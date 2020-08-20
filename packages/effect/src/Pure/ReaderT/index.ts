@@ -5,12 +5,21 @@ import type { Monad } from "../../Prelude"
 import type { URIS, V } from "../../Prelude/HKT"
 import { instance } from "../../Prelude/HKT"
 import type { Auto, F_, InvertedUnionURI, UF_ } from "../../Prelude/HKT/hkt"
+import type { IndexedURI } from "../../Prelude/HKT/Kind"
+import type { Par } from "../../Prelude/HKT/variance"
 import * as R from "../Reader"
 
-export function getReaderM<F extends URIS, C>(
+export function getReaderM<P extends Par = "R">(_?: P) {
+  return <F extends URIS, C>(M: Monad<F, C>) => getReaderM_<F, P, C>(M)
+}
+
+function getReaderM_<F extends URIS, P extends Par, C>(
   M: Monad<F, C>
-): Monad<InvertedUnionURI<R.ReaderURI, F>, Erase<C, Auto> & V<"R", "-">>
-export function getReaderM(M: Monad<[UF_]>): Monad<[R.ReaderURI, UF_]> {
+): Monad<
+  InvertedUnionURI<P extends "R" ? R.ReaderURI : IndexedURI<R.ReaderURI, "R", P>, F>,
+  Erase<C, Auto> & V<P, "-">
+>
+function getReaderM_(M: Monad<[UF_]>): Monad<[R.ReaderURI, UF_]> {
   return instance({
     any: () => R.succeed(M.any()),
     flatten: <A, R2>(ffa: R.Reader<R2, F_<R.Reader<R2, F_<A>>>>): R.Reader<R2, F_<A>> =>

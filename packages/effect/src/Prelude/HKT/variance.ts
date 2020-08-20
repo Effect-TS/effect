@@ -8,7 +8,7 @@ import type { UnionToIntersection } from "../../Utils"
 import type { OrNever } from "./infer"
 
 // list of parameters
-type Par = "I" | "R" | "S" | "E" | "X" | "A"
+export type Par = "I" | "R" | "S" | "E" | "X" | "A"
 
 export interface V<F extends Par, V extends "+" | "-" | "_"> {
   Variance: {
