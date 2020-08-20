@@ -6,7 +6,7 @@ import { flow, pipe, tuple } from "@effect-ts/system/Function"
 import * as O from "@effect-ts/system/Option"
 import * as R from "@effect-ts/system/Record"
 
-export const RecordURI = "RecordURI"
+export const RecordURI = "Record"
 
 export type RecordURI = typeof RecordURI
 
