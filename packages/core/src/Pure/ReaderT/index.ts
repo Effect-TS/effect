@@ -2,12 +2,12 @@ import type { Erase } from "@effect-ts/system/Utils"
 
 import { pipe } from "../../Function"
 import type { Monad } from "../../Prelude"
-import type { RestrictedKindURI, V } from "../../Prelude/HKT"
+import type { URIS, V } from "../../Prelude/HKT"
 import { instance } from "../../Prelude/HKT"
 import type { Auto, F_, InvertedUnionURI, UF_ } from "../../Prelude/HKT/hkt"
 import * as R from "../Reader"
 
-export function getReaderM<F extends RestrictedKindURI, C>(
+export function getReaderM<F extends URIS, C>(
   M: Monad<F, C>
 ): Monad<InvertedUnionURI<R.ReaderURI, F>, Erase<C, Auto> & V<"R", "-">>
 export function getReaderM(M: Monad<[UF_]>): Monad<[R.ReaderURI, UF_]> {

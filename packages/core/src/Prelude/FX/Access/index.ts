@@ -5,6 +5,7 @@ export interface Access<F extends URIS, C = Auto> extends Base<F, C> {
     f: (_: OrFix<"R", C, R>) => A
   ) => Kind<
     F,
+    C,
     OrFix<"N", C, never>,
     OrFix<"K", C, never>,
     SI,

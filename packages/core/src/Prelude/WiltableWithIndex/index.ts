@@ -25,6 +25,7 @@ export interface WiltWithIndex<F extends URIS, C = Auto> {
       a: A
     ) => Kind<
       G,
+      GC,
       OrFix<"N", GC, GN>,
       OrFix<"K", GC, GK>,
       GSIO,
@@ -39,6 +40,7 @@ export interface WiltWithIndex<F extends URIS, C = Auto> {
   ) => <FSI, FSO, FX, FI, FS, FR, FE>(
     ta: Kind<
       F,
+      GC,
       OrFix<"N", C, FN>,
       OrFix<"K", C, FK>,
       FSI,
@@ -52,6 +54,7 @@ export interface WiltWithIndex<F extends URIS, C = Auto> {
     >
   ) => Kind<
     G,
+    GC,
     OrFix<"N", GC, GN>,
     OrFix<"K", GC, GK>,
     GSIO,
@@ -64,6 +67,7 @@ export interface WiltWithIndex<F extends URIS, C = Auto> {
     Separated<
       Kind<
         F,
+        C,
         OrFix<"N", C, FN>,
         OrFix<"K", C, FK>,
         FSI,
@@ -77,6 +81,7 @@ export interface WiltWithIndex<F extends URIS, C = Auto> {
       >,
       Kind<
         F,
+        C,
         OrFix<"N", C, FN>,
         OrFix<"K", C, FK>,
         FSI,
@@ -116,6 +121,7 @@ export function implementSeparateWithIndexF<F extends URIS, C = Auto>(): (
   ) => (
     ta: Kind<
       F,
+      C,
       OrFix<"N", C, FN>,
       OrFix<"K", C, FK>,
       FSI,
@@ -131,6 +137,7 @@ export function implementSeparateWithIndexF<F extends URIS, C = Auto>(): (
     Separated<
       Kind<
         F,
+        C,
         OrFix<"N", C, FN>,
         OrFix<"K", C, FK>,
         FSI,
@@ -144,6 +151,7 @@ export function implementSeparateWithIndexF<F extends URIS, C = Auto>(): (
       >,
       Kind<
         F,
+        C,
         OrFix<"N", C, FN>,
         OrFix<"K", C, FK>,
         FSI,

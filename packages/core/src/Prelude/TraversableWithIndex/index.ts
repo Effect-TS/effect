@@ -22,6 +22,7 @@ export interface ForeachWithIndex<F extends URIS, C = Auto> {
       a: A
     ) => Kind<
       G,
+      GC,
       OrFix<"N", GC, GN>,
       OrFix<"K", GC, GK>,
       GSIO,
@@ -36,6 +37,7 @@ export interface ForeachWithIndex<F extends URIS, C = Auto> {
   ) => <FSI, FSO, FX, FI, FS, FR, FE>(
     fa: Kind<
       F,
+      GC,
       OrFix<"N", C, FN>,
       OrFix<"K", C, FK>,
       FSI,
@@ -49,6 +51,7 @@ export interface ForeachWithIndex<F extends URIS, C = Auto> {
     >
   ) => Kind<
     G,
+    GC,
     OrFix<"N", GC, GN>,
     OrFix<"K", GC, GK>,
     GSIO,
@@ -60,6 +63,7 @@ export interface ForeachWithIndex<F extends URIS, C = Auto> {
     OrFix<"E", GC, GE>,
     Kind<
       F,
+      GC,
       OrFix<"N", C, FN>,
       OrFix<"K", C, FK>,
       FSI,
@@ -100,6 +104,7 @@ export function implementForeachWithIndexF<F extends URIS, C = Auto>(): (
   ) => (
     fa: Kind<
       F,
+      C,
       OrFix<"N", C, N>,
       OrFix<"K", C, K>,
       SI,
@@ -114,6 +119,7 @@ export function implementForeachWithIndexF<F extends URIS, C = Auto>(): (
   ) => G_<
     Kind<
       F,
+      C,
       OrFix<"N", C, N>,
       OrFix<"K", C, K>,
       SI,

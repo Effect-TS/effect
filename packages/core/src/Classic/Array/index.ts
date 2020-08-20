@@ -8,7 +8,7 @@ export const ArrayURI = "Array"
 export type ArrayURI = typeof ArrayURI
 
 declare module "../../Prelude/HKT" {
-  interface URItoKind<N extends string, K, SI, SO, X, I, S, R, E, A> {
+  interface URItoKind<D, N extends string, K, SI, SO, X, I, S, R, E, A> {
     [ArrayURI]: A.Array<A>
   }
   interface URItoIndex<N extends string, K> {

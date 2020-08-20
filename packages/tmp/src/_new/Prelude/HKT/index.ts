@@ -61,7 +61,7 @@ export interface G_<A> {
   A: A
 }
 
-export interface URItoKind<N extends string, K, SI, SO, X, I, S, R, E, A> {
+export interface URItoKind<D, N extends string, K, SI, SO, X, I, S, R, E, A> {
   [UF_]: F_<A>
   [UG_]: G_<A>
   [UF__]: F__<E, A>

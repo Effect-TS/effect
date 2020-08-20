@@ -7,6 +7,7 @@ export interface Separate<F extends URIS, C = Auto> extends Base<F, C> {
   readonly separate: <N extends string, K, SI, SO, X, I, S, R, E, A, B>(
     fa: Kind<
       F,
+      C,
       OrFix<"N", C, N>,
       OrFix<"K", C, K>,
       SI,
@@ -21,6 +22,7 @@ export interface Separate<F extends URIS, C = Auto> extends Base<F, C> {
   ) => Separated<
     Kind<
       F,
+      C,
       OrFix<"N", C, N>,
       OrFix<"K", C, K>,
       SI,
@@ -34,6 +36,7 @@ export interface Separate<F extends URIS, C = Auto> extends Base<F, C> {
     >,
     Kind<
       F,
+      C,
       OrFix<"N", C, N>,
       OrFix<"K", C, K>,
       SI,

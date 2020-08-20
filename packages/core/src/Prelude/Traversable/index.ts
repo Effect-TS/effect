@@ -30,6 +30,7 @@ export interface Foreach<F extends URIS, C = Auto> {
       a: A
     ) => Kind<
       G,
+      C,
       OrFix<"N", GC, GN>,
       OrFix<"K", GC, GK>,
       GSIO,
@@ -44,6 +45,7 @@ export interface Foreach<F extends URIS, C = Auto> {
   ) => <FN extends string, FK, FSI, FSO, FX, FI, FS, FR, FE>(
     fa: Kind<
       F,
+      C,
       OrFix<"N", C, FN>,
       OrFix<"K", C, FK>,
       FSI,
@@ -57,6 +59,7 @@ export interface Foreach<F extends URIS, C = Auto> {
     >
   ) => Kind<
     G,
+    C,
     OrFix<"N", GC, GN>,
     OrFix<"K", GC, GK>,
     GSIO,
@@ -68,6 +71,7 @@ export interface Foreach<F extends URIS, C = Auto> {
     OrFix<"E", GC, GE>,
     Kind<
       F,
+      C,
       OrFix<"N", C, FN>,
       OrFix<"K", C, FK>,
       FSI,
@@ -108,6 +112,7 @@ export function implementForeachF<F extends URIS, C = Auto>(): (
   ) => (
     fa: Kind<
       F,
+      C,
       OrFix<"N", C, N>,
       OrFix<"K", C, K>,
       SI,
@@ -122,6 +127,7 @@ export function implementForeachF<F extends URIS, C = Auto>(): (
   ) => G_<
     Kind<
       F,
+      C,
       OrFix<"N", C, N>,
       OrFix<"K", C, K>,
       SI,
@@ -161,6 +167,7 @@ export interface ForeachComposition<
       a: A
     ) => Kind<
       H,
+      CH,
       OrFix<"N", CH, HN>,
       OrFix<"K", CH, HK>,
       HSIO,
@@ -194,6 +201,7 @@ export interface ForeachComposition<
   >(
     fa: Kind<
       F,
+      CF,
       OrFix<"N", CF, FN>,
       OrFix<"K", CF, FK>,
       FSI,
@@ -205,6 +213,7 @@ export interface ForeachComposition<
       OrFix<"E", CF, FE>,
       Kind<
         G,
+        CG,
         OrFix<"N", CG, GN>,
         OrFix<"K", CG, GK>,
         GSI,
@@ -219,6 +228,7 @@ export interface ForeachComposition<
     >
   ) => Kind<
     H,
+    CH,
     OrFix<"N", CH, HN>,
     OrFix<"K", CH, HK>,
     HSIO,
@@ -230,6 +240,7 @@ export interface ForeachComposition<
     OrFix<"E", CH, HE>,
     Kind<
       F,
+      CF,
       OrFix<"N", CF, FN>,
       OrFix<"K", CF, FK>,
       FSI,
@@ -241,6 +252,7 @@ export interface ForeachComposition<
       OrFix<"E", CF, FE>,
       Kind<
         G,
+        CG,
         OrFix<"N", CG, GN>,
         OrFix<"K", CG, GK>,
         GSI,

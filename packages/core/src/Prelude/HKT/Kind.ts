@@ -11,11 +11,23 @@ export type InvertedUnionURI<
   F extends BaseURIS[]
 > = F extends BaseURIS[] ? [G, ...F] : F
 
-export type Kind<URI extends URIS, N extends string, K, SI, SO, X, I, S, R, E, A> = ((
-  ...x: URI
-) => any) extends (fst: infer XURI, ...rest: infer Rest) => any
+export type Kind<
+  URI extends URIS,
+  D,
+  N extends string,
+  K,
+  SI,
+  SO,
+  X,
+  I,
+  S,
+  R,
+  E,
+  A
+> = ((...x: URI) => any) extends (fst: infer XURI, ...rest: infer Rest) => any
   ? XURI extends BaseURIS
     ? URItoKind<
+        D,
         N,
         K,
         SI,
@@ -25,7 +37,7 @@ export type Kind<URI extends URIS, N extends string, K, SI, SO, X, I, S, R, E, A
         S,
         R,
         E,
-        Rest extends URIS ? Kind<Rest, N, K, SI, SO, X, I, S, R, E, A> : A
+        Rest extends URIS ? Kind<Rest, D, N, K, SI, SO, X, I, S, R, E, A> : A
       >[XURI]
     : never
   : never

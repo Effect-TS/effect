@@ -9,7 +9,7 @@ export const RecordURI = "RecordURI"
 export type RecordURI = typeof RecordURI
 
 declare module "../../Prelude/HKT" {
-  export interface URItoKind<N extends string, K, SI, SO, X, I, S, R, E, A> {
+  export interface URItoKind<D, N extends string, K, SI, SO, X, I, S, R, E, A> {
     [RecordURI]: R.Record<N, A>
   }
 }
