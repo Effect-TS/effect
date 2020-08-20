@@ -1,8 +1,8 @@
-import * as P from "../../Prelude"
-import * as DSL from "../../Prelude/DSL"
-
 import * as A from "@effect-ts/system/Array"
 import { flow, pipe } from "@effect-ts/system/Function"
+
+import * as P from "../../Prelude"
+import * as DSL from "../../Prelude/DSL"
 
 export const ArrayURI = "Array"
 export type ArrayURI = typeof ArrayURI

@@ -1,8 +1,8 @@
-import { Applicative } from "../Combined"
-import { URIS, Auto, Kind, OrFix, Base, UG_, G_, IndexFor } from "../HKT"
+import type { Either } from "@effect-ts/system/Either"
+import type { Separated } from "@effect-ts/system/Utils"
 
-import { Either } from "@effect-ts/system/Either"
-import { Separated } from "@effect-ts/system/Utils"
+import type { Applicative } from "../Combined"
+import type { Auto, Base, G_, IndexFor, Kind, OrFix, UG_, URIS } from "../HKT"
 
 export interface WiltWithIndex<F extends URIS, C = Auto> {
   <G extends URIS, GC = Auto>(F: Applicative<G, GC>): <

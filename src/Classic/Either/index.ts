@@ -1,9 +1,9 @@
-import * as P from "../../Prelude"
-import * as DSL from "../../Prelude/DSL"
-import { Associative } from "../Associative"
-
 import * as E from "@effect-ts/system/Either"
 import { pipe, tuple } from "@effect-ts/system/Function"
+
+import * as P from "../../Prelude"
+import * as DSL from "../../Prelude/DSL"
+import type { Associative } from "../Associative"
 
 export const EitherURI = "Either"
 

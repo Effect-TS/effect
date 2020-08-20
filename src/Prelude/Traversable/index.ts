@@ -1,6 +1,17 @@
-import { IdentityBoth } from "../Combined"
-import { Covariant, CovariantComposition, getCovariantComposition } from "../Covariant"
-import { Auto, Base, CompositionBase2, G_, Kind, OrFix, UF_, UG_, URIS } from "../HKT"
+import type { IdentityBoth } from "../Combined"
+import type { Covariant, CovariantComposition } from "../Covariant"
+import { getCovariantComposition } from "../Covariant"
+import type {
+  Auto,
+  Base,
+  CompositionBase2,
+  G_,
+  Kind,
+  OrFix,
+  UF_,
+  UG_,
+  URIS
+} from "../HKT"
 
 export interface Foreach<F extends URIS, C = Auto> {
   <G extends URIS, GC = Auto>(G: IdentityBoth<G, GC> & Covariant<G, GC>): <

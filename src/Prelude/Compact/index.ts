@@ -1,6 +1,6 @@
-import { URIS, Auto, Base, Kind, OrFix } from "../HKT"
+import type { Option } from "@effect-ts/system/Option"
 
-import { Option } from "@effect-ts/system/Option"
+import type { Auto, Base, Kind, OrFix, URIS } from "../HKT"
 
 export interface Compact<F extends URIS, C = Auto> extends Base<F, C> {
   readonly compact: <N extends string, K, SI, SO, X, I, S, R, E, A>(

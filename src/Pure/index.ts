@@ -1,8 +1,8 @@
-import * as P from "../Prelude"
-import * as DSL from "../Prelude/DSL"
-
 import { constant, identity } from "@effect-ts/system/Function"
 import * as X from "@effect-ts/system/XPure"
+
+import * as P from "../Prelude"
+import { sequenceSF } from "../Prelude/DSL"
 
 export type V = P.V<"R", "-"> & P.V<"E", "+">
 
@@ -54,7 +54,7 @@ export const Provide = P.instance<P.FX.Provide<XPureURI, V>>({
   provide: X.provideAll
 })
 
-export const sequenceS = DSL.sequenceSF(Applicative)
+export const sequenceS = sequenceSF(Applicative)
 
 export {
   access,

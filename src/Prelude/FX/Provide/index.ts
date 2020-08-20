@@ -1,4 +1,4 @@
-import { Auto, Kind, OrFix, URIS, Base } from "../../HKT"
+import type { Auto, Base, Kind, OrFix, URIS } from "../../HKT"
 
 export interface Provide<F extends URIS, C = Auto> extends Base<F, C> {
   readonly provide: <R>(
