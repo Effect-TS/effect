@@ -1,17 +1,17 @@
-import { Auto, Base, Kind, OrFix, URIS } from "../HKT"
+import { Auto, Base, Initial, Kind, OrFix, URIS } from "../HKT"
 
 export interface Any<F extends URIS, C = Auto> extends Base<F, C> {
-  readonly any: <S, SI, SO>() => Kind<
+  readonly any: <N extends string, K, SI, SO, X, I, S, R, E>() => Kind<
     F,
-    OrFix<"N", C, any>,
-    OrFix<"K", C, any>,
+    OrFix<"N", C, N>,
+    OrFix<"K", C, K>,
     SI,
     SO,
-    OrFix<"X", C, any>,
-    OrFix<"I", C, any>,
-    OrFix<"S", C, S>,
-    OrFix<"R", C, any>,
-    OrFix<"E", C, any>,
+    OrFix<"X", C, Initial<C, "X", X>>,
+    OrFix<"I", C, Initial<C, "I", I>>,
+    OrFix<"S", C, Initial<C, "S", S>>,
+    OrFix<"R", C, Initial<C, "R", R>>,
+    OrFix<"E", C, Initial<C, "E", E>>,
     any
   >
 }

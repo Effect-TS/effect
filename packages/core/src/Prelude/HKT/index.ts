@@ -2,6 +2,7 @@ export {
   Auto,
   Base,
   CompositionBase2,
+  Fix,
   F_,
   F__,
   F___,
@@ -12,6 +13,7 @@ export {
   IndexFor,
   instance,
   Kind,
+  OrFix,
   UF_,
   UF__,
   UF___,
@@ -19,11 +21,8 @@ export {
   UG_,
   URIS,
   URItoIndex,
-  URItoKind,
-  Fix,
-  OrFix
+  URItoKind
 } from "./hkt"
-
 export {
   InferA,
   InferE,
@@ -34,3 +33,4 @@ export {
   InferX,
   OrNever
 } from "./infer"
+export { ContravariantP, CovariantP, Initial, Intro, Mix, MixStruct } from "./variance"
