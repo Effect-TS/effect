@@ -41,7 +41,6 @@ export const Covariant = P.instance<P.Covariant<EffectURI, V>>({
 })
 
 export const IdentityEither: P.IdentityEither<EffectURI, AsyncV> = {
-  ...Any,
   ...AssociativeEither,
   ...None
 }
