@@ -1,4 +1,4 @@
-import { Auto, Kind, OrE, OrI, OrK, OrR, OrS, OrX, URIS, Base, OrN } from "../../HKT"
+import { Auto, Kind, OrFix, URIS, Base } from "../../HKT"
 
 import { Either } from "@effect-ts/system/Either"
 
@@ -6,28 +6,28 @@ export interface Run<F extends URIS, C = Auto> extends Base<F, C> {
   readonly run: <N extends string, K, SI, SO, X, I, S, R, E, A>(
     fa: Kind<
       F,
-      OrN<C, N>,
-      OrK<C, K>,
+      OrFix<"N", C, N>,
+      OrFix<"K", C, K>,
       SI,
       SO,
-      OrX<C, X>,
-      OrI<C, I>,
-      OrS<C, S>,
-      OrR<C, R>,
-      OrE<C, E>,
+      OrFix<"X", C, X>,
+      OrFix<"I", C, I>,
+      OrFix<"S", C, S>,
+      OrFix<"R", C, R>,
+      OrFix<"E", C, E>,
       A
     >
   ) => Kind<
     F,
-    OrN<C, N>,
-    OrK<C, K>,
+    OrFix<"N", C, N>,
+    OrFix<"K", C, K>,
     SI,
     SO,
-    OrX<C, X>,
-    OrI<C, I>,
-    OrS<C, S>,
-    OrR<C, R>,
-    OrE<C, never>,
-    Either<OrE<C, E>, A>
+    OrFix<"X", C, X>,
+    OrFix<"I", C, I>,
+    OrFix<"S", C, S>,
+    OrFix<"R", C, R>,
+    OrFix<"E", C, never>,
+    Either<OrFix<"E", C, E>, A>
   >
 }

@@ -103,22 +103,7 @@ export interface Auto {
   readonly Auto: unique symbol
 }
 
-export {
-  FixE,
-  FixI,
-  FixK,
-  FixN,
-  FixR,
-  FixS,
-  FixX,
-  OrE,
-  OrI,
-  OrK,
-  OrN,
-  OrR,
-  OrS,
-  OrX
-} from "./fix"
+export { Fix, OrFix } from "./fix"
 
 export { instance } from "./instance"
 
