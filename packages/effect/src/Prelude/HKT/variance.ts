@@ -29,9 +29,9 @@ export type Mix<C, P extends Par, X extends NonEmptyArray<any>> = C extends V<P,
     : X extends [any, any, any, any]
     ? X[0] & X[1] & X[2] & X[3]
     : X extends [any, any, any, any, any]
-    ? X[0] & X[1] & X[2] & X[3] & X[3]
+    ? X[0] & X[1] & X[2] & X[3] & X[4]
     : X extends [any, any, any, any, any, any]
-    ? X[0] & X[1] & X[2] & X[3] & X[3] & X[4]
+    ? X[0] & X[1] & X[2] & X[3] & X[4] & X[5]
     : UnionToIntersection<{ [k in keyof X]: OrNever<X[k]> }[keyof X]>
   : X[0]
 
