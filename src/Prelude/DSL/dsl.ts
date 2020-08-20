@@ -1,143 +1,124 @@
 import * as A from "@effect-ts/system/Array"
 
+import type { Augmented, Has } from "../../Classic/Has"
+import { HasURI } from "../../Classic/Has"
 import { constant, flow, pipe, tuple } from "../../Function"
 import type { EnforceNonEmptyRecord } from "../../Utils"
 import type { Any } from "../Any"
 import type { AssociativeFlatten } from "../AssociativeFlatten"
 import type { Applicative, Monad } from "../Combined"
 import type { Covariant } from "../Covariant"
-import type { Access } from "../FX"
-import type {
-  Auto,
-  F_,
-  F___,
-  InferA,
-  InferE,
-  InferI,
-  InferK,
-  InferN,
-  InferR,
-  InferS,
-  InferX,
-  Initial,
-  Intro,
-  Kind,
-  Mix,
-  MixStruct,
-  OrFix,
-  UF_,
-  UF___,
-  URIS
-} from "../HKT"
+import type { Access, Provide } from "../FX"
+import type * as HKT from "../HKT"
 
-export function succeedF<F extends URIS, C = Auto>(
+export function succeedF<F extends HKT.URIS, C = HKT.Auto>(
   F: Any<F, C> & Covariant<F, C>
 ): <N extends string, K, SI, SO, A>(
   a: A
-) => Kind<
+) => HKT.Kind<
   F,
-  OrFix<"N", C, N>,
-  OrFix<"K", C, K>,
+  HKT.OrFix<"N", C, N>,
+  HKT.OrFix<"K", C, K>,
   SI,
   SO,
-  OrFix<"X", C, Initial<C, "X">>,
-  OrFix<"I", C, Initial<C, "I">>,
-  OrFix<"S", C, Initial<C, "S">>,
-  OrFix<"R", C, Initial<C, "R">>,
-  OrFix<"E", C, Initial<C, "E">>,
+  HKT.OrFix<"X", C, HKT.Initial<C, "X">>,
+  HKT.OrFix<"I", C, HKT.Initial<C, "I">>,
+  HKT.OrFix<"S", C, HKT.Initial<C, "S">>,
+  HKT.OrFix<"R", C, HKT.Initial<C, "R">>,
+  HKT.OrFix<"E", C, HKT.Initial<C, "E">>,
   A
 >
-export function succeedF(F: Any<UF_> & Covariant<UF_>): <A>(a: A) => F_<A> {
+export function succeedF(F: Any<HKT.UF_> & Covariant<HKT.UF_>): <A>(a: A) => HKT.F_<A> {
   return <A>(a: A) => F.map(constant(a))(F.any())
 }
 
-export function chainF<F extends URIS, C = Auto>(
+export function chainF<F extends HKT.URIS, C = HKT.Auto>(
   F: Monad<F, C>
 ): <N2 extends string, K2, SO, SO2, X2, I2, S2, R2, E2, A, B>(
   f: (
     a: A
-  ) => Kind<
+  ) => HKT.Kind<
     F,
-    OrFix<"N", C, N2>,
-    OrFix<"K", C, K2>,
+    HKT.OrFix<"N", C, N2>,
+    HKT.OrFix<"K", C, K2>,
     SO,
     SO2,
-    OrFix<"X", C, X2>,
-    OrFix<"I", C, I2>,
-    OrFix<"S", C, S2>,
-    OrFix<"R", C, R2>,
-    OrFix<"E", C, E2>,
+    HKT.OrFix<"X", C, X2>,
+    HKT.OrFix<"I", C, I2>,
+    HKT.OrFix<"S", C, S2>,
+    HKT.OrFix<"R", C, R2>,
+    HKT.OrFix<"E", C, E2>,
     B
   >
 ) => <N extends string, K, SI, X, I, S, R, E>(
-  fa: Kind<
+  fa: HKT.Kind<
     F,
-    OrFix<"N", C, N>,
-    OrFix<"K", C, K>,
+    HKT.OrFix<"N", C, N>,
+    HKT.OrFix<"K", C, K>,
     SI,
     SO,
-    OrFix<"X", C, Intro<C, "X", X2, X>>,
-    OrFix<"I", C, Intro<C, "I", I2, I>>,
-    OrFix<"S", C, Intro<C, "S", S2, S>>,
-    OrFix<"R", C, Intro<C, "R", R2, R>>,
-    OrFix<"E", C, Intro<C, "E", E2, E>>,
+    HKT.OrFix<"X", C, HKT.Intro<C, "X", X2, X>>,
+    HKT.OrFix<"I", C, HKT.Intro<C, "I", I2, I>>,
+    HKT.OrFix<"S", C, HKT.Intro<C, "S", S2, S>>,
+    HKT.OrFix<"R", C, HKT.Intro<C, "R", R2, R>>,
+    HKT.OrFix<"E", C, HKT.Intro<C, "E", E2, E>>,
     A
   >
-) => Kind<
+) => HKT.Kind<
   F,
-  OrFix<"N", C, N2>,
-  OrFix<"K", C, K2>,
+  HKT.OrFix<"N", C, N2>,
+  HKT.OrFix<"K", C, K2>,
   SI,
   SO2,
-  OrFix<"X", C, Mix<C, "X", [X2, X]>>,
-  OrFix<"I", C, Mix<C, "I", [I2, I]>>,
-  OrFix<"S", C, Mix<C, "S", [S2, S]>>,
-  OrFix<"R", C, Mix<C, "R", [R2, R]>>,
-  OrFix<"E", C, Mix<C, "X", [E2, E]>>,
+  HKT.OrFix<"X", C, HKT.Mix<C, "X", [X2, X]>>,
+  HKT.OrFix<"I", C, HKT.Mix<C, "I", [I2, I]>>,
+  HKT.OrFix<"S", C, HKT.Mix<C, "S", [S2, S]>>,
+  HKT.OrFix<"R", C, HKT.Mix<C, "R", [R2, R]>>,
+  HKT.OrFix<"E", C, HKT.Mix<C, "X", [E2, E]>>,
   B
 >
-export function chainF(F: Monad<UF_>) {
-  return <A, B>(f: (a: A) => F_<B>) => flow(F.map(f), F.flatten)
+export function chainF(F: Monad<HKT.UF_>) {
+  return <A, B>(f: (a: A) => HKT.F_<B>) => flow(F.map(f), F.flatten)
 }
 
-export function accessMF<F extends URIS, C = Auto>(
+export function accessMF<F extends HKT.URIS, C = HKT.Auto>(
   F: Access<F, C> & AssociativeFlatten<F, C>
 ): <N extends string, K, SI, SO, X, I, S, R, R2, E, A>(
   f: (
-    r: OrFix<"R", C, R>
-  ) => Kind<
+    r: HKT.OrFix<"R", C, R>
+  ) => HKT.Kind<
     F,
-    OrFix<"N", C, N>,
-    OrFix<"K", C, K>,
+    HKT.OrFix<"N", C, N>,
+    HKT.OrFix<"K", C, K>,
     SI,
     SO,
-    OrFix<"X", C, X>,
-    OrFix<"I", C, I>,
-    OrFix<"S", C, S>,
-    OrFix<"R", C, Intro<C, "R", R, R2>>,
-    OrFix<"E", C, E>,
+    HKT.OrFix<"X", C, X>,
+    HKT.OrFix<"I", C, I>,
+    HKT.OrFix<"S", C, S>,
+    HKT.OrFix<"R", C, HKT.Intro<C, "R", R, R2>>,
+    HKT.OrFix<"E", C, E>,
     A
   >
-) => Kind<
+) => HKT.Kind<
   F,
-  OrFix<"N", C, N>,
-  OrFix<"K", C, K>,
+  HKT.OrFix<"N", C, N>,
+  HKT.OrFix<"K", C, K>,
   SI,
   SO,
-  OrFix<"X", C, X>,
-  OrFix<"I", C, I>,
-  OrFix<"S", C, S>,
-  OrFix<"R", C, Mix<C, "R", [R, R2]>>,
-  OrFix<"E", C, E>,
+  HKT.OrFix<"X", C, X>,
+  HKT.OrFix<"I", C, I>,
+  HKT.OrFix<"S", C, S>,
+  HKT.OrFix<"R", C, HKT.Mix<C, "R", [R, R2]>>,
+  HKT.OrFix<"E", C, E>,
   A
 >
 export function accessMF(
-  F: Access<UF___> & AssociativeFlatten<UF___>
-): <R, E, A>(f: (r: R) => F___<R, E, A>) => F___<R, E, A> {
+  F: Access<HKT.UF___> & AssociativeFlatten<HKT.UF___>
+): <R, E, A>(f: (r: R) => HKT.F___<R, E, A>) => HKT.F___<R, E, A> {
   return flow(F.access, F.flatten)
 }
 
-export function sequenceSF<F extends URIS, C = Auto>(
+export function sequenceSF<F extends HKT.URIS, C = HKT.Auto>(
   F: Applicative<F, C>
 ): <
   X,
@@ -148,17 +129,17 @@ export function sequenceSF<F extends URIS, C = Auto>(
   SIO,
   NER extends Record<
     string,
-    Kind<
+    HKT.Kind<
       F,
-      OrFix<"N", C, any>,
-      OrFix<"K", C, any>,
+      HKT.OrFix<"N", C, any>,
+      HKT.OrFix<"K", C, any>,
       SIO,
       SIO,
-      OrFix<"X", C, Intro<C, "X", X, any>>,
-      OrFix<"I", C, Intro<C, "I", I, any>>,
-      OrFix<"S", C, Intro<C, "S", S, any>>,
-      OrFix<"R", C, Intro<C, "R", R, any>>,
-      OrFix<"E", C, Intro<C, "E", E, any>>,
+      HKT.OrFix<"X", C, HKT.Intro<C, "X", X, any>>,
+      HKT.OrFix<"I", C, HKT.Intro<C, "I", I, any>>,
+      HKT.OrFix<"S", C, HKT.Intro<C, "S", S, any>>,
+      HKT.OrFix<"R", C, HKT.Intro<C, "R", R, any>>,
+      HKT.OrFix<"E", C, HKT.Intro<C, "E", E, any>>,
       any
     >
   >
@@ -166,105 +147,105 @@ export function sequenceSF<F extends URIS, C = Auto>(
   r: EnforceNonEmptyRecord<NER> &
     Record<
       string,
-      Kind<
+      HKT.Kind<
         F,
-        OrFix<"N", C, any>,
-        OrFix<"K", C, any>,
+        HKT.OrFix<"N", C, any>,
+        HKT.OrFix<"K", C, any>,
         SIO,
         SIO,
-        OrFix<"X", C, Intro<C, "X", X, any>>,
-        OrFix<"I", C, Intro<C, "I", I, any>>,
-        OrFix<"S", C, Intro<C, "S", S, any>>,
-        OrFix<"R", C, Intro<C, "R", R, any>>,
-        OrFix<"E", C, Intro<C, "E", E, any>>,
+        HKT.OrFix<"X", C, HKT.Intro<C, "X", X, any>>,
+        HKT.OrFix<"I", C, HKT.Intro<C, "I", I, any>>,
+        HKT.OrFix<"S", C, HKT.Intro<C, "S", S, any>>,
+        HKT.OrFix<"R", C, HKT.Intro<C, "R", R, any>>,
+        HKT.OrFix<"E", C, HKT.Intro<C, "E", E, any>>,
         any
       >
     >
-) => Kind<
+) => HKT.Kind<
   F,
-  OrFix<
+  HKT.OrFix<
     "N",
     C,
     {
-      [K in keyof NER]: InferN<F, NER[K]>
+      [K in keyof NER]: HKT.InferN<F, NER[K]>
     }[keyof NER]
   >,
-  OrFix<
+  HKT.OrFix<
     "K",
     C,
     {
-      [K in keyof NER]: InferK<F, NER[K]>
+      [K in keyof NER]: HKT.InferK<F, NER[K]>
     }[keyof NER]
   >,
   SIO,
   SIO,
-  OrFix<
+  HKT.OrFix<
     "X",
     C,
-    MixStruct<
+    HKT.MixStruct<
       C,
       "X",
       X,
       {
-        [K in keyof NER]: InferX<F, NER[K]>
+        [K in keyof NER]: HKT.InferX<F, NER[K]>
       }
     >
   >,
-  OrFix<
+  HKT.OrFix<
     "I",
     C,
-    MixStruct<
+    HKT.MixStruct<
       C,
       "I",
       I,
       {
-        [K in keyof NER]: InferI<F, NER[K]>
+        [K in keyof NER]: HKT.InferI<F, NER[K]>
       }
     >
   >,
-  OrFix<
+  HKT.OrFix<
     "S",
     C,
-    MixStruct<
+    HKT.MixStruct<
       C,
       "S",
       S,
       {
-        [K in keyof NER]: InferS<F, NER[K]>
+        [K in keyof NER]: HKT.InferS<F, NER[K]>
       }
     >
   >,
-  OrFix<
+  HKT.OrFix<
     "R",
     C,
-    MixStruct<
+    HKT.MixStruct<
       C,
       "R",
       R,
       {
-        [K in keyof NER]: InferR<F, NER[K]>
+        [K in keyof NER]: HKT.InferR<F, NER[K]>
       }
     >
   >,
-  OrFix<
+  HKT.OrFix<
     "E",
     C,
-    MixStruct<
+    HKT.MixStruct<
       C,
       "E",
       E,
       {
-        [K in keyof NER]: InferE<F, NER[K]>
+        [K in keyof NER]: HKT.InferE<F, NER[K]>
       }
     >
   >,
   {
-    [K in keyof NER]: InferA<F, NER[K]>
+    [K in keyof NER]: HKT.InferA<F, NER[K]>
   }
 >
 export function sequenceSF(
-  F: Applicative<UF_>
-): (r: Record<string, F_<any>>) => F_<Record<string, any>> {
+  F: Applicative<HKT.UF_>
+): (r: Record<string, HKT.F_<any>>) => HKT.F_<Record<string, any>> {
   return (r) =>
     pipe(
       Object.keys(r).map((k) => tuple(k, r[k])),
@@ -282,5 +263,94 @@ export function sequenceSF(
         })
         return res
       })
+    )
+}
+
+export function accessServiceMF<F extends HKT.URIS, C extends HKT.V<"R", "-">>(
+  F: Monad<F, C> & Access<F, C>
+): <Service>(
+  H: Augmented<Service>
+) => <N extends string, K, SI, SO, X, I, S, R, E, A>(
+  f: (
+    _: Service
+  ) => HKT.Kind<
+    F,
+    HKT.OrFix<"N", C, N>,
+    HKT.OrFix<"K", C, K>,
+    SI,
+    SO,
+    HKT.OrFix<"X", C, X>,
+    HKT.OrFix<"I", C, I>,
+    HKT.OrFix<"S", C, S>,
+    HKT.OrFix<"R", C, R>,
+    HKT.OrFix<"E", C, E>,
+    A
+  >
+) => HKT.Kind<
+  F,
+  HKT.OrFix<"N", C, N>,
+  HKT.OrFix<"K", C, K>,
+  SI,
+  SO,
+  HKT.OrFix<"X", C, X>,
+  HKT.OrFix<"I", C, I>,
+  HKT.OrFix<"S", C, S>,
+  HKT.OrFix<"R", C, R & Has<Service>>,
+  HKT.OrFix<"E", C, E>,
+  A
+>
+export function accessServiceMF(
+  F: Monad<HKT.UF___, HKT.V<"R", "-">> & Access<HKT.UF___, HKT.V<"R", "-">>
+): <Service>(
+  H: Augmented<Service>
+) => <R, E, A>(
+  f: (_: Service) => HKT.F___<R, E, A>
+) => HKT.F___<Has<Service> & R, E, A> {
+  return (H) => (f) => accessMF(F)(flow(H.read, f))
+}
+
+export function provideServiceF<F extends HKT.URIS, C extends HKT.V<"R", "-">>(
+  F: Monad<F, C> & Access<F, C> & Provide<F, C>
+): <Service>(
+  H: Augmented<Service>
+) => (
+  S: Service
+) => <N extends string, K, SI, SO, X, I, S, R, E, A>(
+  fa: HKT.Kind<
+    F,
+    HKT.OrFix<"N", C, N>,
+    HKT.OrFix<"K", C, K>,
+    SI,
+    SO,
+    HKT.OrFix<"X", C, X>,
+    HKT.OrFix<"I", C, I>,
+    HKT.OrFix<"S", C, S>,
+    HKT.OrFix<"R", C, R & Has<Service>>,
+    HKT.OrFix<"E", C, E>,
+    A
+  >
+) => HKT.Kind<
+  F,
+  HKT.OrFix<"N", C, N>,
+  HKT.OrFix<"K", C, K>,
+  SI,
+  SO,
+  HKT.OrFix<"X", C, X>,
+  HKT.OrFix<"I", C, I>,
+  HKT.OrFix<"S", C, S>,
+  HKT.OrFix<"R", C, R>,
+  HKT.OrFix<"E", C, E>,
+  A
+>
+export function provideServiceF(
+  F: Monad<HKT.UF___, HKT.V<"R", "-">> &
+    Access<HKT.UF___, HKT.V<"R", "-">> &
+    Provide<HKT.UF___, HKT.V<"R", "-">>
+) {
+  return <Service>(H: Augmented<Service>) => <R, E, A>(S: Service) => (
+    fa: HKT.F___<Has<Service> & R, E, A>
+  ): HKT.F___<R, E, A> =>
+    accessMF(F)((r: R) =>
+      pipe(fa, F.provide(({ ...r, [H[HasURI].key]: S } as unknown) as R & Has<Service>))
     )
 }
