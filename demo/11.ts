@@ -16,13 +16,13 @@ export interface Store<K, V, A>
 export const URI = "Store"
 export type URI = typeof URI
 
-type SK = "SK"
-type SV = "SV"
-type Params<K, V> = H.CT<SK, K> & H.CT<SV, V>
+type StoreKey = "StoreKey"
+type StoreValue = "StoreValue"
+type Params<K, V> = H.CT<StoreKey, K> & H.CT<StoreValue, V>
 
 declare module "../src/Prelude/HKT" {
   export interface URItoKind<D, N extends string, K, SI, SO, X, I, S, R, E, A> {
-    [URI]: Store<H.Custom<D, SK>, H.Custom<D, SV>, A>
+    [URI]: Store<H.Custom<D, StoreKey>, H.Custom<D, StoreValue>, A>
   }
 }
 
