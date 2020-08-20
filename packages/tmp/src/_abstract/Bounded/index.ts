@@ -1,5 +1,5 @@
-import { Ord } from "../Ord"
-import { Ordering } from "../Ordering"
+import type { Ord } from "../Ord"
+import type { Ordering } from "../Ordering"
 
 export interface Bounded<A> extends Ord<A> {
   readonly top: A

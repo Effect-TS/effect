@@ -1,7 +1,7 @@
-import { Auto, Base, Kind, OrFix, URIS } from "../HKT"
+import type { Either } from "@effect-ts/system/Either"
+import type { Separated } from "@effect-ts/system/Utils"
 
-import { Either } from "@effect-ts/system/Either"
-import { Separated } from "@effect-ts/system/Utils"
+import type { Auto, Base, Kind, OrFix, URIS } from "../HKT"
 
 export interface Separate<F extends URIS, C = Auto> extends Base<F, C> {
   readonly separate: <N extends string, K, SI, SO, X, I, S, R, E, A, B>(

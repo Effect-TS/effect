@@ -1,8 +1,7 @@
 import { failureOrCause } from "../Cause"
 import * as E from "../Either"
-
 import { chain_, foldCauseM_, halt, succeed } from "./core"
-import { Effect } from "./effect"
+import type { Effect } from "./effect"
 
 /**
  * Returns an effect that effectfully "peeks" at the failure of this effect.

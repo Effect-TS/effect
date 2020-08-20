@@ -1,6 +1,6 @@
-import { pipe } from "../../src/Function"
 import * as E from "../../src/_new/Classic/Either"
 import * as R from "../../src/_new/Classic/Record"
+import { pipe } from "../../src/Function"
 
 const result = pipe(
   { a: 0, b: 1 },

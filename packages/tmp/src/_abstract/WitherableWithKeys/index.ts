@@ -1,6 +1,6 @@
-import { Option } from "../../Option"
-import { ApplicativeF, ApplicativeK } from "../Applicative"
-import { HasURI, HKTFull, HKT_, KeyFor, KindFull, URIS } from "../HKT"
+import type { Option } from "../../Option"
+import type { ApplicativeF, ApplicativeK } from "../Applicative"
+import type { HasURI, HKT_, HKTFull, KeyFor, KindFull, URIS } from "../HKT"
 
 export interface WitherWithKeysF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any> {
   <G, GTL0 = any, GTL1 = any, GTL2 = any, GTL3 = any>(

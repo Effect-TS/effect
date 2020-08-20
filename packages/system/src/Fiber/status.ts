@@ -1,4 +1,4 @@
-import { FiberID } from "./id"
+import type { FiberID } from "./id"
 
 export type Status = Done | Finishing | Running | Suspended
 

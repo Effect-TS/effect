@@ -1,4 +1,4 @@
-import { HasURI, HKTFull, KindFull, URIS } from "../HKT"
+import type { HasURI, HKTFull, KindFull, URIS } from "../HKT"
 
 export interface ReduceRightF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any>
   extends HasURI<F, TL0, TL1, TL2, TL3> {

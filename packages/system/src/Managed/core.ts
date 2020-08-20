@@ -1,14 +1,16 @@
-import { Cause } from "../Cause/cause"
+import type { Cause } from "../Cause/cause"
 import { sequential } from "../Effect"
-import { ExecutionStrategy, parallel, Sequential } from "../Effect/ExecutionStrategy"
-import { FiberContext, interrupt } from "../Fiber"
+import type { ExecutionStrategy, Sequential } from "../Effect/ExecutionStrategy"
+import { parallel } from "../Effect/ExecutionStrategy"
+import type { FiberContext } from "../Fiber"
+import { interrupt } from "../Fiber"
 import { pipe, tuple } from "../Function"
 import { makeRef } from "../Ref"
-
 import * as T from "./deps"
 import { internalEffect, releaseAll } from "./internals"
 import { Managed, noop } from "./managed"
-import { Finalizer, makeReleaseMap, ReleaseMap } from "./releaseMap"
+import type { Finalizer, ReleaseMap } from "./releaseMap"
+import { makeReleaseMap } from "./releaseMap"
 
 /**
  * Returns a managed that models the execution of this managed, followed by

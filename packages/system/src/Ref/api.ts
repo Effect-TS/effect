@@ -1,14 +1,14 @@
 import { absolve } from "../Effect/absolve"
 import { chain, effectTotal } from "../Effect/core"
-import { Sync, SyncE } from "../Effect/effect"
+import type { Sync, SyncE } from "../Effect/effect"
 import * as E from "../Either"
 import { identity, pipe, tuple } from "../Function"
 import * as O from "../Option"
 import { AtomicReference } from "../Support/AtomicReference"
 import { matchTag } from "../Utils"
-
-import { Atomic, concrete, Ref, XRef } from "./XRef"
 import * as A from "./atomic"
+import type { Ref, XRef } from "./XRef"
+import { Atomic, concrete } from "./XRef"
 
 /**
  * Creates a new `XRef` with the specified value.

@@ -1,4 +1,5 @@
-import { Generic, genericDef, newtype, typeDef, TypeOf } from "./newtype"
+import type { Generic, TypeOf } from "./newtype"
+import { genericDef, newtype, typeDef } from "./newtype"
 
 /**
  * A newtype representing addition.

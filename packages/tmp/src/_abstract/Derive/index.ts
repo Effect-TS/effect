@@ -1,4 +1,4 @@
-import { HKTFull, KindFull, URIS } from "../HKT"
+import type { HKTFull, KindFull, URIS } from "../HKT"
 
 export interface DeriveF<F, Typeclass, TL0 = any, TL1 = any, TL2 = any, TL3 = any> {
   readonly Derive: "Derive"

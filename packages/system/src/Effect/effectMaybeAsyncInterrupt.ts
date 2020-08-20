@@ -1,13 +1,12 @@
 import * as E from "../Either"
-import { FiberID } from "../Fiber/id"
+import type { FiberID } from "../Fiber/id"
 import * as O from "../Option"
 import { AtomicReference } from "../Support/AtomicReference"
 import { OneShot } from "../Support/OneShot"
-
-import { Canceler } from "./Canceler"
-import { Cb } from "./Cb"
+import type { Canceler } from "./Canceler"
+import type { Cb } from "./Cb"
 import { chain_, effectAsyncOption, effectTotal, succeed, suspend, unit } from "./core"
-import { AsyncRE, Sync } from "./effect"
+import type { AsyncRE, Sync } from "./effect"
 import { flatten } from "./flatten"
 import { onInterrupt_ } from "./onInterrupt_"
 

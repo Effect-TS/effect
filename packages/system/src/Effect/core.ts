@@ -1,11 +1,10 @@
-import { Cause } from "../Cause/cause"
-import * as Fiber from "../Fiber"
-import { Descriptor, InterruptStatus } from "../Fiber/core"
-import { FiberID } from "../Fiber/id"
+import type { Cause } from "../Cause/cause"
+import type * as Fiber from "../Fiber"
+import type { Descriptor, InterruptStatus } from "../Fiber/core"
+import type { FiberID } from "../Fiber/id"
 import * as O from "../Option"
-
-import { Cb } from "./Cb"
-import { AsyncR, AsyncRE, Effect, Sync, SyncE, SyncR } from "./effect"
+import type { Cb } from "./Cb"
+import type { AsyncR, AsyncRE, Effect, Sync, SyncE, SyncR } from "./effect"
 import {
   ICheckInterrupt,
   IDescriptor,

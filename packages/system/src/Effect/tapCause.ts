@@ -1,6 +1,5 @@
-import { Cause } from "../Cause/cause"
-
-import { Effect } from "./effect"
+import type { Cause } from "../Cause/cause"
+import type { Effect } from "./effect"
 import { tapCause_ } from "./tapCause_"
 
 /**

@@ -1,17 +1,21 @@
-import { pipe, Predicate, Refinement, tuple, tupled } from "../Function"
-import * as O from "../Option"
-import { Associative } from "../_abstract/Associative"
-import * as Eq from "../_abstract/Equal"
-import { Identity, makeIdentity } from "../_abstract/Identity"
-import { Ord } from "../_abstract/Ord"
-import * as Ordering from "../_abstract/Ordering"
-import { makeShow, Show } from "../_abstract/Show"
-
-import { Either, isLeft } from "@effect-ts/system/Either/core"
+import type { Either } from "@effect-ts/system/Either/core"
+import { isLeft } from "@effect-ts/system/Either/core"
 import * as M from "@effect-ts/system/Map/core"
 import { Map } from "@effect-ts/system/Map/core"
-import { MutableArray } from "@effect-ts/system/Mutable"
-import { Separated } from "@effect-ts/system/Utils"
+import type { MutableArray } from "@effect-ts/system/Mutable"
+import type { Separated } from "@effect-ts/system/Utils"
+
+import type { Associative } from "../_abstract/Associative"
+import * as Eq from "../_abstract/Equal"
+import type { Identity } from "../_abstract/Identity"
+import { makeIdentity } from "../_abstract/Identity"
+import type { Ord } from "../_abstract/Ord"
+import * as Ordering from "../_abstract/Ordering"
+import type { Show } from "../_abstract/Show"
+import { makeShow } from "../_abstract/Show"
+import type { Predicate, Refinement } from "../Function"
+import { pipe, tuple, tupled } from "../Function"
+import * as O from "../Option"
 
 /**
  * Lookup key `K` returning `Option[(K, A)]` using strict equality of keys

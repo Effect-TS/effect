@@ -1,7 +1,6 @@
-import { AsyncE } from "../Effect/effect"
+import type { AsyncE } from "../Effect/effect"
 import { toPromise } from "../Effect/toPromise"
-
-import { Promise } from "./promise"
+import type { Promise } from "./promise"
 
 /**
  * Completes the promise with the result of the specified effect. If the

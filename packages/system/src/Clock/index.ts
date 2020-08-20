@@ -4,10 +4,11 @@
  * Copyright 2020 Michael Arnaldi and the Matechs Garage Contributors.
  */
 import { effectTotal, unit } from "../Effect/core"
-import { Async, Sync } from "../Effect/effect"
+import type { Async, Sync } from "../Effect/effect"
 import { effectAsyncInterrupt } from "../Effect/effectAsyncInterrupt"
 import { accessService, accessServiceM } from "../Effect/has"
-import { has, HasType } from "../Has"
+import type { HasType } from "../Has"
+import { has } from "../Has"
 
 //
 // Clock Definition

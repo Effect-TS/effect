@@ -1,6 +1,6 @@
-import { CovariantF, CovariantK } from "../Covariant"
-import { HKTFull, HKT_, KeyFor, KindFull, URIS } from "../HKT"
-import { IdentityBothF, IdentityBothK } from "../IdentityBoth"
+import type { CovariantF, CovariantK } from "../Covariant"
+import type { HKT_, HKTFull, KeyFor, KindFull, URIS } from "../HKT"
+import type { IdentityBothF, IdentityBothK } from "../IdentityBoth"
 
 export interface ForeachWithKeysF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any> {
   <G, GTL0 = any, GTL1 = any, GTL2 = any, GTL3 = any>(

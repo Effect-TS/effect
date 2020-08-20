@@ -1,8 +1,7 @@
 import * as R from "../Record"
-import { EnforceNonEmptyRecord, UnionToIntersection } from "../Utils"
-
-import { chain_, foreachParN_, foreachPar_, foreach_, map_ } from "./core"
-import { Managed } from "./managed"
+import type { EnforceNonEmptyRecord, UnionToIntersection } from "../Utils"
+import { chain_, foreach_, foreachPar_, foreachParN_, map_ } from "./core"
+import type { Managed } from "./managed"
 
 export function sequenceS<NER extends Record<string, Managed<any, any, any, any>>>(
   r: EnforceNonEmptyRecord<NER> & Record<string, Managed<any, any, any, any>>

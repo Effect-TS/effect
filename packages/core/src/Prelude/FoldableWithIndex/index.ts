@@ -1,7 +1,7 @@
-import { FoldMapWithIndex } from "../FoldMapWithIndex"
-import { Auto, URIS } from "../HKT"
-import { ReduceRightWithIndex } from "../ReduceRightWithIndex"
-import { ReduceWithIndex } from "../ReduceWithIndex"
+import type { FoldMapWithIndex } from "../FoldMapWithIndex"
+import type { Auto, URIS } from "../HKT"
+import type { ReduceRightWithIndex } from "../ReduceRightWithIndex"
+import type { ReduceWithIndex } from "../ReduceWithIndex"
 
 export type FoldableWithIndex<F extends URIS, C = Auto> = ReduceRightWithIndex<F, C> &
   ReduceWithIndex<F, C> &

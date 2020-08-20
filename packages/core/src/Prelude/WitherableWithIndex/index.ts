@@ -1,7 +1,7 @@
-import { Applicative } from "../Combined"
-import { Auto, Base, G_, IndexFor, Kind, OrFix, UG_, URIS } from "../HKT"
+import type { Option } from "@effect-ts/system/Option"
 
-import { Option } from "@effect-ts/system/Option"
+import type { Applicative } from "../Combined"
+import type { Auto, Base, G_, IndexFor, Kind, OrFix, UG_, URIS } from "../HKT"
 
 export interface WitherWithIndex<F extends URIS, C = Auto> {
   <G extends URIS, GC = Auto>(F: Applicative<G, GC>): <

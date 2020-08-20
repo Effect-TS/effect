@@ -1,7 +1,6 @@
 import { pipe } from "../Function"
-
 import * as D from "./do"
-import { Effect } from "./effect"
+import type { Effect } from "./effect"
 import { map } from "./map"
 
 /**

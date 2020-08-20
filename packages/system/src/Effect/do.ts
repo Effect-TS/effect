@@ -1,5 +1,5 @@
 import { chain_, succeed } from "./core"
-import { Effect } from "./effect"
+import type { Effect } from "./effect"
 import { map_ } from "./map_"
 
 const bind = <S, R, E, A, K, N extends string>(

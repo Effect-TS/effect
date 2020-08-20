@@ -1,13 +1,14 @@
-import { AnyK } from "../_abstract/Any"
-import { AssociativeBothK } from "../_abstract/AssociativeBoth"
-import { AssociativeFlattenK } from "../_abstract/AssociativeFlatten"
-import { CovariantK } from "../_abstract/Covariant"
-import { instance } from "../_abstract/HKT"
-import { IdentityFlattenK } from "../_abstract/IdentityFlatten"
-import { MonadK } from "../_abstract/Monad"
-import { Generic, genericDef } from "../_abstract/Newtype"
-
 import { tuple } from "@effect-ts/system/Function"
+
+import type { AnyK } from "../_abstract/Any"
+import type { AssociativeBothK } from "../_abstract/AssociativeBoth"
+import type { AssociativeFlattenK } from "../_abstract/AssociativeFlatten"
+import type { CovariantK } from "../_abstract/Covariant"
+import { instance } from "../_abstract/HKT"
+import type { IdentityFlattenK } from "../_abstract/IdentityFlatten"
+import type { MonadK } from "../_abstract/Monad"
+import type { Generic } from "../_abstract/Newtype"
+import { genericDef } from "../_abstract/Newtype"
 
 export const Id = genericDef("@newtype/Id")
 

@@ -4,10 +4,11 @@
  * Copyright 2020 Michael Arnaldi and the Matechs Garage Contributors.
  */
 import * as A from "../Array"
-import { Cause, Empty, Then } from "../Cause/cause"
+import type { Cause } from "../Cause/cause"
+import { Empty, Then } from "../Cause/cause"
 import { cause } from "../Effect/cause"
 import { effectTotal, succeed, suspend } from "../Effect/core"
-import { Async, Sync } from "../Effect/effect"
+import type { Async, Sync } from "../Effect/effect"
 import { map_ } from "../Effect/map_"
 import { uncause } from "../Effect/uncause"
 import { zipWith_ } from "../Effect/zipWith_"

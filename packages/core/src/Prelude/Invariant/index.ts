@@ -1,4 +1,4 @@
-import { Auto, Base, Kind, OrFix, URIS } from "../HKT"
+import type { Auto, Base, Kind, OrFix, URIS } from "../HKT"
 
 export interface Invariant<F extends URIS, C = Auto> extends Base<F, C> {
   readonly invmap: <A, B>(fg: {

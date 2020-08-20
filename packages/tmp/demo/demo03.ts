@@ -1,7 +1,7 @@
+import { provideSomeF } from "../src/_abstract/DSL"
 import * as A from "../src/Array"
 import * as T from "../src/Effect"
 import { pipe } from "../src/Function"
-import { provideSomeF } from "../src/_abstract/DSL"
 
 interface Env {
   foo: string

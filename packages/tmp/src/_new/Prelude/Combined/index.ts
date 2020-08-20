@@ -1,10 +1,10 @@
-import { Any } from "../Any"
-import { AssociativeBoth } from "../AssociativeBoth"
-import { AssociativeEither } from "../AssociativeEither"
-import { AssociativeFlatten } from "../AssociativeFlatten"
-import { Covariant } from "../Covariant"
-import { Auto, URIS } from "../HKT"
-import { None } from "../None"
+import type { Any } from "../Any"
+import type { AssociativeBoth } from "../AssociativeBoth"
+import type { AssociativeEither } from "../AssociativeEither"
+import type { AssociativeFlatten } from "../AssociativeFlatten"
+import type { Covariant } from "../Covariant"
+import type { Auto, URIS } from "../HKT"
+import type { None } from "../None"
 
 export type IdentityBoth<F extends URIS, C = Auto> = AssociativeBoth<F, C> & Any<F, C>
 

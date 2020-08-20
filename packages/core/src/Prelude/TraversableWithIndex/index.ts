@@ -1,6 +1,6 @@
-import { IdentityBoth } from "../Combined"
-import { Covariant } from "../Covariant"
-import { Auto, Base, G_, IndexFor, Kind, OrFix, UG_, URIS } from "../HKT"
+import type { IdentityBoth } from "../Combined"
+import type { Covariant } from "../Covariant"
+import type { Auto, Base, G_, IndexFor, Kind, OrFix, UG_, URIS } from "../HKT"
 
 export interface ForeachWithIndex<F extends URIS, C = Auto> {
   <G extends URIS, GC = Auto>(G: IdentityBoth<G, GC> & Covariant<G, GC>): <

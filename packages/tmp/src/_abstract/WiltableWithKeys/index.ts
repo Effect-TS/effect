@@ -1,8 +1,8 @@
-import { Either } from "../../Either"
-import { ApplicativeF, ApplicativeK } from "../Applicative"
-import { HasURI, HKTFull, HKT_, KeyFor, KindFull, URIS } from "../HKT"
+import type { Separated } from "@effect-ts/system/Utils"
 
-import { Separated } from "@effect-ts/system/Utils"
+import type { Either } from "../../Either"
+import type { ApplicativeF, ApplicativeK } from "../Applicative"
+import type { HasURI, HKT_, HKTFull, KeyFor, KindFull, URIS } from "../HKT"
 
 export interface WiltWithKeysF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any> {
   <G, GTL0 = any, GTL1 = any, GTL2 = any, GTL3 = any>(

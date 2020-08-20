@@ -1,4 +1,4 @@
-import { HasURI, HKTFull, KindFull, URIS } from "../HKT"
+import type { HasURI, HKTFull, KindFull, URIS } from "../HKT"
 
 /**
  * The identity for combining two values of types `F[A]` and `F[B]`

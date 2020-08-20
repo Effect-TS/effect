@@ -1,11 +1,10 @@
 import { absolve } from "../Effect/absolve"
 import { chain, effectTotal, succeed } from "../Effect/core"
-import { Sync, SyncE } from "../Effect/effect"
+import type { Sync, SyncE } from "../Effect/effect"
 import { fail } from "../Effect/fail"
 import * as E from "../Either"
 import { pipe } from "../Function"
-import { AtomicReference } from "../Support/AtomicReference"
-
+import type { AtomicReference } from "../Support/AtomicReference"
 import { modify } from "./atomic"
 
 export interface XRef<EA, EB, A, B> {

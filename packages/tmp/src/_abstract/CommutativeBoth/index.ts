@@ -1,5 +1,5 @@
-import { AssociativeBothK, AssociativeBothF } from "../AssociativeBoth"
-import { URIS } from "../HKT"
+import type { AssociativeBothF, AssociativeBothK } from "../AssociativeBoth"
+import type { URIS } from "../HKT"
 
 /**
  * An associative binary operator that combines two values of types `F[A]`

@@ -1,9 +1,8 @@
 import * as E from "../Either"
-import { FiberID } from "../Fiber/id"
-
-import { Canceler } from "./Canceler"
-import { Cb } from "./Cb"
-import { AsyncRE } from "./effect"
+import type { FiberID } from "../Fiber/id"
+import type { Canceler } from "./Canceler"
+import type { Cb } from "./Cb"
+import type { AsyncRE } from "./effect"
 import { effectMaybeAsyncInterrupt } from "./effectMaybeAsyncInterrupt"
 
 /**

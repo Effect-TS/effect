@@ -1,8 +1,7 @@
 import { identity } from "../Function"
-import { UnionToIntersection } from "../Utils"
-
-import { foreachParN_, foreachPar_, foreach_ } from "./core"
-import { Managed } from "./managed"
+import type { UnionToIntersection } from "../Utils"
+import { foreach_, foreachPar_, foreachParN_ } from "./core"
+import type { Managed } from "./managed"
 
 export type SequenceS<T extends Array<Managed<any, any, any, any>>> = {
   [K in keyof T]: [T[K]] extends [Managed<infer S, any, any, any>] ? S : never

@@ -1,4 +1,4 @@
-import { HKT } from "./hkt"
+import type { HKT } from "./hkt"
 
 export type AnyHKT = HKT<any, any, any, any, any, any>
 

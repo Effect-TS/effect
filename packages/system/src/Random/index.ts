@@ -4,10 +4,10 @@
  * Copyright 2020 Michael Arnaldi and the Matechs Garage Contributors.
  */
 import { chain_, effectTotal } from "../Effect/core"
-import { Sync } from "../Effect/effect"
+import type { Sync } from "../Effect/effect"
 import { accessServiceM, replaceService } from "../Effect/has"
-import { has, HasType } from "../Has"
-
+import type { HasType } from "../Has"
+import { has } from "../Has"
 import { PRNG } from "./Alea"
 
 export const RandomURI = Symbol()

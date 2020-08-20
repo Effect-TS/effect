@@ -1,17 +1,17 @@
-import * as A from "../Array/core"
-import { Associative } from "../Associative"
-import { pipe, tuple } from "../Function"
-import { Identity, makeIdentity } from "../Identity"
-import { AnyK } from "../_abstract/Any"
-import { CovariantK } from "../_abstract/Covariant"
-import { instance } from "../_abstract/HKT"
-import { implementForeachF, TraversableK } from "../_abstract/Traversable"
-import {
-  implementForeachWithKeysF,
-  TraversableWithKeysK
-} from "../_abstract/TraversableWithKeys"
-
 import * as R from "@effect-ts/system/Record"
+
+import type { AnyK } from "../_abstract/Any"
+import type { CovariantK } from "../_abstract/Covariant"
+import { instance } from "../_abstract/HKT"
+import type { TraversableK } from "../_abstract/Traversable"
+import { implementForeachF } from "../_abstract/Traversable"
+import type { TraversableWithKeysK } from "../_abstract/TraversableWithKeys"
+import { implementForeachWithKeysF } from "../_abstract/TraversableWithKeys"
+import * as A from "../Array/core"
+import type { Associative } from "../Associative"
+import { pipe, tuple } from "../Function"
+import type { Identity } from "../Identity"
+import { makeIdentity } from "../Identity"
 
 export const RecordURI = "Record"
 export type RecordURI = typeof RecordURI

@@ -1,11 +1,10 @@
 import * as R from "../Record"
-import { EnforceNonEmptyRecord, UnionToIntersection } from "../Utils"
-
+import type { EnforceNonEmptyRecord, UnionToIntersection } from "../Utils"
 import { chain_ } from "./core"
-import { Effect } from "./effect"
-import { foreachParN_ } from "./foreachParN_"
-import { foreachPar_ } from "./foreachPar_"
+import type { Effect } from "./effect"
 import { foreach_ } from "./foreach_"
+import { foreachPar_ } from "./foreachPar_"
+import { foreachParN_ } from "./foreachParN_"
 import { map_ } from "./map_"
 
 export function sequenceS<NER extends Record<string, Effect<any, any, any, any>>>(

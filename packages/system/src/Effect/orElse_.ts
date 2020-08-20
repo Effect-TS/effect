@@ -1,4 +1,4 @@
-import { Effect } from "./effect"
+import type { Effect } from "./effect"
 import { ISucceed } from "./primitives"
 import { tryOrElse_ } from "./tryOrElse_"
 

@@ -1,4 +1,4 @@
-import { HasURI, HKTFull, KindFull, URIS } from "../HKT"
+import type { HasURI, HKTFull, KindFull, URIS } from "../HKT"
 
 /**
  * An associative binary operator that combines two values of types `F[A]`

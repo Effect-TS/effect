@@ -1,4 +1,4 @@
-import { Effect, AsyncRE } from "./effect"
+import type { AsyncRE, Effect } from "./effect"
 import { foreachUnitPar_ } from "./foreachUnitPar_"
 
 /**

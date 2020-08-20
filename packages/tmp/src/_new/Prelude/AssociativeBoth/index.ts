@@ -1,4 +1,4 @@
-import { Auto, Base, Kind, OrE, OrI, OrK, OrN, OrR, OrS, OrX, URIS } from "../HKT"
+import type { Auto, Base, Kind, OrE, OrI, OrK, OrN, OrR, OrS, OrX, URIS } from "../HKT"
 
 export interface AssociativeBoth<F extends URIS, C = Auto> extends Base<F> {
   readonly both: <N2 extends string, K2, SO, SO2, X2, I2, S, R2, E2, B>(

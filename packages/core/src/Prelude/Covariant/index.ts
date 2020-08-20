@@ -1,14 +1,5 @@
-import {
-  Auto,
-  Base,
-  CompositionBase2,
-  instance,
-  Kind,
-  OrFix,
-  UF_,
-  UG_,
-  URIS
-} from "../HKT"
+import type { Auto, Base, CompositionBase2, Kind, OrFix, UF_, UG_, URIS } from "../HKT"
+import { instance } from "../HKT"
 
 export interface Covariant<F extends URIS, C = Auto> extends Base<F, C> {
   readonly map: <A, B>(

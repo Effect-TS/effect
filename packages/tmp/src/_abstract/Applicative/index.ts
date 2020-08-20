@@ -1,6 +1,6 @@
-import { CovariantF, CovariantK } from "../Covariant"
-import { URIS } from "../HKT"
-import { IdentityBothF, IdentityBothK } from "../IdentityBoth"
+import type { CovariantF, CovariantK } from "../Covariant"
+import type { URIS } from "../HKT"
+import type { IdentityBothF, IdentityBothK } from "../IdentityBoth"
 
 export type ApplicativeF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any> = IdentityBothF<
   F,

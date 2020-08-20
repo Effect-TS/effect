@@ -5,10 +5,10 @@ import * as Q from "../Queue/core"
 import * as R from "../Ref"
 import * as S from "../Semaphore"
 import { matchTag } from "../Utils"
-
-import { Atomic, concrete, RefM, XRefM } from "./XRefM"
 import * as T from "./effect"
-import * as M from "./managed"
+import type * as M from "./managed"
+import type { RefM, XRefM } from "./XRefM"
+import { Atomic, concrete } from "./XRefM"
 
 /**
  * Creates a new `XRefM` with the specified value.

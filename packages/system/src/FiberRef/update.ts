@@ -1,7 +1,6 @@
-import { Sync } from "../Effect/effect"
+import type { Sync } from "../Effect/effect"
 import { pipe } from "../Function"
-
-import { FiberRef } from "./fiberRef"
+import type { FiberRef } from "./fiberRef"
 import { modify } from "./modify"
 
 /**

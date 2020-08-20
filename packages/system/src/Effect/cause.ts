@@ -1,7 +1,7 @@
-import { Cause, Empty } from "../Cause/cause"
-
+import type { Cause } from "../Cause/cause"
+import { Empty } from "../Cause/cause"
 import { foldCauseM_, halt, succeed } from "./core"
-import { Effect } from "./effect"
+import type { Effect } from "./effect"
 import { fail } from "./fail"
 import { foldM_ } from "./foldM_"
 

@@ -1,8 +1,7 @@
 import { failureOrCause } from "../Cause/core"
 import * as E from "../Either"
-
 import { foldCauseM_, halt } from "./core"
-import { Effect } from "./effect"
+import type { Effect } from "./effect"
 
 /**
  * Recovers from errors by accepting one effect to execute for the case of an

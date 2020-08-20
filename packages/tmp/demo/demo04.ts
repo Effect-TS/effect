@@ -1,6 +1,6 @@
+import * as Equal from "../src/_abstract/Equal"
 import * as A from "../src/Array"
 import { pipe } from "../src/Function"
-import * as Equal from "../src/_abstract/Equal"
 
 const EqNumberArray = A.DeriveEqual.derive(Equal.strict<number>())
 

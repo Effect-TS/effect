@@ -1,5 +1,5 @@
-import { URIS, Derive } from "../../Prelude"
-import { Associative } from "../Associative"
+import type { Derive, URIS } from "../../Prelude"
+import type { Associative } from "../Associative"
 
 export const IdentityURI = "Identity"
 

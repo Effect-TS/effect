@@ -1,4 +1,4 @@
-import { HasURI } from "."
+import type { HasURI } from "."
 
 export type HKT_<URI, Out> = HKT<URI, any, any, any, any, Out>
 

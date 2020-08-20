@@ -1,4 +1,4 @@
-import { Auto, Base, IndexFor, Kind, OrFix, URIS } from "../HKT"
+import type { Auto, Base, IndexFor, Kind, OrFix, URIS } from "../HKT"
 
 export interface CovariantWithIndex<F extends URIS, C = Auto> extends Base<F, C> {
   readonly mapWithIndex: <N extends string, K, A, B>(

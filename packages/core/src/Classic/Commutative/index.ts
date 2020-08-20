@@ -1,4 +1,4 @@
-import { Associative } from "../Associative"
+import type { Associative } from "../Associative"
 
 /**
  * The `Commutative[A]` type class describes a commutative binary operator

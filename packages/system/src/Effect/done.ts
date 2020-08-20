@@ -1,5 +1,4 @@
-import { Exit } from "../Exit/exit"
-
+import type { Exit } from "../Exit/exit"
 import { halt, succeed, suspend } from "./core"
 
 /**

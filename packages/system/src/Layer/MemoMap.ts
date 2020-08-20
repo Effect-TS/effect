@@ -1,16 +1,16 @@
 import { sequential } from "../Effect/ExecutionStrategy"
-import { Exit } from "../Exit"
+import type { Exit } from "../Exit"
 import { pipe, tuple } from "../Function"
-import { has, HasType } from "../Has"
+import type { HasType } from "../Has"
+import { has } from "../Has"
 import { Managed, noop } from "../Managed/managed"
-import { Finalizer, ReleaseMap, makeReleaseMap } from "../Managed/releaseMap"
-import { insertMap } from "../Managed/releaseMap"
+import type { Finalizer, ReleaseMap } from "../Managed/releaseMap"
+import { insertMap, makeReleaseMap } from "../Managed/releaseMap"
 import * as P from "../Promise"
 import * as R from "../Ref"
 import * as RM from "../RefM"
-
-import { Layer } from "./Layer"
 import * as T from "./deps"
+import type { Layer } from "./Layer"
 
 /**
  * A `MemoMap` memoizes dependencies.

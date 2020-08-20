@@ -1,7 +1,6 @@
 import * as Exit from "../Exit/api"
-
 import { succeed } from "./core"
-import { Effect } from "./effect"
+import type { Effect } from "./effect"
 import { IFold } from "./primitives"
 
 /**

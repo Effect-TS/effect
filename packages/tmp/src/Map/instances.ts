@@ -1,18 +1,16 @@
-import { pipe } from "../Function"
-import { AnyK } from "../_abstract/Any"
-import { CovariantK } from "../_abstract/Covariant"
+import * as M from "@effect-ts/system/Map/core"
+
+import type { AnyK } from "../_abstract/Any"
+import type { CovariantK } from "../_abstract/Covariant"
 import { anyF } from "../_abstract/DSL"
 import { instance } from "../_abstract/HKT"
-import { Ord } from "../_abstract/Ord"
-import { implementForeachF, TraversableK } from "../_abstract/Traversable"
-import {
-  implementForeachWithKeysF,
-  TraversableWithKeysK
-} from "../_abstract/TraversableWithKeys"
-
+import type { Ord } from "../_abstract/Ord"
+import type { TraversableK } from "../_abstract/Traversable"
+import { implementForeachF } from "../_abstract/Traversable"
+import type { TraversableWithKeysK } from "../_abstract/TraversableWithKeys"
+import { implementForeachWithKeysF } from "../_abstract/TraversableWithKeys"
+import { pipe } from "../Function"
 import { getKeys } from "./core"
-
-import * as M from "@effect-ts/system/Map/core"
 
 export const MapURI = "Map"
 export type MapURI = typeof MapURI

@@ -1,7 +1,7 @@
-import * as A from "../../Array"
-import * as E from "../../Either"
-import * as O from "../../Option"
 import * as T from "../_internal/effect"
+import type * as A from "../../Array"
+import * as E from "../../Either"
+import type * as O from "../../Option"
 
 export type Push<S, R, E, I, L, Z> = (
   _: O.Option<A.Array<I>>
