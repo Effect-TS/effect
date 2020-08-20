@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - master
-      - preview/*
 
 jobs:
   build:
@@ -21,6 +20,8 @@ jobs:
           npm install -g yarn
           yarn
           yarn run ci
+          cp .ci.npmrc .npmrc
+          yarn lerna publish from-package --yes
         env:
           CI: "true"
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
