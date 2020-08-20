@@ -1,20 +1,5 @@
 import { CovariantComposition } from "../Covariant"
-import {
-  Auto,
-  Base,
-  instance,
-  Kind,
-  OrE,
-  OrI,
-  OrK,
-  OrN,
-  OrR,
-  OrS,
-  OrX,
-  UF_,
-  UG_,
-  URIS
-} from "../HKT"
+import { Auto, Base, instance, Kind, OrFix, UF_, UG_, URIS } from "../HKT"
 
 export interface Contravariant<F extends URIS, C = Auto> extends Base<F, C> {
   readonly contramap: <A, B>(
@@ -22,28 +7,28 @@ export interface Contravariant<F extends URIS, C = Auto> extends Base<F, C> {
   ) => <N extends string, K, SI, SO, X, I, S, R, E>(
     fa: Kind<
       F,
-      OrN<C, N>,
-      OrK<C, K>,
+      OrFix<"N", C, N>,
+      OrFix<"K", C, K>,
       SI,
       SO,
-      OrX<C, X>,
-      OrI<C, I>,
-      OrS<C, S>,
-      OrR<C, R>,
-      OrE<C, E>,
+      OrFix<"X", C, X>,
+      OrFix<"I", C, I>,
+      OrFix<"S", C, S>,
+      OrFix<"R", C, R>,
+      OrFix<"E", C, E>,
       A
     >
   ) => Kind<
     F,
-    OrN<C, N>,
-    OrK<C, K>,
+    OrFix<"N", C, N>,
+    OrFix<"K", C, K>,
     SI,
     SO,
-    OrX<C, X>,
-    OrI<C, I>,
-    OrS<C, S>,
-    OrR<C, R>,
-    OrE<C, E>,
+    OrFix<"X", C, X>,
+    OrFix<"I", C, I>,
+    OrFix<"S", C, S>,
+    OrFix<"R", C, R>,
+    OrFix<"E", C, E>,
     B
   >
 }

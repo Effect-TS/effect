@@ -1,4 +1,4 @@
-import { URIS, Auto, Base, Kind, OrN, OrK, OrX, OrI, OrS, OrR, OrE } from "../HKT"
+import { URIS, Auto, Base, Kind, OrFix } from "../HKT"
 
 export interface Reduce<F extends URIS, C = Auto> extends Base<F, C> {
   readonly reduce: <A, B>(
@@ -7,15 +7,15 @@ export interface Reduce<F extends URIS, C = Auto> extends Base<F, C> {
   ) => <N extends string, K, SI, SO, X, I, S, R, E>(
     fa: Kind<
       F,
-      OrN<C, N>,
-      OrK<C, K>,
+      OrFix<"N", C, N>,
+      OrFix<"K", C, K>,
       SI,
       SO,
-      OrX<C, X>,
-      OrI<C, I>,
-      OrS<C, S>,
-      OrR<C, R>,
-      OrE<C, E>,
+      OrFix<"X", C, X>,
+      OrFix<"I", C, I>,
+      OrFix<"S", C, S>,
+      OrFix<"R", C, R>,
+      OrFix<"E", C, E>,
       A
     >
   ) => B

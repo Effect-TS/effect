@@ -1,20 +1,5 @@
 import { Applicative } from "../Combined"
-import {
-  Auto,
-  Base,
-  G_,
-  IndexFor,
-  Kind,
-  OrE,
-  OrI,
-  OrK,
-  OrN,
-  OrR,
-  OrS,
-  OrX,
-  UG_,
-  URIS
-} from "../HKT"
+import { Auto, Base, G_, IndexFor, Kind, OrFix, UG_, URIS } from "../HKT"
 
 import { Option } from "@effect-ts/system/Option"
 
@@ -34,57 +19,57 @@ export interface WitherWithIndex<F extends URIS, C = Auto> {
     FK
   >(
     f: (
-      k: IndexFor<F, OrN<C, FN>, OrK<C, FK>>,
+      k: IndexFor<F, OrFix<"N", C, FN>, OrFix<"K", C, FK>>,
       a: A
     ) => Kind<
       G,
-      OrN<GC, GN>,
-      OrK<GC, GK>,
+      OrFix<"N", GC, GN>,
+      OrFix<"K", GC, GK>,
       GSIO,
       GSIO,
-      OrX<GC, GX>,
-      OrI<GC, GI>,
-      OrS<GC, GS>,
-      OrR<GC, GR>,
-      OrE<GC, GE>,
+      OrFix<"X", GC, GX>,
+      OrFix<"I", GC, GI>,
+      OrFix<"S", GC, GS>,
+      OrFix<"R", GC, GR>,
+      OrFix<"E", GC, GE>,
       Option<B>
     >
   ) => <FSI, FSO, FX, FI, FS, FR, FE>(
     ta: Kind<
       F,
-      OrN<C, FN>,
-      OrK<C, FK>,
+      OrFix<"N", C, FN>,
+      OrFix<"K", C, FK>,
       FSI,
       FSO,
-      OrX<C, FX>,
-      OrI<C, FI>,
-      OrS<C, FS>,
-      OrR<C, FR>,
-      OrE<C, FE>,
+      OrFix<"X", C, FX>,
+      OrFix<"I", C, FI>,
+      OrFix<"S", C, FS>,
+      OrFix<"R", C, FR>,
+      OrFix<"E", C, FE>,
       A
     >
   ) => Kind<
     G,
-    OrN<GC, GN>,
-    OrK<GC, GK>,
+    OrFix<"N", GC, GN>,
+    OrFix<"K", GC, GK>,
     GSIO,
     GSIO,
-    OrX<GC, GX>,
-    OrI<GC, GI>,
-    OrS<GC, GS>,
-    OrR<GC, GR>,
-    OrE<GC, GE>,
+    OrFix<"X", GC, GX>,
+    OrFix<"I", GC, GI>,
+    OrFix<"S", GC, GS>,
+    OrFix<"R", GC, GR>,
+    OrFix<"E", GC, GE>,
     Kind<
       F,
-      OrN<C, FN>,
-      OrK<C, FK>,
+      OrFix<"N", C, FN>,
+      OrFix<"K", C, FK>,
       FSI,
       FSO,
-      OrX<C, FX>,
-      OrI<C, FI>,
-      OrS<C, FS>,
-      OrR<C, FR>,
-      OrE<C, FE>,
+      OrFix<"X", C, FX>,
+      OrFix<"I", C, FI>,
+      OrFix<"S", C, FS>,
+      OrFix<"R", C, FR>,
+      OrFix<"E", C, FE>,
       B
     >
   >
@@ -110,33 +95,33 @@ export function implementCompactWithIndexF<F extends URIS, C = Auto>(): (
   }) => (
     G: Applicative<UG_>
   ) => (
-    f: (k: IndexFor<F, OrN<C, FN>, OrK<C, FK>>, a: A) => G_<Option<B>>
+    f: (k: IndexFor<F, OrFix<"N", C, FN>, OrFix<"K", C, FK>>, a: A) => G_<Option<B>>
   ) => (
     ta: Kind<
       F,
-      OrN<C, FN>,
-      OrK<C, FK>,
+      OrFix<"N", C, FN>,
+      OrFix<"K", C, FK>,
       FSI,
       FSO,
-      OrX<C, FX>,
-      OrI<C, FI>,
-      OrS<C, FS>,
-      OrR<C, FR>,
-      OrE<C, FE>,
+      OrFix<"X", C, FX>,
+      OrFix<"I", C, FI>,
+      OrFix<"S", C, FS>,
+      OrFix<"R", C, FR>,
+      OrFix<"E", C, FE>,
       A
     >
   ) => G_<
     Kind<
       F,
-      OrN<C, FN>,
-      OrK<C, FK>,
+      OrFix<"N", C, FN>,
+      OrFix<"K", C, FK>,
       FSI,
       FSO,
-      OrX<C, FX>,
-      OrI<C, FI>,
-      OrS<C, FS>,
-      OrR<C, FR>,
-      OrE<C, FE>,
+      OrFix<"X", C, FX>,
+      OrFix<"I", C, FI>,
+      OrFix<"S", C, FS>,
+      OrFix<"R", C, FR>,
+      OrFix<"E", C, FE>,
       B
     >
   >
