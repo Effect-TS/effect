@@ -36,16 +36,32 @@ export {
   G_,
   HKTFull,
   HKTFullURI,
+  IndexFor,
+  InferA,
+  InferE,
+  InferI,
+  InferK,
+  InferN,
+  InferR,
+  InferS,
+  InferX,
+  Initial,
   instance,
+  Intro,
   Kind,
+  Mix,
+  MixStruct,
   OrFix,
+  OrNever,
   UF_,
   UF__,
   UF___,
   UF____,
   UG_,
   URIS,
-  URItoKind
+  URItoIndex,
+  URItoKind,
+  V
 } from "./HKT"
 export { Invariant } from "./Invariant"
 export { None } from "./None"

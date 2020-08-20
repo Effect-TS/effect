@@ -1,11 +1,10 @@
 import * as P from "../Prelude"
 import { sequenceSF } from "../Prelude/DSL"
-import { ContravariantP, CovariantP } from "../Prelude/HKT"
 
 import { constant, identity } from "@effect-ts/system/Function"
 import * as X from "@effect-ts/system/XPure"
 
-export type V = ContravariantP<"R"> & CovariantP<"E">
+export type V = P.V<"R", "-"> & P.V<"E", "+">
 
 export const XPureURI = "XPureURI"
 
