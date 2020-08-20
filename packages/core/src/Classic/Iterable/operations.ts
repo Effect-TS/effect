@@ -1,5 +1,5 @@
 import * as P from "../../Prelude"
-import { succeedF } from "../../Prelude/DSL"
+import * as DSL from "../../Prelude/DSL"
 
 import { IterableURI } from "./definitions"
 
@@ -26,7 +26,7 @@ export {
 } from "@effect-ts/system/Iterable"
 
 export const foreachF = P.implementForeachF<IterableURI>()((_) => (G) => (f) =>
-  reduce(succeedF(G)(never as Iterable<typeof _.B>), (b, a) =>
+  reduce(DSL.succeedF(G)(never as Iterable<typeof _.B>), (b, a) =>
     pipe(
       b,
       G.both(f(a)),

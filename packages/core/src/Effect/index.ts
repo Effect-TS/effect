@@ -1,5 +1,6 @@
 import { pipe } from "../Function"
 import * as P from "../Prelude"
+import * as DSL from "../Prelude/DSL"
 
 import * as C from "@effect-ts/system/Cause"
 import * as T from "@effect-ts/system/Effect"
@@ -93,7 +94,7 @@ export const Run = P.instance<P.FX.Run<EffectURI, V>>({
   run: T.either
 })
 
-export const getValidationApplicative = P.FX.getValidationF<EffectURI, V>({
+export const getValidationApplicative = DSL.getValidationF<EffectURI, V>({
   ...Monad,
   ...Run,
   ...Fail,
