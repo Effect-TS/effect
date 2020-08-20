@@ -35,6 +35,7 @@ module.exports = {
     "@typescript-eslint/explicit-module-boundary-types": "off",
     "@typescript-eslint/no-empty-interface": "off",
     "@typescript-eslint/camelcase": "off",
+    "@typescript-eslint/consistent-type-imports": "error",
     "sort-destructure-keys/sort-destructure-keys": "error",
     "simple-import-sort/sort": "error",
     "import/no-unresolved": "error",
