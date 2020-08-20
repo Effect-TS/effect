@@ -1,11 +1,12 @@
 import type * as M from "@effect-ts/system/Map"
 
-import { getEitherM } from "../src/Classic/EitherT"
+import * as EitherT from "../src/Classic/EitherT"
 import { identity } from "../src/Function"
 import * as P from "../src/Prelude"
+import * as DSL from "../src/Prelude/DSL"
 import type * as H from "../src/Prelude/HKT"
 import * as T from "../src/Pure"
-import { getReaderM } from "../src/Pure/ReaderT"
+import * as ReaderT from "../src/Pure/ReaderT"
 
 type State<K, V> = M.Map<K, V>
 
@@ -25,11 +26,15 @@ declare module "../src/Prelude/HKT" {
   }
 }
 
-export const getMonad = <K, V>() =>
+export const getStoreMonad = <K, V>() =>
   P.instance<P.Monad<[URI], Params<K, V>>>({
     any: T.Any.any,
     flatten: (ffa) => T.chain_(ffa, identity),
     map: T.map
   })
 
-export const K = getReaderM(getEitherM(getMonad<string, number>()))
+export const K = ReaderT.getReaderM(EitherT.getEitherM(getStoreMonad<string, number>()))
+
+export const chain = DSL.chainF(K)
+
+export const succeed = DSL.succeedF(K)
