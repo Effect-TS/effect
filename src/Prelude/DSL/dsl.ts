@@ -28,7 +28,9 @@ export function succeedF<F extends HKT.URIS, C = HKT.Auto>(
   HKT.OrFix<"E", C, HKT.Initial<C, "E">>,
   A
 >
-export function succeedF(F: Any<HKT.UF_> & Covariant<HKT.UF_>): <A>(a: A) => HKT.F_<A> {
+export function succeedF(
+  F: Any<[HKT.UF_]> & Covariant<[HKT.UF_]>
+): <A>(a: A) => HKT.F_<A> {
   return <A>(a: A) => F.map(constant(a))(F.any())
 }
 
@@ -77,7 +79,7 @@ export function chainF<F extends HKT.URIS, C = HKT.Auto>(
   HKT.OrFix<"E", C, HKT.Mix<C, "X", [E2, E]>>,
   B
 >
-export function chainF(F: Monad<HKT.UF_>) {
+export function chainF(F: Monad<[HKT.UF_]>) {
   return <A, B>(f: (a: A) => HKT.F_<B>) => flow(F.map(f), F.flatten)
 }
 
@@ -113,7 +115,7 @@ export function accessMF<F extends HKT.URIS, C = HKT.Auto>(
   A
 >
 export function accessMF(
-  F: Access<HKT.UF___> & AssociativeFlatten<HKT.UF___>
+  F: Access<[HKT.UF___]> & AssociativeFlatten<[HKT.UF___]>
 ): <R, E, A>(f: (r: R) => HKT.F___<R, E, A>) => HKT.F___<R, E, A> {
   return flow(F.access, F.flatten)
 }
@@ -244,7 +246,7 @@ export function sequenceSF<F extends HKT.URIS, C = HKT.Auto>(
   }
 >
 export function sequenceSF(
-  F: Applicative<HKT.UF_>
+  F: Applicative<[HKT.UF_]>
 ): (r: Record<string, HKT.F_<any>>) => HKT.F_<Record<string, any>> {
   return (r) =>
     pipe(
@@ -300,7 +302,7 @@ export function accessServiceMF<F extends HKT.URIS, C extends HKT.V<"R", "-">>(
   A
 >
 export function accessServiceMF(
-  F: Monad<HKT.UF___, HKT.V<"R", "-">> & Access<HKT.UF___, HKT.V<"R", "-">>
+  F: Monad<[HKT.UF___], HKT.V<"R", "-">> & Access<[HKT.UF___], HKT.V<"R", "-">>
 ): <Service>(
   H: Augmented<Service>
 ) => <R, E, A>(
@@ -343,9 +345,9 @@ export function provideServiceF<F extends HKT.URIS, C extends HKT.V<"R", "-">>(
   A
 >
 export function provideServiceF(
-  F: Monad<HKT.UF___, HKT.V<"R", "-">> &
-    Access<HKT.UF___, HKT.V<"R", "-">> &
-    Provide<HKT.UF___, HKT.V<"R", "-">>
+  F: Monad<[HKT.UF___], HKT.V<"R", "-">> &
+    Access<[HKT.UF___], HKT.V<"R", "-">> &
+    Provide<[HKT.UF___], HKT.V<"R", "-">>
 ) {
   return <Service>(H: Augmented<Service>) => <R, E, A>(S: Service) => (
     fa: HKT.F___<Has<Service> & R, E, A>
@@ -387,7 +389,7 @@ export function provideSomeF<F extends HKT.URIS, C = HKT.Auto>(
   A
 >
 export function provideSomeF(
-  F: Monad<HKT.UF___> & Access<HKT.UF___> & Provide<HKT.UF___>
+  F: Monad<[HKT.UF___]> & Access<[HKT.UF___]> & Provide<[HKT.UF___]>
 ) {
   return <R0, R, E, A>(f: (r0: R0) => R) => (
     fa: HKT.F___<R, E, A>

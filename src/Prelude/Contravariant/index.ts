@@ -41,10 +41,10 @@ export function getContravariantComposition<
   CG = Auto
 >(F: Contravariant<F, CF>, G: Contravariant<G, CG>): CovariantComposition<F, G, CF, CG>
 export function getContravariantComposition(
-  F: Contravariant<UF_>,
-  G: Contravariant<UG_>
+  F: Contravariant<[UF_]>,
+  G: Contravariant<[UG_]>
 ) {
-  return instance<CovariantComposition<UF_, UG_>>({
+  return instance<CovariantComposition<[UF_], [UG_]>>({
     map: (f) => F.contramap(G.contramap(f))
   })
 }

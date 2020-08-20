@@ -18,7 +18,7 @@ declare module "../Prelude/HKT" {
   }
 }
 
-export const Any = P.instance<P.Any<EffectURI, V>>({
+export const Any = P.instance<P.Any<[EffectURI], V>>({
   any: () => T.succeed({})
 })
 
@@ -26,11 +26,11 @@ export class NoneError {
   readonly _tag = "NoneError"
 }
 
-export const None = P.instance<P.None<EffectURI, V>>({
+export const None = P.instance<P.None<[EffectURI], V>>({
   never: () => T.die(new NoneError())
 })
 
-export const AssociativeEither = P.instance<P.AssociativeEither<EffectURI, V>>({
+export const AssociativeEither = P.instance<P.AssociativeEither<[EffectURI], V>>({
   either: (fb) => (fa) =>
     T.foldCauseM_(
       fa,
@@ -49,52 +49,52 @@ export const AssociativeEither = P.instance<P.AssociativeEither<EffectURI, V>>({
     )
 })
 
-export const AssociativeFlatten = P.instance<P.AssociativeFlatten<EffectURI, V>>({
+export const AssociativeFlatten = P.instance<P.AssociativeFlatten<[EffectURI], V>>({
   flatten: T.flatten
 })
 
-export const AssociativeBoth = P.instance<P.AssociativeBoth<EffectURI, V>>({
+export const AssociativeBoth = P.instance<P.AssociativeBoth<[EffectURI], V>>({
   both: T.zip
 })
 
-export const Covariant = P.instance<P.Covariant<EffectURI, V>>({
+export const Covariant = P.instance<P.Covariant<[EffectURI], V>>({
   map: T.map
 })
 
-export const IdentityEither: P.IdentityEither<EffectURI, V> = {
+export const IdentityEither: P.IdentityEither<[EffectURI], V> = {
   ...AssociativeEither,
   ...None
 }
 
-export const IdentityFlatten: P.IdentityFlatten<EffectURI, V> = {
+export const IdentityFlatten: P.IdentityFlatten<[EffectURI], V> = {
   ...Any,
   ...AssociativeFlatten
 }
 
-export const IdentityBoth: P.IdentityBoth<EffectURI, V> = {
+export const IdentityBoth: P.IdentityBoth<[EffectURI], V> = {
   ...Any,
   ...AssociativeBoth
 }
 
-export const Monad: P.Monad<EffectURI, V> = {
+export const Monad: P.Monad<[EffectURI], V> = {
   ...IdentityFlatten,
   ...Covariant
 }
 
-export const Applicative: P.Applicative<EffectURI, V> = {
+export const Applicative: P.Applicative<[EffectURI], V> = {
   ...Covariant,
   ...IdentityBoth
 }
 
-export const Fail = P.instance<P.FX.Fail<EffectURI, V>>({
+export const Fail = P.instance<P.FX.Fail<[EffectURI], V>>({
   fail: T.fail
 })
 
-export const Run = P.instance<P.FX.Run<EffectURI, V>>({
+export const Run = P.instance<P.FX.Run<[EffectURI], V>>({
   run: T.either
 })
 
-export const getValidationApplicative = DSL.getValidationF<EffectURI, V>({
+export const getValidationApplicative = DSL.getValidationF<[EffectURI], V>({
   ...Monad,
   ...Run,
   ...Fail,

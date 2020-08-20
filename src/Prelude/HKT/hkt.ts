@@ -1,3 +1,5 @@
+import type { URIS } from "./Kind"
+
 export interface F_<A> {
   URI: UF_
   A: A
@@ -59,11 +61,22 @@ export interface URItoKind<N extends string, K, SI, SO, X, I, S, R, E, A> {
 
 export interface URItoIndex<N extends string, K> {}
 
-export type IndexFor<F extends URIS, N extends string, K> = F extends keyof URItoIndex<
-  any,
-  any
->
-  ? URItoIndex<N, K>[F]
+export type IndexForBase<
+  F extends BaseURIS,
+  N extends string,
+  K
+> = F extends keyof URItoIndex<any, any> ? URItoIndex<N, K>[F] : K
+
+export type IndexFor<URI extends URIS, N extends string, K> = URI extends [
+  BaseURIS,
+  BaseURIS,
+  BaseURIS
+]
+  ? IndexForBase<URI[2], N, K>
+  : URI extends [BaseURIS, BaseURIS]
+  ? IndexForBase<URI[1], N, K>
+  : URI extends [BaseURIS]
+  ? IndexForBase<URI[0], N, K>
   : K
 
 export const HKTFullURI = "HKTFullURI"
@@ -83,21 +96,7 @@ export interface HKTFull<K, SI, SO, X, I, S, R, E, A> {
   A: A
 }
 
-export type URIS = keyof URItoKind<any, any, any, any, any, any, any, any, any, any>
-
-export type Kind<
-  URI extends URIS,
-  N extends string,
-  K,
-  SI,
-  SO,
-  X,
-  I,
-  S,
-  R,
-  E,
-  A
-> = URI extends URIS ? URItoKind<N, K, SI, SO, X, I, S, R, E, A>[URI] : never
+export type BaseURIS = keyof URItoKind<any, any, any, any, any, any, any, any, any, any>
 
 export interface Auto {
   readonly Auto: unique symbol
@@ -118,3 +117,5 @@ export interface CompositionBase2<F, G, CF = Auto, CG = Auto> {
   CF: CF
   CG: CG
 }
+
+export { Kind, URIS, RestrictedKindURI, UnionURI } from "./Kind"

@@ -37,6 +37,7 @@
       "Classic/Array",
       "Classic/Closure",
       "Classic/Either",
+      "Classic/EitherT",
       "Classic/Equal",
       "Classic/Has",
       "Classic/Identity",
