@@ -6,7 +6,13 @@ import * as X from "../src/Pure"
 
 const A = E.sequenceS({
   a: E.left(0),
+  b: E.right(1),
+  d: E.left("ok")
+})
+export const B = E.invSequenceS({
+  a: E.left(0),
   b: E.right(1)
+  //c: E.left("1")
 })
 
 const ValidationApplicative = E.getValidationApplicative(
@@ -31,5 +37,3 @@ const C = X.sequenceS({
 console.log(A)
 console.log(result)
 console.log(X.runEither(C))
-
-X.AssociativeBothV.both(X.fail(0))(X.fail(""))

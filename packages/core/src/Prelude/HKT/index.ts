@@ -30,6 +30,7 @@ export {
   InferK,
   InferN,
   InferR,
+  InferS,
   InferX,
   OrNever
 } from "./infer"
