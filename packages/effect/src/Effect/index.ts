@@ -1,3 +1,43 @@
+import * as P from "../Prelude"
+import { ContravariantP, CovariantP } from "../Prelude/HKT"
+
+import * as T from "@effect-ts/system/Effect"
+import { Erase } from "@effect-ts/system/Utils"
+
+const EffectURI = T.EffectURI
+type EffectURI = typeof EffectURI
+
+export type V = CovariantP<"E"> & CovariantP<"X"> & ContravariantP<"R">
+export type AsyncV = Erase<V, CovariantP<"X">> & P.Fix<"X", unknown>
+
+declare module "../Prelude/HKT" {
+  interface URItoKind<N extends string, K, SI, SO, X, I, S, R, E, A> {
+    [EffectURI]: T.Effect<X, R, E, A>
+  }
+}
+
+export const Any = P.instance<P.Any<EffectURI, V>>({
+  any: () => T.succeed({})
+})
+
+export const None = P.instance<P.None<EffectURI, AsyncV>>({
+  never: () => T.never
+})
+
+export const AssociativeEither = P.instance<P.AssociativeEither<EffectURI, V>>({
+  either: T.orElseEither
+})
+
+export const AssociativeFlatten = P.instance<P.AssociativeBoth<EffectURI, V>>({
+  both: T.zip
+})
+
+export const IdentityEither: P.IdentityEither<EffectURI, AsyncV> = {
+  ...Any,
+  ...AssociativeEither,
+  ...None
+}
+
 export {
   absolve,
   access,

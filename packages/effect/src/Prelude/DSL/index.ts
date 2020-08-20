@@ -32,7 +32,7 @@ import * as A from "@effect-ts/system/Array"
 
 export function succeedF<F extends URIS, C = Auto>(
   F: Any<F, C> & Covariant<F, C>
-): <N extends string, K, SI, SO, X, I, S, R, E, A>(
+): <N extends string, K, SI, SO, A>(
   a: A
 ) => Kind<
   F,
@@ -40,11 +40,11 @@ export function succeedF<F extends URIS, C = Auto>(
   OrFix<"K", C, K>,
   SI,
   SO,
-  OrFix<"X", C, Initial<C, "X", X>>,
-  OrFix<"I", C, Initial<C, "I", I>>,
-  OrFix<"S", C, Initial<C, "S", S>>,
-  OrFix<"R", C, Initial<C, "R", R>>,
-  OrFix<"E", C, Initial<C, "E", E>>,
+  OrFix<"X", C, Initial<C, "X">>,
+  OrFix<"I", C, Initial<C, "I">>,
+  OrFix<"S", C, Initial<C, "S">>,
+  OrFix<"R", C, Initial<C, "R">>,
+  OrFix<"E", C, Initial<C, "E">>,
   A
 >
 export function succeedF(F: Any<UF_> & Covariant<UF_>): <A>(a: A) => F_<A> {
