@@ -1,46 +1,19 @@
-import type { Auto, Base, CompositionBase2, Kind, OrFix, UF_, UG_, URIS } from "../HKT"
-import { instance } from "../HKT"
+import * as HKT from "../HKT"
 
-export interface Covariant<F extends URIS, C = Auto> extends Base<F, C> {
+export interface Covariant<F extends HKT.URIS, C = HKT.Auto> extends HKT.Base<F, C> {
   readonly map: <A, B>(
     f: (a: A) => B
   ) => <N extends string, K, SI, SO, X, I, S, R, E>(
-    fa: Kind<
-      F,
-      C,
-      OrFix<"N", C, N>,
-      OrFix<"K", C, K>,
-      SI,
-      SO,
-      OrFix<"X", C, X>,
-      OrFix<"I", C, I>,
-      OrFix<"S", C, S>,
-      OrFix<"R", C, R>,
-      OrFix<"E", C, E>,
-      A
-    >
-  ) => Kind<
-    F,
-    C,
-    OrFix<"N", C, N>,
-    OrFix<"K", C, K>,
-    SI,
-    SO,
-    OrFix<"X", C, X>,
-    OrFix<"I", C, I>,
-    OrFix<"S", C, S>,
-    OrFix<"R", C, R>,
-    OrFix<"E", C, E>,
-    B
-  >
+    fa: HKT.KindFix<F, C, N, K, SI, SO, X, I, S, R, E, A>
+  ) => HKT.KindFix<F, C, N, K, SI, SO, X, I, S, R, E, B>
 }
 
 export interface CovariantComposition<
-  F extends URIS,
-  G extends URIS,
-  CF = Auto,
-  CG = Auto
-> extends CompositionBase2<F, G, CF, CG> {
+  F extends HKT.URIS,
+  G extends HKT.URIS,
+  CF = HKT.Auto,
+  CG = HKT.Auto
+> extends HKT.CompositionBase2<F, G, CF, CG> {
   readonly map: <A, B>(
     f: (a: A) => B
   ) => <
@@ -63,70 +36,47 @@ export interface CovariantComposition<
     GR,
     GE
   >(
-    fa: Kind<
+    fa: HKT.KindFix<
       F,
       CF,
-      OrFix<"N", CF, FN>,
-      OrFix<"K", CF, FK>,
+      FN,
+      FK,
       FSI,
       FSO,
-      OrFix<"X", CF, FX>,
-      OrFix<"I", CF, FI>,
-      OrFix<"S", CF, FS>,
-      OrFix<"R", CF, FR>,
-      OrFix<"E", CF, FE>,
-      Kind<
-        G,
-        CG,
-        OrFix<"N", CG, GN>,
-        OrFix<"K", CG, GK>,
-        GSI,
-        GSO,
-        OrFix<"X", CG, GX>,
-        OrFix<"I", CG, GI>,
-        OrFix<"S", CG, GS>,
-        OrFix<"R", CG, GR>,
-        OrFix<"E", CG, GE>,
-        A
-      >
+      FX,
+      FI,
+      FS,
+      FR,
+      FE,
+      HKT.KindFix<G, CG, GN, GK, GSI, GSO, GX, GI, GS, GR, GE, A>
     >
-  ) => Kind<
+  ) => HKT.KindFix<
     F,
     CF,
-    OrFix<"N", CF, FN>,
-    OrFix<"K", CF, FK>,
+    FN,
+    FK,
     FSI,
     FSO,
-    OrFix<"X", CF, FX>,
-    OrFix<"I", CF, FI>,
-    OrFix<"S", CF, FS>,
-    OrFix<"R", CF, FR>,
-    OrFix<"E", CF, FE>,
-    Kind<
-      G,
-      CG,
-      OrFix<"N", CG, GN>,
-      OrFix<"K", CG, GK>,
-      GSI,
-      GSO,
-      OrFix<"X", CG, GX>,
-      OrFix<"I", CG, GI>,
-      OrFix<"S", CG, GS>,
-      OrFix<"R", CG, GR>,
-      OrFix<"E", CG, GE>,
-      B
-    >
+    FX,
+    FI,
+    FS,
+    FR,
+    FE,
+    HKT.KindFix<G, CG, GN, GK, GSI, GSO, GX, GI, GS, GR, GE, B>
   >
 }
 
 export function getCovariantComposition<
-  F extends URIS,
-  G extends URIS,
-  CF = Auto,
-  CG = Auto
+  F extends HKT.URIS,
+  G extends HKT.URIS,
+  CF = HKT.Auto,
+  CG = HKT.Auto
 >(F: Covariant<F, CF>, G: Covariant<G, CG>): CovariantComposition<F, G, CF, CG>
-export function getCovariantComposition(F: Covariant<[UF_]>, G: Covariant<[UG_]>) {
-  return instance<CovariantComposition<[UF_], [UG_]>>({
+export function getCovariantComposition(
+  F: Covariant<[HKT.UF_]>,
+  G: Covariant<[HKT.UG_]>
+) {
+  return HKT.instance<CovariantComposition<[HKT.UF_], [HKT.UG_]>>({
     map: (f) => F.map(G.map(f))
   })
 }

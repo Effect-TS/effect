@@ -1,47 +1,21 @@
-import type { Auto, Base, Kind, OrFix, URIS } from "../HKT"
+import type * as HKT from "../HKT"
 
-export interface Derive<F extends URIS, Typeclass extends URIS, C = Auto>
-  extends Base<F, C> {
+export interface Derive<F extends HKT.URIS, Typeclass extends HKT.URIS, C = HKT.Auto>
+  extends HKT.Base<F, C> {
   readonly derive: <N extends string, K, SI, SO, X, I, S, R, E, A>(
-    fa: Kind<
-      Typeclass,
-      C,
-      OrFix<"N", C, N>,
-      OrFix<"K", C, K>,
-      SI,
-      SO,
-      OrFix<"X", C, X>,
-      OrFix<"I", C, I>,
-      OrFix<"S", C, S>,
-      OrFix<"R", C, R>,
-      OrFix<"E", C, E>,
-      A
-    >
-  ) => Kind<
+    fa: HKT.KindFix<Typeclass, C, N, K, SI, SO, X, I, S, R, E, A>
+  ) => HKT.KindFix<
     Typeclass,
     C,
-    OrFix<"N", C, N>,
-    OrFix<"K", C, K>,
+    N,
+    K,
     SI,
     SO,
-    OrFix<"X", C, X>,
-    OrFix<"I", C, I>,
-    OrFix<"S", C, S>,
-    OrFix<"R", C, R>,
-    OrFix<"E", C, E>,
-    Kind<
-      F,
-      C,
-      OrFix<"N", C, N>,
-      OrFix<"K", C, K>,
-      SI,
-      SO,
-      OrFix<"X", C, X>,
-      OrFix<"I", C, I>,
-      OrFix<"S", C, S>,
-      OrFix<"R", C, R>,
-      OrFix<"E", C, E>,
-      A
-    >
+    X,
+    I,
+    S,
+    R,
+    E,
+    HKT.KindFix<F, C, N, K, SI, SO, X, I, S, R, E, A>
   >
 }
