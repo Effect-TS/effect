@@ -13,7 +13,10 @@ export function getValidationF<F extends HKT.URIS, C = HKT.Auto>(
   F: Monad<F, C> & Run<F, C> & Fail<F, C> & Applicative<F, C>
 ): <Z>(
   A: Associative<Z>
-) => Applicative<F, Erase<C, HKT.Auto> & HKT.Fix<HKT.Alias<F, "E">, Z>>
+) => Applicative<
+  F,
+  Erase<HKT.Strip<C, HKT.Alias<F, "E">>, HKT.Auto> & HKT.Fix<HKT.Alias<F, "E">, Z>
+>
 export function getValidationF(
   F: Monad<[HKT.UF__]> & Run<[HKT.UF__]> & Fail<[HKT.UF__]> & Applicative<[HKT.UF__]>
 ): <Z>(A: Associative<Z>) => Applicative<[HKT.UF__], HKT.Fix<"E", Z>> {
