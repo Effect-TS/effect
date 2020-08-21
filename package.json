@@ -32,6 +32,7 @@
   },
   "config": {
     "modules": [
+      "Modules",
       "Classic",
       "Classic/Array",
       "Classic/Associative",

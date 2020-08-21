@@ -1,18 +1,12 @@
 import * as F from "@effect-ts/system/XPure"
 
+import type { IOURI } from "../../Modules"
 import * as P from "../../Prelude"
 import * as DSL from "../../Prelude/DSL"
 
+export { IOURI } from "../../Modules"
+
 export interface IO<A> extends F.XPure<unknown, unknown, unknown, never, A> {}
-
-export const IOURI = "IO"
-export type IOURI = typeof IOURI
-
-declare module "../../Prelude/HKT" {
-  interface URItoKind<D, N extends string, K, SI, SO, X, I, S, R, E, A> {
-    [IOURI]: IO<A>
-  }
-}
 
 /**
  * Combines this computation with the specified computation.

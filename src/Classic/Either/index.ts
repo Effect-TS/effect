@@ -1,21 +1,14 @@
 import * as E from "@effect-ts/system/Either"
 import { pipe, tuple } from "@effect-ts/system/Function"
 
+import type { EitherURI } from "../../Modules"
 import * as P from "../../Prelude"
 import * as DSL from "../../Prelude/DSL"
 import type { Associative } from "../Associative"
 
-export const EitherURI = "Either"
-
-export type EitherURI = typeof EitherURI
+export { EitherURI } from "../../Modules"
 
 export type V = P.V<"E", "+">
-
-declare module "../../Prelude/HKT" {
-  interface URItoKind<D, N extends string, K, SI, SO, X, I, S, R, E, A> {
-    [EitherURI]: E.Either<E, A>
-  }
-}
 
 export const Any = P.instance<P.Any<[EitherURI], V>>({
   any: () => E.right({})
