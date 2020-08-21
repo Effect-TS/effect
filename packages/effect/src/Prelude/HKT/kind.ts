@@ -1,14 +1,13 @@
 import type { URISL0 as B, URISL0, URItoIndex, URItoKind } from "./hkt"
 import type { Par } from "./variance"
 
-export type BaseURIS = B | IndexedURI<B, Par, Par>
+export type BaseURIS = B | IndexedURI<B, [[Par, Par], ...[Par, Par][]]>
 
 export type URIS = [BaseURIS, ...BaseURIS[]]
 
-export interface IndexedURI<F extends B, P extends Par, Q extends Par> {
+export interface IndexedURI<F extends B, FT extends [[Par, Par], ...[Par, Par][]]> {
   _F: F
-  _P: P
-  _Q: Q
+  _FT: FT
 }
 
 export type UnionURI<G extends BaseURIS, F extends BaseURIS[]> = F extends BaseURIS[]
@@ -20,17 +19,79 @@ export type InvertedUnionURI<
   F extends BaseURIS[]
 > = F extends BaseURIS[] ? [G, ...F] : F
 
-export type Alias<F extends URIS, P extends Par> = F[0] extends IndexedURI<
-  infer U,
-  P,
-  infer Q
->
-  ? Q
+export type AliasFT<FT extends [[Par, Par], ...[Par, Par][]], P extends Par> = ((
+  ...x: FT
+) => any) extends (fst: [infer P_, infer Q_], ...r: infer Rest) => any
+  ? P extends P_
+    ? Q_
+    : Rest extends [[Par, Par], ...[Par, Par][]]
+    ? AliasFT<Rest, P>
+    : P
   : P
 
-export type Indexed<F extends B, P extends Par, Q extends Par> = P extends Q
-  ? F
-  : IndexedURI<F, Q, P>
+export type Alias<F extends URIS, P extends Par> = F[0] extends IndexedURI<
+  any,
+  infer FT
+>
+  ? AliasFT<FT, P>
+  : P
+
+export type Indexed<F extends B, FT extends IndexBase> = Cleanup<FT> extends infer X
+  ? X extends [[Par, Par], ...[Par, Par][]]
+    ? IndexedURI<F, X>
+    : F
+  : F
+
+export type IndexBase = [[Par, Par], [Par, Par]?, [Par, Par]?, [Par, Par]?, [Par, Par]?]
+
+export type Cleanup<FT extends IndexBase> = ((...x: FT) => any) extends (
+  fst: [infer P_, infer Q_],
+  ...r: infer Rest
+) => any
+  ? P_ extends Q_
+    ? Rest extends IndexBase
+      ? Cleanup<Rest>
+      : []
+    : Rest extends IndexBase
+    ? [[P_, Q_], ...Cleanup<Rest>]
+    : [[P_, Q_]]
+  : []
+
+export type Reindex<
+  Cur extends Par,
+  FT extends [[Par, Par], ...[Par, Par][]],
+  X,
+  I,
+  S,
+  R,
+  E
+> = ((...x: FT) => any) extends (a: [infer P, infer Q], ...r: infer Rest) => any
+  ? Cur extends P
+    ? Q extends "X"
+      ? X
+      : Q extends "I"
+      ? I
+      : Q extends "S"
+      ? S
+      : Q extends "R"
+      ? R
+      : Q extends "E"
+      ? E
+      : never
+    : Rest extends [[Par, Par], ...[Par, Par][]]
+    ? Reindex<Cur, Rest, X, I, S, R, E>
+    : Cur extends "X"
+    ? X
+    : Cur extends "I"
+    ? I
+    : Cur extends "S"
+    ? S
+    : Cur extends "R"
+    ? R
+    : Cur extends "E"
+    ? E
+    : never
+  : never
 
 export type Kind<
   URI extends URIS,
@@ -61,68 +122,18 @@ export type Kind<
           E,
           Rest extends URIS ? Kind<Rest, D, N, K, SI, SO, X, I, S, R, E, A> : A
         >[XURI]
-      : XURI extends IndexedURI<infer F, infer P, infer Q>
+      : XURI extends IndexedURI<infer F, infer FT>
       ? URItoKind<
           D,
           N,
           K,
           SI,
           SO,
-          P extends "X"
-            ? Q extends "I"
-              ? I
-              : Q extends "S"
-              ? S
-              : Q extends "R"
-              ? R
-              : Q extends "E"
-              ? E
-              : X
-            : X,
-          P extends "I"
-            ? Q extends "X"
-              ? X
-              : Q extends "S"
-              ? S
-              : Q extends "R"
-              ? R
-              : Q extends "E"
-              ? E
-              : I
-            : I,
-          P extends "S"
-            ? Q extends "X"
-              ? X
-              : Q extends "I"
-              ? I
-              : Q extends "R"
-              ? R
-              : Q extends "E"
-              ? E
-              : S
-            : S,
-          P extends "R"
-            ? Q extends "X"
-              ? X
-              : Q extends "I"
-              ? I
-              : Q extends "S"
-              ? S
-              : Q extends "E"
-              ? E
-              : R
-            : R,
-          P extends "E"
-            ? Q extends "X"
-              ? X
-              : Q extends "I"
-              ? I
-              : Q extends "S"
-              ? S
-              : Q extends "R"
-              ? R
-              : E
-            : E,
+          Reindex<"X", FT, X, I, S, R, E>,
+          Reindex<"I", FT, X, I, S, R, E>,
+          Reindex<"S", FT, X, I, S, R, E>,
+          Reindex<"R", FT, X, I, S, R, E>,
+          Reindex<"E", FT, X, I, S, R, E>,
           Rest extends URIS ? Kind<Rest, D, N, K, SI, SO, X, I, S, R, E, A> : A
         >[F]
       : never
@@ -137,7 +148,7 @@ export type IndexForBase<
 
 export type IndexFor<URI extends URIS, N extends string, K> = IndexForBase<
   {
-    [k in keyof URI]: URI[k] extends IndexedURI<infer F, infer P, infer Q>
+    [k in keyof URI]: URI[k] extends IndexedURI<infer F, infer FT>
       ? F
       : URI[k] extends URISL0
       ? URI[k]
