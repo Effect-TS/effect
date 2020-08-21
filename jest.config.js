@@ -7,7 +7,7 @@ module.exports = {
   collectCoverage: false,
   coverageDirectory: "coverage",
   collectCoverageFrom: ["packages/**/src/**/*.ts"],
-  setupFiles: ["./jest-setup.ts"],
+  setupFiles: ["./scripts/jest-setup.ts"],
   modulePathIgnorePatterns: ["dtslint", "build", "demo"],
   verbose: false,
   moduleNameMapper: {
