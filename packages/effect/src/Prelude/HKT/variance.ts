@@ -2,8 +2,6 @@
 // Experiment
 //
 
-import type { NonEmptyArray } from "@effect-ts/system/NonEmptyArray"
-
 import type { UnionToIntersection } from "../../Utils"
 import type { OrNever } from "./or-never"
 
@@ -17,7 +15,7 @@ export interface V<F extends Par, V extends "+" | "-" | "_"> {
 }
 
 // composes types according to variance specified in C
-export type Mix<C, P extends Par, X extends NonEmptyArray<any>> = C extends V<P, "_">
+export type Mix<C, P extends Par, X extends [any, ...any[]]> = C extends V<P, "_">
   ? X[0]
   : C extends V<P, "+">
   ? X[number]
