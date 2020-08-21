@@ -13,22 +13,20 @@ import type * as HKT from "../HKT"
 
 export function succeedF<F extends HKT.URIS, C = HKT.Auto>(
   F: Any<F, C> & Covariant<F, C>
-): <N extends string, K, SI, SO, A>(
-  a: A
-) => HKT.Kind<
-  F,
-  C,
-  HKT.OrFix<"N", C, N>,
-  HKT.OrFix<"K", C, K>,
+): <
+  N extends string,
+  K,
   SI,
   SO,
-  HKT.OrFix<"X", C, HKT.Initial<C, "X">>,
-  HKT.OrFix<"I", C, HKT.Initial<C, "I">>,
-  HKT.OrFix<"S", C, HKT.Initial<C, "S">>,
-  HKT.OrFix<"R", C, HKT.Initial<C, "R">>,
-  HKT.OrFix<"E", C, HKT.Initial<C, "E">>,
-  A
->
+  A,
+  X = HKT.INIT<F, C, "X">,
+  I = HKT.INIT<F, C, "I">,
+  S = HKT.INIT<F, C, "S">,
+  R = HKT.INIT<F, C, "R">,
+  E = HKT.INIT<F, C, "E">
+>(
+  a: A
+) => HKT.KindFix<F, C, N, K, SI, SO, X, I, S, R, E, A>
 export function succeedF(
   F: Any<[HKT.UF_]> & Covariant<[HKT.UF_]>
 ): <A>(a: A) => HKT.F_<A> {
@@ -117,126 +115,98 @@ export function accessMF(
 export function sequenceSF<F extends HKT.URIS, C = HKT.Auto>(
   F: Applicative<F, C>
 ): <
-  X,
-  I,
-  S,
-  R,
-  E,
   SIO,
   NER extends Record<
     string,
-    HKT.Kind<
+    HKT.KindFix<
       F,
       C,
-      HKT.OrFix<"N", C, any>,
-      HKT.OrFix<"K", C, any>,
+      any,
+      any,
       SIO,
       SIO,
-      HKT.OrFix<"X", C, HKT.Intro<C, "X", X, any>>,
-      HKT.OrFix<"I", C, HKT.Intro<C, "I", I, any>>,
-      HKT.OrFix<"S", C, HKT.Intro<C, "S", S, any>>,
-      HKT.OrFix<"R", C, HKT.Intro<C, "R", R, any>>,
-      HKT.OrFix<"E", C, HKT.Intro<C, "E", E, any>>,
+      HKT.Intro<C, "X", X, any>,
+      HKT.Intro<C, "I", I, any>,
+      HKT.Intro<C, "S", S, any>,
+      HKT.Intro<C, "R", R, any>,
+      HKT.Intro<C, "E", E, any>,
       any
     >
-  >
+  >,
+  X = HKT.INIT<F, C, "X">,
+  I = HKT.INIT<F, C, "I">,
+  S = HKT.INIT<F, C, "S">,
+  R = HKT.INIT<F, C, "R">,
+  E = HKT.INIT<F, C, "E">
 >(
   r: EnforceNonEmptyRecord<NER> &
     Record<
       string,
-      HKT.Kind<
+      HKT.KindFix<
         F,
         C,
-        HKT.OrFix<"N", C, any>,
-        HKT.OrFix<"K", C, any>,
+        any,
+        any,
         SIO,
         SIO,
-        HKT.OrFix<"X", C, HKT.Intro<C, "X", X, any>>,
-        HKT.OrFix<"I", C, HKT.Intro<C, "I", I, any>>,
-        HKT.OrFix<"S", C, HKT.Intro<C, "S", S, any>>,
-        HKT.OrFix<"R", C, HKT.Intro<C, "R", R, any>>,
-        HKT.OrFix<"E", C, HKT.Intro<C, "E", E, any>>,
+        HKT.Intro<C, "X", X, any>,
+        HKT.Intro<C, "I", I, any>,
+        HKT.Intro<C, "S", S, any>,
+        HKT.Intro<C, "R", R, any>,
+        HKT.Intro<C, "E", E, any>,
         any
       >
     >
-) => HKT.Kind<
+) => HKT.KindFix<
   F,
   C,
-  HKT.OrFix<
-    "N",
-    C,
-    {
-      [K in keyof NER]: HKT.InferN<F, NER[K]>
-    }[keyof NER]
-  >,
-  HKT.OrFix<
-    "K",
-    C,
-    {
-      [K in keyof NER]: HKT.InferK<F, NER[K]>
-    }[keyof NER]
-  >,
+  {
+    [K in keyof NER]: HKT.InferN<F, NER[K]>
+  }[keyof NER],
+  {
+    [K in keyof NER]: HKT.InferK<F, NER[K]>
+  }[keyof NER],
   SIO,
   SIO,
-  HKT.OrFix<
+  HKT.MixStruct<
+    C,
     "X",
-    C,
-    HKT.MixStruct<
-      C,
-      "X",
-      X,
-      {
-        [K in keyof NER]: HKT.InferX<F, NER[K]>
-      }
-    >
+    X,
+    {
+      [K in keyof NER]: HKT.InferX<F, NER[K]>
+    }
   >,
-  HKT.OrFix<
+  HKT.MixStruct<
+    C,
     "I",
-    C,
-    HKT.MixStruct<
-      C,
-      "I",
-      I,
-      {
-        [K in keyof NER]: HKT.InferI<F, NER[K]>
-      }
-    >
+    I,
+    {
+      [K in keyof NER]: HKT.InferI<F, NER[K]>
+    }
   >,
-  HKT.OrFix<
+  HKT.MixStruct<
+    C,
     "S",
-    C,
-    HKT.MixStruct<
-      C,
-      "S",
-      S,
-      {
-        [K in keyof NER]: HKT.InferS<F, NER[K]>
-      }
-    >
+    S,
+    {
+      [K in keyof NER]: HKT.InferS<F, NER[K]>
+    }
   >,
-  HKT.OrFix<
+  HKT.MixStruct<
+    C,
     "R",
-    C,
-    HKT.MixStruct<
-      C,
-      "R",
-      R,
-      {
-        [K in keyof NER]: HKT.InferR<F, NER[K]>
-      }
-    >
+    R,
+    {
+      [K in keyof NER]: HKT.InferR<F, NER[K]>
+    }
   >,
-  HKT.OrFix<
-    "E",
+  HKT.MixStruct<
     C,
-    HKT.MixStruct<
-      C,
-      "E",
-      E,
-      {
-        [K in keyof NER]: HKT.InferE<F, NER[K]>
-      }
-    >
+    "E",
+    E,
+    {
+      [K in keyof NER]: HKT.InferE<F, NER[K]>
+    }
   >,
   {
     [K in keyof NER]: HKT.InferA<F, NER[K]>
@@ -270,34 +240,19 @@ export function accessServiceMF<F extends HKT.URIS, C extends HKT.V<"R", "-">>(
 ): <Service>(
   H: Augmented<Service>
 ) => <N extends string, K, SI, SO, X, I, S, R, E, A>(
-  f: (
-    _: Service
-  ) => HKT.Kind<
-    F,
-    C,
-    HKT.OrFix<"N", C, N>,
-    HKT.OrFix<"K", C, K>,
-    SI,
-    SO,
-    HKT.OrFix<"X", C, X>,
-    HKT.OrFix<"I", C, I>,
-    HKT.OrFix<"S", C, S>,
-    HKT.OrFix<"R", C, R>,
-    HKT.OrFix<"E", C, E>,
-    A
-  >
-) => HKT.Kind<
+  f: (_: Service) => HKT.KindFix<F, C, N, K, SI, SO, X, I, S, R, E, A>
+) => HKT.KindFix<
   F,
   C,
-  HKT.OrFix<"N", C, N>,
-  HKT.OrFix<"K", C, K>,
+  N,
+  K,
   SI,
   SO,
-  HKT.OrFix<"X", C, X>,
-  HKT.OrFix<"I", C, I>,
-  HKT.OrFix<"S", C, S>,
-  HKT.OrFix<"R", C, R & Has<Service>>,
-  HKT.OrFix<"E", C, E>,
+  HKT.SetType<F, "X", X, "R", HKT.AccessType<F, C, "R", X, I, S, R, E> & Has<Service>>,
+  HKT.SetType<F, "I", I, "R", HKT.AccessType<F, C, "R", X, I, S, R, E> & Has<Service>>,
+  HKT.SetType<F, "S", S, "R", HKT.AccessType<F, C, "R", X, I, S, R, E> & Has<Service>>,
+  HKT.SetType<F, "R", R, "R", HKT.AccessType<F, C, "R", X, I, S, R, E> & Has<Service>>,
+  HKT.SetType<F, "E", E, "R", HKT.AccessType<F, C, "R", X, I, S, R, E> & Has<Service>>,
   A
 >
 export function accessServiceMF(
@@ -310,39 +265,42 @@ export function accessServiceMF(
   return (H) => (f) => accessMF(F)(flow(H.read, f))
 }
 
-export function provideServiceF<F extends HKT.URIS, C extends HKT.V<"R", "-">>(
+export function provideServiceF<
+  F extends HKT.URIS,
+  C extends HKT.V<HKT.Alias<F, "R">, "-">
+>(
   F: Monad<F, C> & Access<F, C> & Provide<F, C>
 ): <Service>(
   H: Augmented<Service>
 ) => (
   S: Service
 ) => <N extends string, K, SI, SO, X, I, S, R, E, A>(
-  fa: HKT.Kind<
+  fa: HKT.KindFix<
     F,
     C,
-    HKT.OrFix<"N", C, N>,
-    HKT.OrFix<"K", C, K>,
+    N,
+    K,
     SI,
     SO,
-    HKT.OrFix<"X", C, X>,
-    HKT.OrFix<"I", C, I>,
-    HKT.OrFix<"S", C, S>,
-    HKT.OrFix<"R", C, R & Has<Service>>,
-    HKT.OrFix<"E", C, E>,
+    HKT.Alias<F, "R"> extends "X" ? X & Has<Service> : X,
+    HKT.Alias<F, "R"> extends "I" ? I & Has<Service> : I,
+    HKT.Alias<F, "R"> extends "S" ? S & Has<Service> : S,
+    HKT.Alias<F, "R"> extends "R" ? R & Has<Service> : R,
+    HKT.Alias<F, "R"> extends "E" ? E & Has<Service> : E,
     A
   >
-) => HKT.Kind<
+) => HKT.KindFix<
   F,
   C,
-  HKT.OrFix<"N", C, N>,
-  HKT.OrFix<"K", C, K>,
+  N,
+  K,
   SI,
   SO,
-  HKT.OrFix<"X", C, X>,
-  HKT.OrFix<"I", C, I>,
-  HKT.OrFix<"S", C, S>,
-  HKT.OrFix<"R", C, R>,
-  HKT.OrFix<"E", C, E>,
+  HKT.SetType<F, "X", X, "R", HKT.AccessType<F, C, "R", X, I, S, R, E>>,
+  HKT.SetType<F, "I", I, "R", HKT.AccessType<F, C, "R", X, I, S, R, E>>,
+  HKT.SetType<F, "S", S, "R", HKT.AccessType<F, C, "R", X, I, S, R, E>>,
+  HKT.SetType<F, "R", R, "R", HKT.AccessType<F, C, "R", X, I, S, R, E>>,
+  HKT.SetType<F, "E", E, "R", HKT.AccessType<F, C, "R", X, I, S, R, E>>,
   A
 >
 export function provideServiceF(
