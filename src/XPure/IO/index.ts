@@ -53,35 +53,35 @@ export const runEnv = <R>(r: R) => <A>(self: IO<A>): A => F.runIO(F.provideAll(r
 //
 
 /**
- * The `Any` instance for `IO[-_, +_]`.
+ * The `Any` instance for `IO[+_]`.
  */
 export const Any = P.instance<P.Any<[IOURI]>>({
   any: () => F.succeed(() => ({}))
 })
 
 /**
- * The `Covariant` instance for `IO[-_, +_]`.
+ * The `Covariant` instance for `IO[+_]`.
  */
 export const Covariant = P.instance<P.Covariant<[IOURI]>>({
   map
 })
 
 /**
- * The `AssociativeBoth` instance for `IO[-_, +_]`.
+ * The `AssociativeBoth` instance for `IO[+_]`.
  */
 export const AssociativeBoth = P.instance<P.AssociativeBoth<[IOURI]>>({
   both: zip
 })
 
 /**
- * The `AssociativeFlatten` instance for `IO[-_, +_]`.
+ * The `AssociativeFlatten` instance for `IO[+_]`.
  */
 export const AssociativeFlatten = P.instance<P.AssociativeFlatten<[IOURI]>>({
   flatten: (ffa) => F.chain_(ffa, (x) => x)
 })
 
 /**
- * The `IdentityFlatten` instance for `IO[-_, +_]`.
+ * The `IdentityFlatten` instance for `IO[+_]`.
  */
 export const IdentityFlatten = P.instance<P.IdentityFlatten<[IOURI]>>({
   ...Any,
@@ -89,7 +89,7 @@ export const IdentityFlatten = P.instance<P.IdentityFlatten<[IOURI]>>({
 })
 
 /**
- * The `Monad` instance for `IO[-_, +_]`.
+ * The `Monad` instance for `IO[+_]`.
  */
 export const Monad = P.instance<P.Monad<[IOURI]>>({
   ...Any,
@@ -98,7 +98,7 @@ export const Monad = P.instance<P.Monad<[IOURI]>>({
 })
 
 /**
- * The `Applicative` instance for `IO[-_, +_]`.
+ * The `Applicative` instance for `IO[+_]`.
  */
 export const Applicative = P.instance<P.Applicative<[IOURI]>>({
   ...Any,
@@ -107,7 +107,7 @@ export const Applicative = P.instance<P.Applicative<[IOURI]>>({
 })
 
 /**
- * Struct based applicative for IO[-_, +_]
+ * Struct based applicative for IO[+_]
  */
 export const sequenceS = DSL.sequenceSF(Applicative)
 
