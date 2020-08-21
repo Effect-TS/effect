@@ -8,31 +8,34 @@ import * as IO from "../src/XPure/IO"
 import * as R from "../src/XPure/Reader"
 import * as ReaderT from "../src/XPure/ReaderT"
 
-/**
- * Silly example of Reader[_-, Either[_+, _+]] using transformers
- *
- * (all is already inglobated in XPure so a direct XPure interpretation would be much better)
- */
+//
+// IO[Either[X, A]]
+//
 
-const Monad = pipe(IO.Monad, EitherT.monad("X"), ReaderT.monad("I"))
-const Applicative = pipe(
-  IO.Applicative,
-  EitherT.applicative("X"),
-  ReaderT.applicative("I")
-)
-const Run = pipe(IO.Covariant, EitherT.run("X"), ReaderT.run("I"))
-const Fail = pipe(IO.Monad, EitherT.fail("X"), ReaderT.fail("I"))
-const Access = pipe(IO.Monad, EitherT.monad("X"), ReaderT.access("I"))
-const Provide = pipe(IO.Monad, EitherT.monad("X"), ReaderT.provide("I"))
+const IOEMonad = pipe(IO.Monad, EitherT.monad("X"))
+const IOEApplicative = pipe(IO.Applicative, EitherT.applicative("X"))
+const IOERun = pipe(IO.Covariant, EitherT.run("X"))
+const IOEFail = pipe(IO.Monad, EitherT.fail("X"))
 
-export const __ = Fail.fail
-export const ___ = Run.run
-export const ____ = Access.access
-export const _____ = Provide.provide
+//
+// Reader[I, IO[Either[X, A]]]
+//
+
+const Monad = pipe(IOEMonad, ReaderT.monad("I"))
+const Applicative = pipe(IOEApplicative, ReaderT.applicative("I"))
+const Run = pipe(IOERun, ReaderT.run("I"))
+const Fail = pipe(IOEFail, ReaderT.fail("I"))
+const Access = pipe(IOEMonad, ReaderT.access("I"))
+const Provide = pipe(IOEMonad, ReaderT.provide("I"))
+
+export const fail = Fail.fail
+export const run = Run.run
+export const access = Access.access
+export const provide = Provide.provide
 
 export const accessM = accessMF({ ...Monad, ...Access })
 
-const getValidation = getValidationF({
+export const getValidation = getValidationF({
   ...Monad,
   ...Applicative,
   ...Run,
