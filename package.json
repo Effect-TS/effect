@@ -50,6 +50,9 @@
     "ultra-runner": "^3.3.0",
     "yarn-deduplicate": "^2.0.0"
   },
+  "resolutions": {
+    "typescript": "4.1.0-dev.20200821"
+  },
   "husky": {
     "hooks": {
       "pre-commit": "./pre-commit.sh"
