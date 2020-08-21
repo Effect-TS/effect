@@ -1,1 +1,7 @@
-export {}
+export * as prelude from "./Prelude"
+export * as classic from "./Classic"
+export * as effect from "./Effect"
+export * as fn from "./Function"
+export * as newtype from "./Newtype"
+export * as utils from "./Utils"
+export * as xpure from "./XPure"
