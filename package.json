@@ -22,7 +22,7 @@
   },
   "repository": "https://github.com/Matechs-Garage/matechs-effect.git",
   "sideEffects": false,
-  "peerDependencies": {
+  "dependencies": {
     "@effect-ts/system": "^0.0.1"
   },
   "devDependencies": {
