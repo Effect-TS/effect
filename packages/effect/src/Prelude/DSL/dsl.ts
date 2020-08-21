@@ -130,7 +130,7 @@ export function sequenceSF<F extends HKT.URIS, C = HKT.Auto>(
       HKT.Intro<C, "S", S, any>,
       HKT.Intro<C, "R", R, any>,
       HKT.Intro<C, "E", E, any>,
-      any
+      unknown
     >
   >,
   X = HKT.INIT<F, C, "X">,
@@ -154,7 +154,7 @@ export function sequenceSF<F extends HKT.URIS, C = HKT.Auto>(
         HKT.Intro<C, "S", S, any>,
         HKT.Intro<C, "R", R, any>,
         HKT.Intro<C, "E", E, any>,
-        any
+        unknown
       >
     >
 ) => HKT.KindFix<
