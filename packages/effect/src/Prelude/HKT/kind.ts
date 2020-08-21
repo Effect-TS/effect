@@ -1,3 +1,4 @@
+import type { OrFix } from "./fix"
 import type {
   AccessType,
   SetType,
@@ -151,6 +152,34 @@ export type Kind<
     : never
   : never
 
+export type KindFix<
+  URI extends URIS,
+  D,
+  N extends string,
+  K,
+  SI,
+  SO,
+  X,
+  I,
+  S,
+  R,
+  E,
+  A
+> = Kind<
+  URI,
+  D,
+  N,
+  K,
+  SI,
+  SO,
+  OrFix<"X", D, X>,
+  OrFix<"I", D, I>,
+  OrFix<"S", D, S>,
+  OrFix<"R", D, R>,
+  OrFix<"E", D, E>,
+  A
+>
+
 export type IndexForBase<
   F extends URISL0,
   N extends string,
@@ -186,7 +215,6 @@ export type MixTypes<
   E2
 > = SetType<
   F,
-  C,
   Cur,
   X,
   Tar,
