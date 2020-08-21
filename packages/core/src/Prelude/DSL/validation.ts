@@ -18,15 +18,7 @@ export function getValidationF<F extends HKT.URIS, C extends V>(
   A: Associative<Z>
 ) => Applicative<
   F,
-  Erase<C, V> &
-    HKT.Fix<
-      F[0] extends IndexedURI<infer U, infer P, infer Q>
-        ? P extends "E"
-          ? Q
-          : "E"
-        : "E",
-      Z
-    >
+  Erase<C, V> & HKT.Fix<F[0] extends IndexedURI<infer U, "E", infer Q> ? Q : "E", Z>
 >
 export function getValidationF(
   F: Monad<[HKT.UF__], V> &
