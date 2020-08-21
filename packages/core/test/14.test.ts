@@ -1,7 +1,6 @@
 import { pipe } from "@effect-ts/system/Function"
 
 import { makeAssociative } from "../src/Classic/Associative"
-import * as E from "../src/Classic/Either"
 import * as EitherT from "../src/Classic/EitherT"
 import { accessMF, getValidationF, provideSomeF, sequenceSF } from "../src/Prelude/DSL"
 import * as IO from "../src/XPure/IO"
@@ -55,13 +54,13 @@ const StringValidation = getValidation(
 const validate = sequenceSF(StringValidation)
 
 export const result = validate({
-  a: R.succeed(IO.succeed(E.left("foo"))),
-  b: R.succeed(IO.succeed(E.left("bar"))),
-  c: Access.access((r: number) => r + 1)
+  a: fail("foo"),
+  b: fail("bar"),
+  c: access((r: number) => r + 1)
 })
 
 test("14", () => {
-  pipe(result, Provide.provide(2), R.run, IO.run, (x) => {
+  pipe(result, provide(2), R.run, IO.run, (x) => {
     console.log(x)
   })
 })
