@@ -1,6 +1,7 @@
 import { flow, identity, pipe } from "@effect-ts/system/Function"
 import * as M from "@effect-ts/system/Map"
 
+import {} from "../src"
 import * as E from "../src/Classic/Either"
 import * as EitherT from "../src/Classic/EitherT"
 import * as P from "../src/Prelude"
