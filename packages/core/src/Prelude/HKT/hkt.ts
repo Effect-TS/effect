@@ -1,4 +1,4 @@
-import type { URIS } from "./Kind"
+import type { IndexedURI, URIS } from "./Kind"
 
 export interface F_<A> {
   URI: UF_
@@ -67,17 +67,17 @@ export type IndexForBase<
   K
 > = F extends keyof URItoIndex<any, any> ? URItoIndex<N, K>[F] : K
 
-export type IndexFor<URI extends URIS, N extends string, K> = URI extends [
-  URISL0,
-  URISL0,
-  URISL0
-]
-  ? IndexForBase<URI[2], N, K>
-  : URI extends [URISL0, URISL0]
-  ? IndexForBase<URI[1], N, K>
-  : URI extends [URISL0]
-  ? IndexForBase<URI[0], N, K>
-  : K
+export type IndexFor<URI extends URIS, N extends string, K> = IndexForBase<
+  {
+    [k in keyof URI]: URI[k] extends IndexedURI<infer F, infer P, infer Q>
+      ? F
+      : URI[k] extends URISL0
+      ? URI[k]
+      : never
+  }[number],
+  N,
+  K
+>
 
 export const HKTFullURI = "HKTFullURI"
 
