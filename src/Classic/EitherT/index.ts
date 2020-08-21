@@ -9,10 +9,10 @@ import type { Indexed } from "../../Prelude/HKT/Kind"
 import type { Par } from "../../Prelude/HKT/variance"
 import * as E from "../Either"
 
-function getEitherM_<F extends URIS, P extends Par, C>(
+function monad_<F extends URIS, P extends Par, C>(
   M: Monad<F, C>
 ): Monad<HKT.UnionURI<Indexed<E.EitherURI, P, "E">, F>, Erase<C, Auto> & HKT.V<P, "+">>
-function getEitherM_(M: Monad<[UF_]>): Monad<[UF_, E.EitherURI]> {
+function monad_(M: Monad<[UF_]>): Monad<[UF_, E.EitherURI]> {
   return HKT.instance({
     any: () => succeedF(M)(E.right({})),
     flatten: (ffa) =>
@@ -22,6 +22,6 @@ function getEitherM_(M: Monad<[UF_]>): Monad<[UF_, E.EitherURI]> {
   })
 }
 
-export function getEitherM<P extends Par = "E">(_?: P) {
-  return <F extends URIS, C>(M: Monad<F, C>) => getEitherM_<F, P, C>(M)
+export function monad<P extends Par = "E">(_?: P) {
+  return <F extends URIS, C>(M: Monad<F, C>) => monad_<F, P, C>(M)
 }
