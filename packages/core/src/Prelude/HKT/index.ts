@@ -16,7 +16,9 @@ export {
   UF____,
   UG_,
   URItoIndex,
-  URItoKind
+  URItoKind,
+  AccessType,
+  SetType
 } from "./hkt"
 export { InferA, InferE, InferI, InferK, InferN, InferR, InferS, InferX } from "./infer"
 export { instance } from "./instance"
@@ -33,4 +35,4 @@ export {
   URIS
 } from "./kind"
 export { OrNever } from "./or-never"
-export { Initial, Intro, Mix, MixStruct, V, Strip } from "./variance"
+export { Initial, Intro, Mix, MixStruct, V, Strip, Select, Par } from "./variance"
