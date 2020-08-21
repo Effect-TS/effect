@@ -1,4 +1,4 @@
-import type { BaseURIS as B, URItoKind } from "./hkt"
+import type { URISL0 as B, URItoKind } from "./hkt"
 import type { Par } from "./variance"
 
 export type BaseURIS = B | IndexedURI<B, Par, Par>
@@ -27,6 +27,10 @@ export type Alias<F extends URIS, P extends Par> = F[0] extends IndexedURI<
 >
   ? Q
   : P
+
+export type Indexed<F extends B, P extends Par, Q extends Par> = P extends Q
+  ? F
+  : IndexedURI<F, Q, P>
 
 export type Kind<
   URI extends URIS,

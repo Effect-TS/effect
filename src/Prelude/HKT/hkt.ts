@@ -62,20 +62,20 @@ export interface URItoKind<D, N extends string, K, SI, SO, X, I, S, R, E, A> {
 export interface URItoIndex<N extends string, K> {}
 
 export type IndexForBase<
-  F extends BaseURIS,
+  F extends URISL0,
   N extends string,
   K
 > = F extends keyof URItoIndex<any, any> ? URItoIndex<N, K>[F] : K
 
 export type IndexFor<URI extends URIS, N extends string, K> = URI extends [
-  BaseURIS,
-  BaseURIS,
-  BaseURIS
+  URISL0,
+  URISL0,
+  URISL0
 ]
   ? IndexForBase<URI[2], N, K>
-  : URI extends [BaseURIS, BaseURIS]
+  : URI extends [URISL0, URISL0]
   ? IndexForBase<URI[1], N, K>
-  : URI extends [BaseURIS]
+  : URI extends [URISL0]
   ? IndexForBase<URI[0], N, K>
   : K
 
@@ -96,7 +96,7 @@ export interface HKTFull<K, SI, SO, X, I, S, R, E, A> {
   A: A
 }
 
-export type BaseURIS = keyof URItoKind<
+export type URISL0 = keyof URItoKind<
   any,
   any,
   any,
@@ -116,7 +116,16 @@ export interface Auto {
 
 export { Fix, OrFix } from "./fix"
 export { instance } from "./instance"
-export { Alias, IndexedURI, InvertedUnionURI, Kind, UnionURI, URIS } from "./Kind"
+export {
+  Alias,
+  BaseURIS,
+  Indexed,
+  IndexedURI,
+  InvertedUnionURI,
+  Kind,
+  UnionURI,
+  URIS
+} from "./Kind"
 
 export interface Base<F, C = Auto> {
   F: F
