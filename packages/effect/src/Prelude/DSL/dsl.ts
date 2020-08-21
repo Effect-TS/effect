@@ -95,16 +95,16 @@ export function accessMF<F extends HKT.URIS, C = HKT.Auto>(
   SI,
   SO,
   A,
-  X = HKT.Initial<C, HKT.Alias<F, "X">>,
-  I = HKT.Initial<C, HKT.Alias<F, "I">>,
-  S = HKT.Initial<C, HKT.Alias<F, "S">>,
-  R = HKT.Initial<C, HKT.Alias<F, "R">>,
-  E = HKT.Initial<C, HKT.Alias<F, "E">>,
-  X2 = HKT.Initial<C, HKT.Alias<F, "X">>,
-  I2 = HKT.Initial<C, HKT.Alias<F, "I">>,
-  S2 = HKT.Initial<C, HKT.Alias<F, "S">>,
-  R2 = HKT.Initial<C, HKT.Alias<F, "R">>,
-  E2 = HKT.Initial<C, HKT.Alias<F, "E">>
+  X = HKT.INIT<F, C, "X">,
+  I = HKT.INIT<F, C, "I">,
+  S = HKT.INIT<F, C, "S">,
+  R = HKT.INIT<F, C, "R">,
+  E = HKT.INIT<F, C, "E">,
+  X2 = HKT.INIT<F, C, "X">,
+  I2 = HKT.INIT<F, C, "I">,
+  S2 = HKT.INIT<F, C, "S">,
+  R2 = HKT.INIT<F, C, "R">,
+  E2 = HKT.INIT<F, C, "E">
 >(
   f: (
     r: HKT.AccessType<F, C, "R", X2, I2, S2, R2, E2>
