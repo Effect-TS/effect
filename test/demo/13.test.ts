@@ -5,8 +5,8 @@ import * as E from "../../src/Classic/Either"
 import * as EitherT from "../../src/Classic/EitherT"
 import * as InvariantT from "../../src/Classic/InvariantT"
 import { chainF } from "../../src/Prelude/DSL"
-import * as R from "../../src/Pure/Reader"
-import * as ReaderT from "../../src/Pure/ReaderT"
+import * as R from "../../src/XPure/Reader"
+import * as ReaderT from "../../src/XPure/ReaderT"
 
 test("13", () => {
   const M = pipe(A.Monad, EitherT.monad(), ReaderT.monad(), InvariantT.monad("E"))

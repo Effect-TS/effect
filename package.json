@@ -114,10 +114,10 @@
       "Prelude/WiltableWithIndex",
       "Prelude/Witherable",
       "Prelude/WitherableWithIndex",
-      "Pure",
-      "Pure/Reader",
-      "Pure/ReaderT",
-      "Utils"
+      "Utils",
+      "XPure",
+      "XPure/Reader",
+      "XPure/ReaderT"
     ]
   }
 }
