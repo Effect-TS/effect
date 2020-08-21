@@ -29,11 +29,15 @@ export type AliasFT<FT extends [[Par, Par], ...[Par, Par][]], P extends Par> = (
     : P
   : P
 
-export type Alias<F extends URIS, P extends Par> = F[0] extends IndexedURI<
-  any,
-  infer FT
->
-  ? AliasFT<FT, P>
+export type Alias<F extends URIS, P extends Par> = ((...x: F) => any) extends (
+  fst: infer X,
+  ...rest: infer Rest
+) => any
+  ? X extends IndexedURI<any, infer FT>
+    ? AliasFT<FT, P>
+    : Rest extends URIS
+    ? Alias<Rest, P>
+    : P
   : P
 
 export type Indexed<F extends B, FT extends IndexBase> = Cleanup<FT> extends infer X

@@ -12,10 +12,10 @@ import * as R from "../src/XPure/Reader"
  * (all is already inglobated in XPure so a direct XPure interpretation would be much better)
  */
 
-const Monad = pipe(R.Monad, EitherT.monad())
-const Applicative = pipe(R.Applicative, EitherT.applicative())
-const Run = pipe(R.Covariant, EitherT.run())
-const Fail = pipe(R.Monad, EitherT.fail())
+const Monad = pipe(R.Monad, EitherT.monad("X"))
+const Applicative = pipe(R.Applicative, EitherT.applicative("X"))
+const Run = pipe(R.Covariant, EitherT.run("X"))
+const Fail = pipe(R.Monad, EitherT.fail("X"))
 
 const getValidation = getValidationF({
   ...Monad,
