@@ -3,7 +3,7 @@ export {
   Alias,
   Auto,
   Base,
-  BaseURIS,
+  URISL0,
   CompositionBase2,
   Fix,
   F_,
@@ -28,7 +28,9 @@ export {
   UnionURI,
   URIS,
   URItoIndex,
-  URItoKind
+  URItoKind,
+  Indexed,
+  BaseURIS
 } from "./hkt"
 export {
   InferA,
