@@ -318,35 +318,35 @@ export function provideServiceF(
 
 export function provideSomeF<F extends HKT.URIS, C = HKT.Auto>(
   F: Monad<F, C> & Access<F, C> & Provide<F, C>
-): <R, R0>(
-  f: (_: HKT.OrFix<"R", C, R0>) => HKT.OrFix<"R", C, R>
-) => <N extends string, K, SI, SO, X, I, S, E, A>(
-  fa: HKT.Kind<
-    F,
-    C,
-    HKT.OrFix<"N", C, N>,
-    HKT.OrFix<"K", C, K>,
-    SI,
-    SO,
-    HKT.OrFix<"X", C, X>,
-    HKT.OrFix<"I", C, I>,
-    HKT.OrFix<"S", C, S>,
-    HKT.OrFix<"R", C, R>,
-    HKT.OrFix<"E", C, E>,
-    A
-  >
-) => HKT.Kind<
+): <
+  X = HKT.INIT<F, C, "X">,
+  I = HKT.INIT<F, C, "I">,
+  S = HKT.INIT<F, C, "S">,
+  R = HKT.INIT<F, C, "R">,
+  E = HKT.INIT<F, C, "E">,
+  X2 = HKT.INIT<F, C, "X">,
+  I2 = HKT.INIT<F, C, "I">,
+  S2 = HKT.INIT<F, C, "S">,
+  R2 = HKT.INIT<F, C, "R">,
+  E2 = HKT.INIT<F, C, "E">
+>(
+  f: (
+    _: HKT.AccessType<F, C, "R", X2, I2, S2, R2, E2>
+  ) => HKT.AccessType<F, C, "R", X, I, S, R, E>
+) => <N extends string, K, SI, SO, A>(
+  fa: HKT.KindFix<F, C, N, K, SI, SO, X, I, S, R, E, A>
+) => HKT.KindFix<
   F,
   C,
-  HKT.OrFix<"N", C, N>,
-  HKT.OrFix<"K", C, K>,
+  N,
+  K,
   SI,
   SO,
-  HKT.OrFix<"X", C, X>,
-  HKT.OrFix<"I", C, I>,
-  HKT.OrFix<"S", C, S>,
-  HKT.OrFix<"R", C, R0>,
-  HKT.OrFix<"E", C, E>,
+  HKT.SetType<F, "X", X, "R", HKT.AccessType<F, C, "R", X2, I2, S2, R2, E2>>,
+  HKT.SetType<F, "I", I, "R", HKT.AccessType<F, C, "R", X2, I2, S2, R2, E2>>,
+  HKT.SetType<F, "S", S, "R", HKT.AccessType<F, C, "R", X2, I2, S2, R2, E2>>,
+  HKT.SetType<F, "R", R, "R", HKT.AccessType<F, C, "R", X2, I2, S2, R2, E2>>,
+  HKT.SetType<F, "E", E, "R", HKT.AccessType<F, C, "R", X2, I2, S2, R2, E2>>,
   A
 >
 export function provideSomeF(
