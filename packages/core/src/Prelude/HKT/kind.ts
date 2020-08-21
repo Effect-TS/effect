@@ -6,7 +6,7 @@ import type {
   URItoIndex,
   URItoKind
 } from "./hkt"
-import type { Mix, Par } from "./variance"
+import type { Initial, Mix, Par } from "./variance"
 
 export type BaseURIS = B | IndexedURI<B, [[Par, Par], ...[Par, Par][]]>
 
@@ -196,3 +196,5 @@ export type MixTypes<
     [AccessType<F, C, Tar, X, I, S, R, E>, AccessType<F, C, Tar, X2, I2, S2, R2, E2>]
   >
 >
+
+export type INIT<F extends URIS, C, P extends Par> = Initial<C, Alias<F, P>>
