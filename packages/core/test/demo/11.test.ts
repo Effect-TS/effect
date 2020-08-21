@@ -1,11 +1,13 @@
-import { identity, pipe } from "@effect-ts/system/Function"
-import type * as M from "@effect-ts/system/Map"
+import { flow, identity, pipe } from "@effect-ts/system/Function"
+import * as M from "@effect-ts/system/Map"
 
+import * as E from "../../src/Classic/Either"
 import * as EitherT from "../../src/Classic/EitherT"
 import * as P from "../../src/Prelude"
 import * as DSL from "../../src/Prelude/DSL"
 import type * as H from "../../src/Prelude/HKT"
 import * as T from "../../src/Pure"
+import * as R from "../../src/Pure/Reader"
 import * as ReaderT from "../../src/Pure/ReaderT"
 
 type State<K, V> = M.Map<K, V>
@@ -39,4 +41,29 @@ export const chain = DSL.chainF(K)
 
 export const succeed = DSL.succeedF(K)
 
-test("11", () => {})
+test("11", () => {
+  const result = pipe(
+    succeed("hello"),
+    R.map(
+      T.chain(
+        E.fold(
+          (e) => T.succeed(() => E.left(e)),
+          (v) =>
+            T.modify(
+              flow(
+                M.toMutable,
+                (s) => s.set(v, v.length),
+                M.fromMutable,
+                (s) => [s, E.right(v.length)]
+              )
+            )
+        )
+      )
+    ),
+    chain((x) => T.accessM((y: number) => succeed(x * y))),
+    R.runEnv(2),
+    T.runStateResult(M.empty)
+  )
+
+  expect(result).toEqual([M.singleton("hello", 5), E.right(10)])
+})
