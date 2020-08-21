@@ -20,7 +20,9 @@ export type Mix<C, P extends Par, X extends [any, ...any[]]> = C extends V<P, "_
   : C extends V<P, "+">
   ? X[number]
   : C extends V<P, "-">
-  ? X extends [any, any]
+  ? X extends [any]
+    ? X[0]
+    : X extends [any, any]
     ? X[0] & X[1]
     : X extends [any, any, any]
     ? X[0] & X[1] & X[2]
