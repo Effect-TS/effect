@@ -1,5 +1,5 @@
+import type { IterableURI } from "../../Modules"
 import * as P from "../../Prelude"
-import type { IterableURI } from "./definitions"
 import * as It from "./operations"
 
 export const Any = P.instance<P.Any<[IterableURI]>>({

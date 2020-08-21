@@ -1,18 +1,12 @@
 import * as F from "@effect-ts/system/XPure"
 
+import type { ReaderURI } from "../../Modules"
 import * as P from "../../Prelude"
 import * as DSL from "../../Prelude/DSL"
 
+export { ReaderURI } from "../../Modules"
+
 export interface Reader<R, A> extends F.XPure<unknown, unknown, R, never, A> {}
-
-export const ReaderURI = "Reader"
-export type ReaderURI = typeof ReaderURI
-
-declare module "../../Prelude/HKT" {
-  interface URItoKind<D, N extends string, K, SI, SO, X, I, S, R, E, A> {
-    [ReaderURI]: Reader<R, A>
-  }
-}
 
 /**
  * Reads the current context
