@@ -33,8 +33,9 @@
   "config": {
     "modules": [
       "Classic",
-      "Classic/Associative",
       "Classic/Array",
+      "Classic/Associative",
+      "Classic/Bounded",
       "Classic/Closure",
       "Classic/Either",
       "Classic/EitherT",
