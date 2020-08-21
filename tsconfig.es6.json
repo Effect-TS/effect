@@ -4,8 +4,7 @@
     "outDir": "build/esm",
     "target": "ES6",
     "module": "ES6",
-    "incremental": true,
-    "tsBuildInfoFile": "tsbuildinfo/es6.tsbuildinfo",
+    "incremental": false,
     "removeComments": false,
     "lib": ["DOM"]
   },
