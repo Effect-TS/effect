@@ -1,11 +1,16 @@
 import { pipe } from "@effect-ts/system/Function"
 
-import { makeAssociative } from "../src/Classic/Associative"
-import * as EitherT from "../src/Classic/EitherT"
-import { accessMF, getValidationF, provideSomeF, sequenceSF } from "../src/Prelude/DSL"
-import * as IO from "../src/XPure/IO"
-import * as R from "../src/XPure/Reader"
-import * as ReaderT from "../src/XPure/ReaderT"
+import { makeAssociative } from "../../src/Classic/Associative"
+import * as EitherT from "../../src/Classic/EitherT"
+import {
+  accessMF,
+  getValidationF,
+  provideSomeF,
+  sequenceSF
+} from "../../src/Prelude/DSL"
+import * as IO from "../../src/XPure/IO"
+import * as R from "../../src/XPure/Reader"
+import * as ReaderT from "../../src/XPure/ReaderT"
 
 //
 // IO[Either[X, A]]
