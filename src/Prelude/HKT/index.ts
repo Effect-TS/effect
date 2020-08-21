@@ -38,7 +38,8 @@ export {
   MixTypes,
   Reindex,
   UnionURI,
-  URIS
+  URIS,
+  KindFix
 } from "./kind"
 export { OrNever } from "./or-never"
 export { Initial, Intro, Mix, MixStruct, Par, Select, Strip, V } from "./variance"
