@@ -32,6 +32,7 @@ export {
   IndexedURI,
   IndexFor,
   IndexForBase,
+  INIT,
   InvertedUnionURI,
   Kind,
   MixTypes,
