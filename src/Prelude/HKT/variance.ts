@@ -8,7 +8,9 @@ import type { OrNever } from "./or-never"
 // list of parameters
 export type Par = "I" | "R" | "S" | "E" | "X"
 
-export interface V<F extends Par, V extends "+" | "-" | "_"> {
+export type Variance = "+" | "-" | "_"
+
+export interface V<F extends Par, V extends Variance> {
   Variance: {
     [v in V]: () => F
   }
