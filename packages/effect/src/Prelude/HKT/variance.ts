@@ -2,7 +2,7 @@
 // Experiment
 //
 
-import type { UnionToIntersection } from "../../Utils"
+import type { Erase, UnionToIntersection } from "../../Utils"
 import type { OrNever } from "./or-never"
 
 // list of parameters
@@ -57,3 +57,8 @@ export type Initial<C, P extends Par> = C extends V<P, "-">
   : C extends V<P, "+">
   ? never
   : any
+
+export type Strip<C, P extends Par> = Erase<
+  Erase<Erase<C, V<P, "+">>, V<P, "-">>,
+  V<P, "_">
+>

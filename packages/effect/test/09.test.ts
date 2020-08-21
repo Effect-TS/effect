@@ -1,8 +1,8 @@
 import { pipe } from "@effect-ts/system/Function"
 import { has } from "@effect-ts/system/Has"
 
-import * as DSL from "../../src/Prelude/DSL"
-import * as X from "../../src/XPure"
+import * as DSL from "../src/Prelude/DSL"
+import * as X from "../src/XPure"
 
 test("09", () => {
   class MyServiceImpl {

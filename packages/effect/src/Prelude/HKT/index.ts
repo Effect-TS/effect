@@ -33,4 +33,4 @@ export {
   URIS
 } from "./kind"
 export { OrNever } from "./or-never"
-export { Initial, Intro, Mix, MixStruct, V } from "./variance"
+export { Initial, Intro, Mix, MixStruct, V, Strip } from "./variance"

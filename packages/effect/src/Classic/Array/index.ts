@@ -17,7 +17,7 @@ declare module "../../Prelude/HKT" {
 }
 
 export const Any = P.instance<P.Any<[ArrayURI]>>({
-  any: () => []
+  any: () => [{}]
 })
 
 export const AssociativeBoth = P.instance<P.AssociativeBoth<[ArrayURI]>>({
