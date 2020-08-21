@@ -6,7 +6,7 @@ import { sequenceSF } from "../Prelude/DSL"
 
 export type V = P.V<"R", "-"> & P.V<"E", "+">
 
-export const XPureURI = "XPureURI"
+export const XPureURI = "XPure"
 
 export type XPureURI = typeof XPureURI
 

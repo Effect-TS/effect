@@ -6,9 +6,9 @@ import * as EitherT from "../../src/Classic/EitherT"
 import * as P from "../../src/Prelude"
 import * as DSL from "../../src/Prelude/DSL"
 import type * as H from "../../src/Prelude/HKT"
-import * as T from "../../src/Pure"
-import * as R from "../../src/Pure/Reader"
-import * as ReaderT from "../../src/Pure/ReaderT"
+import * as T from "../../src/XPure"
+import * as R from "../../src/XPure/Reader"
+import * as ReaderT from "../../src/XPure/ReaderT"
 
 type State<K, V> = M.Map<K, V>
 
