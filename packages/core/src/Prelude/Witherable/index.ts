@@ -1,10 +1,10 @@
 import type { Option } from "@effect-ts/system/Option"
 
 import type { Applicative } from "../Combined"
-import type { Auto, Base, G_, Kind, OrFix, UG_, URIS } from "../HKT"
+import type * as HKT from "../HKT"
 
-export interface Wither<F extends URIS, C = Auto> {
-  <G extends URIS, GC = Auto>(F: Applicative<G, GC>): <
+export interface Wither<F extends HKT.URIS, C = HKT.Auto> {
+  <G extends HKT.URIS, GC = HKT.Auto>(F: Applicative<G, GC>): <
     GN extends string,
     GK,
     GSIO,
@@ -16,71 +16,30 @@ export interface Wither<F extends URIS, C = Auto> {
     A,
     B
   >(
-    f: (
-      a: A
-    ) => Kind<
-      G,
-      GC,
-      OrFix<"N", GC, GN>,
-      OrFix<"K", GC, GK>,
-      GSIO,
-      GSIO,
-      OrFix<"X", GC, GX>,
-      OrFix<"I", GC, GI>,
-      OrFix<"S", GC, GS>,
-      OrFix<"R", GC, GR>,
-      OrFix<"E", GC, GE>,
-      Option<B>
-    >
+    f: (a: A) => HKT.KindFix<G, GC, GN, GK, GSIO, GSIO, GX, GI, GS, GR, GE, Option<B>>
   ) => <FN extends string, FK, FSI, FSO, FX, FI, FS, FR, FE>(
-    ta: Kind<
-      F,
-      C,
-      OrFix<"N", C, FN>,
-      OrFix<"K", C, FK>,
-      FSI,
-      FSO,
-      OrFix<"X", C, FX>,
-      OrFix<"I", C, FI>,
-      OrFix<"S", C, FS>,
-      OrFix<"R", C, FR>,
-      OrFix<"E", C, FE>,
-      A
-    >
-  ) => Kind<
+    ta: HKT.KindFix<F, C, FN, FK, FSI, FSO, FX, FI, FS, FR, FE, A>
+  ) => HKT.KindFix<
     G,
     GC,
-    OrFix<"N", GC, GN>,
-    OrFix<"K", GC, GK>,
+    GN,
+    GK,
     GSIO,
     GSIO,
-    OrFix<"X", GC, GX>,
-    OrFix<"I", GC, GI>,
-    OrFix<"S", GC, GS>,
-    OrFix<"R", GC, GR>,
-    OrFix<"E", GC, GE>,
-    Kind<
-      F,
-      C,
-      OrFix<"N", C, FN>,
-      OrFix<"K", C, FK>,
-      FSI,
-      FSO,
-      OrFix<"X", C, FX>,
-      OrFix<"I", C, FI>,
-      OrFix<"S", C, FS>,
-      OrFix<"R", C, FR>,
-      OrFix<"E", C, FE>,
-      B
-    >
+    GX,
+    GI,
+    GS,
+    GR,
+    GE,
+    HKT.KindFix<F, C, FN, FK, FSI, FSO, FX, FI, FS, FR, FE, B>
   >
 }
 
-export interface Witherable<F extends URIS, C = Auto> extends Base<F, C> {
+export interface Witherable<F extends HKT.URIS, C = HKT.Auto> extends HKT.Base<F, C> {
   readonly compactF: Wither<F, C>
 }
 
-export function implementCompactF<F extends URIS, C = Auto>(): (
+export function implementCompactF<F extends HKT.URIS, C = HKT.Auto>(): (
   i: <FN extends string, FK, FSI, FSO, FX, FI, FS, FR, FE, A, B>(_: {
     A: A
     B: B
@@ -94,40 +53,12 @@ export function implementCompactF<F extends URIS, C = Auto>(): (
     FR: FR
     FE: FE
   }) => (
-    G: Applicative<[UG_]>
+    G: Applicative<[HKT.UG_]>
   ) => (
-    f: (a: A) => G_<Option<B>>
+    f: (a: A) => HKT.G_<Option<B>>
   ) => (
-    ta: Kind<
-      F,
-      C,
-      OrFix<"N", C, FN>,
-      OrFix<"K", C, FK>,
-      FSI,
-      FSO,
-      OrFix<"X", C, FX>,
-      OrFix<"I", C, FI>,
-      OrFix<"S", C, FS>,
-      OrFix<"R", C, FR>,
-      OrFix<"E", C, FE>,
-      A
-    >
-  ) => G_<
-    Kind<
-      F,
-      C,
-      OrFix<"N", C, FN>,
-      OrFix<"K", C, FK>,
-      FSI,
-      FSO,
-      OrFix<"X", C, FX>,
-      OrFix<"I", C, FI>,
-      OrFix<"S", C, FS>,
-      OrFix<"R", C, FR>,
-      OrFix<"E", C, FE>,
-      B
-    >
-  >
+    ta: HKT.KindFix<F, C, FN, FK, FSI, FSO, FX, FI, FS, FR, FE, A>
+  ) => HKT.G_<HKT.KindFix<F, C, FN, FK, FSI, FSO, FX, FI, FS, FR, FE, B>>
 ) => Wither<F, C>
 export function implementCompactF() {
   return (i: any) => i()
