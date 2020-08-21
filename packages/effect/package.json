@@ -116,6 +116,7 @@
       "Prelude/WitherableWithIndex",
       "Utils",
       "XPure",
+      "XPure/IO",
       "XPure/Reader",
       "XPure/ReaderT"
     ]
