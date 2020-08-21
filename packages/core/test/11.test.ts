@@ -1,14 +1,14 @@
 import { flow, identity, pipe } from "@effect-ts/system/Function"
 import * as M from "@effect-ts/system/Map"
 
-import * as E from "../../src/Classic/Either"
-import * as EitherT from "../../src/Classic/EitherT"
-import * as P from "../../src/Prelude"
-import * as DSL from "../../src/Prelude/DSL"
-import type * as H from "../../src/Prelude/HKT"
-import * as T from "../../src/XPure"
-import * as R from "../../src/XPure/Reader"
-import * as ReaderT from "../../src/XPure/ReaderT"
+import * as E from "../src/Classic/Either"
+import * as EitherT from "../src/Classic/EitherT"
+import * as P from "../src/Prelude"
+import * as DSL from "../src/Prelude/DSL"
+import type * as H from "../src/Prelude/HKT"
+import * as T from "../src/XPure"
+import * as R from "../src/XPure/Reader"
+import * as ReaderT from "../src/XPure/ReaderT"
 
 type State<K, V> = M.Map<K, V>
 
@@ -22,7 +22,7 @@ type StoreKey = "StoreKey"
 type StoreValue = "StoreValue"
 type Params<K, V> = H.CT<StoreKey, K> & H.CT<StoreValue, V>
 
-declare module "../../src/Prelude/HKT" {
+declare module "../src/Prelude/HKT" {
   export interface URItoKind<D, N extends string, K, SI, SO, X, I, S, R, E, A> {
     [URI]: Store<H.Custom<D, StoreKey>, H.Custom<D, StoreValue>, A>
   }

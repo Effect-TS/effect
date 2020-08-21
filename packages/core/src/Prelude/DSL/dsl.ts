@@ -260,7 +260,7 @@ export function sequenceSF(
   return (r) =>
     pipe(
       Object.keys(r).map((k) => tuple(k, r[k])),
-      A.reduce(succeedF(F)([] as readonly (readonly [string, any])[]), (b, a) =>
+      A.reduceRight(succeedF(F)([] as readonly (readonly [string, any])[]), (a, b) =>
         pipe(
           b,
           F.both(a[1]),
