@@ -14,7 +14,7 @@ export function monad<P extends Par = "R">(_?: P) {
 function monad_<F extends URIS, P extends Par, C>(
   M: Monad<F, C>
 ): Monad<
-  HKT.InvertedUnionURI<HKT.Indexed<R.ReaderURI, P, "R">, F>,
+  HKT.InvertedUnionURI<HKT.Indexed<R.ReaderURI, [["R", P]]>, F>,
   Erase<C, HKT.Auto> & V<P, "-">
 >
 function monad_(M: Monad<[HKT.UF_]>): Monad<[R.ReaderURI, HKT.UF_]> {
