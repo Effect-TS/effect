@@ -5,7 +5,7 @@ import type { Monad } from "../../Prelude"
 import { succeedF } from "../../Prelude/DSL"
 import * as HKT from "../../Prelude/HKT"
 import type { Auto, F_, UF_, URIS } from "../../Prelude/HKT/hkt"
-import type { Indexed } from "../../Prelude/HKT/Kind"
+import type { Indexed } from "../../Prelude/HKT/kind"
 import type { Par } from "../../Prelude/HKT/variance"
 import * as E from "../Either"
 
