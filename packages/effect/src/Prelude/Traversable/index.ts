@@ -1,20 +1,10 @@
 import type { IdentityBoth } from "../Combined"
 import type { Covariant, CovariantComposition } from "../Covariant"
 import { getCovariantComposition } from "../Covariant"
-import type {
-  Auto,
-  Base,
-  CompositionBase2,
-  G_,
-  Kind,
-  OrFix,
-  UF_,
-  UG_,
-  URIS
-} from "../HKT"
+import type * as HKT from "../HKT"
 
-export interface Foreach<F extends URIS, C = Auto> {
-  <G extends URIS, GC = Auto>(G: IdentityBoth<G, GC> & Covariant<G, GC>): <
+export interface Foreach<F extends HKT.URIS, C = HKT.Auto> {
+  <G extends HKT.URIS, GC = HKT.Auto>(G: IdentityBoth<G, GC> & Covariant<G, GC>): <
     GSIO,
     GN extends string,
     GK,
@@ -26,73 +16,32 @@ export interface Foreach<F extends URIS, C = Auto> {
     A,
     B
   >(
-    f: (
-      a: A
-    ) => Kind<
-      G,
-      C,
-      OrFix<"N", GC, GN>,
-      OrFix<"K", GC, GK>,
-      GSIO,
-      GSIO,
-      OrFix<"X", GC, GX>,
-      OrFix<"I", GC, GI>,
-      OrFix<"S", GC, GS>,
-      OrFix<"R", GC, GR>,
-      OrFix<"E", GC, GE>,
-      B
-    >
+    f: (a: A) => HKT.KindFix<G, C, GN, GK, GSIO, GSIO, GX, GI, GS, GR, GE, B>
   ) => <FN extends string, FK, FSI, FSO, FX, FI, FS, FR, FE>(
-    fa: Kind<
-      F,
-      C,
-      OrFix<"N", C, FN>,
-      OrFix<"K", C, FK>,
-      FSI,
-      FSO,
-      OrFix<"X", C, FX>,
-      OrFix<"I", C, FI>,
-      OrFix<"S", C, FS>,
-      OrFix<"R", C, FR>,
-      OrFix<"E", C, FE>,
-      A
-    >
-  ) => Kind<
+    fa: HKT.KindFix<F, C, FN, FK, FSI, FSO, FX, FI, FS, FR, FE, A>
+  ) => HKT.KindFix<
     G,
     C,
-    OrFix<"N", GC, GN>,
-    OrFix<"K", GC, GK>,
+    GN,
+    GK,
     GSIO,
     GSIO,
-    OrFix<"X", GC, GX>,
-    OrFix<"I", GC, GI>,
-    OrFix<"S", GC, GS>,
-    OrFix<"R", GC, GR>,
-    OrFix<"E", GC, GE>,
-    Kind<
-      F,
-      C,
-      OrFix<"N", C, FN>,
-      OrFix<"K", C, FK>,
-      FSI,
-      FSO,
-      OrFix<"X", C, FX>,
-      OrFix<"I", C, FI>,
-      OrFix<"S", C, FS>,
-      OrFix<"R", C, FR>,
-      OrFix<"E", C, FE>,
-      B
-    >
+    GX,
+    GI,
+    GS,
+    GR,
+    GE,
+    HKT.KindFix<F, C, FN, FK, FSI, FSO, FX, FI, FS, FR, FE, B>
   >
 }
 
-export interface Traversable<F extends URIS, C = Auto>
-  extends Base<F, C>,
+export interface Traversable<F extends HKT.URIS, C = HKT.Auto>
+  extends HKT.Base<F, C>,
     Covariant<F, C> {
   readonly foreachF: Foreach<F, C>
 }
 
-export function implementForeachF<F extends URIS, C = Auto>(): (
+export function implementForeachF<F extends HKT.URIS, C = HKT.Auto>(): (
   i: <N extends string, K, SI, SO, X, I, S, R, E, A, B>(_: {
     A: A
     B: B
@@ -106,52 +55,24 @@ export function implementForeachF<F extends URIS, C = Auto>(): (
     R: R
     E: E
   }) => (
-    G: IdentityBoth<[UG_]> & Covariant<[UG_]>
+    G: IdentityBoth<[HKT.UG_]> & Covariant<[HKT.UG_]>
   ) => (
-    f: (a: A) => G_<B>
+    f: (a: A) => HKT.G_<B>
   ) => (
-    fa: Kind<
-      F,
-      C,
-      OrFix<"N", C, N>,
-      OrFix<"K", C, K>,
-      SI,
-      SO,
-      OrFix<"X", C, X>,
-      OrFix<"I", C, I>,
-      OrFix<"S", C, S>,
-      OrFix<"R", C, R>,
-      OrFix<"E", C, E>,
-      A
-    >
-  ) => G_<
-    Kind<
-      F,
-      C,
-      OrFix<"N", C, N>,
-      OrFix<"K", C, K>,
-      SI,
-      SO,
-      OrFix<"X", C, X>,
-      OrFix<"I", C, I>,
-      OrFix<"S", C, S>,
-      OrFix<"R", C, R>,
-      OrFix<"E", C, E>,
-      B
-    >
-  >
+    fa: HKT.KindFix<F, C, N, K, SI, SO, X, I, S, R, E, A>
+  ) => HKT.G_<HKT.KindFix<F, C, N, K, SI, SO, X, I, S, R, E, B>>
 ) => Foreach<F, C>
 export function implementForeachF() {
   return (i: any) => i()
 }
 
 export interface ForeachComposition<
-  F extends URIS,
-  G extends URIS,
-  CF = Auto,
-  CG = Auto
+  F extends HKT.URIS,
+  G extends HKT.URIS,
+  CF = HKT.Auto,
+  CG = HKT.Auto
 > {
-  <H extends URIS, CH = Auto>(H: IdentityBoth<H, CH> & Covariant<H, CH>): <
+  <H extends HKT.URIS, CH = HKT.Auto>(H: IdentityBoth<H, CH> & Covariant<H, CH>): <
     HSIO,
     HN extends string,
     HK,
@@ -163,22 +84,7 @@ export interface ForeachComposition<
     A,
     B
   >(
-    f: (
-      a: A
-    ) => Kind<
-      H,
-      CH,
-      OrFix<"N", CH, HN>,
-      OrFix<"K", CH, HK>,
-      HSIO,
-      HSIO,
-      OrFix<"X", CH, HX>,
-      OrFix<"I", CH, HI>,
-      OrFix<"S", CH, HS>,
-      OrFix<"R", CH, HR>,
-      OrFix<"E", CH, HE>,
-      B
-    >
+    f: (a: A) => HKT.KindFix<H, CH, HN, HK, HSIO, HSIO, HX, HI, HS, HR, HE, B>
   ) => <
     FN extends string,
     FK,
@@ -199,94 +105,68 @@ export interface ForeachComposition<
     GR,
     GE
   >(
-    fa: Kind<
+    fa: HKT.KindFix<
       F,
       CF,
-      OrFix<"N", CF, FN>,
-      OrFix<"K", CF, FK>,
+      FN,
+      FK,
       FSI,
       FSO,
-      OrFix<"X", CF, FX>,
-      OrFix<"I", CF, FI>,
-      OrFix<"S", CF, FS>,
-      OrFix<"R", CF, FR>,
-      OrFix<"E", CF, FE>,
-      Kind<
-        G,
-        CG,
-        OrFix<"N", CG, GN>,
-        OrFix<"K", CG, GK>,
-        GSI,
-        GSO,
-        OrFix<"X", CG, GX>,
-        OrFix<"I", CG, GI>,
-        OrFix<"S", CG, GS>,
-        OrFix<"R", CG, GR>,
-        OrFix<"E", CG, GE>,
-        A
-      >
+      FX,
+      FI,
+      FS,
+      FR,
+      FE,
+      HKT.KindFix<G, CG, GN, GK, GSI, GSO, GX, GI, GS, GR, GE, A>
     >
-  ) => Kind<
+  ) => HKT.KindFix<
     H,
     CH,
-    OrFix<"N", CH, HN>,
-    OrFix<"K", CH, HK>,
+    HN,
+    HK,
     HSIO,
     HSIO,
-    OrFix<"X", CH, HX>,
-    OrFix<"I", CH, HI>,
-    OrFix<"S", CH, HS>,
-    OrFix<"R", CH, HR>,
-    OrFix<"E", CH, HE>,
-    Kind<
+    HX,
+    HI,
+    HS,
+    HR,
+    HE,
+    HKT.KindFix<
       F,
       CF,
-      OrFix<"N", CF, FN>,
-      OrFix<"K", CF, FK>,
+      FN,
+      FK,
       FSI,
       FSO,
-      OrFix<"X", CF, FX>,
-      OrFix<"I", CF, FI>,
-      OrFix<"S", CF, FS>,
-      OrFix<"R", CF, FR>,
-      OrFix<"E", CF, FE>,
-      Kind<
-        G,
-        CG,
-        OrFix<"N", CG, GN>,
-        OrFix<"K", CG, GK>,
-        GSI,
-        GSO,
-        OrFix<"X", CG, GX>,
-        OrFix<"I", CG, GI>,
-        OrFix<"S", CG, GS>,
-        OrFix<"R", CG, GR>,
-        OrFix<"E", CG, GE>,
-        B
-      >
+      FX,
+      FI,
+      FS,
+      FR,
+      FE,
+      HKT.KindFix<G, CG, GN, GK, GSI, GSO, GX, GI, GS, GR, GE, B>
     >
   >
 }
 
 export interface TraversableComposition<
-  F extends URIS,
-  G extends URIS,
-  CF = Auto,
-  CG = Auto
-> extends CompositionBase2<F, G, CF, CG>, CovariantComposition<F, G, CF, CG> {
+  F extends HKT.URIS,
+  G extends HKT.URIS,
+  CF = HKT.Auto,
+  CG = HKT.Auto
+> extends HKT.CompositionBase2<F, G, CF, CG>, CovariantComposition<F, G, CF, CG> {
   readonly foreachF: ForeachComposition<F, G, CF, CG>
 }
 
 export function getTraversableComposition<
-  F extends URIS,
-  G extends URIS,
-  CF = Auto,
-  CG = Auto
+  F extends HKT.URIS,
+  G extends HKT.URIS,
+  CF = HKT.Auto,
+  CG = HKT.Auto
 >(F: Traversable<F, CF>, G: Traversable<G, CG>): TraversableComposition<F, G, CF, CG>
 export function getTraversableComposition(
-  F: Traversable<[UF_]>,
-  G: Traversable<[UG_]>
-): TraversableComposition<[UF_], [UG_]> {
+  F: Traversable<[HKT.UF_]>,
+  G: Traversable<[HKT.UG_]>
+): TraversableComposition<[HKT.UF_], [HKT.UG_]> {
   return {
     ...getCovariantComposition(F, G),
     foreachF: (H) => {
