@@ -1,5 +1,5 @@
 import type { Auto, Base, Initial, OrFix } from "../HKT"
-import type { Kind, URIS } from "../HKT/Kind"
+import type { Kind, URIS } from "../HKT/kind"
 
 export interface Any<F extends URIS, C = Auto> extends Base<F, C> {
   readonly any: <N extends string, K, SI, SO>() => Kind<
