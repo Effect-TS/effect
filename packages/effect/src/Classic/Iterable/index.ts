@@ -1,4 +1,14 @@
-export { IterableURI } from "./definitions"
+export { IterableURI } from "../../Modules"
+export {
+  Any,
+  Applicative,
+  AssociativeBoth,
+  AssociativeFlatten,
+  Covariant,
+  Monad,
+  None,
+  Traversable
+} from "./instances"
 export {
   ap,
   chain,
@@ -18,14 +28,3 @@ export {
   zip,
   zip_
 } from "./operations"
-
-export {
-  Any,
-  Applicative,
-  AssociativeBoth,
-  AssociativeFlatten,
-  Covariant,
-  Monad,
-  None,
-  Traversable
-} from "./instances"

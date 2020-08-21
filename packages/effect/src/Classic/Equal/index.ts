@@ -1,7 +1,10 @@
 import * as A from "@effect-ts/system/Array"
 import type * as E from "@effect-ts/system/Either"
 
+import type { EqualURI } from "../../Modules"
 import * as P from "../../Prelude"
+
+export { EqualURI } from "../../Modules"
 
 /**
  * `Equal[A]` provides implicit evidence that two values of type `A` can be
@@ -12,16 +15,6 @@ export interface Equal<A> {
    * Returns whether two values of type `A` are equal.
    */
   readonly equals: (y: A) => (x: A) => boolean
-}
-
-export const EqualURI = "Equal"
-
-export type EqualURI = typeof EqualURI
-
-declare module "../../Prelude/HKT" {
-  interface URItoKind<D, N extends string, K, SI, SO, X, I, S, R, E, A> {
-    [EqualURI]: Equal<A>
-  }
 }
 
 /**

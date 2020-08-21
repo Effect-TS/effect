@@ -3,21 +3,11 @@ import { flow, pipe, tuple } from "@effect-ts/system/Function"
 import * as O from "@effect-ts/system/Option"
 import * as R from "@effect-ts/system/Record"
 
+import type { RecordURI } from "../../Modules"
 import * as P from "../../Prelude"
 import * as A from "../Array"
 
-export const RecordURI = "Record"
-
-export type RecordURI = typeof RecordURI
-
-declare module "../../Prelude/HKT" {
-  interface URItoKind<D, N extends string, K, SI, SO, X, I, S, R, E, A> {
-    [RecordURI]: R.Record<N, A>
-  }
-  interface URItoIndex<N extends string, K> {
-    [RecordURI]: N
-  }
-}
+export { RecordURI } from "../../Modules"
 
 export const Covariant = P.instance<P.Covariant<[RecordURI]>>({
   map: R.map

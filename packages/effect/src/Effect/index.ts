@@ -4,19 +4,14 @@ import * as E from "@effect-ts/system/Either"
 import * as O from "@effect-ts/system/Option"
 
 import { pipe } from "../Function"
+import type { EffectURI } from "../Modules"
 import * as P from "../Prelude"
 import * as DSL from "../Prelude/DSL"
 
-const EffectURI = T.EffectURI
-type EffectURI = typeof EffectURI
+export * from "@effect-ts/system/Effect"
+export { EffectURI } from "../Modules"
 
 export type V = P.V<"E", "+"> & P.V<"X", "+"> & P.V<"R", "-">
-
-declare module "../Prelude/HKT" {
-  interface URItoKind<D, N extends string, K, SI, SO, X, I, S, R, E, A> {
-    [EffectURI]: T.Effect<X, R, E, A>
-  }
-}
 
 export const Any = P.instance<P.Any<[EffectURI], V>>({
   any: () => T.succeed({})
@@ -100,5 +95,3 @@ export const getValidationApplicative = DSL.getValidationF<[EffectURI], V>({
   ...Fail,
   ...Applicative
 })
-
-export * from "@effect-ts/system/Effect"

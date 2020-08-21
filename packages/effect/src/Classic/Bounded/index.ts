@@ -1,18 +1,11 @@
 import type { Ord } from "../Ord"
 import type { Ordering } from "../Ordering"
 
+export { BoundedURI } from "../../Modules"
+
 export interface Bounded<A> extends Ord<A> {
   readonly top: A
   readonly bottom: A
-}
-
-export const BoundedURI = "Bounded"
-export type BoundedURI = typeof BoundedURI
-
-declare module "../../Prelude/HKT" {
-  interface URItoKind<D, N extends string, K, SI, SO, X, I, S, R, E, A> {
-    [BoundedURI]: Bounded<A>
-  }
 }
 
 /**

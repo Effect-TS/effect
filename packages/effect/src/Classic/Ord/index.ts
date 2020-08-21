@@ -1,21 +1,14 @@
 import type { Equal } from "../Equal"
 import { Ordering } from "../Ordering"
 
+export { OrdURI } from "../../Modules"
+
 /**
  * `Ord[A]` provides implicit evidence that values of type `A` have a total
  * ordering.
  */
 export interface Ord<A> extends Equal<A> {
   readonly compare: (y: A) => (x: A) => Ordering
-}
-
-export const OrdURI = "Ord"
-export type OrdURI = typeof OrdURI
-
-declare module "../../Prelude/HKT" {
-  interface URItoKind<D, N extends string, K, SI, SO, X, I, S, R, E, A> {
-    [OrdURI]: Ord<A>
-  }
 }
 
 /**

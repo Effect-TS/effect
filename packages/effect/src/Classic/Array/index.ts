@@ -1,20 +1,11 @@
 import * as A from "@effect-ts/system/Array"
 import { flow, pipe } from "@effect-ts/system/Function"
 
+import type { ArrayURI } from "../../Modules"
 import * as P from "../../Prelude"
 import * as DSL from "../../Prelude/DSL"
 
-export const ArrayURI = "Array"
-export type ArrayURI = typeof ArrayURI
-
-declare module "../../Prelude/HKT" {
-  interface URItoKind<D, N extends string, K, SI, SO, X, I, S, R, E, A> {
-    [ArrayURI]: A.Array<A>
-  }
-  interface URItoIndex<N extends string, K> {
-    [ArrayURI]: number
-  }
-}
+export { ArrayURI } from "../../Modules"
 
 export const Any = P.instance<P.Any<[ArrayURI]>>({
   any: () => [{}]
