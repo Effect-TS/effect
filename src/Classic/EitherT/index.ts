@@ -9,6 +9,8 @@ import * as HKT from "../../Prelude/HKT"
 import type { Par } from "../../Prelude/HKT/variance"
 import * as E from "../Either"
 
+export type _IGNORE = E.EitherURI
+
 function monad_<F extends URIS, P extends Par, C>(
   M: Monad<F, C>
 ): Monad<
