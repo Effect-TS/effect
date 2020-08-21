@@ -5,7 +5,7 @@
 import type { NonEmptyArray } from "@effect-ts/system/NonEmptyArray"
 
 import type { UnionToIntersection } from "../../Utils"
-import type { OrNever } from "./infer"
+import type { OrNever } from "./or-never"
 
 // list of parameters
 export type Par = "I" | "R" | "S" | "E" | "X" | "A"

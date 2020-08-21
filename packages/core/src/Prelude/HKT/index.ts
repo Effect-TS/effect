@@ -18,17 +18,7 @@ export {
   URItoIndex,
   URItoKind
 } from "./hkt"
-export {
-  InferA,
-  InferE,
-  InferI,
-  InferK,
-  InferN,
-  InferR,
-  InferS,
-  InferX,
-  OrNever
-} from "./infer"
+export { InferA, InferE, InferI, InferK, InferN, InferR, InferS, InferX } from "./infer"
 export { instance } from "./instance"
 export {
   Alias,
@@ -42,4 +32,5 @@ export {
   UnionURI,
   URIS
 } from "./kind"
+export { OrNever } from "./or-never"
 export { Initial, Intro, Mix, MixStruct, V } from "./variance"
