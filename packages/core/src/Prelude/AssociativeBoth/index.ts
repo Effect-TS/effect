@@ -19,7 +19,7 @@ export interface AssociativeBoth<F extends HKT.URIS, C = HKT.Auto>
       HKT.Intro<C, "E", E2, E>,
       A
     >
-  ) => HKT.Kind<
+  ) => HKT.KindFix<
     F,
     C,
     N2,

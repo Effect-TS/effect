@@ -1,18 +1,15 @@
-import type { Auto, Base, Initial, Kind, OrFix, URIS } from "../HKT"
+import type * as HKT from "../HKT"
 
-export interface Any<F extends URIS, C = Auto> extends Base<F, C> {
-  readonly any: <N extends string, K, SI, SO>() => Kind<
-    F,
-    C,
-    OrFix<"N", C, N>,
-    OrFix<"K", C, K>,
+export interface Any<F extends HKT.URIS, C = HKT.Auto> extends HKT.Base<F, C> {
+  readonly any: <
+    N extends string,
+    K,
     SI,
     SO,
-    OrFix<"X", C, Initial<C, "X">>,
-    OrFix<"I", C, Initial<C, "I">>,
-    OrFix<"S", C, Initial<C, "S">>,
-    OrFix<"R", C, Initial<C, "R">>,
-    OrFix<"E", C, Initial<C, "E">>,
-    any
-  >
+    X = HKT.INIT<F, C, "X">,
+    I = HKT.INIT<F, C, "I">,
+    S = HKT.INIT<F, C, "S">,
+    R = HKT.INIT<F, C, "R">,
+    E = HKT.INIT<F, C, "E">
+  >() => HKT.KindFix<F, C, N, K, SI, SO, X, I, S, R, E, any>
 }

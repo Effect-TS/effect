@@ -1,35 +1,10 @@
-import type { Auto, Base, IndexFor, Kind, OrFix, URIS } from "../HKT"
+import type * as HKT from "../HKT"
 
-export interface CovariantWithIndex<F extends URIS, C = Auto> extends Base<F, C> {
+export interface CovariantWithIndex<F extends HKT.URIS, C = HKT.Auto>
+  extends HKT.Base<F, C> {
   readonly mapWithIndex: <N extends string, K, A, B>(
-    f: (k: IndexFor<F, OrFix<"N", C, N>, OrFix<"K", C, K>>, a: A) => B
+    f: (k: HKT.IndexFor<F, HKT.OrFix<"N", C, N>, HKT.OrFix<"K", C, K>>, a: A) => B
   ) => <SI, SO, X, I, S, R, E>(
-    fa: Kind<
-      F,
-      C,
-      OrFix<"N", C, N>,
-      OrFix<"K", C, K>,
-      SI,
-      SO,
-      OrFix<"X", C, X>,
-      OrFix<"I", C, I>,
-      OrFix<"S", C, S>,
-      OrFix<"R", C, R>,
-      OrFix<"E", C, E>,
-      A
-    >
-  ) => Kind<
-    F,
-    C,
-    OrFix<"N", C, N>,
-    OrFix<"K", C, K>,
-    SI,
-    SO,
-    OrFix<"X", C, X>,
-    OrFix<"I", C, I>,
-    OrFix<"S", C, S>,
-    OrFix<"R", C, R>,
-    OrFix<"E", C, E>,
-    B
-  >
+    fa: HKT.KindFix<F, C, N, K, SI, SO, X, I, S, R, E, A>
+  ) => HKT.KindFix<F, C, N, K, SI, SO, X, I, S, R, E, B>
 }
