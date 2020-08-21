@@ -1,7 +1,5 @@
 import type { Kind, URIS } from "./kind"
 
-export type OrNever<K> = unknown extends K ? never : K
-
 export type InferA<F extends URIS, K> = [K] extends [
   Kind<F, any, any, any, any, any, any, any, any, any, any, infer X>
 ]
