@@ -3,7 +3,7 @@ import { pipe } from "@effect-ts/system/Function"
 import { makeAssociative } from "../src/Classic/Associative"
 import * as E from "../src/Classic/Either"
 import * as EitherT from "../src/Classic/EitherT"
-import { accessMF, getValidationF, sequenceSF } from "../src/Prelude/DSL"
+import { accessMF, getValidationF, provideSomeF, sequenceSF } from "../src/Prelude/DSL"
 import * as IO from "../src/XPure/IO"
 import * as R from "../src/XPure/Reader"
 import * as ReaderT from "../src/XPure/ReaderT"
@@ -34,6 +34,12 @@ export const access = Access.access
 export const provide = Provide.provide
 
 export const accessM = accessMF({ ...Monad, ...Access })
+
+export const provideSome = provideSomeF({
+  ...Monad,
+  ...Access,
+  ...Provide
+})
 
 export const getValidation = getValidationF({
   ...Monad,
