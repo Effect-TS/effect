@@ -24,6 +24,6 @@ function monad_(M: Monad<[UF_]>): Monad<[UF_, E.EitherURI]> {
   })
 }
 
-export function monad<P extends Par = "E">(_?: P) {
+export function monad<P extends Par = "E">(_errorParam?: P) {
   return <F extends URIS, C>(M: Monad<F, C>) => monad_<F, P, C>(M)
 }
