@@ -10,7 +10,10 @@ import * as E from "../Either"
 
 function monad_<F extends URIS, P extends Par, C>(
   M: Monad<F, C>
-): Monad<HKT.UnionURI<Indexed<E.EitherURI, P, "E">, F>, Erase<C, Auto> & HKT.V<P, "+">>
+): Monad<
+  HKT.UnionURI<Indexed<E.EitherURI, [["E", P]]>, F>,
+  Erase<C, Auto> & HKT.V<P, "+">
+>
 function monad_(M: Monad<[UF_]>): Monad<[UF_, E.EitherURI]> {
   return HKT.instance({
     any: () => succeedF(M)(E.right({})),
