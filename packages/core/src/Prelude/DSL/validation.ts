@@ -7,13 +7,27 @@ import type { Applicative, Monad } from "../Combined"
 import type { Fail } from "../FX/Fail"
 import type { Run } from "../FX/Run"
 import * as HKT from "../HKT"
+import type { IndexedURI } from "../HKT/Kind"
 import { succeedF } from "./dsl"
 
 type V = HKT.V<"E", "+">
 
 export function getValidationF<F extends HKT.URIS, C extends V>(
   F: Monad<F, C> & Run<F, C> & Fail<F, C> & Applicative<F, C>
-): <Z>(A: Associative<Z>) => Applicative<F, Erase<C, V> & HKT.Fix<"E", Z>>
+): <Z>(
+  A: Associative<Z>
+) => Applicative<
+  F,
+  Erase<C, V> &
+    HKT.Fix<
+      F[0] extends IndexedURI<infer U, infer P, infer Q>
+        ? P extends "E"
+          ? Q
+          : "E"
+        : "E",
+      Z
+    >
+>
 export function getValidationF(
   F: Monad<[HKT.UF__], V> &
     Run<[HKT.UF__], V> &
