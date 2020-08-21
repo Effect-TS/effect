@@ -17,6 +17,9 @@ const Applicative = pipe(R.Applicative, EitherT.applicative("X"))
 const Run = pipe(R.Covariant, EitherT.run("X"))
 const Fail = pipe(R.Monad, EitherT.fail("X"))
 
+export const __ = Fail.fail
+export const ___ = Run.run
+
 const getValidation = getValidationF({
   ...Monad,
   ...Applicative,

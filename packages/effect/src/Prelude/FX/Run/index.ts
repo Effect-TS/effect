@@ -1,35 +1,35 @@
 import type { Either } from "@effect-ts/system/Either"
 
-import type { Auto, Base, Kind, OrFix, URIS } from "../../HKT"
+import type * as HKT from "../../HKT"
 
-export interface Run<F extends URIS, C = Auto> extends Base<F, C> {
+export interface Run<F extends HKT.URIS, C = HKT.Auto> extends HKT.Base<F, C> {
   readonly run: <N extends string, K, SI, SO, X, I, S, R, E, A>(
-    fa: Kind<
+    fa: HKT.Kind<
       F,
       C,
-      OrFix<"N", C, N>,
-      OrFix<"K", C, K>,
+      HKT.OrFix<"N", C, N>,
+      HKT.OrFix<"K", C, K>,
       SI,
       SO,
-      OrFix<"X", C, X>,
-      OrFix<"I", C, I>,
-      OrFix<"S", C, S>,
-      OrFix<"R", C, R>,
-      OrFix<"E", C, E>,
+      HKT.OrFix<"X", C, X>,
+      HKT.OrFix<"I", C, I>,
+      HKT.OrFix<"S", C, S>,
+      HKT.OrFix<"R", C, R>,
+      HKT.OrFix<"E", C, E>,
       A
     >
-  ) => Kind<
+  ) => HKT.Kind<
     F,
     C,
-    OrFix<"N", C, N>,
-    OrFix<"K", C, K>,
+    HKT.OrFix<"N", C, N>,
+    HKT.OrFix<"K", C, K>,
     SI,
     SO,
-    OrFix<"X", C, X>,
-    OrFix<"I", C, I>,
-    OrFix<"S", C, S>,
-    OrFix<"R", C, R>,
-    OrFix<"E", C, never>,
-    Either<OrFix<"E", C, E>, A>
+    HKT.SetType<F, C, "X", X, "E", never>,
+    HKT.SetType<F, C, "I", I, "E", never>,
+    HKT.SetType<F, C, "S", S, "E", never>,
+    HKT.SetType<F, C, "R", R, "E", never>,
+    HKT.SetType<F, C, "E", E, "E", never>,
+    Either<HKT.AccessType<F, C, "E", X, I, S, R, E>, A>
   >
 }

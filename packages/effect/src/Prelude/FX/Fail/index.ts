@@ -1,20 +1,20 @@
-import type { Auto, Base, Kind, OrFix, URIS } from "../../HKT"
+import type * as HKT from "../../HKT"
 
-export interface Fail<F extends URIS, C = Auto> extends Base<F, C> {
-  readonly fail: <SI, SO, S, E, A = never>(
-    e: OrFix<"E", C, E>
-  ) => Kind<
+export interface Fail<F extends HKT.URIS, C = HKT.Auto> extends HKT.Base<F, C> {
+  readonly fail: <SI, SO, X, I, S, R, E, A = never>(
+    e: HKT.AccessType<F, C, "E", X, I, S, R, E>
+  ) => HKT.Kind<
     F,
     C,
-    OrFix<"N", C, never>,
-    OrFix<"K", C, never>,
+    HKT.OrFix<"N", C, never>,
+    HKT.OrFix<"K", C, never>,
     SI,
     SO,
-    OrFix<"X", C, never>,
-    OrFix<"I", C, unknown>,
-    OrFix<"S", C, S>,
-    OrFix<"R", C, unknown>,
-    OrFix<"E", C, E>,
+    HKT.OrFix<"X", C, X>,
+    HKT.OrFix<"I", C, I>,
+    HKT.OrFix<"S", C, S>,
+    HKT.OrFix<"R", C, R>,
+    HKT.OrFix<"E", C, E>,
     A
   >
 }

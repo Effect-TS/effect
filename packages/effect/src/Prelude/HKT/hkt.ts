@@ -1,3 +1,5 @@
+import type { Alias, OrFix, Par, Select, URIS } from "."
+
 export const UF_ = "F_"
 export type UF_ = typeof UF_
 export interface F_<A> {
@@ -76,4 +78,16 @@ export type URISL0 = keyof URItoKind<
   any,
   any,
   any
+>
+
+export type AccessType<F extends URIS, C, P extends Par, X, I, S, R, E> = OrFix<
+  Alias<F, P>,
+  C,
+  Select<Alias<F, P>, X, I, S, R, E>
+>
+
+export type SetType<F extends URIS, C, P extends Par, X, Tar extends Par, A> = OrFix<
+  P,
+  C,
+  Alias<F, Tar> extends P ? A : X
 >
