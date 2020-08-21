@@ -1,5 +1,3 @@
-import type { IndexedURI, URIS } from "./Kind"
-
 export interface F_<A> {
   URI: UF_
   A: A
@@ -61,24 +59,6 @@ export interface URItoKind<D, N extends string, K, SI, SO, X, I, S, R, E, A> {
 
 export interface URItoIndex<N extends string, K> {}
 
-export type IndexForBase<
-  F extends URISL0,
-  N extends string,
-  K
-> = F extends keyof URItoIndex<any, any> ? URItoIndex<N, K>[F] : K
-
-export type IndexFor<URI extends URIS, N extends string, K> = IndexForBase<
-  {
-    [k in keyof URI]: URI[k] extends IndexedURI<infer F, infer P, infer Q>
-      ? F
-      : URI[k] extends URISL0
-      ? URI[k]
-      : never
-  }[number],
-  N,
-  K
->
-
 export const HKTFullURI = "HKTFullURI"
 
 export type HKTFullURI = typeof HKTFullURI
@@ -121,6 +101,8 @@ export {
   BaseURIS,
   Indexed,
   IndexedURI,
+  IndexFor,
+  IndexForBase,
   InvertedUnionURI,
   Kind,
   UnionURI,

@@ -1,4 +1,4 @@
-import type { URISL0 as B, URItoKind } from "./hkt"
+import type { URISL0 as B, URISL0, URItoIndex, URItoKind } from "./hkt"
 import type { Par } from "./variance"
 
 export type BaseURIS = B | IndexedURI<B, Par, Par>
@@ -128,3 +128,21 @@ export type Kind<
       : never
     : never
   : never
+
+export type IndexForBase<
+  F extends URISL0,
+  N extends string,
+  K
+> = F extends keyof URItoIndex<any, any> ? URItoIndex<N, K>[F] : K
+
+export type IndexFor<URI extends URIS, N extends string, K> = IndexForBase<
+  {
+    [k in keyof URI]: URI[k] extends IndexedURI<infer F, infer P, infer Q>
+      ? F
+      : URI[k] extends URISL0
+      ? URI[k]
+      : never
+  }[number],
+  N,
+  K
+>
