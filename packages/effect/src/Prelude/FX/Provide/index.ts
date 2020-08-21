@@ -1,35 +1,35 @@
-import type { Auto, Base, Kind, OrFix, URIS } from "../../HKT"
+import type * as HKT from "../../HKT"
 
-export interface Provide<F extends URIS, C = Auto> extends Base<F, C> {
-  readonly provide: <R>(
-    r: OrFix<"R", C, R>
-  ) => <N extends string, K, SI, SO, X, I, S, E, A>(
-    fa: Kind<
+export interface Provide<F extends HKT.URIS, C = HKT.Auto> extends HKT.Base<F, C> {
+  readonly provide: <X, I, S, R, E>(
+    r: HKT.AccessType<F, C, "R", X, I, S, R, E>
+  ) => <N extends string, K, SI, SO, A>(
+    fa: HKT.Kind<
       F,
       C,
-      OrFix<"N", C, N>,
-      OrFix<"K", C, K>,
+      HKT.OrFix<"N", C, N>,
+      HKT.OrFix<"K", C, K>,
       SI,
       SO,
-      OrFix<"X", C, X>,
-      OrFix<"I", C, I>,
-      OrFix<"S", C, S>,
-      OrFix<"R", C, R>,
-      OrFix<"E", C, E>,
+      HKT.OrFix<"X", C, X>,
+      HKT.OrFix<"I", C, I>,
+      HKT.OrFix<"S", C, S>,
+      HKT.OrFix<"R", C, R>,
+      HKT.OrFix<"E", C, E>,
       A
     >
-  ) => Kind<
+  ) => HKT.Kind<
     F,
     C,
-    OrFix<"N", C, N>,
-    OrFix<"K", C, K>,
+    HKT.OrFix<"N", C, N>,
+    HKT.OrFix<"K", C, K>,
     SI,
     SO,
-    OrFix<"X", C, X>,
-    OrFix<"I", C, I>,
-    OrFix<"S", C, S>,
-    OrFix<"R", C, unknown>,
-    OrFix<"E", C, E>,
+    HKT.SetType<F, C, "X", X, "R", unknown>,
+    HKT.SetType<F, C, "I", I, "R", unknown>,
+    HKT.SetType<F, C, "S", S, "R", unknown>,
+    HKT.SetType<F, C, "R", R, "R", unknown>,
+    HKT.SetType<F, C, "E", E, "R", unknown>,
     A
   >
 }
