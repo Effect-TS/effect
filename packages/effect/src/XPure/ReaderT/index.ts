@@ -7,7 +7,7 @@ import * as HKT from "../../Prelude/HKT"
 import type { Par } from "../../Prelude/HKT/variance"
 import * as R from "../Reader"
 
-export function monad<P extends Par = "R">(_?: P) {
+export function monad<P extends Par = "R">(_envParam?: P) {
   return <F extends URIS, C>(M: Monad<F, C>) => monad_<F, P, C>(M)
 }
 
