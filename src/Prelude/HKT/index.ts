@@ -1,4 +1,6 @@
+export { CT, Custom, CustomConstrained } from "./custom"
 export {
+  Alias,
   Auto,
   Base,
   BaseURIS,
@@ -11,6 +13,7 @@ export {
   G_,
   HKTFull,
   HKTFullURI,
+  IndexedURI,
   IndexFor,
   IndexForBase,
   instance,
@@ -39,4 +42,3 @@ export {
   OrNever
 } from "./infer"
 export { Initial, Intro, Mix, MixStruct, V } from "./variance"
-export { CT, Custom, CustomConstrained } from "./custom"
