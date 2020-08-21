@@ -42,4 +42,14 @@ export {
   KindFix
 } from "./kind"
 export { OrNever } from "./or-never"
-export { Initial, Intro, Mix, MixStruct, Par, Select, Strip, V } from "./variance"
+export {
+  Initial,
+  Intro,
+  Mix,
+  MixStruct,
+  Par,
+  Select,
+  Strip,
+  V,
+  Variance
+} from "./variance"
