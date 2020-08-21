@@ -30,7 +30,7 @@ declare module "../src/Prelude/HKT" {
 
 export const getStoreMonad = <K, V>() =>
   P.instance<P.Monad<[URI], Params<K, V>>>({
-    any: T.Any.any,
+    any: () => T.Any.any(),
     flatten: (ffa) => T.chain_(ffa, identity),
     map: T.map
   })
