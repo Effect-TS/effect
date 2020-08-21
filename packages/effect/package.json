@@ -41,6 +41,7 @@
       "Classic/Equal",
       "Classic/Has",
       "Classic/Identity",
+      "Classic/InvariantT",
       "Classic/Inverse",
       "Classic/Iterable",
       "Classic/Ord",
