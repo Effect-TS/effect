@@ -3,7 +3,7 @@ import { constant } from "@effect-ts/system/Function"
 import { makeAssociative } from "../../src/Classic/Associative"
 import * as E from "../../src/Classic/Either"
 import * as DSL from "../../src/Prelude/DSL"
-import * as X from "../../src/Pure"
+import * as X from "../../src/XPure"
 
 test("07", () => {
   const A = E.sequenceS({
