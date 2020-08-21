@@ -20,6 +20,14 @@ export type InvertedUnionURI<
   F extends BaseURIS[]
 > = F extends BaseURIS[] ? [G, ...F] : F
 
+export type Alias<F extends URIS, P extends Par> = F[0] extends IndexedURI<
+  infer U,
+  P,
+  infer Q
+>
+  ? Q
+  : P
+
 export type Kind<
   URI extends URIS,
   D,

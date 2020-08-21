@@ -115,8 +115,8 @@ export interface Auto {
 }
 
 export { Fix, OrFix } from "./fix"
-
 export { instance } from "./instance"
+export { Alias, IndexedURI, InvertedUnionURI, Kind, UnionURI, URIS } from "./Kind"
 
 export interface Base<F, C = Auto> {
   F: F
@@ -129,5 +129,3 @@ export interface CompositionBase2<F, G, CF = Auto, CG = Auto> {
   CF: CF
   CG: CG
 }
-
-export { Kind, URIS, UnionURI, InvertedUnionURI } from "./Kind"
