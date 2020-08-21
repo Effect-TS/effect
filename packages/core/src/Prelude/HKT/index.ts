@@ -1,10 +1,8 @@
+export { Auto, Base, CompositionBase2 } from "./base"
 export { CT, Custom, CustomConstrained } from "./custom"
 export { Fix, OrFix } from "./fix"
 export {
-  Auto,
-  Base,
   URISL0,
-  CompositionBase2,
   F_,
   F__,
   F___,
