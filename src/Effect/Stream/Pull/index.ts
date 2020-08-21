@@ -1,1 +1,1 @@
-export { Pull, end, fail, halt } from "@effect-ts/system/Stream/Pull"
+export * from "@effect-ts/system/Stream/Pull"
