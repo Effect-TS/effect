@@ -1,11 +1,10 @@
 export { CT, Custom, CustomConstrained } from "./custom"
+export { Fix, OrFix } from "./fix"
 export {
-  Alias,
   Auto,
   Base,
   URISL0,
   CompositionBase2,
-  Fix,
   F_,
   F__,
   F___,
@@ -13,24 +12,13 @@ export {
   G_,
   HKTFull,
   HKTFullURI,
-  IndexedURI,
-  IndexFor,
-  IndexForBase,
-  instance,
-  InvertedUnionURI,
-  Kind,
-  OrFix,
   UF_,
   UF__,
   UF___,
   UF____,
   UG_,
-  UnionURI,
-  URIS,
   URItoIndex,
-  URItoKind,
-  Indexed,
-  BaseURIS
+  URItoKind
 } from "./hkt"
 export {
   InferA,
@@ -43,4 +31,17 @@ export {
   InferX,
   OrNever
 } from "./infer"
+export { instance } from "./instance"
+export {
+  Alias,
+  BaseURIS,
+  Indexed,
+  IndexedURI,
+  IndexFor,
+  IndexForBase,
+  InvertedUnionURI,
+  Kind,
+  UnionURI,
+  URIS
+} from "./kind"
 export { Initial, Intro, Mix, MixStruct, V } from "./variance"

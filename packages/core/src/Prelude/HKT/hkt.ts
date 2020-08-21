@@ -82,21 +82,6 @@ export interface Auto {
   readonly Auto: unique symbol
 }
 
-export { Fix, OrFix } from "./fix"
-export { instance } from "./instance"
-export {
-  Alias,
-  BaseURIS,
-  Indexed,
-  IndexedURI,
-  IndexFor,
-  IndexForBase,
-  InvertedUnionURI,
-  Kind,
-  UnionURI,
-  URIS
-} from "./kind"
-
 export interface Base<F, C = Auto> {
   F: F
   C: C
