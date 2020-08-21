@@ -18,7 +18,7 @@ const Monad = pipe(IO.Monad, EitherT.monad("X"), ReaderT.monad("I"))
 const Applicative = pipe(
   IO.Applicative,
   EitherT.applicative("X"),
-  ReaderT.applicative()
+  ReaderT.applicative("I")
 )
 const Run = pipe(IO.Covariant, EitherT.run("X"), ReaderT.run("I"))
 const Fail = pipe(IO.Monad, EitherT.fail("X"), ReaderT.fail("I"))
