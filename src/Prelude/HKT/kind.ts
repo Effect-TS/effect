@@ -1,5 +1,12 @@
-import type { URISL0 as B, URISL0, URItoIndex, URItoKind } from "./hkt"
-import type { Par } from "./variance"
+import type {
+  AccessType,
+  SetType,
+  URISL0 as B,
+  URISL0,
+  URItoIndex,
+  URItoKind
+} from "./hkt"
+import type { Mix, Par } from "./variance"
 
 export type BaseURIS = B | IndexedURI<B, [[Par, Par], ...[Par, Par][]]>
 
@@ -160,4 +167,32 @@ export type IndexFor<URI extends URIS, N extends string, K> = IndexForBase<
   }[number],
   N,
   K
+>
+
+export type MixTypes<
+  F extends URIS,
+  C,
+  Cur extends Par,
+  Tar extends Par,
+  X,
+  I,
+  S,
+  R,
+  E,
+  X2,
+  I2,
+  S2,
+  R2,
+  E2
+> = SetType<
+  F,
+  C,
+  Cur,
+  X,
+  Tar,
+  Mix<
+    C,
+    Alias<F, Tar>,
+    [AccessType<F, C, Tar, X, I, S, R, E>, AccessType<F, C, Tar, X2, I2, S2, R2, E2>]
+  >
 >
