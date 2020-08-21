@@ -8,12 +8,10 @@ export interface Fix<P extends PS, F> {
   }
 }
 
-export type OrFix<P extends PS, A, B> = P extends "N"
-  ? A extends Fix<P, infer X>
+export type OrFix<P extends PS, A, B> = A extends Fix<P, infer X>
+  ? P extends "N"
     ? X extends string
       ? X
       : B
-    : B
-  : A extends Fix<P, infer X>
-  ? X
+    : X
   : B
