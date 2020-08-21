@@ -86,8 +86,9 @@ export type AccessType<F extends URIS, C, P extends Par, X, I, S, R, E> = OrFix<
   Select<Alias<F, P>, X, I, S, R, E>
 >
 
-export type SetType<F extends URIS, C, P extends Par, X, Tar extends Par, A> = OrFix<
-  P,
-  C,
-  Alias<F, Tar> extends P ? A : X
->
+export type SetType<F extends URIS, P extends Par, X, Tar extends Par, A> = Alias<
+  F,
+  Tar
+> extends P
+  ? A
+  : X

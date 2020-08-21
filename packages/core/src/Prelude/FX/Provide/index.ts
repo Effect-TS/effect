@@ -10,32 +10,19 @@ export interface Provide<F extends HKT.URIS, C = HKT.Auto> extends HKT.Base<F, C
   >(
     r: HKT.AccessType<F, C, "R", X, I, S, R, E>
   ) => <N extends string, K, SI, SO, A>(
-    fa: HKT.Kind<
-      F,
-      C,
-      HKT.OrFix<"N", C, N>,
-      HKT.OrFix<"K", C, K>,
-      SI,
-      SO,
-      HKT.OrFix<"X", C, X>,
-      HKT.OrFix<"I", C, I>,
-      HKT.OrFix<"S", C, S>,
-      HKT.OrFix<"R", C, R>,
-      HKT.OrFix<"E", C, E>,
-      A
-    >
-  ) => HKT.Kind<
+    fa: HKT.KindFix<F, C, N, K, SI, SO, X, I, S, R, E, A>
+  ) => HKT.KindFix<
     F,
     C,
-    HKT.OrFix<"N", C, N>,
-    HKT.OrFix<"K", C, K>,
+    N,
+    K,
     SI,
     SO,
-    HKT.SetType<F, C, "X", X, "R", unknown>,
-    HKT.SetType<F, C, "I", I, "R", unknown>,
-    HKT.SetType<F, C, "S", S, "R", unknown>,
-    HKT.SetType<F, C, "R", R, "R", unknown>,
-    HKT.SetType<F, C, "E", E, "R", unknown>,
+    HKT.SetType<F, "X", X, "R", unknown>,
+    HKT.SetType<F, "I", I, "R", unknown>,
+    HKT.SetType<F, "S", S, "R", unknown>,
+    HKT.SetType<F, "R", R, "R", unknown>,
+    HKT.SetType<F, "E", E, "R", unknown>,
     A
   >
 }

@@ -38,49 +38,34 @@ export function succeedF(
 export function chainF<F extends HKT.URIS, C = HKT.Auto>(
   F: Monad<F, C>
 ): <N2 extends string, K2, SO, SO2, X2, I2, S2, R2, E2, A, B>(
-  f: (
-    a: A
-  ) => HKT.Kind<
-    F,
-    C,
-    HKT.OrFix<"N", C, N2>,
-    HKT.OrFix<"K", C, K2>,
-    SO,
-    SO2,
-    HKT.OrFix<"X", C, X2>,
-    HKT.OrFix<"I", C, I2>,
-    HKT.OrFix<"S", C, S2>,
-    HKT.OrFix<"R", C, R2>,
-    HKT.OrFix<"E", C, E2>,
-    B
-  >
+  f: (a: A) => HKT.KindFix<F, C, N2, K2, SO, SO2, X2, I2, S2, R2, E2, B>
 ) => <N extends string, K, SI, X, I, S, R, E>(
-  fa: HKT.Kind<
+  fa: HKT.KindFix<
     F,
     C,
-    HKT.OrFix<"N", C, N>,
-    HKT.OrFix<"K", C, K>,
+    N,
+    K,
     SI,
     SO,
-    HKT.OrFix<"X", C, HKT.Intro<C, "X", X2, X>>,
-    HKT.OrFix<"I", C, HKT.Intro<C, "I", I2, I>>,
-    HKT.OrFix<"S", C, HKT.Intro<C, "S", S2, S>>,
-    HKT.OrFix<"R", C, HKT.Intro<C, "R", R2, R>>,
-    HKT.OrFix<"E", C, HKT.Intro<C, "E", E2, E>>,
+    HKT.Intro<C, "X", X2, X>,
+    HKT.Intro<C, "I", I2, I>,
+    HKT.Intro<C, "S", S2, S>,
+    HKT.Intro<C, "R", R2, R>,
+    HKT.Intro<C, "E", E2, E>,
     A
   >
-) => HKT.Kind<
+) => HKT.KindFix<
   F,
   C,
-  HKT.OrFix<"N", C, N2>,
-  HKT.OrFix<"K", C, K2>,
+  N2,
+  K2,
   SI,
   SO2,
-  HKT.OrFix<"X", C, HKT.Mix<C, "X", [X2, X]>>,
-  HKT.OrFix<"I", C, HKT.Mix<C, "I", [I2, I]>>,
-  HKT.OrFix<"S", C, HKT.Mix<C, "S", [S2, S]>>,
-  HKT.OrFix<"R", C, HKT.Mix<C, "R", [R2, R]>>,
-  HKT.OrFix<"E", C, HKT.Mix<C, "X", [E2, E]>>,
+  HKT.Mix<C, "X", [X2, X]>,
+  HKT.Mix<C, "I", [I2, I]>,
+  HKT.Mix<C, "S", [S2, S]>,
+  HKT.Mix<C, "R", [R2, R]>,
+  HKT.Mix<C, "X", [E2, E]>,
   B
 >
 export function chainF(F: Monad<[HKT.UF_]>) {
@@ -108,25 +93,12 @@ export function accessMF<F extends HKT.URIS, C = HKT.Auto>(
 >(
   f: (
     r: HKT.AccessType<F, C, "R", X2, I2, S2, R2, E2>
-  ) => HKT.Kind<
-    F,
-    C,
-    HKT.OrFix<"N", C, N>,
-    HKT.OrFix<"K", C, K>,
-    SI,
-    SO,
-    HKT.OrFix<"X", C, X>,
-    HKT.OrFix<"I", C, I>,
-    HKT.OrFix<"S", C, S>,
-    HKT.OrFix<"R", C, R>,
-    HKT.OrFix<"E", C, E>,
-    A
-  >
-) => HKT.Kind<
+  ) => HKT.KindFix<F, C, N, K, SI, SO, X, I, S, R, E, A>
+) => HKT.KindFix<
   F,
   C,
-  HKT.OrFix<"N", C, N>,
-  HKT.OrFix<"K", C, K>,
+  N,
+  K,
   SI,
   SO,
   HKT.MixTypes<F, C, "X", "R", X, I, S, R, E, X2, I2, S2, R2, E2>,
