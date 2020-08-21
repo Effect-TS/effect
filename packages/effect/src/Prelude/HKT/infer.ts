@@ -1,5 +1,4 @@
-import type { URIS } from "./hkt"
-import type { Kind } from "./kind"
+import type { Kind, URIS } from "./kind"
 
 export type OrNever<K> = unknown extends K ? never : K
 
