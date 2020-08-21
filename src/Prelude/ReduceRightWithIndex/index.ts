@@ -1,27 +1,13 @@
-import type { Auto, Base, IndexFor, Kind, OrFix, URIS } from "../HKT"
+import type * as HKT from "../HKT"
 
-export interface ReduceRightWithIndex<F extends URIS, C = Auto> extends Base<F, C> {
+export interface ReduceRightWithIndex<F extends HKT.URIS, C = HKT.Auto>
+  extends HKT.Base<F, C> {
   readonly reduceRightWithIndex: ReduceRightWithIndexFn<F, C>
 }
 
-export interface ReduceRightWithIndexFn<F extends URIS, C = Auto> {
+export interface ReduceRightWithIndexFn<F extends HKT.URIS, C = HKT.Auto> {
   <N extends string, K, A, B>(
     b: B,
-    f: (k: IndexFor<F, OrFix<"N", C, N>, OrFix<"K", C, K>>, a: A, b: B) => B
-  ): <SI, SO, X, I, S, R, E>(
-    fa: Kind<
-      F,
-      C,
-      OrFix<"N", C, N>,
-      OrFix<"K", C, K>,
-      SI,
-      SO,
-      OrFix<"X", C, X>,
-      OrFix<"I", C, I>,
-      OrFix<"S", C, S>,
-      OrFix<"R", C, R>,
-      OrFix<"E", C, E>,
-      A
-    >
-  ) => B
+    f: (k: HKT.IndexFor<F, HKT.OrFix<"N", C, N>, HKT.OrFix<"K", C, K>>, a: A, b: B) => B
+  ): <SI, SO, X, I, S, R, E>(fa: HKT.KindFix<F, C, N, K, SI, SO, X, I, S, R, E, A>) => B
 }

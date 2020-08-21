@@ -5,7 +5,7 @@ export interface AssociativeBoth<F extends HKT.URIS, C = HKT.Auto>
   readonly both: <N2 extends string, K2, SO, SO2, X2, I2, S2, R2, E2, B>(
     fb: HKT.KindFix<F, C, N2, K2, SO, SO2, X2, I2, S2, R2, E2, B>
   ) => <N extends string, K, SI, X, I, S, R, E, A>(
-    fa: HKT.Kind<
+    fa: HKT.KindFix<
       F,
       C,
       N,
