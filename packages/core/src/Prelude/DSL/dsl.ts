@@ -89,9 +89,25 @@ export function chainF(F: Monad<[HKT.UF_]>) {
 
 export function accessMF<F extends HKT.URIS, C = HKT.Auto>(
   F: Access<F, C> & AssociativeFlatten<F, C>
-): <N extends string, K, SI, SO, X, I, S, R, R2, E, A>(
+): <
+  N extends string,
+  K,
+  SI,
+  SO,
+  A,
+  X = HKT.Initial<C, HKT.Alias<F, "X">>,
+  I = HKT.Initial<C, HKT.Alias<F, "I">>,
+  S = HKT.Initial<C, HKT.Alias<F, "S">>,
+  R = HKT.Initial<C, HKT.Alias<F, "R">>,
+  E = HKT.Initial<C, HKT.Alias<F, "E">>,
+  X2 = HKT.Initial<C, HKT.Alias<F, "X">>,
+  I2 = HKT.Initial<C, HKT.Alias<F, "I">>,
+  S2 = HKT.Initial<C, HKT.Alias<F, "S">>,
+  R2 = HKT.Initial<C, HKT.Alias<F, "R">>,
+  E2 = HKT.Initial<C, HKT.Alias<F, "E">>
+>(
   f: (
-    r: HKT.OrFix<"R", C, R>
+    r: HKT.AccessType<F, C, "R", X2, I2, S2, R2, E2>
   ) => HKT.Kind<
     F,
     C,
@@ -102,7 +118,7 @@ export function accessMF<F extends HKT.URIS, C = HKT.Auto>(
     HKT.OrFix<"X", C, X>,
     HKT.OrFix<"I", C, I>,
     HKT.OrFix<"S", C, S>,
-    HKT.OrFix<"R", C, HKT.Intro<C, "R", R, R2>>,
+    HKT.OrFix<"R", C, R>,
     HKT.OrFix<"E", C, E>,
     A
   >
@@ -113,11 +129,11 @@ export function accessMF<F extends HKT.URIS, C = HKT.Auto>(
   HKT.OrFix<"K", C, K>,
   SI,
   SO,
-  HKT.OrFix<"X", C, X>,
-  HKT.OrFix<"I", C, I>,
-  HKT.OrFix<"S", C, S>,
-  HKT.OrFix<"R", C, HKT.Mix<C, "R", [R, R2]>>,
-  HKT.OrFix<"E", C, E>,
+  HKT.MixTypes<F, C, "X", "R", X, I, S, R, E, X2, I2, S2, R2, E2>,
+  HKT.MixTypes<F, C, "I", "R", X, I, S, R, E, X2, I2, S2, R2, E2>,
+  HKT.MixTypes<F, C, "S", "R", X, I, S, R, E, X2, I2, S2, R2, E2>,
+  HKT.MixTypes<F, C, "R", "R", X, I, S, R, E, X2, I2, S2, R2, E2>,
+  HKT.MixTypes<F, C, "E", "R", X, I, S, R, E, X2, I2, S2, R2, E2>,
   A
 >
 export function accessMF(
