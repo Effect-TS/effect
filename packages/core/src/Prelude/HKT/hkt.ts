@@ -95,7 +95,7 @@ export {
   Kind,
   UnionURI,
   URIS
-} from "./Kind"
+} from "./kind"
 
 export interface Base<F, C = Auto> {
   F: F
