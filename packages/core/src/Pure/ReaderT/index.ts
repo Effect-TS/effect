@@ -7,17 +7,17 @@ import * as HKT from "../../Prelude/HKT"
 import type { Par } from "../../Prelude/HKT/variance"
 import * as R from "../Reader"
 
-export function getReaderM<P extends Par = "R">(_?: P) {
-  return <F extends URIS, C>(M: Monad<F, C>) => getReaderM_<F, P, C>(M)
+export function monad<P extends Par = "R">(_?: P) {
+  return <F extends URIS, C>(M: Monad<F, C>) => monad_<F, P, C>(M)
 }
 
-function getReaderM_<F extends URIS, P extends Par, C>(
+function monad_<F extends URIS, P extends Par, C>(
   M: Monad<F, C>
 ): Monad<
   HKT.InvertedUnionURI<HKT.Indexed<R.ReaderURI, P, "R">, F>,
   Erase<C, HKT.Auto> & V<P, "-">
 >
-function getReaderM_(M: Monad<[HKT.UF_]>): Monad<[R.ReaderURI, HKT.UF_]> {
+function monad_(M: Monad<[HKT.UF_]>): Monad<[R.ReaderURI, HKT.UF_]> {
   return HKT.instance({
     any: () => R.succeed(M.any()),
     flatten: <A, R2>(

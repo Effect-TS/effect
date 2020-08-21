@@ -2,9 +2,9 @@ import * as A from "../src/Classic/Array"
 import { pipe } from "../src/Function"
 import { chainF } from "../src/Prelude/DSL"
 import * as R from "../src/Pure/Reader"
-import { getReaderM } from "../src/Pure/ReaderT"
+import * as ReaderT from "../src/Pure/ReaderT"
 
-const M = pipe(A.Monad, getReaderM("X"), getReaderM("I"))
+const M = pipe(A.Monad, ReaderT.monad("X"), ReaderT.monad("I"))
 
 pipe(
   R.access((h: string) =>
