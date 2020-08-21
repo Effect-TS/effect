@@ -27,6 +27,21 @@ export type InvertedUnionURI<
   F extends BaseURIS[]
 > = F extends BaseURIS[] ? [G, ...F] : F
 
+export type Alias<F extends URIS, P extends Par> = ((...x: F) => any) extends (
+  fst: infer X,
+  ...rest: infer Rest
+) => any
+  ? X extends IndexedURI<any, infer FT>
+    ? AliasFT<FT, P> extends never
+      ? Rest extends URIS
+        ? Alias<Rest, P>
+        : P
+      : AliasFT<FT, P>
+    : Rest extends URIS
+    ? Alias<Rest, P>
+    : P
+  : P
+
 export type AliasFT<FT extends [[Par, Par], ...[Par, Par][]], P extends Par> = ((
   ...x: FT
 ) => any) extends (fst: [infer P_, infer Q_], ...r: infer Rest) => any
@@ -34,19 +49,8 @@ export type AliasFT<FT extends [[Par, Par], ...[Par, Par][]], P extends Par> = (
     ? Q_
     : Rest extends [[Par, Par], ...[Par, Par][]]
     ? AliasFT<Rest, P>
-    : P
-  : P
-
-export type Alias<F extends URIS, P extends Par> = ((...x: F) => any) extends (
-  fst: infer X,
-  ...rest: infer Rest
-) => any
-  ? X extends IndexedURI<any, infer FT>
-    ? AliasFT<FT, P>
-    : Rest extends URIS
-    ? Alias<Rest, P>
-    : P
-  : P
+    : never
+  : never
 
 export type Indexed<F extends B, FT extends IndexBase> = Cleanup<FT> extends infer X
   ? X extends [[Par, Par], ...[Par, Par][]]
