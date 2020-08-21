@@ -6,7 +6,7 @@ import type { Erase, UnionToIntersection } from "../../Utils"
 import type { OrNever } from "./or-never"
 
 // list of parameters
-export type Par = "I" | "R" | "S" | "E" | "X" | "A"
+export type Par = "I" | "R" | "S" | "E" | "X"
 
 export interface V<F extends Par, V extends "+" | "-" | "_"> {
   Variance: {
@@ -62,3 +62,13 @@ export type Strip<C, P extends Par> = Erase<
   Erase<Erase<C, V<P, "+">>, V<P, "-">>,
   V<P, "_">
 >
+
+export type Select<P extends Par, X, I, S, R, E> = P extends "X"
+  ? X
+  : P extends "I"
+  ? I
+  : P extends "S"
+  ? S
+  : P extends "R"
+  ? R
+  : E
