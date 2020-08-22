@@ -99,7 +99,7 @@ export function getBranch<F extends HKT.URIS, C = HKT.Auto>(
 >(
   lhs: HKT.KindFix<F, C, N2, K2, SO, SO2, X2, I2, S2, R2, E2, (a: A) => C>,
   rhs: HKT.KindFix<F, C, N3, K3, SO, SO3, X3, I3, S3, R3, E3, (a: B) => D>
-) => <N extends string, K, SI, SO, X, I, S, R, E, A, B>(
+) => <N extends string, K, SI, SO, X, I, S, R, E>(
   fe: HKT.KindFix<F, C, N, K, SI, SO, X, I, S, R, E, E.Either<A, B>>
 ) => HKT.KindFix<
   F,
