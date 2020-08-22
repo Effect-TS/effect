@@ -1,4 +1,3 @@
-import { pipe } from "../../Function"
 import type { IdentityBoth } from "../Combined"
 import type { Covariant, CovariantComposition } from "../Covariant"
 import { getCovariantComposition } from "../Covariant"
@@ -173,7 +172,7 @@ export function getTraversableComposition(
     foreachF: (H) => {
       const foreachF = F.foreachF(H)
       const foreachG = G.foreachF(H)
-      return (f) => pipe(f, foreachG, foreachF)
+      return (f) => foreachF(foreachG(f))
     }
   }
 }
