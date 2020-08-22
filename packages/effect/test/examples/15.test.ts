@@ -1,0 +1,24 @@
+import { pipe } from "@effect-ts/system/Function"
+
+import * as E from "../../src/Classic/Either"
+import * as Selective from "../../src/Prelude/Selective"
+import * as IO from "../../src/XPure/IO"
+
+const SelectiveIO = Selective.getSelectMonad({ ...IO.Monad, ...IO.Applicative })
+const branch = Selective.getBranch(SelectiveIO)
+
+const x = 0
+
+test("15", () => {
+  pipe(
+    IO.succeed(x === 0 ? E.left("l" as const) : E.right("r" as const)),
+    branch(
+      IO.succeed((s: "l") => `left: ${s}`),
+      IO.succeed((s: "r") => `right: ${s}`)
+    ),
+    IO.run,
+    (s) => {
+      console.log(s)
+    }
+  )
+})
