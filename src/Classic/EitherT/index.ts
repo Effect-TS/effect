@@ -67,8 +67,8 @@ function run_<F extends URIS, P extends Par, C>(
 >
 function run_(M: Covariant<[UF_]>): Run<[UF_, E.EitherURI]> {
   return HKT.instance({
-    run: <E, A>(fa: F_<E.Either<E, A>>): F_<E.Either<never, E.Either<E, A>>> => {
-      return pipe(fa, M.map(E.Run.run))
+    either: <E, A>(fa: F_<E.Either<E, A>>): F_<E.Either<never, E.Either<E, A>>> => {
+      return pipe(fa, M.map(E.Run.either))
     }
   })
 }
