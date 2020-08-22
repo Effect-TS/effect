@@ -52,7 +52,7 @@ export const Fail = P.instance<P.FX.Fail<[EitherURI], V>>({
 })
 
 export const Run = P.instance<P.FX.Run<[EitherURI], V>>({
-  run: E.right
+  either: E.right
 })
 
 export const getValidationApplicative = DSL.getValidationF({

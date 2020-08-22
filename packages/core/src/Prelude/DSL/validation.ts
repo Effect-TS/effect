@@ -26,8 +26,8 @@ export function getValidationF(
       map: F.map,
       both: (fb) => (fa) =>
         pipe(
-          F.run(fa),
-          F.both(F.run(fb)),
+          F.either(fa),
+          F.both(F.either(fb)),
           F.map(([maybeA, maybeB]) =>
             E.fold_(
               maybeA,
