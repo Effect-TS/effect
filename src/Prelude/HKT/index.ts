@@ -18,7 +18,9 @@ export {
   UG_,
   URISL0,
   URItoIndex,
-  URItoKind
+  URItoKind,
+  XF_,
+  XUF_
 } from "./hkt"
 export { InferA, InferE, InferI, InferK, InferN, InferR, InferS, InferX } from "./infer"
 export { instance } from "./instance"

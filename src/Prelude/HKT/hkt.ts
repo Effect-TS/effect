@@ -7,6 +7,13 @@ export interface F_<A> {
   A: A
 }
 
+export const XUF_ = "XF_"
+export type XUF_ = typeof XUF_
+export interface XF_<A> {
+  URI: XUF_
+  A: (_: A) => A
+}
+
 export const UF__ = "F__"
 export type UF__ = typeof UF__
 export interface F__<E, A> {
@@ -58,6 +65,7 @@ export interface HKTFull<K, SI, SO, X, I, S, R, E, A> {
 
 export interface URItoKind<D, N extends string, K, SI, SO, X, I, S, R, E, A> {
   [UF_]: F_<A>
+  [XUF_]: XF_<A>
   [UG_]: G_<A>
   [UF__]: F__<E, A>
   [UF___]: F___<R, E, A>

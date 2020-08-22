@@ -37,11 +37,6 @@ export const succeed: <A>(a: A) => IO<A> = (a) => F.succeed(() => a)
  */
 export const run = <A>(self: IO<A>): A => F.runIO(self)
 
-/**
- * Run the computation with environment R
- */
-export const runEnv = <R>(r: R) => <A>(self: IO<A>): A => F.runIO(F.provideAll(r)(self))
-
 //
 // Instances
 //
