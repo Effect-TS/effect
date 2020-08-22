@@ -35,7 +35,7 @@ namespace ReaderIOEither {
   export const Access = pipe(IOEither.Monad, ReaderT.access("I"))
   export const Provide = pipe(IOEither.Monad, ReaderT.provide("I"))
 
-  export const { access, any, both, fail, flatten, map, provide, run } = {
+  export const { access, any, both, either, fail, flatten, map, provide } = {
     ...Monad,
     ...Applicative,
     ...Run,

@@ -3,7 +3,7 @@ import type { Either } from "@effect-ts/system/Either"
 import type * as HKT from "../../HKT"
 
 export interface Run<F extends HKT.URIS, C = HKT.Auto> extends HKT.Base<F, C> {
-  readonly run: <
+  readonly either: <
     N extends string,
     K,
     SI,

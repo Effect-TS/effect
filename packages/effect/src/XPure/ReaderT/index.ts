@@ -112,7 +112,7 @@ function run_<F extends URIS, P extends Par, C>(
 >
 function run_(M: Run<[HKT.UF__]>): Run<[R.ReaderURI, HKT.UF__]> {
   return HKT.instance({
-    run: (fa) => pipe(fa, R.map(M.run))
+    either: (fa) => pipe(fa, R.map(M.either))
   })
 }
 

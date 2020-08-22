@@ -86,7 +86,7 @@ export const Fail = P.instance<P.FX.Fail<[EffectURI], V>>({
 })
 
 export const Run = P.instance<P.FX.Run<[EffectURI], V>>({
-  run: T.either
+  either: T.either
 })
 
 export const getValidationApplicative = DSL.getValidationF<[EffectURI], V>({
