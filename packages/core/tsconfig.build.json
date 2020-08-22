@@ -4,7 +4,8 @@
     "outDir": "build",
     "target": "ES5",
     "module": "CommonJS",
-    "incremental": false,
+    "incremental": true,
+    "tsBuildInfoFile": "tsbuildinfo/build.tsbuildinfo",
     "removeComments": false,
     "lib": ["DOM"]
   },
