@@ -23,17 +23,17 @@ export const Covariant = P.instance<P.Covariant<[ArrayURI]>>({
   map: A.map
 })
 
-export const Applicative: P.Applicative<[ArrayURI]> = {
+export const Applicative = P.instance<P.Applicative<[ArrayURI]>>({
   ...Any,
   ...Covariant,
   ...AssociativeBoth
-}
+})
 
-export const Monad: P.Monad<[ArrayURI]> = {
+export const Monad = P.instance<P.Monad<[ArrayURI]>>({
   ...Any,
   ...Covariant,
   ...AssociativeFlatten
-}
+})
 
 export const foreachF = P.implementForeachF<[ArrayURI]>()((_) => (G) => (f) =>
   foreachWithIndexF(G)((_, a) => f(a))
