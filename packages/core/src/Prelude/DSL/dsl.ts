@@ -356,3 +356,79 @@ export function provideSomeF(
     fa: HKT.F___<R, E, A>
   ): HKT.F___<R0, E, A> => accessMF(F)((r0: R0) => pipe(fa, F.provide(f(r0))))
 }
+
+export function doF<F extends HKT.URIS, C = HKT.Auto>(
+  F: Any<F, C> & Covariant<F, C>
+): <
+  N extends string,
+  K,
+  SI,
+  SO,
+  A,
+  X = HKT.INIT<F, C, "X">,
+  I = HKT.INIT<F, C, "I">,
+  S = HKT.INIT<F, C, "S">,
+  R = HKT.INIT<F, C, "R">,
+  E = HKT.INIT<F, C, "E">
+>() => HKT.KindFix<F, C, N, K, SI, SO, X, I, S, R, E, {}>
+export function doF(F: Any<[HKT.UF_]> & Covariant<[HKT.UF_]>): () => HKT.F_<{}> {
+  return () => succeedF(F)({})
+}
+
+export function bindF<F extends HKT.URIS, C = HKT.Auto>(
+  F: Monad<F, C>
+): <N2 extends string, K2, SO, SO2, X2, I2, S2, R2, E2, BK, BN extends string, BA>(
+  tag: Exclude<BN, keyof BK>,
+  f: (a: BA) => HKT.KindFix<F, C, N2, K2, SO, SO2, X2, I2, S2, R2, E2, BA>
+) => <N extends string, K, SI, X, I, S, R, E>(
+  fa: HKT.KindFix<
+    F,
+    C,
+    N,
+    K,
+    SI,
+    SO,
+    HKT.Intro<C, "X", X2, X>,
+    HKT.Intro<C, "I", I2, I>,
+    HKT.Intro<C, "S", S2, S>,
+    HKT.Intro<C, "R", R2, R>,
+    HKT.Intro<C, "E", E2, E>,
+    BK
+  >
+) => HKT.KindFix<
+  F,
+  C,
+  N2,
+  K2,
+  SI,
+  SO2,
+  HKT.Mix<C, "X", [X2, X]>,
+  HKT.Mix<C, "I", [I2, I]>,
+  HKT.Mix<C, "S", [S2, S]>,
+  HKT.Mix<C, "R", [R2, R]>,
+  HKT.Mix<C, "X", [E2, E]>,
+  BK & { [k in BN]: BA }
+>
+export function bindF(
+  F: Monad<[HKT.UF_]>
+): <A, K, N extends string>(
+  tag: Exclude<N, keyof K>,
+  f: (_: K) => HKT.F_<A>
+) => (mk: HKT.F_<K>) => HKT.F_<K & { [k in N]: A }> {
+  return <A, K, N extends string>(tag: Exclude<N, keyof K>, f: (_: K) => HKT.F_<A>) => (
+    mk: HKT.F_<K>
+  ): HKT.F_<K & { [k in N]: A }> =>
+    pipe(
+      mk,
+      chainF(F)((k) =>
+        pipe(
+          f(k),
+          F.map((a) =>
+            Object.assign({}, k, { [tag]: a } as {
+              [k in N]: A
+            })
+          )
+        )
+      )
+    )
+}
