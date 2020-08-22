@@ -1,3 +1,4 @@
+import { flow } from "../../Function"
 import type { IdentityBoth } from "../Combined"
 import type { Covariant, CovariantComposition } from "../Covariant"
 import { getCovariantComposition } from "../Covariant"
@@ -169,10 +170,6 @@ export function getTraversableComposition(
 ): TraversableComposition<[HKT.UF_], [HKT.UG_]> {
   return {
     ...getCovariantComposition(F, G),
-    foreachF: (H) => {
-      const foreachF = F.foreachF(H)
-      const foreachG = G.foreachF(H)
-      return (f) => foreachF(foreachG(f))
-    }
+    foreachF: (H) => flow(G.foreachF(H), F.foreachF(H))
   }
 }
