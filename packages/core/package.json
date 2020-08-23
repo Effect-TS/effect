@@ -53,6 +53,7 @@
       "Classic/Record",
       "Classic/Show",
       "Classic/StateT",
+      "Classic/StateT/Parametric",
       "Effect",
       "Effect/Cause",
       "Effect/Clock",

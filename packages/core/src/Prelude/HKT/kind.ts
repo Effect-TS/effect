@@ -1,35 +1,31 @@
 import type { OrFix } from "./fix"
 import type { ConcreteURIS, URItoIndex, URItoKind } from "./hkt"
 
-export type URIS = [ConcreteURIS, ...ConcreteURIS[]]
+export type URIS = [RealURIS, ...RealURIS[]]
 
-export type UnionURI<
-  G extends ConcreteURIS,
-  F extends ConcreteURIS[]
-> = F extends ConcreteURIS[] ? [...F, G] : F
+export interface URI<F extends ConcreteURIS, C> {
+  _F: F
+  _C: C
+}
+
+export type RealURIS = ConcreteURIS | URI<ConcreteURIS, any>
+
+export type UnionURI<G extends RealURIS, F extends RealURIS[]> = F extends RealURIS[]
+  ? [...F, G]
+  : F
 
 export type InvertedUnionURI<
-  G extends ConcreteURIS,
-  F extends ConcreteURIS[]
-> = F extends ConcreteURIS[] ? [G, ...F] : F
+  G extends RealURIS,
+  F extends RealURIS[]
+> = F extends RealURIS[] ? [G, ...F] : F
 
-export type Kind<
-  URI extends URIS,
-  D,
-  N extends string,
-  K,
-  SI,
-  SO,
-  X,
-  I,
-  S,
-  R,
-  E,
-  A
-> = ((...x: URI) => any) extends (fst: infer XURI, ...rest: infer Rest) => any
+export type Kind<F extends URIS, C, N extends string, K, SI, SO, X, I, S, R, E, A> = ((
+  ...x: F
+) => any) extends (fst: infer XURI, ...rest: infer Rest) => any
   ? XURI extends ConcreteURIS
     ? URItoKind<
-        D,
+        any,
+        C,
         N,
         K,
         SI,
@@ -39,14 +35,29 @@ export type Kind<
         S,
         R,
         E,
-        Rest extends URIS ? Kind<Rest, D, N, K, SI, SO, X, I, S, R, E, A> : A
+        Rest extends URIS ? Kind<Rest, C, N, K, SI, SO, X, I, S, R, E, A> : A
       >[XURI]
+    : XURI extends URI<infer U, infer FC>
+    ? URItoKind<
+        FC,
+        C,
+        N,
+        K,
+        SI,
+        SO,
+        X,
+        I,
+        S,
+        R,
+        E,
+        Rest extends URIS ? Kind<Rest, C, N, K, SI, SO, X, I, S, R, E, A> : A
+      >[U]
     : never
   : never
 
 export type KindFix<
   URI extends URIS,
-  D,
+  C,
   N extends string,
   K,
   SI,
@@ -59,16 +70,16 @@ export type KindFix<
   A
 > = Kind<
   URI,
-  D,
+  C,
   N,
   K,
   SI,
   SO,
-  OrFix<"X", D, X>,
-  OrFix<"I", D, I>,
-  OrFix<"S", D, S>,
-  OrFix<"R", D, R>,
-  OrFix<"E", D, E>,
+  OrFix<"X", C, X>,
+  OrFix<"I", C, I>,
+  OrFix<"S", C, S>,
+  OrFix<"R", C, R>,
+  OrFix<"E", C, E>,
   A
 >
 
@@ -78,8 +89,14 @@ export type IndexForBase<
   K
 > = F extends keyof URItoIndex<any, any> ? URItoIndex<N, K>[F] : K
 
-export type IndexFor<URI extends URIS, N extends string, K> = IndexForBase<
-  URI[number],
+export type IndexFor<F extends URIS, N extends string, K> = IndexForBase<
+  {
+    [K in keyof F]: F[K] extends ConcreteURIS
+      ? F[K]
+      : F[K] extends URI<infer U, any>
+      ? U
+      : never
+  }[number],
   N,
   K
 >

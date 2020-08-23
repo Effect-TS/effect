@@ -4,11 +4,14 @@ export interface CustomType<P extends string, V> {
   }
 }
 
-export type Custom<C, P extends string, D = any> = C extends CustomType<P, infer V>
+export type AccessCustom<C, P extends string, D = any> = C extends CustomType<
+  P,
+  infer V
+>
   ? V
   : D
 
-export type CustomConstrained<C, P extends string, D = any> = C extends CustomType<
+export type AccessCustomExtends<C, P extends string, D = any> = C extends CustomType<
   P,
   infer V
 >
