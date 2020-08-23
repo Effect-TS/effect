@@ -1,17 +1,8 @@
-import type { Alias, OrFix, Par, Select, URIS } from "."
-
 export const UF_ = "F_"
 export type UF_ = typeof UF_
 export interface F_<A> {
   URI: UF_
   A: A
-}
-
-export const XUF_ = "XF_"
-export type XUF_ = typeof XUF_
-export interface XF_<A> {
-  URI: XUF_
-  A: (_: A) => A
 }
 
 export const UF__ = "F__"
@@ -48,6 +39,33 @@ export interface G_<A> {
   A: A
 }
 
+export const UG__ = "G__"
+export type UG__ = typeof UG__
+export interface G__<E, A> {
+  URI: UG__
+  E: () => E
+  A: A
+}
+
+export const UG___ = "G___"
+export type UG___ = typeof UG___
+export interface G___<R, E, A> {
+  URI: UG___
+  R: (_: R) => void
+  E: () => E
+  A: A
+}
+
+export const UG____ = "G____"
+export type UG____ = typeof UG____
+export interface G____<S, R, E, A> {
+  URI: UG____
+  S: S
+  R: (_: R) => void
+  E: () => E
+  A: A
+}
+
 export const HKTFullURI = "HKTFullURI"
 export type HKTFullURI = typeof HKTFullURI
 export interface HKTFull<K, SI, SO, X, I, S, R, E, A> {
@@ -65,16 +83,18 @@ export interface HKTFull<K, SI, SO, X, I, S, R, E, A> {
 
 export interface URItoKind<D, N extends string, K, SI, SO, X, I, S, R, E, A> {
   [UF_]: F_<A>
-  [XUF_]: XF_<A>
-  [UG_]: G_<A>
   [UF__]: F__<E, A>
   [UF___]: F___<R, E, A>
   [UF____]: F____<S, R, E, A>
+  [UG_]: G_<A>
+  [UG__]: G__<E, A>
+  [UG___]: G___<R, E, A>
+  [UG____]: G____<S, R, E, A>
 }
 
 export interface URItoIndex<N extends string, K> {}
 
-export type URISL0 = keyof URItoKind<
+export type ConcreteURIS = keyof URItoKind<
   any,
   any,
   any,
@@ -87,16 +107,3 @@ export type URISL0 = keyof URItoKind<
   any,
   any
 >
-
-export type AccessType<F extends URIS, C, P extends Par, X, I, S, R, E> = OrFix<
-  Alias<F, P>,
-  C,
-  Select<Alias<F, P>, X, I, S, R, E>
->
-
-export type SetType<F extends URIS, P extends Par, X, Tar extends Par, A> = Alias<
-  F,
-  Tar
-> extends P
-  ? A
-  : X

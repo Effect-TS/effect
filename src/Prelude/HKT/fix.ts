@@ -1,6 +1,6 @@
-export type PS = "N" | "K" | "I" | "X" | "S" | "R" | "E" | "A"
+export type Param = "N" | "K" | "I" | "X" | "S" | "R" | "E"
 
-export interface Fix<P extends PS, F> {
+export interface Fix<P extends Param, F> {
   Fix: {
     [p in P]: {
       F: () => F
@@ -8,7 +8,7 @@ export interface Fix<P extends PS, F> {
   }
 }
 
-export type OrFix<P extends PS, A, B> = A extends Fix<P, infer X>
+export type OrFix<P extends Param, A, B> = A extends Fix<P, infer X>
   ? P extends "N"
     ? X extends string
       ? X

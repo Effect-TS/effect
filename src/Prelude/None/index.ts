@@ -6,10 +6,10 @@ export interface None<F extends HKT.URIS, C = HKT.Auto> extends HKT.Base<F, C> {
     K = unknown,
     SI = unknown,
     SO = unknown,
-    X = HKT.INIT<F, C, "X">,
-    I = HKT.INIT<F, C, "I">,
-    S = HKT.INIT<F, C, "S">,
-    R = HKT.INIT<F, C, "R">,
-    E = HKT.INIT<F, C, "E">
+    X = HKT.Initial<C, "X">,
+    I = HKT.Initial<C, "I">,
+    S = HKT.Initial<C, "S">,
+    R = HKT.Initial<C, "R">,
+    E = HKT.Initial<C, "E">
   >() => HKT.KindFix<F, C, N, K, SI, SO, X, I, S, R, E, never>
 }

@@ -3,21 +3,19 @@
 //
 
 import type { Erase, UnionToIntersection } from "../../Utils"
+import type { Param } from "./fix"
 import type { OrNever } from "./or-never"
-
-// list of parameters
-export type Par = "I" | "R" | "S" | "E" | "X"
 
 export type Variance = "+" | "-" | "_"
 
-export interface V<F extends Par, V extends Variance> {
+export interface V<F extends Param, V extends Variance> {
   Variance: {
     [v in V]: () => F
   }
 }
 
 // composes types according to variance specified in C
-export type Mix<C, P extends Par, X extends [any, ...any[]]> = C extends V<P, "_">
+export type Mix<C, P extends Param, X extends [any, ...any[]]> = C extends V<P, "_">
   ? X[0]
   : C extends V<P, "+">
   ? X[number]
@@ -38,7 +36,7 @@ export type Mix<C, P extends Par, X extends [any, ...any[]]> = C extends V<P, "_
   : X[0]
 
 // composes a record of types to the base respecting variance from C
-export type MixStruct<C, P extends Par, X, Y> = C extends V<P, "_">
+export type MixStruct<C, P extends Param, X, Y> = C extends V<P, "_">
   ? X
   : C extends V<P, "+">
   ? Y[keyof Y]
@@ -47,7 +45,7 @@ export type MixStruct<C, P extends Par, X, Y> = C extends V<P, "_">
   : X
 
 // used in subsequent definitions to either vary a paramter or keep it fixed to "Fixed"
-export type Intro<C, P extends Par, Fixed, Current> = C extends V<P, "_">
+export type Intro<C, P extends Param, Fixed, Current> = C extends V<P, "_">
   ? Fixed
   : C extends V<P, "+">
   ? Current
@@ -56,23 +54,13 @@ export type Intro<C, P extends Par, Fixed, Current> = C extends V<P, "_">
   : Fixed
 
 // initial type depending on variance of P in C (eg: initial Contravariant R = unknown, initial Covariant E = never)
-export type Initial<C, P extends Par> = C extends V<P, "-">
+export type Initial<C, P extends Param> = C extends V<P, "-">
   ? unknown
   : C extends V<P, "+">
   ? never
   : any
 
-export type Strip<C, P extends Par> = Erase<
+export type Strip<C, P extends Param> = Erase<
   Erase<Erase<C, V<P, "+">>, V<P, "-">>,
   V<P, "_">
 >
-
-export type Select<P extends Par, X, I, S, R, E> = P extends "X"
-  ? X
-  : P extends "I"
-  ? I
-  : P extends "S"
-  ? S
-  : P extends "R"
-  ? R
-  : E

@@ -9,11 +9,11 @@ export interface Run<F extends HKT.URIS, C = HKT.Auto> extends HKT.Base<F, C> {
     SI,
     SO,
     A,
-    X = HKT.INIT<F, C, "X">,
-    I = HKT.INIT<F, C, "I">,
-    S = HKT.INIT<F, C, "S">,
-    R = HKT.INIT<F, C, "R">,
-    E = HKT.INIT<F, C, "E">
+    X = HKT.Initial<C, "X">,
+    I = HKT.Initial<C, "I">,
+    S = HKT.Initial<C, "S">,
+    R = HKT.Initial<C, "R">,
+    E = HKT.Initial<C, "E">
   >(
     fa: HKT.KindFix<F, C, N, K, SI, SO, X, I, S, R, E, A>
   ) => HKT.KindFix<
@@ -23,11 +23,11 @@ export interface Run<F extends HKT.URIS, C = HKT.Auto> extends HKT.Base<F, C> {
     K,
     SI,
     SO,
-    HKT.SetType<F, "X", X, "E", never>,
-    HKT.SetType<F, "I", I, "E", never>,
-    HKT.SetType<F, "S", S, "E", never>,
-    HKT.SetType<F, "R", R, "E", never>,
-    HKT.SetType<F, "E", E, "E", never>,
-    Either<HKT.AccessType<F, C, "E", X, I, S, R, E>, A>
+    X,
+    I,
+    S,
+    R,
+    never,
+    Either<HKT.OrFix<"E", C, E>, A>
   >
 }
