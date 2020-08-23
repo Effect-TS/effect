@@ -13,17 +13,14 @@ export type StateOut<S, A> = readonly [A, S]
 
 export type StateTVariance<C> = Erase<HKT.Strip<C, "S">, HKT.Auto> & V<"S", "_">
 
-export type StateT<F extends URIS> = HKT.InvertedUnionURI<
+export type StateT<F extends URIS> = HKT.PrependURI<
   StateInURI,
-  HKT.UnionURI<StateOutURI, F>
+  HKT.AppendURI<StateOutURI, F>
 >
 
 export function monad<F extends URIS, C>(
   M: Monad<F, C>
-): Monad<
-  HKT.InvertedUnionURI<StateInURI, HKT.UnionURI<StateOutURI, F>>,
-  StateTVariance<C>
->
+): Monad<HKT.PrependURI<StateInURI, HKT.AppendURI<StateOutURI, F>>, StateTVariance<C>>
 export function monad(M: Monad<[HKT.UF_]>): Monad<StateT<[HKT.UF_]>> {
   return HKT.instance({
     any: <S = any>(): StateIn<S, HKT.F_<StateOut<S, any>>> => (s) =>

@@ -10,14 +10,13 @@ export interface URI<F extends ConcreteURIS, C> {
 
 export type RealURIS = ConcreteURIS | URI<ConcreteURIS, any>
 
-export type UnionURI<G extends RealURIS, F extends RealURIS[]> = F extends RealURIS[]
+export type AppendURI<G extends RealURIS, F extends RealURIS[]> = F extends RealURIS[]
   ? [...F, G]
   : F
 
-export type InvertedUnionURI<
-  G extends RealURIS,
-  F extends RealURIS[]
-> = F extends RealURIS[] ? [G, ...F] : F
+export type PrependURI<G extends RealURIS, F extends RealURIS[]> = F extends RealURIS[]
+  ? [G, ...F]
+  : F
 
 export type ConcreteKind<
   F extends URIS,
