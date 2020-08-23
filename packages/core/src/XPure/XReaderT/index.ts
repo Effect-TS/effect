@@ -12,7 +12,7 @@ export type XReaderTVariance<C> = Erase<HKT.Strip<C, "R">, HKT.Auto> & V<"R", "-
 
 export function monad<F extends URIS, C>(
   M: Monad<F, C>
-): Monad<HKT.InvertedUnionURI<R.XReaderURI, F>, XReaderTVariance<C>>
+): Monad<HKT.PrependURI<R.XReaderURI, F>, XReaderTVariance<C>>
 export function monad(M: Monad<[HKT.UF_]>): Monad<[R.XReaderURI, HKT.UF_]> {
   return HKT.instance({
     any: () => R.succeed(M.any()),
@@ -31,7 +31,7 @@ export function monad(M: Monad<[HKT.UF_]>): Monad<[R.XReaderURI, HKT.UF_]> {
 
 export function access<F extends URIS, C>(
   M: Monad<F, C>
-): Access<HKT.InvertedUnionURI<R.XReaderURI, F>, XReaderTVariance<C>>
+): Access<HKT.PrependURI<R.XReaderURI, F>, XReaderTVariance<C>>
 export function access(M: Monad<[HKT.UF_]>): Access<[R.XReaderURI, HKT.UF_]> {
   return HKT.instance({
     access: (f) => pipe(R.access(f), R.map(succeedF(M)))
@@ -40,7 +40,7 @@ export function access(M: Monad<[HKT.UF_]>): Access<[R.XReaderURI, HKT.UF_]> {
 
 export function provide<F extends URIS, C>(
   M: Monad<F, C>
-): Provide<HKT.InvertedUnionURI<R.XReaderURI, F>, XReaderTVariance<C>>
+): Provide<HKT.PrependURI<R.XReaderURI, F>, XReaderTVariance<C>>
 export function provide(M: Monad<[HKT.UF_]>): Provide<[R.XReaderURI, HKT.UF_]> {
   return HKT.instance({
     provide: <R>(r: R) => <A>(
@@ -55,7 +55,7 @@ export function provide(M: Monad<[HKT.UF_]>): Provide<[R.XReaderURI, HKT.UF_]> {
 
 export function applicative<F extends URIS, C>(
   M: Applicative<F, C>
-): Applicative<HKT.InvertedUnionURI<R.XReaderURI, F>, XReaderTVariance<C>>
+): Applicative<HKT.PrependURI<R.XReaderURI, F>, XReaderTVariance<C>>
 export function applicative(
   M: Applicative<[HKT.UF_]>
 ): Applicative<[R.XReaderURI, HKT.UF_]> {
@@ -77,7 +77,7 @@ export function applicative(
 
 export function run<F extends URIS, C>(
   M: Run<F, C>
-): Run<HKT.InvertedUnionURI<R.XReaderURI, F>, XReaderTVariance<C>>
+): Run<HKT.PrependURI<R.XReaderURI, F>, XReaderTVariance<C>>
 export function run(M: Run<[HKT.UF__]>): Run<[R.XReaderURI, HKT.UF__]> {
   return HKT.instance({
     either: (fa) => pipe(fa, R.map(M.either))
@@ -86,7 +86,7 @@ export function run(M: Run<[HKT.UF__]>): Run<[R.XReaderURI, HKT.UF__]> {
 
 export function fail<F extends URIS, C>(
   M: Fail<F, C>
-): Fail<HKT.InvertedUnionURI<R.XReaderURI, F>, XReaderTVariance<C>>
+): Fail<HKT.PrependURI<R.XReaderURI, F>, XReaderTVariance<C>>
 export function fail(M: Fail<[HKT.UF__]>): Fail<[R.XReaderURI, HKT.UF__]> {
   return HKT.instance({
     fail: (e) => pipe(e, M.fail, R.succeed)

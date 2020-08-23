@@ -12,9 +12,9 @@ export interface PSIn<S> extends URI<StateInURI, HKT.Fix<"S", S>> {}
 
 export interface PSOut<S> extends URI<StateOutURI, HKT.Fix<"S", S>> {}
 
-export type ParametricStateT<F extends URIS, S> = HKT.InvertedUnionURI<
+export type ParametricStateT<F extends URIS, S> = HKT.PrependURI<
   PSIn<S>,
-  HKT.UnionURI<PSOut<S>, F>
+  HKT.AppendURI<PSOut<S>, F>
 >
 
 export function monad<S>() {
