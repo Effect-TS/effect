@@ -9,10 +9,13 @@ import type { Either } from "../Classic/Either"
 import type { Equal } from "../Classic/Equal"
 import type { Identity } from "../Classic/Identity"
 import type { Ord } from "../Classic/Ord"
+import type { Reader } from "../Classic/Reader"
 import type { Record } from "../Classic/Record"
 import type { Show } from "../Classic/Show"
-import type { IO } from "../XPure/IO"
-import type { Reader } from "../XPure/Reader"
+import type { StateIn, StateOut } from "../Classic/StateT"
+import type { XIO } from "../XPure/XIO"
+import type { XReader } from "../XPure/XReader"
+import type { XState } from "../XPure/XState"
 
 export { EffectURI } from "@effect-ts/system/Effect"
 
@@ -49,11 +52,23 @@ export type RecordURI = typeof RecordURI
 export const ShowURI = "Show"
 export type ShowURI = typeof ShowURI
 
-export const IOURI = "IO"
-export type IOURI = typeof IOURI
+export const XIOURI = "XIO"
+export type XIOURI = typeof XIOURI
+
+export const XReaderURI = "XReader"
+export type XReaderURI = typeof XReaderURI
+
+export const XStateURI = "XState"
+export type XStateURI = typeof XStateURI
 
 export const ReaderURI = "Reader"
 export type ReaderURI = typeof ReaderURI
+
+export const StateInURI = "StateIn"
+export type StateInURI = typeof StateInURI
+
+export const StateOutURI = "StateOut"
+export type StateOutURI = typeof StateOutURI
 
 declare module "../Prelude/HKT" {
   interface URItoKind<D, N extends string, K, SI, SO, X, I, S, R, E, A> {
@@ -69,8 +84,12 @@ declare module "../Prelude/HKT" {
     [RecordURI]: Record<N, A>
     [ShowURI]: Show<A>
     [EffectURI]: Effect<X, R, E, A>
-    [IOURI]: IO<A>
+    [XIOURI]: XIO<A>
+    [XReaderURI]: XReader<R, A>
+    [XStateURI]: XState<S, A>
     [ReaderURI]: Reader<R, A>
+    [StateInURI]: StateIn<S, A>
+    [StateOutURI]: StateOut<S, A>
   }
   interface URItoIndex<N extends string, K> {
     [ArrayURI]: number

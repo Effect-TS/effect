@@ -8,9 +8,9 @@ import { makeAssociative } from "../../src/Classic/Associative"
 import * as EitherT from "../../src/Classic/EitherT"
 import * as DSL from "../../src/Prelude/DSL"
 import * as S from "../../src/Prelude/Selective"
-import * as IO from "../../src/XPure/IO"
-import * as Reader from "../../src/XPure/Reader"
-import * as ReaderT from "../../src/XPure/ReaderT"
+import * as IO from "../../src/XPure/XIO"
+import * as Reader from "../../src/XPure/XReader"
+import * as ReaderT from "../../src/XPure/XReaderT"
 
 //
 // IO[Either[X, A]]

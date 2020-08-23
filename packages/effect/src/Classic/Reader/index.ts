@@ -1,36 +1,42 @@
-import * as F from "@effect-ts/system/XPure"
-
+import { identity, tuple } from "../../Function"
 import type { ReaderURI } from "../../Modules"
 import * as P from "../../Prelude"
 import * as DSL from "../../Prelude/DSL"
 
 export { ReaderURI } from "../../Modules"
 
-export interface Reader<R, A> extends F.XPure<unknown, unknown, R, never, A> {}
+export type Reader<R, A> = (r: R) => A
+
+/**
+ * Lift a sync (non failable) computation
+ */
+export const sync: <A>(f: () => A) => Reader<unknown, A> = identity
 
 /**
  * Reads the current context
  */
-export const environment = <R>(): Reader<R, R> => F.environment<R>()()
+export const environment = <R>(): Reader<R, R> => identity
 
 /**
  * Projects a value from the global context in a Reader
  */
-export const access: <R, A>(f: (r: R) => A) => Reader<R, A> = F.access
+export const access: <R, A>(f: (r: R) => A) => Reader<R, A> = identity
 
 /**
  * Changes the value of the local context during the execution of the action `ma`
  */
 export const provideSome: <Q, R>(
   f: (d: Q) => R
-) => <A>(ma: Reader<R, A>) => Reader<Q, A> = F.provideSome
+) => <A>(ma: Reader<R, A>) => Reader<Q, A> = (f) => (ma) => (r) => ma(f(r))
 
 /**
  * Combines this computation with the specified computation.
  */
 export const zip: <R1, B>(
   fb: Reader<R1, B>
-) => <R, A>(fa: Reader<R, A>) => Reader<R & R1, readonly [A, B]> = F.zip
+) => <R, A>(fa: Reader<R, A>) => Reader<R & R1, readonly [A, B]> = (fb) => (fa) => (
+  r
+) => tuple(fa(r), fb(r))
 
 /**
  * Extends this computation with another computation that depends on the
@@ -39,31 +45,31 @@ export const zip: <R1, B>(
  */
 export const chain: <A, R1, B>(
   f: (a: A) => Reader<R1, B>
-) => <R>(self: Reader<R, A>) => Reader<R & R1, B> = F.chain
+) => <R>(self: Reader<R, A>) => Reader<R & R1, B> = (f) => (fa) => (r) => f(fa(r))(r)
 
 /**
  * `map` can be used to turn functions `(a: A) => B` into functions `(fa: F<A>) => F<B>`
  *  whose argument and return types use the type constructor `F` to represent
  *  some computational context.
  */
-export const map: <A, B>(f: (a: A) => B) => <R>(self: Reader<R, A>) => Reader<R, B> =
-  F.map
+export const map: <A, B>(f: (a: A) => B) => <R>(self: Reader<R, A>) => Reader<R, B> = (
+  f
+) => (fa) => (r) => f(fa(r))
 
 /**
  * Succeed with a value A
  */
-export const succeed: <A>(a: A) => Reader<unknown, A> = (a) => F.succeed(() => a)
+export const succeed: <A>(a: A) => Reader<unknown, A> = (a) => () => a
 
 /**
  * Run the computation
  */
-export const run = <A>(self: Reader<unknown, A>): A => F.runIO(self)
+export const run = <A>(self: Reader<unknown, A>): A => self({})
 
 /**
  * Run the computation with environment R
  */
-export const runEnv = <R>(r: R) => <A>(self: Reader<R, A>): A =>
-  F.runIO(F.provideAll(r)(self))
+export const runEnv = <R>(r: R) => <A>(self: Reader<R, A>): A => self(r)
 
 //
 // Instances
@@ -73,14 +79,14 @@ export const runEnv = <R>(r: R) => <A>(self: Reader<R, A>): A =>
  * The `Access` instance for `Reader[-_, +_]`.
  */
 export const Access = P.instance<P.FX.Access<[ReaderURI]>>({
-  access: F.access
+  access
 })
 
 /**
  * The `Any` instance for `Reader[-_, +_]`.
  */
 export const Any = P.instance<P.Any<[ReaderURI]>>({
-  any: () => F.succeed(() => ({}))
+  any: () => () => ({})
 })
 
 /**
@@ -101,7 +107,7 @@ export const AssociativeBoth = P.instance<P.AssociativeBoth<[ReaderURI]>>({
  * The `AssociativeFlatten` instance for `Reader[-_, +_]`.
  */
 export const AssociativeFlatten = P.instance<P.AssociativeFlatten<[ReaderURI]>>({
-  flatten: (ffa) => F.chain_(ffa, (x) => x)
+  flatten: (ffa) => (r) => ffa(r)(r)
 })
 
 /**
@@ -140,4 +146,8 @@ export const sequenceS = DSL.sequenceSF(Applicative)
  */
 export const tap: <A, R1>(
   f: (a: A) => Reader<R1, any>
-) => <R>(self: Reader<R, A>) => Reader<R & R1, A> = F.tap
+) => <R>(self: Reader<R, A>) => Reader<R & R1, A> = (f) => (fa) => (r) => {
+  const x = fa(r)
+  f(x)(r)
+  return x
+}

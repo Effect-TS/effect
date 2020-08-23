@@ -48,8 +48,11 @@
       "Classic/Iterable",
       "Classic/Ord",
       "Classic/Ordering",
+      "Classic/Reader",
+      "Classic/ReaderT",
       "Classic/Record",
       "Classic/Show",
+      "Classic/StateT",
       "Effect",
       "Effect/Cause",
       "Effect/Clock",
@@ -117,9 +120,10 @@
       "Prelude/WitherableWithIndex",
       "Utils",
       "XPure",
-      "XPure/IO",
-      "XPure/Reader",
-      "XPure/ReaderT"
+      "XPure/XIO",
+      "XPure/XReader",
+      "XPure/XReaderT",
+      "XPure/XState"
     ]
   }
 }
