@@ -5,12 +5,12 @@ export interface Access<F extends HKT.URIS, C = HKT.Auto> extends HKT.Base<F, C>
     A,
     SI,
     SO,
-    X = HKT.INIT<F, C, "X">,
-    I = HKT.INIT<F, C, "I">,
-    S = HKT.INIT<F, C, "S">,
-    R = HKT.INIT<F, C, "R">,
-    E = HKT.INIT<F, C, "E">
+    X = HKT.Initial<C, "X">,
+    I = HKT.Initial<C, "I">,
+    S = HKT.Initial<C, "S">,
+    R = HKT.Initial<C, "R">,
+    E = HKT.Initial<C, "E">
   >(
-    f: (_: HKT.AccessType<F, C, "R", X, I, S, R, E>) => A
+    f: (_: R) => A
   ) => HKT.KindFix<F, C, never, never, SI, SO, X, I, S, R, E, A>
 }

@@ -1,4 +1,4 @@
-export { Run } from "./Run"
-export { Fail } from "./Fail"
-export { Access } from "./Access"
-export { Provide } from "./Provide"
+export * from "./Run"
+export * from "./Fail"
+export * from "./Access"
+export * from "./Provide"
