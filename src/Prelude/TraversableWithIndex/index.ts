@@ -66,36 +66,8 @@ export function implementForeachWithIndexF<F extends HKT.URIS, C = HKT.Auto>(): 
       a: A
     ) => HKT.G_<B>
   ) => (
-    fa: HKT.Kind<
-      F,
-      C,
-      HKT.OrFix<"N", C, N>,
-      HKT.OrFix<"K", C, K>,
-      SI,
-      SO,
-      HKT.OrFix<"X", C, X>,
-      HKT.OrFix<"I", C, I>,
-      HKT.OrFix<"S", C, S>,
-      HKT.OrFix<"R", C, R>,
-      HKT.OrFix<"E", C, E>,
-      A
-    >
-  ) => HKT.G_<
-    HKT.Kind<
-      F,
-      C,
-      HKT.OrFix<"N", C, N>,
-      HKT.OrFix<"K", C, K>,
-      SI,
-      SO,
-      HKT.OrFix<"X", C, X>,
-      HKT.OrFix<"I", C, I>,
-      HKT.OrFix<"S", C, S>,
-      HKT.OrFix<"R", C, R>,
-      HKT.OrFix<"E", C, E>,
-      B
-    >
-  >
+    fa: HKT.KindFix<F, C, N, K, SI, SO, X, I, S, R, E, A>
+  ) => HKT.G_<HKT.Kind<F, C, N, K, SI, SO, X, I, S, R, E, B>>
 ) => ForeachWithIndex<F, C>
 export function implementForeachWithIndexF() {
   return (i: any) => i()
