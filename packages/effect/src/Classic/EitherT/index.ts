@@ -4,18 +4,16 @@ import { identity, pipe } from "../../Function"
 import type { Any, Applicative, Covariant, Monad } from "../../Prelude"
 import { succeedF } from "../../Prelude/DSL"
 import type { Fail, Run } from "../../Prelude/FX"
-import type { Auto, F_, Indexed, UF_, URIS } from "../../Prelude/HKT"
+import type { Auto, F_, UF_, URIS } from "../../Prelude/HKT"
 import * as HKT from "../../Prelude/HKT"
-import type { Par } from "../../Prelude/HKT/variance"
 import * as E from "../Either"
 
-function monad_<F extends URIS, P extends Par, C>(
+export type EitherTVariance<C> = Erase<HKT.Strip<C, "E">, Auto> & HKT.V<"E", "+">
+
+export function monad<F extends URIS, C>(
   M: Monad<F, C>
-): Monad<
-  HKT.UnionURI<Indexed<E.EitherURI, [["E", P]]>, F>,
-  Erase<C, Auto> & HKT.V<P, "+">
->
-function monad_(M: Monad<[UF_]>): Monad<[UF_, E.EitherURI]> {
+): Monad<HKT.UnionURI<E.EitherURI, F>, EitherTVariance<C>>
+export function monad(M: Monad<[UF_]>): Monad<[UF_, E.EitherURI]> {
   return HKT.instance({
     any: () => succeedF(M)(E.right({})),
     flatten: (ffa) =>
@@ -25,21 +23,10 @@ function monad_(M: Monad<[UF_]>): Monad<[UF_, E.EitherURI]> {
   })
 }
 
-export function monad<P extends Par = "E">(_errorParam?: P) {
-  return <F extends URIS, C>(M: Monad<F, C>) => monad_<F, P, C>(M)
-}
-
-export function applicative<P extends Par = "E">(_errorParam?: P) {
-  return <F extends URIS, C>(M: Applicative<F, C>) => applicative_<F, P, C>(M)
-}
-
-function applicative_<F extends URIS, P extends Par, C>(
+export function applicative<F extends URIS, C>(
   M: Applicative<F, C>
-): Applicative<
-  HKT.UnionURI<Indexed<E.EitherURI, [["E", P]]>, F>,
-  Erase<C, Auto> & HKT.V<P, "+">
->
-function applicative_(M: Applicative<[UF_]>): Applicative<[UF_, E.EitherURI]> {
+): Applicative<HKT.UnionURI<E.EitherURI, F>, EitherTVariance<C>>
+export function applicative(M: Applicative<[UF_]>): Applicative<[UF_, E.EitherURI]> {
   return HKT.instance({
     any: () => succeedF(M)(E.right({})),
     map: <A, B>(f: (a: A) => B) => <E>(fa: F_<E.Either<E, A>>): F_<E.Either<E, B>> =>
@@ -55,17 +42,10 @@ function applicative_(M: Applicative<[UF_]>): Applicative<[UF_, E.EitherURI]> {
   })
 }
 
-export function run<P extends Par = "E">(_errorParam?: P) {
-  return <F extends URIS, C>(M: Covariant<F, C>) => run_<F, P, C>(M)
-}
-
-function run_<F extends URIS, P extends Par, C>(
+export function run<F extends URIS, C>(
   M: Covariant<F, C>
-): Run<
-  HKT.UnionURI<Indexed<E.EitherURI, [["E", P]]>, F>,
-  Erase<C, Auto> & HKT.V<P, "+">
->
-function run_(M: Covariant<[UF_]>): Run<[UF_, E.EitherURI]> {
+): Run<HKT.UnionURI<E.EitherURI, F>, EitherTVariance<C>>
+export function run(M: Covariant<[UF_]>): Run<[UF_, E.EitherURI]> {
   return HKT.instance({
     either: <E, A>(fa: F_<E.Either<E, A>>): F_<E.Either<never, E.Either<E, A>>> => {
       return pipe(fa, M.map(E.Run.either))
@@ -73,17 +53,10 @@ function run_(M: Covariant<[UF_]>): Run<[UF_, E.EitherURI]> {
   })
 }
 
-export function fail<P extends Par = "E">(_errorParam?: P) {
-  return <F extends URIS, C>(M: Any<F, C> & Covariant<F, C>) => fail_<F, P, C>(M)
-}
-
-function fail_<F extends URIS, P extends Par, C>(
+export function fail<F extends URIS, C>(
   M: Any<F, C> & Covariant<F, C>
-): Fail<
-  HKT.UnionURI<Indexed<E.EitherURI, [["E", P]]>, F>,
-  Erase<C, Auto> & HKT.V<P, "+">
->
-function fail_(M: Any<[UF_]> & Covariant<[UF_]>): Fail<[UF_, E.EitherURI]> {
+): Fail<HKT.UnionURI<E.EitherURI, F>, EitherTVariance<C>>
+export function fail(M: Any<[UF_]> & Covariant<[UF_]>): Fail<[UF_, E.EitherURI]> {
   return HKT.instance({
     fail: <E, A = never>(e: E): F_<E.Either<E, A>> =>
       succeedF(M)(E.widenA<A>()(E.left(e)))

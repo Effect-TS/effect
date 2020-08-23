@@ -20,7 +20,7 @@ export type URI = typeof URI
 
 type StoreKey = "StoreKey"
 type StoreValue = "StoreValue"
-type Params<K, V> = H.CT<StoreKey, K> & H.CT<StoreValue, V>
+type Params<K, V> = H.CustomType<StoreKey, K> & H.CustomType<StoreValue, V>
 
 declare module "../../src/Prelude/HKT" {
   export interface URItoKind<D, N extends string, K, SI, SO, X, I, S, R, E, A> {
@@ -35,7 +35,7 @@ export const getStoreMonad = <K, V>() =>
     map: T.map
   })
 
-export const K = pipe(getStoreMonad<string, number>(), EitherT.monad(), ReaderT.monad())
+export const K = pipe(getStoreMonad<string, number>(), EitherT.monad, ReaderT.monad)
 
 export const chain = DSL.chainF(K)
 
