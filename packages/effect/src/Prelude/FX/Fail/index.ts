@@ -11,5 +11,5 @@ export interface Fail<F extends HKT.URIS, C = HKT.Auto> extends HKT.Base<F, C> {
     E = HKT.Initial<C, "E">
   >(
     e: E
-  ) => HKT.KindFix<F, C, never, never, SI, SO, X, I, S, R, E, never>
+  ) => HKT.Kind<F, C, never, never, SI, SO, X, I, S, R, E, never>
 }

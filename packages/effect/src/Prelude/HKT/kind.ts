@@ -19,9 +19,20 @@ export type InvertedUnionURI<
   F extends RealURIS[]
 > = F extends RealURIS[] ? [G, ...F] : F
 
-export type Kind<F extends URIS, C, N extends string, K, SI, SO, X, I, S, R, E, A> = ((
-  ...x: F
-) => any) extends (fst: infer XURI, ...rest: infer Rest) => any
+export type ConcreteKind<
+  F extends URIS,
+  C,
+  N extends string,
+  K,
+  SI,
+  SO,
+  X,
+  I,
+  S,
+  R,
+  E,
+  A
+> = ((...x: F) => any) extends (fst: infer XURI, ...rest: infer Rest) => any
   ? XURI extends ConcreteURIS
     ? URItoKind<
         any,
@@ -35,7 +46,7 @@ export type Kind<F extends URIS, C, N extends string, K, SI, SO, X, I, S, R, E, 
         S,
         R,
         E,
-        Rest extends URIS ? Kind<Rest, C, N, K, SI, SO, X, I, S, R, E, A> : A
+        Rest extends URIS ? ConcreteKind<Rest, C, N, K, SI, SO, X, I, S, R, E, A> : A
       >[XURI]
     : XURI extends URI<infer U, infer FC>
     ? URItoKind<
@@ -50,12 +61,12 @@ export type Kind<F extends URIS, C, N extends string, K, SI, SO, X, I, S, R, E, 
         S,
         R,
         E,
-        Rest extends URIS ? Kind<Rest, C, N, K, SI, SO, X, I, S, R, E, A> : A
+        Rest extends URIS ? ConcreteKind<Rest, C, N, K, SI, SO, X, I, S, R, E, A> : A
       >[U]
     : never
   : never
 
-export type KindFix<
+export type Kind<
   URI extends URIS,
   C,
   N extends string,
@@ -68,7 +79,7 @@ export type KindFix<
   R,
   E,
   A
-> = Kind<
+> = ConcreteKind<
   URI,
   C,
   N,

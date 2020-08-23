@@ -15,19 +15,6 @@ export interface Run<F extends HKT.URIS, C = HKT.Auto> extends HKT.Base<F, C> {
     R = HKT.Initial<C, "R">,
     E = HKT.Initial<C, "E">
   >(
-    fa: HKT.KindFix<F, C, N, K, SI, SO, X, I, S, R, E, A>
-  ) => HKT.KindFix<
-    F,
-    C,
-    N,
-    K,
-    SI,
-    SO,
-    X,
-    I,
-    S,
-    R,
-    never,
-    Either<HKT.OrFix<"E", C, E>, A>
-  >
+    fa: HKT.Kind<F, C, N, K, SI, SO, X, I, S, R, E, A>
+  ) => HKT.Kind<F, C, N, K, SI, SO, X, I, S, R, never, Either<HKT.OrFix<"E", C, E>, A>>
 }

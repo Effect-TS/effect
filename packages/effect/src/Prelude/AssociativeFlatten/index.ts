@@ -22,7 +22,7 @@ export interface AssociativeFlatten<F extends HKT.URIS, C = HKT.Auto>
     R2,
     E2
   >(
-    ffa: HKT.KindFix<
+    ffa: HKT.Kind<
       F,
       C,
       N2,
@@ -34,7 +34,7 @@ export interface AssociativeFlatten<F extends HKT.URIS, C = HKT.Auto>
       S2,
       R2,
       E2,
-      HKT.KindFix<
+      HKT.Kind<
         F,
         C,
         N,
@@ -49,7 +49,7 @@ export interface AssociativeFlatten<F extends HKT.URIS, C = HKT.Auto>
         A
       >
     >
-  ) => HKT.KindFix<
+  ) => HKT.Kind<
     F,
     C,
     N2,

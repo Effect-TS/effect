@@ -11,5 +11,5 @@ export interface Any<F extends HKT.URIS, C = HKT.Auto> extends HKT.Base<F, C> {
     S = HKT.Initial<C, "S">,
     R = HKT.Initial<C, "R">,
     E = HKT.Initial<C, "E">
-  >() => HKT.KindFix<F, C, N, K, SI, SO, X, I, S, R, E, any>
+  >() => HKT.Kind<F, C, N, K, SI, SO, X, I, S, R, E, any>
 }
