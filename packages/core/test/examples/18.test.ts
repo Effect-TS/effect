@@ -5,7 +5,7 @@ import * as E from "../../src/Classic/Either"
 import * as StateT from "../../src/Classic/StateT/Parametric"
 import * as DSL from "../../src/Prelude/DSL"
 
-namespace StateEither {
+namespace StateStateEither {
   export const Monad = pipe(E.Monad, StateT.monad<number>(), StateT.monad<string>())
 
   export const chain = DSL.chainF(Monad)
@@ -14,7 +14,7 @@ namespace StateEither {
 
 test("16", () => {
   pipe(
-    StateEither.succeed(1),
+    StateStateEither.succeed(1),
     (f) => f("a")(1),
     (r) => {
       console.log(r)
