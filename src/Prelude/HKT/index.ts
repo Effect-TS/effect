@@ -1,6 +1,6 @@
-export { Auto, Base, CompositionBase2 } from "./base"
-export { Custom, CustomConstrained, CustomType } from "./custom"
-export { Fix, OrFix, Param } from "./fix"
+export * from "./base"
+export * from "./custom"
+export * from "./fix"
 export {
   ConcreteURIS,
   F_,
@@ -24,16 +24,8 @@ export {
   URItoIndex,
   URItoKind
 } from "./hkt"
-export { InferA, InferE, InferI, InferK, InferN, InferR, InferS, InferX } from "./infer"
-export { instance } from "./instance"
-export {
-  IndexFor,
-  IndexForBase,
-  InvertedUnionURI,
-  Kind,
-  KindFix,
-  UnionURI,
-  URIS
-} from "./kind"
-export { OrNever } from "./or-never"
-export { Initial, Intro, Mix, MixStruct, Strip, V, Variance } from "./variance"
+export * from "./infer"
+export * from "./instance"
+export * from "./kind"
+export * from "./or-never"
+export * from "./variance"

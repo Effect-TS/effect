@@ -81,7 +81,32 @@ export interface HKTFull<K, SI, SO, X, I, S, R, E, A> {
   A: A
 }
 
-export interface URItoKind<D, N extends string, K, SI, SO, X, I, S, R, E, A> {
+export interface URItoKind<
+  // encodes metadata carried at the URI level (like additional params)
+  FC,
+  // encodes constraints on parameters and variance at the typeclass level
+  TC,
+  // encodes nominal keys
+  N extends string,
+  // encodes generic keys
+  K,
+  // encodes state inpue
+  SI,
+  // encodes state output
+  SO,
+  // encodes free logic (sync/async in FX)
+  X,
+  // encodes free logic (input in FX)
+  I,
+  // encodes free logic (state in FX)
+  S,
+  // encodes free logic (environment in FX)
+  R,
+  // encodes free logic (error in FX)
+  E,
+  // encodes output
+  A
+> {
   [UF_]: F_<A>
   [UF__]: F__<E, A>
   [UF___]: F___<R, E, A>
@@ -95,6 +120,7 @@ export interface URItoKind<D, N extends string, K, SI, SO, X, I, S, R, E, A> {
 export interface URItoIndex<N extends string, K> {}
 
 export type ConcreteURIS = keyof URItoKind<
+  any,
   any,
   any,
   any,

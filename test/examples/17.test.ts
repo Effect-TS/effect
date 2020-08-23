@@ -15,8 +15,9 @@ type State<K, V> = M.Map<K, V>
 export interface Store<K, V, A>
   extends T.XPure<State<K, V>, State<K, V>, unknown, never, A> {}
 
-export const URI = "Store"
-export type URI = typeof URI
+export const KeyValueStoreURI = "KeyValueStore"
+export interface KeyValueStoreURI<K, V>
+  extends H.URI<typeof KeyValueStoreURI, Params<K, V>> {}
 
 type StoreKey = "StoreKey"
 type StoreValue = "StoreValue"
@@ -24,12 +25,16 @@ type Params<K, V> = H.CustomType<StoreKey, K> & H.CustomType<StoreValue, V>
 
 declare module "../../src/Prelude/HKT" {
   export interface URItoKind<FC, TC, N extends string, K, SI, SO, X, I, S, R, E, A> {
-    [URI]: Store<H.AccessCustom<TC, StoreKey>, H.AccessCustom<TC, StoreValue>, A>
+    [KeyValueStoreURI]: Store<
+      H.AccessCustom<FC, StoreKey>,
+      H.AccessCustom<FC, StoreValue>,
+      A
+    >
   }
 }
 
 export const getStoreMonad = <K, V>() =>
-  P.instance<P.Monad<[URI], Params<K, V>>>({
+  P.instance<P.Monad<[KeyValueStoreURI<K, V>]>>({
     any: () => T.Any.any(),
     flatten: (ffa) => T.chain_(ffa, identity),
     map: T.map
@@ -41,7 +46,7 @@ export const chain = DSL.chainF(K)
 
 export const succeed = DSL.succeedF(K)
 
-test("11", () => {
+test("17", () => {
   const result = pipe(
     succeed("hello"),
     R.map(
