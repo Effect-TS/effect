@@ -11,7 +11,7 @@ export const XPureURI = "XPure"
 export type XPureURI = typeof XPureURI
 
 declare module "../Prelude/HKT" {
-  interface URItoKind<D, N extends string, K, SI, SO, X, I, S, R, E, A> {
+  interface URItoKind<FC, TC, N extends string, K, SI, SO, X, I, S, R, E, A> {
     [XPureURI]: X.XPure<SI, SO, R, E, A>
   }
 }

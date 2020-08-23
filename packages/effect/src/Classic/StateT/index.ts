@@ -7,9 +7,7 @@ import { chainF } from "../../Prelude/DSL"
 import type { URIS, V } from "../../Prelude/HKT"
 import * as HKT from "../../Prelude/HKT"
 
-export interface StateIn<S, A> {
-  (s: S): A
-}
+export type StateIn<S, A> = (s: S) => A
 
 export type StateOut<S, A> = readonly [A, S]
 

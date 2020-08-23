@@ -13,6 +13,8 @@ import type { Reader } from "../Classic/Reader"
 import type { Record } from "../Classic/Record"
 import type { Show } from "../Classic/Show"
 import type { StateIn, StateOut } from "../Classic/StateT"
+import type { PState } from "../Classic/StateT/Parametric"
+import type { AccessCustom } from "../Prelude/HKT"
 import type { XIO } from "../XPure/XIO"
 import type { XReader } from "../XPure/XReader"
 import type { XState } from "../XPure/XState"
@@ -67,11 +69,17 @@ export type ReaderURI = typeof ReaderURI
 export const StateInURI = "StateIn"
 export type StateInURI = typeof StateInURI
 
+export const ParametricStateInURI = "ParametricStateIn"
+export type ParametricStateInURI = typeof ParametricStateInURI
+
 export const StateOutURI = "StateOut"
 export type StateOutURI = typeof StateOutURI
 
+export const ParametricStateOutURI = "ParametricStateOut"
+export type ParametricStateOutURI = typeof ParametricStateOutURI
+
 declare module "../Prelude/HKT" {
-  interface URItoKind<D, N extends string, K, SI, SO, X, I, S, R, E, A> {
+  interface URItoKind<FC, TC, N extends string, K, SI, SO, X, I, S, R, E, A> {
     [ArrayURI]: Array<A>
     [BoundedURI]: Bounded<A>
     [ClosureURI]: Closure<A>
@@ -90,6 +98,8 @@ declare module "../Prelude/HKT" {
     [ReaderURI]: Reader<R, A>
     [StateInURI]: StateIn<S, A>
     [StateOutURI]: StateOut<S, A>
+    [ParametricStateInURI]: StateIn<AccessCustom<FC, PState>, A>
+    [ParametricStateOutURI]: StateOut<AccessCustom<FC, PState>, A>
   }
   interface URItoIndex<N extends string, K> {
     [ArrayURI]: number
