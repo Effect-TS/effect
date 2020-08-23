@@ -56,11 +56,11 @@ export type ConcreteKind<
         K,
         SI,
         SO,
-        X,
-        I,
-        S,
-        R,
-        E,
+        OrFix<"X", FC, X>,
+        OrFix<"I", FC, I>,
+        OrFix<"S", FC, S>,
+        OrFix<"R", FC, R>,
+        OrFix<"E", FC, E>,
         Rest extends URIS ? ConcreteKind<Rest, C, N, K, SI, SO, X, I, S, R, E, A> : A
       >[U]
     : never

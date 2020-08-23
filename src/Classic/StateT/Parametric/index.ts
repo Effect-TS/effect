@@ -1,16 +1,16 @@
 import type { StateIn, StateOut } from ".."
 import { flow, pipe, tuple } from "../../../Function"
-import type { ParametricStateInURI, ParametricStateOutURI } from "../../../Modules"
+import type { StateInURI, StateOutURI } from "../../../Modules"
 import type { Monad } from "../../../Prelude"
 import { chainF } from "../../../Prelude/DSL"
-import type { CustomType, URI, URIS } from "../../../Prelude/HKT"
+import type { URI, URIS } from "../../../Prelude/HKT"
 import * as HKT from "../../../Prelude/HKT"
 
 export type PState = "S"
 
-export interface PSIn<S> extends URI<ParametricStateInURI, CustomType<PState, S>> {}
+export interface PSIn<S> extends URI<StateInURI, HKT.Fix<"S", S>> {}
 
-export interface PSOut<S> extends URI<ParametricStateOutURI, CustomType<PState, S>> {}
+export interface PSOut<S> extends URI<StateOutURI, HKT.Fix<"S", S>> {}
 
 export type ParametricStateT<F extends URIS, S> = HKT.InvertedUnionURI<
   PSIn<S>,
