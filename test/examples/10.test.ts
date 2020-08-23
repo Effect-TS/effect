@@ -8,7 +8,7 @@ import * as R from "../../src/XPure/Reader"
 import * as ReaderT from "../../src/XPure/ReaderT"
 
 test("10", () => {
-  const M = pipe(A.Monad, EitherT.monad(), ReaderT.monad())
+  const M = pipe(A.Monad, EitherT.monad, ReaderT.monad)
 
   pipe(
     R.access((k: number) => A.range(0, 10).map((n) => E.right(n + k))),
