@@ -48,7 +48,7 @@ export {
   Initial,
   instance,
   Intro,
-  Kind,
+  ConcreteKind as Kind,
   Mix,
   MixStruct,
   OrFix,

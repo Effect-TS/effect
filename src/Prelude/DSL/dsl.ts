@@ -26,7 +26,7 @@ export function succeedF<F extends HKT.URIS, C = HKT.Auto>(
   E = HKT.Initial<C, "E">
 >(
   a: A
-) => HKT.KindFix<F, C, N, K, SI, SO, X, I, S, R, E, A>
+) => HKT.Kind<F, C, N, K, SI, SO, X, I, S, R, E, A>
 export function succeedF(
   F: Any<[HKT.UF_]> & Covariant<[HKT.UF_]>
 ): <A>(a: A) => HKT.F_<A> {
@@ -36,9 +36,9 @@ export function succeedF(
 export function chainF<F extends HKT.URIS, C = HKT.Auto>(
   F: Monad<F, C>
 ): <N2 extends string, K2, SO, SO2, X2, I2, S2, R2, E2, A, B>(
-  f: (a: A) => HKT.KindFix<F, C, N2, K2, SO, SO2, X2, I2, S2, R2, E2, B>
+  f: (a: A) => HKT.Kind<F, C, N2, K2, SO, SO2, X2, I2, S2, R2, E2, B>
 ) => <N extends string, K, SI, X, I, S, R, E>(
-  fa: HKT.KindFix<
+  fa: HKT.Kind<
     F,
     C,
     N,
@@ -52,7 +52,7 @@ export function chainF<F extends HKT.URIS, C = HKT.Auto>(
     HKT.Intro<C, "E", E2, E>,
     A
   >
-) => HKT.KindFix<
+) => HKT.Kind<
   F,
   C,
   N2,
@@ -85,8 +85,8 @@ export function accessMF<F extends HKT.URIS, C = HKT.Auto>(
   R2 = HKT.Initial<C, "R">,
   E = HKT.Initial<C, "E">
 >(
-  f: (r: HKT.OrFix<"R", C, R2>) => HKT.KindFix<F, C, N, K, SI, SO, X, I, S, R, E, A>
-) => HKT.KindFix<F, C, N, K, SI, SO, X, I, S, R & R2, E, A>
+  f: (r: HKT.OrFix<"R", C, R2>) => HKT.Kind<F, C, N, K, SI, SO, X, I, S, R, E, A>
+) => HKT.Kind<F, C, N, K, SI, SO, X, I, S, R & R2, E, A>
 export function accessMF(
   F: Access<[HKT.UF___]> & AssociativeFlatten<[HKT.UF___]>
 ): <R, E, A>(f: (r: R) => HKT.F___<R, E, A>) => HKT.F___<R, E, A> {
@@ -99,7 +99,7 @@ export function sequenceSF<F extends HKT.URIS, C = HKT.Auto>(
   SIO,
   NER extends Record<
     string,
-    HKT.KindFix<
+    HKT.Kind<
       F,
       C,
       any,
@@ -123,7 +123,7 @@ export function sequenceSF<F extends HKT.URIS, C = HKT.Auto>(
   r: EnforceNonEmptyRecord<NER> &
     Record<
       string,
-      HKT.KindFix<
+      HKT.Kind<
         F,
         C,
         any,
@@ -138,7 +138,7 @@ export function sequenceSF<F extends HKT.URIS, C = HKT.Auto>(
         unknown
       >
     >
-) => HKT.KindFix<
+) => HKT.Kind<
   F,
   C,
   {
@@ -221,8 +221,8 @@ export function accessServiceMF<F extends HKT.URIS, C extends HKT.V<"R", "-">>(
 ): <Service>(
   H: Augmented<Service>
 ) => <N extends string, K, SI, SO, X, I, S, R, E, A>(
-  f: (_: Service) => HKT.KindFix<F, C, N, K, SI, SO, X, I, S, R, E, A>
-) => HKT.KindFix<F, C, N, K, SI, SO, X, I, S, R & Has<Service>, E, A>
+  f: (_: Service) => HKT.Kind<F, C, N, K, SI, SO, X, I, S, R, E, A>
+) => HKT.Kind<F, C, N, K, SI, SO, X, I, S, R & Has<Service>, E, A>
 export function accessServiceMF(
   F: Monad<[HKT.UF___], HKT.V<"R", "-">> & Access<[HKT.UF___], HKT.V<"R", "-">>
 ): <Service>(
@@ -240,8 +240,8 @@ export function provideServiceF<F extends HKT.URIS, C extends HKT.V<"R", "-">>(
 ) => (
   S: Service
 ) => <N extends string, K, SI, SO, X, I, S, R, E, A>(
-  fa: HKT.KindFix<F, C, N, K, SI, SO, X, I, S, R & Has<Service>, E, A>
-) => HKT.KindFix<F, C, N, K, SI, SO, X, I, S, R, E, A>
+  fa: HKT.Kind<F, C, N, K, SI, SO, X, I, S, R & Has<Service>, E, A>
+) => HKT.Kind<F, C, N, K, SI, SO, X, I, S, R, E, A>
 export function provideServiceF(
   F: Monad<[HKT.UF___], HKT.V<"R", "-">> &
     Access<[HKT.UF___], HKT.V<"R", "-">> &
@@ -267,8 +267,8 @@ export function provideSomeF<F extends HKT.URIS, C = HKT.Auto>(
 >(
   f: (_: HKT.OrFix<"R", C, R2>) => HKT.OrFix<"R", C, R>
 ) => <N extends string, K, SI, SO, A>(
-  fa: HKT.KindFix<F, C, N, K, SI, SO, X, I, S, R, E, A>
-) => HKT.KindFix<F, C, N, K, SI, SO, X, I, S, R2, E, A>
+  fa: HKT.Kind<F, C, N, K, SI, SO, X, I, S, R, E, A>
+) => HKT.Kind<F, C, N, K, SI, SO, X, I, S, R2, E, A>
 export function provideSomeF(
   F: Monad<[HKT.UF___]> & Access<[HKT.UF___]> & Provide<[HKT.UF___]>
 ) {
@@ -290,7 +290,7 @@ export function doF<F extends HKT.URIS, C = HKT.Auto>(
   S = HKT.Initial<C, "S">,
   R = HKT.Initial<C, "R">,
   E = HKT.Initial<C, "E">
->() => HKT.KindFix<F, C, N, K, SI, SO, X, I, S, R, E, {}>
+>() => HKT.Kind<F, C, N, K, SI, SO, X, I, S, R, E, {}>
 export function doF(F: Any<[HKT.UF_]> & Covariant<[HKT.UF_]>): () => HKT.F_<{}> {
   return () => succeedF(F)({})
 }
@@ -299,9 +299,9 @@ export function bindF<F extends HKT.URIS, C = HKT.Auto>(
   F: Monad<F, C>
 ): <N2 extends string, K2, SO, SO2, X2, I2, S2, R2, E2, BK, BN extends string, BA>(
   tag: Exclude<BN, keyof BK>,
-  f: (a: BA) => HKT.KindFix<F, C, N2, K2, SO, SO2, X2, I2, S2, R2, E2, BA>
+  f: (a: BA) => HKT.Kind<F, C, N2, K2, SO, SO2, X2, I2, S2, R2, E2, BA>
 ) => <N extends string, K, SI, X, I, S, R, E>(
-  fa: HKT.KindFix<
+  fa: HKT.Kind<
     F,
     C,
     N,
@@ -315,7 +315,7 @@ export function bindF<F extends HKT.URIS, C = HKT.Auto>(
     HKT.Intro<C, "E", E2, E>,
     BK
   >
-) => HKT.KindFix<
+) => HKT.Kind<
   F,
   C,
   N2,
