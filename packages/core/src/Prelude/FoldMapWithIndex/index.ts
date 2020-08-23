@@ -9,7 +9,5 @@ export interface FoldMapWithIndex<F extends HKT.URIS, C = HKT.Auto>
 export interface FoldMapWithIndexFn<F extends HKT.URIS, C = HKT.Auto> {
   <M>(I: Identity<M>): <N extends string, K, A>(
     f: (k: HKT.IndexFor<F, HKT.OrFix<"N", C, N>, HKT.OrFix<"K", C, K>>, a: A) => M
-  ) => <SI, SO, X, I, S, R, E>(
-    fa: HKT.KindFix<F, C, N, K, SI, SO, X, I, S, R, E, A>
-  ) => M
+  ) => <SI, SO, X, I, S, R, E>(fa: HKT.Kind<F, C, N, K, SI, SO, X, I, S, R, E, A>) => M
 }

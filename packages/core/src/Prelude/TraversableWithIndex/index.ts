@@ -20,10 +20,10 @@ export interface ForeachWithIndex<F extends HKT.URIS, C = HKT.Auto> {
     f: (
       k: HKT.IndexFor<F, HKT.OrFix<"N", C, FN>, HKT.OrFix<"K", C, FK>>,
       a: A
-    ) => HKT.KindFix<G, GC, GN, GK, GSIO, GSIO, GX, GI, GS, GR, GE, B>
+    ) => HKT.Kind<G, GC, GN, GK, GSIO, GSIO, GX, GI, GS, GR, GE, B>
   ) => <FSI, FSO, FX, FI, FS, FR, FE>(
-    fa: HKT.KindFix<F, GC, FN, FK, FSI, FSO, FX, FI, FS, FR, FE, A>
-  ) => HKT.KindFix<
+    fa: HKT.Kind<F, GC, FN, FK, FSI, FSO, FX, FI, FS, FR, FE, A>
+  ) => HKT.Kind<
     G,
     GC,
     GN,
@@ -35,7 +35,7 @@ export interface ForeachWithIndex<F extends HKT.URIS, C = HKT.Auto> {
     GS,
     GR,
     GE,
-    HKT.KindFix<F, GC, FN, FK, FSI, FSO, FX, FI, FS, FR, FE, B>
+    HKT.Kind<F, GC, FN, FK, FSI, FSO, FX, FI, FS, FR, FE, B>
   >
 }
 
@@ -66,7 +66,7 @@ export function implementForeachWithIndexF<F extends HKT.URIS, C = HKT.Auto>(): 
       a: A
     ) => HKT.G_<B>
   ) => (
-    fa: HKT.KindFix<F, C, N, K, SI, SO, X, I, S, R, E, A>
+    fa: HKT.Kind<F, C, N, K, SI, SO, X, I, S, R, E, A>
   ) => HKT.G_<HKT.Kind<F, C, N, K, SI, SO, X, I, S, R, E, B>>
 ) => ForeachWithIndex<F, C>
 export function implementForeachWithIndexF() {

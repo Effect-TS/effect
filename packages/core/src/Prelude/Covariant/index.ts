@@ -4,8 +4,8 @@ export interface Covariant<F extends HKT.URIS, C = HKT.Auto> extends HKT.Base<F,
   readonly map: <A, B>(
     f: (a: A) => B
   ) => <N extends string, K, SI, SO, X, I, S, R, E>(
-    fa: HKT.KindFix<F, C, N, K, SI, SO, X, I, S, R, E, A>
-  ) => HKT.KindFix<F, C, N, K, SI, SO, X, I, S, R, E, B>
+    fa: HKT.Kind<F, C, N, K, SI, SO, X, I, S, R, E, A>
+  ) => HKT.Kind<F, C, N, K, SI, SO, X, I, S, R, E, B>
 }
 
 export interface CovariantComposition<
@@ -36,7 +36,7 @@ export interface CovariantComposition<
     GR,
     GE
   >(
-    fa: HKT.KindFix<
+    fa: HKT.Kind<
       F,
       CF,
       FN,
@@ -48,9 +48,9 @@ export interface CovariantComposition<
       FS,
       FR,
       FE,
-      HKT.KindFix<G, CG, GN, GK, GSI, GSO, GX, GI, GS, GR, GE, A>
+      HKT.Kind<G, CG, GN, GK, GSI, GSO, GX, GI, GS, GR, GE, A>
     >
-  ) => HKT.KindFix<
+  ) => HKT.Kind<
     F,
     CF,
     FN,
@@ -62,7 +62,7 @@ export interface CovariantComposition<
     FS,
     FR,
     FE,
-    HKT.KindFix<G, CG, GN, GK, GSI, GSO, GX, GI, GS, GR, GE, B>
+    HKT.Kind<G, CG, GN, GK, GSI, GSO, GX, GI, GS, GR, GE, B>
   >
 }
 

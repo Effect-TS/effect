@@ -5,9 +5,9 @@ import type * as HKT from "../HKT"
 export interface AssociativeEither<F extends HKT.URIS, C = HKT.Auto>
   extends HKT.Base<F, C> {
   readonly either: <N2 extends string, K2, SI2, SO2, X2, I2, S2, R2, E2, B>(
-    fb: HKT.KindFix<F, C, N2, K2, SI2, SO2, X2, I2, S2, R2, E2, B>
+    fb: HKT.Kind<F, C, N2, K2, SI2, SO2, X2, I2, S2, R2, E2, B>
   ) => <N extends string, K, SI, SO, X, I, S, R, E, A>(
-    fa: HKT.KindFix<
+    fa: HKT.Kind<
       F,
       C,
       N,
@@ -21,7 +21,7 @@ export interface AssociativeEither<F extends HKT.URIS, C = HKT.Auto>
       HKT.Intro<C, "E", E2, E>,
       A
     >
-  ) => HKT.KindFix<
+  ) => HKT.Kind<
     F,
     C,
     N | N2,

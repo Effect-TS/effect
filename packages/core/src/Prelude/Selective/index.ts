@@ -7,9 +7,9 @@ import { chainF, succeedF } from "../DSL"
 
 export interface Select<F extends HKT.URIS, C = HKT.Auto> extends HKT.Base<F, C> {
   readonly select: <N2 extends string, K2, SO, SO2, X2, I2, S2, R2, E2, A, B>(
-    fab: HKT.KindFix<F, C, N2, K2, SO, SO2, X2, I2, S2, R2, E2, (a: A) => B>
+    fab: HKT.Kind<F, C, N2, K2, SO, SO2, X2, I2, S2, R2, E2, (a: A) => B>
   ) => <N extends string, K, SI, SO, X, I, S, R, E, B2>(
-    fa: HKT.KindFix<
+    fa: HKT.Kind<
       F,
       C,
       N,
@@ -23,7 +23,7 @@ export interface Select<F extends HKT.URIS, C = HKT.Auto> extends HKT.Base<F, C>
       HKT.Intro<C, "E", E2, E>,
       E.Either<A, B2>
     >
-  ) => HKT.KindFix<
+  ) => HKT.Kind<
     F,
     C,
     N2,
@@ -97,11 +97,11 @@ export function getBranch<F extends HKT.URIS, C = HKT.Auto>(
   B,
   D
 >(
-  lhs: HKT.KindFix<F, C, N2, K2, SO, SO2, X2, I2, S2, R2, E2, (a: A) => C>,
-  rhs: HKT.KindFix<F, C, N3, K3, SO, SO3, X3, I3, S3, R3, E3, (a: B) => D>
+  lhs: HKT.Kind<F, C, N2, K2, SO, SO2, X2, I2, S2, R2, E2, (a: A) => C>,
+  rhs: HKT.Kind<F, C, N3, K3, SO, SO3, X3, I3, S3, R3, E3, (a: B) => D>
 ) => <N extends string, K, SI, SO, X, I, S, R, E>(
-  fe: HKT.KindFix<F, C, N, K, SI, SO, X, I, S, R, E, E.Either<A, B>>
-) => HKT.KindFix<
+  fe: HKT.Kind<F, C, N, K, SI, SO, X, I, S, R, E, E.Either<A, B>>
+) => HKT.Kind<
   F,
   C,
   N2 | N3,

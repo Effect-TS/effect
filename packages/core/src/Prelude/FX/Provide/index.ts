@@ -10,6 +10,6 @@ export interface Provide<F extends HKT.URIS, C = HKT.Auto> extends HKT.Base<F, C
   >(
     r: R
   ) => <N extends string, K, SI, SO, A>(
-    fa: HKT.KindFix<F, C, N, K, SI, SO, X, I, S, R, E, A>
-  ) => HKT.KindFix<F, C, N, K, SI, SO, X, I, S, unknown, E, A>
+    fa: HKT.Kind<F, C, N, K, SI, SO, X, I, S, R, E, A>
+  ) => HKT.Kind<F, C, N, K, SI, SO, X, I, S, unknown, E, A>
 }

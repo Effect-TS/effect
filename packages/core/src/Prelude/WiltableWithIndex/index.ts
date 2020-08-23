@@ -23,10 +23,10 @@ export interface WiltWithIndex<F extends HKT.URIS, C = HKT.Auto> {
     f: (
       k: HKT.IndexFor<F, HKT.OrFix<"N", C, FN>, HKT.OrFix<"K", C, FK>>,
       a: A
-    ) => HKT.KindFix<G, GC, GN, GK, GSIO, GSIO, GX, GI, GS, GR, GE, Either<B, B2>>
+    ) => HKT.Kind<G, GC, GN, GK, GSIO, GSIO, GX, GI, GS, GR, GE, Either<B, B2>>
   ) => <FSI, FSO, FX, FI, FS, FR, FE>(
-    ta: HKT.KindFix<F, GC, FN, FK, FSI, FSO, FX, FI, FS, FR, FE, A>
-  ) => HKT.KindFix<
+    ta: HKT.Kind<F, GC, FN, FK, FSI, FSO, FX, FI, FS, FR, FE, A>
+  ) => HKT.Kind<
     G,
     GC,
     GN,
@@ -39,8 +39,8 @@ export interface WiltWithIndex<F extends HKT.URIS, C = HKT.Auto> {
     GR,
     GE,
     Separated<
-      HKT.KindFix<F, C, FN, FK, FSI, FSO, FX, FI, FS, FR, FE, B>,
-      HKT.KindFix<F, C, FN, FK, FSI, FSO, FX, FI, FS, FR, FE, B2>
+      HKT.Kind<F, C, FN, FK, FSI, FSO, FX, FI, FS, FR, FE, B>,
+      HKT.Kind<F, C, FN, FK, FSI, FSO, FX, FI, FS, FR, FE, B2>
     >
   >
 }
@@ -71,11 +71,11 @@ export function implementSeparateWithIndexF<F extends HKT.URIS, C = HKT.Auto>():
       a: A
     ) => HKT.G_<Either<B, B2>>
   ) => (
-    ta: HKT.KindFix<F, C, FN, FK, FSI, FSO, FX, FI, FS, FR, FE, A>
+    ta: HKT.Kind<F, C, FN, FK, FSI, FSO, FX, FI, FS, FR, FE, A>
   ) => HKT.G_<
     Separated<
-      HKT.KindFix<F, C, FN, FK, FSI, FSO, FX, FI, FS, FR, FE, B>,
-      HKT.KindFix<F, C, FN, FK, FSI, FSO, FX, FI, FS, FR, FE, B2>
+      HKT.Kind<F, C, FN, FK, FSI, FSO, FX, FI, FS, FR, FE, B>,
+      HKT.Kind<F, C, FN, FK, FSI, FSO, FX, FI, FS, FR, FE, B2>
     >
   >
 ) => WiltWithIndex<F, C>
