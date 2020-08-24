@@ -90,11 +90,17 @@ declare module "../Prelude/HKT" {
     [XReaderURI]: XReader<R, A>
     [XStateURI]: XState<S, A>
     [ReaderURI]: Reader<R, A>
-    [StateInURI]: (s: S) => A
-    [StateOutURI]: readonly [A, S]
+    [StateInURI]: StateIn<S, A>
+    [StateOutURI]: StateOut<S, A>
   }
   interface URItoIndex<N extends string, K> {
     [ArrayURI]: number
     [RecordURI]: N
   }
 }
+
+interface StateIn<S, A> {
+  (s: S): A
+}
+
+type StateOut<S, A> = readonly [A, S]
