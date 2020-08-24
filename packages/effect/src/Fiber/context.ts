@@ -13,6 +13,7 @@ import * as fail from "../Effect/fail"
 import * as foreachUnit_ from "../Effect/foreachUnit_"
 import * as interruptAs from "../Effect/interruptAs"
 import type { IFold, Instruction, IRaceWith } from "../Effect/primitives"
+import { uninterruptible } from "../Effect/uninterruptible"
 import * as E from "../Either"
 // exit
 import * as Exit from "../Exit/api"
@@ -385,7 +386,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
           const close = this.openScope.scope.unsafeClose(v)
 
           if (close) {
-            return T.chain_(close, () => done.done(v))[_I]
+            return T.chain_(uninterruptible(close), () => done.done(v))[_I]
           }
 
           return done.done(v)[_I]
