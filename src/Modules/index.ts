@@ -12,7 +12,6 @@ import type { Ord } from "../Classic/Ord"
 import type { Reader } from "../Classic/Reader"
 import type { Record } from "../Classic/Record"
 import type { Show } from "../Classic/Show"
-import type { StateIn, StateOut } from "../Classic/StateT"
 import type { XIO } from "../XPure/XIO"
 import type { XReader } from "../XPure/XReader"
 import type { XState } from "../XPure/XState"
@@ -91,8 +90,8 @@ declare module "../Prelude/HKT" {
     [XReaderURI]: XReader<R, A>
     [XStateURI]: XState<S, A>
     [ReaderURI]: Reader<R, A>
-    [StateInURI]: StateIn<S, A>
-    [StateOutURI]: StateOut<S, A>
+    [StateInURI]: (s: S) => A
+    [StateOutURI]: readonly [A, S]
   }
   interface URItoIndex<N extends string, K> {
     [ArrayURI]: number
