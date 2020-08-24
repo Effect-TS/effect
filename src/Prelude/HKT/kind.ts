@@ -1,3 +1,4 @@
+import type { Auto } from "./base"
 import type { OrFix } from "./fix"
 import type { ConcreteURIS, URItoIndex, URItoKind } from "./hkt"
 
@@ -34,7 +35,7 @@ export type ConcreteKind<
 > = ((...x: F) => any) extends (fst: infer XURI, ...rest: infer Rest) => any
   ? XURI extends ConcreteURIS
     ? URItoKind<
-        any,
+        Auto,
         C,
         N,
         K,
