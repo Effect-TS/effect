@@ -6,7 +6,13 @@ import * as StateT from "../../src/Classic/StateT/Parametric"
 import * as DSL from "../../src/Prelude/DSL"
 
 namespace StateStateEither {
-  // StateT[string, StateT[number, Either[E, A]]]
+  /**
+   * StateT[string, StateT[number, Either[E, A]]]
+   *
+   * Note: this is safe because Parametric fixes "S" locally
+   * opposed to the plain StateT (not safe to be stacked multiple times)
+   * that is generic on "S"
+   */
   export const Monad = pipe(E.Monad, StateT.monad<number>(), StateT.monad<string>())
 
   export const chain = DSL.chainF(Monad)

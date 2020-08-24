@@ -5,13 +5,27 @@ import type { StateInURI, StateOutURI } from "../../../Modules"
 import type { Monad } from "../../../Prelude"
 import * as HKT from "../../../Prelude/HKT"
 
+/**
+ * Take over ownership of "S" making it fixed to provided "S"
+ */
 export type V<C, S> = HKT.Unfix<Erase<HKT.Strip<C, "S">, HKT.Auto>, "S"> &
   HKT.Fix<"S", S>
 
+/**
+ * State Input URI with local override of "S", this makes it safe to be
+ * stacked multiple times
+ */
 export interface PSIn<S> extends HKT.URI<StateInURI, HKT.Fix<"S", S>> {}
 
+/**
+ * State Output URI with local override of "S", this makes it safe to be
+ * stacked multiple times
+ */
 export interface PSOut<S> extends HKT.URI<StateOutURI, HKT.Fix<"S", S>> {}
 
+/**
+ * Construct the transformed URI as [StateIn, F, StateOut]
+ */
 export type ParametricStateT<F extends HKT.URIS, S> = HKT.PrependURI<
   PSIn<S>,
   HKT.AppendURI<PSOut<S>, F>

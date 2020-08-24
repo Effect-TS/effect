@@ -6,6 +6,9 @@ import type { Auto, Monad } from "../../Prelude"
 import { chainF } from "../../Prelude/DSL"
 import * as HKT from "../../Prelude/HKT"
 
+/**
+ * Take over ownership of "S" making it invariant
+ */
 export type V<C> = HKT.Unfix<Erase<HKT.Strip<C, "S">, HKT.Auto>, "S"> & HKT.V<"S", "_">
 
 export type StateT<F extends HKT.URIS> = HKT.PrependURI<
