@@ -1,6 +1,5 @@
 import { map } from "../Cause/core"
 import { pipe } from "../Function"
-import * as O from "../Option"
 import { foldCauseM_, halt, succeed } from "./core"
 import type { Effect } from "./effect"
 
@@ -24,9 +23,3 @@ export const mapError_ = <S, R, E, E2, A>(self: Effect<S, R, E, A>, f: (e: E) =>
 export const mapError = <E, E2>(f: (e: E) => E2) => <S, R, A>(
   self: Effect<S, R, E, A>
 ) => mapError_(self, f)
-
-/**
- * Maps the error value of this effect to an optional value.
- */
-export const asSomeError = <S, R, E, E2, A>(self: Effect<S, R, E, A>) =>
-  mapError_(self, (e) => O.some(e))

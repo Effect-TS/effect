@@ -3,37 +3,17 @@
  *
  * Copyright 2020 Michael Arnaldi and the Matechs Garage Contributors.
  */
-export {
-  accessRegion,
-  accessRegionM,
-  accessService,
-  accessServiceF,
-  accessServiceIn,
-  accessServiceInM,
-  accessServiceM,
-  accessServices,
-  accessServicesM,
-  accessServicesT,
-  accessServicesTM,
-  provideService,
-  provideServiceM,
-  readRegion,
-  readService,
-  readServiceIn,
-  Region,
-  region,
-  RegionURI,
-  replaceService,
-  replaceServiceM,
-  replaceServiceM_,
-  replaceService_,
-  useRegion
-} from "./has"
 export { absolve } from "./absolve"
+export { absorbWith, absorbWith_ } from "./absorbWith"
+export { andThen, andThen_ } from "./andThen"
 export { ap } from "./ap"
 export { ap_ } from "./ap_"
 export { as, as_ } from "./as"
+export { asService } from "./asService"
+export { asSome } from "./asSome"
+export { asSomeError } from "./asSomeError"
 export { asUnit } from "./asUnit"
+export { awaitAllChildren } from "./awaitAllChildren"
 export { bimap } from "./bimap"
 export { bracket } from "./bracket"
 export { bracketExit } from "./bracketExit"
@@ -96,6 +76,7 @@ export { effectAsyncInterrupt } from "./effectAsyncInterrupt"
 export { effectMaybeAsyncInterrupt } from "./effectMaybeAsyncInterrupt"
 export { either } from "./either"
 export { ensuring } from "./ensuring"
+export { ensuringChildren, ensuringChildren_ } from "./ensuringChildren"
 export { environment } from "./environment"
 export {
   ExecutionStrategy,
@@ -131,13 +112,39 @@ export { foreachUnit_ } from "./foreachUnit_"
 export { foreach_ } from "./foreach_"
 export { forever } from "./forever"
 export { fromEither } from "./fromEither"
+export {
+  accessRegion,
+  accessRegionM,
+  accessService,
+  accessServiceF,
+  accessServiceIn,
+  accessServiceInM,
+  accessServiceM,
+  accessServices,
+  accessServicesM,
+  accessServicesT,
+  accessServicesTM,
+  provideService,
+  provideServiceM,
+  readRegion,
+  readService,
+  readServiceIn,
+  Region,
+  region,
+  RegionURI,
+  replaceService,
+  replaceServiceM,
+  replaceServiceM_,
+  replaceService_,
+  useRegion
+} from "./has"
 export { ifM } from "./ifM"
 export { interrupt } from "./interrupt"
 export { interruptAs } from "./interruptAs"
 export { interruptible } from "./interruptible"
 export { map } from "./map"
 export { mapErrorCause, mapErrorCause_ } from "./mapErrorCause"
-export { asSomeError, mapError, mapError_ } from "./mapError_"
+export { mapError, mapError_ } from "./mapError_"
 export { map_ } from "./map_"
 export { never } from "./never"
 export { onError, onExit, onExit_ } from "./onExit"
@@ -176,6 +183,7 @@ export {
   withRuntime,
   withRuntimeM
 } from "./runtime"
+export { sandbox } from "./sandbox"
 export { forkDaemon, forkIn, forkScopeWith, raceWith } from "./scope"
 export {
   bindAll,
@@ -188,6 +196,7 @@ export {
 export { sequenceT, sequenceTPar, sequenceTParN } from "./sequenceT"
 export { sleep } from "./sleep"
 export { summarized, summarized_ } from "./summarized"
+export { supervised } from "./supervised"
 export { tap } from "./tap"
 export { tapBoth } from "./tapBoth"
 export { tapBoth_ } from "./tapBoth_"
