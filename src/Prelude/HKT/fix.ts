@@ -1,3 +1,7 @@
+import type { Erase } from "../../Utils"
+import type { Auto } from "./base"
+import type { Strip } from "./variance"
+
 export type Param = "N" | "K" | "I" | "X" | "S" | "R" | "E"
 
 export interface Fix<P extends Param, F> {
@@ -24,3 +28,5 @@ export type Unfix<C, P extends Param> = {
       [KK in Exclude<keyof C[K], P>]: C[K][KK]
     }
   }
+
+export type CleanParam<C, P extends Param> = Unfix<Erase<Strip<C, P>, Auto>, P>

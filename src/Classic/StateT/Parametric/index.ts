@@ -1,5 +1,3 @@
-import type { Erase } from "@effect-ts/system/Utils"
-
 import * as StateT from "../"
 import type { StateInURI, StateOutURI } from "../../../Modules"
 import type { Monad } from "../../../Prelude"
@@ -8,8 +6,7 @@ import * as HKT from "../../../Prelude/HKT"
 /**
  * Take over ownership of "S" making it fixed to provided "S"
  */
-export type V<C, S> = HKT.Unfix<Erase<HKT.Strip<C, "S">, HKT.Auto>, "S"> &
-  HKT.Fix<"S", S>
+export type V<C, S> = HKT.CleanParam<C, "S"> & HKT.Fix<"S", S>
 
 /**
  * State Input URI with local override of "S", this makes it safe to be
@@ -28,7 +25,7 @@ export interface PSOut<S> extends HKT.URI<StateOutURI, HKT.Fix<"S", S>> {}
  */
 export type ParametricStateT<F extends HKT.URIS, S> = HKT.PrependURI<
   PSIn<S>,
-  HKT.AppendURI<PSOut<S>, F>
+  HKT.AppendURI<F, PSOut<S>>
 >
 
 export function monad<S>() {

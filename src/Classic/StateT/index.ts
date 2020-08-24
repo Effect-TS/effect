@@ -13,12 +13,10 @@ export type V<C> = HKT.Unfix<Erase<HKT.Strip<C, "S">, HKT.Auto>, "S"> & HKT.V<"S
 
 export type StateT<F extends HKT.URIS> = HKT.PrependURI<
   StateInURI,
-  HKT.AppendURI<StateOutURI, F>
+  HKT.AppendURI<F, StateOutURI>
 >
 
-export function monad<F extends HKT.URIS, C>(
-  M: Monad<F, C>
-): Monad<HKT.PrependURI<StateInURI, HKT.AppendURI<StateOutURI, F>>, V<C>>
+export function monad<F extends HKT.URIS, C>(M: Monad<F, C>): Monad<StateT<F>, V<C>>
 export function monad(M: Monad<[HKT.UF_]>): Monad<StateT<[HKT.UF_]>, V<Auto>> {
   return HKT.instance({
     any: <S = any>() => (s: S): HKT.F_<readonly [any, S]> =>
