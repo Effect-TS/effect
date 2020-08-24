@@ -12,7 +12,7 @@ export type EitherTVariance<C> = Erase<HKT.Strip<C, "E">, Auto> & HKT.V<"E", "+"
 
 export function monad<F extends URIS, C>(
   M: Monad<F, C>
-): Monad<HKT.AppendURI<E.EitherURI, F>, EitherTVariance<C>>
+): Monad<HKT.AppendURI<F, E.EitherURI>, EitherTVariance<C>>
 export function monad(M: Monad<[UF_]>): Monad<[UF_, E.EitherURI]> {
   return HKT.instance({
     any: () => succeedF(M)(E.right({})),
@@ -25,7 +25,7 @@ export function monad(M: Monad<[UF_]>): Monad<[UF_, E.EitherURI]> {
 
 export function applicative<F extends URIS, C>(
   M: Applicative<F, C>
-): Applicative<HKT.AppendURI<E.EitherURI, F>, EitherTVariance<C>>
+): Applicative<HKT.AppendURI<F, E.EitherURI>, EitherTVariance<C>>
 export function applicative(M: Applicative<[UF_]>): Applicative<[UF_, E.EitherURI]> {
   return HKT.instance({
     any: () => succeedF(M)(E.right({})),
@@ -44,7 +44,7 @@ export function applicative(M: Applicative<[UF_]>): Applicative<[UF_, E.EitherUR
 
 export function run<F extends URIS, C>(
   M: Covariant<F, C>
-): Run<HKT.AppendURI<E.EitherURI, F>, EitherTVariance<C>>
+): Run<HKT.AppendURI<F, E.EitherURI>, EitherTVariance<C>>
 export function run(M: Covariant<[UF_]>): Run<[UF_, E.EitherURI]> {
   return HKT.instance({
     either: <E, A>(fa: F_<E.Either<E, A>>): F_<E.Either<never, E.Either<E, A>>> => {
@@ -55,7 +55,7 @@ export function run(M: Covariant<[UF_]>): Run<[UF_, E.EitherURI]> {
 
 export function fail<F extends URIS, C>(
   M: Any<F, C> & Covariant<F, C>
-): Fail<HKT.AppendURI<E.EitherURI, F>, EitherTVariance<C>>
+): Fail<HKT.AppendURI<F, E.EitherURI>, EitherTVariance<C>>
 export function fail(M: Any<[UF_]> & Covariant<[UF_]>): Fail<[UF_, E.EitherURI]> {
   return HKT.instance({
     fail: <E, A = never>(e: E): F_<E.Either<E, A>> =>
