@@ -8,8 +8,6 @@ import * as HKT from "../../../Prelude/HKT"
 export type V<C, S> = HKT.Unfix<Erase<HKT.Strip<C, "S">, HKT.Auto>, "S"> &
   HKT.Fix<"S", S>
 
-export type PState = "S"
-
 export interface PSIn<S> extends HKT.URI<StateInURI, HKT.Fix<"S", S>> {}
 
 export interface PSOut<S> extends HKT.URI<StateOutURI, HKT.Fix<"S", S>> {}
