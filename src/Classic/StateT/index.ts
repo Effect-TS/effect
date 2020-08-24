@@ -2,22 +2,21 @@ import type { Erase } from "@effect-ts/system/Utils"
 
 import { flow, pipe, tuple } from "../../Function"
 import type { StateInURI, StateOutURI } from "../../Modules"
-import type { Monad } from "../../Prelude"
+import type { Auto, Monad } from "../../Prelude"
 import { chainF } from "../../Prelude/DSL"
-import type { URIS, V } from "../../Prelude/HKT"
 import * as HKT from "../../Prelude/HKT"
 
-export type StateTVariance<C> = Erase<HKT.Strip<C, "S">, HKT.Auto> & V<"S", "_">
+export type V<C> = HKT.Unfix<Erase<HKT.Strip<C, "S">, HKT.Auto>, "S"> & HKT.V<"S", "_">
 
-export type StateT<F extends URIS> = HKT.PrependURI<
+export type StateT<F extends HKT.URIS> = HKT.PrependURI<
   StateInURI,
   HKT.AppendURI<StateOutURI, F>
 >
 
-export function monad<F extends URIS, C>(
+export function monad<F extends HKT.URIS, C>(
   M: Monad<F, C>
-): Monad<HKT.PrependURI<StateInURI, HKT.AppendURI<StateOutURI, F>>, StateTVariance<C>>
-export function monad(M: Monad<[HKT.UF_]>): Monad<StateT<[HKT.UF_]>> {
+): Monad<HKT.PrependURI<StateInURI, HKT.AppendURI<StateOutURI, F>>, V<C>>
+export function monad(M: Monad<[HKT.UF_]>): Monad<StateT<[HKT.UF_]>, V<Auto>> {
   return HKT.instance({
     any: <S = any>() => (s: S): HKT.F_<readonly [any, S]> =>
       pipe(
@@ -31,7 +30,7 @@ export function monad(M: Monad<[HKT.UF_]>): Monad<StateT<[HKT.UF_]>> {
         ffa,
         chainF(M)(([f, us]) => f(us))
       ),
-    map: <A, B>(f: (a: A) => B) => <N extends string, K, SI, SO, X, I, S, R, E>(
+    map: <A, B>(f: (a: A) => B) => <S>(
       fa: (s: S) => HKT.F_<readonly [A, S]>
     ): ((s: S) => HKT.F_<readonly [B, S]>) =>
       flow(
