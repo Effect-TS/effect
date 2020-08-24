@@ -14,10 +14,10 @@ import { uninterruptibleMask } from "./uninterruptibleMask"
  * succeeds. If `use` fails, then after release, the returned effect will fail
  * with the same error.
  */
-export const bracketExit_ = <S, R, E, A, S1, E1, R1, A1, S2, R2, E2, A2>(
+export const bracketExit_ = <S, R, E, A, S1, E1, R1, A1, S2, R2, E2>(
   acquire: Effect<S, R, E, A>,
   use: (a: A) => Effect<S1, R1, E1, A1>,
-  release: (a: A, e: Exit<E1, A1>) => Effect<S2, R2, E2, A2>
+  release: (a: A, e: Exit<E1, A1>) => Effect<S2, R2, E2, any>
 ): Effect<S | S1 | S2, R & R1 & R2, E | E1 | E2, A1> =>
   uninterruptibleMask(({ restore }) =>
     chain_(acquire, (a) =>
