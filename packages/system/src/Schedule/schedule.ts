@@ -1,7 +1,7 @@
 import * as A from "../Array"
 import * as Clock from "../Clock"
 import * as E from "../Either"
-import { pipe, tuple } from "../Function"
+import { constant, pipe, tuple } from "../Function"
 import * as NA from "../NonEmptyArray"
 import * as O from "../Option"
 import { nextDouble } from "../Random"
@@ -787,7 +787,7 @@ export function exponential(base: number, factor = 2.0) {
 export function fibonacci(one: number) {
   return delayedFrom(
     map_(
-      unfold_(tuple(one, one), ([a1, a2]) => tuple(a1, a1 + a2)),
+      unfold_(constant(tuple(one, one)), ([a1, a2]) => tuple(a1, a1 + a2)),
       ([_]) => _
     )
   )
@@ -857,7 +857,7 @@ export function fromFunction<A, B>(f: (a: A) => B) {
 /**
  * A schedule that always recurs, which counts the number of recurrances.
  */
-export const count = unfold_(0, (n) => n + 1)
+export const count = unfold_(constant(0), (n) => n + 1)
 
 function ensuringLoop<S1, Env1, S, Env, In, Out>(
   finalizer: T.Effect<S1, Env1, never, any>,
@@ -982,7 +982,7 @@ export function foldM_<S, Env, In, Out, Z, S1, Env1>(
 /**
  * A schedule that recurs forever, producing a count of repeats: 0, 1, 2, ...
  */
-export const forever = unfold_(0, (n) => n + 1)
+export const forever = unfold_(constant(0), (n) => n + 1)
 
 function identityLoop<A>(): Decision.StepFunction<never, unknown, A, A> {
   return (now, i) => T.succeed(Decision.makeContinue(i, now, identityLoop()))
@@ -1847,14 +1847,19 @@ function unfoldLoop<A>(
  * Unfolds a schedule that repeats one time from the specified state and iterator.
  */
 export function unfold<A>(f: (a: A) => A) {
-  return (a: A) => new Schedule(unfoldLoop(a, f))
+  return (a: () => A) => unfold_(a, f)
 }
 
 /**
  * Unfolds a schedule that repeats one time from the specified state and iterator.
  */
-export function unfold_<A>(a: A, f: (a: A) => A) {
-  return new Schedule(unfoldLoop(a, f))
+export function unfold_<A>(a: () => A, f: (a: A) => A) {
+  return new Schedule((now) =>
+    pipe(
+      T.effectTotal(a),
+      T.map((a) => Decision.makeContinue(a, now, unfoldLoop(f(a), f)))
+    )
+  )
 }
 
 /**
