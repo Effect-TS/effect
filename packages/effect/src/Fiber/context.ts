@@ -382,7 +382,13 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
             )
           )
 
-          return T.chain_(this.openScope.close(v), () => done.done(v))[_I]
+          const close = this.openScope.scope.unsafeClose(v)
+
+          if (close) {
+            return T.chain_(close, () => done.done(v))[_I]
+          }
+
+          return done.done(v)[_I]
         }
       }
     }
