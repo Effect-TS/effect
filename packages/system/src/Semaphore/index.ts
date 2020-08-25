@@ -3,13 +3,4 @@
  *
  * Copyright 2020 Michael Arnaldi and the Matechs Garage Contributors.
  */
-export {
-  Semaphore,
-  available,
-  makeSemaphore,
-  unsafeMakeSemaphore,
-  withPermit,
-  withPermitManaged,
-  withPermits,
-  withPermitsManaged
-} from "./semaphore"
+export * from "./semaphore"

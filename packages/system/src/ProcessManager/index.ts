@@ -6,7 +6,7 @@ import * as F from "../Fiber"
 import type * as FR from "../FiberRef"
 import { pipe } from "../Function"
 import * as Has from "../Has"
-import * as L from "../Layer"
+import * as L from "../Layer/core"
 import * as M from "../Managed"
 import { AtomicReference } from "../Support/AtomicReference"
 
