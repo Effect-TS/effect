@@ -1,6 +1,8 @@
+import * as A from "../Array"
 import * as Cause from "../Cause/core"
 import * as E from "../Either"
 import * as Exit from "../Exit/api"
+import { pipe } from "../Function"
 import * as IT from "../Iterable"
 import * as O from "../Option"
 import * as T from "./_internal/effect"
@@ -11,7 +13,7 @@ import * as Fiber from "./core"
  */
 export const fromEffect = <E, A>(
   effect: T.AsyncE<E, A>
-): T.Async<Fiber.Syntetic<E, A>> => T.map_(T.result(effect), Fiber.done)
+): T.Async<Fiber.Synthetic<E, A>> => T.map_(T.result(effect), Fiber.done)
 
 /**
  * Interrupts the fiber from whichever fiber is calling this method. If the
@@ -54,8 +56,8 @@ export const join = <E, A>(fiber: Fiber.Fiber<E, A>): T.AsyncE<E, A> =>
  */
 export const mapM = <E2, A, B>(f: (a: A) => T.AsyncE<E2, B>) => <E>(
   fiber: Fiber.Fiber<E, A>
-): Fiber.Syntetic<E | E2, B> => ({
-  _tag: "SynteticFiber",
+): Fiber.Synthetic<E | E2, B> => ({
+  _tag: "SyntheticFiber",
   wait: T.chain_(fiber.wait, Exit.foreach(f)),
   getRef: (ref) => fiber.getRef(ref),
   inheritRefs: fiber.inheritRefs,
@@ -94,7 +96,7 @@ export const waitAll = <E, A>(as: Iterable<Fiber.Fiber<E, A>>) =>
 export const map_ = <E, A, B>(
   fiber: Fiber.Fiber<E, A>,
   f: (a: A) => B
-): Fiber.Syntetic<E, B> => map(f)(fiber)
+): Fiber.Synthetic<E, B> => map(f)(fiber)
 
 /**
  * Passes the success of this fiber to the specified callback, and continues
@@ -140,8 +142,8 @@ export const mapFiber_ = <A, E, E2, A2>(
  */
 export const orElse = <E1, A1>(that: Fiber.Fiber<E1, A1>) => <E, A>(
   fiber: Fiber.Fiber<E, A>
-): Fiber.Syntetic<E | E1, A | A1> => ({
-  _tag: "SynteticFiber",
+): Fiber.Synthetic<E | E1, A | A1> => ({
+  _tag: "SyntheticFiber",
   wait: T.zipWith_(fiber.wait, that.wait, (a, b) => (a._tag === "Success" ? a : b)),
   getRef: (ref) =>
     T.zipWith_(fiber.getRef(ref), that.getRef(ref), (a, b) =>
@@ -168,7 +170,7 @@ export const orElse = <E1, A1>(that: Fiber.Fiber<E1, A1>) => <E, A>(
  */
 export const orElseEither = <E1, A1>(that: Fiber.Fiber<E1, A1>) => <E, A>(
   fiber: Fiber.Fiber<E, A>
-): Fiber.Syntetic<E1 | E, E.Either<A, A1>> =>
+): Fiber.Synthetic<E1 | E, E.Either<A, A1>> =>
   orElse(map_(that, E.right))(map_(fiber, E.left))
 
 /**
@@ -179,7 +181,7 @@ export const as = <B>(b: B) => <E, A>(fiber: Fiber.Fiber<E, A>) => map_(fiber, (
 /**
  * Maps the output of this fiber to `void`.
  */
-export const asUnit = <E, A>(fiber: Fiber.Fiber<E, A>): Fiber.Syntetic<E, void> =>
+export const asUnit = <E, A>(fiber: Fiber.Fiber<E, A>): Fiber.Synthetic<E, void> =>
   map_(fiber, () => undefined)
 
 /**
@@ -191,8 +193,8 @@ export const zipWith_ = <E, A, E1, A1, B>(
   fiberA: Fiber.Fiber<E, A>,
   fiberB: Fiber.Fiber<E1, A1>,
   f: (a: A, b: A1) => B
-): Fiber.Syntetic<E | E1, B> => ({
-  _tag: "SynteticFiber",
+): Fiber.Synthetic<E | E1, B> => ({
+  _tag: "SyntheticFiber",
   getRef: (ref) =>
     T.zipWith_(fiberA.getRef(ref), fiberB.getRef(ref), (a, b) => ref.join(a, b)),
   inheritRefs: T.chain_(fiberA.inheritRefs, () => fiberB.inheritRefs),
@@ -214,7 +216,7 @@ export const zipWith_ = <E, A, E1, A1, B>(
 export const zip_ = <E, A, E1, A1>(
   fiberA: Fiber.Fiber<E, A>,
   fiberB: Fiber.Fiber<E1, A1>
-): Fiber.Syntetic<E | E1, [A, A1]> => zipWith_(fiberA, fiberB, (a, b) => [a, b])
+): Fiber.Synthetic<E | E1, [A, A1]> => zipWith_(fiberA, fiberB, (a, b) => [a, b])
 
 /**
  * Same as `zip` but discards the output of the left hand side.
@@ -222,7 +224,7 @@ export const zip_ = <E, A, E1, A1>(
 export const zipRight_ = <E, A, E1, A1>(
   fiberA: Fiber.Fiber<E, A>,
   fiberB: Fiber.Fiber<E1, A1>
-): Fiber.Syntetic<E | E1, A1> => zipWith_(fiberA, fiberB, (_, b) => b)
+): Fiber.Synthetic<E | E1, A1> => zipWith_(fiberA, fiberB, (_, b) => b)
 
 /**
  * Same as `zip` but discards the output of the right hand side.
@@ -230,25 +232,54 @@ export const zipRight_ = <E, A, E1, A1>(
 export const zipLeft_ = <E, A, E1, A1>(
   fiberA: Fiber.Fiber<E, A>,
   fiberB: Fiber.Fiber<E1, A1>
-): Fiber.Syntetic<E | E1, A> => zipWith_(fiberA, fiberB, (a, _) => a)
+): Fiber.Synthetic<E | E1, A> => zipWith_(fiberA, fiberB, (a, _) => a)
 
-export {
-  CommonFiber,
-  Descriptor,
-  Fiber,
-  FiberID,
-  InterruptStatus,
-  None,
-  Runtime,
-  Syntetic,
-  done,
-  equalsFiberID,
-  fail,
-  fold,
-  halt,
-  interruptAs,
-  interruptStatus,
-  interruptible,
-  newFiberId,
-  uninterruptible
-} from "./core"
+/**
+ * Collects all fibers into a single fiber producing an in-order list of the
+ * results.
+ */
+export function collectAll<E, A>(fibers: Iterable<Fiber.Fiber<E, A>>) {
+  return Fiber.makeSynthetic({
+    _tag: "SyntheticFiber",
+    getRef: (ref) =>
+      T.foldLeft_(fibers, ref.initial, (a, fiber) =>
+        pipe(
+          fiber.getRef(ref),
+          T.map((a2) => ref.join(a, a2))
+        )
+      ),
+    inheritRefs: T.foreachUnit_(fibers, (f) => f.inheritRefs),
+    interruptAs: (fiberId) =>
+      pipe(
+        T.foreach_(fibers, (f) => f.interruptAs(fiberId)),
+        T.map(
+          A.reduceRight(Exit.succeed(A.empty) as Exit.Exit<E, A.Array<A>>, (a, b) =>
+            Exit.zipWith_(a, b, (_a, _b) => [_a, ..._b], Cause.Both)
+          )
+        )
+      ),
+    poll: pipe(
+      T.foreach_(fibers, (f) => f.poll),
+      T.map(
+        A.reduceRight(
+          O.some(Exit.succeed(A.empty) as Exit.Exit<E, readonly A[]>),
+          (a, b) =>
+            O.fold_(
+              a,
+              () => O.none,
+              (ra) =>
+                O.fold_(
+                  b,
+                  () => O.none,
+                  (rb) =>
+                    O.some(Exit.zipWith_(ra, rb, (_a, _b) => [_a, ..._b], Cause.Both))
+                )
+            )
+        )
+      )
+    ),
+    wait: waitAll(fibers)
+  })
+}
+
+export * from "./core"

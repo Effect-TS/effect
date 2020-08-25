@@ -1,5 +1,5 @@
-import type * as Fiber from "../Fiber"
-import { pipe } from "../Function"
+import * as Fiber from "../Fiber"
+import { flow, pipe } from "../Function"
 import { track } from "../Supervisor"
 import { chain } from "./core"
 import type { AsyncRE, Effect } from "./effect"
@@ -40,4 +40,27 @@ export function ensuringChildren_<S, R, E, A, S1, R1>(
       )
     )
   )
+}
+
+/**
+ * Acts on the children of this fiber (collected into a single fiber),
+ * guaranteeing the specified callback will be invoked, whether or not
+ * this effect succeeds.
+ */
+export function ensuringChild_<S, R, E, A, R2, S2>(
+  fa: Effect<S, R, E, A>,
+  f: (_: Fiber.Fiber<any, Iterable<any>>) => Effect<S2, R2, never, any>
+) {
+  return ensuringChildren_(fa, flow(Fiber.collectAll, f))
+}
+
+/**
+ * Acts on the children of this fiber (collected into a single fiber),
+ * guaranteeing the specified callback will be invoked, whether or not
+ * this effect succeeds.
+ */
+export function ensuringChild<S, R, E, A, R2, S2>(
+  f: (_: Fiber.Fiber<any, Iterable<any>>) => Effect<S2, R2, never, any>
+) {
+  return (fa: Effect<S, R, E, A>) => ensuringChild_(fa, f)
 }
