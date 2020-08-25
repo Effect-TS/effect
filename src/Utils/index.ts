@@ -17,13 +17,13 @@ export const pattern: <N extends string>(
 ) => {
   <
     X extends { [k in N]: string },
-    K extends { [k in X[N]]: (_: Extract<X, { _tag: k }>) => any }
+    K extends { [k in X[N]]: (_: Extract<X, { [_tag in N]: k }>) => any }
   >(
     _: K
   ): (m: X) => ReturnType<K[keyof K]>
   <
     X extends { [k in N]: string },
-    K extends { [k in X[N]]?: (_: Extract<X, { _tag: k }>) => any },
+    K extends { [k in X[N]]?: (_: Extract<X, { [_tag in N]: k }>) => any },
     H
   >(
     _: K,
