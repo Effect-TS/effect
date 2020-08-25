@@ -36,7 +36,7 @@ export class Descriptor {
  * Fibers can be joined, yielding their result to other fibers, or interrupted,
  * which terminates the fiber, safely releasing all resources.
  */
-export type Fiber<E, A> = Runtime<E, A> | Syntetic<E, A>
+export type Fiber<E, A> = Runtime<E, A> | Synthetic<E, A>
 
 export interface CommonFiber<E, A> {
   wait: Async<Exit.Exit<E, A>>
@@ -51,8 +51,12 @@ export interface Runtime<E, A> extends CommonFiber<E, A> {
   _tag: "RuntimeFiber"
 }
 
-export interface Syntetic<E, A> extends CommonFiber<E, A> {
-  _tag: "SynteticFiber"
+export interface Synthetic<E, A> extends CommonFiber<E, A> {
+  _tag: "SyntheticFiber"
+}
+
+export function makeSynthetic<E, A>(_: Synthetic<E, A>): Fiber<E, A> {
+  return _
 }
 
 /**
@@ -60,13 +64,13 @@ export interface Syntetic<E, A> extends CommonFiber<E, A> {
  */
 export const fold = <E, A, Z>(
   runtime: (_: Runtime<E, A>) => Z,
-  syntetic: (_: Syntetic<E, A>) => Z
+  syntetic: (_: Synthetic<E, A>) => Z
 ) => (fiber: Fiber<E, A>) => {
   switch (fiber._tag) {
     case "RuntimeFiber": {
       return runtime(fiber)
     }
-    case "SynteticFiber": {
+    case "SyntheticFiber": {
       return syntetic(fiber)
     }
   }
@@ -75,8 +79,8 @@ export const fold = <E, A, Z>(
 /**
  * A fiber that is done with the specified `Exit` value.
  */
-export const done = <E, A>(exit: Exit.Exit<E, A>): Syntetic<E, A> => ({
-  _tag: "SynteticFiber",
+export const done = <E, A>(exit: Exit.Exit<E, A>): Synthetic<E, A> => ({
+  _tag: "SyntheticFiber",
   wait: succeed(exit),
   getRef: (ref) => succeed(ref.initial),
   inheritRefs: unit,
