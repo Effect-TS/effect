@@ -24,6 +24,6 @@ export const catchSomeCause_ = <S2, R2, E2, A2, S, R, E, A>(
 /**
  * Recovers from some or all of the error cases with provided cause.
  */
-export const catchSomeCause = <S2, R2, E2, A2, S, R, E, A>(
+export const catchSomeCause = <S, R, E, E2, A>(
   f: (_: Cause<E2>) => O.Option<Effect<S, R, E, A>>
-) => (effect: Effect<S2, R2, E2, A2>) => catchSomeCause_(effect, f)
+) => <S2, R2, A2>(effect: Effect<S2, R2, E2, A2>) => catchSomeCause_(effect, f)

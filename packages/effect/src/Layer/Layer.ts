@@ -1,5 +1,5 @@
+import { fresh, memo } from "./core"
 import type * as T from "./deps"
-import { fresh, memo } from "./index"
 import type { HasMemoMap } from "./MemoMap"
 
 export class Layer<S, R, E, A> {

@@ -1,25 +1,6 @@
-export {
-  absurd,
-  constant,
-  constFalse,
-  constNull,
-  constTrue,
-  constUndefined,
-  constVoid,
-  Endomorphism,
-  flip,
-  flow,
-  FunctionN,
-  identity,
-  Lazy,
-  not,
-  pipe,
-  Predicate,
-  Refinement,
-  tuple,
-  tupled,
-  unsafeCoerce,
-  untupled
-} from "./core"
-
-export { recursive } from "./safe"
+// codegen:start {preset: barrel, include: ./*.ts}
+export * from "./core"
+export * from "./flow"
+export * from "./pipe"
+export * from "./safe"
+// codegen:end
