@@ -16,6 +16,12 @@ export type StateT<F extends HKT.URIS> = HKT.PrependURI<
   HKT.AppendURI<F, StateOutURI>
 >
 
+export interface StateIn<S, A> {
+  (s: S): A
+}
+
+export type StateOut<S, A> = readonly [A, S]
+
 export function monad<F extends HKT.URIS, C>(M: Monad<F, C>): Monad<StateT<F>, V<C>>
 export function monad(M: Monad<[HKT.UF_]>): Monad<StateT<[HKT.UF_]>, V<Auto>> {
   return HKT.instance({
