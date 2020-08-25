@@ -1,22 +1,3 @@
-export {
-  Map,
-  Next,
-  compact,
-  empty,
-  filterMap,
-  filterMapWithIndex,
-  filterMapWithIndex_,
-  filterMap_,
-  filterWithIndex,
-  filterWithIndex_,
-  fromMutable,
-  isEmpty,
-  make,
-  map,
-  mapWithIndex,
-  mapWithIndex_,
-  map_,
-  singleton,
-  size,
-  toMutable
-} from "./core"
+// codegen:start {preset: barrel, include: ./*.ts, exclude: ./deps.ts}
+export * from "./core"
+// codegen:end

@@ -3,14 +3,16 @@
  *
  * Copyright 2020 Michael Arnaldi and the Matechs Garage Contributors.
  */
-export { FiberRef } from "./fiberRef"
 
-export { get } from "./get"
-export { getAndSet } from "./getAndSet"
-export { getAndUpdate } from "./getAndUpdate"
-export { getAndUpdateSome } from "./getAndUpdateSome"
-export { locally } from "./locally"
-export { modify } from "./modify"
-export { make, unsafeMake } from "./make"
-export { set } from "./set"
-export { update } from "./update"
+// codegen:start {preset: barrel, include: ./*.ts}
+export * from "./fiberRef"
+export * from "./get"
+export * from "./getAndSet"
+export * from "./getAndUpdate"
+export * from "./getAndUpdateSome"
+export * from "./locally"
+export * from "./make"
+export * from "./modify"
+export * from "./set"
+export * from "./update"
+// codegen:end
