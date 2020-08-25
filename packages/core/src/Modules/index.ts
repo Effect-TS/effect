@@ -12,6 +12,7 @@ import type { Ord } from "../Classic/Ord"
 import type { Reader } from "../Classic/Reader"
 import type { Record } from "../Classic/Record"
 import type { Show } from "../Classic/Show"
+import type { StateIn, StateOut } from "../Classic/StateT"
 import type { XIO } from "../XPure/XIO"
 import type { XReader } from "../XPure/XReader"
 import type { XState } from "../XPure/XState"
@@ -98,9 +99,3 @@ declare module "../Prelude/HKT" {
     [RecordURI]: N
   }
 }
-
-interface StateIn<S, A> {
-  (s: S): A
-}
-
-type StateOut<S, A> = readonly [A, S]
