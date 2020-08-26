@@ -3,7 +3,7 @@ import { chain_, effectTotal } from "./core"
 import type { AsyncE } from "./effect"
 
 /**
- * Creates a `ZIO` value that represents the exit value of the specified
+ * Creates a `Effect` value that represents the exit value of the specified
  * fiber.
  */
 export function fromFiber<E, A>(fiber: () => Fiber.Fiber<E, A>): AsyncE<E, A> {
