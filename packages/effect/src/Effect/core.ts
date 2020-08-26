@@ -76,7 +76,7 @@ export function checkDescriptor<S, R, E, A>(
  * Checks the interrupt status, and produces the effect returned by the
  * specified callback.
  */
-export function checkInterrupt<S, R, E, A>(
+export function checkInterruptible<S, R, E, A>(
   f: (_: InterruptStatus) => Effect<S, R, E, A>
 ): Effect<S, R, E, A> {
   return new ICheckInterrupt(f)
