@@ -1,5 +1,5 @@
 import type { InterruptStatus } from "../Fiber/core"
-import { checkInterrupt, interruptStatus_ } from "./core"
+import { checkInterruptible, interruptStatus_ } from "./core"
 import { disconnect } from "./disconnect"
 import type { AsyncRE, Effect } from "./effect"
 import { interruptible } from "./interruptible"
@@ -38,4 +38,5 @@ export class InterruptStatusRestoreImpl implements InterruptStatusRestore {
  */
 export const uninterruptibleMask = <S, R, E, A>(
   f: (restore: InterruptStatusRestore) => Effect<S, R, E, A>
-) => checkInterrupt((flag) => uninterruptible(f(new InterruptStatusRestoreImpl(flag))))
+) =>
+  checkInterruptible((flag) => uninterruptible(f(new InterruptStatusRestoreImpl(flag))))
