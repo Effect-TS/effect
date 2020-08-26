@@ -36,6 +36,7 @@
       "Fiber",
       "FiberRef",
       "Function",
+      "GlobalExceptions",
       "Has",
       "Iterable",
       "Layer",

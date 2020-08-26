@@ -2,6 +2,7 @@ import * as A from "../Array"
 import * as Clock from "../Clock"
 import * as E from "../Either"
 import { constant, pipe, tuple } from "../Function"
+import * as NoSuchElementException from "../GlobalExceptions"
 import * as NA from "../NonEmptyArray"
 import * as O from "../Option"
 import { nextDouble } from "../Random"
@@ -55,7 +56,7 @@ export function driver<S, Env, Inp, Out>(
         T.chain(([o, _]) =>
           O.fold_(
             o,
-            () => T.fail(new Driver.NoSuchElementException()),
+            () => T.fail(new NoSuchElementException.NoSuchElementException()),
             (b) => T.succeed(b)
           )
         )
