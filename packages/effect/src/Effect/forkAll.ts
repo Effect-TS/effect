@@ -1,10 +1,15 @@
 import * as A from "../Array"
 import * as Fiber from "../Fiber"
-import { fork } from "./core"
+import * as I from "../Iterable"
+import { chain_, fork, unit } from "./core"
 import type { AsyncR, Effect } from "./effect"
 import { foreach_ } from "./foreach_"
 import { map_ } from "./map_"
 
+/**
+ * Returns an effect that forks all of the specified values, and returns a
+ * composite fiber that produces a list of their results, in order.
+ */
 export function forkAll<S, R, E, A>(
   effects: Iterable<Effect<S, R, E, A>>
 ): AsyncR<R, Fiber.Fiber<E, readonly A[]>> {
@@ -14,4 +19,13 @@ export function forkAll<S, R, E, A>(
       Fiber.zipWith_(b, a, (_a, _b) => [..._a, _b])
     )
   )
+}
+
+/**
+ * Returns an effect that forks all of the specified values, and returns a
+ * composite fiber that produces unit. This version is faster than [[forkAll]]
+ * in cases where the results of the forked fibers are not needed.
+ */
+export function forkAllUnit<S, R, E, A>(effects: Iterable<Effect<S, R, E, A>>) {
+  return I.reduce_(effects, unit as AsyncR<R, void>, (b, a) => chain_(fork(a), () => b))
 }
