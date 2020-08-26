@@ -1,5 +1,5 @@
 import type * as Cause from "../Cause/core"
-import { succeed, unit } from "../Effect/core"
+import * as T from "../Effect/core"
 import type { Async, Sync } from "../Effect/effect"
 import * as Exit from "../Exit/core"
 import type { FiberRef } from "../FiberRef/fiberRef"
@@ -81,12 +81,17 @@ export const fold = <E, A, Z>(
  */
 export const done = <E, A>(exit: Exit.Exit<E, A>): Synthetic<E, A> => ({
   _tag: "SyntheticFiber",
-  wait: succeed(exit),
-  getRef: (ref) => succeed(ref.initial),
-  inheritRefs: unit,
-  interruptAs: () => succeed(exit),
-  poll: succeed(O.some(exit))
+  wait: T.succeed(exit),
+  getRef: (ref) => T.succeed(ref.initial),
+  inheritRefs: T.unit,
+  interruptAs: () => T.succeed(exit),
+  poll: T.succeed(O.some(exit))
 })
+
+/**
+ * Returns a fiber that has already succeeded with the specified value.
+ */
+export const succeed = <A>(a: A) => done(Exit.succeed(a))
 
 /**
  * A fiber that has already failed with the specified value.
