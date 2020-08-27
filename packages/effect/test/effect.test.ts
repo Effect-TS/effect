@@ -62,7 +62,6 @@ describe("Effect", () => {
     const program = T.raceAll([
       T.effectAsyncInterrupt<unknown, never, number>((cb) => {
         const t = setTimeout(() => {
-          console.log("MMMMMMMm")
           cb(T.succeed(1))
         }, 5000)
         return T.effectTotal(() => {
@@ -107,7 +106,6 @@ describe("Effect", () => {
       [
         T.effectAsyncInterrupt<unknown, never, number>((cb) => {
           const t = setTimeout(() => {
-            console.log("MMMMMMMm")
             cb(T.succeed(1))
           }, 5000)
           return T.effectTotal(() => {
