@@ -60,6 +60,8 @@ function arbiter<E, A>(
  * Returns an effect that races this effect with all the specified effects,
  * yielding the value of the first effect to succeed with a value.
  * Losers of the race will be interrupted immediately.
+ *
+ * Note: in case of success eventual interruption errors are ignored
  */
 export function raceAll<S, R, E, A>(
   ios: NonEmptyArray<Effect<S, R, E, A>>,
