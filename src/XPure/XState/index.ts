@@ -117,7 +117,7 @@ export const Applicative = P.instance<P.Applicative<[XStateURI], V>>({
 /**
  * Struct based applicative for Reader[-_, +_]
  */
-export const sequenceS = DSL.sequenceSF(Applicative)
+export const struct = DSL.structF(Applicative)
 
 /**
  * Returns a computation that effectfully "peeks" at the success of this one.

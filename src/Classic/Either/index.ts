@@ -89,6 +89,6 @@ export const Traversable = P.instance<P.Traversable<[EitherURI], V>>({
   foreachF
 })
 
-export const sequenceS = DSL.sequenceSF(Applicative)
+export const struct = DSL.structF(Applicative)
 
 export * from "@effect-ts/system/Either"

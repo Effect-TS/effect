@@ -2,7 +2,7 @@ import { constant, identity } from "@effect-ts/system/Function"
 import * as X from "@effect-ts/system/XPure"
 
 import * as P from "../Prelude"
-import { sequenceSF } from "../Prelude/DSL"
+import { structF } from "../Prelude/DSL"
 
 export type V = P.V<"R", "-"> & P.V<"E", "+">
 
@@ -60,6 +60,6 @@ export const Monad = P.instance<P.Monad<[XPureURI], V>>({
   ...Covariant
 })
 
-export const sequenceS = sequenceSF(Applicative)
+export const struct = structF(Applicative)
 
 export * from "@effect-ts/system/XPure"
