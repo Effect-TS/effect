@@ -65,7 +65,7 @@ function arbiter<E, A>(
  */
 export function raceAll<S, R, E, A>(
   ios: NonEmptyArray<Effect<S, R, E, A>>,
-  interruptStrategy: "background" | "wait" = "wait"
+  interruptStrategy: "background" | "wait" = "background"
 ): AsyncRE<R, E, A> {
   return pipe(
     Do.of,
