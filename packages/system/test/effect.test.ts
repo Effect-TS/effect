@@ -30,4 +30,28 @@ describe("Effect", () => {
     )
     expect(T.runSyncExit(program)).toEqual(Exit.fail("e"))
   })
+  it("memoize", async () => {
+    const m = jest.fn()
+    const result = await pipe(
+      T.memoize((n: number) =>
+        T.effectTotal(() => {
+          m(n)
+          return n + 1
+        })
+      ),
+      T.chain((f) =>
+        T.struct({
+          a: f(0),
+          b: f(0),
+          c: f(1),
+          d: f(1)
+        })
+      ),
+      T.runPromiseExit
+    )
+
+    expect(result).toEqual(Exit.succeed({ a: 1, b: 1, c: 2, d: 2 }))
+    expect(m).toHaveBeenNthCalledWith(1, 0)
+    expect(m).toHaveBeenNthCalledWith(2, 1)
+  })
 })
