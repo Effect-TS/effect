@@ -1,5 +1,7 @@
 import * as A from "../Array"
+import type { Either } from "../Either"
 import { identity } from "../Function"
+import type { Separated } from "../Utils"
 
 function* genOf<A>(a: A) {
   yield a
@@ -202,3 +204,7 @@ export const concat = <A>(a: Iterable<A>, b: Iterable<A>): Iterable<A> => ({
 })
 
 export const flatten = <A>(a: Iterable<Iterable<A>>) => chain_(a, identity)
+
+export const partitionMap = <A, A1, A2>(f: (a: A) => Either<A1, A2>) => (
+  as: Iterable<A>
+): Separated<Iterable<A1>, Iterable<A2>> => A.separate(Array.from(map_(as, f)))
