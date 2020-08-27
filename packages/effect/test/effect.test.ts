@@ -54,4 +54,101 @@ describe("Effect", () => {
     expect(m).toHaveBeenNthCalledWith(1, 0)
     expect(m).toHaveBeenNthCalledWith(2, 1)
   })
+  it("raceAll", async () => {
+    const a = jest.fn()
+    const b = jest.fn()
+    const c = jest.fn()
+
+    const program = T.raceAll([
+      T.effectAsyncInterrupt<unknown, never, number>((cb) => {
+        const t = setTimeout(() => {
+          console.log("MMMMMMMm")
+          cb(T.succeed(1))
+        }, 5000)
+        return T.effectTotal(() => {
+          a()
+          clearTimeout(t)
+        })
+      }),
+      T.effectAsyncInterrupt<unknown, never, number>((cb) => {
+        const t = setTimeout(() => {
+          cb(T.succeed(2))
+        }, 100)
+        return T.effectTotal(() => {
+          b()
+          clearTimeout(t)
+        })
+      }),
+      T.effectAsyncInterrupt<unknown, never, number>((cb) => {
+        const t = setTimeout(() => {
+          cb(T.succeed(3))
+        }, 5000)
+        return T.effectTotal(() => {
+          c()
+          clearTimeout(t)
+        })
+      })
+    ])
+
+    const result = await T.runPromiseExit(program)
+
+    expect(result).toEqual(Exit.succeed(2))
+
+    expect(a).toHaveBeenCalledTimes(1)
+    expect(b).toHaveBeenCalledTimes(0)
+    expect(c).toHaveBeenCalledTimes(1)
+  })
+  it("raceAll - background", async () => {
+    const a = jest.fn()
+    const b = jest.fn()
+    const c = jest.fn()
+
+    const program = T.raceAll(
+      [
+        T.effectAsyncInterrupt<unknown, never, number>((cb) => {
+          const t = setTimeout(() => {
+            console.log("MMMMMMMm")
+            cb(T.succeed(1))
+          }, 5000)
+          return T.effectTotal(() => {
+            a()
+            clearTimeout(t)
+          })
+        }),
+        T.effectAsyncInterrupt<unknown, never, number>((cb) => {
+          const t = setTimeout(() => {
+            cb(T.succeed(2))
+          }, 100)
+          return T.effectTotal(() => {
+            b()
+            clearTimeout(t)
+          })
+        }),
+        T.effectAsyncInterrupt<unknown, never, number>((cb) => {
+          const t = setTimeout(() => {
+            cb(T.succeed(3))
+          }, 5000)
+          return T.effectTotal(() => {
+            c()
+            clearTimeout(t)
+          })
+        })
+      ],
+      "background"
+    )
+
+    const result = await T.runPromiseExit(program)
+
+    expect(result).toEqual(Exit.succeed(2))
+
+    expect(a).toHaveBeenCalledTimes(0)
+    expect(b).toHaveBeenCalledTimes(0)
+    expect(c).toHaveBeenCalledTimes(0)
+
+    await T.runPromise(T.sleep(100))
+
+    expect(a).toHaveBeenCalledTimes(1)
+    expect(b).toHaveBeenCalledTimes(0)
+    expect(c).toHaveBeenCalledTimes(1)
+  })
 })
