@@ -9,9 +9,9 @@ test("08", () => {
     makeAssociative<string>((r) => (l) => `${l} | ${r}`)
   )
 
-  const validationSequenceS = DSL.sequenceSF(ValidationApplicative)
+  const structValidation = DSL.structF(ValidationApplicative)
 
-  const result = validationSequenceS({
+  const result = structValidation({
     a: T.succeed(0),
     b: T.succeed(1),
     c: T.succeed(2),

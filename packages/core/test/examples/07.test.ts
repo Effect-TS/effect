@@ -6,7 +6,7 @@ import * as DSL from "../../src/Prelude/DSL"
 import * as X from "../../src/XPure"
 
 test("07", () => {
-  const A = E.sequenceS({
+  const A = E.struct({
     a: E.left(0),
     b: E.right(1),
     d: E.left("ok")
@@ -16,9 +16,9 @@ test("07", () => {
     makeAssociative<string>((r) => (l) => `${l} | ${r}`)
   )
 
-  const validationSequenceS = DSL.sequenceSF(ValidationApplicative)
+  const structValidation = DSL.structF(ValidationApplicative)
 
-  const result = validationSequenceS({
+  const result = structValidation({
     a: E.right(0),
     b: E.right(1),
     c: E.right(2),
@@ -26,7 +26,7 @@ test("07", () => {
     e: E.left("e")
   })
 
-  const C = X.sequenceS({
+  const C = X.struct({
     a: X.succeed(constant(0)),
     b: X.fail(0)
   })
