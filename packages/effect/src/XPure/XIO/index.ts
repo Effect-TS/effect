@@ -103,7 +103,7 @@ export const Applicative = P.instance<P.Applicative<[XIOURI]>>({
 /**
  * Struct based applicative for IO[+_]
  */
-export const sequenceS = DSL.sequenceSF(Applicative)
+export const struct = DSL.structF(Applicative)
 
 /**
  * Returns a computation that effectfully "peeks" at the success of this one.

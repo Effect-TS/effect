@@ -93,7 +93,7 @@ export function accessMF(
   return flow(F.access, F.flatten)
 }
 
-export function sequenceSF<F extends HKT.URIS, C = HKT.Auto>(
+export function structF<F extends HKT.URIS, C = HKT.Auto>(
   F: Applicative<F, C>
 ): <
   SIO,
@@ -193,7 +193,7 @@ export function sequenceSF<F extends HKT.URIS, C = HKT.Auto>(
     [K in keyof NER]: HKT.InferA<F, NER[K]>
   }
 >
-export function sequenceSF(
+export function structF(
   F: Applicative<[HKT.UF_]>
 ): (r: Record<string, HKT.F_<any>>) => HKT.F_<Record<string, any>> {
   return (r) =>

@@ -67,7 +67,7 @@ namespace ReaderIOEither {
     makeAssociative<string>((l) => (r) => `${l}, ${r}`)
   )
 
-  export const validate = DSL.sequenceSF(StringValidation)
+  export const structValidation = DSL.structF(StringValidation)
 }
 
 //
@@ -90,7 +90,7 @@ test("13", () => {
     ReaderIOEither.bind("x", () => ReaderIOEither.succeed("0")),
     ReaderIOEither.bind("y", () => ReaderIOEither.succeed("1")),
     ReaderIOEither.bind("v", () =>
-      ReaderIOEither.validate({
+      ReaderIOEither.structValidation({
         a: ReaderIOEither.fail("foo"),
         b: ReaderIOEither.fail("bar"),
         c: ReaderIOEither.access((r: number) => r + 1)
