@@ -1,6 +1,6 @@
 import * as E from "@effect-ts/system/Either"
 
-import { flow, pipe } from "../../Function"
+import { flow, identity, pipe } from "../../Function"
 import * as HKT from "../../Prelude/HKT"
 import type { Applicative, Monad } from "../Combined"
 import { chainF, succeedF } from "../DSL"
@@ -45,10 +45,10 @@ export type Selective<F extends HKT.URIS, C = HKT.Auto> = Applicative<F, C> &
 export type SelectiveMonad<F extends HKT.URIS, C = HKT.Auto> = Selective<F, C> &
   Monad<F, C>
 
-export function getSelectMonad<F extends HKT.URIS, C = HKT.Auto>(
+export function selectM<F extends HKT.URIS, C = HKT.Auto>(
   F: Monad<F, C> & Applicative<F, C>
 ): SelectiveMonad<F, C>
-export function getSelectMonad(
+export function selectM(
   F: Monad<[HKT.UF_]> & Applicative<[HKT.UF_]>
 ): SelectiveMonad<[HKT.UF_], HKT.Auto> {
   return HKT.instance<SelectiveMonad<[HKT.UF_]>>({
@@ -72,7 +72,24 @@ export function getSelectMonad(
   })
 }
 
-export function getBranch<F extends HKT.URIS, C = HKT.Auto>(
+export function selectA<F extends HKT.URIS, C = HKT.Auto>(
+  F: Applicative<F, C>
+): SelectiveMonad<F, C>
+export function selectA(F: Applicative<[HKT.UF_]>): Selective<[HKT.UF_], HKT.Auto> {
+  return HKT.instance<Selective<[HKT.UF_]>>({
+    ...F,
+    select: <A, B>(fab: HKT.F_<(a: A) => B>) => <B2>(
+      fa: HKT.F_<E.Either<A, B2>>
+    ): HKT.F_<B | B2> =>
+      pipe(
+        fa,
+        F.both(fab),
+        F.map(([ea, f]) => E.fold_(ea, f, identity))
+      )
+  })
+}
+
+export function branchF<F extends HKT.URIS, C = HKT.Auto>(
   F: Selective<F, C>
 ): <
   N2 extends string,
@@ -115,7 +132,7 @@ export function getBranch<F extends HKT.URIS, C = HKT.Auto>(
   HKT.Mix<C, "X", [E, E2, E3]>,
   C | D
 >
-export function getBranch(
+export function branchF(
   F: Selective<[HKT.UF_]>
 ): <A, C, B, D>(
   lhs: HKT.F_<(a: A) => C>,
