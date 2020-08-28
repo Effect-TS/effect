@@ -77,11 +77,13 @@ namespace ReaderIOEither {
 namespace ReaderIO {
   export const RIOMonad = pipe(IO.Monad, ReaderT.monad)
   export const RIOApplicative = pipe(IO.Applicative, ReaderT.applicative)
-  export const RIOSelective = S.getSelectMonad({ ...RIOMonad, ...RIOApplicative })
+  export const RIOSelectiveM = S.selectM({ ...RIOMonad, ...RIOApplicative })
+  export const RIOSelectiveA = S.selectA(RIOApplicative)
 
   export const succeed = DSL.succeedF(RIOMonad)
 
-  export const branch = S.getBranch(RIOSelective)
+  export const branchM = S.branchF(RIOSelectiveM)
+  export const branchA = S.branchF(RIOSelectiveA)
 }
 
 test("13", () => {
@@ -97,7 +99,7 @@ test("13", () => {
       })
     ),
     ReaderIOEither.map(({ v: { a, b, c }, x, y }) => `${a}${b}${c}${x}${y}`),
-    ReaderIO.branch(
+    ReaderIO.branchA(
       ReaderIO.succeed((s) => `error: ${s}`),
       ReaderIO.succeed((s) => `success: ${s}`)
     ),
