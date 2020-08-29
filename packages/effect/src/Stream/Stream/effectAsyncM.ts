@@ -1,10 +1,10 @@
 import * as T from "../_internal/effect"
 import * as M from "../_internal/managed"
-import * as A from "../../Array"
+import type * as Array from "../../Array"
 import { pipe } from "../../Function"
-import type * as O from "../../Option"
+import type * as Option from "../../Option"
 import { makeBounded } from "../../Queue"
-import * as R from "../../Ref"
+import * as Ref from "../../Ref"
 import * as Pull from "../Pull"
 import * as Take from "../Take"
 import { chain } from "./chain"
@@ -19,7 +19,9 @@ import { repeatEffectChunkOption } from "./repeatEffectChunkOption"
  */
 export const effectAsyncM = <R, E, A, R1 = R, E1 = E>(
   register: (
-    cb: (next: T.Effect<unknown, R, O.Option<E>, A.Array<A>>) => Promise<boolean>
+    cb: (
+      next: T.Effect<unknown, R, Option.Option<E>, Array.Array<A>>
+    ) => Promise<boolean>
   ) => T.Effect<unknown, R1, E1, unknown>,
   outputBuffer = 16
 ): Stream<unknown, R & R1, E | E1, A> =>
@@ -36,7 +38,7 @@ export const effectAsyncM = <R, E, A, R1 = R, E1 = E>(
         )
       )
     ),
-    M.bind("done", () => R.makeManagedRef(false)),
+    M.bind("done", () => Ref.makeManagedRef(false)),
     M.let("pull", ({ done, output }) =>
       pipe(
         done.get,

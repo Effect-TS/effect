@@ -1,8 +1,8 @@
 import * as T from "../_internal/effect"
-import type * as A from "../../Array"
+import type * as Array from "../../Array"
 import { pipe } from "../../Function"
-import * as O from "../../Option"
-import * as R from "../../Ref"
+import type * as Option from "../../Option"
+import * as Ref from "../../Ref"
 import * as Pull from "../Pull"
 import type { Sync } from "./definitions"
 import { Stream } from "./definitions"
@@ -10,14 +10,14 @@ import { Stream } from "./definitions"
 /**
  * Creates a stream from an array of values
  */
-export const fromArray = <O>(c: A.Array<O>): Sync<O> =>
+export const fromArray = <O>(c: Array.Array<O>): Sync<O> =>
   new Stream(
     pipe(
-      R.makeRef(false),
+      Ref.makeRef(false),
       T.map((doneRef) =>
         pipe(
           doneRef,
-          R.modify((done): [T.SyncE<O.Option<never>, A.Array<O>>, boolean] =>
+          Ref.modify((done): [T.SyncE<Option.Option<never>, Array.Array<O>>, boolean] =>
             done || c.length === 0 ? [Pull.end, true] : [T.succeedNow(c), true]
           ),
           T.flatten

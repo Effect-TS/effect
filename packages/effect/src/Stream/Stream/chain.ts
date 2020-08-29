@@ -4,8 +4,8 @@ import type * as A from "../../Array"
 import { pipe } from "../../Function"
 import type { Finalizer } from "../../Managed"
 import { noop } from "../../Managed"
-import * as O from "../../Option"
-import * as R from "../../Ref"
+import type * as Option from "../../Option"
+import * as Ref from "../../Ref"
 import * as Pull from "../Pull"
 import { Chain, Stream } from "./definitions"
 
@@ -30,15 +30,17 @@ export const chain = <O, O2, S1, R1, E1>(f0: (a: O) => Stream<S1, R1, E1, O2>) =
       M.bind("outerStream", () => self.proc),
       M.bind("currOuterChunk", () =>
         T.toManaged()(
-          R.makeRef<[A.Array<O>, number]>([[], 0])
+          Ref.makeRef<[A.Array<O>, number]>([[], 0])
         )
       ),
       M.bind("currInnerStream", () =>
-        T.toManaged()(R.makeRef<T.Effect<S_, R_, O.Option<E_>, A.Array<O2>>>(Pull.end))
+        T.toManaged()(
+          Ref.makeRef<T.Effect<S_, R_, Option.Option<E_>, A.Array<O2>>>(Pull.end)
+        )
       ),
       M.bind(
         "innerFinalizer",
-        () => M.finalizerRef(noop) as M.Managed<S_, R_, never, R.Ref<Finalizer>>
+        () => M.finalizerRef(noop) as M.Managed<S_, R_, never, Ref.Ref<Finalizer>>
       ),
       M.map(({ currInnerStream, currOuterChunk, innerFinalizer, outerStream }) =>
         new Chain(
