@@ -2,6 +2,7 @@
 export * from "./absolve"
 export * from "./aggregate"
 export * from "./apply"
+export * from "./bracket"
 export * from "./catchAllCause"
 export * from "./chain"
 export * from "./combineChunks"
