@@ -8,7 +8,8 @@ export interface Wilt<F extends HKT.URIS, C = HKT.Auto> {
   <G extends HKT.URIS, GC = HKT.Auto>(F: Applicative<G, GC>): <
     GN extends string,
     GK,
-    GSIO,
+    GQ,
+    GW,
     GX,
     GI,
     GS,
@@ -18,24 +19,24 @@ export interface Wilt<F extends HKT.URIS, C = HKT.Auto> {
     B,
     B2
   >(
-    f: (a: A) => HKT.Kind<G, GC, GN, GK, GSIO, GSIO, GX, GI, GS, GR, GE, Either<B, B2>>
-  ) => <FN extends string, FK, FSI, FSO, FX, FI, FS, FR, FE>(
-    ta: HKT.Kind<F, C, FN, FK, FSI, FSO, FX, FI, FS, FR, FE, A>
+    f: (a: A) => HKT.Kind<G, GC, GN, GK, GQ, GW, GX, GI, GS, GR, GE, Either<B, B2>>
+  ) => <FN extends string, FK, FQ, FW, FX, FI, FS, FR, FE>(
+    ta: HKT.Kind<F, C, FN, FK, FQ, FW, FX, FI, FS, FR, FE, A>
   ) => HKT.Kind<
     G,
     GC,
     GN,
     GK,
-    GSIO,
-    GSIO,
+    GQ,
+    GW,
     GX,
     GI,
     GS,
     GR,
     GE,
     Separated<
-      HKT.Kind<F, C, FN, FK, FSI, FSO, FX, FI, FS, FR, FE, B>,
-      HKT.Kind<F, C, FN, FK, FSI, FSO, FX, FI, FS, FR, FE, B2>
+      HKT.Kind<F, C, FN, FK, FQ, FW, FX, FI, FS, FR, FE, B>,
+      HKT.Kind<F, C, FN, FK, FQ, FW, FX, FI, FS, FR, FE, B2>
     >
   >
 }
@@ -45,13 +46,13 @@ export interface Wiltable<F extends HKT.URIS, C = HKT.Auto> extends HKT.Base<F, 
 }
 
 export function implementSeparateF<F extends HKT.URIS, C = HKT.Auto>(): (
-  i: <FN extends string, FK, FSI, FSO, FX, FI, FS, FR, FE, A, B, B2>(_: {
+  i: <FN extends string, FK, FQ, FW, FX, FI, FS, FR, FE, A, B, B2>(_: {
     A: A
     B: B
     FN: FN
     FK: FK
-    FSI: FSI
-    FSO: FSO
+    FQ: FQ
+    FW: FW
     FX: FX
     FI: FI
     FS: FS
@@ -62,11 +63,11 @@ export function implementSeparateF<F extends HKT.URIS, C = HKT.Auto>(): (
   ) => (
     f: (a: A) => HKT.G_<Either<B, B2>>
   ) => (
-    ta: HKT.Kind<F, C, FN, FK, FSI, FSO, FX, FI, FS, FR, FE, A>
+    ta: HKT.Kind<F, C, FN, FK, FQ, FW, FX, FI, FS, FR, FE, A>
   ) => HKT.G_<
     Separated<
-      HKT.Kind<F, C, FN, FK, FSI, FSO, FX, FI, FS, FR, FE, B>,
-      HKT.Kind<F, C, FN, FK, FSI, FSO, FX, FI, FS, FR, FE, B2>
+      HKT.Kind<F, C, FN, FK, FQ, FW, FX, FI, FS, FR, FE, B>,
+      HKT.Kind<F, C, FN, FK, FQ, FW, FX, FI, FS, FR, FE, B2>
     >
   >
 ) => Wilt<F, C>

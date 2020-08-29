@@ -1,4 +1,3 @@
-export * from "../Classic/Commutative"
 export * from "./Any"
 export * from "./AssociativeBoth"
 export * from "./AssociativeEither"

@@ -7,7 +7,8 @@ export interface Wither<F extends HKT.URIS, C = HKT.Auto> {
   <G extends HKT.URIS, GC = HKT.Auto>(F: Applicative<G, GC>): <
     GN extends string,
     GK,
-    GSIO,
+    GQ,
+    GW,
     GX,
     GI,
     GS,
@@ -16,7 +17,7 @@ export interface Wither<F extends HKT.URIS, C = HKT.Auto> {
     A,
     B
   >(
-    f: (a: A) => HKT.Kind<G, GC, GN, GK, GSIO, GSIO, GX, GI, GS, GR, GE, Option<B>>
+    f: (a: A) => HKT.Kind<G, GC, GN, GK, GQ, GW, GX, GI, GS, GR, GE, Option<B>>
   ) => <FN extends string, FK, FSI, FSO, FX, FI, FS, FR, FE>(
     ta: HKT.Kind<F, C, FN, FK, FSI, FSO, FX, FI, FS, FR, FE, A>
   ) => HKT.Kind<
@@ -24,8 +25,8 @@ export interface Wither<F extends HKT.URIS, C = HKT.Auto> {
     GC,
     GN,
     GK,
-    GSIO,
-    GSIO,
+    GQ,
+    GW,
     GX,
     GI,
     GS,
@@ -40,13 +41,13 @@ export interface Witherable<F extends HKT.URIS, C = HKT.Auto> extends HKT.Base<F
 }
 
 export function implementCompactF<F extends HKT.URIS, C = HKT.Auto>(): (
-  i: <FN extends string, FK, FSI, FSO, FX, FI, FS, FR, FE, A, B>(_: {
+  i: <FN extends string, FK, FQ, FW, FX, FI, FS, FR, FE, A, B>(_: {
     A: A
     B: B
     FN: FN
     FK: FK
-    FSI: FSI
-    FSO: FSO
+    FQ: FQ
+    FW: FW
     FX: FX
     FI: FI
     FS: FS
@@ -57,8 +58,8 @@ export function implementCompactF<F extends HKT.URIS, C = HKT.Auto>(): (
   ) => (
     f: (a: A) => HKT.G_<Option<B>>
   ) => (
-    ta: HKT.Kind<F, C, FN, FK, FSI, FSO, FX, FI, FS, FR, FE, A>
-  ) => HKT.G_<HKT.Kind<F, C, FN, FK, FSI, FSO, FX, FI, FS, FR, FE, B>>
+    ta: HKT.Kind<F, C, FN, FK, FQ, FW, FX, FI, FS, FR, FE, A>
+  ) => HKT.G_<HKT.Kind<F, C, FN, FK, FQ, FW, FX, FI, FS, FR, FE, B>>
 ) => Wither<F, C>
 export function implementCompactF() {
   return (i: any) => i()

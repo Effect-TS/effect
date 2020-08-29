@@ -6,9 +6,10 @@ import type * as HKT from "../HKT"
 
 export interface Foreach<F extends HKT.URIS, C = HKT.Auto> {
   <G extends HKT.URIS, GC = HKT.Auto>(G: IdentityBoth<G, GC> & Covariant<G, GC>): <
-    GSIO,
     GN extends string,
     GK,
+    GQ,
+    GW,
     GX,
     GI,
     GS,
@@ -17,22 +18,22 @@ export interface Foreach<F extends HKT.URIS, C = HKT.Auto> {
     A,
     B
   >(
-    f: (a: A) => HKT.Kind<G, C, GN, GK, GSIO, GSIO, GX, GI, GS, GR, GE, B>
-  ) => <FN extends string, FK, FSI, FSO, FX, FI, FS, FR, FE>(
-    fa: HKT.Kind<F, C, FN, FK, FSI, FSO, FX, FI, FS, FR, FE, A>
+    f: (a: A) => HKT.Kind<G, C, GN, GK, GQ, GW, GX, GI, GS, GR, GE, B>
+  ) => <FN extends string, FK, FQ, FW, FX, FI, FS, FR, FE>(
+    fa: HKT.Kind<F, C, FN, FK, FQ, FW, FX, FI, FS, FR, FE, A>
   ) => HKT.Kind<
     G,
     C,
     GN,
     GK,
-    GSIO,
-    GSIO,
+    GQ,
+    GW,
     GX,
     GI,
     GS,
     GR,
     GE,
-    HKT.Kind<F, C, FN, FK, FSI, FSO, FX, FI, FS, FR, FE, B>
+    HKT.Kind<F, C, FN, FK, FQ, FW, FX, FI, FS, FR, FE, B>
   >
 }
 
@@ -74,9 +75,10 @@ export interface ForeachComposition<
   CG = HKT.Auto
 > {
   <H extends HKT.URIS, CH = HKT.Auto>(H: IdentityBoth<H, CH> & Covariant<H, CH>): <
-    HSIO,
     HN extends string,
     HK,
+    HQ,
+    HW,
     HX,
     HI,
     HS,
@@ -85,12 +87,12 @@ export interface ForeachComposition<
     A,
     B
   >(
-    f: (a: A) => HKT.Kind<H, CH, HN, HK, HSIO, HSIO, HX, HI, HS, HR, HE, B>
+    f: (a: A) => HKT.Kind<H, CH, HN, HK, HQ, HW, HX, HI, HS, HR, HE, B>
   ) => <
     FN extends string,
     FK,
-    FSI,
-    FSO,
+    FQ,
+    FW,
     FX,
     FI,
     FS,
@@ -98,8 +100,8 @@ export interface ForeachComposition<
     FE,
     GN extends string,
     GK,
-    GSI,
-    GSO,
+    GQ,
+    GW,
     GX,
     GI,
     GS,
@@ -111,22 +113,22 @@ export interface ForeachComposition<
       CF,
       FN,
       FK,
-      FSI,
-      FSO,
+      FQ,
+      FW,
       FX,
       FI,
       FS,
       FR,
       FE,
-      HKT.Kind<G, CG, GN, GK, GSI, GSO, GX, GI, GS, GR, GE, A>
+      HKT.Kind<G, CG, GN, GK, GQ, GW, GX, GI, GS, GR, GE, A>
     >
   ) => HKT.Kind<
     H,
     CH,
     HN,
     HK,
-    HSIO,
-    HSIO,
+    HQ,
+    HW,
     HX,
     HI,
     HS,
@@ -137,14 +139,14 @@ export interface ForeachComposition<
       CF,
       FN,
       FK,
-      FSI,
-      FSO,
+      FQ,
+      FW,
       FX,
       FI,
       FS,
       FR,
       FE,
-      HKT.Kind<G, CG, GN, GK, GSI, GSO, GX, GI, GS, GR, GE, B>
+      HKT.Kind<G, CG, GN, GK, GQ, GW, GX, GI, GS, GR, GE, B>
     >
   >
 }

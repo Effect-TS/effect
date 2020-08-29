@@ -74,7 +74,7 @@ export const StateOutURI = "StateOut"
 export type StateOutURI = typeof StateOutURI
 
 declare module "../Prelude/HKT" {
-  interface URItoKind<FC, TC, N extends string, K, SI, SO, X, I, S, R, E, A> {
+  interface URItoKind<FC, TC, N extends string, K, Q, W, X, I, S, R, E, A> {
     [ArrayURI]: Array<A>
     [BoundedURI]: Bounded<A>
     [ClosureURI]: Closure<A>

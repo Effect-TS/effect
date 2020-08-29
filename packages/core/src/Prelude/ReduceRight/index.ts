@@ -4,7 +4,7 @@ export interface ReduceRight<F extends HKT.URIS, C = HKT.Auto> extends HKT.Base<
   readonly reduceRight: <A, B>(
     b: B,
     f: (a: A, b: B) => B
-  ) => <N extends string, K, SI, SO, X, I, S, R, E>(
-    fa: HKT.Kind<F, C, N, K, SI, SO, X, I, S, R, E, A>
+  ) => <N extends string, K, Q, W, X, I, S, R, E>(
+    fa: HKT.Kind<F, C, N, K, Q, W, X, I, S, R, E, A>
   ) => B
 }

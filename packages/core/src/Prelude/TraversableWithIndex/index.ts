@@ -4,9 +4,10 @@ import type * as HKT from "../HKT"
 
 export interface ForeachWithIndex<F extends HKT.URIS, C = HKT.Auto> {
   <G extends HKT.URIS, GC = HKT.Auto>(G: IdentityBoth<G, GC> & Covariant<G, GC>): <
-    GSIO,
     GN extends string,
     GK,
+    GQ,
+    GW,
     GX,
     GI,
     GS,
@@ -20,22 +21,22 @@ export interface ForeachWithIndex<F extends HKT.URIS, C = HKT.Auto> {
     f: (
       k: HKT.IndexFor<F, HKT.OrFix<"N", C, FN>, HKT.OrFix<"K", C, FK>>,
       a: A
-    ) => HKT.Kind<G, GC, GN, GK, GSIO, GSIO, GX, GI, GS, GR, GE, B>
-  ) => <FSI, FSO, FX, FI, FS, FR, FE>(
-    fa: HKT.Kind<F, GC, FN, FK, FSI, FSO, FX, FI, FS, FR, FE, A>
+    ) => HKT.Kind<G, GC, GN, GK, GQ, GW, GX, GI, GS, GR, GE, B>
+  ) => <FQ, FW, FX, FI, FS, FR, FE>(
+    fa: HKT.Kind<F, GC, FN, FK, FQ, FW, FX, FI, FS, FR, FE, A>
   ) => HKT.Kind<
     G,
     GC,
     GN,
     GK,
-    GSIO,
-    GSIO,
+    GQ,
+    GW,
     GX,
     GI,
     GS,
     GR,
     GE,
-    HKT.Kind<F, GC, FN, FK, FSI, FSO, FX, FI, FS, FR, FE, B>
+    HKT.Kind<F, GC, FN, FK, FQ, FW, FX, FI, FS, FR, FE, B>
   >
 }
 
@@ -46,13 +47,13 @@ export interface TraversableWithIndex<F extends HKT.URIS, C = HKT.Auto>
 }
 
 export function implementForeachWithIndexF<F extends HKT.URIS, C = HKT.Auto>(): (
-  i: <N extends string, K, SI, SO, X, I, S, R, E, A, B>(_: {
+  i: <N extends string, K, Q, W, X, I, S, R, E, A, B>(_: {
     A: A
     B: B
     N: N
     K: K
-    SI: SI
-    SO: SO
+    Q: Q
+    W: W
     X: X
     I: I
     S: S
@@ -66,8 +67,8 @@ export function implementForeachWithIndexF<F extends HKT.URIS, C = HKT.Auto>(): 
       a: A
     ) => HKT.G_<B>
   ) => (
-    fa: HKT.Kind<F, C, N, K, SI, SO, X, I, S, R, E, A>
-  ) => HKT.G_<HKT.Kind<F, C, N, K, SI, SO, X, I, S, R, E, B>>
+    fa: HKT.Kind<F, C, N, K, Q, W, X, I, S, R, E, A>
+  ) => HKT.G_<HKT.Kind<F, C, N, K, Q, W, X, I, S, R, E, B>>
 ) => ForeachWithIndex<F, C>
 export function implementForeachWithIndexF() {
   return (i: any) => i()

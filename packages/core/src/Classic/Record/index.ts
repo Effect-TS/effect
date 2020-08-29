@@ -9,24 +9,26 @@ import * as A from "../Array"
 
 export { RecordURI } from "../../Modules"
 
-export const Covariant = P.instance<P.Covariant<[RecordURI]>>({
+export type V = P.V<"N", "_">
+
+export const Covariant = P.instance<P.Covariant<[RecordURI], V>>({
   map: R.map
 })
 
-export const CovariantWithIndex = P.instance<P.CovariantWithIndex<[RecordURI]>>({
+export const CovariantWithIndex = P.instance<P.CovariantWithIndex<[RecordURI], V>>({
   mapWithIndex: R.mapWithIndex
 })
 
-export const foreachF = P.implementForeachF<[RecordURI]>()((_) => (G) => (f) =>
+export const foreachF = P.implementForeachF<[RecordURI], V>()((_) => (G) => (f) =>
   foreachWithIndexF(G)((_, a) => f(a))
 )
 
-export const Traversable = P.instance<P.Traversable<[RecordURI]>>({
+export const Traversable = P.instance<P.Traversable<[RecordURI], V>>({
   map: R.map,
   foreachF
 })
 
-export const foreachWithIndexF = P.implementForeachWithIndexF<[RecordURI]>()(
+export const foreachWithIndexF = P.implementForeachWithIndexF<[RecordURI], V>()(
   (_) => (G) => (f) =>
     flow(
       R.collect(tuple),
@@ -39,48 +41,48 @@ export const foreachWithIndexF = P.implementForeachWithIndexF<[RecordURI]>()(
     )
 )
 
-export const TraversableWithIndex = P.instance<P.TraversableWithIndex<[RecordURI]>>({
+export const TraversableWithIndex = P.instance<P.TraversableWithIndex<[RecordURI], V>>({
   map: R.map,
   foreachWithIndexF
 })
 
-export const Reduce = P.instance<P.Reduce<[RecordURI]>>({
+export const Reduce = P.instance<P.Reduce<[RecordURI], V>>({
   reduce: R.reduce
 })
 
-export const ReduceRight = P.instance<P.ReduceRight<[RecordURI]>>({
+export const ReduceRight = P.instance<P.ReduceRight<[RecordURI], V>>({
   reduceRight: R.reduceRight
 })
 
-export const ReduceWithIndex = P.instance<P.ReduceWithIndex<[RecordURI]>>({
+export const ReduceWithIndex = P.instance<P.ReduceWithIndex<[RecordURI], V>>({
   reduceWithIndex: R.reduceWithIndex
 })
 
-export const ReduceRightWithIndex = P.instance<P.ReduceRightWithIndex<[RecordURI]>>({
+export const ReduceRightWithIndex = P.instance<P.ReduceRightWithIndex<[RecordURI], V>>({
   reduceRightWithIndex: R.reduceRightWithIndex
 })
 
-export const foldMap: P.FoldMapFn<[RecordURI]> = (I) => (f) =>
+export const foldMap: P.FoldMapFn<[RecordURI], V> = (I) => (f) =>
   foldMapWithIndex(I)((_, a) => f(a))
 
-export const FoldMap = P.instance<P.FoldMap<[RecordURI]>>({
+export const FoldMap = P.instance<P.FoldMap<[RecordURI], V>>({
   foldMap
 })
 
-export const foldMapWithIndex: P.FoldMapWithIndexFn<[RecordURI]> = (I) => (f) =>
+export const foldMapWithIndex: P.FoldMapWithIndexFn<[RecordURI], V> = (I) => (f) =>
   R.reduceWithIndex(I.identity, (k, b, a) => I.combine(f(k, a))(b))
 
-export const FoldMapWithIndex = P.instance<P.FoldMapWithIndex<[RecordURI]>>({
+export const FoldMapWithIndex = P.instance<P.FoldMapWithIndex<[RecordURI], V>>({
   foldMapWithIndex
 })
 
-export const Foldable: P.Foldable<[RecordURI]> = {
+export const Foldable: P.Foldable<[RecordURI], V> = {
   ...FoldMap,
   ...Reduce,
   ...ReduceRight
 }
 
-export const FoldableWithIndex: P.FoldableWithIndex<[RecordURI]> = {
+export const FoldableWithIndex: P.FoldableWithIndex<[RecordURI], V> = {
   ...FoldMapWithIndex,
   ...ReduceWithIndex,
   ...ReduceRightWithIndex
@@ -91,15 +93,15 @@ export const toRecord = <K extends string, V>(
 ): R.Record<K, V> =>
   A.reduce_(_, {} as R.Record<K, V>, (b, [k, v]) => Object.assign(b, { [k]: v }))
 
-export const separateF = P.implementSeparateF<[RecordURI]>()(() => (G) => (f) =>
+export const separateF = P.implementSeparateF<[RecordURI], V>()(() => (G) => (f) =>
   separateWithIndexF(G)((_, a) => f(a))
 )
 
-export const Wiltable = P.instance<P.Wiltable<[RecordURI]>>({
+export const Wiltable = P.instance<P.Wiltable<[RecordURI], V>>({
   separateF
 })
 
-export const separateWithIndexF = P.implementSeparateWithIndexF<[RecordURI]>()(
+export const separateWithIndexF = P.implementSeparateWithIndexF<[RecordURI], V>()(
   () => (G) => (f) =>
     flow(
       R.collect(tuple),
@@ -118,19 +120,19 @@ export const separateWithIndexF = P.implementSeparateWithIndexF<[RecordURI]>()(
     )
 )
 
-export const WiltableWithIndex = P.instance<P.WiltableWithIndex<[RecordURI]>>({
+export const WiltableWithIndex = P.instance<P.WiltableWithIndex<[RecordURI], V>>({
   separateWithIndexF
 })
 
-export const compactF = P.implementCompactF<[RecordURI]>()(() => (G) => (f) =>
+export const compactF = P.implementCompactF<[RecordURI], V>()(() => (G) => (f) =>
   compactWithIndexF(G)((_, a) => f(a))
 )
 
-export const Witherable = P.instance<P.Witherable<[RecordURI]>>({
+export const Witherable = P.instance<P.Witherable<[RecordURI], V>>({
   compactF
 })
 
-export const compactWithIndexF = P.implementCompactWithIndexF<[RecordURI]>()(
+export const compactWithIndexF = P.implementCompactWithIndexF<[RecordURI], V>()(
   () => (G) => (f) =>
     flow(
       R.collect(tuple),
@@ -139,19 +141,19 @@ export const compactWithIndexF = P.implementCompactWithIndexF<[RecordURI]>()(
     )
 )
 
-export const WitherableWithIndex = P.instance<P.WitherableWithIndex<[RecordURI]>>({
+export const WitherableWithIndex = P.instance<P.WitherableWithIndex<[RecordURI], V>>({
   compactWithIndexF
 })
 
-export const Compact = P.instance<P.Compact<[RecordURI]>>({
+export const Compact = P.instance<P.Compact<[RecordURI], V>>({
   compact: R.compact
 })
 
-export const Separate = P.instance<P.Separate<[RecordURI]>>({
+export const Separate = P.instance<P.Separate<[RecordURI], V>>({
   separate: R.separate
 })
 
-export const Compactable: P.Compactable<[RecordURI]> = {
+export const Compactable: P.Compactable<[RecordURI], V> = {
   ...Separate,
   ...Compact
 }
