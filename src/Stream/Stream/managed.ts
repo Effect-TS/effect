@@ -4,8 +4,8 @@ import { pipe } from "../../Function"
 import type { ReleaseMap } from "../../Managed"
 import { makeManagedReleaseMap } from "../../Managed"
 import { coerceSE } from "../../Managed/deps"
-import * as O from "../../Option"
-import * as R from "../../Ref"
+import * as Option from "../../Option"
+import * as Ref from "../../Ref"
 import * as Pull from "../Pull"
 import { Stream } from "./definitions"
 
@@ -16,7 +16,7 @@ export const managed = <S, R, E, A>(self: M.Managed<S, R, E, A>): Stream<S, R, E
   new Stream(
     pipe(
       M.of,
-      M.bind("doneRef", () => R.makeManagedRef(false)),
+      M.bind("doneRef", () => Ref.makeManagedRef(false)),
       M.bind("finalizer", () => makeManagedReleaseMap(T.sequential)),
       M.let("pull", ({ doneRef, finalizer }) =>
         T.uninterruptibleMask(({ restore }) =>
@@ -39,7 +39,7 @@ export const managed = <S, R, E, A>(self: M.Managed<S, R, E, A>): Stream<S, R, E
                     ),
                     T.tap(() => doneRef.set(true)),
                     T.map(({ a }) => [a]),
-                    T.mapError(O.some)
+                    T.mapError(Option.some)
                   )
             )
           )

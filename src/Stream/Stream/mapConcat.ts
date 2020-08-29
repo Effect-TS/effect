@@ -1,4 +1,4 @@
-import * as A from "../../Array"
+import * as Array_ from "../../Array"
 import { pipe } from "../../Function"
 import type { Stream } from "./definitions"
 import { mapChunks } from "./mapChunks"
@@ -12,5 +12,5 @@ export const mapConcat = <O, O2>(f: (_: O) => Iterable<O2>) => <S, R, E>(
 ): Stream<S, R, E, O2> =>
   pipe(
     self,
-    mapChunks((o) => A.chain_(o, (o) => Array.from(f(o))))
+    mapChunks((o) => Array_.chain_(o, (o) => Array.from(f(o))))
   )

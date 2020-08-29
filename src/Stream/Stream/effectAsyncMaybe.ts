@@ -1,10 +1,10 @@
 import * as T from "../_internal/effect"
 import * as M from "../_internal/managed"
-import * as A from "../../Array"
+import type * as Array from "../../Array"
 import { pipe } from "../../Function"
-import * as O from "../../Option"
+import * as Option from "../../Option"
 import { makeBounded } from "../../Queue"
-import * as R from "../../Ref"
+import * as Ref from "../../Ref"
 import * as Pull from "../Pull"
 import * as Take from "../Take"
 import { Stream } from "./definitions"
@@ -17,8 +17,10 @@ import { Stream } from "./definitions"
  */
 export const effectAsyncMaybe = <R, E, A>(
   register: (
-    cb: (next: T.Effect<unknown, R, O.Option<E>, A.Array<A>>) => Promise<boolean>
-  ) => O.Option<Stream<unknown, R, E, A>>,
+    cb: (
+      next: T.Effect<unknown, R, Option.Option<E>, Array.Array<A>>
+    ) => Promise<boolean>
+  ) => Option.Option<Stream<unknown, R, E, A>>,
   outputBuffer = 16
 ): Stream<unknown, R, E, A> =>
   new Stream(
@@ -36,12 +38,12 @@ export const effectAsyncMaybe = <R, E, A>(
         )
       ),
       M.bind("pull", ({ maybeStream, output }) =>
-        O.fold_(
+        Option.fold_(
           maybeStream,
           () =>
             pipe(
               M.of,
-              M.bind("done", () => R.makeManagedRef(false)),
+              M.bind("done", () => Ref.makeManagedRef(false)),
               M.map(({ done }) =>
                 pipe(
                   done.get,

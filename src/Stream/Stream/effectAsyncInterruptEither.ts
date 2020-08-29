@@ -1,11 +1,11 @@
 import * as T from "../_internal/effect"
 import * as M from "../_internal/managed"
-import * as A from "../../Array"
-import * as E from "../../Either"
+import type * as Array from "../../Array"
+import * as Either from "../../Either"
 import { pipe } from "../../Function"
-import type * as O from "../../Option"
+import type * as Option from "../../Option"
 import { makeBounded } from "../../Queue"
-import * as R from "../../Ref"
+import * as Ref from "../../Ref"
 import * as Pull from "../Pull"
 import * as Take from "../Take"
 import { Stream } from "./definitions"
@@ -18,8 +18,10 @@ import { Stream } from "./definitions"
  */
 export const effectAsyncInterruptEither = <R, E, A>(
   register: (
-    cb: (next: T.Effect<unknown, R, O.Option<E>, A.Array<A>>) => Promise<boolean>
-  ) => E.Either<T.Canceler<R>, Stream<unknown, R, E, A>>,
+    cb: (
+      next: T.Effect<unknown, R, Option.Option<E>, Array.Array<A>>
+    ) => Promise<boolean>
+  ) => Either.Either<T.Canceler<R>, Stream<unknown, R, E, A>>,
   outputBuffer = 16
 ): Stream<unknown, R, E, A> =>
   new Stream(
@@ -37,12 +39,12 @@ export const effectAsyncInterruptEither = <R, E, A>(
         )
       ),
       M.bind("pull", ({ eitherStream, output }) =>
-        E.fold_(
+        Either.fold_(
           eitherStream,
           (canceler) =>
             pipe(
               M.of,
-              M.bind("done", () => R.makeManagedRef(false)),
+              M.bind("done", () => Ref.makeManagedRef(false)),
               M.map(({ done }) =>
                 pipe(
                   done.get,

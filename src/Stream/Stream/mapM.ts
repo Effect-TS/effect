@@ -1,7 +1,7 @@
 import * as T from "../_internal/effect"
 import * as M from "../_internal/managed"
 import { pipe } from "../../Function"
-import * as O from "../../Option"
+import * as Option from "../../Option"
 import * as BPull from "../BufferedPull"
 import { Stream } from "./definitions"
 
@@ -26,7 +26,7 @@ export const mapM = <O, S1, R1, E1, O1>(f: (o: O) => T.Effect<S1, R1, E1, O1>) =
           T.chain((o) =>
             pipe(
               f(o),
-              T.bimap(O.some, (o1) => [o1] as [O1])
+              T.bimap(Option.some, (o1) => [o1] as [O1])
             )
           )
         )
