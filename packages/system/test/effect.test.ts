@@ -53,6 +53,7 @@ describe("Effect", () => {
     expect(result).toEqual(Exit.succeed({ a: 1, b: 1, c: 2, d: 2 }))
     expect(m).toHaveBeenNthCalledWith(1, 0)
     expect(m).toHaveBeenNthCalledWith(2, 1)
+    expect(m).toHaveBeenCalledTimes(2)
   })
   it("raceAll - wait", async () => {
     const a = jest.fn()
