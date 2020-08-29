@@ -1,6 +1,6 @@
-import type { IdentityBoth } from "../Combined"
 import type { Covariant } from "../Covariant"
 import type * as HKT from "../HKT"
+import type { IdentityBoth } from "../IdentityBoth"
 
 export interface ForeachWithIndex<F extends HKT.URIS, C = HKT.Auto> {
   <G extends HKT.URIS, GC = HKT.Auto>(G: IdentityBoth<G, GC> & Covariant<G, GC>): <
