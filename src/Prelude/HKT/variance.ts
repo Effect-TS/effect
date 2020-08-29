@@ -64,7 +64,4 @@ export type Initial<C, P extends Param> = C extends V<P, "-">
   ? never
   : any
 
-export type Strip<C, P extends Param> = Erase<
-  Erase<Erase<C, V<P, "+">>, V<P, "-">>,
-  V<P, "_">
->
+export type Strip<C, P extends Param> = Erase<C, V<P, "_"> & V<P, "-"> & V<P, "+">>
