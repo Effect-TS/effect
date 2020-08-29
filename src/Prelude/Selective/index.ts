@@ -1,6 +1,6 @@
 import * as E from "@effect-ts/system/Either"
 
-import { flow, identity, pipe } from "../../Function"
+import { constant, flow, identity, pipe } from "../../Function"
 import * as HKT from "../../Prelude/HKT"
 import type { Applicative } from "../Applicative"
 import { chainF, succeedF } from "../DSL"
@@ -151,4 +151,61 @@ export function branchF<F>(F: Selective<HKT.UHKT<F>>) {
       ),
       F.select(rhs)
     )
+}
+
+export function ifF<F extends HKT.URIS, C = HKT.Auto>(
+  F: Selective<F, C>
+): <
+  N2 extends string,
+  K2,
+  SO,
+  SO2,
+  X2,
+  I2,
+  S2,
+  R2,
+  E2,
+  A,
+  N3 extends string,
+  K3,
+  SO3,
+  X3,
+  I3,
+  S3,
+  R3,
+  E3,
+  B
+>(
+  then_: HKT.Kind<F, C, N2, K2, SO, SO2, X2, I2, S2, R2, E2, A>,
+  else_: HKT.Kind<F, C, N3, K3, SO, SO3, X3, I3, S3, R3, E3, B>
+) => <N extends string, K, SI, SO, X, I, S, R, E>(
+  if_: HKT.Kind<F, C, N, K, SI, SO, X, I, S, R, E, boolean>
+) => HKT.Kind<
+  F,
+  C,
+  N | N2 | N3,
+  K | K2 | K3,
+  SI,
+  SO2 | SO3,
+  HKT.Mix<C, "X", [X, X2, X3]>,
+  HKT.Mix<C, "I", [I, I2, I3]>,
+  HKT.Mix<C, "S", [S, S2, S3]>,
+  HKT.Mix<C, "R", [R, R2, R3]>,
+  HKT.Mix<C, "X", [E, E2, E3]>,
+  A | B
+>
+export function ifF(F: Selective<[HKT.UF_]>) {
+  return <A, B>(
+    then_: HKT.F_<A>,
+    else_: HKT.F_<B>
+  ): ((if_: HKT.F_<boolean>) => HKT.F_<A | B>) =>
+    flow(
+      F.map((x) => (x ? E.left(undefined) : E.right(undefined))),
+      branchF(F)(pipe(then_, F.map(constant)), pipe(else_, F.map(constant)))
+    )
+}
+
+export function whenF(F: Selective<[HKT.UF_]>) {
+  return (act: HKT.F_<void>): ((if_: HKT.F_<boolean>) => HKT.F_<void>) =>
+    ifF(F)(act, succeedF(F)(undefined))
 }
