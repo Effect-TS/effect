@@ -8,6 +8,7 @@ import type { Commutative } from "../Classic/Commutative"
 import type { Either } from "../Classic/Either"
 import type { Equal } from "../Classic/Equal"
 import type { Identity } from "../Classic/Identity"
+import type { Inverse } from "../Classic/Inverse"
 import type { Ord } from "../Classic/Ord"
 import type { Reader } from "../Classic/Reader"
 import type { Record } from "../Classic/Record"
@@ -39,6 +40,9 @@ export type EqualURI = typeof EqualURI
 
 export const IdentityURI = "Identity"
 export type IdentityURI = typeof IdentityURI
+
+export const InverseURI = "Inverse"
+export type InverseURI = typeof InverseURI
 
 export const IterableURI = "IterableURI"
 export type IterableURI = typeof IterableURI
@@ -82,6 +86,7 @@ declare module "../Prelude/HKT" {
     [EitherURI]: Either<E, A>
     [EqualURI]: Equal<A>
     [IdentityURI]: Identity<A>
+    [InverseURI]: Inverse<A>
     [IterableURI]: Iterable<A>
     [OrdURI]: Ord<A>
     [RecordURI]: Record<N, A>
