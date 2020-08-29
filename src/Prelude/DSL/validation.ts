@@ -3,10 +3,11 @@ import { pipe, tuple } from "@effect-ts/system/Function"
 import type { Erase } from "@effect-ts/system/Utils"
 
 import type { Associative } from "../../Classic/Associative"
-import type { Applicative, Monad } from "../Combined"
+import type { Applicative } from "../Applicative"
 import type { Fail } from "../FX/Fail"
 import type { Run } from "../FX/Run"
 import * as HKT from "../HKT"
+import type { Monad } from "../Monad"
 import { succeedF } from "./dsl"
 
 export function getValidationF<F extends HKT.URIS, C = HKT.Auto>(

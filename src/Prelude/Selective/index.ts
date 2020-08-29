@@ -2,8 +2,9 @@ import * as E from "@effect-ts/system/Either"
 
 import { flow, identity, pipe } from "../../Function"
 import * as HKT from "../../Prelude/HKT"
-import type { Applicative, Monad } from "../Combined"
+import type { Applicative } from "../Applicative"
 import { chainF, succeedF } from "../DSL"
+import type { Monad } from "../Monad"
 
 export interface Select<F extends HKT.URIS, C = HKT.Auto> extends HKT.Base<F, C> {
   readonly select: <N2 extends string, K2, Q2, W2, X2, I2, S2, R2, E2, A, B>(

@@ -5,11 +5,12 @@ import { HasURI } from "../../Classic/Has"
 import { constant, flow, pipe, tuple } from "../../Function"
 import type { EnforceNonEmptyRecord } from "../../Utils"
 import type { Any } from "../Any"
+import type { Applicative } from "../Applicative"
 import type { AssociativeFlatten } from "../AssociativeFlatten"
-import type { Applicative, Monad } from "../Combined"
 import type { Covariant } from "../Covariant"
 import type { Access, Provide } from "../FX"
 import type * as HKT from "../HKT"
+import type { Monad } from "../Monad"
 
 export function succeedF<F extends HKT.URIS, C = HKT.Auto>(
   F: Any<F, C> & Covariant<F, C>
