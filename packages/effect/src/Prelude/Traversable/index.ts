@@ -1,8 +1,8 @@
 import { flow } from "../../Function"
-import type { IdentityBoth } from "../Combined"
 import type { Covariant, CovariantComposition } from "../Covariant"
 import { getCovariantComposition } from "../Covariant"
 import type * as HKT from "../HKT"
+import type { IdentityBoth } from "../IdentityBoth"
 
 export interface Foreach<F extends HKT.URIS, C = HKT.Auto> {
   <G extends HKT.URIS, GC = HKT.Auto>(G: IdentityBoth<G, GC> & Covariant<G, GC>): <

@@ -1,6 +1,6 @@
 import type { Option } from "@effect-ts/system/Option"
 
-import type { Applicative } from "../Combined"
+import type { Applicative } from "../Applicative"
 import type * as HKT from "../HKT"
 
 export interface WitherWithIndex<F extends HKT.URIS, C = HKT.Auto> {

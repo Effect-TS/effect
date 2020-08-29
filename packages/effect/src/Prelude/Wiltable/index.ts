@@ -1,7 +1,7 @@
 import type { Either } from "@effect-ts/system/Either"
 import type { Separated } from "@effect-ts/system/Utils"
 
-import type { Applicative } from "../Combined"
+import type { Applicative } from "../Applicative"
 import type * as HKT from "../HKT"
 
 export interface Wilt<F extends HKT.URIS, C = HKT.Auto> {
