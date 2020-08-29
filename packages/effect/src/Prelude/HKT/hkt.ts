@@ -90,10 +90,10 @@ export interface URItoKind<
   N extends string,
   // encodes generic keys
   K,
-  // encodes state inpue
-  SI,
-  // encodes state output
-  SO,
+  // encodes free logic
+  Q,
+  // encodes free logic
+  W,
   // encodes free logic (sync/async in FX)
   X,
   // encodes free logic (input in FX)

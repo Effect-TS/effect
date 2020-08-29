@@ -1,15 +1,9 @@
 import type * as HKT from "../../HKT"
 
 export interface Provide<F extends HKT.URIS, C = HKT.Auto> extends HKT.Base<F, C> {
-  readonly provide: <
-    X = HKT.Initial<C, "X">,
-    I = HKT.Initial<C, "I">,
-    S = HKT.Initial<C, "S">,
-    R = HKT.Initial<C, "R">,
-    E = HKT.Initial<C, "E">
-  >(
+  readonly provide: <R>(
     r: R
-  ) => <N extends string, K, SI, SO, A>(
-    fa: HKT.Kind<F, C, N, K, SI, SO, X, I, S, R, E, A>
-  ) => HKT.Kind<F, C, N, K, SI, SO, X, I, S, unknown, E, A>
+  ) => <N extends string, K, Q, W, X, I, S, E, A>(
+    fa: HKT.Kind<F, C, N, K, Q, W, X, I, S, R, E, A>
+  ) => HKT.Kind<F, C, N, K, Q, W, X, I, S, unknown, E, A>
 }
