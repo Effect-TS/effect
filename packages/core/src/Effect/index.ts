@@ -56,30 +56,30 @@ export const Covariant = P.instance<P.Covariant<[EffectURI], V>>({
   map: T.map
 })
 
-export const IdentityEither: P.IdentityEither<[EffectURI], V> = {
+export const IdentityEither = P.instance<P.IdentityEither<[EffectURI], V>>({
   ...AssociativeEither,
   ...None
-}
+})
 
-export const IdentityFlatten: P.IdentityFlatten<[EffectURI], V> = {
+export const IdentityFlatten = P.instance<P.IdentityFlatten<[EffectURI], V>>({
   ...Any,
   ...AssociativeFlatten
-}
+})
 
-export const IdentityBoth: P.IdentityBoth<[EffectURI], V> = {
+export const IdentityBoth = P.instance<P.IdentityBoth<[EffectURI], V>>({
   ...Any,
   ...AssociativeBoth
-}
+})
 
-export const Monad: P.Monad<[EffectURI], V> = {
+export const Monad = P.instance<P.Monad<[EffectURI], V>>({
   ...IdentityFlatten,
   ...Covariant
-}
+})
 
-export const Applicative: P.Applicative<[EffectURI], V> = {
+export const Applicative = P.instance<P.Applicative<[EffectURI], V>>({
   ...Covariant,
   ...IdentityBoth
-}
+})
 
 export const Fail = P.instance<P.FX.Fail<[EffectURI], V>>({
   fail: T.fail
