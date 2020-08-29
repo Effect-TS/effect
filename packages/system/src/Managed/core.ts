@@ -270,6 +270,24 @@ export const fromEffect = <S, R, E, A>(effect: T.Effect<S, R, E, A>) =>
   )
 
 /**
+ * Lifts a `Effect<S, R, E, A>` into `Managed<S, R, E, A>` with a release action.
+ * The acquire and release actions will be performed uninterruptibly.
+ */
+export const make = <S1, R1, A>(
+  release: (a: A) => T.Effect<S1, R1, never, unknown>
+): (<S, R, E>(acquire: T.Effect<S, R, E, A>) => Managed<S | S1, R & R1, E, A>) =>
+  makeExit((a) => release(a))
+
+/**
+ * Lifts a `Effect<S, R, E, A>` into `Managed<S, R, E, A>` with a release action.
+ * The acquire and release actions will be performed uninterruptibly.
+ */
+export const make_ = <S, R, E, A, S1, R1>(
+  acquire: T.Effect<S, R, E, A>,
+  release: (a: A) => T.Effect<S1, R1, never, unknown>
+): Managed<S | S1, R & R1, E, A> => makeExit_(acquire, (a) => release(a))
+
+/**
  * Lifts a `Effect<S, R, E, A>` into `Managed<S, R, E, A>` with a release action
  * that handles `Exit`. The acquire and release actions will be performed uninterruptibly.
  */
