@@ -1,6 +1,7 @@
 // codegen:start {preset: barrel, include: ./*.ts}
 export * from "./absolve"
 export * from "./aggregate"
+export * from "./apply"
 export * from "./catchAllCause"
 export * from "./chain"
 export * from "./combineChunks"
