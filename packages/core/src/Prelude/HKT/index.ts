@@ -1,6 +1,3 @@
-export * from "./base"
-export * from "./custom"
-export * from "./fix"
 export {
   ConcreteURIS,
   F_,
@@ -24,8 +21,14 @@ export {
   URItoIndex,
   URItoKind
 } from "./hkt"
+
+// codegen:start { preset: barrel, include: ./*.ts, exclude: ./hkt.ts }
+export * from "./base"
+export * from "./custom"
+export * from "./fix"
 export * from "./infer"
 export * from "./instance"
 export * from "./kind"
 export * from "./or-never"
 export * from "./variance"
+// codegen:end
