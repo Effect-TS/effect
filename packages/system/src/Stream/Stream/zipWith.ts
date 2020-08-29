@@ -1,12 +1,12 @@
 import * as T from "../_internal/effect"
 import { zipChunks_ } from "../_internal/utils"
-import * as A from "../../Array"
+import * as Array from "../../Array"
 import * as C from "../../Cause/core"
-import * as E from "../../Either"
+import * as Either from "../../Either"
 import * as Exit from "../../Exit/api"
 import { pipe, tuple } from "../../Function"
 import type * as NA from "../../NonEmptyArray"
-import * as O from "../../Option"
+import * as Option from "../../Option"
 import { combineChunks } from "./combineChunks"
 import type { Stream } from "./definitions"
 
@@ -36,66 +36,69 @@ export function zipWith<O, O2, O3, S1, R1, E1>(
   type End = { _tag: "End" }
   type RightDone<W2> = { _tag: "RightDone"; excessR: NA.NonEmptyArray<W2> }
   type LeftDone<W1> = { _tag: "LeftDone"; excessL: NA.NonEmptyArray<W1> }
-  type Running<W1, W2> = { _tag: "Running"; excess: E.Either<A.Array<W1>, A.Array<W2>> }
+  type Running<W1, W2> = {
+    _tag: "Running"
+    excess: Either.Either<Array.Array<W1>, Array.Array<W2>>
+  }
   type State<W1, W2> = End | Running<W1, W2> | LeftDone<W1> | RightDone<W2>
 
   const handleSuccess = (
-    leftUpd: O.Option<A.Array<O>>,
-    rightUpd: O.Option<A.Array<O2>>,
-    excess: E.Either<A.Array<O>, A.Array<O2>>
-  ): Exit.Exit<O.Option<never>, readonly [A.Array<O3>, State<O, O2>]> => {
+    leftUpd: Option.Option<Array.Array<O>>,
+    rightUpd: Option.Option<Array.Array<O2>>,
+    excess: Either.Either<Array.Array<O>, Array.Array<O2>>
+  ): Exit.Exit<Option.Option<never>, readonly [Array.Array<O3>, State<O, O2>]> => {
     const [leftExcess, rightExcess] = pipe(
       excess,
-      E.fold(
-        (l) => tuple<[A.Array<O>, A.Array<O2>]>(l, []),
-        (r) => tuple<[A.Array<O>, A.Array<O2>]>([], r)
+      Either.fold(
+        (l) => tuple<[Array.Array<O>, Array.Array<O2>]>(l, []),
+        (r) => tuple<[Array.Array<O>, Array.Array<O2>]>([], r)
       )
     )
 
     const [left, right] = [
       pipe(
         leftUpd,
-        O.fold(
+        Option.fold(
           () => leftExcess,
-          (upd) => [...leftExcess, ...upd] as A.Array<O>
+          (upd) => [...leftExcess, ...upd] as Array.Array<O>
         )
       ),
       pipe(
         rightUpd,
-        O.fold(
+        Option.fold(
           () => rightExcess,
-          (upd) => [...rightExcess, ...upd] as A.Array<O2>
+          (upd) => [...rightExcess, ...upd] as Array.Array<O2>
         )
       )
     ]
 
     const [emit, newExcess] = zipChunks_(left, right, f)
 
-    if (O.isSome(leftUpd) && O.isSome(rightUpd)) {
+    if (Option.isSome(leftUpd) && Option.isSome(rightUpd)) {
       return Exit.succeed(
-        tuple<[A.Array<O3>, State<O, O2>]>(emit, {
+        tuple<[Array.Array<O3>, State<O, O2>]>(emit, {
           _tag: "Running",
           excess: newExcess
         })
       )
-    } else if (O.isNone(leftUpd) && O.isNone(rightUpd)) {
-      return Exit.fail(O.none)
+    } else if (Option.isNone(leftUpd) && Option.isNone(rightUpd)) {
+      return Exit.fail(Option.none)
     } else {
       return Exit.succeed(
         tuple(
           emit,
           pipe(
             newExcess,
-            E.fold(
+            Either.fold(
               (l): State<O, O2> =>
-                A.isNonEmpty(l)
+                Array.isNonEmpty(l)
                   ? {
                       _tag: "LeftDone",
                       excessL: l
                     }
                   : { _tag: "End" },
               (r): State<O, O2> =>
-                A.isNonEmpty(r)
+                Array.isNonEmpty(r)
                   ? {
                       _tag: "RightDone",
                       excessR: r
@@ -110,11 +113,11 @@ export function zipWith<O, O2, O3, S1, R1, E1>(
 
   return combineChunks(that)<State<O, O2>>({
     _tag: "Running",
-    excess: E.left([])
+    excess: Either.left([])
   })((st, p1, p2) => {
     switch (st._tag) {
       case "End": {
-        return T.succeedNow(Exit.fail(O.none))
+        return T.succeedNow(Exit.fail(Option.none))
       }
       case "Running": {
         return pipe(
@@ -123,23 +126,23 @@ export function zipWith<O, O2, O3, S1, R1, E1>(
           ps === "par"
             ? T.zipWithPar(T.optional(p2), (l, r) => handleSuccess(l, r, st.excess))
             : T.zipWith(T.optional(p2), (l, r) => handleSuccess(l, r, st.excess)),
-          T.catchAllCause((e) => T.succeedNow(Exit.halt(pipe(e, C.map(O.some)))))
+          T.catchAllCause((e) => T.succeedNow(Exit.halt(pipe(e, C.map(Option.some)))))
         )
       }
       case "LeftDone": {
         return pipe(
           p2,
           T.optional,
-          T.map((r) => handleSuccess(O.none, r, E.left(st.excessL))),
-          T.catchAllCause((e) => T.succeedNow(Exit.halt(pipe(e, C.map(O.some)))))
+          T.map((r) => handleSuccess(Option.none, r, Either.left(st.excessL))),
+          T.catchAllCause((e) => T.succeedNow(Exit.halt(pipe(e, C.map(Option.some)))))
         )
       }
       case "RightDone": {
         return pipe(
           p1,
           T.optional,
-          T.map((l) => handleSuccess(l, O.none, E.right(st.excessR))),
-          T.catchAllCause((e) => T.succeedNow(Exit.halt(pipe(e, C.map(O.some)))))
+          T.map((l) => handleSuccess(l, Option.none, Either.right(st.excessR))),
+          T.catchAllCause((e) => T.succeedNow(Exit.halt(pipe(e, C.map(Option.some)))))
         )
       }
     }

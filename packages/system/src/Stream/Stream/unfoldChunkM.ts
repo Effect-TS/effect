@@ -1,9 +1,9 @@
 import * as T from "../_internal/effect"
 import * as M from "../_internal/managed"
-import * as A from "../../Array"
+import type * as Array from "../../Array"
 import { pipe } from "../../Function"
-import * as O from "../../Option"
-import * as R from "../../Ref"
+import * as Option from "../../Option"
+import * as Ref from "../../Ref"
 import * as Pull from "../Pull"
 import { Stream } from "./definitions"
 
@@ -11,13 +11,13 @@ import { Stream } from "./definitions"
  * Creates a stream by effectfully peeling off the "layers" of a value of type `S`
  */
 export const unfoldChunkM = <Z>(z: Z) => <S, R, E, A>(
-  f: (z: Z) => T.Effect<S, R, E, O.Option<readonly [A.Array<A>, Z]>>
+  f: (z: Z) => T.Effect<S, R, E, Option.Option<readonly [Array.Array<A>, Z]>>
 ): Stream<S, R, E, A> =>
   new Stream(
     pipe(
       M.of,
-      M.bind("done", () => R.makeManagedRef(false)),
-      M.bind("ref", () => R.makeManagedRef(z)),
+      M.bind("done", () => Ref.makeManagedRef(false)),
+      M.bind("ref", () => Ref.makeManagedRef(z)),
       M.let("pull", ({ done, ref }) =>
         pipe(
           done.get,
@@ -29,7 +29,7 @@ export const unfoldChunkM = <Z>(z: Z) => <S, R, E, A>(
                   T.chain(f),
                   T.foldM(
                     Pull.fail,
-                    O.fold(
+                    Option.fold(
                       () =>
                         pipe(
                           done.set(true),
