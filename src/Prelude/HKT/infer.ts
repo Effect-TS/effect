@@ -1,49 +1,43 @@
+import type { Param } from "./fix"
 import type { ConcreteKind, URIS } from "./kind"
 
-export type InferA<F extends URIS, K> = [K] extends [
-  ConcreteKind<F, any, any, any, any, any, any, any, any, any, any, infer X>
+export type Infer<F extends URIS, P extends Param | "A" | "C", K> = [K] extends [
+  ConcreteKind<
+    F,
+    infer C,
+    infer N,
+    infer K,
+    infer Q,
+    infer W,
+    infer X,
+    infer I,
+    infer S,
+    infer R,
+    infer E,
+    infer A
+  >
 ]
-  ? X
-  : never
-
-export type InferE<F extends URIS, K> = [K] extends [
-  ConcreteKind<F, any, any, any, any, any, any, any, any, any, infer X, any>
-]
-  ? X
-  : never
-
-export type InferR<F extends URIS, K> = [K] extends [
-  ConcreteKind<F, any, any, any, any, any, any, any, any, infer X, any, any>
-]
-  ? X
-  : never
-
-export type InferS<F extends URIS, K> = [K] extends [
-  ConcreteKind<F, any, any, any, any, any, any, any, infer X, any, any, any>
-]
-  ? X
-  : never
-
-export type InferI<F extends URIS, K> = [K] extends [
-  ConcreteKind<F, any, any, any, any, any, any, infer X, any, any, any, any>
-]
-  ? X
-  : never
-
-export type InferX<F extends URIS, K> = [K] extends [
-  ConcreteKind<F, any, any, any, any, any, infer X, any, any, any, any, any>
-]
-  ? X
-  : never
-
-export type InferN<F extends URIS, K> = [K] extends [
-  ConcreteKind<F, any, infer X, any, any, any, any, any, any, any, any, any>
-]
-  ? X
-  : never
-
-export type InferK<F extends URIS, K> = [K] extends [
-  ConcreteKind<F, any, any, infer X, any, any, any, any, any, any, any, any>
-]
-  ? X
+  ? P extends "C"
+    ? C
+    : P extends "N"
+    ? N
+    : P extends "K"
+    ? K
+    : P extends "Q"
+    ? Q
+    : P extends "W"
+    ? W
+    : P extends "X"
+    ? X
+    : P extends "I"
+    ? I
+    : P extends "S"
+    ? S
+    : P extends "R"
+    ? R
+    : P extends "E"
+    ? E
+    : P extends "A"
+    ? A
+    : never
   : never

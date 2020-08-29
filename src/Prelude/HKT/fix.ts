@@ -2,7 +2,7 @@ import type { Erase } from "../../Utils"
 import type { Auto } from "./base"
 import type { Strip } from "./variance"
 
-export type Param = "N" | "K" | "I" | "X" | "S" | "R" | "E"
+export type Param = "N" | "K" | "Q" | "W" | "I" | "X" | "S" | "R" | "E"
 
 export interface Fix<P extends Param, F> {
   Fix: {

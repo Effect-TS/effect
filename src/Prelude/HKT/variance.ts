@@ -41,7 +41,9 @@ export type MixStruct<C, P extends Param, X, Y> = C extends V<P, "_">
   : C extends V<P, "+">
   ? Y[keyof Y]
   : C extends V<P, "-">
-  ? UnionToIntersection<{ [k in keyof Y]: OrNever<Y[k]> }[keyof Y]>
+  ? P extends "N"
+    ? string
+    : UnionToIntersection<{ [k in keyof Y]: OrNever<Y[k]> }[keyof Y]>
   : X
 
 // used in subsequent definitions to either vary a paramter or keep it fixed to "Fixed"
@@ -55,7 +57,9 @@ export type Intro<C, P extends Param, Fixed, Current> = C extends V<P, "_">
 
 // initial type depending on variance of P in C (eg: initial Contravariant R = unknown, initial Covariant E = never)
 export type Initial<C, P extends Param> = C extends V<P, "-">
-  ? unknown
+  ? P extends "N"
+    ? string
+    : unknown
   : C extends V<P, "+">
   ? never
   : any

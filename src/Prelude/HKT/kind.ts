@@ -24,8 +24,8 @@ export type ConcreteKind<
   C,
   N extends string,
   K,
-  SI,
-  SO,
+  Q,
+  W,
   X,
   I,
   S,
@@ -39,29 +39,29 @@ export type ConcreteKind<
         C,
         N,
         K,
-        SI,
-        SO,
+        Q,
+        W,
         X,
         I,
         S,
         R,
         E,
-        Rest extends URIS ? ConcreteKind<Rest, C, N, K, SI, SO, X, I, S, R, E, A> : A
+        Rest extends URIS ? ConcreteKind<Rest, C, N, K, Q, W, X, I, S, R, E, A> : A
       >[XURI]
     : XURI extends URI<infer U, infer FC>
     ? URItoKind<
         FC,
         C,
-        N,
-        K,
-        SI,
-        SO,
+        OrFix<"N", FC, N>,
+        OrFix<"K", FC, K>,
+        OrFix<"Q", FC, Q>,
+        OrFix<"W", FC, W>,
         OrFix<"X", FC, X>,
         OrFix<"I", FC, I>,
         OrFix<"S", FC, S>,
         OrFix<"R", FC, R>,
         OrFix<"E", FC, E>,
-        Rest extends URIS ? ConcreteKind<Rest, C, N, K, SI, SO, X, I, S, R, E, A> : A
+        Rest extends URIS ? ConcreteKind<Rest, C, N, K, Q, W, X, I, S, R, E, A> : A
       >[U]
     : never
   : never
@@ -71,8 +71,8 @@ export type Kind<
   C,
   N extends string,
   K,
-  SI,
-  SO,
+  Q,
+  W,
   X,
   I,
   S,
@@ -82,10 +82,10 @@ export type Kind<
 > = ConcreteKind<
   URI,
   C,
-  N,
-  K,
-  SI,
-  SO,
+  OrFix<"N", C, N>,
+  OrFix<"K", C, K>,
+  OrFix<"Q", C, Q>,
+  OrFix<"W", C, W>,
   OrFix<"X", C, X>,
   OrFix<"I", C, I>,
   OrFix<"S", C, S>,

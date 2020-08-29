@@ -23,7 +23,7 @@ type StoreValue = "StoreValue"
 type Params<K, V> = H.CustomType<StoreKey, K> & H.CustomType<StoreValue, V>
 
 declare module "../../src/Prelude/HKT" {
-  export interface URItoKind<FC, TC, N extends string, K, SI, SO, X, I, S, R, E, A> {
+  export interface URItoKind<FC, TC, N extends string, K, Q, W, X, I, S, R, E, A> {
     [URI]: Store<H.AccessCustom<TC, StoreKey>, H.AccessCustom<TC, StoreValue>, A>
   }
 }
