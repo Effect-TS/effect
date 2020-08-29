@@ -134,17 +134,12 @@ export function branchF<F extends HKT.URIS, C = HKT.Auto>(
   HKT.Mix<C, "X", [E, E2, E3]>,
   C | D
 >
-export function branchF(
-  F: Selective<[HKT.UF_]>
-): <A, C, B, D>(
-  lhs: HKT.F_<(a: A) => C>,
-  rhs: HKT.F_<(a: B) => D>
-) => (fe: HKT.F_<E.Either<A, B>>) => HKT.F_<C | D> {
-  return <A, C, B, D>(lhs: HKT.F_<(a: A) => C>, rhs: HKT.F_<(a: B) => D>) => (
-    fe: HKT.F_<E.Either<A, B>>
-  ) =>
-    pipe(
-      fe,
+export function branchF(F: Selective<[HKT.UF_]>) {
+  return <A, C, B, D>(
+    lhs: HKT.F_<(a: A) => C>,
+    rhs: HKT.F_<(a: B) => D>
+  ): ((fe: HKT.F_<E.Either<A, B>>) => HKT.F_<C | D>) =>
+    flow(
       F.map(E.map(E.left)),
       F.select(
         pipe(
