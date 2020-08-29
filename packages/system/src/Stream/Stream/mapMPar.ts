@@ -1,7 +1,7 @@
 import * as T from "../_internal/effect"
 import * as M from "../_internal/managed"
 import { pipe } from "../../Function"
-import * as O from "../../Option"
+import * as Option from "../../Option"
 import * as P from "../../Promise"
 import { makeBounded } from "../../Queue"
 import * as Semaphore from "../../Semaphore"
@@ -21,7 +21,7 @@ export const mapMPar = (n: number) => <O, S1, R1, E1, O1>(
     pipe(
       M.of,
       M.bind("out", () =>
-        T.toManaged()(makeBounded<T.Effect<unknown, R1, O.Option<E1 | E>, O1>>(n))
+        T.toManaged()(makeBounded<T.Effect<unknown, R1, Option.Option<E1 | E>, O1>>(n))
       ),
       M.bind("errorSignal", () => T.toManaged()(P.make<E1, never>())),
       M.bind("permits", () => T.toManaged()(Semaphore.makeSemaphore(n))),
@@ -33,7 +33,7 @@ export const mapMPar = (n: number) => <O, S1, R1, E1, O1>(
               T.of,
               T.bind("p", () => P.make<E1, O1>()),
               T.bind("latch", () => P.make<never, void>()),
-              T.tap(({ p }) => out.offer(pipe(p, P.wait, T.mapError(O.some)))),
+              T.tap(({ p }) => out.offer(pipe(p, P.wait, T.mapError(Option.some)))),
               T.tap(({ latch, p }) =>
                 pipe(
                   latch,

@@ -1,6 +1,6 @@
 import type * as T from "../_internal/effect"
-import * as A from "../../Array"
-import * as O from "../../Option"
+import type * as Array from "../../Array"
+import * as Option from "../../Option"
 import type { Stream } from "./definitions"
 import { effectAsyncMaybe } from "./effectAsyncMaybe"
 
@@ -11,11 +11,13 @@ import { effectAsyncMaybe } from "./effectAsyncMaybe"
  */
 export const effectAsync = <R, E, A>(
   register: (
-    cb: (next: T.Effect<unknown, R, O.Option<E>, A.Array<A>>) => Promise<boolean>
+    cb: (
+      next: T.Effect<unknown, R, Option.Option<E>, Array.Array<A>>
+    ) => Promise<boolean>
   ) => void,
   outputBuffer = 16
 ): Stream<unknown, R, E, A> =>
   effectAsyncMaybe((cb) => {
     register(cb)
-    return O.none
+    return Option.none
   }, outputBuffer)

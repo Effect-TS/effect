@@ -6,8 +6,8 @@ import { pipe } from "../../Function"
 import type { Finalizer, ReleaseMap } from "../../Managed"
 import { makeReleaseMap, noop } from "../../Managed"
 import { coerceSE } from "../../Managed/deps"
-import * as O from "../../Option"
-import * as R from "../../Ref"
+import * as Option from "../../Option"
+import * as Ref from "../../Ref"
 import type * as Pull from "../Pull"
 import { Stream } from "./definitions"
 
@@ -29,11 +29,11 @@ export const catchAllCause = <E, S1, R1, E2, O1>(
       M.of,
       M.bind(
         "finalizerRef",
-        () => M.finalizerRef(noop) as M.Managed<S, R, never, R.Ref<Finalizer>>
+        () => M.finalizerRef(noop) as M.Managed<S, R, never, Ref.Ref<Finalizer>>
       ),
       M.bind("ref", () =>
         pipe(
-          R.makeRef<State<E>>({ _tag: "NotStarted" }),
+          Ref.makeRef<State<E>>({ _tag: "NotStarted" }),
           T.toManaged()
         )
       ),
@@ -41,10 +41,10 @@ export const catchAllCause = <E, S1, R1, E2, O1>(
         const closeCurrent = (cause: C.Cause<any>) =>
           pipe(
             finalizerRef,
-            R.getAndSet(noop),
+            Ref.getAndSet(noop),
             T.chain((f) => f(Exit.halt(cause))),
             T.uninterruptible,
-            coerceSE<S | S1, O.Option<E2>>()
+            coerceSE<S | S1, Option.Option<E2>>()
           )
 
         const open = <S, R, E0, O>(stream: Stream<S, R, E0, O>) => (
@@ -58,7 +58,7 @@ export const catchAllCause = <E, S1, R1, E2, O1>(
                   finalizerRef.set((exit) => releaseMap.releaseAll(exit, T.sequential)),
                   T.chain(() =>
                     pipe(
-                      restore(coerceSE<S, O.Option<E0>>()(stream.proc.effect)),
+                      restore(coerceSE<S, Option.Option<E0>>()(stream.proc.effect)),
                       T.provideSome((_: R) => [_, releaseMap] as [R, ReleaseMap]),
                       T.map(([_, __]) => __),
                       T.tap((pull) => ref.set(asState(pull)))
@@ -69,12 +69,12 @@ export const catchAllCause = <E, S1, R1, E2, O1>(
             )
           )
 
-        const failover = (cause: C.Cause<O.Option<E>>) =>
+        const failover = (cause: C.Cause<Option.Option<E>>) =>
           pipe(
             cause,
             C.sequenceCauseOption,
-            O.fold(
-              () => T.fail(O.none),
+            Option.fold(
+              () => T.fail(Option.none),
               (cause) =>
                 pipe(
                   closeCurrent(cause),

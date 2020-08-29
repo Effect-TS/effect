@@ -1,7 +1,7 @@
 import * as T from "../_internal/effect"
 import * as M from "../_internal/managed"
 import { pipe } from "../../Function"
-import * as O from "../../Option"
+import * as Option from "../../Option"
 import { makeManagedRef } from "../../Ref"
 import * as Pull from "../Pull"
 import type { Transducer } from "../Transducer"
@@ -29,15 +29,15 @@ export const aggregate = <S1, R1, E1, O, P>(
               : pipe(
                   pull,
                   T.foldM(
-                    O.fold(
+                    Option.fold(
                       () =>
                         pipe(
                           done.set(true),
-                          T.chain(() => pipe(push(O.none), T.asSomeError))
+                          T.chain(() => pipe(push(Option.none), T.asSomeError))
                         ),
                       (e) => Pull.fail<E | E1>(e)
                     ),
-                    (os) => pipe(push(O.some(os)), T.asSomeError)
+                    (os) => pipe(push(Option.some(os)), T.asSomeError)
                   )
                 )
           )

@@ -1,8 +1,8 @@
 import * as T from "../_internal/effect"
 import * as M from "../_internal/managed"
 import { pipe } from "../../Function"
-import * as O from "../../Option"
-import * as R from "../../Ref"
+import * as Option from "../../Option"
+import * as Ref from "../../Ref"
 import * as BPull from "../BufferedPull"
 import { Stream } from "./definitions"
 
@@ -16,7 +16,7 @@ export const mapAccumM = <Z>(z: Z) => <O, S1, R1, E1, O1>(
   new Stream<S | S1, R & R1, E | E1, O1>(
     pipe(
       M.of,
-      M.bind("state", () => R.makeManagedRef(z)),
+      M.bind("state", () => Ref.makeManagedRef(z)),
       M.bind("pull", () => pipe(self.proc, M.mapM(BPull.make))),
       M.map(({ pull, state }) =>
         pipe(
@@ -29,7 +29,7 @@ export const mapAccumM = <Z>(z: Z) => <O, S1, R1, E1, O1>(
               T.bind("t", ({ s }) => f(s, o)),
               T.tap(({ t }) => state.set(t[0])),
               T.map(({ t }) => [t[1]]),
-              T.mapError(O.some)
+              T.mapError(Option.some)
             )
           )
         )

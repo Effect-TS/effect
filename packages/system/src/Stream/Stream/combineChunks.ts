@@ -1,9 +1,9 @@
 import * as T from "../_internal/effect"
 import * as M from "../_internal/managed"
-import type * as A from "../../Array"
+import type * as Array from "../../Array"
 import type * as Exit from "../../Exit/api"
 import { pipe } from "../../Function"
-import * as O from "../../Option"
+import type * as Option from "../../Option"
 import { Stream } from "./definitions"
 import { unfoldChunkM } from "./unfoldChunkM"
 
@@ -18,13 +18,13 @@ export const combineChunks = <S1, R1, E1, O2>(that: Stream<S1, R1, E1, O2>) => <
 ) => <S, S2, R, E, O, O3>(
   f: (
     z: Z,
-    s: T.Effect<S, R, O.Option<E>, A.Array<O>>,
-    t: T.Effect<S1, R1, O.Option<E1>, A.Array<O2>>
+    s: T.Effect<S, R, Option.Option<E>, Array.Array<O>>,
+    t: T.Effect<S1, R1, Option.Option<E1>, Array.Array<O2>>
   ) => T.Effect<
     S2,
     R & R1,
     never,
-    Exit.Exit<O.Option<E | E1>, readonly [A.Array<O3>, Z]>
+    Exit.Exit<Option.Option<E | E1>, readonly [Array.Array<O3>, Z]>
   >
 ) => (self: Stream<S, R, E, O>): Stream<S1 | S | S2, R & R1, E1 | E, O3> =>
   new Stream(
