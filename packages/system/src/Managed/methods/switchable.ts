@@ -38,7 +38,7 @@ export function switchable<S, R, E, A>(): Managed<
         T.toManaged()
       )
     ),
-    map(({ key, releaseMap }) => (newResource: Managed<S, R, E, A>) =>
+    map(({ key, releaseMap }) => (newResource) =>
       T.uninterruptibleMask(({ restore }) =>
         pipe(
           releaseMap.replace(key, (_) => T.unit),
