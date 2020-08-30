@@ -147,7 +147,7 @@ export class ReleaseMap {
     )
   }
 
-  addIfOpen(finalizer: Finalizer) {
+  addIfOpen(finalizer: Finalizer): T.Async<O.Option<number>> {
     return pipe(
       this.ref,
       R.modify<T.Async<O.Option<number>>, State>((s) => {
