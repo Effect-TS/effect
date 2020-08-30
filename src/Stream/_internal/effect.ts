@@ -5,6 +5,7 @@ export { Canceler } from "../../Effect/Canceler"
 export { catchAllCause, catchAllCause_ } from "../../Effect/catchAllCause_"
 export {
   chain,
+  chain_,
   foldCauseM,
   foldCauseM_,
   fork,
