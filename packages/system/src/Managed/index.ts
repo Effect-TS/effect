@@ -16,4 +16,5 @@ export * from "./sequenceT"
 
 // codegen:start { preset: barrel, include: ./methods/*.ts }
 export * from "./methods/releaseMap"
+export * from "./methods/switchable"
 // codegen:end
