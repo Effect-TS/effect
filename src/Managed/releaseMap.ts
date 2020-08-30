@@ -1,5 +1,5 @@
 import type { ExecutionStrategy } from "../Effect/ExecutionStrategy"
-import { pipe } from "../Function"
+import { absurd, pipe } from "../Function"
 import * as O from "../Option"
 import * as R from "../Ref"
 import * as T from "./deps"
@@ -167,6 +167,29 @@ export class ReleaseMap {
               )
             ]
           }
+        }
+      }),
+      T.flatten
+    )
+  }
+
+  replace(key: number, finalizer: Finalizer): T.Async<O.Option<Finalizer>> {
+    return pipe(
+      this.ref,
+      R.modify<T.Async<O.Option<Finalizer>>, State>((s) => {
+        switch (s._tag) {
+          case "Exited":
+            return [
+              T.map_(finalizer(s.exit), () => O.none),
+              new Exited(s.nextKey, s.exit)
+            ]
+          case "Running":
+            return [
+              T.succeedNow(lookupMap(key)(s.finalizers)),
+              new Running(s.nextKey, insertMap(key, finalizer)(s.finalizers))
+            ]
+          default:
+            return absurd(s)
         }
       }),
       T.flatten
