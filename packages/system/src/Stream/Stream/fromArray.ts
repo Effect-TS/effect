@@ -14,13 +14,9 @@ export const fromArray = <O>(c: Array.Array<O>): Sync<O> =>
   new Stream(
     pipe(
       Ref.makeRef(false),
-      T.map((doneRef) =>
-        pipe(
-          doneRef,
-          Ref.modify((done): [T.SyncE<Option.Option<never>, Array.Array<O>>, boolean] =>
-            done || c.length === 0 ? [Pull.end, true] : [T.succeedNow(c), true]
-          ),
-          T.flatten
+      T.chain(
+        Ref.modify<T.SyncE<Option.Option<never>, Array.Array<O>>, boolean>((done) =>
+          done || c.length === 0 ? [Pull.end, true] : [T.succeedNow(c), true]
         )
       ),
       T.toManaged()
