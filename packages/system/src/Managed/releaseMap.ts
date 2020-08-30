@@ -8,6 +8,8 @@ export type Finalizer = (
   exit: T.Exit<any, any>
 ) => T.Effect<unknown, unknown, never, any>
 
+export const noopFinalizer: Finalizer = () => T.unit
+
 export class Exited {
   readonly _tag = "Exited"
   constructor(readonly nextKey: number, readonly exit: T.Exit<any, any>) {}
