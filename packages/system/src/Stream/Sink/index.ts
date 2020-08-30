@@ -5,7 +5,7 @@ import * as C from "../../Cause/core"
 import * as E from "../../Either"
 import * as Ex from "../../Exit/api"
 import * as F from "../../Fiber/api"
-import { pipe, tuple } from "../../Function"
+import { pipe } from "../../Function"
 import * as O from "../../Option"
 import * as R from "../../Ref"
 import * as Push from "../Push"
@@ -134,90 +134,55 @@ export const raceBoth = <S1, R1, E1, I1 extends I, L1, Z1, I>(
       M.of,
       M.bind("p1", () => self.push),
       M.bind("p2", () => that.push),
-      M.let("push", ({ p1, p2 }) => (i: O.Option<A.Array<I1>>): T.Effect<
+      M.map(({ p1, p2 }) => (i: O.Option<A.Array<I1>>): T.Effect<
         unknown,
         R1 & R,
         readonly [E.Either<E | E1, E.Either<Z, Z1>>, A.Array<L | L1>],
         void
       > =>
-        pipe(
-          T.raceWith(
-            p1(i),
-            p2(i),
-            (res1, fib2) =>
-              pipe(
-                res1,
-                Ex.foldM(
-                  (f) =>
+        T.raceWith(
+          p1(i),
+          p2(i),
+          (res1, fib2) =>
+            Ex.foldM_(
+              res1,
+              (f) =>
+                T.zipSecond_(
+                  F.interrupt(fib2),
+                  T.halt(
                     pipe(
-                      fib2,
-                      F.interrupt,
-                      T.chain(() =>
-                        T.halt(
-                          pipe(
-                            f,
-                            C.map(([r, leftover]) =>
-                              tuple(
-                                E.map_(r, (x) => E.left(x)),
-                                leftover
-                              )
-                            )
-                          )
-                        )
-                      )
-                    ),
-                  () =>
-                    pipe(
-                      fib2,
-                      F.join,
-                      T.mapError(([r, leftover]) =>
-                        tuple(
-                          E.map_(r, (x) => E.right(x)),
-                          leftover
-                        )
-                      )
+                      f,
+                      C.map(([r, leftover]) => [E.map_(r, E.left), leftover] as const)
                     )
+                  )
+                ),
+              () =>
+                T.mapError_(
+                  F.join(fib2),
+                  ([r, leftover]) => [E.map_(r, E.right), leftover] as const
                 )
-              ),
-            (res2, fib1) =>
-              pipe(
-                res2,
-                Ex.foldM(
-                  (f) =>
+            ),
+          (res2, fib1) =>
+            Ex.foldM_(
+              res2,
+              (f) =>
+                T.zipSecond_(
+                  F.interrupt(fib1),
+                  T.halt(
                     pipe(
-                      fib1,
-                      F.interrupt,
-                      T.chain(() =>
-                        T.halt(
-                          pipe(
-                            f,
-                            C.map(([r, leftover]) =>
-                              tuple(
-                                E.map_(r, (x) => E.right(x)),
-                                leftover
-                              )
-                            )
-                          )
-                        )
-                      )
-                    ),
-                  () =>
-                    pipe(
-                      fib1,
-                      F.join,
-                      T.mapError(([r, leftover]) =>
-                        tuple(
-                          E.map_(r, (x) => E.left(x)),
-                          leftover
-                        )
-                      )
+                      f,
+                      C.map(([r, leftover]) => [E.map_(r, E.right), leftover] as const)
                     )
+                  )
+                ),
+              () =>
+                T.mapError_(
+                  F.join(fib1),
+                  ([r, leftover]) => [E.map_(r, E.left), leftover] as const
                 )
-              )
-          )
+            )
         )
-      ),
-      M.map(({ push }) => push)
+      )
     )
   )
 
