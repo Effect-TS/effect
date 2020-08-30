@@ -13,3 +13,7 @@ export * from "./releaseMap"
 export * from "./sequenceS"
 export * from "./sequenceT"
 // codegen:end
+
+// codegen:start { preset: barrel, include: ./methods/*.ts }
+export * from "./methods/releaseMap"
+// codegen:end
