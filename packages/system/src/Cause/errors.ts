@@ -64,7 +64,7 @@ export class RuntimeError extends Error {
   }
 }
 
-export const isRuntime = (u: unknown): u is Untraced =>
+export const isRuntime = (u: unknown): u is RuntimeError =>
   u instanceof Error && u[RuntimeSymbol] === "RuntimeError"
 
 //
