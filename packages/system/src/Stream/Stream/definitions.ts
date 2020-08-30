@@ -5,7 +5,7 @@ import * as C from "../../Cause/core"
 import * as Exit from "../../Exit/api"
 import { pipe } from "../../Function"
 import type { Finalizer, ReleaseMap } from "../../Managed"
-import { makeReleaseMap, noop } from "../../Managed"
+import { makeReleaseMap, noopFinalizer } from "../../Managed"
 import { coerceSE } from "../../Managed/deps"
 import * as Option from "../../Option"
 import * as Ref from "../../Ref"
@@ -103,7 +103,7 @@ export class Chain<S_, R_, E_, O, O2> {
   closeInner() {
     return pipe(
       this.innerFinalizer,
-      Ref.getAndSet(noop),
+      Ref.getAndSet(noopFinalizer),
       T.chain((f) => f(Exit.unit)),
       coerceSE<S_, Option.Option<E_>>()
     )

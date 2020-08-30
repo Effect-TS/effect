@@ -8,9 +8,9 @@ import { pipe, tuple } from "../Function"
 import { makeRef } from "../Ref"
 import * as T from "./deps"
 import { internalEffect, releaseAll } from "./internals"
-import { Managed, noop } from "./managed"
+import { Managed } from "./managed"
 import type { Finalizer, ReleaseMap } from "./releaseMap"
-import { makeReleaseMap } from "./releaseMap"
+import { makeReleaseMap, noopFinalizer } from "./releaseMap"
 
 /**
  * Returns a managed that models the execution of this managed, followed by
@@ -265,7 +265,7 @@ export const fromEffect = <S, R, E, A>(effect: T.Effect<S, R, E, A>) =>
   new Managed<S, R, E, A>(
     T.map_(
       T.accessM((_: readonly [R, ReleaseMap]) => T.provideAll_(effect, _[0])),
-      (a) => [noop, a]
+      (a) => [noopFinalizer, a]
     )
   )
 
