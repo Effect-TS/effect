@@ -19,3 +19,4 @@ export {
 export { bind, let, merge, of } from "../../Managed/do"
 
 export { Managed } from "../../Managed/managed"
+export { switchable } from "../../Managed/methods/switchable"
