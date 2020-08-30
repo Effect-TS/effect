@@ -57,7 +57,7 @@ export class MemoMap {
 
             return T.succeedNow(tuple(cached, m))
           } else {
-            const x = pipe(
+            return pipe(
               T.of,
               T.bind("observers", () => R.makeRef(0)),
               T.bind("promise", () => P.make<E, A>()),
@@ -177,7 +177,6 @@ export class MemoMap {
                 )
               )
             )
-            return x
           }
         }),
         T.flatten
