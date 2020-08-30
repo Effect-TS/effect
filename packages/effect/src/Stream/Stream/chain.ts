@@ -3,7 +3,7 @@ import * as M from "../_internal/managed"
 import type * as A from "../../Array"
 import { pipe } from "../../Function"
 import type { Finalizer } from "../../Managed"
-import { noop } from "../../Managed"
+import { noopFinalizer } from "../../Managed"
 import type * as Option from "../../Option"
 import * as Ref from "../../Ref"
 import * as Pull from "../Pull"
@@ -40,7 +40,8 @@ export const chain = <O, O2, S1, R1, E1>(f0: (a: O) => Stream<S1, R1, E1, O2>) =
       ),
       M.bind(
         "innerFinalizer",
-        () => M.finalizerRef(noop) as M.Managed<S_, R_, never, Ref.Ref<Finalizer>>
+        () =>
+          M.finalizerRef(noopFinalizer) as M.Managed<S_, R_, never, Ref.Ref<Finalizer>>
       ),
       M.map(({ currInnerStream, currOuterChunk, innerFinalizer, outerStream }) =>
         new Chain(
