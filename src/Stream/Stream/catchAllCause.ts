@@ -4,7 +4,7 @@ import * as C from "../../Cause/core"
 import * as Exit from "../../Exit/api"
 import { pipe } from "../../Function"
 import type { Finalizer, ReleaseMap } from "../../Managed"
-import { makeReleaseMap, noop } from "../../Managed"
+import { makeReleaseMap, noopFinalizer } from "../../Managed"
 import { coerceSE } from "../../Managed/deps"
 import * as Option from "../../Option"
 import * as Ref from "../../Ref"
@@ -29,7 +29,8 @@ export const catchAllCause = <E, S1, R1, E2, O1>(
       M.of,
       M.bind(
         "finalizerRef",
-        () => M.finalizerRef(noop) as M.Managed<S, R, never, Ref.Ref<Finalizer>>
+        () =>
+          M.finalizerRef(noopFinalizer) as M.Managed<S, R, never, Ref.Ref<Finalizer>>
       ),
       M.bind("ref", () =>
         pipe(
@@ -41,7 +42,7 @@ export const catchAllCause = <E, S1, R1, E2, O1>(
         const closeCurrent = (cause: C.Cause<any>) =>
           pipe(
             finalizerRef,
-            Ref.getAndSet(noop),
+            Ref.getAndSet(noopFinalizer),
             T.chain((f) => f(Exit.halt(cause))),
             T.uninterruptible,
             coerceSE<S | S1, Option.Option<E2>>()

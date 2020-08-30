@@ -3,9 +3,9 @@ import type { Exit } from "../Exit"
 import { pipe, tuple } from "../Function"
 import type { HasType } from "../Has"
 import { has } from "../Has"
-import { Managed, noop } from "../Managed/managed"
+import { Managed } from "../Managed/managed"
 import type { Finalizer, ReleaseMap } from "../Managed/releaseMap"
-import { insertMap, makeReleaseMap } from "../Managed/releaseMap"
+import { insertMap, makeReleaseMap, noopFinalizer } from "../Managed/releaseMap"
 import * as P from "../Promise"
 import * as R from "../Ref"
 import * as RM from "../RefM"
@@ -61,7 +61,7 @@ export class MemoMap {
               T.of,
               T.bind("observers", () => R.makeRef(0)),
               T.bind("promise", () => P.make<E, A>()),
-              T.bind("finalizerRef", () => R.makeRef<Finalizer>(noop)),
+              T.bind("finalizerRef", () => R.makeRef<Finalizer>(noopFinalizer)),
               T.let("resource", ({ finalizerRef, observers, promise }) =>
                 T.uninterruptibleMask(({ restore }) =>
                   pipe(

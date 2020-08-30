@@ -1,8 +1,6 @@
 import * as T from "./deps"
 import type { Finalizer, ReleaseMap } from "./releaseMap"
 
-export const noop: Finalizer = () => T.unit
-
 export const ManagedURI = "@matechs/core/Eff/ManagedURI"
 export type ManagedURI = typeof ManagedURI
 
