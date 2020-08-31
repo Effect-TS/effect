@@ -3,9 +3,8 @@ import * as M from "../_internal/managed"
 import * as C from "../../Cause/core"
 import * as Exit from "../../Exit/api"
 import { pipe } from "../../Function"
-import type { Finalizer, ReleaseMap } from "../../Managed"
+import type { FinalizerS, ReleaseMap } from "../../Managed"
 import { makeReleaseMap, noopFinalizer } from "../../Managed"
-import { coerceSE } from "../../Managed/deps"
 import * as Option from "../../Option"
 import * as Ref from "../../Ref"
 import type * as Pull from "../Pull"
@@ -20,8 +19,8 @@ export const catchAllCause = <E, S1, R1, E2, O1>(
   f: (e: C.Cause<E>) => Stream<S1, R1, E2, O1>
 ) => <S, R, O>(self: Stream<S, R, E, O>): Stream<S1 | S, R & R1, E2, O1 | O> => {
   type NotStarted = { _tag: "NotStarted" }
-  type Self<E0> = { _tag: "Self"; pull: Pull.Pull<S, R, E0, O> }
-  type Other = { _tag: "Other"; pull: Pull.Pull<S1, R1, E2, O1> }
+  type Self<E0> = { _tag: "Self"; pull: Pull.Pull<S | S1, R, E0, O> }
+  type Other = { _tag: "Other"; pull: Pull.Pull<S | S1, R1, E2, O1> }
   type State<E0> = NotStarted | Self<E0> | Other
 
   return new Stream<S | S1, R & R1, E2, O | O1>(
@@ -30,7 +29,12 @@ export const catchAllCause = <E, S1, R1, E2, O1>(
       M.bind(
         "finalizerRef",
         () =>
-          M.finalizerRef(noopFinalizer) as M.Managed<S, R, never, Ref.Ref<Finalizer>>
+          M.finalizerRef(noopFinalizer<S | S1>()) as M.Managed<
+            S,
+            R,
+            never,
+            Ref.Ref<FinalizerS<S | S1>>
+          >
       ),
       M.bind("ref", () =>
         pipe(
@@ -42,25 +46,26 @@ export const catchAllCause = <E, S1, R1, E2, O1>(
         const closeCurrent = (cause: C.Cause<any>) =>
           pipe(
             finalizerRef,
-            Ref.getAndSet(noopFinalizer),
+            Ref.getAndSet(noopFinalizer<S | S1>()),
             T.chain((f) => f(Exit.halt(cause))),
-            T.uninterruptible,
-            coerceSE<S | S1, Option.Option<E2>>()
+            T.uninterruptible
           )
 
-        const open = <S, R, E0, O>(stream: Stream<S, R, E0, O>) => (
-          asState: (_: Pull.Pull<S, R, E0, O>) => State<E>
+        const open = <R, E0, O>(stream: Stream<S | S1, R, E0, O>) => (
+          asState: (_: Pull.Pull<S | S1, R, E0, O>) => State<E>
         ) =>
           T.uninterruptibleMask(({ restore }) =>
             pipe(
-              makeReleaseMap,
+              makeReleaseMap<S | S1>(),
               T.chain((releaseMap) =>
                 pipe(
                   finalizerRef.set((exit) => releaseMap.releaseAll(exit, T.sequential)),
                   T.chain(() =>
                     pipe(
-                      restore(coerceSE<S, Option.Option<E0>>()(stream.proc.effect)),
-                      T.provideSome((_: R) => [_, releaseMap] as [R, ReleaseMap]),
+                      restore(stream.proc.effect),
+                      T.provideSome(
+                        (_: R) => [_, releaseMap] as [R, ReleaseMap<S | S1>]
+                      ),
                       T.map(([_, __]) => __),
                       T.tap((pull) => ref.set(asState(pull)))
                     )

@@ -38,7 +38,7 @@ export class MemoMap {
           if (inMap) {
             const [acquire, release] = inMap
 
-            const cached = T.accessM(([_, rm]: readonly [R, ReleaseMap]) =>
+            const cached = T.accessM(([_, rm]: readonly [R, ReleaseMap<unknown>]) =>
               pipe(
                 acquire as T.AsyncE<E, A>,
                 T.onExit((ex) => {
@@ -61,18 +61,20 @@ export class MemoMap {
               T.of,
               T.bind("observers", () => R.makeRef(0)),
               T.bind("promise", () => P.make<E, A>()),
-              T.bind("finalizerRef", () => R.makeRef<Finalizer>(noopFinalizer)),
+              T.bind("finalizerRef", () => R.makeRef<Finalizer>(noopFinalizer())),
               T.let("resource", ({ finalizerRef, observers, promise }) =>
                 T.uninterruptibleMask(({ restore }) =>
                   pipe(
                     T.of,
-                    T.bind("env", () => T.environment<readonly [R, ReleaseMap]>()),
+                    T.bind("env", () =>
+                      T.environment<readonly [R, ReleaseMap<unknown>]>()
+                    ),
                     T.let("a", ({ env: [a] }) => a),
                     T.let(
                       "outerReleaseMap",
                       ({ env: [_, outerReleaseMap] }) => outerReleaseMap
                     ),
-                    T.bind("innerReleaseMap", () => makeReleaseMap),
+                    T.bind("innerReleaseMap", () => makeReleaseMap<unknown>()),
                     T.bind("tp", ({ a, innerReleaseMap, outerReleaseMap }) =>
                       restore(
                         pipe(
@@ -166,7 +168,7 @@ export class MemoMap {
                 tuple(
                   resource as T.Effect<
                     unknown,
-                    readonly [R, ReleaseMap],
+                    readonly [R, ReleaseMap<S>],
                     E,
                     readonly [Finalizer, A]
                   >,

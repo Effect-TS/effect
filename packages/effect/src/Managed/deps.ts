@@ -1,7 +1,5 @@
 // minimize circularity by importing only a subset
 
-import type { Effect } from "../Effect/effect"
-
 export { bracketExit_ } from "../Effect/bracketExit_"
 export {
   access,
@@ -17,7 +15,6 @@ export {
 } from "../Effect/core"
 export { bind, let, of } from "../Effect/do"
 export { done } from "../Effect/done"
-export { forkDaemon } from "../Effect/scope"
 export {
   Async,
   AsyncE,
@@ -47,6 +44,7 @@ export { map } from "../Effect/map"
 export { map_ } from "../Effect/map_"
 export { provideSome_ } from "../Effect/provideSome"
 export { result } from "../Effect/result"
+export { forkDaemon } from "../Effect/scope"
 export { tap } from "../Effect/tap"
 export { toManaged } from "../Effect/toManaged"
 export { uninterruptible } from "../Effect/uninterruptible"
@@ -65,7 +63,3 @@ export {
   zipRight_ as exitZipRight_
 } from "../Exit/core"
 export { Exit } from "../Exit/exit"
-
-export const coerceSE = <S1, E1>() => <S, R, E, A>(
-  effect: Effect<S, R, E, A>
-): Effect<S1, R, E1, A> => effect as any

@@ -4,9 +4,8 @@ import type * as Array from "../../Array"
 import * as C from "../../Cause/core"
 import * as Exit from "../../Exit/api"
 import { pipe } from "../../Function"
-import type { Finalizer, ReleaseMap } from "../../Managed"
+import type { FinalizerS, ReleaseMap } from "../../Managed"
 import { makeReleaseMap, noopFinalizer } from "../../Managed"
-import { coerceSE } from "../../Managed/deps"
 import * as Option from "../../Option"
 import * as Ref from "../../Ref"
 import * as Pull from "../Pull"
@@ -92,7 +91,7 @@ export class Chain<S_, R_, E_, O, O2> {
     readonly currInnerStream: Ref.Ref<
       T.Effect<S_, R_, Option.Option<E_>, Array.Array<O2>>
     >,
-    readonly innerFinalizer: Ref.Ref<Finalizer>
+    readonly innerFinalizer: Ref.Ref<FinalizerS<S_>>
   ) {
     this.apply = this.apply.bind(this)
     this.closeInner = this.closeInner.bind(this)
@@ -103,9 +102,8 @@ export class Chain<S_, R_, E_, O, O2> {
   closeInner() {
     return pipe(
       this.innerFinalizer,
-      Ref.getAndSet(noopFinalizer),
-      T.chain((f) => f(Exit.unit)),
-      coerceSE<S_, Option.Option<E_>>()
+      Ref.getAndSet(noopFinalizer()),
+      T.chain((f) => f(Exit.unit))
     )
   }
 
@@ -143,12 +141,12 @@ export class Chain<S_, R_, E_, O, O2> {
         T.uninterruptibleMask(({ restore }) =>
           pipe(
             T.of,
-            T.bind("releaseMap", () => makeReleaseMap),
+            T.bind("releaseMap", () => makeReleaseMap<S_>()),
             T.bind("pull", ({ releaseMap }) =>
               restore(
                 pipe(
                   this.f0(o).proc.effect,
-                  T.provideSome((_: R_) => [_, releaseMap] as [R_, ReleaseMap]),
+                  T.provideSome((_: R_) => [_, releaseMap] as [R_, ReleaseMap<S_>]),
                   T.map(([_, x]) => x)
                 )
               )
@@ -157,8 +155,7 @@ export class Chain<S_, R_, E_, O, O2> {
             T.tap(({ releaseMap }) =>
               this.innerFinalizer.set((e) => releaseMap.releaseAll(e, T.sequential))
             ),
-            T.asUnit,
-            coerceSE<S_, Option.Option<E_>>()
+            T.asUnit
           )
         )
       )
