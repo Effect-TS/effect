@@ -7,7 +7,6 @@
 // codegen:start {preset: barrel, include: ./*.ts, exclude: ./deps.ts}
 export * from "./core"
 export * from "./do"
-export * from "./internals"
 export * from "./managed"
 export * from "./releaseMap"
 export * from "./sequenceS"
