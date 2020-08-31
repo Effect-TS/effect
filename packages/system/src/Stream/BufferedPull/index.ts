@@ -47,7 +47,7 @@ export const update = <S, R, E, A>(self: BufferedPull<S, R, E, A>) =>
     )
   )
 
-export const pullElements = <S, R, E, A>(
+export const pullElement = <S, R, E, A>(
   self: BufferedPull<S, R, E, A>
 ): T.Effect<S, R, O.Option<E>, A> =>
   pipe(
@@ -60,7 +60,7 @@ export const pullElements = <S, R, E, A>(
             return [
               pipe(
                 update(self),
-                T.chain(() => pullElements(self))
+                T.chain(() => pullElement(self))
               ),
               [[], 0]
             ]
