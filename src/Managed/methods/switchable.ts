@@ -29,11 +29,10 @@ export function switchable<S, R, E, A>(): Managed<
 > {
   return pipe(
     Do.of,
-    Do.bind("releaseMap", () => releaseMap),
+    Do.bind("releaseMap", () => releaseMap<S>()),
     Do.bind("key", ({ releaseMap }) =>
       pipe(
         releaseMap.addIfOpen((_) => T.unit),
-        T.coerceSE<S, never>(),
         T.chain(fold(() => T.interrupt, T.succeedNow)),
         T.toManaged()
       )
@@ -50,15 +49,14 @@ export function switchable<S, R, E, A>(): Managed<
           ),
           T.zipSecond(T.of),
           T.bind("r", () => T.environment<R>()),
-          T.bind("inner", () => makeReleaseMap),
+          T.bind("inner", () => makeReleaseMap<S>()),
           T.bind("a", ({ inner, r }) =>
             restore(T.provideAll_(newResource.effect, [r, inner]))
           ),
           T.tap(({ inner }) =>
             releaseMap.replace(key, (exit) => inner.releaseAll(exit, sequential))
           ),
-          T.map(({ a }) => a[1]),
-          T.coerceSE<S, E>()
+          T.map(({ a }) => a[1])
         )
       )
     )

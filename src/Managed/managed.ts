@@ -17,7 +17,12 @@ export class Managed<S, R, E, A> {
    * at the type level because it will otherwise always infer to unknown = async
    */
   constructor(
-    readonly effect: T.AsyncRE<readonly [R, ReleaseMap], E, readonly [Finalizer, A]>
+    readonly effect: T.Effect<
+      S,
+      readonly [R, ReleaseMap<S>],
+      E,
+      readonly [Finalizer, A]
+    >
   ) {}
 }
 

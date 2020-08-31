@@ -1,4 +1,4 @@
-import type { ExecutionStrategy } from "../Effect/ExecutionStrategy"
+import type { ExecutionStrategy, Sequential } from "../Effect/ExecutionStrategy"
 import { absurd, pipe } from "../Function"
 import * as O from "../Option"
 import * as R from "../Ref"
@@ -8,7 +8,9 @@ export type Finalizer = (
   exit: T.Exit<any, any>
 ) => T.Effect<unknown, unknown, never, any>
 
-export const noopFinalizer: Finalizer = () => T.unit
+export type FinalizerS<S> = (exit: T.Exit<any, any>) => T.Effect<S, unknown, never, any>
+
+export const noopFinalizer: <S>() => FinalizerS<S> = () => () => T.unit
 
 export class Exited {
   readonly _tag = "Exited"
@@ -48,14 +50,17 @@ export const lookupMap = <K>(k: K) => <V>(m: ReadonlyMap<K, V>) =>
 
 export type State = Exited | Running
 
-export class ReleaseMap {
+export class ReleaseMap<S> {
   constructor(readonly ref: R.Ref<State>) {}
 
   next(l: number) {
     return l + 1
   }
 
-  add(finalizer: Finalizer): T.Async<Finalizer> {
+  add<S1 extends S>(
+    finalizer: FinalizerS<S1>
+  ): T.Effect<S1, unknown, never, FinalizerS<S1>>
+  add<S1 extends S>(finalizer: FinalizerS<S1>): T.Async<Finalizer> {
     return T.map_(
       this.addIfOpen(finalizer),
       O.fold(
@@ -65,6 +70,10 @@ export class ReleaseMap {
     )
   }
 
+  release<S1 extends S>(
+    key: number,
+    exit: T.Exit<any, any>
+  ): T.Effect<S1, unknown, never, any>
   release(key: number, exit: T.Exit<any, any>): T.Async<any> {
     return pipe(
       this.ref,
@@ -88,6 +97,11 @@ export class ReleaseMap {
     )
   }
 
+  releaseAll<S1 extends S>(
+    exit: T.Exit<any, any>,
+    execStrategy: Sequential
+  ): T.Effect<S1, unknown, never, any>
+  releaseAll(exit: T.Exit<any, any>, execStrategy: ExecutionStrategy): T.Async<any>
   releaseAll(exit: T.Exit<any, any>, execStrategy: ExecutionStrategy): T.Async<any> {
     return pipe(
       this.ref,
@@ -149,6 +163,9 @@ export class ReleaseMap {
     )
   }
 
+  addIfOpen<S1 extends S>(
+    finalizer: FinalizerS<S1>
+  ): T.Effect<S1, unknown, never, O.Option<number>>
   addIfOpen(finalizer: Finalizer): T.Async<O.Option<number>> {
     return pipe(
       this.ref,
@@ -175,6 +192,10 @@ export class ReleaseMap {
     )
   }
 
+  replace<S1 extends S>(
+    key: number,
+    finalizer: FinalizerS<S1>
+  ): T.Effect<S1, unknown, never, O.Option<FinalizerS<S1>>>
   replace(key: number, finalizer: Finalizer): T.Async<O.Option<Finalizer>> {
     return pipe(
       this.ref,
@@ -199,10 +220,8 @@ export class ReleaseMap {
   }
 }
 
-export const makeReleaseMap = T.map_(
-  R.makeRef<State>(new Running(0, new Map())),
-  (s) => new ReleaseMap(s)
-)
+export const makeReleaseMap = <S>() =>
+  T.map_(R.makeRef<State>(new Running(0, new Map())), (s) => new ReleaseMap<S>(s))
 
 export function copyMap<K, V>(self: ReadonlyMap<K, V>) {
   const m = new Map<K, V>()

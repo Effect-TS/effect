@@ -3,7 +3,6 @@ import * as M from "../_internal/managed"
 import { pipe } from "../../Function"
 import type { ReleaseMap } from "../../Managed"
 import { makeManagedReleaseMap } from "../../Managed"
-import { coerceSE } from "../../Managed/deps"
 import * as Option from "../../Option"
 import * as Ref from "../../Ref"
 import * as Pull from "../Pull"
@@ -30,9 +29,8 @@ export const managed = <S, R, E, A>(self: M.Managed<S, R, E, A>): Stream<S, R, E
                     T.bind("a", () =>
                       pipe(
                         self.effect,
-                        coerceSE<S, E>(),
                         T.map(([_, __]) => __),
-                        T.provideSome((r: R) => [r, finalizer] as [R, ReleaseMap]),
+                        T.provideSome((r: R) => [r, finalizer] as [R, ReleaseMap<S>]),
                         restore,
                         T.onError(() => doneRef.set(true))
                       )
