@@ -1,5 +1,6 @@
 // codegen:start {preset: barrel, include: ./*.ts}
 export * from "./absolve"
+export * from "./access"
 export * from "./aggregate"
 export * from "./apply"
 export * from "./bracket"
