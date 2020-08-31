@@ -3,6 +3,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import type { MutableMap } from "../Mutable"
 import * as Op from "../Option"
+import { fromNullable } from "../Option"
 
 /**
  * Map type
@@ -187,4 +188,34 @@ export function size<K, A>(d: Map<K, A>): number {
  */
 export function toMutable<K, A>(m: Map<K, A>): MutableMap<K, A> {
   return new Map(m)
+}
+
+export const insert = <K, V>(k: K, v: V) => (
+  self: ReadonlyMap<K, V>
+): ReadonlyMap<K, V> => {
+  const m = copy<K, V>(self)
+
+  m.set(k, v)
+
+  return m
+}
+
+export const remove = <K>(k: K) => <V>(self: ReadonlyMap<K, V>): ReadonlyMap<K, V> => {
+  const m = copy(self)
+
+  m.delete(k)
+
+  return m
+}
+
+export const lookup = <K>(k: K) => <V>(m: ReadonlyMap<K, V>) => fromNullable(m.get(k))
+
+export function copy<K, V>(self: ReadonlyMap<K, V>) {
+  const m = new Map<K, V>()
+
+  self.forEach((v, k) => {
+    m.set(k, v)
+  })
+
+  return m
 }
