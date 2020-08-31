@@ -9,9 +9,9 @@ import { makeReleaseMap } from "../releaseMap"
 import { releaseMap } from "./releaseMap"
 
 /**
- * Returns a `Managed` value that represents a managed resource that can be safely
- * swapped within the scope of the `Managed`. The function provided inside the
- * `Managed` can be used to switch the resource currently in use.
+ * Returns a {@link Managed} value that represents a managed resource that can
+ * be safely swapped within the scope of the `Managed`. The function provided
+ * inside the `Managed` can be used to switch the resource currently in use.
  *
  * When the resource is switched, the finalizer for the previous finalizer will
  * be executed uninterruptibly. If the effect executing inside the `use`
