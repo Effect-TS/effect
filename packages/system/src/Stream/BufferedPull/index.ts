@@ -1,6 +1,8 @@
 import * as T from "../_internal/effect"
 import * as A from "../../Array"
-import { pipe } from "../../Function"
+import type * as CC from "../../Cause"
+import * as TT from "../../Effect"
+import { flow, identity, pipe } from "../../Function"
 import * as O from "../../Option"
 import * as R from "../../Ref"
 import * as Pull from "../Pull"
@@ -73,6 +75,29 @@ export const pullElement = <S, R, E, A>(
     )
   )
 
+export const pullArray = <S, R, E, A>(
+  self: BufferedPull<S, R, E, A>
+): T.Effect<S, R, O.Option<E>, A.Array<A>> =>
+  pipe(
+    self,
+    ifNotDone(
+      pipe(
+        self.cursor,
+        R.modify(([chunk, idx]): [
+          T.Effect<S, R, O.Option<E>, A.Array<A>>,
+          [A.Array<A>, number]
+        ] => {
+          if (idx >= chunk.length) {
+            return [TT.chain_(update(self), () => pullArray(self)), [[], 0]]
+          } else {
+            return [T.as_(update(self), A.dropLeft_(chunk, idx)), [[], 0]]
+          }
+        }),
+        T.flatten
+      )
+    )
+  )
+
 export const make = <S, R, E, A>(pull: T.Effect<S, R, O.Option<E>, A.Array<A>>) =>
   pipe(
     T.of,
@@ -80,3 +105,34 @@ export const make = <S, R, E, A>(pull: T.Effect<S, R, O.Option<E>, A.Array<A>>) 
     T.bind("cursor", () => R.makeRef<[A.Array<A>, number]>([[], 0])),
     T.map(({ cursor, done }) => new BufferedPull(pull, done, cursor))
   )
+;(async function main() {
+  const log = <T extends unknown[]>(...x: T): TT.Sync<void> =>
+    TT.effectTotal(() => console.log(...x))
+  await pipe(
+    R.makeRef(0),
+    T.chain(
+      flow(
+        R.modify((i): [TT.SyncE<O.Option<never>, A.Array<number>>, number] => [
+          i < 5 ? TT.succeed([i]) : TT.fail(O.none),
+          i + 1
+        ]),
+        T.flatten,
+        make
+      )
+    ),
+    TT.chain((bp) =>
+      TT.repeatWhile_(
+        ifNotDone(
+          TT.foldM_(
+            pullArray(bp),
+            O.fold(() => TT.zipSecond_(log("finished"), Pull.end), Pull.fail),
+            flow(log, TT.zipSecond(TT.succeed(true)))
+          )
+        )(bp),
+        identity
+      )
+    ),
+    TT.runPromise,
+    (p) => p.catch((e: CC.FiberFailure<unknown>) => console.log("\n\n" + e.pretty))
+  )
+})()
