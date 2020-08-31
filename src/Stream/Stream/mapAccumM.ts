@@ -21,7 +21,7 @@ export const mapAccumM = <Z>(z: Z) => <O, S1, R1, E1, O1>(
       M.map(({ pull, state }) =>
         pipe(
           pull,
-          BPull.pullElements,
+          BPull.pullElement,
           T.chain((o) =>
             pipe(
               T.of,
