@@ -1,5 +1,6 @@
 import type { ExecutionStrategy, Sequential } from "../Effect/ExecutionStrategy"
 import { absurd, pipe } from "../Function"
+import { insert, lookup, remove } from "../Map/core"
 import * as O from "../Option"
 import * as R from "../Ref"
 import * as T from "./deps"
@@ -17,66 +18,44 @@ export class Exited {
   constructor(readonly nextKey: number, readonly exit: T.Exit<any, any>) {}
 }
 
-export class Running {
+export class Running<S> {
   readonly _tag = "Running"
   constructor(
     readonly nextKey: number,
-    readonly finalizers: ReadonlyMap<number, Finalizer>
+    readonly _finalizers: ReadonlyMap<number, Finalizer>
   ) {}
-}
 
-export const insertMap = <K, V>(k: K, v: V) => (
-  self: ReadonlyMap<K, V>
-): ReadonlyMap<K, V> => {
-  const m = copyMap<K, V>(self)
-
-  m.set(k, v)
-
-  return m
-}
-
-export const removeMap = <K>(k: K) => <V>(
-  self: ReadonlyMap<K, V>
-): ReadonlyMap<K, V> => {
-  const m = copyMap(self)
-
-  m.delete(k)
-
-  return m
-}
-
-export const lookupMap = <K>(k: K) => <V>(m: ReadonlyMap<K, V>) =>
-  O.fromNullable(m.get(k))
-
-export type State = Exited | Running
-
-export class ReleaseMap<S> {
-  constructor(readonly ref: R.Ref<State>) {}
-
-  next(l: number) {
-    return l + 1
+  finalizers<S1 extends S>(): ReadonlyMap<number, FinalizerS<S1>>
+  finalizers(): ReadonlyMap<number, Finalizer> {
+    return this._finalizers as any
   }
+}
 
-  add<S1 extends S>(
-    finalizer: FinalizerS<S1>
-  ): T.Effect<S1, unknown, never, FinalizerS<S1>>
-  add<S1 extends S>(finalizer: FinalizerS<S1>): T.Async<Finalizer> {
-    return T.map_(
-      this.addIfOpen(finalizer),
+export type State<S> = Exited | Running<S>
+
+export function next(l: number) {
+  return l + 1
+}
+
+export function add<S>(finalizer: FinalizerS<S>) {
+  return (_: ReleaseMap<S>) =>
+    T.map_(
+      addIfOpen(finalizer)(_),
       O.fold(
-        () => () => T.unit,
-        (k) => (e) => this.release(k, e)
+        (): FinalizerS<S> => () => T.unit,
+        (k): FinalizerS<S> => (e) => release(k, e)(_)
       )
     )
-  }
+}
 
-  release<S1 extends S>(
-    key: number,
-    exit: T.Exit<any, any>
-  ): T.Effect<S1, unknown, never, any>
-  release(key: number, exit: T.Exit<any, any>): T.Async<any> {
-    return pipe(
-      this.ref,
+export function release(
+  key: number,
+  exit: T.Exit<any, any>
+): <S>(_: ReleaseMap<S>) => T.Effect<S, unknown, never, any>
+export function release(key: number, exit: T.Exit<any, any>) {
+  return <S>(_: ReleaseMap<S>) =>
+    pipe(
+      _.ref,
       R.modify((s) => {
         switch (s._tag) {
           case "Exited": {
@@ -85,27 +64,34 @@ export class ReleaseMap<S> {
           case "Running": {
             return [
               O.fold_(
-                lookupMap(key)(s.finalizers),
+                lookup(key)(s.finalizers()),
                 () => T.unit,
                 (f) => f(exit)
               ),
-              new Running(s.nextKey, removeMap(key)(s.finalizers))
+              new Running(s.nextKey, remove(key)(s.finalizers()))
             ]
           }
         }
       })
     )
-  }
+}
 
-  releaseAll<S1 extends S>(
-    exit: T.Exit<any, any>,
-    execStrategy: Sequential
-  ): T.Effect<S1, unknown, never, any>
-  releaseAll(exit: T.Exit<any, any>, execStrategy: ExecutionStrategy): T.Async<any>
-  releaseAll(exit: T.Exit<any, any>, execStrategy: ExecutionStrategy): T.Async<any> {
-    return pipe(
-      this.ref,
-      R.modify((s): [T.Async<any>, State] => {
+export function releaseAll(
+  exit: T.Exit<any, any>,
+  execStrategy: Sequential
+): <S>(_: ReleaseMap<S>) => T.Effect<S, unknown, never, any>
+export function releaseAll(
+  exit: T.Exit<any, any>,
+  execStrategy: ExecutionStrategy
+): <S>(_: ReleaseMap<S>) => T.Async<any>
+export function releaseAll(
+  exit: T.Exit<any, any>,
+  execStrategy: ExecutionStrategy
+): <S>(_: ReleaseMap<S>) => T.Async<any> {
+  return <S>(_: ReleaseMap<S>) =>
+    pipe(
+      _.ref,
+      R.modify((s): [T.Async<any>, State<S>] => {
         switch (s._tag) {
           case "Exited": {
             return [T.unit, s]
@@ -115,7 +101,7 @@ export class ReleaseMap<S> {
               case "Sequential": {
                 return [
                   T.chain_(
-                    T.foreach_(Array.from(s.finalizers).reverse(), ([_, f]) =>
+                    T.foreach_(Array.from(s.finalizers()).reverse(), ([_, f]) =>
                       T.result(f(exit))
                     ),
                     (e) =>
@@ -129,7 +115,7 @@ export class ReleaseMap<S> {
               case "Parallel": {
                 return [
                   T.chain_(
-                    T.foreachPar_(Array.from(s.finalizers).reverse(), ([_, f]) =>
+                    T.foreachPar_(Array.from(s.finalizers()).reverse(), ([_, f]) =>
                       T.result(f(exit))
                     ),
                     (e) =>
@@ -144,7 +130,7 @@ export class ReleaseMap<S> {
                 return [
                   T.chain_(
                     T.foreachParN_(execStrategy.n)(
-                      Array.from(s.finalizers).reverse(),
+                      Array.from(s.finalizers()).reverse(),
                       ([_, f]) => T.result(f(exit))
                     ),
                     (e) =>
@@ -161,45 +147,37 @@ export class ReleaseMap<S> {
       }),
       T.flatten
     )
-  }
+}
 
-  addIfOpen<S1 extends S>(
-    finalizer: FinalizerS<S1>
-  ): T.Effect<S1, unknown, never, O.Option<number>>
-  addIfOpen(finalizer: Finalizer): T.Async<O.Option<number>> {
-    return pipe(
-      this.ref,
-      R.modify<T.Async<O.Option<number>>, State>((s) => {
+export function addIfOpen<S>(finalizer: FinalizerS<S>) {
+  return (_: ReleaseMap<S>): T.Effect<S, unknown, never, O.Option<number>> =>
+    pipe(
+      _.ref,
+      R.modify<T.Effect<S, unknown, never, O.Option<number>>, State<S>>((s) => {
         switch (s._tag) {
           case "Exited": {
             return [
               T.map_(finalizer(s.exit), () => O.none),
-              new Exited(this.next(s.nextKey), s.exit)
+              new Exited(next(s.nextKey), s.exit)
             ]
           }
           case "Running": {
             return [
               T.succeedNow(O.some(s.nextKey)),
-              new Running(
-                this.next(s.nextKey),
-                insertMap(s.nextKey, finalizer)(s.finalizers)
-              )
+              new Running(next(s.nextKey), insert(s.nextKey, finalizer)(s.finalizers()))
             ]
           }
         }
       }),
       T.flatten
     )
-  }
+}
 
-  replace<S1 extends S>(
-    key: number,
-    finalizer: FinalizerS<S1>
-  ): T.Effect<S1, unknown, never, O.Option<FinalizerS<S1>>>
-  replace(key: number, finalizer: Finalizer): T.Async<O.Option<Finalizer>> {
-    return pipe(
-      this.ref,
-      R.modify<T.Async<O.Option<Finalizer>>, State>((s) => {
+export function replace<S>(key: number, finalizer: FinalizerS<S>) {
+  return (_: ReleaseMap<S>): T.Effect<S, unknown, never, O.Option<FinalizerS<S>>> =>
+    pipe(
+      _.ref,
+      R.modify<T.Effect<S, unknown, never, O.Option<FinalizerS<S>>>, State<S>>((s) => {
         switch (s._tag) {
           case "Exited":
             return [
@@ -208,8 +186,8 @@ export class ReleaseMap<S> {
             ]
           case "Running":
             return [
-              T.succeedNow(lookupMap(key)(s.finalizers)),
-              new Running(s.nextKey, insertMap(key, finalizer)(s.finalizers))
+              T.succeedNow(lookup(key)(s.finalizers())),
+              new Running(s.nextKey, insert(key, finalizer)(s.finalizers()))
             ]
           default:
             return absurd(s)
@@ -217,18 +195,11 @@ export class ReleaseMap<S> {
       }),
       T.flatten
     )
-  }
+}
+
+export class ReleaseMap<S> {
+  constructor(readonly ref: R.Ref<State<S>>) {}
 }
 
 export const makeReleaseMap = <S>() =>
-  T.map_(R.makeRef<State>(new Running(0, new Map())), (s) => new ReleaseMap<S>(s))
-
-export function copyMap<K, V>(self: ReadonlyMap<K, V>) {
-  const m = new Map<K, V>()
-
-  self.forEach((v, k) => {
-    m.set(k, v)
-  })
-
-  return m
-}
+  T.map_(R.makeRef<State<S>>(new Running(0, new Map())), (s) => new ReleaseMap<S>(s))

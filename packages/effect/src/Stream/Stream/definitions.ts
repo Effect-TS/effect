@@ -5,7 +5,7 @@ import * as C from "../../Cause/core"
 import * as Exit from "../../Exit/api"
 import { pipe } from "../../Function"
 import type { FinalizerS, ReleaseMap } from "../../Managed"
-import { makeReleaseMap, noopFinalizer } from "../../Managed"
+import { makeReleaseMap, noopFinalizer, releaseAll } from "../../Managed"
 import * as Option from "../../Option"
 import * as Ref from "../../Ref"
 import * as Pull from "../Pull"
@@ -153,7 +153,7 @@ export class Chain<S_, R_, E_, O, O2> {
             ),
             T.tap(({ pull }) => this.currInnerStream.set(pull)),
             T.tap(({ releaseMap }) =>
-              this.innerFinalizer.set((e) => releaseMap.releaseAll(e, T.sequential))
+              this.innerFinalizer.set((e) => releaseAll(e, T.sequential)(releaseMap))
             ),
             T.asUnit
           )

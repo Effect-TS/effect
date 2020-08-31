@@ -4,7 +4,7 @@ import * as C from "../../Cause/core"
 import * as Exit from "../../Exit/api"
 import { pipe } from "../../Function"
 import type { FinalizerS, ReleaseMap } from "../../Managed"
-import { makeReleaseMap, noopFinalizer } from "../../Managed"
+import { makeReleaseMap, noopFinalizer, releaseAll } from "../../Managed"
 import * as Option from "../../Option"
 import * as Ref from "../../Ref"
 import type * as Pull from "../Pull"
@@ -59,7 +59,9 @@ export const catchAllCause = <E, S1, R1, E2, O1>(
               makeReleaseMap<S | S1>(),
               T.chain((releaseMap) =>
                 pipe(
-                  finalizerRef.set((exit) => releaseMap.releaseAll(exit, T.sequential)),
+                  finalizerRef.set((exit) =>
+                    releaseAll(exit, T.sequential)(releaseMap)
+                  ),
                   T.chain(() =>
                     pipe(
                       restore(stream.proc.effect),

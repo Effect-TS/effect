@@ -9,7 +9,7 @@ import { makeRef } from "../Ref"
 import * as T from "./deps"
 import { Managed } from "./managed"
 import type { Finalizer, ReleaseMap } from "./releaseMap"
-import { makeReleaseMap, noopFinalizer } from "./releaseMap"
+import * as RelMap from "./releaseMap"
 
 /**
  * Returns a managed that models the execution of this managed, followed by
@@ -231,7 +231,7 @@ export const fork = <S, R, E, A>(
         T.bind("tp", () => T.environment<readonly [R, ReleaseMap<unknown>]>()),
         T.let("r", ({ tp }) => tp[0]),
         T.let("outerReleaseMap", ({ tp }) => tp[1]),
-        T.bind("innerReleaseMap", () => makeReleaseMap<unknown>()),
+        T.bind("innerReleaseMap", () => RelMap.makeReleaseMap<unknown>()),
         T.bind("fiber", ({ innerReleaseMap, r }) =>
           restore(
             pipe(
@@ -243,13 +243,13 @@ export const fork = <S, R, E, A>(
           )
         ),
         T.bind("releaseMapEntry", ({ fiber, innerReleaseMap, outerReleaseMap }) =>
-          outerReleaseMap.add((e) =>
+          RelMap.add((e) =>
             pipe(
               fiber,
               interrupt,
-              T.chain(() => innerReleaseMap.releaseAll(e, sequential))
+              T.chain(() => RelMap.releaseAll(e, sequential)(innerReleaseMap))
             )
-          )
+          )(outerReleaseMap)
         ),
         T.map(({ fiber, releaseMapEntry }) => [releaseMapEntry, fiber])
       )
@@ -264,7 +264,7 @@ export const fromEffect = <S, R, E, A>(effect: T.Effect<S, R, E, A>) =>
   new Managed<S, R, E, A>(
     T.map_(
       T.accessM((_: readonly [R, ReleaseMap<S>]) => T.provideAll_(effect, _[0])),
-      (a) => [noopFinalizer(), a]
+      (a) => [RelMap.noopFinalizer(), a]
     )
   )
 
@@ -309,7 +309,7 @@ export const makeExit_ = <S, R, E, A, S1, R1>(
         T.bind("r", () => T.environment<readonly [R & R1, ReleaseMap<S | S1>]>()),
         T.bind("a", (s) => T.provideAll_(acquire, s.r[0])),
         T.bind("rm", (s) =>
-          s.r[1].add((ex) => T.provideAll_(release(s.a, ex), s.r[0]))
+          RelMap.add((ex) => T.provideAll_(release(s.a, ex), s.r[0]))(s.r[1])
         ),
         T.map((s) => [s.rm, s.a])
       )
@@ -360,7 +360,7 @@ export function makeManagedReleaseMap(
 export function makeManagedReleaseMap(
   es: ExecutionStrategy
 ): Managed<unknown, unknown, any, ReleaseMap<unknown>> {
-  return makeExit_(makeReleaseMap(), (rm, e) => rm.releaseAll(e, es))
+  return makeExit_(RelMap.makeReleaseMap(), (rm, e) => RelMap.releaseAll(e, es)(rm))
 }
 
 /**
@@ -384,7 +384,9 @@ export const makeReserve = <S, R, E, S2, R2, E2, A>(
         T.let("releaseMap", (s) => s.tp[1]),
         T.bind("reserved", (s) => T.provideAll_(reservation, s.r)),
         T.bind("releaseKey", (s) =>
-          s.releaseMap.addIfOpen((x) => T.provideAll_(s.reserved.release(x), s.r))
+          RelMap.addIfOpen((x) => T.provideAll_(s.reserved.release(x), s.r))(
+            s.releaseMap
+          )
         ),
         T.bind("finalizerAndA", (s) => {
           const k = s.releaseKey
@@ -400,7 +402,10 @@ export const makeReserve = <S, R, E, S2, R2, E2, A>(
                     ([r]: readonly [R & R2, ReleaseMap<S | S2>]) => r
                   )
                 ),
-                (a): [Finalizer, A] => [(e) => s.releaseMap.release(k.value, e), a]
+                (a): [Finalizer, A] => [
+                  (e) => RelMap.release(k.value, e)(s.releaseMap),
+                  a
+                ]
               )
             }
           }
@@ -472,7 +477,7 @@ export const onExit_ = <S, R, E, A, S2, R2>(
         T.bind("tp", () => T.environment<readonly [R & R2, ReleaseMap<S | S2>]>()),
         T.let("r", (s) => s.tp[0]),
         T.let("outerReleaseMap", (s) => s.tp[1]),
-        T.bind("innerReleaseMap", () => makeReleaseMap<S | S2>()),
+        T.bind("innerReleaseMap", () => RelMap.makeReleaseMap<S | S2>()),
         T.bind("exitEA", (s) =>
           restore(
             T.provideAll_(T.result(T.map_(self.effect, ([_, a]) => a)), [
@@ -482,15 +487,15 @@ export const onExit_ = <S, R, E, A, S2, R2>(
           )
         ),
         T.bind("releaseMapEntry", (s) =>
-          s.outerReleaseMap.add((e) =>
+          RelMap.add((e) =>
             pipe(
-              s.innerReleaseMap.releaseAll(e, sequential),
+              RelMap.releaseAll(e, sequential)(s.innerReleaseMap),
               T.result,
               T.zipWith(pipe(cleanup(s.exitEA), T.provideAll(s.r), T.result), (l, r) =>
                 T.exitZipRight_(l, r)
               )
             )
-          )
+          )(s.outerReleaseMap)
         ),
         T.bind("a", (s) => T.done(s.exitEA)),
         T.map((s) => [s.releaseMapEntry, s.a])
@@ -529,7 +534,7 @@ export const onExitFirst_ = <S, R, E, A, S2, R2>(
         T.bind("tp", () => T.environment<readonly [R & R2, ReleaseMap<S | S2>]>()),
         T.let("r", (s) => s.tp[0]),
         T.let("outerReleaseMap", (s) => s.tp[1]),
-        T.bind("innerReleaseMap", () => makeReleaseMap<S | S2>()),
+        T.bind("innerReleaseMap", () => RelMap.makeReleaseMap<S | S2>()),
         T.bind("exitEA", (s) =>
           restore(
             T.provideAll_(T.result(T.map_(self.effect, ([_, a]) => a)), [
@@ -539,15 +544,15 @@ export const onExitFirst_ = <S, R, E, A, S2, R2>(
           )
         ),
         T.bind("releaseMapEntry", (s) =>
-          s.outerReleaseMap.add((e) =>
+          RelMap.add((e) =>
             T.flatten(
               T.zipWith_(
                 T.result(T.provideAll_(cleanup(s.exitEA), s.r)),
-                T.result(s.innerReleaseMap.releaseAll(e, sequential)),
+                T.result(RelMap.releaseAll(e, sequential)(s.innerReleaseMap)),
                 (l, r) => T.done(T.exitZipRight_(l, r))
               )
             )
-          )
+          )(s.outerReleaseMap)
         ),
         T.bind("a", (s) => T.done(s.exitEA)),
         T.map((s) => [s.releaseMapEntry, s.a])
@@ -639,13 +644,13 @@ export const use_ = <S, R, E, A, S2, R2, E2, B>(
   f: (a: A) => T.Effect<S2, R2, E2, B>
 ): T.Effect<S | S2, R & R2, E | E2, B> => {
   return T.bracketExit_(
-    makeReleaseMap<S | S2>(),
+    RelMap.makeReleaseMap<S | S2>(),
     (rm) =>
       T.chain_(
         T.provideSome_(self.effect, (r: R) => tuple(r, rm)),
         (a) => f(a[1])
       ),
-    (rm, ex) => rm.releaseAll(ex, sequential)
+    (rm, ex) => RelMap.releaseAll(ex, sequential)(rm)
   )
 }
 
