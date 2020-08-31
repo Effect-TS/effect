@@ -68,7 +68,7 @@ function get<S, R, E, A>(
               )
             )
           ),
-          chain((a) => (a._tag === "None" ? die("bug") : restore(P.wait(a.value[1]))))
+          chain((a) => (a._tag === "None" ? die("bug") : restore(P.await(a.value[1]))))
         )
       )
     )

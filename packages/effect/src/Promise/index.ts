@@ -24,5 +24,4 @@ export * from "./state"
 export * from "./succeed"
 export * from "./unsafeDone"
 export * from "./unsafeMake"
-export * from "./wait"
 // codegen:end

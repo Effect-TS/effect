@@ -33,7 +33,7 @@ export const mapMPar = (n: number) => <O, S1, R1, E1, O1>(
               T.of,
               T.bind("p", () => P.make<E1, O1>()),
               T.bind("latch", () => P.make<never, void>()),
-              T.tap(({ p }) => out.offer(pipe(p, P.wait, T.mapError(Option.some)))),
+              T.tap(({ p }) => out.offer(pipe(p, P.await, T.mapError(Option.some)))),
               T.tap(({ latch, p }) =>
                 pipe(
                   latch,
@@ -42,7 +42,7 @@ export const mapMPar = (n: number) => <O, S1, R1, E1, O1>(
                   T.chain(() =>
                     pipe(
                       errorSignal,
-                      P.wait,
+                      P.await,
                       // Interrupt evaluation if another task fails
                       T.raceFirst(f(a)),
                       // Notify other tasks of a failure
@@ -55,7 +55,7 @@ export const mapMPar = (n: number) => <O, S1, R1, E1, O1>(
                   T.fork
                 )
               ),
-              T.tap(({ latch }) => P.wait(latch)),
+              T.tap(({ latch }) => P.await(latch)),
               T.asUnit
             )
           ),
