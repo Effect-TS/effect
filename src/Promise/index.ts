@@ -5,6 +5,7 @@
  */
 
 // codegen:start {preset: barrel, include: ./*.ts, exclude: ./deps.ts}
+export * from "./await"
 export * from "./complete"
 export * from "./completeWith"
 export * from "./die"
