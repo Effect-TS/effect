@@ -22,7 +22,7 @@ export const mapM = <O, S1, R1, E1, O1>(f: (o: O) => T.Effect<S1, R1, E1, O1>) =
       M.map((pull) =>
         pipe(
           pull,
-          BPull.pullElements,
+          BPull.pullElement,
           T.chain((o) =>
             pipe(
               f(o),
