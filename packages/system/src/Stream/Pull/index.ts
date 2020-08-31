@@ -11,3 +11,9 @@ export const end = T.fail(O.none)
 export const fail = <E>(e: E) => T.fail(O.some(e))
 
 export const halt = <E>(e: Cause<E>) => pipe(T.halt(e), T.mapError(O.some))
+
+export const empty = <A>() => T.succeedNow([] as A.Array<A>)
+
+export const emit = <A>(a: A) => T.succeedNow([a])
+
+export const emitArray = <A>(as: A.Array<A>) => T.succeedNow(as)
