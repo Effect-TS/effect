@@ -38,7 +38,7 @@ export function memoize<A, S, R, E, B>(
             })
           )
         ),
-        bind("b", ({ promise }) => P.wait(promise)),
+        bind("b", ({ promise }) => P.await(promise)),
         map(({ b }) => b)
       )
     )
@@ -78,7 +78,7 @@ export function memoizeEq<A>(compare: (r: A) => (l: A) => boolean) {
               })
             )
           ),
-          bind("b", ({ promise }) => P.wait(promise)),
+          bind("b", ({ promise }) => P.await(promise)),
           map(({ b }) => b)
         )
       )
