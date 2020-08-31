@@ -5,7 +5,8 @@ import type { HasType } from "../Has"
 import { has } from "../Has"
 import { Managed } from "../Managed/managed"
 import type { Finalizer, ReleaseMap } from "../Managed/releaseMap"
-import { insertMap, makeReleaseMap, noopFinalizer } from "../Managed/releaseMap"
+import * as RelMap from "../Managed/releaseMap"
+import { insert } from "../Map"
 import * as P from "../Promise"
 import * as R from "../Ref"
 import * as RM from "../RefM"
@@ -44,7 +45,7 @@ export class MemoMap {
                 T.onExit((ex) => {
                   switch (ex._tag) {
                     case "Success": {
-                      return rm.add(release)
+                      return RelMap.add(release)(rm)
                     }
                     case "Failure": {
                       return T.unit
@@ -61,7 +62,9 @@ export class MemoMap {
               T.of,
               T.bind("observers", () => R.makeRef(0)),
               T.bind("promise", () => P.make<E, A>()),
-              T.bind("finalizerRef", () => R.makeRef<Finalizer>(noopFinalizer())),
+              T.bind("finalizerRef", () =>
+                R.makeRef<Finalizer>(RelMap.noopFinalizer())
+              ),
               T.let("resource", ({ finalizerRef, observers, promise }) =>
                 T.uninterruptibleMask(({ restore }) =>
                   pipe(
@@ -74,7 +77,7 @@ export class MemoMap {
                       "outerReleaseMap",
                       ({ env: [_, outerReleaseMap] }) => outerReleaseMap
                     ),
-                    T.bind("innerReleaseMap", () => makeReleaseMap<unknown>()),
+                    T.bind("innerReleaseMap", () => RelMap.makeReleaseMap<unknown>()),
                     T.bind("tp", ({ a, innerReleaseMap, outerReleaseMap }) =>
                       restore(
                         pipe(
@@ -88,10 +91,10 @@ export class MemoMap {
                                   P.halt(e.cause),
                                   T.chain(
                                     () =>
-                                      innerReleaseMap.releaseAll(
+                                      RelMap.releaseAll(
                                         e,
                                         sequential
-                                      ) as T.AsyncE<E, any>
+                                      )(innerReleaseMap) as T.AsyncE<E, any>
                                   ),
                                   T.chain(() => T.halt(e.cause))
                                 )
@@ -107,10 +110,10 @@ export class MemoMap {
                                           R.modify((n) => [n === 1, n - 1])
                                         )
                                       )(
-                                        innerReleaseMap.releaseAll(
+                                        RelMap.releaseAll(
                                           e,
                                           sequential
-                                        ) as T.Async<any>
+                                        )(innerReleaseMap) as T.Async<any>
                                       )
                                     )
                                   ),
@@ -121,9 +124,9 @@ export class MemoMap {
                                     )
                                   ),
                                   T.bind("outerFinalizer", () =>
-                                    outerReleaseMap.add((e) =>
+                                    RelMap.add((e) =>
                                       T.chain_(finalizerRef.get, (f) => f(e))
-                                    )
+                                    )(outerReleaseMap)
                                   ),
                                   T.tap(() => pipe(promise, P.succeed(e.value[1]))),
                                   T.map(({ outerFinalizer }) =>
@@ -172,7 +175,7 @@ export class MemoMap {
                     E,
                     readonly [Finalizer, A]
                   >,
-                  insertMap(layer, memoized)(m) as ReadonlyMap<
+                  insert(layer, memoized)(m) as ReadonlyMap<
                     Layer<any, any, any, any>,
                     readonly [T.AsyncE<any, any>, Finalizer]
                   >
