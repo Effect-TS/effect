@@ -6,6 +6,9 @@ import { end, halt } from "../Pull"
 import type { AsyncRE } from "./definitions"
 import { repeatEffectChunkOption } from "./repeatEffectChunkOption"
 
+/**
+ * Creates a stream from a {@link XQueue} of values
+ */
 export function fromArrayQueue<S, R, E, O>(
   queue: XQueue<never, R, unknown, E, never, Array<O>>
 ): AsyncRE<R, E, O> {

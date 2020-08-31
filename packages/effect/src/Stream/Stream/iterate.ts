@@ -6,5 +6,8 @@ import { getAndUpdate, makeRef } from "../../Ref"
 import type { Sync } from "./definitions"
 import { Stream } from "./definitions"
 
+/**
+ * The infinite stream of iterative function application: a, f(a), f(f(a)), f(f(f(a))), ...
+ */
 export const iterate = <A>(a: A, f: (a: A) => A): Sync<A> =>
   new Stream(pipe(makeRef(a), toManaged(), mapM(flow(getAndUpdate(f), mapT(single)))))
