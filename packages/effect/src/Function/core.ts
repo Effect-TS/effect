@@ -41,7 +41,7 @@ export interface FunctionN<A extends ReadonlyArray<unknown>, B> {
 /**
  * Will raise if called
  */
-export function absurd<A>(_: never): never {
+export function absurd<A = never>(_: never): A {
   throw new Error("Called `absurd` function which should be uncallable")
 }
 
