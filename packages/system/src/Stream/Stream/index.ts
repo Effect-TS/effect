@@ -2,6 +2,7 @@
 export * from "./absolve"
 export * from "./access"
 export * from "./accessM"
+export * from "./accessStream"
 export * from "./aggregate"
 export * from "./apply"
 export * from "./bracket"
