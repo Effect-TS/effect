@@ -46,7 +46,7 @@ export class BackPressureStrategy<A> implements Strategy<A> {
             if (isShutdown.get) {
               return T.interrupt
             } else {
-              return P.wait(p)
+              return P.await(p)
             }
           }),
           () => T.effectTotal(() => this.unsafeRemove(p))
@@ -243,7 +243,7 @@ export const unsafeCreate = <A>(
   strategy: Strategy<A>
 ): Queue<A> =>
   new (class extends XQueue<unknown, unknown, never, never, A, A> {
-    awaitShutdown: T.Async<void> = P.wait(shutdownHook)
+    awaitShutdown: T.Async<void> = P.await(shutdownHook)
 
     capacity: number = queue.capacity
 
@@ -345,7 +345,7 @@ export const unsafeCreate = <A>(
               if (shutdownFlag.get) {
                 return T.interrupt
               } else {
-                return P.wait(p)
+                return P.await(p)
               }
             }),
             () => T.effectTotal(() => unsafeRemove(takers, p))

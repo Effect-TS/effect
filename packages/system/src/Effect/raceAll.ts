@@ -89,7 +89,7 @@ export function raceAll<S, R, E, A>(
           ),
           Do.bind("c", ({ fs, inheritRefs }) =>
             pipe(
-              restore(pipe(done, P.wait, chain(inheritRefs))),
+              restore(pipe(done, P.await, chain(inheritRefs))),
               onInterrupt(() =>
                 A.reduce_(fs, unit as Async<void>, (io, f) =>
                   tap_(io, () => Fiber.interrupt(f))
