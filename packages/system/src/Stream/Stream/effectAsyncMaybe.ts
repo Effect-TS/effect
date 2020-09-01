@@ -1,7 +1,9 @@
 import * as T from "../_internal/effect"
 import * as M from "../_internal/managed"
 import type * as Array from "../../Array"
+import type { Async } from "../../Effect"
 import type { Exit } from "../../Exit"
+import type { Callback } from "../../Fiber"
 import { pipe } from "../../Function"
 import * as Option from "../../Option"
 import { makeBounded } from "../../Queue"
@@ -19,8 +21,9 @@ import { Stream } from "./definitions"
 export const effectAsyncMaybe = <R, E, A>(
   register: (
     cb: (
-      next: T.Effect<unknown, R, Option.Option<E>, Array.Array<A>>
-    ) => T.Async<Exit<never, boolean>>
+      next: T.Effect<unknown, R, Option.Option<E>, Array.Array<A>>,
+      offerCb?: Callback<never, boolean>
+    ) => Async<Exit<never, boolean>>
   ) => Option.Option<Stream<unknown, R, E, A>>,
   outputBuffer = 16
 ): Stream<unknown, R, E, A> =>
@@ -33,8 +36,10 @@ export const effectAsyncMaybe = <R, E, A>(
       M.bind("runtime", () => pipe(T.runtime<R>(), T.toManaged())),
       M.bind("maybeStream", ({ output, runtime }) =>
         M.effectTotal(() =>
-          register((k) =>
-            pipe(Take.fromPull(k), T.chain(output.offer), runtime.runAsyncCancel)
+          register((k, cb) =>
+            pipe(Take.fromPull(k), T.chain(output.offer), (x) =>
+              runtime.runAsyncCancel(x, cb)
+            )
           )
         )
       ),
