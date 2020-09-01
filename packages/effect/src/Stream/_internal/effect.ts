@@ -1,4 +1,5 @@
 export { as_ } from "../../Effect/as"
+export { effectAsyncInterrupt } from "../../Effect/effectAsyncInterrupt"
 export { asSomeError } from "../../Effect/asSomeError"
 export { asUnit } from "../../Effect/asUnit"
 export { bimap } from "../../Effect/bimap"
