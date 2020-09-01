@@ -110,6 +110,7 @@
       "Prelude/IdentityBoth",
       "Prelude/IdentityEither",
       "Prelude/IdentityFlatten",
+      "Prelude/Indexed",
       "Prelude/Invariant",
       "Prelude/Monad",
       "Prelude/None",
