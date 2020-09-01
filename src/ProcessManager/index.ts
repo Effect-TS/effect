@@ -24,12 +24,10 @@ export class ProcessMap {
     this.subscribe = this.subscribe.bind(this)
   }
 
-  fork<S, R, E, A>(effect: T.Effect<S, R, E, A>, has?: Has.Has<any>) {
-    if (has && this.identified.has(has[Has.HasURI].key)) {
+  fork<S, R, E, A>(effect: T.Effect<S, R, E, A>, has?: Has.Tag<any>) {
+    if (has && this.identified.has(has.key)) {
       return T.die(
-        `Fiber (#${
-          this.identified.get(has[Has.HasURI].key)?.id.seqNumber
-        } already forked`
+        `Fiber (#${this.identified.get(has.key)?.id.seqNumber} already forked`
       )
     }
     if (this.interruptedBy.get) {
@@ -39,14 +37,14 @@ export class ProcessMap {
       T.effectTotal(() => {
         this.fibers.add(f)
         if (has) {
-          this.identified.set(has[Has.HasURI].key, f)
+          this.identified.set(has.key, f)
         }
 
         f.onDone((e) => {
           this.fibers.delete(f)
 
           if (has) {
-            this.identified.set(has[Has.HasURI].key, f)
+            this.identified.set(has.key, f)
           }
 
           if (this.interruptedBy.get) {
@@ -153,7 +151,7 @@ export const makeGenericProcess = <S, R, A>(effect: T.Effect<S, R, never, A>) =>
           M.map(
             (): HasProcessRegistry =>
               ({
-                [HasProcessRegistry[Has.HasURI].key]: new ProcessRegistry(pm)
+                [HasProcessRegistry.key]: new ProcessRegistry(pm)
               } as any)
           )
         )
@@ -195,7 +193,10 @@ export class Process<A, ID> {
  * Fork a new managed process, a managed process runs in background and
  * will trigger interruption if any failure happens
  */
-export const makeProcess = <ID extends string, A>(has: HasProcess<ID, A>) => <S, R>(
+export const makeProcess = <ID extends string, A>(has: Has.Tag<Process<A, ID>>) => <
+  S,
+  R
+>(
   effect: T.Effect<S, R, never, A>
 ) =>
   new L.Layer<
@@ -231,14 +232,14 @@ export const makeProcess = <ID extends string, A>(has: HasProcess<ID, A>) => <S,
               )
             )
           ),
-          M.map((f) => new Process(f)),
+          M.map((f) => new Process<A, ID>(f)),
           M.chain((a) =>
             M.map_(
               environmentFor(has, a),
               (e): HasProcess<ID, A> & HasProcessRegistry =>
                 ({
                   ...e,
-                  [HasProcessRegistry[Has.HasURI].key]: new ProcessRegistry(pm)
+                  [HasProcessRegistry.key]: new ProcessRegistry(pm)
                 } as any)
             )
           )
@@ -248,18 +249,16 @@ export const makeProcess = <ID extends string, A>(has: HasProcess<ID, A>) => <S,
   )
 
 function environmentFor<T>(
-  has: Has.Has<T>,
+  has: Has.Tag<T>,
   a: T
 ): M.Managed<never, unknown, never, Has.Has<T>>
 function environmentFor<T>(
-  has: Has.Has<T>,
+  has: Has.Tag<T>,
   a: T
 ): M.Managed<never, unknown, never, any> {
   return M.fromEffect(
     T.access((r) => ({
-      [has[Has.HasURI].key]: Has.mergeEnvironments(has, r, a as any)[
-        has[Has.HasURI].key
-      ]
+      [has.key]: Has.mergeEnvironments(has, r, a as any)[has.key]
     }))
   )
 }
