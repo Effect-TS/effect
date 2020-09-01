@@ -3,7 +3,7 @@ import { readService } from "../Effect/has"
 import type { DefaultEnv, Runtime } from "../Effect/runtime"
 import { makeRuntime } from "../Effect/runtime"
 import { pipe, tuple } from "../Function"
-import { HasURI, mergeEnvironments } from "../Has"
+import { mergeEnvironments } from "../Has"
 import type { Managed } from "../Managed/managed"
 import type { Finalizer } from "../Managed/releaseMap"
 import * as RM from "../RefM"
@@ -16,12 +16,12 @@ export { Layer } from "./Layer"
 
 export type AsyncR<R, A> = Layer<unknown, R, never, A>
 
-export const pure = <T>(has: T.Has<T>) => (resource: T) =>
+export const pure = <T>(has: T.Tag<T>) => (resource: T) =>
   new Layer<never, unknown, never, T.Has<T>>(
     T.managedChain_(T.fromEffect(T.succeedNow(resource)), (a) => environmentFor(has, a))
   )
 
-export const prepare = <T>(has: T.Has<T>) => <S, R, E, A extends T>(
+export const prepare = <T>(has: T.Tag<T>) => <S, R, E, A extends T>(
   acquire: T.Effect<S, R, E, A>
 ) => ({
   open: <S1, R1, E1>(open: (_: A) => T.Effect<S1, R1, E1, any>) => ({
@@ -37,21 +37,21 @@ export const prepare = <T>(has: T.Has<T>) => <S, R, E, A extends T>(
     fromManaged(has)(T.makeExit_(acquire, (a) => release(a)))
 })
 
-export const service = <T>(has: T.Has<T>) => ({
+export const service = <T>(has: T.Tag<T>) => ({
   fromEffect: fromEffect(has),
   fromManaged: fromManaged(has),
   pure: pure(has),
   prepare: prepare(has)
 })
 
-export const fromEffect = <T>(has: T.Has<T>) => <S, R, E>(
+export const fromEffect = <T>(has: T.Tag<T>) => <S, R, E>(
   resource: T.Effect<S, R, E, T>
 ) =>
   new Layer<S, R, E, T.Has<T>>(
     T.managedChain_(T.fromEffect(resource), (a) => environmentFor(has, a))
   )
 
-export const fromManaged = <T>(has: T.Has<T>) => <S, R, E>(
+export const fromManaged = <T>(has: T.Tag<T>) => <S, R, E>(
   resource: T.Managed<S, R, E, T>
 ) =>
   new Layer<S, R, E, T.Has<T>>(T.managedChain_(resource, (a) => environmentFor(has, a)))
@@ -208,13 +208,13 @@ export const allParN = (n: number) => <Ls extends Layer<any, any, any, any>[]>(
   )
 
 function environmentFor<T>(
-  has: T.Has<T>,
+  has: T.Tag<T>,
   a: T
 ): T.Managed<never, unknown, never, T.Has<T>>
-function environmentFor<T>(has: T.Has<T>, a: T): T.Managed<never, unknown, never, any> {
+function environmentFor<T>(has: T.Tag<T>, a: T): T.Managed<never, unknown, never, any> {
   return T.fromEffect(
     T.access((r) => ({
-      [has[HasURI].key]: mergeEnvironments(has, r, a as any)[has[HasURI].key]
+      [has.key]: mergeEnvironments(has, r, a as any)[has.key]
     }))
   )
 }
@@ -227,13 +227,11 @@ export const main = <S, E, A>(layer: Layer<S, DefaultEnv, E, A>) => layer
 /**
  * Embed the requird environment in a region
  */
-export const region = <K, T>(h: T.Has<T.Region<T, K>>) => <S, R, E>(
+export const region = <K, T>(h: T.Tag<T.Region<T, K>>) => <S, R, E>(
   _: Layer<S, R, E, T>
 ): Layer<S, R, E, T.Has<T.Region<T, K>>> =>
   pipe(
-    fromEffectEnv(
-      T.access((r: T): T.Has<T.Region<T, K>> => ({ [h[HasURI].key]: r } as any))
-    ),
+    fromEffectEnv(T.access((r: T): T.Has<T.Region<T, K>> => ({ [h.key]: r } as any))),
     consuming(_)
   )
 

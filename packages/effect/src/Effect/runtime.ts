@@ -10,8 +10,6 @@ import { FiberContext } from "../Fiber/context"
 import { interruptible } from "../Fiber/core"
 import { newFiberId } from "../Fiber/id"
 import type { Callback, FiberStateDone } from "../Fiber/state"
-// scope
-import { HasURI } from "../Has"
 import type { Layer } from "../Layer/Layer"
 import { HasMemoMap, MemoMap } from "../Layer/MemoMap"
 import type { Finalizer } from "../Managed/releaseMap"
@@ -39,9 +37,9 @@ export const memoMap = new MemoMap(
 )
 
 export const defaultEnv = () => ({
-  [HasClock[HasURI].key]: new LiveClock(),
-  [HasRandom[HasURI].key]: defaultRandom,
-  [HasMemoMap[HasURI].key]: memoMap
+  [HasClock.key]: new LiveClock(),
+  [HasRandom.key]: defaultRandom,
+  [HasMemoMap.key]: memoMap
 })
 
 /**
