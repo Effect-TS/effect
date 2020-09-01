@@ -5,7 +5,9 @@ import * as IO from "../../src/XPure/XIO"
 
 export type DoorState = "DoorOpened" | "DoorClosed"
 
-export const { ichain, iof, lift, lower } = indexedF<DoorState>()(IO.Monad)
+export const { chain, chainLower, ichain, iof, lift, lower } = indexedF<DoorState>()(
+  IO.Monad
+)
 
 export const run = flow(lower<"DoorOpened", "DoorClosed">(), IO.run)
 
@@ -14,5 +16,12 @@ export const closing = ichain((n: number) =>
 )
 
 test("19", () => {
-  expect(pipe(iof<"DoorOpened">()(0), closing, run)).toBe(1)
+  expect(
+    pipe(
+      iof<"DoorOpened">()(0),
+      closing,
+      chainLower((n) => IO.sync(() => n + 2)),
+      run
+    )
+  ).toBe(3)
 })
