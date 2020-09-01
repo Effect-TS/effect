@@ -1,6 +1,6 @@
 import * as A from "@effect-ts/system/Array"
 
-import type { Augmented, Has } from "../../Classic/Has"
+import type { Has, Tag } from "../../Classic/Has"
 import { HasURI } from "../../Classic/Has"
 import { constant, flow, pipe, tuple } from "../../Function"
 import type { EnforceNonEmptyRecord } from "../../Utils"
@@ -181,14 +181,14 @@ export function structF(
 export function accessServiceMF<F extends HKT.URIS, C extends HKT.V<"R", "-">>(
   F: Monad<F, C> & Access<F, C>
 ): <Service>(
-  H: Augmented<Service>
+  H: Tag<Service>
 ) => <N extends string, K, Q, W, X, I, S, R, E, A>(
   f: (_: Service) => HKT.Kind<F, C, N, K, Q, W, X, I, S, R, E, A>
 ) => HKT.Kind<F, C, N, K, Q, W, X, I, S, R & Has<Service>, E, A>
 export function accessServiceMF(
   F: Monad<[HKT.UF___], HKT.V<"R", "-">> & Access<[HKT.UF___], HKT.V<"R", "-">>
 ): <Service>(
-  H: Augmented<Service>
+  H: Tag<Service>
 ) => <R, E, A>(
   f: (_: Service) => HKT.F___<R, E, A>
 ) => HKT.F___<Has<Service> & R, E, A> {
@@ -198,7 +198,7 @@ export function accessServiceMF(
 export function provideServiceF<F extends HKT.URIS, C extends HKT.V<"R", "-">>(
   F: Monad<F, C> & Access<F, C> & Provide<F, C>
 ): <Service>(
-  H: Augmented<Service>
+  H: Tag<Service>
 ) => (
   S: Service
 ) => <N extends string, K, Q, W, X, I, S, R, E, A>(
@@ -209,7 +209,7 @@ export function provideServiceF(
     Access<[HKT.UF___], HKT.V<"R", "-">> &
     Provide<[HKT.UF___], HKT.V<"R", "-">>
 ) {
-  return <Service>(H: Augmented<Service>) => <R, E, A>(S: Service) => (
+  return <Service>(H: Tag<Service>) => <R, E, A>(S: Service) => (
     fa: HKT.F___<Has<Service> & R, E, A>
   ): HKT.F___<R, E, A> =>
     accessMF(F)((r: R) =>
