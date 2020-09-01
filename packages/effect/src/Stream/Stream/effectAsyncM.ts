@@ -1,6 +1,7 @@
 import * as T from "../_internal/effect"
 import * as M from "../_internal/managed"
 import type * as Array from "../../Array"
+import type { Exit } from "../../Exit"
 import { pipe } from "../../Function"
 import type * as Option from "../../Option"
 import { makeBounded } from "../../Queue"
@@ -21,7 +22,7 @@ export const effectAsyncM = <R, E, A, R1 = R, E1 = E>(
   register: (
     cb: (
       next: T.Effect<unknown, R, Option.Option<E>, Array.Array<A>>
-    ) => Promise<boolean>
+    ) => T.Async<Exit<never, boolean>>
   ) => T.Effect<unknown, R1, E1, unknown>,
   outputBuffer = 16
 ): Stream<unknown, R & R1, E | E1, A> =>
@@ -34,7 +35,7 @@ export const effectAsyncM = <R, E, A, R1 = R, E1 = E>(
     M.tap(({ output, runtime }) =>
       T.toManaged()(
         register((k) =>
-          pipe(Take.fromPull(k), T.chain(output.offer), runtime.runPromise)
+          pipe(Take.fromPull(k), T.chain(output.offer), runtime.runAsyncCancel)
         )
       )
     ),

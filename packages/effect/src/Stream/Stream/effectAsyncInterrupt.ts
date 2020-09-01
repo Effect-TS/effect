@@ -1,6 +1,7 @@
 import type * as T from "../_internal/effect"
 import type * as Array from "../../Array"
 import * as Either from "../../Either"
+import type { Exit } from "../../Exit"
 import type * as Option from "../../Option"
 import type { Stream } from "./definitions"
 import { effectAsyncInterruptEither } from "./effectAsyncInterruptEither"
@@ -15,7 +16,7 @@ export const effectAsyncInterrupt = <R, E, A>(
   register: (
     cb: (
       next: T.Effect<unknown, R, Option.Option<E>, Array.Array<A>>
-    ) => Promise<boolean>
+    ) => T.Async<Exit<never, boolean>>
   ) => T.Canceler<R>,
   outputBuffer = 16
 ): Stream<unknown, R, E, A> =>
