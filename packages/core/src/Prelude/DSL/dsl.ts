@@ -258,7 +258,7 @@ export function bindF<F extends HKT.URIS, C = HKT.Auto>(
     F,
     C,
     HKT.Intro<C, "N", N2, N>,
-    HKT.Intro<C, "K", X2, K>,
+    HKT.Intro<C, "K", K2, K>,
     HKT.Intro<C, "Q", Q2, Q>,
     HKT.Intro<C, "W", W2, W>,
     HKT.Intro<C, "X", X2, X>,
