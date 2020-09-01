@@ -2,6 +2,7 @@ import * as T from "../_internal/effect"
 import * as M from "../_internal/managed"
 import type * as Array from "../../Array"
 import * as Either from "../../Either"
+import type { Exit } from "../../Exit"
 import { pipe } from "../../Function"
 import type * as Option from "../../Option"
 import { makeBounded } from "../../Queue"
@@ -20,7 +21,7 @@ export const effectAsyncInterruptEither = <R, E, A>(
   register: (
     cb: (
       next: T.Effect<unknown, R, Option.Option<E>, Array.Array<A>>
-    ) => Promise<boolean>
+    ) => T.Async<Exit<never, boolean>>
   ) => Either.Either<T.Canceler<R>, Stream<unknown, R, E, A>>,
   outputBuffer = 16
 ): Stream<unknown, R, E, A> =>
@@ -34,7 +35,7 @@ export const effectAsyncInterruptEither = <R, E, A>(
       M.bind("eitherStream", ({ output, runtime }) =>
         M.effectTotal(() =>
           register((k) =>
-            pipe(Take.fromPull(k), T.chain(output.offer), runtime.runPromise)
+            pipe(Take.fromPull(k), T.chain(output.offer), runtime.runAsyncCancel)
           )
         )
       ),
