@@ -102,7 +102,7 @@ declare module "../Prelude/HKT" {
     [ReaderURI]: Reader<R, A>
     [StateInURI]: StateIn<S, A>
     [StateOutURI]: StateOut<S, A>
-    [IxURI]: TC extends IxC<infer _I, infer _O> ? Ix<_I, _O, A> : never
+    [IxURI]: TC extends IxC<infer _I, infer _O> ? Ix<_I, _O, A> : any
   }
   interface URItoIndex<N extends string, K> {
     [ArrayURI]: number
