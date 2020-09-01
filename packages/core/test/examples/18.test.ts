@@ -20,7 +20,7 @@ namespace StateStateEither {
   export const succeed = DSL.succeedF(MonadL1)
 }
 
-test("16", () => {
+test("18", () => {
   pipe(
     StateStateEither.succeed(1),
     StateStateEither.chain((n) => StateStateEither.succeed(n + 1)),

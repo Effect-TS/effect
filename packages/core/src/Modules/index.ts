@@ -1,4 +1,4 @@
-import type { Effect } from "@effect-ts/system/Effect"
+import type { _I, Effect } from "@effect-ts/system/Effect"
 import { EffectURI } from "@effect-ts/system/Effect"
 
 import type { Array } from "../Classic/Array"
@@ -14,6 +14,7 @@ import type { Reader } from "../Classic/Reader"
 import type { Record } from "../Classic/Record"
 import type { Show } from "../Classic/Show"
 import type { StateIn, StateOut } from "../Classic/StateT"
+import type { Ix, IxC } from "../Prelude/Indexed"
 import type { XIO } from "../XPure/XIO"
 import type { XReader } from "../XPure/XReader"
 import type { XState } from "../XPure/XState"
@@ -77,6 +78,9 @@ export type ParametricStateInURI = typeof ParametricStateInURI
 export const StateOutURI = "StateOut"
 export type StateOutURI = typeof StateOutURI
 
+export const IxURI = "Ix"
+export type IxURI = typeof IxURI
+
 declare module "../Prelude/HKT" {
   interface URItoKind<FC, TC, N extends string, K, Q, W, X, I, S, R, E, A> {
     [ArrayURI]: Array<A>
@@ -98,6 +102,7 @@ declare module "../Prelude/HKT" {
     [ReaderURI]: Reader<R, A>
     [StateInURI]: StateIn<S, A>
     [StateOutURI]: StateOut<S, A>
+    [IxURI]: TC extends IxC<infer _I, infer _O> ? Ix<_I, _O, A> : never
   }
   interface URItoIndex<N extends string, K> {
     [ArrayURI]: number
