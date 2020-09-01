@@ -3,6 +3,7 @@ import * as Exit from "../src/Exit"
 import { flow, identity, pipe } from "../src/Function"
 import * as O from "../src/Option"
 import * as R from "../src/Ref"
+import * as S from "../src/Stream"
 import * as BufferedPull from "../src/Stream/BufferedPull"
 import * as Pull from "../src/Stream/Pull"
 
@@ -43,6 +44,26 @@ describe("Stream", () => {
       )
 
       expect(T.runSyncExit(program)).toEqual(Exit.succeed([0, 1, 2, 3, 4]))
+    })
+
+    it("effectAsync", async () => {
+      const result = await pipe(
+        S.effectAsync<unknown, never, number>((cb) => {
+          let counter = 0
+          const timer = setInterval(() => {
+            if (counter > 2) {
+              clearInterval(timer)
+              cb(T.fail(O.none))
+            } else {
+              cb(T.succeed([counter]))
+              counter++
+            }
+          }, 10)
+        }),
+        S.runCollect,
+        T.runPromise
+      )
+      expect(result).toEqual([0, 1, 2])
     })
   })
 })
