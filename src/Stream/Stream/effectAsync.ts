@@ -1,6 +1,7 @@
 import type * as T from "../_internal/effect"
 import type * as Array from "../../Array"
 import type { Exit } from "../../Exit"
+import type { Callback } from "../../Fiber"
 import * as Option from "../../Option"
 import type { Stream } from "./definitions"
 import { effectAsyncMaybe } from "./effectAsyncMaybe"
@@ -13,7 +14,8 @@ import { effectAsyncMaybe } from "./effectAsyncMaybe"
 export const effectAsync = <R, E, A>(
   register: (
     cb: (
-      next: T.Effect<unknown, R, Option.Option<E>, Array.Array<A>>
+      next: T.Effect<unknown, R, Option.Option<E>, Array.Array<A>>,
+      offerCb?: Callback<never, boolean>
     ) => T.Async<Exit<never, boolean>>
   ) => void,
   outputBuffer = 16

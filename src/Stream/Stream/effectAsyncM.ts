@@ -2,6 +2,7 @@ import * as T from "../_internal/effect"
 import * as M from "../_internal/managed"
 import type * as Array from "../../Array"
 import type { Exit } from "../../Exit"
+import type { Callback } from "../../Fiber"
 import { pipe } from "../../Function"
 import type * as Option from "../../Option"
 import { makeBounded } from "../../Queue"
@@ -21,7 +22,8 @@ import { repeatEffectChunkOption } from "./repeatEffectChunkOption"
 export const effectAsyncM = <R, E, A, R1 = R, E1 = E>(
   register: (
     cb: (
-      next: T.Effect<unknown, R, Option.Option<E>, Array.Array<A>>
+      next: T.Effect<unknown, R, Option.Option<E>, Array.Array<A>>,
+      offerCb?: Callback<never, boolean>
     ) => T.Async<Exit<never, boolean>>
   ) => T.Effect<unknown, R1, E1, unknown>,
   outputBuffer = 16
@@ -34,8 +36,10 @@ export const effectAsyncM = <R, E, A, R1 = R, E1 = E>(
     M.bind("runtime", () => pipe(T.runtime<R>(), T.toManaged())),
     M.tap(({ output, runtime }) =>
       T.toManaged()(
-        register((k) =>
-          pipe(Take.fromPull(k), T.chain(output.offer), runtime.runAsyncCancel)
+        register((k, cb) =>
+          pipe(Take.fromPull(k), T.chain(output.offer), (x) =>
+            runtime.runAsyncCancel(x, cb)
+          )
         )
       )
     ),
