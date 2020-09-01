@@ -1,7 +1,6 @@
 import * as A from "@effect-ts/system/Array"
 
 import type { Has, Tag } from "../../Classic/Has"
-import { HasURI } from "../../Classic/Has"
 import { constant, flow, pipe, tuple } from "../../Function"
 import type { EnforceNonEmptyRecord } from "../../Utils"
 import type { Any } from "../Any"
@@ -213,7 +212,7 @@ export function provideServiceF(
     fa: HKT.F___<Has<Service> & R, E, A>
   ): HKT.F___<R, E, A> =>
     accessMF(F)((r: R) =>
-      pipe(fa, F.provide(({ ...r, [H[HasURI].key]: S } as unknown) as R & Has<Service>))
+      pipe(fa, F.provide(({ ...r, [H.key]: S } as unknown) as R & Has<Service>))
     )
 }
 
