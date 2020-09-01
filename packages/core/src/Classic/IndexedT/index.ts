@@ -204,18 +204,14 @@ export interface Indexed<F extends [IxURI, ...HKT.URIS], C extends IxC<any, any>
   >
 }
 
-export interface Ix<I, O, A> {
-  _I: I
-  _O: O
-  _A: A
+export class Ix<I, O, A> {
+  readonly _I!: I
+  readonly _O!: O
+  constructor(readonly value: A) {}
 }
 
 export function makeIx<I, O>() {
-  return <A>(a: A): Ix<I, O, A> => ({
-    _A: a,
-    _I: undefined as any,
-    _O: undefined as any
-  })
+  return <A>(a: A): Ix<I, O, A> => new Ix<I, O, A>(a)
 }
 
 export type IndexedT<F extends HKT.URIS, C, I, O> = Indexed<
@@ -241,24 +237,24 @@ function indexed_<_I, _O>(
       f: (a: A) => Ix<IO, IO2, HKT.F_<B>>
     ) => <II extends _I>(fa: Ix<II, IO, HKT.F_<A>>): Ix<II, IO2, HKT.F_<B>> =>
       pipe(
-        fa._A,
-        chainF(F)((a) => f(a)._A),
+        fa.value,
+        chainF(F)((a) => f(a).value),
         makeIx<II, IO2>()
       ),
     lift: <II extends _I, IO extends _I>() => <A>(
       fa: HKT.F_<A>
     ): Ix<II, IO, HKT.F_<A>> => makeIx<II, IO>()(fa),
-    lower: () => (fa) => fa._A,
+    lower: () => (fa) => fa.value,
     chain: <IO extends _O, A, B>(f: (a: A) => Ix<IO, IO, HKT.F_<B>>) => <II extends _I>(
       fa: Ix<II, IO, HKT.F_<A>>
     ): Ix<II, IO, HKT.F_<B>> =>
       pipe(
-        fa._A,
-        chainF(F)((a) => f(a)._A),
+        fa.value,
+        chainF(F)((a) => f(a).value),
         makeIx<II, IO>()
       ),
     chainLower: <A, B>(f: (a: A) => HKT.F_<B>) => <II extends _I, IO extends _O>(
       fa: Ix<II, IO, HKT.F_<A>>
-    ): Ix<II, IO, HKT.F_<B>> => pipe(fa._A, chainF(F)(f), makeIx<II, IO>())
+    ): Ix<II, IO, HKT.F_<B>> => pipe(fa.value, chainF(F)(f), makeIx<II, IO>())
   })
 }
