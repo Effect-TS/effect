@@ -1,7 +1,8 @@
 import { pipe } from "../../Function"
-import { chainF, succeedF } from "../DSL"
-import * as HKT from "../HKT"
-import type { Monad } from "../Monad"
+import type { IxURI } from "../../Modules"
+import { chainF, succeedF } from "../../Prelude/DSL"
+import * as HKT from "../../Prelude/HKT"
+import type { Monad } from "../../Prelude/Monad"
 
 export interface IxC<I, O> {
   Ix: {
@@ -10,9 +11,9 @@ export interface IxC<I, O> {
   }
 }
 
-export type IxCT<C, I, O> = Omit<C, "Ix"> & IxC<I, O>
+export type IxCT<C, I, O> = Omit<C, IxURI> & IxC<I, O>
 
-export type Inner<F extends ["Ix", ...HKT.URIS]> = ((...x: F) => any) extends (
+export type Inner<F extends [IxURI, ...HKT.URIS]> = ((...x: F) => any) extends (
   x: infer H,
   ...r: infer Rest
 ) => any
@@ -21,8 +22,8 @@ export type Inner<F extends ["Ix", ...HKT.URIS]> = ((...x: F) => any) extends (
     : never
   : never
 
-export interface Indexed<F extends ["Ix", ...HKT.URIS], C extends IxC<any, any>> {
-  iof: <II extends C["Ix"]["_I"]>() => <
+export interface Indexed<F extends [IxURI, ...HKT.URIS], C extends IxC<any, any>> {
+  iof: <II extends C[IxURI]["_I"]>() => <
     A,
     N extends string = HKT.Initial<C, "N">,
     K = HKT.Initial<C, "K">,
@@ -37,7 +38,7 @@ export interface Indexed<F extends ["Ix", ...HKT.URIS], C extends IxC<any, any>>
     a: A
   ) => HKT.Kind<F, IxCT<C, II, II>, N, K, Q, W, X, I, S, R, E, A>
 
-  lift: <II extends C["Ix"]["_I"], IO extends C["Ix"]["_I"]>() => <
+  lift: <II extends C[IxURI]["_I"], IO extends C[IxURI]["_I"]>() => <
     N extends string,
     K,
     Q,
@@ -52,7 +53,7 @@ export interface Indexed<F extends ["Ix", ...HKT.URIS], C extends IxC<any, any>>
     fa: HKT.Kind<Inner<F>, C, N, K, Q, W, X, I, S, R, E, A>
   ) => HKT.Kind<F, IxCT<C, II, IO>, N, K, Q, W, X, I, S, R, E, A>
 
-  lower: <II extends C["Ix"]["_I"], IO extends C["Ix"]["_I"]>() => <
+  lower: <II extends C[IxURI]["_I"], IO extends C[IxURI]["_I"]>() => <
     N extends string,
     K,
     Q,
@@ -68,8 +69,8 @@ export interface Indexed<F extends ["Ix", ...HKT.URIS], C extends IxC<any, any>>
   ) => HKT.Kind<Inner<F>, C, N, K, Q, W, X, I, S, R, E, A>
 
   ichain<
-    IO extends C["Ix"]["_O"],
-    IO2 extends C["Ix"]["_I"],
+    IO extends C[IxURI]["_O"],
+    IO2 extends C[IxURI]["_I"],
     N2 extends string,
     K2,
     Q2,
@@ -83,7 +84,7 @@ export interface Indexed<F extends ["Ix", ...HKT.URIS], C extends IxC<any, any>>
     B
   >(
     f: (a: A) => HKT.Kind<F, IxCT<C, IO, IO2>, N2, K2, Q2, W2, X2, I2, S2, R2, E2, B>
-  ): <N extends string, II extends C["Ix"]["_I"], K, Q, W, X, I, S, R, E>(
+  ): <N extends string, II extends C[IxURI]["_I"], K, Q, W, X, I, S, R, E>(
     fa: HKT.Kind<
       F,
       IxCT<C, II, IO>,
@@ -129,7 +130,7 @@ export function makeIx<I, O>() {
 }
 
 export type IndexedT<F extends HKT.URIS, C, I, O> = Indexed<
-  HKT.PrependURI<"Ix", F>,
+  HKT.PrependURI<IxURI, F>,
   IxCT<C, I, O>
 >
 
