@@ -9,6 +9,7 @@ import * as die from "../Effect/die"
 import * as done from "../Effect/done"
 import type { Async, Effect, Sync } from "../Effect/effect"
 import { _I } from "../Effect/effect"
+import { effectMaybeAsyncInterrupt } from "../Effect/effectMaybeAsyncInterrupt"
 import * as fail from "../Effect/fail"
 import * as foreachUnit_ from "../Effect/foreachUnit_"
 import * as interruptAs from "../Effect/interruptAs"
@@ -293,10 +294,29 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     return O.none
   }
 
-  get wait(): Async<Exit.Exit<E, A>> {
-    return T.effectAsyncOption((k) => this.observe0((x) => k(done.done(x))), [
-      this.fiberId
-    ])
+  get await(): Async<Exit.Exit<E, A>> {
+    return effectMaybeAsyncInterrupt(
+      (k): E.Either<Sync<void>, Sync<Exit.Exit<E, A>>> => {
+        const cb: Callback<never, Exit.Exit<E, A>> = (x) => k(done.done(x))
+        return O.fold_(
+          this.observe0(cb),
+          () => E.left(T.effectTotal(() => this.interruptObserver(cb))),
+          E.right
+        )
+      }
+    )
+  }
+
+  interruptObserver(k: Callback<never, Exit.Exit<E, A>>) {
+    const oldState = this.state.get
+
+    if (oldState._tag === "Executing") {
+      const observers = oldState.observers.filter((o) => o !== k)
+
+      this.state.set(
+        new FiberStateExecuting(oldState.status, observers, oldState.interrupted)
+      )
+    }
   }
 
   kill0(fiberId: Fiber.FiberID): Async<Exit.Exit<E, A>> {
@@ -344,7 +364,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     return T.suspend(() => {
       setInterruptedLoop()
 
-      return this.wait
+      return this.await
     })
   }
 

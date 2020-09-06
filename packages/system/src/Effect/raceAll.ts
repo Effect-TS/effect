@@ -80,7 +80,7 @@ export function raceAll<S, R, E, A>(
             A.reduce_(fs, unit as Async<void>, (io, f) =>
               pipe(
                 io,
-                chain(() => pipe(f.wait, chain(arbiter(fs, f, done, fails)), fork))
+                chain(() => pipe(f.await, chain(arbiter(fs, f, done, fails)), fork))
               )
             )
           ),
@@ -102,7 +102,7 @@ export function raceAll<S, R, E, A>(
       )
     ),
     tap(({ c: { fs } }) =>
-      interruptStrategy === "wait" ? foreach_(fs, (f) => f.wait) : unit
+      interruptStrategy === "wait" ? foreach_(fs, (f) => f.await) : unit
     ),
     map(({ c: { c } }) => c)
   )
