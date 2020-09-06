@@ -13,7 +13,6 @@ import * as fail from "../Effect/fail"
 import * as foreachUnit_ from "../Effect/foreachUnit_"
 import * as interruptAs from "../Effect/interruptAs"
 import type { IFold, Instruction, IRaceWith } from "../Effect/primitives"
-import { uninterruptible } from "../Effect/uninterruptible"
 import * as E from "../Either"
 // exit
 import * as Exit from "../Exit/api"
@@ -308,7 +307,11 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
       switch (oldState._tag) {
         case "Executing": {
-          if (oldState.status._tag === "Suspended" && oldState.status.interruptible) {
+          if (
+            oldState.status._tag === "Suspended" &&
+            oldState.status.interruptible &&
+            !interrupting(oldState)
+          ) {
             const newCause = Cause.Then(oldState.interrupted, interruptedCause)
 
             this.state.set(
@@ -363,7 +366,6 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
            * We are truly "done" because all the children of this fiber have terminated,
            * and there are no more pending effects that we have to execute on the fiber.
            */
-
           this.state.set(new FiberStateDone(v))
 
           this.notifyObservers(v, oldState.observers)
@@ -374,7 +376,6 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
            * We are not done yet, because there are children to interrupt, or
            * because there are effects to execute on the fiber.
            */
-
           this.state.set(
             new FiberStateExecuting(
               Status.toFinishing(oldState.status),
@@ -383,13 +384,9 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
             )
           )
 
-          const close = this.openScope.scope.unsafeClose(v)
+          this.setInterrupting(true)
 
-          if (close) {
-            return T.chain_(uninterruptible(close), () => done.done(v))[_I]
-          }
-
-          return done.done(v)[_I]
+          return T.chain_(this.openScope.close(v), () => done.done(v))[_I]
         }
       }
     }
