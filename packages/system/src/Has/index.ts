@@ -73,7 +73,7 @@ export function has(_?: any): Tag<unknown> {
 /**
  * Get the type of a Has
  */
-export type InnerHasType<T> = T extends Has<infer A> ? A : never
+export type InnerHasType<T> = [T] extends [Has<infer A>] ? A : never
 
 /**
  * Replaces the service with the required Service Entry, in the specified environment
