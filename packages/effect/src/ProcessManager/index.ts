@@ -109,7 +109,7 @@ export class ProcessMap {
 }
 
 export const HasProcessMap = Has.has(ProcessMap)
-export type HasProcessMap = Has.HasType<typeof HasProcessMap>
+export type HasProcessMap = Has.HasTag<typeof HasProcessMap>
 
 export const processMapLayer = L.service(HasProcessMap).fromEffect(
   T.effectTotal(() => new ProcessMap())
@@ -280,7 +280,7 @@ export class ProcessRegistry {
 }
 
 export const HasProcessRegistry = Has.has<ProcessRegistry>()
-export type HasProcessRegistry = Has.HasType<typeof HasProcessRegistry>
+export type HasProcessRegistry = Has.HasTag<typeof HasProcessRegistry>
 
 export const accessProcessRegistryM = T.accessServiceM(HasProcessRegistry)
 

@@ -7,7 +7,7 @@ import { effectTotal, unit } from "../Effect/core"
 import type { Async, Sync } from "../Effect/effect"
 import { effectAsyncInterrupt } from "../Effect/effectAsyncInterrupt"
 import { accessService, accessServiceM } from "../Effect/has"
-import type { HasType } from "../Has"
+import type { HasTag } from "../Has"
 import { has } from "../Has"
 
 //
@@ -27,7 +27,7 @@ export abstract class Clock {
 //
 export const HasClock = has(Clock)
 
-export type HasClock = HasType<typeof HasClock>
+export type HasClock = HasTag<typeof HasClock>
 
 //
 // Live Clock Implementation

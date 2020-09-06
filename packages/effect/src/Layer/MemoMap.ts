@@ -1,7 +1,7 @@
 import { sequential } from "../Effect/ExecutionStrategy"
 import type { Exit } from "../Exit"
 import { pipe, tuple } from "../Function"
-import type { HasType } from "../Has"
+import type { HasTag } from "../Has"
 import { has } from "../Has"
 import { Managed } from "../Managed/managed"
 import type { Finalizer, ReleaseMap } from "../Managed/releaseMap"
@@ -190,4 +190,4 @@ export class MemoMap {
 }
 
 export const HasMemoMap = has(MemoMap)
-export type HasMemoMap = HasType<typeof HasMemoMap>
+export type HasMemoMap = HasTag<typeof HasMemoMap>
