@@ -47,7 +47,7 @@ export interface Tag<T> {
 /**
  * Extract the Has type from any augumented variant
  */
-export type HasType<T> = [T] extends [Tag<infer A>] ? Has<A> : never
+export type HasTag<T> = [T] extends [Tag<infer A>] ? Has<A> : never
 
 const makeTag = <T>(def = false, key = Symbol()): Tag<T> => ({
   _T: undefined as any,
@@ -71,9 +71,9 @@ export function has(_?: any): Tag<unknown> {
 }
 
 /**
- * Get the type of a Has
+ * Get the service type of a Has
  */
-export type InnerHasType<T> = [T] extends [Has<infer A>] ? A : never
+export type ServiceType<T> = [T] extends [Has<infer A>] ? A : never
 
 /**
  * Replaces the service with the required Service Entry, in the specified environment

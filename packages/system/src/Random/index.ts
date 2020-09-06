@@ -6,7 +6,7 @@
 import { chain_, effectTotal } from "../Effect/core"
 import type { Sync } from "../Effect/effect"
 import { accessServiceM, replaceService } from "../Effect/has"
-import type { HasType } from "../Has"
+import type { HasTag } from "../Has"
 import { has } from "../Has"
 import { PRNG } from "./Alea"
 
@@ -54,7 +54,7 @@ export class LiveRandom extends Random {
 export const defaultRandom = new LiveRandom(String(Math.random()))
 
 export const HasRandom = has(Random)
-export type HasRandom = HasType<typeof HasRandom>
+export type HasRandom = HasTag<typeof HasRandom>
 
 export const next = accessServiceM(HasRandom)((_) => _.next)
 
