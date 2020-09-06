@@ -12,7 +12,7 @@ import { XQueue } from "./xqueue"
  */
 export const takeBetween = (min: number, max: number) => <RA, RB, EA, EB, A, B>(
   self: XQueue<RA, RB, EA, EB, A, B>
-): T.AsyncRE<RA & RB, EB, readonly B[]> => {
+): T.AsyncRE<RB, EB, readonly B[]> => {
   function takeRemaining(n: number): T.AsyncRE<RB, EB, A.Array<B>> {
     if (n <= 0) {
       return T.succeedNow([])
@@ -53,7 +53,7 @@ export const takeBetween_ = <RA, RB, EA, EB, A, B>(
   self: XQueue<RA, RB, EA, EB, A, B>,
   min: number,
   max: number
-): T.AsyncRE<RA & RB, EB, readonly B[]> => takeBetween(min, max)(self)
+): T.AsyncRE<RB, EB, readonly B[]> => takeBetween(min, max)(self)
 
 /**
  * Waits until the queue is shutdown.
