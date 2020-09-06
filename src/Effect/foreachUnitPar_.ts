@@ -124,7 +124,7 @@ export const foreachUnitPar_ = <S, R, E, A>(
         onInterruptExtended_(
           whenM(
             map_(
-              foreach_(s.fibers, (f) => f.wait),
+              foreach_(s.fibers, (f) => f.await),
               (fs) => A.findFirst_(fs, (e) => e._tag === "Failure")._tag === "Some"
             )
           )(
@@ -135,7 +135,7 @@ export const foreachUnitPar_ = <S, R, E, A>(
           () =>
             chain_(promiseFailure<void>(undefined)(s.result), () =>
               chain_(
-                foreach_(s.fibers, (f) => f.wait),
+                foreach_(s.fibers, (f) => f.await),
                 () => chain_(s.causes.get, (x) => halt(x))
               )
             )

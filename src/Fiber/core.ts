@@ -39,7 +39,7 @@ export class Descriptor {
 export type Fiber<E, A> = Runtime<E, A> | Synthetic<E, A>
 
 export interface CommonFiber<E, A> {
-  wait: Async<Exit.Exit<E, A>>
+  await: Async<Exit.Exit<E, A>>
   //children: Sync<Iterable<Runtime<any, any>>>
   getRef: <K>(fiberRef: FiberRef<K>) => Sync<K>
   inheritRefs: Async<void>
@@ -81,7 +81,7 @@ export const fold = <E, A, Z>(
  */
 export const done = <E, A>(exit: Exit.Exit<E, A>): Synthetic<E, A> => ({
   _tag: "SyntheticFiber",
-  wait: T.succeed(exit),
+  await: T.succeed(exit),
   getRef: (ref) => T.succeed(ref.initial),
   inheritRefs: T.unit,
   interruptAs: () => T.succeed(exit),

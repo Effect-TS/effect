@@ -49,7 +49,7 @@ export const interruptFork = <E, A>(fiber: Fiber.Fiber<E, A>) =>
  * fiber, "inner interruption" can be caught and recovered.
  */
 export const join = <E, A>(fiber: Fiber.Fiber<E, A>): T.AsyncE<E, A> =>
-  T.tap_(T.chain_(fiber.wait, T.done), () => fiber.inheritRefs)
+  T.tap_(T.chain_(fiber.await, T.done), () => fiber.inheritRefs)
 
 /**
  * Effectually maps over the value the fiber computes.
@@ -58,7 +58,7 @@ export const mapM = <E2, A, B>(f: (a: A) => T.AsyncE<E2, B>) => <E>(
   fiber: Fiber.Fiber<E, A>
 ): Fiber.Synthetic<E | E2, B> => ({
   _tag: "SyntheticFiber",
-  wait: T.chain_(fiber.wait, Exit.foreach(f)),
+  await: T.chain_(fiber.await, Exit.foreach(f)),
   getRef: (ref) => fiber.getRef(ref),
   inheritRefs: fiber.inheritRefs,
   interruptAs: (id) => T.chain_(fiber.interruptAs(id), Exit.foreach(f)),
@@ -88,7 +88,7 @@ export const joinAll = <E, A>(as: Iterable<Fiber.Fiber<E, A>>) =>
  * Awaits on all fibers to be completed, successfully or not.
  */
 export const waitAll = <E, A>(as: Iterable<Fiber.Fiber<E, A>>) =>
-  T.result(T.foreachPar_(as, (f) => T.chain_(f.wait, T.done)))
+  T.result(T.foreachPar_(as, (f) => T.chain_(f.await, T.done)))
 
 /**
  * Maps over the value the fiber computes.
@@ -105,7 +105,7 @@ export const map_ = <E, A, B>(
 export const mapFiber = <A, E2, A2>(f: (a: A) => Fiber.Fiber<E2, A2>) => <E>(
   fiber: Fiber.Fiber<E, A>
 ): T.Async<Fiber.Fiber<E | E2, A2>> =>
-  T.map_(fiber.wait, (e) => {
+  T.map_(fiber.await, (e) => {
     switch (e._tag) {
       case "Success": {
         return f(e.value)
@@ -124,7 +124,7 @@ export const mapFiber_ = <A, E, E2, A2>(
   fiber: Fiber.Fiber<E, A>,
   f: (a: A) => Fiber.Fiber<E2, A2>
 ): T.Async<Fiber.Fiber<E | E2, A2>> =>
-  T.map_(fiber.wait, (e) => {
+  T.map_(fiber.await, (e) => {
     switch (e._tag) {
       case "Success": {
         return f(e.value)
@@ -144,7 +144,7 @@ export const orElse = <E1, A1>(that: Fiber.Fiber<E1, A1>) => <E, A>(
   fiber: Fiber.Fiber<E, A>
 ): Fiber.Synthetic<E | E1, A | A1> => ({
   _tag: "SyntheticFiber",
-  wait: T.zipWith_(fiber.wait, that.wait, (a, b) => (a._tag === "Success" ? a : b)),
+  await: T.zipWith_(fiber.await, that.await, (a, b) => (a._tag === "Success" ? a : b)),
   getRef: (ref) =>
     T.zipWith_(fiber.getRef(ref), that.getRef(ref), (a, b) =>
       a === ref.initial ? b : a
@@ -205,8 +205,8 @@ export const zipWith_ = <E, A, E1, A1, B>(
   poll: T.zipWith_(fiberA.poll, fiberB.poll, (oa, ob) =>
     O.chain_(oa, (ea) => O.map_(ob, (eb) => Exit.zipWith_(ea, eb, f, Cause.Both)))
   ),
-  wait: T.result(
-    T.zipWithPar_(T.chain_(fiberA.wait, T.done), T.chain_(fiberB.wait, T.done), f)
+  await: T.result(
+    T.zipWithPar_(T.chain_(fiberA.await, T.done), T.chain_(fiberB.await, T.done), f)
   )
 })
 
@@ -278,7 +278,7 @@ export function collectAll<E, A>(fibers: Iterable<Fiber.Fiber<E, A>>) {
         )
       )
     ),
-    wait: waitAll(fibers)
+    await: waitAll(fibers)
   })
 }
 
