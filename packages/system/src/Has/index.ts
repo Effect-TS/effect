@@ -10,9 +10,7 @@
 export declare const HasURI: unique symbol
 
 /**
- * Has encodes a capability to read and write a service to the
- * environment, additionally encodes if the service should be
- * overridable or not
+ * Has signal presence of a specific service provided via Tag in the environment
  */
 export interface Has<T> {
   [HasURI]: {
@@ -31,6 +29,9 @@ export type ConstructorType<K extends Constructor<any>> = K extends {
 
 export type Constructor<T> = Function & { prototype: T }
 
+/**
+ * Tag Encodes capabilities of reading and writing a service T into a generic environment
+ */
 export interface Tag<T> {
   _T: T
   key: symbol
@@ -61,7 +62,7 @@ const makeTag = <T>(def = false, key = Symbol()): Tag<T> => ({
 })
 
 /**
- * Create a service entry from a type and a URI
+ * Create a service entry Tag from a type and a URI
  */
 export function has<T extends Constructor<any>>(_: T): Tag<ConstructorType<T>>
 export function has<T>(): Tag<T>
