@@ -2,6 +2,7 @@ import * as T from "../src/Effect"
 import * as E from "../src/Either"
 import * as Exit from "../src/Exit"
 import { absurd, pipe, tuple } from "../src/Function"
+import * as O from "../src/Option"
 
 describe("Effect", () => {
   it("absolve", () => {
@@ -149,5 +150,43 @@ describe("Effect", () => {
     expect(a).toHaveBeenCalledTimes(1)
     expect(b).toHaveBeenCalledTimes(0)
     expect(c).toHaveBeenCalledTimes(1)
+  })
+  it("timeout", async () => {
+    const f = jest.fn()
+    const result = await pipe(
+      T.effectAsyncInterrupt<unknown, never, number>((cb) => {
+        const timer = setTimeout(() => {
+          cb(T.succeed(1))
+        }, 2000)
+        return T.effectTotal(() => {
+          f()
+          clearTimeout(timer)
+        })
+      }),
+      T.timeout(100),
+      T.runPromise
+    )
+
+    expect(result).toEqual(O.none)
+    expect(f).toHaveBeenCalledTimes(1)
+  })
+  it("timeoutFail", async () => {
+    const f = jest.fn()
+    const result = await pipe(
+      T.effectAsyncInterrupt<unknown, never, number>((cb) => {
+        const timer = setTimeout(() => {
+          cb(T.succeed(1))
+        }, 2000)
+        return T.effectTotal(() => {
+          f()
+          clearTimeout(timer)
+        })
+      }),
+      T.timeoutFail(100, () => "timeout"),
+      T.runPromiseExit
+    )
+
+    expect(result).toEqual(Exit.fail("timeout"))
+    expect(f).toHaveBeenCalledTimes(1)
   })
 })
