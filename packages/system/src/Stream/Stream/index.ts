@@ -58,6 +58,7 @@ export * from "./runDrain"
 export * from "./runManaged"
 export * from "./succeed"
 export * from "./unfoldChunkM"
+export * from "./unwrap"
 export * from "./zipWith"
 export * from "./zipWithSeq"
 // codegen:end
