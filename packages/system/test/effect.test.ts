@@ -1,6 +1,8 @@
 import * as T from "../src/Effect"
 import * as E from "../src/Either"
 import * as Exit from "../src/Exit"
+import * as Fiber from "../src/Fiber"
+import * as FiberRef from "../src/FiberRef"
 import { absurd, pipe, tuple } from "../src/Function"
 import * as O from "../src/Option"
 
@@ -197,5 +199,14 @@ describe("Effect", () => {
     )
 
     expect(result).toEqual(Exit.fail("(error)"))
+  })
+  it("forkAs", async () => {
+    const result = await pipe(
+      FiberRef.get(Fiber.fiberName),
+      T.forkAs("fiber-A"),
+      T.chain(Fiber.join),
+      T.runPromise
+    )
+    expect(result).toEqual(O.some("fiber-A"))
   })
 })
