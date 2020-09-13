@@ -7,6 +7,6 @@ import { foreachPar_ } from "./foreachPar_"
  *
  * For a sequential version of this method, see `foreach`.
  */
-export const foreachPar = <S, R, E, A, B>(f: (a: A) => Effect<S, R, E, B>) => (
-  as: Iterable<A>
-): AsyncRE<R, E, readonly B[]> => foreachPar_(as, f)
+export function foreachPar<S, R, E, A, B>(f: (a: A) => Effect<S, R, E, B>) {
+  return (as: Iterable<A>): AsyncRE<R, E, readonly B[]> => foreachPar_(as, f)
+}

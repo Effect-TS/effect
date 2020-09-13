@@ -66,12 +66,13 @@ export const repeatOrElseEither_ = <S, R, E, S1, Env1, A, B, S2, R2, E2, C>(
  * `io.repeat(Schedule.once)` yields an effect that executes `io`, and then
  * if that succeeds, executes `io` an additional time.
  */
-export const repeatOrElse_ = <S, R, E, A, SS, SR, B, S2, R2, E2, C>(
+export function repeatOrElse_<S, R, E, A, SS, SR, B, S2, R2, E2, C>(
   self: Effect<S, R, E, A>,
   schedule: S.Schedule<SS, SR, A, B>,
   orElse: (_: E, __: O.Option<B>) => Effect<S2, R2, E2, C>
-): Effect<S | SS | S2, R & SR & R2 & HasClock, E2, C | B> =>
-  map_(repeatOrElseEither_(self, schedule, orElse), E.merge)
+): Effect<S | SS | S2, R & SR & R2 & HasClock, E2, C | B> {
+  return map_(repeatOrElseEither_(self, schedule, orElse), E.merge)
+}
 
 /**
  * Returns a new effect that repeats this effect according to the specified
@@ -80,11 +81,12 @@ export const repeatOrElse_ = <S, R, E, A, SS, SR, B, S2, R2, E2, C>(
  * effect that executes `io`, and then if that succeeds, executes `io` an
  * additional time.
  */
-export const repeat_ = <S, R, E, A, SS, SR, B>(
+export function repeat_<S, R, E, A, SS, SR, B>(
   self: Effect<S, R, E, A>,
   schedule: S.Schedule<SS, SR, A, B>
-): Effect<S | SS, R & SR & HasClock, E, B> =>
-  repeatOrElse_(self, schedule, (e) => fail(e))
+): Effect<S | SS, R & SR & HasClock, E, B> {
+  return repeatOrElse_(self, schedule, (e) => fail(e))
+}
 
 /**
  * Returns a new effect that repeats this effect according to the specified
@@ -93,7 +95,7 @@ export const repeat_ = <S, R, E, A, SS, SR, B>(
  * effect that executes `io`, and then if that succeeds, executes `io` an
  * additional time.
  */
-export const repeat = <A, SS, SR, B>(schedule: S.Schedule<SS, SR, A, B>) => <S, R, E>(
-  self: Effect<S, R, E, A>
-): Effect<S | SS, R & SR & HasClock, E, B> =>
-  repeatOrElse_(self, schedule, (e) => fail(e))
+export function repeat<A, SS, SR, B>(schedule: S.Schedule<SS, SR, A, B>) {
+  return <S, R, E>(self: Effect<S, R, E, A>): Effect<S | SS, R & SR & HasClock, E, B> =>
+    repeatOrElse_(self, schedule, (e) => fail(e))
+}

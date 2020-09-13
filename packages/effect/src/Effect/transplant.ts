@@ -13,5 +13,6 @@ export type Grafter = <S, R, E, A>(effect: Effect<S, R, E, A>) => Effect<S, R, E
  * This can be used to "graft" deep grandchildren onto a higher-level
  * scope, effectively extending their lifespans into the parent scope.
  */
-export const transplant = <S, R, E, A>(f: (_: Grafter) => Effect<S, R, E, A>) =>
-  forkScopeWith((scope) => f((e) => new IOverrideForkScope(e, O.some(scope))))
+export function transplant<S, R, E, A>(f: (_: Grafter) => Effect<S, R, E, A>) {
+  return forkScopeWith((scope) => f((e) => new IOverrideForkScope(e, O.some(scope))))
+}

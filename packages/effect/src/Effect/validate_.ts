@@ -23,16 +23,17 @@ import { map_ } from "./map_"
  * This combinator is lossy meaning that if there are errors all successes
  * will be lost.
  */
-export const validate_ = <A, S, R, E, B>(
+export function validate_<A, S, R, E, B>(
   as: Iterable<A>,
   f: (a: A) => Effect<S, R, E, B>
-) =>
-  absolve(
+) {
+  return absolve(
     map_(
       foreach_(as, (a) => either(f(a))),
       mergeExits<E, B>()
     )
   )
+}
 
 /**
  * Feeds elements of type `A` to `f` and accumulates all errors in error
@@ -41,16 +42,17 @@ export const validate_ = <A, S, R, E, B>(
  * This combinator is lossy meaning that if there are errors all successes
  * will be lost.
  */
-export const validatePar_ = <A, S, R, E, B>(
+export function validatePar_<A, S, R, E, B>(
   as: Iterable<A>,
   f: (a: A) => Effect<S, R, E, B>
-) =>
-  absolve(
+) {
+  return absolve(
     map_(
       foreachPar_(as, (a) => either(f(a))),
       mergeExits<E, B>()
     )
   )
+}
 
 /**
  * Feeds elements of type `A` to `f` and accumulates all errors in error
@@ -59,16 +61,15 @@ export const validatePar_ = <A, S, R, E, B>(
  * This combinator is lossy meaning that if there are errors all successes
  * will be lost.
  */
-export const validateParN_ = (n: number) => <A, S, R, E, B>(
-  as: Iterable<A>,
-  f: (a: A) => Effect<S, R, E, B>
-) =>
-  absolve(
-    map_(
-      foreachParN_(n)(as, (a) => either(f(a))),
-      mergeExits<E, B>()
+export function validateParN_(n: number) {
+  return <A, S, R, E, B>(as: Iterable<A>, f: (a: A) => Effect<S, R, E, B>) =>
+    absolve(
+      map_(
+        foreachParN_(n)(as, (a) => either(f(a))),
+        mergeExits<E, B>()
+      )
     )
-  )
+}
 
 function mergeExits<E, B>(): (
   a: readonly E.Either<E, B>[]

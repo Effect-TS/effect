@@ -8,15 +8,17 @@ import { foreachUnitParN_ } from "./foreachUnitParN_"
  * Evaluate each effect in the structure from left to right, and discard the
  * results. For a parallel version, see `collectAllUnitPar`.
  */
-export const collectAllUnit = <S, R, E, A>(as: Iterable<Effect<S, R, E, A>>) =>
-  foreachUnit_(as, identity)
+export function collectAllUnit<S, R, E, A>(as: Iterable<Effect<S, R, E, A>>) {
+  return foreachUnit_(as, identity)
+}
 
 /**
  * Evaluate each effect in the structure in parallel, and discard the
  * results. For a sequential version, see `collectAllUnit`.
  */
-export const collectAllUnitPar = <S, R, E, A>(as: Iterable<Effect<S, R, E, A>>) =>
-  foreachUnitPar_(as, identity)
+export function collectAllUnitPar<S, R, E, A>(as: Iterable<Effect<S, R, E, A>>) {
+  return foreachUnitPar_(as, identity)
+}
 
 /**
  * Evaluate each effect in the structure in parallel, and discard the
@@ -24,6 +26,7 @@ export const collectAllUnitPar = <S, R, E, A>(as: Iterable<Effect<S, R, E, A>>) 
  *
  * Unlike `collectAllUnitPar`, this method will use at most `n` fibers.
  */
-export const collectAllUnitParN = (n: number) => <S, R, E, A>(
-  as: Iterable<Effect<S, R, E, A>>
-) => foreachUnitParN_(n)(as, identity)
+export function collectAllUnitParN(n: number) {
+  return <S, R, E, A>(as: Iterable<Effect<S, R, E, A>>) =>
+    foreachUnitParN_(n)(as, identity)
+}

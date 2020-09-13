@@ -8,7 +8,9 @@ import { foreachUnit } from "./foreachUnit"
  * Equivalent to `asUnit(foreach(f)(as))`, but without the cost of building
  * the list of results.
  */
-export const foreachUnit_ = <S, R, E, A>(
+export function foreachUnit_<S, R, E, A>(
   as: Iterable<A>,
   f: (a: A) => Effect<S, R, E, any>
-): Effect<S, R, E, void> => foreachUnit(f)(as)
+): Effect<S, R, E, void> {
+  return foreachUnit(f)(as)
+}

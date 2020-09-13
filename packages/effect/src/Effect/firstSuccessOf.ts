@@ -1,7 +1,7 @@
 import * as A from "../Array"
 import * as NEA from "../NonEmptyArray"
 import type { Effect } from "./effect"
-import { orElse_ } from "./orElse_"
+import { orElse_ } from "./orElse"
 
 /**
  * Returns an effect that yields the value of the first

@@ -10,11 +10,13 @@ import { foreachPar_ } from "./foreachPar_"
  *
  * Unlike `foreachPar`, this method will use at most up to `n` fibers.
  */
-export const foreachParN_ = (n: number) => <A, S, R, E, B>(
-  as: Iterable<A>,
-  f: (a: A) => Effect<S, R, E, B>
-): AsyncRE<R, E, readonly B[]> =>
-  pipe(
-    makeSemaphore(n),
-    chain((s) => foreachPar_(as, (a) => withPermit(s)(f(a))))
-  )
+export function foreachParN_(n: number) {
+  return <A, S, R, E, B>(
+    as: Iterable<A>,
+    f: (a: A) => Effect<S, R, E, B>
+  ): AsyncRE<R, E, readonly B[]> =>
+    pipe(
+      makeSemaphore(n),
+      chain((s) => foreachPar_(as, (a) => withPermit(s)(f(a))))
+    )
+}

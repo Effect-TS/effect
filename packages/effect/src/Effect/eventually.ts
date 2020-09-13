@@ -1,5 +1,5 @@
 import type { Effect } from "."
-import { orElse_ } from "./orElse_"
+import { orElse_ } from "./orElse"
 
 /**
  * Returns an effect that ignores errors and runs repeatedly until it eventually succeeds.

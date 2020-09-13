@@ -13,6 +13,6 @@ import { foreachUnitPar_ } from "./foreachUnitPar_"
  *
  * Additionally, interrupts all effects on any failure.
  */
-export const foreachUnitPar = <S, R, E, A>(f: (a: A) => Effect<S, R, E, any>) => (
-  as: Iterable<A>
-): AsyncRE<R, E, void> => foreachUnitPar_(as, f)
+export function foreachUnitPar<S, R, E, A>(f: (a: A) => Effect<S, R, E, any>) {
+  return (as: Iterable<A>): AsyncRE<R, E, void> => foreachUnitPar_(as, f)
+}

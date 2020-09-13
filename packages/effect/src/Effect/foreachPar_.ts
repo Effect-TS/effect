@@ -8,10 +8,10 @@ import { foreachUnitPar_ } from "./foreachUnitPar_"
  *
  * For a sequential version of this method, see `foreach`.
  */
-export const foreachPar_ = <S, R, E, A, B>(
+export function foreachPar_<S, R, E, A, B>(
   as: Iterable<A>,
   f: (a: A) => Effect<S, R, E, B>
-): AsyncRE<R, E, readonly B[]> => {
+): AsyncRE<R, E, readonly B[]> {
   const arr = Array.from(as)
 
   return chain_(

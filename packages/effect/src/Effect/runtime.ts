@@ -36,19 +36,18 @@ export const memoMap = new MemoMap(
   >(new Map())
 )
 
-export const defaultEnv = () => ({
-  [HasClock.key]: new LiveClock(),
-  [HasRandom.key]: defaultRandom,
-  [HasMemoMap.key]: memoMap
-})
+export function defaultEnv() {
+  return {
+    [HasClock.key]: new LiveClock(),
+    [HasRandom.key]: defaultRandom,
+    [HasMemoMap.key]: memoMap
+  }
+}
 
 /**
  * Runs effect until completion, calling cb with the eventual exit state
  */
-export const runAsync = <S, E, A>(
-  _: Effect<S, DefaultEnv, E, A>,
-  cb?: Callback<E, A>
-) => {
+export function runAsync<S, E, A>(_: Effect<S, DefaultEnv, E, A>, cb?: Callback<E, A>) {
   const context = fiberContext<E, A>()
 
   context.evaluateLater(_[_I])
@@ -58,10 +57,10 @@ export const runAsync = <S, E, A>(
 /**
  * Runs effect until completion, calling cb with the eventual exit state
  */
-export const runAsyncAsap = <S, E, A>(
+export function runAsyncAsap<S, E, A>(
   _: Effect<S, DefaultEnv, E, A>,
   cb?: Callback<E, A>
-) => {
+) {
   const context = fiberContext<E, A>()
 
   context.evaluateNow(_[_I])
@@ -81,7 +80,7 @@ export interface CancelMain {
  *
  * Note: this should be used only in node.js as it depends on process.exit
  */
-export const runMain = <S, E>(effect: Effect<S, DefaultEnv, E, void>): CancelMain => {
+export function runMain<S, E>(effect: Effect<S, DefaultEnv, E, void>): CancelMain {
   const context = fiberContext<E, void>()
 
   context.evaluateLater(effect[_I])
@@ -117,10 +116,10 @@ export type AsyncCancel<E, A> = Async<Exit<E, A>>
  * Runs effect until completion returing a cancel effecr that when executed
  * triggers cancellation of the process
  */
-export const runAsyncCancel = <S, E, A>(
+export function runAsyncCancel<S, E, A>(
   _: Effect<S, DefaultEnv, E, A>,
   cb?: Callback<E, A>
-): AsyncCancel<E, A> => {
+): AsyncCancel<E, A> {
   const context = fiberContext<E, A>()
 
   context.evaluateLater(_[_I])
@@ -133,7 +132,7 @@ export const runAsyncCancel = <S, E, A>(
  * Run effect as a Promise, throwing a FiberFailure containing the cause of exit
  * in case of error.
  */
-export const runPromise = <S, E, A>(_: Effect<S, DefaultEnv, E, A>): Promise<A> => {
+export function runPromise<S, E, A>(_: Effect<S, DefaultEnv, E, A>): Promise<A> {
   const context = fiberContext<E, A>()
 
   context.evaluateLater(_[_I])
@@ -158,9 +157,9 @@ export const runPromise = <S, E, A>(_: Effect<S, DefaultEnv, E, A>): Promise<A> 
  * Run effect as a Promise of the Exit state
  * in case of error.
  */
-export const runPromiseExit = <S, E, A>(
+export function runPromiseExit<S, E, A>(
   _: Effect<S, DefaultEnv, E, A>
-): Promise<Exit<E, A>> => {
+): Promise<Exit<E, A>> {
   const context = fiberContext<E, A>()
 
   context.evaluateLater(_[_I])
@@ -175,7 +174,7 @@ export const runPromiseExit = <S, E, A>(
 /**
  * Run effect as a synchronously, returning the full exit state
  */
-export const runSyncExit = <E, A>(_: Effect<never, DefaultEnv, E, A>): Exit<E, A> => {
+export function runSyncExit<E, A>(_: Effect<never, DefaultEnv, E, A>): Exit<E, A> {
   const context = fiberContext<E, A>()
 
   context.evaluateNow(_[_I], true)
@@ -189,7 +188,7 @@ export const runSyncExit = <E, A>(_: Effect<never, DefaultEnv, E, A>): Exit<E, A
  * Run effect synchronously, throwing a FiberFailure containing the cause of exit
  * in case of error.
  */
-export const runSync = <E, A>(_: Effect<never, DefaultEnv, E, A>): A => {
+export function runSync<E, A>(_: Effect<never, DefaultEnv, E, A>): A {
   const context = fiberContext<E, A>()
 
   context.evaluateNow(_[_I], true)
@@ -249,21 +248,25 @@ export interface Runtime<R0> {
  * NOTE: in should be used in a region where current environment
  * is valid (i.e. keep attention to closed resources)
  */
-export const runtime = <R0>() =>
-  accessM((r0: R0) =>
+export function runtime<R0>() {
+  return accessM((r0: R0) =>
     effectTotal(
       (): Runtime<R0> => {
         return makeRuntime<R0>(r0)
       }
     )
   )
+}
 
-export const withRuntimeM = <R0, S, R, E, A>(
+export function withRuntimeM<R0, S, R, E, A>(
   f: (r: Runtime<R0>) => Effect<S, R, E, A>
-) => chain_(runtime<R0>(), f)
+) {
+  return chain_(runtime<R0>(), f)
+}
 
-export const withRuntime = <R0, A>(f: (r: Runtime<R0>) => A) =>
-  chain_(runtime<R0>(), (r) => succeed(f(r)))
+export function withRuntime<R0, A>(f: (r: Runtime<R0>) => A) {
+  return chain_(runtime<R0>(), (r) => succeed(f(r)))
+}
 
 export function makeRuntime<R0>(r0: R0): Runtime<R0> {
   return {

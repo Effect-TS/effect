@@ -38,10 +38,10 @@ import { whenM } from "./whenM"
  *
  * Additionally, interrupts all effects on any failure.
  */
-export const foreachUnitPar_ = <S, R, E, A>(
+export function foreachUnitPar_<S, R, E, A>(
   as: Iterable<A>,
   f: (a: A) => Effect<S, R, E, any>
-): AsyncRE<R, E, void> => {
+): AsyncRE<R, E, void> {
   const arr = Array.from(as)
   const size = arr.length
 

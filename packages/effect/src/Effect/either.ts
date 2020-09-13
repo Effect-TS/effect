@@ -13,11 +13,12 @@ import { foldM_ } from "./foldM_"
  * The error parameter of the returned is `never`, since it is
  * guaranteed the effect does not model failure.
  */
-export const either = <S, R, E, A>(
+export function either<S, R, E, A>(
   self: Effect<S, R, E, A>
-): Effect<S, R, never, E.Either<E, A>> =>
-  foldM_(
+): Effect<S, R, never, E.Either<E, A>> {
+  return foldM_(
     self,
     (e) => succeed(E.left(e)),
     (a) => succeed(E.right(a))
   )
+}

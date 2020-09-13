@@ -13,7 +13,9 @@ import { effectMaybeAsyncInterrupt } from "./effectMaybeAsyncInterrupt"
  * The list of fibers, that may complete the async callback, is used to
  * provide better diagnostics.
  */
-export const effectAsyncInterrupt = <R, E, A>(
+export function effectAsyncInterrupt<R, E, A>(
   register: (cb: Cb<AsyncRE<R, E, A>>) => Canceler<R>,
   blockingOn: readonly FiberID[] = []
-) => effectMaybeAsyncInterrupt<R, E, A>((cb) => E.left(register(cb)), blockingOn)
+) {
+  return effectMaybeAsyncInterrupt<R, E, A>((cb) => E.left(register(cb)), blockingOn)
+}
