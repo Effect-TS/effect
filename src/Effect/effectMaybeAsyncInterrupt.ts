@@ -26,11 +26,11 @@ import { onInterrupt_ } from "./onInterrupt_"
  * The list of fibers, that may complete the async callback, is used to
  * provide better diagnostics.
  */
-export const effectMaybeAsyncInterrupt = <R, E, A>(
+export function effectMaybeAsyncInterrupt<R, E, A>(
   register: (cb: Cb<AsyncRE<R, E, A>>) => E.Either<Canceler<R>, AsyncRE<R, E, A>>,
   blockingOn: readonly FiberID[] = []
-) =>
-  chain_(
+) {
+  return chain_(
     effectTotal(
       () => [new AtomicReference(false), new OneShot<Canceler<R>>()] as const
     ),
@@ -67,3 +67,4 @@ export const effectMaybeAsyncInterrupt = <R, E, A>(
         () => suspend(() => (started.get ? cancel.get() : unit))
       )
   )
+}

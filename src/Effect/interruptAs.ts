@@ -5,4 +5,6 @@ import { halt } from "./core"
 /**
  * Returns an effect that is interrupted as if by the specified fiber.
  */
-export const interruptAs = (fiberId: FiberID) => halt(Interrupt(fiberId))
+export function interruptAs(fiberId: FiberID) {
+  return halt(Interrupt(fiberId))
+}

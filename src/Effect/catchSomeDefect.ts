@@ -12,10 +12,12 @@ import { unrefineWith_ } from "./unrefine"
  * system, to transmit information on a defect for diagnostic or explanatory
  * purposes.
  */
-export const catchSomeDefect_ = <S2, R2, E2, A2, S, R, E, A>(
+export function catchSomeDefect_<S2, R2, E2, A2, S, R, E, A>(
   fa: Effect<S2, R2, E2, A2>,
   f: (_: unknown) => O.Option<Effect<S, R, E, A>>
-) => catchAll_(unrefineWith_(fa, f, fail), (s): Effect<S, R, E | E2, A> => s)
+) {
+  return catchAll_(unrefineWith_(fa, f, fail), (s): Effect<S, R, E | E2, A> => s)
+}
 
 /**
  * Recovers from some or all of the defects with provided partial function.
@@ -25,6 +27,8 @@ export const catchSomeDefect_ = <S2, R2, E2, A2, S, R, E, A>(
  * system, to transmit information on a defect for diagnostic or explanatory
  * purposes.
  */
-export const catchSomeDefect = <S, R, E, A>(
+export function catchSomeDefect<S, R, E, A>(
   f: (_: unknown) => O.Option<Effect<S, R, E, A>>
-) => <S2, R2, E2, A2>(effect: Effect<S2, R2, E2, A2>) => catchSomeDefect_(effect, f)
+) {
+  return <S2, R2, E2, A2>(effect: Effect<S2, R2, E2, A2>) => catchSomeDefect_(effect, f)
+}

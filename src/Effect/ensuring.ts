@@ -14,23 +14,23 @@ import { uninterruptibleMask } from "./uninterruptibleMask"
  * should generally not be used for releasing resources. For higher-level
  * logic built on `ensuring`, see `bracket`.
  */
-export const ensuring = <S, R>(finalizer: Effect<S, R, never, any>) => <S1, R1, E, A>(
-  effect: Effect<S1, R1, E, A>
-) =>
-  uninterruptibleMask(({ restore }) =>
-    foldCauseM_(
-      restore(effect),
-      (cause1) =>
-        foldCauseM_(
-          finalizer,
-          (cause2) => halt(Then(cause1, cause2)),
-          (_) => halt(cause1)
-        ),
-      (value) =>
-        foldCauseM_(
-          finalizer,
-          (cause1) => halt(cause1),
-          (_) => succeed(value)
-        )
+export function ensuring<S, R>(finalizer: Effect<S, R, never, any>) {
+  return <S1, R1, E, A>(effect: Effect<S1, R1, E, A>) =>
+    uninterruptibleMask(({ restore }) =>
+      foldCauseM_(
+        restore(effect),
+        (cause1) =>
+          foldCauseM_(
+            finalizer,
+            (cause2) => halt(Then(cause1, cause2)),
+            (_) => halt(cause1)
+          ),
+        (value) =>
+          foldCauseM_(
+            finalizer,
+            (cause1) => halt(cause1),
+            (_) => succeed(value)
+          )
+      )
     )
-  )
+}

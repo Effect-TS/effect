@@ -16,9 +16,9 @@ import { validate_, validateExec_, validatePar_, validateParN_ } from "./validat
  * This combinator is lossy meaning that if there are errors all successes
  * will be lost.
  */
-export const validate = <A, S, R, E, B>(f: (a: A) => Effect<S, R, E, B>) => (
-  as: Iterable<A>
-) => validate_(as, f)
+export function validate<A, S, R, E, B>(f: (a: A) => Effect<S, R, E, B>) {
+  return (as: Iterable<A>) => validate_(as, f)
+}
 
 /**
  * Feeds elements of type `A` to `f` and accumulates all errors in error
@@ -27,9 +27,9 @@ export const validate = <A, S, R, E, B>(f: (a: A) => Effect<S, R, E, B>) => (
  * This combinator is lossy meaning that if there are errors all successes
  * will be lost.
  */
-export const validatePar = <A, S, R, E, B>(f: (a: A) => Effect<S, R, E, B>) => (
-  as: Iterable<A>
-) => validatePar_(as, f)
+export function validatePar<A, S, R, E, B>(f: (a: A) => Effect<S, R, E, B>) {
+  return (as: Iterable<A>) => validatePar_(as, f)
+}
 
 /**
  * Feeds elements of type `A` to `f` and accumulates all errors in error
@@ -38,9 +38,10 @@ export const validatePar = <A, S, R, E, B>(f: (a: A) => Effect<S, R, E, B>) => (
  * This combinator is lossy meaning that if there are errors all successes
  * will be lost.
  */
-export const validateParN = (n: number) => <A, S, R, E, B>(
-  f: (a: A) => Effect<S, R, E, B>
-) => (as: Iterable<A>) => validateParN_(n)(as, f)
+export function validateParN(n: number) {
+  return <A, S, R, E, B>(f: (a: A) => Effect<S, R, E, B>) => (as: Iterable<A>) =>
+    validateParN_(n)(as, f)
+}
 
 /**
  * Feeds elements of type `A` to `f` and accumulates all errors in error

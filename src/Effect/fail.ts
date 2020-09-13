@@ -5,4 +5,6 @@ import { halt } from "./core"
  * Returns an effect that models failure with the specified error.
  * The moral equivalent of `throw` for pure code.
  */
-export const fail = <E>(e: E) => halt(Fail(e))
+export function fail<E>(e: E) {
+  return halt(Fail(e))
+}
