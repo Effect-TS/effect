@@ -48,7 +48,7 @@ export const mapMPar = (n: number) => <O, S1, R1, E1, O1>(
                       // Notify other tasks of a failure
                       T.tapCause((e) => pipe(errorSignal, P.halt(e))),
                       // Transfer the result to the consuming stream
-                      T.toPromise(p)
+                      T.to(p)
                     )
                   ),
                   Semaphore.withPermit(permits),
