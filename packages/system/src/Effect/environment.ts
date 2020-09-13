@@ -3,4 +3,6 @@ import { access } from "./core"
 /**
  * Access environment
  */
-export const environment = <R>() => access((_: R) => _)
+export function environment<R>() {
+  return access((_: R) => _)
+}

@@ -9,10 +9,12 @@ import type { Effect } from "./effect"
  * succeeds. If `use` fails, then after release, the returned effect will fail
  * with the same error.
  */
-export const bracketExit = <A, S1, E1, R1, A1, S2, R2, E2, A2>(
+export function bracketExit<A, S1, E1, R1, A1, S2, R2, E2, A2>(
   use: (a: A) => Effect<S1, R1, E1, A1>,
   release: (a: A, e: Exit<E1, A1>) => Effect<S2, R2, E2, A2>
-) => <S, R, E>(
-  acquire: Effect<S, R, E, A>
-): Effect<S | S1 | S2, R & R1 & R2, E | E1 | E2, A1> =>
-  bracketExit_(acquire, use, release)
+) {
+  return <S, R, E>(
+    acquire: Effect<S, R, E, A>
+  ): Effect<S | S1 | S2, R & R1 & R2, E | E1 | E2, A1> =>
+    bracketExit_(acquire, use, release)
+}

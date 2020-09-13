@@ -10,10 +10,12 @@ import type { Effect } from "./effect"
  * system, to transmit information on a defect for diagnostic or explanatory
  * purposes.
  */
-export const catchAllDefect_ = <S2, R2, E2, A2, S, R, E, A>(
+export function catchAllDefect_<S2, R2, E2, A2, S, R, E, A>(
   fa: Effect<S2, R2, E2, A2>,
   f: (_: unknown) => Effect<S, R, E, A>
-) => catchSomeDefect_(fa, (u) => O.some(f(u)))
+) {
+  return catchSomeDefect_(fa, (u) => O.some(f(u)))
+}
 
 /**
  * Recovers from all defects with provided function.
@@ -23,11 +25,6 @@ export const catchAllDefect_ = <S2, R2, E2, A2, S, R, E, A>(
  * system, to transmit information on a defect for diagnostic or explanatory
  * purposes.
  */
-export const catchAllDefect = <S, R, E, A>(f: (_: unknown) => Effect<S, R, E, A>) => <
-  S2,
-  R2,
-  E2,
-  A2
->(
-  effect: Effect<S2, R2, E2, A2>
-) => catchAllDefect_(effect, f)
+export function catchAllDefect<S, R, E, A>(f: (_: unknown) => Effect<S, R, E, A>) {
+  return <S2, R2, E2, A2>(effect: Effect<S2, R2, E2, A2>) => catchAllDefect_(effect, f)
+}

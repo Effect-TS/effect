@@ -36,7 +36,10 @@ export class InterruptStatusRestoreImpl implements InterruptStatusRestore {
  * can be used to restore the inherited interruptibility from whatever region
  * the effect is composed into.
  */
-export const uninterruptibleMask = <S, R, E, A>(
+export function uninterruptibleMask<S, R, E, A>(
   f: (restore: InterruptStatusRestore) => Effect<S, R, E, A>
-) =>
-  checkInterruptible((flag) => uninterruptible(f(new InterruptStatusRestoreImpl(flag))))
+) {
+  return checkInterruptible((flag) =>
+    uninterruptible(f(new InterruptStatusRestoreImpl(flag)))
+  )
+}

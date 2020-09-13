@@ -4,8 +4,8 @@ import { halt, succeed, suspend } from "./core"
 /**
  * Returns an effect from a `Exit` value.
  */
-export const done = <E = never, A = unknown>(exit: Exit<E, A>) =>
-  suspend(() => {
+export function done<E = never, A = unknown>(exit: Exit<E, A>) {
+  return suspend(() => {
     switch (exit._tag) {
       case "Success": {
         return succeed(exit.value)
@@ -15,3 +15,4 @@ export const done = <E = never, A = unknown>(exit: Exit<E, A>) =>
       }
     }
   })
+}

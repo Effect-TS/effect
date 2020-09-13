@@ -17,4 +17,6 @@ export const sequential = new Sequential()
 
 export const parallel = new Parallel()
 
-export const parallelN = (n: number) => new ParallelN(n)
+export function parallelN(n: number) {
+  return new ParallelN(n)
+}

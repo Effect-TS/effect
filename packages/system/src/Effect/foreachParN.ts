@@ -11,6 +11,8 @@ import { foreachParN_ } from "./foreachParN_"
  * no new effects will start and the fiber will complete as soon as the running
  * effects complete
  */
-export const foreachParN = (n: number) => <A, S, R, E, B>(
-  f: (a: A) => Effect<S, R, E, B>
-) => (as: Iterable<A>): AsyncRE<R, E, readonly B[]> => foreachParN_(n)(as, f)
+export function foreachParN(n: number) {
+  return <A, S, R, E, B>(f: (a: A) => Effect<S, R, E, B>) => (
+    as: Iterable<A>
+  ): AsyncRE<R, E, readonly B[]> => foreachParN_(n)(as, f)
+}
