@@ -6,7 +6,7 @@ import { bind, of } from "./do"
 import type { AsyncRE, Effect, Sync } from "./effect"
 import { map } from "./map"
 import { tap } from "./tap"
-import { toPromise } from "./toPromise"
+import { to } from "./toPromise"
 
 /**
  * Returns a memoized version of the specified effectual function.
@@ -32,7 +32,7 @@ export function memoize<A, S, R, E, B>(
               return pipe(
                 of,
                 bind("promise", () => P.make<E, B>()),
-                tap(({ promise }) => fork(toPromise(promise)(f(a)))),
+                tap(({ promise }) => fork(to(promise)(f(a)))),
                 map(({ promise }) => tuple(promise, m.set(a, promise)))
               )
             })
@@ -72,7 +72,7 @@ export function memoizeEq<A>(compare: (r: A) => (l: A) => boolean) {
                 return pipe(
                   of,
                   bind("promise", () => P.make<E, B>()),
-                  tap(({ promise }) => fork(toPromise(promise)(f(a)))),
+                  tap(({ promise }) => fork(to(promise)(f(a)))),
                   map(({ promise }) => tuple(promise, m.set(a, promise)))
                 )
               })

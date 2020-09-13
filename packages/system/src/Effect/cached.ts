@@ -11,7 +11,7 @@ import { bind, of } from "./do"
 import type { AsyncE, Effect, SyncR } from "./effect"
 import { map } from "./map"
 import { tap } from "./tap"
-import { toPromise } from "./toPromise"
+import { to } from "./toPromise"
 
 /**
  * Returns an effect that, if evaluated, will return the cached result of
@@ -43,7 +43,7 @@ function compute<S, R, E, A>(fa: Effect<S, R, E, A>, ttl: number, start: number)
   return pipe(
     of,
     bind("p", () => P.make<E, A>()),
-    tap(({ p }) => toPromise(p)(fa)),
+    tap(({ p }) => to(p)(fa)),
     map(({ p }) => O.some(tuple(start + ttl, p)))
   )
 }
