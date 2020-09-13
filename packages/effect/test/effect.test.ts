@@ -189,4 +189,13 @@ describe("Effect", () => {
     expect(result).toEqual(Exit.fail("timeout"))
     expect(f).toHaveBeenCalledTimes(1)
   })
+  it("chainError", () => {
+    const result = pipe(
+      T.fail("error"),
+      T.chainError((e) => T.effectTotal(() => `(${e})`)),
+      T.runSyncExit
+    )
+
+    expect(result).toEqual(Exit.fail("(error)"))
+  })
 })
