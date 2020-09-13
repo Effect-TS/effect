@@ -37,7 +37,7 @@ export const prepare = <T>(has: T.Tag<T>) => <S, R, E, A extends T>(
     fromManaged(has)(T.makeExit_(acquire, (a) => release(a)))
 })
 
-export const service = <T>(has: T.Tag<T>) => ({
+export const create = <T>(has: T.Tag<T>) => ({
   fromEffect: fromEffect(has),
   fromManaged: fromManaged(has),
   pure: pure(has),
@@ -56,10 +56,10 @@ export const fromManaged = <T>(has: T.Tag<T>) => <S, R, E>(
 ) =>
   new Layer<S, R, E, T.Has<T>>(T.managedChain_(resource, (a) => environmentFor(has, a)))
 
-export const fromManagedEnv = <S, R, E, A>(resource: T.Managed<S, R, E, A>) =>
+export const fromRawManaged = <S, R, E, A>(resource: T.Managed<S, R, E, A>) =>
   new Layer<S, R, E, A>(resource)
 
-export const fromEffectEnv = <S, R, E, A>(resource: T.Effect<S, R, E, A>) =>
+export const fromRawEffect = <S, R, E, A>(resource: T.Effect<S, R, E, A>) =>
   new Layer<S, R, E, A>(T.fromEffect(resource))
 
 export const zip_ = <S, R, E, A, S2, R2, E2, A2>(
@@ -231,7 +231,7 @@ export const region = <K, T>(h: T.Tag<T.Region<T, K>>) => <S, R, E>(
   _: Layer<S, R, E, T>
 ): Layer<S, R, E, T.Has<T.Region<T, K>>> =>
   pipe(
-    fromEffectEnv(T.access((r: T): T.Has<T.Region<T, K>> => ({ [h.key]: r } as any))),
+    fromRawEffect(T.access((r: T): T.Has<T.Region<T, K>> => ({ [h.key]: r } as any))),
     consuming(_)
   )
 
@@ -246,7 +246,7 @@ export const toRuntime = <S, R, E, A>(
  * A default memoMap is included in DefaultEnv,
  * this can be used to "scope" a portion of layers to use a different memo map
  */
-export const memoMap = service(HasMemoMap).fromEffect(
+export const memoMap = create(HasMemoMap).fromEffect(
   pipe(
     RM.makeRefM<
       ReadonlyMap<Layer<any, any, any, any>, readonly [T.AsyncE<any, any>, Finalizer]>
@@ -264,7 +264,7 @@ export const memo = <S, R, E, A>(
   pipe(
     T.fromEffect(readService(HasMemoMap)),
     T.managedChain((m) => m.getOrElseMemoize(layer)),
-    fromManagedEnv
+    fromRawManaged
   )
 
 /**

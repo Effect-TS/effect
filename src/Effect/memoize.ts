@@ -6,7 +6,7 @@ import { bind, of } from "./do"
 import type { AsyncRE, Effect, Sync } from "./effect"
 import { map } from "./map"
 import { tap } from "./tap"
-import { to } from "./toPromise"
+import { to } from "./to"
 
 /**
  * Returns a memoized version of the specified effectual function.

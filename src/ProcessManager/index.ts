@@ -111,7 +111,7 @@ export class ProcessMap {
 export const HasProcessMap = Has.has(ProcessMap)
 export type HasProcessMap = Has.HasTag<typeof HasProcessMap>
 
-export const processMapLayer = L.service(HasProcessMap).fromEffect(
+export const processMapLayer = L.create(HasProcessMap).fromEffect(
   T.effectTotal(() => new ProcessMap())
 )
 
