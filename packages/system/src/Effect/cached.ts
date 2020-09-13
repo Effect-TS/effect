@@ -11,7 +11,7 @@ import { bind, of } from "./do"
 import type { AsyncE, Effect, SyncR } from "./effect"
 import { map } from "./map"
 import { tap } from "./tap"
-import { to } from "./toPromise"
+import { to } from "./to"
 
 /**
  * Returns an effect that, if evaluated, will return the cached result of
