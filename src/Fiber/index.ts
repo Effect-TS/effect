@@ -8,6 +8,7 @@
 export * from "./api"
 export * from "./context"
 export * from "./core"
+export * from "./fiberName"
 export * from "./id"
 export * from "./state"
 export * from "./status"
