@@ -1,5 +1,5 @@
 import type { AsyncE } from "../Effect/effect"
-import { to } from "../Effect/toPromise"
+import { to } from "../Effect/to"
 import type { Promise } from "./promise"
 
 /**
