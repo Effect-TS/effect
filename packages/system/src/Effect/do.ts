@@ -77,9 +77,9 @@ function let_<A, K, N extends string>(tag: Exclude<N, keyof K>, f: (_: K) => A) 
     )
 }
 
-const of = succeed({})
+const do_ = succeed({})
 
-export { let_ as let, bind, of, merge }
+export { let_ as let, bind, do_ as do, merge }
 
 export function bindAll<
   K,

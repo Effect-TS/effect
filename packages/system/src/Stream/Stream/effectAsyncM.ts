@@ -29,7 +29,7 @@ export const effectAsyncM = <R, E, A, R1 = R, E1 = E>(
   outputBuffer = 16
 ): Stream<unknown, R & R1, E | E1, A> =>
   pipe(
-    M.of,
+    M.do,
     M.bind("output", () =>
       pipe(makeBounded<Take.Take<E, A>>(outputBuffer), T.toManaged())
     ),

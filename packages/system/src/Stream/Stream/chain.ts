@@ -26,7 +26,7 @@ export const chain = <O, O2, S1, R1, E1>(f0: (a: O) => Stream<S1, R1, E1, O2>) =
 
   return new Stream<S_, R_, E_, O2>(
     pipe(
-      M.of,
+      M.do,
       M.bind("outerStream", () => self.proc),
       M.bind("currOuterChunk", () =>
         T.toManaged()(

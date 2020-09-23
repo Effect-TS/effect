@@ -64,7 +64,7 @@ export function driver<S, Env, Inp, Out>(
 
       const next = (i: Inp) =>
         pipe(
-          T.of,
+          T.do,
           T.bind("step", () => T.map_(ref.get, ([_, o]) => o)),
           T.bind("now", () => Clock.currentTime),
           T.bind("dec", ({ now, step }) => step(now, i)),

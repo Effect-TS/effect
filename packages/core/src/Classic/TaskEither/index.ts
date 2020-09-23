@@ -34,7 +34,9 @@ export const getValidation = getValidationF({
 
 export const chain = chainF(Monad)
 
-export const of = doF(Monad)
+const do_ = doF(Monad)
+
+export { do_ as do }
 
 export const struct = structF(Applicative)
 

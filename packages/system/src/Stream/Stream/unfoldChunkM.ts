@@ -15,7 +15,7 @@ export const unfoldChunkM = <Z>(z: Z) => <S, R, E, A>(
 ): Stream<S, R, E, A> =>
   new Stream(
     pipe(
-      M.of,
+      M.do,
       M.bind("done", () => Ref.makeManagedRef(false)),
       M.bind("ref", () => Ref.makeManagedRef(z)),
       M.let("pull", ({ done, ref }) =>

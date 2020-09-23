@@ -16,7 +16,7 @@ export const aggregate = <S1, R1, E1, O, P>(
 ) => <S, R, E>(self: Stream<S, R, E, O>) =>
   new Stream<S | S1, R & R1, E | E1, P>(
     pipe(
-      M.of,
+      M.do,
       M.bind("pull", () => self.proc),
       M.bind("push", () => transducer.push),
       M.bind("done", () => makeManagedRef(false)),

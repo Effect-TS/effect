@@ -29,7 +29,7 @@ export const effectAsyncMaybe = <R, E, A>(
 ): Stream<unknown, R, E, A> =>
   new Stream(
     pipe(
-      M.of,
+      M.do,
       M.bind("output", () =>
         pipe(makeBounded<Take.Take<E, A>>(outputBuffer), T.toManaged())
       ),
@@ -48,7 +48,7 @@ export const effectAsyncMaybe = <R, E, A>(
           maybeStream,
           () =>
             pipe(
-              M.of,
+              M.do,
               M.bind("done", () => Ref.makeManagedRef(false)),
               M.map(({ done }) =>
                 pipe(

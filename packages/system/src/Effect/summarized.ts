@@ -14,7 +14,7 @@ export function summarized_<S, R, E, A, S2, R2, E2, B, C>(
   f: (start: B, end: B) => C
 ): Effect<S | S2, R & R2, E | E2, [C, A]> {
   return pipe(
-    D.of,
+    D.do,
     D.bind("start", () => summary),
     D.bind("value", () => self),
     D.bind("end", () => summary),

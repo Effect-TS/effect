@@ -14,7 +14,7 @@ export const fromEffectOption = <S, R, E, A>(
 ): Stream<S, R, E, A> =>
   new Stream(
     pipe(
-      M.of,
+      M.do,
       M.bind("doneRef", () => pipe(Ref.makeRef(false), T.toManaged())),
       M.let("pull", ({ doneRef }) =>
         pipe(

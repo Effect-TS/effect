@@ -29,7 +29,7 @@ export const combineChunks = <S1, R1, E1, O2>(that: Stream<S1, R1, E1, O2>) => <
 ) => (self: Stream<S, R, E, O>): Stream<S1 | S | S2, R & R1, E1 | E, O3> =>
   new Stream(
     pipe(
-      M.of,
+      M.do,
       M.bind("left", () => self.proc),
       M.bind("right", () => that.proc),
       M.bind(

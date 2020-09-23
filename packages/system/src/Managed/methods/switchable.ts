@@ -28,7 +28,7 @@ export function switchable<S, R, E, A>(): Managed<
   (x: Managed<S, R, E, A>) => T.Effect<S, R, E, A>
 > {
   return pipe(
-    Do.of,
+    Do.do,
     Do.bind("releaseMap", () => releaseMap<S>()),
     Do.bind("key", ({ releaseMap }) =>
       pipe(
