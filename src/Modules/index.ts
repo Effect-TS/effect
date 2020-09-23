@@ -15,6 +15,7 @@ import type { Reader } from "../Classic/Reader"
 import type { Record } from "../Classic/Record"
 import type { Show } from "../Classic/Show"
 import type { StateIn, StateOut } from "../Classic/StateT"
+import type { Task } from "../Classic/Task"
 import type { XIO } from "../XPure/XIO"
 import type { XReader } from "../XPure/XReader"
 import type { XState } from "../XPure/XState"
@@ -81,6 +82,9 @@ export type StateOutURI = typeof StateOutURI
 export const IxURI = "Ix"
 export type IxURI = typeof IxURI
 
+export const TaskURI = "Task"
+export type TaskURI = typeof TaskURI
+
 declare module "../Prelude/HKT" {
   interface URItoKind<FC, TC, N extends string, K, Q, W, X, I, S, R, E, A> {
     [ArrayURI]: Array<A>
@@ -103,6 +107,7 @@ declare module "../Prelude/HKT" {
     [StateInURI]: StateIn<S, A>
     [StateOutURI]: StateOut<S, A>
     [IxURI]: TC extends IxC<infer _I, infer _O> ? Ix<_I, _O, A> : any
+    [TaskURI]: Task<A>
   }
   interface URItoIndex<N extends string, K> {
     [ArrayURI]: number
