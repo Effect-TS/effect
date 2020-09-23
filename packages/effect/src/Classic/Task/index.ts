@@ -2,6 +2,8 @@ import { pipe, tuple } from "../../Function"
 import type { TaskURI } from "../../Modules"
 import * as P from "../../Prelude"
 import { bindF, chainF, doF, structF } from "../../Prelude/DSL"
+import * as As from "../Associative"
+import * as Id from "../Identity"
 
 export interface Task<A> {
   (): Promise<A>
@@ -82,7 +84,13 @@ export function any(): Task<unknown> {
   return () => Promise.resolve({})
 }
 
-export const of = doF(Monad)
+export function of<A>(a: A): Task<A> {
+  return () => Promise.resolve(a)
+}
+
+const do_ = doF(Monad)
+
+export { do_ as do }
 
 export const bind = bindF(Monad)
 
@@ -104,3 +112,11 @@ export function tap<A, B>(f: (a: A) => Task<B>) {
       )
     )
 }
+
+export const Associative = <A>(M: As.Associative<A>) =>
+  As.makeAssociative<Task<A>>((r) => (l) => () =>
+    l().then((x) => r().then(M.combine(x)))
+  )
+
+export const Identity = <A>(M: Id.Identity<A>) =>
+  Id.makeIdentity<Task<A>>(of(M.identity), Associative(M).combine)
