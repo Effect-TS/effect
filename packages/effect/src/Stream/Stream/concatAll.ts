@@ -56,7 +56,7 @@ export function concatAll<S, R, E, O>(
   const chunkSize = streams.length
   return new Stream(
     pipe(
-      M.of,
+      M.do,
       M.bind("currIndex", () => makeManagedRef(0)),
       M.bind("currStream", () =>
         makeManagedRef<T.Effect<S, R, Option<E>, Array<O>>>(Pull.end)

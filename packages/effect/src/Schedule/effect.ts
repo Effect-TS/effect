@@ -14,7 +14,7 @@ export {
 } from "../Effect/core"
 export { forkDaemon } from "../Effect/scope"
 export { delay } from "../Effect/delay"
-export { bind, let, of } from "../Effect/do"
+export { bind, let, do } from "../Effect/do"
 export { done } from "../Effect/done"
 export {
   Async,

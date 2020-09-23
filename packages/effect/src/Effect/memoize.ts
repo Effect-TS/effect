@@ -2,7 +2,7 @@ import { pipe, tuple } from "../Function"
 import * as P from "../Promise"
 import * as RefM from "../RefM"
 import { fork, succeed } from "./core"
-import { bind, of } from "./do"
+import * as Do from "./do"
 import type { AsyncRE, Effect, Sync } from "./effect"
 import { map } from "./map"
 import { tap } from "./tap"
@@ -18,8 +18,8 @@ export function memoize<A, S, R, E, B>(
     RefM.makeRefM(new Map<A, P.Promise<E, B>>()),
     map((ref) => (a: A) =>
       pipe(
-        of,
-        bind("promise", () =>
+        Do.do,
+        Do.bind("promise", () =>
           pipe(
             ref,
             RefM.modify((m) => {
@@ -30,15 +30,15 @@ export function memoize<A, S, R, E, B>(
               }
 
               return pipe(
-                of,
-                bind("promise", () => P.make<E, B>()),
+                Do.do,
+                Do.bind("promise", () => P.make<E, B>()),
                 tap(({ promise }) => fork(to(promise)(f(a)))),
                 map(({ promise }) => tuple(promise, m.set(a, promise)))
               )
             })
           )
         ),
-        bind("b", ({ promise }) => P.await(promise)),
+        Do.bind("b", ({ promise }) => P.await(promise)),
         map(({ b }) => b)
       )
     )
@@ -58,8 +58,8 @@ export function memoizeEq<A>(compare: (r: A) => (l: A) => boolean) {
       RefM.makeRefM(new Map<A, P.Promise<E, B>>()),
       map((ref) => (a: A) =>
         pipe(
-          of,
-          bind("promise", () =>
+          Do.do,
+          Do.bind("promise", () =>
             pipe(
               ref,
               RefM.modify((m) => {
@@ -70,15 +70,15 @@ export function memoizeEq<A>(compare: (r: A) => (l: A) => boolean) {
                 }
 
                 return pipe(
-                  of,
-                  bind("promise", () => P.make<E, B>()),
+                  Do.do,
+                  Do.bind("promise", () => P.make<E, B>()),
                   tap(({ promise }) => fork(to(promise)(f(a)))),
                   map(({ promise }) => tuple(promise, m.set(a, promise)))
                 )
               })
             )
           ),
-          bind("b", ({ promise }) => P.await(promise)),
+          Do.bind("b", ({ promise }) => P.await(promise)),
           map(({ b }) => b)
         )
       )

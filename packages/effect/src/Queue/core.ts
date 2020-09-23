@@ -99,7 +99,7 @@ export class BackPressureStrategy<A> implements Strategy<A> {
 
   get shutdown(): T.Async<void> {
     return pipe(
-      T.of,
+      T.do,
       T.bind("fiberId", () => T.fiberId()),
       T.bind("putters", () => T.effectTotal(() => unsafePollAll(this.putters))),
       T.tap((s) =>

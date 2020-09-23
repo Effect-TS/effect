@@ -16,7 +16,7 @@ export {
   unit
 } from "../../Effect/core"
 export { die } from "../../Effect/die"
-export { bind, let, merge, of } from "../../Effect/do"
+export { bind, let, merge, do } from "../../Effect/do"
 export { done } from "../../Effect/done"
 export {
   Effect,

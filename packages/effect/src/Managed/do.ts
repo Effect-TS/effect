@@ -23,6 +23,6 @@ const let_ = <A, K, N extends string>(tag: Exclude<N, keyof K>, f: (_: K) => A) 
 ): Managed<S2, R2, E2, K & { [k in N]: A }> =>
   map_(mk, (k): K & { [k in N]: A } => ({ ...k, [tag]: f(k) } as any))
 
-const of = succeedNow({})
+const do_ = succeedNow({})
 
-export { let_ as let, bind, of, merge }
+export { let_ as let, bind, do_ as do, merge }

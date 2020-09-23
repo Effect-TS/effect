@@ -59,7 +59,7 @@ export class MemoMap {
             return T.succeedNow(tuple(cached, m))
           } else {
             return pipe(
-              T.of,
+              T.do,
               T.bind("observers", () => R.makeRef(0)),
               T.bind("promise", () => P.make<E, A>()),
               T.bind("finalizerRef", () =>
@@ -68,7 +68,7 @@ export class MemoMap {
               T.let("resource", ({ finalizerRef, observers, promise }) =>
                 T.uninterruptibleMask(({ restore }) =>
                   pipe(
-                    T.of,
+                    T.do,
                     T.bind("env", () =>
                       T.environment<readonly [R, ReleaseMap<unknown>]>()
                     ),
@@ -101,7 +101,7 @@ export class MemoMap {
                               }
                               case "Success": {
                                 return pipe(
-                                  T.of,
+                                  T.do,
                                   T.tap(() =>
                                     finalizerRef.set((e) =>
                                       T.whenM(

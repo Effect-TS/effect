@@ -25,7 +25,7 @@ export const catchAllCause = <E, S1, R1, E2, O1>(
 
   return new Stream<S | S1, R & R1, E2, O | O1>(
     pipe(
-      M.of,
+      M.do,
       M.bind(
         "finalizerRef",
         () =>

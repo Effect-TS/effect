@@ -19,7 +19,7 @@ export const mapMPar = (n: number) => <O, S1, R1, E1, O1>(
 ) => <S, R, E>(self: Stream<S, R, E, O>): Stream<unknown, R & R1, E | E1, O1> =>
   new Stream(
     pipe(
-      M.of,
+      M.do,
       M.bind("out", () =>
         T.toManaged()(makeBounded<T.Effect<unknown, R1, Option.Option<E1 | E>, O1>>(n))
       ),
@@ -30,7 +30,7 @@ export const mapMPar = (n: number) => <O, S1, R1, E1, O1>(
           self,
           foreachManaged((a) =>
             pipe(
-              T.of,
+              T.do,
               T.bind("p", () => P.make<E1, O1>()),
               T.bind("latch", () => P.make<never, void>()),
               T.tap(({ p }) => out.offer(pipe(p, P.await, T.mapError(Option.some)))),

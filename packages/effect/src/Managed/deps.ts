@@ -13,7 +13,7 @@ export {
   succeed as succeedNow,
   unit
 } from "../Effect/core"
-export { bind, let, of } from "../Effect/do"
+export { bind, let, do as of } from "../Effect/do"
 export { done } from "../Effect/done"
 export {
   Async,

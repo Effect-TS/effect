@@ -15,7 +15,7 @@ export const repeatEffectChunkOption = <S, R, E, A>(
 ): Stream<S, R, E, A> =>
   new Stream(
     pipe(
-      M.of,
+      M.do,
       M.bind("done", () => Ref.makeManagedRef(false)),
       M.let("pull", ({ done }) =>
         pipe(

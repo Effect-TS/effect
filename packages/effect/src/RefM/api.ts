@@ -15,7 +15,7 @@ import { Atomic, concrete } from "./XRefM"
  */
 export const makeRefM = <A>(a: A): T.Sync<RefM<A>> =>
   pipe(
-    T.of,
+    T.do,
     T.bind("ref", () => R.makeRef(a)),
     T.bind("semaphore", () => S.makeSemaphore(1)),
     T.map(({ ref, semaphore }) => new Atomic(ref, semaphore))
@@ -43,7 +43,7 @@ export const makeManagedRefM = <A>(a: A): M.Sync<RefM<A>> =>
  */
 export const dequeueRef = <A>(a: A): T.Sync<[RefM<A>, Q.Dequeue<A>]> =>
   pipe(
-    T.of,
+    T.do,
     T.bind("ref", () => makeRefM(a)),
     T.bind("queue", () => Q.makeUnbounded<A>()),
     T.map(({ queue, ref }) => [
