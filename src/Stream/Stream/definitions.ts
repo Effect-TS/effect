@@ -140,7 +140,7 @@ export class Chain<S_, R_, E_, O, O2> {
       T.chain((o) =>
         T.uninterruptibleMask(({ restore }) =>
           pipe(
-            T.of,
+            T.do,
             T.bind("releaseMap", () => makeReleaseMap<S_>()),
             T.bind("pull", ({ releaseMap }) =>
               restore(

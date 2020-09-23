@@ -14,7 +14,7 @@ export {
 } from "../Effect/core"
 export { forkDaemon } from "../Effect/scope"
 export { die } from "../Effect/die"
-export { bind, let, of } from "../Effect/do"
+export { bind, let, do } from "../Effect/do"
 export { done } from "../Effect/done"
 export { Async, AsyncE, AsyncRE, Effect, Sync, SyncE } from "../Effect/effect"
 export { environment } from "../Effect/environment"

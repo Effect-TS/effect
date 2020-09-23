@@ -8,7 +8,7 @@ export {
   suspend,
   unit
 } from "../Effect/core"
-export { bind, of } from "../Effect/do"
+export { bind, do } from "../Effect/do"
 export { Async, AsyncRE, Sync } from "../Effect/effect"
 export { fiberId } from "../Effect/fiberId"
 export { foreach } from "../Effect/foreach"

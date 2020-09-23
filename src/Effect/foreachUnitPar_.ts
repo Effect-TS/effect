@@ -50,7 +50,7 @@ export function foreachUnitPar_<S, R, E, A>(
   }
 
   return pipe(
-    D.of,
+    D.do,
     D.bind("parentId", () => fiberId()),
     D.bind("causes", () => R.makeRef<Cause<E>>(Empty)),
     D.bind("result", () => promiseMake<void, void>()),

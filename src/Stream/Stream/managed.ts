@@ -14,7 +14,7 @@ import { Stream } from "./definitions"
 export const managed = <S, R, E, A>(self: M.Managed<S, R, E, A>): Stream<S, R, E, A> =>
   new Stream(
     pipe(
-      M.of,
+      M.do,
       M.bind("doneRef", () => Ref.makeManagedRef(false)),
       M.bind("finalizer", () => makeManagedReleaseMap(T.sequential)),
       M.let("pull", ({ doneRef, finalizer }) =>
@@ -25,7 +25,7 @@ export const managed = <S, R, E, A>(self: M.Managed<S, R, E, A>): Stream<S, R, E
               done
                 ? Pull.end
                 : pipe(
-                    T.of,
+                    T.do,
                     T.bind("a", () =>
                       pipe(
                         self.effect,

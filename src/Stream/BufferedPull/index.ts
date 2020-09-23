@@ -99,7 +99,7 @@ export const pullArray = <S, R, E, A>(
 
 export const make = <S, R, E, A>(pull: T.Effect<S, R, O.Option<E>, A.Array<A>>) =>
   pipe(
-    T.of,
+    T.do,
     T.bind("done", () => R.makeRef(false)),
     T.bind("cursor", () => R.makeRef<[A.Array<A>, number]>([[], 0])),
     T.map(({ cursor, done }) => new BufferedPull(pull, done, cursor))

@@ -68,13 +68,13 @@ export function raceAll<S, R, E, A>(
   interruptStrategy: "background" | "wait" = "background"
 ): AsyncRE<R, E, A> {
   return pipe(
-    Do.of,
+    Do.do,
     Do.bind("done", () => P.make<E, readonly [A, Fiber.Fiber<E, A>]>()),
     Do.bind("fails", () => Ref.makeRef(ios.length)),
     Do.bind("c", ({ done, fails }) =>
       uninterruptibleMask(({ restore }) =>
         pipe(
-          Do.of,
+          Do.do,
           Do.bind("fs", () => foreach_(ios, flow(interruptible, fork))),
           tap(({ fs }) =>
             A.reduce_(fs, unit as Async<void>, (io, f) =>

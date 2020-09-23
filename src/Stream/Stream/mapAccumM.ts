@@ -15,7 +15,7 @@ export const mapAccumM = <Z>(z: Z) => <O, S1, R1, E1, O1>(
 ) => <S, R, E>(self: Stream<S, R, E, O>) =>
   new Stream<S | S1, R & R1, E | E1, O1>(
     pipe(
-      M.of,
+      M.do,
       M.bind("state", () => Ref.makeManagedRef(z)),
       M.bind("pull", () => pipe(self.proc, M.mapM(BPull.make))),
       M.map(({ pull, state }) =>
@@ -24,7 +24,7 @@ export const mapAccumM = <Z>(z: Z) => <O, S1, R1, E1, O1>(
           BPull.pullElement,
           T.chain((o) =>
             pipe(
-              T.of,
+              T.do,
               T.bind("s", () => state.get),
               T.bind("t", ({ s }) => f(s, o)),
               T.tap(({ t }) => state.set(t[0])),
