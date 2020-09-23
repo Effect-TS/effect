@@ -56,6 +56,7 @@
       "Classic/StateT",
       "Classic/StateT/Parametric",
       "Classic/Task",
+      "Classic/TaskEither",
       "Effect",
       "Effect/Cause",
       "Effect/Clock",
