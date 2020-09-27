@@ -64,12 +64,20 @@ export function fromManaged<T>(has: T.Tag<T>) {
     )
 }
 
+export function fromFunction<B>(tag: T.Tag<B>) {
+  return <A>(f: (a: A) => B) => fromEffect(tag)(T.access(f))
+}
+
 export function fromRawManaged<S, R, E, A>(resource: T.Managed<S, R, E, A>) {
   return new Layer<S, R, E, A>(resource)
 }
 
 export function fromRawEffect<S, R, E, A>(resource: T.Effect<S, R, E, A>) {
   return new Layer<S, R, E, A>(T.fromEffect(resource))
+}
+
+export function fromRawFunction<A, B>(f: (a: A) => B) {
+  return fromRawEffect(T.access(f))
 }
 
 export function zip_<S, R, E, A, S2, R2, E2, A2>(
@@ -339,7 +347,7 @@ export function chain_<S, R, E, A, S2, R2, E2, B>(
 /**
  * Flatten `Layer<S, R, E, Layer<S2, R2, E2, A>>`
  */
-export function flatten<S, R, E, A, S2, R2, E2, B>(
+export function flatten<S, R, E, S2, R2, E2, B>(
   ffa: Layer<S, R, E, Layer<S2, R2, E2, B>>
 ): Layer<S | S2, R & R2, E | E2, B> {
   return new Layer(T.managedChain_(ffa.build, (i) => i.build))
