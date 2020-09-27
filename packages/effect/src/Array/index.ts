@@ -2,6 +2,7 @@
 
 import type { Either } from "../Either/core"
 import type { Predicate, Refinement } from "../Function/core"
+import { identity } from "../Function/core"
 import type { MutableArray } from "../Mutable"
 import type { NonEmptyArray } from "../NonEmptyArray"
 import type { Option } from "../Option"
@@ -13,32 +14,34 @@ export type Array<A> = ReadonlyArray<A>
 /**
  * Classic Applicative's ap
  */
-export const ap = <A>(fa: readonly A[]) => <B>(
-  fab: readonly ((a: A) => B)[]
-): readonly B[] => ap_(fab, fa)
+export function ap<A>(fa: readonly A[]) {
+  return <B>(fab: readonly ((a: A) => B)[]): readonly B[] => ap_(fab, fa)
+}
 
 /**
  * Classic Applicative's ap
  */
-export const ap_ = <A, B>(
+export function ap_<A, B>(
   fab: readonly ((a: A) => B)[],
   fa: readonly A[]
-): readonly B[] => flatten(map((f: (a: A) => B) => map(f)(fa))(fab))
+): readonly B[] {
+  return flatten(map((f: (a: A) => B) => map(f)(fa))(fab))
+}
 
 /**
  * Composes computations in sequence, using the return value of one computation to determine the next computation.
  */
-export const chain: <A, B>(
-  f: (a: A) => readonly B[]
-) => (ma: readonly A[]) => readonly B[] = (f) => (fa) => chain_(fa, f)
+export function chain<A, B>(f: (a: A) => readonly B[]) {
+  return (ma: readonly A[]): readonly B[] => chain_(ma, f)
+}
 
 /**
  * Composes computations in sequence, using the return value of one computation to determine the next computation.
  */
-export const chain_: <A, B>(
-  ma: readonly A[],
+export function chain_<A, B>(
+  fa: readonly A[],
   f: (a: A) => readonly B[]
-) => readonly B[] = (fa, f) => {
+): readonly B[] {
   let resLen = 0
   const l = fa.length
   const temp = new Array(l)
@@ -64,17 +67,16 @@ export const chain_: <A, B>(
 /**
  * Like chain but ignores output
  */
-export const tap: <A>(
-  f: (a: A) => readonly any[]
-) => (ma: readonly A[]) => readonly A[] = (f) => chain((a) => map(() => a)(f(a)))
+export function tap<A, B>(f: (a: A) => readonly B[]) {
+  return (ma: readonly A[]): readonly A[] => tap_(ma, f)
+}
 
 /**
  * Like chain but ignores output
  */
-export const tap_: <A, B>(
-  ma: readonly A[],
-  f: (a: A) => readonly B[]
-) => readonly A[] = (ma, f) => chain_(ma, (a) => map(() => a)(f(a)))
+export function tap_<A, B>(ma: readonly A[], f: (a: A) => readonly B[]): readonly A[] {
+  return chain_(ma, (a) => map(() => a)(f(a)))
+}
 
 /**
  * A useful recursion pattern for processing an array to produce a new array, often used for "chopping" up the input
@@ -140,8 +142,9 @@ export function chunksOf_<A>(as: Array<A>, n: number): Array<Array<A>> {
 /**
  * Filter out optional values
  */
-export const compact = <A>(fa: readonly Option<A>[]): readonly A[] =>
-  filterMap((x: Option<A>) => x)(fa)
+export function compact<A>(fa: readonly Option<A>[]): readonly A[] {
+  return filterMap((x: Option<A>) => x)(fa)
+}
 
 /**
  * Array comprehension
@@ -201,7 +204,7 @@ export function comprehension<R>(
 /**
  * Concatenate
  */
-export const concat_ = <A>(x: Array<A>, y: Array<A>): Array<A> => {
+export function concat_<A>(x: Array<A>, y: Array<A>): Array<A> {
   const lenx = x.length
   if (lenx === 0) {
     return y
@@ -223,7 +226,7 @@ export const concat_ = <A>(x: Array<A>, y: Array<A>): Array<A> => {
 /**
  * Concatenate
  */
-export const concat = <A>(y: Array<A>): ((x: Array<A>) => Array<A>) => {
+export function concat<A>(y: Array<A>): (x: Array<A>) => Array<A> {
   return (x) => concat_(x, y)
 }
 
@@ -334,8 +337,9 @@ export function dropRight_<A>(as: Array<A>, n: number): Array<A> {
 /**
  * Array[A] => Array[Array[A]]
  */
-export const duplicate = <A>(ma: readonly A[]): readonly (readonly A[])[] =>
-  extend((x: readonly A[]) => x)(ma)
+export function duplicate<A>(ma: readonly A[]): readonly (readonly A[])[] {
+  return extend((x: readonly A[]) => x)(ma)
+}
 
 /**
  * An empty array
@@ -348,10 +352,9 @@ export const empty: Array<never> = []
  *
  * i.e: like map that also consumes all the elements up to `i`
  */
-export const extend: <A, B>(
-  f: (fa: readonly A[]) => B
-) => (ma: readonly A[]) => readonly B[] = (f) => (ma) =>
-  ma.map((_, i, as) => f(as.slice(i)))
+export function extend<A, B>(f: (fa: readonly A[]) => B) {
+  return (ma: readonly A[]): readonly B[] => extend_(ma, f)
+}
 
 /**
  * Extends calls f with all the progressive slices up to the current element's index,
@@ -359,27 +362,35 @@ export const extend: <A, B>(
  *
  * i.e: like map that also consumes all the elements up to `i`
  */
-export const extend_: <A, B>(
+export function extend_<A, B>(
   ma: readonly A[],
   f: (fa: readonly A[]) => B
-) => readonly B[] = (ma, f) => ma.map((_, i, as) => f(as.slice(i)))
+): readonly B[] {
+  return ma.map((_, i, as) => f(as.slice(i)))
+}
 
 /**
  * Filters the array
  */
-export const filter: {
-  <A, B extends A>(refinement: Refinement<A, B>): (fa: readonly A[]) => readonly B[]
-  <A>(predicate: Predicate<A>): (fa: readonly A[]) => readonly A[]
-} = <A>(predicate: Predicate<A>) => (fa: readonly A[]): readonly A[] =>
-  fa.filter(predicate)
+export function filter<A, B extends A>(
+  refinement: Refinement<A, B>
+): (fa: readonly A[]) => readonly B[]
+export function filter<A>(predicate: Predicate<A>): (fa: readonly A[]) => readonly A[]
+export function filter<A>(predicate: Predicate<A>): (fa: readonly A[]) => readonly A[] {
+  return (fa) => fa.filter(predicate)
+}
 
 /**
  * Filters the array
  */
-export const filter_: {
-  <A, B extends A>(fa: readonly A[], refinement: Refinement<A, B>): readonly B[]
-  <A>(fa: readonly A[], predicate: Predicate<A>): readonly A[]
-} = <A>(fa: readonly A[], predicate: Predicate<A>): readonly A[] => fa.filter(predicate)
+export function filter_<A, B extends A>(
+  fa: readonly A[],
+  refinement: Refinement<A, B>
+): readonly B[]
+export function filter_<A>(fa: readonly A[], predicate: Predicate<A>): readonly A[]
+export function filter_<A>(fa: readonly A[], predicate: Predicate<A>): readonly A[] {
+  return fa.filter(predicate)
+}
 
 /**
  * Filters the array also passing element index
@@ -403,32 +414,34 @@ export function filterWithIndex_<A>(
 /**
  * Filters the array also mapping the output
  */
-export const filterMap: <A, B>(
-  f: (a: A) => Option<B>
-) => (fa: readonly A[]) => readonly B[] = (f) => filterMapWithIndex((_, a) => f(a))
+export const filterMap = <A, B>(f: (a: A) => Option<B>) => (
+  fa: readonly A[]
+): readonly B[] => filterMapWithIndex_(fa, (_, a) => f(a))
 
 /**
  * Filters the array also mapping the output
  */
-export const filterMap_: <A, B>(
+export function filterMap_<A, B>(
   fa: readonly A[],
   f: (a: A) => Option<B>
-) => readonly B[] = (fa, f) => filterMapWithIndex_(fa, (_, a) => f(a))
+): readonly B[] {
+  return filterMapWithIndex_(fa, (_, a) => f(a))
+}
 
 /**
  * Filters the array also mapping the output
  */
-export const filterMapWithIndex = <A, B>(f: (i: number, a: A) => Option<B>) => (
-  fa: readonly A[]
-): readonly B[] => filterMapWithIndex_(fa, f)
+export function filterMapWithIndex<A, B>(f: (i: number, a: A) => Option<B>) {
+  return (fa: readonly A[]): readonly B[] => filterMapWithIndex_(fa, f)
+}
 
 /**
  * Filters the array also mapping the output
  */
-export const filterMapWithIndex_ = <A, B>(
+export function filterMapWithIndex_<A, B>(
   fa: readonly A[],
   f: (i: number, a: A) => Option<B>
-): readonly B[] => {
+): readonly B[] {
   const result: MutableArray<B> = []
   for (let i = 0; i < fa.length; i++) {
     const optionB = f(i, fa[i])
@@ -660,22 +673,7 @@ export function findLastMap_<A, B>(as: Array<A>, f: (a: A) => Option<B>): Option
  * assert.deepStrictEqual(flatten([[1], [2], [3]]), [1, 2, 3])
  */
 export function flatten<A>(mma: Array<Array<A>>): Array<A> {
-  let rLen = 0
-  const len = mma.length
-  for (let i = 0; i < len; i++) {
-    rLen += mma[i].length
-  }
-  const r = Array(rLen)
-  let start = 0
-  for (let i = 0; i < len; i++) {
-    const arr = mma[i]
-    const l = arr.length
-    for (let j = 0; j < l; j++) {
-      r[j + start] = arr[j]
-    }
-    start += l
-  }
-  return r
+  return chain_(mma, identity)
 }
 
 /**
@@ -689,7 +687,7 @@ export function foldLeft<A, B>(
   onNil: () => B,
   onCons: (head: A, tail: Array<A>) => B
 ): (as: Array<A>) => B {
-  return (as) => (isEmpty(as) ? onNil() : onCons(as[0], as.slice(1)))
+  return (as) => foldLeft_(as, onNil, onCons)
 }
 
 /**
@@ -710,8 +708,7 @@ export function foldRight<A, B>(
   onNil: () => B,
   onCons: (init: Array<A>, last: A) => B
 ): (as: Array<A>) => B {
-  return (as) =>
-    isEmpty(as) ? onNil() : onCons(as.slice(0, as.length - 1), as[as.length - 1])
+  return (as) => foldRight_(as, onNil, onCons)
 }
 
 /**
@@ -812,7 +809,7 @@ export function isOutOfBound<A>(i: number, as: Array<A>): boolean {
  * assert.deepStrictEqual(last([]), none)
  */
 export function last<A>(as: Array<A>): Option<A> {
-  return lookup_(as.length - 1, as)
+  return lookup_(as, as.length - 1)
 }
 
 /**
@@ -840,7 +837,7 @@ export function lefts<E, A>(as: Array<Either<E, A>>): Array<E> {
  * assert.deepStrictEqual(lookup(1, [1, 2, 3]), some(2))
  * assert.deepStrictEqual(lookup(3, [1, 2, 3]), none)
  */
-export function lookup_<A>(i: number, as: Array<A>): Option<A> {
+export function lookup_<A>(as: Array<A>, i: number): Option<A> {
   return isOutOfBound(i, as) ? none : some(as[i])
 }
 
@@ -848,7 +845,7 @@ export function lookup_<A>(i: number, as: Array<A>): Option<A> {
  * This function provides a safe way to read a value at a particular index from an array
  */
 export function lookup(i: number): <A>(as: Array<A>) => Option<A> {
-  return (as) => (isOutOfBound(i, as) ? none : some(as[i]))
+  return (as) => lookup_(as, i)
 }
 
 /**
@@ -876,30 +873,33 @@ export function makeBy<A>(f: (i: number) => A): (n: number) => Array<A> {
 /**
  * Apply f to every element of Array<A> returning Array<B>
  */
-export const map: <A, B>(f: (a: A) => B) => (fa: readonly A[]) => readonly B[] = (
-  f
-) => (fa) => fa.map((a) => f(a))
+export function map<A, B>(f: (a: A) => B) {
+  return (fa: readonly A[]): readonly B[] => fa.map(f)
+}
 
 /**
  * Apply f to every element of Array<A> returning Array<B>
  */
-export const map_: <A, B>(fa: readonly A[], f: (a: A) => B) => readonly B[] = (fa, f) =>
-  fa.map((a) => f(a))
+export function map_<A, B>(fa: readonly A[], f: (a: A) => B): readonly B[] {
+  return fa.map(f)
+}
 
 /**
  * Like map but also passes the index to f
  */
-export const mapWithIndex: <A, B>(
-  f: (i: number, a: A) => B
-) => (fa: readonly A[]) => readonly B[] = (f) => (fa) => mapWithIndex_(fa, f)
+export function mapWithIndex<A, B>(f: (i: number, a: A) => B) {
+  return (fa: readonly A[]): readonly B[] => mapWithIndex_(fa, f)
+}
 
 /**
  * Like map but also passes the index to f
  */
-export const mapWithIndex_: <A, B>(
+export function mapWithIndex_<A, B>(
   fa: readonly A[],
   f: (i: number, a: A) => B
-) => readonly B[] = (fa, f) => fa.map((a, i) => f(i, a))
+): readonly B[] {
+  return fa.map((a, i) => f(i, a))
+}
 
 /**
  * Apply a function to the element at the specified index, creating a new array, or returning `None` if the index is out
@@ -932,7 +932,9 @@ export function modifyAt_<A>(
 /**
  * Construct an array with a single element
  */
-export const single = <A>(a: A): Array<A> => [a]
+export function single<A>(a: A): Array<A> {
+  return [a]
+}
 
 /**
  * Create an array containing a range of integers, including both endpoints
@@ -947,78 +949,64 @@ export function range(start: number, end: number): Array<number> {
 /**
  * Construct B by compacting with f over the array from left to right
  */
-export const reduce: <A, B>(b: B, f: (b: B, a: A) => B) => (fa: readonly A[]) => B = (
-  b,
-  f
-) => reduceWithIndex(b, (_, b, a) => f(b, a))
-
-/**
- * Construct B by compacting with f over the array from left to right
- */
-export const reduce_: <A, B>(fa: readonly A[], b: B, f: (b: B, a: A) => B) => B = (
-  fa,
-  b,
-  f
-) => reduceWithIndex_(fa, b, (_, b, a) => f(b, a))
-
-/**
- * Construct B by compacting with f over the array from right to left
- */
-export const reduceRight: <A, B>(
-  b: B,
-  f: (a: A, b: B) => B
-) => (fa: readonly A[]) => B = (b, f) => reduceRightWithIndex(b, (_, a, b) => f(a, b))
-
-/**
- * Construct B by compacting with f over the array from right to left
- */
-export const reduceRight_: <A, B>(fa: readonly A[], b: B, f: (a: A, b: B) => B) => B = (
-  fa,
-  b,
-  f
-) => reduceRightWithIndex_(fa, b, (_, a, b) => f(a, b))
-
-/**
- * Construct B by compacting with f over the array from right to left
- */
-export const reduceRightWithIndex: <A, B>(
-  b: B,
-  f: (i: number, a: A, b: B) => B
-) => (fa: readonly A[]) => B = (b, f) => (fa) =>
-  fa.reduceRight((b, a, i) => f(i, a, b), b)
-
-/**
- * Construct B by compacting with f over the array from right to left
- */
-export const reduceRightWithIndex_: <A, B>(
-  fa: readonly A[],
-  b: B,
-  f: (i: number, a: A, b: B) => B
-) => B = (fa, b, f) => fa.reduceRight((b, a, i) => f(i, a, b), b)
-
-/**
- * Construct B by compacting with f over the array from left to right
- */
-export const reduceWithIndex: <A, B>(
-  b: B,
-  f: (i: number, b: B, a: A) => B
-) => (fa: readonly A[]) => B = (b, f) => (fa) => {
-  const l = fa.length
-  let r = b
-  for (let i = 0; i < l; i++) {
-    r = f(i, r, fa[i])
-  }
-  return r
+export function reduce<A, B>(b: B, f: (b: B, a: A) => B) {
+  return (fa: readonly A[]): B => reduce_(fa, b, f)
 }
 
 /**
  * Construct B by compacting with f over the array from left to right
  */
-export const reduceWithIndex_: <A, B>(
+export function reduce_<A, B>(fa: readonly A[], b: B, f: (b: B, a: A) => B): B {
+  return reduceWithIndex_(fa, b, (_, b, a) => f(b, a))
+}
+
+/**
+ * Construct B by compacting with f over the array from right to left
+ */
+export function reduceRight<A, B>(b: B, f: (a: A, b: B) => B) {
+  return (fa: readonly A[]): B => reduceRight_(fa, b, f)
+}
+
+/**
+ * Construct B by compacting with f over the array from right to left
+ */
+export function reduceRight_<A, B>(fa: readonly A[], b: B, f: (a: A, b: B) => B): B {
+  return reduceRightWithIndex_(fa, b, (_, a, b) => f(a, b))
+}
+
+/**
+ * Construct B by compacting with f over the array from right to left
+ */
+export function reduceRightWithIndex<A, B>(b: B, f: (i: number, a: A, b: B) => B) {
+  return (fa: readonly A[]): B => fa.reduceRight((b, a, i) => f(i, a, b), b)
+}
+
+/**
+ * Construct B by compacting with f over the array from right to left
+ */
+export function reduceRightWithIndex_<A, B>(
+  fa: readonly A[],
+  b: B,
+  f: (i: number, a: A, b: B) => B
+): B {
+  return fa.reduceRight((b, a, i) => f(i, a, b), b)
+}
+
+/**
+ * Construct B by compacting with f over the array from left to right
+ */
+export function reduceWithIndex<A, B>(b: B, f: (i: number, b: B, a: A) => B) {
+  return (fa: readonly A[]): B => reduceWithIndex_(fa, b, f)
+}
+
+/**
+ * Construct B by compacting with f over the array from left to right
+ */
+export function reduceWithIndex_<A, B>(
   fa: readonly A[],
   b: B,
   f: (i: number, b: B, a: A) => B
-) => B = (fa, b, f) => {
+): B {
   const l = fa.length
   let r = b
   for (let i = 0; i < l; i++) {
@@ -1343,7 +1331,7 @@ export function toMutable<A>(ras: Array<A>): MutableArray<A> {
 /**
  * Construct A by unfolding B signaling end with an option
  */
-export const unfold_ = <A, B>(b: B, f: (b: B) => Option<readonly [A, B]>): Array<A> => {
+export function unfold_<A, B>(b: B, f: (b: B) => Option<readonly [A, B]>): Array<A> {
   const ret: MutableArray<A> = []
   let bb: B = b
   // eslint-disable-next-line no-constant-condition
@@ -1363,8 +1351,9 @@ export const unfold_ = <A, B>(b: B, f: (b: B) => Option<readonly [A, B]>): Array
 /**
  * Construct A by unfolding B signaling end with an option
  */
-export const unfold = <A, B>(f: (b: B) => Option<readonly [A, B]>) => (b: B) =>
-  unfold_(b, f)
+export function unfold<A, B>(f: (b: B) => Option<readonly [A, B]>) {
+  return (b: B) => unfold_(b, f)
+}
 
 /**
  * Deletes index i (non safe)
@@ -1505,9 +1494,7 @@ export function zipWith<A, B, C>(
 /**
  * Separate Array
  */
-export const separate = <B, C>(
-  fa: Array<Either<B, C>>
-): Separated<Array<B>, Array<C>> => {
+export function separate<B, C>(fa: Array<Either<B, C>>): Separated<Array<B>, Array<C>> {
   const left: MutableArray<B> = []
   const right: MutableArray<C> = []
   for (const e of fa) {
