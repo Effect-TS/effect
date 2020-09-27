@@ -5,6 +5,7 @@ import type { Array } from "../Classic/Array"
 import type { Bounded } from "../Classic/Bounded"
 import type { Closure } from "../Classic/Closure"
 import type { Commutative } from "../Classic/Commutative"
+import type { Const } from "../Classic/Const"
 import type { Either } from "../Classic/Either"
 import type { Equal } from "../Classic/Equal"
 import type { Identity } from "../Classic/Identity"
@@ -16,6 +17,7 @@ import type { Record } from "../Classic/Record"
 import type { Show } from "../Classic/Show"
 import type { StateIn, StateOut } from "../Classic/StateT"
 import type { Task } from "../Classic/Task"
+import type { Layer } from "../Effect/Layer"
 import type { XIO } from "../XPure/XIO"
 import type { XReader } from "../XPure/XReader"
 import type { XState } from "../XPure/XState"
@@ -85,6 +87,12 @@ export type IxURI = typeof IxURI
 export const TaskURI = "Task"
 export type TaskURI = typeof TaskURI
 
+export const ConstURI = "Const"
+export type ConstURI = typeof ConstURI
+
+export const LayerURI = "Layer"
+export type LayerURI = typeof LayerURI
+
 declare module "../Prelude/HKT" {
   interface URItoKind<FC, TC, N extends string, K, Q, W, X, I, S, R, E, A> {
     [ArrayURI]: Array<A>
@@ -108,6 +116,8 @@ declare module "../Prelude/HKT" {
     [StateOutURI]: StateOut<S, A>
     [IxURI]: TC extends IxC<infer _I, infer _O> ? Ix<_I, _O, A> : any
     [TaskURI]: Task<A>
+    [ConstURI]: Const<E, A>
+    [LayerURI]: Layer<S, R, E, A>
   }
   interface URItoIndex<N extends string, K> {
     [ArrayURI]: number
