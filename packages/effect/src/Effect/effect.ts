@@ -18,6 +18,9 @@ export interface Effect<S, R, E, A> {
   readonly [_R]: (_: R) => void
 
   readonly [_I]: Instruction
+
+  readonly _S1: (_: unknown) => void
+  readonly _S2: () => never
 }
 
 export type Sync<A> = Effect<never, unknown, never, A>

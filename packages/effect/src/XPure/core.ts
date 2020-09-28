@@ -1,4 +1,7 @@
 /* eslint-disable prefer-const */
+import type { EffectURI } from "../Effect/effect"
+import { _A, _E, _I, _R, _S, _U } from "../Effect/effect"
+import type { Instruction } from "../Effect/primitives"
 import * as E from "../Either"
 import { constant } from "../Function"
 import { Stack } from "../Stack"
@@ -11,11 +14,19 @@ import { Stack } from "../Stack"
  * including context, state, and failure.
  */
 export abstract class XPure<S1, S2, R, E, A> {
+  readonly _tag = "XPure"
   readonly _S1!: (_: S1) => void
-  readonly _S2!: () => S2
-  readonly _R!: (_: R) => void
-  readonly _E!: () => E
-  readonly _A!: () => A
+  readonly _S2!: () => S2;
+
+  readonly [_U]!: EffectURI;
+  readonly [_S]!: () => never;
+  readonly [_E]!: () => E;
+  readonly [_A]!: () => A;
+  readonly [_R]!: (_: R) => void
+
+  get [_I](): Instruction {
+    return this as any
+  }
 }
 
 function concrete<S1, S2, R, E, A>(
@@ -25,7 +36,7 @@ function concrete<S1, S2, R, E, A>(
 }
 
 class Succeed<A> extends XPure<unknown, never, unknown, never, A> {
-  readonly _tag = "Succeed"
+  readonly _xptag = "Succeed"
 
   constructor(readonly a: A) {
     super()
@@ -33,7 +44,7 @@ class Succeed<A> extends XPure<unknown, never, unknown, never, A> {
 }
 
 class Suspend<S1, S2, R, E, A> extends XPure<S1, S2, R, E, A> {
-  readonly _tag = "Suspend"
+  readonly _xptag = "Suspend"
 
   constructor(readonly f: () => XPure<S1, S2, R, E, A>) {
     super()
@@ -41,7 +52,7 @@ class Suspend<S1, S2, R, E, A> extends XPure<S1, S2, R, E, A> {
 }
 
 class Fail<E> extends XPure<unknown, never, unknown, E, never> {
-  readonly _tag = "Fail"
+  readonly _xptag = "Fail"
 
   constructor(readonly e: E) {
     super()
@@ -49,7 +60,7 @@ class Fail<E> extends XPure<unknown, never, unknown, E, never> {
 }
 
 class Modify<S1, S2, E, A> extends XPure<S1, S2, unknown, E, A> {
-  readonly _tag = "Modify"
+  readonly _xptag = "Modify"
 
   constructor(readonly run: (s1: S1) => readonly [S2, A]) {
     super()
@@ -57,7 +68,7 @@ class Modify<S1, S2, E, A> extends XPure<S1, S2, unknown, E, A> {
 }
 
 class FlatMap<S1, S2, S3, R, R1, E, E1, A, B> extends XPure<S1, S3, R & R1, E1 | E, B> {
-  readonly _tag = "FlatMap"
+  readonly _xptag = "FlatMap"
 
   constructor(
     readonly value: XPure<S1, S2, R, E, A>,
@@ -68,7 +79,7 @@ class FlatMap<S1, S2, S3, R, R1, E, E1, A, B> extends XPure<S1, S3, R & R1, E1 |
 }
 
 class Fold<S1, S2, S3, R, E1, E2, A, B> extends XPure<S1, S3, R, E2, B> {
-  readonly _tag = "Fold"
+  readonly _xptag = "Fold"
 
   constructor(
     readonly value: XPure<S1, S2, R, E1, A>,
@@ -80,7 +91,7 @@ class Fold<S1, S2, S3, R, E1, E2, A, B> extends XPure<S1, S3, R, E2, B> {
 }
 
 class Access<S1, S2, R, E, A> extends XPure<S1, S2, R, E, A> {
-  readonly _tag = "Access"
+  readonly _xptag = "Access"
 
   constructor(readonly access: (r: R) => XPure<S1, S2, R, E, A>) {
     super()
@@ -88,7 +99,7 @@ class Access<S1, S2, R, E, A> extends XPure<S1, S2, R, E, A> {
 }
 
 class Provide<S1, S2, R, E, A> extends XPure<S1, S2, unknown, E, A> {
-  readonly _tag = "Provide"
+  readonly _xptag = "Provide"
 
   constructor(readonly r: R, readonly cont: XPure<S1, S2, R, E, A>) {
     super()
@@ -106,7 +117,7 @@ type Concrete<S1, S2, R, E, A> =
   | Suspend<S1, S2, R, E, A>
 
 class FoldFrame {
-  readonly _tag = "FoldFrame"
+  readonly _xptag = "FoldFrame"
   constructor(
     readonly failure: (e: any) => XPure<any, any, any, any, any>,
     readonly apply: (e: any) => XPure<any, any, any, any, any>
@@ -114,7 +125,7 @@ class FoldFrame {
 }
 
 class ApplyFrame {
-  readonly _tag = "ApplyFrame"
+  readonly _xptag = "ApplyFrame"
   constructor(readonly apply: (e: any) => XPure<any, any, any, any, any>) {}
 }
 
@@ -155,7 +166,7 @@ export function runStateEither_<S1, S2, E, A>(
       if (nextInstr == null) {
         unwinding = false
       } else {
-        if (nextInstr._tag === "FoldFrame") {
+        if (nextInstr._xptag === "FoldFrame") {
           unwinding = false
           push(new ApplyFrame(nextInstr.failure))
         }
@@ -166,12 +177,12 @@ export function runStateEither_<S1, S2, E, A>(
   while (curXPure != null) {
     const xp = concrete(curXPure)
 
-    switch (xp._tag) {
+    switch (xp._xptag) {
       case "FlatMap": {
         const nested = concrete(xp.value)
         const continuation = xp.cont
 
-        switch (nested._tag) {
+        switch (nested._xptag) {
           case "Succeed": {
             curXPure = continuation(nested.a)
             break
@@ -588,6 +599,37 @@ export function provideAll<R>(r: R) {
 }
 
 /**
+ * Provides this computation with its required environment.
+ */
+export function provideAll_<S1, S2, R, E, A>(
+  self: XPure<S1, S2, R, E, A>,
+  r: R
+): XPure<S1, S2, unknown, E, A> {
+  return new Provide(r, self)
+}
+
+/**
+ * Provides some of the environment required to run this effect,
+ * leaving the remainder `R0` and combining it automatically using spread.
+ */
+export function provide_<SI, SO, E, A, R = unknown, R0 = unknown>(
+  next: XPure<SI, SO, R & R0, E, A>,
+  r: R
+): XPure<SI, SO, R0, E, A> {
+  return provideSome((r0: R0) => ({ ...r0, ...r }))(next)
+}
+
+/**
+ * Provides some of the environment required to run this effect,
+ * leaving the remainder `R0` and combining it automatically using spread.
+ */
+export function provide<R = unknown>(r: R) {
+  return <SI, SO, E, A, R0 = unknown>(
+    next: XPure<SI, SO, R & R0, E, A>
+  ): XPure<SI, SO, R0, E, A> => provideSome((r0: R0) => ({ ...r0, ...r }))(next)
+}
+
+/**
  * Access the environment monadically
  */
 export function accessM<R, S1, S2, R1, E, A>(
@@ -706,7 +748,7 @@ export function suspend<S1, S2, R, E, A>(
  * Lift a sync (non failable) computation
  */
 export function sync<A>(f: () => A) {
-  return suspend(() => succeed(() => f()))
+  return suspend(() => succeed<A, unknown, never>(() => f()))
 }
 
 /**
@@ -716,7 +758,7 @@ export function tryCatch<E>(onThrow: (u: unknown) => E) {
   return <A>(f: () => A) =>
     suspend(() => {
       try {
-        return succeed(constant(f()))
+        return succeed<A, unknown, never>(constant(f()))
       } catch (u) {
         return fail(onThrow(u))
       }
