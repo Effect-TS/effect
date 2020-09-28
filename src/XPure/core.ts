@@ -266,8 +266,8 @@ export function runStateEither<S1>(
 }
 
 /**
- * Runs this computation with the specified initial state, returning either a
- * failure or the updated state and the result
+ * Runs this computation with the specified initial state, returning both
+ * updated state and the result
  */
 export function run<S1>(s: S1) {
   return <S2, A>(self: XPure<S1, S2, unknown, never, A>): readonly [S2, A] =>
@@ -283,8 +283,7 @@ export function run_<S1, S2, A>(self: XPure<S1, S2, unknown, never, A>, s: S1) {
 }
 
 /**
- * Runs this computation with the specified initial state, returning both
- * the updated state and the result.
+ * Runs this computation, returning the result.
  */
 export function runIO<A>(self: XPure<unknown, unknown, unknown, never, A>) {
   return run_(self, {})[1]
@@ -639,7 +638,7 @@ export function orElseEither<S3, S4, R2, E2, A2>(that: XPure<S3, S4, R2, E2, A2>
 export function orElseEither_<S1, S2, R, E, A, S3, S4, R2, E2, A2>(
   self: XPure<S1, S2, R, E, A>,
   that: XPure<S3, S4, R2, E2, A2>
-) {
+): XPure<S3 & S1, S4 | S2, R & R2, E2, E.Either<A, A2>> {
   return foldM_(
     self,
     () => map_(that, (a) => E.right(a)),
