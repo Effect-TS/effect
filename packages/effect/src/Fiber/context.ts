@@ -783,7 +783,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                   )
 
                   if (res._tag === "Left") {
-                    current = fail.fail(res)[_I]
+                    current = fail.fail(res.left)[_I]
                   } else {
                     current = this.nextInstr(res.right)
                   }
