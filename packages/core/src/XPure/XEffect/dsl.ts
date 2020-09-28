@@ -18,4 +18,4 @@ export { do_ as do }
 
 export const provideService = DSL.provideServiceF({ ...Monad, ...Provide, ...Access })
 
-export const accessService = DSL.accessServiceMF({ ...Monad, ...Access })
+export const accessServiceM = DSL.accessServiceMF({ ...Monad, ...Access })
