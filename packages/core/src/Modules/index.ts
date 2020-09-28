@@ -18,8 +18,8 @@ import type { Show } from "../Classic/Show"
 import type { StateIn, StateOut } from "../Classic/StateT"
 import type { Task } from "../Classic/Task"
 import type { Layer } from "../Effect/Layer"
+import type { Sync } from "../Effect/Sync"
 import type { XPure } from "../XPure"
-import type { XEffect } from "../XPure/XEffect"
 import type { XIO } from "../XPure/XIO"
 import type { XReader } from "../XPure/XReader"
 import type { XState } from "../XPure/XState"
@@ -95,8 +95,8 @@ export type ConstURI = typeof ConstURI
 export const LayerURI = "Layer"
 export type LayerURI = typeof LayerURI
 
-export const XEffectURI = "XEffect"
-export type XEffectURI = typeof XEffectURI
+export const SyncURI = "Sync"
+export type SyncURI = typeof SyncURI
 
 export const XPureURI = "XPure"
 export type XPureURI = typeof XPureURI
@@ -126,7 +126,7 @@ declare module "../Prelude/HKT" {
     [TaskURI]: Task<A>
     [ConstURI]: Const<E, A>
     [LayerURI]: Layer<S, R, E, A>
-    [XEffectURI]: XEffect<R, E, A>
+    [SyncURI]: Sync<R, E, A>
     [XPureURI]: XPure<S, S, R, E, A>
   }
   interface URItoIndex<N extends string, K> {
