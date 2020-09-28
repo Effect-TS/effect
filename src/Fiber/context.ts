@@ -27,6 +27,7 @@ import * as Sup from "../Supervisor"
 // support
 import { AtomicReference } from "../Support/AtomicReference"
 import { defaultScheduler } from "../Support/Scheduler"
+import * as X from "../XPure"
 // fiber
 import * as Fiber from "./core"
 import type { Callback, FiberRefLocals } from "./state"
@@ -773,6 +774,20 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                       this.pushContinuation(new ApplyFrame(k))
                     }
                   }
+                  break
+                }
+
+                case "XPure": {
+                  const res: E.Either<any, any> = X.runEither(
+                    X.provideAll(this.environments?.value || {})(current)
+                  )
+
+                  if (res._tag === "Left") {
+                    current = fail.fail(res)[_I]
+                  } else {
+                    current = this.nextInstr(res.right)
+                  }
+
                   break
                 }
 

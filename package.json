@@ -75,6 +75,7 @@
       "Support/MutableQueue",
       "Support/OneShot",
       "Support/Scheduler",
+      "Sync",
       "Utils",
       "XPure"
     ]

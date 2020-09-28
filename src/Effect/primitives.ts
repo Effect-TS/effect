@@ -7,6 +7,7 @@ import type { FiberRef } from "../FiberRef/fiberRef"
 import type * as O from "../Option"
 import type { Scope } from "../Scope"
 import type { Supervisor } from "../Supervisor"
+import type { XPure } from "../XPure"
 import type { AsyncRE, Effect, EffectURI } from "./effect"
 import { _A, _E, _I, _R, _S, _U } from "./effect"
 
@@ -53,8 +54,12 @@ export type Instruction =
   | ISupervise<any, any, any, any>
   | IGetForkScope<any, any, any, any>
   | IOverrideForkScope<any, any, any, any>
+  | XPure<unknown, never, any, any, any>
 
 abstract class Base<S, R, E, A> implements Effect<S, R, E, A> {
+  readonly _S1!: (_: unknown) => void
+  readonly _S2!: () => never;
+
   readonly [_U]: EffectURI;
   readonly [_S]: () => S;
   readonly [_E]: () => E;
