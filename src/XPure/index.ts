@@ -1,20 +1,11 @@
 import { constant, identity } from "@effect-ts/system/Function"
 import * as X from "@effect-ts/system/XPure"
 
+import type { XPureURI } from "../Modules"
 import * as P from "../Prelude"
 import { structF } from "../Prelude/DSL"
 
 export type V = P.V<"S", "_"> & P.V<"R", "-"> & P.V<"E", "+">
-
-export const XPureURI = "XPure"
-
-export type XPureURI = typeof XPureURI
-
-declare module "../Prelude/HKT" {
-  interface URItoKind<FC, TC, N extends string, K, Q, W, X, I, S, R, E, A> {
-    [XPureURI]: X.XPure<S, S, R, E, A>
-  }
-}
 
 export const Any = P.instance<P.Any<[XPureURI], V>>({
   any: () => X.succeed(constant({}))

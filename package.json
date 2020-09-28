@@ -134,6 +134,7 @@
       "Prelude/WitherableWithIndex",
       "Utils",
       "XPure",
+      "XPure/XEffect",
       "XPure/XIO",
       "XPure/XReader",
       "XPure/XReaderT",
