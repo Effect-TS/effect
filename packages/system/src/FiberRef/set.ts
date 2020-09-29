@@ -1,4 +1,4 @@
-import type { Sync } from "../Effect/effect"
+import type { UIO } from "../Effect/effect"
 import { pipe } from "../Function"
 import type { FiberRef } from "./fiberRef"
 import { modify } from "./modify"
@@ -6,7 +6,7 @@ import { modify } from "./modify"
 /**
  * Sets the value associated with the current fiber.
  */
-export const set = <A>(a: A) => (fiberRef: FiberRef<A>): Sync<void> =>
+export const set = <A>(a: A) => (fiberRef: FiberRef<A>): UIO<void> =>
   pipe(
     fiberRef,
     modify((_) => [undefined, a])

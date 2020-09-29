@@ -7,9 +7,9 @@ import { IFold } from "./primitives"
  * Returns an effect that semantically runs the effect on a fiber,
  * producing an `Exit` for the completion value of the fiber.
  */
-export function result<S, R, E, A>(
-  value: Effect<S, R, E, A>
-): Effect<S, R, never, Exit.Exit<E, A>> {
+export function result<R, E, A>(
+  value: Effect<R, E, A>
+): Effect<R, never, Exit.Exit<E, A>> {
   return new IFold(
     value,
     (cause) => succeed(Exit.halt(cause)),

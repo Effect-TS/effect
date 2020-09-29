@@ -9,12 +9,12 @@ import * as Pull from "../src/Stream/Pull"
 
 describe("Stream", () => {
   describe("BufferedPull", () => {
-    it("pullArray", () => {
+    it("pullArray", async () => {
       const program = pipe(
         R.makeRef(0),
         T.chain(
           flow(
-            R.modify((i): [T.SyncE<O.Option<never>, readonly number[]>, number] => [
+            R.modify((i): [T.IO<O.Option<never>, readonly number[]>, number] => [
               i < 5 ? T.succeed([i]) : T.fail(O.none),
               i + 1
             ]),
@@ -43,7 +43,7 @@ describe("Stream", () => {
         )
       )
 
-      expect(T.runSyncExit(program)).toEqual(Exit.succeed([0, 1, 2, 3, 4]))
+      expect(await T.runPromiseExit(program)).toEqual(Exit.succeed([0, 1, 2, 3, 4]))
     })
 
     it("effectAsync", async () => {

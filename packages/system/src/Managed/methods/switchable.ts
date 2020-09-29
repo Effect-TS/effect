@@ -21,15 +21,14 @@ import { releaseMap } from "./releaseMap"
  * This constructor can be used to create an expressive control flow that uses
  * several instances of a managed resource.
  */
-export function switchable<S, R, E, A>(): Managed<
-  S,
+export function switchable<R, E, A>(): Managed<
   R,
   never,
-  (x: Managed<S, R, E, A>) => T.Effect<S, R, E, A>
+  (x: Managed<R, E, A>) => T.Effect<R, E, A>
 > {
   return pipe(
     Do.do,
-    Do.bind("releaseMap", () => releaseMap<S>()),
+    Do.bind("releaseMap", () => releaseMap),
     Do.bind("key", ({ releaseMap }) =>
       pipe(
         releaseMap,
@@ -49,9 +48,9 @@ export function switchable<S, R, E, A>(): Managed<
               (fin) => fin(T.exitUnit)
             )
           ),
-          T.zipSecond(T.of),
+          T.zipSecond(T.do),
           T.bind("r", () => T.environment<R>()),
-          T.bind("inner", () => RelMap.makeReleaseMap<S>()),
+          T.bind("inner", () => RelMap.makeReleaseMap),
           T.bind("a", ({ inner, r }) =>
             restore(T.provideAll_(newResource.effect, [r, inner]))
           ),

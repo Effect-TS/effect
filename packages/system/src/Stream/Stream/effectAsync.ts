@@ -14,12 +14,12 @@ import { effectAsyncMaybe } from "./effectAsyncMaybe"
 export const effectAsync = <R, E, A>(
   register: (
     cb: (
-      next: T.Effect<unknown, R, Option.Option<E>, Array.Array<A>>,
+      next: T.Effect<R, Option.Option<E>, Array.Array<A>>,
       offerCb?: Callback<never, boolean>
-    ) => T.Async<Exit<never, boolean>>
+    ) => T.UIO<Exit<never, boolean>>
   ) => void,
   outputBuffer = 16
-): Stream<unknown, R, E, A> =>
+): Stream<R, E, A> =>
   effectAsyncMaybe((cb) => {
     register(cb)
     return Option.none

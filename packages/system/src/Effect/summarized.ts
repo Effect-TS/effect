@@ -8,11 +8,11 @@ import { map } from "./map"
  * then combining the values to produce a summary, together with the result of
  * execution.
  */
-export function summarized_<S, R, E, A, S2, R2, E2, B, C>(
-  self: Effect<S, R, E, A>,
-  summary: Effect<S2, R2, E2, B>,
+export function summarized_<R, E, A, R2, E2, B, C>(
+  self: Effect<R, E, A>,
+  summary: Effect<R2, E2, B>,
   f: (start: B, end: B) => C
-): Effect<S | S2, R & R2, E | E2, [C, A]> {
+): Effect<R & R2, E | E2, [C, A]> {
   return pipe(
     D.do,
     D.bind("start", () => summary),
@@ -27,11 +27,10 @@ export function summarized_<S, R, E, A, S2, R2, E2, B, C>(
  * then combining the values to produce a summary, together with the result of
  * execution.
  */
-export function summarized<S2, R2, E2, B, C>(
-  summary: Effect<S2, R2, E2, B>,
+export function summarized<R2, E2, B, C>(
+  summary: Effect<R2, E2, B>,
   f: (start: B, end: B) => C
 ) {
-  return <S, R, E, A>(
-    self: Effect<S, R, E, A>
-  ): Effect<S | S2, R & R2, E | E2, [C, A]> => summarized_(self, summary, f)
+  return <R, E, A>(self: Effect<R, E, A>): Effect<R & R2, E | E2, [C, A]> =>
+    summarized_(self, summary, f)
 }

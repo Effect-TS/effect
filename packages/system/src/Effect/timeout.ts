@@ -19,7 +19,7 @@ import { timeoutTo_ } from "./timeoutTo"
  * effect has been successfully interrupted.
  */
 export function timeout(d: number) {
-  return <S, R, E, A>(self: Effect<S, R, E, A>) => timeout_(self, d)
+  return <R, E, A>(self: Effect<R, E, A>) => timeout_(self, d)
 }
 
 /**
@@ -38,6 +38,6 @@ export function timeout(d: number) {
  * the timeout, resulting in earliest possible return, before an underlying
  * effect has been successfully interrupted.
  */
-export function timeout_<S, R, E, A>(self: Effect<S, R, E, A>, d: number) {
+export function timeout_<R, E, A>(self: Effect<R, E, A>, d: number) {
   return timeoutTo_(self, d, O.none, O.some)
 }

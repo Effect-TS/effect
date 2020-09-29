@@ -8,9 +8,9 @@ import { uninterruptibleMask } from "./uninterruptibleMask"
  * Calls the specified function, and runs the effect it returns, if this
  * effect is interrupted.
  */
-export function onInterrupt_<S, R, E, A, S2, R2>(
-  self: Effect<S, R, E, A>,
-  cleanup: (interruptors: ReadonlySet<FiberID>) => Effect<S2, R2, never, any>
+export function onInterrupt_<R, E, A, R2>(
+  self: Effect<R, E, A>,
+  cleanup: (interruptors: ReadonlySet<FiberID>) => Effect<R2, never, any>
 ) {
   return uninterruptibleMask(({ restore }) =>
     foldCauseM_(
@@ -28,9 +28,9 @@ export function onInterrupt_<S, R, E, A, S2, R2>(
  * Calls the specified function, and runs the effect it returns, if this
  * effect is interrupted (allows for expanding error).
  */
-export function onInterruptExtended_<S, R, E, A, S2, R2, E2>(
-  self: Effect<S, R, E, A>,
-  cleanup: () => Effect<S2, R2, E2, any>
+export function onInterruptExtended_<R, E, A, R2, E2>(
+  self: Effect<R, E, A>,
+  cleanup: () => Effect<R2, E2, any>
 ) {
   return uninterruptibleMask(({ restore }) =>
     foldCauseM_(

@@ -10,13 +10,12 @@ import * as O from "../../Option"
 //
 //   Stated differently, after a first push(None), all subsequent push(None) must
 //   result in empty [].
-export class Transducer<S, R, E, I, O> {
+export class Transducer<R, E, I, O> {
   constructor(
     readonly push: M.Managed<
-      S,
       R,
       never,
-      (c: O.Option<A.Array<I>>) => T.Effect<S, R, E, A.Array<O>>
+      (c: O.Option<A.Array<I>>) => T.Effect<R, E, A.Array<O>>
     >
   ) {}
 }
@@ -29,26 +28,16 @@ export class Transducer<S, R, E, I, O> {
  *   Stated differently, after a first push(None), all subsequent push(None) must
  *   result in empty [].
  */
-export const transducer = <S, R, E, I, O, S1, R1>(
-  push: M.Managed<
-    S,
-    R,
-    never,
-    (c: O.Option<A.Array<I>>) => T.Effect<S1, R1, E, A.Array<O>>
-  >
-) => new Transducer<S | S1, R & R1, E, I, O>(push)
+export const transducer = <R, E, I, O, R1>(
+  push: M.Managed<R, never, (c: O.Option<A.Array<I>>) => T.Effect<R1, E, A.Array<O>>>
+) => new Transducer<R & R1, E, I, O>(push)
 
 /**
  * Compose this transducer with another transducer, resulting in a composite transducer.
  */
-export const then = <S1, R1, E1, O, O1>(that: Transducer<S1, R1, E1, O, O1>) => <
-  S,
-  R,
-  E,
-  I
->(
-  self: Transducer<S, R, E, I, O>
-): Transducer<S1 | S, R & R1, E1 | E, I, O1> =>
+export const then = <R1, E1, O, O1>(that: Transducer<R1, E1, O, O1>) => <R, E, I>(
+  self: Transducer<R, E, I, O>
+): Transducer<R & R1, E1 | E, I, O1> =>
   transducer(
     pipe(
       self.push,

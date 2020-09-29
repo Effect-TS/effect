@@ -9,7 +9,6 @@ import { runManaged } from "./runManaged"
  * Like `foreach`, but returns a `Managed` so the finalization order
  * can be controlled.
  */
-export const foreachManaged = <A, S1, R1, E1>(
-  f: (i: A) => T.Effect<S1, R1, E1, any>
-) => <S, R, E>(self: Stream<S, R, E, A>): M.Managed<S1 | S, R & R1, E1 | E, void> =>
-  pipe(self, runManaged(Sink.foreach(f)))
+export const foreachManaged = <A, R1, E1>(f: (i: A) => T.Effect<R1, E1, any>) => <R, E>(
+  self: Stream<R, E, A>
+): M.Managed<R & R1, E1 | E, void> => pipe(self, runManaged(Sink.foreach(f)))

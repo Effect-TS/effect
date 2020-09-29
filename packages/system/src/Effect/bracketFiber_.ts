@@ -9,9 +9,9 @@ import { forkDaemon } from "./scope"
  * Fork the effect into a separate fiber wrapping it in a bracket and returining the
  * `use` handle. Acquisition will fork and release will interrupt the fiber
  */
-export function bracketFiber_<S, R, E, A, S2, R2, E2, A2>(
-  effect: Effect<S, R, E, A>,
-  use: (f: Runtime<E, A>) => Effect<S2, R2, E2, A2>
+export function bracketFiber_<R, E, A, R2, E2, A2>(
+  effect: Effect<R, E, A>,
+  use: (f: Runtime<E, A>) => Effect<R2, E2, A2>
 ) {
   return bracket_(
     forkDaemon(effect),

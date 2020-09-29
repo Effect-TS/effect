@@ -4,7 +4,7 @@
  * Copyright 2020 Michael Arnaldi and the Matechs Garage Contributors.
  */
 import { chain_, effectTotal } from "../Effect/core"
-import type { Sync } from "../Effect/effect"
+import type { UIO } from "../Effect/effect"
 import { accessServiceM, replaceService } from "../Effect/has"
 import type { HasTag } from "../Has"
 import { has } from "../Has"
@@ -15,13 +15,13 @@ export const RandomURI = Symbol()
 export abstract class Random {
   readonly _tag!: typeof RandomURI
 
-  abstract readonly next: Sync<number>
-  abstract readonly nextBoolean: Sync<boolean>
-  abstract readonly nextInt: Sync<number>
-  abstract readonly nextDouble: Sync<number>
-  abstract readonly nextRange: (low: number, high: number) => Sync<number>
-  abstract readonly nextIntBetween: (low: number, high: number) => Sync<number>
-  abstract readonly setSeed: (s: string) => Sync<void>
+  abstract readonly next: UIO<number>
+  abstract readonly nextBoolean: UIO<boolean>
+  abstract readonly nextInt: UIO<number>
+  abstract readonly nextDouble: UIO<number>
+  abstract readonly nextRange: (low: number, high: number) => UIO<number>
+  abstract readonly nextIntBetween: (low: number, high: number) => UIO<number>
+  abstract readonly setSeed: (s: string) => UIO<void>
 }
 
 export class LiveRandom extends Random {
@@ -31,18 +31,18 @@ export class LiveRandom extends Random {
     super()
   }
 
-  next: Sync<number> = effectTotal(() => this.PRNG.next())
+  next: UIO<number> = effectTotal(() => this.PRNG.next())
 
-  nextBoolean: Sync<boolean> = chain_(this.next, (n) => effectTotal(() => n > 0.5))
+  nextBoolean: UIO<boolean> = chain_(this.next, (n) => effectTotal(() => n > 0.5))
 
-  nextInt: Sync<number> = effectTotal(() => this.PRNG.int32())
+  nextInt: UIO<number> = effectTotal(() => this.PRNG.int32())
 
-  nextDouble: Sync<number> = effectTotal(() => this.PRNG.double())
+  nextDouble: UIO<number> = effectTotal(() => this.PRNG.double())
 
-  nextRange: (low: number, high: number) => Sync<number> = (low, high) =>
+  nextRange: (low: number, high: number) => UIO<number> = (low, high) =>
     chain_(this.next, (n) => effectTotal(() => (high - low) * n + low))
 
-  nextIntBetween: (low: number, high: number) => Sync<number> = (low, high) =>
+  nextIntBetween: (low: number, high: number) => UIO<number> = (low, high) =>
     chain_(this.next, (n) => effectTotal(() => Math.floor((high - low + 1) * n + low)))
 
   setSeed = (s: string) =>

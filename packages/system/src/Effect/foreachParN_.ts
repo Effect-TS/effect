@@ -1,7 +1,7 @@
 import { pipe } from "../Function"
 import { makeSemaphore, withPermit } from "../Semaphore/semaphore"
 import { chain } from "./core"
-import type { AsyncRE, Effect } from "./effect"
+import type { Effect } from "./effect"
 import { foreachPar_ } from "./foreachPar_"
 
 /**
@@ -11,10 +11,10 @@ import { foreachPar_ } from "./foreachPar_"
  * Unlike `foreachPar`, this method will use at most up to `n` fibers.
  */
 export function foreachParN_(n: number) {
-  return <A, S, R, E, B>(
+  return <A, R, E, B>(
     as: Iterable<A>,
-    f: (a: A) => Effect<S, R, E, B>
-  ): AsyncRE<R, E, readonly B[]> =>
+    f: (a: A) => Effect<R, E, B>
+  ): Effect<R, E, readonly B[]> =>
     pipe(
       makeSemaphore(n),
       chain((s) => foreachPar_(as, (a) => withPermit(s)(f(a))))

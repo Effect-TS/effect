@@ -10,10 +10,10 @@ import { Stream } from "./definitions"
  * Statefully and effectfully maps over the elements of this stream to produce
  * new elements.
  */
-export const mapAccumM = <Z>(z: Z) => <O, S1, R1, E1, O1>(
-  f: (z: Z, o: O) => T.Effect<S1, R1, E1, [Z, O1]>
-) => <S, R, E>(self: Stream<S, R, E, O>) =>
-  new Stream<S | S1, R & R1, E | E1, O1>(
+export const mapAccumM = <Z>(z: Z) => <O, R1, E1, O1>(
+  f: (z: Z, o: O) => T.Effect<R1, E1, [Z, O1]>
+) => <R, E>(self: Stream<R, E, O>) =>
+  new Stream<R & R1, E | E1, O1>(
     pipe(
       M.do,
       M.bind("state", () => Ref.makeManagedRef(z)),

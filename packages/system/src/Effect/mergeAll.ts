@@ -2,7 +2,7 @@ import { pipe } from "../Function"
 import * as I from "../Iterable"
 import * as Ref from "../Ref"
 import { chain, chain_, succeed } from "./core"
-import type { AsyncRE, Effect } from "./effect"
+import type { Effect } from "./effect"
 import { foreachUnitParN_ } from "./foreachUnitParN_"
 import { zipWith_ } from "./zipWith_"
 import { zipWithPar_ } from "./zipWithPar_"
@@ -11,10 +11,10 @@ import { zipWithPar_ } from "./zipWithPar_"
  * Merges an `Iterable[IO]` to a single IO, working sequentially.
  */
 export function mergeAll<B>(zero: B) {
-  return <A>(f: (b: B, a: A) => B) => <S, R, E>(
-    as: Iterable<Effect<S, R, E, A>>
-  ): Effect<S, R, E, B> =>
-    I.reduce_(as, succeed(zero) as Effect<S, R, E, B>, (b, a) => zipWith_(b, a, f))
+  return <A>(f: (b: B, a: A) => B) => <R, E>(
+    as: Iterable<Effect<R, E, A>>
+  ): Effect<R, E, B> =>
+    I.reduce_(as, succeed(zero) as Effect<R, E, B>, (b, a) => zipWith_(b, a, f))
 }
 
 /**
@@ -28,10 +28,10 @@ export function mergeAll<B>(zero: B) {
  * more than once for some of `in` elements during effect execution.
  */
 export function mergeAllPar<B>(zero: B) {
-  return <A>(f: (b: B, a: A) => B) => <S, R, E>(
-    as: Iterable<Effect<S, R, E, A>>
-  ): AsyncRE<R, E, B> =>
-    I.reduce_(as, succeed(zero) as AsyncRE<R, E, B>, (b, a) => zipWithPar_(b, a, f))
+  return <A>(f: (b: B, a: A) => B) => <R, E>(
+    as: Iterable<Effect<R, E, A>>
+  ): Effect<R, E, B> =>
+    I.reduce_(as, succeed(zero) as Effect<R, E, B>, (b, a) => zipWithPar_(b, a, f))
 }
 
 /**
@@ -45,9 +45,9 @@ export function mergeAllPar<B>(zero: B) {
  * more than once for some of `in` elements during effect execution.
  */
 export function mergeAllParN(n: number) {
-  return <B>(zero: B) => <A>(f: (b: B, a: A) => B) => <S, R, E>(
-    as: Iterable<Effect<S, R, E, A>>
-  ): AsyncRE<R, E, B> =>
+  return <B>(zero: B) => <A>(f: (b: B, a: A) => B) => <R, E>(
+    as: Iterable<Effect<R, E, A>>
+  ): Effect<R, E, B> =>
     chain_(Ref.makeRef(zero), (acc) =>
       chain_(
         foreachUnitParN_(n)(

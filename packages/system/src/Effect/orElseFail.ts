@@ -6,16 +6,16 @@ import { orElse_ } from "./orElse"
  * otherwise fails with the specified error.
  */
 export function orElseFail<E2>(e: E2) {
-  return <S, R, E, A>(self: Effect<S, R, E, A>) => orElseFail_(self, e)
+  return <R, E, A>(self: Effect<R, E, A>) => orElseFail_(self, e)
 }
 
 /**
  * Executes this effect and returns its value, if it succeeds, but
  * otherwise fails with the specified error.
  */
-export function orElseFail_<S, R, E, A, E2>(
-  self: Effect<S, R, E, A>,
+export function orElseFail_<R, E, A, E2>(
+  self: Effect<R, E, A>,
   e: E2
-): Effect<S, R, E2, A> {
+): Effect<R, E2, A> {
   return orElse_(self, fail(e))
 }

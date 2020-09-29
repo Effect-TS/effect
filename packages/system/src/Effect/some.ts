@@ -8,9 +8,9 @@ import { foldM } from "./foldM"
 /**
  * Converts an option on values into an option on errors.
  */
-export function some<S, R, E, A>(
-  self: Effect<S, R, E, O.Option<A>>
-): Effect<S, R, O.Option<E>, A> {
+export function some<R, E, A>(
+  self: Effect<R, E, O.Option<A>>
+): Effect<R, O.Option<E>, A> {
   return pipe(
     self,
     foldM(

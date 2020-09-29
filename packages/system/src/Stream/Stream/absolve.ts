@@ -8,6 +8,6 @@ import { succeed } from "./succeed"
 /**
  * Submerges the error case of an `Either` into the `ZStream`.
  */
-export const absolve: <S, R, E, E2, O>(
-  xs: Stream<S, R, E, Either<E2, O>>
-) => Stream<S, R, E | E2, O> = chain(fold(fail, succeed))
+export const absolve: <R, E, E2, O>(
+  xs: Stream<R, E, Either<E2, O>>
+) => Stream<R, E | E2, O> = chain(fold(fail, succeed))

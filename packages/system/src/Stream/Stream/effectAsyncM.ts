@@ -22,12 +22,12 @@ import { repeatEffectChunkOption } from "./repeatEffectChunkOption"
 export const effectAsyncM = <R, E, A, R1 = R, E1 = E>(
   register: (
     cb: (
-      next: T.Effect<unknown, R, Option.Option<E>, Array.Array<A>>,
+      next: T.Effect<R, Option.Option<E>, Array.Array<A>>,
       offerCb?: Callback<never, boolean>
-    ) => T.Async<Exit<never, boolean>>
-  ) => T.Effect<unknown, R1, E1, unknown>,
+    ) => T.UIO<Exit<never, boolean>>
+  ) => T.Effect<R1, E1, unknown>,
   outputBuffer = 16
-): Stream<unknown, R & R1, E | E1, A> =>
+): Stream<R & R1, E | E1, A> =>
   pipe(
     M.do,
     M.bind("output", () =>
@@ -37,9 +37,7 @@ export const effectAsyncM = <R, E, A, R1 = R, E1 = E>(
     M.tap(({ output, runtime }) =>
       T.toManaged()(
         register((k, cb) =>
-          pipe(Take.fromPull(k), T.chain(output.offer), (x) =>
-            runtime.runAsyncCancel(x, cb)
-          )
+          pipe(Take.fromPull(k), T.chain(output.offer), (x) => runtime.runCancel(x, cb))
         )
       )
     ),

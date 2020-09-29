@@ -10,9 +10,9 @@ import { uninterruptibleMask } from "./uninterruptibleMask"
  * this effect. Synchronizes interruption, so if this effect is interrupted,
  * the specified promise will be interrupted, too.
  */
-export const to = <E, A>(p: Promise<E, A>) => <S, R>(
-  effect: Effect<S, R, E, A>
-): Effect<S, R, never, boolean> =>
+export const to = <E, A>(p: Promise<E, A>) => <R>(
+  effect: Effect<R, E, A>
+): Effect<R, never, boolean> =>
   uninterruptibleMask(({ restore }) =>
     chain_(result(restore(effect)), (x) => done(x)(p))
   )

@@ -13,20 +13,22 @@ import { unfoldChunkM } from "./unfoldChunkM"
  * it to the destination stream. `f` can maintain some internal state to control
  * the combining process, with the initial state being specified by `s`.
  */
-export const combineChunks = <S1, R1, E1, O2>(that: Stream<S1, R1, E1, O2>) => <Z>(
-  z: Z
-) => <S, S2, R, E, O, O3>(
+export const combineChunks = <R1, E1, O2>(that: Stream<R1, E1, O2>) => <Z>(z: Z) => <
+  R,
+  E,
+  O,
+  O3
+>(
   f: (
     z: Z,
-    s: T.Effect<S, R, Option.Option<E>, Array.Array<O>>,
-    t: T.Effect<S1, R1, Option.Option<E1>, Array.Array<O2>>
+    s: T.Effect<R, Option.Option<E>, Array.Array<O>>,
+    t: T.Effect<R1, Option.Option<E1>, Array.Array<O2>>
   ) => T.Effect<
-    S2,
     R & R1,
     never,
     Exit.Exit<Option.Option<E | E1>, readonly [Array.Array<O3>, Z]>
   >
-) => (self: Stream<S, R, E, O>): Stream<S1 | S | S2, R & R1, E1 | E, O3> =>
+) => (self: Stream<R, E, O>): Stream<R & R1, E1 | E, O3> =>
   new Stream(
     pipe(
       M.do,

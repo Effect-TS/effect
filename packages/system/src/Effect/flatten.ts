@@ -7,8 +7,6 @@ import type { Effect } from "./effect"
  * the inner effect, returning the value from the inner effect, and effectively
  * flattening a nested effect.
  */
-export function flatten<S, R, E, S1, R1, E1, A>(
-  effect: Effect<S, R, E, Effect<S1, R1, E1, A>>
-) {
+export function flatten<R, E, R1, E1, A>(effect: Effect<R, E, Effect<R1, E1, A>>) {
   return pipe(effect, chain(identity))
 }

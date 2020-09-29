@@ -6,28 +6,23 @@ import * as O from "../../Option"
 import * as R from "../../Ref"
 import * as Pull from "../Pull"
 
-export class BufferedPull<S, R, E, A> {
+export class BufferedPull<R, E, A> {
   constructor(
-    readonly upstream: T.Effect<S, R, O.Option<E>, A.Array<A>>,
+    readonly upstream: T.Effect<R, O.Option<E>, A.Array<A>>,
     readonly done: R.Ref<boolean>,
     readonly cursor: R.Ref<[A.Array<A>, number]>
   ) {}
 }
 
-export const ifNotDone = <S1, R1, E1, A1>(fa: T.Effect<S1, R1, O.Option<E1>, A1>) => <
-  S,
-  R,
-  E,
-  A
->(
-  self: BufferedPull<S, R, E, A>
-): T.Effect<S1, R1, O.Option<E1>, A1> =>
+export const ifNotDone = <R1, E1, A1>(fa: T.Effect<R1, O.Option<E1>, A1>) => <R, E, A>(
+  self: BufferedPull<R, E, A>
+): T.Effect<R1, O.Option<E1>, A1> =>
   pipe(
     self.done.get,
     T.chain((b) => (b ? Pull.end : fa))
   )
 
-export const update = <S, R, E, A>(self: BufferedPull<S, R, E, A>) =>
+export const update = <R, E, A>(self: BufferedPull<R, E, A>) =>
   pipe(
     self,
     ifNotDone(
@@ -48,15 +43,15 @@ export const update = <S, R, E, A>(self: BufferedPull<S, R, E, A>) =>
     )
   )
 
-export const pullElement = <S, R, E, A>(
-  self: BufferedPull<S, R, E, A>
-): T.Effect<S, R, O.Option<E>, A> =>
+export const pullElement = <R, E, A>(
+  self: BufferedPull<R, E, A>
+): T.Effect<R, O.Option<E>, A> =>
   pipe(
     self,
     ifNotDone(
       pipe(
         self.cursor,
-        R.modify(([c, i]): [T.Effect<S, R, O.Option<E>, A>, [A.Array<A>, number]] => {
+        R.modify(([c, i]): [T.Effect<R, O.Option<E>, A>, [A.Array<A>, number]] => {
           if (i >= c.length) {
             return [
               pipe(
@@ -74,16 +69,16 @@ export const pullElement = <S, R, E, A>(
     )
   )
 
-export const pullArray = <S, R, E, A>(
-  self: BufferedPull<S, R, E, A>
-): T.Effect<S, R, O.Option<E>, A.Array<A>> =>
+export const pullArray = <R, E, A>(
+  self: BufferedPull<R, E, A>
+): T.Effect<R, O.Option<E>, A.Array<A>> =>
   pipe(
     self,
     ifNotDone(
       pipe(
         self.cursor,
         R.modify(([chunk, idx]): [
-          T.Effect<S, R, O.Option<E>, A.Array<A>>,
+          T.Effect<R, O.Option<E>, A.Array<A>>,
           [A.Array<A>, number]
         ] => {
           if (idx >= chunk.length) {
@@ -97,7 +92,7 @@ export const pullArray = <S, R, E, A>(
     )
   )
 
-export const make = <S, R, E, A>(pull: T.Effect<S, R, O.Option<E>, A.Array<A>>) =>
+export const make = <R, E, A>(pull: T.Effect<R, O.Option<E>, A.Array<A>>) =>
   pipe(
     T.do,
     T.bind("done", () => R.makeRef(false)),

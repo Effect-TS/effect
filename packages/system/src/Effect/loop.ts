@@ -20,9 +20,9 @@ import { map } from "./map"
  * ```
  */
 export function loop<Z>(initial: Z) {
-  return (cont: (z: Z) => boolean, inc: (z: Z) => Z) => <S, R, E, A>(
-    body: (z: Z) => Effect<S, R, E, A>
-  ): Effect<S, R, E, readonly A[]> => {
+  return (cont: (z: Z) => boolean, inc: (z: Z) => Z) => <R, E, A>(
+    body: (z: Z) => Effect<R, E, A>
+  ): Effect<R, E, readonly A[]> => {
     if (cont(initial)) {
       return chain_(body(initial), (a) =>
         pipe(
@@ -49,9 +49,9 @@ export function loop<Z>(initial: Z) {
  * ```
  */
 export function loopUnit<Z>(initial: Z) {
-  return (cont: (z: Z) => boolean, inc: (z: Z) => Z) => <S, R, E>(
-    body: (z: Z) => Effect<S, R, E, any>
-  ): Effect<S, R, E, void> => {
+  return (cont: (z: Z) => boolean, inc: (z: Z) => Z) => <R, E>(
+    body: (z: Z) => Effect<R, E, any>
+  ): Effect<R, E, void> => {
     if (cont(initial)) {
       return chain_(body(initial), () => loop(inc(initial))(cont, inc)(body))
     }

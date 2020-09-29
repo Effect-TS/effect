@@ -13,7 +13,7 @@ import { asUnit } from "./asUnit"
 import { catchAll } from "./catchAll"
 import { chain, chain_, fork, halt, suspend, unit } from "./core"
 import * as D from "./do"
-import type { AsyncRE, Effect } from "./effect"
+import type { Effect } from "./effect"
 import { ensuring } from "./ensuring"
 import { fiberId } from "./fiberId"
 import { foreach_ } from "./foreach_"
@@ -38,10 +38,10 @@ import { whenM } from "./whenM"
  *
  * Additionally, interrupts all effects on any failure.
  */
-export function foreachUnitPar_<S, R, E, A>(
+export function foreachUnitPar_<R, E, A>(
   as: Iterable<A>,
-  f: (a: A) => Effect<S, R, E, any>
-): AsyncRE<R, E, void> {
+  f: (a: A) => Effect<R, E, any>
+): Effect<R, E, void> {
   const arr = Array.from(as)
   const size = arr.length
 

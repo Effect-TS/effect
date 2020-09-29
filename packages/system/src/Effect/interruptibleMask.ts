@@ -9,8 +9,8 @@ import { InterruptStatusRestoreImpl } from "./uninterruptibleMask"
  * can be used to restore the inherited interruptibility from whatever region
  * the effect is composed into.
  */
-export function interruptibleMask<S, R, E, A>(
-  f: (restore: InterruptStatusRestore) => Effect<S, R, E, A>
+export function interruptibleMask<R, E, A>(
+  f: (restore: InterruptStatusRestore) => Effect<R, E, A>
 ) {
   return checkInterruptible((flag) =>
     interruptible(f(new InterruptStatusRestoreImpl(flag)))

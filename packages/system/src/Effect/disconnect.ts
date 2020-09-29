@@ -19,7 +19,7 @@ import { uninterruptibleMask } from "./uninterruptibleMask"
  *
  * See timeout and race for other applications.
  */
-export function disconnect<S, R, E, A>(effect: Effect<S, R, E, A>) {
+export function disconnect<R, E, A>(effect: Effect<R, E, A>) {
   return uninterruptibleMask(({ restore }) =>
     chain_(fiberId(), (id) =>
       chain_(forkDaemon(restore(effect)), (fiber) =>

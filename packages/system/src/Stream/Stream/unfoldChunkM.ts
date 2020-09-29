@@ -10,9 +10,9 @@ import { Stream } from "./definitions"
 /**
  * Creates a stream by effectfully peeling off the "layers" of a value of type `S`
  */
-export const unfoldChunkM = <Z>(z: Z) => <S, R, E, A>(
-  f: (z: Z) => T.Effect<S, R, E, Option.Option<readonly [Array.Array<A>, Z]>>
-): Stream<S, R, E, A> =>
+export const unfoldChunkM = <Z>(z: Z) => <R, E, A>(
+  f: (z: Z) => T.Effect<R, E, Option.Option<readonly [Array.Array<A>, Z]>>
+): Stream<R, E, A> =>
   new Stream(
     pipe(
       M.do,

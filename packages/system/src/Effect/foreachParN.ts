@@ -1,4 +1,4 @@
-import type { AsyncRE, Effect } from "./effect"
+import type { Effect } from "./effect"
 import { foreachParN_ } from "./foreachParN_"
 
 /**
@@ -12,7 +12,7 @@ import { foreachParN_ } from "./foreachParN_"
  * effects complete
  */
 export function foreachParN(n: number) {
-  return <A, S, R, E, B>(f: (a: A) => Effect<S, R, E, B>) => (
+  return <A, R, E, B>(f: (a: A) => Effect<R, E, B>) => (
     as: Iterable<A>
-  ): AsyncRE<R, E, readonly B[]> => foreachParN_(n)(as, f)
+  ): Effect<R, E, readonly B[]> => foreachParN_(n)(as, f)
 }

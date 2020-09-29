@@ -2,7 +2,7 @@ import * as Fiber from "../Fiber"
 import { flow, pipe } from "../Function"
 import { track } from "../Supervisor"
 import { chain } from "./core"
-import type { AsyncRE, Effect } from "./effect"
+import type { Effect, RIO } from "./effect"
 import { ensuring } from "./ensuring"
 import { supervised } from "./supervised"
 
@@ -10,10 +10,10 @@ import { supervised } from "./supervised"
  * Acts on the children of this fiber, guaranteeing the specified callback
  * will be invoked, whether or not this effect succeeds.
  */
-export function ensuringChildren<S1, R1>(
-  children: (_: readonly Fiber.Runtime<any, any>[]) => Effect<S1, R1, never, any>
+export function ensuringChildren<R1>(
+  children: (_: readonly Fiber.Runtime<any, any>[]) => RIO<R1, any>
 ) {
-  return <S, R, E, A>(fa: Effect<S, R, E, A>): AsyncRE<R & R1, E, A> =>
+  return <R, E, A>(fa: Effect<R, E, A>): Effect<R & R1, E, A> =>
     ensuringChildren_(fa, children)
 }
 
@@ -21,9 +21,9 @@ export function ensuringChildren<S1, R1>(
  * Acts on the children of this fiber, guaranteeing the specified callback
  * will be invoked, whether or not this effect succeeds.
  */
-export function ensuringChildren_<S, R, E, A, S1, R1>(
-  fa: Effect<S, R, E, A>,
-  children: (_: readonly Fiber.Runtime<any, any>[]) => Effect<S1, R1, never, any>
+export function ensuringChildren_<R, E, A, R1>(
+  fa: Effect<R, E, A>,
+  children: (_: readonly Fiber.Runtime<any, any>[]) => RIO<R1, any>
 ) {
   return pipe(
     track,
@@ -47,9 +47,9 @@ export function ensuringChildren_<S, R, E, A, S1, R1>(
  * guaranteeing the specified callback will be invoked, whether or not
  * this effect succeeds.
  */
-export function ensuringChild_<S, R, E, A, R2, S2>(
-  fa: Effect<S, R, E, A>,
-  f: (_: Fiber.Fiber<any, Iterable<any>>) => Effect<S2, R2, never, any>
+export function ensuringChild_<R, E, A, R2>(
+  fa: Effect<R, E, A>,
+  f: (_: Fiber.Fiber<any, Iterable<any>>) => RIO<R2, any>
 ) {
   return ensuringChildren_(fa, flow(Fiber.collectAll, f))
 }
@@ -59,8 +59,8 @@ export function ensuringChild_<S, R, E, A, R2, S2>(
  * guaranteeing the specified callback will be invoked, whether or not
  * this effect succeeds.
  */
-export function ensuringChild<S, R, E, A, R2, S2>(
-  f: (_: Fiber.Fiber<any, Iterable<any>>) => Effect<S2, R2, never, any>
+export function ensuringChild<S, R, E, A, R2>(
+  f: (_: Fiber.Fiber<any, Iterable<any>>) => RIO<R2, any>
 ) {
-  return (fa: Effect<S, R, E, A>) => ensuringChild_(fa, f)
+  return (fa: Effect<R, E, A>) => ensuringChild_(fa, f)
 }

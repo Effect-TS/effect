@@ -16,10 +16,10 @@ import { effectAsyncInterruptEither } from "./effectAsyncInterruptEither"
 export const effectAsyncInterrupt = <R, E, A>(
   register: (
     cb: (
-      next: T.Effect<unknown, R, Option.Option<E>, Array.Array<A>>,
+      next: T.Effect<R, Option.Option<E>, Array.Array<A>>,
       offerCb?: Callback<never, boolean>
-    ) => T.Async<Exit<never, boolean>>
+    ) => T.UIO<Exit<never, boolean>>
   ) => T.Canceler<R>,
   outputBuffer = 16
-): Stream<unknown, R, E, A> =>
+): Stream<R, E, A> =>
   effectAsyncInterruptEither((cb) => Either.left(register(cb)), outputBuffer)

@@ -7,6 +7,6 @@ import { ISupervise } from "./primitives"
  * fibers forked in the effect are reported to the specified supervisor.
  */
 export function supervised(supervisor: Supervisor<any>) {
-  return <S, R, E, A>(fa: Effect<S, R, E, A>): Effect<S, R, E, A> =>
+  return <R, E, A>(fa: Effect<R, E, A>): Effect<R, E, A> =>
     new ISupervise(fa, supervisor).effect
 }
