@@ -3,7 +3,7 @@ import * as P from "../Promise"
 import * as RefM from "../RefM"
 import { fork, succeed } from "./core"
 import * as Do from "./do"
-import type { AsyncRE, Effect, Sync } from "./effect"
+import type { Effect, UIO } from "./effect"
 import { map } from "./map"
 import { tap } from "./tap"
 import { to } from "./to"
@@ -11,9 +11,9 @@ import { to } from "./to"
 /**
  * Returns a memoized version of the specified effectual function.
  */
-export function memoize<A, S, R, E, B>(
-  f: (a: A) => Effect<S, R, E, B>
-): Sync<(a: A) => AsyncRE<R, E, B>> {
+export function memoize<A, R, E, B>(
+  f: (a: A) => Effect<R, E, B>
+): UIO<(a: A) => Effect<R, E, B>> {
   return pipe(
     RefM.makeRefM(new Map<A, P.Promise<E, B>>()),
     map((ref) => (a: A) =>
@@ -51,9 +51,7 @@ export function memoize<A, S, R, E, B>(
  * This variant uses the compare function to compare `A`
  */
 export function memoizeEq<A>(compare: (r: A) => (l: A) => boolean) {
-  return <S, R, E, B>(
-    f: (a: A) => Effect<S, R, E, B>
-  ): Sync<(a: A) => Effect<unknown, R, E, B>> =>
+  return <R, E, B>(f: (a: A) => Effect<R, E, B>): UIO<(a: A) => Effect<R, E, B>> =>
     pipe(
       RefM.makeRefM(new Map<A, P.Promise<E, B>>()),
       map((ref) => (a: A) =>

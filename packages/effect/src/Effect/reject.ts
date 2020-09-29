@@ -8,9 +8,8 @@ import { fail } from "./fail"
  * translating the successful match into a failure, otherwise continue with
  * our held value.
  */
-export function rejectM<A, S1, R1, E1>(pf: (a: A) => O.Option<Effect<S1, R1, E1, E1>>) {
-  return <S, R, E>(self: Effect<S, R, E, A>): Effect<S | S1, R & R1, E | E1, A> =>
-    rejectM_(self, pf)
+export function rejectM<A, R1, E1>(pf: (a: A) => O.Option<Effect<R1, E1, E1>>) {
+  return <R, E>(self: Effect<R, E, A>): Effect<R & R1, E | E1, A> => rejectM_(self, pf)
 }
 
 /**
@@ -18,9 +17,9 @@ export function rejectM<A, S1, R1, E1>(pf: (a: A) => O.Option<Effect<S1, R1, E1,
  * translating the successful match into a failure, otherwise continue with
  * our held value.
  */
-export function rejectM_<S, R, E, A, S1, R1, E1>(
-  self: Effect<S, R, E, A>,
-  pf: (a: A) => O.Option<Effect<S1, R1, E1, E1>>
+export function rejectM_<R, E, A, R1, E1>(
+  self: Effect<R, E, A>,
+  pf: (a: A) => O.Option<Effect<R1, E1, E1>>
 ) {
   return chain_(self, (a) =>
     O.fold_(
@@ -36,16 +35,15 @@ export function rejectM_<S, R, E, A, S1, R1, E1>(
  * continue with our held value.
  */
 export function reject<A, E1>(pf: (a: A) => O.Option<E1>) {
-  return <S, R, E>(self: Effect<S, R, E, A>) =>
-    rejectM_(self, (a) => O.map_(pf(a), fail))
+  return <R, E>(self: Effect<R, E, A>) => rejectM_(self, (a) => O.map_(pf(a), fail))
 }
 
 /**
  * Fail with the returned value if the `PartialFunction` matches, otherwise
  * continue with our held value.
  */
-export function reject_<S, R, E, A, E1>(
-  self: Effect<S, R, E, A>,
+export function reject_<R, E, A, E1>(
+  self: Effect<R, E, A>,
   pf: (a: A) => O.Option<E1>
 ) {
   return rejectM_(self, (a) => O.map_(pf(a), fail))

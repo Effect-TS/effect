@@ -15,9 +15,9 @@ import type { Effect } from "./effect"
  * ```
  */
 export function iterate<Z>(initial: Z) {
-  return (cont: (z: Z) => boolean) => <S, R, E>(
-    body: (z: Z) => Effect<S, R, E, Z>
-  ): Effect<S, R, E, Z> => {
+  return (cont: (z: Z) => boolean) => <R, E>(
+    body: (z: Z) => Effect<R, E, Z>
+  ): Effect<R, E, Z> => {
     if (cont(initial)) {
       return chain_(body(initial), (z2) => iterate(z2)(cont)(body))
     }

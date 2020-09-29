@@ -5,15 +5,13 @@ import * as Fiber from "../Fiber/api"
 import { pipe } from "../Function"
 import { chain, chain_, checkDescriptor, halt, succeed } from "./core"
 import { done } from "./done"
-import type { Effect } from "./effect"
+import type { Effect, IO } from "./effect"
 import { map_ } from "./map_"
 import { mapErrorCause_ } from "./mapErrorCause"
 import { result } from "./result"
 import { raceWith } from "./scope"
 
-function mergeInterruption<A, E2, A2>(
-  a: A
-): (a: Exit.Exit<E2, A2>) => Effect<never, unknown, E2, A> {
+function mergeInterruption<A, E2, A2>(a: A): (a: Exit.Exit<E2, A2>) => IO<E2, A> {
   return (x) => {
     switch (x._tag) {
       case "Success": {
@@ -36,10 +34,10 @@ function mergeInterruption<A, E2, A2>(
  * resume until the loser has been cleanly terminated. If early return is
  * desired
  */
-export function race_<S, R, E, A, S2, R2, E2, A2>(
-  self: Effect<S, R, E, A>,
-  that: Effect<S2, R2, E2, A2>
-): Effect<unknown, R & R2, E | E2, A | A2> {
+export function race_<R, E, A, R2, E2, A2>(
+  self: Effect<R, E, A>,
+  that: Effect<R2, E2, A2>
+): Effect<R & R2, E | E2, A | A2> {
   return checkDescriptor((d) =>
     raceWith(
       self,
@@ -69,10 +67,9 @@ export function race_<S, R, E, A, S2, R2, E2, A2>(
  * WARNING: The raced effect will safely interrupt the "loser", but will not
  * resume until the loser has been cleanly terminated.
  */
-export function race<S2, R2, E2, A2>(that: Effect<S2, R2, E2, A2>) {
-  return <S, R, E, A>(
-    self: Effect<S, R, E, A>
-  ): Effect<unknown, R & R2, E | E2, A | A2> => race_(self, that)
+export function race<R2, E2, A2>(that: Effect<R2, E2, A2>) {
+  return <R, E, A>(self: Effect<R, E, A>): Effect<R & R2, E | E2, A | A2> =>
+    race_(self, that)
 }
 
 /**
@@ -83,10 +80,10 @@ export function race<S2, R2, E2, A2>(that: Effect<S2, R2, E2, A2>) {
  * WARNING: The raced effect will safely interrupt the "loser", but will not
  * resume until the loser has been cleanly terminated.
  */
-export function raceEither_<S, R, E, A, S2, R2, E2, A2>(
-  self: Effect<S, R, E, A>,
-  that: Effect<S2, R2, E2, A2>
-): Effect<unknown, R & R2, E | E2, E.Either<A, A2>> {
+export function raceEither_<R, E, A, R2, E2, A2>(
+  self: Effect<R, E, A>,
+  that: Effect<R2, E2, A2>
+): Effect<R & R2, E | E2, E.Either<A, A2>> {
   return race_(map_(self, E.left), map_(that, E.right))
 }
 
@@ -98,10 +95,9 @@ export function raceEither_<S, R, E, A, S2, R2, E2, A2>(
  * WARNING: The raced effect will safely interrupt the "loser", but will not
  * resume until the loser has been cleanly terminated.
  */
-export function raceEither<S2, R2, E2, A2>(that: Effect<S2, R2, E2, A2>) {
-  return <S, R, E, A>(
-    self: Effect<S, R, E, A>
-  ): Effect<unknown, R & R2, E | E2, E.Either<A, A2>> => raceEither_(self, that)
+export function raceEither<R2, E2, A2>(that: Effect<R2, E2, A2>) {
+  return <R, E, A>(self: Effect<R, E, A>): Effect<R & R2, E | E2, E.Either<A, A2>> =>
+    raceEither_(self, that)
 }
 
 /**
@@ -116,10 +112,8 @@ export function raceEither<S2, R2, E2, A2>(that: Effect<S2, R2, E2, A2>) {
  * interrupt signal, allowing a fast return, with interruption performed
  * in the background.
  */
-export function raceFirst<S2, R2, E2, A2>(that: Effect<S2, R2, E2, A2>) {
-  return <S, R, E, A>(
-    self: Effect<S, R, E, A>
-  ): Effect<unknown, R & R2, E2 | E, A2 | A> =>
+export function raceFirst<R2, E2, A2>(that: Effect<R2, E2, A2>) {
+  return <R, E, A>(self: Effect<R, E, A>): Effect<R & R2, E2 | E, A2 | A> =>
     pipe(
       race_(result(self), result(that)),
       chain((a) => done(a as Exit.Exit<E | E2, A | A2>))

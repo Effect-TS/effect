@@ -3,7 +3,7 @@ import { pipe } from "../src/Function"
 import { has } from "../src/Has"
 
 describe("Has", () => {
-  it("use services", () => {
+  it("use services", async () => {
     class AddService {
       sum(a: number, b: number) {
         return T.effectTotal(() => a + b)
@@ -17,7 +17,7 @@ describe("Has", () => {
     const Add = has(AddService)
     const Mul = has(MulService)
 
-    const result = pipe(
+    const result = await pipe(
       T.accessServicesM({ add: Add, mul: Mul })((_) =>
         pipe(
           _.add.sum(2, 3),
@@ -26,7 +26,7 @@ describe("Has", () => {
       ),
       T.provideService(Add)(new AddService()),
       T.provideService(Mul)(new MulService()),
-      T.runSync
+      T.runPromise
     )
 
     expect(result).toEqual(15)

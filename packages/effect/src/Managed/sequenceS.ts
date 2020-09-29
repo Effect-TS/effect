@@ -3,15 +3,12 @@ import type { EnforceNonEmptyRecord, UnionToIntersection } from "../Utils"
 import { chain_, foreach_, foreachPar_, foreachParN_, map_ } from "./core"
 import type { Managed } from "./managed"
 
-export function sequenceS<NER extends Record<string, Managed<any, any, any, any>>>(
-  r: EnforceNonEmptyRecord<NER> & Record<string, Managed<any, any, any, any>>
+export function sequenceS<NER extends Record<string, Managed<any, any, any>>>(
+  r: EnforceNonEmptyRecord<NER> & Record<string, Managed<any, any, any>>
 ): Managed<
-  {
-    [K in keyof NER]: [NER[K]] extends [Managed<infer S, any, any, any>] ? S : never
-  }[keyof NER],
   UnionToIntersection<
     {
-      [K in keyof NER]: [NER[K]] extends [Managed<any, infer R, any, any>]
+      [K in keyof NER]: [NER[K]] extends [Managed<infer R, any, any>]
         ? unknown extends R
           ? never
           : R
@@ -19,10 +16,10 @@ export function sequenceS<NER extends Record<string, Managed<any, any, any, any>
     }[keyof NER]
   >,
   {
-    [K in keyof NER]: [NER[K]] extends [Managed<any, any, infer E, any>] ? E : never
+    [K in keyof NER]: [NER[K]] extends [Managed<any, infer E, any>] ? E : never
   }[keyof NER],
   {
-    [K in keyof NER]: [NER[K]] extends [Managed<any, any, any, infer A>] ? A : never
+    [K in keyof NER]: [NER[K]] extends [Managed<any, any, infer A>] ? A : never
   }
 > {
   return map_(
@@ -42,19 +39,16 @@ export function sequenceS<NER extends Record<string, Managed<any, any, any, any>
 
 export function bindAll<
   K,
-  NER extends Record<string, Managed<any, any, any, any>> &
+  NER extends Record<string, Managed<any, any, any>> &
     { [k in keyof K & keyof NER]?: never }
 >(
-  r: (k: K) => EnforceNonEmptyRecord<NER> & Record<string, Managed<any, any, any, any>>
-): <S, R, E>(
-  s: Managed<S, R, E, K>
+  r: (k: K) => EnforceNonEmptyRecord<NER> & Record<string, Managed<any, any, any>>
+): <R, E>(
+  s: Managed<R, E, K>
 ) => Managed<
-  {
-    [K in keyof NER]: [NER[K]] extends [Managed<infer S, any, any, any>] ? S : never
-  }[keyof NER],
   UnionToIntersection<
     {
-      [K in keyof NER]: [NER[K]] extends [Managed<any, infer R, any, any>]
+      [K in keyof NER]: [NER[K]] extends [Managed<infer R, any, any>]
         ? unknown extends R
           ? never
           : R
@@ -62,10 +56,10 @@ export function bindAll<
     }[keyof NER]
   >,
   {
-    [K in keyof NER]: [NER[K]] extends [Managed<any, any, infer E, any>] ? E : never
+    [K in keyof NER]: [NER[K]] extends [Managed<any, infer E, any>] ? E : never
   }[keyof NER],
   {
-    [K in keyof NER]: [NER[K]] extends [Managed<any, any, any, infer A>] ? A : never
+    [K in keyof NER]: [NER[K]] extends [Managed<any, any, infer A>] ? A : never
   }
 > {
   return (s) =>
@@ -88,19 +82,16 @@ export function bindAll<
 
 export function bindAllPar<
   K,
-  NER extends Record<string, Managed<any, any, any, any>> &
+  NER extends Record<string, Managed<any, any, any>> &
     { [k in keyof K & keyof NER]?: never }
 >(
-  r: (k: K) => EnforceNonEmptyRecord<NER> & Record<string, Managed<any, any, any, any>>
-): <S, R, E>(
-  s: Managed<S, R, E, K>
+  r: (k: K) => EnforceNonEmptyRecord<NER> & Record<string, Managed<any, any, any>>
+): <R, E>(
+  s: Managed<R, E, K>
 ) => Managed<
-  {
-    [K in keyof NER]: [NER[K]] extends [Managed<infer S, any, any, any>] ? S : never
-  }[keyof NER],
   UnionToIntersection<
     {
-      [K in keyof NER]: [NER[K]] extends [Managed<any, infer R, any, any>]
+      [K in keyof NER]: [NER[K]] extends [Managed<infer R, any, any>]
         ? unknown extends R
           ? never
           : R
@@ -108,10 +99,10 @@ export function bindAllPar<
     }[keyof NER]
   >,
   {
-    [K in keyof NER]: [NER[K]] extends [Managed<any, any, infer E, any>] ? E : never
+    [K in keyof NER]: [NER[K]] extends [Managed<any, infer E, any>] ? E : never
   }[keyof NER],
   {
-    [K in keyof NER]: [NER[K]] extends [Managed<any, any, any, infer A>] ? A : never
+    [K in keyof NER]: [NER[K]] extends [Managed<any, any, infer A>] ? A : never
   }
 > {
   return (s) =>
@@ -136,19 +127,16 @@ export function bindAllParN(
   n: number
 ): <
   K,
-  NER extends Record<string, Managed<any, any, any, any>> &
+  NER extends Record<string, Managed<any, any, any>> &
     { [k in keyof K & keyof NER]?: never }
 >(
-  r: (k: K) => EnforceNonEmptyRecord<NER> & Record<string, Managed<any, any, any, any>>
-) => <S, R, E>(
-  s: Managed<S, R, E, K>
+  r: (k: K) => EnforceNonEmptyRecord<NER> & Record<string, Managed<any, any, any>>
+) => <R, E>(
+  s: Managed<R, E, K>
 ) => Managed<
-  {
-    [K in keyof NER]: [NER[K]] extends [Managed<infer S, any, any, any>] ? S : never
-  }[keyof NER],
   UnionToIntersection<
     {
-      [K in keyof NER]: [NER[K]] extends [Managed<any, infer R, any, any>]
+      [K in keyof NER]: [NER[K]] extends [Managed<infer R, any, any>]
         ? unknown extends R
           ? never
           : R
@@ -156,10 +144,10 @@ export function bindAllParN(
     }[keyof NER]
   >,
   {
-    [K in keyof NER]: [NER[K]] extends [Managed<any, any, infer E, any>] ? E : never
+    [K in keyof NER]: [NER[K]] extends [Managed<any, infer E, any>] ? E : never
   }[keyof NER],
   {
-    [K in keyof NER]: [NER[K]] extends [Managed<any, any, any, infer A>] ? A : never
+    [K in keyof NER]: [NER[K]] extends [Managed<any, any, infer A>] ? A : never
   }
 > {
   return (r) => (s) =>
@@ -180,13 +168,12 @@ export function bindAllParN(
     ) as any
 }
 
-export function sequenceSPar<NER extends Record<string, Managed<any, any, any, any>>>(
-  r: EnforceNonEmptyRecord<NER> & Record<string, Managed<any, any, any, any>>
+export function sequenceSPar<NER extends Record<string, Managed<any, any, any>>>(
+  r: EnforceNonEmptyRecord<NER> & Record<string, Managed<any, any, any>>
 ): Managed<
-  unknown,
   UnionToIntersection<
     {
-      [K in keyof NER]: [NER[K]] extends [Managed<any, infer R, any, any>]
+      [K in keyof NER]: [NER[K]] extends [Managed<infer R, any, any>]
         ? unknown extends R
           ? never
           : R
@@ -194,10 +181,10 @@ export function sequenceSPar<NER extends Record<string, Managed<any, any, any, a
     }[keyof NER]
   >,
   {
-    [K in keyof NER]: [NER[K]] extends [Managed<any, any, infer E, any>] ? E : never
+    [K in keyof NER]: [NER[K]] extends [Managed<any, infer E, any>] ? E : never
   }[keyof NER],
   {
-    [K in keyof NER]: [NER[K]] extends [Managed<any, any, any, infer A>] ? A : never
+    [K in keyof NER]: [NER[K]] extends [Managed<any, any, infer A>] ? A : never
   }
 > {
   return map_(
@@ -217,13 +204,12 @@ export function sequenceSPar<NER extends Record<string, Managed<any, any, any, a
 
 export function sequenceSParN(
   n: number
-): <NER extends Record<string, Managed<any, any, any, any>>>(
-  r: EnforceNonEmptyRecord<NER> & Record<string, Managed<any, any, any, any>>
+): <NER extends Record<string, Managed<any, any, any>>>(
+  r: EnforceNonEmptyRecord<NER> & Record<string, Managed<any, any, any>>
 ) => Managed<
-  unknown,
   UnionToIntersection<
     {
-      [K in keyof NER]: [NER[K]] extends [Managed<any, infer R, any, any>]
+      [K in keyof NER]: [NER[K]] extends [Managed<infer R, any, any>]
         ? unknown extends R
           ? never
           : R
@@ -231,10 +217,10 @@ export function sequenceSParN(
     }[keyof NER]
   >,
   {
-    [K in keyof NER]: [NER[K]] extends [Managed<any, any, infer E, any>] ? E : never
+    [K in keyof NER]: [NER[K]] extends [Managed<any, infer E, any>] ? E : never
   }[keyof NER],
   {
-    [K in keyof NER]: [NER[K]] extends [Managed<any, any, any, infer A>] ? A : never
+    [K in keyof NER]: [NER[K]] extends [Managed<any, any, infer A>] ? A : never
   }
 > {
   return (r) =>

@@ -5,8 +5,8 @@ import { map } from "./map"
 /**
  * Returns an effect that effectfully "peeks" at the success of this effect.
  */
-export function tap<A, S, R, E>(
-  f: (_: A) => Effect<S, R, E, any>
-): <S2, E2, R2>(_: Effect<S2, R2, E2, A>) => Effect<S | S2, R & R2, E | E2, A> {
+export function tap<A, R, E>(
+  f: (_: A) => Effect<R, E, any>
+): <E2, R2>(_: Effect<R2, E2, A>) => Effect<R & R2, E | E2, A> {
   return chain((a: A) => map(() => a)(f(a)))
 }

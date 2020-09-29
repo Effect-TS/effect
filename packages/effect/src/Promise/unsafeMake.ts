@@ -4,4 +4,4 @@ import { Promise } from "./promise"
 import { Pending } from "./state"
 
 export const unsafeMake = <E, A>(fiberId: FiberID) =>
-  new Promise<E, A>(new AtomicReference(new Pending([])), [])
+  new Promise<E, A>(new AtomicReference(new Pending([])), [fiberId])

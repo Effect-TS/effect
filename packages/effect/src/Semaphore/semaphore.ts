@@ -29,7 +29,7 @@ export class Semaphore {
     )
   }
 
-  private loop(n: number, state: State, acc: T.Sync<void>): [T.Sync<void>, State] {
+  private loop(n: number, state: State, acc: T.UIO<void>): [T.UIO<void>, State] {
     switch (state._tag) {
       case "Right": {
         return [acc, E.right(n + state.right)]
@@ -37,11 +37,11 @@ export class Semaphore {
       case "Left": {
         return O.fold_(
           state.left.dequeue(),
-          (): [T.Sync<void>, E.Either<T.ImmutableQueue<Entry>, number>] => [
+          (): [T.UIO<void>, E.Either<T.ImmutableQueue<Entry>, number>] => [
             acc,
             E.right(n)
           ],
-          ([[p, m], q]): [T.Sync<void>, E.Either<T.ImmutableQueue<Entry>, number>] => {
+          ([[p, m], q]): [T.UIO<void>, E.Either<T.ImmutableQueue<Entry>, number>] => {
             if (n > m) {
               return this.loop(
                 n - m,
@@ -59,7 +59,7 @@ export class Semaphore {
     }
   }
 
-  private releaseN(toRelease: number): T.Sync<void> {
+  private releaseN(toRelease: number): T.UIO<void> {
     return T.flatten(
       T.chain_(assertNonNegative(toRelease), () =>
         pipe(
@@ -70,7 +70,7 @@ export class Semaphore {
     )
   }
 
-  private restore(p: T.Promise<never, void>, n: number): T.Sync<void> {
+  private restore(p: T.Promise<never, void>, n: number): T.UIO<void> {
     return T.flatten(
       pipe(
         this.state,
@@ -79,16 +79,16 @@ export class Semaphore {
             (q) =>
               O.fold_(
                 q.find(([a]) => a === p),
-                (): [T.Sync<void>, E.Either<T.ImmutableQueue<Entry>, number>] => [
+                (): [T.UIO<void>, E.Either<T.ImmutableQueue<Entry>, number>] => [
                   this.releaseN(n),
                   E.left(q)
                 ],
-                (x): [T.Sync<void>, E.Either<T.ImmutableQueue<Entry>, number>] => [
+                (x): [T.UIO<void>, E.Either<T.ImmutableQueue<Entry>, number>] => [
                   this.releaseN(n - x[1]),
                   E.left(q.filter(([a]) => a != p))
                 ]
               ),
-            (m): [T.Sync<void>, E.Either<T.ImmutableQueue<Entry>, number>] => [
+            (m): [T.UIO<void>, E.Either<T.ImmutableQueue<Entry>, number>] => [
               T.unit,
               E.right(n + m)
             ]
@@ -131,8 +131,8 @@ export class Semaphore {
 /**
  * Acquires `n` permits, executes the action and releases the permits right after.
  */
-export const withPermits = (n: number) => (s: Semaphore) => <S, R, E, A>(
-  e: T.Effect<S, R, E, A>
+export const withPermits = (n: number) => (s: Semaphore) => <R, E, A>(
+  e: T.Effect<R, E, A>
 ) =>
   T.bracket_(
     s.prepare(n),

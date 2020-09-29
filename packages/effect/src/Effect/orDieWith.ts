@@ -8,6 +8,5 @@ import { foldM_ } from "./foldM_"
  * the specified function to convert the `E` into a `unknown`.
  */
 export function orDieWith<E>(f: (e: E) => unknown) {
-  return <S, R, A>(effect: Effect<S, R, E, A>) =>
-    foldM_(effect, (e) => die(f(e)), succeed)
+  return <R, A>(effect: Effect<R, E, A>) => foldM_(effect, (e) => die(f(e)), succeed)
 }

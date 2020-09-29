@@ -7,9 +7,9 @@ import { foldM_ } from "./foldM_"
 /**
  * Converts an option on errors into an option on values.
  */
-export function optional<S, R, E, A>(
-  self: Effect<S, R, O.Option<E>, A>
-): Effect<S, R, E, O.Option<A>> {
+export function optional<R, E, A>(
+  self: Effect<R, O.Option<E>, A>
+): Effect<R, E, O.Option<A>> {
   return foldM_(
     self,
     O.fold(() => succeed(O.none), fail),

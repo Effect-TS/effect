@@ -1,1 +1,1 @@
-export { Sync } from "../Managed/managed"
+export { UIO } from "../Managed/managed"

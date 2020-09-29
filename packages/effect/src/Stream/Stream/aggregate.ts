@@ -11,10 +11,10 @@ import { Stream } from "./definitions"
  * Applies an aggregator to the stream, which converts one or more elements
  * of type `A` into elements of type `B`.
  */
-export const aggregate = <S1, R1, E1, O, P>(
-  transducer: Transducer<S1, R1, E1, O, P>
-) => <S, R, E>(self: Stream<S, R, E, O>) =>
-  new Stream<S | S1, R & R1, E | E1, P>(
+export const aggregate = <R1, E1, O, P>(transducer: Transducer<R1, E1, O, P>) => <R, E>(
+  self: Stream<R, E, O>
+) =>
+  new Stream<R & R1, E | E1, P>(
     pipe(
       M.do,
       M.bind("pull", () => self.proc),

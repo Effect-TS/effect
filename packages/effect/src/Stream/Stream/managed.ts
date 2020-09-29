@@ -11,7 +11,7 @@ import { Stream } from "./definitions"
 /**
  * Creates a single-valued stream from a managed resource
  */
-export const managed = <S, R, E, A>(self: M.Managed<S, R, E, A>): Stream<S, R, E, A> =>
+export const managed = <R, E, A>(self: M.Managed<R, E, A>): Stream<R, E, A> =>
   new Stream(
     pipe(
       M.do,
@@ -30,7 +30,7 @@ export const managed = <S, R, E, A>(self: M.Managed<S, R, E, A>): Stream<S, R, E
                       pipe(
                         self.effect,
                         T.map(([_, __]) => __),
-                        T.provideSome((r: R) => [r, finalizer] as [R, ReleaseMap<S>]),
+                        T.provideSome((r: R) => [r, finalizer] as [R, ReleaseMap]),
                         restore,
                         T.onError(() => doneRef.set(true))
                       )

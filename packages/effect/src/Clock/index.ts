@@ -4,7 +4,7 @@
  * Copyright 2020 Michael Arnaldi and the Matechs Garage Contributors.
  */
 import { effectTotal, unit } from "../Effect/core"
-import type { Async, Sync } from "../Effect/effect"
+import type { UIO } from "../Effect/effect"
 import { effectAsyncInterrupt } from "../Effect/effectAsyncInterrupt"
 import { accessService, accessServiceM } from "../Effect/has"
 import type { HasTag } from "../Has"
@@ -18,8 +18,8 @@ export const ClockURI = Symbol()
 export abstract class Clock {
   readonly _tag!: typeof ClockURI
 
-  abstract readonly currentTime: Sync<number>
-  abstract readonly sleep: (ms: number) => Async<void>
+  abstract readonly currentTime: UIO<number>
+  abstract readonly sleep: (ms: number) => UIO<void>
 }
 
 //
@@ -33,9 +33,9 @@ export type HasClock = HasTag<typeof HasClock>
 // Live Clock Implementation
 //
 export class LiveClock extends Clock {
-  currentTime: Sync<number> = effectTotal(() => new Date().getTime())
+  currentTime: UIO<number> = effectTotal(() => new Date().getTime())
 
-  sleep: (ms: number) => Async<void> = (ms) =>
+  sleep: (ms: number) => UIO<void> = (ms) =>
     effectAsyncInterrupt((cb) => {
       const timeout = setTimeout(() => {
         cb(unit)
@@ -52,8 +52,8 @@ export class LiveClock extends Clock {
 //
 export class ProxyClock extends Clock {
   constructor(
-    readonly currentTime: Sync<number>,
-    readonly sleep: (ms: number) => Async<void>
+    readonly currentTime: UIO<number>,
+    readonly sleep: (ms: number) => UIO<void>
   ) {
     super()
   }

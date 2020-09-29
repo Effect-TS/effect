@@ -5,8 +5,6 @@ import { environment } from "./environment"
 /**
  * Accesses the environment of the stream in the context of a stream.
  */
-export function accessStream<S, R, E, A>(
-  f: (r: R) => Stream<S, R, E, A>
-): Stream<S, R, E, A> {
+export function accessStream<R, E, A>(f: (r: R) => Stream<R, E, A>): Stream<R, E, A> {
   return chain(f)(environment<R>())
 }

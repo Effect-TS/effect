@@ -8,22 +8,22 @@ import type { Effect } from "./effect"
 /**
  * Recovers from some or all of the error cases.
  */
-export function catchSome<S, R, E, A, S2, R2, E2, A2>(
-  f: (e: E) => O.Option<Effect<S2, R2, E2, A2>>
+export function catchSome<S, R, E, A, R2, E2, A2>(
+  f: (e: E) => O.Option<Effect<R2, E2, A2>>
 ) {
-  return (fa: Effect<S, R, E, A>) => catchSome_(fa, f)
+  return (fa: Effect<R, E, A>) => catchSome_(fa, f)
 }
 
 /**
  * Recovers from some or all of the error cases.
  */
-export function catchSome_<S, R, E, A, S2, R2, E2, A2>(
-  fa: Effect<S, R, E, A>,
-  f: (e: E) => O.Option<Effect<S2, R2, E2, A2>>
+export function catchSome_<R, E, A, R2, E2, A2>(
+  fa: Effect<R, E, A>,
+  f: (e: E) => O.Option<Effect<R2, E2, A2>>
 ) {
   return foldCauseM_(
     fa,
-    (cause): Effect<S2, R2, E | E2, A2> =>
+    (cause): Effect<R2, E | E2, A2> =>
       pipe(
         cause,
         C.failureOrCause,

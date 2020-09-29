@@ -9,7 +9,6 @@ import { mapM } from "./mapM"
  * Effectfully maps each element to a chunk, and flattens the chunks into
  * the output of this stream.
  */
-export const mapConcatChunkM = <S2, R2, E2, O, O2>(
-  f: (_: O) => T.Effect<S2, R2, E2, Array.Array<O2>>
-) => <S, R, E>(self: Stream<S, R, E, O>) =>
-  pipe(self, mapM(f), mapConcatChunk(identity))
+export const mapConcatChunkM = <R2, E2, O, O2>(
+  f: (_: O) => T.Effect<R2, E2, Array.Array<O2>>
+) => <R, E>(self: Stream<R, E, O>) => pipe(self, mapM(f), mapConcatChunk(identity))

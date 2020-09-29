@@ -16,23 +16,7 @@ export { forkDaemon } from "../Effect/scope"
 export { delay } from "../Effect/delay"
 export { bind, let, do } from "../Effect/do"
 export { done } from "../Effect/done"
-export {
-  Async,
-  AsyncE,
-  AsyncR,
-  AsyncRE,
-  Effect,
-  Sync,
-  SyncE,
-  SyncR,
-  SyncRE,
-  _A,
-  _E,
-  _I,
-  _R,
-  _S,
-  _U
-} from "../Effect/effect"
+export { UIO, IO, Effect, _A, _E, _I, _R, _U } from "../Effect/effect"
 export { environment } from "../Effect/environment"
 export { parallel, parallelN } from "../Effect/ExecutionStrategy"
 export { fail } from "../Effect/fail"

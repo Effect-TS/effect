@@ -7,7 +7,7 @@ import * as bracket from "../Effect/bracket_"
 import * as T from "../Effect/core"
 import * as die from "../Effect/die"
 import * as done from "../Effect/done"
-import type { Async, Effect, Sync } from "../Effect/effect"
+import type { Effect, UIO } from "../Effect/effect"
 import { _I } from "../Effect/effect"
 import { effectMaybeAsyncInterrupt } from "../Effect/effectMaybeAsyncInterrupt"
 import * as fail from "../Effect/fail"
@@ -42,22 +42,22 @@ export class Stack<A> {
 
 export class InterruptExit {
   readonly _tag = "InterruptExit"
-  constructor(readonly apply: (a: any) => Effect<any, any, any, any>) {}
+  constructor(readonly apply: (a: any) => Effect<any, any, any>) {}
 }
 
 export class HandlerFrame {
   readonly _tag = "HandlerFrame"
-  constructor(readonly apply: (a: any) => Effect<any, any, any, any>) {}
+  constructor(readonly apply: (a: any) => Effect<any, any, any>) {}
 }
 
 export class ApplyFrame {
   readonly _tag = "ApplyFrame"
-  constructor(readonly apply: (a: any) => Effect<any, any, any, any>) {}
+  constructor(readonly apply: (a: any) => Effect<any, any, any>) {}
 }
 
 export type Frame =
   | InterruptExit
-  | IFold<any, any, any, any, any, any, any, any, any, any, any, any>
+  | IFold<any, any, any, any, any, any, any, any, any>
   | HandlerFrame
   | ApplyFrame
 
@@ -124,7 +124,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     return T.effectTotal(() => this.poll0())
   }
 
-  getRef<K>(fiberRef: FiberRef<K>): Sync<K> {
+  getRef<K>(fiberRef: FiberRef<K>): UIO<K> {
     return T.effectTotal(() => this.fiberRefLocals.get(fiberRef) || fiberRef.initial)
   }
 
@@ -285,7 +285,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     observers.forEach((k) => k(result))
   }
 
-  observe0(k: Callback<never, Exit.Exit<E, A>>): O.Option<Sync<Exit.Exit<E, A>>> {
+  observe0(k: Callback<never, Exit.Exit<E, A>>): O.Option<UIO<Exit.Exit<E, A>>> {
     const x = this.register0(k)
 
     if (x != null) {
@@ -295,9 +295,9 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     return O.none
   }
 
-  get await(): Async<Exit.Exit<E, A>> {
+  get await(): UIO<Exit.Exit<E, A>> {
     return effectMaybeAsyncInterrupt(
-      (k): E.Either<Sync<void>, Sync<Exit.Exit<E, A>>> => {
+      (k): E.Either<UIO<void>, UIO<Exit.Exit<E, A>>> => {
         const cb: Callback<never, Exit.Exit<E, A>> = (x) => k(done.done(x))
         return O.fold_(
           this.observe0(cb),
@@ -320,7 +320,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     }
   }
 
-  kill0(fiberId: Fiber.FiberID): Async<Exit.Exit<E, A>> {
+  kill0(fiberId: Fiber.FiberID): UIO<Exit.Exit<E, A>> {
     const interruptedCause = Cause.Interrupt(fiberId)
 
     const setInterruptedLoop = (): Cause.Cause<never> => {
@@ -369,7 +369,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     })
   }
 
-  interruptAs(fiberId: Fiber.FiberID): Async<Exit.Exit<E, A>> {
+  interruptAs(fiberId: Fiber.FiberID): UIO<Exit.Exit<E, A>> {
     return this.kill0(fiberId)
   }
 
@@ -493,7 +493,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   }
 
   resumeAsync(epoch: number) {
-    return (_: Effect<any, any, any, any>) => {
+    return (_: Effect<any, any, any>) => {
       if (this.exitAsync(epoch)) {
         this.evaluateLater(_[_I])
       }
@@ -563,7 +563,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     if (parentScope !== Scope.globalScope) {
       const exitOrKey = parentScope.unsafeEnsure((exit) =>
         T.suspend(
-          (): Async<any> => {
+          (): UIO<any> => {
             const _interruptors =
               exit._tag === "Failure"
                 ? Cause.interruptors(exit.cause)
@@ -649,10 +649,10 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     cont: (
       exit: Exit.Exit<any, any>,
       fiber: Fiber.Fiber<any, any>
-    ) => Effect<any, any, any, any>,
+    ) => Effect<any, any, any>,
     winnerExit: Exit.Exit<any, any>,
     ab: AtomicReference<boolean>,
-    cb: (_: Effect<unknown, R & R1 & R2 & R3, E2 | E3, A2 | A3>) => void
+    cb: (_: Effect<R & R1 & R2 & R3, E2 | E3, A2 | A3>) => void
   ): void {
     if (ab.compareAndSet(true, false)) {
       switch (winnerExit._tag) {
@@ -681,9 +681,9 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     })
   }
 
-  raceWithImpl<S, R, E, A, S1, R1, E1, A1, S2, R2, E2, A2, S3, R3, E3, A3>(
-    race: IRaceWith<S, R, E, A, S1, R1, E1, A1, S2, R2, E2, A2, S3, R3, E3, A3>
-  ): Effect<unknown, R & R1 & R2 & R3, E2 | E3, A2 | A3> {
+  raceWithImpl<R, E, A, R1, E1, A1, R2, E2, A2, R3, E3, A3>(
+    race: IRaceWith<R, E, A, R1, E1, A1, R2, E2, A2, R3, E3, A3>
+  ): Effect<R & R1 & R2 & R3, E2 | E3, A2 | A3> {
     const raceIndicator = new AtomicReference(true)
     const left = this.fork(race.left[_I], race.scope)
     const right = this.fork(race.right[_I], race.scope)
@@ -750,7 +750,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
               switch (current._tag) {
                 case "FlatMap": {
                   const nested: Instruction = current.val[_I]
-                  const k: (a: any) => Effect<any, any, any, any> = current.f
+                  const k: (a: any) => Effect<any, any, any> = current.f
 
                   switch (nested._tag) {
                     case "Succeed": {

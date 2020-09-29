@@ -1,7 +1,7 @@
 export { bracket_ } from "../Effect/bracket_"
 export { chain_, succeed as succeedNow, unit } from "../Effect/core"
 export { die } from "../Effect/die"
-export { Async, Effect, Sync } from "../Effect/effect"
+export { UIO, Effect } from "../Effect/effect"
 export { flatten } from "../Effect/flatten"
 export { map_ } from "../Effect/map_"
 export { zipFirst_ } from "../Effect/zipFirst_"

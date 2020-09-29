@@ -2,7 +2,7 @@ import * as E from "../Either"
 import type { FiberID } from "../Fiber/id"
 import type { Canceler } from "./Canceler"
 import type { Cb } from "./Cb"
-import type { AsyncRE } from "./effect"
+import type { Effect } from "./effect"
 import { effectMaybeAsyncInterrupt } from "./effectMaybeAsyncInterrupt"
 
 /**
@@ -14,7 +14,7 @@ import { effectMaybeAsyncInterrupt } from "./effectMaybeAsyncInterrupt"
  * provide better diagnostics.
  */
 export function effectAsyncInterrupt<R, E, A>(
-  register: (cb: Cb<AsyncRE<R, E, A>>) => Canceler<R>,
+  register: (cb: Cb<Effect<R, E, A>>) => Canceler<R>,
   blockingOn: readonly FiberID[] = []
 ) {
   return effectMaybeAsyncInterrupt<R, E, A>((cb) => E.left(register(cb)), blockingOn)

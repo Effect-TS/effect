@@ -1,7 +1,7 @@
 import type { InterruptStatus } from "../Fiber/core"
 import { checkInterruptible, interruptStatus_ } from "./core"
 import { disconnect } from "./disconnect"
-import type { AsyncRE, Effect } from "./effect"
+import type { Effect } from "./effect"
 import { interruptible } from "./interruptible"
 import { uninterruptible } from "./uninterruptible"
 
@@ -9,8 +9,8 @@ import { uninterruptible } from "./uninterruptible"
  * Used to restore the inherited interruptibility
  */
 export interface InterruptStatusRestore {
-  readonly restore: <S, R, E, A>(effect: Effect<S, R, E, A>) => Effect<S, R, E, A>
-  readonly force: <S, R, E, A>(effect: Effect<S, R, E, A>) => AsyncRE<R, E, A>
+  readonly restore: <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>
+  readonly force: <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>
 }
 
 export class InterruptStatusRestoreImpl implements InterruptStatusRestore {
@@ -19,11 +19,11 @@ export class InterruptStatusRestoreImpl implements InterruptStatusRestore {
     this.force = this.force.bind(this)
   }
 
-  restore<S, R, E, A>(effect: Effect<S, R, E, A>): Effect<S, R, E, A> {
+  restore<R, E, A>(effect: Effect<R, E, A>): Effect<R, E, A> {
     return interruptStatus_(effect, this.flag)
   }
 
-  force<S, R, E, A>(effect: Effect<S, R, E, A>): AsyncRE<R, E, A> {
+  force<R, E, A>(effect: Effect<R, E, A>): Effect<R, E, A> {
     if (this.flag.isUninteruptible) {
       return interruptible(disconnect(uninterruptible(effect)))
     }
@@ -36,8 +36,8 @@ export class InterruptStatusRestoreImpl implements InterruptStatusRestore {
  * can be used to restore the inherited interruptibility from whatever region
  * the effect is composed into.
  */
-export function uninterruptibleMask<S, R, E, A>(
-  f: (restore: InterruptStatusRestore) => Effect<S, R, E, A>
+export function uninterruptibleMask<R, E, A>(
+  f: (restore: InterruptStatusRestore) => Effect<R, E, A>
 ) {
   return checkInterruptible((flag) =>
     uninterruptible(f(new InterruptStatusRestoreImpl(flag)))

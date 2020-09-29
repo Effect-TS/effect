@@ -4,7 +4,7 @@ import type * as Array from "../../Array"
 import * as C from "../../Cause/core"
 import * as Exit from "../../Exit/api"
 import { pipe } from "../../Function"
-import type { FinalizerS, ReleaseMap } from "../../Managed"
+import type { Finalizer, ReleaseMap } from "../../Managed"
 import { makeReleaseMap, noopFinalizer, releaseAll } from "../../Managed"
 import * as Option from "../../Option"
 import * as Ref from "../../Ref"
@@ -14,13 +14,13 @@ export const StreamURI = "@matechs/core/Eff/StreamURI"
 export type StreamURI = typeof StreamURI
 
 /**
- * A `Stream<S, R, E, O>` is a description of a program that, when evaluated,
+ * A `Stream< R, E, O>` is a description of a program that, when evaluated,
  * may emit 0 or more values of type `O`, may fail with errors of type `E`
  * and uses an environment of type `R` and can be sync or async `S`.
  * One way to think of `Stream` is as a `Effect` program that could emit multiple values.
  *
  * This data type can emit multiple `A` values through multiple calls to `next`.
- * Similarly, embedded inside every `Stream` is an Effect program: `Effect<S, R, Option<E>, A.Array<O>>`.
+ * Similarly, embedded inside every `Stream` is an Effect program: `Effect< R, Option<E>, A.Array<O>>`.
  * This program will be repeatedly evaluated as part of the stream execution. For
  * every evaluation, it will emit a chunk of values or end with an optional failure.
  * A failure of type `None` signals the end of the stream.
@@ -46,34 +46,23 @@ export type StreamURI = typeof StreamURI
  * Instead, recursive operators must be defined explicitly. See the definition of
  * `forever` for an example. This limitation will be lifted in the future.
  */
-export class Stream<S, R, E, A> {
+export class Stream<R, E, A> {
   readonly [T._U]: StreamURI;
-  readonly [T._S]: () => S;
   readonly [T._E]: () => E;
   readonly [T._A]: () => A;
   readonly [T._R]: (_: R) => void
 
   constructor(
-    readonly proc: M.Managed<
-      S,
-      R,
-      never,
-      T.Effect<S, R, Option.Option<E>, Array.Array<A>>
-    >
+    readonly proc: M.Managed<R, never, T.Effect<R, Option.Option<E>, Array.Array<A>>>
   ) {}
 }
 
 /**
  * Type aliases
  */
-export type Sync<A> = Stream<never, unknown, never, A>
-export type SyncE<E, A> = Stream<never, unknown, E, A>
-export type SyncR<R, A> = Stream<never, R, never, A>
-export type SyncRE<R, E, A> = Stream<never, R, E, A>
-export type Async<A> = Stream<unknown, unknown, never, A>
-export type AsyncR<R, A> = Stream<unknown, R, never, A>
-export type AsyncE<E, A> = Stream<unknown, unknown, E, A>
-export type AsyncRE<R, E, A> = Stream<unknown, R, E, A>
+export type UIO<A> = Stream<unknown, never, A>
+export type IO<E, A> = Stream<unknown, E, A>
+export type RIO<R, A> = Stream<R, never, A>
 
 /**
  * The default chunk size used by the various combinators and constructors of [[Stream]].
@@ -83,15 +72,13 @@ export const DefaultChunkSize = 4096
 /**
  * @internal
  */
-export class Chain<S_, R_, E_, O, O2> {
+export class Chain<R_, E_, O, O2> {
   constructor(
-    readonly f0: (a: O) => Stream<S_, R_, E_, O2>,
-    readonly outerStream: T.Effect<S_, R_, Option.Option<E_>, Array.Array<O>>,
+    readonly f0: (a: O) => Stream<R_, E_, O2>,
+    readonly outerStream: T.Effect<R_, Option.Option<E_>, Array.Array<O>>,
     readonly currOuterChunk: Ref.Ref<[Array.Array<O>, number]>,
-    readonly currInnerStream: Ref.Ref<
-      T.Effect<S_, R_, Option.Option<E_>, Array.Array<O2>>
-    >,
-    readonly innerFinalizer: Ref.Ref<FinalizerS<S_>>
+    readonly currInnerStream: Ref.Ref<T.Effect<R_, Option.Option<E_>, Array.Array<O2>>>,
+    readonly innerFinalizer: Ref.Ref<Finalizer>
   ) {
     this.apply = this.apply.bind(this)
     this.closeInner = this.closeInner.bind(this)
@@ -102,14 +89,14 @@ export class Chain<S_, R_, E_, O, O2> {
   closeInner() {
     return pipe(
       this.innerFinalizer,
-      Ref.getAndSet(noopFinalizer()),
+      Ref.getAndSet(noopFinalizer),
       T.chain((f) => f(Exit.unit))
     )
   }
 
-  pullNonEmpty<S, R, E, O>(
-    pull: T.Effect<S, R, Option.Option<E>, Array.Array<O>>
-  ): T.Effect<S, R, Option.Option<E>, Array.Array<O>> {
+  pullNonEmpty<R, E, O>(
+    pull: T.Effect<R, Option.Option<E>, Array.Array<O>>
+  ): T.Effect<R, Option.Option<E>, Array.Array<O>> {
     return pipe(
       pull,
       T.chain((os) => (os.length > 0 ? T.succeedNow(os) : this.pullNonEmpty(pull)))
@@ -120,7 +107,7 @@ export class Chain<S_, R_, E_, O, O2> {
     return pipe(
       this.currOuterChunk,
       Ref.modify(([chunk, nextIdx]): [
-        T.Effect<S_, R_, Option.Option<E_>, O>,
+        T.Effect<R_, Option.Option<E_>, O>,
         [Array.Array<O>, number]
       ] => {
         if (nextIdx < chunk.length) {
@@ -141,12 +128,12 @@ export class Chain<S_, R_, E_, O, O2> {
         T.uninterruptibleMask(({ restore }) =>
           pipe(
             T.do,
-            T.bind("releaseMap", () => makeReleaseMap<S_>()),
+            T.bind("releaseMap", () => makeReleaseMap),
             T.bind("pull", ({ releaseMap }) =>
               restore(
                 pipe(
                   this.f0(o).proc.effect,
-                  T.provideSome((_: R_) => [_, releaseMap] as [R_, ReleaseMap<S_>]),
+                  T.provideSome((_: R_) => [_, releaseMap] as [R_, ReleaseMap]),
                   T.map(([_, x]) => x)
                 )
               )
@@ -162,7 +149,7 @@ export class Chain<S_, R_, E_, O, O2> {
     )
   }
 
-  apply(): T.Effect<S_, R_, Option.Option<E_>, Array.Array<O2>> {
+  apply(): T.Effect<R_, Option.Option<E_>, Array.Array<O2>> {
     return pipe(
       this.currInnerStream.get,
       T.flatten,

@@ -7,16 +7,16 @@ import { map } from "./map"
  * Extracts the optional value, or returns the given 'orElse'.
  */
 export function someOrElse<B>(orElse: () => B) {
-  return <S, R, E, A>(self: Effect<S, R, E, O.Option<A>>) =>
+  return <R, E, A>(self: Effect<R, E, O.Option<A>>) =>
     pipe(self, map(O.getOrElse(orElse)))
 }
 
 /**
  * Extracts the optional value, or returns the given 'orElse'.
  */
-export function someOrElse_<S, R, E, A, B>(
-  self: Effect<S, R, E, O.Option<A>>,
+export function someOrElse_<R, E, A, B>(
+  self: Effect<R, E, O.Option<A>>,
   orElse: () => B
-): Effect<S, R, E, A | B> {
+): Effect<R, E, A | B> {
   return pipe(self, map(O.getOrElse(orElse)))
 }

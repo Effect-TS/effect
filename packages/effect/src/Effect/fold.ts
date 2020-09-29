@@ -1,5 +1,5 @@
 import { succeed } from "./core"
-import type { Effect } from "./effect"
+import type { Effect, RIO } from "./effect"
 import { foldM_ } from "./foldM_"
 
 /**
@@ -8,7 +8,7 @@ import { foldM_ } from "./foldM_"
  * function passed to `fold`.
  */
 export function fold<E, A, A2, A3>(failure: (failure: E) => A2, success: (a: A) => A3) {
-  return <S, R>(value: Effect<S, R, E, A>): Effect<S, R, never, A2 | A3> =>
+  return <R>(value: Effect<R, E, A>): RIO<R, A2 | A3> =>
     foldM_(
       value,
       (e) => succeed(failure(e)),

@@ -13,7 +13,7 @@ import { Atomic, concrete } from "./XRefM"
 /**
  * Creates a new `XRefM` with the specified value.
  */
-export const makeRefM = <A>(a: A): T.Sync<RefM<A>> =>
+export const makeRefM = <A>(a: A): T.UIO<RefM<A>> =>
   pipe(
     T.do,
     T.bind("ref", () => R.makeRef(a)),
@@ -34,14 +34,14 @@ export const unsafeMakeRefM = <A>(a: A): RefM<A> => {
  * Creates a new `RefM` with the specified value in the context of a
  * `Managed.`
  */
-export const makeManagedRefM = <A>(a: A): M.Sync<RefM<A>> =>
+export const makeManagedRefM = <A>(a: A): M.UIO<RefM<A>> =>
   pipe(makeRefM(a), T.toManaged())
 
 /**
  * Creates a new `RefM` and a `Dequeue` that will emit every change to the
  * `RefM`.
  */
-export const dequeueRef = <A>(a: A): T.Sync<[RefM<A>, Q.Dequeue<A>]> =>
+export const dequeueRef = <A>(a: A): T.UIO<[RefM<A>, Q.Dequeue<A>]> =>
   pipe(
     T.do,
     T.bind("ref", () => makeRefM(a)),
@@ -62,8 +62,8 @@ export const dequeueRef = <A>(a: A): T.Sync<[RefM<A>, Q.Dequeue<A>]> =>
  */
 export const modify_ = <RA, RB, EA, EB, R1, E1, B, A>(
   self: XRefM<RA, RB, EA, EB, A, A>,
-  f: (a: A) => T.AsyncRE<R1, E1, readonly [B, A]>
-): T.AsyncRE<RA & RB & R1, EA | EB | E1, B> =>
+  f: (a: A) => T.Effect<R1, E1, readonly [B, A]>
+): T.Effect<RA & RB & R1, EA | EB | E1, B> =>
   pipe(
     self,
     concrete,
@@ -120,10 +120,10 @@ export const modify_ = <RA, RB, EA, EB, R1, E1, B, A>(
  * `update`.
  */
 export const modify = <R1, E1, B, A>(
-  f: (a: A) => T.AsyncRE<R1, E1, readonly [B, A]>
+  f: (a: A) => T.Effect<R1, E1, readonly [B, A]>
 ) => <RA, RB, EA, EB>(
   self: XRefM<RA, RB, EA, EB, A, A>
-): T.AsyncRE<RA & RB & R1, EA | EB | E1, B> => modify_(self, f)
+): T.Effect<RA & RB & R1, EA | EB | E1, B> => modify_(self, f)
 
 /**
  * Writes a new value to the `RefM`, returning the value immediately before
@@ -152,7 +152,7 @@ export const getAndSet = <A>(a: A) => <RA, RB, EA, EB>(
  */
 export const getAndUpdate_ = <RA, RB, EA, EB, R1, E1, A>(
   self: XRefM<RA, RB, EA, EB, A, A>,
-  f: (a: A) => T.AsyncRE<R1, E1, A>
+  f: (a: A) => T.Effect<R1, E1, A>
 ) =>
   pipe(
     self,
@@ -168,7 +168,7 @@ export const getAndUpdate_ = <RA, RB, EA, EB, R1, E1, A>(
  * Atomically modifies the `RefM` with the specified function, returning the
  * value immediately before modification.
  */
-export const getAndUpdate = <R1, E1, A>(f: (a: A) => T.AsyncRE<R1, E1, A>) => <
+export const getAndUpdate = <R1, E1, A>(f: (a: A) => T.Effect<R1, E1, A>) => <
   RA,
   RB,
   EA,
@@ -183,7 +183,7 @@ export const getAndUpdate = <R1, E1, A>(f: (a: A) => T.AsyncRE<R1, E1, A>) => <
  */
 export const getAndUpdateSome_ = <RA, RB, EA, EB, R1, E1, A>(
   self: XRefM<RA, RB, EA, EB, A, A>,
-  f: (a: A) => O.Option<T.AsyncRE<R1, E1, A>>
+  f: (a: A) => O.Option<T.Effect<R1, E1, A>>
 ) =>
   pipe(
     self,
@@ -201,7 +201,7 @@ export const getAndUpdateSome_ = <RA, RB, EA, EB, R1, E1, A>(
  * value immediately before modification.
  */
 export const getAndUpdateSome = <R1, E1, A>(
-  f: (a: A) => O.Option<T.AsyncRE<R1, E1, A>>
+  f: (a: A) => O.Option<T.Effect<R1, E1, A>>
 ) => <RA, RB, EA, EB>(self: XRefM<RA, RB, EA, EB, A, A>) => getAndUpdateSome_(self, f)
 
 /**
@@ -213,7 +213,7 @@ export const getAndUpdateSome = <R1, E1, A>(
 export const modifySome_ = <RA, RB, EA, EB, R1, E1, A, B>(
   self: XRefM<RA, RB, EA, EB, A, A>,
   def: B,
-  f: (a: A) => O.Option<T.AsyncRE<R1, E1, readonly [B, A]>>
+  f: (a: A) => O.Option<T.Effect<R1, E1, readonly [B, A]>>
 ) =>
   pipe(
     self,
@@ -232,7 +232,7 @@ export const modifySome_ = <RA, RB, EA, EB, R1, E1, A, B>(
  * This is a more powerful version of `updateSome`.
  */
 export const modifySome = <B>(def: B) => <R1, E1, A>(
-  f: (a: A) => O.Option<T.AsyncRE<R1, E1, [B, A]>>
+  f: (a: A) => O.Option<T.Effect<R1, E1, [B, A]>>
 ) => <RA, RB, EA, EB>(self: XRefM<RA, RB, EA, EB, A, A>) => modifySome_(self, def, f)
 
 /**
@@ -240,8 +240,8 @@ export const modifySome = <B>(def: B) => <R1, E1, A>(
  */
 export const update_ = <RA, RB, EA, EB, R1, E1, A>(
   self: XRefM<RA, RB, EA, EB, A, A>,
-  f: (a: A) => T.AsyncRE<R1, E1, A>
-): T.AsyncRE<RA & RB & R1, E1 | EA | EB, void> =>
+  f: (a: A) => T.Effect<R1, E1, A>
+): T.Effect<RA & RB & R1, E1 | EA | EB, void> =>
   pipe(
     self,
     modify((v) =>
@@ -255,22 +255,17 @@ export const update_ = <RA, RB, EA, EB, R1, E1, A>(
 /**
  * Atomically modifies the `RefM` with the specified function.
  */
-export const update = <R1, E1, A>(f: (a: A) => T.AsyncRE<R1, E1, A>) => <
-  RA,
-  RB,
-  EA,
-  EB
->(
+export const update = <R1, E1, A>(f: (a: A) => T.Effect<R1, E1, A>) => <RA, RB, EA, EB>(
   self: XRefM<RA, RB, EA, EB, A, A>
-): T.AsyncRE<RA & RB & R1, E1 | EA | EB, void> => update_(self, f)
+): T.Effect<RA & RB & R1, E1 | EA | EB, void> => update_(self, f)
 
 /**
  * Atomically modifies the `RefM` with the specified function.
  */
 export const updateAndGet_ = <RA, RB, EA, EB, R1, E1, A>(
   self: XRefM<RA, RB, EA, EB, A, A>,
-  f: (a: A) => T.AsyncRE<R1, E1, A>
-): T.AsyncRE<RA & RB & R1, E1 | EA | EB, void> =>
+  f: (a: A) => T.Effect<R1, E1, A>
+): T.Effect<RA & RB & R1, E1 | EA | EB, void> =>
   pipe(
     self,
     modify((v) =>
@@ -284,22 +279,22 @@ export const updateAndGet_ = <RA, RB, EA, EB, R1, E1, A>(
 /**
  * Atomically modifies the `RefM` with the specified function.
  */
-export const updateAndGet = <R1, E1, A>(f: (a: A) => T.AsyncRE<R1, E1, A>) => <
+export const updateAndGet = <R1, E1, A>(f: (a: A) => T.Effect<R1, E1, A>) => <
   RA,
   RB,
   EA,
   EB
 >(
   self: XRefM<RA, RB, EA, EB, A, A>
-): T.AsyncRE<RA & RB & R1, E1 | EA | EB, void> => updateAndGet_(self, f)
+): T.Effect<RA & RB & R1, E1 | EA | EB, void> => updateAndGet_(self, f)
 
 /**
  * Atomically modifies the `RefM` with the specified function.
  */
 export const updateSome_ = <RA, RB, EA, EB, R1, E1, A>(
   self: XRefM<RA, RB, EA, EB, A, A>,
-  f: (a: A) => O.Option<T.AsyncRE<R1, E1, A>>
-): T.AsyncRE<RA & RB & R1, E1 | EA | EB, void> =>
+  f: (a: A) => O.Option<T.Effect<R1, E1, A>>
+): T.Effect<RA & RB & R1, E1 | EA | EB, void> =>
   pipe(
     self,
     modify((v) =>
@@ -314,22 +309,22 @@ export const updateSome_ = <RA, RB, EA, EB, R1, E1, A>(
 /**
  * Atomically modifies the `RefM` with the specified function.
  */
-export const updateSome = <R1, E1, A>(f: (a: A) => O.Option<T.AsyncRE<R1, E1, A>>) => <
+export const updateSome = <R1, E1, A>(f: (a: A) => O.Option<T.Effect<R1, E1, A>>) => <
   RA,
   RB,
   EA,
   EB
 >(
   self: XRefM<RA, RB, EA, EB, A, A>
-): T.AsyncRE<RA & RB & R1, E1 | EA | EB, void> => updateSome_(self, f)
+): T.Effect<RA & RB & R1, E1 | EA | EB, void> => updateSome_(self, f)
 
 /**
  * Atomically modifies the `RefM` with the specified function.
  */
 export const updateSomeAndGet_ = <RA, RB, EA, EB, R1, E1, A>(
   self: XRefM<RA, RB, EA, EB, A, A>,
-  f: (a: A) => O.Option<T.AsyncRE<R1, E1, A>>
-): T.AsyncRE<RA & RB & R1, E1 | EA | EB, A> =>
+  f: (a: A) => O.Option<T.Effect<R1, E1, A>>
+): T.Effect<RA & RB & R1, E1 | EA | EB, A> =>
   pipe(
     self,
     modify((v) =>
@@ -345,10 +340,10 @@ export const updateSomeAndGet_ = <RA, RB, EA, EB, R1, E1, A>(
  * Atomically modifies the `RefM` with the specified function.
  */
 export const updateSomeAndGet = <R1, E1, A>(
-  f: (a: A) => O.Option<T.AsyncRE<R1, E1, A>>
+  f: (a: A) => O.Option<T.Effect<R1, E1, A>>
 ) => <RA, RB, EA, EB>(
   self: XRefM<RA, RB, EA, EB, A, A>
-): T.AsyncRE<RA & RB & R1, E1 | EA | EB, A> => updateSomeAndGet_(self, f)
+): T.Effect<RA & RB & R1, E1 | EA | EB, A> => updateSomeAndGet_(self, f)
 
 /**
  * Folds over the error and value types of the `XRefM`.
@@ -395,8 +390,8 @@ export const foldM_ = <RA, RB, EA, EB, A, B, RC, RD, EC, ED, C = A, D = B>(
   self: XRefM<RA, RB, EA, EB, A, B>,
   ea: (_: EA) => EC,
   eb: (_: EB) => ED,
-  ca: (_: C) => T.AsyncRE<RC, EC, A>,
-  bd: (_: B) => T.AsyncRE<RD, ED, D>
+  ca: (_: C) => T.Effect<RC, EC, A>,
+  bd: (_: B) => T.Effect<RD, ED, D>
 ): XRefM<RA & RC, RB & RD, EC, ED, C, D> => self.foldM(ea, eb, ca, bd)
 
 /**
@@ -410,8 +405,8 @@ export const foldM_ = <RA, RB, EA, EB, A, B, RC, RD, EC, ED, C = A, D = B>(
 export const foldM = <EA, EB, A, B, RC, RD, EC, ED, C = A, D = B>(
   ea: (_: EA) => EC,
   eb: (_: EB) => ED,
-  ca: (_: C) => T.AsyncRE<RC, EC, A>,
-  bd: (_: B) => T.AsyncRE<RD, ED, D>
+  ca: (_: C) => T.Effect<RC, EC, A>,
+  bd: (_: B) => T.Effect<RD, ED, D>
 ) => <RA, RB>(
   self: XRefM<RA, RB, EA, EB, A, B>
 ): XRefM<RA & RC, RB & RD, EC, ED, C, D> => self.foldM(ea, eb, ca, bd)
@@ -426,8 +421,8 @@ export const foldAllM_ = <RA, RB, EA, EB, A, B, RC, RD, EC, ED, C = A, D = B>(
   ea: (_: EA) => EC,
   eb: (_: EB) => ED,
   ec: (_: EB) => EC,
-  ca: (_: C) => (_: B) => T.AsyncRE<RC, EC, A>,
-  bd: (_: B) => T.AsyncRE<RD, ED, D>
+  ca: (_: C) => (_: B) => T.Effect<RC, EC, A>,
+  bd: (_: B) => T.Effect<RD, ED, D>
 ): XRefM<RB & RA & RC, RB & RD, EC, ED, C, D> => self.foldAllM(ea, eb, ec, ca, bd)
 
 /**
@@ -439,8 +434,8 @@ export const foldAllM = <EA, EB, A, B, RC, RD, EC, ED, C = A, D = B>(
   ea: (_: EA) => EC,
   eb: (_: EB) => ED,
   ec: (_: EB) => EC,
-  ca: (_: C) => (_: B) => T.AsyncRE<RC, EC, A>,
-  bd: (_: B) => T.AsyncRE<RD, ED, D>
+  ca: (_: C) => (_: B) => T.Effect<RC, EC, A>,
+  bd: (_: B) => T.Effect<RD, ED, D>
 ) => <RA, RB>(
   self: XRefM<RA, RB, EA, EB, A, B>
 ): XRefM<RB & RA & RC, RB & RD, EC, ED, C, D> => self.foldAllM(ea, eb, ec, ca, bd)
@@ -453,7 +448,7 @@ export const foldAllM = <EA, EB, A, B, RC, RD, EC, ED, C = A, D = B>(
  */
 export const collectM_ = <RA, RB, EA, EB, A, B, RC, EC, C>(
   self: XRefM<RA, RB, EA, EB, A, B>,
-  f: (b: B) => O.Option<T.AsyncRE<RC, EC, C>>
+  f: (b: B) => O.Option<T.Effect<RC, EC, C>>
 ): XRefM<RA, RB & RC, EA, O.Option<EB | EC>, A, C> =>
   self.foldM(
     identity,
@@ -473,7 +468,7 @@ export const collectM_ = <RA, RB, EA, EB, A, B, RC, EC, C>(
  * succeeds with the result of the partial function if it is defined or else
  * fails with `None`.
  */
-export const collectM = <B, RC, EC, C>(f: (b: B) => O.Option<T.AsyncRE<RC, EC, C>>) => <
+export const collectM = <B, RC, EC, C>(f: (b: B) => O.Option<T.Effect<RC, EC, C>>) => <
   RA,
   RB,
   EA,
@@ -512,8 +507,8 @@ export const collect = <B, C>(f: (b: B) => O.Option<C>) => <RA, RB, EA, EB, A>(
  */
 export const dimapM_ = <RA, RB, EA, EB, B, RC, EC, A, RD, ED, C = A, D = B>(
   self: XRefM<RA, RB, EA, EB, A, B>,
-  f: (c: C) => T.AsyncRE<RC, EC, A>,
-  g: (b: B) => T.AsyncRE<RD, ED, D>
+  f: (c: C) => T.Effect<RC, EC, A>,
+  g: (b: B) => T.Effect<RD, ED, D>
 ) =>
   self.foldM(
     (ea: EA | EC) => ea,
@@ -527,8 +522,8 @@ export const dimapM_ = <RA, RB, EA, EB, B, RC, EC, A, RD, ED, C = A, D = B>(
  * specified effectual functions.
  */
 export const dimapM = <B, RC, EC, A, RD, ED, C = A, D = B>(
-  f: (c: C) => T.AsyncRE<RC, EC, A>,
-  g: (b: B) => T.AsyncRE<RD, ED, D>
+  f: (c: C) => T.Effect<RC, EC, A>,
+  g: (b: B) => T.Effect<RD, ED, D>
 ) => <RA, RB, EA, EB>(self: XRefM<RA, RB, EA, EB, A, B>) => dimapM_(self, f, g)
 
 /**
@@ -570,7 +565,7 @@ export const dimapError = <EA, EB, EC, ED>(f: (ea: EA) => EC, g: (eb: EB) => ED)
  */
 export const filterInputM_ = <RA, RB, EA, EB, B, A, RC, EC, A1 extends A = A>(
   self: XRefM<RA, RB, EA, EB, A, B>,
-  f: (a: A1) => T.AsyncRE<RC, EC, boolean>
+  f: (a: A1) => T.Effect<RC, EC, boolean>
 ): XRefM<RA & RC, RB, O.Option<EC | EA>, EB, A1, B> =>
   pipe(
     self,
@@ -591,7 +586,7 @@ export const filterInputM_ = <RA, RB, EA, EB, B, A, RC, EC, A1 extends A = A>(
  * predicate is satisfied or else fails with `None`.
  */
 export const filterInputM = <A, RC, EC, A1 extends A = A>(
-  f: (a: A1) => T.AsyncRE<RC, EC, boolean>
+  f: (a: A1) => T.Effect<RC, EC, boolean>
 ) => <RA, RB, EA, EB, B>(
   self: XRefM<RA, RB, EA, EB, A, B>
 ): XRefM<RA & RC, RB, O.Option<EC | EA>, EB, A1, B> => filterInputM_(self, f)
@@ -632,7 +627,7 @@ export const filterInput = <A, A1 extends A = A>(f: (a: A1) => boolean) => <
  */
 export const filterOutputM_ = <RA, RB, EA, EB, A, B, RC, EC>(
   self: XRefM<RA, RB, EA, EB, A, B>,
-  f: (b: B) => T.AsyncRE<RC, EC, boolean>
+  f: (b: B) => T.Effect<RC, EC, boolean>
 ): XRefM<RA, RB & RC, EA, O.Option<EC | EB>, A, B> =>
   pipe(
     self,
@@ -649,7 +644,7 @@ export const filterOutputM_ = <RA, RB, EA, EB, A, B, RC, EC>(
  * returning a `XRefM` with a `get` value that succeeds if the predicate is
  * satisfied or else fails with `None`.
  */
-export const filterOutputM = <B, RC, EC>(f: (b: B) => T.AsyncRE<RC, EC, boolean>) => <
+export const filterOutputM = <B, RC, EC>(f: (b: B) => T.Effect<RC, EC, boolean>) => <
   RA,
   RB,
   EA,
@@ -688,14 +683,14 @@ export const filterOutput = <B>(f: (b: B) => boolean) => <RA, RB, EA, EB, A>(
  */
 export const mapM_ = <RA, RB, EA, EB, A, B, RC, EC, C>(
   self: XRefM<RA, RB, EA, EB, A, B>,
-  f: (b: B) => T.AsyncRE<RC, EC, C>
+  f: (b: B) => T.Effect<RC, EC, C>
 ) => pipe(self, dimapM(T.succeedNow, f))
 
 /**
  * Transforms the `get` value of the `XRefM` with the specified effectual
  * function.
  */
-export const mapM = <B, RC, EC, C>(f: (b: B) => T.AsyncRE<RC, EC, C>) => <
+export const mapM = <B, RC, EC, C>(f: (b: B) => T.Effect<RC, EC, C>) => <
   RA,
   RB,
   EA,
@@ -711,14 +706,14 @@ export const mapM = <B, RC, EC, C>(f: (b: B) => T.AsyncRE<RC, EC, C>) => <
  */
 export const contramapM_ = <RA, RB, EA, EB, B, A, RC, EC, C>(
   self: XRefM<RA, RB, EA, EB, A, B>,
-  f: (c: C) => T.AsyncRE<RC, EC, A>
+  f: (c: C) => T.Effect<RC, EC, A>
 ): XRefM<RA & RC, RB, EC | EA, EB, C, B> => pipe(self, dimapM(f, T.succeedNow))
 
 /**
  * Transforms the `set` value of the `XRefM` with the specified effectual
  * function.
  */
-export const contramapM = <A, RC, EC, C>(f: (c: C) => T.AsyncRE<RC, EC, A>) => <
+export const contramapM = <A, RC, EC, C>(f: (c: C) => T.Effect<RC, EC, A>) => <
   RA,
   RB,
   EA,
@@ -795,7 +790,7 @@ export const writeOnly = <RA, RB, EA, EB, A, B>(
  */
 export const tapInput_ = <RA, RB, EA, EB, B, A, RC, EC, A1 extends A = A>(
   self: XRefM<RA, RB, EA, EB, A, B>,
-  f: (a: A1) => T.AsyncRE<RC, EC, any>
+  f: (a: A1) => T.Effect<RC, EC, any>
 ) =>
   pipe(
     self,
@@ -807,7 +802,7 @@ export const tapInput_ = <RA, RB, EA, EB, B, A, RC, EC, A1 extends A = A>(
  * `XRefM`.
  */
 export const tapInput = <A, RC, EC, A1 extends A = A>(
-  f: (a: A1) => T.AsyncRE<RC, EC, any>
+  f: (a: A1) => T.Effect<RC, EC, any>
 ) => <RA, RB, EA, EB, B>(self: XRefM<RA, RB, EA, EB, A, B>) => tapInput_(self, f)
 
 /**
@@ -816,7 +811,7 @@ export const tapInput = <A, RC, EC, A1 extends A = A>(
  */
 export const tapOutput_ = <RA, RB, EA, EB, A, B, RC, EC>(
   self: XRefM<RA, RB, EA, EB, A, B>,
-  f: (b: B) => T.AsyncRE<RC, EC, any>
+  f: (b: B) => T.Effect<RC, EC, any>
 ) =>
   pipe(
     self,
@@ -827,7 +822,7 @@ export const tapOutput_ = <RA, RB, EA, EB, A, B, RC, EC>(
  * Performs the specified effect every time a value is written to this
  * `XRefM`.
  */
-export const tapOutput = <B, RC, EC>(f: (b: B) => T.AsyncRE<RC, EC, any>) => <
+export const tapOutput = <B, RC, EC>(f: (b: B) => T.Effect<RC, EC, any>) => <
   RA,
   RB,
   EA,

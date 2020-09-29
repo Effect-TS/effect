@@ -32,8 +32,8 @@ export interface XRefM<RA, RB, EA, EB, A, B> {
   readonly foldM: <RC, RD, EC, ED, C, D>(
     ea: (_: EA) => EC,
     eb: (_: EB) => ED,
-    ca: (_: C) => T.AsyncRE<RC, EC, A>,
-    bd: (_: B) => T.AsyncRE<RD, ED, D>
+    ca: (_: C) => T.Effect<RC, EC, A>,
+    bd: (_: B) => T.Effect<RD, ED, D>
   ) => XRefM<RA & RC, RB & RD, EC, ED, C, D>
 
   /**
@@ -45,20 +45,20 @@ export interface XRefM<RA, RB, EA, EB, A, B> {
     ea: (_: EA) => EC,
     eb: (_: EB) => ED,
     ec: (_: EB) => EC,
-    ca: (_: C) => (_: B) => T.AsyncRE<RC, EC, A>,
-    bd: (_: B) => T.AsyncRE<RD, ED, D>
+    ca: (_: C) => (_: B) => T.Effect<RC, EC, A>,
+    bd: (_: B) => T.Effect<RD, ED, D>
   ) => XRefM<RB & RA & RC, RB & RD, EC, ED, C, D>
 
   /**
    * Reads the value from the `XRefM`.
    */
-  readonly get: T.AsyncRE<RB, EB, B>
+  readonly get: T.Effect<RB, EB, B>
 
   /**
    * Writes a new value to the `XRefM`, with a guarantee of immediate
    * consistency (at some cost to performance).
    */
-  readonly set: (a: A) => T.AsyncRE<RA, EA, void>
+  readonly set: (a: A) => T.Effect<RA, EA, void>
 }
 
 export class Atomic<A> implements XRefM<unknown, unknown, never, never, A, A> {
@@ -69,8 +69,8 @@ export class Atomic<A> implements XRefM<unknown, unknown, never, never, A, A> {
   readonly foldM = <RC, RD, EC, ED, C, D>(
     _ea: (_: never) => EC,
     _eb: (_: never) => ED,
-    ca: (_: C) => T.AsyncRE<RC, EC, A>,
-    bd: (_: A) => T.AsyncRE<RD, ED, D>
+    ca: (_: C) => T.Effect<RC, EC, A>,
+    bd: (_: A) => T.Effect<RD, ED, D>
   ): XRefM<RC, RD, EC, ED, C, D> =>
     new Derived<RC, RD, EC, ED, C, D, A>(
       this,
@@ -82,8 +82,8 @@ export class Atomic<A> implements XRefM<unknown, unknown, never, never, A, A> {
     _ea: (_: never) => EC,
     _eb: (_: never) => ED,
     _ec: (_: never) => EC,
-    ca: (_: C) => (_: A) => T.AsyncRE<RC, EC, A>,
-    bd: (_: A) => T.AsyncRE<RD, ED, D>
+    ca: (_: C) => (_: A) => T.Effect<RC, EC, A>,
+    bd: (_: A) => T.Effect<RD, ED, D>
   ): XRefM<RC, RD, EC, ED, C, D> =>
     new DerivedAll<RC, RD, EC, ED, C, D, A>(
       this,
@@ -91,9 +91,9 @@ export class Atomic<A> implements XRefM<unknown, unknown, never, never, A, A> {
       (a) => (s) => ca(a)(s)
     )
 
-  readonly get: T.AsyncRE<unknown, never, A> = this.ref.get
+  readonly get: T.Effect<unknown, never, A> = this.ref.get
 
-  readonly set: (a: A) => T.AsyncRE<unknown, never, void> = (a) =>
+  readonly set: (a: A) => T.Effect<unknown, never, void> = (a) =>
     withPermit(this.semaphore)(this.set(a))
 }
 
@@ -102,15 +102,15 @@ export class Derived<RA, RB, EA, EB, A, B, S> implements XRefM<RA, RB, EA, EB, A
 
   constructor(
     readonly value: Atomic<S>,
-    readonly getEither: (s: S) => T.AsyncRE<RB, EB, B>,
-    readonly setEither: (a: A) => T.AsyncRE<RA, EA, S>
+    readonly getEither: (s: S) => T.Effect<RB, EB, B>,
+    readonly setEither: (a: A) => T.Effect<RA, EA, S>
   ) {}
 
   readonly foldM = <RC, RD, EC, ED, C, D>(
     ea: (_: EA) => EC,
     eb: (_: EB) => ED,
-    ca: (_: C) => T.AsyncRE<RC, EC, A>,
-    bd: (_: B) => T.AsyncRE<RD, ED, D>
+    ca: (_: C) => T.Effect<RC, EC, A>,
+    bd: (_: B) => T.Effect<RD, ED, D>
   ): XRefM<RA & RC, RB & RD, EC, ED, C, D> =>
     new Derived<RA & RC, RB & RD, EC, ED, C, D, S>(
       this.value,
@@ -127,8 +127,8 @@ export class Derived<RA, RB, EA, EB, A, B, S> implements XRefM<RA, RB, EA, EB, A
     ea: (_: EA) => EC,
     eb: (_: EB) => ED,
     ec: (_: EB) => EC,
-    ca: (_: C) => (_: B) => T.AsyncRE<RC, EC, A>,
-    bd: (_: B) => T.AsyncRE<RD, ED, D>
+    ca: (_: C) => (_: B) => T.Effect<RC, EC, A>,
+    bd: (_: B) => T.Effect<RD, ED, D>
   ): XRefM<RB & RA & RC, RB & RD, EC, ED, C, D> =>
     new DerivedAll<RB & RA & RC, RB & RD, EC, ED, C, D, S>(
       this.value,
@@ -145,9 +145,9 @@ export class Derived<RA, RB, EA, EB, A, B, S> implements XRefM<RA, RB, EA, EB, A
         )
     )
 
-  get: T.AsyncRE<RB, EB, B> = T.chain_(this.value.get, (a) => this.getEither(a))
+  get: T.Effect<RB, EB, B> = T.chain_(this.value.get, (a) => this.getEither(a))
 
-  set: (a: A) => T.AsyncRE<RA, EA, void> = (a) =>
+  set: (a: A) => T.Effect<RA, EA, void> = (a) =>
     withPermit(this.value.semaphore)(
       T.chain_(this.setEither(a), (a) => this.value.set(a))
     )
@@ -159,15 +159,15 @@ export class DerivedAll<RA, RB, EA, EB, A, B, S>
 
   constructor(
     readonly value: Atomic<S>,
-    readonly getEither: (s: S) => T.AsyncRE<RB, EB, B>,
-    readonly setEither: (a: A) => (s: S) => T.AsyncRE<RA, EA, S>
+    readonly getEither: (s: S) => T.Effect<RB, EB, B>,
+    readonly setEither: (a: A) => (s: S) => T.Effect<RA, EA, S>
   ) {}
 
   readonly foldM = <RC, RD, EC, ED, C, D>(
     ea: (_: EA) => EC,
     eb: (_: EB) => ED,
-    ca: (_: C) => T.AsyncRE<RC, EC, A>,
-    bd: (_: B) => T.AsyncRE<RD, ED, D>
+    ca: (_: C) => T.Effect<RC, EC, A>,
+    bd: (_: B) => T.Effect<RD, ED, D>
   ): XRefM<RA & RC, RB & RD, EC, ED, C, D> =>
     new DerivedAll<RA & RC, RB & RD, EC, ED, C, D, S>(
       this.value,
@@ -184,8 +184,8 @@ export class DerivedAll<RA, RB, EA, EB, A, B, S>
     ea: (_: EA) => EC,
     eb: (_: EB) => ED,
     ec: (_: EB) => EC,
-    ca: (_: C) => (_: B) => T.AsyncRE<RC, EC, A>,
-    bd: (_: B) => T.AsyncRE<RD, ED, D>
+    ca: (_: C) => (_: B) => T.Effect<RC, EC, A>,
+    bd: (_: B) => T.Effect<RD, ED, D>
   ): XRefM<RB & RA & RC, RB & RD, EC, ED, C, D> =>
     new DerivedAll<RB & RA & RC, RB & RD, EC, ED, C, D, S>(
       this.value,
@@ -202,9 +202,9 @@ export class DerivedAll<RA, RB, EA, EB, A, B, S>
         )
     )
 
-  get: T.AsyncRE<RB, EB, B> = T.chain_(this.value.get, (a) => this.getEither(a))
+  get: T.Effect<RB, EB, B> = T.chain_(this.value.get, (a) => this.getEither(a))
 
-  set: (a: A) => T.AsyncRE<RA, EA, void> = (a) =>
+  set: (a: A) => T.Effect<RA, EA, void> = (a) =>
     withPermit(this.value.semaphore)(
       T.chain_(T.chain_(this.value.get, this.setEither(a)), (a) => this.value.set(a))
     )

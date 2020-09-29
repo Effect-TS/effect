@@ -1,11 +1,11 @@
-import type { SyncR as EffSyncR } from "../../Effect"
+import type { RIO as EffRIO } from "../../Effect"
 import { unit } from "../../Effect"
 import { bracket } from "./bracket"
-import type { SyncR } from "./definitions"
+import type { RIO } from "./definitions"
 
 /**
  * Creates a one-element stream that never fails and executes the finalizer when it ends.
  */
-export function finalizer<R>(finalizer: EffSyncR<R, unknown>): SyncR<R, unknown> {
+export function finalizer<R>(finalizer: EffRIO<R, unknown>): RIO<R, unknown> {
   return bracket((_) => finalizer)(unit)
 }

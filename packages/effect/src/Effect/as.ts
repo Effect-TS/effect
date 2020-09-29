@@ -4,7 +4,7 @@ import { map_ } from "./map_"
 /**
  * Maps the success value of this effect to the specified constant value.
  */
-export function as_<S, R, E, A, B>(self: Effect<S, R, E, A>, b: B) {
+export function as_<R, E, A, B>(self: Effect<R, E, A>, b: B) {
   return map_(self, () => b)
 }
 
@@ -12,5 +12,5 @@ export function as_<S, R, E, A, B>(self: Effect<S, R, E, A>, b: B) {
  * Maps the success value of this effect to the specified constant value.
  */
 export function as<B>(b: B) {
-  return <S, R, E, A>(self: Effect<S, R, E, A>) => map_(self, () => b)
+  return <R, E, A>(self: Effect<R, E, A>) => map_(self, () => b)
 }

@@ -5,6 +5,6 @@ import { map_ } from "./map_"
 /**
  * Maps the success value of this effect to an optional value.
  */
-export function asSome<S, R, E, A>(fa: Effect<S, R, E, A>) {
+export function asSome<R, E, A>(fa: Effect<R, E, A>) {
   return map_(fa, O.some)
 }

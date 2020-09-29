@@ -7,8 +7,8 @@ import { unsandbox } from "./unsandbox"
  * Companion helper to `sandbox`. Allows recovery, and partial recovery, from
  * errors and defects alike.
  */
-export function sandboxWith<S, R, E, A, E2>(
-  f: (_: Effect<S, R, Cause<E>, A>) => Effect<S, R, Cause<E2>, A>
+export function sandboxWith<R, E, A, E2>(
+  f: (_: Effect<R, Cause<E>, A>) => Effect<R, Cause<E2>, A>
 ) {
-  return (self: Effect<S, R, E, A>) => unsandbox(f(sandbox(self)))
+  return (self: Effect<R, E, A>) => unsandbox(f(sandbox(self)))
 }

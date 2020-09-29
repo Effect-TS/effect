@@ -4,7 +4,7 @@ import type { Cause } from "../../Cause/core"
 import { pipe } from "../../Function"
 import * as O from "../../Option"
 
-export type Pull<S, R, E, O> = T.Effect<S, R, O.Option<E>, A.Array<O>>
+export type Pull<R, E, O> = T.Effect<R, O.Option<E>, A.Array<O>>
 
 export const end = T.fail(O.none)
 

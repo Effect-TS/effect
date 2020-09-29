@@ -21,12 +21,12 @@ import { Stream } from "./definitions"
 export const effectAsyncInterruptEither = <R, E, A>(
   register: (
     cb: (
-      next: T.Effect<unknown, R, Option.Option<E>, Array.Array<A>>,
+      next: T.Effect<R, Option.Option<E>, Array.Array<A>>,
       offerCb?: Callback<never, boolean>
-    ) => T.Async<Exit<never, boolean>>
-  ) => Either.Either<T.Canceler<R>, Stream<unknown, R, E, A>>,
+    ) => T.UIO<Exit<never, boolean>>
+  ) => Either.Either<T.Canceler<R>, Stream<R, E, A>>,
   outputBuffer = 16
-): Stream<unknown, R, E, A> =>
+): Stream<R, E, A> =>
   new Stream(
     pipe(
       M.do,
@@ -38,7 +38,7 @@ export const effectAsyncInterruptEither = <R, E, A>(
         M.effectTotal(() =>
           register((k, cb) =>
             pipe(Take.fromPull(k), T.chain(output.offer), (x) =>
-              runtime.runAsyncCancel(x, cb)
+              runtime.runCancel(x, cb)
             )
           )
         )

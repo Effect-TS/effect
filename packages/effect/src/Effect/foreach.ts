@@ -8,6 +8,6 @@ import { foreach_ } from "./foreach_"
  * For a parallel version of this method, see `foreachPar`.
  * If you do not need the results, see `foreachUnit` for a more efficient implementation.
  */
-export function foreach<A, S, R, E, B>(f: (a: A) => Effect<S, R, E, B>) {
+export function foreach<A, R, E, B>(f: (a: A) => Effect<R, E, B>) {
   return (as: Iterable<A>) => foreach_(as, f)
 }

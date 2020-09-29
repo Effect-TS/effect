@@ -5,12 +5,10 @@ import type { Stream } from "./definitions"
 import { fromEffect } from "./fromEffect"
 import { map } from "./map"
 
-const bind = <S, R, E, A, K, N extends string>(
+const bind = <R, E, A, K, N extends string>(
   tag: Exclude<N, keyof K>,
-  f: (_: K) => Stream<S, R, E, A>
-) => <S2, R2, E2>(
-  mk: Stream<S2, R2, E2, K>
-): Stream<S | S2, R & R2, E | E2, K & { [k in N]: A }> =>
+  f: (_: K) => Stream<R, E, A>
+) => <R2, E2>(mk: Stream<R2, E2, K>): Stream<R & R2, E | E2, K & { [k in N]: A }> =>
   pipe(
     mk,
     chain((k) =>
@@ -21,9 +19,9 @@ const bind = <S, R, E, A, K, N extends string>(
     )
   )
 
-const merge = <S, R, E, A, K>(
-  f: (_: K) => Stream<S, R, E, A & { [k in keyof K & keyof A]?: never }>
-) => <S2, R2, E2>(mk: Stream<S2, R2, E2, K>): Stream<S | S2, R & R2, E | E2, K & A> =>
+const merge = <R, E, A, K>(
+  f: (_: K) => Stream<R, E, A & { [k in keyof K & keyof A]?: never }>
+) => <R2, E2>(mk: Stream<R2, E2, K>): Stream<R & R2, E | E2, K & A> =>
   pipe(
     mk,
     chain((k) =>
@@ -35,12 +33,11 @@ const merge = <S, R, E, A, K>(
   )
 
 const let_ = <A, K, N extends string>(tag: Exclude<N, keyof K>, f: (_: K) => A) => <
-  S2,
   R2,
   E2
 >(
-  mk: Stream<S2, R2, E2, K>
-): Stream<S2, R2, E2, K & { [k in N]: A }> =>
+  mk: Stream<R2, E2, K>
+): Stream<R2, E2, K & { [k in N]: A }> =>
   pipe(
     mk,
     map((k): K & { [k in N]: A } => ({ ...k, [tag]: f(k) } as any))
