@@ -115,7 +115,8 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     readonly startIStatus: Fiber.InterruptStatus,
     readonly fiberRefLocals: FiberRefLocals,
     readonly supervisor0: Sup.Supervisor<any>,
-    readonly openScope: Scope.Open<Exit.Exit<E, A>>
+    readonly openScope: Scope.Open<Exit.Exit<E, A>>,
+    readonly maxOp: number
   ) {
     _tracing.trace(this)
   }
@@ -536,7 +537,8 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
       Fiber.interruptStatus(this.isInterruptible),
       childFiberRefLocals,
       currentSup,
-      childScope
+      childScope,
+      this.maxOp
     )
 
     if (currentSup !== Sup.none) {
@@ -735,7 +737,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     )
   }
 
-  evaluateNow(i0: Instruction, isSync = false): void {
+  evaluateNow(i0: Instruction): void {
     try {
       // eslint-disable-next-line prefer-const
       let current: Instruction | undefined = i0
@@ -744,323 +746,313 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
       while (current != null) {
         try {
+          let opCount = 0
+
           while (current != null) {
             // Check to see if the fiber should continue executing or not:
             if (!this.shouldInterrupt) {
-              switch (current._tag) {
-                case "FlatMap": {
-                  const nested: Instruction = current.val[_I]
-                  const k: (a: any) => Effect<any, any, any> = current.f
+              // Fiber does not need to be interrupted, but might need to yield:
+              if (opCount === this.maxOp) {
+                this.evaluateLater(current)
+                current = undefined
+              } else {
+                // Fiber is neither being interrupted nor needs to yield. Execute
+                // the next instruction in the program:
+                switch (current._tag) {
+                  case "FlatMap": {
+                    const nested: Instruction = current.val[_I]
+                    const k: (a: any) => Effect<any, any, any> = current.f
 
-                  switch (nested._tag) {
-                    case "Succeed": {
-                      current = k(nested.val)[_I]
-                      break
-                    }
-                    case "EffectTotal": {
-                      current = k(nested.effect())[_I]
-                      break
-                    }
-                    case "EffectPartial": {
-                      try {
-                        current = k(nested.effect())[_I]
-                      } catch (e) {
-                        current = fail.fail(nested.onThrow(e))[_I]
-                      }
-                      break
-                    }
-                    default: {
-                      current = nested
-                      this.pushContinuation(new ApplyFrame(k))
-                    }
-                  }
-                  break
-                }
-
-                case "XPure": {
-                  const res: E.Either<any, any> = X.runEither(
-                    X.provideAll(this.environments?.value || {})(current)
-                  )
-
-                  if (res._tag === "Left") {
-                    current = fail.fail(res.left)[_I]
-                  } else {
-                    current = this.nextInstr(res.right)
-                  }
-
-                  break
-                }
-
-                case "Succeed": {
-                  current = this.nextInstr(current.val)
-                  break
-                }
-
-                case "EffectTotal": {
-                  current = this.nextInstr(current.effect())
-                  break
-                }
-
-                case "Fail": {
-                  const discardedFolds = this.unwindStack()
-                  const fullCause = current.cause
-
-                  const maybeRedactedCause = discardedFolds
-                    ? // We threw away some error handlers while unwinding the stack because
-                      // we got interrupted during this instruction. So it's not safe to return
-                      // typed failures from cause0, because they might not be typed correctly.
-                      // Instead, we strip the typed failures, and return the remainders and
-                      // the interruption.
-                      Cause.stripFailures(fullCause)
-                    : fullCause
-
-                  if (this.isStackEmpty) {
-                    // Error not caught, stack is empty:
-                    const cause = () => {
-                      const interrupted = this.state.get.interrupted
-                      const causeAndInterrupt = Cause.contains(interrupted)(
-                        maybeRedactedCause
-                      )
-                        ? maybeRedactedCause
-                        : Cause.Then(maybeRedactedCause, interrupted)
-
-                      return causeAndInterrupt
-                    }
-
-                    this.setInterrupting(true)
-
-                    current = this.done(Exit.halt(cause()))
-                  } else {
-                    this.setInterrupting(false)
-
-                    // Error caught, next continuation on the stack will deal
-                    // with it, so we just have to compute it here:
-                    current = this.nextInstr(maybeRedactedCause)
-                  }
-
-                  break
-                }
-
-                case "Fold": {
-                  this.pushContinuation(current)
-                  current = current.value[_I]
-                  break
-                }
-
-                case "InterruptStatus": {
-                  this.pushInterruptStatus(current.flag.toBoolean)
-                  this.pushContinuation(this.interruptExit)
-                  current = current.effect[_I]
-                  break
-                }
-
-                case "CheckInterrupt": {
-                  current = current.f(Fiber.interruptStatus(this.isInterruptible))[_I]
-                  break
-                }
-
-                case "EffectPartial": {
-                  const c = current
-                  try {
-                    current = this.nextInstr(c.effect())
-                  } catch (e) {
-                    current = fail.fail(c.onThrow(e))[_I]
-                  }
-                  break
-                }
-
-                case "EffectAsync": {
-                  if (isSync) {
-                    current = die.die(
-                      new Error("Fatal(Bug): runSync called with async instructions")
-                    )[_I]
-                    break
-                  }
-                  const epoch = this.asyncEpoch
-                  this.asyncEpoch = epoch + 1
-                  const c = current
-                  current = this.enterAsync(epoch, c.blockingOn)
-
-                  if (!current) {
-                    const k = c.register
-                    const h = k(this.resumeAsync(epoch))
-
-                    switch (h._tag) {
-                      case "None": {
-                        current = undefined
+                    switch (nested._tag) {
+                      case "Succeed": {
+                        current = k(nested.val)[_I]
                         break
                       }
-                      case "Some": {
-                        if (this.exitAsync(epoch)) {
-                          current = h.value[_I]
-                        } else {
+                      case "EffectTotal": {
+                        current = k(nested.effect())[_I]
+                        break
+                      }
+                      case "EffectPartial": {
+                        try {
+                          current = k(nested.effect())[_I]
+                        } catch (e) {
+                          current = fail.fail(nested.onThrow(e))[_I]
+                        }
+                        break
+                      }
+                      default: {
+                        current = nested
+                        this.pushContinuation(new ApplyFrame(k))
+                      }
+                    }
+                    break
+                  }
+
+                  case "XPure": {
+                    const res: E.Either<any, any> = X.runEither(
+                      X.provideAll(this.environments?.value || {})(current)
+                    )
+
+                    if (res._tag === "Left") {
+                      current = fail.fail(res.left)[_I]
+                    } else {
+                      current = this.nextInstr(res.right)
+                    }
+
+                    break
+                  }
+
+                  case "Succeed": {
+                    current = this.nextInstr(current.val)
+                    break
+                  }
+
+                  case "EffectTotal": {
+                    current = this.nextInstr(current.effect())
+                    break
+                  }
+
+                  case "Fail": {
+                    const discardedFolds = this.unwindStack()
+                    const fullCause = current.cause
+
+                    const maybeRedactedCause = discardedFolds
+                      ? // We threw away some error handlers while unwinding the stack because
+                        // we got interrupted during this instruction. So it's not safe to return
+                        // typed failures from cause0, because they might not be typed correctly.
+                        // Instead, we strip the typed failures, and return the remainders and
+                        // the interruption.
+                        Cause.stripFailures(fullCause)
+                      : fullCause
+
+                    if (this.isStackEmpty) {
+                      // Error not caught, stack is empty:
+                      const cause = () => {
+                        const interrupted = this.state.get.interrupted
+                        const causeAndInterrupt = Cause.contains(interrupted)(
+                          maybeRedactedCause
+                        )
+                          ? maybeRedactedCause
+                          : Cause.Then(maybeRedactedCause, interrupted)
+
+                        return causeAndInterrupt
+                      }
+
+                      this.setInterrupting(true)
+
+                      current = this.done(Exit.halt(cause()))
+                    } else {
+                      this.setInterrupting(false)
+
+                      // Error caught, next continuation on the stack will deal
+                      // with it, so we just have to compute it here:
+                      current = this.nextInstr(maybeRedactedCause)
+                    }
+
+                    break
+                  }
+
+                  case "Fold": {
+                    this.pushContinuation(current)
+                    current = current.value[_I]
+                    break
+                  }
+
+                  case "InterruptStatus": {
+                    this.pushInterruptStatus(current.flag.toBoolean)
+                    this.pushContinuation(this.interruptExit)
+                    current = current.effect[_I]
+                    break
+                  }
+
+                  case "CheckInterrupt": {
+                    current = current.f(Fiber.interruptStatus(this.isInterruptible))[_I]
+                    break
+                  }
+
+                  case "EffectPartial": {
+                    const c = current
+                    try {
+                      current = this.nextInstr(c.effect())
+                    } catch (e) {
+                      current = fail.fail(c.onThrow(e))[_I]
+                    }
+                    break
+                  }
+
+                  case "EffectAsync": {
+                    const epoch = this.asyncEpoch
+                    this.asyncEpoch = epoch + 1
+                    const c = current
+                    current = this.enterAsync(epoch, c.blockingOn)
+
+                    if (!current) {
+                      const k = c.register
+                      const h = k(this.resumeAsync(epoch))
+
+                      switch (h._tag) {
+                        case "None": {
                           current = undefined
+                          break
+                        }
+                        case "Some": {
+                          if (this.exitAsync(epoch)) {
+                            current = h.value[_I]
+                          } else {
+                            current = undefined
+                          }
                         }
                       }
                     }
-                  }
 
-                  break
-                }
-
-                case "Fork": {
-                  if (isSync) {
-                    current = die.die(
-                      new Error("Fatal(Bug): runSync called with fork instructions")
-                    )[_I]
                     break
                   }
-                  current = this.nextInstr(this.fork(current.value[_I], current.scope))
-                  break
-                }
 
-                case "Descriptor": {
-                  current = current.f(this.getDescriptor())[_I]
-                  break
-                }
-
-                case "Yield": {
-                  if (isSync) {
-                    current = die.die(
-                      new Error("Fatal(Bug): runSync called with yield instructions")
-                    )[_I]
+                  case "Fork": {
+                    current = this.nextInstr(
+                      this.fork(current.value[_I], current.scope)
+                    )
                     break
                   }
-                  current = undefined
-                  this.evaluateLater(T.unit[_I])
-                  break
-                }
 
-                case "Read": {
-                  current = current.f(this.environments?.value || {})[_I]
-                  break
-                }
+                  case "Descriptor": {
+                    current = current.f(this.getDescriptor())[_I]
+                    break
+                  }
 
-                case "Provide": {
-                  const c = current
-                  current = bracket.bracket_(
-                    T.effectTotal(() => {
-                      this.pushEnv(c.r)
-                    }),
-                    () => c.next,
-                    () =>
+                  case "Yield": {
+                    current = undefined
+                    this.evaluateLater(T.unit[_I])
+                    break
+                  }
+
+                  case "Read": {
+                    current = current.f(this.environments?.value || {})[_I]
+                    break
+                  }
+
+                  case "Provide": {
+                    const c = current
+                    current = bracket.bracket_(
                       T.effectTotal(() => {
-                        this.popEnv()
-                      })
-                  )[_I]
-                  break
-                }
-
-                case "Suspend": {
-                  current = current.factory()[_I]
-                  break
-                }
-
-                case "SuspendPartial": {
-                  const c = current
-
-                  try {
-                    current = c.factory()[_I]
-                  } catch (e) {
-                    current = fail.fail(c.onThrow(e))[_I]
-                  }
-
-                  break
-                }
-
-                case "FiberRefNew": {
-                  const fiberRef = new FiberRef(
-                    current.initial,
-                    current.onFork,
-                    current.onJoin
-                  )
-
-                  this.fiberRefLocals.set(fiberRef, current.initial)
-
-                  current = this.nextInstr(fiberRef)
-
-                  break
-                }
-
-                case "FiberRefModify": {
-                  const c = current
-                  const oldValue = O.fromNullable(this.fiberRefLocals.get(c.fiberRef))
-                  const [result, newValue] = current.f(
-                    O.getOrElse_(oldValue, () => c.fiberRef.initial)
-                  )
-                  this.fiberRefLocals.set(c.fiberRef, newValue)
-                  current = this.nextInstr(result)
-                  break
-                }
-
-                case "RaceWith": {
-                  if (isSync) {
-                    current = die.die(
-                      new Error("Fatal(Bug): runSync called with raceWith instructions")
+                        this.pushEnv(c.r)
+                      }),
+                      () => c.next,
+                      () =>
+                        T.effectTotal(() => {
+                          this.popEnv()
+                        })
                     )[_I]
                     break
                   }
-                  current = this.raceWithImpl(current)[_I]
-                  break
-                }
 
-                case "Supervise": {
-                  const c = current
-                  const lastSupervisor = this.supervisors.value
-                  const newSupervisor = c.supervisor.and(lastSupervisor)
-                  const push = T.effectTotal(() => {
-                    this.supervisors = new Stack(newSupervisor, this.supervisors)
-                  })
-                  const pop = T.effectTotal(() => {
-                    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-                    this.supervisors = this.supervisors.previous!
-                  })
-                  current = bracket.bracket_(
-                    push,
-                    () => c.effect,
-                    () => pop
-                  )[_I]
-                  break
-                }
+                  case "Suspend": {
+                    current = current.factory()[_I]
+                    break
+                  }
 
-                case "GetForkScope": {
-                  const c = current
-                  current = c.f(
-                    O.getOrElse_(
-                      this.forkScopeOverride?.value || O.none,
-                      () => this.scope
+                  case "SuspendPartial": {
+                    const c = current
+
+                    try {
+                      current = c.factory()[_I]
+                    } catch (e) {
+                      current = fail.fail(c.onThrow(e))[_I]
+                    }
+
+                    break
+                  }
+
+                  case "FiberRefNew": {
+                    const fiberRef = new FiberRef(
+                      current.initial,
+                      current.onFork,
+                      current.onJoin
                     )
-                  )[_I]
-                  break
-                }
 
-                case "OverrideForkScope": {
-                  const c = current
+                    this.fiberRefLocals.set(fiberRef, current.initial)
 
-                  const push = T.effectTotal(() => {
-                    this.forkScopeOverride = new Stack(
-                      c.forkScope,
-                      this.forkScopeOverride
+                    current = this.nextInstr(fiberRef)
+
+                    break
+                  }
+
+                  case "FiberRefModify": {
+                    const c = current
+                    const oldValue = O.fromNullable(this.fiberRefLocals.get(c.fiberRef))
+                    const [result, newValue] = current.f(
+                      O.getOrElse_(oldValue, () => c.fiberRef.initial)
                     )
-                  })
+                    this.fiberRefLocals.set(c.fiberRef, newValue)
+                    current = this.nextInstr(result)
+                    break
+                  }
 
-                  const pop = T.effectTotal(() => {
-                    this.forkScopeOverride = this.forkScopeOverride?.previous
-                  })
+                  case "RaceWith": {
+                    current = this.raceWithImpl(current)[_I]
+                    break
+                  }
 
-                  current = bracket.bracket_(
-                    push,
-                    () => c.effect,
-                    () => pop
-                  )[_I]
+                  case "Supervise": {
+                    const c = current
+                    const lastSupervisor = this.supervisors.value
+                    const newSupervisor = c.supervisor.and(lastSupervisor)
+                    const push = T.effectTotal(() => {
+                      this.supervisors = new Stack(newSupervisor, this.supervisors)
+                    })
+                    const pop = T.effectTotal(() => {
+                      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                      this.supervisors = this.supervisors.previous!
+                    })
+                    current = bracket.bracket_(
+                      push,
+                      () => c.effect,
+                      () => pop
+                    )[_I]
+                    break
+                  }
 
-                  break
+                  case "GetForkScope": {
+                    const c = current
+                    current = c.f(
+                      O.getOrElse_(
+                        this.forkScopeOverride?.value || O.none,
+                        () => this.scope
+                      )
+                    )[_I]
+                    break
+                  }
+
+                  case "OverrideForkScope": {
+                    const c = current
+
+                    const push = T.effectTotal(() => {
+                      this.forkScopeOverride = new Stack(
+                        c.forkScope,
+                        this.forkScopeOverride
+                      )
+                    })
+
+                    const pop = T.effectTotal(() => {
+                      this.forkScopeOverride = this.forkScopeOverride?.previous
+                    })
+
+                    current = bracket.bracket_(
+                      push,
+                      () => c.effect,
+                      () => pop
+                    )[_I]
+
+                    break
+                  }
                 }
               }
             } else {
               current = T.halt(this.state.get.interrupted)[_I]
               this.setInterrupting(true)
             }
+
+            opCount += 1
           }
         } catch (e) {
           this.setInterrupting(true)
