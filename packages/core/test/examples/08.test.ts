@@ -4,7 +4,7 @@ import { makeAssociative } from "../../src/Classic/Associative"
 import * as T from "../../src/Effect"
 import * as DSL from "../../src/Prelude/DSL"
 
-test("08", () => {
+test("08", async () => {
   const ValidationApplicative = T.getValidationApplicative(
     makeAssociative<string>((r) => (l) => `${l} | ${r}`)
   )
@@ -21,7 +21,7 @@ test("08", () => {
     g: T.access((_: { bar: string }) => 3)
   })
 
-  pipe(
+  await pipe(
     result,
     T.either,
     T.chain((e) =>
@@ -33,6 +33,6 @@ test("08", () => {
       foo: "foo",
       bar: "bar"
     }),
-    T.runSync
+    T.runPromise
   )
 })
