@@ -4,7 +4,7 @@
  * Copyright 2020 Michael Arnaldi and the Matechs Garage Contributors.
  */
 import { effectTotal, unit } from "../Effect/core"
-import type { Async, Effect } from "../Effect/effect"
+import type { Effect, UIO } from "../Effect/effect"
 import { zip_ } from "../Effect/zip_"
 import type { Exit } from "../Exit/exit"
 import type { Runtime } from "../Fiber/core"
@@ -18,10 +18,10 @@ import * as R from "../Ref"
  */
 export class Supervisor<A> {
   constructor(
-    readonly value: Async<A>,
-    readonly unsafeOnStart: <S, R, E, A>(
+    readonly value: UIO<A>,
+    readonly unsafeOnStart: <R, E, A>(
       environment: R,
-      effect: Effect<S, R, E, A>,
+      effect: Effect<R, E, A>,
       parent: O.Option<Runtime<any, any>>,
       fiber: Runtime<E, A>
     ) => Propagation,

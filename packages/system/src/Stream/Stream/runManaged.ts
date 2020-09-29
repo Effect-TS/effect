@@ -10,15 +10,15 @@ import type { Stream } from "./definitions"
 /**
  * Runs the sink on the stream to produce either the sink's result or an error.
  */
-export const runManaged = <S1, R1, E1, O, B>(
-  sink: Sink.Sink<S1, R1, E1, O, any, B>
-) => <S, R, E>(self: Stream<S, R, E, O>): M.Managed<S1 | S, R & R1, E1 | E, B> =>
+export const runManaged = <R1, E1, O, B>(sink: Sink.Sink<R1, E1, O, any, B>) => <R, E>(
+  self: Stream<R, E, O>
+): M.Managed<R & R1, E1 | E, B> =>
   pipe(
     M.zip_(self.proc, sink.push),
     M.mapM(([pull, push]) => {
-      const go: T.Effect<S1 | S, R1 & R, E1 | E, B> = T.foldCauseM_(
+      const go: T.Effect<R1 & R, E1 | E, B> = T.foldCauseM_(
         pull,
-        (c): T.Effect<S1, R1, E1 | E, B> =>
+        (c): T.Effect<R1, E1 | E, B> =>
           pipe(
             C.sequenceCauseOption(c),
             Option.fold(
@@ -40,7 +40,7 @@ export const runManaged = <S1, R1, E1, O, B>(
         (os) =>
           T.foldCauseM_(
             push(Option.some(os)),
-            (c): T.Effect<never, unknown, E1, B> =>
+            (c): T.Effect<unknown, E1, B> =>
               pipe(
                 c,
                 C.map(([_]) => _),

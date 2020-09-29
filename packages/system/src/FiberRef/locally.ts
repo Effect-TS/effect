@@ -11,9 +11,9 @@ import { set } from "./set"
  *
  * Guarantees that fiber data is properly restored via `bracket`.
  */
-export const locally = <A>(value: A) => <S, R, E, B>(use: Effect<S, R, E, B>) => (
+export const locally = <A>(value: A) => <R, E, B>(use: Effect<R, E, B>) => (
   fiberRef: FiberRef<A>
-): Effect<S, R, E, B> =>
+): Effect<R, E, B> =>
   pipe(
     get(fiberRef),
     chain((oldValue) =>

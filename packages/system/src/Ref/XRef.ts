@@ -1,6 +1,6 @@
 import { absolve } from "../Effect/absolve"
 import { chain, effectTotal, succeed } from "../Effect/core"
-import type { Sync, SyncE } from "../Effect/effect"
+import type { IO, UIO } from "../Effect/effect"
 import { fail } from "../Effect/fail"
 import * as E from "../Either"
 import { pipe } from "../Function"
@@ -38,13 +38,13 @@ export interface XRef<EA, EB, A, B> {
   /**
    * Reads the value from the `XRef`.
    */
-  readonly get: SyncE<EB, B>
+  readonly get: IO<EB, B>
 
   /**
    * Writes a new value to the `XRef`, with a guarantee of immediate
    * consistency (at some cost to performance).
    */
-  readonly set: (a: A) => SyncE<EA, void>
+  readonly set: (a: A) => IO<EA, void>
 }
 
 export class Atomic<A> implements XRef<never, never, A, A> {
@@ -77,11 +77,11 @@ export class Atomic<A> implements XRef<never, never, A, A> {
 
   constructor(readonly value: AtomicReference<A>) {}
 
-  get get(): Sync<A> {
+  get get(): UIO<A> {
     return effectTotal(() => this.value.get)
   }
 
-  readonly set = (a: A): Sync<void> => {
+  readonly set = (a: A): UIO<void> => {
     return effectTotal(() => {
       this.value.set(a)
     })
@@ -136,12 +136,12 @@ export class Derived<EA, EB, A, B, S> implements XRef<EA, EB, A, B> {
         )
     )
 
-  readonly get: SyncE<EB, B> = pipe(
+  readonly get: IO<EB, B> = pipe(
     this.value.get,
     chain((s) => E.fold_(this.getEither(s), fail, succeed))
   )
 
-  readonly set: (a: A) => SyncE<EA, void> = (a) =>
+  readonly set: (a: A) => IO<EA, void> = (a) =>
     E.fold_(this.setEither(a), fail, this.value.set)
 }
 
@@ -187,12 +187,12 @@ export class DerivedAll<EA, EB, A, B, S> implements XRef<EA, EB, A, B> {
         )
     )
 
-  readonly get: SyncE<EB, B> = pipe(
+  readonly get: IO<EB, B> = pipe(
     this.value.get,
     chain((a) => E.fold_(this.getEither(a), fail, succeed))
   )
 
-  readonly set: (a: A) => SyncE<EA, void> = (a) =>
+  readonly set: (a: A) => IO<EA, void> = (a) =>
     pipe(
       this.value,
       modify((s) =>

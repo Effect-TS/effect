@@ -9,9 +9,9 @@ import { Stream } from "./definitions"
  * Transforms the full causes of failures emitted by this stream.
  */
 
-export const mapErrorCause = <E, E2>(f: (e: C.Cause<E>) => C.Cause<E2>) => <S, R, O>(
-  self: Stream<S, R, E, O>
-): Stream<S, R, E2, O> =>
+export const mapErrorCause = <E, E2>(f: (e: C.Cause<E>) => C.Cause<E2>) => <R, O>(
+  self: Stream<R, E, O>
+): Stream<R, E2, O> =>
   new Stream(
     pipe(
       self.proc,

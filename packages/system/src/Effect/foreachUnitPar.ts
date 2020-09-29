@@ -1,4 +1,4 @@
-import type { AsyncRE, Effect } from "./effect"
+import type { Effect } from "./effect"
 import { foreachUnitPar_ } from "./foreachUnitPar_"
 
 /**
@@ -13,6 +13,6 @@ import { foreachUnitPar_ } from "./foreachUnitPar_"
  *
  * Additionally, interrupts all effects on any failure.
  */
-export function foreachUnitPar<S, R, E, A>(f: (a: A) => Effect<S, R, E, any>) {
-  return (as: Iterable<A>): AsyncRE<R, E, void> => foreachUnitPar_(as, f)
+export function foreachUnitPar<R, E, A>(f: (a: A) => Effect<R, E, any>) {
+  return (as: Iterable<A>): Effect<R, E, void> => foreachUnitPar_(as, f)
 }

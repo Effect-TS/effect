@@ -8,7 +8,7 @@ import * as P from "../Promise"
 import * as RefM from "../RefM"
 import { provideAll } from "./core"
 import * as Do from "./do"
-import type { AsyncE, Effect, SyncR } from "./effect"
+import type { Effect, IO, RIO } from "./effect"
 import { map } from "./map"
 import { tap } from "./tap"
 import { to } from "./to"
@@ -18,7 +18,7 @@ import { to } from "./to"
  * this effect. Cached results will expire after `timeToLive` duration.
  */
 export function cached(ttl: number) {
-  return <S, R, E, A>(fa: Effect<S, R, E, A>) => cached_(fa, ttl)
+  return <R, E, A>(fa: Effect<R, E, A>) => cached_(fa, ttl)
 }
 
 /**
@@ -26,9 +26,9 @@ export function cached(ttl: number) {
  * this effect. Cached results will expire after `timeToLive` duration.
  */
 export function cached_<S, R, E, A>(
-  fa: Effect<S, R, E, A>,
+  fa: Effect<R, E, A>,
   ttl: number
-): SyncR<R & Has<Clock>, AsyncE<E, A>> {
+): RIO<R & Has<Clock>, IO<E, A>> {
   return pipe(
     Do.do,
     Do.bind("r", () => environment<R & Has<Clock>>()),
@@ -39,7 +39,7 @@ export function cached_<S, R, E, A>(
   )
 }
 
-function compute<S, R, E, A>(fa: Effect<S, R, E, A>, ttl: number, start: number) {
+function compute<R, E, A>(fa: Effect<R, E, A>, ttl: number, start: number) {
   return pipe(
     Do.do,
     Do.bind("p", () => P.make<E, A>()),
@@ -48,8 +48,8 @@ function compute<S, R, E, A>(fa: Effect<S, R, E, A>, ttl: number, start: number)
   )
 }
 
-function get<S, R, E, A>(
-  fa: Effect<S, R, E, A>,
+function get<R, E, A>(
+  fa: Effect<R, E, A>,
   ttl: number,
   cache: RefM.RefM<O.Option<readonly [number, P.Promise<E, A>]>>
 ) {

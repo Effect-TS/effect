@@ -13,25 +13,9 @@ export {
   succeed as succeedNow,
   unit
 } from "../Effect/core"
-export { bind, let, do as of } from "../Effect/do"
+export { bind, do, let } from "../Effect/do"
 export { done } from "../Effect/done"
-export {
-  Async,
-  AsyncE,
-  AsyncR,
-  AsyncRE,
-  Effect,
-  Sync,
-  SyncE,
-  SyncR,
-  SyncRE,
-  _A,
-  _E,
-  _I,
-  _R,
-  _S,
-  _U
-} from "../Effect/effect"
+export { Effect, IO, RIO, UIO, _A, _E, _I, _R, _U } from "../Effect/effect"
 export { environment } from "../Effect/environment"
 export { parallel, parallelN } from "../Effect/ExecutionStrategy"
 export { fail } from "../Effect/fail"

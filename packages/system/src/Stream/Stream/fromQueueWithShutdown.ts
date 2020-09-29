@@ -1,5 +1,5 @@
 import type { XQueue } from "../../Queue"
-import type { AsyncRE } from "./definitions"
+import type { Stream } from "./definitions"
 import { ensuringFirst_ } from "./ensuringFirst"
 import { fromQueue } from "./fromQueue"
 
@@ -8,6 +8,6 @@ import { fromQueue } from "./fromQueue"
  */
 export function fromQueueWithShutdown<R, E, O>(
   queue: XQueue<never, R, unknown, E, never, O>
-): AsyncRE<R, E, O> {
+): Stream<R, E, O> {
   return ensuringFirst_(fromQueue(queue), queue.shutdown)
 }

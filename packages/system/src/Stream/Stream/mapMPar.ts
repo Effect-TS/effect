@@ -14,14 +14,14 @@ import { foreachManaged } from "./foreachManaged"
  * executing up to `n` invocations of `f` concurrently. Transformed elements
  * will be emitted in the original order.
  */
-export const mapMPar = (n: number) => <O, S1, R1, E1, O1>(
-  f: (o: O) => T.Effect<S1, R1, E1, O1>
-) => <S, R, E>(self: Stream<S, R, E, O>): Stream<unknown, R & R1, E | E1, O1> =>
+export const mapMPar = (n: number) => <O, R1, E1, O1>(
+  f: (o: O) => T.Effect<R1, E1, O1>
+) => <R, E>(self: Stream<R, E, O>): Stream<R & R1, E | E1, O1> =>
   new Stream(
     pipe(
       M.do,
       M.bind("out", () =>
-        T.toManaged()(makeBounded<T.Effect<unknown, R1, Option.Option<E1 | E>, O1>>(n))
+        T.toManaged()(makeBounded<T.Effect<R1, Option.Option<E1 | E>, O1>>(n))
       ),
       M.bind("errorSignal", () => T.toManaged()(P.make<E1, never>())),
       M.bind("permits", () => T.toManaged()(Semaphore.makeSemaphore(n))),

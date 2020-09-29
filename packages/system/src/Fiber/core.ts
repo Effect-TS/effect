@@ -1,6 +1,6 @@
 import type * as Cause from "../Cause/core"
 import * as T from "../Effect/core"
-import type { Async, Sync } from "../Effect/effect"
+import type { UIO } from "../Effect/effect"
 import * as Exit from "../Exit/core"
 import type { FiberRef } from "../FiberRef/fiberRef"
 import * as O from "../Option"
@@ -39,12 +39,11 @@ export class Descriptor {
 export type Fiber<E, A> = Runtime<E, A> | Synthetic<E, A>
 
 export interface CommonFiber<E, A> {
-  await: Async<Exit.Exit<E, A>>
-  //children: Sync<Iterable<Runtime<any, any>>>
-  getRef: <K>(fiberRef: FiberRef<K>) => Sync<K>
-  inheritRefs: Async<void>
-  interruptAs(fiberId: FiberID): Async<Exit.Exit<E, A>>
-  poll: Async<O.Option<Exit.Exit<E, A>>>
+  await: UIO<Exit.Exit<E, A>>
+  getRef: <K>(fiberRef: FiberRef<K>) => UIO<K>
+  inheritRefs: UIO<void>
+  interruptAs(fiberId: FiberID): UIO<Exit.Exit<E, A>>
+  poll: UIO<O.Option<Exit.Exit<E, A>>>
 }
 
 export interface Runtime<E, A> extends CommonFiber<E, A> {

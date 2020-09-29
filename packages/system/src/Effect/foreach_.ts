@@ -10,11 +10,8 @@ import { zipWith_ } from "./zipWith_"
  * For a parallel version of this method, see `foreachPar`.
  * If you do not need the results, see `foreachUnit` for a more efficient implementation.
  */
-export function foreach_<A, S, R, E, B>(
-  as: Iterable<A>,
-  f: (a: A) => Effect<S, R, E, B>
-) {
-  return IT.reduce_(as, succeed([]) as Effect<S, R, E, readonly B[]>, (b, a) =>
+export function foreach_<A, R, E, B>(as: Iterable<A>, f: (a: A) => Effect<R, E, B>) {
+  return IT.reduce_(as, succeed([]) as Effect<R, E, readonly B[]>, (b, a) =>
     zipWith_(
       b,
       suspend(() => f(a)),

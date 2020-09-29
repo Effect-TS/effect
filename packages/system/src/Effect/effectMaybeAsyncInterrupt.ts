@@ -6,7 +6,7 @@ import { OneShot } from "../Support/OneShot"
 import type { Canceler } from "./Canceler"
 import type { Cb } from "./Cb"
 import { chain_, effectAsyncOption, effectTotal, succeed, suspend, unit } from "./core"
-import type { AsyncRE, Sync } from "./effect"
+import type { Effect, UIO } from "./effect"
 import { flatten } from "./flatten"
 import { onInterrupt_ } from "./onInterrupt_"
 
@@ -27,7 +27,7 @@ import { onInterrupt_ } from "./onInterrupt_"
  * provide better diagnostics.
  */
 export function effectMaybeAsyncInterrupt<R, E, A>(
-  register: (cb: Cb<AsyncRE<R, E, A>>) => E.Either<Canceler<R>, AsyncRE<R, E, A>>,
+  register: (cb: Cb<Effect<R, E, A>>) => E.Either<Canceler<R>, Effect<R, E, A>>,
   blockingOn: readonly FiberID[] = []
 ) {
   return chain_(
@@ -37,10 +37,10 @@ export function effectMaybeAsyncInterrupt<R, E, A>(
     ([started, cancel]) =>
       onInterrupt_(
         flatten(
-          effectAsyncOption<R, E, AsyncRE<R, E, A>>((k) => {
+          effectAsyncOption<R, E, Effect<R, E, A>>((k) => {
             started.set(true)
 
-            const ret = new AtomicReference<O.Option<Sync<AsyncRE<R, E, A>>>>(O.none)
+            const ret = new AtomicReference<O.Option<UIO<Effect<R, E, A>>>>(O.none)
 
             try {
               const res = register((io) => k(succeed(io)))

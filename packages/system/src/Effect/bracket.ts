@@ -21,12 +21,10 @@ import type { Effect } from "./effect"
  * if the `use` effect succeeds. If this fail-fast behavior is not desired,
  * errors produced by the `release` effect can be caught and ignored.
  */
-export function bracket<A, S1, E1, R1, A1, S2, R2, E2, A2>(
-  use: (a: A) => Effect<S1, R1, E1, A1>,
-  release: (a: A) => Effect<S2, R2, E2, A2>
+export function bracket<A, E1, R1, A1, R2, E2, A2>(
+  use: (a: A) => Effect<R1, E1, A1>,
+  release: (a: A) => Effect<R2, E2, A2>
 ) {
-  return <S, R, E>(
-    acquire: Effect<S, R, E, A>
-  ): Effect<S | S1 | S2, R & R1 & R2, E | E1 | E2, A1> =>
+  return <R, E>(acquire: Effect<R, E, A>): Effect<R & R1 & R2, E | E1 | E2, A1> =>
     bracketExit_(acquire, use, release)
 }

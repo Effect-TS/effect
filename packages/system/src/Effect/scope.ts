@@ -4,7 +4,7 @@ import type { Runtime } from "../Fiber/core"
 import * as O from "../Option"
 import type { Scope } from "../Scope"
 import { globalScope } from "../Scope"
-import type { AsyncR, Effect } from "./effect"
+import type { Effect, RIO } from "./effect"
 import { IFork, IGetForkScope, IRaceWith } from "./primitives"
 
 /**
@@ -12,9 +12,9 @@ import { IFork, IGetForkScope, IRaceWith } from "./primitives"
  * new fiber is attached to the global scope, when the fiber executing the
  * returned effect terminates, the forked fiber will continue running.
  */
-export function forkDaemon<S, R, E, A>(
-  value: Effect<S, R, E, A>
-): AsyncR<R, Fiber.FiberContext<E, A>> {
+export function forkDaemon<R, E, A>(
+  value: Effect<R, E, A>
+): RIO<R, Fiber.FiberContext<E, A>> {
   return new IFork(value, O.some(globalScope))
 }
 
@@ -30,15 +30,15 @@ export function forkDaemon<S, R, E, A>(
  * fiber that forks the child exits, the child will be interrupted.
  */
 export function forkIn(scope: Scope<Exit.Exit<any, any>>) {
-  return <S, R, E, A>(value: Effect<S, R, E, A>): AsyncR<R, Runtime<E, A>> =>
+  return <R, E, A>(value: Effect<R, E, A>): RIO<R, Runtime<E, A>> =>
     new IFork(value, O.some(scope))
 }
 
 /**
  * Retrieves the scope that will be used to supervise forked effects.
  */
-export function forkScopeWith<S, R, E, A>(
-  f: (_: Scope<Exit.Exit<any, any>>) => Effect<S, R, E, A>
+export function forkScopeWith<R, E, A>(
+  f: (_: Scope<Exit.Exit<any, any>>) => Effect<R, E, A>
 ) {
   return new IGetForkScope(f)
 }
@@ -47,18 +47,12 @@ export function forkScopeWith<S, R, E, A>(
  * Returns an effect that races this effect with the specified effect, calling
  * the specified finisher as soon as one result or the other has been computed.
  */
-export function raceWith<S, R, E, A, S1, R1, E1, A1, S2, R2, E2, A2, S3, R3, E3, A3>(
-  left: Effect<S, R, E, A>,
-  right: Effect<S1, R1, E1, A1>,
-  leftWins: (
-    exit: Exit.Exit<E, A>,
-    fiber: Fiber.Fiber<E1, A1>
-  ) => Effect<S2, R2, E2, A2>,
-  rightWins: (
-    exit: Exit.Exit<E1, A1>,
-    fiber: Fiber.Fiber<E, A>
-  ) => Effect<S3, R3, E3, A3>,
+export function raceWith<R, E, A, R1, E1, A1, R2, E2, A2, R3, E3, A3>(
+  left: Effect<R, E, A>,
+  right: Effect<R1, E1, A1>,
+  leftWins: (exit: Exit.Exit<E, A>, fiber: Fiber.Fiber<E1, A1>) => Effect<R2, E2, A2>,
+  rightWins: (exit: Exit.Exit<E1, A1>, fiber: Fiber.Fiber<E, A>) => Effect<R3, E3, A3>,
   scope: O.Option<Scope<Exit.Exit<any, any>>> = O.none
-): Effect<unknown, R & R1 & R2 & R3, E2 | E3, A2 | A3> {
+): Effect<R & R1 & R2 & R3, E2 | E3, A2 | A3> {
   return new IRaceWith(left, right, leftWins, rightWins, scope)
 }

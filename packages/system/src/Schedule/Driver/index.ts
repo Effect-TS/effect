@@ -2,10 +2,10 @@ import type { NoSuchElementException } from "../../GlobalExceptions"
 import type * as O from "../../Option"
 import type * as T from "../effect"
 
-export class Driver<S, Env, Inp, Out> {
+export class Driver<Env, Inp, Out> {
   constructor(
-    readonly next: (inp: Inp) => T.Effect<S, Env, O.Option<never>, Out>,
-    readonly last: T.SyncE<NoSuchElementException, Out>,
-    readonly reset: T.Sync<void>
+    readonly next: (inp: Inp) => T.Effect<Env, O.Option<never>, Out>,
+    readonly last: T.IO<NoSuchElementException, Out>,
+    readonly reset: T.UIO<void>
   ) {}
 }

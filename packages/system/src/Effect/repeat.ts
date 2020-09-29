@@ -19,17 +19,15 @@ import { orDie } from "./orDie"
  * `io.repeat(Schedule.once)` yields an effect that executes `io`, and then
  * if that succeeds, executes `io` an additional time.
  */
-export const repeatOrElseEither_ = <S, R, E, S1, Env1, A, B, S2, R2, E2, C>(
-  self: Effect<S, R, E, A>,
-  schedule: S.Schedule<S1, Env1, A, B>,
-  orElse: (_: E, __: O.Option<B>) => Effect<S2, R2, E2, C>
-): Effect<S | S1 | S2, R & Env1 & R2 & HasClock, E2, E.Either<C, B>> => {
+export const repeatOrElseEither_ = <R, E, Env1, A, B, R2, E2, C>(
+  self: Effect<R, E, A>,
+  schedule: S.Schedule<Env1, A, B>,
+  orElse: (_: E, __: O.Option<B>) => Effect<R2, E2, C>
+): Effect<R & Env1 & R2 & HasClock, E2, E.Either<C, B>> => {
   return pipe(
     S.driver(schedule),
     chain((driver) => {
-      function loop(
-        a: A
-      ): Effect<S | S1 | S2, Env1 & HasClock & R & R2, E2, E.Either<C, B>> {
+      function loop(a: A): Effect<Env1 & HasClock & R & R2, E2, E.Either<C, B>> {
         return pipe(
           driver.next(a),
           foldM(
@@ -66,11 +64,11 @@ export const repeatOrElseEither_ = <S, R, E, S1, Env1, A, B, S2, R2, E2, C>(
  * `io.repeat(Schedule.once)` yields an effect that executes `io`, and then
  * if that succeeds, executes `io` an additional time.
  */
-export function repeatOrElse_<S, R, E, A, SS, SR, B, S2, R2, E2, C>(
-  self: Effect<S, R, E, A>,
-  schedule: S.Schedule<SS, SR, A, B>,
-  orElse: (_: E, __: O.Option<B>) => Effect<S2, R2, E2, C>
-): Effect<S | SS | S2, R & SR & R2 & HasClock, E2, C | B> {
+export function repeatOrElse_<R, E, A, SR, B, R2, E2, C>(
+  self: Effect<R, E, A>,
+  schedule: S.Schedule<SR, A, B>,
+  orElse: (_: E, __: O.Option<B>) => Effect<R2, E2, C>
+): Effect<R & SR & R2 & HasClock, E2, C | B> {
   return map_(repeatOrElseEither_(self, schedule, orElse), E.merge)
 }
 
@@ -81,10 +79,10 @@ export function repeatOrElse_<S, R, E, A, SS, SR, B, S2, R2, E2, C>(
  * effect that executes `io`, and then if that succeeds, executes `io` an
  * additional time.
  */
-export function repeat_<S, R, E, A, SS, SR, B>(
-  self: Effect<S, R, E, A>,
-  schedule: S.Schedule<SS, SR, A, B>
-): Effect<S | SS, R & SR & HasClock, E, B> {
+export function repeat_<R, E, A, SR, B>(
+  self: Effect<R, E, A>,
+  schedule: S.Schedule<SR, A, B>
+): Effect<R & SR & HasClock, E, B> {
   return repeatOrElse_(self, schedule, (e) => fail(e))
 }
 
@@ -95,7 +93,7 @@ export function repeat_<S, R, E, A, SS, SR, B>(
  * effect that executes `io`, and then if that succeeds, executes `io` an
  * additional time.
  */
-export function repeat<A, SS, SR, B>(schedule: S.Schedule<SS, SR, A, B>) {
-  return <S, R, E>(self: Effect<S, R, E, A>): Effect<S | SS, R & SR & HasClock, E, B> =>
+export function repeat<A, SR, B>(schedule: S.Schedule<SR, A, B>) {
+  return <R, E>(self: Effect<R, E, A>): Effect<R & SR & HasClock, E, B> =>
     repeatOrElse_(self, schedule, (e) => fail(e))
 }

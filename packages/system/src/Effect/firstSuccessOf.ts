@@ -7,9 +7,7 @@ import { orElse_ } from "./orElse"
  * Returns an effect that yields the value of the first
  * effect to succeed.
  */
-export function firstSuccessOf<S, R, E, A>(
-  effects: NEA.NonEmptyArray<Effect<S, R, E, A>>
-) {
+export function firstSuccessOf<R, E, A>(effects: NEA.NonEmptyArray<Effect<R, E, A>>) {
   const first = NEA.head(effects)
   const rest = NEA.tail(effects)
 

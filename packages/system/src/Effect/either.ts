@@ -1,6 +1,6 @@
 import * as E from "../Either"
 import { succeed } from "./core"
-import type { Effect } from "./effect"
+import type { Effect, RIO } from "./effect"
 import { foldM_ } from "./foldM_"
 
 /**
@@ -13,9 +13,7 @@ import { foldM_ } from "./foldM_"
  * The error parameter of the returned is `never`, since it is
  * guaranteed the effect does not model failure.
  */
-export function either<S, R, E, A>(
-  self: Effect<S, R, E, A>
-): Effect<S, R, never, E.Either<E, A>> {
+export function either<R, E, A>(self: Effect<R, E, A>): RIO<R, E.Either<E, A>> {
   return foldM_(
     self,
     (e) => succeed(E.left(e)),

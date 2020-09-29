@@ -18,21 +18,10 @@ import type { Stream } from "./definitions"
  * By default pull is executed in parallel to preserve async semanthics, see `zipWithSeq` for
  * a sequential alternative
  */
-export function zipWith<O, O2, O3, S1, R1, E1>(
-  that: Stream<S1, R1, E1, O2>,
-  f: (a: O, a1: O2) => O3,
-  ps: "seq"
-): <S, R, E>(self: Stream<S, R, E, O>) => Stream<S | S1, R & R1, E1 | E, O3>
-export function zipWith<O, O2, O3, S1, R1, E1>(
-  that: Stream<S1, R1, E1, O2>,
-  f: (a: O, a1: O2) => O3,
-  ps?: "par" | "seq"
-): <S, R, E>(self: Stream<S, R, E, O>) => Stream<unknown, R & R1, E1 | E, O3>
-export function zipWith<O, O2, O3, S1, R1, E1>(
-  that: Stream<S1, R1, E1, O2>,
-  f: (a: O, a1: O2) => O3,
-  ps: "par" | "seq" = "par"
-): <S, R, E>(self: Stream<S, R, E, O>) => Stream<unknown, R & R1, E1 | E, O3> {
+export function zipWith<O, O2, O3, R1, E1>(
+  that: Stream<R1, E1, O2>,
+  f: (a: O, a1: O2) => O3
+): <R, E>(self: Stream<R, E, O>) => Stream<R & R1, E1 | E, O3> {
   type End = { _tag: "End" }
   type RightDone<W2> = { _tag: "RightDone"; excessR: NA.NonEmptyArray<W2> }
   type LeftDone<W1> = { _tag: "LeftDone"; excessL: NA.NonEmptyArray<W1> }
@@ -123,9 +112,7 @@ export function zipWith<O, O2, O3, S1, R1, E1>(
         return pipe(
           p1,
           T.optional,
-          ps === "par"
-            ? T.zipWithPar(T.optional(p2), (l, r) => handleSuccess(l, r, st.excess))
-            : T.zipWith(T.optional(p2), (l, r) => handleSuccess(l, r, st.excess)),
+          T.zipWithPar(T.optional(p2), (l, r) => handleSuccess(l, r, st.excess)),
           T.catchAllCause((e) => T.succeedNow(Exit.halt(pipe(e, C.map(Option.some)))))
         )
       }

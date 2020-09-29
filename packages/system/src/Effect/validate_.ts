@@ -4,12 +4,7 @@ import type * as NA from "../NonEmptyArray"
 import { absolve } from "./absolve"
 import type { Effect } from "./effect"
 import { either } from "./either"
-import type {
-  ExecutionStrategy,
-  Parallel,
-  ParallelN,
-  Sequential
-} from "./ExecutionStrategy"
+import type { ExecutionStrategy } from "./ExecutionStrategy"
 import { foreach_ } from "./foreach_"
 import { foreachExec_ } from "./foreachExec_"
 import { foreachPar_ } from "./foreachPar_"
@@ -23,10 +18,7 @@ import { map_ } from "./map_"
  * This combinator is lossy meaning that if there are errors all successes
  * will be lost.
  */
-export function validate_<A, S, R, E, B>(
-  as: Iterable<A>,
-  f: (a: A) => Effect<S, R, E, B>
-) {
+export function validate_<A, R, E, B>(as: Iterable<A>, f: (a: A) => Effect<R, E, B>) {
   return absolve(
     map_(
       foreach_(as, (a) => either(f(a))),
@@ -42,9 +34,9 @@ export function validate_<A, S, R, E, B>(
  * This combinator is lossy meaning that if there are errors all successes
  * will be lost.
  */
-export function validatePar_<A, S, R, E, B>(
+export function validatePar_<A, R, E, B>(
   as: Iterable<A>,
-  f: (a: A) => Effect<S, R, E, B>
+  f: (a: A) => Effect<R, E, B>
 ) {
   return absolve(
     map_(
@@ -62,7 +54,7 @@ export function validatePar_<A, S, R, E, B>(
  * will be lost.
  */
 export function validateParN_(n: number) {
-  return <A, S, R, E, B>(as: Iterable<A>, f: (a: A) => Effect<S, R, E, B>) =>
+  return <A, R, E, B>(as: Iterable<A>, f: (a: A) => Effect<R, E, B>) =>
     absolve(
       map_(
         foreachParN_(n)(as, (a) => either(f(a))),
@@ -101,36 +93,11 @@ function mergeExits<E, B>(): (
  * This combinator is lossy meaning that if there are errors all successes
  * will be lost.
  */
-export function validateExec_<S, R, E, A, B>(
-  es: Sequential,
-  as: Iterable<A>,
-  f: (a: A) => Effect<S, R, E, B>
-): Effect<S, R, NA.NonEmptyArray<E>, A.Array<B>>
-export function validateExec_<S, R, E, A, B>(
-  es: Parallel,
-  as: Iterable<A>,
-  f: (a: A) => Effect<S, R, E, B>
-): Effect<unknown, R, NA.NonEmptyArray<E>, A.Array<B>>
-export function validateExec_<S, R, E, A, B>(
-  es: ParallelN,
-  as: Iterable<A>,
-  f: (a: A) => Effect<S, R, E, B>
-): Effect<unknown, R, NA.NonEmptyArray<E>, A.Array<B>>
-export function validateExec_<S, R, E, A, B>(
+export function validateExec_<A, R, E, B>(
   es: ExecutionStrategy,
   as: Iterable<A>,
-  f: (a: A) => Effect<S, R, E, B>
-): Effect<unknown, R, NA.NonEmptyArray<E>, A.Array<B>>
-export function validateExec_<S, R, E, A, B>(
-  es: ExecutionStrategy,
-  as: Iterable<A>,
-  f: (a: A) => Effect<S, R, E, B>
-): Effect<unknown, R, NA.NonEmptyArray<E>, A.Array<B>>
-export function validateExec_<A, S, R, E, B>(
-  es: ExecutionStrategy,
-  as: Iterable<A>,
-  f: (a: A) => Effect<S, R, E, B>
-): Effect<unknown, R, NA.NonEmptyArray<E>, A.Array<B>> {
+  f: (a: A) => Effect<R, E, B>
+): Effect<R, NA.NonEmptyArray<E>, A.Array<B>> {
   return absolve(
     map_(
       foreachExec_(es, as, (a) => either(f(a))),

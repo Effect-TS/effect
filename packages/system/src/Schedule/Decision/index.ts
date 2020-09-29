@@ -1,13 +1,13 @@
 import * as T from "../effect"
 
-export type Decision<S, Env, Inp, Out> = Done<Out> | Continue<S, Env, Inp, Out>
+export type Decision<Env, Inp, Out> = Done<Out> | Continue<Env, Inp, Out>
 
 export type Interval = number
 
-export type StepFunction<S, Env, Inp, Out> = (
+export type StepFunction<Env, Inp, Out> = (
   interval: Interval,
   inp: Inp
-) => T.Effect<S, Env, never, Decision<S, Env, Inp, Out>>
+) => T.Effect<Env, never, Decision<Env, Inp, Out>>
 
 export class Done<Out> {
   readonly _tag = "Done"
@@ -15,29 +15,29 @@ export class Done<Out> {
   constructor(readonly out: Out) {}
 }
 
-export class Continue<S, Env, Inp, Out> {
+export class Continue<Env, Inp, Out> {
   readonly _tag = "Continue"
 
   constructor(
     readonly out: Out,
     readonly interval: Interval,
-    readonly next: StepFunction<S, Env, Inp, Out>
+    readonly next: StepFunction<Env, Inp, Out>
   ) {}
 }
 
-export function makeDone<Out>(o: Out): Decision<never, unknown, unknown, Out> {
+export function makeDone<Out>(o: Out): Decision<unknown, unknown, Out> {
   return new Done(o)
 }
 
-export function makeContinue<S, Env, Inp, Out>(
+export function makeContinue<Env, Inp, Out>(
   out: Out,
   interval: Interval,
-  next: StepFunction<S, Env, Inp, Out>
-): Decision<S, Env, Inp, Out> {
+  next: StepFunction<Env, Inp, Out>
+): Decision<Env, Inp, Out> {
   return new Continue(out, interval, next)
 }
 
-export function toDone<S, Env, Inp, Out>(self: Decision<S, Env, Inp, Out>): Done<Out> {
+export function toDone<Env, Inp, Out>(self: Decision<Env, Inp, Out>): Done<Out> {
   switch (self._tag) {
     case "Done": {
       return self
@@ -49,9 +49,7 @@ export function toDone<S, Env, Inp, Out>(self: Decision<S, Env, Inp, Out>): Done
 }
 
 export function map<Out, Out1>(f: (o: Out) => Out1) {
-  return <S, Env, Inp>(
-    self: Decision<S, Env, Inp, Out>
-  ): Decision<S, Env, Inp, Out1> => {
+  return <Env, Inp>(self: Decision<Env, Inp, Out>): Decision<Env, Inp, Out1> => {
     switch (self._tag) {
       case "Done": {
         return new Done(f(self.out))
@@ -66,9 +64,7 @@ export function map<Out, Out1>(f: (o: Out) => Out1) {
 }
 
 export function contramap<Inp, Inp1>(f: (i: Inp1) => Inp) {
-  return <S, Env, Out>(
-    self: Decision<S, Env, Inp, Out>
-  ): Decision<S, Env, Inp1, Out> => {
+  return <Env, Out>(self: Decision<Env, Inp, Out>): Decision<Env, Inp1, Out> => {
     switch (self._tag) {
       case "Done": {
         return self
@@ -83,11 +79,10 @@ export function contramap<Inp, Inp1>(f: (i: Inp1) => Inp) {
 }
 
 export function as<Out1>(o: Out1) {
-  return <S, Env, Inp, Out>(
-    self: Decision<S, Env, Inp, Out>
-  ): Decision<S, Env, Inp, Out1> => map(() => o)(self)
+  return <Env, Inp, Out>(self: Decision<Env, Inp, Out>): Decision<Env, Inp, Out1> =>
+    map(() => o)(self)
 }
 
-export function done<A>(a: A): StepFunction<never, unknown, unknown, A> {
+export function done<A>(a: A): StepFunction<unknown, unknown, A> {
   return () => T.succeed(new Done(a))
 }

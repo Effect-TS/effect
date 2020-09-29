@@ -6,8 +6,6 @@ import { fromEffect } from "./fromEffect"
 /**
  * Creates a stream produced from an effect
  */
-export function unwrap<S, R, E, A>(
-  fa: Effect<S, R, E, Stream<S, R, E, A>>
-): Stream<S, R, E, A> {
+export function unwrap<R, E, A>(fa: Effect<R, E, Stream<R, E, A>>): Stream<R, E, A> {
   return flatten(fromEffect(fa))
 }

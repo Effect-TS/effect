@@ -10,9 +10,9 @@ import { Stream } from "./definitions"
 /**
  * Creates a stream from an effect producing chunks of `A` values until it fails with None.
  */
-export const repeatEffectChunkOption = <S, R, E, A>(
-  fa: T.Effect<S, R, Option.Option<E>, Array.Array<A>>
-): Stream<S, R, E, A> =>
+export const repeatEffectChunkOption = <R, E, A>(
+  fa: T.Effect<R, Option.Option<E>, Array.Array<A>>
+): Stream<R, E, A> =>
   new Stream(
     pipe(
       M.do,

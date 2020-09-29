@@ -1,5 +1,5 @@
 import { effectTotal } from "../Effect/core"
-import type { AsyncE, Sync } from "../Effect/effect"
+import type { IO, UIO } from "../Effect/effect"
 import type { Promise } from "./promise"
 import { Done } from "./state"
 
@@ -16,9 +16,9 @@ import { Done } from "./state"
  * completes the promise with the result of an effect see
  * `Promise.complete`.
  */
-export const completeWith = <E, A>(io: AsyncE<E, A>) => (
+export const completeWith = <E, A>(io: IO<E, A>) => (
   promise: Promise<E, A>
-): Sync<boolean> =>
+): UIO<boolean> =>
   effectTotal(() => {
     const state = promise.state.get
 

@@ -20,7 +20,7 @@ import type { Layer } from "./Layer"
 export class MemoMap {
   constructor(
     readonly ref: RM.RefM<
-      ReadonlyMap<Layer<any, any, any, any>, readonly [T.AsyncE<any, any>, Finalizer]>
+      ReadonlyMap<Layer<any, any, any>, readonly [T.IO<any, any>, Finalizer]>
     >
   ) {}
 
@@ -29,8 +29,8 @@ export class MemoMap {
    * returns it. Otherwise, obtains the dependency, stores it in the memo map,
    * and adds a finalizer to the outer `Managed`.
    */
-  getOrElseMemoize = <S, R, E, A>(layer: Layer<S, R, E, A>) =>
-    new Managed<unknown, R, E, A>(
+  getOrElseMemoize = <R, E, A>(layer: Layer<R, E, A>) =>
+    new Managed<R, E, A>(
       pipe(
         this.ref,
         RM.modify((m) => {
@@ -39,9 +39,9 @@ export class MemoMap {
           if (inMap) {
             const [acquire, release] = inMap
 
-            const cached = T.accessM(([_, rm]: readonly [R, ReleaseMap<unknown>]) =>
+            const cached = T.accessM(([_, rm]: readonly [R, ReleaseMap]) =>
               pipe(
-                acquire as T.AsyncE<E, A>,
+                acquire as T.IO<E, A>,
                 T.onExit((ex) => {
                   switch (ex._tag) {
                     case "Success": {
@@ -62,22 +62,18 @@ export class MemoMap {
               T.do,
               T.bind("observers", () => R.makeRef(0)),
               T.bind("promise", () => P.make<E, A>()),
-              T.bind("finalizerRef", () =>
-                R.makeRef<Finalizer>(RelMap.noopFinalizer())
-              ),
+              T.bind("finalizerRef", () => R.makeRef<Finalizer>(RelMap.noopFinalizer)),
               T.let("resource", ({ finalizerRef, observers, promise }) =>
                 T.uninterruptibleMask(({ restore }) =>
                   pipe(
                     T.do,
-                    T.bind("env", () =>
-                      T.environment<readonly [R, ReleaseMap<unknown>]>()
-                    ),
+                    T.bind("env", () => T.environment<readonly [R, ReleaseMap]>()),
                     T.let("a", ({ env: [a] }) => a),
                     T.let(
                       "outerReleaseMap",
                       ({ env: [_, outerReleaseMap] }) => outerReleaseMap
                     ),
-                    T.bind("innerReleaseMap", () => RelMap.makeReleaseMap<unknown>()),
+                    T.bind("innerReleaseMap", () => RelMap.makeReleaseMap),
                     T.bind("tp", ({ a, innerReleaseMap, outerReleaseMap }) =>
                       restore(
                         pipe(
@@ -94,7 +90,7 @@ export class MemoMap {
                                       RelMap.releaseAll(
                                         e,
                                         sequential
-                                      )(innerReleaseMap) as T.AsyncE<E, any>
+                                      )(innerReleaseMap) as T.IO<E, any>
                                   ),
                                   T.chain(() => T.halt(e.cause))
                                 )
@@ -113,7 +109,7 @@ export class MemoMap {
                                         RelMap.releaseAll(
                                           e,
                                           sequential
-                                        )(innerReleaseMap) as T.Async<any>
+                                        )(innerReleaseMap) as T.UIO<any>
                                       )
                                     )
                                   ),
@@ -165,19 +161,18 @@ export class MemoMap {
                       })
                     ),
                     (e: Exit<any, any>) => T.chain_(finalizerRef.get, (f) => f(e))
-                  ] as readonly [T.AsyncE<any, any>, Finalizer]
+                  ] as readonly [T.IO<any, any>, Finalizer]
               ),
               T.map(({ memoized, resource }) =>
                 tuple(
                   resource as T.Effect<
-                    unknown,
-                    readonly [R, ReleaseMap<S>],
+                    readonly [R, ReleaseMap],
                     E,
                     readonly [Finalizer, A]
                   >,
                   insert(layer, memoized)(m) as ReadonlyMap<
-                    Layer<any, any, any, any>,
-                    readonly [T.AsyncE<any, any>, Finalizer]
+                    Layer<any, any, any>,
+                    readonly [T.IO<any, any>, Finalizer]
                   >
                 )
               )

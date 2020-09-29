@@ -9,10 +9,10 @@ import { forkDaemon } from "./scope"
  * Fork the effect into a separate fiber wrapping it in a bracket.
  * Acquisition will fork and release will interrupt the fiber.
  */
-export function bracketFiber<S2, R2, E2, A2, E, A>(
-  use: (f: Runtime<E, A>) => Effect<S2, R2, E2, A2>
+export function bracketFiber<R2, E2, A2, E, A>(
+  use: (f: Runtime<E, A>) => Effect<R2, E2, A2>
 ) {
-  return <S, R>(effect: Effect<S, R, E, A>) =>
+  return <R>(effect: Effect<R, E, A>) =>
     bracket_(
       forkDaemon(effect),
       (f) => chain_(fiberId(), (id) => f.interruptAs(id)),

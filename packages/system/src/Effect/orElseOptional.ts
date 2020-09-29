@@ -9,10 +9,8 @@ import { fail } from "./fail"
  * fails with the `None` value, in which case it will produce the value of
  * the specified effect.
  */
-export function orElseOptional<S2, R2, E2, A2>(
-  that: () => Effect<S2, R2, O.Option<E2>, A2>
-) {
-  return <S, R, E, A>(self: Effect<S, R, O.Option<E>, A>) => orElseOptional_(self, that)
+export function orElseOptional<R2, E2, A2>(that: () => Effect<R2, O.Option<E2>, A2>) {
+  return <R, E, A>(self: Effect<R, O.Option<E>, A>) => orElseOptional_(self, that)
 }
 
 /**
@@ -20,13 +18,13 @@ export function orElseOptional<S2, R2, E2, A2>(
  * fails with the `None` value, in which case it will produce the value of
  * the specified effect.
  */
-export function orElseOptional_<S, R, E, A, S2, R2, E2, A2>(
-  self: Effect<S, R, O.Option<E>, A>,
-  that: () => Effect<S2, R2, O.Option<E2>, A2>
-): Effect<S | S2, R & R2, O.Option<E | E2>, A | A2> {
+export function orElseOptional_<R, E, A, R2, E2, A2>(
+  self: Effect<R, O.Option<E>, A>,
+  that: () => Effect<R2, O.Option<E2>, A2>
+): Effect<R & R2, O.Option<E | E2>, A | A2> {
   return pipe(
     self,
-    catchAll<S2, R2, O.Option<E | E2>, O.Option<E | E2>, A2>(
+    catchAll<R2, O.Option<E | E2>, O.Option<E | E2>, A2>(
       O.fold(that, flow(O.some, fail))
     )
   )

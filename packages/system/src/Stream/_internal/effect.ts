@@ -18,18 +18,7 @@ export {
 export { die } from "../../Effect/die"
 export { bind, let, merge, do } from "../../Effect/do"
 export { done } from "../../Effect/done"
-export {
-  Effect,
-  SyncE,
-  _A,
-  _E,
-  _I,
-  _R,
-  _S,
-  _U,
-  AsyncRE,
-  Async
-} from "../../Effect/effect"
+export { Effect, IO, _A, _E, _I, _R, _U, UIO } from "../../Effect/effect"
 export { sequential } from "../../Effect/ExecutionStrategy"
 export { fail } from "../../Effect/fail"
 export { flatten } from "../../Effect/flatten"

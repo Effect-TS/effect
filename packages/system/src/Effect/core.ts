@@ -4,7 +4,7 @@ import type { Descriptor, InterruptStatus } from "../Fiber/core"
 import type { FiberID } from "../Fiber/id"
 import * as O from "../Option"
 import type { Cb } from "./Cb"
-import type { AsyncR, AsyncRE, Effect, Sync, SyncE, SyncR } from "./effect"
+import type { Effect, IO, RIO, UIO } from "./effect"
 import {
   ICheckInterrupt,
   IDescriptor,
@@ -27,16 +27,16 @@ import {
 /**
  * Effectfully accesses the environment of the effect.
  */
-export function access<R0, A>(f: (_: R0) => A): SyncR<R0, A> {
+export function access<R0, A>(f: (_: R0) => A): RIO<R0, A> {
   return new IRead((_: R0) => new ISucceed(f(_)))
 }
 
 /**
  * Effectfully accesses the environment of the effect.
  */
-export function accessM<R0, S, R, E, A>(
-  f: (_: R0) => Effect<S, R, E, A>
-): Effect<S, R & R0, E, A> {
+export function accessM<R0, R, E, A>(
+  f: (_: R0) => Effect<R, E, A>
+): Effect<R & R0, E, A> {
   return new IRead(f)
 }
 
@@ -45,8 +45,8 @@ export function accessM<R0, S, R, E, A>(
  * the passing of its value to the specified continuation function `f`,
  * followed by the effect that it returns.
  */
-export function chain<S1, R1, E1, A1, A>(f: (a: A) => Effect<S1, R1, E1, A1>) {
-  return <S, R, E>(val: Effect<S, R, E, A>): Effect<S | S1, R & R1, E | E1, A1> =>
+export function chain<R1, E1, A1, A>(f: (a: A) => Effect<R1, E1, A1>) {
+  return <R, E>(val: Effect<R, E, A>): Effect<R & R1, E | E1, A1> =>
     new IFlatMap(val, f)
 }
 
@@ -55,10 +55,10 @@ export function chain<S1, R1, E1, A1, A>(f: (a: A) => Effect<S1, R1, E1, A1>) {
  * the passing of its value to the specified continuation function `f`,
  * followed by the effect that it returns.
  */
-export function chain_<S, R, E, A, S1, R1, E1, A1>(
-  val: Effect<S, R, E, A>,
-  f: (a: A) => Effect<S1, R1, E1, A1>
-): Effect<S | S1, R & R1, E | E1, A1> {
+export function chain_<R, E, A, R1, E1, A1>(
+  val: Effect<R, E, A>,
+  f: (a: A) => Effect<R1, E1, A1>
+): Effect<R & R1, E | E1, A1> {
   return new IFlatMap(val, f)
 }
 
@@ -66,9 +66,9 @@ export function chain_<S, R, E, A, S1, R1, E1, A1>(
  * Constructs an effect based on information about the current fiber, such as
  * its identity.
  */
-export function checkDescriptor<S, R, E, A>(
-  f: (_: Descriptor) => Effect<S, R, E, A>
-): Effect<S, R, E, A> {
+export function checkDescriptor<R, E, A>(
+  f: (_: Descriptor) => Effect<R, E, A>
+): Effect<R, E, A> {
   return new IDescriptor(f)
 }
 
@@ -76,9 +76,9 @@ export function checkDescriptor<S, R, E, A>(
  * Checks the interrupt status, and produces the effect returned by the
  * specified callback.
  */
-export function checkInterruptible<S, R, E, A>(
-  f: (_: InterruptStatus) => Effect<S, R, E, A>
-): Effect<S, R, E, A> {
+export function checkInterruptible<R, E, A>(
+  f: (_: InterruptStatus) => Effect<R, E, A>
+): Effect<R, E, A> {
   return new ICheckInterrupt(f)
 }
 
@@ -93,9 +93,9 @@ export function checkInterruptible<S, R, E, A>(
  * provide better diagnostics.
  */
 export function effectAsync<R, E, A>(
-  register: (cb: Cb<AsyncRE<R, E, A>>) => void,
+  register: (cb: Cb<Effect<R, E, A>>) => void,
   blockingOn: readonly FiberID[] = []
-): AsyncRE<R, E, A> {
+): Effect<R, E, A> {
   return new IEffectAsync((cb) => {
     register(cb)
     return O.none
@@ -114,9 +114,9 @@ export function effectAsync<R, E, A>(
  * provide better diagnostics.
  */
 export function effectAsyncOption<R, E, A>(
-  register: (cb: (_: AsyncRE<R, E, A>) => void) => O.Option<AsyncRE<R, E, A>>,
+  register: (cb: (_: Effect<R, E, A>) => void) => O.Option<Effect<R, E, A>>,
   blockingOn: readonly FiberID[] = []
-): AsyncRE<R, E, A> {
+): Effect<R, E, A> {
   return new IEffectAsync(register, blockingOn)
 }
 
@@ -125,37 +125,35 @@ export function effectAsyncOption<R, E, A>(
  * thrown exceptions into typed failed effects creating with `halt`.
  */
 export function effectPartial<E>(onThrow: (u: unknown) => E) {
-  return <A>(effect: () => A): SyncE<E, A> => new IEffectPartial(effect, onThrow)
+  return <A>(effect: () => A): IO<E, A> => new IEffectPartial(effect, onThrow)
 }
 
 /**
  * Imports a synchronous side-effect into a pure value
  */
-export function effectTotal<A>(effect: () => A): Sync<A> {
+export function effectTotal<A>(effect: () => A): UIO<A> {
   return new IEffectTotal(effect)
 }
 
 /**
  * A more powerful version of `foldM` that allows recovering from any kind of failure except interruptions.
  */
-export function foldCauseM<E, A, S2, R2, E2, A2, S3, R3, E3, A3>(
-  failure: (cause: Cause<E>) => Effect<S2, R2, E2, A2>,
-  success: (a: A) => Effect<S3, R3, E3, A3>
+export function foldCauseM<E, A, R2, E2, A2, R3, E3, A3>(
+  failure: (cause: Cause<E>) => Effect<R2, E2, A2>,
+  success: (a: A) => Effect<R3, E3, A3>
 ) {
-  return <S, R>(
-    value: Effect<S, R, E, A>
-  ): Effect<S | S2 | S3, R & R2 & R3, E2 | E3, A2 | A3> =>
+  return <R>(value: Effect<R, E, A>): Effect<R & R2 & R3, E2 | E3, A2 | A3> =>
     new IFold(value, failure, success)
 }
 
 /**
  * A more powerful version of `foldM` that allows recovering from any kind of failure except interruptions.
  */
-export function foldCauseM_<S, R, E, A, S2, R2, E2, A2, S3, R3, E3, A3>(
-  value: Effect<S, R, E, A>,
-  failure: (cause: Cause<E>) => Effect<S2, R2, E2, A2>,
-  success: (a: A) => Effect<S3, R3, E3, A3>
-): Effect<S | S2 | S3, R & R2 & R3, E2 | E3, A2 | A3> {
+export function foldCauseM_<R, E, A, R2, E2, A2, R3, E3, A3>(
+  value: Effect<R, E, A>,
+  failure: (cause: Cause<E>) => Effect<R2, E2, A2>,
+  success: (a: A) => Effect<R3, E3, A3>
+): Effect<R & R2 & R3, E2 | E3, A2 | A3> {
   return new IFold(value, failure, success)
 }
 
@@ -170,16 +168,16 @@ export function foldCauseM_<S, R, E, A, S2, R2, E2, A2, S3, R3, E3, A3>(
  * The fiber is forked with interrupt supervision mode, meaning that when the
  * fiber that forks the child exits, the child will be interrupted.
  */
-export function fork<S, R, E, A>(
-  value: Effect<S, R, E, A>
-): AsyncR<R, Fiber.FiberContext<E, A>> {
+export function fork<R, E, A>(
+  value: Effect<R, E, A>
+): RIO<R, Fiber.FiberContext<E, A>> {
   return new IFork(value, O.none)
 }
 
 /**
  * Returns an effect that models failure with the specified `Cause`.
  */
-export function halt<E>(cause: Cause<E>): SyncE<E, never> {
+export function halt<E>(cause: Cause<E>): IO<E, never> {
   return new IFail(cause)
 }
 
@@ -190,7 +188,7 @@ export function halt<E>(cause: Cause<E>): SyncE<E, never> {
  * they only affect regions of the effect.
  */
 export function interruptStatus(flag: InterruptStatus) {
-  return <S, R, E, A>(effect: Effect<S, R, E, A>): Effect<S, R, E, A> =>
+  return <R, E, A>(effect: Effect<R, E, A>): Effect<R, E, A> =>
     new IInterruptStatus(effect, flag)
 }
 
@@ -200,10 +198,10 @@ export function interruptStatus(flag: InterruptStatus) {
  * the effect becomes uninterruptible. These changes are compositional, so
  * they only affect regions of the effect.
  */
-export function interruptStatus_<S, R, E, A>(
-  effect: Effect<S, R, E, A>,
+export function interruptStatus_<R, E, A>(
+  effect: Effect<R, E, A>,
   flag: InterruptStatus
-): Effect<S, R, E, A> {
+): Effect<R, E, A> {
   return new IInterruptStatus(effect, flag)
 }
 
@@ -212,25 +210,24 @@ export function interruptStatus_<S, R, E, A>(
  * its dependency on `R`.
  */
 export function provideAll<R>(r: R) {
-  return <S, E, A>(next: Effect<S, R, E, A>): Effect<S, unknown, E, A> =>
-    new IProvide(r, next)
+  return <E, A>(next: Effect<R, E, A>): Effect<unknown, E, A> => new IProvide(r, next)
 }
 
 /**
  * Provides the `Effect` effect with its required environment, which eliminates
  * its dependency on `R`.
  */
-export function provideAll_<S, R, E, A>(
-  next: Effect<S, R, E, A>,
+export function provideAll_<R, E, A>(
+  next: Effect<R, E, A>,
   r: R
-): Effect<S, unknown, E, A> {
+): Effect<unknown, E, A> {
   return new IProvide(r, next)
 }
 
 /**
  * Lift a pure value into an effect
  */
-export function succeed<A>(a: A): Effect<never, unknown, never, A> {
+export function succeed<A>(a: A): Effect<unknown, never, A> {
   return new ISucceed(a)
 }
 
@@ -238,9 +235,7 @@ export function succeed<A>(a: A): Effect<never, unknown, never, A> {
  * Returns a lazily constructed effect, whose construction may itself require effects.
  * When no environment is required (i.e., when R == unknown) it is conceptually equivalent to `flatten(effectTotal(io))`.
  */
-export function suspend<S, R, E, A>(
-  factory: () => Effect<S, R, E, A>
-): Effect<S, R, E, A> {
+export function suspend<R, E, A>(factory: () => Effect<R, E, A>): Effect<R, E, A> {
   return new ISuspend(factory)
 }
 
@@ -249,14 +244,14 @@ export function suspend<S, R, E, A>(
  * When no environment is required (i.e., when R == unknown) it is conceptually equivalent to `flatten(effectPartial(orThrow, io))`.
  */
 export function suspendPartial<E2>(onThrow: (u: unknown) => E2) {
-  return <S, R, E, A>(factory: () => Effect<S, R, E, A>): Effect<S, R, E | E2, A> =>
+  return <R, E, A>(factory: () => Effect<R, E, A>): Effect<R, E | E2, A> =>
     new ISuspendPartial(factory, onThrow)
 }
 
 /**
  * Returns the effect resulting from mapping the success of this effect to unit.
  */
-export const unit: Sync<void> = succeed(undefined)
+export const unit: UIO<void> = succeed(undefined)
 
 /**
  * Returns an effect that yields to the runtime system, starting on a fresh

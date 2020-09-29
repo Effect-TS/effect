@@ -2,7 +2,7 @@ import * as Fiber from "../Fiber"
 import * as FR from "../FiberRef"
 import { pipe } from "../Function"
 import * as O from "../Option"
-import type { AsyncR, Effect } from "."
+import type { Effect, RIO } from "."
 import { chain, fork } from "./core"
 import { uninterruptibleMask } from "./uninterruptibleMask"
 
@@ -10,17 +10,17 @@ import { uninterruptibleMask } from "./uninterruptibleMask"
  * Forks the effect into a new independent fiber, with the specified name.
  */
 export function forkAs(name: string) {
-  return <S, R, E, A>(self: Effect<S, R, E, A>): AsyncR<R, Fiber.FiberContext<E, A>> =>
+  return <R, E, A>(self: Effect<R, E, A>): RIO<R, Fiber.FiberContext<E, A>> =>
     forkAs_(self, name)
 }
 
 /**
  * Forks the effect into a new independent fiber, with the specified name.
  */
-export function forkAs_<S, R, E, A>(
-  self: Effect<S, R, E, A>,
+export function forkAs_<R, E, A>(
+  self: Effect<R, E, A>,
   name: string
-): AsyncR<R, Fiber.FiberContext<E, A>> {
+): RIO<R, Fiber.FiberContext<E, A>> {
   return uninterruptibleMask(({ restore }) =>
     pipe(
       Fiber.fiberName,

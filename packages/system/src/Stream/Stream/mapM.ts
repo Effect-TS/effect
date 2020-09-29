@@ -8,14 +8,10 @@ import { Stream } from "./definitions"
 /**
  * Maps over elements of the stream with the specified effectful function.
  */
-export const mapM = <O, S1, R1, E1, O1>(f: (o: O) => T.Effect<S1, R1, E1, O1>) => <
-  S,
-  R,
-  E
->(
-  self: Stream<S, R, E, O>
-): Stream<S | S1, R & R1, E | E1, O1> =>
-  new Stream<S | S1, R & R1, E | E1, O1>(
+export const mapM = <O, R1, E1, O1>(f: (o: O) => T.Effect<R1, E1, O1>) => <R, E>(
+  self: Stream<R, E, O>
+): Stream<R & R1, E | E1, O1> =>
+  new Stream<R & R1, E | E1, O1>(
     pipe(
       self.proc,
       M.mapM(BPull.make),

@@ -6,9 +6,7 @@ import { foreach } from "./foreach"
 /**
  * Runs the stream and collects all of its elements to an array.
  */
-export const runDrain = <S, R, E, O>(
-  self: Stream<S, R, E, O>
-): T.Effect<S, R, E, void> =>
+export const runDrain = <R, E, O>(self: Stream<R, E, O>): T.Effect<R, E, void> =>
   pipe(
     self,
     foreach((_) => T.unit)

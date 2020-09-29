@@ -9,7 +9,7 @@ export {
   unit
 } from "../Effect/core"
 export { bind, do } from "../Effect/do"
-export { Async, AsyncRE, Sync } from "../Effect/effect"
+export { UIO, Effect } from "../Effect/effect"
 export { fiberId } from "../Effect/fiberId"
 export { foreach } from "../Effect/foreach"
 export { foreachPar_ } from "../Effect/foreachPar_"
