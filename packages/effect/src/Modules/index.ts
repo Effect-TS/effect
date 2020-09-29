@@ -115,7 +115,7 @@ declare module "../Prelude/HKT" {
     [OrdURI]: Ord<A>
     [RecordURI]: Record<N, A>
     [ShowURI]: Show<A>
-    [EffectURI]: Effect<X, R, E, A>
+    [EffectURI]: Effect<R, E, A>
     [XIOURI]: XIO<A>
     [XReaderURI]: XReader<R, A>
     [XStateURI]: XState<S, A>
@@ -125,7 +125,7 @@ declare module "../Prelude/HKT" {
     [IxURI]: TC extends IxC<infer _I, infer _O> ? Ix<_I, _O, A> : any
     [TaskURI]: Task<A>
     [ConstURI]: Const<E, A>
-    [LayerURI]: Layer<S, R, E, A>
+    [LayerURI]: Layer<R, E, A>
     [SyncURI]: Sync<R, E, A>
     [XPureURI]: XPure<S, S, R, E, A>
   }

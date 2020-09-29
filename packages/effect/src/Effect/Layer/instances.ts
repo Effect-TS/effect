@@ -4,7 +4,7 @@ import * as L from "@effect-ts/system/Layer"
 import type { LayerURI } from "../../Modules"
 import * as P from "../../Prelude"
 
-export type V = P.V<"S", "+"> & P.V<"R", "-"> & P.V<"E", "+">
+export type V = P.V<"R", "-"> & P.V<"E", "+">
 
 export const AssociativeBoth = P.instance<P.AssociativeBoth<[LayerURI], V>>({
   both: L.zip

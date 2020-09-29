@@ -11,7 +11,7 @@ import * as DSL from "../Prelude/DSL"
 export * from "@effect-ts/system/Effect"
 export { EffectURI } from "../Modules"
 
-export type V = P.V<"E", "+"> & P.V<"X", "+"> & P.V<"R", "-">
+export type V = P.V<"R", "-"> & P.V<"E", "+">
 
 export const Any = P.instance<P.Any<[EffectURI], V>>({
   any: () => T.succeed({})
