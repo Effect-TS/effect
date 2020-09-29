@@ -178,8 +178,10 @@ export function fiberContext<E, A>() {
     initialIS,
     new Map(),
     supervisor,
-    scope
+    scope,
+    10_000
   )
+
   return context
 }
 
