@@ -14,8 +14,8 @@ import { uninterruptibleMask } from "./uninterruptibleMask"
  * should generally not be used for releasing resources. For higher-level
  * logic built on `ensuring`, see `bracket`.
  */
-export function ensuring<S, R>(finalizer: Effect<S, R, never, any>) {
-  return <S1, R1, E, A>(effect: Effect<S1, R1, E, A>) =>
+export function ensuring<R>(finalizer: Effect<R, never, any>) {
+  return <R1, E, A>(effect: Effect<R1, E, A>) =>
     uninterruptibleMask(({ restore }) =>
       foldCauseM_(
         restore(effect),

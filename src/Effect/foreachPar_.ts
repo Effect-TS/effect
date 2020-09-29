@@ -1,5 +1,5 @@
 import { chain_, effectTotal, suspend } from "./core"
-import type { AsyncRE, Effect } from "./effect"
+import type { Effect } from "./effect"
 import { foreachUnitPar_ } from "./foreachUnitPar_"
 
 /**
@@ -8,10 +8,10 @@ import { foreachUnitPar_ } from "./foreachUnitPar_"
  *
  * For a sequential version of this method, see `foreach`.
  */
-export function foreachPar_<S, R, E, A, B>(
+export function foreachPar_<R, E, A, B>(
   as: Iterable<A>,
-  f: (a: A) => Effect<S, R, E, B>
-): AsyncRE<R, E, readonly B[]> {
+  f: (a: A) => Effect<R, E, B>
+): Effect<R, E, readonly B[]> {
   const arr = Array.from(as)
 
   return chain_(

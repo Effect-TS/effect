@@ -1,7 +1,7 @@
 import { pipe } from "../Function"
 import { makeSemaphore, withPermit } from "../Semaphore"
 import { chain } from "./core"
-import type { AsyncRE, Effect } from "./effect"
+import type { Effect } from "./effect"
 import { foreachUnitPar_ } from "./foreachUnitPar_"
 
 /**
@@ -11,10 +11,10 @@ import { foreachUnitPar_ } from "./foreachUnitPar_"
  * Unlike `foreachPar_`, this method will use at most up to `n` fibers.
  */
 export function foreachUnitParN_(n: number) {
-  return <A, S, R, E, B>(
+  return <A, R, E>(
     as: Iterable<A>,
-    f: (a: A) => Effect<S, R, E, any>
-  ): AsyncRE<R, E, void> =>
+    f: (a: A) => Effect<R, E, any>
+  ): Effect<R, E, void> =>
     pipe(
       makeSemaphore(n),
       chain((s) => foreachUnitPar_(as, (a) => withPermit(s)(f(a))))
@@ -28,7 +28,7 @@ export function foreachUnitParN_(n: number) {
  * Unlike `foreachPar_`, this method will use at most up to `n` fibers.
  */
 export function foreachUnitParN(n: number) {
-  return <A, S, R, E, B>(f: (a: A) => Effect<S, R, E, any>) => (
+  return <A, R, E>(f: (a: A) => Effect<R, E, any>) => (
     as: Iterable<A>
-  ): AsyncRE<R, E, void> => foreachUnitParN_(n)(as, f)
+  ): Effect<R, E, void> => foreachUnitParN_(n)(as, f)
 }

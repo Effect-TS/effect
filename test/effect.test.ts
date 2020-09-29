@@ -6,32 +6,32 @@ import * as FiberRef from "../src/FiberRef"
 import { absurd, pipe, tuple } from "../src/Function"
 import * as O from "../src/Option"
 
-describe("Effect", () => {
-  it("absolve", () => {
+describe("Effect", async () => {
+  it("absolve", async () => {
     const program = T.absolve(T.succeed(E.left("e")))
 
-    expect(T.runSyncExit(program)).toEqual(Exit.fail("e"))
+    expect(await T.runPromiseExit(program)).toEqual(Exit.fail("e"))
   })
-  it("absorbWith", () => {
+  it("absorbWith", async () => {
     const program = pipe(T.die("e"), T.absorbWith(absurd))
     const program2 = pipe(
       T.fail("e"),
       T.absorbWith((e) => `${e}-ok`)
     )
 
-    expect(T.runSyncExit(program)).toEqual(Exit.fail("e"))
-    expect(T.runSyncExit(program2)).toEqual(Exit.fail("e-ok"))
+    expect(await T.runPromiseExit(program)).toEqual(Exit.fail("e"))
+    expect(await T.runPromiseExit(program2)).toEqual(Exit.fail("e-ok"))
   })
-  it("tupled", () => {
-    const program = T.tupled(T.succeed(0), T.succeed("ok"), T.fail("e"))
-    expect(T.runSyncExit(program)).toEqual(Exit.fail("e"))
+  it("tupled", async () => {
+    const program = T.tuple(T.succeed(0), T.succeed("ok"), T.fail("e"))
+    expect(await T.runPromiseExit(program)).toEqual(Exit.fail("e"))
   })
-  it("mapN", () => {
+  it("mapN", async () => {
     const program = pipe(
       tuple(T.succeed(0), T.fail("e"), T.succeed("ok")),
       T.mapN(([a, _, c]) => a + c.length)
     )
-    expect(T.runSyncExit(program)).toEqual(Exit.fail("e"))
+    expect(await T.runPromiseExit(program)).toEqual(Exit.fail("e"))
   })
   it("memoize", async () => {
     const m = jest.fn()
@@ -191,11 +191,11 @@ describe("Effect", () => {
     expect(result).toEqual(Exit.fail("timeout"))
     expect(f).toHaveBeenCalledTimes(1)
   })
-  it("chainError", () => {
-    const result = pipe(
+  it("chainError", async () => {
+    const result = await pipe(
       T.fail("error"),
       T.chainError((e) => T.effectTotal(() => `(${e})`)),
-      T.runSyncExit
+      T.runPromiseExit
     )
 
     expect(result).toEqual(Exit.fail("(error)"))

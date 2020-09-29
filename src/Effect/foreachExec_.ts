@@ -1,10 +1,5 @@
 import type { Effect } from "./effect"
-import type {
-  ExecutionStrategy,
-  Parallel,
-  ParallelN,
-  Sequential
-} from "./ExecutionStrategy"
+import type { ExecutionStrategy } from "./ExecutionStrategy"
 import { foreach_ } from "./foreach_"
 import { foreachPar_ } from "./foreachPar_"
 import { foreachParN_ } from "./foreachParN_"
@@ -15,31 +10,11 @@ import { foreachParN_ } from "./foreachParN_"
  *
  * For a sequential version of this method, see `foreach`.
  */
-export function foreachExec_<S, R, E, A, B>(
-  es: Sequential,
-  as: Iterable<A>,
-  f: (a: A) => Effect<S, R, E, B>
-): Effect<S, R, E, readonly B[]>
-export function foreachExec_<S, R, E, A, B>(
-  es: Parallel,
-  as: Iterable<A>,
-  f: (a: A) => Effect<S, R, E, B>
-): Effect<unknown, R, E, readonly B[]>
-export function foreachExec_<S, R, E, A, B>(
-  es: ParallelN,
-  as: Iterable<A>,
-  f: (a: A) => Effect<S, R, E, B>
-): Effect<unknown, R, E, readonly B[]>
-export function foreachExec_<S, R, E, A, B>(
+export function foreachExec_<R, E, A, B>(
   es: ExecutionStrategy,
   as: Iterable<A>,
-  f: (a: A) => Effect<S, R, E, B>
-): Effect<unknown, R, E, readonly B[]>
-export function foreachExec_<S, R, E, A, B>(
-  es: ExecutionStrategy,
-  as: Iterable<A>,
-  f: (a: A) => Effect<S, R, E, B>
-): Effect<unknown, R, E, readonly B[]> {
+  f: (a: A) => Effect<R, E, B>
+): Effect<R, E, readonly B[]> {
   switch (es._tag) {
     case "Sequential": {
       return foreach_(as, f) as any

@@ -28,7 +28,7 @@ class Handoff<A> {
   constructor(readonly ref: R.Ref<State<A>>) {}
 }
 
-export function make<A>(): T.Sync<Handoff<A>> {
+export function make<A>(): T.UIO<Handoff<A>> {
   return pipe(
     P.make<never, void>(),
     T.chain((p) => R.makeRef<State<A>>(new Empty(p))),
@@ -37,13 +37,13 @@ export function make<A>(): T.Sync<Handoff<A>> {
 }
 
 export function offer<A>(a: A) {
-  return (h: Handoff<A>): T.Async<void> =>
+  return (h: Handoff<A>): T.UIO<void> =>
     pipe(
       P.make<never, void>(),
       T.chain((p) =>
         pipe(
           h.ref,
-          R.modify<T.Async<void>, State<A>>(
+          R.modify<T.UIO<void>, State<A>>(
             matchTag({
               Empty: ({ notifyConsumer }) =>
                 [
@@ -66,13 +66,13 @@ export function offer<A>(a: A) {
     )
 }
 
-export function take<A>(h: Handoff<A>): T.Async<A> {
+export function take<A>(h: Handoff<A>): T.UIO<A> {
   return pipe(
     P.make<never, void>(),
     T.chain((p) =>
       pipe(
         h.ref,
-        R.modify<T.Async<A>, State<A>>(
+        R.modify<T.UIO<A>, State<A>>(
           matchTag({
             Empty: (s) =>
               [
@@ -96,13 +96,13 @@ export function take<A>(h: Handoff<A>): T.Async<A> {
   )
 }
 
-export function poll<A>(h: Handoff<A>): T.Async<Option<A>> {
+export function poll<A>(h: Handoff<A>): T.UIO<Option<A>> {
   return pipe(
     P.make<never, void>(),
     T.chain((p) =>
       pipe(
         h.ref,
-        R.modify<T.Async<Option<A>>, State<A>>(
+        R.modify<T.UIO<Option<A>>, State<A>>(
           matchTag({
             Empty: (s) => [T.succeed(none), s] as const,
             Full: ({ a, notifyProducer }) =>

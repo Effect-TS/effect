@@ -21,21 +21,21 @@ import * as Push from "../Push"
 // - Sinks should always end when receiving a `None`. It is a defect to not end with some
 //   sort of result (even a failure) when receiving a `None`.
 // - Sinks can assume they will not be pushed again after emitting a value.
-export class Sink<S, R, E, I, L, Z> {
-  constructor(readonly push: M.Managed<S, R, never, Push.Push<S, R, E, I, L, Z>>) {}
+export class Sink<R, E, I, L, Z> {
+  constructor(readonly push: M.Managed<R, never, Push.Push<R, E, I, L, Z>>) {}
 }
 
 /**
  * Creates a sink from a Push
  */
-export const fromPush = <S, R, E, I, L, Z>(push: Push.Push<S, R, E, I, L, Z>) =>
+export const fromPush = <R, E, I, L, Z>(push: Push.Push<R, E, I, L, Z>) =>
   new Sink(M.succeedNow(push))
 
 /**
  * A sink that immediately ends with the specified value.
  */
-export const succeed = <Z, I>(z: Z): Sink<never, unknown, never, I, I, Z> =>
-  fromPush<never, unknown, never, I, I, Z>((c) => {
+export const succeed = <Z, I>(z: Z): Sink<unknown, never, I, I, Z> =>
+  fromPush<unknown, never, I, I, Z>((c) => {
     const leftover = O.fold_(
       c,
       () => [] as A.Array<I>,
@@ -50,9 +50,9 @@ export const succeed = <Z, I>(z: Z): Sink<never, unknown, never, I, I, Z> =>
  * `contFn` condition is checked only for the initial value and at the end of processing of each chunk.
  * `f` and `contFn` must preserve chunking-invariance.
  */
-export const foldArraysM = <Z>(z: Z) => (contFn: (s: Z) => boolean) => <I, S, R, E>(
-  f: (s: Z, i: A.Array<I>) => T.Effect<S, R, E, Z>
-): Sink<S, R, E, I, I, Z> => {
+export const foldArraysM = <Z>(z: Z) => (contFn: (s: Z) => boolean) => <I, R, E>(
+  f: (s: Z, i: A.Array<I>) => T.Effect<R, E, Z>
+): Sink<R, E, I, I, Z> => {
   if (contFn(z)) {
     return new Sink(
       pipe(
@@ -104,7 +104,7 @@ export const foldArraysM = <Z>(z: Z) => (contFn: (s: Z) => boolean) => <I, S, R,
  */
 export const foldArrays = <Z>(z: Z) => (contFn: (s: Z) => boolean) => <I>(
   f: (s: Z, i: A.Array<I>) => Z
-): Sink<never, unknown, never, I, I, Z> =>
+): Sink<unknown, never, I, I, Z> =>
   foldArraysM(z)(contFn)((z, i: A.Array<I>) => T.succeedNow(f(z, i)))
 
 /**
@@ -117,25 +117,24 @@ export const foldLeftArrays = <Z>(z: Z) => <I>(f: (s: Z, i: A.Array<I>) => Z) =>
 /**
  * A sink that collects all of its inputs into an array.
  */
-export const collectAll = <A>(): Sink<never, unknown, never, A, A, A.Array<A>> =>
+export const collectAll = <A>(): Sink<unknown, never, A, A, A.Array<A>> =>
   foldLeftArrays([] as A.Array<A>)((s, i: A.Array<A>) => [...s, ...i])
 
 /**
  * Runs both sinks in parallel on the input, returning the result or the error from the
  * one that finishes first.
  */
-export const raceBoth = <S1, R1, E1, I1 extends I, L1, Z1, I>(
-  that: Sink<S1, R1, E1, I1, L1, Z1>
-) => <S, R, E, L, Z>(
-  self: Sink<S, R, E, I, L, Z>
-): Sink<unknown, R1 & R, E1 | E, I1, L1 | L, E.Either<Z, Z1>> =>
+export const raceBoth = <R1, E1, I1 extends I, L1, Z1, I>(
+  that: Sink<R1, E1, I1, L1, Z1>
+) => <R, E, L, Z>(
+  self: Sink<R, E, I, L, Z>
+): Sink<R1 & R, E1 | E, I1, L1 | L, E.Either<Z, Z1>> =>
   new Sink(
     pipe(
       M.do,
       M.bind("p1", () => self.push),
       M.bind("p2", () => that.push),
       M.map(({ p1, p2 }) => (i: O.Option<A.Array<I1>>): T.Effect<
-        unknown,
         R1 & R,
         readonly [E.Either<E | E1, E.Either<Z, Z1>>, A.Array<L | L1>],
         void
@@ -189,12 +188,12 @@ export const raceBoth = <S1, R1, E1, I1 extends I, L1, Z1, I>(
 /**
  * A sink that executes the provided effectful function for every element fed to it.
  */
-export const foreach = <I, S1, R1, E1>(f: (i: I) => T.Effect<S1, R1, E1, any>) => {
+export const foreach = <I, R1, E1>(f: (i: I) => T.Effect<R1, E1, any>) => {
   const go = (
     chunk: A.Array<I>,
     idx: number,
     len: number
-  ): T.Effect<S1, R1, [E.Either<E1, never>, A.Array<I>], void> => {
+  ): T.Effect<R1, [E.Either<E1, never>, A.Array<I>], void> => {
     if (idx === len) {
       return Push.more
     } else {

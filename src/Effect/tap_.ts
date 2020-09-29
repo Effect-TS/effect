@@ -5,9 +5,9 @@ import { map_ } from "./map_"
 /**
  * Returns an effect that effectfully "peeks" at the success of this effect.
  */
-export function tap_<S2, E2, R2, A, S, R, E>(
-  _: Effect<S2, R2, E2, A>,
-  f: (_: A) => Effect<S, R, E, any>
+export function tap_<E2, R2, A, R, E>(
+  _: Effect<R2, E2, A>,
+  f: (_: A) => Effect<R, E, any>
 ) {
   return chain_(_, (a: A) => map_(f(a), () => a))
 }

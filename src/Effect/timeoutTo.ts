@@ -2,7 +2,7 @@ import type { Clock } from "../Clock"
 import { pipe } from "../Function"
 import type { Has } from "../Has"
 import { as } from "./as"
-import type { AsyncRE, Effect } from "./effect"
+import type { Effect } from "./effect"
 import { interruptible } from "./interruptible"
 import { map } from "./map"
 import { raceFirst } from "./race"
@@ -18,7 +18,7 @@ import { sleep } from "./sleep"
  * will be safely interrupted
  */
 export function timeoutTo<B, B2, A>(d: number, b: B, f: (a: A) => B2) {
-  return <S, R, E>(self: Effect<S, R, E, A>): AsyncRE<R & Has<Clock>, E, B | B2> =>
+  return <R, E>(self: Effect<R, E, A>): Effect<R & Has<Clock>, E, B | B2> =>
     timeoutTo_(self, d, b, f)
 }
 
@@ -31,11 +31,11 @@ export function timeoutTo<B, B2, A>(d: number, b: B, f: (a: A) => B2) {
  * If the timeout elapses without producing a value, the running effect
  * will be safely interrupted
  */
-export function timeoutTo_<S, R, E, A, B, B2>(
-  self: Effect<S, R, E, A>,
+export function timeoutTo_<R, E, A, B, B2>(
+  self: Effect<R, E, A>,
   d: number,
   b: B,
   f: (a: A) => B2
-): AsyncRE<R & Has<Clock>, E, B | B2> {
+): Effect<R & Has<Clock>, E, B | B2> {
   return pipe(self, map(f), raceFirst(pipe(sleep(d), interruptible, as(b))))
 }

@@ -9,9 +9,9 @@ import { Stream } from "./definitions"
 /**
  * Creates a stream from an effect producing a value of type `A` or an empty Stream
  */
-export const fromEffectOption = <S, R, E, A>(
-  fa: T.Effect<S, R, Option.Option<E>, A>
-): Stream<S, R, E, A> =>
+export const fromEffectOption = <R, E, A>(
+  fa: T.Effect<R, Option.Option<E>, A>
+): Stream<R, E, A> =>
   new Stream(
     pipe(
       M.do,

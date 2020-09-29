@@ -10,7 +10,7 @@ import { as } from "./as"
 import { asUnit } from "./asUnit"
 import { chain, fork, unit } from "./core"
 import * as Do from "./do"
-import type { Async, AsyncRE, Effect } from "./effect"
+import type { Effect, UIO } from "./effect"
 import { flatten } from "./flatten"
 import { foreach_ } from "./foreach_"
 import { interruptible } from "./interruptible"
@@ -24,7 +24,7 @@ function arbiter<E, A>(
   promise: P.Promise<E, readonly [A, Fiber.Fiber<E, A>]>,
   fails: Ref.Ref<number>
 ) {
-  return (res: Exit.Exit<E, A>): Async<void> =>
+  return (res: Exit.Exit<E, A>): UIO<void> =>
     pipe(
       res,
       Exit.foldM(
@@ -45,7 +45,7 @@ function arbiter<E, A>(
               set
                 ? pipe(
                     fibers,
-                    A.reduce(unit as Async<void>, (io, f) =>
+                    A.reduce(unit as UIO<void>, (io, f) =>
                       f === winner ? io : tap_(io, () => Fiber.interrupt(f))
                     )
                   )
@@ -63,10 +63,10 @@ function arbiter<E, A>(
  *
  * Note: in case of success eventual interruption errors are ignored
  */
-export function raceAll<S, R, E, A>(
-  ios: NonEmptyArray<Effect<S, R, E, A>>,
+export function raceAll<R, E, A>(
+  ios: NonEmptyArray<Effect<R, E, A>>,
   interruptStrategy: "background" | "wait" = "background"
-): AsyncRE<R, E, A> {
+): Effect<R, E, A> {
   return pipe(
     Do.do,
     Do.bind("done", () => P.make<E, readonly [A, Fiber.Fiber<E, A>]>()),
@@ -77,7 +77,7 @@ export function raceAll<S, R, E, A>(
           Do.do,
           Do.bind("fs", () => foreach_(ios, flow(interruptible, fork))),
           tap(({ fs }) =>
-            A.reduce_(fs, unit as Async<void>, (io, f) =>
+            A.reduce_(fs, unit as UIO<void>, (io, f) =>
               pipe(
                 io,
                 chain(() => pipe(f.await, chain(arbiter(fs, f, done, fails)), fork))
@@ -91,7 +91,7 @@ export function raceAll<S, R, E, A>(
             pipe(
               restore(pipe(done, P.await, chain(inheritRefs))),
               onInterrupt(() =>
-                A.reduce_(fs, unit as Async<void>, (io, f) =>
+                A.reduce_(fs, unit as UIO<void>, (io, f) =>
                   tap_(io, () => Fiber.interrupt(f))
                 )
               )

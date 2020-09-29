@@ -1,10 +1,10 @@
 import type { Canceler } from "../Effect/Canceler"
 import { effectTotal } from "../Effect/core"
-import type { AsyncE } from "../Effect/effect"
+import type { IO } from "../Effect/effect"
 import type { Promise } from "./promise"
 import { Pending } from "./state"
 
-export const interruptJoiner = <E, A>(joiner: (a: AsyncE<E, A>) => void) => (
+export const interruptJoiner = <E, A>(joiner: (a: IO<E, A>) => void) => (
   promise: Promise<E, A>
 ): Canceler<unknown> =>
   effectTotal(() => {

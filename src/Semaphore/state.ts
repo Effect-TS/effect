@@ -10,5 +10,5 @@ export const assertNonNegative = (n: number) =>
     : T.unit
 
 export class Acquisition {
-  constructor(readonly waitAcquire: T.Async<void>, readonly release: T.Async<void>) {}
+  constructor(readonly waitAcquire: T.UIO<void>, readonly release: T.UIO<void>) {}
 }

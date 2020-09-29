@@ -1,8 +1,8 @@
 import { toManaged } from "../Effect/toManaged"
-import { pipe } from "../Function"
+import { flow } from "../Function"
 import { makeRef } from "./api"
 
 /**
  * Creates a new `XRef` with the specified value.
  */
-export const makeManagedRef = <A>(a: A) => pipe(makeRef(a), toManaged())
+export const makeManagedRef = flow(makeRef, toManaged())

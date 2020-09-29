@@ -13,11 +13,11 @@ import { transplant } from "./transplant"
  * Sequentially zips this effect with the specified effect using the
  * specified combiner function.
  */
-export function zipWithPar_<S, R, E, A, S2, R2, E2, A2, B>(
-  a: Effect<S, R, E, A>,
-  b: Effect<S2, R2, E2, A2>,
+export function zipWithPar_<R, E, A, R2, E2, A2, B>(
+  a: Effect<R, E, A>,
+  b: Effect<R2, E2, A2>,
   f: (a: A, b: A2) => B
-): Effect<unknown, R & R2, E | E2, B> {
+): Effect<R & R2, E | E2, B> {
   const g = (b: A2, a: A) => f(a, b)
 
   return transplant((graft) =>

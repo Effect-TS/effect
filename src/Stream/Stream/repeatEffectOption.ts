@@ -9,6 +9,6 @@ import { repeatEffectChunkOption } from "./repeatEffectChunkOption"
 /**
  * Creates a stream from an effect producing values of type `A` until it fails with None.
  */
-export const repeatEffectOption: <S, R, E, A>(
-  fa: Effect<S, R, Option<E>, A>
-) => Stream<S, R, E, A> = flow(map(single), repeatEffectChunkOption)
+export const repeatEffectOption: <R, E, A>(
+  fa: Effect<R, Option<E>, A>
+) => Stream<R, E, A> = flow(map(single), repeatEffectChunkOption)

@@ -4,18 +4,18 @@ import { pipe } from "../../Function"
 import type * as Option from "../../Option"
 import * as Ref from "../../Ref"
 import * as Pull from "../Pull"
-import type { Sync } from "./definitions"
+import type { UIO } from "./definitions"
 import { Stream } from "./definitions"
 
 /**
  * Creates a stream from an array of values
  */
-export const fromArray = <O>(c: Array.Array<O>): Sync<O> =>
+export const fromArray = <O>(c: Array.Array<O>): UIO<O> =>
   new Stream(
     pipe(
       Ref.makeRef(false),
       T.chain(
-        Ref.modify<T.SyncE<Option.Option<never>, Array.Array<O>>, boolean>((done) =>
+        Ref.modify<T.IO<Option.Option<never>, Array.Array<O>>, boolean>((done) =>
           done || c.length === 0 ? [Pull.end, true] : [T.succeedNow(c), true]
         )
       ),

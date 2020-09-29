@@ -11,9 +11,8 @@ import * as Fiber from "./core"
 /**
  * Lifts an IO into a `Fiber`.
  */
-export const fromEffect = <E, A>(
-  effect: T.AsyncE<E, A>
-): T.Async<Fiber.Synthetic<E, A>> => T.map_(T.result(effect), Fiber.done)
+export const fromEffect = <E, A>(effect: T.IO<E, A>): T.UIO<Fiber.Synthetic<E, A>> =>
+  T.map_(T.result(effect), Fiber.done)
 
 /**
  * Interrupts the fiber from whichever fiber is calling this method. If the
@@ -29,7 +28,7 @@ export const interrupt = <E, A>(fiber: Fiber.Fiber<E, A>) =>
 export const interruptAllAs = (id: Fiber.FiberID) => (
   fs: Iterable<Fiber.Fiber<any, any>>
 ) =>
-  IT.reduce_(fs, T.unit as T.Async<void>, (io, f) =>
+  IT.reduce_(fs, T.unit as T.UIO<void>, (io, f) =>
     T.asUnit(T.chain_(io, () => f.interruptAs(id)))
   )
 
@@ -48,13 +47,13 @@ export const interruptFork = <E, A>(fiber: Fiber.Fiber<E, A>) =>
  * "inner interruption" of this fiber, unlike interruption triggered by another
  * fiber, "inner interruption" can be caught and recovered.
  */
-export const join = <E, A>(fiber: Fiber.Fiber<E, A>): T.AsyncE<E, A> =>
+export const join = <E, A>(fiber: Fiber.Fiber<E, A>): T.IO<E, A> =>
   T.tap_(T.chain_(fiber.await, T.done), () => fiber.inheritRefs)
 
 /**
  * Effectually maps over the value the fiber computes.
  */
-export const mapM = <E2, A, B>(f: (a: A) => T.AsyncE<E2, B>) => <E>(
+export const mapM = <E2, A, B>(f: (a: A) => T.IO<E2, B>) => <E>(
   fiber: Fiber.Fiber<E, A>
 ): Fiber.Synthetic<E | E2, B> => ({
   _tag: "SyntheticFiber",
@@ -104,7 +103,7 @@ export const map_ = <E, A, B>(
  */
 export const mapFiber = <A, E2, A2>(f: (a: A) => Fiber.Fiber<E2, A2>) => <E>(
   fiber: Fiber.Fiber<E, A>
-): T.Async<Fiber.Fiber<E | E2, A2>> =>
+): T.UIO<Fiber.Fiber<E | E2, A2>> =>
   T.map_(fiber.await, (e) => {
     switch (e._tag) {
       case "Success": {
@@ -123,7 +122,7 @@ export const mapFiber = <A, E2, A2>(f: (a: A) => Fiber.Fiber<E2, A2>) => <E>(
 export const mapFiber_ = <A, E, E2, A2>(
   fiber: Fiber.Fiber<E, A>,
   f: (a: A) => Fiber.Fiber<E2, A2>
-): T.Async<Fiber.Fiber<E | E2, A2>> =>
+): T.UIO<Fiber.Fiber<E | E2, A2>> =>
   T.map_(fiber.await, (e) => {
     switch (e._tag) {
       case "Success": {

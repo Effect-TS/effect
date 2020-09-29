@@ -1,8 +1,8 @@
 import { environment as _ } from "../../Effect/environment"
-import type { SyncR } from "./definitions"
+import type { RIO } from "./definitions"
 import { fromEffect } from "./fromEffect"
 
 /**
  * Accesses the whole environment of the stream.
  */
-export const environment = <R>(): SyncR<R, R> => fromEffect(_<R>())
+export const environment = <R>(): RIO<R, R> => fromEffect(_<R>())

@@ -3,15 +3,15 @@ import type { Array } from "../../Array"
 import * as Cause from "../../Cause"
 import type { XQueue } from "../../Queue"
 import { end, halt } from "../Pull"
-import type { AsyncRE } from "./definitions"
+import type { Stream } from "./definitions"
 import { repeatEffectChunkOption } from "./repeatEffectChunkOption"
 
 /**
  * Creates a stream from a {@link XQueue} of values
  */
-export function fromArrayQueue<S, R, E, O>(
+export function fromArrayQueue<R, E, O>(
   queue: XQueue<never, R, unknown, E, never, Array<O>>
-): AsyncRE<R, E, O> {
+): Stream<R, E, O> {
   return repeatEffectChunkOption(
     T.catchAllCause_(queue.take, (c) =>
       T.chain_(queue.isShutdown, (down) =>

@@ -1,6 +1,6 @@
-import type { AsyncR } from "./effect"
+import type { RIO } from "./effect"
 
 /**
  * Canceler Definition
  */
-export type Canceler<R> = AsyncR<R, void>
+export type Canceler<R> = RIO<R, void>

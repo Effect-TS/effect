@@ -63,5 +63,4 @@ export * from "./succeed"
 export * from "./unfoldChunkM"
 export * from "./unwrap"
 export * from "./zipWith"
-export * from "./zipWithSeq"
 // codegen:end

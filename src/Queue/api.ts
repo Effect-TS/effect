@@ -12,8 +12,8 @@ import { XQueue } from "./xqueue"
  */
 export const takeBetween = (min: number, max: number) => <RA, RB, EA, EB, A, B>(
   self: XQueue<RA, RB, EA, EB, A, B>
-): T.AsyncRE<RB, EB, readonly B[]> => {
-  function takeRemaining(n: number): T.AsyncRE<RB, EB, A.Array<B>> {
+): T.Effect<RB, EB, readonly B[]> => {
+  function takeRemaining(n: number): T.Effect<RB, EB, A.Array<B>> {
     if (n <= 0) {
       return T.succeedNow([])
     } else {
@@ -53,7 +53,7 @@ export const takeBetween_ = <RA, RB, EA, EB, A, B>(
   self: XQueue<RA, RB, EA, EB, A, B>,
   min: number,
   max: number
-): T.AsyncRE<RB, EB, readonly B[]> => takeBetween(min, max)(self)
+): T.Effect<RB, EB, readonly B[]> => takeBetween(min, max)(self)
 
 /**
  * Waits until the queue is shutdown.
@@ -189,7 +189,7 @@ export const takeAllUpTo_ = <RA, RB, EA, EB, A, B>(
  */
 export const bothWithM = <RA1, RB1, EA1, EB1, A1 extends A, C, B, R3, E3, D, A>(
   that: XQueue<RA1, RB1, EA1, EB1, A1, C>,
-  f: (b: B, c: C) => T.AsyncRE<R3, E3, D>
+  f: (b: B, c: C) => T.Effect<R3, E3, D>
 ) => <RA, RB, EA, EB>(self: XQueue<RA, RB, EA, EB, A, B>) => bothWithM_(self, that, f)
 
 /**
@@ -220,40 +220,31 @@ export const bothWithM_ = <
 >(
   self: XQueue<RA, RB, EA, EB, A, B>,
   that: XQueue<RA1, RB1, EA1, EB1, A1, C>,
-  f: (b: B, c: C) => T.AsyncRE<R3, E3, D>
+  f: (b: B, c: C) => T.Effect<R3, E3, D>
 ): XQueue<RA & RA1, RB & RB1 & R3, EA | EA1, E3 | EB | EB1, A1, D> =>
   new (class extends XQueue<RA & RA1, RB & RB1 & R3, EA | EA1, E3 | EB | EB1, A1, D> {
-    awaitShutdown: T.Async<void> = T.chain_(
-      self.awaitShutdown,
-      () => that.awaitShutdown
-    )
+    awaitShutdown: T.UIO<void> = T.chain_(self.awaitShutdown, () => that.awaitShutdown)
 
     capacity: number = Math.min(self.capacity, that.capacity)
 
-    isShutdown: T.Sync<boolean> = self.isShutdown
+    isShutdown: T.UIO<boolean> = self.isShutdown
 
-    offer: (a: A1) => T.AsyncRE<RA & RA1, EA1 | EA, boolean> = (a) =>
+    offer: (a: A1) => T.Effect<RA & RA1, EA1 | EA, boolean> = (a) =>
       T.zipWithPar_(self.offer(a), that.offer(a), (x, y) => x && y)
 
-    offerAll: (as: Iterable<A1>) => T.AsyncRE<RA & RA1, EA1 | EA, boolean> = (as) =>
+    offerAll: (as: Iterable<A1>) => T.Effect<RA & RA1, EA1 | EA, boolean> = (as) =>
       T.zipWithPar_(self.offerAll(as), that.offerAll(as), (x, y) => x && y)
 
-    shutdown: T.Async<void> = T.zipWithPar_(
-      self.shutdown,
-      that.shutdown,
-      () => undefined
-    )
+    shutdown: T.UIO<void> = T.zipWithPar_(self.shutdown, that.shutdown, () => undefined)
 
-    size: T.Async<number> = T.zipWithPar_(self.size, that.size, (x, y) =>
-      Math.max(x, y)
-    )
+    size: T.UIO<number> = T.zipWithPar_(self.size, that.size, (x, y) => Math.max(x, y))
 
-    take: T.AsyncRE<RB & RB1 & R3, E3 | EB | EB1, D> = T.chain_(
+    take: T.Effect<RB & RB1 & R3, E3 | EB | EB1, D> = T.chain_(
       T.zipPar_(self.take, that.take),
       ([b, c]) => f(b, c)
     )
 
-    takeAll: T.AsyncRE<RB & RB1 & R3, E3 | EB | EB1, readonly D[]> = T.chain_(
+    takeAll: T.Effect<RB & RB1 & R3, E3 | EB | EB1, readonly D[]> = T.chain_(
       T.zipPar_(self.takeAll, that.takeAll),
       ([bs, cs]) => {
         const abs = Array.from(bs)
@@ -264,7 +255,7 @@ export const bothWithM_ = <
       }
     )
 
-    takeUpTo: (n: number) => T.AsyncRE<RB & RB1 & R3, E3 | EB | EB1, readonly D[]> = (
+    takeUpTo: (n: number) => T.Effect<RB & RB1 & R3, E3 | EB | EB1, readonly D[]> = (
       max
     ) =>
       T.chain_(T.zipPar_(self.takeUpTo(max), that.takeUpTo(max)), ([bs, cs]) => {
@@ -343,8 +334,8 @@ export const dimap_ = <RA, RB, EA, EB, A, B, C, D>(
  * specified effectual functions.
  */
 export const dimapM = <A, B, C, RC, EC, RD, ED, D>(
-  f: (c: C) => T.AsyncRE<RC, EC, A>,
-  g: (b: B) => T.AsyncRE<RD, ED, D>
+  f: (c: C) => T.Effect<RC, EC, A>,
+  g: (b: B) => T.Effect<RD, ED, D>
 ) => <RA, RB, EA, EB>(
   self: XQueue<RA, RB, EA, EB, A, B>
 ): XQueue<RC & RA, RD & RB, EC | EA, ED | EB, C, D> => dimapM_(self, f, g)
@@ -355,40 +346,40 @@ export const dimapM = <A, B, C, RC, EC, RD, ED, D>(
  */
 export const dimapM_ = <RA, RB, EA, EB, A, B, C, RC, EC, RD, ED, D>(
   self: XQueue<RA, RB, EA, EB, A, B>,
-  f: (c: C) => T.AsyncRE<RC, EC, A>,
-  g: (b: B) => T.AsyncRE<RD, ED, D>
+  f: (c: C) => T.Effect<RC, EC, A>,
+  g: (b: B) => T.Effect<RD, ED, D>
 ): XQueue<RC & RA, RD & RB, EC | EA, ED | EB, C, D> =>
   new (class extends XQueue<RC & RA, RD & RB, EC | EA, ED | EB, C, D> {
-    awaitShutdown: T.Async<void> = self.awaitShutdown
+    awaitShutdown: T.UIO<void> = self.awaitShutdown
 
     capacity: number = self.capacity
 
-    isShutdown: T.Sync<boolean> = self.isShutdown
+    isShutdown: T.UIO<boolean> = self.isShutdown
 
-    offer: (a: C) => T.AsyncRE<RC & RA, EA | EC, boolean> = (c) =>
+    offer: (a: C) => T.Effect<RC & RA, EA | EC, boolean> = (c) =>
       T.chain_(f(c), self.offer)
 
-    offerAll: (as: Iterable<C>) => T.AsyncRE<RC & RA, EC | EA, boolean> = (cs) =>
+    offerAll: (as: Iterable<C>) => T.Effect<RC & RA, EC | EA, boolean> = (cs) =>
       T.chain_(T.foreach_(cs, f), self.offerAll)
 
-    shutdown: T.Async<void> = self.shutdown
+    shutdown: T.UIO<void> = self.shutdown
 
-    size: T.Async<number> = self.size
+    size: T.UIO<number> = self.size
 
-    take: T.AsyncRE<RD & RB, ED | EB, D> = T.chain_(self.take, g)
+    take: T.Effect<RD & RB, ED | EB, D> = T.chain_(self.take, g)
 
-    takeAll: T.AsyncRE<RD & RB, ED | EB, readonly D[]> = T.chain_(self.takeAll, (a) =>
+    takeAll: T.Effect<RD & RB, ED | EB, readonly D[]> = T.chain_(self.takeAll, (a) =>
       T.foreach_(a, g)
     )
 
-    takeUpTo: (n: number) => T.AsyncRE<RD & RB, ED | EB, readonly D[]> = (max) =>
+    takeUpTo: (n: number) => T.Effect<RD & RB, ED | EB, readonly D[]> = (max) =>
       T.chain_(self.takeUpTo(max), (bs) => T.foreach_(bs, g))
   })()
 
 /**
  * Transforms elements enqueued into this queue with an effectful function.
  */
-export const contramapM = <C, RA2, EA2, A>(f: (c: C) => T.AsyncRE<RA2, EA2, A>) => <
+export const contramapM = <C, RA2, EA2, A>(f: (c: C) => T.Effect<RA2, EA2, A>) => <
   RA,
   RB,
   EA,
@@ -409,7 +400,7 @@ export const contramap = <C, A>(f: (c: C) => A) => <RA, RB, EA, EB, B>(
  * Like `filterInput`, but uses an effectful function to filter the elements.
  */
 export const filterInputM = <A, A1 extends A, R2, E2>(
-  f: (_: A1) => T.AsyncRE<R2, E2, boolean>
+  f: (_: A1) => T.Effect<R2, E2, boolean>
 ) => <RA, RB, EA, EB, B>(
   self: XQueue<RA, RB, EA, EB, A, B>
 ): XQueue<RA & R2, RB, EA | E2, EB, A1, B> => filterInputM_(self, f)
@@ -419,19 +410,19 @@ export const filterInputM = <A, A1 extends A, R2, E2>(
  */
 export const filterInputM_ = <RA, RB, EA, EB, B, A, A1 extends A, R2, E2>(
   self: XQueue<RA, RB, EA, EB, A, B>,
-  f: (_: A1) => T.AsyncRE<R2, E2, boolean>
+  f: (_: A1) => T.Effect<R2, E2, boolean>
 ): XQueue<RA & R2, RB, EA | E2, EB, A1, B> =>
   new (class extends XQueue<RA & R2, RB, EA | E2, EB, A1, B> {
-    awaitShutdown: T.Async<void> = self.awaitShutdown
+    awaitShutdown: T.UIO<void> = self.awaitShutdown
 
     capacity: number = self.capacity
 
-    isShutdown: T.Sync<boolean> = self.isShutdown
+    isShutdown: T.UIO<boolean> = self.isShutdown
 
-    offer: (a: A1) => T.AsyncRE<RA & R2, EA | E2, boolean> = (a) =>
+    offer: (a: A1) => T.Effect<RA & R2, EA | E2, boolean> = (a) =>
       T.chain_(f(a), (b) => (b ? self.offer(a) : T.succeedNow(false)))
 
-    offerAll: (as: Iterable<A1>) => T.AsyncRE<RA & R2, EA | E2, boolean> = (as) =>
+    offerAll: (as: Iterable<A1>) => T.Effect<RA & R2, EA | E2, boolean> = (as) =>
       pipe(
         as,
         T.foreach((a) =>
@@ -451,15 +442,15 @@ export const filterInputM_ = <RA, RB, EA, EB, B, A, A1 extends A, R2, E2>(
         })
       )
 
-    shutdown: T.Async<void> = self.shutdown
+    shutdown: T.UIO<void> = self.shutdown
 
-    size: T.Async<number> = self.size
+    size: T.UIO<number> = self.size
 
-    take: T.AsyncRE<RB, EB, B> = self.take
+    take: T.Effect<RB, EB, B> = self.take
 
-    takeAll: T.AsyncRE<RB, EB, readonly B[]> = self.takeAll
+    takeAll: T.Effect<RB, EB, readonly B[]> = self.takeAll
 
-    takeUpTo: (n: number) => T.AsyncRE<RB, EB, readonly B[]> = (max) =>
+    takeUpTo: (n: number) => T.Effect<RB, EB, readonly B[]> = (max) =>
       self.takeUpTo(max)
   })()
 
@@ -489,7 +480,7 @@ export const filterInput_ = <RA, RB, EA, EB, B, A, A1 extends A>(
 /**
  * Transforms elements dequeued from this queue with an effectful function.
  */
-export const mapM = <B, R2, E2, C>(f: (b: B) => T.AsyncRE<R2, E2, C>) => <
+export const mapM = <B, R2, E2, C>(f: (b: B) => T.Effect<R2, E2, C>) => <
   RA,
   RB,
   EA,
@@ -504,7 +495,7 @@ export const mapM = <B, R2, E2, C>(f: (b: B) => T.AsyncRE<R2, E2, C>) => <
  */
 export const mapM_ = <RA, RB, EA, EB, A, B, R2, E2, C>(
   self: XQueue<RA, RB, EA, EB, A, B>,
-  f: (b: B) => T.AsyncRE<R2, E2, C>
+  f: (b: B) => T.Effect<R2, E2, C>
 ) => dimapM_(self, (a: A) => T.succeedNow(a), f)
 
 /**

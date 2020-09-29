@@ -8,7 +8,7 @@ import { foreachParN_ } from "./foreachParN_"
  * Evaluate each effect in the structure from left to right, and collect the
  * results. For a parallel version, see `collectAllPar`.
  */
-export function collectAll<S, R, E, A>(as: Iterable<Effect<S, R, E, A>>) {
+export function collectAll<R, E, A>(as: Iterable<Effect<R, E, A>>) {
   return foreach_(as, identity)
 }
 
@@ -16,7 +16,7 @@ export function collectAll<S, R, E, A>(as: Iterable<Effect<S, R, E, A>>) {
  * Evaluate each effect in the structure in parallel, and collect the
  * results. For a sequential version, see `collectAll`.
  */
-export function collectAllPar<S, R, E, A>(as: Iterable<Effect<S, R, E, A>>) {
+export function collectAllPar<R, E, A>(as: Iterable<Effect<R, E, A>>) {
   return foreachPar_(as, identity)
 }
 
@@ -27,5 +27,5 @@ export function collectAllPar<S, R, E, A>(as: Iterable<Effect<S, R, E, A>>) {
  * Unlike `collectAllPar`, this method will use at most `n` fibers.
  */
 export function collectAllParN(n: number) {
-  return <S, R, E, A>(as: Iterable<Effect<S, R, E, A>>) => foreachParN_(n)(as, identity)
+  return <R, E, A>(as: Iterable<Effect<R, E, A>>) => foreachParN_(n)(as, identity)
 }

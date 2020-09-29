@@ -1,16 +1,16 @@
 import { effectTotal } from "../Effect/core"
-import type { Sync } from "../Effect/effect"
+import type { UIO } from "../Effect/effect"
 import type * as O from "../Option"
 import type { Atomic } from "./XRef"
 
-export const getAndSet = <A>(a: A) => (self: Atomic<A>): Sync<A> =>
+export const getAndSet = <A>(a: A) => (self: Atomic<A>): UIO<A> =>
   effectTotal(() => {
     const v = self.value.get
     self.value.set(a)
     return v
   })
 
-export const getAndUpdate = <A>(f: (a: A) => A) => (self: Atomic<A>): Sync<A> =>
+export const getAndUpdate = <A>(f: (a: A) => A) => (self: Atomic<A>): UIO<A> =>
   effectTotal(() => {
     const v = self.value.get
     self.value.set(f(v))
@@ -19,7 +19,7 @@ export const getAndUpdate = <A>(f: (a: A) => A) => (self: Atomic<A>): Sync<A> =>
 
 export const getAndUpdateSome = <A>(f: (a: A) => O.Option<A>) => (
   self: Atomic<A>
-): Sync<A> =>
+): UIO<A> =>
   effectTotal(() => {
     const v = self.value.get
     const o = f(v)
@@ -31,7 +31,7 @@ export const getAndUpdateSome = <A>(f: (a: A) => O.Option<A>) => (
 
 export const modify = <A, B>(f: (a: A) => readonly [B, A]) => (
   self: Atomic<A>
-): Sync<B> =>
+): UIO<B> =>
   effectTotal(() => {
     const v = self.value.get
     const o = f(v)
@@ -41,7 +41,7 @@ export const modify = <A, B>(f: (a: A) => readonly [B, A]) => (
 
 export const modifySome = <B>(def: B) => <A>(
   f: (a: A) => O.Option<readonly [B, A]>
-) => (self: Atomic<A>): Sync<B> =>
+) => (self: Atomic<A>): UIO<B> =>
   effectTotal(() => {
     const v = self.value.get
     const o = f(v)
@@ -54,12 +54,12 @@ export const modifySome = <B>(def: B) => <A>(
     return def
   })
 
-export const update = <A>(f: (a: A) => A) => (self: Atomic<A>): Sync<void> =>
+export const update = <A>(f: (a: A) => A) => (self: Atomic<A>): UIO<void> =>
   effectTotal(() => {
     self.value.set(f(self.value.get))
   })
 
-export const updateAndGet = <A>(f: (a: A) => A) => (self: Atomic<A>): Sync<A> => {
+export const updateAndGet = <A>(f: (a: A) => A) => (self: Atomic<A>): UIO<A> => {
   return effectTotal(() => {
     self.value.set(f(self.value.get))
     return self.value.get
@@ -68,7 +68,7 @@ export const updateAndGet = <A>(f: (a: A) => A) => (self: Atomic<A>): Sync<A> =>
 
 export const updateSome = <A>(f: (a: A) => O.Option<A>) => (
   self: Atomic<A>
-): Sync<void> =>
+): UIO<void> =>
   effectTotal(() => {
     const o = f(self.value.get)
 
@@ -79,7 +79,7 @@ export const updateSome = <A>(f: (a: A) => O.Option<A>) => (
 
 export const updateSomeAndGet = <A>(f: (a: A) => O.Option<A>) => (
   self: Atomic<A>
-): Sync<A> => {
+): UIO<A> => {
   return effectTotal(() => {
     const o = f(self.value.get)
 

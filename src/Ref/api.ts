@@ -1,6 +1,6 @@
 import { absolve } from "../Effect/absolve"
 import { chain, effectTotal } from "../Effect/core"
-import type { Sync, SyncE } from "../Effect/effect"
+import type { IO, UIO } from "../Effect/effect"
 import * as E from "../Either"
 import { identity, pipe, tuple } from "../Function"
 import * as O from "../Option"
@@ -13,7 +13,7 @@ import { Atomic, concrete } from "./XRef"
 /**
  * Creates a new `XRef` with the specified value.
  */
-export const makeRef = <A>(a: A): Sync<Ref<A>> =>
+export const makeRef = <A>(a: A): UIO<Ref<A>> =>
   effectTotal(() => new Atomic(new AtomicReference(a)))
 
 /**
@@ -251,7 +251,7 @@ export const writeOnly: <EA, EB, A, B>(
  */
 export const modify = <B, A>(f: (a: A) => readonly [B, A]) => <EA, EB>(
   self: XRef<EA, EB, A, A>
-): SyncE<EA | EB, B> =>
+): IO<EA | EB, B> =>
   pipe(
     self,
     concrete,
@@ -317,7 +317,7 @@ export const modify = <B, A>(f: (a: A) => readonly [B, A]) => <EA, EB>(
 export const modify_ = <EA, EB, B, A>(
   self: XRef<EA, EB, A, A>,
   f: (a: A) => [B, A]
-): SyncE<EA | EB, B> => modify(f)(self)
+): IO<EA | EB, B> => modify(f)(self)
 
 /**
  * Atomically modifies the `XRef` with the specified partial function,
@@ -327,7 +327,7 @@ export const modify_ = <EA, EB, B, A>(
  */
 export const modifySome = <B>(def: B) => <A>(f: (a: A) => O.Option<[B, A]>) => <EA, EB>(
   self: XRef<EA, EB, A, A>
-): SyncE<EA | EB, B> =>
+): IO<EA | EB, B> =>
   pipe(
     self,
     concrete,
@@ -352,7 +352,7 @@ export const modifySome_ = <EA, EB, A, B>(
   self: XRef<EA, EB, A, A>,
   def: B,
   f: (a: A) => O.Option<[B, A]>
-): SyncE<EA | EB, B> => modifySome(def)(f)(self)
+): IO<EA | EB, B> => modifySome(def)(f)(self)
 
 /**
  * Atomically writes the specified value to the `XRef`, returning the value
@@ -434,7 +434,7 @@ export const getAndUpdateSome_ = <EA, EB, A>(
  */
 export const update = <A>(f: (a: A) => A) => <EA, EB>(
   self: XRef<EA, EB, A, A>
-): SyncE<EA | EB, void> =>
+): IO<EA | EB, void> =>
   pipe(
     self,
     concrete,
@@ -450,7 +450,7 @@ export const update = <A>(f: (a: A) => A) => <EA, EB>(
 export const update_ = <EA, EB, A>(
   self: XRef<EA, EB, A, A>,
   f: (a: A) => A
-): SyncE<EA | EB, void> => update(f)(self)
+): IO<EA | EB, void> => update(f)(self)
 
 /**
  * Atomically modifies the `XRef` with the specified function and returns
@@ -458,7 +458,7 @@ export const update_ = <EA, EB, A>(
  */
 export const updateAndGet = <A>(f: (a: A) => A) => <EA, EB>(
   self: XRef<EA, EB, A, A>
-): SyncE<EA | EB, A> =>
+): IO<EA | EB, A> =>
   pipe(
     self,
     concrete,
@@ -478,7 +478,7 @@ export const updateAndGet = <A>(f: (a: A) => A) => <EA, EB>(
 export const updateAndGet_ = <EA, EB, A>(
   self: XRef<EA, EB, A, A>,
   f: (a: A) => A
-): SyncE<EA | EB, A> => updateAndGet(f)(self)
+): IO<EA | EB, A> => updateAndGet(f)(self)
 
 /**
  * Atomically modifies the `XRef` with the specified partial function. If
@@ -486,7 +486,7 @@ export const updateAndGet_ = <EA, EB, A>(
  */
 export const updateSome = <A>(f: (a: A) => O.Option<A>) => <EA, EB>(
   self: XRef<EA, EB, A, A>
-): SyncE<EA | EB, void> =>
+): IO<EA | EB, void> =>
   pipe(
     self,
     concrete,
@@ -509,7 +509,7 @@ export const updateSome = <A>(f: (a: A) => O.Option<A>) => <EA, EB>(
 export const updateSome_ = <EA, EB, A>(
   self: XRef<EA, EB, A, A>,
   f: (a: A) => O.Option<A>
-): SyncE<EA | EB, void> => updateSome(f)(self)
+): IO<EA | EB, void> => updateSome(f)(self)
 
 /**
  * Atomically modifies the `XRef` with the specified partial function. If
@@ -518,7 +518,7 @@ export const updateSome_ = <EA, EB, A>(
  */
 export const updateSomeAndGet = <A>(f: (a: A) => O.Option<A>) => <EA, EB>(
   self: XRef<EA, EB, A, A>
-): SyncE<EA | EB, A> =>
+): IO<EA | EB, A> =>
   pipe(
     self,
     concrete,
@@ -542,7 +542,7 @@ export const updateSomeAndGet = <A>(f: (a: A) => O.Option<A>) => <EA, EB>(
 export const updateSomeAndGet_ = <EA, EB, A>(
   self: XRef<EA, EB, A, A>,
   f: (a: A) => O.Option<A>
-): SyncE<EA | EB, A> => updateSomeAndGet(f)(self)
+): IO<EA | EB, A> => updateSomeAndGet(f)(self)
 
 /**
  * Unsafe update value in a Ref<A>

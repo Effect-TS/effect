@@ -8,7 +8,7 @@ import { forkScopeWith } from "./scope"
 export class ForkScopeRestore {
   constructor(private scope: Scope<Exit<any, any>>) {}
 
-  readonly restore = <S, R, E, A>(fa: Effect<S, R, E, A>): Effect<S, R, E, A> =>
+  readonly restore = <R, E, A>(fa: Effect<R, E, A>): Effect<R, E, A> =>
     new IOverrideForkScope(fa, some(this.scope))
 }
 
@@ -18,7 +18,7 @@ export class ForkScopeRestore {
  * what it was originally.
  */
 export function forkScopeMask(newScope: Scope<Exit<any, any>>) {
-  return <S, R, E, A>(f: (restore: ForkScopeRestore) => Effect<S, R, E, A>) =>
+  return <R, E, A>(f: (restore: ForkScopeRestore) => Effect<R, E, A>) =>
     forkScopeWith(
       (scope) => new IOverrideForkScope(f(new ForkScopeRestore(scope)), some(newScope))
     )

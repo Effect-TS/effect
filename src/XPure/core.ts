@@ -1,6 +1,6 @@
 /* eslint-disable prefer-const */
 import type { EffectURI } from "../Effect/effect"
-import { _A, _E, _I, _R, _S, _U } from "../Effect/effect"
+import { _A, _E, _I, _R, _U } from "../Effect/effect"
 import type { Instruction } from "../Effect/primitives"
 import * as E from "../Either"
 import { constant } from "../Function"
@@ -19,7 +19,6 @@ export abstract class XPure<S1, S2, R, E, A> {
   readonly _S2!: () => S2;
 
   readonly [_U]!: EffectURI;
-  readonly [_S]!: () => never;
   readonly [_E]!: () => E;
   readonly [_A]!: () => A;
   readonly [_R]!: (_: R) => void

@@ -5,7 +5,7 @@ import { pipe } from "../../Function"
 import type { XQueue } from "../../Queue"
 import { takeBetween } from "../../Queue"
 import { end, halt } from "../Pull"
-import type { AsyncRE } from "./definitions"
+import type { Stream } from "./definitions"
 import { repeatEffectChunkOption } from "./repeatEffectChunkOption"
 
 /**
@@ -13,7 +13,7 @@ import { repeatEffectChunkOption } from "./repeatEffectChunkOption"
  */
 export function fromQueue<R, E, O>(
   queue: XQueue<never, R, unknown, E, never, O>
-): AsyncRE<R, E, O> {
+): Stream<R, E, O> {
   return pipe(
     queue,
     takeBetween(1, Number.MAX_SAFE_INTEGER),

@@ -1,59 +1,50 @@
-import type { ExecutionStrategy, Sequential } from "../Effect/ExecutionStrategy"
+import type { ExecutionStrategy } from "../Effect/ExecutionStrategy"
 import { absurd, pipe } from "../Function"
 import { insert, lookup, remove } from "../Map/core"
 import * as O from "../Option"
 import * as R from "../Ref"
 import * as T from "./deps"
 
-export type Finalizer = (
-  exit: T.Exit<any, any>
-) => T.Effect<unknown, unknown, never, any>
+export type Finalizer = (exit: T.Exit<any, any>) => T.Effect<unknown, never, any>
 
-export type FinalizerS<S> = (exit: T.Exit<any, any>) => T.Effect<S, unknown, never, any>
-
-export const noopFinalizer: <S>() => FinalizerS<S> = () => () => T.unit
+export const noopFinalizer: Finalizer = () => T.unit
 
 export class Exited {
   readonly _tag = "Exited"
   constructor(readonly nextKey: number, readonly exit: T.Exit<any, any>) {}
 }
 
-export class Running<S> {
+export class Running {
   readonly _tag = "Running"
   constructor(
     readonly nextKey: number,
     readonly _finalizers: ReadonlyMap<number, Finalizer>
   ) {}
 
-  finalizers<S1 extends S>(): ReadonlyMap<number, FinalizerS<S1>>
   finalizers(): ReadonlyMap<number, Finalizer> {
     return this._finalizers as any
   }
 }
 
-export type State<S> = Exited | Running<S>
+export type State = Exited | Running
 
 export function next(l: number) {
   return l + 1
 }
 
-export function add<S>(finalizer: FinalizerS<S>) {
-  return (_: ReleaseMap<S>) =>
+export function add(finalizer: Finalizer) {
+  return (_: ReleaseMap) =>
     T.map_(
       addIfOpen(finalizer)(_),
       O.fold(
-        (): FinalizerS<S> => () => T.unit,
-        (k): FinalizerS<S> => (e) => release(k, e)(_)
+        (): Finalizer => () => T.unit,
+        (k): Finalizer => (e) => release(k, e)(_)
       )
     )
 }
 
-export function release(
-  key: number,
-  exit: T.Exit<any, any>
-): <S>(_: ReleaseMap<S>) => T.Effect<S, unknown, never, any>
 export function release(key: number, exit: T.Exit<any, any>) {
-  return <S>(_: ReleaseMap<S>) =>
+  return (_: ReleaseMap) =>
     pipe(
       _.ref,
       R.modify((s) => {
@@ -78,20 +69,12 @@ export function release(key: number, exit: T.Exit<any, any>) {
 
 export function releaseAll(
   exit: T.Exit<any, any>,
-  execStrategy: Sequential
-): <S>(_: ReleaseMap<S>) => T.Effect<S, unknown, never, any>
-export function releaseAll(
-  exit: T.Exit<any, any>,
   execStrategy: ExecutionStrategy
-): <S>(_: ReleaseMap<S>) => T.Async<any>
-export function releaseAll(
-  exit: T.Exit<any, any>,
-  execStrategy: ExecutionStrategy
-): <S>(_: ReleaseMap<S>) => T.Async<any> {
-  return <S>(_: ReleaseMap<S>) =>
+): (_: ReleaseMap) => T.UIO<any> {
+  return (_: ReleaseMap) =>
     pipe(
       _.ref,
-      R.modify((s): [T.Async<any>, State<S>] => {
+      R.modify((s): [T.UIO<any>, State] => {
         switch (s._tag) {
           case "Exited": {
             return [T.unit, s]
@@ -149,11 +132,11 @@ export function releaseAll(
     )
 }
 
-export function addIfOpen<S>(finalizer: FinalizerS<S>) {
-  return (_: ReleaseMap<S>): T.Effect<S, unknown, never, O.Option<number>> =>
+export function addIfOpen(finalizer: Finalizer) {
+  return (_: ReleaseMap): T.Effect<unknown, never, O.Option<number>> =>
     pipe(
       _.ref,
-      R.modify<T.Effect<S, unknown, never, O.Option<number>>, State<S>>((s) => {
+      R.modify<T.Effect<unknown, never, O.Option<number>>, State>((s) => {
         switch (s._tag) {
           case "Exited": {
             return [
@@ -173,11 +156,11 @@ export function addIfOpen<S>(finalizer: FinalizerS<S>) {
     )
 }
 
-export function replace<S>(key: number, finalizer: FinalizerS<S>) {
-  return (_: ReleaseMap<S>): T.Effect<S, unknown, never, O.Option<FinalizerS<S>>> =>
+export function replace(key: number, finalizer: Finalizer) {
+  return (_: ReleaseMap): T.Effect<unknown, never, O.Option<Finalizer>> =>
     pipe(
       _.ref,
-      R.modify<T.Effect<S, unknown, never, O.Option<FinalizerS<S>>>, State<S>>((s) => {
+      R.modify<T.Effect<unknown, never, O.Option<Finalizer>>, State>((s) => {
         switch (s._tag) {
           case "Exited":
             return [
@@ -197,9 +180,11 @@ export function replace<S>(key: number, finalizer: FinalizerS<S>) {
     )
 }
 
-export class ReleaseMap<S> {
-  constructor(readonly ref: R.Ref<State<S>>) {}
+export class ReleaseMap {
+  constructor(readonly ref: R.Ref<State>) {}
 }
 
-export const makeReleaseMap = <S>() =>
-  T.map_(R.makeRef<State<S>>(new Running(0, new Map())), (s) => new ReleaseMap<S>(s))
+export const makeReleaseMap = T.map_(
+  R.makeRef<State>(new Running(0, new Map())),
+  (s) => new ReleaseMap(s)
+)

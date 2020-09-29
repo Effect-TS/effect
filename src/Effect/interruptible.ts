@@ -14,6 +14,6 @@ import type { Effect } from "./effect"
  * interrupted in unexpected places. Do not use this operator unless you know
  * exactly what you are doing. Instead, you should use `uninterruptibleMask`.
  */
-export function interruptible<S, R, E, A>(effect: Effect<S, R, E, A>) {
+export function interruptible<R, E, A>(effect: Effect<R, E, A>) {
   return pipe(effect, interruptStatus(statusInterruptible))
 }
