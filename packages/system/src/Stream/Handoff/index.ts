@@ -47,7 +47,7 @@ export function offer<A>(a: A) {
             matchTag({
               Empty: ({ notifyConsumer }) =>
                 [
-                  pipe(notifyConsumer, P.succeed(constVoid()), T.zipSecond(P.await(p))),
+                  pipe(notifyConsumer, P.succeed(constVoid()), T.andThen(P.await(p))),
                   new Full(a, p)
                 ] as const,
               Full: (s) =>
