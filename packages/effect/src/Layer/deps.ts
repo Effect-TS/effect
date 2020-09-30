@@ -6,7 +6,6 @@ export {
   chain_,
   checkDescriptor,
   effectTotal,
-  forkDaemon,
   halt,
   provideAll_,
   succeed as succeedNow,
@@ -30,6 +29,7 @@ export { provide } from "../Effect/provide"
 export { provideSome_ } from "../Effect/provideSome"
 export { result } from "../Effect/result"
 export { runCancel } from "../Effect/runtime"
+export { forkDaemon } from "../Effect/core-scope"
 export { tap } from "../Effect/tap"
 export { uninterruptible } from "../Effect/uninterruptible"
 export { uninterruptibleMask } from "../Effect/uninterruptibleMask"
