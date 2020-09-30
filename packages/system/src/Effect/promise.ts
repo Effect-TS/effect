@@ -1,8 +1,9 @@
 import type { Lazy } from "../Function"
 import { flow } from "../Function"
-import { effectAsync, succeed } from "./core"
+import { succeed } from "./core"
 import { die } from "./die"
 import type { IO, UIO } from "./effect"
+import { effectAsync } from "./effectAsync"
 import { fail } from "./fail"
 
 /**
