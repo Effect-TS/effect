@@ -1,4 +1,4 @@
-import * as E from "../Either"
+import type * as E from "../Either"
 import type { FiberID } from "../Fiber/id"
 import * as O from "../Option"
 import { AtomicReference } from "../Support/AtomicReference"
