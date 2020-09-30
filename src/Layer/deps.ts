@@ -6,20 +6,21 @@ export {
   chain_,
   checkDescriptor,
   effectTotal,
+  forkDaemon,
   halt,
   provideAll_,
   succeed as succeedNow,
   suspend,
   unit
 } from "../Effect/core"
-export { forkDaemon } from "../Effect/scope"
 export { die } from "../Effect/die"
-export { bind, let, do } from "../Effect/do"
+export { bind, do, let } from "../Effect/do"
 export { done } from "../Effect/done"
 export { Effect, IO, RIO, UIO } from "../Effect/effect"
 export { environment } from "../Effect/environment"
 export { flatten } from "../Effect/flatten"
 export { foreach_ as effectForeach_ } from "../Effect/foreach_"
+export { provideService, Region } from "../Effect/has"
 export { interrupt } from "../Effect/interrupt"
 export { interruptible } from "../Effect/interruptible"
 export { map } from "../Effect/map"
@@ -36,7 +37,6 @@ export { whenM } from "../Effect/whenM"
 export { flatten as exitFlatten } from "../Exit/core"
 export { join } from "../Fiber/api"
 export { Has, Tag } from "../Has"
-export { provideService, Region } from "../Effect/has"
 export {
   chain as managedChain,
   chain_ as managedChain_,

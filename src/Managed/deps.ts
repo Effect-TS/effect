@@ -10,8 +10,9 @@ export {
   foldCauseM,
   provideAll,
   provideAll_,
-  succeed as succeedNow,
-  unit
+  succeed,
+  unit,
+  forkDaemon
 } from "../Effect/core"
 export { bind, do, let } from "../Effect/do"
 export { done } from "../Effect/done"
@@ -28,12 +29,11 @@ export { map } from "../Effect/map"
 export { map_ } from "../Effect/map_"
 export { provideSome_ } from "../Effect/provideSome"
 export { result } from "../Effect/result"
-export { forkDaemon } from "../Effect/scope"
+export { andThen } from "../Effect/andThen"
 export { tap } from "../Effect/tap"
 export { toManaged } from "../Effect/toManaged"
 export { uninterruptible } from "../Effect/uninterruptible"
 export { uninterruptibleMask } from "../Effect/uninterruptibleMask"
-export { zipSecond } from "../Effect/zipSecond"
 export { zipWith } from "../Effect/zipWith"
 export { zipWithPar_ } from "../Effect/zipWithPar_"
 export { zipWith_ } from "../Effect/zipWith_"

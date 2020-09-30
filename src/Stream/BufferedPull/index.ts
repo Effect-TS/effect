@@ -61,7 +61,7 @@ export const pullElement = <R, E, A>(
               [[], 0]
             ]
           } else {
-            return [T.succeedNow(c[i]), [c, i + 1]]
+            return [T.succeed(c[i]), [c, i + 1]]
           }
         }),
         T.flatten
@@ -84,7 +84,7 @@ export const pullArray = <R, E, A>(
           if (idx >= chunk.length) {
             return [TT.chain_(update(self), () => pullArray(self)), [[], 0]]
           } else {
-            return [T.succeedNow(A.dropLeft_(chunk, idx)), [[], 0]]
+            return [T.succeed(A.dropLeft_(chunk, idx)), [[], 0]]
           }
         }),
         T.flatten

@@ -30,7 +30,7 @@ export const runManaged = <R1, E1, O, B>(sink: Sink.Sink<R1, E1, O, any, B>) => 
                       c,
                       C.map(([_]) => _),
                       C.sequenceCauseEither,
-                      Either.fold(T.halt, T.succeedNow)
+                      Either.fold(T.halt, T.succeed)
                     ),
                   () => T.die("empty stream / empty sinks")
                 ),
@@ -45,7 +45,7 @@ export const runManaged = <R1, E1, O, B>(sink: Sink.Sink<R1, E1, O, any, B>) => 
                 c,
                 C.map(([_]) => _),
                 C.sequenceCauseEither,
-                Either.fold(T.halt, T.succeedNow)
+                Either.fold(T.halt, T.succeed)
               ),
             () => go
           )

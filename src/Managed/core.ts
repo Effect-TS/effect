@@ -267,8 +267,7 @@ export const fromEffect = <R, E, A>(effect: T.Effect<R, E, A>) =>
  */
 export const make = <R1, A>(
   release: (a: A) => T.Effect<R1, never, unknown>
-): (<R, E>(acquire: T.Effect<R, E, A>) => Managed<R & R1, E, A>) =>
-  makeExit((a) => release(a))
+): (<R, E>(acquire: T.Effect<R, E, A>) => Managed<R & R1, E, A>) => makeExit(release)
 
 /**
  * Lifts a `Effect< R, E, A>` into `Managed< R, E, A>` with a release action.
@@ -277,7 +276,7 @@ export const make = <R1, A>(
 export const make_ = <R, E, A, R1>(
   acquire: T.Effect<R, E, A>,
   release: (a: A) => T.Effect<R1, never, unknown>
-): Managed<R & R1, E, A> => makeExit_(acquire, (a) => release(a))
+): Managed<R & R1, E, A> => makeExit_(acquire, release)
 
 /**
  * Lifts a `Effect< R, E, A>` into `Managed< R, E, A>` with a release action
@@ -594,12 +593,12 @@ export const makeReservation = <R2>(
  * is performed interruptibly.
  */
 export const reserve = <R, E, A>(reservation: Reservation<R, E, A>) =>
-  makeReserve(T.succeedNow(reservation))
+  makeReserve(T.succeed(reservation))
 
 /**
  * Lift a pure value into an effect
  */
-export const succeedNow = <A>(a: A) => fromEffect(T.succeedNow(a))
+export const succeedNow = <A>(a: A) => fromEffect(T.succeed(a))
 
 /**
  * Returns a managed that effectfully peeks at the acquired resource.
@@ -638,7 +637,7 @@ export const use_ = <R, E, A, R2, E2, B>(
  * managed effect. Note that this is only safe if the result of this managed
  * effect is valid outside its scope.
  */
-export const useNow = <R, E, A>(self: Managed<R, E, A>) => use_(self, T.succeedNow)
+export const useNow = <R, E, A>(self: Managed<R, E, A>) => use_(self, T.succeed)
 
 /**
  * Returns a managed that executes both this managed and the specified managed,

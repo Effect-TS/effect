@@ -9,7 +9,7 @@ import * as RelMap from "../releaseMap"
 import { releaseMap } from "./releaseMap"
 
 /**
- * Returns a {@link Managed} value that represents a managed resource that can
+ * Returns a `Managed` value that represents a managed resource that can
  * be safely swapped within the scope of the `Managed`. The function provided
  * inside the `Managed` can be used to switch the resource currently in use.
  *
@@ -33,7 +33,7 @@ export function switchable<R, E, A>(): Managed<
       pipe(
         releaseMap,
         RelMap.addIfOpen((_) => T.unit),
-        T.chain(fold(() => T.interrupt, T.succeedNow)),
+        T.chain(fold(() => T.interrupt, T.succeed)),
         T.toManaged()
       )
     ),
@@ -48,7 +48,7 @@ export function switchable<R, E, A>(): Managed<
               (fin) => fin(T.exitUnit)
             )
           ),
-          T.zipSecond(T.do),
+          T.andThen(T.do),
           T.bind("r", () => T.environment<R>()),
           T.bind("inner", () => RelMap.makeReleaseMap),
           T.bind("a", ({ inner, r }) =>
