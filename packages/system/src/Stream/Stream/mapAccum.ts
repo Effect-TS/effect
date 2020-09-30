@@ -11,5 +11,5 @@ export const mapAccum = <Z>(z: Z) => <O, O1>(f: (z: Z, o: O) => [Z, O1]) => <R, 
 ) =>
   pipe(
     self,
-    mapAccumM(z)((z, o) => T.succeedNow(f(z, o)))
+    mapAccumM(z)((z, o) => T.succeed(f(z, o)))
   )

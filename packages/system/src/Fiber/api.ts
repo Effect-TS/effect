@@ -64,7 +64,7 @@ export const mapM = <E2, A, B>(f: (a: A) => T.IO<E2, B>) => <E>(
   poll: T.chain_(
     fiber.poll,
     O.fold(
-      () => T.succeedNow(O.none),
+      () => T.succeed(O.none),
       (a) => T.map_(Exit.foreach_(a, f), O.some)
     )
   )
@@ -73,7 +73,7 @@ export const mapM = <E2, A, B>(f: (a: A) => T.IO<E2, B>) => <E>(
 /**
  * Maps over the value the fiber computes.
  */
-export const map = <A, B>(f: (a: A) => B) => mapM((a: A) => T.succeedNow(f(a)))
+export const map = <A, B>(f: (a: A) => B) => mapM((a: A) => T.succeed(f(a)))
 
 /**
  * Joins all fibers, awaiting their _successful_ completion.

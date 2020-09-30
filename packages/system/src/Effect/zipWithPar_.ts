@@ -3,11 +3,9 @@ import type { Exit } from "../Exit/exit"
 import { join } from "../Fiber/api"
 import type { Fiber } from "../Fiber/core"
 import type { FiberID } from "../Fiber/id"
-import { chain_, checkDescriptor, halt } from "./core"
+import { chain_, checkDescriptor, halt, raceWith, transplant } from "./core"
 import type { Effect } from "./effect"
 import { map_ } from "./map_"
-import { raceWith } from "./scope"
-import { transplant } from "./transplant"
 
 /**
  * Sequentially zips this effect with the specified effect using the
