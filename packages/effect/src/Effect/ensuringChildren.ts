@@ -1,10 +1,9 @@
 import * as Fiber from "../Fiber"
 import { flow, pipe } from "../Function"
 import { track } from "../Supervisor"
-import { chain } from "./core"
+import { chain, supervised } from "./core"
 import type { Effect, RIO } from "./effect"
 import { ensuring } from "./ensuring"
-import { supervised } from "./supervised"
 
 /**
  * Acts on the children of this fiber, guaranteeing the specified callback

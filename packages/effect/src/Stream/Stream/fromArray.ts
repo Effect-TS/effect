@@ -16,7 +16,7 @@ export const fromArray = <O>(c: Array.Array<O>): UIO<O> =>
       Ref.makeRef(false),
       T.chain(
         Ref.modify<T.IO<Option.Option<never>, Array.Array<O>>, boolean>((done) =>
-          done || c.length === 0 ? [Pull.end, true] : [T.succeedNow(c), true]
+          done || c.length === 0 ? [Pull.end, true] : [T.succeed(c), true]
         )
       ),
       T.toManaged()

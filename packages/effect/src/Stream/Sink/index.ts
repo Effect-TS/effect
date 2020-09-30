@@ -105,7 +105,7 @@ export const foldArraysM = <Z>(z: Z) => (contFn: (s: Z) => boolean) => <I, R, E>
 export const foldArrays = <Z>(z: Z) => (contFn: (s: Z) => boolean) => <I>(
   f: (s: Z, i: A.Array<I>) => Z
 ): Sink<unknown, never, I, I, Z> =>
-  foldArraysM(z)(contFn)((z, i: A.Array<I>) => T.succeedNow(f(z, i)))
+  foldArraysM(z)(contFn)((z, i: A.Array<I>) => T.succeed(f(z, i)))
 
 /**
  * A sink that folds its input chunks with the provided function and initial state.
@@ -146,7 +146,7 @@ export const raceBoth = <R1, E1, I1 extends I, L1, Z1, I>(
             Ex.foldM_(
               res1,
               (f) =>
-                T.zipSecond_(
+                T.andThen_(
                   F.interrupt(fib2),
                   T.halt(
                     pipe(
@@ -165,7 +165,7 @@ export const raceBoth = <R1, E1, I1 extends I, L1, Z1, I>(
             Ex.foldM_(
               res2,
               (f) =>
-                T.zipSecond_(
+                T.andThen_(
                   F.interrupt(fib1),
                   T.halt(
                     pipe(

@@ -35,7 +35,7 @@ function go<R, E, O>(
                 : pipe(
                     switchStream(streams[i].proc),
                     T.chain(currStream.set),
-                    T.zipSecond(
+                    T.andThen(
                       go(streams, chunkSize, currIndex, currStream, switchStream)
                     )
                   )

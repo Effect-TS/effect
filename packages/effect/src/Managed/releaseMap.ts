@@ -146,7 +146,7 @@ export function addIfOpen(finalizer: Finalizer) {
           }
           case "Running": {
             return [
-              T.succeedNow(O.some(s.nextKey)),
+              T.succeed(O.some(s.nextKey)),
               new Running(next(s.nextKey), insert(s.nextKey, finalizer)(s.finalizers()))
             ]
           }
@@ -169,7 +169,7 @@ export function replace(key: number, finalizer: Finalizer) {
             ]
           case "Running":
             return [
-              T.succeedNow(lookup(key)(s.finalizers())),
+              T.succeed(lookup(key)(s.finalizers())),
               new Running(s.nextKey, insert(key, finalizer)(s.finalizers()))
             ]
           default:

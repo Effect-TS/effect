@@ -99,7 +99,7 @@ export class Chain<R_, E_, O, O2> {
   ): T.Effect<R, Option.Option<E>, Array.Array<O>> {
     return pipe(
       pull,
-      T.chain((os) => (os.length > 0 ? T.succeedNow(os) : this.pullNonEmpty(pull)))
+      T.chain((os) => (os.length > 0 ? T.succeed(os) : this.pullNonEmpty(pull)))
     )
   }
 
@@ -111,7 +111,7 @@ export class Chain<R_, E_, O, O2> {
         [Array.Array<O>, number]
       ] => {
         if (nextIdx < chunk.length) {
-          return [T.succeedNow(chunk[nextIdx]), [chunk, nextIdx + 1]]
+          return [T.succeed(chunk[nextIdx]), [chunk, nextIdx + 1]]
         } else {
           return [
             pipe(

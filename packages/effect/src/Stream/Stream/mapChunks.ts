@@ -12,5 +12,5 @@ export const mapChunks = <O, O2>(f: (_: Array.Array<O>) => Array.Array<O2>) => <
 ): Stream<R, E, O2> =>
   pipe(
     self,
-    mapChunksM((o) => T.succeedNow(f(o)))
+    mapChunksM((o) => T.succeed(f(o)))
   )

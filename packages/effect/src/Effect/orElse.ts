@@ -1,6 +1,6 @@
+import { tryOrElse_ } from "./core"
 import type { Effect } from "./effect"
 import { ISucceed } from "./primitives"
-import { tryOrElse_ } from "./tryOrElse_"
 
 /**
  * Executes this effect and returns its value, if it succeeds, but
