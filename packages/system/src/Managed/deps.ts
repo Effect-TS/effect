@@ -11,9 +11,9 @@ export {
   provideAll,
   provideAll_,
   succeed,
-  unit,
-  forkDaemon
+  unit
 } from "../Effect/core"
+export { forkDaemon } from "../Effect/core-scope"
 export { bind, do, let } from "../Effect/do"
 export { done } from "../Effect/done"
 export { Effect, IO, RIO, UIO, _A, _E, _I, _R, _U } from "../Effect/effect"
