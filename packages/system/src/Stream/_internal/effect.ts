@@ -12,10 +12,10 @@ export {
   foldCauseM_,
   fork,
   halt,
-  raceWith,
   succeed,
   unit
 } from "../../Effect/core"
+export { raceWith } from "../../Effect/core-scope"
 export { die } from "../../Effect/die"
 export { bind, do, let, merge } from "../../Effect/do"
 export { done } from "../../Effect/done"

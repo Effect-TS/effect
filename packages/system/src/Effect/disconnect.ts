@@ -1,5 +1,6 @@
 import { join } from "../Fiber/api"
-import { chain_, forkDaemon } from "./core"
+import { chain_ } from "./core"
+import { forkDaemon } from "./core-scope"
 import type { Effect } from "./effect"
 import { fiberId } from "./fiberId"
 import { onInterrupt_ } from "./onInterrupt_"
