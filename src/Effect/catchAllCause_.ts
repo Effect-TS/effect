@@ -9,7 +9,7 @@ export function catchAllCause_<R2, E2, A2, R, E, A>(
   effect: Effect<R2, E2, A2>,
   f: (_: Cause<E2>) => Effect<R, E, A>
 ) {
-  return foldCauseM_(effect, f, (x) => succeed(x))
+  return foldCauseM_(effect, f, succeed)
 }
 
 /**
@@ -18,5 +18,5 @@ export function catchAllCause_<R2, E2, A2, R, E, A>(
 export function catchAllCause<R2, E2, A2, R, E, A>(
   f: (_: Cause<E2>) => Effect<R, E, A>
 ) {
-  return (effect: Effect<R2, E2, A2>) => foldCauseM_(effect, f, (x) => succeed(x))
+  return (effect: Effect<R2, E2, A2>) => catchAllCause_(effect, f)
 }
