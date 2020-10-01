@@ -6,5 +6,5 @@ import { mapError_ } from "./mapError"
  * Maps the error value of this effect to an optional value.
  */
 export function asSomeError<R, E, A>(self: Effect<R, E, A>) {
-  return mapError_(self, (e) => O.some(e))
+  return mapError_(self, O.some)
 }
