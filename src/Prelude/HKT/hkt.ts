@@ -9,7 +9,7 @@ export const UF__ = "F__"
 export type UF__ = typeof UF__
 export interface F__<E, A> {
   URI: UF__
-  E: () => E
+  E: E
   A: A
 }
 
@@ -17,8 +17,8 @@ export const UF___ = "F___"
 export type UF___ = typeof UF___
 export interface F___<R, E, A> {
   URI: UF___
-  R: (_: R) => void
-  E: () => E
+  R: R
+  E: E
   A: A
 }
 
@@ -27,8 +27,8 @@ export type UF____ = typeof UF____
 export interface F____<S, R, E, A> {
   URI: UF____
   S: S
-  R: (_: R) => void
-  E: () => E
+  R: R
+  E: E
   A: A
 }
 
@@ -43,7 +43,7 @@ export const UG__ = "G__"
 export type UG__ = typeof UG__
 export interface G__<E, A> {
   URI: UG__
-  E: () => E
+  E: E
   A: A
 }
 
@@ -51,8 +51,8 @@ export const UG___ = "G___"
 export type UG___ = typeof UG___
 export interface G___<R, E, A> {
   URI: UG___
-  R: (_: R) => void
-  E: () => E
+  R: R
+  E: E
   A: A
 }
 
@@ -61,23 +61,8 @@ export type UG____ = typeof UG____
 export interface G____<S, R, E, A> {
   URI: UG____
   S: S
-  R: (_: R) => void
-  E: () => E
-  A: A
-}
-
-export const HKTFullURI = "HKTFullURI"
-export type HKTFullURI = typeof HKTFullURI
-export interface HKTFull<K, SI, SO, X, I, S, R, E, A> {
-  URI: HKTFullURI
-  K: () => K
-  SI: (_: SI) => void
-  SO: () => SO
-  X: () => X
-  I: (_: I) => void
-  S: S
-  R: (_: R) => void
-  E: () => E
+  R: R
+  E: E
   A: A
 }
 
@@ -94,7 +79,7 @@ export interface URItoKind<
   Q,
   // encodes free logic
   W,
-  // encodes free logic (sync/async in FX)
+  // encodes free logic
   X,
   // encodes free logic (input in FX)
   I,

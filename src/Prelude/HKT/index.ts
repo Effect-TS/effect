@@ -8,8 +8,6 @@ export {
   G__,
   G___,
   G____,
-  HKTFull,
-  HKTFullURI,
   UF_,
   UF__,
   UF___,
