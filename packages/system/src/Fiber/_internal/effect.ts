@@ -5,6 +5,7 @@ export {
   chain_,
   effectTotal,
   halt,
+  result,
   succeed,
   suspend,
   unit
@@ -28,7 +29,6 @@ export { interruptAs } from "../../Effect/interruptAs"
 export { map } from "../../Effect/map"
 export { map_ } from "../../Effect/map_"
 export type { IFold, Instruction, IRaceWith } from "../../Effect/primitives"
-export { result } from "../../Effect/result"
 export { tap_ } from "../../Effect/tap_"
 export { zipWithPar_ } from "../../Effect/zipWithPar_"
 export { zipWith_ } from "../../Effect/zipWith_"
