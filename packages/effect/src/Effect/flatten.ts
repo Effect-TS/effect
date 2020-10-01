@@ -1,5 +1,5 @@
-import { identity, pipe } from "../Function"
-import { chain } from "./core"
+import { identity } from "../Function"
+import { chain_ } from "./core"
 import type { Effect } from "./effect"
 
 /**
@@ -8,5 +8,5 @@ import type { Effect } from "./effect"
  * flattening a nested effect.
  */
 export function flatten<R, E, R1, E1, A>(effect: Effect<R, E, Effect<R1, E1, A>>) {
-  return pipe(effect, chain(identity))
+  return chain_(effect, identity)
 }

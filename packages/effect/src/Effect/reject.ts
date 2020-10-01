@@ -1,3 +1,4 @@
+import { flow } from "../Function"
 import * as O from "../Option"
 import { chain_, succeed } from "./core"
 import type { Effect } from "./effect"
@@ -35,7 +36,7 @@ export function rejectM_<R, E, A, R1, E1>(
  * continue with our held value.
  */
 export function reject<A, E1>(pf: (a: A) => O.Option<E1>) {
-  return <R, E>(self: Effect<R, E, A>) => rejectM_(self, (a) => O.map_(pf(a), fail))
+  return <R, E>(self: Effect<R, E, A>) => reject_(self, pf)
 }
 
 /**
@@ -46,5 +47,5 @@ export function reject_<R, E, A, E1>(
   self: Effect<R, E, A>,
   pf: (a: A) => O.Option<E1>
 ) {
-  return rejectM_(self, (a) => O.map_(pf(a), fail))
+  return rejectM_(self, flow(pf, O.map(fail)))
 }
