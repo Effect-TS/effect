@@ -3,13 +3,12 @@ import * as E from "../Either"
 import * as Exit from "../Exit/api"
 import * as Fiber from "../Fiber/api"
 import { pipe } from "../Function"
-import { chain, chain_, checkDescriptor, halt, succeed } from "./core"
+import { chain, chain_, checkDescriptor, halt, result, succeed } from "./core"
 import { raceWith } from "./core-scope"
 import { done } from "./done"
 import type { Effect, IO } from "./effect"
 import { map_ } from "./map_"
 import { mapErrorCause_ } from "./mapErrorCause"
-import { result } from "./result"
 
 function mergeInterruption<A, E2, A2>(a: A): (a: Exit.Exit<E2, A2>) => IO<E2, A> {
   return (x) => {
