@@ -1,5 +1,5 @@
 import type * as O from "../Option"
-import { catchAll_ } from "./catchAll_"
+import { catchAll_ } from "./catchAll"
 import type { Effect } from "./effect"
 import { fail } from "./fail"
 import { unrefineWith_ } from "./unrefine"
