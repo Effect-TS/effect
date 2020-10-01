@@ -10,6 +10,7 @@ export {
   foldCauseM,
   provideAll,
   provideAll_,
+  result,
   succeed,
   unit
 } from "../Effect/core"
@@ -34,7 +35,6 @@ export { orElse_ } from "../Effect/orElse"
 export { provideSome_ } from "../Effect/provideSome"
 export { raceEither_ } from "../Effect/race"
 export { repeatOrElse_ } from "../Effect/repeat"
-export { result } from "../Effect/result"
 export { sleep } from "../Effect/sleep"
 export { tapBoth_ } from "../Effect/tapBoth_"
 export { tapError_ } from "../Effect/tapError"

@@ -8,10 +8,12 @@ export {
   effectTotal,
   halt,
   provideAll_,
+  result,
   succeed as succeedNow,
   suspend,
   unit
 } from "../Effect/core"
+export { forkDaemon } from "../Effect/core-scope"
 export { die } from "../Effect/die"
 export { bind, do, let } from "../Effect/do"
 export { done } from "../Effect/done"
@@ -27,9 +29,7 @@ export { map_ } from "../Effect/map_"
 export { onExit, onExit_ } from "../Effect/onExit"
 export { provide } from "../Effect/provide"
 export { provideSome_ } from "../Effect/provideSome"
-export { result } from "../Effect/result"
 export { runCancel } from "../Effect/runtime"
-export { forkDaemon } from "../Effect/core-scope"
 export { tap } from "../Effect/tap"
 export { uninterruptible } from "../Effect/uninterruptible"
 export { uninterruptibleMask } from "../Effect/uninterruptibleMask"

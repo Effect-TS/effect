@@ -1,5 +1,6 @@
 import type { Cause } from "../Cause/cause"
 import { keepDefects } from "../Cause/core"
+import * as Exit from "../Exit/core"
 import type * as Fiber from "../Fiber"
 import type { Descriptor, InterruptStatus } from "../Fiber/core"
 import type { FiberID } from "../Fiber/id"
@@ -204,6 +205,20 @@ export function provideAll_<R, E, A>(
   r: R
 ): Effect<unknown, E, A> {
   return new IProvide(r, next)
+}
+
+/**
+ * Returns an effect that semantically runs the effect on a fiber,
+ * producing an `Exit` for the completion value of the fiber.
+ */
+export function result<R, E, A>(
+  value: Effect<R, E, A>
+): Effect<R, never, Exit.Exit<E, A>> {
+  return new IFold(
+    value,
+    (cause) => succeed(Exit.halt(cause)),
+    (succ) => succeed(Exit.succeed(succ))
+  )
 }
 
 /**
