@@ -1,5 +1,6 @@
 // minimize circularity by importing only a subset
 
+export { andThen } from "../Effect/andThen"
 export { bracketExit_ } from "../Effect/bracketExit_"
 export {
   access,
@@ -10,6 +11,7 @@ export {
   foldCauseM,
   provideAll,
   provideAll_,
+  result,
   succeed,
   unit
 } from "../Effect/core"
@@ -28,8 +30,6 @@ export { interrupt } from "../Effect/interrupt"
 export { map } from "../Effect/map"
 export { map_ } from "../Effect/map_"
 export { provideSome_ } from "../Effect/provideSome"
-export { result } from "../Effect/result"
-export { andThen } from "../Effect/andThen"
 export { tap } from "../Effect/tap"
 export { toManaged } from "../Effect/toManaged"
 export { uninterruptible } from "../Effect/uninterruptible"
