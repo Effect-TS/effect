@@ -11,3 +11,4 @@ yarn-error.log
 .ultra.cache.json
 tsbuildinfo/
 del-tags.sh
+incubation/
