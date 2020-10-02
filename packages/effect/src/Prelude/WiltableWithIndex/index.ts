@@ -52,9 +52,10 @@ export interface WiltableWithIndex<F extends HKT.URIS, C = HKT.Auto>
 }
 
 export function implementSeparateWithIndexF<F extends HKT.URIS, C = HKT.Auto>(): (
-  i: <FN extends string, FK, FQ, FW, FX, FI, FS, FR, FE, A, B, B2>(_: {
+  i: <FN extends string, FK, FQ, FW, FX, FI, FS, FR, FE, A, B, B2, G>(_: {
     A: A
     B: B
+    G: G
     FN: FN
     FK: FK
     FQ: FQ
@@ -65,15 +66,16 @@ export function implementSeparateWithIndexF<F extends HKT.URIS, C = HKT.Auto>():
     FR: FR
     FE: FE
   }) => (
-    G: Applicative<[HKT.UG_]>
+    G: Applicative<HKT.UHKT<G>>
   ) => (
     f: (
       k: HKT.IndexFor<F, HKT.OrFix<"N", C, FN>, HKT.OrFix<"K", C, FK>>,
       a: A
-    ) => HKT.G_<Either<B, B2>>
+    ) => HKT.HKT<G, Either<B, B2>>
   ) => (
     ta: HKT.Kind<F, C, FN, FK, FQ, FW, FX, FI, FS, FR, FE, A>
-  ) => HKT.G_<
+  ) => HKT.HKT<
+    G,
     Separated<
       HKT.Kind<F, C, FN, FK, FQ, FW, FX, FI, FS, FR, FE, B>,
       HKT.Kind<F, C, FN, FK, FQ, FW, FX, FI, FS, FR, FE, B2>

@@ -1,25 +1,3 @@
-export {
-  ConcreteURIS,
-  F_,
-  F__,
-  F___,
-  F____,
-  G_,
-  G__,
-  G___,
-  G____,
-  UF_,
-  UF__,
-  UF___,
-  UF____,
-  UG_,
-  UG__,
-  UG___,
-  UG____,
-  URItoIndex,
-  URItoKind
-} from "./hkt"
-
 // codegen:start { preset: barrel, include: ./*.ts, exclude: ./hkt.ts }
 export * from "./base"
 export * from "./custom"
@@ -30,3 +8,17 @@ export * from "./kind"
 export * from "./or-never"
 export * from "./variance"
 // codegen:end
+
+export {
+  ConcreteURIS,
+  UHKT,
+  UHKT2,
+  UHKT3,
+  UHKT4,
+  HKT,
+  HKT2,
+  HKT3,
+  HKT4,
+  URItoIndex,
+  URItoKind
+} from "./hkt"

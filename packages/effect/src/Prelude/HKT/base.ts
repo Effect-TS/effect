@@ -1,6 +1,4 @@
-export interface Auto {
-  readonly Auto: unique symbol
-}
+export interface Auto {}
 
 export interface Base<F, C = Auto> {
   F: F
