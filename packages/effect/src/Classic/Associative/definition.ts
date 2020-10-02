@@ -5,4 +5,6 @@ import type { Closure } from "../Closure"
  * for a type `A`. For example, addition for integers, and string
  * concatenation for strings.
  */
-export interface Associative<A> extends Closure<A> {}
+export interface Associative<A> extends Closure<A> {
+  readonly Associative: "Associative"
+}

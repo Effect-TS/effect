@@ -5,5 +5,7 @@ import type { Associative } from "../Associative"
  * for a type `A`. For example, addition for integers.
  */
 export interface Commutative<A> extends Associative<A> {
+  readonly Commutative: "Commutative"
+
   readonly commute: (y: A) => (x: A) => A
 }
