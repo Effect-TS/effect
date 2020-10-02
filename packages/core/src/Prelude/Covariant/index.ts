@@ -72,11 +72,11 @@ export function getCovariantComposition<
   CF = HKT.Auto,
   CG = HKT.Auto
 >(F: Covariant<F, CF>, G: Covariant<G, CG>): CovariantComposition<F, G, CF, CG>
-export function getCovariantComposition(
-  F: Covariant<[HKT.UF_]>,
-  G: Covariant<[HKT.UG_]>
+export function getCovariantComposition<F, G>(
+  F: Covariant<HKT.UHKT<F>>,
+  G: Covariant<HKT.UHKT<G>>
 ) {
-  return HKT.instance<CovariantComposition<[HKT.UF_], [HKT.UG_]>>({
+  return HKT.instance<CovariantComposition<HKT.UHKT<F>, HKT.UHKT<G>>>({
     map: (f) => F.map(G.map(f))
   })
 }

@@ -1,70 +1,36 @@
-export const UF_ = "F_"
-export type UF_ = typeof UF_
-export interface F_<A> {
-  URI: UF_
+import type { URI } from "."
+import type { AccessCustom, CustomType } from "./custom"
+
+export interface HKT<F, A> {
+  F: F
   A: A
 }
 
-export const UF__ = "F__"
-export type UF__ = typeof UF__
-export interface F__<E, A> {
-  URI: UF__
+export interface HKT2<F, E, A> {
+  F: F
   E: E
   A: A
 }
 
-export const UF___ = "F___"
-export type UF___ = typeof UF___
-export interface F___<R, E, A> {
-  URI: UF___
+export interface HKT3<F, R, E, A> {
+  F: F
   R: R
   E: E
   A: A
 }
 
-export const UF____ = "F____"
-export type UF____ = typeof UF____
-export interface F____<S, R, E, A> {
-  URI: UF____
+export interface HKT4<F, S, R, E, A> {
+  F: F
   S: S
   R: R
   E: E
   A: A
 }
 
-export const UG_ = "G_"
-export type UG_ = typeof UG_
-export interface G_<A> {
-  URI: UG_
-  A: A
-}
-
-export const UG__ = "G__"
-export type UG__ = typeof UG__
-export interface G__<E, A> {
-  URI: UG__
-  E: E
-  A: A
-}
-
-export const UG___ = "G___"
-export type UG___ = typeof UG___
-export interface G___<R, E, A> {
-  URI: UG___
-  R: R
-  E: E
-  A: A
-}
-
-export const UG____ = "G____"
-export type UG____ = typeof UG____
-export interface G____<S, R, E, A> {
-  URI: UG____
-  S: S
-  R: R
-  E: E
-  A: A
-}
+export type UHKT<F> = [URI<"HKT1", CustomType<"F", F>>]
+export type UHKT2<F> = [URI<"HKT2", CustomType<"F", F>>]
+export type UHKT3<F> = [URI<"HKT3", CustomType<"F", F>>]
+export type UHKT4<F> = [URI<"HKT4", CustomType<"F", F>>]
 
 export interface URItoKind<
   // encodes metadata carried at the URI level (like additional params)
@@ -92,14 +58,10 @@ export interface URItoKind<
   // encodes output
   A
 > {
-  [UF_]: F_<A>
-  [UF__]: F__<E, A>
-  [UF___]: F___<R, E, A>
-  [UF____]: F____<S, R, E, A>
-  [UG_]: G_<A>
-  [UG__]: G__<E, A>
-  [UG___]: G___<R, E, A>
-  [UG____]: G____<S, R, E, A>
+  ["HKT1"]: HKT<AccessCustom<FC, "F">, A>
+  ["HKT2"]: HKT2<AccessCustom<FC, "F">, E, A>
+  ["HKT3"]: HKT3<AccessCustom<FC, "F">, R, E, A>
+  ["HKT4"]: HKT4<AccessCustom<FC, "F">, S, R, E, A>
 }
 
 export interface URItoIndex<N extends string, K> {}

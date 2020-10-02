@@ -23,23 +23,23 @@ export interface StateIn<S, A> {
 export type StateOut<S, A> = readonly [A, S]
 
 export function monad<F extends HKT.URIS, C>(M: Monad<F, C>): Monad<StateT<F>, V<C>>
-export function monad(M: Monad<[HKT.UF_]>): Monad<StateT<[HKT.UF_]>, V<Auto>> {
+export function monad<F>(M: Monad<HKT.UHKT<F>>): Monad<StateT<HKT.UHKT<F>>, V<Auto>> {
   return HKT.instance({
-    any: <S = any>() => (s: S): HKT.F_<readonly [any, S]> =>
+    any: <S = any>() => (s: S): HKT.HKT<F, readonly [any, S]> =>
       pipe(
         M.any(),
         M.map((m) => tuple(m, s))
       ),
     flatten: <A, S2>(
-      ffa: (s: S2) => HKT.F_<readonly [(s: S2) => HKT.F_<readonly [A, S2]>, S2]>
-    ): ((s: S2) => HKT.F_<readonly [A, S2]>) =>
+      ffa: (s: S2) => HKT.HKT<F, readonly [(s: S2) => HKT.HKT<F, readonly [A, S2]>, S2]>
+    ): ((s: S2) => HKT.HKT<F, readonly [A, S2]>) =>
       flow(
         ffa,
         chainF(M)(([f, us]) => f(us))
       ),
     map: <A, B>(f: (a: A) => B) => <S>(
-      fa: (s: S) => HKT.F_<readonly [A, S]>
-    ): ((s: S) => HKT.F_<readonly [B, S]>) =>
+      fa: (s: S) => HKT.HKT<F, readonly [A, S]>
+    ): ((s: S) => HKT.HKT<F, readonly [B, S]>) =>
       flow(
         fa,
         M.map(([a, s]) => tuple(f(a), s))

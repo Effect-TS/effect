@@ -44,9 +44,10 @@ export interface Traversable<F extends HKT.URIS, C = HKT.Auto>
 }
 
 export function implementForeachF<F extends HKT.URIS, C = HKT.Auto>(): (
-  i: <N extends string, K, SI, SO, X, I, S, R, E, A, B>(_: {
+  i: <N extends string, K, SI, SO, X, I, S, R, E, A, B, G>(_: {
     A: A
     B: B
+    G: G
     N: N
     K: K
     SI: SI
@@ -57,12 +58,12 @@ export function implementForeachF<F extends HKT.URIS, C = HKT.Auto>(): (
     R: R
     E: E
   }) => (
-    G: IdentityBoth<[HKT.UG_]> & Covariant<[HKT.UG_]>
+    G: IdentityBoth<HKT.UHKT<G>> & Covariant<HKT.UHKT<G>>
   ) => (
-    f: (a: A) => HKT.G_<B>
+    f: (a: A) => HKT.HKT<G, B>
   ) => (
     fa: HKT.Kind<F, C, N, K, SI, SO, X, I, S, R, E, A>
-  ) => HKT.G_<HKT.Kind<F, C, N, K, SI, SO, X, I, S, R, E, B>>
+  ) => HKT.HKT<G, HKT.Kind<F, C, N, K, SI, SO, X, I, S, R, E, B>>
 ) => Foreach<F, C>
 export function implementForeachF() {
   return (i: any) => i()
@@ -166,10 +167,10 @@ export function getTraversableComposition<
   CF = HKT.Auto,
   CG = HKT.Auto
 >(F: Traversable<F, CF>, G: Traversable<G, CG>): TraversableComposition<F, G, CF, CG>
-export function getTraversableComposition(
-  F: Traversable<[HKT.UF_]>,
-  G: Traversable<[HKT.UG_]>
-): TraversableComposition<[HKT.UF_], [HKT.UG_]> {
+export function getTraversableComposition<F, G>(
+  F: Traversable<HKT.UHKT<F>>,
+  G: Traversable<HKT.UHKT<G>>
+): TraversableComposition<HKT.UHKT<F>, HKT.UHKT<G>> {
   return {
     ...getCovariantComposition(F, G),
     foreachF: (H) => flow(G.foreachF(H), F.foreachF(H))

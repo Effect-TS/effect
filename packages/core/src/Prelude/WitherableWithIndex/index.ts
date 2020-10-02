@@ -47,9 +47,10 @@ export interface WitherableWithIndex<F extends HKT.URIS, C = HKT.Auto>
 }
 
 export function implementCompactWithIndexF<F extends HKT.URIS, C = HKT.Auto>(): (
-  i: <FN extends string, FK, FQ, FW, FX, FI, FS, FR, FE, A, B>(_: {
+  i: <FN extends string, FK, FQ, FW, FX, FI, FS, FR, FE, A, B, G>(_: {
     A: A
     B: B
+    G: G
     FN: FN
     FK: FK
     FQ: FQ
@@ -60,15 +61,15 @@ export function implementCompactWithIndexF<F extends HKT.URIS, C = HKT.Auto>(): 
     FR: FR
     FE: FE
   }) => (
-    G: Applicative<[HKT.UG_]>
+    G: Applicative<HKT.UHKT<G>>
   ) => (
     f: (
       k: HKT.IndexFor<F, HKT.OrFix<"N", C, FN>, HKT.OrFix<"K", C, FK>>,
       a: A
-    ) => HKT.G_<Option<B>>
+    ) => HKT.HKT<G, Option<B>>
   ) => (
     ta: HKT.Kind<F, C, FN, FK, FQ, FW, FX, FI, FS, FR, FE, A>
-  ) => HKT.G_<HKT.Kind<F, C, FN, FK, FQ, FW, FX, FI, FS, FR, FE, B>>
+  ) => HKT.HKT<G, HKT.Kind<F, C, FN, FK, FQ, FW, FX, FI, FS, FR, FE, B>>
 ) => WitherWithIndex<F, C>
 export function implementCompactWithIndexF() {
   return (i: any) => i()
