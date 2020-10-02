@@ -49,14 +49,14 @@ export type SelectiveMonad<F extends HKT.URIS, C = HKT.Auto> = Selective<F, C> &
 export function selectM<F extends HKT.URIS, C = HKT.Auto>(
   F: Monad<F, C> & Applicative<F, C>
 ): SelectiveMonad<F, C>
-export function selectM(
-  F: Monad<[HKT.UF_]> & Applicative<[HKT.UF_]>
-): SelectiveMonad<[HKT.UF_], HKT.Auto> {
-  return HKT.instance<SelectiveMonad<[HKT.UF_]>>({
+export function selectM<F>(
+  F: Monad<HKT.UHKT<F>> & Applicative<HKT.UHKT<F>>
+): SelectiveMonad<HKT.UHKT<F>, HKT.Auto> {
+  return HKT.instance<SelectiveMonad<HKT.UHKT<F>>>({
     ...F,
-    select: <A, B>(fab: HKT.F_<(a: A) => B>) => <B2>(
-      fa: HKT.F_<E.Either<A, B2>>
-    ): HKT.F_<B | B2> =>
+    select: <A, B>(fab: HKT.HKT<F, (a: A) => B>) => <B2>(
+      fa: HKT.HKT<F, E.Either<A, B2>>
+    ): HKT.HKT<F, B | B2> =>
       pipe(
         fa,
         chainF(F)(
@@ -76,12 +76,14 @@ export function selectM(
 export function selectA<F extends HKT.URIS, C = HKT.Auto>(
   F: Applicative<F, C>
 ): SelectiveMonad<F, C>
-export function selectA(F: Applicative<[HKT.UF_]>): Selective<[HKT.UF_], HKT.Auto> {
-  return HKT.instance<Selective<[HKT.UF_]>>({
+export function selectA<F>(
+  F: Applicative<HKT.UHKT<F>>
+): Selective<HKT.UHKT<F>, HKT.Auto> {
+  return HKT.instance<Selective<HKT.UHKT<F>>>({
     ...F,
-    select: <A, B>(fab: HKT.F_<(a: A) => B>) => <B2>(
-      fa: HKT.F_<E.Either<A, B2>>
-    ): HKT.F_<B | B2> =>
+    select: <A, B>(fab: HKT.HKT<F, (a: A) => B>) => <B2>(
+      fa: HKT.HKT<F, E.Either<A, B2>>
+    ): HKT.HKT<F, B | B2> =>
       pipe(
         fa,
         F.both(fab),
@@ -134,11 +136,11 @@ export function branchF<F extends HKT.URIS, C = HKT.Auto>(
   HKT.Mix<C, "X", [E, E2, E3]>,
   C | D
 >
-export function branchF(F: Selective<[HKT.UF_]>) {
+export function branchF<F>(F: Selective<HKT.UHKT<F>>) {
   return <A, C, B, D>(
-    lhs: HKT.F_<(a: A) => C>,
-    rhs: HKT.F_<(a: B) => D>
-  ): ((fe: HKT.F_<E.Either<A, B>>) => HKT.F_<C | D>) =>
+    lhs: HKT.HKT<F, (a: A) => C>,
+    rhs: HKT.HKT<F, (a: B) => D>
+  ): ((fe: HKT.HKT<F, E.Either<A, B>>) => HKT.HKT<F, C | D>) =>
     flow(
       F.map(E.map(E.left)),
       F.select(

@@ -35,8 +35,8 @@ export function monad<S>() {
 function getMonad_<F extends HKT.URIS, C, S>(
   M: Monad<F, C>
 ): Monad<ParametricStateT<F, S>, V<C, S>>
-function getMonad_<S>(
-  M: Monad<[HKT.UF_]>
-): Monad<ParametricStateT<[HKT.UF_], S>, V<HKT.Auto, S>> {
+function getMonad_<F, S>(
+  M: Monad<HKT.UHKT<F>>
+): Monad<ParametricStateT<HKT.UHKT<F>, S>, V<HKT.Auto, S>> {
   return HKT.instance(StateT.monad(M))
 }

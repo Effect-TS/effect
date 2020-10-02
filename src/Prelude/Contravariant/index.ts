@@ -16,11 +16,11 @@ export function getContravariantComposition<
   CF = HKT.Auto,
   CG = HKT.Auto
 >(F: Contravariant<F, CF>, G: Contravariant<G, CG>): CovariantComposition<F, G, CF, CG>
-export function getContravariantComposition(
-  F: Contravariant<[HKT.UF_]>,
-  G: Contravariant<[HKT.UG_]>
+export function getContravariantComposition<F, G>(
+  F: Contravariant<HKT.UHKT<F>>,
+  G: Contravariant<HKT.UHKT<G>>
 ) {
-  return HKT.instance<CovariantComposition<[HKT.UF_], [HKT.UG_]>>({
+  return HKT.instance<CovariantComposition<HKT.UHKT<F>, HKT.UHKT<G>>>({
     map: (f) => F.contramap(G.contramap(f))
   })
 }

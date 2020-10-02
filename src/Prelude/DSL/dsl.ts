@@ -27,9 +27,9 @@ export function succeedF<F extends HKT.URIS, C = HKT.Auto>(
 >(
   a: A
 ) => HKT.Kind<F, C, N, K, Q, W, X, I, S, R, E, A>
-export function succeedF(
-  F: Any<[HKT.UF_]> & Covariant<[HKT.UF_]>
-): <A>(a: A) => HKT.F_<A> {
+export function succeedF<F>(
+  F: Any<HKT.UHKT<F>> & Covariant<HKT.UHKT<F>>
+): <A>(a: A) => HKT.HKT<F, A> {
   return <A>(a: A) => F.map(constant(a))(F.any())
 }
 
@@ -66,8 +66,8 @@ export function chainF<F extends HKT.URIS, C = HKT.Auto>(
   HKT.Mix<C, "X", [E2, E]>,
   B
 >
-export function chainF(F: Monad<[HKT.UF_]>) {
-  return <A, B>(f: (a: A) => HKT.F_<B>) => flow(F.map(f), F.flatten)
+export function chainF<F>(F: Monad<HKT.UHKT<F>>) {
+  return <A, B>(f: (a: A) => HKT.HKT<F, B>) => flow(F.map(f), F.flatten)
 }
 
 export function accessMF<F extends HKT.URIS, C = HKT.Auto>(
@@ -75,9 +75,9 @@ export function accessMF<F extends HKT.URIS, C = HKT.Auto>(
 ): <N extends string, K, Q, W, X, I, S, R, R2, E, A>(
   f: (r: HKT.OrFix<"R", C, R2>) => HKT.Kind<F, C, N, K, Q, W, X, I, S, R, E, A>
 ) => HKT.Kind<F, C, N, K, Q, W, X, I, S, R & R2, E, A>
-export function accessMF(
-  F: Access<[HKT.UF___]> & AssociativeFlatten<[HKT.UF___]>
-): <R, E, A>(f: (r: R) => HKT.F___<R, E, A>) => HKT.F___<R, E, A> {
+export function accessMF<F>(
+  F: Access<HKT.UHKT3<F>> & AssociativeFlatten<HKT.UHKT3<F>>
+): <R, E, A>(f: (r: R) => HKT.HKT3<F, R, E, A>) => HKT.HKT3<F, R, E, A> {
   return flow(F.access, F.flatten)
 }
 
@@ -154,9 +154,9 @@ export function structF<F extends HKT.URIS, C = HKT.Auto>(
     [K in keyof NER]: HKT.Infer<F, "A", NER[K]>
   }
 >
-export function structF(
-  F: Applicative<[HKT.UF_]>
-): (r: Record<string, HKT.F_<any>>) => HKT.F_<Record<string, any>> {
+export function structF<F>(
+  F: Applicative<HKT.UHKT<F>>
+): (r: Record<string, HKT.HKT<F, any>>) => HKT.HKT<F, Record<string, any>> {
   return (r) =>
     pipe(
       Object.keys(r).map((k) => tuple(k, r[k])),
@@ -184,13 +184,13 @@ export function accessServiceMF<F extends HKT.URIS, C extends HKT.V<"R", "-">>(
 ) => <N extends string, K, Q, W, X, I, S, R, E, A>(
   f: (_: Service) => HKT.Kind<F, C, N, K, Q, W, X, I, S, R, E, A>
 ) => HKT.Kind<F, C, N, K, Q, W, X, I, S, R & Has<Service>, E, A>
-export function accessServiceMF(
-  F: Monad<[HKT.UF___], HKT.V<"R", "-">> & Access<[HKT.UF___], HKT.V<"R", "-">>
+export function accessServiceMF<F>(
+  F: Monad<HKT.UHKT3<F>, HKT.V<"R", "-">> & Access<HKT.UHKT3<F>, HKT.V<"R", "-">>
 ): <Service>(
   H: Tag<Service>
 ) => <R, E, A>(
-  f: (_: Service) => HKT.F___<R, E, A>
-) => HKT.F___<Has<Service> & R, E, A> {
+  f: (_: Service) => HKT.HKT3<F, R, E, A>
+) => HKT.HKT3<F, Has<Service> & R, E, A> {
   return (H) => (f) => accessMF(F)(flow(H.read, f))
 }
 
@@ -203,14 +203,14 @@ export function provideServiceF<F extends HKT.URIS, C extends HKT.V<"R", "-">>(
 ) => <N extends string, K, Q, W, X, I, S, R, E, A>(
   fa: HKT.Kind<F, C, N, K, Q, W, X, I, S, R & Has<Service>, E, A>
 ) => HKT.Kind<F, C, N, K, Q, W, X, I, S, R, E, A>
-export function provideServiceF(
-  F: Monad<[HKT.UF___], HKT.V<"R", "-">> &
-    Access<[HKT.UF___], HKT.V<"R", "-">> &
-    Provide<[HKT.UF___], HKT.V<"R", "-">>
+export function provideServiceF<F>(
+  F: Monad<HKT.UHKT3<F>, HKT.V<"R", "-">> &
+    Access<HKT.UHKT3<F>, HKT.V<"R", "-">> &
+    Provide<HKT.UHKT3<F>, HKT.V<"R", "-">>
 ) {
   return <Service>(H: Tag<Service>) => <R, E, A>(S: Service) => (
-    fa: HKT.F___<Has<Service> & R, E, A>
-  ): HKT.F___<R, E, A> =>
+    fa: HKT.HKT3<F, Has<Service> & R, E, A>
+  ): HKT.HKT3<F, R, E, A> =>
     accessMF(F)((r: R) =>
       pipe(fa, F.provide(({ ...r, [H.key]: S } as unknown) as R & Has<Service>))
     )
@@ -223,12 +223,12 @@ export function provideSomeF<F extends HKT.URIS, C = HKT.Auto>(
 ) => <N extends string, K, Q, W, X, I, S, E, A>(
   fa: HKT.Kind<F, C, N, K, Q, W, X, I, S, R, E, A>
 ) => HKT.Kind<F, C, N, K, Q, W, X, I, S, R2, E, A>
-export function provideSomeF(
-  F: Monad<[HKT.UF___]> & Access<[HKT.UF___]> & Provide<[HKT.UF___]>
+export function provideSomeF<F>(
+  F: Monad<HKT.UHKT3<F>> & Access<HKT.UHKT3<F>> & Provide<HKT.UHKT3<F>>
 ) {
   return <R0, R, E, A>(f: (r0: R0) => R) => (
-    fa: HKT.F___<R, E, A>
-  ): HKT.F___<R0, E, A> => accessMF(F)((r0: R0) => pipe(fa, F.provide(f(r0))))
+    fa: HKT.HKT3<F, R, E, A>
+  ): HKT.HKT3<F, R0, E, A> => accessMF(F)((r0: R0) => pipe(fa, F.provide(f(r0))))
 }
 
 export function doF<F extends HKT.URIS, C = HKT.Auto>(
@@ -244,7 +244,9 @@ export function doF<F extends HKT.URIS, C = HKT.Auto>(
   R = HKT.Initial<C, "R">,
   E = HKT.Initial<C, "E">
 >() => HKT.Kind<F, C, N, K, Q, W, X, I, S, R, E, {}>
-export function doF(F: Any<[HKT.UF_]> & Covariant<[HKT.UF_]>): () => HKT.F_<{}> {
+export function doF<F>(
+  F: Any<HKT.UHKT<F>> & Covariant<HKT.UHKT<F>>
+): () => HKT.HKT<F, {}> {
   return () => succeedF(F)({})
 }
 
@@ -282,15 +284,16 @@ export function bindF<F extends HKT.URIS, C = HKT.Auto>(
   HKT.Mix<C, "X", [E2, E]>,
   BK & { [k in BN]: BA }
 >
-export function bindF(
-  F: Monad<[HKT.UF_]>
+export function bindF<F>(
+  F: Monad<HKT.UHKT<F>>
 ): <A, K, N extends string>(
   tag: Exclude<N, keyof K>,
-  f: (_: K) => HKT.F_<A>
-) => (mk: HKT.F_<K>) => HKT.F_<K & { [k in N]: A }> {
-  return <A, K, N extends string>(tag: Exclude<N, keyof K>, f: (_: K) => HKT.F_<A>) => (
-    mk: HKT.F_<K>
-  ): HKT.F_<K & { [k in N]: A }> =>
+  f: (_: K) => HKT.HKT<F, A>
+) => (mk: HKT.HKT<F, K>) => HKT.HKT<F, K & { [k in N]: A }> {
+  return <A, K, N extends string>(
+    tag: Exclude<N, keyof K>,
+    f: (_: K) => HKT.HKT<F, A>
+  ) => (mk: HKT.HKT<F, K>): HKT.HKT<F, K & { [k in N]: A }> =>
     pipe(
       mk,
       chainF(F)((k) =>
