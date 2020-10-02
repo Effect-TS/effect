@@ -38,6 +38,7 @@
       "Classic/Associative",
       "Classic/Boolean",
       "Classic/Bounded",
+      "Classic/Branded",
       "Classic/Closure",
       "Classic/Commutative",
       "Classic/Const",
