@@ -55,6 +55,7 @@
       "Classic/Reader",
       "Classic/ReaderT",
       "Classic/Record",
+      "Classic/Set",
       "Classic/Show",
       "Classic/StateT",
       "Classic/StateT/Parametric",
