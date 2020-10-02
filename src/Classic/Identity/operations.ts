@@ -5,6 +5,7 @@ import type { Identity } from "./definition"
 
 export function makeIdentity<A>(identity: A, op: (y: A) => (x: A) => A): Identity<A> {
   return {
+    Associative: "Associative",
     combine: op,
     identity
   }

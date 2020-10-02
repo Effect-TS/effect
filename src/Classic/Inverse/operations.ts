@@ -6,6 +6,7 @@ export function makeInverse<A>(
   inverse: (r: A) => (l: A) => A
 ): Inverse<A> {
   return {
+    Associative: "Associative",
     combine,
     identity,
     inverse
