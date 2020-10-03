@@ -63,3 +63,38 @@ export const Separate = P.instance<P.Separate<[ArrayURI]>>({
 export const Extend = P.instance<P.Extend<[ArrayURI]>>({
   extend: A.extend
 })
+
+export const Reduce = P.instance<P.Reduce<[ArrayURI]>>({
+  reduce: A.reduce
+})
+
+export const ReduceWithIndex = P.instance<P.ReduceWithIndex<[ArrayURI]>>({
+  reduceWithIndex: A.reduceWithIndex
+})
+
+export const ReduceRightWithIndex = P.instance<P.ReduceRightWithIndex<[ArrayURI]>>({
+  reduceRightWithIndex: A.reduceRightWithIndex
+})
+
+export const ReduceRight = P.instance<P.ReduceRight<[ArrayURI]>>({
+  reduceRight: A.reduceRight
+})
+
+export const FoldMap = P.instance<P.FoldMap<[ArrayURI]>>({
+  foldMap: A.foldMap
+})
+
+export const FoldMapWithIndex = P.instance<P.FoldMapWithIndex<[ArrayURI]>>({
+  foldMapWithIndex: A.foldMapWithIndex
+})
+
+export const Foldable = P.instance<P.Foldable<[ArrayURI]>>({
+  ...FoldMap,
+  ...Reduce,
+  ...ReduceRight
+})
+export const FoldableWithIndex = P.instance<P.FoldableWithIndex<[ArrayURI]>>({
+  ...FoldMapWithIndex,
+  ...ReduceWithIndex,
+  ...ReduceRightWithIndex
+})

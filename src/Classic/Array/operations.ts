@@ -7,11 +7,13 @@ import * as P from "../../Prelude"
 import * as DSL from "../../Prelude/DSL"
 import type { Equal } from "../Equal"
 import { makeEqual } from "../Equal"
+import type { Identity } from "../Identity"
 import { makeIdentity } from "../Identity"
 import type { Ord } from "../Ord"
 import { fromCompare } from "../Ord"
 import { ordNumber } from "../Ord/common"
 import { toNumber } from "../Ordering"
+import type { Show } from "../Show"
 
 export * from "@effect-ts/system/Array"
 
@@ -128,4 +130,59 @@ export function getOrd<A>(O: Ord<A>): Ord<Array<A>> {
     }
     return ordNumber.compare(bLen)(aLen)
   })
+}
+
+/**
+ * Returns a `Show` for `Array<A>` given `Show<A>`
+ */
+export function getShow<A>(S: Show<A>): Show<Array<A>> {
+  return {
+    show: (as) => `[${as.map(S.show).join(", ")}]`
+  }
+}
+
+/**
+ * Creates an array of unique values that are included in all given arrays using a `Eq` for equality
+ * comparisons. The order and references of result values are determined by the first array.
+ */
+export function intersection_<A>(
+  E: Equal<A>
+): (xs: Array<A>, ys: Array<A>) => Array<A> {
+  const elemE = elem_(E)
+  return (xs, ys) => xs.filter((a) => elemE(ys, a))
+}
+
+/**
+ * Creates an array of unique values that are included in all given arrays using a `Eq` for equality
+ * comparisons. The order and references of result values are determined by the first array.
+ */
+export function intersection<A>(
+  E: Equal<A>
+): (ys: Array<A>) => (xs: Array<A>) => Array<A> {
+  const int = intersection_(E)
+  return (ys) => (xs) => int(xs, ys)
+}
+
+export function foldMap<M>(
+  M: Identity<M>
+): <A>(f: (a: A) => M) => (fa: readonly A[]) => M {
+  return (f) => foldMapWithIndex(M)((_, a) => f(a))
+}
+
+export function foldMap_<M>(
+  M: Identity<M>
+): <A>(fa: readonly A[], f: (a: A) => M) => M {
+  return (fa, f) => foldMapWithIndex_(M)(fa, (_, a) => f(a))
+}
+
+export function foldMapWithIndex<M>(
+  M: Identity<M>
+): <A>(f: (i: number, a: A) => M) => (fa: readonly A[]) => M {
+  return (f) => (fa) => foldMapWithIndex_(M)(fa, f)
+}
+
+export function foldMapWithIndex_<M>(
+  M: Identity<M>
+): <A>(fa: readonly A[], f: (i: number, a: A) => M) => M {
+  return (fa, f) => fa.reduce((b, a, i) => M.combine(f(i, a))(b), M.identity)
 }
