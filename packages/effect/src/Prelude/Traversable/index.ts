@@ -18,12 +18,12 @@ export interface Foreach<F extends HKT.URIS, C = HKT.Auto> {
     A,
     B
   >(
-    f: (a: A) => HKT.Kind<G, C, GN, GK, GQ, GW, GX, GI, GS, GR, GE, B>
+    f: (a: A) => HKT.Kind<G, GC, GN, GK, GQ, GW, GX, GI, GS, GR, GE, B>
   ) => <FN extends string, FK, FQ, FW, FX, FI, FS, FR, FE>(
     fa: HKT.Kind<F, C, FN, FK, FQ, FW, FX, FI, FS, FR, FE, A>
   ) => HKT.Kind<
     G,
-    C,
+    GC,
     GN,
     GK,
     GQ,
