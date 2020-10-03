@@ -17,7 +17,7 @@ export {
 } from "../../Effect/core"
 export { raceWith } from "../../Effect/core-scope"
 export { die } from "../../Effect/die"
-export { bind, do, let, merge } from "../../Effect/do"
+export { bind, do, let } from "../../Effect/do"
 export { done } from "../../Effect/done"
 export { Effect, IO, UIO, _A, _E, _I, _R, _U } from "../../Effect/effect"
 export { effectAsyncInterrupt } from "../../Effect/effectAsyncInterrupt"

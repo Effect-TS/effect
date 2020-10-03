@@ -19,19 +19,6 @@ const bind = <R, E, A, K, N extends string>(
     )
   )
 
-const merge = <R, E, A, K>(
-  f: (_: K) => Stream<R, E, A & { [k in keyof K & keyof A]?: never }>
-) => <R2, E2>(mk: Stream<R2, E2, K>): Stream<R & R2, E | E2, K & A> =>
-  pipe(
-    mk,
-    chain((k) =>
-      pipe(
-        f(k),
-        map((a): K & A => ({ ...k, ...a } as any))
-      )
-    )
-  )
-
 const let_ = <A, K, N extends string>(tag: Exclude<N, keyof K>, f: (_: K) => A) => <
   R2,
   E2
@@ -45,4 +32,4 @@ const let_ = <A, K, N extends string>(tag: Exclude<N, keyof K>, f: (_: K) => A) 
 
 const do_ = fromEffect(T.succeed({}))
 
-export { let_ as let, bind, do_ as do, merge }
+export { let_ as let, bind, do_ as do }
