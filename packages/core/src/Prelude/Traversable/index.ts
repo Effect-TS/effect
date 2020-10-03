@@ -1,4 +1,4 @@
-import { flow } from "../../Function"
+import { flow, identity } from "../../Function"
 import type { Covariant, CovariantComposition } from "../Covariant"
 import { getCovariantComposition } from "../Covariant"
 import type * as HKT from "../HKT"
@@ -174,5 +174,72 @@ export function getTraversableComposition<F, G>(
   return {
     ...getCovariantComposition(F, G),
     foreachF: (H) => flow(G.foreachF(H), F.foreachF(H))
+  }
+}
+
+export function sequenceF<T extends HKT.URIS, C>(
+  T: Traversable<T, C>
+): <F extends HKT.URIS, FC>(
+  App: Covariant<F, FC> & IdentityBoth<F, FC>
+) => <
+  N extends string,
+  K,
+  Q,
+  W,
+  X,
+  I,
+  S,
+  R,
+  E,
+  FN extends string,
+  FK,
+  FQ,
+  FW,
+  FX,
+  FI,
+  FS,
+  FR,
+  FE,
+  A
+>(
+  _: HKT.Kind<
+    T,
+    C,
+    N,
+    K,
+    Q,
+    W,
+    X,
+    I,
+    S,
+    R,
+    E,
+    HKT.Kind<F, FC, FN, FK, FQ, FW, FX, FI, FS, FR, FE, A>
+  >
+) => HKT.Kind<
+  F,
+  FC,
+  FN,
+  FK,
+  FQ,
+  FW,
+  FX,
+  FI,
+  FS,
+  FR,
+  FE,
+  HKT.Kind<T, C, N, K, Q, W, X, I, S, R, E, A>
+>
+export function sequenceF<T extends HKT.URIS, C>(
+  T: Traversable<T, C>
+): <F>(
+  App: Covariant<HKT.UHKT<F>> & IdentityBoth<HKT.UHKT<F>>
+) => <N extends string, K, Q, W, X, I, S, R, E, A>(
+  _: HKT.Kind<T, C, N, K, Q, W, X, I, S, R, E, HKT.HKT<F, A>>
+) => HKT.HKT<F, HKT.Kind<T, C, N, K, Q, W, X, I, S, R, E, A>> {
+  return (App) => {
+    const traverse = T.foreachF(App)
+
+    return traverse(identity)
   }
 }
