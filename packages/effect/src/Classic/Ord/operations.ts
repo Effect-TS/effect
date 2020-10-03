@@ -33,3 +33,11 @@ export function makeOrd<A>(
     equals
   }
 }
+
+export function contramap<A, B>(f: (b: B) => A): (fa: Ord<A>) => Ord<B> {
+  return (fa) => contramap_(fa, f)
+}
+
+export function contramap_<A, B>(fa: Ord<A>, f: (b: B) => A): Ord<B> {
+  return fromCompare((y) => (x) => fa.compare(f(y))(f(x)))
+}

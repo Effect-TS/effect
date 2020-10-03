@@ -6,6 +6,12 @@ import type { ArrayURI } from "../../Modules"
 import * as P from "../../Prelude"
 import * as DSL from "../../Prelude/DSL"
 import type { Equal } from "../Equal"
+import { makeEqual } from "../Equal"
+import { makeIdentity } from "../Identity"
+import type { Ord } from "../Ord"
+import { fromCompare } from "../Ord"
+import { ordNumber } from "../Ord/common"
+import { toNumber } from "../Ordering"
 
 export * from "@effect-ts/system/Array"
 
@@ -86,4 +92,40 @@ export function difference<A>(
 ): (ys: Array<A>) => (xs: Array<A>) => Array<A> {
   const elemE = elem_(E)
   return (ys) => (xs) => xs.filter((a) => !elemE(ys, a))
+}
+
+/**
+ * Derives an `Equal` over the `Array` of a given element type from the `Equal` of that type. The derived `Equal` defines two
+ * arrays as equal if all elements of both arrays are compared equal pairwise with the given `E`. In case of arrays of
+ * different lengths, the result is non equality.
+ */
+export function getEqual<A>(E: Equal<A>): Equal<Array<A>> {
+  return makeEqual((ys) => (xs) =>
+    xs === ys || (xs.length === ys.length && xs.every((x, i) => E.equals(ys[i])(x)))
+  )
+}
+
+/**
+ * Returns a `Identity` for `Array<A>`
+ */
+export function getIdentity<A>() {
+  return makeIdentity(A.empty as Array<A>, A.concat)
+}
+
+/**
+ * Returns a `Ord` for `Array<A>` given `Ord<A>`
+ */
+export function getOrd<A>(O: Ord<A>): Ord<Array<A>> {
+  return fromCompare((b) => (a) => {
+    const aLen = a.length
+    const bLen = b.length
+    const len = Math.min(aLen, bLen)
+    for (let i = 0; i < len; i++) {
+      const ordering = O.compare(b[i])(a[i])
+      if (toNumber(ordering) !== 0) {
+        return ordering
+      }
+    }
+    return ordNumber.compare(bLen)(aLen)
+  })
 }
