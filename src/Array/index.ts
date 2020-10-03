@@ -153,13 +153,14 @@ export function compact<A>(fa: readonly Option<A>[]): readonly A[] {
  * [ f(x, y, ...) | x ← xs, y ← ys, ..., g(x, y, ...) ]
  * ```
  *
- * @example
+ * ```ts
  * assert.deepStrictEqual(comprehension([[1, 2, 3], ['a', 'b']], tuple, (a, b) => (a + b.length) % 2 === 0), [
  *   [1, 'a'],
  *   [1, 'b'],
  *   [3, 'a'],
  *   [3, 'b']
  * ])
+ * ```
  */
 export function comprehension<A, B, C, D, R>(
   input: readonly [Array<A>, Array<B>, Array<C>, Array<D>],
@@ -233,8 +234,9 @@ export function concat<A>(y: Array<A>): (x: Array<A>) => Array<A> {
 /**
  * Attaches an element to the front of an array, creating a new non empty array
  *
- * @example
+ * ```ts
  * assert.deepStrictEqual(cons(0, [1, 2, 3]), [0, 1, 2, 3])
+ * ```
  */
 export function cons_<A>(tail: Array<A>, head: A): NonEmptyArray<A> {
   const len = tail.length
@@ -256,12 +258,13 @@ export function cons<A>(head: A): (tail: Array<A>) => NonEmptyArray<A> {
 /**
  * Delete the element at the specified index, creating a new array, or returning `None` if the index is out of bounds
  *
- * @example
+ * ```ts
  * assert.deepStrictEqual(deleteAt(0)([1, 2, 3]), some([2, 3]))
  * assert.deepStrictEqual(deleteAt(1)([]), none)
+ * ```
  */
 export function deleteAt(i: number): <A>(as: Array<A>) => Option<Array<A>> {
-  return (as) => (isOutOfBound(i, as) ? none : some(unsafeDeleteAt_(as, i)))
+  return (as) => deleteAt_(as, i)
 }
 
 /**
@@ -274,11 +277,12 @@ export function deleteAt_<A>(as: Array<A>, i: number): Option<Array<A>> {
 /**
  * Drop a number of elements from the start of an array, creating a new array
  *
- * @example
+ * ```ts
  * assert.deepStrictEqual(dropLeft(2)([1, 2, 3]), [3])
+ * ```
  */
 export function dropLeft(n: number): <A>(as: Array<A>) => Array<A> {
-  return (as) => as.slice(n, as.length)
+  return (as) => dropLeft_(as, n)
 }
 
 /**
@@ -291,8 +295,9 @@ export function dropLeft_<A>(as: Array<A>, n: number): Array<A> {
 /**
  * Remove the longest initial subarray for which all element satisfy the specified predicate, creating a new array
  *
- * @example
+ * ```ts
  * assert.deepStrictEqual(dropLeftWhile((n: number) => n % 2 === 1)([1, 3, 2, 4, 5]), [2, 4, 5])
+ * ```
  */
 export function dropLeftWhile<A>(predicate: Predicate<A>): (as: Array<A>) => Array<A> {
   return (as) => dropLeftWhile_(as, predicate)
@@ -301,8 +306,9 @@ export function dropLeftWhile<A>(predicate: Predicate<A>): (as: Array<A>) => Arr
 /**
  * Remove the longest initial subarray for which all element satisfy the specified predicate, creating a new array
  *
- * @example
+ * ```
  * assert.deepStrictEqual(dropLeftWhile((n: number) => n % 2 === 1)([1, 3, 2, 4, 5]), [2, 4, 5])
+ * ```
  */
 export function dropLeftWhile_<A>(as: Array<A>, predicate: Predicate<A>): Array<A> {
   const i = spanIndex_(as, predicate)
@@ -317,18 +323,20 @@ export function dropLeftWhile_<A>(as: Array<A>, predicate: Predicate<A>): Array<
 /**
  * Drop a number of elements from the end of an array, creating a new array
  *
- * @example
+ * ```
  * assert.deepStrictEqual(dropRight(2)([1, 2, 3, 4, 5]), [1, 2, 3])
+ * ```
  */
 export function dropRight(n: number): <A>(as: Array<A>) => Array<A> {
-  return (as) => as.slice(0, as.length - n)
+  return (as) => dropRight_(as, n)
 }
 
 /**
  * Drop a number of elements from the end of an array, creating a new array
  *
- * @example
+ * ```
  * assert.deepStrictEqual(dropRight(2)([1, 2, 3, 4, 5]), [1, 2, 3])
+ * ```
  */
 export function dropRight_<A>(as: Array<A>, n: number): Array<A> {
   return as.slice(0, as.length - n)
@@ -398,14 +406,14 @@ export function filter_<A>(fa: readonly A[], predicate: Predicate<A>): readonly 
 export function filterWithIndex<A>(
   predicate: (i: number, a: A) => boolean
 ): (nea: Array<A>) => Array<A> {
-  return (nea) => nea.filter((a, i) => predicate(i, a))
+  return (nea) => filterWithIndex_(nea, predicate)
 }
 
 /**
  * Filters the array also passing element index
  */
 export function filterWithIndex_<A>(
-  nea: NonEmptyArray<A>,
+  nea: Array<A>,
   predicate: (i: number, a: A) => boolean
 ): Array<A> {
   return nea.filter((a, i) => predicate(i, a))
@@ -416,7 +424,7 @@ export function filterWithIndex_<A>(
  */
 export const filterMap = <A, B>(f: (a: A) => Option<B>) => (
   fa: readonly A[]
-): readonly B[] => filterMapWithIndex_(fa, (_, a) => f(a))
+): readonly B[] => filterMap_(fa, f)
 
 /**
  * Filters the array also mapping the output
@@ -455,23 +463,16 @@ export function filterMapWithIndex_<A, B>(
 /**
  * Find the first element which satisfies a predicate (or a refinement) function
  *
- * @example
+ * ```ts
  * assert.deepStrictEqual(findFirst((x: { a: number, b: number }) => x.a === 1)([{ a: 1, b: 1 }, { a: 1, b: 2 }]), some({ a: 1, b: 1 }))
+ * ```
  */
 export function findFirst<A, B extends A>(
   refinement: Refinement<A, B>
 ): (as: Array<A>) => Option<B>
 export function findFirst<A>(predicate: Predicate<A>): (as: Array<A>) => Option<A>
 export function findFirst<A>(predicate: Predicate<A>): (as: Array<A>) => Option<A> {
-  return (as) => {
-    const len = as.length
-    for (let i = 0; i < len; i++) {
-      if (predicate(as[i])) {
-        return some(as[i])
-      }
-    }
-    return none
-  }
+  return (as) => findFirst_(as, predicate)
 }
 
 /**
@@ -495,7 +496,7 @@ export function findFirst_<A>(as: Array<A>, predicate: Predicate<A>): Option<A> 
 /**
  * Find the first element returned by an option based selector function
  *
- * @example
+ * ```ts
  * interface Person {
  *   name: string
  *   age?: number
@@ -505,6 +506,7 @@ export function findFirst_<A>(as: Array<A>, predicate: Predicate<A>): Option<A> 
  *
  * // returns the name of the first person that has an age
  * assert.deepStrictEqual(findFirstMap((p: Person) => (p.age === undefined ? none : some(p.name)))(persons), some('Mary'))
+ * ```
  */
 export function findFirstMap<A, B>(
   f: (a: A) => Option<B>
@@ -529,22 +531,15 @@ export function findFirstMap_<A, B>(as: Array<A>, f: (a: A) => Option<B>): Optio
 /**
  * Find the first index for which a predicate holds
  *
- * @example
+ * ```
  * assert.deepStrictEqual(findIndex((n: number) => n === 2)([1, 2, 3]), some(1))
  * assert.deepStrictEqual(findIndex((n: number) => n === 2)([]), none)
+ * ```
  */
 export function findIndex<A>(
   predicate: Predicate<A>
 ): (as: Array<A>) => Option<number> {
-  return (as) => {
-    const len = as.length
-    for (let i = 0; i < len; i++) {
-      if (predicate(as[i])) {
-        return some(i)
-      }
-    }
-    return none
-  }
+  return (as) => findIndex_(as, predicate)
 }
 
 /**
@@ -563,23 +558,16 @@ export function findIndex_<A>(as: Array<A>, predicate: Predicate<A>): Option<num
 /**
  * Find the last element which satisfies a predicate function
  *
- * @example
+ * ```
  * assert.deepStrictEqual(findLast((x: { a: number, b: number }) => x.a === 1)([{ a: 1, b: 1 }, { a: 1, b: 2 }]), some({ a: 1, b: 2 }))
+ * ```
  */
 export function findLast<A, B extends A>(
   refinement: Refinement<A, B>
 ): (as: Array<A>) => Option<B>
 export function findLast<A>(predicate: Predicate<A>): (as: Array<A>) => Option<A>
 export function findLast<A>(predicate: Predicate<A>): (as: Array<A>) => Option<A> {
-  return (as) => {
-    const len = as.length
-    for (let i = len - 1; i >= 0; i--) {
-      if (predicate(as[i])) {
-        return some(as[i])
-      }
-    }
-    return none
-  }
+  return (as) => findLast_(as, predicate)
 }
 
 /**
@@ -603,7 +591,7 @@ export function findLast_<A>(as: Array<A>, predicate: Predicate<A>): Option<A> {
 /**
  * Returns the index of the last element of the list which matches the predicate
  *
- * @example
+ * ```ts
  * interface X {
  *   a: number
  *   b: number
@@ -611,6 +599,7 @@ export function findLast_<A>(as: Array<A>, predicate: Predicate<A>): Option<A> {
  * const xs: Array<X> = [{ a: 1, b: 0 }, { a: 1, b: 1 }]
  * assert.deepStrictEqual(findLastIndex((x: { a: number }) => x.a === 1)(xs), some(1))
  * assert.deepStrictEqual(findLastIndex((x: { a: number }) => x.a === 4)(xs), none)
+ * ```
  */
 export function findLastIndex<A>(
   predicate: Predicate<A>
@@ -637,7 +626,7 @@ export function findLastIndex_<A>(
 /**
  * Find the last element returned by an option based selector function
  *
- * @example
+ * ```ts
  * interface Person {
  *   name: string
  *   age?: number
@@ -647,6 +636,7 @@ export function findLastIndex_<A>(
  *
  * // returns the name of the last person that has an age
  * assert.deepStrictEqual(findLastMap((p: Person) => (p.age === undefined ? none : some(p.name)))(persons), some('Joey'))
+ * ```
  */
 export function findLastMap<A, B>(f: (a: A) => Option<B>): (as: Array<A>) => Option<B> {
   return (as) => findLastMap_(as, f)
@@ -669,8 +659,9 @@ export function findLastMap_<A, B>(as: Array<A>, f: (a: A) => Option<B>): Option
 /**
  * Removes one level of nesting
  *
- * @example
+ * ```ts
  * assert.deepStrictEqual(flatten([[1], [2], [3]]), [1, 2, 3])
+ * ```
  */
 export function flatten<A>(mma: Array<Array<A>>): Array<A> {
   return chain_(mma, identity)
@@ -679,9 +670,10 @@ export function flatten<A>(mma: Array<Array<A>>): Array<A> {
 /**
  * Break an array into its first element and remaining elements
  *
- * @example
+ * ```ts
  * const len: <A>(as: Array<A>) => number = foldLeft(() => 0, (_, tail) => 1 + len(tail))
  * assert.strictEqual(len([1, 2, 3]), 3)
+ * ```
  */
 export function foldLeft<A, B>(
   onNil: () => B,
@@ -740,9 +732,10 @@ export function fromMutable<A>(as: MutableArray<A>): Array<A> {
 /**
  * Get the first element in an array, or `None` if the array is empty
  *
- * @example
+ * ```ts
  * assert.deepStrictEqual(head([1, 2, 3]), some(1))
  * assert.deepStrictEqual(head([]), none)
+ * ```
  */
 export function head<A>(as: Array<A>): Option<A> {
   return isEmpty(as) ? none : some(as[0])
@@ -751,9 +744,10 @@ export function head<A>(as: Array<A>): Option<A> {
 /**
  * Get all but the last element of an array, creating a new array, or `None` if the array is empty
  *
- * @example
+ * ```
  * assert.deepStrictEqual(init([1, 2, 3]), some([1, 2]))
  * assert.deepStrictEqual(init([]), none)
+ * ```
  */
 export function init<A>(as: Array<A>): Option<Array<A>> {
   const len = as.length
@@ -763,11 +757,12 @@ export function init<A>(as: Array<A>): Option<Array<A>> {
 /**
  * Insert an element at the specified index, creating a new array, or returning `None` if the index is out of bounds
  *
- * @example
+ * ```
  * assert.deepStrictEqual(insertAt(2, 5)([1, 2, 3, 4]), some([1, 2, 5, 3, 4]))
+ * ```
  */
 export function insertAt<A>(i: number, a: A): (as: Array<A>) => Option<Array<A>> {
-  return (as) => (i < 0 || i > as.length ? none : some(unsafeInsertAt_(as, i, a)))
+  return (as) => insertAt_(as, i, a)
 }
 
 /**
@@ -780,8 +775,9 @@ export function insertAt_<A>(as: Array<A>, i: number, a: A): Option<Array<A>> {
 /**
  * Test whether an array is empty
  *
- * @example
+ * ```
  * assert.strictEqual(isEmpty([]), true)
+ * ```
  */
 export function isEmpty<A>(as: Array<A>): boolean {
   return as.length === 0
@@ -804,9 +800,10 @@ export function isOutOfBound<A>(i: number, as: Array<A>): boolean {
 /**
  * Get the last element in an array, or `None` if the array is empty
  *
- * @example
+ * ```ts
  * assert.deepStrictEqual(last([1, 2, 3]), some(3))
  * assert.deepStrictEqual(last([]), none)
+ * ```
  */
 export function last<A>(as: Array<A>): Option<A> {
   return lookup_(as, as.length - 1)
@@ -815,8 +812,9 @@ export function last<A>(as: Array<A>): Option<A> {
 /**
  * Extracts from an array of `Either` all the `Left` elements. All the `Left` elements are extracted in order
  *
- * @example
+ * ```ts
  * assert.deepStrictEqual(lefts([right(1), left('foo'), right(2)]), ['foo'])
+ * ```
  */
 export function lefts<E, A>(as: Array<Either<E, A>>): Array<E> {
   const r: MutableArray<E> = []
@@ -833,9 +831,10 @@ export function lefts<E, A>(as: Array<Either<E, A>>): Array<E> {
 /**
  * This function provides a safe way to read a value at a particular index from an array
  *
- * @example
+ * ```ts
  * assert.deepStrictEqual(lookup(1, [1, 2, 3]), some(2))
  * assert.deepStrictEqual(lookup(3, [1, 2, 3]), none)
+ * ```
  */
 export function lookup_<A>(as: Array<A>, i: number): Option<A> {
   return isOutOfBound(i, as) ? none : some(as[i])
@@ -851,9 +850,10 @@ export function lookup(i: number): <A>(as: Array<A>) => Option<A> {
 /**
  * Return a list of length `n` with element `i` initialized with `f(i)`
  *
- * @example
+ * ```ts
  * const double = (n: number): number => n * 2
  * assert.deepStrictEqual(makeBy_(5, double), [0, 2, 4, 6, 8])
+ * ```
  */
 export function makeBy_<A>(n: number, f: (i: number) => A): Array<A> {
   const r: MutableArray<A> = []
@@ -905,10 +905,11 @@ export function mapWithIndex_<A, B>(
  * Apply a function to the element at the specified index, creating a new array, or returning `None` if the index is out
  * of bounds
  *
- * @example
+ * ```ts
  * const double = (x: number): number => x * 2
  * assert.deepStrictEqual(modifyAt(1, double)([1, 2, 3]), some([1, 4, 3]))
  * assert.deepStrictEqual(modifyAt(1, double)([]), none)
+ * ```
  */
 export function modifyAt<A>(
   i: number,
@@ -939,8 +940,9 @@ export function single<A>(a: A): Array<A> {
 /**
  * Create an array containing a range of integers, including both endpoints
  *
- * @example
+ * ```ts
  * assert.deepStrictEqual(range(1, 5), [1, 2, 3, 4, 5])
+ * ```
  */
 export function range(start: number, end: number): Array<number> {
   return makeBy_(end - start + 1, (i) => start + i)
@@ -1018,8 +1020,9 @@ export function reduceWithIndex_<A, B>(
 /**
  * Create an array containing a value repeated the specified number of times
  *
- * @example
+ * ```ts
  * assert.deepStrictEqual(replicate_(3, 'a'), ['a', 'a', 'a'])
+ * ```
  */
 export function replicate_<A>(n: number, a: A): Array<A> {
   return makeBy_(n, () => a)
@@ -1027,7 +1030,10 @@ export function replicate_<A>(n: number, a: A): Array<A> {
 
 /**
  * Create an array containing a value repeated the specified number of times
+ *
+ * ```ts
  * assert.deepStrictEqual(replicate_(3, 'a'), ['a', 'a', 'a'])
+ * ```
  */
 export function replicate<A>(a: A): (n: number) => Array<A> {
   return (n) => replicate_(n, a)
@@ -1036,8 +1042,9 @@ export function replicate<A>(a: A): (n: number) => Array<A> {
 /**
  * Reverse an array, creating a new array
  *
- * @example
+ * ```ts
  * assert.deepStrictEqual(reverse([1, 2, 3]), [3, 2, 1])
+ * ```
  */
 export function reverse<A>(as: Array<A>): Array<A> {
   return [...as].reverse()
@@ -1046,8 +1053,9 @@ export function reverse<A>(as: Array<A>): Array<A> {
 /**
  * Extracts from an array of `Either` all the `Right` elements. All the `Right` elements are extracted in order
  *
- * @example
+ * ```ts
  * assert.deepStrictEqual(rights([right(1), left('foo'), right(2)]), [1, 2])
+ * ```
  */
 export function rights<E, A>(as: Array<Either<E, A>>): Array<A> {
   const r: MutableArray<A> = []
@@ -1064,8 +1072,9 @@ export function rights<E, A>(as: Array<Either<E, A>>): Array<A> {
 /**
  * Rotate an array to the right by `n` steps
  *
- * @example
+ * ```ts
  * assert.deepStrictEqual(rotate(2)([1, 2, 3, 4, 5]), [4, 5, 1, 2, 3])
+ * ```
  */
 export function rotate(n: number): <A>(as: Array<A>) => Array<A> {
   return (as) => rotate_(as, n)
@@ -1114,8 +1123,9 @@ export function scanLeft_<A, B>(as: Array<A>, b: B, f: (b: B, a: A) => B): Array
 /**
  * Fold an array from the right, keeping all intermediate results instead of only the final result
  *
- * @example
+ * ```ts
  * assert.deepStrictEqual(scanRight(10, (a: number, b) => b - a)([1, 2, 3]), [4, 5, 7, 10])
+ * ```
  */
 export function scanRight<A, B>(
   b: B,
@@ -1140,8 +1150,9 @@ export function scanRight_<A, B>(as: Array<A>, b: B, f: (a: A, b: B) => B): Arra
 /**
  * Append an element to the end of an array, creating a new non empty array
  *
- * @example
+ * ```ts
  * assert.deepStrictEqual(snoc([1, 2, 3], 4), [1, 2, 3, 4])
+ * ```
  */
 export function snoc_<A>(init: Array<A>, end: A): NonEmptyArray<A> {
   const len = init.length
@@ -1179,8 +1190,9 @@ export const spanIndex_ = <A>(as: Array<A>, predicate: Predicate<A>): number => 
  * 1. the longest initial subarray for which all elements satisfy the specified predicate
  * 2. the remaining elements
  *
- * @example
+ * ```ts
  * assert.deepStrictEqual(spanLeft((n: number) => n % 2 === 1)([1, 3, 2, 4, 5]), { init: [1, 3], rest: [2, 4, 5] })
+ * ```
  */
 export function spanLeft<A, B extends A>(
   refinement: Refinement<A, B>
@@ -1222,8 +1234,9 @@ export interface Spanned<I, R> {
 /**
  * Splits an array into two pieces, the first piece has `n` elements.
  *
- * @example
+ * ```ts
  * assert.deepStrictEqual(splitAt(2)([1, 2, 3, 4, 5]), [[1, 2], [3, 4, 5]])
+ * ```
  */
 export function splitAt(n: number): <A>(as: Array<A>) => readonly [Array<A>, Array<A>] {
   return (as) => [as.slice(0, n), as.slice(n)]
@@ -1239,9 +1252,10 @@ export function splitAt_<A>(as: Array<A>, n: number): readonly [Array<A>, Array<
 /**
  * Get all but the first element of an array, creating a new array, or `None` if the array is empty
  *
- * @example
+ * ```ts
  * assert.deepStrictEqual(tail([1, 2, 3]), some([2, 3]))
  * assert.deepStrictEqual(tail([]), none)
+ * ```
  */
 export function tail<A>(as: Array<A>): Option<Array<A>> {
   return isEmpty(as) ? none : some(as.slice(1))
@@ -1251,8 +1265,9 @@ export function tail<A>(as: Array<A>): Option<Array<A>> {
  * Keep only a number of elements from the start of an array, creating a new array.
  * `n` must be a natural number
  *
- * @example
+ * ```ts
  * assert.deepStrictEqual(takeLeft(2)([1, 2, 3]), [1, 2])
+ * ```
  */
 export function takeLeft(n: number): <A>(as: Array<A>) => Array<A> {
   return (as) => as.slice(0, n)
@@ -1269,8 +1284,9 @@ export function takeLeft_<A>(as: Array<A>, n: number): Array<A> {
 /**
  * Calculate the longest initial subarray for which all element satisfy the specified predicate, creating a new array
  *
- * @example
+ * ```ts
  * assert.deepStrictEqual(takeLeftWhile((n: number) => n % 2 === 0)([2, 4, 3, 6]), [2, 4])
+ * ```
  */
 export function takeLeftWhile<A, B extends A>(
   refinement: Refinement<A, B>
@@ -1301,11 +1317,12 @@ export function takeLeftWhile_<A>(as: Array<A>, predicate: Predicate<A>): Array<
  * Keep only a number of elements from the end of an array, creating a new array.
  * `n` must be a natural number
  *
- * @example
+ * ```ts
  * assert.deepStrictEqual(takeRight(2)([1, 2, 3, 4, 5]), [4, 5])
+ * ```
  */
 export function takeRight(n: number): <A>(as: Array<A>) => Array<A> {
-  return (as) => (n === 0 ? empty : as.slice(-n))
+  return (as) => takeRight_(as, n)
 }
 
 /**
@@ -1410,8 +1427,9 @@ export function unsafeUpdateAt<A>(i: number, a: A): (as: Array<A>) => Array<A> {
 /**
  * The function is reverse of `zip`. Takes an array of pairs and return two corresponding arrays
  *
- * @example
+ * ```ts
  * assert.deepStrictEqual(unzip([[1, 'a'], [2, 'b'], [3, 'c']]), [[1, 2, 3], ['a', 'b', 'c']])
+ * ```
  */
 export function unzip<A, B>(as: Array<readonly [A, B]>): readonly [Array<A>, Array<B>] {
   const fa: MutableArray<A> = []
@@ -1426,12 +1444,13 @@ export function unzip<A, B>(as: Array<readonly [A, B]>): readonly [Array<A>, Arr
 /**
  * Change the element at the specified index, creating a new array, or returning `None` if the index is out of bounds
  *
- * @example
+ * ```ts
  * assert.deepStrictEqual(updateAt(1, 1)([1, 2, 3]), some([1, 1, 3]))
  * assert.deepStrictEqual(updateAt(1, 1)([]), none)
+ * ```
  */
 export function updateAt<A>(i: number, a: A): (as: Array<A>) => Option<Array<A>> {
-  return (as) => (isOutOfBound(i, as) ? none : some(unsafeUpdateAt_(as, i, a)))
+  return (as) => updateAt_(as, i, a)
 }
 
 /**
@@ -1445,8 +1464,9 @@ export function updateAt_<A>(as: Array<A>, i: number, a: A): Option<Array<A>> {
  * Takes two arrays and returns an array of corresponding pairs. If one input array is short, excess elements of the
  * longer array are discarded
  *
- * @example
+ * ```ts
  * assert.deepStrictEqual(zip([1, 2, 3], ['a', 'b', 'c', 'd']), [[1, 'a'], [2, 'b'], [3, 'c']])
+ * ```
  */
 export function zip<B>(fb: Array<B>): <A>(fa: Array<A>) => Array<readonly [A, B]> {
   return zipWith(fb, (a, b) => [a, b])
@@ -1464,8 +1484,9 @@ export function zip_<A, B>(fa: Array<A>, fb: Array<B>): Array<readonly [A, B]> {
  * Apply a function to pairs of elements at the same index in two arrays, collecting the results in a new array. If one
  * input array is short, excess elements of the longer array are discarded.
  *
- * @example
+ * ```ts
  * assert.deepStrictEqual(zipWith([1, 2, 3], ['a', 'b', 'c', 'd'], (n, s) => s + n), ['a1', 'b2', 'c3'])
+ * ```
  */
 export function zipWith_<A, B, C>(
   fa: Array<A>,
