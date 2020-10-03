@@ -230,13 +230,11 @@ export function sequenceF<T extends HKT.URIS, C>(
   FE,
   HKT.Kind<T, C, N, K, Q, W, X, I, S, R, E, A>
 >
-export function sequenceF<T extends HKT.URIS, C>(
-  T: Traversable<T, C>
-): <F>(
-  App: Covariant<HKT.UHKT<F>> & IdentityBoth<HKT.UHKT<F>>
-) => <N extends string, K, Q, W, X, I, S, R, E, A>(
-  _: HKT.Kind<T, C, N, K, Q, W, X, I, S, R, E, HKT.HKT<F, A>>
-) => HKT.HKT<F, HKT.Kind<T, C, N, K, Q, W, X, I, S, R, E, A>> {
+export function sequenceF<F>(
+  T: Traversable<HKT.UHKT<F>>
+): <G>(
+  App: Covariant<HKT.UHKT<G>> & IdentityBoth<HKT.UHKT<G>>
+) => <A>(_: HKT.HKT<F, HKT.HKT<G, A>>) => HKT.HKT<G, HKT.HKT<F, A>> {
   return (App) => {
     const traverse = T.foreachF(App)
 
