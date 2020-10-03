@@ -13,12 +13,9 @@ import { unfoldChunkM } from "./unfoldChunkM"
  * it to the destination stream. `f` can maintain some internal state to control
  * the combining process, with the initial state being specified by `s`.
  */
-export const combineChunks = <R1, E1, O2>(that: Stream<R1, E1, O2>) => <Z>(z: Z) => <
-  R,
-  E,
-  O,
-  O3
->(
+export const combineChunks = <R1, E1, O2, Z, R, E, O, O3>(
+  that: Stream<R1, E1, O2>,
+  z: Z,
   f: (
     z: Z,
     s: T.Effect<R, Option.Option<E>, Array.Array<O>>,

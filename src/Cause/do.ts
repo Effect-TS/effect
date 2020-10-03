@@ -17,19 +17,6 @@ const bind = <A, K, N extends string>(
     )
   )
 
-const merge = <A, K>(f: (_: K) => Cause<A & { [k in keyof K & keyof A]?: never }>) => (
-  mk: Cause<K>
-): Cause<K & A> =>
-  pipe(
-    mk,
-    chain((k) =>
-      pipe(
-        f(k),
-        map((a): K & A => ({ ...k, ...a } as any))
-      )
-    )
-  )
-
 const let_ = <A, K, N extends string>(tag: Exclude<N, keyof K>, f: (_: K) => A) => (
   mk: Cause<K>
 ): Cause<K & { [k in N]: A }> =>
@@ -40,4 +27,4 @@ const let_ = <A, K, N extends string>(tag: Exclude<N, keyof K>, f: (_: K) => A) 
 
 const do_ = Fail({})
 
-export { let_ as let, bind, do_ as do, merge }
+export { let_ as let, bind, do_ as do }
