@@ -27,22 +27,6 @@ function bind<R, E, A, K, N extends string>(
     )
 }
 
-function merge<R, E, A, K>(
-  f: (
-    _: K
-  ) => X.Sync<
-    R,
-    E,
-    A &
-      {
-        [k in keyof K & keyof A]?: never
-      }
-  >
-) {
-  return <R2, E2>(mk: X.Sync<R2, E2, K>): X.Sync<R & R2, E | E2, K & A> =>
-    X.chain_(mk, (k) => X.map_(f(k), (a): K & A => ({ ...k, ...a } as any)))
-}
-
 function let_<A, K, N extends string>(tag: Exclude<N, keyof K>, f: (_: K) => A) {
   return <R2, E2>(
     mk: X.Sync<R2, E2, K>
@@ -67,4 +51,4 @@ function let_<A, K, N extends string>(tag: Exclude<N, keyof K>, f: (_: K) => A) 
 
 const do_ = X.succeed({})
 
-export { let_ as let, bind, do_ as do, merge }
+export { let_ as let, bind, do_ as do }
