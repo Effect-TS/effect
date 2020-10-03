@@ -93,7 +93,6 @@
       "Effect/Stream/Take",
       "Effect/Stream/Transducer",
       "Effect/Supervisor",
-      "Effect/Sync",
       "Function",
       "Newtype",
       "Prelude",
