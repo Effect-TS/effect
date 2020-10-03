@@ -1,8 +1,8 @@
 import type { Param } from "./fix"
-import type { ConcreteKind, URIS } from "./kind"
+import type { Kind, URIS } from "./kind"
 
 export type Infer<F extends URIS, P extends Param | "A" | "C", K> = [K] extends [
-  ConcreteKind<
+  Kind<
     F,
     infer C,
     infer N,
