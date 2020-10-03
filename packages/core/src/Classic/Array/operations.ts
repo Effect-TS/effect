@@ -69,7 +69,7 @@ export function elem_<A>(E: Equal<A>): (as: Array<A>, a: A) => boolean {
 }
 
 /**
- * Creates an array of array values not included in the other given array using a `Eq` for equality
+ * Creates an array of array values not included in the other given array using a `Equal` for equality
  * comparisons. The order and references of result values are determined by the first array.
  */
 export function difference_<A>(E: Equal<A>): (xs: Array<A>, ys: Array<A>) => Array<A> {
@@ -78,7 +78,7 @@ export function difference_<A>(E: Equal<A>): (xs: Array<A>, ys: Array<A>) => Arr
 }
 
 /**
- * Creates an array of array values not included in the other given array using a `Eq` for equality
+ * Creates an array of array values not included in the other given array using a `Equal` for equality
  * comparisons. The order and references of result values are determined by the first array.
  */
 export function difference<A>(
