@@ -19,80 +19,41 @@ export type PrependURI<G extends RealURIS, F extends RealURIS[]> = F extends Rea
   ? [G, ...F]
   : F
 
-export type ConcreteKind<
-  F extends URIS,
-  C,
-  N extends string,
-  K,
-  Q,
-  W,
-  X,
-  I,
-  S,
-  R,
-  E,
-  A
-> = ((...x: F) => any) extends (fst: infer XURI, ...rest: infer Rest) => any
+export type Kind<F extends URIS, C, N extends string, K, Q, W, X, I, S, R, E, A> = ((
+  ...x: F
+) => any) extends (fst: infer XURI, ...rest: infer Rest) => any
   ? XURI extends ConcreteURIS
     ? URItoKind<
         Auto,
         C,
-        N,
-        K,
-        Q,
-        W,
-        X,
-        I,
-        S,
-        R,
-        E,
-        Rest extends URIS ? ConcreteKind<Rest, C, N, K, Q, W, X, I, S, R, E, A> : A
+        OrFix<"N", C, N>,
+        OrFix<"K", C, K>,
+        OrFix<"Q", C, Q>,
+        OrFix<"W", C, W>,
+        OrFix<"X", C, X>,
+        OrFix<"I", C, I>,
+        OrFix<"S", C, S>,
+        OrFix<"R", C, R>,
+        OrFix<"E", C, E>,
+        Rest extends URIS ? Kind<Rest, C, N, K, Q, W, X, I, S, R, E, A> : A
       >[XURI]
     : XURI extends URI<infer U, infer FC>
     ? URItoKind<
         FC,
         C,
-        OrFix<"N", FC, N>,
-        OrFix<"K", FC, K>,
-        OrFix<"Q", FC, Q>,
-        OrFix<"W", FC, W>,
-        OrFix<"X", FC, X>,
-        OrFix<"I", FC, I>,
-        OrFix<"S", FC, S>,
-        OrFix<"R", FC, R>,
-        OrFix<"E", FC, E>,
-        Rest extends URIS ? ConcreteKind<Rest, C, N, K, Q, W, X, I, S, R, E, A> : A
+        OrFix<"N", FC, OrFix<"N", C, N>>,
+        OrFix<"K", FC, OrFix<"K", C, K>>,
+        OrFix<"Q", FC, OrFix<"Q", C, Q>>,
+        OrFix<"W", FC, OrFix<"W", C, W>>,
+        OrFix<"X", FC, OrFix<"X", C, X>>,
+        OrFix<"I", FC, OrFix<"I", C, I>>,
+        OrFix<"S", FC, OrFix<"S", C, S>>,
+        OrFix<"R", FC, OrFix<"R", C, R>>,
+        OrFix<"E", FC, OrFix<"E", C, E>>,
+        Rest extends URIS ? Kind<Rest, C, N, K, Q, W, X, I, S, R, E, A> : A
       >[U]
     : never
   : never
-
-export type Kind<
-  URI extends URIS,
-  C,
-  N extends string,
-  K,
-  Q,
-  W,
-  X,
-  I,
-  S,
-  R,
-  E,
-  A
-> = ConcreteKind<
-  URI,
-  C,
-  OrFix<"N", C, N>,
-  OrFix<"K", C, K>,
-  OrFix<"Q", C, Q>,
-  OrFix<"W", C, W>,
-  OrFix<"X", C, X>,
-  OrFix<"I", C, I>,
-  OrFix<"S", C, S>,
-  OrFix<"R", C, R>,
-  OrFix<"E", C, E>,
-  A
->
 
 export type IndexForBase<
   F extends ConcreteURIS,
