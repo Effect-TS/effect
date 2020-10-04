@@ -1,5 +1,6 @@
+import { sequenceF } from "../../Prelude"
 import * as DSL from "../../Prelude/DSL"
-import { Applicative, Fail, Monad, Run } from "./instances"
+import { Applicative, Fail, Monad, Run, Traversable } from "./instances"
 
 export const getValidationApplicative = DSL.getValidationF({
   ...Monad,
@@ -7,4 +8,7 @@ export const getValidationApplicative = DSL.getValidationF({
   ...Applicative,
   ...Run
 })
+
 export const struct = DSL.structF(Applicative)
+
+export const sequence = sequenceF(Traversable)
