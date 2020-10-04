@@ -89,7 +89,7 @@ export const symbol = strict<symbol>()
 /**
  * Derives an `Equal[Array[A]]` given an `Equal[A]`.
  */
-export function eqArray<A>(EqA: Equal<A>): Equal<A.Array<A>> {
+export function array<A>(EqA: Equal<A>): Equal<A.Array<A>> {
   return {
     equals: (y) => (x) => {
       if (x.length === y.length) {
@@ -108,7 +108,7 @@ export function eqArray<A>(EqA: Equal<A>): Equal<A.Array<A>> {
 /**
  * Given a tuple of `Equal`s returns a `Equal` for the tuple
  */
-export function getTuple<T extends ReadonlyArray<Equal<any>>>(
+export function tuple<T extends ReadonlyArray<Equal<any>>>(
   ...eqs: T
 ): Equal<
   {
