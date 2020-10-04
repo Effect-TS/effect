@@ -97,6 +97,9 @@ export function getValidationAssociative<E, A>(
   )
 }
 
+/**
+ * Compact `Either<E, Option<A>>` given `Identity<E>`
+ */
 export function compact<E>(M: Identity<E>) {
   return <A>(ma: Either<E, Option<A>>): Either<E, A> => {
     return E.isLeft(ma)
@@ -107,6 +110,9 @@ export function compact<E>(M: Identity<E>) {
   }
 }
 
+/**
+ * Separate `Either<E, Either<A, B>>` given `Identity<E>`
+ */
 export function separate<E>(M: Identity<E>) {
   const empty = E.left(M.identity)
 
@@ -119,6 +125,9 @@ export function separate<E>(M: Identity<E>) {
   }
 }
 
+/**
+ * Get `Witherable`'s `compactF` given `Identity<E>`
+ */
 export function getCompactF<E>(M: Identity<E>) {
   const com = compact(M)
   return P.implementCompactF<[EitherURI], P.Fix<"E", E>>()((_) => (G) => {
@@ -126,6 +135,10 @@ export function getCompactF<E>(M: Identity<E>) {
     return (f) => flow(traverseF(f), G.map(com))
   })
 }
+
+/**
+ * Get `Wiltable`'s `separateF` given `Identity<E>`
+ */
 export function getSeparateF<E>(M: Identity<E>) {
   const sep = separate(M)
   return P.implementSeparateF<[EitherURI], P.Fix<"E", E>>()((_) => (G) => {
@@ -134,6 +147,9 @@ export function getSeparateF<E>(M: Identity<E>) {
   })
 }
 
+/**
+ * Get `Witherable` instance given `Identity<E>`
+ */
 export function getWitherable<E>(M: Identity<E>) {
   const compactF = getCompactF(M)
   return P.instance<P.Witherable<[EitherURI], P.Fix<"E", E>>>({
@@ -141,6 +157,9 @@ export function getWitherable<E>(M: Identity<E>) {
   })
 }
 
+/**
+ * Get `Wiltable` instance given `Identity<E>`
+ */
 export function getWiltable<E>(M: Identity<E>) {
   const separateF = getSeparateF(M)
   return P.instance<P.Wiltable<[EitherURI], P.Fix<"E", E>>>({
@@ -148,12 +167,19 @@ export function getWiltable<E>(M: Identity<E>) {
   })
 }
 
+/**
+ * Get `Compact` instance given `Identity<E>`
+ */
 export function getCompact<E>(M: Identity<E>) {
   const _compact = compact(M)
   return P.instance<P.Compact<[EitherURI], P.Fix<"E", E>>>({
     compact: _compact
   })
 }
+
+/**
+ * Get `Separate` instance given `Identity<E>`
+ */
 export function getSeparate<E>(M: Identity<E>) {
   const _separate = separate(M)
   return P.instance<P.Separate<[EitherURI], P.Fix<"E", E>>>({
@@ -161,6 +187,9 @@ export function getSeparate<E>(M: Identity<E>) {
   })
 }
 
+/**
+ * Get `Compactable` instance given `Identity<E>`
+ */
 export function getCompactable<E>(M: Identity<E>) {
   const C = getCompact(M)
   const S = getSeparate(M)
