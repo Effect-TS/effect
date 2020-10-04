@@ -106,7 +106,7 @@ export function chainF<F extends HKT.URIS, C = HKT.Auto>(
   HKT.Mix<C, "I", [I2, I]>,
   HKT.Mix<C, "S", [S2, S]>,
   HKT.Mix<C, "R", [R2, R]>,
-  HKT.Mix<C, "X", [E2, E]>,
+  HKT.Mix<C, "E", [E2, E]>,
   B
 >
 export function chainF<F>(F: Monad<HKT.UHKT<F>>) {
