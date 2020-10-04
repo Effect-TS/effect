@@ -44,6 +44,10 @@ export const Wiltable = P.instance<P.Wiltable<[ArrayURI]>>({
   separateF: A.separateF
 })
 
+export const WiltableWithIndex = P.instance<P.WiltableWithIndex<[ArrayURI]>>({
+  separateWithIndexF: A.separateWithIndexF
+})
+
 export const Witherable = P.instance<P.Witherable<[ArrayURI]>>({
   compactF: A.compactF
 })

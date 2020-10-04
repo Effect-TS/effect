@@ -1,6 +1,7 @@
 import type { Array } from "@effect-ts/system/Array"
 import * as A from "@effect-ts/system/Array"
 import { flow, pipe } from "@effect-ts/system/Function"
+import type { MutableArray } from "@effect-ts/system/Mutable"
 
 import type { ArrayURI } from "../../Modules"
 import * as P from "../../Prelude"
@@ -9,7 +10,7 @@ import type { Equal } from "../Equal"
 import { makeEqual } from "../Equal"
 import type { Identity } from "../Identity"
 import { makeIdentity } from "../Identity"
-import type { Ord } from "../Ord"
+import * as Ord from "../Ord"
 import { fromCompare } from "../Ord"
 import { ordNumber } from "../Ord/common"
 import { toNumber } from "../Ordering"
@@ -17,6 +18,9 @@ import type { Show } from "../Show"
 
 export * from "@effect-ts/system/Array"
 
+/**
+ * `TraversableWithIndex`'s `foreachWithIndexF` function
+ */
 export const foreachWithIndexF = P.implementForeachWithIndexF<[ArrayURI]>()(
   (_) => (G) => (f) =>
     A.reduceWithIndex(DSL.succeedF(G)([] as typeof _.B[]), (k, b, a) =>
@@ -31,18 +35,37 @@ export const foreachWithIndexF = P.implementForeachWithIndexF<[ArrayURI]>()(
     )
 )
 
+/**
+ * `Traversable`'s `foreachF` function
+ */
 export const foreachF = P.implementForeachF<[ArrayURI]>()((_) => (G) => (f) =>
   foreachWithIndexF(G)((_, a) => f(a))
 )
 
+/**
+ * `Wilt`'s `separateF` function
+ */
 export const separateF = P.implementSeparateF<[ArrayURI]>()((_) => (G) => (f) =>
   flow(foreachF(G)(f), G.map(A.separate))
 )
 
+/**
+ * `Wilt`'s `separateF` function
+ */
+export const separateWithIndexF = P.implementSeparateWithIndexF<
+  [ArrayURI]
+>()((_) => (G) => (f) => flow(foreachWithIndexF(G)(f), G.map(A.separate)))
+
+/**
+ * `Wither`'s `compactF` function
+ */
 export const compactF = P.implementCompactF<[ArrayURI]>()((_) => (G) => (f) =>
   flow(foreachF(G)(f), G.map(A.compact))
 )
 
+/**
+ * `WitherWithIndex`'s `compactWithIndexF` function
+ */
 export const compactWithIndexF = P.implementCompactWithIndexF<
   [ArrayURI]
 >()((_) => (G) => (f) => flow(foreachWithIndexF(G)(f), G.map(A.compact)))
@@ -117,7 +140,7 @@ export function getIdentity<A>() {
 /**
  * Returns a `Ord` for `Array<A>` given `Ord<A>`
  */
-export function getOrd<A>(O: Ord<A>): Ord<Array<A>> {
+export function getOrd<A>(O: Ord.Ord<A>): Ord.Ord<Array<A>> {
   return fromCompare((b) => (a) => {
     const aLen = a.length
     const bLen = b.length
@@ -163,26 +186,85 @@ export function intersection<A>(
   return (ys) => (xs) => int(xs, ys)
 }
 
+/**
+ * Fold Identity with a mapping function
+ */
 export function foldMap<M>(
   M: Identity<M>
 ): <A>(f: (a: A) => M) => (fa: readonly A[]) => M {
   return (f) => foldMapWithIndex(M)((_, a) => f(a))
 }
 
+/**
+ * Fold Identity with a mapping function
+ */
 export function foldMap_<M>(
   M: Identity<M>
 ): <A>(fa: readonly A[], f: (a: A) => M) => M {
   return (fa, f) => foldMapWithIndex_(M)(fa, (_, a) => f(a))
 }
 
+/**
+ * Fold Identity with a mapping function that consider also the index
+ */
 export function foldMapWithIndex<M>(
   M: Identity<M>
 ): <A>(f: (i: number, a: A) => M) => (fa: readonly A[]) => M {
   return (f) => (fa) => foldMapWithIndex_(M)(fa, f)
 }
 
+/**
+ * Fold Identity with a mapping function that consider also the index
+ */
 export function foldMapWithIndex_<M>(
   M: Identity<M>
 ): <A>(fa: readonly A[], f: (i: number, a: A) => M) => M {
   return (fa, f) => fa.reduce((b, a, i) => M.combine(f(i, a))(b), M.identity)
+}
+
+/**
+ * Sort the elements of an array in increasing order
+ */
+export function sort<A>(O: Ord.Ord<A>): (as: Array<A>) => Array<A> {
+  return (as) => [...as].sort((x, y) => toNumber(O.compare(y)(x)))
+}
+
+/**
+ * Sort the elements of an array in increasing order, where elements are compared using first `ords[0]`,
+ * then `ords[1]`, then `ords[2]`, etc...
+ */
+export function sortBy<A>(ords: Array<Ord.Ord<A>>): (as: Array<A>) => Array<A> {
+  const M = Ord.getIdentity<A>()
+  return sort(ords.reduce((x, y) => M.combine(y)(x), M.identity))
+}
+
+/**
+ * Creates an array of unique values, in order, from all given arrays using a `Equal` for equality comparisons
+ */
+export function union<A>(E: Equal<A>): (xs: Array<A>, ys: Array<A>) => Array<A> {
+  const elemE = elem_(E)
+  return (xs, ys) =>
+    A.concat_(
+      xs,
+      ys.filter((a) => !elemE(xs, a))
+    )
+}
+
+/**
+ * Remove duplicates from an array, keeping the first occurrence of an element.
+ */
+export function uniq<A>(E: Equal<A>): (as: Array<A>) => Array<A> {
+  const elemS = elem_(E)
+  return (as) => {
+    const r: MutableArray<A> = []
+    const len = as.length
+    let i = 0
+    for (; i < len; i++) {
+      const a = as[i]
+      if (!elemS(r, a)) {
+        r.push(a)
+      }
+    }
+    return len === r.length ? as : r
+  }
 }
