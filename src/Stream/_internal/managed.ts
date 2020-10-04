@@ -4,6 +4,7 @@ export {
   ensuring,
   finalizerRef,
   foldCauseM,
+  fromEffect,
   fork,
   map,
   mapM,
