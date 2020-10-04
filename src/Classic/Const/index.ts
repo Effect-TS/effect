@@ -31,7 +31,7 @@ export type Const<E, A> = E & {
 }
 
 /**
- * Map + Contramap
+ * Map + MapLeft
  */
 export function bimap_<E, A, G, B>(
   fea: Const<E, A>,
@@ -42,7 +42,7 @@ export function bimap_<E, A, G, B>(
 }
 
 /**
- * Map + Contramap
+ * Map + MapLeft
  */
 export function bimap<E, G, A, B>(
   f: (e: E) => G,
