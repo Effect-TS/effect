@@ -197,13 +197,6 @@ export const duplicate: <E, A>(ma: Either<E, A>) => Either<E, Either<E, A>> = (m
 
 /**
  * Returns `false` if `Left` or returns the result of the application of the given predicate to the `Right` value.
- *
- * @example
- * const gt2 = exists((n: number) => n > 2)
- *
- * assert.strictEqual(gt2(left('a')), false)
- * assert.strictEqual(gt2(right(1)), false)
- * assert.strictEqual(gt2(right(3)), true)
  */
 export function exists<A>(predicate: Predicate<A>): <E>(ma: Either<E, A>) => boolean {
   return (ma) => (isLeft(ma) ? false : predicate(ma.right))
@@ -211,13 +204,6 @@ export function exists<A>(predicate: Predicate<A>): <E>(ma: Either<E, A>) => boo
 
 /**
  * Returns `false` if `Left` or returns the result of the application of the given predicate to the `Right` value.
- *
- * @example
- * const gt2 = exists((n: number) => n > 2)
- *
- * assert.strictEqual(gt2(left('a')), false)
- * assert.strictEqual(gt2(right(1)), false)
- * assert.strictEqual(gt2(right(3)), true)
  */
 export function exists_<E, A>(ma: Either<E, A>, predicate: Predicate<A>): boolean {
   return isLeft(ma) ? false : predicate(ma.right)
@@ -281,30 +267,6 @@ export const flatten: <E, E2, A>(mma: Either<E, Either<E2, A>>) => Either<E | E2
 /**
  * Takes two functions and an `Either` value, if the value is a `Left` the inner value is applied to the first function,
  * if the value is a `Right` the inner value is applied to the second function.
- *
- * @example
- * function onLeft(errors: Array<string>): string {
- *   return `Errors: ${errors.join(', ')}`
- * }
- *
- * function onRight(value: number): string {
- *   return `Ok: ${value}`
- * }
- *
- * assert.strictEqual(
- *   pipe(
- *     right(1),
- *     fold(onLeft, onRight)
- *   ),
- *   'Ok: 1'
- * )
- * assert.strictEqual(
- *   pipe(
- *     left(['error 1', 'error 2']),
- *     fold(onLeft, onRight)
- *   ),
- *   'Errors: error 1, error 2'
- * )
  */
 export function fold<E, A, B, C>(
   onLeft: (e: E) => B,
@@ -316,30 +278,6 @@ export function fold<E, A, B, C>(
 /**
  * Takes two functions and an `Either` value, if the value is a `Left` the inner value is applied to the first function,
  * if the value is a `Right` the inner value is applied to the second function.
- *
- * @example
- * function onLeft(errors: Array<string>): string {
- *   return `Errors: ${errors.join(', ')}`
- * }
- *
- * function onRight(value: number): string {
- *   return `Ok: ${value}`
- * }
- *
- * assert.strictEqual(
- *   pipe(
- *     right(1),
- *     fold(onLeft, onRight)
- *   ),
- *   'Ok: 1'
- * )
- * assert.strictEqual(
- *   pipe(
- *     left(['error 1', 'error 2']),
- *     fold(onLeft, onRight)
- *   ),
- *   'Errors: error 1, error 2'
- * )
  */
 export function fold_<E, A, B, C>(
   ma: Either<E, A>,
@@ -352,12 +290,6 @@ export function fold_<E, A, B, C>(
 /**
  * Takes a default and a nullable value, if the value is not nully, turn it into a `Right`, if the value is nully use
  * the provided default as a `Left`
- *
- * @example
- * const parse = fromNullable('nully')
- *
- * assert.deepStrictEqual(parse(1), right(1))
- * assert.deepStrictEqual(parse(null), left('nully'))
  */
 export function fromNullable<E>(e: Lazy<E>): <A>(a: A) => Either<E, NonNullable<A>> {
   return <A>(a: A) => (a == null ? left(e()) : right(a as NonNullable<A>))
@@ -366,12 +298,6 @@ export function fromNullable<E>(e: Lazy<E>): <A>(a: A) => Either<E, NonNullable<
 /**
  * Takes a default and a nullable value, if the value is not nully, turn it into a `Right`, if the value is nully use
  * the provided default as a `Left`
- *
- * @example
- * const parse = fromNullable('nully')
- *
- * assert.deepStrictEqual(parse(1), right(1))
- * assert.deepStrictEqual(parse(null), left('nully'))
  */
 export function fromNullable_<A, E>(a: A, e: Lazy<E>): Either<E, NonNullable<A>> {
   return a == null ? left(e()) : right(a as NonNullable<A>)
@@ -528,10 +454,6 @@ export function orElseEither_<E, A, B, M>(
 
 /**
  * Converts a JavaScript Object Notation (JSON) string into an object.
- *
- * @example
- * assert.deepStrictEqual(parseJSON('{"a":1}', toError), right({ a: 1 }))
- * assert.deepStrictEqual(parseJSON('{"a":}', toError), left(new SyntaxError('Unexpected token } in JSON at position 5')))
  */
 export function parseJSON_<E>(
   s: string,
@@ -542,10 +464,6 @@ export function parseJSON_<E>(
 
 /**
  * Converts a JavaScript Object Notation (JSON) string into an object.
- *
- * @example
- * assert.deepStrictEqual(parseJSON('{"a":1}', toError), right({ a: 1 }))
- * assert.deepStrictEqual(parseJSON('{"a":}', toError), left(new SyntaxError('Unexpected token } in JSON at position 5')))
  */
 export function parseJSON<E>(
   onError: (reason: unknown) => E
@@ -555,18 +473,6 @@ export function parseJSON<E>(
 
 /**
  * Converts a JavaScript value to a JavaScript Object Notation (JSON) string.
- *
- * @example
- * assert.deepStrictEqual(E.stringifyJSON({ a: 1 }, E.toError), E.right('{"a":1}'))
- * const circular: any = { ref: null }
- * circular.ref = circular
- * assert.deepStrictEqual(
- *   pipe(
- *     E.stringifyJSON(circular, E.toError),
- *     E.mapLeft(e => e.message.includes('Converting circular structure to JSON'))
- *   ),
- *   E.left(true)
- * )
  */
 export function stringifyJSON<E>(
   u: unknown,
@@ -591,22 +497,6 @@ export function toError(e: unknown): Error {
 
 /**
  * Constructs a new `Either` from a function that might throw
- *
- * @example
- * const unsafeHead = <A>(as: Array<A>): A => {
- *   if (as.length > 0) {
- *     return as[0]
- *   } else {
- *     throw new Error('empty array')
- *   }
- * }
- *
- * const head = <A>(as: Array<A>): Either<Error, A> => {
- *   return tryCatch(() => unsafeHead(as), e => (e instanceof Error ? e : new Error('unknown error')))
- * }
- *
- * assert.deepStrictEqual(head([]), left(new Error('empty array')))
- * assert.deepStrictEqual(head([1, 2, 3]), right(1))
  */
 export function tryCatch_<E, A>(f: Lazy<A>, onError: (e: unknown) => E): Either<E, A> {
   try {
@@ -618,22 +508,6 @@ export function tryCatch_<E, A>(f: Lazy<A>, onError: (e: unknown) => E): Either<
 
 /**
  * Constructs a new `Either` from a function that might throw
- *
- * @example
- * const unsafeHead = <A>(as: Array<A>): A => {
- *   if (as.length > 0) {
- *     return as[0]
- *   } else {
- *     throw new Error('empty array')
- *   }
- * }
- *
- * const head = <A>(as: Array<A>): Either<Error, A> => {
- *   return tryCatch(() => unsafeHead(as), e => (e instanceof Error ? e : new Error('unknown error')))
- * }
- *
- * assert.deepStrictEqual(head([]), left(new Error('empty array')))
- * assert.deepStrictEqual(head([1, 2, 3]), right(1))
  */
 export function tryCatch<E>(
   onError: (e: unknown) => E
@@ -655,3 +529,37 @@ export function compact<E extends Either<any, any>>(
 ): [E] extends [Either<infer L, infer R>] ? Either<L, R> : E {
   return _ as any
 }
+
+/**
+ * Reduce a value `b` through an `Either`
+ */
+export const reduce_: <E, A, B>(fa: Either<E, A>, b: B, f: (b: B, a: A) => B) => B = (
+  fa,
+  b,
+  f
+) => (isLeft(fa) ? b : f(b, fa.right))
+
+/**
+ * Reduce a value `b` through an `Either`
+ */
+export const reduce: <A, B>(
+  b: B,
+  f: (b: B, a: A) => B
+) => <E>(fa: Either<E, A>) => B = (b, f) => (fa) => reduce_(fa, b, f)
+
+/**
+ * Reduce a value `b` through an `Either` in inverted order
+ */
+export const reduceRight: <A, B>(
+  b: B,
+  f: (a: A, b: B) => B
+) => <E>(fa: Either<E, A>) => B = (b, f) => (fa) => reduceRight_(fa, b, f)
+
+/**
+ * Reduce a value `b` through an `Either` in inverted order
+ */
+export const reduceRight_: <E, A, B>(
+  fa: Either<E, A>,
+  b: B,
+  f: (a: A, b: B) => B
+) => B = (fa, b, f) => (isLeft(fa) ? b : f(fa.right, b))

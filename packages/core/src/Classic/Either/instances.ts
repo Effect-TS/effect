@@ -52,3 +52,21 @@ export const Traversable = P.instance<P.Traversable<[EitherURI], V>>({
   map: E.map,
   foreachF: E.foreachF
 })
+
+export const FoldMap = P.instance<P.FoldMap<[EitherURI], V>>({
+  foldMap: E.foldMap
+})
+
+export const Reduce = P.instance<P.Reduce<[EitherURI], V>>({
+  reduce: E.reduce
+})
+
+export const ReduceRight = P.instance<P.ReduceRight<[EitherURI], V>>({
+  reduceRight: E.reduceRight
+})
+
+export const Foldable = P.instance<P.Foldable<[EitherURI], V>>({
+  ...FoldMap,
+  ...Reduce,
+  ...ReduceRight
+})

@@ -19,10 +19,20 @@ import type { Ord } from "../Ord"
 import type { Show } from "../Show"
 import { makeShow } from "../Show"
 
+/**
+ * The `Const` type constructor, which wraps its first type argument and ignores its second.
+ * That is, `Const<E, A>` is isomorphic to `E` for any `A`.
+ *
+ * `Const` has some useful instances. For example, the `Applicative` instance allows us to collect results using a `Identity`
+ * while ignoring return values.
+ */
 export type Const<E, A> = E & {
   readonly _A: A
 }
 
+/**
+ * Map + Contramap
+ */
 export function bimap_<E, A, G, B>(
   fea: Const<E, A>,
   f: (e: E) => G,
@@ -31,6 +41,9 @@ export function bimap_<E, A, G, B>(
   return makeConst(f(fea))()
 }
 
+/**
+ * Map + Contramap
+ */
 export function bimap<E, G, A, B>(
   f: (e: E) => G,
   g: (a: A) => B
@@ -38,11 +51,17 @@ export function bimap<E, G, A, B>(
   return (fa) => bimap_(fa, f, g)
 }
 
+/**
+ * Contramap input
+ */
 export const contramap_: <E, A, B>(
   fa: Const<E, A>,
   f: (b: B) => A
 ) => Const<E, B> = unsafeCoerce
 
+/**
+ * Contramap input
+ */
 export function contramap<A, B>(f: (b: B) => A): <E>(fa: Const<E, A>) => Const<E, B> {
   return (fa) => contramap_(fa, f)
 }
