@@ -12,3 +12,5 @@ export const getValidationApplicative = DSL.getValidationF({
 export const struct = DSL.structF(Applicative)
 
 export const sequence = sequenceF(Traversable)
+
+export const tupled = DSL.tupledF(Applicative)

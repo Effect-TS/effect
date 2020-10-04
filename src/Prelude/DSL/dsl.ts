@@ -11,6 +11,49 @@ import type { Access, Provide } from "../FX"
 import type * as HKT from "../HKT"
 import type { Monad } from "../Monad"
 
+export function apF<F extends HKT.URIS, C>(
+  F: Applicative<F, C>
+): <N extends string, K, Q, W, X, I, S, R, E, A>(
+  fa: HKT.Kind<F, C, N, K, Q, W, X, I, S, R, E, A>
+) => <N2 extends string, K2, Q2, W2, X2, I2, S2, R2, E2, B>(
+  fab: HKT.Kind<
+    F,
+    C,
+    HKT.Intro<C, "N", N, N2>,
+    HKT.Intro<C, "K", K, K2>,
+    HKT.Intro<C, "Q", Q, Q2>,
+    HKT.Intro<C, "W", W, W2>,
+    HKT.Intro<C, "X", X, X2>,
+    HKT.Intro<C, "I", I, I2>,
+    HKT.Intro<C, "S", S, S2>,
+    HKT.Intro<C, "R", R, R2>,
+    HKT.Intro<C, "E", E, E2>,
+    (a: A) => B
+  >
+) => HKT.Kind<
+  F,
+  C,
+  HKT.Mix<C, "N", [N, N2]>,
+  HKT.Mix<C, "K", [K, K2]>,
+  HKT.Mix<C, "Q", [Q, Q2]>,
+  HKT.Mix<C, "W", [W, W2]>,
+  HKT.Mix<C, "X", [X, X2]>,
+  HKT.Mix<C, "I", [I, I2]>,
+  HKT.Mix<C, "S", [S, S2]>,
+  HKT.Mix<C, "R", [R, R2]>,
+  HKT.Mix<C, "E", [E, E2]>,
+  B
+>
+export function apF<F>(
+  F: Applicative<HKT.UHKT<F>>
+): <A>(fa: HKT.HKT<F, A>) => <B>(fab: HKT.HKT<F, (a: A) => B>) => HKT.HKT<F, B> {
+  return (fa) => (fab) =>
+    pipe(
+      F.both(fab)(fa),
+      F.map(([a, f]) => f(a))
+    )
+}
+
 export function succeedF<F extends HKT.URIS, C = HKT.Auto>(
   F: Any<F, C> & Covariant<F, C>
 ): <
@@ -175,6 +218,117 @@ export function structF<F>(
         return res
       })
     )
+}
+
+function curried(f: Function, n: number, acc: ReadonlyArray<unknown>) {
+  return function (x: unknown) {
+    const combined = acc.concat([x])
+    // eslint-disable-next-line prefer-spread
+    return n === 0 ? f.apply(null, combined) : curried(f, n - 1, combined)
+  }
+}
+
+const tupleConstructors: Record<number, (a: unknown) => unknown> = {}
+
+function getTupleConstructor(len: number): (a: unknown) => any {
+  // eslint-disable-next-line no-prototype-builtins
+  if (!tupleConstructors.hasOwnProperty(len)) {
+    tupleConstructors[len] = curried(tuple, len - 1, [])
+  }
+  return tupleConstructors[len]
+}
+
+type TMix<
+  F extends HKT.URIS,
+  C,
+  T extends Array<HKT.Kind<F, C, any, any, any, any, any, any, any, any, any, any>>,
+  P extends HKT.Param,
+  AS
+> = HKT.MixStruct<
+  C,
+  P,
+  AS,
+  {
+    [K in keyof T & number]: HKT.Infer<F, P, T[K]>
+  }
+>
+
+export function tupledF<F extends HKT.URIS, C>(
+  F: Applicative<F, C>
+): <
+  T extends Array<
+    HKT.Kind<
+      F,
+      C,
+      HKT.Intro<C, "N", N, any>,
+      HKT.Intro<C, "K", K, any>,
+      HKT.Intro<C, "Q", Q, any>,
+      HKT.Intro<C, "W", W, any>,
+      HKT.Intro<C, "X", X, any>,
+      HKT.Intro<C, "I", I, any>,
+      HKT.Intro<C, "S", S, any>,
+      HKT.Intro<C, "R", R, any>,
+      HKT.Intro<C, "E", E, any>,
+      unknown
+    >
+  >,
+  N extends string = HKT.Initial<C, "N">,
+  K = HKT.Initial<C, "K">,
+  Q = HKT.Initial<C, "Q">,
+  W = HKT.Initial<C, "W">,
+  X = HKT.Initial<C, "X">,
+  I = HKT.Initial<C, "I">,
+  S = HKT.Initial<C, "S">,
+  R = HKT.Initial<C, "R">,
+  E = HKT.Initial<C, "E">
+>(
+  ...t: T & {
+    readonly 0: HKT.Kind<
+      F,
+      C,
+      HKT.Intro<C, "N", N, any>,
+      HKT.Intro<C, "K", K, any>,
+      HKT.Intro<C, "Q", Q, any>,
+      HKT.Intro<C, "W", W, any>,
+      HKT.Intro<C, "X", X, any>,
+      HKT.Intro<C, "I", I, any>,
+      HKT.Intro<C, "S", S, any>,
+      HKT.Intro<C, "R", R, any>,
+      HKT.Intro<C, "E", E, any>,
+      unknown
+    >
+  }
+) => HKT.Kind<
+  F,
+  C,
+  TMix<F, C, T, "N", N>,
+  TMix<F, C, T, "K", K>,
+  TMix<F, C, T, "Q", Q>,
+  TMix<F, C, T, "W", W>,
+  TMix<F, C, T, "X", X>,
+  TMix<F, C, T, "I", I>,
+  TMix<F, C, T, "S", S>,
+  TMix<F, C, T, "R", R>,
+  TMix<F, C, T, "E", E>,
+  {
+    [K in keyof T]: [T[K]] extends [
+      HKT.Kind<F, C, any, any, any, any, any, any, any, any, any, infer A>
+    ]
+      ? A
+      : never
+  }
+>
+export function tupledF<F>(F: Applicative<HKT.UHKT<F>>): any {
+  const ap = apF(F)
+  return <A>(...args: Array<HKT.HKT<F, A>>) => {
+    const len = args.length
+    const f = getTupleConstructor(len)
+    let fas = F.map(f)(args[0])
+    for (let i = 1; i < len; i++) {
+      fas = ap(args[i])(fas)
+    }
+    return fas
+  }
 }
 
 export function accessServiceMF<F extends HKT.URIS, C extends HKT.V<"R", "-">>(
