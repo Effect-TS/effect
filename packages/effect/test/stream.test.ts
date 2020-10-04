@@ -65,5 +65,38 @@ describe("Stream", () => {
       )
       expect(result).toEqual([0, 1, 2])
     })
+
+    it("merge", async () => {
+      let n = 0
+      const streamA = S.repeatEffectOption(
+        T.delay(100)(
+          T.suspend(() => {
+            n++
+            if (n > 3) {
+              return T.fail(O.none)
+            } else {
+              return T.succeed(1)
+            }
+          })
+        )
+      )
+      let n2 = 0
+      const streamB = S.repeatEffectOption(
+        T.delay(200)(
+          T.suspend(() => {
+            n2++
+            if (n2 > 2) {
+              return T.fail(O.none)
+            } else {
+              return T.succeed(2)
+            }
+          })
+        )
+      )
+
+      expect(
+        await pipe(streamA, S.merge(streamB), S.runCollect, T.runPromise)
+      ).toEqual([1, 2, 1, 1, 2])
+    })
   })
 })

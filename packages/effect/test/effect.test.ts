@@ -6,7 +6,7 @@ import * as FiberRef from "../src/FiberRef"
 import { absurd, pipe, tuple } from "../src/Function"
 import * as O from "../src/Option"
 
-describe("Effect", async () => {
+describe("Effect", () => {
   it("absolve", async () => {
     const program = T.absolve(T.succeed(E.left("e")))
 

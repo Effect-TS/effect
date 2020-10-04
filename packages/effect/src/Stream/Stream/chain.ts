@@ -1,4 +1,4 @@
-import * as T from "../_internal/effect"
+import type * as T from "../_internal/effect"
 import * as M from "../_internal/managed"
 import type * as A from "../../Array"
 import { pipe } from "../../Function"
@@ -24,12 +24,12 @@ export const chain = <O, O2, R1, E1>(f0: (a: O) => Stream<R1, E1, O2>) => <R, E>
       M.do,
       M.bind("outerStream", () => self.proc),
       M.bind("currOuterChunk", () =>
-        T.toManaged()(
+        M.fromEffect(
           Ref.makeRef<[A.Array<O>, number]>([[], 0])
         )
       ),
       M.bind("currInnerStream", () =>
-        T.toManaged()(
+        M.fromEffect(
           Ref.makeRef<T.Effect<R_, Option.Option<E_>, A.Array<O2>>>(Pull.end)
         )
       ),
