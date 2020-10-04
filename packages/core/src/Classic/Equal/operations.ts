@@ -104,3 +104,16 @@ export function eqArray<A>(EqA: Equal<A>): Equal<A.Array<A>> {
     }
   }
 }
+
+/**
+ * Given a tuple of `Equal`s returns a `Equal` for the tuple
+ */
+export function getTuple<T extends ReadonlyArray<Equal<any>>>(
+  ...eqs: T
+): Equal<
+  {
+    [K in keyof T]: T[K] extends Equal<infer A> ? A : never
+  }
+> {
+  return makeEqual((y) => (x) => eqs.every((E, i) => E.equals(y[i])(x[i])))
+}
