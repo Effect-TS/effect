@@ -1,11 +1,7 @@
 import type { Ord } from "../Ord"
 import { max, min } from "../Ord"
 import type { Associative } from "./definition"
-
-export const makeAssociative = <A>(f: (r: A) => (l: A) => A): Associative<A> => ({
-  Associative: "Associative",
-  combine: f
-})
+import { makeAssociative } from "./makeAssociative"
 
 /**
  * Fold `Associative` through an `Array`
@@ -90,40 +86,10 @@ export function object<A extends object = never>(): Associative<A> {
 }
 
 /**
- * Boolean `Associative`  under conjunction
- */
-export const all: Associative<boolean> = makeAssociative((y) => (x) => x && y)
-
-/**
- * Boolean `Associative` under disjunction
- */
-export const any: Associative<boolean> = makeAssociative((y) => (x) => x || y)
-
-/**
- * Number `Associative` under addition
- */
-export const sum: Associative<number> = makeAssociative((y) => (x) => x + y)
-
-/**
- * Number `Associative` under multiplication
- */
-export const product: Associative<number> = makeAssociative((y) => (x) => x * y)
-
-/**
- * String `Associative` under concatenation
- */
-export const string: Associative<string> = makeAssociative((y) => (x) => x + y)
-
-/**
- * Void `Associative`
- */
-const void_: Associative<void> = makeAssociative(() => () => undefined as void)
-
-export { void_ as void }
-
-/**
  * You can glue items between and stay associative
  */
 export function intercalate<A>(a: A): (S: Associative<A>) => Associative<A> {
   return (S) => makeAssociative((y) => (x) => S.combine(S.combine(y)(a))(x))
 }
+
+export * from "./definition"
