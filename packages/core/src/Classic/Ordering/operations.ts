@@ -1,7 +1,7 @@
 import { pipe } from "@effect-ts/system/Function"
 
-import * as A from "../Associative"
-import * as I from "../Identity"
+import * as A from "../Associative/makeAssociative"
+import * as I from "../Identity/makeIdentity"
 import { Ordering } from "./definition"
 
 /**
