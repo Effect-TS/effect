@@ -8,6 +8,7 @@ import type { Commutative } from "../Classic/Commutative"
 import type { Const } from "../Classic/Const"
 import type { Either } from "../Classic/Either"
 import type { Equal } from "../Classic/Equal"
+import type { Id } from "../Classic/Id"
 import type { Identity } from "../Classic/Identity"
 import type { Ix, IxC } from "../Classic/IndexedT"
 import type { Inverse } from "../Classic/Inverse"
@@ -101,6 +102,9 @@ export type SyncURI = typeof SyncURI
 export const XPureURI = "XPure"
 export type XPureURI = typeof XPureURI
 
+export const IdURI = "Id"
+export type IdURI = typeof IdURI
+
 declare module "../Prelude/HKT" {
   interface URItoKind<FC, TC, N extends string, K, Q, W, X, I, S, R, E, A> {
     [ArrayURI]: Array<A>
@@ -128,6 +132,7 @@ declare module "../Prelude/HKT" {
     [LayerURI]: Layer<R, E, A>
     [SyncURI]: Sync<R, E, A>
     [XPureURI]: XPure<S, S, R, E, A>
+    [IdURI]: Id<A>
   }
   interface URItoIndex<N extends string, K> {
     [ArrayURI]: number

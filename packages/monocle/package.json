@@ -1,0 +1,45 @@
+{
+  "name": "@effect-ts/monocle",
+  "version": "0.0.0",
+  "license": "MIT",
+  "homepage": "https://github.com/Matechs-Garage/matechs-effect",
+  "private": false,
+  "scripts": {
+    "clean": "rimraf build tsbuildinfo",
+    "build:lib": "tsc --build tsconfig.build.json && ts-node ../../scripts/package.ts",
+    "build:es6": "tsc --build tsconfig.es6.json && ts-node ../../scripts/rewrite-esm.ts && babel build/esm/ -d build/esm/ -s --plugins annotate-pure-calls",
+    "build:post-process": "ts-node ../../scripts/rewrite-source-maps.ts && ts-node ../../scripts/rewrite-locals.ts",
+    "build": "yarn run build:lib && yarn run build:es6 && yarn run build:post-process",
+    "lint": "eslint . --ext .ts,.tsx",
+    "autofix": "yarn prettier && yarn lint --fix && yarn prettier",
+    "prettier": "prettier --write \"./{src,test,demo}/**/*.ts\"",
+    "tc": "tsc --noEmit",
+    "demo": "ts-node -r tsconfig-paths/register"
+  },
+  "publishConfig": {
+    "access": "public",
+    "directory": "build"
+  },
+  "repository": "https://github.com/Matechs-Garage/matechs-effect.git",
+  "sideEffects": false,
+  "dependencies": {
+    "@effect-ts/core": "^0.1.4"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.10.5",
+    "@types/node": "^14.0.5",
+    "babel-plugin-annotate-pure-calls": "^0.4.0"
+  },
+  "config": {
+    "modules": [
+      "At",
+      "Internal",
+      "Iso",
+      "Ix",
+      "Lens",
+      "Optional",
+      "Prism",
+      "Traversal"
+    ]
+  }
+}
