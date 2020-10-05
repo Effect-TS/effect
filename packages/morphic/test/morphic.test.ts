@@ -2,10 +2,11 @@ import { pipe } from "@effect-ts/core/Function"
 import * as L from "@effect-ts/monocle/Lens"
 import * as fc from "fast-check"
 
-import { make } from "../src"
+import type { AType, EType } from "../src"
+import { make, opaque } from "../src"
 import { derive as arb } from "../src/FastCheck"
 
-const Person = make((F) =>
+const Person_ = make((F) =>
   F.interface({
     name: F.interface({
       first: F.string(),
@@ -13,6 +14,10 @@ const Person = make((F) =>
     })
   })
 )
+
+interface Person extends AType<typeof Person_> {}
+interface PersonRaw extends EType<typeof Person_> {}
+const Person = opaque<PersonRaw, Person>()(Person_)
 
 const ArbitraryPerson = arb(Person)
 const firstNameLens = pipe(Person.lens, L.prop("name"), L.prop("first"))
