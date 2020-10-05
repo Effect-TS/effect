@@ -11,6 +11,10 @@ module.exports = {
   modulePathIgnorePatterns: ["<rootDir>/packages/.*/build", "<rootDir>/_tmp"],
   verbose: false,
   moduleNameMapper: {
+    "@effect-ts/morphic/(.*)$": "<rootDir>/packages/morphic/build/$1",
+    "@effect-ts/morphic$": "<rootDir>/packages/morphic/build",
+    "@effect-ts/monocle/(.*)$": "<rootDir>/packages/monocle/build/$1",
+    "@effect-ts/monocle$": "<rootDir>/packages/monocle/build",
     "@effect-ts/system/(.*)$": "<rootDir>/packages/system/build/$1",
     "@effect-ts/system$": "<rootDir>/packages/system/build",
     "@effect-ts/core/(.*)$": "<rootDir>/packages/core/build/$1",
