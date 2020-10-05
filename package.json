@@ -47,6 +47,7 @@
       "Classic/EitherT",
       "Classic/Equal",
       "Classic/Has",
+      "Classic/Id",
       "Classic/Identity",
       "Classic/IndexedT",
       "Classic/InvariantT",
