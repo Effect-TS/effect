@@ -7,24 +7,7 @@ import type { Associative } from "../Associative"
 import * as A from "../Associative"
 import type { Bounded } from "../Bounded"
 import type { Identity } from "./definition"
-
-/**
- * Creates a new `Identity`
- */
-export function makeIdentity<A>(identity: A, op: (y: A) => (x: A) => A): Identity<A> {
-  return {
-    Associative: "Associative",
-    combine: op,
-    identity
-  }
-}
-
-/**
- * Derive `Identity` from `Associative` and `identity`
- */
-export function fromAssociative<A>(A: Associative<A>) {
-  return (identity: A) => makeIdentity(identity, A.combine)
-}
+import { makeIdentity } from "./makeIdentity"
 
 /**
  * Derive `Identity`
@@ -109,35 +92,3 @@ export function tuple<T extends ReadonlyArray<Identity<any>>>(
     A.tuple(...identities).combine as any
   )
 }
-
-/**
- * Boolean `Identity` under conjunction
- */
-export const all: Identity<boolean> = makeIdentity(true, A.all.combine)
-
-/**
- * Boolean `Identity` under disjunction
- */
-export const any: Identity<boolean> = fromAssociative(A.any)(true)
-
-/**
- * Number `Identity` under multiplication
- */
-export const product: Identity<number> = fromAssociative(A.product)(1)
-
-/**
- * String `Identity` under concatenation
- */
-export const string: Identity<string> = fromAssociative(A.string)("")
-
-/**
- * Number `Identity` under addition
- */
-export const sum: Identity<number> = fromAssociative(A.sum)(0)
-
-/**
- * Void `Identity`
- */
-const void_: Identity<void> = fromAssociative(A.void)(undefined)
-
-export { void_ as void }
