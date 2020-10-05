@@ -3,6 +3,7 @@ export type Ignores =
   | "G"
   | "CommutativeBoth"
   | "CommutativeEither"
+  | "AssociativeCompose"
   | "C"
   | "CF"
   | "CG"
