@@ -3,6 +3,7 @@
 import { identity as id } from "../../Function"
 import type { IdURI } from "../../Modules"
 import * as P from "../../Prelude"
+import { structF, tupledF } from "../../Prelude/DSL"
 import type { Equal } from "../Equal"
 import type { Identity } from "../Identity"
 import type { Show } from "../Show"
@@ -76,116 +77,65 @@ export const reduceRight: <A, B>(b: B, f: (a: A, b: B) => B) => (fa: A) => B = (
   f
 ) => (fa) => reduceRight_(fa, b, f)
 
-export const Applicative = P.instance<P.Applicative<[IdURI]>>({
-  any: () => ({}),
-  both: (b) => (a) => [a, b],
+export const Any = P.instance<P.Any<[IdURI]>>({
+  any: () => ({})
+})
+
+export const Covariant = P.instance<P.Covariant<[IdURI]>>({
   map
 })
 
-//export const sequence: CSequence1<URI> = <F>(F: CApplicative<F>) => <A>(
-//  ta: Identity<HKT<F, A>>
-//): HKT<F, Identity<A>> => {
-//  return F.map(id)(ta)
-//}
-//
-//export const traverse: CTraverse1<URI> = <F>(F: CApplicative<F>) => <A, B>(
-//  f: (a: A) => HKT<F, B>
-//): ((ta: Identity<A>) => HKT<F, Identity<B>>) => {
-//  return (ta) => F.map(id)(f(ta))
-//}
-//
-//export const traverse_: Traverse1<URI> = <F>(F: CApplicative<F>) => <A, B>(
-//  ta: Identity<A>,
-//  f: (a: A) => HKT<F, B>
-//): HKT<F, Identity<B>> => {
-//  return F.map(id)(f(ta))
-//}
+export const AssociativeBoth = P.instance<P.AssociativeBoth<[IdURI]>>({
+  both: (b) => (a) => [a, b]
+})
 
-// export const identity: CMonad1<[IdURI]> &
-//   CFoldable1<URI> &
-//   CTraversable1<URI> &
-//   CAlt1<URI> &
-//   CComonad1<URI> &
-//   CChainRec1<URI> &
-//   CApplicative1<URI> = {
-//   URI,
-//   map,
-//   of: id,
-//   ap,
-//   chain,
-//   reduce,
-//   foldMap,
-//   reduceRight,
-//   traverse,
-//   sequence,
-//   alt,
-//   extract,
-//   extend,
-//   chainRec
-// }
-//
-// export const identityAp: CApplicative1<URI> = {
-//   URI,
-//   map,
-//   of: id,
-//   ap
-// }
-//
-// export const identityMonad: CMonad1<URI> & CApplicative1<URI> = {
-//   URI,
-//   map,
-//   of: id,
-//   ap,
-//   chain
-// }
-//
-// export const Do = () => DoG(identityMonad)
-//
-// export const sequenceS =
-//   /*#__PURE__*/
-//   (() => AP.sequenceS(identityAp))()
-//
-// export const sequenceT =
-//   /*#__PURE__*/
-//   (() => AP.sequenceT(identityAp))()
-//
-// //
-// // Compatibility with fp-ts ecosystem
-// //
-//
-// const traverse__ = <F>(F: Applicative<F>) => <A, B>(
-//   ta: Identity<A>,
-//   f: (a: A) => HKT<F, B>
-// ): HKT<F, Identity<B>> => {
-//   return F.map(f(ta), id)
-// }
-//
-// const sequence_ = <F>(F: Applicative<F>) => <A>(
-//   ta: Identity<HKT<F, A>>
-// ): HKT<F, Identity<A>> => {
-//   return F.map(ta, id)
-// }
-//
-// export const identity_: Monad1<URI> &
-//   Foldable1<URI> &
-//   Traversable1<URI> &
-//   Alt1<URI> &
-//   Comonad1<URI> &
-//   ChainRec1<URI> &
-//   Applicative1<URI> = {
-//   URI,
-//   map: map_,
-//   of: id,
-//   ap: ap_,
-//   chain: chain_,
-//   reduce: reduce_,
-//   foldMap: foldMap_,
-//   reduceRight: reduceRight_,
-//   traverse: traverse__,
-//   sequence: sequence_,
-//   alt: alt_,
-//   extract,
-//   extend: extend_,
-//   chainRec
-// }
-//
+export const AssociativeFlatten = P.instance<P.AssociativeFlatten<[IdURI]>>({
+  flatten: (a) => a
+})
+
+export const IdentityBoth = P.instance<P.IdentityBoth<[IdURI]>>({
+  ...Any,
+  ...AssociativeBoth
+})
+
+export const IdentityFlatten = P.instance<P.IdentityFlatten<[IdURI]>>({
+  ...Any,
+  ...AssociativeFlatten
+})
+
+export const Applicative = P.instance<P.Applicative<[IdURI]>>({
+  ...Covariant,
+  ...IdentityBoth
+})
+
+export const Monad = P.instance<P.Monad<[IdURI]>>({
+  ...Covariant,
+  ...IdentityFlatten
+})
+
+export const Reduce = P.instance<P.Reduce<[IdURI]>>({
+  reduce
+})
+
+export const ReduceRight = P.instance<P.ReduceRight<[IdURI]>>({
+  reduceRight
+})
+
+export const FoldMap = P.instance<P.FoldMap<[IdURI]>>({
+  foldMap
+})
+
+export const Foldable = P.instance<P.Foldable<[IdURI]>>({
+  ...Reduce,
+  ...ReduceRight,
+  ...FoldMap
+})
+
+export const Traversable = P.instance<P.Traversable<[IdURI]>>({
+  ...Covariant,
+  foreachF: () => (f) => f
+})
+
+export const struct = structF(Applicative)
+
+export const tupled = tupledF(Applicative)
