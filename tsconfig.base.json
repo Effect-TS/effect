@@ -29,6 +29,10 @@
     "strictNullChecks": true,
     "baseUrl": ".",
     "paths": {
+      "@effect-ts/morphic/*": ["packages/morphic/build/*"],
+      "@effect-ts/morphic": ["packages/morphic/build"],
+      "@effect-ts/monocle/*": ["packages/monocle/build/*"],
+      "@effect-ts/monocle": ["packages/monocle/build"],
       "@effect-ts/system/*": ["packages/system/build/*"],
       "@effect-ts/system": ["packages/system/build"],
       "@effect-ts/core/*": ["packages/core/build/*"],
