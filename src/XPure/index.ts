@@ -52,7 +52,7 @@ export const Monad = P.instance<P.Monad<[XPureURI], V>>({
 })
 
 export const Category = P.instance<
-  P.Category<[XPureIOURI], P.V<"Q", "-"> & P.V<"W", "+">>
+  P.Category<[XPureIOURI], P.V<"R", "-"> & P.V<"E", "+">>
 >({
   id: () => X.modify((a) => [a, a]),
   compose: (bc) => X.chain((_) => bc)
