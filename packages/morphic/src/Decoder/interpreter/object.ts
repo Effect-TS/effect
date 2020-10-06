@@ -7,8 +7,8 @@ import type { AlgebraObject1, PropsKind1 } from "../../Algebra/object"
 import { isUnknownRecord } from "../../Guard/interpreter/common"
 import { memo, projectFieldWithEnv } from "../../Internal/Utils"
 import { decoderApplyConfig } from "../config"
-import type { Decoder, DecodingError } from "../hkt"
-import { DecoderType, DecoderURI } from "../hkt"
+import type { Decoder } from "../hkt"
+import { DecoderType, DecoderURI, fail } from "../hkt"
 
 export const decoderObjectInterpreter = memo(
   <Env extends AnyEnv>(): AlgebraObject1<DecoderURI, Env> => ({
@@ -76,8 +76,8 @@ function partialDecoder<Props, Env extends AnyEnv>(
           )
         ) as any
       }
-      return T.fail([
-        <DecodingError>{
+      return fail([
+        {
           actual: u,
           message: `${typeof u} is not a record`
         }
@@ -106,15 +106,15 @@ function interfaceDecoder<Props, Env extends AnyEnv>(
             )
           ) as any
         }
-        return T.fail([
-          <DecodingError>{
+        return fail([
+          {
             actual: u,
             message: `not all the required fields are present`
           }
         ])
       }
-      return T.fail([
-        <DecodingError>{
+      return fail([
+        {
           actual: u,
           message: `${typeof u} is not a record`
         }
