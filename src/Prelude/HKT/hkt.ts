@@ -32,6 +32,12 @@ export type UHKT2<F> = [URI<"HKT2", CustomType<"F", F>>]
 export type UHKT3<F> = [URI<"HKT3", CustomType<"F", F>>]
 export type UHKT4<F> = [URI<"HKT4", CustomType<"F", F>>]
 
+export interface CategoryTL {}
+
+export interface AlternativeURI {
+  Category: CategoryTL
+}
+
 export interface URItoKind<
   // encodes metadata carried at the URI level (like additional params)
   FC,

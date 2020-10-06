@@ -143,6 +143,9 @@ declare module "../Prelude/HKT" {
     [IdURI]: Id<A>
     [NonEmptyArrayURI]: NonEmptyArray<A>
   }
+  interface CategoryTL {
+    [XPureURI]: XPureIOURI
+  }
   interface URItoIndex<N extends string, K> {
     [ArrayURI]: number
     [NonEmptyArrayURI]: number
