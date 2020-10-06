@@ -12,6 +12,7 @@ import type { Id } from "../Classic/Id"
 import type { Identity } from "../Classic/Identity"
 import type { Ix, IxC } from "../Classic/IndexedT"
 import type { Inverse } from "../Classic/Inverse"
+import type { NonEmptyArray } from "../Classic/NonEmptyArray"
 import type { Ord } from "../Classic/Ord"
 import type { Reader } from "../Classic/Reader"
 import type { Record } from "../Classic/Record"
@@ -29,6 +30,9 @@ export { EffectURI } from "@effect-ts/system/Effect"
 
 export const ArrayURI = "Array"
 export type ArrayURI = typeof ArrayURI
+
+export const NonEmptyArrayURI = "NonEmptyArray"
+export type NonEmptyArrayURI = typeof NonEmptyArrayURI
 
 export const BoundedURI = "Bounded"
 export type BoundedURI = typeof BoundedURI
@@ -133,9 +137,11 @@ declare module "../Prelude/HKT" {
     [SyncURI]: Sync<R, E, A>
     [XPureURI]: XPure<S, S, R, E, A>
     [IdURI]: Id<A>
+    [NonEmptyArrayURI]: NonEmptyArray<A>
   }
   interface URItoIndex<N extends string, K> {
     [ArrayURI]: number
+    [NonEmptyArrayURI]: number
     [RecordURI]: N
   }
 }
