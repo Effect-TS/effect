@@ -1,7 +1,7 @@
 import { constant, identity } from "@effect-ts/system/Function"
 import * as X from "@effect-ts/system/XPure"
 
-import type { XPureURI } from "../Modules"
+import type { XPureIOURI, XPureURI } from "../Modules"
 import * as P from "../Prelude"
 import { structF } from "../Prelude/DSL"
 
@@ -49,6 +49,13 @@ export const Monad = P.instance<P.Monad<[XPureURI], V>>({
   ...Any,
   ...AssociativeFlatten,
   ...Covariant
+})
+
+export const Category = P.instance<
+  P.Category<[XPureIOURI], P.V<"Q", "-"> & P.V<"W", "+">>
+>({
+  id: () => X.modify((a) => [a, a]),
+  compose: (bc) => X.chain((_) => bc)
 })
 
 export const struct = structF(Applicative)
