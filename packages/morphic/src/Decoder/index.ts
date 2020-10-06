@@ -6,7 +6,7 @@ import type {
   SummonerInterpURI,
   SummonerProgURI
 } from "../Batteries/usage/summoner"
-import type { DecodeError, DecoderURI } from "./hkt"
+import type { DecodeError, Decoder, DecoderURI } from "./hkt"
 import { modelDecoderInterpreter } from "./interpreter"
 
 export const deriveFor = <S extends Summoner<any>>(S: S) => (
@@ -15,7 +15,16 @@ export const deriveFor = <S extends Summoner<any>>(S: S) => (
   F: Materialized<SummonerEnv<S>, L, A, SummonerProgURI<S>, SummonerInterpURI<S>>
 ) => F.derive(modelDecoderInterpreter<SummonerEnv<S>>())(_).decoder
 
-export const decoder = <E, A>(F: M<{}, E, A>) => deriveFor(summonFor({}).make)({})(F)
+const decoders = new Map<any, any>()
+
+export const decoder = <E, A>(F: M<{}, E, A>): Decoder<A> => {
+  if (decoders.has(F)) {
+    return decoders.get(F)
+  }
+  const d = deriveFor(summonFor({}).make)({})(F)
+  decoders.set(F, d)
+  return d
+}
 
 export const report = (e: DecodeError) =>
   e.errors
