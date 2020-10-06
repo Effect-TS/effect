@@ -172,9 +172,10 @@ export function traverse<T extends P.URIS, C = P.Auto>(
 
 export const findFirst: <A>(
   predicate: Predicate<A>
-) => <S>(sa: Optional<S, ReadonlyArray<A>>) => Optional<S, A> =
-  /*#__PURE__*/
-  flow(_.findFirst, compose)
+) => <S>(sa: Optional<S, ReadonlyArray<A>>) => Optional<S, A> = flow(
+  _.findFirst,
+  compose
+)
 
 // -------------------------------------------------------------------------------------
 // pipeables
@@ -197,7 +198,7 @@ export type URI = typeof URI
 
 declare module "@effect-ts/core/Prelude/HKT" {
   export interface URItoKind<FC, TC, N extends string, K, Q, W, X, I, S, R, E, A> {
-    [URI]: Optional<E, A>
+    [URI]: Optional<I, A>
   }
 }
 
