@@ -32,6 +32,8 @@ export type UHKT2<F> = [URI<"HKT2", CustomType<"F", F>>]
 export type UHKT3<F> = [URI<"HKT3", CustomType<"F", F>>]
 export type UHKT4<F> = [URI<"HKT4", CustomType<"F", F>>]
 
+export type UHKTCategory<F> = [URI<"HKTCategory", CustomType<"F", F>>]
+
 export interface CategoryTL {}
 
 export interface AlternativeURI {
@@ -66,6 +68,7 @@ export interface URItoKind<
 > {
   ["HKT1"]: HKT<AccessCustom<FC, "F">, A>
   ["HKT2"]: HKT2<AccessCustom<FC, "F">, E, A>
+  ["HKTCategory"]: HKT2<AccessCustom<FC, "F">, I, A>
   ["HKT3"]: HKT3<AccessCustom<FC, "F">, R, E, A>
   ["HKT4"]: HKT4<AccessCustom<FC, "F">, S, R, E, A>
 }
