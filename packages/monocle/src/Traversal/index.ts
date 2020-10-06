@@ -199,7 +199,7 @@ export type URI = typeof URI
 
 declare module "@effect-ts/core/Prelude/HKT" {
   export interface URItoKind<FC, TC, N extends string, K, Q, W, X, I, S, R, E, A> {
-    [URI]: Traversal<E, A>
+    [URI]: Traversal<I, A>
   }
 }
 
