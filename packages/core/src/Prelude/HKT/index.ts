@@ -20,5 +20,7 @@ export {
   HKT3,
   HKT4,
   URItoIndex,
-  URItoKind
+  URItoKind,
+  AlternativeURI,
+  CategoryTL
 } from "./hkt"
