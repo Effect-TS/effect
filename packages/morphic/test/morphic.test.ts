@@ -6,10 +6,10 @@ import * as fc from "fast-check"
 
 import type { AType, EType } from "../src"
 import { make, opaque } from "../src"
-import { derive as decoder, report } from "../src/Decoder"
-import { derive as encoder } from "../src/Encoder"
-import { derive as arbitrary } from "../src/FastCheck"
-import { derive as guard } from "../src/Guard"
+import { decoder, report } from "../src/Decoder"
+import { encoder } from "../src/Encoder"
+import { arbitrary } from "../src/FastCheck"
+import { guard } from "../src/Guard"
 
 const Person_ = make((F) =>
   F.interface({

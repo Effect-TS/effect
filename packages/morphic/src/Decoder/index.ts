@@ -15,7 +15,7 @@ export const deriveFor = <S extends Summoner<any>>(S: S) => (
   F: Materialized<SummonerEnv<S>, L, A, SummonerProgURI<S>, SummonerInterpURI<S>>
 ) => F.derive(modelDecoderInterpreter<SummonerEnv<S>>())(_).decoder
 
-export const derive = <E, A>(F: M<{}, E, A>) => deriveFor(summonFor({}).make)({})(F)
+export const decoder = <E, A>(F: M<{}, E, A>) => deriveFor(summonFor({}).make)({})(F)
 
 export const report = (e: DecodeError) =>
   e.errors
