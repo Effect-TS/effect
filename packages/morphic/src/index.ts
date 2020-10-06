@@ -6,18 +6,24 @@ import { opaque, opaque_, summonFor } from "./Batteries/summoner"
 //
 
 export { Summoner, summonFor as makeFor } from "./Batteries/summoner"
+
 //
 // Opaque
 //
 export type { AType, EType, RType } from "./Batteries/usage/utils"
+
 //
 // URIS
 //
 export { FastCheckURI } from "./FastCheck/hkt"
+export { GuardURI } from "./Guard/hkt"
+
 //
 // Threading configs
 //
 export {} from "./FastCheck/interpreter/configs"
+export {} from "./Guard/interpreter/configs"
+
 //
 // Generics
 //
