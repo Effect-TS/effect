@@ -106,6 +106,9 @@ export type SyncURI = typeof SyncURI
 export const XPureURI = "XPure"
 export type XPureURI = typeof XPureURI
 
+export const XPureIOURI = "XPureIO"
+export type XPureIOURI = typeof XPureIOURI
+
 export const IdURI = "Id"
 export type IdURI = typeof IdURI
 
@@ -136,6 +139,7 @@ declare module "../Prelude/HKT" {
     [LayerURI]: Layer<R, E, A>
     [SyncURI]: Sync<R, E, A>
     [XPureURI]: XPure<S, S, R, E, A>
+    [XPureIOURI]: XPure<E, A, Q, W, A>
     [IdURI]: Id<A>
     [NonEmptyArrayURI]: NonEmptyArray<A>
   }
