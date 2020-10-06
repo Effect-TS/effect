@@ -6,8 +6,7 @@ import type { AnyEnv } from "../../Algebra/config"
 import type { AlgebraNewtype1 } from "../../Algebra/newtype"
 import { memo } from "../../Internal/Utils"
 import { decoderApplyConfig } from "../config"
-import type { DecodingError } from "../hkt"
-import { DecoderType, DecoderURI } from "../hkt"
+import { DecoderType, DecoderURI, fail } from "../hkt"
 
 export const decoderNewtypeInterpreter = memo(
   <Env extends AnyEnv>(): AlgebraNewtype1<DecoderURI, Env> => ({
@@ -41,8 +40,8 @@ export const decoderNewtypeInterpreter = memo(
                     T.chain(
                       O.fold(
                         () =>
-                          T.fail([
-                            <DecodingError>{
+                          fail([
+                            {
                               actual: u,
                               message: `newtype doesn't satisfy prism conditions`
                             }

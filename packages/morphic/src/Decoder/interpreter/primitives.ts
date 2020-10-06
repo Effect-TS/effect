@@ -11,8 +11,7 @@ import type { AlgebraPrimitive1, UUID } from "../../Algebra/primitives"
 import { isUnknownRecord } from "../../Guard/interpreter/common"
 import { memo } from "../../Internal/Utils"
 import { decoderApplyConfig } from "../config"
-import type { DecodingError } from "../hkt"
-import { DecoderType, DecoderURI } from "../hkt"
+import { DecodeError, DecoderType, DecoderURI, fail } from "../hkt"
 
 export const regexUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -24,8 +23,8 @@ export const decoderPrimitiveInterpreter = memo(
         decoderApplyConfig(config?.conf)(
           {
             decode: (u) =>
-              T.fail([
-                <DecodingError>{
+              fail([
+                {
                   actual: u,
                   message: `functions are not supported`
                 }
@@ -43,8 +42,8 @@ export const decoderPrimitiveInterpreter = memo(
           {
             decode: (u) => {
               if (typeof u !== "string") {
-                return T.fail([
-                  <DecodingError>{
+                return fail([
+                  {
                     actual: u,
                     message: `${typeof u} is not a string`
                   }
@@ -52,8 +51,8 @@ export const decoderPrimitiveInterpreter = memo(
               }
               const d = new Date(u)
               return isNaN(d.getTime())
-                ? T.fail([
-                    <DecodingError>{
+                ? fail([
+                    {
                       actual: u,
                       message: `${u} is not a valid ISO string`
                     }
@@ -71,8 +70,8 @@ export const decoderPrimitiveInterpreter = memo(
           {
             decode: (u) =>
               typeof u !== "boolean"
-                ? T.fail([
-                    <DecodingError>{
+                ? fail([
+                    {
                       actual: u,
                       message: `${typeof u} is not a boolean`
                     }
@@ -89,8 +88,8 @@ export const decoderPrimitiveInterpreter = memo(
           {
             decode: (u) =>
               typeof u !== "string"
-                ? T.fail([
-                    <DecodingError>{
+                ? fail([
+                    {
                       actual: u,
                       message: `${typeof u} is not a string`
                     }
@@ -107,8 +106,8 @@ export const decoderPrimitiveInterpreter = memo(
           {
             decode: (u) =>
               typeof u !== "number"
-                ? T.fail([
-                    <DecodingError>{
+                ? fail([
+                    {
                       actual: u,
                       message: `${typeof u} is not a number`
                     }
@@ -125,18 +124,21 @@ export const decoderPrimitiveInterpreter = memo(
           {
             decode: (u) =>
               typeof u !== "string"
-                ? T.fail([
-                    <DecodingError>{
+                ? fail([
+                    {
                       actual: u,
                       message: `${typeof u} is not an integer string`
                     }
                   ])
-                : T.tryCatch(() => [
-                    <DecodingError>{
-                      actual: u,
-                      message: `${typeof u} is not an integer string`
-                    }
-                  ])(() => BigInt(u))
+                : T.tryCatch(
+                    () =>
+                      new DecodeError([
+                        {
+                          actual: u,
+                          message: `${typeof u} is not an integer string`
+                        }
+                      ])
+                  )(() => BigInt(u))
           },
           env,
           {}
@@ -149,8 +151,8 @@ export const decoderPrimitiveInterpreter = memo(
             decode: (u) =>
               typeof u === "string" && u === k
                 ? T.succeed(<typeof k>u)
-                : T.fail([
-                    <DecodingError>{
+                : fail([
+                    {
                       actual: u,
                       message: `${u} is not ${k}`
                     }
@@ -167,8 +169,8 @@ export const decoderPrimitiveInterpreter = memo(
             decode: (u) =>
               typeof u === "number" && u === k
                 ? T.succeed(<typeof k>u)
-                : T.fail([
-                    <DecodingError>{
+                : fail([
+                    {
                       actual: u,
                       message: `${u} is not ${k}`
                     }
@@ -185,8 +187,8 @@ export const decoderPrimitiveInterpreter = memo(
             decode: (u: unknown) =>
               (typeof u === "string" || typeof u === "number") && ls.includes(u)
                 ? T.succeed(u)
-                : T.fail([
-                    <DecodingError>{
+                : fail([
+                    {
                       actual: u,
                       message: `${u} is not any of ${ls.join(",")}`
                     }
@@ -203,8 +205,8 @@ export const decoderPrimitiveInterpreter = memo(
             decode: (u: unknown) =>
               typeof u === "string" && Object.keys(keys).indexOf(u) !== -1
                 ? T.succeed(u)
-                : T.fail([
-                    <DecodingError>{
+                : fail([
+                    {
                       actual: u,
                       message: `${u} is not any of ${Object.keys(keys).join(",")}`
                     }
@@ -259,8 +261,8 @@ export const decoderPrimitiveInterpreter = memo(
                 decode: (u) =>
                   Array.isArray(u)
                     ? A.foreachF(T.Applicative)(decoder.decode)(u)
-                    : T.fail([
-                        <DecodingError>{
+                    : fail([
+                        {
                           actual: u,
                           message: `${typeof u} is not an array`
                         }
@@ -282,14 +284,14 @@ export const decoderPrimitiveInterpreter = memo(
                   Array.isArray(u)
                     ? A.isNonEmpty(u)
                       ? NA.foreachF(T.Applicative)(decoder.decode)(u)
-                      : T.fail([
-                          <DecodingError>{
+                      : fail([
+                          {
                             actual: u,
                             message: `array is empty`
                           }
                         ])
-                    : T.fail([
-                        <DecodingError>{
+                    : fail([
+                        {
                           actual: u,
                           message: `${typeof u} is not an array`
                         }
@@ -307,8 +309,8 @@ export const decoderPrimitiveInterpreter = memo(
             decode: (u) =>
               typeof u === "string" && regexUUID.test(u)
                 ? T.succeed(<UUID>u)
-                : T.fail([
-                    <DecodingError>{
+                : fail([
+                    {
                       actual: u,
                       message: `${typeof u === "string" ? u : typeof u} is not a uuid`
                     }
@@ -340,8 +342,8 @@ export const decoderPrimitiveInterpreter = memo(
                       }
                     }
 
-                    return T.fail([
-                      <DecodingError>{
+                    return fail([
+                      {
                         actual: u,
                         message: `${typeof u} is not an either`
                       }
@@ -377,8 +379,8 @@ export const decoderPrimitiveInterpreter = memo(
                     }
                   }
 
-                  return T.fail([
-                    <DecodingError>{
+                  return fail([
+                    {
                       actual: u,
                       message: `${typeof u} is not an option`
                     }

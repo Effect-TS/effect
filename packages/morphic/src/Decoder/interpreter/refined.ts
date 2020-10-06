@@ -5,8 +5,7 @@ import type { AnyEnv } from "../../Algebra/config"
 import type { AlgebraRefined1 } from "../../Algebra/refined"
 import { memo } from "../../Internal/Utils"
 import { decoderApplyConfig } from "../config"
-import type { DecodingError } from "../hkt"
-import { DecoderType, DecoderURI } from "../hkt"
+import { DecoderType, DecoderURI, fail } from "../hkt"
 
 export const decoderRefinedInterpreter = memo(
   <Env extends AnyEnv>(): AlgebraRefined1<DecoderURI, Env> => ({
@@ -22,8 +21,8 @@ export const decoderRefinedInterpreter = memo(
                   T.chain_(decoder.decode(u), (a) =>
                     ref(a)
                       ? T.succeed(a)
-                      : T.fail([
-                          <DecodingError>{
+                      : fail([
+                          {
                             actual: u,
                             message: `${typeof u} cannot be refined`
                           }
@@ -46,8 +45,8 @@ export const decoderRefinedInterpreter = memo(
                   T.chain_(decoder.decode(u), (a) =>
                     ref(a)
                       ? T.succeed(a)
-                      : T.fail([
-                          <DecodingError>{
+                      : fail([
+                          {
                             actual: u,
                             message: `${typeof u} cannot be constrained`
                           }

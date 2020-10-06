@@ -1,5 +1,5 @@
 import type * as A from "@effect-ts/core/Classic/Array"
-import type * as T from "@effect-ts/core/Classic/Sync"
+import * as T from "@effect-ts/core/Classic/Sync"
 
 export const DecoderURI = "DecoderURI" as const
 
@@ -12,8 +12,15 @@ export interface DecodingError {
 
 export type ValidationError = A.Array<DecodingError>
 
+export const fail = (e: ValidationError) => T.fail(new DecodeError(e))
+
+export class DecodeError {
+  readonly _tag = "DecodeError"
+  constructor(readonly errors: ValidationError) {}
+}
+
 export interface Decoder<A> {
-  decode: (u: unknown) => T.Sync<unknown, ValidationError, A>
+  decode: (u: unknown) => T.Sync<unknown, DecodeError, A>
 }
 
 declare module "../../Algebra/config" {
