@@ -11,11 +11,11 @@ export interface AssociativeCompose<F extends HKT.URIS, TC = HKT.Auto>
     Q = HKT.Initial<TC, "Q">,
     W = HKT.Initial<TC, "W">,
     X = HKT.Initial<TC, "X">,
-    I = HKT.Initial<TC, "I">,
     S = HKT.Initial<TC, "S">,
-    R = HKT.Initial<TC, "R">
+    R = HKT.Initial<TC, "R">,
+    E = HKT.Initial<TC, "E">
   >(
-    ab: HKT.Kind<F, TC, N, K, Q, W, X, I, S, R, B, C>
+    ab: HKT.Kind<F, TC, N, K, Q, W, X, B, S, R, E, C>
   ) => <
     A,
     N2 extends string = HKT.Initial<TC, "N">,
@@ -25,7 +25,8 @@ export interface AssociativeCompose<F extends HKT.URIS, TC = HKT.Auto>
     X2 = HKT.Initial<TC, "X">,
     I2 = HKT.Initial<TC, "I">,
     S2 = HKT.Initial<TC, "S">,
-    R2 = HKT.Initial<TC, "R">
+    R2 = HKT.Initial<TC, "R">,
+    E2 = HKT.Initial<TC, "E">
   >(
     bc: HKT.Kind<
       F,
@@ -35,10 +36,10 @@ export interface AssociativeCompose<F extends HKT.URIS, TC = HKT.Auto>
       HKT.Intro<TC, "Q", Q, Q2>,
       HKT.Intro<TC, "W", W, W2>,
       HKT.Intro<TC, "X", X, X2>,
-      HKT.Intro<TC, "I", I, I2>,
+      A,
       HKT.Intro<TC, "S", S, S2>,
       HKT.Intro<TC, "R", R, R2>,
-      A,
+      HKT.Intro<TC, "E", E, E2>,
       B
     >
   ) => HKT.Kind<
@@ -49,10 +50,10 @@ export interface AssociativeCompose<F extends HKT.URIS, TC = HKT.Auto>
     HKT.Mix<TC, "Q", [Q, Q2]>,
     HKT.Mix<TC, "W", [W, W2]>,
     HKT.Mix<TC, "X", [X, X2]>,
-    HKT.Mix<TC, "I", [I, I2]>,
+    A,
     HKT.Mix<TC, "S", [S, S2]>,
     HKT.Mix<TC, "R", [R, R2]>,
-    A,
+    HKT.Mix<TC, "E", [E, E2]>,
     C
   >
 }
