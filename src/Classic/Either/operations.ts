@@ -8,6 +8,7 @@ import * as DSL from "../../Prelude/DSL"
 import type { Separated } from "../../Utils"
 import type { Associative } from "../Associative"
 import { makeAssociative } from "../Associative"
+import type { Equal } from "../Equal"
 import type { Identity } from "../Identity"
 import type { Option } from "../Option"
 import type { Show } from "../Show"
@@ -197,4 +198,14 @@ export function getCompactable<E>(M: Identity<E>) {
     ...C,
     ...S
   })
+}
+
+export function getEqual<E, A>(EL: Equal<E>, EA: Equal<A>): Equal<Either<E, A>> {
+  return {
+    equals: (y) => (x) =>
+      x === y ||
+      (E.isLeft(x)
+        ? E.isLeft(y) && EL.equals(y.left)(x.left)
+        : E.isRight(y) && EA.equals(y.right)(x.right))
+  }
 }
