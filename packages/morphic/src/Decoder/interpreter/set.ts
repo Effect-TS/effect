@@ -10,8 +10,7 @@ import type { AnyEnv, ConfigsForType } from "../../Algebra/config"
 import type { AlgebraSet1, SetConfig } from "../../Algebra/set"
 import { memo } from "../../Internal/Utils"
 import { decoderApplyConfig } from "../config"
-import type { DecodingError } from "../hkt"
-import { DecoderType, DecoderURI } from "../hkt"
+import { DecoderType, DecoderURI, fail } from "../hkt"
 
 export const decoderSetInterpreter = memo(
   <Env extends AnyEnv>(): AlgebraSet1<DecoderURI, Env> => ({
@@ -37,8 +36,8 @@ export const decoderSetInterpreter = memo(
                         A.foreachF(T.Applicative)(decoder.decode),
                         T.map(S.fromArray(_))
                       )
-                    : T.fail([
-                        <DecodingError>{
+                    : fail([
+                        {
                           actual: u,
                           message: `${typeof u} is not a Set`
                         }

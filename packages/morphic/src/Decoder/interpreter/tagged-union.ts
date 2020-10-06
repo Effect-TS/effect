@@ -1,12 +1,10 @@
-import * as T from "@effect-ts/core/Classic/Sync"
-
 import type { AnyEnv } from "../../Algebra/config"
 import type { AlgebraTaggedUnion1 } from "../../Algebra/tagged-union"
 import { isUnknownRecord } from "../../Guard/interpreter/common"
 import { mapRecord, memo } from "../../Internal/Utils"
 import { decoderApplyConfig } from "../config"
-import type { Decoder, DecodingError } from "../hkt"
-import { DecoderType, DecoderURI } from "../hkt"
+import type { Decoder } from "../hkt"
+import { DecoderType, DecoderURI, fail } from "../hkt"
 
 export const decoderTaggedUnionInterpreter = memo(
   <Env extends AnyEnv>(): AlgebraTaggedUnion1<DecoderURI, Env> => ({
@@ -25,23 +23,23 @@ export const decoderTaggedUnionInterpreter = memo(
                   if (dec) {
                     return (dec as Decoder<any>).decode(u)
                   } else {
-                    return T.fail([
-                      <DecodingError>{
+                    return fail([
+                      {
                         actual: u,
                         message: `${u[tag]} is not known (${Object.keys(decoders)})`
                       }
                     ])
                   }
                 }
-                return T.fail([
-                  <DecodingError>{
+                return fail([
+                  {
                     actual: u,
                     message: `${tag} field not found`
                   }
                 ])
               }
-              return T.fail([
-                <DecodingError>{
+              return fail([
+                {
                   actual: u,
                   message: `${typeof u} is not a record`
                 }

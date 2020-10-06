@@ -8,7 +8,7 @@ import { isUnknownRecord } from "../../Guard/interpreter/common"
 import { memo } from "../../Internal/Utils"
 import { decoderApplyConfig } from "../config"
 import type { DecodingError } from "../hkt"
-import { DecoderType, DecoderURI } from "../hkt"
+import { DecoderType, DecoderURI, fail } from "../hkt"
 
 export const decoderRecordInterpreter = memo(
   <Env extends AnyEnv>(): AlgebraRecord1<DecoderURI, Env> => ({
@@ -23,7 +23,7 @@ export const decoderRecordInterpreter = memo(
                 decode: (u) =>
                   isUnknownRecord(u)
                     ? R.foreachF(T.Applicative)(decoder.decode)(u)
-                    : T.fail([
+                    : fail([
                         <DecodingError>{
                           actual: u,
                           message: `${typeof u} is not a record`
