@@ -22,5 +22,6 @@ export {
   URItoIndex,
   URItoKind,
   AlternativeURI,
-  CategoryTL
+  CategoryTL,
+  UHKTCategory
 } from "./hkt"
