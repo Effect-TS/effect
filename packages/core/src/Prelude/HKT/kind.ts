@@ -19,9 +19,27 @@ export type PrependURI<G extends RealURIS, F extends RealURIS[]> = F extends Rea
   ? [G, ...F]
   : F
 
-export type Kind<F extends URIS, C, N extends string, K, Q, W, X, I, S, R, E, A> = ((
-  ...x: F
-) => any) extends (fst: infer XURI, ...rest: infer Rest) => any
+export type Index<U extends ConcreteURIS, TC> = TC extends { [u in U]: infer X }
+  ? X extends ConcreteURIS
+    ? X
+    : U
+  : U
+
+export type Kind<
+  F extends URIS,
+  C,
+  N extends string,
+  K,
+  Q,
+  W,
+  X,
+  I,
+  S,
+  R,
+  E,
+  A,
+  TC = {}
+> = ((...x: F) => any) extends (fst: infer XURI, ...rest: infer Rest) => any
   ? XURI extends ConcreteURIS
     ? URItoKind<
         Auto,
@@ -36,7 +54,7 @@ export type Kind<F extends URIS, C, N extends string, K, Q, W, X, I, S, R, E, A>
         OrFix<"R", C, R>,
         OrFix<"E", C, E>,
         Rest extends URIS ? Kind<Rest, C, N, K, Q, W, X, I, S, R, E, A> : A
-      >[XURI]
+      >[Index<XURI, TC>]
     : XURI extends URI<infer U, infer FC>
     ? URItoKind<
         FC,
@@ -51,7 +69,7 @@ export type Kind<F extends URIS, C, N extends string, K, Q, W, X, I, S, R, E, A>
         OrFix<"R", FC, OrFix<"R", C, R>>,
         OrFix<"E", FC, OrFix<"E", C, E>>,
         Rest extends URIS ? Kind<Rest, C, N, K, Q, W, X, I, S, R, E, A> : A
-      >[U]
+      >[Index<U, TC>]
     : never
   : never
 
