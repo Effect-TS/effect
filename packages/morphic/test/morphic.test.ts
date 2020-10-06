@@ -6,9 +6,9 @@ import * as fc from "fast-check"
 
 import type { AType, EType } from "../src"
 import { make, opaque } from "../src"
-import { derive as dec, report } from "../src/Decoder"
-import { derive as enc } from "../src/Encoder"
-import { derive as arb } from "../src/FastCheck"
+import { derive as decoder, report } from "../src/Decoder"
+import { derive as encoder } from "../src/Encoder"
+import { derive as arbitrary } from "../src/FastCheck"
 import { derive as guard } from "../src/Guard"
 
 const Person_ = make((F) =>
@@ -24,36 +24,36 @@ interface Person extends AType<typeof Person_> {}
 interface PersonRaw extends EType<typeof Person_> {}
 const Person = opaque<PersonRaw, Person>()(Person_)
 
-const EncoderPerson = enc(Person)
-const DecoderPerson = dec(Person)
-const ArbitraryPerson = arb(Person)
-const IsPerson = guard(Person)
 const firstNameLens = pipe(Person.lens, L.prop("name"), L.prop("first"))
 
 describe("FastCheck", () => {
   it("Generate Person", () => {
     fc.check(
       fc.property(
-        ArbitraryPerson,
-        (p) => IsPerson.is(p) && typeof firstNameLens.get(p) === "string"
+        arbitrary(Person),
+        (p) => guard(Person).is(p) && typeof firstNameLens.get(p) === "string"
       )
     )
   })
   it("Encode/Decode Person", () => {
     fc.check(
-      fc.property(ArbitraryPerson, (p) => {
-        const res = T.runEither(DecoderPerson.decode(T.run(EncoderPerson.encode(p))))
+      fc.property(arbitrary(Person), (p) => {
+        const res = T.runEither(
+          decoder(Person).decode(T.run(encoder(Person).encode(p)))
+        )
         expect(res).toEqual(E.right(p))
       })
     )
   })
   it("Decodes Person", () => {
     expect(
-      T.runEither(DecoderPerson.decode({ name: { first: "Michael", last: "Arnaldi" } }))
+      T.runEither(
+        decoder(Person).decode({ name: { first: "Michael", last: "Arnaldi" } })
+      )
     ).toEqual(E.right({ name: { first: "Michael", last: "Arnaldi" } }))
   })
   it("Fail Decoding of Person", () => {
-    expect(pipe(DecoderPerson.decode({}), T.mapError(report), T.runEither)).toEqual(
+    expect(pipe(decoder(Person).decode({}), T.mapError(report), T.runEither)).toEqual(
       E.left("not all the required fields are present")
     )
   })
