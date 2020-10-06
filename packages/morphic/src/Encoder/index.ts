@@ -6,7 +6,7 @@ import type {
   SummonerInterpURI,
   SummonerProgURI
 } from "../Batteries/usage/summoner"
-import type { EncoderURI } from "./hkt"
+import type { Encoder, EncoderURI } from "./hkt"
 import { modelEncoderInterpreter } from "./interpreter"
 
 export const deriveFor = <S extends Summoner<any>>(S: S) => (
@@ -15,4 +15,13 @@ export const deriveFor = <S extends Summoner<any>>(S: S) => (
   F: Materialized<SummonerEnv<S>, L, A, SummonerProgURI<S>, SummonerInterpURI<S>>
 ) => F.derive(modelEncoderInterpreter<SummonerEnv<S>>())(_).encoder
 
-export const encoder = <E, A>(F: M<{}, E, A>) => deriveFor(summonFor({}).make)({})(F)
+const encoders = new Map<any, any>()
+
+export const encoder = <E, A>(F: M<{}, E, A>): Encoder<A, E> => {
+  if (encoders.has(F)) {
+    return encoders.get(F)
+  }
+  const d = deriveFor(summonFor({}).make)({})(F)
+  encoders.set(F, d)
+  return d
+}

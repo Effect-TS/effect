@@ -1,3 +1,4 @@
+import type { Arbitrary } from "fast-check"
 import * as fc from "fast-check"
 
 import type { M, Summoner } from "../Batteries/summoner"
@@ -17,9 +18,17 @@ export const deriveFor = <S extends Summoner<any>>(S: S) => (
   F: Materialized<SummonerEnv<S>, L, A, SummonerProgURI<S>, SummonerInterpURI<S>>
 ) => F.derive(modelFcInterpreter<SummonerEnv<S>>())(_).arb
 
-export const arbitrary = <E, A>(F: M<{}, E, A>) =>
-  deriveFor(summonFor({}).make)({
+const arbitraries = new Map<any, any>()
+
+export const arbitrary = <E, A>(F: M<{}, E, A>): Arbitrary<A> => {
+  if (arbitraries.has(F)) {
+    return arbitraries.get(F)
+  }
+  const d = deriveFor(summonFor({}).make)({
     [FastCheckURI]: {
       module: fc
     }
   })(F)
+  arbitraries.set(F, d)
+  return d
+}
