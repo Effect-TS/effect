@@ -18,7 +18,7 @@ export const decoderTaggedUnionInterpreter = memo(
             decode: (u) => {
               if (isUnknownRecord(u)) {
                 if (tag in u) {
-                  const dec = decoders[tag as any]
+                  const dec = decoders[u[tag] as any]
 
                   if (dec) {
                     return (dec as Decoder<any>).decode(u)
