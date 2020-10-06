@@ -18,6 +18,7 @@ export type { AType, EType, RType } from "./Batteries/usage/utils"
 export { FastCheckURI } from "./FastCheck/hkt"
 export { GuardURI } from "./Guard/hkt"
 export { DecoderURI } from "./Decoder/hkt"
+export { Encoder } from "./Encoder/hkt"
 
 //
 // Threading configs
@@ -25,6 +26,7 @@ export { DecoderURI } from "./Decoder/hkt"
 export {} from "./FastCheck/interpreter/configs"
 export {} from "./Guard/interpreter/configs"
 export {} from "./Decoder/interpreter/configs"
+export {} from "./Encoder/interpreter/configs"
 
 //
 // Generics

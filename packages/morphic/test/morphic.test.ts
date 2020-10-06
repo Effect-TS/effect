@@ -7,6 +7,7 @@ import * as fc from "fast-check"
 import type { AType, EType } from "../src"
 import { make, opaque } from "../src"
 import { derive as dec } from "../src/Decoder"
+import { derive as enc } from "../src/Encoder"
 import { derive as arb } from "../src/FastCheck"
 import { derive as guard } from "../src/Guard"
 
@@ -23,6 +24,7 @@ interface Person extends AType<typeof Person_> {}
 interface PersonRaw extends EType<typeof Person_> {}
 const Person = opaque<PersonRaw, Person>()(Person_)
 
+const EncoderPerson = enc(Person)
 const DecoderPerson = dec(Person)
 const ArbitraryPerson = arb(Person)
 const IsPerson = guard(Person)
@@ -35,6 +37,14 @@ describe("FastCheck", () => {
         ArbitraryPerson,
         (p) => IsPerson.is(p) && typeof firstNameLens.get(p) === "string"
       )
+    )
+  })
+  it("Encode/Decode Person", () => {
+    fc.check(
+      fc.property(ArbitraryPerson, (p) => {
+        const res = T.runEither(DecoderPerson.decode(T.run(EncoderPerson.encode(p))))
+        expect(res).toEqual(E.right(p))
+      })
     )
   })
   it("Decodes Person", () => {
