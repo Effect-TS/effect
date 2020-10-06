@@ -8,6 +8,7 @@ import type { AType, EType } from "../src"
 import { make, opaque } from "../src"
 import { decoder, report } from "../src/Decoder"
 import { encoder } from "../src/Encoder"
+import { equal } from "../src/Equal"
 import { arbitrary } from "../src/FastCheck"
 import { guard } from "../src/Guard"
 
@@ -56,5 +57,17 @@ describe("FastCheck", () => {
     expect(pipe(decoder(Person).decode({}), T.mapError(report), T.runEither)).toEqual(
       E.left("not all the required fields are present")
     )
+  })
+  it("Uses Equal", () => {
+    expect(
+      equal(Person).equals({ name: { first: "Michael", last: "Arnaldi" } })({
+        name: { first: "Michael", last: "Arnaldi" }
+      })
+    ).toEqual(true)
+    expect(
+      equal(Person).equals({ name: { first: "Michael", last: "Arnaldi" } })({
+        name: { first: "John", last: "Doe" }
+      })
+    ).toEqual(false)
   })
 })
