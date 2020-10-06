@@ -117,3 +117,21 @@ export function tuple<T extends ReadonlyArray<Equal<any>>>(
 > {
   return makeEqual((y) => (x) => eqs.every((E, i) => E.equals(y[i])(x[i])))
 }
+
+/**
+ * Given a struct of `Equal`s returns a `Equal` for the struct
+ */
+export function struct<O extends Record<string, any>>(
+  eqs: {
+    [K in keyof O]: Equal<O[K]>
+  }
+): Equal<O> {
+  return makeEqual((y) => (x) => {
+    for (const k in eqs) {
+      if (!eqs[k].equals(y[k])(x[k])) {
+        return false
+      }
+    }
+    return true
+  })
+}
