@@ -17,7 +17,7 @@ export const deriveFor = <S extends Summoner<any>>(S: S) => (
   F: Materialized<SummonerEnv<S>, L, A, SummonerProgURI<S>, SummonerInterpURI<S>>
 ) => F.derive(modelFcInterpreter<SummonerEnv<S>>())(_).arb
 
-export const derive = <E, A>(F: M<{}, E, A>) =>
+export const arbitrary = <E, A>(F: M<{}, E, A>) =>
   deriveFor(summonFor({}).make)({
     [FastCheckURI]: {
       module: fc
