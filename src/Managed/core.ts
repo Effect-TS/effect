@@ -16,20 +16,20 @@ import * as RelMap from "./releaseMap"
  * the passing of its value to the specified continuation function `f`,
  * followed by the managed that it returns.
  */
-export const chain = <A, R2, E2, A2>(f: (a: A) => Managed<R2, E2, A2>) => <R, E>(
-  self: Managed<R, E, A>
-) => chain_(self, f)
+export function chain<A, R2, E2, A2>(f: (a: A) => Managed<R2, E2, A2>) {
+  return <R, E>(self: Managed<R, E, A>) => chain_(self, f)
+}
 
 /**
  * Returns a managed that models the execution of this managed, followed by
  * the passing of its value to the specified continuation function `f`,
  * followed by the managed that it returns.
  */
-export const chain_ = <R, E, A, R2, E2, A2>(
+export function chain_<R, E, A, R2, E2, A2>(
   self: Managed<R, E, A>,
   f: (a: A) => Managed<R2, E2, A2>
-) =>
-  new Managed<R & R2, E | E2, A2>(
+) {
+  return new Managed<R & R2, E | E2, A2>(
     T.chain_(self.effect, ([releaseSelf, a]) =>
       T.map_(f(a).effect, ([releaseThat, b]) => [
         (e) =>
@@ -40,11 +40,14 @@ export const chain_ = <R, E, A, R2, E2, A2>(
       ])
     )
   )
+}
 
 /**
  * Imports a synchronous side-effect into a pure value
  */
-export const effectTotal = <A>(effect: () => A) => fromEffect(T.effectTotal(effect))
+export function effectTotal<A>(effect: () => A) {
+  return fromEffect(T.effectTotal(effect))
+}
 
 /**
  * Ensures that `f` is executed when this Managed is finalized, after
@@ -52,10 +55,12 @@ export const effectTotal = <A>(effect: () => A) => fromEffect(T.effectTotal(effe
  *
  * For usecases that need access to the Managed's result, see [[onExit]].
  */
-export const ensuring_ = <R, E, A, R2>(
+export function ensuring_<R, E, A, R2>(
   self: Managed<R, E, A>,
   f: T.Effect<R2, never, any>
-) => onExit_(self, () => f)
+) {
+  return onExit_(self, () => f)
+}
 
 /**
  * Ensures that `f` is executed when this Managed is finalized, after
@@ -63,40 +68,45 @@ export const ensuring_ = <R, E, A, R2>(
  *
  * For usecases that need access to the Managed's result, see [[onExit]].
  */
-export const ensuring = <R2>(f: T.Effect<R2, never, any>) => <R, E, A>(
-  self: Managed<R, E, A>
-) => ensuring_(self, f)
+export function ensuring<R2>(f: T.Effect<R2, never, any>) {
+  return <R, E, A>(self: Managed<R, E, A>) => ensuring_(self, f)
+}
 
 /**
  * Returns an effect that models failure with the specified error. The moral equivalent of throw for pure code.
  */
-export const fail = <E>(e: E) => fromEffect(T.fail(e))
+export function fail<E>(e: E) {
+  return fromEffect(T.fail(e))
+}
 
 /**
  * Creates an effect that executes a finalizer stored in a `Ref`.
  * The `Ref` is yielded as the result of the effect, allowing for
  * control flows that require mutating finalizers.
  */
-export const finalizerRef = (initial: Finalizer) =>
-  makeExit_(makeRef(initial), (ref, exit) => T.chain_(ref.get, (f) => f(exit)))
+export function finalizerRef(initial: Finalizer) {
+  return makeExit_(makeRef(initial), (ref, exit) => T.chain_(ref.get, (f) => f(exit)))
+}
 
 /**
  * A more powerful version of `foldM` that allows recovering from any kind of failure except interruptions.
  */
-export const foldCauseM = <E, A, R1, E1, A1, R2, E2, A2>(
+export function foldCauseM<E, A, R1, E1, A1, R2, E2, A2>(
   f: (cause: Cause<E>) => Managed<R1, E1, A1>,
   g: (a: A) => Managed<R2, E2, A2>
-) => <R>(self: Managed<R, E, A>) => foldCauseM_(self, f, g)
+) {
+  return <R>(self: Managed<R, E, A>) => foldCauseM_(self, f, g)
+}
 
 /**
  * A more powerful version of `foldM` that allows recovering from any kind of failure except interruptions.
  */
-export const foldCauseM_ = <R, E, A, R1, E1, A1, R2, E2, A2>(
+export function foldCauseM_<R, E, A, R1, E1, A1, R2, E2, A2>(
   self: Managed<R, E, A>,
   f: (cause: Cause<E>) => Managed<R1, E1, A1>,
   g: (a: A) => Managed<R2, E2, A2>
-) =>
-  new Managed<R & R1 & R2, E1 | E2, A1 | A2>(
+) {
+  return new Managed<R & R1 & R2, E1 | E2, A1 | A2>(
     pipe(
       self.effect,
       T.foldCauseM(
@@ -105,6 +115,7 @@ export const foldCauseM_ = <R, E, A, R1, E1, A1, R2, E2, A2>(
       )
     )
   )
+}
 
 /**
  * Applies the function `f` to each element of the `Iterable<A>` and
@@ -113,9 +124,9 @@ export const foldCauseM_ = <R, E, A, R1, E1, A1, R2, E2, A2>(
  * For a parallel version of this method, see `foreachPar`.
  * If you do not need the results, see `foreachUnit` for a more efficient implementation.
  */
-export const foreach = <R, E, A, B>(f: (a: A) => Managed<R, E, B>) => (
-  as: Iterable<A>
-) => foreach_(as, f)
+export function foreach<R, E, A, B>(f: (a: A) => Managed<R, E, B>) {
+  return (as: Iterable<A>) => foreach_(as, f)
+}
 
 /**
  * Applies the function `f` to each element of the `Iterable<A>` and
@@ -124,8 +135,8 @@ export const foreach = <R, E, A, B>(f: (a: A) => Managed<R, E, B>) => (
  * For a parallel version of this method, see `foreachPar_`.
  * If you do not need the results, see `foreachUnit_` for a more efficient implementation.
  */
-export const foreach_ = <R, E, A, B>(as: Iterable<A>, f: (a: A) => Managed<R, E, B>) =>
-  new Managed<R, E, readonly B[]>(
+export function foreach_<R, E, A, B>(as: Iterable<A>, f: (a: A) => Managed<R, E, B>) {
+  return new Managed<R, E, readonly B[]>(
     T.map_(
       T.foreach_(as, (a) => f(a).effect),
       (res) => {
@@ -136,6 +147,7 @@ export const foreach_ = <R, E, A, B>(as: Iterable<A>, f: (a: A) => Managed<R, E,
       }
     )
   )
+}
 
 /**
  * Applies the function `f` to each element of the `Iterable<A>` in parallel,
@@ -143,9 +155,9 @@ export const foreach_ = <R, E, A, B>(as: Iterable<A>, f: (a: A) => Managed<R, E,
  *
  * For a sequential version of this method, see `foreach`.
  */
-export const foreachPar = <R, E, A, B>(f: (a: A) => Managed<R, E, B>) => (
-  as: Iterable<A>
-): Managed<R, E, readonly B[]> => foreachPar_(as, f)
+export function foreachPar<R, E, A, B>(f: (a: A) => Managed<R, E, B>) {
+  return (as: Iterable<A>): Managed<R, E, readonly B[]> => foreachPar_(as, f)
+}
 
 /**
  * Applies the function `f` to each element of the `Iterable<A>` in parallel,
@@ -153,11 +165,11 @@ export const foreachPar = <R, E, A, B>(f: (a: A) => Managed<R, E, B>) => (
  *
  * For a sequential version of this method, see `foreach_`.
  */
-export const foreachPar_ = <R, E, A, B>(
+export function foreachPar_<R, E, A, B>(
   as: Iterable<A>,
   f: (a: A) => Managed<R, E, B>
-): Managed<R, E, readonly B[]> =>
-  mapM_(makeManagedReleaseMap(T.parallel), (parallelReleaseMap) => {
+): Managed<R, E, readonly B[]> {
+  return mapM_(makeManagedReleaseMap(T.parallel), (parallelReleaseMap) => {
     const makeInnerMap = T.provideSome_(
       T.map_(makeManagedReleaseMap(sequential).effect, ([_, x]) => x),
       (x: unknown) => tuple(x, parallelReleaseMap)
@@ -172,6 +184,7 @@ export const foreachPar_ = <R, E, A, B>(
       )
     )
   })
+}
 
 /**
  * Applies the function `f` to each element of the `Iterable<A>` in parallel,
@@ -179,9 +192,11 @@ export const foreachPar_ = <R, E, A, B>(
  *
  * Unlike `foreachPar`, this method will use at most up to `n` fibers.
  */
-export const foreachParN = (n: number) => <R, E, A, B>(
-  f: (a: A) => Managed<R, E, B>
-) => (as: Iterable<A>): Managed<R, E, readonly B[]> => foreachParN_(n)(as, f)
+export function foreachParN(n: number) {
+  return <R, E, A, B>(f: (a: A) => Managed<R, E, B>) => (
+    as: Iterable<A>
+  ): Managed<R, E, readonly B[]> => foreachParN_(n)(as, f)
+}
 
 /**
  * Applies the function `f` to each element of the `Iterable<A>` in parallel,
@@ -189,35 +204,37 @@ export const foreachParN = (n: number) => <R, E, A, B>(
  *
  * Unlike `foreachPar_`, this method will use at most up to `n` fibers.
  */
-export const foreachParN_ = (n: number) => <R, E, A, B>(
-  as: Iterable<A>,
-  f: (a: A) => Managed<R, E, B>
-): Managed<R, E, readonly B[]> =>
-  mapM_(makeManagedReleaseMap(T.parallelN(n)), (parallelReleaseMap) => {
-    const makeInnerMap = T.provideSome_(
-      T.map_(makeManagedReleaseMap(sequential).effect, ([_, x]) => x),
-      (x: unknown) => tuple(x, parallelReleaseMap)
-    )
-
-    return T.foreachParN_(n)(as, (a) =>
-      T.map_(
-        T.chain_(makeInnerMap, (innerMap) =>
-          T.provideSome_(f(a).effect, (u: R) => tuple(u, innerMap))
-        ),
-        ([_, b]) => b
+export function foreachParN_(n: number) {
+  return <R, E, A, B>(
+    as: Iterable<A>,
+    f: (a: A) => Managed<R, E, B>
+  ): Managed<R, E, readonly B[]> =>
+    mapM_(makeManagedReleaseMap(T.parallelN(n)), (parallelReleaseMap) => {
+      const makeInnerMap = T.provideSome_(
+        T.map_(makeManagedReleaseMap(sequential).effect, ([_, x]) => x),
+        (x: unknown) => tuple(x, parallelReleaseMap)
       )
-    )
-  })
+
+      return T.foreachParN_(n)(as, (a) =>
+        T.map_(
+          T.chain_(makeInnerMap, (innerMap) =>
+            T.provideSome_(f(a).effect, (u: R) => tuple(u, innerMap))
+          ),
+          ([_, b]) => b
+        )
+      )
+    })
+}
 
 /**
  * Creates a `Managed` value that acquires the original resource in a fiber,
  * and provides that fiber. The finalizer for this value will interrupt the fiber
  * and run the original finalizer.
  */
-export const fork = <R, E, A>(
+export function fork<R, E, A>(
   self: Managed<R, E, A>
-): Managed<R, never, FiberContext<E, A>> =>
-  new Managed(
+): Managed<R, never, FiberContext<E, A>> {
+  return new Managed(
     T.uninterruptibleMask(({ restore }) =>
       pipe(
         T.do,
@@ -248,53 +265,61 @@ export const fork = <R, E, A>(
       )
     )
   )
+}
 
 /**
  * Lifts a `Effect< R, E, A>` into `Managed< R, E, A>` with no release action. The
  * effect will be performed interruptibly.
  */
-export const fromEffect = <R, E, A>(effect: T.Effect<R, E, A>) =>
-  new Managed<R, E, A>(
+export function fromEffect<R, E, A>(effect: T.Effect<R, E, A>) {
+  return new Managed<R, E, A>(
     T.map_(
       T.accessM((_: readonly [R, ReleaseMap]) => T.provideAll_(effect, _[0])),
       (a) => [RelMap.noopFinalizer, a]
     )
   )
+}
 
 /**
  * Lifts a `Effect< R, E, A>` into `Managed< R, E, A>` with a release action.
  * The acquire and release actions will be performed uninterruptibly.
  */
-export const make = <R1, A>(
+export function make<R1, A>(
   release: (a: A) => T.Effect<R1, never, unknown>
-): (<R, E>(acquire: T.Effect<R, E, A>) => Managed<R & R1, E, A>) => makeExit(release)
+): <R, E>(acquire: T.Effect<R, E, A>) => Managed<R & R1, E, A> {
+  return makeExit(release)
+}
 
 /**
  * Lifts a `Effect< R, E, A>` into `Managed< R, E, A>` with a release action.
  * The acquire and release actions will be performed uninterruptibly.
  */
-export const make_ = <R, E, A, R1>(
+export function make_<R, E, A, R1>(
   acquire: T.Effect<R, E, A>,
   release: (a: A) => T.Effect<R1, never, unknown>
-): Managed<R & R1, E, A> => makeExit_(acquire, release)
+): Managed<R & R1, E, A> {
+  return makeExit_(acquire, release)
+}
 
 /**
  * Lifts a `Effect< R, E, A>` into `Managed< R, E, A>` with a release action
  * that handles `Exit`. The acquire and release actions will be performed uninterruptibly.
  */
-export const makeExit = <R1, A>(
+export function makeExit<R1, A>(
   release: (a: A, exit: T.Exit<any, any>) => T.Effect<R1, never, unknown>
-) => <R, E>(acquire: T.Effect<R, E, A>) => makeExit_(acquire, release)
+) {
+  return <R, E>(acquire: T.Effect<R, E, A>) => makeExit_(acquire, release)
+}
 
 /**
  * Lifts a `Effect< R, E, A>` into `Managed< R, E, A>` with a release action
  * that handles `Exit`. The acquire and release actions will be performed uninterruptibly.
  */
-export const makeExit_ = <R, E, A, R1>(
+export function makeExit_<R, E, A, R1>(
   acquire: T.Effect<R, E, A>,
   release: (a: A, exit: T.Exit<any, any>) => T.Effect<R1, never, unknown>
-) =>
-  new Managed<R & R1, E, A>(
+) {
+  return new Managed<R & R1, E, A>(
     T.uninterruptible(
       pipe(
         T.do,
@@ -307,27 +332,30 @@ export const makeExit_ = <R, E, A, R1>(
       )
     )
   )
+}
 
 /**
  * Lifts a `Effect< R, E, A>` into `Managed< R, E, A>` with a release action.
  * The acquire action will be performed interruptibly, while release
  * will be performed uninterruptibly.
  */
-export const makeInterruptible = <A, R1>(
+export function makeInterruptible<A, R1>(
   release: (a: A) => T.Effect<R1, never, unknown>
-) => <R, E>(acquire: T.Effect<R, E, A>) =>
-  onExitFirst_(fromEffect(acquire), T.exitForeach(release))
+) {
+  return <R, E>(acquire: T.Effect<R, E, A>) =>
+    onExitFirst_(fromEffect(acquire), T.exitForeach(release))
+}
 
 /**
  * Lifts a `Effect< R, E, A>` into `Managed< R, E, A>` with a release action.
  * The acquire action will be performed interruptibly, while release
  * will be performed uninterruptibly.
  */
-export const makeInterruptible_ = <R, E, A, R1>(
+export function makeInterruptible_<R, E, A, R1>(
   acquire: T.Effect<R, E, A>,
   release: (a: A) => T.Effect<R1, never, unknown>
-) =>
-  onExitFirst_(fromEffect(acquire), (e) => {
+) {
+  return onExitFirst_(fromEffect(acquire), (e) => {
     switch (e._tag) {
       case "Failure": {
         return T.unit
@@ -337,6 +365,7 @@ export const makeInterruptible_ = <R, E, A, R1>(
       }
     }
   })
+}
 
 /**
  * Construct a `ReleaseMap` wrapped in a `Managed`. The `ReleaseMap` will
@@ -358,10 +387,10 @@ export function makeManagedReleaseMap(
  * This two-phase acquisition allows for resource acquisition flows that can be
  * safely interrupted and released.
  */
-export const makeReserve = <R, E, R2, E2, A>(
+export function makeReserve<R, E, R2, E2, A>(
   reservation: T.Effect<R, E, Reservation<R2, E2, A>>
-) =>
-  new Managed<R & R2, E | E2, A>(
+) {
+  return new Managed<R & R2, E | E2, A>(
     T.uninterruptibleMask(({ restore }) =>
       pipe(
         T.do,
@@ -400,27 +429,30 @@ export const makeReserve = <R, E, R2, E2, A>(
       )
     )
   )
+}
 
 /**
  * Returns a managed whose success is mapped by the specified `f` function.
  */
-export const map = <A, B>(f: (a: A) => B) => <R, E>(self: Managed<R, E, A>) =>
-  map_(self, f)
+export function map<A, B>(f: (a: A) => B) {
+  return <R, E>(self: Managed<R, E, A>) => map_(self, f)
+}
 
 /**
  * Returns a managed whose success is mapped by the specified `f` function.
  */
-export const map_ = <R, E, A, B>(self: Managed<R, E, A>, f: (a: A) => B) =>
-  new Managed<R, E, B>(T.map_(self.effect, ([fin, a]) => [fin, f(a)]))
+export function map_<R, E, A, B>(self: Managed<R, E, A>, f: (a: A) => B) {
+  return new Managed<R, E, B>(T.map_(self.effect, ([fin, a]) => [fin, f(a)]))
+}
 
 /**
  * Returns a managed whose success is mapped by the specified `f` function.
  */
-export const mapM_ = <R, E, A, R2, E2, B>(
+export function mapM_<R, E, A, R2, E2, B>(
   self: Managed<R, E, A>,
   f: (a: A) => T.Effect<R2, E2, B>
-) =>
-  new Managed<R & R2, E | E2, B>(
+) {
+  return new Managed<R & R2, E | E2, B>(
     T.chain_(self.effect, ([fin, a]) =>
       T.provideSome_(
         T.map_(f(a), (b) => [fin, b]),
@@ -428,31 +460,32 @@ export const mapM_ = <R, E, A, R2, E2, B>(
       )
     )
   )
+}
 
 /**
  * Returns a managed whose success is mapped by the specified `f` function.
  */
-export const mapM = <A, R2, E2, B>(f: (a: A) => T.Effect<R2, E2, B>) => <R, E>(
-  self: Managed<R, E, A>
-) =>
-  new Managed<R & R2, E | E2, B>(
-    T.chain_(self.effect, ([fin, a]) =>
-      T.provideSome_(
-        T.map_(f(a), (b) => [fin, b]),
-        ([r]: readonly [R & R2, ReleaseMap]) => r
+export function mapM<A, R2, E2, B>(f: (a: A) => T.Effect<R2, E2, B>) {
+  return <R, E>(self: Managed<R, E, A>) =>
+    new Managed<R & R2, E | E2, B>(
+      T.chain_(self.effect, ([fin, a]) =>
+        T.provideSome_(
+          T.map_(f(a), (b) => [fin, b]),
+          ([r]: readonly [R & R2, ReleaseMap]) => r
+        )
       )
     )
-  )
+}
 
 /**
  * Ensures that a cleanup function runs when this ZManaged is finalized, after
  * the existing finalizers.
  */
-export const onExit_ = <R, E, A, R2>(
+export function onExit_<R, E, A, R2>(
   self: Managed<R, E, A>,
   cleanup: (exit: T.Exit<E, A>) => T.Effect<R2, never, any>
-) =>
-  new Managed<R & R2, E, A>(
+) {
+  return new Managed<R & R2, E, A>(
     T.uninterruptibleMask(({ restore }) =>
       pipe(
         T.do,
@@ -484,32 +517,37 @@ export const onExit_ = <R, E, A, R2>(
       )
     )
   )
+}
 
 /**
  * Ensures that a cleanup function runs when this ZManaged is finalized, after
  * the existing finalizers.
  */
-export const onExit = <E, A, R2>(
+export function onExit<E, A, R2>(
   cleanup: (exit: T.Exit<E, A>) => T.Effect<R2, never, any>
-) => <R>(self: Managed<R, E, A>) => onExit_(self, cleanup)
+) {
+  return <R>(self: Managed<R, E, A>) => onExit_(self, cleanup)
+}
 
 /**
  * Ensures that a cleanup function runs when this ZManaged is finalized, before
  * the existing finalizers.
  */
-export const onExitFirst = <E, A, R2>(
+export function onExitFirst<E, A, R2>(
   cleanup: (exit: T.Exit<E, A>) => T.Effect<R2, never, any>
-) => <R>(self: Managed<R, E, A>) => onExitFirst_(self, cleanup)
+) {
+  return <R>(self: Managed<R, E, A>) => onExitFirst_(self, cleanup)
+}
 
 /**
  * Ensures that a cleanup function runs when this ZManaged is finalized, before
  * the existing finalizers.
  */
-export const onExitFirst_ = <R, E, A, R2>(
+export function onExitFirst_<R, E, A, R2>(
   self: Managed<R, E, A>,
   cleanup: (exit: T.Exit<E, A>) => T.Effect<R2, never, any>
-) =>
-  new Managed<R & R2, E, A>(
+) {
+  return new Managed<R & R2, E, A>(
     T.uninterruptibleMask(({ restore }) =>
       pipe(
         T.do,
@@ -541,19 +579,21 @@ export const onExitFirst_ = <R, E, A, R2>(
       )
     )
   )
+}
 
 /**
  * Like provideSome_ for effect but for Managed
  */
-export const provideSome_ = <R, E, A, R0>(
+export function provideSome_<R, E, A, R0>(
   self: Managed<R, E, A>,
   f: (r0: R0) => R
-): Managed<R0, E, A> =>
-  new Managed(
+): Managed<R0, E, A> {
+  return new Managed(
     T.accessM(([r0, rm]: readonly [R0, ReleaseMap]) =>
       T.provideAll_(self.effect, [f(r0), rm])
     )
   )
+}
 
 /**
  * A `Reservation< R, E, A>` encapsulates resource acquisition and disposal
@@ -576,51 +616,58 @@ export class Reservation<R, E, A> {
 /**
  * Make a new reservation
  */
-export const makeReservation_ = <R, E, A, R2>(
+export function makeReservation_<R, E, A, R2>(
   acquire: T.Effect<R, E, A>,
   release: (exit: T.Exit<any, any>) => T.Effect<R2, never, any>
-) => Reservation.of(acquire, release)
+) {
+  return Reservation.of(acquire, release)
+}
 
 /**
  * Make a new reservation
  */
-export const makeReservation = <R2>(
+export function makeReservation<R2>(
   release: (exit: T.Exit<any, any>) => T.Effect<R2, never, any>
-) => <R, E, A>(acquire: T.Effect<R, E, A>) => Reservation.of(acquire, release)
+) {
+  return <R, E, A>(acquire: T.Effect<R, E, A>) => Reservation.of(acquire, release)
+}
 
 /**
  * Lifts a pure `Reservation< R, E, A>` into `Managed< R, E, A>`. The acquisition step
  * is performed interruptibly.
  */
-export const reserve = <R, E, A>(reservation: Reservation<R, E, A>) =>
-  makeReserve(T.succeed(reservation))
+export function reserve<R, E, A>(reservation: Reservation<R, E, A>) {
+  return makeReserve(T.succeed(reservation))
+}
 
 /**
  * Lift a pure value into an effect
  */
-export const succeedNow = <A>(a: A) => fromEffect(T.succeed(a))
+export function succeedNow<A>(a: A) {
+  return fromEffect(T.succeed(a))
+}
 
 /**
  * Returns a managed that effectfully peeks at the acquired resource.
  */
-export const tap = <A, R2, E2>(f: (a: A) => Managed<R2, E2, any>) => <R, E>(
-  self: Managed<R, E, A>
-) => chain_(self, (a) => map_(f(a), () => a))
+export function tap<A, R2, E2>(f: (a: A) => Managed<R2, E2, any>) {
+  return <R, E>(self: Managed<R, E, A>) => chain_(self, (a) => map_(f(a), () => a))
+}
 
 /**
  * Run an effect while acquiring the resource before and releasing it after
  */
-export const use = <A, R2, E2, B>(f: (a: A) => T.Effect<R2, E2, B>) => <R, E>(
-  self: Managed<R, E, A>
-): T.Effect<R & R2, E | E2, B> => use_(self, f)
+export function use<A, R2, E2, B>(f: (a: A) => T.Effect<R2, E2, B>) {
+  return <R, E>(self: Managed<R, E, A>): T.Effect<R & R2, E | E2, B> => use_(self, f)
+}
 
 /**
  * Run an effect while acquiring the resource before and releasing it after
  */
-export const use_ = <R, E, A, R2, E2, B>(
+export function use_<R, E, A, R2, E2, B>(
   self: Managed<R, E, A>,
   f: (a: A) => T.Effect<R2, E2, B>
-): T.Effect<R & R2, E | E2, B> => {
+): T.Effect<R & R2, E | E2, B> {
   return T.bracketExit_(
     RelMap.makeReleaseMap,
     (rm) =>
@@ -637,64 +684,75 @@ export const use_ = <R, E, A, R2, E2, B>(
  * managed effect. Note that this is only safe if the result of this managed
  * effect is valid outside its scope.
  */
-export const useNow = <R, E, A>(self: Managed<R, E, A>) => use_(self, T.succeed)
+export function useNow<R, E, A>(self: Managed<R, E, A>) {
+  return use_(self, T.succeed)
+}
 
 /**
  * Returns a managed that executes both this managed and the specified managed,
  * in sequence, combining their results with the specified `f` function.
  */
-export const zip_ = <R, E, A, R2, E2, A2, B>(
+export function zip_<R, E, A, R2, E2, A2, B>(
   self: Managed<R, E, A>,
   that: Managed<R2, E2, A2>
-) => zipWith_(self, that, (a, a2) => [a, a2] as [A, A2])
+) {
+  return zipWith_(self, that, (a, a2) => [a, a2] as [A, A2])
+}
 
 /**
  * Returns a managed that executes both this managed and the specified managed,
  * in sequence, combining their results with the specified `f` function.
  */
-export const zip = <R2, E2, A2, B>(that: Managed<R2, E2, A2>) => <R, E, A>(
-  self: Managed<R, E, A>
-) => zipWith_(self, that, (a, a2) => [a, a2] as [A, A2])
+export function zip<R2, E2, A2, B>(that: Managed<R2, E2, A2>) {
+  return <R, E, A>(self: Managed<R, E, A>) =>
+    zipWith_(self, that, (a, a2) => [a, a2] as [A, A2])
+}
 
 /**
  * Returns a managed that executes both this managed and the specified managed,
  * in sequence, combining their results with the specified `f` function.
  */
-export const zipWith = <A, R2, E2, A2, B>(
+export function zipWith<A, R2, E2, A2, B>(
   that: Managed<R2, E2, A2>,
   f: (a: A, a2: A2) => B
-) => <R, E>(self: Managed<R, E, A>) => zipWith_(self, that, f)
+) {
+  return <R, E>(self: Managed<R, E, A>) => zipWith_(self, that, f)
+}
 
 /**
  * Returns a managed that executes both this managed and the specified managed,
  * in sequence, combining their results with the specified `f` function.
  */
-export const zipWith_ = <R, E, A, R2, E2, A2, B>(
+export function zipWith_<R, E, A, R2, E2, A2, B>(
   self: Managed<R, E, A>,
   that: Managed<R2, E2, A2>,
   f: (a: A, a2: A2) => B
-) => chain_(self, (a) => map_(that, (a2) => f(a, a2)))
+) {
+  return chain_(self, (a) => map_(that, (a2) => f(a, a2)))
+}
 
 /**
  * Returns a managed that executes both this managed and the specified managed,
  * in parallel, combining their results with the specified `f` function.
  */
-export const zipWithPar = <A, R2, E2, A2, B>(
+export function zipWithPar<A, R2, E2, A2, B>(
   that: Managed<R2, E2, A2>,
   f: (a: A, a2: A2) => B
-) => <R, E>(self: Managed<R, E, A>): Managed<R & R2, E | E2, B> =>
-  zipWithPar_(self, that, f)
+) {
+  return <R, E>(self: Managed<R, E, A>): Managed<R & R2, E | E2, B> =>
+    zipWithPar_(self, that, f)
+}
 
 /**
  * Returns a managed that executes both this managed and the specified managed,
  * in parallel, combining their results with the specified `f` function.
  */
-export const zipWithPar_ = <R, E, A, R2, E2, A2, B>(
+export function zipWithPar_<R, E, A, R2, E2, A2, B>(
   self: Managed<R, E, A>,
   that: Managed<R2, E2, A2>,
   f: (a: A, a2: A2) => B
-): Managed<R & R2, E | E2, B> =>
-  mapM_(makeManagedReleaseMap(parallel), (parallelReleaseMap) => {
+): Managed<R & R2, E | E2, B> {
+  return mapM_(makeManagedReleaseMap(parallel), (parallelReleaseMap) => {
     const innerMap = T.provideSome_(
       makeManagedReleaseMap(sequential).effect,
       (r: R & R2) => tuple(r, parallelReleaseMap)
@@ -708,3 +766,4 @@ export const zipWithPar_ = <R, E, A, R2, E2, A2, B>(
       )
     )
   })
+}
