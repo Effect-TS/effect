@@ -43,7 +43,8 @@
       "FastCheck",
       "Guard",
       "Internal",
-      "Show"
+      "Show",
+      "Strict"
     ]
   },
   "peerDependencies": {

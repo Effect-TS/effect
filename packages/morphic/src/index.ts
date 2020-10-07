@@ -21,6 +21,7 @@ export { DecoderURI } from "./Decoder/hkt"
 export { EncoderURI } from "./Encoder/hkt"
 export { EqURI } from "./Equal/hkt"
 export { ShowURI } from "./Show/hkt"
+export { StrictURI } from "./Strict/hkt"
 
 //
 // Threading configs
@@ -31,6 +32,7 @@ export {} from "./Decoder/interpreter/configs"
 export {} from "./Encoder/interpreter/configs"
 export {} from "./Equal/interpreter/configs"
 export {} from "./Show/interpreter/configs"
+export {} from "./Strict/interpreter/configs"
 
 //
 // Generics
