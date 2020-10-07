@@ -1,5 +1,4 @@
 import type { Array } from "@effect-ts/core/Classic/Array"
-import * as A from "@effect-ts/core/Classic/Array"
 import type { Ord } from "@effect-ts/core/Classic/Ord"
 import type { Set } from "@effect-ts/core/Classic/Set"
 import * as S from "@effect-ts/core/Classic/Set"
@@ -11,7 +10,7 @@ import type { AlgebraSet1, SetConfig } from "../../Algebra/set"
 import { memo } from "../../Internal/Utils"
 import { decoderApplyConfig } from "../config"
 import { DecoderType, DecoderURI, fail } from "../hkt"
-import { Validation } from "./common"
+import { foreachArray } from "./common"
 
 export const decoderSetInterpreter = memo(
   <Env extends AnyEnv>(): AlgebraSet1<DecoderURI, Env> => ({
@@ -32,11 +31,7 @@ export const decoderSetInterpreter = memo(
               {
                 decode: (u) =>
                   Array.isArray(u)
-                    ? pipe(
-                        u,
-                        A.foreachF(Validation)(decoder.decode),
-                        T.map(S.fromArray(_))
-                      )
+                    ? pipe(u, foreachArray(decoder.decode), T.map(S.fromArray(_)))
                     : fail([
                         {
                           actual: u,

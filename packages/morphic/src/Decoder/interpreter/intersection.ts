@@ -10,7 +10,7 @@ import type {
 import { memo } from "../../Internal/Utils"
 import { decoderApplyConfig } from "../config"
 import { DecoderType, DecoderURI } from "../hkt"
-import { Validation } from "./common"
+import { foreachArray } from "./common"
 
 export const decoderIntersectionInterpreter = memo(
   <Env extends AnyEnv>(): AlgebraIntersection1<DecoderURI, Env> => ({
@@ -22,13 +22,14 @@ export const decoderIntersectionInterpreter = memo(
       }
     ) => (env: Env) => {
       const decoders = types.map((getDecoder) => getDecoder(env).decoder)
+
       return new DecoderType<A>(
         decoderApplyConfig(config?.conf)(
           {
             decode: (u) =>
               pipe(
                 decoders,
-                A.foreachF(Validation)((d) => d.decode(u)),
+                foreachArray((d) => d.decode(u)),
                 T.map(A.reduce(({} as unknown) as A, (b, a) => ({ ...b, ...a })))
               )
           },

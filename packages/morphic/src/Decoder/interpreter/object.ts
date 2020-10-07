@@ -1,7 +1,5 @@
-import * as R from "@effect-ts/core/Classic/Record"
 import * as T from "@effect-ts/core/Classic/Sync"
 import { pipe } from "@effect-ts/core/Function"
-import { tupledF } from "@effect-ts/core/Prelude/DSL"
 
 import type { AnyEnv } from "../../Algebra/config"
 import type { AlgebraObject1, PropsKind1 } from "../../Algebra/object"
@@ -10,7 +8,7 @@ import { memo, projectFieldWithEnv } from "../../Internal/Utils"
 import { decoderApplyConfig } from "../config"
 import type { Decoder } from "../hkt"
 import { DecoderType, DecoderURI, fail } from "../hkt"
-import { Validation } from "./common"
+import { foreachRecordWithIndex, tupled } from "./common"
 
 export const decoderObjectInterpreter = memo(
   <Env extends AnyEnv>(): AlgebraObject1<DecoderURI, Env> => ({
@@ -42,7 +40,7 @@ export const decoderObjectInterpreter = memo(
               {
                 decode: (u) =>
                   T.map_(
-                    tupledF(Validation)(
+                    tupled(
                       interfaceDecoder(keys, decoder).decode(u),
                       partialDecoder(decoderPartial).decode(u)
                     ),
@@ -73,7 +71,7 @@ function partialDecoder<Props, Env extends AnyEnv>(
       if (isUnknownRecord(u)) {
         return pipe(
           u,
-          R.foreachWithIndexF(Validation)((k, a) =>
+          foreachRecordWithIndex((k, a) =>
             decoder[k] ? decoder[k].decode(a) : T.succeed(a)
           )
         ) as any
@@ -103,7 +101,7 @@ function interfaceDecoder<Props, Env extends AnyEnv>(
         if (keys.length <= uk.length && keys.every((v) => uk.includes(v))) {
           return pipe(
             u,
-            R.foreachWithIndexF(Validation)((k, a) =>
+            foreachRecordWithIndex((k, a) =>
               decoder[k] ? decoder[k].decode(a) : T.succeed(a)
             )
           ) as any

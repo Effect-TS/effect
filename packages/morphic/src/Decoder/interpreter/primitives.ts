@@ -1,6 +1,5 @@
 import * as A from "@effect-ts/core/Classic/Array"
 import * as E from "@effect-ts/core/Classic/Either"
-import * as NA from "@effect-ts/core/Classic/NonEmptyArray"
 import * as O from "@effect-ts/core/Classic/Option"
 import { none, some } from "@effect-ts/core/Classic/Option"
 import * as T from "@effect-ts/core/Classic/Sync"
@@ -12,7 +11,7 @@ import { isUnknownRecord } from "../../Guard/interpreter/common"
 import { memo } from "../../Internal/Utils"
 import { decoderApplyConfig } from "../config"
 import { DecodeError, DecoderType, DecoderURI, fail } from "../hkt"
-import { Validation } from "./common"
+import { foreachArray, foreachNonEmptyArray } from "./common"
 
 export const regexUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -261,7 +260,7 @@ export const decoderPrimitiveInterpreter = memo(
               {
                 decode: (u) =>
                   Array.isArray(u)
-                    ? A.foreachF(Validation)(decoder.decode)(u)
+                    ? foreachArray(decoder.decode)(u)
                     : fail([
                         {
                           actual: u,
@@ -284,7 +283,7 @@ export const decoderPrimitiveInterpreter = memo(
                 decode: (u) =>
                   Array.isArray(u)
                     ? A.isNonEmpty(u)
-                      ? NA.foreachF(Validation)(decoder.decode)(u)
+                      ? foreachNonEmptyArray(decoder.decode)(u)
                       : fail([
                           {
                             actual: u,
