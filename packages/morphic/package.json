@@ -44,7 +44,8 @@
       "Guard",
       "Internal",
       "Show",
-      "Strict"
+      "Strict",
+      "StrictDecoder"
     ]
   },
   "peerDependencies": {

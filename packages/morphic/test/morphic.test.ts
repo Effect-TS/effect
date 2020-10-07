@@ -13,6 +13,7 @@ import { arbitrary } from "../src/FastCheck"
 import { guard } from "../src/Guard"
 import { show } from "../src/Show"
 import { strict } from "../src/Strict"
+import { strictDecoder } from "../src/StrictDecoder"
 
 const Person_ = make((F) =>
   F.interface(
@@ -72,6 +73,15 @@ describe("FastCheck", () => {
         })
       )
     ).toEqual({ name: { first: "Michael", last: "Arnaldi" } })
+  })
+  it("Decode & Removes unknown fields", () => {
+    expect(
+      T.runEither(
+        strictDecoder(Person).decode({
+          name: { first: "Michael", last: "Arnaldi", middle: "None" }
+        })
+      )
+    ).toEqual(E.right({ name: { first: "Michael", last: "Arnaldi" } }))
   })
   it("Fail Decoding of Person", () => {
     expect(pipe(decoder(Person).decode({}), T.mapError(report), T.runEither)).toEqual(
