@@ -1,11 +1,14 @@
 import type { Array } from "@effect-ts/system/Array"
 import * as A from "@effect-ts/system/Array"
+import type { Predicate } from "@effect-ts/system/Function"
 import { flow, pipe } from "@effect-ts/system/Function"
 import type { MutableArray } from "@effect-ts/system/Mutable"
 
 import type { ArrayURI } from "../../Modules"
 import * as P from "../../Prelude"
 import * as DSL from "../../Prelude/DSL"
+import type { PredicateWithIndex, Separated } from "../../Utils"
+import type { Either } from "../Either"
 import type { Equal } from "../Equal"
 import { makeEqual } from "../Equal"
 import type { Identity } from "../Identity"
@@ -266,5 +269,80 @@ export function uniq<A>(E: Equal<A>): (as: Array<A>) => Array<A> {
       }
     }
     return len === r.length ? as : r
+  }
+}
+
+export function partition<A>(predicate: Predicate<A>) {
+  return (fa: readonly A[]): Separated<readonly A[], readonly A[]> =>
+    partitionWithIndex((_, a: A) => predicate(a))(fa)
+}
+
+export function partition_<A>(
+  fa: readonly A[],
+  predicate: Predicate<A>
+): Separated<readonly A[], readonly A[]> {
+  return partitionWithIndex((_, a: A) => predicate(a))(fa)
+}
+
+export function partitionMap<A, B, C>(f: (a: A) => Either<B, C>) {
+  return partitionMapWithIndex((_, a: A) => f(a))
+}
+
+export function partitionMap_<A, B, C>(
+  fa: readonly A[],
+  f: (a: A) => Either<B, C>
+): Separated<readonly B[], readonly C[]> {
+  return partitionMapWithIndex_(fa, (_, a) => f(a))
+}
+
+export function partitionMapWithIndex_<A, B, C>(
+  fa: readonly A[],
+  f: (i: number, a: A) => Either<B, C>
+): Separated<readonly B[], readonly C[]> {
+  const left: MutableArray<B> = []
+  const right: MutableArray<C> = []
+  for (let i = 0; i < fa.length; i++) {
+    const e = f(i, fa[i])
+    if (e._tag === "Left") {
+      left.push(e.left)
+    } else {
+      right.push(e.right)
+    }
+  }
+  return {
+    left,
+    right
+  }
+}
+
+export function partitionMapWithIndex<A, B, C>(f: (i: number, a: A) => Either<B, C>) {
+  return (fa: readonly A[]): Separated<readonly B[], readonly C[]> =>
+    partitionMapWithIndex_(fa, f)
+}
+
+export function partitionWithIndex<A>(
+  predicateWithIndex: PredicateWithIndex<number, A>
+) {
+  return (fa: readonly A[]): Separated<readonly A[], readonly A[]> =>
+    partitionWithIndex_(fa, predicateWithIndex)
+}
+
+export function partitionWithIndex_<A>(
+  fa: readonly A[],
+  predicateWithIndex: PredicateWithIndex<number, A>
+): Separated<readonly A[], readonly A[]> {
+  const left: MutableArray<A> = []
+  const right: MutableArray<A> = []
+  for (let i = 0; i < fa.length; i++) {
+    const a = fa[i]
+    if (predicateWithIndex(i, a)) {
+      right.push(a)
+    } else {
+      left.push(a)
+    }
+  }
+  return {
+    left,
+    right
   }
 }
