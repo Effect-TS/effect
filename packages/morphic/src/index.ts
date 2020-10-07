@@ -20,6 +20,7 @@ export { GuardURI } from "./Guard/hkt"
 export { DecoderURI } from "./Decoder/hkt"
 export { EncoderURI } from "./Encoder/hkt"
 export { EqURI } from "./Equal/hkt"
+export { ShowURI } from "./Show/hkt"
 
 //
 // Threading configs
@@ -29,6 +30,7 @@ export {} from "./Guard/interpreter/configs"
 export {} from "./Decoder/interpreter/configs"
 export {} from "./Encoder/interpreter/configs"
 export {} from "./Equal/interpreter/configs"
+export {} from "./Show/interpreter/configs"
 
 //
 // Generics

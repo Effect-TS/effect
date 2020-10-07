@@ -37,8 +37,13 @@
       "Adt",
       "Algebra",
       "Batteries",
+      "Decoder",
+      "Encoder",
+      "Equal",
       "FastCheck",
-      "Internal"
+      "Guard",
+      "Internal",
+      "Show"
     ]
   },
   "peerDependencies": {
