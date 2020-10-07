@@ -5,7 +5,7 @@ export const StrictURI = "StrictURI" as const
 export type StrictURI = typeof StrictURI
 
 export interface Strict<A> {
-  shrink: (u: A) => T.Sync<unknown, never, A>
+  shrink: <K extends A>(u: K) => T.Sync<unknown, never, A>
 }
 
 declare module "../../Algebra/config" {

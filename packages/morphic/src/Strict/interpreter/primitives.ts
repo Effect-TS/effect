@@ -2,7 +2,6 @@ import * as A from "@effect-ts/core/Classic/Array"
 import * as E from "@effect-ts/core/Classic/Either"
 import * as NA from "@effect-ts/core/Classic/NonEmptyArray"
 import * as O from "@effect-ts/core/Classic/Option"
-import { none, some } from "@effect-ts/core/Classic/Option"
 import * as T from "@effect-ts/core/Classic/Sync"
 import { flow, pipe } from "@effect-ts/core/Function"
 
@@ -127,9 +126,9 @@ export const strictPrimitiveInterpreter = memo(
             strictApplyConfig(config?.conf)(
               {
                 shrink: (u) =>
-                  u._tag == "None"
-                    ? T.succeed(none)
-                    : T.map_(strict.shrink(u.value), some)
+                  u._tag === "None"
+                    ? T.succeed(O.none)
+                    : T.map_(strict.shrink((u as O.Some<any>).value), O.some)
               },
               env,
               { strict }
@@ -149,7 +148,8 @@ export const strictPrimitiveInterpreter = memo(
           new StrictType(
             strictApplyConfig(config?.conf)(
               {
-                shrink: (u) => (u == null ? T.succeed(undefined) : strict.shrink(u))
+                shrink: (u) =>
+                  u == null ? T.succeed(undefined) : strict.shrink<any>(u)
               },
               env,
               { strict }

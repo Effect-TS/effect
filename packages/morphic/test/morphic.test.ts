@@ -67,7 +67,7 @@ describe("FastCheck", () => {
   it("Removes unknown fields", () => {
     expect(
       T.run(
-        strict(Person).shrink(<Person>{
+        strict(Person).shrink({
           name: { first: "Michael", last: "Arnaldi", middle: "None" }
         })
       )
