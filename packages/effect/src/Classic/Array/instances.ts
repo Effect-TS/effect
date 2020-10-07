@@ -97,8 +97,32 @@ export const Foldable = P.instance<P.Foldable<[ArrayURI]>>({
   ...Reduce,
   ...ReduceRight
 })
+
 export const FoldableWithIndex = P.instance<P.FoldableWithIndex<[ArrayURI]>>({
   ...FoldMapWithIndex,
   ...ReduceWithIndex,
   ...ReduceRightWithIndex
+})
+
+export const Filter = P.instance<P.Filter<[ArrayURI]>>({
+  filter: A.filter
+})
+
+export const FilterMap = P.instance<P.FilterMap<[ArrayURI]>>({
+  filterMap: A.filterMap
+})
+
+export const Partition = P.instance<P.Partition<[ArrayURI]>>({
+  partition: A.partition
+})
+
+export const PartitionMap = P.instance<P.PartitionMap<[ArrayURI]>>({
+  partitionMap: A.partitionMap
+})
+
+export const Filterable = P.instance<P.Filterable<[ArrayURI]>>({
+  ...Filter,
+  ...FilterMap,
+  ...Partition,
+  ...PartitionMap
 })
