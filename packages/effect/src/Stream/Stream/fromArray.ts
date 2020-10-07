@@ -13,12 +13,18 @@ import { Stream } from "./definitions"
 export const fromArray = <O>(c: Array.Array<O>): UIO<O> =>
   new Stream(
     pipe(
-      Ref.makeRef(false),
-      T.chain(
-        Ref.modify<T.IO<Option.Option<never>, Array.Array<O>>, boolean>((done) =>
-          done || c.length === 0 ? [Pull.end, true] : [T.succeed(c), true]
+      T.do,
+      T.bind("doneRef", () => Ref.makeRef(false)),
+      T.let("pull", ({ doneRef }) =>
+        pipe(
+          doneRef,
+          Ref.modify<T.IO<Option.Option<never>, Array.Array<O>>, boolean>((done) =>
+            done || c.length === 0 ? [Pull.end, true] : [T.succeed(c), true]
+          ),
+          T.flatten
         )
       ),
+      T.map(({ pull }) => pull),
       T.toManaged()
     )
   )

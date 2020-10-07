@@ -51,5 +51,6 @@ export {
   use_ as managedUse_,
   zipWithPar_ as managedZipWithPar_
 } from "../Managed/core"
+export { suspend as suspendManaged } from "../Managed/methods/suspend"
 export { Managed } from "../Managed/managed"
 export { make } from "../Promise/make"
