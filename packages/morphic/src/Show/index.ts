@@ -1,4 +1,4 @@
-import type { Equal } from "@effect-ts/core/Classic/Equal"
+import type { Show } from "@effect-ts/core/Classic/Show"
 
 import type { M, Summoner } from "../Batteries/summoner"
 import { summonFor } from "../Batteries/summoner"
@@ -8,22 +8,22 @@ import type {
   SummonerInterpURI,
   SummonerProgURI
 } from "../Batteries/usage/summoner"
-import type { EqURI } from "./hkt"
-import { modelEqInterpreter } from "./interpreter"
+import type { ShowURI } from "./hkt"
+import { modelShowInterpreter } from "./interpreter"
 
 export const deriveFor = <S extends Summoner<any>>(S: S) => (
-  _: { [k in EqURI & keyof SummonerEnv<S>]: SummonerEnv<S>[k] }
+  _: { [k in ShowURI & keyof SummonerEnv<S>]: SummonerEnv<S>[k] }
 ) => <L, A>(
   F: Materialized<SummonerEnv<S>, L, A, SummonerProgURI<S>, SummonerInterpURI<S>>
-) => F.derive(modelEqInterpreter<SummonerEnv<S>>())(_).eq
+) => F.derive(modelShowInterpreter<SummonerEnv<S>>())(_).show
 
-const equals = new Map<any, any>()
+const shows = new Map<any, any>()
 
-export const equal = <E, A>(F: M<{}, E, A>): Equal<A> => {
-  if (equals.has(F)) {
-    return equals.get(F)
+export const show = <E, A>(F: M<{}, E, A>): Show<A> => {
+  if (shows.has(F)) {
+    return shows.get(F)
   }
   const d = deriveFor(summonFor({}).make)({})(F)
-  equals.set(F, d)
+  shows.set(F, d)
   return d
 }

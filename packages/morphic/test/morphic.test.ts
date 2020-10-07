@@ -11,6 +11,7 @@ import { encoder } from "../src/Encoder"
 import { equal } from "../src/Equal"
 import { arbitrary } from "../src/FastCheck"
 import { guard } from "../src/Guard"
+import { show } from "../src/Show"
 
 const Person_ = make((F) =>
   F.interface({
@@ -69,5 +70,10 @@ describe("FastCheck", () => {
         name: { first: "John", last: "Doe" }
       })
     ).toEqual(false)
+  })
+  it("Shows Person", () => {
+    expect(show(Person).show({ name: { first: "Michael", last: "Arnaldi" } })).toEqual(
+      '{ name: { first: "Michael", last: "Arnaldi" } }'
+    )
   })
 })
