@@ -12,6 +12,7 @@ import { isUnknownRecord } from "../../Guard/interpreter/common"
 import { memo } from "../../Internal/Utils"
 import { decoderApplyConfig } from "../config"
 import { DecodeError, DecoderType, DecoderURI, fail } from "../hkt"
+import { Validation } from "./common"
 
 export const regexUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -260,7 +261,7 @@ export const decoderPrimitiveInterpreter = memo(
               {
                 decode: (u) =>
                   Array.isArray(u)
-                    ? A.foreachF(T.Applicative)(decoder.decode)(u)
+                    ? A.foreachF(Validation)(decoder.decode)(u)
                     : fail([
                         {
                           actual: u,
@@ -283,7 +284,7 @@ export const decoderPrimitiveInterpreter = memo(
                 decode: (u) =>
                   Array.isArray(u)
                     ? A.isNonEmpty(u)
-                      ? NA.foreachF(T.Applicative)(decoder.decode)(u)
+                      ? NA.foreachF(Validation)(decoder.decode)(u)
                       : fail([
                           {
                             actual: u,

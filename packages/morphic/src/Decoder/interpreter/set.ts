@@ -11,6 +11,7 @@ import type { AlgebraSet1, SetConfig } from "../../Algebra/set"
 import { memo } from "../../Internal/Utils"
 import { decoderApplyConfig } from "../config"
 import { DecoderType, DecoderURI, fail } from "../hkt"
+import { Validation } from "./common"
 
 export const decoderSetInterpreter = memo(
   <Env extends AnyEnv>(): AlgebraSet1<DecoderURI, Env> => ({
@@ -33,7 +34,7 @@ export const decoderSetInterpreter = memo(
                   Array.isArray(u)
                     ? pipe(
                         u,
-                        A.foreachF(T.Applicative)(decoder.decode),
+                        A.foreachF(Validation)(decoder.decode),
                         T.map(S.fromArray(_))
                       )
                     : fail([

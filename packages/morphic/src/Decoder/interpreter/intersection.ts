@@ -10,6 +10,7 @@ import type {
 import { memo } from "../../Internal/Utils"
 import { decoderApplyConfig } from "../config"
 import { DecoderType, DecoderURI } from "../hkt"
+import { Validation } from "./common"
 
 export const decoderIntersectionInterpreter = memo(
   <Env extends AnyEnv>(): AlgebraIntersection1<DecoderURI, Env> => ({
@@ -27,7 +28,7 @@ export const decoderIntersectionInterpreter = memo(
             decode: (u) =>
               pipe(
                 decoders,
-                A.foreachF(T.Applicative)((d) => d.decode(u)),
+                A.foreachF(Validation)((d) => d.decode(u)),
                 T.map(A.reduce(({} as unknown) as A, (b, a) => ({ ...b, ...a })))
               )
           },

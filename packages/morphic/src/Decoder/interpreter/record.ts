@@ -1,5 +1,4 @@
 import * as R from "@effect-ts/core/Classic/Record"
-import * as T from "@effect-ts/core/Classic/Sync"
 import { pipe } from "@effect-ts/core/Function"
 
 import type { AnyEnv } from "../../Algebra/config"
@@ -9,6 +8,7 @@ import { memo } from "../../Internal/Utils"
 import { decoderApplyConfig } from "../config"
 import type { DecodingError } from "../hkt"
 import { DecoderType, DecoderURI, fail } from "../hkt"
+import { Validation } from "./common"
 
 export const decoderRecordInterpreter = memo(
   <Env extends AnyEnv>(): AlgebraRecord1<DecoderURI, Env> => ({
@@ -22,7 +22,7 @@ export const decoderRecordInterpreter = memo(
               {
                 decode: (u) =>
                   isUnknownRecord(u)
-                    ? R.foreachF(T.Applicative)(decoder.decode)(u)
+                    ? R.foreachF(Validation)(decoder.decode)(u)
                     : fail([
                         <DecodingError>{
                           actual: u,
