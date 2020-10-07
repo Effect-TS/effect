@@ -18,12 +18,13 @@ export const deriveFor = <S extends Summoner<any>>(S: S) => (
 ) => F.derive(modelShowInterpreter<SummonerEnv<S>>())(_).show
 
 const shows = new Map<any, any>()
+const defDerive = deriveFor(summonFor({}).make)({})
 
 export const show = <E, A>(F: M<{}, E, A>): Show<A> => {
   if (shows.has(F)) {
     return shows.get(F)
   }
-  const d = deriveFor(summonFor({}).make)({})(F)
+  const d = defDerive(F)
   shows.set(F, d)
   return d
 }

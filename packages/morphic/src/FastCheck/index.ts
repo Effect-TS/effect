@@ -19,16 +19,17 @@ export const deriveFor = <S extends Summoner<any>>(S: S) => (
 ) => F.derive(modelFcInterpreter<SummonerEnv<S>>())(_).arb
 
 const arbitraries = new Map<any, any>()
+const defDerive = deriveFor(summonFor({}).make)({
+  [FastCheckURI]: {
+    module: fc
+  }
+})
 
 export const arbitrary = <E, A>(F: M<{}, E, A>): Arbitrary<A> => {
   if (arbitraries.has(F)) {
     return arbitraries.get(F)
   }
-  const d = deriveFor(summonFor({}).make)({
-    [FastCheckURI]: {
-      module: fc
-    }
-  })(F)
+  const d = defDerive(F)
   arbitraries.set(F, d)
   return d
 }

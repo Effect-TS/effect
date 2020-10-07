@@ -16,12 +16,13 @@ export const deriveFor = <S extends Summoner<any>>(S: S) => (
 ) => F.derive(modelDecoderInterpreter<SummonerEnv<S>>())(_).decoder
 
 const decoders = new Map<any, any>()
+const defDerive = deriveFor(summonFor({}).make)({})
 
 export const decoder = <E, A>(F: M<{}, E, A>): Decoder<A> => {
   if (decoders.has(F)) {
     return decoders.get(F)
   }
-  const d = deriveFor(summonFor({}).make)({})(F)
+  const d = defDerive(F)
   decoders.set(F, d)
   return d
 }

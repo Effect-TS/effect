@@ -16,12 +16,12 @@ export const deriveFor = <S extends Summoner<any>>(S: S) => (
 ) => F.derive(modelEncoderInterpreter<SummonerEnv<S>>())(_).encoder
 
 const encoders = new Map<any, any>()
-
+const defDerive = deriveFor(summonFor({}).make)({})
 export const encoder = <E, A>(F: M<{}, E, A>): Encoder<A, E> => {
   if (encoders.has(F)) {
     return encoders.get(F)
   }
-  const d = deriveFor(summonFor({}).make)({})(F)
+  const d = defDerive(F)
   encoders.set(F, d)
   return d
 }

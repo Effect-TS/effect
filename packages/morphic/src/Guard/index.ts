@@ -16,12 +16,13 @@ export const deriveFor = <S extends Summoner<any>>(S: S) => (
 ) => F.derive(modelGuardInterpreter<SummonerEnv<S>>())(_).guard
 
 const guards = new Map<any, any>()
+const defDerive = deriveFor(summonFor({}).make)({})
 
 export const guard = <E, A>(F: M<{}, E, A>): Guard<A> => {
   if (guards.has(F)) {
     return guards.get(F)
   }
-  const d = deriveFor(summonFor({}).make)({})(F)
+  const d = defDerive(F)
   guards.set(F, d)
   return d
 }

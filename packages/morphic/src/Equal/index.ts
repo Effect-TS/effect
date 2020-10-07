@@ -18,12 +18,13 @@ export const deriveFor = <S extends Summoner<any>>(S: S) => (
 ) => F.derive(modelEqInterpreter<SummonerEnv<S>>())(_).eq
 
 const equals = new Map<any, any>()
+const defDerive = deriveFor(summonFor({}).make)({})
 
 export const equal = <E, A>(F: M<{}, E, A>): Equal<A> => {
   if (equals.has(F)) {
     return equals.get(F)
   }
-  const d = deriveFor(summonFor({}).make)({})(F)
+  const d = defDerive(F)
   equals.set(F, d)
   return d
 }
