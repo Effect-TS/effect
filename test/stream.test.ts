@@ -8,6 +8,13 @@ import * as BufferedPull from "../src/Stream/BufferedPull"
 import * as Pull from "../src/Stream/Pull"
 
 describe("Stream", () => {
+  describe("Core", () => {
+    it("fromArray", async () => {
+      const a = S.fromArray([0, 1, 2])
+
+      expect(await T.runPromise(S.runCollect(a))).toEqual([0, 1, 2])
+    })
+  })
   describe("BufferedPull", () => {
     it("pullArray", async () => {
       const program = pipe(
