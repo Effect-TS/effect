@@ -108,16 +108,32 @@ export const Filter = P.instance<P.Filter<[ArrayURI]>>({
   filter: A.filter
 })
 
+export const FilterWithIndex = P.instance<P.FilterWithIndex<[ArrayURI]>>({
+  filterWithIndex: A.filterWithIndex
+})
+
 export const FilterMap = P.instance<P.FilterMap<[ArrayURI]>>({
   filterMap: A.filterMap
+})
+
+export const FilterMapWithIndex = P.instance<P.FilterMapWithIndex<[ArrayURI]>>({
+  filterMapWithIndex: A.filterMapWithIndex
 })
 
 export const Partition = P.instance<P.Partition<[ArrayURI]>>({
   partition: A.partition
 })
 
+export const PartitionWithIndex = P.instance<P.PartitionWithIndex<[ArrayURI]>>({
+  partitionWithIndex: A.partitionWithIndex
+})
+
 export const PartitionMap = P.instance<P.PartitionMap<[ArrayURI]>>({
   partitionMap: A.partitionMap
+})
+
+export const PartitionMapWithIndex = P.instance<P.PartitionMapWithIndex<[ArrayURI]>>({
+  partitionMapWithIndex: A.partitionMapWithIndex
 })
 
 export const Filterable = P.instance<P.Filterable<[ArrayURI]>>({
@@ -125,4 +141,11 @@ export const Filterable = P.instance<P.Filterable<[ArrayURI]>>({
   ...FilterMap,
   ...Partition,
   ...PartitionMap
+})
+
+export const FilterableWithIndex = P.instance<P.FilterableWithIndex<[ArrayURI]>>({
+  ...FilterWithIndex,
+  ...FilterMapWithIndex,
+  ...PartitionWithIndex,
+  ...PartitionMapWithIndex
 })
