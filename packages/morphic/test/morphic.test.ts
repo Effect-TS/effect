@@ -6,6 +6,7 @@ import * as fc from "fast-check"
 
 import type { AType, EType } from "../src"
 import { make, opaque, ShowURI } from "../src"
+import { asserts } from "../src/Asserts"
 import { decoder, report } from "../src/Decoder"
 import { encoder } from "../src/Encoder"
 import { equal } from "../src/Equal"
@@ -104,5 +105,12 @@ describe("FastCheck", () => {
     expect(show(Person).show({ name: { first: "Michael", last: "Arnaldi" } })).toEqual(
       "Michael Arnaldi"
     )
+  })
+  it("Assert Person", () => {
+    const person: unknown = { name: { first: "Michael", last: "Arnaldi" } }
+
+    asserts(Person, person)
+
+    expect(person.name.first).toEqual("Michael")
   })
 })

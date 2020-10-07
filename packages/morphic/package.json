@@ -36,6 +36,7 @@
     "modules": [
       "Adt",
       "Algebra",
+      "Asserts",
       "Batteries",
       "Decoder",
       "Encoder",
