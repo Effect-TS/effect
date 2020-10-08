@@ -1,5 +1,5 @@
 import type { InterfaceA, IntersectionA, TaggedUnionA } from "../../Internal/Config"
-import type { Decoder } from "../DecodingError"
+import type { Decoder } from "../common"
 import type { DecoderURI } from "../hkt"
 
 declare module "../../Algebra/intersection" {
