@@ -106,11 +106,17 @@ export type SyncURI = typeof SyncURI
 export const XPureURI = "XPure"
 export type XPureURI = typeof XPureURI
 
-export const XPureIOURI = "XPureIO"
-export type XPureIOURI = typeof XPureIOURI
+export const XPureCategoryURI = "XPureCategory"
+export type XPureCategoryURI = typeof XPureCategoryURI
+
+export const XPureStateURI = "XPureState"
+export type XPureStateURI = typeof XPureStateURI
 
 export const IdURI = "Id"
 export type IdURI = typeof IdURI
+
+export const EffectCategoryURI = "EffectCategory"
+export type EffectCategoryURI = typeof EffectCategoryURI
 
 declare module "../Prelude/HKT" {
   interface URItoKind<FC, TC, N extends string, K, Q, W, X, I, S, R, E, A> {
@@ -127,6 +133,7 @@ declare module "../Prelude/HKT" {
     [RecordURI]: Record<N, A>
     [ShowURI]: Show<A>
     [EffectURI]: Effect<R, E, A>
+    [EffectCategoryURI]: Effect<I, E, A>
     [XIOURI]: XIO<A>
     [XReaderURI]: XReader<R, A>
     [XStateURI]: XState<S, A>
@@ -139,12 +146,14 @@ declare module "../Prelude/HKT" {
     [LayerURI]: Layer<R, E, A>
     [SyncURI]: Sync<R, E, A>
     [XPureURI]: XPure<S, S, R, E, A>
-    [XPureIOURI]: XPure<I, A, R, E, A>
+    [XPureCategoryURI]: XPure<S, S, I, E, A>
+    [XPureStateURI]: XPure<I, A, R, E, A>
     [IdURI]: Id<A>
     [NonEmptyArrayURI]: NonEmptyArray<A>
   }
   interface CategoryTL {
-    [XPureURI]: XPureIOURI
+    [XPureURI]: XPureCategoryURI
+    [EffectURI]: EffectCategoryURI
   }
   interface URItoIndex<N extends string, K> {
     [ArrayURI]: number
