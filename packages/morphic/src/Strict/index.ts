@@ -9,16 +9,20 @@ import type {
 import type { Strict, StrictURI } from "./hkt"
 import { modelStrictInterpreter } from "./interpreter"
 
-export const deriveFor = <S extends Summoner<any>>(S: S) => (
-  _: { [k in StrictURI & keyof SummonerEnv<S>]: SummonerEnv<S>[k] }
-) => <L, A>(
-  F: Materialized<SummonerEnv<S>, L, A, SummonerProgURI<S>, SummonerInterpURI<S>>
-) => F.derive(modelStrictInterpreter<SummonerEnv<S>>())(_).strict
+export function deriveFor<S extends Summoner<any>>(S: S) {
+  return (
+    _: {
+      [k in StrictURI & keyof SummonerEnv<S>]: SummonerEnv<S>[k]
+    }
+  ) => <L, A>(
+    F: Materialized<SummonerEnv<S>, L, A, SummonerProgURI<S>, SummonerInterpURI<S>>
+  ) => F.derive(modelStrictInterpreter<SummonerEnv<S>>())(_).strict
+}
 
 const stricts = new Map<any, any>()
 const defDerive = deriveFor(summonFor({}).make)({})
 
-export const strict = <E, A>(F: M<{}, E, A>): Strict<A> => {
+export function strict<E, A>(F: M<{}, E, A>): Strict<A> {
   if (stricts.has(F)) {
     return stricts.get(F)
   }

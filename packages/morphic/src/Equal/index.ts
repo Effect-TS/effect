@@ -11,16 +11,20 @@ import type {
 import type { EqURI } from "./hkt"
 import { modelEqInterpreter } from "./interpreter"
 
-export const deriveFor = <S extends Summoner<any>>(S: S) => (
-  _: { [k in EqURI & keyof SummonerEnv<S>]: SummonerEnv<S>[k] }
-) => <L, A>(
-  F: Materialized<SummonerEnv<S>, L, A, SummonerProgURI<S>, SummonerInterpURI<S>>
-) => F.derive(modelEqInterpreter<SummonerEnv<S>>())(_).eq
+export function deriveFor<S extends Summoner<any>>(S: S) {
+  return (
+    _: {
+      [k in EqURI & keyof SummonerEnv<S>]: SummonerEnv<S>[k]
+    }
+  ) => <L, A>(
+    F: Materialized<SummonerEnv<S>, L, A, SummonerProgURI<S>, SummonerInterpURI<S>>
+  ) => F.derive(modelEqInterpreter<SummonerEnv<S>>())(_).eq
+}
 
 const equals = new Map<any, any>()
 const defDerive = deriveFor(summonFor({}).make)({})
 
-export const equal = <E, A>(F: M<{}, E, A>): Equal<A> => {
+export function equal<E, A>(F: M<{}, E, A>): Equal<A> {
   if (equals.has(F)) {
     return equals.get(F)
   }

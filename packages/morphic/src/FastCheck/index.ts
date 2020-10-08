@@ -12,11 +12,15 @@ import type {
 import { FastCheckURI } from "./hkt"
 import { modelFcInterpreter } from "./interpreter"
 
-export const deriveFor = <S extends Summoner<any>>(S: S) => (
-  _: { [k in FastCheckURI & keyof SummonerEnv<S>]: SummonerEnv<S>[k] }
-) => <L, A>(
-  F: Materialized<SummonerEnv<S>, L, A, SummonerProgURI<S>, SummonerInterpURI<S>>
-) => F.derive(modelFcInterpreter<SummonerEnv<S>>())(_).arb
+export function deriveFor<S extends Summoner<any>>(S: S) {
+  return (
+    _: {
+      [k in FastCheckURI & keyof SummonerEnv<S>]: SummonerEnv<S>[k]
+    }
+  ) => <L, A>(
+    F: Materialized<SummonerEnv<S>, L, A, SummonerProgURI<S>, SummonerInterpURI<S>>
+  ) => F.derive(modelFcInterpreter<SummonerEnv<S>>())(_).arb
+}
 
 const arbitraries = new Map<any, any>()
 const defDerive = deriveFor(summonFor({}).make)({
@@ -25,7 +29,7 @@ const defDerive = deriveFor(summonFor({}).make)({
   }
 })
 
-export const arbitrary = <E, A>(F: M<{}, E, A>): Arbitrary<A> => {
+export function arbitrary<E, A>(F: M<{}, E, A>): Arbitrary<A> {
   if (arbitraries.has(F)) {
     return arbitraries.get(F)
   }

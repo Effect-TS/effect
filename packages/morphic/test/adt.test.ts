@@ -1,10 +1,9 @@
 import * as E from "@effect-ts/core/Classic/Either"
 import * as Sync from "@effect-ts/core/Classic/Sync"
-import { pipe } from "@effect-ts/core/Function"
 
 import type { AType, EType } from "../src"
 import { make, makeADT, opaque } from "../src"
-import { decoder, report } from "../src/Decoder"
+import { decodeReport } from "../src/Decoder"
 
 const Foo_ = make((F) =>
   F.interface({
@@ -32,16 +31,14 @@ const FooBar = makeADT("_tag")({ Foo, Bar })
 
 describe("Adt", () => {
   it("decoder", () => {
-    expect(Sync.runEither(decoder(FooBar).decode({ _tag: "Foo", foo: "foo" }))).toEqual(
+    expect(Sync.runEither(decodeReport(FooBar)({ _tag: "Foo", foo: "foo" }))).toEqual(
       E.right<Foo>({ _tag: "Foo", foo: "foo" })
     )
-    expect(Sync.runEither(decoder(FooBar).decode({ _tag: "Bar", bar: "bar" }))).toEqual(
+    expect(Sync.runEither(decodeReport(FooBar)({ _tag: "Bar", bar: "bar" }))).toEqual(
       E.right<Bar>({ _tag: "Bar", bar: "bar" })
     )
-    expect(
-      Sync.runEither(
-        pipe(decoder(FooBar).decode({ _tag: "Baz", baz: "baz" }), Sync.mapError(report))
-      )
-    ).toEqual(E.left("Baz is not known in (Foo, Bar)"))
+    expect(Sync.runEither(decodeReport(FooBar)({ _tag: "Baz", baz: "baz" }))).toEqual(
+      E.left("Baz is not known in (Foo, Bar)")
+    )
   })
 })

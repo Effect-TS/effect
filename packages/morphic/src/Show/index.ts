@@ -11,16 +11,20 @@ import type {
 import type { ShowURI } from "./hkt"
 import { modelShowInterpreter } from "./interpreter"
 
-export const deriveFor = <S extends Summoner<any>>(S: S) => (
-  _: { [k in ShowURI & keyof SummonerEnv<S>]: SummonerEnv<S>[k] }
-) => <L, A>(
-  F: Materialized<SummonerEnv<S>, L, A, SummonerProgURI<S>, SummonerInterpURI<S>>
-) => F.derive(modelShowInterpreter<SummonerEnv<S>>())(_).show
+export function deriveFor<S extends Summoner<any>>(S: S) {
+  return (
+    _: {
+      [k in ShowURI & keyof SummonerEnv<S>]: SummonerEnv<S>[k]
+    }
+  ) => <L, A>(
+    F: Materialized<SummonerEnv<S>, L, A, SummonerProgURI<S>, SummonerInterpURI<S>>
+  ) => F.derive(modelShowInterpreter<SummonerEnv<S>>())(_).show
+}
 
 const shows = new Map<any, any>()
 const defDerive = deriveFor(summonFor({}).make)({})
 
-export const show = <E, A>(F: M<{}, E, A>): Show<A> => {
+export function show<E, A>(F: M<{}, E, A>): Show<A> {
   if (shows.has(F)) {
     return shows.get(F)
   }
