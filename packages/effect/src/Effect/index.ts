@@ -4,7 +4,7 @@ import * as E from "@effect-ts/system/Either"
 import * as O from "@effect-ts/system/Option"
 
 import { pipe } from "../Function"
-import type { EffectURI } from "../Modules"
+import type { EffectCategoryURI, EffectURI } from "../Modules"
 import * as P from "../Prelude"
 import * as DSL from "../Prelude/DSL"
 
@@ -96,7 +96,7 @@ export const getValidationApplicative = DSL.getValidationF<[EffectURI], V>({
   ...Applicative
 })
 
-export const Category = P.instance<P.Category<[EffectURI], V>>({
+export const Category = P.instance<P.Category<[EffectCategoryURI], V>>({
   id: T.environment,
   compose: T.compose
 })

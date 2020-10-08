@@ -1,5 +1,4 @@
 import type * as HKT from "../HKT"
-import type { AlternativeURI } from "../HKT/hkt"
 
 export interface Id<F extends HKT.URIS, C = HKT.Auto> extends HKT.Base<F, C> {
   readonly id: <
@@ -12,5 +11,5 @@ export interface Id<F extends HKT.URIS, C = HKT.Auto> extends HKT.Base<F, C> {
     S = HKT.Initial<C, "S">,
     R = HKT.Initial<C, "R">,
     E = HKT.Initial<C, "E">
-  >() => HKT.Kind<F, C, N, K, Q, W, X, A, S, R, E, A, AlternativeURI["Category"]>
+  >() => HKT.Kind<F, C, N, K, Q, W, X, A, S, R, E, A>
 }

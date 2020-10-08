@@ -21,7 +21,5 @@ export {
   HKT4,
   URItoIndex,
   URItoKind,
-  AlternativeURI,
-  CategoryTL,
   UHKTCategory
 } from "./hkt"
