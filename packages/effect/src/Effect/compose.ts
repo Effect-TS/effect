@@ -4,6 +4,6 @@ import type { Effect } from "./effect"
 /**
  * Uses the output of `that` to provide to `self`
  */
-export function compose<R2, E2, R>(that: Effect<R2, E2, R>) {
-  return <E, A>(self: Effect<R, E, A>) => chain_(that, (r) => provideAll_(self, r))
+export function compose<B, E2, C>(that: Effect<B, E2, C>) {
+  return <A, E>(self: Effect<A, E, B>) => chain_(self, (r) => provideAll_(that, r))
 }
