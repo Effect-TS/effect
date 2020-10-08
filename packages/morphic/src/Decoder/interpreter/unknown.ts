@@ -4,8 +4,9 @@ import type { AnyEnv } from "../../Algebra/config"
 import type { AlgebraUnknown1 } from "../../Algebra/unknown"
 import { isUnknownRecord } from "../../Guard/interpreter/common"
 import { memo } from "../../Internal/Utils"
+import { fail } from "../common"
 import { decoderApplyConfig } from "../config"
-import { DecoderType, DecoderURI, fail } from "../hkt"
+import { DecoderType, DecoderURI } from "../hkt"
 
 export const decoderUnknownInterpreter = memo(
   <Env extends AnyEnv>(): AlgebraUnknown1<DecoderURI, Env> => ({

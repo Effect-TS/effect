@@ -5,8 +5,9 @@ import { flow, pipe } from "@effect-ts/core/Function"
 import type { AnyEnv } from "../../Algebra/config"
 import type { AlgebraNewtype1 } from "../../Algebra/newtype"
 import { memo } from "../../Internal/Utils"
+import { fail } from "../common"
 import { decoderApplyConfig } from "../config"
-import { DecoderType, DecoderURI, fail } from "../hkt"
+import { DecoderType, DecoderURI } from "../hkt"
 
 export const decoderNewtypeInterpreter = memo(
   <Env extends AnyEnv>(): AlgebraNewtype1<DecoderURI, Env> => ({

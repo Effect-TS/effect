@@ -7,7 +7,7 @@ import * as fc from "fast-check"
 import type { AType, EType } from "../src"
 import { make, opaque, ShowURI } from "../src"
 import { asserts } from "../src/Asserts"
-import { decoder, report } from "../src/Decoder"
+import { decoder, decodeReport } from "../src/Decoder"
 import { encoder } from "../src/Encoder"
 import { equal } from "../src/Equal"
 import { arbitrary } from "../src/FastCheck"
@@ -85,7 +85,7 @@ describe("FastCheck", () => {
     ).toEqual(E.right({ name: { first: "Michael", last: "Arnaldi" } }))
   })
   it("Fail Decoding of Person", () => {
-    expect(pipe(decoder(Person).decode({}), T.mapError(report), T.runEither)).toEqual(
+    expect(pipe(decodeReport(Person)({}), T.runEither)).toEqual(
       E.left("not all the required fields are present")
     )
   })

@@ -8,8 +8,9 @@ import { pipe } from "@effect-ts/core/Function"
 import type { AnyEnv, ConfigsForType, Named } from "../../Algebra/config"
 import type { AlgebraSet1, SetConfig } from "../../Algebra/set"
 import { memo } from "../../Internal/Utils"
+import { fail } from "../common"
 import { decoderApplyConfig } from "../config"
-import { DecoderType, DecoderURI, fail } from "../hkt"
+import { DecoderType, DecoderURI } from "../hkt"
 import { foreachArray } from "./common"
 
 export const decoderSetInterpreter = memo(

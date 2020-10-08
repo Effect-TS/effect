@@ -5,8 +5,8 @@ import type { AlgebraRecord1 } from "../../Algebra/record"
 import { isUnknownRecord } from "../../Guard/interpreter/common"
 import { memo } from "../../Internal/Utils"
 import { decoderApplyConfig } from "../config"
-import type { DecodingError } from "../hkt"
-import { DecoderType, DecoderURI, fail } from "../hkt"
+import type { DecodingError, fail } from "../DecodingError"
+import { DecoderType, DecoderURI } from "../hkt"
 import { foreachRecord } from "./common"
 
 export const decoderRecordInterpreter = memo(

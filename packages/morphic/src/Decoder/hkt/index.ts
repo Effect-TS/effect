@@ -1,29 +1,8 @@
-import type * as A from "@effect-ts/core/Classic/Array"
-import * as T from "@effect-ts/core/Classic/Sync"
+import type { Decoder } from "../common"
 
 export const DecoderURI = "DecoderURI" as const
 
 export type DecoderURI = typeof DecoderURI
-
-export interface DecodingError {
-  readonly id?: string
-  readonly name?: string
-  readonly actual?: unknown
-  readonly message?: string
-}
-
-export type ValidationError = A.Array<DecodingError>
-
-export const fail = (e: ValidationError) => T.fail(new DecodeError(e))
-
-export class DecodeError {
-  readonly _tag = "DecodeError"
-  constructor(readonly errors: ValidationError) {}
-}
-
-export interface Decoder<A> {
-  decode: (u: unknown) => T.Sync<unknown, DecodeError, A>
-}
 
 declare module "../../Algebra/config" {
   export interface ConfigType<E, A> {

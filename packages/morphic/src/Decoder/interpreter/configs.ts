@@ -1,5 +1,6 @@
 import type { InterfaceA, IntersectionA, TaggedUnionA } from "../../Internal/Config"
-import type { Decoder, DecoderURI } from "../hkt"
+import type { Decoder } from "../DecodingError"
+import type { DecoderURI } from "../hkt"
 
 declare module "../../Algebra/intersection" {
   interface IntersectionConfig<L extends unknown[], A extends unknown[]> {

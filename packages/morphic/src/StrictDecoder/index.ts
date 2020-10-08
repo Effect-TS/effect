@@ -3,8 +3,9 @@ import { mapError } from "@effect-ts/core/Classic/Sync"
 import { flow } from "@effect-ts/core/Function"
 
 import type { M } from "../Batteries/summoner"
-import { decoder, report } from "../Decoder"
-import type { Decoder } from "../Decoder/hkt"
+import { decoder } from "../Decoder"
+import type { Decoder } from "../Decoder/common"
+import { report } from "../Decoder/common"
 import { strict } from "../Strict"
 
 function strictDecoder_<E, A>(F: M<{}, E, A>): Decoder<A> {
@@ -27,3 +28,5 @@ export function strictDecoder<E, A>(F: M<{}, E, A>): Decoder<A> {
 export function decodeStrictReport<E, A>(F: M<{}, E, A>) {
   return flow(decoder(F).decode, mapError(report))
 }
+
+export { report }

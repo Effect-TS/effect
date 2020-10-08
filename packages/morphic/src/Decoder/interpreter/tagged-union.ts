@@ -2,9 +2,10 @@ import type { AnyEnv } from "../../Algebra/config"
 import type { AlgebraTaggedUnion1 } from "../../Algebra/tagged-union"
 import { isUnknownRecord } from "../../Guard/interpreter/common"
 import { mapRecord, memo } from "../../Internal/Utils"
+import type { Decoder } from "../common"
+import { fail } from "../common"
 import { decoderApplyConfig } from "../config"
-import type { Decoder } from "../hkt"
-import { DecoderType, DecoderURI, fail } from "../hkt"
+import { DecoderType, DecoderURI } from "../hkt"
 
 export const decoderTaggedUnionInterpreter = memo(
   <Env extends AnyEnv>(): AlgebraTaggedUnion1<DecoderURI, Env> => ({

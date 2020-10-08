@@ -9,7 +9,9 @@ import type {
   SummonerInterpURI,
   SummonerProgURI
 } from "../Batteries/usage/summoner"
-import type { DecodeError, Decoder, DecoderURI } from "./hkt"
+import type { Decoder } from "./common"
+import { report } from "./common"
+import type { DecoderURI } from "./hkt"
 import { modelDecoderInterpreter } from "./interpreter"
 
 export function deriveFor<S extends Summoner<any>>(S: S) {
@@ -34,13 +36,8 @@ export function decoder<E, A>(F: M<{}, E, A>): Decoder<A> {
   return d
 }
 
-export function report(e: DecodeError) {
-  return e.errors
-    .map((e) => e.message)
-    .filter((e) => e && e.length > 0)
-    .join(",")
-}
-
 export function decodeReport<E, A>(F: M<{}, E, A>) {
   return flow(decoder(F).decode, mapError(report))
 }
+
+export { report }

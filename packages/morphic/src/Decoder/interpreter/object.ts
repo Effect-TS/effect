@@ -5,9 +5,10 @@ import type { AnyEnv } from "../../Algebra/config"
 import type { AlgebraObject1, PropsKind1 } from "../../Algebra/object"
 import { isUnknownRecord } from "../../Guard/interpreter/common"
 import { memo, projectFieldWithEnv } from "../../Internal/Utils"
+import type { Decoder } from "../common"
+import { fail } from "../common"
 import { decoderApplyConfig } from "../config"
-import type { Decoder } from "../hkt"
-import { DecoderType, DecoderURI, fail } from "../hkt"
+import { DecoderType, DecoderURI } from "../hkt"
 import { foreachRecordWithIndex, tupled } from "./common"
 
 export const decoderObjectInterpreter = memo(

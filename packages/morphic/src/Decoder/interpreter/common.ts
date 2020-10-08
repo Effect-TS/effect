@@ -5,7 +5,7 @@ import * as R from "@effect-ts/core/Classic/Record"
 import * as T from "@effect-ts/core/Classic/Sync"
 import * as DSL from "@effect-ts/core/Prelude/DSL"
 
-import { DecodeError } from "../hkt"
+import { DecodeError } from "../common"
 
 export const AssociativeDecodeError = makeAssociative<DecodeError>((y) => (x) =>
   new DecodeError([...x.errors, ...y.errors])

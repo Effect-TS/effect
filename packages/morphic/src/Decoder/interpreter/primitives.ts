@@ -9,8 +9,9 @@ import type { AnyEnv } from "../../Algebra/config"
 import type { AlgebraPrimitive1, UUID } from "../../Algebra/primitives"
 import { isUnknownRecord } from "../../Guard/interpreter/common"
 import { memo } from "../../Internal/Utils"
+import { DecodeError, fail } from "../common"
 import { decoderApplyConfig } from "../config"
-import { DecodeError, DecoderType, DecoderURI, fail } from "../hkt"
+import { DecoderType, DecoderURI } from "../hkt"
 import { foreachArray, foreachNonEmptyArray } from "./common"
 
 export const regexUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
