@@ -53,9 +53,7 @@ export function create<T>(has: T.Tag<T>) {
 export function fromEffect<T>(has: T.Tag<T>) {
   return <R, E>(resource: T.Effect<R, E, T>) =>
     new Layer<R, E, T.Has<T>>(
-      T.suspendManaged(() =>
-        T.managedChain_(T.fromEffect(resource), (a) => environmentFor(has, a))
-      )
+      T.managedChain_(T.fromEffect(resource), (a) => environmentFor(has, a))
     )
 }
 
