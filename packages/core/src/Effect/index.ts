@@ -95,3 +95,8 @@ export const getValidationApplicative = DSL.getValidationF<[EffectURI], V>({
   ...Fail,
   ...Applicative
 })
+
+export const Category = P.instance<P.Category<[EffectURI], V>>({
+  id: T.environment,
+  compose: T.compose
+})

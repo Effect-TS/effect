@@ -1,7 +1,7 @@
 import { constant, identity } from "@effect-ts/system/Function"
 import * as X from "@effect-ts/system/XPure"
 
-import type { XPureURI } from "../Modules"
+import type { XPureStateURI, XPureURI } from "../Modules"
 import * as P from "../Prelude"
 import { structF } from "../Prelude/DSL"
 
@@ -51,9 +51,14 @@ export const Monad = P.instance<P.Monad<[XPureURI], V>>({
   ...Covariant
 })
 
-export const Category = P.instance<P.Category<[XPureURI], V>>({
+export const StateCategory = P.instance<P.Category<[XPureStateURI], V>>({
   id: () => X.modify((a) => [a, a]),
   compose: (bc) => X.chain((_) => bc)
+})
+
+export const Category = P.instance<P.Category<[XPureURI], V>>({
+  id: () => X.access(identity),
+  compose: (bc) => (ab) => X.chain_(ab, (b) => X.provideAll_(bc, b))
 })
 
 export const struct = structF(Applicative)
