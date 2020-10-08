@@ -34,12 +34,6 @@ export type UHKT4<F> = [URI<"HKT4", CustomType<"F", F>>]
 
 export type UHKTCategory<F> = [URI<"HKTCategory", CustomType<"F", F>>]
 
-export interface CategoryTL {}
-
-export interface AlternativeURI {
-  Category: CategoryTL
-}
-
 export interface URItoKind<
   // encodes metadata carried at the URI level (like additional params)
   FC,
