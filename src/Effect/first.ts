@@ -1,9 +1,9 @@
-import { chain_ } from "./core"
-import type { Effect } from "./effect"
+import { access } from "./core"
 
 /**
- * Run that before self
+ * Returns an effectful function that extracts out the first element of a
+ * tuple.
  */
-export function first<R1, E1>(that: Effect<R1, E1, any>) {
-  return <R, E, A>(self: Effect<R, E, A>) => chain_(that, () => self)
+export function first<A>() {
+  return access((_: readonly [A, any]) => _[0])
 }
