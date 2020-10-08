@@ -1,3 +1,4 @@
+import type { Cb, Effect } from "../src/Effect"
 import * as T from "../src/Effect"
 import * as E from "../src/Either"
 import * as Exit from "../src/Exit"
@@ -208,5 +209,20 @@ describe("Effect", () => {
       T.runPromise
     )
     expect(result).toEqual(O.some("fiber-A"))
+  })
+  it("effectAsyncM", async () => {
+    const result = await pipe(
+      T.effectAsyncM((cb: Cb<Effect<{ bar: string }, never, string>>) =>
+        T.access((r: { foo: string }) => {
+          setTimeout(() => {
+            cb(T.access((b) => `${r.foo} - ${b.bar}`))
+          }, 200)
+        })
+      ),
+      T.provideAll({ bar: "bar", foo: "foo" }),
+      T.runPromise
+    )
+
+    expect(result).toEqual("foo - bar")
   })
 })
