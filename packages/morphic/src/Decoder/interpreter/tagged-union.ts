@@ -26,7 +26,9 @@ export const decoderTaggedUnionInterpreter = memo(
                     return fail([
                       {
                         actual: u,
-                        message: `${u[tag]} is not known (${Object.keys(decoders)})`
+                        message: `${u[tag]} is not known in (${Object.keys(
+                          decoders
+                        ).join(", ")})`
                       }
                     ])
                   }
