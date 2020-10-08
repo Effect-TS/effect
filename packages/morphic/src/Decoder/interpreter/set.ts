@@ -5,7 +5,7 @@ import * as S from "@effect-ts/core/Classic/Set"
 import * as T from "@effect-ts/core/Classic/Sync"
 import { pipe } from "@effect-ts/core/Function"
 
-import type { AnyEnv, ConfigsForType } from "../../Algebra/config"
+import type { AnyEnv, ConfigsForType, Named } from "../../Algebra/config"
 import type { AlgebraSet1, SetConfig } from "../../Algebra/set"
 import { memo } from "../../Internal/Utils"
 import { decoderApplyConfig } from "../config"
@@ -18,22 +18,21 @@ export const decoderSetInterpreter = memo(
     set: <A>(
       a: (env: Env) => DecoderType<A>,
       _: Ord<A>,
-      config?: {
-        name?: string
-        conf?: ConfigsForType<Env, Array<unknown>, Set<A>, SetConfig<unknown, A>>
-      }
+      cfg?: Named<ConfigsForType<Env, Array<unknown>, Set<A>, SetConfig<unknown, A>>>
     ) => (env) =>
       pipe(
         a(env).decoder,
         (decoder) =>
           new DecoderType(
-            decoderApplyConfig(config?.conf)(
+            decoderApplyConfig(cfg?.conf)(
               {
                 decode: (u) =>
                   Array.isArray(u)
                     ? pipe(u, foreachArray(decoder.decode), T.map(S.fromArray(_)))
                     : fail([
                         {
+                          id: cfg?.id,
+                          name: cfg?.name,
                           actual: u,
                           message: `${typeof u} is not a Set`
                         }

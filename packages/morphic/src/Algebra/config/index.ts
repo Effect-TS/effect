@@ -40,3 +40,9 @@ export const getApplyConfig: <Uri extends URIS | URIS2>(
       r[uri],
       k
     )) as any
+
+export type Named<A> = {
+  name?: string
+  id?: string
+  conf?: A
+}

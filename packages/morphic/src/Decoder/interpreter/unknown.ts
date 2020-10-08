@@ -19,6 +19,8 @@ export const decoderUnknownInterpreter = memo(
                 ? T.succeed(u)
                 : fail([
                     {
+                      id: cfg?.id,
+                      name: cfg?.name,
                       actual: u,
                       message: `${typeof u} is not a record`
                     }

@@ -1,4 +1,4 @@
-import type { AnyEnv, ConfigsForType } from "../config"
+import type { AnyEnv, ConfigsForType, Named } from "../config"
 import type { OfType, OfType2 } from "../utils/core"
 import type { HKT2, Kind, Kind2, URIS, URIS2 } from "../utils/hkt"
 
@@ -19,11 +19,6 @@ declare module "../utils/hkt" {
 }
 
 export interface IntersectionConfig<L extends unknown[], A extends unknown[]> {}
-
-export type Named<A> = {
-  name?: string
-  conf?: A
-}
 
 export interface AlgebraIntersection<F, Env> {
   _F: F

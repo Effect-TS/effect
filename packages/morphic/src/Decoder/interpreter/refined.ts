@@ -10,12 +10,12 @@ import { DecoderType, DecoderURI, fail } from "../hkt"
 export const decoderRefinedInterpreter = memo(
   <Env extends AnyEnv>(): AlgebraRefined1<DecoderURI, Env> => ({
     _F: DecoderURI,
-    refined: (getDecoder, ref, config) => (env) =>
+    refined: (getDecoder, ref, cfg) => (env) =>
       pipe(
         getDecoder(env).decoder,
         (decoder) =>
           new DecoderType(
-            decoderApplyConfig(config?.conf)(
+            decoderApplyConfig(cfg?.conf)(
               {
                 decode: (u) =>
                   T.chain_(decoder.decode(u), (a) =>
@@ -23,6 +23,8 @@ export const decoderRefinedInterpreter = memo(
                       ? T.succeed(a)
                       : fail([
                           {
+                            id: cfg?.id,
+                            name: cfg?.name,
                             actual: u,
                             message: `${typeof u} cannot be refined`
                           }

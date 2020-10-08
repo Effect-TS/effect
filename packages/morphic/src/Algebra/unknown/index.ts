@@ -1,6 +1,6 @@
 import type { Record } from "@effect-ts/core/Classic/Record"
 
-import type { AnyEnv, ConfigsForType } from "../config"
+import type { AnyEnv, ConfigsForType, Named } from "../config"
 import type { HKT2, Kind, Kind2, URIS, URIS2 } from "../utils/hkt"
 
 export type Keys = Record<string, null>
@@ -26,25 +26,25 @@ export interface UnknownConfig {}
 export interface Unknown<F, Env> {
   _F: F
   unknown: {
-    (config?: {
-      name?: string
-      conf?: ConfigsForType<Env, unknown, unknown, UnknownConfig>
-    }): HKT2<F, Env, unknown, unknown>
+    (config?: Named<ConfigsForType<Env, unknown, unknown, UnknownConfig>>): HKT2<
+      F,
+      Env,
+      unknown,
+      unknown
+    >
   }
 }
 
 export interface AlgebraUnknown1<F extends URIS, Env extends AnyEnv> {
   _F: F
-  unknown(config?: {
-    name?: string
-    conf?: ConfigsForType<Env, unknown, unknown, UnknownConfig>
-  }): Kind<F, Env, unknown>
+  unknown(
+    config?: Named<ConfigsForType<Env, unknown, unknown, UnknownConfig>>
+  ): Kind<F, Env, unknown>
 }
 
 export interface AlgebraUnknown2<F extends URIS2, Env extends AnyEnv> {
   _F: F
-  unknown(config?: {
-    name?: string
-    conf?: ConfigsForType<Env, unknown, unknown, UnknownConfig>
-  }): Kind2<F, Env, unknown, unknown>
+  unknown(
+    config?: Named<ConfigsForType<Env, unknown, unknown, UnknownConfig>>
+  ): Kind2<F, Env, unknown, unknown>
 }

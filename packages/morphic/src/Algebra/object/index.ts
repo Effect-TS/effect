@@ -1,4 +1,4 @@
-import type { AnyEnv, ConfigsForType } from "../config"
+import type { AnyEnv, ConfigsForType, Named } from "../config"
 import type { HKT2, Kind, Kind2, URIS, URIS2 } from "../utils/hkt"
 
 type AnyMProps<F> = Record<string, HKT2<F, never, any, any>>
@@ -28,15 +28,14 @@ export interface AlgebraObject<F, Env> {
   interface: {
     <Props extends AnyMProps<F>>(
       props: Props,
-      config?: {
-        name?: string
-        conf?: ConfigsForType<
+      config?: Named<
+        ConfigsForType<
           Env,
           Readonly<{ [k in keyof Props]: Props[k]["_E"] }>,
           Readonly<{ [k in keyof Props]: Props[k]["_A"] }>,
           InterfaceConfig<Props>
         >
-      }
+      >
     ): HKT2<
       F,
       Env,
@@ -47,15 +46,14 @@ export interface AlgebraObject<F, Env> {
   partial: {
     <Props extends AnyMProps<F>>(
       props: Props,
-      config?: {
-        name?: string
-        conf?: ConfigsForType<
+      config?: Named<
+        ConfigsForType<
           Env,
           Partial<Readonly<{ [k in keyof Props]: Props[k]["_E"] }>>,
           Partial<Readonly<{ [k in keyof Props]: Props[k]["_A"] }>>,
           PartialConfig<Props>
         >
-      }
+      >
     ): HKT2<
       F,
       Env,
@@ -67,11 +65,8 @@ export interface AlgebraObject<F, Env> {
     <Props extends AnyMProps<F>, PropsPartial extends AnyMProps<F>>(
       props: Props,
       partial: PropsPartial,
-      config?: {
-        name?: string
-        namePartial?: string
-        nameRequired?: string
-        conf?: ConfigsForType<
+      config?: Named<
+        ConfigsForType<
           Env,
           Readonly<{ [k in keyof Props]: Props[k]["_E"] }> &
             Partial<Readonly<{ [k in keyof PropsPartial]: PropsPartial[k]["_E"] }>>,
@@ -79,6 +74,9 @@ export interface AlgebraObject<F, Env> {
             Partial<Readonly<{ [k in keyof PropsPartial]: PropsPartial[k]["_A"] }>>,
           BothConfig<Props, PropsPartial>
         >
+      > & {
+        namePartial?: string
+        nameRequired?: string
       }
     ): HKT2<
       F,
@@ -99,41 +97,39 @@ export interface AlgebraObject1<F extends URIS, Env extends AnyEnv> {
   _F: F
   interface: <Props>(
     props: PropsKind1<F, Props, Env>,
-    config?: {
-      name?: string
-      conf?: ConfigsForType<
+    config?: Named<
+      ConfigsForType<
         Env,
         unknown,
         Readonly<Props>,
         InterfaceConfig<PropsKind1<F, Props, Env>>
       >
-    }
+    >
   ) => Kind<F, Env, Readonly<Props>>
   partial: <Props>(
     props: PropsKind1<F, Props, Env>,
-    config?: {
-      name?: string
-      conf?: ConfigsForType<
+    config?: Named<
+      ConfigsForType<
         Env,
         unknown,
         Partial<Readonly<Props>>,
         PartialConfig<PropsKind1<F, Props, Env>>
       >
-    }
+    >
   ) => Kind<F, Env, Partial<Readonly<Props>>>
   both: <Props, PropsPartial>(
     props: PropsKind1<F, Props, Env>,
     partial: PropsKind1<F, PropsPartial, Env>,
-    config?: {
-      name?: string
-      namePartial?: string
-      nameRequired?: string
-      conf?: ConfigsForType<
+    config?: Named<
+      ConfigsForType<
         Env,
         unknown,
         Readonly<Props> & Partial<Readonly<PropsPartial>>,
         BothConfig<PropsKind1<F, Props, Env>, PropsKind1<F, PropsPartial, Env>>
       >
+    > & {
+      namePartial?: string
+      nameRequired?: string
     }
   ) => Kind<F, Env, Partial<Readonly<Props>> & Partial<Readonly<PropsPartial>>>
 }
@@ -146,36 +142,31 @@ export interface AlgebraObject2<F extends URIS2, Env extends AnyEnv> {
   _F: F
   interface: <PropsE, PropsA>(
     props: PropsKind2<F, PropsE, PropsA, Env>,
-    config?: {
-      name?: string
-      conf?: ConfigsForType<
+    config?: Named<
+      ConfigsForType<
         Env,
         Readonly<PropsE>,
         Readonly<PropsA>,
         InterfaceConfig<PropsKind2<F, PropsE, PropsA, Env>>
       >
-    }
+    >
   ) => Kind2<F, Env, Readonly<PropsE>, Readonly<PropsA>>
   partial: <PropsE, PropsA>(
     props: PropsKind2<F, PropsE, PropsA, Env>,
-    config?: {
-      name?: string
-      conf?: ConfigsForType<
+    config?: Named<
+      ConfigsForType<
         Env,
         Partial<Readonly<PropsE>>,
         Partial<Readonly<PropsA>>,
         PartialConfig<PropsKind2<F, PropsE, PropsA, Env>>
       >
-    }
+    >
   ) => Kind2<F, Env, Partial<Readonly<PropsE>>, Partial<Readonly<PropsA>>>
   both: <PropsE, PropsA, PropsPartialE, PropsPartialA>(
     props: PropsKind2<F, PropsE, PropsA, Env>,
     partial: PropsKind2<F, PropsPartialE, PropsPartialA, Env>,
-    config?: {
-      name?: string
-      namePartial?: string
-      nameRequired?: string
-      conf?: ConfigsForType<
+    config?: Named<
+      ConfigsForType<
         Env,
         Readonly<PropsE> & Partial<Readonly<PropsPartialE>>,
         Readonly<PropsA> & Partial<Readonly<PropsPartialA>>,
@@ -184,6 +175,9 @@ export interface AlgebraObject2<F extends URIS2, Env extends AnyEnv> {
           PropsKind2<F, PropsPartialE, PropsPartialA, Env>
         >
       >
+    > & {
+      namePartial?: string
+      nameRequired?: string
     }
   ) => Kind2<
     F,

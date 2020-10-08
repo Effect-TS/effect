@@ -9,11 +9,11 @@ import { DecoderType, DecoderURI, fail } from "../hkt"
 export const decoderTaggedUnionInterpreter = memo(
   <Env extends AnyEnv>(): AlgebraTaggedUnion1<DecoderURI, Env> => ({
     _F: DecoderURI,
-    taggedUnion: (tag, types, config) => (env) => {
+    taggedUnion: (tag, types, cfg) => (env) => {
       const decoders = mapRecord(types, (a) => a(env).decoder)
 
       return new DecoderType(
-        decoderApplyConfig(config?.conf)(
+        decoderApplyConfig(cfg?.conf)(
           {
             decode: (u) => {
               if (isUnknownRecord(u)) {
@@ -25,6 +25,8 @@ export const decoderTaggedUnionInterpreter = memo(
                   } else {
                     return fail([
                       {
+                        id: cfg?.id,
+                        name: cfg?.name,
                         actual: u,
                         message: `${u[tag]} is not known in (${Object.keys(
                           decoders
@@ -35,6 +37,8 @@ export const decoderTaggedUnionInterpreter = memo(
                 }
                 return fail([
                   {
+                    id: cfg?.id,
+                    name: cfg?.name,
                     actual: u,
                     message: `${tag} field not found`
                   }
@@ -42,6 +46,8 @@ export const decoderTaggedUnionInterpreter = memo(
               }
               return fail([
                 {
+                  id: cfg?.id,
+                  name: cfg?.name,
                   actual: u,
                   message: `${typeof u} is not a record`
                 }

@@ -11,12 +11,12 @@ import { DecoderType, DecoderURI, fail } from "../hkt"
 export const decoderNewtypeInterpreter = memo(
   <Env extends AnyEnv>(): AlgebraNewtype1<DecoderURI, Env> => ({
     _F: DecoderURI,
-    newtypeIso: (iso, getDecoder, config) => (env) =>
+    newtypeIso: (iso, getDecoder, cfg) => (env) =>
       pipe(
         getDecoder(env).decoder,
         (decoder) =>
           new DecoderType(
-            decoderApplyConfig(config?.conf)(
+            decoderApplyConfig(cfg?.conf)(
               {
                 decode: flow(decoder.decode, T.map(iso.get))
               },
@@ -25,12 +25,12 @@ export const decoderNewtypeInterpreter = memo(
             )
           )
       ),
-    newtypePrism: (prism, getDecoder, config) => (env) =>
+    newtypePrism: (prism, getDecoder, cfg) => (env) =>
       pipe(
         getDecoder(env).decoder,
         (decoder) =>
           new DecoderType(
-            decoderApplyConfig(config?.conf)(
+            decoderApplyConfig(cfg?.conf)(
               {
                 decode: (u) =>
                   pipe(
@@ -42,6 +42,8 @@ export const decoderNewtypeInterpreter = memo(
                         () =>
                           fail([
                             {
+                              id: cfg?.id,
+                              name: cfg?.name,
                               actual: u,
                               message: `newtype doesn't satisfy prism conditions`
                             }

@@ -13,36 +13,44 @@ import { foreachRecordWithIndex, tupled } from "./common"
 export const decoderObjectInterpreter = memo(
   <Env extends AnyEnv>(): AlgebraObject1<DecoderURI, Env> => ({
     _F: DecoderURI,
-    interface: (props, config) => (env) =>
+    interface: (props, cfg) => (env) =>
       pipe(projectFieldWithEnv(props, env)("decoder"), (decoder) => {
         const keys = Object.keys(decoder)
         return new DecoderType(
-          decoderApplyConfig(config?.conf)(interfaceDecoder(keys, decoder), env, {
-            decoder: decoder as any
-          })
+          decoderApplyConfig(cfg?.conf)(
+            interfaceDecoder(keys, decoder, cfg?.id, cfg?.name),
+            env,
+            {
+              decoder: decoder as any
+            }
+          )
         )
       }),
-    partial: (props, config) => (env) =>
+    partial: (props, cfg) => (env) =>
       pipe(projectFieldWithEnv(props, env)("decoder"), (decoder) => {
         return new DecoderType(
-          decoderApplyConfig(config?.conf)(partialDecoder(decoder), env, {
-            decoder: decoder as any
-          })
+          decoderApplyConfig(cfg?.conf)(
+            partialDecoder(decoder, cfg?.id, cfg?.name),
+            env,
+            {
+              decoder: decoder as any
+            }
+          )
         )
       }),
-    both: (props, partial, config) => (env) =>
+    both: (props, partial, cfg) => (env) =>
       pipe(projectFieldWithEnv(props, env)("decoder"), (decoder) =>
         pipe(projectFieldWithEnv(partial, env)("decoder"), (decoderPartial) => {
           const keys = Object.keys(decoder)
 
           return new DecoderType(
-            decoderApplyConfig(config?.conf)(
+            decoderApplyConfig(cfg?.conf)(
               {
                 decode: (u) =>
                   T.map_(
                     tupled(
-                      interfaceDecoder(keys, decoder).decode(u),
-                      partialDecoder(decoderPartial).decode(u)
+                      interfaceDecoder(keys, decoder, cfg?.id, cfg?.name).decode(u),
+                      partialDecoder(decoderPartial, cfg?.id, cfg?.name).decode(u)
                     ),
                     ([r, o]) => ({ ...r, ...o })
                   )
@@ -64,7 +72,9 @@ function partialDecoder<Props, Env extends AnyEnv>(
     [q in keyof PropsKind1<DecoderURI, Props, Env>]: ReturnType<
       PropsKind1<DecoderURI, Props, Env>[q]
     >["decoder"]
-  }
+  },
+  id?: string,
+  name?: string
 ): Decoder<Partial<Readonly<Props>>> {
   return {
     decode: (u) => {
@@ -78,6 +88,8 @@ function partialDecoder<Props, Env extends AnyEnv>(
       }
       return fail([
         {
+          id,
+          name,
           actual: u,
           message: `${typeof u} is not a record`
         }
@@ -92,7 +104,9 @@ function interfaceDecoder<Props, Env extends AnyEnv>(
     [q in keyof PropsKind1<DecoderURI, Props, Env>]: ReturnType<
       PropsKind1<DecoderURI, Props, Env>[q]
     >["decoder"]
-  }
+  },
+  id?: string,
+  name?: string
 ): Decoder<Readonly<Props>> {
   return {
     decode: (u) => {
@@ -108,17 +122,14 @@ function interfaceDecoder<Props, Env extends AnyEnv>(
         }
         return fail([
           {
+            id,
+            name,
             actual: u,
             message: `not all the required fields are present`
           }
         ])
       }
-      return fail([
-        {
-          actual: u,
-          message: `${typeof u} is not a record`
-        }
-      ])
+      return fail([{ id, name, actual: u, message: `${typeof u} is not a record` }])
     }
   }
 }

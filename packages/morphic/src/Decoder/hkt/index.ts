@@ -6,6 +6,8 @@ export const DecoderURI = "DecoderURI" as const
 export type DecoderURI = typeof DecoderURI
 
 export interface DecodingError {
+  readonly id?: string
+  readonly name?: string
   readonly actual?: unknown
   readonly message?: string
 }

@@ -22,11 +22,9 @@ export type TupleE<T extends NonEmptyArray<Effect<any, any, any>>> = {
   [K in keyof T]: [T[K]] extends [Effect<any, infer E, any>] ? E : never
 }[number]
 
-export type TupleA<T extends NonEmptyArray<Effect<any, any, any>>> = Readonly<
-  {
-    [K in keyof T]: [T[K]] extends [Effect<any, any, infer A>] ? A : never
-  }
->
+export type TupleA<T extends NonEmptyArray<Effect<any, any, any>>> = {
+  [K in keyof T]: [T[K]] extends [Effect<any, any, infer A>] ? A : never
+}
 
 /**
  * Like `foreach` + `identity` with a tuple type
