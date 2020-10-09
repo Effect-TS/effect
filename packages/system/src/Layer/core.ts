@@ -362,6 +362,30 @@ export function fromConstructor<S>(
 
 /**
  * Creates a layer from a constructor (...deps) => T
+ */
+export function fromConstructorM<S>(
+  tag: T.Tag<S>
+): <Services extends any[], R0, E0>(
+  constructor: (...services: Services) => Effect<R0, E0, S>
+) => (
+  ...tags: { [k in keyof Services]: T.Tag<Services[k]> }
+) => Layer<
+  UnionToIntersection<
+    { [k in keyof Services]: Has<Services[k]> }[keyof Services & number]
+  > &
+    R0,
+  E0,
+  Has<S>
+> {
+  return (f) => (...tags) =>
+    fromEffect(tag)(
+      T.accessServicesTM(...tags)(((...services: any[]) =>
+        f(...(services as any))) as any) as any
+    )
+}
+
+/**
+ * Creates a layer from a constructor (...deps) => T
  * with an open + release operation
  */
 export function bracketConstructor<S>(
@@ -385,6 +409,38 @@ export function bracketConstructor<S>(
   return (f) => (...tags) => (open, release) =>
     prepare(tag)(
       T.accessServicesT(...tags)(((...services: any[]) =>
+        f(...(services as any))) as any) as any
+    )
+      .open(open as any)
+      .release(release as any) as any
+}
+
+/**
+ * Creates a layer from a constructor (...deps) => T
+ * with an open + release operation
+ */
+export function bracketConstructorM<S>(
+  tag: T.Tag<S>
+): <Services extends any[], S2 extends S, R0, E0>(
+  constructor: (...services: Services) => Effect<R0, E0, S2>
+) => (
+  ...tags: { [k in keyof Services]: T.Tag<Services[k]> }
+) => <R, R2, E>(
+  open: (s: S2) => Effect<R, E, unknown>,
+  release: (s: S2) => Effect<R2, never, unknown>
+) => Layer<
+  UnionToIntersection<
+    { [k in keyof Services]: Has<Services[k]> }[keyof Services & number]
+  > &
+    R &
+    R2 &
+    R0,
+  E | E0,
+  Has<S>
+> {
+  return (f) => (...tags) => (open, release) =>
+    prepare(tag)(
+      T.accessServicesTM(...tags)(((...services: any[]) =>
         f(...(services as any))) as any) as any
     )
       .open(open as any)
