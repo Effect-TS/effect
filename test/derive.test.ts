@@ -27,19 +27,24 @@ export class CalculatorService {
 // module tag
 export const Calculator = has(CalculatorService)
 
-// access functions
-export const { add, base, factor, factorFun, gen, mul } = T.derive(Calculator)(
+// lifted functions
+export const { add, base, factor, mul } = T.deriveLifted(Calculator)(
   ["add", "mul"],
   ["base"],
-  ["factor"],
-  ["gen", "factorFun"]
+  ["factor"]
 )
+
+// accessM functions
+export const { gen } = T.deriveAccessM(Calculator)(["gen"])
+
+// access functions
+export const { factorFun } = T.deriveAccess(Calculator)(["factorFun", "gen"])
 
 // program
 const program = pipe(
   T.zip_(
     gen((f) => f(1)),
-    factorFun(T.effectTotal)
+    factorFun((f) => f())
   ),
   T.chain((_) => T.tuple(base, factor, T.succeed(_))),
   T.chain(([b, f, [x, y]]) => T.chain_(add(b, f), (k) => T.succeed(k + x + y))),
