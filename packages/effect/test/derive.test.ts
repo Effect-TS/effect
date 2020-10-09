@@ -16,6 +16,10 @@ export class CalculatorService {
   mul = (x: number, y: number) => {
     return T.effectTotal(() => x * y)
   }
+
+  gen<A>(a: A) {
+    return T.effectTotal(() => a)
+  }
 }
 
 // module tag
@@ -53,7 +57,8 @@ describe("Derive Access", () => {
           add: () => T.succeed(0),
           mul: () => T.succeed(0),
           base: T.succeed(0),
-          factor: 0
+          factor: 0,
+          gen: T.succeed
         }),
         T.runPromise
       )
