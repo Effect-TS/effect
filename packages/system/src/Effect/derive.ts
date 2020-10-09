@@ -5,7 +5,13 @@ import { accessService, accessServiceM } from "./has"
 export type ShapeFn<T> = Pick<
   T,
   {
-    [k in keyof T]: T[k] extends (...args: any[]) => Effect<any, any, any> ? k : never
+    [k in keyof T]: T[k] extends (
+      ...args: infer ARGS
+    ) => Effect<infer R, infer E, infer A>
+      ? ((...args: ARGS) => Effect<R, E, A>) extends T[k]
+        ? k
+        : never
+      : never
   }[keyof T]
 >
 
