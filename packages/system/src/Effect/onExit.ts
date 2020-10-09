@@ -41,3 +41,19 @@ export function onError<E, A, R2, E2>(
       }
     })
 }
+
+export function onError_<R, E, A, R2, E2>(
+  self: Effect<R, E, A>,
+  cleanup: (exit: Cause<E>) => Effect<R2, E2, any>
+): Effect<R & R2, E | E2, A> {
+  return onExit_(self, (e) => {
+    switch (e._tag) {
+      case "Failure": {
+        return cleanup(e.cause)
+      }
+      case "Success": {
+        return unit
+      }
+    }
+  })
+}
