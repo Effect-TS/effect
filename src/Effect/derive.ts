@@ -51,16 +51,18 @@ export type DerivedLifted<
     [k in Values]: Effect<Has<T>, never, T[k]>
   }
 
-export function deriveLifted<T>(H: Tag<T>) {
-  return <
-    Fns extends keyof ShapeFn<T> = never,
-    Cns extends keyof ShapeCn<T> = never,
-    Values extends keyof ShapePu<T> = never
-  >(
-    functions: Fns[],
-    constants: Cns[],
-    values: Values[]
-  ): DerivedLifted<T, Fns, Cns, Values> => {
+export function deriveLifted<T>(
+  H: Tag<T>
+): <
+  Fns extends keyof ShapeFn<T> = never,
+  Cns extends keyof ShapeCn<T> = never,
+  Values extends keyof ShapePu<T> = never
+>(
+  functions: Fns[],
+  constants: Cns[],
+  values: Values[]
+) => DerivedLifted<T, Fns, Cns, Values> {
+  return (functions, constants, values) => {
     const ret = {} as any
 
     for (const k of functions) {
@@ -85,8 +87,10 @@ export type DerivedAccessM<T, Gens extends keyof T> = {
   ) => Effect<R_ & Has<T>, E_, A_>
 }
 
-export function deriveAccessM<T>(H: Tag<T>) {
-  return <Gens extends keyof T = never>(generics: Gens[]): DerivedAccessM<T, Gens> => {
+export function deriveAccessM<T>(
+  H: Tag<T>
+): <Gens extends keyof T = never>(generics: Gens[]) => DerivedAccessM<T, Gens> {
+  return (generics) => {
     const ret = {} as any
 
     for (const k of generics) {
@@ -101,8 +105,10 @@ export type DerivedAccess<T, Gens extends keyof T> = {
   [k in Gens]: <A_>(f: (_: T[k]) => A_) => Effect<Has<T>, never, A_>
 }
 
-export function deriveAccess<T>(H: Tag<T>) {
-  return <Gens extends keyof T = never>(generics: Gens[]): DerivedAccess<T, Gens> => {
+export function deriveAccess<T>(
+  H: Tag<T>
+): <Gens extends keyof T = never>(generics: Gens[]) => DerivedAccess<T, Gens> {
+  return (generics) => {
     const ret = {} as any
 
     for (const k of generics) {
