@@ -1,8 +1,10 @@
 import { reduce_ } from "../Array"
+import type { Effect } from "../Effect"
 import { readService } from "../Effect/has"
 import type { DefaultEnv, Runtime } from "../Effect/runtime"
 import { makeRuntime } from "../Effect/runtime"
 import { pipe, tuple } from "../Function"
+import type { Has } from "../Has"
 import { mergeEnvironments } from "../Has"
 import type { Managed } from "../Managed/managed"
 import type { Finalizer } from "../Managed/releaseMap"
@@ -333,4 +335,58 @@ export function flatten<R, E, R2, E2, B>(
   ffa: Layer<R, E, Layer<R2, E2, B>>
 ): Layer<R & R2, E | E2, B> {
   return new Layer(T.managedChain_(ffa.build, (i) => i.build))
+}
+
+/**
+ * Creates a layer from a constructor (...deps) => T
+ */
+export function fromConstructor<S>(
+  tag: T.Tag<S>
+): <Services extends any[]>(
+  constructor: (...services: Services) => S
+) => (
+  ...tags: { [k in keyof Services]: T.Tag<Services[k]> }
+) => Layer<
+  UnionToIntersection<
+    { [k in keyof Services]: Has<Services[k]> }[keyof Services & number]
+  >,
+  never,
+  Has<S>
+> {
+  return (f) => (...tags) =>
+    fromEffect(tag)(
+      T.accessServicesT(...tags)(((...services: any[]) =>
+        f(...(services as any))) as any) as any
+    )
+}
+
+/**
+ * Creates a layer from a constructor (...deps) => T
+ * with an open + release operation
+ */
+export function bracketConstructor<S>(
+  tag: T.Tag<S>
+): <Services extends any[], S2 extends S>(
+  constructor: (...services: Services) => S2
+) => (
+  ...tags: { [k in keyof Services]: T.Tag<Services[k]> }
+) => <R, R2, E>(
+  open: (s: S2) => Effect<R, E, unknown>,
+  release: (s: S2) => Effect<R2, never, unknown>
+) => Layer<
+  UnionToIntersection<
+    { [k in keyof Services]: Has<Services[k]> }[keyof Services & number]
+  > &
+    R &
+    R2,
+  E,
+  Has<S>
+> {
+  return (f) => (...tags) => (open, release) =>
+    prepare(tag)(
+      T.accessServicesT(...tags)(((...services: any[]) =>
+        f(...(services as any))) as any) as any
+    )
+      .open(open as any)
+      .release(release as any) as any
 }
