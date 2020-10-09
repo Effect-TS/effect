@@ -24,3 +24,21 @@ export interface Effect<R, E, A> {
 export type IO<E, A> = Effect<unknown, E, A>
 export type RIO<R, A> = Effect<R, never, A>
 export type UIO<A> = Effect<unknown, never, A>
+
+export type _A<T extends Effect<any, any, any>> = [T] extends [
+  Effect<infer R, infer E, infer A>
+]
+  ? A
+  : never
+
+export type _R<T extends Effect<any, any, any>> = [T] extends [
+  Effect<infer R, infer E, infer A>
+]
+  ? R
+  : never
+
+export type _E<T extends Effect<any, any, any>> = [T] extends [
+  Effect<infer R, infer E, infer A>
+]
+  ? E
+  : never
