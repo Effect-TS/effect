@@ -4,27 +4,18 @@ import { has } from "../src/Has"
 
 // module definition
 
-export class LiveCalculator {
-  factor = 2
-
-  factorFun = () => 3
-
-  base = T.succeed(1)
-
-  add(x: number, y: number) {
-    return T.effectTotal(() => x + y)
-  }
-
-  mul = (x: number, y: number) => {
-    return T.effectTotal(() => x * y)
-  }
-
-  gen<A>(a: A) {
-    return T.effectTotal(() => a)
+export function LiveCalculator() {
+  return {
+    factor: 2,
+    factorFun: () => 3,
+    base: T.succeed(1),
+    add: (x: number, y: number) => T.effectTotal(() => x + y),
+    mul: (x: number, y: number) => T.effectTotal(() => x * y),
+    gen: <A>(a: A) => T.effectTotal(() => a)
   }
 }
 
-export interface Calculator extends LiveCalculator {}
+export interface Calculator extends ReturnType<typeof LiveCalculator> {}
 
 // module tag
 export const Calculator = has<Calculator>()
@@ -67,11 +58,7 @@ export function MockCalculator(): Calculator {
 describe("Derive Access", () => {
   it("should use derived access functions", async () => {
     expect(
-      await pipe(
-        program,
-        T.provideService(Calculator)(new LiveCalculator()),
-        T.runPromise
-      )
+      await pipe(program, T.provideService(Calculator)(LiveCalculator()), T.runPromise)
     ).toEqual(21)
   })
   it("should use mock", async () => {
