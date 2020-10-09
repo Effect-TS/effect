@@ -1,5 +1,4 @@
 import type { Has, Tag } from "../Has"
-import { chain_ } from "./core"
 import type { Effect } from "./effect"
 import { accessService, accessServiceM } from "./has"
 
@@ -12,21 +11,6 @@ export type ShapeFn<T> = Pick<
       ? ((...args: ARGS) => Effect<R, E, A>) extends T[k]
         ? k
         : never
-      : never
-  }[keyof T]
->
-
-export type ShapeGen<T> = Pick<
-  T,
-  {
-    [k in keyof T]: T[k] extends (
-      ...args: infer ARGS
-    ) => Effect<infer R, infer E, infer A>
-      ? ((...args: ARGS) => Effect<R, E, A>) extends T[k]
-        ? never
-        : k
-      : T[k] extends (...args: any[]) => any
-      ? k
       : never
   }[keyof T]
 >
@@ -48,12 +32,11 @@ export type ShapePu<T> = Omit<
     }[keyof T]
 >
 
-export type DerivedAccess<
+export type DerivedLifted<
   T,
   Fns extends keyof ShapeFn<T>,
   Cns extends keyof ShapeCn<T>,
-  Values extends keyof ShapePu<T>,
-  Gens extends keyof ShapeGen<T>
+  Values extends keyof ShapePu<T>
 > = {
   [k in Fns]: T[k] extends (...args: infer ARGS) => Effect<infer R, infer E, infer A>
     ? (...args: ARGS) => Effect<R & Has<T>, E, A>
@@ -66,25 +49,18 @@ export type DerivedAccess<
   } &
   {
     [k in Values]: Effect<Has<T>, never, T[k]>
-  } &
-  {
-    [k in Gens]: <R_, E_, A_>(
-      f: (_: T[k]) => Effect<R_, E_, A_>
-    ) => Effect<R_ & Has<T>, E_, A_>
   }
 
-export function derive<T>(H: Tag<T>) {
+export function deriveLifted<T>(H: Tag<T>) {
   return <
     Fns extends keyof ShapeFn<T> = never,
     Cns extends keyof ShapeCn<T> = never,
-    Values extends keyof ShapePu<T> = never,
-    Gens extends keyof ShapeGen<T> = never
+    Values extends keyof ShapePu<T> = never
   >(
     functions: Fns[],
     constants: Cns[],
-    values: Values[],
-    generics: Gens[]
-  ): DerivedAccess<T, Fns, Cns, Values, Gens> => {
+    values: Values[]
+  ): DerivedLifted<T, Fns, Cns, Values> => {
     const ret = {} as any
 
     for (const k of functions) {
@@ -99,6 +75,20 @@ export function derive<T>(H: Tag<T>) {
       ret[k] = accessService(H)((h) => h[k])
     }
 
+    return ret as any
+  }
+}
+
+export type DerivedAccessM<T, Gens extends keyof T> = {
+  [k in Gens]: <R_, E_, A_>(
+    f: (_: T[k]) => Effect<R_, E_, A_>
+  ) => Effect<R_ & Has<T>, E_, A_>
+}
+
+export function deriveAccessM<T>(H: Tag<T>) {
+  return <Gens extends keyof T = never>(generics: Gens[]): DerivedAccessM<T, Gens> => {
+    const ret = {} as any
+
     for (const k of generics) {
       ret[k] = (f: any) => accessServiceM(H)((h) => f(h[k]))
     }
@@ -107,6 +97,18 @@ export function derive<T>(H: Tag<T>) {
   }
 }
 
-export function apply<R, E, A>(self: Effect<R, E, A>) {
-  return <R2, E2, A2>(f: (a: A) => Effect<R2, E2, A2>) => chain_(self, f)
+export type DerivedAccess<T, Gens extends keyof T> = {
+  [k in Gens]: <A_>(f: (_: T[k]) => A_) => Effect<Has<T>, never, A_>
+}
+
+export function deriveAccess<T>(H: Tag<T>) {
+  return <Gens extends keyof T = never>(generics: Gens[]): DerivedAccess<T, Gens> => {
+    const ret = {} as any
+
+    for (const k of generics) {
+      ret[k] = (f: any) => accessService(H)((h) => f(h[k]))
+    }
+
+    return ret as any
+  }
 }
