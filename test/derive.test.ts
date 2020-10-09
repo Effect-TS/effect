@@ -4,9 +4,11 @@ import { has } from "../src/Has"
 
 class CalculatorService {
   base = T.succeed(1)
+
   add(x: number, y: number) {
     return T.effectTotal(() => x + y)
   }
+
   mul = (x: number, y: number) => {
     return T.effectTotal(() => x * y)
   }
