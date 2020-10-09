@@ -2,7 +2,11 @@ import * as T from "../src/Effect"
 import { pipe } from "../src/Function"
 import { has } from "../src/Has"
 
-class CalculatorService {
+// module definition
+
+export class CalculatorService {
+  factor = 2
+
   base = T.succeed(1)
 
   add(x: number, y: number) {
@@ -14,13 +18,20 @@ class CalculatorService {
   }
 }
 
-const Calculator = has(CalculatorService)
+// module tag
+export const Calculator = has(CalculatorService)
 
-const { add, base, mul } = T.derive(Calculator, ["add", "mul"], ["base"])
+// access functions
+export const { add, base, factor, mul } = T.derive(Calculator)(
+  ["add", "mul"],
+  ["base"],
+  ["factor"]
+)
 
+// program
 const program = pipe(
-  base,
-  T.chain((b) => add(b, 2)),
+  T.zip_(base, factor),
+  T.chain(([b, f]) => add(b, f)),
   T.chain((sum) => mul(sum, 3))
 )
 
@@ -41,7 +52,8 @@ describe("Derive Access", () => {
         T.provideService(Calculator)({
           add: () => T.succeed(0),
           mul: () => T.succeed(0),
-          base: T.succeed(0)
+          base: T.succeed(0),
+          factor: 0
         }),
         T.runPromise
       )
