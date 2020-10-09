@@ -4,7 +4,7 @@ import { has } from "../src/Has"
 
 // module definition
 
-export class CalculatorService {
+export class LiveCalculator {
   factor = 2
 
   factorFun = () => 3
@@ -24,8 +24,10 @@ export class CalculatorService {
   }
 }
 
+export interface Calculator extends LiveCalculator {}
+
 // module tag
-export const Calculator = has(CalculatorService)
+export const Calculator = has<Calculator>()
 
 // lifted functions
 export const { add, base, factor, mul } = T.deriveLifted(Calculator)(
@@ -51,30 +53,30 @@ const program = pipe(
   T.chain((sum) => mul(sum, 3))
 )
 
+export function MockCalculator(): Calculator {
+  return {
+    add: () => T.succeed(0),
+    mul: () => T.succeed(0),
+    base: T.succeed(0),
+    factor: 0,
+    gen: T.succeed,
+    factorFun: () => 0
+  }
+}
+
 describe("Derive Access", () => {
   it("should use derived access functions", async () => {
     expect(
       await pipe(
         program,
-        T.provideService(Calculator)(new CalculatorService()),
+        T.provideService(Calculator)(new LiveCalculator()),
         T.runPromise
       )
     ).toEqual(21)
   })
   it("should use mock", async () => {
     expect(
-      await pipe(
-        program,
-        T.provideService(Calculator)({
-          add: () => T.succeed(0),
-          mul: () => T.succeed(0),
-          base: T.succeed(0),
-          factor: 0,
-          gen: T.succeed,
-          factorFun: () => 0
-        }),
-        T.runPromise
-      )
+      await pipe(program, T.provideService(Calculator)(MockCalculator()), T.runPromise)
     ).toEqual(0)
   })
 })
