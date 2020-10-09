@@ -39,7 +39,7 @@ export const { add, base, factor, factorFun, gen, mul } = T.derive(Calculator)(
 const program = pipe(
   T.zip_(
     gen((f) => f(1)),
-    factorFun((f) => T.effectTotal(f))
+    factorFun(T.effectTotal)
   ),
   T.chain((_) => T.tuple(base, factor, T.succeed(_))),
   T.chain(([b, f, [x, y]]) => T.chain_(add(b, f), (k) => T.succeed(k + x + y))),
