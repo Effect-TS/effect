@@ -13,6 +13,7 @@ export {
   suspend,
   unit
 } from "../Effect/core"
+export { accessServicesT } from "../Effect/has"
 export { forkDaemon } from "../Effect/core-scope"
 export { die } from "../Effect/die"
 export { bind, do, let } from "../Effect/do"
