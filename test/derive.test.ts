@@ -36,8 +36,8 @@ export const { factorFun } = T.deriveAccess(Calculator)(["factorFun", "gen"])
 // program
 const program = pipe(
   T.zip_(
-    gen((f) => f(1)),
-    factorFun((f) => f())
+    gen((_) => _(1)),
+    factorFun((_) => _())
   ),
   T.chain((_) => T.tuple(base, factor, T.succeed(_))),
   T.chain(([b, f, [x, y]]) => T.chain_(add(b, f), (k) => T.succeed(k + x + y))),
