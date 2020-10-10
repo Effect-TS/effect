@@ -474,3 +474,35 @@ export function bracketConstructorM<S>(
       .open(open as any)
       .release(release as any) as any
 }
+
+export function restrict<Tags extends T.Tag<any>[]>(...ts: Tags) {
+  return <R, E>(
+    self: Layer<
+      R,
+      E,
+      UnionToIntersection<
+        {
+          [k in keyof Tags]: [Tags[k]] extends [T.Tag<infer A>] ? Has<A> : never
+        }[number]
+      >
+    >
+  ): Layer<
+    R,
+    E,
+    UnionToIntersection<
+      {
+        [k in keyof Tags]: [Tags[k]] extends [T.Tag<infer A>] ? Has<A> : never
+      }[number]
+    >
+  > =>
+    using_(
+      self,
+      fromRawEffect(
+        T.accessServicesT(...ts)((...servises) =>
+          servises
+            .map((s, i) => ({ [ts[i].key]: s } as any))
+            .reduce((x, y) => ({ ...x, ...y }))
+        )
+      )
+    ) as any
+}
