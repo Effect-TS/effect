@@ -13,7 +13,6 @@ export {
   suspend,
   unit
 } from "../Effect/core"
-export { accessServicesT, accessServicesTM } from "../Effect/has"
 export { forkDaemon } from "../Effect/core-scope"
 export { die } from "../Effect/die"
 export { bind, do, let } from "../Effect/do"
@@ -22,7 +21,12 @@ export { Effect, IO, RIO, UIO } from "../Effect/effect"
 export { environment } from "../Effect/environment"
 export { flatten } from "../Effect/flatten"
 export { foreach_ as effectForeach_ } from "../Effect/foreach_"
-export { provideService, Region } from "../Effect/has"
+export {
+  accessServicesT,
+  accessServicesTM,
+  provideService,
+  Region
+} from "../Effect/has"
 export { interrupt } from "../Effect/interrupt"
 export { interruptible } from "../Effect/interruptible"
 export { map } from "../Effect/map"
@@ -52,6 +56,6 @@ export {
   use_ as managedUse_,
   zipWithPar_ as managedZipWithPar_
 } from "../Managed/core"
-export { suspend as suspendManaged } from "../Managed/methods/suspend"
 export { Managed } from "../Managed/managed"
+export { suspend as suspendManaged } from "../Managed/methods/suspend"
 export { make } from "../Promise/make"
