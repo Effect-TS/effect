@@ -3,7 +3,7 @@ import type { Effect } from "../Effect"
 import { readService } from "../Effect/has"
 import type { DefaultEnv, Runtime } from "../Effect/runtime"
 import { makeRuntime } from "../Effect/runtime"
-import { pipe, tuple } from "../Function"
+import { identity, pipe, tuple } from "../Function"
 import type { Has } from "../Has"
 import { mergeEnvironments } from "../Has"
 import type { Managed } from "../Managed/managed"
@@ -361,7 +361,7 @@ export function fromConstructor<S>(
 }
 
 /**
- * Creates a layer from a constructor (...deps) => T
+ * Creates a layer from a constructor (...deps) => Effect<R, E, T>
  */
 export function fromConstructorM<S>(
   tag: T.Tag<S>
@@ -381,6 +381,34 @@ export function fromConstructorM<S>(
     fromEffect(tag)(
       T.accessServicesTM(...tags)(((...services: any[]) =>
         f(...(services as any))) as any) as any
+    )
+}
+
+/**
+ * Creates a layer from a constructor (...deps) => Managed<R, E, T>
+ */
+export function fromConstructorManaged<S>(
+  tag: T.Tag<S>
+): <Services extends any[], R0, E0>(
+  constructor: (...services: Services) => Managed<R0, E0, S>
+) => (
+  ...tags: { [k in keyof Services]: T.Tag<Services[k]> }
+) => Layer<
+  UnionToIntersection<
+    { [k in keyof Services]: Has<Services[k]> }[keyof Services & number]
+  > &
+    R0,
+  E0,
+  Has<S>
+> {
+  return (f) => (...tags) =>
+    fromManaged(tag)(
+      T.managedChain_(
+        T.fromEffect(
+          T.accessServicesT(...tags)((...services: any[]) => f(...(services as any)))
+        ),
+        identity
+      )
     )
 }
 
