@@ -7,6 +7,7 @@ import type {
   AlgebraIntersection2,
   IntersectionConfig
 } from "../../Algebra/intersection"
+import { mergePrefer } from "../../Decoder/interpreter/common"
 import { memo } from "../../Internal/Utils"
 import { encoderApplyConfig } from "../config"
 import { EncoderType, EncoderURI } from "../hkt"
@@ -28,7 +29,7 @@ export const encoderIntersectionInterpreter = memo(
               pipe(
                 encoders,
                 A.foreachF(T.Applicative)((d) => d.encode(u)),
-                T.map(A.reduce(({} as unknown) as L, (b, a) => ({ ...b, ...a })))
+                T.map(A.reduce(({} as unknown) as L, (b, a) => mergePrefer(u, b, a)))
               )
           },
           env,

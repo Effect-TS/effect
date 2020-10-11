@@ -24,3 +24,19 @@ export const foreachRecord = R.foreachF(Validation)
 export const foreachRecordWithIndex = R.foreachWithIndexF(Validation)
 export const tupled = DSL.tupledF(Validation)
 export const struct = DSL.structF(Validation)
+
+export function mergePrefer(u: any, b: any, a: any) {
+  const r = <any>{ ...b }
+
+  for (const k of Object.keys(a)) {
+    if (k in r && k in u) {
+      if (u[k] !== a[k]) {
+        r[k] = a[k]
+      }
+    } else {
+      r[k] = a[k]
+    }
+  }
+
+  return r
+}

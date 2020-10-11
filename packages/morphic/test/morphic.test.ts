@@ -40,6 +40,17 @@ const Person = opaque<PersonRaw, Person>()(Person_)
 
 const firstNameLens = pipe(Person.lens, L.prop("name"), L.prop("first"))
 
+export const Id = make((F) =>
+  F.interface({
+    id: F.interface({
+      id: F.bigint()
+    })
+  })
+)
+
+export const InterA = make((F) => F.intersection([Person(F), Id(F)]))
+export const InterB = make((F) => F.intersection([Id(F), Person(F)]))
+
 describe("FastCheck", () => {
   it("Generate Person", () => {
     fc.check(
@@ -112,5 +123,31 @@ describe("FastCheck", () => {
     asserts(Person, person)
 
     expect(person.name.first).toEqual("Michael")
+  })
+  it("Intersection is commutative", () => {
+    expect(
+      T.runEither(
+        decoder(InterA).decode({
+          name: { first: "Michael", last: "Arnaldi" },
+          id: {
+            id: "0"
+          }
+        })
+      )
+    ).toEqual(
+      E.right({ name: { first: "Michael", last: "Arnaldi" }, id: { id: BigInt(0) } })
+    )
+    expect(
+      T.runEither(
+        decoder(InterB).decode({
+          name: { first: "Michael", last: "Arnaldi" },
+          id: {
+            id: "0"
+          }
+        })
+      )
+    ).toEqual(
+      E.right({ name: { first: "Michael", last: "Arnaldi" }, id: { id: BigInt(0) } })
+    )
   })
 })
