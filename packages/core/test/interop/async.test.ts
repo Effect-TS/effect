@@ -9,8 +9,9 @@ import * as T from "../../src/Effect"
 describe("Async/Effect interop", () => {
   it("should execute async natively", async () => {
     const result = await pipe(
-      A.succeed(0),
+      A.accessM((_: { foo: string }) => A.succeed(_.foo.length)),
       T.chain((n) => T.effectTotal(() => n + 1)),
+      T.provideAll({ foo: "" }),
       T.runPromiseExit
     )
 

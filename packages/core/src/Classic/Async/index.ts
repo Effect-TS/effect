@@ -51,7 +51,7 @@ export const currentIntegration = new AtomicReference<
   Option<<R, E, A>(_: Async<R, E, A>) => Effect<R, E, A>>
 >(none)
 
-export class Async<R, E, A> extends FFI<unknown, never, number> {
+export class Async<R, E, A> extends FFI<R, E, A> {
   constructor(readonly f: (_: InterruptionState, r: R) => CancelablePromise<E, A>) {
     super()
   }
@@ -294,6 +294,16 @@ export const sync = <A>(f: () => A): Async<unknown, never, A> =>
 // construct a Task from a value
 export const succeed = <A>(a: A): Async<unknown, never, A> =>
   new Async((is) => new CancelablePromise(() => Promise.resolve(a), is))
+
+// reads a value from the environment and transforms it using f
+export const access = <A, B>(f: (_: A) => B): Async<A, never, B> =>
+  new Async((is, r) => new CancelablePromise(() => Promise.resolve(f(r)), is))
+
+// reads a value from the environment and transforms it monadically using f
+export const accessM = <R, R1, E, A>(
+  f: (_: R) => Async<R1, E, A>
+): Async<R & R1, E, A> =>
+  new Async((is, r) => new CancelablePromise(() => f(r).f(is, r).promise(), is))
 
 // construct a Task from an error
 export const fail = <E>(e: E): Async<unknown, E, never> =>
