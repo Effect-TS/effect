@@ -1,3 +1,6 @@
+import "../../src/Effect/Integrations"
+
+import { succeed } from "@effect-ts/system/Exit"
 import { pipe } from "@effect-ts/system/Function"
 
 import * as A from "../../src/Classic/Async"
@@ -8,9 +11,9 @@ describe("Async/Effect interop", () => {
     const result = await pipe(
       A.succeed(0),
       T.chain((n) => T.effectTotal(() => n + 1)),
-      T.runPromise
+      T.runPromiseExit
     )
 
-    expect(result).toEqual(1)
+    expect(result).toEqual(succeed(1))
   })
 })
