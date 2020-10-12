@@ -38,6 +38,7 @@ export type Instruction =
   | IGetForkScope<any, any, any>
   | IOverrideForkScope<any, any, any>
   | XPure<unknown, never, any, any, any>
+  | FFI<any, any, any>
 
 abstract class Base<R, E, A> implements Effect<R, E, A> {
   readonly _S1!: (_: unknown) => void
@@ -49,6 +50,21 @@ abstract class Base<R, E, A> implements Effect<R, E, A> {
   readonly [_R]: (_: R) => void
 
   get [_I]() {
+    return this as any
+  }
+}
+
+export abstract class FFI<R, E, A> extends Base<R, E, A> {
+  readonly _tag = "FFI"
+  readonly _S1!: (_: unknown) => void
+  readonly _S2!: () => never;
+
+  readonly [_U]!: EffectURI;
+  readonly [_E]!: () => E;
+  readonly [_A]!: () => A;
+  readonly [_R]!: (_: R) => void
+
+  get [_I](): Instruction {
     return this as any
   }
 }
