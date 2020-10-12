@@ -8,8 +8,8 @@ import type * as O from "../Option"
 import type { Scope } from "../Scope"
 import type { Supervisor } from "../Supervisor"
 import type { XPure } from "../XPure"
-import type { Effect, EffectURI } from "./effect"
-import { _A, _E, _I, _R, _U } from "./effect"
+import type { Effect, FFI, IFail } from "./effect"
+import { _A, _E, _I, _R, _U, Base } from "./effect"
 
 //
 // @category Primitives
@@ -39,35 +39,6 @@ export type Instruction =
   | IOverrideForkScope<any, any, any>
   | XPure<unknown, never, any, any, any>
   | FFI<any, any, any>
-
-abstract class Base<R, E, A> implements Effect<R, E, A> {
-  readonly _S1!: (_: unknown) => void
-  readonly _S2!: () => never;
-
-  readonly [_U]: EffectURI;
-  readonly [_E]: () => E;
-  readonly [_A]: () => A;
-  readonly [_R]: (_: R) => void
-
-  get [_I]() {
-    return this as any
-  }
-}
-
-export abstract class FFI<R, E, A> extends Base<R, E, A> {
-  readonly _tag = "FFI"
-  readonly _S1!: (_: unknown) => void
-  readonly _S2!: () => never;
-
-  readonly [_U]!: EffectURI;
-  readonly [_E]!: () => E;
-  readonly [_A]!: () => A;
-  readonly [_R]!: (_: R) => void
-
-  get [_I](): Instruction {
-    return this as any
-  }
-}
 
 export class IFlatMap<R, E, A, R1, E1, A1> extends Base<R & R1, E | E1, A1> {
   readonly _tag = "FlatMap"
@@ -155,14 +126,6 @@ export class ICheckInterrupt<R, E, A> extends Base<R, E, A> {
   readonly _tag = "CheckInterrupt"
 
   constructor(readonly f: (_: Fiber.InterruptStatus) => Effect<R, E, A>) {
-    super()
-  }
-}
-
-export class IFail<E> extends Base<unknown, E, never> {
-  readonly _tag = "Fail"
-
-  constructor(readonly cause: Cause.Cause<E>) {
     super()
   }
 }
@@ -288,3 +251,5 @@ export class IOverrideForkScope<R, E, A> extends Base<R, E, A> {
     super()
   }
 }
+
+export * from "./effect"
