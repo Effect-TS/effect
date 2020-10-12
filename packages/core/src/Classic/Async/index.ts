@@ -2,6 +2,7 @@
  * The Async Problem
  */
 
+import * as T from "../../Effect"
 import { pipe } from "../../Function"
 import type { UnionToIntersection } from "../../Utils"
 
@@ -41,8 +42,28 @@ import type { UnionToIntersection } from "../../Utils"
  * Step 1, The Data Type
  */
 
-export interface Async<R, E, A> {
-  (_: InterruptionState, r: R): CancelablePromise<E, A>
+export class Async<R, E, A> extends T.FFI<unknown, never, number> {
+  constructor(readonly f: (_: InterruptionState, r: R) => CancelablePromise<E, A>) {
+    super()
+  }
+  get [T._I]() {
+    return T.accessM((r: R) =>
+      T.effectAsyncInterrupt<R, E, A>((cb) => {
+        const int = runAsync(this, r, (ex) => {
+          if (ex._tag === "Success") {
+            cb(T.succeed(ex.a))
+          } else if (ex._tag === "Failure") {
+            cb(T.fail(ex.e))
+          } else {
+            cb(T.interrupt)
+          }
+        })
+        return T.effectTotal(() => {
+          int()
+        })
+      })
+    )[T._I]
+  }
 }
 
 /**
@@ -231,25 +252,28 @@ export const tracingContext = new Tracer()
 
 // runs the cancellable promise in a tracing context
 // folds the result to an Exit state
-const runCancelablePromise = <E, A>(
+function runCancelablePromise<E, A>(
   task: CancelablePromise<E, A>
-): Promise<Exit<E, A>> =>
-  tracingContext
+): Promise<Exit<E, A>> {
+  return tracingContext
     .traced(task.promise)()
     .then((a) => success(a))
     .catch((e: Rejection<E>) => Promise.resolve(e))
+}
 
 // runs as a Promise of an Exit
-export const runPromise = <R, E, A>(task: Async<R, E, A>, r: R): Promise<Exit<E, A>> =>
-  runCancelablePromise(task(new InterruptionState(), r))
+export function runPromise<R, E, A>(task: Async<R, E, A>, r: R): Promise<Exit<E, A>> {
+  return runCancelablePromise(task.f(new InterruptionState(), r))
+}
 
 // runs as a Cancellable task
-export const runAsync = <E, A>(cb?: (e: Exit<E, A>) => void) => <R>(
+export function runAsync<R, E, A>(
   task: Async<R, E, A>,
-  r: R
-) => {
+  r: R,
+  cb?: (e: Exit<E, A>) => void
+) {
   const is = new InterruptionState()
-  const interruptible = task(is, r)
+  const interruptible = task.f(is, r)
   const running = runCancelablePromise(interruptible)
 
   running.then((e) => {
@@ -266,16 +290,16 @@ export const runAsync = <E, A>(cb?: (e: Exit<E, A>) => void) => <R>(
  */
 
 // construct a Task from a sync computation that is not supposed to fail
-export const sync = <A>(f: () => A): Async<unknown, never, A> => (is) =>
-  new CancelablePromise(() => Promise.resolve(f()), is)
+export const sync = <A>(f: () => A): Async<unknown, never, A> =>
+  new Async((is) => new CancelablePromise(() => Promise.resolve(f()), is))
 
 // construct a Task from a value
-export const succeed = <A>(a: A): Async<unknown, never, A> => (is) =>
-  new CancelablePromise(() => Promise.resolve(a), is)
+export const succeed = <A>(a: A): Async<unknown, never, A> =>
+  new Async((is) => new CancelablePromise(() => Promise.resolve(a), is))
 
 // construct a Task from an error
-export const fail = <E>(e: E): Async<unknown, E, never> => (is) =>
-  new CancelablePromise(() => Promise.reject(failure(e)), is)
+export const fail = <E>(e: E): Async<unknown, E, never> =>
+  new Async((is) => new CancelablePromise(() => Promise.reject(failure(e)), is))
 
 // construct an empty task of {}
 // useful to combine with bind & assign
@@ -285,27 +309,35 @@ export const of = succeed({})
 // need to specify the action to take on error
 export const fromPromise = <E>(onError: (u: unknown) => E) => <A>(
   p: () => Promise<A>
-): Async<unknown, E, A> => (is) =>
-  new CancelablePromise(() => p().catch((e) => Promise.reject(failure(onError(e)))), is)
+): Async<unknown, E, A> =>
+  new Async(
+    (is) =>
+      new CancelablePromise(
+        () => p().catch((e) => Promise.reject(failure(onError(e)))),
+        is
+      )
+  )
 
 // like fromPromise but for sync code that can throw
 export const fromTryCatch = <E>(onError: (u: unknown) => E) => <A>(
   p: () => A
 ): Async<unknown, E, A> => {
-  return (is) =>
-    new CancelablePromise(() => {
-      try {
-        return Promise.resolve(p())
-      } catch (e) {
-        return Promise.reject(failure(onError(e)))
-      }
-    }, is)
+  return new Async(
+    (is) =>
+      new CancelablePromise(() => {
+        try {
+          return Promise.resolve(p())
+        } catch (e) {
+          return Promise.reject(failure(onError(e)))
+        }
+      }, is)
+  )
 }
 
 // construct a Task from a promise that cannot fail
 export const fromNonFailingPromise = <A>(
   p: () => Promise<A>
-): Async<unknown, never, A> => (is) => new CancelablePromise(p, is)
+): Async<unknown, never, A> => new Async((is) => new CancelablePromise(p, is))
 
 // represent a callback
 export type Cb<A> = (a: A) => void
@@ -313,20 +345,23 @@ export type Cb<A> = (a: A) => void
 // construct a Task from an async callback (like new Promise())
 export const fromCallback = <E = never, A = void>(
   f: (resolve: (res: A) => void, reject: (error: E) => void) => void
-): Async<unknown, E, A> => (is) =>
-  new CancelablePromise(
-    () =>
-      new Promise<A>((res, rej) => {
-        f(
-          (result) => {
-            res(result)
-          },
-          (err) => {
-            rej(failure(err))
-          }
-        )
-      }),
-    is
+): Async<unknown, E, A> =>
+  new Async(
+    (is) =>
+      new CancelablePromise(
+        () =>
+          new Promise<A>((res, rej) => {
+            f(
+              (result) => {
+                res(result)
+              },
+              (err) => {
+                rej(failure(err))
+              }
+            )
+          }),
+        is
+      )
   )
 
 /**
@@ -387,23 +422,27 @@ export const handle = <R, E = never, E1 = never, B = unknown>(
 export const fold = <A, E, E1, A1, E2, A2, R1, R2>(
   f: (e: E) => Async<R1, E1, A1>,
   g: (a: A) => Async<R2, E2, A2>
-) => <R>(self: Async<R, E, A>): Async<R & R1 & R2, E1 | E2, A1 | A2> => (is, r) =>
-  new CancelablePromise(
-    () =>
-      self(is, r)
-        .promise()
-        .then((a) => g(a)(is, r).promise())
-        .catch((e: Rejection<E>) => {
-          switch (e._tag) {
-            case "Failure": {
-              return f(e.e)(is, r).promise()
-            }
-            case "Interrupt": {
-              return Promise.reject(e)
-            }
-          }
-        }),
-    is
+) => <R>(self: Async<R, E, A>): Async<R & R1 & R2, E1 | E2, A1 | A2> =>
+  new Async(
+    (is, r) =>
+      new CancelablePromise(
+        () =>
+          self
+            .f(is, r)
+            .promise()
+            .then((a) => g(a).f(is, r).promise())
+            .catch((e: Rejection<E>) => {
+              switch (e._tag) {
+                case "Failure": {
+                  return f(e.e).f(is, r).promise()
+                }
+                case "Interrupt": {
+                  return Promise.reject(e)
+                }
+              }
+            }),
+        is
+      )
   )
 
 // logically runs the operation and return its exit
@@ -418,8 +457,10 @@ export const result = <R, E, A>(task: Async<R, E, A>): Async<R, never, Exit<E, A
 
 // like Promise.all
 export function all<R, E, A>(a: Async<R, E, A>[]): Async<R, E, A[]> {
-  return (is, r) =>
-    new CancelablePromise(() => Promise.all(a.map((p) => p(is, r).promise())), is)
+  return new Async(
+    (is, r) =>
+      new CancelablePromise(() => Promise.all(a.map((p) => p.f(is, r).promise())), is)
+  )
 }
 
 // like Promise.all for tuples
@@ -490,49 +531,56 @@ export const delayed = (ms: number) => <R, E, A>(task: Async<R, E, A>) =>
 
 export const onInterrupt = <R, E1, A1>(f: () => Async<R, E1, A1>) => <R2, E, A>(
   self: Async<R, E, A>
-): Async<R & R2, E | E1, A> => (is, r) =>
-  new CancelablePromise(
-    () =>
-      self(is, r)
-        .promise()
-        .catch(async (e: Rejection<E>) => {
-          switch (e._tag) {
-            case "Failure": {
-              return Promise.reject(e)
-            }
-            case "Interrupt": {
-              await f()(new InterruptionState(), r).promise()
+): Async<R & R2, E | E1, A> =>
+  new Async(
+    (is, r) =>
+      new CancelablePromise(
+        () =>
+          self
+            .f(is, r)
+            .promise()
+            .catch(async (e: Rejection<E>) => {
+              switch (e._tag) {
+                case "Failure": {
+                  return Promise.reject(e)
+                }
+                case "Interrupt": {
+                  await f().f(new InterruptionState(), r).promise()
 
-              return await Promise.reject(failure(e))
-            }
-          }
-        }),
-    is
+                  return await Promise.reject(failure(e))
+                }
+              }
+            }),
+        is
+      )
   )
 
 export const fromInterruptibleCallback = <E = never, A = void, E2 = never, A2 = void>(
   f: (resolve: (res: A) => void, reject: (error: E) => void) => Async<unknown, E2, A2>
-): Async<unknown, E | E2, A> => (is) => {
-  let finalizer: Async<unknown, E2, A2>
+): Async<unknown, E | E2, A> =>
+  new Async((is) => {
+    let finalizer: Async<unknown, E2, A2>
 
-  const finalizerTask: Async<unknown, E, A> = (is: InterruptionState) =>
-    new CancelablePromise(
-      () =>
-        new Promise<A>((res, rej) => {
-          finalizer = f(
-            (result) => {
-              res(result)
-            },
-            (err) => {
-              rej(failure(err))
-            }
-          )
-        }),
-      is
+    const finalizerTask: Async<unknown, E, A> = new Async(
+      (is: InterruptionState) =>
+        new CancelablePromise(
+          () =>
+            new Promise<A>((res, rej) => {
+              finalizer = f(
+                (result) => {
+                  res(result)
+                },
+                (err) => {
+                  rej(failure(err))
+                }
+              )
+            }),
+          is
+        )
     )
 
-  return pipe(
-    finalizerTask,
-    onInterrupt(() => finalizer)
-  )(is, {})
-}
+    return pipe(
+      finalizerTask,
+      onInterrupt(() => finalizer)
+    ).f(is, {})
+  })
