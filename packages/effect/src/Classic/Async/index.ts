@@ -2,9 +2,14 @@
  * The Async Problem
  */
 
-import * as T from "../../Effect"
+import type { Effect, Instruction } from "@effect-ts/system/Effect"
+import { _I, FFI, notIimplementedFFI } from "@effect-ts/system/Effect"
+import { AtomicReference } from "@effect-ts/system/Support/AtomicReference"
+
 import { pipe } from "../../Function"
 import type { UnionToIntersection } from "../../Utils"
+import type { Option } from "../Option"
+import { none } from "../Option"
 
 /**
  * During the last part of day-2 when we started to test async code we noticed
@@ -42,27 +47,20 @@ import type { UnionToIntersection } from "../../Utils"
  * Step 1, The Data Type
  */
 
-export class Async<R, E, A> extends T.FFI<unknown, never, number> {
+export const currentIntegration = new AtomicReference<
+  Option<<R, E, A>(_: Async<R, E, A>) => Effect<R, E, A>>
+>(none)
+
+export class Async<R, E, A> extends FFI<unknown, never, number> {
   constructor(readonly f: (_: InterruptionState, r: R) => CancelablePromise<E, A>) {
     super()
   }
-  get [T._I]() {
-    return T.accessM((r: R) =>
-      T.effectAsyncInterrupt<R, E, A>((cb) => {
-        const int = runAsync(this, r, (ex) => {
-          if (ex._tag === "Success") {
-            cb(T.succeed(ex.a))
-          } else if (ex._tag === "Failure") {
-            cb(T.fail(ex.e))
-          } else {
-            cb(T.interrupt)
-          }
-        })
-        return T.effectTotal(() => {
-          int()
-        })
-      })
-    )[T._I]
+  get [_I](): Instruction {
+    const ci = currentIntegration.get
+    if (ci._tag === "Some") {
+      return ci.value(this)["_I"]
+    }
+    return notIimplementedFFI
   }
 }
 
