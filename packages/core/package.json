@@ -75,6 +75,7 @@
       "Effect/Exit",
       "Effect/Fiber",
       "Effect/FiberRef",
+      "Effect/Integrations",
       "Effect/Layer",
       "Effect/Managed",
       "Effect/ProcessManager",
