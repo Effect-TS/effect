@@ -8,4 +8,15 @@ describe("FreeAssociative", () => {
       2
     ])
   })
+  it("map", () => {
+    expect(
+      pipe(
+        FA.init<number>(),
+        FA.append(1),
+        FA.append(2),
+        FA.map((n) => n + 1),
+        FA.toArray
+      )
+    ).toEqual([2, 3])
+  })
 })
