@@ -35,6 +35,7 @@
       "Exit",
       "Fiber",
       "FiberRef",
+      "FreeAssociative",
       "Function",
       "Fused",
       "GlobalExceptions",
