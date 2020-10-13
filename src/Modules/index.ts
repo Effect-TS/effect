@@ -8,6 +8,7 @@ import type { Commutative } from "../Classic/Commutative"
 import type { Const } from "../Classic/Const"
 import type { Either } from "../Classic/Either"
 import type { Equal } from "../Classic/Equal"
+import type { FreeAssociative } from "../Classic/FreeAssociative"
 import type { Id } from "../Classic/Id"
 import type { Identity } from "../Classic/Identity"
 import type { Ix, IxC } from "../Classic/IndexedT"
@@ -118,6 +119,9 @@ export type IdURI = typeof IdURI
 export const EffectCategoryURI = "EffectCategory"
 export type EffectCategoryURI = typeof EffectCategoryURI
 
+export const FreeAssociativeURI = "FreeAssociative"
+export type FreeAssociativeURI = typeof FreeAssociativeURI
+
 declare module "../Prelude/HKT" {
   interface URItoKind<FC, TC, N extends string, K, Q, W, X, I, S, R, E, A> {
     [ArrayURI]: Array<A>
@@ -150,6 +154,7 @@ declare module "../Prelude/HKT" {
     [XPureStateCategoryURI]: XPure<I, A, R, E, A>
     [IdURI]: Id<A>
     [NonEmptyArrayURI]: NonEmptyArray<A>
+    [FreeAssociativeURI]: FreeAssociative<A>
   }
   interface URItoIndex<N extends string, K> {
     [ArrayURI]: number
