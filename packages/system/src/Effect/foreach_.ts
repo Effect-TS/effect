@@ -1,6 +1,8 @@
+import * as FA from "../FreeAssociative"
 import * as IT from "../Iterable"
 import { succeed, suspend } from "./core"
 import type { Effect } from "./effect"
+import { map_ } from "./map_"
 import { zipWith_ } from "./zipWith_"
 
 /**
@@ -11,11 +13,17 @@ import { zipWith_ } from "./zipWith_"
  * If you do not need the results, see `foreachUnit` for a more efficient implementation.
  */
 export function foreach_<A, R, E, B>(as: Iterable<A>, f: (a: A) => Effect<R, E, B>) {
-  return IT.reduce_(as, succeed([]) as Effect<R, E, readonly B[]>, (b, a) =>
-    zipWith_(
-      b,
-      suspend(() => f(a)),
-      (acc, r) => [...acc, r]
-    )
+  return map_(
+    IT.reduce_(
+      as,
+      succeed(FA.init<B>()) as Effect<R, E, FA.FreeAssociative<B>>,
+      (b, a) =>
+        zipWith_(
+          b,
+          suspend(() => f(a)),
+          (acc, r) => FA.append(r)(acc)
+        )
+    ),
+    FA.toArray
   )
 }
