@@ -239,7 +239,18 @@ describe("Effect", () => {
       ),
       T.runPromiseExit
     )
+    const result_ok = await pipe(
+      range(0, 100),
+      T.foreachParN(10)((n) =>
+        pipe(
+          T.sleep(10),
+          T.map(() => n)
+        )
+      ),
+      T.runPromiseExit
+    )
 
     expect(result).toEqual(Exit.fail("error in process: 5"))
+    expect(result_ok).toEqual(Exit.succeed(range(0, 100)))
   })
 })
