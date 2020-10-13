@@ -1,3 +1,4 @@
+import { range } from "../src/Array"
 import type { Cb, Effect } from "../src/Effect"
 import * as T from "../src/Effect"
 import * as E from "../src/Either"
@@ -224,5 +225,21 @@ describe("Effect", () => {
     )
 
     expect(result).toEqual("foo - bar")
+  })
+  it("foreachParN", async () => {
+    const result = await pipe(
+      range(0, 100),
+      T.foreachParN(3)((n) =>
+        pipe(
+          T.sleep(100),
+          T.chain(() =>
+            n > 1 && n % 5 === 0 ? T.fail(`error in process: ${n}`) : T.succeed(n)
+          )
+        )
+      ),
+      T.runPromiseExit
+    )
+
+    expect(result).toEqual(Exit.fail("error in process: 5"))
   })
 })
