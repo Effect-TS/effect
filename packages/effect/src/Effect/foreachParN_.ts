@@ -3,19 +3,17 @@ import { interrupt } from "../Fiber"
 import { pipe, tuple } from "../Function"
 import * as P from "../Promise"
 import * as Q from "../Queue"
-import { foldCauseM } from "."
 import { bracket } from "./bracket"
 import { collectAll } from "./collectAll"
-import { chain, fork } from "./core"
+import { chain, foldCauseM, fork, result } from "./core"
 import * as D from "./do"
+import { done } from "./done"
 import type { Effect } from "./effect"
 import { foreach } from "./foreach"
 import { foreachUnit } from "./foreachUnit"
 import { forever } from "./forever"
 import { map } from "./map"
-import { sandbox } from "./sandbox"
 import { tap } from "./tap"
-import { unsandbox } from "./unsandbox"
 
 /**
  * Applies the functionw `f` to each element of the `Iterable<A>` in parallel,
@@ -75,9 +73,9 @@ export function foreachParN_(n: number) {
               pipe(
                 pairs,
                 foreach(([p]) => P.await(p)),
-                sandbox,
+                result,
                 tap(() => pipe(fibers, foreach(interrupt))),
-                unsandbox
+                chain(done)
               )
             ),
             map(({ res }) => res)
