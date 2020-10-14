@@ -1,5 +1,8 @@
 import type { FiberID } from "../Fiber/id"
 
+/**
+ * Cause is a Free Semiring structure that allows tracking of multiple error causes.
+ */
 export type Cause<E> = Empty | Fail<E> | Die | Interrupt | Then<E> | Both<E>
 
 export interface Empty {
