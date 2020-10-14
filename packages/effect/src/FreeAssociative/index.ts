@@ -1,67 +1,91 @@
-import type { Endomorphism, Predicate } from "../Function"
+import type { Endomorphism, Predicate, Refinement } from "../Function"
+import { flow } from "../Function"
+import type { Option } from "../Option"
+import { isSome } from "../Option"
 import { Stack } from "../Stack"
 
-export class Empty {
+export class IEmpty {
   readonly _tag = "Empty"
 }
 
-export class Element<A> {
+export class IElement<A> {
   readonly _tag = "Element"
   constructor(readonly element: A) {}
 }
 
-export class Concat<A> {
+export class IConcat<A> {
   readonly _tag = "Concat"
   constructor(readonly left: FreeAssociative<A>, readonly right: FreeAssociative<A>) {}
 }
 
-export class Filter<A> {
+export class IFilter<A> {
   readonly _tag = "Filter"
   constructor(readonly self: FreeAssociative<A>, readonly f: Predicate<A>) {}
 }
 
-export class Map<A> {
+export class IMap<A> {
   readonly _tag = "Map"
   constructor(readonly self: FreeAssociative<A>, readonly f: Endomorphism<A>) {}
 }
 
-export type FreeAssociative<A> = Empty | Element<A> | Concat<A> | Filter<A> | Map<A>
+export type FreeAssociative<A> =
+  | IEmpty
+  | IElement<A>
+  | IConcat<A>
+  | IFilter<A>
+  | IMap<A>
 
 export function init<A>(): FreeAssociative<A> {
-  return new Empty()
+  return new IEmpty()
 }
 
 export function of<A>(a: A): FreeAssociative<A> {
-  return new Element(a)
+  return new IElement(a)
 }
 
+export function filter<A, B extends A>(
+  f: Refinement<A, B>
+): (_: FreeAssociative<A>) => FreeAssociative<B>
+export function filter<A>(
+  f: Predicate<A>
+): (_: FreeAssociative<A>) => FreeAssociative<A>
 export function filter<A>(
   f: Predicate<A>
 ): (_: FreeAssociative<A>) => FreeAssociative<A> {
-  return (_) => new Filter(_, f)
+  return (_) => new IFilter(_, f)
 }
 
 export function map<A, B>(
   f: (a: A) => B
 ): (_: FreeAssociative<A>) => FreeAssociative<B> {
-  return (_) => new Map(_, f as any) as any
+  return (_) => new IMap(_, f as any) as any
 }
 
 export function concat<A>(
   r: FreeAssociative<A>
 ): (l: FreeAssociative<A>) => FreeAssociative<A> {
-  return (l) => new Concat(l, r)
+  return (l) => new IConcat(l, r)
 }
 
 export function append<A>(a: A): (_: FreeAssociative<A>) => FreeAssociative<A> {
-  return (_) => new Concat(_, new Element(a))
+  return (_) => new IConcat(_, new IElement(a))
 }
 
 export function prepend<A>(a: A): (_: FreeAssociative<A>) => FreeAssociative<A> {
-  return (_) => new Concat(new Element(a), _)
+  return (_) => new IConcat(new IElement(a), _)
 }
 
-export type Ops<A> = Filter<A> | Map<A>
+export function filterMap<A, B>(
+  f: (a: A) => Option<B>
+): (fa: FreeAssociative<A>) => FreeAssociative<B> {
+  return flow(
+    map(f),
+    filter(isSome),
+    map((x) => x.value)
+  )
+}
+
+export type Ops<A> = IFilter<A> | IMap<A>
 
 export function toArray<A>(_: FreeAssociative<A>): readonly A[] {
   const as = <A[]>[]
