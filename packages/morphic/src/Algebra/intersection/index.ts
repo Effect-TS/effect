@@ -78,7 +78,15 @@ export interface AlgebraIntersection<F, Env> {
             : never
         }[number]
       >,
-      unknown
+      UnionToIntersection<
+        {
+          [k in keyof AS]: [AS[k]] extends [{ _A: infer A }]
+            ? unknown extends A
+              ? never
+              : A
+            : never
+        }[number]
+      >
     >
     <L, A, Env>(
       types: Array<HKT2<F, Env, L, A>>,
