@@ -1,3 +1,5 @@
+import type { UnionToIntersection } from "@effect-ts/core/Utils"
+
 import type { AnyEnv, ConfigsForType, Named } from "../config"
 import type { OfType, OfType2 } from "../utils/core"
 import type { HKT2, Kind, Kind2, URIS, URIS2 } from "../utils/hkt"
@@ -23,56 +25,61 @@ export interface IntersectionConfig<L extends unknown[], A extends unknown[]> {}
 export interface AlgebraIntersection<F, Env> {
   _F: F
   intersection: {
-    <A, B, LA, LB>(
-      types: [HKT2<F, Env, LA, A>, HKT2<F, Env, LB, B>],
-      config?: Named<
-        ConfigsForType<Env, LA & LB, A & B, IntersectionConfig<[LA, LB], [A, B]>>
-      >
-    ): HKT2<F, Env, LA & LB, A & B>
-    <A, B, C, LA, LB, LC>(
-      types: [HKT2<F, Env, LA, A>, HKT2<F, Env, LB, B>, HKT2<F, Env, LC, C>],
+    <AS extends HKT2<F, Env, any, any>[]>(
+      types: AS,
       config?: Named<
         ConfigsForType<
           Env,
-          LA & LB & LC,
-          A & B & C,
-          IntersectionConfig<[LA, LB, LC], [A, B, C]>
+          UnionToIntersection<
+            {
+              [k in keyof AS]: [AS[k]] extends [{ _E: infer E }]
+                ? unknown extends E
+                  ? never
+                  : E
+                : never
+            }[number]
+          >,
+          UnionToIntersection<
+            {
+              [k in keyof AS]: [AS[k]] extends [{ _A: infer A }]
+                ? unknown extends A
+                  ? never
+                  : A
+                : never
+            }[number]
+          >,
+          IntersectionConfig<
+            {
+              [k in keyof AS]: [AS[k]] extends [{ _E: infer E }]
+                ? unknown extends E
+                  ? never
+                  : E
+                : never
+            },
+            {
+              [k in keyof AS]: [AS[k]] extends [{ _A: infer A }]
+                ? unknown extends A
+                  ? never
+                  : A
+                : never
+            }
+          >
         >
       >
-    ): HKT2<F, Env, LA & LB & LC, A & B & C>
-    <A, B, C, D, LA, LB, LC, LD>(
-      types: [
-        HKT2<F, Env, LA, A>,
-        HKT2<F, Env, LB, B>,
-        HKT2<F, Env, LC, C>,
-        HKT2<F, Env, LD, D>
-      ],
-      config?: Named<
-        ConfigsForType<
-          Env,
-          LA & LB & LC & LD,
-          A & B & C & D,
-          IntersectionConfig<[LA, LB, LC, LD], [A, B, C, D]>
-        >
-      >
-    ): HKT2<F, Env, LA & LB & LC & LD, A & B & C & D>
-    <A, B, C, D, E, LA, LB, LC, LD, LE>(
-      types: [
-        HKT2<F, Env, LA, A>,
-        HKT2<F, Env, LB, B>,
-        HKT2<F, Env, LC, C>,
-        HKT2<F, Env, LD, D>,
-        HKT2<F, Env, LE, E>
-      ],
-      config?: Named<
-        ConfigsForType<
-          Env,
-          LA & LB & LC & LD & LE,
-          A & B & C & D & E,
-          IntersectionConfig<[LA, LB, LC, LD, LE], [A, B, C, D, E]>
-        >
-      >
-    ): HKT2<F, Env, LA & LB & LC & LD & LE, A & B & C & D & E>
+    ): HKT2<
+      F,
+      Env,
+      UnionToIntersection<
+        {
+          [k in keyof AS]: [AS[k]] extends [{ _E: infer E }]
+            ? unknown extends E
+              ? never
+              : E
+            : never
+        }[number]
+      >,
+      unknown
+    >
     <L, A, Env>(
       types: Array<HKT2<F, Env, L, A>>,
       config?: Named<ConfigsForType<Env, L, A, IntersectionConfig<L[], A[]>>>
