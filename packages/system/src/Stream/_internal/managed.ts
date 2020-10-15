@@ -4,12 +4,10 @@ export {
   ensuring,
   finalizerRef,
   foldCauseM,
-  fromEffect,
   fork,
   map,
   mapM,
   mapM_,
-  succeedNow,
   tap,
   useNow,
   zip,
@@ -18,6 +16,8 @@ export {
 } from "../../Managed/core"
 
 export { bind, let, do } from "../../Managed/do"
+export { fromEffect } from "../../Managed/fromEffect"
+export { succeed } from "../../Managed/succeed"
 
 export { Managed } from "../../Managed/managed"
 export { switchable } from "../../Managed/methods/switchable"
