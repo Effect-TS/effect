@@ -29,7 +29,7 @@ export class Sink<R, E, I, L, Z> {
  * Creates a sink from a Push
  */
 export const fromPush = <R, E, I, L, Z>(push: Push.Push<R, E, I, L, Z>) =>
-  new Sink(M.succeedNow(push))
+  new Sink(M.succeed(push))
 
 /**
  * A sink that immediately ends with the specified value.

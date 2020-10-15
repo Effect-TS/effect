@@ -1,5 +1,6 @@
-import { chain_, map_, succeedNow } from "./core"
+import { chain_, map_ } from "./core"
 import type { Managed } from "./managed"
+import { succeed } from "./succeed"
 
 const bind = <R, E, A, K, N extends string>(
   tag: Exclude<N, keyof K>,
@@ -15,6 +16,6 @@ const let_ = <A, K, N extends string>(tag: Exclude<N, keyof K>, f: (_: K) => A) 
 ): Managed<R2, E2, K & { [k in N]: A }> =>
   map_(mk, (k): K & { [k in N]: A } => ({ ...k, [tag]: f(k) } as any))
 
-const do_ = succeedNow({})
+const do_ = succeed({})
 
 export { let_ as let, bind, do_ as do }

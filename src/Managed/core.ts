@@ -7,6 +7,7 @@ import { interrupt } from "../Fiber"
 import { pipe, tuple } from "../Function"
 import { makeRef } from "../Ref"
 import * as T from "./deps"
+import { fromEffect } from "./fromEffect"
 import { Managed } from "./managed"
 import type { Finalizer, ReleaseMap } from "./releaseMap"
 import * as RelMap from "./releaseMap"
@@ -263,19 +264,6 @@ export function fork<R, E, A>(
         ),
         T.map(({ fiber, releaseMapEntry }) => [releaseMapEntry, fiber])
       )
-    )
-  )
-}
-
-/**
- * Lifts a `Effect< R, E, A>` into `Managed< R, E, A>` with no release action. The
- * effect will be performed interruptibly.
- */
-export function fromEffect<R, E, A>(effect: T.Effect<R, E, A>) {
-  return new Managed<R, E, A>(
-    T.map_(
-      T.accessM((_: readonly [R, ReleaseMap]) => T.provideAll_(effect, _[0])),
-      (a) => [RelMap.noopFinalizer, a]
     )
   )
 }
@@ -638,13 +626,6 @@ export function makeReservation<R2>(
  */
 export function reserve<R, E, A>(reservation: Reservation<R, E, A>) {
   return makeReserve(T.succeed(reservation))
-}
-
-/**
- * Lift a pure value into an effect
- */
-export function succeedNow<A>(a: A) {
-  return fromEffect(T.succeed(a))
 }
 
 /**
