@@ -7,10 +7,12 @@
 // codegen:start {preset: barrel, include: ./*.ts, exclude: ./deps.ts}
 export * from "./core"
 export * from "./do"
+export * from "./fromEffect"
 export * from "./managed"
 export * from "./releaseMap"
 export * from "./sequenceS"
 export * from "./sequenceT"
+export * from "./succeed"
 // codegen:end
 
 // codegen:start { preset: barrel, include: ./methods/*.ts }

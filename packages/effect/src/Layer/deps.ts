@@ -48,7 +48,6 @@ export {
   foreachParN_,
   foreachPar_,
   foreach_ as managedForeach_,
-  fromEffect,
   makeExit_,
   makeInterruptible_,
   map_ as managedMap_,
@@ -57,5 +56,6 @@ export {
   zipWithPar_ as managedZipWithPar_
 } from "../Managed/core"
 export { Managed } from "../Managed/managed"
+export { fromEffect } from "../Managed/fromEffect"
 export { suspend as suspendManaged } from "../Managed/methods/suspend"
 export { make } from "../Promise/make"
