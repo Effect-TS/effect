@@ -8,6 +8,7 @@
  */
 import * as O from "@effect-ts/core/Classic/Option"
 import { flow, identity, pipe } from "@effect-ts/core/Function"
+import type { Newtype } from "@effect-ts/core/Newtype"
 import * as P from "@effect-ts/core/Prelude"
 
 import * as _ from "../Internal"
@@ -127,3 +128,10 @@ export const Invariant = P.instance<P.Invariant<[URI]>>({
     g: imap(g, f)
   })
 })
+
+export function newtype<T extends Newtype<any, any>>(): Iso<T["_A"], T> {
+  return {
+    get: (_) => _ as any,
+    reverseGet: (_) => _ as any
+  }
+}

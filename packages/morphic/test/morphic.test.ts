@@ -1,6 +1,9 @@
 import * as E from "@effect-ts/core/Classic/Either"
 import * as T from "@effect-ts/core/Classic/Sync"
 import { pipe } from "@effect-ts/core/Function"
+import type { TypeOf } from "@effect-ts/core/Newtype"
+import { typeDef } from "@effect-ts/core/Newtype"
+import * as I from "@effect-ts/monocle/Iso"
 import * as L from "@effect-ts/monocle/Lens"
 import * as fc from "fast-check"
 
@@ -40,10 +43,13 @@ const Person = opaque<PersonRaw, Person>()(Person_)
 
 const firstNameLens = pipe(Person.lens, L.prop("name"), L.prop("first"))
 
+const IdT = typeDef<bigint>()("IdT")
+interface IdT extends TypeOf<typeof IdT> {}
+
 export const Id = make((F) =>
   F.interface({
     id: F.interface({
-      id: F.bigint()
+      id: F.newtypeIso(I.newtype<IdT>(), F.bigint())
     })
   })
 )

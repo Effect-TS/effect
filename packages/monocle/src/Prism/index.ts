@@ -6,6 +6,7 @@
  * 1. getOption(s).fold(s, reverseGet) = s
  * 2. getOption(reverseGet(a)) = Some(a)
  */
+import type { Newtype } from "@effect-ts/core/Newtype"
 import * as P from "@effect-ts/core/Prelude"
 import type { Either } from "fp-ts/lib/Either"
 import type { Predicate, Refinement } from "fp-ts/lib/function"
@@ -238,3 +239,12 @@ export const Invariant = P.instance<P.Invariant<[URI]>>({
     g: imap(g, f)
   })
 })
+
+export function newtype<T extends Newtype<any, any>>(
+  getOption: (_: T["_A"]) => boolean
+): Prism<T["_A"], T> {
+  return {
+    getOption: (_) => (getOption(_) ? O.some(_) : O.none),
+    reverseGet: (_) => _ as any
+  }
+}
