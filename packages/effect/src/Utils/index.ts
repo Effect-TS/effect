@@ -46,3 +46,9 @@ export type RefinementWithIndex<I, A, B extends A> = (i: I, a: A) => a is B
 export type PredicateWithIndex<I, A> = (i: I, a: A) => boolean
 
 export type Erase<R, K> = R & K extends K & infer R1 ? R1 : R
+
+export type _A<T> = [T] extends [{ ["_A"]: () => infer A }] ? A : never
+
+export type _R<T> = [T] extends [{ ["_R"]: (_: infer R) => void }] ? R : never
+
+export type _E<T> = [T] extends [{ ["_E"]: () => infer E }] ? E : never
