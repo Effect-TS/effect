@@ -2,6 +2,7 @@ import type { Effect } from "@effect-ts/system/Effect"
 import { EffectURI } from "@effect-ts/system/Effect"
 
 import type { Array } from "../Classic/Array"
+import type { Async } from "../Classic/Async"
 import type { Bounded } from "../Classic/Bounded"
 import type { Closure } from "../Classic/Closure"
 import type { Commutative } from "../Classic/Commutative"
@@ -122,6 +123,9 @@ export type EffectCategoryURI = typeof EffectCategoryURI
 export const FreeAssociativeURI = "FreeAssociative"
 export type FreeAssociativeURI = typeof FreeAssociativeURI
 
+export const AsyncURI = "Async"
+export type AsyncURI = typeof AsyncURI
+
 declare module "../Prelude/HKT" {
   interface URItoKind<FC, TC, N extends string, K, Q, W, X, I, S, R, E, A> {
     [ArrayURI]: Array<A>
@@ -155,6 +159,7 @@ declare module "../Prelude/HKT" {
     [IdURI]: Id<A>
     [NonEmptyArrayURI]: NonEmptyArray<A>
     [FreeAssociativeURI]: FreeAssociative<A>
+    [AsyncURI]: Async<R, E, A>
   }
   interface URItoIndex<N extends string, K> {
     [ArrayURI]: number
