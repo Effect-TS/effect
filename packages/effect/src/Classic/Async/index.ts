@@ -745,6 +745,18 @@ export const provideService: <Service>(
   fa: Async<R & Has<Service>, E, A>
 ) => Async<R, E, A> = DSL.provideServiceF({ ...Monad, ...Provide, ...Access })
 
+export const provideServiceM: <Service>(
+  H: Tag<Service>
+) => <R2, E2>(
+  SM: Async<R2, E2, Service>
+) => <R, E, A>(fa: Async<R & Has<Service>, E, A>) => Async<R & R2, E | E2, A> = (
+  tag
+) => (SM) => (fa) =>
+  pipe(
+    SM,
+    chain((s) => pipe(fa, provideService(tag)(s)))
+  )
+
 export const provideSome: <R, R2>(
   f: (_: R2) => R
 ) => <E, A>(fa: Async<R, E, A>) => Async<R2, E, A> = DSL.provideSomeF({
