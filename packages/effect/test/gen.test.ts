@@ -28,6 +28,10 @@ const program = T.gen(function* (_) {
   return c
 })
 
+class MyError {
+  readonly _tag = "MyError"
+}
+
 describe("Generator", () => {
   it("should use generator program", async () => {
     const result = await pipe(
@@ -126,7 +130,7 @@ describe("Generator", () => {
       const c = yield* _(O.some(3))
 
       if (a + b + c > 10) {
-        yield* _(E.left("error"))
+        yield* _(E.left(new MyError()))
       }
 
       return { a, b, c }
@@ -143,7 +147,7 @@ describe("Generator", () => {
       const d = yield* _(X.access((_: { n: number }) => _.n))
 
       if (a + b + c + d > 10) {
-        yield* _(E.left("error"))
+        yield* _(E.left(new MyError()))
       }
 
       return { a, b, c, d }
@@ -152,6 +156,6 @@ describe("Generator", () => {
     expect(pipe(result, X.runEitherEnv({ n: 4 }))).toEqual(
       E.right({ a: 1, b: 2, c: 3, d: 4 })
     )
-    expect(pipe(result, X.runEitherEnv({ n: 7 }))).toEqual(E.left("error"))
+    expect(pipe(result, X.runEitherEnv({ n: 7 }))).toEqual(E.left(new MyError()))
   })
 })
