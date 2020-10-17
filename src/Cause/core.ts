@@ -593,3 +593,12 @@ export const stripInterrupts = <E>(cause: Cause<E>): Cause<E> => {
     }
   }
 }
+
+export function isCause(u: unknown): u is Cause<unknown> {
+  return (
+    typeof u === "object" &&
+    u !== null &&
+    "_tag" in u &&
+    ["Empty", "Fail", "Die", "Interrupt", "Then", "Both"].includes(u["_tag"])
+  )
+}

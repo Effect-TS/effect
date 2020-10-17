@@ -57,4 +57,17 @@ describe("Generator", () => {
 
     expect(result).toEqual(Ex.succeed(2))
   })
+  it("try/catch defects", async () => {
+    const result = await T.runPromiseExit(
+      T.gen(function* (_) {
+        try {
+          yield* _(T.die(new Error("error")))
+        } catch (e) {
+          return yield* _(T.succeed((e as number) + 1))
+        }
+      })
+    )
+
+    expect(result).toEqual(Ex.die(new Error("error")))
+  })
 })
