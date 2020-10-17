@@ -46,6 +46,17 @@ describe("Generator", () => {
 
     expect(result).toEqual(Ex.fail("12 should be lower then x"))
   })
+  it("catches defects", async () => {
+    const result = await pipe(
+      T.gen(function* (_) {
+        yield* _(T.unit)
+        throw new Error("defect")
+      }),
+      T.runPromiseExit
+    )
+
+    expect(result).toEqual(Ex.die(new Error("defect")))
+  })
   it("mix types", async () => {
     class SumTooBig {
       readonly _tag = "SumTooBig"
