@@ -11,8 +11,8 @@ type B = {
 }
 
 const program = T.gen(function* (_) {
-  const a = (yield* _(T.environment<A>())).a
-  const b = (yield* _(T.environment<B>())).b
+  const a = yield* _(T.access((_: A) => _.a))
+  const b = yield* _(T.access((_: B) => _.b))
 
   const c = a + b
 
