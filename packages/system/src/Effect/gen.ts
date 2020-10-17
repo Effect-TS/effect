@@ -60,8 +60,8 @@ const adapter = (_: any) => {
 export function gen<
   Eff extends GenEffect<any, any, any>,
   REff extends _R<Eff>,
-  EEff extends _E<Eff> = never,
-  AEff = void
+  EEff extends _E<Eff>,
+  AEff
 >(
   f: (i: {
     <A>(_: Option<A>): GenEffect<unknown, NoSuchElementException, A>
