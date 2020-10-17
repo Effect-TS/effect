@@ -1,3 +1,5 @@
+import "./Integrations"
+
 import * as C from "@effect-ts/system/Cause"
 import * as T from "@effect-ts/system/Effect"
 import * as E from "@effect-ts/system/Either"
