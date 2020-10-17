@@ -28,21 +28,19 @@ const program = T.gen(function* (_) {
 
 describe("Generator", () => {
   it("should use generator program", async () => {
-    const result = await T.runPromiseExit(
-      pipe(
-        program,
-        T.provideAll<A & B>({ a: 1, b: 2 })
-      )
+    const result = await pipe(
+      program,
+      T.provideAll<A & B>({ a: 1, b: 2 }),
+      T.runPromiseExit
     )
 
     expect(result).toEqual(Ex.succeed(3))
   })
   it("should use generator program (failing)", async () => {
-    const result = await T.runPromiseExit(
-      pipe(
-        program,
-        T.provideAll<A & B>({ a: 10, b: 2 })
-      )
+    const result = await pipe(
+      program,
+      T.provideAll<A & B>({ a: 10, b: 2 }),
+      T.runPromiseExit
     )
 
     expect(result).toEqual(Ex.fail("12 should be lower then x"))
