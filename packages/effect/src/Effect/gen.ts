@@ -27,7 +27,7 @@ export class GenEffect<R, E, A> {
   constructor(readonly effect: Effect<R, E, A> | Managed<R, E, A>) {}
 
   *[Symbol.iterator](): Generator<GenEffect<R, E, A>, A, any> {
-    return (yield this) as any
+    return yield this
   }
 }
 
