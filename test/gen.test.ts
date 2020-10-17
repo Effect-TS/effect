@@ -34,4 +34,14 @@ describe("Generator", () => {
 
     expect(result).toEqual(Ex.succeed(3))
   })
+  it("should use generator program (failing)", async () => {
+    const result = await T.runPromiseExit(
+      pipe(
+        program,
+        T.provideAll<A & B>({ a: 10, b: 2 })
+      )
+    )
+
+    expect(result).toEqual(Ex.fail("12 should be lower then x"))
+  })
 })
