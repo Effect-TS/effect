@@ -4,6 +4,7 @@ import * as Exit from "../Exit/core"
 import type * as Fiber from "../Fiber"
 import type { Descriptor, InterruptStatus } from "../Fiber/core"
 import type { FiberID } from "../Fiber/id"
+import { identity } from "../Function"
 import * as O from "../Option"
 import type { Supervisor } from "../Supervisor"
 import type { Effect, IO, RIO, UIO } from "./effect"
@@ -110,6 +111,16 @@ export function effectAsyncOption<R, E, A>(
 export function effectPartial<E>(onThrow: (u: unknown) => E) {
   return <A>(effect: () => A): IO<E, A> => new IEffectPartial(effect, onThrow)
 }
+
+/**
+ * Imports a synchronous side-effect into a pure value, translating any
+ * thrown exceptions into typed failed effects creating with `halt`.
+ */
+function try_<A>(effect: () => A): IO<unknown, A> {
+  return new IEffectPartial(effect, identity)
+}
+
+export { try_ as try }
 
 /**
  * Imports a synchronous side-effect into a pure value
