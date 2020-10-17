@@ -24,16 +24,19 @@ function isOption(u: unknown): u is Option<unknown> {
   )
 }
 
-const adapter = (_: any) => {
+const adapter = (_: any, __?: any) => {
   return isOption(_)
     ? new GenEither(
-        _._tag === "Some" ? right(_.value) : left(new NoSuchElementException())
+        _._tag === "Some"
+          ? right(_.value)
+          : left(__ ? __() : new NoSuchElementException())
       )
     : new GenEither(_)
 }
 
 export function gen<Eff extends GenEither<any, any>, EEff extends _E<Eff>, AEff>(
   f: (i: {
+    <E, A>(_: Option<A>, onNone: () => E): GenEither<E, A>
     <A>(_: Option<A>): GenEither<NoSuchElementException, A>
     <E, A>(_: Either<E, A>): GenEither<E, A>
   }) => Generator<Eff, AEff, any>

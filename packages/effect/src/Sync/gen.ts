@@ -38,13 +38,15 @@ function isOption(u: unknown): u is Option<unknown> {
   )
 }
 
-const adapter = (_: any) => {
+const adapter = (_: any, __?: any) => {
   if (isEither(_)) {
     return new GenSync(_._tag === "Left" ? fail(_.left) : succeed(_.right))
   }
   if (isOption(_)) {
     return new GenSync(
-      _._tag === "None" ? fail(new NoSuchElementException()) : succeed(_.value)
+      _._tag === "None"
+        ? fail(__ ? __() : new NoSuchElementException())
+        : succeed(_.value)
     )
   }
   return new GenSync(_)
@@ -57,6 +59,7 @@ export function gen<
   AEff
 >(
   f: (i: {
+    <E, A>(_: Option<A>, onNone: () => E): GenSync<unknown, E, A>
     <A>(_: Option<A>): GenSync<unknown, NoSuchElementException, A>
     <E, A>(_: Either<E, A>): GenSync<unknown, E, A>
     <R, E, A>(_: Sync<R, E, A>): GenSync<R, E, A>
