@@ -1,5 +1,3 @@
-import "../../src/Effect/Integrations"
-
 import { succeed } from "@effect-ts/system/Exit"
 import { pipe } from "@effect-ts/system/Function"
 
