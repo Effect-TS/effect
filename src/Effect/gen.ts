@@ -12,6 +12,7 @@ import { bracketExit_ } from "./bracketExit_"
 import { chain_, succeed, suspend, unit } from "./core"
 import type { Effect } from "./effect"
 import { sequential } from "./ExecutionStrategy"
+import { fail } from "./fail"
 import { fromEither } from "./fromEither"
 import { getOrFail } from "./getOrFail"
 import { map_ } from "./map_"
@@ -47,12 +48,14 @@ function isOption(u: unknown): u is Option<unknown> {
   )
 }
 
-const adapter = (_: any) => {
+const adapter = (_: any, __?: any) => {
   if (isEither(_)) {
     return new GenEffect(fromEither(() => _))
   }
   if (isOption(_)) {
-    return new GenEffect(getOrFail(() => _))
+    return new GenEffect(
+      __ ? (_._tag === "None" ? fail(__()) : succeed(_.value)) : getOrFail(() => _)
+    )
   }
   return new GenEffect(_)
 }
@@ -64,6 +67,7 @@ export function gen<
   AEff
 >(
   f: (i: {
+    <E, A>(_: Option<A>, onNone: () => E): GenEffect<unknown, E, A>
     <A>(_: Option<A>): GenEffect<unknown, NoSuchElementException, A>
     <E, A>(_: Either<E, A>): GenEffect<unknown, E, A>
     <R, E, A>(_: Effect<R, E, A>): GenEffect<R, E, A>
