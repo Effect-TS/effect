@@ -2,8 +2,10 @@
  * inspired by https://github.com/tusharmath/qio/pull/22 (revised)
  */
 import type { _E, _R } from "../Utils"
+import { catchAll_ } from "./catchAll"
 import { chain_, succeed, suspend } from "./core"
 import type { Effect } from "./effect"
+import { fail } from "./fail"
 
 export class GenEffect<R, E, A> {
   readonly _R!: (_R: R) => void
@@ -32,10 +34,20 @@ export function gen<Eff, REff extends _R<Eff>, EEff extends _E<Eff>, AEff>(
       if (state.done) {
         return succeed(state.value)
       }
-      return chain_(state.value["effect"], (val) => {
-        const next = iterator.next(val)
-        return run(next)
-      })
+      return catchAll_(
+        chain_(state.value["effect"], (val) => {
+          const next = iterator.next(val)
+          return run(next)
+        }),
+        (e) =>
+          suspend(() => {
+            try {
+              return run(iterator.throw(e))
+            } catch {
+              return fail(e)
+            }
+          })
+      )
     }
 
     return run(state)
