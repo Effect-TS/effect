@@ -5,6 +5,7 @@ import * as Ex from "../src/Exit"
 import { pipe } from "../src/Function"
 import * as M from "../src/Managed"
 import * as O from "../src/Option"
+import * as X from "../src/Sync"
 
 type A = {
   a: number
@@ -132,5 +133,25 @@ describe("Generator", () => {
     })
 
     expect(result).toEqual(E.right({ a: 1, b: 2, c: 3 }))
+  })
+
+  it("sync gen", () => {
+    const result = X.gen(function* (_) {
+      const a = yield* _(E.right(1))
+      const b = yield* _(E.right(2))
+      const c = yield* _(O.some(3))
+      const d = yield* _(X.access((_: { n: number }) => _.n))
+
+      if (a + b + c + d > 10) {
+        yield* _(E.left("error"))
+      }
+
+      return { a, b, c, d }
+    })
+
+    expect(pipe(result, X.runEitherEnv({ n: 4 }))).toEqual(
+      E.right({ a: 1, b: 2, c: 3, d: 4 })
+    )
+    expect(pipe(result, X.runEitherEnv({ n: 7 }))).toEqual(E.left("error"))
   })
 })
