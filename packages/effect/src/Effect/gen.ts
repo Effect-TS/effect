@@ -2,7 +2,7 @@
  * inspired by https://github.com/tusharmath/qio/pull/22 (revised)
  */
 import type { _E, _R } from "../Utils"
-import { chain_, succeed } from "./core"
+import { chain_, succeed, suspend } from "./core"
 import type { Effect } from "./effect"
 
 export class GenEffect<R, E, A> {
@@ -22,19 +22,22 @@ export function gen<Eff, REff extends _R<Eff>, EEff extends _E<Eff>, AEff>(
     i: <R, E, A>(_: Effect<R, E, A>) => GenEffect<R, E, A>
   ) => Generator<Eff, AEff, any>
 ): Effect<REff, EEff, AEff> {
-  const iterator = f((_) => new GenEffect(_))
-  const state = iterator.next()
+  return suspend(() => {
+    const iterator = f((_) => new GenEffect(_))
+    const state = iterator.next()
 
-  function run(
-    state: IteratorYieldResult<Eff> | IteratorReturnResult<AEff>
-  ): Effect<any, any, AEff> {
-    if (state.done) {
-      return succeed(state.value)
+    function run(
+      state: IteratorYieldResult<Eff> | IteratorReturnResult<AEff>
+    ): Effect<any, any, AEff> {
+      if (state.done) {
+        return succeed(state.value)
+      }
+      return chain_(state.value["effect"], (val) => {
+        const next = iterator.next(val)
+        return run(next)
+      })
     }
-    return chain_(state.value["effect"], (val) => {
-      const next = iterator.next(val)
-      return run(next)
-    })
-  }
-  return run(state)
+
+    return run(state)
+  })
 }
