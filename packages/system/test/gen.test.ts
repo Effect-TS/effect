@@ -117,4 +117,20 @@ describe("Generator", () => {
 
     expect(close).toHaveBeenCalledTimes(1)
   })
+
+  it("either gen", () => {
+    const result = E.gen(function* (_) {
+      const a = yield* _(E.right(1))
+      const b = yield* _(E.right(2))
+      const c = yield* _(O.some(3))
+
+      if (a + b + c > 10) {
+        yield* _(E.left("error"))
+      }
+
+      return { a, b, c }
+    })
+
+    expect(result).toEqual(E.right({ a: 1, b: 2, c: 3 }))
+  })
 })
