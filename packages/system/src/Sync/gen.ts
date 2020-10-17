@@ -1,0 +1,83 @@
+/**
+ * inspired by https://github.com/tusharmath/qio/pull/22 (revised)
+ */
+import type { Either } from "../Either"
+import { NoSuchElementException } from "../GlobalExceptions"
+import type { Option } from "../Option"
+import type { _E, _R } from "../Utils"
+import type { Sync } from "./core"
+import { chain_, fail, succeed, suspend } from "./core"
+
+export class GenSync<R, E, A> {
+  readonly _R!: (_R: R) => void
+  readonly _E!: () => E
+  readonly _A!: () => A
+
+  constructor(readonly effect: Sync<R, E, A>) {}
+
+  *[Symbol.iterator](): Generator<GenSync<R, E, A>, A, any> {
+    return yield this
+  }
+}
+
+function isEither(u: unknown): u is Either<unknown, unknown> {
+  return (
+    typeof u === "object" &&
+    u != null &&
+    "_tag" in u &&
+    (u["_tag"] === "Left" || u["_tag"] === "Right")
+  )
+}
+
+function isOption(u: unknown): u is Option<unknown> {
+  return (
+    typeof u === "object" &&
+    u != null &&
+    "_tag" in u &&
+    (u["_tag"] === "Some" || u["_tag"] === "None")
+  )
+}
+
+const adapter = (_: any) => {
+  if (isEither(_)) {
+    return new GenSync(_._tag === "Left" ? fail(_.left) : succeed(_.right))
+  }
+  if (isOption(_)) {
+    return new GenSync(
+      _._tag === "None" ? fail(new NoSuchElementException()) : succeed(_.value)
+    )
+  }
+  return new GenSync(_)
+}
+
+export function gen<
+  Eff extends GenSync<any, any, any>,
+  REff extends _R<Eff>,
+  EEff extends _E<Eff>,
+  AEff
+>(
+  f: (i: {
+    <A>(_: Option<A>): GenSync<unknown, NoSuchElementException, A>
+    <E, A>(_: Either<E, A>): GenSync<unknown, E, A>
+    <R, E, A>(_: Sync<R, E, A>): GenSync<R, E, A>
+  }) => Generator<Eff, AEff, any>
+): Sync<REff, EEff, AEff> {
+  return suspend(() => {
+    const iterator = f(adapter as any)
+    const state = iterator.next()
+
+    function run(
+      state: IteratorYieldResult<Eff> | IteratorReturnResult<AEff>
+    ): Sync<any, any, AEff> {
+      if (state.done) {
+        return succeed(state.value)
+      }
+      return chain_(state.value["effect"], (val) => {
+        const next = iterator.next(val)
+        return run(next)
+      })
+    }
+
+    return run(state)
+  })
+}
