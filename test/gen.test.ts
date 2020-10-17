@@ -1,3 +1,4 @@
+import * as A from "../src/Array"
 import * as T from "../src/Effect"
 import * as E from "../src/Either"
 import * as Ex from "../src/Exit"
@@ -109,6 +110,14 @@ describe("Generator", () => {
       )
     )
 
+    const sum = T.gen(function* (_) {
+      let sum = 0
+      for (const i of A.range(0, 10)) {
+        sum += yield* _(T.succeed(i))
+      }
+      return sum
+    })
+
     const program1 = T.gen(function* (_) {
       const a = yield* _(E.right(1))
       const b = yield* _(O.some(2))
@@ -130,7 +139,7 @@ describe("Generator", () => {
         return yield* _(T.fail(new SumTooBig(`${s} > 20`)))
       }
 
-      return s
+      return { s, sum: yield* _(sum) }
     })
 
     expect(
@@ -139,7 +148,7 @@ describe("Generator", () => {
         T.provideAll<A & B>({ a: 3, b: 4 }),
         T.runPromiseExit
       )
-    ).toEqual(Ex.succeed(20))
+    ).toEqual(Ex.succeed({ s: 20, sum: 55 }))
 
     expect(open).toHaveBeenCalledTimes(1)
     expect(close).toHaveBeenCalledTimes(1)
