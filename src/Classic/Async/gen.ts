@@ -46,7 +46,7 @@ function isOption(u: unknown): u is Option<unknown> {
   )
 }
 
-const adapter = (_: any) => {
+const adapter = (_: any, __?: any) => {
   if (isSync(_)) {
     return new GenAsync(
       accessM((r) => {
@@ -64,7 +64,9 @@ const adapter = (_: any) => {
   }
   if (isOption(_)) {
     return new GenAsync(
-      _._tag === "None" ? fail(new NoSuchElementException()) : succeed(_.value)
+      _._tag === "None"
+        ? fail(__ ? __() : new NoSuchElementException())
+        : succeed(_.value)
     )
   }
   return new GenAsync(_)
@@ -77,6 +79,7 @@ export function gen<
   AEff
 >(
   f: (i: {
+    <E, A>(_: Option<A>, onNone: () => E): GenAsync<unknown, E, A>
     <A>(_: Option<A>): GenAsync<unknown, NoSuchElementException, A>
     <E, A>(_: Either<E, A>): GenAsync<unknown, E, A>
     <R, E, A>(_: Sync<R, E, A>): GenAsync<R, E, A>

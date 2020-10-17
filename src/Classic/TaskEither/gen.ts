@@ -35,10 +35,12 @@ function isEither(u: unknown): u is Either<unknown, unknown> {
   )
 }
 
-const adapter = (_: any) => {
+const adapter = (_: any, __?: any) => {
   return isOption(_)
     ? new GenTaskEither(
-        _._tag === "Some" ? T.succeed(_.value) : T.fail(new NoSuchElementException())
+        _._tag === "Some"
+          ? T.succeed(_.value)
+          : T.fail(__ ? __() : new NoSuchElementException())
       )
     : isEither(_)
     ? new GenTaskEither(_._tag === "Left" ? T.fail(_.left) : T.succeed(_.right))
@@ -47,6 +49,7 @@ const adapter = (_: any) => {
 
 export function gen<Eff extends GenTaskEither<any, any>, EEff extends _E<Eff>, AEff>(
   f: (i: {
+    <E, A>(_: Option<A>, onNone: () => E): GenTaskEither<E, A>
     <A>(_: Option<A>): GenTaskEither<NoSuchElementException, A>
     <E, A>(_: Either<E, A>): GenTaskEither<E, A>
     <E, A>(_: TaskEither<E, A>): GenTaskEither<E, A>
