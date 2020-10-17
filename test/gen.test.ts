@@ -44,4 +44,17 @@ describe("Generator", () => {
 
     expect(result).toEqual(Ex.fail("12 should be lower then x"))
   })
+  it("try/catch", async () => {
+    const result = await T.runPromiseExit(
+      T.gen(function* (_) {
+        try {
+          return yield* _(T.fail(1))
+        } catch (e) {
+          return yield* _(T.succeed((e as number) + 1))
+        }
+      })
+    )
+
+    expect(result).toEqual(Ex.succeed(2))
+  })
 })
