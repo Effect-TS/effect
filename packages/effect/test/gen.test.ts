@@ -128,19 +128,28 @@ describe("Generator", () => {
     })
 
     const program2 = T.gen(function* (_) {
-      const { a, b, c } = yield* _(program1)
-      const d = yield* _(T.access((_: B) => _.b))
-      const e = yield* _(managedNumber)
+      const resOrFail = yield* _(T.either(program1))
 
-      expect(close).toHaveBeenCalledTimes(0)
+      switch (resOrFail._tag) {
+        case "Left": {
+          return yield* _(T.succeed(0))
+        }
+        case "Right": {
+          const { a, b, c } = resOrFail.right
+          const d = yield* _(T.access((_: B) => _.b))
+          const e = yield* _(managedNumber)
 
-      const s = a + b + c + d + e
+          expect(close).toHaveBeenCalledTimes(0)
 
-      if (s > 20) {
-        return yield* _(T.fail(new SumTooBig(`${s} > 20`)))
+          const s = a + b + c + d + e
+
+          if (s > 20) {
+            return yield* _(T.fail(new SumTooBig(`${s} > 20`)))
+          }
+
+          return yield* _(sum(s))
+        }
       }
-
-      return yield* _(sum(s))
     })
 
     expect(
