@@ -63,14 +63,10 @@ describe("Generator", () => {
       constructor(readonly message: string) {}
     }
 
-    const open = jest.fn()
     const close = jest.fn()
 
     const managedNumber = pipe(
-      T.effectTotal(() => {
-        open()
-        return 10
-      }),
+      T.effectTotal(() => 10),
       M.makeExit(() =>
         T.effectTotal(() => {
           close()
@@ -119,7 +115,6 @@ describe("Generator", () => {
       )
     ).toEqual(Ex.succeed(210))
 
-    expect(open).toHaveBeenCalledTimes(1)
     expect(close).toHaveBeenCalledTimes(1)
   })
 })
