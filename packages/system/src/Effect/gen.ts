@@ -9,11 +9,9 @@ import { makeReleaseMap, Managed, releaseAll } from "../Managed"
 import type { Option } from "../Option"
 import type { _E, _R } from "../Utils"
 import { bracketExit_ } from "./bracketExit_"
-import { catchAll_ } from "./catchAll"
 import { chain_, succeed, suspend, unit } from "./core"
 import type { Effect } from "./effect"
 import { sequential } from "./ExecutionStrategy"
-import { fail } from "./fail"
 import { fromEither } from "./fromEither"
 import { getOrFail } from "./getOrFail"
 import { map_ } from "./map_"
@@ -36,7 +34,7 @@ function isEither(u: unknown): u is Either<unknown, unknown> {
     typeof u === "object" &&
     u != null &&
     "_tag" in u &&
-    ["Left", "Right"].includes(u["_tag"])
+    (u["_tag"] === "Left" || u["_tag"] === "Right")
   )
 }
 
@@ -45,7 +43,7 @@ function isOption(u: unknown): u is Option<unknown> {
     typeof u === "object" &&
     u != null &&
     "_tag" in u &&
-    ["Some", "None"].includes(u["_tag"])
+    (u["_tag"] === "Some" || u["_tag"] === "None")
   )
 }
 
@@ -78,27 +76,17 @@ export function gen<Eff, REff extends _R<Eff>, EEff extends _E<Eff>, AEff>(
       if (state.done) {
         return succeed(state.value)
       }
-      return catchAll_(
-        chain_(
-          state.value["effect"] instanceof Managed
-            ? map_(
-                provideSome_(state.value["effect"]["effect"], (r0) => tuple(r0, rm)),
-                ([_, a]) => a
-              )
-            : state.value["effect"],
-          (val) => {
-            const next = iterator.next(val)
-            return run(rm, next)
-          }
-        ),
-        (e) =>
-          suspend(() => {
-            try {
-              return run(rm, iterator.throw(e))
-            } catch {
-              return fail(e)
-            }
-          })
+      return chain_(
+        state.value["effect"] instanceof Managed
+          ? map_(
+              provideSome_(state.value["effect"]["effect"], (r0) => tuple(r0, rm)),
+              ([_, a]) => a
+            )
+          : state.value["effect"],
+        (val) => {
+          const next = iterator.next(val)
+          return run(rm, next)
+        }
       )
     }
 
