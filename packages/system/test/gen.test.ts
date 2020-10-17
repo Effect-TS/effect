@@ -110,13 +110,14 @@ describe("Generator", () => {
       )
     )
 
-    const sum = T.gen(function* (_) {
-      let sum = 0
-      for (const i of A.range(0, 10)) {
-        sum += yield* _(T.succeed(i))
-      }
-      return sum
-    })
+    const sum = (n: number) =>
+      T.gen(function* (_) {
+        let sum = 0
+        for (const i of A.range(0, n)) {
+          sum += yield* _(T.succeed(i))
+        }
+        return sum
+      })
 
     const program1 = T.gen(function* (_) {
       const a = yield* _(E.right(1))
@@ -139,7 +140,7 @@ describe("Generator", () => {
         return yield* _(T.fail(new SumTooBig(`${s} > 20`)))
       }
 
-      return { s, sum: yield* _(sum) }
+      return yield* _(sum(s))
     })
 
     expect(
@@ -148,7 +149,7 @@ describe("Generator", () => {
         T.provideAll<A & B>({ a: 3, b: 4 }),
         T.runPromiseExit
       )
-    ).toEqual(Ex.succeed({ s: 20, sum: 55 }))
+    ).toEqual(Ex.succeed(210))
 
     expect(open).toHaveBeenCalledTimes(1)
     expect(close).toHaveBeenCalledTimes(1)
