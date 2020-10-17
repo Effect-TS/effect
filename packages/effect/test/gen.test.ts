@@ -123,11 +123,26 @@ describe("Generator", () => {
     expect(close).toHaveBeenCalledTimes(1)
   })
 
+  it("option gen", () => {
+    const result = O.gen(function* (_) {
+      const a = yield* _(O.some(1))
+      const b = yield* _(O.some(2))
+
+      if (a + b > 10) {
+        yield* _(O.none)
+      }
+
+      return { a, b }
+    })
+
+    expect(result).toEqual(O.some({ a: 1, b: 2 }))
+  })
+
   it("either gen", () => {
     const result = E.gen(function* (_) {
-      const a = yield* _(E.right(1))
-      const b = yield* _(E.right(2))
-      const c = yield* _(O.some(3))
+      const a = yield* _(O.some(1))
+      const b = yield* _(O.some(2))
+      const c = yield* _(E.right(3))
 
       if (a + b + c > 10) {
         yield* _(E.left(new MyError()))
@@ -141,9 +156,9 @@ describe("Generator", () => {
 
   it("sync gen", () => {
     const result = X.gen(function* (_) {
-      const a = yield* _(E.right(1))
-      const b = yield* _(E.right(2))
-      const c = yield* _(O.some(3))
+      const a = yield* _(O.some(1))
+      const b = yield* _(O.some(2))
+      const c = yield* _(E.right(3))
       const d = yield* _(X.access((_: { n: number }) => _.n))
 
       if (a + b + c + d > 10) {
