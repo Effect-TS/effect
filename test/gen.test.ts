@@ -2,14 +2,22 @@ import * as T from "../src/Effect"
 import * as Ex from "../src/Exit"
 import { pipe } from "../src/Function"
 
-const program = T.gen(function* (eff) {
-  const a = yield* eff(T.access((_: { a: number }) => _.a))
-  const b = yield* eff(T.access((_: { b: number }) => _.b))
+const program = T.gen(function* (_) {
+  type A = {
+    a: number
+  }
+
+  type B = {
+    b: number
+  }
+
+  const a = (yield* _(T.environment<A>())).a
+  const b = (yield* _(T.environment<B>())).b
 
   const c = a + b
 
   if (c > 10) {
-    yield* eff(T.fail(`${c} should be lower then x`))
+    yield* _(T.fail(`${c} should be lower then x`))
   }
 
   return c
