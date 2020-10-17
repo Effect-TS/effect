@@ -1,7 +1,7 @@
-import type { Either } from "../Either"
 import { NoSuchElementException } from "../GlobalExceptions"
 import type { Option } from "../Option"
 import type { _E } from "../Utils"
+import type { Either } from "./core"
 import { chain_, left, right } from "./core"
 
 export class GenEither<E, A> {
