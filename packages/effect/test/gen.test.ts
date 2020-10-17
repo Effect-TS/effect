@@ -109,10 +109,16 @@ describe("Generator", () => {
       )
     )
 
-    const program = T.gen(function* (_) {
+    const program1 = T.gen(function* (_) {
       const a = yield* _(E.right(1))
       const b = yield* _(O.some(2))
       const c = yield* _(T.access((_: A) => _.a))
+
+      return { a, b, c }
+    })
+
+    const program2 = T.gen(function* (_) {
+      const { a, b, c } = yield* _(program1)
       const d = yield* _(T.access((_: B) => _.b))
       const e = yield* _(managedNumber)
 
@@ -129,7 +135,7 @@ describe("Generator", () => {
 
     expect(
       await pipe(
-        program,
+        program2,
         T.provideAll<A & B>({ a: 3, b: 4 }),
         T.runPromiseExit
       )
