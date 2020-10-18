@@ -1,11 +1,12 @@
 import type { Effect } from "../../Effect"
-import { fromEither } from "../../Effect"
+import { fromEither, readService } from "../../Effect"
 import { die } from "../../Effect/die"
 import type { Either } from "../../Either"
 import { NoSuchElementException, PrematureGeneratorExit } from "../../GlobalExceptions"
+import type { Has, Tag } from "../../Has"
 import type { Option } from "../../Option"
 import type { _E, _R } from "../../Utils"
-import { isEither, isOption } from "../../Utils"
+import { isEither, isOption, isTag } from "../../Utils"
 import { chain_ } from "./chain"
 import { Stream } from "./definitions"
 import { fail } from "./fail"
@@ -34,12 +35,15 @@ const adapter = (_: any, __?: any) => {
     return new GenStream(fromEffect(fromEither(() => _)))
   } else if (_ instanceof Stream) {
     return new GenStream(_)
+  } else if (isTag(_)) {
+    return new GenStream(fromEffect(readService(_)))
   }
   return new GenStream(fromEffect(_))
 }
 
 export function gen<Eff extends GenStream<any, any, any>, AEff>(
   f: (i: {
+    <A>(_: Tag<A>): GenStream<Has<A>, never, A>
     <E, A>(_: Option<A>, onNone: () => E): GenStream<unknown, E, A>
     <A>(_: Option<A>): GenStream<unknown, NoSuchElementException, A>
     <E, A>(_: Either<E, A>): GenStream<unknown, E, A>

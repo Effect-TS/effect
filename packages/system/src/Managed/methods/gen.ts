@@ -1,11 +1,14 @@
+import { accessService } from "../../Effect"
 import type { Effect } from "../../Effect/effect"
 import { fromEither } from "../../Effect/fromEither"
 import { getOrFail } from "../../Effect/getOrFail"
 import type { Either } from "../../Either"
+import { identity } from "../../Function"
 import type { NoSuchElementException } from "../../GlobalExceptions"
+import type { Tag } from "../../Has"
 import type { Option } from "../../Option"
 import type { _E, _R } from "../../Utils"
-import { isEither, isOption } from "../../Utils"
+import { isEither, isOption, isTag } from "../../Utils"
 import { chain_, fail } from "../core"
 import { fromEffect } from "../fromEffect"
 import { Managed } from "../managed"
@@ -25,6 +28,9 @@ export class GenManaged<R, E, A> {
 }
 
 const adapter = (_: any, __?: any) => {
+  if (isTag(_)) {
+    return new GenManaged(fromEffect(accessService(_)(identity)))
+  }
   if (isEither(_)) {
     return new GenManaged(fromEffect(fromEither(() => _)))
   }
@@ -45,6 +51,7 @@ const adapter = (_: any, __?: any) => {
 
 export function gen<Eff extends GenManaged<any, any, any>, AEff>(
   f: (i: {
+    <A>(_: Tag<A>): GenManaged<A, never, A>
     <E, A>(_: Option<A>, onNone: () => E): GenManaged<unknown, E, A>
     <A>(_: Option<A>): GenManaged<unknown, NoSuchElementException, A>
     <E, A>(_: Either<E, A>): GenManaged<unknown, E, A>
