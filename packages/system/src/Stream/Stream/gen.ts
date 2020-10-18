@@ -1,11 +1,16 @@
-import * as M from "../_internal/managed"
+import type { Effect } from "../../Effect"
+import { fromEither, isEither, isOption } from "../../Effect"
 import { die } from "../../Effect/die"
-import { PrematureGeneratorExit } from "../../GlobalExceptions"
+import type { Either } from "../../Either"
+import { NoSuchElementException, PrematureGeneratorExit } from "../../GlobalExceptions"
+import type { Option } from "../../Option"
 import type { _E, _R } from "../../Utils"
 import { chain_ } from "./chain"
 import { Stream } from "./definitions"
+import { fail } from "./fail"
 import { fromEffect } from "./fromEffect"
 import { succeed } from "./succeed"
+import { suspend } from "./suspend"
 
 export class GenStream<R, E, A> {
   readonly _R!: (_R: R) => void
@@ -17,16 +22,27 @@ export class GenStream<R, E, A> {
   }
 }
 
-const adapter = (_: any) => {
-  return new GenStream(_)
-}
-
-export function suspend<R, E, A>(f: () => Stream<R, E, A>): Stream<R, E, A> {
-  return new Stream(M.suspend(() => f().proc))
+const adapter = (_: any, __?: any) => {
+  if (isOption(_)) {
+    return new GenStream(
+      _._tag === "None"
+        ? fail(__ ? __() : new NoSuchElementException())
+        : succeed(_.value)
+    )
+  } else if (isEither(_)) {
+    return new GenStream(fromEffect(fromEither(() => _)))
+  } else if (_ instanceof Stream) {
+    return new GenStream(_)
+  }
+  return new GenStream(fromEffect(_))
 }
 
 export function gen<Eff extends GenStream<any, any, any>, AEff>(
   f: (i: {
+    <E, A>(_: Option<A>, onNone: () => E): GenStream<unknown, E, A>
+    <A>(_: Option<A>): GenStream<unknown, NoSuchElementException, A>
+    <E, A>(_: Either<E, A>): GenStream<unknown, E, A>
+    <R, E, A>(_: Effect<R, E, A>): GenStream<R, E, A>
     <R, E, A>(_: Stream<R, E, A>): GenStream<R, E, A>
   }) => Generator<Eff, AEff, any>
 ): Stream<_R<Eff>, _E<Eff>, AEff> {
