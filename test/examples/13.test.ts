@@ -141,18 +141,22 @@ test("13", () => {
 })
 
 test("13 generator", () => {
-  const result = ReaderIOEither.gen(function* (_) {
-    const a = yield* _(ReaderIOEither.access((_: { a: number }) => _.a))
-    const b = yield* _(ReaderIOEither.access((_: { b: number }) => _.b))
-    const c = yield* _(Either.right(2))
-    const d = yield* _(Option.some(3))
+  const { access, fail, gen } = ReaderIOEither
+  const { right } = Either
+  const { some } = Option
+
+  const result = gen(function* (_) {
+    const a = yield* _(access((_: { a: number }) => _.a))
+    const b = yield* _(access((_: { b: number }) => _.b))
+    const c = yield* _(right(2))
+    const d = yield* _(some(3))
 
     if (a + b + c + d > 10) {
-      yield* _(ReaderIOEither.fail("error"))
+      yield* _(fail("error"))
     }
 
     return a + b + c + d
   })
 
-  expect(pipe(result, Reader.runEnv({ a: 1, b: 2 }), IO.run)).toEqual(Either.right(8))
+  expect(pipe(result, Reader.runEnv({ a: 1, b: 2 }), IO.run)).toEqual(right(8))
 })
