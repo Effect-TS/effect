@@ -102,3 +102,5 @@ export const Category = P.instance<P.Category<[EffectCategoryURI], V>>({
   id: T.environment,
   compose: T.compose
 })
+
+export const gen_ = DSL.genF(Monad)
