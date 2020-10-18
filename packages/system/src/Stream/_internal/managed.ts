@@ -21,3 +21,4 @@ export { succeed } from "../../Managed/succeed"
 
 export { Managed } from "../../Managed/managed"
 export { switchable } from "../../Managed/methods/switchable"
+export { suspend } from "../../Managed/methods/suspend"
