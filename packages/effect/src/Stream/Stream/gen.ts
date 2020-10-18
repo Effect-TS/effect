@@ -1,10 +1,11 @@
 import * as M from "../_internal/managed"
+import { die } from "../../Effect/die"
+import { PrematureGeneratorExit } from "../../GlobalExceptions"
 import type { _E, _R } from "../../Utils"
 import { chain_ } from "./chain"
 import { Stream } from "./definitions"
-import { succeed } from "./succeed"
 import { fromEffect } from "./fromEffect"
-import { die } from "../../Effect/die"
+import { succeed } from "./succeed"
 
 export class GenStream<R, E, A> {
   readonly _R!: (_R: R) => void
@@ -15,26 +16,27 @@ export class GenStream<R, E, A> {
     return yield this
   }
 }
+
 const adapter = (_: any) => {
   return new GenStream(_)
 }
+
 export function suspend<R, E, A>(f: () => Stream<R, E, A>): Stream<R, E, A> {
   return new Stream(M.suspend(() => f().proc))
 }
+
 export function gen<Eff extends GenStream<any, any, any>, AEff>(
   f: (i: {
     <R, E, A>(_: Stream<R, E, A>): GenStream<R, E, A>
   }) => Generator<Eff, AEff, any>
 ): Stream<_R<Eff>, _E<Eff>, AEff> {
   return suspend(() => {
-    function run(
-      replayStack: any[]
-    ): Stream<any, any, AEff> {
+    function run(replayStack: any[]): Stream<any, any, AEff> {
       const iterator = f(adapter as any)
       let state = iterator.next()
-      for(let i = 0; i < replayStack.length; i++){
-        if(state.done){
-          return fromEffect(die("Something very wrong has happened. Replaying values resulted in a premature end of the generator execution. Provided generator should be pure and perform effects only by yielding them, so that the generator can safely be re-run without side effects."))
+      for (let i = 0; i < replayStack.length; i++) {
+        if (state.done) {
+          return fromEffect(die(new PrematureGeneratorExit()))
         }
         state = iterator.next(replayStack[i])
       }
