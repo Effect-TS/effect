@@ -54,7 +54,7 @@ export function genF<F>(
     adapter?: {
       <A>(_: HKT.HKT<F, A>): GenHKT<HKT.HKT<F, A>, A>
     }
-    optimizedOrFull?: "optimized" | "full"
+    stack?: "discard" | "keep-all"
   }
 ): <Eff extends GenHKT<HKT.HKT<F, any>, any>, AEff>(
   f: (i: {
@@ -64,12 +64,12 @@ export function genF<F>(
   const chain = chainF(F)
   const succeed = succeedF(F)
 
-  return <Eff extends GenHKT<HKT.HKT<F, any>, any>, AEff>(
-    f: (i: {
-      <A>(_: HKT.HKT<F, A>): GenHKT<HKT.HKT<F, A>, A>
-    }) => Generator<Eff, AEff, any>
-  ): HKT.HKT<F, AEff> => {
-    if (config?.optimizedOrFull === "full") {
+  if (config?.stack === "keep-all") {
+    return <Eff extends GenHKT<HKT.HKT<F, any>, any>, AEff>(
+      f: (i: {
+        <A>(_: HKT.HKT<F, A>): GenHKT<HKT.HKT<F, A>, A>
+      }) => Generator<Eff, AEff, any>
+    ): HKT.HKT<F, AEff> => {
       return pipe(
         succeed({}),
         chain(() => {
@@ -90,7 +90,13 @@ export function genF<F>(
         })
       )
     }
+  }
 
+  return <Eff extends GenHKT<HKT.HKT<F, any>, any>, AEff>(
+    f: (i: {
+      <A>(_: HKT.HKT<F, A>): GenHKT<HKT.HKT<F, A>, A>
+    }) => Generator<Eff, AEff, any>
+  ): HKT.HKT<F, AEff> => {
     return pipe(
       succeed({}),
       chain(() => {
