@@ -1,4 +1,5 @@
 import type { Either } from "../Either/core"
+import type { Tag } from "../Has"
 import type { Option } from "../Option"
 
 export type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (
@@ -74,4 +75,8 @@ export function isOption(u: unknown): u is Option<unknown> {
     "_tag" in u &&
     (u["_tag"] === "Some" || u["_tag"] === "None")
   )
+}
+
+export function isTag(u: unknown): u is Tag<unknown> {
+  return typeof u === "object" && u != null && "_tag" in u && u["_tag"] === "Tag"
 }
