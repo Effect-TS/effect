@@ -17,6 +17,7 @@ export * from "./succeed"
 
 // codegen:start { preset: barrel, include: ./methods/*.ts }
 export * from "./methods/ensuringFirst"
+export * from "./methods/gen"
 export * from "./methods/releaseMap"
 export * from "./methods/suspend"
 export * from "./methods/switchable"

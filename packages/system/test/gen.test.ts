@@ -229,4 +229,28 @@ describe("Generator", () => {
       Ex.die(new PrematureGeneratorExit())
     )
   })
+
+  it("managed gen", async () => {
+    const fn = jest.fn()
+    const result = M.gen(function* (_) {
+      const a = yield* _(O.some(0))
+      const b = yield* _(E.right(1))
+      const c = yield* _(T.succeed(2))
+      const d = yield* _(
+        M.makeExit_(T.succeed(3), () =>
+          T.effectTotal(() => {
+            fn()
+          })
+        )
+      )
+
+      expect(fn).toHaveBeenCalledTimes(0)
+
+      return { a, b, c, d }
+    })
+    expect(await pipe(result, M.use(T.succeed), T.runPromiseExit)).toEqual(
+      Ex.succeed({ a: 0, b: 1, c: 2, d: 3 })
+    )
+    expect(fn).toHaveBeenCalledTimes(1)
+  })
 })
