@@ -33,6 +33,7 @@ export type Constructor<T> = Function & { prototype: T }
  * Tag Encodes capabilities of reading and writing a service T into a generic environment
  */
 export interface Tag<T> {
+  _tag: "Tag"
   _T: T
   key: symbol
   def: boolean
@@ -50,6 +51,7 @@ export interface Tag<T> {
 export type HasTag<T> = [T] extends [Tag<infer A>] ? Has<A> : never
 
 const makeTag = <T>(def = false, key = Symbol()): Tag<T> => ({
+  _tag: "Tag",
   _T: undefined as any,
   key,
   def,

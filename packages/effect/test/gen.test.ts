@@ -4,6 +4,7 @@ import * as E from "../src/Either"
 import * as Ex from "../src/Exit"
 import { pipe } from "../src/Function"
 import { PrematureGeneratorExit } from "../src/GlobalExceptions"
+import { has } from "../src/Has"
 import * as M from "../src/Managed"
 import * as O from "../src/Option"
 import * as S from "../src/Stream"
@@ -120,6 +121,31 @@ describe("Generator", () => {
     ).toEqual(Ex.succeed(210))
 
     expect(close).toHaveBeenCalledTimes(1)
+  })
+
+  it("should use services", async () => {
+    class CalcService {
+      add(x: number, y: number) {
+        return T.effectTotal(() => x + y)
+      }
+    }
+
+    interface Calc extends CalcService {}
+    const Calc = has<Calc>()
+
+    const prog = T.gen(function* (_) {
+      const { add } = yield* _(Calc)
+
+      return yield* _(add(2, 3))
+    })
+
+    const result = await pipe(
+      prog,
+      T.provideService(Calc)(new CalcService()),
+      T.runPromiseExit
+    )
+
+    expect(result).toEqual(Ex.succeed(5))
   })
 
   it("option gen", () => {

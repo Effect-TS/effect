@@ -4,11 +4,12 @@
 import type { Either } from "../Either"
 import { tuple } from "../Function"
 import type { NoSuchElementException } from "../GlobalExceptions"
+import type { Has, Tag } from "../Has"
 import type { ReleaseMap } from "../Managed"
 import { makeReleaseMap, Managed, releaseAll } from "../Managed"
 import type { Option } from "../Option"
 import type { _E, _R } from "../Utils"
-import { isEither, isOption } from "../Utils"
+import { isEither, isOption, isTag } from "../Utils"
 import { bracketExit_ } from "./bracketExit_"
 import { chain_, succeed, suspend, unit } from "./core"
 import type { Effect } from "./effect"
@@ -16,6 +17,7 @@ import { sequential } from "./ExecutionStrategy"
 import { fail } from "./fail"
 import { fromEither } from "./fromEither"
 import { getOrFail } from "./getOrFail"
+import { readService } from "./has"
 import { map_ } from "./map_"
 import { provideSome_ } from "./provideSome"
 
@@ -40,11 +42,15 @@ const adapter = (_: any, __?: any) => {
       __ ? (_._tag === "None" ? fail(__()) : succeed(_.value)) : getOrFail(() => _)
     )
   }
+  if (isTag(_)) {
+    return new GenEffect(readService(_))
+  }
   return new GenEffect(_)
 }
 
 export function gen<Eff extends GenEffect<any, any, any>, AEff>(
   f: (i: {
+    <A>(_: Tag<A>): GenEffect<Has<A>, never, A>
     <E, A>(_: Option<A>, onNone: () => E): GenEffect<unknown, E, A>
     <A>(_: Option<A>): GenEffect<unknown, NoSuchElementException, A>
     <E, A>(_: Either<E, A>): GenEffect<unknown, E, A>
