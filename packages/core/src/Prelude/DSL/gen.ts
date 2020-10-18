@@ -1,3 +1,5 @@
+import { PrematureGeneratorExit } from "@effect-ts/system/GlobalExceptions"
+
 import { pipe } from "../../Function"
 import type * as HKT from "../HKT"
 import type { Monad } from "../Monad"
@@ -77,6 +79,9 @@ export function genF<F>(
             const iterator = f((config?.adapter ? config.adapter : adapter) as any)
             let state = iterator.next()
             for (let i = 0; i < replayStack.length; i++) {
+              if (state.done) {
+                throw new PrematureGeneratorExit()
+              }
               state = iterator.next(replayStack[i])
             }
             if (state.done) {
