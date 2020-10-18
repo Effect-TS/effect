@@ -8,6 +8,7 @@ import type { ReleaseMap } from "../Managed"
 import { makeReleaseMap, Managed, releaseAll } from "../Managed"
 import type { Option } from "../Option"
 import type { _E, _R } from "../Utils"
+import { isEither, isOption } from "../Utils"
 import { bracketExit_ } from "./bracketExit_"
 import { chain_, succeed, suspend, unit } from "./core"
 import type { Effect } from "./effect"
@@ -28,24 +29,6 @@ export class GenEffect<R, E, A> {
   *[Symbol.iterator](): Generator<GenEffect<R, E, A>, A, any> {
     return yield this
   }
-}
-
-export function isEither(u: unknown): u is Either<unknown, unknown> {
-  return (
-    typeof u === "object" &&
-    u != null &&
-    "_tag" in u &&
-    (u["_tag"] === "Left" || u["_tag"] === "Right")
-  )
-}
-
-export function isOption(u: unknown): u is Option<unknown> {
-  return (
-    typeof u === "object" &&
-    u != null &&
-    "_tag" in u &&
-    (u["_tag"] === "Some" || u["_tag"] === "None")
-  )
 }
 
 const adapter = (_: any, __?: any) => {

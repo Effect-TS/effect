@@ -5,6 +5,7 @@ import type { Either } from "../Either"
 import { NoSuchElementException } from "../GlobalExceptions"
 import type { Option } from "../Option"
 import type { _E, _R } from "../Utils"
+import { isEither, isOption } from "../Utils"
 import type { Sync } from "./core"
 import { chain_, fail, succeed, suspend } from "./core"
 
@@ -18,24 +19,6 @@ export class GenSync<R, E, A> {
   *[Symbol.iterator](): Generator<GenSync<R, E, A>, A, any> {
     return yield this
   }
-}
-
-function isEither(u: unknown): u is Either<unknown, unknown> {
-  return (
-    typeof u === "object" &&
-    u != null &&
-    "_tag" in u &&
-    (u["_tag"] === "Left" || u["_tag"] === "Right")
-  )
-}
-
-function isOption(u: unknown): u is Option<unknown> {
-  return (
-    typeof u === "object" &&
-    u != null &&
-    "_tag" in u &&
-    (u["_tag"] === "Some" || u["_tag"] === "None")
-  )
 }
 
 const adapter = (_: any, __?: any) => {
