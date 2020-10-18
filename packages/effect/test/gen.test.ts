@@ -93,13 +93,10 @@ describe("Generator", () => {
       const { a, b, c } = yield* _(program1)
       const d = yield* _(T.access((_: B) => _.b))
       const e = yield* _(
-        pipe(
-          T.succeed(10),
-          M.make(() =>
-            T.effectTotal(() => {
-              close()
-            })
-          )
+        M.make_(T.succeed(10), () =>
+          T.effectTotal(() => {
+            close()
+          })
         )
       )
 
