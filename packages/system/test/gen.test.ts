@@ -5,6 +5,7 @@ import * as Ex from "../src/Exit"
 import { pipe } from "../src/Function"
 import * as M from "../src/Managed"
 import * as O from "../src/Option"
+import * as S from "../src/Stream"
 import * as X from "../src/Sync"
 
 type A = {
@@ -172,5 +173,15 @@ describe("Generator", () => {
       E.right({ a: 1, b: 2, c: 3, d: 4 })
     )
     expect(pipe(result, X.runEitherEnv({ n: 7 }))).toEqual(E.left(new MyError()))
+  })
+
+  it("stream gen", async () => {
+    const result = S.gen(function* (_) {
+      const a = yield* _(S.fromArray([0, 1, 2]))
+      return a
+    })
+    expect(await pipe(result, S.runCollect, T.runPromiseExit)).toEqual(
+      Ex.succeed([0, 1, 2])
+    )
   })
 })
