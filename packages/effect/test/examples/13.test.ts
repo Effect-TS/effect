@@ -75,50 +75,16 @@ namespace ReaderIOEither {
 
   export const structValidation = DSL.structF(StringValidation)
 
+  type Stack<R, E, A> = Reader.XReader<R, XIO<Either.Either<E, A>>>
+
   const adapter: {
-    <A>(_: Option.Option<A>): GenHKT<
-      typeof Monad["F"],
-      typeof Monad["C"],
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      unknown,
-      NoSuchElementException,
-      A
-    >
-    <E, A>(_: Either.Either<E, A>): GenHKT<
-      typeof Monad["F"],
-      typeof Monad["C"],
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      unknown,
-      E,
-      A
-    >
+    <A>(_: Option.Option<A>): GenHKT<Stack<unknown, NoSuchElementException, A>, A>
+    <E, A>(_: Either.Either<E, A>): GenHKT<Stack<unknown, E, A>, A>
     <R, E, A>(_: Reader.XReader<R, XIO<Either.Either<E, A>>>): GenHKT<
-      typeof Monad["F"],
-      typeof Monad["C"],
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      R,
-      E,
+      Stack<R, NoSuchElementException, A>,
       A
     >
-  } = (_: unknown) => {
+  } = (_: any): any => {
     if (isOption(_)) {
       new GenHKT(
         _._tag === "None" ? fail(new NoSuchElementException()) : succeed(_.value)
