@@ -29,7 +29,8 @@ const adapter = (_: any) => {
 }
 
 export function genF<F extends HKT.URIS, C>(
-  F: Monad<F>
+  F: Monad<F>,
+  k?: "optimized" | "full"
 ): <Eff extends GenHKT<F, C, any, any, any, any, any, any, any, any, any, any>, AEff>(
   f: (i: {
     <N extends string, K, Q, W, X, I, S, R, E, A>(
@@ -51,7 +52,8 @@ export function genF<F extends HKT.URIS, C>(
   AEff
 >
 export function genF<F>(
-  F: Monad<HKT.UHKT<F>>
+  F: Monad<HKT.UHKT<F>>,
+  k: "optimized" | "full" = "optimized"
 ): <
   Eff extends GenHKT<
     HKT.UHKT<F>,
@@ -123,6 +125,30 @@ export function genF<F>(
       >
     }) => Generator<Eff, AEff, any>
   ): HKT.HKT<F, AEff> => {
+    if (k === "optimized") {
+      return pipe(
+        succeed({}),
+        chain(() => {
+          const iterator = f(adapter as any)
+          const state = iterator.next()
+
+          function run(
+            state: IteratorYieldResult<Eff> | IteratorReturnResult<AEff>
+          ): HKT.HKT<F, AEff> {
+            if (state.done) {
+              return succeed(state.value)
+            }
+            return chain((val) => {
+              const next = iterator.next(val)
+              return run(next)
+            })(state.value["effect"])
+          }
+
+          return run(state)
+        })
+      )
+    }
+
     return pipe(
       succeed({}),
       chain(() => {
