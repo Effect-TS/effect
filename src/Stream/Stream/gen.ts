@@ -3,6 +3,8 @@ import type { _E, _R } from "../../Utils"
 import { chain_ } from "./chain"
 import { Stream } from "./definitions"
 import { succeed } from "./succeed"
+import { fromEffect } from "./fromEffect"
+import { die } from "../../Effect/die"
 
 export class GenStream<R, E, A> {
   readonly _R!: (_R: R) => void
@@ -25,21 +27,24 @@ export function gen<Eff extends GenStream<any, any, any>, AEff>(
   }) => Generator<Eff, AEff, any>
 ): Stream<_R<Eff>, _E<Eff>, AEff> {
   return suspend(() => {
-    const iterator = f(adapter as any)
-    const state = iterator.next()
     function run(
-      state: IteratorYieldResult<Eff> | IteratorReturnResult<AEff>
+      replayStack: any[]
     ): Stream<any, any, AEff> {
+      const iterator = f(adapter as any)
+      let state = iterator.next()
+      for(let i = 0; i < replayStack.length; i++){
+        if(state.done){
+          return fromEffect(die("Something very wrong has happened. Replaying values resulted in a premature end of the generator execution. Provided generator should be pure and perform effects only by yielding them, so that the generator can safely be re-run without side effects."))
+        }
+        state = iterator.next(replayStack[i])
+      }
       if (state.done) {
         return succeed(state.value)
       }
       return chain_(state.value["effect"], (val) => {
-        // 1 : definisci cosa vuol dire "prima"
-        // 2 : come ottengo "iterator.next" di "prima" per passarci il valore "val" nuovo?
-        const next = iterator.next(val)
-        return run(next)
+        return run(replayStack.concat([val]))
       })
     }
-    return run(state)
+    return run([])
   })
 }
