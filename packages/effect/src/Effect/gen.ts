@@ -60,12 +60,7 @@ const adapter = (_: any, __?: any) => {
   return new GenEffect(_)
 }
 
-export function gen<
-  Eff extends GenEffect<any, any, any>,
-  REff extends _R<Eff>,
-  EEff extends _E<Eff>,
-  AEff
->(
+export function gen<Eff extends GenEffect<any, any, any>, AEff>(
   f: (i: {
     <E, A>(_: Option<A>, onNone: () => E): GenEffect<unknown, E, A>
     <A>(_: Option<A>): GenEffect<unknown, NoSuchElementException, A>
@@ -73,7 +68,7 @@ export function gen<
     <R, E, A>(_: Effect<R, E, A>): GenEffect<R, E, A>
     <R, E, A>(_: Managed<R, E, A>): GenEffect<R, E, A>
   }) => Generator<Eff, AEff, any>
-): Effect<REff, EEff, AEff> {
+): Effect<_R<Eff>, _E<Eff>, AEff> {
   return suspend(() => {
     const iterator = f(adapter as any)
     const state = iterator.next()
