@@ -3,7 +3,7 @@
  */
 import { NoSuchElementException } from "@effect-ts/system/GlobalExceptions"
 import type { _E, _R } from "@effect-ts/system/Utils"
-import { isEither, isOption, isTag } from "@effect-ts/system/Utils"
+import { isEither, isOption, isSync, isTag } from "@effect-ts/system/Utils"
 
 import { identity, pipe } from "../../Function"
 import type { Either } from "../Either"
@@ -24,10 +24,6 @@ export class GenAsync<R, E, A> {
   *[Symbol.iterator](): Generator<GenAsync<R, E, A>, A, any> {
     return yield this
   }
-}
-
-function isSync(u: unknown): u is Sync<unknown, unknown, unknown> {
-  return typeof u === "object" && u != null && "_tag" in u && u["_tag"] === "XPure"
 }
 
 const adapter = (_: any, __?: any) => {
