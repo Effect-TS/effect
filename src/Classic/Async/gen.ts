@@ -3,15 +3,16 @@
  */
 import { NoSuchElementException } from "@effect-ts/system/GlobalExceptions"
 import type { _E, _R } from "@effect-ts/system/Utils"
-import { isEither, isOption } from "@effect-ts/system/Utils"
+import { isEither, isOption, isTag } from "@effect-ts/system/Utils"
 
 import { identity, pipe } from "../../Function"
 import type { Either } from "../Either"
+import type { Has, Tag } from "../Has"
 import type { Option } from "../Option"
 import type { Sync } from "../Sync"
 import { runEitherEnv } from "../Sync"
 import type { Async } from "./core"
-import { accessM, chain, fail, succeed, sync } from "./core"
+import { accessM, accessService, chain, fail, succeed, sync } from "./core"
 
 export class GenAsync<R, E, A> {
   readonly _R!: (_R: R) => void
@@ -30,6 +31,9 @@ function isSync(u: unknown): u is Sync<unknown, unknown, unknown> {
 }
 
 const adapter = (_: any, __?: any) => {
+  if (isTag(_)) {
+    return new GenAsync(accessService(_)(identity))
+  }
   if (isSync(_)) {
     return new GenAsync(
       accessM((r) => {
@@ -57,6 +61,7 @@ const adapter = (_: any, __?: any) => {
 
 export function gen<Eff extends GenAsync<any, any, any>, AEff>(
   f: (i: {
+    <A>(_: Tag<A>): GenAsync<Has<A>, never, A>
     <E, A>(_: Option<A>, onNone: () => E): GenAsync<unknown, E, A>
     <A>(_: Option<A>): GenAsync<unknown, NoSuchElementException, A>
     <E, A>(_: Either<E, A>): GenAsync<unknown, E, A>
