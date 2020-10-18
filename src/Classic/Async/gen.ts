@@ -3,6 +3,7 @@
  */
 import { NoSuchElementException } from "@effect-ts/system/GlobalExceptions"
 import type { _E, _R } from "@effect-ts/system/Utils"
+import { isEither, isOption } from "@effect-ts/system/Utils"
 
 import { identity, pipe } from "../../Function"
 import type { Either } from "../Either"
@@ -24,26 +25,8 @@ export class GenAsync<R, E, A> {
   }
 }
 
-function isEither(u: unknown): u is Either<unknown, unknown> {
-  return (
-    typeof u === "object" &&
-    u != null &&
-    "_tag" in u &&
-    (u["_tag"] === "Left" || u["_tag"] === "Right")
-  )
-}
-
 function isSync(u: unknown): u is Sync<unknown, unknown, unknown> {
   return typeof u === "object" && u != null && "_tag" in u && u["_tag"] === "XPure"
-}
-
-function isOption(u: unknown): u is Option<unknown> {
-  return (
-    typeof u === "object" &&
-    u != null &&
-    "_tag" in u &&
-    (u["_tag"] === "Some" || u["_tag"] === "None")
-  )
 }
 
 const adapter = (_: any, __?: any) => {
