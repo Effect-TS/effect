@@ -84,14 +84,14 @@ namespace ReaderIOEither {
       Stack<R, NoSuchElementException, A>,
       A
     >
-  } = (_: any): any => {
+  } = (_: any) => {
     if (isOption(_)) {
-      new GenHKT(
+      return new GenHKT(
         _._tag === "None" ? fail(new NoSuchElementException()) : succeed(_.value)
       )
     }
     if (isEither(_)) {
-      new GenHKT(_._tag === "Left" ? fail(_.left) : succeed(_.right))
+      return new GenHKT(_._tag === "Left" ? fail(_.left) : succeed(_.right))
     }
     return new GenHKT(_)
   }
@@ -141,22 +141,18 @@ test("13", () => {
 })
 
 test("13 generator", () => {
-  const { access, fail, gen } = ReaderIOEither
-  const { right } = Either
-  const { some } = Option
-
-  const result = gen(function* (_) {
-    const a = yield* _(access((_: { a: number }) => _.a))
-    const b = yield* _(access((_: { b: number }) => _.b))
-    const c = yield* _(right(2))
-    const d = yield* _(some(3))
+  const result = ReaderIOEither.gen(function* (_) {
+    const a = yield* _(ReaderIOEither.access((_: { a: number }) => _.a))
+    const b = yield* _(ReaderIOEither.access((_: { b: number }) => _.b))
+    const c = yield* _(Either.right(2))
+    const d = yield* _(Option.some(3))
 
     if (a + b + c + d > 10) {
-      yield* _(fail("error"))
+      yield* _(ReaderIOEither.fail("error"))
     }
 
     return a + b + c + d
   })
 
-  expect(pipe(result, Reader.runEnv({ a: 1, b: 2 }), IO.run)).toEqual(right(8))
+  expect(pipe(result, Reader.runEnv({ a: 1, b: 2 }), IO.run)).toEqual(Either.right(8))
 })
