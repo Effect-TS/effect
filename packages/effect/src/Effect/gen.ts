@@ -30,7 +30,7 @@ export class GenEffect<R, E, A> {
   }
 }
 
-function isEither(u: unknown): u is Either<unknown, unknown> {
+export function isEither(u: unknown): u is Either<unknown, unknown> {
   return (
     typeof u === "object" &&
     u != null &&
@@ -39,7 +39,7 @@ function isEither(u: unknown): u is Either<unknown, unknown> {
   )
 }
 
-function isOption(u: unknown): u is Option<unknown> {
+export function isOption(u: unknown): u is Option<unknown> {
   return (
     typeof u === "object" &&
     u != null &&
