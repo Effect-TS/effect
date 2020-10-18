@@ -69,26 +69,24 @@ export function genF<F>(
       <A>(_: HKT.HKT<F, A>): GenHKT<HKT.HKT<F, A>, A>
     }) => Generator<Eff, AEff, any>
   ): HKT.HKT<F, AEff> => {
-    if (config?.optimizedOrFull === "optimized") {
+    if (config?.optimizedOrFull === "full") {
       return pipe(
         succeed({}),
         chain(() => {
-          const iterator = f((config?.adapter ? config.adapter : adapter) as any)
-          const state = iterator.next()
-
-          function run(
-            state: IteratorYieldResult<Eff> | IteratorReturnResult<AEff>
-          ): HKT.HKT<F, AEff> {
+          function run(replayStack: any[]): HKT.HKT<F, AEff> {
+            const iterator = f((config?.adapter ? config.adapter : adapter) as any)
+            let state = iterator.next()
+            for (let i = 0; i < replayStack.length; i++) {
+              state = iterator.next(replayStack[i])
+            }
             if (state.done) {
               return succeed(state.value)
             }
             return chain((val) => {
-              const next = iterator.next(val)
-              return run(next)
+              return run(replayStack.concat([val]))
             })(state.value["effect"])
           }
-
-          return run(state)
+          return run([])
         })
       )
     }
@@ -96,20 +94,22 @@ export function genF<F>(
     return pipe(
       succeed({}),
       chain(() => {
-        function run(replayStack: any[]): HKT.HKT<F, AEff> {
-          const iterator = f(adapter as any)
-          let state = iterator.next()
-          for (let i = 0; i < replayStack.length; i++) {
-            state = iterator.next(replayStack[i])
-          }
+        const iterator = f((config?.adapter ? config.adapter : adapter) as any)
+        const state = iterator.next()
+
+        function run(
+          state: IteratorYieldResult<Eff> | IteratorReturnResult<AEff>
+        ): HKT.HKT<F, AEff> {
           if (state.done) {
             return succeed(state.value)
           }
           return chain((val) => {
-            return run(replayStack.concat([val]))
+            const next = iterator.next(val)
+            return run(next)
           })(state.value["effect"])
         }
-        return run([])
+
+        return run(state)
       })
     )
   }
