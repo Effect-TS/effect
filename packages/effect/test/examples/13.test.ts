@@ -5,6 +5,7 @@
 import { pipe } from "@effect-ts/system/Function"
 
 import { makeAssociative } from "../../src/Classic/Associative"
+import * as Either from "../../src/Classic/Either"
 import * as EitherT from "../../src/Classic/EitherT"
 import * as DSL from "../../src/Prelude/DSL"
 import * as S from "../../src/Prelude/Selective"
@@ -68,6 +69,8 @@ namespace ReaderIOEither {
   )
 
   export const structValidation = DSL.structF(StringValidation)
+
+  export const gen = DSL.genF(Monad)
 }
 
 //
@@ -109,4 +112,19 @@ test("13", () => {
       console.log(x)
     }
   )
+})
+
+test("13 generator", () => {
+  const result = ReaderIOEither.gen(function* (_) {
+    const a = yield* _(ReaderIOEither.access((_: { a: number }) => _.a))
+    const b = yield* _(ReaderIOEither.access((_: { b: number }) => _.b))
+
+    if (a + b > 10) {
+      yield* _(ReaderIOEither.fail("error"))
+    }
+
+    return a + b
+  })
+
+  expect(pipe(result, Reader.runEnv({ a: 1, b: 2 }), IO.run)).toEqual(Either.right(3))
 })
