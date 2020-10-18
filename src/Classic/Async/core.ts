@@ -784,3 +784,5 @@ export const provideSome: <R, R2>(
   ...Access,
   ...Provide
 })
+
+export const gen_ = DSL.genF(Monad)
