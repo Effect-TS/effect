@@ -178,8 +178,12 @@ describe("Generator", () => {
 
   it("stream gen", async () => {
     const result = S.gen(function* (_) {
-      const a = yield* _(S.fromArray([0, 1, 2]))
-      return a
+      const a = yield* _(O.some(0))
+      const b = yield* _(E.right(1))
+      const c = yield* _(T.succeed(2))
+      const d = yield* _(S.fromArray([a, b, c]))
+
+      return d
     })
     expect(await pipe(result, S.runCollect, T.runPromiseExit)).toEqual(
       Ex.succeed([0, 1, 2])
