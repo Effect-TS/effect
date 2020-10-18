@@ -1,3 +1,6 @@
+import type { Either } from "../Either/core"
+import type { Option } from "../Option"
+
 export type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (
   k: infer I
 ) => void
@@ -54,3 +57,21 @@ export type _R<T> = [T] extends [{ ["_R"]: (_: infer R) => void }] ? R : never
 export type _E<T> = [T] extends [{ ["_E"]: () => infer E }] ? E : never
 
 export * from "./tool"
+
+export function isEither(u: unknown): u is Either<unknown, unknown> {
+  return (
+    typeof u === "object" &&
+    u != null &&
+    "_tag" in u &&
+    (u["_tag"] === "Left" || u["_tag"] === "Right")
+  )
+}
+
+export function isOption(u: unknown): u is Option<unknown> {
+  return (
+    typeof u === "object" &&
+    u != null &&
+    "_tag" in u &&
+    (u["_tag"] === "Some" || u["_tag"] === "None")
+  )
+}

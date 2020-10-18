@@ -1,6 +1,7 @@
 import { NoSuchElementException } from "../GlobalExceptions"
 import type { Option } from "../Option"
 import type { _E } from "../Utils"
+import { isOption } from "../Utils"
 import type { Either } from "./core"
 import { chain_, left, right } from "./core"
 
@@ -13,15 +14,6 @@ export class GenEither<E, A> {
   *[Symbol.iterator](): Generator<GenEither<E, A>, A, any> {
     return yield this
   }
-}
-
-function isOption(u: unknown): u is Option<unknown> {
-  return (
-    typeof u === "object" &&
-    u != null &&
-    "_tag" in u &&
-    (u["_tag"] === "Some" || u["_tag"] === "None")
-  )
 }
 
 const adapter = (_: any, __?: any) => {
