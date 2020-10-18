@@ -80,10 +80,7 @@ namespace ReaderIOEither {
   const adapter: {
     <A>(_: Option.Option<A>): GenHKT<Stack<unknown, NoSuchElementException, A>, A>
     <E, A>(_: Either.Either<E, A>): GenHKT<Stack<unknown, E, A>, A>
-    <R, E, A>(_: Reader.XReader<R, XIO<Either.Either<E, A>>>): GenHKT<
-      Stack<R, NoSuchElementException, A>,
-      A
-    >
+    <R, E, A>(_: Stack<R, E, A>): GenHKT<Stack<R, E, A>, A>
   } = (_: any) => {
     if (isOption(_)) {
       return new GenHKT(
