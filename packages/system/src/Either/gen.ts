@@ -34,13 +34,13 @@ const adapter = (_: any, __?: any) => {
     : new GenEither(_)
 }
 
-export function gen<Eff extends GenEither<any, any>, EEff extends _E<Eff>, AEff>(
+export function gen<Eff extends GenEither<any, any>, AEff>(
   f: (i: {
     <E, A>(_: Option<A>, onNone: () => E): GenEither<E, A>
     <A>(_: Option<A>): GenEither<NoSuchElementException, A>
     <E, A>(_: Either<E, A>): GenEither<E, A>
   }) => Generator<Eff, AEff, any>
-): Either<EEff, AEff> {
+): Either<_E<Eff>, AEff> {
   const iterator = f(adapter as any)
   const state = iterator.next()
 

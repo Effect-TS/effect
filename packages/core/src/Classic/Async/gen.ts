@@ -72,12 +72,7 @@ const adapter = (_: any, __?: any) => {
   return new GenAsync(_)
 }
 
-export function gen<
-  Eff extends GenAsync<any, any, any>,
-  REff extends _R<Eff>,
-  EEff extends _E<Eff>,
-  AEff
->(
+export function gen<Eff extends GenAsync<any, any, any>, AEff>(
   f: (i: {
     <E, A>(_: Option<A>, onNone: () => E): GenAsync<unknown, E, A>
     <A>(_: Option<A>): GenAsync<unknown, NoSuchElementException, A>
@@ -85,7 +80,7 @@ export function gen<
     <R, E, A>(_: Sync<R, E, A>): GenAsync<R, E, A>
     <R, E, A>(_: Async<R, E, A>): GenAsync<R, E, A>
   }) => Generator<Eff, AEff, any>
-): Async<REff, EEff, AEff> {
+): Async<_R<Eff>, _E<Eff>, AEff> {
   return pipe(
     sync(() => {
       const iterator = f(adapter as any)

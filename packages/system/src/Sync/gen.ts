@@ -52,19 +52,14 @@ const adapter = (_: any, __?: any) => {
   return new GenSync(_)
 }
 
-export function gen<
-  Eff extends GenSync<any, any, any>,
-  REff extends _R<Eff>,
-  EEff extends _E<Eff>,
-  AEff
->(
+export function gen<Eff extends GenSync<any, any, any>, AEff>(
   f: (i: {
     <E, A>(_: Option<A>, onNone: () => E): GenSync<unknown, E, A>
     <A>(_: Option<A>): GenSync<unknown, NoSuchElementException, A>
     <E, A>(_: Either<E, A>): GenSync<unknown, E, A>
     <R, E, A>(_: Sync<R, E, A>): GenSync<R, E, A>
   }) => Generator<Eff, AEff, any>
-): Sync<REff, EEff, AEff> {
+): Sync<_R<Eff>, _E<Eff>, AEff> {
   return suspend(() => {
     const iterator = f(adapter as any)
     const state = iterator.next()

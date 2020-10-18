@@ -47,14 +47,14 @@ const adapter = (_: any, __?: any) => {
     : new GenTaskEither(_)
 }
 
-export function gen<Eff extends GenTaskEither<any, any>, EEff extends _E<Eff>, AEff>(
+export function gen<Eff extends GenTaskEither<any, any>, AEff>(
   f: (i: {
     <E, A>(_: Option<A>, onNone: () => E): GenTaskEither<E, A>
     <A>(_: Option<A>): GenTaskEither<NoSuchElementException, A>
     <E, A>(_: Either<E, A>): GenTaskEither<E, A>
     <E, A>(_: TaskEither<E, A>): GenTaskEither<E, A>
   }) => Generator<Eff, AEff, any>
-): TaskEither<EEff, AEff> {
+): TaskEither<_E<Eff>, AEff> {
   const iterator = f(adapter as any)
   const state = iterator.next()
 
