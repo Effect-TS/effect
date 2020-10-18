@@ -72,15 +72,6 @@ describe("Generator", () => {
 
     const close = jest.fn()
 
-    const managedNumber = pipe(
-      T.effectTotal(() => 10),
-      M.makeExit(() =>
-        T.effectTotal(() => {
-          close()
-        })
-      )
-    )
-
     const sum = (n: number) =>
       T.gen(function* (_) {
         let sum = 0
@@ -101,7 +92,16 @@ describe("Generator", () => {
     const program2 = T.gen(function* (_) {
       const { a, b, c } = yield* _(program1)
       const d = yield* _(T.access((_: B) => _.b))
-      const e = yield* _(managedNumber)
+      const e = yield* _(
+        pipe(
+          T.succeed(10),
+          M.make(() =>
+            T.effectTotal(() => {
+              close()
+            })
+          )
+        )
+      )
 
       expect(close).toHaveBeenCalledTimes(0)
 
