@@ -2,12 +2,15 @@
  * inspired by https://github.com/tusharmath/qio/pull/22 (revised)
  */
 import type { Either } from "../Either"
+import { identity } from "../Function"
 import { NoSuchElementException } from "../GlobalExceptions"
+import type { Has, Tag } from "../Has"
 import type { Option } from "../Option"
 import type { _E, _R } from "../Utils"
-import { isEither, isOption } from "../Utils"
+import { isEither, isOption, isTag } from "../Utils"
 import type { Sync } from "./core"
 import { chain_, fail, succeed, suspend } from "./core"
+import { accessService } from "./has"
 
 export class GenSync<R, E, A> {
   readonly _R!: (_R: R) => void
@@ -22,6 +25,9 @@ export class GenSync<R, E, A> {
 }
 
 const adapter = (_: any, __?: any) => {
+  if (isTag(_)) {
+    return new GenSync(accessService(_)(identity))
+  }
   if (isEither(_)) {
     return new GenSync(_._tag === "Left" ? fail(_.left) : succeed(_.right))
   }
@@ -37,6 +43,7 @@ const adapter = (_: any, __?: any) => {
 
 export function gen<Eff extends GenSync<any, any, any>, AEff>(
   f: (i: {
+    <A>(_: Tag<A>): GenSync<Has<A>, never, A>
     <E, A>(_: Option<A>, onNone: () => E): GenSync<unknown, E, A>
     <A>(_: Option<A>): GenSync<unknown, NoSuchElementException, A>
     <E, A>(_: Either<E, A>): GenSync<unknown, E, A>
