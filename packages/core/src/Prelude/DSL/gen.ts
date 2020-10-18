@@ -28,15 +28,19 @@ const adapter = (_: any) => {
   return new GenHKT(_)
 }
 
-export function genF<F extends HKT.URIS, C>(
-  F: Monad<F>,
-  k?: "optimized" | "full"
-): <Eff extends GenHKT<F, C, any, any, any, any, any, any, any, any, any, any>, AEff>(
-  f: (i: {
+export function genF<
+  F extends HKT.URIS,
+  C,
+  ADAPTER = {
     <N extends string, K, Q, W, X, I, S, R, E, A>(
       _: HKT.Kind<F, C, N, K, Q, W, X, I, S, R, E, A>
     ): GenHKT<F, C, N, K, Q, W, X, I, S, R, E, A>
-  }) => Generator<Eff, AEff, any>
+  }
+>(
+  F: Monad<F>,
+  config?: { adapter?: ADAPTER; optimizedOrFull?: "optimized" | "full" }
+): <Eff extends GenHKT<F, C, any, any, any, any, any, any, any, any, any, any>, AEff>(
+  f: (i: ADAPTER) => Generator<Eff, AEff, any>
 ) => HKT.Kind<
   F,
   C,
@@ -53,7 +57,25 @@ export function genF<F extends HKT.URIS, C>(
 >
 export function genF<F>(
   F: Monad<HKT.UHKT<F>>,
-  k: "optimized" | "full" = "optimized"
+  config?: {
+    adapter?: {
+      <A>(_: HKT.HKT<F, A>): GenHKT<
+        HKT.UHKT<F>,
+        HKT.Auto,
+        any,
+        any,
+        any,
+        any,
+        any,
+        any,
+        any,
+        any,
+        any,
+        A
+      >
+    }
+    optimizedOrFull?: "optimized" | "full"
+  }
 ): <
   Eff extends GenHKT<
     HKT.UHKT<F>,
@@ -125,11 +147,11 @@ export function genF<F>(
       >
     }) => Generator<Eff, AEff, any>
   ): HKT.HKT<F, AEff> => {
-    if (k === "optimized") {
+    if (config?.optimizedOrFull === "optimized") {
       return pipe(
         succeed({}),
         chain(() => {
-          const iterator = f(adapter as any)
+          const iterator = f((config?.adapter ? config.adapter : adapter) as any)
           const state = iterator.next()
 
           function run(

@@ -3,12 +3,17 @@
 /* eslint-disable @typescript-eslint/no-namespace */
 
 import { pipe } from "@effect-ts/system/Function"
+import { NoSuchElementException } from "@effect-ts/system/GlobalExceptions"
+import { isEither, isOption } from "@effect-ts/system/Utils"
 
 import { makeAssociative } from "../../src/Classic/Associative"
 import * as Either from "../../src/Classic/Either"
 import * as EitherT from "../../src/Classic/EitherT"
+import * as Option from "../../src/Classic/Option"
+import { GenHKT } from "../../src/Prelude/DSL"
 import * as DSL from "../../src/Prelude/DSL"
 import * as S from "../../src/Prelude/Selective"
+import type { XIO } from "../../src/XPure/XIO"
 import * as IO from "../../src/XPure/XIO"
 import * as Reader from "../../src/XPure/XReader"
 import * as ReaderT from "../../src/XPure/XReaderT"
@@ -70,7 +75,62 @@ namespace ReaderIOEither {
 
   export const structValidation = DSL.structF(StringValidation)
 
-  export const gen = DSL.genF(Monad)
+  const adapter: {
+    <A>(_: Option.Option<A>): GenHKT<
+      typeof Monad["F"],
+      typeof Monad["C"],
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      unknown,
+      NoSuchElementException,
+      A
+    >
+    <E, A>(_: Either.Either<E, A>): GenHKT<
+      typeof Monad["F"],
+      typeof Monad["C"],
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      unknown,
+      E,
+      A
+    >
+    <R, E, A>(_: Reader.XReader<R, XIO<Either.Either<E, A>>>): GenHKT<
+      typeof Monad["F"],
+      typeof Monad["C"],
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      R,
+      E,
+      A
+    >
+  } = (_: unknown) => {
+    if (isOption(_)) {
+      new GenHKT(
+        _._tag === "None" ? fail(new NoSuchElementException()) : succeed(_.value)
+      )
+    }
+    if (isEither(_)) {
+      new GenHKT(_._tag === "Left" ? fail(_.left) : succeed(_.right))
+    }
+    return new GenHKT(_)
+  }
+
+  export const gen = DSL.genF(Monad, { adapter })
 }
 
 //
@@ -118,13 +178,15 @@ test("13 generator", () => {
   const result = ReaderIOEither.gen(function* (_) {
     const a = yield* _(ReaderIOEither.access((_: { a: number }) => _.a))
     const b = yield* _(ReaderIOEither.access((_: { b: number }) => _.b))
+    const c = yield* _(Either.right(2))
+    const d = yield* _(Option.some(3))
 
-    if (a + b > 10) {
+    if (a + b + c + d > 10) {
       yield* _(ReaderIOEither.fail("error"))
     }
 
-    return a + b
+    return a + b + c + d
   })
 
-  expect(pipe(result, Reader.runEnv({ a: 1, b: 2 }), IO.run)).toEqual(Either.right(3))
+  expect(pipe(result, Reader.runEnv({ a: 1, b: 2 }), IO.run)).toEqual(Either.right(8))
 })

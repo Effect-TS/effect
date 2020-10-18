@@ -1,5 +1,6 @@
 import { NoSuchElementException } from "@effect-ts/system/GlobalExceptions"
 import type { _E } from "@effect-ts/system/Utils"
+import { isEither, isOption } from "@effect-ts/system/Utils"
 
 import type { Either } from "../Either"
 import type { Option } from "../Option"
@@ -15,24 +16,6 @@ export class GenTaskEither<E, A> {
   *[Symbol.iterator](): Generator<GenTaskEither<E, A>, A, any> {
     return yield this
   }
-}
-
-function isOption(u: unknown): u is Option<unknown> {
-  return (
-    typeof u === "object" &&
-    u != null &&
-    "_tag" in u &&
-    (u["_tag"] === "Some" || u["_tag"] === "None")
-  )
-}
-
-function isEither(u: unknown): u is Either<unknown, unknown> {
-  return (
-    typeof u === "object" &&
-    u != null &&
-    "_tag" in u &&
-    (u["_tag"] === "Some" || u["_tag"] === "None")
-  )
 }
 
 const adapter = (_: any, __?: any) => {
