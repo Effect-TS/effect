@@ -130,3 +130,10 @@ export function clamp<A>(O: Ord<A>): (low: A, hi: A) => (x: A) => A {
   const maxO = max(O)
   return (low, hi) => (x) => maxO(low)(minO(hi)(x))
 }
+
+/**
+ * Get the dual of an Ord
+ */
+export function dual<A>(O: Ord<A>) {
+  return fromCompare<A>((y) => (x) => O.compare(x)(y))
+}

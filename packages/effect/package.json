@@ -69,6 +69,7 @@
       "Classic/Sync",
       "Classic/Task",
       "Classic/TaskEither",
+      "Classic/Tree",
       "Effect",
       "Effect/Cause",
       "Effect/Clock",

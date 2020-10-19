@@ -22,6 +22,7 @@ import type { Show } from "../Classic/Show"
 import type { StateIn, StateOut } from "../Classic/StateT"
 import type { Sync } from "../Classic/Sync"
 import type { Task } from "../Classic/Task"
+import type { Tree } from "../Classic/Tree"
 import type { Layer } from "../Effect/Layer"
 import type { XPure } from "../XPure"
 import type { XIO } from "../XPure/XIO"
@@ -126,6 +127,9 @@ export type FreeAssociativeURI = typeof FreeAssociativeURI
 export const AsyncURI = "Async"
 export type AsyncURI = typeof AsyncURI
 
+export const TreeURI = "Tree"
+export type TreeURI = typeof TreeURI
+
 declare module "../Prelude/HKT" {
   interface URItoKind<FC, TC, N extends string, K, Q, W, X, I, S, R, E, A> {
     [ArrayURI]: Array<A>
@@ -160,6 +164,7 @@ declare module "../Prelude/HKT" {
     [NonEmptyArrayURI]: NonEmptyArray<A>
     [FreeAssociativeURI]: FreeAssociative<A>
     [AsyncURI]: Async<R, E, A>
+    [TreeURI]: Tree<A>
   }
   interface URItoIndex<N extends string, K> {
     [ArrayURI]: number
