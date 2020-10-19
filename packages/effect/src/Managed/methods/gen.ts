@@ -40,7 +40,7 @@ const adapter = (_: any, __?: any) => {
         ? _._tag === "None"
           ? fail(__())
           : succeed(_.value)
-        : fromEffect(getOrFail(() => _))
+        : fromEffect(getOrFail(_))
     )
   }
   if (_ instanceof Managed) {

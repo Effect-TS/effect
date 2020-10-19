@@ -39,7 +39,7 @@ const adapter = (_: any, __?: any) => {
   }
   if (isOption(_)) {
     return new GenEffect(
-      __ ? (_._tag === "None" ? fail(__()) : succeed(_.value)) : getOrFail(() => _)
+      __ ? (_._tag === "None" ? fail(__()) : succeed(_.value)) : getOrFail(_)
     )
   }
   if (isTag(_)) {
