@@ -238,20 +238,20 @@ export function concat<A>(y: Array<A>): (x: Array<A>) => Array<A> {
  * assert.deepStrictEqual(cons(0, [1, 2, 3]), [0, 1, 2, 3])
  * ```
  */
-export function cons_<A>(tail: Array<A>, head: A): NonEmptyArray<A> {
+export function cons_<A>(tail: Array<A>, head: A): Array<A> {
   const len = tail.length
   const r = Array(len + 1)
   for (let i = 0; i < len; i++) {
     r[i + 1] = tail[i]
   }
   r[0] = head
-  return (r as unknown) as NonEmptyArray<A>
+  return (r as unknown) as Array<A>
 }
 
 /**
  * Attaches an element to the front of an array, creating a new non empty array
  */
-export function cons<A>(head: A): (tail: Array<A>) => NonEmptyArray<A> {
+export function cons<A>(head: A): (tail: Array<A>) => Array<A> {
   return (tail) => cons_(tail, head)
 }
 
@@ -1154,20 +1154,20 @@ export function scanRight_<A, B>(as: Array<A>, b: B, f: (a: A, b: B) => B): Arra
  * assert.deepStrictEqual(snoc([1, 2, 3], 4), [1, 2, 3, 4])
  * ```
  */
-export function snoc_<A>(init: Array<A>, end: A): NonEmptyArray<A> {
+export function snoc_<A>(init: Array<A>, end: A): Array<A> {
   const len = init.length
   const r = Array(len + 1)
   for (let i = 0; i < len; i++) {
     r[i] = init[i]
   }
   r[len] = end
-  return (r as unknown) as NonEmptyArray<A>
+  return (r as unknown) as Array<A>
 }
 
 /**
  * Append an element to the end of an array, creating a new non empty array
  */
-export function snoc<A>(end: A): (init: Array<A>) => NonEmptyArray<A> {
+export function snoc<A>(end: A): (init: Array<A>) => Array<A> {
   return (init) => snoc_(init, end)
 }
 
