@@ -1,11 +1,11 @@
 {
-  "Pipe Operator": {
-    "prefix": "p",
+  "Pipe Operator |": {
+    "prefix": "|",
     "body": ["[\"|>\"]"],
     "description": "Pipe Operator"
   },
   "Flow Operator": {
-    "prefix": "f",
+    "prefix": ">",
     "body": ["[\">>\"]"],
     "description": "Flow Operator"
   },
