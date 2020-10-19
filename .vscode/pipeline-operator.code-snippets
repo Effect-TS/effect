@@ -1,0 +1,17 @@
+{
+  "Pipe Operator": {
+    "prefix": "p",
+    "body": ["[\"|>\"]"],
+    "description": "Pipe Operator"
+  },
+  "Flow Operator": {
+    "prefix": "f",
+    "body": ["[\">>\"]"],
+    "description": "Flow Operator"
+  },
+  "Operators Import": {
+    "prefix": "op",
+    "body": ["import \"@effect-ts/core/Operators\""],
+    "description": "Operators Import"
+  }
+}

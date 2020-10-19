@@ -2,8 +2,6 @@ lib/
 node_modules/
 .idea/
 coverage/
-.vscode/*
-!.vscode/*.default.json
 yarn-error.log
 .npmrc
 .ionide/
