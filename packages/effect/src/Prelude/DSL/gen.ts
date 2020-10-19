@@ -117,15 +117,195 @@ export function genF<
 ) => HKT.Kind<
   F,
   C,
-  HKT.Infer<F, "N", Eff["effect"]>,
-  HKT.Infer<F, "K", Eff["effect"]>,
-  HKT.Infer<F, "Q", Eff["effect"]>,
-  HKT.Infer<F, "W", Eff["effect"]>,
-  HKT.Infer<F, "X", Eff["effect"]>,
-  HKT.Infer<F, "I", Eff["effect"]>,
-  HKT.Infer<F, "S", Eff["effect"]>,
-  HKT.Infer<F, "R", Eff["effect"]>,
-  HKT.Infer<F, "E", Eff["effect"]>,
+  [Eff] extends [
+    GenHKT<
+      HKT.Kind<
+        F,
+        C,
+        infer _N,
+        infer _K,
+        infer _Q,
+        infer _W,
+        infer _X,
+        infer _I,
+        infer _S,
+        infer _R,
+        infer _E,
+        any
+      >,
+      any
+    >
+  ]
+    ? _N
+    : never,
+  [Eff] extends [
+    GenHKT<
+      HKT.Kind<
+        F,
+        C,
+        infer _N,
+        infer _K,
+        infer _Q,
+        infer _W,
+        infer _X,
+        infer _I,
+        infer _S,
+        infer _R,
+        infer _E,
+        any
+      >,
+      any
+    >
+  ]
+    ? _K
+    : never,
+  [Eff] extends [
+    GenHKT<
+      HKT.Kind<
+        F,
+        C,
+        infer _N,
+        infer _K,
+        infer _Q,
+        infer _W,
+        infer _X,
+        infer _I,
+        infer _S,
+        infer _R,
+        infer _E,
+        any
+      >,
+      any
+    >
+  ]
+    ? _Q
+    : never,
+  [Eff] extends [
+    GenHKT<
+      HKT.Kind<
+        F,
+        C,
+        infer _N,
+        infer _K,
+        infer _Q,
+        infer _W,
+        infer _X,
+        infer _I,
+        infer _S,
+        infer _R,
+        infer _E,
+        any
+      >,
+      any
+    >
+  ]
+    ? _W
+    : never,
+  [Eff] extends [
+    GenHKT<
+      HKT.Kind<
+        F,
+        C,
+        infer _N,
+        infer _K,
+        infer _Q,
+        infer _W,
+        infer _X,
+        infer _I,
+        infer _S,
+        infer _R,
+        infer _E,
+        any
+      >,
+      any
+    >
+  ]
+    ? _X
+    : never,
+  [Eff] extends [
+    GenHKT<
+      HKT.Kind<
+        F,
+        C,
+        infer _N,
+        infer _K,
+        infer _Q,
+        infer _W,
+        infer _X,
+        infer _I,
+        infer _S,
+        infer _R,
+        infer _E,
+        any
+      >,
+      any
+    >
+  ]
+    ? _I
+    : never,
+  [Eff] extends [
+    GenHKT<
+      HKT.Kind<
+        F,
+        C,
+        infer _N,
+        infer _K,
+        infer _Q,
+        infer _W,
+        infer _X,
+        infer _I,
+        infer _S,
+        infer _R,
+        infer _E,
+        any
+      >,
+      any
+    >
+  ]
+    ? _S
+    : never,
+  [Eff] extends [
+    GenHKT<
+      HKT.Kind<
+        F,
+        C,
+        infer _N,
+        infer _K,
+        infer _Q,
+        infer _W,
+        infer _X,
+        infer _I,
+        infer _S,
+        infer _R,
+        infer _E,
+        any
+      >,
+      any
+    >
+  ]
+    ? _R
+    : never,
+  [Eff] extends [
+    GenHKT<
+      HKT.Kind<
+        F,
+        C,
+        infer _N,
+        infer _K,
+        infer _Q,
+        infer _W,
+        infer _X,
+        infer _I,
+        infer _S,
+        infer _R,
+        infer _E,
+        any
+      >,
+      any
+    >
+  ]
+    ? _E
+    : never,
   AEff
 >
 export function genF<F>(
