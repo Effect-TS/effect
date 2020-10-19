@@ -20,12 +20,14 @@ export type NonEmptyArray<A> = A.Array<A> & {
  * @example
  * assert.deepStrictEqual(cons(1, [2, 3, 4]), [1, 2, 3, 4])
  */
-export const cons_: <A>(tail: A.Array<A>, head: A) => NonEmptyArray<A> = A.cons_
+export const cons_: <A>(tail: A.Array<A>, head: A) => NonEmptyArray<A> = A.cons_ as any
 
 /**
  * Append an element to the front of an array, creating a new non empty array
  */
-export const cons: <A>(head: A) => (tail: A.Array<A>) => NonEmptyArray<A> = A.cons
+export const cons: <A>(
+  head: A
+) => (tail: A.Array<A>) => NonEmptyArray<A> = A.cons as any
 
 /**
  * Append an element to the end of an array, creating a new non empty array
@@ -33,12 +35,12 @@ export const cons: <A>(head: A) => (tail: A.Array<A>) => NonEmptyArray<A> = A.co
  * @example
  * assert.deepStrictEqual(snoc([1, 2, 3], 4), [1, 2, 3, 4])
  */
-export const snoc_: <A>(init: A.Array<A>, end: A) => NonEmptyArray<A> = A.snoc_
+export const snoc_: <A>(init: A.Array<A>, end: A) => NonEmptyArray<A> = A.snoc_ as any
 
 /**
  * Append an element to the end of an array, creating a new non empty array
  */
-export const snoc: <A>(end: A) => (init: A.Array<A>) => NonEmptyArray<A> = A.snoc
+export const snoc: <A>(end: A) => (init: A.Array<A>) => NonEmptyArray<A> = A.snoc as any
 
 /**
  * Builds a `ReadonlyNonEmptyArray` from an array returning `none` if `as` is an empty array
