@@ -12,12 +12,8 @@ export const AssociativeBoth = P.instance<P.AssociativeBoth<[EitherURI], V>>({
 })
 
 export const AssociativeEither = P.instance<P.AssociativeEither<[EitherURI], V>>({
-  or: (fb) => (fa) =>
-    fa._tag === "Right"
-      ? E.right(E.left(fa.right))
-      : fb._tag === "Right"
-      ? E.right(fb)
-      : fb
+  orElseEither: (fb) => (fa) =>
+    fa._tag === "Right" ? E.right(E.left(fa.right)) : E.map_(fb(), E.right)
 })
 
 export const AssociativeFlatten = P.instance<P.AssociativeFlatten<[EitherURI], V>>({

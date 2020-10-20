@@ -1,6 +1,6 @@
 import type { EqualURI } from "../../Modules"
 import * as P from "../../Prelude"
-import { anyEqual, both, contramap, either, nothingEqual } from "./operations"
+import { anyEqual, both, contramap, nothingEqual, orElseEither } from "./operations"
 
 /**
  * The `AssociativeBoth` instance for `Equal`.
@@ -13,7 +13,7 @@ export const AssociativeBoth = P.instance<P.AssociativeBoth<[EqualURI]>>({
  * The `AssociativeEither` instance for `Equal`.
  */
 export const AssociativeEither = P.instance<P.AssociativeEither<[EqualURI]>>({
-  or: either
+  orElseEither
 })
 
 /**

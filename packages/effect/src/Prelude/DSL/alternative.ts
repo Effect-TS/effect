@@ -3,10 +3,10 @@ import type { AssociativeEither } from "../AssociativeEither"
 import type { Covariant } from "../Covariant"
 import type { HKT, Intro, Kind, Mix, UHKT, URIS } from "../HKT"
 
-export function altF<F extends URIS, C>(
+export function orElseF<F extends URIS, C>(
   F: AssociativeEither<F, C> & Covariant<F, C>
 ): <N2 extends string, K2, Q2, W2, X2, I2, S2, R2, E2, B>(
-  fb: Kind<F, C, N2, K2, Q2, W2, X2, I2, S2, R2, E2, B>
+  fb: () => Kind<F, C, N2, K2, Q2, W2, X2, I2, S2, R2, E2, B>
 ) => <N extends string, K, Q, W, X, I, S, R, E, A>(
   fa: Kind<
     F,
@@ -36,11 +36,11 @@ export function altF<F extends URIS, C>(
   Mix<C, "E", [E2, E]>,
   A | B
 >
-export function altF<F>(F: AssociativeEither<UHKT<F>> & Covariant<UHKT<F>>) {
-  return <B>(fb: HKT<F, B>) => <A>(fa: HKT<F, A>): HKT<F, A | B> =>
+export function orElseF<F>(F: AssociativeEither<UHKT<F>> & Covariant<UHKT<F>>) {
+  return <B>(fb: () => HKT<F, B>) => <A>(fa: HKT<F, A>): HKT<F, A | B> =>
     pipe(
       fa,
-      F.or(fb),
+      F.orElseEither(fb),
       F.map((e) => (e._tag === "Left" ? e.left : e.right))
     )
 }
