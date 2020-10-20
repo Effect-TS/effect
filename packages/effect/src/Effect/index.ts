@@ -27,23 +27,29 @@ export const None = P.instance<P.None<[EffectURI], V>>({
   never: () => T.die(new NoneError())
 })
 
-export const AssociativeEither = P.instance<P.AssociativeEither<[EffectURI], V>>({
-  either: (fb) => (fa) =>
-    T.foldCauseM_(
-      fa,
-      (c) =>
-        pipe(
-          c,
-          C.find((x) =>
-            x._tag === "Die" && x.value instanceof NoneError ? O.some(x.value) : O.none
-          ),
-          O.fold(
-            () => T.orElseEither_(T.halt(c), fb),
-            () => T.map_(fb, E.right)
-          )
+export const or: <R2, E2, B>(
+  fb: T.Effect<R2, E2, B>
+) => <R, E, A>(fa: T.Effect<R, E, A>) => T.Effect<R2 & R, E2 | E, E.Either<A, B>> = (
+  fb
+) => (fa) =>
+  T.foldCauseM_(
+    fa,
+    (c) =>
+      pipe(
+        c,
+        C.find((x) =>
+          x._tag === "Die" && x.value instanceof NoneError ? O.some(x.value) : O.none
         ),
-      (a) => T.succeed(E.left(a))
-    )
+        O.fold(
+          () => T.orElseEither_(T.halt(c), fb),
+          () => T.map_(fb, E.right)
+        )
+      ),
+    (a) => T.succeed(E.left(a))
+  )
+
+export const AssociativeEither = P.instance<P.AssociativeEither<[EffectURI], V>>({
+  or
 })
 
 export const AssociativeFlatten = P.instance<P.AssociativeFlatten<[EffectURI], V>>({

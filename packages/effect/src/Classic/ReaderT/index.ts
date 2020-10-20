@@ -48,9 +48,9 @@ export function associativeEither<F>(
   M: AssociativeEither<HKT.UHKT<F>>
 ): AssociativeEither<HKT.PrependURI<R.ReaderURI, HKT.UHKT<F>>, HKT.V<"R", "-">> {
   return HKT.instance({
-    either: <R2, B>(fb: R.Reader<R2, HKT.HKT<F, B>>) => <R, A>(
+    or: <R2, B>(fb: R.Reader<R2, HKT.HKT<F, B>>) => <R, A>(
       fa: R.Reader<R, HKT.HKT<F, A>>
-    ): R.Reader<R2 & R, HKT.HKT<F, Either<A, B>>> => (r) => M.either(fb(r))(fa(r))
+    ): R.Reader<R2 & R, HKT.HKT<F, Either<A, B>>> => (r) => M.or(fb(r))(fa(r))
   })
 }
 
