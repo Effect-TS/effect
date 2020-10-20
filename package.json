@@ -20,10 +20,7 @@
   },
   "repository": "https://github.com/Matechs-Garage/matechs-effect.git",
   "sideEffects": false,
-  "devDependencies": {
-    "@babel/cli": "^7.10.5",
-    "babel-plugin-annotate-pure-calls": "^0.4.0"
-  },
+  "devDependencies": {},
   "config": {
     "modules": [
       "Array",
