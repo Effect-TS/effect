@@ -15,6 +15,7 @@ import type { Identity } from "../Classic/Identity"
 import type { Ix, IxC } from "../Classic/IndexedT"
 import type { Inverse } from "../Classic/Inverse"
 import type { NonEmptyArray } from "../Classic/NonEmptyArray"
+import type { Option } from "../Classic/Option"
 import type { Ord } from "../Classic/Ord"
 import type { Reader } from "../Classic/Reader"
 import type { Record } from "../Classic/Record"
@@ -130,6 +131,9 @@ export type AsyncURI = typeof AsyncURI
 export const TreeURI = "Tree"
 export type TreeURI = typeof TreeURI
 
+export const OptionURI = "Option"
+export type OptionURI = typeof OptionURI
+
 declare module "../Prelude/HKT" {
   interface URItoKind<FC, TC, N extends string, K, Q, W, X, I, S, R, E, A> {
     [ArrayURI]: Array<A>
@@ -165,6 +169,7 @@ declare module "../Prelude/HKT" {
     [FreeAssociativeURI]: FreeAssociative<A>
     [AsyncURI]: Async<R, E, A>
     [TreeURI]: Tree<A>
+    [OptionURI]: Option<A>
   }
   interface URItoIndex<N extends string, K> {
     [ArrayURI]: number
