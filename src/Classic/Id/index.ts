@@ -3,7 +3,7 @@
 import { identity as id } from "../../Function"
 import type { IdURI } from "../../Modules"
 import * as P from "../../Prelude"
-import { structF, tupledF } from "../../Prelude/DSL"
+import { structF, tupleF } from "../../Prelude/DSL"
 import type { Equal } from "../Equal"
 import type { Identity } from "../Identity"
 import type { Show } from "../Show"
@@ -138,4 +138,4 @@ export const Traversable = P.instance<P.Traversable<[IdURI]>>({
 
 export const struct = structF(Applicative)
 
-export const tupled = tupledF(Applicative)
+export const tuple = tupleF(Applicative)
