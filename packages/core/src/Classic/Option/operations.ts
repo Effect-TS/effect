@@ -31,7 +31,7 @@ export function getShow<A>(S: Show<A>): Show<O.Option<A>> {
 }
 
 export const AssociativeEither = P.instance<P.AssociativeEither<[OptionURI]>>({
-  either: <B>(fb: O.Option<B>) => <A>(fa: O.Option<A>): O.Option<Either<A, B>> =>
+  or: <B>(fb: O.Option<B>) => <A>(fa: O.Option<A>): O.Option<Either<A, B>> =>
     fa._tag === "Some"
       ? O.some(left(fa.value))
       : fb._tag === "Some"

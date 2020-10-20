@@ -19,7 +19,7 @@ export const AssociativeBoth = P.instance<P.AssociativeBoth<[SyncURI], V>>({
 })
 
 export const AssociativeEither = P.instance<P.AssociativeEither<[SyncURI], V>>({
-  either: X.orElseEither
+  or: X.orElseEither
 })
 
 export const AssociativeFlatten = P.instance<P.AssociativeFlatten<[SyncURI], V>>({

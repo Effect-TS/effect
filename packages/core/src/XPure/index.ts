@@ -24,7 +24,7 @@ export const AssociativeBoth = P.instance<P.AssociativeBoth<[XPureURI], V>>({
 })
 
 export const AssociativeEither = P.instance<P.AssociativeEither<[XPureURI], V>>({
-  either: X.orElseEither
+  or: X.orElseEither
 })
 
 export const AssociativeFlatten = P.instance<P.AssociativeFlatten<[XPureURI], V>>({

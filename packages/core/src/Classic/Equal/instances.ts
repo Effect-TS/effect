@@ -13,7 +13,7 @@ export const AssociativeBoth = P.instance<P.AssociativeBoth<[EqualURI]>>({
  * The `AssociativeEither` instance for `Equal`.
  */
 export const AssociativeEither = P.instance<P.AssociativeEither<[EqualURI]>>({
-  either
+  or: either
 })
 
 /**
