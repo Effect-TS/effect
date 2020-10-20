@@ -31,19 +31,6 @@ export function some<A>(a: A): Option<A> {
 }
 
 /**
- * Alternative that if self is none
- */
-export const alt_: <A>(self: Option<A>, that: () => Option<A>) => Option<A> = (ma, f) =>
-  isNone(ma) ? f() : ma
-
-/**
- * Alternative that if self is none
- */
-export const alt: <A>(that: () => Option<A>) => (fa: Option<A>) => Option<A> = (
-  that
-) => (fa) => (isNone(fa) ? that() : fa)
-
-/**
  * Classic applicative
  */
 export const ap_: <A, B>(fab: Option<(a: A) => B>, fa: Option<A>) => Option<B> = (

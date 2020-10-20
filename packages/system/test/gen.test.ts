@@ -148,21 +148,6 @@ describe("Generator", () => {
     expect(result).toEqual(Ex.succeed(5))
   })
 
-  it("option gen", () => {
-    const result = O.gen(function* (_) {
-      const a = yield* _(O.some(1))
-      const b = yield* _(O.some(2))
-
-      if (a + b > 10) {
-        yield* _(O.none)
-      }
-
-      return { a, b }
-    })
-
-    expect(result).toEqual(O.some({ a: 1, b: 2 }))
-  })
-
   it("either gen", () => {
     const result = E.gen(function* (_) {
       const a = yield* _(O.some(1))

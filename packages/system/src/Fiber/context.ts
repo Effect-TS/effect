@@ -513,7 +513,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     })
 
     const parentScope: Scope.Scope<Exit.Exit<any, any>> = O.getOrElse_(
-      O.alt_(forkScope, () => this.forkScopeOverride?.value || O.none),
+      forkScope._tag === "Some" ? forkScope : this.forkScopeOverride?.value || O.none,
       () => this.scope
     )
 

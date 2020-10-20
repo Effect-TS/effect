@@ -9,7 +9,7 @@ import type { Decoder } from "../common"
 import { fail } from "../common"
 import { decoderApplyConfig } from "../config"
 import { DecoderType, DecoderURI } from "../hkt"
-import { foreachRecordWithIndex, tupled } from "./common"
+import { foreachRecordWithIndex, tuple } from "./common"
 
 export const decoderObjectInterpreter = memo(
   <Env extends AnyEnv>(): AlgebraObject1<DecoderURI, Env> => ({
@@ -49,7 +49,7 @@ export const decoderObjectInterpreter = memo(
               {
                 decode: (u) =>
                   T.map_(
-                    tupled(
+                    tuple(
                       interfaceDecoder(keys, decoder, cfg?.id, cfg?.name).decode(u),
                       partialDecoder(decoderPartial, cfg?.id, cfg?.name).decode(u)
                     ),

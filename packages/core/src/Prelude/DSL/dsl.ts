@@ -253,7 +253,7 @@ type TMix<
   }
 >
 
-export function tupledF<F extends HKT.URIS, C>(
+export function tupleF<F extends HKT.URIS, C>(
   F: Applicative<F, C>
 ): <
   T extends Array<
@@ -318,7 +318,7 @@ export function tupledF<F extends HKT.URIS, C>(
       : never
   }
 >
-export function tupledF<F>(F: Applicative<HKT.UHKT<F>>): any {
+export function tupleF<F>(F: Applicative<HKT.UHKT<F>>): any {
   const ap = apF(F)
   return <A>(...args: Array<HKT.HKT<F, A>>) => {
     const len = args.length

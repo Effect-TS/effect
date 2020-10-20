@@ -13,6 +13,6 @@ export const struct = DSL.structF(Applicative)
 
 export const sequence = sequenceF(Traversable)
 
-export const tupled = DSL.tupledF(Applicative)
+export const tuple = DSL.tupleF(Applicative)
 
 export const gen_ = DSL.genF(Monad)
