@@ -157,7 +157,8 @@ export interface TraversableComposition<
   G extends HKT.URIS,
   CF = HKT.Auto,
   CG = HKT.Auto
-> extends HKT.CompositionBase2<F, G, CF, CG>, CovariantComposition<F, G, CF, CG> {
+> extends HKT.CompositionBase2<F, G, CF, CG>,
+    CovariantComposition<F, G, CF, CG> {
   readonly foreachF: ForeachComposition<F, G, CF, CG>
 }
 
