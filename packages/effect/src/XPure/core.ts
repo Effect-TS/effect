@@ -666,7 +666,9 @@ export function either<S1, S2, R, E, A>(
  * Executes this computation and returns its value, if it succeeds, but
  * otherwise executes the specified computation.
  */
-export function orElseEither<S3, S4, R2, E2, A2>(that: XPure<S3, S4, R2, E2, A2>) {
+export function orElseEither<S3, S4, R2, E2, A2>(
+  that: () => XPure<S3, S4, R2, E2, A2>
+) {
   return <S1, S2, R, E, A>(
     self: XPure<S1, S2, R, E, A>
   ): XPure<S3 & S1, S4 | S2, R & R2, E2, E.Either<A, A2>> => orElseEither_(self, that)
@@ -678,11 +680,11 @@ export function orElseEither<S3, S4, R2, E2, A2>(that: XPure<S3, S4, R2, E2, A2>
  */
 export function orElseEither_<S1, S2, R, E, A, S3, S4, R2, E2, A2>(
   self: XPure<S1, S2, R, E, A>,
-  that: XPure<S3, S4, R2, E2, A2>
+  that: () => XPure<S3, S4, R2, E2, A2>
 ): XPure<S3 & S1, S4 | S2, R & R2, E2, E.Either<A, A2>> {
   return foldM_(
     self,
-    () => map_(that, (a) => E.right(a)),
+    () => map_(that(), (a) => E.right(a)),
     (a) => succeed(() => E.left(a))
   )
 }

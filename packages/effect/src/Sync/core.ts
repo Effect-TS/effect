@@ -231,7 +231,7 @@ export const either: <R, E, A>(self: Sync<R, E, A>) => Sync<R, never, Either<E, 
  * otherwise executes the specified computation.
  */
 export const orElseEither: <R2, E2, A2>(
-  that: Sync<R2, E2, A2>
+  that: () => Sync<R2, E2, A2>
 ) => <R, E, A>(self: Sync<R, E, A>) => Sync<R & R2, E2, Either<A, A2>> = X.orElseEither
 
 /**
@@ -240,7 +240,7 @@ export const orElseEither: <R2, E2, A2>(
  */
 export const orElseEither_: <R, E, A, R2, E2, A2>(
   self: Sync<R, E, A>,
-  that: Sync<R2, E2, A2>
+  that: () => Sync<R2, E2, A2>
 ) => Sync<R & R2, E2, Either<A, A2>> = X.orElseEither_
 
 /**
