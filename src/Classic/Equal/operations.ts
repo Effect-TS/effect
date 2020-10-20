@@ -43,13 +43,15 @@ export function both<B>(fb: Equal<B>): <A>(fa: Equal<A>) => Equal<readonly [A, B
  * `Equal[B]`. The instance will compare the `Either[A, B]` values and if
  * both are `Right` or `Left` compare them for equality.
  */
-export function either<B>(fb: Equal<B>): <A>(fa: Equal<A>) => Equal<E.Either<A, B>> {
+export function orElseEither<B>(
+  fb: () => Equal<B>
+): <A>(fa: Equal<A>) => Equal<E.Either<A, B>> {
   return (fa) =>
     makeEqual((ey) => (ex) =>
       ex._tag === "Left" && ey._tag === "Left"
         ? fa.equals(ey.left)(ex.left)
         : ex._tag === "Right" && ey._tag === "Right"
-        ? fb.equals(ey.right)(ex.right)
+        ? fb().equals(ey.right)(ex.right)
         : false
     )
 }
