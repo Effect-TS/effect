@@ -25,10 +25,7 @@
   "dependencies": {
     "@effect-ts/system": "^0.3.14"
   },
-  "devDependencies": {
-    "@babel/cli": "^7.10.5",
-    "babel-plugin-annotate-pure-calls": "^0.4.0"
-  },
+  "devDependencies": {},
   "config": {
     "modules": [
       "Modules",
