@@ -1,4 +1,4 @@
-import { Effect, UIO } from "../Effect/effect"
+import type { Effect, UIO } from "../Effect/effect"
 
 /**
  * A `XQueue<RA, RB, EA, EB, A, B>` is a lightweight, asynchronous queue into which values of
