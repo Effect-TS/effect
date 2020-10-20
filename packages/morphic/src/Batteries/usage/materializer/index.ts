@@ -29,8 +29,7 @@ export interface MorphExtra<
   A,
   InterpURI extends InterpreterURI,
   ProgURI extends ProgramURI
->
-  extends InhabitedTypes<R, E, A>,
+> extends InhabitedTypes<R, E, A>,
     InhabitedInterpreterAndAlbegra<ProgURI, InterpURI>,
     Interpretable<R, E, A, ProgURI> {}
 
