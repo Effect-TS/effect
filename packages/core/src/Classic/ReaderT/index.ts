@@ -1,8 +1,9 @@
 import { pipe } from "../../Function"
-import type { Applicative, Monad } from "../../Prelude"
+import type { Applicative, AssociativeEither, Monad } from "../../Prelude"
 import { succeedF } from "../../Prelude/DSL"
 import type { Access, Fail, Provide, Run } from "../../Prelude/FX"
 import * as HKT from "../../Prelude/HKT"
+import type { Either } from "../Either"
 import * as R from "../Reader"
 
 export type V<C> = HKT.CleanParam<C, "R"> & HKT.V<"R", "-">
@@ -37,6 +38,19 @@ export function access<F>(
 ): Access<HKT.PrependURI<R.ReaderURI, HKT.UHKT<F>>, HKT.V<"R", "-">> {
   return HKT.instance({
     access: (f) => pipe(R.access(f), R.map(succeedF(M)))
+  })
+}
+
+export function associativeEither<F extends HKT.URIS, C>(
+  M: AssociativeEither<F, C>
+): AssociativeEither<HKT.PrependURI<R.ReaderURI, F>, V<C>>
+export function associativeEither<F>(
+  M: AssociativeEither<HKT.UHKT<F>>
+): AssociativeEither<HKT.PrependURI<R.ReaderURI, HKT.UHKT<F>>, HKT.V<"R", "-">> {
+  return HKT.instance({
+    either: <R2, B>(fb: R.Reader<R2, HKT.HKT<F, B>>) => <R, A>(
+      fa: R.Reader<R, HKT.HKT<F, A>>
+    ): R.Reader<R2 & R, HKT.HKT<F, Either<A, B>>> => (r) => M.either(fb(r))(fa(r))
   })
 }
 
