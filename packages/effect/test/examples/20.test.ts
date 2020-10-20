@@ -17,7 +17,7 @@ namespace ReaderEither {
   export const { access } = Access
   export const { fail } = Fail
 
-  export const tupled = DSL.tupledF(Applicative)
+  export const tupled = DSL.tupleF(Applicative)
 }
 
 test("20", () => {

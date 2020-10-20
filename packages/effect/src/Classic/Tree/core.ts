@@ -366,4 +366,4 @@ export { do_ as do }
 
 export const struct = DSL.structF(Applicative)
 
-export const tupled = DSL.tupledF(Applicative)
+export const tuple = DSL.tupleF(Applicative)

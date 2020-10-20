@@ -1,4 +1,6 @@
+import type * as A from "../src/Classic/Array"
 import * as T from "../src/Classic/Async"
+import * as O from "../src/Classic/Option"
 import { pipe } from "../src/Function"
 
 type A = {
@@ -36,5 +38,20 @@ describe("Generator", () => {
     )
 
     expect(result).toEqual(T.successExit(3))
+  })
+
+  it("option gen", () => {
+    const result = O.gen(function* (_) {
+      const a = yield* _(O.some(1))
+      const b = yield* _(O.some(2))
+
+      if (a + b > 10) {
+        yield* _(O.none)
+      }
+
+      return { a, b }
+    })
+
+    expect(result).toEqual(O.some({ a: 1, b: 2 }))
   })
 })
