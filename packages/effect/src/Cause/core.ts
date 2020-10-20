@@ -525,8 +525,10 @@ export const squash = <E>(f: (e: E) => unknown) => (cause: Cause<E>): unknown =>
     cause,
     failureOption,
     O.map(f),
-    O.alt(() =>
-      interrupted(cause)
+    (o) =>
+      o._tag === "Some"
+        ? o
+        : interrupted(cause)
         ? O.some<unknown>(
             new InterruptedException(
               "Interrupted by fibers: " +
@@ -536,9 +538,8 @@ export const squash = <E>(f: (e: E) => unknown) => (cause: Cause<E>): unknown =>
                   .join(", ")
             )
           )
-        : O.none
-    ),
-    O.alt(() => A.head(defects(cause))),
+        : O.none,
+    (o) => (o._tag === "Some" ? o : A.head(defects(cause))),
     O.getOrElse(() => new InterruptedException())
   )
 
