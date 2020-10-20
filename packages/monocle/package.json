@@ -1,6 +1,6 @@
 {
   "name": "@effect-ts/monocle",
-  "version": "0.4.24",
+  "version": "0.4.25",
   "license": "MIT",
   "homepage": "https://github.com/Matechs-Garage/matechs-effect",
   "private": false,
@@ -23,7 +23,7 @@
   "repository": "https://github.com/Matechs-Garage/matechs-effect.git",
   "sideEffects": false,
   "dependencies": {
-    "@effect-ts/core": "^0.5.24"
+    "@effect-ts/core": "^0.5.25"
   },
   "config": {
     "modules": [
