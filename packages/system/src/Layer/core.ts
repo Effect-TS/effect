@@ -7,16 +7,19 @@ import * as M from "../Managed"
 import type { Erase, UnionToIntersection } from "../Utils"
 import type { Layer, MergeA, MergeE, MergeR } from "./definitions"
 import {
+  and_,
   build,
+  fold_,
+  fromRawEffect,
+  fromRawFunctionM,
   LayerAllPar,
   LayerAllSeq,
   LayerChain,
-  LayerFold,
   LayerFresh,
   LayerManaged,
   LayerMap,
-  LayerZipWithPar,
-  LayerZipWithSeq
+  LayerZipWithSeq,
+  using_
 } from "./definitions"
 
 export * from "./definitions"
@@ -80,18 +83,6 @@ export function fromRawManaged<R, E, A>(resource: M.Managed<R, E, A>): Layer<R, 
   return new LayerManaged(resource)
 }
 
-export function fromRawEffect<R, E, A>(resource: T.Effect<R, E, A>): Layer<R, E, A> {
-  return new LayerManaged(M.fromEffect(resource))
-}
-
-export function fromRawFunction<A, B>(f: (a: A) => B) {
-  return fromRawEffect(T.access(f))
-}
-
-export function fromRawFunctionM<A, R, E, B>(f: (a: A) => T.Effect<R, E, B>) {
-  return fromRawEffect(T.accessM(f))
-}
-
 export function zip_<R, E, A, R2, E2, A2>(
   left: Layer<R, E, A>,
   right: Layer<R2, E2, A2>
@@ -101,14 +92,6 @@ export function zip_<R, E, A, R2, E2, A2>(
 
 export function zip<R2, E2, A2>(right: Layer<R2, E2, A2>) {
   return <R, E, A>(left: Layer<R, E, A>) => zip_(left, right)
-}
-
-export function fold_<R, E, A, E1, B, R2, E2, C>(
-  self: Layer<R, E, A>,
-  failure: Layer<readonly [R, Cause<E>], E1, B>,
-  success: Layer<A & R2, E2, C>
-): Layer<R & R2, E1 | E2, B | C> {
-  return new LayerFold<R, E, E1, E2, A, R2, B, C>(self, failure, success)
 }
 
 export function andTo<R, E, A>(to: Layer<R, E, A>) {
@@ -139,35 +122,8 @@ export function using<R2, E2, A2>(
   return <R, E, A>(to: Layer<R, E, A>) => andTo_(self, to)
 }
 
-export function using_<R, E, A, R2, E2, A2>(
-  to: Layer<R & A2, E, A>,
-  self: Layer<R2, E2, A2>,
-  noErase: "no-erase"
-): Layer<R & R2, E | E2, A & A2>
-export function using_<R, E, A, R2, E2, A2>(
-  to: Layer<R, E, A>,
-  self: Layer<R2, E2, A2>
-): Layer<Erase<R, A2> & R2, E | E2, A & A2>
-export function using_<R, E, A, R2, E2, A2>(
-  to: Layer<R, E, A>,
-  self: Layer<R2, E2, A2>
-): Layer<Erase<R, A2> & R2, E | E2, A & A2> {
-  return fold_<Erase<R, A2> & R2, E2, A2, E2, never, Erase<R, A2> & R2, E | E2, A2 & A>(
-    self,
-    fromRawFunctionM((_: readonly [R & R2, Cause<E2>]) => T.halt(_[1])),
-    and_(self, to)
-  )
-}
-
 export function and<R2, E2, A2>(that: Layer<R2, E2, A2>) {
   return <R, E, A>(self: Layer<R, E, A>) => and_(self, that)
-}
-
-export function and_<R, E, A, R2, E2, A2>(
-  self: Layer<R, E, A>,
-  that: Layer<R2, E2, A2>
-): Layer<R & R2, E | E2, A & A2> {
-  return new LayerZipWithPar(self, that, (l, r) => ({ ...l, ...r }))
 }
 
 export function andSeq<R2, E2, A2>(that: Layer<R2, E2, A2>) {
