@@ -8,12 +8,12 @@ interface Object {
   ["|>"]<Self, Result>(this: Self, next: (value: Self) => Result): Result
 }
 
-Object.prototype["|>"] = function <Self, Result>(
-  this: Self,
-  next: (value: Self) => Result
-): Result {
-  return next(this)
-}
+Object.defineProperty(Object.prototype, "|>", {
+  value<Self, Result>(this: Self, next: (value: Self) => Result): Result {
+    return next(this)
+  },
+  enumerable: false
+})
 
 interface Function {
   /**
@@ -25,9 +25,12 @@ interface Function {
   ): (...args: Args) => Result
 }
 
-Function.prototype[">>"] = function <Args extends any[], A, Result>(
-  this: (...args: Args) => A,
-  next: (value: A) => Result
-): (...args: Args) => Result {
-  return (...args) => next(this(...args))
-}
+Object.defineProperty(Function.prototype, ">>", {
+  value<Args extends any[], A, Result>(
+    this: (...args: Args) => A,
+    next: (value: A) => Result
+  ): (...args: Args) => Result {
+    return (...args) => next(this(...args))
+  },
+  enumerable: false
+})
