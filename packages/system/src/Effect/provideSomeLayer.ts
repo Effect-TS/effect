@@ -1,4 +1,5 @@
 import type { Layer } from "../Layer/core"
+import { build } from "../Layer/definitions"
 import { use_ } from "../Managed/core"
 import type { Effect } from "./effect"
 import { provideSome_ } from "./provideSome"
@@ -8,7 +9,7 @@ import { provideSome_ } from "./provideSome"
  */
 export function provideSomeLayer<R, E, A>(layer: Layer<R, E, A>) {
   return <R1, E1, A1>(eff: Effect<R1 & A, E1, A1>): Effect<R & R1, E | E1, A1> =>
-    use_(layer.build, (p) => provideSome_(eff, (r: R & R1) => ({ ...r, ...p })))
+    use_(build(layer), (p) => provideSome_(eff, (r: R & R1) => ({ ...r, ...p })))
 }
 
 /**

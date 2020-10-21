@@ -41,7 +41,6 @@
       "Mutable",
       "NonEmptyArray",
       "Option",
-      "ProcessManager",
       "Promise",
       "Queue",
       "Random",

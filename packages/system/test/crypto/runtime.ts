@@ -2,7 +2,7 @@ import * as C from "../../src/Cause"
 import * as T from "../../src/Effect"
 import * as Ex from "../../src/Exit"
 import { pipe, tuple } from "../../src/Function"
-import type * as L from "../../src/Layer"
+import * as L from "../../src/Layer"
 import * as M from "../../src/Managed"
 import { AtomicReference } from "../../src/Support/AtomicReference"
 
@@ -30,7 +30,7 @@ export function testRuntime<R>(self: L.Layer<T.DefaultEnv, never, R>) {
         T.do,
         T.bind("rm", () => M.makeReleaseMap),
         T.bind("res", ({ rm }) =>
-          T.provideSome_(self.build.effect, (r: T.DefaultEnv) => tuple(r, rm))
+          T.provideSome_(L.build(self).effect, (r: T.DefaultEnv) => tuple(r, rm))
         ),
         T.tap(({ res, rm }) =>
           T.effectTotal(() => {

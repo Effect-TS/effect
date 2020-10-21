@@ -10,16 +10,12 @@ import { FiberContext } from "../Fiber/context"
 import { interruptible } from "../Fiber/core"
 import { newFiberId } from "../Fiber/id"
 import type { Callback } from "../Fiber/state"
-import type { Layer } from "../Layer/Layer"
-import { HasMemoMap, MemoMap } from "../Layer/MemoMap"
-import type { Finalizer } from "../Managed/releaseMap"
 import { defaultRandom, HasRandom } from "../Random"
-import { unsafeMakeRefM } from "../RefM"
 import * as Scope from "../Scope"
 // supervisor
 import * as Supervisor from "../Supervisor"
 import { accessM, chain_, effectTotal, succeed } from "./core"
-import type { Effect, IO, UIO } from "./effect"
+import type { Effect, UIO } from "./effect"
 import { _I } from "./effect"
 import { provideSome_ } from "./provideSome"
 
@@ -28,19 +24,12 @@ const empty = () => {
   //
 }
 
-export type DefaultEnv = HasClock & HasRandom & HasMemoMap
-
-export const memoMap = new MemoMap(
-  unsafeMakeRefM<ReadonlyMap<Layer<any, any, any>, readonly [IO<any, any>, Finalizer]>>(
-    new Map()
-  )
-)
+export type DefaultEnv = HasClock & HasRandom
 
 export function defaultEnv() {
   return {
     [HasClock.key]: new LiveClock(),
-    [HasRandom.key]: defaultRandom,
-    [HasMemoMap.key]: memoMap
+    [HasRandom.key]: defaultRandom
   }
 }
 
