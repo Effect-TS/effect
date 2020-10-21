@@ -13,6 +13,7 @@ import { insert } from "../Map"
 import * as P from "../Promise"
 import * as R from "../Ref"
 import * as RM from "../RefM"
+import { AtomicReference } from "../Support/AtomicReference"
 import type { Erase, UnionToIntersection } from "../Utils"
 
 export function fromRawEffect<R, E, A>(resource: T.Effect<R, E, A>): Layer<R, E, A> {
@@ -63,9 +64,16 @@ export function using_<R, E, A, R2, E2, A2>(
 }
 
 export abstract class Layer<RIn, E, ROut> {
+  readonly hash = new AtomicReference(Symbol())
+
   readonly _RIn!: (_: RIn) => void
   readonly _E!: () => E
-  readonly _ROut!: () => ROut;
+  readonly _ROut!: () => ROut
+
+  setKey(hash: symbol) {
+    this.hash.set(hash)
+    return this
+  }
 
   ["_I"](): LayerInstruction {
     return this as any
@@ -330,9 +338,7 @@ export function build<R, E, A>(_: Layer<R, E, A>): M.Managed<R, E, A> {
 
 export function makeMemoMap() {
   return pipe(
-    RM.makeRefM<
-      ReadonlyMap<Layer<any, any, any>, readonly [T.IO<any, any>, Finalizer]>
-    >(new Map()),
+    RM.makeRefM<ReadonlyMap<symbol, readonly [T.IO<any, any>, Finalizer]>>(new Map()),
     T.chain((r) => T.effectTotal(() => new MemoMap(r)))
   )
 }
@@ -342,9 +348,7 @@ export function makeMemoMap() {
  */
 export class MemoMap {
   constructor(
-    readonly ref: RM.RefM<
-      ReadonlyMap<Layer<any, any, any>, readonly [T.IO<any, any>, Finalizer]>
-    >
+    readonly ref: RM.RefM<ReadonlyMap<symbol, readonly [T.IO<any, any>, Finalizer]>>
   ) {}
 
   /**
@@ -357,7 +361,7 @@ export class MemoMap {
       pipe(
         this.ref,
         RM.modify((m) => {
-          const inMap = m.get(layer)
+          const inMap = m.get(layer.hash.get)
 
           if (inMap) {
             const [acquire, release] = inMap
@@ -499,8 +503,8 @@ export class MemoMap {
                     E,
                     readonly [Finalizer, A]
                   >,
-                  insert(layer, memoized)(m) as ReadonlyMap<
-                    Layer<any, any, any>,
+                  insert(layer.hash.get, memoized)(m) as ReadonlyMap<
+                    symbol,
                     readonly [T.IO<any, any>, Finalizer]
                   >
                 )
