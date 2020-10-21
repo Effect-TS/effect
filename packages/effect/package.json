@@ -73,7 +73,6 @@
       "Effect/FiberRef",
       "Effect/Layer",
       "Effect/Managed",
-      "Effect/ProcessManager",
       "Effect/Promise",
       "Effect/Queue",
       "Effect/Random",
