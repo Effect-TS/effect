@@ -1,17 +1,19 @@
 import type { Clock } from "../Clock"
 import { currentTime } from "../Clock"
 import { pipe, tuple } from "../Function"
-import type { Has } from "../Layer/deps"
-import { chain, die, environment, uninterruptibleMask } from "../Layer/deps"
+import type { Has } from "../Has"
 import * as O from "../Option"
 import * as P from "../Promise"
 import * as RefM from "../RefM"
-import { provideAll } from "./core"
+import { chain, provideAll } from "./core"
+import { die } from "./die"
 import * as Do from "./do"
 import type { Effect, IO, RIO } from "./effect"
+import { environment } from "./environment"
 import { map } from "./map"
 import { tap } from "./tap"
 import { to } from "./to"
+import { uninterruptibleMask } from "./uninterruptibleMask"
 
 /**
  * Returns an effect that, if evaluated, will return the cached result of

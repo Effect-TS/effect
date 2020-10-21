@@ -1,6 +1,5 @@
 import type { Cause } from "../Cause"
 import { pipe } from "../Function"
-import { uninterruptibleMask } from "../Layer/deps"
 import * as P from "../Promise"
 import { andThen } from "./andThen"
 import { catchAllCause } from "./catchAllCause_"
@@ -10,6 +9,7 @@ import type { Effect } from "./effect"
 import { map } from "./map"
 import { runtime } from "./runtime"
 import { to } from "./to"
+import { uninterruptibleMask } from "./uninterruptibleMask"
 
 /**
  * Imports an asynchronous effect into a pure `ZIO` value. This formulation is
