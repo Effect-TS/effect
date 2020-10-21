@@ -318,8 +318,15 @@ export function runPromiseEnv<R, E, A>(
   return runCancelablePromise(task.f(new InterruptionState(), r))
 }
 
+export function runAsync<E, A>(
+  task: Async<unknown, E, A>,
+  cb?: (e: Exit<E, A>) => void
+) {
+  return runAsyncEnv(task, {}, cb)
+}
+
 // runs as a Cancellable task
-export function runAsync<R, E, A>(
+export function runAsyncEnv<R, E, A>(
   task: Async<R, E, A>,
   r: R,
   cb?: (e: Exit<E, A>) => void
