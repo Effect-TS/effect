@@ -7,5 +7,6 @@
 // codegen:start {preset: barrel, include: ./*.ts, exclude: ./+(promise|effect).ts}
 export * from "./api"
 export * from "./core"
+export * from "./unsafe"
 export * from "./xqueue"
 // codegen:end
