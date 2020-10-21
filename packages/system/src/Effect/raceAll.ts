@@ -2,7 +2,6 @@ import * as A from "../Array"
 import * as Exit from "../Exit"
 import * as Fiber from "../Fiber"
 import { flow, pipe, tuple } from "../Function"
-import { tap, uninterruptibleMask } from "../Layer/deps"
 import type { NonEmptyArray } from "../NonEmptyArray"
 import * as P from "../Promise"
 import * as Ref from "../Ref"
@@ -16,7 +15,9 @@ import { foreach_ } from "./foreach_"
 import { interruptible } from "./interruptible"
 import { map } from "./map"
 import { onInterrupt } from "./onInterrupt"
+import { tap } from "./tap"
 import { tap_ } from "./tap_"
+import { uninterruptibleMask } from "./uninterruptibleMask"
 
 function arbiter<E, A>(
   fibers: readonly Fiber.Fiber<E, A>[],
