@@ -3,7 +3,6 @@ import type { Applicative, AssociativeEither, Monad } from "../../Prelude"
 import { succeedF } from "../../Prelude/DSL"
 import type { Access, Fail, Provide, Run } from "../../Prelude/FX"
 import * as HKT from "../../Prelude/HKT"
-import type { Either } from "../Either"
 import * as R from "../Reader"
 
 export type V<C> = HKT.CleanParam<C, "R"> & HKT.V<"R", "-">
@@ -11,32 +10,28 @@ export type V<C> = HKT.CleanParam<C, "R"> & HKT.V<"R", "-">
 export function monad<F extends HKT.URIS, C>(
   M: Monad<F, C>
 ): Monad<HKT.PrependURI<R.ReaderURI, F>, V<C>>
-export function monad<F>(
-  M: Monad<HKT.UHKT<F>>
-): Monad<HKT.PrependURI<R.ReaderURI, HKT.UHKT<F>>, HKT.V<"R", "-">> {
-  return HKT.instance({
-    any: () => M.any,
-    flatten: <A, R, R2>(
-      ffa: R.Reader<R, HKT.HKT<F, R.Reader<R2, HKT.HKT<F, A>>>>
-    ): R.Reader<R & R2, HKT.HKT<F, A>> => (r) =>
-      pipe(
-        ffa(r),
-        M.map((f) => f(r)),
-        M.flatten
-      ),
-    map: <A, B>(f: (a: A) => B) => <R>(
-      fa: R.Reader<R, HKT.HKT<F, A>>
-    ): R.Reader<R, HKT.HKT<F, B>> => (r) => pipe(fa(r), M.map(f))
-  })
+export function monad<F>(M: Monad<HKT.UHKT<F>>) {
+  return HKT.instance<Monad<HKT.PrependURI<R.ReaderURI, HKT.UHKT<F>>, HKT.V<"R", "-">>>(
+    {
+      any: () => M.any,
+      flatten: (ffa) => (r) =>
+        pipe(
+          ffa(r),
+          M.map((f) => f(r)),
+          M.flatten
+        ),
+      map: (f) => (fa) => (r) => M.map(f)(fa(r))
+    }
+  )
 }
 
 export function access<F extends HKT.URIS, C>(
   M: Monad<F, C>
 ): Access<HKT.PrependURI<R.ReaderURI, F>, V<C>>
-export function access<F>(
-  M: Monad<HKT.UHKT<F>>
-): Access<HKT.PrependURI<R.ReaderURI, HKT.UHKT<F>>, HKT.V<"R", "-">> {
-  return HKT.instance({
+export function access<F>(M: Monad<HKT.UHKT<F>>) {
+  return HKT.instance<
+    Access<HKT.PrependURI<R.ReaderURI, HKT.UHKT<F>>, HKT.V<"R", "-">>
+  >({
     access: (f) => pipe(R.access(f), R.map(succeedF(M)))
   })
 }
@@ -44,52 +39,39 @@ export function access<F>(
 export function associativeEither<F extends HKT.URIS, C>(
   M: AssociativeEither<F, C>
 ): AssociativeEither<HKT.PrependURI<R.ReaderURI, F>, V<C>>
-export function associativeEither<F>(
-  M: AssociativeEither<HKT.UHKT<F>>
-): AssociativeEither<HKT.PrependURI<R.ReaderURI, HKT.UHKT<F>>, HKT.V<"R", "-">> {
-  return HKT.instance({
-    orElseEither: <R2, B>(fb: () => R.Reader<R2, HKT.HKT<F, B>>) => <R, A>(
-      fa: R.Reader<R, HKT.HKT<F, A>>
-    ): R.Reader<R2 & R, HKT.HKT<F, Either<A, B>>> => (r) =>
-      M.orElseEither(() => fb()(r))(fa(r))
+export function associativeEither<F>(M: AssociativeEither<HKT.UHKT<F>>) {
+  return HKT.instance<
+    AssociativeEither<HKT.PrependURI<R.ReaderURI, HKT.UHKT<F>>, HKT.V<"R", "-">>
+  >({
+    orElseEither: (fb) => (fa) => (r) => M.orElseEither(() => fb()(r))(fa(r))
   })
 }
 
 export function provide<F extends HKT.URIS, C>(
   M: Monad<F, C>
 ): Provide<HKT.PrependURI<R.ReaderURI, F>, V<C>>
-export function provide<F>(
-  M: Monad<HKT.UHKT<F>>
-): Provide<HKT.PrependURI<R.ReaderURI, HKT.UHKT<F>>, HKT.V<"R", "-">> {
-  return HKT.instance({
-    provide: <R>(r: R) => <A>(
-      fa: R.Reader<R, HKT.HKT<F, A>>
-    ): R.Reader<unknown, HKT.HKT<F, A>> =>
-      pipe(
-        fa,
-        R.provideSome(() => r)
-      )
+export function provide<F>(M: Monad<HKT.UHKT<F>>) {
+  return HKT.instance<
+    Provide<HKT.PrependURI<R.ReaderURI, HKT.UHKT<F>>, HKT.V<"R", "-">>
+  >({
+    provide: (r) => R.provideSome(() => r)
   })
 }
 
 export function applicative<F extends HKT.URIS, C>(
   M: Applicative<F, C>
 ): Applicative<HKT.PrependURI<R.ReaderURI, F>, V<C>>
-export function applicative<F>(
-  M: Applicative<HKT.UHKT<F>>
-): Applicative<HKT.PrependURI<R.ReaderURI, HKT.UHKT<F>>, HKT.V<"R", "-">> {
-  return HKT.instance({
+export function applicative<F>(M: Applicative<HKT.UHKT<F>>) {
+  return HKT.instance<
+    Applicative<HKT.PrependURI<R.ReaderURI, HKT.UHKT<F>>, HKT.V<"R", "-">>
+  >({
     any: () => R.succeed(M.any()),
-    map: <A, B>(f: (a: A) => B) => <R>(
-      fa: R.Reader<R, HKT.HKT<F, A>>
-    ): R.Reader<R, HKT.HKT<F, B>> => pipe(fa, R.map(M.map(f))),
-    both: <R2, B>(fb: R.Reader<R2, HKT.HKT<F, B>>) => <R, A>(
-      fa: R.Reader<R, HKT.HKT<F, A>>
-    ): R.Reader<R & R2, HKT.HKT<F, readonly [A, B]>> =>
+    map: (f) => R.map(M.map(f)),
+    both: (fb) => (fa) =>
       pipe(
         fa,
         R.zip(fb),
-        R.map(([_a, _b]) => pipe(_a, M.both(_b)))
+        R.map(([_a, _b]) => M.both(_b)(_a))
       )
   })
 }
