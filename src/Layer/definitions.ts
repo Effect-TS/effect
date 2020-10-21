@@ -13,7 +13,54 @@ import { insert } from "../Map"
 import * as P from "../Promise"
 import * as R from "../Ref"
 import * as RM from "../RefM"
-import type { UnionToIntersection } from "../Utils"
+import type { Erase, UnionToIntersection } from "../Utils"
+
+export function fromRawEffect<R, E, A>(resource: T.Effect<R, E, A>): Layer<R, E, A> {
+  return new LayerManaged(M.fromEffect(resource))
+}
+
+export function fromRawFunction<A, B>(f: (a: A) => B) {
+  return fromRawEffect(T.access(f))
+}
+
+export function fromRawFunctionM<A, R, E, B>(f: (a: A) => T.Effect<R, E, B>) {
+  return fromRawEffect(T.accessM(f))
+}
+
+export function and_<R, E, A, R2, E2, A2>(
+  self: Layer<R, E, A>,
+  that: Layer<R2, E2, A2>
+): Layer<R & R2, E | E2, A & A2> {
+  return new LayerZipWithPar(self, that, (l, r) => ({ ...l, ...r }))
+}
+
+export function fold_<R, E, A, E1, B, R2, E2, C>(
+  self: Layer<R, E, A>,
+  failure: Layer<readonly [R, Cause<E>], E1, B>,
+  success: Layer<A & R2, E2, C>
+): Layer<R & R2, E1 | E2, B | C> {
+  return new LayerFold<R, E, E1, E2, A, R2, B, C>(self, failure, success)
+}
+
+export function using_<R, E, A, R2, E2, A2>(
+  to: Layer<R & A2, E, A>,
+  self: Layer<R2, E2, A2>,
+  noErase: "no-erase"
+): Layer<R & R2, E | E2, A & A2>
+export function using_<R, E, A, R2, E2, A2>(
+  to: Layer<R, E, A>,
+  self: Layer<R2, E2, A2>
+): Layer<Erase<R, A2> & R2, E | E2, A & A2>
+export function using_<R, E, A, R2, E2, A2>(
+  to: Layer<R, E, A>,
+  self: Layer<R2, E2, A2>
+): Layer<Erase<R, A2> & R2, E | E2, A & A2> {
+  return fold_<Erase<R, A2> & R2, E2, A2, E2, never, Erase<R, A2> & R2, E | E2, A2 & A>(
+    self,
+    fromRawFunctionM((_: readonly [R & R2, Cause<E2>]) => T.halt(_[1])),
+    and_(self, to)
+  )
+}
 
 export abstract class Layer<RIn, E, ROut> {
   readonly _RIn!: (_: RIn) => void
@@ -22,6 +69,22 @@ export abstract class Layer<RIn, E, ROut> {
 
   ["_I"](): LayerInstruction {
     return this as any
+  }
+
+  ["<+<"]<R2, E2, A2>(
+    from: Layer<R2, E2, A2>
+  ): Layer<Erase<RIn, A2> & R2, E2 | E, ROut & A2> {
+    return using_(this, from)
+  }
+
+  [">+>"]<R2, E2, A2>(
+    from: Layer<R2, E2, A2>
+  ): Layer<Erase<R2, ROut> & RIn, E2 | E, ROut & A2> {
+    return using_(from, this)
+  }
+
+  ["+++"]<R2, E2, A2>(from: Layer<R2, E2, A2>): Layer<R2 & RIn, E2 | E, ROut & A2> {
+    return and_(from, this)
   }
 }
 
