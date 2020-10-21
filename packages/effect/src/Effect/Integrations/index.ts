@@ -9,7 +9,7 @@ function asyncToEffectIntegration() {
       some(<R, E, A>(self: A.Async<R, E, A>) =>
         T.accessM((r: R) =>
           T.effectAsyncInterrupt<R, E, A>((cb) => {
-            const int = A.runAsync(self, r, (ex) => {
+            const int = A.runAsyncEnv(self, r, (ex) => {
               if (ex._tag === "Success") {
                 cb(T.succeed(ex.a))
               } else if (ex._tag === "Failure") {
