@@ -11,9 +11,12 @@ import type { AsyncURI } from "../../Modules"
 import * as P from "../../Prelude"
 import * as DSL from "../../Prelude/DSL"
 import type { UnionToIntersection } from "../../Utils"
+import type { Either } from "../Either"
 import * as E from "../Either"
 import type { Has, Tag } from "../Has"
 import * as O from "../Option"
+import type { Sync } from "../Sync"
+import { runEitherEnv } from "../Sync"
 
 /**
  * During the last part of day-2 when we started to test async code we noticed
@@ -793,3 +796,11 @@ export const provideSome: <R, R2>(
 })
 
 export const gen_ = DSL.genF(Monad)
+
+export function fromEither<E, A>(_: Either<E, A>) {
+  return _._tag === "Left" ? fail(_.left) : succeed(_.right)
+}
+
+export function fromSync<R, E, A>(_: Sync<R, E, A>) {
+  return accessM((r: R) => fromEither(runEitherEnv(r)(_)))
+}
