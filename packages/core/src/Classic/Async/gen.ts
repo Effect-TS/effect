@@ -55,6 +55,36 @@ const adapter = (_: any, __?: any) => {
   return new GenAsync(_)
 }
 
+export function gen<RBase, EBase, AEff>(): <Eff extends GenAsync<RBase, EBase, any>>(
+  f: (i: {
+    <A>(_: Tag<A>): GenAsync<Has<A>, never, A>
+    <E, A>(_: Option<A>, onNone: () => E): GenAsync<unknown, E, A>
+    <A>(_: Option<A>): GenAsync<unknown, NoSuchElementException, A>
+    <E, A>(_: Either<E, A>): GenAsync<unknown, E, A>
+    <R, E, A>(_: Sync<R, E, A>): GenAsync<R, E, A>
+    <R, E, A>(_: Async<R, E, A>): GenAsync<R, E, A>
+  }) => Generator<Eff, AEff, any>
+) => Async<_R<Eff>, _E<Eff>, AEff>
+export function gen<EBase, AEff>(): <Eff extends GenAsync<any, EBase, any>>(
+  f: (i: {
+    <A>(_: Tag<A>): GenAsync<Has<A>, never, A>
+    <E, A>(_: Option<A>, onNone: () => E): GenAsync<unknown, E, A>
+    <A>(_: Option<A>): GenAsync<unknown, NoSuchElementException, A>
+    <E, A>(_: Either<E, A>): GenAsync<unknown, E, A>
+    <R, E, A>(_: Sync<R, E, A>): GenAsync<R, E, A>
+    <R, E, A>(_: Async<R, E, A>): GenAsync<R, E, A>
+  }) => Generator<Eff, AEff, any>
+) => Async<_R<Eff>, _E<Eff>, AEff>
+export function gen<AEff>(): <Eff extends GenAsync<any, any, any>>(
+  f: (i: {
+    <A>(_: Tag<A>): GenAsync<Has<A>, never, A>
+    <E, A>(_: Option<A>, onNone: () => E): GenAsync<unknown, E, A>
+    <A>(_: Option<A>): GenAsync<unknown, NoSuchElementException, A>
+    <E, A>(_: Either<E, A>): GenAsync<unknown, E, A>
+    <R, E, A>(_: Sync<R, E, A>): GenAsync<R, E, A>
+    <R, E, A>(_: Async<R, E, A>): GenAsync<R, E, A>
+  }) => Generator<Eff, AEff, any>
+) => Async<_R<Eff>, _E<Eff>, AEff>
 export function gen<Eff extends GenAsync<any, any, any>, AEff>(
   f: (i: {
     <A>(_: Tag<A>): GenAsync<Has<A>, never, A>
@@ -64,29 +94,39 @@ export function gen<Eff extends GenAsync<any, any, any>, AEff>(
     <R, E, A>(_: Sync<R, E, A>): GenAsync<R, E, A>
     <R, E, A>(_: Async<R, E, A>): GenAsync<R, E, A>
   }) => Generator<Eff, AEff, any>
-): Async<_R<Eff>, _E<Eff>, AEff> {
-  return pipe(
-    sync(() => {
-      const iterator = f(adapter as any)
-      const state = iterator.next()
+): Async<_R<Eff>, _E<Eff>, AEff>
+export function gen(...args: any[]): any {
+  function gen_<Eff extends GenAsync<any, any, any>, AEff>(
+    f: (i: any) => Generator<Eff, AEff, any>
+  ): Async<_R<Eff>, _E<Eff>, AEff> {
+    return pipe(
+      sync(() => {
+        const iterator = f(adapter as any)
+        const state = iterator.next()
 
-      function run(
-        state: IteratorYieldResult<Eff> | IteratorReturnResult<AEff>
-      ): Async<any, any, AEff> {
-        if (state.done) {
-          return succeed(state.value)
+        function run(
+          state: IteratorYieldResult<Eff> | IteratorReturnResult<AEff>
+        ): Async<any, any, AEff> {
+          if (state.done) {
+            return succeed(state.value)
+          }
+          return pipe(
+            state.value["effect"],
+            chain((val) => {
+              const next = iterator.next(val)
+              return run(next)
+            })
+          )
         }
-        return pipe(
-          state.value["effect"],
-          chain((val) => {
-            const next = iterator.next(val)
-            return run(next)
-          })
-        )
-      }
 
-      return run(state)
-    }),
-    chain(identity)
-  )
+        return run(state)
+      }),
+      chain(identity)
+    )
+  }
+
+  if (args.length === 0) {
+    return (f: any) => gen_(f)
+  }
+  return gen_(args[0])
 }
