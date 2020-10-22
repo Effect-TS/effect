@@ -31,6 +31,19 @@ const program = T.gen(function* (_) {
   return c
 })
 
+const programNumber = T.gen<number>()(function* (_) {
+  const a = yield* _(T.access((_: A) => _.a))
+  const b = yield* _(T.access((_: B) => _.b))
+
+  const c = a + b
+
+  if (c > 10) {
+    yield* _(T.fail(`${c} should be lower then x`))
+  }
+
+  return c
+})
+
 class MyError {
   readonly _tag = "MyError"
 }
@@ -39,6 +52,15 @@ describe("Generator", () => {
   it("should use generator program", async () => {
     const result = await pipe(
       program,
+      T.provideAll<A & B>({ a: 1, b: 2 }),
+      T.runPromiseExit
+    )
+
+    expect(result).toEqual(Ex.succeed(3))
+  })
+  it("should use generator programNumber", async () => {
+    const result = await pipe(
+      programNumber,
       T.provideAll<A & B>({ a: 1, b: 2 }),
       T.runPromiseExit
     )
