@@ -85,29 +85,29 @@ export function gen(...args: any[]): any {
   function gen_<Eff extends GenStream<any, any, any>, AEff>(
     f: (i: any) => Generator<Eff, AEff, any>
   ): Stream<_R<Eff>, _E<Eff>, AEff> {
-  return suspend(() => {
-    function run(replayStack: any[]): Stream<any, any, AEff> {
-      const iterator = f(adapter as any)
-      let state = iterator.next()
-      for (let i = 0; i < replayStack.length; i++) {
-        if (state.done) {
-          return fromEffect(die(new PrematureGeneratorExit()))
+    return suspend(() => {
+      function run(replayStack: any[]): Stream<any, any, AEff> {
+        const iterator = f(adapter as any)
+        let state = iterator.next()
+        for (let i = 0; i < replayStack.length; i++) {
+          if (state.done) {
+            return fromEffect(die(new PrematureGeneratorExit()))
+          }
+          state = iterator.next(replayStack[i])
         }
-        state = iterator.next(replayStack[i])
+        if (state.done) {
+          return succeed(state.value)
+        }
+        return chain_(state.value["effect"], (val) => {
+          return run(replayStack.concat([val]))
+        })
       }
-      if (state.done) {
-        return succeed(state.value)
-      }
-      return chain_(state.value["effect"], (val) => {
-        return run(replayStack.concat([val]))
-      })
-    }
-    return run([])
-  })
-}
+      return run([])
+    })
+  }
 
-if (args.length === 0) {
-  return (f: any) => gen_(f)
-}
-return gen_(args[0])
+  if (args.length === 0) {
+    return (f: any) => gen_(f)
+  }
+  return gen_(args[0])
 }
