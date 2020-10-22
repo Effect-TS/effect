@@ -7,6 +7,7 @@ import type { Effect, EffectURI, FFI, Instruction } from "@effect-ts/system/Effe
 import { AtomicReference } from "@effect-ts/system/Support/AtomicReference"
 
 import { flow, identity, pipe, tuple as mkTuple } from "../../Function"
+import type { Has, Tag } from "../../Has"
 import type { AsyncURI } from "../../Modules"
 import * as P from "../../Prelude"
 import * as DSL from "../../Prelude/DSL"
@@ -15,7 +16,6 @@ import { runEitherEnv } from "../../Sync"
 import type { UnionToIntersection } from "../../Utils"
 import type { Either } from "../Either"
 import * as E from "../Either"
-import type { Has, Tag } from "../Has"
 import * as O from "../Option"
 
 /**
