@@ -1,6 +1,7 @@
 import * as Sy from "../_internal"
 import type { Has, Tag } from "../../Classic/Has"
 import { pipe } from "../../Function"
+import type { Erase } from "../../Utils"
 
 export abstract class SyncLayer<R, E, A> {
   readonly _R!: (_: R) => void
@@ -14,9 +15,22 @@ export abstract class SyncLayer<R, E, A> {
   ["+++"]<R2, E2, A2>(that: SyncLayer<R2, E2, A2>): SyncLayer<R & R2, E | E2, A & A2> {
     return new Both(this, that)
   }
+  ["<+<"]<R2, E2, A2>(
+    that: SyncLayer<R2, E2, A2>
+  ): SyncLayer<Erase<R, A2> & R2, E | E2, A & A2> {
+    return new Using(that, this)
+  }
+  [">+>"]<R2, E2, A2>(
+    that: SyncLayer<R2, E2, A2>
+  ): SyncLayer<Erase<R2, A> & R, E | E2, A & A2> {
+    return new Using(this, that)
+  }
 }
 
-export type Instructions = Of<any, any, any> | Both<any, any, any, any, any, any>
+export type Instructions =
+  | Of<any, any, any>
+  | Both<any, any, any, any, any, any>
+  | Using<any, any, any, any, any, any>
 
 export class Of<R, E, A> extends SyncLayer<R, E, A> {
   readonly _tag = "FromSync"
@@ -28,6 +42,21 @@ export class Of<R, E, A> extends SyncLayer<R, E, A> {
 
 export class Both<R, E, A, R2, E2, A2> extends SyncLayer<R & R2, E | E2, A & A2> {
   readonly _tag = "Both"
+
+  constructor(
+    readonly left: SyncLayer<R, E, A>,
+    readonly right: SyncLayer<R2, E2, A2>
+  ) {
+    super()
+  }
+}
+
+export class Using<R, E, A, R2, E2, A2> extends SyncLayer<
+  R & Erase<R2, A>,
+  E | E2,
+  A & A2
+> {
+  readonly _tag = "Using"
 
   constructor(
     readonly left: SyncLayer<R, E, A>,
@@ -75,6 +104,20 @@ export function scope<R, E, A>(
             pipe(
               getMemoOrElseCreate(ins.right)(_),
               Sy.map((r) => ({ ...l, ...r }))
+            )
+          )
+        )
+      )
+    }
+    case "Using": {
+      return Sy.succeed((_) =>
+        pipe(
+          getMemoOrElseCreate(ins.left)(_),
+          Sy.chain((l) =>
+            pipe(
+              getMemoOrElseCreate(ins.right)(_),
+              Sy.map((r) => ({ ...l, ...r })),
+              Sy.provide(l)
             )
           )
         )
