@@ -22,13 +22,9 @@ const Bar = has<Bar>()
 
 const Baz = has<Baz>()
 
-const FooLive = L.fromSync(Foo)(
-  Sy.succeed<Foo>({ foo: "foo" })
-)
+const FooLive = L.fromValue(Foo)({ foo: "foo" })
 
-const BarLive = L.fromSync(Bar)(
-  Sy.succeed<Bar>({ bar: "bar" })
-)
+const BarLive = L.fromValue(Bar)({ bar: "bar" })
 
 const BazLive = L.fromSync(Baz)(
   Sy.gen(function* (_) {
