@@ -1,5 +1,5 @@
 {
-  "typescript.tsdk": "node_modules/typescript/lib",
+  "typescript.tsdk": "/Users/mattiamanzati/Desktop/matechs-effect/node_modules/typescript/lib",
   "editor.formatOnSave": true,
   "eslint.format.enable": true,
   "[javascript]": {

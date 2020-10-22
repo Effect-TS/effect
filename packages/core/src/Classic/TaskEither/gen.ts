@@ -30,6 +30,22 @@ const adapter = (_: any, __?: any) => {
     : new GenTaskEither(_)
 }
 
+export function gen<EBase, AEff>(): <Eff extends GenTaskEither<EBase, any>>(
+  f: (i: {
+    <E, A>(_: Option<A>, onNone: () => E): GenTaskEither<E, A>
+    <A>(_: Option<A>): GenTaskEither<NoSuchElementException, A>
+    <E, A>(_: Either<E, A>): GenTaskEither<E, A>
+    <E, A>(_: TaskEither<E, A>): GenTaskEither<E, A>
+  }) => Generator<Eff, AEff, any>
+) => TaskEither<_E<Eff>, AEff>
+export function gen<AEff>(): <Eff extends GenTaskEither<any, any>>(
+  f: (i: {
+    <E, A>(_: Option<A>, onNone: () => E): GenTaskEither<E, A>
+    <A>(_: Option<A>): GenTaskEither<NoSuchElementException, A>
+    <E, A>(_: Either<E, A>): GenTaskEither<E, A>
+    <E, A>(_: TaskEither<E, A>): GenTaskEither<E, A>
+  }) => Generator<Eff, AEff, any>
+) => TaskEither<_E<Eff>, AEff>
 export function gen<Eff extends GenTaskEither<any, any>, AEff>(
   f: (i: {
     <E, A>(_: Option<A>, onNone: () => E): GenTaskEither<E, A>
@@ -37,21 +53,31 @@ export function gen<Eff extends GenTaskEither<any, any>, AEff>(
     <E, A>(_: Either<E, A>): GenTaskEither<E, A>
     <E, A>(_: TaskEither<E, A>): GenTaskEither<E, A>
   }) => Generator<Eff, AEff, any>
-): TaskEither<_E<Eff>, AEff> {
-  const iterator = f(adapter as any)
-  const state = iterator.next()
+): TaskEither<_E<Eff>, AEff>
+export function gen(...args: any[]): any {
+  function gen_<Eff extends GenTaskEither<any, any>, AEff>(
+    f: (i: any) => Generator<Eff, AEff, any>
+  ): TaskEither<_E<Eff>, AEff> {
+    const iterator = f(adapter as any)
+    const state = iterator.next()
 
-  function run(
-    state: IteratorYieldResult<Eff> | IteratorReturnResult<AEff>
-  ): TaskEither<any, AEff> {
-    if (state.done) {
-      return T.succeed(state.value)
+    function run(
+      state: IteratorYieldResult<Eff> | IteratorReturnResult<AEff>
+    ): TaskEither<any, AEff> {
+      if (state.done) {
+        return T.succeed(state.value)
+      }
+      return T.chain((val) => {
+        const next = iterator.next(val)
+        return run(next)
+      })(state.value["effect"])
     }
-    return T.chain((val) => {
-      const next = iterator.next(val)
-      return run(next)
-    })(state.value["effect"])
+
+    return run(state)
   }
 
-  return run(state)
+  if (args.length === 0) {
+    return (f: any) => gen_(f)
+  }
+  return gen_(args[0])
 }
