@@ -1,8 +1,8 @@
 import type { Effect } from "@effect-ts/system/Effect"
 import { EffectURI } from "@effect-ts/system/Effect"
 
+import type { Async } from "../Async"
 import type { Array } from "../Classic/Array"
-import type { Async } from "../Classic/Async"
 import type { Bounded } from "../Classic/Bounded"
 import type { Closure } from "../Classic/Closure"
 import type { Commutative } from "../Classic/Commutative"
