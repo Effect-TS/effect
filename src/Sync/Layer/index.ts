@@ -140,6 +140,15 @@ export function fromSync<T>(tag: Tag<T>) {
     new Of(pipe(_, Sy.map(tag.of)))
 }
 
+export function fromFunction<T>(tag: Tag<T>) {
+  return <R, E>(_: (_: R) => T): SyncLayer<R, E, Has<T>> =>
+    new Of(pipe(Sy.access(_), Sy.map(tag.of)))
+}
+
+export function fromValue<T>(tag: Tag<T>) {
+  return (_: T): SyncLayer<unknown, never, Has<T>> => new Of(Sy.succeed(tag.of(_)))
+}
+
 export function provideSyncLayer<R, E, A>(layer: SyncLayer<R, E, A>) {
   return <R2, E2, A2>(_: Sy.Sync<R2 & A, E2, A2>): Sy.Sync<R & R2, E | E2, A2> =>
     pipe(
