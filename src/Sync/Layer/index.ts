@@ -1,6 +1,6 @@
 import * as Sy from "../_internal"
-import type { Has, Tag } from "../../Classic/Has"
 import { pipe } from "../../Function"
+import type { Has, Tag } from "../../Has"
 import type { Erase } from "../../Utils"
 
 export abstract class SyncLayer<R, E, A> {

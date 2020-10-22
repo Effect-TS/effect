@@ -1,7 +1,7 @@
 import * as A from "@effect-ts/system/Array"
 
-import type { Has, Tag } from "../../Classic/Has"
 import { constant, flow, pipe, tuple } from "../../Function"
+import type { Has, Tag } from "../../Has"
 import type { EnforceNonEmptyRecord } from "../../Utils"
 import type { Any } from "../Any"
 import type { Applicative } from "../Applicative"

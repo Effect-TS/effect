@@ -1,7 +1,7 @@
-import { has } from "../../src/Classic/Has"
 import * as T from "../../src/Effect"
 import * as Ref from "../../src/Effect/Ref"
 import { pipe } from "../../src/Function"
+import { has } from "../../src/Has"
 
 class ConsoleService {
   logN(n: number) {
