@@ -94,7 +94,7 @@ export function scope<R, E, A>(
 
   switch (ins._tag) {
     case "FromSync": {
-      return Sy.succeed((_: MemoMap) => ins.sync)
+      return Sy.succeed((_) => ins.sync)
     }
     case "Both": {
       return Sy.succeed((_) =>
