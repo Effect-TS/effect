@@ -81,28 +81,28 @@ export function gen(...args: any[]): any {
   function gen_<Eff extends GenSync<any, any, any>, AEff>(
     f: (i: any) => Generator<Eff, AEff, any>
   ): Sync<_R<Eff>, _E<Eff>, AEff> {
-  return suspend(() => {
-    const iterator = f(adapter as any)
-    const state = iterator.next()
+    return suspend(() => {
+      const iterator = f(adapter as any)
+      const state = iterator.next()
 
-    function run(
-      state: IteratorYieldResult<Eff> | IteratorReturnResult<AEff>
-    ): Sync<any, any, AEff> {
-      if (state.done) {
-        return succeed(state.value)
+      function run(
+        state: IteratorYieldResult<Eff> | IteratorReturnResult<AEff>
+      ): Sync<any, any, AEff> {
+        if (state.done) {
+          return succeed(state.value)
+        }
+        return chain_(state.value["effect"], (val) => {
+          const next = iterator.next(val)
+          return run(next)
+        })
       }
-      return chain_(state.value["effect"], (val) => {
-        const next = iterator.next(val)
-        return run(next)
-      })
-    }
 
-    return run(state)
-  })
-}
+      return run(state)
+    })
+  }
 
-if (args.length === 0) {
-  return (f: any) => gen_(f)
-}
-return gen_(args[0])
+  if (args.length === 0) {
+    return (f: any) => gen_(f)
+  }
+  return gen_(args[0])
 }
