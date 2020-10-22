@@ -6,11 +6,11 @@ import type { _E, _R } from "@effect-ts/system/Utils"
 import { isEither, isOption, isSync, isTag } from "@effect-ts/system/Utils"
 
 import { identity, pipe } from "../../Function"
+import type { Sync } from "../../Sync"
+import { runEitherEnv } from "../../Sync"
 import type { Either } from "../Either"
 import type { Has, Tag } from "../Has"
 import type { Option } from "../Option"
-import type { Sync } from "../Sync"
-import { runEitherEnv } from "../Sync"
 import type { Async } from "./core"
 import { accessM, accessService, chain, fail, succeed, sync } from "./core"
 

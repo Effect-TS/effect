@@ -10,13 +10,13 @@ import { flow, identity, pipe, tuple as mkTuple } from "../../Function"
 import type { AsyncURI } from "../../Modules"
 import * as P from "../../Prelude"
 import * as DSL from "../../Prelude/DSL"
+import type { Sync } from "../../Sync"
+import { runEitherEnv } from "../../Sync"
 import type { UnionToIntersection } from "../../Utils"
 import type { Either } from "../Either"
 import * as E from "../Either"
 import type { Has, Tag } from "../Has"
 import * as O from "../Option"
-import type { Sync } from "../Sync"
-import { runEitherEnv } from "../Sync"
 
 /**
  * During the last part of day-2 when we started to test async code we noticed
