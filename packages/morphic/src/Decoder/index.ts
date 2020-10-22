@@ -1,5 +1,5 @@
-import { mapError } from "@effect-ts/core/Classic/Sync"
 import { flow } from "@effect-ts/core/Function"
+import { mapError } from "@effect-ts/core/Sync"
 
 import type { M, Summoner } from "../Batteries/summoner"
 import { summonFor } from "../Batteries/summoner"

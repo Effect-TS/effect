@@ -1,5 +1,5 @@
-import * as T from "@effect-ts/core/Classic/Sync"
 import { pipe } from "@effect-ts/core/Function"
+import * as T from "@effect-ts/core/Sync"
 
 import type { AnyEnv } from "../../Algebra/config"
 import type { AlgebraRefined1 } from "../../Algebra/refined"

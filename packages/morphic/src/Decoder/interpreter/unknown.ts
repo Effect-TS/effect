@@ -1,4 +1,4 @@
-import * as T from "@effect-ts/core/Classic/Sync"
+import * as T from "@effect-ts/core/Sync"
 
 import type { AnyEnv } from "../../Algebra/config"
 import type { AlgebraUnknown1 } from "../../Algebra/unknown"

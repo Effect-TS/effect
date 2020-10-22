@@ -1,6 +1,6 @@
 import * as R from "@effect-ts/core/Classic/Record"
-import * as T from "@effect-ts/core/Classic/Sync"
 import { pipe } from "@effect-ts/core/Function"
+import * as T from "@effect-ts/core/Sync"
 
 import type { AnyEnv } from "../../Algebra/config"
 import type { AlgebraObject2 } from "../../Algebra/object"

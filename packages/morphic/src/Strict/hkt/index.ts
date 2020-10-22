@@ -1,4 +1,4 @@
-import type * as T from "@effect-ts/core/Classic/Sync"
+import type * as T from "@effect-ts/core/Sync"
 
 export const StrictURI = "StrictURI" as const
 

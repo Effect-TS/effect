@@ -1,6 +1,6 @@
-import * as T from "@effect-ts/core/Classic/Sync"
-import { mapError } from "@effect-ts/core/Classic/Sync"
 import { flow } from "@effect-ts/core/Function"
+import * as T from "@effect-ts/core/Sync"
+import { mapError } from "@effect-ts/core/Sync"
 
 import type { M } from "../Batteries/summoner"
 import { decoder } from "../Decoder"

@@ -1,6 +1,6 @@
 import * as O from "@effect-ts/core/Classic/Option"
-import * as T from "@effect-ts/core/Classic/Sync"
 import { flow, pipe } from "@effect-ts/core/Function"
+import * as T from "@effect-ts/core/Sync"
 
 import type { AnyEnv } from "../../Algebra/config"
 import type { AlgebraNewtype1 } from "../../Algebra/newtype"

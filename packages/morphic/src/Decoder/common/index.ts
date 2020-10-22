@@ -1,5 +1,5 @@
 import type * as A from "@effect-ts/core/Classic/Array"
-import * as T from "@effect-ts/core/Classic/Sync"
+import * as T from "@effect-ts/core/Sync"
 
 export interface DecodingError {
   readonly id?: string
