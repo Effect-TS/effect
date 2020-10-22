@@ -1,7 +1,7 @@
 import { succeed } from "@effect-ts/system/Exit"
 import { pipe } from "@effect-ts/system/Function"
 
-import * as A from "../../src/Classic/Async"
+import * as A from "../../src/Async"
 import * as T from "../../src/Effect"
 
 describe("Async/Effect interop", () => {
