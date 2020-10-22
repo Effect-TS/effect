@@ -1,5 +1,6 @@
 import * as Array_ from "../../Array"
-import { pipe, Predicate } from "../../Function"
+import type { Predicate } from "../../Function"
+import { pipe } from "../../Function"
 import type { Stream } from "./definitions"
 import { mapChunks } from "./mapChunks"
 
@@ -12,5 +13,5 @@ export const filter = <O>(f: Predicate<O>) => <R, E>(
 ): Stream<R, E, O> =>
   pipe(
     self,
-    mapChunks((o) => Array_.chain_(o, (o) => f(o) ? [o] : []))
+    mapChunks((o) => Array_.chain_(o, (o) => (f(o) ? [o] : [])))
   )
