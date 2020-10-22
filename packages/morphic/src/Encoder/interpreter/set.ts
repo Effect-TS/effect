@@ -1,7 +1,7 @@
 import * as A from "@effect-ts/core/Classic/Array"
 import * as S from "@effect-ts/core/Classic/Set"
-import * as T from "@effect-ts/core/Classic/Sync"
 import { pipe } from "@effect-ts/core/Function"
+import * as T from "@effect-ts/core/Sync"
 
 import type { AnyEnv } from "../../Algebra/config"
 import type { AlgebraSet2 } from "../../Algebra/set"

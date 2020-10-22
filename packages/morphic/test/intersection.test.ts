@@ -1,5 +1,5 @@
 import { right } from "@effect-ts/core/Classic/Either"
-import { runEither } from "@effect-ts/core/Classic/Sync"
+import { runEither } from "@effect-ts/core/Sync"
 
 import { make } from "../src"
 import { decoder } from "../src/Decoder"

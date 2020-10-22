@@ -1,8 +1,8 @@
 import type { Array } from "@effect-ts/core/Classic/Array"
 import type { Ord } from "@effect-ts/core/Classic/Ord"
 import type { Set } from "@effect-ts/core/Classic/Set"
-import * as T from "@effect-ts/core/Classic/Sync"
 import { pipe } from "@effect-ts/core/Function"
+import * as T from "@effect-ts/core/Sync"
 
 import type { AnyEnv, ConfigsForType } from "../../Algebra/config"
 import type { AlgebraSet1, SetConfig } from "../../Algebra/set"

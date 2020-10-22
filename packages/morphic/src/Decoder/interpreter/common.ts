@@ -2,8 +2,8 @@ import * as A from "@effect-ts/core/Classic/Array"
 import { makeAssociative } from "@effect-ts/core/Classic/Associative"
 import * as NA from "@effect-ts/core/Classic/NonEmptyArray"
 import * as R from "@effect-ts/core/Classic/Record"
-import * as T from "@effect-ts/core/Classic/Sync"
 import * as DSL from "@effect-ts/core/Prelude/DSL"
+import * as T from "@effect-ts/core/Sync"
 
 import { DecodeError } from "../common"
 
