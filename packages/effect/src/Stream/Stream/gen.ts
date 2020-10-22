@@ -41,6 +41,36 @@ const adapter = (_: any, __?: any) => {
   return new GenStream(fromEffect(_))
 }
 
+export function gen<RBase, EBase, AEff>(): <Eff extends GenStream<RBase, EBase, any>>(
+  f: (i: {
+    <A>(_: Tag<A>): GenStream<Has<A>, never, A>
+    <E, A>(_: Option<A>, onNone: () => E): GenStream<unknown, E, A>
+    <A>(_: Option<A>): GenStream<unknown, NoSuchElementException, A>
+    <E, A>(_: Either<E, A>): GenStream<unknown, E, A>
+    <R, E, A>(_: Effect<R, E, A>): GenStream<R, E, A>
+    <R, E, A>(_: Stream<R, E, A>): GenStream<R, E, A>
+  }) => Generator<Eff, AEff, any>
+) => Stream<_R<Eff>, _E<Eff>, AEff>
+export function gen<EBase, AEff>(): <Eff extends GenStream<any, EBase, any>>(
+  f: (i: {
+    <A>(_: Tag<A>): GenStream<Has<A>, never, A>
+    <E, A>(_: Option<A>, onNone: () => E): GenStream<unknown, E, A>
+    <A>(_: Option<A>): GenStream<unknown, NoSuchElementException, A>
+    <E, A>(_: Either<E, A>): GenStream<unknown, E, A>
+    <R, E, A>(_: Effect<R, E, A>): GenStream<R, E, A>
+    <R, E, A>(_: Stream<R, E, A>): GenStream<R, E, A>
+  }) => Generator<Eff, AEff, any>
+) => Stream<_R<Eff>, _E<Eff>, AEff>
+export function gen<AEff>(): <Eff extends GenStream<any, any, any>>(
+  f: (i: {
+    <A>(_: Tag<A>): GenStream<Has<A>, never, A>
+    <E, A>(_: Option<A>, onNone: () => E): GenStream<unknown, E, A>
+    <A>(_: Option<A>): GenStream<unknown, NoSuchElementException, A>
+    <E, A>(_: Either<E, A>): GenStream<unknown, E, A>
+    <R, E, A>(_: Effect<R, E, A>): GenStream<R, E, A>
+    <R, E, A>(_: Stream<R, E, A>): GenStream<R, E, A>
+  }) => Generator<Eff, AEff, any>
+) => Stream<_R<Eff>, _E<Eff>, AEff>
 export function gen<Eff extends GenStream<any, any, any>, AEff>(
   f: (i: {
     <A>(_: Tag<A>): GenStream<Has<A>, never, A>
@@ -50,7 +80,11 @@ export function gen<Eff extends GenStream<any, any, any>, AEff>(
     <R, E, A>(_: Effect<R, E, A>): GenStream<R, E, A>
     <R, E, A>(_: Stream<R, E, A>): GenStream<R, E, A>
   }) => Generator<Eff, AEff, any>
-): Stream<_R<Eff>, _E<Eff>, AEff> {
+): Stream<_R<Eff>, _E<Eff>, AEff>
+export function gen(...args: any[]): any {
+  function gen_<Eff extends GenStream<any, any, any>, AEff>(
+    f: (i: any) => Generator<Eff, AEff, any>
+  ): Stream<_R<Eff>, _E<Eff>, AEff> {
   return suspend(() => {
     function run(replayStack: any[]): Stream<any, any, AEff> {
       const iterator = f(adapter as any)
@@ -70,4 +104,10 @@ export function gen<Eff extends GenStream<any, any, any>, AEff>(
     }
     return run([])
   })
+}
+
+if (args.length === 0) {
+  return (f: any) => gen_(f)
+}
+return gen_(args[0])
 }
