@@ -1,7 +1,7 @@
 import * as T from "@effect-ts/system/Effect"
 import { some } from "@effect-ts/system/Option"
 
-import * as A from "../../Classic/Async"
+import * as A from "../../Async"
 
 function asyncToEffectIntegration() {
   if (A.currentIntegration.get._tag === "None") {

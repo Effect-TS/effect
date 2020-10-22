@@ -1,5 +1,5 @@
+import * as T from "../src/Async"
 import type * as A from "../src/Classic/Array"
-import * as T from "../src/Classic/Async"
 import * as O from "../src/Classic/Option"
 import { pipe } from "../src/Function"
 
