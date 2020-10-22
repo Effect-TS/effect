@@ -27,11 +27,10 @@
   },
   "config": {
     "modules": [
-      "Modules",
+      "Async",
       "Classic",
       "Classic/Array",
       "Classic/Associative",
-      "Classic/Async",
       "Classic/Boolean",
       "Classic/Bounded",
       "Classic/Branded",
