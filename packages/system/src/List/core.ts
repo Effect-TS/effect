@@ -4,6 +4,7 @@
 
 import type { Option } from "../Option"
 import { fromNullable } from "../Option"
+import type { Separated } from "../Utils"
 
 /**
  * Forked from https://github.com/funkia/list/blob/master/src/index.ts
@@ -1213,7 +1214,15 @@ export function filter<A>(predicate: (a: A) => boolean): (l: List<A>) => List<A>
     foldl_(l, emptyPushable(), (acc, a) => (predicate(a) ? push(a, acc) : acc))
 }
 
-// CONTINUE
+/**
+ * Returns a new list that only contains the elements of the original
+ * list for which the predicate returns `false`.
+ *
+ * @complexity O(n)
+ */
+export function reject_<A>(l: List<A>, predicate: (a: A) => boolean): List<A> {
+  return foldl_(l, emptyPushable(), (acc, a) => (predicate(a) ? acc : push(a, acc)))
+}
 
 /**
  * Returns a new list that only contains the elements of the original
@@ -1221,8 +1230,8 @@ export function filter<A>(predicate: (a: A) => boolean): (l: List<A>) => List<A>
  *
  * @complexity O(n)
  */
-export function reject<A>(predicate: (a: A) => boolean, l: List<A>): List<A> {
-  return foldl_(l, emptyPushable(), (acc, a) => (predicate(a) ? acc : push(a, acc)))
+export function reject<A>(predicate: (a: A) => boolean): (l: List<A>) => List<A> {
+  return (l) => reject_(l, predicate)
 }
 
 /**
@@ -1232,30 +1241,52 @@ export function reject<A>(predicate: (a: A) => boolean, l: List<A>): List<A> {
  *
  * @complexity O(n)
  */
-export function partition<A, B extends A>(
-  predicate: (a: A) => a is B,
-  l: List<A>
-): [List<B>, List<Exclude<A, B>>]
-export function partition<A>(
-  predicate: (a: A) => boolean,
-  l: List<A>
-): [List<A>, List<A>]
-export function partition<A>(
-  predicate: (a: A) => boolean,
-  l: List<A>
-): [List<A>, List<A>] {
+export function partition_<A, B extends A>(
+  l: List<A>,
+  predicate: (a: A) => a is B
+): Separated<List<B>, List<Exclude<A, B>>>
+export function partition_<A>(
+  l: List<A>,
+  predicate: (a: A) => boolean
+): Separated<List<A>, List<A>>
+export function partition_<A>(
+  l: List<A>,
+  predicate: (a: A) => boolean
+): Separated<List<A>, List<A>> {
   return foldl_(
     l,
-    [emptyPushable<A>(), emptyPushable<A>()] as [MutableList<A>, MutableList<A>],
-    (arr, a) => (predicate(a) ? push(a, arr[0]) : push(a, arr[1]), arr)
+    { left: emptyPushable<A>(), right: emptyPushable<A>() } as Separated<
+      MutableList<A>,
+      MutableList<A>
+    >,
+    (arr, a) => (predicate(a) ? push(a, arr.left) : push(a, arr.right), arr)
   )
+}
+
+export function partition<A, B extends A>(
+  predicate: (a: A) => a is B
+): (l: List<A>) => Separated<List<B>, List<Exclude<A, B>>>
+export function partition<A>(
+  predicate: (a: A) => boolean
+): (l: List<A>) => Separated<List<A>, List<A>>
+export function partition<A>(
+  predicate: (a: A) => boolean
+): (l: List<A>) => Separated<List<A>, List<A>> {
+  return (l) => partition_(l, predicate)
 }
 
 /**
  * Concats the strings in the list separated by a specified separator.
  */
-export function join(separator: string, l: List<string>): string {
+export function join_(l: List<string>, separator: string): string {
   return foldl_(l, "", (a, b) => (a.length === 0 ? b : a + separator + b))
+}
+
+/**
+ * Concats the strings in the list separated by a specified separator.
+ */
+export function join(separator: string): (l: List<string>) => string {
+  return (l) => join_(l, separator)
 }
 
 function foldrSuffix<A, B>(
@@ -1305,7 +1336,7 @@ function foldrNode<A, B>(
  *
  * @complexity O(n)
  */
-export function foldr<A, B>(f: (value: A, acc: B) => B, initial: B, l: List<A>): B {
+export function foldr_<A, B>(l: List<A>, initial: B, f: (value: A, acc: B) => B): B {
   const suffixSize = getSuffixSize(l)
   const prefixSize = getPrefixSize(l)
   let acc = foldrSuffix(f, initial, l.suffix, suffixSize)
@@ -1314,6 +1345,17 @@ export function foldr<A, B>(f: (value: A, acc: B) => B, initial: B, l: List<A>):
   }
   return foldrPrefix(f, acc, l.prefix, prefixSize)
 }
+
+/**
+ * Folds a function over a list. Right-associative.
+ *
+ * @complexity O(n)
+ */
+export function foldr<A, B>(initial: B, f: (value: A, acc: B) => B): (l: List<A>) => B {
+  return (l) => foldr_(l, initial, f)
+}
+
+// CONTINUE
 
 /**
  * Applies a list of functions to a list of values.
