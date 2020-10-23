@@ -37,7 +37,7 @@ const BazLive = L.fromSync(Baz)(
   })
 )
 
-const AppLive = BazLive["<+<"](FooLive["+++"](BarLive))
+const AppLive = BazLive["<<<"](FooLive["+++"](BarLive))
 
 describe("SyncLayer", () => {
   it("use foo & bar", () => {
