@@ -24,7 +24,7 @@ export function deriveIdentity<F extends URIS, A>(
  */
 export function fold<A>(M: Identity<A>): (as: ReadonlyArray<A>) => A {
   const foldM = A.fold(M)
-  return (as) => foldM(M.identity, as)
+  return foldM(M.identity)
 }
 
 /**

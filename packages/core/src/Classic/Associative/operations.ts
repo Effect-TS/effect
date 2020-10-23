@@ -6,8 +6,8 @@ import { makeAssociative } from "./makeAssociative"
 /**
  * Fold `Associative` through an `Array`
  */
-export function fold<A>(S: Associative<A>): (a: A, as: ReadonlyArray<A>) => A {
-  return (a, as) => as.reduce((x, y) => S.combine(y)(x), a)
+export function fold<A>(S: Associative<A>): (a: A) => (as: ReadonlyArray<A>) => A {
+  return (a) => (as) => as.reduce((x, y) => S.combine(y)(x), a)
 }
 
 /**
