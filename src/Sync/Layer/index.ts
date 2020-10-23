@@ -282,7 +282,7 @@ export function fromSync<T>(tag: Tag<T>) {
 }
 
 export function fromFunction<T>(tag: Tag<T>) {
-  return <R, E>(_: (_: R) => T): SyncLayer<R, E, Has<T>> =>
+  return <R>(_: (_: R) => T): SyncLayer<R, never, Has<T>> =>
     new Of(pipe(Sy.access(_), Sy.map(tag.of)))
 }
 
