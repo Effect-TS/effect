@@ -22,6 +22,18 @@ export abstract class SyncLayer<R, E, A> {
     return new Both(this, that)
   }
 
+  ["<<<"]<R2, E2, A2>(
+    that: SyncLayer<R2, E2, A2>
+  ): SyncLayer<Erase<R, A2> & R2, E | E2, A> {
+    return new From(that, this)
+  }
+
+  [">>>"]<R2, E2, A2>(
+    that: SyncLayer<R2, E2, A2>
+  ): SyncLayer<Erase<R2, A> & R, E | E2, A2> {
+    return new From(this, that)
+  }
+
   ["<+<"]<R2, E2, A2>(
     that: SyncLayer<R2, E2, A2>
   ): SyncLayer<Erase<R, A2> & R2, E | E2, A & A2> {
@@ -148,6 +160,30 @@ export class Using<R, E, A, R2, E2, A2> extends SyncLayer<
   }
 }
 
+export class From<R, E, A, R2, E2, A2> extends SyncLayer<R & Erase<R2, A>, E | E2, A2> {
+  readonly _tag = "From"
+
+  constructor(
+    readonly left: SyncLayer<R, E, A>,
+    readonly right: SyncLayer<R2, E2, A2>
+  ) {
+    super()
+  }
+
+  scope(): Sy.Sync<
+    unknown,
+    never,
+    (_: SyncMemoMap) => Sy.Sync<R & Erase<R2, A>, E | E2, A2>
+  > {
+    return Sy.succeed((_) =>
+      pipe(
+        getMemoOrElseCreate(this.left)(_),
+        Sy.chain((l) => pipe(getMemoOrElseCreate(this.right)(_), Sy.provide(l)))
+      )
+    )
+  }
+}
+
 export class All<Layers extends SyncLayer<any, any, any>[]> extends SyncLayer<
   MergeR<Layers>,
   MergeE<Layers>,
@@ -265,10 +301,22 @@ export function andTo<R2, E2, A2>(left: SyncLayer<R2, E2, A2>) {
   ): SyncLayer<R & Erase<R2, A>, E | E2, A & A2> => new Using(right, left)
 }
 
+export function to<R2, E2, A2>(left: SyncLayer<R2, E2, A2>) {
+  return <R, E, A>(
+    right: SyncLayer<R, E, A>
+  ): SyncLayer<R & Erase<R2, A>, E | E2, A2> => new From(right, left)
+}
+
 export function using<R2, E2, A2>(left: SyncLayer<R2, E2, A2>) {
   return <R, E, A>(
     right: SyncLayer<R, E, A>
   ): SyncLayer<Erase<R, A2> & R2, E | E2, A & A2> => new Using(left, right)
+}
+
+export function from<R2, E2, A2>(left: SyncLayer<R2, E2, A2>) {
+  return <R, E, A>(
+    right: SyncLayer<R, E, A>
+  ): SyncLayer<Erase<R, A2> & R2, E | E2, A> => new From(left, right)
 }
 
 export function provideSyncLayer<R, E, A>(layer: SyncLayer<R, E, A>) {

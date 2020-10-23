@@ -1,6 +1,5 @@
 import * as Ex from "../src/Exit"
 import { pipe } from "../src/Function"
-import * as L from "../src/Layer"
 import {
   CryptoLive,
   hashPassword,
@@ -13,8 +12,7 @@ import { testRuntime } from "./crypto/runtime"
 describe("Crypto Suite", () => {
   describe("Live", () => {
     const { runPromise, runPromiseExit } = pipe(
-      CryptoLive,
-      L.using(PBKDF2ConfigLive),
+      CryptoLive["<<<"](PBKDF2ConfigLive),
       testRuntime
     )()
 
@@ -37,8 +35,7 @@ describe("Crypto Suite", () => {
   })
   describe("Test", () => {
     const { runPromise, runPromiseExit } = pipe(
-      CryptoLive,
-      L.using(PBKDF2ConfigLive),
+      CryptoLive["<<<"](PBKDF2ConfigLive),
       testRuntime
     )()
 
