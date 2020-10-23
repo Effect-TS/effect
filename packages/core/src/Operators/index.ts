@@ -20,7 +20,12 @@ declare global {
   }
 }
 
+let patched = false
+
 export function patch() {
+  if (patched) {
+    return
+  }
   Object.defineProperty(Object.prototype, "|>", {
     value<Self, Result>(this: Self, next: (value: Self) => Result): Result {
       return next(this)
@@ -37,6 +42,7 @@ export function patch() {
     },
     enumerable: false
   })
+  patched = true
 }
 
 patch()
