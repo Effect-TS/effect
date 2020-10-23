@@ -61,6 +61,26 @@ export function using_<R, E, A, R2, E2, A2>(
   )
 }
 
+export function from_<R, E, A, R2, E2, A2>(
+  to: Layer<R & A2, E, A>,
+  self: Layer<R2, E2, A2>,
+  noErase: "no-erase"
+): Layer<R & R2, E | E2, A>
+export function from_<R, E, A, R2, E2, A2>(
+  to: Layer<R, E, A>,
+  self: Layer<R2, E2, A2>
+): Layer<Erase<R, A2> & R2, E | E2, A>
+export function from_<R, E, A, R2, E2, A2>(
+  to: Layer<R, E, A>,
+  self: Layer<R2, E2, A2>
+): Layer<Erase<R, A2> & R2, E | E2, A> {
+  return fold_<Erase<R, A2> & R2, E2, A2, E2, never, Erase<R, A2> & R2, E | E2, A>(
+    self,
+    fromRawFunctionM((_: readonly [R & R2, Cause<E2>]) => T.halt(_[1])),
+    to
+  )
+}
+
 export abstract class Layer<RIn, E, ROut> {
   readonly hash = new AtomicReference(Symbol())
 
@@ -75,6 +95,18 @@ export abstract class Layer<RIn, E, ROut> {
 
   ["_I"](): LayerInstruction {
     return this as any
+  }
+
+  ["<<<"]<R2, E2, A2>(
+    from: Layer<R2, E2, A2>
+  ): Layer<Erase<RIn, A2> & R2, E2 | E, ROut> {
+    return from_(this, from)
+  }
+
+  [">>>"]<R2, E2, A2>(
+    from: Layer<R2, E2, A2>
+  ): Layer<Erase<R2, ROut> & RIn, E2 | E, A2> {
+    return from_(from, this)
   }
 
   ["<+<"]<R2, E2, A2>(
