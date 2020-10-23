@@ -1355,13 +1355,18 @@ export function foldr<A, B>(initial: B, f: (value: A, acc: B) => B): (l: List<A>
   return (l) => foldr_(l, initial, f)
 }
 
-// CONTINUE
+/**
+ * Applies a list of functions to a list of values.
+ */
+export function ap_<A, B>(listF: List<(a: A) => B>, l: List<A>): List<B> {
+  return flatten(map_(listF, (f) => map_(l, f)))
+}
 
 /**
  * Applies a list of functions to a list of values.
  */
-export function ap<A, B>(listF: List<(a: A) => B>, l: List<A>): List<B> {
-  return flatten(map_(listF, (f) => map_(l, f)))
+export function ap<A, B>(l: List<A>): (listF: List<(a: A) => B>) => List<B> {
+  return (listF) => ap_(listF, l)
 }
 
 /**
@@ -1378,8 +1383,16 @@ export function flatten<A>(nested: List<List<A>>): List<A> {
  * Maps a function over a list and concatenates all the resulting
  * lists together.
  */
-export function chain<A, B>(f: (a: A) => List<B>, l: List<A>): List<B> {
+export function chain_<A, B>(l: List<A>, f: (a: A) => List<B>): List<B> {
   return flatten(map_(l, f))
+}
+
+/**
+ * Maps a function over a list and concatenates all the resulting
+ * lists together.
+ */
+export function chain<A, B>(f: (a: A) => List<B>): (l: List<A>) => List<B> {
+  return (l) => chain_(l, f)
 }
 
 // callback fold
@@ -1541,8 +1554,18 @@ function everyCb<A>(value: A, state: any): boolean {
  *
  * @complexity O(n)
  */
-export function every<A>(predicate: (a: A) => boolean, l: List<A>): boolean {
+export function every_<A>(l: List<A>, predicate: (a: A) => boolean): boolean {
   return foldlCb<A, PredState>(everyCb, { predicate, result: true }, l).result
+}
+
+/**
+ * Returns `true` if and only if the predicate function returns `true`
+ * for all elements in the given list.
+ *
+ * @complexity O(n)
+ */
+export function every<A>(predicate: (a: A) => boolean): (l: List<A>) => boolean {
+  return (l) => every_(l, predicate)
 }
 
 function someCb<A>(value: A, state: any): boolean {
@@ -1555,8 +1578,18 @@ function someCb<A>(value: A, state: any): boolean {
  *
  * @complexity O(n)
  */
-export function some<A>(predicate: (a: A) => boolean, l: List<A>): boolean {
+export function some_<A>(l: List<A>, predicate: (a: A) => boolean): boolean {
   return foldlCb<A, PredState>(someCb, { predicate, result: false }, l).result
+}
+
+/**
+ * Returns true if and only if there exists an element in the list for
+ * which the predicate returns true.
+ *
+ * @complexity O(n)
+ */
+export function some<A>(predicate: (a: A) => boolean): (l: List<A>) => boolean {
+  return (l) => some_(l, predicate)
 }
 
 /**
@@ -1565,8 +1598,18 @@ export function some<A>(predicate: (a: A) => boolean, l: List<A>): boolean {
  *
  * @complexity O(n)
  */
-export function none<A>(predicate: (a: A) => boolean, l: List<A>): boolean {
-  return !some(predicate, l)
+export function none_<A>(l: List<A>, predicate: (a: A) => boolean): boolean {
+  return !some_(l, predicate)
+}
+
+/**
+ * Returns `true` if and only if the predicate function returns
+ * `false` for every element in the given list.
+ *
+ * @complexity O(n)
+ */
+export function none<A>(predicate: (a: A) => boolean): (l: List<A>) => boolean {
+  return (l) => none_(l, predicate)
 }
 
 function findCb<A>(value: A, state: PredState): boolean {
@@ -1584,9 +1627,46 @@ function findCb<A>(value: A, state: PredState): boolean {
  *
  * @complexity O(n)
  */
-export function find<A>(predicate: (a: A) => boolean, l: List<A>): A | undefined {
+export function unsafeFind_<A>(
+  l: List<A>,
+  predicate: (a: A) => boolean
+): A | undefined {
   return foldlCb<A, PredState>(findCb, { predicate, result: undefined }, l).result
 }
+
+/**
+ * Returns the _first_ element for which the predicate returns `true`.
+ * If no such element is found the function returns `undefined`.
+ *
+ * @complexity O(n)
+ */
+export function unsafeFind<A>(
+  predicate: (a: A) => boolean
+): (l: List<A>) => A | undefined {
+  return (l) => unsafeFind_(l, predicate)
+}
+
+/**
+ * Returns the _first_ element for which the predicate returns `true`.
+ * If no such element is found the function returns `undefined`.
+ *
+ * @complexity O(n)
+ */
+export function find_<A>(l: List<A>, predicate: (a: A) => boolean) {
+  return fromNullable(unsafeFind_(l, predicate))
+}
+
+/**
+ * Returns the _first_ element for which the predicate returns `true`.
+ * If no such element is found the function returns `undefined`.
+ *
+ * @complexity O(n)
+ */
+export function find<A>(predicate: (a: A) => boolean) {
+  return (l: List<A>) => find_(l, predicate)
+}
+
+// CONTINUE
 
 /**
  * Returns the _last_ element for which the predicate returns `true`.

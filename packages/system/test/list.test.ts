@@ -2,6 +2,6 @@ import * as L from "../src/List"
 
 describe("List", () => {
   it("use list", () => {
-    L.chain((n: number) => L.of(n + 1), L.of(0))
+    L.chain_(L.of(0), (n: number) => L.of(n + 1))
   })
 })
