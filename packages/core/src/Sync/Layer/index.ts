@@ -205,7 +205,7 @@ export type MergeA<Ls extends SyncLayer<any, any, any>[]> = UnionToIntersection<
 export type SyncMemoMap = Map<symbol, any>
 
 export function getMemoOrElseCreate<R, E, A>(layer: SyncLayer<R, E, A>) {
-  return (m: SyncMemoMap) => {
+  return (m: SyncMemoMap): Sy.Sync<R, E, A> => {
     const inMap = m.get(layer.hash.get)
     if (inMap) {
       return Sy.succeed(inMap)
