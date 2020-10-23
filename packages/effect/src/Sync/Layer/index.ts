@@ -1,7 +1,8 @@
 import * as Sy from "../_internal"
+import * as A from "../../Classic/Array"
 import { pipe } from "../../Function"
 import type { Has, Tag } from "../../Has"
-import type { Erase } from "../../Utils"
+import type { Erase, UnionToIntersection } from "../../Utils"
 
 export abstract class SyncLayer<R, E, A> {
   readonly _R!: (_: R) => void
@@ -15,11 +16,13 @@ export abstract class SyncLayer<R, E, A> {
   ["+++"]<R2, E2, A2>(that: SyncLayer<R2, E2, A2>): SyncLayer<R & R2, E | E2, A & A2> {
     return new Both(this, that)
   }
+
   ["<+<"]<R2, E2, A2>(
     that: SyncLayer<R2, E2, A2>
   ): SyncLayer<Erase<R, A2> & R2, E | E2, A & A2> {
     return new Using(that, this)
   }
+
   [">+>"]<R2, E2, A2>(
     that: SyncLayer<R2, E2, A2>
   ): SyncLayer<Erase<R2, A> & R, E | E2, A & A2> {
@@ -31,6 +34,7 @@ export type Instructions =
   | Of<any, any, any>
   | Both<any, any, any, any, any, any>
   | Using<any, any, any, any, any, any>
+  | All<SyncLayer<any, any, any>[]>
 
 export class Of<R, E, A> extends SyncLayer<R, E, A> {
   readonly _tag = "FromSync"
@@ -66,6 +70,42 @@ export class Using<R, E, A, R2, E2, A2> extends SyncLayer<
   }
 }
 
+export type MergeR<Ls extends SyncLayer<any, any, any>[]> = UnionToIntersection<
+  {
+    [k in keyof Ls]: [Ls[k]] extends [SyncLayer<infer X, any, any>]
+      ? unknown extends X
+        ? never
+        : X
+      : never
+  }[number]
+>
+
+export type MergeE<Ls extends SyncLayer<any, any, any>[]> = {
+  [k in keyof Ls]: [Ls[k]] extends [SyncLayer<any, infer X, any>] ? X : never
+}[number]
+
+export type MergeA<Ls extends SyncLayer<any, any, any>[]> = UnionToIntersection<
+  {
+    [k in keyof Ls]: [Ls[k]] extends [SyncLayer<any, any, infer X>]
+      ? unknown extends X
+        ? never
+        : X
+      : never
+  }[number]
+>
+
+export class All<Layers extends SyncLayer<any, any, any>[]> extends SyncLayer<
+  MergeR<Layers>,
+  MergeE<Layers>,
+  MergeA<Layers>
+> {
+  readonly _tag = "All"
+
+  constructor(readonly layers: Layers & { 0: SyncLayer<any, any, any> }) {
+    super()
+  }
+}
+
 type MemoMap = Map<SyncLayer<any, any, any>, any>
 
 function getMemoOrElseCreate<R, E, A>(layer: SyncLayer<R, E, A>) {
@@ -87,7 +127,7 @@ function getMemoOrElseCreate<R, E, A>(layer: SyncLayer<R, E, A>) {
   }
 }
 
-export function scope<R, E, A>(
+function scope<R, E, A>(
   layer: SyncLayer<R, E, A>
 ): Sy.Sync<unknown, never, (_: MemoMap) => Sy.Sync<R, E, A>> {
   const ins = layer._I()
@@ -104,6 +144,19 @@ export function scope<R, E, A>(
             pipe(
               getMemoOrElseCreate(ins.right)(_),
               Sy.map((r) => ({ ...l, ...r }))
+            )
+          )
+        )
+      )
+    }
+    case "All": {
+      return Sy.succeed((_) =>
+        pipe(
+          ins.layers,
+          A.reduce(<Sy.Sync<any, any, any>>Sy.succeed({}), (b, a) =>
+            pipe(
+              getMemoOrElseCreate(a)(_),
+              Sy.chain((x) => ({ ...b, ...x }))
             )
           )
         )
@@ -135,6 +188,10 @@ export function build<R, E, A>(layer: SyncLayer<R, E, A>) {
   })
 }
 
+export function fromRawSync<R, E, T>(_: Sy.Sync<R, E, T>): SyncLayer<R, E, T> {
+  return new Of(_)
+}
+
 export function fromSync<T>(tag: Tag<T>) {
   return <R, E>(_: Sy.Sync<R, E, T>): SyncLayer<R, E, Has<T>> =>
     new Of(pipe(_, Sy.map(tag.of)))
@@ -149,10 +206,33 @@ export function fromValue<T>(tag: Tag<T>) {
   return (_: T): SyncLayer<unknown, never, Has<T>> => new Of(Sy.succeed(tag.of(_)))
 }
 
+export function and<R2, E2, A2>(left: SyncLayer<R2, E2, A2>) {
+  return <R, E, A>(right: SyncLayer<R, E, A>): SyncLayer<R & R2, E | E2, A & A2> =>
+    new Both(left, right)
+}
+
+export function andTo<R2, E2, A2>(left: SyncLayer<R2, E2, A2>) {
+  return <R, E, A>(
+    right: SyncLayer<R, E, A>
+  ): SyncLayer<R & Erase<R2, A>, E | E2, A & A2> => new Using(right, left)
+}
+
+export function using<R2, E2, A2>(left: SyncLayer<R2, E2, A2>) {
+  return <R, E, A>(
+    right: SyncLayer<R, E, A>
+  ): SyncLayer<Erase<R, A2> & R2, E | E2, A & A2> => new Using(left, right)
+}
+
 export function provideSyncLayer<R, E, A>(layer: SyncLayer<R, E, A>) {
   return <R2, E2, A2>(_: Sy.Sync<R2 & A, E2, A2>): Sy.Sync<R & R2, E | E2, A2> =>
     pipe(
       build(layer),
       Sy.chain((a) => pipe(_, Sy.provide(a)))
     )
+}
+
+export function all<Ls extends SyncLayer<any, any, any>[]>(
+  ...ls: Ls & { 0: SyncLayer<any, any, any> }
+): SyncLayer<MergeR<Ls>, MergeE<Ls>, MergeA<Ls>> {
+  return new All(ls)
 }
