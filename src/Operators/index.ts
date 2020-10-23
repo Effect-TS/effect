@@ -20,21 +20,25 @@ declare global {
   }
 }
 
-Object.defineProperty(Object.prototype, "|>", {
-  value<Self, Result>(this: Self, next: (value: Self) => Result): Result {
-    return next(this)
-  },
-  enumerable: false
-})
+export function patch() {
+  Object.defineProperty(Object.prototype, "|>", {
+    value<Self, Result>(this: Self, next: (value: Self) => Result): Result {
+      return next(this)
+    },
+    enumerable: false
+  })
 
-Object.defineProperty(Function.prototype, ">>", {
-  value<Args extends any[], A, Result>(
-    this: (...args: Args) => A,
-    next: (value: A) => Result
-  ): (...args: Args) => Result {
-    return (...args) => next(this(...args))
-  },
-  enumerable: false
-})
+  Object.defineProperty(Function.prototype, ">>", {
+    value<Args extends any[], A, Result>(
+      this: (...args: Args) => A,
+      next: (value: A) => Result
+    ): (...args: Args) => Result {
+      return (...args) => next(this(...args))
+    },
+    enumerable: false
+  })
+}
+
+patch()
 
 export {}
