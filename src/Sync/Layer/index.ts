@@ -205,23 +205,27 @@ export type MergeA<Ls extends SyncLayer<any, any, any>[]> = UnionToIntersection<
 export type SyncMemoMap = Map<symbol, any>
 
 export function getMemoOrElseCreate<R, E, A>(layer: SyncLayer<R, E, A>) {
-  return (m: SyncMemoMap): Sy.Sync<R, E, A> => {
-    const inMap = m.get(layer.hash.get)
-    if (inMap) {
-      return Sy.succeed(inMap)
-    } else {
-      return Sy.gen(function* (_) {
-        const f = yield* _(layer.scope())
-        const a = yield* _(f(m))
-        yield* _(
-          Sy.sync(() => {
-            m.set(layer.hash.get, a)
+  return (m: SyncMemoMap): Sy.Sync<R, E, A> =>
+    Sy.gen(function* (_) {
+      const inMap = yield* _(Sy.sync(() => m.get(layer.hash.get)))
+
+      if (inMap) {
+        return yield* _(Sy.succeed(inMap))
+      } else {
+        return yield* _(
+          Sy.gen(function* (_) {
+            const f = yield* _(layer.scope())
+            const a = yield* _(f(m))
+            yield* _(
+              Sy.sync(() => {
+                m.set(layer.hash.get, a)
+              })
+            )
+            return a
           })
         )
-        return a
-      })
-    }
-  }
+      }
+    })
 }
 
 export function fromRawSync<R, E, T>(_: Sy.Sync<R, E, T>): SyncLayer<R, E, T> {
