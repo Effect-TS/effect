@@ -1,6 +1,6 @@
 import * as T from "../src/Effect"
 import { pipe } from "../src/Function"
-import { has } from "../src/Has"
+import { tag } from "../src/Has"
 
 // module definition
 
@@ -18,7 +18,7 @@ export function LiveCalculator() {
 export interface Calculator extends ReturnType<typeof LiveCalculator> {}
 
 // module tag
-export const Calculator = has<Calculator>()
+export const Calculator = tag<Calculator>()
 
 // lifted functions
 export const { add, base, factor, mul } = T.deriveLifted(Calculator)(

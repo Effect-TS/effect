@@ -8,7 +8,7 @@ import type { UIO } from "../Effect/effect"
 import { effectAsyncInterrupt } from "../Effect/effectAsyncInterrupt"
 import { accessService, accessServiceM } from "../Effect/has"
 import type { HasTag } from "../Has"
-import { has } from "../Has"
+import { tag } from "../Has"
 
 //
 // Clock Definition
@@ -25,7 +25,7 @@ export abstract class Clock {
 //
 // Has Clock
 //
-export const HasClock = has(Clock)
+export const HasClock = tag(Clock)
 
 export type HasClock = HasTag<typeof HasClock>
 
