@@ -94,21 +94,23 @@ export class Both<R, E, A, R2, E2, A2> extends SyncLayer<R & R2, E | E2, A & A2>
     super()
   }
 
+  scopeBoth(self: Both<R, E, A, R2, E2, A2>) {
+    return Sy.succeed((map: SyncMemoMap) =>
+      Sy.gen(function* (_) {
+        const l = yield* _(getMemoOrElseCreate(self.left)(map))
+        const r = yield* _(getMemoOrElseCreate(self.right)(map))
+
+        return { ...l, ...r }
+      })
+    )
+  }
+
   scope(): Sy.Sync<
     unknown,
     never,
     (_: SyncMemoMap) => Sy.Sync<R & R2, E | E2, A & A2>
   > {
-    const left = this.left
-    const right = this.right
-    return Sy.succeed((map) =>
-      Sy.gen(function* (_) {
-        const l = yield* _(getMemoOrElseCreate(left)(map))
-        const r = yield* _(getMemoOrElseCreate(right)(map))
-
-        return { ...l, ...r }
-      })
-    )
+    return this.scopeBoth(this)
   }
 }
 
