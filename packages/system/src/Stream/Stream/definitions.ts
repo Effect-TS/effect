@@ -14,7 +14,7 @@ export const StreamURI = "@matechs/core/Eff/StreamURI"
 export type StreamURI = typeof StreamURI
 
 /**
- * A `Stream< R, E, O>` is a description of a program that, when evaluated,
+ * A `Stream<R, E, O>` is a description of a program that, when evaluated,
  * may emit 0 or more values of type `O`, may fail with errors of type `E`
  * and uses an environment of type `R` and can be sync or async `S`.
  * One way to think of `Stream` is as a `Effect` program that could emit multiple values.
