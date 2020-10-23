@@ -1,6 +1,7 @@
 import type { Either } from "../Either/core"
 import type { Tag } from "../Has"
 import type { Option } from "../Option"
+import { none, some } from "../Option"
 import type { Sync } from "../Sync"
 
 export type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (
@@ -92,13 +93,36 @@ export function isAdtElement<A extends { _tag: string }, K extends A["_tag"]>(
   return (adt: A): adt is Extract<A, { _tag: K }> => adt["_tag"] === tag
 }
 
-export function isGenericAdtElement<T extends string>(): <
-  A extends { [k in T]: string },
-  K extends A[T]
->(
+export function isGenericAdtElement<T extends string>(
+  _t: T
+): <A extends { [k in T]: string }, K extends A[T]>(
   tag: K
 ) => (adt: A) => adt is Extract<A, { [k in T]: K }> {
   return <A extends { [k in T]: string }, K extends A[T]>(tag: K) => (
     adt: A
-  ): adt is Extract<A, { [k in T]: K }> => adt["_tag"] === tag
+  ): adt is Extract<A, { [k in T]: K }> => adt[_t] === tag
+}
+
+export function onAdtElement<A extends { _tag: string }, K extends A["_tag"], B>(
+  tag: K,
+  f: (_: Extract<A, { _tag: K }>) => B
+): (adt: A) => Option<B> {
+  return (adt: A) => {
+    if (adt["_tag"] === tag) {
+      return some(f(adt as any))
+    }
+    return none
+  }
+}
+
+export function onGenericAdtElement<T extends string>(_t: T) {
+  return <A extends { [k in T]: string }, K extends A[T], B>(
+    tag: K,
+    f: (_: Extract<A, { [k in T]: K }>) => B
+  ) => (adt: A): Option<B> => {
+    if (adt[_t] === tag) {
+      return some(f(adt as any))
+    }
+    return none
+  }
 }
