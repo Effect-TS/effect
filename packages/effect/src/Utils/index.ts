@@ -85,3 +85,20 @@ export function isTag(u: unknown): u is Tag<unknown> {
 export function isSync(u: unknown): u is Sync<unknown, unknown, unknown> {
   return typeof u === "object" && u != null && "_tag" in u && u["_tag"] === "XPure"
 }
+
+export function isAdtElement<A extends { _tag: string }, K extends A["_tag"]>(
+  tag: K
+): (adt: A) => adt is Extract<A, { _tag: K }> {
+  return (adt: A): adt is Extract<A, { _tag: K }> => adt["_tag"] === tag
+}
+
+export function isGenericAdtElement<T extends string>(): <
+  A extends { [k in T]: string },
+  K extends A[T]
+>(
+  tag: K
+) => (adt: A) => adt is Extract<A, { [k in T]: K }> {
+  return <A extends { [k in T]: string }, K extends A[T]>(tag: K) => (
+    adt: A
+  ): adt is Extract<A, { [k in T]: K }> => adt["_tag"] === tag
+}
