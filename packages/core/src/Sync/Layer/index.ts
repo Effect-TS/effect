@@ -1,3 +1,5 @@
+import { AtomicReference } from "@effect-ts/system/Support/AtomicReference"
+
 import * as Sy from "../_internal"
 import * as A from "../../Classic/Array"
 import { pipe } from "../../Function"
@@ -5,12 +7,19 @@ import type { Has, Tag } from "../../Has"
 import type { Erase, UnionToIntersection } from "../../Utils"
 
 export abstract class SyncLayer<R, E, A> {
+  readonly hash = new AtomicReference(Symbol())
+
   readonly _R!: (_: R) => void
   readonly _E!: () => E
   readonly _A!: () => A
 
   _I(): Instructions {
     return this as any
+  }
+
+  setKey(key: symbol) {
+    this.hash.set(key)
+    return this
   }
 
   ["+++"]<R2, E2, A2>(that: SyncLayer<R2, E2, A2>): SyncLayer<R & R2, E | E2, A & A2> {
@@ -124,11 +133,11 @@ export class All<Layers extends SyncLayer<any, any, any>[]> extends SyncLayer<
   }
 }
 
-type MemoMap = Map<SyncLayer<any, any, any>, any>
+type MemoMap = Map<symbol, any>
 
 function getMemoOrElseCreate<R, E, A>(layer: SyncLayer<R, E, A>) {
   return (m: MemoMap) => {
-    const x = m.get(layer)
+    const x = m.get(layer.hash.get)
     if (x) {
       return Sy.succeed(x)
     } else {
@@ -137,7 +146,7 @@ function getMemoOrElseCreate<R, E, A>(layer: SyncLayer<R, E, A>) {
         Sy.chain((f) => f(m)),
         Sy.tap((a) =>
           Sy.sync(() => {
-            m.set(layer, a)
+            m.set(layer.hash.get, a)
           })
         )
       )
