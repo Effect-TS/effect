@@ -4,7 +4,7 @@ import * as E from "../src/Either"
 import * as Ex from "../src/Exit"
 import { pipe } from "../src/Function"
 import { PrematureGeneratorExit } from "../src/GlobalExceptions"
-import { has } from "../src/Has"
+import { tag } from "../src/Has"
 import * as M from "../src/Managed"
 import * as O from "../src/Option"
 import * as S from "../src/Stream"
@@ -199,7 +199,7 @@ describe("Generator", () => {
     }
 
     interface Calc extends CalcService {}
-    const Calc = has<Calc>()
+    const Calc = tag<Calc>()
 
     const prog = T.gen(function* (_) {
       const { add } = yield* _(Calc)

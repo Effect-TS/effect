@@ -2,7 +2,7 @@ import * as crypto from "crypto"
 
 import * as T from "../../src/Effect"
 import { pipe } from "../../src/Function"
-import { has } from "../../src/Has"
+import { tag } from "../../src/Has"
 import * as L from "../../src/Layer"
 
 // larger numbers mean better security, less
@@ -25,7 +25,7 @@ type _config = typeof defaultConfig
 
 export interface PBKDF2Config extends _config {}
 
-export const PBKDF2Config = has<PBKDF2Config>()
+export const PBKDF2Config = tag<PBKDF2Config>()
 
 export const PBKDF2ConfigLive = L.create(PBKDF2Config).fromEffect(
   T.effectTotal(() => defaultConfig)
@@ -114,7 +114,7 @@ export function makeCrypto(config: PBKDF2Config) {
 
 export interface Crypto extends ReturnType<typeof makeCrypto> {}
 
-export const Crypto = has<Crypto>()
+export const Crypto = tag<Crypto>()
 
 export const {
   /**

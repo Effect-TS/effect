@@ -5,7 +5,7 @@ import * as A from "../Array"
 import type { Region } from "../Effect/has"
 import { pipe } from "../Function"
 import type { Has, Tag } from "../Has"
-import { has, mergeEnvironments } from "../Has"
+import { mergeEnvironments, tag } from "../Has"
 import * as R from "../Record"
 import type { UnionToIntersection } from "../Utils"
 import * as X from "./core"
@@ -200,7 +200,7 @@ export function replaceService_<R1, E1, A1, T>(
 }
 
 export function region<K, T>(): Tag<Region<T, K>> {
-  return has<Region<T, K>>()
+  return tag<Region<T, K>>()
 }
 
 export function useRegion<K, T>(h: Tag<Region<T, K>>) {
