@@ -24,6 +24,7 @@ import type { StateIn, StateOut } from "../Classic/StateT"
 import type { Task } from "../Classic/Task"
 import type { Tree } from "../Classic/Tree"
 import type { Layer } from "../Effect/Layer"
+import type { List } from "../Persistent/List"
 import type { Sync } from "../Sync"
 import type { XPure } from "../XPure"
 import type { XIO } from "../XPure/XIO"
@@ -134,6 +135,9 @@ export type TreeURI = typeof TreeURI
 export const OptionURI = "Option"
 export type OptionURI = typeof OptionURI
 
+export const ListURI = "List"
+export type ListURI = typeof ListURI
+
 declare module "../Prelude/HKT" {
   interface URItoKind<FC, TC, N extends string, K, Q, W, X, I, S, R, E, A> {
     [ArrayURI]: Array<A>
@@ -170,8 +174,10 @@ declare module "../Prelude/HKT" {
     [AsyncURI]: Async<R, E, A>
     [TreeURI]: Tree<A>
     [OptionURI]: Option<A>
+    [ListURI]: List<A>
   }
   interface URItoIndex<N extends string, K> {
+    [ListURI]: number
     [ArrayURI]: number
     [NonEmptyArrayURI]: number
     [RecordURI]: N

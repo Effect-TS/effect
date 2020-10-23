@@ -349,12 +349,12 @@ export function backwards<A>(l: List<A>): Iterable<A> {
   }
 }
 
-function emptyPushable<A>(): MutableList<A> {
+export function emptyPushable<A>(): MutableList<A> {
   return new List(0, 0, 0, [], undefined, []) as any
 }
 
 /** Appends the value to the list by _mutating_ the list and its content. */
-function push<A>(value: A, l: MutableList<A>): MutableList<A> {
+export function push<A>(value: A, l: MutableList<A>): MutableList<A> {
   const suffixSize = getSuffixSize(l)
   if (l.length === 0) {
     l.bits = setPrefix(1, l.bits)
@@ -1376,7 +1376,7 @@ export function ap<A, B>(l: List<A>): (listF: List<(a: A) => B>) => List<B> {
  * @complexity O(n * log(m)), where n is the length of the outer list and m the length of the inner lists.
  */
 export function flatten<A>(nested: List<List<A>>): List<A> {
-  return foldl_<List<A>, List<A>>(nested, empty(), concat)
+  return foldl_<List<A>, List<A>>(nested, empty(), concat_)
 }
 
 /**
@@ -1666,7 +1666,18 @@ export function find<A>(predicate: (a: A) => boolean) {
   return (l: List<A>) => find_(l, predicate)
 }
 
-// CONTINUE
+/**
+ * Returns the _last_ element for which the predicate returns `true`.
+ * If no such element is found the function returns `undefined`.
+ *
+ * @complexity O(n)
+ */
+export function unsafeFindLast_<A>(
+  l: List<A>,
+  predicate: (a: A) => boolean
+): A | undefined {
+  return foldrCb<A, PredState>(findCb, { predicate, result: undefined }, l).result
+}
 
 /**
  * Returns the _last_ element for which the predicate returns `true`.
@@ -1674,8 +1685,30 @@ export function find<A>(predicate: (a: A) => boolean) {
  *
  * @complexity O(n)
  */
-export function findLast<A>(predicate: (a: A) => boolean, l: List<A>): A | undefined {
-  return foldrCb<A, PredState>(findCb, { predicate, result: undefined }, l).result
+export function unsafeFindLast<A>(
+  predicate: (a: A) => boolean
+): (l: List<A>) => A | undefined {
+  return (l) => unsafeFindLast_(l, predicate)
+}
+
+/**
+ * Returns the _last_ element for which the predicate returns `true`.
+ * If no such element is found the function returns `undefined`.
+ *
+ * @complexity O(n)
+ */
+export function findLast_<A>(l: List<A>, predicate: (a: A) => boolean) {
+  return fromNullable(unsafeFindLast_(l, predicate))
+}
+
+/**
+ * Returns the _last_ element for which the predicate returns `true`.
+ * If no such element is found the function returns `undefined`.
+ *
+ * @complexity O(n)
+ */
+export function findLast<A>(predicate: (a: A) => boolean): (l: List<A>) => Option<A> {
+  return (l) => findLast_(l, predicate)
 }
 
 type IndexOfState = {
@@ -1695,10 +1728,20 @@ function indexOfCb(value: any, state: IndexOfState): boolean {
  *
  * @complexity O(n)
  */
-export function indexOf<A>(element: A, l: List<A>): number {
+export function indexOf_<A>(l: List<A>, element: A): number {
   const state = { element, found: false, index: -1 }
   foldlCb(indexOfCb, state, l)
   return state.found ? state.index : -1
+}
+
+/**
+ * Returns the index of the _first_ element in the list that is equal
+ * to the given element. If no such element is found `-1` is returned.
+ *
+ * @complexity O(n)
+ */
+export function indexOf<A>(element: A): (l: List<A>) => number {
+  return (l) => indexOf_(l, element)
 }
 
 /**
@@ -1707,10 +1750,20 @@ export function indexOf<A>(element: A, l: List<A>): number {
  *
  * @complexity O(n)
  */
-export function lastIndexOf<A>(element: A, l: List<A>): number {
+export function lastIndexOf_<A>(l: List<A>, element: A): number {
   const state = { element, found: false, index: 0 }
   foldrCb(indexOfCb, state, l)
   return state.found ? l.length - state.index : -1
+}
+
+/**
+ * Returns the index of the _last_ element in the list that is equal
+ * to the given element. If no such element is found `-1` is returned.
+ *
+ * @complexity O(n)
+ */
+export function lastIndexOf<A>(element: A): (l: List<A>) => number {
+  return (l) => lastIndexOf_(l, element)
 }
 
 type FindIndexState = {
@@ -1731,13 +1784,24 @@ function findIndexCb<A>(value: A, state: FindIndexState): boolean {
  *
  * @complexity O(n)
  */
-export function findIndex<A>(predicate: (a: A) => boolean, l: List<A>): number {
+export function findIndex_<A>(l: List<A>, predicate: (a: A) => boolean): number {
   const { found, index } = foldlCb<A, FindIndexState>(
     findIndexCb,
     { predicate, found: false, index: -1 },
     l
   )
   return found ? index : -1
+}
+
+/**
+ * Returns the index of the `first` element for which the predicate
+ * returns true. If no such element is found the function returns
+ * `-1`.
+ *
+ * @complexity O(n)
+ */
+export function findIndex<A>(predicate: (a: A) => boolean): (l: List<A>) => number {
+  return (l) => findIndex_(l, predicate)
 }
 
 type ContainsState = {
@@ -1760,10 +1824,20 @@ function containsCb(value: any, state: ContainsState): boolean {
  *
  * @complexity O(n)
  */
-export function contains<A>(element: A, l: List<A>): boolean {
+export function contains_<A>(l: List<A>, element: A): boolean {
   containsState.element = element
   containsState.result = false
   return foldlCb(containsCb, containsState, l).result
+}
+
+/**
+ * Returns `true` if the list contains the specified element.
+ * Otherwise it returns `false`.
+ *
+ * @complexity O(n)
+ */
+export function contains<A>(element: A): (l: List<A>) => boolean {
+  return (l) => contains_(l, element)
 }
 
 type EqualsState<A> = {
@@ -1782,8 +1856,17 @@ function equalsCb<A>(value2: A, state: EqualsState<A>): boolean {
  *
  * @complexity O(n)
  */
-export function equals<A>(l1: List<A>, l2: List<A>): boolean {
-  return equalsWith(elementEquals, l1, l2)
+export function equals_<A>(l1: List<A>, l2: List<A>): boolean {
+  return equalsWith_(l1, l2, elementEquals)
+}
+
+/**
+ * Returns true if the two lists are equivalent.
+ *
+ * @complexity O(n)
+ */
+export function equals<A>(l2: List<A>): (l1: List<A>) => boolean {
+  return (l1) => equals_(l1, l2)
 }
 
 /**
@@ -1792,10 +1875,10 @@ export function equals<A>(l1: List<A>, l2: List<A>): boolean {
  *
  * @complexity O(n)
  */
-export function equalsWith<A>(
-  f: (a: A, b: A) => boolean,
+export function equalsWith_<A>(
   l1: List<A>,
-  l2: List<A>
+  l2: List<A>,
+  f: (a: A, b: A) => boolean
 ): boolean {
   if (l1 === l2) {
     return true
@@ -1805,6 +1888,19 @@ export function equalsWith<A>(
     const s = { iterator: l2[Symbol.iterator](), equals: true, f }
     return foldlCb<A, EqualsState<A>>(equalsCb, s, l1).equals
   }
+}
+
+/**
+ * Returns true if the two lists are equivalent when comparing each
+ * pair of elements with the given comparison function.
+ *
+ * @complexity O(n)
+ */
+export function equalsWith<A>(
+  l2: List<A>,
+  f: (a: A, b: A) => boolean
+): (l1: List<A>) => boolean {
+  return (l1) => equalsWith_(l1, l2, f)
 }
 
 // concat
@@ -2117,7 +2213,7 @@ function concatAffixes<A>(left: List<A>, right: List<A>): number {
  *
  * @complexity O(log(n))
  */
-export function concat<A>(left: List<A>, right: List<A>): List<A> {
+export function concat_<A>(left: List<A>, right: List<A>): List<A> {
   if (left.length === 0) {
     return right
   } else if (right.length === 0) {
@@ -2169,13 +2265,22 @@ export function concat<A>(left: List<A>, right: List<A>): List<A> {
 }
 
 /**
+ * Concatenates two lists.
+ *
+ * @complexity O(log(n))
+ */
+export function concat<A>(right: List<A>): (left: List<A>) => List<A> {
+  return (left) => concat_(left, right)
+}
+
+/**
  * Returns a list that has the entry specified by the index replaced with the given value.
  *
  * If the index is out of bounds the given list is returned unchanged.
  *
  * @complexity O(log(n))
  */
-export function update<A>(index: number, a: A, l: List<A>): List<A> {
+export function update_<A>(l: List<A>, index: number, a: A): List<A> {
   if (index < 0 || l.length <= index) {
     return l
   }
@@ -2197,6 +2302,17 @@ export function update<A>(index: number, a: A, l: List<A>): List<A> {
 }
 
 /**
+ * Returns a list that has the entry specified by the index replaced with the given value.
+ *
+ * If the index is out of bounds the given list is returned unchanged.
+ *
+ * @complexity O(log(n))
+ */
+export function update<A>(index: number, a: A): (l: List<A>) => List<A> {
+  return (l) => update_(l, index, a)
+}
+
+/**
  * Returns a list that has the entry specified by the index replaced with
  * the value returned by applying the function to the value.
  *
@@ -2205,11 +2321,24 @@ export function update<A>(index: number, a: A, l: List<A>): List<A> {
  *
  * @complexity `O(log(n))`
  */
-export function adjust<A>(index: number, f: (a: A) => A, l: List<A>): List<A> {
+export function adjust_<A>(l: List<A>, index: number, f: (a: A) => A): List<A> {
   if (index < 0 || l.length <= index) {
     return l
   }
-  return update(index, f(unsafeNth_(l, index)!), l)
+  return update_(l, index, f(unsafeNth_(l, index)!))
+}
+
+/**
+ * Returns a list that has the entry specified by the index replaced with
+ * the value returned by applying the function to the value.
+ *
+ * If the index is out of bounds the given list is
+ * returned unchanged.
+ *
+ * @complexity `O(log(n))`
+ */
+export function adjust<A>(index: number, f: (a: A) => A): (l: List<A>) => List<A> {
+  return (l) => adjust_(l, index, f)
 }
 
 // slice and slice based functions
@@ -2443,7 +2572,7 @@ function sliceTreeList<A>(
  *
  * @complexity `O(log(n))`
  */
-export function slice<A>(from: number, to: number, l: List<A>): List<A> {
+export function slice_<A>(l: List<A>, from: number, to: number): List<A> {
   let { bits, length } = l
 
   to = Math.min(length, to)
@@ -2564,12 +2693,32 @@ export function slice<A>(from: number, to: number, l: List<A>): List<A> {
 }
 
 /**
+ * Returns a slice of a list. Elements are removed from the beginning and
+ * end. Both the indices can be negative in which case they will count
+ * from the right end of the list.
+ *
+ * @complexity `O(log(n))`
+ */
+export function slice(from: number, to: number): <A>(l: List<A>) => List<A> {
+  return (l) => slice_(l, from, to)
+}
+
+/**
  * Takes the first `n` elements from a list and returns them in a new list.
  *
  * @complexity `O(log(n))`
  */
-export function take<A>(n: number, l: List<A>): List<A> {
-  return slice(0, n, l)
+export function take_<A>(l: List<A>, n: number): List<A> {
+  return slice_(l, 0, n)
+}
+
+/**
+ * Takes the first `n` elements from a list and returns them in a new list.
+ *
+ * @complexity `O(log(n))`
+ */
+export function take(n: number): <A>(l: List<A>) => List<A> {
+  return (l) => take_(l, n)
 }
 
 type FindNotIndexState = {
@@ -2593,9 +2742,20 @@ function findNotIndexCb(value: any, state: FindNotIndexState): boolean {
  * @complexity `O(k + log(n))` where `k` is the number of elements satisfying
  * the predicate.
  */
-export function takeWhile<A>(predicate: (a: A) => boolean, l: List<A>): List<A> {
+export function takeWhile_<A>(l: List<A>, predicate: (a: A) => boolean): List<A> {
   const { index } = foldlCb(findNotIndexCb, { predicate, index: 0 }, l)
-  return slice(0, index, l)
+  return slice_(l, 0, index)
+}
+
+/**
+ * Takes the first elements in the list for which the predicate returns
+ * `true`.
+ *
+ * @complexity `O(k + log(n))` where `k` is the number of elements satisfying
+ * the predicate.
+ */
+export function takeWhile<A>(predicate: (a: A) => boolean): (l: List<A>) => List<A> {
+  return (l) => takeWhile_(l, predicate)
 }
 
 /**
@@ -2605,9 +2765,22 @@ export function takeWhile<A>(predicate: (a: A) => boolean, l: List<A>): List<A> 
  * @complexity `O(k + log(n))` where `k` is the number of elements
  * satisfying the predicate.
  */
-export function takeLastWhile<A>(predicate: (a: A) => boolean, l: List<A>): List<A> {
+export function takeLastWhile_<A>(l: List<A>, predicate: (a: A) => boolean): List<A> {
   const { index } = foldrCb(findNotIndexCb, { predicate, index: 0 }, l)
-  return slice(l.length - index, l.length, l)
+  return slice_(l, l.length - index, l.length)
+}
+
+/**
+ * Takes the last elements in the list for which the predicate returns
+ * `true`.
+ *
+ * @complexity `O(k + log(n))` where `k` is the number of elements
+ * satisfying the predicate.
+ */
+export function takeLastWhile<A>(
+  predicate: (a: A) => boolean
+): (l: List<A>) => List<A> {
+  return (l) => takeLastWhile_(l, predicate)
 }
 
 /**
@@ -2617,9 +2790,20 @@ export function takeLastWhile<A>(predicate: (a: A) => boolean, l: List<A>): List
  * @complexity `O(k + log(n))` where `k` is the number of elements
  * satisfying the predicate.
  */
-export function dropWhile<A>(predicate: (a: A) => boolean, l: List<A>): List<A> {
+export function dropWhile_<A>(l: List<A>, predicate: (a: A) => boolean): List<A> {
   const { index } = foldlCb(findNotIndexCb, { predicate, index: 0 }, l)
-  return slice(index, l.length, l)
+  return slice_(l, index, l.length)
+}
+
+/**
+ * Removes the first elements in the list for which the predicate returns
+ * `true`.
+ *
+ * @complexity `O(k + log(n))` where `k` is the number of elements
+ * satisfying the predicate.
+ */
+export function dropWhile<A>(predicate: (a: A) => boolean): (l: List<A>) => List<A> {
+  return (l) => dropWhile_(l, predicate)
 }
 
 /**
@@ -2628,7 +2812,22 @@ export function dropWhile<A>(predicate: (a: A) => boolean, l: List<A>): List<A> 
  * @complexity `O(n)`
  */
 export function dropRepeats<A>(l: List<A>): List<A> {
-  return dropRepeatsWith(elementEquals, l)
+  return dropRepeatsWith_(l, elementEquals)
+}
+
+/**
+ * Returns a new list without repeated elements by using the given
+ * function to determine when elements are equal.
+ *
+ * @complexity `O(n)`
+ */
+export function dropRepeatsWith_<A>(
+  l: List<A>,
+  predicate: (a: A, b: A) => boolean
+): List<A> {
+  return foldl_(l, emptyPushable(), (acc, a) =>
+    acc.length !== 0 && predicate(unsafeLast(acc)!, a) ? acc : push(a, acc)
+  )
 }
 
 /**
@@ -2638,12 +2837,9 @@ export function dropRepeats<A>(l: List<A>): List<A> {
  * @complexity `O(n)`
  */
 export function dropRepeatsWith<A>(
-  predicate: (a: A, b: A) => Boolean,
-  l: List<A>
-): List<A> {
-  return foldl_(l, emptyPushable(), (acc, a) =>
-    acc.length !== 0 && predicate(unsafeLast(acc)!, a) ? acc : push(a, acc)
-  )
+  predicate: (a: A, b: A) => boolean
+): (l: List<A>) => List<A> {
+  return (l) => dropRepeatsWith_(l, predicate)
 }
 
 /**
@@ -2652,8 +2848,18 @@ export function dropRepeatsWith<A>(
  *
  * @complexity `O(log(n))`
  */
-export function takeLast<A>(n: number, l: List<A>): List<A> {
-  return slice(l.length - n, l.length, l)
+export function takeLast_<A>(l: List<A>, n: number): List<A> {
+  return slice_(l, l.length - n, l.length)
+}
+
+/**
+ * Takes the last `n` elements from a list and returns them in a new
+ * list.
+ *
+ * @complexity `O(log(n))`
+ */
+export function takeLast<A>(n: number): (l: List<A>) => List<A> {
+  return (l) => takeLast_(l, n)
 }
 
 /**
@@ -2664,8 +2870,34 @@ export function takeLast<A>(n: number, l: List<A>): List<A> {
  *
  * @complexity `O(log(n))`
  */
-export function splitAt<A>(index: number, l: List<A>): [List<A>, List<A>] {
-  return [slice(0, index, l), slice(index, l.length, l)]
+export function splitAt_<A>(l: List<A>, index: number): [List<A>, List<A>] {
+  return [slice_(l, 0, index), slice_(l, index, l.length)]
+}
+
+/**
+ * Splits a list at the given index and return the two sides in a pair.
+ * The left side will contain all elements before but not including the
+ * element at the given index. The right side contains the element at the
+ * index and all elements after it.
+ *
+ * @complexity `O(log(n))`
+ */
+export function splitAt(index: number): <A>(l: List<A>) => [List<A>, List<A>] {
+  return (l) => splitAt_(l, index)
+}
+
+/**
+ * Splits a list at the first element in the list for which the given
+ * predicate returns `true`.
+ *
+ * @complexity `O(n)`
+ */
+export function splitWhen_<A>(
+  l: List<A>,
+  predicate: (a: A) => boolean
+): [List<A>, List<A>] {
+  const idx = findIndex_(l, predicate)
+  return idx === -1 ? [l, empty()] : splitAt_(l, idx)
 }
 
 /**
@@ -2675,17 +2907,15 @@ export function splitAt<A>(index: number, l: List<A>): [List<A>, List<A>] {
  * @complexity `O(n)`
  */
 export function splitWhen<A>(
-  predicate: (a: A) => boolean,
-  l: List<A>
-): [List<A>, List<A>] {
-  const idx = findIndex(predicate, l)
-  return idx === -1 ? [l, empty()] : splitAt(idx, l)
+  predicate: (a: A) => boolean
+): (l: List<A>) => [List<A>, List<A>] {
+  return (l) => splitWhen_(l, predicate)
 }
 
 /**
  * Splits the list into chunks of the given size.
  */
-export function splitEvery<A>(size: number, l: List<A>): List<List<A>> {
+export function splitEvery_<A>(l: List<A>, size: number): List<List<A>> {
   const { buffer, l2 } = foldl_(
     l,
     { l2: emptyPushable<List<A>>(), buffer: emptyPushable<A>() },
@@ -2702,14 +2932,32 @@ export function splitEvery<A>(size: number, l: List<A>): List<List<A>> {
 }
 
 /**
+ * Splits the list into chunks of the given size.
+ */
+export function splitEvery(size: number): <A>(l: List<A>) => List<List<A>> {
+  return (l) => splitEvery_(l, size)
+}
+
+/**
  * Takes an index, a number of elements to remove and a list. Returns a
  * new list with the given amount of elements removed from the specified
  * index.
  *
  * @complexity `O(log(n))`
  */
-export function remove<A>(from: number, amount: number, l: List<A>): List<A> {
-  return concat(slice(0, from, l), slice(from + amount, l.length, l))
+export function remove_<A>(l: List<A>, from: number, amount: number): List<A> {
+  return concat_(slice_(l, 0, from), slice_(l, from + amount, l.length))
+}
+
+/**
+ * Takes an index, a number of elements to remove and a list. Returns a
+ * new list with the given amount of elements removed from the specified
+ * index.
+ *
+ * @complexity `O(log(n))`
+ */
+export function remove(from: number, amount: number): <A>(l: List<A>) => List<A> {
+  return (l) => remove_(l, from, amount)
 }
 
 /**
@@ -2717,8 +2965,17 @@ export function remove<A>(from: number, amount: number, l: List<A>): List<A> {
  *
  * @complexity `O(log(n))`
  */
-export function drop<A>(n: number, l: List<A>): List<A> {
-  return slice(n, l.length, l)
+export function drop_<A>(l: List<A>, n: number): List<A> {
+  return slice_(l, n, l.length)
+}
+
+/**
+ * Returns a new list without the first `n` elements.
+ *
+ * @complexity `O(log(n))`
+ */
+export function drop(n: number): <A>(l: List<A>) => List<A> {
+  return (l) => drop_(l, n)
 }
 
 /**
@@ -2726,8 +2983,17 @@ export function drop<A>(n: number, l: List<A>): List<A> {
  *
  * @complexity `O(log(n))`
  */
-export function dropLast<A>(n: number, l: List<A>): List<A> {
-  return slice(0, l.length - n, l)
+export function dropLast_<A>(l: List<A>, n: number): List<A> {
+  return slice_(l, 0, l.length - n)
+}
+
+/**
+ * Returns a new list without the last `n` elements.
+ *
+ * @complexity `O(log(n))`
+ */
+export function dropLast<A>(n: number): (l: List<A>) => List<A> {
+  return (l) => dropLast_(l, n)
 }
 
 /**
@@ -2737,7 +3003,7 @@ export function dropLast<A>(n: number, l: List<A>): List<A> {
  * @complexity `O(1)`
  */
 export function pop<A>(l: List<A>): List<A> {
-  return slice(0, -1, l)
+  return slice_(l, 0, -1)
 }
 
 /**
@@ -2747,7 +3013,7 @@ export function pop<A>(l: List<A>): List<A> {
  * @complexity `O(1)`
  */
 export function tail<A>(l: List<A>): List<A> {
-  return slice(1, l.length, l)
+  return slice_(l, 1, l.length)
 }
 
 function arrayPush<A>(array: A[], a: A): A[] {
@@ -2769,8 +3035,17 @@ export function toArray<A>(l: List<A>): A[] {
  *
  * @complexity O(log(n))
  */
-export function insert<A>(index: number, element: A, l: List<A>): List<A> {
-  return concat(append_(slice(0, index, l), element), slice(index, l.length, l))
+export function insert_<A>(l: List<A>, index: number, element: A): List<A> {
+  return concat_(append_(slice_(l, 0, index), element), slice_(l, index, l.length))
+}
+
+/**
+ * Inserts the given element at the given index in the list.
+ *
+ * @complexity O(log(n))
+ */
+export function insert<A>(index: number, element: A): (l: List<A>) => List<A> {
+  return (l) => insert_(l, index, element)
 }
 
 /**
@@ -2778,8 +3053,20 @@ export function insert<A>(index: number, element: A, l: List<A>): List<A> {
  *
  * @complexity `O(log(n))`
  */
-export function insertAll<A>(index: number, elements: List<A>, l: List<A>): List<A> {
-  return concat(concat(slice(0, index, l), elements), slice(index, l.length, l))
+export function insertAll_<A>(l: List<A>, index: number, elements: List<A>): List<A> {
+  return concat_(concat_(slice_(l, 0, index), elements), slice_(l, index, l.length))
+}
+
+/**
+ * Inserts the given list of elements at the given index in the list.
+ *
+ * @complexity `O(log(n))`
+ */
+export function insertAll<A>(
+  index: number,
+  elements: List<A>
+): (l: List<A>) => List<A> {
+  return (l) => insertAll_(l, index, elements)
 }
 
 /**
@@ -2806,8 +3093,41 @@ export function isList<A>(l: any): l is List<A> {
  * @complexity `O(log(n))`, where `n` is the length of the smallest
  * list.
  */
-export function zip<A, B>(as: List<A>, bs: List<B>): List<[A, B]> {
-  return zipWith((a, b) => [a, b] as [A, B], as, bs)
+export function zip_<A, B>(as: List<A>, bs: List<B>): List<readonly [A, B]> {
+  return zipWith_(as, bs, (a, b) => [a, b] as [A, B])
+}
+
+/**
+ * Iterate over two lists in parallel and collect the pairs.
+ *
+ * @complexity `O(log(n))`, where `n` is the length of the smallest
+ * list.
+ */
+export function zip<A, B>(bs: List<B>): (as: List<A>) => List<readonly [A, B]> {
+  return (as) => zip_(as, bs)
+}
+
+/**
+ * This is like mapping over two lists at the same time. The two lists
+ * are iterated over in parallel and each pair of elements is passed
+ * to the function. The returned values are assembled into a new list.
+ *
+ * The shortest list determines the size of the result.
+ *
+ * @complexity `O(log(n))` where `n` is the length of the smallest
+ * list.
+ */
+export function zipWith_<A, B, C>(
+  as: List<A>,
+  bs: List<B>,
+  f: (a: A, b: B) => C
+): List<C> {
+  const swapped = bs.length < as.length
+  const iterator = (swapped ? as : bs)[Symbol.iterator]()
+  return map_((swapped ? bs : as) as any, (a: any) => {
+    const b: any = iterator.next().value
+    return swapped ? f(b, a) : f(a, b)
+  })
 }
 
 /**
@@ -2821,16 +3141,10 @@ export function zip<A, B>(as: List<A>, bs: List<B>): List<[A, B]> {
  * list.
  */
 export function zipWith<A, B, C>(
-  f: (a: A, b: B) => C,
-  as: List<A>,
-  bs: List<B>
-): List<C> {
-  const swapped = bs.length < as.length
-  const iterator = (swapped ? as : bs)[Symbol.iterator]()
-  return map_((swapped ? bs : as) as any, (a: any) => {
-    const b: any = iterator.next().value
-    return swapped ? f(b, a) : f(a, b)
-  })
+  bs: List<B>,
+  f: (a: A, b: B) => C
+): (as: List<A>) => List<C> {
+  return (as) => zipWith_(as, bs, f)
 }
 
 export type Ordering = -1 | 0 | 1
@@ -2844,7 +3158,10 @@ export type Ordering = -1 | 0 | 1
  *
  * @complexity O(n * log(n))
  */
-export function sortWith<A>(comparator: (a: A, b: A) => Ordering, l: List<A>): List<A> {
+export function sortWith_<A>(
+  l: List<A>,
+  comparator: (a: A, b: A) => Ordering
+): List<A> {
   const arr: { idx: number; elm: A }[] = []
   let i = 0
   forEach_(l, (elm) => arr.push({ idx: i++, elm }))
@@ -2860,11 +3177,26 @@ export function sortWith<A>(comparator: (a: A, b: A) => Ordering, l: List<A>): L
 }
 
 /**
+ * Sort the given list by comparing values using the given function.
+ * The function receieves two values and should return `-1` if the
+ * first value is stricty larger than the second, `0` is they are
+ * equal and `1` if the first values is strictly smaller than the
+ * second.
+ *
+ * @complexity O(n * log(n))
+ */
+export function sortWith<A>(
+  comparator: (a: A, b: A) => Ordering
+): (l: List<A>) => List<A> {
+  return (l) => sortWith_(l, comparator)
+}
+
+/**
  * Returns a list of lists where each sublist's elements are all
  * equal.
  */
 export function group<A>(l: List<A>): List<List<A>> {
-  return groupWith(elementEquals, l)
+  return groupWith_(l, elementEquals)
 }
 
 /**
@@ -2875,7 +3207,7 @@ export function group<A>(l: List<A>): List<List<A>> {
  * equal elements should be grouped together the list should be sorted
  * before grouping.
  */
-export function groupWith<A>(f: (a: A, b: A) => boolean, l: List<A>): List<List<A>> {
+export function groupWith_<A>(l: List<A>, f: (a: A, b: A) => boolean): List<List<A>> {
   const result = emptyPushable<MutableList<A>>()
   let buffer = emptyPushable<A>()
   forEach_(l, (a) => {
@@ -2889,10 +3221,31 @@ export function groupWith<A>(f: (a: A, b: A) => boolean, l: List<A>): List<List<
 }
 
 /**
+ * Returns a list of lists where each sublist's elements are pairwise
+ * equal based on the given comparison function.
+ *
+ * Note that only adjacent elements are compared for equality. If all
+ * equal elements should be grouped together the list should be sorted
+ * before grouping.
+ */
+export function groupWith<A>(
+  f: (a: A, b: A) => boolean
+): (l: List<A>) => List<List<A>> {
+  return (l) => groupWith_(l, f)
+}
+
+/**
  * Inserts a separator between each element in a list.
  */
-export function intersperse<A>(separator: A, l: List<A>): List<A> {
+export function intersperse_<A>(l: List<A>, separator: A): List<A> {
   return pop(foldl_(l, emptyPushable(), (l2, a) => push(separator, push(a, l2))))
+}
+
+/**
+ * Inserts a separator between each element in a list.
+ */
+export function intersperse<A>(separator: A): (l: List<A>) => List<A> {
+  return (l) => intersperse_(l, separator)
 }
 
 /**
