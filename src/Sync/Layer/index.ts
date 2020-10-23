@@ -99,16 +99,15 @@ export class Both<R, E, A, R2, E2, A2> extends SyncLayer<R & R2, E | E2, A & A2>
     never,
     (_: SyncMemoMap) => Sy.Sync<R & R2, E | E2, A & A2>
   > {
-    return Sy.succeed((_) =>
-      pipe(
-        getMemoOrElseCreate(this.left)(_),
-        Sy.chain((l) =>
-          pipe(
-            getMemoOrElseCreate(this.right)(_),
-            Sy.map((r) => ({ ...l, ...r }))
-          )
-        )
-      )
+    const left = this.left
+    const right = this.right
+    return Sy.succeed((map) =>
+      Sy.gen(function* (_) {
+        const l = yield* _(getMemoOrElseCreate(left)(map))
+        const r = yield* _(getMemoOrElseCreate(right)(map))
+
+        return { ...l, ...r }
+      })
     )
   }
 }
@@ -205,19 +204,20 @@ export type SyncMemoMap = Map<symbol, any>
 
 export function getMemoOrElseCreate<R, E, A>(layer: SyncLayer<R, E, A>) {
   return (m: SyncMemoMap) => {
-    const x = m.get(layer.hash.get)
-    if (x) {
-      return Sy.succeed(x)
+    const inMap = m.get(layer.hash.get)
+    if (inMap) {
+      return Sy.succeed(inMap)
     } else {
-      return pipe(
-        layer.scope(),
-        Sy.chain((f) => f(m)),
-        Sy.tap((a) =>
+      return Sy.gen(function* (_) {
+        const f = yield* _(layer.scope())
+        const a = yield* _(f(m))
+        yield* _(
           Sy.sync(() => {
             m.set(layer.hash.get, a)
           })
         )
-      )
+        return a
+      })
     }
   }
 }
