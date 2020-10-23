@@ -66,9 +66,9 @@ const makeTag = <T>(def = false, key = Symbol()): Tag<T> => ({
 /**
  * Create a service entry Tag from a type and a URI
  */
-export function has<T extends Constructor<any>>(_: T): Tag<ConstructorType<T>>
-export function has<T>(): Tag<T>
-export function has(_?: any): Tag<unknown> {
+export function tag<T extends Constructor<any>>(_: T): Tag<ConstructorType<T>>
+export function tag<T>(): Tag<T>
+export function tag(_?: any): Tag<unknown> {
   return makeTag()
 }
 

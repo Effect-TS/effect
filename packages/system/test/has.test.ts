@@ -1,6 +1,6 @@
 import * as T from "../src/Effect"
 import { pipe } from "../src/Function"
-import { has } from "../src/Has"
+import { tag } from "../src/Has"
 
 describe("Has", () => {
   it("use services", async () => {
@@ -14,8 +14,8 @@ describe("Has", () => {
         return T.effectTotal(() => a * b)
       }
     }
-    const Add = has(AddService)
-    const Mul = has(MulService)
+    const Add = tag(AddService)
+    const Mul = tag(MulService)
 
     const result = await pipe(
       T.accessServicesM({ add: Add, mul: Mul })((_) =>

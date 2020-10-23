@@ -7,7 +7,7 @@ import type { Effect } from "../Effect/effect"
 import { provide } from "../Effect/provide"
 import { pipe } from "../Function"
 import type { Has, Tag } from "../Has"
-import { has, mergeEnvironments } from "../Has"
+import { mergeEnvironments, tag } from "../Has"
 import * as R from "../Record"
 import type { UnionToIntersection } from "../Utils"
 
@@ -211,7 +211,7 @@ export interface Region<T, K> {
 }
 
 export function region<K, T>(): Tag<Region<T, K>> {
-  return has<Region<T, K>>()
+  return tag<Region<T, K>>()
 }
 
 export function useRegion<K, T>(h: Tag<Region<T, K>>) {
