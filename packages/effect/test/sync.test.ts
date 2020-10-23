@@ -1,4 +1,4 @@
-import { has } from "@effect-ts/system/Has"
+import { tag } from "@effect-ts/system/Has"
 
 import { pipe } from "../src/Function"
 import * as Sy from "../src/Sync"
@@ -16,11 +16,11 @@ interface Baz {
   baz: string
 }
 
-const Foo = has<Foo>()
+const Foo = tag<Foo>()
 
-const Bar = has<Bar>()
+const Bar = tag<Bar>()
 
-const Baz = has<Baz>()
+const Baz = tag<Baz>()
 
 const FooLive = L.fromValue(Foo)({ foo: "foo" })
 

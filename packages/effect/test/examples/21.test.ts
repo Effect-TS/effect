@@ -1,7 +1,7 @@
 import * as T from "../../src/Effect"
 import * as Ref from "../../src/Effect/Ref"
 import { pipe } from "../../src/Function"
-import { has } from "../../src/Has"
+import { tag } from "../../src/Has"
 
 class ConsoleService {
   logN(n: number) {
@@ -12,7 +12,7 @@ class ConsoleService {
 }
 
 interface Console extends ConsoleService {}
-const Console = has<Console>()
+const Console = tag<Console>()
 
 const program = T.gen(function* (_) {
   const { logN } = yield* _(Console)
