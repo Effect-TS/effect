@@ -32,6 +32,8 @@ export abstract class SyncLayer<R, E, A> {
 
 export type Instructions =
   | Of<any, any, any>
+  | Fresh<any, any, any>
+  | Suspended<any, any, any>
   | Both<any, any, any, any, any, any>
   | Using<any, any, any, any, any, any>
   | All<SyncLayer<any, any, any>[]>
@@ -40,6 +42,22 @@ export class Of<R, E, A> extends SyncLayer<R, E, A> {
   readonly _tag = "FromSync"
 
   constructor(readonly sync: Sy.Sync<R, E, A>) {
+    super()
+  }
+}
+
+export class Fresh<R, E, A> extends SyncLayer<R, E, A> {
+  readonly _tag = "Fresh"
+
+  constructor(readonly sync: SyncLayer<R, E, A>) {
+    super()
+  }
+}
+
+export class Suspended<R, E, A> extends SyncLayer<R, E, A> {
+  readonly _tag = "Suspended"
+
+  constructor(readonly sync: () => SyncLayer<R, E, A>) {
     super()
   }
 }
@@ -136,6 +154,12 @@ function scope<R, E, A>(
     case "FromSync": {
       return Sy.succeed((_) => ins.sync)
     }
+    case "Fresh": {
+      return Sy.succeed((_) => build(ins.sync))
+    }
+    case "Suspended": {
+      return Sy.succeed(getMemoOrElseCreate(ins.sync()))
+    }
     case "Both": {
       return Sy.succeed((_) =>
         pipe(
@@ -190,6 +214,14 @@ export function build<R, E, A>(layer: SyncLayer<R, E, A>) {
 
 export function fromRawSync<R, E, T>(_: Sy.Sync<R, E, T>): SyncLayer<R, E, T> {
   return new Of(_)
+}
+
+export function fresh<R, E, A>(layer: SyncLayer<R, E, A>) {
+  return new Fresh(layer)
+}
+
+export function suspended<R, E, A>(layer: () => SyncLayer<R, E, A>) {
+  return new Suspended(layer)
 }
 
 export function fromSync<T>(tag: Tag<T>) {
