@@ -4,8 +4,6 @@ import * as T from "../Effect"
 import { sequential } from "../Effect/ExecutionStrategy"
 import type { Exit } from "../Exit"
 import { pipe, tuple } from "../Function"
-import type { HasTag } from "../Has"
-import { has } from "../Has"
 import * as M from "../Managed"
 import type { Finalizer, ReleaseMap } from "../Managed/releaseMap"
 import * as RelMap from "../Managed/releaseMap"
@@ -517,6 +515,3 @@ export class MemoMap {
     )
   }
 }
-
-export const HasMemoMap = has(MemoMap)
-export type HasMemoMap = HasTag<typeof HasMemoMap>
