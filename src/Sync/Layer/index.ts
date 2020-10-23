@@ -13,10 +13,6 @@ export abstract class SyncLayer<R, E, A> {
   readonly _E!: () => E
   readonly _A!: () => A
 
-  _I(): Instructions {
-    return this as any
-  }
-
   setKey(key: symbol) {
     this.hash.set(key)
     return this
@@ -37,21 +33,30 @@ export abstract class SyncLayer<R, E, A> {
   ): SyncLayer<Erase<R2, A> & R, E | E2, A & A2> {
     return new Using(this, that)
   }
-}
 
-export type Instructions =
-  | Of<any, any, any>
-  | Fresh<any, any, any>
-  | Suspended<any, any, any>
-  | Both<any, any, any, any, any, any>
-  | Using<any, any, any, any, any, any>
-  | All<SyncLayer<any, any, any>[]>
+  abstract scope(): Sy.Sync<unknown, never, (_: SyncMemoMap) => Sy.Sync<R, E, A>>
+
+  build() {
+    const scope = () => this.scope()
+
+    return Sy.gen(function* (_) {
+      const memo = yield* _(Sy.sync((): SyncMemoMap => new Map()))
+      const scoped = yield* _(scope())
+
+      return yield* _(scoped(memo))
+    })
+  }
+}
 
 export class Of<R, E, A> extends SyncLayer<R, E, A> {
   readonly _tag = "FromSync"
 
   constructor(readonly sync: Sy.Sync<R, E, A>) {
     super()
+  }
+
+  scope(): Sy.Sync<unknown, never, (_: SyncMemoMap) => Sy.Sync<R, E, A>> {
+    return Sy.succeed((_) => this.sync)
   }
 }
 
@@ -61,6 +66,10 @@ export class Fresh<R, E, A> extends SyncLayer<R, E, A> {
   constructor(readonly sync: SyncLayer<R, E, A>) {
     super()
   }
+
+  scope(): Sy.Sync<unknown, never, (_: SyncMemoMap) => Sy.Sync<R, E, A>> {
+    return Sy.succeed((_) => this.sync.build())
+  }
 }
 
 export class Suspended<R, E, A> extends SyncLayer<R, E, A> {
@@ -68,6 +77,10 @@ export class Suspended<R, E, A> extends SyncLayer<R, E, A> {
 
   constructor(readonly sync: () => SyncLayer<R, E, A>) {
     super()
+  }
+
+  scope(): Sy.Sync<unknown, never, (_: SyncMemoMap) => Sy.Sync<R, E, A>> {
+    return Sy.succeed(getMemoOrElseCreate(this.sync()))
   }
 }
 
@@ -79,6 +92,24 @@ export class Both<R, E, A, R2, E2, A2> extends SyncLayer<R & R2, E | E2, A & A2>
     readonly right: SyncLayer<R2, E2, A2>
   ) {
     super()
+  }
+
+  scope(): Sy.Sync<
+    unknown,
+    never,
+    (_: SyncMemoMap) => Sy.Sync<R & R2, E | E2, A & A2>
+  > {
+    return Sy.succeed((_) =>
+      pipe(
+        getMemoOrElseCreate(this.left)(_),
+        Sy.chain((l) =>
+          pipe(
+            getMemoOrElseCreate(this.right)(_),
+            Sy.map((r) => ({ ...l, ...r }))
+          )
+        )
+      )
+    )
   }
 }
 
@@ -94,6 +125,55 @@ export class Using<R, E, A, R2, E2, A2> extends SyncLayer<
     readonly right: SyncLayer<R2, E2, A2>
   ) {
     super()
+  }
+
+  scope(): Sy.Sync<
+    unknown,
+    never,
+    (_: SyncMemoMap) => Sy.Sync<R & Erase<R2, A>, E | E2, A & A2>
+  > {
+    return Sy.succeed((_) =>
+      pipe(
+        getMemoOrElseCreate(this.left)(_),
+        Sy.chain((l) =>
+          pipe(
+            getMemoOrElseCreate(this.right)(_),
+            Sy.map((r) => ({ ...l, ...r })),
+            Sy.provide(l)
+          )
+        )
+      )
+    )
+  }
+}
+
+export class All<Layers extends SyncLayer<any, any, any>[]> extends SyncLayer<
+  MergeR<Layers>,
+  MergeE<Layers>,
+  MergeA<Layers>
+> {
+  readonly _tag = "All"
+
+  constructor(readonly layers: Layers & { 0: SyncLayer<any, any, any> }) {
+    super()
+  }
+
+  scope(): Sy.Sync<
+    unknown,
+    never,
+    (_: SyncMemoMap) => Sy.Sync<MergeR<Layers>, MergeE<Layers>, MergeA<Layers>>
+  > {
+    return Sy.succeed((_) =>
+      pipe(
+        this.layers,
+        A.reduce(<Sy.Sync<any, any, any>>Sy.succeed({}), (b, a) =>
+          pipe(
+            getMemoOrElseCreate(a)(_),
+            Sy.chain((x) => ({ ...b, ...x }))
+          )
+        )
+      )
+    )
   }
 }
 
@@ -121,28 +201,16 @@ export type MergeA<Ls extends SyncLayer<any, any, any>[]> = UnionToIntersection<
   }[number]
 >
 
-export class All<Layers extends SyncLayer<any, any, any>[]> extends SyncLayer<
-  MergeR<Layers>,
-  MergeE<Layers>,
-  MergeA<Layers>
-> {
-  readonly _tag = "All"
+export type SyncMemoMap = Map<symbol, any>
 
-  constructor(readonly layers: Layers & { 0: SyncLayer<any, any, any> }) {
-    super()
-  }
-}
-
-type MemoMap = Map<symbol, any>
-
-function getMemoOrElseCreate<R, E, A>(layer: SyncLayer<R, E, A>) {
-  return (m: MemoMap) => {
+export function getMemoOrElseCreate<R, E, A>(layer: SyncLayer<R, E, A>) {
+  return (m: SyncMemoMap) => {
     const x = m.get(layer.hash.get)
     if (x) {
       return Sy.succeed(x)
     } else {
       return pipe(
-        scope(layer),
+        layer.scope(),
         Sy.chain((f) => f(m)),
         Sy.tap((a) =>
           Sy.sync(() => {
@@ -152,73 +220,6 @@ function getMemoOrElseCreate<R, E, A>(layer: SyncLayer<R, E, A>) {
       )
     }
   }
-}
-
-function scope<R, E, A>(
-  layer: SyncLayer<R, E, A>
-): Sy.Sync<unknown, never, (_: MemoMap) => Sy.Sync<R, E, A>> {
-  const ins = layer._I()
-
-  switch (ins._tag) {
-    case "FromSync": {
-      return Sy.succeed((_) => ins.sync)
-    }
-    case "Fresh": {
-      return Sy.succeed((_) => build(ins.sync))
-    }
-    case "Suspended": {
-      return Sy.succeed(getMemoOrElseCreate(ins.sync()))
-    }
-    case "Both": {
-      return Sy.succeed((_) =>
-        pipe(
-          getMemoOrElseCreate(ins.left)(_),
-          Sy.chain((l) =>
-            pipe(
-              getMemoOrElseCreate(ins.right)(_),
-              Sy.map((r) => ({ ...l, ...r }))
-            )
-          )
-        )
-      )
-    }
-    case "All": {
-      return Sy.succeed((_) =>
-        pipe(
-          ins.layers,
-          A.reduce(<Sy.Sync<any, any, any>>Sy.succeed({}), (b, a) =>
-            pipe(
-              getMemoOrElseCreate(a)(_),
-              Sy.chain((x) => ({ ...b, ...x }))
-            )
-          )
-        )
-      )
-    }
-    case "Using": {
-      return Sy.succeed((_) =>
-        pipe(
-          getMemoOrElseCreate(ins.left)(_),
-          Sy.chain((l) =>
-            pipe(
-              getMemoOrElseCreate(ins.right)(_),
-              Sy.map((r) => ({ ...l, ...r })),
-              Sy.provide(l)
-            )
-          )
-        )
-      )
-    }
-  }
-}
-
-export function build<R, E, A>(layer: SyncLayer<R, E, A>) {
-  return Sy.gen(function* (_) {
-    const memo = yield* _(Sy.sync((): MemoMap => new Map()))
-    const scoped = yield* _(scope(layer))
-
-    return yield* _(scoped(memo))
-  })
 }
 
 export function fromRawSync<R, E, T>(_: Sy.Sync<R, E, T>): SyncLayer<R, E, T> {
@@ -267,7 +268,7 @@ export function using<R2, E2, A2>(left: SyncLayer<R2, E2, A2>) {
 export function provideSyncLayer<R, E, A>(layer: SyncLayer<R, E, A>) {
   return <R2, E2, A2>(_: Sy.Sync<R2 & A, E2, A2>): Sy.Sync<R & R2, E | E2, A2> =>
     pipe(
-      build(layer),
+      layer.build(),
       Sy.chain((a) => pipe(_, Sy.provide(a)))
     )
 }
