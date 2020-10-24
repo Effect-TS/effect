@@ -123,7 +123,7 @@ export class DroppingStrategy<A> implements Strategy<A> {
     _takers: MutableQueue<P.Promise<never, A>>,
     _isShutdown: AtomicBoolean
   ): T.UIO<boolean> {
-    return T.succeedNow(false)
+    return T.succeed(false)
   }
 
   unsafeOnQueueEmptySpace(_queue: MutableQueue<A>) {
@@ -183,7 +183,7 @@ export class SlidingStrategy<A> implements Strategy<A> {
 }
 
 export const unsafeCompletePromise = <A>(p: P.Promise<never, A>, a: A) =>
-  P.unsafeDone(T.succeedNow(a))(p)
+  P.unsafeDone(T.succeed(a))(p)
 
 export const unsafeCompleteTakers = <A>(
   strategy: Strategy<A>,
@@ -258,12 +258,12 @@ export const unsafeCreate = <A>(
 
           if (taker != null) {
             unsafeCompletePromise(taker, a)
-            return T.succeedNow(true)
+            return T.succeed(true)
           } else {
             const succeeded = queue.offer(a)
 
             if (succeeded) {
-              return T.succeedNow(true)
+              return T.succeed(true)
             } else {
               return strategy.handleSurplus([a], queue, takers, shutdownFlag)
             }
@@ -285,7 +285,7 @@ export const unsafeCreate = <A>(
           })
 
           if (remaining.length === 0) {
-            return T.succeedNow(true)
+            return T.succeed(true)
           }
 
           const surplus = unsafeOfferAll(queue, remaining)
@@ -293,7 +293,7 @@ export const unsafeCreate = <A>(
           unsafeCompleteTakers(strategy, queue, takers)
 
           if (surplus.length === 0) {
-            return T.succeedNow(true)
+            return T.succeed(true)
           } else {
             return strategy.handleSurplus(surplus, queue, takers, shutdownFlag)
           }
@@ -320,7 +320,7 @@ export const unsafeCreate = <A>(
       if (shutdownFlag.get) {
         return T.interrupt
       } else {
-        return T.succeedNow(queue.size - takers.size + strategy.surplusSize)
+        return T.succeed(queue.size - takers.size + strategy.surplusSize)
       }
     })
 
@@ -334,7 +334,7 @@ export const unsafeCreate = <A>(
 
         if (item != null) {
           strategy.unsafeOnQueueEmptySpace(queue)
-          return T.succeedNow(item)
+          return T.succeed(item)
         } else {
           const p = P.unsafeMake<never, A>(d.id)
 

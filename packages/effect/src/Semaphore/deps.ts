@@ -1,5 +1,5 @@
 export { bracket_ } from "../Effect/bracket_"
-export { chain_, succeed as succeedNow, unit } from "../Effect/core"
+export { chain_, succeed, unit } from "../Effect/core"
 export { die } from "../Effect/die"
 export { UIO, Effect } from "../Effect/effect"
 export { flatten } from "../Effect/flatten"

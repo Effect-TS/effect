@@ -135,7 +135,7 @@ export const getAndSet_ = <RA, RB, EA, EB, A>(
 ) =>
   pipe(
     self,
-    modify((v) => T.succeedNow([v, a]))
+    modify((v) => T.succeed([v, a]))
   )
 
 /**
@@ -190,7 +190,7 @@ export const getAndUpdateSome_ = <RA, RB, EA, EB, R1, E1, A>(
     modify((v) =>
       pipe(
         f(v),
-        O.getOrElse(() => T.succeedNow(v)),
+        O.getOrElse(() => T.succeed(v)),
         T.map((r) => [v, r])
       )
     )
@@ -220,7 +220,7 @@ export const modifySome_ = <RA, RB, EA, EB, R1, E1, A, B>(
     modify((v) =>
       pipe(
         f(v),
-        O.getOrElse(() => T.succeedNow(tuple(def, v)))
+        O.getOrElse(() => T.succeed(tuple(def, v)))
       )
     )
   )
@@ -300,7 +300,7 @@ export const updateSome_ = <RA, RB, EA, EB, R1, E1, A>(
     modify((v) =>
       pipe(
         f(v),
-        O.getOrElse(() => T.succeedNow(v)),
+        O.getOrElse(() => T.succeed(v)),
         T.map((r) => [undefined, r])
       )
     )
@@ -330,7 +330,7 @@ export const updateSomeAndGet_ = <RA, RB, EA, EB, R1, E1, A>(
     modify((v) =>
       pipe(
         f(v),
-        O.getOrElse(() => T.succeedNow(v)),
+        O.getOrElse(() => T.succeed(v)),
         T.map((r) => [r, r])
       )
     )
@@ -453,7 +453,7 @@ export const collectM_ = <RA, RB, EA, EB, A, B, RC, EC, C>(
   self.foldM(
     identity,
     (_) => O.some<EB | EC>(_),
-    (_) => T.succeedNow(_),
+    (_) => T.succeed(_),
     (b) =>
       pipe(
         f(b),
@@ -489,7 +489,7 @@ export const collect_ = <RA, RB, EA, EB, A, B, C>(
 ): XRefM<RA, RB, EA, O.Option<EB>, A, C> =>
   pipe(
     self,
-    collectM((b) => pipe(f(b), O.map(T.succeedNow)))
+    collectM((b) => pipe(f(b), O.map(T.succeed)))
   )
 
 /**
@@ -573,10 +573,10 @@ export const filterInputM_ = <RA, RB, EA, EB, B, A, RC, EC, A1 extends A = A>(
       (ea) => O.some<EA | EC>(ea),
       identity,
       (a: A1) =>
-        T.ifM(T.asSomeError(f(a)))(() => T.succeedNow(a))(() =>
+        T.ifM(T.asSomeError(f(a)))(() => T.succeed(a))(() =>
           T.fail<O.Option<EA | EC>>(O.none)
         ),
-      T.succeedNow
+      T.succeed
     )
   )
 
@@ -602,7 +602,7 @@ export const filterInput_ = <RA, RB, EA, EB, B, A, A1 extends A = A>(
 ): XRefM<RA, RB, O.Option<EA>, EB, A1, B> =>
   pipe(
     self,
-    filterInputM((a) => T.succeedNow(f(a)))
+    filterInputM((a) => T.succeed(f(a)))
   )
 
 /**
@@ -634,8 +634,8 @@ export const filterOutputM_ = <RA, RB, EA, EB, A, B, RC, EC>(
     foldM(
       (ea) => ea,
       (eb) => O.some<EB | EC>(eb),
-      (a) => T.succeedNow(a),
-      (b) => T.ifM(T.asSomeError(f(b)))(() => T.succeedNow(b))(() => T.fail(O.none))
+      (a) => T.succeed(a),
+      (b) => T.ifM(T.asSomeError(f(b)))(() => T.succeed(b))(() => T.fail(O.none))
     )
   )
 
@@ -665,7 +665,7 @@ export const filterOutput_ = <RA, RB, EA, EB, A, B>(
 ): XRefM<RA, RB, EA, O.Option<EB>, A, B> =>
   pipe(
     self,
-    filterOutputM((b) => T.succeedNow(f(b)))
+    filterOutputM((b) => T.succeed(f(b)))
   )
 
 /**
@@ -684,7 +684,7 @@ export const filterOutput = <B>(f: (b: B) => boolean) => <RA, RB, EA, EB, A>(
 export const mapM_ = <RA, RB, EA, EB, A, B, RC, EC, C>(
   self: XRefM<RA, RB, EA, EB, A, B>,
   f: (b: B) => T.Effect<RC, EC, C>
-) => pipe(self, dimapM(T.succeedNow, f))
+) => pipe(self, dimapM(T.succeed, f))
 
 /**
  * Transforms the `get` value of the `XRefM` with the specified effectual
@@ -707,7 +707,7 @@ export const mapM = <B, RC, EC, C>(f: (b: B) => T.Effect<RC, EC, C>) => <
 export const contramapM_ = <RA, RB, EA, EB, B, A, RC, EC, C>(
   self: XRefM<RA, RB, EA, EB, A, B>,
   f: (c: C) => T.Effect<RC, EC, A>
-): XRefM<RA & RC, RB, EC | EA, EB, C, B> => pipe(self, dimapM(f, T.succeedNow))
+): XRefM<RA & RC, RB, EC | EA, EB, C, B> => pipe(self, dimapM(f, T.succeed))
 
 /**
  * Transforms the `set` value of the `XRefM` with the specified effectual
@@ -732,7 +732,7 @@ export const contramap_ = <RA, RB, EA, EB, B, C, A>(
 ): XRefM<RA, RB, EA, EB, C, B> =>
   pipe(
     self,
-    contramapM((c) => T.succeedNow(f(c)))
+    contramapM((c) => T.succeed(f(c)))
   )
 
 /**
@@ -751,7 +751,7 @@ export const map_ = <RA, RB, EA, EB, A, B, C>(
 ) =>
   pipe(
     self,
-    mapM((b) => T.succeedNow(f(b)))
+    mapM((b) => T.succeed(f(b)))
   )
 
 /**
