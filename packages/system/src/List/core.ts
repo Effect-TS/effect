@@ -2,6 +2,8 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable no-var */
 
+import type { Either } from "../Either"
+import { identity } from "../Function"
 import type { Option } from "../Option"
 import { fromNullable } from "../Option"
 import type { Separated } from "../Utils"
@@ -1112,7 +1114,7 @@ function foldlNode<A, B>(
 /**
  * Folds a function over a list. Left-associative.
  */
-export function foldl_<A, B>(l: List<A>, initial: B, f: (acc: B, value: A) => B): B {
+export function reduce_<A, B>(l: List<A>, initial: B, f: (acc: B, value: A) => B): B {
   const suffixSize = getSuffixSize(l)
   const prefixSize = getPrefixSize(l)
   initial = foldlPrefix(f, initial, l.prefix, prefixSize)
@@ -1125,8 +1127,11 @@ export function foldl_<A, B>(l: List<A>, initial: B, f: (acc: B, value: A) => B)
 /**
  * Folds a function over a list. Left-associative.
  */
-export function foldl<A, B>(initial: B, f: (acc: B, value: A) => B): (l: List<A>) => B {
-  return (l) => foldl_(l, initial, f)
+export function reduce<A, B>(
+  initial: B,
+  f: (acc: B, value: A) => B
+): (l: List<A>) => B {
+  return (l) => reduce_(l, initial, f)
 }
 
 /**
@@ -1138,7 +1143,7 @@ export function scan_<A, B>(
   initial: B,
   f: (acc: B, value: A) => B
 ): List<B> {
-  return foldl_(l, push(initial, emptyPushable<B>()), (l2, a) =>
+  return reduce_(l, push(initial, emptyPushable<B>()), (l2, a) =>
     push(f(unsafeLast(l2)!, a), l2)
   )
 }
@@ -1166,7 +1171,7 @@ export function scan<A, B>(
  * @complexity O(n)
  */
 export function forEach_<A>(l: List<A>, callback: (a: A) => void): void {
-  foldl_(l, undefined as void, (_, element) => callback(element))
+  reduce_(l, undefined as void, (_, element) => callback(element))
 }
 
 /**
@@ -1196,7 +1201,7 @@ export function filter_<A, B extends A>(
 ): List<B>
 export function filter_<A>(l: List<A>, predicate: (a: A) => boolean): List<A>
 export function filter_<A>(l: List<A>, predicate: (a: A) => boolean): List<A> {
-  return foldl_(l, emptyPushable(), (acc, a) => (predicate(a) ? push(a, acc) : acc))
+  return reduce_(l, emptyPushable(), (acc, a) => (predicate(a) ? push(a, acc) : acc))
 }
 
 /**
@@ -1211,7 +1216,40 @@ export function filter<A, B extends A>(
 export function filter<A>(predicate: (a: A) => boolean): (l: List<A>) => List<A>
 export function filter<A>(predicate: (a: A) => boolean): (l: List<A>) => List<A> {
   return (l) =>
-    foldl_(l, emptyPushable(), (acc, a) => (predicate(a) ? push(a, acc) : acc))
+    reduce_(l, emptyPushable(), (acc, a) => (predicate(a) ? push(a, acc) : acc))
+}
+
+/**
+ * Returns a new list that only contains the elements of the original
+ * list for which the f returns `Some`.
+ *
+ * @complexity O(n)
+ */
+export function filterMap_<A, B>(l: List<A>, f: (a: A) => Option<B>): List<B> {
+  return reduce_(l, emptyPushable(), (acc, a) => {
+    const fa = f(a)
+    if (fa._tag === "Some") {
+      push(fa.value, acc)
+    }
+    return acc
+  })
+}
+
+/**
+ * Returns a new list that only contains the elements of the original
+ * list for which the f returns `Some`.
+ *
+ * @complexity O(n)
+ */
+export function filterMap<A, B>(f: (a: A) => Option<B>): (l: List<A>) => List<B> {
+  return (l) => filterMap_(l, f)
+}
+
+/**
+ * Filter out optional values
+ */
+export function compact<A>(fa: List<Option<A>>): List<A> {
+  return filterMap((x: Option<A>) => x)(fa)
 }
 
 /**
@@ -1220,8 +1258,8 @@ export function filter<A>(predicate: (a: A) => boolean): (l: List<A>) => List<A>
  *
  * @complexity O(n)
  */
-export function reject_<A>(l: List<A>, predicate: (a: A) => boolean): List<A> {
-  return foldl_(l, emptyPushable(), (acc, a) => (predicate(a) ? acc : push(a, acc)))
+export function filterNot_<A>(l: List<A>, predicate: (a: A) => boolean): List<A> {
+  return reduce_(l, emptyPushable(), (acc, a) => (predicate(a) ? acc : push(a, acc)))
 }
 
 /**
@@ -1230,8 +1268,8 @@ export function reject_<A>(l: List<A>, predicate: (a: A) => boolean): List<A> {
  *
  * @complexity O(n)
  */
-export function reject<A>(predicate: (a: A) => boolean): (l: List<A>) => List<A> {
-  return (l) => reject_(l, predicate)
+export function filterNot<A>(predicate: (a: A) => boolean): (l: List<A>) => List<A> {
+  return (l) => filterNot_(l, predicate)
 }
 
 /**
@@ -1253,7 +1291,7 @@ export function partition_<A>(
   l: List<A>,
   predicate: (a: A) => boolean
 ): Separated<List<A>, List<A>> {
-  return foldl_(
+  return reduce_(
     l,
     { left: emptyPushable<A>(), right: emptyPushable<A>() } as Separated<
       MutableList<A>,
@@ -1263,6 +1301,13 @@ export function partition_<A>(
   )
 }
 
+/**
+ * Splits the list into two lists. One list that contains all the
+ * values for which the predicate returns `true` and one containing
+ * the values for which it returns `false`.
+ *
+ * @complexity O(n)
+ */
 export function partition<A, B extends A>(
   predicate: (a: A) => a is B
 ): (l: List<A>) => Separated<List<B>, List<Exclude<A, B>>>
@@ -1276,10 +1321,60 @@ export function partition<A>(
 }
 
 /**
+ * Splits the list into two lists. One list that contains the lefts
+ * and one contains the rights
+ *
+ * @complexity O(n)
+ */
+export function partitionMap_<A, B, C>(
+  l: List<A>,
+  f: (_: A) => Either<B, C>
+): Separated<List<B>, List<C>> {
+  return reduce_(
+    l,
+    { left: emptyPushable<B>(), right: emptyPushable<C>() } as Separated<
+      MutableList<B>,
+      MutableList<C>
+    >,
+    (arr, a) => {
+      const fa = f(a)
+      if (fa._tag === "Left") {
+        push(fa.left, arr.left)
+      } else {
+        push(fa.right, arr.right)
+      }
+      return arr
+    }
+  )
+}
+
+/**
+ * Splits the list into two lists. One list that contains the lefts
+ * and one contains the rights
+ *
+ * @complexity O(n)
+ */
+export function partitionMap<A, B, C>(
+  f: (_: A) => Either<B, C>
+): (l: List<A>) => Separated<List<B>, List<C>> {
+  return (l) => partitionMap_(l, f)
+}
+
+/**
+ * Splits the list into two lists. One list that contains the lefts
+ * and one contains the rights
+ *
+ * @complexity O(n)
+ */
+export function separate<B, C>(l: List<Either<B, C>>): Separated<List<B>, List<C>> {
+  return partitionMap_(l, identity)
+}
+
+/**
  * Concats the strings in the list separated by a specified separator.
  */
 export function join_(l: List<string>, separator: string): string {
-  return foldl_(l, "", (a, b) => (a.length === 0 ? b : a + separator + b))
+  return reduce_(l, "", (a, b) => (a.length === 0 ? b : a + separator + b))
 }
 
 /**
@@ -1336,7 +1431,11 @@ function foldrNode<A, B>(
  *
  * @complexity O(n)
  */
-export function foldr_<A, B>(l: List<A>, initial: B, f: (value: A, acc: B) => B): B {
+export function reduceRight_<A, B>(
+  l: List<A>,
+  initial: B,
+  f: (value: A, acc: B) => B
+): B {
   const suffixSize = getSuffixSize(l)
   const prefixSize = getPrefixSize(l)
   let acc = foldrSuffix(f, initial, l.suffix, suffixSize)
@@ -1351,8 +1450,11 @@ export function foldr_<A, B>(l: List<A>, initial: B, f: (value: A, acc: B) => B)
  *
  * @complexity O(n)
  */
-export function foldr<A, B>(initial: B, f: (value: A, acc: B) => B): (l: List<A>) => B {
-  return (l) => foldr_(l, initial, f)
+export function reduceRight<A, B>(
+  initial: B,
+  f: (value: A, acc: B) => B
+): (l: List<A>) => B {
+  return (l) => reduceRight_(l, initial, f)
 }
 
 /**
@@ -1376,7 +1478,7 @@ export function ap<A, B>(l: List<A>): (listF: List<(a: A) => B>) => List<B> {
  * @complexity O(n * log(m)), where n is the length of the outer list and m the length of the inner lists.
  */
 export function flatten<A>(nested: List<List<A>>): List<A> {
-  return foldl_<List<A>, List<A>>(nested, empty(), concat_)
+  return reduce_<List<A>, List<A>>(nested, empty(), concat_)
 }
 
 /**
@@ -1526,17 +1628,25 @@ function foldlWhileCb<A, B>(a: A, state: FoldlWhileState<A, B>): boolean {
   return true
 }
 
-export function foldlWhile<A, B>(
-  predicate: (acc: B, value: A) => boolean,
-  f: (acc: B, value: A) => B,
+export function reduceWhile_<A, B>(
+  l: List<A>,
   initial: B,
-  l: List<A>
+  predicate: (acc: B, value: A) => boolean,
+  f: (acc: B, value: A) => B
 ): B {
   return foldlCb<A, FoldlWhileState<A, B>>(
     foldlWhileCb,
     { predicate, f, result: initial },
     l
   ).result
+}
+
+export function reduceWhile<A, B>(
+  initial: B,
+  predicate: (acc: B, value: A) => boolean,
+  f: (acc: B, value: A) => B
+): (l: List<A>) => B {
+  return (l) => reduceWhile_(l, initial, predicate, f)
 }
 
 type PredState = {
@@ -2825,7 +2935,7 @@ export function dropRepeatsWith_<A>(
   l: List<A>,
   predicate: (a: A, b: A) => boolean
 ): List<A> {
-  return foldl_(l, emptyPushable(), (acc, a) =>
+  return reduce_(l, emptyPushable(), (acc, a) =>
     acc.length !== 0 && predicate(unsafeLast(acc)!, a) ? acc : push(a, acc)
   )
 }
@@ -2916,7 +3026,7 @@ export function splitWhen<A>(
  * Splits the list into chunks of the given size.
  */
 export function splitEvery_<A>(l: List<A>, size: number): List<List<A>> {
-  const { buffer, l2 } = foldl_(
+  const { buffer, l2 } = reduce_(
     l,
     { l2: emptyPushable<List<A>>(), buffer: emptyPushable<A>() },
     ({ buffer, l2 }, elm) => {
@@ -3027,7 +3137,7 @@ function arrayPush<A>(array: A[], a: A): A[] {
  * @complexity `O(n)`
  */
 export function toArray<A>(l: List<A>): A[] {
-  return foldl_<A, A[]>(l, [], arrayPush)
+  return reduce_<A, A[]>(l, [], arrayPush)
 }
 
 /**
@@ -3074,7 +3184,7 @@ export function insertAll<A>(
  * @complexity O(n)
  */
 export function reverse<A>(l: List<A>): List<A> {
-  return foldl_(l, empty(), (newL, element) => prepend_(newL, element))
+  return reduce_(l, empty(), (newL, element) => prepend_(newL, element))
 }
 
 /**
@@ -3103,7 +3213,7 @@ export function zip_<A, B>(as: List<A>, bs: List<B>): List<readonly [A, B]> {
  * @complexity `O(log(n))`, where `n` is the length of the smallest
  * list.
  */
-export function zip<A, B>(bs: List<B>): (as: List<A>) => List<readonly [A, B]> {
+export function zip<B>(bs: List<B>): <A>(as: List<A>) => List<readonly [A, B]> {
   return (as) => zip_(as, bs)
 }
 
@@ -3238,7 +3348,7 @@ export function groupWith<A>(
  * Inserts a separator between each element in a list.
  */
 export function intersperse_<A>(l: List<A>, separator: A): List<A> {
-  return pop(foldl_(l, emptyPushable(), (l2, a) => push(separator, push(a, l2))))
+  return pop(reduce_(l, emptyPushable(), (l2, a) => push(separator, push(a, l2))))
 }
 
 /**
