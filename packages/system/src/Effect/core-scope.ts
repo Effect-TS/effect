@@ -96,3 +96,23 @@ export function forkScopeWith<R, E, A>(
 ) {
   return new IGetForkScope(f)
 }
+
+/**
+ * Returns a new effect that will utilize the specified scope to supervise
+ * any fibers forked within the original effect.
+ */
+export function overrideForkScope(scope: Scope<Exit<any, any>>) {
+  return <R, E, A>(self: Effect<R, E, A>): Effect<R, E, A> =>
+    new IOverrideForkScope(self, O.some(scope))
+}
+
+/**
+ * Returns a new effect that will utilize the specified scope to supervise
+ * any fibers forked within the original effect.
+ */
+export function overrideForkScope_<R, E, A>(
+  self: Effect<R, E, A>,
+  scope: Scope<Exit<any, any>>
+): Effect<R, E, A> {
+  return new IOverrideForkScope(self, O.some(scope))
+}
