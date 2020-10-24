@@ -11,4 +11,4 @@ Thhis repository target the `next` major release, for the current legacy reposit
 
 ### Get in touch
 
-The best place to reach out would be either in (https://fpchat-invite.herokuapp.com)[https://fpchat-invite.herokuapp.com] (FP Chat, channel #matechs) or for italians (https://italiajs.herokuapp.com/)[https://italiajs.herokuapp.com/] (Italia JS, @Michael Arnaldi or channel #fp)
+The best place to reach out would be either in [https://fpchat-invite.herokuapp.com](https://fpchat-invite.herokuapp.com) (FP Chat, channel #matechs) or for italians [https://italiajs.herokuapp.com/](https://italiajs.herokuapp.com/) (Italia JS, @Michael Arnaldi or channel #fp)
