@@ -244,13 +244,21 @@ export function sortBy<A>(ords: Array<Ord.Ord<A>>): (as: Array<A>) => Array<A> {
 /**
  * Creates an array of unique values, in order, from all given arrays using a `Equal` for equality comparisons
  */
-export function union<A>(E: Equal<A>): (xs: Array<A>, ys: Array<A>) => Array<A> {
+export function union_<A>(E: Equal<A>): (xs: Array<A>, ys: Array<A>) => Array<A> {
   const elemE = elem_(E)
   return (xs, ys) =>
     A.concat_(
       xs,
       ys.filter((a) => !elemE(xs, a))
     )
+}
+
+/**
+ * Creates an array of unique values, in order, from all given arrays using a `Equal` for equality comparisons
+ */
+export function union<A>(E: Equal<A>): (ys: Array<A>) => (xs: Array<A>) => Array<A> {
+  const un = union_(E)
+  return (ys) => (xs) => un(xs, ys)
 }
 
 /**
