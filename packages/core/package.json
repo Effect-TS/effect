@@ -91,6 +91,7 @@
       "Modules",
       "Newtype",
       "Operators",
+      "Persistent/List",
       "Prelude",
       "Prelude/Any",
       "Prelude/Applicative",
