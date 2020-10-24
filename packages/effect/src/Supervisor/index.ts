@@ -37,7 +37,7 @@ export class Supervisor<A> {
    * supervision event if only both component supervisors indicate they have
    * handled the supervision event.
    */
-  and<B>(that: Supervisor<B>): Supervisor<[A, B]> {
+  and<B>(that: Supervisor<B>): Supervisor<readonly [A, B]> {
     return new Supervisor(
       zip_(this.value, that.value),
       (environment, effect, parent, fiber) =>
@@ -59,7 +59,7 @@ export class Supervisor<A> {
    * supervision event if either component supervisors indicate they have
    * handled the supervision event.
    */
-  or<B>(that: Supervisor<B>): Supervisor<[A, B]> {
+  or<B>(that: Supervisor<B>): Supervisor<readonly [A, B]> {
     return new Supervisor(
       zip_(this.value, that.value),
       (environment, effect, parent, fiber) =>
