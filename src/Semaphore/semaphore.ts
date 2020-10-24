@@ -100,7 +100,7 @@ export class Semaphore {
 
   prepare(n: number) {
     if (n === 0) {
-      return T.succeedNow(new Acquisition(T.unit, T.unit))
+      return T.succeed(new Acquisition(T.unit, T.unit))
     } else {
       return T.chain_(T.promiseMake<never, void>(), (p) =>
         pipe(

@@ -4,7 +4,7 @@ export {
   chain_,
   checkDescriptor,
   effectTotal,
-  succeed as succeedNow,
+  succeed,
   suspend,
   unit
 } from "../Effect/core"

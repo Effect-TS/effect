@@ -15,14 +15,14 @@ export const takeBetween = (min: number, max: number) => <RA, RB, EA, EB, A, B>(
 ): T.Effect<RB, EB, readonly B[]> => {
   function takeRemaining(n: number): T.Effect<RB, EB, A.Array<B>> {
     if (n <= 0) {
-      return T.succeedNow([])
+      return T.succeed([])
     } else {
       return T.chain_(self.take, (a) => T.map_(takeRemaining(n - 1), (_) => [a, ..._]))
     }
   }
 
   if (max < min) {
-    return T.succeedNow([])
+    return T.succeed([])
   } else {
     return pipe(
       self.takeUpTo(max),
@@ -37,7 +37,7 @@ export const takeBetween = (min: number, max: number) => <RA, RB, EA, EB, A, B>(
             ...A.reverse(list)
           ])
         } else {
-          return T.succeedNow(bs)
+          return T.succeed(bs)
         }
       })
     )
@@ -274,7 +274,7 @@ export const bothWith = <RA1, RB1, EA1, EB1, A1 extends A, C, B, D, A>(
   that: XQueue<RA1, RB1, EA1, EB1, A1, C>,
   f: (b: B, c: C) => D
 ) => <RA, RB, EA, EB>(self: XQueue<RA, RB, EA, EB, A, B>) =>
-  bothWithM_(self, that, (b, c) => T.succeedNow(f(b, c)))
+  bothWithM_(self, that, (b, c) => T.succeed(f(b, c)))
 
 /**
  * Like `bothWithM`, but uses a pure function.
@@ -283,7 +283,7 @@ export const bothWith_ = <RA, RB, EA, EB, RA1, RB1, EA1, EB1, A1 extends A, C, B
   self: XQueue<RA, RB, EA, EB, A, B>,
   that: XQueue<RA1, RB1, EA1, EB1, A1, C>,
   f: (b: B, c: C) => D
-) => bothWithM_(self, that, (b, c) => T.succeedNow(f(b, c)))
+) => bothWithM_(self, that, (b, c) => T.succeed(f(b, c)))
 
 /**
  * Like `bothWith`, but tuples the elements instead of applying a function.
@@ -420,7 +420,7 @@ export const filterInputM_ = <RA, RB, EA, EB, B, A, A1 extends A, R2, E2>(
     isShutdown: T.UIO<boolean> = self.isShutdown
 
     offer: (a: A1) => T.Effect<RA & R2, EA | E2, boolean> = (a) =>
-      T.chain_(f(a), (b) => (b ? self.offer(a) : T.succeedNow(false)))
+      T.chain_(f(a), (b) => (b ? self.offer(a) : T.succeed(false)))
 
     offerAll: (as: Iterable<A1>) => T.Effect<RA & R2, EA | E2, boolean> = (as) =>
       pipe(
@@ -435,7 +435,7 @@ export const filterInputM_ = <RA, RB, EA, EB, B, A, A1 extends A, R2, E2>(
           const filtered = A.filterMap_(maybeAs, identity)
 
           if (A.isEmpty(filtered)) {
-            return T.succeedNow(false)
+            return T.succeed(false)
           } else {
             return self.offerAll(filtered)
           }
@@ -466,7 +466,7 @@ export const filterInput = <A, A1 extends A>(f: (_: A1) => boolean) => <
   B
 >(
   self: XQueue<RA, RB, EA, EB, A, B>
-): XQueue<RA, RB, EA, EB, A1, B> => filterInputM_(self, (a) => T.succeedNow(f(a)))
+): XQueue<RA, RB, EA, EB, A1, B> => filterInputM_(self, (a) => T.succeed(f(a)))
 
 /**
  * Applies a filter to elements enqueued into this queue. Elements that do not
@@ -475,7 +475,7 @@ export const filterInput = <A, A1 extends A>(f: (_: A1) => boolean) => <
 export const filterInput_ = <RA, RB, EA, EB, B, A, A1 extends A>(
   self: XQueue<RA, RB, EA, EB, A, B>,
   f: (_: A1) => boolean
-): XQueue<RA, RB, EA, EB, A1, B> => filterInputM_(self, (a) => T.succeedNow(f(a)))
+): XQueue<RA, RB, EA, EB, A1, B> => filterInputM_(self, (a) => T.succeed(f(a)))
 
 /**
  * Transforms elements dequeued from this queue with an effectful function.
@@ -488,7 +488,7 @@ export const mapM = <B, R2, E2, C>(f: (b: B) => T.Effect<R2, E2, C>) => <
   A
 >(
   self: XQueue<RA, RB, EA, EB, A, B>
-) => dimapM_(self, (a: A) => T.succeedNow(a), f)
+) => dimapM_(self, (a: A) => T.succeed(a), f)
 
 /**
  * Transforms elements dequeued from this queue with an effectful function.
@@ -496,7 +496,7 @@ export const mapM = <B, R2, E2, C>(f: (b: B) => T.Effect<R2, E2, C>) => <
 export const mapM_ = <RA, RB, EA, EB, A, B, R2, E2, C>(
   self: XQueue<RA, RB, EA, EB, A, B>,
   f: (b: B) => T.Effect<R2, E2, C>
-) => dimapM_(self, (a: A) => T.succeedNow(a), f)
+) => dimapM_(self, (a: A) => T.succeed(a), f)
 
 /**
  * Take the head option of values in the queue.
