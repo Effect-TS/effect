@@ -358,7 +358,9 @@ export const modifySome_ = <EA, EB, A, B>(
  * Atomically writes the specified value to the `XRef`, returning the value
  * immediately before modification.
  */
-export const getAndSet = <A>(a: A) => <EA, EB>(self: XRef<EA, EB, A, A>) =>
+export const getAndSet = <A>(a: A) => <EA, EB>(
+  self: XRef<EA, EB, A, A>
+): IO<EA | EB, A> =>
   pipe(
     self,
     concrete,
