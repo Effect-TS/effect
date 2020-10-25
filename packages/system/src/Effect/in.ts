@@ -1,6 +1,6 @@
+import { head } from "../Array"
 import * as Fiber from "../Fiber"
-import { flow, pipe } from "../Function"
-import { first, from } from "../List"
+import { pipe } from "../Function"
 import * as O from "../Option"
 import type { Scope } from "../Scope"
 import { chain } from "./core"
@@ -27,10 +27,10 @@ function in_(scope: Scope<any>) {
             chain(() =>
               pipe(
                 restore(Fiber.join(fiber)),
-                onInterrupt(
-                  flow(
-                    from,
-                    first,
+                onInterrupt((x) =>
+                  pipe(
+                    Array.from(x),
+                    head,
                     O.fold(
                       () => Fiber.interrupt(fiber),
                       (id) => fiber.interruptAs(id)
