@@ -124,15 +124,6 @@ export function accessMF<F>(
   return flow(F.access, F.flatten)
 }
 
-type SMix<F extends HKT.URIS, C, NER, P extends HKT.Param, AS> = HKT.MixStruct<
-  C,
-  P,
-  AS,
-  {
-    [K in keyof NER]: HKT.Infer<F, P, NER[K]>
-  }
->
-
 export function structF<F extends HKT.URIS, C = HKT.Auto>(
   F: Applicative<F, C>
 ): <
@@ -184,17 +175,17 @@ export function structF<F extends HKT.URIS, C = HKT.Auto>(
 ) => HKT.Kind<
   F,
   C,
-  SMix<F, C, NER, "N", N>,
-  SMix<F, C, NER, "K", K>,
-  SMix<F, C, NER, "Q", Q>,
-  SMix<F, C, NER, "W", W>,
-  SMix<F, C, NER, "X", X>,
-  SMix<F, C, NER, "I", I>,
-  SMix<F, C, NER, "S", S>,
-  SMix<F, C, NER, "R", R>,
-  SMix<F, C, NER, "E", E>,
+  HKT.Infer<F, C, "N", NER[keyof NER]>,
+  HKT.Infer<F, C, "K", NER[keyof NER]>,
+  HKT.Infer<F, C, "Q", NER[keyof NER]>,
+  HKT.Infer<F, C, "W", NER[keyof NER]>,
+  HKT.Infer<F, C, "X", NER[keyof NER]>,
+  HKT.Infer<F, C, "I", NER[keyof NER]>,
+  HKT.Infer<F, C, "S", NER[keyof NER]>,
+  HKT.Infer<F, C, "R", NER[keyof NER]>,
+  HKT.Infer<F, C, "E", NER[keyof NER]>,
   {
-    [K in keyof NER]: HKT.Infer<F, "A", NER[K]>
+    [K in keyof NER]: HKT.Infer<F, C, "A", NER[K]>
   }
 >
 export function structF<F>(
@@ -237,21 +228,6 @@ function getTupleConstructor(len: number): (a: unknown) => any {
   }
   return tupleConstructors[len]
 }
-
-type TMix<
-  F extends HKT.URIS,
-  C,
-  T extends Array<HKT.Kind<F, C, any, any, any, any, any, any, any, any, any, any>>,
-  P extends HKT.Param,
-  AS
-> = HKT.MixStruct<
-  C,
-  P,
-  AS,
-  {
-    [K in keyof T & number]: HKT.Infer<F, P, T[K]>
-  }
->
 
 export function tupleF<F extends HKT.URIS, C>(
   F: Applicative<F, C>
@@ -301,15 +277,15 @@ export function tupleF<F extends HKT.URIS, C>(
 ) => HKT.Kind<
   F,
   C,
-  TMix<F, C, T, "N", N>,
-  TMix<F, C, T, "K", K>,
-  TMix<F, C, T, "Q", Q>,
-  TMix<F, C, T, "W", W>,
-  TMix<F, C, T, "X", X>,
-  TMix<F, C, T, "I", I>,
-  TMix<F, C, T, "S", S>,
-  TMix<F, C, T, "R", R>,
-  TMix<F, C, T, "E", E>,
+  HKT.Infer<F, C, "N", T[number]>,
+  HKT.Infer<F, C, "K", T[number]>,
+  HKT.Infer<F, C, "Q", T[number]>,
+  HKT.Infer<F, C, "W", T[number]>,
+  HKT.Infer<F, C, "X", T[number]>,
+  HKT.Infer<F, C, "I", T[number]>,
+  HKT.Infer<F, C, "S", T[number]>,
+  HKT.Infer<F, C, "R", T[number]>,
+  HKT.Infer<F, C, "E", T[number]>,
   {
     [K in keyof T]: [T[K]] extends [
       HKT.Kind<F, C, any, any, any, any, any, any, any, any, any, infer A>
