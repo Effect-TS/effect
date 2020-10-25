@@ -1,5 +1,5 @@
 import * as R from "../Record"
-import type { EnforceNonEmptyRecord, UnionToIntersection } from "../Utils"
+import type { _E, _R, EnforceNonEmptyRecord } from "../Utils"
 import type { Effect } from "./effect"
 import { foreach_ } from "./foreach_"
 import { foreachPar_ } from "./foreachPar_"
@@ -9,18 +9,8 @@ import { map_ } from "./map_"
 export function struct<NER extends Record<string, Effect<any, any, any>>>(
   r: EnforceNonEmptyRecord<NER> & Record<string, Effect<any, any, any>>
 ): Effect<
-  UnionToIntersection<
-    {
-      [K in keyof NER]: [NER[K]] extends [Effect<infer R, any, any>]
-        ? unknown extends R
-          ? never
-          : R
-        : never
-    }[keyof NER]
-  >,
-  {
-    [K in keyof NER]: [NER[K]] extends [Effect<any, infer E, any>] ? E : never
-  }[keyof NER],
+  _R<NER[keyof NER]>,
+  _E<NER[keyof NER]>,
   {
     [K in keyof NER]: [NER[K]] extends [Effect<any, any, infer A>] ? A : never
   }
@@ -43,18 +33,8 @@ export function struct<NER extends Record<string, Effect<any, any, any>>>(
 export function structPar<NER extends Record<string, Effect<any, any, any>>>(
   r: EnforceNonEmptyRecord<NER> & Record<string, Effect<any, any, any>>
 ): Effect<
-  UnionToIntersection<
-    {
-      [K in keyof NER]: [NER[K]] extends [Effect<infer R, any, any>]
-        ? unknown extends R
-          ? never
-          : R
-        : never
-    }[keyof NER]
-  >,
-  {
-    [K in keyof NER]: [NER[K]] extends [Effect<any, infer E, any>] ? E : never
-  }[keyof NER],
+  _R<NER[keyof NER]>,
+  _E<NER[keyof NER]>,
   {
     [K in keyof NER]: [NER[K]] extends [Effect<any, any, infer A>] ? A : never
   }
@@ -79,18 +59,8 @@ export function structParN(
 ): <NER extends Record<string, Effect<any, any, any>>>(
   r: EnforceNonEmptyRecord<NER> & Record<string, Effect<any, any, any>>
 ) => Effect<
-  UnionToIntersection<
-    {
-      [K in keyof NER]: [NER[K]] extends [Effect<infer R, any, any>]
-        ? unknown extends R
-          ? never
-          : R
-        : never
-    }[keyof NER]
-  >,
-  {
-    [K in keyof NER]: [NER[K]] extends [Effect<any, infer E, any>] ? E : never
-  }[keyof NER],
+  _R<NER[keyof NER]>,
+  _E<NER[keyof NER]>,
   {
     [K in keyof NER]: [NER[K]] extends [Effect<any, any, infer A>] ? A : never
   }
