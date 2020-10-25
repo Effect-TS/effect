@@ -5,7 +5,7 @@ import { getOrFail } from "../../Effect/getOrFail"
 import type { Either } from "../../Either"
 import { identity } from "../../Function"
 import type { NoSuchElementException } from "../../GlobalExceptions"
-import type { Tag } from "../../Has"
+import type { Has, Tag } from "../../Has"
 import type { Option } from "../../Option"
 import type { _E, _R } from "../../Utils"
 import { isEither, isOption, isTag } from "../../Utils"
@@ -51,7 +51,7 @@ const adapter = (_: any, __?: any) => {
 
 export function gen<RBase, EBase, AEff>(): <Eff extends GenManaged<RBase, EBase, any>>(
   f: (i: {
-    <A>(_: Tag<A>): GenManaged<A, never, A>
+    <A>(_: Tag<A>): GenManaged<Has<A>, never, A>
     <E, A>(_: Option<A>, onNone: () => E): GenManaged<unknown, E, A>
     <A>(_: Option<A>): GenManaged<unknown, NoSuchElementException, A>
     <E, A>(_: Either<E, A>): GenManaged<unknown, E, A>
@@ -61,7 +61,7 @@ export function gen<RBase, EBase, AEff>(): <Eff extends GenManaged<RBase, EBase,
 ) => Managed<_R<Eff>, _E<Eff>, AEff>
 export function gen<EBase, AEff>(): <Eff extends GenManaged<any, EBase, any>>(
   f: (i: {
-    <A>(_: Tag<A>): GenManaged<A, never, A>
+    <A>(_: Tag<A>): GenManaged<Has<A>, never, A>
     <E, A>(_: Option<A>, onNone: () => E): GenManaged<unknown, E, A>
     <A>(_: Option<A>): GenManaged<unknown, NoSuchElementException, A>
     <E, A>(_: Either<E, A>): GenManaged<unknown, E, A>
@@ -71,7 +71,7 @@ export function gen<EBase, AEff>(): <Eff extends GenManaged<any, EBase, any>>(
 ) => Managed<_R<Eff>, _E<Eff>, AEff>
 export function gen<AEff>(): <Eff extends GenManaged<any, any, any>>(
   f: (i: {
-    <A>(_: Tag<A>): GenManaged<A, never, A>
+    <A>(_: Tag<A>): GenManaged<Has<A>, never, A>
     <E, A>(_: Option<A>, onNone: () => E): GenManaged<unknown, E, A>
     <A>(_: Option<A>): GenManaged<unknown, NoSuchElementException, A>
     <E, A>(_: Either<E, A>): GenManaged<unknown, E, A>
@@ -81,7 +81,7 @@ export function gen<AEff>(): <Eff extends GenManaged<any, any, any>>(
 ) => Managed<_R<Eff>, _E<Eff>, AEff>
 export function gen<Eff extends GenManaged<any, any, any>, AEff>(
   f: (i: {
-    <A>(_: Tag<A>): GenManaged<A, never, A>
+    <A>(_: Tag<A>): GenManaged<Has<A>, never, A>
     <E, A>(_: Option<A>, onNone: () => E): GenManaged<unknown, E, A>
     <A>(_: Option<A>): GenManaged<unknown, NoSuchElementException, A>
     <E, A>(_: Either<E, A>): GenManaged<unknown, E, A>
