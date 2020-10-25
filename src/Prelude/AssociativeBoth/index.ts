@@ -22,15 +22,15 @@ export interface AssociativeBoth<F extends HKT.URIS, C = HKT.Auto>
   ) => HKT.Kind<
     F,
     C,
-    HKT.Mix<C, "N", [N2, N]>,
-    HKT.Mix<C, "K", [K2, K]>,
-    HKT.Mix<C, "Q", [Q2, Q]>,
-    HKT.Mix<C, "W", [W2, W]>,
-    HKT.Mix<C, "X", [X2, X]>,
-    HKT.Mix<C, "I", [I2, I]>,
-    HKT.Mix<C, "S", [S2, S]>,
-    HKT.Mix<C, "R", [R2, R]>,
-    HKT.Mix<C, "E", [E2, E]>,
+    HKT.Infer<F, C, "N", typeof fa | typeof fb>,
+    HKT.Infer<F, C, "K", typeof fa | typeof fb>,
+    HKT.Infer<F, C, "Q", typeof fa | typeof fb>,
+    HKT.Infer<F, C, "W", typeof fa | typeof fb>,
+    HKT.Infer<F, C, "X", typeof fa | typeof fb>,
+    HKT.Infer<F, C, "I", typeof fa | typeof fb>,
+    HKT.Infer<F, C, "S", typeof fa | typeof fb>,
+    HKT.Infer<F, C, "R", typeof fa | typeof fb>,
+    HKT.Infer<F, C, "E", typeof fa | typeof fb>,
     readonly [A, B]
   >
 }

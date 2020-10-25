@@ -39,15 +39,15 @@ export function genWithHistoryF<
 ) => HKT.Kind<
   F,
   C,
-  HKT.Infer<F, "N", Eff["effect"]>,
-  HKT.Infer<F, "K", Eff["effect"]>,
-  HKT.Infer<F, "Q", Eff["effect"]>,
-  HKT.Infer<F, "W", Eff["effect"]>,
-  HKT.Infer<F, "X", Eff["effect"]>,
-  HKT.Infer<F, "I", Eff["effect"]>,
-  HKT.Infer<F, "S", Eff["effect"]>,
-  HKT.Infer<F, "R", Eff["effect"]>,
-  HKT.Infer<F, "E", Eff["effect"]>,
+  HKT.Infer<F, C, "N", Eff["effect"]>,
+  HKT.Infer<F, C, "K", Eff["effect"]>,
+  HKT.Infer<F, C, "Q", Eff["effect"]>,
+  HKT.Infer<F, C, "W", Eff["effect"]>,
+  HKT.Infer<F, C, "X", Eff["effect"]>,
+  HKT.Infer<F, C, "I", Eff["effect"]>,
+  HKT.Infer<F, C, "S", Eff["effect"]>,
+  HKT.Infer<F, C, "R", Eff["effect"]>,
+  HKT.Infer<F, C, "E", Eff["effect"]>,
   AEff
 >
 export function genWithHistoryF<F>(
@@ -117,15 +117,15 @@ export function genF<
 ) => HKT.Kind<
   F,
   C,
-  HKT.Infer<F, "N", Eff["effect"]>,
-  HKT.Infer<F, "K", Eff["effect"]>,
-  HKT.Infer<F, "Q", Eff["effect"]>,
-  HKT.Infer<F, "W", Eff["effect"]>,
-  HKT.Infer<F, "X", Eff["effect"]>,
-  HKT.Infer<F, "I", Eff["effect"]>,
-  HKT.Infer<F, "S", Eff["effect"]>,
-  HKT.Infer<F, "R", Eff["effect"]>,
-  HKT.Infer<F, "E", Eff["effect"]>,
+  HKT.Infer<F, C, "N", Eff["effect"]>,
+  HKT.Infer<F, C, "K", Eff["effect"]>,
+  HKT.Infer<F, C, "Q", Eff["effect"]>,
+  HKT.Infer<F, C, "W", Eff["effect"]>,
+  HKT.Infer<F, C, "X", Eff["effect"]>,
+  HKT.Infer<F, C, "I", Eff["effect"]>,
+  HKT.Infer<F, C, "S", Eff["effect"]>,
+  HKT.Infer<F, C, "R", Eff["effect"]>,
+  HKT.Infer<F, C, "E", Eff["effect"]>,
   AEff
 >
 export function genF<F>(
