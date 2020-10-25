@@ -1,10 +1,10 @@
 import type { Param } from "./fix"
 import type { Kind, URIS } from "./kind"
 
-export type Infer<F extends URIS, P extends Param | "A" | "C", K> = [K] extends [
+export type Infer<F extends URIS, C, P extends Param | "A" | "C", K> = [K] extends [
   Kind<
     F,
-    infer C,
+    C,
     infer N,
     infer K,
     infer Q,
