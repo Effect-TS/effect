@@ -14,7 +14,7 @@ export class AtomicNumber extends AtomicReference<number> {
   }
 
   decrementAndGet() {
-    this.set(this.get + 1)
+    this.set(this.get - 1)
     return this.get
   }
 
