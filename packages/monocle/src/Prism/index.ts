@@ -6,13 +6,12 @@
  * 1. getOption(s).fold(s, reverseGet) = s
  * 2. getOption(reverseGet(a)) = Some(a)
  */
+import type { Either } from "@effect-ts/core/Classic/Either"
+import * as O from "@effect-ts/core/Classic/Option"
+import type { Predicate, Refinement } from "@effect-ts/core/Function"
+import { flow, identity, pipe } from "@effect-ts/core/Function"
 import type { Newtype } from "@effect-ts/core/Newtype"
 import * as P from "@effect-ts/core/Prelude"
-import type { Either } from "fp-ts/lib/Either"
-import type { Predicate, Refinement } from "fp-ts/lib/function"
-import { flow, identity } from "fp-ts/lib/function"
-import * as O from "fp-ts/lib/Option"
-import { pipe } from "fp-ts/lib/pipeable"
 
 import * as _ from "../Internal"
 import type { Lens } from "../Lens"
