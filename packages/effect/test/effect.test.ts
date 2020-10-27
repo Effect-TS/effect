@@ -145,12 +145,6 @@ describe("Effect", () => {
 
     expect(result).toEqual(Exit.succeed(2))
 
-    expect(a).toHaveBeenCalledTimes(0)
-    expect(b).toHaveBeenCalledTimes(0)
-    expect(c).toHaveBeenCalledTimes(0)
-
-    await T.runPromise(T.sleep(100))
-
     expect(a).toHaveBeenCalledTimes(1)
     expect(b).toHaveBeenCalledTimes(0)
     expect(c).toHaveBeenCalledTimes(1)
