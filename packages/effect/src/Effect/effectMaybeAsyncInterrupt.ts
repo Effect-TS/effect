@@ -37,7 +37,7 @@ export function effectMaybeAsyncInterrupt<R, E, A>(
     ([started, cancel]) =>
       onInterrupt_(
         flatten(
-          effectAsyncOption<R, E, Effect<R, E, A>>((k) => {
+          effectAsyncOption<unknown, never, Effect<R, E, A>>((k) => {
             started.set(true)
 
             const ret = new AtomicReference<O.Option<UIO<Effect<R, E, A>>>>(O.none)
