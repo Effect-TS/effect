@@ -335,7 +335,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
               )
             )
 
-            this.evaluateNow(T.interruptAs(this.fiberId)[T._I])
+            this.evaluateLater(T.interruptAs(this.fiberId)[T._I])
 
             return newCause
           } else {

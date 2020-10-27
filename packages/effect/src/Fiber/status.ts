@@ -29,24 +29,26 @@ export class Suspended {
   ) {}
 }
 
-export const withInterrupting = (b: boolean) => (s: Status): Status => {
-  switch (s._tag) {
-    case "Done": {
-      return s
-    }
-    case "Finishing": {
-      return new Finishing(b)
-    }
-    case "Running": {
-      return new Running(b)
-    }
-    case "Suspended": {
-      return new Suspended(
-        withInterrupting(b)(s.previous),
-        s.interruptible,
-        s.epoch,
-        s.blockingOn
-      )
+export function withInterrupting(b: boolean) {
+  return (s: Status): Status => {
+    switch (s._tag) {
+      case "Done": {
+        return s
+      }
+      case "Finishing": {
+        return new Finishing(b)
+      }
+      case "Running": {
+        return new Running(b)
+      }
+      case "Suspended": {
+        return new Suspended(
+          withInterrupting(b)(s.previous),
+          s.interruptible,
+          s.epoch,
+          s.blockingOn
+        )
+      }
     }
   }
 }
