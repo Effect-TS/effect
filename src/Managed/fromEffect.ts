@@ -1,6 +1,5 @@
 import * as T from "./deps"
 import { Managed } from "./managed"
-import type { ReleaseMap } from "./releaseMap"
 import * as RelMap from "./releaseMap"
 
 /**
@@ -10,7 +9,7 @@ import * as RelMap from "./releaseMap"
 export function fromEffect<R, E, A>(effect: T.Effect<R, E, A>) {
   return new Managed<R, E, A>(
     T.map_(
-      T.accessM((_: readonly [R, ReleaseMap]) => T.provideAll_(effect, _[0])),
+      T.provideSome_(effect, ([_]) => _),
       (a) => [RelMap.noopFinalizer, a]
     )
   )
