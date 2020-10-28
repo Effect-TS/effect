@@ -18,16 +18,19 @@ export const decoderRefinedInterpreter = memo(
           new DecoderType(
             decoderApplyConfig(cfg?.conf)(
               {
-                decode: (u) =>
-                  T.chain_(decoder.decode(u), (a) =>
+                validate: (u, c) =>
+                  T.chain_(decoder.validate(u, c), (a) =>
                     ref(a)
                       ? T.succeed(a)
                       : fail([
                           {
                             id: cfg?.id,
                             name: cfg?.name,
-                            actual: u,
-                            message: `${typeof u} cannot be refined`
+                            message: `${typeof u} cannot be refined`,
+                            context: {
+                              ...c,
+                              actual: u
+                            }
                           }
                         ])
                   )
@@ -44,14 +47,17 @@ export const decoderRefinedInterpreter = memo(
           new DecoderType(
             decoderApplyConfig(config?.conf)(
               {
-                decode: (u) =>
-                  T.chain_(decoder.decode(u), (a) =>
+                validate: (u, c) =>
+                  T.chain_(decoder.validate(u, c), (a) =>
                     ref(a)
                       ? T.succeed(a)
                       : fail([
                           {
-                            actual: u,
-                            message: `${typeof u} cannot be constrained`
+                            message: `${typeof u} cannot be constrained`,
+                            context: {
+                              ...c,
+                              actual: u
+                            }
                           }
                         ])
                   )

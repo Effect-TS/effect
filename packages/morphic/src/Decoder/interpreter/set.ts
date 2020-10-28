@@ -27,15 +27,27 @@ export const decoderSetInterpreter = memo(
           new DecoderType(
             decoderApplyConfig(cfg?.conf)(
               {
-                decode: (u) =>
+                validate: (u, c) =>
                   Array.isArray(u)
-                    ? pipe(u, foreachArray(decoder.decode), T.map(S.fromArray(_)))
+                    ? pipe(
+                        u,
+                        foreachArray((k, a) =>
+                          decoder.validate(u, {
+                            key: `${c.key}[${k}]`,
+                            actual: u
+                          })
+                        ),
+                        T.map(S.fromArray(_))
+                      )
                     : fail([
                         {
                           id: cfg?.id,
                           name: cfg?.name,
-                          actual: u,
-                          message: `${typeof u} is not a Set`
+                          message: `${typeof u} is not a Set`,
+                          context: {
+                            ...c,
+                            actual: u
+                          }
                         }
                       ])
               },

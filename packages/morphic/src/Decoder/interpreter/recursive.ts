@@ -24,7 +24,7 @@ export const decoderRecursiveInterpreter = memo(
             (getDecoder) =>
               decoderApplyConfig(config?.config)(
                 {
-                  decode: (u) => getDecoder().decode(u)
+                  validate: (u, c) => getDecoder().validate(u, c)
                 },
                 env,
                 {}

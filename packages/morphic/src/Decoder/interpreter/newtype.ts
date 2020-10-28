@@ -1,5 +1,5 @@
 import * as O from "@effect-ts/core/Classic/Option"
-import { flow, pipe } from "@effect-ts/core/Function"
+import { pipe } from "@effect-ts/core/Function"
 import * as T from "@effect-ts/core/Sync"
 
 import type { AnyEnv } from "../../Algebra/config"
@@ -19,7 +19,8 @@ export const decoderNewtypeInterpreter = memo(
           new DecoderType(
             decoderApplyConfig(cfg?.conf)(
               {
-                decode: flow(decoder.decode, T.map(iso.get))
+                validate: (u, c) =>
+                  pipe(decoder.validate(u, { ...c, actual: u }), T.map(iso.get))
               },
               env,
               { decoder }
@@ -33,10 +34,9 @@ export const decoderNewtypeInterpreter = memo(
           new DecoderType(
             decoderApplyConfig(cfg?.conf)(
               {
-                decode: (u) =>
+                validate: (u, c) =>
                   pipe(
-                    u,
-                    decoder.decode,
+                    decoder.validate(u, { ...c, actual: u }),
                     T.map(prism.getOption),
                     T.chain(
                       O.fold(
@@ -45,8 +45,8 @@ export const decoderNewtypeInterpreter = memo(
                             {
                               id: cfg?.id,
                               name: cfg?.name,
-                              actual: u,
-                              message: `newtype doesn't satisfy prism conditions`
+                              message: `newtype doesn't satisfy prism conditions`,
+                              context: { ...c, actual: u }
                             }
                           ]),
                         T.succeed

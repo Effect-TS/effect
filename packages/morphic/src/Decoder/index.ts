@@ -14,6 +14,17 @@ import { report } from "./common"
 import type { DecoderURI } from "./hkt"
 import { modelDecoderInterpreter } from "./interpreter"
 
+export type {
+  Decoder,
+  ContextEntry,
+  DecodeError,
+  DecodingError,
+  Validate,
+  ValidationError,
+  report,
+  fail
+} from "./common"
+
 export function deriveFor<S extends Summoner<any>>(S: S) {
   return (
     _: {
@@ -31,7 +42,9 @@ export function decoder<E, A>(F: M<{}, E, A>): Decoder<A> {
   if (decoders.has(F)) {
     return decoders.get(F)
   }
-  const d = defDerive(F)
+  const d: Decoder<A> = {
+    decode: (u) => defDerive(F).validate(u, { actual: u, key: "" })
+  }
   decoders.set(F, d)
   return d
 }
@@ -39,5 +52,3 @@ export function decoder<E, A>(F: M<{}, E, A>): Decoder<A> {
 export function decodeReport<E, A>(F: M<{}, E, A>) {
   return flow(decoder(F).decode, mapError(report))
 }
-
-export { report }

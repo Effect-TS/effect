@@ -76,6 +76,26 @@ describe("FastCheck", () => {
       })
     )
   })
+  it("Track fields", () => {
+    expect(
+      T.runEither(decoder(Person).decode({ name: { first: "Michael", last: 1 } }))
+    ).toEqual(
+      E.left({
+        _tag: "DecodeError",
+        errors: [
+          {
+            context: {
+              actual: 1,
+              key: "name.last"
+            },
+            id: undefined,
+            message: "number is not a string",
+            name: undefined
+          }
+        ]
+      })
+    )
+  })
   it("Decodes Person", () => {
     expect(
       T.runEither(

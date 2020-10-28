@@ -15,15 +15,18 @@ export const decoderUnknownInterpreter = memo(
       new DecoderType(
         decoderApplyConfig(cfg?.conf)(
           {
-            decode: (u) =>
+            validate: (u, c) =>
               isUnknownRecord(u)
                 ? T.succeed(u)
                 : fail([
                     {
                       id: cfg?.id,
                       name: cfg?.name,
-                      actual: u,
-                      message: `${typeof u} is not a record`
+                      message: `${typeof u} is not a record`,
+                      context: {
+                        ...c,
+                        actual: u
+                      }
                     }
                   ])
           },

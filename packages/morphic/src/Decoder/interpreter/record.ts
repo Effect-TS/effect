@@ -4,11 +4,10 @@ import type { AnyEnv } from "../../Algebra/config"
 import type { AlgebraRecord1 } from "../../Algebra/record"
 import { isUnknownRecord } from "../../Guard/interpreter/common"
 import { memo } from "../../Internal/Utils"
-import type { DecodingError } from "../common"
 import { fail } from "../common"
 import { decoderApplyConfig } from "../config"
 import { DecoderType, DecoderURI } from "../hkt"
-import { foreachRecord } from "./common"
+import { foreachRecordWithIndex } from "./common"
 
 export const decoderRecordInterpreter = memo(
   <Env extends AnyEnv>(): AlgebraRecord1<DecoderURI, Env> => ({
@@ -20,15 +19,20 @@ export const decoderRecordInterpreter = memo(
           new DecoderType(
             decoderApplyConfig(cfg?.conf)(
               {
-                decode: (u) =>
+                validate: (u, c) =>
                   isUnknownRecord(u)
-                    ? foreachRecord(decoder.decode)(u)
+                    ? foreachRecordWithIndex((k, a) =>
+                        decoder.validate(a, { key: `${c.key}.${k}`, actual: u })
+                      )(u)
                     : fail([
-                        <DecodingError>{
+                        {
                           id: cfg?.id,
                           name: cfg?.name,
-                          actual: u,
-                          message: `${typeof u} is not a record`
+                          message: `${typeof u} is not a record`,
+                          context: {
+                            ...c,
+                            actual: u
+                          }
                         }
                       ])
               },

@@ -5,11 +5,11 @@ import type { AnyEnv } from "../../Algebra/config"
 import type { AlgebraObject1, PropsKind1 } from "../../Algebra/object"
 import { isUnknownRecord } from "../../Guard/interpreter/common"
 import { memo, projectFieldWithEnv } from "../../Internal/Utils"
-import type { Decoder } from "../common"
+import type { Validate } from "../common"
 import { fail } from "../common"
 import { decoderApplyConfig } from "../config"
 import { DecoderType, DecoderURI } from "../hkt"
-import { foreachRecordWithIndex, tuple } from "./common"
+import { fixKey, foreachRecordWithIndex, tuple } from "./common"
 
 export const decoderObjectInterpreter = memo(
   <Env extends AnyEnv>(): AlgebraObject1<DecoderURI, Env> => ({
@@ -47,11 +47,14 @@ export const decoderObjectInterpreter = memo(
           return new DecoderType(
             decoderApplyConfig(cfg?.conf)(
               {
-                decode: (u) =>
+                validate: (u, c) =>
                   T.map_(
                     tuple(
-                      interfaceDecoder(keys, decoder, cfg?.id, cfg?.name).decode(u),
-                      partialDecoder(decoderPartial, cfg?.id, cfg?.name).decode(u)
+                      interfaceDecoder(keys, decoder, cfg?.id, cfg?.name).validate(
+                        u,
+                        c
+                      ),
+                      partialDecoder(decoderPartial, cfg?.id, cfg?.name).validate(u, c)
                     ),
                     ([r, o]) => ({ ...r, ...o })
                   )
@@ -76,14 +79,19 @@ function partialDecoder<Props, Env extends AnyEnv>(
   },
   id?: string,
   name?: string
-): Decoder<Partial<Readonly<Props>>> {
+): Validate<Partial<Readonly<Props>>> {
   return {
-    decode: (u) => {
+    validate: (u, c) => {
       if (isUnknownRecord(u)) {
         return pipe(
           u,
           foreachRecordWithIndex((k, a) =>
-            decoder[k] ? decoder[k].decode(a) : T.succeed(a)
+            decoder[k]
+              ? (decoder[k] as Validate<any>).validate(a, {
+                  key: fixKey(`${c.key}.${k}`),
+                  actual: a
+                })
+              : T.succeed(a)
           )
         ) as any
       }
@@ -91,8 +99,11 @@ function partialDecoder<Props, Env extends AnyEnv>(
         {
           id,
           name,
-          actual: u,
-          message: `${typeof u} is not a record`
+          message: `${typeof u} is not a record`,
+          context: {
+            ...c,
+            actual: u
+          }
         }
       ])
     }
@@ -108,16 +119,21 @@ function interfaceDecoder<Props, Env extends AnyEnv>(
   },
   id?: string,
   name?: string
-): Decoder<Readonly<Props>> {
+): Validate<Readonly<Props>> {
   return {
-    decode: (u) => {
+    validate: (u, c) => {
       if (isUnknownRecord(u)) {
         const uk = Object.keys(u)
         if (keys.length <= uk.length && keys.every((v) => uk.includes(v))) {
           return pipe(
             u,
             foreachRecordWithIndex((k, a) =>
-              decoder[k] ? decoder[k].decode(a) : T.succeed(a)
+              decoder[k]
+                ? (decoder[k] as Validate<any>).validate(a, {
+                    key: fixKey(`${c.key}.${k}`),
+                    actual: a
+                  })
+                : T.succeed(a)
             )
           ) as any
         }
@@ -125,12 +141,25 @@ function interfaceDecoder<Props, Env extends AnyEnv>(
           {
             id,
             name,
-            actual: u,
-            message: `not all the required fields are present`
+            message: `not all the required fields are present`,
+            context: {
+              ...c,
+              actual: u
+            }
           }
         ])
       }
-      return fail([{ id, name, actual: u, message: `${typeof u} is not a record` }])
+      return fail([
+        {
+          id,
+          name,
+          message: `${typeof u} is not a record`,
+          context: {
+            ...c,
+            actual: u
+          }
+        }
+      ])
     }
   }
 }

@@ -2,7 +2,7 @@ import type { AnyEnv } from "../../Algebra/config"
 import type { AlgebraTaggedUnion1 } from "../../Algebra/tagged-union"
 import { isUnknownRecord } from "../../Guard/interpreter/common"
 import { mapRecord, memo } from "../../Internal/Utils"
-import type { Decoder } from "../common"
+import type { Validate } from "../common"
 import { fail } from "../common"
 import { decoderApplyConfig } from "../config"
 import { DecoderType, DecoderURI } from "../hkt"
@@ -16,22 +16,28 @@ export const decoderTaggedUnionInterpreter = memo(
       return new DecoderType(
         decoderApplyConfig(cfg?.conf)(
           {
-            decode: (u) => {
+            validate: (u, c) => {
               if (isUnknownRecord(u)) {
                 if (tag in u) {
                   const dec = decoders[u[tag] as any]
 
                   if (dec) {
-                    return (dec as Decoder<any>).decode(u)
+                    return (dec as Validate<any>).validate(u, {
+                      ...c,
+                      actual: u
+                    })
                   } else {
                     return fail([
                       {
                         id: cfg?.id,
                         name: cfg?.name,
-                        actual: u,
                         message: `${u[tag]} is not known in (${Object.keys(
                           decoders
-                        ).join(", ")})`
+                        ).join(", ")})`,
+                        context: {
+                          ...c,
+                          actual: u
+                        }
                       }
                     ])
                   }
@@ -40,8 +46,11 @@ export const decoderTaggedUnionInterpreter = memo(
                   {
                     id: cfg?.id,
                     name: cfg?.name,
-                    actual: u,
-                    message: `${tag} field not found`
+                    message: `${tag} field not found`,
+                    context: {
+                      ...c,
+                      actual: u
+                    }
                   }
                 ])
               }
@@ -49,8 +58,11 @@ export const decoderTaggedUnionInterpreter = memo(
                 {
                   id: cfg?.id,
                   name: cfg?.name,
-                  actual: u,
-                  message: `${typeof u} is not a record`
+                  message: `${typeof u} is not a record`,
+                  context: {
+                    ...c,
+                    actual: u
+                  }
                 }
               ])
             }

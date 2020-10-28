@@ -18,9 +18,8 @@ export const Validation = DSL.getValidationF({
   ...T.Fail
 })(AssociativeDecodeError)
 
-export const foreachNonEmptyArray = NA.foreachF(Validation)
-export const foreachArray = A.foreachF(Validation)
-export const foreachRecord = R.foreachF(Validation)
+export const foreachNonEmptyArray = NA.foreachWithIndexF(Validation)
+export const foreachArray = A.foreachWithIndexF(Validation)
 export const foreachRecordWithIndex = R.foreachWithIndexF(Validation)
 export const tuple = DSL.tupleF(Validation)
 export const struct = DSL.structF(Validation)
@@ -39,4 +38,11 @@ export function mergePrefer(u: any, b: any, a: any) {
   }
 
   return r
+}
+
+export function fixKey(s: string) {
+  if (s.startsWith(".")) {
+    return s.substr(1)
+  }
+  return s
 }
