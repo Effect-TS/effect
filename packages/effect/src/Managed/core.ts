@@ -670,6 +670,15 @@ export function useNow<R, E, A>(self: Managed<R, E, A>) {
 }
 
 /**
+ * Use the resource until interruption. Useful for resources that you want
+ * to acquire and use as long as the application is running, like a
+ * HTTP server.
+ */
+export function useForever<R, E, A>(self: Managed<R, E, A>) {
+  return use_(self, () => T.never)
+}
+
+/**
  * Returns a managed that executes both this managed and the specified managed,
  * in sequence, combining their results with the specified `f` function.
  */

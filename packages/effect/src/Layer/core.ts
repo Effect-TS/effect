@@ -418,3 +418,11 @@ export function restrict<Tags extends Tag<any>[]>(...ts: Tags) {
       )
     ) as any
 }
+
+/**
+ * Builds this layer and uses it until it is interrupted. This is useful when
+ * your entire application is a layer, such as an HTTP server.
+ */
+export function launch<R, E, A>(self: Layer<R, E, A>): T.Effect<R, E, never> {
+  return M.useForever(build(self))
+}
