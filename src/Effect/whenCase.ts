@@ -1,6 +1,6 @@
 import type * as O from "../Option"
-import { suspend, unit } from "."
 import { asUnit } from "./asUnit"
+import { suspend, unit } from "./core"
 import type { Effect } from "./effect"
 
 /**
