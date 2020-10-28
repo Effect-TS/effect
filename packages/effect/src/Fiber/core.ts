@@ -48,6 +48,7 @@ export interface CommonFiber<E, A> {
 
 export interface Runtime<E, A> extends CommonFiber<E, A> {
   _tag: "RuntimeFiber"
+  id: FiberID
 }
 
 export interface Synthetic<E, A> extends CommonFiber<E, A> {
