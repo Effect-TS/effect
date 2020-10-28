@@ -16,6 +16,6 @@ export function whenM_<R1, E1, A, R, E>(
 /**
  * The moral equivalent of `if (p) exp` when `p` has side-effects
  */
-export function whenM<R, E>(self: Effect<R, E, boolean>) {
-  return <R1, E1, A>(predicate: Effect<R1, E1, A>) => whenM_(predicate, self)
+export function whenM<R, E>(predicate: Effect<R, E, boolean>) {
+  return <R1, E1, A>(self: Effect<R1, E1, A>) => whenM_(self, predicate)
 }
