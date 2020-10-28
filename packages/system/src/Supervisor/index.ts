@@ -109,7 +109,7 @@ export const _continue = new Continue()
 export const track = effectTotal(() => {
   const set = new Set<Runtime<any, any>>()
 
-  return new Supervisor<Runtime<any, any>[]>(
+  return new Supervisor<readonly Runtime<any, any>[]>(
     effectTotal(() => Array.from(set)),
     (_, __, ___, fiber) => {
       set.add(fiber)
