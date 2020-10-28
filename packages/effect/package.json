@@ -45,6 +45,7 @@
       "Promise",
       "Queue",
       "Random",
+      "Record",
       "Ref",
       "RefM",
       "Schedule",
