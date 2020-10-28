@@ -3,7 +3,7 @@ import type { Exit } from "../Exit/exit"
 import { join } from "../Fiber/api"
 import type { Fiber } from "../Fiber/core"
 import type { FiberID } from "../Fiber/id"
-import { chain_, checkDescriptor, halt } from "./core"
+import { chain_, descriptorWith, halt } from "./core"
 import { raceWith, transplant } from "./core-scope"
 import type { Effect } from "./effect"
 import { map_ } from "./map_"
@@ -20,7 +20,7 @@ export function zipWithPar_<R, E, A, R2, E2, A2, B>(
   const g = (b: A2, a: A) => f(a, b)
 
   return transplant((graft) =>
-    checkDescriptor((d) =>
+    descriptorWith((d) =>
       raceWith(
         graft(a),
         graft(b),

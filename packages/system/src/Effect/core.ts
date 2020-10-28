@@ -70,7 +70,7 @@ export function chain_<R, E, A, R1, E1, A1>(
  * Constructs an effect based on information about the current fiber, such as
  * its identity.
  */
-export function checkDescriptor<R, E, A>(
+export function descriptorWith<R, E, A>(
   f: (_: Descriptor) => Effect<R, E, A>
 ): Effect<R, E, A> {
   return new IDescriptor(f)
