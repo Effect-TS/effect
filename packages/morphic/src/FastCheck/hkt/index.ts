@@ -1,6 +1,6 @@
 import type { Arbitrary } from "fast-check"
 
-export const FastCheckURI = "@matechs/morphic/FastCheckURI" as const
+export const FastCheckURI = "FastCheckURI" as const
 
 export type FastCheckURI = typeof FastCheckURI
 

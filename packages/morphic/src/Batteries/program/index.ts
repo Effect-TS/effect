@@ -12,7 +12,7 @@ import type { GetAlgebra } from "../../Algebra/utils/core"
 import type { InferredAlgebra, InferredProgram } from "../usage/program-infer"
 import type { AnyConfigEnv } from "../usage/summoner"
 
-export const ProgramURI = "@matechs/morphic/ProgramURI" as const
+export const ProgramURI = "ProgramURI" as const
 
 export type ProgramURI = typeof ProgramURI
 
