@@ -35,13 +35,13 @@ export type Constructor<T> = Function & { prototype: T }
 export interface Tag<T> {
   _tag: "Tag"
   _T: T
-  key: symbol
+  key: PropertyKey
   def: boolean
   overridable: () => Tag<T>
   fixed: () => Tag<T>
   refine: <T1 extends T>() => Tag<T1>
   read: (r: Has<T>) => T
-  setKey: (s: symbol) => Tag<T>
+  setKey: (s: PropertyKey) => Tag<T>
   of: (_: T) => Has<T>
 }
 
@@ -50,7 +50,7 @@ export interface Tag<T> {
  */
 export type HasTag<T> = [T] extends [Tag<infer A>] ? Has<A> : never
 
-const makeTag = <T>(def = false, key = Symbol()): Tag<T> => ({
+const makeTag = <T>(def = false, key: PropertyKey = Symbol()): Tag<T> => ({
   _tag: "Tag",
   _T: undefined as any,
   key,
@@ -60,7 +60,7 @@ const makeTag = <T>(def = false, key = Symbol()): Tag<T> => ({
   fixed: () => makeTag(false, key),
   refine: () => makeTag(def, key),
   read: (r: Has<T>) => r[key],
-  setKey: (s: symbol) => makeTag(def, s)
+  setKey: (s: PropertyKey) => makeTag(def, s)
 })
 
 /**
