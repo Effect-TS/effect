@@ -7,7 +7,7 @@ import type { Has, Tag } from "../../Has"
 import type { Erase, UnionToIntersection } from "../../Utils"
 
 export abstract class SyncLayer<R, E, A> {
-  readonly hash = new AtomicReference(Symbol())
+  readonly hash = new AtomicReference<PropertyKey>(Symbol())
 
   readonly _R!: (_: R) => void
   readonly _E!: () => E
@@ -238,7 +238,7 @@ export type MergeA<Ls extends SyncLayer<any, any, any>[]> = UnionToIntersection<
   }[number]
 >
 
-export type SyncMemoMap = Map<symbol, any>
+export type SyncMemoMap = Map<PropertyKey, any>
 
 export function getMemoOrElseCreate<R, E, A>(layer: SyncLayer<R, E, A>) {
   return (m: SyncMemoMap): Sy.Sync<R, E, A> =>
