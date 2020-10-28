@@ -5,5 +5,5 @@ import { access } from "./core"
  * tuple.
  */
 export function first<A>() {
-  return access((_: readonly [A, any]) => _[0])
+  return access((_: readonly [A, unknown]) => _[0])
 }

@@ -17,7 +17,7 @@ import { sequential } from "./ExecutionStrategy"
 import { fail } from "./fail"
 import { fromEither } from "./fromEither"
 import { getOrFail } from "./getOrFail"
-import { readService } from "./has"
+import { service } from "./has"
 import { map_ } from "./map_"
 import { provideSome_ } from "./provideSome"
 
@@ -43,7 +43,7 @@ const adapter = (_: any, __?: any) => {
     )
   }
   if (isTag(_)) {
-    return new GenEffect(readService(_))
+    return new GenEffect(service(_))
   }
   return new GenEffect(_)
 }
