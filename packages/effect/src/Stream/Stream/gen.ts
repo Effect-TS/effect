@@ -1,5 +1,5 @@
 import type { Effect } from "../../Effect"
-import { fromEither, readService } from "../../Effect"
+import { fromEither, service } from "../../Effect"
 import { die } from "../../Effect/die"
 import type { Either } from "../../Either"
 import { NoSuchElementException, PrematureGeneratorExit } from "../../GlobalExceptions"
@@ -36,7 +36,7 @@ const adapter = (_: any, __?: any) => {
   } else if (_ instanceof Stream) {
     return new GenStream(_)
   } else if (isTag(_)) {
-    return new GenStream(fromEffect(readService(_)))
+    return new GenStream(fromEffect(service(_)))
   }
   return new GenStream(fromEffect(_))
 }

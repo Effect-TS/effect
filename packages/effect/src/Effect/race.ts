@@ -3,7 +3,7 @@ import * as E from "../Either"
 import * as Exit from "../Exit/api"
 import * as Fiber from "../Fiber/api"
 import { pipe } from "../Function"
-import { chain, chain_, checkDescriptor, halt, result, succeed } from "./core"
+import { chain, chain_, descriptorWith, halt, result, succeed } from "./core"
 import { raceWith } from "./core-scope"
 import { done } from "./done"
 import type { Effect, IO } from "./effect"
@@ -37,7 +37,7 @@ export function race_<R, E, A, R2, E2, A2>(
   self: Effect<R, E, A>,
   that: Effect<R2, E2, A2>
 ): Effect<R & R2, E | E2, A | A2> {
-  return checkDescriptor((d) =>
+  return descriptorWith((d) =>
     raceWith(
       self,
       that,

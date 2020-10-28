@@ -133,10 +133,24 @@ export function accessService<T>(s: Tag<T>) {
 }
 
 /**
- * Access a service with the required Service Entry
+ * Accesses the specified service in the environment of the effect.
  */
-export function readService<T>(s: Tag<T>) {
+export function service<T>(s: Tag<T>) {
   return accessServiceM(s)((a) => succeed(a))
+}
+
+/**
+ * Accesses the specified services in the environment of the effect.
+ */
+export function services<Ts extends readonly Tag<any>[]>(...s: Ts) {
+  return access(
+    (
+      r: UnionToIntersection<
+        { [k in keyof Ts]: [Ts[k]] extends [Tag<infer T>] ? Has<T> : never }[number]
+      >
+    ): Readonly<{ [k in keyof Ts]: [Ts[k]] extends [Tag<infer T>] ? T : never }> =>
+      s.map((tag) => tag.read(r as any)) as any
+  )
 }
 
 /**

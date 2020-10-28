@@ -2,7 +2,7 @@ export { asUnit, tap } from "../Effect"
 export {
   chain,
   chain_,
-  checkDescriptor,
+  descriptorWith as checkDescriptor,
   effectTotal,
   succeed,
   suspend,
