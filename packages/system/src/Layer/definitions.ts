@@ -82,7 +82,7 @@ export function from_<R, E, A, R2, E2, A2>(
 }
 
 export abstract class Layer<RIn, E, ROut> {
-  readonly hash = new AtomicReference(Symbol())
+  readonly hash = new AtomicReference<PropertyKey>(Symbol())
 
   readonly _RIn!: (_: RIn) => void
   readonly _E!: () => E
@@ -368,7 +368,9 @@ export function build<R, E, A>(_: Layer<R, E, A>): M.Managed<R, E, A> {
 
 export function makeMemoMap() {
   return pipe(
-    RM.makeRefM<ReadonlyMap<symbol, readonly [T.IO<any, any>, Finalizer]>>(new Map()),
+    RM.makeRefM<ReadonlyMap<PropertyKey, readonly [T.IO<any, any>, Finalizer]>>(
+      new Map()
+    ),
     T.chain((r) => T.effectTotal(() => new MemoMap(r)))
   )
 }
@@ -378,7 +380,9 @@ export function makeMemoMap() {
  */
 export class MemoMap {
   constructor(
-    readonly ref: RM.RefM<ReadonlyMap<symbol, readonly [T.IO<any, any>, Finalizer]>>
+    readonly ref: RM.RefM<
+      ReadonlyMap<PropertyKey, readonly [T.IO<any, any>, Finalizer]>
+    >
   ) {}
 
   /**
