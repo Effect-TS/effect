@@ -18,6 +18,7 @@ export {
 export { forkDaemon } from "../Effect/core-scope"
 export { bind, do, let } from "../Effect/do"
 export { done } from "../Effect/done"
+export { never } from "../Effect/never"
 export { Effect, IO, RIO, UIO, _A, _E, _I, _R, _U } from "../Effect/effect"
 export { environment } from "../Effect/environment"
 export { parallel, parallelN } from "../Effect/ExecutionStrategy"
