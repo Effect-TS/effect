@@ -90,12 +90,12 @@ export function gen(...args: any[]): any {
       function run(replayStack: L.List<any>): Stream<any, any, AEff> {
         const iterator = f(adapter as any)
         let state = iterator.next()
-        L.forEach_(replayStack, (a) => {
+        for (const a of replayStack) {
           if (state.done) {
             return fromEffect(die(new PrematureGeneratorExit()))
           }
           state = iterator.next(a)
-        })
+        }
         if (state.done) {
           return succeed(state.value)
         }
