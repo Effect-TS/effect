@@ -1,7 +1,7 @@
 import * as P from "../../Prelude"
 import { isOption } from "../../Utils"
 import type * as O from "../Option"
-import { Monad, Traversable } from "./instances"
+import { Applicative, Monad, Traversable } from "./instances"
 import * as A from "./operations"
 
 export const sequence = P.sequenceF(Traversable)
@@ -19,3 +19,7 @@ const adapter: {
 export const gen = P.genWithHistoryF(Monad, {
   adapter
 })
+
+export const tuple = P.tupleF(Applicative)
+
+export const struct = P.structF(Applicative)
