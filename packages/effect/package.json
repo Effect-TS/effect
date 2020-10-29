@@ -1,6 +1,6 @@
 {
   "name": "@effect-ts/core",
-  "version": "0.7.20",
+  "version": "0.7.21",
   "license": "MIT",
   "homepage": "https://github.com/Matechs-Garage/matechs-effect",
   "private": false,
@@ -23,7 +23,7 @@
   "repository": "https://github.com/Matechs-Garage/matechs-effect.git",
   "sideEffects": false,
   "dependencies": {
-    "@effect-ts/system": "^0.5.15"
+    "@effect-ts/system": "^0.5.16"
   },
   "config": {
     "modules": [
