@@ -1,4 +1,5 @@
 import { PrematureGeneratorExit } from "@effect-ts/system/GlobalExceptions"
+import * as L from "@effect-ts/system/List"
 
 import { pipe } from "../../Function"
 import type * as HKT from "../HKT"
@@ -73,23 +74,26 @@ export function genWithHistoryF<F>(
     return pipe(
       succeed({}),
       chain(() => {
-        function run(replayStack: any[]): HKT.HKT<F, AEff> {
+        function run(replayStack: L.List<any>): HKT.HKT<F, AEff> {
           const iterator = f((config?.adapter ? config.adapter : adapter) as any)
           let state = iterator.next()
-          for (let i = 0; i < replayStack.length; i++) {
+
+          L.forEach_(replayStack, (a) => {
             if (state.done) {
               throw new PrematureGeneratorExit()
             }
-            state = iterator.next(replayStack[i])
-          }
+            state = a
+          })
+
           if (state.done) {
             return succeed(state.value)
           }
+
           return chain((val) => {
-            return run(replayStack.concat([val]))
+            return run(L.append_(replayStack, val))
           })(state.value["effect"])
         }
-        return run([])
+        return run(L.empty())
       })
     )
   }
