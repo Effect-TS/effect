@@ -4,6 +4,7 @@ import { die } from "../../Effect/die"
 import type { Either } from "../../Either"
 import { NoSuchElementException, PrematureGeneratorExit } from "../../GlobalExceptions"
 import type { Has, Tag } from "../../Has"
+import * as L from "../../List"
 import type { Option } from "../../Option"
 import type { _E, _R } from "../../Utils"
 import { isEither, isOption, isTag } from "../../Utils"
@@ -86,23 +87,23 @@ export function gen(...args: any[]): any {
     f: (i: any) => Generator<Eff, AEff, any>
   ): Stream<_R<Eff>, _E<Eff>, AEff> {
     return suspend(() => {
-      function run(replayStack: any[]): Stream<any, any, AEff> {
+      function run(replayStack: L.List<any>): Stream<any, any, AEff> {
         const iterator = f(adapter as any)
         let state = iterator.next()
-        for (let i = 0; i < replayStack.length; i++) {
+        L.forEach_(replayStack, (a) => {
           if (state.done) {
             return fromEffect(die(new PrematureGeneratorExit()))
           }
-          state = iterator.next(replayStack[i])
-        }
+          state = iterator.next(a)
+        })
         if (state.done) {
           return succeed(state.value)
         }
         return chain_(state.value["effect"], (val) => {
-          return run(replayStack.concat([val]))
+          return run(L.append_(replayStack, val))
         })
       }
-      return run([])
+      return run(L.empty())
     })
   }
 
