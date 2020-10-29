@@ -29,7 +29,8 @@ export const decoderRefinedInterpreter = memo(
                             message: `${typeof u} cannot be refined`,
                             context: {
                               ...c,
-                              actual: u
+                              actual: u,
+                              types: cfg?.name ? [...c.types, cfg.name] : c.types
                             }
                           }
                         ])
@@ -56,7 +57,8 @@ export const decoderRefinedInterpreter = memo(
                             message: `${typeof u} cannot be constrained`,
                             context: {
                               ...c,
-                              actual: u
+                              actual: u,
+                              types: config?.name ? [...c.types, config.name] : c.types
                             }
                           }
                         ])

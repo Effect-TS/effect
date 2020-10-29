@@ -20,7 +20,14 @@ export const decoderNewtypeInterpreter = memo(
             decoderApplyConfig(cfg?.conf)(
               {
                 validate: (u, c) =>
-                  pipe(decoder.validate(u, { ...c, actual: u }), T.map(iso.get))
+                  pipe(
+                    decoder.validate(u, {
+                      ...c,
+                      actual: u,
+                      types: cfg?.name ? [...c.types, cfg.name] : c.types
+                    }),
+                    T.map(iso.get)
+                  )
               },
               env,
               { decoder }
@@ -36,7 +43,11 @@ export const decoderNewtypeInterpreter = memo(
               {
                 validate: (u, c) =>
                   pipe(
-                    decoder.validate(u, { ...c, actual: u }),
+                    decoder.validate(u, {
+                      ...c,
+                      actual: u,
+                      types: cfg?.name ? [...c.types, cfg.name] : c.types
+                    }),
                     T.map(prism.getOption),
                     T.chain(
                       O.fold(
@@ -46,7 +57,11 @@ export const decoderNewtypeInterpreter = memo(
                               id: cfg?.id,
                               name: cfg?.name,
                               message: `newtype doesn't satisfy prism conditions`,
-                              context: { ...c, actual: u }
+                              context: {
+                                ...c,
+                                actual: u,
+                                types: cfg?.name ? [...c.types, cfg.name] : c.types
+                              }
                             }
                           ]),
                         T.succeed

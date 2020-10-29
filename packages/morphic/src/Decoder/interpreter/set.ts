@@ -34,7 +34,8 @@ export const decoderSetInterpreter = memo(
                         foreachArray((k, a) =>
                           decoder.validate(u, {
                             key: `${c.key}[${k}]`,
-                            actual: u
+                            actual: u,
+                            types: cfg?.name ? [...c.types, cfg.name] : c.types
                           })
                         ),
                         T.map(S.fromArray(_))
@@ -46,7 +47,8 @@ export const decoderSetInterpreter = memo(
                           message: `${typeof u} is not a Set`,
                           context: {
                             ...c,
-                            actual: u
+                            actual: u,
+                            types: cfg?.name ? [...c.types, cfg.name] : c.types
                           }
                         }
                       ])

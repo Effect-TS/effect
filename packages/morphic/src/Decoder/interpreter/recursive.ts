@@ -24,7 +24,11 @@ export const decoderRecursiveInterpreter = memo(
             (getDecoder) =>
               decoderApplyConfig(config?.config)(
                 {
-                  validate: (u, c) => getDecoder().validate(u, c)
+                  validate: (u, c) =>
+                    getDecoder().validate(u, {
+                      ...c,
+                      types: config?.name ? [...c.types, config.name] : c.types
+                    })
                 },
                 env,
                 {}

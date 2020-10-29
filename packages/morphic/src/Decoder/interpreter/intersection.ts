@@ -18,6 +18,7 @@ export const decoderIntersectionInterpreter = memo(
     intersection: <A>(
       types: ((env: Env) => DecoderType<A>)[],
       config?: {
+        name?: string
         conf?: ConfigsForType<Env, unknown, A, IntersectionConfig<unknown[], A[]>>
       }
     ) => (env: Env) => {
@@ -30,7 +31,11 @@ export const decoderIntersectionInterpreter = memo(
               pipe(
                 decoders,
                 foreachArray((k, d) =>
-                  d.validate(u, { actual: d, key: fixKey(`${c.key}.${k}`) })
+                  d.validate(u, {
+                    actual: d,
+                    key: fixKey(`${c.key}.${k}`),
+                    types: config?.name ? [...c.types, config.name] : c.types
+                  })
                 ),
                 T.map(A.reduce(({} as unknown) as A, (b, a) => mergePrefer(u, b, a)))
               )

@@ -25,7 +25,8 @@ export const decoderUnknownInterpreter = memo(
                       message: `${typeof u} is not a record`,
                       context: {
                         ...c,
-                        actual: u
+                        actual: u,
+                        types: cfg?.name ? [...c.types, cfg.name] : c.types
                       }
                     }
                   ])

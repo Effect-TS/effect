@@ -31,7 +31,8 @@ export const decoderPrimitiveInterpreter = memo(
                   message: `functions are not supported`,
                   context: {
                     ...c,
-                    actual: u
+                    actual: u,
+                    types: cfg?.name ? [...c.types, cfg.name] : c.types
                   }
                 }
               ])
@@ -55,7 +56,8 @@ export const decoderPrimitiveInterpreter = memo(
                     message: `${typeof u} is not a string`,
                     context: {
                       ...c,
-                      actual: u
+                      actual: u,
+                      types: cfg?.name ? [...c.types, cfg.name] : c.types
                     }
                   }
                 ])
@@ -69,7 +71,8 @@ export const decoderPrimitiveInterpreter = memo(
                       message: `${u} is not a valid ISO string`,
                       context: {
                         ...c,
-                        actual: u
+                        actual: u,
+                        types: cfg?.name ? [...c.types, cfg.name] : c.types
                       }
                     }
                   ])
@@ -93,7 +96,8 @@ export const decoderPrimitiveInterpreter = memo(
                       message: `${typeof u} is not a boolean`,
                       context: {
                         ...c,
-                        actual: u
+                        actual: u,
+                        types: cfg?.name ? [...c.types, cfg.name] : c.types
                       }
                     }
                   ])
@@ -116,7 +120,8 @@ export const decoderPrimitiveInterpreter = memo(
                       message: `${typeof u} is not a string`,
                       context: {
                         ...c,
-                        actual: u
+                        actual: u,
+                        types: cfg?.name ? [...c.types, cfg.name] : c.types
                       }
                     }
                   ])
@@ -139,7 +144,8 @@ export const decoderPrimitiveInterpreter = memo(
                       message: `${typeof u} is not a number`,
                       context: {
                         ...c,
-                        actual: u
+                        actual: u,
+                        types: cfg?.name ? [...c.types, cfg.name] : c.types
                       }
                     }
                   ])
@@ -162,7 +168,8 @@ export const decoderPrimitiveInterpreter = memo(
                       message: `${typeof u} is not an integer string`,
                       context: {
                         ...c,
-                        actual: u
+                        actual: u,
+                        types: cfg?.name ? [...c.types, cfg.name] : c.types
                       }
                     }
                   ])
@@ -175,7 +182,8 @@ export const decoderPrimitiveInterpreter = memo(
                           message: `${typeof u} is not an integer string`,
                           context: {
                             ...c,
-                            actual: u
+                            actual: u,
+                            types: cfg?.name ? [...c.types, cfg.name] : c.types
                           }
                         }
                       ])
@@ -199,7 +207,8 @@ export const decoderPrimitiveInterpreter = memo(
                       message: `${u} is not ${k}`,
                       context: {
                         ...c,
-                        actual: u
+                        actual: u,
+                        types: cfg?.name ? [...c.types, cfg.name] : c.types
                       }
                     }
                   ])
@@ -222,7 +231,8 @@ export const decoderPrimitiveInterpreter = memo(
                       message: `${u} is not ${k}`,
                       context: {
                         ...c,
-                        actual: u
+                        actual: u,
+                        types: cfg?.name ? [...c.types, cfg.name] : c.types
                       }
                     }
                   ])
@@ -245,7 +255,8 @@ export const decoderPrimitiveInterpreter = memo(
                       message: `${u} is not any of ${ls.join(",")}`,
                       context: {
                         ...c,
-                        actual: u
+                        actual: u,
+                        types: cfg?.name ? [...c.types, cfg.name] : c.types
                       }
                     }
                   ])
@@ -268,7 +279,8 @@ export const decoderPrimitiveInterpreter = memo(
                       message: `${u} is not any of ${Object.keys(keys).join(",")}`,
                       context: {
                         ...c,
-                        actual: u
+                        actual: u,
+                        types: cfg?.name ? [...c.types, cfg.name] : c.types
                       }
                     }
                   ])
@@ -290,7 +302,8 @@ export const decoderPrimitiveInterpreter = memo(
                     : T.map_(
                         decoder.validate(u, {
                           ...c,
-                          actual: u
+                          actual: u,
+                          types: cfg?.name ? [...c.types, cfg.name] : c.types
                         }),
                         some
                       )
@@ -304,7 +317,19 @@ export const decoderPrimitiveInterpreter = memo(
       pipe(
         getType(env).decoder,
         (decoder) =>
-          new DecoderType(decoderApplyConfig(cfg?.conf)(decoder, env, { decoder }))
+          new DecoderType(
+            decoderApplyConfig(cfg?.conf)(
+              {
+                validate: (u, c) =>
+                  decoder.validate(u, {
+                    ...c,
+                    types: cfg?.name ? [...c.types, cfg.name] : c.types
+                  })
+              },
+              env,
+              { decoder }
+            )
+          )
       ),
     optional: (getType, cfg) => (env) =>
       pipe(
@@ -318,7 +343,8 @@ export const decoderPrimitiveInterpreter = memo(
                     ? T.succeed(undefined)
                     : decoder.validate(u, {
                         ...c,
-                        actual: u
+                        actual: u,
+                        types: cfg?.name ? [...c.types, cfg.name] : c.types
                       })
               },
               env,
@@ -343,7 +369,8 @@ export const decoderPrimitiveInterpreter = memo(
                           message: `${typeof u} is not an array`,
                           context: {
                             ...c,
-                            actual: u
+                            actual: u,
+                            types: cfg?.name ? [...c.types, cfg.name] : c.types
                           }
                         }
                       ])
@@ -364,7 +391,11 @@ export const decoderPrimitiveInterpreter = memo(
                   Array.isArray(u)
                     ? A.isNonEmpty(u)
                       ? foreachNonEmptyArray((k, a) =>
-                          decoder.validate(a, { key: `${c.key}[${k}]`, actual: a })
+                          decoder.validate(a, {
+                            key: `${c.key}[${k}]`,
+                            actual: a,
+                            types: cfg?.name ? [...c.types, cfg.name] : c.types
+                          })
                         )(u)
                       : fail([
                           {
@@ -373,7 +404,8 @@ export const decoderPrimitiveInterpreter = memo(
                             message: `array is empty`,
                             context: {
                               ...c,
-                              actual: u
+                              actual: u,
+                              types: cfg?.name ? [...c.types, cfg.name] : c.types
                             }
                           }
                         ])
@@ -384,7 +416,8 @@ export const decoderPrimitiveInterpreter = memo(
                           message: `${typeof u} is not an array`,
                           context: {
                             ...c,
-                            actual: u
+                            actual: u,
+                            types: cfg?.name ? [...c.types, cfg.name] : c.types
                           }
                         }
                       ])
@@ -408,7 +441,8 @@ export const decoderPrimitiveInterpreter = memo(
                       message: `${typeof u === "string" ? u : typeof u} is not a uuid`,
                       context: {
                         ...c,
-                        actual: u
+                        actual: u,
+                        types: cfg?.name ? [...c.types, cfg.name] : c.types
                       }
                     }
                   ])
@@ -436,7 +470,8 @@ export const decoderPrimitiveInterpreter = memo(
                         return T.map_(
                           left.validate(u["left"], {
                             key: `${c.key}.left`,
-                            actual: u
+                            actual: u,
+                            types: cfg?.name ? [...c.types, cfg.name] : c.types
                           }),
                           E.left
                         ) as any
@@ -444,7 +479,8 @@ export const decoderPrimitiveInterpreter = memo(
                         return T.map_(
                           left.validate(u["right"], {
                             key: `${c.key}.right`,
-                            actual: u
+                            actual: u,
+                            types: cfg?.name ? [...c.types, cfg.name] : c.types
                           }),
                           E.right
                         )
@@ -458,7 +494,8 @@ export const decoderPrimitiveInterpreter = memo(
                         message: `${typeof u} is not an either`,
                         context: {
                           ...c,
-                          actual: u
+                          actual: u,
+                          types: cfg?.name ? [...c.types, cfg.name] : c.types
                         }
                       }
                     ])
@@ -490,7 +527,8 @@ export const decoderPrimitiveInterpreter = memo(
                       return T.map_(
                         decoder.validate(u["value"], {
                           key: fixKey(`${c.key}.value`),
-                          actual: u
+                          actual: u,
+                          types: cfg?.name ? [...c.types, cfg.name] : c.types
                         }),
                         O.some
                       )
@@ -506,7 +544,8 @@ export const decoderPrimitiveInterpreter = memo(
                       message: `${typeof u} is not an option`,
                       context: {
                         ...c,
-                        actual: u
+                        actual: u,
+                        types: cfg?.name ? [...c.types, cfg.name] : c.types
                       }
                     }
                   ])

@@ -22,7 +22,11 @@ export const decoderRecordInterpreter = memo(
                 validate: (u, c) =>
                   isUnknownRecord(u)
                     ? foreachRecordWithIndex((k, a) =>
-                        decoder.validate(a, { key: `${c.key}.${k}`, actual: u })
+                        decoder.validate(a, {
+                          key: `${c.key}.${k}`,
+                          actual: u,
+                          types: cfg?.name ? [...c.types, cfg.name] : c.types
+                        })
                       )(u)
                     : fail([
                         {
@@ -31,7 +35,8 @@ export const decoderRecordInterpreter = memo(
                           message: `${typeof u} is not a record`,
                           context: {
                             ...c,
-                            actual: u
+                            actual: u,
+                            types: cfg?.name ? [...c.types, cfg.name] : c.types
                           }
                         }
                       ])

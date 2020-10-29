@@ -28,6 +28,7 @@ const Person_ = make((F) =>
       })
     },
     {
+      name: "Person",
       conf: {
         [ShowURI]: (_) => ({
           show: (p) => `${p.name.first} ${p.name.last}`
@@ -86,7 +87,8 @@ describe("FastCheck", () => {
           {
             context: {
               actual: 1,
-              key: "name.last"
+              key: "name.last",
+              types: ["Person"]
             },
             id: undefined,
             message: "number is not a string",

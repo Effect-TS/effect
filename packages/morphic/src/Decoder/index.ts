@@ -43,7 +43,7 @@ export function decoder<E, A>(F: M<{}, E, A>): Decoder<A> {
     return decoders.get(F)
   }
   const d: Decoder<A> = {
-    decode: (u) => defDerive(F).validate(u, { actual: u, key: "" })
+    decode: (u) => defDerive(F).validate(u, { actual: u, key: "", types: [] })
   }
   decoders.set(F, d)
   return d

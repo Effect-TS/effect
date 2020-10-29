@@ -89,7 +89,8 @@ function partialDecoder<Props, Env extends AnyEnv>(
             decoder[k]
               ? (decoder[k] as Validate<any>).validate(a, {
                   key: fixKey(`${c.key}.${k}`),
-                  actual: a
+                  actual: a,
+                  types: name ? [...c.types, name] : c.types
                 })
               : T.succeed(a)
           )
@@ -102,7 +103,8 @@ function partialDecoder<Props, Env extends AnyEnv>(
           message: `${typeof u} is not a record`,
           context: {
             ...c,
-            actual: u
+            actual: u,
+            types: name ? [...c.types, name] : c.types
           }
         }
       ])
@@ -131,7 +133,8 @@ function interfaceDecoder<Props, Env extends AnyEnv>(
               decoder[k]
                 ? (decoder[k] as Validate<any>).validate(a, {
                     key: fixKey(`${c.key}.${k}`),
-                    actual: a
+                    actual: a,
+                    types: name ? [...c.types, name] : c.types
                   })
                 : T.succeed(a)
             )
@@ -144,7 +147,8 @@ function interfaceDecoder<Props, Env extends AnyEnv>(
             message: `not all the required fields are present`,
             context: {
               ...c,
-              actual: u
+              actual: u,
+              types: name ? [...c.types, name] : c.types
             }
           }
         ])
@@ -156,7 +160,8 @@ function interfaceDecoder<Props, Env extends AnyEnv>(
           message: `${typeof u} is not a record`,
           context: {
             ...c,
-            actual: u
+            actual: u,
+            types: name ? [...c.types, name] : c.types
           }
         }
       ])

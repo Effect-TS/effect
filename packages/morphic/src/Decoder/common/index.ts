@@ -3,6 +3,7 @@ import * as T from "@effect-ts/core/Sync"
 
 export interface ContextEntry {
   readonly key: string
+  readonly types: string[]
   readonly actual?: unknown
 }
 

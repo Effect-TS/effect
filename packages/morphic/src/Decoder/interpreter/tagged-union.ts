@@ -24,7 +24,8 @@ export const decoderTaggedUnionInterpreter = memo(
                   if (dec) {
                     return (dec as Validate<any>).validate(u, {
                       ...c,
-                      actual: u
+                      actual: u,
+                      types: cfg?.name ? [...c.types, cfg.name] : c.types
                     })
                   } else {
                     return fail([
@@ -36,7 +37,8 @@ export const decoderTaggedUnionInterpreter = memo(
                         ).join(", ")})`,
                         context: {
                           ...c,
-                          actual: u
+                          actual: u,
+                          types: cfg?.name ? [...c.types, cfg.name] : c.types
                         }
                       }
                     ])
@@ -49,7 +51,8 @@ export const decoderTaggedUnionInterpreter = memo(
                     message: `${tag} field not found`,
                     context: {
                       ...c,
-                      actual: u
+                      actual: u,
+                      types: cfg?.name ? [...c.types, cfg.name] : c.types
                     }
                   }
                 ])
@@ -61,7 +64,8 @@ export const decoderTaggedUnionInterpreter = memo(
                   message: `${typeof u} is not a record`,
                   context: {
                     ...c,
-                    actual: u
+                    actual: u,
+                    types: cfg?.name ? [...c.types, cfg.name] : c.types
                   }
                 }
               ])
