@@ -78,12 +78,12 @@ export function genWithHistoryF<F>(
           const iterator = f((config?.adapter ? config.adapter : adapter) as any)
           let state = iterator.next()
 
-          L.forEach_(replayStack, (a) => {
+          for (const a of replayStack) {
             if (state.done) {
               throw new PrematureGeneratorExit()
             }
             state = a
-          })
+          }
 
           if (state.done) {
             return succeed(state.value)
