@@ -1,4 +1,4 @@
-import { pipe } from "../Function"
+import type { UIO } from "../Effect"
 import type { FiberRef } from "./fiberRef"
 import { modify } from "./modify"
 
@@ -6,8 +6,4 @@ import { modify } from "./modify"
  * Reads the value associated with the current fiber. Returns initial value if
  * no value was `set` or inherited from parent.
  */
-export const get = <A>(fiberRef: FiberRef<A>) =>
-  pipe(
-    fiberRef,
-    modify((a) => [a, a])
-  )
+export const get: <A>(fiberRef: FiberRef<A>) => UIO<A> = modify((a) => [a, a])

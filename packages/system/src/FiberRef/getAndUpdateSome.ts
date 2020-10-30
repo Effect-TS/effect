@@ -1,6 +1,4 @@
-import { pipe } from "../Function"
 import * as O from "../Option"
-import type { FiberRef } from "./fiberRef"
 import { modify } from "./modify"
 
 /**
@@ -8,10 +6,5 @@ import { modify } from "./modify"
  * returns the old value.
  * If the function is undefined on the current value it doesn't change it.
  */
-export const getAndUpdateSome = <A>(f: (a: A) => O.Option<A>) => (
-  fiberRef: FiberRef<A>
-) =>
-  pipe(
-    fiberRef,
-    modify((v) => [v, O.getOrElse_(f(v), () => v)])
-  )
+export const getAndUpdateSome = <A>(f: (a: A) => O.Option<A>) =>
+  modify<A, A>((v) => [v, O.getOrElse_(f(v), () => v)])
