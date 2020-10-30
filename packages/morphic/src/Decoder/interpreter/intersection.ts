@@ -10,7 +10,7 @@ import type {
 import { memo } from "../../Internal/Utils"
 import { decoderApplyConfig } from "../config"
 import { DecoderType, DecoderURI } from "../hkt"
-import { fixKey, foreachArray, mergePrefer } from "./common"
+import { foreachArray, mergePrefer } from "./common"
 
 export const decoderIntersectionInterpreter = memo(
   <Env extends AnyEnv>(): AlgebraIntersection1<DecoderURI, Env> => ({
@@ -33,7 +33,7 @@ export const decoderIntersectionInterpreter = memo(
                 foreachArray((k, d) =>
                   d.validate(u, {
                     actual: d,
-                    key: fixKey(`${c.key}.${k}`),
+                    key: c.key,
                     types: config?.name ? [...c.types, config.name] : c.types
                   })
                 ),
