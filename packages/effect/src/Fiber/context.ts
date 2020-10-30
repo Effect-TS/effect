@@ -408,6 +408,10 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   setInterrupting(value: boolean): void {
     const oldState = this.state.get
 
+    if (this.isInterrupting) {
+      return
+    }
+
     switch (oldState._tag) {
       case "Executing": {
         this.state.set(
@@ -471,7 +475,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
         if (oldState.status._tag === "Suspended" && epoch === oldState.status.epoch) {
           this.state.set(
             new FiberStateExecuting(
-              oldState.status,
+              oldState.status.previous,
               oldState.observers,
               oldState.interrupted
             )
