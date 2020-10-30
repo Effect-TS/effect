@@ -317,6 +317,55 @@ class CancelablePromise<E, A> {
   }
 }
 
+export class Tracer {
+  private running = new Set<Promise<any>>()
+
+  constructor() {
+    this.traced = this.traced.bind(this)
+    this.wait = this.wait.bind(this)
+    this.clear = this.clear.bind(this)
+  }
+
+  // tracks a lazy promise lifetime
+  traced<A>(promise: () => Promise<A>) {
+    return async () => {
+      const p = promise()
+      this.running.add(p)
+
+      try {
+        const a = await p
+        this.running.delete(p)
+        return Promise.resolve(a)
+      } catch (e) {
+        this.running.delete(p)
+        return Promise.reject(e)
+      }
+    }
+  }
+
+  // awaits for all the running promises to complete
+  async wait(): Promise<Exit<any, any>[]> {
+    const t = await Promise.all(
+      Array.from(this.running).map((p) =>
+        p.then((a) => successExit(a)).catch((e) => Promise.resolve(e))
+      )
+    )
+    return await new Promise((r) => {
+      setTimeout(() => {
+        r(t)
+      }, 0)
+    })
+  }
+
+  // clears itself
+  clear() {
+    this.running.clear()
+  }
+}
+
+// create the root tracing context
+export const tracingContext = new Tracer()
+
 // the actual driver
 async function runInternal<R, E, A>(
   self: Async<R, E, A>,
@@ -412,7 +461,7 @@ export async function runPromiseExitEnv<R, E, A>(
   is = new InterruptionState()
 ): Promise<Exit<E, A>> {
   try {
-    const a = await runInternal(task, r, is)
+    const a = await tracingContext.traced(() => runInternal(task, r, is))()
     return successExit(a)
   } catch (e) {
     return e
@@ -425,7 +474,7 @@ export async function runPromiseExit<E, A>(
   is = new InterruptionState()
 ): Promise<Exit<E, A>> {
   try {
-    const a = await runInternal(task, {}, is)
+    const a = await tracingContext.traced(() => runInternal(task, {}, is))()
     return successExit(a)
   } catch (e) {
     return e
