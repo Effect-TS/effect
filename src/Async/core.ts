@@ -81,10 +81,11 @@ export type AsyncInstruction =
   | ISuspend<any, any, any>
   | IPromise<any, any>
   | IChain<any, any, any, any, any, any>
-  | IFoldExit<any, any, any, any, any, any>
+  | IFold<any, any, any, any, any, any, any, any, any>
   | IRead<any, any>
   | IDone<any, any>
   | IProvide<any, any, any>
+  | IFinalizer<any, any, any, any, any, any>
   | IAll<any, any, any>
 
 export class IOf<A> extends Async<unknown, never, A> {
@@ -154,13 +155,26 @@ export class IChain<R, E, A, R2, E2, B> extends Async<R & R2, E | E2, B> {
   }
 }
 
-export class IFoldExit<R, E, A, R2, E2, B> extends Async<R & R2, E2, B> {
-  readonly _asyncTag = "IFoldExit"
+export class IFold<R, E, A, R2, E2, B, R3, E3, C> extends Async<
+  R & R2 & R3,
+  E2 | E3,
+  B | C
+> {
+  readonly _asyncTag = "ICatch"
 
   constructor(
     readonly self: Async<R, E, A>,
-    readonly f: (a: Exit<E, A>) => Async<R2, E2, B>
+    readonly f: (a: E) => Async<R2, E2, B>,
+    readonly g: (a: A) => Async<R3, E3, C>
   ) {
+    super()
+  }
+}
+
+export class IFinalizer<R, E, A, R2, E2, B> extends Async<R & R2, E2, A> {
+  readonly _asyncTag = "IFinalizer"
+
+  constructor(readonly self: Async<R, E, A>, readonly f: () => Async<R2, E2, B>) {
     super()
   }
 }
@@ -346,10 +360,36 @@ async function runInternal<R, E, A>(
     case "IProvide": {
       return await runInternal(op.self, op.r, is)
     }
-    case "IFoldExit": {
+    case "ICatch": {
       const a = await runPromiseExitEnv(op.self, r, is)
 
-      return await runInternal(op.f(a), r, is)
+      switch (a._tag) {
+        case "Failure": {
+          return await runInternal(op.f(a.e), r, is)
+        }
+        case "Success": {
+          return a.a
+        }
+        case "Interrupt": {
+          throw interruptExit
+        }
+      }
+    }
+    case "IFinalizer": {
+      const a = await runPromiseExitEnv(op.self, r, is)
+
+      switch (a._tag) {
+        case "Failure": {
+          throw failExit(a.e)
+        }
+        case "Success": {
+          return a.a
+        }
+        case "Interrupt": {
+          await runInternal(op.f(), r, new InterruptionState())
+          throw interruptExit
+        }
+      }
     }
     case "IPromise": {
       return await new CancelablePromise(
@@ -495,24 +535,7 @@ export function fold<A, E, E1, A1, E2, A2, R1, R2>(
   g: (a: A) => Async<R2, E2, A2>
 ) {
   return <R>(self: Async<R, E, A>): Async<R & R1 & R2, E1 | E2, A1 | A2> =>
-    pipe(
-      self,
-      foldExit(
-        (e): Async<R1 & R2, E1 | E2, A1 | A2> => {
-          switch (e._tag) {
-            case "Failure": {
-              return f(e.e)
-            }
-            case "Success": {
-              return g(e.a)
-            }
-            case "Interrupt": {
-              return done(interruptExit)
-            }
-          }
-        }
-      )
-    )
+    new IFold(self, f, g)
 }
 
 // like .catch in Promise
@@ -545,11 +568,6 @@ export function unfailable<A>(
   promise: (onInterrupt: (f: () => void) => void) => Promise<A>
 ): Async<unknown, never, A> {
   return new IPromise(promise, () => undefined as never)
-}
-
-// fold monadically over the exit value
-export function foldExit<E, A, R2, E2, B>(f: (_: Exit<E, A>) => Async<R2, E2, B>) {
-  return <R>(self: Async<R, E, A>): Async<R & R2, E2, B> => new IFoldExit(self, f)
 }
 
 // maps over the success result
@@ -647,18 +665,7 @@ export { assign as let }
 // runs a finalizer on interruption
 export function onInterrupt<R, E1, A1>(f: () => Async<R, E1, A1>) {
   return <R2, E, A>(self: Async<R, E, A>): Async<R & R2, E | E1, A> =>
-    pipe(
-      self,
-      foldExit(
-        (e): Async<R & R2, E | E1, A> =>
-          e._tag === "Interrupt"
-            ? pipe(
-                f(),
-                chain(() => done(interruptExit))
-              )
-            : done(e)
-      )
-    )
+    new IFinalizer(self, f)
 }
 
 // zips the result of both async in a pair
