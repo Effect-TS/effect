@@ -2,6 +2,7 @@ import type { Array } from "../Array"
 import { constant, tuple } from "../Function"
 import * as IT from "../Iterable"
 import { fold_ } from "../Option"
+import { parseMs } from "../Utils/parse-ms"
 import type { UIO } from "./_internal/effect"
 import * as T from "./_internal/effect"
 import type { Runtime } from "./core"
@@ -48,19 +49,17 @@ export function prettyPrintM(dump: FiberDump): UIO<string> {
  * @internal
  */
 export function prettyPrint(dump: FiberDump, now: number): string {
-  const millis = now - dump.fiberId.startTimeMillis
-  const seconds = millis / 1000
-  const minutes = seconds / 60
-  const hours = minutes / 60
+  const { days, hours, milliseconds, minutes, seconds } = parseMs(
+    now - dump.fiberId.startTimeMillis
+  )
 
   const name = fold_(dump.fiberName, constant(""), (n) => `"${n}" `)
-  // todo: lifetime is going to show incorrectly formatted duration
-  //  e.g.'1h63m3780s3780000ms' instead of '1h3m0s0ms'
   const lifeMsg =
-    (hours < 1 ? "" : `${Math.trunc(hours)}h`) +
-    (hours < 1 && minutes < 1 ? "" : `${Math.trunc(minutes)}m`) +
-    (hours < 1 && minutes < 1 && seconds < 1 ? "" : `${Math.trunc(seconds)}s`) +
-    `${millis}ms`
+    (days === 0 ? "" : `${days}d`) +
+    (days === 0 && hours === 0 ? "" : `${hours}h`) +
+    (days === 0 && hours === 0 && minutes === 0 ? "" : `${minutes}m`) +
+    (days === 0 && hours === 0 && minutes === 0 && seconds === 0 ? "" : `${seconds}s`) +
+    `${milliseconds}ms`
   const waitMsg = (function (status: Status) {
     switch (status._tag) {
       case "Suspended":
