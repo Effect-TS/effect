@@ -54,6 +54,8 @@ export function prettyPrint(dump: FiberDump, now: number): string {
   const hours = minutes / 60
 
   const name = fold_(dump.fiberName, constant(""), (n) => `"${n}" `)
+  // todo: lifetime is going to show incorrectly formatted duration
+  //  e.g.'1h63m3780s3780000ms' instead of '1h3m0s0ms'
   const lifeMsg =
     (hours < 1 ? "" : `${Math.trunc(hours)}h`) +
     (hours < 1 && minutes < 1 ? "" : `${Math.trunc(minutes)}m`) +
