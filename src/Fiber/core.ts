@@ -39,15 +39,38 @@ export class Descriptor {
 export type Fiber<E, A> = Runtime<E, A> | Synthetic<E, A>
 
 export interface CommonFiber<E, A> {
+  /**
+   * Awaits the fiber, which suspends the awaiting fiber until the result of the
+   * fiber has been determined.
+   */
   await: UIO<Exit.Exit<E, A>>
+  /**
+   * Gets the value of the fiber ref for this fiber, or the initial value of
+   * the fiber ref, if the fiber is not storing the ref.
+   */
   getRef: <K>(fiberRef: FiberRef<K>) => UIO<K>
+  /**
+   * Inherits values from all {@link FiberRef} instances into current fiber.
+   * This will resume immediately.
+   */
   inheritRefs: UIO<void>
+  /**
+   * Interrupts the fiber as if interrupted from the specified fiber. If the
+   * fiber has already exited, the returned effect will resume immediately.
+   * Otherwise, the effect will resume when the fiber exits.
+   */
   interruptAs(fiberId: FiberID): UIO<Exit.Exit<E, A>>
+  /**
+   * Tentatively observes the fiber, but returns immediately if it is not already done.
+   */
   poll: UIO<O.Option<Exit.Exit<E, A>>>
 }
 
 export interface Runtime<E, A> extends CommonFiber<E, A> {
   _tag: "RuntimeFiber"
+  /**
+   * The identity of the fiber.
+   */
   id: FiberID
 }
 
