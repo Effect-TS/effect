@@ -1,9 +1,7 @@
-import type * as Cause from "../Cause/core"
-import * as T from "../Effect/core"
 import type { UIO } from "../Effect/effect"
-import * as Exit from "../Exit/core"
+import type * as Exit from "../Exit/core"
 import type { FiberRef } from "../FiberRef/fiberRef"
-import * as O from "../Option"
+import type * as O from "../Option"
 import type { Scope } from "../Scope"
 import type { FiberID } from "./id"
 import type { Status } from "./status"
@@ -77,59 +75,6 @@ export interface Runtime<E, A> extends CommonFiber<E, A> {
 export interface Synthetic<E, A> extends CommonFiber<E, A> {
   _tag: "SyntheticFiber"
 }
-
-export function makeSynthetic<E, A>(_: Synthetic<E, A>): Fiber<E, A> {
-  return _
-}
-
-/**
- * Folds over the runtime or synthetic fiber.
- */
-export const fold = <E, A, Z>(
-  runtime: (_: Runtime<E, A>) => Z,
-  syntetic: (_: Synthetic<E, A>) => Z
-) => (fiber: Fiber<E, A>) => {
-  switch (fiber._tag) {
-    case "RuntimeFiber": {
-      return runtime(fiber)
-    }
-    case "SyntheticFiber": {
-      return syntetic(fiber)
-    }
-  }
-}
-
-/**
- * A fiber that is done with the specified `Exit` value.
- */
-export const done = <E, A>(exit: Exit.Exit<E, A>): Synthetic<E, A> => ({
-  _tag: "SyntheticFiber",
-  await: T.succeed(exit),
-  getRef: (ref) => T.succeed(ref.initial),
-  inheritRefs: T.unit,
-  interruptAs: () => T.succeed(exit),
-  poll: T.succeed(O.some(exit))
-})
-
-/**
- * Returns a fiber that has already succeeded with the specified value.
- */
-export const succeed = <A>(a: A) => done(Exit.succeed(a))
-
-/**
- * A fiber that has already failed with the specified value.
- */
-export const fail = <E>(e: E) => done(Exit.fail(e))
-
-/**
- * Creates a `Fiber` that is halted with the specified cause.
- */
-export const halt = <E>(cause: Cause.Cause<E>) => done(Exit.halt(cause))
-
-/**
- * A fiber that is already interrupted.
- */
-export const interruptAs = (id: FiberID) => done(Exit.interrupt(id))
 
 /**
  * InterruptStatus tracks interruptability of the current stack region
