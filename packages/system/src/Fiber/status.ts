@@ -29,6 +29,10 @@ export class Suspended {
   ) {}
 }
 
+export function isDone(s: Status): boolean {
+  return s._tag === "Done"
+}
+
 export function withInterrupting(b: boolean) {
   return (s: Status): Status => {
     switch (s._tag) {
