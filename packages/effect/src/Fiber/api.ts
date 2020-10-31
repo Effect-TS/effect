@@ -2,8 +2,10 @@ import * as A from "../Array"
 import * as Cause from "../Cause/core"
 import * as E from "../Either"
 import * as Exit from "../Exit/api"
-import { pipe } from "../Function"
+import { flow, pipe } from "../Function"
 import * as IT from "../Iterable"
+import type { Managed } from "../Managed"
+import { make } from "../Managed"
 import * as O from "../Option"
 import * as T from "./_internal/effect"
 import type * as Fiber from "./core"
@@ -369,3 +371,7 @@ export const halt = <E>(cause: Cause.Cause<E>) => done(Exit.halt(cause))
  * A fiber that is already interrupted.
  */
 export const interruptAs = (id: Fiber.FiberID) => done(Exit.interrupt(id))
+
+export const toManaged: <E, A>(
+  fiber: Fiber.Fiber<E, A>
+) => Managed<unknown, never, Fiber.Fiber<E, A>> = flow(T.succeed, make(interrupt))
