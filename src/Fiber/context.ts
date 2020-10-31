@@ -89,6 +89,8 @@ export const _tracing = new TracingContext()
 
 export const currentFiber = new AtomicReference<FiberContext<any, any> | null>(null)
 
+export const unsafeCurrentFiber = () => O.fromNullable(currentFiber.get)
+
 export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   readonly _tag = "RuntimeFiber"
   readonly state = new AtomicReference(initial<E, A>())
