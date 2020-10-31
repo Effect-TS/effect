@@ -23,9 +23,11 @@ import * as X from "../XPure"
 import * as T from "./_internal/effect"
 // fiber
 import * as Fiber from "./core"
-import type { Callback, FiberRefLocals } from "./state"
+import type { Callback } from "./state"
 import { FiberStateDone, FiberStateExecuting, initial, interrupting } from "./state"
 import * as Status from "./status"
+
+export type FiberRefLocals = Map<FiberRef<any>, any>
 
 export class Stack<A> {
   constructor(readonly value: A, readonly previous?: Stack<A>) {}
