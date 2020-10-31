@@ -1,6 +1,5 @@
 import * as C from "../Cause"
 import type * as Exit from "../Exit"
-import type { FiberRef } from "../FiberRef/fiberRef"
 import type { Status } from "./status"
 import { Done, Running } from "./status"
 
@@ -29,8 +28,6 @@ export class FiberStateDone<E, A> {
 
 export const initial = <E, A>(): FiberState<E, A> =>
   new FiberStateExecuting(new Running(false), [], C.Empty)
-
-export type FiberRefLocals = Map<FiberRef<any>, any>
 
 export const interrupting = <E, A>(state: FiberState<E, A>) => {
   const loop = (status: Status): boolean => {
