@@ -70,6 +70,12 @@ export interface Runtime<E, A> extends CommonFiber<E, A> {
    * The identity of the fiber.
    */
   id: FiberID
+
+  readonly scope: Scope<Exit.Exit<E, A>>
+  /**
+   * The status of the fiber.
+   */
+  readonly status: UIO<Status>
 }
 
 export interface Synthetic<E, A> extends CommonFiber<E, A> {

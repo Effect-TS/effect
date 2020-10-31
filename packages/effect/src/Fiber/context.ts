@@ -506,6 +506,10 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     return this.openScope.scope
   }
 
+  get status(): T.UIO<Status.Status> {
+    return T.succeed(this.state.get.status)
+  }
+
   fork(
     i0: T.Instruction,
     forkScope: O.Option<Scope.Scope<Exit.Exit<any, any>>>
