@@ -4,8 +4,9 @@ import * as T from "../src/Effect"
 import * as E from "../src/Either"
 import * as Exit from "../src/Exit"
 import * as Fiber from "../src/Fiber"
+import { dump, prettyPrintM } from "../src/Fiber"
 import * as FiberRef from "../src/FiberRef"
-import { absurd, pipe, tuple } from "../src/Function"
+import { absurd, flow, pipe, tuple } from "../src/Function"
 import * as O from "../src/Option"
 
 describe("Effect", () => {
@@ -196,15 +197,35 @@ describe("Effect", () => {
 
     expect(result).toEqual(Exit.fail("(error)"))
   })
-  it("forkAs", async () => {
-    const result = await pipe(
-      FiberRef.get(Fiber.fiberName),
-      T.forkAs("fiber-A"),
-      T.chain(Fiber.join),
-      T.runPromise
-    )
-    expect(result).toEqual(O.some("fiber-A"))
-  })
+  it(
+    "forkAs",
+    async () => {
+      const result = await pipe(
+        FiberRef.get(Fiber.fiberName),
+        T.delay(5),
+        T.forkAs("fiber-A"),
+        T.tap(
+          flow(
+            dump,
+            T.chain(prettyPrintM),
+            T.chain((text) => T.effectTotal(() => console.log(text)))
+          )
+        ),
+        T.tap(
+          flow(
+            dump,
+            T.delay(10),
+            T.chain(prettyPrintM),
+            T.chain((text) => T.effectTotal(() => console.log(text)))
+          )
+        ),
+        T.chain(Fiber.join),
+        T.runPromise
+      )
+      expect(result).toEqual(O.some("fiber-A"))
+    },
+    15 * 1000
+  )
   it("effectAsyncM", async () => {
     const result = await pipe(
       T.effectAsyncM((cb: Cb<Effect<{ bar: string }, never, string>>) =>
