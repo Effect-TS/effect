@@ -10,6 +10,32 @@ import { absurd, flow, pipe, tuple } from "../src/Function"
 import * as O from "../src/Option"
 
 describe("Effect", () => {
+  it("traces", async () => {
+    T.globalTracingEnabled.set(true)
+
+    const traces = await pipe(
+      T.succeed(1),
+      T.map((n) => n + 1),
+      T.map((n) => n + 2),
+      T.chain((n) =>
+        pipe(
+          n,
+          T.succeed,
+          T.map((k) => k + 3)
+        )
+      ),
+      T.andThen(T.traces),
+      T.runPromise
+    )
+
+    T.globalTracingEnabled.set(false)
+
+    expect(traces.map((s) => s.split("/")).map((s) => s[s.length - 1])).toEqual([
+      "effect.test.ts:18:9",
+      "effect.test.ts:19:9",
+      "effect.test.ts:24:13"
+    ])
+  })
   it("absolve", async () => {
     const program = T.absolve(T.succeed(E.left("e")))
 
@@ -267,28 +293,5 @@ describe("Effect", () => {
 
     expect(result).toEqual(Exit.fail("error in process: 5"))
     expect(result_ok).toEqual(Exit.succeed(range(0, 100)))
-  })
-
-  it("traces", async () => {
-    const traces = await pipe(
-      T.succeed(1),
-      T.map((n) => n + 1),
-      T.map((n) => n + 2),
-      T.chain((n) =>
-        pipe(
-          n,
-          T.succeed,
-          T.map((k) => k + 3)
-        )
-      ),
-      T.andThen(T.traces),
-      T.runPromise
-    )
-
-    expect(traces.map((s) => s.split("/")).map((s) => s[s.length - 1])).toEqual([
-      "effect.test.ts:275:9",
-      "effect.test.ts:276:9",
-      "effect.test.ts:281:13"
-    ])
   })
 })
