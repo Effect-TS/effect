@@ -25,6 +25,7 @@ import {
   ISupervise,
   ISuspend,
   ISuspendPartial,
+  ITraces,
   IYield
 } from "./primitives"
 
@@ -298,4 +299,9 @@ export const unit: UIO<void> = succeed(undefined)
  * stack. Manual use of this method can improve fairness, at the cost of
  * overhead.
  */
-export const yieldNow = new IYield()
+export const yieldNow: Effect<unknown, never, void> = new IYield()
+
+/**
+ * Returns the current set of execution traces
+ */
+export const traces: Effect<unknown, never, string[]> = new ITraces()

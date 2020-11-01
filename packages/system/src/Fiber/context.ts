@@ -95,6 +95,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   readonly _tag = "RuntimeFiber"
   readonly state = new AtomicReference(initial<E, A>())
   readonly scheduler = defaultScheduler
+  readonly execTraces = <string[]>[]
 
   asyncEpoch = 0 | 0
   stack?: Stack<Frame> = undefined
@@ -211,6 +212,13 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     }
   }
 
+  addTraces<X>(k: X): X {
+    if (k["$trace"]) {
+      this.execTraces.push(k["$trace"])
+    }
+    return k
+  }
+
   /**
    * Unwinds the stack, looking for the first error handler, and exiting
    * interruptible / uninterruptible regions.
@@ -268,6 +276,8 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     if (!this.isStackEmpty) {
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       const k = this.popContinuation()!
+
+      this.addTraces(k.apply)
 
       return k.apply(value)[T._I]
     } else {
@@ -764,14 +774,17 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
                     switch (nested._tag) {
                       case "Succeed": {
+                        this.addTraces(k)
                         current = k(nested.val)[T._I]
                         break
                       }
                       case "EffectTotal": {
+                        this.addTraces(k)
                         current = k(nested.effect())[T._I]
                         break
                       }
                       case "EffectPartial": {
+                        this.addTraces(k)
                         try {
                           current = k(nested.effect())[T._I]
                         } catch (e) {
@@ -798,6 +811,11 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                       current = this.nextInstr(res.right)
                     }
 
+                    break
+                  }
+
+                  case "ITraces": {
+                    current = T.succeed(this.execTraces)["_I"]
                     break
                   }
 

@@ -39,6 +39,7 @@ export type Instruction =
   | IOverrideForkScope<any, any, any>
   | XPure<unknown, never, any, any, any>
   | FFI<any, any, any>
+  | ITraces
 
 export class IFlatMap<R, E, A, R1, E1, A1> extends Base<R & R1, E | E1, A1> {
   readonly _tag = "FlatMap"
@@ -52,6 +53,14 @@ export class ISucceed<A> extends Base<unknown, never, A> {
   readonly _tag = "Succeed"
 
   constructor(readonly val: A) {
+    super()
+  }
+}
+
+export class ITraces extends Base<unknown, never, string[]> {
+  readonly _tag = "ITraces"
+
+  constructor() {
     super()
   }
 }

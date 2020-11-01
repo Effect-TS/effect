@@ -268,4 +268,27 @@ describe("Effect", () => {
     expect(result).toEqual(Exit.fail("error in process: 5"))
     expect(result_ok).toEqual(Exit.succeed(range(0, 100)))
   })
+
+  it("traces", async () => {
+    const traces = await pipe(
+      T.succeed(1),
+      T.map((n) => n + 1),
+      T.map((n) => n + 2),
+      T.chain((n) =>
+        pipe(
+          n,
+          T.succeed,
+          T.map((k) => k + 3)
+        )
+      ),
+      T.andThen(T.traces),
+      T.runPromise
+    )
+
+    expect(traces.map((s) => s.split("/")).map((s) => s[s.length - 1])).toEqual([
+      "effect.test.ts:275:9",
+      "effect.test.ts:276:9",
+      "effect.test.ts:281:13"
+    ])
+  })
 })
