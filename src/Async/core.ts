@@ -160,7 +160,7 @@ export class IFold<R, E, A, R2, E2, B, R3, E3, C> extends Async<
   E2 | E3,
   B | C
 > {
-  readonly _asyncTag = "ICatch"
+  readonly _asyncTag = "IFold"
 
   constructor(
     readonly self: Async<R, E, A>,
@@ -409,7 +409,7 @@ async function runInternal<R, E, A>(
     case "IProvide": {
       return await runInternal(op.self, op.r, is)
     }
-    case "ICatch": {
+    case "IFold": {
       const a = await runPromiseExitEnv(op.self, r, is)
 
       switch (a._tag) {
