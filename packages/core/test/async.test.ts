@@ -23,4 +23,14 @@ describe("Async", () => {
       await As.runPromiseExit(pipe(fib(10), As.provideAll({ initial: 1 })))
     ).toEqual(As.successExit(89))
   })
+  it("fold", async () => {
+    expect(
+      await pipe(
+        As.access((_: { n: number }) => _.n),
+        As.fold(As.fail, (n) => As.succeed(n + 1)),
+        As.provideAll({ n: 1 }),
+        As.runPromiseExit
+      )
+    ).toEqual(As.successExit(2))
+  })
 })
