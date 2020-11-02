@@ -132,16 +132,3 @@ export function gen(...args: any[]): any {
   }
   return gen_(args[0])
 }
-
-export function genA<AEff>() {
-  return <Eff extends GenEffect<any, any, any>>(
-    f: (i: {
-      <A>(_: Tag<A>): GenEffect<Has<A>, never, A>
-      <E, A>(_: Option<A>, onNone: () => E): GenEffect<unknown, E, A>
-      <A>(_: Option<A>): GenEffect<unknown, NoSuchElementException, A>
-      <E, A>(_: Either<E, A>): GenEffect<unknown, E, A>
-      <R, E, A>(_: Effect<R, E, A>): GenEffect<R, E, A>
-      <R, E, A>(_: Managed<R, E, A>): GenEffect<R, E, A>
-    }) => Generator<Eff, AEff, any>
-  ): Effect<_R<Eff>, _E<Eff>, AEff> => gen(f)
-}
