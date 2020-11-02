@@ -417,7 +417,7 @@ async function runInternal<R, E, A>(
           return await runInternal(op.f(a.e), r, is)
         }
         case "Success": {
-          return a.a
+          return await runInternal(op.g(a.a), r, is)
         }
         case "Interrupt": {
           throw interruptExit
