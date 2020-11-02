@@ -10,29 +10,21 @@ import { FiberDump } from "./dump"
 import { fiberName } from "./fiberName"
 import type { Status } from "./status"
 
-export function dumpWith(withTrace: false) {
-  return <E, A>(fiber: Runtime<E, A>): T.UIO<FiberDump> =>
-    T.map_(
-      // todo: trace is not supported, add it later
-      T.zipWithPar_(fiber.getRef(fiberName), fiber.status, tuple),
-      ([name, status]) => FiberDump(fiber.id, name, status)
-    )
+export function dump<E, A>(fiber: Runtime<E, A>): T.UIO<FiberDump> {
+  return T.map_(T.zipPar_(fiber.getRef(fiberName), fiber.status), ([name, status]) =>
+    FiberDump(fiber.id, name, status)
+  )
 }
-
-export const dump = dumpWith(false)
 
 export function dumpFibers(fibers: Iterable<Runtime<any, any>>): UIO<Array<FiberDump>> {
   return T.foreach_(fibers, dump)
 }
 
-// export function dumpFibersStr() {}
-// export function putDumpFibersStr() {}
-
 export function dumpStr(
   fibers: Iterable<Runtime<any, any>>,
   withTrace: false
 ): UIO<string> {
-  const du = T.foreach_(fibers, dumpWith(withTrace))
+  const du = T.foreach_(fibers, dump)
   const now = T.effectTotal(() => new Date().getTime())
   return T.map_(T.zipWith_(du, now, tuple), ([dumps, now]) => {
     const tree = renderHierarchy(dumps)
@@ -75,7 +67,6 @@ export function prettyPrint(dump: FiberDump, now: number): string {
   return [
     `${name}#${dump.fiberId.seqNumber} (${lifeMsg}) ${waitMsg}`,
     `   Status: ${statMsg}`
-    // todo: add pretty printed trace
   ].join("\n")
 }
 
@@ -104,8 +95,6 @@ export function renderStatus(status: Status): string {
     case "Suspended": {
       const inter = status.interruptible ? "interruptible" : "uninterruptible"
       const ep = `${status.epoch} asyncs`
-      // todo trace
-      // const as = status.asyncTrace
       return `Suspended(${inter}, ${ep})`
     }
   }
