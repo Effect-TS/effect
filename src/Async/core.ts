@@ -481,6 +481,20 @@ export async function runPromiseExit<E, A>(
   }
 }
 
+// runs as a Promise of an Exit
+export async function runPromise<E, A>(
+  task: Async<unknown, E, A>,
+  is = new InterruptionState()
+): Promise<A> {
+  return runPromiseExit(task, is).then((e) =>
+    e._tag === "Failure"
+      ? Promise.reject(e.e)
+      : e._tag === "Interrupt"
+      ? Promise.reject(e)
+      : Promise.resolve(e.a)
+  )
+}
+
 // runs as a Cancellable
 export function runAsync<E, A>(
   task: Async<unknown, E, A>,
