@@ -8657,9 +8657,9 @@ typescript@^3.0.3, typescript@^3.7.5, typescript@^3.8.3, typescript@^3.9.5:
   integrity sha512-BLbiRkiBzAwsjut4x/dsibSTB6yWpwT5qWmC2OfuCg3GgVQCSgMs4vEctYPhsaGtd0AeuuHMkjZ2h2WG8MSzRw==
 
 typescript@^4.1.0-dev.20201019:
-  version "4.1.0-dev.20201029"
-  resolved "https://registry.yarnpkg.com/typescript/-/typescript-4.1.0-dev.20201029.tgz#c1dcfa06270aeb193494cbdadc98fc3bb2c161bc"
-  integrity sha512-79ZW2B8s4P1ZvR8KLv4gnJfn01oCmHZkhs4CsVR8nnJN1yD6xbbf/rEAD3ROcAvD20oQ+RYEId3B67YqcFPmCg==
+  version "4.1.0-dev.20201102"
+  resolved "https://registry.yarnpkg.com/typescript/-/typescript-4.1.0-dev.20201102.tgz#e1978890ac063bb3f13d067067905b312c1e0897"
+  integrity sha512-kyL2MUGRx69NgowtHpnabYzNA3N8CR+XW51kL9my6MfSXyrojytW5P4YmaayHGQhWLRmzzdDvHfkf2PQBHgbUw==
 
 typescript@next:
   version "4.1.0-dev.20200821"
