@@ -2,28 +2,24 @@ import * as R from "@effect-ts/core/Classic/Record"
 import { pipe } from "@effect-ts/core/Function"
 import * as T from "@effect-ts/core/Sync"
 
-import type { AnyEnv } from "../../Algebra/config"
-import type { AlgebraRecord1 } from "../../Algebra/record"
-import { memo } from "../../Internal/Utils"
-import { strictApplyConfig } from "../config"
-import { StrictType, StrictURI } from "../hkt"
+import type { RecordURI } from "../../Algebra/Record"
+import { interpreter } from "../../HKT"
+import { strictApplyConfig, StrictType, StrictURI } from "../base"
 
-export const strictRecordInterpreter = memo(
-  <Env extends AnyEnv>(): AlgebraRecord1<StrictURI, Env> => ({
-    _F: StrictURI,
-    record: (getCodomain, config) => (env) =>
-      pipe(
-        getCodomain(env).strict,
-        (strict) =>
-          new StrictType(
-            strictApplyConfig(config?.conf)(
-              {
-                shrink: R.foreachF(T.Applicative)(strict.shrink)
-              },
-              env,
-              { strict }
-            )
+export const strictRecordInterpreter = interpreter<StrictURI, RecordURI>()(() => ({
+  _F: StrictURI,
+  record: (getCodomain, config) => (env) =>
+    pipe(
+      getCodomain(env).strict,
+      (strict) =>
+        new StrictType(
+          strictApplyConfig(config?.conf)(
+            {
+              shrink: R.foreachF(T.Applicative)(strict.shrink)
+            },
+            env,
+            { strict }
           )
-      )
-  })
-)
+        )
+    )
+}))

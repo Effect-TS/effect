@@ -1,39 +1,35 @@
 import * as T from "@effect-ts/core/Sync"
 
-import type { AnyEnv } from "../../Algebra/config"
-import type { AlgebraUnknown1 } from "../../Algebra/unknown"
+import type { UnknownURI } from "../../Algebra/Unknown"
 import { isUnknownRecord } from "../../Guard/interpreter/common"
-import { memo } from "../../Internal/Utils"
+import { interpreter } from "../../HKT"
+import { decoderApplyConfig, DecoderType, DecoderURI } from "../base"
 import { fail } from "../common"
-import { decoderApplyConfig } from "../config"
-import { DecoderType, DecoderURI } from "../hkt"
 
-export const decoderUnknownInterpreter = memo(
-  <Env extends AnyEnv>(): AlgebraUnknown1<DecoderURI, Env> => ({
-    _F: DecoderURI,
-    unknown: (cfg) => (env) =>
-      new DecoderType(
-        decoderApplyConfig(cfg?.conf)(
-          {
-            validate: (u, c) =>
-              isUnknownRecord(u)
-                ? T.succeed(u)
-                : fail([
-                    {
-                      id: cfg?.id,
-                      name: cfg?.name,
-                      message: `${typeof u} is not a record`,
-                      context: {
-                        ...c,
-                        actual: u,
-                        types: cfg?.name ? [...c.types, cfg.name] : c.types
-                      }
+export const decoderUnknownInterpreter = interpreter<DecoderURI, UnknownURI>()(() => ({
+  _F: DecoderURI,
+  unknown: (cfg) => (env) =>
+    new DecoderType(
+      decoderApplyConfig(cfg?.conf)(
+        {
+          validate: (u, c) =>
+            isUnknownRecord(u)
+              ? T.succeed(u)
+              : fail([
+                  {
+                    id: cfg?.id,
+                    name: cfg?.name,
+                    message: `${typeof u} is not a record`,
+                    context: {
+                      ...c,
+                      actual: u,
+                      types: cfg?.name ? [...c.types, cfg.name] : c.types
                     }
-                  ])
-          },
-          env,
-          {}
-        )
+                  }
+                ])
+        },
+        env,
+        {}
       )
-  })
-)
+    )
+}))

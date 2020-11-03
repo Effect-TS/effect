@@ -1,41 +1,31 @@
 import { pipe } from "@effect-ts/core/Function"
 
-import type { AnyEnv, ConfigsForType } from "../../Algebra/config"
-import type { AlgebraRecursive1, RecursiveConfig } from "../../Algebra/recursive"
-import { memo } from "../../Internal/Utils"
-import { accessFC, fcApplyConfig } from "../config"
-import { FastCheckType, FastCheckURI } from "../hkt"
+import type { RecursiveURI } from "../../Algebra/Recursive"
+import { interpreter } from "../../HKT"
+import { memo } from "../../Utils"
+import { accessFC, FastCheckType, FastCheckURI, fcApplyConfig } from "../base"
 
-export const fcRecursiveInterpreter = memo(
-  <Env extends AnyEnv>(): AlgebraRecursive1<FastCheckURI, Env> => ({
-    _F: FastCheckURI,
-    recursive: <A>(
-      f: (x: (env: Env) => FastCheckType<A>) => (env: Env) => FastCheckType<A>,
-      config?: {
-        name?: string
-        conf?: ConfigsForType<Env, unknown, A, RecursiveConfig<unknown, A>>
-      }
-    ) => {
-      type FA = ReturnType<typeof f>
-      const get = memo(() => f(res))
-      const res: FA = (env) =>
-        pipe(
-          () => get()(env).arb,
-          (getArb) =>
-            new FastCheckType(
-              fcApplyConfig(config?.conf)(
-                accessFC(env)
-                  .constant(null)
-                  .chain((_) => getArb()),
-                env,
-                {
-                  getArb
-                }
-              )
+export const fcRecursiveInterpreter = interpreter<FastCheckURI, RecursiveURI>()(() => ({
+  _F: FastCheckURI,
+  recursive: (f, config) => {
+    const get = memo(() => f(res))
+    const res: any = (env: any) =>
+      pipe(
+        () => get()(env).arb,
+        (getArb) =>
+          new FastCheckType(
+            fcApplyConfig(config?.conf)(
+              accessFC(env)
+                .constant(null)
+                .chain((_) => getArb()),
+              env,
+              {
+                getArb
+              }
             )
-        )
+          )
+      )
 
-      return res
-    }
-  })
-)
+    return res
+  }
+}))

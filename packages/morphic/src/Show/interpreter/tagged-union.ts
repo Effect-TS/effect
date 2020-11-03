@@ -1,11 +1,10 @@
-import type { AnyEnv } from "../../Algebra/config"
-import type { AlgebraTaggedUnion1 } from "../../Algebra/tagged-union"
-import { mapRecord, memo } from "../../Internal/Utils"
-import { showApplyConfig } from "../config"
-import { ShowType, ShowURI } from "../hkt"
+import type { TaggedUnionURI } from "../../Algebra/TaggedUnion"
+import { interpreter } from "../../HKT"
+import { mapRecord } from "../../Utils"
+import { showApplyConfig, ShowType, ShowURI } from "../base"
 
-export const showTaggedUnionInterpreter = memo(
-  <Env extends AnyEnv>(): AlgebraTaggedUnion1<ShowURI, Env> => ({
+export const showTaggedUnionInterpreter = interpreter<ShowURI, TaggedUnionURI>()(
+  () => ({
     _F: ShowURI,
     taggedUnion: (tag, types, config) => (env) => {
       const shows = mapRecord(types, (a) => a(env).show)

@@ -1,17 +1,20 @@
 import type * as S from "@effect-ts/core/Classic/Show"
 
-import type { InterfaceA, IntersectionA, TaggedUnionA } from "../../Internal/Config"
-import type { ShowURI } from "../hkt"
+import type { InterfaceLA, IntersectionLA, TaggedUnionLA } from "../../Algebra/Config"
+import type { ShowURI } from "../base"
 
-declare module "../../Algebra/intersection" {
-  interface IntersectionConfig<L extends unknown[], A extends unknown[]> {
+declare module "../../Algebra/Intersection" {
+  interface IntersectionConfig<
+    L extends readonly unknown[],
+    A extends readonly unknown[]
+  > {
     [ShowURI]: {
-      shows: IntersectionA<A, ShowURI>
+      shows: IntersectionLA<L, A, ShowURI>
     }
   }
 }
 
-declare module "../../Algebra/newtype" {
+declare module "../../Algebra/Newtype" {
   interface IsoConfig<L, A, N> {
     [ShowURI]: {
       show: S.Show<A>
@@ -24,26 +27,26 @@ declare module "../../Algebra/newtype" {
   }
 }
 
-declare module "../../Algebra/object" {
+declare module "../../Algebra/Object" {
   interface InterfaceConfig<Props> {
     [ShowURI]: {
-      show: InterfaceA<Props, ShowURI>
+      show: InterfaceLA<Props, ShowURI>
     }
   }
   interface PartialConfig<Props> {
     [ShowURI]: {
-      show: InterfaceA<Props, ShowURI>
+      show: InterfaceLA<Props, ShowURI>
     }
   }
   interface BothConfig<Props, PropsPartial> {
     [ShowURI]: {
-      show: InterfaceA<Props & PropsPartial, ShowURI>
-      showPartial: InterfaceA<PropsPartial, ShowURI>
+      show: InterfaceLA<Props & PropsPartial, ShowURI>
+      showPartial: InterfaceLA<PropsPartial, ShowURI>
     }
   }
 }
 
-declare module "../../Algebra/primitives" {
+declare module "../../Algebra/Primitives" {
   interface NonEmptyArrayConfig<L, A> {
     [ShowURI]: {
       show: S.Show<A>
@@ -82,7 +85,7 @@ declare module "../../Algebra/primitives" {
   }
 }
 
-declare module "../../Algebra/refined" {
+declare module "../../Algebra/Refined" {
   interface RefinedConfig<E, A, B> {
     [ShowURI]: {
       show: S.Show<A>
@@ -96,7 +99,7 @@ declare module "../../Algebra/refined" {
   }
 }
 
-declare module "../../Algebra/set" {
+declare module "../../Algebra/Set" {
   interface SetConfig<L, A> {
     [ShowURI]: {
       show: S.Show<A>
@@ -104,7 +107,7 @@ declare module "../../Algebra/set" {
   }
 }
 
-declare module "../../Algebra/record" {
+declare module "../../Algebra/Record" {
   interface RecordConfig<L, A> {
     [ShowURI]: {
       show: S.Show<A>
@@ -112,10 +115,10 @@ declare module "../../Algebra/record" {
   }
 }
 
-declare module "../../Algebra/tagged-union" {
+declare module "../../Algebra/TaggedUnion" {
   interface TaggedUnionConfig<Types> {
     [ShowURI]: {
-      shows: TaggedUnionA<Types, ShowURI>
+      shows: TaggedUnionLA<Types, ShowURI>
     }
   }
 }

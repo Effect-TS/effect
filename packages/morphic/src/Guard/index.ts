@@ -6,7 +6,7 @@ import type {
   SummonerInterpURI,
   SummonerProgURI
 } from "../Batteries/usage/summoner"
-import type { Guard, GuardURI } from "./hkt"
+import type { Guard, GuardURI } from "./base"
 import { modelGuardInterpreter } from "./interpreter"
 
 export function deriveFor<S extends Summoner<any>>(S: S) {

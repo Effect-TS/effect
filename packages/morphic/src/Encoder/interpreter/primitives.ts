@@ -5,16 +5,14 @@ import * as O from "@effect-ts/core/Classic/Option"
 import { flow, pipe } from "@effect-ts/core/Function"
 import * as T from "@effect-ts/core/Sync"
 
-import type { AnyEnv } from "../../Algebra/config"
-import type { AlgebraPrimitive2 } from "../../Algebra/primitives"
-import { memo } from "../../Internal/Utils"
-import { encoderApplyConfig } from "../config"
-import { EncoderType, EncoderURI } from "../hkt"
+import type { PrimitivesURI } from "../../Algebra/Primitives"
+import { interpreter } from "../../HKT"
+import { encoderApplyConfig, EncoderType, EncoderURI } from "../base"
 
 export const regexUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
-export const encoderPrimitiveInterpreter = memo(
-  <Env extends AnyEnv>(): AlgebraPrimitive2<EncoderURI, Env> => ({
+export const encoderPrimitiveInterpreter = interpreter<EncoderURI, PrimitivesURI>()(
+  () => ({
     _F: EncoderURI,
     function: (_, __, config) => (env) =>
       new EncoderType(

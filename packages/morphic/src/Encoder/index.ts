@@ -6,7 +6,7 @@ import type {
   SummonerInterpURI,
   SummonerProgURI
 } from "../Batteries/usage/summoner"
-import type { Encoder, EncoderURI } from "./hkt"
+import type { Encoder, EncoderURI } from "./base"
 import { modelEncoderInterpreter } from "./interpreter"
 
 export function deriveFor<S extends Summoner<any>>(S: S) {

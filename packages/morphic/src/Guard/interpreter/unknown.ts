@@ -1,21 +1,17 @@
-import type { AnyEnv } from "../../Algebra/config"
-import type { AlgebraUnknown1 } from "../../Algebra/unknown"
-import { memo } from "../../Internal/Utils"
-import { guardApplyConfig } from "../config"
-import { GuardType, GuardURI } from "../hkt"
+import type { UnknownURI } from "../../Algebra/Unknown"
+import { interpreter } from "../../HKT"
+import { guardApplyConfig, GuardType, GuardURI } from "../base"
 
-export const guardUnknownInterpreter = memo(
-  <Env extends AnyEnv>(): AlgebraUnknown1<GuardURI, Env> => ({
-    _F: GuardURI,
-    unknown: (cfg) => (env) =>
-      new GuardType(
-        guardApplyConfig(cfg?.conf)(
-          {
-            is: (u): u is unknown => true
-          },
-          env,
-          {}
-        )
+export const guardUnknownInterpreter = interpreter<GuardURI, UnknownURI>()(() => ({
+  _F: GuardURI,
+  unknown: (cfg) => (env) =>
+    new GuardType(
+      guardApplyConfig(cfg?.conf)(
+        {
+          is: (u): u is unknown => true
+        },
+        env,
+        {}
       )
-  })
-)
+    )
+}))

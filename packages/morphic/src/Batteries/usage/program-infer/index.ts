@@ -1,5 +1,4 @@
-import type { Algebra, Algebra1, Algebra2 } from "../../../Algebra/utils/core"
-import type { HKT2, Kind, Kind2, URIS, URIS2 } from "../../../Algebra/utils/hkt"
+import type { Algebra, HKT, InterpreterURIS, Kind } from "../../../HKT"
 import type {
   ProgramAlgebra,
   ProgramAlgebraURI,
@@ -14,11 +13,11 @@ export const interpretable = <T extends { [overloadsSymb]?: any }>(
   program: T
 ): Overloads<T> => program as Overloads<T>
 
-export type InferredAlgebra<F, PURI extends ProgramURI, R> = Algebra<
-  ProgramAlgebraURI[PURI],
-  F,
+export type InferredAlgebra<
+  F extends InterpreterURIS,
+  PURI extends ProgramURI,
   R
->
+> = Algebra<ProgramAlgebraURI[PURI], F, R>
 
 export type Overloads<I extends { [overloadsSymb]?: any }> = NonNullable<
   I[typeof overloadsSymb]
@@ -30,19 +29,11 @@ export interface InferredProgram<
   A,
   PURI extends ProgramURI
 > {
-  <G, Env extends R>(a: ProgramAlgebra<G, Env>[PURI]): HKT2<G, Env, E, A>
+  <Env extends R>(a: ProgramAlgebra<"HKT", Env>[PURI]): HKT<Env, E, A>
   [overloadsSymb]?: {
-    <G extends URIS>(a: Algebra1<ProgramAlgebraURI[PURI], G, R>): Kind<
-      G,
-      { [k in G & keyof R]: R[k] },
-      A
-    >
-    <G extends URIS2>(a: Algebra2<ProgramAlgebraURI[PURI], G, R>): Kind2<
-      G,
-      { [k in G & keyof R]: R[k] },
-      E,
-      A
-    >
+    <G extends Exclude<InterpreterURIS, "HKT">>(
+      a: Algebra<ProgramAlgebraURI[PURI], G, R>
+    ): Kind<G, { [k in G & keyof R]: R[k] }, E, A>
   }
 }
 

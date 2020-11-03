@@ -1,42 +1,37 @@
 import { pipe } from "@effect-ts/core/Function"
 
-import type { AnyEnv } from "../../Algebra/config"
-import type { AlgebraNewtype1 } from "../../Algebra/newtype"
-import { memo } from "../../Internal/Utils"
-import { eqApplyConfig } from "../config"
-import { EqType, EqURI } from "../hkt"
+import type { NewtypeURI } from "../../Algebra/Newtype"
+import { interpreter } from "../../HKT"
+import { eqApplyConfig, EqType, EqURI } from "../base"
 
-export const eqNewtypeInterpreter = memo(
-  <Env extends AnyEnv>(): AlgebraNewtype1<EqURI, Env> => ({
-    _F: EqURI,
-    newtypeIso: (iso, getEq, config) => (env) =>
-      pipe(
-        getEq(env).eq,
-        (eq) =>
-          new EqType(
-            eqApplyConfig(config?.conf)(
-              {
-                equals: (y) => (x) => eq.equals(iso.reverseGet(y))(iso.reverseGet(x))
-              },
-              env,
-              { eq }
-            )
+export const eqNewtypeInterpreter = interpreter<EqURI, NewtypeURI>()(() => ({
+  _F: EqURI,
+  newtypeIso: (iso, getEq, config) => (env) =>
+    pipe(
+      getEq(env).eq,
+      (eq) =>
+        new EqType(
+          eqApplyConfig(config?.conf)(
+            {
+              equals: (y) => (x) => eq.equals(iso.reverseGet(y))(iso.reverseGet(x))
+            },
+            env,
+            { eq }
           )
-      ),
-    newtypePrism: (prism, getEq, config) => (env) =>
-      pipe(
-        getEq(env).eq,
-        (eq) =>
-          new EqType(
-            eqApplyConfig(config?.conf)(
-              {
-                equals: (y) => (x) =>
-                  eq.equals(prism.reverseGet(y))(prism.reverseGet(x))
-              },
-              env,
-              { eq }
-            )
+        )
+    ),
+  newtypePrism: (prism, getEq, config) => (env) =>
+    pipe(
+      getEq(env).eq,
+      (eq) =>
+        new EqType(
+          eqApplyConfig(config?.conf)(
+            {
+              equals: (y) => (x) => eq.equals(prism.reverseGet(y))(prism.reverseGet(x))
+            },
+            env,
+            { eq }
           )
-      )
-  })
-)
+        )
+    )
+}))

@@ -1,12 +1,11 @@
-import type { AnyEnv } from "../../Algebra/config"
-import type { AlgebraTaggedUnion2 } from "../../Algebra/tagged-union"
-import { mapRecord, memo } from "../../Internal/Utils"
-import { encoderApplyConfig } from "../config"
-import type { Encoder } from "../hkt"
-import { EncoderType, EncoderURI } from "../hkt"
+import type { TaggedUnionURI } from "../../Algebra/TaggedUnion"
+import { interpreter } from "../../HKT"
+import { mapRecord } from "../../Utils"
+import type { Encoder } from "../base"
+import { encoderApplyConfig, EncoderType, EncoderURI } from "../base"
 
-export const encoderTaggedUnionInterpreter = memo(
-  <Env extends AnyEnv>(): AlgebraTaggedUnion2<EncoderURI, Env> => ({
+export const encoderTaggedUnionInterpreter = interpreter<EncoderURI, TaggedUnionURI>()(
+  () => ({
     _F: EncoderURI,
     taggedUnion: (tag, types, config) => (env) => {
       const encoders = mapRecord(types, (a) => a(env).encoder)

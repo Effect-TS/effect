@@ -1,11 +1,10 @@
-import type { AnyEnv } from "../../Algebra/config"
-import type { AlgebraTaggedUnion1 } from "../../Algebra/tagged-union"
-import { mapRecord, memo } from "../../Internal/Utils"
-import { strictApplyConfig } from "../config"
-import { StrictType, StrictURI } from "../hkt"
+import type { TaggedUnionURI } from "../../Algebra/TaggedUnion"
+import { interpreter } from "../../HKT"
+import { mapRecord } from "../../Utils"
+import { strictApplyConfig, StrictType, StrictURI } from "../base"
 
-export const strictTaggedUnionInterpreter = memo(
-  <Env extends AnyEnv>(): AlgebraTaggedUnion1<StrictURI, Env> => ({
+export const strictTaggedUnionInterpreter = interpreter<StrictURI, TaggedUnionURI>()(
+  () => ({
     _F: StrictURI,
     taggedUnion: (tag, types, config) => (env) => {
       const stricts = mapRecord(types, (a) => a(env).strict)
@@ -13,7 +12,7 @@ export const strictTaggedUnionInterpreter = memo(
       return new StrictType(
         strictApplyConfig(config?.conf)(
           {
-            shrink: (u) => stricts[u[tag]].shrink(u)
+            shrink: (u) => stricts[u[tag] as any].shrink(u)
           },
           env,
           {

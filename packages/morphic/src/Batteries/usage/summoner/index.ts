@@ -1,6 +1,5 @@
-import type { AnyEnv } from "../../../Algebra/config"
-import type { CacheType } from "../../../Algebra/utils/core"
-import type { URIS, URIS2 } from "../../../Algebra/utils/hkt"
+import type { CacheType } from "../../../Algebra/Core"
+import type { AnyEnv, InterpreterURIS } from "../../../HKT"
 import type { InterpreterResult, InterpreterURI } from "../interpreter-result"
 import type { Materialized } from "../materializer"
 import { materialize } from "../materializer"
@@ -70,7 +69,7 @@ export function makeSummoner<S extends Summoners<any, any, any> = never>(
   }
 }
 
-export type ExtractEnv<Env, SummonerEnv extends URIS | URIS2> = {
+export type ExtractEnv<Env, SummonerEnv extends InterpreterURIS> = {
   [k in SummonerEnv & keyof Env]: NonNullable<Env>[k & keyof Env]
 }
 

@@ -5,19 +5,17 @@ import { none, some } from "@effect-ts/core/Classic/Option"
 import { pipe } from "@effect-ts/core/Function"
 import * as T from "@effect-ts/core/Sync"
 
-import type { AnyEnv } from "../../Algebra/config"
-import type { AlgebraPrimitive1, UUID } from "../../Algebra/primitives"
+import type { PrimitivesURI, UUID } from "../../Algebra/Primitives"
 import { isUnknownRecord } from "../../Guard/interpreter/common"
-import { memo } from "../../Internal/Utils"
+import { interpreter } from "../../HKT"
+import { decoderApplyConfig, DecoderType, DecoderURI } from "../base"
 import { DecodeError, fail } from "../common"
-import { decoderApplyConfig } from "../config"
-import { DecoderType, DecoderURI } from "../hkt"
 import { fixKey, foreachArray, foreachNonEmptyArray } from "./common"
 
 export const regexUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
-export const decoderPrimitiveInterpreter = memo(
-  <Env extends AnyEnv>(): AlgebraPrimitive1<DecoderURI, Env> => ({
+export const decoderPrimitiveInterpreter = interpreter<DecoderURI, PrimitivesURI>()(
+  () => ({
     _F: DecoderURI,
     function: (_, __, cfg) => (env) =>
       new DecoderType(

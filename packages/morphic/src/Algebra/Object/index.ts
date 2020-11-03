@@ -32,7 +32,7 @@ type PropsA<
     [k in keyof Props]: HKT<any, any, any>
   }
 > = {
-  [k in keyof Props]: Props[k]["_E"]
+  [k in keyof Props]: Props[k]["_A"]
 }
 
 export interface AlgebraObjects<F extends InterpreterURIS, Env extends AnyEnv> {

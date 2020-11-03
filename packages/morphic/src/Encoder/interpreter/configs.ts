@@ -1,15 +1,18 @@
-import type { InterfaceLA, IntersectionLA, TaggedUnionLA } from "../../Internal/Config"
-import type { Encoder, EncoderURI } from "../hkt"
+import type { InterfaceLA, IntersectionLA, TaggedUnionLA } from "../../Algebra/Config"
+import type { Encoder, EncoderURI } from "../base"
 
-declare module "../../Algebra/intersection" {
-  interface IntersectionConfig<L extends unknown[], A extends unknown[]> {
+declare module "../../Algebra/Intersection" {
+  interface IntersectionConfig<
+    L extends readonly unknown[],
+    A extends readonly unknown[]
+  > {
     [EncoderURI]: {
       encoders: IntersectionLA<L, A, EncoderURI>
     }
   }
 }
 
-declare module "../../Algebra/newtype" {
+declare module "../../Algebra/Newtype" {
   interface IsoConfig<L, A, N> {
     [EncoderURI]: {
       encoder: Encoder<A, L>
@@ -22,7 +25,7 @@ declare module "../../Algebra/newtype" {
   }
 }
 
-declare module "../../Algebra/object" {
+declare module "../../Algebra/Object" {
   interface InterfaceConfig<Props> {
     [EncoderURI]: {
       encoder: InterfaceLA<Props, EncoderURI>
@@ -41,7 +44,7 @@ declare module "../../Algebra/object" {
   }
 }
 
-declare module "../../Algebra/primitives" {
+declare module "../../Algebra/Primitives" {
   interface UnknownEConfig<L, A> {
     [EncoderURI]: {
       encoder: Encoder<A, L>
@@ -85,7 +88,7 @@ declare module "../../Algebra/primitives" {
   }
 }
 
-declare module "../../Algebra/refined" {
+declare module "../../Algebra/Refined" {
   interface RefinedConfig<E, A, B> {
     [EncoderURI]: {
       encoder: Encoder<A, E>
@@ -98,7 +101,7 @@ declare module "../../Algebra/refined" {
   }
 }
 
-declare module "../../Algebra/set" {
+declare module "../../Algebra/Set" {
   interface SetConfig<L, A> {
     [EncoderURI]: {
       encoder: Encoder<A, L>
@@ -106,7 +109,7 @@ declare module "../../Algebra/set" {
   }
 }
 
-declare module "../../Algebra/record" {
+declare module "../../Algebra/Record" {
   interface RecordConfig<L, A> {
     [EncoderURI]: {
       encoder: Encoder<A, L>
@@ -114,7 +117,7 @@ declare module "../../Algebra/record" {
   }
 }
 
-declare module "../../Algebra/tagged-union" {
+declare module "../../Algebra/TaggedUnion" {
   interface TaggedUnionConfig<Types> {
     [EncoderURI]: {
       encoders: TaggedUnionLA<Types, EncoderURI>

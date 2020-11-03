@@ -5,16 +5,14 @@ import * as O from "@effect-ts/core/Classic/Option"
 import { flow, pipe } from "@effect-ts/core/Function"
 import * as T from "@effect-ts/core/Sync"
 
-import type { AnyEnv } from "../../Algebra/config"
-import type { AlgebraPrimitive1, UUID } from "../../Algebra/primitives"
-import { memo } from "../../Internal/Utils"
-import { strictApplyConfig } from "../config"
-import { StrictType, StrictURI } from "../hkt"
+import type { PrimitivesURI, UUID } from "../../Algebra/Primitives"
+import { interpreter } from "../../HKT"
+import { strictApplyConfig, StrictType, StrictURI } from "../base"
 
 export const regexUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
-export const strictPrimitiveInterpreter = memo(
-  <Env extends AnyEnv>(): AlgebraPrimitive1<StrictURI, Env> => ({
+export const strictPrimitiveInterpreter = interpreter<StrictURI, PrimitivesURI>()(
+  () => ({
     _F: StrictURI,
     function: (_, __, config) => (env) =>
       new StrictType(

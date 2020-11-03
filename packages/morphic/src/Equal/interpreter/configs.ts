@@ -1,17 +1,20 @@
 import type * as E from "@effect-ts/core/Classic/Equal"
 
-import type { InterfaceA, IntersectionA, TaggedUnionA } from "../..//Internal/Config"
-import type { EqURI } from "../hkt"
+import type { InterfaceLA, IntersectionLA, TaggedUnionLA } from "../../Algebra/Config"
+import type { EqURI } from "../base"
 
-declare module "../../Algebra/intersection" {
-  interface IntersectionConfig<L extends unknown[], A extends unknown[]> {
+declare module "../../Algebra/Intersection" {
+  export interface IntersectionConfig<
+    L extends readonly unknown[],
+    A extends readonly unknown[]
+  > {
     [EqURI]: {
-      equals: IntersectionA<A, EqURI>
+      equals: IntersectionLA<L, A, EqURI>
     }
   }
 }
 
-declare module "../../Algebra/newtype" {
+declare module "../../Algebra/Newtype" {
   interface NewtypeConfig<L, A, N> {
     [EqURI]: {
       eq: E.Equal<A>
@@ -34,26 +37,26 @@ declare module "../../Algebra/newtype" {
   }
 }
 
-declare module "../../Algebra/object" {
+declare module "../../Algebra/Object" {
   interface InterfaceConfig<Props> {
     [EqURI]: {
-      eq: InterfaceA<Props, EqURI>
+      eq: InterfaceLA<Props, EqURI>
     }
   }
   interface PartialConfig<Props> {
     [EqURI]: {
-      eq: InterfaceA<Props, EqURI>
+      eq: InterfaceLA<Props, EqURI>
     }
   }
   interface BothConfig<Props, PropsPartial> {
     [EqURI]: {
-      eq: InterfaceA<Props, EqURI>
-      eqPartial: InterfaceA<PropsPartial, EqURI>
+      eq: InterfaceLA<Props, EqURI>
+      eqPartial: InterfaceLA<PropsPartial, EqURI>
     }
   }
 }
 
-declare module "../../Algebra/primitives" {
+declare module "../../Algebra/Primitives" {
   interface NonEmptyArrayConfig<L, A> {
     [EqURI]: {
       eq: E.Equal<A>
@@ -92,7 +95,7 @@ declare module "../../Algebra/primitives" {
   }
 }
 
-declare module "../../Algebra/refined" {
+declare module "../../Algebra/Refined" {
   interface RefinedConfig<E, A, B> {
     [EqURI]: {
       eq: E.Equal<A>
@@ -106,7 +109,7 @@ declare module "../../Algebra/refined" {
   }
 }
 
-declare module "../../Algebra/set" {
+declare module "../../Algebra/Set" {
   interface SetConfig<L, A> {
     [EqURI]: {
       eq: E.Equal<A>
@@ -114,7 +117,7 @@ declare module "../../Algebra/set" {
   }
 }
 
-declare module "../../Algebra/record" {
+declare module "../../Algebra/Record" {
   interface RecordConfig<L, A> {
     [EqURI]: {
       eq: E.Equal<A>
@@ -122,10 +125,10 @@ declare module "../../Algebra/record" {
   }
 }
 
-declare module "../../Algebra/tagged-union" {
+declare module "../../Algebra/TaggedUnion" {
   interface TaggedUnionConfig<Types> {
     [EqURI]: {
-      equals: TaggedUnionA<Types, EqURI>
+      equals: TaggedUnionLA<Types, EqURI>
     }
   }
 }

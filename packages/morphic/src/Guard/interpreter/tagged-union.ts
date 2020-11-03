@@ -1,11 +1,10 @@
-import type { AnyEnv } from "../../Algebra/config"
-import type { AlgebraTaggedUnion1 } from "../../Algebra/tagged-union"
-import { mapRecord, memo } from "../../Internal/Utils"
-import { guardApplyConfig } from "../config"
-import { GuardType, GuardURI } from "../hkt"
+import type { TaggedUnionURI } from "../../Algebra/TaggedUnion"
+import { interpreter } from "../../HKT"
+import { mapRecord } from "../../Utils"
+import { guardApplyConfig, GuardType, GuardURI } from "../base"
 
-export const guardTaggedUnionInterpreter = memo(
-  <Env extends AnyEnv>(): AlgebraTaggedUnion1<GuardURI, Env> => ({
+export const guardTaggedUnionInterpreter = interpreter<GuardURI, TaggedUnionURI>()(
+  () => ({
     _F: GuardURI,
     taggedUnion: (tag, types, config) => (env) => {
       const guards = mapRecord(types, (a) => a(env).guard)

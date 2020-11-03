@@ -8,7 +8,7 @@ import type {
   SummonerInterpURI,
   SummonerProgURI
 } from "../Batteries/usage/summoner"
-import type { EqURI } from "./hkt"
+import type { EqURI } from "./base"
 import { modelEqInterpreter } from "./interpreter"
 
 export function deriveFor<S extends Summoner<any>>(S: S) {
