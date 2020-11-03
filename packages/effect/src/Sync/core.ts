@@ -4,6 +4,10 @@ import * as X from "../XPure"
 
 export interface Sync<R, E, A> extends X.XPure<unknown, never, R, E, A> {}
 
+export interface UIO<A> extends Sync<unknown, never, A> {}
+export interface RIO<R, A> extends Sync<R, never, A> {}
+export interface IO<E, A> extends Sync<unknown, E, A> {}
+
 /**
  * Extends this computation with another computation that depends on the
  * result of this computation by running the first computation, using its
