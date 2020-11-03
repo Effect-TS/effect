@@ -8,7 +8,7 @@ Thhis repository target the `next` major release, for the current legacy reposit
 - [Effect-TS Core: ZIO-Prelude Inspired Typeclasses & Module Structure](https://dev.to/matechs/effect-ts-core-zio-prelude-inspired-typeclasses-module-structure-50g6)
 - [The Effect Data Types: Effect](https://dev.to/matechs/the-effect-data-types-effect-1e3f)
 - [The Effect Data Types: Managed & Layer](https://dev.to/matechs/the-effect-data-types-managed-layer-4722)
-- [Busing TypeScript Generators](https://dev.to/matechs/abusing-typescript-generators-4m5h)
+- [Abusing TypeScript Generators](https://dev.to/matechs/abusing-typescript-generators-4m5h)
 
 ### Get in touch
 
