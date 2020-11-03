@@ -1,9 +1,7 @@
 import * as M from "../src/micro"
 import { equal } from "../src/micro/Equal"
 
-export const Person_ = M.make((F) =>
-  F.array(F.string(), { conf: { [M.EqURI]: (_) => _ } })
-)
+export const Person_ = M.make((F) => F.array(F.string(), { conf: { Eq: (_) => _ } }))
 
 export interface Person extends M.AType<typeof Person_> {}
 export interface PersonE extends M.EType<typeof Person_> {}

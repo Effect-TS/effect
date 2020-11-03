@@ -2,7 +2,7 @@ import type { Equal } from "@effect-ts/core/Classic/Equal"
 
 import { getApplyConfig } from "../../HKT"
 
-export const EqURI = "EqURI" as const
+export const EqURI = "Eq" as const
 export type EqURI = typeof EqURI
 
 export const eqApplyConfig = getApplyConfig(EqURI)
