@@ -5,6 +5,8 @@
  * - A: output
  *
  * And additionally supports interruption
+ *
+ * Note: this design is not stack safe.
  */
 
 import type { Cause } from "@effect-ts/system/Cause"
