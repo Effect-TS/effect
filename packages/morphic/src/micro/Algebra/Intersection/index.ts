@@ -14,8 +14,7 @@ export interface IntersectionConfig<
 export interface AlgebraIntersections<F extends InterpreterURIS, Env extends AnyEnv> {
   _F: F
   intersection: {
-    <Types extends readonly OfType<F, any, any, Env>[]>(
-      types: Types,
+    <Types extends readonly OfType<F, any, any, Env>[]>(...types: Types): (
       config?: Named<
         ConfigsForType<
           Env,
@@ -51,7 +50,7 @@ export interface AlgebraIntersections<F extends InterpreterURIS, Env extends Any
           >
         >
       >
-    ): Kind<
+    ) => Kind<
       F,
       Env,
       UnionToIntersection<
@@ -73,9 +72,8 @@ export interface AlgebraIntersections<F extends InterpreterURIS, Env extends Any
         }[number]
       >
     >
-    <L, A, Env>(
-      types: Array<OfType<F, L, A, Env>>,
+    <L, A, Env>(...types: Array<OfType<F, L, A, Env>>): (
       config?: Named<ConfigsForType<Env, L, A, IntersectionConfig<L[], A[]>>>
-    ): Kind<F, Env, L, A>
+    ) => Kind<F, Env, L, A>
   }
 }

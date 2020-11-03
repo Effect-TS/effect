@@ -1,15 +1,19 @@
 import type * as E from "@effect-ts/core/Classic/Equal"
 
-import type { TaggedUnionLA } from "../../Algebra/Config"
+import type { IntersectionLA, TaggedUnionLA } from "../../Algebra/Config"
 import type { EqURI } from "../base"
 
-//declare module "../../Algebra/intersection" {
-//  interface IntersectionConfig<L extends unknown[], A extends unknown[]> {
-//    [EqURI]: {
-//      equals: IntersectionA<A, EqURI>
-//    }
-//  }
-//}
+declare module "../../Algebra/Intersection" {
+  export interface IntersectionConfig<
+    L extends readonly unknown[],
+    A extends readonly unknown[]
+  > {
+    [EqURI]: {
+      equals: IntersectionLA<L, A, EqURI>
+    }
+  }
+}
+
 //
 //declare module "../../Algebra/newtype" {
 //  interface NewtypeConfig<L, A, N> {
