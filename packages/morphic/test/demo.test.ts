@@ -41,3 +41,7 @@ export const all = M.make((F) =>
     }
   })
 )
+
+it("dummy", () => {
+  expect(1).toEqual(1)
+})
