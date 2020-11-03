@@ -10,7 +10,10 @@ export const hashIntersectionInterpreter = interpreter<HashURI, IntersectionURI>
       return new HashType(
         hashApplyConfig(config?.conf)(
           {
-            hash: hashs.map((s) => s.hash).join(" & ")
+            hash: hashs
+              .map((s) => s.hash)
+              .sort()
+              .join(" & ")
           },
           env,
           {
