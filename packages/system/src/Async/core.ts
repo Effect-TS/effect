@@ -8,6 +8,7 @@ import { pipe } from "../Function"
 import * as O from "../Option"
 import { Stack } from "../Stack"
 import { AtomicReference } from "../Support/AtomicReference"
+import * as S from "../Sync"
 import type * as U from "../Utils"
 
 export const currentIntegration = new AtomicReference<
@@ -37,14 +38,13 @@ export const notIimplementedFFI = new IFailEffect({
 })
 
 /**
- * `Async[ S2, R, E, A]` is a purely functional description of a computation
- * that requires an environment `R` and an initial state `S1` and may either
- * fail with an `E` or succeed with an updated state `S2` and an `A`. Because
- * of its polymorphism `Async` can be used to model a variety of effects
- * including context, state, and failure.
+ * `Async[R, E, A]` is a purely functional description of an async computation
+ * that requires an environment `R` and may either  fail with an `E` or succeed
+ * with an `A`.
  */
 export abstract class Async<R, E, A> {
-  readonly _tag = "Async"
+  readonly _tag = "XPure"
+  readonly _SX!: () => unknown
   readonly _S1!: (_: unknown) => void
   readonly _S2!: () => never;
 
@@ -167,6 +167,7 @@ type Concrete<R, E, A> =
   | IPromise<E, A>
   | IDone<E, A>
   | IAll<R, E, A>
+  | S.Sync<R, E, A>
 
 class FoldFrame {
   readonly _asyncTag = "FoldFrame"
@@ -451,6 +452,10 @@ export function runPromiseExitEnv<R, E, A>(
         }
         case "Suspend": {
           curAsync = xp.f()
+          break
+        }
+        case "XPure": {
+          curAsync = fromEither(S.runEitherEnv(r)(xp))
           break
         }
         case "Succeed": {
@@ -1081,3 +1086,8 @@ const assign = <K extends string>(k: K) => <S, A1>(f: (s: S) => A1) => <R, E>(
   )
 
 export { assign as let }
+
+// list an Either
+export function fromEither<E, A>(e: E.Either<E, A>) {
+  return e._tag === "Right" ? succeed(e.right) : fail(e.left)
+}
