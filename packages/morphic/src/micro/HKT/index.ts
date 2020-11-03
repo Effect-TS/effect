@@ -111,14 +111,9 @@ export interface URItoAlgebra<F extends InterpreterURIS, Env extends AnyEnv> {
 
 export type AlgebraURIS = Exclude<keyof URItoAlgebra<never, never>, "_F" | "_R">
 
-export interface URItoConfigType<E, A> {}
+export type ConfigTypeURIS = keyof ConfigType<any, any>
 
-export type ConfigTypeURIS = keyof URItoConfigType<any, any>
-
-export type ConfigTypeKind<URI extends ConfigTypeURIS, E, A> = URItoConfigType<
-  E,
-  A
->[URI]
+export type ConfigTypeKind<URI extends ConfigTypeURIS, E, A> = ConfigType<E, A>[URI]
 
 export type GetAlgebra<A extends AlgebraURIS> = A
 

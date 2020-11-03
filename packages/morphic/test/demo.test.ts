@@ -1,5 +1,8 @@
+import * as fc from "fast-check"
+
 import * as M from "../src/micro"
 import { equal } from "../src/micro/Equal"
+import { arbitrary } from "../src/micro/FastCheck"
 
 export const Person_ = M.make((F) => F.array(F.string(), { conf: { Eq: (_) => _ } }))
 
@@ -43,5 +46,9 @@ export const all = M.make((F) =>
 )
 
 it("dummy", () => {
-  expect(1).toEqual(1)
+  fc.assert(
+    fc.property(arbitrary(all), (a) => {
+      expect(Object.keys(a)).toEqual(["a", "b", "c"])
+    })
+  )
 })
