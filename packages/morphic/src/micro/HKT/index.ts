@@ -1,5 +1,5 @@
 import type { Record } from "@effect-ts/core/Classic/Record"
-import type { UnionToIntersection } from "@effect-ts/core/Utils"
+import type { Compute, UnionToIntersection } from "@effect-ts/core/Utils"
 
 import type { AlgebraIntersections } from "../Algebra/Intersection"
 import { IntersectionURI } from "../Algebra/Intersection"
@@ -33,7 +33,7 @@ export interface GenConfig<A, R, K> {
 export type NoEnv = unknown
 
 export type MapToGenConfig<R extends AnyEnv, T extends URISIndexedAny, K> = {
-  [k in InterpreterURIS]?: GenConfig<T[k], R[k], ThreadURI<K, k>>
+  [k in Exclude<InterpreterURIS, "HKT">]?: GenConfig<T[k], R[k], ThreadURI<K, k>>
 }
 
 export interface ConfigType<E, A> {
@@ -43,10 +43,9 @@ export interface ConfigType<E, A> {
   readonly ["HKT"]: never
 }
 
-export type ConfigsForType<R extends AnyEnv, E, A, K = {}> = MapToGenConfig<
-  R,
-  ConfigType<E, A>,
-  K
+export type ConfigsForType<R extends AnyEnv, E, A, K = {}> = Compute<
+  MapToGenConfig<R, ConfigType<E, A>, K>,
+  "flat"
 >
 
 export type ThreadURI<C, URI extends InterpreterURIS> = URI extends keyof C
