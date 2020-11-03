@@ -1,28 +1,21 @@
 import { pipe } from "@effect-ts/core/Function"
 
-import type { AnyEnv, ConfigsForType } from "../../Algebra/config"
-import type { AlgebraRecursive1, RecursiveConfig } from "../../Algebra/recursive"
-import { memo } from "../../Internal/Utils"
-import { decoderApplyConfig } from "../config"
-import { DecoderType, DecoderURI } from "../hkt"
+import type { RecursiveURI } from "../../Algebra/Recursive"
+import { interpreter } from "../../HKT"
+import { memo } from "../../Utils"
+import { decoderApplyConfig, DecoderType, DecoderURI } from "../base"
 
-export const decoderRecursiveInterpreter = memo(
-  <Env extends AnyEnv>(): AlgebraRecursive1<DecoderURI, Env> => ({
+export const decoderRecursiveInterpreter = interpreter<DecoderURI, RecursiveURI>()(
+  () => ({
     _F: DecoderURI,
-    recursive: <A>(
-      a: (x: (env: Env) => DecoderType<A>) => (env: Env) => DecoderType<A>,
-      config?: {
-        name?: string
-        config?: ConfigsForType<Env, unknown, A, RecursiveConfig<unknown, A>>
-      }
-    ) => {
+    recursive: (a, config) => {
       const get = memo(() => a(res))
       const res: ReturnType<typeof a> = (env) =>
         new DecoderType(
           pipe(
             () => get()(env).decoder,
             (getDecoder) =>
-              decoderApplyConfig(config?.config)(
+              decoderApplyConfig(config?.conf)(
                 {
                   validate: (u, c) =>
                     getDecoder().validate(u, {

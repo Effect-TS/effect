@@ -9,9 +9,9 @@ import type {
   SummonerInterpURI,
   SummonerProgURI
 } from "../Batteries/usage/summoner"
+import type { DecoderURI } from "./base"
 import type { Decoder } from "./common"
 import { report } from "./common"
-import type { DecoderURI } from "./hkt"
 import { modelDecoderInterpreter } from "./interpreter"
 
 export type {

@@ -2,42 +2,33 @@ import * as A from "@effect-ts/core/Classic/Array"
 import { pipe } from "@effect-ts/core/Function"
 import * as T from "@effect-ts/core/Sync"
 
-import type { AnyEnv, ConfigsForType } from "../../Algebra/config"
-import type {
-  AlgebraIntersection2,
-  IntersectionConfig
-} from "../../Algebra/intersection"
+import type { IntersectionURI } from "../../Algebra/Intersection"
 import { mergePrefer } from "../../Decoder/interpreter/common"
-import { memo } from "../../Internal/Utils"
-import { encoderApplyConfig } from "../config"
-import { EncoderType, EncoderURI } from "../hkt"
+import { interpreter } from "../../HKT"
+import { encoderApplyConfig, EncoderType, EncoderURI } from "../base"
 
-export const encoderIntersectionInterpreter = memo(
-  <Env extends AnyEnv>(): AlgebraIntersection2<EncoderURI, Env> => ({
-    _F: EncoderURI,
-    intersection: <L, A>(
-      types: ((env: Env) => EncoderType<A, L>)[],
-      config?: {
-        conf?: ConfigsForType<Env, L, A, IntersectionConfig<L[], A[]>>
-      }
-    ) => (env: Env) => {
-      const encoders = types.map((getEncoder) => getEncoder(env).encoder)
-      return new EncoderType<A, L>(
-        encoderApplyConfig(config?.conf)(
-          {
-            encode: (u) =>
-              pipe(
-                encoders,
-                A.foreachF(T.Applicative)((d) => d.encode(u)),
-                T.map(A.reduce(({} as unknown) as L, (b, a) => mergePrefer(u, b, a)))
-              )
-          },
-          env,
-          {
-            encoders: encoders as any
-          }
-        )
+export const encoderIntersectionInterpreter = interpreter<
+  EncoderURI,
+  IntersectionURI
+>()(() => ({
+  _F: EncoderURI,
+  intersection: (...types) => (config) => (env) => {
+    const encoders = types.map((getEncoder) => getEncoder(env).encoder)
+    return new EncoderType(
+      encoderApplyConfig(config?.conf)(
+        {
+          encode: (u) =>
+            pipe(
+              encoders,
+              A.foreachF(T.Applicative)((d) => d.encode(u)),
+              T.map(A.reduce(({} as unknown) as any, (b, a) => mergePrefer(u, b, a)))
+            )
+        },
+        env,
+        {
+          encoders: encoders as any
+        }
       )
-    }
-  })
-)
+    )
+  }
+}))

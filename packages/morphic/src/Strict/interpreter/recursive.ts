@@ -1,28 +1,21 @@
 import { pipe } from "@effect-ts/core/Function"
 
-import type { AnyEnv, ConfigsForType } from "../../Algebra/config"
-import type { AlgebraRecursive1, RecursiveConfig } from "../../Algebra/recursive"
-import { memo } from "../../Internal/Utils"
-import { strictApplyConfig } from "../config"
-import { StrictType, StrictURI } from "../hkt"
+import type { RecursiveURI } from "../../Algebra/Recursive"
+import { interpreter } from "../../HKT"
+import { memo } from "../../Utils"
+import { strictApplyConfig, StrictType, StrictURI } from "../base"
 
-export const strictRecursiveInterpreter = memo(
-  <Env extends AnyEnv>(): AlgebraRecursive1<StrictURI, Env> => ({
+export const strictRecursiveInterpreter = interpreter<StrictURI, RecursiveURI>()(
+  () => ({
     _F: StrictURI,
-    recursive: <A>(
-      a: (x: (env: Env) => StrictType<A>) => (env: Env) => StrictType<A>,
-      config?: {
-        name?: string
-        config?: ConfigsForType<Env, unknown, A, RecursiveConfig<unknown, A>>
-      }
-    ) => {
+    recursive: (a, config) => {
       const get = memo(() => a(res))
       const res: ReturnType<typeof a> = (env) =>
         new StrictType(
           pipe(
             () => get()(env).strict,
             (getStrict) =>
-              strictApplyConfig(config?.config)(
+              strictApplyConfig(config?.conf)(
                 {
                   shrink: (u) => getStrict().shrink(u)
                 },

@@ -1,28 +1,21 @@
 import { pipe } from "@effect-ts/core/Function"
 
-import type { AnyEnv, ConfigsForType } from "../../Algebra/config"
-import type { AlgebraRecursive2, RecursiveConfig } from "../../Algebra/recursive"
-import { memo } from "../../Internal/Utils"
-import { encoderApplyConfig } from "../config"
-import { EncoderType, EncoderURI } from "../hkt"
+import type { RecursiveURI } from "../../Algebra/Recursive"
+import { interpreter } from "../../HKT"
+import { memo } from "../../Utils"
+import { encoderApplyConfig, EncoderType, EncoderURI } from "../base"
 
-export const encoderRecursiveInterpreter = memo(
-  <Env extends AnyEnv>(): AlgebraRecursive2<EncoderURI, Env> => ({
+export const encoderRecursiveInterpreter = interpreter<EncoderURI, RecursiveURI>()(
+  () => ({
     _F: EncoderURI,
-    recursive: <L, A>(
-      a: (x: (env: Env) => EncoderType<A, L>) => (env: Env) => EncoderType<A, L>,
-      config?: {
-        name?: string
-        config?: ConfigsForType<Env, L, A, RecursiveConfig<L, A>>
-      }
-    ) => {
+    recursive: (a, config) => {
       const get = memo(() => a(res))
       const res: ReturnType<typeof a> = (env) =>
         new EncoderType(
           pipe(
             () => get()(env).encoder,
             (getEncoder) =>
-              encoderApplyConfig(config?.config)(
+              encoderApplyConfig(config?.conf)(
                 {
                   encode: (u) => getEncoder().encode(u)
                 },

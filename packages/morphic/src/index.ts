@@ -15,13 +15,13 @@ export type { AType, EType, RType } from "./Batteries/usage/utils"
 //
 // URIS
 //
-export { FastCheckURI } from "./FastCheck/hkt"
-export { GuardURI } from "./Guard/hkt"
-export { DecoderURI } from "./Decoder/hkt"
-export { EncoderURI } from "./Encoder/hkt"
-export { EqURI } from "./Equal/hkt"
-export { ShowURI } from "./Show/hkt"
-export { StrictURI } from "./Strict/hkt"
+export { FastCheckURI } from "./FastCheck/base"
+export { GuardURI } from "./Guard/base"
+export { DecoderURI } from "./Decoder/base"
+export { EncoderURI } from "./Encoder/base"
+export { EqURI } from "./Equal/base"
+export { ShowURI } from "./Show/base"
+export { StrictURI } from "./Strict/base"
 
 //
 // Threading configs

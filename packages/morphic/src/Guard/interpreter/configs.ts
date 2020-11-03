@@ -1,15 +1,18 @@
-import type { InterfaceA, IntersectionA, TaggedUnionA } from "../../Internal/Config"
-import type { Guard, GuardURI } from "../hkt"
+import type { InterfaceLA, IntersectionLA, TaggedUnionLA } from "../../Algebra/Config"
+import type { Guard, GuardURI } from "../base"
 
-declare module "../../Algebra/intersection" {
-  interface IntersectionConfig<L extends unknown[], A extends unknown[]> {
+declare module "../../Algebra/Intersection" {
+  interface IntersectionConfig<
+    L extends readonly unknown[],
+    A extends readonly unknown[]
+  > {
     [GuardURI]: {
-      guards: IntersectionA<A, GuardURI>
+      guards: IntersectionLA<L, A, GuardURI>
     }
   }
 }
 
-declare module "../../Algebra/newtype" {
+declare module "../../Algebra/Newtype" {
   interface NewtypeConfig<L, A, N> {
     [GuardURI]: {
       guard: Guard<A>
@@ -32,26 +35,26 @@ declare module "../../Algebra/newtype" {
   }
 }
 
-declare module "../../Algebra/object" {
+declare module "../../Algebra/Object" {
   interface InterfaceConfig<Props> {
     [GuardURI]: {
-      guard: InterfaceA<Props, GuardURI>
+      guard: InterfaceLA<Props, GuardURI>
     }
   }
   interface PartialConfig<Props> {
     [GuardURI]: {
-      guard: InterfaceA<Props, GuardURI>
+      guard: InterfaceLA<Props, GuardURI>
     }
   }
   interface BothConfig<Props, PropsPartial> {
     [GuardURI]: {
-      guard: InterfaceA<Props, GuardURI>
-      guardPartial: InterfaceA<PropsPartial, GuardURI>
+      guard: InterfaceLA<Props, GuardURI>
+      guardPartial: InterfaceLA<PropsPartial, GuardURI>
     }
   }
 }
 
-declare module "../../Algebra/primitives" {
+declare module "../../Algebra/Primitives" {
   interface NonEmptyArrayConfig<L, A> {
     [GuardURI]: {
       guard: Guard<A>
@@ -90,7 +93,7 @@ declare module "../../Algebra/primitives" {
   }
 }
 
-declare module "../../Algebra/refined" {
+declare module "../../Algebra/Refined" {
   interface RefinedConfig<E, A, B> {
     [GuardURI]: {
       guard: Guard<A>
@@ -103,7 +106,7 @@ declare module "../../Algebra/refined" {
   }
 }
 
-declare module "../../Algebra/set" {
+declare module "../../Algebra/Set" {
   interface SetConfig<L, A> {
     [GuardURI]: {
       guard: Guard<A>
@@ -111,7 +114,7 @@ declare module "../../Algebra/set" {
   }
 }
 
-declare module "../../Algebra/record" {
+declare module "../../Algebra/Record" {
   interface RecordConfig<L, A> {
     [GuardURI]: {
       guard: Guard<A>
@@ -119,10 +122,10 @@ declare module "../../Algebra/record" {
   }
 }
 
-declare module "../../Algebra/tagged-union" {
+declare module "../../Algebra/TaggedUnion" {
   interface TaggedUnionConfig<Types> {
     [GuardURI]: {
-      guards: TaggedUnionA<Types, GuardURI>
+      guards: TaggedUnionLA<Types, GuardURI>
     }
   }
 }

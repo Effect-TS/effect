@@ -8,7 +8,7 @@ import type {
   SummonerInterpURI,
   SummonerProgURI
 } from "../Batteries/usage/summoner"
-import type { ShowURI } from "./hkt"
+import type { ShowURI } from "./base"
 import { modelShowInterpreter } from "./interpreter"
 
 export function deriveFor<S extends Summoner<any>>(S: S) {

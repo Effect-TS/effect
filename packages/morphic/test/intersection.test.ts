@@ -34,7 +34,7 @@ const G = make((F) =>
     g: F.string()
   })
 )
-const All = make((F) => F.intersection([A(F), B(F), C(F), D(F), E(F), G(F)]))
+const All = make((F) => F.intersection(A(F), B(F), C(F), D(F), E(F), G(F))())
 
 describe("Intersection", () => {
   it("Decodes All", () => {

@@ -1,5 +1,5 @@
-import type { AnyEnv } from "../../Algebra/config"
-import { memo, merge } from "../../Internal/Utils"
+import type { AnyEnv } from "../../HKT"
+import { memo, merge } from "../../Utils"
 import { guardIntersectionInterpreter } from "./intersection"
 import { guardNewtypeInterpreter } from "./newtype"
 import { guardObjectInterpreter } from "./object"

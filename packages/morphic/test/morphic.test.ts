@@ -55,8 +55,8 @@ export const Id = make((F) =>
   })
 )
 
-export const InterA = make((F) => F.intersection([Person(F), Id(F)]))
-export const InterB = make((F) => F.intersection([Id(F), Person(F)]))
+export const InterA = make((F) => F.intersection(Person(F), Id(F))())
+export const InterB = make((F) => F.intersection(Id(F), Person(F))())
 
 describe("FastCheck", () => {
   it("Generate Person", () => {

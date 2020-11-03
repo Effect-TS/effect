@@ -1,13 +1,12 @@
 import { pipe } from "@effect-ts/core/Function"
 
-import type { AnyEnv } from "../../Algebra/config"
-import type { AlgebraTaggedUnion1 } from "../../Algebra/tagged-union"
-import { collect, memo } from "../../Internal/Utils"
-import { accessFC, fcApplyConfig } from "../config"
-import { FastCheckType, FastCheckURI } from "../hkt"
+import type { TaggedUnionURI } from "../../Algebra/TaggedUnion"
+import { interpreter } from "../../HKT"
+import { collect } from "../../Utils"
+import { accessFC, FastCheckType, FastCheckURI, fcApplyConfig } from "../base"
 
-export const fcTaggedUnionInterpreter = memo(
-  <Env extends AnyEnv>(): AlgebraTaggedUnion1<FastCheckURI, Env> => ({
+export const fcTaggedUnionInterpreter = interpreter<FastCheckURI, TaggedUnionURI>()(
+  () => ({
     _F: FastCheckURI,
     taggedUnion: (_tag, dic, config) => (env) =>
       new FastCheckType(

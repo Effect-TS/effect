@@ -1,4 +1,4 @@
-import type { Guard } from "../hkt"
+import type { Guard } from "../base"
 
 export const isUnknownRecord = (u: unknown): u is { [key: string]: unknown } => {
   const s = Object.prototype.toString.call(u)

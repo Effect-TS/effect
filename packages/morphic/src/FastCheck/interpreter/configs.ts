@@ -1,17 +1,20 @@
 import type { Arbitrary } from "fast-check"
 
-import type { InterfaceA, IntersectionA, TaggedUnionA } from "../../Internal/Config"
-import type { FastCheckURI } from "../hkt"
+import type { InterfaceLA, IntersectionLA, TaggedUnionLA } from "../../Algebra/Config"
+import type { FastCheckURI } from "../base"
 
-declare module "../../Algebra/intersection" {
-  interface IntersectionConfig<L extends unknown[], A extends unknown[]> {
+declare module "../../Algebra/Intersection" {
+  interface IntersectionConfig<
+    L extends readonly unknown[],
+    A extends readonly unknown[]
+  > {
     [FastCheckURI]: {
-      arbs: IntersectionA<A, FastCheckURI>
+      arbs: IntersectionLA<L, A, FastCheckURI>
     }
   }
 }
 
-declare module "../../Algebra/newtype" {
+declare module "../../Algebra/Newtype" {
   interface NewtypeConfig<L, A, N> {
     [FastCheckURI]: {
       arb: Arbitrary<A>
@@ -29,26 +32,26 @@ declare module "../../Algebra/newtype" {
   }
 }
 
-declare module "../../Algebra/object" {
+declare module "../../Algebra/Object" {
   interface InterfaceConfig<Props> {
     [FastCheckURI]: {
-      arbs: InterfaceA<Props, FastCheckURI>
+      arbs: InterfaceLA<Props, FastCheckURI>
     }
   }
   interface PartialConfig<Props> {
     [FastCheckURI]: {
-      arbs: InterfaceA<Props, FastCheckURI>
+      arbs: InterfaceLA<Props, FastCheckURI>
     }
   }
   interface BothConfig<Props, PropsPartial> {
     [FastCheckURI]: {
-      arbs: InterfaceA<Props, FastCheckURI>
-      arbsPartial: InterfaceA<PropsPartial, FastCheckURI>
+      arbs: InterfaceLA<Props, FastCheckURI>
+      arbsPartial: InterfaceLA<PropsPartial, FastCheckURI>
     }
   }
 }
 
-declare module "../../Algebra/primitives" {
+declare module "../../Algebra/Primitives" {
   interface NonEmptyArrayConfig<L, A> {
     [FastCheckURI]: {
       arb: Arbitrary<A>
@@ -87,7 +90,7 @@ declare module "../../Algebra/primitives" {
   }
 }
 
-declare module "../../Algebra/recursive" {
+declare module "../../Algebra/Recursive" {
   interface RecursiveConfig<L, A> {
     [FastCheckURI]: {
       getArb: () => Arbitrary<A>
@@ -95,7 +98,7 @@ declare module "../../Algebra/recursive" {
   }
 }
 
-declare module "../../Algebra/refined" {
+declare module "../../Algebra/Refined" {
   interface RefinedConfig<E, A, B> {
     [FastCheckURI]: {
       arb: Arbitrary<A>
@@ -108,7 +111,7 @@ declare module "../../Algebra/refined" {
   }
 }
 
-declare module "../../Algebra/set" {
+declare module "../../Algebra/Set" {
   interface SetConfig<L, A> {
     [FastCheckURI]: {
       arb: Arbitrary<A>
@@ -116,7 +119,7 @@ declare module "../../Algebra/set" {
   }
 }
 
-declare module "../../Algebra/record" {
+declare module "../../Algebra/Record" {
   interface RecordConfig<L, A> {
     [FastCheckURI]: {
       arb: Arbitrary<A>
@@ -124,15 +127,15 @@ declare module "../../Algebra/record" {
   }
 }
 
-declare module "../../Algebra/tagged-union" {
+declare module "../../Algebra/TaggedUnion" {
   interface TaggedUnionConfig<Types> {
     [FastCheckURI]: {
-      arbs: TaggedUnionA<Types, FastCheckURI>
+      arbs: TaggedUnionLA<Types, FastCheckURI>
     }
   }
 }
 
-declare module "../../Algebra/unknown" {
+declare module "../../Algebra/Unknown" {
   interface UnknownConfig {
     [FastCheckURI]: {
       arb: Arbitrary<unknown>

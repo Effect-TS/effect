@@ -1,23 +1,13 @@
 import { pipe } from "@effect-ts/core/Function"
 
-import type { AnyEnv, ConfigsForType } from "../../Algebra/config"
-import type {
-  AlgebraIntersection1,
-  IntersectionConfig
-} from "../../Algebra/intersection"
-import { memo } from "../../Internal/Utils"
-import { accessFC, fcApplyConfig } from "../config"
-import { FastCheckType, FastCheckURI } from "../hkt"
+import type { IntersectionURI } from "../../Algebra/Intersection"
+import { interpreter } from "../../HKT"
+import { accessFC, FastCheckType, FastCheckURI, fcApplyConfig } from "../base"
 
-export const fcIntersectionInterpreter = memo(
-  <Env extends AnyEnv>(): AlgebraIntersection1<FastCheckURI, Env> => ({
+export const fcIntersectionInterpreter = interpreter<FastCheckURI, IntersectionURI>()(
+  () => ({
     _F: FastCheckURI,
-    intersection: <A>(
-      items: ((env: Env) => FastCheckType<A>)[],
-      config?: {
-        conf?: ConfigsForType<Env, unknown, A, IntersectionConfig<unknown[], A[]>>
-      }
-    ) => (env: Env) =>
+    intersection: (...items) => (config) => (env) =>
       pipe(
         items.map((getArb) => getArb(env).arb),
         (arbs) =>

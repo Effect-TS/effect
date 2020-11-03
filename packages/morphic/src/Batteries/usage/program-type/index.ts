@@ -1,3 +1,4 @@
+import type { InterpreterURIS } from "../../../HKT"
 import type { AnyConfigEnv } from "../summoner"
 
 export interface ProgramType<R extends AnyConfigEnv, E, A> {
@@ -11,7 +12,7 @@ export declare type ProgramURI = Exclude<
   "_E" | "_A" | "_R"
 >
 
-export interface ProgramAlgebra<F, Env> {
+export interface ProgramAlgebra<F extends InterpreterURIS, Env> {
   _F: F
 }
 

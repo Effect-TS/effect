@@ -1,8 +1,8 @@
 import type { Erase } from "@effect-ts/core/Utils"
 
-import type { AnyEnv } from "../../Algebra/config"
-import { cacheUnaryFunction } from "../../Algebra/utils/core"
-import type { BaseFC } from "../../FastCheck/config"
+import { cacheUnaryFunction } from "../../Algebra/Core"
+import type { BaseFC } from "../../FastCheck/base"
+import type { AnyEnv } from "../../HKT"
 import type { InterpreterURI } from "../interpreter"
 import type { ProgramURI } from "../program"
 import type { Materialized } from "../usage/materializer"
@@ -41,7 +41,7 @@ export const summonFor: <R extends AnyEnv = {}>(
 ) => SummonerOps<Summoner<R & BaseFC>> = <R extends AnyConfigEnv = {}>(
   _env: ExtractEnv<R, never>
 ) =>
-  makeSummoner<Summoner<R & BaseFC>>(cacheUnaryFunction, (program) => {
+  makeSummoner<Summoner<R & BaseFC>>(cacheUnaryFunction, () => {
     return {
       build: (a) => a
     }

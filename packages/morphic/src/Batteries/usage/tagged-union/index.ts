@@ -14,9 +14,8 @@ import { tuple } from "@effect-ts/core/Function"
 import type { ADT } from "../../../Adt"
 import { makeADT } from "../../../Adt"
 import type { ElemType } from "../../../Adt/utils"
-import type { ConfigsForType } from "../../../Algebra/config"
-import type { TaggedUnionConfig, TaggedUnionURI } from "../../../Algebra/tagged-union"
-import type { Algebra, HKT2 } from "../../../Algebra/utils/hkt"
+import type { TaggedUnionConfig, TaggedUnionURI } from "../../../Algebra/TaggedUnion"
+import type { ConfigsForType, HKT, InterpreterURIS, URItoAlgebra } from "../../../HKT"
 import type { InterpreterURI } from "../interpreter-result"
 import type { Materialized, Morph } from "../materializer"
 import type { ProgramType, ProgramURI } from "../program-type"
@@ -34,7 +33,7 @@ export type TaggedUnionProg<R, E, A, ProgURI extends ProgramURI> = ProgramType<
   E,
   A
 >[ProgURI] &
-  (<G>(a: Algebra<G, R>[TaggedUnionURI]) => HKT2<G, R, E, A>)
+  (<G extends InterpreterURIS>(a: URItoAlgebra<G, R>[TaggedUnionURI]) => HKT<R, E, A>)
 
 type M<
   R,

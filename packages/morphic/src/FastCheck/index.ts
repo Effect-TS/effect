@@ -9,7 +9,7 @@ import type {
   SummonerInterpURI,
   SummonerProgURI
 } from "../Batteries/usage/summoner"
-import { FastCheckURI } from "./hkt"
+import { FastCheckURI } from "./base"
 import { modelFcInterpreter } from "./interpreter"
 
 export function deriveFor<S extends Summoner<any>>(S: S) {

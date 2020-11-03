@@ -1,18 +1,14 @@
 import { pipe } from "@effect-ts/core/Function"
 
-import type { AnyEnv } from "../../Algebra/config"
-import type { AlgebraUnknown1 } from "../../Algebra/unknown"
-import { memo } from "../../Internal/Utils"
-import { accessFC, fcApplyConfig } from "../config"
-import { FastCheckType, FastCheckURI } from "../hkt"
+import type { UnknownURI } from "../../Algebra/Unknown"
+import { interpreter } from "../../HKT"
+import { accessFC, FastCheckType, FastCheckURI, fcApplyConfig } from "../base"
 
-export const fcUnknownInterpreter = memo(
-  <Env extends AnyEnv>(): AlgebraUnknown1<FastCheckURI, Env> => ({
-    _F: FastCheckURI,
-    unknown: (configs) => (env) =>
-      pipe(
-        accessFC(env).anything(),
-        (arb) => new FastCheckType(fcApplyConfig(configs?.conf)(arb, env, { arb }))
-      )
-  })
-)
+export const fcUnknownInterpreter = interpreter<FastCheckURI, UnknownURI>()(() => ({
+  _F: FastCheckURI,
+  unknown: (configs) => (env) =>
+    pipe(
+      accessFC(env).anything(),
+      (arb) => new FastCheckType(fcApplyConfig(configs?.conf)(arb, env, { arb }))
+    )
+}))

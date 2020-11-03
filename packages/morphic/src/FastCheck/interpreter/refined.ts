@@ -1,25 +1,21 @@
 import { pipe } from "@effect-ts/core/Function"
 
-import type { AnyEnv } from "../../Algebra/config"
-import type { AlgebraRefined1 } from "../../Algebra/refined"
-import { memo } from "../../Internal/Utils"
-import { fcApplyConfig } from "../config"
-import { FastCheckType, FastCheckURI } from "../hkt"
+import type { RefinedURI } from "../../Algebra/Refined"
+import { interpreter } from "../../HKT"
+import { FastCheckType, FastCheckURI, fcApplyConfig } from "../base"
 
-export const fcRefinedInterpreter = memo(
-  <Env extends AnyEnv>(): AlgebraRefined1<FastCheckURI, Env> => ({
-    _F: FastCheckURI,
-    refined: (getArb, ref, config) => (env) =>
-      pipe(
-        getArb(env).arb,
-        (arb) =>
-          new FastCheckType(fcApplyConfig(config?.conf)(arb.filter(ref), env, { arb }))
-      ),
-    constrained: (getArb, ref, config) => (env) =>
-      pipe(
-        getArb(env).arb,
-        (arb) =>
-          new FastCheckType(fcApplyConfig(config?.conf)(arb.filter(ref), env, { arb }))
-      )
-  })
-)
+export const fcRefinedInterpreter = interpreter<FastCheckURI, RefinedURI>()(() => ({
+  _F: FastCheckURI,
+  refined: (getArb, ref, config) => (env) =>
+    pipe(
+      getArb(env).arb,
+      (arb) =>
+        new FastCheckType(fcApplyConfig(config?.conf)(arb.filter(ref), env, { arb }))
+    ),
+  constrained: (getArb, ref, config) => (env) =>
+    pipe(
+      getArb(env).arb,
+      (arb) =>
+        new FastCheckType(fcApplyConfig(config?.conf)(arb.filter(ref), env, { arb }))
+    )
+}))

@@ -1,15 +1,18 @@
-import type { InterfaceA, IntersectionA, TaggedUnionA } from "../../Internal/Config"
-import type { Strict, StrictURI } from "../hkt"
+import type { InterfaceLA, IntersectionLA, TaggedUnionLA } from "../../Algebra/Config"
+import type { Strict, StrictURI } from "../base"
 
-declare module "../../Algebra/intersection" {
-  interface IntersectionConfig<L extends unknown[], A extends unknown[]> {
+declare module "../../Algebra/Intersection" {
+  interface IntersectionConfig<
+    L extends readonly unknown[],
+    A extends readonly unknown[]
+  > {
     [StrictURI]: {
-      stricts: IntersectionA<A, StrictURI>
+      stricts: IntersectionLA<L, A, StrictURI>
     }
   }
 }
 
-declare module "../../Algebra/newtype" {
+declare module "../../Algebra/Newtype" {
   interface NewtypeConfig<L, A, N> {
     [StrictURI]: {
       strict: Strict<A>
@@ -32,26 +35,26 @@ declare module "../../Algebra/newtype" {
   }
 }
 
-declare module "../../Algebra/object" {
+declare module "../../Algebra/Object" {
   interface InterfaceConfig<Props> {
     [StrictURI]: {
-      strict: InterfaceA<Props, StrictURI>
+      strict: InterfaceLA<Props, StrictURI>
     }
   }
   interface PartialConfig<Props> {
     [StrictURI]: {
-      strict: InterfaceA<Props, StrictURI>
+      strict: InterfaceLA<Props, StrictURI>
     }
   }
   interface BothConfig<Props, PropsPartial> {
     [StrictURI]: {
-      strict: InterfaceA<Props, StrictURI>
-      strictPartial: InterfaceA<PropsPartial, StrictURI>
+      strict: InterfaceLA<Props, StrictURI>
+      strictPartial: InterfaceLA<PropsPartial, StrictURI>
     }
   }
 }
 
-declare module "../../Algebra/primitives" {
+declare module "../../Algebra/Primitives" {
   interface NonEmptyArrayConfig<L, A> {
     [StrictURI]: {
       strict: Strict<A>
@@ -90,7 +93,7 @@ declare module "../../Algebra/primitives" {
   }
 }
 
-declare module "../../Algebra/refined" {
+declare module "../../Algebra/Refined" {
   interface RefinedConfig<E, A, B> {
     [StrictURI]: {
       strict: Strict<A>
@@ -103,7 +106,7 @@ declare module "../../Algebra/refined" {
   }
 }
 
-declare module "../../Algebra/set" {
+declare module "../../Algebra/Set" {
   interface SetConfig<L, A> {
     [StrictURI]: {
       strict: Strict<A>
@@ -111,7 +114,7 @@ declare module "../../Algebra/set" {
   }
 }
 
-declare module "../../Algebra/record" {
+declare module "../../Algebra/Record" {
   interface RecordConfig<L, A> {
     [StrictURI]: {
       strict: Strict<A>
@@ -119,10 +122,10 @@ declare module "../../Algebra/record" {
   }
 }
 
-declare module "../../Algebra/tagged-union" {
+declare module "../../Algebra/TaggedUnion" {
   interface TaggedUnionConfig<Types> {
     [StrictURI]: {
-      stricts: TaggedUnionA<Types, StrictURI>
+      stricts: TaggedUnionLA<Types, StrictURI>
     }
   }
 }

@@ -1,28 +1,18 @@
 import { all, fold } from "@effect-ts/core/Classic/Identity"
 
-import type { AnyEnv, ConfigsForType } from "../../Algebra/config"
-import type {
-  AlgebraIntersection1,
-  IntersectionConfig
-} from "../../Algebra/intersection"
-import { memo } from "../../Internal/Utils"
-import { guardApplyConfig } from "../config"
-import { GuardType, GuardURI } from "../hkt"
+import type { IntersectionURI } from "../../Algebra/Intersection"
+import { interpreter } from "../../HKT"
+import { guardApplyConfig, GuardType, GuardURI } from "../base"
 
-export const guardIntersectionInterpreter = memo(
-  <Env extends AnyEnv>(): AlgebraIntersection1<GuardURI, Env> => ({
+export const guardIntersectionInterpreter = interpreter<GuardURI, IntersectionURI>()(
+  () => ({
     _F: GuardURI,
-    intersection: <A>(
-      types: ((env: Env) => GuardType<A>)[],
-      config?: {
-        conf?: ConfigsForType<Env, unknown, A, IntersectionConfig<unknown[], A[]>>
-      }
-    ) => (env: Env) => {
+    intersection: (...types) => (config) => (env) => {
       const guards = types.map((getGuard) => getGuard(env).guard)
-      return new GuardType<A>(
+      return new GuardType(
         guardApplyConfig(config?.conf)(
           {
-            is: (u): u is A => fold(all)(guards.map((guard) => guard.is(u)))
+            is: (u): u is any => fold(all)(guards.map((guard) => guard.is(u)))
           },
           env,
           {

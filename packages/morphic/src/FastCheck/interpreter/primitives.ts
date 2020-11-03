@@ -3,14 +3,12 @@ import { left, right } from "@effect-ts/core/Classic/Either"
 import { fromNullable, none, some } from "@effect-ts/core/Classic/Option"
 import { pipe } from "@effect-ts/core/Function"
 
-import type { AnyEnv } from "../../Algebra/config"
-import type { AlgebraPrimitive1 } from "../../Algebra/primitives"
-import { memo } from "../../Internal/Utils"
-import { accessFC, fcApplyConfig } from "../config"
-import { FastCheckType, FastCheckURI } from "../hkt"
+import type { PrimitivesURI } from "../../Algebra/Primitives"
+import { interpreter } from "../../HKT"
+import { accessFC, FastCheckType, FastCheckURI, fcApplyConfig } from "../base"
 
-export const fcPrimitiveInterpreter = memo(
-  <Env extends AnyEnv>(): AlgebraPrimitive1<FastCheckURI, Env> => ({
+export const fcPrimitiveInterpreter = interpreter<FastCheckURI, PrimitivesURI>()(
+  () => ({
     _F: FastCheckURI,
     function: (i, o, config) => (env) =>
       new FastCheckType(
