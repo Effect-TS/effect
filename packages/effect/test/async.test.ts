@@ -27,7 +27,7 @@ describe("Async", () => {
     expect(
       await pipe(
         As.access((_: { n: number }) => _.n),
-        As.fold(As.fail, (n) => As.succeed(n + 1)),
+        As.foldM(As.fail, (n) => As.succeed(n + 1)),
         As.provideAll({ n: 1 }),
         As.runPromiseExit
       )
