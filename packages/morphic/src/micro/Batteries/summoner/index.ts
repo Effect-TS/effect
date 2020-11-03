@@ -1,6 +1,7 @@
 import type { Erase } from "@effect-ts/core/Utils"
 
 import { cacheUnaryFunction } from "../../Algebra/Core"
+import type { BaseFC } from "../../FastCheck/base"
 import type { AnyEnv } from "../../HKT"
 import type { InterpreterURI } from "../interpreter"
 import type { ProgramURI } from "../program"
@@ -13,8 +14,6 @@ import type {
   Summoners
 } from "../usage/summoner"
 import { makeSummoner } from "../usage/summoner"
-
-export interface BaseFC {}
 
 export interface MM<R, L, A>
   extends Materialized<R, L, A, ProgramURI, InterpreterURI> {}
