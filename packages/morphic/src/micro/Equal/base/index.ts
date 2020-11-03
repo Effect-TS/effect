@@ -8,7 +8,10 @@ export type EqURI = typeof EqURI
 export const eqApplyConfig = getApplyConfig(EqURI)
 
 declare module "../../HKT" {
-  export interface ConfigType<E, A> {
+  interface URItoKind<R, E, A> {
+    [EqURI]: (env: R) => EqType<A>
+  }
+  interface ConfigType<E, A> {
     [EqURI]: Equal<A>
   }
 }
@@ -17,13 +20,4 @@ export class EqType<A> {
   _A!: A
   _URI!: EqURI
   constructor(public eq: Equal<A>) {}
-}
-
-declare module "../../HKT" {
-  interface URItoKind<R, E, A> {
-    [EqURI]: (env: R) => EqType<A>
-  }
-  interface URItoConfigType<E, A> {
-    [EqURI]: Equal<A>
-  }
 }
