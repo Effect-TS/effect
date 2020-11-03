@@ -23,6 +23,7 @@
   "config": {
     "modules": [
       "Array",
+      "Async",
       "Cause",
       "Clock",
       "Effect",
