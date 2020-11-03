@@ -1,6 +1,6 @@
 import type * as E from "@effect-ts/core/Classic/Equal"
 
-import type { IntersectionLA, TaggedUnionLA } from "../../Algebra/Config"
+import type { InterfaceLA, IntersectionLA, TaggedUnionLA } from "../../Algebra/Config"
 import type { EqURI } from "../base"
 
 declare module "../../Algebra/Intersection" {
@@ -14,48 +14,47 @@ declare module "../../Algebra/Intersection" {
   }
 }
 
-//
-//declare module "../../Algebra/newtype" {
-//  interface NewtypeConfig<L, A, N> {
-//    [EqURI]: {
-//      eq: E.Equal<A>
-//    }
-//  }
-//  interface CoerceConfig<L, A, N> {
-//    [EqURI]: {
-//      eq: E.Equal<A>
-//    }
-//  }
-//  interface IsoConfig<L, A, N> {
-//    [EqURI]: {
-//      eq: E.Equal<A>
-//    }
-//  }
-//  interface PrismConfig<L, A, N> {
-//    [EqURI]: {
-//      eq: E.Equal<A>
-//    }
-//  }
-//}
+declare module "../../Algebra/Newtype" {
+  interface NewtypeConfig<L, A, N> {
+    [EqURI]: {
+      eq: E.Equal<A>
+    }
+  }
+  interface CoerceConfig<L, A, N> {
+    [EqURI]: {
+      eq: E.Equal<A>
+    }
+  }
+  interface IsoConfig<L, A, N> {
+    [EqURI]: {
+      eq: E.Equal<A>
+    }
+  }
+  interface PrismConfig<L, A, N> {
+    [EqURI]: {
+      eq: E.Equal<A>
+    }
+  }
+}
 
-//declare module "../../Algebra/object" {
-//  interface InterfaceConfig<Props> {
-//    [EqURI]: {
-//      eq: InterfaceA<Props, EqURI>
-//    }
-//  }
-//  interface PartialConfig<Props> {
-//    [EqURI]: {
-//      eq: InterfaceA<Props, EqURI>
-//    }
-//  }
-//  interface BothConfig<Props, PropsPartial> {
-//    [EqURI]: {
-//      eq: InterfaceA<Props, EqURI>
-//      eqPartial: InterfaceA<PropsPartial, EqURI>
-//    }
-//  }
-//}
+declare module "../../Algebra/Object" {
+  interface InterfaceConfig<Props> {
+    [EqURI]: {
+      eq: InterfaceLA<Props, EqURI>
+    }
+  }
+  interface PartialConfig<Props> {
+    [EqURI]: {
+      eq: InterfaceLA<Props, EqURI>
+    }
+  }
+  interface BothConfig<Props, PropsPartial> {
+    [EqURI]: {
+      eq: InterfaceLA<Props, EqURI>
+      eqPartial: InterfaceLA<PropsPartial, EqURI>
+    }
+  }
+}
 
 declare module "../../Algebra/Primitives" {
   interface NonEmptyArrayConfig<L, A> {
@@ -96,35 +95,35 @@ declare module "../../Algebra/Primitives" {
   }
 }
 
-//declare module "../../Algebra/refined" {
-//  interface RefinedConfig<E, A, B> {
-//    [EqURI]: {
-//      eq: E.Equal<A>
-//      eqRefined: E.Equal<B>
-//    }
-//  }
-//  interface PredicateConfig<E, A> {
-//    [EqURI]: {
-//      eq: E.Equal<A>
-//    }
-//  }
-//}
-//
-//declare module "../../Algebra/set" {
-//  interface SetConfig<L, A> {
-//    [EqURI]: {
-//      eq: E.Equal<A>
-//    }
-//  }
-//}
+declare module "../../Algebra/Refined" {
+  interface RefinedConfig<E, A, B> {
+    [EqURI]: {
+      eq: E.Equal<A>
+      eqRefined: E.Equal<B>
+    }
+  }
+  interface PredicateConfig<E, A> {
+    [EqURI]: {
+      eq: E.Equal<A>
+    }
+  }
+}
 
-//declare module "../../Algebra/record" {
-//  interface RecordConfig<L, A> {
-//    [EqURI]: {
-//      eq: E.Equal<A>
-//    }
-//  }
-//}
+declare module "../../Algebra/Set" {
+  interface SetConfig<L, A> {
+    [EqURI]: {
+      eq: E.Equal<A>
+    }
+  }
+}
+
+declare module "../../Algebra/Record" {
+  interface RecordConfig<L, A> {
+    [EqURI]: {
+      eq: E.Equal<A>
+    }
+  }
+}
 
 declare module "../../Algebra/TaggedUnion" {
   interface TaggedUnionConfig<Types> {
