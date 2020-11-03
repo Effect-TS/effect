@@ -30,4 +30,16 @@ export const C = M.make((F) =>
   })
 )
 
-export const all = M.make((F) => F.intersection([A(F), B(F), C(F)]))
+export const all = M.make((F) =>
+  F.intersection(
+    A(F),
+    B(F),
+    C(F)
+  )({
+    conf: {
+      [M.EqURI]: (_, __, { equals: [a, b, c] }) => {
+        return _
+      }
+    }
+  })
+)
