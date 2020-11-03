@@ -20,7 +20,7 @@ export { GuardURI } from "./Guard/base"
 export { DecoderURI } from "./Decoder/base"
 export { EncoderURI } from "./Encoder/base"
 export { EqURI } from "./Equal/base"
-//export { ShowURI } from "./Show/hkt"
+export { ShowURI } from "./Show/base"
 //export { StrictURI } from "./Strict/hkt"
 
 //
@@ -31,7 +31,7 @@ export {} from "./Guard/interpreter/configs"
 export {} from "./Decoder/interpreter/configs"
 export {} from "./Encoder/interpreter/configs"
 export {} from "./Equal/interpreter/configs"
-//export {} from "./Show/interpreter/configs"
+export {} from "./Show/interpreter/configs"
 //export {} from "./Strict/interpreter/configs"
 
 //
