@@ -1,5 +1,3 @@
-import type { Compute } from "@effect-ts/core/Utils"
-
 import type {
   AnyEnv,
   ConfigsForType,
@@ -25,21 +23,17 @@ type PropsE<
   Props extends {
     [k in keyof Props]: HKT<any, any, any>
   }
-> = Compute<
-  {
-    [k in keyof Props]: Props[k]["_E"]
-  }
->
+> = {
+  [k in keyof Props]: Props[k]["_E"]
+}
 
 type PropsA<
   Props extends {
     [k in keyof Props]: HKT<any, any, any>
   }
-> = Compute<
-  {
-    [k in keyof Props]: Props[k]["_E"]
-  }
->
+> = {
+  [k in keyof Props]: Props[k]["_E"]
+}
 
 export interface AlgebraObjects<F extends InterpreterURIS, Env extends AnyEnv> {
   _F: F
