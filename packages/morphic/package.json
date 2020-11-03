@@ -37,10 +37,11 @@
       "Equal",
       "FastCheck",
       "Guard",
-      "Internal",
+      "HKT",
       "Show",
       "Strict",
-      "StrictDecoder"
+      "StrictDecoder",
+      "Utils"
     ]
   },
   "peerDependencies": {
