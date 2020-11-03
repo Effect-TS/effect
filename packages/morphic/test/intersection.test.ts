@@ -3,6 +3,7 @@ import { runEither } from "@effect-ts/core/Sync"
 
 import { make } from "../src"
 import { decoder } from "../src/Decoder"
+import { hash } from "../src/Hash"
 
 const A = make((F) =>
   F.interface({
@@ -50,5 +51,10 @@ describe("Intersection", () => {
         })
       )
     ).toEqual(right({ a: "a", b: "b", c: "c", d: "d", e: "e", g: "g" }))
+  })
+  it("Hashes all", () => {
+    expect(hash(All).hash).toEqual(
+      '{"a":"string"} & {"b":"string"} & {"c":"string"} & {"d":"string"} & {"e":"string"} & {"g":"string"}'
+    )
   })
 })

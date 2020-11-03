@@ -37,6 +37,7 @@
       "Equal",
       "FastCheck",
       "Guard",
+      "Hash",
       "HKT",
       "Show",
       "Strict",

@@ -4,6 +4,7 @@ import * as Sync from "@effect-ts/core/Sync"
 import type { AType, EType } from "../src"
 import { make, makeADT, opaque } from "../src"
 import { decodeReport } from "../src/Decoder"
+import { hash } from "../src/Hash"
 
 const Foo_ = make((F) =>
   F.interface({
@@ -39,6 +40,11 @@ describe("Adt", () => {
     )
     expect(Sync.runEither(decodeReport(FooBar)({ _tag: "Baz", baz: "baz" }))).toEqual(
       E.left("Baz is not known in (Foo, Bar)")
+    )
+  })
+  it("Hashes adt", () => {
+    expect(hash(FooBar).hash).toEqual(
+      '{"_tag":"Bar","bar":"string"} | {"_tag":"Foo","foo":"string"}'
     )
   })
 })
