@@ -3,16 +3,14 @@
  */
 import { NoSuchElementException } from "@effect-ts/system/GlobalExceptions"
 import type { _E, _R } from "@effect-ts/system/Utils"
-import { isEither, isOption, isSync, isTag } from "@effect-ts/system/Utils"
+import { isEither, isOption, isTag } from "@effect-ts/system/Utils"
 
 import type { Either } from "../Classic/Either"
 import type { Option } from "../Classic/Option"
 import { identity, pipe } from "../Function"
 import type { Has, Tag } from "../Has"
-import type { Sync } from "../Sync"
-import { runEitherEnv } from "../Sync"
 import type { Async } from "./core"
-import { accessM, accessService, chain, fail, succeed, sync } from "./core"
+import { accessService, chain, fail, succeed, sync } from "./core"
 
 export class GenAsync<R, E, A> {
   readonly _R!: (_R: R) => void
@@ -29,18 +27,6 @@ export class GenAsync<R, E, A> {
 const adapter = (_: any, __?: any) => {
   if (isTag(_)) {
     return new GenAsync(accessService(_)(identity))
-  }
-  if (isSync(_)) {
-    return new GenAsync(
-      accessM((r) => {
-        const ex = runEitherEnv(r)(_)
-        if (ex._tag === "Left") {
-          return fail(ex.left)
-        } else {
-          return succeed(ex.right)
-        }
-      })
-    )
   }
   if (isEither(_)) {
     return new GenAsync(_._tag === "Left" ? fail(_.left) : succeed(_.right))
@@ -61,7 +47,6 @@ export function gen<RBase, EBase, AEff>(): <Eff extends GenAsync<RBase, EBase, a
     <E, A>(_: Option<A>, onNone: () => E): GenAsync<unknown, E, A>
     <A>(_: Option<A>): GenAsync<unknown, NoSuchElementException, A>
     <E, A>(_: Either<E, A>): GenAsync<unknown, E, A>
-    <R, E, A>(_: Sync<R, E, A>): GenAsync<R, E, A>
     <R, E, A>(_: Async<R, E, A>): GenAsync<R, E, A>
   }) => Generator<Eff, AEff, any>
 ) => Async<_R<Eff>, _E<Eff>, AEff>
@@ -71,7 +56,6 @@ export function gen<EBase, AEff>(): <Eff extends GenAsync<any, EBase, any>>(
     <E, A>(_: Option<A>, onNone: () => E): GenAsync<unknown, E, A>
     <A>(_: Option<A>): GenAsync<unknown, NoSuchElementException, A>
     <E, A>(_: Either<E, A>): GenAsync<unknown, E, A>
-    <R, E, A>(_: Sync<R, E, A>): GenAsync<R, E, A>
     <R, E, A>(_: Async<R, E, A>): GenAsync<R, E, A>
   }) => Generator<Eff, AEff, any>
 ) => Async<_R<Eff>, _E<Eff>, AEff>
@@ -81,7 +65,6 @@ export function gen<AEff>(): <Eff extends GenAsync<any, any, any>>(
     <E, A>(_: Option<A>, onNone: () => E): GenAsync<unknown, E, A>
     <A>(_: Option<A>): GenAsync<unknown, NoSuchElementException, A>
     <E, A>(_: Either<E, A>): GenAsync<unknown, E, A>
-    <R, E, A>(_: Sync<R, E, A>): GenAsync<R, E, A>
     <R, E, A>(_: Async<R, E, A>): GenAsync<R, E, A>
   }) => Generator<Eff, AEff, any>
 ) => Async<_R<Eff>, _E<Eff>, AEff>
@@ -91,7 +74,6 @@ export function gen<Eff extends GenAsync<any, any, any>, AEff>(
     <E, A>(_: Option<A>, onNone: () => E): GenAsync<unknown, E, A>
     <A>(_: Option<A>): GenAsync<unknown, NoSuchElementException, A>
     <E, A>(_: Either<E, A>): GenAsync<unknown, E, A>
-    <R, E, A>(_: Sync<R, E, A>): GenAsync<R, E, A>
     <R, E, A>(_: Async<R, E, A>): GenAsync<R, E, A>
   }) => Generator<Eff, AEff, any>
 ): Async<_R<Eff>, _E<Eff>, AEff>
