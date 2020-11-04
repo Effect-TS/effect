@@ -2,6 +2,7 @@ import * as A from "../Array"
 import type { FiberID } from "../Fiber/id"
 import { pipe } from "../Function"
 import * as O from "../Option"
+import * as S from "../Sync"
 import type { Cause } from "./cause"
 
 //
@@ -77,54 +78,64 @@ const renderFailError = (error: Error): Sequential =>
 
 const lines = (s: string) => s.split("\n").map((s) => s.replace("\r", "")) as string[]
 
-const linearSegments = <E>(cause: Cause<E>): Step[] => {
-  switch (cause._tag) {
-    case "Then": {
-      return [...linearSegments(cause.left), ...linearSegments(cause.right)]
+const linearSegments = <E>(cause: Cause<E>): S.UIO<Step[]> =>
+  S.gen(function* (_) {
+    switch (cause._tag) {
+      case "Then": {
+        return [
+          ...(yield* _(linearSegments(cause.left))),
+          ...(yield* _(linearSegments(cause.right)))
+        ]
+      }
+      default: {
+        return (yield* _(causeToSequential(cause))).all
+      }
     }
-    default: {
-      return causeToSequential(cause).all
-    }
-  }
-}
+  })
 
-const parallelSegments = <E>(cause: Cause<E>): Sequential[] => {
-  switch (cause._tag) {
-    case "Both": {
-      return [...parallelSegments(cause.left), ...parallelSegments(cause.right)]
+const parallelSegments = <E>(cause: Cause<E>): S.UIO<Sequential[]> =>
+  S.gen(function* (_) {
+    switch (cause._tag) {
+      case "Both": {
+        return [
+          ...(yield* _(parallelSegments(cause.left))),
+          ...(yield* _(parallelSegments(cause.right)))
+        ]
+      }
+      default: {
+        return [yield* _(causeToSequential(cause))]
+      }
     }
-    default: {
-      return [causeToSequential(cause)]
-    }
-  }
-}
+  })
 
-const causeToSequential = <E>(cause: Cause<E>): Sequential => {
-  switch (cause._tag) {
-    case "Empty": {
-      return Sequential([])
+const causeToSequential = <E>(cause: Cause<E>): S.UIO<Sequential> =>
+  S.gen(function* (_) {
+    yield* _(S.unit)
+    switch (cause._tag) {
+      case "Empty": {
+        return Sequential([])
+      }
+      case "Fail": {
+        return cause.value instanceof Error
+          ? renderFailError(cause.value)
+          : renderFail(lines(JSON.stringify(cause.value, null, 2)))
+      }
+      case "Die": {
+        return cause.value instanceof Error
+          ? renderDie(cause.value)
+          : renderDieUnknown(lines(JSON.stringify(cause.value, null, 2)))
+      }
+      case "Interrupt": {
+        return renderInterrupt(cause.fiberId)
+      }
+      case "Then": {
+        return Sequential(yield* _(linearSegments(cause)))
+      }
+      case "Both": {
+        return Sequential([Parallel(yield* _(parallelSegments(cause)))])
+      }
     }
-    case "Fail": {
-      return cause.value instanceof Error
-        ? renderFailError(cause.value)
-        : renderFail(lines(JSON.stringify(cause.value, null, 2)))
-    }
-    case "Die": {
-      return cause.value instanceof Error
-        ? renderDie(cause.value)
-        : renderDieUnknown(lines(JSON.stringify(cause.value, null, 2)))
-    }
-    case "Interrupt": {
-      return renderInterrupt(cause.fiberId)
-    }
-    case "Then": {
-      return Sequential(linearSegments(cause))
-    }
-    case "Both": {
-      return Sequential([Parallel(parallelSegments(cause))])
-    }
-  }
-}
+  })
 
 const times = (s: string, n: number) => {
   let h = ""
@@ -160,17 +171,26 @@ const format = (segment: Segment): readonly string[] => {
   }
 }
 
-const prettyLines = <E>(cause: Cause<E>): readonly string[] => {
-  const s = causeToSequential(cause)
+const prettyLines = <E>(cause: Cause<E>) =>
+  S.gen(function* (_) {
+    const s = yield* _(causeToSequential(cause))
 
-  if (s.all.length === 1 && s.all[0]._tag === "Failure") {
-    return s.all[0].lines
-  }
+    if (s.all.length === 1 && s.all[0]._tag === "Failure") {
+      return s.all[0].lines
+    }
 
-  return O.getOrElse_(A.updateAt_(format(s), 0, "╥"), (): string[] => [])
+    return O.getOrElse_(A.updateAt_(format(s), 0, "╥"), (): string[] => [])
+  })
+
+export function prettyM<E1>(cause: Cause<E1>) {
+  return S.gen(function* (_) {
+    const lines = yield* _(prettyLines(cause))
+
+    return lines.join("\n")
+  })
 }
 
 /**
  * Returns a `String` with the cause pretty-printed.
  */
-export const pretty = <E1>(cause: Cause<E1>) => prettyLines(cause).join("\n")
+export const pretty = <E1>(cause: Cause<E1>) => S.run(prettyM(cause))
