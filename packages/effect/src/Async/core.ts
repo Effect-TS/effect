@@ -58,7 +58,7 @@ export const Monad = P.instance<P.Monad<[AsyncURI], V>>({
 })
 
 export const Fail = P.instance<P.FX.Fail<[AsyncURI], V>>({
-  fail
+  fail: A.fail
 })
 
 export const Run = P.instance<P.FX.Run<[AsyncURI], V>>({
