@@ -573,8 +573,10 @@ export const filterInputM_ = <RA, RB, EA, EB, B, A, RC, EC, A1 extends A = A>(
       (ea) => O.some<EA | EC>(ea),
       identity,
       (a: A1) =>
-        T.ifM(T.asSomeError(f(a)))(() => T.succeed(a))(() =>
-          T.fail<O.Option<EA | EC>>(O.none)
+        T.ifM_(
+          T.asSomeError(f(a)),
+          () => T.succeed(a),
+          () => T.fail<O.Option<EA | EC>>(O.none)
         ),
       T.succeed
     )
@@ -635,7 +637,12 @@ export const filterOutputM_ = <RA, RB, EA, EB, A, B, RC, EC>(
       (ea) => ea,
       (eb) => O.some<EB | EC>(eb),
       (a) => T.succeed(a),
-      (b) => T.ifM(T.asSomeError(f(b)))(() => T.succeed(b))(() => T.fail(O.none))
+      (b) =>
+        T.ifM_(
+          T.asSomeError(f(b)),
+          () => T.succeed(b),
+          () => T.fail(O.none)
+        )
     )
   )
 
