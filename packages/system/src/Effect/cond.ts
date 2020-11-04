@@ -1,6 +1,5 @@
-import type { RIO } from "."
 import { chain_, effectTotal } from "./core"
-import type { Effect } from "./effect"
+import type { Effect, RIO } from "./effect"
 import { fail } from "./fail"
 
 /**
