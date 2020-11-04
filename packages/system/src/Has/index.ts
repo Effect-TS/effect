@@ -4,6 +4,9 @@
  * Copyright 2020 Michael Arnaldi and the Matechs Garage Contributors.
  */
 
+import type { Option } from "../Option"
+import { fromNullable, none } from "../Option"
+
 /**
  * URI used in Has
  */
@@ -41,6 +44,7 @@ export interface Tag<T> {
   fixed: () => Tag<T>
   refine: <T1 extends T>() => Tag<T1>
   read: (r: Has<T>) => T
+  readOption: (r: unknown) => Option<T>
   setKey: (s: PropertyKey) => Tag<T>
   of: (_: T) => Has<T>
 }
@@ -60,6 +64,8 @@ const makeTag = <T>(def = false, key: PropertyKey = Symbol()): Tag<T> => ({
   fixed: () => makeTag(false, key),
   refine: () => makeTag(def, key),
   read: (r: Has<T>) => r[key],
+  readOption: (r: unknown) =>
+    typeof r === "object" && r !== null ? fromNullable(r[key]) : none,
   setKey: (s: PropertyKey) => makeTag(def, s)
 })
 
