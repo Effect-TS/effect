@@ -127,7 +127,7 @@ export function flatten<R, E, A, R2, E2>(
 }
 
 export function fromEither<E, A>(_: E.Either<E, A>) {
-  return _._tag === "Left" ? fail(_.left) : A.succeed(_.right)
+  return _._tag === "Left" ? A.fail(_.left) : A.succeed(_.right)
 }
 
 export function fromSync<R, E, A>(_: Sync<R, E, A>) {
