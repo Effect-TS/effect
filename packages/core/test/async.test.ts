@@ -33,4 +33,12 @@ describe("Async", () => {
       )
     ).toEqual(As.successExit(2))
   })
+  it("collectAll", async () => {
+    expect(
+      await pipe(
+        As.collectAll([As.succeed(1), As.succeed(2), As.succeed(3)] as const),
+        As.runPromiseExit
+      )
+    ).toEqual(As.successExit([1, 2, 3]))
+  })
 })
