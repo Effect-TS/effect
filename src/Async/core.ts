@@ -492,6 +492,9 @@ export function runPromiseExitEnv<R, E, A>(
               }
             }
           }
+          if (!errored) {
+            curAsync = new ISucceed(as)
+          }
           break
         }
         case "Fail": {
