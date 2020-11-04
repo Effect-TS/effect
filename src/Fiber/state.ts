@@ -1,5 +1,6 @@
 import * as C from "../Cause"
 import type * as Exit from "../Exit"
+import * as S from "../Sync"
 import type { Status } from "./status"
 import { Done, Running } from "./status"
 
@@ -30,22 +31,23 @@ export const initial = <E, A>(): FiberState<E, A> =>
   new FiberStateExecuting(new Running(false), [], C.Empty)
 
 export const interrupting = <E, A>(state: FiberState<E, A>) => {
-  const loop = (status: Status): boolean => {
-    switch (status._tag) {
-      case "Running": {
-        return status.interrupting
+  const loop = (status: Status): S.UIO<boolean> =>
+    S.gen(function* (_) {
+      switch (status._tag) {
+        case "Running": {
+          return status.interrupting
+        }
+        case "Finishing": {
+          return status.interrupting
+        }
+        case "Suspended": {
+          return yield* _(loop(status.previous))
+        }
+        case "Done": {
+          return false
+        }
       }
-      case "Finishing": {
-        return status.interrupting
-      }
-      case "Suspended": {
-        return loop(status.previous)
-      }
-      case "Done": {
-        return false
-      }
-    }
-  }
+    })
 
-  return loop(state.status)
+  return S.run(loop(state.status))
 }
