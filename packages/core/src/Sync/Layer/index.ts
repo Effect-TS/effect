@@ -206,7 +206,7 @@ export class All<Layers extends SyncLayer<any, any, any>[]> extends SyncLayer<
         A.reduce(<Sy.Sync<any, any, any>>Sy.succeed({}), (b, a) =>
           pipe(
             getMemoOrElseCreate(a)(_),
-            Sy.chain((x) => ({ ...b, ...x }))
+            Sy.chain((x) => Sy.map_(b, (k) => ({ ...k, ...x })))
           )
         )
       )
