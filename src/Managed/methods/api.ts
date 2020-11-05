@@ -1,10 +1,10 @@
 import type { Cause } from "../../Cause"
 import * as T from "../../Effect"
 import * as E from "../../Either"
-import { flow, pipe, tuple } from "../../Function"
+import { flow, identity, pipe, tuple } from "../../Function"
 import * as O from "../../Option"
 import * as P from "../../Promise"
-import { fail, map_, mapM_ } from "../core"
+import { fail, foldCauseM_, map_, mapM_ } from "../core"
 import { fromEffect } from "../fromEffect"
 import type { UIO } from "../managed"
 import { Managed } from "../managed"
@@ -153,4 +153,135 @@ export function optional<R, E, A>(
     O.fold(() => succeed(O.none), fail),
     flow(O.some, succeed)
   )
+}
+
+/**
+ * Keeps none of the errors, and terminates the fiber with them, using
+ * the specified function to convert the `E` into a `Throwable`.
+ */
+export function orDieWith<E>(f: (e: E) => unknown) {
+  return <R, A>(self: Managed<R, E, A>) => new Managed(T.orDieWith_(self.effect, f))
+}
+
+/**
+ * Keeps none of the errors, and terminates the fiber with them, using
+ * the specified function to convert the `E` into a `Throwable`.
+ */
+export function orDieWith_<R, E, A>(self: Managed<R, E, A>, f: (e: E) => unknown) {
+  return new Managed(T.orDieWith_(self.effect, f))
+}
+
+/**
+ * Translates effect failure into death of the fiber, making all failures unchecked and
+ * not a part of the type of the effect.
+ */
+export function orDie<R, E, A>(self: Managed<R, E, A>) {
+  return orDieWith_(self, identity)
+}
+
+/**
+ * Executes this effect and returns its value, if it succeeds, but
+ * otherwise executes the specified effect.
+ */
+export function orElse<R2, E2, A2>(that: () => Managed<R2, E2, A2>) {
+  return <R, E, A>(self: Managed<R, E, A>) => orElse_(self, that)
+}
+
+/**
+ * Executes this effect and returns its value, if it succeeds, but
+ * otherwise executes the specified effect.
+ */
+export function orElse_<R, E, A, R2, E2, A2>(
+  self: Managed<R, E, A>,
+  that: () => Managed<R2, E2, A2>
+) {
+  return foldM_(self, () => that(), succeed)
+}
+
+/**
+ * Executes this effect and returns its value, if it succeeds, but
+ * otherwise fails with the specified error.
+ */
+export function orElseFail<E2>(e: E2) {
+  return <R, E, A>(self: Managed<R, E, A>) => orElseFail_(self, e)
+}
+
+/**
+ * Executes this effect and returns its value, if it succeeds, but
+ * otherwise fails with the specified error.
+ */
+export function orElseFail_<R, E, A, E2>(self: Managed<R, E, A>, e: E2) {
+  return orElse_(self, () => fail(e))
+}
+
+/**
+ * Executes this effect and returns its value, if it succeeds, but
+ * otherwise executes the specified effect.
+ */
+export function orElseEither<R2, E2, A2>(that: () => Managed<R2, E2, A2>) {
+  return <R, E, A>(self: Managed<R, E, A>): Managed<R & R2, E2, E.Either<A2, A>> =>
+    orElseEither_(self, that)
+}
+
+/**
+ * Executes this effect and returns its value, if it succeeds, but
+ * otherwise executes the specified effect.
+ */
+export function orElseEither_<R, E, A, R2, E2, A2>(
+  self: Managed<R, E, A>,
+  that: () => Managed<R2, E2, A2>
+): Managed<R & R2, E2, E.Either<A2, A>> {
+  return foldM_(self, () => map_(that(), E.left), flow(E.right, succeed))
+}
+
+/**
+ * Returns an effect that will produce the value of this effect, unless it
+ * fails with the `None` value, in which case it will produce the value of
+ * the specified effect.
+ */
+export function orElseOptional_<R, E, A, R2, E2, A2>(
+  self: Managed<R, O.Option<E>, A>,
+  that: () => Managed<R2, O.Option<E2>, A2>
+): Managed<R & R2, O.Option<E | E2>, A | A2> {
+  return catchAll_(
+    self,
+    O.fold(
+      () => that(),
+      (e) => fail(O.some<E | E2>(e))
+    )
+  )
+}
+
+/**
+ * Recovers from all errors.
+ */
+export function catchAll_<R, E, A, R2, E2, A2>(
+  self: Managed<R, E, A>,
+  f: (e: E) => Managed<R2, E2, A2>
+) {
+  return foldM_(self, f, succeed)
+}
+
+/**
+ * Recovers from all errors.
+ */
+export function catchAll<E, R2, E2, A2>(f: (e: E) => Managed<R2, E2, A2>) {
+  return <R, A>(self: Managed<R, E, A>) => catchAll_(self, f)
+}
+
+/**
+ * Recovers from all errors with provided Cause.
+ */
+export function catchAllCause_<R, E, A, R2, E2, A2>(
+  self: Managed<R, E, A>,
+  f: (e: Cause<E>) => Managed<R2, E2, A2>
+) {
+  return foldCauseM_(self, f, succeed)
+}
+
+/**
+ * Recovers from all errors with provided Cause.
+ */
+export function catchAllCause<E, R2, E2, A2>(f: (e: Cause<E>) => Managed<R2, E2, A2>) {
+  return <R, A>(self: Managed<R, E, A>) => foldCauseM_(self, f, succeed)
 }
