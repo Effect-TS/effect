@@ -4,13 +4,14 @@ import * as E from "../../Either"
 import { flow, identity, pipe, tuple } from "../../Function"
 import * as O from "../../Option"
 import * as P from "../../Promise"
-import { fail, foldCauseM_, map_, mapM_ } from "../core"
+import { chain_, fail, foldCauseM_, map_, mapM_ } from "../core"
 import { fromEffect } from "../fromEffect"
 import type { UIO } from "../managed"
 import { Managed } from "../managed"
 import { succeed } from "../succeed"
 import { absolve } from "./absolve"
 import { foldM_ } from "./foldM_"
+import { halt } from "./halt"
 import { releaseMap } from "./releaseMap"
 import { suspend } from "./suspend"
 
@@ -284,4 +285,83 @@ export function catchAllCause_<R, E, A, R2, E2, A2>(
  */
 export function catchAllCause<E, R2, E2, A2>(f: (e: Cause<E>) => Managed<R2, E2, A2>) {
   return <R, A>(self: Managed<R, E, A>) => foldCauseM_(self, f, succeed)
+}
+
+/**
+ * Recovers from some or all of the error cases.
+ */
+export function catchSome_<R, E, A, R2, E2, A2>(
+  self: Managed<R, E, A>,
+  pf: (e: E) => O.Option<Managed<R2, E2, A2>>
+): Managed<R & R2, E | E2, A | A2> {
+  return catchAll_(self, (e) => O.getOrElse_(pf(e), () => fail<E | E2>(e)))
+}
+
+/**
+ * Recovers from some or all of the error cases.
+ */
+export function catchSome<E, R2, E2, A2>(pf: (e: E) => O.Option<Managed<R2, E2, A2>>) {
+  return <R, A>(self: Managed<R, E, A>) => catchSome_(self, pf)
+}
+
+/**
+ * Recovers from some or all of the error cases.
+ */
+export function catchSomeCause_<R, E, A, R2, E2, A2>(
+  self: Managed<R, E, A>,
+  pf: (e: Cause<E>) => O.Option<Managed<R2, E2, A2>>
+): Managed<R & R2, E | E2, A | A2> {
+  return catchAllCause_(self, (e) => O.getOrElse_(pf(e), () => halt<E | E2>(e)))
+}
+
+/**
+ * Recovers from some or all of the error cases.
+ */
+export function catchSomeCause<R, E, A, R2, E2, A2>(
+  pf: (e: Cause<E>) => O.Option<Managed<R2, E2, A2>>
+) {
+  return (self: Managed<R, E, A>) => catchSomeCause_(self, pf)
+}
+
+/**
+ * Fail with `e` if the supplied `PartialFunction` does not match, otherwise
+ * continue with the returned value.
+ */
+export function collectM_<R, E, A, E1, R1, E2, B>(
+  self: Managed<R, E, A>,
+  e: E1,
+  pf: (a: A) => O.Option<Managed<R1, E2, B>>
+): Managed<R & R1, E | E1 | E2, B> {
+  return chain_(self, (a) => O.getOrElse_(pf(a), () => fail<E1 | E2>(e)))
+}
+
+/**
+ * Fail with `e` if the supplied `PartialFunction` does not match, otherwise
+ * continue with the returned value.
+ */
+export function collectM<A, E1, R1, E2, B>(
+  e: E1,
+  pf: (a: A) => O.Option<Managed<R1, E2, B>>
+) {
+  return <R, E>(self: Managed<R, E, A>) => collectM_(self, e, pf)
+}
+
+/**
+ * Fail with `e` if the supplied `PartialFunction` does not match, otherwise
+ * succeed with the returned value.
+ */
+export function collect_<R, E, A, E1, B>(
+  self: Managed<R, E, A>,
+  e: E1,
+  pf: (a: A) => O.Option<B>
+): Managed<R, E | E1, B> {
+  return collectM_(self, e, flow(pf, O.map(succeed)))
+}
+
+/**
+ * Fail with `e` if the supplied `PartialFunction` does not match, otherwise
+ * succeed with the returned value.
+ */
+export function collect<A, E1, B>(e: E1, pf: (a: A) => O.Option<B>) {
+  return <R, E>(self: Managed<R, E, A>) => collect_(self, e, pf)
 }
