@@ -16,9 +16,16 @@ export * from "./succeed"
 // codegen:end
 
 // codegen:start { preset: barrel, include: ./methods/*.ts }
+export * from "./methods/absolve"
+export * from "./methods/absorb"
 export * from "./methods/ensuringFirst"
+export * from "./methods/foldM_"
+export * from "./methods/foldM"
+export * from "./methods/fromEither"
 export * from "./methods/gen"
+export * from "./methods/halt"
 export * from "./methods/releaseMap"
+export * from "./methods/sandbox"
 export * from "./methods/suspend"
 export * from "./methods/switchable"
 // codegen:end
