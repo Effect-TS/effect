@@ -17,6 +17,8 @@ export {
   unit
 } from "../Effect/core"
 export { forkDaemon } from "../Effect/core-scope"
+export { mapError_ } from "../Effect/mapError"
+export { mapErrorCause_ } from "../Effect/mapErrorCause"
 export { bind, do, let } from "../Effect/do"
 export { done } from "../Effect/done"
 export { Effect, IO, RIO, UIO, _A, _E, _I, _R, _U } from "../Effect/effect"

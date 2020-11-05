@@ -18,6 +18,7 @@ export * from "./succeed"
 // codegen:start { preset: barrel, include: ./methods/*.ts }
 export * from "./methods/absolve"
 export * from "./methods/absorb"
+export * from "./methods/api"
 export * from "./methods/ensuringFirst"
 export * from "./methods/foldM_"
 export * from "./methods/foldM"
