@@ -10,9 +10,9 @@ export * from "./do"
 export * from "./fromEffect"
 export * from "./managed"
 export * from "./releaseMap"
-export * from "./sequenceS"
-export * from "./sequenceT"
+export * from "./struct"
 export * from "./succeed"
+export * from "./tuple"
 // codegen:end
 
 // codegen:start { preset: barrel, include: ./methods/*.ts }

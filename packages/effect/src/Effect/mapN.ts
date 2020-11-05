@@ -2,8 +2,8 @@ import type { NonEmptyArray } from "../NonEmptyArray"
 import type { _E, _R } from "../Utils"
 import type { Effect } from "./effect"
 import { map_ } from "./map_"
-import type { TupleA } from "./tupled"
-import { tuple, tuplePar, tupleParN } from "./tupled"
+import type { TupleA } from "./tuple"
+import { tuple, tuplePar, tupleParN } from "./tuple"
 
 /**
  * Sequentially zips the specified effects using the specified combiner
