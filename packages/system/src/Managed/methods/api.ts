@@ -4,13 +4,14 @@ import * as E from "../../Either"
 import { flow, identity, pipe, tuple } from "../../Function"
 import * as O from "../../Option"
 import * as P from "../../Promise"
-import { chain_, fail, foldCauseM_, map_, mapM_ } from "../core"
+import { chain_, fail, foldCauseM_, map_, mapM_, provideSome_ } from "../core"
 import { fromEffect } from "../fromEffect"
 import type { UIO } from "../managed"
 import { Managed } from "../managed"
 import { succeed } from "../succeed"
 import { absolve } from "./absolve"
 import { foldM_ } from "./foldM_"
+import { gen } from "./gen"
 import { halt } from "./halt"
 import { releaseMap } from "./releaseMap"
 import { suspend } from "./suspend"
@@ -364,4 +365,50 @@ export function collect_<R, E, A, E1, B>(
  */
 export function collect<A, E1, B>(e: E1, pf: (a: A) => O.Option<B>) {
   return <R, E>(self: Managed<R, E, A>) => collect_(self, e, pf)
+}
+
+/**
+ * Provides the `Managed` effect with its required environment, which eliminates
+ * its dependency on `R`.
+ */
+export function provideAll<R>(r: R) {
+  return <E, A>(self: Managed<R, E, A>) => provideAll_(self, r)
+}
+
+/**
+ * Provides the `Managed` effect with its required environment, which eliminates
+ * its dependency on `R`.
+ */
+export function provideAll_<R, E, A>(self: Managed<R, E, A>, r: R) {
+  return provideSome_(self, () => r)
+}
+
+/**
+ * Accesses the whole environment of the effect.
+ */
+export function environment<R>() {
+  return fromEffect(T.environment<R>())
+}
+
+/**
+ * Executes the second effect and then provides its output as an environment to this effect
+ */
+export function compose<A, E2, B>(that: Managed<A, E2, B>) {
+  return <R, E>(self: Managed<R, E, A>) =>
+    gen(function* (_) {
+      const r1 = yield* _(environment<R>())
+      const r = yield* _(provideAll(r1)(self))
+
+      return yield* _(provideAll(r)(that))
+    })
+}
+
+/**
+ * Returns an effect whose failure and success have been lifted into an
+ * `Either`. The resulting effect cannot fail
+ */
+export function either<R, E, A>(
+  self: Managed<R, E, A>
+): Managed<R, never, E.Either<E, A>> {
+  return fold_(self, E.left, E.right)
 }

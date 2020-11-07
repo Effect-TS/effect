@@ -584,6 +584,13 @@ export function provideSome_<R, E, A, R0>(
 }
 
 /**
+ * Like provideSome for effect but for Managed
+ */
+export function provideSome<R, R0>(f: (r0: R0) => R) {
+  return <E, A>(self: Managed<R, E, A>) => provideSome_(self, f)
+}
+
+/**
  * A `Reservation< R, E, A>` encapsulates resource acquisition and disposal
  * without specifying when or how that resource might be used.
  *
