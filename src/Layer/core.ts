@@ -1,6 +1,6 @@
 import type { Cause } from "../Cause"
 import * as T from "../Effect"
-import { identity, pipe, tuple } from "../Function"
+import { identity as idFn, pipe, tuple } from "../Function"
 import type { Has, Tag } from "../Has"
 import { mergeEnvironments } from "../Has"
 import * as M from "../Managed"
@@ -246,7 +246,7 @@ export function chain_<R, E, A, R2, E2, B>(
 export function flatten<R, E, R2, E2, B>(
   ffa: Layer<R, E, Layer<R2, E2, B>>
 ): Layer<R & R2, E | E2, B> {
-  return chain_(ffa, identity)
+  return chain_(ffa, idFn)
 }
 
 /**
@@ -319,7 +319,7 @@ export function fromConstructorManaged<S>(
         M.fromEffect(
           T.accessServicesT(...tags)((...services: any[]) => f(...(services as any)))
         ),
-        identity
+        idFn
       )
     )
 }
@@ -425,4 +425,12 @@ export function restrict<Tags extends Tag<any>[]>(...ts: Tags) {
  */
 export function launch<R, E, A>(self: Layer<R, E, A>): T.Effect<R, E, never> {
   return M.useForever(build(self))
+}
+
+/**
+ * Constructs a layer that passes along the specified environment as an
+ * output.
+ */
+export function identity<R>() {
+  return fromRawManaged(M.environment<R>())
 }
