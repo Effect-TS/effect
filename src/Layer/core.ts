@@ -8,6 +8,7 @@ import type { Erase, UnionToIntersection } from "../Utils"
 import type { Layer, MergeA, MergeE, MergeR } from "./definitions"
 import {
   and_,
+  andTo_,
   build,
   fold_,
   fromRawEffect,
@@ -92,21 +93,6 @@ export function zip_<R, E, A, R2, E2, A2>(
 
 export function zip<R2, E2, A2>(right: Layer<R2, E2, A2>) {
   return <R, E, A>(left: Layer<R, E, A>) => zip_(left, right)
-}
-
-export function andTo<R, E, A>(to: Layer<R, E, A>) {
-  return <R2, E2, A2>(self: Layer<R2, E2, A2>) => andTo_(self, to)
-}
-
-export function andTo_<R, E, A, R2, E2, A2>(
-  self: Layer<R2, E2, A2>,
-  to: Layer<R, E, A>
-): Layer<Erase<R, A2> & R2, E | E2, A & A2> {
-  return fold_<Erase<R, A2> & R2, E2, A2, E2, never, Erase<R, A2> & R2, E | E2, A2 & A>(
-    self,
-    fromRawFunctionM((_: readonly [R & R2, Cause<E2>]) => T.halt(_[1])),
-    and_(self, to)
-  )
 }
 
 export function to<R, E, A>(to: Layer<R, E, A>) {

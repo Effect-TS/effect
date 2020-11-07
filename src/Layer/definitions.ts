@@ -42,17 +42,32 @@ export function fold_<R, E, A, E1, B, R2, E2, C>(
 }
 
 export function using_<R, E, A, R2, E2, A2>(
-  to: Layer<R & A2, E, A>,
-  self: Layer<R2, E2, A2>,
+  self: Layer<R & A2, E, A>,
+  from: Layer<R2, E2, A2>,
   noErase: "no-erase"
 ): Layer<R & R2, E | E2, A & A2>
 export function using_<R, E, A, R2, E2, A2>(
-  to: Layer<R, E, A>,
-  self: Layer<R2, E2, A2>
+  self: Layer<R, E, A>,
+  from: Layer<R2, E2, A2>
 ): Layer<Erase<R, A2> & R2, E | E2, A & A2>
 export function using_<R, E, A, R2, E2, A2>(
-  to: Layer<R, E, A>,
-  self: Layer<R2, E2, A2>
+  self: Layer<R, E, A>,
+  from: Layer<R2, E2, A2>
+): Layer<Erase<R, A2> & R2, E | E2, A & A2> {
+  return fold_<Erase<R, A2> & R2, E2, A2, E2, never, Erase<R, A2> & R2, E | E2, A2 & A>(
+    from,
+    fromRawFunctionM((_: readonly [R & R2, Cause<E2>]) => T.halt(_[1])),
+    and_(from, self)
+  )
+}
+
+export function andTo<R, E, A>(to: Layer<R, E, A>) {
+  return <R2, E2, A2>(self: Layer<R2, E2, A2>) => andTo_(self, to)
+}
+
+export function andTo_<R, E, A, R2, E2, A2>(
+  self: Layer<R2, E2, A2>,
+  to: Layer<R, E, A>
 ): Layer<Erase<R, A2> & R2, E | E2, A & A2> {
   return fold_<Erase<R, A2> & R2, E2, A2, E2, never, Erase<R, A2> & R2, E | E2, A2 & A>(
     self,
@@ -62,22 +77,22 @@ export function using_<R, E, A, R2, E2, A2>(
 }
 
 export function from_<R, E, A, R2, E2, A2>(
-  to: Layer<R & A2, E, A>,
-  self: Layer<R2, E2, A2>,
+  self: Layer<R & A2, E, A>,
+  to: Layer<R2, E2, A2>,
   noErase: "no-erase"
 ): Layer<R & R2, E | E2, A>
 export function from_<R, E, A, R2, E2, A2>(
-  to: Layer<R, E, A>,
-  self: Layer<R2, E2, A2>
+  self: Layer<R, E, A>,
+  to: Layer<R2, E2, A2>
 ): Layer<Erase<R, A2> & R2, E | E2, A>
 export function from_<R, E, A, R2, E2, A2>(
-  to: Layer<R, E, A>,
-  self: Layer<R2, E2, A2>
+  self: Layer<R, E, A>,
+  to: Layer<R2, E2, A2>
 ): Layer<Erase<R, A2> & R2, E | E2, A> {
   return fold_<Erase<R, A2> & R2, E2, A2, E2, never, Erase<R, A2> & R2, E | E2, A>(
-    self,
+    to,
     fromRawFunctionM((_: readonly [R & R2, Cause<E2>]) => T.halt(_[1])),
-    to
+    self
   )
 }
 
@@ -118,7 +133,7 @@ export abstract class Layer<RIn, E, ROut> {
   [">+>"]<R2, E2, A2>(
     from: Layer<R2, E2, A2>
   ): Layer<Erase<R2, ROut> & RIn, E2 | E, ROut & A2> {
-    return using_(from, this)
+    return andTo_(this, from)
   }
 
   ["+++"]<R2, E2, A2>(from: Layer<R2, E2, A2>): Layer<R2 & RIn, E2 | E, ROut & A2> {
