@@ -575,3 +575,94 @@ export function join_<R, E, A, R1, E1, A1>(
     return a1
   })
 }
+
+/**
+ * Depending on provided environment returns either this one or the other effect.
+ */
+export function joinEither<R2, E2, A2>(that: Managed<R2, E2, A2>) {
+  return <R, E, A>(
+    self: Managed<R, E, A>
+  ): Managed<E.Either<R, R2>, E | E2, E.Either<A, A2>> => joinEither_(self, that)
+}
+
+/**
+ * Depending on provided environment returns either this one or the other effect.
+ */
+export function joinEither_<R, E, A, R2, E2, A2>(
+  self: Managed<R, E, A>,
+  that: Managed<R2, E2, A2>
+): Managed<E.Either<R, R2>, E | E2, E.Either<A, A2>> {
+  return gen(function* (_) {
+    const e = yield* _(environment<E.Either<R, R2>>())
+    const r = yield* _(
+      E.fold_(
+        e,
+        (r0): IO<E | E2, E.Either<A, A2>> => provideAll_(map_(self, E.left), r0),
+        (r1) => provideAll_(map_(that, E.right), r1)
+      )
+    )
+    return r
+  })
+}
+
+/**
+ * Join self selectively with C
+ */
+export function identityLeft<C>() {
+  return <R, E, A>(
+    self: Managed<R, E, A>
+  ): Managed<E.Either<R, C>, E, E.Either<A, C>> => joinEither_(self, environment<C>())
+}
+
+/**
+ * Lifts a synchronous side-effect into a `Managed[R, E, A]`,
+ * translating any thrown exceptions into typed failed effects using onThrow.
+ */
+export function effectPartial<E>(onThrow: (u: unknown) => E) {
+  return <A>(f: () => A): Managed<unknown, E, A> =>
+    fromEffect(T.effectPartial(onThrow)(f))
+}
+
+/**
+ * Returns an effect whose success is mapped by the specified side effecting
+ * `f` function, translating any thrown exceptions into typed failed effects.
+ */
+export function mapEffectWith<E2, A, B>(onThrow: (u: unknown) => E2, f: (a: A) => B) {
+  return <R, E>(self: Managed<R, E, A>): Managed<R, E | E2, B> =>
+    mapEffectWith_(self, onThrow, f)
+}
+
+/**
+ * Returns an effect whose success is mapped by the specified side effecting
+ * `f` function, translating any thrown exceptions into typed failed effects.
+ */
+export function mapEffectWith_<R, E, E2, A, B>(
+  self: Managed<R, E, A>,
+  onThrow: (u: unknown) => E2,
+  f: (a: A) => B
+): Managed<R, E | E2, B> {
+  return foldM_(
+    self,
+    (e) => fail(e),
+    (a) => effectPartial(onThrow)(() => f(a))
+  )
+}
+
+/**
+ * Returns an effect whose success is mapped by the specified side effecting
+ * `f` function, translating any thrown exceptions into typed failed effects.
+ */
+export function mapEffect_<R, E, A, B>(
+  self: Managed<R, E, A>,
+  f: (a: A) => B
+): Managed<R, unknown, B> {
+  return mapEffectWith_(self, identity, f)
+}
+
+/**
+ * Returns an effect whose success is mapped by the specified side effecting
+ * `f` function, translating any thrown exceptions into typed failed effects.
+ */
+export function mapEffect<A, B>(f: (a: A) => B) {
+  return <R, E>(self: Managed<R, E, A>) => mapEffect_(self, f)
+}
