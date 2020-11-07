@@ -9,7 +9,7 @@ import type { Scope } from "../Scope"
 import type { Supervisor } from "../Supervisor"
 import type { XPure } from "../XPure"
 import type { Effect, FFI, IFail } from "./effect"
-import { _A, _E, _I, _R, _U, Base } from "./effect"
+import { Base } from "./effect"
 
 //
 // @category Primitives
@@ -103,7 +103,7 @@ export class IFold<R, E, A, R2, E2, A2, R3, E3, A3> extends Base<
   }
 }
 
-export type FailureReporter = O.Option<(e: Cause.Cause<unknown>) => void>
+export type FailureReporter = (e: Cause.Cause<unknown>) => void
 
 export class IFork<R, E, A> extends Base<R, never, FiberContext<E, A>> {
   readonly _tag = "Fork"
@@ -111,7 +111,7 @@ export class IFork<R, E, A> extends Base<R, never, FiberContext<E, A>> {
   constructor(
     readonly value: Effect<R, E, A>,
     readonly scope: O.Option<Scope<Exit.Exit<any, any>>>,
-    readonly reportFailure: FailureReporter
+    readonly reportFailure: O.Option<FailureReporter>
   ) {
     super()
   }

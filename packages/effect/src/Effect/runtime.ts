@@ -12,7 +12,6 @@ import { interruptible } from "../Fiber/core"
 import { newFiberId } from "../Fiber/id"
 import type { Callback } from "../Fiber/state"
 import { constVoid } from "../Function"
-import * as O from "../Option"
 import { defaultRandom, HasRandom } from "../Random"
 import * as Scope from "../Scope"
 // supervisor
@@ -159,11 +158,11 @@ export function runPromiseExit<E, A>(_: Effect<DefaultEnv, E, A>): Promise<Exit<
   })
 }
 
-export const prettyReporter: FailureReporter = O.some((e) => {
+export const prettyReporter: FailureReporter = (e) => {
   console.error(pretty(e))
-})
+}
 
-export function fiberContext<E, A>() {
+export function fiberContext<E, A>(reporter: FailureReporter = constVoid) {
   const initialIS = interruptible
   const fiberId = newFiberId()
   const scope = Scope.unsafeMakeScope<Exit<E, A>>()
@@ -177,7 +176,7 @@ export function fiberContext<E, A>() {
     supervisor,
     scope,
     10_000,
-    constVoid
+    reporter
   )
 
   return context
