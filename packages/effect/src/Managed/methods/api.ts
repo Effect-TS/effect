@@ -1,6 +1,7 @@
 import type { Cause } from "../../Cause"
 import * as T from "../../Effect"
 import * as E from "../../Either"
+import * as Ex from "../../Exit"
 import { constVoid, flow, identity, pipe, tuple } from "../../Function"
 import * as O from "../../Option"
 import * as P from "../../Promise"
@@ -17,6 +18,8 @@ import {
 import { fromEffect } from "../fromEffect"
 import type { IO, RIO, UIO } from "../managed"
 import { Managed } from "../managed"
+import type { ReleaseMap } from "../releaseMap"
+import * as RM from "../releaseMap"
 import { succeed } from "../succeed"
 import { absolve } from "./absolve"
 import { foldM_ } from "./foldM_"
@@ -262,6 +265,34 @@ export function orElseOptional_<R, E, A, R2, E2, A2>(
       (e) => fail(O.some<E | E2>(e))
     )
   )
+}
+
+/**
+ * Executes this effect and returns its value, if it succeeds, but
+ * otherwise succeeds with the specified value.
+ */
+export function orElseSucceed_<R, E, A, A2>(
+  self: Managed<R, O.Option<E>, A>,
+  that: () => A2
+): Managed<R, O.Option<E>, A | A2> {
+  return orElse_(self, () => succeed(that()))
+}
+
+/**
+ * Executes this effect and returns its value, if it succeeds, but
+ * otherwise succeeds with the specified value.
+ */
+export function orElseSucceed<R, E, A, A2>(that: () => A2) {
+  return (self: Managed<R, O.Option<E>, A>) => orElseSucceed_(self, that)
+}
+
+/**
+ * Returns an effect that will produce the value of this effect, unless it
+ * fails with the `None` value, in which case it will produce the value of
+ * the specified effect.
+ */
+export function orElseOptional<R2, E2, A2>(that: () => Managed<R2, O.Option<E2>, A2>) {
+  return <R, E, A>(self: Managed<R, O.Option<E>, A>) => orElseOptional_(self, that)
 }
 
 /**
@@ -665,4 +696,63 @@ export function mapEffect_<R, E, A, B>(
  */
 export function mapEffect<A, B>(f: (a: A) => B) {
   return <R, E>(self: Managed<R, E, A>) => mapEffect_(self, f)
+}
+
+/**
+ * Preallocates the managed resource, resulting in a Managed that reserves
+ * and acquires immediately and cannot fail. You should take care that you
+ * are not interrupted between running preallocate and actually acquiring
+ * the resource as you might leak otherwise.
+ */
+export function preallocate<R, E, A>(self: Managed<R, E, A>): T.Effect<R, E, UIO<A>> {
+  return T.uninterruptibleMask(({ restore }) =>
+    T.gen(function* (_) {
+      const releaseMap = yield* _(RM.makeReleaseMap)
+      const tp = yield* _(
+        T.result(restore(T.provideSome_(self.effect, (r: R) => tuple(r, releaseMap))))
+      )
+      const preallocated = yield* _(
+        Ex.foldM_(
+          tp,
+          (c) =>
+            pipe(
+              releaseMap,
+              RM.releaseAll(Ex.fail(c), T.sequential),
+              T.andThen(T.halt(c))
+            ),
+          ([release, a]) =>
+            T.succeed(
+              new Managed(
+                T.accessM(([_, releaseMap]: readonly [unknown, ReleaseMap]) =>
+                  T.map_(RM.add(release)(releaseMap), (_) => tuple(_, a))
+                )
+              )
+            )
+        )
+      )
+
+      return preallocated
+    })
+  )
+}
+
+/**
+ * Preallocates the managed resource inside an outer managed, resulting in a
+ * Managed that reserves and acquires immediately and cannot fail.
+ */
+export function preallocateManaged<R, E, A>(
+  self: Managed<R, E, A>
+): Managed<R, E, UIO<A>> {
+  return new Managed(
+    T.map_(self.effect, ([release, a]) =>
+      tuple(
+        release,
+        new Managed(
+          T.accessM(([_, releaseMap]: readonly [unknown, ReleaseMap]) =>
+            T.map_(RM.add(release)(releaseMap), (_) => tuple(_, a))
+          )
+        )
+      )
+    )
+  )
 }
