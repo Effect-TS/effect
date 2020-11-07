@@ -182,7 +182,7 @@ export function fork<R, E, A>(
  */
 export function forkReport(reportFailure: FailureReporter) {
   return <R, E, A>(value: Effect<R, E, A>): RIO<R, Fiber.FiberContext<E, A>> =>
-    new IFork(value, O.none, reportFailure)
+    new IFork(value, O.none, O.some(reportFailure))
 }
 
 /**
