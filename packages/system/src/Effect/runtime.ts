@@ -1,3 +1,4 @@
+// option
 // cause
 import * as Cause from "../Cause/core"
 import { FiberFailure } from "../Cause/errors"
@@ -10,10 +11,13 @@ import { FiberContext } from "../Fiber/context"
 import { interruptible } from "../Fiber/core"
 import { newFiberId } from "../Fiber/id"
 import type { Callback } from "../Fiber/state"
+import { constVoid } from "../Function"
+import * as O from "../Option"
 import { defaultRandom, HasRandom } from "../Random"
 import * as Scope from "../Scope"
 // supervisor
 import * as Supervisor from "../Supervisor"
+import type { FailureReporter } from "."
 import { accessM, chain_, effectTotal, succeed } from "./core"
 import type { Effect, UIO } from "./effect"
 import { _I } from "./effect"
@@ -155,6 +159,10 @@ export function runPromiseExit<E, A>(_: Effect<DefaultEnv, E, A>): Promise<Exit<
   })
 }
 
+export const prettyReporter: FailureReporter = O.some((e) => {
+  console.error(pretty(e))
+})
+
 export function fiberContext<E, A>() {
   const initialIS = interruptible
   const fiberId = newFiberId()
@@ -168,7 +176,8 @@ export function fiberContext<E, A>() {
     new Map(),
     supervisor,
     scope,
-    10_000
+    10_000,
+    constVoid
   )
 
   return context

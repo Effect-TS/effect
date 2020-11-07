@@ -4,6 +4,7 @@ import type { Runtime } from "../Fiber/core"
 import * as O from "../Option"
 import type { Scope } from "../Scope"
 import { globalScope } from "../Scope"
+import type { FailureReporter } from "."
 import { succeed } from "./core"
 import type { Effect, RIO, UIO } from "./effect"
 import { IFork, IGetForkScope, IOverrideForkScope, IRaceWith } from "./primitives"
@@ -69,7 +70,17 @@ export function transplant<R, E, A>(f: (_: Grafter) => Effect<R, E, A>) {
 export function forkDaemon<R, E, A>(
   value: Effect<R, E, A>
 ): RIO<R, Fiber.FiberContext<E, A>> {
-  return new IFork(value, O.some(globalScope))
+  return new IFork(value, O.some(globalScope), O.none)
+}
+
+/**
+ * Forks the effect into a new fiber attached to the global scope. Because the
+ * new fiber is attached to the global scope, when the fiber executing the
+ * returned effect terminates, the forked fiber will continue running.
+ */
+export function forkDaemonReport(reportFailure: FailureReporter) {
+  return <R, E, A>(value: Effect<R, E, A>): RIO<R, Fiber.FiberContext<E, A>> =>
+    new IFork(value, O.some(globalScope), reportFailure)
 }
 
 /**
@@ -85,7 +96,24 @@ export function forkDaemon<R, E, A>(
  */
 export function forkIn(scope: Scope<Exit<any, any>>) {
   return <R, E, A>(value: Effect<R, E, A>): RIO<R, Runtime<E, A>> =>
-    new IFork(value, O.some(scope))
+    new IFork(value, O.some(scope), O.none)
+}
+
+/**
+ * Returns an effect that forks this effect into its own separate fiber,
+ * returning the fiber immediately, without waiting for it to begin
+ * executing the effect.
+ *
+ * The returned fiber can be used to interrupt the forked fiber, await its
+ * result, or join the fiber. See `Fiber` for more information.
+ *
+ * The fiber is forked with interrupt supervision mode, meaning that when the
+ * fiber that forks the child exits, the child will be interrupted.
+ */
+export function forkInReport(reportFailure: FailureReporter) {
+  return (scope: Scope<Exit<any, any>>) => <R, E, A>(
+    value: Effect<R, E, A>
+  ): RIO<R, Runtime<E, A>> => new IFork(value, O.some(scope), reportFailure)
 }
 
 /**

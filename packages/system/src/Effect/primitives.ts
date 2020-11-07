@@ -103,12 +103,15 @@ export class IFold<R, E, A, R2, E2, A2, R3, E3, A3> extends Base<
   }
 }
 
+export type FailureReporter = O.Option<(e: Cause.Cause<unknown>) => void>
+
 export class IFork<R, E, A> extends Base<R, never, FiberContext<E, A>> {
   readonly _tag = "Fork"
 
   constructor(
     readonly value: Effect<R, E, A>,
-    readonly scope: O.Option<Scope<Exit.Exit<any, any>>>
+    readonly scope: O.Option<Scope<Exit.Exit<any, any>>>,
+    readonly reportFailure: FailureReporter
   ) {
     super()
   }
