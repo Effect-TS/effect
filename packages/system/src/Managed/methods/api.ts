@@ -1,7 +1,7 @@
 import type { Cause } from "../../Cause"
 import * as T from "../../Effect"
 import * as E from "../../Either"
-import { flow, identity, pipe, tuple } from "../../Function"
+import { constVoid, flow, identity, pipe, tuple } from "../../Function"
 import * as O from "../../Option"
 import * as P from "../../Promise"
 import {
@@ -15,7 +15,7 @@ import {
   zip_
 } from "../core"
 import { fromEffect } from "../fromEffect"
-import type { RIO, UIO } from "../managed"
+import type { IO, RIO, UIO } from "../managed"
 import { Managed } from "../managed"
 import { succeed } from "../succeed"
 import { absolve } from "./absolve"
@@ -517,4 +517,61 @@ export function foldCause_<R, E, A, B, C>(
  */
 export function foldCause<E, A, B, C>(f: (e: Cause<E>) => B, g: (a: A) => C) {
   return <R>(self: Managed<R, E, A>) => fold_(sandbox(self), f, g)
+}
+
+/**
+ * Returns a new effect that ignores the success or failure of this effect.
+ */
+export function ignore<R, E, A>(self: Managed<R, E, A>): Managed<R, never, void> {
+  return fold_(self, constVoid, constVoid)
+}
+
+/**
+ * Returns whether this managed effect is a failure.
+ */
+export function isFailure<R, E, A>(self: Managed<R, E, A>) {
+  return fold_(
+    self,
+    () => true,
+    () => false
+  )
+}
+
+/**
+ * Returns whether this managed effect is a success.
+ */
+export function isSuccess<R, E, A>(self: Managed<R, E, A>) {
+  return fold_(
+    self,
+    () => false,
+    () => true
+  )
+}
+
+/**
+ * Depending on the environment execute this or the other effect
+ */
+export function join<R1, E1, A1>(that: Managed<R1, E1, A1>) {
+  return <R, E, A>(self: Managed<R, E, A>): Managed<E.Either<R, R1>, E | E1, A | A1> =>
+    join_(self, that)
+}
+
+/**
+ * Depending on the environment execute this or the other effect
+ */
+export function join_<R, E, A, R1, E1, A1>(
+  self: Managed<R, E, A>,
+  that: Managed<R1, E1, A1>
+): Managed<E.Either<R, R1>, E | E1, A | A1> {
+  return gen(function* (_) {
+    const either = yield* _(environment<E.Either<R, R1>>())
+    const a1 = yield* _(
+      E.fold_(
+        either,
+        (r): IO<E | E1, A | A1> => provideAll(r)(self),
+        (r1) => provideAll(r1)(that)
+      )
+    )
+    return a1
+  })
 }
