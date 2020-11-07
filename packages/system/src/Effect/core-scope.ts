@@ -80,7 +80,7 @@ export function forkDaemon<R, E, A>(
  */
 export function forkDaemonReport(reportFailure: FailureReporter) {
   return <R, E, A>(value: Effect<R, E, A>): RIO<R, Fiber.FiberContext<E, A>> =>
-    new IFork(value, O.some(globalScope), reportFailure)
+    new IFork(value, O.some(globalScope), O.some(reportFailure))
 }
 
 /**
@@ -113,7 +113,7 @@ export function forkIn(scope: Scope<Exit<any, any>>) {
 export function forkInReport(reportFailure: FailureReporter) {
   return (scope: Scope<Exit<any, any>>) => <R, E, A>(
     value: Effect<R, E, A>
-  ): RIO<R, Runtime<E, A>> => new IFork(value, O.some(scope), reportFailure)
+  ): RIO<R, Runtime<E, A>> => new IFork(value, O.some(scope), O.some(reportFailure))
 }
 
 /**
