@@ -10,6 +10,7 @@ import * as Exit from "../Exit/api"
 // fiberRef
 import { FiberRef } from "../FiberRef/fiberRef"
 import * as update from "../FiberRef/update"
+import { constVoid } from "../Function"
 // option
 import * as O from "../Option"
 // supervisor / scope
@@ -91,6 +92,8 @@ export const currentFiber = new AtomicReference<FiberContext<any, any> | null>(n
 
 export const unsafeCurrentFiber = () => O.fromNullable(currentFiber.get)
 
+const noop = O.some(constVoid)
+
 export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   readonly _tag = "RuntimeFiber"
   readonly state = new AtomicReference(initial<E, A>())
@@ -111,7 +114,8 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     readonly fiberRefLocals: FiberRefLocals,
     readonly supervisor0: Sup.Supervisor<any>,
     readonly openScope: Scope.Open<Exit.Exit<E, A>>,
-    readonly maxOp: number
+    readonly maxOp: number,
+    readonly reportFailure: (e: Cause.Cause<E>) => void
   ) {
     _tracing.trace(this)
   }
@@ -277,7 +281,6 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
   notifyObservers(v: Exit.Exit<E, A>, observers: Callback<never, Exit.Exit<E, A>>[]) {
     const result = Exit.succeed(v)
-
     observers.forEach((k) => k(result))
   }
 
@@ -384,7 +387,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
            * and there are no more pending effects that we have to execute on the fiber.
            */
           this.state.set(new FiberStateDone(v))
-
+          this.reportUnhandled(v)
           this.notifyObservers(v, oldState.observers)
 
           return undefined
@@ -406,6 +409,12 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
           return T.chain_(this.openScope.close(v), () => T.done(v))[T._I]
         }
       }
+    }
+  }
+
+  reportUnhandled(exit: Exit.Exit<E, A>) {
+    if (exit._tag === "Failure") {
+      this.reportFailure(exit.cause)
     }
   }
 
@@ -512,7 +521,8 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
   fork(
     i0: T.Instruction,
-    forkScope: O.Option<Scope.Scope<Exit.Exit<any, any>>>
+    forkScope: O.Option<Scope.Scope<Exit.Exit<any, any>>>,
+    reportFailure: O.Option<(e: Cause.Cause<E>) => void>
   ): FiberContext<any, any> {
     const childFiberRefLocals: FiberRefLocals = new Map()
 
@@ -537,7 +547,8 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
       childFiberRefLocals,
       currentSup,
       childScope,
-      this.maxOp
+      this.maxOp,
+      O.getOrElse_(reportFailure, () => this.reportFailure)
     )
 
     if (currentSup !== Sup.none) {
@@ -686,8 +697,8 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     race: T.IRaceWith<R, E, A, R1, E1, A1, R2, E2, A2, R3, E3, A3>
   ): T.Effect<R & R1 & R2 & R3, E2 | E3, A2 | A3> {
     const raceIndicator = new AtomicReference(true)
-    const left = this.fork(race.left[T._I], race.scope)
-    const right = this.fork(race.right[T._I], race.scope)
+    const left = this.fork(race.left[T._I], race.scope, noop)
+    const right = this.fork(race.right[T._I], race.scope, noop)
 
     return T.effectAsync<R & R1 & R2 & R3, E2 | E3, A2 | A3>(
       (cb) => {
@@ -917,7 +928,11 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
                   case "Fork": {
                     current = this.nextInstr(
-                      this.fork(current.value[T._I], current.scope)
+                      this.fork(
+                        current.value[T._I],
+                        current.scope,
+                        current.reportFailure
+                      )
                     )
                     break
                   }

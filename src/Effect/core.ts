@@ -7,6 +7,7 @@ import type { FiberID } from "../Fiber/id"
 import { identity } from "../Function"
 import * as O from "../Option"
 import type { Supervisor } from "../Supervisor"
+import type { FailureReporter } from "."
 import type { Effect, IO, RIO, UIO } from "./effect"
 import {
   ICheckInterrupt,
@@ -165,7 +166,23 @@ export function foldCauseM_<R, E, A, R2, E2, A2, R3, E3, A3>(
 export function fork<R, E, A>(
   value: Effect<R, E, A>
 ): RIO<R, Fiber.FiberContext<E, A>> {
-  return new IFork(value, O.none)
+  return new IFork(value, O.none, O.none)
+}
+
+/**
+ * Returns an effect that forks this effect into its own separate fiber,
+ * returning the fiber immediately, without waiting for it to begin
+ * executing the effect.
+ *
+ * The returned fiber can be used to interrupt the forked fiber, await its
+ * result, or join the fiber. See `Fiber` for more information.
+ *
+ * The fiber is forked with interrupt supervision mode, meaning that when the
+ * fiber that forks the child exits, the child will be interrupted.
+ */
+export function forkReport(reportFailure: FailureReporter) {
+  return <R, E, A>(value: Effect<R, E, A>): RIO<R, Fiber.FiberContext<E, A>> =>
+    new IFork(value, O.none, reportFailure)
 }
 
 /**
