@@ -3,6 +3,7 @@ import * as T from "../../Effect"
 import * as E from "../../Either"
 import * as Ex from "../../Exit"
 import { constVoid, flow, identity, pipe, tuple } from "../../Function"
+import * as L from "../../Layer"
 import * as O from "../../Option"
 import * as P from "../../Promise"
 import {
@@ -695,7 +696,7 @@ export function mapEffect_<R, E, A, B>(
  * `f` function, translating any thrown exceptions into typed failed effects.
  */
 export function mapEffect<A, B>(f: (a: A) => B) {
-  return <R, E>(self: Managed<R, E, A>) => mapEffect_(self, f)
+  return <R, E>(self: Managed<R, E, A>): Managed<R, unknown, B> => mapEffect_(self, f)
 }
 
 /**
@@ -755,4 +756,42 @@ export function preallocateManaged<R, E, A>(
       )
     )
   )
+}
+
+/**
+ * Provides a layer to the `Managed`, which translates it to another level.
+ */
+export function provideLayer<R2, E2, R>(layer: L.Layer<R2, E2, R>) {
+  return <E, A>(self: Managed<R, E, A>): Managed<R2, E2 | E, A> =>
+    chain_(L.build(layer), (r) => provideAll_(self, r))
+}
+
+/**
+ * Provides a layer to the `Managed`, which translates it to another level.
+ */
+export function provideLayer_<R, E, A, R2, E2>(
+  self: Managed<R, E, A>,
+  layer: L.Layer<R2, E2, R>
+): Managed<R2, E | E2, A> {
+  return chain_(L.build(layer), (r) => provideAll_(self, r))
+}
+
+/**
+ * Splits the environment into two parts, providing one part using the
+ * specified layer and leaving the remainder `R0`.
+ */
+export function provideSomeLayer<R2, E2, R>(layer: L.Layer<R2, E2, R>) {
+  return <R0, E, A>(self: Managed<R & R0, E, A>): Managed<R0 & R2, E | E2, A> =>
+    provideLayer(layer["+++"](L.identity<R0>()))(self)
+}
+
+/**
+ * Splits the environment into two parts, providing one part using the
+ * specified layer and leaving the remainder `R0`.
+ */
+export function provideSomeLayer_<R0, E, A, R2, E2, R>(
+  self: Managed<R & R0, E, A>,
+  layer: L.Layer<R2, E2, R>
+): Managed<R0 & R2, E | E2, A> {
+  return provideSomeLayer(layer)(self)
 }
