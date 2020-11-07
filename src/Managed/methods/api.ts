@@ -4,9 +4,18 @@ import * as E from "../../Either"
 import { flow, identity, pipe, tuple } from "../../Function"
 import * as O from "../../Option"
 import * as P from "../../Promise"
-import { chain_, fail, foldCauseM_, map_, mapM_, provideSome_ } from "../core"
+import {
+  chain,
+  chain_,
+  fail,
+  foldCauseM_,
+  map_,
+  mapM_,
+  provideSome_,
+  zip_
+} from "../core"
 import { fromEffect } from "../fromEffect"
-import type { UIO } from "../managed"
+import type { RIO, UIO } from "../managed"
 import { Managed } from "../managed"
 import { succeed } from "../succeed"
 import { absolve } from "./absolve"
@@ -411,4 +420,72 @@ export function either<R, E, A>(
   self: Managed<R, E, A>
 ): Managed<R, never, E.Either<E, A>> {
   return fold_(self, E.left, E.right)
+}
+
+/**
+ * Returns a ZManaged that ignores errors raised by the acquire effect and
+ * runs it repeatedly until it eventually succeeds.
+ */
+export function eventually<R, E, A>(self: Managed<R, E, A>): Managed<R, never, A> {
+  return new Managed(T.eventually(self.effect))
+}
+
+/**
+ * Zips this effect with its environment
+ */
+export function first<R, E, A>(self: Managed<R, E, A>) {
+  return zip_(self, environment<R>())
+}
+
+/**
+ * Effectfully map the error channel
+ */
+export function chainError_<R, E, A, R2, E2>(
+  self: Managed<R, E, A>,
+  f: (e: E) => RIO<R2, E2>
+): Managed<R & R2, E2, A> {
+  return flipWith_(self, chain(f))
+}
+
+/**
+ * Effectfully map the error channel
+ */
+export function chainError<E, R2, E2>(f: (e: E) => RIO<R2, E2>) {
+  return <R, A>(self: Managed<R, E, A>) => chainError_(self, f)
+}
+
+/**
+ * Flip the error and result
+ */
+export function flip<R, E, A>(self: Managed<R, E, A>): Managed<R, A, E> {
+  return foldM_(self, succeed, fail)
+}
+
+/**
+ * Flip the error and result, then apply an effectful function to the effect
+ */
+export function flipWith_<R, E, A, R2, E1, A1>(
+  self: Managed<R, E, A>,
+  f: (_: Managed<R, A, E>) => Managed<R2, A1, E1>
+) {
+  return flip(f(flip(self)))
+}
+
+/**
+ * Flip the error and result, then apply an effectful function to the effect
+ */
+export function flipWith<R, E, A, R2, E1, A1>(
+  f: (_: Managed<R, A, E>) => Managed<R2, A1, E1>
+) {
+  return (self: Managed<R, E, A>) => flipWith_(self, f)
+}
+
+/**
+ * Returns an effect that performs the outer effect first, followed by the
+ * inner effect, yielding the value of the inner effect.
+ *
+ * This method can be used to "flatten" nested effects.
+ */
+export function flatten<R2, E2, R, E, A>(self: Managed<R2, E2, Managed<R, E, A>>) {
+  return chain_(self, identity)
 }
