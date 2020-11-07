@@ -23,6 +23,7 @@ import { foldM_ } from "./foldM_"
 import { gen } from "./gen"
 import { halt } from "./halt"
 import { releaseMap } from "./releaseMap"
+import { sandbox } from "./sandbox"
 import { suspend } from "./suspend"
 
 /**
@@ -488,4 +489,32 @@ export function flipWith<R, E, A, R2, E1, A1>(
  */
 export function flatten<R2, E2, R, E, A>(self: Managed<R2, E2, Managed<R, E, A>>) {
   return chain_(self, identity)
+}
+
+/**
+ * Returns an effect that performs the outer effect first, followed by the
+ * inner effect, yielding the value of the inner effect.
+ *
+ * This method can be used to "flatten" nested effects.
+ */
+export function flattenM<R2, E2, R, E, A>(self: Managed<R2, E2, T.Effect<R, E, A>>) {
+  return mapM_(self, identity)
+}
+
+/**
+ * A more powerful version of `fold` that allows recovering from any kind of failure except interruptions.
+ */
+export function foldCause_<R, E, A, B, C>(
+  self: Managed<R, E, A>,
+  f: (e: Cause<E>) => B,
+  g: (a: A) => C
+) {
+  return fold_(sandbox(self), f, g)
+}
+
+/**
+ * A more powerful version of `fold` that allows recovering from any kind of failure except interruptions.
+ */
+export function foldCause<E, A, B, C>(f: (e: Cause<E>) => B, g: (a: A) => C) {
+  return <R>(self: Managed<R, E, A>) => fold_(sandbox(self), f, g)
 }
