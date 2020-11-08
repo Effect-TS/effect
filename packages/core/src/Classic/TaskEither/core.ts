@@ -1,4 +1,12 @@
-import { chainF, doF, genF, getValidationF, structF, succeedF } from "../../Prelude/DSL"
+import {
+  chainF,
+  doF,
+  genF,
+  getValidationF,
+  matchers,
+  structF,
+  succeedF
+} from "../../Prelude/DSL"
 import type { Either } from "../Either"
 import * as ET from "../EitherT"
 import * as T from "../Task"
@@ -45,3 +53,8 @@ export const structPar = structF(ApplicativePar)
 export const succeed = succeedF(Monad)
 
 export const gen_ = genF(Monad)
+
+/**
+ * Matchers
+ */
+export const { match, matchIn, matchTag, matchTagIn } = matchers(Monad)

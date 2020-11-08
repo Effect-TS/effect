@@ -1,7 +1,7 @@
 import * as P from "../../Prelude"
 import { isOption } from "../../Utils"
 import type * as O from "../Option"
-import { Applicative, Monad, Traversable } from "./instances"
+import { Applicative, Covariant, Monad, Traversable } from "./instances"
 import * as A from "./operations"
 
 export const sequence = P.sequenceF(Traversable)
@@ -23,3 +23,8 @@ export const gen = P.genWithHistoryF(Monad, {
 export const tuple = P.tupleF(Applicative)
 
 export const struct = P.structF(Applicative)
+
+/**
+ * Matchers
+ */
+export const { match, matchIn, matchTag, matchTagIn } = P.matchers(Covariant)

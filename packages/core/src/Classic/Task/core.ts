@@ -122,3 +122,8 @@ export const Identity = <A>(M: Id.Identity<A>) =>
   Id.makeIdentity<Task<A>>(of(M.identity), Associative(M).combine)
 
 export const succeed = succeedF(Monad)
+
+/**
+ * Matchers
+ */
+export const { match, matchIn, matchTag, matchTagIn } = P.matchers(Covariant)

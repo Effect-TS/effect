@@ -133,3 +133,5 @@ export function fromEither<E, A>(_: E.Either<E, A>) {
 export function fromSync<R, E, A>(_: Sync<R, E, A>) {
   return A.accessM((r: R) => fromEither(runEitherEnv(r)(_)))
 }
+
+export const { match, matchIn, matchTag, matchTagIn } = P.matchers(Covariant)

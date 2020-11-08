@@ -1,6 +1,6 @@
 import { sequenceF } from "../../Prelude"
 import * as DSL from "../../Prelude/DSL"
-import { Applicative, Fail, Monad, Run, Traversable } from "./instances"
+import { Applicative, Covariant, Fail, Monad, Run, Traversable } from "./instances"
 
 export const getValidationApplicative = DSL.getValidationF({
   ...Monad,
@@ -16,3 +16,8 @@ export const sequence = sequenceF(Traversable)
 export const tuple = DSL.tupleF(Applicative)
 
 export const gen_ = DSL.genF(Monad)
+
+/**
+ * Matchers
+ */
+export const { match, matchIn, matchTag, matchTagIn } = DSL.matchers(Covariant)
