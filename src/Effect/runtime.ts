@@ -1,7 +1,6 @@
 // option
 // cause
 import * as Cause from "../Cause/core"
-import { FiberFailure } from "../Cause/errors"
 import { pretty } from "../Cause/pretty"
 // exit
 import { HasClock, LiveClock } from "../Clock"
@@ -11,7 +10,7 @@ import { FiberContext } from "../Fiber/context"
 import { interruptible } from "../Fiber/core"
 import { newFiberId } from "../Fiber/id"
 import type { Callback } from "../Fiber/state"
-import { constVoid } from "../Function"
+import { constVoid, identity } from "../Function"
 import { defaultRandom, HasRandom } from "../Random"
 import * as Scope from "../Scope"
 // supervisor
@@ -134,7 +133,7 @@ export function runPromise<E, A>(_: Effect<DefaultEnv, E, A>): Promise<A> {
           break
         }
         case "Failure": {
-          rej(new FiberFailure(exit.cause))
+          rej(Cause.squash(identity)(exit.cause))
           break
         }
       }
