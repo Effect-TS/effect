@@ -117,8 +117,7 @@ export function runCancel<E, A>(
 }
 
 /**
- * Run effect as a Promise, throwing a FiberFailure containing the cause of exit
- * in case of error.
+ * Run effect as a Promise, throwing a the first error or exception
  */
 export function runPromise<E, A>(_: Effect<DefaultEnv, E, A>): Promise<A> {
   const context = fiberContext<E, A>()
