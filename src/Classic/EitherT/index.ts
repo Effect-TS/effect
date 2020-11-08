@@ -22,7 +22,7 @@ export function monad<F>(M: Monad<HKT.UHKT<F>>) {
         M.map((e) => (e._tag === "Left" ? succeed<E.Either<E | E2, A>>(e) : e.right)),
         M.flatten
       ),
-    map: (f) => flow(M.map(E.map(f)))
+    map: (f) => M.map(E.map(f))
   })
 }
 
@@ -34,7 +34,7 @@ export function applicative<F>(M: Applicative<HKT.UHKT<F>>) {
     Applicative<HKT.AppendURI<HKT.UHKT<F>, E.EitherURI>, HKT.V<"E", "+">>
   >({
     any: () => succeedF(M)(E.right({})),
-    map: (f) => flow(M.map(E.map(f))),
+    map: (f) => M.map(E.map(f)),
     both: (fb) =>
       flow(
         M.both(fb),
