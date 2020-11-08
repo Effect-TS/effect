@@ -49,6 +49,7 @@
       "Classic/Map",
       "Classic/NonEmptyArray",
       "Classic/Option",
+      "Classic/OptionT",
       "Classic/Ord",
       "Classic/Ordering",
       "Classic/Reader",
