@@ -38,7 +38,7 @@ export function applicative<F>(M: Applicative<HKT.UHKT<F>>) {
     both: (fb) =>
       flow(
         M.both(fb),
-        M.map(([ea, eb]) => pipe(ea, E.AssociativeBoth.both(eb)))
+        M.map(([ea, eb]) => E.AssociativeBoth.both(eb)(ea))
       )
   })
 }
