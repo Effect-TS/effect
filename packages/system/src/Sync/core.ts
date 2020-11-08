@@ -1,5 +1,6 @@
 import type { Either } from "../Either/core"
 import { flow } from "../Function"
+import type { _A, _E, _R } from "../Utils"
 import * as X from "../XPure"
 
 export interface Sync<R, E, A> extends X.XPure<unknown, never, R, E, A> {}
@@ -320,3 +321,21 @@ export const runEitherEnv: <R>(r: R) => <E, A>(self: Sync<R, E, A>) => Either<E,
  * Runs this non failable computation returning a success of type A
  */
 export const run: <A>(self: Sync<unknown, never, A>) => A = X.runIO
+
+/**
+ * Compact the union produced by the result of f
+ */
+export function unionFn<ARGS extends any[], Ret extends Sync<any, any, any>>(
+  _: (...args: ARGS) => Ret
+): (...args: ARGS) => Sync<_R<Ret>, _E<Ret>, _A<Ret>> {
+  return _ as any
+}
+
+/**
+ * Compact the union
+ */
+export function union<Ret extends Sync<any, any, any>>(
+  _: Ret
+): Sync<_R<Ret>, _E<Ret>, _A<Ret>> {
+  return _ as any
+}

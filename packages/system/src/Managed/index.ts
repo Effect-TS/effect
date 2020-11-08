@@ -29,4 +29,5 @@ export * from "./methods/releaseMap"
 export * from "./methods/sandbox"
 export * from "./methods/suspend"
 export * from "./methods/switchable"
+export * from "./methods/union"
 // codegen:end

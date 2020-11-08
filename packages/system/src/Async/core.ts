@@ -1094,3 +1094,21 @@ export { assign as let }
 export function fromEither<E, A>(e: E.Either<E, A>) {
   return e._tag === "Right" ? succeed(e.right) : fail(e.left)
 }
+
+/**
+ * Compact the union produced by the result of f
+ */
+export function unionFn<ARGS extends any[], Ret extends Async<any, any, any>>(
+  _: (...args: ARGS) => Ret
+): (...args: ARGS) => Async<U._R<Ret>, U._E<Ret>, U._A<Ret>> {
+  return _ as any
+}
+
+/**
+ * Compact the union
+ */
+export function union<Ret extends Async<any, any, any>>(
+  _: Ret
+): Async<U._R<Ret>, U._E<Ret>, U._A<Ret>> {
+  return _ as any
+}
