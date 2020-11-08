@@ -82,3 +82,8 @@ export const FoldableWithIndex = P.instance<P.FoldableWithIndex<[NonEmptyArrayUR
   ...ReduceWithIndex,
   ...ReduceRightWithIndex
 })
+
+/**
+ * Matchers
+ */
+export const { match, matchIn, matchTag, matchTagIn } = P.matchers(Covariant)

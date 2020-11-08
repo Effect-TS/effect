@@ -7,7 +7,6 @@ import type {
   XPureURI
 } from "../Modules"
 import * as P from "../Prelude"
-import { structF } from "../Prelude/DSL"
 
 export type V = P.V<"S", "_"> & P.V<"R", "-"> & P.V<"E", "+">
 
@@ -65,6 +64,13 @@ export const Category = P.instance<P.Category<[XPureReaderCategoryURI], V>>({
   compose: (bc) => (ab) => X.chain_(ab, (b) => X.provideAll_(bc, b))
 })
 
-export const struct = structF(Applicative)
+export const struct = P.structF(Applicative)
+
+export const tuple = P.tupleF(Applicative)
+
+/**
+ * Matchers
+ */
+export const { match, matchIn, matchTag, matchTagIn } = P.matchers(Covariant)
 
 export * from "@effect-ts/system/XPure"

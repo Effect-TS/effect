@@ -330,3 +330,8 @@ export { do_ as do }
 export const struct = P.structF({ ...Monad, ...Applicative })
 
 export const tuple = P.tupleF({ ...Monad, ...Applicative })
+
+/**
+ * Matchers
+ */
+export const { match, matchIn, matchTag, matchTagIn } = P.matchers(Covariant)

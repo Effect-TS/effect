@@ -72,3 +72,8 @@ export const Category = P.instance<P.Category<[EffectCategoryURI], V>>({
 })
 
 export const gen_ = DSL.genF(Monad)
+
+/**
+ * Matchers
+ */
+export const { match, matchIn, matchTag, matchTagIn } = DSL.matchers(Covariant)
