@@ -67,6 +67,7 @@ export * from "./source"
 export * from "./succeed"
 export * from "./suspend"
 export * from "./unfoldChunkM"
+export * from "./union"
 export * from "./unwrap"
 export * from "./zipWith"
 // codegen:end
