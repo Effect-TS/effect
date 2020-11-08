@@ -367,3 +367,8 @@ export { do_ as do }
 export const struct = DSL.structF(Applicative)
 
 export const tuple = DSL.tupleF(Applicative)
+
+/**
+ * Matchers
+ */
+export const { match, matchIn, matchTag, matchTagIn } = DSL.matchers(Monad)
