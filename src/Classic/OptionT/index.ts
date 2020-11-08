@@ -1,4 +1,4 @@
-import { pipe } from "../../Function"
+import { flow } from "../../Function"
 import type { Applicative, Monad } from "../../Prelude"
 import { succeedF } from "../../Prelude/DSL"
 import * as HKT from "../../Prelude/HKT"
@@ -10,12 +10,10 @@ export function monad<F extends HKT.URIS, C>(
 export function monad<F>(M: Monad<HKT.UHKT<F>, HKT.Auto>) {
   return HKT.instance<Monad<HKT.AppendURI<HKT.UHKT<F>, O.OptionURI>, HKT.Auto>>({
     any: () => succeedF(M)(O.some({})),
-    flatten: (ffa) =>
-      pipe(
-        ffa,
-        M.map((o) => (o._tag === "None" ? succeedF(M)(O.none) : o.value)),
-        M.flatten
-      ),
+    flatten: flow(
+      M.map((o) => (o._tag === "None" ? succeedF(M)(O.none) : o.value)),
+      M.flatten
+    ),
     map: (f) => M.map(O.map(f))
   })
 }
@@ -27,9 +25,9 @@ export function applicative<F>(M: Applicative<HKT.UHKT<F>, HKT.Auto>) {
   return HKT.instance<Applicative<HKT.AppendURI<HKT.UHKT<F>, O.OptionURI>, HKT.Auto>>({
     any: () => succeedF(M)(O.some({})),
     map: (f) => M.map(O.map(f)),
-    both: (fb) => (fa) =>
-      pipe(
-        M.both(fb)(fa),
+    both: (fb) =>
+      flow(
+        M.both(fb),
         M.map(([a, b]) => O.zip_(a, b))
       )
   })
