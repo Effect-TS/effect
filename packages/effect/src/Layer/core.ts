@@ -19,6 +19,7 @@ import {
   LayerFresh,
   LayerManaged,
   LayerMap,
+  LayerSuspend,
   LayerZipWithSeq,
   using_
 } from "./definitions"
@@ -424,4 +425,4 @@ export function identity<R>() {
 /**
  * Empty layer, useful for init cases
  */
-export const Empty = identity<unknown>()
+export const Empty = new LayerSuspend(() => identity<unknown>())
