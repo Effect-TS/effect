@@ -1,6 +1,6 @@
 {
   "name": "@effect-ts/jest",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "license": "MIT",
   "homepage": "https://github.com/Matechs-Garage/matechs-effect",
   "private": false,
