@@ -425,4 +425,6 @@ export function identity<R>() {
 /**
  * Empty layer, useful for init cases
  */
-export const Empty = new LayerSuspend(() => identity<unknown>())
+export const Empty: Layer<unknown, never, unknown> = new LayerSuspend(() =>
+  identity<unknown>()
+)
