@@ -139,6 +139,10 @@ export abstract class Layer<RIn, E, ROut> {
   ["+++"]<R2, E2, A2>(from: Layer<R2, E2, A2>): Layer<R2 & RIn, E2 | E, ROut & A2> {
     return and_(from, this)
   }
+
+  use<R, E1, A>(effect: T.Effect<R & ROut, E1, A>): T.Effect<RIn & R, E | E1, A> {
+    return T.provideSomeLayer(this)(effect)
+  }
 }
 
 export type LayerInstruction =
