@@ -420,3 +420,8 @@ export function launch<R, E, A>(self: Layer<R, E, A>): T.Effect<R, E, never> {
 export function identity<R>() {
   return fromRawManaged(M.environment<R>())
 }
+
+/**
+ * Empty layer, useful for init cases
+ */
+export const Empty = identity<unknown>()
