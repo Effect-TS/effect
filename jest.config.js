@@ -11,6 +11,8 @@ module.exports = {
   modulePathIgnorePatterns: ["<rootDir>/packages/.*/build", "<rootDir>/_tmp"],
   verbose: false,
   moduleNameMapper: {
+    "@effect-ts/jest/(.*)$": "<rootDir>/packages/jest/build/$1",
+    "@effect-ts/jest$": "<rootDir>/packages/jest/build",
     "@effect-ts/morphic/(.*)$": "<rootDir>/packages/morphic/build/$1",
     "@effect-ts/morphic$": "<rootDir>/packages/morphic/build",
     "@effect-ts/monocle/(.*)$": "<rootDir>/packages/monocle/build/$1",
