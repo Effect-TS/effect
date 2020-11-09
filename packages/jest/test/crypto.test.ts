@@ -1,6 +1,5 @@
 import * as T from "@effect-ts/core/Effect"
 import * as Ex from "@effect-ts/core/Effect/Exit"
-import { pipe } from "@effect-ts/core/Function"
 
 import { testRuntime } from "../src/Runtime"
 import {
@@ -8,12 +7,13 @@ import {
   hashPassword,
   InvalidPassword,
   PBKDF2ConfigLive,
+  PBKDF2ConfigTest,
   verifyPassword
 } from "./crypto"
 
 describe("Crypto Suite", () => {
   describe("Live", () => {
-    const { it } = pipe(CryptoLive["<<<"](PBKDF2ConfigLive), testRuntime)()
+    const { it } = testRuntime(CryptoLive["<<<"](PBKDF2ConfigLive))()
 
     it("should hash and verify password", () =>
       T.gen(function* (_) {
@@ -35,7 +35,7 @@ describe("Crypto Suite", () => {
       }))
   })
   describe("Test", () => {
-    const { it } = pipe(CryptoLive["<<<"](PBKDF2ConfigLive), testRuntime)()
+    const { it } = testRuntime(CryptoLive["<<<"](PBKDF2ConfigTest))()
 
     it("should hash and verify password", () =>
       T.gen(function* (_) {
