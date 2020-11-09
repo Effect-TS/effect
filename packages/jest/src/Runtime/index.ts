@@ -15,75 +15,76 @@ export interface TestRuntime<R> {
   provide: <R2, E, A>(self: T.Effect<R & R2, E, A>) => T.Effect<R2, E, A>
 }
 
-export function testRuntime<R>(self: L.Layer<T.DefaultEnv, never, R>) {
-  return ({
+export function testRuntime<R>(
+  self: L.Layer<T.DefaultEnv, never, R>,
+  {
     close = 120_000,
     open = 120_000
   }: {
     open?: number
     close?: number
-  } = {}): TestRuntime<R> => {
-    const promiseEnv = Pr.unsafeMake<never, R>(None)
-    const promiseRelMap = Pr.unsafeMake<never, M.ReleaseMap>(None)
+  } = {}
+): TestRuntime<R> {
+  const promiseEnv = Pr.unsafeMake<never, R>(None)
+  const promiseRelMap = Pr.unsafeMake<never, M.ReleaseMap>(None)
 
-    beforeAll(
-      () =>
-        pipe(
-          T.do,
-          T.bind("rm", () => M.makeReleaseMap),
-          T.tap(({ rm }) => pipe(promiseRelMap, Pr.succeed(rm))),
-          T.bind("res", ({ rm }) =>
-            T.provideSome_(L.build(self).effect, (r: T.DefaultEnv) => tuple(r, rm))
-          ),
-          T.map(({ res }) => res[1]),
-          T.result,
-          T.chain((ex) => pipe(promiseEnv, Pr.complete(T.done(ex)))),
-          T.runPromise
+  beforeAll(
+    () =>
+      pipe(
+        T.do,
+        T.bind("rm", () => M.makeReleaseMap),
+        T.tap(({ rm }) => pipe(promiseRelMap, Pr.succeed(rm))),
+        T.bind("res", ({ rm }) =>
+          T.provideSome_(L.build(self).effect, (r: T.DefaultEnv) => tuple(r, rm))
         ),
-      open
-    )
+        T.map(({ res }) => res[1]),
+        T.result,
+        T.chain((ex) => pipe(promiseEnv, Pr.complete(T.done(ex)))),
+        T.runPromise
+      ),
+    open
+  )
 
-    afterAll(
-      () =>
-        pipe(
-          promiseRelMap,
-          Pr.await,
-          T.chain((rm) => M.releaseAll(Ex.succeed(undefined), T.sequential)(rm)),
-          T.runPromise
-        ),
-      close
-    )
+  afterAll(
+    () =>
+      pipe(
+        promiseRelMap,
+        Pr.await,
+        T.chain((rm) => M.releaseAll(Ex.succeed(undefined), T.sequential)(rm)),
+        T.runPromise
+      ),
+    close
+  )
 
-    return {
-      it: (name, self) =>
-        it(name, () =>
-          pipe(
-            promiseEnv,
-            Pr.await,
-            T.chain((r) => T.provide(r)(self())),
-            T.runPromise
-          )
-        ),
-      runPromise: (self) =>
+  return {
+    it: (name, self) =>
+      it(name, () =>
         pipe(
           promiseEnv,
           Pr.await,
-          T.chain((r) => T.provide(r)(self)),
+          T.chain((r) => T.provide(r)(self())),
           T.runPromise
-        ),
-      runPromiseExit: (self) =>
-        pipe(
-          promiseEnv,
-          Pr.await,
-          T.chain((r) => T.provide(r)(self)),
-          T.runPromiseExit
-        ),
-      provide: (self) =>
-        pipe(
-          promiseEnv,
-          Pr.await,
-          T.chain((r) => T.provide(r)(self))
         )
-    }
+      ),
+    runPromise: (self) =>
+      pipe(
+        promiseEnv,
+        Pr.await,
+        T.chain((r) => T.provide(r)(self)),
+        T.runPromise
+      ),
+    runPromiseExit: (self) =>
+      pipe(
+        promiseEnv,
+        Pr.await,
+        T.chain((r) => T.provide(r)(self)),
+        T.runPromiseExit
+      ),
+    provide: (self) =>
+      pipe(
+        promiseEnv,
+        Pr.await,
+        T.chain((r) => T.provide(r)(self))
+      )
   }
 }

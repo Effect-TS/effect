@@ -13,7 +13,7 @@ import {
 
 describe("Crypto Suite", () => {
   describe("Live", () => {
-    const { it } = testRuntime(CryptoLive["<<<"](PBKDF2ConfigLive))()
+    const { it } = testRuntime(CryptoLive["<<<"](PBKDF2ConfigLive))
 
     it("should hash and verify password", () =>
       T.gen(function* (_) {
@@ -35,7 +35,7 @@ describe("Crypto Suite", () => {
       }))
   })
   describe("Test", () => {
-    const { it } = testRuntime(CryptoLive["<<<"](PBKDF2ConfigTest))()
+    const { it } = testRuntime(CryptoLive["<<<"](PBKDF2ConfigTest))
 
     it("should hash and verify password", () =>
       T.gen(function* (_) {
