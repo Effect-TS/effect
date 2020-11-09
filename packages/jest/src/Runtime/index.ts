@@ -1,5 +1,4 @@
 import * as T from "@effect-ts/core/Effect"
-import * as C from "@effect-ts/core/Effect/Cause"
 import * as Ex from "@effect-ts/core/Effect/Exit"
 import * as L from "@effect-ts/core/Effect/Layer"
 import * as M from "@effect-ts/core/Effect/Managed"
@@ -28,7 +27,7 @@ export function testRuntime<R>(self: L.Layer<T.DefaultEnv, never, R>) {
     const promiseRelMap = Pr.unsafeMake<never, M.ReleaseMap>(None)
 
     beforeAll(
-      async () =>
+      () =>
         pipe(
           T.do,
           T.bind("rm", () => M.makeReleaseMap),
@@ -44,18 +43,16 @@ export function testRuntime<R>(self: L.Layer<T.DefaultEnv, never, R>) {
       open
     )
 
-    afterAll(async () => {
-      const res = await pipe(
-        promiseRelMap,
-        Pr.await,
-        T.chain((rm) => M.releaseAll(Ex.succeed(undefined), T.sequential)(rm)),
-        T.runPromiseExit
-      )
-
-      if (res._tag === "Failure") {
-        throw new Error(C.pretty(res.cause))
-      }
-    }, close)
+    afterAll(
+      () =>
+        pipe(
+          promiseRelMap,
+          Pr.await,
+          T.chain((rm) => M.releaseAll(Ex.succeed(undefined), T.sequential)(rm)),
+          T.runPromise
+        ),
+      close
+    )
 
     return {
       it: (name, self) =>
