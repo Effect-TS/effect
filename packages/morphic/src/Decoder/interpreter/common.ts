@@ -5,11 +5,12 @@ import * as R from "@effect-ts/core/Classic/Record"
 import * as DSL from "@effect-ts/core/Prelude/DSL"
 import * as T from "@effect-ts/core/Sync"
 
-import { DecodeError } from "../common"
+import type { Errors } from "../common"
 
-export const AssociativeDecodeError = makeAssociative<DecodeError>((y) => (x) =>
-  new DecodeError([...x.errors, ...y.errors])
-)
+export const AssociativeDecodeError = makeAssociative<Errors>((y) => (x) => [
+  ...x,
+  ...y
+])
 
 export const Validation = DSL.getValidationF({
   ...T.Applicative,

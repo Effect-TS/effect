@@ -5,7 +5,7 @@ import * as T from "@effect-ts/core/Sync"
 import type { NewtypeURI } from "../../Algebra/Newtype"
 import { interpreter } from "../../HKT"
 import { decoderApplyConfig, DecoderType, DecoderURI } from "../base"
-import { fail } from "../common"
+import { fail, makeDecoder } from "../common"
 
 export const decoderNewtypeInterpreter = interpreter<DecoderURI, NewtypeURI>()(() => ({
   _F: DecoderURI,
@@ -15,17 +15,11 @@ export const decoderNewtypeInterpreter = interpreter<DecoderURI, NewtypeURI>()((
       (decoder) =>
         new DecoderType(
           decoderApplyConfig(cfg?.conf)(
-            {
-              validate: (u, c) =>
-                pipe(
-                  decoder.validate(u, {
-                    ...c,
-                    actual: u,
-                    types: cfg?.name ? [...c.types, cfg.name] : c.types
-                  }),
-                  T.map(iso.get)
-                )
-            },
+            makeDecoder(
+              (u, c) => pipe(decoder.validate(u, c), T.map(iso.get)),
+              "newtypeIso",
+              cfg?.name || "NewtypeIso"
+            ),
             env,
             { decoder }
           )
@@ -37,35 +31,21 @@ export const decoderNewtypeInterpreter = interpreter<DecoderURI, NewtypeURI>()((
       (decoder) =>
         new DecoderType(
           decoderApplyConfig(cfg?.conf)(
-            {
-              validate: (u, c) =>
+            makeDecoder(
+              (u, c) =>
                 pipe(
-                  decoder.validate(u, {
-                    ...c,
-                    actual: u,
-                    types: cfg?.name ? [...c.types, cfg.name] : c.types
-                  }),
+                  decoder.validate(u, c),
                   T.map(prism.getOption),
                   T.chain(
                     O.fold(
-                      () =>
-                        fail([
-                          {
-                            id: cfg?.id,
-                            name: cfg?.name,
-                            message: `newtype doesn't satisfy prism conditions`,
-                            context: {
-                              ...c,
-                              actual: u,
-                              types: cfg?.name ? [...c.types, cfg.name] : c.types
-                            }
-                          }
-                        ]),
+                      () => fail(u, c, `newtype doesn't satisfy prism conditions`),
                       T.succeed
                     )
                   )
-                )
-            },
+                ),
+              "newtypePrism",
+              cfg?.name || "NewtypePrism"
+            ),
             env,
             { decoder }
           )

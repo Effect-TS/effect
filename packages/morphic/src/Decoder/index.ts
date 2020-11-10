@@ -1,5 +1,5 @@
 import { flow } from "@effect-ts/core/Function"
-import { mapError, runEither } from "@effect-ts/core/Sync"
+import { runEither } from "@effect-ts/core/Sync"
 
 import type { M, Summoner } from "../Batteries/summoner"
 import { summonFor } from "../Batteries/summoner"
@@ -11,19 +11,31 @@ import type {
 } from "../Batteries/usage/summoner"
 import type { DecoderURI } from "./base"
 import type { Decoder } from "./common"
-import { report } from "./common"
 import { modelDecoderInterpreter } from "./interpreter"
 
 export type {
-  Decoder,
+  appendContext,
+  Context,
   ContextEntry,
-  DecodeError,
-  DecodingError,
+  Decode,
+  Decoder,
+  Errors,
+  fail,
+  failures,
+  makeDecoder,
   Validate,
+  Validation,
   ValidationError,
-  report,
-  fail
+  Reporter
 } from "./common"
+
+export {
+  report,
+  formatValidationErrors,
+  formatValidationError,
+  TYPE_MAX_LEN,
+  ReporterOptions
+} from "./reporters"
 
 export function deriveFor<S extends Summoner<any>>(S: S) {
   return (
@@ -42,15 +54,9 @@ export function decoder<E, A>(F: M<{}, E, A>): Decoder<A> {
   if (decoders.has(F)) {
     return decoders.get(F)
   }
-  const d: Decoder<A> = {
-    decode: (u) => defDerive(F).validate(u, { actual: u, key: "", types: [] })
-  }
+  const d: Decoder<A> = defDerive(F)
   decoders.set(F, d)
   return d
-}
-
-export function decodeReport<E, A>(F: M<{}, E, A>) {
-  return flow(decoder(F).decode, mapError(report))
 }
 
 export function runDecode<E, A>(F: M<{}, E, A>) {

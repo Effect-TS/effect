@@ -5,6 +5,7 @@ import * as T from "@effect-ts/core/Sync"
 import type { IntersectionURI } from "../../Algebra/Intersection"
 import { interpreter } from "../../HKT"
 import { decoderApplyConfig, DecoderType, DecoderURI } from "../base"
+import { makeDecoder } from "../common"
 import { foreachArray, mergePrefer } from "./common"
 
 export const decoderIntersectionInterpreter = interpreter<
@@ -12,25 +13,21 @@ export const decoderIntersectionInterpreter = interpreter<
   IntersectionURI
 >()(() => ({
   _F: DecoderURI,
-  intersection: (...types) => (config) => (env) => {
+  intersection: (...types) => (cfg) => (env) => {
     const decoders = types.map((getDecoder) => getDecoder(env).decoder)
 
     return new DecoderType(
-      decoderApplyConfig(config?.conf)(
-        {
-          validate: (u, c) =>
+      decoderApplyConfig(cfg?.conf)(
+        makeDecoder(
+          (u, c) =>
             pipe(
               decoders,
-              foreachArray((k, d) =>
-                d.validate(u, {
-                  actual: d,
-                  key: c.key,
-                  types: config?.name ? [...c.types, config.name] : c.types
-                })
-              ),
+              foreachArray((_, d) => d.validate(u, c)),
               T.map(A.reduce({} as any, (b, a) => mergePrefer(u, b, a)))
-            )
-        },
+            ),
+          "intersection",
+          cfg?.name || "Intersection"
+        ),
         env,
         {
           decoders: decoders as any

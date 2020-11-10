@@ -1,39 +1,88 @@
-import type * as A from "@effect-ts/core/Classic/Array"
 import * as T from "@effect-ts/core/Sync"
+
+import type { AlgebraNoUnion } from "../../Batteries/program"
+
+export type CodecTypes = keyof AlgebraNoUnion<any, any>
+
+export interface Decoder<A> {
+  readonly codecType: CodecTypes
+
+  readonly name?: string
+  readonly validate: Validate<A>
+  readonly decode: Decode<A>
+}
+
+class DecoderImpl<A> {
+  constructor(
+    readonly validate: Validate<A>,
+    readonly codecType: CodecTypes,
+    readonly name?: string
+  ) {
+    this.decode = this.decode.bind(this)
+  }
+
+  decode(i: unknown): Validation<A> {
+    return this.validate(i, [{ key: "", actual: i, type: this }])
+  }
+
+  with(validate: Validate<A>): Decoder<A> {
+    return new DecoderImpl(validate, this.codecType)
+  }
+}
+
+export function makeDecoder<A>(
+  validate: Validate<A>,
+  codecType: CodecTypes,
+  name?: string
+): Decoder<A> {
+  return new DecoderImpl(validate, codecType, name)
+}
 
 export interface ContextEntry {
   readonly key: string
-  readonly types: string[]
+  readonly type: Decoder<any>
   readonly actual?: unknown
 }
 
-export interface DecodingError {
-  readonly context: ContextEntry
-  readonly id?: string
-  readonly name?: string
+export interface Context extends ReadonlyArray<ContextEntry> {}
+
+export interface ValidationError {
+  readonly value: unknown
+  readonly context: Context
   readonly message?: string
 }
 
-export type ValidationError = A.Array<DecodingError>
+export interface Errors extends Array<ValidationError> {}
 
-export const fail = (e: ValidationError) => T.fail(new DecodeError(e))
+export type Validation<A> = T.IO<Errors, A>
 
-export class DecodeError {
-  readonly _tag = "DecodeError"
-  constructor(readonly errors: ValidationError) {}
+export type Validate<A> = (i: unknown, context: Context) => Validation<A>
+
+export type Decode<A> = (i: unknown) => Validation<A>
+
+export const failures: <T>(errors: Errors) => Validation<T> = T.fail
+
+export const fail = <T>(
+  value: unknown,
+  context: Context,
+  message?: string
+): Validation<T> => failures([{ value, context, message }])
+
+export const appendContext = (
+  c: Context,
+  key: string,
+  decoder: Decoder<any>,
+  actual?: unknown
+): Context => {
+  const len = c.length
+  const r = Array(len + 1)
+  for (let i = 0; i < len; i++) {
+    r[i] = c[i]
+  }
+  r[len] = { key, type: decoder, actual }
+  return r
 }
 
-export interface Validate<A> {
-  validate: (u: unknown, c: ContextEntry) => T.Sync<unknown, DecodeError, A>
-}
-
-export interface Decoder<A> {
-  decode: (u: unknown) => T.Sync<unknown, DecodeError, A>
-}
-
-export function report(e: DecodeError) {
-  return e.errors
-    .map((e) => e.message)
-    .filter((e) => e && e.length > 0)
-    .join(",")
+export interface Reporter<A> {
+  report: (validation: Validation<any>) => A
 }

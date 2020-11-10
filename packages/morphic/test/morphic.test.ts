@@ -10,7 +10,7 @@ import * as fc from "fast-check"
 import type { AType, EType } from "../src"
 import { make, opaque, ShowURI } from "../src"
 import { asserts } from "../src/Asserts"
-import { decoder, decodeReport } from "../src/Decoder"
+import { decode, decoder, report } from "../src/Decoder"
 import { encoder } from "../src/Encoder"
 import { equal } from "../src/Equal"
 import { arbitrary } from "../src/FastCheck"
@@ -79,23 +79,11 @@ describe("FastCheck", () => {
   })
   it("Track fields", () => {
     expect(
-      T.runEither(decoder(Person).decode({ name: { first: "Michael", last: 1 } }))
+      T.runEither(report(decode(Person)({ name: { first: "Michael", last: 1 } })))
     ).toEqual(
-      E.left({
-        _tag: "DecodeError",
-        errors: [
-          {
-            context: {
-              actual: 1,
-              key: "name.last",
-              types: ["Person"]
-            },
-            id: undefined,
-            message: "number is not a string",
-            name: undefined
-          }
-        ]
-      })
+      E.left([
+        "Expecting String at name.last but instead got: 1 (number is not a string)"
+      ])
     )
   })
   it("Decodes Person", () => {
@@ -124,8 +112,10 @@ describe("FastCheck", () => {
     ).toEqual(E.right({ name: { first: "Michael", last: "Arnaldi" } }))
   })
   it("Fail Decoding of Person", () => {
-    expect(pipe(decodeReport(Person)({}), T.runEither)).toEqual(
-      E.left("not all the required fields are present")
+    expect(pipe(report(decode(Person)({})), T.runEither)).toEqual(
+      E.left([
+        "Expecting Person but instead got: {} (not all the required fields are present)"
+      ])
     )
   })
   it("Uses Equal", () => {

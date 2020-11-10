@@ -5,7 +5,7 @@ import * as T from "@effect-ts/core/Sync"
 import type { SetURI } from "../../Algebra/Set"
 import { interpreter } from "../../HKT"
 import { decoderApplyConfig, DecoderType, DecoderURI } from "../base"
-import { fail } from "../common"
+import { appendContext, fail, makeDecoder } from "../common"
 import { foreachArray } from "./common"
 
 export const decoderSetInterpreter = interpreter<DecoderURI, SetURI>()(() => ({
@@ -16,33 +16,20 @@ export const decoderSetInterpreter = interpreter<DecoderURI, SetURI>()(() => ({
       (decoder) =>
         new DecoderType(
           decoderApplyConfig(cfg?.conf)(
-            {
-              validate: (u, c) =>
+            makeDecoder(
+              (u, c) =>
                 Array.isArray(u)
                   ? pipe(
                       u,
                       foreachArray((k, a) =>
-                        decoder.validate(u, {
-                          key: `${c.key}[${k}]`,
-                          actual: u,
-                          types: cfg?.name ? [...c.types, cfg.name] : c.types
-                        })
+                        decoder.validate(a, appendContext(c, String(k), decoder, a))
                       ),
                       T.map(S.fromArray(_))
                     )
-                  : fail([
-                      {
-                        id: cfg?.id,
-                        name: cfg?.name,
-                        message: `${typeof u} is not a Set`,
-                        context: {
-                          ...c,
-                          actual: u,
-                          types: cfg?.name ? [...c.types, cfg.name] : c.types
-                        }
-                      }
-                    ])
-            },
+                  : fail(u, c, `${typeof u} is not a Set`),
+              "set",
+              cfg?.name || "Set"
+            ),
             env,
             { decoder }
           )

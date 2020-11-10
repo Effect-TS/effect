@@ -9,8 +9,8 @@ import type { PrimitivesURI, UUID } from "../../Algebra/Primitives"
 import { isUnknownRecord } from "../../Guard/interpreter/common"
 import { interpreter } from "../../HKT"
 import { decoderApplyConfig, DecoderType, DecoderURI } from "../base"
-import { DecodeError, fail } from "../common"
-import { fixKey, foreachArray, foreachNonEmptyArray } from "./common"
+import { appendContext, fail, makeDecoder } from "../common"
+import { foreachArray, foreachNonEmptyArray } from "./common"
 
 export const regexUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -20,21 +20,11 @@ export const decoderPrimitiveInterpreter = interpreter<DecoderURI, PrimitivesURI
     function: (_, __, cfg) => (env) =>
       new DecoderType(
         decoderApplyConfig(cfg?.conf)(
-          {
-            validate: (u, c) =>
-              fail([
-                {
-                  id: cfg?.id,
-                  name: cfg?.name,
-                  message: `functions are not supported`,
-                  context: {
-                    ...c,
-                    actual: u,
-                    types: cfg?.name ? [...c.types, cfg.name] : c.types
-                  }
-                }
-              ])
-          },
+          makeDecoder(
+            (u, c) => fail(u, c, `functions are not supported`),
+            "function",
+            cfg?.name || "function"
+          ),
           env,
           {}
         )
@@ -44,39 +34,19 @@ export const decoderPrimitiveInterpreter = interpreter<DecoderURI, PrimitivesURI
     date: (cfg) => (env) =>
       new DecoderType(
         decoderApplyConfig(cfg?.conf)(
-          {
-            validate: (u, c) => {
+          makeDecoder(
+            (u, c) => {
               if (typeof u !== "string") {
-                return fail([
-                  {
-                    id: cfg?.id,
-                    name: cfg?.name,
-                    message: `${typeof u} is not a string`,
-                    context: {
-                      ...c,
-                      actual: u,
-                      types: cfg?.name ? [...c.types, cfg.name] : c.types
-                    }
-                  }
-                ])
+                return fail(u, c, `${typeof u} is not a string`)
               }
               const d = new Date(u)
               return isNaN(d.getTime())
-                ? fail([
-                    {
-                      id: cfg?.id,
-                      name: cfg?.name,
-                      message: `${u} is not a valid ISO string`,
-                      context: {
-                        ...c,
-                        actual: u,
-                        types: cfg?.name ? [...c.types, cfg.name] : c.types
-                      }
-                    }
-                  ])
+                ? fail(u, c, `${u} is not a valid ISO string`)
                 : T.succeed(d)
-            }
-          },
+            },
+            "date",
+            cfg?.name
+          ),
           env,
           {}
         )
@@ -84,23 +54,14 @@ export const decoderPrimitiveInterpreter = interpreter<DecoderURI, PrimitivesURI
     boolean: (cfg) => (env) =>
       new DecoderType(
         decoderApplyConfig(cfg?.conf)(
-          {
-            validate: (u, c) =>
+          makeDecoder(
+            (u, c) =>
               typeof u !== "boolean"
-                ? fail([
-                    {
-                      id: cfg?.id,
-                      name: cfg?.name,
-                      message: `${typeof u} is not a boolean`,
-                      context: {
-                        ...c,
-                        actual: u,
-                        types: cfg?.name ? [...c.types, cfg.name] : c.types
-                      }
-                    }
-                  ])
-                : T.succeed(u)
-          },
+                ? fail(u, c, `${typeof u} is not a boolean`)
+                : T.succeed(u),
+            "boolean",
+            cfg?.name || "Boolean"
+          ),
           env,
           {}
         )
@@ -108,23 +69,14 @@ export const decoderPrimitiveInterpreter = interpreter<DecoderURI, PrimitivesURI
     string: (cfg) => (env) =>
       new DecoderType(
         decoderApplyConfig(cfg?.conf)(
-          {
-            validate: (u, c) =>
+          makeDecoder(
+            (u, c) =>
               typeof u !== "string"
-                ? fail([
-                    {
-                      id: cfg?.id,
-                      name: cfg?.name,
-                      message: `${typeof u} is not a string`,
-                      context: {
-                        ...c,
-                        actual: u,
-                        types: cfg?.name ? [...c.types, cfg.name] : c.types
-                      }
-                    }
-                  ])
-                : T.succeed(u)
-          },
+                ? fail(u, c, `${typeof u} is not a string`)
+                : T.succeed(u),
+            "string",
+            cfg?.name || "String"
+          ),
           env,
           {}
         )
@@ -132,23 +84,14 @@ export const decoderPrimitiveInterpreter = interpreter<DecoderURI, PrimitivesURI
     number: (cfg) => (env) =>
       new DecoderType(
         decoderApplyConfig(cfg?.conf)(
-          {
-            validate: (u, c) =>
+          makeDecoder(
+            (u, c) =>
               typeof u !== "number"
-                ? fail([
-                    {
-                      id: cfg?.id,
-                      name: cfg?.name,
-                      message: `${typeof u} is not a number`,
-                      context: {
-                        ...c,
-                        actual: u,
-                        types: cfg?.name ? [...c.types, cfg.name] : c.types
-                      }
-                    }
-                  ])
-                : T.succeed(u)
-          },
+                ? fail(u, c, `${typeof u} is not a number`)
+                : T.succeed(u),
+            "number",
+            cfg?.name || "Number"
+          ),
           env,
           {}
         )
@@ -156,37 +99,21 @@ export const decoderPrimitiveInterpreter = interpreter<DecoderURI, PrimitivesURI
     bigint: (cfg) => (env) =>
       new DecoderType<bigint>(
         decoderApplyConfig(cfg?.conf)(
-          {
-            validate: (u, c) =>
+          makeDecoder(
+            (u, c) =>
               typeof u !== "string"
-                ? fail([
-                    {
-                      id: cfg?.id,
-                      name: cfg?.name,
-                      message: `${typeof u} is not an integer string`,
-                      context: {
-                        ...c,
-                        actual: u,
-                        types: cfg?.name ? [...c.types, cfg.name] : c.types
-                      }
+                ? fail(u, c, `${typeof u} is not an integer string`)
+                : T.suspend(() => {
+                    try {
+                      const x = BigInt(u)
+                      return T.succeed(x)
+                    } catch {
+                      return fail(u, c, `${typeof u} is not an integer string`)
                     }
-                  ])
-                : T.tryCatch(
-                    () =>
-                      new DecodeError([
-                        {
-                          id: cfg?.id,
-                          name: cfg?.name,
-                          message: `${typeof u} is not an integer string`,
-                          context: {
-                            ...c,
-                            actual: u,
-                            types: cfg?.name ? [...c.types, cfg.name] : c.types
-                          }
-                        }
-                      ])
-                  )(() => BigInt(u))
-          },
+                  }),
+            "bigint",
+            cfg?.name || "BigInt"
+          ),
           env,
           {}
         )
@@ -194,23 +121,14 @@ export const decoderPrimitiveInterpreter = interpreter<DecoderURI, PrimitivesURI
     stringLiteral: (k, cfg) => (env) =>
       new DecoderType<typeof k>(
         decoderApplyConfig(cfg?.conf)(
-          {
-            validate: (u, c) =>
+          makeDecoder(
+            (u, c) =>
               typeof u === "string" && u === k
                 ? T.succeed(<typeof k>u)
-                : fail([
-                    {
-                      id: cfg?.id,
-                      name: cfg?.name,
-                      message: `${u} is not ${k}`,
-                      context: {
-                        ...c,
-                        actual: u,
-                        types: cfg?.name ? [...c.types, cfg.name] : c.types
-                      }
-                    }
-                  ])
-          },
+                : fail(u, c, `${u} is not ${k}`),
+            "stringLiteral",
+            cfg?.name || "StringLiteral"
+          ),
           env,
           {}
         )
@@ -218,23 +136,14 @@ export const decoderPrimitiveInterpreter = interpreter<DecoderURI, PrimitivesURI
     numberLiteral: (k, cfg) => (env) =>
       new DecoderType<typeof k>(
         decoderApplyConfig(cfg?.conf)(
-          {
-            validate: (u, c) =>
+          makeDecoder(
+            (u, c) =>
               typeof u === "number" && u === k
                 ? T.succeed(<typeof k>u)
-                : fail([
-                    {
-                      id: cfg?.id,
-                      name: cfg?.name,
-                      message: `${u} is not ${k}`,
-                      context: {
-                        ...c,
-                        actual: u,
-                        types: cfg?.name ? [...c.types, cfg.name] : c.types
-                      }
-                    }
-                  ])
-          },
+                : fail(u, c, `${u} is not ${k}`),
+            "numberLiteral",
+            cfg?.name || "NumberLiteral"
+          ),
           env,
           {}
         )
@@ -242,23 +151,14 @@ export const decoderPrimitiveInterpreter = interpreter<DecoderURI, PrimitivesURI
     oneOfLiterals: (ls, cfg) => (env) =>
       new DecoderType(
         decoderApplyConfig(cfg?.conf)(
-          {
-            validate: (u, c) =>
+          makeDecoder(
+            (u, c) =>
               (typeof u === "string" || typeof u === "number") && ls.includes(u)
                 ? T.succeed(u)
-                : fail([
-                    {
-                      id: cfg?.id,
-                      name: cfg?.name,
-                      message: `${u} is not any of ${ls.join(",")}`,
-                      context: {
-                        ...c,
-                        actual: u,
-                        types: cfg?.name ? [...c.types, cfg.name] : c.types
-                      }
-                    }
-                  ])
-          },
+                : fail(u, c, `${u} is not any of ${ls.join(",")}`),
+            "oneOfLiterals",
+            cfg?.name || "OneOfLiterals"
+          ),
           env,
           {}
         )
@@ -266,23 +166,14 @@ export const decoderPrimitiveInterpreter = interpreter<DecoderURI, PrimitivesURI
     keysOf: (keys, cfg) => (env) =>
       new DecoderType<keyof typeof keys & string>(
         decoderApplyConfig(cfg?.conf)(
-          {
-            validate: (u, c) =>
+          makeDecoder(
+            (u, c) =>
               typeof u === "string" && Object.keys(keys).indexOf(u) !== -1
                 ? T.succeed(u)
-                : fail([
-                    {
-                      id: cfg?.id,
-                      name: cfg?.name,
-                      message: `${u} is not any of ${Object.keys(keys).join(",")}`,
-                      context: {
-                        ...c,
-                        actual: u,
-                        types: cfg?.name ? [...c.types, cfg.name] : c.types
-                      }
-                    }
-                  ])
-          },
+                : fail(u, c, `${u} is not any of ${Object.keys(keys).join(",")}`),
+            "keysOf",
+            cfg?.name || "KeysOf"
+          ),
           env,
           {}
         )
@@ -293,19 +184,12 @@ export const decoderPrimitiveInterpreter = interpreter<DecoderURI, PrimitivesURI
         (decoder) =>
           new DecoderType(
             decoderApplyConfig(cfg?.conf)(
-              {
-                validate: (u, c) =>
-                  u == null
-                    ? T.succeed(none)
-                    : T.map_(
-                        decoder.validate(u, {
-                          ...c,
-                          actual: u,
-                          types: cfg?.name ? [...c.types, cfg.name] : c.types
-                        }),
-                        some
-                      )
-              },
+              makeDecoder(
+                (u, c) =>
+                  u == null ? T.succeed(none) : T.map_(decoder.validate(u, c), some),
+                "nullable",
+                cfg?.name || "Nullable"
+              ),
               env,
               { decoder }
             )
@@ -317,13 +201,11 @@ export const decoderPrimitiveInterpreter = interpreter<DecoderURI, PrimitivesURI
         (decoder) =>
           new DecoderType(
             decoderApplyConfig(cfg?.conf)(
-              {
-                validate: (u, c) =>
-                  decoder.validate(u, {
-                    ...c,
-                    types: cfg?.name ? [...c.types, cfg.name] : c.types
-                  })
-              },
+              makeDecoder(
+                (u, c) => decoder.validate(u, c),
+                "mutable",
+                cfg?.name || "Mutable"
+              ),
               env,
               { decoder }
             )
@@ -335,16 +217,11 @@ export const decoderPrimitiveInterpreter = interpreter<DecoderURI, PrimitivesURI
         (decoder) =>
           new DecoderType(
             decoderApplyConfig(cfg?.conf)(
-              {
-                validate: (u, c) =>
-                  u == null
-                    ? T.succeed(undefined)
-                    : decoder.validate(u, {
-                        ...c,
-                        actual: u,
-                        types: cfg?.name ? [...c.types, cfg.name] : c.types
-                      })
-              },
+              makeDecoder(
+                (u, c) => (u == null ? T.succeed(undefined) : decoder.validate(u, c)),
+                "optional",
+                cfg?.name || "Optional"
+              ),
               env,
               { decoder }
             )
@@ -356,23 +233,14 @@ export const decoderPrimitiveInterpreter = interpreter<DecoderURI, PrimitivesURI
         (decoder) =>
           new DecoderType(
             decoderApplyConfig(cfg?.conf)(
-              {
-                validate: (u, c) =>
+              makeDecoder(
+                (u, c) =>
                   Array.isArray(u)
                     ? foreachArray(decoder.validate)(u)
-                    : fail([
-                        {
-                          id: cfg?.id,
-                          name: cfg?.name,
-                          message: `${typeof u} is not an array`,
-                          context: {
-                            ...c,
-                            actual: u,
-                            types: cfg?.name ? [...c.types, cfg.name] : c.types
-                          }
-                        }
-                      ])
-              },
+                    : fail(u, c, `${typeof u} is not an array`),
+                "array",
+                cfg?.name || "Array"
+              ),
               env,
               { decoder }
             )
@@ -384,42 +252,18 @@ export const decoderPrimitiveInterpreter = interpreter<DecoderURI, PrimitivesURI
         (decoder) =>
           new DecoderType(
             decoderApplyConfig(cfg?.conf)(
-              {
-                validate: (u, c) =>
+              makeDecoder(
+                (u, c) =>
                   Array.isArray(u)
                     ? A.isNonEmpty(u)
                       ? foreachNonEmptyArray((k, a) =>
-                          decoder.validate(a, {
-                            key: `${c.key}[${k}]`,
-                            actual: a,
-                            types: cfg?.name ? [...c.types, cfg.name] : c.types
-                          })
+                          decoder.validate(a, appendContext(c, String(k), decoder, a))
                         )(u)
-                      : fail([
-                          {
-                            id: cfg?.id,
-                            name: cfg?.name,
-                            message: `array is empty`,
-                            context: {
-                              ...c,
-                              actual: u,
-                              types: cfg?.name ? [...c.types, cfg.name] : c.types
-                            }
-                          }
-                        ])
-                    : fail([
-                        {
-                          id: cfg?.id,
-                          name: cfg?.name,
-                          message: `${typeof u} is not an array`,
-                          context: {
-                            ...c,
-                            actual: u,
-                            types: cfg?.name ? [...c.types, cfg.name] : c.types
-                          }
-                        }
-                      ])
-              },
+                      : fail(u, c, `array is empty`)
+                    : fail(u, c, `${typeof u} is not an array`),
+                "nonEmptyArray",
+                cfg?.name || "NonEmptyArray"
+              ),
               env,
               { decoder }
             )
@@ -428,23 +272,14 @@ export const decoderPrimitiveInterpreter = interpreter<DecoderURI, PrimitivesURI
     uuid: (cfg) => (env) =>
       new DecoderType<UUID>(
         decoderApplyConfig(cfg?.conf)(
-          {
-            validate: (u, c) =>
+          makeDecoder(
+            (u, c) =>
               typeof u === "string" && regexUUID.test(u)
                 ? T.succeed(<UUID>u)
-                : fail([
-                    {
-                      id: cfg?.id,
-                      name: cfg?.name,
-                      message: `${typeof u === "string" ? u : typeof u} is not a uuid`,
-                      context: {
-                        ...c,
-                        actual: u,
-                        types: cfg?.name ? [...c.types, cfg.name] : c.types
-                      }
-                    }
-                  ])
-          },
+                : fail(u, c, `${typeof u === "string" ? u : typeof u} is not a uuid`),
+            "uuid",
+            cfg?.name || "UUID"
+          ),
           env,
           {}
         )
@@ -456,8 +291,8 @@ export const decoderPrimitiveInterpreter = interpreter<DecoderURI, PrimitivesURI
           (right) =>
             new DecoderType(
               decoderApplyConfig(cfg?.conf)(
-                {
-                  validate: (u, c) => {
+                makeDecoder(
+                  (u, c) => {
                     if (
                       isUnknownRecord(u) &&
                       "_tag" in u &&
@@ -466,39 +301,28 @@ export const decoderPrimitiveInterpreter = interpreter<DecoderURI, PrimitivesURI
                     ) {
                       if (u["_tag"] === "Left") {
                         return T.map_(
-                          left.validate(u["left"], {
-                            key: `${c.key}.left`,
-                            actual: u,
-                            types: cfg?.name ? [...c.types, cfg.name] : c.types
-                          }),
+                          left.validate(
+                            u["left"],
+                            appendContext(c, "left", left, u["left"])
+                          ),
                           E.left
                         ) as any
                       } else {
                         return T.map_(
-                          left.validate(u["right"], {
-                            key: `${c.key}.right`,
-                            actual: u,
-                            types: cfg?.name ? [...c.types, cfg.name] : c.types
-                          }),
+                          right.validate(
+                            u["right"],
+                            appendContext(c, "right", right, u["right"])
+                          ),
                           E.right
                         )
                       }
                     }
 
-                    return fail([
-                      {
-                        id: cfg?.id,
-                        name: cfg?.name,
-                        message: `${typeof u} is not an either`,
-                        context: {
-                          ...c,
-                          actual: u,
-                          types: cfg?.name ? [...c.types, cfg.name] : c.types
-                        }
-                      }
-                    ])
-                  }
-                },
+                    return fail(u, c, `${typeof u} is not an either`)
+                  },
+                  "either",
+                  cfg?.name || "Either"
+                ),
                 env,
                 {
                   left,
@@ -514,8 +338,8 @@ export const decoderPrimitiveInterpreter = interpreter<DecoderURI, PrimitivesURI
         (decoder) =>
           new DecoderType(
             decoderApplyConfig(cfg?.conf)(
-              {
-                validate: (u, c) => {
+              makeDecoder(
+                (u, c) => {
                   if (
                     isUnknownRecord(u) &&
                     "_tag" in u &&
@@ -523,11 +347,10 @@ export const decoderPrimitiveInterpreter = interpreter<DecoderURI, PrimitivesURI
                   ) {
                     if (u["_tag"] === "Some") {
                       return T.map_(
-                        decoder.validate(u["value"], {
-                          key: fixKey(`${c.key}.value`),
-                          actual: u,
-                          types: cfg?.name ? [...c.types, cfg.name] : c.types
-                        }),
+                        decoder.validate(
+                          u["value"],
+                          appendContext(c, "value", decoder, u["value"])
+                        ),
                         O.some
                       )
                     } else {
@@ -535,20 +358,11 @@ export const decoderPrimitiveInterpreter = interpreter<DecoderURI, PrimitivesURI
                     }
                   }
 
-                  return fail([
-                    {
-                      id: cfg?.id,
-                      name: cfg?.name,
-                      message: `${typeof u} is not an option`,
-                      context: {
-                        ...c,
-                        actual: u,
-                        types: cfg?.name ? [...c.types, cfg.name] : c.types
-                      }
-                    }
-                  ])
-                }
-              },
+                  return fail(u, c, `${typeof u} is not an option`)
+                },
+                "option",
+                cfg?.name || "Option"
+              ),
               env,
               {
                 decoder

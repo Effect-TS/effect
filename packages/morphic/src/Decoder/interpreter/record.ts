@@ -4,7 +4,7 @@ import type { RecordURI } from "../../Algebra/Record"
 import { isUnknownRecord } from "../../Guard/interpreter/common"
 import { interpreter } from "../../HKT"
 import { decoderApplyConfig, DecoderType, DecoderURI } from "../base"
-import { fail } from "../common"
+import { appendContext, fail, makeDecoder } from "../common"
 import { foreachRecordWithIndex } from "./common"
 
 export const decoderRecordInterpreter = interpreter<DecoderURI, RecordURI>()(() => ({
@@ -15,29 +15,16 @@ export const decoderRecordInterpreter = interpreter<DecoderURI, RecordURI>()(() 
       (decoder) =>
         new DecoderType(
           decoderApplyConfig(cfg?.conf)(
-            {
-              validate: (u, c) =>
+            makeDecoder(
+              (u, c) =>
                 isUnknownRecord(u)
                   ? foreachRecordWithIndex((k, a) =>
-                      decoder.validate(a, {
-                        key: `${c.key}.${k}`,
-                        actual: u,
-                        types: cfg?.name ? [...c.types, cfg.name] : c.types
-                      })
+                      decoder.validate(a, appendContext(c, k, decoder, u))
                     )(u)
-                  : fail([
-                      {
-                        id: cfg?.id,
-                        name: cfg?.name,
-                        message: `${typeof u} is not a record`,
-                        context: {
-                          ...c,
-                          actual: u,
-                          types: cfg?.name ? [...c.types, cfg.name] : c.types
-                        }
-                      }
-                    ])
-            },
+                  : fail(u, c, `${typeof u} is not a record`),
+              "record",
+              cfg?.name || "Record"
+            ),
             env,
             { decoder }
           )

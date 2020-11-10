@@ -1,5 +1,5 @@
 import { getApplyConfig } from "../../HKT"
-import type { Validate } from "../common"
+import type { Decoder } from "../common"
 
 export const DecoderURI = "DecoderURI" as const
 
@@ -9,7 +9,7 @@ export const decoderApplyConfig = getApplyConfig(DecoderURI)
 
 declare module "../../HKT" {
   interface ConfigType<E, A> {
-    [DecoderURI]: Validate<A>
+    [DecoderURI]: Decoder<A>
   }
   interface URItoKind<R, E, A> {
     [DecoderURI]: (env: R) => DecoderType<A>
@@ -19,5 +19,5 @@ declare module "../../HKT" {
 export class DecoderType<A> {
   _A!: A
   _URI!: DecoderURI
-  constructor(public decoder: Validate<A>) {}
+  constructor(public decoder: Decoder<A>) {}
 }

@@ -5,6 +5,7 @@ import type { PrimitivesURI } from "../../Algebra/Primitives"
 import type { RecordURI } from "../../Algebra/Record"
 import type { RecursiveURI } from "../../Algebra/Recursive"
 import type { RefinedURI } from "../../Algebra/Refined"
+import type { SetURI } from "../../Algebra/Set"
 import type { TaggedUnionURI } from "../../Algebra/TaggedUnion"
 import type { UnknownURI } from "../../Algebra/Unknown"
 import type { GetAlgebra, InterpreterURIS } from "../../HKT"
@@ -33,6 +34,7 @@ declare module "../usage/program-type" {
       | RecursiveURI
       | RefinedURI
       | UnknownURI
+      | SetURI
     >
   }
 

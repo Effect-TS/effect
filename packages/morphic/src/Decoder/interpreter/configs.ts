@@ -1,6 +1,6 @@
 import type { InterfaceLA, IntersectionLA, TaggedUnionLA } from "../../Algebra/Config"
 import type { DecoderURI } from "../base"
-import type { Validate } from "../common"
+import type { Decoder } from "../common"
 
 declare module "../../Algebra/Intersection" {
   interface IntersectionConfig<
@@ -16,22 +16,22 @@ declare module "../../Algebra/Intersection" {
 declare module "../../Algebra/Newtype" {
   interface NewtypeConfig<L, A, N> {
     [DecoderURI]: {
-      decoder: Validate<A>
+      decoder: Decoder<A>
     }
   }
   interface CoerceConfig<L, A, N> {
     [DecoderURI]: {
-      decoder: Validate<A>
+      decoder: Decoder<A>
     }
   }
   interface IsoConfig<L, A, N> {
     [DecoderURI]: {
-      decoder: Validate<A>
+      decoder: Decoder<A>
     }
   }
   interface PrismConfig<L, A, N> {
     [DecoderURI]: {
-      decoder: Validate<A>
+      decoder: Decoder<A>
     }
   }
 }
@@ -58,38 +58,38 @@ declare module "../../Algebra/Object" {
 declare module "../../Algebra/Primitives" {
   interface NonEmptyArrayConfig<L, A> {
     [DecoderURI]: {
-      decoder: Validate<A>
+      decoder: Decoder<A>
     }
   }
   interface ArrayConfig<L, A> {
     [DecoderURI]: {
-      decoder: Validate<A>
+      decoder: Decoder<A>
     }
   }
   interface NullableConfig<L, A> {
     [DecoderURI]: {
-      decoder: Validate<A>
+      decoder: Decoder<A>
     }
   }
   interface MutableConfig<L, A> {
     [DecoderURI]: {
-      decoder: Validate<A>
+      decoder: Decoder<A>
     }
   }
   interface OptionalConfig<L, A> {
     [DecoderURI]: {
-      decoder: Validate<A>
+      decoder: Decoder<A>
     }
   }
   interface EitherConfig<EE, EA, AE, AA> {
     [DecoderURI]: {
-      left: Validate<EA>
-      right: Validate<AA>
+      left: Decoder<EA>
+      right: Decoder<AA>
     }
   }
   interface OptionConfig<L, A> {
     [DecoderURI]: {
-      decoder: Validate<A>
+      decoder: Decoder<A>
     }
   }
 }
@@ -97,12 +97,12 @@ declare module "../../Algebra/Primitives" {
 declare module "../../Algebra/Refined" {
   interface RefinedConfig<E, A, B> {
     [DecoderURI]: {
-      decoder: Validate<A>
+      decoder: Decoder<A>
     }
   }
   interface PredicateConfig<E, A> {
     [DecoderURI]: {
-      decoder: Validate<A>
+      decoder: Decoder<A>
     }
   }
 }
@@ -110,7 +110,7 @@ declare module "../../Algebra/Refined" {
 declare module "../../Algebra/Set" {
   interface SetConfig<L, A> {
     [DecoderURI]: {
-      decoder: Validate<A>
+      decoder: Decoder<A>
     }
   }
 }
@@ -118,7 +118,7 @@ declare module "../../Algebra/Set" {
 declare module "../../Algebra/Record" {
   interface RecordConfig<L, A> {
     [DecoderURI]: {
-      decoder: Validate<A>
+      decoder: Decoder<A>
     }
   }
 }
