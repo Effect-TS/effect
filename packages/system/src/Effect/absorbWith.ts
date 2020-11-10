@@ -26,6 +26,6 @@ export function absorbWith_<R, A, E>(fa: Effect<R, E, A>, f: (e: E) => unknown) 
  * Attempts to convert defects into a failure, throwing away all information
  * about the cause of the failure.
  */
-export function absord<R, E, A>(self: Effect<R, E, A>) {
+export function absorb<R, E, A>(self: Effect<R, E, A>) {
   return absorbWith_(self, identity)
 }
