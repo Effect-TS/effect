@@ -5,7 +5,7 @@ import { map } from "../core"
 import * as T from "../deps"
 import * as Do from "../do"
 import type { Managed } from "../managed"
-import * as RelMap from "../releaseMap"
+import * as RelMap from "../ReleaseMap"
 import { releaseMap } from "./releaseMap"
 
 /**

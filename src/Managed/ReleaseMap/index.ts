@@ -1,9 +1,9 @@
-import type { ExecutionStrategy } from "../Effect/ExecutionStrategy"
-import { absurd, pipe } from "../Function"
-import { insert, lookup, remove } from "../Map/core"
-import * as O from "../Option"
-import * as R from "../Ref"
-import * as T from "./deps"
+import type { ExecutionStrategy } from "../../Effect/ExecutionStrategy"
+import { absurd, pipe } from "../../Function"
+import { insert, lookup, remove } from "../../Map/core"
+import * as O from "../../Option"
+import * as R from "../../Ref"
+import * as T from "../deps"
 
 export type Finalizer = (exit: T.Exit<any, any>) => T.Effect<unknown, never, any>
 

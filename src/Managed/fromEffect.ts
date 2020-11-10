@@ -1,6 +1,6 @@
 import * as T from "./deps"
 import { Managed } from "./managed"
-import * as RelMap from "./releaseMap"
+import * as RelMap from "./ReleaseMap"
 
 /**
  * Lifts a `Effect< R, E, A>` into `Managed< R, E, A>` with no release action. The

@@ -9,8 +9,8 @@ import { makeRef } from "../Ref"
 import * as T from "./deps"
 import { fromEffect } from "./fromEffect"
 import { Managed } from "./managed"
-import type { Finalizer, ReleaseMap } from "./releaseMap"
-import * as RelMap from "./releaseMap"
+import type { Finalizer, ReleaseMap } from "./ReleaseMap"
+import * as RelMap from "./ReleaseMap"
 
 /**
  * Returns a managed that models the execution of this managed, followed by
