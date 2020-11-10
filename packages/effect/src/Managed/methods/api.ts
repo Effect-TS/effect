@@ -1006,3 +1006,13 @@ export function retry<R1, E, O>(policy: Schedule<R1, E, O>) {
   return <R, A>(self: Managed<R, E, A>): Managed<R & R1 & HasClock, E, A> =>
     retry_(self, policy)
 }
+
+/**
+ * Returns an effect that semantically runs the effect on a fiber,
+ * producing an `Exit` for the completion value of the fiber.
+ */
+export function result<R, E, A>(
+  self: Managed<R, E, A>
+): Managed<R, never, Ex.Exit<E, A>> {
+  return foldCauseM_(self, flow(Ex.halt, succeed), flow(Ex.succeed, succeed))
+}
