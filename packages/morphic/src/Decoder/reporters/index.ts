@@ -9,6 +9,9 @@ import { pipe } from "@effect-ts/core/Function"
 import * as S from "@effect-ts/core/Sync"
 
 import type * as t from "../common"
+import { takeUntil } from "./utils"
+
+const isUnionType = (_: t.ContextEntry) => false
 
 const jsToString = (value: unknown) =>
   value === undefined ? "undefined" : JSON.stringify(value)
@@ -21,6 +24,9 @@ const keyPath = (ctx: t.Context) =>
 
 const getErrorFromCtx = (validation: t.ValidationError) =>
   A.last(validation.context as t.ContextEntry[])
+
+const getValidationContext = (validation: t.ValidationError) =>
+  validation.context as t.ContextEntry[]
 
 export const TYPE_MAX_LEN = 160
 
@@ -49,6 +55,54 @@ const errorMessageSimple = (
     .filter(Boolean)
     .join(" ")
 
+const errorMessageUnion = (
+  expectedTypes: string[],
+  path: string,
+  value: unknown,
+  options?: ReporterOptions
+) =>
+  [
+    "Expecting one of:\n",
+    expectedTypes.map((type) => `    ${truncateType(type, options)}`).join("\n"),
+    path === "" ? "\n" : `\nat ${path} `,
+    `but instead got: ${jsToString(value)}`
+  ]
+    .filter(Boolean)
+    .join("")
+
+const findExpectedType = (ctx: t.ContextEntry[]) =>
+  pipe(
+    ctx,
+    A.findIndex(isUnionType),
+    O.chain((n) => A.lookup_(ctx, n + 1))
+  )
+
+const formatValidationErrorOfUnion = (
+  path: string,
+  errors: NEA.NonEmptyArray<t.ValidationError>,
+  options?: ReporterOptions
+) => {
+  const expectedTypes = pipe(
+    errors,
+    A.map(getValidationContext),
+    A.map(findExpectedType),
+    A.compact
+  )
+
+  const value = pipe(
+    expectedTypes,
+    A.head,
+    O.map((v) => v.actual),
+    O.getOrElse((): unknown => undefined)
+  )
+
+  const expected = expectedTypes.map(({ type }) => type?.name || "Anonymous")
+
+  return expected.length > 0
+    ? O.some(errorMessageUnion(expected, path, value, options))
+    : O.none
+}
+
 const formatValidationCommonError = (
   path: string,
   error: t.ValidationError,
@@ -63,16 +117,17 @@ const formatValidationCommonError = (
   )
 
 const groupByKey = NEA.groupBy((error: t.ValidationError) =>
-  pipe(error.context, keyPath)
+  pipe(error.context, takeUntil(isUnionType), keyPath)
 )
 
 const format = (
   path: string,
   errors: NEA.NonEmptyArray<t.ValidationError>,
   options?: ReporterOptions
-) => {
-  return formatValidationCommonError(path, NEA.head(errors), options)
-}
+) =>
+  NEA.tail(errors).length > 0
+    ? formatValidationErrorOfUnion(path, errors, options)
+    : formatValidationCommonError(path, NEA.head(errors), options)
 
 export const formatValidationError = (
   error: t.ValidationError,

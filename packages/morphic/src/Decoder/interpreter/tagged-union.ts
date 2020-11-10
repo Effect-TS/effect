@@ -4,7 +4,7 @@ import { interpreter } from "../../HKT"
 import { mapRecord } from "../../Utils"
 import { decoderApplyConfig, DecoderType, DecoderURI } from "../base"
 import type { Decoder } from "../common"
-import { appendContext, fail, makeDecoder } from "../common"
+import { fail, makeDecoder } from "../common"
 
 export const decoderTaggedUnionInterpreter = interpreter<DecoderURI, TaggedUnionURI>()(
   () => ({
@@ -21,10 +21,7 @@ export const decoderTaggedUnionInterpreter = interpreter<DecoderURI, TaggedUnion
                   const dec = decoders[u[tag] as any]
 
                   if (dec) {
-                    return (dec as Decoder<any>).validate(
-                      u,
-                      appendContext(c, "", dec, u)
-                    )
+                    return (dec as Decoder<any>).validate(u, c)
                   } else {
                     return fail(
                       u,
