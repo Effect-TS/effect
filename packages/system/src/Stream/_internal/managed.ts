@@ -6,6 +6,7 @@ export {
   foldCauseM,
   fork,
   map,
+  map_,
   mapM,
   mapM_,
   tap,
