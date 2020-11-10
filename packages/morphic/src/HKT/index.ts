@@ -69,7 +69,6 @@ export const getApplyConfig: <Uri extends InterpreterURIS>(
 
 export type Named<A> = {
   name?: string
-  id?: string
   conf?: A
 }
 
