@@ -42,15 +42,10 @@ const Bar = opaque<BarRaw, Bar>()(Bar_)
 
 const FooBar = makeADT("_tag")({ Foo, Bar })
 
-const isString = guard(make((F) => F.string())).is
-const isNumber = guard(make((F) => F.number())).is
+const isString = O.fromPredicate(guard(make((F) => F.string())).is)
+const isNumber = O.fromPredicate(guard(make((F) => F.number())).is)
 
-const CustomUnion = make((F) =>
-  F.union(
-    F.string(),
-    F.number()
-  )([O.fromPredicate(isString), O.fromPredicate(isNumber)])
-)
+const CustomUnion = make((F) => F.union(F.string(), F.number())([isString, isNumber]))
 
 describe("Adt", () => {
   it("non tagged unions", () => {
