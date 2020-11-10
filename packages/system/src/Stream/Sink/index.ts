@@ -108,12 +108,12 @@ export function collectAllWhileWith_<R, E, I, L, Z, S>(
  * the predicate `p`. The sink's results will be accumulated
  * using the stepping function `f`.
  */
-export function collectAllWhileWith<R, E, I, L, Z, S>(
+export function collectAllWhileWith<S, Z>(
   z: S,
   p: (z: Z) => boolean,
   f: (s: S, z: Z) => S
 ) {
-  return (self: Sink<R, E, I, L, Z>) => collectAllWhileWith_(self, z, p, f)
+  return <R, E, I, L>(self: Sink<R, E, I, L, Z>) => collectAllWhileWith_(self, z, p, f)
 }
 
 /**
@@ -122,11 +122,11 @@ export function collectAllWhileWith<R, E, I, L, Z, S>(
  *
  * This function essentially runs sinks in sequence.
  */
-export function chain_<R, R1, E, E1, I, L, L2, Z, Z2>(
+export function chain_<R, R1, E, E1, I, I2, L, L2, Z, Z2>(
   self: Sink<R, E, I, L, Z>,
-  f: (z: Z) => Sink<R1, E | E1, I, L2, Z2>
+  f: (z: Z) => Sink<R1, E1, I2, L2, Z2>
 ) {
-  return foldM_(self, (e) => (fail(e) as unknown) as Sink<R1, E1, I, L2, Z2>, f)
+  return foldM_(self, (e) => fail<E, L>(e), f)
 }
 
 /**
@@ -135,30 +135,47 @@ export function chain_<R, R1, E, E1, I, L, L2, Z, Z2>(
  *
  * This function essentially runs sinks in sequence.
  */
-export function chain<R, R1, E, E1, I, L, L2, Z, Z2>(
-  f: (z: Z) => Sink<R1, E | E1, I, L2, Z2>
-) {
-  return (self: Sink<R, E, I, L, Z>) => chain_(self, f)
+export function chain<Z, R, R1, E1, I1, L1, Z1>(f: (z: Z) => Sink<R1, E1, I1, L1, Z1>) {
+  return <E, I, L>(self: Sink<R, E, I, L, Z>) => chain_(self, f)
 }
 
-export function foldM_<R, R1, E, E2, I2, L, L2, Z, Z2>(
-  self: Sink<R, E, I2, L, Z>,
-  failure: (e: E) => Sink<R1, E2, I2, L2, Z2>,
-  success: (z: Z) => Sink<R1, E2, I2, L2, Z2>
-): Sink<R & R1, E | E2, I2, L2, Z2> {
+/**
+ * Recovers from errors by accepting one effect to execute for the case of an
+ * error, and one effect to execute for the case of success.
+ *
+ * This method has better performance than `either` since no intermediate
+ * value is allocated and does not require subsequent calls to `flatMap` to
+ * define the next effect.
+ *
+ * The error parameter of the returned `IO` may be chosen arbitrarily, since
+ * it will depend on the `IO`s returned by the given continuations.
+ */
+export function foldM_<R, E, I, L, Z, R1, E1, I1, L1, Z1, R2, E2, I2, L2, Z2>(
+  self: Sink<R, E, I, L, Z>,
+  failure: (e: E) => Sink<R1, E1, I1, L1, Z1>,
+  success: (z: Z) => Sink<R2, E2, I2, L2, Z2>
+): Sink<R & R1 & R2, E1 | E2, I & I1 & I2, L1 | L2, Z1 | Z2> {
   return new Sink(
     pipe(
       M.do,
       M.bind("switched", () => T.toManaged_(R.makeRef(false))),
       M.bind("thisPush", () => self.push),
       M.bind("thatPush", () =>
-        T.toManaged_(R.makeRef<Push.Push<R1, E2, I2, L2, Z2>>((_) => T.unit))
+        T.toManaged_(
+          R.makeRef<Push.Push<R1 & R2, E1 | E2, I & I1 & I2, L1 | L2, Z1 | Z2>>(
+            (_) => T.unit
+          )
+        )
       ),
       M.bind("openThatPush", () =>
-        M.switchable<R1, never, Push.Push<R1, E2, I2, L2, Z2>>()
+        M.switchable<
+          R1 & R2,
+          never,
+          Push.Push<R1 & R2, E1 | E2, I & I1 & I2, L1 | L2, Z1 | Z2>
+        >()
       ),
       M.map(({ openThatPush, switched, thatPush, thisPush }) => {
-        return (in_: O.Option<A.Array<I2>>) =>
+        return (in_: O.Option<A.Array<I & I1 & I2>>) =>
           T.chain_(switched.get, (sw) => {
             if (!sw) {
               return T.catchAll_(thisPush(in_), (v) => {
@@ -175,13 +192,13 @@ export function foldM_<R, R1, E, E2, I2, L, L2, Z, Z2>(
                         in_,
                         () =>
                           pipe(
-                            p(O.some((leftover as unknown) as A.Array<I2>)),
+                            p(O.some((leftover as unknown) as A.Array<I & I1 & I2>)),
                             T.when(() => leftover.length > 0),
                             T.andThen(p(O.none))
                           ),
                         () =>
                           pipe(
-                            p(O.some((leftover as unknown) as A.Array<I2>)),
+                            p(O.some((leftover as unknown) as A.Array<I & I1 & I2>)),
                             T.when(() => leftover.length > 0)
                           )
                       )
@@ -201,7 +218,7 @@ export function foldM_<R, R1, E, E2, I2, L, L2, Z, Z2>(
 /**
  * A sink that always fails with the specified error.
  */
-export function fail<E, I>(e: E): Sink<unknown, E, I, I, void> {
+export function fail<E, I>(e: E): Sink<unknown, E, I, I, never> {
   return fromPush((c) => {
     const leftover: A.Array<I> = O.fold_(
       c,
@@ -333,17 +350,21 @@ export const collectAll = <A>(): Sink<unknown, never, A, A, A.Array<A>> =>
  * Runs both sinks in parallel on the input, returning the result or the error from the
  * one that finishes first.
  */
-export const raceBoth = <R1, E1, I1 extends I, L1, Z1, I>(
-  that: Sink<R1, E1, I1, L1, Z1>
-) => <R, E, L, Z>(
+export const raceBoth = <R1, E1, I1, L1, Z1>(that: Sink<R1, E1, I1, L1, Z1>) => <
+  R,
+  E,
+  I,
+  L,
+  Z
+>(
   self: Sink<R, E, I, L, Z>
-): Sink<R1 & R, E1 | E, I1, L1 | L, E.Either<Z, Z1>> =>
+): Sink<R1 & R, E1 | E, I & I1, L1 | L, E.Either<Z, Z1>> =>
   new Sink(
     pipe(
       M.do,
       M.bind("p1", () => self.push),
       M.bind("p2", () => that.push),
-      M.map(({ p1, p2 }) => (i: O.Option<A.Array<I1>>): T.Effect<
+      M.map(({ p1, p2 }) => (i: O.Option<A.Array<I & I1>>): T.Effect<
         R1 & R,
         readonly [E.Either<E | E1, E.Either<Z, Z1>>, A.Array<L | L1>],
         void
@@ -424,6 +445,9 @@ export const foreach = <I, R1, E1>(f: (i: I) => T.Effect<R1, E1, any>) => {
   )
 }
 
+/**
+ * Drops any leftover
+ */
 export function dropLeftover<R, E, I, L, Z>(
   self: Sink<R, E, I, L, Z>
 ): Sink<R, E, I, never, Z> {
@@ -434,40 +458,45 @@ export function dropLeftover<R, E, I, L, Z>(
   )
 }
 
-export function foldChunksM<R, E, I, S>(
-  z: S,
-  contFn: (s: S) => boolean,
-  f: (a: S, i: readonly I[]) => T.Effect<R, E, S>
-): Sink<R, E, I, I, S> {
-  if (contFn(z)) {
-    return new Sink(
-      pipe(
-        M.do,
-        M.bind("state", () => T.toManaged_(R.makeRef(z))),
-        M.map(({ state }) => {
-          return (is: O.Option<readonly I[]>) =>
-            O.fold_(
-              is,
-              () => T.chain_(state.get, (s) => Push.emit(s, [])),
-              (is) =>
-                pipe(
-                  state.get,
-                  T.chain((_) => f(_, is)),
-                  T.mapError((e) => [E.left(e), []] as const),
-                  T.chain((s) => {
-                    if (contFn(s)) {
-                      return T.andThen_(state.set(s), Push.more)
-                    } else {
-                      return Push.emit(s, [])
-                    }
-                  })
-                )
-            )
-        })
+/**
+ * A sink that effectfully folds its input chunks with the provided function, termination predicate and initial state.
+ * `contFn` condition is checked only for the initial value and at the end of processing of each chunk.
+ * `f` and `contFn` must preserve chunking-invariance.
+ */
+export function foldChunksM<S>(z: S) {
+  return (contFn: (s: S) => boolean) => <R, E, I>(
+    f: (a: S, i: readonly I[]) => T.Effect<R, E, S>
+  ): Sink<R, E, I, I, S> => {
+    if (contFn(z)) {
+      return new Sink(
+        pipe(
+          M.do,
+          M.bind("state", () => T.toManaged_(R.makeRef(z))),
+          M.map(({ state }) => {
+            return (is: O.Option<readonly I[]>) =>
+              O.fold_(
+                is,
+                () => T.chain_(state.get, (s) => Push.emit(s, [])),
+                (is) =>
+                  pipe(
+                    state.get,
+                    T.chain((_) => f(_, is)),
+                    T.mapError((e) => [E.left(e), []] as const),
+                    T.chain((s) => {
+                      if (contFn(s)) {
+                        return T.andThen_(state.set(s), Push.more)
+                      } else {
+                        return Push.emit(s, [])
+                      }
+                    })
+                  )
+              )
+          })
+        )
       )
-    )
-  } else {
-    return succeed(z)
+    } else {
+      return succeed(z)
+    }
   }
 }
 
@@ -475,9 +504,8 @@ export function foldChunksM<R, E, I, S>(
  * A sink that effectfully folds its input chunks with the provided function and initial state.
  * `f` must preserve chunking-invariance.
  */
-export function foldLeftChunksM<R, E, I, S>(
-  z: S,
-  f: (s: S, i: readonly I[]) => T.Effect<R, E, S>
-): Sink<R, E, I, never, S> {
-  return dropLeftover(foldChunksM(z, (_) => true, f))
+export function foldLeftChunksM<S>(z: S) {
+  return <R, E, I>(
+    f: (s: S, i: readonly I[]) => T.Effect<R, E, S>
+  ): Sink<R, E, I, never, S> => dropLeftover(foldChunksM(z)((_) => true)(f))
 }
