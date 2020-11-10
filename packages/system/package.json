@@ -1,6 +1,6 @@
 {
   "name": "@effect-ts/system",
-  "version": "0.5.46",
+  "version": "0.6.0",
   "license": "MIT",
   "private": false,
   "scripts": {
