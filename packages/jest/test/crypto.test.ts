@@ -3,12 +3,11 @@ import * as Ex from "@effect-ts/core/Effect/Exit"
 
 import { testRuntime } from "../src/Runtime"
 import {
+  Crypto,
   CryptoLive,
-  hashPassword,
   InvalidPassword,
   PBKDF2ConfigLive,
-  PBKDF2ConfigTest,
-  verifyPassword
+  PBKDF2ConfigTest
 } from "./crypto"
 
 describe("Crypto Suite", () => {
@@ -17,6 +16,8 @@ describe("Crypto Suite", () => {
 
     it("should hash and verify password", () =>
       T.gen(function* (_) {
+        const { hashPassword, verifyPassword } = yield* _(Crypto)
+
         const password = "wuihfjierngjkrnjgwrgn"
         const hash = yield* _(hashPassword(password))
         const verify = yield* _(T.result(verifyPassword(password, hash)))
@@ -26,6 +27,8 @@ describe("Crypto Suite", () => {
 
     it("should hash and not verify password", () =>
       T.gen(function* (_) {
+        const { hashPassword, verifyPassword } = yield* _(Crypto)
+
         const password = "wuihfjierngjkrnjgwrgn"
         const passwordBad = "wuIhfjierngjkrnjgwrgn"
         const hash = yield* _(hashPassword(password))
@@ -39,6 +42,8 @@ describe("Crypto Suite", () => {
 
     it("should hash and verify password", () =>
       T.gen(function* (_) {
+        const { hashPassword, verifyPassword } = yield* _(Crypto)
+
         const password = "wuihfjierngjkrnjgwrgn"
         const hash = yield* _(hashPassword(password))
         const verify = yield* _(T.result(verifyPassword(password, hash)))
@@ -48,6 +53,8 @@ describe("Crypto Suite", () => {
 
     it("should hash and not verify password", () =>
       T.gen(function* (_) {
+        const { hashPassword, verifyPassword } = yield* _(Crypto)
+
         const password = "wuihfjierngjkrnjgwrgn"
         const passwordBad = "wuIhfjierngjkrnjgwrgn"
         const hash = yield* _(hashPassword(password))
