@@ -71,6 +71,7 @@
       "Effect/FiberRef",
       "Effect/Layer",
       "Effect/Managed",
+      "Effect/Managed/ReleaseMap",
       "Effect/Promise",
       "Effect/Queue",
       "Effect/Random",
