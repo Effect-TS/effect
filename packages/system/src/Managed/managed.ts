@@ -1,5 +1,5 @@
 import * as T from "./deps"
-import type { Finalizer, ReleaseMap } from "./releaseMap"
+import type { Finalizer, ReleaseMap } from "./ReleaseMap"
 
 export const ManagedURI = "@matechs/core/Eff/ManagedURI"
 export type ManagedURI = typeof ManagedURI

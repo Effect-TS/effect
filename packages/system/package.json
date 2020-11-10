@@ -39,6 +39,7 @@
       "Layer",
       "List",
       "Managed",
+      "Managed/ReleaseMap",
       "Map",
       "Mutable",
       "NonEmptyArray",
