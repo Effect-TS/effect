@@ -1,10 +1,12 @@
 export { andThen, andThen_ } from "../../Effect/andThen"
-export { as_ } from "../../Effect/as"
+export { as_, as } from "../../Effect/as"
 export { asSomeError } from "../../Effect/asSomeError"
 export { asUnit } from "../../Effect/asUnit"
 export { bimap } from "../../Effect/bimap"
 export { Canceler } from "../../Effect/Canceler"
 export { catchAllCause, catchAllCause_ } from "../../Effect/catchAllCause_"
+export { catchAll_ } from "../../Effect/catchAll"
+export { when } from "../../Effect/when"
 export {
   chain,
   chain_,
@@ -38,7 +40,7 @@ export { tap } from "../../Effect/tap"
 export { tapCause } from "../../Effect/tapCause"
 export { tapError } from "../../Effect/tapError"
 export { to } from "../../Effect/to"
-export { toManaged } from "../../Effect/toManaged"
+export { toManaged, toManaged_ } from "../../Effect/toManaged"
 export { uninterruptible } from "../../Effect/uninterruptible"
 export { uninterruptibleMask } from "../../Effect/uninterruptibleMask"
 export { zipWith } from "../../Effect/zipWith"

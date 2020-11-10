@@ -638,8 +638,18 @@ export function reserve<R, E, A>(reservation: Reservation<R, E, A>) {
 /**
  * Returns a managed that effectfully peeks at the acquired resource.
  */
+export function tap_<A, R, R2, E, E2>(
+  self: Managed<R, E, A>,
+  f: (a: A) => Managed<R2, E2, any>
+) {
+  return chain_(self, (a) => map_(f(a), () => a))
+}
+
+/**
+ * Returns a managed that effectfully peeks at the acquired resource.
+ */
 export function tap<A, R2, E2>(f: (a: A) => Managed<R2, E2, any>) {
-  return <R, E>(self: Managed<R, E, A>) => chain_(self, (a) => map_(f(a), () => a))
+  return <R, E>(self: Managed<R, E, A>) => tap_(self, f)
 }
 
 /**
