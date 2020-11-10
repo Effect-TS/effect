@@ -1,5 +1,5 @@
 import { flow } from "@effect-ts/core/Function"
-import { mapError } from "@effect-ts/core/Sync"
+import { mapError, runEither } from "@effect-ts/core/Sync"
 
 import type { M, Summoner } from "../Batteries/summoner"
 import { summonFor } from "../Batteries/summoner"
@@ -51,4 +51,12 @@ export function decoder<E, A>(F: M<{}, E, A>): Decoder<A> {
 
 export function decodeReport<E, A>(F: M<{}, E, A>) {
   return flow(decoder(F).decode, mapError(report))
+}
+
+export function runDecode<E, A>(F: M<{}, E, A>) {
+  return flow(decoder(F).decode, runEither)
+}
+
+export function decode<E, A>(F: M<{}, E, A>) {
+  return decoder(F).decode
 }

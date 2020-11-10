@@ -1,3 +1,6 @@
+import { flow } from "@effect-ts/core/Function"
+import { run } from "@effect-ts/core/Sync"
+
 import type { M, Summoner } from "../Batteries/summoner"
 import { summonFor } from "../Batteries/summoner"
 import type { Materialized } from "../Batteries/usage/materializer"
@@ -29,4 +32,12 @@ export function encoder<E, A>(F: M<{}, E, A>): Encoder<A, E> {
   const d = defDerive(F)
   encoders.set(F, d)
   return d
+}
+
+export function encode<E, A>(F: M<{}, E, A>) {
+  return encoder(F).encode
+}
+
+export function runEncode<E, A>(F: M<{}, E, A>) {
+  return flow(encoder(F).encode, run)
 }
