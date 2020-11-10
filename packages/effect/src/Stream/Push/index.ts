@@ -36,12 +36,12 @@ export function halt<E>(
 /**
  * Decorates a Push with a Effect value that re-initializes it with a fresh state.
  */
-export function restartable<R, E, I, L, Z>(
-  sink: M.Managed<R, never, Push<R, E, I, L, Z>>
-): M.Managed<R, never, [Push<R, E, I, L, Z>, T.Effect<R, never, void>]> {
+export function restartable<R, R1, E, I, L, Z>(
+  sink: M.Managed<R, never, Push<R1, E, I, L, Z>>
+): M.Managed<R, never, [Push<R1, E, I, L, Z>, T.Effect<R, never, void>]> {
   return pipe(
     M.do,
-    M.bind("switchSink", () => M.switchable<R, never, Push<R, E, I, L, Z>>()),
+    M.bind("switchSink", () => M.switchable<R, never, Push<R1, E, I, L, Z>>()),
     M.bind("initialSink", ({ switchSink }) => T.toManaged_(switchSink(sink))),
     M.bind("currSink", ({ initialSink }) => T.toManaged_(R.makeRef(initialSink))),
     M.map(({ currSink, switchSink }) => {
