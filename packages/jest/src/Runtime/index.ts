@@ -1,7 +1,7 @@
 import * as T from "@effect-ts/core/Effect"
 import * as Ex from "@effect-ts/core/Effect/Exit"
 import * as L from "@effect-ts/core/Effect/Layer"
-import * as M from "@effect-ts/core/Effect/Managed"
+import * as RM from "@effect-ts/core/Effect/Managed/ReleaseMap"
 import * as Pr from "@effect-ts/core/Effect/Promise"
 import { pipe, tuple } from "@effect-ts/core/Function"
 import { None } from "@effect-ts/system/Fiber"
@@ -26,13 +26,13 @@ export function testRuntime<R>(
   } = {}
 ): TestRuntime<R> {
   const promiseEnv = Pr.unsafeMake<never, R>(None)
-  const promiseRelMap = Pr.unsafeMake<never, M.ReleaseMap>(None)
+  const promiseRelMap = Pr.unsafeMake<never, RM.ReleaseMap>(None)
 
   beforeAll(
     () =>
       pipe(
         T.do,
-        T.bind("rm", () => M.makeReleaseMap),
+        T.bind("rm", () => RM.makeReleaseMap),
         T.tap(({ rm }) => pipe(promiseRelMap, Pr.succeed(rm))),
         T.bind("res", ({ rm }) =>
           T.provideSome_(L.build(self).effect, (r: T.DefaultEnv) => tuple(r, rm))
@@ -50,7 +50,7 @@ export function testRuntime<R>(
       pipe(
         promiseRelMap,
         Pr.await,
-        T.chain((rm) => M.releaseAll(Ex.succeed(undefined), T.sequential)(rm)),
+        T.chain((rm) => RM.releaseAll(Ex.succeed(undefined), T.sequential)(rm)),
         T.runPromise
       ),
     close
