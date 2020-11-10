@@ -9,6 +9,7 @@ import { eqRecursiveInterpreter } from "./recursive"
 import { eqRefinedInterpreter } from "./refined"
 import { eqSetInterpreter } from "./set"
 import { eqTaggedUnionInterpreter } from "./tagged-union"
+import { eqUnionInterpreter } from "./union"
 import { eqUnknownInterpreter } from "./unknown"
 
 export const allModelEq = <Env extends AnyEnv>() =>
@@ -22,7 +23,8 @@ export const allModelEq = <Env extends AnyEnv>() =>
     eqTaggedUnionInterpreter<Env>(),
     eqRecursiveInterpreter<Env>(),
     eqRecordMapInterpreter<Env>(),
-    eqSetInterpreter<Env>()
+    eqSetInterpreter<Env>(),
+    eqUnionInterpreter<Env>()
   )
 
 export const modelEqInterpreter = memo(allModelEq) as typeof allModelEq

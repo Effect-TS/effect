@@ -2,7 +2,7 @@ import type { UnionURI } from "../../Algebra/Union"
 import { interpreter } from "../../HKT"
 import { eqApplyConfig, EqType, EqURI } from "../base"
 
-export const eqTaggedUnionInterpreter = interpreter<EqURI, UnionURI>()(() => ({
+export const eqUnionInterpreter = interpreter<EqURI, UnionURI>()(() => ({
   _F: EqURI,
   union: (...types) => (guards, config) => (env) => {
     const equals = types.map((a) => a(env).eq)
