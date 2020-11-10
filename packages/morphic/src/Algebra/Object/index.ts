@@ -61,7 +61,7 @@ export interface AlgebraObjects<F extends InterpreterURIS, Env extends AnyEnv> {
   ) => Kind<F, Env, Partial<Readonly<PropsE<Props>>>, Partial<Readonly<PropsA<Props>>>>
   both: <
     Props extends { [k in keyof Props]: HKT<Env, any, any> },
-    PropsPartial extends { [k in keyof Props]: HKT<Env, any, any> }
+    PropsPartial extends { [k in keyof PropsPartial]: HKT<Env, any, any> }
   >(
     props: PropsKind<F, PropsE<Props>, PropsA<Props>, Env>,
     partial: PropsKind<F, PropsE<PropsPartial>, PropsA<PropsPartial>, Env>,

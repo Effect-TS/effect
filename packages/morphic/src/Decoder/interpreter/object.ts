@@ -78,8 +78,14 @@ function partialDecoder<PropsA, PropsE, Env extends AnyEnv>(
   return {
     validate: (u, c) => {
       if (isUnknownRecord(u)) {
+        const r = {}
+        for (const k of Object.keys(u)) {
+          if (typeof u[k] !== "undefined" && decoder[k]) {
+            r[k] = u[k]
+          }
+        }
         return pipe(
-          u,
+          r,
           foreachRecordWithIndex((k, a) =>
             decoder[k]
               ? (decoder[k] as Validate<any>).validate(a, {
