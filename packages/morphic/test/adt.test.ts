@@ -5,6 +5,7 @@ import * as Sync from "@effect-ts/core/Sync"
 import type { AType, EType } from "../src"
 import { make, makeADT, opaque } from "../src"
 import { decode, report } from "../src/Decoder"
+import { guard } from "../src/Guard"
 import { hash } from "../src/Hash"
 
 const Foo_ = make((F) =>
@@ -41,14 +42,14 @@ const Bar = opaque<BarRaw, Bar>()(Bar_)
 
 const FooBar = makeADT("_tag")({ Foo, Bar })
 
+const isString = guard(make((F) => F.string())).is
+const isNumber = guard(make((F) => F.number())).is
+
 const CustomUnion = make((F) =>
   F.union(
     F.string(),
     F.number()
-  )([
-    (_) => (typeof _ === "string" ? O.some(_) : O.none),
-    (_) => (typeof _ === "number" ? O.some(_) : O.none)
-  ])
+  )([O.fromPredicate(isString), O.fromPredicate(isNumber)])
 )
 
 describe("Adt", () => {
