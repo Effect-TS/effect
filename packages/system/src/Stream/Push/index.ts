@@ -7,9 +7,9 @@ import * as E from "../../Either"
 import { pipe } from "../../Function"
 import type * as O from "../../Option"
 
-export type Push<R, E, I, L, Z> = (
-  _: O.Option<A.Array<I>>
-) => T.Effect<R, readonly [E.Either<E, Z>, A.Array<L>], void>
+export interface Push<R, E, I, L, Z> {
+  (_: O.Option<A.Array<I>>): T.Effect<R, readonly [E.Either<E, Z>, A.Array<L>], void>
+}
 
 export function emit<I, Z>(
   z: Z,
