@@ -9,6 +9,7 @@ import { strictRecursiveInterpreter } from "./recursive"
 import { strictRefinedInterpreter } from "./refined"
 import { strictSetInterpreter } from "./set"
 import { strictTaggedUnionInterpreter } from "./tagged-union"
+import { strictUnionInterpreter } from "./union"
 import { strictUnknownInterpreter } from "./unknown"
 
 export const allModelStrict = <Env extends AnyEnv>() =>
@@ -22,7 +23,8 @@ export const allModelStrict = <Env extends AnyEnv>() =>
     strictTaggedUnionInterpreter<Env>(),
     strictRecursiveInterpreter<Env>(),
     strictRecordInterpreter<Env>(),
-    strictSetInterpreter<Env>()
+    strictSetInterpreter<Env>(),
+    strictUnionInterpreter<Env>()
   )
 
 export const modelStrictInterpreter = memo(allModelStrict) as typeof allModelStrict

@@ -9,6 +9,7 @@ import { encoderRecursiveInterpreter } from "./recursive"
 import { encoderRefinedInterpreter } from "./refined"
 import { encoderSetInterpreter } from "./set"
 import { encoderTaggedUnionInterpreter } from "./tagged-union"
+import { encoderUnionInterpreter } from "./union"
 import { encoderUnknownInterpreter } from "./unknown"
 
 export const allModelEncoder = <Env extends AnyEnv>() =>
@@ -22,7 +23,8 @@ export const allModelEncoder = <Env extends AnyEnv>() =>
     encoderTaggedUnionInterpreter<Env>(),
     encoderRecursiveInterpreter<Env>(),
     encoderRecordInterpreter<Env>(),
-    encoderSetInterpreter<Env>()
+    encoderSetInterpreter<Env>(),
+    encoderUnionInterpreter<Env>()
   )
 
 export const modelEncoderInterpreter = memo(allModelEncoder) as typeof allModelEncoder

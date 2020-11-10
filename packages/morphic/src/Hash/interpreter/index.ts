@@ -9,6 +9,7 @@ import { hashRecursiveInterpreter } from "./recursive"
 import { hashRefinedInterpreter } from "./refined"
 import { hashSetInterpreter } from "./set"
 import { hashTaggedUnionInterpreter } from "./tagged-union"
+import { hashUnionInterpreter } from "./union"
 import { hashUnknownInterpreter } from "./unknown"
 
 export const allModelHash = <Env extends AnyEnv>() =>
@@ -22,7 +23,8 @@ export const allModelHash = <Env extends AnyEnv>() =>
     hashTaggedUnionInterpreter<Env>(),
     hashRecursiveInterpreter<Env>(),
     hashSetInterpreter<Env>(),
-    hashRecordInterpreter<Env>()
+    hashRecordInterpreter<Env>(),
+    hashUnionInterpreter<Env>()
   )
 
 export const modelHashInterpreter = memo(allModelHash) as typeof allModelHash

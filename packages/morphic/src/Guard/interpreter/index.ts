@@ -9,6 +9,7 @@ import { guardRecursiveInterpreter } from "./recursive"
 import { guardRefinedInterpreter } from "./refined"
 import { guardSetInterpreter } from "./set"
 import { guardTaggedUnionInterpreter } from "./tagged-union"
+import { guardUnionInterpreter } from "./union"
 import { guardUnknownInterpreter } from "./unknown"
 
 export const allModelGuard = <Env extends AnyEnv>() =>
@@ -22,7 +23,8 @@ export const allModelGuard = <Env extends AnyEnv>() =>
     guardTaggedUnionInterpreter<Env>(),
     guardRecursiveInterpreter<Env>(),
     guardRecordInterpreter<Env>(),
-    guardSetInterpreter<Env>()
+    guardSetInterpreter<Env>(),
+    guardUnionInterpreter<Env>()
   )
 
 export const modelGuardInterpreter = memo(allModelGuard) as typeof allModelGuard

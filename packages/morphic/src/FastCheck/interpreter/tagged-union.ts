@@ -13,7 +13,7 @@ export const fcTaggedUnionInterpreter = interpreter<FastCheckURI, TaggedUnionURI
         pipe(
           collect(dic, (_, getArb) => getArb(env).arb),
           (arbs) =>
-            fcApplyConfig(config?.conf)(accessFC(env).oneof(...arbs), env, {
+            fcApplyConfig(config?.conf)(accessFC(env).oneof(...arbs) as any, env, {
               arbs: arbs as any
             })
         )

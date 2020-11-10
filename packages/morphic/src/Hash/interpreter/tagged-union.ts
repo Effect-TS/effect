@@ -7,14 +7,14 @@ export const hashTaggedUnionInterpreter = interpreter<HashURI, TaggedUnionURI>()
   () => ({
     _F: HashURI,
     taggedUnion: (tag, types, config) => (env) => {
-      const hashs = mapRecord(types, (a) => a(env).hash)
+      const hashs = mapRecord(types as any, (a) => a(env).hash)
       return new HashType(
         hashApplyConfig(config?.conf)(
           {
-            hash: Object.keys(hashs)
+            hash: `Tagged(${tag})(${Object.keys(hashs)
               .map((t) => hashs[t].hash)
               .sort()
-              .join(" | ")
+              .join(" | ")})`
           },
           env,
           {

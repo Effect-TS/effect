@@ -13,7 +13,8 @@ export const encoderTaggedUnionInterpreter = interpreter<EncoderURI, TaggedUnion
       return new EncoderType(
         encoderApplyConfig(config?.conf)(
           {
-            encode: (u) => (encoders[u[tag] as any] as Encoder<any, any>).encode(u)
+            encode: (u) =>
+              (encoders[u[tag as any] as any] as Encoder<any, any>).encode(u)
           },
           env,
           {

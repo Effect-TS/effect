@@ -9,6 +9,7 @@ import { fcRecursiveInterpreter } from "./recursive"
 import { fcRefinedInterpreter } from "./refined"
 import { fcSetInterpreter } from "./set"
 import { fcTaggedUnionInterpreter } from "./tagged-union"
+import { fcUnionInterpreter } from "./union"
 import { fcUnknownInterpreter } from "./unknown"
 
 export const allModelFC = <Env extends AnyEnv>() =>
@@ -22,7 +23,8 @@ export const allModelFC = <Env extends AnyEnv>() =>
     fcTaggedUnionInterpreter<Env>(),
     fcRecursiveInterpreter<Env>(),
     fcStrMapInterpreter<Env>(),
-    fcSetInterpreter<Env>()
+    fcSetInterpreter<Env>(),
+    fcUnionInterpreter<Env>()
   )
 
 export const modelFcInterpreter = memo(allModelFC) as typeof allModelFC

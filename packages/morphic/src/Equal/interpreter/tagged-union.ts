@@ -14,8 +14,8 @@ export const eqTaggedUnionInterpreter = interpreter<EqURI, TaggedUnionURI>()(() 
             if (a === b) {
               return true
             } else {
-              const aTag = a[tag]
-              return aTag === b[tag] ? equals[aTag as any].equals(b)(a) : false
+              const aTag = a[tag as any]
+              return aTag === b[tag as any] ? equals[aTag as any].equals(b)(a) : false
             }
           }
         },

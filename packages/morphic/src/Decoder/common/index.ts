@@ -1,8 +1,8 @@
 import * as T from "@effect-ts/core/Sync"
 
-import type { AlgebraNoUnion } from "../../Batteries/program"
+import type { CoreAlgebra } from "../../Batteries/program"
 
-export type CodecTypes = keyof AlgebraNoUnion<any, any>
+export type CodecTypes = keyof CoreAlgebra<any, any>
 
 export interface Decoder<A> {
   readonly codecType: CodecTypes

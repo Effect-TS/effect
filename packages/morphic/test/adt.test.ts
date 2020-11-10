@@ -1,4 +1,5 @@
 import * as E from "@effect-ts/core/Classic/Either"
+import * as O from "@effect-ts/core/Classic/Option"
 import * as Sync from "@effect-ts/core/Sync"
 
 import type { AType, EType } from "../src"
@@ -40,7 +41,24 @@ const Bar = opaque<BarRaw, Bar>()(Bar_)
 
 const FooBar = makeADT("_tag")({ Foo, Bar })
 
+const CustomUnion = make((F) =>
+  F.union(
+    F.string(),
+    F.number()
+  )([
+    (_) => (typeof _ === "string" ? O.some(_) : O.none),
+    (_) => (typeof _ === "number" ? O.some(_) : O.none)
+  ])
+)
+
 describe("Adt", () => {
+  it("non tagged unions", () => {
+    expect(Sync.runEither(report(decode(CustomUnion)("ok")))).toEqual(E.right("ok"))
+    expect(Sync.runEither(report(decode(CustomUnion)(1)))).toEqual(E.right(1))
+    expect(Sync.runEither(report(decode(CustomUnion)(null)))).toEqual(
+      E.left(["Expecting one of:\n    String\n    Number\nbut instead got: null"])
+    )
+  })
   it("decoder", () => {
     expect(Sync.runEither(decode(FooBar)({ _tag: "Foo", foo: "foo" }))).toEqual(
       E.right<Foo>({ _tag: "Foo", foo: "foo" })
@@ -61,7 +79,7 @@ describe("Adt", () => {
   })
   it("Hashes adt", () => {
     expect(hash(FooBar).hash).toEqual(
-      '{"_tag":"Bar","bar":"string"} | {"_tag":"Foo","foo":"string"}'
+      'Tagged(_tag)({"_tag":"Bar","bar":"string"} | {"_tag":"Foo","foo":"string"})'
     )
   })
 })

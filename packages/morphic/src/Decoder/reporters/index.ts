@@ -11,7 +11,7 @@ import * as S from "@effect-ts/core/Sync"
 import type * as t from "../common"
 import { takeUntil } from "./utils"
 
-const isUnionType = (_: t.ContextEntry) => false
+const isUnionType = (_: t.ContextEntry) => _.type.codecType === "union"
 
 const jsToString = (value: unknown) =>
   value === undefined ? "undefined" : JSON.stringify(value)

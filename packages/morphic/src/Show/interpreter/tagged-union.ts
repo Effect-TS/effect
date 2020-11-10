@@ -11,7 +11,7 @@ export const showTaggedUnionInterpreter = interpreter<ShowURI, TaggedUnionURI>()
       return new ShowType(
         showApplyConfig(config?.conf)(
           {
-            show: (a): string => (shows as any)[a[tag]].show(a)
+            show: (a): string => (shows as any)[a[tag as any]].show(a)
           },
           env,
           {
