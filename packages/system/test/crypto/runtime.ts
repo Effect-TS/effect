@@ -3,7 +3,7 @@ import * as T from "../../src/Effect"
 import * as Ex from "../../src/Exit"
 import { pipe, tuple } from "../../src/Function"
 import * as L from "../../src/Layer"
-import * as M from "../../src/Managed"
+import * as M from "../../src/Managed/ReleaseMap"
 import { AtomicReference } from "../../src/Support/AtomicReference"
 
 export interface TestRuntime<R> {
