@@ -1,4 +1,5 @@
-import type { Cause } from "../../Cause"
+import * as Cause from "../../Cause"
+import type { HasClock } from "../../Clock"
 import * as T from "../../Effect"
 import * as E from "../../Either"
 import * as Ex from "../../Exit"
@@ -6,6 +7,7 @@ import { constVoid, flow, identity, pipe, tuple } from "../../Function"
 import * as L from "../../Layer"
 import * as O from "../../Option"
 import * as P from "../../Promise"
+import type { Schedule } from "../../Schedule"
 import {
   chain,
   chain_,
@@ -14,6 +16,7 @@ import {
   map_,
   mapM_,
   provideSome_,
+  useNow,
   zip_
 } from "../core"
 import { fromEffect } from "../fromEffect"
@@ -61,7 +64,7 @@ export function mapError<E, E2>(f: (e: E) => E2) {
  */
 export function mapErrorCause_<R, A, E, E2>(
   self: Managed<R, E, A>,
-  f: (e: Cause<E>) => Cause<E2>
+  f: (e: Cause.Cause<E>) => Cause.Cause<E2>
 ) {
   return new Managed(T.mapErrorCause_(self.effect, f))
 }
@@ -69,7 +72,7 @@ export function mapErrorCause_<R, A, E, E2>(
 /**
  * Returns an effect whose full failure is mapped by the specified `f` function.
  */
-export function mapErrorCause<E, E2>(f: (e: Cause<E>) => Cause<E2>) {
+export function mapErrorCause<E, E2>(f: (e: Cause.Cause<E>) => Cause.Cause<E2>) {
   return <R, A>(self: Managed<R, E, A>) => mapErrorCause_(self, f)
 }
 
@@ -318,7 +321,7 @@ export function catchAll<E, R2, E2, A2>(f: (e: E) => Managed<R2, E2, A2>) {
  */
 export function catchAllCause_<R, E, A, R2, E2, A2>(
   self: Managed<R, E, A>,
-  f: (e: Cause<E>) => Managed<R2, E2, A2>
+  f: (e: Cause.Cause<E>) => Managed<R2, E2, A2>
 ) {
   return foldCauseM_(self, f, succeed)
 }
@@ -326,7 +329,9 @@ export function catchAllCause_<R, E, A, R2, E2, A2>(
 /**
  * Recovers from all errors with provided Cause.
  */
-export function catchAllCause<E, R2, E2, A2>(f: (e: Cause<E>) => Managed<R2, E2, A2>) {
+export function catchAllCause<E, R2, E2, A2>(
+  f: (e: Cause.Cause<E>) => Managed<R2, E2, A2>
+) {
   return <R, A>(self: Managed<R, E, A>) => foldCauseM_(self, f, succeed)
 }
 
@@ -352,7 +357,7 @@ export function catchSome<E, R2, E2, A2>(pf: (e: E) => O.Option<Managed<R2, E2, 
  */
 export function catchSomeCause_<R, E, A, R2, E2, A2>(
   self: Managed<R, E, A>,
-  pf: (e: Cause<E>) => O.Option<Managed<R2, E2, A2>>
+  pf: (e: Cause.Cause<E>) => O.Option<Managed<R2, E2, A2>>
 ): Managed<R & R2, E | E2, A | A2> {
   return catchAllCause_(self, (e) => O.getOrElse_(pf(e), () => halt<E | E2>(e)))
 }
@@ -361,7 +366,7 @@ export function catchSomeCause_<R, E, A, R2, E2, A2>(
  * Recovers from some or all of the error cases.
  */
 export function catchSomeCause<R, E, A, R2, E2, A2>(
-  pf: (e: Cause<E>) => O.Option<Managed<R2, E2, A2>>
+  pf: (e: Cause.Cause<E>) => O.Option<Managed<R2, E2, A2>>
 ) {
   return (self: Managed<R, E, A>) => catchSomeCause_(self, pf)
 }
@@ -538,7 +543,7 @@ export function flattenM<R2, E2, R, E, A>(self: Managed<R2, E2, T.Effect<R, E, A
  */
 export function foldCause_<R, E, A, B, C>(
   self: Managed<R, E, A>,
-  f: (e: Cause<E>) => B,
+  f: (e: Cause.Cause<E>) => B,
   g: (a: A) => C
 ) {
   return fold_(sandbox(self), f, g)
@@ -547,7 +552,7 @@ export function foldCause_<R, E, A, B, C>(
 /**
  * A more powerful version of `fold` that allows recovering from any kind of failure except interruptions.
  */
-export function foldCause<E, A, B, C>(f: (e: Cause<E>) => B, g: (a: A) => C) {
+export function foldCause<E, A, B, C>(f: (e: Cause.Cause<E>) => B, g: (a: A) => C) {
   return <R>(self: Managed<R, E, A>) => fold_(sandbox(self), f, g)
 }
 
@@ -794,4 +799,210 @@ export function provideSomeLayer_<R0, E, A, R2, E2, R>(
   layer: L.Layer<R2, E2, R>
 ): Managed<R0 & R2, E | E2, A> {
   return provideSomeLayer(layer)(self)
+}
+
+/**
+ * Keeps some of the errors, and terminates the fiber with the rest, using
+ * the specified function to convert the `E` into a `Throwable`.
+ */
+export function refineOrDieWith<E, E1>(
+  pf: (e: E) => O.Option<E1>,
+  f: (e: E) => unknown
+) {
+  return <R, A>(self: Managed<R, E, A>) => refineOrDieWith_(self, pf, f)
+}
+
+/**
+ * Keeps some of the errors, and terminates the fiber with the rest, using
+ * the specified function to convert the `E` into a `Throwable`.
+ */
+export function refineOrDieWith_<R, A, E, E1>(
+  self: Managed<R, E, A>,
+  pf: (e: E) => O.Option<E1>,
+  f: (e: E) => unknown
+) {
+  return catchAll_(self, (e) =>
+    pipe(
+      e,
+      pf,
+      O.fold(
+        () => die(f(e)),
+        (e1) => fail(e1)
+      )
+    )
+  )
+}
+
+/**
+ * Keeps some of the errors, and terminates the fiber with the rest
+ */
+export function refineOrDie<E, E1>(pf: (e: E) => O.Option<E1>) {
+  return refineOrDieWith(pf, identity)
+}
+
+/**
+ * Keeps some of the errors, and terminates the fiber with the rest
+ */
+export function refineOrDie_<R, A, E, E1>(
+  self: Managed<R, E, A>,
+  pf: (e: E) => O.Option<E1>
+) {
+  return refineOrDie(pf)(self)
+}
+
+/**
+ * Returns a managed that dies with the specified `unknown`. This method
+ * can be used for terminating a fiber because a defect has been
+ * detected in the code.
+ */
+export function die(e: unknown) {
+  return halt(Cause.Die(e))
+}
+
+/**
+ * Continue with the returned computation if the `PartialFunction` matches,
+ * translating the successful match into a failure, otherwise continue with
+ * our held value.
+ */
+export function rejectM<A, R1, E1>(pf: (a: A) => O.Option<Managed<R1, E1, E1>>) {
+  return <R, E>(self: Managed<R, E, A>): Managed<R & R1, E | E1, A> =>
+    rejectM_(self, pf)
+}
+
+/**
+ * Continue with the returned computation if the `PartialFunction` matches,
+ * translating the successful match into a failure, otherwise continue with
+ * our held value.
+ */
+export function rejectM_<R, E, A, R1, E1>(
+  self: Managed<R, E, A>,
+  pf: (a: A) => O.Option<Managed<R1, E1, E1>>
+) {
+  return chain_(self, (a) =>
+    O.fold_(
+      pf(a),
+      () => succeed(a),
+      (_) => chain_(_, (e1) => fail(e1))
+    )
+  )
+}
+
+/**
+ * Fail with the returned value if the `PartialFunction` matches, otherwise
+ * continue with our held value.
+ */
+export function reject<A, E1>(pf: (a: A) => O.Option<E1>) {
+  return <R, E>(self: Managed<R, E, A>) => reject_(self, pf)
+}
+
+/**
+ * Fail with the returned value if the `PartialFunction` matches, otherwise
+ * continue with our held value.
+ */
+export function reject_<R, E, A, E1>(
+  self: Managed<R, E, A>,
+  pf: (a: A) => O.Option<E1>
+) {
+  return rejectM_(self, flow(pf, O.map(fail)))
+}
+
+/**
+ * Runs all the finalizers associated with this scope. This is useful to
+ * conceptually "close" a scope when composing multiple managed effects.
+ * Note that this is only safe if the result of this managed effect is valid
+ * outside its scope.
+ */
+export function release<R, E, A>(self: Managed<R, E, A>) {
+  return fromEffect(useNow(self))
+}
+
+/**
+ * Returns an effect that retries this effect with the specified schedule when it fails, until
+ * the schedule is done, then both the value produced by the schedule together with the last
+ * error are passed to the specified recovery function.
+ */
+export function retryOrElseEither_<R, E, A, R1, O, R2, E2, A2>(
+  self: Managed<R, E, A>,
+  policy: Schedule<R1, E, O>,
+  orElse: (e: E, o: O) => Managed<R2, E2, A2>
+): Managed<R & R1 & R2 & HasClock, E2, E.Either<A2, A>> {
+  return new Managed(
+    T.map_(
+      T.accessM(([env, releaseMap]: readonly [R & R1 & R2 & HasClock, ReleaseMap]) =>
+        T.provideAll_(
+          T.retryOrElseEither_(
+            T.provideAll_(self.effect, tuple(env, releaseMap)),
+            policy,
+            (e, o) => T.provideAll_(orElse(e, o).effect, tuple(env, releaseMap))
+          ),
+          env
+        )
+      ),
+      E.fold(
+        ([f, a]) => tuple<[RM.Finalizer, E.Either<A2, A>]>(f, E.left(a)),
+        ([f, a]) => tuple<[RM.Finalizer, E.Either<A2, A>]>(f, E.right(a))
+      )
+    )
+  )
+}
+
+/**
+ * Returns an effect that retries this effect with the specified schedule when it fails, until
+ * the schedule is done, then both the value produced by the schedule together with the last
+ * error are passed to the specified recovery function.
+ */
+export function retryOrElseEither<E, R1, O, R2, E2, A2>(
+  policy: Schedule<R1, E, O>,
+  orElse: (e: E, o: O) => Managed<R2, E2, A2>
+) {
+  return <R, A>(self: Managed<R, E, A>) => retryOrElseEither_(self, policy, orElse)
+}
+
+/**
+ * Retries with the specified schedule, until it fails, and then both the
+ * value produced by the schedule together with the last error are passed to
+ * the recovery function.
+ */
+export function retryOrElse_<R, E, A, R1, O, R2, E2, A2>(
+  self: Managed<R, E, A>,
+  policy: Schedule<R1, E, O>,
+  orElse: (e: E, o: O) => Managed<R2, E2, A2>
+): Managed<R & R1 & R2 & HasClock, E2, A | A2> {
+  return map_(retryOrElseEither_(self, policy, orElse), E.fold(identity, identity))
+}
+
+/**
+ * Retries with the specified schedule, until it fails, and then both the
+ * value produced by the schedule together with the last error are passed to
+ * the recovery function.
+ */
+export function retryOrElse<E, R1, O, R2, E2, A2>(
+  policy: Schedule<R1, E, O>,
+  orElse: (e: E, o: O) => Managed<R2, E2, A2>
+) {
+  return <R, A>(self: Managed<R, E, A>) => retryOrElse_(self, policy, orElse)
+}
+
+/**
+ * Retries with the specified retry policy.
+ * Retries are done following the failure of the original `io` (up to a fixed maximum with
+ * `once` or `recurs` for example), so that that `io.retry(Schedule.once)` means
+ * "execute `io` and in case of failure, try again once".
+ */
+export function retry_<R, E, A, R1, O>(
+  self: Managed<R, E, A>,
+  policy: Schedule<R1, E, O>
+): Managed<R & R1 & HasClock, E, A> {
+  return retryOrElse_(self, policy, (e, _) => fail(e))
+}
+
+/**
+ * Retries with the specified retry policy.
+ * Retries are done following the failure of the original `io` (up to a fixed maximum with
+ * `once` or `recurs` for example), so that that `io.retry(Schedule.once)` means
+ * "execute `io` and in case of failure, try again once".
+ */
+export function retry<R1, E, O>(policy: Schedule<R1, E, O>) {
+  return <R, A>(self: Managed<R, E, A>): Managed<R & R1 & HasClock, E, A> =>
+    retry_(self, policy)
 }
