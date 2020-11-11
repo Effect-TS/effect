@@ -1,6 +1,6 @@
 import * as A from "@effect-ts/core/Classic/Array"
 import * as S from "@effect-ts/core/Classic/Set"
-import { pipe } from "@effect-ts/core/Function"
+import { flow, pipe } from "@effect-ts/core/Function"
 import * as T from "@effect-ts/core/Sync"
 
 import type { SetURI } from "../../Algebra/Set"
@@ -16,15 +16,7 @@ export const encoderSetInterpreter = interpreter<EncoderURI, SetURI>()(() => ({
         new EncoderType(
           encoderApplyConfig(config?.conf)(
             {
-              encode: (u) =>
-                Array.isArray(u)
-                  ? pipe(u, S.toArray(_), A.foreachF(T.Applicative)(encoder.encode))
-                  : fail([
-                      {
-                        actual: u,
-                        message: `${typeof u} is not a Set`
-                      }
-                    ])
+              encode: flow(S.toArray(_), A.foreachF(T.Applicative)(encoder.encode))
             },
             env,
             { encoder }
