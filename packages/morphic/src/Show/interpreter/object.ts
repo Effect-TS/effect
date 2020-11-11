@@ -16,8 +16,8 @@ export const showObjectInterpreter = interpreter<ShowURI, ObjectURI>()(() => ({
   _F: ShowURI,
   interface: (props, config) => (env) =>
     new ShowType(
-      pipe(projectFieldWithEnv(props as any, env)("show"), (show) =>
-        showApplyConfig(config?.conf)(S.struct(show), env, {
+      pipe(projectFieldWithEnv(props, env)("show"), (show) =>
+        showApplyConfig(config?.conf)(S.struct(show) as any, env, {
           show: show as any
         })
       )
@@ -25,7 +25,7 @@ export const showObjectInterpreter = interpreter<ShowURI, ObjectURI>()(() => ({
   partial: (props, config) => (env) =>
     asPartial(
       new ShowType(
-        pipe(projectFieldWithEnv(props as any, env)("show"), (show) =>
+        pipe(projectFieldWithEnv(props, env)("show"), (show) =>
           showApplyConfig(config?.conf)(
             S.struct(mapRecord(show, showOrUndefined)) as any,
             env,

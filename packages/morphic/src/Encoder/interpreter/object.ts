@@ -5,20 +5,17 @@ import * as T from "@effect-ts/core/Sync"
 import type { ObjectURI } from "../../Algebra/Object"
 import { interpreter } from "../../HKT"
 import { projectFieldWithEnv } from "../../Utils"
-import type { Encoder } from "../base"
 import { encoderApplyConfig, EncoderType, EncoderURI } from "../base"
 
 export const encoderObjectInterpreter = interpreter<EncoderURI, ObjectURI>()(() => ({
   _F: EncoderURI,
   interface: (props, config) => (env) =>
-    pipe(projectFieldWithEnv(props as any, env)("encoder"), (encoder) => {
+    pipe(projectFieldWithEnv(props, env)("encoder"), (encoder) => {
       return new EncoderType(
         encoderApplyConfig(config?.conf)(
           {
             encode: R.foreachWithIndexF(T.Applicative)((k, a) =>
-              encoder[k] != null
-                ? (encoder[k] as Encoder<any, any>).encode(a)
-                : T.succeed(a)
+              encoder[k] != null ? encoder[k].encode(a) : T.succeed(a)
             ) as any
           },
           env,
@@ -29,14 +26,12 @@ export const encoderObjectInterpreter = interpreter<EncoderURI, ObjectURI>()(() 
       )
     }),
   partial: (props, config) => (env) =>
-    pipe(projectFieldWithEnv(props as any, env)("encoder"), (encoder) => {
+    pipe(projectFieldWithEnv(props, env)("encoder"), (encoder) => {
       return new EncoderType(
         encoderApplyConfig(config?.conf)(
           {
             encode: R.foreachWithIndexF(T.Applicative)((k, a) =>
-              encoder[k] != null
-                ? (encoder[k] as Encoder<any, any>).encode(a)
-                : T.succeed(a)
+              encoder[k] != null ? encoder[k].encode(a) : T.succeed(a)
             ) as any
           },
           env,
@@ -54,9 +49,9 @@ export const encoderObjectInterpreter = interpreter<EncoderURI, ObjectURI>()(() 
             {
               encode: R.foreachWithIndexF(T.Applicative)((k, a) =>
                 encoder[k] != null
-                  ? (encoder[k] as Encoder<any, any>).encode(a)
+                  ? encoder[k].encode(a)
                   : encoderPartial[k] != null
-                  ? (encoder[k] as Encoder<any, any>).encode(a)
+                  ? encoder[k].encode(a)
                   : T.succeed(a)
               ) as any
             },

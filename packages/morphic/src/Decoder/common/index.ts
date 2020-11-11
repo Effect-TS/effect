@@ -10,6 +10,8 @@ export interface Decoder<A> {
   readonly name?: string
   readonly validate: Validate<A>
   readonly decode: Decode<A>
+
+  readonly with: (validate: Validate<A>) => Decoder<A>
 }
 
 class DecoderImpl<A> {

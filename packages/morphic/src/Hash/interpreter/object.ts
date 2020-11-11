@@ -20,7 +20,7 @@ export const hashObjectInterpreter = interpreter<HashURI, ObjectURI>()(() => ({
   _F: HashURI,
   interface: (props, config) => (env) =>
     new HashType(
-      pipe(projectFieldWithEnv(props as any, env)("hash"), (hash) =>
+      pipe(projectFieldWithEnv(props, env)("hash"), (hash) =>
         hashApplyConfig(config?.conf)(
           {
             hash: JSON.stringify(sortRecord(mapRecord(hash, (h) => h.hash)))
@@ -35,7 +35,7 @@ export const hashObjectInterpreter = interpreter<HashURI, ObjectURI>()(() => ({
   partial: (props, config) => (env) =>
     asPartial(
       new HashType(
-        pipe(projectFieldWithEnv(props as any, env)("hash"), (hash) =>
+        pipe(projectFieldWithEnv(props, env)("hash"), (hash) =>
           hashApplyConfig(config?.conf)(
             {
               hash: JSON.stringify(

@@ -1,9 +1,9 @@
 import { pipe } from "@effect-ts/core/Function"
 import * as T from "@effect-ts/core/Sync"
 
-import type { ObjectURI, PropsKind } from "../../Algebra/Object"
+import type { ObjectURI } from "../../Algebra/Object"
 import { isUnknownRecord } from "../../Guard/interpreter/common"
-import type { AnyEnv } from "../../HKT"
+import type { Kind } from "../../HKT"
 import { interpreter } from "../../HKT"
 import { projectFieldWithEnv } from "../../Utils"
 import { decoderApplyConfig, DecoderType, DecoderURI } from "../base"
@@ -14,7 +14,7 @@ import { foreachRecordWithIndex, tuple } from "./common"
 export const decoderObjectInterpreter = interpreter<DecoderURI, ObjectURI>()(() => ({
   _F: DecoderURI,
   interface: (props, cfg) => (env) =>
-    pipe(projectFieldWithEnv(props as any, env)("decoder"), (decoder) => {
+    pipe(projectFieldWithEnv(props, env)("decoder"), (decoder) => {
       const keys = Object.keys(decoder)
       return new DecoderType(
         decoderApplyConfig(cfg?.conf)(interfaceDecoder(keys, decoder, cfg?.name), env, {
@@ -23,7 +23,7 @@ export const decoderObjectInterpreter = interpreter<DecoderURI, ObjectURI>()(() 
       )
     }),
   partial: (props, cfg) => (env) =>
-    pipe(projectFieldWithEnv(props as any, env)("decoder"), (decoder) => {
+    pipe(projectFieldWithEnv(props, env)("decoder"), (decoder) => {
       return new DecoderType(
         decoderApplyConfig(cfg?.conf)(partialDecoder(decoder, cfg?.name), env, {
           decoder: decoder as any
@@ -60,14 +60,23 @@ export const decoderObjectInterpreter = interpreter<DecoderURI, ObjectURI>()(() 
     )
 }))
 
-function partialDecoder<PropsA, PropsE, Env extends AnyEnv>(
-  decoder: {
-    [q in keyof PropsKind<DecoderURI, PropsA, PropsE, Env>]: ReturnType<
-      PropsKind<DecoderURI, PropsA, PropsE, Env>[q]
-    >["decoder"]
-  },
+function partialDecoder<
+  Env,
+  Props extends { [k in keyof Props]: (env: Env) => DecoderType<any> }
+>(
+  decoder: { [q in keyof Props]: ReturnType<Props[q]>["decoder"] },
   name?: string
-): Decoder<Partial<Readonly<PropsA>>> {
+): Decoder<
+  Partial<
+    Readonly<
+      {
+        [k in keyof Props]: [Props[k]] extends [Kind<DecoderURI, any, infer E, infer A>]
+          ? A
+          : never
+      }
+    >
+  >
+> {
   return makeDecoder(
     (u, c) => {
       if (isUnknownRecord(u)) {
@@ -96,15 +105,22 @@ function partialDecoder<PropsA, PropsE, Env extends AnyEnv>(
   )
 }
 
-function interfaceDecoder<PropsA, PropsE, Env extends AnyEnv>(
+function interfaceDecoder<
+  Env,
+  Props extends { [k in keyof Props]: (env: Env) => DecoderType<any> }
+>(
   keys: string[],
-  decoder: {
-    [q in keyof PropsKind<DecoderURI, PropsA, PropsE, Env>]: ReturnType<
-      PropsKind<DecoderURI, PropsA, PropsE, Env>[q]
-    >["decoder"]
-  },
+  decoder: { [q in keyof Props]: ReturnType<Props[q]>["decoder"] },
   name?: string
-): Decoder<Readonly<PropsA>> {
+): Decoder<
+  Readonly<
+    {
+      [k in keyof Props]: [Props[k]] extends [Kind<DecoderURI, any, infer E, infer A>]
+        ? A
+        : never
+    }
+  >
+> {
   return makeDecoder(
     (u, c) => {
       if (isUnknownRecord(u)) {
