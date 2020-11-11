@@ -1,5 +1,6 @@
 import * as A from "@effect-ts/system/Array"
-import { pipe } from "@effect-ts/system/Function"
+import { flow, pipe } from "@effect-ts/system/Function"
+import * as L from "@effect-ts/system/List"
 import type { MutableArray } from "@effect-ts/system/Mutable"
 import type { NonEmptyArray } from "@effect-ts/system/NonEmptyArray"
 import * as NA from "@effect-ts/system/NonEmptyArray"
@@ -23,15 +24,15 @@ export * from "@effect-ts/system/NonEmptyArray"
  */
 export const foreachWithIndexF = P.implementForeachWithIndexF<[NonEmptyArrayURI]>()(
   (_) => (G) => (f) =>
-    A.reduceWithIndex(DSL.succeedF(G)([] as typeof _.B[]), (k, b, a) =>
-      pipe(
-        b,
-        G.both(f(k, a as any)),
-        G.map(([x, y]) => {
-          x.push(y)
-          return x
-        })
-      )
+    flow(
+      A.reduceWithIndex(DSL.succeedF(G)(L.empty()), (k, b, a) =>
+        pipe(
+          b,
+          G.both(f(k, a as any)),
+          G.map(([x, y]) => L.append_(x, y))
+        )
+      ),
+      G.map(L.toArray)
     ) as any
 )
 
