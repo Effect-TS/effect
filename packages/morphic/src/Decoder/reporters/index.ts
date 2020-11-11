@@ -9,7 +9,6 @@ import { pipe } from "@effect-ts/core/Function"
 import * as S from "@effect-ts/core/Sync"
 
 import type * as t from "../common"
-import { takeUntil } from "./utils"
 
 const isUnionType = (_: t.ContextEntry) => _.type.codecType === "union"
 
@@ -117,7 +116,7 @@ const formatValidationCommonError = (
   )
 
 const groupByKey = NEA.groupBy((error: t.ValidationError) =>
-  pipe(error.context, takeUntil(isUnionType), keyPath)
+  keyPath(A.takeUntil_(error.context, isUnionType))
 )
 
 const format = (
