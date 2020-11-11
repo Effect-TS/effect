@@ -12,7 +12,8 @@ export {
   provideAll_,
   result,
   succeed,
-  unit
+  unit,
+  suspend
 } from "../Effect/core"
 export { forkDaemon } from "../Effect/core-scope"
 export { delay } from "../Effect/delay"
