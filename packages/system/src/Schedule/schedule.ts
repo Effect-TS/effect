@@ -1,8 +1,9 @@
 import * as A from "../Array"
 import * as Clock from "../Clock"
 import * as E from "../Either"
-import { constant, pipe, tuple } from "../Function"
+import { pipe, tuple } from "../Function"
 import * as NoSuchElementException from "../GlobalExceptions"
+import * as L from "../List"
 import * as NA from "../NonEmptyArray"
 import * as O from "../Option"
 import { nextDouble } from "../Random"
@@ -125,8 +126,9 @@ export function repeat<Env, Inp, Out>(self: Schedule<Env, Inp, Out>) {
 /**
  * Returns a new schedule with the given delay added to every update.
  */
-export function addDelay<Env, Inp, Out>(f: (b: Out) => number) {
-  return (self: Schedule<Env, Inp, Out>) => addDelayM_(self, (b) => T.succeed(f(b)))
+export function addDelay<Out>(f: (b: Out) => number) {
+  return <Env, Inp>(self: Schedule<Env, Inp, Out>) =>
+    addDelayM_(self, (b) => T.succeed(f(b)))
 }
 
 /**
@@ -472,7 +474,10 @@ export function chooseMerge_<Env, In, Out, Env1, In1, Out1>(
  * Returns a new schedule that collects the outputs of this one into an array.
  */
 export function collectAll<Env, In, Out>(self: Schedule<Env, In, Out>) {
-  return fold_(self, A.empty as A.Array<Out>, (xs, x) => [...xs, x])
+  return map_(
+    fold_(self, L.empty<Out>(), (xs, x) => L.append_(xs, x)),
+    L.toArray
+  )
 }
 
 /**
@@ -771,7 +776,7 @@ export function exponential(base: number, factor = 2.0) {
 export function fibonacci(one: number) {
   return delayedFrom(
     map_(
-      unfold_(constant(tuple(one, one)), ([a1, a2]) => tuple(a1, a1 + a2)),
+      unfold_(tuple(one, one), ([a1, a2]) => tuple(a1, a1 + a2)),
       ([_]) => _
     )
   )
@@ -839,7 +844,7 @@ export function fromFunction<A, B>(f: (a: A) => B) {
 /**
  * A schedule that always recurs, which counts the number of recurrances.
  */
-export const count = unfold_(constant(0), (n) => n + 1)
+export const count = unfold_(0, (n) => n + 1)
 
 function ensuringLoop<Env1, Env, In, Out>(
   finalizer: T.Effect<Env1, never, any>,
@@ -956,7 +961,7 @@ export function foldM_<Env, In, Out, Z, Env1>(
 /**
  * A schedule that recurs forever, producing a count of repeats: 0, 1, 2, ...
  */
-export const forever = unfold_(constant(0), (n) => n + 1)
+export const forever = unfold_(0, (n) => n + 1)
 
 function identityLoop<A>(): Decision.StepFunction<unknown, A, A> {
   return (now, i) => T.succeed(Decision.makeContinue(i, now, identityLoop()))
@@ -1270,7 +1275,7 @@ export function reconsider<Env, In, Out, Out2>(
  * Returns a new schedule that effectfully reconsiders every decision made by this schedule,
  * possibly modifying the next interval and the output type in the process.
  */
-export function reconsider_<Env, In, Out, Env1, Out2>(
+export function reconsider_<Env, In, Out, Out2>(
   self: Schedule<Env, In, Out>,
   f: (_: Decision.Decision<Env, In, Out>) => E.Either<Out2, [Out2, number]>
 ) {
@@ -1803,18 +1808,15 @@ function unfoldLoop<A>(
  * Unfolds a schedule that repeats one time from the specified state and iterator.
  */
 export function unfold<A>(f: (a: A) => A) {
-  return (a: () => A) => unfold_(a, f)
+  return (a: A) => unfold_(a, f)
 }
 
 /**
  * Unfolds a schedule that repeats one time from the specified state and iterator.
  */
-export function unfold_<A>(a: () => A, f: (a: A) => A) {
+export function unfold_<A>(a: A, f: (a: A) => A) {
   return new Schedule((now) =>
-    pipe(
-      T.effectTotal(a),
-      T.map((a) => Decision.makeContinue(a, now, unfoldLoop(f(a), f)))
-    )
+    T.effectTotal(() => Decision.makeContinue(a, now, unfoldLoop(f(a), f)))
   )
 }
 

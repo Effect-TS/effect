@@ -13,32 +13,32 @@ import { strictApplyConfig, StrictType, StrictURI } from "../base"
 export const strictObjectInterpreter = interpreter<StrictURI, ObjectURI>()(() => ({
   _F: StrictURI,
   interface: (props, config) => (env) =>
-    pipe(projectFieldWithEnv(props as any, env)("strict"), (strict) => {
+    pipe(projectFieldWithEnv(props, env)("strict"), (strict) => {
       return new StrictType(
-        strictApplyConfig(config?.conf)(interfaceStrict(strict), env, {
+        strictApplyConfig(config?.conf)(interfaceStrict(strict) as any, env, {
           strict: strict as any
         })
       )
     }),
   partial: (props, config) => (env) =>
-    pipe(projectFieldWithEnv(props as any, env)("strict"), (strict) => {
+    pipe(projectFieldWithEnv(props, env)("strict"), (strict) => {
       return new StrictType(
-        strictApplyConfig(config?.conf)(partialStrict(strict), env, {
+        strictApplyConfig(config?.conf)(partialStrict(strict) as any, env, {
           strict: strict as any
         })
       )
     }),
   both: (props, partial, config) => (env) =>
-    pipe(projectFieldWithEnv(props as any, env)("strict"), (strict) =>
-      pipe(projectFieldWithEnv(partial as any, env)("strict"), (strictPartial) => {
+    pipe(projectFieldWithEnv(props, env)("strict"), (strict) =>
+      pipe(projectFieldWithEnv(partial, env)("strict"), (strictPartial) => {
         return new StrictType(
           strictApplyConfig(config?.conf)(
             {
               shrink: (u) => {
                 return T.map_(
                   T.zip_(
-                    interfaceStrict(strict).shrink(u),
-                    partialStrict(strictPartial).shrink(u)
+                    interfaceStrict(strict).shrink(u as any),
+                    partialStrict(strictPartial).shrink(u as any)
                   ),
                   ([r, o]) => ({ ...r, ...o })
                 ) as any

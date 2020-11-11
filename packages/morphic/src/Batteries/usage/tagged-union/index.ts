@@ -35,7 +35,7 @@ export type TaggedUnionProg<R, E, A, ProgURI extends ProgramURI> = ProgramType<
 >[ProgURI] &
   (<G extends InterpreterURIS>(a: URItoAlgebra<G, R>[TaggedUnionURI]) => HKT<R, E, A>)
 
-type M<
+export type M<
   R,
   E,
   A,
@@ -43,7 +43,7 @@ type M<
   InterpURI extends InterpreterURI
 > = Materialized<R, E, A, ProgURI, InterpURI>
 
-type AnyTypes = Record<string, InhabitedTypes<any, any, any>>
+export type AnyTypes = Record<string, InhabitedTypes<any, any, any>>
 
 export type UnionTypes<
   Types extends AnyTypes,
@@ -61,7 +61,7 @@ export type UnionTypes<
   >
 }
 
-type AnyM<ProgURI extends ProgramURI, InterpURI extends InterpreterURI, R> = M<
+export type AnyM<ProgURI extends ProgramURI, InterpURI extends InterpreterURI, R> = M<
   R,
   any,
   any,
@@ -182,7 +182,7 @@ export function makeTagged<
   }
 }
 
-type AnyADTTypes = {
+export type AnyADTTypes = {
   [k in keyof AnyTypes]: [any, any]
 }
 
@@ -205,7 +205,7 @@ export type MorphADT<
   Morph<R, EOfTypes<Types>, AOfTypes<Types>, InterpURI, ProgURI> &
   Refinable<Types, Tag, ProgURI, InterpURI, R>
 
-interface HasTypes<Types extends AnyADTTypes> {
+export interface HasTypes<Types extends AnyADTTypes> {
   _Types: Types
 }
 

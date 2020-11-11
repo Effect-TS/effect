@@ -24,7 +24,7 @@ export const decoderPrimitiveInterpreter = interpreter<DecoderURI, PrimitivesURI
             (u, c) => fail(u, c, `functions are not supported`),
             "function",
             cfg?.name || "function"
-          ),
+          ) as any,
           env,
           {}
         )
@@ -236,7 +236,9 @@ export const decoderPrimitiveInterpreter = interpreter<DecoderURI, PrimitivesURI
               makeDecoder(
                 (u, c) =>
                   Array.isArray(u)
-                    ? foreachArray(decoder.validate)(u)
+                    ? foreachArray((k, a) =>
+                        decoder.validate(a, appendContext(c, String(k), decoder, a))
+                      )(u)
                     : fail(u, c, `${typeof u} is not an array`),
                 "array",
                 cfg?.name || "Array"

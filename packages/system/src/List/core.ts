@@ -231,7 +231,7 @@ export class List<A> implements Iterable<A> {
   [Symbol.iterator](): Iterator<A> {
     return new ForwardListIterator(this)
   }
-  toJSON(): A[] {
+  toJSON(): readonly A[] {
     return toArray(this)
   }
 }
@@ -3136,7 +3136,7 @@ function arrayPush<A>(array: A[], a: A): A[] {
  *
  * @complexity `O(n)`
  */
-export function toArray<A>(l: List<A>): A[] {
+export function toArray<A>(l: List<A>): readonly A[] {
   return reduce_<A, A[]>(l, [], arrayPush)
 }
 

@@ -18,6 +18,8 @@ import type { AlgebraSet } from "../Algebra/Set"
 import { SetURI } from "../Algebra/Set"
 import type { AlgebraTaggedUnion } from "../Algebra/TaggedUnion"
 import { TaggedUnionURI } from "../Algebra/TaggedUnion"
+import type { AlgebraUnion } from "../Algebra/Union"
+import { UnionURI } from "../Algebra/Union"
 import type { AlgebraUnknown } from "../Algebra/Unknown"
 import { UnknownURI } from "../Algebra/Unknown"
 import { memo } from "../Utils"
@@ -67,7 +69,6 @@ export const getApplyConfig: <Uri extends InterpreterURIS>(
 
 export type Named<A> = {
   name?: string
-  id?: string
   conf?: A
 }
 
@@ -100,6 +101,7 @@ export interface URItoAlgebra<F extends InterpreterURIS, Env extends AnyEnv> {
 
   [PrimitivesURI]: AlgebraPrimitives<F, Env>
   [TaggedUnionURI]: AlgebraTaggedUnion<F, Env>
+  [UnionURI]: AlgebraUnion<F, Env>
   [IntersectionURI]: AlgebraIntersections<F, Env>
   [ObjectURI]: AlgebraObjects<F, Env>
   [NewtypeURI]: AlgebraNewtypes<F, Env>

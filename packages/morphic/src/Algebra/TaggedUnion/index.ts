@@ -20,16 +20,42 @@ export type TaggedTypes<F extends InterpreterURIS, Tag extends string, L, A, R> 
 
 export interface AlgebraTaggedUnion<F extends InterpreterURIS, Env extends AnyEnv> {
   _F: F
-  taggedUnion<Tag extends string, A, L>(
+  taggedUnion<
+    Tag extends string,
+    Types extends {
+      [k in keyof Types]: Kind<F, Env, { [t in Tag]: string }, { [t in Tag]: string }>
+    }
+  >(
     tag: Tag,
-    types: TaggedTypes<F, Tag, A, L, Env>,
+    types: Types,
     config?: Named<
       ConfigsForType<
         Env,
-        TaggedValues<Tag, L>[keyof L],
-        TaggedValues<Tag, A>[keyof A],
-        TaggedUnionConfig<TaggedValues<Tag, L>>
+        {
+          [k in keyof Types]: [Types[k]] extends [Kind<F, Env, infer E, infer A>]
+            ? E
+            : never
+        }[keyof Types],
+        {
+          [k in keyof Types]: [Types[k]] extends [Kind<F, Env, infer E, infer A>]
+            ? A
+            : never
+        }[keyof Types],
+        TaggedUnionConfig<Types>
       >
     >
-  ): Kind<F, Env, TaggedValues<Tag, L>[keyof L], TaggedValues<Tag, A>[keyof A]>
+  ): Kind<
+    F,
+    Env,
+    {
+      [k in keyof Types]: [Types[k]] extends [Kind<F, Env, infer E, infer A>]
+        ? E
+        : never
+    }[keyof Types],
+    {
+      [k in keyof Types]: [Types[k]] extends [Kind<F, Env, infer E, infer A>]
+        ? A
+        : never
+    }[keyof Types]
+  >
 }

@@ -1,8 +1,8 @@
 import * as T from "@effect-ts/core/Sync"
 
-import type { AlgebraNoUnion } from "../../Batteries/program"
+import type { CoreAlgebra } from "../../Batteries/program"
 
-export type CodecTypes = keyof AlgebraNoUnion<any, any>
+export type CodecTypes = keyof CoreAlgebra<any, any>
 
 export interface Decoder<A> {
   readonly codecType: CodecTypes
@@ -10,6 +10,8 @@ export interface Decoder<A> {
   readonly name?: string
   readonly validate: Validate<A>
   readonly decode: Decode<A>
+
+  readonly with: (validate: Validate<A>) => Decoder<A>
 }
 
 class DecoderImpl<A> {
@@ -19,6 +21,7 @@ class DecoderImpl<A> {
     readonly name?: string
   ) {
     this.decode = this.decode.bind(this)
+    this.with = this.with.bind(this)
   }
 
   decode(i: unknown): Validation<A> {
@@ -26,7 +29,7 @@ class DecoderImpl<A> {
   }
 
   with(validate: Validate<A>): Decoder<A> {
-    return new DecoderImpl(validate, this.codecType)
+    return new DecoderImpl(validate, this.codecType, this.name)
   }
 }
 
@@ -52,7 +55,7 @@ export interface ValidationError {
   readonly message?: string
 }
 
-export interface Errors extends Array<ValidationError> {}
+export interface Errors extends ReadonlyArray<ValidationError> {}
 
 export type Validation<A> = T.IO<Errors, A>
 
@@ -60,13 +63,13 @@ export type Validate<A> = (i: unknown, context: Context) => Validation<A>
 
 export type Decode<A> = (i: unknown) => Validation<A>
 
-export const failures: <T>(errors: Errors) => Validation<T> = T.fail
+export const failures: (errors: Errors) => Validation<never> = T.fail
 
-export const fail = <T>(
+export const fail = (
   value: unknown,
   context: Context,
   message?: string
-): Validation<T> => failures([{ value, context, message }])
+): Validation<never> => failures([{ value, context, message }])
 
 export const appendContext = (
   c: Context,

@@ -9,6 +9,7 @@ import { decoderRecursiveInterpreter } from "./recursive"
 import { decoderRefinedInterpreter } from "./refined"
 import { decoderSetInterpreter } from "./set"
 import { decoderTaggedUnionInterpreter } from "./tagged-union"
+import { decoderUnionInterpreter } from "./union"
 import { decoderUnknownInterpreter } from "./unknown"
 
 export const allModelDecoder = <Env extends AnyEnv>() =>
@@ -22,7 +23,20 @@ export const allModelDecoder = <Env extends AnyEnv>() =>
     decoderTaggedUnionInterpreter<Env>(),
     decoderRecursiveInterpreter<Env>(),
     decoderRecordInterpreter<Env>(),
-    decoderSetInterpreter<Env>()
+    decoderSetInterpreter<Env>(),
+    decoderUnionInterpreter<Env>()
   )
 
 export const modelDecoderInterpreter = memo(allModelDecoder) as typeof allModelDecoder
+
+export { decoderIntersectionInterpreter } from "./intersection"
+export { decoderNewtypeInterpreter } from "./newtype"
+export { decoderObjectInterpreter } from "./object"
+export { decoderPrimitiveInterpreter } from "./primitives"
+export { decoderRecordInterpreter } from "./record"
+export { decoderRecursiveInterpreter } from "./recursive"
+export { decoderRefinedInterpreter } from "./refined"
+export { decoderSetInterpreter } from "./set"
+export { decoderTaggedUnionInterpreter } from "./tagged-union"
+export { decoderUnionInterpreter } from "./union"
+export { decoderUnknownInterpreter } from "./unknown"

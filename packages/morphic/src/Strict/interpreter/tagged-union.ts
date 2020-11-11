@@ -12,7 +12,7 @@ export const strictTaggedUnionInterpreter = interpreter<StrictURI, TaggedUnionUR
       return new StrictType(
         strictApplyConfig(config?.conf)(
           {
-            shrink: (u) => stricts[u[tag] as any].shrink(u)
+            shrink: (u) => stricts[u[tag as any] as any].shrink(u)
           },
           env,
           {

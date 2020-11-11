@@ -1,7 +1,7 @@
 export const InterpreterURI = "InterpreterURI" as const
 export type InterpreterURI = typeof InterpreterURI
 
-interface Interpreter<E, A> {
+export interface Interpreter<E, A> {
   // dumb constructor
   build: (a: A) => A
 }

@@ -23,14 +23,14 @@ export const eqObjectInterpreter = interpreter<EqURI, ObjectURI>()(() => ({
   _F: EqURI,
   interface: (props, config) => (env) =>
     new EqType(
-      pipe(projectFieldWithEnv(props as any, env)("eq"), (eq) =>
-        eqApplyConfig(config?.conf)(E.struct(eq), env, { eq: eq as any })
+      pipe(projectFieldWithEnv(props, env)("eq"), (eq) =>
+        eqApplyConfig(config?.conf)(E.struct(eq) as any, env, { eq: eq as any })
       )
     ),
   partial: (props, config) => (env) =>
     asPartial(
       new EqType(
-        pipe(projectFieldWithEnv(props as any, env)("eq"), (eq) =>
+        pipe(projectFieldWithEnv(props, env)("eq"), (eq) =>
           eqApplyConfig(config?.conf)(
             E.struct(mapRecord(eq, eqOrUndefined)) as any,
             env,
@@ -41,10 +41,10 @@ export const eqObjectInterpreter = interpreter<EqURI, ObjectURI>()(() => ({
     ),
   both: (props, partial, config) => (env) =>
     new EqType(
-      pipe(projectFieldWithEnv(props as any, env)("eq"), (eq) =>
-        pipe(projectFieldWithEnv(partial as any, env)("eq"), (eqPartial) =>
+      pipe(projectFieldWithEnv(props, env)("eq"), (eq) =>
+        pipe(projectFieldWithEnv(partial, env)("eq"), (eqPartial) =>
           eqApplyConfig(config?.conf)(
-            E.struct({ ...eq, ...mapRecord(eqPartial, eqOrUndefined) } as any),
+            E.struct({ ...eq, ...mapRecord(eqPartial, eqOrUndefined) }),
             env,
             {
               eq: eq as any,
@@ -53,5 +53,5 @@ export const eqObjectInterpreter = interpreter<EqURI, ObjectURI>()(() => ({
           )
         )
       )
-    ) as any
+    )
 }))

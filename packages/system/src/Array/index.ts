@@ -1314,6 +1314,38 @@ export function takeLeftWhile_<A>(as: Array<A>, predicate: Predicate<A>): Array<
 }
 
 /**
+ * Takes elements until the predicate returns positively
+ */
+export function takeUntil<A, B extends A>(
+  predicate: Refinement<A, B>
+): (as: Array<A>) => Array<B>
+export function takeUntil<A>(predicate: Predicate<A>): (as: Array<A>) => Array<A>
+export function takeUntil<A>(predicate: Predicate<A>): (as: Array<A>) => Array<A> {
+  return (as) => takeUntil_(as, predicate)
+}
+
+/**
+ * Takes elements until the predicate returns positively
+ */
+export function takeUntil_<A, B extends A>(
+  as: Array<A>,
+  predicate: Refinement<A, B>
+): Array<B>
+export function takeUntil_<A>(as: Array<A>, predicate: Predicate<A>): Array<A>
+export function takeUntil_<A>(as: Array<A>, predicate: Predicate<A>): Array<A> {
+  const init = []
+
+  for (let i = 0; i < as.length; i++) {
+    init[i] = as[i]
+    if (predicate(as[i])) {
+      return init
+    }
+  }
+
+  return init
+}
+
+/**
  * Keep only a number of elements from the end of an array, creating a new array.
  * `n` must be a natural number
  *

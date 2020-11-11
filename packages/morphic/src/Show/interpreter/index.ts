@@ -9,6 +9,7 @@ import { showRecursiveInterpreter } from "./recursive"
 import { showRefinedInterpreter } from "./refined"
 import { showSetInterpreter } from "./set"
 import { showTaggedUnionInterpreter } from "./tagged-union"
+import { showUnionInterpreter } from "./union"
 import { showUnknownInterpreter } from "./unknown"
 
 export const allModelShow = <Env extends AnyEnv>() =>
@@ -22,7 +23,20 @@ export const allModelShow = <Env extends AnyEnv>() =>
     showTaggedUnionInterpreter<Env>(),
     showRecursiveInterpreter<Env>(),
     showSetInterpreter<Env>(),
-    showRecordInterpreter<Env>()
+    showRecordInterpreter<Env>(),
+    showUnionInterpreter<Env>()
   )
 
 export const modelShowInterpreter = memo(allModelShow) as typeof allModelShow
+
+export { showIntersectionInterpreter } from "./intersection"
+export { showNewtypeInterpreter } from "./newtype"
+export { showObjectInterpreter } from "./object"
+export { showPrimitiveInterpreter } from "./primitives"
+export { showRecordInterpreter } from "./record"
+export { showRecursiveInterpreter } from "./recursive"
+export { showRefinedInterpreter } from "./refined"
+export { showSetInterpreter } from "./set"
+export { showTaggedUnionInterpreter } from "./tagged-union"
+export { showUnionInterpreter } from "./union"
+export { showUnknownInterpreter } from "./unknown"

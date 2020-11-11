@@ -9,7 +9,7 @@ export const fcObjectInterpreter = interpreter<FastCheckURI, ObjectURI>()(() => 
   _F: FastCheckURI,
   partial: (props, config) => (env) =>
     pipe(
-      projectFieldWithEnv(props as any, env)("arb"),
+      projectFieldWithEnv(props, env)("arb"),
       (arbs) =>
         new FastCheckType(
           fcApplyConfig(config?.conf)(
@@ -25,7 +25,7 @@ export const fcObjectInterpreter = interpreter<FastCheckURI, ObjectURI>()(() => 
     ),
   interface: (props, config) => (env) =>
     pipe(
-      projectFieldWithEnv(props as any, env)("arb"),
+      projectFieldWithEnv(props, env)("arb"),
       (arbs) =>
         new FastCheckType(
           fcApplyConfig(config?.conf)(accessFC(env).record(arbs) as any, env, {
@@ -34,9 +34,9 @@ export const fcObjectInterpreter = interpreter<FastCheckURI, ObjectURI>()(() => 
         )
     ),
   both: (props, partial, config) => (env) =>
-    pipe(projectFieldWithEnv(props as any, env)("arb"), (arbs) =>
+    pipe(projectFieldWithEnv(props, env)("arb"), (arbs) =>
       pipe(
-        projectFieldWithEnv(partial as any, env)("arb"),
+        projectFieldWithEnv(partial, env)("arb"),
         (arbsPartial) =>
           new FastCheckType(
             fcApplyConfig(config?.conf)(

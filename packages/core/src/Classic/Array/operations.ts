@@ -2,6 +2,7 @@ import type { Array } from "@effect-ts/system/Array"
 import * as A from "@effect-ts/system/Array"
 import type { Predicate } from "@effect-ts/system/Function"
 import { flow, pipe } from "@effect-ts/system/Function"
+import * as L from "@effect-ts/system/List"
 import type { MutableArray } from "@effect-ts/system/Mutable"
 
 import type { ArrayURI } from "../../Modules"
@@ -26,15 +27,15 @@ export * from "@effect-ts/system/Array"
  */
 export const foreachWithIndexF = P.implementForeachWithIndexF<[ArrayURI]>()(
   (_) => (G) => (f) =>
-    A.reduceWithIndex(DSL.succeedF(G)([] as typeof _.B[]), (k, b, a) =>
-      pipe(
-        b,
-        G.both(f(k, a)),
-        G.map(([x, y]) => {
-          x.push(y)
-          return x
-        })
-      )
+    flow(
+      A.reduceWithIndex(DSL.succeedF(G)(L.empty()), (k, b, a) =>
+        pipe(
+          b,
+          G.both(f(k, a)),
+          G.map(([x, y]) => L.append_(x, y))
+        )
+      ),
+      G.map(L.toArray)
     )
 )
 

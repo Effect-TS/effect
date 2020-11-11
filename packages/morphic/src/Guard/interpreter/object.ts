@@ -15,12 +15,12 @@ type AOfProps<P> = P extends PropsKind<any, infer A, infer L, any> ? A : never
 export const guardObjectInterpreter = interpreter<GuardURI, ObjectURI>()(() => ({
   _F: GuardURI,
   interface: (props, config) => (env) =>
-    pipe(projectFieldWithEnv(props as any, env)("guard"), (guard) => {
+    pipe(projectFieldWithEnv(props, env)("guard"), (guard) => {
       const keys = Object.keys(guard)
       const len = keys.length
       return new GuardType(
         guardApplyConfig(config?.conf)(
-          interfaceGuard(props as any, len, keys, guard) as any,
+          interfaceGuard(props, len, keys, guard) as any,
           env,
           {
             guard: guard as any
@@ -29,13 +29,13 @@ export const guardObjectInterpreter = interpreter<GuardURI, ObjectURI>()(() => (
       )
     }),
   partial: (props, config) => (env) =>
-    pipe(projectFieldWithEnv(props as any, env)("guard"), (guard) => {
+    pipe(projectFieldWithEnv(props, env)("guard"), (guard) => {
       const keys = Object.keys(guard)
       const len = keys.length
 
       return new GuardType(
         guardApplyConfig(config?.conf)(
-          partialGuard(props as any, len, keys, guard) as any,
+          partialGuard(props, len, keys, guard) as any,
           env,
           {
             guard: guard as any
@@ -44,8 +44,8 @@ export const guardObjectInterpreter = interpreter<GuardURI, ObjectURI>()(() => (
       )
     }),
   both: (props, partial, config) => (env) =>
-    pipe(projectFieldWithEnv(props as any, env)("guard"), (guard) =>
-      pipe(projectFieldWithEnv(partial as any, env)("guard"), (guardPartial) => {
+    pipe(projectFieldWithEnv(props, env)("guard"), (guard) =>
+      pipe(projectFieldWithEnv(partial, env)("guard"), (guardPartial) => {
         const keys = Object.keys(guard)
         const len = keys.length
 
@@ -55,7 +55,7 @@ export const guardObjectInterpreter = interpreter<GuardURI, ObjectURI>()(() => (
         return new GuardType(
           guardApplyConfig(config?.conf)(
             {
-              is: (u): u is AOfProps<typeof props> & AOfProps<typeof partial> =>
+              is: (u): u is any =>
                 interfaceGuard(props as any, len, keys, guard).is(u) &&
                 partialGuard(partial as any, lenPartial, keysPartial, guardPartial).is(
                   u

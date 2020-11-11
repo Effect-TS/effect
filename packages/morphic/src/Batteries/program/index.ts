@@ -7,6 +7,7 @@ import type { RecursiveURI } from "../../Algebra/Recursive"
 import type { RefinedURI } from "../../Algebra/Refined"
 import type { SetURI } from "../../Algebra/Set"
 import type { TaggedUnionURI } from "../../Algebra/TaggedUnion"
+import type { UnionURI } from "../../Algebra/Union"
 import type { UnknownURI } from "../../Algebra/Unknown"
 import type { GetAlgebra, InterpreterURIS } from "../../HKT"
 import type { InferredAlgebra, InferredProgram } from "../usage/program-infer"
@@ -16,7 +17,7 @@ export const ProgramURI = "ProgramURI" as const
 
 export type ProgramURI = typeof ProgramURI
 
-export interface AlgebraNoUnion<F extends InterpreterURIS, Env>
+export interface CoreAlgebra<F extends InterpreterURIS, Env>
   extends InferredAlgebra<F, ProgramURI, Env> {}
 
 export interface P<R extends AnyConfigEnv, E, A>
@@ -35,11 +36,12 @@ declare module "../usage/program-type" {
       | RefinedURI
       | UnknownURI
       | SetURI
+      | UnionURI
     >
   }
 
   interface ProgramAlgebra<F extends InterpreterURIS, Env> {
-    [ProgramURI]: AlgebraNoUnion<F, Env>
+    [ProgramURI]: CoreAlgebra<F, Env>
   }
 
   interface ProgramType<R extends AnyConfigEnv, E, A> {
