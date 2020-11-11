@@ -54,7 +54,7 @@ export interface ValidationError {
   readonly message?: string
 }
 
-export interface Errors extends Array<ValidationError> {}
+export interface Errors extends ReadonlyArray<ValidationError> {}
 
 export type Validation<A> = T.IO<Errors, A>
 
