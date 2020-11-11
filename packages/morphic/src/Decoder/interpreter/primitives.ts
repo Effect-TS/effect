@@ -24,7 +24,7 @@ export const decoderPrimitiveInterpreter = interpreter<DecoderURI, PrimitivesURI
             (u, c) => fail(u, c, `functions are not supported`),
             "function",
             cfg?.name || "function"
-          ),
+          ) as any,
           env,
           {}
         )

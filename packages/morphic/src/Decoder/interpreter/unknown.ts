@@ -18,7 +18,7 @@ export const decoderUnknownInterpreter = interpreter<DecoderURI, UnknownURI>()((
               : fail(u, c, `${typeof u} is not a record`),
           "unknown",
           cfg?.name || "unknown"
-        ),
+        ) as any,
         env,
         {}
       )

@@ -62,13 +62,13 @@ export type Validate<A> = (i: unknown, context: Context) => Validation<A>
 
 export type Decode<A> = (i: unknown) => Validation<A>
 
-export const failures: <T>(errors: Errors) => Validation<T> = T.fail
+export const failures: (errors: Errors) => Validation<never> = T.fail
 
-export const fail = <T>(
+export const fail = (
   value: unknown,
   context: Context,
   message?: string
-): Validation<T> => failures([{ value, context, message }])
+): Validation<never> => failures([{ value, context, message }])
 
 export const appendContext = (
   c: Context,
