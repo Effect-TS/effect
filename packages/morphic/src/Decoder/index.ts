@@ -13,7 +13,7 @@ import type { DecoderURI } from "./base"
 import type { Decoder } from "./common"
 import { modelDecoderInterpreter } from "./interpreter"
 
-export type {
+export {
   appendContext,
   Context,
   ContextEntry,

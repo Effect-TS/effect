@@ -21,6 +21,7 @@ class DecoderImpl<A> {
     readonly name?: string
   ) {
     this.decode = this.decode.bind(this)
+    this.with = this.with.bind(this)
   }
 
   decode(i: unknown): Validation<A> {
@@ -28,7 +29,7 @@ class DecoderImpl<A> {
   }
 
   with(validate: Validate<A>): Decoder<A> {
-    return new DecoderImpl(validate, this.codecType)
+    return new DecoderImpl(validate, this.codecType, this.name)
   }
 }
 
