@@ -1,5 +1,3 @@
-import "./Integrations"
-
 import * as T from "@effect-ts/system/Effect"
 
 import type { EffectCategoryURI, EffectURI } from "../Modules"
