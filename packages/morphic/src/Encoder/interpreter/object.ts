@@ -51,7 +51,7 @@ export const encoderObjectInterpreter = interpreter<EncoderURI, ObjectURI>()(() 
                 encoder[k] != null
                   ? encoder[k].encode(a)
                   : encoderPartial[k] != null
-                  ? encoder[k].encode(a)
+                  ? encoderPartial[k].encode(a)
                   : T.succeed(a)
               ) as any
             },

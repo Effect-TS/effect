@@ -28,3 +28,15 @@ export const allModelEq = <Env extends AnyEnv>() =>
   )
 
 export const modelEqInterpreter = memo(allModelEq) as typeof allModelEq
+
+export { eqIntersectionInterpreter } from "./intersection"
+export { eqNewtypeInterpreter } from "./newtype"
+export { eqObjectInterpreter } from "./object"
+export { eqPrimitiveInterpreter } from "./primitives"
+export { eqRecordMapInterpreter } from "./record"
+export { eqRecursiveInterpreter } from "./recursive"
+export { eqRefinedInterpreter } from "./refined"
+export { eqSetInterpreter } from "./set"
+export { eqTaggedUnionInterpreter } from "./tagged-union"
+export { eqUnionInterpreter } from "./union"
+export { eqUnknownInterpreter } from "./unknown"

@@ -28,3 +28,15 @@ export const allModelStrict = <Env extends AnyEnv>() =>
   )
 
 export const modelStrictInterpreter = memo(allModelStrict) as typeof allModelStrict
+
+export { strictIntersectionInterpreter } from "./intersection"
+export { strictNewtypeInterpreter } from "./newtype"
+export { strictObjectInterpreter } from "./object"
+export { strictPrimitiveInterpreter } from "./primitives"
+export { strictRecordInterpreter } from "./record"
+export { strictRecursiveInterpreter } from "./recursive"
+export { strictRefinedInterpreter } from "./refined"
+export { strictSetInterpreter } from "./set"
+export { strictTaggedUnionInterpreter } from "./tagged-union"
+export { strictUnionInterpreter } from "./union"
+export { strictUnknownInterpreter } from "./unknown"

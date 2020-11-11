@@ -28,3 +28,15 @@ export const allModelHash = <Env extends AnyEnv>() =>
   )
 
 export const modelHashInterpreter = memo(allModelHash) as typeof allModelHash
+
+export { hashIntersectionInterpreter } from "./intersection"
+export { hashNewtypeInterpreter } from "./newtype"
+export { hashObjectInterpreter } from "./object"
+export { hashPrimitiveInterpreter } from "./primitives"
+export { hashRecordInterpreter } from "./record"
+export { hashRecursiveInterpreter } from "./recursive"
+export { hashRefinedInterpreter } from "./refined"
+export { hashSetInterpreter } from "./set"
+export { hashTaggedUnionInterpreter } from "./tagged-union"
+export { hashUnionInterpreter } from "./union"
+export { hashUnknownInterpreter } from "./unknown"

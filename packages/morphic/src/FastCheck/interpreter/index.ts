@@ -28,3 +28,15 @@ export const allModelFC = <Env extends AnyEnv>() =>
   )
 
 export const modelFcInterpreter = memo(allModelFC) as typeof allModelFC
+
+export { fcIntersectionInterpreter } from "./intersection"
+export { fcNewtypeInterpreter } from "./newtype"
+export { fcObjectInterpreter } from "./object"
+export { fcPrimitiveInterpreter } from "./primitives"
+export { fcStrMapInterpreter } from "./record"
+export { fcRecursiveInterpreter } from "./recursive"
+export { fcRefinedInterpreter } from "./refined"
+export { fcSetInterpreter } from "./set"
+export { fcTaggedUnionInterpreter } from "./tagged-union"
+export { fcUnionInterpreter } from "./union"
+export { fcUnknownInterpreter } from "./unknown"
