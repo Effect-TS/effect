@@ -10,7 +10,6 @@ import { encoder } from "../src/Encoder"
 const Id_ = make((F) =>
   F.interface({
     id: F.number({
-      name: "Id",
       conf: {
         [DecoderURI]: (_) =>
           _.with((u, c) =>
@@ -42,6 +41,6 @@ it("decodes id", () => {
       )
     )
   ).toEqual(
-    left(['Expecting Id at id but instead got: "bla" (id should be an integer)'])
+    left(['Expecting Number at id but instead got: "bla" (id should be an integer)'])
   )
 })
