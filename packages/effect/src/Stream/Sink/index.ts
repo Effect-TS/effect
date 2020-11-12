@@ -8,6 +8,7 @@ import * as E from "../../Either"
 import * as Ex from "../../Exit/api"
 import * as F from "../../Fiber/api"
 import { pipe } from "../../Function"
+import * as L from "../../Layer"
 import * as O from "../../Option"
 import * as R from "../../Ref"
 import { matchTag } from "../../Utils"
@@ -652,7 +653,7 @@ export function zip<R1, E1, I, I1 extends I, L1, Z1>(that: Sink<R1, E1, I1, L1, 
 }
 
 /**
- * Like [[zip]], but keeps only the result from the `that` sink.
+ * Like `zip`, but keeps only the result from the `that` sink.
  */
 export function zipLeft_<R, R1, E, E1, I, I1 extends I, L extends I1, L1, Z, Z1>(
   self: Sink<R, E, I, L, Z>,
@@ -662,7 +663,7 @@ export function zipLeft_<R, R1, E, E1, I, I1 extends I, L extends I1, L1, Z, Z1>
 }
 
 /**
- * Like [[zip]], but keeps only the result from the `that` sink.
+ * Like `zip`, but keeps only the result from the `that` sink.
  */
 export function zipLeft<R1, E1, I, I1 extends I, L1, Z1>(
   that: Sink<R1, E1, I1, L1, Z1>
@@ -688,7 +689,7 @@ export function zipPar<R1, E1, I1, L1, Z1>(that: Sink<R1, E1, I1, L1, Z1>) {
 }
 
 /**
- * Like [[zipPar]], but keeps only the result from this sink.
+ * Like `zipPar`, but keeps only the result from this sink.
  */
 export function zipParLeft_<R, R1, E, E1, I, I1, L, L1, Z>(
   self: Sink<R, E, I, L, Z>,
@@ -698,14 +699,14 @@ export function zipParLeft_<R, R1, E, E1, I, I1, L, L1, Z>(
 }
 
 /**
- * Like [[zipPar]], but keeps only the result from this sink.
+ * Like `zipPar`, but keeps only the result from this sink.
  */
 export function zipParLeft<R1, E1, I1, L1>(that: Sink<R1, E1, I1, L1, unknown>) {
   return <R, E, I, L, Z>(self: Sink<R, E, I, L, Z>) => zipParLeft_(self, that)
 }
 
 /**
- * Like [[zipPar]], but keeps only the result from the `that` sink.
+ * Like `zipPar`, but keeps only the result from the `that` sink.
  */
 export function zipParRight_<R, R1, E, E1, I, I1, L, L1, Z, Z1>(
   self: Sink<R, E, I, L, Z>,
@@ -715,14 +716,14 @@ export function zipParRight_<R, R1, E, E1, I, I1, L, L1, Z, Z1>(
 }
 
 /**
- * Like [[zipPar]], but keeps only the result from the `that` sink.
+ * Like `zipPar`, but keeps only the result from the `that` sink.
  */
 export function zipParRight<R1, E1, I1, L1, Z1>(that: Sink<R1, E1, I1, L1, Z1>) {
   return <R, E, I, L, Z>(self: Sink<R, E, I, L, Z>) => zipParRight_(self, that)
 }
 
 /**
- * Like [[zip]], but keeps only the result from this sink.
+ * Like `zip`, but keeps only the result from this sink.
  */
 export function zipRight_<R, R1, E, E1, I, I1 extends I, L extends I1, L1, Z, Z1>(
   self: Sink<R, E, I, L, Z>,
@@ -732,7 +733,7 @@ export function zipRight_<R, R1, E, E1, I, I1 extends I, L extends I1, L1, Z, Z1
 }
 
 /**
- * Like [[zip]], but keeps only the result from this sink.
+ * Like `zip`, but keeps only the result from this sink.
  */
 export function zipRight<R1, E1, I, I1 extends I, L1, Z, Z1>(
   that: Sink<R1, E1, I1, L1, Z1>
@@ -1052,13 +1053,13 @@ export function untilOutputM<R1, E1, Z>(f: (z: Z) => T.Effect<R1, E1, boolean>) 
  * Provides the sink with its required environment, which eliminates
  * its dependency on `R`.
  */
-export function provide_<R, E, I, L, Z>(
+export function provideAll_<R, E, I, L, Z>(
   self: Sink<R, E, I, L, Z>,
   r: R
 ): Sink<unknown, E, I, L, Z> {
   return new Sink(
     M.map_(M.provideAll_(self.push, r), (push) => (i: O.Option<A.Array<I>>) =>
-      T.provide_(push(i), r)
+      T.provideAll_(push(i), r)
     )
   )
 }
@@ -1067,8 +1068,74 @@ export function provide_<R, E, I, L, Z>(
  * Provides the sink with its required environment, which eliminates
  * its dependency on `R`.
  */
-export function provide<R>(r: R) {
-  return <E, I, L, Z>(self: Sink<R, E, I, L, Z>) => provide_(self, r)
+export function provideAll<R>(r: R) {
+  return <E, I, L, Z>(self: Sink<R, E, I, L, Z>) => provideAll_(self, r)
+}
+
+/**
+ * Provides some of the environment required to run this effect,
+ * leaving the remainder `R0`.
+ */
+export function provideSome_<R0, R, E, I, L, Z>(
+  self: Sink<R, E, I, L, Z>,
+  f: (r0: R0) => R
+) {
+  return new Sink(
+    M.map_(M.provideSome_(self.push, f), (push) => (i: O.Option<A.Array<I>>) =>
+      T.provideSome_(push(i), f)
+    )
+  )
+}
+
+/**
+ * Provides some of the environment required to run this effect,
+ * leaving the remainder `R0`.
+ */
+export function provideSome<R0, R>(f: (r0: R0) => R) {
+  return <E, I, L, Z>(self: Sink<R, E, I, L, Z>) => provideSome_(self, f)
+}
+
+/**
+ * Provides a layer to the `Managed`, which translates it to another level.
+ */
+export function provideLayer<R2, R>(layer: L.Layer<R2, never, R>) {
+  return <E, I, L, Z>(self: Sink<R, E, I, L, Z>) => provideLayer_(self, layer)
+}
+
+/**
+ * Provides a layer to the `Managed`, which translates it to another level.
+ */
+export function provideLayer_<R, E, I, L, Z, R2>(
+  self: Sink<R, E, I, L, Z>,
+  layer: L.Layer<R2, never, R>
+) {
+  return new Sink<R2, E, I, L, Z>(
+    M.chain_(L.build(layer), (r) =>
+      M.map_(M.provideAll_(self.push, r), (push) => (i: O.Option<A.Array<I>>) =>
+        T.provideAll_(push(i), r)
+      )
+    )
+  )
+}
+
+/**
+ * Splits the environment into two parts, providing one part using the
+ * specified layer and leaving the remainder `R0`.
+ */
+export function provideSomeLayer<R2, R>(layer: L.Layer<R2, never, R>) {
+  return <R0, E, I, L, Z>(self: Sink<R & R0, E, I, L, Z>): Sink<R0 & R2, E, I, L, Z> =>
+    provideLayer(layer["+++"](L.identity<R0>()))(self)
+}
+
+/**
+ * Splits the environment into two parts, providing one part using the
+ * specified layer and leaving the remainder `R0`.
+ */
+export function provideSomeLayer_<R0, E, I, L, Z, R2, R>(
+  self: Sink<R & R0, E, I, L, Z>,
+  layer: L.Layer<R2, never, R>
+): Sink<R0 & R2, E, I, L, Z> {
+  return provideSomeLayer(layer)(self)
 }
 
 /**
