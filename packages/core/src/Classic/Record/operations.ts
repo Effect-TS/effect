@@ -28,8 +28,8 @@ export const foreachWithIndexF = P.implementForeachWithIndexF<[RecordURI], V>()(
     flow(
       R.collect(tuple),
       A.foreachF(G)(([k, a]) => G.map((b) => tuple(k, b))(f(k, a))),
-      G.map(
-        A.reduce({} as R.Record<typeof _.N, typeof _.B>, (b, [k, v]) =>
+      G.map((x) =>
+        A.reduce_(x, {} as R.Record<typeof _.N, typeof _.B>, (b, [k, v]) =>
           Object.assign(b, { [k]: v })
         )
       )
