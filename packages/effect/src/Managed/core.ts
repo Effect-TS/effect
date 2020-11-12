@@ -570,6 +570,25 @@ export function onExitFirst_<R, E, A, R2>(
 }
 
 /**
+ * Provides the `Managed` effect with its required environment, which eliminates
+ * its dependency on `R`.
+ */
+export function provide_<R, E, A>(
+  self: Managed<R, E, A>,
+  r: R
+): Managed<unknown, E, A> {
+  return provideSome_(self, (_) => r)
+}
+
+/**
+ * Provides the `Managed` effect with its required environment, which eliminates
+ * its dependency on `R`.
+ */
+export function provide<R>(r: R) {
+  return <E, A>(self: Managed<R, E, A>) => provide_(self, r)
+}
+
+/**
  * Like provideSome_ for effect but for Managed
  */
 export function provideSome_<R, E, A, R0>(
