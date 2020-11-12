@@ -768,7 +768,7 @@ export function preallocateManaged<R, E, A>(
  */
 export function provideLayer<R2, E2, R>(layer: L.Layer<R2, E2, R>) {
   return <E, A>(self: Managed<R, E, A>): Managed<R2, E2 | E, A> =>
-    chain_(L.build(layer), (r) => provideAll_(self, r))
+    provideLayer_(self, layer)
 }
 
 /**
