@@ -5,7 +5,7 @@ import type { Effect } from "./effect"
 /**
  * Folds an Iterable[A] using an effectual function f, working sequentially from left to right.
  */
-export function foldRight_<A, Z, R, E>(
+export function reduceRight_<A, Z, R, E>(
   i: Iterable<A>,
   zero: Z,
   f: (a: A, z: Z) => Effect<R, E, Z>
@@ -18,6 +18,6 @@ export function foldRight_<A, Z, R, E>(
 /**
  * Folds an Iterable[A] using an effectual function f, working sequentially from left to right.
  */
-export function foldRight<A, Z, R, E>(zero: Z, f: (a: A, z: Z) => Effect<R, E, Z>) {
-  return (i: Iterable<A>) => foldRight_(i, zero, f)
+export function reduceRight<A, Z, R, E>(zero: Z, f: (a: A, z: Z) => Effect<R, E, Z>) {
+  return (i: Iterable<A>) => reduceRight_(i, zero, f)
 }

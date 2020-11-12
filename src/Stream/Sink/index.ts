@@ -1189,7 +1189,7 @@ export function collectAllToSet<A>(): Sink<unknown, never, A, never, Set<A>> {
 /**
  * A sink that counts the number of elements fed to it.
  */
-export const count: Sink<unknown, never, unknown, never, number> = foldLeft(0)(
+export const count: Sink<unknown, never, unknown, never, number> = reduceLeft(0)(
   (s, _) => s + 1
 )
 
@@ -1238,7 +1238,7 @@ export function reduce<S>(z: S) {
   return (contFn: (s: S) => boolean) => <I>(
     f: (s: S, i: I) => S
   ): Sink<unknown, never, I, I, S> => {
-    const foldChunk = (
+    const reduceChunk = (
       s: S,
       chunk: A.Array<I>,
       idx: number,
@@ -1250,7 +1250,7 @@ export function reduce<S>(z: S) {
         const s1 = f(s, chunk[idx])
 
         if (contFn(s1)) {
-          return foldChunk(s1, chunk, idx + 1, len)
+          return reduceChunk(s1, chunk, idx + 1, len)
         } else {
           return [s1, O.some(A.dropLeft_(chunk, idx + 1))] as const
         }
@@ -1269,7 +1269,7 @@ export function reduce<S>(z: S) {
                 () => T.chain_(state.get, (s) => Push.emit(s, A.empty)),
                 (is) =>
                   T.chain_(state.get, (s) => {
-                    const [st, l] = foldChunk(s, is, 0, is.length)
+                    const [st, l] = reduceChunk(s, is, 0, is.length)
 
                     return O.fold_(
                       l,
@@ -1351,12 +1351,12 @@ export function reduceM<S>(z: S) {
   return (contFn: (s: S) => boolean) => <R, E, I>(
     f: (s: S, i: I) => T.Effect<R, E, S>
   ): Sink<R, E, I, I, S> => {
-    const foldChunk = (
+    function reduceChunk(
       s: S,
       chunk: A.Array<I>,
       idx: number,
       len: number
-    ): T.Effect<R, readonly [E, A.Array<I>], readonly [S, O.Option<A.Array<I>>]> => {
+    ): T.Effect<R, readonly [E, A.Array<I>], readonly [S, O.Option<A.Array<I>>]> {
       if (idx === len) {
         return T.succeed([s, O.none] as const)
       } else {
@@ -1365,7 +1365,7 @@ export function reduceM<S>(z: S) {
           (e) => T.fail([e, A.dropLeft_(chunk, idx + 1)] as const),
           (s1) => {
             if (contFn(s1)) {
-              return foldChunk(s1, chunk, idx + 1, len)
+              return reduceChunk(s1, chunk, idx + 1, len)
             } else {
               return T.succeed([s1, O.some(A.dropLeft_(chunk, idx + 1))])
             }
@@ -1387,7 +1387,7 @@ export function reduceM<S>(z: S) {
                 (is) =>
                   T.chain_(state.get, (s) => {
                     return T.foldM_(
-                      foldChunk(s, is, 0, is.length),
+                      reduceChunk(s, is, 0, is.length),
                       (err) => Push.fail(...err),
                       ([st, l]) => {
                         return O.fold_(
@@ -1411,7 +1411,7 @@ export function reduceM<S>(z: S) {
 /**
  * A sink that folds its inputs with the provided function and initial state.
  */
-export function foldLeft<S>(z: S) {
+export function reduceLeft<S>(z: S) {
   return <I>(f: (s: S, i: I) => S): Sink<unknown, never, I, never, S> =>
     dropLeftover(reduce(z)((_) => true)(f))
 }
@@ -1642,7 +1642,7 @@ export function succeed<Z, I>(z: Z): Sink<unknown, never, I, I, Z> {
 /**
  * A sink that sums incoming numeric values.
  */
-export const sum: Sink<unknown, never, number, never, number> = foldLeft(0)(
+export const sum: Sink<unknown, never, number, never, number> = reduceLeft(0)(
   (a, b) => a + b
 )
 

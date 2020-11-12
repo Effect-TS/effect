@@ -279,7 +279,7 @@ export function collectAll<E, A>(fibers: Iterable<Fiber.Fiber<E, A>>) {
   return makeSynthetic({
     _tag: "SyntheticFiber",
     getRef: (ref) =>
-      T.foldLeft_(fibers, ref.initial, (a, fiber) =>
+      T.reduceLeft_(fibers, ref.initial, (a, fiber) =>
         pipe(
           fiber.getRef(ref),
           T.map((a2) => ref.join(a, a2))
