@@ -46,7 +46,7 @@ export function unrefineWith_<R, E, E1, E2, A>(
     (cause): Effect<R, E1 | E2, A> =>
       pipe(
         cause,
-        C.find(pf),
+        C.find((c) => (c._tag === "Die" ? pf(c.value) : O.none)),
         O.fold(() => pipe(cause, C.map(f), halt), fail)
       )
   )

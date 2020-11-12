@@ -268,4 +268,8 @@ describe("Effect", () => {
     expect(result).toEqual(Exit.fail("error in process: 5"))
     expect(result_ok).toEqual(Exit.succeed(range(0, 100)))
   })
+  it("catchAllDefect", async () => {
+    const a = await pipe(T.die("LOL"), T.catchAllDefect(T.succeed), T.runPromise)
+    expect(a).toEqual("LOL")
+  })
 })
