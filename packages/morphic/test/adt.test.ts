@@ -69,7 +69,7 @@ describe("Adt", () => {
     )
     expect(Sync.runEither(report(decode(FooBar)({ _tag: "Bar", baz: "baz" })))).toEqual(
       E.left([
-        'Expecting Bar but instead got: {"_tag":"Bar","baz":"baz"} (not all the required fields are present)'
+        "Expecting String at bar but instead got: undefined (undefined is not a string)"
       ])
     )
   })

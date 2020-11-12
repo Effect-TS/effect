@@ -114,7 +114,7 @@ describe("FastCheck", () => {
   it("Fail Decoding of Person", () => {
     expect(pipe(report(decode(Person)({})), T.runEither)).toEqual(
       E.left([
-        "Expecting Person but instead got: {} (not all the required fields are present)"
+        "Expecting Interface at name but instead got: undefined (undefined is not a record)"
       ])
     )
   })
