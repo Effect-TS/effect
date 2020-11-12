@@ -2,6 +2,7 @@ import { isNonEmpty } from "@effect-ts/core/Classic/Array"
 import { left, right } from "@effect-ts/core/Classic/Either"
 import { fromNullable, none, some } from "@effect-ts/core/Classic/Option"
 import { pipe } from "@effect-ts/core/Function"
+import * as L from "@effect-ts/core/Persistent/List"
 
 import type { PrimitivesURI } from "../../Algebra/Primitives"
 import { interpreter } from "../../HKT"
@@ -108,6 +109,16 @@ export const fcPrimitiveInterpreter = interpreter<FastCheckURI, PrimitivesURI>()
         (arb) =>
           new FastCheckType(
             fcApplyConfig(config?.conf)(accessFC(env).array(arb), env, { arb })
+          )
+      ),
+    list: (T, config) => (env) =>
+      pipe(
+        T(env).arb,
+        (arb) =>
+          new FastCheckType(
+            fcApplyConfig(config?.conf)(accessFC(env).array(arb).map(L.from), env, {
+              arb
+            })
           )
       ),
     nonEmptyArray: (T, config) => (env) =>

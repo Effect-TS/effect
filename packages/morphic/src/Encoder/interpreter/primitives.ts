@@ -3,6 +3,7 @@ import * as E from "@effect-ts/core/Classic/Either"
 import * as NA from "@effect-ts/core/Classic/NonEmptyArray"
 import * as O from "@effect-ts/core/Classic/Option"
 import { flow, pipe } from "@effect-ts/core/Function"
+import * as L from "@effect-ts/core/Persistent/List"
 import * as T from "@effect-ts/core/Sync"
 
 import type { PrimitivesURI } from "../../Algebra/Primitives"
@@ -164,6 +165,23 @@ export const encoderPrimitiveInterpreter = interpreter<EncoderURI, PrimitivesURI
             encoderApplyConfig(config?.conf)(
               {
                 encode: A.foreachF(T.Applicative)(encoder.encode)
+              },
+              env,
+              { encoder }
+            )
+          )
+      ),
+    list: (getType, config) => (env) =>
+      pipe(
+        getType(env).encoder,
+        (encoder) =>
+          new EncoderType(
+            encoderApplyConfig(config?.conf)(
+              {
+                encode: flow(
+                  L.foreachF(T.Applicative)(encoder.encode),
+                  T.map(L.toArray)
+                )
               },
               env,
               { encoder }

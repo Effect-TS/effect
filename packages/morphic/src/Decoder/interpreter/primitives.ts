@@ -3,6 +3,7 @@ import * as E from "@effect-ts/core/Classic/Either"
 import * as O from "@effect-ts/core/Classic/Option"
 import { none, some } from "@effect-ts/core/Classic/Option"
 import { pipe } from "@effect-ts/core/Function"
+import * as List from "@effect-ts/core/Persistent/List"
 import * as T from "@effect-ts/core/Sync"
 
 import type { PrimitivesURI, UUID } from "../../Algebra/Primitives"
@@ -239,6 +240,30 @@ export const decoderPrimitiveInterpreter = interpreter<DecoderURI, PrimitivesURI
                     ? foreachArray((k, a) =>
                         decoder.validate(a, appendContext(c, String(k), decoder, a))
                       )(u)
+                    : fail(u, c, `${typeof u} is not an array`),
+                "array",
+                cfg?.name || "Array"
+              ),
+              env,
+              { decoder }
+            )
+          )
+      ),
+    list: (getType, cfg) => (env) =>
+      pipe(
+        getType(env).decoder,
+        (decoder) =>
+          new DecoderType(
+            decoderApplyConfig(cfg?.conf)(
+              makeDecoder(
+                (u, c) =>
+                  Array.isArray(u)
+                    ? T.map_(
+                        foreachArray((k, a) =>
+                          decoder.validate(a, appendContext(c, String(k), decoder, a))
+                        )(u),
+                        List.from
+                      )
                     : fail(u, c, `${typeof u} is not an array`),
                 "array",
                 cfg?.name || "Array"

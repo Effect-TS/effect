@@ -3,6 +3,7 @@ import type { Either } from "@effect-ts/core/Classic/Either"
 import type { NonEmptyArray } from "@effect-ts/core/Classic/NonEmptyArray"
 import type { Option } from "@effect-ts/core/Classic/Option"
 import { pipe } from "@effect-ts/core/Function"
+import * as L from "@effect-ts/core/Persistent/List"
 
 import type { PrimitivesURI, UUID } from "../../Algebra/Primitives"
 import { interpreter } from "../../HKT"
@@ -163,6 +164,21 @@ export const guardPrimitiveInterpreter = interpreter<GuardURI, PrimitivesURI>()(
             {
               is: (u): u is Array<AOfGuard<typeof guard>> =>
                 Array.isArray(u) && u.every(guard.is)
+            },
+            env,
+            { guard }
+          )
+        )
+    ),
+  list: (getType, config) => (env) =>
+    pipe(
+      getType(env).guard,
+      (guard) =>
+        new GuardType(
+          guardApplyConfig(config?.conf)(
+            {
+              is: (u): u is L.List<AOfGuard<typeof guard>> =>
+                L.isList(u) && L.every_(u, guard.is)
             },
             env,
             { guard }
