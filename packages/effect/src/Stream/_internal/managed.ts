@@ -20,7 +20,7 @@ export {
 export { bind, let, do } from "../../Managed/do"
 export { fromEffect } from "../../Managed/fromEffect"
 export { succeed } from "../../Managed/succeed"
-export { provideAll_ } from "../../Managed/methods/api"
+export { provideAll_, fold_, environment } from "../../Managed/methods/api"
 export { provideSome_ } from "../../Managed/core"
 
 export { Managed } from "../../Managed/managed"
