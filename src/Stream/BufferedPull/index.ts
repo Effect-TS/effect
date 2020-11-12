@@ -69,7 +69,7 @@ export const pullElement = <R, E, A>(
     )
   )
 
-export const pullArray = <R, E, A>(
+export const pullChunk = <R, E, A>(
   self: BufferedPull<R, E, A>
 ): T.Effect<R, O.Option<E>, A.Array<A>> =>
   pipe(
@@ -82,7 +82,7 @@ export const pullArray = <R, E, A>(
           [A.Array<A>, number]
         ] => {
           if (idx >= chunk.length) {
-            return [TT.chain_(update(self), () => pullArray(self)), [[], 0]]
+            return [TT.chain_(update(self), () => pullChunk(self)), [[], 0]]
           } else {
             return [T.succeed(A.dropLeft_(chunk, idx)), [[], 0]]
           }
