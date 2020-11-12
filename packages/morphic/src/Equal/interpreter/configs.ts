@@ -1,6 +1,7 @@
 import type * as E from "@effect-ts/core/Classic/Equal"
 
 import type { InterfaceLA, IntersectionLA, TaggedUnionLA } from "../../Algebra/Config"
+import type { HKT } from "../../HKT"
 import type { EqURI } from "../base"
 
 declare module "../../Algebra/Intersection" {
@@ -129,6 +130,18 @@ declare module "../../Algebra/TaggedUnion" {
   interface TaggedUnionConfig<Types> {
     [EqURI]: {
       equals: TaggedUnionLA<Types, EqURI>
+    }
+  }
+}
+
+declare module "../../Algebra/Union" {
+  interface UnionConfig<Types> {
+    [EqURI]: {
+      equals: {
+        [k in keyof Types]: Types[k] extends HKT<any, infer E, infer A>
+          ? E.Equal<A>
+          : never
+      }
     }
   }
 }

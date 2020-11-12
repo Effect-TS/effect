@@ -17,7 +17,7 @@ export const hashIntersectionInterpreter = interpreter<HashURI, IntersectionURI>
           },
           env,
           {
-            hashs: hashs as any
+            hashes: hashs as any
           }
         )
       )

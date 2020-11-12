@@ -3,7 +3,7 @@ import * as O from "@effect-ts/core/Classic/Option"
 import * as Sync from "@effect-ts/core/Sync"
 
 import type { AType, EType } from "../src"
-import { make, makeADT, opaque } from "../src"
+import { DecoderURI, make, makeADT, opaque } from "../src"
 import { decode, report } from "../src/Decoder"
 import { guard } from "../src/Guard"
 import { hash } from "../src/Hash"
@@ -45,7 +45,13 @@ const FooBar = makeADT("_tag")({ Foo, Bar })
 const isString = O.fromPredicate(guard(make((F) => F.string())).is)
 const isNumber = O.fromPredicate(guard(make((F) => F.number())).is)
 
-const CustomUnion = make((F) => F.union(F.string(), F.number())([isString, isNumber]))
+const CustomUnion = make((F) =>
+  F.union(F.string(), F.number())([isString, isNumber], {
+    conf: {
+      [DecoderURI]: (_, __, ___) => _
+    }
+  })
+)
 
 describe("Adt", () => {
   it("non tagged unions", () => {

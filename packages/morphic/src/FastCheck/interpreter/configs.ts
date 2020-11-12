@@ -1,6 +1,7 @@
 import type { Arbitrary } from "fast-check"
 
 import type { InterfaceLA, IntersectionLA, TaggedUnionLA } from "../../Algebra/Config"
+import type { HKT } from "../../HKT"
 import type { FastCheckURI } from "../base"
 
 declare module "../../Algebra/Intersection" {
@@ -139,6 +140,18 @@ declare module "../../Algebra/Unknown" {
   interface UnknownConfig {
     [FastCheckURI]: {
       arb: Arbitrary<unknown>
+    }
+  }
+}
+
+declare module "../../Algebra/Union" {
+  interface UnionConfig<Types> {
+    [FastCheckURI]: {
+      arbs: {
+        [k in keyof Types]: Types[k] extends HKT<any, infer E, infer A>
+          ? Arbitrary<A>
+          : never
+      }
     }
   }
 }

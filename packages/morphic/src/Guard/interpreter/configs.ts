@@ -1,4 +1,5 @@
 import type { InterfaceLA, IntersectionLA, TaggedUnionLA } from "../../Algebra/Config"
+import type { HKT } from "../../HKT"
 import type { Guard, GuardURI } from "../base"
 
 declare module "../../Algebra/Intersection" {
@@ -126,6 +127,18 @@ declare module "../../Algebra/TaggedUnion" {
   interface TaggedUnionConfig<Types> {
     [GuardURI]: {
       guards: TaggedUnionLA<Types, GuardURI>
+    }
+  }
+}
+
+declare module "../../Algebra/Union" {
+  interface UnionConfig<Types> {
+    [GuardURI]: {
+      guards: {
+        [k in keyof Types]: Types[k] extends HKT<any, infer E, infer A>
+          ? Guard<A>
+          : never
+      }
     }
   }
 }

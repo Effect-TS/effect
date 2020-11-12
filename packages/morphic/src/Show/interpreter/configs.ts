@@ -1,6 +1,7 @@
 import type * as S from "@effect-ts/core/Classic/Show"
 
 import type { InterfaceLA, IntersectionLA, TaggedUnionLA } from "../../Algebra/Config"
+import type { HKT } from "../../HKT"
 import type { ShowURI } from "../base"
 
 declare module "../../Algebra/Intersection" {
@@ -119,6 +120,18 @@ declare module "../../Algebra/TaggedUnion" {
   interface TaggedUnionConfig<Types> {
     [ShowURI]: {
       shows: TaggedUnionLA<Types, ShowURI>
+    }
+  }
+}
+
+declare module "../../Algebra/Union" {
+  interface UnionConfig<Types> {
+    [ShowURI]: {
+      shows: {
+        [k in keyof Types]: Types[k] extends HKT<any, infer E, infer A>
+          ? S.Show<A>
+          : never
+      }
     }
   }
 }

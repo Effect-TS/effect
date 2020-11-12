@@ -1,4 +1,5 @@
 import type { InterfaceLA, IntersectionLA, TaggedUnionLA } from "../../Algebra/Config"
+import type { HKT } from "../../HKT"
 import type { Strict, StrictURI } from "../base"
 
 declare module "../../Algebra/Intersection" {
@@ -126,6 +127,18 @@ declare module "../../Algebra/TaggedUnion" {
   interface TaggedUnionConfig<Types> {
     [StrictURI]: {
       stricts: TaggedUnionLA<Types, StrictURI>
+    }
+  }
+}
+
+declare module "../../Algebra/Union" {
+  interface UnionConfig<Types> {
+    [StrictURI]: {
+      stricts: {
+        [k in keyof Types]: Types[k] extends HKT<any, infer E, infer A>
+          ? Strict<A>
+          : never
+      }
     }
   }
 }

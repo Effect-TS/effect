@@ -1,4 +1,5 @@
 import type { InterfaceLA, IntersectionLA, TaggedUnionLA } from "../../Algebra/Config"
+import type { HKT } from "../../HKT"
 import type { Encoder, EncoderURI } from "../base"
 
 declare module "../../Algebra/Intersection" {
@@ -121,6 +122,18 @@ declare module "../../Algebra/TaggedUnion" {
   interface TaggedUnionConfig<Types> {
     [EncoderURI]: {
       encoders: TaggedUnionLA<Types, EncoderURI>
+    }
+  }
+}
+
+declare module "../../Algebra/Union" {
+  interface UnionConfig<Types> {
+    [EncoderURI]: {
+      encoders: {
+        [k in keyof Types]: Types[k] extends HKT<any, infer E, infer A>
+          ? Encoder<A, E>
+          : never
+      }
     }
   }
 }
