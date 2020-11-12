@@ -6,7 +6,7 @@ import * as SK from "../src/Stream/Sink"
 describe("Sink", () => {
   describe("collectAllToMap", () => {
     it("does not dupe", async () => {
-      const stream = S.fromArray([
+      const stream = S.fromChunk([
         "one",
         "two",
         "three",
