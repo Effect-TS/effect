@@ -5,6 +5,7 @@ import type { NonEmptyArray } from "@effect-ts/core/Classic/NonEmptyArray"
 import type { Option } from "@effect-ts/core/Classic/Option"
 import type { Record } from "@effect-ts/core/Classic/Record"
 import type { FunctionN } from "@effect-ts/core/Function"
+import type { List } from "@effect-ts/core/Persistent/List"
 import type { Mutable } from "@effect-ts/system/Mutable"
 
 import type { AnyEnv, ConfigsForType, InterpreterURIS, Kind, Named } from "../../HKT"
@@ -21,6 +22,7 @@ export type LiteralT = string | number
 
 export interface NonEmptyArrayConfig<L, A> {}
 export interface ArrayConfig<L, A> {}
+export interface ListConfig<L, A> {}
 export interface NullableConfig<L, A> {}
 export interface MutableConfig<L, A> {}
 export interface OptionalConfig<L, A> {}
@@ -127,6 +129,11 @@ export interface AlgebraPrimitives<F extends InterpreterURIS, Env extends AnyEnv
     a: Kind<F, Env, L, A>,
     config?: Named<ConfigsForType<Env, Array<L>, Array<A>, ArrayConfig<L, A>>>
   ) => Kind<F, Env, Array<L>, Array<A>>
+
+  readonly list: <L, A>(
+    a: Kind<F, Env, L, A>,
+    config?: Named<ConfigsForType<Env, Array<L>, List<A>, ListConfig<L, A>>>
+  ) => Kind<F, Env, Array<L>, List<A>>
 
   readonly nonEmptyArray: <L, A>(
     a: Kind<F, Env, L, A>,

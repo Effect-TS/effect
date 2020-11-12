@@ -257,7 +257,7 @@ describe("Generator", () => {
       const a = yield* _(O.some(0))
       const b = yield* _(E.right(1))
       const c = yield* _(T.succeed(2))
-      const d = yield* _(S.fromArray([a, b, c]))
+      const d = yield* _(S.fromChunk([a, b, c]))
 
       return d
     })
@@ -284,7 +284,7 @@ describe("Generator", () => {
         )
       )
       const b = a + 1
-      const c = yield* _(S.fromArray(A.range(b, 10)))
+      const c = yield* _(S.fromChunk(A.range(b, 10)))
       return c
     })
     expect(await pipe(result, S.runCollect, T.runPromiseExit)).toEqual(
@@ -295,10 +295,10 @@ describe("Generator", () => {
   it("stream gen #3", async () => {
     let b = 0
     const result = S.gen(function* (_) {
-      const a = yield* _(S.fromArray([0, 1, 2]))
+      const a = yield* _(S.fromChunk([0, 1, 2]))
       b++ // this is impure stuff that breaks the generator
       if (b > 1) return 0
-      const n = yield* _(S.fromArray(A.range(0, a)))
+      const n = yield* _(S.fromChunk(A.range(0, a)))
       return n + 1
     })
     expect(await pipe(result, S.runCollect, T.runPromiseExit)).toEqual(

@@ -16,4 +16,4 @@ export const empty = <A>() => T.succeed([] as A.Array<A>)
 
 export const emit = <A>(a: A) => T.succeed([a])
 
-export const emitArray = <A>(as: A.Array<A>) => T.succeed(as)
+export const emitChunk = <A>(as: A.Array<A>) => T.succeed(as)

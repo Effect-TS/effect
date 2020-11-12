@@ -9,6 +9,7 @@ import {
 } from "@effect-ts/core/Classic/Equal"
 import { getEqual as OgetEq } from "@effect-ts/core/Classic/Option"
 import { pipe } from "@effect-ts/core/Function"
+import { getEqual as LgetEq } from "@effect-ts/core/Persistent/List"
 
 import type { PrimitivesURI, UUID } from "../../Algebra/Primitives"
 import { interpreter } from "../../HKT"
@@ -87,6 +88,11 @@ export const eqPrimitiveInterpreter = interpreter<EqURI, PrimitivesURI>()(() => 
     pipe(
       getType(env).eq,
       (eq) => new EqType(eqApplyConfig(config?.conf)(AgetEq(eq), env, { eq }))
+    ),
+  list: (getType, config) => (env) =>
+    pipe(
+      getType(env).eq,
+      (eq) => new EqType(eqApplyConfig(config?.conf)(LgetEq(eq), env, { eq }))
     ),
   nonEmptyArray: (getType, config) => (env) =>
     pipe(

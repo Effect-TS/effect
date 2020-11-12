@@ -13,6 +13,7 @@ import type { Identity } from "@effect-ts/core/Classic/Identity"
 import type { Option } from "@effect-ts/core/Classic/Option"
 import type { Predicate, Refinement } from "@effect-ts/core/Function"
 import { identity, pipe } from "@effect-ts/core/Function"
+import * as L from "@effect-ts/core/Persistent/List"
 import * as P from "@effect-ts/core/Prelude"
 
 import * as _ from "../Internal"
@@ -174,9 +175,11 @@ export function traverse<T extends P.URIS, C = P.Auto>(
 /**
  * Map each target to a `Monoid` and combine the results.
  */
-export const foldMap = <M>(M: Identity<M>) => <A>(f: (a: A) => M) => <S>(
-  sa: Traversal<S, A>
-): ((s: S) => M) => sa.modifyF(C.getApplicative(M))((a) => C.makeConst(f(a))())
+export const foldMap = <M>(M: Identity<M>) => {
+  const _ = C.getApplicative(M)
+  return <A>(f: (a: A) => M) => <S>(sa: Traversal<S, A>): ((s: S) => M) =>
+    sa.modifyF(_)(f as any)
+}
 
 /**
  * Map each target to a `Monoid` and combine the results.
@@ -184,11 +187,21 @@ export const foldMap = <M>(M: Identity<M>) => <A>(f: (a: A) => M) => <S>(
 export const fold = <A>(M: Identity<A>): (<S>(sa: Traversal<S, A>) => (s: S) => A) =>
   foldMap(M)(identity)
 
+const unknownId = A.getIdentity<any>()
+
 /**
  * Get all the targets of a `Traversal`.
  */
 export const getAll = <S>(s: S) => <A>(sa: Traversal<S, A>): ReadonlyArray<A> =>
-  foldMap(A.getIdentity<A>())((a: A) => [a])(sa)(s)
+  foldMap(unknownId)((a: A) => [a])(sa)(s)
+
+const unknownIdList = L.getIdentity<any>()
+
+/**
+ * Get all the targets of a `Traversal`.
+ */
+export const getAllList = <S>(s: S) => <A>(sa: Traversal<S, A>): L.List<A> =>
+  foldMap(unknownIdList as Identity<L.List<A>>)(L.of as (a: A) => L.List<A>)(sa)(s)
 
 // -------------------------------------------------------------------------------------
 // instances

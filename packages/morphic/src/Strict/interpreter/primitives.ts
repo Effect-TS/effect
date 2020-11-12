@@ -3,6 +3,7 @@ import * as E from "@effect-ts/core/Classic/Either"
 import * as NA from "@effect-ts/core/Classic/NonEmptyArray"
 import * as O from "@effect-ts/core/Classic/Option"
 import { flow, pipe } from "@effect-ts/core/Function"
+import * as L from "@effect-ts/core/Persistent/List"
 import * as T from "@effect-ts/core/Sync"
 
 import type { PrimitivesURI, UUID } from "../../Algebra/Primitives"
@@ -162,6 +163,20 @@ export const strictPrimitiveInterpreter = interpreter<StrictURI, PrimitivesURI>(
             strictApplyConfig(config?.conf)(
               {
                 shrink: A.foreachF(T.Applicative)(strict.shrink)
+              },
+              env,
+              { strict }
+            )
+          )
+      ),
+    list: (getType, config) => (env) =>
+      pipe(
+        getType(env).strict,
+        (strict) =>
+          new StrictType(
+            strictApplyConfig(config?.conf)(
+              {
+                shrink: L.foreachF(T.Applicative)(strict.shrink)
               },
               env,
               { strict }

@@ -145,7 +145,21 @@ export const hashPrimitiveInterpreter = interpreter<HashURI, PrimitivesURI>()(()
       pipe(getHash(env).hash, (hash) =>
         hashApplyConfig(config?.conf)(
           named(config?.name)({
-            hash: `Array<${hash.hash}`
+            hash: `Array<${hash.hash}>`
+          }),
+          env,
+          {
+            hash
+          }
+        )
+      )
+    ),
+  list: (getHash, config) => (env) =>
+    new HashType(
+      pipe(getHash(env).hash, (hash) =>
+        hashApplyConfig(config?.conf)(
+          named(config?.name)({
+            hash: `List<${hash.hash}>`
           }),
           env,
           {

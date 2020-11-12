@@ -19,14 +19,14 @@ export function deriveFor<S extends Summoner<any>>(S: S) {
   ) => F.derive(modelHashInterpreter<SummonerEnv<S>>())(_).hash
 }
 
-const hashs = new Map<any, any>()
+const hashes = new Map<any, any>()
 const defDerive = deriveFor(summonFor({}).make)({})
 
 export function hash<E, A>(F: M<{}, E, A>): Hash {
-  if (hashs.has(F)) {
-    return hashs.get(F)
+  if (hashes.has(F)) {
+    return hashes.get(F)
   }
   const d = defDerive(F)
-  hashs.set(F, d)
+  hashes.set(F, d)
   return d
 }

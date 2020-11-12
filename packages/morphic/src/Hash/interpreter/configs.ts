@@ -7,7 +7,7 @@ declare module "../../Algebra/Intersection" {
     A extends readonly unknown[]
   > {
     [HashURI]: {
-      hashs: IntersectionLA<L, A, HashURI>
+      hashes: IntersectionLA<L, A, HashURI>
     }
   }
 }
@@ -116,7 +116,17 @@ declare module "../../Algebra/Record" {
 declare module "../../Algebra/TaggedUnion" {
   interface TaggedUnionConfig<Types> {
     [HashURI]: {
-      hashs: TaggedUnionLA<Types, HashURI>
+      hashes: TaggedUnionLA<Types, HashURI>
+    }
+  }
+}
+
+declare module "../../Algebra/Union" {
+  interface UnionConfig<Types> {
+    [HashURI]: {
+      hashes: {
+        [k in keyof Types]: Hash
+      }
     }
   }
 }

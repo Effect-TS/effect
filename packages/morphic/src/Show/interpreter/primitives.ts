@@ -9,6 +9,7 @@ import {
   string as showString
 } from "@effect-ts/core/Classic/Show"
 import { absurd, pipe } from "@effect-ts/core/Function"
+import { getShow as LgetShow } from "@effect-ts/core/Persistent/List"
 
 import type { LiteralT, PrimitivesURI, UUID } from "../../Algebra/Primitives"
 import { interpreter } from "../../HKT"
@@ -140,6 +141,16 @@ export const showPrimitiveInterpreter = interpreter<ShowURI, PrimitivesURI>()(()
       pipe(getShow(env).show, (show) =>
         pipe(AgetShow(show), (showArray) =>
           showApplyConfig(config?.conf)(named(config?.name)(showArray), env, {
+            show
+          })
+        )
+      )
+    ),
+  list: (getShow, config) => (env) =>
+    new ShowType(
+      pipe(getShow(env).show, (show) =>
+        pipe(LgetShow(show), (showList) =>
+          showApplyConfig(config?.conf)(named(config?.name)(showList), env, {
             show
           })
         )
