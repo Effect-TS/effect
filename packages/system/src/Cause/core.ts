@@ -84,7 +84,7 @@ export function contains<E, E1 extends E = E>(that: Cause<E1>) {
     equalsCause(that, cause) ||
     pipe(
       cause,
-      foldLeft(false)((_, c) => (equalsCause(that, c) ? O.some(true) : O.none))
+      reduceLeft(false)((_, c) => (equalsCause(that, c) ? O.some(true) : O.none))
     )
 }
 
@@ -94,7 +94,7 @@ export function contains<E, E1 extends E = E>(that: Cause<E1>) {
 export function defects<E>(cause: Cause<E>): readonly unknown[] {
   return pipe(
     cause,
-    foldLeft<readonly unknown[]>([])((a, c) =>
+    reduceLeft<readonly unknown[]>([])((a, c) =>
       c._tag === "Die" ? O.some([...a, c.value]) : O.none
     )
   )
@@ -166,7 +166,7 @@ export function failureOrCause<E>(cause: Cause<E>): E.Either<E, Cause<never>> {
 export function failures<E>(cause: Cause<E>) {
   return pipe(
     cause,
-    foldLeft<readonly E[]>([])((a, c) =>
+    reduceLeft<readonly E[]>([])((a, c) =>
       c._tag === "Fail" ? O.some([...a, c.value]) : O.none
     )
   )
@@ -386,16 +386,16 @@ export function foldSafe<E, Z>(
 /**
  * Accumulates a state over a Cause
  */
-export function foldLeft<Z>(z: Z) {
+export function reduceLeft<Z>(z: Z) {
   return <E>(f: (z: Z, cause: Cause<E>) => O.Option<Z>): ((cause: Cause<E>) => Z) => {
-    return (cause) => S.run(foldLeftSafe(z)(f)(cause))
+    return (cause) => S.run(reduceLeftSafe(z)(f)(cause))
   }
 }
 
 /**
  * Accumulates a state over a Cause
  */
-export function foldLeftSafe<Z>(z: Z) {
+export function reduceLeftSafe<Z>(z: Z) {
   return <E>(
     f: (z: Z, cause: Cause<E>) => O.Option<Z>
   ): ((cause: Cause<E>) => S.UIO<Z>) => {
@@ -406,12 +406,16 @@ export function foldLeftSafe<Z>(z: Z) {
         switch (cause._tag) {
           case "Then": {
             return yield* _(
-              foldLeftSafe(yield* _(foldLeftSafe(apply)(f)(cause.left)))(f)(cause.right)
+              reduceLeftSafe(yield* _(reduceLeftSafe(apply)(f)(cause.left)))(f)(
+                cause.right
+              )
             )
           }
           case "Both": {
             return yield* _(
-              foldLeftSafe(yield* _(foldLeftSafe(apply)(f)(cause.left)))(f)(cause.right)
+              reduceLeftSafe(yield* _(reduceLeftSafe(apply)(f)(cause.left)))(f)(
+                cause.right
+              )
             )
           }
           default: {
@@ -464,7 +468,7 @@ export function interruptedOnly<E>(cause: Cause<E>) {
 export function interruptors<E>(cause: Cause<E>) {
   return pipe(
     cause,
-    foldLeft<Set<FiberID>>(new Set())((s, c) =>
+    reduceLeft<Set<FiberID>>(new Set())((s, c) =>
       c._tag === "Interrupt" ? O.some(s.add(c.fiberId)) : O.none
     )
   )
@@ -478,7 +482,7 @@ export function isEmpty<E>(cause: Cause<E>) {
     equalsCause(cause, Empty) ||
     pipe(
       cause,
-      foldLeft(true)((acc, c) => {
+      reduceLeft(true)((acc, c) => {
         switch (c._tag) {
           case "Empty": {
             return O.some(acc)
