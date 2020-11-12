@@ -12,8 +12,13 @@ const mid = Math.floor(size / 2)
 const id = "id-" + mid
 const nameModified = "Luke-" + mid + "-modified"
 
-const makeNames = () => {
-  let arr = L.emptyPushable()
+interface NameId {
+  name: string
+  id: string
+}
+
+const makeNames = (): L.List<NameId> => {
+  let arr = L.emptyPushable<NameId>()
   for (let i = 0; i < size; i++)
     arr = L.push(
       {
@@ -27,12 +32,6 @@ const makeNames = () => {
 }
 
 const data = {
-  a: {
-    b: {
-      c: { d: { e: "hello" } }
-    }
-  },
-
   m: {
     n: {
       names: makeNames()
@@ -42,18 +41,22 @@ const data = {
 
 const repeat = 1000 //50000
 
-const run = (fn: () => any) => {
-  for (let i = 0; i < repeat; i++) fn()
+const run = <A>(fn: () => A): A => {
+  let r = undefined
+  for (let i = 0; i < repeat; i++) {
+    r = fn()
+  }
+  return r as any
 }
 
 it("monocle-ts traversal list", () => {
   const optics = pipe(
-    Lens.id<any>(),
+    Lens.id<typeof data>(),
     Lens.prop("m"),
     Lens.prop("n"),
     Lens.prop("names"),
     Lens.traverse(L.Traversable),
-    Traversal.filter((child: any) => child.id === id)
+    Traversal.filter((child) => child.id === id)
   )
 
   const modify = pipe(
@@ -61,11 +64,10 @@ it("monocle-ts traversal list", () => {
     Traversal.modify((s) => ({ ...s, name: nameModified }))
   )
 
-  let r = undefined
-  const fn = () => (r = modify(data))
-  run(fn)
+  const fn = () => modify(data)
+  const r = run(fn)
 
   const w = L.first(Traversal.getAllList(r)(optics))
 
-  expect(w).toEqual(O.some({ id, name: nameModified }))
+  expect(w).toEqual<O.Option<NameId>>(O.some({ id, name: nameModified }))
 })
