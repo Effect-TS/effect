@@ -5,6 +5,7 @@ import * as R from "@effect-ts/system/Record"
 import { flow, identity, pipe, tuple } from "../../Function"
 import type { RecordURI } from "../../Modules"
 import type { Foldable } from "../../Prelude"
+import { succeedF } from "../../Prelude"
 import * as P from "../../Prelude"
 import type * as HKT from "../../Prelude/HKT"
 import * as A from "../Array"
@@ -24,16 +25,18 @@ export * from "@effect-ts/system/Record"
  * Traverse Record with Applicative, passing index to f
  */
 export const foreachWithIndexF = P.implementForeachWithIndexF<[RecordURI], V>()(
-  (_) => (G) => (f) =>
-    flow(
-      R.collect(tuple),
-      A.foreachF(G)(([k, a]) => G.map((b) => tuple(k, b))(f(k, a))),
-      G.map((x) =>
-        A.reduce_(x, {} as R.Record<typeof _.N, typeof _.B>, (b, [k, v]) =>
-          Object.assign(b, { [k]: v })
-        )
-      )
-    )
+  (_) => (G) => {
+    const succeed = succeedF(G)
+    return (f) => (fa) => {
+      let base = succeed<Record<typeof _.N, typeof _.B>>({} as any)
+      for (const k of Object.keys(fa) as typeof _.N[]) {
+        base = G.map(([x, b]: readonly [Record<typeof _.N, typeof _.B>, typeof _.B]) =>
+          Object.assign(x, { [k]: b })
+        )(G.both(f(k, fa[k]))(base))
+      }
+      return base
+    }
+  }
 )
 
 /**
