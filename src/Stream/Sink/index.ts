@@ -764,28 +764,20 @@ export function zipWith<R1, E1, I, I1 extends I, L1, Z, Z1, Z2>(
   return <R, E, L extends I1>(self: Sink<R, E, I, L, Z>) => zipWith_(self, that, f)
 }
 
-interface BothRunning {
-  readonly _tag: "BothRunning"
+class BothRunning {
+  readonly _tag = "BothRunning"
 }
 
-const bothRunning: BothRunning = { _tag: "BothRunning" }
+const bothRunning = new BothRunning()
 
-interface LeftDone<Z> {
-  readonly _tag: "LeftDone"
-  readonly value: Z
+class LeftDone<Z> {
+  readonly _tag = "LeftDone"
+  constructor(readonly value: Z) {}
 }
 
-function leftDone<Z>(z: Z): LeftDone<Z> {
-  return { _tag: "LeftDone", value: z }
-}
-
-interface RightDone<Z1> {
-  readonly _tag: "RightDone"
-  readonly value: Z1
-}
-
-function rightDone<Z1>(z1: Z1): RightDone<Z1> {
-  return { _tag: "RightDone", value: z1 }
+class RightDone<Z1> {
+  readonly _tag = "RightDone"
+  constructor(readonly value: Z1) {}
 }
 
 type State<Z, Z1> = BothRunning | LeftDone<Z> | RightDone<Z1>
@@ -893,13 +885,13 @@ export function zipWithPar_<R, R1, E, E1, I, I1, L, L1, Z, Z1, Z2>(
                             l.length > l1.length ? l1 : l
                           ] as const)
                         } else {
-                          return T.succeed(leftDone(z))
+                          return T.succeed(new LeftDone(z))
                         }
                       } else {
                         if (O.isSome(rr)) {
                           const [z1] = rr.value
 
-                          return T.succeed(rightDone(z1))
+                          return T.succeed(new RightDone(z1))
                         } else {
                           return T.succeed(bothRunning)
                         }
