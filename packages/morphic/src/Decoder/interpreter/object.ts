@@ -124,16 +124,21 @@ function interfaceDecoder<
   return makeDecoder(
     (u, c) => {
       if (isUnknownRecord(u)) {
-        return T.struct(
-          keys.reduce((prev, k) => {
-            prev[k] = decoder[k]
+        const r = keys.reduce((prev, k) => {
+          prev[k] = u[k]
+          return prev
+        }, {} as Record<string, unknown>)
+
+        return pipe(
+          r,
+          foreachRecordWithIndex((k, a) =>
+            decoder[k]
               ? (decoder[k] as Decoder<any>).validate(
-                  u[k],
-                  appendContext(c, k, decoder[k], u[k])
+                  a,
+                  appendContext(c, k, decoder[k], a)
                 )
-              : T.succeed(u[k])
-            return prev
-          }, {} as any)
+              : T.succeed(a)
+          )
         )
       }
       return fail(u, c, `${typeof u} is not a record`)
