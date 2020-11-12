@@ -6,18 +6,18 @@ export const hashIntersectionInterpreter = interpreter<HashURI, IntersectionURI>
   () => ({
     _F: HashURI,
     intersection: (...types) => (config) => (env) => {
-      const hashs = types.map((getHash) => getHash(env).hash)
+      const hashes = types.map((getHash) => getHash(env).hash)
       return new HashType(
         hashApplyConfig(config?.conf)(
           {
-            hash: hashs
+            hash: hashes
               .map((s) => s.hash)
               .sort()
               .join(" & ")
           },
           env,
           {
-            hashes: hashs as any
+            hashes: hashes as any
           }
         )
       )
