@@ -9,6 +9,7 @@ import * as Ex from "../../Exit/api"
 import * as F from "../../Fiber/api"
 import { pipe } from "../../Function"
 import * as L from "../../Layer"
+import type * as MP from "../../Map"
 import * as O from "../../Option"
 import * as R from "../../Ref"
 import { matchTag } from "../../Utils"
@@ -1131,6 +1132,46 @@ export function provideSomeLayer_<R0, E, I, L, Z, R2, R>(
 }
 
 /**
+ * Creates a Sink from a managed `Push`
+ */
+export function apply<R, E, I, L, Z>(
+  push: M.Managed<R, never, Push.Push<R, E, I, L, Z>>
+): Sink<R, E, I, L, Z> {
+  return new Sink(push)
+}
+
+// BOOKMARK
+
+/**
+ * A sink that collects all of its inputs into an array.
+ */
+export function collectAll<A>(): Sink<unknown, never, A, A, A.Array<A>> {
+  return foldLeftChunks([] as A.Array<A>)((s, i: A.Array<A>) => [...s, ...i])
+}
+
+/**
+ * A sink that collects all of its inputs into a map. The keys are extracted from inputs
+ * using the keying function `key`; if multiple inputs use the same key, they are merged
+ * using the `f` function.
+ */
+export function collectAllToMap<A, K>(key: (a: A) => K) {
+  return (f: (a: A, a1: A) => A): Sink<unknown, never, A, never, MP.Map<K, A>> =>
+    new Sink(
+      M.suspend(
+        () =>
+          foldLeftChunks<Map<K, A>>(new Map())((acc, as: A.Array<A>) =>
+            A.reduce_(as, acc, (acc, a) => {
+              const k = key(a)
+              const v = acc.get(k)
+
+              return acc.set(k, v ? f(v, a) : a)
+            })
+          ).push
+      )
+    )
+}
+
+/**
  * A sink that always fails with the specified error.
  */
 export function fail<E, I>(e: E): Sink<unknown, E, I, I, never> {
@@ -1166,79 +1207,23 @@ export const succeed = <Z, I>(z: Z): Sink<unknown, never, I, I, Z> =>
   })
 
 /**
- * A sink that effectfully folds its input chunks with the provided function, termination predicate and initial state.
- * `contFn` condition is checked only for the initial value and at the end of processing of each chunk.
- * `f` and `contFn` must preserve chunking-invariance.
- */
-export const foldArraysM = <Z>(z: Z) => (contFn: (s: Z) => boolean) => <I, R, E>(
-  f: (s: Z, i: A.Array<I>) => T.Effect<R, E, Z>
-): Sink<R, E, I, I, Z> => {
-  if (contFn(z)) {
-    return new Sink(
-      pipe(
-        M.do,
-        M.bind("state", () => pipe(R.makeRef(z), T.toManaged())),
-        M.let("push", ({ state }) => (is: O.Option<A.Array<I>>) => {
-          switch (is._tag) {
-            case "None": {
-              return pipe(
-                state.get,
-                T.chain((s) => Push.emit(s, []))
-              )
-            }
-            case "Some": {
-              return pipe(
-                state.get,
-                T.chain((s) =>
-                  pipe(
-                    f(s, is.value),
-                    T.mapError(
-                      (e) => [E.left(e), []] as [E.Either<E, never>, A.Array<I>]
-                    ),
-                    T.chain((s) =>
-                      contFn(s)
-                        ? pipe(
-                            state.set(s),
-                            T.chain(() => Push.more)
-                          )
-                        : Push.emit(s, [])
-                    )
-                  )
-                )
-              )
-            }
-          }
-        }),
-        M.map(({ push }) => push)
-      )
-    )
-  } else {
-    return succeed<Z, I>(z)
-  }
-}
-
-/**
  * A sink that folds its input chunks with the provided function, termination predicate and initial state.
  * `contFn` condition is checked only for the initial value and at the end of processing of each chunk.
  * `f` and `contFn` must preserve chunking-invariance.
  */
-export const foldArrays = <Z>(z: Z) => (contFn: (s: Z) => boolean) => <I>(
+export const foldChunks = <Z>(z: Z) => (contFn: (s: Z) => boolean) => <I>(
   f: (s: Z, i: A.Array<I>) => Z
 ): Sink<unknown, never, I, I, Z> =>
-  foldArraysM(z)(contFn)((z, i: A.Array<I>) => T.succeed(f(z, i)))
+  foldChunksM(z)(contFn)((z, i: A.Array<I>) => T.succeed(f(z, i)))
 
 /**
  * A sink that folds its input chunks with the provided function and initial state.
  * `f` must preserve chunking-invariance.
  */
-export const foldLeftArrays = <Z>(z: Z) => <I>(f: (s: Z, i: A.Array<I>) => Z) =>
-  foldArrays(z)(() => true)(f)
-
-/**
- * A sink that collects all of its inputs into an array.
- */
-export const collectAll = <A>(): Sink<unknown, never, A, A, A.Array<A>> =>
-  foldLeftArrays([] as A.Array<A>)((s, i: A.Array<A>) => [...s, ...i])
+export function foldLeftChunks<S>(z: S) {
+  return <I>(f: (s: S, i: A.Array<I>) => S): Sink<unknown, never, I, never, S> =>
+    foldChunks(z)(() => true)(f) as Sink<unknown, never, I, never, S>
+}
 
 /**
  * A sink that executes the provided effectful function for every element fed to it.
