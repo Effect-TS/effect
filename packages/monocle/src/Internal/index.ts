@@ -123,40 +123,30 @@ export const prismAsOptional = <S, A>(sa: Prism<S, A>): Optional<S, A> => ({
 })
 
 export const prismAsTraversal = <S, A>(sa: Prism<S, A>): Traversal<S, A> => ({
-  modifyF: (F) => (f) => (s) =>
-    pipe(
-      sa.getOption(s),
-      O.fold(
-        () => DSL.succeedF(F)(s),
-        (a) =>
-          pipe(
-            f(a),
-            F.map((a) => prismSet(a)(sa)(s))
-          )
+  modifyF: (F) => {
+    const succeed = DSL.succeedF(F)
+    return (f) => (s) =>
+      O.fold_(
+        sa.getOption(s),
+        () => succeed(s),
+        (a) => F.map<A, S>((a) => prismSet(a)(sa)(s))(f(a))
       )
-    )
+  }
 })
 
 export const prismModifyOption = <A>(f: (a: A) => A) => <S>(sa: Prism<S, A>) => (
   s: S
 ): O.Option<S> =>
-  pipe(
-    sa.getOption(s),
-    O.map((o) => {
-      const n = f(o)
-      return n === o ? s : sa.reverseGet(n)
-    })
-  )
+  O.map_(sa.getOption(s), (o) => {
+    const n = f(o)
+    return n === o ? s : sa.reverseGet(n)
+  })
 
 export const prismModify = <A>(f: (a: A) => A) => <S>(
   sa: Prism<S, A>
 ): ((s: S) => S) => {
   const g = prismModifyOption(f)(sa)
-  return (s) =>
-    pipe(
-      g(s),
-      O.getOrElse(() => s)
-    )
+  return (s) => O.getOrElse_(g(s), () => s)
 }
 
 export const prismSet = <A>(a: A): (<S>(sa: Prism<S, A>) => (s: S) => S) =>
@@ -198,40 +188,30 @@ export const prismLeft = <E, A>(): Prism<E.Either<E, A>, E> => ({
 // -------------------------------------------------------------------------------------
 
 export const optionalAsTraversal = <S, A>(sa: Optional<S, A>): Traversal<S, A> => ({
-  modifyF: (F) => (f) => (s) =>
-    pipe(
-      sa.getOption(s),
-      O.fold(
-        () => DSL.succeedF(F)(s),
-        (a) =>
-          pipe(
-            f(a),
-            F.map((a: A) => sa.set(a)(s))
-          )
+  modifyF: (F) => (f) => {
+    const succeed = DSL.succeedF(F)
+    return (s) =>
+      O.fold_(
+        sa.getOption(s),
+        () => succeed(s),
+        (a) => F.map<A, S>((a: A) => sa.set(a)(s))(f(a))
       )
-    )
+  }
 })
 
 export const optionalModifyOption = <A>(f: (a: A) => A) => <S>(
   optional: Optional<S, A>
 ) => (s: S): O.Option<S> =>
-  pipe(
-    optional.getOption(s),
-    O.map((a) => {
-      const n = f(a)
-      return n === a ? s : optional.set(n)(s)
-    })
-  )
+  O.map_(optional.getOption(s), (a) => {
+    const n = f(a)
+    return n === a ? s : optional.set(n)(s)
+  })
 
 export const optionalModify = <A>(f: (a: A) => A) => <S>(
   optional: Optional<S, A>
 ): ((s: S) => S) => {
   const g = optionalModifyOption(f)(optional)
-  return (s) =>
-    pipe(
-      g(s),
-      O.getOrElse(() => s)
-    )
+  return (s) => O.getOrElse_(g(s), () => s)
 }
 
 export const optionalComposeOptional = <A, B>(ab: Optional<A, B>) => <S>(
@@ -244,12 +224,10 @@ export const optionalComposeOptional = <A, B>(ab: Optional<A, B>) => <S>(
 const findFirstMutable = <A>(predicate: Predicate<A>): Optional<Array<A>, A> => ({
   getOption: A.findFirst(predicate),
   set: (a) => (s) =>
-    pipe(
+    O.fold_(
       A.findIndex(predicate)(s),
-      O.fold(
-        () => s,
-        (i) => A.unsafeUpdateAt(i, a)(s)
-      )
+      () => s,
+      (i) => A.unsafeUpdateAt(i, a)(s)
     )
 })
 
@@ -299,11 +277,7 @@ function indexMutableArray<A = never>(): Index<Array<A>, number, A> {
   return {
     index: (i) => ({
       getOption: A.lookup(i),
-      set: (a) => (as) =>
-        pipe(
-          A.updateAt(i, a)(as),
-          O.getOrElse(() => as)
-        )
+      set: (a) => (as) => O.getOrElse_(A.updateAt(i, a)(as), () => as)
     })
   }
 }
