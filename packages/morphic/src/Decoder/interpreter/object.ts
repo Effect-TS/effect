@@ -124,7 +124,7 @@ function interfaceDecoder<
   return makeDecoder(
     (u, c) => {
       if (isUnknownRecord(u)) {
-        const r = keys.reduce((prev, k) => {
+        const r = keys.concat(Object.keys(u)).reduce((prev, k) => {
           prev[k] = u[k]
           return prev
         }, {} as Record<string, unknown>)
