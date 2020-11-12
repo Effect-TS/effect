@@ -52,73 +52,58 @@ export function as<Z1>(z: Z1) {
  * the predicate `p`. The sink's results will be accumulated
  * using the stepping function `f`.
  */
-export function collectAllWhileWith_<R, E, I, L, Z, S>(
-  self: Sink<R, E, I, L, Z>,
-  z: S,
-  p: (z: Z) => boolean,
-  f: (s: S, z: Z) => S
-): Sink<R, E, I, L, S> {
-  return new Sink(
-    pipe(
-      R.makeManagedRef(z),
-      M.chain((acc) => {
-        return pipe(
-          Push.restartable(self.push),
-          M.map(([push, restart]) => {
-            const go = (
-              s: S,
-              in_: O.Option<A.Array<I>>,
-              end: boolean
-            ): T.Effect<R, [E.Either<E, S>, A.Array<L>], S> =>
-              T.catchAll_(T.as_(push(in_), s), ([e, leftover]) =>
-                E.fold_(
-                  e,
-                  (e) => Push.fail(e, leftover),
-                  (z) => {
-                    if (p(z)) {
-                      const s1 = f(s, z)
+export function collectAllWhileWith<S>(z: S) {
+  return <Z>(p: (z: Z) => boolean) => (f: (s: S, z: Z) => S) => <R, E, I, L>(
+    self: Sink<R, E, I, L, Z>
+  ): Sink<R, E, I, L, S> =>
+    new Sink(
+      pipe(
+        R.makeManagedRef(z),
+        M.chain((acc) => {
+          return pipe(
+            Push.restartable(self.push),
+            M.map(([push, restart]) => {
+              const go = (
+                s: S,
+                in_: O.Option<A.Array<I>>,
+                end: boolean
+              ): T.Effect<R, [E.Either<E, S>, A.Array<L>], S> =>
+                T.catchAll_(T.as_(push(in_), s), ([e, leftover]) =>
+                  E.fold_(
+                    e,
+                    (e) => Push.fail(e, leftover),
+                    (z) => {
+                      if (p(z)) {
+                        const s1 = f(s, z)
 
-                      if (A.isEmpty(leftover)) {
-                        if (end) {
-                          return Push.emit(s1, A.empty)
+                        if (A.isEmpty(leftover)) {
+                          if (end) {
+                            return Push.emit(s1, A.empty)
+                          } else {
+                            return T.as_(restart, s1)
+                          }
                         } else {
-                          return T.as_(restart, s1)
+                          return T.andThen_(
+                            restart,
+                            go(s1, O.some(leftover) as O.Option<A.Array<I>>, end)
+                          )
                         }
                       } else {
-                        return T.andThen_(
-                          restart,
-                          go(s1, O.some((leftover as unknown) as A.Array<I>), end)
-                        )
+                        return Push.emit(s, leftover)
                       }
-                    } else {
-                      return Push.emit(s, leftover)
                     }
-                  }
+                  )
                 )
-              )
 
-            return (in_: O.Option<A.Array<I>>) =>
-              T.chain_(acc.get, (s) =>
-                T.chain_(go(s, in_, O.isNone(in_)), (s1) => acc.set(s1))
-              )
-          })
-        )
-      })
+              return (in_: O.Option<A.Array<I>>) =>
+                T.chain_(acc.get, (s) =>
+                  T.chain_(go(s, in_, O.isNone(in_)), (s1) => acc.set(s1))
+                )
+            })
+          )
+        })
+      )
     )
-  )
-}
-
-/**
- * Repeatedly runs the sink for as long as its results satisfy
- * the predicate `p`. The sink's results will be accumulated
- * using the stepping function `f`.
- */
-export function collectAllWhileWith<S, Z>(
-  z: S,
-  p: (z: Z) => boolean,
-  f: (s: S, z: Z) => S
-) {
-  return <R, E, I, L>(self: Sink<R, E, I, L, Z>) => collectAllWhileWith_(self, z, p, f)
 }
 
 /**
@@ -307,11 +292,11 @@ export function dimapChunksM<R1, E1, I, I2, Z, Z2>(
  *
  * This function essentially runs sinks in sequence.
  */
-function chain_<R, R1, E, E1, I, I2, L, L2, Z, Z2>(
+export function chain_<R, E, I, L extends I1, Z, R1, E1, I1 extends I, L1, Z1>(
   self: Sink<R, E, I, L, Z>,
-  f: (z: Z) => Sink<R1, E1, I2, L2, Z2>
-): Sink<R & R1, E | E1, I & L2 & I2, L | L2, Z2> {
-  return foldM_(self, (e) => fail(e), f)
+  f: (z: Z) => Sink<R1, E1, I1, L1, Z1>
+): Sink<R & R1, E | E1, I1, L1, Z1> {
+  return foldM_(self, (e) => (fail(e) as unknown) as Sink<R1, E | E1, I1, L1, Z1>, f)
 }
 
 /**
@@ -320,8 +305,10 @@ function chain_<R, R1, E, E1, I, I2, L, L2, Z, Z2>(
  *
  * This function essentially runs sinks in sequence.
  */
-export function chain<Z, R, R1, E1, I1, L1, Z1>(f: (z: Z) => Sink<R1, E1, I1, L1, Z1>) {
-  return <E, I, L>(self: Sink<R, E, I, L, Z>) => chain_(self, f)
+export function chain<Z, R, R1, E1, I, I1 extends I, L1, Z1>(
+  f: (z: Z) => Sink<R1, E1, I1, L1, Z1>
+) {
+  return <E, L extends I1>(self: Sink<R, E, I, L, Z>) => chain_(self, f)
 }
 
 /**
@@ -335,7 +322,7 @@ export function chain<Z, R, R1, E1, I1, L1, Z1>(f: (z: Z) => Sink<R1, E1, I1, L1
  * The error parameter of the returned `IO` may be chosen arbitrarily, since
  * it will depend on the `IO`s returned by the given continuations.
  */
-export function foldM_<R, E, I, L, Z, R1, E1, I1, L1, Z1, R2, E2, I2, L2, Z2>(
+export function foldM_<R, R1, R2, E, E1, E2, I, I1, I2, L, L1, L2, Z, Z1, Z2>(
   self: Sink<R, E, I, L, Z>,
   failure: (e: E) => Sink<R1, E1, I1, L1, Z1>,
   success: (z: Z) => Sink<R2, E2, I2, L2, Z2>
@@ -377,13 +364,13 @@ export function foldM_<R, E, I, L, Z, R1, E1, I1, L1, Z1, R2, E2, I2, L2, Z2>(
                         in_,
                         () =>
                           pipe(
-                            p(O.some((leftover as unknown) as A.Array<I & I1 & I2>)),
+                            p(O.some(leftover) as O.Option<A.Array<I & I1 & I2>>),
                             T.when(() => A.isNonEmpty(leftover)),
                             T.andThen(p(O.none))
                           ),
                         () =>
                           pipe(
-                            p(O.some((leftover as unknown) as A.Array<I & I1 & I2>)),
+                            p(O.some(leftover) as O.Option<A.Array<I & I1 & I2>>),
                             T.when(() => A.isNonEmpty(leftover))
                           )
                       )
@@ -398,6 +385,24 @@ export function foldM_<R, E, I, L, Z, R1, E1, I1, L1, Z1, R2, E2, I2, L2, Z2>(
       })
     )
   )
+}
+
+/**
+ * Recovers from errors by accepting one effect to execute for the case of an
+ * error, and one effect to execute for the case of success.
+ *
+ * This method has better performance than `either` since no intermediate
+ * value is allocated and does not require subsequent calls to `flatMap` to
+ * define the next effect.
+ *
+ * The error parameter of the returned `IO` may be chosen arbitrarily, since
+ * it will depend on the `IO`s returned by the given continuations.
+ */
+export function foldM<R1, R2, E, E1, E2, I1, I2, L1, L2, Z, Z1, Z2>(
+  failure: (e: E) => Sink<R1, E1, I1, L1, Z1>,
+  success: (z: Z) => Sink<R2, E2, I2, L2, Z2>
+) {
+  return <R, I, L>(self: Sink<R, E, I, L, Z>) => foldM_(self, failure, success)
 }
 
 /**
@@ -453,8 +458,8 @@ export function mapM_<R, R1, E, E1, I, L, Z, Z2>(
   return new Sink(
     M.map_(self.push, (push) => {
       return (inputs: O.Option<A.Array<I>>) =>
-        T.catchAll_(push(inputs), ([e, left]) => {
-          return E.fold_(
+        T.catchAll_(push(inputs), ([e, left]) =>
+          E.fold_(
             e,
             (e) => Push.fail(e, left),
             (z) =>
@@ -464,7 +469,7 @@ export function mapM_<R, R1, E, E1, I, L, Z, Z2>(
                 (z2) => Push.emit(z2, left)
               )
           )
-        })
+        )
     })
   )
 }
@@ -610,8 +615,8 @@ export function toTransducer<R, E, I, L, Z>(
 ): Transducer<R, E, I, Z> {
   return transducer(
     M.map_(Push.restartable(self.push), ([push, restart]) => {
-      const go = (input: O.Option<A.Array<I>>): T.Effect<R, E, A.Array<Z>> => {
-        return T.foldM_(
+      const go = (input: O.Option<A.Array<I>>): T.Effect<R, E, A.Array<Z>> =>
+        T.foldM_(
           push(input),
           ([e, leftover]) =>
             E.fold_(
@@ -630,7 +635,6 @@ export function toTransducer<R, E, I, L, Z>(
             ),
           (_) => T.succeed(A.empty)
         )
-      }
 
       return (input: O.Option<A.Array<I>>) => go(input)
     })
@@ -641,10 +645,10 @@ export function toTransducer<R, E, I, L, Z>(
  * Feeds inputs to this sink until it yields a result, then switches over to the
  * provided sink until it yields a result, combining the two results in a tuple.
  */
-export function zip_<R, R1, E, E1, I, I1, L, L1, Z, Z1>(
+export function zip_<R, R1, E, E1, I, I1 extends I, L extends I1, L1, Z, Z1>(
   self: Sink<R, E, I, L, Z>,
   that: Sink<R1, E1, I1, L1, Z1>
-): Sink<R & R1, E | E1, I & L1 & I1, L | L1, readonly [Z, Z1]> {
+): Sink<R & R1, E | E1, I & I1, L | L1, readonly [Z, Z1]> {
   return zipWith_(self, that, (z, z1) => [z, z1] as const)
 }
 
@@ -652,15 +656,14 @@ export function zip_<R, R1, E, E1, I, I1, L, L1, Z, Z1>(
  * Feeds inputs to this sink until it yields a result, then switches over to the
  * provided sink until it yields a result, combining the two results in a tuple.
  */
-export function zip<R1, E1, I1, L1, Z1>(that: Sink<R1, E1, I1, L1, Z1>) {
-  return <R, E, I, L, Z>(self: Sink<R, E, I, L, Z>) =>
-    zipWith_(self, that, (z, z1) => [z, z1] as const)
+export function zip<R1, E1, I, I1 extends I, L1, Z1>(that: Sink<R1, E1, I1, L1, Z1>) {
+  return <R, E, L extends I1, Z>(self: Sink<R, E, I, L, Z>) => zip_(self, that)
 }
 
 /**
  * Like [[zip]], but keeps only the result from the `that` sink.
  */
-export function zipLeft_<R, R1, E, E1, I, I1, L, L1, Z, Z1>(
+export function zipLeft_<R, R1, E, E1, I, I1 extends I, L extends I1, L1, Z, Z1>(
   self: Sink<R, E, I, L, Z>,
   that: Sink<R1, E1, I1, L1, Z1>
 ): Sink<R & R1, E | E1, I & L1 & I1, L | L1, Z> {
@@ -670,19 +673,91 @@ export function zipLeft_<R, R1, E, E1, I, I1, L, L1, Z, Z1>(
 /**
  * Like [[zip]], but keeps only the result from the `that` sink.
  */
-export function zipLeft<R1, E1, I1, L1, Z1>(that: Sink<R1, E1, I1, L1, Z1>) {
-  return <R, E, I, L, Z>(self: Sink<R, E, I, L, Z>) => zipWith_(self, that, (z) => z)
+export function zipLeft<R1, E1, I, I1 extends I, L1, Z1>(
+  that: Sink<R1, E1, I1, L1, Z1>
+) {
+  return <R, E, L extends I1, Z>(self: Sink<R, E, I, L, Z>) => zipLeft_(self, that)
+}
+
+/**
+ * Runs both sinks in parallel on the input and combines the results in a tuple.
+ */
+export function zipPar_<R, R1, E, E1, I, I1, L, L1, Z, Z1>(
+  self: Sink<R, E, I, L, Z>,
+  that: Sink<R1, E1, I1, L1, Z1>
+): Sink<R & R1, E | E1, I & I1, L | L1, readonly [Z, Z1]> {
+  return zipWithPar_(self, that, (a, b) => [a, b] as const)
+}
+
+/**
+ * Runs both sinks in parallel on the input and combines the results in a tuple.
+ */
+export function zipPar<R1, E1, I1, L1, Z1>(that: Sink<R1, E1, I1, L1, Z1>) {
+  return <R, E, I, L, Z>(self: Sink<R, E, I, L, Z>) => zipPar_(self, that)
+}
+
+/**
+ * Like [[zipPar]], but keeps only the result from this sink.
+ */
+export function zipParLeft_<R, R1, E, E1, I, I1, L, L1, Z>(
+  self: Sink<R, E, I, L, Z>,
+  that: Sink<R1, E1, I1, L1, unknown>
+): Sink<R & R1, E | E1, I & I1, L | L1, Z> {
+  return zipWithPar_(self, that, (b, _) => b)
+}
+
+/**
+ * Like [[zipPar]], but keeps only the result from this sink.
+ */
+export function zipParLeft<R1, E1, I1, L1>(that: Sink<R1, E1, I1, L1, unknown>) {
+  return <R, E, I, L, Z>(self: Sink<R, E, I, L, Z>) => zipParLeft_(self, that)
+}
+
+/**
+ * Like [[zipPar]], but keeps only the result from the `that` sink.
+ */
+export function zipParRight_<R, R1, E, E1, I, I1, L, L1, Z, Z1>(
+  self: Sink<R, E, I, L, Z>,
+  that: Sink<R1, E1, I1, L1, Z1>
+): Sink<R & R1, E | E1, I & I1, L | L1, Z1> {
+  return zipWithPar_(self, that, (_, c) => c)
+}
+
+/**
+ * Like [[zipPar]], but keeps only the result from the `that` sink.
+ */
+export function zipParRight<R1, E1, I1, L1, Z1>(that: Sink<R1, E1, I1, L1, Z1>) {
+  return <R, E, I, L, Z>(self: Sink<R, E, I, L, Z>) => zipParRight_(self, that)
+}
+
+/**
+ * Like [[zip]], but keeps only the result from this sink.
+ */
+export function zipRight_<R, R1, E, E1, I, I1 extends I, L extends I1, L1, Z, Z1>(
+  self: Sink<R, E, I, L, Z>,
+  that: Sink<R1, E1, I1, L1, Z1>
+): Sink<R & R1, E | E1, I & L1 & I1, L | L1, Z1> {
+  return zipWith_(self, that, (_, z1) => z1)
+}
+
+/**
+ * Like [[zip]], but keeps only the result from this sink.
+ */
+export function zipRight<R1, E1, I, I1 extends I, L1, Z, Z1>(
+  that: Sink<R1, E1, I1, L1, Z1>
+) {
+  return <R, E, L extends I1>(self: Sink<R, E, I, L, Z>) => zipRight_(self, that)
 }
 
 /**
  * Feeds inputs to this sink until it yields a result, then switches over to the
  * provided sink until it yields a result, finally combining the two results with `f`.
  */
-export function zipWith_<R, R1, E, E1, I, I1, L, L1, Z, Z1, Z2>(
+export function zipWith_<R, R1, E, E1, I, I1 extends I, L extends I1, L1, Z, Z1, Z2>(
   self: Sink<R, E, I, L, Z>,
   that: Sink<R1, E1, I1, L1, Z1>,
   f: (z: Z, z1: Z1) => Z2
-): Sink<R & R1, E | E1, I & L1 & I1, L | L1, Z2> {
+): Sink<R & R1, E | E1, I & I1, L | L1, Z2> {
   return chain_(self, (z) => map_(that, (_) => f(z, _)))
 }
 
@@ -690,18 +765,12 @@ export function zipWith_<R, R1, E, E1, I, I1, L, L1, Z, Z1, Z2>(
  * Feeds inputs to this sink until it yields a result, then switches over to the
  * provided sink until it yields a result, finally combining the two results with `f`.
  */
-export function zipWith<R1, E1, I1, L1, Z, Z1, Z2>(
+export function zipWith<R1, E1, I, I1 extends I, L1, Z, Z1, Z2>(
   that: Sink<R1, E1, I1, L1, Z1>,
   f: (z: Z, z1: Z1) => Z2
 ) {
-  return <R, E, I, L>(self: Sink<R, E, I, L, Z>) =>
-    chain_(self, (z) => map_(that, (_) => f(z, _)))
+  return <R, E, L extends I1>(self: Sink<R, E, I, L, Z>) => zipWith_(self, that, f)
 }
-
-/**
- * Runs both sinks in parallel on the input and combines the results
- * using the provided function.
- */
 
 interface BothRunning {
   readonly _tag: "BothRunning"
@@ -729,7 +798,11 @@ function rightDone<Z1>(z1: Z1): RightDone<Z1> {
 
 type State<Z, Z1> = BothRunning | LeftDone<Z> | RightDone<Z1>
 
-export function zipWithPar<R, R1, E, E1, I, I1, L, L1, Z, Z1, Z2>(
+/**
+ * Runs both sinks in parallel on the input and combines the results
+ * using the provided function.
+ */
+export function zipWithPar_<R, R1, E, E1, I, I1, L, L1, Z, Z1, Z2>(
   self: Sink<R, E, I, L, Z>,
   that: Sink<R1, E1, I1, L1, Z1>,
   f: (z: Z, z1: Z1) => Z2
@@ -890,6 +963,123 @@ export function zipWithPar<R, R1, E, E1, I, I1, L, L1, Z, Z1, Z2>(
   )
 }
 
+/**
+ * Runs both sinks in parallel on the input and combines the results
+ * using the provided function.
+ */
+export function zipWithPar<R1, E1, I1, L1, Z, Z1, Z2>(
+  that: Sink<R1, E1, I1, L1, Z1>,
+  f: (z: Z, z1: Z1) => Z2
+) {
+  return <R, E, I, L>(self: Sink<R, E, I, L, Z>) => zipWithPar_(self, that, f)
+}
+
+/**
+ * Exposes leftover
+ */
+export function exposeLeftover<R, E, I, L, Z>(
+  self: Sink<R, E, I, L, Z>
+): Sink<R, E, I, never, readonly [Z, A.Array<L>]> {
+  return new Sink(
+    M.map_(self.push, (p) => {
+      return (in_: O.Option<A.Array<I>>) =>
+        T.mapError_(p(in_), ([v, leftover]) => {
+          return [E.map_(v, (z) => [z, leftover] as const), A.empty] as const
+        })
+    })
+  )
+}
+
+/**
+ * Drops any leftover
+ */
+export function dropLeftover<R, E, I, L, Z>(
+  self: Sink<R, E, I, L, Z>
+): Sink<R, E, I, never, Z> {
+  return new Sink(
+    M.map_(self.push, (p) => (in_: O.Option<readonly I[]>) =>
+      T.mapError_(p(in_), ([v, _]) => [v, []])
+    )
+  )
+}
+
+/**
+ * Creates a sink that produces values until one verifies
+ * the predicate `f`.
+ */
+export function untilOutputM_<R, R1, E, E1, I, L, Z>(
+  self: Sink<R, E, I, L, Z>,
+  f: (z: Z) => T.Effect<R1, E1, boolean>
+): Sink<R & R1, E | E1, I, L, O.Option<Z>> {
+  return new Sink(
+    M.map_(Push.restartable(self.push), ([push, restart]) => {
+      const go = (
+        in_: O.Option<A.Array<I>>,
+        end: boolean
+      ): T.Effect<
+        R & R1,
+        readonly [E.Either<E | E1, O.Option<Z>>, A.Array<L>],
+        void
+      > => {
+        return T.catchAll_(push(in_), ([e, leftover]) =>
+          E.fold_(
+            e,
+            (e) => Push.fail(e, leftover),
+            (z) =>
+              T.chain_(
+                T.mapError_(f(z), (err) => [E.left(err), leftover] as const),
+                (satisfied) => {
+                  if (satisfied) {
+                    return Push.emit(O.some(z), leftover)
+                  } else if (A.isEmpty(leftover)) {
+                    return end
+                      ? Push.emit(O.none, A.empty)
+                      : T.andThen_(restart, Push.more)
+                  } else {
+                    return go(O.some(leftover) as O.Option<A.Array<I>>, end)
+                  }
+                }
+              )
+          )
+        )
+      }
+
+      return (is: O.Option<A.Array<I>>) => go(is, O.isNone(is))
+    })
+  )
+}
+
+/**
+ * Creates a sink that produces values until one verifies
+ * the predicate `f`.
+ */
+export function untilOutputM<R1, E1, Z>(f: (z: Z) => T.Effect<R1, E1, boolean>) {
+  return <R, E, I, L>(self: Sink<R, E, I, L, Z>) => untilOutputM_(self, f)
+}
+
+/**
+ * Provides the sink with its required environment, which eliminates
+ * its dependency on `R`.
+ */
+export function provide_<R, E, I, L, Z>(
+  self: Sink<R, E, I, L, Z>,
+  r: R
+): Sink<unknown, E, I, L, Z> {
+  return new Sink(
+    M.map_(M.provide_(self.push, r), (push) => (i: O.Option<A.Array<I>>) =>
+      T.provide_(push(i), r)
+    )
+  )
+}
+
+/**
+ * Provides the sink with its required environment, which eliminates
+ * its dependency on `R`.
+ */
+export function provide<R>(r: R) {
+  return <E, I, L, Z>(self: Sink<R, E, I, L, Z>) => provide_(self, r)
+}
+
 /*
 
 
@@ -1041,19 +1231,6 @@ export const foreach = <I, R1, E1>(f: (i: I) => T.Effect<R1, E1, any>) => {
     O.fold(
       () => Push.emit<never, void>(undefined, []),
       (is: A.Array<I>) => go(is, 0, is.length)
-    )
-  )
-}
-
-/**
- * Drops any leftover
- */
-export function dropLeftover<R, E, I, L, Z>(
-  self: Sink<R, E, I, L, Z>
-): Sink<R, E, I, never, Z> {
-  return new Sink(
-    M.map_(self.push, (p) => (in_: O.Option<readonly I[]>) =>
-      T.mapError_(p(in_), ([v, _]) => [v, []])
     )
   )
 }
