@@ -130,16 +130,7 @@ export function contramapM_<R, R1, E, E1, I, I2, L, Z>(
   self: Sink<R, E, I, L, Z>,
   f: (i2: I2) => T.Effect<R1, E1, I>
 ): Sink<R & R1, E | E1, I2, L, Z> {
-  const mapM = <R_, E_, A, B>(
-    f: (a: A) => T.Effect<R_, E_, B>
-  ): ((as: A.Array<A>) => T.Effect<R_, E_, A.Array<B>>) => {
-    return (as) =>
-      A.reduce_(as, T.succeed([]) as T.Effect<R_, E_, A.Array<B>>, (acc, v) =>
-        T.chain_(acc, (bs) => T.map_(f(v), (b) => A.snoc_(bs, b)))
-      )
-  }
-
-  return contramapChunksM_(self, mapM(f))
+  return contramapChunksM_(self, T.foreach(f))
 }
 
 /**
@@ -1079,21 +1070,6 @@ export function provide_<R, E, I, L, Z>(
 export function provide<R>(r: R) {
   return <E, I, L, Z>(self: Sink<R, E, I, L, Z>) => provide_(self, r)
 }
-
-/*
-
-
-
-
-
-
-
-
-
-
-
-
-*/
 
 /**
  * A sink that always fails with the specified error.
