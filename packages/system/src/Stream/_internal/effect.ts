@@ -18,6 +18,7 @@ export {
   unit
 } from "../../Effect/core"
 export { raceWith } from "../../Effect/core-scope"
+export { foreach } from "../../Effect/foreach"
 export { die } from "../../Effect/die"
 export { bind, do, let } from "../../Effect/do"
 export { done } from "../../Effect/done"
