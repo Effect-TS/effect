@@ -112,7 +112,7 @@ export function collectAllWhileWith<S>(z: S) {
 export function contramap_<R, E, I, I2, L, Z>(
   self: Sink<R, E, I, L, Z>,
   f: (i2: I2) => I
-): Sink<R, E, I & I2, L, Z> {
+): Sink<R, E, I2, L, Z> {
   return contramapChunks_(self, A.map(f))
 }
 
@@ -129,7 +129,7 @@ export function contramap<I, I2>(f: (i2: I2) => I) {
 export function contramapM_<R, R1, E, E1, I, I2, L, Z>(
   self: Sink<R, E, I, L, Z>,
   f: (i2: I2) => T.Effect<R1, E1, I>
-): Sink<R & R1, E | E1, I & I2, L, Z> {
+): Sink<R & R1, E | E1, I2, L, Z> {
   const mapM = <R_, E_, A, B>(
     f: (a: A) => T.Effect<R_, E_, B>
   ): ((as: A.Array<A>) => T.Effect<R_, E_, A.Array<B>>) => {
@@ -156,7 +156,7 @@ export function contramapM<R1, E1, I, I2>(f: (i2: I2) => T.Effect<R1, E1, I>) {
 export function contramapChunks_<R, E, I, I2, L, Z>(
   self: Sink<R, E, I, L, Z>,
   f: (a: A.Array<I2>) => A.Array<I>
-): Sink<R, E, I & I2, L, Z> {
+): Sink<R, E, I2, L, Z> {
   return new Sink(M.map_(self.push, (push) => (input) => push(O.map_(input, f))))
 }
 
@@ -175,10 +175,10 @@ export function contramapChunks<I, I2>(f: (a: A.Array<I2>) => A.Array<I>) {
 export function contramapChunksM_<R, R1, E, E1, I, I2, L, Z>(
   self: Sink<R, E, I, L, Z>,
   f: (a: A.Array<I2>) => T.Effect<R1, E1, A.Array<I>>
-): Sink<R & R1, E | E1, I & I2, L, Z> {
+): Sink<R & R1, E | E1, I2, L, Z> {
   return new Sink(
     M.map_(self.push, (push) => {
-      return (input: O.Option<A.Array<I & I2>>) =>
+      return (input: O.Option<A.Array<I2>>) =>
         O.fold_(
           input,
           () => push(O.none),
@@ -210,7 +210,7 @@ export function dimap_<R, E, I, I2, L, Z, Z2>(
   self: Sink<R, E, I, L, Z>,
   f: (i2: I2) => I,
   g: (z: Z) => Z2
-): Sink<R, E, I & I2, L, Z2> {
+): Sink<R, E, I2, L, Z2> {
   return map_(contramap_(self, f), g)
 }
 
@@ -228,7 +228,7 @@ export function dimapM_<R, R1, E, E1, I, I2, L, Z, Z2>(
   self: Sink<R, E, I, L, Z>,
   f: (i2: I2) => T.Effect<R1, E1, I>,
   g: (z: Z) => T.Effect<R1, E1, Z2>
-): Sink<R & R1, E | E1, I & I2, L, Z2> {
+): Sink<R & R1, E | E1, I2, L, Z2> {
   return mapM_(contramapM_(self, f), g)
 }
 
@@ -249,7 +249,7 @@ export function dimapChunks_<R, E, I, I2, L, Z, Z2>(
   self: Sink<R, E, I, L, Z>,
   f: (i2: A.Array<I2>) => A.Array<I>,
   g: (z: Z) => Z2
-): Sink<R, E, I & I2, L, Z2> {
+): Sink<R, E, I2, L, Z2> {
   return map_(contramapChunks_(self, f), g)
 }
 
@@ -271,7 +271,7 @@ export function dimapChunksM_<R, R1, E, E1, I, I2, L, Z, Z2>(
   self: Sink<R, E, I, L, Z>,
   f: (i2: A.Array<I2>) => T.Effect<R1, E1, A.Array<I>>,
   g: (z: Z) => T.Effect<R1, E1, Z2>
-): Sink<R & R1, E | E1, I & I2, L, Z2> {
+): Sink<R & R1, E | E1, I2, L, Z2> {
   return mapM_(contramapChunksM_(self, f), g)
 }
 
