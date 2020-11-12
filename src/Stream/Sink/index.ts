@@ -1,14 +1,15 @@
 import * as T from "../_internal/effect"
 import * as M from "../_internal/managed"
 import * as A from "../../Array"
-import * as C from "../../Cause/core"
+import * as C from "../../Cause"
 import type { HasClock } from "../../Clock"
 import { currentTime } from "../../Clock"
 import * as E from "../../Either"
 import * as Ex from "../../Exit/api"
 import * as F from "../../Fiber/api"
-import { pipe } from "../../Function"
+import { identity, pipe } from "../../Function"
 import * as L from "../../Layer"
+import type * as MP from "../../Map"
 import * as O from "../../Option"
 import * as R from "../../Ref"
 import { matchTag } from "../../Utils"
@@ -54,7 +55,7 @@ export function as<Z1>(z: Z1) {
  * using the stepping function `f`.
  */
 export function collectAllWhileWith<S>(z: S) {
-  return <Z>(p: (z: Z) => boolean) => (f: (s: S, z: Z) => S) => <R, E, I, L>(
+  return <Z>(p: (z: Z) => boolean) => (f: (s: S, z: Z) => S) => <R, E, I, L extends I>(
     self: Sink<R, E, I, L, Z>
   ): Sink<R, E, I, L, S> =>
     new Sink(
@@ -288,7 +289,11 @@ export function chain_<R, E, I, L extends I1, Z, R1, E1, I1 extends I, L1, Z1>(
   self: Sink<R, E, I, L, Z>,
   f: (z: Z) => Sink<R1, E1, I1, L1, Z1>
 ): Sink<R & R1, E | E1, I1, L1, Z1> {
-  return foldM_(self, (e) => (fail(e) as unknown) as Sink<R1, E | E1, I1, L1, Z1>, f)
+  return foldM_(
+    self,
+    (e) => (fail(e)<I1>() as unknown) as Sink<R1, E | E1, I1, L1, Z1>,
+    f
+  )
 }
 
 /**
@@ -602,7 +607,7 @@ export function timed<R, E, I, L, Z>(
  * and emits the sink's results as outputs. The sink will be restarted when
  * it ends.
  */
-export function toTransducer<R, E, I, L, Z>(
+export function toTransducer<R, E, I, L extends I, Z>(
   self: Sink<R, E, I, L, Z>
 ): Transducer<R, E, I, Z> {
   return transducer(
@@ -619,10 +624,7 @@ export function toTransducer<R, E, I, L, Z>(
                   restart,
                   A.isEmpty(leftover) || O.isNone(input)
                     ? T.succeed([z])
-                    : T.map_(go(O.some(leftover) as O.Option<A.Array<I>>), (more) => [
-                        z,
-                        ...more
-                      ])
+                    : T.map_(go(O.some(leftover)), (more) => [z, ...more])
                 )
             ),
           (_) => T.succeed(A.empty)
@@ -991,7 +993,7 @@ export function dropLeftover<R, E, I, L, Z>(
  * Creates a sink that produces values until one verifies
  * the predicate `f`.
  */
-export function untilOutputM_<R, R1, E, E1, I, L, Z>(
+export function untilOutputM_<R, R1, E, E1, I, L extends I, Z>(
   self: Sink<R, E, I, L, Z>,
   f: (z: Z) => T.Effect<R1, E1, boolean>
 ): Sink<R & R1, E | E1, I, L, O.Option<Z>> {
@@ -1038,7 +1040,7 @@ export function untilOutputM_<R, R1, E, E1, I, L, Z>(
  * the predicate `f`.
  */
 export function untilOutputM<R1, E1, Z>(f: (z: Z) => T.Effect<R1, E1, boolean>) {
-  return <R, E, I, L>(self: Sink<R, E, I, L, Z>) => untilOutputM_(self, f)
+  return <R, E, I, L extends I>(self: Sink<R, E, I, L, Z>) => untilOutputM_(self, f)
 }
 
 /**
@@ -1131,91 +1133,170 @@ export function provideSomeLayer_<R0, E, I, L, Z, R2, R>(
 }
 
 /**
- * A sink that always fails with the specified error.
+ * Creates a Sink from a managed `Push`
  */
-export function fail<E, I>(e: E): Sink<unknown, E, I, I, never> {
-  return fromPush((c) => {
-    const leftover: A.Array<I> = O.fold_(
-      c,
-      () => A.empty,
-      (x) => x
-    )
-
-    return Push.fail(e, leftover)
-  })
+export function managedPush<R, E, I, L, Z>(
+  push: M.Managed<R, never, Push.Push<R, E, I, L, Z>>
+): Sink<R, E, I, L, Z> {
+  return new Sink(push)
 }
 
 /**
- * Creates a sink from a Push
+ * Accesses the environment of the sink in the context of a sink.
  */
-export const fromPush = <R, E, I, L, Z>(push: Push.Push<R, E, I, L, Z>) =>
-  new Sink(M.succeed(push))
+export function accessM<R, R2, E, I, L, Z>(
+  f: (r: R) => Sink<R2, E, I, L, Z>
+): Sink<R & R2, E, I, L, Z> {
+  return new Sink(M.chain_(M.environment<R>(), (env) => f(env).push))
+}
 
 /**
- * A sink that immediately ends with the specified value.
+ * A sink that collects all of its inputs into an array.
  */
-export const succeed = <Z, I>(z: Z): Sink<unknown, never, I, I, Z> =>
-  fromPush<unknown, never, I, I, Z>((c) => {
-    const leftover = O.fold_(
-      c,
-      () => [] as A.Array<I>,
-      (x) => x
-    )
+export function collectAll<A>(): Sink<unknown, never, A, never, A.Array<A>> {
+  return reduceLeftChunks(A.empty as A.Array<A>)((s, i: A.Array<A>) => [...s, ...i])
+}
 
-    return Push.emit(z, leftover)
-  })
+/**
+ * A sink that collects all of its inputs into a map. The keys are extracted from inputs
+ * using the keying function `key`; if multiple inputs use the same key, they are merged
+ * using the `f` function.
+ */
+export function collectAllToMap<A, K>(key: (a: A) => K) {
+  return (f: (a: A, a1: A) => A): Sink<unknown, never, A, never, MP.Map<K, A>> =>
+    new Sink(
+      M.suspend(
+        () =>
+          reduceLeftChunks<Map<K, A>>(new Map())((acc, as: A.Array<A>) =>
+            A.reduce_(as, acc, (acc, a) => {
+              const k = key(a)
+              const v = acc.get(k)
+
+              return acc.set(k, v ? f(v, a) : a)
+            })
+          ).push
+      )
+    )
+}
+
+/**
+ * A sink that collects all of its inputs into a set.
+ */
+export function collectAllToSet<A>(): Sink<unknown, never, A, never, Set<A>> {
+  return map_(collectAll<A>(), (as) => new Set(as))
+}
+
+/**
+ * A sink that counts the number of elements fed to it.
+ */
+export const count: Sink<unknown, never, unknown, never, number> = foldLeft(0)(
+  (s, _) => s + 1
+)
+
+/**
+ * Creates a sink halting with the specified `Throwable`.
+ */
+export function die(e: unknown): Sink<unknown, never, unknown, never, never> {
+  return halt(C.Die(e))
+}
+
+/**
+ * Creates a sink halting with the specified message, wrapped in a
+ * `RuntimeException`.
+ */
+export function dieMessage(m: string): Sink<unknown, never, unknown, never, never> {
+  return halt(C.Die(new C.RuntimeError(m)))
+}
+
+/**
+ * A sink that ignores its inputs.
+ */
+export const drain: Sink<unknown, never, unknown, never, void> = dropLeftover(
+  foreach((_) => T.unit)
+)
+
+/**
+ * A sink that always fails with the specified error.
+ */
+export function fail<E>(e: E) {
+  return <I>(): Sink<unknown, E, I, I, never> =>
+    fromPush((c) => {
+      const leftover: A.Array<I> = O.fold_(
+        c,
+        () => A.empty,
+        (x) => x
+      )
+
+      return Push.fail(e, leftover)
+    })
+}
+
+/**
+ * A sink that folds its inputs with the provided function, termination predicate and initial state.
+ */
+export function reduce<S>(z: S) {
+  return (contFn: (s: S) => boolean) => <I>(
+    f: (s: S, i: I) => S
+  ): Sink<unknown, never, I, I, S> => {
+    const foldChunk = (
+      s: S,
+      chunk: A.Array<I>,
+      idx: number,
+      len: number
+    ): readonly [S, O.Option<A.Array<I>>] => {
+      if (idx === len) {
+        return [s, O.none] as const
+      } else {
+        const s1 = f(s, chunk[idx])
+
+        if (contFn(s1)) {
+          return foldChunk(s1, chunk, idx + 1, len)
+        } else {
+          return [s1, O.some(A.dropLeft_(chunk, idx + 1))] as const
+        }
+      }
+    }
+
+    if (contFn(z)) {
+      return new Sink(
+        pipe(
+          M.do,
+          M.bind("state", () => T.toManaged_(R.makeRef(z))),
+          M.map(({ state }) => {
+            return (is: O.Option<A.Array<I>>) =>
+              O.fold_(
+                is,
+                () => T.chain_(state.get, (s) => Push.emit(s, A.empty)),
+                (is) =>
+                  T.chain_(state.get, (s) => {
+                    const [st, l] = foldChunk(s, is, 0, is.length)
+
+                    return O.fold_(
+                      l,
+                      () => T.andThen_(state.set(st), Push.more),
+                      (leftover) => Push.emit(st, leftover)
+                    )
+                  })
+              )
+          })
+        )
+      )
+    } else {
+      return succeed(z)
+    }
+  }
+}
 
 /**
  * A sink that folds its input chunks with the provided function, termination predicate and initial state.
  * `contFn` condition is checked only for the initial value and at the end of processing of each chunk.
  * `f` and `contFn` must preserve chunking-invariance.
  */
-export const foldChunks = <Z>(z: Z) => (contFn: (s: Z) => boolean) => <I>(
-  f: (s: Z, i: A.Array<I>) => Z
-): Sink<unknown, never, I, I, Z> =>
-  foldChunksM(z)(contFn)((z, i: A.Array<I>) => T.succeed(f(z, i)))
-
-/**
- * A sink that folds its input chunks with the provided function and initial state.
- * `f` must preserve chunking-invariance.
- */
-export const foldLeftChunks = <Z>(z: Z) => <I>(f: (s: Z, i: A.Array<I>) => Z) =>
-  foldChunks(z)(() => true)(f)
-
-/**
- * A sink that collects all of its inputs into an array.
- */
-export const collectAll = <A>(): Sink<unknown, never, A, A, A.Array<A>> =>
-  foldLeftChunks([] as A.Array<A>)((s, i: A.Array<A>) => [...s, ...i])
-
-/**
- * A sink that executes the provided effectful function for every element fed to it.
- */
-export const foreach = <I, R1, E1>(f: (i: I) => T.Effect<R1, E1, any>) => {
-  const go = (
-    chunk: A.Array<I>,
-    idx: number,
-    len: number
-  ): T.Effect<R1, [E.Either<E1, never>, A.Array<I>], void> => {
-    if (idx === len) {
-      return Push.more
-    } else {
-      return pipe(
-        f(chunk[idx]),
-        T.foldM(
-          (e) => Push.fail(e, A.dropLeft_(chunk, idx + 1)),
-          () => go(chunk, idx + 1, len)
-        )
-      )
-    }
-  }
-
-  return fromPush(
-    O.fold(
-      () => Push.emit<never, void>(undefined, []),
-      (is: A.Array<I>) => go(is, 0, is.length)
-    )
-  )
+export function reduceChunks<Z>(z: Z) {
+  return (contFn: (s: Z) => boolean) => <I>(
+    f: (s: Z, i: A.Array<I>) => Z
+  ): Sink<unknown, never, I, I, Z> =>
+    reduceChunksM(z)(contFn)((z, i: A.Array<I>) => T.succeed(f(z, i)))
 }
 
 /**
@@ -1223,7 +1304,7 @@ export const foreach = <I, R1, E1>(f: (i: I) => T.Effect<R1, E1, any>) => {
  * `contFn` condition is checked only for the initial value and at the end of processing of each chunk.
  * `f` and `contFn` must preserve chunking-invariance.
  */
-export function foldChunksM<S>(z: S) {
+export function reduceChunksM<S>(z: S) {
   return (contFn: (s: S) => boolean) => <R, E, I>(
     f: (a: S, i: readonly I[]) => T.Effect<R, E, S>
   ): Sink<R, E, I, I, S> => {
@@ -1261,19 +1342,355 @@ export function foldChunksM<S>(z: S) {
 }
 
 /**
- * A sink that effectfully folds its input chunks with the provided function and initial state.
- * `f` must preserve chunking-invariance.
+ * A sink that effectfully folds its inputs with the provided function, termination predicate and initial state.
+ *
+ * This sink may terminate in the middle of a chunk and discard the rest of it. See the discussion on the
+ * ZSink class scaladoc on sinks vs. transducers.
  */
-export function foldLeftChunksM<S>(z: S) {
-  return <R, E, I>(
-    f: (s: S, i: readonly I[]) => T.Effect<R, E, S>
-  ): Sink<R, E, I, never, S> => dropLeftover(foldChunksM(z)((_) => true)(f))
+export function reduceM<S>(z: S) {
+  return (contFn: (s: S) => boolean) => <R, E, I>(
+    f: (s: S, i: I) => T.Effect<R, E, S>
+  ): Sink<R, E, I, I, S> => {
+    const foldChunk = (
+      s: S,
+      chunk: A.Array<I>,
+      idx: number,
+      len: number
+    ): T.Effect<R, readonly [E, A.Array<I>], readonly [S, O.Option<A.Array<I>>]> => {
+      if (idx === len) {
+        return T.succeed([s, O.none] as const)
+      } else {
+        return T.foldM_(
+          f(s, chunk[idx]),
+          (e) => T.fail([e, A.dropLeft_(chunk, idx + 1)] as const),
+          (s1) => {
+            if (contFn(s1)) {
+              return foldChunk(s1, chunk, idx + 1, len)
+            } else {
+              return T.succeed([s1, O.some(A.dropLeft_(chunk, idx + 1))])
+            }
+          }
+        )
+      }
+    }
+
+    if (contFn(z)) {
+      return new Sink(
+        pipe(
+          M.do,
+          M.bind("state", () => T.toManaged_(R.makeRef(z))),
+          M.map(({ state }) => {
+            return (is: O.Option<A.Array<I>>) =>
+              O.fold_(
+                is,
+                () => T.chain_(state.get, (s) => Push.emit(s, A.empty)),
+                (is) =>
+                  T.chain_(state.get, (s) => {
+                    return T.foldM_(
+                      foldChunk(s, is, 0, is.length),
+                      (err) => Push.fail(...err),
+                      ([st, l]) => {
+                        return O.fold_(
+                          l,
+                          () => T.andThen_(state.set(st), Push.more),
+                          (leftover) => Push.emit(st, leftover)
+                        )
+                      }
+                    )
+                  })
+              )
+          })
+        )
+      )
+    } else {
+      return succeed(z)
+    }
+  }
 }
 
 /**
- * A sink that ignores its inputs.
+ * A sink that folds its inputs with the provided function and initial state.
  */
+export function foldLeft<S>(z: S) {
+  return <I>(f: (s: S, i: I) => S): Sink<unknown, never, I, never, S> =>
+    dropLeftover(reduce(z)((_) => true)(f))
+}
 
-export const drain: Sink<unknown, never, unknown, never, void> = dropLeftover(
-  foreach((_) => T.unit)
+/**
+ * A sink that folds its input chunks with the provided function and initial state.
+ * `f` must preserve chunking-invariance.
+ */
+export function reduceLeftChunks<S>(z: S) {
+  return <I>(f: (s: S, i: A.Array<I>) => S): Sink<unknown, never, I, never, S> =>
+    reduceChunks(z)(() => true)(f) as Sink<unknown, never, I, never, S>
+}
+
+/**
+ * A sink that effectfully folds its input chunks with the provided function and initial state.
+ * `f` must preserve chunking-invariance.
+ */
+export function reduceLeftChunksM<S>(z: S) {
+  return <R, E, I>(
+    f: (s: S, i: readonly I[]) => T.Effect<R, E, S>
+  ): Sink<R, E, I, never, S> => dropLeftover(reduceChunksM(z)((_) => true)(f))
+}
+
+/**
+ * A sink that effectfully folds its inputs with the provided function and initial state.
+ */
+export function reduceLeftM<S>(z: S) {
+  return <R, E, I>(f: (s: S, i: I) => T.Effect<R, E, S>): Sink<R, E, I, I, S> =>
+    reduceM(z)((_) => true)(f)
+}
+
+/**
+ * A sink that executes the provided effectful function for every element fed to it.
+ */
+export function foreach<I, R1, E1>(f: (i: I) => T.Effect<R1, E1, any>) {
+  const go = (
+    chunk: A.Array<I>,
+    idx: number,
+    len: number
+  ): T.Effect<R1, [E.Either<E1, never>, A.Array<I>], void> => {
+    if (idx === len) {
+      return Push.more
+    } else {
+      return pipe(
+        f(chunk[idx]),
+        T.foldM(
+          (e) => Push.fail(e, A.dropLeft_(chunk, idx + 1)),
+          () => go(chunk, idx + 1, len)
+        )
+      )
+    }
+  }
+
+  return fromPush(
+    O.fold(
+      () => Push.emit<never, void>(undefined, []),
+      (is: A.Array<I>) => go(is, 0, is.length)
+    )
+  )
+}
+
+/**
+ * A sink that executes the provided effectful function for every chunk fed to it.
+ */
+export function foreachChunk<R, E, I, L>(
+  f: (a: A.Array<I>) => T.Effect<R, E, any>
+): Sink<R, E, I, never, void> {
+  return fromPush((in_: O.Option<A.Array<I>>) =>
+    O.fold_(
+      in_,
+      () => Push.emit<never, void>(undefined, A.empty),
+      (is) =>
+        T.andThen_(
+          T.mapError_(f(is), (e) => [E.left(e), A.empty] as const),
+          Push.more
+        )
+    )
+  )
+}
+
+/**
+ * A sink that executes the provided effectful function for every element fed to it
+ * until `f` evaluates to `false`.
+ */
+export function foreachWhile<R, E, I>(
+  f: (i: I) => T.Effect<R, E, boolean>
+): Sink<R, E, I, I, void> {
+  const go = (
+    chunk: A.Array<I>,
+    idx: number,
+    len: number
+  ): T.Effect<R, readonly [E.Either<E, void>, A.Array<I>], void> => {
+    if (idx === len) {
+      return Push.more
+    } else {
+      return T.foldM_(
+        f(chunk[idx]),
+        (e) => Push.fail(e, A.dropLeft_(chunk, idx + 1)),
+        (b) => {
+          if (b) {
+            return go(chunk, idx + 1, len)
+          } else {
+            return Push.emit<I, void>(undefined, A.dropLeft_(chunk, idx))
+          }
+        }
+      )
+    }
+  }
+
+  return fromPush((in_: O.Option<A.Array<I>>) =>
+    O.fold_(
+      in_,
+      () => Push.emit<never, void>(undefined, A.empty),
+      (is) => go(is, 0, is.length)
+    )
+  )
+}
+
+/**
+ * Creates a single-value sink produced from an effect
+ */
+export function fromEffect<R, E, Z>(b: T.Effect<R, E, Z>) {
+  return <I>(): Sink<R, E, I, I, Z> =>
+    fromPush<R, E, I, I, Z>((in_: O.Option<A.Array<I>>) => {
+      const leftover = O.fold_(in_, () => A.empty as A.Array<I>, identity)
+
+      return T.foldM_(
+        b,
+        (e) => Push.fail(e, leftover),
+        (z) => Push.emit(z, leftover)
+      )
+    })
+}
+
+/**
+ * Creates a sink from a Push
+ */
+export function fromPush<R, E, I, L, Z>(push: Push.Push<R, E, I, L, Z>) {
+  return new Sink(M.succeed(push))
+}
+
+/**
+ * Creates a sink halting with a specified cause.
+ */
+export function halt<E>(e: C.Cause<E>): Sink<unknown, E, unknown, never, never> {
+  return fromPush((_) => Push.halt(e))
+}
+
+/**
+ * Creates a sink containing the first value.
+ */
+export function head<I>(): Sink<unknown, never, I, I, O.Option<I>> {
+  return new Sink(
+    M.succeed((in_: O.Option<A.Array<I>>) =>
+      O.fold_(
+        in_,
+        () => Push.emit(O.none, A.empty),
+        (ch) => {
+          if (A.isEmpty(ch)) {
+            return Push.more
+          } else {
+            return Push.emit(A.head(ch), A.empty)
+          }
+        }
+      )
+    )
+  )
+}
+
+/**
+ * Creates a sink containing the last value.
+ */
+export function last<I>(): Sink<unknown, never, I, never, O.Option<I>> {
+  return new Sink(
+    pipe(
+      M.do,
+      M.bind("state", () => T.toManaged_(R.makeRef<O.Option<I>>(O.none))),
+      M.map(({ state }) => {
+        return (is: O.Option<A.Array<I>>) =>
+          T.chain_(state.get, (last) => {
+            return O.fold_(
+              is,
+              () => Push.emit(last, A.empty),
+              (ch) =>
+                O.fold_(
+                  A.last(ch),
+                  () => Push.more,
+                  (l) => T.andThen_(state.set(O.some(l)), Push.more)
+                )
+            )
+          })
+      })
+    )
+  )
+}
+
+/**
+ * A sink that depends on another managed value
+ * `resource` will be finalized after the processing.
+ */
+export function managed<R, E, A>(resource: M.Managed<R, E, A>) {
+  return <I, L extends I, Z>(fn: (a: A) => Sink<R, E, I, L, Z>) =>
+    M.chain_(
+      M.fold_(
+        resource,
+        (err) => fail(err)<I>() as Sink<R, E, I, I, Z>,
+        (m) => fn(m)
+      ),
+      (_) => _.push
+    )
+}
+
+/**
+ * A sink that immediately ends with the specified value.
+ */
+export function succeed<Z, I>(z: Z): Sink<unknown, never, I, I, Z> {
+  return fromPush<unknown, never, I, I, Z>((c) => {
+    const leftover = O.fold_(
+      c,
+      () => [] as A.Array<I>,
+      (x) => x
+    )
+
+    return Push.emit(z, leftover)
+  })
+}
+
+/**
+ * A sink that sums incoming numeric values.
+ */
+export const sum: Sink<unknown, never, number, never, number> = foldLeft(0)(
+  (a, b) => a + b
+)
+
+/**
+ * A sink that takes the specified number of values.
+ */
+export function take<I>(n: number): Sink<unknown, never, I, I, A.Array<I>> {
+  return new Sink(
+    pipe(
+      M.do,
+      M.bind("state", () => T.toManaged_(R.makeRef<A.Array<I>>(A.empty))),
+      M.map(({ state }) => {
+        return (is: O.Option<A.Array<I>>) =>
+          T.chain_(state.get, (take) => {
+            return O.fold_(
+              is,
+              () => {
+                if (n >= 0) {
+                  return Push.emit(take, A.empty as A.Array<I>)
+                } else {
+                  return Push.emit(A.empty, take)
+                }
+              },
+              (ch) => {
+                const remaining = n - take.length
+
+                if (remaining <= ch.length) {
+                  const [chunk, leftover] = A.splitAt_(ch, remaining)
+
+                  return T.andThen_(
+                    state.set(A.empty),
+                    Push.emit([...take, ...chunk], leftover)
+                  )
+                } else {
+                  return T.andThen_(state.set([...take, ...ch]), Push.more)
+                }
+              }
+            )
+          })
+      })
+    )
+  )
+}
+
+/**
+ * A sink with timed execution.
+ */
+export const timedDrain: Sink<HasClock, never, unknown, never, number> = map_(
+  timed(drain),
+  ([_, a]) => a
 )
