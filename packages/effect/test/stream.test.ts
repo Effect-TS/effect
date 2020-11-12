@@ -10,7 +10,7 @@ import * as Pull from "../src/Stream/Pull"
 describe("Stream", () => {
   describe("Core", () => {
     it("fromArray", async () => {
-      const a = S.fromArray([0, 1, 2])
+      const a = S.fromChunk([0, 1, 2])
 
       expect(await T.runPromise(S.runCollect(a))).toEqual([0, 1, 2])
     })
@@ -35,7 +35,7 @@ describe("Stream", () => {
             T.repeatWhile_(
               BufferedPull.ifNotDone(
                 T.foldM_(
-                  T.chain_(BufferedPull.pullArray(bp), (a) => {
+                  T.chain_(BufferedPull.pullChunk(bp), (a) => {
                     res.push(...a)
                     return T.succeed(a)
                   }),

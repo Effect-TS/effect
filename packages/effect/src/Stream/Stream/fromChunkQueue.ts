@@ -9,7 +9,7 @@ import { repeatEffectChunkOption } from "./repeatEffectChunkOption"
 /**
  * Creates a stream from a {@link XQueue} of values
  */
-export function fromArrayQueue<R, E, O>(
+export function fromChunkQueue<R, E, O>(
   queue: XQueue<never, R, unknown, E, never, Array<O>>
 ): Stream<R, E, O> {
   return repeatEffectChunkOption(
