@@ -125,7 +125,7 @@ function interfaceDecoder<
     (u, c) => {
       if (isUnknownRecord(u)) {
         const set = new Set(keys.concat(Object.keys(u)))
-        const r = {} as Record<string, unknown>
+        const r = {} as typeof u
         set.forEach((k) => {
           r[k] = u[k]
         })
@@ -140,7 +140,7 @@ function interfaceDecoder<
                 )
               : T.succeed(a)
           )
-        )
+        ) as any
       }
       return fail(u, c, `${typeof u} is not a record`)
     },
