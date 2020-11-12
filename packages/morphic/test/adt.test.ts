@@ -3,12 +3,12 @@ import * as O from "@effect-ts/core/Classic/Option"
 import * as Sync from "@effect-ts/core/Sync"
 
 import type { AType, EType } from "../src"
-import { DecoderURI, make, makeADT, opaque } from "../src"
+import * as MO from "../src"
 import { decode, report } from "../src/Decoder"
 import { guard } from "../src/Guard"
 import { hash } from "../src/Hash"
 
-const Foo_ = make((F) =>
+const Foo_ = MO.make((F) =>
   F.interface(
     {
       _tag: F.stringLiteral("Foo"),
@@ -22,9 +22,9 @@ const Foo_ = make((F) =>
 
 interface Foo extends AType<typeof Foo_> {}
 interface FooRaw extends EType<typeof Foo_> {}
-const Foo = opaque<FooRaw, Foo>()(Foo_)
+const Foo = MO.opaque<FooRaw, Foo>()(Foo_)
 
-const Bar_ = make((F) =>
+const Bar_ = MO.make((F) =>
   F.interface(
     {
       _tag: F.stringLiteral("Bar"),
@@ -38,17 +38,18 @@ const Bar_ = make((F) =>
 
 interface Bar extends AType<typeof Bar_> {}
 interface BarRaw extends EType<typeof Bar_> {}
-const Bar = opaque<BarRaw, Bar>()(Bar_)
+const Bar = MO.opaque<BarRaw, Bar>()(Bar_)
 
-const FooBar = makeADT("_tag")({ Foo, Bar })
+export const FooBar = MO.makeADT("_tag")({ Foo, Bar })
+export type FooBar = MO.AType<typeof FooBar>
 
-const isString = O.fromPredicate(guard(make((F) => F.string())).is)
-const isNumber = O.fromPredicate(guard(make((F) => F.number())).is)
+const isString = O.fromPredicate(guard(MO.make((F) => F.string())).is)
+const isNumber = O.fromPredicate(guard(MO.make((F) => F.number())).is)
 
-const CustomUnion = make((F) =>
+const CustomUnion = MO.make((F) =>
   F.union(F.string(), F.number())([isString, isNumber], {
     conf: {
-      [DecoderURI]: (_, __, ___) => _
+      [MO.DecoderURI]: (_, __, ___) => _
     }
   })
 )
