@@ -18,9 +18,9 @@ interface NameId {
 }
 
 const makeNames = (): L.List<NameId> => {
-  let arr = L.emptyPushable<NameId>()
+  const arr = L.emptyPushable<NameId>()
   for (let i = 0; i < size; i++)
-    arr = L.push(
+    L.push(
       {
         id: "id-" + i,
         name: "Luke-" + i
