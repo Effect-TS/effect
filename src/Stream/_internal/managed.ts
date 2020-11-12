@@ -13,7 +13,8 @@ export {
   useNow,
   zip,
   zipWith,
-  zip_
+  zip_,
+  provide_
 } from "../../Managed/core"
 
 export { bind, let, do } from "../../Managed/do"
