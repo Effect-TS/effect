@@ -124,27 +124,13 @@ function interfaceDecoder<
   return makeDecoder(
     (u, c) => {
       if (isUnknownRecord(u)) {
-        const uk = Object.keys(u)
-        if (keys.length <= uk.length && keys.every((v) => uk.includes(v))) {
-          return pipe(
-            u,
-            foreachRecordWithIndex((k, a) =>
-              decoder[k]
-                ? (decoder[k] as Decoder<any>).validate(
-                    a,
-                    appendContext(c, k, decoder[k], a)
-                  )
-                : T.succeed(a)
-            )
-          ) as any
-        }
-        const missingKeys = keys.filter((v) => !uk.includes(v))
-        return fail(
-          u,
-          c,
-          `not all the required fields are present: ${missingKeys.join(
-            ", "
-          )}  ${keys} ${uk}`
+        return T.struct(
+          keys.reduce((prev, k) => {
+            prev[k] = decoder[k]
+              ? decoder[k].validate(u[k], appendContext(c, k, decoder[k], u[k]))
+              : T.succeed(u[k])
+            return prev
+          }, {} as any)
         )
       }
       return fail(u, c, `${typeof u} is not a record`)
