@@ -1,8 +1,7 @@
 import type { Array } from "@effect-ts/system/Array"
 import * as A from "@effect-ts/system/Array"
 import type { Predicate } from "@effect-ts/system/Function"
-import { flow, pipe } from "@effect-ts/system/Function"
-import * as L from "@effect-ts/system/List"
+import { flow } from "@effect-ts/system/Function"
 import type { MutableArray } from "@effect-ts/system/Mutable"
 
 import type { ArrayURI } from "../../Modules"
@@ -26,17 +25,19 @@ export * from "@effect-ts/system/Array"
  * `TraversableWithIndex`'s `foreachWithIndexF` function
  */
 export const foreachWithIndexF = P.implementForeachWithIndexF<[ArrayURI]>()(
-  (_) => (G) => (f) =>
-    flow(
-      A.reduceWithIndex(DSL.succeedF(G)(L.empty()), (k, b, a) =>
-        pipe(
-          b,
-          G.both(f(k, a)),
-          G.map(([x, y]) => L.append_(x, y))
-        )
-      ),
-      G.map(L.toArray)
-    )
+  (_) => (G) => {
+    const succeed = DSL.succeedF(G)
+    return (f) => (fa) => {
+      let base = succeed([] as typeof _.B[])
+      for (let k = 0; k < fa.length; k += 1) {
+        base = G.map(([bs, b]: readonly [typeof _.B[], typeof _.B]) => {
+          bs.push(b)
+          return bs
+        })(G.both(f(k, fa[k]))(base))
+      }
+      return base
+    }
+  }
 )
 
 /**
