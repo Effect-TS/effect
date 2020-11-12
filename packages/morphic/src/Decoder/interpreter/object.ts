@@ -138,7 +138,14 @@ function interfaceDecoder<
             )
           ) as any
         }
-        return fail(u, c, `not all the required fields are present`)
+        const missingKeys = keys.filter((v) => !uk.includes(v))
+        return fail(
+          u,
+          c,
+          `not all the required fields are present: ${missingKeys.join(
+            ", "
+          )}  ${keys} ${uk}`
+        )
       }
       return fail(u, c, `${typeof u} is not a record`)
     },
