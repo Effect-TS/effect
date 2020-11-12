@@ -127,7 +127,10 @@ function interfaceDecoder<
         return T.struct(
           keys.reduce((prev, k) => {
             prev[k] = decoder[k]
-              ? decoder[k].validate(u[k], appendContext(c, k, decoder[k], u[k]))
+              ? (decoder[k] as Decoder<any>).validate(
+                  u[k],
+                  appendContext(c, k, decoder[k], u[k])
+                )
               : T.succeed(u[k])
             return prev
           }, {} as any)
