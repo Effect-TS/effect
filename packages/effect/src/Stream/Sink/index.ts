@@ -1066,7 +1066,7 @@ export function provide_<R, E, I, L, Z>(
   r: R
 ): Sink<unknown, E, I, L, Z> {
   return new Sink(
-    M.map_(M.provide_(self.push, r), (push) => (i: O.Option<A.Array<I>>) =>
+    M.map_(M.provideAll_(self.push, r), (push) => (i: O.Option<A.Array<I>>) =>
       T.provide_(push(i), r)
     )
   )
