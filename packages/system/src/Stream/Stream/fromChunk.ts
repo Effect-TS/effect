@@ -10,7 +10,7 @@ import { Stream } from "./definitions"
 /**
  * Creates a stream from an array of values
  */
-export const fromArray = <O>(c: Array.Array<O>): UIO<O> =>
+export const fromChunk = <O>(c: Array.Array<O>): UIO<O> =>
   new Stream(
     pipe(
       T.do,
