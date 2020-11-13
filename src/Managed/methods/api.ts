@@ -1,4 +1,4 @@
-import * as Cause from "../../Cause"
+import * as C from "../../Cause"
 import type { HasClock } from "../../Clock"
 import * as T from "../../Effect"
 import * as E from "../../Either"
@@ -30,7 +30,6 @@ import { foldM_ } from "./foldM_"
 import { gen } from "./gen"
 import { halt } from "./halt"
 import { releaseMap } from "./releaseMap"
-import { sandbox } from "./sandbox"
 import { suspend } from "./suspend"
 
 /**
@@ -64,7 +63,7 @@ export function mapError<E, E2>(f: (e: E) => E2) {
  */
 export function mapErrorCause_<R, A, E, E2>(
   self: Managed<R, E, A>,
-  f: (e: Cause.Cause<E>) => Cause.Cause<E2>
+  f: (e: C.Cause<E>) => C.Cause<E2>
 ) {
   return new Managed(T.mapErrorCause_(self.effect, f))
 }
@@ -72,7 +71,7 @@ export function mapErrorCause_<R, A, E, E2>(
 /**
  * Returns an effect whose full failure is mapped by the specified `f` function.
  */
-export function mapErrorCause<E, E2>(f: (e: Cause.Cause<E>) => Cause.Cause<E2>) {
+export function mapErrorCause<E, E2>(f: (e: C.Cause<E>) => C.Cause<E2>) {
   return <R, A>(self: Managed<R, E, A>) => mapErrorCause_(self, f)
 }
 
@@ -321,7 +320,7 @@ export function catchAll<E, R2, E2, A2>(f: (e: E) => Managed<R2, E2, A2>) {
  */
 export function catchAllCause_<R, E, A, R2, E2, A2>(
   self: Managed<R, E, A>,
-  f: (e: Cause.Cause<E>) => Managed<R2, E2, A2>
+  f: (e: C.Cause<E>) => Managed<R2, E2, A2>
 ) {
   return foldCauseM_(self, f, succeed)
 }
@@ -330,7 +329,7 @@ export function catchAllCause_<R, E, A, R2, E2, A2>(
  * Recovers from all errors with provided Cause.
  */
 export function catchAllCause<E, R2, E2, A2>(
-  f: (e: Cause.Cause<E>) => Managed<R2, E2, A2>
+  f: (e: C.Cause<E>) => Managed<R2, E2, A2>
 ) {
   return <R, A>(self: Managed<R, E, A>) => foldCauseM_(self, f, succeed)
 }
@@ -357,7 +356,7 @@ export function catchSome<E, R2, E2, A2>(pf: (e: E) => O.Option<Managed<R2, E2, 
  */
 export function catchSomeCause_<R, E, A, R2, E2, A2>(
   self: Managed<R, E, A>,
-  pf: (e: Cause.Cause<E>) => O.Option<Managed<R2, E2, A2>>
+  pf: (e: C.Cause<E>) => O.Option<Managed<R2, E2, A2>>
 ): Managed<R & R2, E | E2, A | A2> {
   return catchAllCause_(self, (e) => O.getOrElse_(pf(e), () => halt<E | E2>(e)))
 }
@@ -366,7 +365,7 @@ export function catchSomeCause_<R, E, A, R2, E2, A2>(
  * Recovers from some or all of the error cases.
  */
 export function catchSomeCause<R, E, A, R2, E2, A2>(
-  pf: (e: Cause.Cause<E>) => O.Option<Managed<R2, E2, A2>>
+  pf: (e: C.Cause<E>) => O.Option<Managed<R2, E2, A2>>
 ) {
   return (self: Managed<R, E, A>) => catchSomeCause_(self, pf)
 }
@@ -543,7 +542,7 @@ export function flattenM<R2, E2, R, E, A>(self: Managed<R2, E2, T.Effect<R, E, A
  */
 export function foldCause_<R, E, A, B, C>(
   self: Managed<R, E, A>,
-  f: (e: Cause.Cause<E>) => B,
+  f: (e: C.Cause<E>) => B,
   g: (a: A) => C
 ) {
   return fold_(sandbox(self), f, g)
@@ -552,7 +551,7 @@ export function foldCause_<R, E, A, B, C>(
 /**
  * A more powerful version of `fold` that allows recovering from any kind of failure except interruptions.
  */
-export function foldCause<E, A, B, C>(f: (e: Cause.Cause<E>) => B, g: (a: A) => C) {
+export function foldCause<E, A, B, C>(f: (e: C.Cause<E>) => B, g: (a: A) => C) {
   return <R>(self: Managed<R, E, A>) => fold_(sandbox(self), f, g)
 }
 
@@ -856,7 +855,7 @@ export function refineOrDie_<R, A, E, E1>(
  * detected in the code.
  */
 export function die(e: unknown) {
-  return halt(Cause.Die(e))
+  return halt(C.Die(e))
 }
 
 /**
@@ -1015,4 +1014,59 @@ export function result<R, E, A>(
   self: Managed<R, E, A>
 ): Managed<R, never, Ex.Exit<E, A>> {
   return foldCauseM_(self, flow(Ex.halt, succeed), flow(Ex.succeed, succeed))
+}
+
+/**
+ * Exposes the full cause of failure of this effect.
+ */
+export function sandbox<R, E, A>(self: Managed<R, E, A>) {
+  return new Managed(T.sandbox(self.effect))
+}
+
+/**
+ * The inverse operation to `sandbox`. Submerges the full cause of failure.
+ */
+export function unsandbox<R, E, A>(self: Managed<R, C.Cause<E>, A>) {
+  return mapErrorCause_(self, C.flatten)
+}
+
+/**
+ * Companion helper to `sandbox`. Allows recovery, and partial recovery, from
+ * errors and defects alike.
+ */
+export function sandboxWith<R, E, A, R2, E2, B>(
+  f: (_: Managed<R, C.Cause<E>, A>) => Managed<R2, C.Cause<E2>, B>
+) {
+  return (self: Managed<R, E, A>) => sandboxWith_(self, f)
+}
+
+/**
+ * Companion helper to `sandbox`. Allows recovery, and partial recovery, from
+ * errors and defects alike.
+ */
+export function sandboxWith_<R, E, A, R2, E2, B>(
+  self: Managed<R, E, A>,
+  f: (_: Managed<R, C.Cause<E>, A>) => Managed<R2, C.Cause<E2>, B>
+) {
+  return unsandbox(f(sandbox(self)))
+}
+
+/**
+ * Zips this effect with its environment
+ */
+export function second<R, E, A>(self: Managed<R, E, A>) {
+  return zip_(environment<R>(), self)
+}
+
+/**
+ * Converts an option on values into an option on errors.
+ */
+export function some<R, E, A>(
+  self: Managed<R, E, O.Option<A>>
+): Managed<R, O.Option<E>, A> {
+  return foldM_(
+    self,
+    flow(O.some, fail),
+    O.fold(() => fail(O.none), succeed)
+  )
 }
