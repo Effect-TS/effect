@@ -80,16 +80,10 @@ function partialDecoder<
   return makeDecoder(
     (u, c) => {
       if (isUnknownRecord(u)) {
-        const r = {}
-        for (const k of Object.keys(u)) {
-          if (typeof u[k] !== "undefined" && decoder[k]) {
-            r[k] = u[k]
-          }
-        }
         return pipe(
-          r,
+          u,
           foreachRecordWithIndex((k, a) =>
-            decoder[k]
+            typeof a !== "undefined" && decoder[k]
               ? (decoder[k] as Decoder<any>).validate(
                   a,
                   appendContext(c, k, decoder[k], a)
