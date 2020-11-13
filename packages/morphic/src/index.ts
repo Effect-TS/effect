@@ -23,6 +23,7 @@ export { EqURI } from "./Equal/base"
 export { ShowURI } from "./Show/base"
 export { StrictURI } from "./Strict/base"
 export { HashURI } from "./Hash/base"
+export { ReorderURI } from "./Reorder/base"
 
 //
 // Threading configs
@@ -35,6 +36,7 @@ export {} from "./Equal/interpreter/configs"
 export {} from "./Show/interpreter/configs"
 export {} from "./Strict/interpreter/configs"
 export {} from "./Hash/interpreter/configs"
+export {} from "./Reorder/interpreter/configs"
 
 //
 // Generics
