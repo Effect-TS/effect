@@ -1,4 +1,5 @@
 import * as E from "@effect-ts/core/Classic/Either"
+import * as O from "@effect-ts/core/Classic/Option"
 import { pipe } from "@effect-ts/core/Function"
 import type { TypeOf } from "@effect-ts/core/Newtype"
 import { typeDef } from "@effect-ts/core/Newtype"
@@ -168,4 +169,76 @@ describe("FastCheck", () => {
       E.right({ name: { first: "Michael", last: "Arnaldi" }, id: { id: BigInt(0) } })
     )
   })
+})
+
+const A = make((F) => F.both({ a: F.string() }, { b: F.nullable(F.string()) }))
+
+it("Removes unknown fields with partial", () => {
+  expect(
+    T.run(
+      strict(A).shrink({
+        a: "a",
+        b: O.none,
+        c: "c"
+      })
+    )
+  ).toEqual({ a: "a", b: O.none })
+  expect(
+    T.run(
+      strict(A).shrink({
+        a: "a",
+        b: O.some("b"),
+        c: "c"
+      })
+    )
+  ).toEqual({ a: "a", b: O.some("b") })
+  expect(
+    T.run(
+      strict(A).shrink({
+        a: "a",
+        b: undefined,
+        c: "c"
+      })
+    )
+  ).toEqual({ a: "a", b: undefined })
+  expect(
+    T.run(
+      strict(A).shrink({
+        a: "a",
+        c: "c"
+      })
+    )
+  ).toEqual({ a: "a" })
+})
+
+it("Decodes/Encodes partial properly", () => {
+  expect(T.run(encoder(A).encode({ a: "a" }))).toEqual({
+    a: "a"
+  })
+  expect(T.run(encoder(A).encode({ a: "a", b: undefined }))).toEqual({
+    a: "a",
+    b: undefined
+  })
+  expect(T.run(encoder(A).encode({ a: "a", b: O.none }))).toEqual({
+    a: "a",
+    b: null
+  })
+
+  expect(T.runEither(decoder(A).decode({ a: "a" }))).toEqual(
+    E.right({
+      a: "a"
+    })
+  )
+  expect(T.runEither(decoder(A).decode({ a: "a", b: undefined }))).toEqual(
+    E.right({
+      a: "a",
+      b: undefined
+    })
+  )
+  expect(T.runEither(decoder(A).decode({ a: "a", b: null }))).toEqual(
+    E.right({
+      a: "a",
+      b: O.none
+    })
+  )
 })
