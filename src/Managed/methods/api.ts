@@ -1,9 +1,12 @@
+import type { Cause } from "../../Cause"
 import * as C from "../../Cause"
 import type { HasClock } from "../../Clock"
+import type { Effect } from "../../Effect"
 import * as T from "../../Effect"
 import * as E from "../../Either"
 import * as Ex from "../../Exit"
 import { constVoid, flow, identity, pipe, tuple } from "../../Function"
+import { NoSuchElementException } from "../../GlobalExceptions"
 import * as L from "../../Layer"
 import * as O from "../../Option"
 import * as P from "../../Promise"
@@ -1116,4 +1119,105 @@ export function someOrElseM_<R, E, A, R1, E1, B>(
     self,
     O.fold((): Managed<R1, E1, A | B> => orElse, succeed)
   )
+}
+
+/**
+ * Extracts the optional value, or fails with the given error 'e'.
+ */
+export function someOrFail<E1>(e: () => E1) {
+  return <R, E, A>(self: Managed<R, E, O.Option<A>>): Managed<R, E1 | E, A> =>
+    someOrFail_(self, e)
+}
+
+/**
+ * Extracts the optional value, or fails with the given error 'e'.
+ */
+export function someOrFail_<R, E, A, E1>(
+  self: Managed<R, E, O.Option<A>>,
+  e: () => E1
+) {
+  return chain_(
+    self,
+    O.fold(() => fail(e()), succeed)
+  )
+}
+
+/**
+ * Extracts the optional value, or fails with a `NoSuchElementException`
+ */
+export function someOrFailException<R, E, A>(
+  self: Managed<R, E, O.Option<A>>
+): Managed<R, E | NoSuchElementException, A> {
+  return someOrFail_(self, () => new NoSuchElementException())
+}
+
+/**
+ * Returns an effect that effectfully peeks at the failure or success of the acquired resource.
+ */
+export function tapBoth_<R, E, A, R1, E1, R2, E2>(
+  self: Managed<R, E, A>,
+  f: (e: E) => Managed<R1, E1, any>,
+  g: (a: A) => Managed<R2, E2, any>
+): Managed<R & R1 & R2, E | E1 | E2, A> {
+  return foldM_(
+    self,
+    (e) => chain_(f(e), () => fail(e)),
+    (a) => map_(g(a), () => a)
+  )
+}
+
+/**
+ * Returns an effect that effectfully peeks at the failure or success of the acquired resource.
+ */
+export function tapBoth<E, A, R1, E1, R2, E2>(
+  f: (e: E) => Managed<R1, E1, any>,
+  g: (a: A) => Managed<R2, E2, any>
+) {
+  return <R>(self: Managed<R, E, A>) => tapBoth_(self, f, g)
+}
+
+/**
+ * Returns an effect that effectually peeks at the cause of the failure of
+ * the acquired resource.
+ */
+export function tapCause_<R, E, A, R1, E1>(
+  self: Managed<R, E, A>,
+  f: (c: Cause<E>) => Managed<R1, E1, any>
+): Managed<R & R1, E | E1, A> {
+  return catchAllCause_(self, (c) => chain_(f(c), () => halt(c)))
+}
+
+/**
+ * Returns an effect that effectually peeks at the cause of the failure of
+ * the acquired resource.
+ */
+export function tapCause<E, R1, E1>(f: (c: Cause<E>) => Managed<R1, E1, any>) {
+  return <R, A>(self: Managed<R, E, A>): Managed<R & R1, E | E1, A> =>
+    tapCause_(self, f)
+}
+
+/**
+ * Returns an effect that effectfully peeks at the failure of the acquired resource.
+ */
+export function tapError_<R, E, A, R1, E1>(
+  self: Managed<R, E, A>,
+  f: (e: E) => Managed<R1, E1, any>
+): Managed<R & R1, E | E1, A> {
+  return tapBoth_(self, f, succeed)
+}
+
+/**
+ * Returns an effect that effectfully peeks at the failure of the acquired resource.
+ */
+export function tapError<E, R1, E1>(f: (e: E) => Managed<R1, E1, any>) {
+  return <R, A>(self: Managed<R, E, A>) => tapError_(self, f)
+}
+
+/**
+ * Like `tap`, but uses a function that returns a Effect value rather than a
+ * Managed value.
+ */
+export function tapM<A, R1, E1>(f: (a: A) => Effect<R1, E1, any>) {
+  return <R, E>(self: Managed<R, E, A>): Managed<R & R1, E | E1, A> =>
+    mapM_(self, (a) => T.as_(f(a), a))
 }
