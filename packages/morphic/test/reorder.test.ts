@@ -27,14 +27,14 @@ export interface All extends MO.AType<typeof All_> {}
 export interface AllE extends MO.EType<typeof All_> {}
 export const All = MO.opaque<AllE, All>()(All_)
 
-const reordered = S.run(
-  reorder(All).reorder({
-    b: "b",
-    c: "c",
-    a: "a"
-  })
-)
-
 it("sort the model", () => {
+  const reordered = S.run(
+    reorder(All).reorder({
+      b: "b",
+      c: "c",
+      a: "a"
+    })
+  )
+
   expect(Object.keys(reordered)).toEqual(["a", "b", "c"])
 })
