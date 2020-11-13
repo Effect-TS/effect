@@ -94,7 +94,7 @@ function interfaceStrict<PropsA, PropsE, Env extends AnyEnv>(
           // TODO: this undefined check only is necessary because in `both`, we traverse the object twice, once with interface, and once with partial
           typeof u[k] !== "undefined"
             ? (strict[k] as Strict<any>).shrink(u[k])
-            : T.succeed(O.some(u[k]))
+            : T.succeed(u[k])
         ),
         T.map((x) => x as any)
       )
