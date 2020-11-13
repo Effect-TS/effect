@@ -44,7 +44,7 @@ export const decoderObjectInterpreter = interpreter<DecoderURI, ObjectURI>()(() 
                     interfaceDecoder(keys, decoder, cfg?.name).validate(u, c),
                     partialDecoder(decoderPartial, cfg?.name).validate(u, c)
                   ),
-                  ([r, o]) => ({ ...r, ...o })
+                  ([r, o]) => ({ ...o, ...r })
                 ),
               "both",
               cfg?.name || "Both"
