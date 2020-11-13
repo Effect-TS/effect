@@ -1079,3 +1079,41 @@ export function some<R, E, A>(
     O.fold(() => fail(O.none), succeed)
   )
 }
+
+/**
+ * Extracts the optional value, or returns the given 'orElse'.
+ */
+export function someOrElse<B>(orElse: () => B) {
+  return <R, E, A>(self: Managed<R, E, O.Option<A>>): Managed<R, E, A | B> =>
+    someOrElse_(self, orElse)
+}
+
+/**
+ * Extracts the optional value, or returns the given 'orElse'.
+ */
+export function someOrElse_<R, E, A, B>(
+  self: Managed<R, E, O.Option<A>>,
+  orElse: () => B
+) {
+  return map_(self, O.getOrElse(orElse))
+}
+
+/**
+ * Extracts the optional value, or executes the effect 'orElse'.
+ */
+export function someOrElseM<R1, E1, B>(orElse: Managed<R1, E1, B>) {
+  return <R, E, A>(self: Managed<R, E, O.Option<A>>) => someOrElseM_(self, orElse)
+}
+
+/**
+ * Extracts the optional value, or executes the effect 'orElse'.
+ */
+export function someOrElseM_<R, E, A, R1, E1, B>(
+  self: Managed<R, E, O.Option<A>>,
+  orElse: Managed<R1, E1, B>
+) {
+  return chain_(
+    self,
+    O.fold((): Managed<R1, E1, A | B> => orElse, succeed)
+  )
+}
