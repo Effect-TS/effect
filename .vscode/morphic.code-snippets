@@ -24,20 +24,25 @@
     "body": [
       "export interface $1 extends NT.Newtype<\"$1\", $2> {}",
       "",
-      "export const $1 = MO.make((F) => F.newtypeIso(Iso.newtype<$1>(), F.$3()))",
+      "export const $1Iso = Iso.newtype<$1>()",
+      "",
+      "export const $1 = MO.make((F) => F.newtypeIso($1Iso, F.$3()))",
       ""
     ],
-    "description": "Defines a Morphic newtyps iso"
+    "description": "Defines a Morphic newtype via iso"
   },
   "Morphic Newtype Prism": {
     "prefix": "mont-pri",
     "body": [
       "export interface $1 extends NT.Newtype<\"$1\", $2> {}",
       "",
-      "export const $1 = MO.make((F) => F.newtypePrism(Prism.newtype<$1>((_) => $3), F.$4()))",
+      "export const $1Prism = Prism.newtype<$1>((_) => $3)",
+      "export const $1Iso = Iso.newtype<$1>()",
+      "",
+      "export const $1 = MO.make((F) => F.newtypePrism($1Prism, F.$4()))",
       ""
     ],
-    "description": "Defines a Morphic newtyps iso"
+    "description": "Defines a Morphic newtype via prism"
   },
   "Morphic interface": {
     "prefix": "moi",
