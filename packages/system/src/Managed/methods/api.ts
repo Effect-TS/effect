@@ -33,6 +33,15 @@ import { releaseMap } from "./releaseMap"
 import { suspend } from "./suspend"
 
 /**
+ * Attempts to convert defects into a failure, throwing away all information
+ * about the cause of the failure.
+ */
+export function absorb<E>(f: (e: E) => unknown) {
+  return <R, A>(self: Managed<R, E, A>) =>
+    foldM_(sandbox(self), (c) => fail(C.squash(f)(c)), succeed)
+}
+
+/**
  * Unwraps the optional success of this effect, but can fail with None value.
  */
 export function get<R, A>(self: Managed<R, never, O.Option<A>>) {
