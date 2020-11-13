@@ -68,7 +68,9 @@ function partialStrict<PropsA, PropsE, Env extends AnyEnv>(
         strict as Record<string, any>,
         R.foreachWithIndexF(T.Applicative)((k) =>
           u[k]
-            ? T.map_((strict[k] as Strict<any>).shrink(u[k]), O.some)
+            ? typeof u[k] !== "undefined"
+              ? T.map_((strict[k] as Strict<any>).shrink(u[k]), O.some)
+              : T.succeed(O.some(u[k]))
             : T.succeed(O.none)
         ),
         T.map(R.compact),
@@ -89,7 +91,10 @@ function interfaceStrict<PropsA, PropsE, Env extends AnyEnv>(
       pipe(
         strict as Record<string, any>,
         R.foreachWithIndexF(T.Applicative)((k) =>
-          (strict[k] as Strict<any>).shrink(u[k])
+          // TODO: this undefined check only is necessary because in `both`, we traverse the object twice, once with interface, and once with partial
+          typeof u[k] !== "undefined"
+            ? (strict[k] as Strict<any>).shrink(u[k])
+            : T.succeed(O.some(u[k]))
         ),
         T.map((x) => x as any)
       )
