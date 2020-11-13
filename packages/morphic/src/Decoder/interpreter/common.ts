@@ -41,6 +41,19 @@ export function mergePrefer(u: any, b: any, a: any) {
   return r
 }
 
+export function originalSort(u: any, b: any) {
+  const r = <any>{}
+  const ks = new Set(Object.keys(b))
+
+  for (const k of Object.keys(u)) {
+    if (ks.has(k)) {
+      r[k] = b[k]
+    }
+  }
+
+  return r
+}
+
 export function fixKey(s: string) {
   if (s.startsWith(".")) {
     return s.substr(1)

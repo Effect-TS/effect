@@ -4,6 +4,7 @@ import { pipe } from "@effect-ts/core/Function"
 import * as T from "@effect-ts/core/Sync"
 
 import type { ObjectURI, PropsKind } from "../../Algebra/Object"
+import { mergePrefer, originalSort } from "../../Decoder/interpreter/common"
 import type { AnyEnv } from "../../HKT"
 import { interpreter } from "../../HKT"
 import { projectFieldWithEnv } from "../../Utils"
@@ -40,7 +41,7 @@ export const strictObjectInterpreter = interpreter<StrictURI, ObjectURI>()(() =>
                     interfaceStrict(strict).shrink(u as any),
                     partialStrict(strictPartial).shrink(u as any)
                   ),
-                  ([r, o]) => ({ ...o, ...r })
+                  ([r, o]) => originalSort(u, mergePrefer(u, r, o))
                 ) as any
               }
             },
