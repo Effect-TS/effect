@@ -9,6 +9,36 @@
     ],
     "description": "Defines a Morphic opaque signature"
   },
+  "Morphic": {
+    "prefix": "mo",
+    "body": ["const $1_ = MO.make(F => F.$0 )", ""],
+    "description": "Defines a Morphic interface"
+  },
+  "Import Morphic": {
+    "prefix": "+MO",
+    "body": ["import * as MO from \"@effect-ts/morphic\""],
+    "description": "Imports Morphic as MO"
+  },
+  "Morphic Newtype": {
+    "prefix": "mont",
+    "body": [
+      "export interface $1 extends NT.Newtype<\"$1\", $2> {}",
+      "",
+      "export const $1 = MO.make((F) => F.newtypeIso(Iso.newtype<$1>(), F.$3()))",
+      ""
+    ],
+    "description": "Defines a Morphic newtyps iso"
+  },
+  "Morphic Newtype Prism": {
+    "prefix": "mont-pri",
+    "body": [
+      "export interface $1 extends NT.Newtype<\"$1\", $2> {}",
+      "",
+      "export const $1 = MO.make((F) => F.newtypePrism(Prism.newtype<$1>((_) => $3), F.$4()))",
+      ""
+    ],
+    "description": "Defines a Morphic newtyps iso"
+  },
   "Morphic interface": {
     "prefix": "moi",
     "body": [
@@ -31,7 +61,7 @@
       "export const $1 = MO.opaque<$1E, $1>()($1_)",
       ""
     ],
-    "description": "Defines a Morphic interface"
+    "description": "Defines a Morphic intersection"
   },
   "Morphic opaque for tagged unions": {
     "prefix": "mo|",
@@ -40,6 +70,6 @@
       "export type $1 = MO.AType<typeof $1>",
       ""
     ],
-    "description": "Defines a Morphic Tagged union"
+    "description": "Defines a Morphic tagged union"
   }
 }
