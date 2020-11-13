@@ -40,7 +40,7 @@ export const strictObjectInterpreter = interpreter<StrictURI, ObjectURI>()(() =>
                     interfaceStrict(strict).shrink(u as any),
                     partialStrict(strictPartial).shrink(u as any)
                   ),
-                  ([r, o]) => ({ ...r, ...o })
+                  ([r, o]) => ({ ...o, ...r })
                 ) as any
               }
             },
