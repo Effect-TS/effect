@@ -9,7 +9,7 @@ import { projectFieldWithEnv } from "../../Utils"
 import { decoderApplyConfig, DecoderType, DecoderURI } from "../base"
 import type { Decoder } from "../common"
 import { appendContext, fail, makeDecoder } from "../common"
-import { foreachRecordWithIndex, tuple } from "./common"
+import { foreachRecordWithIndex, mergePrefer, originalSort, tuple } from "./common"
 
 export const decoderObjectInterpreter = interpreter<DecoderURI, ObjectURI>()(() => ({
   _F: DecoderURI,
@@ -44,7 +44,7 @@ export const decoderObjectInterpreter = interpreter<DecoderURI, ObjectURI>()(() 
                     interfaceDecoder(keys, decoder, cfg?.name).validate(u, c),
                     partialDecoder(decoderPartial, cfg?.name).validate(u, c)
                   ),
-                  ([r, o]) => ({ ...r, ...o })
+                  ([r, o]) => originalSort(u, mergePrefer(u, r, o))
                 ),
               "both",
               cfg?.name || "Both"

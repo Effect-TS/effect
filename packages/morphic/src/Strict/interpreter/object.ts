@@ -4,6 +4,7 @@ import { pipe } from "@effect-ts/core/Function"
 import * as T from "@effect-ts/core/Sync"
 
 import type { ObjectURI, PropsKind } from "../../Algebra/Object"
+import { mergePrefer, originalSort } from "../../Decoder/interpreter/common"
 import type { AnyEnv } from "../../HKT"
 import { interpreter } from "../../HKT"
 import { projectFieldWithEnv } from "../../Utils"
@@ -40,7 +41,7 @@ export const strictObjectInterpreter = interpreter<StrictURI, ObjectURI>()(() =>
                     interfaceStrict(strict).shrink(u as any),
                     partialStrict(strictPartial).shrink(u as any)
                   ),
-                  ([r, o]) => ({ ...r, ...o })
+                  ([r, o]) => originalSort(u, mergePrefer(u, r, o))
                 ) as any
               }
             },
@@ -68,7 +69,9 @@ function partialStrict<PropsA, PropsE, Env extends AnyEnv>(
         strict as Record<string, any>,
         R.foreachWithIndexF(T.Applicative)((k) =>
           u[k]
-            ? T.map_((strict[k] as Strict<any>).shrink(u[k]), O.some)
+            ? typeof u[k] !== "undefined"
+              ? T.map_((strict[k] as Strict<any>).shrink(u[k]), O.some)
+              : T.succeed(O.some(u[k]))
             : T.succeed(O.none)
         ),
         T.map(R.compact),
