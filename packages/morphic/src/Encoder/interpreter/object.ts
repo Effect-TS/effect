@@ -31,7 +31,9 @@ export const encoderObjectInterpreter = interpreter<EncoderURI, ObjectURI>()(() 
         encoderApplyConfig(config?.conf)(
           {
             encode: R.foreachWithIndexF(T.Applicative)((k, a) =>
-              encoder[k] != null ? encoder[k].encode(a) : T.succeed(a)
+              typeof a !== "undefined" && encoder[k] != null
+                ? encoder[k].encode(a)
+                : T.succeed(a)
             ) as any
           },
           env,
@@ -50,7 +52,7 @@ export const encoderObjectInterpreter = interpreter<EncoderURI, ObjectURI>()(() 
               encode: R.foreachWithIndexF(T.Applicative)((k, a) =>
                 encoder[k] != null
                   ? encoder[k].encode(a)
-                  : encoderPartial[k] != null
+                  : typeof a !== "undefined" && encoderPartial[k] != null
                   ? encoderPartial[k].encode(a)
                   : T.succeed(a)
               ) as any
