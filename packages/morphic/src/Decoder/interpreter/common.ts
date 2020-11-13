@@ -47,9 +47,14 @@ export function originalSort(u: any, b: any) {
 
   for (const k of Object.keys(u)) {
     if (ks.has(k)) {
+      ks.delete(k)
       r[k] = b[k]
     }
   }
+
+  ks.forEach((k) => {
+    r[k] = b[k]
+  })
 
   return r
 }
