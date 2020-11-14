@@ -96,9 +96,9 @@ export function runMain<E>(effect: Effect<DefaultEnv, E, void>): void {
           break
         }
       }
-      // eslint-disable-next-line no-fallthrough
       case "Success": {
         teardown(0, context.id)
+        break
       }
     }
   })
