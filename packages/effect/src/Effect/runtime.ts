@@ -79,7 +79,11 @@ export function teardown(status: number, id: FiberID) {
  *
  * Note: this should be used only in node.js as it depends on global process
  */
-export function runMain<E>(effect: Effect<DefaultEnv, E, void>): void {
+export function runMain<E>(
+  effect: Effect<DefaultEnv, E, void>,
+  hook: NodeJS.SignalsListener = constVoid,
+  cont: (status: number, id: FiberID) => void = teardown
+): void {
   const context = fiberContext<E, void>()
 
   context.evaluateLater(effect[_I])
@@ -88,16 +92,16 @@ export function runMain<E>(effect: Effect<DefaultEnv, E, void>): void {
       case "Failure": {
         if (Cause.died(exit.cause) || Cause.failed(exit.cause)) {
           console.error(pretty(exit.cause))
-          teardown(1, context.id)
+          cont(1, context.id)
           break
         } else {
           console.log(pretty(exit.cause))
-          teardown(0, context.id)
+          cont(0, context.id)
           break
         }
       }
       case "Success": {
-        teardown(0, context.id)
+        cont(0, context.id)
         break
       }
     }
@@ -105,7 +109,9 @@ export function runMain<E>(effect: Effect<DefaultEnv, E, void>): void {
 
   const interrupted = new AtomicBoolean(false)
 
-  const handler = () => {
+  const handler: NodeJS.SignalsListener = (...args) => {
+    hook(...args)
+
     process.removeListener("SIGTERM", handler)
     process.removeListener("SIGINT", handler)
 
