@@ -4,7 +4,7 @@ import * as Exit from "../Exit/api"
 import * as Fiber from "../Fiber/api"
 import { pipe } from "../Function"
 import { chain, chain_, descriptorWith, halt, result, succeed } from "./core"
-import { raceWith } from "./core-scope"
+import { raceWith_ } from "./core-scope"
 import { done } from "./done"
 import type { Effect, IO } from "./effect"
 import { map_ } from "./map_"
@@ -38,7 +38,7 @@ export function race_<R, E, A, R2, E2, A2>(
   that: Effect<R2, E2, A2>
 ): Effect<R & R2, E | E2, A | A2> {
   return descriptorWith((d) =>
-    raceWith(
+    raceWith_(
       self,
       that,
       (exit, right) =>

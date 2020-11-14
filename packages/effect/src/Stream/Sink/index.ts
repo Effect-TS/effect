@@ -515,7 +515,7 @@ export function raceBoth_<R, R1, E, E1, I, I1, L, L1, Z, Z1>(
         readonly [E.Either<E | E1, E.Either<Z, Z1>>, A.Array<L | L1>],
         void
       > =>
-        T.raceWith(
+        T.raceWith_(
           p1(i),
           p2(i),
           (res1, fib2) =>
