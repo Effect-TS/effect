@@ -394,43 +394,43 @@ export function catchSomeCause<R, E, A, R2, E2, A2>(
  * Fail with `e` if the supplied `PartialFunction` does not match, otherwise
  * continue with the returned value.
  */
-export function collectM_<R, E, A, E1, R1, E2, B>(
+export function continueOrFailM_<R, E, A, E1, R1, E2, B>(
   self: Managed<R, E, A>,
-  e: E1,
+  e: () => E1,
   pf: (a: A) => O.Option<Managed<R1, E2, B>>
 ): Managed<R & R1, E | E1 | E2, B> {
-  return chain_(self, (a) => O.getOrElse_(pf(a), () => fail<E1 | E2>(e)))
+  return chain_(self, (a) => O.getOrElse_(pf(a), () => fail<E1 | E2>(e())))
 }
 
 /**
  * Fail with `e` if the supplied `PartialFunction` does not match, otherwise
  * continue with the returned value.
  */
-export function collectM<A, E1, R1, E2, B>(
-  e: E1,
+export function continueOrFailM<A, E1, R1, E2, B>(
+  e: () => E1,
   pf: (a: A) => O.Option<Managed<R1, E2, B>>
 ) {
-  return <R, E>(self: Managed<R, E, A>) => collectM_(self, e, pf)
+  return <R, E>(self: Managed<R, E, A>) => continueOrFailM_(self, e, pf)
 }
 
 /**
  * Fail with `e` if the supplied `PartialFunction` does not match, otherwise
  * succeed with the returned value.
  */
-export function collect_<R, E, A, E1, B>(
+export function continueOrFail_<R, E, A, E1, B>(
   self: Managed<R, E, A>,
-  e: E1,
+  e: () => E1,
   pf: (a: A) => O.Option<B>
 ): Managed<R, E | E1, B> {
-  return collectM_(self, e, flow(pf, O.map(succeed)))
+  return continueOrFailM_(self, e, flow(pf, O.map(succeed)))
 }
 
 /**
  * Fail with `e` if the supplied `PartialFunction` does not match, otherwise
  * succeed with the returned value.
  */
-export function collect<A, E1, B>(e: E1, pf: (a: A) => O.Option<B>) {
-  return <R, E>(self: Managed<R, E, A>) => collect_(self, e, pf)
+export function continueOrFail<A, E1, B>(e: () => E1, pf: (a: A) => O.Option<B>) {
+  return <R, E>(self: Managed<R, E, A>) => continueOrFail_(self, e, pf)
 }
 
 /**
@@ -1982,4 +1982,22 @@ export function zipPar_<R, E, A, R2, E2, A2>(
 export function zipPar<R2, E2, A2>(b: Managed<R2, E2, A2>) {
   return <R, E, A>(a: Managed<R, E, A>): Managed<R & R2, E | E2, [A, A2]> =>
     zipPar_(a, b)
+}
+
+/**
+ * Creates new `Managed` from a `Effect` value that uses a `ReleaseMap` and returns
+ * a resource and a finalizer.
+ *
+ * The correct usage of this constructor consists of:
+ * - Properly registering a finalizer in the ReleaseMap as part of the `Effect` value;
+ * - Managing interruption safety - take care to use `uninterruptible` or
+ *   `uninterruptibleMask` to verify that the finalizer is registered in the
+ *   `ReleaseMap` after acquiring the value;
+ * - Returning the finalizer returned from `ReleaseMap#add`. This is important
+ *   to prevent double-finalization.
+ */
+export function create<R, E, A>(
+  effect: T.Effect<readonly [R, RM.ReleaseMap], E, readonly [RM.Finalizer, A]>
+) {
+  return new Managed(effect)
 }
