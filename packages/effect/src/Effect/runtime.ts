@@ -61,16 +61,14 @@ export function runAsap<E, A>(_: Effect<DefaultEnv, E, A>, cb?: Callback<E, A>) 
 export function defaultTeardown(
   status: number,
   id: FiberID,
-  onExit: (status: number) => void = (s) => {
-    process.exit(s)
-  }
+  onExit: (status: number) => void
 ) {
   run(interruptAllAs(id)(_tracing.running), () => {
     setTimeout(() => {
       if (_tracing.running.size === 0) {
         onExit(status)
       } else {
-        defaultTeardown(status, id)
+        defaultTeardown(status, id, onExit)
       }
     }, 0)
   })
@@ -96,22 +94,26 @@ export function runMain<E>(
 ): void {
   const context = fiberContext<E, void>()
 
+  const onExit = (s: number) => {
+    process.exit(s)
+  }
+
   context.evaluateLater(effect[_I])
   context.runAsync((exit) => {
     switch (exit._tag) {
       case "Failure": {
         if (Cause.died(exit.cause) || Cause.failed(exit.cause)) {
           console.error(pretty(exit.cause))
-          customTeardown(1, context.id)
+          customTeardown(1, context.id, onExit)
           break
         } else {
           console.log(pretty(exit.cause))
-          customTeardown(0, context.id)
+          customTeardown(0, context.id, onExit)
           break
         }
       }
       case "Success": {
-        customTeardown(0, context.id)
+        customTeardown(0, context.id, onExit)
         break
       }
     }
