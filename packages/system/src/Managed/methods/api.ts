@@ -12,6 +12,7 @@ import { NoSuchElementException } from "../../GlobalExceptions"
 import type { Has, Tag } from "../../Has"
 import { mergeEnvironments } from "../../Has"
 import * as L from "../../Layer"
+import type { Option } from "../../Option"
 import * as O from "../../Option"
 import * as P from "../../Promise"
 import * as R from "../../Record"
@@ -23,6 +24,9 @@ import {
   effectTotal,
   fail,
   foldCauseM_,
+  foreach_,
+  foreachPar_,
+  foreachParN_,
   map_,
   mapM_,
   provideSome_,
@@ -2000,4 +2004,82 @@ export function create<R, E, A>(
   effect: T.Effect<readonly [R, RM.ReleaseMap], E, readonly [RM.Finalizer, A]>
 ) {
   return new Managed(effect)
+}
+
+/**
+ * Evaluate each effect in the structure from left to right, collecting the
+ * the successful values and discarding the empty cases. For a parallel version, see `collectPar`.
+ */
+export function collect<A, R, E, B>(f: (a: A) => Managed<R, Option<E>, B>) {
+  return (self: Iterable<A>): Managed<R, E, readonly B[]> => collect_(self, f)
+}
+
+/**
+ * Evaluate each effect in the structure from left to right, collecting the
+ * the successful values and discarding the empty cases. For a parallel version, see `collectPar`.
+ */
+export function collect_<A, R, E, B>(
+  self: Iterable<A>,
+  f: (a: A) => Managed<R, Option<E>, B>
+): Managed<R, E, readonly B[]> {
+  return map_(
+    foreach_(self, (a) => optional(f(a))),
+    A.compact
+  )
+}
+
+/**
+ * Evaluate each effect in the structure in parallel, collecting the
+ * the successful values and discarding the empty cases.
+ */
+export function collectPar<A, R, E, B>(f: (a: A) => Managed<R, Option<E>, B>) {
+  return (self: Iterable<A>): Managed<R, E, readonly B[]> => collectPar_(self, f)
+}
+
+/**
+ * Evaluate each effect in the structure in parallel, collecting the
+ * the successful values and discarding the empty cases.
+ */
+export function collectPar_<A, R, E, B>(
+  self: Iterable<A>,
+  f: (a: A) => Managed<R, Option<E>, B>
+): Managed<R, E, readonly B[]> {
+  return map_(
+    foreachPar_(self, (a) => optional(f(a))),
+    A.compact
+  )
+}
+
+/**
+ * Evaluate each effect in the structure in parallel, collecting the
+ * the successful values and discarding the empty cases.
+ *
+ * Unlike `collectPar`, this method will use at most up to `n` fibers.
+ */
+export function collectParN_(
+  n: number
+): <A, R, E, B>(
+  self: Iterable<A>,
+  f: (a: A) => Managed<R, Option<E>, B>
+) => Managed<R, E, readonly B[]> {
+  return (self, f) =>
+    map_(
+      foreachParN_(n)(self, (a) => optional(f(a))),
+      A.compact
+    )
+}
+
+/**
+ * Evaluate each effect in the structure in parallel, collecting the
+ * the successful values and discarding the empty cases.
+ *
+ * Unlike `collectPar`, this method will use at most up to `n` fibers.
+ */
+export function collectParN(
+  n: number
+): <A, R, E, B>(
+  f: (a: A) => Managed<R, Option<E>, B>
+) => (self: Iterable<A>) => Managed<R, E, readonly B[]> {
+  const c = collectParN_(n)
+  return (f) => (self) => c(self, f)
 }
