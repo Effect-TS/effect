@@ -1612,16 +1612,27 @@ export function last<I>(): Sink<unknown, never, I, never, O.Option<I>> {
  * A sink that depends on another managed value
  * `resource` will be finalized after the processing.
  */
+export function managed_<R, E, A, I, L extends I, Z>(
+  resource: M.Managed<R, E, A>,
+  fn: (a: A) => Sink<R, E, I, L, Z>
+) {
+  return M.chain_(
+    M.fold_(
+      resource,
+      (err) => fail(err)<I>() as Sink<R, E, I, I, Z>,
+      (m) => fn(m)
+    ),
+    (_) => _.push
+  )
+}
+
+/**
+ * A sink that depends on another managed value
+ * `resource` will be finalized after the processing.
+ */
 export function managed<R, E, A>(resource: M.Managed<R, E, A>) {
   return <I, L extends I, Z>(fn: (a: A) => Sink<R, E, I, L, Z>) =>
-    M.chain_(
-      M.fold_(
-        resource,
-        (err) => fail(err)<I>() as Sink<R, E, I, I, Z>,
-        (m) => fn(m)
-      ),
-      (_) => _.push
-    )
+    managed_(resource, fn)
 }
 
 /**
