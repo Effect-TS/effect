@@ -73,7 +73,7 @@ export function teardown(status: number, id: FiberID) {
 /**
  * Runs effect until completion listening for system level termination signals that
  * triggers cancellation of the process, in case errors are found process will
- * exit with a status of 2 and cause will be pretty printed, if interruption
+ * exit with a status of 1 and cause will be pretty printed, if interruption
  * is found without errors the cause is pretty printed and process exits with
  * status 0. In the success scenario process exits with status 0 witout any log.
  *
@@ -88,7 +88,7 @@ export function runMain<E>(effect: Effect<DefaultEnv, E, void>): void {
       case "Failure": {
         if (Cause.died(exit.cause) || Cause.failed(exit.cause)) {
           console.error(pretty(exit.cause))
-          teardown(2, context.id)
+          teardown(1, context.id)
           break
         } else {
           console.log(pretty(exit.cause))
