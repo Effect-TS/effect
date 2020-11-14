@@ -70,6 +70,10 @@ export function teardown(status: number, id: FiberID) {
   })
 }
 
+export const defaultHook = (
+  cont: NodeJS.SignalsListener
+): ((signal: NodeJS.Signals) => void) => (signal) => cont(signal)
+
 /**
  * Runs effect until completion listening for system level termination signals that
  * triggers cancellation of the process, in case errors are found process will
@@ -81,7 +85,7 @@ export function teardown(status: number, id: FiberID) {
  */
 export function runMain<E>(
   effect: Effect<DefaultEnv, E, void>,
-  hook: NodeJS.SignalsListener = constVoid,
+  hook: (cont: NodeJS.SignalsListener) => NodeJS.SignalsListener = defaultHook,
   cont: (status: number, id: FiberID) => void = teardown
 ): void {
   const context = fiberContext<E, void>()
@@ -109,15 +113,15 @@ export function runMain<E>(
 
   const interrupted = new AtomicBoolean(false)
 
-  const handler: NodeJS.SignalsListener = (...args) => {
-    hook(...args)
+  const handler: NodeJS.SignalsListener = (signal) => {
+    hook(() => {
+      process.removeListener("SIGTERM", handler)
+      process.removeListener("SIGINT", handler)
 
-    process.removeListener("SIGTERM", handler)
-    process.removeListener("SIGINT", handler)
-
-    if (interrupted.compareAndSet(false, true)) {
-      run(context.interruptAs(context.id))
-    }
+      if (interrupted.compareAndSet(false, true)) {
+        run(context.interruptAs(context.id))
+      }
+    })(signal)
   }
 
   process.once("SIGTERM", handler)
