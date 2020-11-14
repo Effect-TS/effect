@@ -8,10 +8,12 @@ import * as Ex from "../../Exit"
 import * as F from "../../Fiber"
 import { constVoid, flow, identity, pipe, tuple } from "../../Function"
 import { NoSuchElementException } from "../../GlobalExceptions"
+import type { Has, Tag } from "../../Has"
 import * as L from "../../Layer"
 import * as O from "../../Option"
 import * as P from "../../Promise"
 import type { Schedule } from "../../Schedule"
+import type { UnionToIntersection } from "../../Utils"
 import {
   chain,
   chain_,
@@ -1303,4 +1305,120 @@ export function timeout(d: number) {
         })
       )
     )
+}
+
+/**
+ * Constructs a layer from this managed resource.
+ */
+export function toLayer<A>(
+  tag: Tag<A>
+): <R, E>(self: Managed<R, E, A>) => L.Layer<R, E, Has<A>> {
+  return L.fromManaged(tag)
+}
+
+/**
+ * Constructs a layer from this managed resource.
+ */
+export function toLayer_<R, E, A>(
+  self: Managed<R, E, A>,
+  tag: Tag<A>
+): L.Layer<R, E, Has<A>> {
+  return toLayer(tag)(self)
+}
+
+/**
+ * Constructs a layer from this managed resource, which must return one or
+ * more services.
+ */
+export function toLayerMany<Tags extends Tag<any>[]>(...tags: Tags) {
+  return <R, E>(
+    self: Managed<
+      R,
+      E,
+      UnionToIntersection<
+        {
+          [k in keyof Tags & number]: [Tags[k]] extends [Tag<infer A>] ? Has<A> : never
+        }[number]
+      >
+    >
+  ) =>
+    L.fromRawManaged(
+      map_(
+        self,
+        (
+          r
+        ): UnionToIntersection<
+          {
+            [k in keyof Tags & number]: [Tags[k]] extends [Tag<infer A>]
+              ? Has<A>
+              : never
+          }[number]
+        > => {
+          const env: any = {}
+          for (const tag of tags) {
+            env[tag.key] = tag.read(r as any)
+          }
+          return env
+        }
+      )
+    )
+}
+
+/**
+ * Return unit while running the effect
+ */
+export function asUnit<R, E, A>(self: Managed<R, E, A>): Managed<R, E, void> {
+  return as_(self, undefined)
+}
+
+/**
+ * The moral equivalent of `if (!p) exp` when `p` has side-effects
+ */
+export function unlessM<R1, E1>(b: Managed<R1, E1, boolean>) {
+  return <R, E, A>(self: Managed<R, E, A>): Managed<R1 & R, E1 | E, void> =>
+    chain_(b, (b) => (b ? unit : asUnit(self)))
+}
+
+/**
+ * Maps this effect to the specified constant while preserving the
+ * effects of this effect.
+ */
+export function as_<R, E, A, B>(self: Managed<R, E, A>, b: B) {
+  return map_(self, () => b)
+}
+
+/**
+ * Maps this effect to the specified constant while preserving the
+ * effects of this effect.
+ */
+export function as<B>(b: B) {
+  return <R, E, A>(self: Managed<R, E, A>) => as_(self, b)
+}
+
+/**
+ * Maps the success value of this effect to an optional value.
+ */
+export function asSome<R, E, A>(self: Managed<R, E, A>) {
+  return map_(self, O.some)
+}
+
+/**
+ * Maps the error value of this effect to an optional value.
+ */
+export function asSomeError<R, E, A>(self: Managed<R, E, A>) {
+  return mapError_(self, O.some)
+}
+
+/**
+ * Maps the success value of this effect to a service.
+ */
+export function asService<A>(tag: Tag<A>) {
+  return <R, E>(self: Managed<R, E, A>) => asService_(self, tag)
+}
+
+/**
+ * Maps the success value of this effect to a service.
+ */
+export function asService_<R, E, A>(self: Managed<R, E, A>, tag: Tag<A>) {
+  return map_(self, tag.of)
 }
