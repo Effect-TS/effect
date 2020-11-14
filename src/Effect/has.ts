@@ -33,6 +33,9 @@ export function accessServicesM<SS extends Record<string, Tag<any>>>(s: SS) {
     )
 }
 
+/**
+ * Access a tuple of services with the required Service Entries monadically
+ */
 export const accessServicesTM = <SS extends Tag<any>[]>(...s: SS) => <
   R = unknown,
   E = never,
@@ -54,6 +57,9 @@ export const accessServicesTM = <SS extends Tag<any>[]>(...s: SS) => <
     ) => f(...(A.map_(s, (v) => r[v.key]) as any))
   )
 
+/**
+ * Access a tuple of services with the required Service Entries
+ */
 export function accessServicesT<SS extends Tag<any>[]>(...s: SS) {
   return <B = unknown>(
     f: (
