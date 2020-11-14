@@ -2350,8 +2350,9 @@ export function reduce_<A, Z, R, E>(
 /**
  * Folds an Iterable[A] using an effectual function f, working sequentially from left to right.
  */
-export function reduce<A, Z, R, E>(zero: Z, f: (z: Z, a: A) => Managed<R, E, Z>) {
-  return (i: Iterable<A>) => reduce_(i, zero, f)
+export function reduce<Z>(zero: Z) {
+  return <R, E, A>(f: (z: Z, a: A) => Managed<R, E, Z>) => (i: Iterable<A>) =>
+    reduce_(i, zero, f)
 }
 
 /**
@@ -2370,8 +2371,9 @@ export function reduceRight_<A, Z, R, E>(
 /**
  * Folds an Iterable[A] using an effectual function f, working sequentially from left to right.
  */
-export function reduceRight<A, Z, R, E>(zero: Z, f: (a: A, z: Z) => Managed<R, E, Z>) {
-  return (i: Iterable<A>) => reduceRight_(i, zero, f)
+export function reduceRight<Z>(zero: Z) {
+  return <R, E, A>(f: (a: A, z: Z) => Managed<R, E, Z>) => (i: Iterable<A>) =>
+    reduceRight_(i, zero, f)
 }
 
 /**
