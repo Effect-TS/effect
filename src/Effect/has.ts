@@ -224,25 +224,40 @@ export interface Region<T, K> {
   }
 }
 
+/**
+ * Defines a new region tag
+ */
 export function region<K, T>(): Tag<Region<T, K>> {
   return tag<Region<T, K>>()
 }
 
+/**
+ * Uses the region to provide
+ */
 export function useRegion<K, T>(h: Tag<Region<T, K>>) {
   return <R, E, A>(e: Effect<R & T, E, A>) =>
     accessServiceM(h)((a) => pipe(e, provide((a as any) as T)))
 }
 
+/**
+ * Access the region monadically
+ */
 export function accessRegionM<K, T>(h: Tag<Region<T, K>>) {
   return <R, E, A>(e: (_: T) => Effect<R & T, E, A>) =>
     accessServiceM(h)((a) => pipe(accessM(e), provide((a as any) as T)))
 }
 
+/**
+ * Access the region
+ */
 export function accessRegion<K, T>(h: Tag<Region<T, K>>) {
   return <A>(e: (_: T) => A) =>
     accessServiceM(h)((a) => pipe(access(e), provide((a as any) as T)))
 }
 
+/**
+ * Read the region value
+ */
 export function readRegion<K, T>(h: Tag<Region<T, K>>) {
   return accessServiceM(h)((a) =>
     pipe(
@@ -252,6 +267,9 @@ export function readRegion<K, T>(h: Tag<Region<T, K>>) {
   )
 }
 
+/**
+ * Reads service inside region
+ */
 export function readServiceIn<A>(_: Tag<A>) {
   return <K, T>(h: Tag<Region<Has<A> & T, K>>) =>
     useRegion(h)(
@@ -264,6 +282,9 @@ export function readServiceIn<A>(_: Tag<A>) {
     )
 }
 
+/**
+ * Access service inside region
+ */
 export function accessServiceIn<A>(_: Tag<A>) {
   return <K, T>(h: Tag<Region<Has<A> & T, K>>) => <B>(f: (_: A) => B) =>
     useRegion(h)(
@@ -276,6 +297,9 @@ export function accessServiceIn<A>(_: Tag<A>) {
     )
 }
 
+/**
+ * Reads service inside region monadically
+ */
 export function accessServiceInM<A>(_: Tag<A>) {
   return <K, T>(h: Tag<Region<Has<A> & T, K>>) => <R, E, B>(
     f: (_: A) => Effect<R, E, B>
