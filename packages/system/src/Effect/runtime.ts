@@ -5,9 +5,11 @@ import { pretty } from "../Cause/pretty"
 // exit
 import { HasClock, LiveClock } from "../Clock"
 import type { Exit } from "../Exit/exit"
+import { interruptAllAs } from "../Fiber/api"
 // fiber
-import { FiberContext } from "../Fiber/context"
+import { _tracing, FiberContext } from "../Fiber/context"
 import { interruptible } from "../Fiber/core"
+import type { FiberID } from "../Fiber/id"
 import { newFiberId } from "../Fiber/id"
 import type { Callback } from "../Fiber/state"
 import { constVoid, identity } from "../Function"
@@ -59,6 +61,12 @@ export interface CancelMain {
   (): void
 }
 
+export function teardown(status: number, id: FiberID) {
+  run(interruptAllAs(id)(_tracing.running), () => {
+    process.exit(status)
+  })
+}
+
 /**
  * Runs effect until completion returing a cancel function that when invoked
  * triggers cancellation of the process, in case errors are found process will
@@ -77,15 +85,17 @@ export function runMain<E>(effect: Effect<DefaultEnv, E, void>): CancelMain {
       case "Failure": {
         if (Cause.died(exit.cause) || Cause.failed(exit.cause)) {
           console.error(pretty(exit.cause))
-          process.exit(2)
+          teardown(2, context.id)
+          break
         } else {
           console.log(pretty(exit.cause))
-          process.exit(0)
+          teardown(0, context.id)
+          break
         }
       }
       // eslint-disable-next-line no-fallthrough
       case "Success": {
-        process.exit(0)
+        teardown(0, context.id)
       }
     }
   })
