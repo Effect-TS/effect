@@ -20,6 +20,7 @@ import type { UnionToIntersection } from "../../Utils"
 import {
   chain,
   chain_,
+  effectTotal,
   fail,
   foldCauseM_,
   map_,
@@ -1399,14 +1400,31 @@ export function asUnit<R, E, A>(self: Managed<R, E, A>): Managed<R, E, void> {
  */
 export function unlessM<R1, E1>(b: Managed<R1, E1, boolean>) {
   return <R, E, A>(self: Managed<R, E, A>): Managed<R1 & R, E1 | E, void> =>
-    chain_(b, (b) => (b ? unit : asUnit(self)))
+    unlessM_(self, b)
+}
+
+/**
+ * The moral equivalent of `if (!p) exp` when `p` has side-effects
+ */
+export function unlessM_<R, E, A, R1, E1>(
+  self: Managed<R, E, A>,
+  b: Managed<R1, E1, boolean>
+): Managed<R1 & R, E1 | E, void> {
+  return chain_(b, (b) => (b ? unit : asUnit(self)))
 }
 
 /**
  * The moral equivalent of `if (!p) exp`
  */
-export function unless(b: boolean) {
-  return unlessM(succeed(b))
+export function unless(b: () => boolean) {
+  return unlessM(effectTotal(b))
+}
+
+/**
+ * The moral equivalent of `if (!p) exp`
+ */
+export function unless_<R, E, A>(self: Managed<R, E, A>, b: () => boolean) {
+  return unless(b)(self)
 }
 
 /**
@@ -1812,4 +1830,60 @@ export function accessServiceInM<A>(_: Tag<A>) {
         )
       )
     )
+}
+
+/**
+ * The moral equivalent of `if (p) exp` when `p` has side-effects
+ */
+export function whenM<R1, E1>(b: Managed<R1, E1, boolean>) {
+  return unlessM(map_(b, (b) => !b))
+}
+
+/**
+ * The moral equivalent of `if (p) exp`
+ */
+export function when(b: () => boolean) {
+  return unless(() => !b())
+}
+
+/**
+ * A more powerful version of `withEarlyRelease` that allows specifying an
+ * exit value in the event of early release.
+ */
+export function withEarlyReleaseExit_<R, E, A>(
+  self: Managed<R, E, A>,
+  exit: Ex.Exit<E, A>
+): Managed<R, E, readonly [T.UIO<any>, A]> {
+  return new Managed(
+    T.map_(self.effect, (tp) =>
+      tuple(tp[0], tuple(T.uninterruptible(tp[0](exit)), tp[1]))
+    )
+  )
+}
+
+/**
+ * A more powerful version of `withEarlyRelease` that allows specifying an
+ * exit value in the event of early release.
+ */
+export function withEarlyReleaseExit<E, A>(exit: Ex.Exit<E, A>) {
+  return <R>(self: Managed<R, E, A>) => withEarlyReleaseExit_(self, exit)
+}
+
+/**
+ * Returns an effect that succeeds with the `Fiber.Id` of the caller.
+ */
+export function fiberId() {
+  return fromEffect(T.fiberId())
+}
+
+/**
+ * Modifies this `ZManaged` to provide a canceler that can be used to eagerly
+ * execute the finalizer of this `ZManaged`. The canceler will run
+ * uninterruptibly with an exit value indicating that the effect was
+ * interrupted, and if completed will cause the regular finalizer to not run.
+ */
+export function withEarlyRelease<R, E, A>(
+  self: Managed<R, E, A>
+): Managed<R, E, readonly [T.UIO<any>, A]> {
+  return chain_(fiberId(), (id) => withEarlyReleaseExit_(self, Ex.interrupt(id)))
 }
