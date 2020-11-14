@@ -5,6 +5,7 @@ import type { Effect } from "../../Effect"
 import * as T from "../../Effect"
 import * as E from "../../Either"
 import * as Ex from "../../Exit"
+import * as F from "../../Fiber"
 import { constVoid, flow, identity, pipe, tuple } from "../../Function"
 import { NoSuchElementException } from "../../GlobalExceptions"
 import * as L from "../../Layer"
@@ -25,7 +26,6 @@ import {
 import { fromEffect } from "../fromEffect"
 import type { IO, RIO, UIO } from "../managed"
 import { Managed } from "../managed"
-import type { ReleaseMap } from "../ReleaseMap"
 import * as RM from "../ReleaseMap"
 import { succeed } from "../succeed"
 import { absolve } from "./absolve"
@@ -740,7 +740,7 @@ export function preallocate<R, E, A>(self: Managed<R, E, A>): T.Effect<R, E, UIO
           ([release, a]) =>
             T.succeed(
               new Managed(
-                T.accessM(([_, releaseMap]: readonly [unknown, ReleaseMap]) =>
+                T.accessM(([_, releaseMap]: readonly [unknown, RM.ReleaseMap]) =>
                   T.map_(RM.add(release)(releaseMap), (_) => tuple(_, a))
                 )
               )
@@ -765,7 +765,7 @@ export function preallocateManaged<R, E, A>(
       tuple(
         release,
         new Managed(
-          T.accessM(([_, releaseMap]: readonly [unknown, ReleaseMap]) =>
+          T.accessM(([_, releaseMap]: readonly [unknown, RM.ReleaseMap]) =>
             T.map_(RM.add(release)(releaseMap), (_) => tuple(_, a))
           )
         )
@@ -939,7 +939,7 @@ export function retryOrElseEither_<R, E, A, R1, O, R2, E2, A2>(
 ): Managed<R & R1 & R2 & HasClock, E2, E.Either<A2, A>> {
   return new Managed(
     T.map_(
-      T.accessM(([env, releaseMap]: readonly [R & R1 & R2 & HasClock, ReleaseMap]) =>
+      T.accessM(([env, releaseMap]: readonly [R & R1 & R2 & HasClock, RM.ReleaseMap]) =>
         T.provideAll_(
           T.retryOrElseEither_(
             T.provideAll_(self.effect, tuple(env, releaseMap)),
@@ -1220,4 +1220,87 @@ export function tapError<E, R1, E1>(f: (e: E) => Managed<R1, E1, any>) {
 export function tapM<A, R1, E1>(f: (a: A) => Effect<R1, E1, any>) {
   return <R, E>(self: Managed<R, E, A>): Managed<R & R1, E | E1, A> =>
     mapM_(self, (a) => T.as_(f(a), a))
+}
+
+/**
+ * Returns a new effect that executes this one and times the acquisition of the resource.
+ */
+export function timed<R, E, A>(
+  self: Managed<R, E, A>
+): Managed<R & HasClock, E, readonly [number, A]> {
+  return new Managed(
+    T.chain_(T.environment<readonly [R, RM.ReleaseMap]>(), ([r, releaseMap]) =>
+      T.provideSome_(
+        T.map_(
+          T.timed(T.provideAll_(self.effect, [r, releaseMap])),
+          ([duration, [fin, a]]) => tuple(fin, tuple(duration, a))
+        ),
+        (r: readonly [R & HasClock, RM.ReleaseMap]) => r[0]
+      )
+    )
+  )
+}
+
+/**
+ * Returns an effect that will timeout this resource, returning `None` if the
+ * timeout elapses before the resource was reserved and acquired.
+ * If the reservation completes successfully (even after the timeout) the release action will be run on a new fiber.
+ * `Some` will be returned if acquisition and reservation complete in time
+ */
+export function timeout(d: number) {
+  return <R, E, A>(self: Managed<R, E, A>): Managed<R & HasClock, E, O.Option<A>> =>
+    new Managed(
+      T.uninterruptibleMask(({ restore }) =>
+        T.gen(function* (_) {
+          const env = yield* _(T.environment<readonly [R & HasClock, RM.ReleaseMap]>())
+          const [r, outerReleaseMap] = env
+          const innerReleaseMap = yield* _(RM.makeReleaseMap)
+          const earlyRelease = yield* _(
+            RM.add((exit) => RM.releaseAll(exit, T.sequential)(innerReleaseMap))(
+              outerReleaseMap
+            )
+          )
+          const raceResult: E.Either<
+            F.Fiber<E, readonly [RM.Finalizer, A]>,
+            A
+          > = yield* _(
+            restore(
+              T.provideAll_(
+                T.raceWith_(
+                  T.provideAll_(self.effect, tuple(r, innerReleaseMap)),
+                  T.as_(T.sleep(d), O.none),
+                  (result, sleeper) =>
+                    T.andThen_(
+                      F.interrupt(sleeper),
+                      T.done(Ex.map_(result, (tp) => E.right(tp[1])))
+                    ),
+                  (_, resultFiber) => T.succeed(E.left(resultFiber))
+                ),
+                r
+              )
+            )
+          )
+          const a = yield* _(
+            E.fold_(
+              raceResult,
+              (f) =>
+                T.as_(
+                  T.chain_(T.fiberId(), (id) =>
+                    T.forkDaemon(
+                      T.ensuring_(
+                        F.interrupt(f),
+                        RM.releaseAll(Ex.interrupt(id), T.sequential)(innerReleaseMap)
+                      )
+                    )
+                  ),
+                  O.none
+                ),
+              (v) => T.succeed(O.some(v))
+            )
+          )
+
+          return tuple(earlyRelease, a)
+        })
+      )
+    )
 }

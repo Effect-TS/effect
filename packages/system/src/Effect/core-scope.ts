@@ -38,7 +38,7 @@ export function forkScopeMask(newScope: Scope<Exit<any, any>>) {
  * Returns an effect that races this effect with the specified effect, calling
  * the specified finisher as soon as one result or the other has been computed.
  */
-export function raceWith<R, E, A, R1, E1, A1, R2, E2, A2, R3, E3, A3>(
+export function raceWith_<R, E, A, R1, E1, A1, R2, E2, A2, R3, E3, A3>(
   left: Effect<R, E, A>,
   right: Effect<R1, E1, A1>,
   leftWins: (exit: Exit<E, A>, fiber: Fiber.Fiber<E1, A1>) => Effect<R2, E2, A2>,
@@ -46,6 +46,20 @@ export function raceWith<R, E, A, R1, E1, A1, R2, E2, A2, R3, E3, A3>(
   scope: O.Option<Scope<Exit<any, any>>> = O.none
 ): Effect<R & R1 & R2 & R3, E2 | E3, A2 | A3> {
   return new IRaceWith(left, right, leftWins, rightWins, scope)
+}
+
+/**
+ * Returns an effect that races this effect with the specified effect, calling
+ * the specified finisher as soon as one result or the other has been computed.
+ */
+export function raceWith<E, A, R1, E1, A1, R2, E2, A2, R3, E3, A3>(
+  right: Effect<R1, E1, A1>,
+  leftWins: (exit: Exit<E, A>, fiber: Fiber.Fiber<E1, A1>) => Effect<R2, E2, A2>,
+  rightWins: (exit: Exit<E1, A1>, fiber: Fiber.Fiber<E, A>) => Effect<R3, E3, A3>,
+  scope: O.Option<Scope<Exit<any, any>>> = O.none
+) {
+  return <R>(left: Effect<R, E, A>) =>
+    raceWith_(left, right, leftWins, rightWins, scope)
 }
 
 export type Grafter = <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>
