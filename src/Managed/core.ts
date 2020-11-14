@@ -1,3 +1,4 @@
+import * as A from "../Array"
 import type { Cause } from "../Cause/cause"
 import { sequential } from "../Effect"
 import type { ExecutionStrategy } from "../Effect/ExecutionStrategy"
@@ -148,6 +149,42 @@ export function foreach_<R, E, A, B>(as: Iterable<A>, f: (a: A) => Managed<R, E,
       }
     )
   )
+}
+
+/**
+ * Applies the function `f` to each element of the `Iterable[A]` and runs
+ * produced effects sequentially.
+ *
+ * Equivalent to `foreach(as)(f).unit`, but without the cost of building
+ * the list of results.
+ */
+export function foreachUnit_<R, E, A, B>(
+  as: Iterable<A>,
+  f: (a: A) => Managed<R, E, B>
+) {
+  return new Managed<R, E, void>(
+    T.map_(
+      T.foreach_(as, (a) => f(a).effect),
+      (result) => {
+        const [fins] = A.unzip(result)
+        return tuple<[Finalizer, void]>(
+          (e) => T.foreach_(A.reverse(fins), (f) => f(e)),
+          undefined
+        )
+      }
+    )
+  )
+}
+
+/**
+ * Applies the function `f` to each element of the `Iterable[A]` and runs
+ * produced effects sequentially.
+ *
+ * Equivalent to `foreach(as)(f).unit`, but without the cost of building
+ * the list of results.
+ */
+export function foreachUnit<R, E, A, B>(f: (a: A) => Managed<R, E, B>) {
+  return (as: Iterable<A>) => foreachUnit_(as, f)
 }
 
 /**
