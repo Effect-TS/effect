@@ -10,10 +10,9 @@ import { zipWithPar_ } from "./zipWithPar_"
 /**
  * Merges an `Iterable[IO]` to a single IO, working sequentially.
  */
-export function mergeAll<B>(zero: B) {
-  return <A>(f: (b: B, a: A) => B) => <R, E>(
-    as: Iterable<Effect<R, E, A>>
-  ): Effect<R, E, B> => mergeAll_(as, zero, f)
+export function mergeAll<A, B>(zero: B, f: (b: B, a: A) => B) {
+  return <R, E>(as: Iterable<Effect<R, E, A>>): Effect<R, E, B> =>
+    mergeAll_(as, zero, f)
 }
 
 /**
