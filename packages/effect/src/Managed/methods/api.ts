@@ -11,6 +11,7 @@ import { constVoid, flow, identity, pipe, tuple } from "../../Function"
 import { NoSuchElementException } from "../../GlobalExceptions"
 import type { Has, Tag } from "../../Has"
 import { mergeEnvironments } from "../../Has"
+import * as I from "../../Iterable"
 import * as L from "../../Layer"
 import type { Option } from "../../Option"
 import * as O from "../../Option"
@@ -27,6 +28,8 @@ import {
   foreach_,
   foreachPar_,
   foreachParN_,
+  foreachUnit_,
+  makeManagedReleaseMap,
   map_,
   mapM_,
   provideSome_,
@@ -2007,6 +2010,83 @@ export function create<R, E, A>(
 }
 
 /**
+ * Applies the function `f` to each element of the `Iterable[A]` and runs
+ * produced effects in parallel, discarding the results.
+ *
+ * For a sequential version of this method, see `foreachUnit_`.
+ */
+export function foreachUnitPar_<R, E, A, B>(
+  as: Iterable<A>,
+  f: (a: A) => Managed<R, E, B>
+): Managed<R, E, void> {
+  return mapM_(makeManagedReleaseMap(T.parallel), (parallelReleaseMap) => {
+    const makeInnerMap = T.provideSome_(
+      T.map_(makeManagedReleaseMap(T.sequential).effect, ([_, e]) => e),
+      (r) => tuple(r, parallelReleaseMap)
+    )
+    return T.foreachUnitPar_(as, (a) =>
+      T.chain_(makeInnerMap, (innerMap) =>
+        T.provideSome_(
+          T.map_(f(a).effect, ([_, a]) => a),
+          (r: R) => tuple(r, innerMap)
+        )
+      )
+    )
+  })
+}
+
+/**
+ * Applies the function `f` to each element of the `Iterable[A]` and runs
+ * produced effects in parallel, discarding the results.
+ *
+ * For a sequential version of this method, see `foreachUnit_`.
+ */
+export function foreachUnitPar<R, E, A, B>(f: (a: A) => Managed<R, E, B>) {
+  return (as: Iterable<A>) => foreachUnitPar_(as, f)
+}
+
+/**
+ * Applies the function `f` to each element of the `Iterable[A]` and runs
+ * produced effects in parallel, discarding the results.
+ *
+ * For a sequential version of this method, see `foreachUnit_`.
+ */
+export function foreachUnitParN_(n: number) {
+  const c = T.foreachUnitParN_(n)
+  return <R, E, A, B>(
+    as: Iterable<A>,
+    f: (a: A) => Managed<R, E, B>
+  ): Managed<R, E, void> =>
+    mapM_(makeManagedReleaseMap(T.parallel), (parallelReleaseMap) => {
+      const makeInnerMap = T.provideSome_(
+        T.map_(makeManagedReleaseMap(T.sequential).effect, ([_, e]) => e),
+        (r) => tuple(r, parallelReleaseMap)
+      )
+
+      return c(as, (a) =>
+        T.chain_(makeInnerMap, (innerMap) =>
+          T.provideSome_(
+            T.map_(f(a).effect, ([_, a]) => a),
+            (r: R) => tuple(r, innerMap)
+          )
+        )
+      )
+    })
+}
+
+/**
+ * Applies the function `f` to each element of the `Iterable[A]` and runs
+ * produced effects in parallel, discarding the results.
+ *
+ * For a sequential version of this method, see `foreachUnit_`.
+ */
+export function foreachUnitParN(n: number) {
+  return <R, E, A, B>(f: (a: A) => Managed<R, E, B>) => (
+    as: Iterable<A>
+  ): Managed<R, E, void> => foreachUnitParN_(n)(as, f)
+}
+
+/**
  * Evaluate each effect in the structure from left to right, collecting the
  * the successful values and discarding the empty cases. For a parallel version, see `collectPar`.
  */
@@ -2082,4 +2162,154 @@ export function collectParN(
 ) => (self: Iterable<A>) => Managed<R, E, readonly B[]> {
   const c = collectParN_(n)
   return (f) => (self) => c(self, f)
+}
+
+/**
+ * Evaluate each effect in the structure from left to right, and collect the
+ * results. For a parallel version, see `collectAllPar`.
+ */
+export function collectAll<R, E, A>(as: Iterable<Managed<R, E, A>>) {
+  return foreach_(as, identity)
+}
+
+/**
+ * Evaluate each effect in the structure in parallel, and collect the
+ * results. For a sequential version, see `collectAll`.
+ */
+export function collectAllPar<R, E, A>(as: Iterable<Managed<R, E, A>>) {
+  return foreachPar_(as, identity)
+}
+
+/**
+ * Evaluate each effect in the structure in parallel, and collect the
+ * results. For a sequential version, see `collectAll`.
+ *
+ * Unlike `collectAllPar`, this method will use at most `n` fibers.
+ */
+export function collectAllParN(n: number) {
+  return <R, E, A>(as: Iterable<Managed<R, E, A>>) => foreachParN_(n)(as, identity)
+}
+
+/**
+ * Evaluate each effect in the structure from left to right, and discard the
+ * results. For a parallel version, see `collectAllUnitPar`.
+ */
+export function collectAllUnit<R, E, A>(as: Iterable<Managed<R, E, A>>) {
+  return foreachUnit_(as, identity)
+}
+
+/**
+ * Evaluate each effect in the structure in parallel, and discard the
+ * results. For a sequential version, see `collectAllUnit`.
+ */
+export function collectAllUnitPar<R, E, A>(as: Iterable<Managed<R, E, A>>) {
+  return foreachUnitPar_(as, identity)
+}
+
+/**
+ * Evaluate each effect in the structure in parallel, and discard the
+ * results. For a sequential version, see `collectAllUnit`.
+ *
+ * Unlike `collectAllUnitPar`, this method will use at most `n` fibers.
+ */
+export function collectAllUnitParN(n: number) {
+  return <R, E, A>(as: Iterable<Managed<R, E, A>>) => foreachUnitParN_(n)(as, identity)
+}
+
+/**
+ * Evaluate each effect in the structure with `collectAll`, and collect
+ * the results with given partial function.
+ */
+export function collectAllWith_<R, E, A, B>(
+  as: Iterable<Managed<R, E, A>>,
+  pf: (a: A) => O.Option<B>
+): Managed<R, E, readonly B[]> {
+  return map_(collectAll(as), flow(A.map(pf), A.compact))
+}
+
+/**
+ * Evaluate each effect in the structure with `collectAll`, and collect
+ * the results with given partial function.
+ */
+export function collectAllWith<A, B>(pf: (a: A) => O.Option<B>) {
+  return <R, E>(as: Iterable<Managed<R, E, A>>) => collectAllWith_(as, pf)
+}
+
+/**
+ * Evaluate each effect in the structure with `collectAll`, and collect
+ * the results with given partial function.
+ */
+export function collectAllWithPar_<R, E, A, B>(
+  as: Iterable<Managed<R, E, A>>,
+  pf: (a: A) => O.Option<B>
+): Managed<R, E, readonly B[]> {
+  return map_(collectAllPar(as), flow(A.map(pf), A.compact))
+}
+
+/**
+ * Evaluate each effect in the structure with `collectAll`, and collect
+ * the results with given partial function.
+ */
+export function collectAllWithPar<A, B>(pf: (a: A) => O.Option<B>) {
+  return <R, E>(as: Iterable<Managed<R, E, A>>) => collectAllWithPar_(as, pf)
+}
+
+/**
+ * Evaluate each effect in the structure with `collectAllPar`, and collect
+ * the results with given partial function.
+ *
+ * Unlike `collectAllWithPar`, this method will use at most up to `n` fibers.
+ */
+export function collectAllWithParN_(
+  n: number
+): <R, E, A, B>(
+  as: Iterable<Managed<R, E, A>>,
+  pf: (a: A) => O.Option<B>
+) => Managed<R, E, readonly B[]> {
+  const c = collectAllParN(n)
+  return (as, pf) => map_(c(as), flow(A.map(pf), A.compact))
+}
+
+/**
+ * Evaluate each effect in the structure with `collectAllPar`, and collect
+ * the results with given partial function.
+ *
+ * Unlike `collectAllWithPar`, this method will use at most up to `n` fibers.
+ */
+export function collectAllWithParN(
+  n: number
+): <A, B>(
+  pf: (a: A) => O.Option<B>
+) => <R, E>(as: Iterable<Managed<R, E, A>>) => Managed<R, E, readonly B[]> {
+  const c = collectAllWithParN_(n)
+  return (pf) => (as) => c(as, pf)
+}
+
+/**
+ * Evaluate and run each effect in the structure and collect discarding failed ones.
+ */
+export function collectAllSuccesses<R, E, A>(as: Iterable<Managed<R, E, A>>) {
+  return collectAllWith_(I.map_(as, result), (e) =>
+    e._tag === "Success" ? O.some(e.value) : O.none
+  )
+}
+
+/**
+ * Evaluate and run each effect in the structure in parallel, and collect discarding failed ones.
+ */
+export function collectAllSuccessesPar<R, E, A>(as: Iterable<Managed<R, E, A>>) {
+  return collectAllWithPar_(I.map_(as, result), (e) =>
+    e._tag === "Success" ? O.some(e.value) : O.none
+  )
+}
+
+/**
+ * Evaluate and run each effect in the structure in parallel, and collect discarding failed ones.
+ *
+ * Unlike `collectAllSuccessesPar`, this method will use at most up to `n` fibers.
+ */
+export function collectAllSuccessesParN(n: number) {
+  const c = collectAllWithParN_(n)
+  return <R, E, A>(as: Iterable<Managed<R, E, A>>) =>
+    c(I.map_(as, result), (e) => (e._tag === "Success" ? O.some(e.value) : O.none))
 }
