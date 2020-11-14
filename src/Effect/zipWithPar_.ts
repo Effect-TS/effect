@@ -4,7 +4,7 @@ import { join } from "../Fiber/api"
 import type { Fiber } from "../Fiber/core"
 import type { FiberID } from "../Fiber/id"
 import { chain_, descriptorWith, halt } from "./core"
-import { raceWith, transplant } from "./core-scope"
+import { raceWith_, transplant } from "./core-scope"
 import type { Effect } from "./effect"
 import { map_ } from "./map_"
 
@@ -21,7 +21,7 @@ export function zipWithPar_<R, E, A, R2, E2, A2, B>(
 
   return transplant((graft) =>
     descriptorWith((d) =>
-      raceWith(
+      raceWith_(
         graft(a),
         graft(b),
         (ex, fi) => coordinateZipPar<E, E2>()(d.id, f, true, ex, fi),
