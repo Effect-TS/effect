@@ -13,6 +13,7 @@ import type { Has, Tag } from "../../Has"
 import { mergeEnvironments } from "../../Has"
 import * as I from "../../Iterable"
 import * as L from "../../Layer"
+import * as NA from "../../NonEmptyArray"
 import type { Option } from "../../Option"
 import * as O from "../../Option"
 import * as P from "../../Promise"
@@ -29,6 +30,7 @@ import {
   foreachPar_,
   foreachParN_,
   foreachUnit_,
+  makeExit_,
   makeManagedReleaseMap,
   map_,
   mapM_,
@@ -2312,4 +2314,241 @@ export function collectAllSuccessesParN(n: number) {
   const c = collectAllWithParN_(n)
   return <R, E, A>(as: Iterable<Managed<R, E, A>>) =>
     c(I.map_(as, result), (e) => (e._tag === "Success" ? O.some(e.value) : O.none))
+}
+
+/**
+ * Creates an effect that only executes the provided function as its
+ * release action.
+ */
+export function finalizerExit<R>(
+  f: (exit: Ex.Exit<any, any>) => T.RIO<R, any>
+): RIO<R, void> {
+  return makeExit_(T.unit, (_, e) => f(e))
+}
+
+/**
+ * Creates an effect that only executes the provided finalizer as its
+ * release action.
+ */
+export function finalizer<R>(f: T.RIO<R, any>): RIO<R, void> {
+  return finalizerExit(() => f)
+}
+
+/**
+ * Folds an Iterable[A] using an effectual function f, working sequentially from left to right.
+ */
+export function reduce_<A, Z, R, E>(
+  i: Iterable<A>,
+  zero: Z,
+  f: (z: Z, a: A) => Managed<R, E, Z>
+): Managed<R, E, Z> {
+  return A.reduce_(Array.from(i), succeed(zero) as Managed<R, E, Z>, (acc, el) =>
+    chain_(acc, (a) => f(a, el))
+  )
+}
+
+/**
+ * Folds an Iterable[A] using an effectual function f, working sequentially from left to right.
+ */
+export function reduce<A, Z, R, E>(zero: Z, f: (z: Z, a: A) => Managed<R, E, Z>) {
+  return (i: Iterable<A>) => reduce_(i, zero, f)
+}
+
+/**
+ * Folds an Iterable[A] using an effectual function f, working sequentially from left to right.
+ */
+export function reduceRight_<A, Z, R, E>(
+  i: Iterable<A>,
+  zero: Z,
+  f: (a: A, z: Z) => Managed<R, E, Z>
+): Managed<R, E, Z> {
+  return A.reduceRight_(Array.from(i), succeed(zero) as Managed<R, E, Z>, (el, acc) =>
+    chain_(acc, (a) => f(el, a))
+  )
+}
+
+/**
+ * Folds an Iterable[A] using an effectual function f, working sequentially from left to right.
+ */
+export function reduceRight<A, Z, R, E>(zero: Z, f: (a: A, z: Z) => Managed<R, E, Z>) {
+  return (i: Iterable<A>) => reduceRight_(i, zero, f)
+}
+
+/**
+ * Reduces an `Iterable[IO]` to a single `IO`, working sequentially.
+ */
+export function reduceAll_<R, E, A>(
+  as: NA.NonEmptyArray<Managed<R, E, A>>,
+  f: (acc: A, a: A) => A
+): Managed<R, E, A> {
+  return A.reduce_(NA.tail(as), NA.head(as), (acc, a) => zipWith_(acc, a, f))
+}
+
+/**
+ * Reduces an `Iterable[IO]` to a single `IO`, working sequentially.
+ */
+export function reduceAll<A>(f: (acc: A, a: A) => A) {
+  return <R, E>(as: NA.NonEmptyArray<Managed<R, E, A>>) => reduceAll_(as, f)
+}
+
+/**
+ * Reduces an `Iterable[IO]` to a single `IO`, working in parallel.
+ */
+export function reduceAllPar_<R, E, A>(
+  as: NA.NonEmptyArray<Managed<R, E, A>>,
+  f: (acc: A, a: A) => A
+): Managed<R, E, A> {
+  return mapM_(makeManagedReleaseMap(T.parallel), (parallelReleaseMap) =>
+    T.provideSome_(
+      T.reduceAllPar_(
+        NA.map_(as, (_) => T.map_(_.effect, ([_, a]) => a)),
+        f
+      ),
+      (r: R) => tuple(r, parallelReleaseMap)
+    )
+  )
+}
+
+/**
+ * Reduces an `Iterable[IO]` to a single `IO`, working in parallel.
+ */
+export function reduceAllPar<A>(f: (acc: A, a: A) => A) {
+  return <R, E>(as: NA.NonEmptyArray<Managed<R, E, A>>) => reduceAllPar_(as, f)
+}
+
+/**
+ * Reduces an `Iterable[IO]` to a single `IO`, working in up to `n` fibers in parallel.
+ */
+export function reduceAllParN_(n: number) {
+  const red = T.reduceAllParN_(n)
+  return <R, E, A>(
+    as: NA.NonEmptyArray<Managed<R, E, A>>,
+    f: (acc: A, a: A) => A
+  ): Managed<R, E, A> =>
+    mapM_(makeManagedReleaseMap(T.parallel), (parallelReleaseMap) =>
+      T.provideSome_(
+        red(
+          NA.map_(as, (_) => T.map_(_.effect, ([_, a]) => a)),
+          f
+        ),
+        (r: R) => tuple(r, parallelReleaseMap)
+      )
+    )
+}
+
+/**
+ * Reduces an `Iterable[IO]` to a single `IO`, working in up to `n` fibers in parallel.
+ */
+export function reduceAllParN(n: number) {
+  return <A>(f: (acc: A, a: A) => A) => <R, E>(
+    as: NA.NonEmptyArray<Managed<R, E, A>>
+  ): Managed<R, E, A> => reduceAllParN_(n)(as, f)
+}
+
+/**
+ * Merges an `Iterable[IO]` to a single IO, working sequentially.
+ */
+export function mergeAll<B>(zero: B) {
+  return <A>(f: (b: B, a: A) => B) => <R, E>(
+    as: Iterable<Managed<R, E, A>>
+  ): Managed<R, E, B> => mergeAll_(as, zero, f)
+}
+
+/**
+ * Merges an `Iterable[IO]` to a single IO, working sequentially.
+ */
+export function mergeAll_<R, E, A, B>(
+  as: Iterable<Managed<R, E, A>>,
+  zero: B,
+  f: (b: B, a: A) => B
+) {
+  return I.reduce_(as, succeed(zero) as Managed<R, E, B>, (b, a) => zipWith_(b, a, f))
+}
+
+/**
+ * Merges an `Iterable[IO]` to a single IO, working in parallel.
+ *
+ * Due to the parallel nature of this combinator, `f` must be both:
+ * - commutative: `f(a, b) == f(b, a)`
+ * - associative: `f(a, f(b, c)) == f(f(a, b), c)`
+ *
+ * It's unsafe to execute side effects inside `f`, as `f` may be executed
+ * more than once for some of `in` elements during effect execution.
+ */
+export function mergeAllPar<B>(zero: B) {
+  return <A>(f: (b: B, a: A) => B) => <R, E>(
+    as: Iterable<Managed<R, E, A>>
+  ): Managed<R, E, B> => mergeAllPar_(as, zero, f)
+}
+
+/**
+ * Merges an `Iterable[IO]` to a single IO, working in parallel.
+ *
+ * Due to the parallel nature of this combinator, `f` must be both:
+ * - commutative: `f(a, b) == f(b, a)`
+ * - associative: `f(a, f(b, c)) == f(f(a, b), c)`
+ *
+ * It's unsafe to execute side effects inside `f`, as `f` may be executed
+ * more than once for some of `in` elements during effect execution.
+ */
+export function mergeAllPar_<R, E, A, B>(
+  as: Iterable<Managed<R, E, A>>,
+  zero: B,
+  f: (b: B, a: A) => B
+) {
+  return mapM_(makeManagedReleaseMap(T.parallel), (parallelReleaseMap) =>
+    T.provideSome_(
+      T.mergeAllPar_(
+        I.map_(as, (_) => T.map_(_.effect, ([_, a]) => a)),
+        zero,
+        f
+      ),
+      (r: R) => tuple(r, parallelReleaseMap)
+    )
+  )
+}
+
+/**
+ * Merges an `Iterable[IO]` to a single IO, working in with up to `n` fibers in parallel.
+ *
+ * Due to the parallel nature of this combinator, `f` must be both:
+ * - commutative: `f(a, b) == f(b, a)`
+ * - associative: `f(a, f(b, c)) == f(f(a, b), c)`
+ *
+ * It's unsafe to execute side effects inside `f`, as `f` may be executed
+ * more than once for some of `in` elements during effect execution.
+ */
+export function mergeAllParN(n: number) {
+  return <B>(zero: B) => <A>(f: (b: B, a: A) => B) => <R, E>(
+    as: Iterable<Managed<R, E, A>>
+  ): Managed<R, E, B> => mergeAllParN_(n)(as, zero, f)
+}
+
+/**
+ * Merges an `Iterable[IO]` to a single IO, working in with up to `n` fibers in parallel.
+ *
+ * Due to the parallel nature of this combinator, `f` must be both:
+ * - commutative: `f(a, b) == f(b, a)`
+ * - associative: `f(a, f(b, c)) == f(f(a, b), c)`
+ *
+ * It's unsafe to execute side effects inside `f`, as `f` may be executed
+ * more than once for some of `in` elements during effect execution.
+ */
+export function mergeAllParN_(n: number) {
+  const m = T.mergeAllParN_(n)
+  return <R, E, A, B>(
+    as: Iterable<Managed<R, E, A>>,
+    zero: B,
+    f: (b: B, a: A) => B
+  ): Managed<R, E, B> =>
+    mapM_(makeManagedReleaseMap(T.parallel), (parallelReleaseMap) =>
+      T.provideSome_(
+        m(
+          I.map_(as, (_) => T.map_(_.effect, ([_, a]) => a)),
+          zero,
+          f
+        ),
+        (r: R) => tuple(r, parallelReleaseMap)
+      )
+    )
 }
