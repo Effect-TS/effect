@@ -17,6 +17,7 @@ import { defaultRandom, HasRandom } from "../Random"
 import * as Scope from "../Scope"
 // supervisor
 import * as Supervisor from "../Supervisor"
+import { AtomicBoolean } from "../Support/AtomicBoolean"
 import type { FailureReporter } from "."
 import { accessM, chain_, effectTotal, succeed } from "./core"
 import type { Effect, UIO } from "./effect"
@@ -57,10 +58,6 @@ export function runAsap<E, A>(_: Effect<DefaultEnv, E, A>, cb?: Callback<E, A>) 
   context.runAsync(cb || empty)
 }
 
-export interface CancelMain {
-  (): void
-}
-
 export function teardown(status: number, id: FiberID) {
   run(interruptAllAs(id)(_tracing.running), () => {
     setTimeout(() => {
@@ -74,15 +71,15 @@ export function teardown(status: number, id: FiberID) {
 }
 
 /**
- * Runs effect until completion returing a cancel function that when invoked
+ * Runs effect until completion listening for system level termination signals that
  * triggers cancellation of the process, in case errors are found process will
  * exit with a status of 2 and cause will be pretty printed, if interruption
  * is found without errors the cause is pretty printed and process exits with
  * status 0. In the success scenario process exits with status 0 witout any log.
  *
- * Note: this should be used only in node.js as it depends on process.exit
+ * Note: this should be used only in node.js as it depends on global process
  */
-export function runMain<E>(effect: Effect<DefaultEnv, E, void>): CancelMain {
+export function runMain<E>(effect: Effect<DefaultEnv, E, void>): void {
   const context = fiberContext<E, void>()
 
   context.evaluateLater(effect[_I])
@@ -106,9 +103,19 @@ export function runMain<E>(effect: Effect<DefaultEnv, E, void>): CancelMain {
     }
   })
 
-  return () => {
-    run(context.interruptAs(context.id))
+  const interrupted = new AtomicBoolean(false)
+
+  const handler = () => {
+    process.removeListener("SIGTERM", handler)
+    process.removeListener("SIGINT", handler)
+
+    if (interrupted.compareAndSet(false, true)) {
+      run(context.interruptAs(context.id))
+    }
   }
+
+  process.once("SIGTERM", handler)
+  process.once("SIGINT", handler)
 }
 
 /**
