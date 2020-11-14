@@ -58,13 +58,19 @@ export function runAsap<E, A>(_: Effect<DefaultEnv, E, A>, cb?: Callback<E, A>) 
   context.runAsync(cb || empty)
 }
 
-export function teardown(status: number, id: FiberID) {
+export function defaultTeardown(
+  status: number,
+  id: FiberID,
+  onExit: (status: number) => void = (s) => {
+    process.exit(s)
+  }
+) {
   run(interruptAllAs(id)(_tracing.running), () => {
     setTimeout(() => {
       if (_tracing.running.size === 0) {
-        process.exit(status)
+        onExit(status)
       } else {
-        teardown(status, id)
+        defaultTeardown(status, id)
       }
     }, 0)
   })
@@ -85,8 +91,8 @@ export const defaultHook = (
  */
 export function runMain<E>(
   effect: Effect<DefaultEnv, E, void>,
-  hook: (cont: NodeJS.SignalsListener) => NodeJS.SignalsListener = defaultHook,
-  cont: (status: number, id: FiberID) => void = teardown
+  customHook: (cont: NodeJS.SignalsListener) => NodeJS.SignalsListener = defaultHook,
+  customTeardown: typeof defaultTeardown = defaultTeardown
 ): void {
   const context = fiberContext<E, void>()
 
@@ -96,16 +102,16 @@ export function runMain<E>(
       case "Failure": {
         if (Cause.died(exit.cause) || Cause.failed(exit.cause)) {
           console.error(pretty(exit.cause))
-          cont(1, context.id)
+          customTeardown(1, context.id)
           break
         } else {
           console.log(pretty(exit.cause))
-          cont(0, context.id)
+          customTeardown(0, context.id)
           break
         }
       }
       case "Success": {
-        cont(0, context.id)
+        customTeardown(0, context.id)
         break
       }
     }
@@ -114,7 +120,7 @@ export function runMain<E>(
   const interrupted = new AtomicBoolean(false)
 
   const handler: NodeJS.SignalsListener = (signal) => {
-    hook(() => {
+    customHook(() => {
       process.removeListener("SIGTERM", handler)
       process.removeListener("SIGINT", handler)
 
