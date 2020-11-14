@@ -1422,7 +1422,7 @@ export function reduceLeft<S>(z: S) {
  */
 export function reduceLeftChunks<S>(z: S) {
   return <I>(f: (s: S, i: A.Array<I>) => S): Sink<unknown, never, I, never, S> =>
-    reduceChunks(z)(() => true)(f) as Sink<unknown, never, I, never, S>
+    dropLeftover(reduceChunks(z)(() => true)(f))
 }
 
 /**
@@ -1439,8 +1439,8 @@ export function reduceLeftChunksM<S>(z: S) {
  * A sink that effectfully folds its inputs with the provided function and initial state.
  */
 export function reduceLeftM<S>(z: S) {
-  return <R, E, I>(f: (s: S, i: I) => T.Effect<R, E, S>): Sink<R, E, I, I, S> =>
-    reduceM(z)((_) => true)(f)
+  return <R, E, I>(f: (s: S, i: I) => T.Effect<R, E, S>): Sink<R, E, I, never, S> =>
+    dropLeftover(reduceM(z)((_) => true)(f))
 }
 
 /**
