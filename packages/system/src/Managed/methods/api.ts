@@ -1,7 +1,8 @@
+import * as A from "../../Array"
 import type { Cause } from "../../Cause"
 import * as C from "../../Cause"
 import type { HasClock } from "../../Clock"
-import type { Effect } from "../../Effect"
+import type { Effect, Region } from "../../Effect"
 import * as T from "../../Effect"
 import * as E from "../../Either"
 import * as Ex from "../../Exit"
@@ -9,9 +10,11 @@ import * as F from "../../Fiber"
 import { constVoid, flow, identity, pipe, tuple } from "../../Function"
 import { NoSuchElementException } from "../../GlobalExceptions"
 import type { Has, Tag } from "../../Has"
+import { mergeEnvironments } from "../../Has"
 import * as L from "../../Layer"
 import * as O from "../../Option"
 import * as P from "../../Promise"
+import * as R from "../../Record"
 import type { Schedule } from "../../Schedule"
 import type { UnionToIntersection } from "../../Utils"
 import {
@@ -441,6 +444,26 @@ export function provideAll<R>(r: R) {
  */
 export function provideAll_<R, E, A>(self: Managed<R, E, A>, r: R) {
   return provideSome_(self, () => r)
+}
+
+/**
+ * Provides some of the environment required to run this effect,
+ * leaving the remainder `R0` and combining it automatically using spread.
+ */
+export function provide_<E, A, R = unknown, R0 = unknown>(
+  next: Managed<R & R0, E, A>,
+  r: R
+): Managed<R0, E, A> {
+  return provideSome_(next, (r0: R0) => ({ ...r0, ...r }))
+}
+
+/**
+ * Provides some of the environment required to run this effect,
+ * leaving the remainder `R0` and combining it automatically using spread.
+ */
+export function provide<R>(r: R) {
+  return <E, A, R0>(next: Managed<R & R0, E, A>): Managed<R0, E, A> =>
+    provideSome_(next, (r0: R0) => ({ ...r0, ...r }))
 }
 
 /**
@@ -1380,6 +1403,13 @@ export function unlessM<R1, E1>(b: Managed<R1, E1, boolean>) {
 }
 
 /**
+ * The moral equivalent of `if (!p) exp`
+ */
+export function unless(b: boolean) {
+  return unlessM(succeed(b))
+}
+
+/**
  * Maps this effect to the specified constant while preserving the
  * effects of this effect.
  */
@@ -1421,4 +1451,359 @@ export function asService<A>(tag: Tag<A>) {
  */
 export function asService_<R, E, A>(self: Managed<R, E, A>, tag: Tag<A>) {
   return map_(self, tag.of)
+}
+
+/**
+ * Executes the this effect and then provides its output as an environment to the second effect
+ */
+export function andThen_<R, E, A, R1, E1, B>(
+  self: Managed<R, E, A>,
+  that: Managed<R1, E1, B>
+) {
+  return chain_(self, () => that)
+}
+
+/**
+ * Executes the this effect and then provides its output as an environment to the second effect
+ */
+export function andThen<R1, E1, B>(that: Managed<R1, E1, B>) {
+  return <R, E, A>(self: Managed<R, E, A>) => chain_(self, () => that)
+}
+
+/**
+ * Returns an effect whose failure and success channels have been mapped by
+ * the specified pair of functions, `f` and `g`.
+ */
+export function bimap<E, A, E1, A1>(f: (e: E) => E1, g: (a: A) => A1) {
+  return <R>(self: Managed<R, E, A>) => bimap_(self, f, g)
+}
+
+/**
+ * Returns an effect whose failure and success channels have been mapped by
+ * the specified pair of functions, `f` and `g`.
+ */
+export function bimap_<R, E, A, E1, A1>(
+  self: Managed<R, E, A>,
+  f: (e: E) => E1,
+  g: (a: A) => A1
+) {
+  return map_(mapError_(self, f), g)
+}
+
+/**
+ * Joins with environment passing self selectively on the right side
+ */
+export function right<C>() {
+  return <R, E, A>(self: Managed<R, E, A>) => joinEither_(environment<C>(), self)
+}
+
+/**
+ * Effectfully accesses the environment of the effect.
+ */
+export function access<R0, A>(f: (_: R0) => A): RIO<R0, A> {
+  return fromEffect(T.access(f))
+}
+
+/**
+ * Effectfully accesses the environment of the effect.
+ */
+export function accessM<R0, R, E, A>(
+  f: (_: R0) => Managed<R, E, A>
+): Managed<R & R0, E, A> {
+  return chain_(environment<R0>(), f)
+}
+
+/**
+ * Effectfully accesses the environment of the effect.
+ */
+export function accessEffect<R0, R, E, A>(
+  f: (_: R0) => Effect<R, E, A>
+): Managed<R & R0, E, A> {
+  return mapM_(environment<R0>(), f)
+}
+
+/**
+ * Access a record of services with the required Service Entries
+ */
+export function accessServicesM<SS extends Record<string, Tag<any>>>(s: SS) {
+  return <R = unknown, E = never, B = unknown>(
+    f: (
+      a: {
+        [k in keyof SS]: [SS[k]] extends [Tag<infer T>] ? T : unknown
+      }
+    ) => Managed<R, E, B>
+  ) =>
+    accessM(
+      (
+        r: UnionToIntersection<
+          {
+            [k in keyof SS]: [SS[k]] extends [Tag<infer T>] ? Has<T> : unknown
+          }[keyof SS]
+        >
+      ) => f(R.map_(s, (v) => r[v.key]) as any)
+    )
+}
+
+export const accessServicesTM = <SS extends Tag<any>[]>(...s: SS) => <
+  R = unknown,
+  E = never,
+  B = unknown
+>(
+  f: (
+    ...a: {
+      [k in keyof SS]: [SS[k]] extends [Tag<infer T>] ? T : unknown
+    }
+  ) => Managed<R, E, B>
+) =>
+  accessM(
+    (
+      r: UnionToIntersection<
+        {
+          [k in keyof SS]: [SS[k]] extends [Tag<infer T>] ? Has<T> : never
+        }[keyof SS & number]
+      >
+    ) => f(...(A.map_(s, (v) => r[v.key]) as any))
+  )
+
+export function accessServicesT<SS extends Tag<any>[]>(...s: SS) {
+  return <B = unknown>(
+    f: (
+      ...a: {
+        [k in keyof SS]: [SS[k]] extends [Tag<infer T>] ? T : unknown
+      }
+    ) => B
+  ) =>
+    access(
+      (
+        r: UnionToIntersection<
+          {
+            [k in keyof SS]: [SS[k]] extends [Tag<infer T>] ? Has<T> : never
+          }[keyof SS & number]
+        >
+      ) => f(...(A.map_(s, (v) => r[v.key]) as any))
+    )
+}
+
+/**
+ * Access a record of services with the required Service Entries
+ */
+export function accessServices<SS extends Record<string, Tag<any>>>(s: SS) {
+  return <B>(
+    f: (
+      a: {
+        [k in keyof SS]: [SS[k]] extends [Tag<infer T>] ? T : unknown
+      }
+    ) => B
+  ) =>
+    access(
+      (
+        r: UnionToIntersection<
+          {
+            [k in keyof SS]: [SS[k]] extends [Tag<infer T>] ? Has<T> : unknown
+          }[keyof SS]
+        >
+      ) => f(R.map_(s, (v) => r[v.key]) as any)
+    )
+}
+
+/**
+ * Access a service with the required Service Entry
+ */
+export function accessServiceM<T>(s: Tag<T>) {
+  return <R, E, B>(f: (a: T) => Managed<R, E, B>) =>
+    accessM((r: Has<T>) => f(r[s.key as any]))
+}
+
+/**
+ * Access a service with the required Service Entry
+ */
+export function accessServiceF<T>(s: Tag<T>) {
+  return <
+    K extends keyof T &
+      {
+        [k in keyof T]: T[k] extends (...args: any[]) => Managed<any, any, any>
+          ? k
+          : never
+      }[keyof T]
+  >(
+    k: K
+  ) => (
+    ...args: T[K] extends (...args: infer ARGS) => Managed<any, any, any>
+      ? ARGS
+      : unknown[]
+  ): T[K] extends (...args: any[]) => Managed<infer R, infer E, infer A>
+    ? Managed<R & Has<T>, E, A>
+    : unknown[] => accessServiceM(s)((t) => (t[k] as any)(...args)) as any
+}
+
+/**
+ * Access a service with the required Service Entry
+ */
+export function accessService<T>(s: Tag<T>) {
+  return <B>(f: (a: T) => B) => accessServiceM(s)((a) => succeed(f(a)))
+}
+
+/**
+ * Accesses the specified service in the environment of the effect.
+ */
+export function service<T>(s: Tag<T>) {
+  return accessServiceM(s)((a) => succeed(a))
+}
+
+/**
+ * Accesses the specified services in the environment of the effect.
+ */
+export function services<Ts extends readonly Tag<any>[]>(...s: Ts) {
+  return access(
+    (
+      r: UnionToIntersection<
+        { [k in keyof Ts]: [Ts[k]] extends [Tag<infer T>] ? Has<T> : never }[number]
+      >
+    ): Readonly<{ [k in keyof Ts]: [Ts[k]] extends [Tag<infer T>] ? T : never }> =>
+      s.map((tag) => tag.read(r as any)) as any
+  )
+}
+
+/**
+ * Provides the service with the required Service Entry
+ */
+export function provideServiceM<T>(_: Tag<T>) {
+  return <R, E>(f: Managed<R, E, T>) => <R1, E1, A1>(
+    ma: Managed<R1 & Has<T>, E1, A1>
+  ): Managed<R & R1, E | E1, A1> =>
+    accessM((r: R & R1) =>
+      chain_(f, (t) => provideAll_(ma, mergeEnvironments(_, r, t)))
+    )
+}
+
+/**
+ * Provides the service with the required Service Entry
+ */
+export function provideService<T>(_: Tag<T>) {
+  return (f: T) => <R1, E1, A1>(
+    ma: Managed<R1 & Has<T>, E1, A1>
+  ): Managed<R1, E1, A1> => provideServiceM(_)(succeed(f))(ma)
+}
+
+/**
+ * Replaces the service with the required Service Entry
+ */
+export function replaceServiceM<R, E, T>(_: Tag<T>, f: (_: T) => Managed<R, E, T>) {
+  return <R1, E1, A1>(
+    ma: Managed<R1 & Has<T>, E1, A1>
+  ): Managed<R & R1 & Has<T>, E | E1, A1> =>
+    accessServiceM(_)((t) => provideServiceM(_)(f(t))(ma))
+}
+
+/**
+ * Replaces the service with the required Service Entry
+ */
+export function replaceServiceM_<R, E, T, R1, E1, A1>(
+  ma: Managed<R1 & Has<T>, E1, A1>,
+  _: Tag<T>,
+  f: (_: T) => Managed<R, E, T>
+): Managed<R & R1 & Has<T>, E | E1, A1> {
+  return accessServiceM(_)((t) => provideServiceM(_)(f(t))(ma))
+}
+
+/**
+ * Replaces the service with the required Service Entry
+ */
+export function replaceService<T>(_: Tag<T>, f: (_: T) => T) {
+  return <R1, E1, A1>(ma: Managed<R1 & Has<T>, E1, A1>): Managed<R1 & Has<T>, E1, A1> =>
+    accessServiceM(_)((t) => provideServiceM(_)(succeed(f(t)))(ma))
+}
+
+/**
+ * Replaces the service with the required Service Entry
+ */
+export function replaceService_<R1, E1, A1, T>(
+  ma: Managed<R1 & Has<T>, E1, A1>,
+  _: Tag<T>,
+  f: (_: T) => T
+): Managed<R1 & Has<T>, E1, A1> {
+  return accessServiceM(_)((t) => provideServiceM(_)(succeed(f(t)))(ma))
+}
+
+/**
+ * Uses the region to provide
+ */
+export function useRegion<K, T>(h: Tag<Region<T, K>>) {
+  return <R, E, A>(self: Managed<R & T, E, A>) =>
+    accessServiceM(h)((a) => pipe(self, provide((a as any) as T)))
+}
+
+/**
+ * Access the region monadically
+ */
+export function accessRegionM<K, T>(h: Tag<Region<T, K>>) {
+  return <R, E, A>(e: (_: T) => Managed<R & T, E, A>) =>
+    accessServiceM(h)((a) => pipe(accessM(e), provide((a as any) as T)))
+}
+
+/**
+ * Access the region
+ */
+export function accessRegion<K, T>(h: Tag<Region<T, K>>) {
+  return <A>(e: (_: T) => A) =>
+    accessServiceM(h)((a) => pipe(access(e), provide((a as any) as T)))
+}
+
+/**
+ * Read the region value
+ */
+export function readRegion<K, T>(h: Tag<Region<T, K>>) {
+  return accessServiceM(h)((a) =>
+    pipe(
+      access((r: T) => r),
+      provide((a as any) as T)
+    )
+  )
+}
+
+/**
+ * Reads service inside region
+ */
+export function readServiceIn<A>(_: Tag<A>) {
+  return <K, T>(h: Tag<Region<Has<A> & T, K>>) =>
+    useRegion(h)(
+      accessServiceM(_)((a) =>
+        pipe(
+          access((r: A) => r),
+          provide((a as any) as A)
+        )
+      )
+    )
+}
+
+/**
+ * Access service inside region
+ */
+export function accessServiceIn<A>(_: Tag<A>) {
+  return <K, T>(h: Tag<Region<Has<A> & T, K>>) => <B>(f: (_: A) => B) =>
+    useRegion(h)(
+      accessServiceM(_)((a) =>
+        pipe(
+          access((r: A) => f(r)),
+          provide((a as any) as A)
+        )
+      )
+    )
+}
+
+/**
+ * Reads service inside region monadically
+ */
+export function accessServiceInM<A>(_: Tag<A>) {
+  return <K, T>(h: Tag<Region<Has<A> & T, K>>) => <R, E, B>(
+    f: (_: A) => Managed<R, E, B>
+  ) =>
+    useRegion(h)(
+      accessServiceM(_)((a) =>
+        pipe(
+          accessM((r: A) => f(r)),
+          provide((a as any) as A)
+        )
+      )
+    )
 }
