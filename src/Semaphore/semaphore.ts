@@ -46,10 +46,10 @@ export class Semaphore {
               return this.loop(
                 n - m,
                 E.left(q),
-                T.zipFirst_(acc, T.promiseSucceed_(p, undefined))
+                T.zipLeft_(acc, T.promiseSucceed_(p, undefined))
               )
             } else if (n === m) {
-              return [T.zipFirst_(acc, T.promiseSucceed_(p, undefined)), E.left(q)]
+              return [T.zipLeft_(acc, T.promiseSucceed_(p, undefined)), E.left(q)]
             } else {
               return [acc, E.left(q.prepend([p, m - n]))]
             }
