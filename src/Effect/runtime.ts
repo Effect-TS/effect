@@ -63,11 +63,13 @@ export interface CancelMain {
 
 export function teardown(status: number, id: FiberID) {
   run(interruptAllAs(id)(_tracing.running), () => {
-    if (_tracing.running.size === 0) {
-      process.exit(status)
-    } else {
-      teardown(status, id)
-    }
+    setTimeout(() => {
+      if (_tracing.running.size === 0) {
+        process.exit(status)
+      } else {
+        teardown(status, id)
+      }
+    }, 0)
   })
 }
 
