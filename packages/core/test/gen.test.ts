@@ -1,5 +1,5 @@
 import * as T from "../src/Async"
-import type * as A from "../src/Classic/Array"
+import * as A from "../src/Classic/Array"
 import * as O from "../src/Classic/Option"
 import { pipe } from "../src/Function"
 
@@ -53,5 +53,26 @@ describe("Generator", () => {
     })
 
     expect(result).toEqual(O.some({ a: 1, b: 2 }))
+  })
+
+  it("history gen", () => {
+    function integersBetween(starting: number, ending: number): number[] {
+      const arr = []
+      for (let i = starting; i <= ending; i++) arr.push(i)
+      return arr
+    }
+
+    const allPairings = A.gen(function* ($) {
+      const a = yield* $(integersBetween(0, 1))
+      const b = yield* $(integersBetween(0, 1))
+      return [a, b]
+    })
+
+    expect(allPairings).toEqual([
+      [0, 0],
+      [0, 1],
+      [1, 0],
+      [1, 1]
+    ])
   })
 })
