@@ -82,7 +82,7 @@ export function genWithHistoryF<F>(
             if (state.done) {
               throw new PrematureGeneratorExit()
             }
-            state = a
+            state = iterator.next(a)
           }
 
           if (state.done) {
