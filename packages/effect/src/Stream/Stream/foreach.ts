@@ -1,5 +1,5 @@
-import type * as T from "../_internal/effect"
 import { pipe } from "../../Function"
+import type * as T from "../_internal/effect"
 import * as Sink from "../Sink"
 import type { Stream } from "./definitions"
 import { run } from "./run"

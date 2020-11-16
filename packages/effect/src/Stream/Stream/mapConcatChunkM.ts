@@ -1,6 +1,6 @@
-import type * as T from "../_internal/effect"
 import type * as Array from "../../Array"
 import { identity, pipe } from "../../Function"
+import type * as T from "../_internal/effect"
 import type { Stream } from "./definitions"
 import { mapConcatChunk } from "./mapConcatChunk"
 import { mapM } from "./mapM"

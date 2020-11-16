@@ -1,9 +1,9 @@
-import * as T from "../_internal/effect"
-import * as M from "../_internal/managed"
 import type * as Array from "../../Array"
 import type * as Exit from "../../Exit/api"
 import { pipe } from "../../Function"
 import type * as Option from "../../Option"
+import * as T from "../_internal/effect"
+import * as M from "../_internal/managed"
 import { Stream } from "./definitions"
 import { unfoldChunkM } from "./unfoldChunkM"
 

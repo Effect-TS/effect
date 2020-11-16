@@ -1,8 +1,8 @@
-import * as T from "../_internal/effect"
-import * as M from "../_internal/managed"
 import type * as Array from "../../Array"
 import { pipe } from "../../Function"
 import * as Option from "../../Option"
+import * as T from "../_internal/effect"
+import * as M from "../_internal/managed"
 import { Stream } from "./definitions"
 
 /**

@@ -1,8 +1,8 @@
-import * as T from "../_internal/effect"
-import * as M from "../_internal/managed"
 import * as C from "../../Cause/core"
 import { pipe } from "../../Function"
 import * as Option from "../../Option"
+import * as T from "../_internal/effect"
+import * as M from "../_internal/managed"
 import { Stream } from "./definitions"
 
 /**

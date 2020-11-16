@@ -1,9 +1,9 @@
-import * as T from "../_internal/effect"
 import * as A from "../../Array"
 import * as TT from "../../Effect"
 import { pipe } from "../../Function"
 import * as O from "../../Option"
 import * as R from "../../Ref"
+import * as T from "../_internal/effect"
 import * as Pull from "../Pull"
 
 export class BufferedPull<R, E, A> {

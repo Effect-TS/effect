@@ -1,7 +1,7 @@
-import * as T from "../_internal/effect"
 import type { Array } from "../../Array"
 import * as Cause from "../../Cause"
 import type { XQueue } from "../../Queue"
+import * as T from "../_internal/effect"
 import { end, halt } from "../Pull"
 import type { Stream } from "./definitions"
 import { repeatEffectChunkOption } from "./repeatEffectChunkOption"

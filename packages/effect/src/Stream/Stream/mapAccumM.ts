@@ -1,8 +1,8 @@
-import * as T from "../_internal/effect"
-import * as M from "../_internal/managed"
 import { pipe } from "../../Function"
 import * as Option from "../../Option"
 import * as Ref from "../../Ref"
+import * as T from "../_internal/effect"
+import * as M from "../_internal/managed"
 import * as BPull from "../BufferedPull"
 import { Stream } from "./definitions"
 
