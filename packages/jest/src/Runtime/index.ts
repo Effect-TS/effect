@@ -15,8 +15,8 @@ export interface TestRuntime<R> {
   provide: <R2, E, A>(self: T.Effect<R & R2, E, A>) => T.Effect<R2, E, A>
 }
 
-export function testRuntime<R>(
-  self: L.Layer<T.DefaultEnv, never, R>,
+export function testRuntime<R, E>(
+  self: L.Layer<T.DefaultEnv, E, R>,
   {
     close = 120_000,
     open = 120_000
@@ -39,7 +39,7 @@ export function testRuntime<R>(
         ),
         T.map(({ res }) => res[1]),
         T.result,
-        T.chain((ex) => pipe(promiseEnv, Pr.complete(T.done(ex)))),
+        T.chain((ex) => pipe(promiseEnv, Pr.complete(T.orDie(T.done(ex))))),
         T.runPromise
       ),
     open
