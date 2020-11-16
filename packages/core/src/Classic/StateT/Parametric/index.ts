@@ -1,7 +1,7 @@
-import * as StateT from "../"
 import type { StateInURI, StateOutURI } from "../../../Modules"
 import type { Monad } from "../../../Prelude"
 import * as HKT from "../../../Prelude/HKT"
+import * as StateT from "../"
 
 /**
  * Take over ownership of "S" making it fixed to provided "S"

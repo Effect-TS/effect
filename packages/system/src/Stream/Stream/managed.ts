@@ -1,10 +1,10 @@
-import * as T from "../_internal/effect"
-import * as M from "../_internal/managed"
 import { pipe } from "../../Function"
 import { makeManagedReleaseMap } from "../../Managed"
 import type { ReleaseMap } from "../../Managed/ReleaseMap"
 import * as Option from "../../Option"
 import * as Ref from "../../Ref"
+import * as T from "../_internal/effect"
+import * as M from "../_internal/managed"
 import * as Pull from "../Pull"
 import { Stream } from "./definitions"
 

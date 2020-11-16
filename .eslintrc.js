@@ -52,7 +52,7 @@ module.exports = {
     "import/no-duplicates": "error",
     "import/no-unresolved": "error",
     "import/order": "off",
-    "simple-import-sort/sort": "error",
+    "simple-import-sort/imports": "error",
     "sort-destructure-keys/sort-destructure-keys": "error"
   }
 }

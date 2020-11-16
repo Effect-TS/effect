@@ -1,11 +1,11 @@
-import * as T from "../_internal/effect"
-import * as M from "../_internal/managed"
-import * as R from "../_internal/ref"
 import * as A from "../../Array"
 import type { Cause } from "../../Cause"
 import * as E from "../../Either"
 import { pipe } from "../../Function"
 import type * as O from "../../Option"
+import * as T from "../_internal/effect"
+import * as M from "../_internal/managed"
+import * as R from "../_internal/ref"
 
 export interface Push<R, E, I, L, Z> {
   (_: O.Option<A.Array<I>>): T.Effect<R, readonly [E.Either<E, Z>, A.Array<L>], void>
