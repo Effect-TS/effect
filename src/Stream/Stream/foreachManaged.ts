@@ -1,6 +1,6 @@
+import { pipe } from "../../Function"
 import type * as T from "../_internal/effect"
 import type * as M from "../_internal/managed"
-import { pipe } from "../../Function"
 import * as Sink from "../Sink"
 import type { Stream } from "./definitions"
 import { runManaged } from "./runManaged"

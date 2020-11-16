@@ -1,5 +1,5 @@
-import * as T from "../_internal/effect"
 import { pipe } from "../../Function"
+import * as T from "../_internal/effect"
 import { chain } from "./chain"
 import type { Stream } from "./definitions"
 import { fromEffect } from "./fromEffect"

@@ -1,9 +1,9 @@
-import * as T from "../_internal/effect"
-import * as M from "../_internal/managed"
 import * as C from "../../Cause/core"
 import * as Either from "../../Either"
 import { pipe } from "../../Function"
 import * as Option from "../../Option"
+import * as T from "../_internal/effect"
+import * as M from "../_internal/managed"
 import type * as Sink from "../Sink"
 import type { Stream } from "./definitions"
 
