@@ -1,10 +1,10 @@
 import { AtomicReference } from "@effect-ts/system/Support/AtomicReference"
 
-import * as Sy from "../_internal"
 import * as A from "../../Classic/Array"
 import { pipe } from "../../Function"
 import type { Has, Tag } from "../../Has"
 import type { Erase, UnionToIntersection } from "../../Utils"
+import * as Sy from "../_internal"
 
 export abstract class SyncLayer<R, E, A> {
   readonly hash = new AtomicReference<PropertyKey>(Symbol())

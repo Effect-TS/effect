@@ -1,9 +1,9 @@
-import type * as T from "../_internal/effect"
 import type * as Array from "../../Array"
 import * as Either from "../../Either"
 import type { Exit } from "../../Exit"
 import type { Callback } from "../../Fiber"
 import type * as Option from "../../Option"
+import type * as T from "../_internal/effect"
 import type { Stream } from "./definitions"
 import { effectAsyncInterruptEither } from "./effectAsyncInterruptEither"
 

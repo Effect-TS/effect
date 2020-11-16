@@ -1,11 +1,11 @@
-import type * as T from "../_internal/effect"
-import * as M from "../_internal/managed"
 import type * as A from "../../Array"
 import { pipe } from "../../Function"
 import type { Finalizer } from "../../Managed/ReleaseMap"
 import { noopFinalizer } from "../../Managed/ReleaseMap"
 import type * as Option from "../../Option"
 import * as Ref from "../../Ref"
+import type * as T from "../_internal/effect"
+import * as M from "../_internal/managed"
 import * as Pull from "../Pull"
 import { Chain, Stream } from "./definitions"
 

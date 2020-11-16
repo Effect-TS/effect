@@ -1,8 +1,8 @@
-import type * as T from "../_internal/effect"
 import type * as Array from "../../Array"
 import type { Exit } from "../../Exit"
 import type { Callback } from "../../Fiber"
 import * as Option from "../../Option"
+import type * as T from "../_internal/effect"
 import type { Stream } from "./definitions"
 import { effectAsyncMaybe } from "./effectAsyncMaybe"
 
