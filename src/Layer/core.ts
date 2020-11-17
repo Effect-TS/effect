@@ -465,7 +465,7 @@ export type ToSequenceR<
 > = ((...all: Ls) => any) extends (h: infer Head, ...t: infer Tail) => any
   ? Head extends Layer<infer _R, infer _E, infer _A>
     ? Tail extends readonly Layer<any, any, any>[]
-      ? ToSequenceR<Tail, Erase<_R, A> & R, _A>
+      ? ToSequenceR<Tail, Erase<_R, A> & R, _A & A>
       : Erase<_R, A> & R
     : R
   : R
