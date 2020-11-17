@@ -87,3 +87,11 @@ export const FoldableWithIndex = P.instance<P.FoldableWithIndex<[NonEmptyArrayUR
  * Matchers
  */
 export const { match, matchIn, matchTag, matchTagIn } = P.matchers(Covariant)
+
+/**
+ * Conditionals
+ */
+const branch = P.conditionalF(Covariant)
+const branch_ = P.conditionalF_(Covariant)
+
+export { branch as if, branch_ as if_ }
