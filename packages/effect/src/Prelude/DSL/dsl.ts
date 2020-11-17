@@ -384,7 +384,7 @@ export function bindF<F extends HKT.URIS, C = HKT.Auto>(
   F: Monad<F, C>
 ): <N2 extends string, K2, Q2, W2, X2, I2, S2, R2, E2, BK, BN extends string, BA>(
   tag: Exclude<BN, keyof BK>,
-  f: (a: BA) => HKT.Kind<F, C, N2, K2, Q2, W2, X2, I2, S2, R2, E2, BA>
+  f: (a: BK) => HKT.Kind<F, C, N2, K2, Q2, W2, X2, I2, S2, R2, E2, BA>
 ) => <N extends string, K, Q, W, X, I, S, R, E>(
   fa: HKT.Kind<
     F,
@@ -435,6 +435,33 @@ export function bindF<F>(
             })
           )
         )
+      )
+    )
+}
+
+export function letF<F extends HKT.URIS, C = HKT.Auto>(
+  F: Monad<F, C>
+): <BK, BN extends string, BA>(
+  tag: Exclude<BN, keyof BK>,
+  f: (a: BK) => BA
+) => <N extends string, K, Q, W, X, I, S, R, E>(
+  fa: HKT.Kind<F, C, N, K, Q, W, X, I, S, R, E, BK>
+) => HKT.Kind<F, C, N, K, Q, W, X, I, S, R, E, BK & { [k in BN]: BA }>
+export function letF<F>(
+  F: Monad<HKT.UHKT<F>>
+): <A, K, N extends string>(
+  tag: Exclude<N, keyof K>,
+  f: (_: K) => A
+) => (mk: HKT.HKT<F, K>) => HKT.HKT<F, K & { [k in N]: A }> {
+  return <A, K, N extends string>(tag: Exclude<N, keyof K>, f: (_: K) => A) => (
+    mk: HKT.HKT<F, K>
+  ): HKT.HKT<F, K & { [k in N]: A }> =>
+    pipe(
+      mk,
+      F.map((k) =>
+        Object.assign({}, k, { [tag]: f(k) } as {
+          [k in N]: A
+        })
       )
     )
 }
