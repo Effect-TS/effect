@@ -1,7 +1,10 @@
+import * as A from "../src/Classic/Array"
+import * as E from "../src/Classic/Either"
 import * as T from "../src/Effect"
-import * as E from "../src/Effect/Exit"
+import * as Ex from "../src/Effect/Exit"
 import { pipe } from "../src/Function"
 
+T.if_
 export type ADT =
   | { _tag: "A"; a: string }
   | { _tag: "B"; b: string }
@@ -33,7 +36,7 @@ describe("Matchers", () => {
       T.runPromiseExit
     )
 
-    expect(res).toEqual(E.succeed("A - a"))
+    expect(res).toEqual(Ex.succeed("A - a"))
   })
   it("matchIn - def", async () => {
     const program = matcherDef({
@@ -47,7 +50,7 @@ describe("Matchers", () => {
       T.runPromiseExit
     )
 
-    expect(res).toEqual(E.succeed("D - B"))
+    expect(res).toEqual(Ex.succeed("D - B"))
   })
   it("match", async () => {
     const program = pipe(
@@ -64,6 +67,26 @@ describe("Matchers", () => {
 
     const res = await pipe(program, T.provideAll({ A: "A" }), T.runPromiseExit)
 
-    expect(res).toEqual(E.succeed("A - a"))
+    expect(res).toEqual(Ex.succeed("A - a"))
+  })
+
+  it("array conditional", () => {
+    const res = pipe(
+      false,
+      A.if(
+        () => [0],
+        () => ["ok"]
+      )
+    )
+    expect(res).toEqual(["ok"])
+  })
+
+  it("either conditionals", () => {
+    const res = E.if_(
+      true,
+      () => E.right(0),
+      () => E.left("ko")
+    )
+    expect(res).toEqual(E.right(0))
   })
 })

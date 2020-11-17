@@ -14,3 +14,11 @@ export const getValidationApplicative = DSL.getValidationF({
  * Matchers
  */
 export const { match, matchIn, matchTag, matchTagIn } = DSL.matchers(Covariant)
+
+/**
+ * Conditionals
+ */
+const branch = DSL.conditionalF(Covariant)
+const branch_ = DSL.conditionalF_(Covariant)
+
+export { branch as if, branch_ as if_ }

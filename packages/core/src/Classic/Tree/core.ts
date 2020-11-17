@@ -372,3 +372,11 @@ export const tuple = DSL.tupleF(Applicative)
  * Matchers
  */
 export const { match, matchIn, matchTag, matchTagIn } = DSL.matchers(Monad)
+
+/**
+ * Conditionals
+ */
+const branch = DSL.conditionalF(Monad)
+const branch_ = DSL.conditionalF_(Monad)
+
+export { branch as if, branch_ as if_ }

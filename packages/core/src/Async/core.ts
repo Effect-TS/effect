@@ -135,3 +135,11 @@ export function fromSync<R, E, A>(_: Sync<R, E, A>) {
 }
 
 export const { match, matchIn, matchTag, matchTagIn } = P.matchers(Covariant)
+
+/**
+ * Conditionals
+ */
+const branch = P.conditionalF(Covariant)
+const branch_ = P.conditionalF_(Covariant)
+
+export { branch as if, branch_ as if_ }
