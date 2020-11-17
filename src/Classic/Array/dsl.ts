@@ -7,14 +7,16 @@ import * as A from "./operations"
 export const sequence = P.sequenceF(Traversable)
 
 const adapter: {
-  <A>(_: O.Option<A>): P.GenHKT<A.Array<A>, A>
-  <A>(_: A.Array<A>): P.GenHKT<A.Array<A>, A>
-} = (_: any) => {
-  if (isOption(_)) {
-    return new P.GenHKT(_._tag === "None" ? [] : [_.value])
-  }
-  return new P.GenHKT(_)
-}
+  <A>(_: () => O.Option<A>): P.GenLazyHKT<A.Array<A>, A>
+  <A>(_: () => A.Array<A>): P.GenLazyHKT<A.Array<A>, A>
+} = (_: () => any) =>
+  new P.GenLazyHKT(() => {
+    const x = _()
+    if (isOption(x)) {
+      return x._tag === "None" ? [] : [x.value]
+    }
+    return x
+  })
 
 export const gen = P.genWithHistoryF(Monad, {
   adapter
