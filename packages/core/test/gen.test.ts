@@ -63,8 +63,8 @@ describe("Generator", () => {
     }
 
     const allPairings = A.gen(function* ($) {
-      const a = yield* $(integersBetween(0, 1))
-      const b = yield* $(integersBetween(0, 1))
+      const a = yield* $(() => integersBetween(0, 1))
+      const b = yield* $(() => integersBetween(0, 1))
       return [a, b]
     })
 
