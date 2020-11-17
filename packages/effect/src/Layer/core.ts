@@ -430,60 +430,40 @@ export const Empty: Layer<unknown, never, unknown> = new LayerSuspend(() =>
   identity<unknown>()
 )
 
-export type FromSequenceR<Ls extends readonly Layer<any, any, any>[], R = unknown> = ((
-  ...all: Ls
-) => any) extends (h: infer Head, ...t: infer Tail) => any
-  ? Head extends Layer<infer _R, infer _E, infer _A>
-    ? Tail extends readonly Layer<any, any, any>[]
-      ? FromSequenceR<Tail, _R & Erase<R, _A>>
-      : _R & Erase<R, _A>
-    : R
-  : R
-
-export function fromAll<Ls extends readonly Layer<any, any, any>[]>(
-  ...layers: Ls
-): Layer<
-  FromSequenceR<Ls>,
-  _E<Ls[number]>,
-  UnionToIntersection<
-    {
-      [k in keyof Ls]: [Ls[k]] extends [Layer<any, any, infer A>]
-        ? unknown extends A
-          ? never
-          : A
-        : never
-    }[number]
-  >
-> {
-  return reduce_(layers, Empty, (b, a) => b["<+<"](a) as any) as any
-}
-
-export type ToSequenceR<
+export type FromAll<
   Ls extends readonly Layer<any, any, any>[],
   R = unknown,
+  E = never,
   A = unknown
 > = ((...all: Ls) => any) extends (h: infer Head, ...t: infer Tail) => any
   ? Head extends Layer<infer _R, infer _E, infer _A>
     ? Tail extends readonly Layer<any, any, any>[]
-      ? ToSequenceR<Tail, Erase<_R, A> & R, _A & A>
-      : Erase<_R, A> & R
-    : R
-  : R
+      ? FromAll<Tail, _R & Erase<R, _A>, E | _E, _A & A>
+      : Layer<_R & Erase<R, _A>, E | _E, A & _A>
+    : Layer<R, E, A>
+  : Layer<R, E, A>
+
+export function fromAll<Ls extends readonly Layer<any, any, any>[]>(
+  ...layers: Ls
+): FromAll<Ls> {
+  return reduce_(layers, Empty, (b, a) => b["<+<"](a) as any) as any
+}
+
+export type ToAll<
+  Ls extends readonly Layer<any, any, any>[],
+  R = unknown,
+  E = never,
+  A = unknown
+> = ((...all: Ls) => any) extends (h: infer Head, ...t: infer Tail) => any
+  ? Head extends Layer<infer _R, infer _E, infer _A>
+    ? Tail extends readonly Layer<any, any, any>[]
+      ? ToAll<Tail, Erase<_R, A> & R, E | _E, _A & A>
+      : Layer<Erase<_R, A> & R, E | _E, A & _A>
+    : Layer<R, E, A>
+  : Layer<R, E, A>
 
 export function toAll<Ls extends readonly Layer<any, any, any>[]>(
   ...layers: Ls
-): Layer<
-  ToSequenceR<Ls>,
-  _E<Ls[number]>,
-  UnionToIntersection<
-    {
-      [k in keyof Ls]: [Ls[k]] extends [Layer<any, any, infer A>]
-        ? unknown extends A
-          ? never
-          : A
-        : never
-    }[number]
-  >
-> {
+): ToAll<Ls> {
   return reduce_(layers, Empty, (b, a) => b[">+>"](a) as any) as any
 }
