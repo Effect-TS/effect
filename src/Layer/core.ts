@@ -440,7 +440,7 @@ export type FromSequenceR<Ls extends readonly Layer<any, any, any>[], R = unknow
     : R
   : R
 
-export function fromSequence<Ls extends readonly Layer<any, any, any>[]>(
+export function fromAll<Ls extends readonly Layer<any, any, any>[]>(
   ...layers: Ls
 ): Layer<
   FromSequenceR<Ls>,
@@ -456,4 +456,34 @@ export function fromSequence<Ls extends readonly Layer<any, any, any>[]>(
   >
 > {
   return reduce_(layers, Empty, (b, a) => b["<+<"](a) as any) as any
+}
+
+export type ToSequenceR<
+  Ls extends readonly Layer<any, any, any>[],
+  R = unknown,
+  A = unknown
+> = ((...all: Ls) => any) extends (h: infer Head, ...t: infer Tail) => any
+  ? Head extends Layer<infer _R, infer _E, infer _A>
+    ? Tail extends readonly Layer<any, any, any>[]
+      ? ToSequenceR<Tail, Erase<_R, A> & R, _A>
+      : Erase<_R, A> & R
+    : R
+  : R
+
+export function toAll<Ls extends readonly Layer<any, any, any>[]>(
+  ...layers: Ls
+): Layer<
+  ToSequenceR<Ls>,
+  _E<Ls[number]>,
+  UnionToIntersection<
+    {
+      [k in keyof Ls]: [Ls[k]] extends [Layer<any, any, infer A>]
+        ? unknown extends A
+          ? never
+          : A
+        : never
+    }[number]
+  >
+> {
+  return reduce_(layers, Empty, (b, a) => b[">+>"](a) as any) as any
 }
