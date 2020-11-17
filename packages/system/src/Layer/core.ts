@@ -1,10 +1,11 @@
+import { reduce_ } from "../Array"
 import type { Cause } from "../Cause"
 import * as T from "../Effect"
 import { identity as idFn, pipe, tuple } from "../Function"
 import type { Has, Tag } from "../Has"
 import { mergeEnvironments } from "../Has"
 import * as M from "../Managed"
-import type { Erase, UnionToIntersection } from "../Utils"
+import type { _E, Erase, UnionToIntersection } from "../Utils"
 import type { Layer, MergeA, MergeE, MergeR } from "./definitions"
 import {
   and_,
@@ -428,3 +429,31 @@ export function identity<R>() {
 export const Empty: Layer<unknown, never, unknown> = new LayerSuspend(() =>
   identity<unknown>()
 )
+
+export type FromSequenceR<Ls extends readonly Layer<any, any, any>[], R = unknown> = ((
+  ...all: Ls
+) => any) extends (h: infer Head, ...t: infer Tail) => any
+  ? Head extends Layer<infer _R, infer _E, infer _A>
+    ? Tail extends readonly Layer<any, any, any>[]
+      ? FromSequenceR<Tail, _R & Erase<R, _A>>
+      : _R & Erase<R, _A>
+    : R
+  : R
+
+export function fromSequence<Ls extends readonly Layer<any, any, any>[]>(
+  ...layers: Ls
+): Layer<
+  FromSequenceR<Ls>,
+  _E<Ls[number]>,
+  UnionToIntersection<
+    {
+      [k in keyof Ls]: [Ls[k]] extends [Layer<any, any, infer A>]
+        ? unknown extends A
+          ? never
+          : A
+        : never
+    }[number]
+  >
+> {
+  return reduce_(layers, Empty, (b, a) => b["<+<"](a) as any) as any
+}
