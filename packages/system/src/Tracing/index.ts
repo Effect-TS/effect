@@ -17,7 +17,7 @@ export function traceWith(name: string) {
     if (stack) {
       const trace = parse(stack)[4]
       if (trace && trace.file && trace.lineNumber && trace.column) {
-        return <X extends (...args: any[]) => any>(x: X): X => {
+        return <X extends Function>(x: X): X => {
           if ("$trace" in x) {
             return x
           }
@@ -36,8 +36,8 @@ export function traceWith(name: string) {
   return identity
 }
 
-export function traceFrom<F>(f: F) {
-  return <G>(g: G): G => {
+export function traceFrom<F extends Function>(f: F) {
+  return <G extends Function>(g: G): G => {
     if (globalTracingEnabled.get && "$trace" in f) {
       g["$trace"] = f["$trace"]
     }
@@ -45,7 +45,9 @@ export function traceFrom<F>(f: F) {
   }
 }
 
-export function traceF(f: () => <A>(a: A) => A): <A>(a: A) => A {
+export function traceF(
+  f: () => <A extends Function>(a: A) => A
+): <A extends Function>(a: A) => A {
   if (globalTracingEnabled.get) {
     return f()
   }
