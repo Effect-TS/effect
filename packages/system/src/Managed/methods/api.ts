@@ -2554,3 +2554,32 @@ export function mergeAllParN_(n: number) {
       )
     )
 }
+
+/**
+ * A scope in which Managed values can be safely allocated. Passing a managed
+ * resource to the `apply` method will return an effect that allocates the resource
+ * and returns it with an early-release handle.
+ */
+export class Scope {
+  constructor(
+    readonly apply: <R, E, A>(
+      ma: Managed<R, E, A>
+    ) => T.Effect<R, E, readonly [RM.Finalizer, A]>
+  ) {}
+}
+
+/**
+ * Creates a scope in which resources can be safely allocated into together with a release action.
+ */
+export function scope(): Managed<unknown, never, Scope> {
+  return map_(
+    releaseMap,
+    (finalizers) =>
+      new Scope(
+        <R, E, A>(ma: Managed<R, E, A>): T.Effect<R, E, readonly [RM.Finalizer, A]> =>
+          T.chain_(T.environment<R>(), (r) =>
+            T.provideAll_(ma.effect, [r, finalizers] as const)
+          )
+      )
+  )
+}
