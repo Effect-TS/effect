@@ -1,5 +1,7 @@
 import * as FA from "../FreeAssociative"
+import { flow } from "../Function"
 import * as IT from "../Iterable"
+import { traceF, traceFrom, traceWith } from "../Tracing"
 import { succeed, suspend } from "./core"
 import type { Effect } from "./effect"
 import { map_ } from "./map_"
@@ -13,6 +15,8 @@ import { zipWith_ } from "./zipWith_"
  * If you do not need the results, see `foreachUnit` for a more efficient implementation.
  */
 export function foreach_<A, R, E, B>(as: Iterable<A>, f: (a: A) => Effect<R, E, B>) {
+  const trace = traceF(() => flow(traceWith("Effect/foreach_"), traceFrom(f)))
+  const toArray = trace(FA.toArray)
   return map_(
     IT.reduce_(
       as,
@@ -20,10 +24,10 @@ export function foreach_<A, R, E, B>(as: Iterable<A>, f: (a: A) => Effect<R, E, 
       (b, a) =>
         zipWith_(
           b,
-          suspend(() => f(a)),
-          (acc, r) => FA.append(r)(acc)
+          suspend(trace(() => f(a))),
+          trace((acc, r) => FA.append(r)(acc))
         )
     ),
-    FA.toArray
+    toArray
   )
 }
