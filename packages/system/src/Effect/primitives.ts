@@ -82,7 +82,7 @@ export class IEffectPartial<E, A> extends Base<unknown, E, A> {
 export class ITracingStatus<R, E, A> extends Base<R, E, A> {
   readonly _tag = "TracingStatus"
 
-  constructor(readonly effect: Effect<R, E, A>, readonly status: boolean) {
+  constructor(readonly effect: Effect<R, E, A>, readonly status: O.Option<number>) {
     super()
   }
 }

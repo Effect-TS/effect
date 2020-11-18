@@ -12,6 +12,7 @@ import { FiberRef } from "../FiberRef/fiberRef"
 import * as update from "../FiberRef/update"
 import { constVoid } from "../Function"
 import * as L from "../List"
+import type { Option } from "../Option"
 // option
 import * as O from "../Option"
 // supervisor / scope
@@ -112,7 +113,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   asyncEpoch = 0 | 0
   stack?: Stack<Frame> = undefined
   environments?: Stack<any> = new Stack(this.startEnv)
-  tracingStatus?: Stack<boolean> = undefined
+  tracingStatus?: Stack<Option<number>> = undefined
   interruptStatus?: Stack<boolean> = new Stack(this.startIStatus.toBoolean)
   supervisors: Stack<Sup.Supervisor<any>> = new Stack(this.supervisor0)
   forkScopeOverride?: Stack<O.Option<Scope.Scope<Exit.Exit<any, any>>>> = undefined
@@ -136,7 +137,9 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   }
 
   get shouldTrace() {
-    return this.tracingStatus ? this.tracingStatus.value : true
+    return this.tracingStatus
+      ? this.tracingStatus.value
+      : O.some(globalTracesQuantity.get)
   }
 
   getRef<K>(fiberRef: FiberRef<K>): T.UIO<K> {
@@ -157,8 +160,8 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   }
 
   addTraces<K>(k: K): K {
-    if (globalTracingEnabled.get && this.shouldTrace && "$trace" in k) {
-      if (this.executionTraces.get.length >= globalTracesQuantity.get) {
+    if (globalTracingEnabled.get && this.shouldTrace._tag === "Some" && "$trace" in k) {
+      if (this.executionTraces.get.length >= this.shouldTrace.value) {
         this.executionTraces.set(L.drop_(this.executionTraces.get, 1))
       }
       this.executionTraces.set(L.append_(this.executionTraces.get, k["$trace"]))

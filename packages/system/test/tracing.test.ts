@@ -41,6 +41,25 @@ describe("Tracing", () => {
       ]
     ])
   })
+  it("should only keep 2 traces", async () => {
+    const a = await pipe(
+      T.succeed(0),
+      T.map((n) => n + 1),
+      T.map((n) => n + 1),
+      T.map((n) => n + 1),
+      T.andThen(T.executionTraces),
+      T.map((s) =>
+        s.map((t) => {
+          const parts = t.file.split("/")
+          return `(${t.op}) ${parts[parts.length - 1]}`
+        })
+      ),
+      T.tracedN(2),
+      T.runPromise
+    )
+
+    expect(a).toEqual(["(map) tracing.test.ts:49:9", "(andThen) tracing.test.ts:50:9"])
+  })
   it("should not trace", async () => {
     const a = await pipe(
       T.succeed(0),
