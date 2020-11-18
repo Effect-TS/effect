@@ -2,7 +2,7 @@ import { identity } from "../Function"
 import { AtomicBoolean } from "../Support/AtomicBoolean"
 import { AtomicNumber } from "../Support/AtomicNumber"
 
-export const reg = /\/(.*?):(\d+):(\d+)/
+export const reg = /(\/|\\)(.*?):(\d+):(\d+)/
 
 export const globalTracingEnabled = new AtomicBoolean(true)
 export const globalTracesQuantity = new AtomicNumber(100)
@@ -23,7 +23,7 @@ export function traceWith(name: string) {
           if ("$trace" in x) {
             return x
           }
-          x["$trace"] = new ExecutionTrace(`/${ref[1]}:${ref[2]}:${ref[3]}`, name)
+          x["$trace"] = new ExecutionTrace(`/${ref[2]}:${ref[3]}:${ref[4]}`, name)
           return x
         }
       }
