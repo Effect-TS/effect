@@ -6,16 +6,8 @@ import { IGetExecutionTraces, ITracingStatus } from "./primitives"
  * Dumps execution traces
  */
 
-export const executionTraces: UIO<readonly ExecutionTrace[]> = new IGetExecutionTraces(
-  false
-)
-/**
- * Dumps execution traces
- */
+export const executionTraces: UIO<readonly ExecutionTrace[]> = new IGetExecutionTraces()
 
-export const internalExecutionTraces: UIO<
-  readonly ExecutionTrace[]
-> = new IGetExecutionTraces(true)
 /**
  * Enables Effect tracing for this effect. Because this is the default, this
  * operation only has an additional meaning if the effect is located within

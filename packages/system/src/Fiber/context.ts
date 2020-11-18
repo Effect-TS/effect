@@ -103,9 +103,6 @@ export const unsafeCurrentFiber = () => O.fromNullable(currentFiber.get)
 
 const noop = O.some(constVoid)
 
-const paths = __dirname.split("/")
-const dir = paths.slice(0, paths.length - 1).join("/")
-
 export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   readonly _tag = "RuntimeFiber"
   readonly state = new AtomicReference(initial<E, A>())
@@ -866,13 +863,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                   }
 
                   case "GetExecutionTraces": {
-                    current = this.nextInstr(
-                      current.internal
-                        ? L.toArray(this.executionTraces.get)
-                        : L.toArray(this.executionTraces.get).filter(
-                            (k) => !k.file.includes(dir)
-                          )
-                    )
+                    current = this.nextInstr(L.toArray(this.executionTraces.get))
                     break
                   }
 

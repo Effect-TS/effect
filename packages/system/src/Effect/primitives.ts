@@ -66,7 +66,7 @@ export class IGetExecutionTraces extends Base<
 > {
   readonly _tag = "GetExecutionTraces"
 
-  constructor(readonly internal: boolean) {
+  constructor() {
     super()
   }
 }
