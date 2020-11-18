@@ -57,7 +57,15 @@ export class ISucceed<A> extends Base<unknown, never, A> {
   }
 }
 
-export class IGetExecutionTraces extends Base<unknown, never, readonly string[]> {
+export class ExecutionTrace {
+  constructor(readonly file: string, readonly op: string) {}
+}
+
+export class IGetExecutionTraces extends Base<
+  unknown,
+  never,
+  readonly ExecutionTrace[]
+> {
   readonly _tag = "GetExecutionTraces"
 
   constructor(readonly internal: boolean) {

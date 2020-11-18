@@ -3,6 +3,7 @@ import * as A from "../Array"
 import * as Cause from "../Cause/core"
 // effect
 import { RuntimeError } from "../Cause/errors"
+import type { ExecutionTrace } from "../Effect"
 // either
 import * as E from "../Either"
 // exit
@@ -103,7 +104,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   readonly _tag = "RuntimeFiber"
   readonly state = new AtomicReference(initial<E, A>())
   readonly scheduler = defaultScheduler
-  readonly traces = new AtomicReference(L.empty<string>())
+  readonly traces = new AtomicReference(L.empty<ExecutionTrace>())
 
   asyncEpoch = 0 | 0
   stack?: Stack<Frame> = undefined
@@ -846,7 +847,11 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
                   case "GetExecutionTraces": {
                     current = this.nextInstr(
-                      L.toArray(this.traces.get).filter((k) => !k.includes(dir))
+                      current.internal
+                        ? L.toArray(this.traces.get)
+                        : L.toArray(this.traces.get).filter(
+                            (k) => !k.file.includes(dir)
+                          )
                     )
                     break
                   }

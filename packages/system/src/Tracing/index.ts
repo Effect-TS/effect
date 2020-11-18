@@ -1,3 +1,4 @@
+import { ExecutionTrace } from "../Effect"
 import { identity } from "../Function"
 import { AtomicBoolean } from "../Support/AtomicBoolean"
 
@@ -13,12 +14,11 @@ export function traceWith(name: string) {
       const ref = reg.exec(line)
 
       if (ref) {
-        const full = `${name} : /${ref[1]}:${ref[2]}:${ref[3]}`
         return <X>(x: X) => {
           if ("$trace" in x) {
             return x
           }
-          x["$trace"] = full
+          x["$trace"] = new ExecutionTrace(`/${ref[1]}:${ref[2]}:${ref[3]}`, name)
           return x
         }
       }

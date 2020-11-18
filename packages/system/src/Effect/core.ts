@@ -8,6 +8,7 @@ import { identity } from "../Function"
 import * as O from "../Option"
 import type { Supervisor } from "../Supervisor"
 import { traceWith } from "../Tracing"
+import type { ExecutionTrace } from "."
 import type { Effect, IO, RIO, UIO } from "./effect"
 import type { FailureReporter } from "./primitives"
 import {
@@ -53,8 +54,9 @@ export function accessM<R0, R, E, A>(
  * followed by the effect that it returns.
  */
 export function chain<R1, E1, A1, A>(f: (a: A) => Effect<R1, E1, A1>) {
+  const trace = traceWith("chain")
   return <R, E>(val: Effect<R, E, A>): Effect<R & R1, E | E1, A1> =>
-    new IFlatMap(val, traceWith("chain")(f))
+    new IFlatMap(val, trace(f))
 }
 
 /**
@@ -322,11 +324,13 @@ export const yieldNow: UIO<void> = new IYield()
 /**
  * Dumps execution traces
  */
-export const executionTraces: UIO<readonly string[]> = new IGetExecutionTraces(false)
+export const executionTraces: UIO<readonly ExecutionTrace[]> = new IGetExecutionTraces(
+  false
+)
 
 /**
  * Dumps execution traces
  */
-export const internalExecutionTraces: UIO<readonly string[]> = new IGetExecutionTraces(
-  true
-)
+export const internalExecutionTraces: UIO<
+  readonly ExecutionTrace[]
+> = new IGetExecutionTraces(true)
