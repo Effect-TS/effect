@@ -17,15 +17,16 @@ export function traceWith(name: string) {
     if (stack) {
       const trace = parse(stack)[4]
       if (trace && trace.file && trace.lineNumber && trace.column) {
-        return <X>(x: X) => {
+        return <X extends (...args: any[]) => any>(x: X): X => {
           if ("$trace" in x) {
             return x
           }
-          x["$trace"] = new ExecutionTrace(
+          const f = (...args: any[]) => x(...args)
+          f["$trace"] = new ExecutionTrace(
             `${trace.file}:${trace.lineNumber}:${trace.column}`,
             name
           )
-          return x
+          return f as any
         }
       }
       return identity
