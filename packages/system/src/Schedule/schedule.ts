@@ -813,7 +813,8 @@ export function fixed(interval: number): Schedule<unknown, unknown, number> {
             ),
           ({ lastRun, startMillis }) => {
             const runningBehind = now > lastRun + interval
-            const boundary = (now - startMillis) % interval
+            const boundary =
+              interval === 0 ? interval : interval - ((now - startMillis) % interval)
             const sleepTime = boundary === 0 ? now : boundary
             const nextRun = runningBehind ? now : now + sleepTime
 
