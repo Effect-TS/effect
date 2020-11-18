@@ -31,13 +31,13 @@ describe("Tracing", () => {
     expect(a).toEqual([
       3,
       [
-        "(map) tracing.test.ts:11:9",
-        "(map) tracing.test.ts:12:9",
-        "(map) tracing.test.ts:13:9",
-        "(chain) tracing.test.ts:14:9",
-        "(chain_) zipWith_.ts:14:10",
-        "(map) zipWith_.ts:14:28",
-        "(chain_) zipWith_.ts:14:10"
+        "(Effect/map) tracing.test.ts:11:9",
+        "(Effect/map) tracing.test.ts:12:9",
+        "(Effect/map) tracing.test.ts:13:9",
+        "(Effect/chain) tracing.test.ts:14:9",
+        "(Effect/chain_) zipWith_.ts:14:10",
+        "(Effect/map_) zipWith_.ts:14:28",
+        "(Effect/chain_) zipWith_.ts:14:10"
       ]
     ])
   })
@@ -58,7 +58,10 @@ describe("Tracing", () => {
       T.runPromise
     )
 
-    expect(a).toEqual(["(map) tracing.test.ts:49:9", "(andThen) tracing.test.ts:50:9"])
+    expect(a).toEqual([
+      "(Effect/map) tracing.test.ts:49:9",
+      "(Effect/andThen) tracing.test.ts:50:9"
+    ])
   })
   it("should not trace", async () => {
     const a = await pipe(

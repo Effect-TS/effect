@@ -52,7 +52,7 @@ export function accessM<R0, R, E, A>(
  * followed by the effect that it returns.
  */
 export function chain<R1, E1, A1, A>(f: (a: A) => Effect<R1, E1, A1>) {
-  const trace = traceF(() => traceWith("chain"))
+  const trace = traceF(() => traceWith("Effect/chain"))
   return <R, E>(val: Effect<R, E, A>): Effect<R & R1, E | E1, A1> =>
     new IFlatMap(val, trace(f))
 }
@@ -66,7 +66,7 @@ export function chain_<R, E, A, R1, E1, A1>(
   val: Effect<R, E, A>,
   f: (a: A) => Effect<R1, E1, A1>
 ): Effect<R & R1, E | E1, A1> {
-  const trace = traceF(() => traceWith("chain_"))
+  const trace = traceF(() => traceWith("Effect/chain_"))
   return new IFlatMap(val, trace(f))
 }
 
