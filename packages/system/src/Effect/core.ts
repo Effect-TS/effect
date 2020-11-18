@@ -322,4 +322,11 @@ export const yieldNow: UIO<void> = new IYield()
 /**
  * Dumps execution traces
  */
-export const executionTraces: UIO<readonly string[]> = new IGetExecutionTraces()
+export const executionTraces: UIO<readonly string[]> = new IGetExecutionTraces(false)
+
+/**
+ * Dumps execution traces
+ */
+export const internalExecutionTraces: UIO<readonly string[]> = new IGetExecutionTraces(
+  true
+)

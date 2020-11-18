@@ -60,7 +60,7 @@ export class ISucceed<A> extends Base<unknown, never, A> {
 export class IGetExecutionTraces extends Base<unknown, never, readonly string[]> {
   readonly _tag = "GetExecutionTraces"
 
-  constructor() {
+  constructor(readonly internal: boolean) {
     super()
   }
 }

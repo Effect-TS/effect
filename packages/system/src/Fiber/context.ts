@@ -20,6 +20,7 @@ import * as Sup from "../Supervisor"
 // support
 import { AtomicReference } from "../Support/AtomicReference"
 import { defaultScheduler } from "../Support/Scheduler"
+import { globalTracingEnabled } from "../Tracing"
 // xpure / internal effect
 import * as X from "../XPure"
 import * as T from "./_internal/effect"
@@ -95,6 +96,9 @@ export const unsafeCurrentFiber = () => O.fromNullable(currentFiber.get)
 
 const noop = O.some(constVoid)
 
+const paths = __dirname.split("/")
+const dir = paths.slice(0, paths.length - 1).join("/")
+
 export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   readonly _tag = "RuntimeFiber"
   readonly state = new AtomicReference(initial<E, A>())
@@ -144,7 +148,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   }
 
   addTraces<K>(k: K): K {
-    if ("$trace" in k) {
+    if (globalTracingEnabled.get && "$trace" in k) {
       this.traces.set(L.append_(this.traces.get, k["$trace"]))
     }
     return k
@@ -841,7 +845,9 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                   }
 
                   case "GetExecutionTraces": {
-                    current = this.nextInstr(L.toArray(this.traces.get))
+                    current = this.nextInstr(
+                      L.toArray(this.traces.get).filter((k) => !k.includes(dir))
+                    )
                     break
                   }
 

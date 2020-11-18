@@ -29,7 +29,7 @@ export function traceWith(name: string) {
 
 export function traceFrom<F>(f: F) {
   return <G>(g: G): G => {
-    if ("$trace" in f) {
+    if (globalTracingEnabled.get && "$trace" in f) {
       g["$trace"] = f["$trace"]
     }
     return g
