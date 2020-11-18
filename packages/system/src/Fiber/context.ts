@@ -944,6 +944,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
                   case "TracingStatus": {
                     this.tracingStatus = new Stack(current.status, this.tracingStatus)
+                    this.stack = new Stack(this.tracingExit, this.stack)
                     current = current.effect["_I"]
                     break
                   }
