@@ -8,7 +8,6 @@ import { identity } from "../Function"
 import * as O from "../Option"
 import type { Supervisor } from "../Supervisor"
 import { traceF, traceWith } from "../Tracing"
-import type { ExecutionTrace } from "."
 import type { Effect, IO, RIO, UIO } from "./effect"
 import type { FailureReporter } from "./primitives"
 import {
@@ -21,7 +20,6 @@ import {
   IFlatMap,
   IFold,
   IFork,
-  IGetExecutionTraces,
   IInterruptStatus,
   IProvide,
   IRead,
@@ -321,17 +319,3 @@ export const unit: UIO<void> = succeed(undefined)
  * overhead.
  */
 export const yieldNow: UIO<void> = new IYield()
-
-/**
- * Dumps execution traces
- */
-export const executionTraces: UIO<readonly ExecutionTrace[]> = new IGetExecutionTraces(
-  false
-)
-
-/**
- * Dumps execution traces
- */
-export const internalExecutionTraces: UIO<
-  readonly ExecutionTrace[]
-> = new IGetExecutionTraces(true)

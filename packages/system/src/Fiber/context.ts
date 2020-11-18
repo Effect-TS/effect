@@ -3,7 +3,6 @@ import * as A from "../Array"
 import * as Cause from "../Cause/core"
 // effect
 import { RuntimeError } from "../Cause/errors"
-import type { ExecutionTrace } from "../Effect"
 // either
 import * as E from "../Either"
 // exit
@@ -21,6 +20,7 @@ import * as Sup from "../Supervisor"
 // support
 import { AtomicReference } from "../Support/AtomicReference"
 import { defaultScheduler } from "../Support/Scheduler"
+import type { ExecutionTrace } from "../Tracing"
 import { globalTracingEnabled } from "../Tracing"
 // xpure / internal effect
 import * as X from "../XPure"
@@ -42,6 +42,11 @@ export class InterruptExit {
   constructor(readonly apply: (a: any) => T.Effect<any, any, any>) {}
 }
 
+export class TracingExit {
+  readonly _tag = "TracingExit"
+  constructor(readonly apply: (a: any) => T.Effect<any, any, any>) {}
+}
+
 export class HandlerFrame {
   readonly _tag = "HandlerFrame"
   constructor(readonly apply: (a: any) => T.Effect<any, any, any>) {}
@@ -54,6 +59,7 @@ export class ApplyFrame {
 
 export type Frame =
   | InterruptExit
+  | TracingExit
   | T.IFold<any, any, any, any, any, any, any, any, any>
   | HandlerFrame
   | ApplyFrame
@@ -104,11 +110,12 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   readonly _tag = "RuntimeFiber"
   readonly state = new AtomicReference(initial<E, A>())
   readonly scheduler = defaultScheduler
-  readonly traces = new AtomicReference(L.empty<ExecutionTrace>())
+  readonly executionTraces = new AtomicReference(L.empty<ExecutionTrace>())
 
   asyncEpoch = 0 | 0
   stack?: Stack<Frame> = undefined
   environments?: Stack<any> = new Stack(this.startEnv)
+  tracingStatus?: Stack<boolean> = undefined
   interruptStatus?: Stack<boolean> = new Stack(this.startIStatus.toBoolean)
   supervisors: Stack<Sup.Supervisor<any>> = new Stack(this.supervisor0)
   forkScopeOverride?: Stack<O.Option<Scope.Scope<Exit.Exit<any, any>>>> = undefined
@@ -131,6 +138,10 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     return T.effectTotal(() => this.poll0())
   }
 
+  get shouldTrace() {
+    return this.tracingStatus ? this.tracingStatus.value : true
+  }
+
   getRef<K>(fiberRef: FiberRef<K>): T.UIO<K> {
     return T.effectTotal(() => this.fiberRefLocals.get(fiberRef) || fiberRef.initial)
   }
@@ -149,8 +160,8 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   }
 
   addTraces<K>(k: K): K {
-    if (globalTracingEnabled.get && "$trace" in k) {
-      this.traces.set(L.append_(this.traces.get, k["$trace"]))
+    if (globalTracingEnabled.get && this.shouldTrace && "$trace" in k) {
+      this.executionTraces.set(L.append_(this.executionTraces.get, k["$trace"]))
     }
     return k
   }
@@ -165,6 +176,11 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
         return v
       })[T._I]
     }
+  })
+
+  tracingExit = new TracingExit((v: any) => {
+    this.tracingStatus = this.tracingStatus?.previous
+    return T.succeed(v)["_I"]
   })
 
   get isInterruptible() {
@@ -245,6 +261,10 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
       switch (frame._tag) {
         case "InterruptExit": {
           this.popInterruptStatus()
+          break
+        }
+        case "TracingExit": {
+          this.tracingStatus = this.tracingStatus?.previous
           break
         }
         case "Fold": {
@@ -848,8 +868,8 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                   case "GetExecutionTraces": {
                     current = this.nextInstr(
                       current.internal
-                        ? L.toArray(this.traces.get)
-                        : L.toArray(this.traces.get).filter(
+                        ? L.toArray(this.executionTraces.get)
+                        : L.toArray(this.executionTraces.get).filter(
                             (k) => !k.file.includes(dir)
                           )
                     )
@@ -920,6 +940,12 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                     current = current.f(Fiber.interruptStatus(this.isInterruptible))[
                       T._I
                     ]
+                    break
+                  }
+
+                  case "TracingStatus": {
+                    this.tracingStatus = new Stack(current.status, this.tracingStatus)
+                    current = current.effect["_I"]
                     break
                   }
 

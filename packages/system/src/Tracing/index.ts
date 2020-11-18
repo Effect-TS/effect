@@ -1,10 +1,13 @@
-import { ExecutionTrace } from "../Effect"
 import { identity } from "../Function"
 import { AtomicBoolean } from "../Support/AtomicBoolean"
 
 export const reg = /\/(.*?):(\d+):(\d+)/
 
-export const globalTracingEnabled = new AtomicBoolean(false)
+export const globalTracingEnabled = new AtomicBoolean(true)
+
+export class ExecutionTrace {
+  constructor(readonly file: string, readonly op: string) {}
+}
 
 export function traceWith(name: string) {
   if (globalTracingEnabled.get) {

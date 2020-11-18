@@ -72,4 +72,29 @@ describe("Tracing", () => {
       ]
     ])
   })
+  it("should not trace", async () => {
+    const a = await pipe(
+      T.succeed(0),
+      T.map((n) => n + 1),
+      T.map((n) => n + 1),
+      T.map((n) => n + 1),
+      T.chain((n) =>
+        T.tuple(
+          T.succeed(n),
+          pipe(
+            T.executionTraces,
+            T.map((s) =>
+              s.map((t) => {
+                const parts = t.file.split("/")
+                return `(${t.op}) ${parts[parts.length - 1]}`
+              })
+            )
+          )
+        )
+      ),
+      T.untraced,
+      T.runPromise
+    )
+    expect(a).toEqual([3, []])
+  })
 })
