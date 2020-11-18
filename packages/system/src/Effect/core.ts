@@ -7,7 +7,7 @@ import type { FiberID } from "../Fiber/id"
 import { identity } from "../Function"
 import * as O from "../Option"
 import type { Supervisor } from "../Supervisor"
-import { traceWith } from "../Tracing"
+import { traceF, traceWith } from "../Tracing"
 import type { ExecutionTrace } from "."
 import type { Effect, IO, RIO, UIO } from "./effect"
 import type { FailureReporter } from "./primitives"
@@ -54,7 +54,7 @@ export function accessM<R0, R, E, A>(
  * followed by the effect that it returns.
  */
 export function chain<R1, E1, A1, A>(f: (a: A) => Effect<R1, E1, A1>) {
-  const trace = traceWith("chain")
+  const trace = traceF(() => traceWith("chain"))
   return <R, E>(val: Effect<R, E, A>): Effect<R & R1, E | E1, A1> =>
     new IFlatMap(val, trace(f))
 }
@@ -68,7 +68,8 @@ export function chain_<R, E, A, R1, E1, A1>(
   val: Effect<R, E, A>,
   f: (a: A) => Effect<R1, E1, A1>
 ): Effect<R & R1, E | E1, A1> {
-  return new IFlatMap(val, traceWith("chain_")(f))
+  const trace = traceF(() => traceWith("chain_"))
+  return new IFlatMap(val, trace(f))
 }
 
 /**

@@ -8,7 +8,7 @@ export const globalTracingEnabled = new AtomicBoolean(false)
 
 export function traceWith(name: string) {
   if (globalTracingEnabled.get) {
-    const line = new Error()?.stack?.split("\n")?.[3]
+    const line = new Error()?.stack?.split("\n")?.[5]
 
     if (line) {
       const ref = reg.exec(line)
@@ -34,4 +34,11 @@ export function traceFrom<F>(f: F) {
     }
     return g
   }
+}
+
+export function traceF(f: () => <A>(a: A) => A): <A>(a: A) => A {
+  if (globalTracingEnabled.get) {
+    return f()
+  }
+  return identity
 }
