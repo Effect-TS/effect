@@ -2571,15 +2571,13 @@ export class Scope {
 /**
  * Creates a scope in which resources can be safely allocated into together with a release action.
  */
-export function scope(): Managed<unknown, never, Scope> {
-  return map_(
-    releaseMap,
-    (finalizers) =>
-      new Scope(
-        <R, E, A>(ma: Managed<R, E, A>): T.Effect<R, E, readonly [RM.Finalizer, A]> =>
-          T.chain_(T.environment<R>(), (r) =>
-            T.provideAll_(ma.effect, [r, finalizers] as const)
-          )
-      )
-  )
-}
+export const scope: Managed<unknown, never, Scope> = map_(
+  releaseMap,
+  (finalizers) =>
+    new Scope(
+      <R, E, A>(ma: Managed<R, E, A>): T.Effect<R, E, readonly [RM.Finalizer, A]> =>
+        T.chain_(T.environment<R>(), (r) =>
+          T.provideAll_(ma.effect, [r, finalizers] as const)
+        )
+    )
+)
