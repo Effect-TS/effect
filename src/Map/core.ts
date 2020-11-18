@@ -208,6 +208,18 @@ export const remove = <K>(k: K) => <V>(self: ReadonlyMap<K, V>): ReadonlyMap<K, 
   return m
 }
 
+export const removeMany = <K>(ks: ReadonlyArray<K>) => <V>(
+  self: ReadonlyMap<K, V>
+): ReadonlyMap<K, V> => {
+  const m = copy(self)
+
+  ks.forEach((k) => {
+    m.delete(k)
+  })
+
+  return m
+}
+
 export const lookup = <K>(k: K) => <V>(m: ReadonlyMap<K, V>) => fromNullable(m.get(k))
 
 export function copy<K, V>(self: ReadonlyMap<K, V>) {
