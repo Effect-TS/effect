@@ -1,9 +1,11 @@
 import { identity } from "../Function"
 import { AtomicBoolean } from "../Support/AtomicBoolean"
+import { AtomicNumber } from "../Support/AtomicNumber"
 
 export const reg = /\/(.*?):(\d+):(\d+)/
 
 export const globalTracingEnabled = new AtomicBoolean(true)
+export const globalTracesQuantity = new AtomicNumber(100)
 
 export class ExecutionTrace {
   constructor(readonly file: string, readonly op: string) {}

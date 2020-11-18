@@ -21,7 +21,7 @@ import * as Sup from "../Supervisor"
 import { AtomicReference } from "../Support/AtomicReference"
 import { defaultScheduler } from "../Support/Scheduler"
 import type { ExecutionTrace } from "../Tracing"
-import { globalTracingEnabled } from "../Tracing"
+import { globalTracesQuantity, globalTracingEnabled } from "../Tracing"
 // xpure / internal effect
 import * as X from "../XPure"
 import * as T from "./_internal/effect"
@@ -158,6 +158,9 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
   addTraces<K>(k: K): K {
     if (globalTracingEnabled.get && this.shouldTrace && "$trace" in k) {
+      if (this.executionTraces.get.length >= globalTracesQuantity.get) {
+        this.executionTraces.set(L.drop_(this.executionTraces.get, 1))
+      }
       this.executionTraces.set(L.append_(this.executionTraces.get, k["$trace"]))
     }
     return k
