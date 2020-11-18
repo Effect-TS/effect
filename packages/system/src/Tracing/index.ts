@@ -1,8 +1,7 @@
 import { identity } from "../Function"
 import { AtomicBoolean } from "../Support/AtomicBoolean"
 import { AtomicNumber } from "../Support/AtomicNumber"
-
-export const reg = /(\/|\\)(.*?):(\d+):(\d+)/
+import { parse } from "./parse"
 
 export const globalTracingEnabled = new AtomicBoolean(true)
 export const globalTracesQuantity = new AtomicNumber(100)
@@ -13,21 +12,25 @@ export class ExecutionTrace {
 
 export function traceWith(name: string) {
   if (globalTracingEnabled.get) {
-    const line = new Error()?.stack?.split("\n")?.[5]
+    const stack = new Error()?.stack
 
-    if (line) {
-      const ref = reg.exec(line)
-
-      if (ref) {
+    if (stack) {
+      const trace = parse(stack)[4]
+      if (trace && trace.file && trace.lineNumber && trace.column) {
         return <X>(x: X) => {
           if ("$trace" in x) {
             return x
           }
-          x["$trace"] = new ExecutionTrace(`/${ref[2]}:${ref[3]}:${ref[4]}`, name)
+          x["$trace"] = new ExecutionTrace(
+            `${trace.file}:${trace.lineNumber}:${trace.column}`,
+            name
+          )
           return x
         }
       }
+      return identity
     }
+    return identity
   }
   return identity
 }
@@ -47,3 +50,5 @@ export function traceF(f: () => <A>(a: A) => A): <A>(a: A) => A {
   }
   return identity
 }
+
+export { parse as parseStackTrace } from "./parse"
