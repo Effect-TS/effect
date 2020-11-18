@@ -273,7 +273,8 @@ export function supervised(supervisor: Supervisor<any>) {
  * When no environment is required (i.e., when R == unknown) it is conceptually equivalent to `flatten(effectTotal(io))`.
  */
 export function suspend<R, E, A>(factory: () => Effect<R, E, A>): Effect<R, E, A> {
-  return new ISuspend(factory)
+  const trace = traceF(() => traceWith("Effect/suspend"))
+  return new ISuspend(trace(factory))
 }
 
 /**

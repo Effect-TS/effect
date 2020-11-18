@@ -161,10 +161,12 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
   addTraces<K>(k: K): K {
     if (globalTracingEnabled.get && this.shouldTrace._tag === "Some" && "$trace" in k) {
-      if (this.executionTraces.get.length >= this.shouldTrace.value) {
-        this.executionTraces.set(L.drop_(this.executionTraces.get, 1))
+      if (k["$trace"] !== L.unsafeLast(this.executionTraces.get)) {
+        if (this.executionTraces.get.length >= this.shouldTrace.value) {
+          this.executionTraces.set(L.drop_(this.executionTraces.get, 1))
+        }
+        this.executionTraces.set(L.append_(this.executionTraces.get, k["$trace"]))
       }
-      this.executionTraces.set(L.append_(this.executionTraces.get, k["$trace"]))
     }
     return k
   }
