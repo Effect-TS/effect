@@ -1,5 +1,8 @@
+import { flow } from "../Function"
+import { traceF, traceFrom, traceWith } from "../Tracing"
 import { chain_, effectTotal, suspend } from "./core"
 import type { Effect } from "./effect"
+import { traced, untraced } from "./executionTraces"
 import { foreachUnitPar_ } from "./foreachUnitPar_"
 
 /**
@@ -12,26 +15,29 @@ export function foreachPar_<R, E, A, B>(
   as: Iterable<A>,
   f: (a: A) => Effect<R, E, B>
 ): Effect<R, E, readonly B[]> {
+  const trace = traceF(() => flow(traceWith("Effect/foreachPar_"), traceFrom(f)))
   const arr = Array.from(as)
 
   return chain_(
     effectTotal<B[]>(() => []),
-    (array) => {
+    trace((array) => {
       const fn = ([a, n]: [A, number]) =>
         chain_(
-          suspend(() => f(a)),
+          suspend(() => traced(f(a))),
           (b) =>
             effectTotal(() => {
               array[n] = b
             })
         )
-      return chain_(
-        foreachUnitPar_(
-          arr.map((a, n) => [a, n] as [A, number]),
-          fn
-        ),
-        () => effectTotal(() => array)
+      return untraced(
+        chain_(
+          foreachUnitPar_(
+            arr.map((a, n) => [a, n] as [A, number]),
+            fn
+          ),
+          () => effectTotal(() => array)
+        )
       )
-    }
+    })
   )
 }

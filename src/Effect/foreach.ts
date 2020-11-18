@@ -1,3 +1,5 @@
+import { flow } from "../Function"
+import { traceF, traceFrom, traceWith } from "../Tracing"
 import type { Effect } from "./effect"
 import { foreach_ } from "./foreach_"
 
@@ -9,5 +11,6 @@ import { foreach_ } from "./foreach_"
  * If you do not need the results, see `foreachUnit` for a more efficient implementation.
  */
 export function foreach<A, R, E, B>(f: (a: A) => Effect<R, E, B>) {
-  return (as: Iterable<A>) => foreach_(as, f)
+  const trace = traceF(() => flow(traceWith("Effect/foreach"), traceFrom(f)))
+  return (as: Iterable<A>) => foreach_(as, trace(f))
 }
