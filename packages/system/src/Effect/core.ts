@@ -7,8 +7,9 @@ import type { FiberID } from "../Fiber/id"
 import { identity } from "../Function"
 import * as O from "../Option"
 import type { Supervisor } from "../Supervisor"
-import type { FailureReporter } from "."
+import { traceWith } from "../Tracing"
 import type { Effect, IO, RIO, UIO } from "./effect"
+import type { FailureReporter } from "./primitives"
 import {
   ICheckInterrupt,
   IDescriptor,
@@ -19,6 +20,7 @@ import {
   IFlatMap,
   IFold,
   IFork,
+  IGetExecutionTraces,
   IInterruptStatus,
   IProvide,
   IRead,
@@ -52,7 +54,7 @@ export function accessM<R0, R, E, A>(
  */
 export function chain<R1, E1, A1, A>(f: (a: A) => Effect<R1, E1, A1>) {
   return <R, E>(val: Effect<R, E, A>): Effect<R & R1, E | E1, A1> =>
-    new IFlatMap(val, f)
+    new IFlatMap(val, traceWith("chain")(f))
 }
 
 /**
@@ -64,7 +66,7 @@ export function chain_<R, E, A, R1, E1, A1>(
   val: Effect<R, E, A>,
   f: (a: A) => Effect<R1, E1, A1>
 ): Effect<R & R1, E | E1, A1> {
-  return new IFlatMap(val, f)
+  return new IFlatMap(val, traceWith("chain_")(f))
 }
 
 /**
@@ -315,4 +317,9 @@ export const unit: UIO<void> = succeed(undefined)
  * stack. Manual use of this method can improve fairness, at the cost of
  * overhead.
  */
-export const yieldNow = new IYield()
+export const yieldNow: UIO<void> = new IYield()
+
+/**
+ * Dumps execution traces
+ */
+export const executionTraces: UIO<readonly string[]> = new IGetExecutionTraces()

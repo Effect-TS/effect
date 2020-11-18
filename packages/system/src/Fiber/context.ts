@@ -11,6 +11,7 @@ import * as Exit from "../Exit/api"
 import { FiberRef } from "../FiberRef/fiberRef"
 import * as update from "../FiberRef/update"
 import { constVoid } from "../Function"
+import * as L from "../List"
 // option
 import * as O from "../Option"
 // supervisor / scope
@@ -98,6 +99,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   readonly _tag = "RuntimeFiber"
   readonly state = new AtomicReference(initial<E, A>())
   readonly scheduler = defaultScheduler
+  readonly traces = new AtomicReference(L.empty<string>())
 
   asyncEpoch = 0 | 0
   stack?: Stack<Frame> = undefined
@@ -139,6 +141,13 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
         return O.some(state.value)
       }
     }
+  }
+
+  addTraces<K>(k: K): K {
+    if ("$trace" in k) {
+      this.traces.set(L.append_(this.traces.get, k["$trace"]))
+    }
+    return k
   }
 
   interruptExit = new InterruptExit((v: any) => {
@@ -272,6 +281,8 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     if (!this.isStackEmpty) {
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       const k = this.popContinuation()!
+
+      this.addTraces(k.apply)
 
       return k.apply(value)[T._I]
     } else {
@@ -775,17 +786,23 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
                     switch (nested._tag) {
                       case "Succeed": {
+                        this.addTraces(k)
                         current = k(nested.val)[T._I]
                         break
                       }
                       case "EffectTotal": {
+                        this.addTraces(k)
+                        this.addTraces(nested.effect)
                         current = k(nested.effect())[T._I]
                         break
                       }
                       case "EffectPartial": {
                         try {
+                          this.addTraces(k)
+                          this.addTraces(nested.effect)
                           current = k(nested.effect())[T._I]
                         } catch (e) {
+                          this.addTraces(nested.onThrow)
                           current = T.fail(nested.onThrow(e))[T._I]
                         }
                         break
@@ -823,7 +840,13 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                     break
                   }
 
+                  case "GetExecutionTraces": {
+                    current = this.nextInstr(L.toArray(this.traces.get))
+                    break
+                  }
+
                   case "EffectTotal": {
+                    this.addTraces(current.effect)
                     current = this.nextInstr(current.effect())
                     break
                   }
@@ -882,6 +905,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                   }
 
                   case "CheckInterrupt": {
+                    this.addTraces(current.f)
                     current = current.f(Fiber.interruptStatus(this.isInterruptible))[
                       T._I
                     ]
@@ -906,6 +930,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
                     if (!current) {
                       const k = c.register
+                      this.addTraces(k)
                       const h = k(this.resumeAsync(epoch))
 
                       switch (h._tag) {
@@ -938,6 +963,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                   }
 
                   case "Descriptor": {
+                    this.addTraces(current.f)
                     current = current.f(this.getDescriptor())[T._I]
                     break
                   }
@@ -949,6 +975,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                   }
 
                   case "Read": {
+                    this.addTraces(current.f)
                     current = current.f(this.environments?.value || {})[T._I]
                     break
                   }
@@ -969,6 +996,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                   }
 
                   case "Suspend": {
+                    this.addTraces(current.factory)
                     current = current.factory()[T._I]
                     break
                   }
@@ -977,8 +1005,10 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                     const c = current
 
                     try {
+                      this.addTraces(c.factory)
                       current = c.factory()[T._I]
                     } catch (e) {
+                      this.addTraces(c.onThrow)
                       current = T.fail(c.onThrow(e))[T._I]
                     }
 
@@ -1002,6 +1032,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                   case "FiberRefModify": {
                     const c = current
                     const oldValue = O.fromNullable(this.fiberRefLocals.get(c.fiberRef))
+                    this.addTraces(current.f)
                     const [result, newValue] = current.f(
                       O.getOrElse_(oldValue, () => c.fiberRef.initial)
                     )
@@ -1036,6 +1067,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
                   case "GetForkScope": {
                     const c = current
+                    this.addTraces(c.f)
                     current = c.f(
                       O.getOrElse_(
                         this.forkScopeOverride?.value || O.none,
