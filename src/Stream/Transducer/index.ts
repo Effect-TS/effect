@@ -300,7 +300,7 @@ export function branchAfter<R, E, I, O>(
   const toCollect = Math.max(0, n)
 
   return new Transducer(
-    M.chain_(M.scope(), (scope) =>
+    M.chain_(M.scope, (scope) =>
       M.map_(
         RM.makeManagedRefM<State>(initialState),
         (state) => (is: O.Option<Array<I>>) =>
