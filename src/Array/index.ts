@@ -1546,3 +1546,28 @@ export function separate<B, C>(fa: Array<Either<B, C>>): Separated<Array<B>, Arr
     right
   }
 }
+
+/**
+ * Drops elements while the predicate returns true
+ */
+export function dropWhile_<A>(
+  as: ReadonlyArray<A>,
+  predicate: Predicate<A>
+): ReadonlyArray<A> {
+  const i = spanIndex_(as, predicate)
+  const l = as.length
+  const rest = Array(l - i)
+  for (let j = i; j < l; j++) {
+    rest[j - i] = as[j]
+  }
+  return rest
+}
+
+/**
+ * Drops elements while the predicate returns true
+ */
+export function dropWhile<A>(
+  predicate: Predicate<A>
+): (as: ReadonlyArray<A>) => ReadonlyArray<A> {
+  return (as) => dropWhile_(as, predicate)
+}
