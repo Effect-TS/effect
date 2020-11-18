@@ -2,6 +2,7 @@ import { flow } from "../Function"
 import { traceF, traceFrom, traceWith } from "../Tracing"
 import { chain_, effectTotal, suspend } from "./core"
 import type { Effect } from "./effect"
+import { traced, untraced } from "./executionTraces"
 import { foreachUnitPar_ } from "./foreachUnitPar_"
 
 /**
@@ -22,21 +23,20 @@ export function foreachPar_<R, E, A, B>(
     trace((array) => {
       const fn = ([a, n]: [A, number]) =>
         chain_(
-          suspend(trace(() => f(a))),
-          trace((b) =>
-            effectTotal(
-              trace(() => {
-                array[n] = b
-              })
-            )
-          )
+          suspend(() => traced(f(a))),
+          (b) =>
+            effectTotal(() => {
+              array[n] = b
+            })
         )
-      return chain_(
-        foreachUnitPar_(
-          arr.map((a, n) => [a, n] as [A, number]),
-          trace(fn)
-        ),
-        trace(() => effectTotal(trace(() => array)))
+      return untraced(
+        chain_(
+          foreachUnitPar_(
+            arr.map((a, n) => [a, n] as [A, number]),
+            fn
+          ),
+          () => effectTotal(() => array)
+        )
       )
     })
   )
