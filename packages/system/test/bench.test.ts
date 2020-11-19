@@ -18,6 +18,14 @@ async function fibPromise(n: number): Promise<number> {
   const b = await fibPromise(n - 2)
   return a + b
 }
+function fibEffectGen(n: number): T.UIO<number> {
+  if (n < 2) {
+    return T.succeed(1)
+  }
+  return T.gen(function* (_) {
+    return (yield* _(fibEffectGen(n - 1))) + (yield* _(fibEffectGen(n - 2)))
+  })
+}
 
 describe("Bench", () => {
   it("promise", async () => {
@@ -26,4 +34,20 @@ describe("Bench", () => {
     }
   })
   it("effect", () => T.runPromise(T.repeatN(1000)(fibEffect(10))))
+  it("effect-gen", () =>
+    T.runPromise(
+      T.gen(function* (_) {
+        for (let i = 0; i < 1000; i++) {
+          yield* _(fibEffect(10))
+        }
+      })
+    ))
+  it("effect-gen-2", () =>
+    T.runPromise(
+      T.gen(function* (_) {
+        for (let i = 0; i < 1000; i++) {
+          yield* _(fibEffectGen(10))
+        }
+      })
+    ))
 })
