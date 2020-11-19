@@ -49,7 +49,7 @@ const adapter = (_: any, __?: any) => {
   return new GenEffect(_)
 }
 
-export function gen<RBase, EBase, AEff>(): <Eff extends GenEffect<RBase, EBase, any>>(
+export function genM<RBase, EBase, AEff>(): <Eff extends GenEffect<RBase, EBase, any>>(
   f: (i: {
     <A>(_: Tag<A>): GenEffect<Has<A>, never, A>
     <E, A>(_: Option<A>, onNone: () => E): GenEffect<unknown, E, A>
@@ -59,7 +59,7 @@ export function gen<RBase, EBase, AEff>(): <Eff extends GenEffect<RBase, EBase, 
     <R, E, A>(_: Managed<R, E, A>): GenEffect<R, E, A>
   }) => Generator<Eff, AEff, any>
 ) => Effect<_R<Eff>, _E<Eff>, AEff>
-export function gen<EBase, AEff>(): <Eff extends GenEffect<any, EBase, any>>(
+export function genM<EBase, AEff>(): <Eff extends GenEffect<any, EBase, any>>(
   f: (i: {
     <A>(_: Tag<A>): GenEffect<Has<A>, never, A>
     <E, A>(_: Option<A>, onNone: () => E): GenEffect<unknown, E, A>
@@ -69,7 +69,7 @@ export function gen<EBase, AEff>(): <Eff extends GenEffect<any, EBase, any>>(
     <R, E, A>(_: Managed<R, E, A>): GenEffect<R, E, A>
   }) => Generator<Eff, AEff, any>
 ) => Effect<_R<Eff>, _E<Eff>, AEff>
-export function gen<AEff>(): <Eff extends GenEffect<any, any, any>>(
+export function genM<AEff>(): <Eff extends GenEffect<any, any, any>>(
   f: (i: {
     <A>(_: Tag<A>): GenEffect<Has<A>, never, A>
     <E, A>(_: Option<A>, onNone: () => E): GenEffect<unknown, E, A>
@@ -79,7 +79,7 @@ export function gen<AEff>(): <Eff extends GenEffect<any, any, any>>(
     <R, E, A>(_: Managed<R, E, A>): GenEffect<R, E, A>
   }) => Generator<Eff, AEff, any>
 ) => Effect<_R<Eff>, _E<Eff>, AEff>
-export function gen<Eff extends GenEffect<any, any, any>, AEff>(
+export function genM<Eff extends GenEffect<any, any, any>, AEff>(
   f: (i: {
     <A>(_: Tag<A>): GenEffect<Has<A>, never, A>
     <E, A>(_: Option<A>, onNone: () => E): GenEffect<unknown, E, A>
@@ -89,7 +89,7 @@ export function gen<Eff extends GenEffect<any, any, any>, AEff>(
     <R, E, A>(_: Managed<R, E, A>): GenEffect<R, E, A>
   }) => Generator<Eff, AEff, any>
 ): Effect<_R<Eff>, _E<Eff>, AEff>
-export function gen(...args: any[]): any {
+export function genM(...args: any[]): any {
   function gen_<Eff extends GenEffect<any, any, any>, AEff>(
     f: (i: any) => Generator<Eff, AEff, any>
   ): Effect<_R<Eff>, _E<Eff>, AEff> {
@@ -125,6 +125,72 @@ export function gen(...args: any[]): any {
           (_, e) => releaseAll(e, sequential)(rm)
         )
       )
+    })
+  }
+
+  if (args.length === 0) {
+    return (f: any) => gen_(f)
+  }
+  return gen_(args[0])
+}
+
+export function gen<RBase, EBase, AEff>(): <Eff extends GenEffect<RBase, EBase, any>>(
+  f: (i: {
+    <A>(_: Tag<A>): GenEffect<Has<A>, never, A>
+    <E, A>(_: Option<A>, onNone: () => E): GenEffect<unknown, E, A>
+    <A>(_: Option<A>): GenEffect<unknown, NoSuchElementException, A>
+    <E, A>(_: Either<E, A>): GenEffect<unknown, E, A>
+    <R, E, A>(_: Effect<R, E, A>): GenEffect<R, E, A>
+  }) => Generator<Eff, AEff, any>
+) => Effect<_R<Eff>, _E<Eff>, AEff>
+export function gen<EBase, AEff>(): <Eff extends GenEffect<any, EBase, any>>(
+  f: (i: {
+    <A>(_: Tag<A>): GenEffect<Has<A>, never, A>
+    <E, A>(_: Option<A>, onNone: () => E): GenEffect<unknown, E, A>
+    <A>(_: Option<A>): GenEffect<unknown, NoSuchElementException, A>
+    <E, A>(_: Either<E, A>): GenEffect<unknown, E, A>
+    <R, E, A>(_: Effect<R, E, A>): GenEffect<R, E, A>
+  }) => Generator<Eff, AEff, any>
+) => Effect<_R<Eff>, _E<Eff>, AEff>
+export function gen<AEff>(): <Eff extends GenEffect<any, any, any>>(
+  f: (i: {
+    <A>(_: Tag<A>): GenEffect<Has<A>, never, A>
+    <E, A>(_: Option<A>, onNone: () => E): GenEffect<unknown, E, A>
+    <A>(_: Option<A>): GenEffect<unknown, NoSuchElementException, A>
+    <E, A>(_: Either<E, A>): GenEffect<unknown, E, A>
+    <R, E, A>(_: Effect<R, E, A>): GenEffect<R, E, A>
+  }) => Generator<Eff, AEff, any>
+) => Effect<_R<Eff>, _E<Eff>, AEff>
+export function gen<Eff extends GenEffect<any, any, any>, AEff>(
+  f: (i: {
+    <A>(_: Tag<A>): GenEffect<Has<A>, never, A>
+    <E, A>(_: Option<A>, onNone: () => E): GenEffect<unknown, E, A>
+    <A>(_: Option<A>): GenEffect<unknown, NoSuchElementException, A>
+    <E, A>(_: Either<E, A>): GenEffect<unknown, E, A>
+    <R, E, A>(_: Effect<R, E, A>): GenEffect<R, E, A>
+  }) => Generator<Eff, AEff, any>
+): Effect<_R<Eff>, _E<Eff>, AEff>
+export function gen(...args: any[]): any {
+  function gen_<Eff extends GenEffect<any, any, any>, AEff>(
+    f: (i: any) => Generator<Eff, AEff, any>
+  ): Effect<_R<Eff>, _E<Eff>, AEff> {
+    return suspend(() => {
+      const iterator = f(adapter as any)
+      const state = iterator.next()
+
+      function run(
+        state: IteratorYieldResult<Eff> | IteratorReturnResult<AEff>
+      ): Effect<any, any, AEff> {
+        if (state.done) {
+          return succeed(state.value)
+        }
+        return chain_(state.value["effect"] as Effect<any, any, any>, (val) => {
+          const next = iterator.next(val)
+          return run(next)
+        })
+      }
+
+      return run(state)
     })
   }
 

@@ -9,7 +9,7 @@ module.exports = {
   collectCoverageFrom: ["packages/**/src/**/*.ts"],
   setupFiles: ["./scripts/jest-setup.ts"],
   modulePathIgnorePatterns: ["<rootDir>/packages/.*/build", "<rootDir>/_tmp"],
-  verbose: false,
+  verbose: true,
   moduleNameMapper: {
     "@effect-ts/jest/(.*)$": "<rootDir>/packages/jest/build/$1",
     "@effect-ts/jest$": "<rootDir>/packages/jest/build",
@@ -21,5 +21,10 @@ module.exports = {
     "@effect-ts/system$": "<rootDir>/packages/system/build",
     "@effect-ts/core/(.*)$": "<rootDir>/packages/core/build/$1",
     "@effect-ts/core$": "<rootDir>/packages/core/build"
+  },
+  globals: {
+    "ts-jest": {
+      tsconfig: "<rootDir>/tsconfig.json"
+    }
   }
 }
