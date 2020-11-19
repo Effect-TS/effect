@@ -20,14 +20,10 @@ async function fibPromise(n: number): Promise<number> {
 }
 
 describe("Bench", () => {
-  it("effect", async () => {
-    for (let i = 0; i < 100; i++) {
-      await T.runPromise(fibEffect(10))
-    }
-  })
   it("promise", async () => {
-    for (let i = 0; i < 100; i++) {
+    for (let i = 0; i < 1000; i++) {
       await fibPromise(10)
     }
   })
+  it("effect", () => T.runPromise(T.repeatN(1000)(fibEffect(10))))
 })
