@@ -8,6 +8,14 @@ import { runManaged } from "./runManaged"
 /**
  * Runs the sink on the stream to produce either the sink's result or an error.
  */
+export const run_ = <R, R1, E, E1, O, B>(
+  self: Stream<R, E, O>,
+  sink: Sink.Sink<R1, E1, O, any, B>
+): T.Effect<R & R1, E1 | E, B> => pipe(self, runManaged(sink), M.useNow)
+
+/**
+ * Runs the sink on the stream to produce either the sink's result or an error.
+ */
 export const run = <R1, E1, O, B>(sink: Sink.Sink<R1, E1, O, any, B>) => <R, E>(
   self: Stream<R, E, O>
-): T.Effect<R & R1, E1 | E, B> => pipe(self, runManaged(sink), M.useNow)
+) => run_(self, sink)
