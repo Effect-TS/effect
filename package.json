@@ -59,5 +59,8 @@
     "hooks": {
       "pre-commit": "./pre-commit.sh"
     }
+  },
+  "dependencies": {
+    "ttypescript": "^1.5.12"
   }
 }
