@@ -1,5 +1,4 @@
-import type * as A from "@effect-ts/core/Classic/Array"
-
+import type * as A from "../../Array"
 import type { Effect } from "../../Effect"
 import * as SK from "./../Sink"
 import type { Stream } from "./definitions"
