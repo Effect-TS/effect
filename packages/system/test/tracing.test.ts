@@ -1,4 +1,5 @@
 // trace :: T -> Effect
+
 import * as T from "../src/Effect"
 import { pipe } from "../src/Function"
 
@@ -24,10 +25,10 @@ describe("Tracer", () => {
     )
 
     expect(traces).toEqual([
-      "(Effect:tuple): test/tracing.test.ts:20:7",
-      "(Effect:succeed): test/tracing.test.ts:20:15",
-      "(Effect:succeed): test/tracing.test.ts:20:29",
-      "(Effect:succeed): test/tracing.test.ts:20:43"
+      "(Effect:tuple): test/tracing.test.ts:21:7",
+      "(Effect:succeed): test/tracing.test.ts:21:15",
+      "(Effect:succeed): test/tracing.test.ts:21:29",
+      "(Effect:succeed): test/tracing.test.ts:21:43"
     ])
   })
 })
