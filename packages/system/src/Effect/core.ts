@@ -50,7 +50,7 @@ export function accessM<R0, R, E, A>(
  * the passing of its value to the specified continuation function `f`,
  * followed by the effect that it returns.
  */
-export function chain<R1, E1, A1, A>(f: (a: A) => Effect<R1, E1, A1>) {
+export function chain<R1, E1, A1, A>(f: (a: A) => Effect<R1, E1, A1>, _trace?: string) {
   return <R, E>(val: Effect<R, E, A>): Effect<R & R1, E | E1, A1> =>
     new IFlatMap(val, f)
 }
@@ -252,7 +252,7 @@ export function result<R, E, A>(
 /**
  * Lift a pure value into an effect
  */
-export function succeed<A>(a: A): Effect<unknown, never, A> {
+export function succeed<A>(a: A, _trace?: string): Effect<unknown, never, A> {
   return new ISucceed(a)
 }
 
