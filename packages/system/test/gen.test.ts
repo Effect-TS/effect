@@ -139,6 +139,8 @@ describe("Generator", () => {
       constructor(readonly message: string) {}
     }
 
+    const close = jest.fn()
+
     const sum = (n: number) =>
       T.gen(function* (_) {
         let sum = 0
@@ -156,11 +158,20 @@ describe("Generator", () => {
       return { a, b, c }
     })
 
-    const program2 = T.gen(function* (_) {
+    const program2 = T.genM(function* (_) {
       const { a, b, c } = yield* _(program1)
       const d = yield* _(T.access((_: B) => _.b))
+      const e = yield* _(
+        M.make_(T.succeed(10), () =>
+          T.effectTotal(() => {
+            close()
+          })
+        )
+      )
 
-      const s = a + b + c + d
+      expect(close).toHaveBeenCalledTimes(0)
+
+      const s = a + b + c + d + e
 
       if (s > 20) {
         return yield* _(T.fail(new SumTooBig(`${s} > 20`)))
@@ -175,7 +186,9 @@ describe("Generator", () => {
         T.provideAll<A & B>({ a: 3, b: 4 }),
         T.runPromiseExit
       )
-    ).toEqual(Ex.succeed(55))
+    ).toEqual(Ex.succeed(210))
+
+    expect(close).toHaveBeenCalledTimes(1)
   })
 
   it("should use services", async () => {
