@@ -1,5 +1,5 @@
 {
-  "typescript.tsdk": "node_modules/ttypescript/lib",
+  "typescript.tsdk": "node_modules/typescript/lib",
   "editor.formatOnSave": true,
   "eslint.format.enable": true,
   "[javascript]": {

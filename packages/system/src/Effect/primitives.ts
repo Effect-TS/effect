@@ -24,6 +24,7 @@ export type Instruction =
   | IFork<any, any, any>
   | IInterruptStatus<any, any, any>
   | ICheckInterrupt<any, any, any>
+  | ICheckExecutionTraces<any, any, any>
   | IFail<any>
   | IDescriptor<any, any, any>
   | IYield
@@ -51,7 +52,15 @@ export class IFlatMap<R, E, A, R1, E1, A1> extends Base<R & R1, E | E1, A1> {
 export class ISucceed<A> extends Base<unknown, never, A> {
   readonly _tag = "Succeed"
 
-  constructor(readonly val: A) {
+  constructor(readonly val: A, readonly trace?: string) {
+    super()
+  }
+}
+
+export class ICheckExecutionTraces<R, E, A> extends Base<R, E, A> {
+  readonly _tag = "CheckExecutionTraces"
+
+  constructor(readonly f: (traces: readonly string[]) => Effect<R, E, A>) {
     super()
   }
 }

@@ -11,6 +11,7 @@ import * as Exit from "../Exit/api"
 import { FiberRef } from "../FiberRef/fiberRef"
 import * as update from "../FiberRef/update"
 import { constVoid } from "../Function"
+import * as L from "../List"
 // option
 import * as O from "../Option"
 // supervisor / scope
@@ -106,6 +107,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   supervisors: Stack<Sup.Supervisor<any>> = new Stack(this.supervisor0)
   forkScopeOverride?: Stack<O.Option<Scope.Scope<Exit.Exit<any, any>>>> = undefined
   scopeKey: Scope.Key | undefined = undefined
+  executionTraces = new AtomicReference(L.empty<string>())
 
   constructor(
     readonly fiberId: Fiber.FiberID,
@@ -122,6 +124,12 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
   get poll() {
     return T.effectTotal(() => this.poll0())
+  }
+
+  addTrace(trace?: string) {
+    if (trace) {
+      this.executionTraces.set(L.append_(this.executionTraces.get, trace))
+    }
   }
 
   getRef<K>(fiberRef: FiberRef<K>): T.UIO<K> {
@@ -775,6 +783,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
                     switch (nested._tag) {
                       case "Succeed": {
+                        this.addTrace(nested.trace)
                         current = k(nested.val)[T._I]
                         break
                       }
@@ -812,6 +821,12 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                     break
                   }
 
+                  case "CheckExecutionTraces": {
+                    const x = current
+                    current = x.f(L.toArray(this.executionTraces.get))[T._I]
+                    break
+                  }
+
                   case "FFI": {
                     current = current[T._I]
 
@@ -819,6 +834,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                   }
 
                   case "Succeed": {
+                    this.addTrace(current.trace)
                     current = this.nextInstr(current.val)
                     break
                   }
