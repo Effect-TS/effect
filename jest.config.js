@@ -21,5 +21,10 @@ module.exports = {
     "@effect-ts/system$": "<rootDir>/packages/system/build",
     "@effect-ts/core/(.*)$": "<rootDir>/packages/core/build/$1",
     "@effect-ts/core$": "<rootDir>/packages/core/build"
+  },
+  globals: {
+    "ts-jest": {
+      tsconfig: "<rootDir>/tsconfig.test.json"
+    }
   }
 }

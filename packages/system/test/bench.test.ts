@@ -23,7 +23,9 @@ function fibEffectGen(n: number): T.UIO<number> {
     return T.succeed(1)
   }
   return T.gen(function* (_) {
-    return (yield* _(fibEffectGen(n - 1))) + (yield* _(fibEffectGen(n - 2)))
+    const x = yield* _(fibEffectGen(n - 1))
+    const y = yield* _(fibEffectGen(n - 2))
+    return x + y
   })
 }
 
