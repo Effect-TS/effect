@@ -13,4 +13,4 @@ const res = ts.transpileModule(
     fileName: path.join(__dirname, "packages/system/src/trace.ts")
   }
 )
-console.log(res.outputText)
+fs.writeFileSync(path.join(__dirname, "packages/system/src/trace2.ts"), res.outputText)

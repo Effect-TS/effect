@@ -40,36 +40,44 @@ export default function myTransformerPlugin(
             const iEnd = methodsEnd.findIndex((s) => s === text)
 
             if (iEnd !== -1) {
-              return factory.createCallExpression(
-                factory.createPropertyAccessExpression(
-                  factory.createIdentifier(effectVar),
-                  factory.createIdentifier(supportedEnd[iEnd])
+              return ts.visitEachChild(
+                factory.createCallExpression(
+                  factory.createPropertyAccessExpression(
+                    factory.createIdentifier(effectVar),
+                    factory.createIdentifier(supportedEnd[iEnd])
+                  ),
+                  node.typeArguments,
+                  [
+                    ...node.arguments,
+                    factory.createStringLiteral(
+                      `${sourceFile.fileName}:${line + 1}:${character + 1}`
+                    )
+                  ]
                 ),
-                node.typeArguments,
-                [
-                  ...node.arguments,
-                  factory.createStringLiteral(
-                    `${sourceFile.fileName}:${line + 1}:${character + 1}`
-                  )
-                ]
+                visitor,
+                ctx
               )
             }
 
             const iTop = methodsTop.findIndex((s) => s === text)
 
             if (iTop !== -1) {
-              return factory.createCallExpression(
-                factory.createPropertyAccessExpression(
-                  factory.createIdentifier(effectVar),
-                  factory.createIdentifier(supportedTop[iTop])
-                ),
-                node.typeArguments,
-                [
-                  factory.createStringLiteral(
-                    `${sourceFile.fileName}:${line + 1}:${character + 1}`
+              return ts.visitEachChild(
+                factory.createCallExpression(
+                  factory.createPropertyAccessExpression(
+                    factory.createIdentifier(effectVar),
+                    factory.createIdentifier(supportedTop[iTop])
                   ),
-                  ...node.arguments
-                ]
+                  node.typeArguments,
+                  [
+                    factory.createStringLiteral(
+                      `${sourceFile.fileName}:${line + 1}:${character + 1}`
+                    ),
+                    ...node.arguments
+                  ]
+                ),
+                visitor,
+                ctx
               )
             }
           }
