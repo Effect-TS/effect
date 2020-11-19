@@ -14,7 +14,8 @@
     "test": "jest --detectOpenHandles",
     "autofix": "ultra -r autofix",
     "lint": "ultra -r lint",
-    "tc": "ultra -r tc"
+    "tc": "ultra -r tc",
+    "plugin": "ts-node build.ts"
   },
   "devDependencies": {
     "@babel/cli": "^7.12.1",

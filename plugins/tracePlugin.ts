@@ -4,7 +4,13 @@ export interface MyPluginOptions {
   some?: string
 }
 
-const effectModuleRegex = /\/\/ trace :: (.*?) -> Effect/
+const support = {
+  Effect: {
+    reg: /\/\/ trace :: (.*?) -> Effect/,
+    top: ["succeed", "chain", "map"],
+    end: ["tuple"]
+  }
+}
 
 export default function myTransformerPlugin(
   _program: ts.Program,
@@ -14,10 +20,14 @@ export default function myTransformerPlugin(
     before(ctx: ts.TransformationContext) {
       return (sourceFile: ts.SourceFile) => {
         let effectVar: string | undefined = undefined
-        const EffectMatches = effectModuleRegex.exec(sourceFile.getFullText())
+        let context: keyof typeof support | undefined = undefined
 
-        if (EffectMatches) {
-          effectVar = EffectMatches[1]
+        for (const k of Object.keys(support) as (keyof typeof support)[]) {
+          const match = support[k].reg.exec(sourceFile.getFullText())
+          if (match) {
+            effectVar = match[1]
+            context = k
+          }
         }
 
         const factory = ctx.factory
@@ -25,14 +35,15 @@ export default function myTransformerPlugin(
         function visitor(node: ts.Node): ts.Node {
           if (
             effectVar &&
+            context &&
             ts.isCallExpression(node) &&
             node.expression.getText().startsWith(`${effectVar}.`)
           ) {
             const { character, line } = sourceFile.getLineAndCharacterOfPosition(
               node.getStart()
             )
-            const supportedEnd = ["succeed", "chain", "map"]
-            const supportedTop = ["tuple"]
+            const supportedEnd = support[context].end
+            const supportedTop = support[context].top
             const methodsEnd = supportedEnd.map((s) => `${effectVar}.${s}`)
             const methodsTop = supportedTop.map((s) => `${effectVar}.${s}`)
             const text = node.expression.getText()
