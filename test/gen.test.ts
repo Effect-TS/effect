@@ -158,7 +158,7 @@ describe("Generator", () => {
       return { a, b, c }
     })
 
-    const program2 = T.gen(function* (_) {
+    const program2 = T.genM(function* (_) {
       const { a, b, c } = yield* _(program1)
       const d = yield* _(T.access((_: B) => _.b))
       const e = yield* _(
