@@ -17,6 +17,7 @@ import * as O from "../Option"
 // supervisor / scope
 import * as Scope from "../Scope"
 import * as Sup from "../Supervisor"
+import { AtomicNumber } from "../Support/AtomicNumber"
 // support
 import { AtomicReference } from "../Support/AtomicReference"
 import { defaultScheduler } from "../Support/Scheduler"
@@ -95,6 +96,8 @@ export const unsafeCurrentFiber = () => O.fromNullable(currentFiber.get)
 
 const noop = O.some(constVoid)
 
+export const executionTracesLength = new AtomicNumber(100)
+
 export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   readonly _tag = "RuntimeFiber"
   readonly state = new AtomicReference(initial<E, A>())
@@ -108,6 +111,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   forkScopeOverride?: Stack<O.Option<Scope.Scope<Exit.Exit<any, any>>>> = undefined
   scopeKey: Scope.Key | undefined = undefined
   executionTraces = new AtomicReference(L.empty<string>())
+  traceStatusStack: Stack<boolean> | undefined = new Stack(true)
 
   constructor(
     readonly fiberId: Fiber.FiberID,
@@ -128,7 +132,14 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
   addTrace(trace?: string) {
     if (trace) {
-      this.executionTraces.set(L.append_(this.executionTraces.get, trace))
+      const region = this.traceStatusStack?.value
+
+      if (region) {
+        if (this.executionTraces.get.length >= executionTracesLength.get) {
+          this.executionTraces.set(L.drop_(this.executionTraces.get, 1))
+        }
+        this.executionTraces.set(L.append_(this.executionTraces.get, trace))
+      }
     }
   }
 
@@ -836,6 +847,12 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                   case "Succeed": {
                     this.addTrace(current.trace)
                     current = this.nextInstr(current.val)
+                    break
+                  }
+
+                  case "Traced": {
+                    this.addTrace(current.trace)
+                    current = current.f[T._I]
                     break
                   }
 

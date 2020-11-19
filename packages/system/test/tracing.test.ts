@@ -2,12 +2,14 @@
 import * as T from "../src/Effect"
 import { pipe } from "../src/Function"
 
-const parseReg = /^(.*?):(\d+):(\d+)$/
-function parse(s: string) {
+const parseReg = /^(.*?):(\d+):(\d+):(.*?):(.*?)$/
+export function parse(s: string) {
   const m = parseReg.exec(s)
   if (m) {
     const parts = m[1].split("/")
-    return `${parts[parts.length - 2]}/${parts[parts.length - 1]}:${m[2]}:${m[3]}`
+    return `(${m[4]}:${m[5]}): ${parts[parts.length - 2]}/${parts[parts.length - 1]}:${
+      m[2]
+    }:${m[3]}`
   }
   return ``
 }
@@ -22,9 +24,10 @@ describe("Tracer", () => {
     )
 
     expect(traces).toEqual([
-      "test/tracing.test.ts:18:15",
-      "test/tracing.test.ts:18:29",
-      "test/tracing.test.ts:18:43"
+      "(Effect:tuple): test/tracing.test.ts:20:7",
+      "(Effect:succeed): test/tracing.test.ts:20:15",
+      "(Effect:succeed): test/tracing.test.ts:20:29",
+      "(Effect:succeed): test/tracing.test.ts:20:43"
     ])
   })
 })

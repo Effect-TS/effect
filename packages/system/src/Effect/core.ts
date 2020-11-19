@@ -27,6 +27,7 @@ import {
   ISupervise,
   ISuspend,
   ISuspendPartial,
+  ITraced,
   IYield
 } from "./primitives"
 
@@ -53,7 +54,7 @@ export function accessM<R0, R, E, A>(
  */
 export function chain<R1, E1, A1, A>(f: (a: A) => Effect<R1, E1, A1>, _trace?: string) {
   return <R, E>(val: Effect<R, E, A>): Effect<R & R1, E | E1, A1> =>
-    new IFlatMap(val, f)
+    new IFlatMap(val, f, _trace)
 }
 
 /**
@@ -327,3 +328,13 @@ export const unit: UIO<void> = succeed(undefined)
  * overhead.
  */
 export const yieldNow = new IYield()
+
+/**
+ * Marks self with the trace new _trace
+ */
+export function traceWith_<R, E, A>(
+  self: Effect<R, E, A>,
+  _trace?: string
+): Effect<R, E, A> {
+  return new ITraced(self, _trace)
+}

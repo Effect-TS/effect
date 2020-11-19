@@ -61,7 +61,9 @@ export default function myTransformerPlugin(
                   [
                     ...node.arguments,
                     factory.createStringLiteral(
-                      `${sourceFile.fileName}:${line + 1}:${character + 1}`
+                      `${sourceFile.fileName}:${line + 1}:${character + 1}:${context}:${
+                        supportedEnd[iEnd]
+                      }`
                     )
                   ]
                 ),
@@ -82,7 +84,9 @@ export default function myTransformerPlugin(
                   node.typeArguments,
                   [
                     factory.createStringLiteral(
-                      `${sourceFile.fileName}:${line + 1}:${character + 1}`
+                      `${sourceFile.fileName}:${line + 1}:${character + 1}:${context}:${
+                        supportedTop[iTop]
+                      }`
                     ),
                     ...node.arguments
                   ]

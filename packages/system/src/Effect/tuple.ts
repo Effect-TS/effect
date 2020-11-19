@@ -2,6 +2,7 @@ import { identity } from "../Function"
 import type { NonEmptyArray } from "../NonEmptyArray"
 import * as NA from "../NonEmptyArray"
 import type { _E, _R } from "../Utils"
+import { traceWith_ } from "./core"
 import type { Effect } from "./effect"
 import { foreach_ } from "./foreach_"
 import { foreachPar_ } from "./foreachPar_"
@@ -25,7 +26,7 @@ export function tuple<T extends NonEmptyArray<Effect<any, any, any>>>(
   ...t: T
 ): Effect<_R<T[number]>, _E<T[number]>, TupleA<T>> {
   if (typeof t[0] === "string") {
-    return foreach_(NA.tail(t), identity) as any
+    return traceWith_(foreach_(NA.tail(t), identity), t[0]) as any
   }
   return foreach_(t, identity) as any
 }
