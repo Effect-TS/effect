@@ -2,6 +2,7 @@
   "extends": "./tsconfig.base.json",
   "files": [],
   "compilerOptions": {
-    "baseUrl": "."
+    "baseUrl": ".",
+    "target": "ES2017"
   }
 }
