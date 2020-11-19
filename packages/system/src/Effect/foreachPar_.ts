@@ -2,7 +2,7 @@ import { flow } from "../Function"
 import { traceF, traceFrom, traceWith } from "../Tracing"
 import { chain_, effectTotal, suspend } from "./core"
 import type { Effect } from "./effect"
-import { traced, untraced } from "./executionTraces"
+import { untracedMask } from "./executionTraces"
 import { foreachUnitPar_ } from "./foreachUnitPar_"
 
 /**
@@ -18,26 +18,28 @@ export function foreachPar_<R, E, A, B>(
   const trace = traceF(() => flow(traceWith("Effect/foreachPar_"), traceFrom(f)))
   const arr = Array.from(as)
 
-  return chain_(
-    effectTotal<B[]>(() => []),
-    trace((array) => {
-      const fn = ([a, n]: [A, number]) =>
-        chain_(
-          suspend(() => traced(f(a))),
-          (b) =>
-            effectTotal(() => {
-              array[n] = b
-            })
-        )
-      return untraced(
-        chain_(
-          foreachUnitPar_(
-            arr.map((a, n) => [a, n] as [A, number]),
-            fn
-          ),
-          () => effectTotal(() => array)
-        )
+  return untracedMask(
+    trace(({ restore }) =>
+      chain_(
+        effectTotal<B[]>(() => []),
+        (array) => {
+          const fn = ([a, n]: [A, number]) =>
+            chain_(
+              suspend(() => restore(f(a))),
+              (b) =>
+                effectTotal(() => {
+                  array[n] = b
+                })
+            )
+          return chain_(
+            foreachUnitPar_(
+              arr.map((a, n) => [a, n] as [A, number]),
+              fn
+            ),
+            () => effectTotal(() => array)
+          )
+        }
       )
-    })
+    )
   )
 }

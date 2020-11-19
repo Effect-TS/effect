@@ -124,4 +124,23 @@ describe("Tracing", () => {
       "(Effect/andThen) tracing.test.ts:112:9"
     ])
   })
+  it("should trace foreachParN", async () => {
+    const a = await pipe(
+      [0, 1, 2],
+      T.foreachParN(2, (n) => T.succeed(n + 1)),
+      T.andThen(T.executionTraces),
+      T.map((s) =>
+        s.map((t) => {
+          const parts = t.file.split("/")
+          return `(${t.op}) ${parts[parts.length - 1]}`
+        })
+      ),
+      T.runPromise
+    )
+
+    expect(a).toEqual([
+      "(Effect/foreachParN) tracing.test.ts:130:9",
+      "(Effect/andThen) tracing.test.ts:131:9"
+    ])
+  })
 })

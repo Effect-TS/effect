@@ -1,3 +1,5 @@
+import { flow } from "../Function"
+import { traceF, traceFrom, traceWith } from "../Tracing"
 import type { Effect } from "./effect"
 import { foreachParN_ } from "./foreachParN_"
 
@@ -11,8 +13,11 @@ import { foreachParN_ } from "./foreachParN_"
  * no new effects will start and the fiber will complete as soon as the running
  * effects complete
  */
-export function foreachParN(n: number) {
-  return <A, R, E, B>(f: (a: A) => Effect<R, E, B>) => (
-    as: Iterable<A>
-  ): Effect<R, E, readonly B[]> => foreachParN_(n)(as, f)
+export function foreachParN<A, R, E, B>(
+  n: number,
+  f: (a: A) => Effect<R, E, B>
+): (as: Iterable<A>) => Effect<R, E, readonly B[]> {
+  const trace = traceF(() => flow(traceWith("Effect/foreachParN"), traceFrom(f)))
+  const g = trace(f)
+  return (as) => foreachParN_(n)(as, g)
 }
