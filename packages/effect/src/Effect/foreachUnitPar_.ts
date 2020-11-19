@@ -2,21 +2,19 @@ import * as A from "../Array"
 import type { Cause } from "../Cause/cause"
 import { Both, Empty } from "../Cause/cause"
 import * as Fiber from "../Fiber"
-import { flow, pipe } from "../Function"
+import { pipe } from "../Function"
 import { fork as managedFork, use_ as managedUse_ } from "../Managed/core"
 import { await as promiseWait } from "../Promise/await"
 import { fail as promiseFailure } from "../Promise/fail"
 import { make as promiseMake } from "../Promise/make"
 import { succeed as promiseSucceed } from "../Promise/succeed"
 import * as R from "../Ref"
-import { traceF, traceFrom, traceWith } from "../Tracing"
 import { asUnit } from "./asUnit"
 import { catchAll } from "./catchAll"
 import { chain, chain_, fork, halt, suspend, unit } from "./core"
 import * as D from "./do"
 import type { Effect } from "./effect"
 import { ensuring } from "./ensuring"
-import { traced, untraced } from "./executionTraces"
 import { fiberId } from "./fiberId"
 import { foreach_ } from "./foreach_"
 import { interruptible } from "./interruptible"
@@ -44,8 +42,6 @@ export function foreachUnitPar_<R, E, A>(
   as: Iterable<A>,
   f: (a: A) => Effect<R, E, any>
 ): Effect<R, E, void> {
-  const trace = traceF(() => flow(traceWith("Effect/foreachUnitPar_"), traceFrom(f)))
-
   const arr = Array.from(as)
   const size = arr.length
 
@@ -84,8 +80,7 @@ export function foreachUnitPar_<R, E, A>(
       uninterruptible(
         whenM(s.startTask)(
           pipe(
-            suspend(trace(() => f(a))),
-            traced,
+            suspend(() => f(a)),
             interruptible,
             tapCause((c) =>
               pipe(
@@ -147,7 +142,6 @@ export function foreachUnitPar_<R, E, A>(
         )
       )
     ),
-    asUnit,
-    untraced
+    asUnit
   )
 }

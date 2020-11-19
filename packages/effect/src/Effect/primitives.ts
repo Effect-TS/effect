@@ -7,7 +7,6 @@ import type { FiberRef } from "../FiberRef/fiberRef"
 import type * as O from "../Option"
 import type { Scope } from "../Scope"
 import type { Supervisor } from "../Supervisor"
-import type { ExecutionTrace } from "../Tracing"
 import type { XPure } from "../XPure"
 import type { Effect, FFI, IFail } from "./effect"
 import { Base } from "./effect"
@@ -25,7 +24,6 @@ export type Instruction =
   | IFork<any, any, any>
   | IInterruptStatus<any, any, any>
   | ICheckInterrupt<any, any, any>
-  | ICheckTracingStatus<any, any, any>
   | IFail<any>
   | IDescriptor<any, any, any>
   | IYield
@@ -41,8 +39,6 @@ export type Instruction =
   | IOverrideForkScope<any, any, any>
   | XPure<unknown, never, any, any, any>
   | FFI<any, any, any>
-  | ITracingStatus<any, any, any>
-  | IGetExecutionTraces
 
 export class IFlatMap<R, E, A, R1, E1, A1> extends Base<R & R1, E | E1, A1> {
   readonly _tag = "FlatMap"
@@ -60,38 +56,10 @@ export class ISucceed<A> extends Base<unknown, never, A> {
   }
 }
 
-export class ICheckTracingStatus<R, E, A> extends Base<R, E, A> {
-  readonly _tag = "CheckTracingStatus"
-
-  constructor(readonly f: (_: O.Option<number>) => Effect<R, E, A>) {
-    super()
-  }
-}
-
-export class IGetExecutionTraces extends Base<
-  unknown,
-  never,
-  readonly ExecutionTrace[]
-> {
-  readonly _tag = "GetExecutionTraces"
-
-  constructor() {
-    super()
-  }
-}
-
 export class IEffectPartial<E, A> extends Base<unknown, E, A> {
   readonly _tag = "EffectPartial"
 
   constructor(readonly effect: () => A, readonly onThrow: (u: unknown) => E) {
-    super()
-  }
-}
-
-export class ITracingStatus<R, E, A> extends Base<R, E, A> {
-  readonly _tag = "TracingStatus"
-
-  constructor(readonly effect: Effect<R, E, A>, readonly status: O.Option<number>) {
     super()
   }
 }

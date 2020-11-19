@@ -1,5 +1,3 @@
-import { flow } from "../Function"
-import { traceF, traceFrom, traceWith } from "../Tracing"
 import { chain_ } from "./core"
 import type { Effect } from "./effect"
 import { map_ } from "./map_"
@@ -13,14 +11,5 @@ export function zipWith_<R, E, A, R2, E2, A2, B>(
   b: Effect<R2, E2, A2>,
   f: (a: A, b: A2) => B
 ): Effect<R & R2, E | E2, B> {
-  const trace = traceF(() => flow(traceWith("Effect/zipWith_"), traceFrom(f)))
-  return chain_(
-    a,
-    trace((ra) =>
-      map_(
-        b,
-        trace((rb) => f(ra, rb))
-      )
-    )
-  )
+  return chain_(a, (ra) => map_(b, (rb) => f(ra, rb)))
 }
