@@ -790,7 +790,13 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                 switch (current._tag) {
                   case "FlatMap": {
                     const nested: T.Instruction = current.val[T._I]
-                    const k: (a: any) => T.Effect<any, any, any> = current.f
+                    const c = current
+                    const k: (a: any) => T.Effect<any, any, any> = c.trace
+                      ? (k) => {
+                          this.addTrace(c.trace)
+                          return c.f(k)
+                        }
+                      : c.f
 
                     switch (nested._tag) {
                       case "Succeed": {

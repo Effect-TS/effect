@@ -28,7 +28,8 @@ describe("Tracer", () => {
       "(Effect:tuple): test/tracing.test.ts:21:7",
       "(Effect:succeed): test/tracing.test.ts:21:15",
       "(Effect:succeed): test/tracing.test.ts:21:29",
-      "(Effect:succeed): test/tracing.test.ts:21:43"
+      "(Effect:succeed): test/tracing.test.ts:21:43",
+      "(Effect:map): test/tracing.test.ts:22:7"
     ])
   })
 })
