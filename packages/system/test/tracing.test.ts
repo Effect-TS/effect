@@ -1,8 +1,5 @@
 import * as T from "../src/Effect"
 import { pipe } from "../src/Function"
-import { globalTracingEnabled } from "../src/Tracing"
-
-globalTracingEnabled.set(true)
 
 describe("Tracing", () => {
   it("should trace", async () => {
@@ -31,11 +28,11 @@ describe("Tracing", () => {
     expect(a).toEqual([
       3,
       [
-        "(Effect/map) tracing.test.ts:11:9",
-        "(Effect/map) tracing.test.ts:12:9",
-        "(Effect/map) tracing.test.ts:13:9",
-        "(Effect/chain) tracing.test.ts:14:9",
-        "(Effect/tuple) tracing.test.ts:15:11"
+        "(Effect/map) tracing.test.ts:8:9",
+        "(Effect/map) tracing.test.ts:9:9",
+        "(Effect/map) tracing.test.ts:10:9",
+        "(Effect/chain) tracing.test.ts:11:9",
+        "(Effect/tuple) tracing.test.ts:12:11"
       ]
     ])
   })
@@ -57,8 +54,8 @@ describe("Tracing", () => {
     )
 
     expect(a).toEqual([
-      "(Effect/map) tracing.test.ts:47:9",
-      "(Effect/andThen) tracing.test.ts:48:9"
+      "(Effect/map) tracing.test.ts:44:9",
+      "(Effect/andThen) tracing.test.ts:45:9"
     ])
   })
   it("should not trace", async () => {
@@ -101,8 +98,8 @@ describe("Tracing", () => {
     )
 
     expect(a).toEqual([
-      "(Effect/foreach) tracing.test.ts:92:9",
-      "(Effect/andThen) tracing.test.ts:93:9"
+      "(Effect/foreach) tracing.test.ts:89:9",
+      "(Effect/andThen) tracing.test.ts:90:9"
     ])
   })
   it("should trace foreachPar", async () => {
@@ -120,8 +117,8 @@ describe("Tracing", () => {
     )
 
     expect(a).toEqual([
-      "(Effect/foreachPar) tracing.test.ts:111:9",
-      "(Effect/andThen) tracing.test.ts:112:9"
+      "(Effect/foreachPar) tracing.test.ts:108:9",
+      "(Effect/andThen) tracing.test.ts:109:9"
     ])
   })
   it("should trace foreachParN", async () => {
@@ -139,8 +136,8 @@ describe("Tracing", () => {
     )
 
     expect(a).toEqual([
-      "(Effect/foreachParN) tracing.test.ts:130:9",
-      "(Effect/andThen) tracing.test.ts:131:9"
+      "(Effect/foreachParN) tracing.test.ts:127:9",
+      "(Effect/andThen) tracing.test.ts:128:9"
     ])
   })
 })
