@@ -67,7 +67,7 @@ export function filterParN_(n: number) {
   return <A, R, E>(as: Iterable<A>, f: (a: A) => Effect<R, E, boolean>) =>
     pipe(
       as,
-      foreachParN(n)((a) => map_(f(a), (b) => (b ? O.some(a) : O.none))),
+      foreachParN(n, (a) => map_(f(a), (b) => (b ? O.some(a) : O.none))),
       map(compact)
     )
 }

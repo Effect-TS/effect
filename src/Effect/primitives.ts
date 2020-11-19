@@ -25,6 +25,7 @@ export type Instruction =
   | IFork<any, any, any>
   | IInterruptStatus<any, any, any>
   | ICheckInterrupt<any, any, any>
+  | ICheckTracingStatus<any, any, any>
   | IFail<any>
   | IDescriptor<any, any, any>
   | IYield
@@ -55,6 +56,14 @@ export class ISucceed<A> extends Base<unknown, never, A> {
   readonly _tag = "Succeed"
 
   constructor(readonly val: A) {
+    super()
+  }
+}
+
+export class ICheckTracingStatus<R, E, A> extends Base<R, E, A> {
+  readonly _tag = "CheckTracingStatus"
+
+  constructor(readonly f: (_: O.Option<number>) => Effect<R, E, A>) {
     super()
   }
 }
