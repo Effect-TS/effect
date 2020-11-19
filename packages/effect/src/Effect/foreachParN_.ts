@@ -1,14 +1,16 @@
 import { makeBy_ } from "../Array"
 import { interrupt } from "../Fiber"
-import { pipe, tuple } from "../Function"
+import { flow, pipe, tuple } from "../Function"
 import * as P from "../Promise"
 import * as Q from "../Queue"
+import { traceF, traceFrom, traceWith } from "../Tracing"
 import { bracket } from "./bracket"
 import { collectAll } from "./collectAll"
 import { chain, foldCauseM, fork, result } from "./core"
 import * as D from "./do"
 import { done } from "./done"
 import type { Effect } from "./effect"
+import { untracedMask } from "./executionTraces"
 import { foreach } from "./foreach"
 import { foreachUnit } from "./foreachUnit"
 import { forever } from "./forever"
@@ -25,62 +27,68 @@ export function foreachParN_(n: number) {
   return <A, R, E, B>(
     as: Iterable<A>,
     f: (a: A) => Effect<R, E, B>
-  ): Effect<R, E, readonly B[]> =>
-    pipe(
-      Q.makeBounded<readonly [P.Promise<E, B>, A]>(n),
-      bracket(
-        (q) =>
-          pipe(
-            D.do,
-            D.bind("pairs", () =>
+  ): Effect<R, E, readonly B[]> => {
+    const trace = traceF(() => flow(traceWith("foreachParN_"), traceFrom(f)))
+    return untracedMask(
+      trace(({ restore }) =>
+        pipe(
+          Q.makeBounded<readonly [P.Promise<E, B>, A]>(n),
+          bracket(
+            (q) =>
               pipe(
-                as,
-                foreach((a) =>
+                D.do,
+                D.bind("pairs", () =>
                   pipe(
-                    P.make<E, B>(),
-                    map((p) => tuple(p, a))
-                  )
-                )
-              )
-            ),
-            tap(({ pairs }) => pipe(pairs, foreachUnit(q.offer), fork)),
-            D.bind("fibers", ({ pairs }) =>
-              pipe(
-                makeBy_(n, () =>
-                  pipe(
-                    q.take,
-                    chain(([p, a]) =>
+                    as,
+                    foreach((a) =>
                       pipe(
-                        f(a),
-                        foldCauseM(
-                          (c) =>
-                            pipe(
-                              pairs,
-                              foreach(([promise]) => pipe(promise, P.halt(c)))
-                            ),
-                          (b) => pipe(p, P.succeed(b))
-                        )
+                        P.make<E, B>(),
+                        map((p) => tuple(p, a))
                       )
-                    ),
-                    forever,
-                    fork
+                    )
                   )
                 ),
-                collectAll
-              )
-            ),
-            D.bind("res", ({ fibers, pairs }) =>
-              pipe(
-                pairs,
-                foreach(([p]) => P.await(p)),
-                result,
-                tap(() => pipe(fibers, foreach(interrupt))),
-                chain(done)
-              )
-            ),
-            map(({ res }) => res)
-          ),
-        (q) => q.shutdown
+                tap(({ pairs }) => pipe(pairs, foreachUnit(q.offer), fork)),
+                D.bind("fibers", ({ pairs }) =>
+                  pipe(
+                    makeBy_(n, () =>
+                      pipe(
+                        q.take,
+                        chain(([p, a]) =>
+                          pipe(
+                            restore(f(a)),
+                            foldCauseM(
+                              (c) =>
+                                pipe(
+                                  pairs,
+                                  foreach(([promise]) => pipe(promise, P.halt(c)))
+                                ),
+                              (b) => pipe(p, P.succeed(b))
+                            )
+                          )
+                        ),
+                        forever,
+                        fork
+                      )
+                    ),
+                    collectAll
+                  )
+                ),
+                D.bind("res", ({ fibers, pairs }) =>
+                  pipe(
+                    pairs,
+                    foreach(([p]) => P.await(p)),
+                    result,
+                    tap(() => pipe(fibers, foreach(interrupt))),
+                    chain(done)
+                  )
+                ),
+                map(({ res }) => res)
+              ),
+            (q) => q.shutdown
+          )
+        )
       )
     )
+  }
 }
