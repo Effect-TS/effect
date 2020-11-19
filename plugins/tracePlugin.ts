@@ -7,8 +7,8 @@ export interface MyPluginOptions {
 const support = {
   Effect: {
     reg: /\/\/ trace :: (.*?) -> Effect/,
-    top: ["succeed", "chain", "map"],
-    end: ["tuple"]
+    top: ["tuple"],
+    end: ["succeed", "chain", "map"]
   }
 }
 

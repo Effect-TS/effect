@@ -253,6 +253,9 @@ export function result<R, E, A>(
  * Lift a pure value into an effect
  */
 export function succeed<A>(a: A, _trace?: string): Effect<unknown, never, A> {
+  if (_trace) {
+    console.log(_trace)
+  }
   return new ISucceed(a)
 }
 

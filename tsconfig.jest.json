@@ -3,7 +3,6 @@
   "files": [],
   "compilerOptions": {
     "baseUrl": ".",
-    "target": "ES2017",
-    "plugins": [{ "transform": "./plugins/tracePlugin.ts" }]
+    "target": "ES2017"
   }
 }
