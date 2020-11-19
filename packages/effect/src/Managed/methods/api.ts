@@ -3,6 +3,7 @@ import type { Cause } from "../../Cause"
 import * as C from "../../Cause"
 import type { HasClock } from "../../Clock"
 import type { Effect, Region } from "../../Effect"
+import { descriptor, supervised } from "../../Effect"
 import * as T from "../../Effect"
 import * as E from "../../Either"
 import * as Ex from "../../Exit"
@@ -19,6 +20,7 @@ import * as O from "../../Option"
 import * as P from "../../Promise"
 import * as R from "../../Record"
 import type { Schedule } from "../../Schedule"
+import { track } from "../../Supervisor"
 import type { UnionToIntersection } from "../../Utils"
 import {
   chain,
@@ -2581,3 +2583,36 @@ export const scope: Managed<unknown, never, Scope> = map_(
         )
     )
 )
+
+/**
+ * Locally installs a supervisor and an effect that succeeds with all the
+ * children that have been forked in the returned effect.
+ */
+export function withChildren<R, E, A>(
+  get: (io: T.Effect<unknown, never, A.Array<F.Runtime<any, any>>>) => Managed<R, E, A>
+): Managed<R, E, A> {
+  return unwrap(
+    T.map_(
+      track,
+      (supervisor) =>
+        new Managed(
+          supervised(supervisor)(
+            get(
+              T.chain_(supervisor.value, (children) =>
+                T.map_(descriptor, (d) => A.filter_(children, (_) => _.id !== d.id))
+              )
+            ).effect
+          )
+        )
+    )
+  )
+}
+
+/**
+ * Unwraps a `Managed` that is inside an `Effect`.
+ */
+export function unwrap<R, E, A>(
+  fa: T.Effect<R, E, Managed<R, E, A>>
+): Managed<R, E, A> {
+  return flatten(fromEffect(fa))
+}
