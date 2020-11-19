@@ -1,5 +1,3 @@
-import { flow } from "../Function"
-import { traceF, traceFrom, traceWith } from "../Tracing"
 import type { Effect } from "./effect"
 import type { ExecutionStrategy } from "./ExecutionStrategy"
 import { foreachExec_ } from "./foreachExec_"
@@ -15,8 +13,5 @@ export function foreachExec(
 ): <R, E, A, B>(
   f: (a: A) => Effect<R, E, B>
 ) => (as: Iterable<A>) => Effect<R, E, readonly B[]> {
-  return (f) => {
-    const trace = traceF(() => flow(traceWith("Effect/foreachExec_"), traceFrom(f)))
-    return (as) => foreachExec_(es, as, trace(f))
-  }
+  return (f) => (as) => foreachExec_(es, as, f)
 }
