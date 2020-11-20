@@ -18,8 +18,6 @@ export default function tracingPlugin(_program: ts.Program, _opts: TracingOption
 
         function visitor(node: ts.Node): ts.Node {
           if (tracingEnabled && ts.isCallExpression(node)) {
-            const localText = node.expression.getText()
-
             const symbol = checker.getSymbolAtLocation(node.expression)
             const argsToTrace =
               symbol
@@ -33,8 +31,6 @@ export default function tracingPlugin(_program: ts.Program, _opts: TracingOption
                     .map((e) => e.comment)
                 )
                 .reduce((flatten, entry) => flatten.concat(entry), []) || []
-
-            if (localText.indexOf("bimap") > -1) console.log(localText, argsToTrace)
 
             if (argsToTrace.length > 0) {
               const name = _opts.tracingFactory || "T"
