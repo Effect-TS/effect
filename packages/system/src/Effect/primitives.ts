@@ -24,6 +24,7 @@ export type Instruction =
   | IFork<any, any, any>
   | IInterruptStatus<any, any, any>
   | ICheckInterrupt<any, any, any>
+  | ICheckExecutionTraces<any, any, any>
   | IFail<any>
   | IDescriptor<any, any, any>
   | IYield
@@ -52,6 +53,14 @@ export class ISucceed<A> extends Base<unknown, never, A> {
   readonly _tag = "Succeed"
 
   constructor(readonly val: A) {
+    super()
+  }
+}
+
+export class ICheckExecutionTraces<R, E, A> extends Base<R, E, A> {
+  readonly _tag = "CheckExecutionTraces"
+
+  constructor(readonly f: (traces: readonly string[]) => Effect<R, E, A>) {
     super()
   }
 }
@@ -93,13 +102,9 @@ export class IFold<R, E, A, R2, E2, A2, R3, E3, A3> extends Base<
   constructor(
     readonly value: Effect<R, E, A>,
     readonly failure: (cause: Cause.Cause<E>) => Effect<R2, E2, A2>,
-    readonly success: (a: A) => Effect<R3, E3, A3>
+    readonly apply: (a: A) => Effect<R3, E3, A3>
   ) {
     super()
-  }
-
-  apply(v: A): Effect<R & R2 & R3, E2 | E3, A2 | A3> {
-    return this.success(v)
   }
 }
 

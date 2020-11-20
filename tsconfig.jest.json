@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.base.json",
+  "files": [],
+  "compilerOptions": {
+    "baseUrl": ".",
+    "target": "ES2017",
+    "plugins": [
+      {
+        "transform": "./plugins/tracePlugin.ts",
+        "tracingFactory": "__TRACING",
+        "tracingModule": "@effect-ts/core/Tracing"
+      }
+    ],
+    "incremental": false
+  }
+}

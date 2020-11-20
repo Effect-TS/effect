@@ -40,7 +40,13 @@
       "@effect-ts/system": ["packages/system/build"],
       "@effect-ts/core/*": ["packages/core/build/*"],
       "@effect-ts/core": ["packages/core/build"]
-    }
+    },
+    "plugins": [
+      {
+        "transform": "./plugins/tracePlugin.ts"
+      }
+    ],
+    "target": "ES2017"
   },
   "exclude": ["node_modules", "build", "lib"]
 }
