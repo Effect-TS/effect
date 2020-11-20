@@ -75,6 +75,7 @@
       "Support/OneShot",
       "Support/Scheduler",
       "Sync",
+      "Tracing",
       "Utils",
       "XPure"
     ]

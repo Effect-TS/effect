@@ -1,4 +1,5 @@
-import { succeed, traceAs } from "./core"
+import { traceAs } from "../Tracing"
+import { succeed } from "./core"
 import type { Effect } from "./effect"
 import { fail } from "./fail"
 import { foldM_ } from "./foldM_"

@@ -1,4 +1,5 @@
-import { chain_, succeed, traceAs } from "./core"
+import { traceAs } from "../Tracing"
+import { chain_, succeed } from "./core"
 import type { Effect } from "./effect"
 
 /**

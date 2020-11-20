@@ -1,4 +1,5 @@
-import { chain, succeed, traceAs } from "./core"
+import { traceAs } from "../Tracing"
+import { chain, succeed } from "./core"
 
 /**
  * Returns an effect whose success is mapped by the specified `f` function.
