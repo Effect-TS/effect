@@ -1,8 +1,8 @@
+export { traceAs, traceF_ } from "../Tracing"
+
 // traceConfig: Effect map [0]
 // traceConfig: Effect chain [0]
 // traceConfig: Effect bimap [0,1]
-
-export { traceAs, traceF_ } from "../Tracing"
 
 // codegen:start {preset: barrel, include: ./*.ts}
 export * from "./absolve"

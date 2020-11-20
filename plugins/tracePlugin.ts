@@ -40,6 +40,8 @@ export default function tracingPlugin(_program: ts.Program, _opts: TracingOption
               const nameImportParts = namedImport.getText().split(" ")
               const name = nameImportParts[nameImportParts.length - 1]
 
+              console.log(matches)
+
               matches.forEach((s) => {
                 const parts = s.split(" ")
 
