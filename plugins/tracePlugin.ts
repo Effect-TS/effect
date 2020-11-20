@@ -1,8 +1,11 @@
+import * as path from "path"
 import * as ts from "typescript"
 
 export interface TracingOptions {
   tracingFactory?: string
+  tracingFileNameFactory?: string
   tracingModule?: string
+  relativeToRoot?: string
 }
 
 export default function tracingPlugin(_program: ts.Program, _opts: TracingOptions) {
@@ -12,6 +15,10 @@ export default function tracingPlugin(_program: ts.Program, _opts: TracingOption
         const checker = _program.getTypeChecker()
         let tracingModule = _opts.tracingModule || "@effect-ts/core/Tracing"
         const tracingFactory = _opts.tracingFactory || "__TRACER"
+        const tracingFileNameFactory =
+          _opts.tracingFileNameFactory || "__TRACER_FILE_NAME"
+        const entryDir = path.join(__dirname, _opts.relativeToRoot || "../")
+        const file = sourceFile.fileName.replace(entryDir, "")
 
         const factory = ctx.factory
 
@@ -81,10 +88,12 @@ export default function tracingPlugin(_program: ts.Program, _opts: TracingOption
                       undefined,
                       [
                         ts.visitEachChild(node.arguments[i], visitor, ctx),
-                        factory.createStringLiteral(
-                          `${sourceFile.fileName}:${line + 1}:${
-                            character + 1
-                          }:${context}:${method}`
+                        factory.createBinaryExpression(
+                          factory.createIdentifier(tracingFileNameFactory),
+                          factory.createToken(ts.SyntaxKind.PlusToken),
+                          factory.createStringLiteral(
+                            `:${line + 1}:${character + 1}:${context}:${method}`
+                          )
                         )
                       ]
                     )
@@ -101,6 +110,20 @@ export default function tracingPlugin(_program: ts.Program, _opts: TracingOption
         return ts.visitEachChild(
           tracingEnabled
             ? factory.updateSourceFile(sourceFile, [
+                factory.createVariableStatement(
+                  undefined,
+                  factory.createVariableDeclarationList(
+                    [
+                      factory.createVariableDeclaration(
+                        factory.createIdentifier(tracingFileNameFactory),
+                        undefined,
+                        undefined,
+                        factory.createStringLiteral(file)
+                      )
+                    ],
+                    ts.NodeFlags.Const
+                  )
+                ),
                 factory.createImportDeclaration(
                   undefined,
                   undefined,

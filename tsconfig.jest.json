@@ -8,7 +8,9 @@
       {
         "transform": "./plugins/tracePlugin.ts",
         "tracingFactory": "__TRACING",
-        "tracingModule": "@effect-ts/core/Tracing"
+        "tracingFileNameFactory": "__TRACING_FILE_NAME",
+        "tracingModule": "@effect-ts/core/Tracing",
+        "relativeToRoot": "../"
       }
     ],
     "incremental": false
