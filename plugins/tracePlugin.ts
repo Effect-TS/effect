@@ -2,8 +2,6 @@ import * as path from "path"
 import * as ts from "typescript"
 
 export interface TracingOptions {
-  tracingFactory?: string
-  tracingFileNameFactory?: string
   tracingModule?: string
   relativeToRoot?: string
 }
@@ -14,13 +12,13 @@ export default function tracingPlugin(_program: ts.Program, _opts: TracingOption
       return (sourceFile: ts.SourceFile) => {
         const checker = _program.getTypeChecker()
         let tracingModule = _opts.tracingModule || "@effect-ts/core/Tracing"
-        const tracingFactory = _opts.tracingFactory || "__TRACER"
-        const tracingFileNameFactory =
-          _opts.tracingFileNameFactory || "__TRACER_FILE_NAME"
         const entryDir = path.join(__dirname, _opts.relativeToRoot || "../")
         const file = sourceFile.fileName.replace(entryDir, "")
 
         const factory = ctx.factory
+
+        const tracingFactory = factory.createUniqueName("TRACER")
+        const tracingFileNameFactory = factory.createUniqueName("FILE_NAME")
 
         const traceRegex = /\/\/ trace: on/
         const overrideRegex = /\/\/ tracingModule: (.*)/
@@ -82,14 +80,14 @@ export default function tracingPlugin(_program: ts.Program, _opts: TracingOption
 
                     return factory.createCallExpression(
                       factory.createPropertyAccessExpression(
-                        factory.createIdentifier(tracingFactory),
+                        tracingFactory,
                         factory.createIdentifier("traceF_")
                       ),
                       undefined,
                       [
                         ts.visitEachChild(node.arguments[i], visitor, ctx),
                         factory.createBinaryExpression(
-                          factory.createIdentifier(tracingFileNameFactory),
+                          tracingFileNameFactory,
                           factory.createToken(ts.SyntaxKind.PlusToken),
                           factory.createStringLiteral(
                             `:${line + 1}:${character + 1}:${context}:${method}`
@@ -115,7 +113,7 @@ export default function tracingPlugin(_program: ts.Program, _opts: TracingOption
                   factory.createVariableDeclarationList(
                     [
                       factory.createVariableDeclaration(
-                        factory.createIdentifier(tracingFileNameFactory),
+                        tracingFileNameFactory,
                         undefined,
                         undefined,
                         factory.createStringLiteral(file)
@@ -130,9 +128,7 @@ export default function tracingPlugin(_program: ts.Program, _opts: TracingOption
                   factory.createImportClause(
                     false,
                     undefined,
-                    factory.createNamespaceImport(
-                      factory.createIdentifier(tracingFactory)
-                    )
+                    factory.createNamespaceImport(tracingFactory)
                   ),
                   factory.createStringLiteral(tracingModule)
                 ),

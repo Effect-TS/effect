@@ -7,12 +7,9 @@
     "plugins": [
       {
         "transform": "./plugins/tracePlugin.ts",
-        "tracingFactory": "__TRACING",
-        "tracingFileNameFactory": "__TRACING_FILE_NAME",
         "tracingModule": "@effect-ts/core/Tracing",
         "relativeToRoot": "../"
       }
-    ],
-    "incremental": false
+    ]
   }
 }
