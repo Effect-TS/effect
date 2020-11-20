@@ -4,6 +4,9 @@ import type { Effect } from "./effect"
 
 /**
  * Returns an effect whose success is mapped by the specified `f` function.
+ *
+ * @module Effect
+ * @trace 1
  */
 export function map_<R, E, A, B>(_: Effect<R, E, A>, f: (a: A) => B) {
   return chain_(

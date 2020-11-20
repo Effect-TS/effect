@@ -1,6 +1,8 @@
 import * as ts from "typescript"
 
-export interface TracingOptions {}
+export interface TracingOptions {
+  tracingFactory: string
+}
 
 export const traceRegex = /\/\/ trace: on/
 
@@ -9,70 +11,56 @@ export default function tracingPlugin(_program: ts.Program, _opts: TracingOption
     before(ctx: ts.TransformationContext) {
       return (sourceFile: ts.SourceFile) => {
         const checker = _program.getTypeChecker()
-        const autoConfig = {} as Record<
-          string,
-          { name: string; context: string; trace: number[] }
-        >
 
         const factory = ctx.factory
 
         const tracingEnabled = traceRegex.test(sourceFile.getFullText())
 
         function visitor(node: ts.Node): ts.Node {
-          if (ts.isImportDeclaration(node) && tracingEnabled) {
-            const clauses = node.importClause
-            const namedImport = clauses?.getChildAt(0)
-
-            if (namedImport && ts.isNamespaceImport(namedImport)) {
-              const type = checker.getTypeAtLocation(namedImport)
-              const sym = type.getSymbol()
-              const matches: string[] = []
-              if (sym) {
-                sym.declarations.forEach((d) => {
-                  const traceConfigRegex = new RegExp(`// traceConfig: (.*)`, "gm")
-                  let match = traceConfigRegex.exec(d.getText())
-                  while (match != null) {
-                    matches.push(match[1])
-                    match = traceConfigRegex.exec(d.getText())
-                  }
-                })
-              }
-              const nameImportParts = namedImport.getText().split(" ")
-              const name = nameImportParts[nameImportParts.length - 1]
-
-              console.log(matches)
-
-              matches.forEach((s) => {
-                const parts = s.split(" ")
-
-                const context = parts[0]
-                const fn = parts[1]
-                const trace = JSON.parse(parts[2])
-
-                autoConfig[`${name}.${fn}`] = {
-                  name,
-                  context,
-                  trace
-                }
-              })
-            }
-          }
-
-          if (ts.isCallExpression(node)) {
+          if (tracingEnabled && ts.isCallExpression(node)) {
             const localText = node.expression.getText()
-            const localConfig = autoConfig[localText]
 
-            if (localConfig && localText !== "hasOwnProperty") {
-              const { context, name, trace } = localConfig
+            const symbol = checker.getSymbolAtLocation(node.expression)
+            const argsToTrace =
+              symbol
+                ?.getDeclarations()
+                ?.map((e) =>
+                  ts
+                    .getAllJSDocTags(
+                      e,
+                      (t): t is ts.JSDocTag => t.tagName.getText() === "trace"
+                    )
+                    .map((e) => e.comment)
+                )
+                .reduce((flatten, entry) => flatten.concat(entry), []) || []
 
-              const text = node.expression.getText()
-              const method = text.substr(name.length + 1)
+            if (localText.indexOf("bimap") > -1) console.log(localText, argsToTrace)
+
+            if (argsToTrace.length > 0) {
+              const name = _opts.tracingFactory || "T"
+              const method =
+                symbol
+                  ?.getDeclarations()
+                  ?.map((e) => ts.getNameOfDeclaration(e)?.getText())
+                  .filter((name) => name && name?.length > 0)[0] || "unknown"
+              const context =
+                symbol
+                  ?.getDeclarations()
+                  ?.map((e) =>
+                    ts
+                      .getAllJSDocTags(
+                        e,
+                        (t): t is ts.JSDocTag => t.tagName.getText() === "module"
+                      )
+                      .map((e) => e.comment)
+                  )
+                  .reduce((flatten, entry) => flatten.concat(entry), [])[0] || "unknown"
 
               return factory.createCallExpression(
                 node.expression,
                 node.typeArguments,
                 node.arguments.map((x, i) => {
-                  if (trace.includes(i)) {
+                  if (argsToTrace.includes("all") || argsToTrace.includes("" + i)) {
                     const {
                       character,
                       line
