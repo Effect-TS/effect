@@ -29,7 +29,8 @@ describe("Tracer", () => {
       "(Effect:succeed): test/tracing.test.ts:21:15",
       "(Effect:succeed): test/tracing.test.ts:21:29",
       "(Effect:succeed): test/tracing.test.ts:21:43",
-      "(Effect:map): test/tracing.test.ts:22:7"
+      "(Effect:map): test/tracing.test.ts:22:7",
+      "(Effect:andThen): test/tracing.test.ts:23:7"
     ])
   })
 })

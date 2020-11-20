@@ -8,7 +8,7 @@ const support = {
   Effect: {
     reg: /\/\/ trace :: (.*?) -> Effect/,
     top: ["tuple"],
-    end: ["succeed", "chain", "map"]
+    end: ["succeed", "chain", "chain_", "map", "map_", "andThen", "andThen_"]
   }
 }
 

@@ -64,9 +64,10 @@ export function chain<R1, E1, A1, A>(f: (a: A) => Effect<R1, E1, A1>, _trace?: s
  */
 export function chain_<R, E, A, R1, E1, A1>(
   val: Effect<R, E, A>,
-  f: (a: A) => Effect<R1, E1, A1>
+  f: (a: A) => Effect<R1, E1, A1>,
+  _trace?: string
 ): Effect<R & R1, E | E1, A1> {
-  return new IFlatMap(val, f)
+  return new IFlatMap(val, f, _trace)
 }
 
 /**
