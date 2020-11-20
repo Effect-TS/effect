@@ -44,15 +44,6 @@
     "plugins": [
       {
         "transform": "./plugins/tracePlugin.ts"
-        //"custom": [
-        //  {
-        //    "context": "Managed",
-        //    "reg": "// trace :: (.*?) -> Managed",
-        //    "fns": {
-        //      "map": [0]
-        //    }
-        //  }
-        //]
       }
     ],
     "target": "ES2017"

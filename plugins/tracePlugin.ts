@@ -1,12 +1,15 @@
 import * as ts from "typescript"
 
 export interface TracingOptions {
-  custom?: [{ context: string; reg: string; fns: Record<string, number[]> }]
+  custom?: [{ context: string; regs: string[]; fns: Record<string, number[]> }]
 }
 
 const base = {
   Effect: {
-    reg: /\/\/ trace :: (.*?) -> Effect/,
+    regs: [
+      /\/\/ trace :: (.*?) -> Effect/,
+      new RegExp(`import \\* as (.*?) from "|'@effect-ts\\/core\\/Effect"|'`)
+    ],
     fns: {
       map: [0],
       bimap: [0, 1]
@@ -19,7 +22,9 @@ export default function tracingPlugin(_program: ts.Program, _opts: TracingOption
   if (_opts.custom) {
     for (const k of _opts.custom) {
       support[k.context] = {
-        reg: new RegExp(k.reg),
+        reg: support[k.context]
+          ? [...support[k.context].regs, ...k.regs.map((r) => new RegExp(r))]
+          : k.regs.map((r) => new RegExp(r)),
         fns: {
           ...(support[k.context] ? support[k.context].fns : {}),
           ...k.fns
@@ -34,10 +39,12 @@ export default function tracingPlugin(_program: ts.Program, _opts: TracingOption
         let context: keyof typeof support | undefined = undefined
 
         for (const k of Object.keys(support) as (keyof typeof support)[]) {
-          const match = support[k].reg.exec(sourceFile.getFullText())
-          if (match) {
-            effectVar = match[1]
-            context = k
+          for (const r of support[k].regs) {
+            const match = r.exec(sourceFile.getFullText())
+            if (match) {
+              effectVar = match[1]
+              context = k
+            }
           }
         }
 
