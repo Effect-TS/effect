@@ -1,73 +1,76 @@
 import * as ts from "typescript"
 
-export interface TracingOptions {
-  custom?: [{ context: string; regs: string[]; fns: Record<string, number[]> }]
-}
+export interface TracingOptions {}
 
-const base = {
-  Effect: {
-    regs: [
-      /\/\/ trace :: (.*?) -> Effect/,
-      new RegExp(`import \\* as (.*?) from "|'@effect-ts\\/core\\/Effect"|'`)
-    ],
-    fns: {
-      map: [0],
-      bimap: [0, 1]
-    }
-  }
-}
+export const traceRegex = /\/\/ trace: on/
 
 export default function tracingPlugin(_program: ts.Program, _opts: TracingOptions) {
-  const support = { ...base }
-  if (_opts.custom) {
-    for (const k of _opts.custom) {
-      support[k.context] = {
-        reg: support[k.context]
-          ? [...support[k.context].regs, ...k.regs.map((r) => new RegExp(r))]
-          : k.regs.map((r) => new RegExp(r)),
-        fns: {
-          ...(support[k.context] ? support[k.context].fns : {}),
-          ...k.fns
-        }
-      }
-    }
-  }
   return {
     before(ctx: ts.TransformationContext) {
       return (sourceFile: ts.SourceFile) => {
-        let effectVar: string | undefined = undefined
-        let context: keyof typeof support | undefined = undefined
-
-        for (const k of Object.keys(support) as (keyof typeof support)[]) {
-          for (const r of support[k].regs) {
-            const match = r.exec(sourceFile.getFullText())
-            if (match) {
-              effectVar = match[1]
-              context = k
-            }
-          }
-        }
+        const checker = _program.getTypeChecker()
+        const autoConfig = {} as Record<
+          string,
+          { name: string; context: string; trace: number[] }
+        >
 
         const factory = ctx.factory
 
-        function visitor(node: ts.Node): ts.Node {
-          if (
-            effectVar &&
-            context &&
-            ts.isCallExpression(node) &&
-            node.expression.getText().startsWith(`${effectVar}.`)
-          ) {
-            const text = node.expression.getText()
-            const method = text.substr(effectVar.length + 1)
+        const tracingEnabled = traceRegex.test(sourceFile.getFullText())
 
-            if (support[context].fns[method]) {
-              const replace = support[context].fns[method] as number[]
-              const v = effectVar
+        function visitor(node: ts.Node): ts.Node {
+          if (ts.isImportDeclaration(node) && tracingEnabled) {
+            const clauses = node.importClause
+            const namedImport = clauses?.getChildAt(0)
+
+            if (namedImport && ts.isNamespaceImport(namedImport)) {
+              const type = checker.getTypeAtLocation(namedImport)
+              const sym = type.getSymbol()
+              const matches: string[] = []
+              if (sym) {
+                sym.declarations.forEach((d) => {
+                  const traceConfigRegex = new RegExp(`// traceConfig: (.*)`, "gm")
+                  let match = traceConfigRegex.exec(d.getText())
+                  while (match != null) {
+                    matches.push(match[1])
+                    match = traceConfigRegex.exec(d.getText())
+                  }
+                })
+              }
+              const nameImportParts = namedImport.getText().split(" ")
+              const name = nameImportParts[nameImportParts.length - 1]
+
+              matches.forEach((s) => {
+                const parts = s.split(" ")
+
+                const context = parts[0]
+                const fn = parts[1]
+                const trace = JSON.parse(parts[2])
+
+                autoConfig[`${name}.${fn}`] = {
+                  name,
+                  context,
+                  trace
+                }
+              })
+            }
+          }
+
+          if (ts.isCallExpression(node)) {
+            const localText = node.expression.getText()
+            const localConfig = autoConfig[localText]
+
+            if (localConfig && localText !== "hasOwnProperty") {
+              const { context, name, trace } = localConfig
+
+              const text = node.expression.getText()
+              const method = text.substr(name.length + 1)
+
               return factory.createCallExpression(
                 node.expression,
                 node.typeArguments,
                 node.arguments.map((x, i) => {
-                  if (replace.includes(i)) {
+                  if (trace.includes(i)) {
                     const {
                       character,
                       line
@@ -77,7 +80,7 @@ export default function tracingPlugin(_program: ts.Program, _opts: TracingOption
 
                     return factory.createCallExpression(
                       factory.createPropertyAccessExpression(
-                        factory.createIdentifier(v),
+                        factory.createIdentifier(name),
                         factory.createIdentifier("traceF_")
                       ),
                       undefined,

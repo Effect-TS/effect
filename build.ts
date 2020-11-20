@@ -19,4 +19,4 @@ export const res = ts.transpileModule(
 //  path.join(__dirname, "packages/system/test/tracing-built.test.ts"),
 //  res.outputText
 //)
-console.log(res.outputText)
+//console.log(res.outputText)

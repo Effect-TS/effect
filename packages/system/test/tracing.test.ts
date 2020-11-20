@@ -1,4 +1,4 @@
-// trace :: T -> Effect
+// trace: on
 
 import * as T from "../src/Effect"
 import { identity, pipe } from "../src/Function"

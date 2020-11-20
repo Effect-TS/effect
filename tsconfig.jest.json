@@ -4,6 +4,7 @@
   "compilerOptions": {
     "baseUrl": ".",
     "target": "ES2017",
-    "plugins": [{ "transform": "./plugins/tracePlugin.ts" }]
+    "plugins": [{ "transform": "./plugins/tracePlugin.ts" }],
+    "incremental": false
   }
 }
