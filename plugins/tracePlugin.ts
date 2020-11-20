@@ -1,10 +1,10 @@
 import * as ts from "typescript"
 
-export interface MyPluginOptions {
-  some?: string
+export interface TracingOptions {
+  custom?: [{ context: string; reg: string; fns: Record<string, number[]> }]
 }
 
-const support = {
+const base = {
   Effect: {
     reg: /\/\/ trace :: (.*?) -> Effect/,
     fns: {
@@ -14,10 +14,19 @@ const support = {
   }
 }
 
-export default function myTransformerPlugin(
-  _program: ts.Program,
-  _opts: MyPluginOptions
-) {
+export default function tracingPlugin(_program: ts.Program, _opts: TracingOptions) {
+  const support = { ...base }
+  if (_opts.custom) {
+    for (const k of _opts.custom) {
+      support[k.context] = {
+        reg: new RegExp(k.reg),
+        fns: {
+          ...(support[k.context] ? support[k.context].fns : {}),
+          ...k.fns
+        }
+      }
+    }
+  }
   return {
     before(ctx: ts.TransformationContext) {
       return (sourceFile: ts.SourceFile) => {
