@@ -43,9 +43,9 @@
     },
     "plugins": [
       {
-        "transform": "./plugins/tracePlugin.ts",
+        "transform": "./packages/tracing-plugin/src/index.ts",
         "tracingModule": "@effect-ts/core/Tracing",
-        "relativeToRoot": "../"
+        "relativeToRoot": "../../../"
       }
     ],
     "target": "ES2017"

@@ -4,6 +4,5 @@
   "compilerOptions": {
     "baseUrl": ".",
     "target": "ES2017"
-  },
-  "include": ["build.ts", "plugins/tracePlugin.ts"]
+  }
 }
