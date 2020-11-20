@@ -1,20 +1,30 @@
 import * as ts from "typescript"
 
 export interface TracingOptions {
-  tracingFactory: string
+  tracingFactory?: string
+  tracingModule?: string
 }
-
-export const traceRegex = /\/\/ trace: on/
 
 export default function tracingPlugin(_program: ts.Program, _opts: TracingOptions) {
   return {
     before(ctx: ts.TransformationContext) {
       return (sourceFile: ts.SourceFile) => {
         const checker = _program.getTypeChecker()
+        let tracingModule = _opts.tracingModule || "@effect-ts/core/Tracing"
+        const tracingFactory = _opts.tracingFactory || "__TRACER"
 
         const factory = ctx.factory
 
+        const traceRegex = /\/\/ trace: on/
+        const overrideRegex = /\/\/ tracingModule: (.*)/
+
         const tracingEnabled = traceRegex.test(sourceFile.getFullText())
+
+        const overrideMatches = overrideRegex.exec(sourceFile.getFullText())
+
+        if (overrideMatches) {
+          tracingModule = overrideMatches[1]
+        }
 
         function visitor(node: ts.Node): ts.Node {
           if (tracingEnabled && ts.isCallExpression(node)) {
@@ -33,7 +43,6 @@ export default function tracingPlugin(_program: ts.Program, _opts: TracingOption
                 .reduce((flatten, entry) => flatten.concat(entry), []) || []
 
             if (argsToTrace.length > 0) {
-              const name = _opts.tracingFactory || "T"
               const method =
                 symbol
                   ?.getDeclarations()
@@ -66,7 +75,7 @@ export default function tracingPlugin(_program: ts.Program, _opts: TracingOption
 
                     return factory.createCallExpression(
                       factory.createPropertyAccessExpression(
-                        factory.createIdentifier(name),
+                        factory.createIdentifier(tracingFactory),
                         factory.createIdentifier("traceF_")
                       ),
                       undefined,
@@ -88,7 +97,28 @@ export default function tracingPlugin(_program: ts.Program, _opts: TracingOption
 
           return ts.visitEachChild(node, visitor, ctx)
         }
-        return ts.visitEachChild(sourceFile, visitor, ctx)
+
+        return ts.visitEachChild(
+          tracingEnabled
+            ? factory.updateSourceFile(sourceFile, [
+                factory.createImportDeclaration(
+                  undefined,
+                  undefined,
+                  factory.createImportClause(
+                    false,
+                    undefined,
+                    factory.createNamespaceImport(
+                      factory.createIdentifier(tracingFactory)
+                    )
+                  ),
+                  factory.createStringLiteral(tracingModule)
+                ),
+                ...sourceFile.statements
+              ])
+            : sourceFile,
+          visitor,
+          ctx
+        )
       }
     }
   }

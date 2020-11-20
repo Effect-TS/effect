@@ -1,4 +1,5 @@
 // trace: on
+// tracingModule: ../src/Tracing
 
 import * as T from "../src/Effect"
 import { identity, pipe } from "../src/Function"
@@ -26,8 +27,8 @@ describe("Tracer", () => {
     )
 
     expect(traces).toEqual([
-      "(Effect:map): test/tracing.test.ts:22:13",
-      "(Effect:bimap): test/tracing.test.ts:23:25"
+      "(Effect:map): test/tracing.test.ts:23:13",
+      "(Effect:bimap): test/tracing.test.ts:24:25"
     ])
   })
 })
