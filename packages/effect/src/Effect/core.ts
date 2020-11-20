@@ -10,6 +10,7 @@ import type { Supervisor } from "../Supervisor"
 import type { FailureReporter } from "."
 import type { Effect, IO, RIO, UIO } from "./effect"
 import {
+  ICheckExecutionTraces,
   ICheckInterrupt,
   IDescriptor,
   IEffectAsync,
@@ -85,6 +86,16 @@ export function checkInterruptible<R, E, A>(
   f: (_: InterruptStatus) => Effect<R, E, A>
 ): Effect<R, E, A> {
   return new ICheckInterrupt(f)
+}
+
+/**
+ * Checks the interrupt status, and produces the effect returned by the
+ * specified callback.
+ */
+export function checkExecutionTraces<R, E, A>(
+  f: (_: readonly string[]) => Effect<R, E, A>
+): Effect<R, E, A> {
+  return new ICheckExecutionTraces(f)
 }
 
 /**
