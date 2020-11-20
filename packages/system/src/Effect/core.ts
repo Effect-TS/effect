@@ -27,7 +27,6 @@ import {
   ISupervise,
   ISuspend,
   ISuspendPartial,
-  ITraced,
   IYield
 } from "./primitives"
 
@@ -52,9 +51,9 @@ export function accessM<R0, R, E, A>(
  * the passing of its value to the specified continuation function `f`,
  * followed by the effect that it returns.
  */
-export function chain<R1, E1, A1, A>(f: (a: A) => Effect<R1, E1, A1>, _trace?: string) {
+export function chain<R1, E1, A1, A>(f: (a: A) => Effect<R1, E1, A1>) {
   return <R, E>(val: Effect<R, E, A>): Effect<R & R1, E | E1, A1> =>
-    new IFlatMap(val, f, _trace)
+    new IFlatMap(val, f)
 }
 
 /**
@@ -64,10 +63,9 @@ export function chain<R1, E1, A1, A>(f: (a: A) => Effect<R1, E1, A1>, _trace?: s
  */
 export function chain_<R, E, A, R1, E1, A1>(
   val: Effect<R, E, A>,
-  f: (a: A) => Effect<R1, E1, A1>,
-  _trace?: string
+  f: (a: A) => Effect<R1, E1, A1>
 ): Effect<R & R1, E | E1, A1> {
-  return new IFlatMap(val, f, _trace)
+  return new IFlatMap(val, f)
 }
 
 /**
@@ -265,8 +263,8 @@ export function result<R, E, A>(
 /**
  * Lift a pure value into an effect
  */
-export function succeed<A>(a: A, _trace?: string): Effect<unknown, never, A> {
-  return new ISucceed(a, _trace)
+export function succeed<A>(a: A): Effect<unknown, never, A> {
+  return new ISucceed(a)
 }
 
 /**
@@ -331,11 +329,26 @@ export const unit: UIO<void> = succeed(undefined)
 export const yieldNow = new IYield()
 
 /**
- * Marks self with the trace new _trace
+ * Marks f with the specified trace
  */
-export function traceWith_<R, E, A>(
-  self: Effect<R, E, A>,
-  _trace?: string
-): Effect<R, E, A> {
-  return new ITraced(self, _trace)
+export function traceF_<F extends Function>(f: F, _trace: string): F {
+  const g = ((...args: any[]) => f(...args)) as any
+  g["$trace"] = _trace
+  return g
+}
+
+/**
+ * Trace F as the first of inputs
+ */
+export function traceAs(...refs: any[]) {
+  return <F extends Function>(f: F): F => {
+    for (const r of refs) {
+      if (r && "$trace" in r) {
+        const g = ((...args: any[]) => f(...args)) as any
+        g["$trace"] = r["$trace"]
+        return g
+      }
+    }
+    return f
+  }
 }

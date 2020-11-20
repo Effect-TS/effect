@@ -1,3 +1,5 @@
+export { flow } from "../Function"
+
 // codegen:start {preset: barrel, include: ./*.ts}
 export * from "./absolve"
 export * from "./absorbWith"

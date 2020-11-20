@@ -16,6 +16,6 @@ const res = ts.transpileModule(
   }
 )
 fs.writeFileSync(
-  path.join(__dirname, "packages/system/test/tracing.test.out.ts"),
+  path.join(__dirname, "packages/system/test/tracing-built.test.ts"),
   res.outputText
 )

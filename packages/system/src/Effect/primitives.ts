@@ -30,7 +30,6 @@ export type Instruction =
   | IYield
   | IRead<any, any, any, any>
   | IProvide<any, any, any>
-  | ITraced<any, any, any>
   | ISuspend<any, any, any>
   | ISuspendPartial<any, any, any, any, any>
   | IFiberRefNew<any>
@@ -45,11 +44,7 @@ export type Instruction =
 export class IFlatMap<R, E, A, R1, E1, A1> extends Base<R & R1, E | E1, A1> {
   readonly _tag = "FlatMap"
 
-  constructor(
-    readonly val: Effect<R, E, A>,
-    readonly f: (a: A) => Effect<R1, E1, A1>,
-    readonly trace?: string
-  ) {
+  constructor(readonly val: Effect<R, E, A>, readonly f: (a: A) => Effect<R1, E1, A1>) {
     super()
   }
 }
@@ -57,7 +52,7 @@ export class IFlatMap<R, E, A, R1, E1, A1> extends Base<R & R1, E | E1, A1> {
 export class ISucceed<A> extends Base<unknown, never, A> {
   readonly _tag = "Succeed"
 
-  constructor(readonly val: A, readonly trace?: string) {
+  constructor(readonly val: A) {
     super()
   }
 }
@@ -66,14 +61,6 @@ export class ICheckExecutionTraces<R, E, A> extends Base<R, E, A> {
   readonly _tag = "CheckExecutionTraces"
 
   constructor(readonly f: (traces: readonly string[]) => Effect<R, E, A>) {
-    super()
-  }
-}
-
-export class ITraced<R, E, A> extends Base<R, E, A> {
-  readonly _tag = "Traced"
-
-  constructor(readonly f: Effect<R, E, A>, readonly trace?: string) {
     super()
   }
 }
@@ -115,13 +102,9 @@ export class IFold<R, E, A, R2, E2, A2, R3, E3, A3> extends Base<
   constructor(
     readonly value: Effect<R, E, A>,
     readonly failure: (cause: Cause.Cause<E>) => Effect<R2, E2, A2>,
-    readonly success: (a: A) => Effect<R3, E3, A3>
+    readonly apply: (a: A) => Effect<R3, E3, A3>
   ) {
     super()
-  }
-
-  apply(v: A): Effect<R & R2 & R3, E2 | E3, A2 | A3> {
-    return this.success(v)
   }
 }
 

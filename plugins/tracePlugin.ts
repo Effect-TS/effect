@@ -7,8 +7,10 @@ export interface MyPluginOptions {
 const support = {
   Effect: {
     reg: /\/\/ trace :: (.*?) -> Effect/,
-    top: ["tuple"],
-    end: ["succeed", "chain", "chain_", "map", "map_", "andThen", "andThen_"]
+    fns: {
+      map: [0],
+      bimap: [0, 1]
+    }
   }
 }
 
@@ -39,60 +41,42 @@ export default function myTransformerPlugin(
             ts.isCallExpression(node) &&
             node.expression.getText().startsWith(`${effectVar}.`)
           ) {
-            const { character, line } = sourceFile.getLineAndCharacterOfPosition(
-              node.getStart()
-            )
-            const supportedEnd = support[context].end
-            const supportedTop = support[context].top
-            const methodsEnd = supportedEnd.map((s) => `${effectVar}.${s}`)
-            const methodsTop = supportedTop.map((s) => `${effectVar}.${s}`)
             const text = node.expression.getText()
+            const method = text.substr(effectVar.length + 1)
 
-            const iEnd = methodsEnd.findIndex((s) => s === text)
-
-            if (iEnd !== -1) {
-              return ts.visitEachChild(
-                factory.createCallExpression(
-                  factory.createPropertyAccessExpression(
-                    factory.createIdentifier(effectVar),
-                    factory.createIdentifier(supportedEnd[iEnd])
-                  ),
-                  node.typeArguments,
-                  [
-                    ...node.arguments,
-                    factory.createStringLiteral(
-                      `${sourceFile.fileName}:${line + 1}:${character + 1}:${context}:${
-                        supportedEnd[iEnd]
-                      }`
+            if (support[context].fns[method]) {
+              const replace = support[context].fns[method] as number[]
+              const v = effectVar
+              return factory.createCallExpression(
+                node.expression,
+                node.typeArguments,
+                node.arguments.map((x, i) => {
+                  if (replace.includes(i)) {
+                    const {
+                      character,
+                      line
+                    } = sourceFile.getLineAndCharacterOfPosition(
+                      node.arguments[i].getStart()
                     )
-                  ]
-                ),
-                visitor,
-                ctx
-              )
-            }
 
-            const iTop = methodsTop.findIndex((s) => s === text)
-
-            if (iTop !== -1) {
-              return ts.visitEachChild(
-                factory.createCallExpression(
-                  factory.createPropertyAccessExpression(
-                    factory.createIdentifier(effectVar),
-                    factory.createIdentifier(supportedTop[iTop])
-                  ),
-                  node.typeArguments,
-                  [
-                    factory.createStringLiteral(
-                      `${sourceFile.fileName}:${line + 1}:${character + 1}:${context}:${
-                        supportedTop[iTop]
-                      }`
-                    ),
-                    ...node.arguments
-                  ]
-                ),
-                visitor,
-                ctx
+                    return factory.createCallExpression(
+                      factory.createPropertyAccessExpression(
+                        factory.createIdentifier(v),
+                        factory.createIdentifier("traceF_")
+                      ),
+                      undefined,
+                      [
+                        ts.visitEachChild(node.arguments[i], visitor, ctx),
+                        factory.createStringLiteral(
+                          `${sourceFile.fileName}:${line + 1}:${
+                            character + 1
+                          }:${context}:${method}`
+                        )
+                      ]
+                    )
+                  }
+                  return ts.visitEachChild(x, visitor, ctx)
+                })
               )
             }
           }

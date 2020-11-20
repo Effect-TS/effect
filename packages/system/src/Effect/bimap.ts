@@ -1,4 +1,4 @@
-import { succeed } from "./core"
+import { succeed, traceAs } from "./core"
 import type { Effect } from "./effect"
 import { fail } from "./fail"
 import { foldM_ } from "./foldM_"
@@ -22,7 +22,7 @@ export function bimap_<R, E, A, E2, B>(
 ) {
   return foldM_(
     self,
-    (e) => fail(f(e)),
-    (a) => succeed(g(a))
+    traceAs(f)((e) => fail(f(e))),
+    traceAs(g)((a) => succeed(g(a)))
   )
 }

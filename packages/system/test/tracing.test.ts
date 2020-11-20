@@ -1,7 +1,7 @@
 // trace :: T -> Effect
 
 import * as T from "../src/Effect"
-import { pipe } from "../src/Function"
+import { identity, pipe } from "../src/Function"
 
 const parseReg = /^(.*?):(\d+):(\d+):(.*?):(.*?)$/
 export function parse(s: string) {
@@ -20,17 +20,14 @@ describe("Tracer", () => {
     const traces = await pipe(
       T.tuple(T.succeed(1), T.succeed(2), T.succeed(3)),
       T.map(([a, b, c]) => a + b + c),
+      T.bimap(identity, (n) => n + 1),
       T.andThen(T.checkExecutionTraces((traces) => T.succeed(traces.map(parse)))),
       T.runPromise
     )
 
     expect(traces).toEqual([
-      "(Effect:tuple): test/tracing.test.ts:21:7",
-      "(Effect:succeed): test/tracing.test.ts:21:15",
-      "(Effect:succeed): test/tracing.test.ts:21:29",
-      "(Effect:succeed): test/tracing.test.ts:21:43",
-      "(Effect:map): test/tracing.test.ts:22:7",
-      "(Effect:andThen): test/tracing.test.ts:23:7"
+      "(Effect:map): test/tracing.test.ts:22:13",
+      "(Effect:bimap): test/tracing.test.ts:23:25"
     ])
   })
 })
