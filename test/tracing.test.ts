@@ -22,13 +22,13 @@ describe("Tracer", () => {
       T.tuple(T.succeed(1), T.succeed(2), T.succeed(3)),
       T.map(([a, b, c]) => a + b + c),
       T.bimap(identity, (n) => n + 1),
-      T.andThen(T.checkExecutionTraces((traces) => T.succeed(traces.map(parse)))),
+      T.andThen(T.checkExecutionTraces(T.succeed)),
       T.runPromise
     )
 
     expect(traces).toEqual([
-      "(Effect:map): test/tracing.test.ts:23:13",
-      "(Effect:bimap): test/tracing.test.ts:24:25"
+      "packages/system/test/tracing.test.ts:23:13:Effect:map",
+      "packages/system/test/tracing.test.ts:24:25:Effect:bimap"
     ])
   })
 })
