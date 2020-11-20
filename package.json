@@ -142,6 +142,7 @@
       "Prelude/Witherable",
       "Prelude/WitherableWithIndex",
       "Sync",
+      "Tracing",
       "Utils",
       "XPure",
       "XPure/XIO",
