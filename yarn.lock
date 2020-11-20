@@ -3523,9 +3523,9 @@ eslint-plugin-prettier@^3.1.4:
     prettier-linter-helpers "^1.0.0"
 
 eslint-plugin-simple-import-sort@^6.0.0:
-  version "6.0.0"
-  resolved "https://registry.yarnpkg.com/eslint-plugin-simple-import-sort/-/eslint-plugin-simple-import-sort-6.0.0.tgz#036346edede70afab8928cc4c4b5ae3bd8db7f01"
-  integrity sha512-YEx+2Zli3mw4mzLzotZSeor4GqdjFWv6S7LcQeKsoXWD4GzMtP42WCz40kAlB35ehxf7PR5V/4f8g8l9aqWGsg==
+  version "6.0.1"
+  resolved "https://registry.yarnpkg.com/eslint-plugin-simple-import-sort/-/eslint-plugin-simple-import-sort-6.0.1.tgz#24a3af3b745dcd389c060db28e22d0f5e3edf86e"
+  integrity sha512-RfFnoi7fQtv7z9sZNJidIcZgWc0ZJe8uOPC3ldmatai4Igr5iDpzTmSUDEZKYm4TnrR01N0X32kfKvax7bivHQ==
 
 eslint-plugin-sort-destructure-keys@^1.3.5:
   version "1.3.5"
