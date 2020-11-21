@@ -14,6 +14,10 @@ import type { Effect } from "./effect"
  *
  * The error parameter of the returned `IO` may be chosen arbitrarily, since
  * it will depend on the `IO`s returned by the given continuations.
+ *
+ * @module Effect
+ * @trace 1
+ * @trace 2
  */
 export function foldM_<R, E, A, R2, E2, A2, R3, E3, A3>(
   value: Effect<R, E, A>,
