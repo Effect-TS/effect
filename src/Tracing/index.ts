@@ -47,7 +47,37 @@ export function traceAs<F extends Function>(f: F, ...refs: any[]): F {
 /**
  * Trace self using suspend
  */
-export function traceSuspend(trace: string) {
-  return <R, E, A>(self: Effect<R, E, A>): Effect<R, E, A> =>
-    new ISuspend(traceF_(() => self, trace))
+export function traceSuspend<R, E, A>(self: Effect<R, E, A>, trace: string) {
+  return new ISuspend(traceF_(() => self, trace))
+}
+
+export const traceSym = Symbol()
+
+/**
+ * Represent T + trace
+ */
+export class Traced<T> {
+  readonly _sym = traceSym
+  constructor(readonly value: T, readonly trace: string) {}
+}
+
+/**
+ * Create a traced value if not already traced
+ */
+export function traceReplace<T>(
+  value: T,
+  trace: string
+): [T] extends [Traced<infer X>] ? X : T {
+  return (value && value["_sym"] === traceSym ? value : new Traced(value, trace)) as any
+}
+
+export function foldTraced_<T, A, B>(
+  k: T,
+  f: (t: T) => A,
+  g: (t: Traced<T>) => B
+): A | B {
+  if (k && k["_sym"] === traceSym) {
+    return g(k as any)
+  }
+  return f(k)
 }

@@ -3,19 +3,9 @@
 
 import * as T from "../src/Effect"
 import { identity, pipe } from "../src/Function"
+import * as O from "../src/Option"
+import { foldTraced_, Traced } from "../src/Tracing"
 import { CustomService, makeCustomService } from "./utils/service"
-
-const parseReg = /^(.*?):(\d+):(\d+):(.*?):(.*?)$/
-export function parse(s: string) {
-  const m = parseReg.exec(s)
-  if (m) {
-    const parts = m[1].split("/")
-    return `(${m[4]}:${m[5]}): ${parts[parts.length - 2]}/${parts[parts.length - 1]}:${
-      m[2]
-    }:${m[3]}`
-  }
-  return ``
-}
 
 describe("Tracer", () => {
   it("trace", async () => {
@@ -29,12 +19,12 @@ describe("Tracer", () => {
     )
 
     expect(traces).toEqual([
-      "packages/system/test/tracing.test.ts:24:7:Effect:tuple",
-      "packages/system/test/tracing.test.ts:24:15:Effect:succeed",
-      "packages/system/test/tracing.test.ts:24:34:Effect:succeed",
-      "packages/system/test/tracing.test.ts:24:53:Effect:succeed",
-      "packages/system/test/tracing.test.ts:25:13:Effect:map",
-      "packages/system/test/tracing.test.ts:26:25:Effect:bimap"
+      "packages/system/test/tracing.test.ts:14:7:Effect:tuple",
+      "packages/system/test/tracing.test.ts:14:15:Effect:succeed",
+      "packages/system/test/tracing.test.ts:14:34:Effect:succeed",
+      "packages/system/test/tracing.test.ts:14:53:Effect:succeed",
+      "packages/system/test/tracing.test.ts:15:13:Effect:map",
+      "packages/system/test/tracing.test.ts:16:25:Effect:bimap"
     ])
   })
 
@@ -49,13 +39,13 @@ describe("Tracer", () => {
     )
 
     expect(traces).toEqual([
-      "packages/system/test/tracing.test.ts:44:26:Effect:bind",
-      "packages/system/test/tracing.test.ts:44:28:Effect:succeed",
-      "packages/system/test/tracing.test.ts:45:26:Effect:bind",
-      "packages/system/test/tracing.test.ts:45:28:Effect:succeed",
-      "packages/system/test/tracing.test.ts:46:16:Effect:bind",
-      "packages/system/test/tracing.test.ts:46:32:Effect:effectTotal",
-      "packages/system/test/tracing.test.ts:47:23:Effect:bind"
+      "packages/system/test/tracing.test.ts:34:26:Effect:bind",
+      "packages/system/test/tracing.test.ts:34:28:Effect:succeed",
+      "packages/system/test/tracing.test.ts:35:26:Effect:bind",
+      "packages/system/test/tracing.test.ts:35:28:Effect:succeed",
+      "packages/system/test/tracing.test.ts:36:16:Effect:bind",
+      "packages/system/test/tracing.test.ts:36:32:Effect:effectTotal",
+      "packages/system/test/tracing.test.ts:37:23:Effect:bind"
     ])
   })
 
@@ -70,13 +60,13 @@ describe("Tracer", () => {
     )
 
     expect(traces).toEqual([
-      "packages/system/test/tracing.test.ts:65:26:Effect:bind",
-      "packages/system/test/tracing.test.ts:65:28:Effect:succeed",
-      "packages/system/test/tracing.test.ts:66:26:Effect:bind",
-      "packages/system/test/tracing.test.ts:66:28:Effect:succeed",
-      "packages/system/test/tracing.test.ts:67:16:Effect:bind",
-      "packages/system/test/tracing.test.ts:67:32:Effect:effectTotal",
-      "packages/system/test/tracing.test.ts:68:23:Effect:bind"
+      "packages/system/test/tracing.test.ts:55:26:Effect:bind",
+      "packages/system/test/tracing.test.ts:55:28:Effect:succeed",
+      "packages/system/test/tracing.test.ts:56:26:Effect:bind",
+      "packages/system/test/tracing.test.ts:56:28:Effect:succeed",
+      "packages/system/test/tracing.test.ts:57:16:Effect:bind",
+      "packages/system/test/tracing.test.ts:57:32:Effect:effectTotal",
+      "packages/system/test/tracing.test.ts:58:23:Effect:bind"
     ])
   })
 
@@ -90,10 +80,26 @@ describe("Tracer", () => {
 
     expect(traces).toEqual([
       "packages/system/test/utils/service.ts:8:34:Effect:succeed",
-      "packages/system/test/tracing.test.ts:85:39:Effect:accessServiceM",
-      "packages/system/test/tracing.test.ts:85:46:CustomService:printTrace",
+      "packages/system/test/tracing.test.ts:75:39:Effect:accessServiceM",
+      "packages/system/test/tracing.test.ts:75:46:CustomService:printTrace",
       "packages/system/test/utils/service.ts:14:29:Effect:chain_",
       "packages/system/test/utils/service.ts:14:35:Effect:succeed"
     ])
+  })
+
+  it("should embed trace", () => {
+    /**
+     * @module Custom
+     * @trace replace 0
+     */
+    function custom(n: number): O.Option<Traced<number>> {
+      return foldTraced_(n, () => O.none, O.some)
+    }
+
+    const call = custom(1)
+
+    expect(call).toEqual(
+      O.some(new Traced(1, "packages/system/test/tracing.test.ts:99:25:Custom:custom"))
+    )
   })
 })
