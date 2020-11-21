@@ -9,6 +9,7 @@ import { pipe } from "../Function"
 import type { Has, Tag } from "../Has"
 import { mergeEnvironments, tag } from "../Has"
 import * as R from "../Record"
+import { traceAs } from "../Tracing"
 import type { UnionToIntersection } from "../Utils"
 
 /**
@@ -106,7 +107,7 @@ export function accessServices<SS extends Record<string, Tag<any>>>(s: SS) {
  */
 export function accessServiceM<T>(s: Tag<T>) {
   return <R, E, B>(f: (a: T) => Effect<R, E, B>) =>
-    accessM((r: Has<T>) => f(r[s.key as any]))
+    accessM(traceAs((r: Has<T>) => f(r[s.key as any]), f))
 }
 
 /**

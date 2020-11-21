@@ -858,6 +858,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                   }
 
                   case "EffectTotal": {
+                    this.addTrace(current.effect)
                     current = this.nextInstr(current.effect())
                     break
                   }
