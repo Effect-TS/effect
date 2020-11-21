@@ -32,7 +32,8 @@ export default function tracingPlugin(_program: ts.Program, _opts: TracingOption
         }
 
         function visitor(node: ts.Node): ts.Node {
-          if (tracingEnabled && ts.isVariableStatement(node)) {
+          const b = true
+          if (tracingEnabled && ts.isVariableStatement(node) && b) {
             const declarations = node.declarationList.declarations.map((d) => {
               const traceTags = ts
                 .getAllJSDocTags(
@@ -61,7 +62,7 @@ export default function tracingPlugin(_program: ts.Program, _opts: TracingOption
                     .map((e) => e.comment)[0] || undefined
 
                 const { character, line } = sourceFile.getLineAndCharacterOfPosition(
-                  d.getStart()
+                  node.getStart()
                 )
 
                 return factory.createVariableDeclaration(
@@ -288,24 +289,28 @@ export default function tracingPlugin(_program: ts.Program, _opts: TracingOption
                       node.arguments[i].getStart()
                     )
 
-                    return factory.createCallExpression(
-                      factory.createPropertyAccessExpression(
-                        tracingFactory,
-                        factory.createIdentifier("traceF_")
-                      ),
-                      undefined,
-                      [
-                        ts.visitEachChild(node.arguments[i], visitor, ctx),
-                        factory.createBinaryExpression(
-                          tracingFileNameFactory,
-                          factory.createToken(ts.SyntaxKind.PlusToken),
-                          factory.createStringLiteral(
-                            `:${line + 1}:${character + 1}:${context}:${
-                              named ? named : method
-                            }`
+                    return ts.visitEachChild(
+                      factory.createCallExpression(
+                        factory.createPropertyAccessExpression(
+                          tracingFactory,
+                          factory.createIdentifier("traceF_")
+                        ),
+                        undefined,
+                        [
+                          node.arguments[i],
+                          factory.createBinaryExpression(
+                            tracingFileNameFactory,
+                            factory.createToken(ts.SyntaxKind.PlusToken),
+                            factory.createStringLiteral(
+                              `:${line + 1}:${character + 1}:${context}:${
+                                named ? named : method
+                              }`
+                            )
                           )
-                        )
-                      ]
+                        ]
+                      ),
+                      visitor,
+                      ctx
                     )
                   }
                   if (argsToTrace.includes("replace " + i)) {
@@ -316,24 +321,28 @@ export default function tracingPlugin(_program: ts.Program, _opts: TracingOption
                       node.arguments[i].getStart()
                     )
 
-                    return factory.createCallExpression(
-                      factory.createPropertyAccessExpression(
-                        tracingFactory,
-                        factory.createIdentifier("traceReplace")
-                      ),
-                      undefined,
-                      [
-                        ts.visitEachChild(node.arguments[i], visitor, ctx),
-                        factory.createBinaryExpression(
-                          tracingFileNameFactory,
-                          factory.createToken(ts.SyntaxKind.PlusToken),
-                          factory.createStringLiteral(
-                            `:${line + 1}:${character + 1}:${context}:${
-                              named ? named : method
-                            }`
+                    return ts.visitEachChild(
+                      factory.createCallExpression(
+                        factory.createPropertyAccessExpression(
+                          tracingFactory,
+                          factory.createIdentifier("traceReplace")
+                        ),
+                        undefined,
+                        [
+                          node.arguments[i],
+                          factory.createBinaryExpression(
+                            tracingFileNameFactory,
+                            factory.createToken(ts.SyntaxKind.PlusToken),
+                            factory.createStringLiteral(
+                              `:${line + 1}:${character + 1}:${context}:${
+                                named ? named : method
+                              }`
+                            )
                           )
-                        )
-                      ]
+                        ]
+                      ),
+                      visitor,
+                      ctx
                     )
                   }
                   return ts.visitEachChild(x, visitor, ctx)
