@@ -1654,28 +1654,6 @@ export function accessServiceM<T>(s: Tag<T>) {
 /**
  * Access a service with the required Service Entry
  */
-export function accessServiceF<T>(s: Tag<T>) {
-  return <
-    K extends keyof T &
-      {
-        [k in keyof T]: T[k] extends (...args: any[]) => Managed<any, any, any>
-          ? k
-          : never
-      }[keyof T]
-  >(
-    k: K
-  ) => (
-    ...args: T[K] extends (...args: infer ARGS) => Managed<any, any, any>
-      ? ARGS
-      : unknown[]
-  ): T[K] extends (...args: any[]) => Managed<infer R, infer E, infer A>
-    ? Managed<R & Has<T>, E, A>
-    : unknown[] => accessServiceM(s)((t) => (t[k] as any)(...args)) as any
-}
-
-/**
- * Access a service with the required Service Entry
- */
 export function accessService<T>(s: Tag<T>) {
   return <B>(f: (a: T) => B) => accessServiceM(s)((a) => succeed(f(a)))
 }

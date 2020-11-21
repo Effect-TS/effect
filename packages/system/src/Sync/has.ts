@@ -106,28 +106,6 @@ export function accessServiceM<T>(s: Tag<T>) {
 /**
  * Access a service with the required Service Entry
  */
-export function accessServiceF<T>(s: Tag<T>) {
-  return <
-    K extends keyof T &
-      {
-        [k in keyof T]: T[k] extends (...args: any[]) => X.Sync<any, any, any>
-          ? k
-          : never
-      }[keyof T]
-  >(
-    k: K
-  ) => (
-    ...args: T[K] extends (...args: infer ARGS) => X.Sync<any, any, any>
-      ? ARGS
-      : unknown[]
-  ): T[K] extends (...args: any[]) => X.Sync<infer R, infer E, infer A>
-    ? X.Sync<R & Has<T>, E, A>
-    : unknown[] => accessServiceM(s)((t) => (t[k] as any)(...args)) as any
-}
-
-/**
- * Access a service with the required Service Entry
- */
 export function accessService<T>(s: Tag<T>) {
   return <B>(f: (a: T) => B) => accessServiceM(s)((a) => X.succeed(f(a)))
 }
@@ -135,7 +113,7 @@ export function accessService<T>(s: Tag<T>) {
 /**
  * Access a service with the required Service Entry
  */
-export function readService<T>(s: Tag<T>) {
+export function service<T>(s: Tag<T>) {
   return accessServiceM(s)((a) => X.succeed(a))
 }
 
