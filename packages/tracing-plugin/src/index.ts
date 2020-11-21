@@ -32,8 +32,211 @@ export default function tracingPlugin(_program: ts.Program, _opts: TracingOption
         }
 
         function visitor(node: ts.Node): ts.Node {
-          const b = true
-          if (tracingEnabled && ts.isVariableStatement(node) && b) {
+          if (tracingEnabled && ts.isPropertyAccessExpression(node)) {
+            const parent = node.parent
+
+            if (parent && ts.isCallExpression(parent)) {
+              const symbol = checker.getTypeAtLocation(node).getSymbol()
+
+              const arities = (
+                symbol
+                  ?.getDeclarations()
+                  ?.map((e) =>
+                    ts
+                      .getAllJSDocTags(
+                        e,
+                        (t): t is ts.JSDocTag => t.tagName.getText() === "arity"
+                      )
+                      .map((e) => e.comment)
+                  )
+                  .reduce((flatten, entry) => flatten.concat(entry), []) || []
+              ).filter((s): s is string => s != null)
+
+              const traceTags = (
+                symbol
+                  ?.getDeclarations()
+                  ?.map((e) =>
+                    ts
+                      .getAllJSDocTags(
+                        e,
+                        (t): t is ts.JSDocTag => t.tagName.getText() === "trace"
+                      )
+                      .map((e) => e.comment)
+                  )
+                  .reduce((flatten, entry) => flatten.concat(entry), []) || []
+              ).filter((s): s is string => s != null)
+
+              if (arities.length > 0) {
+                const method =
+                  symbol
+                    ?.getDeclarations()
+                    ?.map((e) => ts.getNameOfDeclaration(e)?.getText())
+                    .filter((name) => name && name?.length > 0)[0] || "unknown"
+
+                const context =
+                  symbol
+                    ?.getDeclarations()
+                    ?.map((e) =>
+                      ts
+                        .getAllJSDocTags(
+                          e,
+                          (t): t is ts.JSDocTag => t.tagName.getText() === "module"
+                        )
+                        .map((e) => e.comment)
+                    )
+                    .reduce((flatten, entry) => flatten.concat(entry), [])[0] ||
+                  "unknown"
+
+                const named =
+                  symbol
+                    ?.getDeclarations()
+                    ?.map((e) =>
+                      ts
+                        .getAllJSDocTags(
+                          e,
+                          (t): t is ts.JSDocTag => t.tagName.getText() === "named"
+                        )
+                        .map((e) => e.comment)
+                    )
+                    .reduce((flatten, entry) => flatten.concat(entry), [])[0] ||
+                  undefined
+
+                const { character, line } = sourceFile.getLineAndCharacterOfPosition(
+                  node.getStart()
+                )
+
+                const isSuspend = traceTags.includes("suspend")
+                const isAppend = traceTags.includes("append")
+
+                const arity = parseInt(arities[0])
+                const args: ts.Identifier[] = []
+                for (let z = 0; z < arity; z += 1) {
+                  args.push(factory.createUniqueName("x"))
+                }
+
+                if (isSuspend) {
+                  const { character, line } = sourceFile.getLineAndCharacterOfPosition(
+                    node.getStart()
+                  )
+                  return factory.createCallExpression(
+                    factory.createPropertyAccessExpression(
+                      tracingFactory,
+                      factory.createIdentifier("traceSuspend")
+                    ),
+                    undefined,
+                    [
+                      factory.createArrowFunction(
+                        undefined,
+                        undefined,
+                        args.map((x) =>
+                          factory.createParameterDeclaration(
+                            undefined,
+                            undefined,
+                            undefined,
+                            x,
+                            undefined,
+                            undefined,
+                            undefined
+                          )
+                        ),
+                        undefined,
+                        factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
+                        factory.createCallExpression(node, undefined, [
+                          ...args.map(
+                            handleChild(
+                              traceTags,
+                              factory,
+                              tracingFactory,
+                              tracingFileNameFactory,
+                              context,
+                              named,
+                              method,
+                              visitor,
+                              ctx,
+                              line,
+                              character
+                            )
+                          ),
+                          ...(isAppend
+                            ? [
+                                factory.createBinaryExpression(
+                                  tracingFileNameFactory,
+                                  factory.createToken(ts.SyntaxKind.PlusToken),
+                                  factory.createStringLiteral(
+                                    `:${line + 1}:${character + 1}:${context}:${
+                                      named ? named : method
+                                    }`
+                                  )
+                                )
+                              ]
+                            : [])
+                        ])
+                      ),
+                      factory.createBinaryExpression(
+                        tracingFileNameFactory,
+                        factory.createToken(ts.SyntaxKind.PlusToken),
+                        factory.createStringLiteral(
+                          `:${line + 1}:${character + 1}:${context}:${
+                            named ? named : method
+                          }`
+                        )
+                      )
+                    ]
+                  )
+                }
+
+                return factory.createArrowFunction(
+                  undefined,
+                  undefined,
+                  args.map((x) =>
+                    factory.createParameterDeclaration(
+                      undefined,
+                      undefined,
+                      undefined,
+                      x,
+                      undefined,
+                      undefined,
+                      undefined
+                    )
+                  ),
+                  undefined,
+                  factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
+                  factory.createCallExpression(node, undefined, [
+                    ...args.map(
+                      handleChild(
+                        traceTags,
+                        factory,
+                        tracingFactory,
+                        tracingFileNameFactory,
+                        context,
+                        named,
+                        method,
+                        visitor,
+                        ctx,
+                        line,
+                        character
+                      )
+                    ),
+                    ...(isAppend
+                      ? [
+                          factory.createBinaryExpression(
+                            tracingFileNameFactory,
+                            factory.createToken(ts.SyntaxKind.PlusToken),
+                            factory.createStringLiteral(
+                              `:${line + 1}:${character + 1}:${context}:${
+                                named ? named : method
+                              }`
+                            )
+                          )
+                        ]
+                      : [])
+                  ])
+                )
+              }
+            }
+          }
+
+          if (tracingEnabled && ts.isVariableStatement(node)) {
             const declarations = node.declarationList.declarations.map((d) => {
               const traceTags = ts
                 .getAllJSDocTags(
@@ -135,8 +338,10 @@ export default function tracingPlugin(_program: ts.Program, _opts: TracingOption
             const useOverloads =
               overloadArgsToTrace && overloadArgsToTrace.length > 0 ? true : false
 
-            const argsToTrace =
-              overloadArgsToTrace && useOverloads ? overloadArgsToTrace : argsToTrace_
+            const argsToTrace = (overloadArgsToTrace && useOverloads
+              ? overloadArgsToTrace
+              : argsToTrace_
+            ).filter((s): s is string => s != null)
 
             if (argsToTrace.length > 0) {
               const method =
@@ -192,7 +397,6 @@ export default function tracingPlugin(_program: ts.Program, _opts: TracingOption
 
               const isSuspend = argsToTrace.includes("suspend")
               const isAppend = argsToTrace.includes("append")
-              const isBind = argsToTrace.includes("bind")
 
               if (isAppend) {
                 const { character, line } = sourceFile.getLineAndCharacterOfPosition(
@@ -213,42 +417,6 @@ export default function tracingPlugin(_program: ts.Program, _opts: TracingOption
                   ]),
                   visitor,
                   ctx
-                )
-              }
-
-              if (isBind) {
-                const { character, line } = sourceFile.getLineAndCharacterOfPosition(
-                  node.getStart()
-                )
-                return factory.createCallExpression(
-                  factory.createCallExpression(
-                    factory.createPropertyAccessExpression(
-                      node.expression,
-                      factory.createIdentifier("bind")
-                    ),
-                    undefined,
-                    [
-                      factory.createObjectLiteralExpression(
-                        [
-                          factory.createPropertyAssignment(
-                            factory.createStringLiteral("$trace"),
-                            factory.createBinaryExpression(
-                              tracingFileNameFactory,
-                              factory.createToken(ts.SyntaxKind.PlusToken),
-                              factory.createStringLiteral(
-                                `:${line + 1}:${character + 1}:${context}:${
-                                  named ? named : method
-                                }`
-                              )
-                            )
-                          )
-                        ],
-                        false
-                      )
-                    ]
-                  ),
-                  node.typeArguments,
-                  node.arguments.map((e) => ts.visitEachChild(e, visitor, ctx))
                 )
               }
 
@@ -280,72 +448,23 @@ export default function tracingPlugin(_program: ts.Program, _opts: TracingOption
               return factory.createCallExpression(
                 node.expression,
                 node.typeArguments,
-                node.arguments.map((x, i) => {
-                  if (argsToTrace.includes("all") || argsToTrace.includes("" + i)) {
-                    const {
-                      character,
-                      line
-                    } = sourceFile.getLineAndCharacterOfPosition(
-                      node.arguments[i].getStart()
-                    )
-
-                    return ts.visitEachChild(
-                      factory.createCallExpression(
-                        factory.createPropertyAccessExpression(
-                          tracingFactory,
-                          factory.createIdentifier("traceF_")
-                        ),
-                        undefined,
-                        [
-                          node.arguments[i],
-                          factory.createBinaryExpression(
-                            tracingFileNameFactory,
-                            factory.createToken(ts.SyntaxKind.PlusToken),
-                            factory.createStringLiteral(
-                              `:${line + 1}:${character + 1}:${context}:${
-                                named ? named : method
-                              }`
-                            )
-                          )
-                        ]
-                      ),
-                      visitor,
-                      ctx
-                    )
-                  }
-                  if (argsToTrace.includes("replace " + i)) {
-                    const {
-                      character,
-                      line
-                    } = sourceFile.getLineAndCharacterOfPosition(
-                      node.arguments[i].getStart()
-                    )
-
-                    return ts.visitEachChild(
-                      factory.createCallExpression(
-                        factory.createPropertyAccessExpression(
-                          tracingFactory,
-                          factory.createIdentifier("traceReplace")
-                        ),
-                        undefined,
-                        [
-                          node.arguments[i],
-                          factory.createBinaryExpression(
-                            tracingFileNameFactory,
-                            factory.createToken(ts.SyntaxKind.PlusToken),
-                            factory.createStringLiteral(
-                              `:${line + 1}:${character + 1}:${context}:${
-                                named ? named : method
-                              }`
-                            )
-                          )
-                        ]
-                      ),
-                      visitor,
-                      ctx
-                    )
-                  }
-                  return ts.visitEachChild(x, visitor, ctx)
+                node.arguments.map((x, i, a) => {
+                  const { character, line } = sourceFile.getLineAndCharacterOfPosition(
+                    x.getStart()
+                  )
+                  return handleChild(
+                    argsToTrace,
+                    factory,
+                    tracingFactory,
+                    tracingFileNameFactory,
+                    context,
+                    named,
+                    method,
+                    visitor,
+                    ctx,
+                    line,
+                    character
+                  )(x, i, a)
                 })
               )
             }
@@ -389,5 +508,72 @@ export default function tracingPlugin(_program: ts.Program, _opts: TracingOption
         )
       }
     }
+  }
+}
+function handleChild(
+  argsToTrace: string[],
+  factory: ts.NodeFactory,
+  tracingFactory: ts.Identifier,
+  tracingFileNameFactory: ts.Identifier,
+  context: string,
+  named: string | undefined,
+  method: string,
+  visitor: (node: ts.Node) => ts.Node,
+  ctx: ts.TransformationContext,
+  line: number,
+  character: number
+): (
+  value: ts.Expression,
+  index: number,
+  array: readonly ts.Expression[]
+) => ts.Expression {
+  return (x, i) => {
+    if (argsToTrace.includes("all") || argsToTrace.includes("" + i)) {
+      return ts.visitEachChild(
+        factory.createCallExpression(
+          factory.createPropertyAccessExpression(
+            tracingFactory,
+            factory.createIdentifier("traceF_")
+          ),
+          undefined,
+          [
+            x,
+            factory.createBinaryExpression(
+              tracingFileNameFactory,
+              factory.createToken(ts.SyntaxKind.PlusToken),
+              factory.createStringLiteral(
+                `:${line + 1}:${character + 1}:${context}:${named ? named : method}`
+              )
+            )
+          ]
+        ),
+        visitor,
+        ctx
+      )
+    }
+    if (argsToTrace.includes("replace " + i)) {
+      return ts.visitEachChild(
+        factory.createCallExpression(
+          factory.createPropertyAccessExpression(
+            tracingFactory,
+            factory.createIdentifier("traceReplace")
+          ),
+          undefined,
+          [
+            x,
+            factory.createBinaryExpression(
+              tracingFileNameFactory,
+              factory.createToken(ts.SyntaxKind.PlusToken),
+              factory.createStringLiteral(
+                `:${line + 1}:${character + 1}:${context}:${named ? named : method}`
+              )
+            )
+          ]
+        ),
+        visitor,
+        ctx
+      )
+    }
+    return ts.visitEachChild(x, visitor, ctx)
   }
 }
