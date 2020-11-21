@@ -73,6 +73,7 @@
       "Support/LinkedList",
       "Support/MutableQueue",
       "Support/OneShot",
+      "Support/RingBuffer",
       "Support/Scheduler",
       "Sync",
       "Tracing",
