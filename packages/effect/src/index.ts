@@ -121,6 +121,7 @@ export default function tracingPlugin(_program: ts.Program, _opts: TracingOption
 
               const isSuspend = argsToTrace.includes("suspend")
               const isAppend = argsToTrace.includes("append")
+              const isBind = argsToTrace.includes("bind")
 
               if (isAppend) {
                 const { character, line } = sourceFile.getLineAndCharacterOfPosition(
@@ -141,6 +142,42 @@ export default function tracingPlugin(_program: ts.Program, _opts: TracingOption
                   ]),
                   visitor,
                   ctx
+                )
+              }
+
+              if (isBind) {
+                const { character, line } = sourceFile.getLineAndCharacterOfPosition(
+                  node.getStart()
+                )
+                return factory.createCallExpression(
+                  factory.createCallExpression(
+                    factory.createPropertyAccessExpression(
+                      node.expression,
+                      factory.createIdentifier("bind")
+                    ),
+                    undefined,
+                    [
+                      factory.createObjectLiteralExpression(
+                        [
+                          factory.createPropertyAssignment(
+                            factory.createStringLiteral("$trace"),
+                            factory.createBinaryExpression(
+                              tracingFileNameFactory,
+                              factory.createToken(ts.SyntaxKind.PlusToken),
+                              factory.createStringLiteral(
+                                `:${line + 1}:${character + 1}:${context}:${
+                                  named ? named : method
+                                }`
+                              )
+                            )
+                          )
+                        ],
+                        false
+                      )
+                    ]
+                  ),
+                  node.typeArguments,
+                  node.arguments.map((e) => ts.visitEachChild(e, visitor, ctx))
                 )
               }
 
