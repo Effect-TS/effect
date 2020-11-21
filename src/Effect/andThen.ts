@@ -24,6 +24,6 @@ export function andThen_<R, E, A, R1, E1, A1>(
 ) {
   return chain_(
     fa,
-    foldTraced_(fb, (_, trace) => (trace ? traceF_(() => _, trace) : () => _))
+    foldTraced_(fb, (_, trace) => traceF_(() => _, trace))
   )
 }
