@@ -149,7 +149,7 @@ export function genM(...args: any[]): any {
         }
         return chain_(
           state.value._trace
-            ? traceSuspend(state.value._trace)(
+            ? traceSuspend(
                 state.value["effect"] instanceof Managed
                   ? map_(
                       provideSome_(state.value["effect"]["effect"], (r0) =>
@@ -157,7 +157,8 @@ export function genM(...args: any[]): any {
                       ),
                       ([_, a]) => a
                     )
-                  : state.value["effect"]
+                  : state.value["effect"],
+                state.value._trace
               )
             : state.value["effect"] instanceof Managed
             ? map_(
@@ -216,8 +217,9 @@ export function gen(...args: any[]): any {
         }
         return chain_(
           state.value._trace
-            ? traceSuspend(state.value._trace)(
-                state.value["effect"] as Effect<any, any, any>
+            ? traceSuspend(
+                state.value["effect"] as Effect<any, any, any>,
+                state.value._trace
               )
             : (state.value["effect"] as Effect<any, any, any>),
           (val) => {
