@@ -32,8 +32,7 @@ export default function tracingPlugin(_program: ts.Program, _opts: TracingOption
         }
 
         function visitor(node: ts.Node): ts.Node {
-          const b = true
-          if (tracingEnabled && ts.isVariableStatement(node) && b) {
+          if (tracingEnabled && ts.isVariableStatement(node)) {
             const declarations = node.declarationList.declarations.map((d) => {
               const traceTags = ts
                 .getAllJSDocTags(
