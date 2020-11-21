@@ -19,7 +19,7 @@ export function traceF_<F extends Function>(f: F, _trace: string): F {
 export function traceAs<F extends Function>(f: F, ...refs: any[]): F {
   switch (arguments.length) {
     case 2: {
-      if ("$trace" in refs[0]) {
+      if (refs[0] && "$trace" in refs[0]) {
         const g = ((...args: any[]) => f(...args)) as any
         g["$trace"] = refs[0]["$trace"]
         return g
@@ -80,4 +80,31 @@ export function foldTraced_<T, A, B>(
     return g(k as any)
   }
   return f(k)
+}
+
+/**
+ * Trace F as the first of inputs via binding
+ */
+export function traceAsBind<F extends Function>(f: F, ...refs: any[]): F {
+  switch (arguments.length) {
+    case 2: {
+      if (refs[0] && "$trace" in refs[0]) {
+        return f.bind({ $trace: refs[0]["$trace"] })
+      }
+      return f
+    }
+    default: {
+      let trace: undefined | string = undefined
+      for (let i = 0; i < refs.length; i++) {
+        if (refs[i] && "$trace" in refs[i]) {
+          trace = refs[i]["$trace"]
+          i = refs.length
+        }
+      }
+      if (trace) {
+        return f.bind({ $trace: trace })
+      }
+      return f
+    }
+  }
 }
