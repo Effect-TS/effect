@@ -4,7 +4,6 @@
   "compilerOptions": {
     "baseUrl": ".",
     "target": "ES2017",
-    "incremental": false,
     "plugins": [
       {
         "transform": "./packages/tracing-plugin/src/index.ts",

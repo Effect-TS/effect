@@ -33,7 +33,7 @@ export default function tracingPlugin(_program: ts.Program, _opts: TracingOption
 
         function visitor(node: ts.Node): ts.Node {
           if (tracingEnabled && ts.isCallExpression(node)) {
-            const symbol = checker.getSymbolAtLocation(node.expression)
+            const symbol = checker.getTypeAtLocation(node.expression).getSymbol()
             const argsToTrace =
               symbol
                 ?.getDeclarations()
@@ -65,15 +65,42 @@ export default function tracingPlugin(_program: ts.Program, _opts: TracingOption
                       .map((e) => e.comment)
                   )
                   .reduce((flatten, entry) => flatten.concat(entry), [])[0] || "unknown"
+              const named =
+                symbol
+                  ?.getDeclarations()
+                  ?.map((e) =>
+                    ts
+                      .getAllJSDocTags(
+                        e,
+                        (t): t is ts.JSDocTag => t.tagName.getText() === "named"
+                      )
+                      .map((e) => e.comment)
+                  )
+                  .reduce((flatten, entry) => flatten.concat(entry), [])[0] || undefined
 
               const isSuspend = argsToTrace.includes("suspend")
               const isAppend = argsToTrace.includes("append")
 
-              console.log(argsToTrace)
-
               if (isAppend) {
-                console.log("HERE")
-                console.log("HERE")
+                const { character, line } = sourceFile.getLineAndCharacterOfPosition(
+                  node.getStart()
+                )
+                return ts.visitEachChild(
+                  factory.createCallExpression(node.expression, node.typeArguments, [
+                    ...node.arguments,
+                    factory.createBinaryExpression(
+                      tracingFileNameFactory,
+                      factory.createToken(ts.SyntaxKind.PlusToken),
+                      factory.createStringLiteral(
+                        `:${line + 1}:${character + 1}:${context}:${
+                          named ? named : method
+                        }`
+                      )
+                    )
+                  ]),
+                  visitor,
+                  ctx
+                )
               }
 
               if (isSuspend) {
@@ -92,7 +119,9 @@ export default function tracingPlugin(_program: ts.Program, _opts: TracingOption
                         tracingFileNameFactory,
                         factory.createToken(ts.SyntaxKind.PlusToken),
                         factory.createStringLiteral(
-                          `:${line + 1}:${character + 1}:${context}:${method}`
+                          `:${line + 1}:${character + 1}:${context}:${
+                            named ? named : method
+                          }`
                         )
                       )
                     ]
@@ -126,7 +155,9 @@ export default function tracingPlugin(_program: ts.Program, _opts: TracingOption
                           tracingFileNameFactory,
                           factory.createToken(ts.SyntaxKind.PlusToken),
                           factory.createStringLiteral(
-                            `:${line + 1}:${character + 1}:${context}:${method}`
+                            `:${line + 1}:${character + 1}:${context}:${
+                              named ? named : method
+                            }`
                           )
                         )
                       ]

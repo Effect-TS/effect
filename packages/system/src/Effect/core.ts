@@ -136,6 +136,10 @@ export { try_ as try }
 
 /**
  * Imports a synchronous side-effect into a pure value
+ *
+ * @module Effect
+ *
+ * @trace 0
  */
 export function effectTotal<A>(effect: () => A): UIO<A> {
   return new IEffectTotal(effect)
