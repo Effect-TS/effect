@@ -32,6 +32,77 @@ export default function tracingPlugin(_program: ts.Program, _opts: TracingOption
         }
 
         function visitor(node: ts.Node): ts.Node {
+          const b = true
+          if (tracingEnabled && ts.isVariableStatement(node) && b) {
+            const declarations = node.declarationList.declarations.map((d) => {
+              const traceTags = ts
+                .getAllJSDocTags(
+                  d,
+                  (t): t is ts.JSDocTag => t.tagName.getText() === "trace"
+                )
+                .map((e) => e.comment)
+
+              if (traceTags.length > 0) {
+                const method = ts.getNameOfDeclaration(d)?.getText() || "unknown"
+
+                const context =
+                  ts
+                    .getAllJSDocTags(
+                      d,
+                      (t): t is ts.JSDocTag => t.tagName.getText() === "module"
+                    )
+                    .map((e) => e.comment)[0] || "unknown"
+
+                const named =
+                  ts
+                    .getAllJSDocTags(
+                      d,
+                      (t): t is ts.JSDocTag => t.tagName.getText() === "named"
+                    )
+                    .map((e) => e.comment)[0] || undefined
+
+                const { character, line } = sourceFile.getLineAndCharacterOfPosition(
+                  node.getStart()
+                )
+
+                return factory.createVariableDeclaration(
+                  d.name,
+                  d.exclamationToken,
+                  d.type,
+                  factory.createCallExpression(
+                    factory.createPropertyAccessExpression(
+                      tracingFactory,
+                      factory.createIdentifier("traceSuspend")
+                    ),
+                    undefined,
+                    d.initializer
+                      ? [
+                          d.initializer,
+                          factory.createBinaryExpression(
+                            tracingFileNameFactory,
+                            factory.createToken(ts.SyntaxKind.PlusToken),
+                            factory.createStringLiteral(
+                              `:${line + 1}:${character + 1}:${context}:${
+                                named ? named : method
+                              }`
+                            )
+                          )
+                        ]
+                      : undefined
+                  )
+                )
+              }
+
+              return d
+            })
+
+            return ts.visitEachChild(
+              factory.createVariableStatement(node.modifiers, declarations),
+              visitor,
+              ctx
+            )
+          }
+
           if (tracingEnabled && ts.isCallExpression(node)) {
             const symbol = checker.getTypeAtLocation(node.expression).getSymbol()
             const overloadDeclarations = checker
