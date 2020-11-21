@@ -22,7 +22,7 @@ export function foldM_<R, E, A, R2, E2, A2, R3, E3, A3>(
 ): Effect<R & R2 & R3, E2 | E3, A2 | A3> {
   return foldCauseM_(
     value,
-    traceAs(failure)((cause) => E.fold_(failureOrCause(cause), failure, halt)),
+    traceAs((cause) => E.fold_(failureOrCause(cause), failure, halt), failure),
     success
   )
 }

@@ -11,6 +11,6 @@ import type { Effect } from "./effect"
 export function map_<R, E, A, B>(_: Effect<R, E, A>, f: (a: A) => B) {
   return chain_(
     _,
-    traceAs(f)((a: A) => succeed(f(a)))
+    traceAs((a: A) => succeed(f(a)), f)
   )
 }

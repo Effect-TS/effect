@@ -8,5 +8,5 @@ import { chain, succeed } from "./core"
  * @trace 0
  */
 export function map<A, B>(f: (a: A) => B) {
-  return chain(traceAs(f)((a: A) => succeed(f(a))))
+  return chain(traceAs((a: A) => succeed(f(a)), f))
 }

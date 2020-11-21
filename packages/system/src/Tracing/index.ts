@@ -1,6 +1,5 @@
 import type { Effect } from "../Effect"
 import { ISuspend } from "../Effect/primitives"
-import { identity } from "../Function"
 
 /**
  * Marks f with the specified trace
@@ -14,17 +13,15 @@ export function traceF_<F extends Function>(f: F, _trace: string): F {
 /**
  * Trace F as the first of inputs
  */
-export function traceAs(...refs: any[]) {
+export function traceAs<F extends Function>(f: F, ...refs: any[]): F {
   switch (arguments.length) {
-    case 1: {
+    case 2: {
       if ("$trace" in refs[0]) {
-        return <F extends Function>(f: F): F => {
-          const g = ((...args: any[]) => f(...args)) as any
-          g["$trace"] = refs[0]["$trace"]
-          return g
-        }
+        const g = ((...args: any[]) => f(...args)) as any
+        g["$trace"] = refs[0]["$trace"]
+        return g
       }
-      return identity
+      return f
     }
     default: {
       let trace: undefined | string = undefined
@@ -35,13 +32,11 @@ export function traceAs(...refs: any[]) {
         }
       }
       if (trace) {
-        return <F extends Function>(f: F): F => {
-          const g = ((...args: any[]) => f(...args)) as any
-          g["$trace"] = trace
-          return g
-        }
+        const g = ((...args: any[]) => f(...args)) as any
+        g["$trace"] = trace
+        return g
       }
-      return identity
+      return f
     }
   }
 }
