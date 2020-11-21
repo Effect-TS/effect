@@ -149,26 +149,23 @@ export default function tracingPlugin(_program: ts.Program, _opts: TracingOption
                   node.getStart()
                 )
                 return factory.createCallExpression(
-                  factory.createCallExpression(
-                    factory.createPropertyAccessExpression(
-                      tracingFactory,
-                      factory.createIdentifier("traceSuspend")
-                    ),
-                    undefined,
-                    [
-                      factory.createBinaryExpression(
-                        tracingFileNameFactory,
-                        factory.createToken(ts.SyntaxKind.PlusToken),
-                        factory.createStringLiteral(
-                          `:${line + 1}:${character + 1}:${context}:${
-                            named ? named : method
-                          }`
-                        )
-                      )
-                    ]
+                  factory.createPropertyAccessExpression(
+                    tracingFactory,
+                    factory.createIdentifier("traceSuspend")
                   ),
                   undefined,
-                  [ts.visitEachChild(node, visitor, ctx)]
+                  [
+                    ts.visitEachChild(node, visitor, ctx),
+                    factory.createBinaryExpression(
+                      tracingFileNameFactory,
+                      factory.createToken(ts.SyntaxKind.PlusToken),
+                      factory.createStringLiteral(
+                        `:${line + 1}:${character + 1}:${context}:${
+                          named ? named : method
+                        }`
+                      )
+                    )
+                  ]
                 )
               }
 
@@ -188,6 +185,34 @@ export default function tracingPlugin(_program: ts.Program, _opts: TracingOption
                       factory.createPropertyAccessExpression(
                         tracingFactory,
                         factory.createIdentifier("traceF_")
+                      ),
+                      undefined,
+                      [
+                        ts.visitEachChild(node.arguments[i], visitor, ctx),
+                        factory.createBinaryExpression(
+                          tracingFileNameFactory,
+                          factory.createToken(ts.SyntaxKind.PlusToken),
+                          factory.createStringLiteral(
+                            `:${line + 1}:${character + 1}:${context}:${
+                              named ? named : method
+                            }`
+                          )
+                        )
+                      ]
+                    )
+                  }
+                  if (argsToTrace.includes("replace " + i)) {
+                    const {
+                      character,
+                      line
+                    } = sourceFile.getLineAndCharacterOfPosition(
+                      node.arguments[i].getStart()
+                    )
+
+                    return factory.createCallExpression(
+                      factory.createPropertyAccessExpression(
+                        tracingFactory,
+                        factory.createIdentifier("traceReplace")
                       ),
                       undefined,
                       [
