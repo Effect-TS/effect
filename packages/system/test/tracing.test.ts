@@ -3,6 +3,9 @@
 
 import * as T from "../src/Effect"
 import { identity, pipe } from "../src/Function"
+import { tag } from "../src/Has"
+import { fromNullable, some } from "../src/Option"
+import type { _A } from "../src/Utils"
 
 const parseReg = /^(.*?):(\d+):(\d+):(.*?):(.*?)$/
 export function parse(s: string) {
@@ -77,5 +80,29 @@ describe("Tracer", () => {
       "packages/system/test/tracing.test.ts:66:32:Effect:effectTotal",
       "packages/system/test/tracing.test.ts:67:23:Effect:bind"
     ])
+  })
+
+  it("trace service", async () => {
+    const makeService = T.succeed({
+      /**
+       * @module Service
+       * @trace 0
+       */
+      printTrace<A>(f: () => A) {
+        return T.effectTotal(() => fromNullable<string>(f["$trace"]))
+      }
+    })
+    interface Service extends _A<typeof makeService> {}
+    const Service = tag<Service>()
+
+    const traces = await pipe(
+      T.accessServiceM(Service)((_) => _.printTrace(() => 1)),
+      T.provideServiceM(Service)(makeService),
+      T.runPromise
+    )
+
+    expect(traces).toEqual(
+      some("packages/system/test/tracing.test.ts:99:53:Service:printTrace")
+    )
   })
 })
