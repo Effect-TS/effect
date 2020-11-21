@@ -27,6 +27,7 @@ describe("Tracer", () => {
     )
 
     expect(traces).toEqual([
+      "packages/system/test/tracing.test.ts:22:7:Effect:tuple",
       "packages/system/test/tracing.test.ts:22:15:Effect:succeed",
       "packages/system/test/tracing.test.ts:22:29:Effect:succeed",
       "packages/system/test/tracing.test.ts:22:43:Effect:succeed",
