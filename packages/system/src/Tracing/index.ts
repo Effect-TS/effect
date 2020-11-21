@@ -1,3 +1,6 @@
+import type { Effect } from "../Effect"
+import { ISuspend } from "../Effect/primitives"
+
 /**
  * Marks f with the specified trace
  */
@@ -35,4 +38,12 @@ export function traceAs(...refs: any[]) {
       }
     }
   }
+}
+
+/**
+ * Trace self using suspend
+ */
+export function traceSuspend(trace: string) {
+  return <R, E, A>(self: Effect<R, E, A>): Effect<R, E, A> =>
+    new ISuspend(traceF_(() => self, trace))
 }

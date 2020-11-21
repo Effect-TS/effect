@@ -66,6 +66,46 @@ export default function tracingPlugin(_program: ts.Program, _opts: TracingOption
                   )
                   .reduce((flatten, entry) => flatten.concat(entry), [])[0] || "unknown"
 
+              const isSuspend =
+                (symbol
+                  ?.getDeclarations()
+                  ?.map((e) =>
+                    ts
+                      .getAllJSDocTags(
+                        e,
+                        (t): t is ts.JSDocTag => t.tagName.getText() === "trace"
+                      )
+                      .map((e) => e.comment)
+                  )
+                  .reduce((flatten, entry) => flatten.concat(entry), [])[0] ||
+                  "unknown") === "suspend"
+
+              if (isSuspend) {
+                const { character, line } = sourceFile.getLineAndCharacterOfPosition(
+                  node.getStart()
+                )
+                return factory.createCallExpression(
+                  factory.createCallExpression(
+                    factory.createPropertyAccessExpression(
+                      tracingFactory,
+                      factory.createIdentifier("traceSuspend")
+                    ),
+                    undefined,
+                    [
+                      factory.createBinaryExpression(
+                        tracingFileNameFactory,
+                        factory.createToken(ts.SyntaxKind.PlusToken),
+                        factory.createStringLiteral(
+                          `:${line + 1}:${character + 1}:${context}:${method}`
+                        )
+                      )
+                    ]
+                  ),
+                  undefined,
+                  [ts.visitEachChild(node, visitor, ctx)]
+                )
+              }
+
               return factory.createCallExpression(
                 node.expression,
                 node.typeArguments,
