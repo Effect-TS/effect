@@ -80,7 +80,7 @@ describe("Tracer", () => {
     )
 
     expect(traces).toEqual([
-      "packages/system/test/utils/service.ts:12:1:CustomService:makeCustomService",
+      "packages/system/test/utils/service.ts:12:14:CustomService:makeCustomService",
       "packages/system/test/utils/service.ts:12:44:Effect:succeed",
       "packages/system/test/tracing.test.ts:76:39:Effect:accessServiceM",
       "packages/system/test/tracing.test.ts:76:46:CustomService:printTrace",
