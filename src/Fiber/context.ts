@@ -20,6 +20,7 @@ import * as Sup from "../Supervisor"
 import { AtomicNumber } from "../Support/AtomicNumber"
 // support
 import { AtomicReference } from "../Support/AtomicReference"
+import { RingBuffer } from "../Support/RingBuffer"
 import { defaultScheduler } from "../Support/Scheduler"
 import { foldTraced_ } from "../Tracing"
 // xpure / internal effect
@@ -111,7 +112,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   supervisors: Stack<Sup.Supervisor<any>> = new Stack(this.supervisor0)
   forkScopeOverride?: Stack<O.Option<Scope.Scope<Exit.Exit<any, any>>>> = undefined
   scopeKey: Scope.Key | undefined = undefined
-  executionTraces = new AtomicReference(L.empty<string>())
+  executionTraces = new RingBuffer<string>(executionTracesLength.get)
   traceStatusStack: Stack<boolean> | undefined = new Stack(true)
 
   constructor(
@@ -136,10 +137,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
       const region = this.traceStatusStack?.value
 
       if (region) {
-        if (this.executionTraces.get.length >= executionTracesLength.get) {
-          this.executionTraces.set(L.drop_(this.executionTraces.get, 1))
-        }
-        this.executionTraces.set(L.append_(this.executionTraces.get, f["$trace"]))
+        this.executionTraces.push(f["$trace"])
       }
     }
   }
@@ -148,10 +146,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     const region = this.traceStatusStack?.value
 
     if (region) {
-      if (this.executionTraces.get.length >= executionTracesLength.get) {
-        this.executionTraces.set(L.drop_(this.executionTraces.get, 1))
-      }
-      this.executionTraces.set(L.append_(this.executionTraces.get, trace))
+      this.executionTraces.push(trace)
     }
   }
 
@@ -860,7 +855,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                   case "CheckExecutionTraces": {
                     const x = current
                     this.addTrace(x.f)
-                    current = x.f(L.toArray(this.executionTraces.get))[T._I]
+                    current = x.f(L.toArray(this.executionTraces.list))[T._I]
                     break
                   }
 
