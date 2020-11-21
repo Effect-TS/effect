@@ -62,7 +62,7 @@ export default function tracingPlugin(_program: ts.Program, _opts: TracingOption
                     .map((e) => e.comment)[0] || undefined
 
                 const { character, line } = sourceFile.getLineAndCharacterOfPosition(
-                  node.getStart()
+                  d.getStart()
                 )
 
                 return factory.createVariableDeclaration(
