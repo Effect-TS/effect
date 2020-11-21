@@ -33,8 +33,22 @@ export default function tracingPlugin(_program: ts.Program, _opts: TracingOption
 
         function visitor(node: ts.Node): ts.Node {
           if (tracingEnabled && ts.isCallExpression(node)) {
-            const symbol = checker.getSymbolAtLocation(node.expression)
-            const argsToTrace =
+            const symbol = checker.getTypeAtLocation(node.expression).getSymbol()
+            const overloadDeclarations = checker
+              .getResolvedSignature(node)
+              ?.getDeclaration()
+
+            const overloadArgsToTrace = overloadDeclarations
+              ? ts
+                  .getAllJSDocTags(
+                    overloadDeclarations,
+                    (t): t is ts.JSDocTag => t.tagName.getText() === "trace"
+                  )
+                  .map((e) => e.comment)
+                  .filter((s): s is string => s != null)
+              : undefined
+
+            const argsToTrace_ =
               symbol
                 ?.getDeclarations()
                 ?.map((e) =>
@@ -47,38 +61,88 @@ export default function tracingPlugin(_program: ts.Program, _opts: TracingOption
                 )
                 .reduce((flatten, entry) => flatten.concat(entry), []) || []
 
+            const useOverloads =
+              overloadArgsToTrace && overloadArgsToTrace.length > 0 ? true : false
+
+            const argsToTrace =
+              overloadArgsToTrace && useOverloads ? overloadArgsToTrace : argsToTrace_
+
             if (argsToTrace.length > 0) {
               const method =
-                symbol
-                  ?.getDeclarations()
-                  ?.map((e) => ts.getNameOfDeclaration(e)?.getText())
-                  .filter((name) => name && name?.length > 0)[0] || "unknown"
+                useOverloads && overloadDeclarations
+                  ? ts.getNameOfDeclaration(overloadDeclarations)?.getText() ||
+                    "undefined"
+                  : symbol
+                      ?.getDeclarations()
+                      ?.map((e) => ts.getNameOfDeclaration(e)?.getText())
+                      .filter((name) => name && name?.length > 0)[0] || "unknown"
+
               const context =
-                symbol
-                  ?.getDeclarations()
-                  ?.map((e) =>
-                    ts
+                useOverloads && overloadDeclarations
+                  ? ts
                       .getAllJSDocTags(
-                        e,
+                        overloadDeclarations,
                         (t): t is ts.JSDocTag => t.tagName.getText() === "module"
                       )
-                      .map((e) => e.comment)
-                  )
-                  .reduce((flatten, entry) => flatten.concat(entry), [])[0] || "unknown"
-
-              const isSuspend =
-                (symbol
-                  ?.getDeclarations()
-                  ?.map((e) =>
-                    ts
-                      .getAllJSDocTags(
-                        e,
-                        (t): t is ts.JSDocTag => t.tagName.getText() === "trace"
+                      .map((e) => e.comment)[0] || "unknown"
+                  : symbol
+                      ?.getDeclarations()
+                      ?.map((e) =>
+                        ts
+                          .getAllJSDocTags(
+                            e,
+                            (t): t is ts.JSDocTag => t.tagName.getText() === "module"
+                          )
+                          .map((e) => e.comment)
                       )
-                      .map((e) => e.comment)
-                  )
-                  .reduce((flatten, entry) => flatten.concat(entry), [])[0] ||
-                  "unknown") === "suspend"
+                      .reduce((flatten, entry) => flatten.concat(entry), [])[0] ||
+                    "unknown"
+
+              const named =
+                useOverloads && overloadDeclarations
+                  ? ts
+                      .getAllJSDocTags(
+                        overloadDeclarations,
+                        (t): t is ts.JSDocTag => t.tagName.getText() === "named"
+                      )
+                      .map((e) => e.comment)[0] || undefined
+                  : symbol
+                      ?.getDeclarations()
+                      ?.map((e) =>
+                        ts
+                          .getAllJSDocTags(
+                            e,
+                            (t): t is ts.JSDocTag => t.tagName.getText() === "named"
+                          )
+                          .map((e) => e.comment)
+                      )
+                      .reduce((flatten, entry) => flatten.concat(entry), [])[0] ||
+                    undefined
+
+              const isSuspend = argsToTrace.includes("suspend")
+              const isAppend = argsToTrace.includes("append")
+
+              if (isAppend) {
+                const { character, line } = sourceFile.getLineAndCharacterOfPosition(
+                  node.getStart()
+                )
+                return ts.visitEachChild(
+                  factory.createCallExpression(node.expression, node.typeArguments, [
+                    ...node.arguments,
+                    factory.createBinaryExpression(
+                      tracingFileNameFactory,
+                      factory.createToken(ts.SyntaxKind.PlusToken),
+                      factory.createStringLiteral(
+                        `:${line + 1}:${character + 1}:${context}:${
+                          named ? named : method
+                        }`
+                      )
+                    )
+                  ]),
+                  visitor,
+                  ctx
+                )
+              }
 
               if (isSuspend) {
                 const { character, line } = sourceFile.getLineAndCharacterOfPosition(
@@ -96,7 +160,9 @@ export default function tracingPlugin(_program: ts.Program, _opts: TracingOption
                         tracingFileNameFactory,
                         factory.createToken(ts.SyntaxKind.PlusToken),
                         factory.createStringLiteral(
-                          `:${line + 1}:${character + 1}:${context}:${method}`
+                          `:${line + 1}:${character + 1}:${context}:${
+                            named ? named : method
+                          }`
                         )
                       )
                     ]
@@ -130,7 +196,9 @@ export default function tracingPlugin(_program: ts.Program, _opts: TracingOption
                           tracingFileNameFactory,
                           factory.createToken(ts.SyntaxKind.PlusToken),
                           factory.createStringLiteral(
-                            `:${line + 1}:${character + 1}:${context}:${method}`
+                            `:${line + 1}:${character + 1}:${context}:${
+                              named ? named : method
+                            }`
                           )
                         )
                       ]
