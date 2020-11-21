@@ -12,6 +12,10 @@ export type TupleA<T extends NonEmptyArray<Effect<any, any, any>>> = {
 
 /**
  * Like `foreach` + `identity` with a tuple type
+ *
+ * @module Effect
+ *
+ * @trace suspend
  */
 export function tuple<T extends NonEmptyArray<Effect<any, any, any>>>(
   ...t: T
