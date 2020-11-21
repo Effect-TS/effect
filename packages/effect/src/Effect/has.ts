@@ -106,37 +106,29 @@ export function accessServices<SS extends Record<string, Tag<any>>>(s: SS) {
  * Access a service with the required Service Entry
  */
 export function accessServiceM<T>(s: Tag<T>) {
-  return <R, E, B>(f: (a: T) => Effect<R, E, B>) =>
-    accessM(traceAs((r: Has<T>) => f(r[s.key as any]), f))
-}
-
-/**
- * Access a service with the required Service Entry
- */
-export function accessServiceF<T>(s: Tag<T>) {
-  return <
-    K extends keyof T &
-      {
-        [k in keyof T]: T[k] extends (...args: any[]) => Effect<any, any, any>
-          ? k
-          : never
-      }[keyof T]
-  >(
-    k: K
-  ) => (
-    ...args: T[K] extends (...args: infer ARGS) => Effect<any, any, any>
-      ? ARGS
-      : unknown[]
-  ): T[K] extends (...args: any[]) => Effect<infer R, infer E, infer A>
-    ? Effect<R & Has<T>, E, A>
-    : unknown[] => accessServiceM(s)((t) => (t[k] as any)(...args)) as any
+  return (
+    /**
+     * @module Effect
+     * @named accessServiceM
+     * @trace 0
+     */
+    <R, E, B>(f: (a: T) => Effect<R, E, B>) =>
+      accessM(traceAs((r: Has<T>) => f(r[s.key as any]), f))
+  )
 }
 
 /**
  * Access a service with the required Service Entry
  */
 export function accessService<T>(s: Tag<T>) {
-  return <B>(f: (a: T) => B) => accessServiceM(s)((a) => succeed(f(a)))
+  return (
+    /**
+     * @module Effect
+     * @named accessService
+     * @trace 0
+     */
+    <B>(f: (a: T) => B) => accessServiceM(s)(traceAs((a) => succeed(f(a)), f))
+  )
 }
 
 /**
