@@ -4,7 +4,7 @@
 import * as T from "../src/Effect"
 import { identity, pipe } from "../src/Function"
 import * as O from "../src/Option"
-import { foldTraced_, Traced } from "../src/Tracing"
+import { foldTraced_ } from "../src/Tracing"
 import { CustomService, makeCustomService } from "./utils/service"
 
 describe("Tracer", () => {
@@ -25,7 +25,7 @@ describe("Tracer", () => {
       "packages/system/test/tracing.test.ts:14:53:Effect:succeed",
       "packages/system/test/tracing.test.ts:15:13:Effect:map",
       "packages/system/test/tracing.test.ts:16:25:Effect:bimap",
-      "packages/system/test/tracing.test.ts:17:7:Effect:andThen"
+      "packages/system/test/tracing.test.ts:17:17:Effect:andThen"
     ])
   })
 
@@ -85,7 +85,7 @@ describe("Tracer", () => {
       "packages/system/test/tracing.test.ts:76:46:CustomService:printTrace",
       "packages/system/test/utils/service.ts:14:29:Effect:chain_",
       "packages/system/test/utils/service.ts:14:35:Effect:succeed",
-      "packages/system/test/tracing.test.ts:77:7:Effect:andThen"
+      "packages/system/test/tracing.test.ts:77:17:Effect:andThen"
     ])
   })
 
@@ -94,14 +94,14 @@ describe("Tracer", () => {
      * @module Custom
      * @trace replace 0
      */
-    function custom(n: number): O.Option<Traced<number>> {
-      return foldTraced_(n, () => O.none, O.some)
+    function custom(n: number): O.Option<string> {
+      return foldTraced_(n, (_, trace) => O.fromNullable(trace))
     }
 
     const call = custom(1)
 
     expect(call).toEqual(
-      O.some(new Traced(1, "packages/system/test/tracing.test.ts:101:25:Custom:custom"))
+      O.some("packages/system/test/tracing.test.ts:101:25:Custom:custom")
     )
   })
 
@@ -126,7 +126,7 @@ describe("Tracer", () => {
     const call = await T.runPromise(custom(1))
 
     expect(call).toEqual([
-      "packages/system/test/tracing.test.ts:114:14:Effect:andThen_",
+      "packages/system/test/tracing.test.ts:122:9:Effect:andThen_",
       "packages/system/test/tracing.test.ts:126:37:Custom:custom"
     ])
   })
