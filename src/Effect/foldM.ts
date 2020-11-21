@@ -1,5 +1,6 @@
 import { failureOrCause } from "../Cause/core"
 import * as E from "../Either"
+import { traceAs } from "../Tracing"
 import { foldCauseM_, halt } from "./core"
 import type { Effect } from "./effect"
 
@@ -13,6 +14,10 @@ import type { Effect } from "./effect"
  *
  * The error parameter of the returned `IO` may be chosen arbitrarily, since
  * it will depend on the `IO`s returned by the given continuations.
+ *
+ * @module Effect
+ * @trace 0
+ * @trace 1
  */
 export function foldM<E, A, R2, E2, A2, R3, E3, A3>(
   failure: (failure: E) => Effect<R2, E2, A2>,
@@ -21,7 +26,7 @@ export function foldM<E, A, R2, E2, A2, R3, E3, A3>(
   return <R>(value: Effect<R, E, A>): Effect<R & R2 & R3, E2 | E3, A2 | A3> =>
     foldCauseM_(
       value,
-      (cause) => E.fold_(failureOrCause(cause), failure, halt),
+      traceAs((cause) => E.fold_(failureOrCause(cause), failure, halt), failure),
       success
     )
 }
