@@ -27,6 +27,9 @@ describe("Tracer", () => {
     )
 
     expect(traces).toEqual([
+      "packages/system/test/tracing.test.ts:22:15:Effect:succeed",
+      "packages/system/test/tracing.test.ts:22:29:Effect:succeed",
+      "packages/system/test/tracing.test.ts:22:43:Effect:succeed",
       "packages/system/test/tracing.test.ts:23:13:Effect:map",
       "packages/system/test/tracing.test.ts:24:25:Effect:bimap"
     ])
