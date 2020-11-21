@@ -401,4 +401,4 @@ export const unit: UIO<void> = succeed(undefined)
  * stack. Manual use of this method can improve fairness, at the cost of
  * overhead.
  */
-export const yieldNow = new IYield()
+export const yieldNow: UIO<void> = new IYield()
