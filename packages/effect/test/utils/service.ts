@@ -5,6 +5,10 @@ import * as T from "../../src/Effect"
 import { tag } from "../../src/Has"
 import type { _A } from "../../src/Utils"
 
+/**
+ * @module CustomService
+ * @trace suspend
+ */
 export const makeCustomService = T.succeed({
   /**
    * @module CustomService
