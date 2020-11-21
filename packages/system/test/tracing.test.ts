@@ -68,8 +68,6 @@ describe("Tracer", () => {
       })
     )
 
-    console.log(traces)
-
     expect(traces).toEqual([
       "packages/system/test/tracing.test.ts:64:26:Effect:bind",
       "packages/system/test/tracing.test.ts:64:28:Effect:succeed",
