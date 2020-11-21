@@ -30,7 +30,7 @@ export function bimap_<R, E, A, E2, B>(
 ) {
   return foldM_(
     self,
-    traceAs(f)((e) => fail(f(e))),
-    traceAs(g)((a) => succeed(g(a)))
+    traceAs((e) => fail(f(e)), f),
+    traceAs((a) => succeed(g(a)), f)
   )
 }
