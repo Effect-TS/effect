@@ -22,7 +22,7 @@ import { AtomicNumber } from "../Support/AtomicNumber"
 import { AtomicReference } from "../Support/AtomicReference"
 import { RingBuffer } from "../Support/RingBuffer"
 import { defaultScheduler } from "../Support/Scheduler"
-import { foldTraced_ } from "../Tracing"
+import { foldTraced_, tracingEnabled } from "../Tracing"
 // xpure / internal effect
 import * as X from "../XPure"
 import * as T from "./_internal/effect"
@@ -133,7 +133,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   }
 
   addTrace(f: Function) {
-    if (f && "$trace" in f) {
+    if (tracingEnabled.get && f && "$trace" in f) {
       const region = this.traceStatusStack?.value
 
       if (region) {
