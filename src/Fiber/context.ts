@@ -986,13 +986,15 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                   }
 
                   case "Fork": {
-                    current = this.nextInstr(
-                      this.fork(
-                        current.value[T._I],
-                        current.scope,
-                        current.reportFailure
+                    const c = current
+                    foldTraced_(c.value, (v, t) => {
+                      if (t) {
+                        this.addTraceValue(t)
+                      }
+                      current = this.nextInstr(
+                        this.fork(v[T._I], c.scope, c.reportFailure)
                       )
-                    )
+                    })
                     break
                   }
 

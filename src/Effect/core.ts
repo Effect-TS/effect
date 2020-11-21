@@ -221,6 +221,9 @@ export function foldCauseM_<R, E, A, R2, E2, A2, R3, E3, A3>(
  *
  * The fiber is forked with interrupt supervision mode, meaning that when the
  * fiber that forks the child exits, the child will be interrupted.
+ *
+ * @module Effect
+ * @trace replace 0
  */
 export function fork<R, E, A>(
   value: Effect<R, E, A>

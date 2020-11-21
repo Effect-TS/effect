@@ -133,4 +133,30 @@ describe("Tracer", () => {
       "packages/system/test/tracing.test.ts:129:37:Custom:custom"
     ])
   })
+
+  it("should trace fork", async () => {
+    const traces = await pipe(
+      T.fork(T.sleep(200)),
+      T.andThen(T.checkExecutionTraces(T.succeed)),
+      T.runPromise
+    )
+
+    expect(traces).toEqual([
+      "packages/system/test/tracing.test.ts:139:14:Effect:fork",
+      "packages/system/test/tracing.test.ts:140:17:Effect:andThen"
+    ])
+  })
+
+  it("should trace sleep", async () => {
+    const traces = await pipe(
+      T.sleep(200),
+      T.andThen(T.checkExecutionTraces(T.succeed)),
+      T.runPromise
+    )
+
+    expect(traces).toEqual([
+      "packages/system/test/tracing.test.ts:152:15:Effect:sleep",
+      "packages/system/test/tracing.test.ts:153:17:Effect:andThen"
+    ])
+  })
 })
