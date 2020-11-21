@@ -102,7 +102,7 @@ export default function tracingPlugin(_program: ts.Program, _opts: TracingOption
                   undefined
 
                 const { character, line } = sourceFile.getLineAndCharacterOfPosition(
-                  node.getStart()
+                  node.getEnd()
                 )
 
                 const isSuspend = traceTags.includes("suspend")
