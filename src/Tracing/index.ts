@@ -1,11 +1,14 @@
 import type { Effect } from "../Effect"
 import { ISuspend } from "../Effect/primitives"
+import { AtomicBoolean } from "../Support/AtomicBoolean"
+
+export const tracingEnabled = new AtomicBoolean(true)
 
 /**
  * Marks f with the specified trace
  */
 export function traceF_<F extends Function>(f: F, _trace?: string): F {
-  if (_trace) {
+  if (tracingEnabled.get && _trace) {
     if ("$trace" in f) {
       return f
     }
@@ -20,6 +23,9 @@ export function traceF_<F extends Function>(f: F, _trace?: string): F {
  * Trace F as the first of inputs
  */
 export function traceAs<F extends Function>(f: F, ...refs: any[]): F {
+  if (!tracingEnabled.get) {
+    return f
+  }
   switch (arguments.length) {
     case 2: {
       if (refs[0] && "$trace" in refs[0]) {
@@ -51,6 +57,9 @@ export function traceAs<F extends Function>(f: F, ...refs: any[]): F {
  * Trace self using suspend
  */
 export function traceSuspend<R, E, A>(self: Effect<R, E, A>, trace: string) {
+  if (!tracingEnabled.get) {
+    return self
+  }
   return new ISuspend(traceF_(() => self, trace))
 }
 
@@ -71,6 +80,9 @@ export function traceReplace<T>(
   value: T,
   trace: string
 ): [T] extends [Traced<infer X>] ? X : T {
+  if (!tracingEnabled.get) {
+    return value as any
+  }
   return (value && value["_sym"] === traceSym ? value : new Traced(value, trace)) as any
 }
 
@@ -85,6 +97,9 @@ export function foldTraced_<T, A>(k: T, f: (t: T, _trace?: string) => A): A {
  * Trace F as the first of inputs via binding
  */
 export function traceAsBind<F extends Function>(f: F, ...refs: any[]): F {
+  if (!tracingEnabled.get) {
+    return f
+  }
   switch (arguments.length) {
     case 2: {
       if (refs[0] && "$trace" in refs[0]) {
