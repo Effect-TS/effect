@@ -27,14 +27,27 @@ export class GenEffect<R, E, A> {
   readonly _E!: () => E
   readonly _A!: () => A
 
-  constructor(readonly effect: Effect<R, E, A> | Managed<R, E, A>) {}
+  constructor(readonly effect: Effect<R, E, A> | Managed<R, E, A>, _trace?: string) {}
 
   *[Symbol.iterator](): Generator<GenEffect<R, E, A>, A, any> {
     return yield this
   }
 }
 
-const adapter = (_: any, __?: any) => {
+/**
+ * Adapter Function
+ *
+ * @module Effect
+ *
+ * @trace append
+ */
+export function adapter<R, E, A>(_: Managed<R, E, A>): GenEffect<R, E, A>
+export function adapter<R, E, A>(_: Effect<R, E, A>): GenEffect<R, E, A>
+export function adapter<E, A>(_: Either<E, A>): GenEffect<unknown, E, A>
+export function adapter<A>(_: Option<A>): GenEffect<unknown, NoSuchElementException, A>
+export function adapter<E, A>(_: Option<A>, onNone: () => E): GenEffect<unknown, E, A>
+export function adapter<A>(_: Tag<A>): GenEffect<Has<A>, never, A>
+export function adapter(_: any, __?: any) {
   if (isEither(_)) {
     return new GenEffect(fromEither(() => _))
   }
@@ -49,49 +62,71 @@ const adapter = (_: any, __?: any) => {
   return new GenEffect(_)
 }
 
+/**
+ * Adapter Function
+ *
+ * @module Effect
+ *
+ * @trace append
+ */
+export interface AdapterWithManaged {
+  /**
+   * Adapter Function
+   *
+   * @module Effect
+   *
+   * @trace append
+   */
+  <A>(_: Tag<A>): GenEffect<Has<A>, never, A>
+  /**
+   * Adapter Function
+   *
+   * @module Effect
+   *
+   * @trace append
+   */
+  <E, A>(_: Option<A>, onNone: () => E): GenEffect<unknown, E, A>
+  /**
+   * Adapter Function
+   *
+   * @module Effect
+   *
+   * @trace append
+   */
+  <A>(_: Option<A>): GenEffect<unknown, NoSuchElementException, A>
+  /**
+   * Adapter Function
+   *
+   * @module Effect
+   *
+   * @trace append
+   */
+  <E, A>(_: Either<E, A>): GenEffect<unknown, E, A>
+  /**
+   * Adapter Function
+   *
+   * @module Effect
+   *
+   * @trace append
+   */
+  <R, E, A>(_: Effect<R, E, A>): GenEffect<R, E, A>
+}
+
 export function genM<RBase, EBase, AEff>(): <Eff extends GenEffect<RBase, EBase, any>>(
-  f: (i: {
-    <A>(_: Tag<A>): GenEffect<Has<A>, never, A>
-    <E, A>(_: Option<A>, onNone: () => E): GenEffect<unknown, E, A>
-    <A>(_: Option<A>): GenEffect<unknown, NoSuchElementException, A>
-    <E, A>(_: Either<E, A>): GenEffect<unknown, E, A>
-    <R, E, A>(_: Effect<R, E, A>): GenEffect<R, E, A>
-    <R, E, A>(_: Managed<R, E, A>): GenEffect<R, E, A>
-  }) => Generator<Eff, AEff, any>
+  f: (i: AdapterWithManaged) => Generator<Eff, AEff, any>
 ) => Effect<_R<Eff>, _E<Eff>, AEff>
 export function genM<EBase, AEff>(): <Eff extends GenEffect<any, EBase, any>>(
-  f: (i: {
-    <A>(_: Tag<A>): GenEffect<Has<A>, never, A>
-    <E, A>(_: Option<A>, onNone: () => E): GenEffect<unknown, E, A>
-    <A>(_: Option<A>): GenEffect<unknown, NoSuchElementException, A>
-    <E, A>(_: Either<E, A>): GenEffect<unknown, E, A>
-    <R, E, A>(_: Effect<R, E, A>): GenEffect<R, E, A>
-    <R, E, A>(_: Managed<R, E, A>): GenEffect<R, E, A>
-  }) => Generator<Eff, AEff, any>
+  f: (i: AdapterWithManaged) => Generator<Eff, AEff, any>
 ) => Effect<_R<Eff>, _E<Eff>, AEff>
 export function genM<AEff>(): <Eff extends GenEffect<any, any, any>>(
-  f: (i: {
-    <A>(_: Tag<A>): GenEffect<Has<A>, never, A>
-    <E, A>(_: Option<A>, onNone: () => E): GenEffect<unknown, E, A>
-    <A>(_: Option<A>): GenEffect<unknown, NoSuchElementException, A>
-    <E, A>(_: Either<E, A>): GenEffect<unknown, E, A>
-    <R, E, A>(_: Effect<R, E, A>): GenEffect<R, E, A>
-    <R, E, A>(_: Managed<R, E, A>): GenEffect<R, E, A>
-  }) => Generator<Eff, AEff, any>
+  f: (i: AdapterWithManaged) => Generator<Eff, AEff, any>
 ) => Effect<_R<Eff>, _E<Eff>, AEff>
 export function genM<Eff extends GenEffect<any, any, any>, AEff>(
-  f: (i: {
-    <A>(_: Tag<A>): GenEffect<Has<A>, never, A>
-    <E, A>(_: Option<A>, onNone: () => E): GenEffect<unknown, E, A>
-    <A>(_: Option<A>): GenEffect<unknown, NoSuchElementException, A>
-    <E, A>(_: Either<E, A>): GenEffect<unknown, E, A>
-    <R, E, A>(_: Effect<R, E, A>): GenEffect<R, E, A>
-    <R, E, A>(_: Managed<R, E, A>): GenEffect<R, E, A>
-  }) => Generator<Eff, AEff, any>
+  f: (i: AdapterWithManaged) => Generator<Eff, AEff, any>
 ): Effect<_R<Eff>, _E<Eff>, AEff>
 export function genM(...args: any[]): any {
   function gen_<Eff extends GenEffect<any, any, any>, AEff>(
-    f: (i: any) => Generator<Eff, AEff, any>
+    f: (i: AdapterWithManaged) => Generator<Eff, AEff, any>
   ): Effect<_R<Eff>, _E<Eff>, AEff> {
     return suspend(() => {
       const iterator = f(adapter as any)

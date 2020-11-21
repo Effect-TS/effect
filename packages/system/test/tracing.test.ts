@@ -35,4 +35,19 @@ describe("Tracer", () => {
       "packages/system/test/tracing.test.ts:24:25:Effect:bimap"
     ])
   })
+
+  it("trace generator", async () => {
+    const traces = await T.runPromise(
+      T.genM(function* ($) {
+        const a = yield* $(T.succeed(1))
+        const b = yield* $(T.succeed(2))
+
+        yield* $(T.effectTotal(() => a + b))
+
+        return yield* $(T.checkExecutionTraces(T.succeed))
+      })
+    )
+
+    expect(traces).toEqual([])
+  })
 })

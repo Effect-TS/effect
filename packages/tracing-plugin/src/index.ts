@@ -66,19 +66,15 @@ export default function tracingPlugin(_program: ts.Program, _opts: TracingOption
                   )
                   .reduce((flatten, entry) => flatten.concat(entry), [])[0] || "unknown"
 
-              const isSuspend =
-                (symbol
-                  ?.getDeclarations()
-                  ?.map((e) =>
-                    ts
-                      .getAllJSDocTags(
-                        e,
-                        (t): t is ts.JSDocTag => t.tagName.getText() === "trace"
-                      )
-                      .map((e) => e.comment)
-                  )
-                  .reduce((flatten, entry) => flatten.concat(entry), [])[0] ||
-                  "unknown") === "suspend"
+              const isSuspend = argsToTrace.includes("suspend")
+              const isAppend = argsToTrace.includes("append")
+
+              console.log(argsToTrace)
+
+              if (isAppend) {
+                console.log("HERE")
+                console.log("HERE")
+              }
 
               if (isSuspend) {
                 const { character, line } = sourceFile.getLineAndCharacterOfPosition(
