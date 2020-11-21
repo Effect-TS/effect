@@ -7,6 +7,7 @@ import type { FiberID } from "../Fiber/id"
 import { identity } from "../Function"
 import * as O from "../Option"
 import type { Supervisor } from "../Supervisor"
+import { traceAs } from "../Tracing"
 import type { FailureReporter } from "."
 import type { Effect, IO, RIO, UIO } from "./effect"
 import {
@@ -32,6 +33,9 @@ import {
 
 /**
  * Effectfully accesses the environment of the effect.
+ *
+ * @module Effect
+ * @trace 0
  */
 export function access<R0, A>(f: (_: R0) => A): RIO<R0, A> {
   return new IRead((_: R0) => new ISucceed(f(_)))
@@ -39,6 +43,9 @@ export function access<R0, A>(f: (_: R0) => A): RIO<R0, A> {
 
 /**
  * Effectfully accesses the environment of the effect.
+ *
+ * @module Effect
+ * @trace 0
  */
 export function accessM<R0, R, E, A>(
   f: (_: R0) => Effect<R, E, A>
@@ -52,7 +59,6 @@ export function accessM<R0, R, E, A>(
  * followed by the effect that it returns.
  *
  * @module Effect
- *
  * @trace 0
  */
 export function chain<R1, E1, A1, A>(f: (a: A) => Effect<R1, E1, A1>) {
@@ -66,7 +72,6 @@ export function chain<R1, E1, A1, A>(f: (a: A) => Effect<R1, E1, A1>) {
  * followed by the effect that it returns.
  *
  * @module Effect
- *
  * @trace 1
  */
 export function chain_<R, E, A, R1, E1, A1>(
@@ -79,6 +84,9 @@ export function chain_<R, E, A, R1, E1, A1>(
 /**
  * Constructs an effect based on information about the current fiber, such as
  * its identity.
+ *
+ * @module Effect
+ * @trace 0
  */
 export function descriptorWith<R, E, A>(
   f: (_: Descriptor) => Effect<R, E, A>
@@ -89,6 +97,9 @@ export function descriptorWith<R, E, A>(
 /**
  * Checks the interrupt status, and produces the effect returned by the
  * specified callback.
+ *
+ * @module Effect
+ * @trace 0
  */
 export function checkInterruptible<R, E, A>(
   f: (_: InterruptStatus) => Effect<R, E, A>
@@ -99,6 +110,9 @@ export function checkInterruptible<R, E, A>(
 /**
  * Checks the interrupt status, and produces the effect returned by the
  * specified callback.
+ *
+ * @module Effect
+ * @trace 0
  */
 export function checkExecutionTraces<R, E, A>(
   f: (_: readonly string[]) => Effect<R, E, A>
@@ -116,6 +130,9 @@ export function checkExecutionTraces<R, E, A>(
  *
  * The list of fibers, that may complete the async callback, is used to
  * provide better diagnostics.
+ *
+ * @module Effect
+ * @trace 0
  */
 export function effectAsyncOption<R, E, A>(
   register: (cb: (_: Effect<R, E, A>) => void) => O.Option<Effect<R, E, A>>,
@@ -127,14 +144,26 @@ export function effectAsyncOption<R, E, A>(
 /**
  * Imports a synchronous side-effect into a pure value, translating any
  * thrown exceptions into typed failed effects creating with `halt`.
+ *
+ * @module Effect
+ * @trace 0
  */
 export function effectPartial<E>(onThrow: (u: unknown) => E) {
-  return <A>(effect: () => A): IO<E, A> => new IEffectPartial(effect, onThrow)
+  return (
+    /**
+     * @module Effect
+     * @trace 0
+     */
+    <A>(effect: () => A): IO<E, A> => new IEffectPartial(effect, onThrow)
+  )
 }
 
 /**
  * Imports a synchronous side-effect into a pure value, translating any
  * thrown exceptions into typed failed effects creating with `halt`.
+ *
+ * @module Effect
+ * @trace 0
  */
 function try_<A>(effect: () => A): IO<unknown, A> {
   return new IEffectPartial(effect, identity)
@@ -146,7 +175,6 @@ export { try_ as try }
  * Imports a synchronous side-effect into a pure value
  *
  * @module Effect
- *
  * @trace 0
  */
 export function effectTotal<A>(effect: () => A): UIO<A> {
@@ -155,6 +183,10 @@ export function effectTotal<A>(effect: () => A): UIO<A> {
 
 /**
  * A more powerful version of `foldM` that allows recovering from any kind of failure except interruptions.
+ *
+ * @module Effect
+ * @trace 0
+ * @trace 1
  */
 export function foldCauseM<E, A, R2, E2, A2, R3, E3, A3>(
   failure: (cause: Cause<E>) => Effect<R2, E2, A2>,
@@ -166,6 +198,10 @@ export function foldCauseM<E, A, R2, E2, A2, R3, E3, A3>(
 
 /**
  * A more powerful version of `foldM` that allows recovering from any kind of failure except interruptions.
+ *
+ * @module Effect
+ * @trace 1
+ * @trace 2
  */
 export function foldCauseM_<R, E, A, R2, E2, A2, R3, E3, A3>(
   value: Effect<R, E, A>,
@@ -294,6 +330,9 @@ export function supervised(supervisor: Supervisor<any>) {
 /**
  * Returns a lazily constructed effect, whose construction may itself require effects.
  * When no environment is required (i.e., when R == unknown) it is conceptually equivalent to `flatten(effectTotal(io))`.
+ *
+ * @module Effect
+ * @trace 0
  */
 export function suspend<R, E, A>(factory: () => Effect<R, E, A>): Effect<R, E, A> {
   return new ISuspend(factory)
@@ -302,27 +341,48 @@ export function suspend<R, E, A>(factory: () => Effect<R, E, A>): Effect<R, E, A
 /**
  * Returns a lazily constructed effect, whose construction may itself require effects.
  * When no environment is required (i.e., when R == unknown) it is conceptually equivalent to `flatten(effectPartial(orThrow, io))`.
+ *
+ * @module Effect
+ * @trace 0
  */
 export function suspendPartial<E2>(onThrow: (u: unknown) => E2) {
-  return <R, E, A>(factory: () => Effect<R, E, A>): Effect<R, E | E2, A> =>
-    new ISuspendPartial(factory, onThrow)
+  return (
+    /**
+     * @module Effect
+     * @trace 0
+     */
+    <R, E, A>(factory: () => Effect<R, E, A>): Effect<R, E | E2, A> =>
+      new ISuspendPartial(factory, onThrow)
+  )
 }
 
 /**
  * Executed `that` in case `self` fails with a `Cause` that doesn't contain defects,
  * executes `success` in case of successes
+ *
+ * @module Effect
+ * @trace 1
+ * @trace 2
  */
 export function tryOrElse_<R, E, A, R2, E2, A2, R3, E3, A3>(
   self: Effect<R, E, A>,
   that: () => Effect<R2, E2, A2>,
   success: (a: A) => Effect<R3, E3, A3>
 ): Effect<R & R2 & R3, E2 | E3, A2 | A3> {
-  return new IFold(self, (cause) => O.fold_(keepDefects(cause), that, halt), success)
+  return new IFold(
+    self,
+    traceAs((cause) => O.fold_(keepDefects(cause), that, halt), that),
+    success
+  )
 }
 
 /**
  * Executed `that` in case `self` fails with a `Cause` that doesn't contain defects,
  * executes `success` in case of successes
+ *
+ * @module Effect
+ * @trace 0
+ * @trace 1
  */
 export function tryOrElse<A, R2, E2, A2, R3, E3, A3>(
   that: () => Effect<R2, E2, A2>,
