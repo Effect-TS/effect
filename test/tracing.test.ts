@@ -90,6 +90,7 @@ describe("Tracer", () => {
 
     expect(traces).toEqual([
       "packages/system/test/utils/service.ts:8:34:Effect:succeed",
+      "packages/system/test/tracing.test.ts:85:39:Effect:accessServiceM",
       "packages/system/test/tracing.test.ts:85:46:CustomService:printTrace",
       "packages/system/test/utils/service.ts:14:29:Effect:chain_",
       "packages/system/test/utils/service.ts:14:35:Effect:succeed"
