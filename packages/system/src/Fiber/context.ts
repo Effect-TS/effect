@@ -859,6 +859,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
                   case "CheckExecutionTraces": {
                     const x = current
+                    this.addTrace(x.f)
                     current = x.f(L.toArray(this.executionTraces.get))[T._I]
                     break
                   }
