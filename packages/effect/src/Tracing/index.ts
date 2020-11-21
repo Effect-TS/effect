@@ -4,13 +4,16 @@ import { ISuspend } from "../Effect/primitives"
 /**
  * Marks f with the specified trace
  */
-export function traceF_<F extends Function>(f: F, _trace: string): F {
-  if ("$trace" in f) {
-    return f
+export function traceF_<F extends Function>(f: F, _trace?: string): F {
+  if (_trace) {
+    if ("$trace" in f) {
+      return f
+    }
+    const g = ((...args: any[]) => f(...args)) as any
+    g["$trace"] = _trace
+    return g
   }
-  const g = ((...args: any[]) => f(...args)) as any
-  g["$trace"] = _trace
-  return g
+  return f
 }
 
 /**
