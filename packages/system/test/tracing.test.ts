@@ -80,11 +80,12 @@ describe("Tracer", () => {
     )
 
     expect(traces).toEqual([
-      "packages/system/test/utils/service.ts:8:44:Effect:succeed",
+      "packages/system/test/utils/service.ts:12:1:CustomService:makeCustomService",
+      "packages/system/test/utils/service.ts:12:44:Effect:succeed",
       "packages/system/test/tracing.test.ts:76:39:Effect:accessServiceM",
       "packages/system/test/tracing.test.ts:76:46:CustomService:printTrace",
-      "packages/system/test/utils/service.ts:14:29:Effect:chain_",
-      "packages/system/test/utils/service.ts:14:45:Effect:succeed",
+      "packages/system/test/utils/service.ts:18:29:Effect:chain_",
+      "packages/system/test/utils/service.ts:18:45:Effect:succeed",
       "packages/system/test/tracing.test.ts:77:17:Effect:andThen"
     ])
   })
@@ -101,7 +102,7 @@ describe("Tracer", () => {
     const call = custom(1)
 
     expect(call).toEqual(
-      O.some("packages/system/test/tracing.test.ts:101:25:Custom:custom")
+      O.some("packages/system/test/tracing.test.ts:102:25:Custom:custom")
     )
   })
 
@@ -126,8 +127,8 @@ describe("Tracer", () => {
     const call = await T.runPromise(custom(1))
 
     expect(call).toEqual([
-      "packages/system/test/tracing.test.ts:122:9:Effect:andThen_",
-      "packages/system/test/tracing.test.ts:126:37:Custom:custom"
+      "packages/system/test/tracing.test.ts:123:9:Effect:andThen_",
+      "packages/system/test/tracing.test.ts:127:37:Custom:custom"
     ])
   })
 })
