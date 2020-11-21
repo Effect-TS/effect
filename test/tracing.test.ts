@@ -20,9 +20,9 @@ describe("Tracer", () => {
 
     expect(traces).toEqual([
       "packages/system/test/tracing.test.ts:14:7:Effect:tuple",
-      "packages/system/test/tracing.test.ts:14:15:Effect:succeed",
-      "packages/system/test/tracing.test.ts:14:34:Effect:succeed",
-      "packages/system/test/tracing.test.ts:14:53:Effect:succeed",
+      "packages/system/test/tracing.test.ts:14:30:Effect:succeed",
+      "packages/system/test/tracing.test.ts:14:49:Effect:succeed",
+      "packages/system/test/tracing.test.ts:14:68:Effect:succeed",
       "packages/system/test/tracing.test.ts:15:13:Effect:map",
       "packages/system/test/tracing.test.ts:16:25:Effect:bimap",
       "packages/system/test/tracing.test.ts:17:17:Effect:andThen"
@@ -41,9 +41,9 @@ describe("Tracer", () => {
 
     expect(traces).toEqual([
       "packages/system/test/tracing.test.ts:35:26:Effect:bind",
-      "packages/system/test/tracing.test.ts:35:28:Effect:succeed",
+      "packages/system/test/tracing.test.ts:35:38:Effect:succeed",
       "packages/system/test/tracing.test.ts:36:26:Effect:bind",
-      "packages/system/test/tracing.test.ts:36:28:Effect:succeed",
+      "packages/system/test/tracing.test.ts:36:38:Effect:succeed",
       "packages/system/test/tracing.test.ts:37:16:Effect:bind",
       "packages/system/test/tracing.test.ts:37:32:Effect:effectTotal",
       "packages/system/test/tracing.test.ts:38:23:Effect:bind"
@@ -62,9 +62,9 @@ describe("Tracer", () => {
 
     expect(traces).toEqual([
       "packages/system/test/tracing.test.ts:56:26:Effect:bind",
-      "packages/system/test/tracing.test.ts:56:28:Effect:succeed",
+      "packages/system/test/tracing.test.ts:56:38:Effect:succeed",
       "packages/system/test/tracing.test.ts:57:26:Effect:bind",
-      "packages/system/test/tracing.test.ts:57:28:Effect:succeed",
+      "packages/system/test/tracing.test.ts:57:38:Effect:succeed",
       "packages/system/test/tracing.test.ts:58:16:Effect:bind",
       "packages/system/test/tracing.test.ts:58:32:Effect:effectTotal",
       "packages/system/test/tracing.test.ts:59:23:Effect:bind"
@@ -80,11 +80,11 @@ describe("Tracer", () => {
     )
 
     expect(traces).toEqual([
-      "packages/system/test/utils/service.ts:8:34:Effect:succeed",
+      "packages/system/test/utils/service.ts:8:44:Effect:succeed",
       "packages/system/test/tracing.test.ts:76:39:Effect:accessServiceM",
       "packages/system/test/tracing.test.ts:76:46:CustomService:printTrace",
       "packages/system/test/utils/service.ts:14:29:Effect:chain_",
-      "packages/system/test/utils/service.ts:14:35:Effect:succeed",
+      "packages/system/test/utils/service.ts:14:45:Effect:succeed",
       "packages/system/test/tracing.test.ts:77:17:Effect:andThen"
     ])
   })
