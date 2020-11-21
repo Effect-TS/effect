@@ -82,14 +82,17 @@ describe("Tracer", () => {
 
   it("trace service", async () => {
     const traces = await pipe(
-      T.accessServiceM(CustomService)((_) => _.printTrace(() => 1)),
+      T.accessServiceM(CustomService)((_) => _.printTrace(1)),
       T.andThen(T.checkExecutionTraces(T.succeed)),
       T.provideServiceM(CustomService)(makeCustomService),
       T.runPromise
     )
 
     expect(traces).toEqual([
-      "packages/system/test/tracing.test.ts:85:59:CustomService:printTrace"
+      "packages/system/test/utils/service.ts:8:34:Effect:succeed",
+      "packages/system/test/tracing.test.ts:85:46:CustomService:printTrace",
+      "packages/system/test/utils/service.ts:14:29:Effect:chain_",
+      "packages/system/test/utils/service.ts:14:35:Effect:succeed"
     ])
   })
 })

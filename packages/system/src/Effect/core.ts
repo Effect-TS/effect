@@ -50,6 +50,10 @@ export function accessM<R0, R, E, A>(
  * Returns an effect that models the execution of this effect, followed by
  * the passing of its value to the specified continuation function `f`,
  * followed by the effect that it returns.
+ *
+ * @module Effect
+ *
+ * @trace 0
  */
 export function chain<R1, E1, A1, A>(f: (a: A) => Effect<R1, E1, A1>) {
   return <R, E>(val: Effect<R, E, A>): Effect<R & R1, E | E1, A1> =>
@@ -60,6 +64,10 @@ export function chain<R1, E1, A1, A>(f: (a: A) => Effect<R1, E1, A1>) {
  * Returns an effect that models the execution of this effect, followed by
  * the passing of its value to the specified continuation function `f`,
  * followed by the effect that it returns.
+ *
+ * @module Effect
+ *
+ * @trace 1
  */
 export function chain_<R, E, A, R1, E1, A1>(
   val: Effect<R, E, A>,

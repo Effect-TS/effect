@@ -1,3 +1,6 @@
+// trace: on
+// tracingModule: ../../src/Tracing
+
 import * as T from "../../src/Effect"
 import { tag } from "../../src/Has"
 import type { _A } from "../../src/Utils"
@@ -5,10 +8,10 @@ import type { _A } from "../../src/Utils"
 export const makeCustomService = T.succeed({
   /**
    * @module CustomService
-   * @trace 0
+   * @trace suspend
    */
-  printTrace<A>(f: () => A) {
-    return T.effectTotal(f)
+  printTrace<A>(a: A) {
+    return T.chain_(T.unit, () => T.succeed(a))
   }
 })
 
