@@ -60,14 +60,6 @@ function adapter(_: any, __?: any, ___?: any) {
   return new GenEffect(_, __)
 }
 
-/**
- * Adapter Function
- *
- * @module Effect
- *
- * @trace append
- * @named bind
- */
 export interface Adapter {
   /**
    * Adapter Function
@@ -116,14 +108,6 @@ export interface Adapter {
   <R, E, A>(_: Effect<R, E, A>): GenEffect<R, E, A>
 }
 
-/**
- * Adapter Function
- *
- * @module Effect
- *
- * @trace append
- * @named bind
- */
 export interface AdapterWithManaged extends Adapter {
   /**
    * Adapter Function
