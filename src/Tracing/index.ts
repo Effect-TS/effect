@@ -71,13 +71,9 @@ export function traceReplace<T>(
   return (value && value["_sym"] === traceSym ? value : new Traced(value, trace)) as any
 }
 
-export function foldTraced_<T, A, B>(
-  k: T,
-  f: (t: T) => A,
-  g: (t: Traced<T>) => B
-): A | B {
+export function foldTraced_<T, A>(k: T, f: (t: T, _trace?: string) => A): A {
   if (k && k["_sym"] === traceSym) {
-    return g(k as any)
+    return f(k["value"], k["trace"])
   }
   return f(k)
 }
