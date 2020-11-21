@@ -21,6 +21,7 @@ import { AtomicNumber } from "../Support/AtomicNumber"
 // support
 import { AtomicReference } from "../Support/AtomicReference"
 import { defaultScheduler } from "../Support/Scheduler"
+import { foldTraced_ } from "../Tracing"
 // xpure / internal effect
 import * as X from "../XPure"
 import * as T from "./_internal/effect"
@@ -140,6 +141,17 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
         }
         this.executionTraces.set(L.append_(this.executionTraces.get, f["$trace"]))
       }
+    }
+  }
+
+  addTraceValue(trace: string) {
+    const region = this.traceStatusStack?.value
+
+    if (region) {
+      if (this.executionTraces.get.length >= executionTracesLength.get) {
+        this.executionTraces.set(L.drop_(this.executionTraces.get, 1))
+      }
+      this.executionTraces.set(L.append_(this.executionTraces.get, trace))
     }
   }
 
@@ -797,8 +809,13 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
                     switch (nested._tag) {
                       case "Succeed": {
-                        this.addTrace(k)
-                        current = k(nested.val)[T._I]
+                        foldTraced_(nested.val, (v, t) => {
+                          this.addTrace(k)
+                          if (t) {
+                            this.addTraceValue(t)
+                          }
+                          current = k(v)[T._I]
+                        })
                         break
                       }
                       case "EffectTotal": {
@@ -853,7 +870,12 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                   }
 
                   case "Succeed": {
-                    current = this.nextInstr(current.val)
+                    foldTraced_(current.val, (v, t) => {
+                      if (t) {
+                        this.addTraceValue(t)
+                      }
+                      current = this.nextInstr(v)
+                    })
                     break
                   }
 
