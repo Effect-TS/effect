@@ -110,33 +110,6 @@ describe("Tracer", () => {
     )
   })
 
-  it("should bind trace", async () => {
-    /**
-     * @module Custom
-     * @trace bind
-     */
-    function custom(_n: number): T.UIO<readonly string[]> {
-      return T.andThen_(
-        T.effectTotal(
-          T.traceF_(
-            () => _n,
-            // @ts-expect-error
-            this["$trace"]
-          )
-        ),
-        T.checkExecutionTraces(T.succeed)
-      )
-    }
-
-    const call = await T.runPromise(custom(1))
-
-    expect(call).toEqual([
-      "packages/system/test/tracing.test.ts:127:9:Effect:andThen_",
-      "packages/system/test/tracing.test.ts:131:37:Custom:custom",
-      "packages/system/test/tracing.test.ts:127:32:Effect:checkExecutionTraces"
-    ])
-  })
-
   it("should trace fork", async () => {
     const traces = await pipe(
       T.fork(T.sleep(200)),
@@ -145,9 +118,9 @@ describe("Tracer", () => {
     )
 
     expect(traces).toEqual([
-      "packages/system/test/tracing.test.ts:142:14:Effect:fork",
-      "packages/system/test/tracing.test.ts:143:17:Effect:andThen",
-      "packages/system/test/tracing.test.ts:143:40:Effect:checkExecutionTraces"
+      "packages/system/test/tracing.test.ts:115:14:Effect:fork",
+      "packages/system/test/tracing.test.ts:116:17:Effect:andThen",
+      "packages/system/test/tracing.test.ts:116:40:Effect:checkExecutionTraces"
     ])
   })
 
@@ -159,9 +132,9 @@ describe("Tracer", () => {
     )
 
     expect(traces).toEqual([
-      "packages/system/test/tracing.test.ts:156:15:Effect:sleep",
-      "packages/system/test/tracing.test.ts:157:17:Effect:andThen",
-      "packages/system/test/tracing.test.ts:157:40:Effect:checkExecutionTraces"
+      "packages/system/test/tracing.test.ts:129:15:Effect:sleep",
+      "packages/system/test/tracing.test.ts:130:17:Effect:andThen",
+      "packages/system/test/tracing.test.ts:130:40:Effect:checkExecutionTraces"
     ])
   })
 })
