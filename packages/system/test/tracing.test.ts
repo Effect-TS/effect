@@ -3,9 +3,7 @@
 
 import * as T from "../src/Effect"
 import { identity, pipe } from "../src/Function"
-import { tag } from "../src/Has"
-import { fromNullable, some } from "../src/Option"
-import type { _A } from "../src/Utils"
+import { CustomService, makeCustomService } from "./utils/service"
 
 const parseReg = /^(.*?):(\d+):(\d+):(.*?):(.*?)$/
 export function parse(s: string) {
@@ -31,12 +29,12 @@ describe("Tracer", () => {
     )
 
     expect(traces).toEqual([
-      "packages/system/test/tracing.test.ts:26:7:Effect:tuple",
-      "packages/system/test/tracing.test.ts:26:15:Effect:succeed",
-      "packages/system/test/tracing.test.ts:26:34:Effect:succeed",
-      "packages/system/test/tracing.test.ts:26:53:Effect:succeed",
-      "packages/system/test/tracing.test.ts:27:13:Effect:map",
-      "packages/system/test/tracing.test.ts:28:25:Effect:bimap"
+      "packages/system/test/tracing.test.ts:25:7:Effect:tuple",
+      "packages/system/test/tracing.test.ts:25:15:Effect:succeed",
+      "packages/system/test/tracing.test.ts:25:34:Effect:succeed",
+      "packages/system/test/tracing.test.ts:25:53:Effect:succeed",
+      "packages/system/test/tracing.test.ts:26:13:Effect:map",
+      "packages/system/test/tracing.test.ts:27:25:Effect:bimap"
     ])
   })
 
@@ -51,13 +49,13 @@ describe("Tracer", () => {
     )
 
     expect(traces).toEqual([
+      "packages/system/test/tracing.test.ts:45:26:Effect:bind",
+      "packages/system/test/tracing.test.ts:45:28:Effect:succeed",
       "packages/system/test/tracing.test.ts:46:26:Effect:bind",
       "packages/system/test/tracing.test.ts:46:28:Effect:succeed",
-      "packages/system/test/tracing.test.ts:47:26:Effect:bind",
-      "packages/system/test/tracing.test.ts:47:28:Effect:succeed",
-      "packages/system/test/tracing.test.ts:48:16:Effect:bind",
-      "packages/system/test/tracing.test.ts:48:32:Effect:effectTotal",
-      "packages/system/test/tracing.test.ts:49:23:Effect:bind"
+      "packages/system/test/tracing.test.ts:47:16:Effect:bind",
+      "packages/system/test/tracing.test.ts:47:32:Effect:effectTotal",
+      "packages/system/test/tracing.test.ts:48:23:Effect:bind"
     ])
   })
 
@@ -72,37 +70,28 @@ describe("Tracer", () => {
     )
 
     expect(traces).toEqual([
+      "packages/system/test/tracing.test.ts:66:26:Effect:bind",
+      "packages/system/test/tracing.test.ts:66:28:Effect:succeed",
       "packages/system/test/tracing.test.ts:67:26:Effect:bind",
       "packages/system/test/tracing.test.ts:67:28:Effect:succeed",
-      "packages/system/test/tracing.test.ts:68:26:Effect:bind",
-      "packages/system/test/tracing.test.ts:68:28:Effect:succeed",
-      "packages/system/test/tracing.test.ts:69:16:Effect:bind",
-      "packages/system/test/tracing.test.ts:69:32:Effect:effectTotal",
-      "packages/system/test/tracing.test.ts:70:23:Effect:bind"
+      "packages/system/test/tracing.test.ts:68:16:Effect:bind",
+      "packages/system/test/tracing.test.ts:68:32:Effect:effectTotal",
+      "packages/system/test/tracing.test.ts:69:23:Effect:bind"
     ])
   })
 
   it("trace service", async () => {
-    const makeService = T.succeed({
-      /**
-       * @module Service
-       * @trace 0
-       */
-      printTrace<A>(f: () => A) {
-        return T.effectTotal(() => fromNullable<string>(f["$trace"]))
-      }
-    })
-    interface Service extends _A<typeof makeService> {}
-    const Service = tag<Service>()
-
     const traces = await pipe(
-      T.accessServiceM(Service)((_) => _.printTrace(() => 1)),
-      T.provideServiceM(Service)(makeService),
+      T.accessServiceM(CustomService)((_) => _.printTrace(() => 1)),
+      T.andThen(T.checkExecutionTraces(T.succeed)),
+      T.provideServiceM(CustomService)(makeCustomService),
       T.runPromise
     )
 
-    expect(traces).toEqual(
-      some("packages/system/test/tracing.test.ts:99:53:Service:printTrace")
-    )
+    console.log(traces)
+
+    expect(traces).toEqual([
+      "packages/system/test/tracing.test.ts:98:53:Service:printTrace"
+    ])
   })
 })
