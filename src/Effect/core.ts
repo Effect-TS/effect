@@ -262,6 +262,9 @@ export function result<R, E, A>(
 
 /**
  * Lift a pure value into an effect
+ *
+ * @module Effect
+ * @trace suspend
  */
 export function succeed<A>(a: A): Effect<unknown, never, A> {
   return new ISucceed(a)
