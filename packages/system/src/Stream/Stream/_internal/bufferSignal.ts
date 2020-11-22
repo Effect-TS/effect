@@ -11,6 +11,10 @@ import * as Pull from "../../Pull"
 import * as Take from "../../Take"
 import type { Stream } from "../definitions"
 
+/**
+ * Allows a faster producer to progress independently of a slower consumer by buffering
+ * to the provided queue.
+ */
 export function bufferSignal<R, E, E1, O, O1>(
   self: Stream<R, E, O>,
   queue: Q.Queue<readonly [Take.Take<E1, O1>, P.Promise<never, void>]>
