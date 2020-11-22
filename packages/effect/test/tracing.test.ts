@@ -19,7 +19,7 @@ describe("Tracer", () => {
     )
 
     expect(traces).toEqual([
-      "packages/system/test/tracing.test.ts:14:7:Effect:tuple",
+      "packages/system/test/tracing.test.ts:14:14:Effect:tuple",
       "packages/system/test/tracing.test.ts:14:30:Effect:succeed",
       "packages/system/test/tracing.test.ts:14:49:Effect:succeed",
       "packages/system/test/tracing.test.ts:14:68:Effect:succeed",
@@ -86,7 +86,7 @@ describe("Tracer", () => {
       "packages/system/test/utils/service.ts:12:14:CustomService:makeCustomService",
       "packages/system/test/utils/service.ts:12:44:Effect:succeed",
       "packages/system/test/tracing.test.ts:79:39:Effect:accessServiceM",
-      "packages/system/test/tracing.test.ts:79:46:CustomService:printTrace",
+      "packages/system/test/tracing.test.ts:79:58:CustomService:printTrace",
       "packages/system/test/utils/service.ts:18:29:Effect:chain_",
       "packages/system/test/utils/service.ts:18:45:Effect:succeed",
       "packages/system/test/tracing.test.ts:80:17:Effect:andThen",
