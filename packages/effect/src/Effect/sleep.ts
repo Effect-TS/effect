@@ -7,6 +7,7 @@ import { suspend } from "./core"
  *
  * @module Effect
  * @trace replace 0
+ * @trace point-free
  */
 export function sleep(ms: number) {
   return foldTraced_(ms, (d, t) => suspend(traceF_(() => clockSleep(d), t)))

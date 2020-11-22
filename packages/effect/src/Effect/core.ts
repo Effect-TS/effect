@@ -36,7 +36,7 @@ import {
  *
  * @module Effect
  * @trace 0
- * @arity 1
+ * @trace point-free
  */
 export function access<R0, A>(f: (_: R0) => A): RIO<R0, A> {
   return new IRead((_: R0) => new ISucceed(f(_)))
@@ -47,7 +47,7 @@ export function access<R0, A>(f: (_: R0) => A): RIO<R0, A> {
  *
  * @module Effect
  * @trace 0
- * @arity 1
+ * @trace point-free
  */
 export function accessM<R0, R, E, A>(
   f: (_: R0) => Effect<R, E, A>
@@ -62,7 +62,7 @@ export function accessM<R0, R, E, A>(
  *
  * @module Effect
  * @trace 0
- * @arity 1
+ * @trace point-free
  */
 export function chain<R1, E1, A1, A>(f: (a: A) => Effect<R1, E1, A1>) {
   return <R, E>(val: Effect<R, E, A>): Effect<R & R1, E | E1, A1> =>
@@ -76,7 +76,6 @@ export function chain<R1, E1, A1, A>(f: (a: A) => Effect<R1, E1, A1>) {
  *
  * @module Effect
  * @trace 1
- * @arity 2
  */
 export function chain_<R, E, A, R1, E1, A1>(
   val: Effect<R, E, A>,
@@ -91,7 +90,7 @@ export function chain_<R, E, A, R1, E1, A1>(
  *
  * @module Effect
  * @trace 0
- * @arity 1
+ * @trace point-free
  */
 export function descriptorWith<R, E, A>(
   f: (_: Descriptor) => Effect<R, E, A>
@@ -105,7 +104,7 @@ export function descriptorWith<R, E, A>(
  *
  * @module Effect
  * @trace 0
- * @arity 1
+ * @trace point-free
  */
 export function checkInterruptible<R, E, A>(
   f: (_: InterruptStatus) => Effect<R, E, A>
@@ -119,7 +118,7 @@ export function checkInterruptible<R, E, A>(
  *
  * @module Effect
  * @trace 0
- * @arity 1
+ * @trace point-free
  */
 export function checkExecutionTraces<R, E, A>(
   f: (_: readonly string[]) => Effect<R, E, A>
@@ -140,7 +139,6 @@ export function checkExecutionTraces<R, E, A>(
  *
  * @module Effect
  * @trace 0
- * @arity 2
  */
 export function effectAsyncOption<R, E, A>(
   register: (cb: (_: Effect<R, E, A>) => void) => O.Option<Effect<R, E, A>>,
@@ -155,14 +153,14 @@ export function effectAsyncOption<R, E, A>(
  *
  * @module Effect
  * @trace 0
- * @arity 1
+ * @trace point-free
  */
 export function effectPartial<E>(onThrow: (u: unknown) => E) {
   return (
     /**
      * @module Effect
      * @trace 0
-     * @arity 1
+     * @trace point-free
      */
     <A>(effect: () => A): IO<E, A> => new IEffectPartial(effect, onThrow)
   )
@@ -174,7 +172,7 @@ export function effectPartial<E>(onThrow: (u: unknown) => E) {
  *
  * @module Effect
  * @trace 0
- * @arity 1
+ * @trace point-free
  */
 function try_<A>(effect: () => A): IO<unknown, A> {
   return new IEffectPartial(effect, identity)
@@ -187,7 +185,7 @@ export { try_ as try }
  *
  * @module Effect
  * @trace 0
- * @arity 1
+ * @trace point-free
  */
 export function effectTotal<A>(effect: () => A): UIO<A> {
   return new IEffectTotal(effect)
@@ -199,7 +197,6 @@ export function effectTotal<A>(effect: () => A): UIO<A> {
  * @module Effect
  * @trace 0
  * @trace 1
- * @arity 2
  */
 export function foldCauseM<E, A, R2, E2, A2, R3, E3, A3>(
   failure: (cause: Cause<E>) => Effect<R2, E2, A2>,
@@ -215,7 +212,6 @@ export function foldCauseM<E, A, R2, E2, A2, R3, E3, A3>(
  * @module Effect
  * @trace 1
  * @trace 2
- * @arity 3
  */
 export function foldCauseM_<R, E, A, R2, E2, A2, R3, E3, A3>(
   value: Effect<R, E, A>,
@@ -238,7 +234,7 @@ export function foldCauseM_<R, E, A, R2, E2, A2, R3, E3, A3>(
  *
  * @module Effect
  * @trace replace 0
- * @arity 1
+ * @trace point-free
  */
 export function fork<R, E, A>(
   value: Effect<R, E, A>
@@ -331,7 +327,7 @@ export function result<R, E, A>(
  *
  * @module Effect
  * @trace replace 0
- * @arity 1
+ * @trace point-free
  */
 export function succeed<A>(a: A): Effect<unknown, never, A> {
   return new ISucceed(a)
@@ -352,7 +348,7 @@ export function supervised(supervisor: Supervisor<any>) {
  *
  * @module Effect
  * @trace 0
- * @arity 1
+ * @trace point-free
  */
 export function suspend<R, E, A>(factory: () => Effect<R, E, A>): Effect<R, E, A> {
   return new ISuspend(factory)
@@ -364,14 +360,14 @@ export function suspend<R, E, A>(factory: () => Effect<R, E, A>): Effect<R, E, A
  *
  * @module Effect
  * @trace 0
- * @arity 1
+ * @trace point-free
  */
 export function suspendPartial<E2>(onThrow: (u: unknown) => E2) {
   return (
     /**
      * @module Effect
      * @trace 0
-     * @arity 1
+     * @trace point-free
      */
     <R, E, A>(factory: () => Effect<R, E, A>): Effect<R, E | E2, A> =>
       new ISuspendPartial(factory, onThrow)
@@ -385,7 +381,6 @@ export function suspendPartial<E2>(onThrow: (u: unknown) => E2) {
  * @module Effect
  * @trace 1
  * @trace 2
- * @arity 3
  */
 export function tryOrElse_<R, E, A, R2, E2, A2, R3, E3, A3>(
   self: Effect<R, E, A>,
@@ -406,7 +401,6 @@ export function tryOrElse_<R, E, A, R2, E2, A2, R3, E3, A3>(
  * @module Effect
  * @trace 0
  * @trace 1
- * @arity 2
  */
 export function tryOrElse<A, R2, E2, A2, R3, E3, A3>(
   that: () => Effect<R2, E2, A2>,

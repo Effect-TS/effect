@@ -137,4 +137,19 @@ describe("Tracer", () => {
       "packages/system/test/tracing.test.ts:130:40:Effect:checkExecutionTraces"
     ])
   })
+
+  it("should trace point free", async () => {
+    const traces = await pipe(
+      200,
+      T.sleep,
+      T.andThen(T.checkExecutionTraces(T.succeed)),
+      T.runPromise
+    )
+
+    expect(traces).toEqual([
+      "packages/system/test/tracing.test.ts:144:14:Effect:sleep",
+      "packages/system/test/tracing.test.ts:145:17:Effect:andThen",
+      "packages/system/test/tracing.test.ts:145:40:Effect:checkExecutionTraces"
+    ])
+  })
 })
