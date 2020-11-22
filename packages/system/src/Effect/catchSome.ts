@@ -23,7 +23,7 @@ export function catchSome_<R, E, A, R2, E2, A2>(
 ) {
   return foldCauseM_(
     fa,
-    (cause) =>
+    (cause): Effect<R2, E | E2, A2> =>
       pipe(
         cause,
         C.failureOrCause,
