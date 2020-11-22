@@ -140,7 +140,7 @@ export default function tracingPlugin(_program: ts.Program, _opts: TracingOption
 
               if (isSuspend) {
                 const { character, line } = sourceFile.getLineAndCharacterOfPosition(
-                  node.getStart()
+                  node.expression.getEnd()
                 )
                 return factory.createCallExpression(
                   factory.createPropertyAccessExpression(
@@ -461,7 +461,7 @@ export default function tracingPlugin(_program: ts.Program, _opts: TracingOption
 
               if (isSuspend) {
                 const { character, line } = sourceFile.getLineAndCharacterOfPosition(
-                  node.getStart()
+                  node.expression.getEnd()
                 )
                 return factory.createCallExpression(
                   factory.createPropertyAccessExpression(
