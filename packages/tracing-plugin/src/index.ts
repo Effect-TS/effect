@@ -527,7 +527,7 @@ function handleChild(
   array: readonly ts.Expression[]
 ) => ts.Expression {
   return (x, i) => {
-    if (argsToTrace.includes("all") || argsToTrace.includes("" + i)) {
+    if (argsToTrace.includes("" + i)) {
       return ts.visitEachChild(
         factory.createCallExpression(
           factory.createPropertyAccessExpression(
