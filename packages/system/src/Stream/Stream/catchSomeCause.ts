@@ -9,10 +9,10 @@ import { halt } from "./halt"
  * fails with some errors. Allows recovery from all causes of failure, including interruption if the
  * stream is uninterruptible.
  */
-export function catchSomeCause_<R, R1, E, E1, O extends O1, O1>(
+export function catchSomeCause_<R, R1, E, E1, O, O1>(
   self: Stream<R, E, O>,
   f: (c: C.Cause<E>) => O.Option<Stream<R1, E1, O1>>
-): Stream<R & R1, E | E1, O1> {
+): Stream<R & R1, E | E1, O | O1> {
   return catchAllCause_(self, (cause) =>
     O.getOrElse_(f(cause), () => halt<E | E1>(cause))
   )
@@ -23,7 +23,7 @@ export function catchSomeCause_<R, R1, E, E1, O extends O1, O1>(
  * fails with some errors. Allows recovery from all causes of failure, including interruption if the
  * stream is uninterruptible.
  */
-export function catchSomeCause<R1, E, E1, O extends O1, O1>(
+export function catchSomeCause<R1, E, E1, O, O1>(
   f: (c: C.Cause<E>) => O.Option<Stream<R1, E1, O1>>
 ) {
   return <R>(self: Stream<R, E, O>) => catchSomeCause_(self, f)
