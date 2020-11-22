@@ -69,6 +69,30 @@ export default function tracingPlugin(_program: ts.Program, _opts: TracingOption
               const signature = checker.getTypeAtLocation(node).getCallSignatures()[0]
               const params = signature.getParameters()
 
+              if (
+                checker
+                  .getTypeAtLocation(node)
+                  .getCallSignatures()
+                  .findIndex(
+                    (s) =>
+                      s.getParameters().length !== params.length ||
+                      s
+                        .getParameters()
+                        .findIndex((p) =>
+                          p.valueDeclaration.getText().includes("...")
+                        ) !== -1
+                  ) !== -1
+              ) {
+                const { character, line } = sourceFile.getLineAndCharacterOfPosition(
+                  node.getEnd()
+                )
+                throw new TypeError(
+                  `cannot safely desugar point-free due to multiple overloads with a different number of parameters or a variadic argument is present: ${
+                    sourceFile.fileName
+                  }:${line + 1}:${character + 1}`
+                )
+              }
+
               const method =
                 symbol
                   ?.getDeclarations()
@@ -116,7 +140,7 @@ export default function tracingPlugin(_program: ts.Program, _opts: TracingOption
 
               if (isSuspend) {
                 const { character, line } = sourceFile.getLineAndCharacterOfPosition(
-                  node.getStart()
+                  node.expression.getEnd()
                 )
                 return factory.createCallExpression(
                   factory.createPropertyAccessExpression(
@@ -343,6 +367,22 @@ export default function tracingPlugin(_program: ts.Program, _opts: TracingOption
             ).filter((s): s is string => s != null)
 
             if (argsToTrace.length > 0) {
+              if (
+                (argsToTrace.findIndex((v) => v.includes("replace")) !== -1 ||
+                  argsToTrace.findIndex((v) => /^(\d*)$/.test(v)) !== -1) &&
+                node.arguments.findIndex((x) => ts.isSpreadElement(x)) !== -1
+              ) {
+                const { character, line } = sourceFile.getLineAndCharacterOfPosition(
+                  node.arguments.find((x) => ts.isSpreadElement(x))?.getStart() ||
+                    node.getStart()
+                )
+                throw new TypeError(
+                  `spread syntax is not available when "@trace i" or "@trace replace i" is defined at: ${
+                    sourceFile.fileName
+                  }:${line + 1}:${character + 1}`
+                )
+              }
+
               const method =
                 useOverloads && overloadDeclarations
                   ? ts.getNameOfDeclaration(overloadDeclarations)?.getText() ||
@@ -421,7 +461,7 @@ export default function tracingPlugin(_program: ts.Program, _opts: TracingOption
 
               if (isSuspend) {
                 const { character, line } = sourceFile.getLineAndCharacterOfPosition(
-                  node.getStart()
+                  node.expression.getEnd()
                 )
                 return factory.createCallExpression(
                   factory.createPropertyAccessExpression(
@@ -527,7 +567,7 @@ function handleChild(
   array: readonly ts.Expression[]
 ) => ts.Expression {
   return (x, i) => {
-    if (argsToTrace.includes("" + i)) {
+    if (argsToTrace.includes("all") || argsToTrace.includes("" + i)) {
       return ts.visitEachChild(
         factory.createCallExpression(
           factory.createPropertyAccessExpression(
