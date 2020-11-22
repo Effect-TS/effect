@@ -9,15 +9,15 @@ import * as Pull from "../Pull"
 import { Stream } from "./definitions"
 import { halt } from "./halt"
 
+class State<X> {
+  constructor(public buffer: A.Array<X>, public done: boolean) {}
+}
+
 /**
  * Re-chunks the elements of the stream into chunks of
  * `n` elements each.
  * The last chunk might contain less than `n` elements
  */
-class State<X> {
-  constructor(public buffer: A.Array<X>, public done: boolean) {}
-}
-
 export function chunkN_<R, E, O>(self: Stream<R, E, O>, n: number): Stream<R, E, O> {
   const emitOrAccumulate = (
     buffer: A.Array<O>,

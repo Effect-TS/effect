@@ -24,7 +24,6 @@ export function broadcastDynamic_<R, E, O>(
       ),
       T.map(([_, x]) => x)
     ),
-
     T.map((_) => flattenExitOption(fromQueueWithShutdown(_)))
   )
 }

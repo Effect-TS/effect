@@ -10,7 +10,7 @@ export function bimap_<R, E, E1, O, O1>(
   self: Stream<R, E, O>,
   f: (e: E) => E1,
   g: (o: O) => O1
-): Stream<R, E | E1, O1> {
+): Stream<R, E1, O1> {
   return map_(mapError_(self, f), g)
 }
 
