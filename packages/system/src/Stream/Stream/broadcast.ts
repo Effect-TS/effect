@@ -1,7 +1,7 @@
 import * as A from "../../Array"
 import { pipe } from "../../Function"
 import * as M from "../../Managed"
-import { broadcastedQueues_ } from "./broadcastQueues"
+import { broadcastedQueues_ } from "./broadcastedQueues"
 import type { Stream } from "./definitions"
 import { flattenExitOption } from "./flattenExitOption"
 import { fromQueueWithShutdown } from "./fromQueueWithShutdown"
