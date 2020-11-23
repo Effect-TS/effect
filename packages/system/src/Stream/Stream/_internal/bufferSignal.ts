@@ -15,10 +15,10 @@ import type { Stream } from "../definitions"
  * Allows a faster producer to progress independently of a slower consumer by buffering
  * to the provided queue.
  */
-export function bufferSignal<R, E, E1, O, O1>(
+export function bufferSignal<R, E, O>(
   self: Stream<R, E, O>,
-  queue: Q.Queue<readonly [Take.Take<E1, O1>, P.Promise<never, void>]>
-): M.Managed<R, never, T.Effect<R, O.Option<E1>, A.Array<O1>>> {
+  queue: Q.Queue<readonly [Take.Take<E, O>, P.Promise<never, void>]>
+): M.Managed<R, never, T.Effect<R, O.Option<E>, A.Array<O>>> {
   return pipe(
     M.do,
     M.bind("as", () => self.proc),
@@ -27,7 +27,7 @@ export function bufferSignal<R, E, E1, O, O1>(
     M.bind("ref", ({ start }) => T.toManaged_(Ref.makeRef(start))),
     M.bind("done", () => T.toManaged_(Ref.makeRef(false))),
     M.let("upstream", ({ as, ref }) => {
-      const offer = (take: Take.Take<E1, O1>): T.UIO<void> =>
+      const offer = (take: Take.Take<E, O>): T.UIO<void> =>
         Ex.fold_(
           take,
           (_) =>
@@ -53,7 +53,7 @@ export function bufferSignal<R, E, E1, O, O1>(
 
       return pipe(
         Take.fromPull(as),
-        T.tap((take) => offer(take as Ex.Exit<O.Option<E1>, A.Array<O1>>)),
+        T.tap((take) => offer(take as Ex.Exit<O.Option<E>, A.Array<O>>)),
         T.repeatWhile((_) => _ !== Take.end),
         T.asUnit
       )

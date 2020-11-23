@@ -36,7 +36,7 @@ function collectWhileArray<X, Y>(
 export function collectWhile_<R, E, O, O2>(
   self: Stream<R, E, O>,
   f: (o: O) => O.Option<O2>
-): Stream<R, E, O | O2> {
+): Stream<R, E, O2> {
   return new Stream(
     pipe(
       M.do,
@@ -70,6 +70,6 @@ export function collectWhile_<R, E, O, O2>(
 /**
  * Transforms all elements of the stream for as long as the specified partial function is defined.
  */
-export function collectWhile<O, O2 extends O>(f: (o: O) => O.Option<O2>) {
+export function collectWhile<O, O2>(f: (o: O) => O.Option<O2>) {
   return <R, E>(self: Stream<R, E, O>) => collectWhile_(self, f)
 }
