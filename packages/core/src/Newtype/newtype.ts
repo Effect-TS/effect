@@ -7,19 +7,37 @@ export type AnyNewtype = Newtype<any, any>
 
 export interface Constructor<T, URI> {
   URI: URI
+  /**
+   * @optimize identity
+   */
   wrap: (_: T) => Newtype<URI, T>
+  /**
+   * @optimize identity
+   */
   unwrap: (_: Newtype<URI, T>) => T
 }
 
 export interface GenericConstructor<URI> {
   URI: URI
+  /**
+   * @optimize identity
+   */
   wrap: <T>(_: T) => Newtype<URI, T>
+  /**
+   * @optimize identity
+   */
   unwrap: <T>(_: Newtype<URI, T>) => T
   of: <T>() => Constructor<T, URI>
 }
 
 export interface ConstructorK<T, URI, K extends Newtype<URI, T>> {
+  /**
+   * @optimize identity
+   */
   wrap: (_: T) => K
+  /**
+   * @optimize identity
+   */
   unwrap: (_: K) => T
 }
 
