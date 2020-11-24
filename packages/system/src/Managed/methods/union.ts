@@ -3,6 +3,8 @@ import type { Managed } from "../managed"
 
 /**
  * Compact the union produced by the result of f
+ *
+ * @optimize identity
  */
 export function unionFn<ARGS extends any[], Ret extends Managed<any, any, any>>(
   _: (...args: ARGS) => Ret
@@ -12,6 +14,8 @@ export function unionFn<ARGS extends any[], Ret extends Managed<any, any, any>>(
 
 /**
  * Compact the union
+ *
+ * @optimize identity
  */
 export function union<Ret extends Managed<any, any, any>>(
   _: Ret

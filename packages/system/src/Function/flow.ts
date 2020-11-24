@@ -10,6 +10,8 @@
  * const f = flow(len, double)
  *
  * assert.strictEqual(f('aaa'), 6)
+ *
+ * @optimize flow
  */
 export function flow<A extends ReadonlyArray<unknown>, B>(
   ab: (...a: A) => B

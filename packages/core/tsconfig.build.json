@@ -7,7 +7,15 @@
     "incremental": true,
     "tsBuildInfoFile": "tsbuildinfo/build.tsbuildinfo",
     "removeComments": false,
-    "lib": ["DOM"]
+    "plugins": [
+      {
+        "transform": "../tracing-plugin/src/index.ts",
+        "pipe": true,
+        "flow": true,
+        "tracing": false,
+        "identity": true
+      }
+    ]
   },
   "include": ["src/**/*"],
   "exclude": ["test", "node_modules"]

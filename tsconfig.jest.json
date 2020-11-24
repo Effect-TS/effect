@@ -7,8 +7,10 @@
     "plugins": [
       {
         "transform": "./packages/tracing-plugin/src/index.ts",
-        "tracingModule": "@effect-ts/core/Tracing",
-        "relativeToRoot": "../../../"
+        "pipe": true,
+        "flow": true,
+        "tracing": false,
+        "identity": true
       }
     ]
   }
