@@ -5,6 +5,7 @@ import {
   hashPassword,
   InvalidPassword,
   PBKDF2ConfigLive,
+  PBKDF2ConfigTest,
   verifyPassword
 } from "./crypto"
 import { testRuntime } from "./crypto/runtime"
@@ -35,7 +36,7 @@ describe("Crypto Suite", () => {
   })
   describe("Test", () => {
     const { runPromise, runPromiseExit } = pipe(
-      CryptoLive["<<<"](PBKDF2ConfigLive),
+      CryptoLive["<<<"](PBKDF2ConfigTest),
       testRuntime
     )()
 
