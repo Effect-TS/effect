@@ -7,7 +7,8 @@
     "incremental": true,
     "tsBuildInfoFile": "tsbuildinfo/es6.tsbuildinfo",
     "removeComments": false,
-    "lib": ["DOM"]
+    "lib": ["ES2020"],
+    "plugins": []
   },
   "include": ["src/**/*"],
   "exclude": ["test", "node_modules"]
