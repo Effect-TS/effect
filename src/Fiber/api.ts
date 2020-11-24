@@ -319,6 +319,9 @@ export function collectAll<E, A>(fibers: Iterable<Fiber.Fiber<E, A>>) {
   })
 }
 
+/**
+ * @optimize identity
+ */
 export function makeSynthetic<E, A>(_: Fiber.Synthetic<E, A>): Fiber.Fiber<E, A> {
   return _
 }

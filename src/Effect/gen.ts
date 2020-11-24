@@ -9,7 +9,6 @@ import { Managed } from "../Managed"
 import type { ReleaseMap } from "../Managed/ReleaseMap"
 import { makeReleaseMap, releaseAll } from "../Managed/ReleaseMap"
 import type { Option } from "../Option"
-import { traceSuspend } from "../Tracing"
 import type { _E, _R } from "../Utils"
 import { isEither, isOption, isTag } from "../Utils"
 import { bracketExit_ } from "./bracketExit_"
@@ -61,62 +60,14 @@ function adapter(_: any, __?: any, ___?: any) {
 }
 
 export interface Adapter {
-  /**
-   * Adapter Function
-   *
-   * @module Effect
-   *
-   * @trace append
-   * @named bind
-   */
   <A>(_: Tag<A>): GenEffect<Has<A>, never, A>
-  /**
-   * Adapter Function
-   *
-   * @module Effect
-   *
-   * @trace append
-   * @named bind
-   */
   <E, A>(_: Option<A>, onNone: () => E): GenEffect<unknown, E, A>
-  /**
-   * Adapter Function
-   *
-   * @module Effect
-   *
-   * @trace append
-   * @named bind
-   */
   <A>(_: Option<A>): GenEffect<unknown, NoSuchElementException, A>
-  /**
-   * Adapter Function
-   *
-   * @module Effect
-   *
-   * @trace append
-   * @named bind
-   */
   <E, A>(_: Either<E, A>): GenEffect<unknown, E, A>
-  /**
-   * Adapter Function
-   *
-   * @module Effect
-   *
-   * @trace append
-   * @named bind
-   */
   <R, E, A>(_: Effect<R, E, A>): GenEffect<R, E, A>
 }
 
 export interface AdapterWithManaged extends Adapter {
-  /**
-   * Adapter Function
-   *
-   * @module Effect
-   *
-   * @trace append
-   * @named bind
-   */
   <R, E, A>(_: Managed<R, E, A>): GenEffect<R, E, A>
 }
 
@@ -149,17 +100,12 @@ export function genM(...args: any[]): any {
         }
         return chain_(
           state.value._trace
-            ? traceSuspend(
-                state.value["effect"] instanceof Managed
-                  ? map_(
-                      provideSome_(state.value["effect"]["effect"], (r0) =>
-                        tuple(r0, rm)
-                      ),
-                      ([_, a]) => a
-                    )
-                  : state.value["effect"],
-                state.value._trace
-              )
+            ? state.value["effect"] instanceof Managed
+              ? map_(
+                  provideSome_(state.value["effect"]["effect"], (r0) => tuple(r0, rm)),
+                  ([_, a]) => a
+                )
+              : state.value["effect"]
             : state.value["effect"] instanceof Managed
             ? map_(
                 provideSome_(state.value["effect"]["effect"], (r0) => tuple(r0, rm)),
@@ -217,10 +163,7 @@ export function gen(...args: any[]): any {
         }
         return chain_(
           state.value._trace
-            ? traceSuspend(
-                state.value["effect"] as Effect<any, any, any>,
-                state.value._trace
-              )
+            ? (state.value["effect"] as Effect<any, any, any>)
             : (state.value["effect"] as Effect<any, any, any>),
           (val) => {
             const next = iterator.next(val)

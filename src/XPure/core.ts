@@ -30,6 +30,9 @@ export abstract class XPure<S1, S2, R, E, A> {
   }
 }
 
+/**
+ * @optimize identity
+ */
 function concrete<S1, S2, R, E, A>(
   _: XPure<S1, S2, R, E, A>
 ): Concrete<S1, S2, R, E, A> {
