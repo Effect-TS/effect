@@ -523,6 +523,8 @@ export function tryCatch<E>(
 
 /**
  * Compact types Either<E, A> | Either<E2, B> = Either<E | E2, A | B>
+ *
+ * @optimize identity
  */
 export function compact<E extends Either<any, any>>(
   _: E

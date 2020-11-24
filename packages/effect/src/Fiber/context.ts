@@ -22,7 +22,6 @@ import { AtomicNumber } from "../Support/AtomicNumber"
 import { AtomicReference } from "../Support/AtomicReference"
 import { RingBuffer } from "../Support/RingBuffer"
 import { defaultScheduler } from "../Support/Scheduler"
-import { foldTraced_, tracingEnabled } from "../Tracing"
 // xpure / internal effect
 import * as X from "../XPure"
 import * as T from "./_internal/effect"
@@ -133,7 +132,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   }
 
   addTrace(f: Function) {
-    if (tracingEnabled.get && f && "$trace" in f) {
+    if ("$trace" in f) {
       const region = this.traceStatusStack?.value
 
       if (region) {
@@ -804,13 +803,8 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
                     switch (nested._tag) {
                       case "Succeed": {
-                        foldTraced_(nested.val, (v, t) => {
-                          this.addTrace(k)
-                          if (t) {
-                            this.addTraceValue(t)
-                          }
-                          current = k(v)[T._I]
-                        })
+                        this.addTrace(k)
+                        current = k(nested.val)[T._I]
                         break
                       }
                       case "EffectTotal": {
@@ -866,12 +860,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                   }
 
                   case "Succeed": {
-                    foldTraced_(current.val, (v, t) => {
-                      if (t) {
-                        this.addTraceValue(t)
-                      }
-                      current = this.nextInstr(v)
-                    })
+                    current = this.nextInstr(current.val)
                     break
                   }
 
@@ -981,15 +970,13 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                   }
 
                   case "Fork": {
-                    const c = current
-                    foldTraced_(c.value, (v, t) => {
-                      if (t) {
-                        this.addTraceValue(t)
-                      }
-                      current = this.nextInstr(
-                        this.fork(v[T._I], c.scope, c.reportFailure)
+                    current = this.nextInstr(
+                      this.fork(
+                        current.value[T._I],
+                        current.scope,
+                        current.reportFailure
                       )
-                    })
+                    )
                     break
                   }
 

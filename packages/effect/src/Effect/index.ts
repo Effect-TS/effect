@@ -1,5 +1,3 @@
-export { traceAs, traceF_ } from "../Tracing"
-
 // codegen:start {preset: barrel, include: ./*.ts}
 export * from "./absolve"
 export * from "./absorbWith"

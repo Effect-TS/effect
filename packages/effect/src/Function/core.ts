@@ -96,6 +96,8 @@ export function flip<A, B, C>(f: (a: A, b: B) => C): (b: B, a: A) => C {
 
 /**
  * Identity function
+ *
+ * @optimize identity
  */
 export function identity<A>(a: A): A {
   return a
@@ -140,5 +142,9 @@ export function untupled<A extends ReadonlyArray<unknown>, B>(
 
 /**
  * Performs unsafe coercion of types
+ *
+ * @optimize identity
  */
-export const unsafeCoerce: <A, B>(a: A) => B = identity as any
+export function unsafeCoerce<A, B>(a: A): B {
+  return a as any
+}

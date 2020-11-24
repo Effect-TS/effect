@@ -62,6 +62,9 @@ export abstract class Async<R, E, A> {
   }
 }
 
+/**
+ * @optimize identity
+ */
 function concrete<R, E, A>(_: Async<R, E, A>): Concrete<R, E, A> {
   return _ as any
 }
@@ -1097,6 +1100,8 @@ export function fromEither<E, A>(e: E.Either<E, A>) {
 
 /**
  * Compact the union produced by the result of f
+ *
+ * @optimize identity
  */
 export function unionFn<ARGS extends any[], Ret extends Async<any, any, any>>(
   _: (...args: ARGS) => Ret
@@ -1106,6 +1111,8 @@ export function unionFn<ARGS extends any[], Ret extends Async<any, any, any>>(
 
 /**
  * Compact the union
+ *
+ * @optimize identity
  */
 export function union<Ret extends Async<any, any, any>>(
   _: Ret
