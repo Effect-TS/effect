@@ -45,6 +45,44 @@ export function tap<A, R, E1>(
   return (take) => tap_(take, f)
 }
 
+/**
+ * Folds over the failure cause, success value and end-of-stream marker to
+ * yield a value.
+ */
+export function fold_<E, A, Z>(
+  take: Take<E, A>,
+  end: Z,
+  error: (cause: C.Cause<E>) => Z,
+  value: (chunk: ReadonlyArray<A>) => Z
+): Z {
+  return E.fold_(
+    take,
+    flow(
+      C.sequenceCauseOption,
+      O.fold(() => end, error)
+    ),
+    value
+  )
+}
+
+/**
+ * Folds over the failure cause, success value and end-of-stream marker to
+ * yield a value.
+ */
+export function fold<E, A, Z>(
+  end: Z,
+  error: (cause: C.Cause<E>) => Z,
+  value: (chunk: ReadonlyArray<A>) => Z
+) {
+  return (take: Take<E, A>) => fold_(take, end, error, value)
+}
+
+/**
+ * Effectful version of [[Take#fold]].
+ *
+ * Folds over the failure cause, success value and end-of-stream marker to
+ * yield an effect.
+ */
 export function foldM_<E, A, R, E1, Z>(
   take: Take<E, A>,
   end: () => T.Effect<R, E1, Z>,
@@ -54,6 +92,12 @@ export function foldM_<E, A, R, E1, Z>(
   return E.foldM_(take, flow(C.sequenceCauseOption, O.fold(end, error)), value)
 }
 
+/**
+ * Effectful version of [[Take#fold]].
+ *
+ * Folds over the failure cause, success value and end-of-stream marker to
+ * yield an effect.
+ */
 export function foldM<E, A, R, E1, Z>(
   end: () => T.Effect<R, E1, Z>,
   error: (cause: C.Cause<E>) => T.Effect<R, E1, Z>,
