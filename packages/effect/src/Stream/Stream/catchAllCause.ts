@@ -15,9 +15,10 @@ import { Stream } from "./definitions"
  * fails. Allows recovery from all causes of failure, including interruption if the
  * stream is uninterruptible.
  */
-export const catchAllCause = <E, R1, E2, O1>(
+export function catchAllCause_<R, E, R1, E2, O, O1>(
+  self: Stream<R, E, O>,
   f: (e: C.Cause<E>) => Stream<R1, E2, O1>
-) => <R, O>(self: Stream<R, E, O>): Stream<R & R1, E2, O1 | O> => {
+): Stream<R & R1, E2, O1 | O> {
   type NotStarted = { _tag: "NotStarted" }
   type Self<E0> = { _tag: "Self"; pull: Pull.Pull<R, E0, O> }
   type Other = { _tag: "Other"; pull: Pull.Pull<R1, E2, O1> }
@@ -113,4 +114,15 @@ export const catchAllCause = <E, R1, E2, O1>(
       M.map(({ pull }) => pull)
     )
   )
+}
+
+/**
+ * Switches over to the stream produced by the provided function in case this one
+ * fails. Allows recovery from all causes of failure, including interruption if the
+ * stream is uninterruptible.
+ */
+export function catchAllCause<R, E, R1, E2, O, O1>(
+  f: (e: C.Cause<E>) => Stream<R1, E2, O1>
+) {
+  return (self: Stream<R, E, O>) => catchAllCause_(self, f)
 }
