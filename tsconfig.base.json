@@ -10,7 +10,7 @@
     "preserveSymlinks": true,
     "moduleResolution": "node",
     "noEmit": false,
-    "lib": ["es2018"],
+    "lib": ["es2020"],
     "sourceMap": true,
     "declarationMap": true,
     "strict": true,
