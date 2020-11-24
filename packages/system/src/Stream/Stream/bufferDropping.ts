@@ -1,0 +1,42 @@
+import * as T from "../../Effect"
+import { pipe } from "../../Function"
+import * as M from "../../Managed"
+import type * as P from "../../Promise"
+import * as Q from "../../Queue"
+import type * as Take from "../Take"
+import { bufferSignal } from "./_internal/bufferSignal"
+import { Stream } from "./definitions"
+
+/**
+ * Allows a faster producer to progress independently of a slower consumer by buffering
+ * up to `capacity` elements in a dropping queue.
+ *
+ * @note Prefer capacities that are powers of 2 for better performance.
+ */
+export function bufferDropping_<R, E, O>(
+  self: Stream<R, E, O>,
+  capacity: number
+): Stream<R, E, O> {
+  return new Stream(
+    pipe(
+      M.do,
+      M.bind("queue", () =>
+        T.toManaged_(
+          Q.makeDropping<readonly [Take.Take<E, O>, P.Promise<never, void>]>(capacity),
+          (q) => q.shutdown
+        )
+      ),
+      M.chain(({ queue }) => bufferSignal(self, queue))
+    )
+  )
+}
+
+/**
+ * Allows a faster producer to progress independently of a slower consumer by buffering
+ * up to `capacity` elements in a dropping queue.
+ *
+ * @note Prefer capacities that are powers of 2 for better performance.
+ */
+export function bufferDropping(capacity: number) {
+  return <R, E, O>(self: Stream<R, E, O>) => bufferDropping_(self, capacity)
+}

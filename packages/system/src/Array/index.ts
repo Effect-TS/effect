@@ -448,6 +448,32 @@ export function filterMapWithIndex_<A, B>(
 }
 
 /**
+ * Maps an array until `none` is returned
+ */
+export function collectWhile_<A, B>(arr: Array<A>, f: (x: A) => Option<B>): Array<B> {
+  const result: MutableArray<B> = []
+
+  for (let i = 0; i < arr.length; i++) {
+    const o = f(arr[i])
+
+    if (isSome(o)) {
+      result.push(o.value)
+    } else {
+      break
+    }
+  }
+
+  return result
+}
+
+/**
+ * Maps an array until `none` is returned
+ */
+export function collectWhile<A, B>(f: (x: A) => Option<B>) {
+  return (arr: Array<A>) => collectWhile_(arr, f)
+}
+
+/**
  * Find the first element which satisfies a predicate (or a refinement) function
  *
  * ```ts

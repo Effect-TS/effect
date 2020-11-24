@@ -106,3 +106,21 @@ export class IllegalStateException extends Error {
 
 export const isIllegalStateException = (u: unknown): u is IllegalStateException =>
   u instanceof Error && u[IllegalStateSymbol] === "IllegalStateException"
+
+//
+// @category IllegalState
+//
+export const IllegalArgumentSymbol: unique symbol = Symbol.for(
+  "@matechs/core/symbols/errors/IllegalArgument"
+)
+export class IllegalArgumentException extends Error {
+  readonly [IllegalArgumentSymbol] = "IllegalArgumentException"
+
+  constructor(message?: string) {
+    super(message)
+    this.name = this[IllegalArgumentSymbol]
+  }
+}
+
+export const isIllegalArgumentException = (u: unknown): u is IllegalArgumentException =>
+  u instanceof Error && u[IllegalArgumentSymbol] === "IllegalArgumentException"
