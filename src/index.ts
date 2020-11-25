@@ -116,13 +116,19 @@ export default function tracer(
             ])
 
             const noTraceRetTagsOverload = overloadDeclarations
-              ? ts
-                  .getAllJSDocTags(
-                    overloadDeclarations,
-                    (t): t is ts.JSDocTag => t.tagName.getText() === "notraceret"
-                  )
-                  .map((e) => e.comment)
-                  .filter((s): s is string => s != null)
+              ? (() => {
+                  try {
+                    return ts
+                      .getAllJSDocTags(
+                        overloadDeclarations,
+                        (t): t is ts.JSDocTag => t.tagName.getText() === "notraceret"
+                      )
+                      .map((e) => e.comment)
+                      .filter((s): s is string => s != null)
+                  } catch {
+                    return undefined
+                  }
+                })()
               : undefined
 
             const noTraceRetTagsMain =
