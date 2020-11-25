@@ -8,11 +8,12 @@
     "clean": "rimraf build tsbuildinfo",
     "build:lib": "ttsc --build  tsconfig.build.json && ts-node ../../scripts/package.ts",
     "build:es6": "ttsc --build  tsconfig.es6.json && ts-node ../../scripts/rewrite-esm.ts && babel build/esm/ -d build/esm/ -s --plugins annotate-pure-calls",
-    "build:post-process": "ts-node ../../scripts/rewrite-source-maps.ts && ts-node ../../scripts/rewrite-locals.ts",
+    "build:post-process": "ts-node ../../scripts/rewrite-source-maps.ts && ts-node ../../scripts/rewrite-locals.ts && yarn prettier:lib",
     "build": "yarn run build:lib && yarn run build:es6 && yarn run build:post-process",
     "lint": "eslint . --ext .ts,.tsx",
     "autofix": "yarn prettier && yarn lint --fix && yarn prettier",
     "prettier": "prettier --write \"./{src,test,demo}/**/*.ts\"",
+    "prettier:lib": "prettier --write \"./build/**/*.ts\"",
     "tc": "tsc --noEmit",
     "demo": "ts-node -r tsconfig-paths/register"
   },
