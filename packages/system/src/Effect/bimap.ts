@@ -1,7 +1,7 @@
 import { succeed } from "./core"
 import type { Effect } from "./effect"
 import { fail } from "./fail"
-import { foldM_ } from "./foldM_"
+import { foldM_ } from "./foldM"
 
 /**
  * Returns an effect whose failure and success channels have been mapped by

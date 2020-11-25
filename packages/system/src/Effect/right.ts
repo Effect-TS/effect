@@ -3,7 +3,7 @@ import * as O from "../Option"
 import type { Effect } from "."
 import { succeed } from "./core"
 import { fail } from "./fail"
-import { foldM_ } from "./foldM_"
+import { foldM_ } from "./foldM"
 
 /**
  * Returns a successful effect if the value is `Right`, or fails with the error `None`.

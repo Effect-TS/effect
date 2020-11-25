@@ -12,7 +12,7 @@
         "transform": "../tracing-plugin/src/index.ts",
         "pipe": true,
         "flow": true,
-        "tracing": false,
+        "tracing": true,
         "identity": true,
         "dataFirst": true
       }
