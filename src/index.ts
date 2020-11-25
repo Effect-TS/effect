@@ -78,8 +78,7 @@ export default function tracer(
             ts.isCallExpression(node.expression) &&
             ts.isPropertyAccessExpression(node.expression.expression) &&
             node.arguments.length === 1 &&
-            !ts.isSpreadElement(node.arguments[0]) &&
-            sourceFile.fileName.includes("opt.test.ts")
+            !ts.isSpreadElement(node.arguments[0])
           ) {
             const symbol = checker
               .getTypeAtLocation(node.expression.expression)
@@ -102,16 +101,17 @@ export default function tracer(
               .reduce((flatten, entry) => flatten.concat(entry), [])[0]
 
             if (dataFirstTag) {
-              return factory.createCallExpression(
-                factory.createPropertyAccessExpression(
-                  node.expression.expression.expression,
-                  factory.createIdentifier(dataFirstTag)
+              return ts.visitEachChild(
+                factory.createCallExpression(
+                  factory.createPropertyAccessExpression(
+                    node.expression.expression.expression,
+                    factory.createIdentifier(dataFirstTag)
+                  ),
+                  undefined,
+                  [node.arguments[0], ...node.expression.arguments]
                 ),
-                undefined,
-                [
-                  ts.visitEachChild(node, dataFirst, ctx).arguments[0],
-                  ...ts.visitEachChild(node.expression, dataFirst, ctx).arguments
-                ]
+                dataFirst,
+                ctx
               )
             }
           }
@@ -169,13 +169,13 @@ export default function tracer(
               ...(optimizeTagsOverload || [])
             ])
 
-            const noTraceRetTagsOverload = overloadDeclarations
+            const traceRetTagsOverload = overloadDeclarations
               ? (() => {
                   try {
                     return ts
                       .getAllJSDocTags(
                         overloadDeclarations,
-                        (t): t is ts.JSDocTag => t.tagName.getText() === "notraceret"
+                        (t): t is ts.JSDocTag => t.tagName.getText() === "traceret"
                       )
                       .map((e) => e.comment)
                       .filter((s): s is string => s != null)
@@ -185,7 +185,7 @@ export default function tracer(
                 })()
               : undefined
 
-            const noTraceRetTagsMain =
+            const traceRetTagsMain =
               symbol
                 ?.getDeclarations()
                 ?.map((e) => {
@@ -193,7 +193,7 @@ export default function tracer(
                     return ts
                       .getAllJSDocTags(
                         e,
-                        (t): t is ts.JSDocTag => t.tagName.getText() === "notraceret"
+                        (t): t is ts.JSDocTag => t.tagName.getText() === "traceret"
                       )
                       .map((e) => e.comment)
                   } catch {
@@ -202,18 +202,12 @@ export default function tracer(
                 })
                 .reduce((flatten, entry) => flatten.concat(entry), []) || []
 
-            const noTraceRetTags = new Set([
-              ...noTraceRetTagsMain,
-              ...(noTraceRetTagsOverload || [])
+            const traceRetTags = new Set([
+              ...traceRetTagsMain,
+              ...(traceRetTagsOverload || [])
             ])
 
-            const cs = checker
-              .getResolvedSignature(node)
-              ?.getReturnType()
-              ?.getCallSignatures()
-
-            const shouldTrace =
-              noTraceRetTags.size === 0 && cs && cs.length > 0 && isTracing
+            const shouldTrace = traceRetTags.size > 0 && isTracing
 
             if (
               identityOn &&
