@@ -17,7 +17,7 @@ export {
 } from "../Effect/core"
 export { forkDaemon } from "../Effect/core-scope"
 export { delay } from "../Effect/delay"
-export { bind, bind_, do, let } from "../Effect/do"
+export { bind, bind_, do, let, let_ } from "../Effect/do"
 export { done } from "../Effect/done"
 export { Effect, IO, UIO, _A, _E, _I, _R, _U } from "../Effect/effect"
 export { environment } from "../Effect/environment"

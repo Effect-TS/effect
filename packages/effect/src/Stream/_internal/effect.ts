@@ -20,7 +20,7 @@ export {
 export { raceWith_ } from "../../Effect/core-scope"
 export { foreach } from "../../Effect/foreach"
 export { die } from "../../Effect/die"
-export { bind, bind_, do, let } from "../../Effect/do"
+export { bind, bind_, do, let, let_ } from "../../Effect/do"
 export { done } from "../../Effect/done"
 export { Effect, IO, UIO, _A, _E, _I, _R, _U, RIO } from "../../Effect/effect"
 export { effectAsyncInterrupt } from "../../Effect/effectAsyncInterrupt"
