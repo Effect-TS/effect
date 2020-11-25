@@ -11,7 +11,7 @@
       {
         "transform": "../tracing-plugin/src/index.ts",
         "pipe": true,
-        "flow": false,
+        "flow": true,
         "tracing": false,
         "identity": true
       }
