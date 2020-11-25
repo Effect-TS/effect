@@ -30,7 +30,6 @@ function checkRegionAt(
 }
 
 const traceRegex = /tracing: (on|off)/
-const moduleRegex = /@module (.*)/
 const traceOnRegex = /tracing: on/
 
 export default function tracer(
@@ -73,64 +72,50 @@ export default function tracer(
           })
           .filter(([x]) => x.length > 0)
 
-        const modules = new Map<string, ts.Identifier>()
-
         function dataFirst(node: ts.Node): ts.VisitResult<ts.Node> {
-          if (ts.isImportDeclaration(node) && node.importClause) {
-            const bindings = node.importClause.namedBindings
-            if (bindings && ts.isNamespaceImport(bindings)) {
-              const symbol = checker.getTypeAtLocation(bindings).getSymbol()
-              const module = symbol?.valueDeclaration.getFullText().match(moduleRegex)
+          if (
+            ts.isCallExpression(node) &&
+            ts.isCallExpression(node.expression) &&
+            ts.isPropertyAccessExpression(node.expression.expression) &&
+            node.arguments.length === 1 &&
+            !ts.isSpreadElement(node.arguments[0]) &&
+            sourceFile.fileName.includes("opt.test.ts")
+          ) {
+            const symbol = checker
+              .getTypeAtLocation(node.expression.expression)
+              .getSymbol()
 
-              if (module) {
-                modules.set(module[1], bindings.name)
-              }
+            const dataFirstTag = symbol
+              ?.getDeclarations()
+              ?.map((e) => {
+                try {
+                  return ts
+                    .getAllJSDocTags(
+                      e,
+                      (t): t is ts.JSDocTag => t.tagName?.getText() === "dataFirst"
+                    )
+                    .map((e) => e.comment)
+                } catch {
+                  return []
+                }
+              })
+              .reduce((flatten, entry) => flatten.concat(entry), [])[0]
+
+            if (dataFirstTag) {
+              return factory.createCallExpression(
+                factory.createPropertyAccessExpression(
+                  node.expression.expression.expression,
+                  factory.createIdentifier(dataFirstTag)
+                ),
+                undefined,
+                [
+                  ts.visitEachChild(node, dataFirst, ctx).arguments[0],
+                  ...ts.visitEachChild(node.expression, dataFirst, ctx).arguments
+                ]
+              )
             }
           }
-          const eff = modules.get("Effect")
-          if (eff) {
-            if (
-              ts.isCallExpression(node) &&
-              ts.isCallExpression(node.expression) &&
-              node.arguments.length === 1 &&
-              !ts.isSpreadElement(node.arguments[0]) &&
-              sourceFile.fileName.includes("opt.test.ts")
-            ) {
-              const symbol = checker
-                .getTypeAtLocation(node.expression.expression)
-                .getSymbol()
 
-              const dataFirstTag = symbol
-                ?.getDeclarations()
-                ?.map((e) => {
-                  try {
-                    return ts
-                      .getAllJSDocTags(
-                        e,
-                        (t): t is ts.JSDocTag => t.tagName?.getText() === "dataFirst"
-                      )
-                      .map((e) => e.comment)
-                  } catch {
-                    return []
-                  }
-                })
-                .reduce((flatten, entry) => flatten.concat(entry), [])[0]
-
-              if (dataFirstTag) {
-                return factory.createCallExpression(
-                  factory.createPropertyAccessExpression(
-                    eff,
-                    factory.createIdentifier(dataFirstTag)
-                  ),
-                  undefined,
-                  [
-                    ts.visitEachChild(node, dataFirst, ctx).arguments[0],
-                    ...ts.visitEachChild(node.expression, dataFirst, ctx).arguments
-                  ]
-                )
-              }
-            }
-          }
           return ts.visitEachChild(node, dataFirst, ctx)
         }
 
