@@ -3,7 +3,7 @@ import { some } from "@effect-ts/system/Option"
 
 import * as A from "../../Async"
 
-function asyncToEffectIntegration() {
+export function asyncToEffectIntegration() {
   if (A.currentIntegration.get._tag === "None") {
     A.currentIntegration.set(
       some(<R, E, A>(self: A.Async<R, E, A>) =>

@@ -198,7 +198,7 @@ export default function tracer(
                         optimiseFlow(
                           ts.visitEachChild(node, visitor, ctx).arguments,
                           factory,
-                          id
+                          factory.createSpreadElement(id)
                         )
                       ),
                       factory.createStringLiteral(
@@ -230,7 +230,7 @@ export default function tracer(
                       optimiseFlow(
                         ts.visitEachChild(node, visitor, ctx).arguments,
                         factory,
-                        id
+                        factory.createSpreadElement(id)
                       )
                     )
               }
@@ -442,7 +442,7 @@ function optimisePipe(
 function optimiseFlow(
   args: ArrayLike<ts.Expression>,
   factory: ts.NodeFactory,
-  x: ts.Identifier
+  x: ts.SpreadElement
 ): ts.Expression {
   if (args.length === 1) {
     return factory.createCallExpression(args[0], undefined, [x])
