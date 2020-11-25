@@ -203,6 +203,8 @@ export function forkReport(reportFailure: FailureReporter) {
 
 /**
  * Returns an effect that models failure with the specified `Cause`.
+ *
+ * @trace
  */
 export function halt<E>(cause: Cause<E>): IO<E, never> {
   return new IFail(cause)
