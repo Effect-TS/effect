@@ -62,7 +62,10 @@ export function bind_<R2, E2, R, E, A, K, N extends string>(
   )
 }
 
-function let_<A, K, N extends string>(tag: Exclude<N, keyof K>, f: (_: K) => A) {
+/**
+ * @dataFirst let_
+ */
+function let__<A, K, N extends string>(tag: Exclude<N, keyof K>, f: (_: K) => A) {
   return <R2, E2>(
     mk: Effect<R2, E2, K>
   ): Effect<
@@ -84,9 +87,32 @@ function let_<A, K, N extends string>(tag: Exclude<N, keyof K>, f: (_: K) => A) 
     )
 }
 
+export function let_<R2, E2, A, K, N extends string>(
+  mk: Effect<R2, E2, K>,
+  tag: Exclude<N, keyof K>,
+  f: (_: K) => A
+): Effect<
+  R2,
+  E2,
+  K &
+    {
+      [k in N]: A
+    }
+> {
+  return map_(
+    mk,
+    (
+      k
+    ): K &
+      {
+        [k in N]: A
+      } => ({ ...k, [tag]: f(k) } as any)
+  )
+}
+
 const do_ = succeed({})
 
-export { let_ as let, bind, do_ as do }
+export { let__ as let, bind, do_ as do }
 
 export function bindAll<
   K,

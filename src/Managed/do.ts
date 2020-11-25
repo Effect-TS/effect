@@ -56,14 +56,54 @@ export function bind_<R2, E2, R, E, A, K, N extends string>(
   )
 }
 
-const let_ = <A, K, N extends string>(tag: Exclude<N, keyof K>, f: (_: K) => A) => <
+/**
+ * @dataFirst let_
+ */
+function let__<A, K, N extends string>(tag: Exclude<N, keyof K>, f: (_: K) => A) {
+  return <R2, E2>(
+    mk: Managed<R2, E2, K>
+  ): Managed<
+    R2,
+    E2,
+    K &
+      {
+        [k in N]: A
+      }
+  > =>
+    map_(
+      mk,
+      (
+        k
+      ): K &
+        {
+          [k in N]: A
+        } => ({ ...k, [tag]: f(k) } as any)
+    )
+}
+
+export function let_<R2, E2, A, K, N extends string>(
+  mk: Managed<R2, E2, K>,
+  tag: Exclude<N, keyof K>,
+  f: (_: K) => A
+): Managed<
   R2,
-  E2
->(
-  mk: Managed<R2, E2, K>
-): Managed<R2, E2, K & { [k in N]: A }> =>
-  map_(mk, (k): K & { [k in N]: A } => ({ ...k, [tag]: f(k) } as any))
+  E2,
+  K &
+    {
+      [k in N]: A
+    }
+> {
+  return map_(
+    mk,
+    (
+      k
+    ): K &
+      {
+        [k in N]: A
+      } => ({ ...k, [tag]: f(k) } as any)
+  )
+}
 
 const do_ = succeed({})
 
-export { let_ as let, do_ as do }
+export { let__ as let, do_ as do }
