@@ -11,6 +11,6 @@ describe("Optimizations", () => {
         T.chain((n) => T.succeed(n + 1)),
         T.runPromise
       )
-    ).toEqual(2)
+    ).toEqual(4)
   })
 })
