@@ -62,7 +62,6 @@ export function chain<R1, E1, A1, A>(f: (a: A) => Effect<R1, E1, A1>) {
  * Returns an effect that models the execution of this effect, followed by
  * the passing of its value to the specified continuation function `f`,
  * followed by the effect that it returns.
- *
  */
 export function chain_<R, E, A, R1, E1, A1>(
   val: Effect<R, E, A>,
@@ -268,6 +267,8 @@ export function result<R, E, A>(
 
 /**
  * Lift a pure value into an effect
+ *
+ * @trace
  */
 export function succeed<A>(a: A): Effect<unknown, never, A> {
   return new ISucceed(a)

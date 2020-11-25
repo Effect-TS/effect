@@ -1,7 +1,7 @@
 import { succeed } from "./core"
 import { die } from "./die"
 import type { Effect } from "./effect"
-import { foldM_ } from "./foldM_"
+import { foldM_ } from "./foldM"
 
 /**
  * Keeps none of the errors, and terminates the fiber with them, using
