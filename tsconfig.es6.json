@@ -13,7 +13,8 @@
         "pipe": true,
         "flow": true,
         "tracing": false,
-        "identity": true
+        "identity": true,
+        "dataFirst": true
       }
     ]
   },
