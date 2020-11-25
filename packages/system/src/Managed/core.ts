@@ -17,6 +17,8 @@ import * as RelMap from "./ReleaseMap"
  * Returns a managed that models the execution of this managed, followed by
  * the passing of its value to the specified continuation function `f`,
  * followed by the managed that it returns.
+ *
+ * @dataFirst chain_
  */
 export function chain<A, R2, E2, A2>(f: (a: A) => Managed<R2, E2, A2>) {
   return <R, E>(self: Managed<R, E, A>) => chain_(self, f)
@@ -684,6 +686,8 @@ export function tap_<A, R, R2, E, E2>(
 
 /**
  * Returns a managed that effectfully peeks at the acquired resource.
+ *
+ * @dataFirst tap_
  */
 export function tap<A, R2, E2>(f: (a: A) => Managed<R2, E2, any>) {
   return <R, E>(self: Managed<R, E, A>) => tap_(self, f)

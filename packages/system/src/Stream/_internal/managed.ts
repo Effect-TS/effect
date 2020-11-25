@@ -17,7 +17,7 @@ export {
   chain_
 } from "../../Managed/core"
 
-export { bind, let, do } from "../../Managed/do"
+export { bind, bind_, let, do } from "../../Managed/do"
 export { fromEffect } from "../../Managed/fromEffect"
 export { succeed } from "../../Managed/succeed"
 export { provideAll_, fold_, environment, scope } from "../../Managed/methods/api"

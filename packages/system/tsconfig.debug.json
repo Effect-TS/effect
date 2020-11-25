@@ -16,6 +16,6 @@
       }
     ]
   },
-  "include": ["test/opt.test.ts"],
-  "exclude": ["src", "node_modules"]
+  "include": ["test/**/*.ts", "src/**/*.ts"],
+  "exclude": ["node_modules"]
 }

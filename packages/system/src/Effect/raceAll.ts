@@ -15,8 +15,7 @@ import { foreach_ } from "./foreach_"
 import { interruptible } from "./interruptible"
 import { map } from "./map"
 import { onInterrupt } from "./onInterrupt"
-import { tap } from "./tap"
-import { tap_ } from "./tap_"
+import { tap, tap_ } from "./tap"
 import { uninterruptibleMask } from "./uninterruptibleMask"
 
 function arbiter<E, A>(
