@@ -170,6 +170,8 @@ export const makeConst: <E>(e: E) => <A = never>() => Const<E, A> = (e) => () =>
 
 /**
  * Maps `Const[E, A]` to `Const[E, B]` via `f : A => B`
+ *
+ * @optimize identity
  */
 export const map_: <E, A, B>(
   fa: Const<E, A>,
@@ -179,7 +181,14 @@ export const map_: <E, A, B>(
 /**
  * Maps `Const[E, A]` to `Const[E, B]` via `f : A => B`
  */
-export function map<A, B>(f: (a: A) => B): <E>(fa: Const<E, A>) => Const<E, B> {
+export function map<A, B>(
+  f: (a: A) => B
+): {
+  /**
+   * @optimize identity
+   */
+  <E>(fa: Const<E, A>): Const<E, B>
+} {
   return (fa) => map_(fa, f)
 }
 
@@ -194,6 +203,10 @@ export const mapLeft_: <E, A, G>(fea: Const<E, A>, f: (e: E) => G) => Const<G, A
 /**
  * Maps `Const[E, A]` to `Const[E1, A]` via `f : E => E1`
  */
-export function mapLeft<E, G>(f: (e: E) => G): <A>(fa: Const<E, A>) => Const<G, A> {
+export function mapLeft<E, G>(
+  f: (e: E) => G
+): {
+  <A>(fa: Const<E, A>): Const<G, A>
+} {
   return (fa) => mapLeft_(fa, f)
 }
