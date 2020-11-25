@@ -1,11 +1,9 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "outDir": "build",
+    "outDir": "compiler-debug",
     "target": "ES2017",
     "module": "CommonJS",
-    "incremental": true,
-    "tsBuildInfoFile": "tsbuildinfo/build.tsbuildinfo",
     "removeComments": false,
     "plugins": [
       {
@@ -18,6 +16,6 @@
       }
     ]
   },
-  "include": ["src/**/*"],
-  "exclude": ["test", "node_modules"]
+  "include": ["test/opt.test.ts"],
+  "exclude": ["src", "node_modules"]
 }
