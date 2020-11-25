@@ -1,6 +1,6 @@
 // minimize circularity by importing only a subset
 
-export { andThen } from "../Effect/andThen"
+export { andThen, andThen_ } from "../Effect/andThen"
 export { bracketExit_ } from "../Effect/bracketExit_"
 export {
   access,
