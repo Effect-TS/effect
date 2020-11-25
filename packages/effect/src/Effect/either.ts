@@ -1,7 +1,7 @@
 import * as E from "../Either"
 import { succeed } from "./core"
 import type { Effect, RIO } from "./effect"
-import { foldM_ } from "./foldM_"
+import { foldM_ } from "./foldM"
 
 /**
  * Returns an effect whose failure and success have been lifted into an

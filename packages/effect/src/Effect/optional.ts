@@ -2,7 +2,7 @@ import * as O from "../Option"
 import { succeed } from "./core"
 import type { Effect } from "./effect"
 import { fail } from "./fail"
-import { foldM_ } from "./foldM_"
+import { foldM_ } from "./foldM"
 
 /**
  * Converts an option on errors into an option on values.

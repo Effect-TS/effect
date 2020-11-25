@@ -1,6 +1,6 @@
 import { succeed } from "./core"
 import type { Effect } from "./effect"
-import { foldM_ } from "./foldM_"
+import { foldM_ } from "./foldM"
 
 /**
  * Recovers from all errors.
