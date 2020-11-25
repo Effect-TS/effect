@@ -50,6 +50,8 @@ export function accessM<R0, R, E, A>(
  * Returns an effect that models the execution of this effect, followed by
  * the passing of its value to the specified continuation function `f`,
  * followed by the effect that it returns.
+ *
+ * @dataFirst chain_
  */
 export function chain<R1, E1, A1, A>(f: (a: A) => Effect<R1, E1, A1>) {
   return <R, E>(val: Effect<R, E, A>): Effect<R & R1, E | E1, A1> =>
