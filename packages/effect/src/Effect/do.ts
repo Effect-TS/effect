@@ -7,6 +7,9 @@ import { foreachPar_ } from "./foreachPar_"
 import { foreachParN_ } from "./foreachParN_"
 import { map_ } from "./map_"
 
+/**
+ * @dataFirst bind_
+ */
 function bind<R, E, A, K, N extends string>(
   tag: Exclude<N, keyof K>,
   f: (_: K) => Effect<R, E, A>
@@ -32,6 +35,31 @@ function bind<R, E, A, K, N extends string>(
           } => ({ ...k, [tag]: a } as any)
       )
     )
+}
+
+export function bind_<R2, E2, R, E, A, K, N extends string>(
+  mk: Effect<R2, E2, K>,
+  tag: Exclude<N, keyof K>,
+  f: (_: K) => Effect<R, E, A>
+): Effect<
+  R & R2,
+  E | E2,
+  K &
+    {
+      [k in N]: A
+    }
+> {
+  return chain_(mk, (k) =>
+    map_(
+      f(k),
+      (
+        a
+      ): K &
+        {
+          [k in N]: A
+        } => ({ ...k, [tag]: a } as any)
+    )
+  )
 }
 
 function let_<A, K, N extends string>(tag: Exclude<N, keyof K>, f: (_: K) => A) {

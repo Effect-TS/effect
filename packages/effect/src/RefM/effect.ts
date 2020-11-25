@@ -1,7 +1,7 @@
 export { as } from "../Effect/as"
 export { asSomeError } from "../Effect/asSomeError"
 export { chain, chain_, succeed } from "../Effect/core"
-export { bind, do } from "../Effect/do"
+export { bind, bind_, do } from "../Effect/do"
 export { Effect, UIO } from "../Effect/effect"
 export { fail } from "../Effect/fail"
 export { foldM_ } from "../Effect/foldM_"

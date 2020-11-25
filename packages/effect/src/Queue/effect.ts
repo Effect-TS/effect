@@ -1,4 +1,4 @@
-export { asUnit, tap } from "../Effect"
+export { asUnit, tap, tap_ } from "../Effect"
 export {
   chain,
   chain_,
@@ -8,7 +8,7 @@ export {
   suspend,
   unit
 } from "../Effect/core"
-export { bind, do } from "../Effect/do"
+export { bind, bind_, do } from "../Effect/do"
 export { UIO, Effect } from "../Effect/effect"
 export { fiberId } from "../Effect/fiberId"
 export { foreach } from "../Effect/foreach"
