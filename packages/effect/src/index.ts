@@ -30,7 +30,7 @@ function checkRegionAt(
 }
 
 const traceRegex = /tracing: (on|off)/
-const traceOnRegex = /tracing: on/
+const traceOnRegex = /(tracing: on|@trace)/
 
 export default function tracer(
   _program: ts.Program,
@@ -306,8 +306,10 @@ export default function tracer(
             }
           }
 
-          if (isTracing) {
-            if (ts.isClassDeclaration(node) && node.name) {
+          if (ts.isClassDeclaration(node) && node.name) {
+            const forcedTrace = /@trace/.test(node.getFullText())
+
+            if (isTracing || forcedTrace) {
               const members: [ts.Identifier, ts.StringLiteral][] = []
 
               node.members.forEach((m) => {
@@ -355,8 +357,12 @@ export default function tracer(
                 )
               ]
             }
+          }
 
-            if (ts.isArrowFunction(node)) {
+          if (ts.isArrowFunction(node)) {
+            const forcedTrace = /@trace/.test(node.getFullText())
+
+            if (isTracing || forcedTrace) {
               const { character, line } = sourceFile.getLineAndCharacterOfPosition(
                 node.body?.getStart() || node.getStart()
               )
@@ -374,7 +380,12 @@ export default function tracer(
                 )
               ])
             }
-            if (ts.isFunctionExpression(node)) {
+          }
+
+          if (ts.isFunctionExpression(node)) {
+            const forcedTrace = /@trace/.test(node.getFullText())
+
+            if (isTracing || forcedTrace) {
               const { character, line } = sourceFile.getLineAndCharacterOfPosition(
                 node.body?.getStart() || node.getStart()
               )
@@ -391,7 +402,12 @@ export default function tracer(
                 )
               ])
             }
-            if (ts.isFunctionDeclaration(node)) {
+          }
+
+          if (ts.isFunctionDeclaration(node)) {
+            const forcedTrace = /@trace/.test(node.getFullText())
+
+            if (isTracing || forcedTrace) {
               const { character, line } = sourceFile.getLineAndCharacterOfPosition(
                 node.body?.getStart() || node.getStart()
               )
@@ -410,6 +426,7 @@ export default function tracer(
               }
             }
           }
+
           return ts.visitEachChild(node, visitor, ctx)
         }
 
