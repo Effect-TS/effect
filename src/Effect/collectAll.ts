@@ -10,7 +10,7 @@ import { foreachParN_ } from "./foreachParN_"
 import { foreachUnit_ } from "./foreachUnit_"
 import { foreachUnitPar_ } from "./foreachUnitPar_"
 import { foreachUnitParN_ } from "./foreachUnitParN_"
-import { map_ } from "./map_"
+import { map_ } from "./map"
 
 /**
  * Evaluate each effect in the structure from left to right, and collect the

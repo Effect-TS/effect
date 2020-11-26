@@ -2,7 +2,7 @@ import type { Array } from "../Array"
 import type { MutableArray } from "../Mutable"
 import { chain_, succeed, suspend } from "./core"
 import type { Effect } from "./effect"
-import { map_ } from "./map_"
+import { map_ } from "./map"
 
 /**
  * Drops all elements so long as the effectful predicate returns true.

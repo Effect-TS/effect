@@ -1,7 +1,7 @@
 import * as O from "../Option"
 import { succeed } from "./core"
 import type { Effect } from "./effect"
-import { map_ } from "./map_"
+import { map_ } from "./map"
 
 /**
  * The moral equivalent of `if (p) exp`

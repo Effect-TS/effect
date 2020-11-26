@@ -6,7 +6,7 @@ import type { FiberID } from "../Fiber/id"
 import { chain_, descriptorWith, halt } from "./core"
 import { raceWith_, transplant } from "./core-scope"
 import type { Effect } from "./effect"
-import { map_ } from "./map_"
+import { map_ } from "./map"
 
 /**
  * Sequentially zips this effect with the specified effect using the
