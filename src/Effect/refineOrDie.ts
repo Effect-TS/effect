@@ -1,8 +1,8 @@
 import { identity, pipe } from "../Function"
 import * as O from "../Option"
-import type { Effect } from "."
 import { catchAll_ } from "./catchAll"
 import { die } from "./die"
+import type { Effect } from "./effect"
 import { fail } from "./fail"
 
 /**

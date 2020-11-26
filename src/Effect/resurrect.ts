@@ -1,6 +1,6 @@
 import { identity } from "../Function"
 import { some } from "../Option"
-import type { Effect } from "."
+import type { Effect } from "./effect"
 import { unrefineWith_ } from "./unrefine"
 
 /**

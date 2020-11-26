@@ -2,8 +2,8 @@ import * as Fiber from "../Fiber"
 import * as FR from "../FiberRef"
 import { pipe } from "../Function"
 import * as O from "../Option"
-import type { Effect, RIO } from "."
 import { chain, fork } from "./core"
+import type { Effect, RIO } from "./effect"
 import { uninterruptibleMask } from "./uninterruptibleMask"
 
 /**
