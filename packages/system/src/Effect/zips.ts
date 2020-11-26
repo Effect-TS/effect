@@ -1,5 +1,5 @@
 import type { Effect } from "./effect"
-import { zipWith_ } from "./zipWith_"
+import { zipWith_ } from "./zipWith"
 import { zipWithPar_ } from "./zipWithPar_"
 
 /**
