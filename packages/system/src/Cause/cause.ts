@@ -1,9 +1,10 @@
+import type { Trace } from "../Fiber"
 import type { FiberID } from "../Fiber/id"
 
 /**
  * Cause is a Free Semiring structure that allows tracking of multiple error causes.
  */
-export type Cause<E> = Empty | Fail<E> | Die | Interrupt | Then<E> | Both<E>
+export type Cause<E> = Empty | Fail<E> | Die | Interrupt | Then<E> | Both<E> | Traced<E>
 
 export interface Empty {
   readonly _tag: "Empty"
@@ -24,6 +25,12 @@ export interface Interrupt {
   readonly fiberId: FiberID
 }
 
+export interface Traced<E> {
+  readonly _tag: "Traced"
+  readonly cause: Cause<E>
+  readonly trace: Trace
+}
+
 export interface Then<E> {
   readonly _tag: "Then"
   readonly left: Cause<E>
@@ -36,43 +43,59 @@ export interface Both<E> {
   readonly right: Cause<E>
 }
 
-export const Empty: Cause<never> = {
+export const empty: Cause<never> = {
   _tag: "Empty"
 }
 
-export const Fail = <E>(value: E): Cause<E> => ({
-  _tag: "Fail",
-  value
-})
+export function fail<E>(value: E): Cause<E> {
+  return {
+    _tag: "Fail",
+    value
+  }
+}
 
-export const Die = (value: unknown): Cause<never> => ({
-  _tag: "Die",
-  value
-})
+export function traced<E>(cause: Cause<E>, trace: Trace): Cause<E> {
+  return {
+    _tag: "Traced",
+    cause,
+    trace
+  }
+}
 
-export const Interrupt = (fiberId: FiberID): Cause<never> => ({
-  _tag: "Interrupt",
-  fiberId
-})
+export function die(value: unknown): Cause<never> {
+  return {
+    _tag: "Die",
+    value
+  }
+}
 
-export const Then = <E1, E2>(left: Cause<E1>, right: Cause<E2>): Cause<E1 | E2> =>
-  left === Empty
+export function interrupt(fiberId: FiberID): Cause<never> {
+  return {
+    _tag: "Interrupt",
+    fiberId
+  }
+}
+
+export function then<E1, E2>(left: Cause<E1>, right: Cause<E2>): Cause<E1 | E2> {
+  return left === empty
     ? right
-    : right === Empty
+    : right === empty
     ? left
     : {
         _tag: "Then",
         left,
         right
       }
+}
 
-export const Both = <E1, E2>(left: Cause<E1>, right: Cause<E2>): Cause<E1 | E2> =>
-  left === Empty
+export function both<E1, E2>(left: Cause<E1>, right: Cause<E2>): Cause<E1 | E2> {
+  return left === empty
     ? right
-    : right === Empty
+    : right === empty
     ? left
     : {
         _tag: "Both",
         left,
         right
       }
+}

@@ -50,7 +50,9 @@ describe("Stream", () => {
         )
       )
 
-      expect(await T.runPromiseExit(program)).toEqual(Exit.succeed([0, 1, 2, 3, 4]))
+      expect(await pipe(program, T.result, T.map(Exit.untraced), T.runPromise)).toEqual(
+        Exit.succeed([0, 1, 2, 3, 4])
+      )
     })
 
     it("effectAsync", async () => {

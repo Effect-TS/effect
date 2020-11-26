@@ -37,3 +37,10 @@ const _fiberCounter = new AtomicNumber(0)
  */
 export const newFiberId = () =>
   FiberID(new Date().getTime(), _fiberCounter.getAndIncrement())
+
+/**
+ * Format a fiber id
+ */
+export function prettyFiberId(_: FiberID) {
+  return `[${_.seqNumber}](started at: ${_.startTimeMillis})`
+}

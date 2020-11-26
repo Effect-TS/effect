@@ -1,4 +1,4 @@
-import { Then } from "../Cause/cause"
+import { then } from "../Cause/cause"
 import { fold_ } from "../Exit/api"
 import type { Exit } from "../Exit/exit"
 import { chain_, foldCauseM_, halt, result } from "./core"
@@ -27,7 +27,7 @@ export function bracketExit_<R, E, A, E1, R1, A1, R2, E2>(
             halt(
               fold_(
                 e,
-                (_) => Then(_, cause2),
+                (_) => then(_, cause2),
                 (_) => cause2
               )
             ),

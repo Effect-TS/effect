@@ -82,7 +82,7 @@ export const collectAll = <E, A>(
           (acc, el) =>
             pipe(
               acc,
-              zipWith(el, (acc, el) => [el, ...acc], C.Then)
+              zipWith(el, (acc, el) => [el, ...acc], C.then)
             )
         ),
         map(A.reverse)
@@ -152,7 +152,7 @@ export const collectAllPar = <E, A>(
           (acc, el) =>
             pipe(
               acc,
-              zipWith(el, (acc, el) => [el, ...acc], C.Both)
+              zipWith(el, (acc, el) => [el, ...acc], C.both)
             )
         ),
         map(A.reverse)
@@ -163,7 +163,7 @@ export const collectAllPar = <E, A>(
 /**
  * Construct an Exit with an unchecked cause containing the specified error
  */
-export const die = (error: unknown) => halt(C.Die(error))
+export const die = (error: unknown) => halt(C.die(error))
 
 /**
  * Returns f(a) if the exit is successful
@@ -177,7 +177,7 @@ export const exists = <A>(f: (a: A) => boolean) => <E>(exit: Exit<E, A>): boolea
 /**
  * Constructs a failed exit with the specified checked error
  */
-export const fail = <E>(e: E) => halt(C.Fail(e))
+export const fail = <E>(e: E) => halt(C.fail(e))
 
 /**
  * Flatten nested Exits
@@ -255,7 +255,7 @@ export const halt = <E>(cause: C.Cause<E>) => Failure(cause)
 /**
  * Constructs an exit with the specified interruption state
  */
-export const interrupt = (id: FiberID) => halt(C.Interrupt(id))
+export const interrupt = (id: FiberID) => halt(C.interrupt(id))
 
 /**
  * Returns if Exit contains an interruption state
@@ -377,7 +377,7 @@ export const zip = <E1, B>(that: Exit<E1, B>) => <E, A>(
 ): Exit<E | E1, [A, B]> =>
   pipe(
     exit,
-    zipWith(that, (a, b) => [a, b], C.Then)
+    zipWith(that, (a, b) => [a, b], C.then)
   )
 
 /**
@@ -388,7 +388,7 @@ export const zipLeft = <E1, B>(that: Exit<E1, B>) => <E, A>(
 ): Exit<E | E1, A> =>
   pipe(
     exit,
-    zipWith(that, (a, _) => a, C.Then)
+    zipWith(that, (a, _) => a, C.then)
   )
 
 /**
@@ -399,7 +399,7 @@ export const zipPar = <E1, B>(that: Exit<E1, B>) => <E, A>(
 ): Exit<E | E1, [A, B]> =>
   pipe(
     exit,
-    zipWith(that, (a, b) => [a, b], C.Both)
+    zipWith(that, (a, b) => [a, b], C.both)
   )
 
 /**
@@ -410,7 +410,7 @@ export const zipParLeft = <E1, B>(that: Exit<E1, B>) => <E, A>(
 ): Exit<E | E1, A> =>
   pipe(
     exit,
-    zipWith(that, (a, _) => a, C.Both)
+    zipWith(that, (a, _) => a, C.both)
   )
 
 /**
@@ -421,7 +421,7 @@ export const zipParRight = <E1, B>(that: Exit<E1, B>) => <E, A>(
 ): Exit<E | E1, B> =>
   pipe(
     exit,
-    zipWith(that, (_, b) => b, C.Both)
+    zipWith(that, (_, b) => b, C.both)
   )
 
 /**
@@ -432,7 +432,7 @@ export const zipRight = <E1, B>(that: Exit<E1, B>) => <E, A>(
 ): Exit<E | E1, B> =>
   pipe(
     exit,
-    zipWith(that, (_, b) => b, C.Then)
+    zipWith(that, (_, b) => b, C.then)
   )
 
 /**
@@ -444,5 +444,21 @@ export const zipRight_ = <E, A, E1, B>(
 ): Exit<E | E1, B> =>
   pipe(
     exit,
-    zipWith(that, (_, b) => b, C.Then)
+    zipWith(that, (_, b) => b, C.then)
   )
+
+/**
+ * Returns an untraced exit value.
+ */
+export function untraced<E, A>(self: Exit<E, A>): Exit<E, A> {
+  return self._tag === "Success" ? self : halt(C.untraced(self.cause))
+}
+
+/**
+ * Asserts an exit is a failure
+ */
+export function assertsFailure<E, A>(exit: Exit<E, A>): asserts exit is Failure<E> {
+  if (exit._tag === "Success") {
+    throw new Error("expected a failed exit and got success")
+  }
+}

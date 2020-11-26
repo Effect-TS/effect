@@ -1,5 +1,5 @@
 /**
- * relative: ../
+ * relative: ../../
  */
 import type { Cause } from "../Cause/cause"
 import { keepDefects } from "../Cause/core"

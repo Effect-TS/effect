@@ -5,7 +5,7 @@
  */
 import * as A from "../Array"
 import type { Cause } from "../Cause/cause"
-import { Empty, Then } from "../Cause/cause"
+import { empty, then } from "../Cause/cause"
 import { cause } from "../Effect/cause"
 import { effectTotal, succeed, suspend } from "../Effect/core"
 import type { UIO } from "../Effect/effect"
@@ -185,7 +185,7 @@ export class OrderedFinalizer {
   constructor(readonly order: number, readonly finalizer: (_: any) => UIO<any>) {}
 }
 
-const noCause = Empty
+const noCause = empty
 
 const noCauseEffect: UIO<Cause<never>> = succeed(noCause)
 
@@ -323,7 +323,7 @@ export class Local<A> implements CommonScope<A> {
 
       return uncause(
         A.reduce_(sorted, noCauseEffect, (acc, o) =>
-          o != null ? zipWith_(acc, cause(o.finalizer(a)), (a, b) => Then(a, b)) : acc
+          o != null ? zipWith_(acc, cause(o.finalizer(a)), (a, b) => then(a, b)) : acc
         )
       )
     } else {

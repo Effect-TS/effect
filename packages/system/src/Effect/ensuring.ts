@@ -1,4 +1,4 @@
-import { Then } from "../Cause/cause"
+import { then } from "../Cause/cause"
 import { foldCauseM_, halt, succeed } from "./core"
 import type { Effect } from "./effect"
 import { uninterruptibleMask } from "./uninterruptibleMask"
@@ -39,7 +39,7 @@ export function ensuring_<R, E, A, R1>(
       (cause1) =>
         foldCauseM_(
           finalizer,
-          (cause2) => halt(Then(cause1, cause2)),
+          (cause2) => halt(then(cause1, cause2)),
           (_) => halt(cause1)
         ),
       (value) =>

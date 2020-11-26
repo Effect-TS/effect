@@ -44,13 +44,13 @@ export function race_<R, E, A, R2, E2, A2>(
       (exit, right) =>
         Exit.foldM_(
           exit,
-          (cause) => mapErrorCause_(Fiber.join(right), (_) => Cause.Both(cause, _)),
+          (cause) => mapErrorCause_(Fiber.join(right), (_) => Cause.both(cause, _)),
           (a) => chain_(right.interruptAs(d.id), mergeInterruption(a))
         ),
       (exit, left) =>
         Exit.foldM_(
           exit,
-          (cause) => mapErrorCause_(Fiber.join(left), (_) => Cause.Both(_, cause)),
+          (cause) => mapErrorCause_(Fiber.join(left), (_) => Cause.both(_, cause)),
           (a) => chain_(left.interruptAs(d.id), mergeInterruption(a))
         )
     )
