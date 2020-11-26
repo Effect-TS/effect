@@ -227,6 +227,334 @@ export function fiberContext<E, A>(reporter: FailureReporter = constVoid) {
   return context
 }
 
+export class CustomRuntime<R> {
+  constructor(readonly env: R, readonly platform: Platform) {
+    this.traceExecution = this.traceExecution.bind(this)
+    this.traceExecutionLength = this.traceExecutionLength.bind(this)
+    this.traceStack = this.traceStack.bind(this)
+    this.traceStackLength = this.traceStackLength.bind(this)
+    this.traceEffect = this.traceEffect.bind(this)
+    this.initialTracingStatus = this.initialTracingStatus.bind(this)
+    this.ancestorExecutionTraceLength = this.ancestorExecutionTraceLength.bind(this)
+    this.ancestorStackTraceLength = this.ancestorStackTraceLength.bind(this)
+    this.ancestryLength = this.ancestryLength.bind(this)
+    this.fiberContext = this.fiberContext.bind(this)
+  }
+
+  fiberContext<E, A>(reporter: FailureReporter = constVoid) {
+    const initialIS = interruptible
+    const fiberId = newFiberId()
+    const scope = Scope.unsafeMakeScope<Exit<E, A>>()
+    const supervisor = Supervisor.none
+
+    const context = new FiberContext<E, A>(
+      fiberId,
+      this.env,
+      initialIS,
+      new Map(),
+      supervisor,
+      scope,
+      10_000,
+      reporter,
+      this.platform,
+      none
+    )
+
+    return context
+  }
+
+  /**
+   * Runs effect until completion listening for system level termination signals that
+   * triggers cancellation of the process, in case errors are found process will
+   * exit with a status of 1 and cause will be pretty printed, if interruption
+   * is found without errors the cause is pretty printed and process exits with
+   * status 0. In the success scenario process exits with status 0 witout any log.
+   *
+   * Note: this should be used only in node.js as it depends on global process
+   */
+  runMain<E>(
+    effect: Effect<DefaultEnv, E, void>,
+    customHook: (cont: NodeJS.SignalsListener) => NodeJS.SignalsListener = defaultHook,
+    customTeardown: typeof defaultTeardown = defaultTeardown
+  ): void {
+    const context = this.fiberContext<E, void>()
+
+    const onExit = (s: number) => {
+      process.exit(s)
+    }
+
+    context.evaluateLater(effect[_I])
+    context.runAsync((exit) => {
+      switch (exit._tag) {
+        case "Failure": {
+          if (Cause.died(exit.cause) || Cause.failed(exit.cause)) {
+            console.error(pretty(exit.cause))
+            customTeardown(1, context.id, onExit)
+            break
+          } else {
+            console.log(pretty(exit.cause))
+            customTeardown(0, context.id, onExit)
+            break
+          }
+        }
+        case "Success": {
+          customTeardown(0, context.id, onExit)
+          break
+        }
+      }
+    })
+
+    const interrupted = new AtomicBoolean(false)
+
+    const handler: NodeJS.SignalsListener = (signal) => {
+      customHook(() => {
+        process.removeListener("SIGTERM", handler)
+        process.removeListener("SIGINT", handler)
+
+        if (interrupted.compareAndSet(false, true)) {
+          this.run(context.interruptAs(context.id))
+        }
+      })(signal)
+    }
+
+    process.once("SIGTERM", handler)
+    process.once("SIGINT", handler)
+  }
+
+  /**
+   * Runs effect until completion, calling cb with the eventual exit state
+   */
+  run<E, A>(_: Effect<DefaultEnv, E, A>, cb?: Callback<E, A>) {
+    const context = this.fiberContext<E, A>()
+
+    context.evaluateLater(_[_I])
+    context.runAsync(cb || empty)
+  }
+
+  /**
+   * Runs effect until completion, calling cb with the eventual exit state
+   */
+  runAsap<E, A>(_: Effect<DefaultEnv, E, A>, cb?: Callback<E, A>) {
+    const context = this.fiberContext<E, A>()
+
+    context.evaluateNow(_[_I])
+    context.runAsync(cb || empty)
+  }
+
+  /**
+   * Runs effect until completion returing a cancel effecr that when executed
+   * triggers cancellation of the process
+   */
+  runCancel<E, A>(_: Effect<DefaultEnv, E, A>, cb?: Callback<E, A>): AsyncCancel<E, A> {
+    const context = this.fiberContext<E, A>()
+
+    context.evaluateLater(_[_I])
+    context.runAsync(cb || empty)
+
+    return context.interruptAs(context.id)
+  }
+
+  /**
+   * Run effect as a Promise, throwing a the first error or exception
+   */
+  runPromise<E, A>(_: Effect<DefaultEnv, E, A>): Promise<A> {
+    const context = this.fiberContext<E, A>()
+
+    context.evaluateLater(_[_I])
+
+    return new Promise((res, rej) => {
+      context.runAsync((exit) => {
+        switch (exit._tag) {
+          case "Success": {
+            res(exit.value)
+            break
+          }
+          case "Failure": {
+            rej(Cause.squash(identity)(exit.cause))
+            break
+          }
+        }
+      })
+    })
+  }
+
+  /**
+   * Run effect as a Promise of the Exit state
+   * in case of error.
+   */
+  runPromiseExit<E, A>(_: Effect<DefaultEnv, E, A>): Promise<Exit<E, A>> {
+    const context = this.fiberContext<E, A>()
+
+    context.evaluateLater(_[_I])
+
+    return new Promise((res) => {
+      context.runAsync((exit) => {
+        res(exit)
+      })
+    })
+  }
+
+  traceExecution(b: boolean) {
+    return new CustomRuntime(
+      this.env,
+      new Platform(
+        this.platform.executionTraceLength,
+        this.platform.stackTraceLength,
+        b,
+        this.platform.traceStack,
+        this.platform.traceEffects,
+        this.platform.initialTracingStatus,
+        this.platform.ancestorExecutionTraceLength,
+        this.platform.ancestorStackTraceLength,
+        this.platform.ancestryLength
+      )
+    )
+  }
+
+  traceExecutionLength(n: number) {
+    return new CustomRuntime(
+      this.env,
+      new Platform(
+        n,
+        this.platform.stackTraceLength,
+        this.platform.traceExecution,
+        this.platform.traceStack,
+        this.platform.traceEffects,
+        this.platform.initialTracingStatus,
+        this.platform.ancestorExecutionTraceLength,
+        this.platform.ancestorStackTraceLength,
+        this.platform.ancestryLength
+      )
+    )
+  }
+
+  traceStack(b: boolean) {
+    return new CustomRuntime(
+      this.env,
+      new Platform(
+        this.platform.executionTraceLength,
+        this.platform.stackTraceLength,
+        this.platform.traceExecution,
+        b,
+        this.platform.traceEffects,
+        this.platform.initialTracingStatus,
+        this.platform.ancestorExecutionTraceLength,
+        this.platform.ancestorStackTraceLength,
+        this.platform.ancestryLength
+      )
+    )
+  }
+
+  traceStackLength(n: number) {
+    return new CustomRuntime(
+      this.env,
+      new Platform(
+        this.platform.executionTraceLength,
+        n,
+        this.platform.traceExecution,
+        this.platform.traceStack,
+        this.platform.traceEffects,
+        this.platform.initialTracingStatus,
+        this.platform.ancestorExecutionTraceLength,
+        this.platform.ancestorStackTraceLength,
+        this.platform.ancestryLength
+      )
+    )
+  }
+
+  traceEffect(b: boolean) {
+    return new CustomRuntime(
+      this.env,
+      new Platform(
+        this.platform.executionTraceLength,
+        this.platform.stackTraceLength,
+        this.platform.traceExecution,
+        this.platform.traceStack,
+        b,
+        this.platform.initialTracingStatus,
+        this.platform.ancestorExecutionTraceLength,
+        this.platform.ancestorStackTraceLength,
+        this.platform.ancestryLength
+      )
+    )
+  }
+
+  initialTracingStatus(b: boolean) {
+    return new CustomRuntime(
+      this.env,
+      new Platform(
+        this.platform.executionTraceLength,
+        this.platform.stackTraceLength,
+        this.platform.traceExecution,
+        this.platform.traceStack,
+        this.platform.traceEffects,
+        b,
+        this.platform.ancestorExecutionTraceLength,
+        this.platform.ancestorStackTraceLength,
+        this.platform.ancestryLength
+      )
+    )
+  }
+
+  ancestorExecutionTraceLength(n: number) {
+    return new CustomRuntime(
+      this.env,
+      new Platform(
+        this.platform.executionTraceLength,
+        this.platform.stackTraceLength,
+        this.platform.traceExecution,
+        this.platform.traceStack,
+        this.platform.traceEffects,
+        this.platform.initialTracingStatus,
+        n,
+        this.platform.ancestorStackTraceLength,
+        this.platform.ancestryLength
+      )
+    )
+  }
+
+  ancestorStackTraceLength(n: number) {
+    return new CustomRuntime(
+      this.env,
+      new Platform(
+        this.platform.executionTraceLength,
+        this.platform.stackTraceLength,
+        this.platform.traceExecution,
+        this.platform.traceStack,
+        this.platform.traceEffects,
+        this.platform.initialTracingStatus,
+        this.platform.ancestorExecutionTraceLength,
+        n,
+        this.platform.ancestryLength
+      )
+    )
+  }
+
+  ancestryLength(n: number) {
+    return new CustomRuntime(
+      this.env,
+      new Platform(
+        this.platform.executionTraceLength,
+        this.platform.stackTraceLength,
+        this.platform.traceExecution,
+        this.platform.traceStack,
+        this.platform.traceEffects,
+        this.platform.initialTracingStatus,
+        this.platform.ancestorExecutionTraceLength,
+        this.platform.ancestorStackTraceLength,
+        n
+      )
+    )
+  }
+}
+
+/**
+ * Construct custom runtime
+ */
+export function makeCustomRuntime() {
+  return new CustomRuntime(defaultEnv(), defaultPlatform)
+}
+
 /**
  * Represent an environment providing function
  */
