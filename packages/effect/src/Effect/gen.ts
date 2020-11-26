@@ -19,7 +19,7 @@ import { fail } from "./fail"
 import { fromEither } from "./fromEither"
 import { getOrFail } from "./getOrFail"
 import { service } from "./has"
-import { map_ } from "./map_"
+import { map_ } from "./map"
 import { provideSome_ } from "./provideSome"
 
 export class GenEffect<R, E, A> {

@@ -1,6 +1,6 @@
 import * as O from "../Option"
 import type { Effect } from "./effect"
-import { map_ } from "./map_"
+import { map_ } from "./map"
 
 /**
  * Extracts the optional value, or returns the given 'orElse'.

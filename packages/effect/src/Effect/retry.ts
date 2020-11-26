@@ -8,8 +8,7 @@ import { chain } from "./core"
 import type { Effect } from "./effect"
 import { fail } from "./fail"
 import { foldM } from "./foldM"
-import { map } from "./map"
-import { map_ } from "./map_"
+import { map, map_ } from "./map"
 import { orDie } from "./orDie"
 
 function loop<R, E, A, R1, O, R2, E2, A2>(

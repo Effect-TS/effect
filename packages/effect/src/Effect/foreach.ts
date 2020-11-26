@@ -2,7 +2,7 @@ import * as FA from "../FreeAssociative"
 import * as IT from "../Iterable"
 import { succeed, suspend } from "./core"
 import type { Effect } from "./effect"
-import { map_ } from "./map_"
+import { map_ } from "./map"
 import { zipWith_ } from "./zipWith"
 
 /**

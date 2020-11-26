@@ -2,7 +2,7 @@ import * as A from "../Array"
 import * as NA from "../NonEmptyArray"
 import * as O from "../Option"
 import type { Effect } from "./effect"
-import { map_ } from "./map_"
+import { map_ } from "./map"
 import { mergeAllPar_, mergeAllParN_ } from "./mergeAll"
 import { zipWith_ } from "./zipWith"
 

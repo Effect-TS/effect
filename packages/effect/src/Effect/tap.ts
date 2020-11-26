@@ -1,7 +1,7 @@
 import { traceAs } from "../Function"
 import { chain_ } from "./core"
 import type { Effect } from "./effect"
-import { map_ } from "./map_"
+import { map_ } from "./map"
 
 /**
  * Returns an effect that effectfully "peeks" at the success of this effect.

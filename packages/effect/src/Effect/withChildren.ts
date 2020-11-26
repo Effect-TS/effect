@@ -3,7 +3,7 @@ import { track } from "../Supervisor"
 import { chain_, supervised } from "./core"
 import { descriptor } from "./descriptor"
 import type { Effect, UIO } from "./effect"
-import { map_ } from "./map_"
+import { map_ } from "./map"
 
 /**
  * Locally installs a supervisor and an effect that succeeds with all the
