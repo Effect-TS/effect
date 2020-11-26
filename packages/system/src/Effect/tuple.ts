@@ -2,7 +2,7 @@ import { identity } from "../Function"
 import type { NonEmptyArray } from "../NonEmptyArray"
 import type { _E, _R } from "../Utils"
 import type { Effect } from "./effect"
-import { foreach_ } from "./foreach_"
+import { foreach_ } from "./foreach"
 import { foreachPar_ } from "./foreachPar_"
 import { foreachParN_ } from "./foreachParN_"
 

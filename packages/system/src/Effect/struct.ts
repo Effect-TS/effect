@@ -1,7 +1,7 @@
 import * as R from "../Record"
 import type { _E, _R, EnforceNonEmptyRecord } from "../Utils"
 import type { Effect } from "./effect"
-import { foreach_ } from "./foreach_"
+import { foreach_ } from "./foreach"
 import { foreachPar_ } from "./foreachPar_"
 import { foreachParN_ } from "./foreachParN_"
 import { map_ } from "./map_"
