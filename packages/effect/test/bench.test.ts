@@ -67,6 +67,29 @@ describe("Bench", () => {
         })
       ))
   })
+  describe("With Untraced", () => {
+    it("effect", () => T.runPromise(T.untraced(T.repeatN(1000)(fibEffect(10)))))
+    it("effect-gen", () =>
+      T.runPromise(
+        T.untraced(
+          T.gen(function* (_) {
+            for (let i = 0; i < 1000; i++) {
+              yield* _(fibEffect(10))
+            }
+          })
+        )
+      ))
+    it("effect-gen-2", () =>
+      T.runPromise(
+        T.untraced(
+          T.gen(function* (_) {
+            for (let i = 0; i < 1000; i++) {
+              yield* _(fibEffectGen(10))
+            }
+          })
+        )
+      ))
+  })
   describe("Without Tracing", () => {
     it("effect", () => runtime.runPromise(T.repeatN(1000)(fibEffect(10))))
     it("effect-gen", () =>
