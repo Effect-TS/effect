@@ -25,17 +25,17 @@ export class IFailEffect<E> {
   readonly ["_A"]!: () => never;
   readonly ["_R"]!: (_: unknown) => void
 
-  constructor(readonly cause: Cause<E>) {}
+  constructor(readonly fill: () => Cause<E>) {}
 
   get ["_I"](): Instruction {
     return this as any
   }
 }
 
-export const notIimplementedFFI = new IFailEffect({
+export const notIimplementedFFI = new IFailEffect(() => ({
   _tag: "Die",
   value: new Error("not supported")
-})
+}))
 
 /**
  * `Async[R, E, A]` is a purely functional description of an async computation

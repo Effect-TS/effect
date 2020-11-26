@@ -1,8 +1,12 @@
 /**
  * tracing: on
  */
+import * as C from "../src/Cause"
 import * as T from "../src/Effect"
+import * as Ex from "../src/Exit"
+import * as F from "../src/Fiber"
 import { pipe } from "../src/Function"
+import * as L from "../src/List"
 
 describe("Optimizations", () => {
   it("chain data first", async () => {
@@ -16,16 +20,40 @@ describe("Optimizations", () => {
         T.catchAll(function handle(n) {
           return T.succeed(n)
         }),
-        T.andThen(T.checkExecutionTraces(T.succeed)),
-        T.runPromise
+        T.chain((n) =>
+          T.haltWith((trace) =>
+            pipe(trace(), (trace) =>
+              C.Fail({
+                n,
+                trace: {
+                  ...trace,
+                  fiberId: F.None
+                }
+              })
+            )
+          )
+        ),
+        T.runPromiseExit
       )
-    ).toEqual([
-      "opt.test.ts:12:24:anonymous",
-      "opt.test.ts:13:24:anonymous",
-      "opt.test.ts:14:24:anonymous",
-      "Effect/fail.ts:13:31:fail",
-      "opt.test.ts:16:39:handle",
-      "Effect/core.ts:278:61:succeed"
-    ])
+    ).toEqual(
+      Ex.fail({
+        n: 4,
+        trace: {
+          executionTrace: L.from([
+            "opt.test.ts:24:11:anonymous",
+            "opt.test.ts:20:39:handle",
+            "Effect/fail.ts:13:31:fail",
+            "opt.test.ts:18:24:anonymous",
+            "opt.test.ts:17:24:anonymous",
+            "opt.test.ts:16:24:anonymous"
+          ]),
+          fiberId: F.None,
+          parentTrace: {
+            _tag: "None"
+          },
+          stackTrace: L.from([])
+        }
+      })
+    )
   })
 })

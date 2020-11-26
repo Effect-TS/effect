@@ -1,4 +1,5 @@
 import type { Cause } from "../Cause"
+import type { Trace } from "../Fiber"
 import type { Instruction } from "./primitives"
 
 export const _R = "_R"
@@ -42,15 +43,15 @@ export abstract class Base<R, E, A> implements Effect<R, E, A> {
 export class IFail<E> extends Base<unknown, E, never> {
   readonly _tag = "Fail"
 
-  constructor(readonly cause: Cause<E>) {
+  constructor(readonly fill: (_: () => Trace) => Cause<E>) {
     super()
   }
 }
 
-export const notIimplementedFFI = new IFail({
+export const notIimplementedFFI = new IFail(() => ({
   _tag: "Die",
   value: new Error("not supported")
-})
+}))
 
 export abstract class FFI<R, E, A> extends Base<R, E, A> {
   readonly _tag = "FFI"
