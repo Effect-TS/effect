@@ -203,6 +203,8 @@ export const prettyReporter: FailureReporter = (e) => {
   console.error(pretty(e))
 }
 
+const defaultPlatform = new Platform(10, 10, true, true, true, true, 10, 10, 10)
+
 export function fiberContext<E, A>(reporter: FailureReporter = constVoid) {
   const initialIS = interruptible
   const fiberId = newFiberId()
@@ -218,7 +220,7 @@ export function fiberContext<E, A>(reporter: FailureReporter = constVoid) {
     scope,
     10_000,
     reporter,
-    new Platform(10, 10, true, true, true, true, 10, 10, 10),
+    defaultPlatform,
     none
   )
 

@@ -1,6 +1,3 @@
-/**
- * relative: ../../
- */
 import type { Cause } from "../Cause/cause"
 import { keepDefects } from "../Cause/core"
 import * as Exit from "../Exit/core"

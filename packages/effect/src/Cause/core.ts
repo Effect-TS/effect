@@ -7,7 +7,7 @@ import * as O from "../Option"
 import * as S from "../Sync"
 import type { Cause } from "./cause"
 import { both, empty, fail, then, traced } from "./cause"
-import { equalsCause } from "./eq"
+import { equalsCause, equalsCauseSafe } from "./eq"
 import { InterruptedException } from "./errors"
 
 export { both, Cause, empty, fail, then, die, interrupt, traced } from "./cause"
@@ -84,12 +84,27 @@ export function map<E, E1>(f: (e: E) => E1) {
  * Determines if this cause contains or is equal to the specified cause.
  */
 export function contains<E, E1 extends E = E>(that: Cause<E1>) {
+  return (cause: Cause<E>) => S.run(containsSafe(that)(cause))
+}
+
+/**
+ * Determines if this cause contains or is equal to the specified cause.
+ */
+export function containsSafe<E, E1 extends E = E>(that: Cause<E1>) {
   return (cause: Cause<E>) =>
-    equalsCause(that, cause) ||
-    pipe(
-      cause,
-      reduceLeft(false)((_, c) => (equalsCause(that, c) ? O.some(true) : O.none))
-    )
+    S.gen(function* (_) {
+      const x = yield* _(equalsCauseSafe(that, cause))
+
+      return (
+        x ||
+        pipe(
+          cause,
+          reduceLeftSafeM(false)((_, c) =>
+            S.map_(equalsCauseSafe(that, c), (o) => (o ? O.some(true) : O.none))
+          )
+        )
+      )
+    })
 }
 
 /**
@@ -462,6 +477,40 @@ export function reduceLeftSafe<Z>(z: Z) {
           }
           case "Traced": {
             return yield* _(reduceLeftSafe(apply)(f)(cause.cause))
+          }
+          default: {
+            return apply
+          }
+        }
+      })
+  }
+}
+
+export function reduceLeftSafeM<Z>(z: Z) {
+  return <E>(
+    f: (z: Z, cause: Cause<E>) => S.UIO<O.Option<Z>>
+  ): ((cause: Cause<E>) => S.UIO<Z>) => {
+    return (cause) =>
+      S.gen(function* (_) {
+        const apply = O.getOrElse_(yield* _(f(z, cause)), () => z)
+
+        switch (cause._tag) {
+          case "Then": {
+            return yield* _(
+              reduceLeftSafeM(yield* _(reduceLeftSafeM(apply)(f)(cause.left)))(f)(
+                cause.right
+              )
+            )
+          }
+          case "Both": {
+            return yield* _(
+              reduceLeftSafeM(yield* _(reduceLeftSafeM(apply)(f)(cause.left)))(f)(
+                cause.right
+              )
+            )
+          }
+          case "Traced": {
+            return yield* _(reduceLeftSafeM(apply)(f)(cause.cause))
           }
           default: {
             return apply

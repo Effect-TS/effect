@@ -855,27 +855,33 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     )
   }
 
+  fastPathTrace(
+    k: any,
+    effect: any,
+    fastPathFlatMapContinuationTrace: AtomicReference<TraceElement | undefined>
+  ): TraceElement | undefined {
+    if (this.inTracingRegion) {
+      const kTrace = traceLocation(k)
+
+      if (this.platform.traceEffects) {
+        this.addTrace(effect)
+      }
+      if (this.platform.traceStack) {
+        fastPathFlatMapContinuationTrace.set(kTrace)
+      }
+      return kTrace
+    }
+    return undefined
+  }
+
   evaluateNow(i0: T.Instruction): void {
     try {
       // eslint-disable-next-line prefer-const
       let current: T.Instruction | undefined = i0
 
-      let fastPathFlatMapContinuationTrace: TraceElement | undefined = undefined
-
-      const fastPathTrace = (k: any, effect: any): TraceElement | undefined => {
-        if (this.inTracingRegion) {
-          const kTrace = traceLocation(k)
-
-          if (this.platform.traceEffects) {
-            this.addTrace(effect)
-          }
-          if (this.platform.traceStack) {
-            fastPathFlatMapContinuationTrace = kTrace
-          }
-          return kTrace
-        }
-        return undefined
-      }
+      const fastPathFlatMapContinuationTrace = new AtomicReference<
+        TraceElement | undefined
+      >(undefined)
 
       currentFiber.set(this)
 
@@ -908,9 +914,13 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                         break
                       }
                       case "EffectTotal": {
-                        const kTrace = fastPathTrace(k, nested.effect)
+                        const kTrace = this.fastPathTrace(
+                          k,
+                          nested.effect,
+                          fastPathFlatMapContinuationTrace
+                        )
                         if (this.platform.traceStack && kTrace != null) {
-                          fastPathFlatMapContinuationTrace = undefined
+                          fastPathFlatMapContinuationTrace.set(undefined)
                         }
                         if (this.platform.traceExecution && kTrace != null) {
                           this.addTraceValue(kTrace)
@@ -919,11 +929,15 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                         break
                       }
                       case "EffectPartial": {
-                        const kTrace = fastPathTrace(k, nested.effect)
+                        const kTrace = this.fastPathTrace(
+                          k,
+                          nested.effect,
+                          fastPathFlatMapContinuationTrace
+                        )
                         try {
                           current = k(nested.effect())[T._I]
                           if (this.platform.traceStack && kTrace != null) {
-                            fastPathFlatMapContinuationTrace = undefined
+                            fastPathFlatMapContinuationTrace.set(undefined)
                           }
                           if (this.platform.traceExecution && kTrace != null) {
                             this.addTraceValue(kTrace)
@@ -997,9 +1011,10 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                   }
 
                   case "Fail": {
+                    console.log("HERE")
                     const discardedFolds = this.unwindStack()
-                    const fast = fastPathFlatMapContinuationTrace
-                    fastPathFlatMapContinuationTrace = undefined
+                    const fast = fastPathFlatMapContinuationTrace.get
+                    fastPathFlatMapContinuationTrace.set(undefined)
                     const fullCause = current.fill(() => this.captureTrace(fast))
 
                     const maybeRedactedCause = discardedFolds
