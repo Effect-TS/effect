@@ -220,7 +220,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   }
 
   pushContinuation(k: Frame) {
-    if (this.platform.traceStack) {
+    if (this.platform.traceStack && this.inTracingRegion) {
       this.stackTraces.push(traceLocation(k.apply))
     }
     this.stack = new Stack(k, this.stack)
@@ -998,9 +998,9 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
                   case "Fail": {
                     const discardedFolds = this.unwindStack()
-                    const fullCause = current.fill(() =>
-                      this.captureTrace(fastPathFlatMapContinuationTrace)
-                    )
+                    const fast = fastPathFlatMapContinuationTrace
+                    fastPathFlatMapContinuationTrace = undefined
+                    const fullCause = current.fill(() => this.captureTrace(fast))
 
                     const maybeRedactedCause = discardedFolds
                       ? // We threw away some error handlers while unwinding the stack because

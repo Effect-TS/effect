@@ -5,7 +5,7 @@ import type { Cause } from "../Cause/cause"
 import { keepDefects } from "../Cause/core"
 import * as Exit from "../Exit/core"
 import type * as Fiber from "../Fiber"
-import { identity } from "../Function"
+import { identity, traceAs } from "../Function"
 import type { List } from "../List"
 import * as O from "../Option"
 import type { Supervisor } from "../Supervisor"
@@ -306,14 +306,16 @@ export function provideAll_<R, E, A>(
 /**
  * Returns an effect that semantically runs the effect on a fiber,
  * producing an `Exit` for the completion value of the fiber.
+ *
+ * @trace
  */
 export function result<R, E, A>(
   value: Effect<R, E, A>
 ): Effect<R, never, Exit.Exit<E, A>> {
   return new IFold(
     value,
-    (cause) => succeed(Exit.halt(cause)),
-    (succ) => succeed(Exit.succeed(succ))
+    traceAs(result, (cause) => succeed(Exit.halt(cause))),
+    traceAs(result, (succ) => succeed(Exit.succeed(succ)))
   )
 }
 
@@ -362,7 +364,11 @@ export function tryOrElse_<R, E, A, R2, E2, A2, R3, E3, A3>(
   that: () => Effect<R2, E2, A2>,
   success: (a: A) => Effect<R3, E3, A3>
 ): Effect<R & R2 & R3, E2 | E3, A2 | A3> {
-  return new IFold(self, (cause) => O.fold_(keepDefects(cause), that, halt), success)
+  return new IFold(
+    self,
+    traceAs(that, (cause) => O.fold_(keepDefects(cause), that, halt)),
+    success
+  )
 }
 
 /**

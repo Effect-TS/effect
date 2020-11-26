@@ -14,11 +14,12 @@ describe("Optimizations", () => {
       T.chain((n) => T.succeed(n + 1)),
       T.chain((n) => T.succeed(n + 1)),
       T.chain((n) => T.succeed(n + 1)),
-      T.tap(T.fail),
+      T.tap((n) => T.fail(`(${n})`)),
       T.catchAll(function handle(n) {
         return T.succeed(n)
       }),
       T.chain((n) => T.fail(`error: ${n}`)),
+      T.chain(() => T.succeed(0)),
       T.result,
       T.runPromise
     )
@@ -27,6 +28,6 @@ describe("Optimizations", () => {
 
     console.log(C.pretty(res.cause, "packages/system/"))
 
-    expect(C.untraced(res.cause)).toEqual(C.fail("error: 4"))
+    expect(C.untraced(res.cause)).toEqual(C.fail("error: (4)"))
   })
 })
