@@ -112,6 +112,18 @@ export function checkTraced<R, E, A>(
 }
 
 /**
+ * Disables Effect tracing facilities for the duration of the effect.
+ *
+ * Note: Effect tracing is cached, as such after the first iteration
+ * it has a negligible effect on performance of hot-spots (Additional
+ * hash map lookup per flatMap). As such, using `untraced` sections
+ * is not guaranteed to result in a noticeable performance increase.
+ */
+export function untraced<R, E, A>(self: Effect<R, E, A>): Effect<R, E, A> {
+  return new ITracingStatus(self, false)
+}
+
+/**
  * Imports an asynchronous effect into a pure `Effect` value, possibly returning
  * the value synchronously.
  *
