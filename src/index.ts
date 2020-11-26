@@ -1,5 +1,4 @@
 import * as path from "path"
-import {} from "ts-expose-internals"
 import * as ts from "typescript"
 
 function checkRegionAt(
@@ -9,7 +8,7 @@ function checkRegionAt(
 ) {
   const previous = regions.filter(([_, __]) => __ <= line)
   const last = previous[previous.length - 1]
-  let on = false
+  let on = true
 
   if (last) {
     if (last[1] === line) {
@@ -30,9 +29,6 @@ function checkRegionAt(
   return on
 }
 
-const traceOnRegex = /(tracing: on|@trace)/
-const relativeRegex = /relative: (.*)/
-
 export default function tracer(
   _program: ts.Program,
   _opts?: {
@@ -41,6 +37,7 @@ export default function tracer(
     flow?: boolean
     identity?: boolean
     dataFirst?: boolean
+    replaceMap?: Record<string, string>
   }
 ) {
   const tracingOn = !(_opts?.tracing === false)
@@ -53,12 +50,16 @@ export default function tracer(
   return {
     before(ctx: ts.TransformationContext) {
       const factory = ctx.factory
+      const rm = {
+        "@effect-ts/system": "@effect-ts/system/_traced",
+        "@effect-ts/core": "@effect-ts/core/_traced",
+        ...(_opts?.replaceMap || {})
+      }
+      const rmKeys = Object.keys(rm)
+
       return (sourceFile: ts.SourceFile) => {
         const sourceFullText = sourceFile.getFullText()
         const traceF = factory.createUniqueName("trace")
-
-        const tracingEnabled = traceOnRegex.test(sourceFile.getFullText()) && tracingOn
-        const relative = sourceFile.getFullText().match(relativeRegex)
 
         const regions = sourceFullText
           .split("\n")
@@ -125,6 +126,49 @@ export default function tracer(
           const nodeStart = sourceFile.getLineAndCharacterOfPosition(node.getStart())
           const isTracing =
             tracingOn && checkRegionAt(regions, nodeStart.line, nodeStart.character)
+
+          if (
+            tracingOn &&
+            ts.isImportDeclaration(node) &&
+            ts.isStringLiteral(node.moduleSpecifier) &&
+            !node.getText().includes("import type")
+          ) {
+            const spec = node.moduleSpecifier.text
+            for (const k of rmKeys) {
+              if (spec.includes(k) && !spec.includes(rm[k])) {
+                return factory.updateImportDeclaration(
+                  node,
+                  node.decorators,
+                  node.modifiers,
+                  node.importClause,
+                  factory.createStringLiteral(spec.replace(k, rm[k]))
+                )
+              }
+            }
+          }
+
+          if (
+            tracingOn &&
+            ts.isExportDeclaration(node) &&
+            node.moduleSpecifier &&
+            ts.isStringLiteral(node.moduleSpecifier) &&
+            !node.isTypeOnly
+          ) {
+            factory.createExportDeclaration
+            const spec = node.moduleSpecifier.text
+            for (const k of rmKeys) {
+              if (spec.includes(k) && !spec.includes(rm[k])) {
+                return factory.updateExportDeclaration(
+                  node,
+                  node.decorators,
+                  node.modifiers,
+                  node.isTypeOnly,
+                  node.exportClause,
+                  factory.createStringLiteral(spec.replace(k, rm[k]))
+                )
+              }
+            }
+          }
 
           if (ts.isCallExpression(node)) {
             const symbol = checker.getTypeAtLocation(node.expression).getSymbol()
@@ -406,7 +450,7 @@ export default function tracer(
             }
           }
 
-          if (ts.isFunctionDeclaration(node)) {
+          if (ts.isFunctionDeclaration(node) && tracingOn) {
             const forcedTrace = /@trace/.test(node.getFullText())
 
             if (isTracing || forcedTrace) {
@@ -433,7 +477,6 @@ export default function tracer(
         }
 
         const { fileName } = sourceFile
-        const fileDir = ts.normalizePath(path.dirname(fileName))
 
         const traceFNode = factory.createFunctionDeclaration(
           undefined,
@@ -464,22 +507,22 @@ export default function tracer(
           undefined,
           factory.createBlock(
             [
-              factory.createExpressionStatement(
-                factory.createBinaryExpression(
-                  factory.createElementAccessExpression(
-                    factory.createIdentifier("f"),
-                    factory.createStringLiteral("$trace")
-                  ),
-                  factory.createToken(ts.SyntaxKind.EqualsToken),
+              factory.createIfStatement(
+                factory.createIdentifier("f"),
+                factory.createExpressionStatement(
                   factory.createBinaryExpression(
-                    factory.createStringLiteral(
-                      path.relative(
-                        path.join(fileDir, relative ? relative[1] : "."),
-                        fileName
-                      )
+                    factory.createElementAccessExpression(
+                      factory.createIdentifier("f"),
+                      factory.createStringLiteral("$trace")
                     ),
-                    factory.createToken(ts.SyntaxKind.PlusToken),
-                    factory.createIdentifier("t")
+                    factory.createToken(ts.SyntaxKind.EqualsToken),
+                    factory.createBinaryExpression(
+                      factory.createStringLiteral(
+                        path.relative(process.cwd(), fileName)
+                      ),
+                      factory.createToken(ts.SyntaxKind.PlusToken),
+                      factory.createIdentifier("t")
+                    )
                   )
                 )
               ),
@@ -489,7 +532,7 @@ export default function tracer(
           )
         )
 
-        if (tracingEnabled) {
+        if (tracingOn) {
           const visited_ = ts.visitEachChild(sourceFile, visitor, ctx)
           const visited = dataFirstOn
             ? ts.visitEachChild(visited_, dataFirst, ctx)
