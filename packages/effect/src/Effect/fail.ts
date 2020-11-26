@@ -1,8 +1,8 @@
 /**
- * relative: ../
+ * relative: ../../
  */
-import { Fail } from "../Cause/cause"
-import { halt } from "./core"
+import * as C from "../Cause/cause"
+import { haltWith } from "."
 
 /**
  * Returns an effect that models failure with the specified error.
@@ -11,5 +11,5 @@ import { halt } from "./core"
  * @trace
  */
 export function fail<E>(e: E) {
-  return halt(Fail(e))
+  return haltWith((trace) => C.traced(C.fail(e), trace()))
 }

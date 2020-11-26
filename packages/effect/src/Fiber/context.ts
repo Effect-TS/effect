@@ -31,7 +31,7 @@ import type { Callback } from "./state"
 import { FiberStateDone, FiberStateExecuting, initial, interrupting } from "./state"
 import * as Status from "./status"
 import type { Platform, TraceElement } from "./tracing"
-import { Trace, traceLocation, truncatedParentTrace } from "./tracing"
+import { SourceLocation, Trace, traceLocation, truncatedParentTrace } from "./tracing"
 
 export type FiberRefLocals = Map<FiberRef<any>, any>
 
@@ -143,7 +143,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
   addTrace(f: Function) {
     if (this.inTracingRegion && "$trace" in f) {
-      this.executionTraces.push(f["$trace"])
+      this.executionTraces.push(new SourceLocation(f["$trace"]))
     }
   }
 
@@ -391,7 +391,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   }
 
   kill0(fiberId: Fiber.FiberID): T.UIO<Exit.Exit<E, A>> {
-    const interruptedCause = Cause.Interrupt(fiberId)
+    const interruptedCause = Cause.interrupt(fiberId)
 
     const setInterruptedLoop = (): Cause.Cause<never> => {
       const oldState = this.state.get
@@ -403,7 +403,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
             oldState.status.interruptible &&
             !interrupting(oldState)
           ) {
-            const newCause = Cause.Then(oldState.interrupted, interruptedCause)
+            const newCause = Cause.then(oldState.interrupted, interruptedCause)
 
             this.state.set(
               new FiberStateExecuting(
@@ -417,7 +417,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
             return newCause
           } else {
-            const newCause = Cause.Then(oldState.interrupted, interruptedCause)
+            const newCause = Cause.then(oldState.interrupted, interruptedCause)
 
             this.state.set(
               new FiberStateExecuting(oldState.status, oldState.observers, newCause)
@@ -1019,7 +1019,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                           maybeRedactedCause
                         )
                           ? maybeRedactedCause
-                          : Cause.Then(maybeRedactedCause, interrupted)
+                          : Cause.then(maybeRedactedCause, interrupted)
 
                         return causeAndInterrupt
                       }

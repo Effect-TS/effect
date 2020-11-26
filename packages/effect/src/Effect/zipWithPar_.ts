@@ -1,4 +1,4 @@
-import { Both } from "../Cause/cause"
+import { both } from "../Cause/cause"
 import type { Exit } from "../Exit/exit"
 import { join } from "../Fiber/api"
 import type { Fiber } from "../Fiber/core"
@@ -51,8 +51,8 @@ function coordinateZipPar<E, E2>() {
             }
             case "Failure": {
               return leftWinner
-                ? halt(Both(winner.cause, e.cause))
-                : halt(Both(e.cause, winner.cause))
+                ? halt(both(winner.cause, e.cause))
+                : halt(both(e.cause, winner.cause))
             }
           }
         })

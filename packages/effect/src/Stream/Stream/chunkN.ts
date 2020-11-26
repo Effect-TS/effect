@@ -47,7 +47,7 @@ export function chunkN_<R, E, O>(self: Stream<R, E, O>, n: number): Stream<R, E,
   }
 
   if (n < 1) {
-    return halt(C.Die(new C.IllegalArgumentException("chunkN: n must be at least 1")))
+    return halt(C.die(new C.IllegalArgumentException("chunkN: n must be at least 1")))
   } else {
     return new Stream(
       pipe(

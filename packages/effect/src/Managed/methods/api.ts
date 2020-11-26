@@ -906,7 +906,7 @@ export function refineOrDie_<R, A, E, E1>(
  * detected in the code.
  */
 export function die(e: unknown) {
-  return halt(C.Die(e))
+  return halt(C.die(e))
 }
 
 /**

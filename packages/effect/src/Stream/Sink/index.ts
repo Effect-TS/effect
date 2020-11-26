@@ -1197,7 +1197,7 @@ export const count: Sink<unknown, never, unknown, never, number> = reduceLeft(0)
  * Creates a sink halting with the specified `Throwable`.
  */
 export function die(e: unknown): Sink<unknown, never, unknown, never, never> {
-  return halt(C.Die(e))
+  return halt(C.die(e))
 }
 
 /**
@@ -1205,7 +1205,7 @@ export function die(e: unknown): Sink<unknown, never, unknown, never, never> {
  * `RuntimeException`.
  */
 export function dieMessage(m: string): Sink<unknown, never, unknown, never, never> {
-  return halt(C.Die(new C.RuntimeError(m)))
+  return halt(C.die(new C.RuntimeError(m)))
 }
 
 /**

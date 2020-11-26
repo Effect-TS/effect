@@ -230,10 +230,10 @@ export function zipWith_<E, A, E1, A1, B>(
     inheritRefs: T.chain_(fiberA.inheritRefs, () => fiberB.inheritRefs),
     interruptAs: (id) =>
       T.zipWith_(fiberA.interruptAs(id), fiberB.interruptAs(id), (ea, eb) =>
-        Exit.zipWith_(ea, eb, f, Cause.Both)
+        Exit.zipWith_(ea, eb, f, Cause.both)
       ),
     poll: T.zipWith_(fiberA.poll, fiberB.poll, (oa, ob) =>
-      O.chain_(oa, (ea) => O.map_(ob, (eb) => Exit.zipWith_(ea, eb, f, Cause.Both)))
+      O.chain_(oa, (ea) => O.map_(ob, (eb) => Exit.zipWith_(ea, eb, f, Cause.both)))
     ),
     await: T.result(
       T.zipWithPar_(T.chain_(fiberA.await, T.done), T.chain_(fiberB.await, T.done), f)
@@ -291,7 +291,7 @@ export function collectAll<E, A>(fibers: Iterable<Fiber.Fiber<E, A>>) {
         T.foreach_(fibers, (f) => f.interruptAs(fiberId)),
         T.map(
           A.reduceRight(Exit.succeed(A.empty) as Exit.Exit<E, A.Array<A>>, (a, b) =>
-            Exit.zipWith_(a, b, (_a, _b) => [_a, ..._b], Cause.Both)
+            Exit.zipWith_(a, b, (_a, _b) => [_a, ..._b], Cause.both)
           )
         )
       ),
@@ -309,7 +309,7 @@ export function collectAll<E, A>(fibers: Iterable<Fiber.Fiber<E, A>>) {
                   b,
                   () => O.none,
                   (rb) =>
-                    O.some(Exit.zipWith_(ra, rb, (_a, _b) => [_a, ..._b], Cause.Both))
+                    O.some(Exit.zipWith_(ra, rb, (_a, _b) => [_a, ..._b], Cause.both))
                 )
             )
         )

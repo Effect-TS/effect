@@ -1,1 +1,9 @@
-export { Cause, Interrupt, Die, Fail, Both, Empty, Then } from "../../Cause/cause"
+export {
+  Cause,
+  interrupt as Interrupt,
+  die as Die,
+  fail as Fail,
+  both as Both,
+  empty as Empty,
+  then as Then
+} from "../../Cause/cause"
