@@ -1,4 +1,5 @@
 import * as T from "../src/Effect"
+import { makeCustomRuntime } from "../src/Effect"
 
 function fibEffect(n: number): T.UIO<number> {
   if (n < 2) {
@@ -29,27 +30,60 @@ function fibEffectGen(n: number): T.UIO<number> {
   })
 }
 
+const runtime = makeCustomRuntime()
+  .traceEffect(false)
+  .traceExecution(false)
+  .traceExecutionLength(0)
+  .traceStack(false)
+  .traceStackLength(0)
+  .ancestorExecutionTraceLength(0)
+  .ancestorStackTraceLength(0)
+  .ancestryLength(0)
+
 describe("Bench", () => {
-  it("promise", async () => {
-    for (let i = 0; i < 1000; i++) {
-      await fibPromise(10)
-    }
+  describe("Target", () => {
+    it("promise", async () => {
+      for (let i = 0; i < 1000; i++) {
+        await fibPromise(10)
+      }
+    })
   })
-  it("effect", () => T.runPromise(T.repeatN(1000)(fibEffect(10))))
-  it("effect-gen", () =>
-    T.runPromise(
-      T.gen(function* (_) {
-        for (let i = 0; i < 1000; i++) {
-          yield* _(fibEffect(10))
-        }
-      })
-    ))
-  it("effect-gen-2", () =>
-    T.runPromise(
-      T.gen(function* (_) {
-        for (let i = 0; i < 1000; i++) {
-          yield* _(fibEffectGen(10))
-        }
-      })
-    ))
+  describe("With Tracing", () => {
+    it("effect", () => T.runPromise(T.repeatN(1000)(fibEffect(10))))
+    it("effect-gen", () =>
+      T.runPromise(
+        T.gen(function* (_) {
+          for (let i = 0; i < 1000; i++) {
+            yield* _(fibEffect(10))
+          }
+        })
+      ))
+    it("effect-gen-2", () =>
+      T.runPromise(
+        T.gen(function* (_) {
+          for (let i = 0; i < 1000; i++) {
+            yield* _(fibEffectGen(10))
+          }
+        })
+      ))
+  })
+  describe("Without Tracing", () => {
+    it("effect", () => runtime.runPromise(T.repeatN(1000)(fibEffect(10))))
+    it("effect-gen", () =>
+      runtime.runPromise(
+        T.gen(function* (_) {
+          for (let i = 0; i < 1000; i++) {
+            yield* _(fibEffect(10))
+          }
+        })
+      ))
+    it("effect-gen-2", () =>
+      runtime.runPromise(
+        T.gen(function* (_) {
+          for (let i = 0; i < 1000; i++) {
+            yield* _(fibEffectGen(10))
+          }
+        })
+      ))
+  })
 })
