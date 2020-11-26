@@ -30,7 +30,6 @@ function checkRegionAt(
   return on
 }
 
-const traceRegex = /tracing: (on|off)/
 const traceOnRegex = /(tracing: on|@trace)/
 const relativeRegex = /relative: (.*)/
 
@@ -65,7 +64,7 @@ export default function tracer(
           .split("\n")
           .map((line, i) => {
             const x: [boolean, number][] = []
-            const m = line.matchAll(traceRegex)
+            const m = line.matchAll(/tracing: (on|off)/g)
             for (const k of m) {
               if (k && k.index) {
                 x.push([k[1] === "on", k.index])
