@@ -22,7 +22,7 @@ describe("Crypto Suite", () => {
         const hash = yield* _(hashPassword(password))
         const verify = yield* _(T.result(verifyPassword(password, hash)))
 
-        expect(verify).toEqual(Ex.unit)
+        expect(Ex.untraced(verify)).toEqual(Ex.unit)
       }))
 
     it("should hash and not verify password", () =>
@@ -34,7 +34,7 @@ describe("Crypto Suite", () => {
         const hash = yield* _(hashPassword(password))
         const verify = yield* _(T.result(verifyPassword(passwordBad, hash)))
 
-        expect(verify).toEqual(Ex.fail(new InvalidPassword()))
+        expect(Ex.untraced(verify)).toEqual(Ex.fail(new InvalidPassword()))
       }))
   })
   describe("Test", () => {
@@ -48,7 +48,7 @@ describe("Crypto Suite", () => {
         const hash = yield* _(hashPassword(password))
         const verify = yield* _(T.result(verifyPassword(password, hash)))
 
-        expect(verify).toEqual(Ex.unit)
+        expect(Ex.untraced(verify)).toEqual(Ex.unit)
       }))
 
     it("should hash and not verify password", () =>
@@ -60,7 +60,7 @@ describe("Crypto Suite", () => {
         const hash = yield* _(hashPassword(password))
         const verify = yield* _(T.result(verifyPassword(passwordBad, hash)))
 
-        expect(verify).toEqual(Ex.fail(new InvalidPassword()))
+        expect(Ex.untraced(verify)).toEqual(Ex.fail(new InvalidPassword()))
       }))
   })
 })
