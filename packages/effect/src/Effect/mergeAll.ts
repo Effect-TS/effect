@@ -4,7 +4,7 @@ import * as Ref from "../Ref"
 import { chain, chain_, succeed } from "./core"
 import type { Effect } from "./effect"
 import { foreachUnitParN_ } from "./foreachUnitParN_"
-import { zipWith_ } from "./zipWith_"
+import { zipWith_ } from "./zipWith"
 import { zipWithPar_ } from "./zipWithPar_"
 
 /**

@@ -8,7 +8,7 @@ import { foreachPar } from "./foreachPar"
 import { foreachParN } from "./foreachParN"
 import { map } from "./map"
 import { map_ } from "./map_"
-import { zipWith_ } from "./zipWith_"
+import { zipWith_ } from "./zipWith"
 
 /**
  * Filters the collection using the specified effectual predicate.

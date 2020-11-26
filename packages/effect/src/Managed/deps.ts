@@ -41,7 +41,7 @@ export { uninterruptible } from "../Effect/uninterruptible"
 export { uninterruptibleMask } from "../Effect/uninterruptibleMask"
 export { zipWith } from "../Effect/zipWith"
 export { zipWithPar_ } from "../Effect/zipWithPar_"
-export { zipWith_ } from "../Effect/zipWith_"
+export { zipWith_ } from "../Effect/zipWith"
 export { zip_ } from "../Effect/zip_"
 export { foreach as exitForeach } from "../Exit/api"
 export {
