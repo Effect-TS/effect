@@ -14,4 +14,5 @@ export * from "./fiberRenderer"
 export * from "./id"
 export * from "./state"
 export * from "./status"
+export * from "./tracing"
 // codegen:end

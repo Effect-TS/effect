@@ -5,16 +5,16 @@ import type { Cause } from "../Cause/cause"
 import { keepDefects } from "../Cause/core"
 import * as Exit from "../Exit/core"
 import type * as Fiber from "../Fiber"
-import type { Descriptor, InterruptStatus } from "../Fiber/core"
-import type { FiberID } from "../Fiber/id"
 import { identity } from "../Function"
+import type { List } from "../List"
 import * as O from "../Option"
 import type { Supervisor } from "../Supervisor"
-import type { FailureReporter } from "."
 import type { Effect, IO, RIO, UIO } from "./effect"
+import type { FailureReporter } from "./primitives"
 import {
   ICheckExecutionTraces,
   ICheckInterrupt,
+  ICheckTracingStatus,
   IDescriptor,
   IEffectAsync,
   IEffectPartial,
@@ -30,6 +30,7 @@ import {
   ISupervise,
   ISuspend,
   ISuspendPartial,
+  ITracingStatus,
   IYield
 } from "./primitives"
 
@@ -78,7 +79,7 @@ export function chain_<R, E, A, R1, E1, A1>(
  * its identity.
  */
 export function descriptorWith<R, E, A>(
-  f: (_: Descriptor) => Effect<R, E, A>
+  f: (_: Fiber.Descriptor) => Effect<R, E, A>
 ): Effect<R, E, A> {
   return new IDescriptor(f)
 }
@@ -88,19 +89,29 @@ export function descriptorWith<R, E, A>(
  * specified callback.
  */
 export function checkInterruptible<R, E, A>(
-  f: (_: InterruptStatus) => Effect<R, E, A>
+  f: (_: Fiber.InterruptStatus) => Effect<R, E, A>
 ): Effect<R, E, A> {
   return new ICheckInterrupt(f)
 }
 
 /**
- * Checks the interrupt status, and produces the effect returned by the
- * specified callback.
+ * Checks the execution traces in the current fiber, and produces the
+ * effect returned by the specified callback.
  */
 export function checkExecutionTraces<R, E, A>(
-  f: (_: readonly string[]) => Effect<R, E, A>
+  f: (_: List<Fiber.TraceElement>) => Effect<R, E, A>
 ): Effect<R, E, A> {
   return new ICheckExecutionTraces(f)
+}
+
+/**
+ * Checks the tracing status, and produces the effect returned by the
+ * specified callback.
+ */
+export function checkTraced<R, E, A>(
+  f: (_: boolean) => Effect<R, E, A>
+): Effect<R, E, A> {
+  return new ICheckTracingStatus(f)
 }
 
 /**
@@ -117,7 +128,7 @@ export function checkExecutionTraces<R, E, A>(
  */
 export function effectAsyncOption<R, E, A>(
   register: (cb: (_: Effect<R, E, A>) => void) => O.Option<Effect<R, E, A>>,
-  blockingOn: readonly FiberID[] = []
+  blockingOn: readonly Fiber.FiberID[] = []
 ): Effect<R, E, A> {
   return new IEffectAsync(register, blockingOn)
 }
@@ -210,6 +221,18 @@ export function forkReport(reportFailure: FailureReporter) {
  * @trace
  */
 export function halt<E>(cause: Cause<E>): IO<E, never> {
+  return new IFail(() => cause)
+}
+
+/**
+ * Returns an effect that models failure with the specified `Cause`.
+ *
+ * This version takes in a lazily-evaluated trace that can be attached to the `Cause`
+ * via `Cause.Traced`.
+ *
+ * @trace
+ */
+export function haltWith<E>(cause: (_: () => Fiber.Trace) => Cause<E>): IO<E, never> {
   return new IFail(cause)
 }
 
@@ -219,7 +242,7 @@ export function halt<E>(cause: Cause<E>): IO<E, never> {
  * the effect becomes uninterruptible. These changes are compositional, so
  * they only affect regions of the effect.
  */
-export function interruptStatus(flag: InterruptStatus) {
+export function interruptStatus(flag: Fiber.InterruptStatus) {
   return <R, E, A>(effect: Effect<R, E, A>): Effect<R, E, A> =>
     new IInterruptStatus(effect, flag)
 }
@@ -232,9 +255,33 @@ export function interruptStatus(flag: InterruptStatus) {
  */
 export function interruptStatus_<R, E, A>(
   effect: Effect<R, E, A>,
-  flag: InterruptStatus
+  flag: Fiber.InterruptStatus
 ): Effect<R, E, A> {
   return new IInterruptStatus(effect, flag)
+}
+
+/**
+ * Toggles Effect tracing support for this effect. If `true` is used, then the
+ * effect will accumulate traces, while if `false` is used, then tracing
+ * is disabled. These changes are compositional, so they only affect regions
+ * of the effect.
+ */
+export function tracingStatus(flag: boolean) {
+  return <R, E, A>(effect: Effect<R, E, A>): Effect<R, E, A> =>
+    new ITracingStatus(effect, flag)
+}
+
+/**
+ * Toggles Effect tracing support for this effect. If `true` is used, then the
+ * effect will accumulate traces, while if `false` is used, then tracing
+ * is disabled. These changes are compositional, so they only affect regions
+ * of the effect.
+ */
+export function tracingStatus_<R, E, A>(
+  effect: Effect<R, E, A>,
+  flag: boolean
+): Effect<R, E, A> {
+  return new ITracingStatus(effect, flag)
 }
 
 /**

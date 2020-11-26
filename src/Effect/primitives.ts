@@ -3,7 +3,9 @@ import type * as Exit from "../Exit/exit"
 import type { FiberContext } from "../Fiber/context"
 import type * as Fiber from "../Fiber/core"
 import type { FiberID } from "../Fiber/id"
+import type { TraceElement } from "../Fiber/tracing"
 import type { FiberRef } from "../FiberRef/fiberRef"
+import type { List } from "../List"
 import type * as O from "../Option"
 import type { Scope } from "../Scope"
 import type { Supervisor } from "../Supervisor"
@@ -25,6 +27,7 @@ export type Instruction =
   | IInterruptStatus<any, any, any>
   | ICheckInterrupt<any, any, any>
   | ICheckExecutionTraces<any, any, any>
+  | ICheckTracingStatus<any, any, any>
   | IFail<any>
   | IDescriptor<any, any, any>
   | IYield
@@ -40,6 +43,7 @@ export type Instruction =
   | IOverrideForkScope<any, any, any>
   | XPure<unknown, never, any, any, any>
   | FFI<any, any, any>
+  | ITracingStatus<any, any, any>
 
 export class IFlatMap<R, E, A, R1, E1, A1> extends Base<R & R1, E | E1, A1> {
   readonly _tag = "FlatMap"
@@ -60,7 +64,23 @@ export class ISucceed<A> extends Base<unknown, never, A> {
 export class ICheckExecutionTraces<R, E, A> extends Base<R, E, A> {
   readonly _tag = "CheckExecutionTraces"
 
-  constructor(readonly f: (traces: readonly string[]) => Effect<R, E, A>) {
+  constructor(readonly f: (traces: List<TraceElement>) => Effect<R, E, A>) {
+    super()
+  }
+}
+
+export class ITracingStatus<R, E, A> extends Base<R, E, A> {
+  readonly _tag = "TracingStatus"
+
+  constructor(readonly effect: Effect<R, E, A>, readonly flag: boolean) {
+    super()
+  }
+}
+
+export class ICheckTracingStatus<R, E, A> extends Base<R, E, A> {
+  readonly _tag = "CheckTracingStatus"
+
+  constructor(readonly f: (tracingStatus: boolean) => Effect<R, E, A>) {
     super()
   }
 }

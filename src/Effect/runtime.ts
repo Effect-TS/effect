@@ -12,7 +12,9 @@ import { interruptible } from "../Fiber/core"
 import type { FiberID } from "../Fiber/id"
 import { newFiberId } from "../Fiber/id"
 import type { Callback } from "../Fiber/state"
+import { Platform } from "../Fiber/tracing"
 import { constVoid, identity } from "../Function"
+import { none } from "../Option"
 import { defaultRandom, HasRandom } from "../Random"
 import * as Scope from "../Scope"
 // supervisor
@@ -215,7 +217,9 @@ export function fiberContext<E, A>(reporter: FailureReporter = constVoid) {
     supervisor,
     scope,
     10_000,
-    reporter
+    reporter,
+    new Platform(10, 10, true, true, true, true, 10, 10, 10),
+    none
   )
 
   return context

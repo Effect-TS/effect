@@ -3,6 +3,7 @@ import * as A from "../Array"
 import * as Cause from "../Cause/core"
 // effect
 import { RuntimeError } from "../Cause/errors"
+import { ISucceed } from "../Effect"
 // either
 import * as E from "../Either"
 // exit
@@ -17,7 +18,6 @@ import * as O from "../Option"
 // supervisor / scope
 import * as Scope from "../Scope"
 import * as Sup from "../Supervisor"
-import { AtomicNumber } from "../Support/AtomicNumber"
 // support
 import { AtomicReference } from "../Support/AtomicReference"
 import { RingBuffer } from "../Support/RingBuffer"
@@ -30,6 +30,8 @@ import * as Fiber from "./core"
 import type { Callback } from "./state"
 import { FiberStateDone, FiberStateExecuting, initial, interrupting } from "./state"
 import * as Status from "./status"
+import type { Platform, TraceElement } from "./tracing"
+import { Trace, traceLocation, truncatedParentTrace } from "./tracing"
 
 export type FiberRefLocals = Map<FiberRef<any>, any>
 
@@ -39,6 +41,11 @@ export class Stack<A> {
 
 export class InterruptExit {
   readonly _tag = "InterruptExit"
+  constructor(readonly apply: (a: any) => T.Effect<any, any, any>) {}
+}
+
+export class TracingExit {
+  readonly _tag = "TracingExit"
   constructor(readonly apply: (a: any) => T.Effect<any, any, any>) {}
 }
 
@@ -54,6 +61,7 @@ export class ApplyFrame {
 
 export type Frame =
   | InterruptExit
+  | TracingExit
   | T.IFold<any, any, any, any, any, any, any, any, any>
   | HandlerFrame
   | ApplyFrame
@@ -97,8 +105,6 @@ export const unsafeCurrentFiber = () => O.fromNullable(currentFiber.get)
 
 const noop = O.some(constVoid)
 
-export const executionTracesLength = new AtomicNumber(100)
-
 export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   readonly _tag = "RuntimeFiber"
   readonly state = new AtomicReference(initial<E, A>())
@@ -111,8 +117,10 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   supervisors: Stack<Sup.Supervisor<any>> = new Stack(this.supervisor0)
   forkScopeOverride?: Stack<O.Option<Scope.Scope<Exit.Exit<any, any>>>> = undefined
   scopeKey: Scope.Key | undefined = undefined
-  executionTraces = new RingBuffer<string>(executionTracesLength.get)
+  executionTraces = new RingBuffer<TraceElement>(this.platform.executionTraceLength)
+  stackTraces = new RingBuffer<TraceElement>(this.platform.stackTraceLength)
   traceStatusStack: Stack<boolean> | undefined = new Stack(true)
+  traceStatusEnabled = this.platform.traceExecution || this.platform.traceStack
 
   constructor(
     readonly fiberId: Fiber.FiberID,
@@ -122,7 +130,9 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     readonly supervisor0: Sup.Supervisor<any>,
     readonly openScope: Scope.Open<Exit.Exit<E, A>>,
     readonly maxOp: number,
-    readonly reportFailure: (e: Cause.Cause<E>) => void
+    readonly reportFailure: (e: Cause.Cause<E>) => void,
+    readonly platform: Platform,
+    readonly parentTrace: O.Option<Trace>
   ) {
     _tracing.trace(this)
   }
@@ -132,19 +142,13 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   }
 
   addTrace(f: Function) {
-    if ("$trace" in f) {
-      const region = this.traceStatusStack?.value
-
-      if (region) {
-        this.executionTraces.push(f["$trace"])
-      }
+    if (this.inTracingRegion && "$trace" in f) {
+      this.executionTraces.push(f["$trace"])
     }
   }
 
-  addTraceValue(trace: string) {
-    const region = this.traceStatusStack?.value
-
-    if (region) {
+  addTraceValue(trace: TraceElement) {
+    if (this.inTracingRegion) {
       this.executionTraces.push(trace)
     }
   }
@@ -178,6 +182,19 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     }
   })
 
+  popTracingStatus() {
+    this.traceStatusStack = this.traceStatusStack?.previous
+  }
+
+  pushTracingStatus(flag: boolean) {
+    this.traceStatusStack = new Stack(flag, this.traceStatusStack)
+  }
+
+  tracingExit = new TracingExit((v: any) => {
+    this.popTracingStatus()
+    return new ISucceed(v)
+  })
+
   get isInterruptible() {
     return this.interruptStatus ? this.interruptStatus.value : true
   }
@@ -203,6 +220,9 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   }
 
   pushContinuation(k: Frame) {
+    if (this.platform.traceStack) {
+      this.stackTraces.push(traceLocation(k.apply))
+    }
     this.stack = new Stack(k, this.stack)
   }
 
@@ -258,15 +278,30 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
           this.popInterruptStatus()
           break
         }
+        case "TracingExit": {
+          this.popTracingStatus()
+          break
+        }
         case "Fold": {
           if (!this.shouldInterrupt) {
             // Push error handler back onto the stack and halt iteration:
+            if (this.platform.traceStack && this.inTracingRegion) {
+              this.stackTraces.pop()
+            }
             this.pushContinuation(new HandlerFrame(frame.failure))
             unwinding = false
           } else {
+            if (this.platform.traceStack && this.inTracingRegion) {
+              this.stackTraces.pop()
+            }
             discardedFolds = true
           }
           break
+        }
+        default: {
+          if (this.platform.traceStack && this.inTracingRegion) {
+            this.stackTraces.pop()
+          }
         }
       }
     }
@@ -298,7 +333,16 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       const k = this.popContinuation()!
 
-      this.addTrace(k.apply)
+      if (this.inTracingRegion && this.platform.traceExecution) {
+        this.addTrace(k.apply)
+      }
+      if (
+        this.platform.traceStack &&
+        k._tag !== "InterruptExit" &&
+        k._tag !== "TracingExit"
+      ) {
+        this.stackTraces.pop()
+      }
 
       return k.apply(value)[T._I]
     } else {
@@ -566,6 +610,10 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     const currentSup = this.supervisors.value
     const childId = Fiber.newFiberId()
     const childScope = Scope.unsafeMakeScope<Exit.Exit<E, A>>()
+    const ancestry =
+      this.inTracingRegion && (this.platform.traceExecution || this.platform.traceStack)
+        ? O.some(this.cutAncestryTrace(this.captureTrace(undefined)))
+        : O.none
 
     const childContext = new FiberContext(
       childId,
@@ -575,7 +623,9 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
       currentSup,
       childScope,
       this.maxOp,
-      O.getOrElse_(reportFailure, () => this.reportFailure)
+      O.getOrElse_(reportFailure, () => this.reportFailure),
+      this.platform,
+      ancestry
     )
 
     if (currentSup !== Sup.none) {
@@ -720,6 +770,15 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     })
   }
 
+  get inTracingRegion() {
+    return (
+      this.traceStatusEnabled &&
+      (this.traceStatusStack
+        ? this.traceStatusStack.value
+        : this.platform.initialTracingStatus)
+    )
+  }
+
   raceWithImpl<R, E, A, R1, E1, A1, R2, E2, A2, R3, E3, A3>(
     race: T.IRaceWith<R, E, A, R1, E1, A1, R2, E2, A2, R3, E3, A3>
   ): T.Effect<R & R1 & R2 & R3, E2 | E3, A2 | A3> {
@@ -774,10 +833,49 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     )
   }
 
+  captureTrace(last: TraceElement | undefined): Trace {
+    const exec = L.reverse(this.executionTraces.list)
+    const stack_ = L.reverse(this.stackTraces.list)
+    const stack = last ? L.prepend_(stack_, last) : stack_
+    return new Trace(this.id, exec, stack, this.parentTrace)
+  }
+
+  cutAncestryTrace(trace: Trace): Trace {
+    const maxExecLength = this.platform.ancestorExecutionTraceLength
+    const maxStackLength = this.platform.ancestorStackTraceLength
+    const maxAncestors = this.platform.ancestryLength - 1
+
+    const truncated = truncatedParentTrace(trace, maxAncestors)
+
+    return new Trace(
+      trace.fiberId,
+      L.take_(trace.executionTrace, maxExecLength),
+      L.take_(trace.stackTrace, maxStackLength),
+      truncated
+    )
+  }
+
   evaluateNow(i0: T.Instruction): void {
     try {
       // eslint-disable-next-line prefer-const
       let current: T.Instruction | undefined = i0
+
+      let fastPathFlatMapContinuationTrace: TraceElement | undefined = undefined
+
+      const fastPathTrace = (k: any, effect: any): TraceElement | undefined => {
+        if (this.inTracingRegion) {
+          const kTrace = traceLocation(k)
+
+          if (this.platform.traceEffects) {
+            this.addTrace(effect)
+          }
+          if (this.platform.traceStack) {
+            fastPathFlatMapContinuationTrace = kTrace
+          }
+          return kTrace
+        }
+        return undefined
+      }
 
       currentFiber.set(this)
 
@@ -803,21 +901,33 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
                     switch (nested._tag) {
                       case "Succeed": {
-                        this.addTrace(k)
+                        if (this.platform.traceExecution) {
+                          this.addTrace(k)
+                        }
                         current = k(nested.val)[T._I]
                         break
                       }
                       case "EffectTotal": {
-                        this.addTrace(k)
-                        this.addTrace(nested.effect)
+                        const kTrace = fastPathTrace(k, nested.effect)
+                        if (this.platform.traceStack && kTrace != null) {
+                          fastPathFlatMapContinuationTrace = undefined
+                        }
+                        if (this.platform.traceExecution && kTrace != null) {
+                          this.addTraceValue(kTrace)
+                        }
                         current = k(nested.effect())[T._I]
                         break
                       }
                       case "EffectPartial": {
+                        const kTrace = fastPathTrace(k, nested.effect)
                         try {
-                          this.addTrace(k)
-                          this.addTrace(nested.effect)
                           current = k(nested.effect())[T._I]
+                          if (this.platform.traceStack && kTrace != null) {
+                            fastPathFlatMapContinuationTrace = undefined
+                          }
+                          if (this.platform.traceExecution && kTrace != null) {
+                            this.addTraceValue(kTrace)
+                          }
                         } catch (e) {
                           this.addTrace(nested.onThrow)
                           current = T.fail(nested.onThrow(e))[T._I]
@@ -846,10 +956,24 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                     break
                   }
 
+                  case "TracingStatus": {
+                    if (this.inTracingRegion) {
+                      this.pushTracingStatus(current.flag)
+                      this.stack = new Stack(this.tracingExit, this.stack)
+                    }
+                    current = current.effect[T._I]
+                    break
+                  }
+
+                  case "CheckTracingStatus": {
+                    current = current.f(this.inTracingRegion)[T._I]
+                    break
+                  }
+
                   case "CheckExecutionTraces": {
                     const x = current
                     this.addTrace(x.f)
-                    current = x.f(L.toArray(this.executionTraces.list))[T._I]
+                    current = x.f(this.executionTraces.list)[T._I]
                     break
                   }
 
@@ -865,14 +989,18 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                   }
 
                   case "EffectTotal": {
-                    this.addTrace(current.effect)
+                    if (this.platform.traceEffects) {
+                      this.addTrace(current.effect)
+                    }
                     current = this.nextInstr(current.effect())
                     break
                   }
 
                   case "Fail": {
                     const discardedFolds = this.unwindStack()
-                    const fullCause = current.cause
+                    const fullCause = current.fill(() =>
+                      this.captureTrace(fastPathFlatMapContinuationTrace)
+                    )
 
                     const maybeRedactedCause = discardedFolds
                       ? // We threw away some error handlers while unwinding the stack because
@@ -933,8 +1061,14 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                   case "EffectPartial": {
                     const c = current
                     try {
+                      if (this.inTracingRegion && this.platform.traceEffects) {
+                        this.addTrace(c.effect)
+                      }
                       current = this.nextInstr(c.effect())
                     } catch (e) {
+                      if (this.inTracingRegion && this.platform.traceEffects) {
+                        this.addTrace(c.onThrow)
+                      }
                       current = T.fail(c.onThrow(e))[T._I]
                     }
                     break
