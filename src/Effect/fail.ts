@@ -1,6 +1,3 @@
-/**
- * relative: ../../
- */
 import * as C from "../Cause/cause"
 import { haltWith } from "./core"
 
