@@ -124,6 +124,16 @@ export function untraced<R, E, A>(self: Effect<R, E, A>): Effect<R, E, A> {
 }
 
 /**
+ * Enables Effect tracing for this effect. Because this is the default, this
+ * operation only has an additional meaning if the effect is located within
+ * an `untraced` section, or the current fiber has been spawned by a parent
+ * inside an `untraced` section.
+ */
+export function traced<R, E, A>(self: Effect<R, E, A>): Effect<R, E, A> {
+  return new ITracingStatus(self, true)
+}
+
+/**
  * Imports an asynchronous effect into a pure `Effect` value, possibly returning
  * the value synchronously.
  *
