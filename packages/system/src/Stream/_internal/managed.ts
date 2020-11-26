@@ -10,6 +10,7 @@ export {
   mapM,
   mapM_,
   tap,
+  tap_,
   useNow,
   zip,
   zipWith,
