@@ -1,8 +1,8 @@
 /**
- * relative: ../
+ * relative: ../../
  */
-import { Die } from "../Cause/cause"
-import { halt } from "./core"
+import * as C from "../Cause/cause"
+import { haltWith } from "."
 
 /**
  * Returns an effect that dies with the specified `unknown`.
@@ -12,5 +12,5 @@ import { halt } from "./core"
  * @trace
  */
 export function die(e: unknown) {
-  return halt(Die(e))
+  return haltWith((trace) => C.traced(C.die(e), trace()))
 }

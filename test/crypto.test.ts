@@ -22,7 +22,7 @@ describe("Crypto Suite", () => {
       const hash = await runPromise(hashPassword(password))
       const verify = await runPromiseExit(verifyPassword(password, hash))
 
-      expect(verify).toEqual(Ex.unit)
+      expect(Ex.untraced(verify)).toEqual(Ex.unit)
     })
 
     it("should hash and not verify password", async () => {
@@ -31,7 +31,7 @@ describe("Crypto Suite", () => {
       const hash = await runPromise(hashPassword(password))
       const verify = await runPromiseExit(verifyPassword(passwordBad, hash))
 
-      expect(verify).toEqual(Ex.fail(new InvalidPassword()))
+      expect(Ex.untraced(verify)).toEqual(Ex.fail(new InvalidPassword()))
     })
   })
   describe("Test", () => {
@@ -45,7 +45,7 @@ describe("Crypto Suite", () => {
       const hash = await runPromise(hashPassword(password))
       const verify = await runPromiseExit(verifyPassword(password, hash))
 
-      expect(verify).toEqual(Ex.unit)
+      expect(Ex.untraced(verify)).toEqual(Ex.unit)
     })
 
     it("should hash and not verify password", async () => {
@@ -54,7 +54,7 @@ describe("Crypto Suite", () => {
       const hash = await runPromise(hashPassword(password))
       const verify = await runPromiseExit(verifyPassword(passwordBad, hash))
 
-      expect(verify).toEqual(Ex.fail(new InvalidPassword()))
+      expect(Ex.untraced(verify)).toEqual(Ex.fail(new InvalidPassword()))
     })
   })
 })

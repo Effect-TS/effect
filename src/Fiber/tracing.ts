@@ -2,6 +2,7 @@ import * as L from "../List"
 import * as O from "../Option"
 import * as S from "../Sync"
 import type { FiberID } from "./id"
+import { prettyFiberId } from "./id"
 
 export type TraceElement = NoLocation | SourceLocation
 
@@ -80,4 +81,60 @@ export class Platform {
     readonly ancestorStackTraceLength: number,
     readonly ancestryLength: number
   ) {}
+}
+
+export function prettyLocation(traceElement: TraceElement, pre: string) {
+  return traceElement._tag === "NoLocation"
+    ? "No Location Present"
+    : `${pre}${traceElement.location}`
+}
+
+export function prettyTrace(trace: Trace, pre: string): string {
+  return S.run(prettyTraceSafe(trace, pre))
+}
+
+export function prettyTraceSafe(trace: Trace, pre: string): S.UIO<string> {
+  return S.gen(function* ($) {
+    const execTrace = !L.isEmpty(trace.executionTrace)
+    const stackTrace = !L.isEmpty(trace.stackTrace)
+
+    const execPrint = execTrace
+      ? [
+          `Fiber: ${prettyFiberId(trace.fiberId)} Execution trace:`,
+          "",
+          ...L.toArray(
+            L.map_(trace.executionTrace, (a) => `  ${prettyLocation(a, pre)}`)
+          )
+        ]
+      : [`Fiber: ${prettyFiberId(trace.fiberId)} Execution trace: <empty trace>`]
+
+    const stackPrint = stackTrace
+      ? [
+          `Fiber: ${prettyFiberId(trace.fiberId)} was supposed to continue to:`,
+          "",
+          ...L.toArray(
+            L.map_(
+              trace.stackTrace,
+              (e) => `  a future continuation at ${prettyLocation(e, pre)}`
+            )
+          )
+        ]
+      : [
+          `Fiber: ${prettyFiberId(
+            trace.fiberId
+          )} was supposed to continue to: <empty trace>`
+        ]
+
+    const parent = trace.parentTrace
+
+    const ancestry =
+      parent._tag === "None"
+        ? [`Fiber: ${prettyFiberId(trace.fiberId)} was spawned by: <empty trace>`]
+        : [
+            `Fiber: ${prettyFiberId(trace.fiberId)} was spawned by:\n`,
+            yield* $(prettyTraceSafe(parent.value, pre))
+          ]
+
+    return ["", ...stackPrint, "", ...execPrint, "", ...ancestry].join("\n")
+  })
 }

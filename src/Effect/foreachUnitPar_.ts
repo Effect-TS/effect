@@ -1,6 +1,6 @@
 import * as A from "../Array"
 import type { Cause } from "../Cause/cause"
-import { Both, Empty } from "../Cause/cause"
+import { both, empty } from "../Cause/cause"
 import * as Fiber from "../Fiber"
 import { pipe } from "../Function"
 import { fork as managedFork, use_ as managedUse_ } from "../Managed/core"
@@ -52,7 +52,7 @@ export function foreachUnitPar_<R, E, A>(
   return pipe(
     D.do,
     D.bind("parentId", () => fiberId()),
-    D.bind("causes", () => R.makeRef<Cause<E>>(Empty)),
+    D.bind("causes", () => R.makeRef<Cause<E>>(empty)),
     D.bind("result", () => promiseMake<void, void>()),
     D.bind("status", () => R.makeRef([0, 0, false] as [number, number, boolean])),
     D.let("startTask", (s) =>
@@ -85,7 +85,7 @@ export function foreachUnitPar_<R, E, A>(
             tapCause((c) =>
               pipe(
                 s.causes,
-                R.update((l) => Both(l, c)),
+                R.update((l) => both(l, c)),
                 chain(() => s.startFailure)
               )
             ),

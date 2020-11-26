@@ -81,7 +81,9 @@ describe("Generator", () => {
     const result = await pipe(
       program,
       T.provideAll<A & B>({ a: 1, b: 2 }),
-      T.runPromiseExit
+      T.result,
+      T.map(Ex.untraced),
+      T.runPromise
     )
 
     expect(result).toEqual(Ex.succeed(3))
@@ -90,7 +92,9 @@ describe("Generator", () => {
     const result = await pipe(
       programNumber,
       T.provideAll<A & B>({ a: 1, b: 2 }),
-      T.runPromiseExit
+      T.result,
+      T.map(Ex.untraced),
+      T.runPromise
     )
 
     expect(result).toEqual(Ex.succeed(3))
@@ -99,7 +103,9 @@ describe("Generator", () => {
     const result = await pipe(
       programNumberFailString,
       T.provideAll<A & B>({ a: 1, b: 2 }),
-      T.runPromiseExit
+      T.result,
+      T.map(Ex.untraced),
+      T.runPromise
     )
 
     expect(result).toEqual(Ex.succeed(3))
@@ -108,7 +114,9 @@ describe("Generator", () => {
     const result = await pipe(
       programNumberFailStringR,
       T.provideAll<A & B>({ a: 1, b: 2 }),
-      T.runPromiseExit
+      T.result,
+      T.map(Ex.untraced),
+      T.runPromise
     )
 
     expect(result).toEqual(Ex.succeed(3))
@@ -117,7 +125,9 @@ describe("Generator", () => {
     const result = await pipe(
       program,
       T.provideAll<A & B>({ a: 10, b: 2 }),
-      T.runPromiseExit
+      T.result,
+      T.map(Ex.untraced),
+      T.runPromise
     )
 
     expect(result).toEqual(Ex.fail("12 should be lower then x"))
@@ -128,7 +138,9 @@ describe("Generator", () => {
         yield* _(T.unit)
         throw new Error("defect")
       }),
-      T.runPromiseExit
+      T.result,
+      T.map(Ex.untraced),
+      T.runPromise
     )
 
     expect(result).toEqual(Ex.die(new Error("defect")))
@@ -184,7 +196,9 @@ describe("Generator", () => {
       await pipe(
         program2,
         T.provideAll<A & B>({ a: 3, b: 4 }),
-        T.runPromiseExit
+        T.result,
+        T.map(Ex.untraced),
+        T.runPromise
       )
     ).toEqual(Ex.succeed(210))
 
@@ -210,7 +224,9 @@ describe("Generator", () => {
     const result = await pipe(
       prog,
       T.provideService(Calc)(new CalcService()),
-      T.runPromiseExit
+      T.result,
+      T.map(Ex.untraced),
+      T.runPromise
     )
 
     expect(result).toEqual(Ex.succeed(5))
@@ -261,9 +277,9 @@ describe("Generator", () => {
 
       return d
     })
-    expect(await pipe(result, S.runCollect, T.runPromiseExit)).toEqual(
-      Ex.succeed([0, 1, 2])
-    )
+    expect(
+      await pipe(result, S.runCollect, T.result, T.map(Ex.untraced), T.runPromise)
+    ).toEqual(Ex.succeed([0, 1, 2]))
   })
 
   it("stream gen #2", async () => {
@@ -287,9 +303,9 @@ describe("Generator", () => {
       const c = yield* _(() => S.fromChunk(A.range(b, 10)))
       return c
     })
-    expect(await pipe(result, S.runCollect, T.runPromiseExit)).toEqual(
-      Ex.succeed([...A.range(1, 10), ...A.range(2, 10), ...A.range(3, 10)])
-    )
+    expect(
+      await pipe(result, S.runCollect, T.result, T.map(Ex.untraced), T.runPromise)
+    ).toEqual(Ex.succeed([...A.range(1, 10), ...A.range(2, 10), ...A.range(3, 10)]))
   })
 
   it("stream gen #3", async () => {
@@ -301,9 +317,9 @@ describe("Generator", () => {
       const n = yield* _(() => S.fromChunk(A.range(0, a)))
       return n + 1
     })
-    expect(await pipe(result, S.runCollect, T.runPromiseExit)).toEqual(
-      Ex.die(new PrematureGeneratorExit())
-    )
+    expect(
+      await pipe(result, S.runCollect, T.result, T.map(Ex.untraced), T.runPromise)
+    ).toEqual(Ex.die(new PrematureGeneratorExit()))
   })
 
   it("managed gen", async () => {
@@ -324,9 +340,9 @@ describe("Generator", () => {
 
       return { a, b, c, d }
     })
-    expect(await pipe(result, M.use(T.succeed), T.runPromiseExit)).toEqual(
-      Ex.succeed({ a: 0, b: 1, c: 2, d: 3 })
-    )
+    expect(
+      await pipe(result, M.use(T.succeed), T.result, T.map(Ex.untraced), T.runPromise)
+    ).toEqual(Ex.succeed({ a: 0, b: 1, c: 2, d: 3 }))
     expect(fn).toHaveBeenCalledTimes(1)
   })
 })

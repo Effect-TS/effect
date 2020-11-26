@@ -20,7 +20,7 @@ export const mapErrorCause = <E, E2>(f: (e: C.Cause<E>) => C.Cause<E2>) => <R, O
           pipe(
             C.sequenceCauseOption(x),
             Option.fold(
-              () => C.Fail(Option.none),
+              () => C.fail(Option.none),
               (c) => pipe(f(c), C.map(Option.some))
             )
           )

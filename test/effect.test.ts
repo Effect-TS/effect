@@ -2,7 +2,7 @@ import { range } from "../src/Array"
 import type { Cb, Effect } from "../src/Effect"
 import * as T from "../src/Effect"
 import * as E from "../src/Either"
-import * as Exit from "../src/Exit"
+import * as Ex from "../src/Exit"
 import * as Fiber from "../src/Fiber"
 import { dump, prettyPrintM } from "../src/Fiber"
 import * as FiberRef from "../src/FiberRef"
@@ -13,7 +13,9 @@ describe("Effect", () => {
   it("absolve", async () => {
     const program = T.absolve(T.succeed(E.left("e")))
 
-    expect(await T.runPromiseExit(program)).toEqual(Exit.fail("e"))
+    expect(await pipe(program, T.result, T.map(Ex.untraced), T.runPromise)).toEqual(
+      Ex.fail("e")
+    )
   })
   it("absorbWith", async () => {
     const program = pipe(T.die("e"), T.absorbWith(absurd))
@@ -22,19 +24,27 @@ describe("Effect", () => {
       T.absorbWith((e) => `${e}-ok`)
     )
 
-    expect(await T.runPromiseExit(program)).toEqual(Exit.fail("e"))
-    expect(await T.runPromiseExit(program2)).toEqual(Exit.fail("e-ok"))
+    expect(await pipe(program, T.result, T.map(Ex.untraced), T.runPromise)).toEqual(
+      Ex.fail("e")
+    )
+    expect(await pipe(program2, T.result, T.map(Ex.untraced), T.runPromise)).toEqual(
+      Ex.fail("e-ok")
+    )
   })
   it("tupled", async () => {
     const program = T.tuple(T.succeed(0), T.succeed("ok"), T.fail("e"))
-    expect(await T.runPromiseExit(program)).toEqual(Exit.fail("e"))
+    expect(await pipe(program, T.result, T.map(Ex.untraced), T.runPromise)).toEqual(
+      Ex.fail("e")
+    )
   })
   it("mapN", async () => {
     const program = pipe(
       tuple(T.succeed(0), T.fail("e"), T.succeed("ok")),
       T.mapN(([a, _, c]) => a + c.length)
     )
-    expect(await T.runPromiseExit(program)).toEqual(Exit.fail("e"))
+    expect(await pipe(program, T.result, T.map(Ex.untraced), T.runPromise)).toEqual(
+      Ex.fail("e")
+    )
   })
   it("memoize", async () => {
     const m = jest.fn()
@@ -53,10 +63,12 @@ describe("Effect", () => {
           d: f(1)
         })
       ),
-      T.runPromiseExit
+      T.result,
+      T.map(Ex.untraced),
+      T.runPromise
     )
 
-    expect(result).toEqual(Exit.succeed({ a: 1, b: 1, c: 2, d: 2 }))
+    expect(result).toEqual(Ex.succeed({ a: 1, b: 1, c: 2, d: 2 }))
     expect(m).toHaveBeenNthCalledWith(1, 0)
     expect(m).toHaveBeenNthCalledWith(2, 1)
     expect(m).toHaveBeenCalledTimes(2)
@@ -99,9 +111,9 @@ describe("Effect", () => {
       "wait"
     )
 
-    const result = await T.runPromiseExit(program)
+    const result = await pipe(program, T.result, T.map(Ex.untraced), T.runPromise)
 
-    expect(result).toEqual(Exit.succeed(2))
+    expect(result).toEqual(Ex.succeed(2))
 
     expect(a).toHaveBeenCalledTimes(1)
     expect(b).toHaveBeenCalledTimes(0)
@@ -142,9 +154,9 @@ describe("Effect", () => {
       })
     ])
 
-    const result = await T.runPromiseExit(program)
+    const result = await pipe(program, T.result, T.map(Ex.untraced), T.runPromise)
 
-    expect(result).toEqual(Exit.succeed(2))
+    expect(result).toEqual(Ex.succeed(2))
 
     expect(a).toHaveBeenCalledTimes(1)
     expect(b).toHaveBeenCalledTimes(0)
@@ -182,20 +194,24 @@ describe("Effect", () => {
         })
       }),
       T.timeoutFail(100, () => "timeout"),
-      T.runPromiseExit
+      T.result,
+      T.map(Ex.untraced),
+      T.runPromise
     )
 
-    expect(result).toEqual(Exit.fail("timeout"))
+    expect(result).toEqual(Ex.fail("timeout"))
     expect(f).toHaveBeenCalledTimes(1)
   })
   it("chainError", async () => {
     const result = await pipe(
       T.fail("error"),
       T.chainError((e) => T.effectTotal(() => `(${e})`)),
-      T.runPromiseExit
+      T.result,
+      T.map(Ex.untraced),
+      T.runPromise
     )
 
-    expect(result).toEqual(Exit.fail("(error)"))
+    expect(result).toEqual(Ex.fail("(error)"))
   })
   it(
     "forkAs",
@@ -252,7 +268,9 @@ describe("Effect", () => {
           )
         )
       ),
-      T.runPromiseExit
+      T.result,
+      T.map(Ex.untraced),
+      T.runPromise
     )
     const result_ok = await pipe(
       range(0, 100),
@@ -262,11 +280,13 @@ describe("Effect", () => {
           T.map(() => n)
         )
       ),
-      T.runPromiseExit
+      T.result,
+      T.map(Ex.untraced),
+      T.runPromise
     )
 
-    expect(result).toEqual(Exit.fail("error in process: 5"))
-    expect(result_ok).toEqual(Exit.succeed(range(0, 100)))
+    expect(result).toEqual(Ex.fail("error in process: 5"))
+    expect(result_ok).toEqual(Ex.succeed(range(0, 100)))
   })
   it("catchAllDefect", async () => {
     const a = await pipe(T.die("LOL"), T.catchAllDefect(T.succeed), T.runPromise)

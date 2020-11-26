@@ -21,14 +21,14 @@ export class FiberStateExecuting<E, A> {
 export class FiberStateDone<E, A> {
   readonly _tag = "Done"
 
-  readonly interrupted = C.Empty
+  readonly interrupted = C.empty
   readonly status: Status = new Done()
 
   constructor(readonly value: Exit.Exit<E, A>) {}
 }
 
 export const initial = <E, A>(): FiberState<E, A> =>
-  new FiberStateExecuting(new Running(false), [], C.Empty)
+  new FiberStateExecuting(new Running(false), [], C.empty)
 
 export const interrupting = <E, A>(state: FiberState<E, A>) => {
   const loop = (status: Status): S.UIO<boolean> =>

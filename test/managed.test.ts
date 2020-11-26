@@ -9,7 +9,9 @@ describe("Managed", () => {
     const res = await pipe(
       M.absolve(M.effectTotal(() => E.left("error"))),
       M.useNow,
-      T.runPromiseExit
+      T.result,
+      T.map(Ex.untraced),
+      T.runPromise
     )
 
     expect(res).toEqual(Ex.fail("error"))
