@@ -6,8 +6,7 @@
     "target": "ES2017",
     "plugins": [
       {
-        "transform": "./packages/tracing-plugin/src/index.ts",
-        "tracing": true
+        "transform": "./packages/tracing-plugin/src/index.ts"
       }
     ]
   }

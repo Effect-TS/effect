@@ -40,26 +40,6 @@ export function defaultEnv() {
   }
 }
 
-/**
- * Runs effect until completion, calling cb with the eventual exit state
- */
-export function run<E, A>(_: Effect<DefaultEnv, E, A>, cb?: Callback<E, A>) {
-  const context = fiberContext<E, A>()
-
-  context.evaluateLater(_[_I])
-  context.runAsync(cb || empty)
-}
-
-/**
- * Runs effect until completion, calling cb with the eventual exit state
- */
-export function runAsap<E, A>(_: Effect<DefaultEnv, E, A>, cb?: Callback<E, A>) {
-  const context = fiberContext<E, A>()
-
-  context.evaluateNow(_[_I])
-  context.runAsync(cb || empty)
-}
-
 export function defaultTeardown(
   status: number,
   id: FiberID,
@@ -81,151 +61,15 @@ export const defaultHook = (
 ): ((signal: NodeJS.Signals) => void) => (signal) => cont(signal)
 
 /**
- * Runs effect until completion listening for system level termination signals that
- * triggers cancellation of the process, in case errors are found process will
- * exit with a status of 1 and cause will be pretty printed, if interruption
- * is found without errors the cause is pretty printed and process exits with
- * status 0. In the success scenario process exits with status 0 witout any log.
- *
- * Note: this should be used only in node.js as it depends on global process
- */
-export function runMain<E>(
-  effect: Effect<DefaultEnv, E, void>,
-  customHook: (cont: NodeJS.SignalsListener) => NodeJS.SignalsListener = defaultHook,
-  customTeardown: typeof defaultTeardown = defaultTeardown
-): void {
-  const context = fiberContext<E, void>()
-
-  const onExit = (s: number) => {
-    process.exit(s)
-  }
-
-  context.evaluateLater(effect[_I])
-  context.runAsync((exit) => {
-    switch (exit._tag) {
-      case "Failure": {
-        if (Cause.died(exit.cause) || Cause.failed(exit.cause)) {
-          console.error(pretty(exit.cause))
-          customTeardown(1, context.id, onExit)
-          break
-        } else {
-          console.log(pretty(exit.cause))
-          customTeardown(0, context.id, onExit)
-          break
-        }
-      }
-      case "Success": {
-        customTeardown(0, context.id, onExit)
-        break
-      }
-    }
-  })
-
-  const interrupted = new AtomicBoolean(false)
-
-  const handler: NodeJS.SignalsListener = (signal) => {
-    customHook(() => {
-      process.removeListener("SIGTERM", handler)
-      process.removeListener("SIGINT", handler)
-
-      if (interrupted.compareAndSet(false, true)) {
-        run(context.interruptAs(context.id))
-      }
-    })(signal)
-  }
-
-  process.once("SIGTERM", handler)
-  process.once("SIGINT", handler)
-}
-
-/**
  * Effect Canceler
  */
 export type AsyncCancel<E, A> = UIO<Exit<E, A>>
-
-/**
- * Runs effect until completion returing a cancel effecr that when executed
- * triggers cancellation of the process
- */
-export function runCancel<E, A>(
-  _: Effect<DefaultEnv, E, A>,
-  cb?: Callback<E, A>
-): AsyncCancel<E, A> {
-  const context = fiberContext<E, A>()
-
-  context.evaluateLater(_[_I])
-  context.runAsync(cb || empty)
-
-  return context.interruptAs(context.id)
-}
-
-/**
- * Run effect as a Promise, throwing a the first error or exception
- */
-export function runPromise<E, A>(_: Effect<DefaultEnv, E, A>): Promise<A> {
-  const context = fiberContext<E, A>()
-
-  context.evaluateLater(_[_I])
-
-  return new Promise((res, rej) => {
-    context.runAsync((exit) => {
-      switch (exit._tag) {
-        case "Success": {
-          res(exit.value)
-          break
-        }
-        case "Failure": {
-          rej(Cause.squash(identity)(exit.cause))
-          break
-        }
-      }
-    })
-  })
-}
-
-/**
- * Run effect as a Promise of the Exit state
- * in case of error.
- */
-export function runPromiseExit<E, A>(_: Effect<DefaultEnv, E, A>): Promise<Exit<E, A>> {
-  const context = fiberContext<E, A>()
-
-  context.evaluateLater(_[_I])
-
-  return new Promise((res) => {
-    context.runAsync((exit) => {
-      res(exit)
-    })
-  })
-}
 
 export const prettyReporter: FailureReporter = (e) => {
   console.error(pretty(e))
 }
 
 const defaultPlatform = new Platform(10, 10, true, true, true, true, 10, 10, 10)
-
-export function fiberContext<E, A>(reporter: FailureReporter = constVoid) {
-  const initialIS = interruptible
-  const fiberId = newFiberId()
-  const scope = Scope.unsafeMakeScope<Exit<E, A>>()
-  const supervisor = Supervisor.none
-
-  const context = new FiberContext<E, A>(
-    fiberId,
-    defaultEnv(),
-    initialIS,
-    new Map(),
-    supervisor,
-    scope,
-    10_000,
-    reporter,
-    defaultPlatform,
-    none
-  )
-
-  return context
-}
 
 export class CustomRuntime<R> {
   constructor(readonly env: R, readonly platform: Platform) {
@@ -394,6 +238,10 @@ export class CustomRuntime<R> {
     })
   }
 
+  withEnvironment<R2>(f: (_: R) => R2) {
+    return new CustomRuntime(f(this.env), this.platform)
+  }
+
   traceExecution(b: boolean) {
     return new CustomRuntime(
       this.env,
@@ -554,6 +402,24 @@ export class CustomRuntime<R> {
 export function makeCustomRuntime() {
   return new CustomRuntime(defaultEnv(), defaultPlatform)
 }
+
+/**
+ * Default runtime
+ */
+export const defaultRuntime = makeCustomRuntime()
+
+/**
+ * Exports of default runtime
+ */
+export const {
+  fiberContext,
+  run,
+  runAsap,
+  runCancel,
+  runMain,
+  runPromise,
+  runPromiseExit
+} = defaultRuntime
 
 /**
  * Represent an environment providing function

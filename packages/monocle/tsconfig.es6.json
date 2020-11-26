@@ -9,12 +9,7 @@
     "removeComments": false,
     "plugins": [
       {
-        "transform": "../tracing-plugin/src/index.ts",
-        "pipe": true,
-        "flow": true,
-        "tracing": true,
-        "identity": true,
-        "dataFirst": true
+        "transform": "../tracing-plugin/src/index.ts"
       }
     ]
   },
