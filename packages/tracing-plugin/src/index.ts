@@ -1,4 +1,5 @@
 import * as path from "path"
+import {} from "ts-expose-internals"
 import * as ts from "typescript"
 
 function checkRegionAt(
@@ -31,6 +32,7 @@ function checkRegionAt(
 
 const traceRegex = /tracing: (on|off)/
 const traceOnRegex = /(tracing: on|@trace)/
+const relativeRegex = /relative: (.*)/
 
 export default function tracer(
   _program: ts.Program,
@@ -57,6 +59,7 @@ export default function tracer(
         const traceF = factory.createUniqueName("trace")
 
         const tracingEnabled = traceOnRegex.test(sourceFile.getFullText()) && tracingOn
+        const relative = sourceFile.getFullText().match(relativeRegex)
 
         const regions = sourceFullText
           .split("\n")
@@ -431,6 +434,7 @@ export default function tracer(
         }
 
         const { fileName } = sourceFile
+        const fileDir = ts.normalizePath(path.dirname(fileName))
 
         const traceFNode = factory.createFunctionDeclaration(
           undefined,
@@ -469,7 +473,12 @@ export default function tracer(
                   ),
                   factory.createToken(ts.SyntaxKind.EqualsToken),
                   factory.createBinaryExpression(
-                    factory.createStringLiteral(path.relative(process.cwd(), fileName)),
+                    factory.createStringLiteral(
+                      path.relative(
+                        path.join(fileDir, relative ? relative[1] : "."),
+                        fileName
+                      )
+                    ),
                     factory.createToken(ts.SyntaxKind.PlusToken),
                     factory.createIdentifier("t")
                   )

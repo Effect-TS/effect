@@ -49,12 +49,13 @@
     "prettier": "^2.1.2",
     "reflect-metadata": "^0.1.13",
     "retry-ts": "^0.1.2",
+    "ts-expose-internals": "^4.1.2",
     "ts-jest": "^26.4.1",
     "ts-node": "^9.0.0",
+    "ttypescript": "^1.5.12",
     "typescript": "^4.1.2",
     "ultra-runner": "^3.5.0",
-    "yarn-deduplicate": "^3.0.0",
-    "ttypescript": "^1.5.12"
+    "yarn-deduplicate": "^3.0.0"
   },
   "husky": {
     "hooks": {
