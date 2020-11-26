@@ -1011,7 +1011,6 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                   }
 
                   case "Fail": {
-                    console.log("HERE")
                     const discardedFolds = this.unwindStack()
                     const fast = fastPathFlatMapContinuationTrace.get
                     fastPathFlatMapContinuationTrace.set(undefined)
