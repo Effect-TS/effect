@@ -54,6 +54,7 @@ export default function tracer(
       return (sourceFile: ts.SourceFile) => {
         const sourceFullText = sourceFile.getFullText()
         const traceF = factory.createUniqueName("trace")
+        const traced = new Set<string>()
 
         const regions = sourceFullText
           .split("\n")
@@ -304,9 +305,7 @@ export default function tracer(
           }
 
           if (ts.isClassDeclaration(node) && node.name) {
-            const forcedTrace = /@trace/.test(node.getFullText())
-
-            if (isTracing || forcedTrace) {
+            if (isTracing) {
               const members: [ts.Identifier, ts.StringLiteral][] = []
 
               node.members.forEach((m) => {
@@ -357,9 +356,7 @@ export default function tracer(
           }
 
           if (ts.isArrowFunction(node)) {
-            const forcedTrace = /@trace/.test(node.getFullText())
-
-            if (isTracing || forcedTrace) {
+            if (isTracing) {
               const { character, line } = sourceFile.getLineAndCharacterOfPosition(
                 node.body?.getStart() || node.getStart()
               )
@@ -380,46 +377,52 @@ export default function tracer(
           }
 
           if (ts.isFunctionExpression(node)) {
-            const forcedTrace = /@trace/.test(node.getFullText())
-
-            if (isTracing || forcedTrace) {
-              const { character, line } = sourceFile.getLineAndCharacterOfPosition(
-                node.body?.getStart() || node.getStart()
-              )
-
-              return factory.createCallExpression(traceF, undefined, [
-                ts.visitEachChild(node, visitor, ctx),
-                factory.createStringLiteral(
-                  `:${line + 1}:${character + 1}:${
-                    node.name?.getText() ||
-                    (ts.isVariableDeclaration(node.parent)
-                      ? node.parent.name.getText()
-                      : "anonymous")
-                  }`
+            if (isTracing) {
+              if ((node.name && !traced.has(node.name.getText())) || !node.name) {
+                if (node.name) {
+                  traced.add(node.name.getText())
+                }
+                const { character, line } = sourceFile.getLineAndCharacterOfPosition(
+                  node.body?.getStart() || node.getStart()
                 )
-              ])
+
+                return factory.createCallExpression(traceF, undefined, [
+                  ts.visitEachChild(node, visitor, ctx),
+                  factory.createStringLiteral(
+                    `:${line + 1}:${character + 1}:${
+                      node.name?.getText() ||
+                      (ts.isVariableDeclaration(node.parent)
+                        ? node.parent.name.getText()
+                        : "anonymous")
+                    }`
+                  )
+                ])
+              }
             }
           }
 
           if (ts.isFunctionDeclaration(node) && tracingOn) {
-            const forcedTrace = /@trace/.test(node.getFullText())
+            if (isTracing) {
+              if ((node.name && !traced.has(node.name.getText())) || !node.name) {
+                if (node.name) {
+                  traced.add(node.name.getText())
+                }
+                const { character, line } = sourceFile.getLineAndCharacterOfPosition(
+                  node.body?.getStart() || node.getStart()
+                )
+                const name = node.name
 
-            if (isTracing || forcedTrace) {
-              const { character, line } = sourceFile.getLineAndCharacterOfPosition(
-                node.body?.getStart() || node.getStart()
-              )
-              const name = node.name
-
-              if (name) {
-                return [
-                  ts.visitEachChild(node, visitor, ctx),
-                  factory.createCallExpression(traceF, undefined, [
-                    name,
-                    factory.createStringLiteral(
-                      `:${line + 1}:${character + 1}:${name.getText()}`
-                    )
-                  ])
-                ]
+                if (name) {
+                  return [
+                    ts.visitEachChild(node, visitor, ctx),
+                    factory.createCallExpression(traceF, undefined, [
+                      name,
+                      factory.createStringLiteral(
+                        `:${line + 1}:${character + 1}:${name.getText()}`
+                      )
+                    ])
+                  ]
+                }
               }
             }
           }
