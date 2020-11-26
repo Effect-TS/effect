@@ -4,9 +4,9 @@ import type { Runtime } from "../Fiber/core"
 import * as O from "../Option"
 import type { Scope } from "../Scope"
 import { globalScope } from "../Scope"
-import type { FailureReporter } from "."
 import { succeed } from "./core"
 import type { Effect, RIO, UIO } from "./effect"
+import type { FailureReporter } from "./primitives"
 import { IFork, IGetForkScope, IOverrideForkScope, IRaceWith } from "./primitives"
 
 /**
