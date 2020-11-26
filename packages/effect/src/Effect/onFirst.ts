@@ -1,4 +1,4 @@
-import type { Effect } from "."
+import type { Effect } from "./effect"
 import { environment } from "./environment"
 import { zip_ } from "./zip_"
 

@@ -2,7 +2,7 @@
  * relative: ../../
  */
 import * as C from "../Cause/cause"
-import { haltWith } from "."
+import { haltWith } from "./core"
 
 /**
  * Returns an effect that dies with the specified `unknown`.

@@ -1,5 +1,5 @@
 import * as O from "../Option"
-import type { Effect } from "."
+import type { Effect } from "./effect"
 import { timeoutTo_ } from "./timeoutTo"
 
 /**

@@ -1,8 +1,8 @@
 import type { Either } from "../Either"
 import { left, right } from "../Either"
 import * as E from "../Either"
-import type { Effect } from "."
-import { accessM, provideAll_ } from "."
+import { accessM, provideAll_ } from "./core"
+import type { Effect } from "./effect"
 import { map_ } from "./map_"
 
 /**
