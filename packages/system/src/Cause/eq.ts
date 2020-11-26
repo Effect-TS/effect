@@ -2,6 +2,9 @@ import { equalsFiberID } from "../Fiber/id"
 import * as S from "../Sync"
 import type { Cause } from "./cause"
 
+/**
+ * This is unsafe, if we make it safe it kills perf because Cause.isEmpty uses this
+ */
 export function equalsCause<E>(x: Cause<E>, y: Cause<E>): boolean {
   switch (x._tag) {
     case "Fail": {
@@ -38,7 +41,7 @@ export function equalsCause<E>(x: Cause<E>, y: Cause<E>): boolean {
       )
     }
     case "Traced": {
-      return y._tag === "Traced" ? equalsCause(x.cause, y.cause) : false
+      return equalsCause(x.cause, y)
     }
   }
 }
@@ -80,7 +83,7 @@ export function equalsCauseSafe<E>(x: Cause<E>, y: Cause<E>): S.UIO<boolean> {
         )
       }
       case "Traced": {
-        return y._tag === "Traced" ? yield* _(equalsCauseSafe(x.cause, y.cause)) : false
+        return yield* _(equalsCauseSafe(x.cause, y))
       }
     }
   })
