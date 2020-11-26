@@ -7,11 +7,7 @@
     "plugins": [
       {
         "transform": "./packages/tracing-plugin/src/index.ts",
-        "pipe": true,
-        "flow": true,
-        "tracing": true,
-        "identity": true,
-        "dataFirst": true
+        "tracing": true
       }
     ]
   }

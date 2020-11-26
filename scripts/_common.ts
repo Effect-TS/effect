@@ -1,14 +1,14 @@
-import fs from "fs"
-
 import chalk from "chalk"
-import { copy as copy_, AsyncOptions } from "cpx"
-import * as A from "fp-ts/lib/Array"
+import type { AsyncOptions } from "cpx"
+import { copy as copy_ } from "cpx"
 import { log } from "fp-ts/lib/Console"
+import * as E from "fp-ts/lib/Either"
+import type { FunctionN } from "fp-ts/lib/function"
 import * as IO from "fp-ts/lib/IO"
+import { pipe } from "fp-ts/lib/pipeable"
 import * as T from "fp-ts/lib/Task"
 import * as TE from "fp-ts/lib/TaskEither"
-import { FunctionN } from "fp-ts/lib/function"
-import { pipe } from "fp-ts/lib/pipeable"
+import fs from "fs"
 import glob_ from "glob"
 
 export const readFile = TE.taskify<fs.PathLike, string, NodeJS.ErrnoException, string>(
@@ -64,11 +64,18 @@ function modifyFile(
 function modifyFiles(
   f: (content: string, path: string) => string
 ): (paths: Array<string>) => TE.TaskEither<NodeJS.ErrnoException, void> {
-  return (paths) =>
-    pipe(
-      A.array.traverse(TE.taskEither)(paths, modifyFile(f)),
-      TE.map(() => undefined)
-    )
+  return (paths) => {
+    return async () => {
+      for (const path of paths) {
+        const r = await modifyFile(f)(path)()
+
+        if (r._tag === "Left") {
+          return r
+        }
+      }
+      return E.right(undefined)
+    }
+  }
 }
 
 export function modifyGlob(

@@ -1,4 +1,3 @@
-import { monoid } from "fp-ts"
 import * as A from "fp-ts/lib/Array"
 import { tuple } from "fp-ts/lib/function"
 import { pipe } from "fp-ts/lib/pipeable"
@@ -21,13 +20,18 @@ export const replace = pipe(
       `@effect-ts/${p}`
     )
   ),
-  A.map(([reg, repl]) => (x: string) => x.replace(reg, repl)),
-  monoid.fold(monoid.getEndomorphismMonoid<string>())
+  A.map(([reg, repl]) => (x: string) => x.replace(reg, repl))
 )
 
 pipe(
   GLOB_PATTERN,
-  modifyGlob(replace),
+  modifyGlob((x) => {
+    let y = x
+    for (const f of replace) {
+      y = f(y)
+    }
+    return y
+  }),
   TE.fold(onLeft, onRight("locals rewrite succeeded!")),
   runMain
 )

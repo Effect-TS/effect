@@ -1,12 +1,12 @@
-import { posix } from "path"
-
 import chalk from "chalk"
 import { sequenceT } from "fp-ts/lib/Apply"
 import * as A from "fp-ts/lib/Array"
 import * as E from "fp-ts/lib/Either"
-import * as TE from "fp-ts/lib/TaskEither"
-import { Endomorphism, flow, unsafeCoerce } from "fp-ts/lib/function"
+import type { Endomorphism } from "fp-ts/lib/function"
+import { flow, unsafeCoerce } from "fp-ts/lib/function"
 import { pipe } from "fp-ts/lib/pipeable"
+import * as TE from "fp-ts/lib/TaskEither"
+import { posix } from "path"
 
 import { copy, modifyGlob, onLeft, onRight } from "./_common"
 
