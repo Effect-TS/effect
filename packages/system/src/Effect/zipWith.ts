@@ -1,7 +1,7 @@
 import { traceAs } from "../Function"
 import { chain_ } from "./core"
 import type { Effect } from "./effect"
-import { map_ } from "./map_"
+import { map_ } from "./map"
 
 /**
  * Sequentially zips this effect with the specified effect using the

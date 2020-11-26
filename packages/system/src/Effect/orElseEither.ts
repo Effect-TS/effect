@@ -2,7 +2,7 @@ import * as E from "../Either"
 import { flow } from "../Function"
 import { succeed, tryOrElse_ } from "./core"
 import type { Effect } from "./effect"
-import { map_ } from "./map_"
+import { map_ } from "./map"
 
 /**
  * Returns an effect that will produce the value of this effect, unless it

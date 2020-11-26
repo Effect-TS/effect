@@ -4,7 +4,7 @@ import * as I from "../Iterable"
 import { chain_, fork, unit } from "./core"
 import type { Effect, RIO } from "./effect"
 import { foreach_ } from "./foreach"
-import { map_ } from "./map_"
+import { map_ } from "./map"
 
 /**
  * Returns an effect that forks all of the specified values, and returns a

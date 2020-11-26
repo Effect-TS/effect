@@ -6,8 +6,7 @@ import { succeed } from "./core"
 import type { Effect } from "./effect"
 import { foreachPar } from "./foreachPar"
 import { foreachParN } from "./foreachParN"
-import { map } from "./map"
-import { map_ } from "./map_"
+import { map, map_ } from "./map"
 import { zipWith_ } from "./zipWith"
 
 /**

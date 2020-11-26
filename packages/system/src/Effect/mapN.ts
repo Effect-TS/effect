@@ -1,7 +1,7 @@
 import type { NonEmptyArray } from "../NonEmptyArray"
 import type { _E, _R } from "../Utils"
 import type { Effect } from "./effect"
-import { map_ } from "./map_"
+import { map_ } from "./map"
 import type { TupleA } from "./tuple"
 import { tuple, tuplePar, tupleParN } from "./tuple"
 

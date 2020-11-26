@@ -7,7 +7,7 @@ import { chain, chain_, descriptorWith, halt, result, succeed } from "./core"
 import { raceWith_ } from "./core-scope"
 import { done } from "./done"
 import type { Effect, IO } from "./effect"
-import { map_ } from "./map_"
+import { map_ } from "./map"
 import { mapErrorCause_ } from "./mapErrorCause"
 
 function mergeInterruption<A, E2, A2>(a: A): (a: Exit.Exit<E2, A2>) => IO<E2, A> {

@@ -6,7 +6,7 @@ import { either } from "./either"
 import { foreach_ } from "./foreach"
 import { foreachPar_ } from "./foreachPar_"
 import { foreachParN_ } from "./foreachParN_"
-import { map_ } from "./map_"
+import { map_ } from "./map"
 
 /**
  * Feeds elements of type `A` to a function `f` that returns an effect.

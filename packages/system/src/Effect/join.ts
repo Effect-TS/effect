@@ -3,7 +3,7 @@ import { left, right } from "../Either"
 import * as E from "../Either"
 import { accessM, provideAll_ } from "./core"
 import type { Effect } from "./effect"
-import { map_ } from "./map_"
+import { map_ } from "./map"
 
 /**
  * Depending on provided environment returns either this one or the other effect.

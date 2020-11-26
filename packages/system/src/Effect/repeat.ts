@@ -6,8 +6,7 @@ import * as S from "../Schedule"
 import { chain } from "./core"
 import type { Effect } from "./effect"
 import { foldM } from "./foldM"
-import { map } from "./map"
-import { map_ } from "./map_"
+import { map, map_ } from "./map"
 import { orDie } from "./orDie"
 
 /**
