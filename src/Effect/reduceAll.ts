@@ -4,7 +4,7 @@ import * as O from "../Option"
 import type { Effect } from "./effect"
 import { map_ } from "./map_"
 import { mergeAllPar_, mergeAllParN_ } from "./mergeAll"
-import { zipWith_ } from "./zipWith_"
+import { zipWith_ } from "./zipWith"
 
 /**
  * Reduces an `Iterable[IO]` to a single `IO`, working sequentially.

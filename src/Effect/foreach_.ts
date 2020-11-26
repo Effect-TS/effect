@@ -3,7 +3,7 @@ import * as IT from "../Iterable"
 import { succeed, suspend } from "./core"
 import type { Effect } from "./effect"
 import { map_ } from "./map_"
-import { zipWith_ } from "./zipWith_"
+import { zipWith_ } from "./zipWith"
 
 /**
  * Applies the function `f` to each element of the `Iterable<A>` and
