@@ -14,6 +14,8 @@ export function catchAll_<R2, E2, A2, R, E, A>(
 
 /**
  * Recovers from all errors.
+ *
+ * @dataFirst catchAll_
  */
 export function catchAll<R, E, E2, A>(f: (e: E2) => Effect<R, E, A>) {
   return <R2, A2>(effect: Effect<R2, E2, A2>) => catchAll_(effect, f)
