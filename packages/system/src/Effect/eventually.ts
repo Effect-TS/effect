@@ -1,4 +1,4 @@
-import type { Effect } from "."
+import type { Effect } from "./effect"
 import { orElse_ } from "./orElse"
 
 /**

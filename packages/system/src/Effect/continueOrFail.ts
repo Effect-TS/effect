@@ -1,7 +1,7 @@
 import { flow, pipe } from "../Function"
 import * as O from "../Option/core"
-import type { Effect } from "."
 import { chain_, succeed } from "./core"
+import type { Effect } from "./effect"
 import { fail } from "./fail"
 
 /**

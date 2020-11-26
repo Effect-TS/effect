@@ -20,10 +20,10 @@ import * as Scope from "../Scope"
 // supervisor
 import * as Supervisor from "../Supervisor"
 import { AtomicBoolean } from "../Support/AtomicBoolean"
-import type { FailureReporter } from "."
 import { accessM, chain_, effectTotal, succeed } from "./core"
 import type { Effect, UIO } from "./effect"
 import { _I } from "./effect"
+import type { FailureReporter } from "./primitives"
 import { provideSome_ } from "./provideSome"
 
 // empty function
