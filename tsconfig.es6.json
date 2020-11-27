@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "build/esm",
+    "target": "ES2017",
+    "module": "ES6",
+    "incremental": true,
+    "tsBuildInfoFile": "tsbuildinfo/es6.tsbuildinfo",
+    "removeComments": false,
+    "lib": ["ES2020"],
+    "plugins": []
+  },
+  "include": ["src/**/*"],
+  "exclude": ["test", "node_modules"]
+}

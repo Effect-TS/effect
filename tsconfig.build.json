@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "build",
+    "target": "ES2017",
+    "module": "CommonJS",
+    "incremental": true,
+    "tsBuildInfoFile": "tsbuildinfo/build.tsbuildinfo",
+    "removeComments": false,
+    "lib": ["ES2020"],
+    "plugins": []
+  },
+  "include": ["src/**/*"],
+  "exclude": ["test", "node_modules"]
+}
