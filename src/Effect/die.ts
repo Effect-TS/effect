@@ -1,3 +1,5 @@
+import { traceFrom } from "@effect-ts/tracing-utils"
+
 import * as C from "../Cause/cause"
 import { haltWith } from "./core"
 
@@ -6,8 +8,10 @@ import { haltWith } from "./core"
  * This method can be used for terminating a fiber because a defect has been
  * detected in the code.
  *
- * @trace
+ * @tracecall die
  */
 export function die(e: unknown) {
-  return haltWith((trace) => C.traced(C.die(e), trace()))
+  // tracing: off
+  return haltWith(traceFrom("die", (trace) => C.traced(C.die(e), trace())))
+  // tracing: on
 }

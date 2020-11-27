@@ -4,7 +4,7 @@ import * as Ex from "../src/Exit"
 import { pipe } from "../src/Function"
 
 describe("Tracing & Optimizations", () => {
-  it.skip("should collect traces", async () => {
+  it("should collect traces", async () => {
     const res = await pipe(
       T.succeed(1),
       T.chain((n) => T.succeed(n + 1)),
