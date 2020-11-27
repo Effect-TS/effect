@@ -8,16 +8,16 @@
       {
         "transform": "./packages/tracing-plugin/src/index.ts",
         "moduleMap": {
-          "^packages/system/src/(.*)": "$1 (@effect-ts/system)",
-          "^packages/system/test/(.*)": "$1 (@effect-ts/system/test)",
-          "^packages/core/src/(.*)": "$1 (@effect-ts/core)",
-          "^packages/core/test/(.*)": "$1 (@effect-ts/core/test)",
-          "^packages/jest/src/(.*)": "$1 (@effect-ts/jest)",
-          "^packages/jest/test/(.*)": "$1 (@effect-ts/jest/test)",
-          "^packages/monocle/src/(.*)": "$1 (@effect-ts/monocle)",
-          "^packages/monocle/test/(.*)": "$1 (@effect-ts/monocle/test)",
-          "^packages/morphic/src/(.*)": "$1 (@effect-ts/morphic)",
-          "^packages/morphic/test/(.*)": "$1 (@effect-ts/morphic/test)"
+          "^packages/system/src/(.*)": "(@effect-ts/system): $1",
+          "^packages/system/test/(.*)": "(@effect-ts/system/test): $1",
+          "^packages/core/src/(.*)": "(@effect-ts/core): $1",
+          "^packages/core/test/(.*)": "(@effect-ts/core/test): $1",
+          "^packages/jest/src/(.*)": "(@effect-ts/jest): $1",
+          "^packages/jest/test/(.*)": "(@effect-ts/jest/test): $1",
+          "^packages/monocle/src/(.*)": "(@effect-ts/monocle): $1",
+          "^packages/monocle/test/(.*)": "(@effect-ts/monocle/test): $1",
+          "^packages/morphic/src/(.*)": "(@effect-ts/morphic): $1",
+          "^packages/morphic/test/(.*)": "(@effect-ts/morphic/test): $1"
         }
       }
     ]
