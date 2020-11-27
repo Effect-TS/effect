@@ -1,8 +1,10 @@
+import { accessCallTrace, traceAs, traceFrom } from "@effect-ts/tracing-utils"
+
 import type { Cause } from "../Cause/cause"
 import { keepDefects } from "../Cause/core"
 import * as Exit from "../Exit/core"
 import type * as Fiber from "../Fiber"
-import { identity, traceAs } from "../Function"
+import { identity } from "../Function"
 import type { List } from "../List"
 import * as O from "../Option"
 import type { Supervisor } from "../Supervisor"
@@ -237,10 +239,12 @@ export function forkReport(reportFailure: FailureReporter) {
 /**
  * Returns an effect that models failure with the specified `Cause`.
  *
- * @trace
+ * @tracecall halt
  */
 export function halt<E>(cause: Cause<E>): IO<E, never> {
-  return new IFail(() => cause)
+  // tracing: off
+  return new IFail(traceFrom("halt", () => cause))
+  // tracing: on
 }
 
 /**
@@ -248,8 +252,6 @@ export function halt<E>(cause: Cause<E>): IO<E, never> {
  *
  * This version takes in a lazily-evaluated trace that can be attached to the `Cause`
  * via `Cause.Traced`.
- *
- * @trace
  */
 export function haltWith<E>(cause: (_: () => Fiber.Trace) => Cause<E>): IO<E, never> {
   return new IFail(cause)
@@ -340,9 +342,11 @@ export function result<R, E, A>(
 
 /**
  * Lift a pure value into an effect
+ *
+ * @tracecall succeed
  */
 export function succeed<A>(a: A): Effect<unknown, never, A> {
-  return new ISucceed(a)
+  return new ISucceed(a, accessCallTrace("succeed"))
 }
 
 /**
@@ -405,7 +409,11 @@ export function tryOrElse<A, R2, E2, A2, R3, E3, A3>(
 /**
  * Returns the effect resulting from mapping the success of this effect to unit.
  */
-export const unit: UIO<void> = succeed(undefined)
+export const unit: UIO<void> = suspend(function unit() {
+  // tracing: off
+  return succeed(undefined)
+  //tracing: on
+})
 
 /**
  * Returns an effect that yields to the runtime system, starting on a fresh

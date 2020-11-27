@@ -1,4 +1,5 @@
-import { traceAs } from "../Function"
+import { traceAs } from "@effect-ts/tracing-utils"
+
 import { chain_, succeed } from "./core"
 import type { Effect } from "./effect"
 

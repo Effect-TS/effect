@@ -56,7 +56,7 @@ export class IFlatMap<R, E, A, R1, E1, A1> extends Base<R & R1, E | E1, A1> {
 export class ISucceed<A> extends Base<unknown, never, A> {
   readonly _tag = "Succeed"
 
-  constructor(readonly val: A) {
+  constructor(readonly val: A, readonly trace?: string) {
     super()
   }
 }
