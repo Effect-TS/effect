@@ -55,6 +55,8 @@ export default function tracer(
         const sourceFullText = sourceFile.getFullText()
         const traceF = factory.createUniqueName("trace")
         const traced = new Set<string>()
+        const fileVar = factory.createUniqueName("fileName")
+        const traceVar = factory.createUniqueName("$trace")
 
         const regions = sourceFullText
           .split("\n")
@@ -304,6 +306,73 @@ export default function tracer(
             }
           }
 
+          if (ts.isClassDeclaration(node) && node.name) {
+            if (isTracing) {
+              const members: [ts.Identifier, ts.StringLiteral][] = []
+
+              node.members
+                .filter((t) => !ts.isConstructorDeclaration(t))
+                .forEach((m) => {
+                  const { character, line } = sourceFile.getLineAndCharacterOfPosition(
+                    m.getStart()
+                  )
+                  if (m.name && ts.isIdentifier(m.name) && ts.isMethodDeclaration(m)) {
+                    members.push([
+                      m.name,
+                      factory.createStringLiteral(
+                        `:${line + 1}:${
+                          character + 1 + m.name.getText().length
+                        }:${m.name.getText()}`
+                      )
+                    ])
+                  }
+                })
+
+              const cl = ts.visitEachChild(node, visitor, ctx)
+
+              return factory.createClassDeclaration(
+                cl.decorators,
+                cl.modifiers,
+                cl.name,
+                cl.typeParameters,
+                cl.heritageClauses,
+                cl.members.map((m) => {
+                  if (ts.isConstructorDeclaration(m) && m.body) {
+                    return factory.updateConstructorDeclaration(
+                      m,
+                      m.decorators,
+                      m.modifiers,
+                      m.parameters,
+                      factory.updateBlock(m.body, [
+                        ...m.body.statements,
+                        ...members.map(([id, trace]) => {
+                          return factory.createExpressionStatement(
+                            factory.createBinaryExpression(
+                              factory.createElementAccessExpression(
+                                factory.createPropertyAccessExpression(
+                                  factory.createThis(),
+                                  id
+                                ),
+                                traceVar
+                              ),
+                              factory.createToken(ts.SyntaxKind.EqualsToken),
+                              factory.createBinaryExpression(
+                                fileVar,
+                                factory.createToken(ts.SyntaxKind.PlusToken),
+                                trace
+                              )
+                            )
+                          )
+                        })
+                      ])
+                    )
+                  }
+                  return m
+                })
+              )
+            }
+          }
+
           if (ts.isArrowFunction(node)) {
             if (isTracing) {
               const { character, line } = sourceFile.getLineAndCharacterOfPosition(
@@ -356,20 +425,27 @@ export default function tracer(
                 if (node.name) {
                   traced.add(node.name.getText())
                 }
+
                 const { character, line } = sourceFile.getLineAndCharacterOfPosition(
                   node.body?.getStart() || node.getStart()
                 )
+
                 const name = node.name
 
                 if (name) {
                   return [
                     ts.visitEachChild(node, visitor, ctx),
-                    factory.createCallExpression(traceF, undefined, [
-                      name,
-                      factory.createStringLiteral(
-                        `:${line + 1}:${character + 1}:${name.getText()}`
+                    factory.createBinaryExpression(
+                      factory.createElementAccessExpression(name, traceVar),
+                      factory.createToken(ts.SyntaxKind.EqualsToken),
+                      factory.createBinaryExpression(
+                        fileVar,
+                        factory.createToken(ts.SyntaxKind.PlusToken),
+                        factory.createStringLiteral(
+                          `:${line + 1}:${character + 1}:${name.getText()}`
+                        )
                       )
-                    ])
+                    )
                   ]
                 }
               }
@@ -380,6 +456,36 @@ export default function tracer(
         }
 
         const { fileName } = sourceFile
+
+        const fileNode = factory.createVariableStatement(
+          undefined,
+          factory.createVariableDeclarationList(
+            [
+              factory.createVariableDeclaration(
+                fileVar,
+                undefined,
+                undefined,
+                factory.createStringLiteral(path.relative(process.cwd(), fileName))
+              )
+            ],
+            ts.NodeFlags.Const
+          )
+        )
+
+        const traceNode = factory.createVariableStatement(
+          undefined,
+          factory.createVariableDeclarationList(
+            [
+              factory.createVariableDeclaration(
+                traceVar,
+                undefined,
+                undefined,
+                factory.createStringLiteral("$trace")
+              )
+            ],
+            ts.NodeFlags.Const
+          )
+        )
 
         const traceFNode = factory.createFunctionDeclaration(
           undefined,
@@ -416,13 +522,11 @@ export default function tracer(
                   factory.createBinaryExpression(
                     factory.createElementAccessExpression(
                       factory.createIdentifier("f"),
-                      factory.createStringLiteral("$trace")
+                      traceVar
                     ),
                     factory.createToken(ts.SyntaxKind.EqualsToken),
                     factory.createBinaryExpression(
-                      factory.createStringLiteral(
-                        path.relative(process.cwd(), fileName)
-                      ),
+                      fileVar,
                       factory.createToken(ts.SyntaxKind.PlusToken),
                       factory.createIdentifier("t")
                     )
@@ -440,7 +544,12 @@ export default function tracer(
           const visited = dataFirstOn
             ? ts.visitEachChild(visited_, dataFirst, ctx)
             : visited_
-          return factory.updateSourceFile(visited, [traceFNode, ...visited.statements])
+          return factory.updateSourceFile(visited, [
+            traceNode,
+            fileNode,
+            traceFNode,
+            ...visited.statements
+          ])
         }
 
         const visited_ = ts.visitEachChild(sourceFile, visitor, ctx)
