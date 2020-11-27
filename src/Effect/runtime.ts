@@ -1,3 +1,7 @@
+/**
+ * tracing: off
+ */
+
 // option
 // cause
 import * as Cause from "../Cause/core"
@@ -83,6 +87,12 @@ export class CustomRuntime<R> {
     this.ancestorStackTraceLength = this.ancestorStackTraceLength.bind(this)
     this.ancestryLength = this.ancestryLength.bind(this)
     this.fiberContext = this.fiberContext.bind(this)
+    this.run = this.run.bind(this)
+    this.runAsap = this.runAsap.bind(this)
+    this.runCancel = this.runCancel.bind(this)
+    this.runMain = this.runMain.bind(this)
+    this.runPromise = this.runPromise.bind(this)
+    this.runPromiseExit = this.runPromiseExit.bind(this)
   }
 
   fiberContext<E, A>(reporter: FailureReporter = constVoid) {
