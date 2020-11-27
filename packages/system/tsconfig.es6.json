@@ -9,7 +9,8 @@
     "removeComments": false,
     "plugins": [
       {
-        "transform": "../tracing-plugin/src/index.ts"
+        "transform": "../tracing-plugin/src/index.ts",
+        "tracing": false
       }
     ]
   },
