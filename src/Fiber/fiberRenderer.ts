@@ -1,3 +1,6 @@
+/**
+ * tracing: off
+ */
 import type { Array } from "../Array"
 import { constant, tuple } from "../Function"
 import * as IT from "../Iterable"
