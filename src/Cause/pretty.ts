@@ -68,6 +68,7 @@ const renderInterrupt = (
   Sequential([
     Failure([
       `An interrupt was produced by #${fiberId.seqNumber}.`,
+      "",
       ...renderTrace(trace, pre)
     ])
   ])
@@ -79,6 +80,7 @@ const renderDie = (error: Error, trace: O.Option<Trace>, pre: string): Sequentia
   Sequential([
     Failure([
       "An unchecked error was produced.",
+      "",
       ...renderError(error),
       ...renderTrace(trace, pre)
     ])
