@@ -18,6 +18,7 @@ Just like `ZIO` in scala, that has been taken as source-code reference to port i
 - **Testable**. Inject test services into your app for fast, deterministic, and type-safe testing.
 - **Resilient**. Build apps that never lose errors, and which respond to failure locally and flexibly.
 - **Functional**. Rapidly compose solutions to complex problems from simple building blocks.
+- **Stack Safe**. Forget ever seeying again `Maximum call stack size exceeded` and profit.
 
 Within the ecosystem of packages you will find:
 
