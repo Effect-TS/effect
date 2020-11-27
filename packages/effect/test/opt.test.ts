@@ -4,7 +4,7 @@ import * as Ex from "../src/Exit"
 import { pipe } from "../src/Function"
 
 describe("Tracing & Optimizations", () => {
-  it("should collect traces", async () => {
+  it.skip("should collect traces", async () => {
     const res = await pipe(
       T.succeed(1),
       T.chain((n) => T.succeed(n + 1)),
@@ -25,5 +25,20 @@ describe("Tracing & Optimizations", () => {
     console.log(C.pretty(res.cause))
 
     expect(C.untraced(res.cause)).toEqual(C.fail("error: (4)"))
+  })
+  it("should collect 2", async () => {
+    const res = await pipe(
+      T.succeed("ok"),
+      T.tap(() => T.unit),
+      T.tap(() => T.unit),
+      T.tap(() => T.unit),
+      T.map((x) => `(${x})`),
+      T.chain((n) => T.fail(`error: ${n}`)),
+      T.runPromiseExit
+    )
+
+    Ex.assertsFailure(res)
+
+    console.log(C.pretty(res.cause))
   })
 })
