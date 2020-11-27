@@ -1,6 +1,7 @@
+import { traceAs } from "@effect-ts/tracing-utils"
+
 import { failureOrCause } from "../Cause/core"
 import * as E from "../Either"
-import { traceAs } from "../Function"
 import { foldCauseM_, halt } from "./core"
 import type { Effect } from "./effect"
 

@@ -38,6 +38,7 @@ export default function tracer(
     identity?: boolean
     dataFirst?: boolean
     moduleMap?: Record<string, string>
+    functionModule?: string
   }
 ) {
   const tracingOn = !(_opts?.tracing === false)
@@ -60,6 +61,7 @@ export default function tracer(
         const traced = new Set<string>()
         const fileVar = factory.createUniqueName("fileName")
         const traceVar = factory.createUniqueName("$trace")
+        const tracing = factory.createUniqueName("tracing")
 
         const regions = sourceFullText
           .split("\n")
@@ -205,12 +207,55 @@ export default function tracer(
                 })
                 .reduce((flatten, entry) => flatten.concat(entry), []) || []
 
+            const traceCallTagsOverload = overloadDeclarations
+              ? (() => {
+                  try {
+                    return ts
+                      .getAllJSDocTags(
+                        overloadDeclarations,
+                        (t): t is ts.JSDocTag => t.tagName.getText() === "tracecall"
+                      )
+                      .map((e) => e.comment)
+                      .filter((s): s is string => s != null)
+                  } catch {
+                    return undefined
+                  }
+                })()
+              : undefined
+
+            const traceCallTagsMain =
+              symbol
+                ?.getDeclarations()
+                ?.map((e) => {
+                  try {
+                    return ts
+                      .getAllJSDocTags(
+                        e,
+                        (t): t is ts.JSDocTag => t.tagName.getText() === "tracecall"
+                      )
+                      .map((e) => e.comment)
+                  } catch {
+                    return []
+                  }
+                })
+                .reduce((flatten, entry) => flatten.concat(entry), []) || []
+
             const traceRetTags = new Set([
               ...traceRetTagsMain,
               ...(traceRetTagsOverload || [])
             ])
 
+            const traceCallTags = [
+              ...traceCallTagsMain,
+              ...(traceCallTagsOverload || [])
+            ]
+
             const shouldTrace = traceRetTags.size > 0 && isTracing
+            const shouldTraceCall = isTracing
+              ? traceCallTags.length > 0
+                ? traceCallTags[0]
+                : undefined
+              : undefined
 
             if (
               identityOn &&
@@ -293,9 +338,45 @@ export default function tracer(
               }
             }
 
+            let child: ts.CallExpression
+
+            if (shouldTraceCall) {
+              const { character, line } = sourceFile.getLineAndCharacterOfPosition(
+                node.expression.getEnd()
+              )
+
+              child = factory.createCallExpression(
+                factory.createPropertyAccessExpression(
+                  tracing,
+                  factory.createIdentifier("traceCall")
+                ),
+                undefined,
+                [
+                  factory.createArrowFunction(
+                    undefined,
+                    undefined,
+                    [],
+                    undefined,
+                    factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
+                    ts.visitEachChild(node, visitor, ctx)
+                  ),
+                  factory.createStringLiteral(shouldTraceCall),
+                  factory.createBinaryExpression(
+                    fileVar,
+                    factory.createToken(ts.SyntaxKind.PlusToken),
+                    factory.createStringLiteral(
+                      `:${line + 1}:${character + 1}:${node.expression.getText()}`
+                    )
+                  )
+                ]
+              )
+            } else {
+              child = ts.visitEachChild(node, visitor, ctx)
+            }
+
             if (shouldTrace) {
               return factory.createCallExpression(traceF, undefined, [
-                ts.visitEachChild(node, visitor, ctx),
+                child,
                 factory.createStringLiteral(
                   `:${nodeStart.line + 1}:${nodeStart.character + 1}:${
                     ts.isVariableDeclaration(node.parent)
@@ -306,6 +387,8 @@ export default function tracer(
                   }`
                 )
               ])
+            } else {
+              return child
             }
           }
 
@@ -562,6 +645,16 @@ export default function tracer(
             ? ts.visitEachChild(visited_, dataFirst, ctx)
             : visited_
           return factory.updateSourceFile(visited, [
+            factory.createImportDeclaration(
+              undefined,
+              undefined,
+              factory.createImportClause(
+                false,
+                undefined,
+                factory.createNamespaceImport(tracing)
+              ),
+              factory.createStringLiteral("@effect-ts/tracing-utils")
+            ),
             traceNode,
             fileNode,
             traceFNode,
