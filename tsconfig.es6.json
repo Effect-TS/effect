@@ -11,7 +11,7 @@
       {
         "transform": "../tracing-plugin/src/index.ts",
         "moduleMap": {
-          "^src/(.*)": "$1 (@effect-ts/system)"
+          "^src/(.*)": "(@effect-ts/system): $1"
         }
       }
     ]
