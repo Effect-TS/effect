@@ -304,57 +304,6 @@ export default function tracer(
             }
           }
 
-          if (ts.isClassDeclaration(node) && node.name) {
-            if (isTracing) {
-              const members: [ts.Identifier, ts.StringLiteral][] = []
-
-              node.members.forEach((m) => {
-                const { character, line } = sourceFile.getLineAndCharacterOfPosition(
-                  m.getStart()
-                )
-                if (m.name && ts.isIdentifier(m.name) && ts.isMethodDeclaration(m)) {
-                  members.push([
-                    m.name,
-                    factory.createStringLiteral(
-                      `:${line + 1}:${
-                        character + 1 + m.name.getText().length
-                      }:${m.name.getText()}`
-                    )
-                  ])
-                }
-              })
-
-              const name = node.name
-
-              return [
-                ts.visitEachChild(node, visitor, ctx),
-                factory.createCallExpression(traceF, undefined, [
-                  name,
-                  factory.createStringLiteral(
-                    `:${nodeStart.line + 1}:${
-                      nodeStart.character +
-                      7 +
-                      name.getText().length +
-                      (node.getFirstToken()?.getText() === "export" ? 7 : 0)
-                    }:${name.getText()}`
-                  )
-                ]),
-                ...members.map(([id, trace]) =>
-                  factory.createCallExpression(traceF, undefined, [
-                    factory.createElementAccessExpression(
-                      factory.createPropertyAccessExpression(
-                        name,
-                        factory.createIdentifier("prototype")
-                      ),
-                      factory.createStringLiteral(id.getText())
-                    ),
-                    trace
-                  ])
-                )
-              ]
-            }
-          }
-
           if (ts.isArrowFunction(node)) {
             if (isTracing) {
               const { character, line } = sourceFile.getLineAndCharacterOfPosition(
