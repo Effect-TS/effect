@@ -37,7 +37,7 @@ export default function tracer(
     flow?: boolean
     identity?: boolean
     dataFirst?: boolean
-    replaceMap?: Record<string, string>
+    moduleMap?: Record<string, string>
   }
 ) {
   const tracingOn = !(_opts?.tracing === false)
@@ -46,6 +46,9 @@ export default function tracer(
   const flowOn = !(_opts?.flow === false)
   const dataFirstOn = !(_opts?.dataFirst === false)
   const checker = _program.getTypeChecker()
+
+  const moduleMap = _opts?.moduleMap || {}
+  const moduleMapKeys = Object.keys(moduleMap).map((k) => [k, new RegExp(k)] as const)
 
   return {
     before(ctx: ts.TransformationContext) {
@@ -457,6 +460,20 @@ export default function tracer(
 
         const { fileName } = sourceFile
 
+        let finalName = path.relative(process.cwd(), fileName)
+
+        for (const k of moduleMapKeys) {
+          const matches = finalName.match(k[1])
+          if (matches) {
+            let patchedName = moduleMap[k[0]]
+            for (let j = 1; j < matches.length; j += 1) {
+              patchedName = patchedName.replace("$" + j, matches[j])
+            }
+            finalName = patchedName
+            break
+          }
+        }
+
         const fileNode = factory.createVariableStatement(
           undefined,
           factory.createVariableDeclarationList(
@@ -465,7 +482,7 @@ export default function tracer(
                 fileVar,
                 undefined,
                 undefined,
-                factory.createStringLiteral(path.relative(process.cwd(), fileName))
+                factory.createStringLiteral(finalName)
               )
             ],
             ts.NodeFlags.Const
