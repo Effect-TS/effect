@@ -1,3 +1,6 @@
+/**
+ * tracing: off
+ */
 import { AtomicNumber } from "../Support/AtomicNumber"
 
 /**
