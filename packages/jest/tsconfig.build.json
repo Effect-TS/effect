@@ -9,7 +9,10 @@
     "removeComments": false,
     "plugins": [
       {
-        "transform": "../tracing-plugin/src/index.ts"
+        "transform": "../tracing-plugin/src/index.ts",
+        "moduleMap": {
+          "^src/(.*)": "$1 (@effect-ts/jest)"
+        }
       }
     ]
   },
