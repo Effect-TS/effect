@@ -2,13 +2,13 @@
 
 Effect-TS is a zero dependency set of libraries to write highly productive, purely functional TypeScript at scale.
 
-The main driver of inspiration and the source of most of the ideas politely borrowed by this library is the core [ZIO](https://github.com/zio/zio) and its ecosystem of libraries, in particoular [ZIO-Prelude](https://github.com/zio/zio-prelude) from which we take the naming and design of a highly innovative typeclass system.
+The main driver of inspiration and the source of most of the ideas politely borrowed by this library is the core [ZIO](https://github.com/zio/zio) and its ecosystem of libraries, in particular [ZIO-Prelude](https://github.com/zio/zio-prelude) from which we take the naming and design of a highly innovative typeclass system.
 
-Within the TypeScript ecosystem this library takes inspiration from [fp-ts](https://github.com/gcanti/fp-ts), [io-ts](https://github.com/gcanti/fp-ts), [morphic-ts](https://github.com/sledorze/morphic-ts), [waveguide](https://github.com/rzeigler/waveguide), [qio](https://github.com/tusharmath/qio) and please forgive us if we are forgetting some.
+Within the TypeScript ecosystem, this library takes inspiration from [fp-ts](https://github.com/gcanti/fp-ts), [io-ts](https://github.com/gcanti/fp-ts), [morphic-ts](https://github.com/sledorze/morphic-ts), [waveguide](https://github.com/rzeigler/waveguide), [qio](https://github.com/tusharmath/qio) and please forgive us if we are forgetting some.
 
 Before anything we would like to say THANK YOU to all the contributors and authors of all the libraries we took something from, this work would have not been possible without you!
 
-Just like `ZIO` in scala, that has been taken as source-code reference to port in typescript, `@effect-ts/core/Effect` is powered by highly-scalable, non-blocking fibers that never waste or leak resources, `Effect` lets you build scalable, resilient, and reactive applications that meet the needs of your business.
+Just like `ZIO` in scala, which was taken as source-code reference for the typescript port, `@effect-ts/core/Effect` is powered by highly-scalable, non-blocking fibers that never waste or leak resources, `Effect` lets you build scalable, resilient, and reactive applications that meet the needs of your business.
 
 - **High-performance**. Build scalable applications with greater performance compared to `Promise`.
 - **Type-safe**. Use the full power of the TypeScript compiler to catch bugs at compile time.
@@ -18,7 +18,7 @@ Just like `ZIO` in scala, that has been taken as source-code reference to port i
 - **Testable**. Inject test services into your app for fast, deterministic, and type-safe testing.
 - **Resilient**. Build apps that never lose errors, and which respond to failure locally and flexibly.
 - **Functional**. Rapidly compose solutions to complex problems from simple building blocks.
-- **Stack Safe**. Forget ever seeying again `Maximum call stack size exceeded` and profit.
+- **Stack Safe**. Forget ever seeing again `Maximum call stack size exceeded` and profit.
 
 Within the ecosystem of packages you will find:
 
@@ -30,7 +30,7 @@ Within the ecosystem of packages you will find:
 
 - `@effect-ts/morphic` Based on a fork of `morphic-ts` this library provides derivation of common typeclasses like `Decoder`, `Encoder`, `Guard` in a highly configurable manner and utilities around `ADT` in general data-modelling needs.
 
-- `@effect-ts/tracing-plugin` This typescipt compiler plugin, to be used with `ttypescript`, can be configured to:
+- `@effect-ts/tracing-plugin` This typescript compiler plugin, to be used with `ttypescript`, can be configured to:
   - add compile time traces to your application code
   - reduce the calls to `pipe`
   - reduce the calls to `flow`
@@ -51,9 +51,9 @@ If you like to know more check out our, incomplete, series of articles:
 
 This is not an excuse, we will write docs when the active development slows down but:
 
-Functional libraries tends to have almost no documentation and the reason is the best documentation for a function is the function definition if the name is meaningful and if the types are clear.
+Functional libraries tend to have almost no documentation and the reason is that the best documentation for a function is its own definition assuming the name is meaningful and the types are clear.
 
-For the reason above when we will begin documentation it will be in the lines of a guide to introduce concepts used in the library rather then an "online database of function definitions"
+For the reason above, when we will begin documenting it, it will be along the lines of a guide in order to introduce concepts used in the library rather than just an "online database of function definitions"
 
 ## Get in touch
 
@@ -65,4 +65,4 @@ This library is actively maintained by Matechs-Garage the `R&D` leg of the [Mate
 
 ## Contributors
 
-Many thanks to all contributors of this amazing project, many of you have contributed from functionality up to bug reporting and fixing this library would have been nowhere near without your work. If you are interested to join us reach out (regardless of your experience)!
+Many thanks to all contributors of this amazing project, many of you have contributed from functionality up to bug reporting and fixing this library would have been nowhere near without your work. If you are interested to join us then reach out (regardless of your experience)!
