@@ -325,23 +325,21 @@ export function provideAll_<R, E, A>(
 /**
  * Returns an effect that semantically runs the effect on a fiber,
  * producing an `Exit` for the completion value of the fiber.
- *
- * @trace
  */
 export function result<R, E, A>(
   value: Effect<R, E, A>
 ): Effect<R, never, Exit.Exit<E, A>> {
+  // tracing: off
   return new IFold(
     value,
     traceAs(result, (cause) => succeed(Exit.halt(cause))),
     traceAs(result, (succ) => succeed(Exit.succeed(succ)))
   )
+  // tracing: on
 }
 
 /**
  * Lift a pure value into an effect
- *
- * @trace
  */
 export function succeed<A>(a: A): Effect<unknown, never, A> {
   return new ISucceed(a)
@@ -383,11 +381,13 @@ export function tryOrElse_<R, E, A, R2, E2, A2, R3, E3, A3>(
   that: () => Effect<R2, E2, A2>,
   success: (a: A) => Effect<R3, E3, A3>
 ): Effect<R & R2 & R3, E2 | E3, A2 | A3> {
+  // tracing: off
   return new IFold(
     self,
     traceAs(that, (cause) => O.fold_(keepDefects(cause), that, halt)),
     success
   )
+  // tracing: on
 }
 
 /**

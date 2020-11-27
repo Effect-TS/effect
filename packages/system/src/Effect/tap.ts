@@ -21,8 +21,10 @@ export function tap_<E2, R2, A, R, E>(
   _: Effect<R2, E2, A>,
   f: (_: A) => Effect<R, E, any>
 ) {
+  // tracing: off
   return chain_(
     _,
     traceAs(f, (a: A) => map_(f(a), () => a))
   )
+  // tracing: on
 }
