@@ -1,14 +1,10 @@
-/**
- * relative: ../
- * tracing: on
- */
 import * as C from "../src/Cause"
 import * as T from "../src/Effect"
 import * as Ex from "../src/Exit"
 import { pipe } from "../src/Function"
 
-describe("Optimizations", () => {
-  it("chain data first", async () => {
+describe("Tracing & Optimizations", () => {
+  it("should collect traces", async () => {
     const res = await pipe(
       T.succeed(1),
       T.chain((n) => T.succeed(n + 1)),
@@ -26,7 +22,7 @@ describe("Optimizations", () => {
 
     Ex.assertsFailure(res)
 
-    console.log(C.pretty(res.cause, "packages/system/"))
+    console.log(C.pretty(res.cause))
 
     expect(C.untraced(res.cause)).toEqual(C.fail("error: (4)"))
   })
