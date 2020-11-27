@@ -8,7 +8,11 @@ module.exports = {
   coverageDirectory: "coverage",
   collectCoverageFrom: ["packages/**/src/**/*.ts"],
   setupFiles: ["./scripts/jest-setup.ts"],
-  modulePathIgnorePatterns: ["<rootDir>/packages/.*/build", "<rootDir>/_tmp"],
+  modulePathIgnorePatterns: [
+    "<rootDir>/packages/.*/build",
+    "<rootDir>/packages/.*/compiler-debug",
+    "<rootDir>/_tmp"
+  ],
   verbose: true,
   moduleNameMapper: {
     "@effect-ts/jest/(.*)$": "<rootDir>/packages/jest/build/$1",
