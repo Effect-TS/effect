@@ -1,5 +1,8 @@
-/* adapted from https://github.com/gcanti/fp-ts */
-
+/**
+ * adapted from https://github.com/gcanti/fp-ts
+ *
+ * tracing: off
+ */
 import type { Either } from "../Either/core"
 import type { Predicate, Refinement } from "../Function/core"
 import { identity } from "../Function/core"
