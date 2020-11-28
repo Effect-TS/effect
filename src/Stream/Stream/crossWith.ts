@@ -1,5 +1,6 @@
 import type { Stream } from "."
-import { chain_, map_ } from "."
+import { chain_ } from "./chain"
+import { map_ } from "./map"
 
 /**
  * Composes this stream with the specified stream to create a cartesian product of elements

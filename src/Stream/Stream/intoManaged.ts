@@ -1,8 +1,8 @@
 import * as C from "../../Cause"
-import * as T from "../../Effect"
-import * as M from "../../Managed"
 import * as O from "../../Option"
-import type { XQueue } from "../../Queue/xqueue"
+import type * as Q from "../../Queue/xqueue"
+import * as T from "../_internal/effect"
+import * as M from "../_internal/managed"
 import * as TK from "../Take"
 import type { Stream } from "./definitions"
 
@@ -12,7 +12,7 @@ import type { Stream } from "./definitions"
  */
 export function intoManaged_<R, R1, E, A>(
   stream: Stream<R, E, A>,
-  queue: XQueue<R1, unknown, never, unknown, TK.Take<E, A>, unknown>
+  queue: Q.XQueue<R1, unknown, never, unknown, TK.Take<E, A>, unknown>
 ): M.Managed<R & R1, E, void> {
   return M.chain_(stream.proc, (as) => {
     const go: T.Effect<R & R1, never, void> = T.foldCauseM_(
@@ -35,7 +35,7 @@ export function intoManaged_<R, R1, E, A>(
  * composition.
  */
 export function intoManaged<R1, E, A>(
-  queue: XQueue<R1, unknown, never, unknown, TK.Take<E, A>, unknown>
+  queue: Q.XQueue<R1, unknown, never, unknown, TK.Take<E, A>, unknown>
 ) {
   return <R>(self: Stream<R, E, A>) => intoManaged_(self, queue)
 }

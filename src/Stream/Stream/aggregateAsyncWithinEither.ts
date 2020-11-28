@@ -1,13 +1,10 @@
-import type { Array } from "../../Array"
 import * as A from "../../Array"
-import type { HasClock } from "../../Clock"
+import type * as CL from "../../Clock"
 import * as E from "../../Either"
 import * as Ex from "../../Exit"
-import type { Fiber } from "../../Fiber"
 import { flow, pipe } from "../../Function"
 import * as O from "../../Option"
-import type { Schedule } from "../../Schedule"
-import * as Sc from "../../Schedule"
+import * as SC from "../../Schedule"
 import * as T from "../_internal/effect"
 import * as F from "../_internal/fiber"
 import * as M from "../_internal/managed"
@@ -15,7 +12,7 @@ import * as R from "../_internal/ref"
 import * as Handoff from "../Handoff"
 import type * as Pull from "../Pull"
 import * as Take from "../Take"
-import type { Transducer } from "../Transducer"
+import type * as TR from "../Transducer"
 import { Stream } from "./definitions"
 import { flattenTake } from "./flattenTake"
 
@@ -32,8 +29,8 @@ import { flattenTake } from "./flattenTake"
  * pulls.
  */
 export function aggregateAsyncWithinEither<O, R1, E1, P, Q>(
-  transducer: Transducer<R1, E1, O, P>,
-  schedule: Schedule<R1, Array<P>, Q>
+  transducer: TR.Transducer<R1, E1, O, P>,
+  schedule: SC.Schedule<R1, A.Array<P>, Q>
 ) {
   return <R, E>(self: Stream<R, E, O>) =>
     aggregateAsyncWithinEither_(self, transducer, schedule)
@@ -53,9 +50,9 @@ export function aggregateAsyncWithinEither<O, R1, E1, P, Q>(
  */
 export function aggregateAsyncWithinEither_<R, E, O, R1, E1, P, Q>(
   self: Stream<R, E, O>,
-  transducer: Transducer<R1, E1, O, P>,
-  schedule: Schedule<R1, Array<P>, Q>
-): Stream<R & R1 & HasClock, E | E1, E.Either<Q, P>> {
+  transducer: TR.Transducer<R1, E1, O, P>,
+  schedule: SC.Schedule<R1, A.Array<P>, Q>
+): Stream<R & R1 & CL.HasClock, E | E1, E.Either<Q, P>> {
   return pipe(
     M.do,
     M.bind("pull", () => self.proc),
@@ -63,19 +60,19 @@ export function aggregateAsyncWithinEither_<R, E, O, R1, E1, P, Q>(
     M.bind("handoff", () => M.fromEffect(Handoff.make<Take.Take<E, O>>())),
     M.bind("raceNextTime", () => R.makeManagedRef(false)),
     M.bind("waitingFiber", () =>
-      R.makeManagedRef<O.Option<Fiber<never, Take.Take<E | E1, O>>>>(O.none)
+      R.makeManagedRef<O.Option<F.Fiber<never, Take.Take<E | E1, O>>>>(O.none)
     ),
-    M.bind("sdriver", () => M.fromEffect(Sc.driver(schedule))),
-    M.bind("lastChunk", () => R.makeManagedRef<Array<P>>(A.empty)),
+    M.bind("sdriver", () => M.fromEffect(SC.driver(schedule))),
+    M.bind("lastChunk", () => R.makeManagedRef<A.Array<P>>(A.empty)),
     M.let("producer", ({ handoff, pull }) =>
       T.repeatWhileM_(Take.fromPull(pull), (take) =>
-        pipe(Handoff.offer(take)(handoff), T.as(Ex.succeeded(take)))
+        pipe(Handoff.offer_(handoff, take), T.as(Ex.succeeded(take)))
       )
     ),
     M.let(
       "consumer",
       ({ handoff, lastChunk, push, raceNextTime, sdriver, waitingFiber }) => {
-        const updateSchedule: T.RIO<R1 & HasClock, O.Option<Q>> = pipe(
+        const updateSchedule: T.RIO<R1 & CL.HasClock, O.Option<Q>> = pipe(
           lastChunk.get,
           T.chain(sdriver.next),
           T.fold((_) => O.none, O.some)
@@ -116,9 +113,9 @@ export function aggregateAsyncWithinEither_<R, E, O, R1, E1, P, Q>(
         const go = (
           race: boolean
         ): T.Effect<
-          R & R1 & HasClock,
+          R & R1 & CL.HasClock,
           O.Option<E | E1>,
-          Array<Take.Take<E1, E.Either<Q, P>>>
+          A.Array<Take.Take<E1, E.Either<Q, P>>>
         > => {
           if (!race) {
             return pipe(

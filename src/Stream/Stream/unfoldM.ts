@@ -1,5 +1,5 @@
-import * as T from "../../Effect"
 import * as O from "../../Option"
+import * as T from "../_internal/effect"
 import type { Stream } from "./definitions"
 import { unfoldChunkM } from "./unfoldChunkM"
 

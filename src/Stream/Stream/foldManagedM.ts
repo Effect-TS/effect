@@ -1,5 +1,5 @@
-import type * as T from "../../Effect"
-import type * as M from "../../Managed"
+import type * as T from "../_internal/effect"
+import type * as M from "../_internal/managed"
 import type { Stream } from "./definitions"
 import { foldWhileManagedM } from "./foldWhileManagedM"
 

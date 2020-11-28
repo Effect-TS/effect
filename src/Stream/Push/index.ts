@@ -18,8 +18,6 @@ export function emit<I, Z>(
   return T.fail([E.right(z), leftover])
 }
 
-export const more = T.unit
-
 export function fail<E, I>(
   e: E,
   leftover: A.Array<I>
@@ -32,6 +30,8 @@ export function halt<E>(
 ): T.IO<[E.Either<E, never>, A.Array<never>], never> {
   return T.mapError_(T.halt(c), (e) => [E.left(e), A.empty])
 }
+
+export const more = T.unit
 
 /**
  * Decorates a Push with a Effect value that re-initializes it with a fresh state.

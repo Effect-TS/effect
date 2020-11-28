@@ -1,11 +1,11 @@
 import * as A from "../../Array"
-import * as T from "../../Effect"
 import { pipe } from "../../Function"
-import * as M from "../../Managed"
 import * as O from "../../Option"
-import * as Ref from "../../Ref"
 import * as BP from "../../Stream/BufferedPull"
 import * as Pull from "../../Stream/Pull"
+import * as T from "../_internal/effect"
+import * as M from "../_internal/managed"
+import * as Ref from "../_internal/ref"
 import { Stream } from "./definitions"
 
 /**

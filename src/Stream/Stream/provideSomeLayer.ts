@@ -1,6 +1,6 @@
-import * as T from "../../Effect"
 import * as L from "../../Layer"
-import * as M from "../../Managed"
+import * as T from "../_internal/effect"
+import * as M from "../_internal/managed"
 import { chain_ } from "./chain"
 import type { Stream } from "./definitions"
 import { managed } from "./managed"
