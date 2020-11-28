@@ -1,5 +1,5 @@
 import type * as Array from "../../Array"
-import type * as Exit from "../../Exit/api"
+import type * as Ex from "../../Exit"
 import { pipe } from "../../Function"
 import type * as Option from "../../Option"
 import * as T from "../_internal/effect"
@@ -13,7 +13,7 @@ import { unfoldChunkM } from "./unfoldChunkM"
  * it to the destination stream. `f` can maintain some internal state to control
  * the combining process, with the initial state being specified by `s`.
  */
-export const combineChunks = <R1, E1, O2, Z, R, E, O, O3>(
+export function combineChunks<R1, E1, O2, Z, R, E, O, O3>(
   that: Stream<R1, E1, O2>,
   z: Z,
   f: (
@@ -23,24 +23,26 @@ export const combineChunks = <R1, E1, O2, Z, R, E, O, O3>(
   ) => T.Effect<
     R & R1,
     never,
-    Exit.Exit<Option.Option<E | E1>, readonly [Array.Array<O3>, Z]>
+    Ex.Exit<Option.Option<E | E1>, readonly [Array.Array<O3>, Z]>
   >
-) => (self: Stream<R, E, O>): Stream<R & R1, E1 | E, O3> =>
-  new Stream(
-    pipe(
-      M.do,
-      M.bind("left", () => self.proc),
-      M.bind("right", () => that.proc),
-      M.bind(
-        "pull",
-        ({ left, right }) =>
-          unfoldChunkM(z)((z) =>
-            pipe(
-              f(z, left, right),
-              T.chain((ex) => T.optional(T.done(ex)))
-            )
-          ).proc
-      ),
-      M.map(({ pull }) => pull)
+) {
+  return (self: Stream<R, E, O>): Stream<R & R1, E1 | E, O3> =>
+    new Stream(
+      pipe(
+        M.do,
+        M.bind("left", () => self.proc),
+        M.bind("right", () => that.proc),
+        M.bind(
+          "pull",
+          ({ left, right }) =>
+            unfoldChunkM(z)((z) =>
+              pipe(
+                f(z, left, right),
+                T.chain((ex) => T.optional(T.done(ex)))
+              )
+            ).proc
+        ),
+        M.map(({ pull }) => pull)
+      )
     )
-  )
+}

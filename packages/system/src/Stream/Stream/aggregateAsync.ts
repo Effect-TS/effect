@@ -1,6 +1,6 @@
-import type { HasClock } from "../../Clock"
-import * as Sc from "../../Schedule"
-import type { Transducer } from "../Transducer"
+import type * as CL from "../../Clock"
+import * as SC from "../../Schedule"
+import type * as TR from "../Transducer"
 import { aggregateAsyncWithin_ } from "./aggregateAsyncWithin"
 import type { Stream } from "./definitions"
 
@@ -16,7 +16,7 @@ import type { Stream } from "./definitions"
  * Any transducer can be used here, but see `Transducer.foldWeightedM` and `Transducer.foldUntilM` for
  * transducers that cover the common usecases.
  */
-export function aggregateAsync<O, R1, E1, P>(transducer: Transducer<R1, E1, O, P>) {
+export function aggregateAsync<O, R1, E1, P>(transducer: TR.Transducer<R1, E1, O, P>) {
   return <R, E>(self: Stream<R, E, O>) => aggregateAsync_(self, transducer)
 }
 
@@ -34,7 +34,7 @@ export function aggregateAsync<O, R1, E1, P>(transducer: Transducer<R1, E1, O, P
  */
 export function aggregateAsync_<R, E, O, R1, E1, P>(
   self: Stream<R, E, O>,
-  transducer: Transducer<R1, E1, O, P>
-): Stream<R & R1 & HasClock, E | E1, P> {
-  return aggregateAsyncWithin_(self, transducer, Sc.forever)
+  transducer: TR.Transducer<R1, E1, O, P>
+): Stream<R & R1 & CL.HasClock, E | E1, P> {
+  return aggregateAsyncWithin_(self, transducer, SC.forever)
 }

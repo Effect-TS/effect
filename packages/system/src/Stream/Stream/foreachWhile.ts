@@ -1,4 +1,4 @@
-import type * as T from "../../Effect"
+import type * as T from "../_internal/effect"
 import * as SK from "../Sink"
 import type { Stream } from "./definitions"
 import { run_ } from "./run"

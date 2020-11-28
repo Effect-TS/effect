@@ -1,5 +1,5 @@
 import type * as T from "../_internal/effect"
-import * as Sink from "../Sink"
+import * as SK from "../Sink"
 import type { Stream } from "./definitions"
 import { run_ } from "./run"
 
@@ -10,7 +10,7 @@ export function foreach_<R, R1, E, E1, A>(
   self: Stream<R, E, A>,
   f: (i: A) => T.Effect<R1, E1, any>
 ): T.Effect<R & R1, E1 | E, void> {
-  return run_(self, Sink.foreach(f))
+  return run_(self, SK.foreach(f))
 }
 
 /**

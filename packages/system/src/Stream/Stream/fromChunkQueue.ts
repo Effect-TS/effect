@@ -1,8 +1,8 @@
-import type { Array } from "../../Array"
-import * as Cause from "../../Cause"
-import type { XQueue } from "../../Queue"
+import type * as A from "../../Array"
+import * as C from "../../Cause"
+import type * as Q from "../../Queue"
 import * as T from "../_internal/effect"
-import { end, halt } from "../Pull"
+import * as Pull from "../Pull"
 import type { Stream } from "./definitions"
 import { repeatEffectChunkOption } from "./repeatEffectChunkOption"
 
@@ -10,12 +10,12 @@ import { repeatEffectChunkOption } from "./repeatEffectChunkOption"
  * Creates a stream from a {@link XQueue} of values
  */
 export function fromChunkQueue<R, E, O>(
-  queue: XQueue<never, R, unknown, E, never, Array<O>>
+  queue: Q.XQueue<never, R, unknown, E, never, A.Array<O>>
 ): Stream<R, E, O> {
   return repeatEffectChunkOption(
     T.catchAllCause_(queue.take, (c) =>
       T.chain_(queue.isShutdown, (down) =>
-        down && Cause.interrupted(c) ? end : halt(c)
+        down && C.interrupted(c) ? Pull.end : Pull.halt(c)
       )
     )
   )

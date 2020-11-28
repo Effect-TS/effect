@@ -1,8 +1,8 @@
-import * as T from "../../Effect"
-import type { Exit } from "../../Exit"
-import * as M from "../../Managed"
-import type { Option } from "../../Option"
-import type { Dequeue } from "../../Queue"
+import type * as Ex from "../../Exit"
+import type * as O from "../../Option"
+import type * as Q from "../../Queue"
+import * as T from "../_internal/effect"
+import * as M from "../_internal/managed"
 import type { Stream } from "./definitions"
 import { distributedWithDynamic_ } from "./distributedWithDynamic"
 
@@ -18,7 +18,7 @@ import { distributedWithDynamic_ } from "./distributedWithDynamic"
 export function broadcastedQueuesDynamic_<R, E, O>(
   self: Stream<R, E, O>,
   maximumLag: number
-): M.Managed<R, never, T.UIO<Dequeue<Exit<Option<E>, O>>>> {
+): M.Managed<R, never, T.UIO<Q.Dequeue<Ex.Exit<O.Option<E>, O>>>> {
   const decider = T.succeed((_: symbol) => true)
 
   return M.map_(

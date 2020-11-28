@@ -1,4 +1,4 @@
-import * as M from "../../Managed"
+import * as M from "../_internal/managed"
 import * as BP from "../BufferedPull"
 import { Stream } from "./definitions"
 

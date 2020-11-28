@@ -1,8 +1,8 @@
-import { single } from "../../Array"
-import { map as mapT, toManaged } from "../../Effect"
+import * as A from "../../Array"
 import { flow, pipe } from "../../Function"
-import { map as mapM } from "../../Managed"
-import { getAndUpdate, makeRef } from "../../Ref"
+import * as T from "../_internal/effect"
+import * as M from "../_internal/managed"
+import * as Ref from "../_internal/ref"
 import type { UIO } from "./definitions"
 import { Stream } from "./definitions"
 
@@ -11,6 +11,10 @@ import { Stream } from "./definitions"
  */
 export function iterate<A>(a: A, f: (a: A) => A): UIO<A> {
   return new Stream(
-    pipe(makeRef(a), toManaged(), mapM(flow(getAndUpdate(f), mapT(single))))
+    pipe(
+      Ref.makeRef(a),
+      T.toManaged(),
+      M.map(flow(Ref.getAndUpdate(f), T.map(A.single)))
+    )
   )
 }

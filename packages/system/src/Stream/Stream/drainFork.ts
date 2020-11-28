@@ -1,6 +1,6 @@
-import * as T from "../../Effect"
-import * as M from "../../Managed"
 import * as P from "../../Promise"
+import * as T from "../_internal/effect"
+import * as M from "../_internal/managed"
 import { chain_ } from "./chain"
 import { crossRight_ } from "./crossRight"
 import type { Stream } from "./definitions"
