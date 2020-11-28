@@ -41,7 +41,7 @@ export default function bundle(
         const unpiped = B1.unpipe(traced)
         const unflowed = B1.unflow(unpiped)
         const unid = B1.identity(unflowed)
-        const df = B1.identity(unid)
+        const df = B1.dataFirst(unid)
 
         return df
       }
