@@ -5,7 +5,7 @@ import type { Stream } from "./definitions"
 import { runManaged_ } from "./runManaged"
 
 /**
- * Like [[Stream#foreachWhile]], but returns a `Managed` so the finalization order
+ * Like `Stream#foreachWhile`, but returns a `Managed` so the finalization order
  * can be controlled.
  */
 export function foreachWhileManaged_<R, R1, E, E1, O>(
@@ -16,7 +16,7 @@ export function foreachWhileManaged_<R, R1, E, E1, O>(
 }
 
 /**
- * Like [[Stream#foreachWhile]], but returns a `Managed` so the finalization order
+ * Like `Stream#foreachWhile`, but returns a `Managed` so the finalization order
  * can be controlled.
  */
 export function foreachWhileManaged<R1, E1, O>(f: (o: O) => T.Effect<R1, E1, boolean>) {
