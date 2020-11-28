@@ -1,10 +1,9 @@
 import { pipe } from "../../Function"
-import { makeManagedReleaseMap } from "../../Managed"
-import type { ReleaseMap } from "../../Managed/ReleaseMap"
-import * as Option from "../../Option"
-import * as Ref from "../../Ref"
+import type * as RM from "../../Managed/ReleaseMap"
+import * as O from "../../Option"
 import * as T from "../_internal/effect"
 import * as M from "../_internal/managed"
+import * as Ref from "../_internal/ref"
 import * as Pull from "../Pull"
 import { Stream } from "./definitions"
 
@@ -16,7 +15,7 @@ export function managed<R, E, A>(self: M.Managed<R, E, A>): Stream<R, E, A> {
     pipe(
       M.do,
       M.bind("doneRef", () => Ref.makeManagedRef(false)),
-      M.bind("finalizer", () => makeManagedReleaseMap(T.sequential)),
+      M.bind("finalizer", () => M.makeManagedReleaseMap(T.sequential)),
       M.let("pull", ({ doneRef, finalizer }) =>
         T.uninterruptibleMask(({ restore }) =>
           pipe(
@@ -30,14 +29,14 @@ export function managed<R, E, A>(self: M.Managed<R, E, A>): Stream<R, E, A> {
                       pipe(
                         self.effect,
                         T.map(([_, __]) => __),
-                        T.provideSome((r: R) => [r, finalizer] as [R, ReleaseMap]),
+                        T.provideSome((r: R) => [r, finalizer] as [R, RM.ReleaseMap]),
                         restore,
                         T.onError(() => doneRef.set(true))
                       )
                     ),
                     T.tap(() => doneRef.set(true)),
                     T.map(({ a }) => [a]),
-                    T.mapError(Option.some)
+                    T.mapError(O.some)
                   )
             )
           )

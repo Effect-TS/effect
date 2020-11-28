@@ -5,7 +5,7 @@ import { pipe } from "../../Function"
 import * as Map from "../../Map"
 import * as O from "../../Option"
 import * as Q from "../../Queue"
-import * as Sem from "../../Semaphore"
+import * as SM from "../../Semaphore"
 import * as T from "../_internal/effect"
 import * as M from "../_internal/managed"
 import * as R from "../_internal/ref"
@@ -86,7 +86,7 @@ export function distributedWithDynamic_<R, E, O>(
     M.bind("add", ({ queuesRef }) => {
       return pipe(
         M.do,
-        M.bind("queuesLock", () => T.toManaged_(Sem.makeSemaphore(1))),
+        M.bind("queuesLock", () => T.toManaged_(SM.makeSemaphore(1))),
         M.bind("newQueue", () =>
           pipe(
             R.makeRef<T.UIO<readonly [symbol, Q.Queue<Ex.Exit<O.Option<E>, O>>]>>(
@@ -105,7 +105,7 @@ export function distributedWithDynamic_<R, E, O>(
         ),
         M.let("finalize", ({ newQueue, queuesLock }) => {
           return (endTake: Ex.Exit<O.Option<E>, never>) =>
-            Sem.withPermit(queuesLock)(
+            SM.withPermit(queuesLock)(
               T.chain_(
                 newQueue.set(
                   pipe(
@@ -153,7 +153,7 @@ export function distributedWithDynamic_<R, E, O>(
           )
         ),
         M.map(({ newQueue, queuesLock }) =>
-          Sem.withPermit(queuesLock)(T.flatten(newQueue.get))
+          SM.withPermit(queuesLock)(T.flatten(newQueue.get))
         )
       )
     }),

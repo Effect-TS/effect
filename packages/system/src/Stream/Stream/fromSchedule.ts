@@ -1,8 +1,7 @@
-import type { HasClock } from "../../Clock"
-import { map } from "../../Effect"
+import type * as CL from "../../Clock"
 import { constVoid, flow } from "../../Function"
-import type { Schedule } from "../../Schedule"
-import { driver } from "../../Schedule"
+import * as SC from "../../Schedule"
+import * as T from "../_internal/effect"
 import type { Stream } from "./definitions"
 import { repeatEffectOption } from "./repeatEffectOption"
 import { unwrap } from "./unwrap"
@@ -13,9 +12,9 @@ import { unwrap } from "./unwrap"
  * schedule, continuing for as long as the schedule continues.
  */
 export const fromSchedule: <R, A>(
-  schedule: Schedule<R, unknown, A>
-) => Stream<R & HasClock, never, A> = flow(
-  driver,
-  map((driver) => repeatEffectOption(driver.next(constVoid()))),
+  schedule: SC.Schedule<R, unknown, A>
+) => Stream<R & CL.HasClock, never, A> = flow(
+  SC.driver,
+  T.map((driver) => repeatEffectOption(driver.next(constVoid()))),
   unwrap
 )

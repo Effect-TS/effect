@@ -1,13 +1,11 @@
-import type { Effect } from "../../Effect"
-import { fromEither, service } from "../../Effect"
-import { die } from "../../Effect/die"
-import type { Either } from "../../Either"
+import type * as E from "../../Either"
 import { NoSuchElementException, PrematureGeneratorExit } from "../../GlobalExceptions"
-import type { Has, Tag } from "../../Has"
+import type * as H from "../../Has"
 import * as L from "../../List"
-import type { Option } from "../../Option"
+import type * as O from "../../Option"
 import type { _E, _R } from "../../Utils"
 import { isEither, isOption, isTag } from "../../Utils"
+import * as T from "../_internal/effect"
 import { chain_ } from "./chain"
 import { Stream } from "./definitions"
 import { fail } from "./fail"
@@ -33,11 +31,11 @@ const adapter = (_: any, __?: any) => {
         ? fail(__ ? __() : new NoSuchElementException())
         : succeed(x.value)
     } else if (isEither(x)) {
-      return fromEffect(fromEither(() => x))
+      return fromEffect(T.fromEither(() => x))
     } else if (x instanceof Stream) {
       return x
     } else if (isTag(x)) {
-      return fromEffect(service(x))
+      return fromEffect(T.service(x))
     }
     return fromEffect(x)
   })
@@ -45,41 +43,41 @@ const adapter = (_: any, __?: any) => {
 
 export function gen<RBase, EBase, AEff>(): <Eff extends GenStream<RBase, EBase, any>>(
   f: (i: {
-    <A>(_: () => Tag<A>): GenStream<Has<A>, never, A>
-    <E, A>(_: () => Option<A>, onNone: () => E): GenStream<unknown, E, A>
-    <A>(_: () => Option<A>): GenStream<unknown, NoSuchElementException, A>
-    <E, A>(_: () => Either<E, A>): GenStream<unknown, E, A>
-    <R, E, A>(_: () => Effect<R, E, A>): GenStream<R, E, A>
+    <A>(_: () => H.Tag<A>): GenStream<H.Has<A>, never, A>
+    <E, A>(_: () => O.Option<A>, onNone: () => E): GenStream<unknown, E, A>
+    <A>(_: () => O.Option<A>): GenStream<unknown, NoSuchElementException, A>
+    <E, A>(_: () => E.Either<E, A>): GenStream<unknown, E, A>
+    <R, E, A>(_: () => T.Effect<R, E, A>): GenStream<R, E, A>
     <R, E, A>(_: () => Stream<R, E, A>): GenStream<R, E, A>
   }) => Generator<Eff, AEff, any>
 ) => Stream<_R<Eff>, _E<Eff>, AEff>
 export function gen<EBase, AEff>(): <Eff extends GenStream<any, EBase, any>>(
   f: (i: {
-    <A>(_: () => Tag<A>): GenStream<Has<A>, never, A>
-    <E, A>(_: () => Option<A>, onNone: () => E): GenStream<unknown, E, A>
-    <A>(_: () => Option<A>): GenStream<unknown, NoSuchElementException, A>
-    <E, A>(_: () => Either<E, A>): GenStream<unknown, E, A>
-    <R, E, A>(_: () => Effect<R, E, A>): GenStream<R, E, A>
+    <A>(_: () => H.Tag<A>): GenStream<H.Has<A>, never, A>
+    <E, A>(_: () => O.Option<A>, onNone: () => E): GenStream<unknown, E, A>
+    <A>(_: () => O.Option<A>): GenStream<unknown, NoSuchElementException, A>
+    <E, A>(_: () => E.Either<E, A>): GenStream<unknown, E, A>
+    <R, E, A>(_: () => T.Effect<R, E, A>): GenStream<R, E, A>
     <R, E, A>(_: () => Stream<R, E, A>): GenStream<R, E, A>
   }) => Generator<Eff, AEff, any>
 ) => Stream<_R<Eff>, _E<Eff>, AEff>
 export function gen<AEff>(): <Eff extends GenStream<any, any, any>>(
   f: (i: {
-    <A>(_: () => Tag<A>): GenStream<Has<A>, never, A>
-    <E, A>(_: () => Option<A>, onNone: () => E): GenStream<unknown, E, A>
-    <A>(_: () => Option<A>): GenStream<unknown, NoSuchElementException, A>
-    <E, A>(_: () => Either<E, A>): GenStream<unknown, E, A>
-    <R, E, A>(_: () => Effect<R, E, A>): GenStream<R, E, A>
+    <A>(_: () => H.Tag<A>): GenStream<H.Has<A>, never, A>
+    <E, A>(_: () => O.Option<A>, onNone: () => E): GenStream<unknown, E, A>
+    <A>(_: () => O.Option<A>): GenStream<unknown, NoSuchElementException, A>
+    <E, A>(_: () => E.Either<E, A>): GenStream<unknown, E, A>
+    <R, E, A>(_: () => T.Effect<R, E, A>): GenStream<R, E, A>
     <R, E, A>(_: () => Stream<R, E, A>): GenStream<R, E, A>
   }) => Generator<Eff, AEff, any>
 ) => Stream<_R<Eff>, _E<Eff>, AEff>
 export function gen<Eff extends GenStream<any, any, any>, AEff>(
   f: (i: {
-    <A>(_: () => Tag<A>): GenStream<Has<A>, never, A>
-    <E, A>(_: () => Option<A>, onNone: () => E): GenStream<unknown, E, A>
-    <A>(_: () => Option<A>): GenStream<unknown, NoSuchElementException, A>
-    <E, A>(_: () => Either<E, A>): GenStream<unknown, E, A>
-    <R, E, A>(_: () => Effect<R, E, A>): GenStream<R, E, A>
+    <A>(_: () => H.Tag<A>): GenStream<H.Has<A>, never, A>
+    <E, A>(_: () => O.Option<A>, onNone: () => E): GenStream<unknown, E, A>
+    <A>(_: () => O.Option<A>): GenStream<unknown, NoSuchElementException, A>
+    <E, A>(_: () => E.Either<E, A>): GenStream<unknown, E, A>
+    <R, E, A>(_: () => T.Effect<R, E, A>): GenStream<R, E, A>
     <R, E, A>(_: () => Stream<R, E, A>): GenStream<R, E, A>
   }) => Generator<Eff, AEff, any>
 ): Stream<_R<Eff>, _E<Eff>, AEff>
@@ -93,7 +91,7 @@ export function gen(...args: any[]): any {
         let state = iterator.next()
         for (const a of replayStack) {
           if (state.done) {
-            return fromEffect(die(new PrematureGeneratorExit()))
+            return fromEffect(T.die(new PrematureGeneratorExit()))
           }
           state = iterator.next(a)
         }

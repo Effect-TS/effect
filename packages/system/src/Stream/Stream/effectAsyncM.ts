@@ -1,12 +1,12 @@
-import type * as Array from "../../Array"
-import type { Exit } from "../../Exit"
-import type { Callback } from "../../Fiber"
+import type * as A from "../../Array"
+import type * as Ex from "../../Exit"
 import { pipe } from "../../Function"
-import type * as Option from "../../Option"
-import { makeBounded } from "../../Queue"
-import * as Ref from "../../Ref"
+import type * as O from "../../Option"
+import * as Q from "../../Queue"
 import * as T from "../_internal/effect"
+import type * as F from "../_internal/fiber"
 import * as M from "../_internal/managed"
+import * as Ref from "../_internal/ref"
 import * as Pull from "../Pull"
 import * as Take from "../Take"
 import { chain } from "./chain"
@@ -22,16 +22,16 @@ import { repeatEffectChunkOption } from "./repeatEffectChunkOption"
 export function effectAsyncM<R, E, A, R1 = R, E1 = E>(
   register: (
     cb: (
-      next: T.Effect<R, Option.Option<E>, Array.Array<A>>,
-      offerCb?: Callback<never, boolean>
-    ) => T.UIO<Exit<never, boolean>>
+      next: T.Effect<R, O.Option<E>, A.Array<A>>,
+      offerCb?: F.Callback<never, boolean>
+    ) => T.UIO<Ex.Exit<never, boolean>>
   ) => T.Effect<R1, E1, unknown>,
   outputBuffer = 16
 ): Stream<R & R1, E | E1, A> {
   return pipe(
     M.do,
     M.bind("output", () =>
-      pipe(makeBounded<Take.Take<E, A>>(outputBuffer), T.toManaged())
+      pipe(Q.makeBounded<Take.Take<E, A>>(outputBuffer), T.toManaged())
     ),
     M.bind("runtime", () => pipe(T.runtime<R>(), T.toManaged())),
     M.tap(({ output, runtime }) =>

@@ -1,9 +1,9 @@
 import type * as A from "../../Array"
-import * as T from "../../Effect"
 import type * as Ex from "../../Exit"
-import type * as M from "../../Managed"
 import * as O from "../../Option"
 import type * as XQ from "../../Queue"
+import * as T from "../_internal/effect"
+import type * as M from "../_internal/managed"
 import type { Stream } from "./definitions"
 import { distributedWith_ } from "./distributedWith"
 

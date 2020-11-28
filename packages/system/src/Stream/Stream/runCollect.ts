@@ -1,7 +1,7 @@
-import type * as Array from "../../Array"
+import type * as A from "../../Array"
 import { pipe } from "../../Function"
 import type * as T from "../_internal/effect"
-import * as Sink from "../Sink"
+import * as SK from "../Sink"
 import type { Stream } from "./definitions"
 import { run } from "./run"
 
@@ -10,4 +10,4 @@ import { run } from "./run"
  */
 export const runCollect = <R, E, O>(
   self: Stream<R, E, O>
-): T.Effect<R, E, Array.Array<O>> => pipe(self, run(Sink.collectAll<O>()))
+): T.Effect<R, E, A.Array<O>> => pipe(self, run(SK.collectAll<O>()))

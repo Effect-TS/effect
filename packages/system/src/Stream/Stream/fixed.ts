@@ -1,5 +1,5 @@
-import type { Clock } from "../../Clock"
-import type { Has } from "../../Has"
+import type * as CL from "../../Clock"
+import type * as H from "../../Has"
 import * as SC from "../../Schedule"
 import type { Stream } from "./definitions"
 import { schedule_ } from "./schedule"
@@ -11,7 +11,7 @@ import { schedule_ } from "./schedule"
 export function fixed_<R, E, O>(
   self: Stream<R, E, O>,
   duration: number
-): Stream<R & Has<Clock>, E, O> {
+): Stream<R & H.Has<CL.Clock>, E, O> {
   return schedule_(self, SC.fixed(duration))
 }
 

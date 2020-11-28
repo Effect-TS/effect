@@ -1,8 +1,8 @@
 import { pipe } from "../../Function"
-import type * as Option from "../../Option"
-import * as Ref from "../../Ref"
+import type * as O from "../../Option"
 import * as T from "../_internal/effect"
 import * as M from "../_internal/managed"
+import * as Ref from "../_internal/ref"
 import * as Pull from "../Pull"
 import { Stream } from "./definitions"
 
@@ -10,7 +10,7 @@ import { Stream } from "./definitions"
  * Creates a stream from an effect producing a value of type `A` or an empty Stream
  */
 export function fromEffectOption<R, E, A>(
-  fa: T.Effect<R, Option.Option<E>, A>
+  fa: T.Effect<R, O.Option<E>, A>
 ): Stream<R, E, A> {
   return new Stream(
     pipe(

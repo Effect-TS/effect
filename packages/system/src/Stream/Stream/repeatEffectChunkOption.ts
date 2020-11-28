@@ -1,19 +1,19 @@
-import type * as Array from "../../Array"
+import type * as A from "../../Array"
 import { pipe } from "../../Function"
-import * as Option from "../../Option"
-import * as Ref from "../../Ref"
+import * as O from "../../Option"
 import * as T from "../_internal/effect"
 import * as M from "../_internal/managed"
+import * as Ref from "../_internal/ref"
 import * as Pull from "../Pull"
 import { Stream } from "./definitions"
 
 /**
  * Creates a stream from an effect producing chunks of `A` values until it fails with None.
  */
-export const repeatEffectChunkOption = <R, E, A>(
-  fa: T.Effect<R, Option.Option<E>, Array.Array<A>>
-): Stream<R, E, A> =>
-  new Stream(
+export function repeatEffectChunkOption<R, E, A>(
+  fa: T.Effect<R, O.Option<E>, A.Array<A>>
+): Stream<R, E, A> {
+  return new Stream(
     pipe(
       M.do,
       M.bind("done", () => Ref.makeManagedRef(false)),
@@ -26,7 +26,7 @@ export const repeatEffectChunkOption = <R, E, A>(
               : pipe(
                   fa,
                   T.tapError(
-                    Option.fold(
+                    O.fold(
                       () => done.set(true),
                       () => T.unit
                     )
@@ -38,3 +38,4 @@ export const repeatEffectChunkOption = <R, E, A>(
       M.map(({ pull }) => pull)
     )
   )
+}

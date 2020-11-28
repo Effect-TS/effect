@@ -1,4 +1,4 @@
-import { die as die_ } from "../../Effect/die"
+import * as T from "../_internal/effect"
 import type { UIO } from "./definitions"
 import { fromEffect } from "./fromEffect"
 
@@ -6,5 +6,5 @@ import { fromEffect } from "./fromEffect"
  * The stream that dies with the error.
  */
 export function die(e: unknown): UIO<never> {
-  return fromEffect(die_(e))
+  return fromEffect(T.die(e))
 }

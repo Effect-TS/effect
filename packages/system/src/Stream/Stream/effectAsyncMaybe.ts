@@ -1,13 +1,12 @@
-import type * as Array from "../../Array"
-import type { UIO } from "../../Effect"
-import type { Exit } from "../../Exit"
-import type { Callback } from "../../Fiber"
+import type * as A from "../../Array"
+import type * as Ex from "../../Exit"
 import { pipe } from "../../Function"
-import * as Option from "../../Option"
-import { makeBounded } from "../../Queue"
-import * as Ref from "../../Ref"
+import * as O from "../../Option"
+import * as Q from "../../Queue"
 import * as T from "../_internal/effect"
+import type * as F from "../_internal/fiber"
 import * as M from "../_internal/managed"
+import * as Ref from "../_internal/ref"
 import * as Pull from "../Pull"
 import * as Take from "../Take"
 import { Stream } from "./definitions"
@@ -21,17 +20,17 @@ import { Stream } from "./definitions"
 export function effectAsyncMaybe<R, E, A>(
   register: (
     cb: (
-      next: T.Effect<R, Option.Option<E>, Array.Array<A>>,
-      offerCb?: Callback<never, boolean>
-    ) => UIO<Exit<never, boolean>>
-  ) => Option.Option<Stream<R, E, A>>,
+      next: T.Effect<R, O.Option<E>, A.Array<A>>,
+      offerCb?: F.Callback<never, boolean>
+    ) => T.UIO<Ex.Exit<never, boolean>>
+  ) => O.Option<Stream<R, E, A>>,
   outputBuffer = 16
 ): Stream<R, E, A> {
   return new Stream(
     pipe(
       M.do,
       M.bind("output", () =>
-        pipe(makeBounded<Take.Take<E, A>>(outputBuffer), T.toManaged())
+        pipe(Q.makeBounded<Take.Take<E, A>>(outputBuffer), T.toManaged())
       ),
       M.bind("runtime", () => pipe(T.runtime<R>(), T.toManaged())),
       M.bind("maybeStream", ({ output, runtime }) =>
@@ -44,7 +43,7 @@ export function effectAsyncMaybe<R, E, A>(
         )
       ),
       M.bind("pull", ({ maybeStream, output }) =>
-        Option.fold_(
+        O.fold_(
           maybeStream,
           () =>
             pipe(

@@ -1,6 +1,5 @@
 import * as A from "../../Array"
-import { pipe } from "../../Function"
-import * as M from "../../Managed"
+import * as M from "../_internal/managed"
 import { broadcastedQueues_ } from "./broadcastedQueues"
 import type { Stream } from "./definitions"
 import { flattenExitOption } from "./flattenExitOption"
@@ -25,8 +24,8 @@ export function broadcast_<R, E, O>(
   n: number,
   maximumLag: number
 ): M.Managed<R, never, A.Array<Stream<unknown, E, O>>> {
-  return pipe(
+  return M.map_(
     broadcastedQueues_(self, n, maximumLag),
-    M.map(A.map((q) => flattenExitOption(fromQueueWithShutdown(q))))
+    A.map((q) => flattenExitOption(fromQueueWithShutdown(q)))
   )
 }
