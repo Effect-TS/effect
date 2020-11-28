@@ -1,6 +1,6 @@
 import ts from "typescript"
 
-export default function tracer(
+export default function identity(
   _program: ts.Program,
   _opts?: {
     identity?: boolean
