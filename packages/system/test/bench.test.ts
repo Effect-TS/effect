@@ -1,3 +1,5 @@
+import { defaultRuntime, QIO } from "@qio/core"
+
 import * as T from "../src/Effect"
 import { makeCustomRuntime } from "../src/Effect"
 
@@ -10,6 +12,13 @@ function fibEffect(n: number): T.UIO<number> {
     T.suspend(() => fibEffect(n - 2)),
     (a, b) => a + b
   )
+}
+function fibQIO(n: number): QIO<number> {
+  if (n < 2) {
+    return QIO.resolve(0)
+  }
+  // access to avoid ending up in the sync optimization that lead to stack explosion
+  return QIO.accessM(() => fibQIO(n - 1).zipWith(fibQIO(n - 1), (x, y) => x + y))
 }
 async function fibPromise(n: number): Promise<number> {
   if (n < 2) {
@@ -30,6 +39,8 @@ function fibEffectGen(n: number): T.UIO<number> {
   })
 }
 
+const qioRuntime = defaultRuntime()
+
 const runtime = makeCustomRuntime()
   .traceEffect(false)
   .traceExecution(false)
@@ -45,6 +56,11 @@ describe("Bench", () => {
     it("promise", async () => {
       for (let i = 0; i < 1000; i++) {
         await fibPromise(10)
+      }
+    })
+    it("qio", async () => {
+      for (let i = 0; i < 1000; i++) {
+        await qioRuntime.unsafeExecutePromise(fibQIO(10))
       }
     })
   })
