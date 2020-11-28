@@ -271,7 +271,7 @@ export function prettyM<E1>(cause: Cause<E1>, pre = "") {
   return S.gen(function* (_) {
     const lines = yield* _(prettyLines(cause, pre))
 
-    return lines.join("\n")
+    return `\n${lines.join("\n")}`
   })
 }
 
