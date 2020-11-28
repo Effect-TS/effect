@@ -9,10 +9,10 @@ import { Stream } from "./definitions"
 /**
  * Creates a stream from an effect producing a value of type `A` or an empty Stream
  */
-export const fromEffectOption = <R, E, A>(
+export function fromEffectOption<R, E, A>(
   fa: T.Effect<R, Option.Option<E>, A>
-): Stream<R, E, A> =>
-  new Stream(
+): Stream<R, E, A> {
+  return new Stream(
     pipe(
       M.do,
       M.bind("doneRef", () => pipe(Ref.makeRef(false), T.toManaged())),
@@ -36,3 +36,4 @@ export const fromEffectOption = <R, E, A>(
       M.map(({ pull }) => pull)
     )
   )
+}

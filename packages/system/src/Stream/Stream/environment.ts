@@ -5,4 +5,6 @@ import { fromEffect } from "./fromEffect"
 /**
  * Accesses the whole environment of the stream.
  */
-export const environment = <R>(): RIO<R, R> => fromEffect(_<R>())
+export function environment<R>(): RIO<R, R> {
+  return fromEffect(_<R>())
+}

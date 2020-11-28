@@ -7,5 +7,6 @@ import { fromEffectOption } from "./fromEffectOption"
 /**
  * Creates a stream from an effect producing a value of type `A`
  */
-export const fromEffect = <R, E, A>(fa: T.Effect<R, E, A>): Stream<R, E, A> =>
-  pipe(fa, T.mapError(Option.some), fromEffectOption)
+export function fromEffect<R, E, A>(fa: T.Effect<R, E, A>): Stream<R, E, A> {
+  return pipe(fa, T.mapError(Option.some), fromEffectOption)
+}
