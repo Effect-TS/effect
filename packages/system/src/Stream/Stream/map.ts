@@ -1,22 +1,19 @@
-import { pipe } from "../../Function"
 import type { Stream } from "./definitions"
-import { mapChunks } from "./mapChunks"
+import { mapChunks_ } from "./mapChunks"
 
 /**
  * Transforms the chunks emitted by this stream.
  */
-export const map_ = <R, E, O, O2>(
+export function map_<R, E, O, O2>(
   self: Stream<R, E, O>,
   f: (_: O) => O2
-): Stream<R, E, O2> =>
-  pipe(
-    self,
-    mapChunks((o) => o.map(f))
-  )
+): Stream<R, E, O2> {
+  return mapChunks_(self, (o) => o.map(f))
+}
 
 /**
  * Transforms the chunks emitted by this stream.
  */
-export const map = <O, O2>(f: (_: O) => O2) => <R, E>(
-  self: Stream<R, E, O>
-): Stream<R, E, O2> => map_(self, f)
+export function map<O, O2>(f: (_: O) => O2) {
+  return <R, E>(self: Stream<R, E, O>): Stream<R, E, O2> => map_(self, f)
+}

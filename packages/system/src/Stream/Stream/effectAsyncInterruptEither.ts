@@ -18,7 +18,7 @@ import { Stream } from "./definitions"
  * The optionality of the error type `E` can be used to signal the end of the stream, by
  * setting it to `None`.
  */
-export const effectAsyncInterruptEither = <R, E, A>(
+export function effectAsyncInterruptEither<R, E, A>(
   register: (
     cb: (
       next: T.Effect<R, Option.Option<E>, Array.Array<A>>,
@@ -26,8 +26,8 @@ export const effectAsyncInterruptEither = <R, E, A>(
     ) => T.UIO<Exit<never, boolean>>
   ) => Either.Either<T.Canceler<R>, Stream<R, E, A>>,
   outputBuffer = 16
-): Stream<R, E, A> =>
-  new Stream(
+): Stream<R, E, A> {
+  return new Stream(
     pipe(
       M.do,
       M.bind("output", () =>
@@ -82,3 +82,4 @@ export const effectAsyncInterruptEither = <R, E, A>(
       M.map(({ pull }) => pull)
     )
   )
+}

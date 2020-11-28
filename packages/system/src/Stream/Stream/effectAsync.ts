@@ -11,7 +11,7 @@ import { effectAsyncMaybe } from "./effectAsyncMaybe"
  * The optionality of the error type `E` can be used to signal the end of the stream,
  * by setting it to `None`.
  */
-export const effectAsync = <R, E, A>(
+export function effectAsync<R, E, A>(
   register: (
     cb: (
       next: T.Effect<R, Option.Option<E>, Array.Array<A>>,
@@ -19,8 +19,9 @@ export const effectAsync = <R, E, A>(
     ) => T.UIO<Exit<never, boolean>>
   ) => void,
   outputBuffer = 16
-): Stream<R, E, A> =>
-  effectAsyncMaybe((cb) => {
+): Stream<R, E, A> {
+  return effectAsyncMaybe((cb) => {
     register(cb)
     return Option.none
   }, outputBuffer)
+}
