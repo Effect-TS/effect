@@ -18,7 +18,11 @@ function fibQIO(n: number): QIO<number> {
     return QIO.resolve(0)
   }
   // access to avoid ending up in the sync optimization that lead to stack explosion
-  return QIO.accessM(() => fibQIO(n - 1).zipWith(fibQIO(n - 1), (x, y) => x + y))
+  // mimic the same ops as fibEffect
+  return QIO.accessM(() => fibQIO(n - 1)).zipWith(
+    QIO.accessM(() => fibQIO(n - 2)),
+    (x, y) => x + y
+  )
 }
 async function fibPromise(n: number): Promise<number> {
   if (n < 2) {
