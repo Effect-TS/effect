@@ -4,12 +4,12 @@ import * as O from "../../Option"
 import type { Stream } from "./definitions"
 
 /**
-   * Executes an effectful fold over the stream of values.
-   * Returns a Managed value that represents the scope of the stream.
-   * Stops the fold early when the condition is not fulfilled.
-
-   * @param cont function which defines the early termination condition
-   */
+ * Executes an effectful fold over the stream of values.
+ * Returns a Managed value that represents the scope of the stream.
+ * Stops the fold early when the condition is not fulfilled.
+ *
+ * @param cont function which defines the early termination condition
+ */
 export function foldWhileManagedM<S>(s: S) {
   return (cont: (s: S) => boolean) => <O, R1, E1>(
     f: (s: S, o: O) => T.Effect<R1, E1, S>

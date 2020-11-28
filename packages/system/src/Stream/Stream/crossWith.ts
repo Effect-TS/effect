@@ -6,7 +6,7 @@ import { chain_, map_ } from "."
  * with a specified function.
  * The `that` stream would be run multiple times, for every element in the `this` stream.
  *
- * See also [[Stream#zip]] and [[Stream#<&>]] for the more common point-wise variant.
+ * See also [[Stream#zip]] for the more common point-wise variant.
  */
 export function crossWith_<R, R1, E, E1, O, O2>(
   self: Stream<R, E, O>,
@@ -21,7 +21,7 @@ export function crossWith_<R, R1, E, E1, O, O2>(
  * with a specified function.
  * The `that` stream would be run multiple times, for every element in the `this` stream.
  *
- * See also [[Stream#zip]] and [[Stream#<&>]] for the more common point-wise variant.
+ * See also [[Stream#zip]] for the more common point-wise variant.
  */
 export function crossWith<R1, E1, O2>(that: Stream<R1, E1, O2>) {
   return <O, C>(f: (o: O, o2: O2) => C) => <R, E>(self: Stream<R, E, O>) =>
