@@ -1,6 +1,6 @@
 {
   "name": "@effect-ts/system",
-  "version": "0.6.59",
+  "version": "0.6.60",
   "license": "MIT",
   "private": false,
   "scripts": {
@@ -22,7 +22,7 @@
   "repository": "https://github.com/Matechs-Garage/matechs-effect.git",
   "sideEffects": false,
   "dependencies": {
-    "@effect-ts/tracing-utils": "^0.0.1"
+    "@effect-ts/tracing-utils": "^0.0.2"
   },
   "config": {
     "modules": [
