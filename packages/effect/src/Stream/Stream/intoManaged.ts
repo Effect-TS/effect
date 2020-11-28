@@ -34,8 +34,8 @@ export function intoManaged_<R, R1, E, A>(
  * Like `into`, but provides the result as a `Managed` to allow for scope
  * composition.
  */
-export function intoManaged<R, R1, E, A>(
+export function intoManaged<R1, E, A>(
   queue: XQueue<R1, unknown, never, unknown, TK.Take<E, A>, unknown>
 ) {
-  return (self: Stream<R, E, A>) => intoManaged_(self, queue)
+  return <R>(self: Stream<R, E, A>) => intoManaged_(self, queue)
 }

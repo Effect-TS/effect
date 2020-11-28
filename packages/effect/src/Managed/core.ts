@@ -57,7 +57,7 @@ export function effectTotal<A>(effect: () => A) {
  * Ensures that `f` is executed when this Managed is finalized, after
  * the existing finalizer.
  *
- * For usecases that need access to the Managed's result, see [[onExit]].
+ * For usecases that need access to the Managed's result, see `onExit`.
  */
 export function ensuring_<R, E, A, R2>(
   self: Managed<R, E, A>,
@@ -70,7 +70,7 @@ export function ensuring_<R, E, A, R2>(
  * Ensures that `f` is executed when this Managed is finalized, after
  * the existing finalizer.
  *
- * For usecases that need access to the Managed's result, see [[onExit]].
+ * For usecases that need access to the Managed's result, see `onExit`.
  */
 export function ensuring<R2>(f: T.Effect<R2, never, any>) {
   return <R, E, A>(self: Managed<R, E, A>) => ensuring_(self, f)
@@ -507,7 +507,7 @@ export function mapM<A, R2, E2, B>(f: (a: A) => T.Effect<R2, E2, B>) {
 }
 
 /**
- * Ensures that a cleanup function runs when this ZManaged is finalized, after
+ * Ensures that a cleanup function runs when this Managed is finalized, after
  * the existing finalizers.
  */
 export function onExit_<R, E, A, R2>(
@@ -549,7 +549,7 @@ export function onExit_<R, E, A, R2>(
 }
 
 /**
- * Ensures that a cleanup function runs when this ZManaged is finalized, after
+ * Ensures that a cleanup function runs when this Managed is finalized, after
  * the existing finalizers.
  */
 export function onExit<E, A, R2>(
@@ -559,7 +559,7 @@ export function onExit<E, A, R2>(
 }
 
 /**
- * Ensures that a cleanup function runs when this ZManaged is finalized, before
+ * Ensures that a cleanup function runs when this Managed is finalized, before
  * the existing finalizers.
  */
 export function onExitFirst<E, A, R2>(
@@ -569,7 +569,7 @@ export function onExitFirst<E, A, R2>(
 }
 
 /**
- * Ensures that a cleanup function runs when this ZManaged is finalized, before
+ * Ensures that a cleanup function runs when this Managed is finalized, before
  * the existing finalizers.
  */
 export function onExitFirst_<R, E, A, R2>(
@@ -635,7 +635,7 @@ export function provideSome<R, R0>(f: (r0: R0) => R) {
  * A `Reservation< R, E, A>` encapsulates resource acquisition and disposal
  * without specifying when or how that resource might be used.
  *
- * See `Managed#reserve` and `ZIO#reserve` for details of usage.
+ * See `Managed#reserve` and `Effect#reserve` for details of usage.
  */
 export class Reservation<R, E, A> {
   static of = <R, E, A, R2>(

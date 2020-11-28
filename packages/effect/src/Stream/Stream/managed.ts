@@ -11,8 +11,8 @@ import { Stream } from "./definitions"
 /**
  * Creates a single-valued stream from a managed resource
  */
-export const managed = <R, E, A>(self: M.Managed<R, E, A>): Stream<R, E, A> =>
-  new Stream(
+export function managed<R, E, A>(self: M.Managed<R, E, A>): Stream<R, E, A> {
+  return new Stream(
     pipe(
       M.do,
       M.bind("doneRef", () => Ref.makeManagedRef(false)),
@@ -46,3 +46,4 @@ export const managed = <R, E, A>(self: M.Managed<R, E, A>): Stream<R, E, A> =>
       M.map(({ pull }) => pull)
     )
   )
+}

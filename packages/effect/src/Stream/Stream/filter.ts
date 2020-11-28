@@ -1,8 +1,7 @@
 import * as A from "../../Array"
 import type { Predicate, Refinement } from "../../Function"
-import { pipe } from "../../Function"
 import type { Stream } from "./definitions"
-import { mapChunks } from "./mapChunks"
+import { mapChunks_ } from "./mapChunks"
 
 /**
  * Applies the predicate to each element and allows passing elements
@@ -36,5 +35,5 @@ export function filter_<R, E, O>(
   self: Stream<R, E, O>,
   f: Predicate<O>
 ): Stream<R, E, O> {
-  return pipe(self, mapChunks(A.filter(f)))
+  return mapChunks_(self, A.filter(f))
 }

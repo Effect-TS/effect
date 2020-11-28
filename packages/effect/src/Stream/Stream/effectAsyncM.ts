@@ -19,7 +19,7 @@ import { repeatEffectChunkOption } from "./repeatEffectChunkOption"
  * The registration of the callback itself returns an effect. The optionality of the
  * error type `E` can be used to signal the end of the stream, by setting it to `None`.
  */
-export const effectAsyncM = <R, E, A, R1 = R, E1 = E>(
+export function effectAsyncM<R, E, A, R1 = R, E1 = E>(
   register: (
     cb: (
       next: T.Effect<R, Option.Option<E>, Array.Array<A>>,
@@ -27,8 +27,8 @@ export const effectAsyncM = <R, E, A, R1 = R, E1 = E>(
     ) => T.UIO<Exit<never, boolean>>
   ) => T.Effect<R1, E1, unknown>,
   outputBuffer = 16
-): Stream<R & R1, E | E1, A> =>
-  pipe(
+): Stream<R & R1, E | E1, A> {
+  return pipe(
     M.do,
     M.bind("output", () =>
       pipe(makeBounded<Take.Take<E, A>>(outputBuffer), T.toManaged())
@@ -65,3 +65,4 @@ export const effectAsyncM = <R, E, A, R1 = R, E1 = E>(
     managed,
     chain(repeatEffectChunkOption)
   )
+}

@@ -1,13 +1,15 @@
 import type { Either } from "../../Either"
 import { fold } from "../../Either"
-import { chain } from "./chain"
+import { chain_ } from "./chain"
 import type { Stream } from "./definitions"
 import { fail } from "./fail"
 import { succeed } from "./succeed"
 
 /**
- * Submerges the error case of an `Either` into the `ZStream`.
+ * Submerges the error case of an `Either` into the `Stream`.
  */
-export const absolve: <R, E, E2, O>(
+export function absolve<R, E, E2, O>(
   xs: Stream<R, E, Either<E2, O>>
-) => Stream<R, E | E2, O> = chain(fold(fail, succeed))
+): Stream<R, E | E2, O> {
+  return chain_(xs, fold(fail, succeed))
+}

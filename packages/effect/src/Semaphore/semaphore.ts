@@ -146,7 +146,7 @@ export const withPermits = (n: number) => (s: Semaphore) => <R, E, A>(
 export const withPermit = (s: Semaphore) => withPermits(1)(s)
 
 /**
- * Acquires `n` permits in a [[Managed]] and releases the permits in the finalizer.
+ * Acquires `n` permits in a `Managed` and releases the permits in the finalizer.
  */
 export const withPermitsManaged = (n: number) => (s: Semaphore) =>
   T.makeReserve(
@@ -154,7 +154,7 @@ export const withPermitsManaged = (n: number) => (s: Semaphore) =>
   )
 
 /**
- * Acquires a permit in a [[Managed]] and releases the permit in the finalizer.
+ * Acquires a permit in a `Managed` and releases the permit in the finalizer.
  */
 export const withPermitManaged = (s: Semaphore) => withPermitsManaged(1)(s)
 

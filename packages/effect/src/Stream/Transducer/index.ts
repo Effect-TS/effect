@@ -613,7 +613,7 @@ export function foldUntilM<R, E, I, O>(
  * will cross the threshold.
  *
  * The foldWeightedDecomposeM allows the decompose function
- * to return a `ZIO` value, and consequently it allows the transducer
+ * to return an `Effect` value, and consequently it allows the transducer
  * to fail.
  */
 export function foldWeightedDecompose<I, O>(

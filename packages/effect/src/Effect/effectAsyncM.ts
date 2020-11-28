@@ -12,8 +12,8 @@ import { to } from "./to"
 import { uninterruptibleMask } from "./uninterruptibleMask"
 
 /**
- * Imports an asynchronous effect into a pure `ZIO` value. This formulation is
- * necessary when the effect is itself expressed in terms of `ZIO`.
+ * Imports an asynchronous effect into a pure `Effect` value. This formulation is
+ * necessary when the effect is itself expressed in terms of `Effect`.
  */
 export function effectAsyncM<R, E, R2, E2, A>(
   register: (cb: (_: Effect<R2, E2, A>) => void) => Effect<R, E, any>

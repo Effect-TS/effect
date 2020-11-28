@@ -78,7 +78,7 @@ export function fold<E, A, Z>(
 }
 
 /**
- * Effectful version of [[Take#fold]].
+ * Effectful version of `Take#fold`.
  *
  * Folds over the failure cause, success value and end-of-stream marker to
  * yield an effect.
@@ -93,7 +93,7 @@ export function foldM_<E, A, R, E1, Z>(
 }
 
 /**
- * Effectful version of [[Take#fold]].
+ * Effectful version of `Take#fold`.
  *
  * Folds over the failure cause, success value and end-of-stream marker to
  * yield an effect.

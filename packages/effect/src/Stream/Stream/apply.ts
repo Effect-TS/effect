@@ -12,6 +12,8 @@ import { Stream } from "./definitions"
  * The stream evaluation guarantees proper acquisition and release of the
  * {@link Managed}.
  */
-export const apply = <R, E, O>(
+export function apply<R, E, O>(
   proc: Managed<R, never, Effect<R, Option<E>, Array<O>>>
-) => new Stream<R, E, O>(proc)
+) {
+  return new Stream<R, E, O>(proc)
+}

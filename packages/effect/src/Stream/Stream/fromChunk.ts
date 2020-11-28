@@ -10,8 +10,8 @@ import { Stream } from "./definitions"
 /**
  * Creates a stream from an array of values
  */
-export const fromChunk = <O>(c: Array.Array<O>): UIO<O> =>
-  new Stream(
+export function fromChunk<O>(c: Array.Array<O>): UIO<O> {
+  return new Stream(
     pipe(
       T.do,
       T.bind("doneRef", () => Ref.makeRef(false)),
@@ -28,3 +28,4 @@ export const fromChunk = <O>(c: Array.Array<O>): UIO<O> =>
       T.toManaged()
     )
   )
+}

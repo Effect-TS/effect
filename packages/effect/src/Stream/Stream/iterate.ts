@@ -9,5 +9,8 @@ import { Stream } from "./definitions"
 /**
  * The infinite stream of iterative function application: a, f(a), f(f(a)), f(f(f(a))), ...
  */
-export const iterate = <A>(a: A, f: (a: A) => A): UIO<A> =>
-  new Stream(pipe(makeRef(a), toManaged(), mapM(flow(getAndUpdate(f), mapT(single)))))
+export function iterate<A>(a: A, f: (a: A) => A): UIO<A> {
+  return new Stream(
+    pipe(makeRef(a), toManaged(), mapM(flow(getAndUpdate(f), mapT(single))))
+  )
+}
