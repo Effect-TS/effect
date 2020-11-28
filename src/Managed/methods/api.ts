@@ -511,7 +511,7 @@ export function either<R, E, A>(
 }
 
 /**
- * Returns a ZManaged that ignores errors raised by the acquire effect and
+ * Returns a Managed that ignores errors raised by the acquire effect and
  * runs it repeatedly until it eventually succeeds.
  */
 export function eventually<R, E, A>(self: Managed<R, E, A>): Managed<R, never, A> {
@@ -1868,8 +1868,8 @@ export function fiberId() {
 }
 
 /**
- * Modifies this `ZManaged` to provide a canceler that can be used to eagerly
- * execute the finalizer of this `ZManaged`. The canceler will run
+ * Modifies this `Managed` to provide a canceler that can be used to eagerly
+ * execute the finalizer of this `Managed`. The canceler will run
  * uninterruptibly with an exit value indicating that the effect was
  * interrupted, and if completed will cause the regular finalizer to not run.
  */

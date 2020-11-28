@@ -65,7 +65,7 @@ export type IO<E, A> = Stream<unknown, E, A>
 export type RIO<R, A> = Stream<R, never, A>
 
 /**
- * The default chunk size used by the various combinators and constructors of [[Stream]].
+ * The default chunk size used by the various combinators and constructors of `Stream`.
  */
 export const DefaultChunkSize = 4096
 

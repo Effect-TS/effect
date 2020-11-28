@@ -10,10 +10,11 @@ import type { Stream } from "./definitions"
 /**
  * Runs the sink on the stream to produce either the sink's result or an error.
  */
-export const runManaged = <R1, E1, O, B>(sink: Sink.Sink<R1, E1, O, any, B>) => <R, E>(
-  self: Stream<R, E, O>
-): M.Managed<R & R1, E1 | E, B> =>
-  pipe(
+export function runManaged_<R, R1, E, E1, O, B>(
+  self: Stream<R, E, O>,
+  sink: Sink.Sink<R1, E1, O, any, B>
+): M.Managed<R & R1, E1 | E, B> {
+  return pipe(
     M.zip_(self.proc, sink.push),
     M.mapM(([pull, push]) => {
       const go: T.Effect<R1 & R, E1 | E, B> = T.foldCauseM_(
@@ -53,3 +54,11 @@ export const runManaged = <R1, E1, O, B>(sink: Sink.Sink<R1, E1, O, any, B>) => 
       return go
     })
   )
+}
+
+/**
+ * Runs the sink on the stream to produce either the sink's result or an error.
+ */
+export function runManaged<R1, E1, O, B>(sink: Sink.Sink<R1, E1, O, any, B>) {
+  return <R, E>(self: Stream<R, E, O>) => runManaged_(self, sink)
+}

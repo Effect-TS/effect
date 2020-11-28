@@ -7,5 +7,14 @@ import type { Promise } from "./promise"
  * Halts the promise with the specified cause, which will be propagated to all
  * fibers waiting on the value of the promise.
  */
-export const halt = <E>(e: Cause<E>) => <A>(promise: Promise<E, A>) =>
-  completeWith<E, A>(effectHalt(e))(promise)
+export function halt_<E, A>(promise: Promise<E, A>, e: Cause<E>) {
+  return completeWith<E, A>(effectHalt(e))(promise)
+}
+
+/**
+ * Halts the promise with the specified cause, which will be propagated to all
+ * fibers waiting on the value of the promise.
+ */
+export function halt<E>(e: Cause<E>) {
+  return <A>(promise: Promise<E, A>) => halt_(promise, e)
+}

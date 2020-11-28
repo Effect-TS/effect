@@ -5,4 +5,6 @@ import { fromEffect } from "./fromEffect"
 /**
  * The stream that always fails with the error
  */
-export const fail = <E>(e: E): IO<E, never> => fromEffect(fail_(e))
+export function fail<E>(e: E): IO<E, never> {
+  return fromEffect(fail_(e))
+}

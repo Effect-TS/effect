@@ -5,4 +5,6 @@ import { fromEffect } from "./fromEffect"
 /**
  * The stream that dies with the error.
  */
-export const die = (e: unknown): UIO<never> => fromEffect(die_(e))
+export function die(e: unknown): UIO<never> {
+  return fromEffect(die_(e))
+}

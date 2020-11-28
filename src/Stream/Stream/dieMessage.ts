@@ -4,4 +4,6 @@ import { fromEffect } from "./fromEffect"
 /**
  * The stream that dies with an exception described by `msg`.
  */
-export const dieMessage = (msg: string) => fromEffect(_(msg))
+export function dieMessage(msg: string) {
+  fromEffect(_(msg))
+}
