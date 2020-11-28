@@ -57,7 +57,7 @@ export function effectTotal<A>(effect: () => A) {
  * Ensures that `f` is executed when this Managed is finalized, after
  * the existing finalizer.
  *
- * For usecases that need access to the Managed's result, see [[onExit]].
+ * For usecases that need access to the Managed's result, see `onExit`.
  */
 export function ensuring_<R, E, A, R2>(
   self: Managed<R, E, A>,
@@ -70,7 +70,7 @@ export function ensuring_<R, E, A, R2>(
  * Ensures that `f` is executed when this Managed is finalized, after
  * the existing finalizer.
  *
- * For usecases that need access to the Managed's result, see [[onExit]].
+ * For usecases that need access to the Managed's result, see `onExit`.
  */
 export function ensuring<R2>(f: T.Effect<R2, never, any>) {
   return <R, E, A>(self: Managed<R, E, A>) => ensuring_(self, f)

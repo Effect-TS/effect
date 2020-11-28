@@ -13,7 +13,7 @@ import { unfoldM } from "./unfoldM"
  * it to the destination stream. `f` can maintain some internal state to control
  * the combining process, with the initial state being specified by `s`.
  *
- * Where possible, prefer [[Stream#combineChunks]] for a more efficient implementation.
+ * Where possible, prefer `Stream#combineChunks` for a more efficient implementation.
  */
 export function combine<R1, E1, O2>(that: Stream<R1, E1, O2>) {
   return <S>(s: S) => <R, E, O, O3>(

@@ -119,7 +119,7 @@ export function filterOrElse_<R, E, A, R2, E2, A2>(
 }
 
 /**
- * Dies with a [[Error]] having the specified text message
+ * Dies with a `Error` having the specified text message
  * if the predicate fails.
  */
 export function filterOrDieMessage<A, B extends A>(
@@ -136,7 +136,7 @@ export function filterOrDieMessage<A>(p: Predicate<A>, message: (a: A) => string
 }
 
 /**
- * Dies with a [[Error]] having the specified text message
+ * Dies with a `Error` having the specified text message
  * if the predicate fails.
  */
 export function filterOrDieMessage_<R, E, A, B extends A>(

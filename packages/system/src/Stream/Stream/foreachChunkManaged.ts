@@ -6,7 +6,7 @@ import type { Stream } from "./definitions"
 import { runManaged_ } from "./runManaged"
 
 /**
- * Like [[Stream#foreachChunk]], but returns a `Managed` so the finalization order
+ * Like `Stream#foreachChunk`, but returns a `Managed` so the finalization order
  * can be controlled.
  */
 export function foreachChunkManaged<R, R1, E, E1, O>(

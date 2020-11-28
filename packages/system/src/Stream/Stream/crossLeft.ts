@@ -6,7 +6,7 @@ import type { Stream } from "./definitions"
  * but keeps only elements from this stream.
  * The `that` stream would be run multiple times, for every element in the `this` stream.
  *
- * See also [[Stream#zip]] and [[Stream#<&>]] for the more common point-wise variant.
+ * See also `Stream#zip` for the more common point-wise variant.
  */
 export function crossLeft_<R, R1, E, E1, O, O2>(
   self: Stream<R, E, O>,
@@ -20,7 +20,7 @@ export function crossLeft_<R, R1, E, E1, O, O2>(
  * but keeps only elements from this stream.
  * The `that` stream would be run multiple times, for every element in the `this` stream.
  *
- * See also [[Stream#zip]] and [[Stream#<&>]] for the more common point-wise variant.
+ * See also `Stream#zip` for the more common point-wise variant.
  */
 export function crossLeft<R1, E1, O2>(that: Stream<R1, E1, O2>) {
   return <R, E, O>(self: Stream<R, E, O>) => crossLeft_(self, that)
