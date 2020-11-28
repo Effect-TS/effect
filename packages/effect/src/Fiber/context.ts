@@ -837,8 +837,8 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   }
 
   captureTrace(last: TraceElement | undefined): Trace {
-    const exec = L.reverse(this.executionTraces.list)
-    const stack_ = L.reverse(this.stackTraces.list)
+    const exec = this.executionTraces.listReverse
+    const stack_ = this.stackTraces.listReverse
     const stack = last ? L.prepend_(stack_, last) : stack_
     return new Trace(this.id, exec, stack, this.parentTrace)
   }

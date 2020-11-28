@@ -20,9 +20,16 @@ export class RingBuffer<T> {
   }
 
   get list(): L.List<T> {
-    const l = L.emptyPushable<T>()
+    let l = L.empty<T>()
     this.values.forEach((t) => {
-      L.push(t, l)
+      l = L.append_(l, t)
+    })
+    return l
+  }
+  get listReverse(): L.List<T> {
+    let l = L.empty<T>()
+    this.values.forEach((t) => {
+      l = L.prepend_(l, t)
     })
     return l
   }
