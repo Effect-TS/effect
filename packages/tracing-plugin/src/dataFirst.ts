@@ -1,6 +1,6 @@
 import ts from "typescript"
 
-export default function tracer(
+export default function dataFirst(
   _program: ts.Program,
   _opts?: {
     dataFirst?: boolean
