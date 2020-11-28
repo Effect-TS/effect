@@ -16,7 +16,8 @@ export const Prod = genericDef("@newtype/Prod")
 export interface Prod<A> extends Generic<A, typeof Prod> {}
 
 /**
- * A newtype representing logical disjunction. */
+ * A newtype representing logical disjunction.
+ */
 const Or_ = typeDef<boolean>()("@newtype/Or")
 
 export interface Or extends TypeOf<typeof Or_> {}
@@ -24,7 +25,8 @@ export interface Or extends TypeOf<typeof Or_> {}
 export const Or = newtype<Or>()(Or_)
 
 /**
- * A newtype represeting logical conjunction. */
+ * A newtype represeting logical conjunction.
+ */
 const And_ = typeDef<boolean>()("@newtype/And")
 
 export interface And extends TypeOf<typeof And_> {}

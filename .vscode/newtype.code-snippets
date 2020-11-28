@@ -1,0 +1,11 @@
+{
+  "Classic Newtype": {
+    "prefix": "newtype",
+    "body": [
+      "const $1_ = NT.typeDef<$0>()(\"@newtype/$1\")",
+      "export interface $1 extends NT.TypeOf<typeof $1_> {}",
+      "export const $1 = NT.newtype<$1>()($1_)"
+    ],
+    "description": "Defines a Morphic newtype via iso"
+  }
+}
