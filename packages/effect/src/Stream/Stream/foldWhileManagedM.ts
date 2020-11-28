@@ -1,6 +1,6 @@
-import * as T from "../../Effect"
-import * as M from "../../Managed"
 import * as O from "../../Option"
+import * as T from "../_internal/effect"
+import * as M from "../_internal/managed"
 import type { Stream } from "./definitions"
 
 /**
@@ -25,7 +25,6 @@ export function foldWhileManagedM<S>(s: S) {
               () => T.succeed(s1),
               (e) => T.fail(e)
             ),
-            // TODO: Check with mike, using ch.foldM(s1)(f)
             (ch) => T.chain_(T.reduce_(ch, s1, f), loop)
           )
         }

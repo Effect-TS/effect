@@ -1,2 +1,3 @@
-export { join, interrupt } from "../../Fiber/api"
+export { join, interrupt, interruptAll } from "../../Fiber/api"
 export { Fiber } from "../../Fiber/core"
+export { Callback } from "../../Fiber/state"

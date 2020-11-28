@@ -1,7 +1,7 @@
-import type { Array } from "../../Array"
-import type { Effect } from "../../Effect"
-import type { Managed } from "../../Managed"
-import type { Option } from "../../Option"
+import type * as A from "../../Array"
+import type * as O from "../../Option"
+import type * as T from "../_internal/effect"
+import type * as M from "../_internal/managed"
 import { Stream } from "./definitions"
 
 /**
@@ -13,7 +13,7 @@ import { Stream } from "./definitions"
  * {@link Managed}.
  */
 export function apply<R, E, O>(
-  proc: Managed<R, never, Effect<R, Option<E>, Array<O>>>
+  proc: M.Managed<R, never, T.Effect<R, O.Option<E>, A.Array<O>>>
 ) {
   return new Stream<R, E, O>(proc)
 }

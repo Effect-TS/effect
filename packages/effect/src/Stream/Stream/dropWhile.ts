@@ -1,10 +1,10 @@
 import * as A from "../../Array"
-import * as T from "../../Effect"
 import type { Predicate } from "../../Function"
 import { pipe } from "../../Function"
-import * as M from "../../Managed"
 import * as O from "../../Option"
-import * as Ref from "../../Ref"
+import * as T from "../_internal/effect"
+import * as M from "../_internal/managed"
+import * as Ref from "../_internal/ref"
 import { Stream } from "./definitions"
 
 /**

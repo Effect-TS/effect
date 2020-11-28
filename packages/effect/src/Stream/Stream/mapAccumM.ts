@@ -1,9 +1,9 @@
 import { pipe } from "../../Function"
-import * as Option from "../../Option"
-import * as Ref from "../../Ref"
+import * as O from "../../Option"
 import * as T from "../_internal/effect"
 import * as M from "../_internal/managed"
-import * as BPull from "../BufferedPull"
+import * as Ref from "../_internal/ref"
+import * as BP from "../BufferedPull"
 import { Stream } from "./definitions"
 
 /**
@@ -18,11 +18,11 @@ export function mapAccumM<Z>(z: Z) {
       pipe(
         M.do,
         M.bind("state", () => Ref.makeManagedRef(z)),
-        M.bind("pull", () => pipe(self.proc, M.mapM(BPull.make))),
+        M.bind("pull", () => pipe(self.proc, M.mapM(BP.make))),
         M.map(({ pull, state }) =>
           pipe(
             pull,
-            BPull.pullElement,
+            BP.pullElement,
             T.chain((o) =>
               pipe(
                 T.do,
@@ -30,7 +30,7 @@ export function mapAccumM<Z>(z: Z) {
                 T.bind("t", ({ s }) => f(s, o)),
                 T.tap(({ t }) => state.set(t[0])),
                 T.map(({ t }) => [t[1]]),
-                T.mapError(Option.some)
+                T.mapError(O.some)
               )
             )
           )

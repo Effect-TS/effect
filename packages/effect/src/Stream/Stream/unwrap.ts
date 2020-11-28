@@ -1,4 +1,4 @@
-import type { Effect } from "../../Effect"
+import type { Effect } from "../_internal/effect"
 import type { Stream } from "./definitions"
 import { flatten } from "./flatten"
 import { fromEffect } from "./fromEffect"

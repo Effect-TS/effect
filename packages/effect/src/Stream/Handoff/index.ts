@@ -1,10 +1,10 @@
-import * as T from "../../Effect"
 import { constVoid, pipe } from "../../Function"
 import type { Option } from "../../Option"
 import { none, some } from "../../Option"
 import * as P from "../../Promise"
-import * as R from "../../Ref"
 import { matchTag } from "../../Utils"
+import * as T from "../_internal/effect"
+import * as R from "../_internal/ref"
 
 type State<A> = Empty | Full<A>
 
@@ -36,34 +36,37 @@ export function make<A>(): T.UIO<Handoff<A>> {
   )
 }
 
-export function offer<A>(a: A) {
-  return (h: Handoff<A>): T.UIO<void> =>
-    pipe(
-      P.make<never, void>(),
-      T.chain((p) =>
-        pipe(
-          h.ref,
-          R.modify<T.UIO<void>, State<A>>(
-            matchTag({
-              Empty: ({ notifyConsumer }) =>
-                [
-                  pipe(notifyConsumer, P.succeed(constVoid()), T.andThen(P.await(p))),
-                  new Full(a, p)
-                ] as const,
-              Full: (s) =>
-                [
-                  pipe(
-                    P.await(s.notifyProducer),
-                    T.chain(() => offer(a)(h))
-                  ),
-                  s
-                ] as const
-            })
-          ),
-          T.flatten
-        )
+export function offer_<A>(h: Handoff<A>, a: A): T.UIO<void> {
+  return pipe(
+    P.make<never, void>(),
+    T.chain((p) =>
+      pipe(
+        h.ref,
+        R.modify<T.UIO<void>, State<A>>(
+          matchTag({
+            Empty: ({ notifyConsumer }) =>
+              [
+                pipe(notifyConsumer, P.succeed(constVoid()), T.andThen(P.await(p))),
+                new Full(a, p)
+              ] as const,
+            Full: (s) =>
+              [
+                pipe(
+                  P.await(s.notifyProducer),
+                  T.chain(() => offer_(h, a))
+                ),
+                s
+              ] as const
+          })
+        ),
+        T.flatten
       )
     )
+  )
+}
+
+export function offer<A>(a: A) {
+  return (h: Handoff<A>) => offer_(h, a)
 }
 
 export function take<A>(h: Handoff<A>): T.UIO<A> {

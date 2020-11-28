@@ -1,19 +1,32 @@
 import type * as A from "../../Array"
 import type { Cause } from "../../Cause/core"
-import { pipe } from "../../Function"
 import * as O from "../../Option"
+import type { Dequeue } from "../../Queue"
 import * as T from "../_internal/effect"
+import type { Take } from "../Take"
 
 export type Pull<R, E, O> = T.Effect<R, O.Option<E>, A.Array<O>>
 
-export const end = T.fail(O.none)
+export function emit<A>(a: A) {
+  return T.succeed([a])
+}
 
-export const fail = <E>(e: E) => T.fail(O.some(e))
+export function emitChunk<A>(as: A.Array<A>) {
+  return T.succeed(as)
+}
 
-export const halt = <E>(e: Cause<E>) => pipe(T.halt(e), T.mapError(O.some))
+export function fromDequeue<E, A>(d: Dequeue<Take<E, A>>) {
+  return T.chain_(d.take, (_) => T.done(_))
+}
+
+export function fail<E>(e: E) {
+  return T.fail(O.some(e))
+}
+
+export function halt<E>(e: Cause<E>) {
+  return T.mapError_(T.halt(e), O.some)
+}
 
 export const empty = <A>() => T.succeed([] as A.Array<A>)
 
-export const emit = <A>(a: A) => T.succeed([a])
-
-export const emitChunk = <A>(as: A.Array<A>) => T.succeed(as)
+export const end = T.fail(O.none)

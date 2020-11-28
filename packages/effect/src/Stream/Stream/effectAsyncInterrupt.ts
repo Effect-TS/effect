@@ -1,9 +1,9 @@
-import type * as Array from "../../Array"
-import * as Either from "../../Either"
-import type { Exit } from "../../Exit"
-import type { Callback } from "../../Fiber"
+import type * as A from "../../Array"
+import * as E from "../../Either"
+import type * as Ex from "../../Exit"
 import type * as Option from "../../Option"
 import type * as T from "../_internal/effect"
+import type * as F from "../_internal/fiber"
 import type { Stream } from "./definitions"
 import { effectAsyncInterruptEither } from "./effectAsyncInterruptEither"
 
@@ -16,11 +16,11 @@ import { effectAsyncInterruptEither } from "./effectAsyncInterruptEither"
 export function effectAsyncInterrupt<R, E, A>(
   register: (
     cb: (
-      next: T.Effect<R, Option.Option<E>, Array.Array<A>>,
-      offerCb?: Callback<never, boolean>
-    ) => T.UIO<Exit<never, boolean>>
+      next: T.Effect<R, Option.Option<E>, A.Array<A>>,
+      offerCb?: F.Callback<never, boolean>
+    ) => T.UIO<Ex.Exit<never, boolean>>
   ) => T.Canceler<R>,
   outputBuffer = 16
 ): Stream<R, E, A> {
-  return effectAsyncInterruptEither((cb) => Either.left(register(cb)), outputBuffer)
+  return effectAsyncInterruptEither((cb) => E.left(register(cb)), outputBuffer)
 }

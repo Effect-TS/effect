@@ -1,5 +1,5 @@
 import { pipe } from "../../Function"
-import * as Option from "../../Option"
+import * as O from "../../Option"
 import * as T from "../_internal/effect"
 import * as M from "../_internal/managed"
 import { Stream } from "./definitions"
@@ -11,7 +11,7 @@ export function mapError_<R, E, E2, O>(
   self: Stream<R, E, O>,
   f: (e: E) => E2
 ): Stream<R, E2, O> {
-  return new Stream(pipe(self.proc, M.map(T.mapError(Option.map(f)))))
+  return new Stream(pipe(self.proc, M.map(T.mapError(O.map(f)))))
 }
 
 /**

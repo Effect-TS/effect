@@ -1,9 +1,9 @@
-import * as T from "../../Effect"
 import type * as Ex from "../../Exit"
 import { pipe } from "../../Function"
-import * as M from "../../Managed"
 import type * as O from "../../Option"
 import * as BP from "../../Stream/BufferedPull"
+import * as T from "../_internal/effect"
+import * as M from "../_internal/managed"
 import { Stream } from "./definitions"
 import { unfoldM } from "./unfoldM"
 

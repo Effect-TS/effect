@@ -1,6 +1,6 @@
 import type * as T from "../_internal/effect"
 import type * as M from "../_internal/managed"
-import * as Sink from "../Sink"
+import * as SK from "../Sink"
 import type { Stream } from "./definitions"
 import { runManaged_ } from "./runManaged"
 
@@ -12,7 +12,7 @@ export function foreachManaged_<A, R, R1, E, E1>(
   self: Stream<R, E, A>,
   f: (i: A) => T.Effect<R1, E1, any>
 ): M.Managed<R & R1, E1 | E, void> {
-  return runManaged_(self, Sink.foreach(f))
+  return runManaged_(self, SK.foreach(f))
 }
 
 /**

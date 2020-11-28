@@ -1,12 +1,11 @@
-import * as C from "../../Cause/core"
-import * as Exit from "../../Exit/api"
+import * as C from "../../Cause"
+import * as Ex from "../../Exit"
 import { pipe } from "../../Function"
-import type { Finalizer, ReleaseMap } from "../../Managed/ReleaseMap"
-import { makeReleaseMap, noopFinalizer, releaseAll } from "../../Managed/ReleaseMap"
+import * as RM from "../../Managed/ReleaseMap"
 import * as Option from "../../Option"
-import * as Ref from "../../Ref"
 import * as T from "../_internal/effect"
 import * as M from "../_internal/managed"
+import * as Ref from "../_internal/ref"
 import type * as Pull from "../Pull"
 import { Stream } from "./definitions"
 
@@ -29,7 +28,8 @@ export function catchAllCause_<R, E, R1, E2, O, O1>(
       M.do,
       M.bind(
         "finalizerRef",
-        () => M.finalizerRef(noopFinalizer) as M.Managed<R, never, Ref.Ref<Finalizer>>
+        () =>
+          M.finalizerRef(RM.noopFinalizer) as M.Managed<R, never, Ref.Ref<RM.Finalizer>>
       ),
       M.bind("ref", () =>
         pipe(
@@ -41,8 +41,8 @@ export function catchAllCause_<R, E, R1, E2, O, O1>(
         const closeCurrent = (cause: C.Cause<any>) =>
           pipe(
             finalizerRef,
-            Ref.getAndSet(noopFinalizer),
-            T.chain((f) => f(Exit.halt(cause))),
+            Ref.getAndSet(RM.noopFinalizer),
+            T.chain((f) => f(Ex.halt(cause))),
             T.uninterruptible
           )
 
@@ -51,16 +51,16 @@ export function catchAllCause_<R, E, R1, E2, O, O1>(
         ) =>
           T.uninterruptibleMask(({ restore }) =>
             pipe(
-              makeReleaseMap,
+              RM.makeReleaseMap,
               T.chain((releaseMap) =>
                 pipe(
                   finalizerRef.set((exit) =>
-                    releaseAll(exit, T.sequential)(releaseMap)
+                    RM.releaseAll(exit, T.sequential)(releaseMap)
                   ),
                   T.chain(() =>
                     pipe(
                       restore(stream.proc.effect),
-                      T.provideSome((_: R) => [_, releaseMap] as [R, ReleaseMap]),
+                      T.provideSome((_: R) => [_, releaseMap] as [R, RM.ReleaseMap]),
                       T.map(([_, __]) => __),
                       T.tap((pull) => ref.set(asState(pull)))
                     )

@@ -1,9 +1,9 @@
-import type { Array } from "../../Array"
-import type { HasClock } from "../../Clock"
+import type * as A from "../../Array"
+import type * as CL from "../../Clock"
 import * as E from "../../Either"
 import * as O from "../../Option"
-import type { Schedule } from "../../Schedule"
-import type { Transducer } from "../Transducer"
+import type * as SC from "../../Schedule"
+import type * as TR from "../Transducer"
 import { aggregateAsyncWithinEither_ } from "./aggregateAsyncWithinEither"
 import type { Stream } from "./definitions"
 import { filterMap_ } from "./filterMap"
@@ -12,8 +12,8 @@ import { filterMap_ } from "./filterMap"
  * Uses `aggregateAsyncWithinEither` but only returns the `Right` results.
  */
 export function aggregateAsyncWithin<O, R1, E1, P>(
-  transducer: Transducer<R1, E1, O, P>,
-  schedule: Schedule<R1, Array<P>, any>
+  transducer: TR.Transducer<R1, E1, O, P>,
+  schedule: SC.Schedule<R1, A.Array<P>, any>
 ) {
   return <R, E>(self: Stream<R, E, O>) =>
     aggregateAsyncWithin_(self, transducer, schedule)
@@ -24,9 +24,9 @@ export function aggregateAsyncWithin<O, R1, E1, P>(
  */
 export function aggregateAsyncWithin_<R, E, O, R1, E1, P>(
   self: Stream<R, E, O>,
-  transducer: Transducer<R1, E1, O, P>,
-  schedule: Schedule<R1, Array<P>, any>
-): Stream<R & R1 & HasClock, E | E1, P> {
+  transducer: TR.Transducer<R1, E1, O, P>,
+  schedule: SC.Schedule<R1, A.Array<P>, any>
+): Stream<R & R1 & CL.HasClock, E | E1, P> {
   return filterMap_(
     aggregateAsyncWithinEither_(self, transducer, schedule),
     E.fold(() => O.none, O.some)

@@ -1,13 +1,12 @@
-import type * as Array from "../../Array"
+import type * as A from "../../Array"
 import * as C from "../../Cause/core"
 import * as Exit from "../../Exit/api"
 import { pipe } from "../../Function"
-import type { Finalizer, ReleaseMap } from "../../Managed/ReleaseMap"
-import { makeReleaseMap, noopFinalizer, releaseAll } from "../../Managed/ReleaseMap"
-import * as Option from "../../Option"
-import * as Ref from "../../Ref"
+import * as RM from "../../Managed/ReleaseMap"
+import * as O from "../../Option"
 import * as T from "../_internal/effect"
 import type * as M from "../_internal/managed"
+import * as Ref from "../_internal/ref"
 import * as Pull from "../Pull"
 
 export const StreamURI = "@matechs/core/Eff/StreamURI"
@@ -53,7 +52,7 @@ export class Stream<R, E, A> {
   readonly [T._R]: (_: R) => void
 
   constructor(
-    readonly proc: M.Managed<R, never, T.Effect<R, Option.Option<E>, Array.Array<A>>>
+    readonly proc: M.Managed<R, never, T.Effect<R, O.Option<E>, A.Array<A>>>
   ) {}
 }
 
@@ -75,10 +74,10 @@ export const DefaultChunkSize = 4096
 export class Chain<R_, E_, O, O2> {
   constructor(
     readonly f0: (a: O) => Stream<R_, E_, O2>,
-    readonly outerStream: T.Effect<R_, Option.Option<E_>, Array.Array<O>>,
-    readonly currOuterChunk: Ref.Ref<[Array.Array<O>, number]>,
-    readonly currInnerStream: Ref.Ref<T.Effect<R_, Option.Option<E_>, Array.Array<O2>>>,
-    readonly innerFinalizer: Ref.Ref<Finalizer>
+    readonly outerStream: T.Effect<R_, O.Option<E_>, A.Array<O>>,
+    readonly currOuterChunk: Ref.Ref<[A.Array<O>, number]>,
+    readonly currInnerStream: Ref.Ref<T.Effect<R_, O.Option<E_>, A.Array<O2>>>,
+    readonly innerFinalizer: Ref.Ref<RM.Finalizer>
   ) {
     this.apply = this.apply.bind(this)
     this.closeInner = this.closeInner.bind(this)
@@ -89,14 +88,14 @@ export class Chain<R_, E_, O, O2> {
   closeInner() {
     return pipe(
       this.innerFinalizer,
-      Ref.getAndSet(noopFinalizer),
+      Ref.getAndSet(RM.noopFinalizer),
       T.chain((f) => f(Exit.unit))
     )
   }
 
   pullNonEmpty<R, E, O>(
-    pull: T.Effect<R, Option.Option<E>, Array.Array<O>>
-  ): T.Effect<R, Option.Option<E>, Array.Array<O>> {
+    pull: T.Effect<R, O.Option<E>, A.Array<O>>
+  ): T.Effect<R, O.Option<E>, A.Array<O>> {
     return pipe(
       pull,
       T.chain((os) => (os.length > 0 ? T.succeed(os) : this.pullNonEmpty(pull)))
@@ -107,8 +106,8 @@ export class Chain<R_, E_, O, O2> {
     return pipe(
       this.currOuterChunk,
       Ref.modify(([chunk, nextIdx]): [
-        T.Effect<R_, Option.Option<E_>, O>,
-        [Array.Array<O>, number]
+        T.Effect<R_, O.Option<E_>, O>,
+        [A.Array<O>, number]
       ] => {
         if (nextIdx < chunk.length) {
           return [T.succeed(chunk[nextIdx]), [chunk, nextIdx + 1]]
@@ -128,19 +127,19 @@ export class Chain<R_, E_, O, O2> {
         T.uninterruptibleMask(({ restore }) =>
           pipe(
             T.do,
-            T.bind("releaseMap", () => makeReleaseMap),
+            T.bind("releaseMap", () => RM.makeReleaseMap),
             T.bind("pull", ({ releaseMap }) =>
               restore(
                 pipe(
                   this.f0(o).proc.effect,
-                  T.provideSome((_: R_) => [_, releaseMap] as [R_, ReleaseMap]),
+                  T.provideSome((_: R_) => [_, releaseMap] as [R_, RM.ReleaseMap]),
                   T.map(([_, x]) => x)
                 )
               )
             ),
             T.tap(({ pull }) => this.currInnerStream.set(pull)),
             T.tap(({ releaseMap }) =>
-              this.innerFinalizer.set((e) => releaseAll(e, T.sequential)(releaseMap))
+              this.innerFinalizer.set((e) => RM.releaseAll(e, T.sequential)(releaseMap))
             ),
             T.asUnit
           )
@@ -149,7 +148,7 @@ export class Chain<R_, E_, O, O2> {
     )
   }
 
-  apply(): T.Effect<R_, Option.Option<E_>, Array.Array<O2>> {
+  apply(): T.Effect<R_, O.Option<E_>, A.Array<O2>> {
     return pipe(
       this.currInnerStream.get,
       T.flatten,
@@ -157,7 +156,7 @@ export class Chain<R_, E_, O, O2> {
         pipe(
           c,
           C.sequenceCauseOption,
-          Option.fold(
+          O.fold(
             // The additional switch is needed to eagerly run the finalizer
             // *before* pulling another element from the outer stream.
             () =>
