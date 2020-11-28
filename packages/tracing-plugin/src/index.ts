@@ -63,6 +63,13 @@ export default function tracer(
         const traceVar = factory.createUniqueName("$trace")
         const tracing = factory.createUniqueName("tracing")
 
+        const isModule =
+          sourceFile.statements.find((s) => /(import|export)/.test(s.getText())) != null
+
+        if (!isModule) {
+          return sourceFile
+        }
+
         const regions = sourceFullText
           .split("\n")
           .map((line, i) => {
