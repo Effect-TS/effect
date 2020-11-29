@@ -1004,10 +1004,8 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                     break
                   }
 
-                  case "CheckExecutionTraces": {
-                    const x = current
-                    this.addTrace(x.f)
-                    current = x.f(this.executionTraces.list)[T._I]
+                  case "Trace": {
+                    current = this.nextInstr(this.captureTrace(undefined))
                     break
                   }
 

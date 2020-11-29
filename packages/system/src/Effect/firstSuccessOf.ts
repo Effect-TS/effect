@@ -2,6 +2,7 @@ import * as A from "../Array"
 import * as NEA from "../NonEmptyArray"
 import type { Effect } from "./effect"
 import { orElse_ } from "./orElse"
+import { refailWithTrace } from "./refailWithTrace"
 
 /**
  * Returns an effect that yields the value of the first
@@ -11,5 +12,5 @@ export function firstSuccessOf<R, E, A>(effects: NEA.NonEmptyArray<Effect<R, E, 
   const first = NEA.head(effects)
   const rest = NEA.tail(effects)
 
-  return A.reduce_(rest, first, (b, a) => orElse_(b, () => a))
+  return refailWithTrace(A.reduce_(rest, first, (b, a) => orElse_(b, () => a)))
 }
