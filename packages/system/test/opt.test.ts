@@ -1,9 +1,15 @@
 import * as C from "../src/Cause"
 import * as T from "../src/Effect"
 import * as Ex from "../src/Exit"
+import type { Trace } from "../src/Fiber"
 import { prettyTrace } from "../src/Fiber"
 import { prettyTraceNode } from "../src/Fiber/tracingNode"
 import { pipe } from "../src/Function"
+
+const customNodeRender = (_: Trace): string =>
+  prettyTraceNode(_, (_, path) => {
+    return path.replace("system/build", "system")
+  })
 
 describe("Tracing & Optimizations", () => {
   it("should collect traces", async () => {
@@ -51,12 +57,6 @@ describe("Tracing & Optimizations", () => {
 
     Ex.assertsFailure(res)
 
-    console.log(
-      C.pretty(res.cause, (_) =>
-        prettyTraceNode(_, (_, path) => {
-          return path.replace("system/build", "system")
-        })
-      )
-    )
+    console.log(C.pretty(res.cause, customNodeRender))
   })
 })
