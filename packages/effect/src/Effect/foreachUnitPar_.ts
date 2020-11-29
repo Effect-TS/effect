@@ -20,6 +20,7 @@ import { foreach_ } from "./foreach"
 import { interruptible } from "./interruptible"
 import { map_ } from "./map"
 import { onInterruptExtended_ } from "./onInterrupt_"
+import { refailWithTrace } from "./refailWithTrace"
 import { tap } from "./tap"
 import { tapCause } from "./tapCause"
 import { toManaged } from "./toManaged"
@@ -122,14 +123,16 @@ export function foreachUnitPar_<R, E, A>(
     tap((s) =>
       managedUse_(s.interruptor, () =>
         onInterruptExtended_(
-          whenM(
-            map_(
-              foreach_(s.fibers, (f) => f.await),
-              (fs) => A.findFirst_(fs, (e) => e._tag === "Failure")._tag === "Some"
-            )
-          )(
-            chain_(promiseFailure<void>(undefined)(s.result), () =>
-              chain_(s.causes.get, (x) => halt(x))
+          refailWithTrace(
+            whenM(
+              map_(
+                foreach_(s.fibers, (f) => f.await),
+                (fs) => A.findFirst_(fs, (e) => e._tag === "Failure")._tag === "Some"
+              )
+            )(
+              chain_(promiseFailure<void>(undefined)(s.result), () =>
+                chain_(s.causes.get, (x) => halt(x))
+              )
             )
           ),
           () =>

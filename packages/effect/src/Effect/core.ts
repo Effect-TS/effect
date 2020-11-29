@@ -5,13 +5,11 @@ import { keepDefects } from "../Cause/core"
 import * as Exit from "../Exit/core"
 import type * as Fiber from "../Fiber"
 import { identity } from "../Function"
-import type { List } from "../List"
 import * as O from "../Option"
 import type { Supervisor } from "../Supervisor"
 import type { Effect, IO, RIO, UIO } from "./effect"
 import type { FailureReporter } from "./primitives"
 import {
-  ICheckExecutionTraces,
   ICheckInterrupt,
   ICheckTracingStatus,
   IDescriptor,
@@ -29,6 +27,7 @@ import {
   ISupervise,
   ISuspend,
   ISuspendPartial,
+  ITrace,
   ITracingStatus,
   IYield
 } from "./primitives"
@@ -94,14 +93,9 @@ export function checkInterruptible<R, E, A>(
 }
 
 /**
- * Checks the execution traces in the current fiber, and produces the
- * effect returned by the specified callback.
+ * Capture trace at the current point
  */
-export function checkExecutionTraces<R, E, A>(
-  f: (_: List<Fiber.TraceElement>) => Effect<R, E, A>
-): Effect<R, E, A> {
-  return new ICheckExecutionTraces(f)
-}
+export const trace: UIO<Fiber.Trace> = new ITrace()
 
 /**
  * Checks the tracing status, and produces the effect returned by the
