@@ -18,7 +18,7 @@ import { unwrapManaged } from "./unwrapManaged"
 /**
  * More powerful version of `Stream.groupByKey`
  */
-export function groupBy_<R, R1, E, E1, O, K, V>(
+export function groupBy<R, R1, E, E1, O, K, V>(
   self: Stream<R, E, O>,
   f: (o: O) => T.Effect<R1, E1, readonly [K, V]>,
   buffer = 16
@@ -91,18 +91,4 @@ export function groupBy_<R, R1, E, E1, O, K, V>(
   )
 
   return GB.make(qstream, buffer)
-}
-
-/**
- * More powerful version of `Stream.groupByKey`
- */
-export function groupBy<R1, E1, O, K, V>(
-  f: (o: O) => T.Effect<R1, E1, readonly [K, V]>,
-  buffer = 16
-) {
-  return <E, A>(g: (k: K, stream: Stream<unknown, E | E1, V>) => Stream<R1, E1, A>) => <
-    R
-  >(
-    self: Stream<R, E, O>
-  ) => groupBy_(self, f, buffer)(g)
 }
