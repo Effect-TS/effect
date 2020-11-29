@@ -15,4 +15,5 @@ export * from "./id"
 export * from "./state"
 export * from "./status"
 export * from "./tracing"
+export * from "./tracingNode"
 // codegen:end
