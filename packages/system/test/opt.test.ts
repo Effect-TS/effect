@@ -7,14 +7,24 @@ describe("Tracing & Optimizations", () => {
   it("should collect traces", async () => {
     const res = await pipe(
       T.succeed(1),
-      T.chain((n) => T.succeed(n + 1)),
-      T.chain((n) => T.succeed(n + 1)),
-      T.chain((n) => T.succeed(n + 1)),
-      T.tap((n) => T.fail(`(${n})`)),
+      T.chain((n) => {
+        return T.succeed(n + 1)
+      }),
+      T.chain((n) => {
+        return T.succeed(n + 1)
+      }),
+      T.chain((n) => {
+        return T.succeed(n + 1)
+      }),
+      T.tap((n) => {
+        return T.fail(`(${n})`)
+      }),
       T.catchAll(function handle(n) {
         return T.succeed(n)
       }),
-      T.chain((n) => T.fail(`error: ${n}`)),
+      T.chain((n) => {
+        return T.fail(`error: ${n}`)
+      }),
       T.chain(() => T.succeed(0)),
       T.result,
       T.runPromise
