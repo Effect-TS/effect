@@ -21,7 +21,7 @@ export function combine<R1, E1, O2>(that: Stream<R1, E1, O2>) {
       s: S,
       a: T.Effect<R, O.Option<E>, O>,
       b: T.Effect<R1, O.Option<E1>, O2>
-    ) => T.Effect<R1, never, Ex.Exit<O.Option<E | E1>, readonly [O3, S]>>
+    ) => T.Effect<R & R1, never, Ex.Exit<O.Option<E | E1>, readonly [O3, S]>>
   ) => (self: Stream<R, E, O>): Stream<R1 & R, E | E1, O3> =>
     new Stream(
       pipe(

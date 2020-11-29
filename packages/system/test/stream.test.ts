@@ -39,6 +39,30 @@ describe("Stream", () => {
     ])
   })
 
+  it("interleave", async () => {
+    expect(
+      await pipe(
+        S.fromChunk([1, 1, 1, 1, 1, 1, 1, 1, 1, 1]),
+        S.interleave(S.fromChunk([2, 2, 2, 2, 2, 2, 2, 2, 2, 2])),
+        S.take(5),
+        S.runCollect,
+        T.runPromise
+      )
+    ).toEqual([1, 2, 1, 2, 1])
+  })
+
+  it("intersperse", async () => {
+    expect(
+      await pipe(
+        S.fromChunk([1, 1, 1, 1, 1, 1, 1, 1, 1, 1]),
+        S.intersperse(2),
+        S.take(5),
+        S.runCollect,
+        T.runPromise
+      )
+    ).toEqual([1, 2, 1, 2, 1])
+  })
+
   describe("BufferedPull", () => {
     it("pullArray", async () => {
       const program = pipe(
