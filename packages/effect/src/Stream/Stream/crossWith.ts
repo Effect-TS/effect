@@ -1,5 +1,5 @@
-import type { Stream } from "."
 import { chain_ } from "./chain"
+import type { Stream } from "./definitions"
 import { map_ } from "./map"
 
 /**

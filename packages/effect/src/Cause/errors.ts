@@ -1,4 +1,3 @@
-import { prettyTrace } from "../Fiber"
 import type { Cause } from "./cause"
 import { pretty } from "./pretty"
 
@@ -13,7 +12,7 @@ export const FiberFailureSymbol: unique symbol = Symbol.for(
 export class FiberFailure<E> extends Error {
   readonly [FiberFailureSymbol] = "FiberFailure"
 
-  readonly pretty = pretty(this.cause, prettyTrace)
+  readonly pretty = pretty(this.cause)
 
   constructor(readonly cause: Cause<E>) {
     super()
