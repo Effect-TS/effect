@@ -100,7 +100,7 @@ export function groupBy<R1, E1, O, K, V>(
   f: (o: O) => T.Effect<R1, E1, readonly [K, V]>,
   buffer = 16
 ) {
-  return <E, A>(g: (k: K, stream: Stream<unknown, E, V>) => Stream<R1, E | E1, A>) => <
+  return <E, A>(g: (k: K, stream: Stream<unknown, E | E1, V>) => Stream<R1, E1, A>) => <
     R
   >(
     self: Stream<R, E, O>

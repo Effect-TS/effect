@@ -21,7 +21,7 @@ export interface GroupBy<R, E, K, V> {
   readonly grouped: Stream<R, E, readonly [K, Q.Dequeue<Ex.Exit<O.Option<E>, V>>]>
   readonly buffer: number
   <A, R1, E1>(
-    f: (k: K, stream: Stream<unknown, E, V>) => Stream<R1, E | E1, A>
+    f: (k: K, stream: Stream<unknown, E | E1, V>) => Stream<R1, E1, A>
   ): Stream<R & R1, E | E1, A>
 }
 
