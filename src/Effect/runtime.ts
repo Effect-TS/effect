@@ -73,7 +73,7 @@ export const prettyReporter: FailureReporter = (e) => {
   console.error(pretty(e))
 }
 
-const defaultPlatform = new Platform(10, 10, true, true, true, true, 10, 10, 10)
+const defaultPlatform = new Platform(100, 100, true, true, true, true, 100, 100, 100)
 
 export class CustomRuntime<R> {
   constructor(readonly env: R, readonly platform: Platform) {
