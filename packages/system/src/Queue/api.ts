@@ -478,6 +478,23 @@ export const filterInput_ = <RA, RB, EA, EB, B, A, A1 extends A>(
 ): XQueue<RA, RB, EA, EB, A1, B> => filterInputM_(self, (a) => T.succeed(f(a)))
 
 /**
+ * Transforms elements dequeued from this queue with a function.
+ */
+export const map_ = <RA, RB, EA, EB, A, B, C>(
+  self: XQueue<RA, RB, EA, EB, A, B>,
+  f: (b: B) => C
+): XQueue<RA, RB, EA, EB, A, C> => {
+  return mapM_(self, (_) => T.succeed(f(_)))
+}
+
+/**
+ * Transforms elements dequeued from this queue with a function.
+ */
+export const map = <RA, RB, EA, EB, A, B, C>(f: (b: B) => C) => {
+  return (self: XQueue<RA, RB, EA, EB, A, B>) => map_(self, f)
+}
+
+/**
  * Transforms elements dequeued from this queue with an effectful function.
  */
 export const mapM = <B, R2, E2, C>(f: (b: B) => T.Effect<R2, E2, C>) => <

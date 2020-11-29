@@ -53,7 +53,7 @@ export { optional } from "../../Effect/optional"
 export { orDie } from "../../Effect/orDie"
 export { orElse_, orElse } from "../../Effect/orElse"
 export { provideSome, provideSome_ } from "../../Effect/provideSome"
-export { raceFirst, raceFirst_ } from "../../Effect/race"
+export { raceFirst, raceFirst_, race, race_ } from "../../Effect/race"
 export { reduce_, reduce } from "../../Effect/reduce"
 export {
   repeatWhileM_,
