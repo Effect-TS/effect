@@ -9,10 +9,10 @@ import { chain, foldCauseM, fork, result } from "./core"
 import * as D from "./do"
 import { done } from "./done"
 import type { Effect } from "./effect"
-import { foreach } from "./foreach"
-import { foreachUnit } from "./foreachUnit"
+import { foreach, foreachUnit } from "./foreach"
 import { forever } from "./forever"
 import { map } from "./map"
+import { refailWithTrace } from "./refailWithTrace"
 import { tap } from "./tap"
 
 /**
@@ -81,6 +81,7 @@ export function foreachParN_(n: number) {
             map(({ res }) => res)
           ),
         (q) => q.shutdown
-      )
+      ),
+      refailWithTrace
     )
 }
