@@ -229,6 +229,10 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     this.stack = new Stack(k, this.stack)
   }
 
+  popStackTrace() {
+    this.stackTraces.pop()
+  }
+
   popContinuation() {
     const current = this.stack?.value
     this.stack = this.stack?.previous
@@ -289,13 +293,13 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
           if (!this.shouldInterrupt) {
             // Push error handler back onto the stack and halt iteration:
             if (this.platform.traceStack && this.inTracingRegion) {
-              this.stackTraces.pop()
+              this.popStackTrace()
             }
             this.pushContinuation(new HandlerFrame(frame.failure))
             unwinding = false
           } else {
             if (this.platform.traceStack && this.inTracingRegion) {
-              this.stackTraces.pop()
+              this.popStackTrace()
             }
             discardedFolds = true
           }
@@ -303,7 +307,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
         }
         default: {
           if (this.platform.traceStack && this.inTracingRegion) {
-            this.stackTraces.pop()
+            this.popStackTrace()
           }
         }
       }
@@ -344,7 +348,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
         k._tag !== "InterruptExit" &&
         k._tag !== "TracingExit"
       ) {
-        this.stackTraces.pop()
+        this.popStackTrace()
       }
 
       return k.apply(value)[T._I]
@@ -949,7 +953,6 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                           fastPathFlatMapContinuationTrace
                         )
                         try {
-                          current = k(nested.effect())[T._I]
                           if (this.platform.traceStack && kTrace != null) {
                             fastPathFlatMapContinuationTrace.set(undefined)
                           }
@@ -960,6 +963,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                           ) {
                             this.addTraceValue(kTrace)
                           }
+                          current = k(nested.effect())[T._I]
                         } catch (e) {
                           if (this.platform.traceExecution && this.inTracingRegion) {
                             this.addTrace(nested.onThrow)
@@ -1032,10 +1036,12 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                     if (this.platform.traceEffects && this.inTracingRegion) {
                       this.addTrace(current.fill)
                     }
-                    const discardedFolds = this.unwindStack()
+
                     const fast = fastPathFlatMapContinuationTrace.get
                     fastPathFlatMapContinuationTrace.set(undefined)
                     const fullCause = current.fill(() => this.captureTrace(fast))
+
+                    const discardedFolds = this.unwindStack()
 
                     const maybeRedactedCause = discardedFolds
                       ? // We threw away some error handlers while unwinding the stack because

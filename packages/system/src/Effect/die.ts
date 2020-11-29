@@ -11,7 +11,5 @@ import { haltWith } from "./core"
  * @tracecall die
  */
 export function die(e: unknown) {
-  // tracing: off
   return haltWith(traceFrom("die", (trace) => C.traced(C.die(e), trace())))
-  // tracing: on
 }

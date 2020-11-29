@@ -10,7 +10,5 @@ import { haltWith } from "./core"
  * @tracecall fail
  */
 export function fail<E>(e: E) {
-  // tracing: off
   return haltWith(traceAsFrom("fail", fail, (trace) => C.traced(C.fail(e), trace())))
-  // tracing: on
 }
