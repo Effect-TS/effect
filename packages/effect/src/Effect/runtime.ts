@@ -13,6 +13,7 @@ import type { Exit } from "../Exit/exit"
 import { interruptAllAs } from "../Fiber/api"
 // fiber
 import { _tracing, FiberContext } from "../Fiber/context"
+import type { Runtime as FiberRuntime } from "../Fiber/core"
 import { interruptible } from "../Fiber/core"
 import type { FiberID } from "../Fiber/id"
 import { newFiberId } from "../Fiber/id"
@@ -108,6 +109,7 @@ export class CustomRuntime<R> {
     this.runPromise = this.runPromise.bind(this)
     this.runPromiseExit = this.runPromiseExit.bind(this)
     this.traceRenderer = this.traceRenderer.bind(this)
+    this.runFiber = this.runFiber.bind(this)
   }
 
   fiberContext<E, A>() {
@@ -129,6 +131,12 @@ export class CustomRuntime<R> {
       none
     )
 
+    return context
+  }
+
+  runFiber<E, A>(self: Effect<R, E, A>): FiberRuntime<E, A> {
+    const context = this.fiberContext<E, A>()
+    context.evaluateLater(self[_I])
     return context
   }
 
@@ -528,6 +536,7 @@ export const {
   run,
   runAsap,
   runCancel,
+  runFiber,
   runMain,
   runPromise,
   runPromiseExit

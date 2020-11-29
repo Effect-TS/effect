@@ -2,6 +2,7 @@ import { defaultRuntime, QIO } from "@qio/core"
 
 import * as T from "../src/Effect"
 import { makeCustomRuntime } from "../src/Effect"
+import * as F from "../src/Fiber"
 
 function fibEffect(n: number): T.UIO<number> {
   if (n < 2) {
@@ -70,6 +71,8 @@ describe("Bench", () => {
   })
   describe("With Tracing", () => {
     it("effect", () => T.runPromise(T.repeatN(1000)(fibEffect(10))))
+    it("effect-fork-in", () =>
+      T.runPromise(F.join(runtime.runFiber(T.repeatN(1000)(fibEffect(10))))))
     it("effect-gen", () =>
       T.runPromise(
         T.gen(function* (_) {
