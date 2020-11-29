@@ -11,7 +11,7 @@
       {
         "transform": "../tracing-plugin/src/index.ts",
         "moduleMap": {
-          "^src/(.*)": "(@effect-ts/morphic): $1"
+          "^src/(.*)": "(@effect-ts/morphic): build/_src/$1"
         }
       }
     ]

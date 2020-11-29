@@ -45,7 +45,5 @@ export const newFiberId = () =>
  * Format a fiber id
  */
 export function prettyFiberId(_: FiberID) {
-  return `(sequence: ${_.seqNumber}, start_time: ${new Date(
-    _.startTimeMillis
-  ).toISOString()})`
+  return `#${_.seqNumber} (started at: ${new Date(_.startTimeMillis).toISOString()})`
 }

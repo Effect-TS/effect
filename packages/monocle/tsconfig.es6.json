@@ -11,7 +11,7 @@
       {
         "transform": "../tracing-plugin/src/index.ts",
         "moduleMap": {
-          "^src/(.*)": "(@effect-ts/monocle): $1"
+          "^src/(.*)": "(@effect-ts/monocle): build/_src/$1"
         }
       }
     ]
