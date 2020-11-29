@@ -1,7 +1,7 @@
 /**
  * tracing: off
  */
-import type { Renderer } from "../Cause"
+import type { Cause, Renderer } from "../Cause"
 import * as L from "../List"
 import * as O from "../Option"
 import * as S from "../Sync"
@@ -84,7 +84,9 @@ export class Platform {
     readonly ancestorExecutionTraceLength: number,
     readonly ancestorStackTraceLength: number,
     readonly ancestryLength: number,
-    readonly renderer: Renderer
+    readonly renderer: Renderer,
+    readonly reportFailure: (e: Cause<unknown>) => void,
+    readonly maxOp: number
   ) {}
 }
 

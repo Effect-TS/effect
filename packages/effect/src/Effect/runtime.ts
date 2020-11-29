@@ -38,11 +38,11 @@ const empty = () => {
 
 export type DefaultEnv = HasClock & HasRandom
 
-export function defaultEnv() {
+export function defaultEnv(): DefaultEnv {
   return {
     [HasClock.key]: new LiveClock(),
     [HasRandom.key]: defaultRandom
-  }
+  } as any
 }
 
 export function defaultTeardown(
@@ -84,7 +84,9 @@ const defaultPlatform = new Platform(
   100,
   100,
   100,
-  prettyTrace
+  prettyTrace,
+  constVoid,
+  10_000
 )
 
 export class CustomRuntime<R> {
@@ -105,9 +107,10 @@ export class CustomRuntime<R> {
     this.runMain = this.runMain.bind(this)
     this.runPromise = this.runPromise.bind(this)
     this.runPromiseExit = this.runPromiseExit.bind(this)
+    this.traceRenderer = this.traceRenderer.bind(this)
   }
 
-  fiberContext<E, A>(reporter: FailureReporter = constVoid) {
+  fiberContext<E, A>() {
     const initialIS = interruptible
     const fiberId = newFiberId()
     const scope = Scope.unsafeMakeScope<Exit<E, A>>()
@@ -120,8 +123,8 @@ export class CustomRuntime<R> {
       new Map(),
       supervisor,
       scope,
-      10_000,
-      reporter,
+      this.platform.maxOp,
+      this.platform.reportFailure,
       this.platform,
       none
     )
@@ -277,7 +280,9 @@ export class CustomRuntime<R> {
         this.platform.ancestorExecutionTraceLength,
         this.platform.ancestorStackTraceLength,
         this.platform.ancestryLength,
-        renderer
+        renderer,
+        this.platform.reportFailure,
+        this.platform.maxOp
       )
     )
   }
@@ -295,7 +300,9 @@ export class CustomRuntime<R> {
         this.platform.ancestorExecutionTraceLength,
         this.platform.ancestorStackTraceLength,
         this.platform.ancestryLength,
-        this.platform.renderer
+        this.platform.renderer,
+        this.platform.reportFailure,
+        this.platform.maxOp
       )
     )
   }
@@ -313,7 +320,9 @@ export class CustomRuntime<R> {
         this.platform.ancestorExecutionTraceLength,
         this.platform.ancestorStackTraceLength,
         this.platform.ancestryLength,
-        this.platform.renderer
+        this.platform.renderer,
+        this.platform.reportFailure,
+        this.platform.maxOp
       )
     )
   }
@@ -331,7 +340,9 @@ export class CustomRuntime<R> {
         this.platform.ancestorExecutionTraceLength,
         this.platform.ancestorStackTraceLength,
         this.platform.ancestryLength,
-        this.platform.renderer
+        this.platform.renderer,
+        this.platform.reportFailure,
+        this.platform.maxOp
       )
     )
   }
@@ -349,7 +360,9 @@ export class CustomRuntime<R> {
         this.platform.ancestorExecutionTraceLength,
         this.platform.ancestorStackTraceLength,
         this.platform.ancestryLength,
-        this.platform.renderer
+        this.platform.renderer,
+        this.platform.reportFailure,
+        this.platform.maxOp
       )
     )
   }
@@ -367,7 +380,9 @@ export class CustomRuntime<R> {
         this.platform.ancestorExecutionTraceLength,
         this.platform.ancestorStackTraceLength,
         this.platform.ancestryLength,
-        this.platform.renderer
+        this.platform.renderer,
+        this.platform.reportFailure,
+        this.platform.maxOp
       )
     )
   }
@@ -385,7 +400,9 @@ export class CustomRuntime<R> {
         this.platform.ancestorExecutionTraceLength,
         this.platform.ancestorStackTraceLength,
         this.platform.ancestryLength,
-        this.platform.renderer
+        this.platform.renderer,
+        this.platform.reportFailure,
+        this.platform.maxOp
       )
     )
   }
@@ -403,7 +420,9 @@ export class CustomRuntime<R> {
         n,
         this.platform.ancestorStackTraceLength,
         this.platform.ancestryLength,
-        this.platform.renderer
+        this.platform.renderer,
+        this.platform.reportFailure,
+        this.platform.maxOp
       )
     )
   }
@@ -421,7 +440,9 @@ export class CustomRuntime<R> {
         this.platform.ancestorExecutionTraceLength,
         n,
         this.platform.ancestryLength,
-        this.platform.renderer
+        this.platform.renderer,
+        this.platform.reportFailure,
+        this.platform.maxOp
       )
     )
   }
@@ -439,7 +460,49 @@ export class CustomRuntime<R> {
         this.platform.ancestorExecutionTraceLength,
         this.platform.ancestorStackTraceLength,
         n,
-        this.platform.renderer
+        this.platform.renderer,
+        this.platform.reportFailure,
+        this.platform.maxOp
+      )
+    )
+  }
+
+  reportFailure(reportFailure: (_: Cause.Cause<unknown>) => void) {
+    return new CustomRuntime(
+      this.env,
+      new Platform(
+        this.platform.executionTraceLength,
+        this.platform.stackTraceLength,
+        this.platform.traceExecution,
+        this.platform.traceStack,
+        this.platform.traceEffects,
+        this.platform.initialTracingStatus,
+        this.platform.ancestorExecutionTraceLength,
+        this.platform.ancestorStackTraceLength,
+        this.platform.ancestryLength,
+        this.platform.renderer,
+        reportFailure,
+        this.platform.maxOp
+      )
+    )
+  }
+
+  maxOp(maxOp: number) {
+    return new CustomRuntime(
+      this.env,
+      new Platform(
+        this.platform.executionTraceLength,
+        this.platform.stackTraceLength,
+        this.platform.traceExecution,
+        this.platform.traceStack,
+        this.platform.traceEffects,
+        this.platform.initialTracingStatus,
+        this.platform.ancestorExecutionTraceLength,
+        this.platform.ancestorStackTraceLength,
+        this.platform.ancestryLength,
+        this.platform.renderer,
+        this.platform.reportFailure,
+        maxOp
       )
     )
   }
