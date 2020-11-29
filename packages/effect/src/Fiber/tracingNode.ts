@@ -8,8 +8,7 @@ import * as A from "../Array"
 import * as L from "../List"
 import * as S from "../Sync"
 import { prettyFiberId } from "./id"
-import type { Trace } from "./tracing"
-import { prettyLocation } from "./tracing"
+import type { Trace, TraceElement } from "./tracing"
 
 export const nodeTracer = (trace: Trace) => prettyTraceNode(trace, (_, __) => __)
 
@@ -18,6 +17,31 @@ export function prettyTraceNode(
   adapt: (mod: string, path: string) => string
 ): string {
   return S.run(prettyTraceNodeSafe(trace, adapt))
+}
+
+export function prettyLocationNode(
+  traceElement: TraceElement,
+  adapt: (mod: string, path: string) => string
+) {
+  try {
+    if (traceElement._tag === "SourceLocation") {
+      const isModule = traceElement.location.match(/\((.*)\): (.*):(\d+):(\d+):(.*)/)
+
+      if (isModule) {
+        const [, mod, file, line_, col, name] = isModule
+        const line = parseInt(line_)
+        const modulePath = require.resolve(`${mod}/package.json`)
+        const realPath = adapt(mod, path.join(modulePath, "..", file))
+
+        return `${realPath}:${line}:${col}:${name}`
+      }
+    }
+  } catch {
+    //
+  }
+  return traceElement._tag === "NoLocation"
+    ? "No Location Present"
+    : `${traceElement.location}`
 }
 
 export function prettyTraceNodeSafe(
@@ -32,7 +56,9 @@ export function prettyTraceNodeSafe(
       ? [
           `Fiber: ${prettyFiberId(trace.fiberId)} Execution trace:`,
           "",
-          ...L.toArray(L.map_(trace.executionTrace, (a) => `  ${prettyLocation(a)}`))
+          ...L.toArray(
+            L.map_(trace.executionTrace, (a) => `  ${prettyLocationNode(a, adapt)}`)
+          )
         ]
       : [`Fiber: ${prettyFiberId(trace.fiberId)} Execution trace: <empty trace>`]
 
@@ -43,7 +69,7 @@ export function prettyTraceNodeSafe(
           ...L.toArray(
             L.map_(
               trace.stackTrace,
-              (e) => `  a future continuation at ${prettyLocation(e)}`
+              (e) => `  a future continuation at ${prettyLocationNode(e, adapt)}`
             )
           )
         ]

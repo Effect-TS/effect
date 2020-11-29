@@ -2,7 +2,6 @@ import * as C from "../src/Cause"
 import * as T from "../src/Effect"
 import * as Ex from "../src/Exit"
 import type { Trace } from "../src/Fiber"
-import { prettyTrace } from "../src/Fiber"
 import { prettyTraceNode } from "../src/Fiber/tracingNode"
 import { pipe } from "../src/Function"
 
@@ -40,7 +39,7 @@ describe("Tracing & Optimizations", () => {
 
     Ex.assertsFailure(res)
 
-    console.log(C.pretty(res.cause, prettyTrace))
+    console.log(C.pretty(res.cause, customNodeRender))
 
     expect(C.untraced(res.cause)).toEqual(C.fail("error: (4)"))
   })
