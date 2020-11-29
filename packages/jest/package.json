@@ -1,6 +1,6 @@
 {
   "name": "@effect-ts/jest",
-  "version": "0.2.76",
+  "version": "0.2.77",
   "license": "MIT",
   "homepage": "https://github.com/Matechs-Garage/matechs-effect",
   "private": false,
@@ -24,7 +24,7 @@
   "repository": "https://github.com/Matechs-Garage/matechs-effect.git",
   "sideEffects": false,
   "dependencies": {
-    "@effect-ts/core": "^0.8.76"
+    "@effect-ts/core": "^0.8.77"
   },
   "peerDependencies": {
     "jest": "^26.4.2"
