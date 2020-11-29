@@ -1,6 +1,7 @@
 import * as A from "../Array"
 import type { FiberID } from "../Fiber/id"
 import type { Trace } from "../Fiber/tracing"
+import { prettyTrace } from "../Fiber/tracing"
 import { pipe } from "../Function"
 import * as O from "../Option"
 import * as S from "../Sync"
@@ -294,5 +295,5 @@ export function prettyM<E1>(cause: Cause<E1>, renderer: Renderer) {
 /**
  * Returns a `String` with the cause pretty-printed.
  */
-export const pretty = <E1>(cause: Cause<E1>, renderer: Renderer) =>
+export const pretty = <E1>(cause: Cause<E1>, renderer: Renderer = prettyTrace) =>
   S.run(prettyM(cause, renderer))
