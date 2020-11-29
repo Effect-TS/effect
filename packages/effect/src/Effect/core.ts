@@ -236,9 +236,7 @@ export function forkReport(reportFailure: FailureReporter) {
  * @tracecall halt
  */
 export function halt<E>(cause: Cause<E>): IO<E, never> {
-  // tracing: off
   return new IFail(traceFrom("halt", () => cause))
-  // tracing: on
 }
 
 /**
@@ -325,13 +323,11 @@ export function provideAll_<R, E, A>(
 export function result<R, E, A>(
   value: Effect<R, E, A>
 ): Effect<R, never, Exit.Exit<E, A>> {
-  // tracing: off
   return new IFold(
     value,
-    traceAs(result, (cause) => succeed(Exit.halt(cause))),
-    traceAs(result, (succ) => succeed(Exit.succeed(succ)))
+    (cause) => succeed(Exit.halt(cause)),
+    (succ) => succeed(Exit.succeed(succ))
   )
-  // tracing: on
 }
 
 /**
@@ -379,13 +375,11 @@ export function tryOrElse_<R, E, A, R2, E2, A2, R3, E3, A3>(
   that: () => Effect<R2, E2, A2>,
   success: (a: A) => Effect<R3, E3, A3>
 ): Effect<R & R2 & R3, E2 | E3, A2 | A3> {
-  // tracing: off
   return new IFold(
     self,
     traceAs(that, (cause) => O.fold_(keepDefects(cause), that, halt)),
     success
   )
-  // tracing: on
 }
 
 /**
@@ -404,9 +398,7 @@ export function tryOrElse<A, R2, E2, A2, R3, E3, A3>(
  * Returns the effect resulting from mapping the success of this effect to unit.
  */
 export const unit: UIO<void> = suspend(function unit() {
-  // tracing: off
   return succeed(undefined)
-  //tracing: on
 })
 
 /**
