@@ -1,6 +1,7 @@
 /**
  * tracing: off
  */
+import type { Renderer } from "../Cause"
 import * as L from "../List"
 import * as O from "../Option"
 import * as S from "../Sync"
@@ -82,21 +83,22 @@ export class Platform {
     readonly initialTracingStatus: boolean,
     readonly ancestorExecutionTraceLength: number,
     readonly ancestorStackTraceLength: number,
-    readonly ancestryLength: number
+    readonly ancestryLength: number,
+    readonly renderer: Renderer
   ) {}
 }
 
-export function prettyLocation(traceElement: TraceElement, pre: string) {
+export function prettyLocation(traceElement: TraceElement) {
   return traceElement._tag === "NoLocation"
     ? "No Location Present"
-    : `${pre}${traceElement.location}`
+    : `${traceElement.location}`
 }
 
-export function prettyTrace(trace: Trace, pre: string): string {
-  return S.run(prettyTraceSafe(trace, pre))
+export function prettyTrace(trace: Trace): string {
+  return S.run(prettyTraceSafe(trace))
 }
 
-export function prettyTraceSafe(trace: Trace, pre: string): S.UIO<string> {
+export function prettyTraceSafe(trace: Trace): S.UIO<string> {
   return S.gen(function* ($) {
     const execTrace = !L.isEmpty(trace.executionTrace)
     const stackTrace = !L.isEmpty(trace.stackTrace)
@@ -105,9 +107,7 @@ export function prettyTraceSafe(trace: Trace, pre: string): S.UIO<string> {
       ? [
           `Fiber: ${prettyFiberId(trace.fiberId)} Execution trace:`,
           "",
-          ...L.toArray(
-            L.map_(trace.executionTrace, (a) => `  ${prettyLocation(a, pre)}`)
-          )
+          ...L.toArray(L.map_(trace.executionTrace, (a) => `  ${prettyLocation(a)}`))
         ]
       : [`Fiber: ${prettyFiberId(trace.fiberId)} Execution trace: <empty trace>`]
 
@@ -118,7 +118,7 @@ export function prettyTraceSafe(trace: Trace, pre: string): S.UIO<string> {
           ...L.toArray(
             L.map_(
               trace.stackTrace,
-              (e) => `  a future continuation at ${prettyLocation(e, pre)}`
+              (e) => `  a future continuation at ${prettyLocation(e)}`
             )
           )
         ]
@@ -135,7 +135,7 @@ export function prettyTraceSafe(trace: Trace, pre: string): S.UIO<string> {
         ? [`Fiber: ${prettyFiberId(trace.fiberId)} was spawned by: <empty trace>`]
         : [
             `Fiber: ${prettyFiberId(trace.fiberId)} was spawned by:\n`,
-            yield* $(prettyTraceSafe(parent.value, pre))
+            yield* $(prettyTraceSafe(parent.value))
           ]
 
     return ["", ...stackPrint, "", ...execPrint, "", ...ancestry].join("\n")

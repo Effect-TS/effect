@@ -5,6 +5,7 @@
 // option
 // cause
 import * as Cause from "../Cause/core"
+import type { Renderer } from "../Cause/pretty"
 import { pretty } from "../Cause/pretty"
 // exit
 import { HasClock, LiveClock } from "../Clock"
@@ -16,7 +17,7 @@ import { interruptible } from "../Fiber/core"
 import type { FiberID } from "../Fiber/id"
 import { newFiberId } from "../Fiber/id"
 import type { Callback } from "../Fiber/state"
-import { Platform } from "../Fiber/tracing"
+import { Platform, prettyTrace } from "../Fiber/tracing"
 import { constVoid, identity } from "../Function"
 import { none } from "../Option"
 import { defaultRandom, HasRandom } from "../Random"
@@ -70,10 +71,21 @@ export const defaultHook = (
 export type AsyncCancel<E, A> = UIO<Exit<E, A>>
 
 export const prettyReporter: FailureReporter = (e) => {
-  console.error(pretty(e))
+  console.error(pretty(e, prettyTrace))
 }
 
-const defaultPlatform = new Platform(100, 100, true, true, true, true, 100, 100, 100)
+const defaultPlatform = new Platform(
+  100,
+  100,
+  true,
+  true,
+  true,
+  true,
+  100,
+  100,
+  100,
+  prettyTrace
+)
 
 export class CustomRuntime<R> {
   constructor(readonly env: R, readonly platform: Platform) {
@@ -142,11 +154,11 @@ export class CustomRuntime<R> {
       switch (exit._tag) {
         case "Failure": {
           if (Cause.died(exit.cause) || Cause.failed(exit.cause)) {
-            console.error(pretty(exit.cause))
+            console.error(pretty(exit.cause, this.platform.renderer))
             customTeardown(1, context.id, onExit)
             break
           } else {
-            console.log(pretty(exit.cause))
+            console.log(pretty(exit.cause, this.platform.renderer))
             customTeardown(0, context.id, onExit)
             break
           }
@@ -252,6 +264,24 @@ export class CustomRuntime<R> {
     return new CustomRuntime(f(this.env), this.platform)
   }
 
+  traceRenderer(renderer: Renderer) {
+    return new CustomRuntime(
+      this.env,
+      new Platform(
+        this.platform.executionTraceLength,
+        this.platform.stackTraceLength,
+        this.platform.traceExecution,
+        this.platform.traceStack,
+        this.platform.traceEffects,
+        this.platform.initialTracingStatus,
+        this.platform.ancestorExecutionTraceLength,
+        this.platform.ancestorStackTraceLength,
+        this.platform.ancestryLength,
+        renderer
+      )
+    )
+  }
+
   traceExecution(b: boolean) {
     return new CustomRuntime(
       this.env,
@@ -264,7 +294,8 @@ export class CustomRuntime<R> {
         this.platform.initialTracingStatus,
         this.platform.ancestorExecutionTraceLength,
         this.platform.ancestorStackTraceLength,
-        this.platform.ancestryLength
+        this.platform.ancestryLength,
+        this.platform.renderer
       )
     )
   }
@@ -281,7 +312,8 @@ export class CustomRuntime<R> {
         this.platform.initialTracingStatus,
         this.platform.ancestorExecutionTraceLength,
         this.platform.ancestorStackTraceLength,
-        this.platform.ancestryLength
+        this.platform.ancestryLength,
+        this.platform.renderer
       )
     )
   }
@@ -298,7 +330,8 @@ export class CustomRuntime<R> {
         this.platform.initialTracingStatus,
         this.platform.ancestorExecutionTraceLength,
         this.platform.ancestorStackTraceLength,
-        this.platform.ancestryLength
+        this.platform.ancestryLength,
+        this.platform.renderer
       )
     )
   }
@@ -315,7 +348,8 @@ export class CustomRuntime<R> {
         this.platform.initialTracingStatus,
         this.platform.ancestorExecutionTraceLength,
         this.platform.ancestorStackTraceLength,
-        this.platform.ancestryLength
+        this.platform.ancestryLength,
+        this.platform.renderer
       )
     )
   }
@@ -332,7 +366,8 @@ export class CustomRuntime<R> {
         this.platform.initialTracingStatus,
         this.platform.ancestorExecutionTraceLength,
         this.platform.ancestorStackTraceLength,
-        this.platform.ancestryLength
+        this.platform.ancestryLength,
+        this.platform.renderer
       )
     )
   }
@@ -349,7 +384,8 @@ export class CustomRuntime<R> {
         b,
         this.platform.ancestorExecutionTraceLength,
         this.platform.ancestorStackTraceLength,
-        this.platform.ancestryLength
+        this.platform.ancestryLength,
+        this.platform.renderer
       )
     )
   }
@@ -366,7 +402,8 @@ export class CustomRuntime<R> {
         this.platform.initialTracingStatus,
         n,
         this.platform.ancestorStackTraceLength,
-        this.platform.ancestryLength
+        this.platform.ancestryLength,
+        this.platform.renderer
       )
     )
   }
@@ -383,7 +420,8 @@ export class CustomRuntime<R> {
         this.platform.initialTracingStatus,
         this.platform.ancestorExecutionTraceLength,
         n,
-        this.platform.ancestryLength
+        this.platform.ancestryLength,
+        this.platform.renderer
       )
     )
   }
@@ -400,7 +438,8 @@ export class CustomRuntime<R> {
         this.platform.initialTracingStatus,
         this.platform.ancestorExecutionTraceLength,
         this.platform.ancestorStackTraceLength,
-        n
+        n,
+        this.platform.renderer
       )
     )
   }
