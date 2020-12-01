@@ -1124,7 +1124,9 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
                     if (!current) {
                       const k = c.register
-                      this.addTrace(k)
+                      if (this.platform.traceEffects && this.inTracingRegion) {
+                        this.addTrace(k)
+                      }
                       const h = k(this.resumeAsync(epoch))
 
                       switch (h._tag) {
@@ -1157,7 +1159,9 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                   }
 
                   case "Descriptor": {
-                    this.addTrace(current.f)
+                    if (this.platform.traceExecution && this.inTracingRegion) {
+                      this.addTrace(current.f)
+                    }
                     current = current.f(this.getDescriptor())[T._I]
                     break
                   }
@@ -1169,7 +1173,9 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                   }
 
                   case "Read": {
-                    this.addTrace(current.f)
+                    if (this.platform.traceExecution && this.inTracingRegion) {
+                      this.addTrace(current.f)
+                    }
                     current = current.f(this.environments?.value || {})[T._I]
                     break
                   }
@@ -1190,7 +1196,9 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                   }
 
                   case "Suspend": {
-                    this.addTrace(current.factory)
+                    if (this.platform.traceExecution && this.inTracingRegion) {
+                      this.addTrace(current.factory)
+                    }
                     current = current.factory()[T._I]
                     break
                   }
@@ -1199,10 +1207,14 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                     const c = current
 
                     try {
-                      this.addTrace(c.factory)
+                      if (this.platform.traceExecution && this.inTracingRegion) {
+                        this.addTrace(current.factory)
+                      }
                       current = c.factory()[T._I]
                     } catch (e) {
-                      this.addTrace(c.onThrow)
+                      if (this.platform.traceExecution && this.inTracingRegion) {
+                        this.addTrace(c.onThrow)
+                      }
                       current = T.fail(c.onThrow(e))[T._I]
                     }
 
@@ -1226,6 +1238,9 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                   case "FiberRefModify": {
                     const c = current
                     const oldValue = O.fromNullable(this.fiberRefLocals.get(c.fiberRef))
+                    if (this.platform.traceExecution && this.inTracingRegion) {
+                      this.addTrace(current.f)
+                    }
                     const [result, newValue] = current.f(
                       O.getOrElse_(oldValue, () => c.fiberRef.initial)
                     )
