@@ -1,6 +1,6 @@
 {
   "name": "@effect-ts/tracing-utils",
-  "version": "0.0.3",
+  "version": "0.1.0",
   "license": "MIT",
   "private": false,
   "scripts": {
