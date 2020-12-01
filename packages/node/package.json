@@ -1,0 +1,34 @@
+{
+  "name": "@effect-ts/node",
+  "version": "0.0.0",
+  "license": "MIT",
+  "homepage": "https://github.com/Matechs-Garage/matechs-effect",
+  "private": false,
+  "scripts": {
+    "clean": "rimraf build tsbuildinfo",
+    "build:lib": "ttsc --build  tsconfig.build.json && ts-node ../../scripts/package.ts",
+    "build:es6": "ttsc --build  tsconfig.es6.json && ts-node ../../scripts/rewrite-esm.ts && babel build/esm/ -d build/esm/ -s --plugins annotate-pure-calls",
+    "build:post-process": "ts-node ../../scripts/rewrite-source-maps.ts && ts-node ../../scripts/rewrite-locals.ts && yarn prettier:lib",
+    "build": "yarn run build:lib && yarn run build:es6 && yarn run build:post-process",
+    "lint": "eslint . --ext .ts,.tsx",
+    "autofix": "yarn prettier && yarn lint --fix && yarn prettier",
+    "prettier": "prettier --write \"./{src,test,demo}/**/*.ts\"",
+    "prettier:lib": "prettier --write \"./build/**/*.js\"",
+    "tc": "tsc --noEmit",
+    "demo": "ts-node -r tsconfig-paths/register"
+  },
+  "publishConfig": {
+    "access": "public",
+    "directory": "build"
+  },
+  "repository": "https://github.com/Matechs-Garage/matechs-effect.git",
+  "sideEffects": false,
+  "dependencies": {
+    "@effect-ts/core": "^0.8.77"
+  },
+  "config": {
+    "modules": [
+      "Runtime"
+    ]
+  }
+}

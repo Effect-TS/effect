@@ -1,13 +1,14 @@
-import * as C from "../src/Cause"
-import * as T from "../src/Effect"
-import * as Ex from "../src/Exit"
-import type { Trace } from "../src/Fiber"
-import { prettyTraceNode } from "../src/Fiber/tracingNode"
-import { pipe } from "../src/Function"
+import * as T from "@effect-ts/core/Effect"
+import * as C from "@effect-ts/core/Effect/Cause"
+import * as Ex from "@effect-ts/core/Effect/Exit"
+import type { Trace } from "@effect-ts/core/Effect/Fiber"
+import { pipe } from "@effect-ts/core/Function"
+
+import { prettyTraceNode } from "../src/Runtime"
 
 const customNodeRender = (_: Trace): string =>
   prettyTraceNode(_, (_, path) => {
-    return path.replace("system/build", "system")
+    return path.replace("/build/", "/").replace("_src", "src")
   })
 
 describe("Tracing & Optimizations", () => {
@@ -43,6 +44,7 @@ describe("Tracing & Optimizations", () => {
 
     expect(C.untraced(res.cause)).toEqual(C.fail("error: (4)"))
   })
+
   it("should collect 2", async () => {
     const res = await pipe(
       T.succeed("ok"),

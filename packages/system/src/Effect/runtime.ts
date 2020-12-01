@@ -10,22 +10,20 @@ import { pretty } from "../Cause/pretty"
 // exit
 import { HasClock, LiveClock } from "../Clock"
 import type { Exit } from "../Exit/exit"
-import { interruptAllAs } from "../Fiber/api"
 // fiber
-import { _tracing, FiberContext } from "../Fiber/context"
+import { FiberContext } from "../Fiber/context"
 import type { Runtime as FiberRuntime } from "../Fiber/core"
 import { interruptible } from "../Fiber/core"
-import type { FiberID } from "../Fiber/id"
 import { newFiberId } from "../Fiber/id"
+import { Platform } from "../Fiber/platform"
 import type { Callback } from "../Fiber/state"
-import { Platform, prettyTrace } from "../Fiber/tracing"
+import { prettyTrace } from "../Fiber/tracing"
 import { constVoid, identity } from "../Function"
 import { none } from "../Option"
 import { defaultRandom, HasRandom } from "../Random"
 import * as Scope from "../Scope"
 // supervisor
 import * as Supervisor from "../Supervisor"
-import { AtomicBoolean } from "../Support/AtomicBoolean"
 import { accessM, chain_, effectTotal, succeed } from "./core"
 import type { Effect, UIO } from "./effect"
 import { _I } from "./effect"
@@ -45,26 +43,6 @@ export function defaultEnv(): DefaultEnv {
     [HasRandom.key]: defaultRandom
   } as any
 }
-
-export function defaultTeardown(
-  status: number,
-  id: FiberID,
-  onExit: (status: number) => void
-) {
-  run(interruptAllAs(id)(_tracing.running), () => {
-    setTimeout(() => {
-      if (_tracing.running.size === 0) {
-        onExit(status)
-      } else {
-        defaultTeardown(status, id, onExit)
-      }
-    }, 0)
-  })
-}
-
-export const defaultHook = (
-  cont: NodeJS.SignalsListener
-): ((signal: NodeJS.Signals) => void) => (signal) => cont(signal)
 
 /**
  * Effect Canceler
@@ -105,7 +83,6 @@ export class CustomRuntime<R> {
     this.run = this.run.bind(this)
     this.runAsap = this.runAsap.bind(this)
     this.runCancel = this.runCancel.bind(this)
-    this.runMain = this.runMain.bind(this)
     this.runPromise = this.runPromise.bind(this)
     this.runPromiseExit = this.runPromiseExit.bind(this)
     this.traceRenderer = this.traceRenderer.bind(this)
@@ -138,64 +115,6 @@ export class CustomRuntime<R> {
     const context = this.fiberContext<E, A>()
     context.evaluateLater(self[_I])
     return context
-  }
-
-  /**
-   * Runs effect until completion listening for system level termination signals that
-   * triggers cancellation of the process, in case errors are found process will
-   * exit with a status of 1 and cause will be pretty printed, if interruption
-   * is found without errors the cause is pretty printed and process exits with
-   * status 0. In the success scenario process exits with status 0 witout any log.
-   *
-   * Note: this should be used only in node.js as it depends on global process
-   */
-  runMain<E>(
-    effect: Effect<DefaultEnv, E, void>,
-    customHook: (cont: NodeJS.SignalsListener) => NodeJS.SignalsListener = defaultHook,
-    customTeardown: typeof defaultTeardown = defaultTeardown
-  ): void {
-    const context = this.fiberContext<E, void>()
-
-    const onExit = (s: number) => {
-      process.exit(s)
-    }
-
-    context.evaluateLater(effect[_I])
-    context.runAsync((exit) => {
-      switch (exit._tag) {
-        case "Failure": {
-          if (Cause.died(exit.cause) || Cause.failed(exit.cause)) {
-            console.error(pretty(exit.cause, this.platform.renderer))
-            customTeardown(1, context.id, onExit)
-            break
-          } else {
-            console.log(pretty(exit.cause, this.platform.renderer))
-            customTeardown(0, context.id, onExit)
-            break
-          }
-        }
-        case "Success": {
-          customTeardown(0, context.id, onExit)
-          break
-        }
-      }
-    })
-
-    const interrupted = new AtomicBoolean(false)
-
-    const handler: NodeJS.SignalsListener = (signal) => {
-      customHook(() => {
-        process.removeListener("SIGTERM", handler)
-        process.removeListener("SIGINT", handler)
-
-        if (interrupted.compareAndSet(false, true)) {
-          this.run(context.interruptAs(context.id))
-        }
-      })(signal)
-    }
-
-    process.once("SIGTERM", handler)
-    process.once("SIGINT", handler)
   }
 
   /**
@@ -537,7 +456,6 @@ export const {
   runAsap,
   runCancel,
   runFiber,
-  runMain,
   runPromise,
   runPromiseExit
 } = defaultRuntime

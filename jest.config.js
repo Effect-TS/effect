@@ -25,6 +25,8 @@ module.exports = {
     "@effect-ts/system$": "<rootDir>/packages/system/build",
     "@effect-ts/core/(.*)$": "<rootDir>/packages/core/build/$1",
     "@effect-ts/core$": "<rootDir>/packages/core/build",
+    "@effect-ts/node/(.*)$": "<rootDir>/packages/node/build/$1",
+    "@effect-ts/node$": "<rootDir>/packages/node/build",
     "@effect-ts/tracing-utils/(.*)$": "<rootDir>/packages/tracing-utils/build/$1",
     "@effect-ts/tracing-utils$": "<rootDir>/packages/tracing-utils/build"
   },

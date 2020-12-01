@@ -1,7 +1,6 @@
 /**
  * tracing: off
  */
-import type { Cause, Renderer } from "../Cause"
 import * as L from "../List"
 import * as O from "../Option"
 import * as S from "../Sync"
@@ -71,23 +70,6 @@ export function truncatedParentTrace(
   } else {
     return trace.parentTrace
   }
-}
-
-export class Platform {
-  constructor(
-    readonly executionTraceLength: number,
-    readonly stackTraceLength: number,
-    readonly traceExecution: boolean,
-    readonly traceStack: boolean,
-    readonly traceEffects: boolean,
-    readonly initialTracingStatus: boolean,
-    readonly ancestorExecutionTraceLength: number,
-    readonly ancestorStackTraceLength: number,
-    readonly ancestryLength: number,
-    readonly renderer: Renderer,
-    readonly reportFailure: (e: Cause<unknown>) => void,
-    readonly maxOp: number
-  ) {}
 }
 
 export function prettyLocation(traceElement: TraceElement) {
