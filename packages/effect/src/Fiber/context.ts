@@ -30,10 +30,11 @@ import * as X from "../XPure"
 import * as T from "./_internal/effect"
 // fiber
 import * as Fiber from "./core"
+import type { Platform } from "./platform"
 import type { Callback } from "./state"
 import { FiberStateDone, FiberStateExecuting, initial, interrupting } from "./state"
 import * as Status from "./status"
-import type { Platform, TraceElement } from "./tracing"
+import type { TraceElement } from "./tracing"
 import { SourceLocation, Trace, traceLocation, truncatedParentTrace } from "./tracing"
 
 export type FiberRefLocals = Map<FiberRef<any>, any>
