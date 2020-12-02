@@ -165,7 +165,9 @@ export function prettyTraceNodeSafe(
 }
 
 export class NodeRuntime<R> {
-  constructor(readonly custom: CustomRuntime<R>) {}
+  constructor(readonly custom: CustomRuntime<R>) {
+    this.runMain = this.runMain.bind(this)
+  }
 
   /**
    * Runs effect until completion listening for system level termination signals that
