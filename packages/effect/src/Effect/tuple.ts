@@ -2,8 +2,7 @@ import { identity } from "../Function"
 import type { NonEmptyArray } from "../NonEmptyArray"
 import type { _E, _R } from "../Utils"
 import type { Effect } from "./effect"
-import { foreach_ } from "./foreach"
-import { foreachPar_ } from "./foreachPar_"
+import { foreach_, foreachPar_ } from "./foreach"
 import { foreachParN_ } from "./foreachParN_"
 
 export type TupleA<T extends NonEmptyArray<Effect<any, any, any>>> = {

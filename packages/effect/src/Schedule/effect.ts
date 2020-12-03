@@ -1,4 +1,4 @@
-export { andThen_, andThen } from "../Effect/andThen"
+export { andThen, andThen_ } from "../Effect/andThen"
 export { as_ } from "../Effect/as"
 export { bracketExit_ } from "../Effect/bracketExit_"
 export {
@@ -12,8 +12,8 @@ export {
   provideAll_,
   result,
   succeed,
-  unit,
-  suspend
+  suspend,
+  unit
 } from "../Effect/core"
 export { forkDaemon } from "../Effect/core-scope"
 export { delay } from "../Effect/delay"
@@ -24,13 +24,11 @@ export { environment } from "../Effect/environment"
 export { parallel, parallelN } from "../Effect/ExecutionStrategy"
 export { fail } from "../Effect/fail"
 export { flatten } from "../Effect/flatten"
-export { foldM_, foldM } from "../Effect/foldM"
+export { foldM, foldM_ } from "../Effect/foldM"
+export { foreach, foreachPar_, foreach_ } from "../Effect/foreach"
 export { foreachParN_ } from "../Effect/foreachParN_"
-export { foreachPar_ } from "../Effect/foreachPar_"
-export { foreach_, foreach } from "../Effect/foreach"
 export { interrupt } from "../Effect/interrupt"
-export { map } from "../Effect/map"
-export { map_ } from "../Effect/map"
+export { map, map_ } from "../Effect/map"
 export { never } from "../Effect/never"
 export { orElse_ } from "../Effect/orElse"
 export { provideSome_ } from "../Effect/provideSome"
