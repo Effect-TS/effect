@@ -1,8 +1,8 @@
 import { pipe } from "../Function"
-import { makeSemaphore, withPermit } from "../Semaphore"
-import { chain } from "./core"
+import * as Semaphore from "../Semaphore"
+import * as core from "./core"
 import type { Effect } from "./effect"
-import { foreachUnitPar_ } from "./foreachUnitPar_"
+import * as foreach from "./foreach"
 
 /**
  * Applies the function `f` to each element of the `Iterable[A]` and runs
@@ -16,8 +16,10 @@ export function foreachUnitParN_(n: number) {
     f: (a: A) => Effect<R, E, any>
   ): Effect<R, E, void> =>
     pipe(
-      makeSemaphore(n),
-      chain((s) => foreachUnitPar_(as, (a) => withPermit(s)(f(a))))
+      Semaphore.makeSemaphore(n),
+      core.chain((s) =>
+        foreach.foreachUnitPar_(as, (a) => Semaphore.withPermit(s)(f(a)))
+      )
     )
 }
 
