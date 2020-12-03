@@ -2,21 +2,20 @@ import * as A from "../Array"
 import { flow, identity } from "../Function"
 import * as I from "../Iterable"
 import * as O from "../Option"
-import { result } from "./core"
+import * as core from "./core"
 import type { Effect } from "./effect"
-import { foreach_, foreachUnit_ } from "./foreach"
-import { foreachPar_ } from "./foreachPar_"
-import { foreachParN_ } from "./foreachParN_"
-import { foreachUnitPar_ } from "./foreachUnitPar_"
-import { foreachUnitParN_ } from "./foreachUnitParN_"
-import { map_ } from "./map"
+import * as foreach from "./foreach"
+import * as foreachPar from "./foreachPar_"
+import * as foreachParN from "./foreachParN_"
+import * as foreachUnitParN from "./foreachUnitParN_"
+import * as map from "./map"
 
 /**
  * Evaluate each effect in the structure from left to right, and collect the
  * results. For a parallel version, see `collectAllPar`.
  */
 export function collectAll<R, E, A>(as: Iterable<Effect<R, E, A>>) {
-  return foreach_(as, identity)
+  return foreach.foreach_(as, identity)
 }
 
 /**
@@ -24,7 +23,7 @@ export function collectAll<R, E, A>(as: Iterable<Effect<R, E, A>>) {
  * results. For a sequential version, see `collectAll`.
  */
 export function collectAllPar<R, E, A>(as: Iterable<Effect<R, E, A>>) {
-  return foreachPar_(as, identity)
+  return foreachPar.foreachPar_(as, identity)
 }
 
 /**
@@ -34,7 +33,8 @@ export function collectAllPar<R, E, A>(as: Iterable<Effect<R, E, A>>) {
  * Unlike `collectAllPar`, this method will use at most `n` fibers.
  */
 export function collectAllParN(n: number) {
-  return <R, E, A>(as: Iterable<Effect<R, E, A>>) => foreachParN_(n)(as, identity)
+  return <R, E, A>(as: Iterable<Effect<R, E, A>>) =>
+    foreachParN.foreachParN_(n)(as, identity)
 }
 
 /**
@@ -42,7 +42,7 @@ export function collectAllParN(n: number) {
  * results. For a parallel version, see `collectAllUnitPar`.
  */
 export function collectAllUnit<R, E, A>(as: Iterable<Effect<R, E, A>>) {
-  return foreachUnit_(as, identity)
+  return foreach.foreachUnit_(as, identity)
 }
 
 /**
@@ -50,7 +50,7 @@ export function collectAllUnit<R, E, A>(as: Iterable<Effect<R, E, A>>) {
  * results. For a sequential version, see `collectAllUnit`.
  */
 export function collectAllUnitPar<R, E, A>(as: Iterable<Effect<R, E, A>>) {
-  return foreachUnitPar_(as, identity)
+  return foreach.foreachUnitPar_(as, identity)
 }
 
 /**
@@ -60,7 +60,8 @@ export function collectAllUnitPar<R, E, A>(as: Iterable<Effect<R, E, A>>) {
  * Unlike `collectAllUnitPar`, this method will use at most `n` fibers.
  */
 export function collectAllUnitParN(n: number) {
-  return <R, E, A>(as: Iterable<Effect<R, E, A>>) => foreachUnitParN_(n)(as, identity)
+  return <R, E, A>(as: Iterable<Effect<R, E, A>>) =>
+    foreachUnitParN.foreachUnitParN_(n)(as, identity)
 }
 
 /**
@@ -71,7 +72,7 @@ export function collectAllWith_<R, E, A, B>(
   as: Iterable<Effect<R, E, A>>,
   pf: (a: A) => O.Option<B>
 ): Effect<R, E, readonly B[]> {
-  return map_(collectAll(as), flow(A.map(pf), A.compact))
+  return map.map_(collectAll(as), flow(A.map(pf), A.compact))
 }
 
 /**
@@ -90,7 +91,7 @@ export function collectAllWithPar_<R, E, A, B>(
   as: Iterable<Effect<R, E, A>>,
   pf: (a: A) => O.Option<B>
 ): Effect<R, E, readonly B[]> {
-  return map_(collectAllPar(as), flow(A.map(pf), A.compact))
+  return map.map_(collectAllPar(as), flow(A.map(pf), A.compact))
 }
 
 /**
@@ -114,7 +115,7 @@ export function collectAllWithParN_(
   pf: (a: A) => O.Option<B>
 ) => Effect<R, E, readonly B[]> {
   const c = collectAllParN(n)
-  return (as, pf) => map_(c(as), flow(A.map(pf), A.compact))
+  return (as, pf) => map.map_(c(as), flow(A.map(pf), A.compact))
 }
 
 /**
@@ -136,7 +137,7 @@ export function collectAllWithParN(
  * Evaluate and run each effect in the structure and collect discarding failed ones.
  */
 export function collectAllSuccesses<R, E, A>(as: Iterable<Effect<R, E, A>>) {
-  return collectAllWith_(I.map_(as, result), (e) =>
+  return collectAllWith_(I.map_(as, core.result), (e) =>
     e._tag === "Success" ? O.some(e.value) : O.none
   )
 }
@@ -145,7 +146,7 @@ export function collectAllSuccesses<R, E, A>(as: Iterable<Effect<R, E, A>>) {
  * Evaluate and run each effect in the structure in parallel, and collect discarding failed ones.
  */
 export function collectAllSuccessesPar<R, E, A>(as: Iterable<Effect<R, E, A>>) {
-  return collectAllWithPar_(I.map_(as, result), (e) =>
+  return collectAllWithPar_(I.map_(as, core.result), (e) =>
     e._tag === "Success" ? O.some(e.value) : O.none
   )
 }
@@ -158,5 +159,5 @@ export function collectAllSuccessesPar<R, E, A>(as: Iterable<Effect<R, E, A>>) {
 export function collectAllSuccessesParN(n: number) {
   const c = collectAllWithParN_(n)
   return <R, E, A>(as: Iterable<Effect<R, E, A>>) =>
-    c(I.map_(as, result), (e) => (e._tag === "Success" ? O.some(e.value) : O.none))
+    c(I.map_(as, core.result), (e) => (e._tag === "Success" ? O.some(e.value) : O.none))
 }
