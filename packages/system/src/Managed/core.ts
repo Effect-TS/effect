@@ -255,7 +255,7 @@ export function foreachParN_(n: number) {
         (x: unknown) => tuple(x, parallelReleaseMap)
       )
 
-      return T.foreachParN_(n)(as, (a) =>
+      return T.foreachParN_(as, n, (a) =>
         T.map_(
           T.chain_(makeInnerMap, (innerMap) =>
             T.provideSome_(f(a).effect, (u: R) => tuple(u, innerMap))

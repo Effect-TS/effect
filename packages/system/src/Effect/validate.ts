@@ -45,10 +45,9 @@ export function validateParN(n: number) {
  * This combinator is lossy meaning that if there are errors all successes
  * will be lost.
  */
-export function validateExec(
-  es: ExecutionStrategy
-): <R, E, A, B>(
+export function validateExec<R, E, A, B>(
+  es: ExecutionStrategy,
   f: (a: A) => Effect<R, E, B>
-) => (as: Iterable<A>) => Effect<R, NA.NonEmptyArray<E>, A.Array<B>> {
-  return (f) => (as) => validateExec_(es, as, f)
+): (as: Iterable<A>) => Effect<R, NA.NonEmptyArray<E>, A.Array<B>> {
+  return (as) => validateExec_(as, es, f)
 }

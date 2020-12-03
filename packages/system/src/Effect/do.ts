@@ -2,8 +2,7 @@ import * as R from "../Record"
 import type { EnforceNonEmptyRecord, UnionToIntersection } from "../Utils"
 import { chain_, succeed } from "./core"
 import type { Effect } from "./effect"
-import { foreach_, foreachPar_ } from "./foreach"
-import { foreachParN_ } from "./foreachParN_"
+import { foreach_, foreachPar_, foreachParN_ } from "./foreach"
 import { map_ } from "./map"
 
 /**
@@ -229,8 +228,9 @@ export function bindAllParN(
   return (r) => (s) =>
     chain_(s, (k) =>
       map_(
-        foreachParN_(n)(
+        foreachParN_(
           R.collect_(r(k), (k, v) => [k, v] as const),
+          n,
           ([_, e]) => map_(e, (a) => [_, a] as const)
         ),
         (values) => {
