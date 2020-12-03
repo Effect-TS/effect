@@ -112,8 +112,9 @@ export function releaseAll(
               case "ParallelN": {
                 return [
                   T.chain_(
-                    T.foreachParN_(execStrategy.n)(
+                    T.foreachParN_(
                       Array.from(s.finalizers()).reverse(),
+                      execStrategy.n,
                       ([_, f]) => T.result(f(exit))
                     ),
                     (e) =>

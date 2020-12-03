@@ -21,6 +21,7 @@ import * as coreScope from "./core-scope"
 import * as Do from "./do"
 import type { Effect } from "./effect"
 import * as ensuring from "./ensuring"
+import type { ExecutionStrategy } from "./ExecutionStrategy"
 import * as fiberId from "./fiberId"
 import * as forkManaged from "./forkManaged"
 import * as interruptible from "./interruptible"
@@ -354,4 +355,124 @@ export function foreachUnitParN_<R, E, A>(
  */
 export function foreachUnitParN<R, E, A>(n: number, f: (a: A) => Effect<R, E, any>) {
   return (as: Iterable<A>) => foreachUnitParN_(as, n, f)
+}
+
+/**
+ * Applies the functionw `f` to each element of the `Iterable<A>` in parallel,
+ * and returns the results in a new `readonly B[]`.
+ *
+ * Unlike `foreachPar`, this method will use at most up to `n` fibers.
+ */
+export function foreachParN_<R, E, A, B>(
+  as: Iterable<A>,
+  n: number,
+  f: (a: A) => Effect<R, E, B>
+): Effect<R, E, readonly B[]> {
+  function worker(
+    q: Q.Queue<readonly [promise.Promise<E, B>, A]>,
+    pairs: Iterable<readonly [promise.Promise<E, B>, A]>,
+    ref: Ref.Ref<number>
+  ): Effect<R, never, void> {
+    return pipe(
+      q.take,
+      core.chain(([p, a]) =>
+        pipe(
+          f(a),
+          core.foldCauseM(
+            (c) => foreach_(pairs, (_) => pipe(_[0], promise.halt(c))),
+            (b) => pipe(p, promise.succeed(b))
+          )
+        )
+      ),
+      core.chain(() => worker(q, pairs, ref)),
+      whenM.whenM(
+        pipe(
+          ref,
+          Ref.modify((n) => tuple(n > 0, n - 1))
+        )
+      )
+    )
+  }
+
+  return pipe(
+    Q.makeBounded<readonly [promise.Promise<E, B>, A]>(n),
+    bracket.bracket(
+      (q) =>
+        pipe(
+          Do.do,
+          Do.bind("pairs", () =>
+            foreach_(as, (a) =>
+              pipe(
+                promise.make<E, B>(),
+                map.map((p) => tuple(p, a))
+              )
+            )
+          ),
+          Do.bind("ref", ({ pairs }) => Ref.makeRef(pairs.length)),
+          tap.tap(({ pairs }) => core.fork(foreach_(pairs, (pair) => q.offer(pair)))),
+          tap.tap(({ pairs, ref }) =>
+            collectAll.collectAllUnit(
+              pipe(
+                L.range_(0, n),
+                L.map(() => core.fork(worker(q, pairs, ref)))
+              )
+            )
+          ),
+          core.chain(({ pairs }) => foreach_(pairs, (_) => promise.await(_[0])))
+        ),
+      (q) => q.shutdown
+    ),
+    refailWithTrace.refailWithTrace
+  )
+}
+
+/**
+ * Applies the functionw `f` to each element of the `Iterable<A>` in parallel,
+ * and returns the results in a new `readonly B[]`.
+ *
+ * Unlike `foreachPar`, this method will use at most up to `n` fibers.
+ *
+ * @dataFirst foreachParN_
+ */
+export function foreachParN<R, E, A, B>(n: number, f: (a: A) => Effect<R, E, B>) {
+  return (as: Iterable<A>) => foreachParN_(as, n, f)
+}
+
+/**
+ * Applies the function `f` to each element of the `Iterable<A>` in parallel,
+ * and returns the results in a new `readonly B[]`.
+ *
+ * For a sequential version of this method, see `foreach`.
+ */
+export function foreachExec_<R, E, A, B>(
+  as: Iterable<A>,
+  es: ExecutionStrategy,
+  f: (a: A) => Effect<R, E, B>
+): Effect<R, E, readonly B[]> {
+  switch (es._tag) {
+    case "Sequential": {
+      return foreach_(as, f) as any
+    }
+    case "Parallel": {
+      return foreachPar_(as, f) as any
+    }
+    case "ParallelN": {
+      return foreachParN_(as, es.n, f) as any
+    }
+  }
+}
+
+/**
+ * Applies the function `f` to each element of the `Iterable<A>` in parallel,
+ * and returns the results in a new `readonly B[]`.
+ *
+ * For a sequential version of this method, see `foreach`.
+ *
+ * @dataFirst foreachExec_
+ */
+export function foreachExec<R, E, A, B>(
+  es: ExecutionStrategy,
+  f: (a: A) => Effect<R, E, B>
+): (as: Iterable<A>) => Effect<R, E, readonly B[]> {
+  return (as) => foreachExec_(as, es, f)
 }
