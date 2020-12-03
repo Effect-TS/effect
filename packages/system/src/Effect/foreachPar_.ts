@@ -1,6 +1,6 @@
-import { chain_, effectTotal, suspend } from "./core"
+import * as core from "./core"
 import type { Effect } from "./effect"
-import { foreachUnitPar_ } from "./foreachUnitPar_"
+import * as foreach from "./foreach"
 
 /**
  * Applies the function `f` to each element of the `Iterable<A>` in parallel,
@@ -14,23 +14,23 @@ export function foreachPar_<R, E, A, B>(
 ): Effect<R, E, readonly B[]> {
   const arr = Array.from(as)
 
-  return chain_(
-    effectTotal<B[]>(() => []),
+  return core.chain_(
+    core.effectTotal<B[]>(() => []),
     (array) => {
       const fn = ([a, n]: [A, number]) =>
-        chain_(
-          suspend(() => f(a)),
+        core.chain_(
+          core.suspend(() => f(a)),
           (b) =>
-            effectTotal(() => {
+            core.effectTotal(() => {
               array[n] = b
             })
         )
-      return chain_(
-        foreachUnitPar_(
+      return core.chain_(
+        foreach.foreachUnitPar_(
           arr.map((a, n) => [a, n] as [A, number]),
           fn
         ),
-        () => effectTotal(() => array)
+        () => core.effectTotal(() => array)
       )
     }
   )
