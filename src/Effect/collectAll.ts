@@ -6,7 +6,6 @@ import * as core from "./core"
 import type { Effect } from "./effect"
 import * as foreach from "./foreach"
 import * as foreachParN from "./foreachParN_"
-import * as foreachUnitParN from "./foreachUnitParN_"
 import * as map from "./map"
 
 /**
@@ -60,7 +59,7 @@ export function collectAllUnitPar<R, E, A>(as: Iterable<Effect<R, E, A>>) {
  */
 export function collectAllUnitParN(n: number) {
   return <R, E, A>(as: Iterable<Effect<R, E, A>>) =>
-    foreachUnitParN.foreachUnitParN_(n)(as, identity)
+    foreach.foreachUnitParN_(as, n, identity)
 }
 
 /**

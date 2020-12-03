@@ -3,7 +3,7 @@ import * as I from "../Iterable"
 import * as Ref from "../Ref"
 import { chain, chain_, succeed } from "./core"
 import type { Effect } from "./effect"
-import { foreachUnitParN_ } from "./foreachUnitParN_"
+import * as foreach from "./foreach"
 import { zipWith_ } from "./zipWith"
 import { zipWithPar_ } from "./zipWithPar_"
 
@@ -94,8 +94,9 @@ export function mergeAllParN_(n: number) {
   ): Effect<R, E, B> =>
     chain_(Ref.makeRef(zero), (acc) =>
       chain_(
-        foreachUnitParN_(n)(
+        foreach.foreachUnitParN_(
           as,
+          n,
           chain((a) =>
             pipe(
               acc,
