@@ -14,17 +14,20 @@ import { zipWithIndex } from "../Stream/zipWithIndex"
 /**
  * Representation of a grouped stream.
  * This allows to filter which groups will be processed.
- * Once this is applied all groups will be processed in parallel and the results will
+ * Once merge is used all groups will be processed in parallel and the results will
  * be merged in arbitrary order.
  */
 export interface GroupBy<R, E, K, V> {
   readonly grouped: Stream<R, E, readonly [K, Q.Dequeue<Ex.Exit<O.Option<E>, V>>]>
   readonly buffer: number
-  readonly process: <A, R1, E1>(
+  readonly merge: <A, R1, E1>(
     f: (k: K, stream: Stream<unknown, E, V>) => Stream<R1, E1, A>
   ) => Stream<R & R1, E | E1, A>
 }
 
+/**
+ * Construct
+ */
 export function make<R, E, K, V>(
   grouped: Stream<R, E, readonly [K, Q.Dequeue<Ex.Exit<O.Option<E>, V>>]>,
   buffer: number
@@ -32,7 +35,7 @@ export function make<R, E, K, V>(
   return {
     grouped,
     buffer,
-    process: (f) =>
+    merge: (f) =>
       pipe(
         grouped,
         chainPar(

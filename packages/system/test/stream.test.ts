@@ -21,7 +21,7 @@ describe("Stream", () => {
       await pipe(
         S.fromIterable(["hello", "world", "hi", "holla"]),
         S.groupByKey((a) => a[0]),
-        S.processGroups((k, s) =>
+        S.mergeGroupBy((k, s) =>
           pipe(
             s,
             S.take(2),

@@ -16,5 +16,5 @@ export function mapMPartitioned<O, K, R1, E1, O2>(
   buffer = 16
 ) {
   return <R, E>(self: Stream<R, E, O>) =>
-    groupByKey_(self, keyBy, buffer).process((_, s) => mapM_(s, f))
+    groupByKey_(self, keyBy, buffer).merge((_, s) => mapM_(s, f))
 }
