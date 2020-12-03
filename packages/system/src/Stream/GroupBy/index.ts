@@ -17,32 +17,24 @@ import { zipWithIndex } from "../Stream/zipWithIndex"
  * Once merge is used all groups will be processed in parallel and the results will
  * be merged in arbitrary order.
  */
-export interface GroupBy<R, E, K, V> {
-  readonly grouped: Stream<R, E, readonly [K, Q.Dequeue<Ex.Exit<O.Option<E>, V>>]>
-  readonly buffer: number
-  readonly merge: <A, R1, E1>(
-    f: (k: K, stream: Stream<unknown, E, V>) => Stream<R1, E1, A>
-  ) => Stream<R & R1, E | E1, A>
-}
+export class GroupBy<R, E, K, V> {
+  constructor(
+    readonly grouped: Stream<R, E, readonly [K, Q.Dequeue<Ex.Exit<O.Option<E>, V>>]>,
+    readonly buffer: number
+  ) {
+    this.merge = this.merge.bind(this)
+  }
 
-/**
- * Construct
- */
-export function make<R, E, K, V>(
-  grouped: Stream<R, E, readonly [K, Q.Dequeue<Ex.Exit<O.Option<E>, V>>]>,
-  buffer: number
-): GroupBy<R, E, K, V> {
-  return {
-    grouped,
-    buffer,
-    merge: (f) =>
-      pipe(
-        grouped,
-        chainPar(
-          Number.MAX_SAFE_INTEGER,
-          buffer
-        )(([k, q]) => f(k, flattenExitOption(fromQueueWithShutdown(q))))
-      )
+  merge<A, R1, E1>(
+    f: (k: K, stream: Stream<unknown, E, V>) => Stream<R1, E1, A>
+  ): Stream<R & R1, E | E1, A> {
+    return pipe(
+      this.grouped,
+      chainPar(
+        Number.MAX_SAFE_INTEGER,
+        this.buffer
+      )(([k, q]) => f(k, flattenExitOption(fromQueueWithShutdown(q))))
+    )
   }
 }
 
@@ -68,7 +60,7 @@ export function first_<R, E, K, V>(
     map(([v]) => v)
   )
 
-  return make(g1, self.buffer)
+  return new GroupBy(g1, self.buffer)
 }
 
 /**
@@ -98,7 +90,7 @@ export function filter_<R, E, K, V>(
     })
   )
 
-  return make(g1, self.buffer)
+  return new GroupBy(g1, self.buffer)
 }
 
 /**

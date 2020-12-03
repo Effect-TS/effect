@@ -90,7 +90,7 @@ export function groupBy_<R, R1, E, E1, O, K, V>(
     )
   )
 
-  return GB.make(qstream, buffer)
+  return new GB.GroupBy(qstream, buffer)
 }
 
 /**
