@@ -29,10 +29,15 @@ export function as<E1>(e: E1) {
 /**
  * Builds a Cause depending on the result of another
  */
+export function chain_<E, E1>(cause: Cause<E>, f: (_: E) => Cause<E1>): Cause<E1> {
+  return S.run(chainSafe(f)(cause))
+}
+
+/**
+ * Builds a Cause depending on the result of another
+ */
 export function chain<E, E1>(f: (_: E) => Cause<E1>) {
-  return (cause: Cause<E>): Cause<E1> => {
-    return S.run(chainSafe(f)(cause))
-  }
+  return (cause: Cause<E>): Cause<E1> => chain_(cause, f)
 }
 
 /**
@@ -76,8 +81,15 @@ export function chainSafe<E, E1>(f: (_: E) => Cause<E1>) {
 /**
  * Equivalent to chain((a) => Fail(f(a)))
  */
+export function map_<E, E1>(cause: Cause<E>, f: (e: E) => E1) {
+  return chain_(cause, (e: E) => fail(f(e)))
+}
+
+/**
+ * Equivalent to chain((a) => Fail(f(a)))
+ */
 export function map<E, E1>(f: (e: E) => E1) {
-  return chain((e: E) => fail(f(e)))
+  return (cause: Cause<E>) => map_(cause, f)
 }
 
 /**
