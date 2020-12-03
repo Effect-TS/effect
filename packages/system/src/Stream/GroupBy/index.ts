@@ -20,30 +20,27 @@ import { zipWithIndex } from "../Stream/zipWithIndex"
 export interface GroupBy<R, E, K, V> {
   readonly grouped: Stream<R, E, readonly [K, Q.Dequeue<Ex.Exit<O.Option<E>, V>>]>
   readonly buffer: number
-  <A, R1, E1>(f: (k: K, stream: Stream<unknown, E, V>) => Stream<R1, E1, A>): Stream<
-    R & R1,
-    E | E1,
-    A
-  >
+  readonly process: <A, R1, E1>(
+    f: (k: K, stream: Stream<unknown, E, V>) => Stream<R1, E1, A>
+  ) => Stream<R & R1, E | E1, A>
 }
 
 export function make<R, E, K, V>(
   grouped: Stream<R, E, readonly [K, Q.Dequeue<Ex.Exit<O.Option<E>, V>>]>,
   buffer: number
 ): GroupBy<R, E, K, V> {
-  function GroupByApply<R1, E1, A>(
-    f: (k: K, stream: Stream<unknown, E, V>) => Stream<R1, E1, A>
-  ): Stream<R & R1, E | E1, A> {
-    return pipe(
-      grouped,
-      chainPar(
-        Number.MAX_SAFE_INTEGER,
-        buffer
-      )(([k, q]) => f(k, flattenExitOption(fromQueueWithShutdown(q))))
-    )
+  return {
+    grouped,
+    buffer,
+    process: (f) =>
+      pipe(
+        grouped,
+        chainPar(
+          Number.MAX_SAFE_INTEGER,
+          buffer
+        )(([k, q]) => f(k, flattenExitOption(fromQueueWithShutdown(q))))
+      )
   }
-
-  return Object.assign(GroupByApply, { grouped, buffer }) as GroupBy<R, E, K, V>
 }
 
 /**

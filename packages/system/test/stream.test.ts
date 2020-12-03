@@ -19,10 +19,9 @@ describe("Stream", () => {
   it("groupByKey", async () => {
     expect(
       await pipe(
-        S.groupByKey(
-          S.fromIterable(["hello", "world", "hi", "holla"]),
-          (a) => a[0]
-        )((k, s) =>
+        S.fromIterable(["hello", "world", "hi", "holla"]),
+        S.groupByKey((a) => a[0]),
+        S.processGroups((k, s) =>
           pipe(
             s,
             S.take(2),
