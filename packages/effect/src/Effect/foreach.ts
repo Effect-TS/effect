@@ -9,19 +9,24 @@ import * as IT from "../Iterable"
 import * as L from "../List"
 import * as M from "../Managed"
 import * as promise from "../Promise"
+import * as Q from "../Queue"
 import * as Ref from "../Ref"
 import * as andThen from "./andThen"
+import * as asUnit from "./asUnit"
+import * as bracket from "./bracket"
 import * as catchAll from "./catchAll"
+import * as collectAll from "./collectAll"
 import * as core from "./core"
 import * as coreScope from "./core-scope"
 import * as Do from "./do"
 import type { Effect } from "./effect"
 import * as ensuring from "./ensuring"
 import * as fiberId from "./fiberId"
-import { forkManaged } from "./forkManaged"
+import * as forkManaged from "./forkManaged"
 import * as interruptible from "./interruptible"
 import * as map from "./map"
 import * as refailWithTrace from "./refailWithTrace"
+import * as tap from "./tap"
 import * as tapCause from "./tapCause"
 import * as uninterruptible from "./uninterruptible"
 import * as whenM from "./whenM"
@@ -202,10 +207,10 @@ export function foreachUnitPar_<R, E, A>(
             core.chain(Fiber.joinAll)
           )
         ),
-        forkManaged
+        forkManaged.forkManaged
       )
     ),
-    core.chain(({ causes, fibers, interrupter, result }) =>
+    tap.tap(({ causes, fibers, interrupter, result }) =>
       M.use_(interrupter, () => {
         return pipe(
           result,
@@ -220,7 +225,8 @@ export function foreachUnitPar_<R, E, A>(
           refailWithTrace.refailWithTrace
         )
       })
-    )
+    ),
+    asUnit.asUnit
   )
 }
 
@@ -287,4 +293,65 @@ export function foreachPar_<R, E, A, B>(
  */
 export function foreachPar<R, E, A, B>(f: (a: A) => Effect<R, E, B>) {
   return (as: Iterable<A>): Effect<R, E, readonly B[]> => foreachPar_(as, f)
+}
+
+/**
+ * Applies the function `f` to each element of the `Iterable[A]` and runs
+ * produced effects in parallel, discarding the results.
+ *
+ * Unlike `foreachUnitPar_`, this method will use at most up to `n` fibers.
+ */
+export function foreachUnitParN_<R, E, A>(
+  as: Iterable<A>,
+  n: number,
+  f: (a: A) => Effect<R, E, any>
+): Effect<R, E, void> {
+  const as_ = L.from(as)
+  const size = L.length(as_)
+
+  function worker(q: Q.Queue<A>, ref: Ref.Ref<number>): Effect<R, E, void> {
+    return pipe(
+      q.take,
+      core.chain(f),
+      core.chain(() => worker(q, ref)),
+      whenM.whenM(
+        pipe(
+          ref,
+          Ref.modify((n) => tuple(n > 0, n - 1))
+        )
+      )
+    )
+  }
+
+  return pipe(
+    Q.makeBounded<A>(n),
+    bracket.bracket(
+      (q) =>
+        pipe(
+          Do.do,
+          Do.bind("ref", () => Ref.makeRef(size)),
+          tap.tap(() => core.fork(foreachUnit_(as, q.offer))),
+          Do.bind("fibers", ({ ref }) =>
+            collectAll.collectAll(
+              L.map_(L.range_(0, n), () => core.fork(worker(q, ref)))
+            )
+          ),
+          tap.tap(({ fibers }) => foreach_(fibers, (_) => _.await))
+        ),
+      (q) => q.shutdown
+    ),
+    refailWithTrace.refailWithTrace
+  )
+}
+
+/**
+ * Applies the function `f` to each element of the `Iterable[A]` and runs
+ * produced effects in parallel, discarding the results.
+ *
+ * Unlike `foreachUnitPar_`, this method will use at most up to `n` fibers.
+ *
+ * @dataFirst foreachUnitParN_
+ */
+export function foreachUnitParN<R, E, A>(n: number, f: (a: A) => Effect<R, E, any>) {
+  return (as: Iterable<A>) => foreachUnitParN_(as, n, f)
 }

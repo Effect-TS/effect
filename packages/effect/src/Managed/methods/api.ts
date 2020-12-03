@@ -2034,7 +2034,6 @@ export function foreachUnitPar<R, E, A, B>(f: (a: A) => Managed<R, E, B>) {
  * For a sequential version of this method, see `foreachUnit_`.
  */
 export function foreachUnitParN_(n: number) {
-  const c = T.foreachUnitParN_(n)
   return <R, E, A, B>(
     as: Iterable<A>,
     f: (a: A) => Managed<R, E, B>
@@ -2045,7 +2044,7 @@ export function foreachUnitParN_(n: number) {
         (r) => tuple(r, parallelReleaseMap)
       )
 
-      return c(as, (a) =>
+      return T.foreachUnitParN_(as, n, (a) =>
         T.chain_(makeInnerMap, (innerMap) =>
           T.provideSome_(
             T.map_(f(a).effect, ([_, a]) => a),
