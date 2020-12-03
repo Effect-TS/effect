@@ -19,13 +19,15 @@ export { effectAsyncInterrupt } from "../../Effect/effectAsyncInterrupt"
 export { effectMaybeAsyncInterrupt } from "../../Effect/effectMaybeAsyncInterrupt"
 export { fail } from "../../Effect/fail"
 export { fiberId } from "../../Effect/fiberId"
-export { foreach, foreach_ } from "../../Effect/foreach"
-export { foreachPar } from "../../Effect/foreachPar"
-export { foreachPar_ } from "../../Effect/foreachPar_"
-export { foreachUnit_ } from "../../Effect/foreach"
+export {
+  foreach,
+  foreachPar,
+  foreachPar_,
+  foreachUnit_,
+  foreach_
+} from "../../Effect/foreach"
 export { interruptAs } from "../../Effect/interruptAs"
-export { map } from "../../Effect/map"
-export { map_ } from "../../Effect/map"
+export { map, map_ } from "../../Effect/map"
 export { never } from "../../Effect/never"
 export type { IFold, Instruction, IRaceWith } from "../../Effect/primitives"
 export { reduce_ } from "../../Effect/reduce"

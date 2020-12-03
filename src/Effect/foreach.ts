@@ -241,3 +241,50 @@ export function foreachUnitPar_<R, E, A>(
 export function foreachUnitPar<R, E, A>(f: (a: A) => Effect<R, E, any>) {
   return (as: Iterable<A>) => foreachUnitPar_(as, f)
 }
+
+/**
+ * Applies the function `f` to each element of the `Iterable<A>` in parallel,
+ * and returns the results in a new `readonly B[]`.
+ *
+ * For a sequential version of this method, see `foreach`.
+ */
+export function foreachPar_<R, E, A, B>(
+  as: Iterable<A>,
+  f: (a: A) => Effect<R, E, B>
+): Effect<R, E, readonly B[]> {
+  const arr = Array.from(as)
+
+  return core.chain_(
+    core.effectTotal<B[]>(() => []),
+    (array) => {
+      function fn([a, n]: [A, number]) {
+        return core.chain_(
+          core.suspend(() => f(a)),
+          (b) =>
+            core.effectTotal(() => {
+              array[n] = b
+            })
+        )
+      }
+      return map.map_(
+        foreachUnitPar_(
+          arr.map((a, n) => [a, n] as [A, number]),
+          fn
+        ),
+        () => array
+      )
+    }
+  )
+}
+
+/**
+ * Applies the function `f` to each element of the `Iterable<A>` in parallel,
+ * and returns the results in a new `readonly B[]`.
+ *
+ * For a sequential version of this method, see `foreach`.
+ *
+ * @dataFirst foreachPar_
+ */
+export function foreachPar<R, E, A, B>(f: (a: A) => Effect<R, E, B>) {
+  return (as: Iterable<A>): Effect<R, E, readonly B[]> => foreachPar_(as, f)
+}
