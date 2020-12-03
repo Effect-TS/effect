@@ -1,13 +1,13 @@
-import { compact } from "../Array"
+import * as A from "../Array"
 import { flow, pipe } from "../Function"
 import * as I from "../Iterable"
 import * as O from "../Option"
-import { succeed } from "./core"
+import * as core from "./core"
 import type { Effect } from "./effect"
-import { foreachPar } from "./foreachPar"
-import { foreachParN } from "./foreachParN"
-import { map, map_ } from "./map"
-import { zipWith_ } from "./zipWith"
+import * as foreach from "./foreach"
+import * as foreachParN from "./foreachParN"
+import * as map from "./map"
+import * as zipWith from "./zipWith"
 
 /**
  * Filters the collection using the specified effectual predicate.
@@ -23,8 +23,8 @@ export function filter_<A, R, E>(
   as: Iterable<A>,
   f: (a: A) => Effect<R, E, boolean>
 ): Effect<R, E, readonly A[]> {
-  return I.reduce_(as, <Effect<R, E, A[]>>succeed([]), (io, a) =>
-    zipWith_(io, f(a), (as_, p) => {
+  return I.reduce_(as, <Effect<R, E, A[]>>core.succeed([]), (io, a) =>
+    zipWith.zipWith_(io, f(a), (as_, p) => {
       if (p) {
         as_.push(a)
       }
@@ -43,8 +43,8 @@ export function filterPar_<A, R, E>(
 ) {
   return pipe(
     as,
-    foreachPar((a) => map_(f(a), (b) => (b ? O.some(a) : O.none))),
-    map(compact)
+    foreach.foreachPar((a) => map.map_(f(a), (b) => (b ? O.some(a) : O.none))),
+    map.map(A.compact)
   )
 }
 
@@ -66,8 +66,10 @@ export function filterParN_(n: number) {
   return <A, R, E>(as: Iterable<A>, f: (a: A) => Effect<R, E, boolean>) =>
     pipe(
       as,
-      foreachParN(n)((a) => map_(f(a), (b) => (b ? O.some(a) : O.none))),
-      map(compact)
+      foreachParN.foreachParN(n)((a) =>
+        map.map_(f(a), (b) => (b ? O.some(a) : O.none))
+      ),
+      map.map(A.compact)
     )
 }
 
@@ -102,7 +104,7 @@ export function filterNot_<A, R, E>(
     as,
     flow(
       f,
-      map((b) => !b)
+      map.map((b) => !b)
     )
   )
 }
@@ -119,7 +121,7 @@ export function filterNotPar_<A, R, E>(
     as,
     flow(
       f,
-      map((b) => !b)
+      map.map((b) => !b)
     )
   )
 }
@@ -142,7 +144,7 @@ export function filterNotParN_(n: number) {
       as,
       flow(
         f,
-        map((b) => !b)
+        map.map((b) => !b)
       )
     )
 }

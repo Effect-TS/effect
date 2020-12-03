@@ -1,7 +1,6 @@
 import type { Effect } from "./effect"
 import { flip } from "./flip"
-import { foreach_ } from "./foreach"
-import { foreachPar_ } from "./foreachPar_"
+import { foreach_, foreachPar_ } from "./foreach"
 import { foreachParN_ } from "./foreachParN_"
 
 /**
