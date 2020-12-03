@@ -2,6 +2,10 @@ import * as M from "../_internal/managed"
 import * as BP from "../BufferedPull"
 import { Stream } from "./definitions"
 
+/**
+ * Submerges the chunks carried by this stream into the stream's structure, while
+ * still preserving them.
+ */
 export function flattenChunks<R, E, O>(
   self: Stream<R, E, readonly O[]>
 ): Stream<R, E, O> {

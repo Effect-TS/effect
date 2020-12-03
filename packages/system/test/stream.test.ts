@@ -15,6 +15,53 @@ describe("Stream", () => {
       expect(await T.runPromise(S.runCollect(a))).toEqual([0, 1, 2])
     })
   })
+
+  it("groupByKey", async () => {
+    expect(
+      await pipe(
+        S.fromIterable(["hello", "world", "hi", "holla"]),
+        S.groupByKey((a) => a[0]),
+        S.mergeGroupBy((k, s) =>
+          pipe(
+            s,
+            S.take(2),
+            S.map((_) => [k, _] as const)
+          )
+        ),
+        S.runCollect,
+        T.runPromise
+      )
+    ).toEqual([
+      ["h", "hello"],
+      ["h", "hi"],
+      ["w", "world"]
+    ])
+  })
+
+  it("interleave", async () => {
+    expect(
+      await pipe(
+        S.fromChunk([1, 1, 1, 1, 1, 1, 1, 1, 1, 1]),
+        S.interleave(S.fromChunk([2, 2, 2, 2, 2, 2, 2, 2, 2, 2])),
+        S.take(5),
+        S.runCollect,
+        T.runPromise
+      )
+    ).toEqual([1, 2, 1, 2, 1])
+  })
+
+  it("intersperse", async () => {
+    expect(
+      await pipe(
+        S.fromChunk([1, 1, 1, 1, 1, 1, 1, 1, 1, 1]),
+        S.intersperse(2),
+        S.take(5),
+        S.runCollect,
+        T.runPromise
+      )
+    ).toEqual([1, 2, 1, 2, 1])
+  })
+
   describe("BufferedPull", () => {
     it("pullArray", async () => {
       const program = pipe(
