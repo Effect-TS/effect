@@ -23,8 +23,8 @@ export function fromPromiseWith_<E, A>(
  * Create an Effect that when executed will construct `promise` and wait for its result,
  * errors will be handled using `onReject`
  */
-export function fromPromiseWith<E, A>(onReject: (reason: unknown) => E) {
-  return (effect: Lazy<Promise<A>>): IO<E, A> => fromPromiseWith_(effect, onReject)
+export function fromPromiseWith<E>(onReject: (reason: unknown) => E) {
+  return <A>(effect: Lazy<Promise<A>>): IO<E, A> => fromPromiseWith_(effect, onReject)
 }
 
 /**
