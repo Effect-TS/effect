@@ -300,6 +300,24 @@ export function reduce_<A, B>(self: Chunk<A>, b: B, f: (b: B, a: A) => B): B {
   return x
 }
 
+/**
+ * @dataFirst reduce_
+ */
 export function reduce<A, B>(b: B, f: (b: B, a: A) => B): (self: Chunk<A>) => B {
   return (self) => reduce_(self, b, f)
+}
+
+export function chain_<A, B>(self: Chunk<A>, f: (a: A) => Chunk<B>): Chunk<B> {
+  let x: Chunk<B> = new ChunkEmpty()
+  for (const y of self) {
+    x = new ChunkConcat(x, f(y))
+  }
+  return x
+}
+
+/**
+ * @dataFirst chain_
+ */
+export function chain<A, B>(f: (a: A) => Chunk<B>): (self: Chunk<A>) => Chunk<B> {
+  return (self) => chain_(self, f)
 }

@@ -46,4 +46,14 @@ describe("Chunk", () => {
       )
     ).toEqual(21)
   })
+  it("chain", () => {
+    const res = pipe(
+      C.single(0),
+      C.concat(C.array([1, 2])),
+      C.concat(C.list(L.from([3, 4, 5]))),
+      C.chain((n) => C.array([0, n + 1]))
+    )
+    expect(C.toArray(res)).toEqual([0, 1, 0, 2, 0, 3, 0, 4, 0, 5, 0, 6])
+    expect(pipe(res, C.get(5))).toEqual(3)
+  })
 })
