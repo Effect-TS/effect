@@ -5,7 +5,6 @@ export abstract class Chunk<A> implements Iterable<A> {
   abstract length(): number
   abstract get(i: number): A | undefined
   abstract [Symbol.iterator](): Iterator<A>
-  abstract map<B>(f: (a: A) => B): Chunk<B>
 }
 
 function* genOf<A>(a: A) {
@@ -32,10 +31,6 @@ export class ChunkSingle<A> extends Chunk<A> {
     return 1
   }
 
-  map<B>(f: (a: A) => B) {
-    return new ChunkSingle(f(this.a))
-  }
-
   [Symbol.iterator](): Iterator<A> {
     return genOf(this.a)
   }
@@ -54,10 +49,6 @@ export class ChunkArray<A> extends Chunk<A> {
 
   length() {
     return this.arr.length
-  }
-
-  map<B>(f: (a: A) => B) {
-    return new ChunkArray(this.arr.map(f))
   }
 
   [Symbol.iterator](): Iterator<A> {
@@ -80,10 +71,6 @@ export class ChunkList<A> extends Chunk<A> {
     return this.list.length
   }
 
-  map<B>(f: (a: A) => B) {
-    return new ChunkList(L.map_(this.list, f))
-  }
-
   [Symbol.iterator](): Iterator<A> {
     return this.list[Symbol.iterator]()
   }
@@ -102,10 +89,6 @@ export class ChunkConcat<A, B> extends Chunk<A | B> {
 
   length() {
     return this.l.length() + this.r.length()
-  }
-
-  map<C>(f: (a: A | B) => C) {
-    return new ChunkConcat(this.l.map(f), this.r.map(f))
   }
 
   [Symbol.iterator](): Iterator<A | B> {
@@ -282,9 +265,41 @@ export function toArray<A>(self: Chunk<A>): A.Array<A> {
  * @dataFirst map_
  */
 export function map<A, B>(f: (a: A) => B) {
-  return (self: Chunk<A>) => self.map(f)
+  return (self: Chunk<A>) => map_(self, f)
 }
 
-export function map_<A, B>(self: Chunk<A>, f: (a: A) => B) {
-  return self.map(f)
+export function map_<A, B>(self: Chunk<A>, f: (a: A) => B): Chunk<B> {
+  const c = concrete(self)
+  switch (c._tag) {
+    case "ChunkArray": {
+      return new ChunkArray(c.arr.map(f))
+    }
+    case "ChunkList": {
+      return new ChunkList(L.map_(c.list, f))
+    }
+    case "ChunkBuffer": {
+      return new ChunkList(L.map_(L.from(c.buf) as any, f))
+    }
+    case "ChunkEmpty": {
+      return c
+    }
+    case "ChunkSingle": {
+      return new ChunkSingle(f(c.a))
+    }
+    case "ChunkConcat": {
+      return new ChunkConcat(map_(c.l, f), map_(c.r, f))
+    }
+  }
+}
+
+export function reduce_<A, B>(self: Chunk<A>, b: B, f: (b: B, a: A) => B): B {
+  let x = b
+  for (const y of self) {
+    x = f(x, y)
+  }
+  return x
+}
+
+export function reduce<A, B>(b: B, f: (b: B, a: A) => B): (self: Chunk<A>) => B {
+  return (self) => reduce_(self, b, f)
 }

@@ -35,4 +35,15 @@ describe("Chunk", () => {
       )
     ).toEqual([1, 2, 3, 4, 5, 6])
   })
+  it("reduce", () => {
+    expect(
+      pipe(
+        C.single(0),
+        C.concat(C.array([1, 2])),
+        C.concat(C.list(L.from([3, 4, 5]))),
+        C.map((n) => n + 1),
+        C.reduce(0, (x, y) => x + y)
+      )
+    ).toEqual(21)
+  })
 })
