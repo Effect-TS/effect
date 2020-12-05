@@ -93,20 +93,24 @@ export function makeCrypto(config: PBKDF2Config) {
         const hash = combined.toString("binary", saltBytes + 8)
 
         // verify the salt and hash against the password
-        crypto.pbkdf2(password, salt, iterations, hashBytes, config.digest, function (
-          err,
-          verify
-        ) {
-          if (err) {
-            cb(T.fail(new InvalidPassword()))
-          } else {
-            if (verify.toString("binary") === hash) {
-              cb(T.unit)
-            } else {
+        crypto.pbkdf2(
+          password,
+          salt,
+          iterations,
+          hashBytes,
+          config.digest,
+          function (err, verify) {
+            if (err) {
               cb(T.fail(new InvalidPassword()))
+            } else {
+              if (verify.toString("binary") === hash) {
+                cb(T.unit)
+              } else {
+                cb(T.fail(new InvalidPassword()))
+              }
             }
           }
-        })
+        )
       })
   }
 }
