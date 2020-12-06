@@ -1,4 +1,5 @@
 import type * as A from "@effect-ts/core/Classic/Array"
+import type * as B from "@effect-ts/core/Classic/Branded"
 import * as O from "@effect-ts/core/Classic/Option"
 import * as T from "@effect-ts/core/Effect"
 import * as M from "@effect-ts/core/Effect/Managed"
@@ -13,6 +14,8 @@ export class ReadableError {
   constructor(readonly error: Error) {}
 }
 
+export type Byte = B.Branded<number, "Byte">
+
 /**
  * Captures a Node `Readable`, converting it into a `Stream`,
  *
@@ -21,7 +24,7 @@ export class ReadableError {
  */
 export function streamFromReadable(
   r: () => stream.Readable
-): S.Stream<unknown, ReadableError, Buffer> {
+): S.Stream<unknown, ReadableError, Byte> {
   return pipe(
     T.effectTotal(r),
     T.tap((sr) =>
@@ -37,7 +40,7 @@ export function streamFromReadable(
       })
     ),
     S.chain((sr) =>
-      S.effectAsync<unknown, ReadableError, Buffer>((cb) => {
+      S.effectAsync<unknown, ReadableError, Byte>((cb) => {
         sr.on("data", (data) => {
           cb(T.succeed(data))
         })
@@ -62,7 +65,7 @@ export class WritableError {
  */
 export function sinkFromWritable(
   w: () => stream.Writable
-): Sink.Sink<unknown, WritableError, Buffer, never, void> {
+): Sink.Sink<unknown, WritableError, Byte, never, void> {
   return new Sink.Sink(
     pipe(
       T.effectTotal(w),
@@ -71,11 +74,11 @@ export function sinkFromWritable(
           sw.destroy()
         })
       ),
-      M.map((sw) => (o: O.Option<A.Array<Buffer>>) =>
+      M.map((sw) => (o: O.Option<A.Array<Byte>>) =>
         O.isNone(o)
           ? Push.emit(undefined, [])
           : T.effectAsync((cb) => {
-              sw.write(Buffer.concat(o.value), (err) => {
+              sw.write(o.value, (err) => {
                 if (err) {
                   cb(Push.fail(new WritableError(err), []))
                 } else {
