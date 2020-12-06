@@ -1,4 +1,4 @@
-import * as A from "../../Array"
+import * as A from "../../Chunk"
 import type * as Ex from "../../Exit"
 import { pipe } from "../../Function"
 import * as Map from "../../Map"
@@ -33,7 +33,7 @@ export function distributedWith_<R, E, O>(
   n: number,
   maximumLag: number,
   decide: (_: O) => T.UIO<(_: number) => boolean>
-): M.Managed<R, never, ReadonlyArray<Q.Dequeue<Ex.Exit<O.Option<E>, O>>>> {
+): M.Managed<R, never, A.Chunk<Q.Dequeue<Ex.Exit<O.Option<E>, O>>>> {
   return pipe(
     P.make<never, (_: O) => T.UIO<(_: symbol) => boolean>>(),
     M.fromEffect,
@@ -60,7 +60,7 @@ export function distributedWith_<R, E, O>(
                 entries,
                 [
                   Map.empty as Map.Map<symbol, number>,
-                  A.empty as A.Array<Q.Dequeue<Ex.Exit<O.Option<E>, O>>>
+                  A.empty as A.Chunk<Q.Dequeue<Ex.Exit<O.Option<E>, O>>>
                 ] as const,
                 ([mapping, queue], [mappings, queues]) => [
                   Map.insert(mapping[0], mapping[1])(mappings),

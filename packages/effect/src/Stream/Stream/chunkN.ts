@@ -1,5 +1,5 @@
-import * as A from "../../Array"
 import * as C from "../../Cause"
+import * as A from "../../Chunk"
 import { pipe } from "../../Function"
 import * as O from "../../Option"
 import * as T from "../_internal/effect"
@@ -10,7 +10,7 @@ import { Stream } from "./definitions"
 import { halt } from "./halt"
 
 class State<X> {
-  constructor(public buffer: A.Array<X>, public done: boolean) {}
+  constructor(public buffer: A.Chunk<X>, public done: boolean) {}
 }
 
 /**
@@ -20,11 +20,11 @@ class State<X> {
  */
 export function chunkN_<R, E, O>(self: Stream<R, E, O>, n: number): Stream<R, E, O> {
   const emitOrAccumulate = (
-    buffer: A.Array<O>,
+    buffer: A.Chunk<O>,
     done: boolean,
     ref: Ref.Ref<State<O>>,
-    pull: T.Effect<R, O.Option<E>, A.Array<O>>
-  ): T.Effect<R, O.Option<E>, A.Array<O>> => {
+    pull: T.Effect<R, O.Option<E>, A.Chunk<O>>
+  ): T.Effect<R, O.Option<E>, A.Chunk<O>> => {
     if (buffer.length < n) {
       if (done) {
         if (A.isEmpty(buffer)) {

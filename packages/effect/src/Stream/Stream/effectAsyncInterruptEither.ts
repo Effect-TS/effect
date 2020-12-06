@@ -1,4 +1,4 @@
-import type * as A from "../../Array"
+import type * as A from "../../Chunk"
 import * as E from "../../Either"
 import type * as Ex from "../../Exit"
 import { pipe } from "../../Function"
@@ -21,7 +21,7 @@ import { Stream } from "./definitions"
 export function effectAsyncInterruptEither<R, E, A>(
   register: (
     cb: (
-      next: T.Effect<R, O.Option<E>, A.Array<A>>,
+      next: T.Effect<R, O.Option<E>, A.Chunk<A>>,
       offerCb?: F.Callback<never, boolean>
     ) => T.UIO<Ex.Exit<never, boolean>>
   ) => E.Either<T.Canceler<R>, Stream<R, E, A>>,

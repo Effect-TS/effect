@@ -1,5 +1,5 @@
-import * as A from "../../Array"
 import * as C from "../../Cause"
+import * as A from "../../Chunk"
 import type { HasClock } from "../../Clock"
 import { currentTime } from "../../Clock"
 import * as E from "../../Either"
@@ -67,9 +67,9 @@ export function collectAllWhileWith<S>(z: S) {
             M.map(([push, restart]) => {
               const go = (
                 s: S,
-                in_: O.Option<A.Array<I>>,
+                in_: O.Option<A.Chunk<I>>,
                 end: boolean
-              ): T.Effect<R, [E.Either<E, S>, A.Array<L>], S> =>
+              ): T.Effect<R, [E.Either<E, S>, A.Chunk<L>], S> =>
                 T.catchAll_(T.as_(push(in_), s), ([e, leftover]) =>
                   E.fold_(
                     e,
@@ -87,7 +87,7 @@ export function collectAllWhileWith<S>(z: S) {
                         } else {
                           return T.andThen_(
                             restart,
-                            go(s1, O.some(leftover) as O.Option<A.Array<I>>, end)
+                            go(s1, O.some(leftover) as O.Option<A.Chunk<I>>, end)
                           )
                         }
                       } else {
@@ -97,7 +97,7 @@ export function collectAllWhileWith<S>(z: S) {
                   )
                 )
 
-              return (in_: O.Option<A.Array<I>>) =>
+              return (in_: O.Option<A.Chunk<I>>) =>
                 T.chain_(acc.get, (s) =>
                   T.chain_(go(s, in_, O.isNone(in_)), (s1) => acc.set(s1))
                 )
@@ -148,7 +148,7 @@ export function contramapM<R1, E1, I, I2>(f: (i2: I2) => T.Effect<R1, E1, I>) {
  */
 export function contramapChunks_<R, E, I, I2, L, Z>(
   self: Sink<R, E, I, L, Z>,
-  f: (a: A.Array<I2>) => A.Array<I>
+  f: (a: A.Chunk<I2>) => A.Chunk<I>
 ): Sink<R, E, I2, L, Z> {
   return new Sink(M.map_(self.push, (push) => (input) => push(O.map_(input, f))))
 }
@@ -157,7 +157,7 @@ export function contramapChunks_<R, E, I, I2, L, Z>(
  * Transforms this sink's input chunks.
  * `f` must preserve chunking-invariance
  */
-export function contramapChunks<I, I2>(f: (a: A.Array<I2>) => A.Array<I>) {
+export function contramapChunks<I, I2>(f: (a: A.Chunk<I2>) => A.Chunk<I>) {
   return <R, E, L, Z>(self: Sink<R, E, I, L, Z>) => contramapChunks_(self, f)
 }
 
@@ -167,11 +167,11 @@ export function contramapChunks<I, I2>(f: (a: A.Array<I2>) => A.Array<I>) {
  */
 export function contramapChunksM_<R, R1, E, E1, I, I2, L, Z>(
   self: Sink<R, E, I, L, Z>,
-  f: (a: A.Array<I2>) => T.Effect<R1, E1, A.Array<I>>
+  f: (a: A.Chunk<I2>) => T.Effect<R1, E1, A.Chunk<I>>
 ): Sink<R & R1, E | E1, I2, L, Z> {
   return new Sink(
     M.map_(self.push, (push) => {
-      return (input: O.Option<A.Array<I2>>) =>
+      return (input: O.Option<A.Chunk<I2>>) =>
         O.fold_(
           input,
           () => push(O.none),
@@ -191,7 +191,7 @@ export function contramapChunksM_<R, R1, E, E1, I, I2, L, Z>(
  * `f` must preserve chunking-invariance
  */
 export function contramapChunksM<R1, E1, I, I2>(
-  f: (a: A.Array<I2>) => T.Effect<R1, E1, A.Array<I>>
+  f: (a: A.Chunk<I2>) => T.Effect<R1, E1, A.Chunk<I>>
 ) {
   return <R, E, L, Z>(self: Sink<R, E, I, L, Z>) => contramapChunksM_(self, f)
 }
@@ -240,7 +240,7 @@ export function dimapM<R1, E1, I, I2, Z, Z2>(
  */
 export function dimapChunks_<R, E, I, I2, L, Z, Z2>(
   self: Sink<R, E, I, L, Z>,
-  f: (i2: A.Array<I2>) => A.Array<I>,
+  f: (i2: A.Chunk<I2>) => A.Chunk<I>,
   g: (z: Z) => Z2
 ): Sink<R, E, I2, L, Z2> {
   return map_(contramapChunks_(self, f), g)
@@ -250,7 +250,7 @@ export function dimapChunks_<R, E, I, I2, L, Z, Z2>(
  * Transforms both input chunks and result of this sink using the provided functions.
  */
 export function dimapChunks<I, I2, Z, Z2>(
-  f: (i2: A.Array<I2>) => A.Array<I>,
+  f: (i2: A.Chunk<I2>) => A.Chunk<I>,
   g: (z: Z) => Z2
 ) {
   return <R, E, L>(self: Sink<R, E, I, L, Z>) => dimapChunks_(self, f, g)
@@ -262,7 +262,7 @@ export function dimapChunks<I, I2, Z, Z2>(
  */
 export function dimapChunksM_<R, R1, E, E1, I, I2, L, Z, Z2>(
   self: Sink<R, E, I, L, Z>,
-  f: (i2: A.Array<I2>) => T.Effect<R1, E1, A.Array<I>>,
+  f: (i2: A.Chunk<I2>) => T.Effect<R1, E1, A.Chunk<I>>,
   g: (z: Z) => T.Effect<R1, E1, Z2>
 ): Sink<R & R1, E | E1, I2, L, Z2> {
   return mapM_(contramapChunksM_(self, f), g)
@@ -273,7 +273,7 @@ export function dimapChunksM_<R, R1, E, E1, I, I2, L, Z, Z2>(
  * `f` and `g` must preserve chunking-invariance
  */
 export function dimapChunksM<R1, E1, I, I2, Z, Z2>(
-  f: (i2: A.Array<I2>) => T.Effect<R1, E1, A.Array<I>>,
+  f: (i2: A.Chunk<I2>) => T.Effect<R1, E1, A.Chunk<I>>,
   g: (z: Z) => T.Effect<R1, E1, Z2>
 ) {
   return <R, E, L>(self: Sink<R, E, I, L, Z>) => dimapChunksM_(self, f, g)
@@ -344,7 +344,7 @@ export function foldM_<R, R1, R2, E, E1, E2, I, I1, I2, L, L1, L2, Z, Z1, Z2>(
         >()
       ),
       M.map(({ openThatPush, switched, thatPush, thisPush }) => {
-        return (in_: O.Option<A.Array<I & I1 & I2>>) =>
+        return (in_: O.Option<A.Chunk<I & I1 & I2>>) =>
           T.chain_(switched.get, (sw) => {
             if (!sw) {
               return T.catchAll_(thisPush(in_), (v) => {
@@ -361,13 +361,13 @@ export function foldM_<R, R1, R2, E, E1, E2, I, I1, I2, L, L1, L2, Z, Z1, Z2>(
                         in_,
                         () =>
                           pipe(
-                            p(O.some(leftover) as O.Option<A.Array<I & I1 & I2>>),
+                            p(O.some(leftover) as O.Option<A.Chunk<I & I1 & I2>>),
                             T.when(() => A.isNonEmpty(leftover)),
                             T.andThen(p(O.none))
                           ),
                         () =>
                           pipe(
-                            p(O.some(leftover) as O.Option<A.Array<I & I1 & I2>>),
+                            p(O.some(leftover) as O.Option<A.Chunk<I & I1 & I2>>),
                             T.when(() => A.isNonEmpty(leftover))
                           )
                       )
@@ -410,7 +410,7 @@ export function map_<R, E, I, L, Z, Z2>(
   f: (z: Z) => Z2
 ): Sink<R, E, I, L, Z2> {
   return new Sink(
-    M.map_(self.push, (sink) => (inputs: O.Option<A.Array<I>>) =>
+    M.map_(self.push, (sink) => (inputs: O.Option<A.Chunk<I>>) =>
       T.mapError_(sink(inputs), (e) => [E.map_(e[0], f), e[1]])
     )
   )
@@ -432,7 +432,7 @@ export function mapError_<R, E, E2, I, L, Z>(
 ): Sink<R, E | E2, I, L, Z> {
   return new Sink(
     M.map_(self.push, (p) => {
-      return (in_: O.Option<A.Array<I>>) =>
+      return (in_: O.Option<A.Chunk<I>>) =>
         T.mapError_(p(in_), (e) => [E.mapLeft_(e[0], f), e[1]])
     })
   )
@@ -454,7 +454,7 @@ export function mapM_<R, R1, E, E1, I, L, Z, Z2>(
 ): Sink<R & R1, E | E1, I, L, Z2> {
   return new Sink(
     M.map_(self.push, (push) => {
-      return (inputs: O.Option<A.Array<I>>) =>
+      return (inputs: O.Option<A.Chunk<I>>) =>
         T.catchAll_(push(inputs), ([e, left]) =>
           E.fold_(
             e,
@@ -510,9 +510,9 @@ export function raceBoth_<R, R1, E, E1, I, I1, L, L1, Z, Z1>(
       M.do,
       M.bind("p1", () => self.push),
       M.bind("p2", () => that.push),
-      M.map(({ p1, p2 }) => (i: O.Option<A.Array<I & I1>>): T.Effect<
+      M.map(({ p1, p2 }) => (i: O.Option<A.Chunk<I & I1>>): T.Effect<
         R1 & R,
-        readonly [E.Either<E | E1, E.Either<Z, Z1>>, A.Array<L | L1>],
+        readonly [E.Either<E | E1, E.Either<Z, Z1>>, A.Chunk<L | L1>],
         void
       > =>
         T.raceWith_(
@@ -580,12 +580,12 @@ export function timed<R, E, I, L, Z>(
     pipe(
       self.push,
       M.zipWith(T.toManaged_(currentTime), (push, start) => {
-        return (in_: O.Option<A.Array<I>>) =>
+        return (in_: O.Option<A.Chunk<I>>) =>
           T.catchAll_(
             push(in_),
             ([e, leftover]): T.Effect<
               R & HasClock,
-              [E.Either<E, readonly [Z, number]>, A.Array<L>],
+              [E.Either<E, readonly [Z, number]>, A.Chunk<L>],
               never
             > =>
               E.fold_(
@@ -612,7 +612,7 @@ export function toTransducer<R, E, I, L extends I, Z>(
 ): Transducer<R, E, I, Z> {
   return transducer(
     M.map_(Push.restartable(self.push), ([push, restart]) => {
-      const go = (input: O.Option<A.Array<I>>): T.Effect<R, E, A.Array<Z>> =>
+      const go = (input: O.Option<A.Chunk<I>>): T.Effect<R, E, A.Chunk<Z>> =>
         T.foldM_(
           push(input),
           ([e, leftover]) =>
@@ -630,7 +630,7 @@ export function toTransducer<R, E, I, L extends I, Z>(
           (_) => T.succeed(A.empty)
         )
 
-      return (input: O.Option<A.Array<I>>) => go(input)
+      return (input: O.Option<A.Chunk<I>>) => go(input)
     })
   )
 }
@@ -800,20 +800,20 @@ export function zipWithPar_<R, R1, E, E1, I, I1, L, L1, Z, Z1, Z2>(
       M.bind("p1", () => self.push),
       M.bind("p2", () => that.push),
       M.map(({ p1, p2, ref }) => {
-        return (in_: O.Option<A.Array<I & I1>>) =>
+        return (in_: O.Option<A.Chunk<I & I1>>) =>
           T.chain_(ref.get, (state) => {
             const newState = pipe(
               state,
               matchTag({
                 BothRunning: (): T.Effect<
                   R & R1,
-                  readonly [E.Either<E | E1, Z2>, A.Array<L | L1>],
+                  readonly [E.Either<E | E1, Z2>, A.Chunk<L | L1>],
                   State<Z, Z1>
                 > => {
                   const l: T.Effect<
                     R & R1,
-                    readonly [E.Either<E | E1, Z2>, A.Array<L | L1>],
-                    O.Option<readonly [Z, A.Array<L>]>
+                    readonly [E.Either<E | E1, Z2>, A.Chunk<L | L1>],
+                    O.Option<readonly [Z, A.Chunk<L>]>
                   > = T.foldM_(
                     p1(in_),
                     ([e, l]) =>
@@ -822,27 +822,27 @@ export function zipWithPar_<R, R1, E, E1, I, I1, L, L1, Z, Z1, Z2>(
                         (e) =>
                           Push.fail(e, l) as T.Effect<
                             R & R1,
-                            [E.Either<E | E1, Z2>, A.Array<L | L1>],
-                            O.Option<readonly [Z, A.Array<L>]>
+                            [E.Either<E | E1, Z2>, A.Chunk<L | L1>],
+                            O.Option<readonly [Z, A.Chunk<L>]>
                           >,
                         (z) =>
                           T.succeed(O.some([z, l] as const)) as T.Effect<
                             R & R1,
-                            [E.Either<E | E1, Z2>, A.Array<L | L1>],
-                            O.Option<readonly [Z, A.Array<L>]>
+                            [E.Either<E | E1, Z2>, A.Chunk<L | L1>],
+                            O.Option<readonly [Z, A.Chunk<L>]>
                           >
                       ),
                     (_) =>
                       T.succeed(O.none) as T.Effect<
                         R & R1,
-                        [E.Either<E | E1, Z2>, A.Array<L | L1>],
-                        O.Option<readonly [Z, A.Array<L>]>
+                        [E.Either<E | E1, Z2>, A.Chunk<L | L1>],
+                        O.Option<readonly [Z, A.Chunk<L>]>
                       >
                   )
                   const r: T.Effect<
                     R & R1,
-                    readonly [E.Either<E | E1, never>, A.Array<L | L1>],
-                    O.Option<readonly [Z1, A.Array<L1>]>
+                    readonly [E.Either<E | E1, never>, A.Chunk<L | L1>],
+                    O.Option<readonly [Z1, A.Chunk<L1>]>
                   > = T.foldM_(
                     p2(in_),
                     ([e, l]) =>
@@ -851,21 +851,21 @@ export function zipWithPar_<R, R1, E, E1, I, I1, L, L1, Z, Z1, Z2>(
                         (e) =>
                           Push.fail(e, l) as T.Effect<
                             R & R1,
-                            [E.Either<E | E1, never>, A.Array<L | L1>],
-                            O.Option<readonly [Z1, A.Array<L1>]>
+                            [E.Either<E | E1, never>, A.Chunk<L | L1>],
+                            O.Option<readonly [Z1, A.Chunk<L1>]>
                           >,
                         (z) =>
                           T.succeed(O.some([z, l] as const)) as T.Effect<
                             R & R1,
-                            [E.Either<E | E1, never>, A.Array<L | L1>],
-                            O.Option<readonly [Z1, A.Array<L1>]>
+                            [E.Either<E | E1, never>, A.Chunk<L | L1>],
+                            O.Option<readonly [Z1, A.Chunk<L1>]>
                           >
                       ),
                     (_) =>
                       T.succeed(O.none) as T.Effect<
                         R & R1,
-                        [E.Either<E | E1, never>, A.Array<L | L1>],
-                        O.Option<readonly [Z1, A.Array<L1>]>
+                        [E.Either<E | E1, never>, A.Chunk<L | L1>],
+                        O.Option<readonly [Z1, A.Chunk<L1>]>
                       >
                   )
 
@@ -873,7 +873,7 @@ export function zipWithPar_<R, R1, E, E1, I, I1, L, L1, Z, Z1, Z2>(
                     T.zipPar_(l, r),
                     ([lr, rr]): T.Effect<
                       R & R1,
-                      readonly [E.Either<E1, Z2>, A.Array<L | L1>],
+                      readonly [E.Either<E1, Z2>, A.Chunk<L | L1>],
                       State<Z, Z1>
                     > => {
                       if (O.isSome(lr)) {
@@ -901,7 +901,7 @@ export function zipWithPar_<R, R1, E, E1, I, I1, L, L1, Z, Z1, Z2>(
                     }
                   ) as T.Effect<
                     R & R1,
-                    readonly [E.Either<E1, Z2>, A.Array<L | L1>],
+                    readonly [E.Either<E1, Z2>, A.Chunk<L | L1>],
                     State<Z, Z1>
                   >
                 },
@@ -911,7 +911,7 @@ export function zipWithPar_<R, R1, E, E1, I, I1, L, L1, Z, Z1, Z2>(
                       p2(in_),
                       ([e, leftover]): T.Effect<
                         R & R1,
-                        readonly [E.Either<E | E1, Z2>, A.Array<L | L1>],
+                        readonly [E.Either<E | E1, Z2>, A.Chunk<L | L1>],
                         State<Z, Z1>
                       > =>
                         E.fold_(
@@ -928,7 +928,7 @@ export function zipWithPar_<R, R1, E, E1, I, I1, L, L1, Z, Z1, Z2>(
                       p1(in_),
                       ([e, leftover]): T.Effect<
                         R & R1,
-                        readonly [E.Either<E | E1, Z2>, A.Array<L | L1>],
+                        readonly [E.Either<E | E1, Z2>, A.Chunk<L | L1>],
                         State<Z, Z1>
                       > =>
                         E.fold_(
@@ -965,10 +965,10 @@ export function zipWithPar<R1, E1, I1, L1, Z, Z1, Z2>(
  */
 export function exposeLeftover<R, E, I, L, Z>(
   self: Sink<R, E, I, L, Z>
-): Sink<R, E, I, never, readonly [Z, A.Array<L>]> {
+): Sink<R, E, I, never, readonly [Z, A.Chunk<L>]> {
   return new Sink(
     M.map_(self.push, (p) => {
-      return (in_: O.Option<A.Array<I>>) =>
+      return (in_: O.Option<A.Chunk<I>>) =>
         T.mapError_(p(in_), ([v, leftover]) => {
           return [E.map_(v, (z) => [z, leftover] as const), A.empty] as const
         })
@@ -983,7 +983,7 @@ export function dropLeftover<R, E, I, L, Z>(
   self: Sink<R, E, I, L, Z>
 ): Sink<R, E, I, never, Z> {
   return new Sink(
-    M.map_(self.push, (p) => (in_: O.Option<readonly I[]>) =>
+    M.map_(self.push, (p) => (in_: O.Option<A.Chunk<I>>) =>
       T.mapError_(p(in_), ([v, _]) => [v, []])
     )
   )
@@ -1000,11 +1000,11 @@ export function untilOutputM_<R, R1, E, E1, I, L extends I, Z>(
   return new Sink(
     M.map_(Push.restartable(self.push), ([push, restart]) => {
       const go = (
-        in_: O.Option<A.Array<I>>,
+        in_: O.Option<A.Chunk<I>>,
         end: boolean
       ): T.Effect<
         R & R1,
-        readonly [E.Either<E | E1, O.Option<Z>>, A.Array<L>],
+        readonly [E.Either<E | E1, O.Option<Z>>, A.Chunk<L>],
         void
       > => {
         return T.catchAll_(push(in_), ([e, leftover]) =>
@@ -1022,7 +1022,7 @@ export function untilOutputM_<R, R1, E, E1, I, L extends I, Z>(
                       ? Push.emit(O.none, A.empty)
                       : T.andThen_(restart, Push.more)
                   } else {
-                    return go(O.some(leftover) as O.Option<A.Array<I>>, end)
+                    return go(O.some(leftover) as O.Option<A.Chunk<I>>, end)
                   }
                 }
               )
@@ -1030,7 +1030,7 @@ export function untilOutputM_<R, R1, E, E1, I, L extends I, Z>(
         )
       }
 
-      return (is: O.Option<A.Array<I>>) => go(is, O.isNone(is))
+      return (is: O.Option<A.Chunk<I>>) => go(is, O.isNone(is))
     })
   )
 }
@@ -1052,7 +1052,7 @@ export function provideAll_<R, E, I, L, Z>(
   r: R
 ): Sink<unknown, E, I, L, Z> {
   return new Sink(
-    M.map_(M.provideAll_(self.push, r), (push) => (i: O.Option<A.Array<I>>) =>
+    M.map_(M.provideAll_(self.push, r), (push) => (i: O.Option<A.Chunk<I>>) =>
       T.provideAll_(push(i), r)
     )
   )
@@ -1075,7 +1075,7 @@ export function provideSome_<R0, R, E, I, L, Z>(
   f: (r0: R0) => R
 ) {
   return new Sink(
-    M.map_(M.provideSome_(self.push, f), (push) => (i: O.Option<A.Array<I>>) =>
+    M.map_(M.provideSome_(self.push, f), (push) => (i: O.Option<A.Chunk<I>>) =>
       T.provideSome_(push(i), f)
     )
   )
@@ -1105,7 +1105,7 @@ export function provideLayer_<R, E, I, L, Z, R2>(
 ) {
   return new Sink<R2, E, I, L, Z>(
     M.chain_(L.build(layer), (r) =>
-      M.map_(M.provideAll_(self.push, r), (push) => (i: O.Option<A.Array<I>>) =>
+      M.map_(M.provideAll_(self.push, r), (push) => (i: O.Option<A.Chunk<I>>) =>
         T.provideAll_(push(i), r)
       )
     )
@@ -1153,8 +1153,8 @@ export function accessM<R, R2, E, I, L, Z>(
 /**
  * A sink that collects all of its inputs into an array.
  */
-export function collectAll<A>(): Sink<unknown, never, A, never, A.Array<A>> {
-  return reduceLeftChunks(A.empty as A.Array<A>)((s, i: A.Array<A>) => [...s, ...i])
+export function collectAll<A>(): Sink<unknown, never, A, never, A.Chunk<A>> {
+  return reduceLeftChunks(A.empty as A.Chunk<A>)((s, i: A.Chunk<A>) => [...s, ...i])
 }
 
 /**
@@ -1167,7 +1167,7 @@ export function collectAllToMap<A, K>(key: (a: A) => K) {
     new Sink(
       M.suspend(
         () =>
-          reduceLeftChunks<Map<K, A>>(new Map())((acc, as: A.Array<A>) =>
+          reduceLeftChunks<Map<K, A>>(new Map())((acc, as: A.Chunk<A>) =>
             A.reduce_(as, acc, (acc, a) => {
               const k = key(a)
               const v = acc.get(k)
@@ -1221,7 +1221,7 @@ export const drain: Sink<unknown, never, unknown, never, void> = dropLeftover(
 export function fail<E>(e: E) {
   return <I>(): Sink<unknown, E, I, I, never> =>
     fromPush((c) => {
-      const leftover: A.Array<I> = O.fold_(
+      const leftover: A.Chunk<I> = O.fold_(
         c,
         () => A.empty,
         (x) => x
@@ -1240,10 +1240,10 @@ export function reduce<S>(z: S) {
   ): Sink<unknown, never, I, I, S> => {
     const reduceChunk = (
       s: S,
-      chunk: A.Array<I>,
+      chunk: A.Chunk<I>,
       idx: number,
       len: number
-    ): readonly [S, O.Option<A.Array<I>>] => {
+    ): readonly [S, O.Option<A.Chunk<I>>] => {
       if (idx === len) {
         return [s, O.none] as const
       } else {
@@ -1263,7 +1263,7 @@ export function reduce<S>(z: S) {
           M.do,
           M.bind("state", () => T.toManaged_(R.makeRef(z))),
           M.map(({ state }) => {
-            return (is: O.Option<A.Array<I>>) =>
+            return (is: O.Option<A.Chunk<I>>) =>
               O.fold_(
                 is,
                 () => T.chain_(state.get, (s) => Push.emit(s, A.empty)),
@@ -1294,9 +1294,9 @@ export function reduce<S>(z: S) {
  */
 export function reduceChunks<Z>(z: Z) {
   return (contFn: (s: Z) => boolean) => <I>(
-    f: (s: Z, i: A.Array<I>) => Z
+    f: (s: Z, i: A.Chunk<I>) => Z
   ): Sink<unknown, never, I, I, Z> =>
-    reduceChunksM(z)(contFn)((z, i: A.Array<I>) => T.succeed(f(z, i)))
+    reduceChunksM(z)(contFn)((z, i: A.Chunk<I>) => T.succeed(f(z, i)))
 }
 
 /**
@@ -1306,7 +1306,7 @@ export function reduceChunks<Z>(z: Z) {
  */
 export function reduceChunksM<S>(z: S) {
   return (contFn: (s: S) => boolean) => <R, E, I>(
-    f: (a: S, i: readonly I[]) => T.Effect<R, E, S>
+    f: (a: S, i: A.Chunk<I>) => T.Effect<R, E, S>
   ): Sink<R, E, I, I, S> => {
     if (contFn(z)) {
       return new Sink(
@@ -1314,7 +1314,7 @@ export function reduceChunksM<S>(z: S) {
           M.do,
           M.bind("state", () => T.toManaged_(R.makeRef(z))),
           M.map(({ state }) => {
-            return (is: O.Option<readonly I[]>) =>
+            return (is: O.Option<A.Chunk<I>>) =>
               O.fold_(
                 is,
                 () => T.chain_(state.get, (s) => Push.emit(s, [])),
@@ -1353,10 +1353,10 @@ export function reduceM<S>(z: S) {
   ): Sink<R, E, I, I, S> => {
     function reduceChunk(
       s: S,
-      chunk: A.Array<I>,
+      chunk: A.Chunk<I>,
       idx: number,
       len: number
-    ): T.Effect<R, readonly [E, A.Array<I>], readonly [S, O.Option<A.Array<I>>]> {
+    ): T.Effect<R, readonly [E, A.Chunk<I>], readonly [S, O.Option<A.Chunk<I>>]> {
       if (idx === len) {
         return T.succeed([s, O.none] as const)
       } else {
@@ -1380,7 +1380,7 @@ export function reduceM<S>(z: S) {
           M.do,
           M.bind("state", () => T.toManaged_(R.makeRef(z))),
           M.map(({ state }) => {
-            return (is: O.Option<A.Array<I>>) =>
+            return (is: O.Option<A.Chunk<I>>) =>
               O.fold_(
                 is,
                 () => T.chain_(state.get, (s) => Push.emit(s, A.empty)),
@@ -1421,7 +1421,7 @@ export function reduceLeft<S>(z: S) {
  * `f` must preserve chunking-invariance.
  */
 export function reduceLeftChunks<S>(z: S) {
-  return <I>(f: (s: S, i: A.Array<I>) => S): Sink<unknown, never, I, never, S> =>
+  return <I>(f: (s: S, i: A.Chunk<I>) => S): Sink<unknown, never, I, never, S> =>
     dropLeftover(reduceChunks(z)(() => true)(f))
 }
 
@@ -1431,7 +1431,7 @@ export function reduceLeftChunks<S>(z: S) {
  */
 export function reduceLeftChunksM<S>(z: S) {
   return <R, E, I>(
-    f: (s: S, i: readonly I[]) => T.Effect<R, E, S>
+    f: (s: S, i: A.Chunk<I>) => T.Effect<R, E, S>
   ): Sink<R, E, I, never, S> => dropLeftover(reduceChunksM(z)((_) => true)(f))
 }
 
@@ -1448,10 +1448,10 @@ export function reduceLeftM<S>(z: S) {
  */
 export function foreach<I, R1, E1>(f: (i: I) => T.Effect<R1, E1, any>) {
   const go = (
-    chunk: A.Array<I>,
+    chunk: A.Chunk<I>,
     idx: number,
     len: number
-  ): T.Effect<R1, [E.Either<E1, never>, A.Array<I>], void> => {
+  ): T.Effect<R1, [E.Either<E1, never>, A.Chunk<I>], void> => {
     if (idx === len) {
       return Push.more
     } else {
@@ -1468,7 +1468,7 @@ export function foreach<I, R1, E1>(f: (i: I) => T.Effect<R1, E1, any>) {
   return fromPush(
     O.fold(
       () => Push.emit<never, void>(undefined, []),
-      (is: A.Array<I>) => go(is, 0, is.length)
+      (is: A.Chunk<I>) => go(is, 0, is.length)
     )
   )
 }
@@ -1477,9 +1477,9 @@ export function foreach<I, R1, E1>(f: (i: I) => T.Effect<R1, E1, any>) {
  * A sink that executes the provided effectful function for every chunk fed to it.
  */
 export function foreachChunk<R, E, I, L>(
-  f: (a: A.Array<I>) => T.Effect<R, E, any>
+  f: (a: A.Chunk<I>) => T.Effect<R, E, any>
 ): Sink<R, E, I, never, void> {
-  return fromPush((in_: O.Option<A.Array<I>>) =>
+  return fromPush((in_: O.Option<A.Chunk<I>>) =>
     O.fold_(
       in_,
       () => Push.emit<never, void>(undefined, A.empty),
@@ -1500,10 +1500,10 @@ export function foreachWhile<R, E, I>(
   f: (i: I) => T.Effect<R, E, boolean>
 ): Sink<R, E, I, I, void> {
   const go = (
-    chunk: A.Array<I>,
+    chunk: A.Chunk<I>,
     idx: number,
     len: number
-  ): T.Effect<R, readonly [E.Either<E, void>, A.Array<I>], void> => {
+  ): T.Effect<R, readonly [E.Either<E, void>, A.Chunk<I>], void> => {
     if (idx === len) {
       return Push.more
     } else {
@@ -1521,7 +1521,7 @@ export function foreachWhile<R, E, I>(
     }
   }
 
-  return fromPush((in_: O.Option<A.Array<I>>) =>
+  return fromPush((in_: O.Option<A.Chunk<I>>) =>
     O.fold_(
       in_,
       () => Push.emit<never, void>(undefined, A.empty),
@@ -1535,8 +1535,8 @@ export function foreachWhile<R, E, I>(
  */
 export function fromEffect<R, E, Z>(b: T.Effect<R, E, Z>) {
   return <I>(): Sink<R, E, I, I, Z> =>
-    fromPush<R, E, I, I, Z>((in_: O.Option<A.Array<I>>) => {
-      const leftover = O.fold_(in_, () => A.empty as A.Array<I>, identity)
+    fromPush<R, E, I, I, Z>((in_: O.Option<A.Chunk<I>>) => {
+      const leftover = O.fold_(in_, () => A.empty as A.Chunk<I>, identity)
 
       return T.foldM_(
         b,
@@ -1565,7 +1565,7 @@ export function halt<E>(e: C.Cause<E>): Sink<unknown, E, unknown, never, never> 
  */
 export function head<I>(): Sink<unknown, never, I, I, O.Option<I>> {
   return new Sink(
-    M.succeed((in_: O.Option<A.Array<I>>) =>
+    M.succeed((in_: O.Option<A.Chunk<I>>) =>
       O.fold_(
         in_,
         () => Push.emit(O.none, A.empty),
@@ -1590,7 +1590,7 @@ export function last<I>(): Sink<unknown, never, I, never, O.Option<I>> {
       M.do,
       M.bind("state", () => T.toManaged_(R.makeRef<O.Option<I>>(O.none))),
       M.map(({ state }) => {
-        return (is: O.Option<A.Array<I>>) =>
+        return (is: O.Option<A.Chunk<I>>) =>
           T.chain_(state.get, (last) => {
             return O.fold_(
               is,
@@ -1642,7 +1642,7 @@ export function succeed<Z, I>(z: Z): Sink<unknown, never, I, I, Z> {
   return fromPush<unknown, never, I, I, Z>((c) => {
     const leftover = O.fold_(
       c,
-      () => [] as A.Array<I>,
+      () => [] as A.Chunk<I>,
       (x) => x
     )
 
@@ -1660,19 +1660,19 @@ export const sum: Sink<unknown, never, number, never, number> = reduceLeft(0)(
 /**
  * A sink that takes the specified number of values.
  */
-export function take<I>(n: number): Sink<unknown, never, I, I, A.Array<I>> {
+export function take<I>(n: number): Sink<unknown, never, I, I, A.Chunk<I>> {
   return new Sink(
     pipe(
       M.do,
-      M.bind("state", () => T.toManaged_(R.makeRef<A.Array<I>>(A.empty))),
+      M.bind("state", () => T.toManaged_(R.makeRef<A.Chunk<I>>(A.empty))),
       M.map(({ state }) => {
-        return (is: O.Option<A.Array<I>>) =>
+        return (is: O.Option<A.Chunk<I>>) =>
           T.chain_(state.get, (take) => {
             return O.fold_(
               is,
               () => {
                 if (n >= 0) {
-                  return Push.emit(take, A.empty as A.Array<I>)
+                  return Push.emit(take, A.empty as A.Chunk<I>)
                 } else {
                   return Push.emit(A.empty, take)
                 }

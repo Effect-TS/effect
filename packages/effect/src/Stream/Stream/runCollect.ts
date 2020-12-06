@@ -1,4 +1,4 @@
-import type * as A from "../../Array"
+import type * as A from "../../Chunk"
 import { pipe } from "../../Function"
 import type * as T from "../_internal/effect"
 import * as SK from "../Sink"
@@ -10,4 +10,4 @@ import { run } from "./run"
  */
 export const runCollect = <R, E, O>(
   self: Stream<R, E, O>
-): T.Effect<R, E, A.Array<O>> => pipe(self, run(SK.collectAll<O>()))
+): T.Effect<R, E, A.Chunk<O>> => pipe(self, run(SK.collectAll<O>()))

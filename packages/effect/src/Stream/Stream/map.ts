@@ -1,3 +1,4 @@
+import * as Chunk from "../../Chunk"
 import type { Stream } from "./definitions"
 import { mapChunks_ } from "./mapChunks"
 
@@ -8,7 +9,7 @@ export function map_<R, E, O, O2>(
   self: Stream<R, E, O>,
   f: (_: O) => O2
 ): Stream<R, E, O2> {
-  return mapChunks_(self, (o) => o.map(f))
+  return mapChunks_(self, Chunk.map(f))
 }
 
 /**

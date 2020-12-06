@@ -453,7 +453,10 @@ export function filterMapWithIndex_<A, B>(
 /**
  * Maps an array until `none` is returned
  */
-export function collectWhile_<A, B>(arr: Array<A>, f: (x: A) => Option<B>): Array<B> {
+export function collectWhileMap_<A, B>(
+  arr: Array<A>,
+  f: (x: A) => Option<B>
+): Array<B> {
   const result: MutableArray<B> = []
 
   for (let i = 0; i < arr.length; i++) {
@@ -472,8 +475,8 @@ export function collectWhile_<A, B>(arr: Array<A>, f: (x: A) => Option<B>): Arra
 /**
  * Maps an array until `none` is returned
  */
-export function collectWhile<A, B>(f: (x: A) => Option<B>) {
-  return (arr: Array<A>) => collectWhile_(arr, f)
+export function collectWhileMap<A, B>(f: (x: A) => Option<B>) {
+  return (arr: Array<A>) => collectWhileMap_(arr, f)
 }
 
 /**

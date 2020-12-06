@@ -1,4 +1,4 @@
-import * as A from "../../Array"
+import * as A from "../../Chunk"
 import type * as CL from "../../Clock"
 import * as E from "../../Either"
 import * as Ex from "../../Exit"
@@ -30,7 +30,7 @@ import { flattenTake } from "./flattenTake"
  */
 export function aggregateAsyncWithinEither<O, R1, E1, P, Q>(
   transducer: TR.Transducer<R1, E1, O, P>,
-  schedule: SC.Schedule<R1, A.Array<P>, Q>
+  schedule: SC.Schedule<R1, A.Chunk<P>, Q>
 ) {
   return <R, E>(self: Stream<R, E, O>) =>
     aggregateAsyncWithinEither_(self, transducer, schedule)
@@ -51,7 +51,7 @@ export function aggregateAsyncWithinEither<O, R1, E1, P, Q>(
 export function aggregateAsyncWithinEither_<R, E, O, R1, E1, P, Q>(
   self: Stream<R, E, O>,
   transducer: TR.Transducer<R1, E1, O, P>,
-  schedule: SC.Schedule<R1, A.Array<P>, Q>
+  schedule: SC.Schedule<R1, A.Chunk<P>, Q>
 ): Stream<R & R1 & CL.HasClock, E | E1, E.Either<Q, P>> {
   return pipe(
     M.do,
@@ -63,7 +63,7 @@ export function aggregateAsyncWithinEither_<R, E, O, R1, E1, P, Q>(
       R.makeManagedRef<O.Option<F.Fiber<never, Take.Take<E | E1, O>>>>(O.none)
     ),
     M.bind("sdriver", () => M.fromEffect(SC.driver(schedule))),
-    M.bind("lastChunk", () => R.makeManagedRef<A.Array<P>>(A.empty)),
+    M.bind("lastChunk", () => R.makeManagedRef<A.Chunk<P>>(A.empty)),
     M.let("producer", ({ handoff, pull }) =>
       T.repeatWhileM_(Take.fromPull(pull), (take) =>
         pipe(Handoff.offer_(handoff, take), T.as(Ex.succeeded(take)))
@@ -80,7 +80,7 @@ export function aggregateAsyncWithinEither_<R, E, O, R1, E1, P, Q>(
         const waitForProducer: T.RIO<R1, Take.Take<E | E1, O>> = pipe(
           waitingFiber,
           R.getAndSet(
-            O.none as O.Option<F.Fiber<never, Ex.Exit<O.Option<E | E1>, A.Array<O>>>>
+            O.none as O.Option<F.Fiber<never, Ex.Exit<O.Option<E | E1>, A.Chunk<O>>>>
           ),
           T.chain(
             O.fold(
@@ -115,7 +115,7 @@ export function aggregateAsyncWithinEither_<R, E, O, R1, E1, P, Q>(
         ): T.Effect<
           R & R1 & CL.HasClock,
           O.Option<E | E1>,
-          A.Array<Take.Take<E1, E.Either<Q, P>>>
+          A.Chunk<Take.Take<E1, E.Either<Q, P>>>
         > => {
           if (!race) {
             return pipe(

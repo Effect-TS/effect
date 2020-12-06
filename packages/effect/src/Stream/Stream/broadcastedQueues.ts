@@ -1,4 +1,4 @@
-import type * as A from "../../Array"
+import type * as A from "../../Chunk"
 import type * as Ex from "../../Exit"
 import * as O from "../../Option"
 import type * as XQ from "../../Queue"
@@ -33,7 +33,7 @@ export function broadcastedQueues_<R, E, O>(
   self: Stream<R, E, O>,
   n: number,
   maximumLag: number
-): M.Managed<R, never, A.Array<XQ.Dequeue<Ex.Exit<O.Option<E>, O>>>> {
+): M.Managed<R, never, A.Chunk<XQ.Dequeue<Ex.Exit<O.Option<E>, O>>>> {
   const decider = T.succeed((_: number) => true)
   return distributedWith_(self, n, maximumLag, (_) => decider)
 }

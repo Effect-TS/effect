@@ -1,4 +1,4 @@
-import type * as A from "../../../Array"
+import type * as A from "../../../Chunk"
 import * as Ex from "../../../Exit"
 import { pipe } from "../../../Function"
 import * as O from "../../../Option"
@@ -18,7 +18,7 @@ import type { Stream } from "../definitions"
 export function bufferSignal<R, E, O>(
   self: Stream<R, E, O>,
   queue: Q.Queue<readonly [Take.Take<E, O>, P.Promise<never, void>]>
-): M.Managed<R, never, T.Effect<R, O.Option<E>, A.Array<O>>> {
+): M.Managed<R, never, T.Effect<R, O.Option<E>, A.Chunk<O>>> {
   return pipe(
     M.do,
     M.bind("as", () => self.proc),
@@ -53,7 +53,7 @@ export function bufferSignal<R, E, O>(
 
       return pipe(
         Take.fromPull(as),
-        T.tap((take) => offer(take as Ex.Exit<O.Option<E>, A.Array<O>>)),
+        T.tap((take) => offer(take as Ex.Exit<O.Option<E>, A.Chunk<O>>)),
         T.repeatWhile((_) => _ !== Take.end),
         T.asUnit
       )

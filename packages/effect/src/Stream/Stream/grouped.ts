@@ -1,4 +1,4 @@
-import type * as A from "../../Array"
+import type * as A from "../../Chunk"
 import * as TR from "../Transducer"
 import { aggregate_ } from "./aggregate"
 import type { Stream } from "./definitions"
@@ -10,7 +10,7 @@ import type { Stream } from "./definitions"
 export function grouped_<R, E, O>(
   self: Stream<R, E, O>,
   chunkSize: number
-): Stream<R, E, A.Array<O>> {
+): Stream<R, E, A.Chunk<O>> {
   return aggregate_(self, TR.collectAllN(chunkSize))
 }
 

@@ -1,5 +1,5 @@
-import type * as A from "../../Array"
 import * as C from "../../Cause"
+import type * as A from "../../Chunk"
 import { pipe } from "../../Function"
 import * as O from "../../Option"
 import * as Ref from "../../Ref"
@@ -21,14 +21,14 @@ export function concat_<R, R1, E, E1, O, O1>(
       M.do,
       M.bind("currStream", () =>
         T.toManaged_(
-          Ref.makeRef<T.Effect<R & R1, O.Option<E | E1>, A.Array<O | O1>>>(Pull.end)
+          Ref.makeRef<T.Effect<R & R1, O.Option<E | E1>, A.Chunk<O | O1>>>(Pull.end)
         )
       ),
       M.bind("switchStream", () =>
         M.switchable<
           R & R1,
           never,
-          T.Effect<R & R1, O.Option<E | E1>, A.Array<O | O1>>
+          T.Effect<R & R1, O.Option<E | E1>, A.Chunk<O | O1>>
         >()
       ),
       M.bind("switched", () => T.toManaged_(Ref.makeRef(false))),
@@ -39,7 +39,7 @@ export function concat_<R, R1, E, E1, O, O1>(
         const go: T.Effect<
           R & R1,
           O.Option<E | E1>,
-          A.Array<O | O1>
+          A.Chunk<O | O1>
         > = T.catchAllCause_(T.flatten(currStream.get), (_) =>
           O.fold_(
             C.sequenceCauseOption(_),
