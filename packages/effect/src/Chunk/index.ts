@@ -14,13 +14,36 @@ export interface NonEmptyChunk<A> extends Readonly<ArrayLike<A>>, Iterable<A> {
 /**
  * @optimize identity
  */
-export function buffer<A>(id: Uint8Array): Chunk<A> {
+export function buffer<A>(
+  id:
+    | Uint8Array
+    | Uint16Array
+    | Uint32Array
+    | Uint8ClampedArray
+    | Int8Array
+    | Int16Array
+    | Int32Array
+): Chunk<A> {
   return id as any
 }
 
+export function isTyped(
+  self: Chunk<unknown>
+): self is
+  | Buffer
+  | Uint8Array
+  | Uint16Array
+  | Uint32Array
+  | Uint8ClampedArray
+  | Int8Array
+  | Int16Array
+  | Int32Array {
+  return "subarray" in self
+}
+
 export function dropLeft_<A>(self: Chunk<A>, n: number): Chunk<A> {
-  if (Buffer && Buffer.isBuffer(self)) {
-    return buffer(self.slice(n, self.length))
+  if (isTyped(self)) {
+    return buffer(self.subarray(n, self.length))
   }
   if (Array.isArray(self)) {
     return A.dropLeft_(self, n)
@@ -80,10 +103,10 @@ export function last<A>(as: Chunk<A>): O.Option<A> {
 }
 
 export function splitAt_<A>(as: Chunk<A>, n: number): readonly [Chunk<A>, Chunk<A>] {
-  if (Buffer && Buffer.isBuffer(as)) {
-    return [buffer(as.slice(0, n)), buffer(as.slice(n))]
+  if (isTyped(as)) {
+    return [buffer(as.subarray(0, n)), buffer(as.subarray(n))]
   }
-  if (Array && Array.isArray(as)) {
+  if (Array.isArray(as)) {
     return [as.slice(0, n), as.slice(n)]
   }
   const as_ = Array.from(as)
@@ -129,8 +152,8 @@ export const spanIndex_ = <A>(as: Chunk<A>, predicate: Predicate<A>): number => 
 
 export function dropWhile_<A>(as: Chunk<A>, predicate: Predicate<A>): Chunk<A> {
   const i = spanIndex_(as, predicate)
-  if (Buffer && Buffer.isBuffer(as)) {
-    return buffer(as.slice(i, as.length))
+  if (isTyped(as)) {
+    return buffer(as.subarray(i, as.length))
   }
   const l = as.length
   const rest = Array(l - i)
@@ -146,7 +169,7 @@ export function filter<A, B extends A>(
 export function filter<A>(predicate: Predicate<A>): (fa: Chunk<A>) => Chunk<A>
 export function filter<A>(predicate: Predicate<A>): (fa: Chunk<A>) => Chunk<A> {
   return (self) => {
-    if (Buffer && Buffer.isBuffer(self)) {
+    if (isTyped(self)) {
       return buffer(self.filter(predicate as any))
     }
     if (Array.isArray(self)) {
@@ -158,7 +181,7 @@ export function filter<A>(predicate: Predicate<A>): (fa: Chunk<A>) => Chunk<A> {
 
 export function filterMap_<A, B>(self: Chunk<A>, f: (a: A) => O.Option<B>): Chunk<B> {
   if (Array.isArray(self)) {
-    return A.filterMap_(Array.from(self), f)
+    return A.filterMap_(self, f)
   }
   return A.filterMap_(Array.from(self), f)
 }
@@ -205,10 +228,10 @@ export function collectWhile_<A>(arr: Chunk<A>, f: Predicate<A>): Chunk<A> {
     }
   }
 
-  if (Buffer && Buffer.isBuffer(arr)) {
-    return buffer(arr.slice(0, j))
+  if (isTyped(arr)) {
+    return buffer(arr.subarray(0, j))
   }
-  if (Array && Array.isArray(arr)) {
+  if (Array.isArray(arr)) {
     return arr.slice(0, j)
   }
   return Array.from(arr).slice(0, j)
@@ -238,8 +261,8 @@ export function chain_<A, B>(fa: Chunk<A>, f: (a: A) => Chunk<B>): Chunk<B> {
 }
 
 export function takeLeft_<A>(as: Chunk<A>, n: number): Chunk<A> {
-  if (Buffer && Buffer.isBuffer(as)) {
-    return buffer(as.slice(0, n))
+  if (isTyped(as)) {
+    return buffer(as.subarray(0, n))
   }
   if (Array.isArray(as)) {
     return as.slice(0, n)
