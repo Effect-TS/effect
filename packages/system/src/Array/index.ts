@@ -1598,8 +1598,27 @@ export function dropWhile_<A>(
 /**
  * Drops elements while the predicate returns true
  */
-export function dropWhile<A>(
-  predicate: Predicate<A>
-): (as: ReadonlyArray<A>) => ReadonlyArray<A> {
+export function dropWhile<A>(predicate: Predicate<A>): (as: Array<A>) => Array<A> {
   return (as) => dropWhile_(as, predicate)
+}
+
+/**
+ * Constructs a new readpnly array from an interable.
+ */
+export function from<A>(as: Iterable<A>): Array<A> {
+  return Array.from(as)
+}
+
+/**
+ * Joins together string arrays
+ */
+export function join_(as: Array<string>, s: string): string {
+  return as.join(s)
+}
+
+/**
+ * Joins together string arrays
+ */
+export function join(s: string): (as: Array<string>) => string {
+  return (as) => as.join(s)
 }
