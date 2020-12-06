@@ -14,7 +14,10 @@ export class ReadableError {
 }
 
 /**
- * Captures a Node `Readable`, converting it into a `Stream`
+ * Captures a Node `Readable`, converting it into a `Stream`,
+ *
+ * Note: your Readable should not have an encoding set in order to work with buffers,
+ * calling this with a Readable with an encoding setted with `Die`.
  */
 export function streamFromReadable(
   r: () => stream.Readable
