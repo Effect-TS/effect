@@ -1,4 +1,5 @@
 import * as C from "../../Cause"
+import type * as A from "../../Chunk"
 import { pipe } from "../../Function"
 import * as O from "../../Option"
 import * as Pull from "../../Stream/Pull"
@@ -12,16 +13,16 @@ export function forever<R, E, O>(self: Stream<R, E, O>): Stream<R, E, O> {
     pipe(
       M.do,
       M.bind("currStream", () =>
-        T.toManaged_(Ref.makeRef<T.Effect<R, O.Option<E>, readonly O[]>>(Pull.end))
+        T.toManaged_(Ref.makeRef<T.Effect<R, O.Option<E>, A.Chunk<O>>>(Pull.end))
       ),
       M.bind("switchStream", () =>
-        M.switchable<R, never, T.Effect<R, O.Option<E>, readonly O[]>>()
+        M.switchable<R, never, T.Effect<R, O.Option<E>, A.Chunk<O>>>()
       ),
       M.tap(({ currStream, switchStream }) => {
         return T.toManaged_(T.chain_(switchStream(self.proc), currStream.set))
       }),
       M.map(({ currStream, switchStream }) => {
-        const go: T.Effect<R, O.Option<E>, readonly O[]> = T.catchAllCause_(
+        const go: T.Effect<R, O.Option<E>, A.Chunk<O>> = T.catchAllCause_(
           T.flatten(currStream.get),
           (_) =>
             O.fold_(

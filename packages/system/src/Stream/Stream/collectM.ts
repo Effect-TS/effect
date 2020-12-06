@@ -1,4 +1,4 @@
-import * as A from "../../Array"
+import * as A from "../../Chunk"
 import { pipe } from "../../Function"
 import * as O from "../../Option"
 import * as T from "../_internal/effect"
@@ -18,7 +18,7 @@ export function collectM_<R, R1, E, E1, O, O1>(
       M.do,
       M.bind("as", () => M.mapM_(self.proc, BP.make)),
       M.let("pull", ({ as }) => {
-        const go: T.Effect<R & R1, O.Option<E | E1>, A.Array<O1>> = T.chain_(
+        const go: T.Effect<R & R1, O.Option<E | E1>, A.Chunk<O1>> = T.chain_(
           BP.pullElement(as),
           (o) =>
             O.fold_(

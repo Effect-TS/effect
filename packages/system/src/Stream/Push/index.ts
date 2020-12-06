@@ -1,5 +1,5 @@
-import * as A from "../../Array"
 import type { Cause } from "../../Cause"
+import * as A from "../../Chunk"
 import * as E from "../../Either"
 import { pipe } from "../../Function"
 import type * as O from "../../Option"
@@ -8,26 +8,26 @@ import * as M from "../_internal/managed"
 import * as R from "../_internal/ref"
 
 export interface Push<R, E, I, L, Z> {
-  (_: O.Option<A.Array<I>>): T.Effect<R, readonly [E.Either<E, Z>, A.Array<L>], void>
+  (_: O.Option<A.Chunk<I>>): T.Effect<R, readonly [E.Either<E, Z>, A.Chunk<L>], void>
 }
 
 export function emit<I, Z>(
   z: Z,
-  leftover: A.Array<I>
-): T.IO<[E.Either<never, Z>, A.Array<I>], never> {
+  leftover: A.Chunk<I>
+): T.IO<[E.Either<never, Z>, A.Chunk<I>], never> {
   return T.fail([E.right(z), leftover])
 }
 
 export function fail<E, I>(
   e: E,
-  leftover: A.Array<I>
-): T.IO<[E.Either<E, never>, A.Array<I>], never> {
+  leftover: A.Chunk<I>
+): T.IO<[E.Either<E, never>, A.Chunk<I>], never> {
   return T.fail([E.left(e), leftover])
 }
 
 export function halt<E>(
   c: Cause<E>
-): T.IO<[E.Either<E, never>, A.Array<never>], never> {
+): T.IO<[E.Either<E, never>, A.Chunk<never>], never> {
   return T.mapError_(T.halt(c), (e) => [E.left(e), A.empty])
 }
 
@@ -46,7 +46,7 @@ export function restartable<R, R1, E, I, L, Z>(
     M.bind("currSink", ({ initialSink }) => T.toManaged_(R.makeRef(initialSink))),
     M.map(({ currSink, switchSink }) => {
       const restart = T.chain_(switchSink(sink), currSink.set)
-      const newPush = (input: O.Option<A.Array<I>>) =>
+      const newPush = (input: O.Option<A.Chunk<I>>) =>
         T.chain_(currSink.get, (f) => f(input))
 
       return [newPush, restart]

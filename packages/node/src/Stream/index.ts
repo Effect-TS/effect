@@ -1,5 +1,5 @@
-import type * as A from "@effect-ts/core/Classic/Array"
 import type * as B from "@effect-ts/core/Classic/Branded"
+import type * as C from "@effect-ts/core/Classic/Chunk"
 import * as O from "@effect-ts/core/Classic/Option"
 import * as T from "@effect-ts/core/Effect"
 import * as M from "@effect-ts/core/Effect/Managed"
@@ -74,7 +74,7 @@ export function sinkFromWritable(
           sw.destroy()
         })
       ),
-      M.map((sw) => (o: O.Option<A.Array<Byte>>) =>
+      M.map((sw) => (o: O.Option<C.Chunk<Byte>>) =>
         O.isNone(o)
           ? Push.emit(undefined, [])
           : T.effectAsync((cb) => {

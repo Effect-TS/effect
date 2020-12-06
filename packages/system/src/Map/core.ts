@@ -208,14 +208,14 @@ export const remove = <K>(k: K) => <V>(self: ReadonlyMap<K, V>): ReadonlyMap<K, 
   return m
 }
 
-export const removeMany = <K>(ks: ReadonlyArray<K>) => <V>(
+export const removeMany = <K>(ks: Iterable<K>) => <V>(
   self: ReadonlyMap<K, V>
 ): ReadonlyMap<K, V> => {
   const m = copy(self)
 
-  ks.forEach((k) => {
+  for (const k of ks) {
     m.delete(k)
-  })
+  }
 
   return m
 }

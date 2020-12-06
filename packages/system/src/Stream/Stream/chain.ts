@@ -1,4 +1,4 @@
-import type * as A from "../../Array"
+import type * as A from "../../Chunk"
 import { pipe } from "../../Function"
 import * as RM from "../../Managed/ReleaseMap"
 import type * as Option from "../../Option"
@@ -25,12 +25,12 @@ export function chain_<R, R1, E, E1, O, O2>(
       M.bind("outerStream", () => self.proc),
       M.bind("currOuterChunk", () =>
         M.fromEffect(
-          Ref.makeRef<[A.Array<O>, number]>([[], 0])
+          Ref.makeRef<[A.Chunk<O>, number]>([[], 0])
         )
       ),
       M.bind("currInnerStream", () =>
         M.fromEffect(
-          Ref.makeRef<T.Effect<R_, Option.Option<E_>, A.Array<O2>>>(Pull.end)
+          Ref.makeRef<T.Effect<R_, Option.Option<E_>, A.Chunk<O2>>>(Pull.end)
         )
       ),
       M.bind(

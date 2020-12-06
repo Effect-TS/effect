@@ -1,4 +1,4 @@
-import type * as A from "../../Array"
+import type * as A from "../../Chunk"
 import { pipe } from "../../Function"
 import * as O from "../../Option"
 import * as T from "../_internal/effect"
@@ -11,7 +11,7 @@ import { Stream } from "./definitions"
  * Creates a stream from an effect producing chunks of `A` values until it fails with None.
  */
 export function repeatEffectChunkOption<R, E, A>(
-  fa: T.Effect<R, O.Option<E>, A.Array<A>>
+  fa: T.Effect<R, O.Option<E>, A.Chunk<A>>
 ): Stream<R, E, A> {
   return new Stream(
     pipe(

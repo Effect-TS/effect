@@ -1,5 +1,5 @@
-import type * as A from "../../Array"
 import type * as C from "../../Cause"
+import type * as A from "../../Chunk"
 import { pipe } from "../../Function"
 import * as O from "../../Option"
 import * as P from "../../Promise"
@@ -32,7 +32,7 @@ export function chainPar(n: number, outputBuffer = 16) {
           M.do,
           M.bind("out", () =>
             T.toManaged_(
-              Q.makeBounded<T.Effect<R1, O.Option<E | E1>, A.Array<O2>>>(outputBuffer),
+              Q.makeBounded<T.Effect<R1, O.Option<E | E1>, A.Chunk<O2>>>(outputBuffer),
               (q) => q.shutdown
             )
           ),

@@ -1,4 +1,4 @@
-import * as A from "../../Array"
+import * as A from "../../Chunk"
 import type { Stream } from "./definitions"
 import { mapChunks_ } from "./mapChunks"
 

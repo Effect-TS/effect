@@ -1,9 +1,8 @@
-import * as A from "../../Array"
 import * as C from "../../Cause"
+import * as A from "../../Chunk"
 import * as E from "../../Either"
 import * as Ex from "../../Exit/api"
 import { pipe, tuple } from "../../Function"
-import type * as NEA from "../../NonEmptyArray"
 import * as O from "../../Option"
 import * as T from "../_internal/effect"
 import { zipChunks_ } from "../_internal/utils"
@@ -23,24 +22,24 @@ export function zipWith<O, O2, O3, R1, E1>(
   f: (a: O, a1: O2) => O3
 ): <R, E>(self: Stream<R, E, O>) => Stream<R & R1, E1 | E, O3> {
   type End = { _tag: "End" }
-  type RightDone<W2> = { _tag: "RightDone"; excessR: NEA.NonEmptyArray<W2> }
-  type LeftDone<W1> = { _tag: "LeftDone"; excessL: NEA.NonEmptyArray<W1> }
+  type RightDone<W2> = { _tag: "RightDone"; excessR: A.NonEmptyChunk<W2> }
+  type LeftDone<W1> = { _tag: "LeftDone"; excessL: A.NonEmptyChunk<W1> }
   type Running<W1, W2> = {
     _tag: "Running"
-    excess: E.Either<A.Array<W1>, A.Array<W2>>
+    excess: E.Either<A.Chunk<W1>, A.Chunk<W2>>
   }
   type State<W1, W2> = End | Running<W1, W2> | LeftDone<W1> | RightDone<W2>
 
   const handleSuccess = (
-    leftUpd: O.Option<A.Array<O>>,
-    rightUpd: O.Option<A.Array<O2>>,
-    excess: E.Either<A.Array<O>, A.Array<O2>>
-  ): Ex.Exit<O.Option<never>, readonly [A.Array<O3>, State<O, O2>]> => {
+    leftUpd: O.Option<A.Chunk<O>>,
+    rightUpd: O.Option<A.Chunk<O2>>,
+    excess: E.Either<A.Chunk<O>, A.Chunk<O2>>
+  ): Ex.Exit<O.Option<never>, readonly [A.Chunk<O3>, State<O, O2>]> => {
     const [leftExcess, rightExcess] = pipe(
       excess,
       E.fold(
-        (l) => tuple<[A.Array<O>, A.Array<O2>]>(l, []),
-        (r) => tuple<[A.Array<O>, A.Array<O2>]>([], r)
+        (l) => tuple<[A.Chunk<O>, A.Chunk<O2>]>(l, []),
+        (r) => tuple<[A.Chunk<O>, A.Chunk<O2>]>([], r)
       )
     )
 
@@ -49,14 +48,14 @@ export function zipWith<O, O2, O3, R1, E1>(
         leftUpd,
         O.fold(
           () => leftExcess,
-          (upd) => [...leftExcess, ...upd] as A.Array<O>
+          (upd) => [...leftExcess, ...upd] as A.Chunk<O>
         )
       ),
       pipe(
         rightUpd,
         O.fold(
           () => rightExcess,
-          (upd) => [...rightExcess, ...upd] as A.Array<O2>
+          (upd) => [...rightExcess, ...upd] as A.Chunk<O2>
         )
       )
     ]
@@ -65,7 +64,7 @@ export function zipWith<O, O2, O3, R1, E1>(
 
     if (O.isSome(leftUpd) && O.isSome(rightUpd)) {
       return Ex.succeed(
-        tuple<[A.Array<O3>, State<O, O2>]>(emit, {
+        tuple<[A.Chunk<O3>, State<O, O2>]>(emit, {
           _tag: "Running",
           excess: newExcess
         })

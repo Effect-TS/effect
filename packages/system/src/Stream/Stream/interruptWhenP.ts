@@ -1,4 +1,4 @@
-import type * as A from "../../Array"
+import type * as A from "../../Chunk"
 import { pipe } from "../../Function"
 import * as O from "../../Option"
 import * as P from "../../Promise"
@@ -31,7 +31,7 @@ export function interruptWhenP_<R, E, E1, O>(
       M.let("pull", ({ as, asPull, done }) =>
         T.chain_(
           T.zipWith_(done.get, P.isDone(p), (a, b) => [a, b] as const),
-          ([a, b]): T.Effect<R, O.Option<E | E1>, A.Array<O>> => {
+          ([a, b]): T.Effect<R, O.Option<E | E1>, A.Chunk<O>> => {
             if (a) {
               return Pull.end
             } else if (b) {

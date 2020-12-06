@@ -1,5 +1,5 @@
-import * as A from "../../Array"
 import * as C from "../../Cause"
+import * as A from "../../Chunk"
 import * as E from "../../Either"
 import * as Ex from "../../Exit"
 import * as F from "../../Fiber"
@@ -60,7 +60,7 @@ export function mergeWith<R1, E1, B>(
                             Ex.fold(
                               (
                                 c
-                              ): E.Either<O.Option<C.Cause<E | E1>>, A.Array<C | C1>> =>
+                              ): E.Either<O.Option<C.Cause<E | E1>>, A.Chunk<C | C1>> =>
                                 E.left(C.sequenceCauseOption(c)),
                               E.right
                             )

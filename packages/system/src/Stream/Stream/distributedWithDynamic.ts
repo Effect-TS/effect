@@ -1,5 +1,5 @@
-import * as A from "../../Array"
 import * as C from "../../Cause"
+import * as A from "../../Chunk"
 import * as Ex from "../../Exit"
 import { pipe } from "../../Function"
 import * as Map from "../../Map"
@@ -52,7 +52,7 @@ export function distributedWithDynamic_<R, E, O>(
       T.bind("queues", () => T.map_(queuesRef.get, (m) => m.entries())),
       T.chain(({ queues, shouldProcess }) =>
         pipe(
-          T.reduce_(queues, A.empty as A.Array<symbol>, (acc, [id, queue]) => {
+          T.reduce_(queues, A.empty as A.Chunk<symbol>, (acc, [id, queue]) => {
             if (shouldProcess(id)) {
               return pipe(
                 queue.offer(Ex.succeed(o)),

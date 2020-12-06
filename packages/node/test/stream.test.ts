@@ -1,3 +1,4 @@
+import * as C from "@effect-ts/core/Classic/Chunk"
 import * as T from "@effect-ts/core/Effect"
 import * as S from "@effect-ts/core/Effect/Stream"
 import { pipe } from "@effect-ts/core/Function"
@@ -16,6 +17,6 @@ describe("Node Stream", () => {
       T.runPromise
     )
 
-    expect(Buffer.from(res).toString("utf-8")).toEqual("a, b, c")
+    expect(C.asBuffer(res).toString("utf-8")).toEqual("a, b, c")
   })
 })

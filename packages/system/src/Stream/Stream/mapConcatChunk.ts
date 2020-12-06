@@ -1,4 +1,4 @@
-import * as A from "../../Array"
+import * as A from "../../Chunk"
 import type { Stream } from "./definitions"
 import { mapChunks_ } from "./mapChunks"
 
@@ -8,7 +8,7 @@ import { mapChunks_ } from "./mapChunks"
  */
 export function mapConcatChunk_<R, E, O, O2>(
   self: Stream<R, E, O>,
-  f: (_: O) => A.Array<O2>
+  f: (_: O) => A.Chunk<O2>
 ): Stream<R, E, O2> {
   return mapChunks_(self, (o) => A.chain_(o, f))
 }
@@ -17,6 +17,6 @@ export function mapConcatChunk_<R, E, O, O2>(
  * Maps each element to a chunk, and flattens the chunks into the output of
  * this stream.
  */
-export function mapConcatChunk<O, O2>(f: (_: O) => A.Array<O2>) {
+export function mapConcatChunk<O, O2>(f: (_: O) => A.Chunk<O2>) {
   return <R, E>(self: Stream<R, E, O>) => mapConcatChunk_(self, f)
 }
