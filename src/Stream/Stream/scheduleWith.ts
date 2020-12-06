@@ -1,4 +1,4 @@
-import * as A from "../../Array"
+import * as A from "../../Chunk"
 import type * as CL from "../../Clock"
 import { pipe } from "../../Function"
 import type * as H from "../../Has"

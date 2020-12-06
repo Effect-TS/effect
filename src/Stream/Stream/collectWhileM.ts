@@ -1,4 +1,4 @@
-import * as A from "../../Array"
+import * as A from "../../Chunk"
 import { pipe } from "../../Function"
 import * as O from "../../Option"
 import * as BP from "../../Stream/BufferedPull"
@@ -27,7 +27,7 @@ export function collectWhileM_<R, R1, E, E1, O, O2>(
           } else {
             return T.chain_(
               BP.pullElement(as),
-              (a): T.Effect<R & R1, O.Option<E | E1>, A.Array<O2>> =>
+              (a): T.Effect<R & R1, O.Option<E | E1>, A.Chunk<O2>> =>
                 O.fold_(
                   pf(a),
                   () => T.andThen_(done.set(true), Pull.end),

@@ -1,4 +1,4 @@
-import * as A from "../../Array"
+import * as A from "../../Chunk"
 import type { Predicate } from "../../Function"
 import { pipe } from "../../Function"
 import * as O from "../../Option"
@@ -21,7 +21,7 @@ export function dropWhile_<R, E, O>(
       M.bind("chunks", () => self.proc),
       M.bind("keepDroppingRef", () => T.toManaged_(Ref.makeRef(true))),
       M.let("pull", ({ chunks, keepDroppingRef }) => {
-        const go: T.Effect<R, O.Option<E>, A.Array<O>> = T.chain_(chunks, (chunk) =>
+        const go: T.Effect<R, O.Option<E>, A.Chunk<O>> = T.chain_(chunks, (chunk) =>
           T.chain_(keepDroppingRef.get, (keepDropping) => {
             if (!keepDropping) {
               return T.succeed(chunk)

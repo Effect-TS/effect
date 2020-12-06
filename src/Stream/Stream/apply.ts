@@ -1,4 +1,4 @@
-import type * as A from "../../Array"
+import type * as A from "../../Chunk"
 import type * as O from "../../Option"
 import type * as T from "../_internal/effect"
 import type * as M from "../_internal/managed"
@@ -13,7 +13,7 @@ import { Stream } from "./definitions"
  * {@link Managed}.
  */
 export function apply<R, E, O>(
-  proc: M.Managed<R, never, T.Effect<R, O.Option<E>, A.Array<O>>>
+  proc: M.Managed<R, never, T.Effect<R, O.Option<E>, A.Chunk<O>>>
 ) {
   return new Stream<R, E, O>(proc)
 }

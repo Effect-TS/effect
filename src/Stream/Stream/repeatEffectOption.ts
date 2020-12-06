@@ -1,4 +1,4 @@
-import * as A from "../../Array"
+import * as A from "../../Chunk"
 import { flow } from "../../Function"
 import type * as O from "../../Option"
 import * as T from "../_internal/effect"

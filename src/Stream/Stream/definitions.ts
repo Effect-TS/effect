@@ -1,5 +1,5 @@
-import type * as A from "../../Array"
 import * as C from "../../Cause/core"
+import type * as A from "../../Chunk"
 import * as Exit from "../../Exit/api"
 import { pipe } from "../../Function"
 import * as RM from "../../Managed/ReleaseMap"
@@ -19,7 +19,7 @@ export type StreamURI = typeof StreamURI
  * One way to think of `Stream` is as a `Effect` program that could emit multiple values.
  *
  * This data type can emit multiple `A` values through multiple calls to `next`.
- * Similarly, embedded inside every `Stream` is an Effect program: `Effect< R, Option<E>, A.Array<O>>`.
+ * Similarly, embedded inside every `Stream` is an Effect program: `Effect< R, Option<E>, A.Chunk<O>>`.
  * This program will be repeatedly evaluated as part of the stream execution. For
  * every evaluation, it will emit a chunk of values or end with an optional failure.
  * A failure of type `None` signals the end of the stream.
@@ -52,7 +52,7 @@ export class Stream<R, E, A> {
   readonly [T._R]: (_: R) => void
 
   constructor(
-    readonly proc: M.Managed<R, never, T.Effect<R, O.Option<E>, A.Array<A>>>
+    readonly proc: M.Managed<R, never, T.Effect<R, O.Option<E>, A.Chunk<A>>>
   ) {}
 }
 
@@ -74,9 +74,9 @@ export const DefaultChunkSize = 4096
 export class Chain<R_, E_, O, O2> {
   constructor(
     readonly f0: (a: O) => Stream<R_, E_, O2>,
-    readonly outerStream: T.Effect<R_, O.Option<E_>, A.Array<O>>,
-    readonly currOuterChunk: Ref.Ref<[A.Array<O>, number]>,
-    readonly currInnerStream: Ref.Ref<T.Effect<R_, O.Option<E_>, A.Array<O2>>>,
+    readonly outerStream: T.Effect<R_, O.Option<E_>, A.Chunk<O>>,
+    readonly currOuterChunk: Ref.Ref<[A.Chunk<O>, number]>,
+    readonly currInnerStream: Ref.Ref<T.Effect<R_, O.Option<E_>, A.Chunk<O2>>>,
     readonly innerFinalizer: Ref.Ref<RM.Finalizer>
   ) {
     this.apply = this.apply.bind(this)
@@ -94,8 +94,8 @@ export class Chain<R_, E_, O, O2> {
   }
 
   pullNonEmpty<R, E, O>(
-    pull: T.Effect<R, O.Option<E>, A.Array<O>>
-  ): T.Effect<R, O.Option<E>, A.Array<O>> {
+    pull: T.Effect<R, O.Option<E>, A.Chunk<O>>
+  ): T.Effect<R, O.Option<E>, A.Chunk<O>> {
     return pipe(
       pull,
       T.chain((os) => (os.length > 0 ? T.succeed(os) : this.pullNonEmpty(pull)))
@@ -107,7 +107,7 @@ export class Chain<R_, E_, O, O2> {
       this.currOuterChunk,
       Ref.modify(([chunk, nextIdx]): [
         T.Effect<R_, O.Option<E_>, O>,
-        [A.Array<O>, number]
+        [A.Chunk<O>, number]
       ] => {
         if (nextIdx < chunk.length) {
           return [T.succeed(chunk[nextIdx]), [chunk, nextIdx + 1]]
@@ -148,7 +148,7 @@ export class Chain<R_, E_, O, O2> {
     )
   }
 
-  apply(): T.Effect<R_, O.Option<E_>, A.Array<O2>> {
+  apply(): T.Effect<R_, O.Option<E_>, A.Chunk<O2>> {
     return pipe(
       this.currInnerStream.get,
       T.flatten,

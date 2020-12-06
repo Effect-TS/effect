@@ -1,4 +1,4 @@
-import * as A from "../../Array"
+import * as A from "../../Chunk"
 import { pipe } from "../../Function"
 import * as O from "../../Option"
 import * as T from "../_internal/effect"
@@ -16,7 +16,7 @@ export function drop_<R, E, O>(self: Stream<R, E, O>, n: number): Stream<R, E, O
       M.bind("chunks", () => self.proc),
       M.bind("counterRef", () => T.toManaged_(Ref.makeRef(0))),
       M.let("pull", ({ chunks, counterRef }) => {
-        const go: T.Effect<R, O.Option<E>, A.Array<O>> = T.chain_(chunks, (chunk) =>
+        const go: T.Effect<R, O.Option<E>, A.Chunk<O>> = T.chain_(chunks, (chunk) =>
           T.chain_(counterRef.get, (cnt) => {
             if (cnt >= n) {
               return T.succeed(chunk)

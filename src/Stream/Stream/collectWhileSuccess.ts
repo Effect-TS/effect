@@ -1,6 +1,6 @@
 import * as Ex from "../../Exit"
 import * as O from "../../Option"
-import { collectWhile_ } from "./collectWhile"
+import { collectWhileMap_ } from "./collectWhileMap"
 import type { Stream } from "./definitions"
 
 /**
@@ -9,7 +9,7 @@ import type { Stream } from "./definitions"
 export function collectWhileSuccess<R, E, O1, L1>(
   self: Stream<R, E, Ex.Exit<L1, O1>>
 ): Stream<R, E, O1> {
-  return collectWhile_(
+  return collectWhileMap_(
     self,
     Ex.fold(
       (_) => O.none,

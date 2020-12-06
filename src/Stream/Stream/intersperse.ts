@@ -22,14 +22,14 @@ export function intersperse_<R, E, O, O1>(
             const builder: (O | O1)[] = []
             let flagResult = first
 
-            os.forEach((o) => {
+            for (const o of os) {
               if (flagResult) {
                 flagResult = false
                 builder.push(o)
               } else {
                 builder.push(middle, o)
               }
-            })
+            }
 
             return [builder, flagResult]
           })

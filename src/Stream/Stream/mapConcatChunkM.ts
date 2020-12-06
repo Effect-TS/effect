@@ -1,4 +1,4 @@
-import type * as A from "../../Array"
+import type * as A from "../../Chunk"
 import { identity, pipe } from "../../Function"
 import type * as T from "../_internal/effect"
 import type { Stream } from "./definitions"
@@ -11,7 +11,7 @@ import { mapM } from "./mapM"
  */
 export function mapConcatChunkM_<R, R2, E, E2, O, O2>(
   self: Stream<R, E, O>,
-  f: (_: O) => T.Effect<R2, E2, A.Array<O2>>
+  f: (_: O) => T.Effect<R2, E2, A.Chunk<O2>>
 ): Stream<R & R2, E | E2, O2> {
   return pipe(self, mapM(f), mapConcatChunk(identity))
 }
@@ -21,7 +21,7 @@ export function mapConcatChunkM_<R, R2, E, E2, O, O2>(
  * the output of this stream.
  */
 export function mapConcatChunkM<R2, E2, O, O2>(
-  f: (_: O) => T.Effect<R2, E2, A.Array<O2>>
+  f: (_: O) => T.Effect<R2, E2, A.Chunk<O2>>
 ) {
   return <R, E>(self: Stream<R, E, O>) => mapConcatChunkM_(self, f)
 }

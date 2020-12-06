@@ -1,4 +1,4 @@
-import type * as A from "../../Array"
+import type * as A from "../../Chunk"
 import type * as Ex from "../../Exit"
 import * as O from "../../Option"
 import type * as T from "../_internal/effect"
@@ -14,7 +14,7 @@ import { effectAsyncMaybe } from "./effectAsyncMaybe"
 export function effectAsync<R, E, A>(
   register: (
     cb: (
-      next: T.Effect<R, O.Option<E>, A.Array<A>>,
+      next: T.Effect<R, O.Option<E>, A.Chunk<A>>,
       offerCb?: F.Callback<never, boolean>
     ) => T.UIO<Ex.Exit<never, boolean>>
   ) => void,

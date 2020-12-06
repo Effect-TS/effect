@@ -1,5 +1,5 @@
-import type * as A from "../../Array"
 import * as C from "../../Cause"
+import type * as A from "../../Chunk"
 import { pipe } from "../../Function"
 import * as O from "../../Option"
 import * as T from "../_internal/effect"
@@ -9,14 +9,14 @@ import * as Pull from "../Pull"
 import { Stream } from "./definitions"
 
 function go<R, E, O>(
-  streams: A.Array<Stream<R, E, O>>,
+  streams: A.Chunk<Stream<R, E, O>>,
   chunkSize: number,
   currIndex: Ref.Ref<number>,
-  currStream: Ref.Ref<T.Effect<R, O.Option<E>, A.Array<O>>>,
+  currStream: Ref.Ref<T.Effect<R, O.Option<E>, A.Chunk<O>>>,
   switchStream: (
-    x: M.Managed<R, never, T.Effect<R, O.Option<E>, A.Array<O>>>
-  ) => T.Effect<R, never, T.Effect<R, O.Option<E>, A.Array<O>>>
-): T.Effect<R, O.Option<E>, A.Array<O>> {
+    x: M.Managed<R, never, T.Effect<R, O.Option<E>, A.Chunk<O>>>
+  ) => T.Effect<R, never, T.Effect<R, O.Option<E>, A.Chunk<O>>>
+): T.Effect<R, O.Option<E>, A.Chunk<O>> {
   return pipe(
     currStream.get,
     T.flatten,
@@ -48,17 +48,17 @@ function go<R, E, O>(
 /**
  * Concatenates all of the streams in the chunk to one stream.
  */
-export function concatAll<R, E, O>(streams: A.Array<Stream<R, E, O>>): Stream<R, E, O> {
+export function concatAll<R, E, O>(streams: A.Chunk<Stream<R, E, O>>): Stream<R, E, O> {
   const chunkSize = streams.length
   return new Stream(
     pipe(
       M.do,
       M.bind("currIndex", () => Ref.makeManagedRef(0)),
       M.bind("currStream", () =>
-        Ref.makeManagedRef<T.Effect<R, O.Option<E>, A.Array<O>>>(Pull.end)
+        Ref.makeManagedRef<T.Effect<R, O.Option<E>, A.Chunk<O>>>(Pull.end)
       ),
       M.bind("switchStream", () =>
-        M.switchable<R, never, T.Effect<R, O.Option<E>, A.Array<O>>>()
+        M.switchable<R, never, T.Effect<R, O.Option<E>, A.Chunk<O>>>()
       ),
       M.map(({ currIndex, currStream, switchStream }) =>
         go(streams, chunkSize, currIndex, currStream, switchStream)
