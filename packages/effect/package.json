@@ -31,6 +31,7 @@
       "Async",
       "Classic",
       "Classic/Array",
+      "Classic/Chunk",
       "Classic/Associative",
       "Classic/Boolean",
       "Classic/Bounded",
