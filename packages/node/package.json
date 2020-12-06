@@ -28,7 +28,8 @@
   },
   "config": {
     "modules": [
-      "Runtime"
+      "Runtime",
+      "Stream"
     ]
   }
 }
