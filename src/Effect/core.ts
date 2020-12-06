@@ -160,6 +160,17 @@ export function effectPartial<E>(onThrow: (u: unknown) => E) {
  * Imports a synchronous side-effect into a pure value, translating any
  * thrown exceptions into typed failed effects creating with `halt`.
  */
+export function effectPartial_<E, A>(
+  effect: () => A,
+  onThrow: (u: unknown) => E
+): IO<E, A> {
+  return new IEffectPartial(effect, onThrow)
+}
+
+/**
+ * Imports a synchronous side-effect into a pure value, translating any
+ * thrown exceptions into typed failed effects creating with `halt`.
+ */
 function try_<A>(effect: () => A): IO<unknown, A> {
   return new IEffectPartial(effect, identity)
 }
