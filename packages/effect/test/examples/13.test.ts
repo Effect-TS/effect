@@ -103,8 +103,8 @@ namespace ReaderIOEither {
 namespace ReaderIO {
   export const RIOMonad = pipe(IO.Monad, ReaderT.monad)
   export const RIOApplicative = pipe(IO.Applicative, ReaderT.applicative)
-  export const RIOSelectiveM = S.selectM({ ...RIOMonad, ...RIOApplicative })
-  export const RIOSelectiveA = S.selectA(RIOApplicative)
+  export const RIOSelectiveM = S.monad(RIOMonad)
+  export const RIOSelectiveA = S.applicative(RIOApplicative)
 
   export const succeed = DSL.succeedF(RIOMonad)
 
