@@ -121,6 +121,15 @@ export function concat_<A>(x: Chunk<A>, y: Chunk<A>): Chunk<A> {
   if (Buffer && Buffer.isBuffer(x) && Buffer.isBuffer(y)) {
     return buffer(Buffer.concat([x, y]))
   }
+
+  if (isTyped(x) && x.constructor === y.constructor) {
+    // @ts-expect-error
+    const c = new x.constructor(x.length + y.length)
+    c.set(x)
+    c.set(y, x.length)
+    return c
+  }
+
   const lenx = x.length
   if (lenx === 0) {
     return y
