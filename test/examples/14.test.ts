@@ -4,7 +4,7 @@ import * as E from "../../src/Classic/Either"
 import * as Selective from "../../src/Prelude/Selective"
 import * as IO from "../../src/XPure/XIO"
 
-const SelectiveIO = Selective.selectM({ ...IO.Monad, ...IO.Applicative })
+const SelectiveIO = Selective.monad(IO.Monad)
 const branch = Selective.branchF(SelectiveIO)
 
 const x = 0
