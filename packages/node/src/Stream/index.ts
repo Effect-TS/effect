@@ -1,11 +1,11 @@
-import type * as C from "@effect-ts/core/Classic/Chunk"
+import * as C from "@effect-ts/core/Classic/Chunk"
 import * as O from "@effect-ts/core/Classic/Option"
 import * as T from "@effect-ts/core/Effect"
 import * as M from "@effect-ts/core/Effect/Managed"
 import * as S from "@effect-ts/core/Effect/Stream"
 import * as Push from "@effect-ts/core/Effect/Stream/Push"
 import * as Sink from "@effect-ts/core/Effect/Stream/Sink"
-import { pipe } from "@effect-ts/core/Function"
+import { pipe, tuple } from "@effect-ts/core/Function"
 import type * as stream from "stream"
 
 import type { Byte } from "../Byte"
@@ -88,4 +88,70 @@ export function sinkFromWritable(
       )
     )
   )
+}
+
+export class TransformError {
+  readonly _tag = "TransformError"
+  constructor(readonly error: Error) {}
+}
+
+/**
+ * Captures a Node `Transform` for use with `Stream`
+ */
+export function transform(
+  tr: () => stream.Transform
+): <R, E>(stream: S.Stream<R, E, Byte>) => S.Stream<R, E | TransformError, Byte> {
+  return <R, E>(stream: S.Stream<R, E, Byte>) => {
+    const managedSink = pipe(
+      T.effectTotal(tr),
+      M.makeExit((st) =>
+        T.effectTotal(() => {
+          st.destroy()
+        })
+      ),
+      M.map((st) =>
+        tuple(
+          st,
+          Sink.fromPush<unknown, TransformError, Byte, never, void>(
+            O.fold(
+              () =>
+                T.chain_(
+                  T.effectTotal(() => {
+                    st.end()
+                  }),
+                  () => Push.emit(undefined, [])
+                ),
+              (chunk) =>
+                T.effectAsync((cb) => {
+                  st.write(C.asBuffer(chunk), (err) =>
+                    err ? cb(Push.fail(new TransformError(err), [])) : cb(Push.more)
+                  )
+                })
+            )
+          )
+        )
+      )
+    )
+    return pipe(
+      S.managed(managedSink),
+      S.chain(([st, sink]) =>
+        S.effectAsyncM<unknown, TransformError, Byte, R, E | TransformError>((cb) =>
+          T.andThen_(
+            T.effectTotal(() => {
+              st.on("data", (chunk) => {
+                cb(T.succeed(chunk))
+              })
+              st.on("error", (err) => {
+                cb(T.fail(O.some(new TransformError(err))))
+              })
+              st.on("end", () => {
+                cb(T.fail(O.none))
+              })
+            }),
+            S.run_(stream, sink)
+          )
+        )
+      )
+    )
+  }
 }
