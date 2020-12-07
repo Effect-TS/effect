@@ -1,7 +1,3 @@
-/**
- * tracing: off
- */
-
 // option
 // cause
 import * as Cause from "../Cause/core"

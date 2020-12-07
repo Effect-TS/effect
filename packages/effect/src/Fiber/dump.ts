@@ -1,6 +1,3 @@
-/**
- * tracing: off
- */
 import type { Option } from "../Option"
 import type { FiberID } from "./id"
 import type { Status } from "./status"

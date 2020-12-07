@@ -1,6 +1,3 @@
-/**
- * tracing: off
- */
 import * as S from "../Sync"
 import type { FiberID } from "./id"
 

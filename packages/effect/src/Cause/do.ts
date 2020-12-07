@@ -1,6 +1,3 @@
-/**
- * tracing: off
- */
 import { pipe } from "../Function"
 import type { Cause } from "./cause"
 import { fail } from "./cause"
