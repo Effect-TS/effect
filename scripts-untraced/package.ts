@@ -4,9 +4,9 @@ import { flow } from "fp-ts/lib/function"
 import { pipe } from "fp-ts/lib/pipeable"
 import * as TE from "fp-ts/lib/TaskEither"
 
-import { copy, onLeft, onRight, readFile, runMain, writeFile } from "./_common"
+import { copy, onLeft, onRight, readFile, runMain, writeFile } from "../scripts/_common"
 
-const copyReadme = copy("./README.md", "./build/_traced", { update: true })
+const copyReadme = copy("./README.md", "./build/_untraced", { update: true })
 
 const loadPackageJson = pipe(
   readFile("./package.json", "utf8"),
@@ -36,7 +36,7 @@ const writePackageJsonContent = (content: any) =>
       null,
       2
     ),
-    (str) => writeFile("./build/_traced/package.json", str)
+    (str) => writeFile("./build/_untraced/package.json", str)
   )
 
 const getModules = flow(
@@ -50,7 +50,7 @@ const getModules = flow(
 const writeModulePackageJson = (modules: string[]) =>
   A.array.traverse(TE.taskEither)(modules, (m) =>
     writeFile(
-      `./build/_traced/${m}/package.json`,
+      `./build/_untraced/${m}/package.json`,
       JSON.stringify(
         {
           sideEffects: false,

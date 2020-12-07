@@ -1,0 +1,22 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "build/_untraced",
+    "target": "ES2017",
+    "module": "CommonJS",
+    "incremental": true,
+    "tsBuildInfoFile": "tsbuildinfo/build.untraced.tsbuildinfo",
+    "removeComments": false,
+    "plugins": [
+      {
+        "transform": "../tracing-plugin/src/index.ts",
+        "moduleMap": {
+          "^src/(.*)": "(@effect-ts/system): _src/$1"
+        },
+        "tracing": false
+      }
+    ]
+  },
+  "include": ["src/**/*"],
+  "exclude": ["test", "node_modules"]
+}

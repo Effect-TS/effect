@@ -2,9 +2,9 @@ import type { Endomorphism } from "fp-ts/lib/function"
 import { pipe } from "fp-ts/lib/pipeable"
 import * as TE from "fp-ts/lib/TaskEither"
 
-import { modifyGlob, onLeft, onRight, runMain } from "./_common"
+import { modifyGlob, onLeft, onRight, runMain } from "../scripts/_common"
 
-const ES6_GLOB_PATTERN = "build/_traced/esm/**/*.@(ts|js)"
+const ES6_GLOB_PATTERN = "build/_untraced/esm/**/*.@(ts|js)"
 
 const packages = [
   "fp-ts",
