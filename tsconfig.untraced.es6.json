@@ -1,0 +1,22 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "build/_untraced/esm",
+    "module": "ES6",
+    "target": "ES2017",
+    "incremental": true,
+    "tsBuildInfoFile": "tsbuildinfo/es6.untraced.tsbuildinfo",
+    "removeComments": false,
+    "plugins": [
+      {
+        "transform": "../tracing-plugin/src/index.ts",
+        "moduleMap": {
+          "^src/(.*)": "(@effect-ts/system): _src/$1"
+        },
+        "tracing": false
+      }
+    ]
+  },
+  "include": ["src/**/*"],
+  "exclude": ["test", "node_modules"]
+}
