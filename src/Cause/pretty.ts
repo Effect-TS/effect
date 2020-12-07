@@ -1,3 +1,6 @@
+/**
+ * tracing: off
+ */
 import * as A from "../Array"
 import type { FiberID } from "../Fiber/id"
 import type { Trace } from "../Fiber/tracing"

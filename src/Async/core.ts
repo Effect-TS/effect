@@ -1,4 +1,7 @@
 /* eslint-disable prefer-const */
+/**
+ * tracing: off
+ */
 import type { Cause } from "../Cause"
 import type { EffectURI } from "../Effect/effect"
 import { _A, _E, _I, _R, _U } from "../Effect/effect"
