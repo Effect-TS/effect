@@ -1,6 +1,3 @@
-/**
- * tracing: off
- */
 import * as C from "../Cause"
 import type * as Exit from "../Exit"
 import * as S from "../Sync"

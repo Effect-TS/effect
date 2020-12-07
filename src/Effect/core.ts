@@ -139,7 +139,6 @@ export function traced<R, E, A>(self: Effect<R, E, A>): Effect<R, E, A> {
  *
  * The list of fibers, that may complete the async callback, is used to
  * provide better diagnostics.
- *
  */
 export function effectAsyncOption<R, E, A>(
   register: (cb: (_: Effect<R, E, A>) => void) => O.Option<Effect<R, E, A>>,
@@ -186,7 +185,6 @@ export function effectTotal<A>(effect: () => A): UIO<A> {
 
 /**
  * A more powerful version of `foldM` that allows recovering from any kind of failure except interruptions.
- *
  */
 export function foldCauseM<E, A, R2, E2, A2, R3, E3, A3>(
   failure: (cause: Cause<E>) => Effect<R2, E2, A2>,
@@ -198,7 +196,6 @@ export function foldCauseM<E, A, R2, E2, A2, R3, E3, A3>(
 
 /**
  * A more powerful version of `foldM` that allows recovering from any kind of failure except interruptions.
- *
  */
 export function foldCauseM_<R, E, A, R2, E2, A2, R3, E3, A3>(
   value: Effect<R, E, A>,
@@ -379,7 +376,6 @@ export function suspendPartial<E2>(onThrow: (u: unknown) => E2) {
 /**
  * Executed `that` in case `self` fails with a `Cause` that doesn't contain defects,
  * executes `success` in case of successes
- *
  */
 export function tryOrElse_<R, E, A, R2, E2, A2, R3, E3, A3>(
   self: Effect<R, E, A>,
@@ -396,7 +392,6 @@ export function tryOrElse_<R, E, A, R2, E2, A2, R3, E3, A3>(
 /**
  * Executed `that` in case `self` fails with a `Cause` that doesn't contain defects,
  * executes `success` in case of successes
- *
  */
 export function tryOrElse<A, R2, E2, A2, R3, E3, A3>(
   that: () => Effect<R2, E2, A2>,

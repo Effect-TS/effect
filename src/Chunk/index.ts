@@ -1,6 +1,3 @@
-/**
- * tracing: off
- */
 import * as A from "../Array"
 import type { Predicate, Refinement } from "../Function"
 import * as O from "../Option"

@@ -1,7 +1,3 @@
-/**
- * tracing: off
- */
-
 import * as A from "../Array"
 import * as E from "../Either"
 import type { Trace } from "../Fiber"
