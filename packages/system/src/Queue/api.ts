@@ -106,7 +106,6 @@ export const offer_ = <RA, RB, EA, EB, A, B>(
  *
  * For Dropping Queue: uses `Dropping` Strategy,
  * It places the values in the queue but if there is no room it will not enqueue them and return false.
- *
  */
 export const offerAll = <A>(as: Iterable<A>) => <RA, RB, EA, EB, B>(
   self: XQueue<RA, RB, EA, EB, A, B>
@@ -127,7 +126,6 @@ export const offerAll = <A>(as: Iterable<A>) => <RA, RB, EA, EB, B>(
  *
  * For Dropping Queue: uses `Dropping` Strategy,
  * It places the values in the queue but if there is no room it will not enqueue them and return false.
- *
  */
 export const offerAll_ = <RA, RB, EA, EB, A, B>(
   self: XQueue<RA, RB, EA, EB, A, B>,

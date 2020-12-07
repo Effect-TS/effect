@@ -1,4 +1,6 @@
-/* adapted from https://github.com/gcanti/fp-ts */
+/**
+ * adapted from https://github.com/gcanti/fp-ts
+ */
 import type { Lazy, Predicate, Refinement } from "../Function/core"
 import { tuple } from "../Function/core"
 import type { Option } from "../Option/core"

@@ -1,7 +1,3 @@
-/**
- * tracing: off
- */
-
 import type { Trace } from "../Fiber"
 import type { FiberID } from "../Fiber/id"
 
