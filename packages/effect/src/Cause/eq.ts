@@ -1,3 +1,6 @@
+/**
+ * tracing: off
+ */
 import { equalsFiberID } from "../Fiber/id"
 import * as S from "../Sync"
 import type { Cause } from "./cause"
