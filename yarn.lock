@@ -3442,9 +3442,9 @@ eslint-module-utils@^2.6.0:
     pkg-dir "^2.0.0"
 
 eslint-plugin-codegen@^0.14.0:
-  version "0.14.0"
-  resolved "https://registry.yarnpkg.com/eslint-plugin-codegen/-/eslint-plugin-codegen-0.14.0.tgz#b0cf93152174cde9efb8d75907db5cfb1ce1d3f3"
-  integrity sha512-UOWxEMLSDrylTbAEgG3EpENRy4DX935JNLsYGAfAQ9+ZbxRymdogAae9RiOIMzSJC8UGWLrswXjlRlqFVs0SHA==
+  version "0.14.3"
+  resolved "https://registry.yarnpkg.com/eslint-plugin-codegen/-/eslint-plugin-codegen-0.14.3.tgz#0c780a063419a2abed69cb45a832d7498c2aa93d"
+  integrity sha512-8ami8f9rkLLo++J1W5kwrgUDSeUC2/98CaQCafEoSw9X1oFDwa1b1RRNa2osbIcV+Y5XgIPdJPBISbPOuW3ynw==
   dependencies:
     "@babel/core" "^7.11.6"
     "@babel/generator" "~7.11.6"
@@ -3454,7 +3454,7 @@ eslint-plugin-codegen@^0.14.0:
     fp-ts "^2.1.0"
     glob "^7.1.4"
     io-ts "^2.2.4"
-    io-ts-extra "0.11.0"
+    io-ts-extra "0.11.3"
     js-yaml "^3.14.0"
     lodash "^4.17.15"
     string.prototype.matchall "^4.0.2"
@@ -4700,10 +4700,10 @@ internal-slot@^1.0.2:
     has "^1.0.3"
     side-channel "^1.0.2"
 
-io-ts-extra@0.11.0:
-  version "0.11.0"
-  resolved "https://registry.yarnpkg.com/io-ts-extra/-/io-ts-extra-0.11.0.tgz#05111350b8ea9a589f031562e3eeffa58243e2f6"
-  integrity sha512-WWvLv9xwy7+NtZp5ilGey3Ru8xUnmHDGlHjkh+aoPowVVVl2g4fWqCuHFVmS5rHHWxrHl7BBiq/yWpyVHTPG+A==
+io-ts-extra@0.11.3:
+  version "0.11.3"
+  resolved "https://registry.yarnpkg.com/io-ts-extra/-/io-ts-extra-0.11.3.tgz#2ed1a94edf2265cfe54d83cc9c31a48493097b2a"
+  integrity sha512-HwLnrdqkrUVa08SBaTwTMbUz+bwdS2HfIgxydxJM4mQz8LMHVgKEQC53vmfKR6QaWMM4AuH9qAwrns0rEaaOVA==
   dependencies:
     fp-ts "^2.1.0"
     io-ts "^2.2.4"
