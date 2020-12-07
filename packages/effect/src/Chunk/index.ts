@@ -118,6 +118,12 @@ export function single<A>(a: A): Chunk<A> {
 }
 
 export function concat_<A>(x: Chunk<A>, y: Chunk<A>): Chunk<A> {
+  if (x === empty) {
+    return y
+  }
+  if (y === empty) {
+    return x
+  }
   if (Buffer && Buffer.isBuffer(x) && Buffer.isBuffer(y)) {
     return buffer(Buffer.concat([x, y]))
   }
