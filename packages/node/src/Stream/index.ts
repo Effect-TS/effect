@@ -1,4 +1,3 @@
-import type * as B from "@effect-ts/core/Classic/Branded"
 import type * as C from "@effect-ts/core/Classic/Chunk"
 import * as O from "@effect-ts/core/Classic/Option"
 import * as T from "@effect-ts/core/Effect"
@@ -9,12 +8,12 @@ import * as Sink from "@effect-ts/core/Effect/Stream/Sink"
 import { pipe } from "@effect-ts/core/Function"
 import type * as stream from "stream"
 
+import type { Byte } from "../Byte"
+
 export class ReadableError {
   readonly _tag = "ReadableError"
   constructor(readonly error: Error) {}
 }
-
-export type Byte = B.Branded<number, "Byte">
 
 /**
  * Captures a Node `Readable`, converting it into a `Stream`,

@@ -28,6 +28,8 @@
   },
   "config": {
     "modules": [
+      "Byte",
+      "Process",
       "Runtime",
       "Stream"
     ]

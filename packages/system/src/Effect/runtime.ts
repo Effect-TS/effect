@@ -54,15 +54,15 @@ export const prettyReporter: FailureReporter = (e) => {
 }
 
 const defaultPlatform = new Platform(
-  100,
-  100,
+  10,
+  10,
   true,
   true,
   true,
   true,
-  100,
-  100,
-  100,
+  10,
+  10,
+  10,
   prettyTrace,
   constVoid,
   10_000

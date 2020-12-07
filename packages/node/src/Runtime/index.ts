@@ -198,7 +198,6 @@ export class NodeRuntime<R> {
             customTeardown(1, context.id, onExit)
             break
           } else {
-            console.log(Cause.pretty(exit.cause, this.custom.platform.renderer))
             customTeardown(0, context.id, onExit)
             break
           }
