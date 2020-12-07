@@ -1,6 +1,3 @@
-/**
- * tracing: off
- */
 declare global {
   interface Object {
     /**

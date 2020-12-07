@@ -1,8 +1,6 @@
 /**
  * Partially Ported from https://github.com/samhh/fp-ts-std
  * Partially Ported from https://github.com/0x706b/principia
- *
- * tracing: off
  */
 import { flow, pipe } from "../../Function"
 import type { Sum } from "../../Newtype"
