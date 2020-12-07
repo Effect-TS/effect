@@ -1,8 +1,6 @@
 /**
  * Partially Ported from https://github.com/samhh/fp-ts-std
  * Partially Ported from https://github.com/0x706b/principia
- *
- * tracing: off
  */
 import type { Predicate } from "../../Function"
 import type { Prod, Sum } from "../../Newtype"
