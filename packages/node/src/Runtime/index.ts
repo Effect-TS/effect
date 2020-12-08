@@ -193,12 +193,12 @@ export class NodeRuntime<R> {
     context.runAsync((exit) => {
       switch (exit._tag) {
         case "Failure": {
-          if (Cause.died(exit.cause) || Cause.failed(exit.cause)) {
-            console.error(Cause.pretty(exit.cause, this.custom.platform.renderer))
-            customTeardown(1, context.id, onExit)
+          if (Cause.interruptedOnly(exit.cause)) {
+            customTeardown(0, context.id, onExit)
             break
           } else {
-            customTeardown(0, context.id, onExit)
+            console.error(Cause.pretty(exit.cause, this.custom.platform.renderer))
+            customTeardown(1, context.id, onExit)
             break
           }
         }

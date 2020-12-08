@@ -56,3 +56,5 @@ export function accessCallTrace(name: string, clean = true) {
 
   return undefined
 }
+
+export * from "./Global"

@@ -1,3 +1,5 @@
+import "@effect-ts/tracing-utils/Enable"
+
 import * as T from "@effect-ts/core/Effect"
 import * as C from "@effect-ts/core/Effect/Cause"
 import * as Ex from "@effect-ts/core/Effect/Exit"
