@@ -236,7 +236,7 @@ const causeToSequential = <E>(cause: Cause<E>, renderer: Renderer): S.UIO<Sequen
   })
 
 function renderTrace(o: O.Option<Trace>, renderer: Renderer) {
-  return o._tag === "None" ? ["No Trace available."] : lines(renderer(o.value))
+  return o._tag === "None" ? [] : lines(renderer(o.value))
 }
 
 const times = (s: string, n: number) => {
