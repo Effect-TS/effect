@@ -1,5 +1,7 @@
 // option
 // cause
+import { isTracingEnabled } from "@effect-ts/tracing-utils"
+
 import * as Cause from "../Cause/core"
 import type { Renderer } from "../Cause/pretty"
 import { pretty } from "../Cause/pretty"
@@ -52,10 +54,10 @@ export const prettyReporter: FailureReporter = (e) => {
 const defaultPlatform = new Platform(
   10,
   10,
-  true,
-  true,
-  true,
-  true,
+  isTracingEnabled(),
+  isTracingEnabled(),
+  isTracingEnabled(),
+  isTracingEnabled(),
   10,
   10,
   10,

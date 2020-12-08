@@ -42,6 +42,7 @@
       "@effect-ts/core": ["packages/core/build"],
       "@effect-ts/node/*": ["packages/node/build/*"],
       "@effect-ts/node": ["packages/node/build"],
+      "@effect-ts/tracing-utils/*": ["packages/tracing-utils/build/*"],
       "@effect-ts/tracing-utils": ["packages/tracing-utils/build"]
     },
     "target": "ES2017"
