@@ -1,5 +1,7 @@
 import type { Trace } from "../Fiber"
 import type { FiberID } from "../Fiber/id"
+import * as L from "../List"
+import * as O from "../Option"
 
 /**
  * Cause is a Free Semiring structure that allows tracking of multiple error causes.
@@ -55,6 +57,13 @@ export function fail<E>(value: E): Cause<E> {
 }
 
 export function traced<E>(cause: Cause<E>, trace: Trace): Cause<E> {
+  if (
+    L.isEmpty(trace.executionTrace) &&
+    L.isEmpty(trace.stackTrace) &&
+    O.isNone(trace.parentTrace)
+  ) {
+    return cause
+  }
   return {
     _tag: "Traced",
     cause,
