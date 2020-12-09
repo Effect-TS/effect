@@ -1,6 +1,5 @@
 import * as E from "@effect-ts/system/Either"
 import { pipe, tuple } from "@effect-ts/system/Function"
-import type { Erase } from "@effect-ts/system/Utils"
 
 import type { Associative } from "../../Classic/Associative"
 import type { Applicative } from "../Applicative"
@@ -12,9 +11,7 @@ import { succeedF } from "./dsl"
 
 export function getValidationF<F extends HKT.URIS, C = HKT.Auto>(
   F: Monad<F, C> & Run<F, C> & Fail<F, C> & Applicative<F, C>
-): <Z>(
-  A: Associative<Z>
-) => Applicative<F, Erase<HKT.Strip<C, "E">, HKT.Auto> & HKT.Fix<"E", Z>>
+): <Z>(A: Associative<Z>) => Applicative<F, HKT.CleanParam<C, "E"> & HKT.Fix<"E", Z>>
 export function getValidationF<F>(
   F: Monad<HKT.UHKT2<F>> &
     Run<HKT.UHKT2<F>> &

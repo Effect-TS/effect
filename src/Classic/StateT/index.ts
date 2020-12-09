@@ -1,5 +1,3 @@
-import type { Erase } from "@effect-ts/system/Utils"
-
 import { flow, pipe, tuple } from "../../Function"
 import type { StateInURI, StateOutURI } from "../../Modules"
 import type { Auto, Monad } from "../../Prelude"
@@ -9,7 +7,7 @@ import * as HKT from "../../Prelude/HKT"
 /**
  * Take over ownership of "S" making it invariant
  */
-export type V<C> = HKT.Unfix<Erase<HKT.Strip<C, "S">, HKT.Auto>, "S"> & HKT.V<"S", "_">
+export type V<C> = HKT.CleanParam<C, "S"> & HKT.V<"S", "_">
 
 export type StateT<F extends HKT.URIS> = HKT.PrependURI<
   StateInURI,

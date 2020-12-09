@@ -34,6 +34,7 @@ namespace IOEither {
 //
 
 namespace ReaderIOEither {
+  //
   export const Monad = pipe(IOEither.Monad, ReaderT.monad)
   export const Applicative = pipe(IOEither.Applicative, ReaderT.applicative)
   export const Run = pipe(IOEither.Run, ReaderT.run)
