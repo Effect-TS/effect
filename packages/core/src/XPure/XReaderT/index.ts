@@ -5,11 +5,9 @@ import type { Access, Fail, Provide, Run } from "../../Prelude/FX"
 import * as HKT from "../../Prelude/HKT"
 import * as R from "../XReader"
 
-export type V<C> = HKT.CleanParam<C, "R"> & HKT.V<"R", "-">
-
 export function monad<F extends HKT.URIS, C>(
   M: Monad<F, C>
-): Monad<HKT.PrependURI<R.XReaderURI, F>, V<C>>
+): Monad<HKT.PrependURI<R.XReaderURI, F>, HKT.CleanParam<C, "R"> & HKT.V<"R", "-">>
 export function monad<F>(
   M: Monad<HKT.UHKT<F>>
 ): Monad<HKT.PrependURI<R.XReaderURI, HKT.UHKT<F>>, HKT.V<"R", "-">> {
@@ -31,7 +29,7 @@ export function monad<F>(
 
 export function access<F extends HKT.URIS, C>(
   M: Monad<F, C>
-): Access<HKT.PrependURI<R.XReaderURI, F>, V<C>>
+): Access<HKT.PrependURI<R.XReaderURI, F>, HKT.CleanParam<C, "R"> & HKT.V<"R", "-">>
 export function access<F>(
   M: Monad<HKT.UHKT<F>>
 ): Access<HKT.PrependURI<R.XReaderURI, HKT.UHKT<F>>, HKT.V<"R", "-">> {
@@ -42,7 +40,7 @@ export function access<F>(
 
 export function provide<F extends HKT.URIS, C>(
   M: Monad<F, C>
-): Provide<HKT.PrependURI<R.XReaderURI, F>, V<C>>
+): Provide<HKT.PrependURI<R.XReaderURI, F>, HKT.CleanParam<C, "R"> & HKT.V<"R", "-">>
 export function provide<F>(
   _: Monad<HKT.UHKT<F>>
 ): Provide<HKT.PrependURI<R.XReaderURI, HKT.UHKT<F>>, HKT.V<"R", "-">> {
@@ -53,7 +51,10 @@ export function provide<F>(
 
 export function applicative<F extends HKT.URIS, C>(
   M: Applicative<F, C>
-): Applicative<HKT.PrependURI<R.XReaderURI, F>, V<C>>
+): Applicative<
+  HKT.PrependURI<R.XReaderURI, F>,
+  HKT.CleanParam<C, "R"> & HKT.V<"R", "-">
+>
 export function applicative<F>(
   M: Applicative<HKT.UHKT<F>>
 ): Applicative<HKT.PrependURI<R.XReaderURI, HKT.UHKT<F>>, HKT.V<"R", "-">> {
@@ -77,7 +78,7 @@ export function applicative<F>(
 
 export function run<F extends HKT.URIS, C>(
   M: Run<F, C>
-): Run<HKT.PrependURI<R.XReaderURI, F>, V<C>>
+): Run<HKT.PrependURI<R.XReaderURI, F>, HKT.CleanParam<C, "R"> & HKT.V<"R", "-">>
 export function run<F>(
   M: Run<HKT.UHKT2<F>>
 ): Run<HKT.PrependURI<R.XReaderURI, HKT.UHKT2<F>>, HKT.V<"R", "-">> {
@@ -88,7 +89,7 @@ export function run<F>(
 
 export function fail<F extends HKT.URIS, C>(
   M: Fail<F, C>
-): Fail<HKT.PrependURI<R.XReaderURI, F>, V<C>>
+): Fail<HKT.PrependURI<R.XReaderURI, F>, HKT.CleanParam<C, "R"> & HKT.V<"R", "-">>
 export function fail<F>(
   M: Fail<HKT.UHKT2<F>>
 ): Fail<HKT.PrependURI<R.XReaderURI, HKT.UHKT2<F>>, HKT.V<"R", "-">> {
