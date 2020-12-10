@@ -1,4 +1,4 @@
-import "../src/Modules/register"
+import "../src/Modules/Traced"
 
 import * as T from "@effect-ts/core/Effect"
 import * as C from "@effect-ts/core/Effect/Cause"
