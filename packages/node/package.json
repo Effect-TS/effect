@@ -29,6 +29,7 @@
   "config": {
     "modules": [
       "Byte",
+      "Modules",
       "Process",
       "Runtime",
       "Stream"

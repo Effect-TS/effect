@@ -1,4 +1,4 @@
-import "@effect-ts/tracing-utils/Enable"
+import "../src/Modules/register"
 
 import * as T from "@effect-ts/core/Effect"
 import * as C from "@effect-ts/core/Effect/Cause"
@@ -10,7 +10,7 @@ import { prettyTraceNode } from "../src/Runtime"
 
 const customNodeRender = (_: Trace): string =>
   prettyTraceNode(_, (_, path) => {
-    return path.replace("/build/", "/").replace("_src", "src")
+    return path.replace("/build/", "/").replace("/_traced/", "/").replace("_src", "src")
   })
 
 describe("Tracing & Optimizations", () => {

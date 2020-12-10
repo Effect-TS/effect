@@ -9,7 +9,7 @@ import { posix } from "path"
 
 import { modifyGlob, onLeft, onRight } from "../scripts/_common"
 
-const MAP_GLOB_PATTERN = "build/_untraced/**/*.map"
+const MAP_GLOB_PATTERN = "build/_traced/**/*.map"
 
 interface SourceMapInterface {
   sources: string[]

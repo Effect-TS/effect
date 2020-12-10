@@ -5,7 +5,7 @@ import * as TE from "fp-ts/lib/TaskEither"
 
 import { modifyGlob, onLeft, onRight, runMain } from "../scripts/_common"
 
-const GLOB_PATTERN = "build/_untraced/**/*.@(ts|js)"
+const GLOB_PATTERN = "build/_traced/**/*.@(ts|js)"
 
 const packages = ["system", "core", "morphic", "monocle"]
 
