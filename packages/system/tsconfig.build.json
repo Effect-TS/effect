@@ -10,9 +10,6 @@
     "plugins": [
       {
         "transform": "../tracing-plugin/src/index.ts",
-        "moduleMap": {
-          "^src/(.*)": "(@effect-ts/system): _src/$1"
-        },
         "tracing": false
       }
     ]

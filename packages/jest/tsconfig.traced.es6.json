@@ -1,16 +1,18 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "outDir": "build",
+    "outDir": "build/_traced/esm",
+    "module": "ES6",
     "target": "ES2017",
-    "module": "CommonJS",
     "incremental": true,
-    "tsBuildInfoFile": "tsbuildinfo/build.tsbuildinfo",
+    "tsBuildInfoFile": "tsbuildinfo/es6.traced.tsbuildinfo",
     "removeComments": false,
     "plugins": [
       {
         "transform": "../tracing-plugin/src/index.ts",
-        "tracing": false
+        "moduleMap": {
+          "^src/(.*)": "(@effect-ts/jest): _src/$1"
+        }
       }
     ]
   },

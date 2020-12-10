@@ -2,17 +2,15 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "outDir": "build/esm",
-    "target": "ES2017",
     "module": "ES6",
+    "target": "ES2017",
     "incremental": true,
     "tsBuildInfoFile": "tsbuildinfo/es6.tsbuildinfo",
     "removeComments": false,
     "plugins": [
       {
         "transform": "../tracing-plugin/src/index.ts",
-        "moduleMap": {
-          "^src/(.*)": "(@effect-ts/jest): build/_src/$1"
-        }
+        "tracing": false
       }
     ]
   },
