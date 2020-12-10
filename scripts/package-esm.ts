@@ -4,9 +4,9 @@ import { flow } from "fp-ts/lib/function"
 import { pipe } from "fp-ts/lib/pipeable"
 import * as TE from "fp-ts/lib/TaskEither"
 
-import { copy, onLeft, onRight, readFile, runMain, writeFile } from "../scripts/_common"
+import { copy, onLeft, onRight, readFile, runMain, writeFile } from "./_common"
 
-const copyReadme = copy("./README.md", "./build/_traced", { update: true })
+const copyReadme = copy("./README.md", "./build", { update: true })
 
 const loadPackageJson = pipe(
   readFile("./package.json", "utf8"),
@@ -27,7 +27,7 @@ const writePackageJsonContent = (content: any) =>
         peerDependencies: content["peerDependencies"],
         gitHead: content["gitHead"],
         main: "./index.js",
-        module: "./esm/index.js",
+        type: "module",
         typings: "./index.d.ts",
         publishConfig: {
           access: "public"
@@ -36,7 +36,7 @@ const writePackageJsonContent = (content: any) =>
       null,
       2
     ),
-    (str) => writeFile("./build/_traced/package.json", str)
+    (str) => writeFile("./build/esm/package.json", str)
   )
 
 const getModules = flow(
@@ -50,14 +50,12 @@ const getModules = flow(
 const writeModulePackageJson = (modules: string[]) =>
   A.array.traverse(TE.taskEither)(modules, (m) =>
     writeFile(
-      `./build/_traced/${m}/package.json`,
+      `./build/esm/${m}/package.json`,
       JSON.stringify(
         {
           sideEffects: false,
           main: "./index.js",
-          module: `${A.range(1, m.split("/").length)
-            .map(() => "../")
-            .join("")}esm/${m}/index.js`,
+          type: "module",
           typings: `./index.d.ts`
         },
         null,

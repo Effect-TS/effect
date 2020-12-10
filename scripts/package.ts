@@ -71,7 +71,7 @@ pipe(
   TE.apSecond(loadPackageJson),
   TE.chainFirst(writePackageJsonContent),
   TE.chain(getModules),
-  TE.chain(writeModulePackageJson),
+  TE.chainFirst(writeModulePackageJson),
   TE.fold(onLeft, onRight("package copy succeeded!")),
   runMain
 )

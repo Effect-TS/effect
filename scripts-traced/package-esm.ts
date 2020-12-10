@@ -27,7 +27,7 @@ const writePackageJsonContent = (content: any) =>
         peerDependencies: content["peerDependencies"],
         gitHead: content["gitHead"],
         main: "./index.js",
-        module: "./esm/index.js",
+        type: "module",
         typings: "./index.d.ts",
         publishConfig: {
           access: "public"
@@ -36,7 +36,7 @@ const writePackageJsonContent = (content: any) =>
       null,
       2
     ),
-    (str) => writeFile("./build/_traced/package.json", str)
+    (str) => writeFile("./build/_traced/esm/package.json", str)
   )
 
 const getModules = flow(
@@ -50,14 +50,12 @@ const getModules = flow(
 const writeModulePackageJson = (modules: string[]) =>
   A.array.traverse(TE.taskEither)(modules, (m) =>
     writeFile(
-      `./build/_traced/${m}/package.json`,
+      `./build/_traced/esm/${m}/package.json`,
       JSON.stringify(
         {
           sideEffects: false,
           main: "./index.js",
-          module: `${A.range(1, m.split("/").length)
-            .map(() => "../")
-            .join("")}esm/${m}/index.js`,
+          type: "module",
           typings: `./index.d.ts`
         },
         null,
