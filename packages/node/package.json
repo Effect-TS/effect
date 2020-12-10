@@ -33,9 +33,7 @@
       "Byte",
       "Modules",
       "Modules/Alias",
-      "Modules/ESM",
       "Modules/Traced",
-      "Modules/TracedESM",
       "Process",
       "Runtime",
       "Stream"
