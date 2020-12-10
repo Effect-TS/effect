@@ -35,18 +35,24 @@ export const defaultHook = (
   cont: NodeJS.SignalsListener
 ): ((signal: NodeJS.Signals) => void) => (signal) => cont(signal)
 
-export const nodeTracer = (trace: Fiber.Trace) => prettyTraceNode(trace, (_, __) => __)
+export const nodeTracer = (trace: Fiber.Trace) =>
+  prettyTraceNode(trace, (path) =>
+    path
+      .replace("/esm/_traced/", "/")
+      .replace("/_traced/", "/")
+      .replace(process.cwd() + "/", "")
+  )
 
 export function prettyTraceNode(
   trace: Fiber.Trace,
-  adapt: (mod: string, path: string) => string
+  adapt: (path: string, mod?: string) => string
 ): string {
   return S.run(prettyTraceNodeSafe(trace, adapt))
 }
 
 export function prettyLocationNode(
   traceElement: Fiber.TraceElement,
-  adapt: (mod: string, path: string) => string
+  adapt: (path: string, mod?: string) => string
 ) {
   try {
     if (traceElement._tag === "SourceLocation") {
@@ -56,7 +62,7 @@ export function prettyLocationNode(
         const [, mod, file, line_, col, name] = isModule
         const line = parseInt(line_)
         const modulePath = require.resolve(`${mod}/package.json`)
-        const realPath = adapt(mod, path.join(modulePath, "..", file))
+        const realPath = adapt(path.join(modulePath, "..", file), mod)
 
         return `${realPath}:${line}:${col}:${name}`
       } else {
@@ -78,7 +84,7 @@ export function prettyLocationNode(
 
 export function prettyTraceNodeSafe(
   trace: Fiber.Trace,
-  adapt: (mod: string, path: string) => string
+  adapt: (path: string, mod?: string) => string
 ): S.UIO<string> {
   return S.gen(function* ($) {
     const execTrace = !L.isEmpty(trace.executionTrace)
@@ -136,7 +142,7 @@ export function prettyTraceNodeSafe(
           const [, mod, file, line_, col] = isModule
           const line = parseInt(line_)
           const modulePath = require.resolve(`${mod}/package.json`)
-          const realPath = adapt(mod, path.join(modulePath, "..", file))
+          const realPath = adapt(path.join(modulePath, "..", file), mod)
           const lines = fs.readFileSync(realPath).toString("utf-8").split("\n")
 
           if (lines.length > line + 6 && line > 3) {
@@ -165,7 +171,7 @@ export function prettyTraceNodeSafe(
           const isPath = firstFailure.value.location.match(/(.*):(\d+):(\d+):(.*)/)
           if (isPath) {
             const [, file, line_, col] = isPath
-            const realPath = path.join(process.cwd(), file)
+            const realPath = adapt(path.join(process.cwd(), file))
 
             if (fs.existsSync(realPath)) {
               const line = parseInt(line_)

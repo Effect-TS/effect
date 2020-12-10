@@ -9,7 +9,7 @@ import { pipe } from "@effect-ts/core/Function"
 import { prettyTraceNode } from "../src/Runtime"
 
 const customNodeRender = (_: Trace): string =>
-  prettyTraceNode(_, (_, path) => {
+  prettyTraceNode(_, (path) => {
     return path.replace("/build/", "/").replace("/_traced/", "/").replace("_src", "src")
   })
 
