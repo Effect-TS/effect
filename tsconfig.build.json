@@ -7,8 +7,12 @@
     "incremental": true,
     "tsBuildInfoFile": "tsbuildinfo/build.tsbuildinfo",
     "removeComments": false,
-    "lib": ["ES2020"],
-    "plugins": []
+    "plugins": [
+      {
+        "transform": "../tracing-plugin/src/index.ts",
+        "tracing": false
+      }
+    ]
   },
   "include": ["src/**/*"],
   "exclude": ["test", "node_modules"]
