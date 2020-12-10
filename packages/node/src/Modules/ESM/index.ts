@@ -1,5 +1,3 @@
-import "@effect-ts/tracing-utils/Enable"
-
 import { alias } from "../Alias"
 
 alias({
