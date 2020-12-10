@@ -37,10 +37,7 @@ export const defaultHook = (
 
 export const nodeTracer = (trace: Fiber.Trace) =>
   prettyTraceNode(trace, (path) =>
-    path
-      .replace("/esm/_traced/", "/")
-      .replace("/_traced/", "/")
-      .replace(process.cwd() + "/", "")
+    path.replace("/esm/_traced/", "/").replace("/_traced/", "/")
   )
 
 export function prettyTraceNode(
