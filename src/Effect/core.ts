@@ -1,4 +1,4 @@
-import { accessCallTrace, traceAs, traceFrom } from "@effect-ts/tracing-utils"
+import { accessCallTrace, traceAs, traceAsFrom } from "@effect-ts/tracing-utils"
 
 import type { Cause } from "../Cause/cause"
 import { keepDefects } from "../Cause/core"
@@ -244,7 +244,7 @@ export function forkReport(reportFailure: FailureReporter) {
  * @tracecall halt
  */
 export function halt<E>(cause: Cause<E>): IO<E, never> {
-  return new IFail(traceFrom("halt", () => cause))
+  return new IFail(traceAsFrom("halt", halt, () => cause))
 }
 
 /**
@@ -327,14 +327,16 @@ export function provideAll_<R, E, A>(
 /**
  * Returns an effect that semantically runs the effect on a fiber,
  * producing an `Exit` for the completion value of the fiber.
+ *
+ * @tracecall result
  */
 export function result<R, E, A>(
   value: Effect<R, E, A>
 ): Effect<R, never, Exit.Exit<E, A>> {
   return new IFold(
     value,
-    (cause) => succeed(Exit.halt(cause)),
-    (succ) => succeed(Exit.succeed(succ))
+    traceAsFrom("result", result, (cause) => succeed(Exit.halt(cause))),
+    traceAsFrom("result", result, (succ) => succeed(Exit.succeed(succ)))
   )
 }
 
@@ -344,7 +346,7 @@ export function result<R, E, A>(
  * @tracecall succeed
  */
 export function succeed<A>(a: A): Effect<unknown, never, A> {
-  return new ISucceed(a, accessCallTrace("succeed"))
+  return new ISucceed(a, accessCallTrace("succeed") || succeed["$trace"])
 }
 
 /**
