@@ -1,19 +1,21 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "outDir": "compiler-debug",
+    "outDir": "build/_traced",
     "target": "ES2017",
     "module": "CommonJS",
+    "incremental": true,
+    "tsBuildInfoFile": "tsbuildinfo/build.traced.tsbuildinfo",
     "removeComments": false,
     "plugins": [
       {
         "transform": "../tracing-plugin/src/index.ts",
         "moduleMap": {
-          "^src/(.*)": "(@effect-ts/system): _src/$1"
+          "^src/(.*)": "(@effect-ts/node): _src/$1"
         }
       }
     ]
   },
-  "include": ["test/**/*.ts", "src/**/*.ts"],
-  "exclude": ["node_modules"]
+  "include": ["src/**/*"],
+  "exclude": ["test", "node_modules"]
 }
