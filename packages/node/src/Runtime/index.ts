@@ -59,6 +59,13 @@ export function prettyLocationNode(
         const realPath = adapt(mod, path.join(modulePath, "..", file))
 
         return `${realPath}:${line}:${col}:${name}`
+      } else {
+        const isPath = traceElement.location.match(/(.*):(\d+):(\d+):(.*)/)
+        if (isPath) {
+          const [, file, line_, col, name] = isPath
+          const line = parseInt(line_)
+          return `${path.join(process.cwd(), file)}:${line}:${col}:${name}`
+        }
       }
     }
   } catch {
@@ -154,6 +161,40 @@ export function prettyTraceNodeSafe(
           }
 
           return ["", ...stackPrint, "", ...execPrint, "", ...ancestry].join("\n")
+        } else {
+          const isPath = firstFailure.value.location.match(/(.*):(\d+):(\d+):(.*)/)
+          if (isPath) {
+            const [, file, line_, col] = isPath
+            const realPath = path.join(process.cwd(), file)
+
+            if (fs.existsSync(realPath)) {
+              const line = parseInt(line_)
+              const lines = fs.readFileSync(realPath).toString("utf-8").split("\n")
+
+              if (lines.length > line + 6 && line > 3) {
+                return [
+                  "",
+                  `${realPath}:${line}:${col}`,
+                  "",
+                  lines[line - 2],
+                  lines[line - 1],
+                  `${A.range(0, parseInt(col) - 1)
+                    .map(() => " ")
+                    .join("")}^^^`,
+                  lines[line],
+                  lines[line + 1],
+                  "",
+                  ...stackPrint,
+                  "",
+                  ...execPrint,
+                  "",
+                  ...ancestry
+                ].join("\n")
+              }
+
+              return ["", ...stackPrint, "", ...execPrint, "", ...ancestry].join("\n")
+            }
+          }
         }
       }
     } catch {
