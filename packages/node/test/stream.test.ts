@@ -1,4 +1,5 @@
 import * as C from "@effect-ts/core/Classic/Chunk"
+import * as O from "@effect-ts/core/Classic/Option"
 import * as T from "@effect-ts/core/Effect"
 import * as S from "@effect-ts/core/Effect/Stream"
 import { flow, pipe } from "@effect-ts/core/Function"
@@ -18,7 +19,9 @@ describe("Node Stream", () => {
       T.runPromise
     )
 
-    expect(C.asBuffer(res).toString("utf-8")).toEqual("a, b, c")
+    expect(O.map_(C.asBuffer(res), (_) => _.toString("utf-8"))).toEqual(
+      O.some("a, b, c")
+    )
   })
   it("transform (gzip/gunzip)", async () => {
     const res = await pipe(
@@ -31,6 +34,8 @@ describe("Node Stream", () => {
       T.runPromise
     )
 
-    expect(C.asBuffer(res).toString("utf-8")).toEqual("a, b, c")
+    expect(O.map_(C.asBuffer(res), (_) => _.toString("utf-8"))).toEqual(
+      O.some("a, b, c")
+    )
   })
 })
