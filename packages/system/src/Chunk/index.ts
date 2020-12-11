@@ -282,14 +282,14 @@ export function takeLeft_<A>(as: Chunk<A>, n: number): Chunk<A> {
   return Array.from(as).slice(0, n)
 }
 
-export function asBuffer(self: Chunk<number>): O.Option<Buffer> {
+export function asBuffer(self: Chunk<number>): Buffer {
   if (Buffer && Buffer.isBuffer(self)) {
-    return O.some(self)
+    return self
   }
   if (isTyped(self)) {
-    return O.some(Buffer.from(self))
+    return Buffer.from(self)
   }
-  return O.none
+  return Buffer.of(...self)
 }
 
 export function asArray<A>(self: Chunk<A>): A.Array<A> {
