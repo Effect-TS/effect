@@ -1,4 +1,4 @@
-import * as C from "@effect-ts/core/Classic/Chunk"
+import type * as C from "@effect-ts/core/Classic/Chunk"
 import * as O from "@effect-ts/core/Classic/Option"
 import * as T from "@effect-ts/core/Effect"
 import * as M from "@effect-ts/core/Effect/Managed"
@@ -123,8 +123,10 @@ export function transform(
                 ),
               (chunk) =>
                 T.effectAsync((cb) => {
-                  st.write(C.asBuffer(chunk), (err) =>
-                    err ? cb(Push.fail(new TransformError(err), [])) : cb(Push.more)
+                  st.write(
+                    Buffer.isBuffer(chunk) ? chunk : Buffer.of(...chunk),
+                    (err) =>
+                      err ? cb(Push.fail(new TransformError(err), [])) : cb(Push.more)
                   )
                 })
             )
