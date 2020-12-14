@@ -8705,9 +8705,9 @@ uid-number@0.0.6:
   integrity sha1-DqEOgDXo61uOREnwbaHHMGY7qoE=
 
 ultra-runner@^3.5.0:
-  version "3.6.0"
-  resolved "https://registry.yarnpkg.com/ultra-runner/-/ultra-runner-3.6.0.tgz#531f78071d140d88227def55727b2e7b791d6139"
-  integrity sha512-ccr8w6exl7J9YHeuf021jk4tLmJn9zBp7fizHo0j49a61I40SUv5yZkxvpf5K0C+rXy6L3HhJHfNO1Gm4QI+XQ==
+  version "3.7.0"
+  resolved "https://registry.yarnpkg.com/ultra-runner/-/ultra-runner-3.7.0.tgz#716d8160039d9de76d1e2929f025c0a025a00608"
+  integrity sha512-d1bnhHRCrIiibw3W+5aGiCfJxegF9tJKb869Gr/sf0Dw3BM1MqVQYStGB0VWz8bHeietyiUk54gufGMlLN9w2g==
   dependencies:
     ansi-split "^1.0.1"
     chalk "^4.0.0"
