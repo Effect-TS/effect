@@ -1,4 +1,5 @@
 import * as A from "../Array"
+import * as T from "../Effect"
 import type { Predicate, Refinement } from "../Function"
 import * as O from "../Option"
 
@@ -294,4 +295,71 @@ export function asArray<A>(self: Chunk<A>): A.Array<A> {
     return self
   }
   return Array.from(self)
+}
+
+export function takeWhile_<A>(self: Chunk<A>, pred: Predicate<A>): Chunk<A> {
+  if (isTyped(self)) {
+    const i = spanIndex_(self, pred)
+
+    return buffer(self.subarray(0, i))
+  }
+
+  if (Array.isArray(self)) {
+    return A.takeLeftWhile_(self, pred)
+  }
+
+  return A.takeLeftWhile_(Array.from(self), pred)
+}
+
+export function takeWhile<A>(pred: Predicate<A>) {
+  return (self: Chunk<A>) => takeWhile_(self, pred)
+}
+
+export function fromIterable<A>(self: Iterable<A>): Chunk<A> {
+  return Array.from(self)
+}
+
+/**
+ * Takes all elements so long as the effectual predicate returns true.
+ */
+export function takeWhileM_<R, E, A>(
+  self: Chunk<A>,
+  p: (a: A) => T.Effect<R, E, boolean>
+): T.Effect<R, E, Chunk<A>> {
+  if (Array.isArray(self)) {
+    return T.suspend(() => {
+      const result: A[] = []
+      let taking: T.Effect<R, E, boolean> = T.succeed(true)
+
+      self.forEach((a) => {
+        taking = T.chain_(taking, (b) =>
+          T.map_(
+            T.if_(
+              b,
+              () => p(a),
+              () => T.succeed(false)
+            ),
+            (r) => {
+              if (r) {
+                result.push(a)
+              }
+
+              return r
+            }
+          )
+        )
+      })
+
+      return T.as_(taking, result as Chunk<A>)
+    })
+  }
+
+  return takeWhileM_(Array.from(self), p)
+}
+
+/**
+ * Takes all elements so long as the effectual predicate returns true.
+ */
+export function takeWhileM<R, E, A>(p: (a: A) => T.Effect<R, E, boolean>) {
+  return (self: Chunk<A>) => takeWhileM_(self, p)
 }

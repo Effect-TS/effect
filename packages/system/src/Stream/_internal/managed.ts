@@ -34,7 +34,8 @@ export {
   fold_,
   environment,
   scope,
-  withChildren
+  withChildren,
+  dieMessage
 } from "../../Managed/methods/api"
 export { provideSome_, provideSome, use, use_ } from "../../Managed/core"
 
