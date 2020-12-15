@@ -20,16 +20,19 @@ export function make<K, V>(values: readonly (readonly [K, V])[]): Map<K, V> {
 /**
  * Removes None values
  */
-export const compact = <K, A>(fa: Map<K, Op.Option<A>>): Map<K, A> => {
+export function compact<K, A>(fa: Map<K, Op.Option<A>>): Map<K, A> {
   const m = new Map<K, A>()
   const entries = fa.entries()
   let e: Next<readonly [K, Op.Option<A>]>
+
   while (!(e = entries.next()).done) {
     const [k, oa] = e.value
+
     if (Op.isSome(oa)) {
       m.set(k, oa.value)
     }
   }
+
   return m
 }
 
@@ -41,75 +44,79 @@ export const empty: Map<never, never> = new Map<never, never>()
 /**
  * Filter out None and map
  */
-export const filterMap: <A, B>(
-  f: (a: A) => Op.Option<B>
-) => <E>(fa: Map<E, A>) => Map<E, B> = (f) => filterMapWithIndex((_, a) => f(a))
-
-/**
- * Filter out None and map
- */
-export const filterMap_: <E, A, B>(
+export function filterMap_<E, A, B>(
   fa: Map<E, A>,
   f: (a: A) => Op.Option<B>
-) => Map<E, B> = (fa, f) => filterMapWithIndex_(fa, (_, a) => f(a))
-
-/**
- * Filter out None and map
- */
-export const filterMapWithIndex = <K, A, B>(
-  f: (k: K, a: A) => Op.Option<B>
-): ((fa: Map<K, A>) => Map<K, B>) => {
-  return (fa) => filterMapWithIndex_(fa, f)
+): Map<E, B> {
+  return filterMapWithIndex_(fa, (_, a) => f(a))
 }
 
 /**
  * Filter out None and map
  */
-export const filterMapWithIndex_ = <K, A, B>(
+export function filterMap<A, B>(f: (a: A) => Op.Option<B>) {
+  return <E>(fa: Map<E, A>) => filterMap_(fa, f)
+}
+
+/**
+ * Filter out None and map
+ */
+export function filterMapWithIndex_<K, A, B>(
   fa: Map<K, A>,
   f: (k: K, a: A) => Op.Option<B>
-): Map<K, B> => {
+): Map<K, B> {
   const m = new Map<K, B>()
   const entries = fa.entries()
   let e: Next<readonly [K, A]>
+
   // tslint:disable-next-line: strict-boolean-expressions
   while (!(e = entries.next()).done) {
     const [k, a] = e.value
     const o = f(k, a)
+
     if (Op.isSome(o)) {
       m.set(k, o.value)
     }
   }
+
   return m
 }
 
 /**
  * Filter out None and map
  */
-export const filterWithIndex = <K, A>(
-  p: (k: K, a: A) => boolean
-): ((fa: Map<K, A>) => Map<K, A>) => {
-  return (fa) => filterWithIndex_(fa, p)
+export function filterMapWithIndex<K, A, B>(f: (k: K, a: A) => Op.Option<B>) {
+  return (fa: Map<K, A>) => filterMapWithIndex_(fa, f)
 }
 
 /**
  * Filter out None and map
  */
-export const filterWithIndex_ = <K, A>(
+export function filterWithIndex_<K, A>(
   fa: Map<K, A>,
   p: (k: K, a: A) => boolean
-): Map<K, A> => {
+): Map<K, A> {
   const m = new Map<K, A>()
   const entries = fa.entries()
   let e: Next<readonly [K, A]>
+
   // tslint:disable-next-line: strict-boolean-expressions
   while (!(e = entries.next()).done) {
     const [k, a] = e.value
+
     if (p(k, a)) {
       m.set(k, a)
     }
   }
+
   return m
+}
+
+/**
+ * Filter out None and map
+ */
+export function filterWithIndex<K, A>(p: (k: K, a: A) => boolean) {
+  return (fa: Map<K, A>) => filterWithIndex_(fa, p)
 }
 
 /**
@@ -129,39 +136,39 @@ export function isEmpty<K, A>(d: Map<K, A>): boolean {
 /**
  * Maps values using f
  */
-export const map_: <E, A, B>(fa: Map<E, A>, f: (a: A) => B) => Map<E, B> = (fa, f) =>
-  map(f)(fa)
-
-/**
- * Maps values using f
- */
-export const map: <A, B>(f: (a: A) => B) => <E>(fa: Map<E, A>) => Map<E, B> = (f) =>
-  mapWithIndex((_, a) => f(a))
-
-/**
- * Maps values using f
- */
-export const mapWithIndex = <K, A, B>(
-  f: (k: K, a: A) => B
-): ((fa: Map<K, A>) => Map<K, B>) => {
-  return (fa) => mapWithIndex_(fa, f)
+export function map_<E, A, B>(fa: Map<E, A>, f: (a: A) => B): Map<E, B> {
+  return mapWithIndex_(fa, (_, a) => f(a))
 }
 
 /**
  * Maps values using f
  */
-export const mapWithIndex_ = <K, A, B>(
-  fa: Map<K, A>,
-  f: (k: K, a: A) => B
-): Map<K, B> => {
+export function map<A, B>(f: (a: A) => B) {
+  return <E>(fa: Map<E, A>) => map_(fa, f)
+}
+
+/**
+ * Maps values using f
+ */
+export function mapWithIndex_<K, A, B>(fa: Map<K, A>, f: (k: K, a: A) => B): Map<K, B> {
   const m = new Map<K, B>()
   const entries = fa.entries()
   let e: Next<readonly [K, A]>
+
   while (!(e = entries.next()).done) {
     const [key, a] = e.value
+
     m.set(key, f(key, a))
   }
+
   return m
+}
+
+/**
+ * Maps values using f
+ */
+export function mapWithIndex<K, A, B>(f: (k: K, a: A) => B) {
+  return (fa: Map<K, A>) => mapWithIndex_(fa, f)
 }
 
 export interface Next<A> {
@@ -190,9 +197,7 @@ export function toMutable<K, A>(m: Map<K, A>): MutableMap<K, A> {
   return new Map(m)
 }
 
-export const insert = <K, V>(k: K, v: V) => (
-  self: ReadonlyMap<K, V>
-): ReadonlyMap<K, V> => {
+export function insert_<K, V>(self: ReadonlyMap<K, V>, k: K, v: V): ReadonlyMap<K, V> {
   const m = copy<K, V>(self)
 
   m.set(k, v)
@@ -200,7 +205,11 @@ export const insert = <K, V>(k: K, v: V) => (
   return m
 }
 
-export const remove = <K>(k: K) => <V>(self: ReadonlyMap<K, V>): ReadonlyMap<K, V> => {
+export function insert<K, V>(k: K, v: V) {
+  return (self: ReadonlyMap<K, V>) => insert_(self, k, v)
+}
+
+export function remove_<K, V>(self: ReadonlyMap<K, V>, k: K): ReadonlyMap<K, V> {
   const m = copy(self)
 
   m.delete(k)
@@ -208,9 +217,14 @@ export const remove = <K>(k: K) => <V>(self: ReadonlyMap<K, V>): ReadonlyMap<K, 
   return m
 }
 
-export const removeMany = <K>(ks: Iterable<K>) => <V>(
-  self: ReadonlyMap<K, V>
-): ReadonlyMap<K, V> => {
+export function remove<K>(k: K) {
+  return <V>(self: ReadonlyMap<K, V>) => remove_(self, k)
+}
+
+export function removeMany_<K, V>(
+  self: ReadonlyMap<K, V>,
+  ks: Iterable<K>
+): ReadonlyMap<K, V> {
   const m = copy(self)
 
   for (const k of ks) {
@@ -220,7 +234,17 @@ export const removeMany = <K>(ks: Iterable<K>) => <V>(
   return m
 }
 
-export const lookup = <K>(k: K) => <V>(m: ReadonlyMap<K, V>) => fromNullable(m.get(k))
+export function removeMany<K>(ks: Iterable<K>) {
+  return <V>(self: ReadonlyMap<K, V>) => removeMany_(self, ks)
+}
+
+export function lookup_<K, V>(m: ReadonlyMap<K, V>, k: K): Op.Option<NonNullable<V>> {
+  return fromNullable(m.get(k))
+}
+
+export function lookup<K>(k: K) {
+  return <V>(m: ReadonlyMap<K, V>) => lookup_(m, k)
+}
 
 export function copy<K, V>(self: ReadonlyMap<K, V>) {
   const m = new Map<K, V>()
