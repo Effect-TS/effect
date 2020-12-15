@@ -73,6 +73,8 @@ export type Named<A> = {
 }
 
 export interface HKT<R, E, A> {
+  readonly _tag: "HKT"
+
   readonly _R: (_R: R) => void
   readonly _E: E
   readonly _A: A

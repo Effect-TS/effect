@@ -20,11 +20,13 @@ import { show } from "../src/Show"
 import { strict } from "../src/Strict"
 import { strictDecoder } from "../src/StrictDecoder"
 
+const First = make((F) => F.string())
+
 const Person_ = make((F) =>
   F.interface(
     {
       name: F.interface({
-        first: F.string(),
+        first: First(F),
         last: F.string()
       })
     },
