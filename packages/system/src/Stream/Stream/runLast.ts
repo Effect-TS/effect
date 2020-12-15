@@ -6,6 +6,6 @@ import { run_ } from "./run"
  * Runs the stream to completion and yields the last value emitted by it,
  * discarding the rest of the elements.
  */
-export function runHead<R, E, O>(self: Stream<R, E, O>) {
+export function runLast<R, E, O>(self: Stream<R, E, O>) {
   return run_(self, SK.last<O>())
 }
