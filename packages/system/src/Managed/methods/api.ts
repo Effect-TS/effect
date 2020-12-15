@@ -1,5 +1,6 @@
 import * as A from "../../Array"
 import type { Cause } from "../../Cause"
+import { RuntimeError } from "../../Cause"
 import * as C from "../../Cause"
 import type { HasClock } from "../../Clock"
 import type { Effect, Region } from "../../Effect"
@@ -907,6 +908,15 @@ export function refineOrDie_<R, A, E, E1>(
  */
 export function die(e: unknown) {
   return halt(C.die(e))
+}
+
+/**
+ * Returns an effect that dies with a [[java.lang.RuntimeException]] having the
+ * specified text message. This method can be used for terminating a fiber
+ * because a defect has been detected in the code.
+ */
+export function dieMessage(message: string) {
+  return die(new RuntimeError(message))
 }
 
 /**
