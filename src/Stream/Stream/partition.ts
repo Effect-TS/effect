@@ -13,7 +13,7 @@ export function partition_<R, E, O>(
   self: Stream<R, E, O>,
   p: (o: O) => boolean,
   buffer = 16
-): M.Managed<R, E, readonly [Stream<unknown, E, O>, Stream<unknown, E, O>]> {
+): M.Managed<R, never, readonly [Stream<unknown, E, O>, Stream<unknown, E, O>]> {
   return partitionEither_(
     self,
     (a) => (p(a) ? T.succeed(E.left(a)) : T.succeed(E.right(a))),
