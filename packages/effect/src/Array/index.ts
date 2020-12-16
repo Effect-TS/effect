@@ -350,6 +350,11 @@ export function duplicate<A>(ma: Array<A>): Array<Array<A>> {
 export const empty: Array<never> = []
 
 /**
+ * An empty array
+ */
+export const emptyOf: <A>() => Array<A> = () => []
+
+/**
  * Extends calls f with all the progressive slices up to the current element's index,
  * and uses the return value to construct the result array
  *

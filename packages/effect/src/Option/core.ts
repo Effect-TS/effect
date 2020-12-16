@@ -24,6 +24,11 @@ export type Option<A> = None | Some<A>
 export const none: Option<never> = { _tag: "None" }
 
 /**
+ * Constructs none
+ */
+export const emptyOf: <A>() => Option<A> = () => none
+
+/**
  * Constructs Some(A)
  */
 export function some<A>(a: A): Option<A> {
@@ -287,6 +292,13 @@ export function getOrElse<B>(onNone: () => B): <A>(ma: Option<A>) => A | B {
 
 /**
  * Extracts the value out of the structure, if it exists. Otherwise returns the given default value
+ */
+export function getOrElseInv<B>(onNone: () => B): (ma: Option<B>) => B {
+  return getOrElse(onNone)
+}
+
+/**
+ * Extracts the value out of the structure, if it exists. Otherwise returns the given default value
  *
  * @example
  * assert.strictEqual(
@@ -306,6 +318,13 @@ export function getOrElse<B>(onNone: () => B): <A>(ma: Option<A>) => A | B {
  */
 export function getOrElse_<A, B>(ma: Option<A>, onNone: () => B): A | B {
   return ma._tag === "None" ? onNone() : ma.value
+}
+
+/**
+ * Extracts the value out of the structure, if it exists. Otherwise returns the given default value
+ */
+export function getOrElseInv_<A>(ma: Option<A>, onNone: () => A): A {
+  return getOrElse_(ma, onNone)
 }
 
 /**
