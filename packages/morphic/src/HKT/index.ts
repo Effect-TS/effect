@@ -45,6 +45,8 @@ export interface ConfigType<E, A> {
   readonly ["HKT"]: never
 }
 
+export interface ConfigExtensions {}
+
 export type ConfigsForType<R extends AnyEnv, E, A, K = {}> = MapToGenConfig<
   R,
   ConfigType<E, A>,
@@ -70,6 +72,7 @@ export const getApplyConfig: <Uri extends InterpreterURIS>(
 export type Named<A> = {
   name?: string
   conf?: A
+  extensions?: ConfigExtensions
 }
 
 export interface HKT<R, E, A> {
