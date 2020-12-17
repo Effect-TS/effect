@@ -1,6 +1,7 @@
 import * as DSL from "../../Prelude/DSL"
 import { Applicative, Covariant, Fail, Monad, Run } from "./instances"
 
+export const tuple = DSL.tupleF(Applicative)
 export const struct = DSL.structF(Applicative)
 
 export const getValidationApplicative = DSL.getValidationF({
