@@ -174,7 +174,7 @@ export function prettyTraceNodeSafe(
               const line = parseInt(line_)
               const lines = fs.readFileSync(realPath).toString("utf-8").split("\n")
 
-              if (lines.length > line + 6 && line > 3) {
+              if (lines.length > line + 4 && line > 2) {
                 return [
                   "",
                   `${realPath}:${line}:${col}`,
@@ -185,7 +185,6 @@ export function prettyTraceNodeSafe(
                     .map(() => " ")
                     .join("")}^^^`,
                   lines[line],
-                  lines[line + 1],
                   "",
                   ...stackPrint,
                   "",
