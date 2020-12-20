@@ -1,5 +1,5 @@
 import * as As from "../src/Async"
-import { pipe } from "../src/Function"
+import { identity, pipe } from "../src/Function"
 
 describe("Async", () => {
   it("should use async", async () => {
@@ -43,16 +43,15 @@ describe("Async", () => {
   })
 
   it("onError", async () => {
-
     const throwP = async () => {
-      throw new Error("err");
+      throw new Error("err")
     }
-    const rejectP = async () => Promise.reject("reject");
+    const rejectP = async () => Promise.reject("reject")
 
     expect(
       await pipe(
         () => throwP(),
-        As.promise(_ => "mapped u"),
+        As.promise((_) => "mapped u"),
         As.runPromiseExit
       )
     ).toEqual(As.failExit("mapped u"))
@@ -60,9 +59,13 @@ describe("Async", () => {
     expect(
       await pipe(
         () => rejectP(),
-        As.promise(_ => "mapped u"),
+        As.promise((_) => "mapped u"),
         As.runPromiseExit
       )
     ).toEqual(As.failExit("mapped u"))
+
+    expect(
+      await pipe(() => rejectP(), As.promise(identity), As.runPromiseExit)
+    ).toEqual(As.failExit("reject"))
   })
 })
