@@ -1,32 +1,26 @@
 import * as A from "../../Array"
 import { pipe } from "../../Function"
+import type { _A, _E, _R } from "../../Utils"
 import { flattenTuples } from "./_internal/flattenTuples"
 import type { Stream } from "./definitions"
 import { map } from "./map"
 import { zip_ } from "./zip"
 
-type ZipFunctionParameters<S extends readonly Stream<any, any, unknown>[]> = {
-  [K in keyof S]: S[K] extends Stream<any, any, infer R> ? R : never
-}
-
-type ZipFunction<S extends readonly Stream<any, any, unknown>[], O> = (
-  ...f: ZipFunctionParameters<S>
-) => O
-
 /**
  * Zips the specified streams together with the specified function.
  */
-export function zipN<
-  R,
-  E,
-  S1 extends Stream<R, E, unknown>,
-  S2 extends Stream<R, E, unknown>,
-  SN extends readonly Stream<R, E, unknown>[]
->(s1: S1, s2: S2, ...streams: SN) {
-  return <O>(f: ZipFunction<[S1, S2, ...SN], O>): Stream<R, E, O> => {
+export function zipN<SN extends readonly Stream<any, any, any>[]>(
+  ...streams: SN & {
+    readonly 0: Stream<any, any, any>
+    readonly 1: Stream<any, any, any>
+  }
+) {
+  return <O>(
+    f: (...os: { [K in keyof SN]: _A<SN[K]> }) => O
+  ): Stream<_R<SN[number]>, _E<SN[number]>, O> => {
     return pipe(
-      A.reduce_(streams, zip_(s1, s2), zip_),
-      map((_) => f(...(flattenTuples(_) as ZipFunctionParameters<[S1, S2, ...SN]>)))
+      A.reduce_(streams, zip_(streams[0], streams[1]), zip_),
+      map((_) => f(...(flattenTuples(_) as any)))
     )
   }
 }
