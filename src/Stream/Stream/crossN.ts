@@ -27,7 +27,7 @@ export function crossN<SN extends readonly Stream<any, any, any>[]>(
     ) => O
   ): Stream<_R<SN[number]>, _E<SN[number]>, O> => {
     return pipe(
-      A.reduce_(streams, cross_(streams[0], streams[1]), cross_),
+      A.reduce_(A.dropLeft_(streams, 2), cross_(streams[0], streams[1]), cross_),
       map((_) => f(...(flattenTuples(_) as any)))
     )
   }
