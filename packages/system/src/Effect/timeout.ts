@@ -1,3 +1,4 @@
+import type * as CL from "../Clock"
 import * as O from "../Option"
 import type { Effect } from "./effect"
 import { timeoutTo_ } from "./timeoutTo"
@@ -38,6 +39,9 @@ export function timeout(d: number) {
  * the timeout, resulting in earliest possible return, before an underlying
  * effect has been successfully interrupted.
  */
-export function timeout_<R, E, A>(self: Effect<R, E, A>, d: number) {
+export function timeout_<R, E, A>(
+  self: Effect<R, E, A>,
+  d: number
+): Effect<R & CL.HasClock, E, O.Option<A>> {
   return timeoutTo_(self, d, O.none, O.some)
 }

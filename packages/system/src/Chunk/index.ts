@@ -366,3 +366,27 @@ export function takeWhileM_<R, E, A>(
 export function takeWhileM<R, E, A>(p: (a: A) => T.Effect<R, E, boolean>) {
   return (self: Chunk<A>) => takeWhileM_(self, p)
 }
+
+/**
+ * Statefully maps over the chunk, producing new elements of type `B`.
+ */
+export function mapAccum<S1>(s1: S1) {
+  return <A, B>(f1: (s1: S1, a: A) => readonly [S1, B]) => (
+    self: Chunk<A>
+  ): readonly [S1, Chunk<B>] => {
+    if (!Array.isArray(self)) {
+      return mapAccum(s1)(f1)(Array.from(self))
+    }
+
+    let s = s1
+    const result: B[] = []
+
+    for (const a of self) {
+      const [s2, b] = f1(s, a)
+      s = s2
+      result.push(b)
+    }
+
+    return [s, result] as const
+  }
+}
