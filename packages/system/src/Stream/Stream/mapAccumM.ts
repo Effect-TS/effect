@@ -11,7 +11,10 @@ import { Stream } from "./definitions"
  * new elements.
  */
 export function mapAccumM<Z>(z: Z) {
-  return <O, R1, E1, O1>(f: (z: Z, o: O) => T.Effect<R1, E1, [Z, O1]>) => <R, E>(
+  return <O, R1, E1, O1>(f: (z: Z, o: O) => T.Effect<R1, E1, readonly [Z, O1]>) => <
+    R,
+    E
+  >(
     self: Stream<R, E, O>
   ) =>
     new Stream<R & R1, E | E1, O1>(
