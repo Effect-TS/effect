@@ -6,6 +6,9 @@ import * as R from "../src/Ref"
 import * as S from "../src/Stream"
 import * as BufferedPull from "../src/Stream/BufferedPull"
 import * as Pull from "../src/Stream/Pull"
+import { crossN } from "../src/Stream/Stream/crossN"
+import { range } from "../src/Stream/Stream/range"
+import { zipN } from "../src/Stream/Stream/zipN"
 
 describe("Stream", () => {
   describe("Core", () => {
@@ -154,5 +157,59 @@ describe("Stream", () => {
         await pipe(streamA, S.merge(streamB), S.runCollect, T.runPromise)
       ).toEqual([1, 2, 1, 1, 2])
     })
+  })
+
+  it("zipN", async () => {
+    expect(
+      await pipe(
+        zipN(
+          S.fromChunk([1, 1, 1, 1]),
+          S.fromChunk(["a", "b", "c", "d"]),
+          S.fromChunk([2, 2, 2, 2]),
+          S.fromChunk(["e", "f", "g", "h"])
+        )((a, b, c, d) => [a, b, c, d] as const),
+        S.runCollect,
+        T.runPromise
+      )
+    ).toEqual([
+      [1, "a", 2, "e"],
+      [1, "b", 2, "f"],
+      [1, "c", 2, "g"],
+      [1, "d", 2, "h"]
+    ])
+  })
+
+  it("crossN", async () => {
+    expect(
+      await pipe(
+        crossN(
+          S.fromChunk([1, 2]),
+          S.fromChunk(["a", "b"]),
+          S.fromChunk([3, 4])
+        )((a, b, c) => [a, b, c] as const),
+        S.runCollect,
+        T.runPromise
+      )
+    ).toEqual([
+      [1, "a", 3],
+      [1, "a", 4],
+      [1, "b", 3],
+      [1, "b", 4],
+      [2, "a", 3],
+      [2, "a", 4],
+      [2, "b", 3],
+      [2, "b", 4]
+    ])
+  })
+
+  it("range", async () => {
+    expect(await pipe(range(2, 8), S.runCollect, T.runPromise)).toEqual([
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ])
   })
 })
