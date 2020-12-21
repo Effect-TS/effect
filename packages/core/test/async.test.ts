@@ -1,5 +1,5 @@
 import * as As from "../src/Async"
-import { pipe } from "../src/Function"
+import { identity, pipe } from "../src/Function"
 
 describe("Async", () => {
   it("should use async", async () => {
@@ -40,5 +40,32 @@ describe("Async", () => {
         As.runPromiseExit
       )
     ).toEqual(As.successExit([1, 2, 3]))
+  })
+
+  it("onError", async () => {
+    const throwP = async () => {
+      throw new Error("err")
+    }
+    const rejectP = async () => Promise.reject("reject")
+
+    expect(
+      await pipe(
+        () => throwP(),
+        As.promise((_) => "mapped u"),
+        As.runPromiseExit
+      )
+    ).toEqual(As.failExit("mapped u"))
+
+    expect(
+      await pipe(
+        () => rejectP(),
+        As.promise((_) => "mapped u"),
+        As.runPromiseExit
+      )
+    ).toEqual(As.failExit("mapped u"))
+
+    expect(
+      await pipe(() => rejectP(), As.promise(identity), As.runPromiseExit)
+    ).toEqual(As.failExit("reject"))
   })
 })

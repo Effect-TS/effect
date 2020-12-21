@@ -549,7 +549,8 @@ export function runPromiseExitEnv<R, E, A>(
           try {
             curAsync = new ISucceed(
               await new CancelablePromise(
-                (s) => xp.promise(s).catch((e) => Promise.reject(failExit(e))),
+                (s) =>
+                  xp.promise(s).catch((e) => Promise.reject(failExit(xp.onError(e)))),
                 is
               ).promise()
             )
