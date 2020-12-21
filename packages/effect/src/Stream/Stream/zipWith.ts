@@ -6,7 +6,7 @@ import { pipe, tuple } from "../../Function"
 import * as O from "../../Option"
 import * as T from "../_internal/effect"
 import { zipChunks_ } from "../_internal/utils"
-import { combineChunks } from "./combineChunks"
+import { combineChunks_ } from "./combineChunks"
 import type { Stream } from "./definitions"
 
 /**
@@ -17,10 +17,11 @@ import type { Stream } from "./definitions"
  * By default pull is executed in parallel to preserve async semanthics, see `zipWithSeq` for
  * a sequential alternative
  */
-export function zipWith<O, O2, O3, R1, E1>(
+export function zipWith_<R, R1, E, E1, O, O2, O3>(
+  self: Stream<R, E, O>,
   that: Stream<R1, E1, O2>,
   f: (a: O, a1: O2) => O3
-): <R, E>(self: Stream<R, E, O>) => Stream<R & R1, E1 | E, O3> {
+): Stream<R & R1, E1 | E, O3> {
   type End = { _tag: "End" }
   type RightDone<W2> = { _tag: "RightDone"; excessR: A.NonEmptyChunk<W2> }
   type LeftDone<W1> = { _tag: "LeftDone"; excessL: A.NonEmptyChunk<W1> }
@@ -99,7 +100,8 @@ export function zipWith<O, O2, O3, R1, E1>(
     }
   }
 
-  return combineChunks(
+  return combineChunks_(
+    self,
     that,
     <State<O, O2>>{
       _tag: "Running",
@@ -137,4 +139,19 @@ export function zipWith<O, O2, O3, R1, E1>(
       }
     }
   )
+}
+
+/**
+ * Zips this stream with another point-wise and applies the function to the paired elements.
+ *
+ * The new stream will end when one of the sides ends.
+ *
+ * By default pull is executed in parallel to preserve async semanthics, see `zipWithSeq` for
+ * a sequential alternative
+ */
+export function zipWith<R1, E1, O, O2, O3>(
+  that: Stream<R1, E1, O2>,
+  f: (a: O, a1: O2) => O3
+) {
+  return <R, E>(self: Stream<R, E, O>) => zipWith_(self, that, f)
 }
