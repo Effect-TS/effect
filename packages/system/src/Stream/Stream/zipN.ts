@@ -19,7 +19,7 @@ export function zipN<SN extends readonly Stream<any, any, any>[]>(
     f: (...os: { [K in keyof SN]: _A<SN[K]> }) => O
   ): Stream<_R<SN[number]>, _E<SN[number]>, O> => {
     return pipe(
-      A.reduce_(streams, zip_(streams[0], streams[1]), zip_),
+      A.reduce_(A.dropLeft_(streams, 2), zip_(streams[0], streams[1]), zip_),
       map((_) => f(...(flattenTuples(_) as any)))
     )
   }
