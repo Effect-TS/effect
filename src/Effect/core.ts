@@ -1,7 +1,7 @@
 import { traceAs } from "@effect-ts/tracing-utils"
 
 import type { Cause } from "../Cause/cause"
-import { keepDefects, traced as tracedCause } from "../Cause/core"
+import { keepDefects } from "../Cause/core"
 import * as Exit from "../Exit/core"
 import type * as Fiber from "../Fiber"
 import { identity } from "../Function"
@@ -242,7 +242,7 @@ export function forkReport(reportFailure: FailureReporter) {
  * Returns an effect that models failure with the specified `Cause`.
  */
 export function halt<E>(cause: Cause<E>): IO<E, never> {
-  return new IFail((trace) => tracedCause(cause, trace()))
+  return new IFail(() => cause)
 }
 
 /**
