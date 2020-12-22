@@ -14,7 +14,7 @@ import { map } from "./map"
  * See also `Stream#zipN` for the more common point-wise variant.
  */
 export function crossN<SN extends readonly Stream<any, any, any>[]>(
-  ...streams: SN & {
+  ...[s1, s2, ...streams]: SN & {
     readonly 0: Stream<any, any, any>
     readonly 1: Stream<any, any, any>
   }
@@ -27,7 +27,7 @@ export function crossN<SN extends readonly Stream<any, any, any>[]>(
     ) => O
   ): Stream<_R<SN[number]>, _E<SN[number]>, O> => {
     return pipe(
-      A.reduce_(A.dropLeft_(streams, 2), cross_(streams[0], streams[1]), cross_),
+      A.reduce_(streams, cross_(s1, s2), cross_),
       map((_) => f(...(flattenTuples(_) as any)))
     )
   }
