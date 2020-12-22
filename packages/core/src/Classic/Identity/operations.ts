@@ -28,7 +28,7 @@ export function fold<A>(M: Identity<A>): (as: ReadonlyArray<A>) => A {
 }
 
 /**
- * The dual of a `Monoid`, obtained by swapping the arguments of `concat`.
+ * The dual of a `Identity`, obtained by swapping the arguments of `concat`.
  */
 export function dual<A>(M: Identity<A>): Identity<A> {
   return makeIdentity(M.identity, A.dual(M).combine)
