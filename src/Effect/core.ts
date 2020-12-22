@@ -1,7 +1,7 @@
-import { accessCallTrace, traceAs, traceAsFrom } from "@effect-ts/tracing-utils"
+import { traceAs } from "@effect-ts/tracing-utils"
 
 import type { Cause } from "../Cause/cause"
-import { keepDefects } from "../Cause/core"
+import { keepDefects, traced as tracedCause } from "../Cause/core"
 import * as Exit from "../Exit/core"
 import type * as Fiber from "../Fiber"
 import { identity } from "../Function"
@@ -240,11 +240,9 @@ export function forkReport(reportFailure: FailureReporter) {
 
 /**
  * Returns an effect that models failure with the specified `Cause`.
- *
- * @tracecall halt
  */
 export function halt<E>(cause: Cause<E>): IO<E, never> {
-  return new IFail(traceAsFrom("halt", halt, () => cause))
+  return new IFail((trace) => tracedCause(cause, trace()))
 }
 
 /**
@@ -327,26 +325,22 @@ export function provideAll_<R, E, A>(
 /**
  * Returns an effect that semantically runs the effect on a fiber,
  * producing an `Exit` for the completion value of the fiber.
- *
- * @tracecall result
  */
 export function result<R, E, A>(
   value: Effect<R, E, A>
 ): Effect<R, never, Exit.Exit<E, A>> {
   return new IFold(
     value,
-    traceAsFrom("result", result, (cause) => succeed(Exit.halt(cause))),
-    traceAsFrom("result", result, (succ) => succeed(Exit.succeed(succ)))
+    traceAs(result, (cause) => succeed(Exit.halt(cause))),
+    traceAs(result, (succ) => succeed(Exit.succeed(succ)))
   )
 }
 
 /**
  * Lift a pure value into an effect
- *
- * @tracecall succeed
  */
 export function succeed<A>(a: A): Effect<unknown, never, A> {
-  return new ISucceed(a, accessCallTrace("succeed") || succeed["$trace"])
+  return new ISucceed(a, succeed["$trace"])
 }
 
 /**
