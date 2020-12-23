@@ -34,6 +34,6 @@ export function provideLayer_<R, E, A, E1, A1>(
 /**
  * Provides a layer to the given effect
  */
-export function provideLayer<R, E, A, E1, A1>(layer: L.Layer<R, E, A>) {
-  return (self: Effect<A, E1, A1>) => provideLayer_(self, layer)
+export function provideLayer<R, E, A>(layer: L.Layer<R, E, A>) {
+  return <E1, A1>(self: Effect<A, E1, A1>) => provideLayer_(self, layer)
 }
