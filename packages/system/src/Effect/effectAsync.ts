@@ -1,3 +1,5 @@
+import { traceAs } from "@effect-ts/tracing-utils"
+
 import type { FiberID } from "../Fiber/id"
 import * as O from "../Option"
 import type { Cb } from "./Cb"
@@ -18,8 +20,11 @@ export function effectAsync<R, E, A>(
   register: (cb: Cb<Effect<R, E, A>>) => void,
   blockingOn: readonly FiberID[] = []
 ): Effect<R, E, A> {
-  return effectAsyncOption((cb) => {
-    register(cb)
-    return O.none
-  }, blockingOn)
+  return effectAsyncOption(
+    traceAs(register, (cb) => {
+      register(cb)
+      return O.none
+    }),
+    blockingOn
+  )
 }
