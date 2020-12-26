@@ -2,7 +2,6 @@
  * tracing: off
  */
 
-import * as A from "@effect-ts/core/Classic/Array"
 import type { CustomRuntime } from "@effect-ts/core/Effect"
 import * as T from "@effect-ts/core/Effect"
 import { defaultRuntime } from "@effect-ts/core/Effect"
@@ -12,7 +11,6 @@ import * as S from "@effect-ts/core/Sync"
 import * as Cause from "@effect-ts/system/Cause"
 import * as Fiber from "@effect-ts/system/Fiber"
 import { AtomicBoolean } from "@effect-ts/system/Support/AtomicBoolean"
-import * as fs from "fs"
 import * as path from "path"
 
 export function defaultTeardown(
@@ -123,85 +121,6 @@ export function prettyTraceNodeSafe(
             `Fiber: ${Fiber.prettyFiberId(trace.fiberId)} was spawned by:\n`,
             yield* $(prettyTraceNodeSafe(parent.value, adapt))
           ]
-
-    const firstFailure = L.first(trace.executionTrace)
-
-    try {
-      if (
-        firstFailure._tag === "Some" &&
-        firstFailure.value._tag === "SourceLocation"
-      ) {
-        const isModule = firstFailure.value.location.match(
-          /\((.*)\): (.*):(\d+):(\d+):(.*)/
-        )
-
-        if (isModule) {
-          const [, mod, file, line_, col] = isModule
-          const line = parseInt(line_)
-          const modulePath = require.resolve(`${mod}/package.json`)
-          const realPath = adapt(path.join(modulePath, "..", file), mod)
-          const lines = fs.readFileSync(realPath).toString("utf-8").split("\n")
-
-          if (lines.length > line + 6 && line > 3) {
-            return [
-              "",
-              `${realPath}:${line}:${col}`,
-              "",
-              lines[line - 2],
-              lines[line - 1],
-              `${A.range(0, parseInt(col) - 1)
-                .map(() => " ")
-                .join("")}^^^`,
-              lines[line],
-              lines[line + 1],
-              "",
-              ...stackPrint,
-              "",
-              ...execPrint,
-              "",
-              ...ancestry
-            ].join("\n")
-          }
-
-          return ["", ...stackPrint, "", ...execPrint, "", ...ancestry].join("\n")
-        } else {
-          const isPath = firstFailure.value.location.match(/(.*):(\d+):(\d+):(.*)/)
-          if (isPath) {
-            const [, file, line_, col] = isPath
-            const realPath = adapt(path.join(process.cwd(), file))
-
-            if (fs.existsSync(realPath)) {
-              const line = parseInt(line_)
-              const lines = fs.readFileSync(realPath).toString("utf-8").split("\n")
-
-              if (lines.length > line + 4 && line > 2) {
-                return [
-                  "",
-                  `${realPath}:${line}:${col}`,
-                  "",
-                  lines[line - 2],
-                  lines[line - 1],
-                  `${A.range(0, parseInt(col) - 1)
-                    .map(() => " ")
-                    .join("")}^^^`,
-                  lines[line],
-                  "",
-                  ...stackPrint,
-                  "",
-                  ...execPrint,
-                  "",
-                  ...ancestry
-                ].join("\n")
-              }
-
-              return ["", ...stackPrint, "", ...execPrint, "", ...ancestry].join("\n")
-            }
-          }
-        }
-      }
-    } catch {
-      //
-    }
 
     return ["", ...stackPrint, "", ...execPrint, "", ...ancestry].join("\n")
   })
