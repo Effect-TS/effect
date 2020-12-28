@@ -4,13 +4,14 @@ import type { Trace } from "../Fiber"
 import type { FiberID } from "../Fiber/id"
 import { identity, pipe } from "../Function"
 import * as O from "../Option"
+import { Stack } from "../Stack"
 import * as S from "../Sync"
 import type { Cause } from "./cause"
 import { both, empty, fail, then, traced } from "./cause"
-import { equalsCause, equalsCauseSafe } from "./eq"
+import { equalsCauseSafe } from "./eq"
 import { InterruptedException } from "./errors"
 
-export { both, Cause, empty, fail, then, die, interrupt, traced } from "./cause"
+export { both, Cause, die, empty, fail, interrupt, then, traced } from "./cause"
 
 /**
  * Applicative's ap
@@ -584,31 +585,43 @@ export function interruptors<E>(cause: Cause<E>) {
  * Determines if the `Cause` is empty.
  */
 export function isEmpty<E>(cause: Cause<E>) {
-  return (
-    equalsCause(cause, empty) ||
-    pipe(
-      cause,
-      reduceLeft(true)((acc, c) => {
-        switch (c._tag) {
-          case "Empty": {
-            return O.some(acc)
-          }
-          case "Die": {
-            return O.some(false)
-          }
-          case "Fail": {
-            return O.some(false)
-          }
-          case "Interrupt": {
-            return O.some(false)
-          }
-          default: {
-            return O.none
-          }
-        }
-      })
-    )
-  )
+  if (
+    cause._tag === "Empty" ||
+    (cause._tag === "Traced" && cause.cause._tag === "Empty")
+  ) {
+    return true
+  }
+  let causes: Stack<Cause<E>> | undefined = undefined
+  let current: Cause<E> | undefined = cause
+  while (current) {
+    switch (current._tag) {
+      case "Die": {
+        return false
+      }
+      case "Fail": {
+        return false
+      }
+      case "Then": {
+        causes = new Stack(current.right, causes)
+        current = current.left
+        break
+      }
+      case "Both": {
+        causes = new Stack(current.right, causes)
+        current = current.left
+        break
+      }
+      default: {
+        current = undefined
+      }
+    }
+    if (!current && causes) {
+      current = causes.value
+      causes = causes.previous
+    }
+  }
+
+  return true
 }
 
 /**
