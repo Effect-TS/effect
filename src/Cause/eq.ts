@@ -23,9 +23,11 @@ export function equalsCause<E>(x: Cause<E>, y: Cause<E>): boolean {
   while (current) {
     if (current.x._tag === "Traced") {
       current = { x: current.x.cause, y: current.y }
+      continue
     }
     if (current.y._tag === "Traced") {
       current = { x: current.x, y: current.y.cause }
+      continue
     }
     switch (current.x._tag) {
       case "Fail": {
@@ -94,9 +96,6 @@ export function equalsCause<E>(x: Cause<E>, y: Cause<E>): boolean {
           y: current.y.left
         }
         break
-      }
-      case "Traced": {
-        throw new Error("BUG!")
       }
     }
     if (!current && causes) {
