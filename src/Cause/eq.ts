@@ -1,90 +1,108 @@
 import { equalsFiberID } from "../Fiber/id"
-import * as S from "../Sync"
+import { Stack } from "../Stack"
 import type { Cause } from "./cause"
 
-/**
- * This is unsafe, if we make it safe it kills perf because Cause.isEmpty uses this
- */
 export function equalsCause<E>(x: Cause<E>, y: Cause<E>): boolean {
-  switch (x._tag) {
-    case "Fail": {
-      return y._tag === "Fail" && x.value === y.value
-    }
-    case "Empty": {
-      return y._tag === "Empty"
-    }
-    case "Die": {
-      return (
-        y._tag === "Die" &&
-        ((x.value instanceof Error &&
-          y.value instanceof Error &&
-          x.value.name === y.value.name &&
-          x.value.message === y.value.message) ||
-          x.value === y.value)
-      )
-    }
-    case "Interrupt": {
-      return y._tag === "Interrupt" && equalsFiberID(x.fiberId, y.fiberId)
-    }
-    case "Both": {
-      return (
-        y._tag === "Both" &&
-        equalsCause(x.left, y.left) &&
-        equalsCause(x.right, y.right)
-      )
-    }
-    case "Then": {
-      return (
-        y._tag === "Then" &&
-        equalsCause(x.left, y.left) &&
-        equalsCause(x.right, y.right)
-      )
-    }
-    case "Traced": {
-      return equalsCause(x.cause, y)
-    }
+  if (
+    x === y ||
+    (x._tag === "Traced" && x.cause === y) ||
+    (y._tag === "Traced" && x === y.cause) ||
+    (x._tag === "Traced" && y._tag === "Traced" && x.cause === y.cause)
+  ) {
+    return true
   }
-}
+  type K = {
+    x: Cause<E>
+    y: Cause<E>
+  }
+  // eslint-disable-next-line prefer-const
+  let current: K | undefined = { x, y }
+  // eslint-disable-next-line prefer-const
+  let causes: Stack<K> | undefined = undefined
 
-export function equalsCauseSafe<E>(x: Cause<E>, y: Cause<E>): S.UIO<boolean> {
-  return S.gen(function* (_) {
-    switch (x._tag) {
+  while (current) {
+    if (current.x._tag === "Traced") {
+      current = { x: current.x.cause, y: current.y }
+    }
+    if (current.y._tag === "Traced") {
+      current = { x: current.x, y: current.y.cause }
+    }
+    switch (current.x._tag) {
       case "Fail": {
-        return y._tag === "Fail" && x.value === y.value
-      }
-      case "Empty": {
-        return y._tag === "Empty"
+        if (!(current.y._tag === "Fail" && current.x.value === current.y.value)) {
+          return false
+        }
+        current = undefined
+        break
       }
       case "Die": {
-        return (
-          y._tag === "Die" &&
-          ((x.value instanceof Error &&
-            y.value instanceof Error &&
-            x.value.name === y.value.name &&
-            x.value.message === y.value.message) ||
-            x.value === y.value)
-        )
+        if (!(current.y._tag === "Die" && current.x.value === current.y.value)) {
+          return false
+        }
+        current = undefined
+        break
+      }
+      case "Empty": {
+        if (!(current.y._tag === "Empty")) {
+          return false
+        }
+        current = undefined
+        break
       }
       case "Interrupt": {
-        return y._tag === "Interrupt" && equalsFiberID(x.fiberId, y.fiberId)
+        if (
+          !(
+            current.y._tag === "Interrupt" &&
+            equalsFiberID(current.x.fiberId, current.y.fiberId)
+          )
+        ) {
+          return false
+        }
+        current = undefined
+        break
       }
       case "Both": {
-        return (
-          y._tag === "Both" &&
-          (yield* _(equalsCauseSafe(x.left, y.left))) &&
-          (yield* _(equalsCauseSafe(x.right, y.right)))
+        if (!(current.y._tag === "Both")) {
+          return false
+        }
+        causes = new Stack(
+          {
+            x: current.x.right,
+            y: current.y.right
+          },
+          causes
         )
+        current = {
+          x: current.x.left,
+          y: current.y.left
+        }
+        break
       }
       case "Then": {
-        return (
-          y._tag === "Then" &&
-          (yield* _(equalsCauseSafe(x.left, y.left))) &&
-          (yield* _(equalsCauseSafe(x.right, y.right)))
+        if (!(current.y._tag === "Then")) {
+          return false
+        }
+        causes = new Stack(
+          {
+            x: current.x.right,
+            y: current.y.right
+          },
+          causes
         )
+        current = {
+          x: current.x.left,
+          y: current.y.left
+        }
+        break
       }
       case "Traced": {
-        return yield* _(equalsCauseSafe(x.cause, y))
+        throw new Error("BUG!")
       }
     }
-  })
+    if (!current && causes) {
+      current = causes.value
+      causes = causes.previous
+    }
+  }
+  return true
 }

@@ -1,3 +1,4 @@
+/* eslint-disable prefer-const */
 import * as A from "../Array"
 import * as E from "../Either"
 import type { Trace } from "../Fiber"
@@ -8,7 +9,7 @@ import { Stack } from "../Stack"
 import * as S from "../Sync"
 import type { Cause } from "./cause"
 import { both, empty, fail, then, traced } from "./cause"
-import { equalsCauseSafe } from "./eq"
+import { equalsCause } from "./eq"
 import { InterruptedException } from "./errors"
 
 export { both, Cause, die, empty, fail, interrupt, then, traced } from "./cause"
@@ -97,27 +98,12 @@ export function map<E, E1>(f: (e: E) => E1) {
  * Determines if this cause contains or is equal to the specified cause.
  */
 export function contains<E, E1 extends E = E>(that: Cause<E1>) {
-  return (cause: Cause<E>) => S.run(containsSafe(that)(cause))
-}
-
-/**
- * Determines if this cause contains or is equal to the specified cause.
- */
-export function containsSafe<E, E1 extends E = E>(that: Cause<E1>) {
   return (cause: Cause<E>) =>
-    S.gen(function* (_) {
-      const x = yield* _(equalsCauseSafe(that, cause))
-
-      return (
-        x ||
-        pipe(
-          cause,
-          reduceLeftSafeM(false)((_, c) =>
-            S.map_(equalsCauseSafe(that, c), (o) => (o ? O.some(true) : O.none))
-          )
-        )
-      )
-    })
+    equalsCause(that, cause) ||
+    pipe(
+      cause,
+      reduceLeft(false)((_, c) => (equalsCause(that, c) ? O.some(true) : O.none))
+    )
 }
 
 /**
@@ -458,78 +444,38 @@ export function foldSafe<E, Z>(
  */
 export function reduceLeft<Z>(z: Z) {
   return <E>(f: (z: Z, cause: Cause<E>) => O.Option<Z>): ((cause: Cause<E>) => Z) => {
-    return (cause) => S.run(reduceLeftSafe(z)(f)(cause))
-  }
-}
+    return (cause) => {
+      let causes: Stack<Cause<E>> | undefined = undefined
+      let current: Cause<E> | undefined = cause
+      let acc = z
+      while (current) {
+        const x = f(acc, current)
+        acc = x._tag === "Some" ? x.value : acc
 
-/**
- * Accumulates a state over a Cause
- */
-export function reduceLeftSafe<Z>(z: Z) {
-  return <E>(
-    f: (z: Z, cause: Cause<E>) => O.Option<Z>
-  ): ((cause: Cause<E>) => S.UIO<Z>) => {
-    return (cause) =>
-      S.gen(function* (_) {
-        const apply = O.getOrElse_(f(z, cause), () => z)
-
-        switch (cause._tag) {
+        switch (current._tag) {
           case "Then": {
-            return yield* _(
-              reduceLeftSafe(yield* _(reduceLeftSafe(apply)(f)(cause.left)))(f)(
-                cause.right
-              )
-            )
+            causes = new Stack(current.right, causes)
+            current = current.left
+            break
           }
           case "Both": {
-            return yield* _(
-              reduceLeftSafe(yield* _(reduceLeftSafe(apply)(f)(cause.left)))(f)(
-                cause.right
-              )
-            )
-          }
-          case "Traced": {
-            return yield* _(reduceLeftSafe(apply)(f)(cause.cause))
+            causes = new Stack(current.right, causes)
+            current = current.left
+            break
           }
           default: {
-            return apply
+            current = undefined
+            break
           }
         }
-      })
-  }
-}
 
-export function reduceLeftSafeM<Z>(z: Z) {
-  return <E>(
-    f: (z: Z, cause: Cause<E>) => S.UIO<O.Option<Z>>
-  ): ((cause: Cause<E>) => S.UIO<Z>) => {
-    return (cause) =>
-      S.gen(function* (_) {
-        const apply = O.getOrElse_(yield* _(f(z, cause)), () => z)
-
-        switch (cause._tag) {
-          case "Then": {
-            return yield* _(
-              reduceLeftSafeM(yield* _(reduceLeftSafeM(apply)(f)(cause.left)))(f)(
-                cause.right
-              )
-            )
-          }
-          case "Both": {
-            return yield* _(
-              reduceLeftSafeM(yield* _(reduceLeftSafeM(apply)(f)(cause.left)))(f)(
-                cause.right
-              )
-            )
-          }
-          case "Traced": {
-            return yield* _(reduceLeftSafeM(apply)(f)(cause.cause))
-          }
-          default: {
-            return apply
-          }
+        if (!current && causes) {
+          current = causes.value
+          causes = causes.previous
         }
-      })
+      }
+      return acc
+    }
   }
 }
 
