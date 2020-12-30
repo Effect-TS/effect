@@ -4008,9 +4008,9 @@ fp-ts-contrib@^0.1.21:
   integrity sha512-Wa1wXpeDDVyPiTZaxbas+y6pigKxiZlf/xzUBhFJ5bPNAsOrzNfFeQliu3bIH9ZjYWrt6HIMuNXAejPh6oSSkA==
 
 fp-ts@^2.1.0, fp-ts@^2.8.4:
-  version "2.9.2"
-  resolved "https://registry.yarnpkg.com/fp-ts/-/fp-ts-2.9.2.tgz#0f51b6bdb52fe4314e96c93bb5f15a2969c562d9"
-  integrity sha512-fswVB9E5Aq9+jCZU+4heaJTYuv8m5/vn9ii12pmxduyf3YwP4AQKFmFO66YDNzL+c0iP6G8Cav5gpvc+2emOAw==
+  version "2.9.3"
+  resolved "https://registry.yarnpkg.com/fp-ts/-/fp-ts-2.9.3.tgz#419b9103018ddf7c785acf2b3fecb2662afab5af"
+  integrity sha512-NjzcHYgigcbPQ6yJ52zwgsVDwKz3vwy9sjbxyzcvfXQm+j1BGeOPRuzLKEwsLyE4Xut6gG1FXJtsU9/gUB7tXg==
 
 fragment-cache@^0.2.1:
   version "0.2.1"
