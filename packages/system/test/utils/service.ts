@@ -7,12 +7,10 @@ import type { _A } from "../../src/Utils"
 
 /**
  * @module CustomService
- * @trace suspend
  */
 export const makeCustomService = T.succeed({
   /**
    * @module CustomService
-   * @trace suspend
    */
   printTrace<A>(a: A) {
     return T.chain_(T.unit, () => T.succeed(a))

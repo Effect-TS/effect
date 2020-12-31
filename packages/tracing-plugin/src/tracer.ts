@@ -77,8 +77,54 @@ export default function tracer(
 
         function visitor(node: ts.Node): ts.VisitResult<ts.Node> {
           const nodeStart = sourceFile.getLineAndCharacterOfPosition(node.getStart())
+          const nodeEnd = sourceFile.getLineAndCharacterOfPosition(node.getEnd())
           const isTracing =
             tracingOn && checkRegionAt(regions, nodeStart.line, nodeStart.character)
+
+          if (ts.isPropertyAccessExpression(node) && isTracing) {
+            const symbol = checker.getTypeAtLocation(node).getSymbol()
+
+            const traceCallTags =
+              symbol
+                ?.getDeclarations()
+                ?.map((e) => {
+                  try {
+                    return ts
+                      .getAllJSDocTags(
+                        e,
+                        (t): t is ts.JSDocTag => t.tagName.getText() === "traceCall"
+                      )
+                      .map((e) => e.comment)
+                  } catch {
+                    return []
+                  }
+                })
+                .reduce((flatten, entry) => flatten.concat(entry), []) || []
+
+            const shouldTrace = traceCallTags.length > 0 && isTracing
+
+            if (shouldTrace) {
+              return factory.createCallExpression(
+                factory.createPropertyAccessExpression(
+                  tracing,
+                  factory.createIdentifier("traceCall")
+                ),
+                undefined,
+                [
+                  ts.visitEachChild(node, visitor, ctx),
+                  factory.createBinaryExpression(
+                    fileVar,
+                    factory.createToken(ts.SyntaxKind.PlusToken),
+                    factory.createStringLiteral(
+                      `:${nodeEnd.line + 1}:${
+                        nodeEnd.character + 1
+                      }:${node.name.getText()}`
+                    )
+                  )
+                ]
+              )
+            }
+          }
 
           if (ts.isCallExpression(node)) {
             const symbol = checker.getTypeAtLocation(node.expression).getSymbol()

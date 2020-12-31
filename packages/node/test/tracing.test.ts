@@ -6,12 +6,13 @@ import * as Ex from "@effect-ts/core/Effect/Exit"
 import type { Trace } from "@effect-ts/core/Effect/Fiber"
 import { pipe } from "@effect-ts/core/Function"
 
+//import * as p from "path"
 import { prettyTraceNode } from "../src/Runtime"
 
 const customNodeRender = (_: Trace): string =>
-  prettyTraceNode(_, (path) => {
-    return path.replace("/build/", "/").replace("/_traced/", "/").replace("_src", "src")
-  })
+  prettyTraceNode(_, (path) =>
+    path.replace("/build/", "/").replace("/_traced/", "/").replace("_src", "src")
+  )
 
 describe("Tracing & Optimizations", () => {
   it("should collect traces", async () => {
