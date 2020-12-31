@@ -325,6 +325,8 @@ export function provideAll_<R, E, A>(
 /**
  * Returns an effect that semantically runs the effect on a fiber,
  * producing an `Exit` for the completion value of the fiber.
+ *
+ * @traceCall
  */
 export function result<R, E, A>(
   value: Effect<R, E, A>
@@ -338,6 +340,8 @@ export function result<R, E, A>(
 
 /**
  * Lift a pure value into an effect
+ *
+ * @traceCall
  */
 export function succeed<A>(a: A): Effect<unknown, never, A> {
   return new ISucceed(a, succeed["$trace"])

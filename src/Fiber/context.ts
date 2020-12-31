@@ -32,7 +32,13 @@ import type { Callback } from "./state"
 import { FiberStateDone, FiberStateExecuting, initial, interrupting } from "./state"
 import * as Status from "./status"
 import type { TraceElement } from "./tracing"
-import { SourceLocation, Trace, traceLocation, truncatedParentTrace } from "./tracing"
+import {
+  NoLocation,
+  SourceLocation,
+  Trace,
+  traceLocation,
+  truncatedParentTrace
+} from "./tracing"
 
 export type FiberRefLocals = Map<FiberRef<any>, any>
 
@@ -148,9 +154,15 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     }
   }
 
-  addTraceValue(trace: TraceElement) {
+  addTraceValue(trace: string | undefined | TraceElement) {
     if (this.inTracingRegion) {
-      this.executionTraces.push(trace)
+      this.executionTraces.push(
+        trace
+          ? typeof trace === "string"
+            ? new SourceLocation(trace)
+            : trace
+          : new NoLocation()
+      )
     }
   }
 
@@ -912,12 +924,8 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
                     switch (nested._tag) {
                       case "Succeed": {
-                        if (
-                          this.platform.traceEffects &&
-                          this.inTracingRegion &&
-                          nested.trace
-                        ) {
-                          this.addTraceValue(new SourceLocation(nested.trace))
+                        if (this.platform.traceEffects && this.inTracingRegion) {
+                          this.addTraceValue(nested.trace)
                         }
                         if (this.platform.traceExecution && this.inTracingRegion) {
                           this.addTrace(k)
@@ -934,11 +942,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                         if (this.platform.traceStack && kTrace != null) {
                           fastPathFlatMapContinuationTrace.set(undefined)
                         }
-                        if (
-                          this.platform.traceExecution &&
-                          this.inTracingRegion &&
-                          kTrace != null
-                        ) {
+                        if (this.platform.traceExecution && this.inTracingRegion) {
                           this.addTraceValue(kTrace)
                         }
                         current = k(nested.effect())[T._I]
@@ -1018,6 +1022,9 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                   }
 
                   case "Succeed": {
+                    if (this.platform.traceEffects && this.inTracingRegion) {
+                      this.addTraceValue(current.trace)
+                    }
                     current = this.nextInstr(current.val)
                     break
                   }
