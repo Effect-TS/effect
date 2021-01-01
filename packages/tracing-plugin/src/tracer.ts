@@ -75,56 +75,62 @@ export default function tracer(
           })
           .filter(([x]) => x.length > 0)
 
+        function traceCall(node: ts.Expression, isTracing: boolean) {
+          const symbol = checker.getTypeAtLocation(node).getSymbol()
+
+          const traceCallTags =
+            symbol
+              ?.getDeclarations()
+              ?.map((e) => {
+                try {
+                  return ts
+                    .getAllJSDocTags(
+                      e,
+                      (t): t is ts.JSDocTag => t.tagName.getText() === "traceCall"
+                    )
+                    .map((e) => e.comment)
+                } catch {
+                  return []
+                }
+              })
+              .reduce((flatten, entry) => flatten.concat(entry), []) || []
+
+          const shouldTrace = traceCallTags.length > 0 && isTracing
+
+          if (shouldTrace) {
+            const nodeEnd = sourceFile.getLineAndCharacterOfPosition(node.getEnd())
+            return factory.createCallExpression(
+              factory.createPropertyAccessExpression(
+                tracing,
+                factory.createIdentifier("traceCall")
+              ),
+              undefined,
+              [
+                node,
+                factory.createBinaryExpression(
+                  fileVar,
+                  factory.createToken(ts.SyntaxKind.PlusToken),
+                  factory.createStringLiteral(
+                    `:${nodeEnd.line + 1}:${nodeEnd.character + 1}:${
+                      ts.isIdentifier(node)
+                        ? node.getText()
+                        : ts.isPropertyAccessExpression(node)
+                        ? node.name.getText()
+                        : "unknown"
+                    }`
+                  )
+                )
+              ]
+            )
+          }
+          return node
+        }
+
         function visitor(node: ts.Node): ts.VisitResult<ts.Node> {
           const nodeStart = sourceFile.getLineAndCharacterOfPosition(node.getStart())
-          const nodeEnd = sourceFile.getLineAndCharacterOfPosition(node.getEnd())
+
           const isTracing =
             tracingOn && checkRegionAt(regions, nodeStart.line, nodeStart.character)
-
-          if (ts.isPropertyAccessExpression(node) && isTracing) {
-            const symbol = checker.getTypeAtLocation(node).getSymbol()
-
-            const traceCallTags =
-              symbol
-                ?.getDeclarations()
-                ?.map((e) => {
-                  try {
-                    return ts
-                      .getAllJSDocTags(
-                        e,
-                        (t): t is ts.JSDocTag => t.tagName.getText() === "traceCall"
-                      )
-                      .map((e) => e.comment)
-                  } catch {
-                    return []
-                  }
-                })
-                .reduce((flatten, entry) => flatten.concat(entry), []) || []
-
-            const shouldTrace = traceCallTags.length > 0 && isTracing
-
-            if (shouldTrace) {
-              return factory.createCallExpression(
-                factory.createPropertyAccessExpression(
-                  tracing,
-                  factory.createIdentifier("traceCall")
-                ),
-                undefined,
-                [
-                  ts.visitEachChild(node, visitor, ctx),
-                  factory.createBinaryExpression(
-                    fileVar,
-                    factory.createToken(ts.SyntaxKind.PlusToken),
-                    factory.createStringLiteral(
-                      `:${nodeEnd.line + 1}:${
-                        nodeEnd.character + 1
-                      }:${node.name.getText()}`
-                    )
-                  )
-                ]
-              )
-            }
-          }
 
           if (ts.isCallExpression(node)) {
             const symbol = checker.getTypeAtLocation(node.expression).getSymbol()
@@ -139,7 +145,7 @@ export default function tracer(
                     return ts
                       .getAllJSDocTags(
                         overloadDeclarations,
-                        (t): t is ts.JSDocTag => t.tagName.getText() === "traceret"
+                        (t): t is ts.JSDocTag => t.tagName.getText() === "traceRet"
                       )
                       .map((e) => e.comment)
                       .filter((s): s is string => s != null)
@@ -157,7 +163,7 @@ export default function tracer(
                     return ts
                       .getAllJSDocTags(
                         e,
-                        (t): t is ts.JSDocTag => t.tagName.getText() === "traceret"
+                        (t): t is ts.JSDocTag => t.tagName.getText() === "traceRet"
                       )
                       .map((e) => e.comment)
                   } catch {
@@ -173,7 +179,12 @@ export default function tracer(
 
             const shouldTrace = traceRetTags.size > 0 && isTracing
 
-            const child = ts.visitEachChild(node, visitor, ctx)
+            const child_ = ts.visitEachChild(node, visitor, ctx)
+            const child = factory.createCallExpression(
+              traceCall(child_.expression, isTracing),
+              child_.typeArguments,
+              child_.arguments.map((ex) => traceCall(ex, isTracing))
+            )
 
             if (shouldTrace) {
               return factory.createCallExpression(traceF, undefined, [
@@ -306,7 +317,7 @@ export default function tracer(
             }
           }
 
-          if (ts.isFunctionDeclaration(node) && tracingOn) {
+          if (ts.isFunctionDeclaration(node)) {
             if (isTracing) {
               if ((node.name && !traced.has(node.name.getText())) || !node.name) {
                 if (node.name) {

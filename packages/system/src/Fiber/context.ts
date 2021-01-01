@@ -924,11 +924,11 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
                     switch (nested._tag) {
                       case "Succeed": {
-                        if (this.platform.traceEffects && this.inTracingRegion) {
-                          this.addTraceValue(nested.trace)
-                        }
                         if (this.platform.traceExecution && this.inTracingRegion) {
                           this.addTrace(k)
+                        }
+                        if (this.platform.traceEffects && this.inTracingRegion) {
+                          this.addTraceValue(nested.trace)
                         }
                         current = k(nested.val)[T._I]
                         break
