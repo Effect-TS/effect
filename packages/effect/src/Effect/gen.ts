@@ -1,6 +1,8 @@
 /**
  * inspired by https://github.com/tusharmath/qio/pull/22 (revised)
  */
+import { traceAs } from "@effect-ts/tracing-utils"
+
 import type { Either } from "../Either"
 import { tuple } from "../Function"
 import type { NoSuchElementException } from "../GlobalExceptions"
@@ -37,33 +39,51 @@ export class GenEffect<R, E, A> {
   }
 }
 
-function adapter(_: any, __?: any, ___?: any) {
+function adapter(_: any, __?: any) {
   if (isEither(_)) {
     return new GenEffect(
       fromEither(() => _),
-      __
+      adapter["$trace"]
     )
   }
   if (isOption(_)) {
     if (typeof __ === "string") {
-      return new GenEffect(getOrFail(_), __)
+      return new GenEffect(getOrFail(_), adapter["$trace"])
     }
     return new GenEffect(
       __ ? (_._tag === "None" ? fail(__()) : succeed(_.value)) : getOrFail(_),
-      ___
+      adapter["$trace"]
     )
   }
   if (isTag(_)) {
-    return new GenEffect(service(_), __)
+    return new GenEffect(service(_), adapter["$trace"])
   }
-  return new GenEffect(_, __)
+  return new GenEffect(_, adapter["$trace"])
 }
 
+/**
+ * @traceCall
+ */
 export interface Adapter {
+  /**
+   * @traceCall
+   */
   <A>(_: Tag<A>): GenEffect<Has<A>, never, A>
+  /**
+   * @traceCall
+   */
   <E, A>(_: Option<A>, onNone: () => E): GenEffect<unknown, E, A>
+  /**
+   * @traceCall
+   */
   <A>(_: Option<A>): GenEffect<unknown, NoSuchElementException, A>
+  /**
+   * @traceCall
+   */
   <E, A>(_: Either<E, A>): GenEffect<unknown, E, A>
+  /**
+   * @traceCall
+   */
   <R, E, A>(_: Effect<R, E, A>): GenEffect<R, E, A>
 }
 
@@ -151,29 +171,30 @@ export function gen(...args: any[]): any {
   function gen_<Eff extends GenEffect<any, any, any>, AEff>(
     f: (i: Adapter) => Generator<Eff, AEff, any>
   ): Effect<_R<Eff>, _E<Eff>, AEff> {
-    return suspend(() => {
-      const iterator = f(adapter as any)
-      const state = iterator.next()
+    return suspend(
+      traceAs(f, () => {
+        const iterator = f(adapter as any)
+        const state = iterator.next()
 
-      function run(
-        state: IteratorYieldResult<Eff> | IteratorReturnResult<AEff>
-      ): Effect<any, any, AEff> {
-        if (state.done) {
-          return succeed(state.value)
-        }
-        return chain_(
-          state.value._trace
-            ? (state.value["effect"] as Effect<any, any, any>)
-            : (state.value["effect"] as Effect<any, any, any>),
-          (val) => {
+        function run(
+          state: IteratorYieldResult<Eff> | IteratorReturnResult<AEff>
+        ): Effect<any, any, AEff> {
+          if (state.done) {
+            return succeed(state.value)
+          }
+          const bind = (val: any) => {
             const next = iterator.next(val)
             return run(next)
           }
-        )
-      }
+          if (state.value._trace) {
+            bind["$trace"] = state.value._trace
+          }
+          return chain_(state.value["effect"] as Effect<any, any, any>, bind)
+        }
 
-      return run(state)
-    })
+        return run(state)
+      })
+    )
   }
 
   if (args.length === 0) {
