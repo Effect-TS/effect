@@ -1,5 +1,13 @@
 import ts from "typescript"
 
+function hasYield(node: ts.Node): boolean {
+  if (ts.isYieldExpression(node)) {
+    return true
+  } else {
+    return ts.forEachChild(node, hasYield) || false
+  }
+}
+
 export default function unflow(
   _program: ts.Program,
   _opts?: {
@@ -14,7 +22,15 @@ export default function unflow(
       const factory = ctx.factory
 
       return (sourceFile: ts.SourceFile) => {
-        function visitor(node: ts.Node): ts.VisitResult<ts.Node> {
+        function visitor(node: ts.Node, inGen: boolean): ts.VisitResult<ts.Node> {
+          if (ts.isFunctionDeclaration(node) && node.asteriskToken) {
+            return ts.visitEachChild(node, (x) => visitor(x, true), ctx)
+          }
+
+          if (ts.isFunctionExpression(node) && node.asteriskToken) {
+            return ts.visitEachChild(node, (x) => visitor(x, true), ctx)
+          }
+
           if (ts.isCallExpression(node)) {
             const symbol = checker.getTypeAtLocation(node.expression).getSymbol()
 
@@ -60,7 +76,7 @@ export default function unflow(
               ...(optimizeTagsOverload || [])
             ])
 
-            if (flowOn && optimizeTags.has("flow")) {
+            if (flowOn && optimizeTags.has("flow") && (!inGen || !hasYield(node))) {
               const shortcut =
                 checker
                   .getTypeAtLocation(node.arguments[0])
@@ -95,7 +111,7 @@ export default function unflow(
                   undefined,
                   factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
                   optimiseFlow(
-                    ts.visitEachChild(node, visitor, ctx).arguments,
+                    ts.visitEachChild(node, (x) => visitor(x, inGen), ctx).arguments,
                     factory,
                     shortcut ? id : factory.createSpreadElement(id)
                   )
@@ -104,10 +120,12 @@ export default function unflow(
             }
           }
 
-          return ts.visitEachChild(node, visitor, ctx)
+          return ts.visitEachChild(node, (x) => visitor(x, inGen), ctx)
         }
 
-        return flowOn ? ts.visitEachChild(sourceFile, visitor, ctx) : sourceFile
+        return flowOn
+          ? ts.visitEachChild(sourceFile, (x) => visitor(x, false), ctx)
+          : sourceFile
       }
     }
   }
