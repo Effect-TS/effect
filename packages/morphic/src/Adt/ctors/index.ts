@@ -1,18 +1,18 @@
 import { mapWithIndex } from "@effect-ts/core/Classic/Record"
 
-import type { ExtractUnion, KeysDefinition, Remove, Tagged } from "../utils"
+import type { ExtractUnion, KeysDefinition, Tagged } from "../utils"
 
 export type CtorType<C extends Ctors<any, any>> = C extends Ctors<infer A, any>
   ? A
   : never
 
 export type Of<A, Tag extends keyof A> = {
-  [key in A[Tag] & string]: (a: Remove<ExtractUnion<A, Tag, key>, Tag>) => A
+  [key in A[Tag] & string]: (a: Omit<ExtractUnion<A, Tag, key>, Tag>) => A
 }
 
 export type As<A, Tag extends keyof A> = {
   [key in A[Tag] & string]: (
-    a: Remove<ExtractUnion<A, Tag, key>, Tag>
+    a: Omit<ExtractUnion<A, Tag, key>, Tag>
   ) => ExtractUnion<A, Tag, key>
 }
 
