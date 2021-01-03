@@ -27,7 +27,7 @@ const defDerive = deriveFor(summonFor({}).make)({})
 
 export function encoder<E, A>(F: M<{}, E, A>): Encoder<A, E> {
   if (encoders.has(F)) {
-    return encoders.get(F)
+    return encoders.get(F).encoder
   }
   const d = defDerive(F)
   encoders.set(F, d)

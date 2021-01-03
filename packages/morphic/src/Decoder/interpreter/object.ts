@@ -91,7 +91,7 @@ function partialDecoder<
             typeof a !== "undefined" && decoder[k]
               ? (decoder[k] as DecoderType<any>).decoder.validate(
                   a,
-                  appendContext(c, k, decoder[k], a)
+                  appendContext(c, k, decoder[k].decoder, a)
                 )
               : T.succeed(a)
           )
@@ -135,7 +135,7 @@ function interfaceDecoder<
             decoder[k]
               ? (decoder[k] as DecoderType<any>).decoder.validate(
                   a,
-                  appendContext(c, k, decoder[k], a)
+                  appendContext(c, k, decoder[k].decoder, a)
                 )
               : T.succeed(a)
           )

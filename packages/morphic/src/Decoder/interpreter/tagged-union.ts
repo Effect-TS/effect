@@ -10,7 +10,7 @@ export const decoderTaggedUnionInterpreter = interpreter<DecoderURI, TaggedUnion
   () => ({
     _F: DecoderURI,
     taggedUnion: (tag, types, cfg) => (env) => {
-      const decoders = mapRecord(types, (a) => a(env))
+      const decoders = mapRecord(types, (a) => a(env).decoder)
 
       return new DecoderType(
         decoderApplyConfig(cfg?.conf)(
@@ -18,7 +18,7 @@ export const decoderTaggedUnionInterpreter = interpreter<DecoderURI, TaggedUnion
             (u, c) => {
               if (isUnknownRecord(u)) {
                 if (tag in u) {
-                  const dec = decoders[u[tag] as any].decoder
+                  const dec = decoders[u[tag] as any]
 
                   if (dec) {
                     return (dec as Decoder<any>).validate(
