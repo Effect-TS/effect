@@ -145,7 +145,7 @@ export class Using<R, E, A, R2, E2, A2> extends SyncLayer<
     never,
     (_: SyncMemoMap) => Sy.Sync<R & Erase<R2, A>, E | E2, A & A2>
   > {
-    return Sy.succeed((_) =>
+    return Sy.succeed((_: SyncMemoMap) =>
       pipe(
         getMemoOrElseCreate(this.left)(_),
         Sy.chain((l) =>
@@ -156,7 +156,7 @@ export class Using<R, E, A, R2, E2, A2> extends SyncLayer<
           )
         )
       )
-    )
+    ) as any
   }
 }
 
@@ -175,12 +175,12 @@ export class From<R, E, A, R2, E2, A2> extends SyncLayer<R & Erase<R2, A>, E | E
     never,
     (_: SyncMemoMap) => Sy.Sync<R & Erase<R2, A>, E | E2, A2>
   > {
-    return Sy.succeed((_) =>
+    return Sy.succeed((_: SyncMemoMap) =>
       pipe(
         getMemoOrElseCreate(this.left)(_),
         Sy.chain((l) => pipe(getMemoOrElseCreate(this.right)(_), Sy.provide(l)))
       )
-    )
+    ) as any
   }
 }
 
