@@ -10,8 +10,6 @@ import { isUnknownRecord } from "./common"
 
 const hasOwnProperty = Object.prototype.hasOwnProperty
 
-type AOfProps<P> = P extends PropsKind<any, infer A, infer L, any> ? A : never
-
 export const guardObjectInterpreter = interpreter<GuardURI, ObjectURI>()(() => ({
   _F: GuardURI,
   interface: (props, config) => (env) =>
@@ -19,13 +17,9 @@ export const guardObjectInterpreter = interpreter<GuardURI, ObjectURI>()(() => (
       const keys = Object.keys(guard)
       const len = keys.length
       return new GuardType(
-        guardApplyConfig(config?.conf)(
-          interfaceGuard(props, len, keys, guard) as any,
-          env,
-          {
-            guard: guard as any
-          }
-        )
+        guardApplyConfig(config?.conf)(interfaceGuard(len, keys, guard) as any, env, {
+          guard: guard as any
+        })
       )
     }),
   partial: (props, config) => (env) =>
@@ -34,13 +28,9 @@ export const guardObjectInterpreter = interpreter<GuardURI, ObjectURI>()(() => (
       const len = keys.length
 
       return new GuardType(
-        guardApplyConfig(config?.conf)(
-          partialGuard(props, len, keys, guard) as any,
-          env,
-          {
-            guard: guard as any
-          }
-        )
+        guardApplyConfig(config?.conf)(partialGuard(len, keys, guard) as any, env, {
+          guard: guard as any
+        })
       )
     }),
   both: (props, partial, config) => (env) =>
@@ -56,10 +46,8 @@ export const guardObjectInterpreter = interpreter<GuardURI, ObjectURI>()(() => (
           guardApplyConfig(config?.conf)(
             {
               is: (u): u is any =>
-                interfaceGuard(props as any, len, keys, guard).is(u) &&
-                partialGuard(partial as any, lenPartial, keysPartial, guardPartial).is(
-                  u
-                )
+                interfaceGuard(len, keys, guard).is(u) &&
+                partialGuard(lenPartial, keysPartial, guardPartial).is(u)
             },
             env,
             {
@@ -73,7 +61,6 @@ export const guardObjectInterpreter = interpreter<GuardURI, ObjectURI>()(() => (
 }))
 
 function partialGuard<PropsA, PropsE, Env extends AnyEnv>(
-  props: PropsKind<GuardURI, PropsA, PropsE, Env>,
   len: number,
   keys: string[],
   guard: {
@@ -83,7 +70,7 @@ function partialGuard<PropsA, PropsE, Env extends AnyEnv>(
   }
 ): Guard<Partial<Readonly<PropsA>>> {
   return {
-    is: (u): u is AOfProps<typeof props> => {
+    is: (u): u is any => {
       if (isUnknownRecord(u)) {
         for (let i = 0; i < len; i++) {
           const k = keys[i]
@@ -100,7 +87,6 @@ function partialGuard<PropsA, PropsE, Env extends AnyEnv>(
 }
 
 function interfaceGuard<PropsA, PropsE, Env extends AnyEnv>(
-  props: PropsKind<GuardURI, PropsA, PropsE, Env>,
   len: number,
   keys: string[],
   guard: {
@@ -110,7 +96,7 @@ function interfaceGuard<PropsA, PropsE, Env extends AnyEnv>(
   }
 ): Guard<Readonly<PropsA>> {
   return {
-    is: (u): u is AOfProps<typeof props> => {
+    is: (u): u is any => {
       if (isUnknownRecord(u)) {
         for (let i = 0; i < len; i++) {
           const k = keys[i]

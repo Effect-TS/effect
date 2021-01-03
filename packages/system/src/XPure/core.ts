@@ -627,8 +627,8 @@ export function provide_<SI, SO, E, A, R = unknown, R0 = unknown>(
  * Provides some of the environment required to run this effect,
  * leaving the remainder `R0` and combining it automatically using spread.
  */
-export function provide<R = unknown>(r: R) {
-  return <SI, SO, E, A, R0 = unknown>(
+export function provide<R>(r: R) {
+  return <SI, SO, E, A, R0>(
     next: XPure<SI, SO, R & R0, E, A>
   ): XPure<SI, SO, R0, E, A> => provideSome((r0: R0) => ({ ...r0, ...r }))(next)
 }

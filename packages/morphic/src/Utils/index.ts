@@ -88,3 +88,12 @@ export const memo: <F extends () => any>(get: F) => typeof get = <F extends () =
 export type IsNever<X, Y, N> = "X" | X extends "X" ? Y : N
 
 export type Includes<A, B, Y, N> = IsNever<B, Y, A extends B ? Y : N>
+
+export const UnsafeChilds = Symbol()
+
+export function passChilds(childs: any) {
+  return <X>(x: X): X => {
+    Object.assign(x, { [UnsafeChilds]: childs })
+    return x
+  }
+}

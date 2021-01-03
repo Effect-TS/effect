@@ -17,15 +17,19 @@ export const decoderObjectInterpreter = interpreter<DecoderURI, ObjectURI>()(() 
     pipe(projectFieldWithEnv(props, env)("decoder"), (decoder) => {
       const keys = Object.keys(decoder)
       return new DecoderType(
-        decoderApplyConfig(cfg?.conf)(interfaceDecoder(keys, decoder, cfg?.name), env, {
-          decoder: decoder as any
-        })
+        decoderApplyConfig(cfg?.conf)(
+          interfaceDecoder(keys, decoder, cfg?.name) as any,
+          env,
+          {
+            decoder: decoder as any
+          }
+        )
       )
     }),
   partial: (props, cfg) => (env) =>
     pipe(projectFieldWithEnv(props, env)("decoder"), (decoder) => {
       return new DecoderType(
-        decoderApplyConfig(cfg?.conf)(partialDecoder(decoder, cfg?.name), env, {
+        decoderApplyConfig(cfg?.conf)(partialDecoder(decoder, cfg?.name) as any, env, {
           decoder: decoder as any
         })
       )
