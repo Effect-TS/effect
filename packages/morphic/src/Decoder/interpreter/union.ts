@@ -9,7 +9,7 @@ import { appendContext, failures, makeDecoder } from "../common"
 export const decoderUnionInterpreter = interpreter<DecoderURI, UnionURI>()(() => ({
   _F: DecoderURI,
   union: (...types) => (_, cfg) => (env) => {
-    const decoders = types.map((a) => a(env).decoder)
+    const decoders = types.map((a) => a(env))
 
     return new DecoderType(
       decoderApplyConfig(cfg?.conf)(
@@ -20,9 +20,9 @@ export const decoderUnionInterpreter = interpreter<DecoderURI, UnionURI>()(() =>
               for (const d in decoders) {
                 const res = yield* _(
                   S.either(
-                    (decoders[d] as Decoder<any>).validate(
+                    (decoders[d].decoder as Decoder<any>).validate(
                       u,
-                      appendContext(c, "", decoders[d], u)
+                      appendContext(c, "", decoders[d].decoder, u)
                     )
                   )
                 )
@@ -43,6 +43,6 @@ export const decoderUnionInterpreter = interpreter<DecoderURI, UnionURI>()(() =>
           decoders: decoders as any
         }
       )
-    )
+    ).setChilds(decoders)
   }
 }))

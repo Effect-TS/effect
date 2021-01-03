@@ -14,7 +14,7 @@ export const decoderIntersectionInterpreter = interpreter<
 >()(() => ({
   _F: DecoderURI,
   intersection: (...types) => (cfg) => (env) => {
-    const decoders = types.map((getDecoder) => getDecoder(env).decoder)
+    const decoders = types.map((getDecoder) => getDecoder(env))
 
     return new DecoderType(
       decoderApplyConfig(cfg?.conf)(
@@ -22,7 +22,7 @@ export const decoderIntersectionInterpreter = interpreter<
           (u, c) =>
             pipe(
               decoders,
-              foreachArray((_, d) => d.validate(u, c)),
+              foreachArray((_, d) => d.decoder.validate(u, c)),
               T.map(A.reduce({} as any, (b, a) => mergePrefer(u, b, a)))
             ),
           "intersection",
@@ -33,6 +33,6 @@ export const decoderIntersectionInterpreter = interpreter<
           decoders: decoders as any
         }
       )
-    )
+    ).setChilds(A.reduce_(decoders, {}, (b, d) => ({ ...b, ...d.getChilds() })))
   }
 }))

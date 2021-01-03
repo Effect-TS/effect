@@ -32,6 +32,19 @@ export const projectFieldWithEnv = <
     [q in keyof T]: ReturnType<T[q]>[K]
   }
 
+export const projectFieldWithEnv2 = <
+  T extends R.Record<any, (e: R) => R.Record<any, any>>,
+  R
+>(
+  t: T,
+  env: R
+): {
+  [q in keyof T]: ReturnType<T[q]>
+} =>
+  R.map_(t, (p) => p(env)) as {
+    [q in keyof T]: ReturnType<T[q]>
+  }
+
 export function conjunction<A, B>(...x: [A, B]): A & B
 export function conjunction<A, B, C>(...x: [A, B, C]): A & B & C
 export function conjunction<A, B, C, D>(...x: [A, B, C, D]): A & B & C & D
@@ -88,12 +101,3 @@ export const memo: <F extends () => any>(get: F) => typeof get = <F extends () =
 export type IsNever<X, Y, N> = "X" | X extends "X" ? Y : N
 
 export type Includes<A, B, Y, N> = IsNever<B, Y, A extends B ? Y : N>
-
-export const UnsafeChilds = Symbol()
-
-export function passChilds(childs: any) {
-  return <X>(x: X): X => {
-    Object.assign(x, { [UnsafeChilds]: childs })
-    return x
-  }
-}

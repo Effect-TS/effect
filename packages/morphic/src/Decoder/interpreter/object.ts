@@ -5,7 +5,7 @@ import type { ObjectURI } from "../../Algebra/Object"
 import { isUnknownRecord } from "../../Guard/interpreter/common"
 import type { Kind } from "../../HKT"
 import { interpreter } from "../../HKT"
-import { projectFieldWithEnv } from "../../Utils"
+import { projectFieldWithEnv2 } from "../../Utils"
 import { decoderApplyConfig, DecoderType, DecoderURI } from "../base"
 import type { Decoder } from "../common"
 import { appendContext, fail, makeDecoder } from "../common"
@@ -14,7 +14,7 @@ import { foreachRecordWithIndex, mergePrefer, originalSort, tuple } from "./comm
 export const decoderObjectInterpreter = interpreter<DecoderURI, ObjectURI>()(() => ({
   _F: DecoderURI,
   interface: (props, cfg) => (env) =>
-    pipe(projectFieldWithEnv(props, env)("decoder"), (decoder) => {
+    pipe(projectFieldWithEnv2(props, env), (decoder) => {
       const keys = Object.keys(decoder)
       return new DecoderType(
         decoderApplyConfig(cfg?.conf)(
@@ -24,19 +24,19 @@ export const decoderObjectInterpreter = interpreter<DecoderURI, ObjectURI>()(() 
             decoder: decoder as any
           }
         )
-      )
+      ).setChilds(decoder)
     }),
   partial: (props, cfg) => (env) =>
-    pipe(projectFieldWithEnv(props, env)("decoder"), (decoder) => {
+    pipe(projectFieldWithEnv2(props, env), (decoder) => {
       return new DecoderType(
         decoderApplyConfig(cfg?.conf)(partialDecoder(decoder, cfg?.name) as any, env, {
           decoder: decoder as any
         })
-      )
+      ).setChilds(decoder)
     }),
   both: (props, partial, cfg) => (env) =>
-    pipe(projectFieldWithEnv(props, env)("decoder"), (decoder) =>
-      pipe(projectFieldWithEnv(partial, env)("decoder"), (decoderPartial) => {
+    pipe(projectFieldWithEnv2(props, env), (decoder) =>
+      pipe(projectFieldWithEnv2(partial, env), (decoderPartial) => {
         const keys = Object.keys(decoder)
 
         return new DecoderType(
@@ -59,7 +59,7 @@ export const decoderObjectInterpreter = interpreter<DecoderURI, ObjectURI>()(() 
               decoderPartial: decoderPartial as any
             }
           )
-        )
+        ).setChilds({ ...decoder, ...decoderPartial })
       })
     )
 }))
@@ -68,7 +68,7 @@ function partialDecoder<
   Env,
   Props extends { [k in keyof Props]: (env: Env) => DecoderType<any> }
 >(
-  decoder: { [q in keyof Props]: ReturnType<Props[q]>["decoder"] },
+  decoder: any,
   name?: string
 ): Decoder<
   Partial<
@@ -88,7 +88,7 @@ function partialDecoder<
           u,
           foreachRecordWithIndex((k, a) =>
             typeof a !== "undefined" && decoder[k]
-              ? (decoder[k] as Decoder<any>).validate(
+              ? (decoder[k] as DecoderType<any>).decoder.validate(
                   a,
                   appendContext(c, k, decoder[k], a)
                 )
@@ -108,7 +108,7 @@ function interfaceDecoder<
   Props extends { [k in keyof Props]: (env: Env) => DecoderType<any> }
 >(
   keys: string[],
-  decoder: { [q in keyof Props]: ReturnType<Props[q]>["decoder"] },
+  decoder: any,
   name?: string
 ): Decoder<
   Readonly<
@@ -132,7 +132,7 @@ function interfaceDecoder<
           r,
           foreachRecordWithIndex((k, a) =>
             decoder[k]
-              ? (decoder[k] as Decoder<any>).validate(
+              ? (decoder[k] as DecoderType<any>).decoder.validate(
                   a,
                   appendContext(c, k, decoder[k], a)
                 )
