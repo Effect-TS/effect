@@ -43,6 +43,6 @@ export const decoderUnionInterpreter = interpreter<DecoderURI, UnionURI>()(() =>
           decoders: decoders as any
         }
       )
-    ).setChilds(decoders)
+    )
   }
 }))

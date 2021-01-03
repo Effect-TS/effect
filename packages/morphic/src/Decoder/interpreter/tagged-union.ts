@@ -45,7 +45,7 @@ export const decoderTaggedUnionInterpreter = interpreter<DecoderURI, TaggedUnion
             decoders: decoders as any
           }
         )
-      ).setChilds(decoders)
+      )
     }
   })
 )

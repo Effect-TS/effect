@@ -19,7 +19,7 @@ declare module "../../HKT" {
 export class DecoderType<A> {
   _A!: A
   _URI!: DecoderURI
-  childs: any = undefined
+  childs: any = {}
   constructor(public decoder: Decoder<A>) {}
   setChilds(childs: any) {
     this.childs = childs
