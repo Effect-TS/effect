@@ -104,10 +104,10 @@ export function to<R, E, A>(to: Layer<R, E, A>) {
 export function to_<R, E, A, R2, E2, A2>(
   self: Layer<R2, E2, A2>,
   to: Layer<R, E, A>
-): Layer<Erase<R, A2> & R2, E | E2, A> {
-  return fold_<Erase<R, A2> & R2, E2, A2, E2, never, Erase<R, A2> & R2, E | E2, A>(
+): Layer<Erase<R & R2, A2> & R2, E | E2, A> {
+  return fold_(
     self,
-    fromRawFunctionM((_: readonly [R & R2, Cause<E2>]) => T.halt(_[1])),
+    fromRawFunctionM((_: readonly [Erase<R & R2, A2> & R2, Cause<E2>]) => T.halt(_[1])),
     to
   )
 }
@@ -118,10 +118,10 @@ export function using<R2, E2, A2>(
 ): <R, E, A>(to: Layer<R & A2, E, A>) => Layer<R & R2, E2 | E, A & A2>
 export function using<R2, E2, A2>(
   self: Layer<R2, E2, A2>
-): <R, E, A>(to: Layer<R, E, A>) => Layer<Erase<R, A2> & R2, E2 | E, A & A2>
+): <R, E, A>(to: Layer<R, E, A>) => Layer<Erase<R & R2, A2> & R2, E2 | E, A & A2>
 export function using<R2, E2, A2>(
   self: Layer<R2, E2, A2>
-): <R, E, A>(to: Layer<R, E, A>) => Layer<Erase<R, A2> & R2, E2 | E, A & A2> {
+): <R, E, A>(to: Layer<R, E, A>) => Layer<Erase<R & R2, A2> & R2, E2 | E, A & A2> {
   return <R, E, A>(to: Layer<R, E, A>) => andTo_(self, to)
 }
 
@@ -131,10 +131,10 @@ export function from<R2, E2, A2>(
 ): <R, E, A>(to: Layer<R & A2, E, A>) => Layer<R & R2, E2 | E, A>
 export function from<R2, E2, A2>(
   self: Layer<R2, E2, A2>
-): <R, E, A>(to: Layer<R, E, A>) => Layer<Erase<R, A2> & R2, E2 | E, A>
+): <R, E, A>(to: Layer<R, E, A>) => Layer<Erase<R & R2, A2> & R2, E2 | E, A>
 export function from<R2, E2, A2>(
   self: Layer<R2, E2, A2>
-): <R, E, A>(to: Layer<R, E, A>) => Layer<Erase<R, A2> & R2, E2 | E, A> {
+): <R, E, A>(to: Layer<R, E, A>) => Layer<Erase<R & R2, A2> & R2, E2 | E, A> {
   return <R, E, A>(to: Layer<R, E, A>) => to_(self, to)
 }
 
