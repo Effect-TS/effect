@@ -36,8 +36,8 @@ export function and_<R, E, A, R2, E2, A2>(
 export function fold_<R, E, A, E1, B, R2, E2, C>(
   self: Layer<R, E, A>,
   failure: Layer<readonly [R, Cause<E>], E1, B>,
-  success: Layer<A & R2, E2, C>
-): Layer<R & R2, E1 | E2, B | C> {
+  success: Layer<R2, E2, C>
+): Layer<R & Erase<R2, A>, E1 | E2, B | C> {
   return new LayerFold<R, E, E1, E2, A, R2, B, C>(self, failure, success)
 }
 
@@ -49,14 +49,14 @@ export function using_<R, E, A, R2, E2, A2>(
 export function using_<R, E, A, R2, E2, A2>(
   self: Layer<R, E, A>,
   from: Layer<R2, E2, A2>
-): Layer<Erase<R, A2> & R2, E | E2, A & A2>
+): Layer<Erase<R & R2, A2> & R2, E | E2, A & A2>
 export function using_<R, E, A, R2, E2, A2>(
   self: Layer<R, E, A>,
   from: Layer<R2, E2, A2>
-): Layer<Erase<R, A2> & R2, E | E2, A & A2> {
-  return fold_<Erase<R, A2> & R2, E2, A2, E2, never, Erase<R, A2> & R2, E | E2, A2 & A>(
+): Layer<Erase<R & R2, A2> & R2, E | E2, A & A2> {
+  return fold_(
     from,
-    fromRawFunctionM((_: readonly [R & R2, Cause<E2>]) => T.halt(_[1])),
+    fromRawFunctionM((_: readonly [Erase<R, A2> & R2, Cause<E2>]) => T.halt(_[1])),
     and_(from, self)
   )
 }
@@ -68,10 +68,10 @@ export function andTo<R, E, A>(to: Layer<R, E, A>) {
 export function andTo_<R, E, A, R2, E2, A2>(
   self: Layer<R2, E2, A2>,
   to: Layer<R, E, A>
-): Layer<Erase<R, A2> & R2, E | E2, A & A2> {
-  return fold_<Erase<R, A2> & R2, E2, A2, E2, never, Erase<R, A2> & R2, E | E2, A2 & A>(
+): Layer<R2 & Erase<R & R2, A2>, E | E2, A & A2> {
+  return fold_(
     self,
-    fromRawFunctionM((_: readonly [R & R2, Cause<E2>]) => T.halt(_[1])),
+    fromRawFunctionM((_: readonly [R2 & Erase<R & R2, A2>, Cause<E2>]) => T.halt(_[1])),
     and_(self, to)
   )
 }
@@ -89,9 +89,9 @@ export function from_<R, E, A, R2, E2, A2>(
   self: Layer<R, E, A>,
   to: Layer<R2, E2, A2>
 ): Layer<Erase<R, A2> & R2, E | E2, A> {
-  return fold_<Erase<R, A2> & R2, E2, A2, E2, never, Erase<R, A2> & R2, E | E2, A>(
+  return fold_(
     to,
-    fromRawFunctionM((_: readonly [R & R2, Cause<E2>]) => T.halt(_[1])),
+    fromRawFunctionM((_: readonly [Erase<R, A2> & R2, Cause<E2>]) => T.halt(_[1])),
     self
   )
 }
@@ -126,13 +126,13 @@ export abstract class Layer<RIn, E, ROut> {
 
   ["<+<"]<R2, E2, A2>(
     from: Layer<R2, E2, A2>
-  ): Layer<Erase<RIn, A2> & R2, E2 | E, ROut & A2> {
+  ): Layer<Erase<RIn & R2, A2> & R2, E2 | E, ROut & A2> {
     return using_(this, from)
   }
 
   [">+>"]<R2, E2, A2>(
     from: Layer<R2, E2, A2>
-  ): Layer<Erase<R2, ROut> & RIn, E2 | E, ROut & A2> {
+  ): Layer<Erase<R2 & RIn, ROut> & RIn, E2 | E, ROut & A2> {
     return andTo_(this, from)
   }
 
@@ -158,7 +158,7 @@ export type LayerInstruction =
   | LayerChain<any, any, any, any, any, any>
 
 export class LayerFold<RIn, E, E1, E2, ROut, R, ROut1, ROut2> extends Layer<
-  RIn & R,
+  RIn & Erase<R, ROut>,
   E1 | E2,
   ROut1 | ROut2
 > {
@@ -167,7 +167,7 @@ export class LayerFold<RIn, E, E1, E2, ROut, R, ROut1, ROut2> extends Layer<
   constructor(
     readonly self: Layer<RIn, E, ROut>,
     readonly failure: Layer<readonly [RIn, Cause<E>], E1, ROut1>,
-    readonly success: Layer<ROut & R, E2, ROut2>
+    readonly success: Layer<R, E2, ROut2>
   ) {
     super()
   }

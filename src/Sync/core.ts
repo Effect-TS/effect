@@ -190,9 +190,9 @@ export const provide_: <E, A, R = unknown, R0 = unknown>(
  * Provides some of the environment required to run this effect,
  * leaving the remainder `R0` and combining it automatically using spread.
  */
-export const provide: <R = unknown>(
+export const provide: <R>(
   r: R
-) => <E, A, R0 = unknown>(next: Sync<R & R0, E, A>) => Sync<R0, E, A> = X.provide
+) => <E, A, R0>(next: Sync<R & R0, E, A>) => Sync<R0, E, A> = X.provide
 
 /**
  * Provides this computation with its required environment.
