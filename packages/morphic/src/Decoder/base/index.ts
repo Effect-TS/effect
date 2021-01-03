@@ -28,4 +28,7 @@ export class DecoderType<A> {
   getChilds() {
     return this.childs
   }
+  at<K extends keyof A>(k: K): DecoderType<A[K]> | undefined {
+    return this.childs[k]
+  }
 }
