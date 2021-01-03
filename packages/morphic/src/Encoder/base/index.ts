@@ -25,5 +25,13 @@ declare module "../../HKT" {
 export class EncoderType<A, E> {
   _A!: A
   _URI!: EncoderURI
+  childs: any = {}
   constructor(public encoder: Encoder<A, E>) {}
+  setChilds(childs: any) {
+    this.childs = childs
+    return this
+  }
+  getChilds() {
+    return this.childs
+  }
 }

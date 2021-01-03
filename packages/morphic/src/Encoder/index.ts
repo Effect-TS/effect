@@ -9,7 +9,7 @@ import type {
   SummonerInterpURI,
   SummonerProgURI
 } from "../Batteries/usage/summoner"
-import type { Encoder, EncoderURI } from "./base"
+import type { Encoder, EncoderType, EncoderURI } from "./base"
 import { modelEncoderInterpreter } from "./interpreter"
 
 export function deriveFor<S extends Summoner<any>>(S: S) {
@@ -19,13 +19,22 @@ export function deriveFor<S extends Summoner<any>>(S: S) {
     }
   ) => <L, A>(
     F: Materialized<SummonerEnv<S>, L, A, SummonerProgURI<S>, SummonerInterpURI<S>>
-  ) => F.derive(modelEncoderInterpreter<SummonerEnv<S>>())(_).encoder
+  ) => F.derive(modelEncoderInterpreter<SummonerEnv<S>>())(_)
 }
 
 const encoders = new Map<any, any>()
 const defDerive = deriveFor(summonFor({}).make)({})
 
 export function encoder<E, A>(F: M<{}, E, A>): Encoder<A, E> {
+  if (encoders.has(F)) {
+    return encoders.get(F)
+  }
+  const d = defDerive(F)
+  encoders.set(F, d)
+  return d.encoder
+}
+
+export function encoderType<E, A>(F: M<{}, E, A>): EncoderType<A, E> {
   if (encoders.has(F)) {
     return encoders.get(F)
   }

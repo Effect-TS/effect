@@ -1,9 +1,11 @@
 import { right } from "@effect-ts/core/Classic/Either"
-import { runEither } from "@effect-ts/core/Sync"
+import { run, runEither } from "@effect-ts/core/Sync"
 
 import { make } from "../src"
 import type { Decoder } from "../src/Decoder"
 import { decoder, decoderType } from "../src/Decoder"
+import { encoderType } from "../src/Encoder"
+import type { Encoder } from "../src/Encoder/base"
 import { hash } from "../src/Hash"
 
 const A = make((F) =>
@@ -59,7 +61,9 @@ describe("Intersection", () => {
     )
   })
   it("Has childs", () => {
-    const g: Decoder<string> = decoderType(All).getChilds()["g"].decoder
-    expect(runEither(g.decode("ok"))).toEqual(right("ok"))
+    const gd: Decoder<string> = decoderType(All).getChilds()["g"].decoder
+    const ge: Encoder<string, string> = encoderType(All).getChilds()["g"].encoder
+    expect(runEither(gd.decode("ok"))).toEqual(right("ok"))
+    expect(run(ge.encode("ok"))).toEqual("ok")
   })
 })

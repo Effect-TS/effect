@@ -30,7 +30,7 @@ export const decoderIntersectionInterpreter = interpreter<
         ),
         env,
         {
-          decoders: decoders as any
+          decoders: A.map_(decoders, (d) => d.decoder) as any
         }
       )
     ).setChilds(A.reduce_(decoders, {}, (b, d) => ({ ...b, ...d.getChilds() })))

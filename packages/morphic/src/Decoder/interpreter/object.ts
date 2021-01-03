@@ -1,3 +1,4 @@
+import * as R from "@effect-ts/core/Classic/Record"
 import { pipe } from "@effect-ts/core/Function"
 import * as T from "@effect-ts/core/Sync"
 
@@ -21,7 +22,7 @@ export const decoderObjectInterpreter = interpreter<DecoderURI, ObjectURI>()(() 
           interfaceDecoder(keys, decoder, cfg?.name) as any,
           env,
           {
-            decoder: decoder as any
+            decoder: R.map_(decoder, (d) => d.decoder) as any
           }
         )
       ).setChilds(decoder)
@@ -30,7 +31,7 @@ export const decoderObjectInterpreter = interpreter<DecoderURI, ObjectURI>()(() 
     pipe(projectFieldWithEnv2(props, env), (decoder) => {
       return new DecoderType(
         decoderApplyConfig(cfg?.conf)(partialDecoder(decoder, cfg?.name) as any, env, {
-          decoder: decoder as any
+          decoder: R.map_(decoder, (d) => d.decoder) as any
         })
       ).setChilds(decoder)
     }),
@@ -55,8 +56,8 @@ export const decoderObjectInterpreter = interpreter<DecoderURI, ObjectURI>()(() 
             ),
             env,
             {
-              decoder: decoder as any,
-              decoderPartial: decoderPartial as any
+              decoder: R.map_(decoder, (d) => d.decoder) as any,
+              decoderPartial: R.map_(decoderPartial, (d) => d.decoder) as any
             }
           )
         ).setChilds({ ...decoder, ...decoderPartial })

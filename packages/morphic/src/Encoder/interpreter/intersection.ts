@@ -13,22 +13,22 @@ export const encoderIntersectionInterpreter = interpreter<
 >()(() => ({
   _F: EncoderURI,
   intersection: (...types) => (config) => (env) => {
-    const encoders = types.map((getEncoder) => getEncoder(env).encoder)
+    const encoders = types.map((getEncoder) => getEncoder(env))
     return new EncoderType(
       encoderApplyConfig(config?.conf)(
         {
           encode: (u) =>
             pipe(
               encoders,
-              A.foreachF(T.Applicative)((d) => d.encode(u)),
+              A.foreachF(T.Applicative)((d) => d.encoder.encode(u)),
               T.map(A.reduce(({} as unknown) as any, (b, a) => mergePrefer(u, b, a)))
             )
         },
         env,
         {
-          encoders: encoders as any
+          encoders: A.map_(encoders, (d) => d.encoder) as any
         }
       )
-    )
+    ).setChilds(A.reduce_(encoders, {}, (b, d) => ({ ...b, ...d.getChilds() })))
   }
 }))
