@@ -31,7 +31,7 @@
   },
   "Array": {
     "prefix": "+A",
-    "body": ["import * as A from \"@effect-ts/core/Classic/Map\""],
+    "body": ["import * as A from \"@effect-ts/core/Classic/Array\""],
     "description": "Array as A"
   },
   "Record": {

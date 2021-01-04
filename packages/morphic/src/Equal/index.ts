@@ -8,7 +8,7 @@ import type {
   SummonerInterpURI,
   SummonerProgURI
 } from "../Batteries/usage/summoner"
-import type { EqURI } from "./base"
+import type { EqType, EqURI } from "./base"
 import { modelEqInterpreter } from "./interpreter"
 
 export function deriveFor<S extends Summoner<any>>(S: S) {
@@ -18,13 +18,22 @@ export function deriveFor<S extends Summoner<any>>(S: S) {
     }
   ) => <L, A>(
     F: Materialized<SummonerEnv<S>, L, A, SummonerProgURI<S>, SummonerInterpURI<S>>
-  ) => F.derive(modelEqInterpreter<SummonerEnv<S>>())(_).eq
+  ) => F.derive(modelEqInterpreter<SummonerEnv<S>>())(_)
 }
 
 const equals = new Map<any, any>()
 const defDerive = deriveFor(summonFor({}).make)({})
 
 export function equal<E, A>(F: M<{}, E, A>): Equal<A> {
+  if (equals.has(F)) {
+    return equals.get(F).eq
+  }
+  const d = defDerive(F)
+  equals.set(F, d)
+  return d.eq
+}
+
+export function equalType<E, A>(F: M<{}, E, A>): EqType<A> {
   if (equals.has(F)) {
     return equals.get(F)
   }

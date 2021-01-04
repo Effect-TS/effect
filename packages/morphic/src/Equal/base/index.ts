@@ -19,5 +19,16 @@ declare module "../../HKT" {
 export class EqType<A> {
   _A!: A
   _URI!: EqURI
+  childs: any = {}
   constructor(public eq: Equal<A>) {}
+  setChilds(childs: any) {
+    this.childs = childs
+    return this
+  }
+  getChilds() {
+    return this.childs
+  }
+  at<K extends keyof A>(k: K): EqType<A[K]> | undefined {
+    return this.childs[k]
+  }
 }

@@ -4,6 +4,7 @@ import { run, runEither } from "@effect-ts/core/Sync"
 import { make } from "../src"
 import { decoder, decoderType } from "../src/Decoder"
 import { encoderType } from "../src/Encoder"
+import { equalType } from "../src/Equal"
 import { hash } from "../src/Hash"
 
 const A = make((F) =>
@@ -63,7 +64,10 @@ describe("Intersection", () => {
     const gd = decoderType(All).at("g")!.decoder
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const ge = encoderType(All).at("g")!.encoder
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const geq = equalType(All).at("g")!.eq
     expect(runEither(gd.decode("ok"))).toEqual(right("ok"))
     expect(run(ge.encode("ok"))).toEqual("ok")
+    expect(geq.equals("ok")("ok")).toEqual(true)
   })
 })

@@ -1,9 +1,10 @@
 import * as E from "@effect-ts/core/Classic/Equal"
+import * as R from "@effect-ts/core/Classic/Record"
 import { pipe } from "@effect-ts/core/Function"
 
 import type { ObjectURI } from "../../Algebra/Object"
 import { interpreter } from "../../HKT"
-import { mapRecord, projectFieldWithEnv } from "../../Utils"
+import { mapRecord, projectFieldWithEnv2 } from "../../Utils"
 import { eqApplyConfig, EqType, EqURI } from "../base"
 
 const asPartial = <T>(x: EqType<T>): EqType<Partial<T>> => x as any
@@ -22,36 +23,43 @@ export const eqOrUndefined = <A>(eq: E.Equal<A>): E.Equal<A | undefined> => ({
 export const eqObjectInterpreter = interpreter<EqURI, ObjectURI>()(() => ({
   _F: EqURI,
   interface: (props, config) => (env) =>
-    new EqType(
-      pipe(projectFieldWithEnv(props, env)("eq"), (eq) =>
-        eqApplyConfig(config?.conf)(E.struct(eq) as any, env, { eq: eq as any })
-      )
-    ),
+    pipe(projectFieldWithEnv2(props, env), (eq) => {
+      const equals = R.map_(eq, (e) => e.eq)
+      return new EqType(
+        eqApplyConfig(config?.conf)(E.struct(equals) as any, env, {
+          eq: equals as any
+        })
+      ).setChilds(eq)
+    }),
   partial: (props, config) => (env) =>
-    asPartial(
-      new EqType(
-        pipe(projectFieldWithEnv(props, env)("eq"), (eq) =>
+    pipe(projectFieldWithEnv2(props, env), (eq) => {
+      const equals = R.map_(eq, (e) => e.eq)
+      return asPartial(
+        new EqType(
           eqApplyConfig(config?.conf)(
-            E.struct(mapRecord(eq, eqOrUndefined)) as any,
+            E.struct(mapRecord(equals, eqOrUndefined)) as any,
             env,
-            { eq: eq as any }
+            { eq: equals as any }
           )
         )
-      )
-    ),
+      ).setChilds(eq)
+    }),
   both: (props, partial, config) => (env) =>
-    new EqType(
-      pipe(projectFieldWithEnv(props, env)("eq"), (eq) =>
-        pipe(projectFieldWithEnv(partial, env)("eq"), (eqPartial) =>
+    pipe(
+      [projectFieldWithEnv2(props, env), projectFieldWithEnv2(partial, env)] as const,
+      ([eq, eqPartial]) => {
+        const equals = R.map_(eq, (e) => e.eq)
+        const equalsPartial = R.map_(eqPartial, (e) => e.eq)
+        return new EqType(
           eqApplyConfig(config?.conf)(
-            E.struct({ ...eq, ...mapRecord(eqPartial, eqOrUndefined) }),
+            E.struct({ ...equals, ...mapRecord(equalsPartial, eqOrUndefined) }),
             env,
             {
-              eq: eq as any,
-              eqPartial: eqPartial as any
+              eq: equals as any,
+              eqPartial: equalsPartial as any
             }
           )
-        )
-      )
+        ).setChilds({ ...eq, ...eqPartial })
+      }
     )
 }))
