@@ -34,7 +34,7 @@ export class EncoderType<A, E> {
   getChilds() {
     return this.childs
   }
-  at<K extends keyof A & keyof E>(k: K): EncoderType<E[K], A[K]> | undefined {
+  at<K extends keyof A & keyof E>(k: K): EncoderType<A[K], E[K]> | undefined {
     return this.childs[k]
   }
 }
