@@ -37,6 +37,10 @@ Within the ecosystem of packages you will find:
   - reduce the calls to `identity`
   - optimize data-last pipeable functions to data-first
 
+## Get in touch
+
+Join us using discord at: [https://discord.gg/aEXNXgZA](https://discord.gg/aEXNXgZA)
+
 ## Articles
 
 If you like to know more check out our, incomplete, series of articles:
@@ -54,10 +58,6 @@ This is not an excuse, we will write docs when the active development slows down
 Functional libraries tend to have almost no documentation and the reason is that the best documentation for a function is its own definition assuming the name is meaningful and the types are clear.
 
 For the reason above, when we will begin documenting it, it will be along the lines of a guide in order to introduce concepts used in the library rather than just an "online database of function definitions"
-
-## Get in touch
-
-The best place to reach out would be either in [https://fpchat-invite.herokuapp.com](https://fpchat-invite.herokuapp.com) (FP Chat, channel #matechs) or for italians [https://italiajs.herokuapp.com/](https://italiajs.herokuapp.com/) (Italia JS, @Michael Arnaldi or channel #fp)
 
 ## Maintainers
 
