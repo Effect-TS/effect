@@ -6,14 +6,13 @@
 import { chain_, effectTotal } from "../Effect/core"
 import type { UIO } from "../Effect/effect"
 import { accessServiceM, replaceService } from "../Effect/has"
+import { literal } from "../Function"
 import type { HasTag } from "../Has"
 import { tag } from "../Has"
 import { PRNG } from "./Alea"
 
-export const RandomURI = Symbol()
-
 export abstract class Random {
-  readonly _tag!: typeof RandomURI
+  readonly _tag = literal("@effect-ts/system/Random")
 
   abstract readonly next: UIO<number>
   abstract readonly nextBoolean: UIO<boolean>

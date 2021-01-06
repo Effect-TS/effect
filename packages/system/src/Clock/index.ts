@@ -7,16 +7,15 @@ import { effectTotal, unit } from "../Effect/core"
 import type { UIO } from "../Effect/effect"
 import { effectAsyncInterrupt } from "../Effect/effectAsyncInterrupt"
 import { accessService, accessServiceM } from "../Effect/has"
+import { literal } from "../Function"
 import type { HasTag } from "../Has"
 import { tag } from "../Has"
 
 //
 // Clock Definition
 //
-export const ClockURI = Symbol()
-
 export abstract class Clock {
-  readonly _tag!: typeof ClockURI
+  readonly _tag = literal("@effect-ts/system/Clock")
 
   abstract readonly currentTime: UIO<number>
   abstract readonly sleep: (ms: number) => UIO<void>
