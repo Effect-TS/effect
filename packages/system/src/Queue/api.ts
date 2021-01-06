@@ -13,11 +13,11 @@ import { XQueue } from "./xqueue"
 export const takeBetween = (min: number, max: number) => <RA, RB, EA, EB, A, B>(
   self: XQueue<RA, RB, EA, EB, A, B>
 ): T.Effect<RB, EB, readonly B[]> => {
-  function takeRemaining(n: number): T.Effect<RB, EB, A.Array<B>> {
+  function takeRemainder(n: number): T.Effect<RB, EB, A.Array<B>> {
     if (n <= 0) {
       return T.succeed([])
     } else {
-      return T.chain_(self.take, (a) => T.map_(takeRemaining(n - 1), (_) => [a, ..._]))
+      return T.chain_(self.take, (a) => T.map_(takeRemainder(n - 1), (_) => [a, ..._]))
     }
   }
 
@@ -32,10 +32,7 @@ export const takeBetween = (min: number, max: number) => <RA, RB, EA, EB, A, B>(
         if (remaining === 1) {
           return T.map_(self.take, (b) => [...bs, b])
         } else if (remaining > 1) {
-          return T.map_(takeRemaining(remaining - 1), (list) => [
-            ...bs,
-            ...A.reverse(list)
-          ])
+          return T.map_(takeRemainder(remaining), (list) => [...bs, ...A.reverse(list)])
         } else {
           return T.succeed(bs)
         }
