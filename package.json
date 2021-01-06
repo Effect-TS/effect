@@ -46,7 +46,7 @@
     "husky": "4.3.6",
     "jest": "^26.6.0",
     "lerna": "^3.22.1",
-    "madge": "^3.11.0",
+    "madge": "^4.0.0",
     "prettier": "^2.1.2",
     "reflect-metadata": "^0.1.13",
     "retry-ts": "^0.1.2",
