@@ -104,6 +104,15 @@ export function identity<A>(a: A): A {
 }
 
 /**
+ * Force string to be literal
+ *
+ * @optimize identity
+ */
+export function literal<K extends string>(k: K): K {
+  return k
+}
+
+/**
  * Inverts a boolean predicate
  */
 export function not<A>(predicate: Predicate<A>): Predicate<A> {
