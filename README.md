@@ -39,7 +39,7 @@ Within the ecosystem of packages you will find:
 
 ## Get in touch
 
-Join us using discord at: [https://discord.gg/aEXNXgZA](https://discord.gg/aEXNXgZA)
+Join us using discord at: [https://discord.gg/hdt7t7jpvn](https://discord.gg/hdt7t7jpvn)
 
 ## Articles
 
