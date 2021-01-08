@@ -2,7 +2,7 @@
   "name": "@effect-ts/jest",
   "version": "0.5.3",
   "license": "MIT",
-  "homepage": "https://github.com/Matechs-Garage/matechs-effect",
+  "homepage": "https://github.com/Matechs-Garage/effect-ts",
   "private": false,
   "scripts": {
     "clean": "rimraf build tsbuildinfo",
@@ -23,7 +23,7 @@
     "access": "public",
     "directory": "build"
   },
-  "repository": "https://github.com/Matechs-Garage/matechs-effect.git",
+  "repository": "https://github.com/Matechs-Garage/effect-ts.git",
   "sideEffects": false,
   "dependencies": {
     "@effect-ts/core": "^0.11.3"

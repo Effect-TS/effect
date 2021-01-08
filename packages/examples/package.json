@@ -1,0 +1,16 @@
+{
+  "name": "@effect-ts/examples",
+  "version": "0.0.0",
+  "license": "MIT",
+  "homepage": "https://github.com/Matechs-Garage/effect-ts",
+  "private": true,
+  "scripts": {
+    "tc": "tsc --noEmit"
+  },
+  "repository": "https://github.com/Matechs-Garage/effect-ts.git",
+  "sideEffects": false,
+  "dependencies": {
+    "@effect-ts/core": "^0.11.3",
+    "@effect-ts/node": "^0.3.3"
+  }
+}
