@@ -26,6 +26,12 @@ export function fromRawFunctionM<A, R, E, B>(f: (a: A) => T.Effect<R, E, B>) {
   return fromRawEffect(T.accessM(f))
 }
 
+/**
+ * Merge two Layers in parallel without providing any data to each other
+ *
+ * @param self - first Layer to combine
+ * @param that - second Layer to combine
+ */
 export function and_<R, E, A, R2, E2, A2>(
   self: Layer<R, E, A>,
   that: Layer<R2, E2, A2>
@@ -41,11 +47,29 @@ export function fold_<R, E, A, E1, B, R2, E2, C>(
   return new LayerFold<R, E, E1, E2, A, R2, B, C>(self, failure, success)
 }
 
+/**
+ * Create a Layer with the data from both Layers, while providing the data from
+ * the second Layer into the first Layer. Could be used in rare cases with
+ * generics to avoid the usage of `Erase` helper.
+ *
+ * @param self - Layer with the data for the final Layer
+ * @param from - Layer with the data for the final Layer, which is also provided
+ *    into the first Layer.
+ * @param noErase - type level marker to avoid the use of `Erase` helper
+ */
 export function using_<R, E, A, R2, E2, A2>(
   self: Layer<R & A2, E, A>,
   from: Layer<R2, E2, A2>,
   noErase: "no-erase"
 ): Layer<R & R2, E | E2, A & A2>
+/**
+ * Create a Layer with the data from both Layers, while providing the data from
+ * the second Layer into the first Layer.
+ *
+ * @param self - Layer with the data for the final Layer
+ * @param from - Layer with the data for the final Layer, which is also provided
+ *    into the first Layer.
+ */
 export function using_<R, E, A, R2, E2, A2>(
   self: Layer<R, E, A>,
   from: Layer<R2, E2, A2>
@@ -65,6 +89,14 @@ export function andTo<R, E, A>(to: Layer<R, E, A>) {
   return <R2, E2, A2>(self: Layer<R2, E2, A2>) => andTo_(self, to)
 }
 
+/**
+ * Create a Layer with the data from both Layers, while providing the data from
+ * the first Layer into the second Layer
+ *
+ * @param self - Layer with the data for the final Layer, which is also provided
+ *    into the second Layer.
+ * @param to - Layer with the data for the final Layer
+ */
 export function andTo_<R, E, A, R2, E2, A2>(
   self: Layer<R2, E2, A2>,
   to: Layer<R, E, A>
@@ -76,11 +108,27 @@ export function andTo_<R, E, A, R2, E2, A2>(
   )
 }
 
+/**
+ * Create a Layer with the data from the first parameter, while providing the
+ * data from the second parameter to it. Could be used in rare cases with
+ * generics to avoid the usage of `Erase` helper.
+ *
+ * @param self - Layer with the data for the final Layer
+ * @param to - Layer providing the data for the first Layer
+ * @param noErase - type level marker to avoid the use of `Erase` helper
+ */
 export function from_<R, E, A, R2, E2, A2>(
   self: Layer<R & A2, E, A>,
   to: Layer<R2, E2, A2>,
   noErase: "no-erase"
 ): Layer<R & R2, E | E2, A>
+/**
+ * Create a Layer with the data from the first parameter, while providing the
+ * data from the second parameter to it. Uses the `Erase` helper.
+ *
+ * @param self - Layer with the data for the final Layer
+ * @param to - Layer providing the data for the first Layer
+ */
 export function from_<R, E, A, R2, E2, A2>(
   self: Layer<R, E, A>,
   to: Layer<R2, E2, A2>
@@ -112,30 +160,159 @@ export abstract class Layer<RIn, E, ROut> {
     return this as any
   }
 
+  /**
+   * Create a Layer with the data only from the left Layer, while providing the data
+   * to it from the Layer on the right.
+   *
+   * @see {@link from_} Underlying implementation
+   *
+   * @example
+   * ```typescript
+   * import * as T from "@effect-ts/core/Effect"
+   * import * as L from "@effect-ts/core/Effect/Layer"
+   * import { tag } from "@effect-ts/core/Has"
+   *
+   * const rightTag = tag<string>()
+   * const right = L.pure(rightTag)("Hello World!")
+   *
+   * const leftTag = tag<number>()
+   * const left = L.fromEffect(leftTag)(T.accessService(rightTag)((s) => s.length))
+   *
+   * // Layer containing the number
+   * const live = left["<<<"](right)
+   * ```
+   */
   ["<<<"]<R2, E2, A2>(
     from: Layer<R2, E2, A2>
   ): Layer<Erase<RIn, A2> & R2, E2 | E, ROut> {
     return from_(this, from)
   }
 
+  /**
+   * Create a Layer with the data only from the right Layer, while providing the data
+   * to it from the Layer on the left.
+   *
+   * @example
+   * ```typescript
+   * import * as T from "@effect-ts/core/Effect"
+   * import * as L from "@effect-ts/core/Effect/Layer"
+   * import { tag } from "@effect-ts/core/Has"
+   *
+   * const rightTag = tag<string>()
+   * const right = L.pure(rightTag)("Hello World!")
+   *
+   * const leftTag = tag<number>()
+   * const left = L.fromEffect(leftTag)(T.accessService(rightTag)((s) => s.length))
+   *
+   * // Layer containing the string, while also requiring a string to construct
+   * // the 'left' Layer, since we used it, but dropped a value provided by it.
+   * const live = left[">>>"](right)
+   * ```
+   */
   [">>>"]<R2, E2, A2>(
     from: Layer<R2, E2, A2>
   ): Layer<Erase<R2, ROut> & RIn, E2 | E, A2> {
     return from_(from, this)
   }
 
+  /**
+   * Create a Layer with the data from both the left Layer and the right Layer,
+   * while providing the data to the left Layer from the Layer on the right.
+   *
+   * @see {@link using_}
+   *
+   * @example
+   * ```typescript
+   * import * as T from "@effect-ts/core/Effect"
+   * import * as L from "@effect-ts/core/Effect/Layer"
+   * import { tag } from "@effect-ts/core/Has"
+   *
+   * const rightTag = tag<string>()
+   * const right = L.pure(rightTag)("Hello World!")
+   *
+   * const leftTag = tag<number>()
+   * const left = L.fromEffect(leftTag)(T.accessService(rightTag)((s) => s.length))
+   *
+   * // Layer containing the number and the string
+   * const live = left["<+<"](right)
+   * ```
+   */
   ["<+<"]<R2, E2, A2>(
     from: Layer<R2, E2, A2>
   ): Layer<Erase<RIn & R2, A2> & R2, E2 | E, ROut & A2> {
     return using_(this, from)
   }
 
+  /**
+   * Create a Layer with the data from both the left Layer and the right Layer,
+   * while providing the data to the right Layer from the Layer on the left.
+   *
+   * @see {@link andTo_}
+   *
+   * @example
+   * ```typescript
+   * import * as T from "@effect-ts/core/Effect"
+   * import * as L from "@effect-ts/core/Effect/Layer"
+   * import { tag } from "@effect-ts/core/Has"
+   *
+   * const rightTag = tag<string>()
+   * const right = L.pure(rightTag)("Hello World!")
+   *
+   * const leftTag = tag<number>()
+   * const left = L.fromEffect(leftTag)(T.accessService(rightTag)((s) => s.length))
+   *
+   * // Layer containing the number and the string, while also requiring a string to
+   * // construct 'left' Layer, since we used it, but dropped a value provided by it.
+   * const live = left[">+>"](right)
+   * ```
+   */
   [">+>"]<R2, E2, A2>(
     from: Layer<R2, E2, A2>
   ): Layer<Erase<R2 & RIn, ROut> & RIn, E2 | E, ROut & A2> {
     return andTo_(this, from)
   }
 
+  /**
+   * Combine both layers in parallel
+   *
+   * @see {@link and_}
+   *
+   * @example
+   * ```typescript
+   * import * as T from "@effect-ts/core/Effect"
+   * import * as L from "@effect-ts/core/Effect/Layer"
+   * import { tag } from "@effect-ts/core/Has"
+   *
+   * const rightTag = tag<string>()
+   * const right = L.pure(rightTag)("Hello World!")
+   *
+   * const leftTag = tag<number>()
+   * const left = L.fromEffect(leftTag)(T.accessService(rightTag)((s) => s.length))
+   *
+   * // Layer containing the number and the string, while requiring a string to be
+   * // provided for 'left' Layer.
+   * const live = left["+++"](right)
+   * ```
+   *
+   * @example
+   * ```typescript
+   * import * as T from "@effect-ts/core/Effect"
+   * import * as L from "@effect-ts/core/Effect/Layer"
+   * import { tag } from "@effect-ts/core/Has"
+   *
+   * const centerTag = tag<string>()
+   * const center = L.pure(centerTag)("Hello World!")
+   *
+   * const leftTag = tag<number>()
+   * const left = L.fromEffect(leftTag)(T.accessService(centerTag)((s) => s.length))
+   *
+   * const rightTag = tag<readonly string[]>()
+   * const right = L.fromEffect(rightTag)(T.accessService(centerTag)((s) => s.split("")))
+   *
+   * // Layer containing the number, the array of strings and the string.
+   * const live = left["+++"](right)["<+<"](center)
+   * ```
+   */
   ["+++"]<R2, E2, A2>(from: Layer<R2, E2, A2>): Layer<R2 & RIn, E2 | E, ROut & A2> {
     return and_(from, this)
   }
