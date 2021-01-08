@@ -59,6 +59,10 @@ Functional libraries tend to have almost no documentation and the reason is that
 
 For the reason above, when we will begin documenting it, it will be along the lines of a guide in order to introduce concepts used in the library rather than just an "online database of function definitions"
 
+## Examples
+
+- AWS Lambda Setup: [https://github.com/Matechs-Garage/effect-ts-lambda](https://github.com/Matechs-Garage/effect-ts-lambda)
+
 ## Maintainers
 
 This library is actively maintained by Matechs-Garage the `R&D` leg of the [Matechs](https://www.matechs.com/) group that sponsor its development.
