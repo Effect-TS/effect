@@ -1,18 +1,18 @@
 import * as T from "@effect-ts/core/Effect"
 import * as L from "@effect-ts/core/Effect/Layer"
 import * as M from "@effect-ts/core/Effect/Managed"
+import * as P from "@effect-ts/core/Effect/Promise"
 import type * as Q from "@effect-ts/core/Effect/Queue"
 import { literal, pipe } from "@effect-ts/core/Function"
 import { tag } from "@effect-ts/core/Has"
-import type { _A } from "@effect-ts/core/Utils"
-import type { IncomingMessage, ServerResponse } from "http"
+import type { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda"
 
 /**
  * The context of a request
  */
 export type RequestContext = {
-  readonly req: IncomingMessage
-  readonly res: ServerResponse
+  readonly event: APIGatewayProxyEvent
+  readonly res: P.Promise<never, APIGatewayProxyResult>
 }
 
 /**
@@ -36,7 +36,13 @@ export const GlobalRequestQueue = (requestQueue: Q.Queue<RequestContext>) =>
   L.fromManaged(RequestQueue)(
     pipe(
       T.succeed({ _tag: literal("@app/RequestQueue"), requestQueue }),
-      M.makeExit(({ requestQueue }) => requestQueue.shutdown)
+      M.makeExit(({ requestQueue }) =>
+        pipe(
+          requestQueue.takeAll,
+          T.tap(() => requestQueue.shutdown),
+          T.chain(T.foreach(({ res }) => T.to(res)(T.interrupt)))
+        )
+      )
     )
   )
 
@@ -51,8 +57,8 @@ export const takeRequest = T.accessServiceM(RequestQueue)(
  * Returns an effect that will poll indefinately the request queue
  * forking each process `f` in a new child fiber
  */
-export const processRequests = <R, E, A>(
-  f: (a: { req: IncomingMessage; res: ServerResponse }) => T.Effect<R, E, A>
+export const processRequests = <R>(
+  f: (a: APIGatewayProxyEvent) => T.RIO<R, APIGatewayProxyResult>
 ) =>
   pipe(
     // poll from the request queue waiting in case no requests are present
@@ -61,7 +67,13 @@ export const processRequests = <R, E, A>(
     // here we are forking inside the parent scope so in case the
     // parent is interrupted each of the child will also trigger
     // interruption
-    T.chain((r) => T.fork(f(r))),
+    T.chain((r) =>
+      pipe(
+        f(r.event),
+        T.chain((res) => P.complete(T.succeed(res))(r.res)),
+        T.fork
+      )
+    ),
     // loop forever
     T.forever
   )

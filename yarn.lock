@@ -1447,6 +1447,11 @@
   dependencies:
     "@sinonjs/commons" "^1.7.0"
 
+"@types/aws-lambda@^8.10.70":
+  version "8.10.70"
+  resolved "https://registry.yarnpkg.com/@types/aws-lambda/-/aws-lambda-8.10.70.tgz#1d1c79730669b337208e3476f7a16150d43fcaf5"
+  integrity sha512-adaPn39OKMIzCxaf2KHBu4d3MJKLGdm27zxAyag+rAI1UTwgtgEgrwRpuzN1NDMZn/i6vRxJZRbsSmlw7I0/Sg==
+
 "@types/babel__core@^7.0.0", "@types/babel__core@^7.1.7":
   version "7.1.9"
   resolved "https://registry.yarnpkg.com/@types/babel__core/-/babel__core-7.1.9.tgz#77e59d438522a6fb898fa43dc3455c6e72f3963d"

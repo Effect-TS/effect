@@ -1,8 +1,9 @@
 import * as T from "@effect-ts/core/Effect"
+import * as P from "@effect-ts/core/Effect/Promise"
 import * as Q from "@effect-ts/core/Effect/Queue"
 import { pipe } from "@effect-ts/core/Function"
 import * as R from "@effect-ts/node/Runtime"
-import type { IncomingMessage, ServerResponse } from "http"
+import type { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda"
 
 import { main } from "./program"
 import { LiveAuth } from "./program/Auth"
@@ -28,9 +29,12 @@ pipe(
 /**
  * The main exposed handler
  */
-export default (req: IncomingMessage, res: ServerResponse) => {
-  /**
-   * Push each request in the global queue, it is a no-op if queue is closed
-   */
-  R.run(requestQueue.offer({ req, res }))
-}
+export const lambdaHandler = async (
+  event: APIGatewayProxyEvent
+): Promise<APIGatewayProxyResult> =>
+  pipe(
+    P.make<never, APIGatewayProxyResult>(),
+    T.tap((res) => requestQueue.offer({ event, res })),
+    T.chain(P.await),
+    R.runPromise
+  )
