@@ -51,8 +51,11 @@ export default function tracer(
         const traceF = factory.createUniqueName("trace")
         const traced = new Set<string>()
         const fileVar = factory.createUniqueName("fileName")
-        const traceVar = factory.createUniqueName("$trace")
         const tracing = factory.createUniqueName("tracing")
+        const traceVar = factory.createPropertyAccessExpression(
+          tracing,
+          factory.createIdentifier("tracingSymbol")
+        )
 
         const isModule =
           sourceFile.statements.find((s) => /(import|export)/.test(s.getText())) != null
@@ -384,21 +387,6 @@ export default function tracer(
           )
         )
 
-        const traceNode = factory.createVariableStatement(
-          undefined,
-          factory.createVariableDeclarationList(
-            [
-              factory.createVariableDeclaration(
-                traceVar,
-                undefined,
-                undefined,
-                factory.createStringLiteral("$trace")
-              )
-            ],
-            ts.NodeFlags.Const
-          )
-        )
-
         const traceFNode = factory.createFunctionDeclaration(
           undefined,
           undefined,
@@ -465,7 +453,6 @@ export default function tracer(
               ),
               factory.createStringLiteral("@effect-ts/tracing-utils")
             ),
-            traceNode,
             fileNode,
             traceFNode,
             ...visited.statements
