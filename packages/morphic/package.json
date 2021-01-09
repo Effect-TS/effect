@@ -1,6 +1,6 @@
 {
   "name": "@effect-ts/morphic",
-  "version": "0.11.7",
+  "version": "0.11.8",
   "license": "MIT",
   "homepage": "https://github.com/Matechs-Garage/effect-ts",
   "private": false,
@@ -26,8 +26,8 @@
   "repository": "https://github.com/Matechs-Garage/effect-ts.git",
   "sideEffects": false,
   "dependencies": {
-    "@effect-ts/core": "^0.11.4",
-    "@effect-ts/monocle": "^0.10.4"
+    "@effect-ts/core": "^0.11.5",
+    "@effect-ts/monocle": "^0.10.5"
   },
   "config": {
     "modules": [
