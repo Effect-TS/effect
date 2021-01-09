@@ -1,5 +1,3 @@
-import { traceAs } from "@effect-ts/tracing-utils"
-
 import * as R from "../Record"
 import type { EnforceNonEmptyRecord, UnionToIntersection } from "../Utils"
 import { chain_, succeed } from "./core"
@@ -24,18 +22,15 @@ function bind<R, E, A, K, N extends string>(
         [k in N]: A
       }
   > =>
-    chain_(
-      mk,
-      traceAs(f, (k) =>
-        map_(
-          f(k),
-          (
-            a
-          ): K &
-            {
-              [k in N]: A
-            } => ({ ...k, [tag]: a } as any)
-        )
+    chain_(mk, (k) =>
+      map_(
+        f(k),
+        (
+          a
+        ): K &
+          {
+            [k in N]: A
+          } => ({ ...k, [tag]: a } as any)
       )
     )
 }
@@ -52,18 +47,15 @@ export function bind_<R2, E2, R, E, A, K, N extends string>(
       [k in N]: A
     }
 > {
-  return chain_(
-    mk,
-    traceAs(f, (k) =>
-      map_(
-        f(k),
-        (
-          a
-        ): K &
-          {
-            [k in N]: A
-          } => ({ ...k, [tag]: a } as any)
-      )
+  return chain_(mk, (k) =>
+    map_(
+      f(k),
+      (
+        a
+      ): K &
+        {
+          [k in N]: A
+        } => ({ ...k, [tag]: a } as any)
     )
   )
 }
@@ -84,15 +76,12 @@ function let__<A, K, N extends string>(tag: Exclude<N, keyof K>, f: (_: K) => A)
   > =>
     map_(
       mk,
-      traceAs(
-        f,
-        (
-          k
-        ): K &
-          {
-            [k in N]: A
-          } => ({ ...k, [tag]: f(k) } as any)
-      )
+      (
+        k
+      ): K &
+        {
+          [k in N]: A
+        } => ({ ...k, [tag]: f(k) } as any)
     )
 }
 
@@ -110,15 +99,12 @@ export function let_<R2, E2, A, K, N extends string>(
 > {
   return map_(
     mk,
-    traceAs(
-      f,
-      (
-        k
-      ): K &
-        {
-          [k in N]: A
-        } => ({ ...k, [tag]: f(k) } as any)
-    )
+    (
+      k
+    ): K &
+      {
+        [k in N]: A
+      } => ({ ...k, [tag]: f(k) } as any)
   )
 }
 
@@ -195,22 +181,19 @@ export function bindAllPar<
   }
 > {
   return (s) =>
-    chain_(
-      s,
-      traceAs(r, (k) =>
-        map_(
-          foreachPar_(
-            R.collect_(r(k), (k, v) => [k, v] as const),
-            ([_, e]) => map_(e, (a) => [_, a] as const)
-          ),
-          (values) => {
-            const res = {}
-            values.forEach(([k, v]) => {
-              res[k] = v
-            })
-            return res
-          }
-        )
+    chain_(s, (k) =>
+      map_(
+        foreachPar_(
+          R.collect_(r(k), (k, v) => [k, v] as const),
+          ([_, e]) => map_(e, (a) => [_, a] as const)
+        ),
+        (values) => {
+          const res = {}
+          values.forEach(([k, v]) => {
+            res[k] = v
+          })
+          return res
+        }
       )
     ) as any
 }
@@ -243,23 +226,20 @@ export function bindAllParN(
   }
 > {
   return (r) => (s) =>
-    chain_(
-      s,
-      traceAs(r, (k) =>
-        map_(
-          foreachParN_(
-            R.collect_(r(k), (k, v) => [k, v] as const),
-            n,
-            ([_, e]) => map_(e, (a) => [_, a] as const)
-          ),
-          (values) => {
-            const res = {}
-            values.forEach(([k, v]) => {
-              res[k] = v
-            })
-            return res
-          }
-        )
+    chain_(s, (k) =>
+      map_(
+        foreachParN_(
+          R.collect_(r(k), (k, v) => [k, v] as const),
+          n,
+          ([_, e]) => map_(e, (a) => [_, a] as const)
+        ),
+        (values) => {
+          const res = {}
+          values.forEach(([k, v]) => {
+            res[k] = v
+          })
+          return res
+        }
       )
     ) as any
 }

@@ -1,4 +1,4 @@
-import { traceAs } from "@effect-ts/tracing-utils"
+import { accessTraces } from "@effect-ts/tracing-utils"
 
 import type { Cause } from "../Cause/cause"
 import { keepDefects } from "../Cause/core"
@@ -54,6 +54,7 @@ export function accessM<R0, R, E, A>(
  * followed by the effect that it returns.
  *
  * @dataFirst chain_
+ * @trace 0
  */
 export function chain<R1, E1, A1, A>(f: (a: A) => Effect<R1, E1, A1>) {
   return <R, E>(val: Effect<R, E, A>): Effect<R & R1, E | E1, A1> =>
@@ -64,6 +65,8 @@ export function chain<R1, E1, A1, A>(f: (a: A) => Effect<R1, E1, A1>) {
  * Returns an effect that models the execution of this effect, followed by
  * the passing of its value to the specified continuation function `f`,
  * followed by the effect that it returns.
+ *
+ * @trace 1
  */
 export function chain_<R, E, A, R1, E1, A1>(
   val: Effect<R, E, A>,
@@ -178,6 +181,8 @@ export { try_ as try }
 
 /**
  * Imports a synchronous side-effect into a pure value
+ *
+ * @trace 0
  */
 export function effectTotal<A>(effect: () => A): UIO<A> {
   return new IEffectTotal(effect)
@@ -325,26 +330,25 @@ export function provideAll_<R, E, A>(
 /**
  * Returns an effect that semantically runs the effect on a fiber,
  * producing an `Exit` for the completion value of the fiber.
- *
- * @traceCall
  */
 export function result<R, E, A>(
   value: Effect<R, E, A>
 ): Effect<R, never, Exit.Exit<E, A>> {
   return new IFold(
     value,
-    traceAs(result, (cause) => succeed(Exit.halt(cause))),
-    traceAs(result, (succ) => succeed(Exit.succeed(succ)))
+    (cause) => succeed(Exit.halt(cause)),
+    (succ) => succeed(Exit.succeed(succ))
   )
 }
 
 /**
  * Lift a pure value into an effect
  *
- * @traceCall
+ * @trace call
  */
 export function succeed<A>(a: A): Effect<unknown, never, A> {
-  return new ISucceed(a, succeed["$trace"])
+  const traces = accessTraces(succeed)
+  return new ISucceed(a, traces[1])
 }
 
 /**
@@ -382,11 +386,7 @@ export function tryOrElse_<R, E, A, R2, E2, A2, R3, E3, A3>(
   that: () => Effect<R2, E2, A2>,
   success: (a: A) => Effect<R3, E3, A3>
 ): Effect<R & R2 & R3, E2 | E3, A2 | A3> {
-  return new IFold(
-    self,
-    traceAs(that, (cause) => O.fold_(keepDefects(cause), that, halt)),
-    success
-  )
+  return new IFold(self, (cause) => O.fold_(keepDefects(cause), that, halt), success)
 }
 
 /**
