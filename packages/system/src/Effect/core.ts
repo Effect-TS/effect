@@ -1,4 +1,4 @@
-import { accessTraceCall } from "@effect-ts/tracing-utils"
+import { accessCallTrace } from "@effect-ts/tracing-utils"
 
 import type { Cause } from "../Cause/cause"
 import { keepDefects } from "../Cause/core"
@@ -347,7 +347,8 @@ export function result<R, E, A>(
  * @trace call
  */
 export function succeed<A>(a: A): Effect<unknown, never, A> {
-  return new ISucceed(a, accessTraceCall(succeed))
+  const trace = accessCallTrace()
+  return new ISucceed(a, trace)
 }
 
 /**
