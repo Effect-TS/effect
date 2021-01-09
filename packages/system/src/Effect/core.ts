@@ -255,6 +255,8 @@ export function halt<E>(cause: Cause<E>): IO<E, never> {
  *
  * This version takes in a lazily-evaluated trace that can be attached to the `Cause`
  * via `Cause.Traced`.
+ *
+ * @trace 0
  */
 export function haltWith<E>(cause: (_: () => Fiber.Trace) => Cause<E>): IO<E, never> {
   return new IFail(cause)
