@@ -107,12 +107,39 @@ export default function tracer(
           getTrace: (node: ts.Node, pos: "start" | "end") => ts.BinaryExpression,
           x: ts.Expression
         ): ts.Expression {
-          return tags["trace"] && tags["trace"].includes(`${i}`)
-            ? factory.createCallExpression(traceFromIdentifier, undefined, [
-                getTrace(x, "start"),
-                ts.visitEachChild(x, visitor, ctx)
-              ])
-            : ts.visitEachChild(x, visitor, ctx)
+          const symbol = checker.getSymbolAtLocation(x)
+
+          const entries: (readonly [string, string | undefined])[] =
+            symbol?.getJsDocTags().map((t) => [t.name, t.text] as const) || []
+
+          const tagsX: Record<string, (string | undefined)[]> = {}
+
+          for (const entry of entries) {
+            if (!tagsX[entry[0]]) {
+              tagsX[entry[0]] = []
+            }
+            tagsX[entry[0]].push(entry[1])
+          }
+
+          const z = ts.visitNode(x, visitor)
+
+          const y =
+            tagsX["trace"] && tagsX["trace"].includes("call")
+              ? factory.createCallExpression(tracedIdentifier, undefined, [
+                  z,
+                  getTrace(x, "end")
+                ])
+              : z
+
+          const child =
+            tags["trace"] && tags["trace"].includes(`${i}`)
+              ? factory.createCallExpression(traceFromIdentifier, undefined, [
+                  getTrace(x, "start"),
+                  y
+                ])
+              : y
+
+          return child
         }
 
         function visitor(node: ts.Node): ts.VisitResult<ts.Node> {
@@ -138,7 +165,7 @@ export default function tracer(
             if (signature && tags["trace"] && tags["trace"].includes("call")) {
               return factory.createCallExpression(
                 factory.createCallExpression(tracedIdentifier, undefined, [
-                  ts.visitEachChild(node.expression, visitor, ctx),
+                  ts.visitNode(node.expression, visitor),
                   getTrace(node.expression, "end")
                 ]),
                 undefined,
@@ -148,16 +175,14 @@ export default function tracer(
               )
             }
 
-            if (signature && tags["trace"]) {
-              return factory.updateCallExpression(
-                node,
-                ts.visitEachChild(node.expression, visitor, ctx),
-                node.typeArguments,
-                node.arguments.map((x, i) =>
-                  traceChild(tags, i, factory, traceFromIdentifier, getTrace, x)
-                )
+            return factory.updateCallExpression(
+              node,
+              ts.visitNode(node.expression, visitor),
+              node.typeArguments,
+              node.arguments.map((x, i) =>
+                traceChild(tags, i, factory, traceFromIdentifier, getTrace, x)
               )
-            }
+            )
           }
 
           return ts.visitEachChild(node, visitor, ctx)
