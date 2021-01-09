@@ -139,13 +139,7 @@ export default function tracer(
               return factory.createCallExpression(
                 factory.createCallExpression(tracedIdentifier, undefined, [
                   ts.visitEachChild(node.expression, visitor, ctx),
-                  factory.createArrayLiteralExpression(
-                    [
-                      getTrace(node.expression, "end"),
-                      ...node.arguments.map((x) => getTrace(x, "start"))
-                    ],
-                    false
-                  )
+                  getTrace(node.expression, "end")
                 ]),
                 undefined,
                 node.arguments.map((x, i) =>

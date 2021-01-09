@@ -32,13 +32,7 @@ import type { Callback } from "./state"
 import { FiberStateDone, FiberStateExecuting, initial, interrupting } from "./state"
 import * as Status from "./status"
 import type { TraceElement } from "./tracing"
-import {
-  NoLocation,
-  SourceLocation,
-  Trace,
-  traceLocation,
-  truncatedParentTrace
-} from "./tracing"
+import { SourceLocation, Trace, traceLocation, truncatedParentTrace } from "./tracing"
 
 export type FiberRefLocals = Map<FiberRef<any>, any>
 
@@ -155,13 +149,9 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   }
 
   addTraceValue(trace: string | undefined | TraceElement) {
-    if (this.inTracingRegion) {
+    if (this.inTracingRegion && trace) {
       this.executionTraces.push(
-        trace
-          ? typeof trace === "string"
-            ? new SourceLocation(trace)
-            : trace
-          : new NoLocation()
+        typeof trace === "string" ? new SourceLocation(trace) : trace
       )
     }
   }
