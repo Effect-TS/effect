@@ -1,6 +1,7 @@
 import { isTracingEnabled } from "./Global"
 
 let tmp: any
+export const tracingSymbol = "$trace"
 
 export function traceCall<F extends Function>(f: F, trace: any): F {
   if (!isTracingEnabled()) {
@@ -25,10 +26,10 @@ export function accessCallTrace(): string | undefined {
 }
 
 export function traceFrom<F extends Function>(g: string | undefined, f: F): F {
-  if (!f["$trace"]) {
+  if (!f[tracingSymbol]) {
     if (g && isTracingEnabled()) {
       const h = (...args: any[]) => f(...args)
-      h["$trace"] = g
+      h[tracingSymbol] = g
       return h as any
     }
   }
@@ -36,9 +37,9 @@ export function traceFrom<F extends Function>(g: string | undefined, f: F): F {
 }
 
 export function traceAs<F extends Function>(g: any, f: F): F {
-  if (g && g["$trace"] && isTracingEnabled()) {
+  if (g && g[tracingSymbol] && isTracingEnabled()) {
     const h = (...args: any[]) => f(...args)
-    h["$trace"] = g["$trace"]
+    h[tracingSymbol] = g[tracingSymbol]
     return h as any
   }
   return f
