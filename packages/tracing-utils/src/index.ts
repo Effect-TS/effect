@@ -13,15 +13,13 @@ export function traceCall<F extends Function>(f: F, trace: any): F {
   }
 }
 
-const empty: string[] = []
-
-export function accessTraces<ARGS extends readonly any[], B>(
+export function accessTraceCall<ARGS extends readonly any[], B>(
   f: (...args: ARGS) => B
-): string[] {
+): string | undefined {
   if (!isTracingEnabled() || !f["$traceCall"]) {
-    return empty
+    return undefined
   }
-  const traces: any[] = f["$traceCall"]
+  const traces: any = f["$traceCall"]
   delete f["$traceCall"]
   return traces
 }
