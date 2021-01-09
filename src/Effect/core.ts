@@ -1,4 +1,5 @@
-import { accessCallTrace } from "@effect-ts/tracing-utils"
+// tracing: off
+import { accessCallTrace, traceAs, traceFrom } from "@effect-ts/tracing-utils"
 
 import type { Cause } from "../Cause/cause"
 import { keepDefects } from "../Cause/core"
@@ -34,13 +35,17 @@ import {
 
 /**
  * Effectfully accesses the environment of the effect.
+ *
+ * @trace 0
  */
 export function access<R0, A>(f: (_: R0) => A): RIO<R0, A> {
-  return new IRead((_: R0) => new ISucceed(f(_)))
+  return new IRead(traceAs(f, (_: R0) => new ISucceed(f(_))))
 }
 
 /**
  * Effectfully accesses the environment of the effect.
+ *
+ * @trace 0
  */
 export function accessM<R0, R, E, A>(
   f: (_: R0) => Effect<R, E, A>
@@ -78,6 +83,8 @@ export function chain_<R, E, A, R1, E1, A1>(
 /**
  * Constructs an effect based on information about the current fiber, such as
  * its identity.
+ *
+ * @trace 0
  */
 export function descriptorWith<R, E, A>(
   f: (_: Fiber.Descriptor) => Effect<R, E, A>
@@ -88,6 +95,8 @@ export function descriptorWith<R, E, A>(
 /**
  * Checks the interrupt status, and produces the effect returned by the
  * specified callback.
+ *
+ * @trace 0
  */
 export function checkInterruptible<R, E, A>(
   f: (_: Fiber.InterruptStatus) => Effect<R, E, A>
@@ -142,6 +151,8 @@ export function traced<R, E, A>(self: Effect<R, E, A>): Effect<R, E, A> {
  *
  * The list of fibers, that may complete the async callback, is used to
  * provide better diagnostics.
+ *
+ * @trace 0
  */
 export function effectAsyncOption<R, E, A>(
   register: (cb: (_: Effect<R, E, A>) => void) => O.Option<Effect<R, E, A>>,
@@ -153,14 +164,24 @@ export function effectAsyncOption<R, E, A>(
 /**
  * Imports a synchronous side-effect into a pure value, translating any
  * thrown exceptions into typed failed effects creating with `halt`.
+ *
+ * @trace 0
  */
 export function effectPartial<E>(onThrow: (u: unknown) => E) {
-  return <A>(effect: () => A): IO<E, A> => new IEffectPartial(effect, onThrow)
+  return (
+    /**
+     * @trace 0
+     */
+    <A>(effect: () => A): IO<E, A> => new IEffectPartial(effect, onThrow)
+  )
 }
 
 /**
  * Imports a synchronous side-effect into a pure value, translating any
  * thrown exceptions into typed failed effects creating with `halt`.
+ *
+ * @trace 0
+ * @trace 1
  */
 export function effectPartial_<E, A>(
   effect: () => A,
@@ -172,6 +193,8 @@ export function effectPartial_<E, A>(
 /**
  * Imports a synchronous side-effect into a pure value, translating any
  * thrown exceptions into typed failed effects creating with `halt`.
+ *
+ * @trace 0
  */
 function try_<A>(effect: () => A): IO<unknown, A> {
   return new IEffectPartial(effect, identity)
@@ -190,6 +213,9 @@ export function effectTotal<A>(effect: () => A): UIO<A> {
 
 /**
  * A more powerful version of `foldM` that allows recovering from any kind of failure except interruptions.
+ *
+ * @trace 0
+ * @trace 1
  */
 export function foldCauseM<E, A, R2, E2, A2, R3, E3, A3>(
   failure: (cause: Cause<E>) => Effect<R2, E2, A2>,
@@ -201,6 +227,9 @@ export function foldCauseM<E, A, R2, E2, A2, R3, E3, A3>(
 
 /**
  * A more powerful version of `foldM` that allows recovering from any kind of failure except interruptions.
+ *
+ * @trace 1
+ * @trace 2
  */
 export function foldCauseM_<R, E, A, R2, E2, A2, R3, E3, A3>(
   value: Effect<R, E, A>,
@@ -245,9 +274,12 @@ export function forkReport(reportFailure: FailureReporter) {
 
 /**
  * Returns an effect that models failure with the specified `Cause`.
+ *
+ * @trace call
  */
 export function halt<E>(cause: Cause<E>): IO<E, never> {
-  return new IFail(() => cause)
+  const trace = accessCallTrace()
+  return new IFail(traceFrom(trace, () => cause))
 }
 
 /**
@@ -332,14 +364,17 @@ export function provideAll_<R, E, A>(
 /**
  * Returns an effect that semantically runs the effect on a fiber,
  * producing an `Exit` for the completion value of the fiber.
+ *
+ * @trace call
  */
 export function result<R, E, A>(
   value: Effect<R, E, A>
 ): Effect<R, never, Exit.Exit<E, A>> {
+  const trace = accessCallTrace()
   return new IFold(
     value,
-    (cause) => succeed(Exit.halt(cause)),
-    (succ) => succeed(Exit.succeed(succ))
+    traceFrom(trace, (cause) => succeed(Exit.halt(cause))),
+    traceFrom(trace, (succ) => succeed(Exit.succeed(succ)))
   )
 }
 
@@ -365,6 +400,8 @@ export function supervised(supervisor: Supervisor<any>) {
 /**
  * Returns a lazily constructed effect, whose construction may itself require effects.
  * When no environment is required (i.e., when R == unknown) it is conceptually equivalent to `flatten(effectTotal(io))`.
+ *
+ * @trace 0
  */
 export function suspend<R, E, A>(factory: () => Effect<R, E, A>): Effect<R, E, A> {
   return new ISuspend(factory)
@@ -373,15 +410,25 @@ export function suspend<R, E, A>(factory: () => Effect<R, E, A>): Effect<R, E, A
 /**
  * Returns a lazily constructed effect, whose construction may itself require effects.
  * When no environment is required (i.e., when R == unknown) it is conceptually equivalent to `flatten(effectPartial(orThrow, io))`.
+ *
+ * @trace 0
  */
 export function suspendPartial<E2>(onThrow: (u: unknown) => E2) {
-  return <R, E, A>(factory: () => Effect<R, E, A>): Effect<R, E | E2, A> =>
-    new ISuspendPartial(factory, onThrow)
+  return (
+    /**
+     * @trace 0
+     */
+    <R, E, A>(factory: () => Effect<R, E, A>): Effect<R, E | E2, A> =>
+      new ISuspendPartial(factory, onThrow)
+  )
 }
 
 /**
  * Executed `that` in case `self` fails with a `Cause` that doesn't contain defects,
  * executes `success` in case of successes
+ *
+ * @trace 1
+ * @trace 2
  */
 export function tryOrElse_<R, E, A, R2, E2, A2, R3, E3, A3>(
   self: Effect<R, E, A>,
@@ -394,6 +441,9 @@ export function tryOrElse_<R, E, A, R2, E2, A2, R3, E3, A3>(
 /**
  * Executed `that` in case `self` fails with a `Cause` that doesn't contain defects,
  * executes `success` in case of successes
+ *
+ * @trace 0
+ * @trace 1
  */
 export function tryOrElse<A, R2, E2, A2, R3, E3, A3>(
   that: () => Effect<R2, E2, A2>,
@@ -405,9 +455,7 @@ export function tryOrElse<A, R2, E2, A2, R3, E3, A3>(
 /**
  * Returns the effect resulting from mapping the success of this effect to unit.
  */
-export const unit: UIO<void> = suspend(function unit() {
-  return succeed(undefined)
-})
+export const unit: UIO<void> = new ISucceed(undefined)
 
 /**
  * Returns an effect that yields to the runtime system, starting on a fresh

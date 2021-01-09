@@ -914,11 +914,11 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
                     switch (nested._tag) {
                       case "Succeed": {
-                        if (this.platform.traceExecution && this.inTracingRegion) {
-                          this.addTrace(k)
-                        }
                         if (this.platform.traceEffects && this.inTracingRegion) {
                           this.addTraceValue(nested.trace)
+                        }
+                        if (this.platform.traceExecution && this.inTracingRegion) {
+                          this.addTrace(k)
                         }
                         current = k(nested.val)[T._I]
                         break
@@ -929,11 +929,11 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                           nested.effect,
                           fastPathFlatMapContinuationTrace
                         )
-                        if (this.platform.traceStack && kTrace != null) {
-                          fastPathFlatMapContinuationTrace.set(undefined)
-                        }
                         if (this.platform.traceExecution && this.inTracingRegion) {
                           this.addTraceValue(kTrace)
+                        }
+                        if (this.platform.traceStack && kTrace != null) {
+                          fastPathFlatMapContinuationTrace.set(undefined)
                         }
                         current = k(nested.effect())[T._I]
                         break
