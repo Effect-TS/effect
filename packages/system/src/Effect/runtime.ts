@@ -52,15 +52,15 @@ export const prettyReporter: FailureReporter = (e) => {
 }
 
 const defaultPlatform = new Platform(
-  10,
-  10,
+  25,
+  25,
   isTracingEnabled(),
   isTracingEnabled(),
   isTracingEnabled(),
   isTracingEnabled(),
-  10,
-  10,
-  10,
+  25,
+  25,
+  25,
   prettyTrace,
   constVoid,
   10_000
