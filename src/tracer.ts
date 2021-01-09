@@ -154,50 +154,6 @@ export default function tracer(
               )
             }
 
-            if (signature && tags["trace"] && tags["trace"].includes("args")) {
-              return factory.updateCallExpression(
-                node,
-                node.expression,
-                node.typeArguments,
-                node.arguments.map((x, i) => {
-                  const symbol = checker.getSymbolAtLocation(x)
-                  const declaration = symbol?.valueDeclaration
-                  if (declaration) {
-                    if (ts.isFunctionDeclaration(declaration)) {
-                      const argumentTags =
-                        symbol?.getJsDocTags().map((t) => t.name) || []
-
-                      if (argumentTags.includes("trace")) {
-                        return factory.createCallExpression(
-                          tracedIdentifier,
-                          undefined,
-                          [
-                            traceChild(
-                              tags,
-                              i,
-                              factory,
-                              traceFromIdentifier,
-                              getTrace,
-                              x
-                            ),
-                            factory.createArrayLiteralExpression(
-                              [
-                                getTrace(x, "end"),
-                                ...declaration.parameters.map(() => getTrace(x, "end"))
-                              ],
-                              false
-                            )
-                          ]
-                        )
-                      }
-                    }
-                  }
-
-                  return traceChild(tags, i, factory, traceFromIdentifier, getTrace, x)
-                })
-              )
-            }
-
             if (signature && tags["trace"] && tags["trace"]) {
               return factory.updateCallExpression(
                 node,
