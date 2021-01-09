@@ -1,26 +1,26 @@
 import { isTracingEnabled } from "./Global"
 
+let tmp: any
+
 export function traceCall<F extends Function>(f: F, trace: any): F {
   if (!isTracingEnabled()) {
     return f
   }
   // @ts-expect-error
   return (...args: any[]) => {
-    f["$traceCall"] = trace
+    tmp = trace
     const res = f(...args)
-    delete f["$traceCall"]
+    tmp = undefined
     return res
   }
 }
 
-export function accessTraceCall<ARGS extends readonly any[], B>(
-  f: (...args: ARGS) => B
-): string | undefined {
-  if (!isTracingEnabled() || !f["$traceCall"]) {
+export function accessCallTrace(): string | undefined {
+  if (!isTracingEnabled() || !tmp) {
     return undefined
   }
-  const traces: any = f["$traceCall"]
-  delete f["$traceCall"]
+  const traces: any = tmp
+  tmp = undefined
   return traces
 }
 
