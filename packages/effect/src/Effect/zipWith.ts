@@ -1,5 +1,3 @@
-import { traceAs } from "@effect-ts/tracing-utils"
-
 import { chain_ } from "./core"
 import type { Effect } from "./effect"
 import { map_ } from "./map"
@@ -26,8 +24,5 @@ export function zipWith_<R, E, A, R2, E2, A2, B>(
   b: Effect<R2, E2, A2>,
   f: (a: A, b: A2) => B
 ): Effect<R & R2, E | E2, B> {
-  return chain_(
-    a,
-    traceAs(f, (ra) => map_(b, (rb) => f(ra, rb)))
-  )
+  return chain_(a, (ra) => map_(b, (rb) => f(ra, rb)))
 }

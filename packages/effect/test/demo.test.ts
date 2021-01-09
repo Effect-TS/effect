@@ -21,7 +21,7 @@ it("should not break", async () => {
 it("should trace generator", async () => {
   const exit = await pipe(
     T.gen(function* (_) {
-      const a = yield* _(T.succeed(1))
+      const a = yield* _(T.effectTotal(() => 1))
       const b = yield* _(T.succeed(2))
       return a + b
     }),

@@ -1,5 +1,3 @@
-import { traceAs } from "@effect-ts/tracing-utils"
-
 import { failureOrCause } from "../Cause/core"
 import * as E from "../Either"
 import { foldCauseM_, halt } from "./core"
@@ -23,7 +21,7 @@ export function foldM_<R, E, A, R2, E2, A2, R3, E3, A3>(
 ): Effect<R & R2 & R3, E2 | E3, A2 | A3> {
   return foldCauseM_(
     value,
-    traceAs(failure, (cause) => E.fold_(failureOrCause(cause), failure, halt)),
+    (cause) => E.fold_(failureOrCause(cause), failure, halt),
     success
   )
 }

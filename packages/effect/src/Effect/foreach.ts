@@ -1,5 +1,3 @@
-import { traceAs } from "@effect-ts/tracing-utils"
-
 import * as cause from "../Cause"
 import * as Ex from "../Exit"
 import * as Fiber from "../Fiber"
@@ -159,40 +157,38 @@ export function foreachUnitPar_<R, E, A>(
         andThen.andThen(promise.fail<void>(undefined)(result))
       )
     ),
-    Do.let("task", ({ causes, result, startFailure, startTask, status }) =>
-      traceAs(f, (a: A) =>
-        pipe(
-          core.suspend(() => f(a)),
-          interruptible.interruptible,
-          tapCause.tapCause((c) =>
-            pipe(
-              causes,
-              Ref.update((_) => cause.both(_, c)),
-              andThen.andThen(startFailure)
-            )
-          ),
-          ensuring.ensuring(
-            (() => {
-              const isComplete = pipe(
-                status,
-                Ref.modify(([started, done, failing]) => {
-                  const newDone = done + 1
+    Do.let("task", ({ causes, result, startFailure, startTask, status }) => (a: A) =>
+      pipe(
+        core.suspend(() => f(a)),
+        interruptible.interruptible,
+        tapCause.tapCause((c) =>
+          pipe(
+            causes,
+            Ref.update((_) => cause.both(_, c)),
+            andThen.andThen(startFailure)
+          )
+        ),
+        ensuring.ensuring(
+          (() => {
+            const isComplete = pipe(
+              status,
+              Ref.modify(([started, done, failing]) => {
+                const newDone = done + 1
 
-                  return tuple(
-                    (failing ? started : size) === newDone,
-                    tuple(started, newDone, failing)
-                  )
-                })
-              )
-              return pipe(
-                promise.succeed<void>(undefined)(result),
-                whenM.whenM(isComplete)
-              )
-            })()
-          ),
-          whenM.whenM(startTask),
-          uninterruptible.uninterruptible
-        )
+                return tuple(
+                  (failing ? started : size) === newDone,
+                  tuple(started, newDone, failing)
+                )
+              })
+            )
+            return pipe(
+              promise.succeed<void>(undefined)(result),
+              whenM.whenM(isComplete)
+            )
+          })()
+        ),
+        whenM.whenM(startTask),
+        uninterruptible.uninterruptible
       )
     ),
     Do.bind("fibers", ({ task }) =>
