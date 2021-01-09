@@ -1,3 +1,6 @@
+// tracing: off
+import { traceAs } from "@effect-ts/tracing-utils"
+
 import { chain_ } from "./core"
 import type { Effect } from "./effect"
 import { map_ } from "./map"
@@ -6,6 +9,7 @@ import { map_ } from "./map"
  * Returns an effect that effectfully "peeks" at the success of this effect.
  *
  * @dataFirst tap_
+ * @trace 0
  */
 export function tap<A, R, E>(
   f: (_: A) => Effect<R, E, any>
@@ -15,10 +19,14 @@ export function tap<A, R, E>(
 
 /**
  * Returns an effect that effectfully "peeks" at the success of this effect.
+ * @trace 1
  */
 export function tap_<E2, R2, A, R, E>(
   _: Effect<R2, E2, A>,
   f: (_: A) => Effect<R, E, any>
 ) {
-  return chain_(_, (a: A) => map_(f(a), () => a))
+  return chain_(
+    _,
+    traceAs(f, (a: A) => map_(f(a), () => a))
+  )
 }
