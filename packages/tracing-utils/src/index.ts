@@ -2,6 +2,14 @@ import { isTracingEnabled } from "./Global"
 
 export const tracingSymbol = "$trace"
 
+export const traceFnForFile = (file: string) => <F extends Function>(
+  f: F,
+  t: string
+): F => {
+  if (f) f[tracingSymbol] = file + t
+  return f
+}
+
 export function traceAs<F extends Function>(g: any, f: F): F {
   if (g[tracingSymbol] && isTracingEnabled()) {
     f[tracingSymbol] = g[tracingSymbol]

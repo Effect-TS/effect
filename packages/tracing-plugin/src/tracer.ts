@@ -387,55 +387,25 @@ export default function tracer(
           )
         )
 
-        const traceFNode = factory.createFunctionDeclaration(
+        const traceFNode = factory.createVariableStatement(
           undefined,
-          undefined,
-          undefined,
-          traceF,
-          undefined,
-          [
-            factory.createParameterDeclaration(
-              undefined,
-              undefined,
-              undefined,
-              factory.createIdentifier("f"),
-              undefined,
-              undefined,
-              undefined
-            ),
-            factory.createParameterDeclaration(
-              undefined,
-              undefined,
-              undefined,
-              factory.createIdentifier("t"),
-              undefined,
-              undefined,
-              undefined
-            )
-          ],
-          undefined,
-          factory.createBlock(
+          factory.createVariableDeclarationList(
             [
-              factory.createIfStatement(
-                factory.createIdentifier("f"),
-                factory.createExpressionStatement(
-                  factory.createBinaryExpression(
-                    factory.createElementAccessExpression(
-                      factory.createIdentifier("f"),
-                      traceVar
-                    ),
-                    factory.createToken(ts.SyntaxKind.EqualsToken),
-                    factory.createBinaryExpression(
-                      fileVar,
-                      factory.createToken(ts.SyntaxKind.PlusToken),
-                      factory.createIdentifier("t")
-                    )
-                  )
+              factory.createVariableDeclaration(
+                traceF,
+                undefined,
+                undefined,
+                factory.createCallExpression(
+                  factory.createPropertyAccessExpression(
+                    tracing,
+                    factory.createIdentifier("traceFnForFile")
+                  ),
+                  undefined,
+                  [fileVar]
                 )
-              ),
-              factory.createReturnStatement(factory.createIdentifier("f"))
+              )
             ],
-            true
+            ts.NodeFlags.Const
           )
         )
 
