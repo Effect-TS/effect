@@ -51,21 +51,21 @@ export function prettyLocationNode(
 ) {
   try {
     if (traceElement._tag === "SourceLocation") {
-      const isModule = traceElement.location.match(/\((.*)\): (.*):(\d+):(\d+):(.*)/)
+      const isModule = traceElement.location.match(/\((.*)\): (.*):(\d+):(\d+)/)
 
       if (isModule) {
-        const [, mod, file, line_, col, name] = isModule
+        const [, mod, file, line_, col] = isModule
         const line = parseInt(line_)
         const modulePath = require.resolve(`${mod}/package.json`)
         const realPath = adapt(path.join(modulePath, "..", file), mod)
 
-        return `${realPath}:${line}:${col}:${name}`
+        return `${realPath}:${line}:${col}`
       } else {
-        const isPath = traceElement.location.match(/(.*):(\d+):(\d+):(.*)/)
+        const isPath = traceElement.location.match(/(.*):(\d+):(\d+)/)
         if (isPath) {
-          const [, file, line_, col, name] = isPath
+          const [, file, line_, col] = isPath
           const line = parseInt(line_)
-          return `${path.join(process.cwd(), file)}:${line}:${col}:${name}`
+          return `${path.join(process.cwd(), file)}:${line}:${col}`
         }
       }
     }
