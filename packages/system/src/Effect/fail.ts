@@ -11,5 +11,7 @@ import { haltWith } from "./core"
  */
 export function fail<E>(e: E) {
   const trace = accessCallTrace()
+  // tracing: off
   return haltWith(traceFrom(trace, (trace) => C.traced(C.fail(e), trace())))
+  // tracing: on
 }
