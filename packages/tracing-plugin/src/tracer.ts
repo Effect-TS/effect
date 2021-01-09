@@ -154,7 +154,7 @@ export default function tracer(
               )
             }
 
-            if (signature && tags["trace"] && tags["trace"]) {
+            if (signature && tags["trace"]) {
               return factory.updateCallExpression(
                 node,
                 ts.visitEachChild(node.expression, visitor, ctx),
