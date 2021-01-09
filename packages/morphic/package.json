@@ -27,7 +27,8 @@
   "sideEffects": false,
   "dependencies": {
     "@effect-ts/core": "^0.11.5",
-    "@effect-ts/monocle": "^0.10.5"
+    "@effect-ts/monocle": "^0.10.5",
+    "@effect-ts/tracing-utils": "^0.2.3"
   },
   "config": {
     "modules": [
