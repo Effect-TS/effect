@@ -39,8 +39,6 @@ export default function tracer(
   const tracingOn = !(_opts?.tracing === false)
   const checker = _program.getTypeChecker()
 
-  checker
-
   const moduleMap = _opts?.moduleMap || {}
   const moduleMapKeys = Object.keys(moduleMap).map((k) => [k, new RegExp(k)] as const)
 
