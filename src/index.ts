@@ -1,28 +1,29 @@
 import { isTracingEnabled } from "./Global"
 
-let tmp: any
 export const tracingSymbol = "$trace"
 
-export function traceCall<F extends Function>(f: F, trace: any): F {
+let currentTraceCall: string | undefined
+
+export function traceCall<F extends Function>(f: F, trace: string): F {
   if (!isTracingEnabled()) {
     return f
   }
   // @ts-expect-error
   return (...args: any[]) => {
-    tmp = trace
+    currentTraceCall = trace
     const res = f(...args)
-    tmp = undefined
+    currentTraceCall = undefined
     return res
   }
 }
 
 export function accessCallTrace(): string | undefined {
-  if (!isTracingEnabled() || !tmp) {
+  if (!isTracingEnabled() || !currentTraceCall) {
     return undefined
   }
-  const traces: any = tmp
-  tmp = undefined
-  return traces
+  const callTrace: any = currentTraceCall
+  currentTraceCall = undefined
+  return callTrace
 }
 
 export function traceFrom<F extends Function>(g: string | undefined, f: F): F {
