@@ -26,6 +26,7 @@ it("should trace generator", async () => {
       return a + b
     }),
     T.chain(T.succeed),
+    T.andThen(T.effectTotal(() => 4)),
     T.chain(T.fail),
     T.runPromiseExit
   )

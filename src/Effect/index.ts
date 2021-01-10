@@ -2,7 +2,6 @@
 export * from "./absolve"
 export * from "./absorbWith"
 export * from "./andThen"
-export * from "./ap_"
 export * from "./ap"
 export * from "./as"
 export * from "./asService"
