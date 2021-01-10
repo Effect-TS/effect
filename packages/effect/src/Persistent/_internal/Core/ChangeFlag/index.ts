@@ -1,7 +1,6 @@
 // copyright https://github.com/frptools
 
 // eslint-disable-next-line prefer-const
-
 let SENTINEL: ChangeFlag
 
 /**
