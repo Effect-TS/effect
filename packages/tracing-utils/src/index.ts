@@ -4,8 +4,8 @@ export const tracingSymbol = "$trace"
 
 let currentTraceCall: string | undefined
 
-export function traceCall<F extends Function>(f: F, trace: string): F {
-  if (!isTracingEnabled()) {
+export function traceCall<F extends Function>(f: F, trace: string | undefined): F {
+  if (!isTracingEnabled() || !trace) {
     return f
   }
   // @ts-expect-error
