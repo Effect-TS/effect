@@ -127,19 +127,15 @@ export function tryGetHash_<K, V>(
 /**
  * Lookup the value for `key` in `map` using custom hash.
  */
-export function getHash_<K, V>(
-  map: HashMap<K, V>,
-  key: K,
-  hash: number
-): V | undefined {
-  return O.toUndefined(tryGetHash_(map, key, hash))
+export function getHash_<K, V>(map: HashMap<K, V>, key: K, hash: number): O.Option<V> {
+  return tryGetHash_(map, key, hash)
 }
 
 /**
  * Lookup the value for `key` in `map` using internal hash function.
  */
-export function get_<K, V>(map: HashMap<K, V>, key: K): V | undefined {
-  return O.toUndefined(tryGetHash_(map, key, map.config.hash(key)))
+export function get_<K, V>(map: HashMap<K, V>, key: K): O.Option<V> {
+  return tryGetHash_(map, key, map.config.hash(key))
 }
 
 /**

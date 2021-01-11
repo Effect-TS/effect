@@ -1,6 +1,7 @@
 import type { Equal } from "../src/Equal"
 import { pipe } from "../src/Function"
 import * as Hash from "../src/Hash"
+import * as O from "../src/Option"
 import * as HM from "../src/Persistent/HashMap"
 
 describe("HashMap", () => {
@@ -34,13 +35,13 @@ describe("HashMap", () => {
       })
     )
     expect(HM.isEmpty(map)).toEqual(false)
-    expect(HM.get_(map, new Index(0, 0))).toEqual(new Value(4, 4))
-    expect(HM.get_(map, new Index(1, 1))).toEqual(undefined)
+    expect(HM.get_(map, new Index(0, 0))).toEqual(O.some(new Value(4, 4)))
+    expect(HM.get_(map, new Index(1, 1))).toEqual(O.none)
     expect(HM.has_(map, new Index(1, 1))).toEqual(false)
     expect(HM.has_(map, new Index(0, 0))).toEqual(true)
     expect(HM.has_(map, new Index(2, 2))).toEqual(true)
     expect(HM.has_(map, new Index(3, 3))).toEqual(true)
-    expect(HM.get_(map, new Index(3, 3))).toEqual(new Value(6, 6))
+    expect(HM.get_(map, new Index(3, 3))).toEqual(O.some(new Value(6, 6)))
     expect(Array.from(map)).toEqual([
       [new Index(0, 0), new Value(4, 4)],
       [new Index(2, 2), new Value(5, 5)],
