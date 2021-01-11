@@ -8,6 +8,7 @@ import type { Hash } from "../../Hash"
 import * as O from "../../Option"
 import { fromBitmap, hashFragment, toBitmap } from "./Bitwise"
 import { SIZE } from "./Config"
+import { randomHash } from "./Hash"
 import type { Node, UpdateFn } from "./Nodes"
 import { Empty, isEmptyNode } from "./Nodes"
 
@@ -99,10 +100,16 @@ export class HashMapIterator<K, V, T> implements IterableIterator<T> {
   }
 }
 
+/**
+ * Creates a new map
+ */
 export function make<K, V>(K: Hash<K> & Equal<K>) {
   return new HashMap<K, V>(false, 0, K, new Empty(), 0)
 }
 
+/**
+ * Set the root of the map
+ */
 export function setTree_<K, V>(
   map: HashMap<K, V>,
   newRoot: Node<K, V>,
@@ -455,4 +462,14 @@ export function reduce_<K, V, Z>(
  */
 export function reduce<K, V, Z>(z: Z, f: (z: Z, v: V, k: K) => Z) {
   return (map: HashMap<K, V>) => reduce_(map, z, f)
+}
+
+/**
+ * Make a new map that has randomly cached hash and referential equality
+ */
+export function makeDefault<K, V>() {
+  return make<K, V>({
+    equals: (y) => (x) => x === y,
+    hash: randomHash
+  })
 }
