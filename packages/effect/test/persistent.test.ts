@@ -68,4 +68,24 @@ describe("HashMap", () => {
       [new Index(3, 3), new Value(6, 6)]
     ])
   })
+  it("default", () => {
+    class Index {
+      constructor(readonly a: number, readonly b: number) {}
+    }
+    class Value {
+      constructor(readonly c: number, readonly d: number) {}
+    }
+    const x = new Index(0, 0)
+    const m = pipe(
+      HM.makeDefault<Index, Value>(),
+      HM.set(x, new Value(0, 1)),
+      HM.set(x, new Value(0, 2))
+    )
+    expect(Array.from(m)).toEqual([[x, new Value(0, 2)]])
+    const j = pipe(m, HM.set(new Index(0, 0), new Value(0, 3)))
+    expect(Array.from(j)).toEqual([
+      [x, new Value(0, 3)],
+      [x, new Value(0, 2)]
+    ])
+  })
 })
