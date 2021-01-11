@@ -76,14 +76,16 @@ describe("HashMap", () => {
       [new Index(3, 3), 6]
     ])
     expect(
-      Array.from(
-        HM.chainWithIndex_(map, (k, v) =>
+      pipe(
+        map,
+        HM.chainWithIndex((k, v) =>
           pipe(
             makeMap(),
             HM.set(new Index(k.a + 1, k.b + 1), new Value(v.c, v.d + 1)),
             HM.set(new Index(k.a + 6, k.b + 6), new Value(v.c + 1, v.d + 1))
           )
-        )
+        ),
+        Array.from
       )
     ).toEqual([
       [new Index(8, 8), new Value(6, 6)],
