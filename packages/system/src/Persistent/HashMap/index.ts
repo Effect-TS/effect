@@ -1,13 +1,12 @@
 import type { Equal } from "../../Equal"
 import { constant } from "../../Function"
 import type { Hash } from "../../Hash"
+import * as O from "../../Option"
 import { arraySpliceIn, arraySpliceOut, arrayUpdate } from "./Array"
 import { fromBitmap, hashFragment, toBitmap } from "./Bitwise"
 import { MAX_INDEX_NODE, MIN_ARRAY_NODE, SIZE } from "./Config"
 
 export const emptySymbol = Symbol()
-
-export const nothing = {}
 
 export type Node<K, V> =
   | LeafNode<K, V>
@@ -32,8 +31,8 @@ export class Empty<K, V> {
     key: K,
     size: SizeRef
   ): Node<K, V> {
-    const v = f()
-    if (v === nothing) return new Empty()
+    const v = f(O.none)
+    if (O.isNone(v)) return new Empty()
     ++size.value
     return new LeafNode(edit, hash, key, v)
   }
@@ -55,7 +54,7 @@ export function canEditNode<K, V>(edit: number, node: Node<K, V>): boolean {
 
 export type KeyEq<K> = (a: K, b: K) => boolean
 
-export type UpdateFn<V> = (v?: V | undefined) => V | undefined
+export type UpdateFn<V> = (v: O.Option<V>) => O.Option<V>
 
 export class LeafNode<K, V> {
   readonly _tag = "LeafNode"
@@ -64,7 +63,7 @@ export class LeafNode<K, V> {
     readonly edit: number,
     readonly hash: number,
     readonly key: K,
-    public value: V | undefined
+    public value: O.Option<V>
   ) {}
 
   modify(
@@ -79,7 +78,7 @@ export class LeafNode<K, V> {
     if (keyEq(key, this.key)) {
       const v = f(this.value)
       if (v === this.value) return this
-      else if (v === nothing) {
+      else if (O.isNone(v)) {
         --size.value
         return new Empty()
       }
@@ -89,8 +88,8 @@ export class LeafNode<K, V> {
       }
       return new LeafNode(edit, hash, key, v)
     }
-    const v = f()
-    if (v === nothing) return this
+    const v = f(O.none)
+    if (O.isNone(v)) return this
     ++size.value
     return mergeLeaves(
       edit,
@@ -137,8 +136,8 @@ export class CollisionNode<K, V> {
 
       return list.length > 1 ? new CollisionNode(edit, this.hash, list) : list[0] // collapse single element collision list
     }
-    const v = f()
-    if (v === nothing) return this
+    const v = f(O.none)
+    if (O.isNone(v)) return this
     ++size.value
     return mergeLeaves(
       edit,
@@ -167,8 +166,7 @@ export class CollisionNode<K, V> {
         const value = child.value
         const newValue = f(value)
         if (newValue === value) return list
-
-        if (newValue === nothing) {
+        if (O.isNone(newValue)) {
           --size.value
           return arraySpliceOut(mutate, i, list)
         }
@@ -176,8 +174,8 @@ export class CollisionNode<K, V> {
       }
     }
 
-    const newValue = f()
-    if (newValue === nothing) return list
+    const newValue = f(O.none)
+    if (O.isNone(newValue)) return list
     ++size.value
     return arrayUpdate(mutate, len, new LeafNode(edit, hash, key, newValue), list)
   }
@@ -374,9 +372,12 @@ export interface Config<K> {
 }
 
 export class HashMap<K, V> {
+  readonly _K!: () => K
+  readonly _V!: () => V
+
   constructor(
-    readonly editable: boolean,
-    readonly edit: number,
+    public editable: boolean,
+    public edit: number,
     readonly config: Config<K>,
     public root: Node<K, V>,
     public size: number
@@ -415,12 +416,11 @@ export function setTree_<K, V>(
 /**
  * Lookup the value for `key` in `map` using custom hash.
  */
-export function tryGetHash_<K, V, D>(
+export function tryGetHash_<K, V>(
   map: HashMap<K, V>,
   key: K,
-  hash: number,
-  alt: D
-): V | D {
+  hash: number
+): O.Option<V> {
   let node = map.root
   let shift = 0
   const keyEq = map.config.keyEq
@@ -429,17 +429,17 @@ export function tryGetHash_<K, V, D>(
   while (true)
     switch (node._tag) {
       case "LeafNode": {
-        return keyEq(key, node.key) && node.value ? node.value : alt
+        return keyEq(key, node.key) ? node.value : O.none
       }
       case "CollisionNode": {
         if (hash === node.hash) {
           const children = node.children
           for (let i = 0, len = children.length; i < len; ++i) {
             const child = children[i]
-            if ("key" in child && keyEq(key, child.key)) return child.value || alt
+            if ("key" in child && keyEq(key, child.key)) return child.value
           }
         }
-        return alt
+        return O.none
       }
       case "IndexedNode": {
         const frag = hashFragment(shift, hash)
@@ -449,7 +449,7 @@ export function tryGetHash_<K, V, D>(
           shift += SIZE
           break
         }
-        return alt
+        return O.none
       }
       case "ArrayNode": {
         node = node.children[hashFragment(shift, hash)]
@@ -457,10 +457,10 @@ export function tryGetHash_<K, V, D>(
           shift += SIZE
           break
         }
-        return alt
+        return O.none
       }
       default:
-        return alt
+        return O.none
     }
 }
 
@@ -472,14 +472,14 @@ export function getHash_<K, V>(
   key: K,
   hash: number
 ): V | undefined {
-  return tryGetHash_(map, key, hash, undefined)
+  return O.toUndefined(tryGetHash_(map, key, hash))
 }
 
 /**
  * Lookup the value for `key` in `map` using internal hash function.
  */
 export function get_<K, V>(map: HashMap<K, V>, key: K): V | undefined {
-  return tryGetHash_(map, key, map.config.hash(key), undefined)
+  return O.toUndefined(tryGetHash_(map, key, map.config.hash(key)))
 }
 
 /**
@@ -493,14 +493,14 @@ export function get<K>(key: K) {
  * Does an entry exist for `key` in `map`? Uses custom `hash`.
  */
 export function hasHash_<K, V>(map: HashMap<K, V>, key: K, hash: number): boolean {
-  return tryGetHash_(map, key, hash, nothing) !== nothing
+  return O.isNone(tryGetHash_(map, key, hash))
 }
 
 /**
  * Does an entry exist for `key` in `map`? Uses internal hash function.
  */
 export function has_<K, V>(map: HashMap<K, V>, key: K): boolean {
-  return tryGetHash_(map, key, map.config.hash(key), nothing) !== nothing
+  return O.isSome(tryGetHash_(map, key, map.config.hash(key)))
 }
 
 /**
@@ -524,7 +524,7 @@ export function modifyHash_<K, V>(
   key: K,
   hash: number,
   f: UpdateFn<V>
-) {
+): HashMap<K, V> {
   const size = { value: map.size }
   const newRoot = map.root.modify(
     map.editable ? map.edit : NaN,
@@ -555,14 +555,14 @@ export function modify_<K, V>(map: HashMap<K, V>, key: K, f: UpdateFn<V>) {
  * Store `value` for `key` in `map` using custom hash.
  */
 export function setHash_<K, V>(map: HashMap<K, V>, key: K, hash: number, value: V) {
-  return modifyHash_(map, key, hash, constant(value))
+  return modifyHash_(map, key, hash, constant(O.some(value)))
 }
 
 /**
  * Store `value` for `key` in `map` using internal hash function.
  */
 export function set_<K, V>(map: HashMap<K, V>, key: K, value: V) {
-  return modify_(map, key, constant(value))
+  return modify_(map, key, constant(O.some(value)))
 }
 
 /**
@@ -576,14 +576,14 @@ export function set<K, V>(key: K, value: V) {
  *  Remove the entry for `key` in `map` using custom hash.
  */
 export function removeHash_<K, V>(map: HashMap<K, V>, key: K, hash: number) {
-  return modifyHash_(map, key, hash, constant(nothing))
+  return modifyHash_<K, V>(map, key, hash, constant(O.none))
 }
 
 /**
  *  Remove the entry for `key` in `map` using internal hash.
  */
 export function remove_<K, V>(map: HashMap<K, V>, key: K) {
-  return modifyHash_(map, key, map.config.hash(key), constant(nothing))
+  return modifyHash_(map, key, map.config.hash(key), constant(O.none))
 }
 
 /**
@@ -591,4 +591,30 @@ export function remove_<K, V>(map: HashMap<K, V>, key: K) {
  */
 export function remove<K>(key: K) {
   return <V>(map: HashMap<K, V>) => remove_(map, key)
+}
+
+/**
+ * Mark `map` as mutable.
+ */
+export function beginMutation<K, V>(map: HashMap<K, V>) {
+  return new HashMap(true, map.edit + 1, map.config, map.root, map.size)
+}
+
+/**
+ * Mark `map` as immutable.
+ */
+export function endMutation<K, V>(map: HashMap<K, V>) {
+  map.editable = false
+  return map
+}
+
+/**
+ * Mutate `map` within the context of `f`.
+ */
+export function mutate<K, V>(f: (map: HashMap<K, V>) => void) {
+  return (map: HashMap<K, V>) => {
+    const transient = beginMutation(map)
+    f(transient)
+    return endMutation(transient)
+  }
 }
