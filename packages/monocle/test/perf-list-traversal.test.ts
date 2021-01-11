@@ -1,6 +1,6 @@
 // from https://github.com/akheron/js-optics-benchmark/blob/master/test/benchmark.test.ts
 
-import * as O from "@effect-ts/core/Classic/Option"
+import * as O from "@effect-ts/core/Common/Option"
 import { pipe } from "@effect-ts/core/Function"
 import * as L from "@effect-ts/core/Persistent/List"
 
