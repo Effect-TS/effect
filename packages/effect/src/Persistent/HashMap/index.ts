@@ -362,10 +362,13 @@ export interface VisitResult<K, V, A> {
 
 export type TraversalFn<K, V, A> = (node: readonly [K, V]) => A
 
+/**
+ * Visit each leaf lazily
+ */
 export function visitLazy<K, V, A>(
   node: Node<K, V>,
   f: TraversalFn<K, V, A>,
-  cont: Cont<K, V, A>
+  cont: Cont<K, V, A> = undefined
 ): O.Option<VisitResult<K, V, A>> {
   switch (node._tag) {
     case "LeafNode": {
@@ -388,22 +391,37 @@ export function visitLazy<K, V, A>(
   }
 }
 
+/**
+ * Get an IterableIterator of the map keys
+ */
 export function keys<K, V>(map: HashMap<K, V>): IterableIterator<K> {
   return new HashMapIterator(map, ([k]) => k)
 }
 
+/**
+ * Get an IterableIterator of the map values
+ */
 export function values<K, V>(map: HashMap<K, V>): IterableIterator<V> {
   return new HashMapIterator(map, ([, v]) => v)
 }
 
+/**
+ * Update a value if exists
+ */
 export function update_<K, V>(map: HashMap<K, V>, key: K, f: (v: V) => V) {
   return modify_(map, key, O.map(f))
 }
 
+/**
+ * Update a value if exists
+ */
 export function update<K, V>(key: K, f: (v: V) => V) {
   return (map: HashMap<K, V>) => update_(map, key, f)
 }
 
+/**
+ * Reduce a state over the map entries
+ */
 export function reduce_<K, V, Z>(
   map: HashMap<K, V>,
   z: Z,
@@ -432,6 +450,9 @@ export function reduce_<K, V, Z>(
   return z
 }
 
+/**
+ * Reduce a state over the map entries
+ */
 export function reduce<K, V, Z>(z: Z, f: (z: Z, v: V, k: K) => Z) {
   return (map: HashMap<K, V>) => reduce_(map, z, f)
 }
