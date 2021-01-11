@@ -47,5 +47,15 @@ describe("HashMap", () => {
       [new Index(2, 2), new Value(5, 5)],
       [new Index(3, 3), new Value(6, 6)]
     ])
+    expect(Array.from(HM.keys(map))).toEqual([
+      new Index(0, 0),
+      new Index(2, 2),
+      new Index(3, 3)
+    ])
+    expect(Array.from(HM.values(map))).toEqual([
+      new Value(4, 4),
+      new Value(5, 5),
+      new Value(6, 6)
+    ])
   })
 })
