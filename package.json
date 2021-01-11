@@ -64,8 +64,5 @@
       "pre-commit": "./pre-commit.sh"
     }
   },
-  "dependencies": {
-    "@collectable/map": "^4.0.1",
-    "@frptools/structural": "^1.0.2"
-  }
+  "dependencies": {}
 }
