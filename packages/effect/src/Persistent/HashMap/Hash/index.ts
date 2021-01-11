@@ -4,9 +4,8 @@
  * Based on:
  * http://stackoverflow.com/questions/7616461/generate-a-hash-from-string-in-javascript-jquery
  */
-export function hash(str: any) {
+export function hash(str: string | number) {
   if (typeof str === "number") return str
-  if (typeof str !== "string") str += ""
 
   let hash = 0
   for (let i = 0, len = str.length; i < len; ++i) {
