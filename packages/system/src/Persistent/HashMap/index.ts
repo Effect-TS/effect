@@ -429,14 +429,14 @@ export function update<K, V>(key: K, f: (v: V) => V) {
 /**
  * Reduce a state over the map entries
  */
-export function reduce_<K, V, Z>(
+export function reduceWithIndex_<K, V, Z>(
   map: HashMap<K, V>,
   z: Z,
-  f: (z: Z, v: V, k: K) => Z
+  f: (z: Z, k: K, v: V) => Z
 ): Z {
   const root = map.root
   if (root._tag === "LeafNode")
-    return O.isSome(root.value) ? f(z, root.value.value, root.key) : z
+    return O.isSome(root.value) ? f(z, root.key, root.value.value) : z
   if (root._tag === "Empty") {
     return z
   }
@@ -448,7 +448,7 @@ export function reduce_<K, V, Z>(
       if (child && !isEmptyNode(child)) {
         if (child._tag === "LeafNode") {
           if (O.isSome(child.value)) {
-            z = f(z, child.value.value, child.key)
+            z = f(z, child.key, child.value.value)
           }
         } else toVisit.push(child.children)
       }
@@ -460,8 +460,22 @@ export function reduce_<K, V, Z>(
 /**
  * Reduce a state over the map entries
  */
-export function reduce<K, V, Z>(z: Z, f: (z: Z, v: V, k: K) => Z) {
-  return (map: HashMap<K, V>) => reduce_(map, z, f)
+export function reduceWithIndex<K, V, Z>(z: Z, f: (z: Z, k: K, v: V) => Z) {
+  return (map: HashMap<K, V>) => reduceWithIndex_(map, z, f)
+}
+
+/**
+ * Reduce a state over the map entries
+ */
+export function reduce_<K, V, Z>(map: HashMap<K, V>, z: Z, f: (z: Z, v: V) => Z): Z {
+  return reduceWithIndex_(map, z, (z, _, v) => f(z, v))
+}
+
+/**
+ * Reduce a state over the map entries
+ */
+export function reduce<V, Z>(z: Z, f: (z: Z, v: V) => Z) {
+  return <K>(map: HashMap<K, V>) => reduce_(map, z, f)
 }
 
 /**
@@ -472,4 +486,95 @@ export function makeDefault<K, V>() {
     equals: (y) => (x) => x === y,
     hash: randomHash
   })
+}
+
+/**
+ * Apply f to each element
+ */
+export function forEachWithIndex_<K, V>(
+  map: HashMap<K, V>,
+  f: (k: K, v: V, m: HashMap<K, V>) => void
+) {
+  return reduceWithIndex_(map, undefined as void, (_, key, value) => f(key, value, map))
+}
+
+/**
+ * Apply f to each element
+ */
+export function forEach_<K, V>(
+  map: HashMap<K, V>,
+  f: (v: V, m: HashMap<K, V>) => void
+) {
+  return forEachWithIndex_(map, (_, value, map) => f(value, map))
+}
+
+/**
+ * Maps over the map entries
+ */
+export function mapWithIndex_<K, V, A>(map: HashMap<K, V>, f: (k: K, v: V) => A) {
+  return reduceWithIndex_(map, make<K, A>(map.config), (z, k, v) => set_(z, k, f(k, v)))
+}
+
+/**
+ * Maps over the map entries
+ */
+export function mapWithIndex<K, V, A>(f: (k: K, v: V) => A) {
+  return (map: HashMap<K, V>) => mapWithIndex_(map, f)
+}
+
+/**
+ * Maps over the map entries
+ */
+export function map_<K, V, A>(map: HashMap<K, V>, f: (v: V) => A) {
+  return reduceWithIndex_(map, make<K, A>(map.config), (z, k, v) => set_(z, k, f(v)))
+}
+
+/**
+ * Maps over the map entries
+ */
+export function map<V, A>(f: (v: V) => A) {
+  return <K>(map: HashMap<K, V>) => map_(map, f)
+}
+
+/**
+ * Chain over the map entries
+ */
+export function chain_<K, V, A>(map: HashMap<K, V>, f: (v: V) => HashMap<K, A>) {
+  return reduceWithIndex_(map, make<K, A>(map.config), (z, _, v) =>
+    z.mutate((m) => {
+      forEachWithIndex_(f(v), (_k, _a) => {
+        set_(m, _k, _a)
+      })
+    })
+  )
+}
+
+/**
+ * Chain over the map entries
+ */
+export function chain<K, V, A>(f: (v: V) => HashMap<K, A>) {
+  return (map: HashMap<K, V>) => chain_(map, f)
+}
+
+/**
+ * Chain over the map entries
+ */
+export function chainWithIndex_<K, V, A>(
+  map: HashMap<K, V>,
+  f: (k: K, v: V) => HashMap<K, A>
+) {
+  return reduceWithIndex_(map, make<K, A>(map.config), (z, k, v) =>
+    z.mutate((m) => {
+      forEachWithIndex_(f(k, v), (_k, _a) => {
+        set_(m, _k, _a)
+      })
+    })
+  )
+}
+
+/**
+ * Chain over the map entries
+ */
+export function chainWithIndex<K, V, A>(f: (k: K, v: V) => HashMap<K, A>) {
+  return (map: HashMap<K, V>) => chainWithIndex_(map, f)
 }
