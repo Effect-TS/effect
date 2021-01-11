@@ -299,6 +299,7 @@ export class ArrayNode<K, V> {
     return new ArrayNode(edit, count, newChildren)
   }
 }
+
 function pack<K, V>(
   edit: number,
   count: number,
@@ -319,6 +320,7 @@ function pack<K, V>(
   }
   return new IndexedNode(edit, bitmap, children)
 }
+
 function expand<K, V>(
   edit: number,
   frag: number,
@@ -336,6 +338,7 @@ function expand<K, V>(
   arr[frag] = child
   return new ArrayNode(edit, count + 1, arr)
 }
+
 function mergeLeaves<K, V>(
   edit: number,
   shift: number,
@@ -348,6 +351,7 @@ function mergeLeaves<K, V>(
 
   const subH1 = hashFragment(shift, h1)
   const subH2 = hashFragment(shift, h2)
+
   return new IndexedNode(
     edit,
     toBitmap(subH1) | toBitmap(subH2),
