@@ -7,13 +7,10 @@ import type { Hash } from "../../Hash"
 import * as O from "../../Option"
 import { fromBitmap, hashFragment, toBitmap } from "./Bitwise"
 import { SIZE } from "./Config"
-import type { KeyEq, Node, UpdateFn } from "./Nodes"
+import type { Node, UpdateFn } from "./Nodes"
 import { Empty, isEmptyNode } from "./Nodes"
 
-export interface Config<K> {
-  keyEq: KeyEq<K>
-  hash: (k: K) => number
-}
+export type Config<K> = Equal<K> & Hash<K>
 
 export class HashMap<K, V> implements Iterable<readonly [K, V]> {
   readonly _K!: () => K
@@ -46,16 +43,7 @@ export class HashMapIterator<K, V> implements Iterator<readonly [K, V]> {
 }
 
 export function make<K, V>(K: Hash<K> & Equal<K>) {
-  return new HashMap<K, V>(
-    false,
-    0,
-    {
-      keyEq: K.equals,
-      hash: K.hash
-    },
-    new Empty(),
-    0
-  )
+  return new HashMap<K, V>(false, 0, K, new Empty(), 0)
 }
 
 export function setTree_<K, V>(
@@ -83,7 +71,7 @@ export function tryGetHash_<K, V>(
 ): O.Option<V> {
   let node = map.root
   let shift = 0
-  const keyEq = map.config.keyEq
+  const keyEq = map.config.equals
 
   // eslint-disable-next-line no-constant-condition
   while (true)
@@ -184,7 +172,7 @@ export function modifyHash_<K, V>(
   const size = { value: map.size }
   const newRoot = map.root.modify(
     map.editable ? map.edit : NaN,
-    map.config.keyEq,
+    map.config.equals,
     0,
     f,
     hash,
