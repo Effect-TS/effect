@@ -295,6 +295,21 @@
     exec-sh "^0.3.2"
     minimist "^1.2.0"
 
+"@collectable/core@^5.0.1":
+  version "5.0.1"
+  resolved "https://registry.yarnpkg.com/@collectable/core/-/core-5.0.1.tgz#f36ea4676b31d619681bfae8105c4114c205663d"
+  integrity sha1-826kZ2sx1hloG/roEFxBFMIFZj0=
+  dependencies:
+    "@frptools/corelib" "^1.1.0"
+    "@frptools/structural" "^1.0.0"
+
+"@collectable/map@^4.0.1":
+  version "4.0.1"
+  resolved "https://registry.yarnpkg.com/@collectable/map/-/map-4.0.1.tgz#ce2ca8ef4daa8847678568d00667580b27bec87f"
+  integrity sha1-ziyo702qiEdnhWjQBmdYCye+yH8=
+  dependencies:
+    "@collectable/core" "^5.0.1"
+
 "@eslint/eslintrc@^0.2.2":
   version "0.2.2"
   resolved "https://registry.yarnpkg.com/@eslint/eslintrc/-/eslintrc-0.2.2.tgz#d01fc791e2fc33e88a29d6f3dc7e93d0cd784b76"
@@ -384,6 +399,22 @@
     tar "^4.4.10"
     unique-filename "^1.1.1"
     which "^1.3.1"
+
+"@frptools/corelib@^1.1.0", "@frptools/corelib@^1.1.1":
+  version "1.1.1"
+  resolved "https://registry.yarnpkg.com/@frptools/corelib/-/corelib-1.1.1.tgz#92cf40d398225eb2f07330f0e1fb7bff1e4bc21a"
+  integrity sha512-gOIC237EXD0dv37echeD8KJDUY6t2pNBRDkozgbtHdsYQBrWdlsoTLbCP2JqeTMN/dbjcNyJb0zi3PBOjx4OKQ==
+  dependencies:
+    date-fns "^1.28.5"
+    glob "^7.1.2"
+    uuid "^3.1.0"
+
+"@frptools/structural@^1.0.0", "@frptools/structural@^1.0.2":
+  version "1.0.2"
+  resolved "https://registry.yarnpkg.com/@frptools/structural/-/structural-1.0.2.tgz#40c78ca3bc09a3981747889a5748b9f33abaaf55"
+  integrity sha512-7p27N6rihBvvpy730jzET0y2w+m98uVtP5xaqxqtRsY68z4hbp4g76B7pkWkGvE0Ns1jc8Lf/yMj+9Hn1KRXeQ==
+  dependencies:
+    "@frptools/corelib" "^1.1.1"
 
 "@istanbuljs/load-nyc-config@^1.0.0":
   version "1.1.0"
@@ -2898,6 +2929,11 @@ data-urls@^2.0.0:
     abab "^2.0.3"
     whatwg-mimetype "^2.3.0"
     whatwg-url "^8.0.0"
+
+date-fns@^1.28.5:
+  version "1.30.1"
+  resolved "https://registry.yarnpkg.com/date-fns/-/date-fns-1.30.1.tgz#2e71bf0b119153dbb4cc4e88d9ea5acfb50dc05c"
+  integrity sha512-hBSVCvSmWC+QypYObzwGOd9wqdDpOt+0wl0KbU+R+uuZBS1jN8VsD1ss3irQDknRj5NvxiTF6oj/nDRnN/UQNw==
 
 dateformat@^3.0.0:
   version "3.0.3"
@@ -8804,7 +8840,7 @@ util-promisify@^2.1.0:
   dependencies:
     object.getownpropertydescriptors "^2.0.3"
 
-uuid@^3.0.1, uuid@^3.3.2:
+uuid@^3.0.1, uuid@^3.1.0, uuid@^3.3.2:
   version "3.4.0"
   resolved "https://registry.yarnpkg.com/uuid/-/uuid-3.4.0.tgz#b23e4358afa8a202fe7a100af1f5f883f02007ee"
   integrity sha512-HjSDRw6gZE5JMggctHBcjVak08+KEVhSIiDzFnT9S9aegmp85S/bReBVTb4QTFaRNptJ9kuYaNhnbNEOkbKb/A==
