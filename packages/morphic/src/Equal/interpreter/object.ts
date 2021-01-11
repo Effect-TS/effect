@@ -1,5 +1,5 @@
-import * as E from "@effect-ts/core/Classic/Equal"
-import * as R from "@effect-ts/core/Classic/Record"
+import * as E from "@effect-ts/core/Common/Equal"
+import * as R from "@effect-ts/core/Common/Record"
 import { pipe } from "@effect-ts/core/Function"
 
 import type { ObjectURI } from "../../Algebra/Object"

@@ -1,4 +1,4 @@
-import type { Task } from "../Task"
+import type { Task } from "."
 import { chain, sync } from "./core"
 
 export class GenTask<A> {

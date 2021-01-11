@@ -5,12 +5,12 @@
  * The most common example of a `Traversal` would be to focus into all elements inside of a container (e.g.
  * `Array`, `Option`). To do this we will use the relation between the typeclass `Traversable` and `Traversal`.
  */
-import * as A from "@effect-ts/core/Classic/Array"
-import * as C from "@effect-ts/core/Classic/Const"
-import type { Either } from "@effect-ts/core/Classic/Either"
-import * as I from "@effect-ts/core/Classic/Id"
-import type { Identity } from "@effect-ts/core/Classic/Identity"
-import type { Option } from "@effect-ts/core/Classic/Option"
+import * as A from "@effect-ts/core/Common/Array"
+import * as C from "@effect-ts/core/Common/Const"
+import type { Either } from "@effect-ts/core/Common/Either"
+import * as I from "@effect-ts/core/Common/Id"
+import type { Identity } from "@effect-ts/core/Common/Identity"
+import type { Option } from "@effect-ts/core/Common/Option"
 import type { Predicate, Refinement } from "@effect-ts/core/Function"
 import { identity, pipe } from "@effect-ts/core/Function"
 import * as L from "@effect-ts/core/Persistent/List"

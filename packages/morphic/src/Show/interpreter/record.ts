@@ -1,4 +1,4 @@
-import { getShow as RgetShow } from "@effect-ts/core/Classic/Record"
+import { getShow as RgetShow } from "@effect-ts/core/Common/Record"
 import { pipe } from "@effect-ts/core/Function"
 
 import type { RecordURI } from "../../Algebra/Record"

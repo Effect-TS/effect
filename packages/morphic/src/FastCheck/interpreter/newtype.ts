@@ -1,4 +1,4 @@
-import type { Some } from "@effect-ts/core/Classic/Option"
+import type { Some } from "@effect-ts/core/Common/Option"
 import { pipe } from "@effect-ts/core/Function"
 
 import type { NewtypeURI } from "../../Algebra/Newtype"

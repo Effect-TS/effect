@@ -1,6 +1,6 @@
 import * as T from "../src/Async"
-import * as A from "../src/Classic/Array"
-import * as O from "../src/Classic/Option"
+import * as A from "../src/Common/Array"
+import * as O from "../src/Common/Option"
 import { pipe } from "../src/Function"
 
 type A = {

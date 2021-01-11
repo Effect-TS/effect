@@ -1,4 +1,4 @@
-import { getEqual as SgetEq } from "@effect-ts/core/Classic/Set"
+import { getEqual as SgetEq } from "@effect-ts/core/Common/Set"
 import { pipe } from "@effect-ts/core/Function"
 
 import type { SetURI } from "../../Algebra/Set"

@@ -1,5 +1,5 @@
-import type * as C from "@effect-ts/core/Classic/Chunk"
-import * as O from "@effect-ts/core/Classic/Option"
+import type * as C from "@effect-ts/core/Common/Chunk"
+import * as O from "@effect-ts/core/Common/Option"
 import * as T from "@effect-ts/core/Effect"
 import * as M from "@effect-ts/core/Effect/Managed"
 import * as S from "@effect-ts/core/Effect/Stream"

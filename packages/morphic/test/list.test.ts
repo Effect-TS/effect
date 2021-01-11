@@ -1,4 +1,4 @@
-import { right } from "@effect-ts/core/Classic/Either"
+import { right } from "@effect-ts/core/Common/Either"
 import { pipe } from "@effect-ts/core/Function"
 import * as L from "@effect-ts/core/Persistent/List"
 import * as S from "@effect-ts/core/Sync"

@@ -1,5 +1,5 @@
-import * as A from "@effect-ts/core/Classic/Array"
-import * as S from "@effect-ts/core/Classic/Set"
+import * as A from "@effect-ts/core/Common/Array"
+import * as S from "@effect-ts/core/Common/Set"
 import { flow, pipe } from "@effect-ts/core/Function"
 import * as T from "@effect-ts/core/Sync"
 

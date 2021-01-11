@@ -1,7 +1,7 @@
-import type { Array } from "@effect-ts/core/Classic/Array"
-import type { Either } from "@effect-ts/core/Classic/Either"
-import type { NonEmptyArray } from "@effect-ts/core/Classic/NonEmptyArray"
-import type { Option } from "@effect-ts/core/Classic/Option"
+import type { Array } from "@effect-ts/core/Common/Array"
+import type { Either } from "@effect-ts/core/Common/Either"
+import type { NonEmptyArray } from "@effect-ts/core/Common/NonEmptyArray"
+import type { Option } from "@effect-ts/core/Common/Option"
 import { pipe } from "@effect-ts/core/Function"
 import * as L from "@effect-ts/core/Persistent/List"
 

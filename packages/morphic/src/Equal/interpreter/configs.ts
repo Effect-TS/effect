@@ -1,4 +1,4 @@
-import type * as E from "@effect-ts/core/Classic/Equal"
+import type * as E from "@effect-ts/core/Common/Equal"
 
 import type { InterfaceLA, IntersectionLA, TaggedUnionLA } from "../../Algebra/Config"
 import type { HKT } from "../../HKT"

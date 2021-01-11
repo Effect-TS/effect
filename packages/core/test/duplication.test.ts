@@ -1,5 +1,5 @@
-import * as A from "../src/Classic/Array"
-import * as R from "../src/Classic/Record"
+import * as A from "../src/Common/Array"
+import * as R from "../src/Common/Record"
 import * as T from "../src/Effect"
 import { pipe } from "../src/Function"
 import * as S from "../src/Sync"

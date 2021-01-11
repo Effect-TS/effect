@@ -1,13 +1,13 @@
-import type { Array } from "@effect-ts/core/Classic/Array"
+import type { Array } from "@effect-ts/core/Common/Array"
 import {
   difference,
   Foldable as foldableArray,
   intersection,
   reduceRight
-} from "@effect-ts/core/Classic/Array"
-import { first as AssociativeFirst } from "@effect-ts/core/Classic/Associative"
-import { eqString } from "@effect-ts/core/Classic/Equal"
-import { fromFoldable } from "@effect-ts/core/Classic/Record"
+} from "@effect-ts/core/Common/Array"
+import { first as AssociativeFirst } from "@effect-ts/core/Common/Associative"
+import { eqString } from "@effect-ts/core/Common/Equal"
+import { fromFoldable } from "@effect-ts/core/Common/Record"
 import { tuple } from "@effect-ts/core/Function"
 
 import * as CU from "./ctors"

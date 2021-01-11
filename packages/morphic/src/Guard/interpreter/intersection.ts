@@ -1,4 +1,4 @@
-import { all, fold } from "@effect-ts/core/Classic/Identity"
+import { all, fold } from "@effect-ts/core/Common/Identity"
 
 import type { IntersectionURI } from "../../Algebra/Intersection"
 import { interpreter } from "../../HKT"

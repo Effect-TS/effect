@@ -1,5 +1,5 @@
-import type * as B from "@effect-ts/core/Classic/Branded"
-import type { Chunk } from "@effect-ts/core/Classic/Chunk"
+import type * as B from "@effect-ts/core/Common/Branded"
+import type { Chunk } from "@effect-ts/core/Common/Chunk"
 
 export type Byte = B.Branded<number, "Byte">
 

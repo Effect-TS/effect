@@ -1,6 +1,6 @@
-import { Foldable as array } from "@effect-ts/core/Classic/Array"
-import { first } from "@effect-ts/core/Classic/Associative"
-import { fromFoldable } from "@effect-ts/core/Classic/Record"
+import { Foldable as array } from "@effect-ts/core/Common/Array"
+import { first } from "@effect-ts/core/Common/Associative"
+import { fromFoldable } from "@effect-ts/core/Common/Record"
 import { pipe } from "@effect-ts/core/Function"
 
 import type { RecordURI } from "../../Algebra/Record"

@@ -6,7 +6,7 @@
  * 1. reverseGet(get(s)) = s
  * 2. get(reversetGet(a)) = a
  */
-import * as O from "@effect-ts/core/Classic/Option"
+import * as O from "@effect-ts/core/Common/Option"
 import { flow, identity, pipe } from "@effect-ts/core/Function"
 import type { Newtype } from "@effect-ts/core/Newtype"
 import * as P from "@effect-ts/core/Prelude"

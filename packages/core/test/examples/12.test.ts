@@ -1,9 +1,9 @@
 import { pipe } from "@effect-ts/system/Function"
 
-import * as A from "../../src/Classic/Array"
-import * as E from "../../src/Classic/Either"
-import * as EitherT from "../../src/Classic/EitherT"
-import * as InvariantT from "../../src/Classic/InvariantT"
+import * as A from "../../src/Common/Array"
+import * as E from "../../src/Common/Either"
+import * as EitherT from "../../src/Common/EitherT"
+import * as InvariantT from "../../src/Common/InvariantT"
 import { chainF } from "../../src/Prelude/DSL"
 import * as R from "../../src/XPure/XReader"
 import * as ReaderT from "../../src/XPure/XReaderT"
