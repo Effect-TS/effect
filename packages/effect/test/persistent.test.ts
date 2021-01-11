@@ -1,5 +1,5 @@
 import type { Equal } from "../src/Equal"
-import { pipe } from "../src/Function"
+import { pipe, tuple } from "../src/Function"
 import * as Hash from "../src/Hash"
 import * as O from "../src/Option"
 import * as HM from "../src/Persistent/HashMap"
@@ -56,6 +56,16 @@ describe("HashMap", () => {
       new Value(4, 4),
       new Value(5, 5),
       new Value(6, 6)
+    ])
+    expect(
+      HM.reduce_(map, [] as readonly (readonly [Index, Value])[], (z, v, k) => [
+        ...z,
+        tuple(k, v)
+      ])
+    ).toEqual([
+      [new Index(0, 0), new Value(4, 4)],
+      [new Index(2, 2), new Value(5, 5)],
+      [new Index(3, 3), new Value(6, 6)]
     ])
   })
 })
