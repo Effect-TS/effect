@@ -403,3 +403,35 @@ export function update_<K, V>(map: HashMap<K, V>, key: K, f: (v: V) => V) {
 export function update<K, V>(key: K, f: (v: V) => V) {
   return (map: HashMap<K, V>) => update_(map, key, f)
 }
+
+export function reduce_<K, V, Z>(
+  map: HashMap<K, V>,
+  z: Z,
+  f: (z: Z, v: V, k: K) => Z
+): Z {
+  const root = map.root
+  if (root._tag === "LeafNode")
+    return O.isSome(root.value) ? f(z, root.value.value, root.key) : z
+  if (root._tag === "Empty") {
+    return z
+  }
+  const toVisit = [root.children]
+  let children
+  while ((children = toVisit.pop())) {
+    for (let i = 0, len = children.length; i < len; ) {
+      const child = children[i++]
+      if (child && !isEmptyNode(child)) {
+        if (child._tag === "LeafNode") {
+          if (O.isSome(child.value)) {
+            z = f(z, child.value.value, child.key)
+          }
+        } else toVisit.push(child.children)
+      }
+    }
+  }
+  return z
+}
+
+export function reduce<K, V, Z>(z: Z, f: (z: Z, v: V, k: K) => Z) {
+  return (map: HashMap<K, V>) => reduce_(map, z, f)
+}
