@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-namespace */
 import { pipe } from "@effect-ts/system/Function"
 
-import * as E from "../../src/Classic/Either"
-import * as ReaderT from "../../src/Classic/ReaderT"
+import * as E from "../../src/Common/Either"
+import * as ReaderT from "../../src/Common/ReaderT"
 import * as DSL from "../../src/Prelude/DSL"
 
 namespace ReaderEither {
