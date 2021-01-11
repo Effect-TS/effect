@@ -232,6 +232,8 @@ export function get_<K, V>(map: HashMap<K, V>, key: K): O.Option<V> {
 
 /**
  * Lookup the value for `key` in `map` using internal hash function.
+ *
+ * @dataFirst get_
  */
 export function get<K>(key: K) {
   return <V>(map: HashMap<K, V>) => get_(map, key)
@@ -249,6 +251,15 @@ export function hasHash_<K, V>(map: HashMap<K, V>, key: K, hash: number): boolea
  */
 export function has_<K, V>(map: HashMap<K, V>, key: K): boolean {
   return O.isSome(tryGetHash_(map, key, map.config.hash(key)))
+}
+
+/**
+ * Does an entry exist for `key` in `map`? Uses internal hash function.
+ *
+ * @dataFirst has_
+ */
+export function has<K>(key: K) {
+  return <V>(map: HashMap<K, V>) => has_(map, key)
 }
 
 /**
@@ -300,10 +311,18 @@ export function modify_<K, V>(map: HashMap<K, V>, key: K, f: UpdateFn<V>) {
 }
 
 /**
- * Store `value` for `key` in `map` using custom hash.
+ * Alter the value stored for `key` in `map` using function `f` using internal hash function.
+ *
+ *  `f` is invoked with the current value for `k` if it exists,
+ * or no arguments if no such value exists.
+ *
+ * `modify` will always either update or insert a value into the map.
+ * Returns a map with the modified value. Does not alter `map`.
+ *
+ * @dataFirst modify_
  */
-export function setHash_<K, V>(map: HashMap<K, V>, key: K, hash: number, value: V) {
-  return modifyHash_(map, key, hash, constant(O.some(value)))
+export function modify<K, V>(key: K, f: UpdateFn<V>) {
+  return (map: HashMap<K, V>) => modify_(map, key, f)
 }
 
 /**
@@ -315,27 +334,24 @@ export function set_<K, V>(map: HashMap<K, V>, key: K, value: V) {
 
 /**
  * Store `value` for `key` in `map` using internal hash function.
+ *
+ * @dataFirst set_
  */
 export function set<K, V>(key: K, value: V) {
   return (map: HashMap<K, V>) => set_(map, key, value)
 }
 
 /**
- *  Remove the entry for `key` in `map` using custom hash.
- */
-export function removeHash_<K, V>(map: HashMap<K, V>, key: K, hash: number) {
-  return modifyHash_<K, V>(map, key, hash, constant(O.none))
-}
-
-/**
  *  Remove the entry for `key` in `map` using internal hash.
  */
 export function remove_<K, V>(map: HashMap<K, V>, key: K) {
-  return modifyHash_(map, key, map.config.hash(key), constant(O.none))
+  return modify_(map, key, constant(O.none))
 }
 
 /**
  *  Remove the entry for `key` in `map` using internal hash.
+ *
+ * @dataFirst remove_
  */
 export function remove<K>(key: K) {
   return <V>(map: HashMap<K, V>) => remove_(map, key)
@@ -358,6 +374,8 @@ export function endMutation<K, V>(map: HashMap<K, V>) {
 
 /**
  * Mutate `map` within the context of `f`.
+ *
+ * @dataFirst mutate_
  */
 export function mutate<K, V>(f: (map: HashMap<K, V>) => void) {
   return (map: HashMap<K, V>) => mutate_(map, f)
@@ -461,6 +479,8 @@ export function update_<K, V>(map: HashMap<K, V>, key: K, f: (v: V) => V) {
 
 /**
  * Update a value if exists
+ *
+ * @dataFirst update_
  */
 export function update<K, V>(key: K, f: (v: V) => V) {
   return (map: HashMap<K, V>) => update_(map, key, f)
@@ -499,6 +519,8 @@ export function reduceWithIndex_<K, V, Z>(
 
 /**
  * Reduce a state over the map entries
+ *
+ * @dataFirst reduceWithIndex_
  */
 export function reduceWithIndex<K, V, Z>(z: Z, f: (z: Z, k: K, v: V) => Z) {
   return (map: HashMap<K, V>) => reduceWithIndex_(map, z, f)
@@ -513,6 +535,8 @@ export function reduce_<K, V, Z>(map: HashMap<K, V>, z: Z, f: (z: Z, v: V) => Z)
 
 /**
  * Reduce a state over the map entries
+ *
+ * @dataFirst reduce_
  */
 export function reduce<V, Z>(z: Z, f: (z: Z, v: V) => Z) {
   return <K>(map: HashMap<K, V>) => reduce_(map, z, f)
@@ -541,6 +565,15 @@ export function forEachWithIndex_<K, V>(
 
 /**
  * Apply f to each element
+ *
+ * @dataFirst forEachWithIndex_
+ */
+export function forEachWithIndex<K, V>(f: (k: K, v: V, m: HashMap<K, V>) => void) {
+  return (map: HashMap<K, V>) => forEachWithIndex_(map, f)
+}
+
+/**
+ * Apply f to each element
  */
 export function forEach_<K, V>(
   map: HashMap<K, V>,
@@ -548,6 +581,15 @@ export function forEach_<K, V>(
 ) {
   forEachWithIndex_(map, (_, value, map) => f(value, map))
   return map
+}
+
+/**
+ * Apply f to each element
+ *
+ * @dataFirst forEach_
+ */
+export function forEach<K, V>(f: (v: V, m: HashMap<K, V>) => void) {
+  return (map: HashMap<K, V>) => forEach_(map, f)
 }
 
 /**
@@ -559,6 +601,8 @@ export function mapWithIndex_<K, V, A>(map: HashMap<K, V>, f: (k: K, v: V) => A)
 
 /**
  * Maps over the map entries
+ *
+ * @dataFirst mapWithIndex_
  */
 export function mapWithIndex<K, V, A>(f: (k: K, v: V) => A) {
   return (map: HashMap<K, V>) => mapWithIndex_(map, f)
@@ -573,6 +617,8 @@ export function map_<K, V, A>(map: HashMap<K, V>, f: (v: V) => A) {
 
 /**
  * Maps over the map entries
+ *
+ * @dataFirst map_
  */
 export function map<V, A>(f: (v: V) => A) {
   return <K>(map: HashMap<K, V>) => map_(map, f)
@@ -593,6 +639,8 @@ export function chain_<K, V, A>(map: HashMap<K, V>, f: (v: V) => HashMap<K, A>) 
 
 /**
  * Chain over the map entries
+ *
+ * @dataFirst chain_
  */
 export function chain<K, V, A>(f: (v: V) => HashMap<K, A>) {
   return (map: HashMap<K, V>) => chain_(map, f)
@@ -616,6 +664,8 @@ export function chainWithIndex_<K, V, A>(
 
 /**
  * Chain over the map entries
+ *
+ * @dataFirst chainWithIndex_
  */
 export function chainWithIndex<K, V, A>(f: (k: K, v: V) => HashMap<K, A>) {
   return (map: HashMap<K, V>) => chainWithIndex_(map, f)
