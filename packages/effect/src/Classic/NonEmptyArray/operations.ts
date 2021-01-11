@@ -1,9 +1,9 @@
 import * as A from "@effect-ts/system/Array"
 import { flow, pipe } from "@effect-ts/system/Function"
-import * as L from "@effect-ts/system/List"
 import type { MutableArray } from "@effect-ts/system/Mutable"
 import type { NonEmptyArray } from "@effect-ts/system/NonEmptyArray"
 import * as NA from "@effect-ts/system/NonEmptyArray"
+import * as L from "@effect-ts/system/Persistent/List"
 
 import type { NonEmptyArrayURI } from "../../Modules"
 import * as P from "../../Prelude"
