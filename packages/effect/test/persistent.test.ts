@@ -26,10 +26,13 @@ describe("HashMap", () => {
       HM.set(new Index(0, 0), new Value(1, 1)),
       HM.set(new Index(1, 1), new Value(2, 2)),
       HM.set(new Index(1, 1), new Value(3, 3)),
-      HM.set(new Index(0, 0), new Value(4, 4))
+      HM.set(new Index(0, 0), new Value(4, 4)),
+      HM.remove(new Index(1, 1))
     )
     expect(HM.isEmpty(map)).toEqual(false)
     expect(HM.get_(map, new Index(0, 0))).toEqual(new Value(4, 4))
-    expect(HM.get_(map, new Index(1, 1))).toEqual(new Value(3, 3))
+    expect(HM.get_(map, new Index(1, 1))).toEqual(undefined)
+    expect(HM.has_(map, new Index(1, 1))).toEqual(false)
+    expect(HM.has_(map, new Index(0, 0))).toEqual(true)
   })
 })
