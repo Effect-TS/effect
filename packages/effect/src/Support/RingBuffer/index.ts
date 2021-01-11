@@ -1,4 +1,4 @@
-import * as L from "../../List"
+import * as L from "../../Persistent/List"
 import { DoublyLinkedList } from "../DublyLinkedList"
 
 export class RingBuffer<T> {

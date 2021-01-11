@@ -12,9 +12,9 @@ import * as Exit from "../Exit/api"
 import { FiberRef } from "../FiberRef/fiberRef"
 import * as update from "../FiberRef/update"
 import { constVoid } from "../Function"
-import * as L from "../List"
 // option
 import * as O from "../Option"
+import * as L from "../Persistent/List"
 // supervisor / scope
 import * as Scope from "../Scope"
 import * as Sup from "../Supervisor"
