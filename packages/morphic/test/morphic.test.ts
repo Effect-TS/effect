@@ -1,5 +1,5 @@
-import * as E from "@effect-ts/core/Classic/Either"
-import * as O from "@effect-ts/core/Classic/Option"
+import * as E from "@effect-ts/core/Common/Either"
+import * as O from "@effect-ts/core/Common/Option"
 import { pipe } from "@effect-ts/core/Function"
 import type { TypeOf } from "@effect-ts/core/Newtype"
 import { typeDef } from "@effect-ts/core/Newtype"

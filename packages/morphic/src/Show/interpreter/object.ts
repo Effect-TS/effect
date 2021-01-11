@@ -1,4 +1,4 @@
-import * as S from "@effect-ts/core/Classic/Show"
+import * as S from "@effect-ts/core/Common/Show"
 import { pipe } from "@effect-ts/core/Function"
 
 import { mapRecord, projectFieldWithEnv } from "../..//Utils"

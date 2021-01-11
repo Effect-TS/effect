@@ -1,5 +1,5 @@
-import * as A from "../src/Classic/Array"
-import * as E from "../src/Classic/Either"
+import * as A from "../src/Common/Array"
+import * as E from "../src/Common/Either"
 import * as T from "../src/Effect"
 import * as Ex from "../src/Effect/Exit"
 import { pipe } from "../src/Function"

@@ -1,4 +1,4 @@
-import * as O from "@effect-ts/core/Classic/Option"
+import * as O from "@effect-ts/core/Common/Option"
 import { pipe } from "@effect-ts/core/Function"
 import * as T from "@effect-ts/core/Sync"
 

@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-namespace */
 import { pipe } from "@effect-ts/system/Function"
 
-import * as E from "../../src/Classic/Either"
-import * as StateT from "../../src/Classic/StateT/Parametric"
+import * as E from "../../src/Common/Either"
+import * as StateT from "../../src/Common/StateT/Parametric"
 import * as DSL from "../../src/Prelude/DSL"
 
 namespace StateStateEither {

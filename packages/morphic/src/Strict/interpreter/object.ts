@@ -1,5 +1,5 @@
-import * as O from "@effect-ts/core/Classic/Option"
-import * as R from "@effect-ts/core/Classic/Record"
+import * as O from "@effect-ts/core/Common/Option"
+import * as R from "@effect-ts/core/Common/Record"
 import { pipe } from "@effect-ts/core/Function"
 import * as T from "@effect-ts/core/Sync"
 

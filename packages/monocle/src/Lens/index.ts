@@ -10,8 +10,8 @@
  * 2. set(get(s))(s) = s
  * 3. set(a)(set(a)(s)) = set(a)(s)
  */
-import type { Either } from "@effect-ts/core/Classic/Either"
-import type { Option } from "@effect-ts/core/Classic/Option"
+import type { Either } from "@effect-ts/core/Common/Either"
+import type { Option } from "@effect-ts/core/Common/Option"
 import type { Predicate, Refinement } from "@effect-ts/core/Function"
 import { flow, pipe } from "@effect-ts/core/Function"
 import * as P from "@effect-ts/core/Prelude"

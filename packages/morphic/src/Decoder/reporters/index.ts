@@ -1,10 +1,10 @@
 /**
  * From https://github.com/gillchristian/io-ts-reporters
  */
-import * as A from "@effect-ts/core/Classic/Array"
-import * as NEA from "@effect-ts/core/Classic/NonEmptyArray"
-import * as O from "@effect-ts/core/Classic/Option"
-import * as R from "@effect-ts/core/Classic/Record"
+import * as A from "@effect-ts/core/Common/Array"
+import * as NEA from "@effect-ts/core/Common/NonEmptyArray"
+import * as O from "@effect-ts/core/Common/Option"
+import * as R from "@effect-ts/core/Common/Record"
 import { pipe } from "@effect-ts/core/Function"
 import * as S from "@effect-ts/core/Sync"
 

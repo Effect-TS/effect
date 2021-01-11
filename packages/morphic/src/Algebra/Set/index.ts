@@ -1,6 +1,6 @@
-import type { Array } from "@effect-ts/core/Classic/Array"
-import type { Ord } from "@effect-ts/core/Classic/Ord"
-import type { Set } from "@effect-ts/core/Classic/Set"
+import type { Array } from "@effect-ts/core/Common/Array"
+import type { Ord } from "@effect-ts/core/Common/Ord"
+import type { Set } from "@effect-ts/core/Common/Set"
 
 import type { AnyEnv, ConfigsForType, InterpreterURIS, Kind, Named } from "../../HKT"
 

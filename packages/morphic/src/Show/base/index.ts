@@ -1,4 +1,4 @@
-import type { Show } from "@effect-ts/core/Classic/Show"
+import type { Show } from "@effect-ts/core/Common/Show"
 
 import { getApplyConfig } from "../../HKT"
 

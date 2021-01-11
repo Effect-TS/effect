@@ -1,4 +1,4 @@
-import type { Option } from "@effect-ts/core/Classic/Option"
+import type { Option } from "@effect-ts/core/Common/Option"
 import { pipe } from "@effect-ts/core/Function"
 
 import type { At } from "../At"

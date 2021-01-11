@@ -1,13 +1,13 @@
-import { getEqual as AgetEq } from "@effect-ts/core/Classic/Array"
-import { getEqual as EgetEq } from "@effect-ts/core/Classic/Either"
+import { getEqual as AgetEq } from "@effect-ts/core/Common/Array"
+import { getEqual as EgetEq } from "@effect-ts/core/Common/Either"
 import {
   contramap,
   eqBoolean,
   eqNumber,
   eqStrict,
   eqString
-} from "@effect-ts/core/Classic/Equal"
-import { getEqual as OgetEq } from "@effect-ts/core/Classic/Option"
+} from "@effect-ts/core/Common/Equal"
+import { getEqual as OgetEq } from "@effect-ts/core/Common/Option"
 import { pipe } from "@effect-ts/core/Function"
 import { getEqual as LgetEq } from "@effect-ts/core/Persistent/List"
 

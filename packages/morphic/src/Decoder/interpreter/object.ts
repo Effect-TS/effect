@@ -1,4 +1,4 @@
-import * as R from "@effect-ts/core/Classic/Record"
+import * as R from "@effect-ts/core/Common/Record"
 import { pipe } from "@effect-ts/core/Function"
 import * as T from "@effect-ts/core/Sync"
 
