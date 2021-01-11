@@ -18,11 +18,13 @@ describe("HashMap", () => {
     const hashIndex: Hash.Hash<Index> = {
       hash: (x) => Hash.string(`${x.a}-${x.b}`)
     }
-    const map = pipe(
+    const makeMap = () =>
       HM.make<Index, Value>({
         ...eqIndex,
         ...hashIndex
-      }),
+      })
+    const map = pipe(
+      makeMap(),
       HM.set(new Index(0, 0), new Value(0, 0)),
       HM.set(new Index(0, 0), new Value(1, 1)),
       HM.set(new Index(1, 1), new Value(2, 2)),
@@ -58,14 +60,38 @@ describe("HashMap", () => {
       new Value(6, 6)
     ])
     expect(
-      HM.reduce_(map, [] as readonly (readonly [Index, Value])[], (z, v, k) => [
-        ...z,
-        tuple(k, v)
-      ])
+      HM.reduceWithIndex_(
+        map,
+        [] as readonly (readonly [Index, Value])[],
+        (z, k, v) => [...z, tuple(k, v)]
+      )
     ).toEqual([
       [new Index(0, 0), new Value(4, 4)],
       [new Index(2, 2), new Value(5, 5)],
       [new Index(3, 3), new Value(6, 6)]
+    ])
+    expect(Array.from(HM.map_(map, (v) => v.d))).toEqual([
+      [new Index(0, 0), 4],
+      [new Index(2, 2), 5],
+      [new Index(3, 3), 6]
+    ])
+    expect(
+      Array.from(
+        HM.chainWithIndex_(map, (k, v) =>
+          pipe(
+            makeMap(),
+            HM.set(new Index(k.a + 1, k.b + 1), new Value(v.c, v.d + 1)),
+            HM.set(new Index(k.a + 6, k.b + 6), new Value(v.c + 1, v.d + 1))
+          )
+        )
+      )
+    ).toEqual([
+      [new Index(8, 8), new Value(6, 6)],
+      [new Index(9, 9), new Value(7, 7)],
+      [new Index(1, 1), new Value(4, 5)],
+      [new Index(3, 3), new Value(5, 6)],
+      [new Index(4, 4), new Value(6, 7)],
+      [new Index(6, 6), new Value(5, 5)]
     ])
   })
   it("default", () => {
