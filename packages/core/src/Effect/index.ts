@@ -1,5 +1,6 @@
 import * as T from "@effect-ts/system/Effect"
 
+import * as I from "../Classic/Identity"
 import type { EffectCategoryURI, EffectURI } from "../Modules"
 import * as P from "../Prelude"
 import * as DSL from "../Prelude/DSL"
@@ -75,3 +76,23 @@ export const gen_ = DSL.genF(Monad)
  * Matchers
  */
 export const { match, matchIn, matchTag, matchTagIn } = DSL.matchers(Covariant)
+
+/**
+ * Derive sequential identity
+ */
+export function getIdentity<A>(Id: I.Identity<A>) {
+  return <R = unknown, E = never>(): I.Identity<T.Effect<R, E, A>> =>
+    I.makeIdentity(T.succeed(Id.identity) as T.Effect<R, E, A>, (y) => (x) =>
+      T.zipWith_(x, y, (a, b) => Id.combine(b)(a))
+    )
+}
+
+/**
+ * Derive parallel identity
+ */
+export function getIdentityPar<A>(Id: I.Identity<A>) {
+  return <R = unknown, E = never>(): I.Identity<T.Effect<R, E, A>> =>
+    I.makeIdentity(T.succeed(Id.identity) as T.Effect<R, E, A>, (y) => (x) =>
+      T.zipWithPar_(x, y, (a, b) => Id.combine(b)(a))
+    )
+}
