@@ -1,9 +1,9 @@
 import type { Equal } from "../../Equal"
+import { constant } from "../../Function"
 import type { Hash } from "../../Hash"
 import { arraySpliceIn, arraySpliceOut, arrayUpdate } from "./Array"
 import { fromBitmap, hashFragment, toBitmap } from "./Bitwise"
 import { MAX_INDEX_NODE, MIN_ARRAY_NODE, SIZE } from "./Config"
-import { hash } from "./Hash"
 
 export const emptySymbol = Symbol()
 
@@ -383,6 +383,20 @@ export class HashMap<K, V> {
   ) {}
 }
 
+export function make<K, V>(K: Hash<K> & Equal<K>) {
+  return new HashMap<K, V>(
+    false,
+    0,
+    {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      keyEq: (x, y) => K.equals!(y)(x),
+      hash: K.hash
+    },
+    new Empty(),
+    0
+  )
+}
+
 export function setTree_<K, V>(
   map: HashMap<K, V>,
   newRoot: Node<K, V>,
@@ -398,7 +412,15 @@ export function setTree_<K, V>(
     : new HashMap(map.editable, map.edit, map.config, newRoot, newSize)
 }
 
-export function tryGetHash_<K, V, D>(map: HashMap<K, V>, alt: D, hash: number, key: K) {
+/**
+ * Lookup the value for `key` in `map` using custom hash.
+ */
+export function tryGetHash_<K, V, D>(
+  map: HashMap<K, V>,
+  key: K,
+  hash: number,
+  alt: D
+): V | D {
   let node = map.root
   let shift = 0
   const keyEq = map.config.keyEq
@@ -407,14 +429,14 @@ export function tryGetHash_<K, V, D>(map: HashMap<K, V>, alt: D, hash: number, k
   while (true)
     switch (node._tag) {
       case "LeafNode": {
-        return keyEq(key, node.key) ? node.value : alt
+        return keyEq(key, node.key) && node.value ? node.value : alt
       }
       case "CollisionNode": {
         if (hash === node.hash) {
           const children = node.children
           for (let i = 0, len = children.length; i < len; ++i) {
             const child = children[i]
-            if ("key" in child && keyEq(key, child.key)) return child.value
+            if ("key" in child && keyEq(key, child.key)) return child.value || alt
           }
         }
         return alt
@@ -442,18 +464,110 @@ export function tryGetHash_<K, V, D>(map: HashMap<K, V>, alt: D, hash: number, k
     }
 }
 
-export function make<K, V>(K?: Partial<Hash<K>> & Partial<Equal<K>>) {
-  return new HashMap<K, V>(
-    false,
-    0,
-    {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      keyEq: K && K.equals ? (x, y) => K.equals!(y)(x) : (x, y) => x === y,
-      hash: K && K.hash ? K.hash : hash
-    },
-    new Empty(),
-    0
-  )
+/**
+ * Lookup the value for `key` in `map` using custom hash.
+ */
+export function getHash_<K, V>(
+  map: HashMap<K, V>,
+  key: K,
+  hash: number
+): V | undefined {
+  return tryGetHash_(map, key, hash, undefined)
 }
 
-// const map = make<string, number>()
+/**
+ * Lookup the value for `key` in `map` using internal hash function.
+ */
+export function get_<K, V>(map: HashMap<K, V>, key: K): V | undefined {
+  return tryGetHash_(map, key, map.config.hash(key), undefined)
+}
+
+/**
+ * Lookup the value for `key` in `map` using internal hash function.
+ */
+export function get<K>(key: K) {
+  return <V>(map: HashMap<K, V>) => get_(map, key)
+}
+
+/**
+ * Does an entry exist for `key` in `map`? Uses custom `hash`.
+ */
+export function hasHash_<K, V>(map: HashMap<K, V>, key: K, hash: number): boolean {
+  return tryGetHash_(map, key, hash, nothing) !== nothing
+}
+
+/**
+ * Does an entry exist for `key` in `map`? Uses internal hash function.
+ */
+export function has_<K, V>(map: HashMap<K, V>, key: K): boolean {
+  return tryGetHash_(map, key, map.config.hash(key), nothing) !== nothing
+}
+
+/**
+ * Does `map` contain any elements?
+ */
+export function isEmpty<K, V>(map: HashMap<K, V>): boolean {
+  return map && !!isEmptyNode(map.root)
+}
+
+/**
+ * Alter the value stored for `key` in `map` using function `f` using custom hash.
+ *
+ *  `f` is invoked with the current value for `k` if it exists,
+ * or no arguments if no such value exists.
+ *
+ * `modify` will always either update or insert a value into the map.
+ * Returns a map with the modified value. Does not alter `map`.
+ */
+export function modifyHash_<K, V>(
+  map: HashMap<K, V>,
+  key: K,
+  hash: number,
+  f: UpdateFn<V>
+) {
+  const size = { value: map.size }
+  const newRoot = map.root.modify(
+    map.editable ? map.edit : NaN,
+    map.config.keyEq,
+    0,
+    f,
+    hash,
+    key,
+    size
+  )
+  return setTree_(map, newRoot, size.value)
+}
+
+/**
+ * Alter the value stored for `key` in `map` using function `f` using internal hash function.
+ *
+ *  `f` is invoked with the current value for `k` if it exists,
+ * or no arguments if no such value exists.
+ *
+ * `modify` will always either update or insert a value into the map.
+ * Returns a map with the modified value. Does not alter `map`.
+ */
+export function modify_<K, V>(map: HashMap<K, V>, key: K, f: UpdateFn<V>) {
+  return modifyHash_(map, key, map.config.hash(key), f)
+}
+
+/**
+ * Store `value` for `key` in `map` using custom hash.
+ */
+export function setHash_<K, V>(map: HashMap<K, V>, key: K, hash: number, value: V) {
+  return modifyHash_(map, key, hash, constant(value))
+}
+
+/**
+ * Store `value` for `key` in `map` using internal hash function.
+ */
+export function set_<K, V>(map: HashMap<K, V>, key: K, value: V) {
+  return modify_(map, key, constant(value))
+}
+
+/**
+ * Store `value` for `key` in `map` using internal hash function.
+ */
+export function set<K, V>(key: K, value: V) {
+  return (map: HashMap<K, V>) => set_(map, key, value)
+}
