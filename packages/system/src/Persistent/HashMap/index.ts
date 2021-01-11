@@ -571,3 +571,24 @@ export function set_<K, V>(map: HashMap<K, V>, key: K, value: V) {
 export function set<K, V>(key: K, value: V) {
   return (map: HashMap<K, V>) => set_(map, key, value)
 }
+
+/**
+ *  Remove the entry for `key` in `map` using custom hash.
+ */
+export function removeHash_<K, V>(map: HashMap<K, V>, key: K, hash: number) {
+  return modifyHash_(map, key, hash, constant(nothing))
+}
+
+/**
+ *  Remove the entry for `key` in `map` using internal hash.
+ */
+export function remove_<K, V>(map: HashMap<K, V>, key: K) {
+  return modifyHash_(map, key, map.config.hash(key), constant(nothing))
+}
+
+/**
+ *  Remove the entry for `key` in `map` using internal hash.
+ */
+export function remove<K>(key: K) {
+  return <V>(map: HashMap<K, V>) => remove_(map, key)
+}
