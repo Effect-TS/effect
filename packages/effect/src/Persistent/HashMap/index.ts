@@ -25,20 +25,26 @@ export class HashMap<K, V> implements Iterable<readonly [K, V]> {
   ) {}
 
   [Symbol.iterator](): Iterator<readonly [K, V]> {
-    return new HashMapIterator(visitLazy(this.root, identity, undefined))
+    return new HashMapIterator(this, identity)
   }
 }
 
-export class HashMapIterator<K, V> implements Iterator<readonly [K, V]> {
-  constructor(private v: O.Option<VisitResult<K, V, readonly [K, V]>>) {}
+export class HashMapIterator<K, V, T> implements IterableIterator<T> {
+  v = visitLazy(this.map.root, this.f, undefined)
 
-  next(): IteratorResult<readonly [K, V]> {
+  constructor(readonly map: HashMap<K, V>, readonly f: TraversalFn<K, V, T>) {}
+
+  next(): IteratorResult<T> {
     if (O.isNone(this.v)) {
       return { done: true, value: undefined }
     }
     const v0 = this.v.value
     this.v = applyCont(v0.cont)
     return { done: false, value: v0.value }
+  }
+
+  [Symbol.iterator](): IterableIterator<T> {
+    return new HashMapIterator(this.map, this.f)
   }
 }
 
@@ -324,4 +330,12 @@ export function visitLazy<K, V, A>(
       return applyCont(cont)
     }
   }
+}
+
+export function keys<K, V>(map: HashMap<K, V>): IterableIterator<K> {
+  return new HashMapIterator(map, ([k]) => k)
+}
+
+export function values<K, V>(map: HashMap<K, V>): IterableIterator<V> {
+  return new HashMapIterator(map, ([, v]) => v)
 }
