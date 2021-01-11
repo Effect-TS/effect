@@ -1,4 +1,4 @@
-export { as } from "../Effect/as"
+export { as, as_ } from "../Effect/as"
 export { asSomeError } from "../Effect/asSomeError"
 export { chain, chain_, succeed } from "../Effect/core"
 export { bind, bind_, do } from "../Effect/do"
