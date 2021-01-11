@@ -1,5 +1,4 @@
-import type { Equal } from "packages/system/src/Equal"
-
+import type { Equal } from "../../../Equal"
 import * as O from "../../../Option"
 import { arraySpliceIn, arraySpliceOut, arrayUpdate } from "../Array"
 import { fromBitmap, hashFragment, toBitmap } from "../Bitwise"
