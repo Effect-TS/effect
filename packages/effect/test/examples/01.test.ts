@@ -1,7 +1,7 @@
 import { pipe } from "@effect-ts/system/Function"
 
-import * as A from "../../src/Classic/Array"
-import * as E from "../../src/Classic/Either"
+import * as A from "../../src/Common/Array"
+import * as E from "../../src/Common/Either"
 import { getCovariantComposition } from "../../src/Prelude/Covariant"
 
 test("01", () => {

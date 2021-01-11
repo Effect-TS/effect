@@ -1,4 +1,4 @@
-import * as C from "../src/Classic/Const"
+import * as C from "../src/Common/Const"
 import { pipe } from "../src/Function"
 
 describe("Optimizer", () => {

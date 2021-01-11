@@ -1,6 +1,6 @@
 import { pipe } from "@effect-ts/system/Function"
 
-import * as E from "../../src/Classic/Either"
+import * as E from "../../src/Common/Either"
 import * as Selective from "../../src/Prelude/Selective"
 import * as IO from "../../src/XPure/XIO"
 

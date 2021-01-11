@@ -1,4 +1,4 @@
-import type { Option } from "../../Classic/Option"
+import type { Option } from "../../Common/Option"
 import type * as HKT from "../HKT"
 
 export interface FilterMapWithIndex<F extends HKT.URIS, C = HKT.Auto>

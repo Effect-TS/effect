@@ -1,6 +1,6 @@
 import * as T from "@effect-ts/system/Effect"
 
-import * as I from "../Classic/Identity"
+import * as I from "../Common/Identity"
 import type { EffectCategoryURI, EffectURI } from "../Modules"
 import * as P from "../Prelude"
 import * as DSL from "../Prelude/DSL"
