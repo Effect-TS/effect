@@ -1,4 +1,4 @@
-import { some } from "@effect-ts/core/Classic/Option"
+import { some } from "@effect-ts/core/Common/Option"
 import { pipe } from "@effect-ts/core/Function"
 
 import * as L from "../src/Lens"
