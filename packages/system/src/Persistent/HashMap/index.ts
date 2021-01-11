@@ -34,6 +34,14 @@ export class HashMap<K, V> implements Iterable<readonly [K, V]> {
     this.has = this.has.bind(this)
     this.remove = this.remove.bind(this)
     this.mutate = this.mutate.bind(this)
+    this.reduceWithIndex = this.reduceWithIndex.bind(this)
+    this.reduce = this.reduce.bind(this)
+    this.forEachWithIndex = this.forEachWithIndex.bind(this)
+    this.forEach = this.forEach.bind(this)
+    this.mapWithIndex = this.mapWithIndex.bind(this)
+    this.map = this.map.bind(this)
+    this.chain = this.chain.bind(this)
+    this.chainWithIndex = this.chainWithIndex.bind(this)
   }
 
   [Symbol.iterator](): Iterator<readonly [K, V]> {
@@ -78,6 +86,38 @@ export class HashMap<K, V> implements Iterable<readonly [K, V]> {
 
   mutate(f: (map: HashMap<K, V>) => void): HashMap<K, V> {
     return mutate_(this, f)
+  }
+
+  reduceWithIndex<Z>(z: Z, f: (z: Z, k: K, v: V) => Z): Z {
+    return reduceWithIndex_(this, z, f)
+  }
+
+  reduce<Z>(z: Z, f: (z: Z, v: V) => Z): Z {
+    return reduce_(this, z, f)
+  }
+
+  forEachWithIndex(f: (k: K, v: V, m: HashMap<K, V>) => void): HashMap<K, V> {
+    return forEachWithIndex_(this, f)
+  }
+
+  forEach(f: (v: V, m: HashMap<K, V>) => void): HashMap<K, V> {
+    return forEach_(this, f)
+  }
+
+  map<A>(f: (v: V) => A): HashMap<K, A> {
+    return map_(this, f)
+  }
+
+  mapWithIndex<A>(f: (k: K, v: V) => A): HashMap<K, A> {
+    return mapWithIndex_(this, f)
+  }
+
+  chain<A>(f: (v: V) => HashMap<K, A>): HashMap<K, A> {
+    return chain_(this, f)
+  }
+
+  chainWithIndex<A>(f: (k: K, v: V) => HashMap<K, A>): HashMap<K, A> {
+    return chainWithIndex_(this, f)
   }
 }
 
@@ -495,7 +535,8 @@ export function forEachWithIndex_<K, V>(
   map: HashMap<K, V>,
   f: (k: K, v: V, m: HashMap<K, V>) => void
 ) {
-  return reduceWithIndex_(map, undefined as void, (_, key, value) => f(key, value, map))
+  reduceWithIndex_(map, undefined as void, (_, key, value) => f(key, value, map))
+  return map
 }
 
 /**
@@ -505,7 +546,8 @@ export function forEach_<K, V>(
   map: HashMap<K, V>,
   f: (v: V, m: HashMap<K, V>) => void
 ) {
-  return forEachWithIndex_(map, (_, value, map) => f(value, map))
+  forEachWithIndex_(map, (_, value, map) => f(value, map))
+  return map
 }
 
 /**
