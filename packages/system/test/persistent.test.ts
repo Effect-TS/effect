@@ -1,8 +1,7 @@
 import type { Equal } from "../src/Equal"
 import { pipe } from "../src/Function"
-import type { Hash } from "../src/Hash"
+import * as Hash from "../src/Hash"
 import * as HM from "../src/Persistent/HashMap"
-import { hash } from "../src/Persistent/HashMap/Hash"
 
 describe("HashMap", () => {
   it("use hash-map 4", () => {
@@ -15,8 +14,8 @@ describe("HashMap", () => {
     const eqIndex: Equal<Index> = {
       equals: (y) => (x) => x === y || (x.a === y.a && x.b === y.b)
     }
-    const hashIndex: Hash<Index> = {
-      hash: (x) => hash(`${x.a}-${x.b}`)
+    const hashIndex: Hash.Hash<Index> = {
+      hash: (x) => Hash.string(`${x.a}-${x.b}`)
     }
     const map = pipe(
       HM.make<Index, Value>({
