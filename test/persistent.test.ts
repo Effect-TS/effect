@@ -27,12 +27,19 @@ describe("HashMap", () => {
       HM.set(new Index(1, 1), new Value(2, 2)),
       HM.set(new Index(1, 1), new Value(3, 3)),
       HM.set(new Index(0, 0), new Value(4, 4)),
-      HM.remove(new Index(1, 1))
+      HM.remove(new Index(1, 1)),
+      HM.mutate((m) => {
+        HM.set_(m, new Index(2, 2), new Value(5, 5))
+        HM.set_(m, new Index(3, 3), new Value(6, 6))
+      })
     )
     expect(HM.isEmpty(map)).toEqual(false)
     expect(HM.get_(map, new Index(0, 0))).toEqual(new Value(4, 4))
     expect(HM.get_(map, new Index(1, 1))).toEqual(undefined)
     expect(HM.has_(map, new Index(1, 1))).toEqual(false)
     expect(HM.has_(map, new Index(0, 0))).toEqual(true)
+    expect(HM.has_(map, new Index(2, 2))).toEqual(true)
+    expect(HM.has_(map, new Index(3, 3))).toEqual(true)
+    expect(HM.get_(map, new Index(3, 3))).toEqual(new Value(6, 6))
   })
 })
