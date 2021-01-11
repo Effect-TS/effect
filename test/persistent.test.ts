@@ -1,65 +1,36 @@
-import { pipe, tuple } from "../src/Function"
-import type { Equatable } from "../src/Persistent/_internal/Structural"
-import { equalsSymbol } from "../src/Persistent/_internal/Structural"
+import type { Equal } from "../src/Equal"
+import { pipe } from "../src/Function"
+import type { Hash } from "../src/Hash"
 import * as HM from "../src/Persistent/HashMap"
+import { hash } from "../src/Persistent/HashMap/Hash"
 
 describe("HashMap", () => {
-  it("use hash-map", () => {
-    const map = pipe(
-      HM.empty<number, string>(),
-      HM.set(0, "ok"),
-      HM.set(1, "ko"),
-      HM.set(2, "no")
-    )
-    expect(map).toEqual(HM.fromArray([tuple(0, "ok"), tuple(1, "ko"), tuple(2, "no")]))
-  })
-  it("use hash-map 2", () => {
-    const map = pipe(
-      HM.empty<string, string>(),
-      HM.set("0", "ok"),
-      HM.set("1", "ko"),
-      HM.set("2", "no")
-    )
-    expect(map).toEqual(HM.fromObject({ 0: "ok", 1: "ko", 2: "no" }))
-  })
-  it("use hash-map 3", () => {
-    const map = pipe(
-      HM.empty<string, string>(),
-      HM.set("0", "ok"),
-      HM.set("1", "ko"),
-      HM.set("2", "no"),
-      HM.updateMap((m) => {
-        HM.set_(m, "3", "oo")
-        HM.set_(m, "4", "oo")
-      })
-    )
-    expect(map).toEqual(HM.fromObject({ 0: "ok", 1: "ko", 2: "no", 3: "oo", 4: "oo" }))
-  })
   it("use hash-map 4", () => {
-    class Index implements Equatable {
+    class Index {
       constructor(readonly a: number, readonly b: number) {}
-
-      [equalsSymbol](other: any): boolean {
-        return other instanceof Index && other.a === this.a && other.b === this.b
-      }
     }
-    interface Value {
-      c: number
-      d: number
+    class Value {
+      constructor(readonly c: number, readonly d: number) {}
+    }
+    const eqIndex: Equal<Index> = {
+      equals: (y) => (x) => x === y || (x.a === y.a && x.b === y.b)
+    }
+    const hashIndex: Hash<Index> = {
+      hash: (x) => hash(`${x.a}-${x.b}`)
     }
     const map = pipe(
-      HM.empty<Index, Value>(),
-      HM.set<Index, Value>(new Index(0, 1), { c: 0, d: 0 }),
-      HM.set<Index, Value>(new Index(0, 1), { c: 1, d: 1 }),
-      HM.set<Index, Value>(new Index(1, 1), { c: 0, d: 0 }),
-      HM.set<Index, Value>(new Index(10, 1), { c: 3, d: 2 }),
-      HM.set<Index, Value>(new Index(10, 1), { c: 3, d: 3 })
+      HM.make<Index, Value>({
+        ...eqIndex,
+        ...hashIndex
+      }),
+      HM.set(new Index(0, 0), new Value(0, 0)),
+      HM.set(new Index(0, 0), new Value(1, 1)),
+      HM.set(new Index(1, 1), new Value(2, 2)),
+      HM.set(new Index(1, 1), new Value(3, 3)),
+      HM.set(new Index(0, 0), new Value(4, 4))
     )
-
-    console.log(Array.from(map))
-
-    expect(HM.get_(map, new Index(0, 1))).toEqual({ c: 1, d: 1 })
-    expect(HM.get_(map, new Index(1, 1))).toEqual({ c: 0, d: 0 })
-    //expect(HM.get_(map, new Index(1, 1))).toEqual({ c: 0, d: 0 })
+    expect(HM.isEmpty(map)).toEqual(false)
+    expect(HM.get_(map, new Index(0, 0))).toEqual(new Value(4, 4))
+    expect(HM.get_(map, new Index(1, 1))).toEqual(new Value(3, 3))
   })
 })
