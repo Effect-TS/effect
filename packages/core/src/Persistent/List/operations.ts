@@ -1,4 +1,4 @@
-import * as List from "@effect-ts/system/List"
+import * as List from "@effect-ts/system/Persistent/List"
 
 import * as A from "../../Classic/Array"
 import type { Equal } from "../../Classic/Equal"
@@ -12,7 +12,7 @@ import { flow, pipe } from "../../Function"
 import type { ListURI } from "../../Modules"
 import * as P from "../../Prelude"
 
-export * from "@effect-ts/system/List"
+export * from "@effect-ts/system/Persistent/List"
 
 /**
  * `Traversable`'s `foreachF` function
