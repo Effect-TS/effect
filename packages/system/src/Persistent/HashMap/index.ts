@@ -2,6 +2,7 @@
  * Based on https://github.com/mattbierner/hamt_plus/blob/master/lib/hamt.js
  */
 import type { Equal } from "../../Equal"
+import type { Endomorphism } from "../../Function"
 import { constant, identity, tuple } from "../../Function"
 import type { Hash } from "../../Hash"
 import * as O from "../../Option"
@@ -22,10 +23,60 @@ export class HashMap<K, V> implements Iterable<readonly [K, V]> {
     readonly config: Config<K>,
     public root: Node<K, V>,
     public size: number
-  ) {}
+  ) {
+    this.get = this.get.bind(this)
+    this.set = this.set.bind(this)
+    this.keys = this.keys.bind(this)
+    this.values = this.values.bind(this)
+    this.modify = this.modify.bind(this)
+    this.update = this.update.bind(this)
+    this.has = this.has.bind(this)
+    this.remove = this.remove.bind(this)
+    this.mutate = this.mutate.bind(this)
+  }
 
   [Symbol.iterator](): Iterator<readonly [K, V]> {
     return new HashMapIterator(this, identity)
+  }
+
+  get(key: K): O.Option<V> {
+    return get_(this, key)
+  }
+
+  set(key: K, value: V): HashMap<K, V> {
+    return set_(this, key, value)
+  }
+
+  get isEmpty(): boolean {
+    return isEmpty(this)
+  }
+
+  has(key: K): boolean {
+    return has_(this, key)
+  }
+
+  keys(): IterableIterator<K> {
+    return keys(this)
+  }
+
+  values(): IterableIterator<V> {
+    return values(this)
+  }
+
+  modify(key: K, f: UpdateFn<V>): HashMap<K, V> {
+    return modify_(this, key, f)
+  }
+
+  update(key: K, f: Endomorphism<V>): HashMap<K, V> {
+    return update_(this, key, f)
+  }
+
+  remove(key: K): HashMap<K, V> {
+    return remove_(this, key)
+  }
+
+  mutate(f: (map: HashMap<K, V>) => void): HashMap<K, V> {
+    return mutate_(this, f)
   }
 }
 
@@ -262,11 +313,16 @@ export function endMutation<K, V>(map: HashMap<K, V>) {
  * Mutate `map` within the context of `f`.
  */
 export function mutate<K, V>(f: (map: HashMap<K, V>) => void) {
-  return (map: HashMap<K, V>) => {
-    const transient = beginMutation(map)
-    f(transient)
-    return endMutation(transient)
-  }
+  return (map: HashMap<K, V>) => mutate_(map, f)
+}
+
+/**
+ * Mutate `map` within the context of `f`.
+ */
+export function mutate_<K, V>(map: HashMap<K, V>, f: (map: HashMap<K, V>) => void) {
+  const transient = beginMutation(map)
+  f(transient)
+  return endMutation(transient)
 }
 
 export type Cont<K, V, A> =
@@ -338,4 +394,12 @@ export function keys<K, V>(map: HashMap<K, V>): IterableIterator<K> {
 
 export function values<K, V>(map: HashMap<K, V>): IterableIterator<V> {
   return new HashMapIterator(map, ([, v]) => v)
+}
+
+export function update_<K, V>(map: HashMap<K, V>, key: K, f: (v: V) => V) {
+  return modify_(map, key, O.map(f))
+}
+
+export function update<K, V>(key: K, f: (v: V) => V) {
+  return (map: HashMap<K, V>) => update_(map, key, f)
 }
