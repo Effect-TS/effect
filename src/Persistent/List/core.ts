@@ -2,11 +2,11 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable no-var */
 
-import type { Either } from "../Either"
-import { identity } from "../Function"
-import type { Option } from "../Option"
-import { fromNullable } from "../Option"
-import type { Separated } from "../Utils"
+import type { Either } from "../../Either"
+import { identity } from "../../Function"
+import type { Option } from "../../Option"
+import { fromNullable } from "../../Option"
+import type { Separated } from "../../Utils"
 
 /**
  * Forked from https://github.com/funkia/list/blob/master/src/index.ts
