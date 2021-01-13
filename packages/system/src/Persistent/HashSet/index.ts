@@ -7,100 +7,10 @@ import type { Separated } from "../../Utils"
 import * as HM from "../HashMap"
 
 export class HashSet<V> implements Iterable<V> {
-  constructor(readonly keyMap: HM.HashMap<V, any>) {
-    this.add = this.add.bind(this)
-    this.remove = this.remove.bind(this)
-    this.values = this.values.bind(this)
-    this.has = this.has.bind(this)
-    this.forEach = this.forEach.bind(this)
-    this.mutate = this.mutate.bind(this)
-    this.intersection = this.intersection.bind(this)
-    this.union = this.union.bind(this)
-    this.difference = this.difference.bind(this)
-    this.map = this.map.bind(this)
-    this.chain = this.chain.bind(this)
-    this.some = this.some.bind(this)
-    this.every = this.every.bind(this)
-    this.filter = this.filter.bind(this)
-    this.reduce = this.reduce.bind(this)
-    this.toggle = this.toggle.bind(this)
-    this.partition = this.partition.bind(this)
-  }
+  constructor(readonly keyMap: HM.HashMap<V, any>) {}
 
   [Symbol.iterator](): Iterator<V> {
     return HM.keys(this.keyMap)
-  }
-
-  add(v: V): HashSet<V> {
-    return add_(this, v)
-  }
-
-  remove(v: V): HashSet<V> {
-    return remove_(this, v)
-  }
-
-  values(): IterableIterator<V> {
-    return values(this)
-  }
-
-  has(v: V): boolean {
-    return has_(this, v)
-  }
-
-  forEach(f: (v: V) => void): HashSet<V> {
-    return forEach_(this, f)
-  }
-
-  mutate(f: (set: HashSet<V>) => void): HashSet<V> {
-    return mutate_(this, f)
-  }
-
-  intersection(other: Iterable<V>): HashSet<V> {
-    return intersection_(this, other)
-  }
-
-  union(other: Iterable<V>): HashSet<V> {
-    return union_(this, other)
-  }
-
-  difference(other: Iterable<V>): HashSet<V> {
-    return difference_(this, other)
-  }
-
-  map<B>(C: HM.Config<B>): (f: (a: V) => B) => HashSet<B> {
-    const m = map_(C)
-    return (f) => m(this, f)
-  }
-
-  chain<B>(C: HM.Config<B>): (f: (a: V) => Iterable<B>) => HashSet<B> {
-    const m = chain_(C)
-    return (f) => m(this, f)
-  }
-
-  some(p: Predicate<V>): boolean {
-    return some_(this, p)
-  }
-
-  every(p: Predicate<V>): boolean {
-    return every_(this, p)
-  }
-
-  filter<B extends V>(p: Refinement<V, B>): HashSet<B>
-  filter(p: Predicate<V>): HashSet<V>
-  filter(p: Predicate<V>): HashSet<V> {
-    return filter_(this, p)
-  }
-
-  reduce<Z>(z: Z, f: (z: Z, v: V) => Z): Z {
-    return reduce_(this, z, f)
-  }
-
-  toggle(v: V): HashSet<V> {
-    return toggle_(this, v)
-  }
-
-  partition<B extends V>(p: Refinement<V, B>): Separated<HashSet<V>, HashSet<B>> {
-    return partition_(this, p)
   }
 }
 
@@ -114,8 +24,8 @@ export function makeDefault<V>() {
 
 export function add_<V>(set: HashSet<V>, v: V) {
   return set.keyMap.editable
-    ? (set.keyMap.set(v, true), set)
-    : new HashSet(set.keyMap.set(v, true))
+    ? (HM.set_(set.keyMap, v, true), set)
+    : new HashSet(HM.set_(set.keyMap, v, true))
 }
 
 export function add<V>(v: V) {
@@ -124,8 +34,8 @@ export function add<V>(v: V) {
 
 export function remove_<V>(set: HashSet<V>, v: V) {
   return set.keyMap.editable
-    ? (set.keyMap.remove(v), set)
-    : new HashSet(set.keyMap.remove(v))
+    ? (HM.remove_(set.keyMap, v), set)
+    : new HashSet(HM.remove_(set.keyMap, v))
 }
 
 export function remove<V>(v: V) {
@@ -133,7 +43,7 @@ export function remove<V>(v: V) {
 }
 
 export function values<V>(set: HashSet<V>) {
-  return set.keyMap.keys()
+  return HM.keys(set.keyMap)
 }
 
 export function has_<V>(set: HashSet<V>, v: V) {
@@ -145,7 +55,7 @@ export function has_<V>(set: HashSet<V>, v: V) {
  */
 export function forEach_<V>(map: HashSet<V>, f: (v: V, m: HashSet<V>) => void) {
   return new HashSet(
-    map.keyMap.forEachWithIndex((k, _, m) => {
+    HM.forEachWithIndex_(map.keyMap, (k, _, m) => {
       f(k, new HashSet(m))
     })
   )
@@ -463,7 +373,7 @@ export function difference<A>(y: Iterable<A>): (x: HashSet<A>) => HashSet<A> {
  * Reduce a state over the map entries
  */
 export function reduce_<V, Z>(set: HashSet<V>, z: Z, f: (z: Z, v: V) => Z): Z {
-  return set.keyMap.reduceWithIndex(z, (z, v) => f(z, v))
+  return HM.reduceWithIndex_(set.keyMap, z, (z, v) => f(z, v))
 }
 
 /**
