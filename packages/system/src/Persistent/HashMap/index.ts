@@ -2,13 +2,13 @@
  * Based on https://github.com/mattbierner/hamt_plus/blob/master/lib/hamt.js
  */
 import type { Equal } from "../../Equal"
-import type { Endomorphism } from "../../Function"
+import type { Endomorphism, Refinement } from "../../Function"
 import { constant, identity, tuple } from "../../Function"
 import type { Hash } from "../../Hash"
+import { randomHash } from "../../Hash"
 import * as O from "../../Option"
 import { fromBitmap, hashFragment, toBitmap } from "./Bitwise"
 import { SIZE } from "./Config"
-import { randomHash } from "./Hash"
 import type { Node, UpdateFn } from "./Nodes"
 import { Empty, isEmptyNode } from "./Nodes"
 
@@ -625,7 +625,7 @@ export function map<V, A>(f: (v: V) => A) {
 }
 
 /**
- * Chain over the map entries
+ * Chain over the map entries, the hash and equal of the 2 maps has to be the same
  */
 export function chain_<K, V, A>(map: HashMap<K, V>, f: (v: V) => HashMap<K, A>) {
   return reduceWithIndex_(map, make<K, A>(map.config), (z, _, v) =>
@@ -638,7 +638,7 @@ export function chain_<K, V, A>(map: HashMap<K, V>, f: (v: V) => HashMap<K, A>) 
 }
 
 /**
- * Chain over the map entries
+ * Chain over the map entries, the hash and equal of the 2 maps has to be the same
  *
  * @dataFirst chain_
  */
@@ -647,7 +647,7 @@ export function chain<K, V, A>(f: (v: V) => HashMap<K, A>) {
 }
 
 /**
- * Chain over the map entries
+ * Chain over the map entries, the hash and equal of the 2 maps has to be the same
  */
 export function chainWithIndex_<K, V, A>(
   map: HashMap<K, V>,
@@ -663,10 +663,144 @@ export function chainWithIndex_<K, V, A>(
 }
 
 /**
- * Chain over the map entries
+ * Chain over the map entries, the hash and equal of the 2 maps has to be the same
  *
  * @dataFirst chainWithIndex_
  */
 export function chainWithIndex<K, V, A>(f: (k: K, v: V) => HashMap<K, A>) {
   return (map: HashMap<K, V>) => chainWithIndex_(map, f)
+}
+
+/**
+ * Removes None values
+ */
+export function compact<K, A>(fa: HashMap<K, O.Option<A>>): HashMap<K, A> {
+  return filterMapWithIndex_(fa, (_, a) => a)
+}
+
+/**
+ * Filter out None and map
+ */
+export function filterMapWithIndex_<K, A, B>(
+  fa: HashMap<K, A>,
+  f: (k: K, a: A) => O.Option<B>
+): HashMap<K, B> {
+  const m = make<K, B>(fa.config)
+
+  return mutate_(m, (m) => {
+    for (const [k, a] of fa) {
+      const o = f(k, a)
+      if (O.isSome(o)) {
+        m.set(k, o.value)
+      }
+    }
+  })
+}
+
+/**
+ * Filter out None and map
+ *
+ * @dataFirst filterMapWithIndex_
+ */
+export function filterMapWithIndex<K, A, B>(f: (k: K, a: A) => O.Option<B>) {
+  return (fa: HashMap<K, A>) => filterMapWithIndex_(fa, f)
+}
+
+/**
+ * Filter out None and map
+ */
+export function filterMap_<E, A, B>(
+  fa: HashMap<E, A>,
+  f: (a: A) => O.Option<B>
+): HashMap<E, B> {
+  return filterMapWithIndex_(fa, (_, a) => f(a))
+}
+
+/**
+ * Filter out None and map
+ *
+ * @dataFirst filterMap_
+ */
+export function filterMap<A, B>(f: (a: A) => O.Option<B>) {
+  return <E>(fa: HashMap<E, A>) => filterMap_(fa, f)
+}
+
+/**
+ * Filter out by predicate
+ */
+export function filterWithIndex_<K, A>(
+  fa: HashMap<K, A>,
+  p: (k: K, a: A) => boolean
+): HashMap<K, A> {
+  const m = make<K, A>(fa.config)
+
+  return mutate_(m, (m) => {
+    for (const [k, a] of fa) {
+      if (p(k, a)) {
+        m.set(k, a)
+      }
+    }
+  })
+}
+
+/**
+ * Filter out by predicate
+ *
+ * @dataFirst filterWithIndex_
+ */
+export function filterWithIndex<K, A>(p: (k: K, a: A) => boolean) {
+  return (fa: HashMap<K, A>) => filterWithIndex_(fa, p)
+}
+
+/**
+ * Filter out by predicate
+ */
+export function filter_<K, A, B extends A>(
+  fa: HashMap<K, A>,
+  p: Refinement<A, B>
+): HashMap<K, B>
+export function filter_<K, A>(fa: HashMap<K, A>, p: (a: A) => boolean): HashMap<K, A>
+export function filter_<K, A>(fa: HashMap<K, A>, p: (a: A) => boolean): HashMap<K, A> {
+  return filterWithIndex_(fa, (_, a) => p(a))
+}
+
+/**
+ * Filter out by predicate
+ *
+ * @dataFirst filter_
+ */
+export function filter<A, B extends A>(
+  p: Refinement<A, B>
+): <K>(fa: HashMap<K, A>) => HashMap<K, A>
+export function filter<A>(
+  p: (a: A) => boolean
+): <K>(fa: HashMap<K, A>) => HashMap<K, A> {
+  return (fa) => filter_(fa, p)
+}
+
+/**
+ * Calculate the number of key/value pairs in a map
+ */
+export function size<K, V>(map: HashMap<K, V>) {
+  return map.size
+}
+
+/**
+ * Remove many keys
+ */
+export function removeMany_<K, V>(self: HashMap<K, V>, ks: Iterable<K>): HashMap<K, V> {
+  return self.mutate((m) => {
+    for (const k of ks) {
+      remove_(m, k)
+    }
+  })
+}
+
+/**
+ * Remove many keys
+ *
+ * @dataFirst removeMany_
+ */
+export function removeMany<K>(ks: Iterable<K>) {
+  return <V>(self: HashMap<K, V>) => removeMany_(self, ks)
 }
