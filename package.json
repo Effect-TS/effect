@@ -103,6 +103,7 @@
       "Persistent",
       "Persistent/List",
       "Persistent/HashMap",
+      "Persistent/HashSet",
       "Prelude",
       "Prelude/Any",
       "Prelude/Applicative",
