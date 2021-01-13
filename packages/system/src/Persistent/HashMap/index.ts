@@ -7,6 +7,7 @@ import { constant, identity, tuple } from "../../Function"
 import type { Hash } from "../../Hash"
 import { randomHash } from "../../Hash"
 import * as O from "../../Option"
+import * as S from "../HashSet"
 import { fromBitmap, hashFragment, toBitmap } from "./Bitwise"
 import { SIZE } from "./Config"
 import type { Node, UpdateFn } from "./Nodes"
@@ -803,4 +804,11 @@ export function removeMany_<K, V>(self: HashMap<K, V>, ks: Iterable<K>): HashMap
  */
 export function removeMany<K>(ks: Iterable<K>) {
   return <V>(self: HashMap<K, V>) => removeMany_(self, ks)
+}
+
+/**
+ * Get the set of keys
+ */
+export function keySet<K, V>(self: HashMap<K, V>) {
+  return new S.HashSet(self)
 }

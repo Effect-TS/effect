@@ -7,7 +7,7 @@ import type { Separated } from "../../Utils"
 import * as HM from "../HashMap"
 
 export class HashSet<V> implements Iterable<V> {
-  constructor(readonly keyMap: HM.HashMap<V, boolean>) {}
+  constructor(readonly keyMap: HM.HashMap<V, any>) {}
 
   [Symbol.iterator](): Iterator<V> {
     return HM.keys(this.keyMap)
@@ -73,12 +73,12 @@ export function mutate_<V>(set: HashSet<V>, transient: (set: HashSet<V>) => void
  *
  * the hash and equal of the 2 sets has to be the same
  */
-export function intersection_<A>(l: HashSet<A>, r: HashSet<A>): HashSet<A> {
+export function intersection_<A>(l: HashSet<A>, r: Iterable<A>): HashSet<A> {
   const x = make<A>(l.keyMap.config)
 
   return mutate_(x, (y) => {
-    for (const k of l) {
-      if (has_(r, k)) {
+    for (const k of r) {
+      if (has_(l, k)) {
         add_(y, k)
       }
     }
@@ -90,7 +90,7 @@ export function intersection_<A>(l: HashSet<A>, r: HashSet<A>): HashSet<A> {
  *
  * @dataFirst intersection_
  */
-export function intersection<A>(r: HashSet<A>) {
+export function intersection<A>(r: Iterable<A>) {
   return (l: HashSet<A>) => intersection_(l, r)
 }
 
@@ -348,22 +348,22 @@ export function endMutation<K>(set: HashSet<K>) {
 }
 
 /**
- * Form the set difference (`x` - `y`),
- *
- * the hash and equal of the 2 sets has to be the same
+ * Form the set difference (`x` - `y`)
  */
-export function difference_<A>(x: HashSet<A>, y: HashSet<A>): HashSet<A> {
-  return filter_(x, (a: A) => !has_(y, a))
+export function difference_<A>(x: HashSet<A>, y: Iterable<A>): HashSet<A> {
+  return mutate_(x, (s) => {
+    for (const k of y) {
+      remove_(s, k)
+    }
+  })
 }
 
 /**
- * Form the set difference (`x` - `y`),
- *
- * the hash and equal of the 2 sets has to be the same
+ * Form the set difference (`x` - `y`)
  *
  * @dataFirst difference_
  */
-export function difference<A>(y: HashSet<A>): (x: HashSet<A>) => HashSet<A> {
+export function difference<A>(y: Iterable<A>): (x: HashSet<A>) => HashSet<A> {
   return (x) => difference_(x, y)
 }
 
@@ -404,16 +404,16 @@ export function toggle_<A>(set: HashSet<A>, a: A): HashSet<A> {
  *
  * the hash and equal of the 2 sets has to be the same
  */
-export function union_<A>(l: HashSet<A>, r: HashSet<A>): HashSet<A> {
+export function union_<A>(l: HashSet<A>, r: Iterable<A>): HashSet<A> {
   const x = make(l.keyMap.config)
 
   return mutate_(x, (x) => {
     forEach_(l, (a) => {
       add_(x, a)
     })
-    forEach_(r, (a) => {
+    for (const a of r) {
       add_(x, a)
-    })
+    }
   })
 }
 
@@ -424,6 +424,6 @@ export function union_<A>(l: HashSet<A>, r: HashSet<A>): HashSet<A> {
  *
  * @dataFirst union_
  */
-export function union<A>(y: HashSet<A>): (x: HashSet<A>) => HashSet<A> {
+export function union<A>(y: Iterable<A>): (x: HashSet<A>) => HashSet<A> {
   return (x) => union_(x, y)
 }
