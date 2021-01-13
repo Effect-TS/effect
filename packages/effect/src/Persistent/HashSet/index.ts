@@ -7,10 +7,100 @@ import type { Separated } from "../../Utils"
 import * as HM from "../HashMap"
 
 export class HashSet<V> implements Iterable<V> {
-  constructor(readonly keyMap: HM.HashMap<V, any>) {}
+  constructor(readonly keyMap: HM.HashMap<V, any>) {
+    this.add = this.add.bind(this)
+    this.remove = this.remove.bind(this)
+    this.values = this.values.bind(this)
+    this.has = this.has.bind(this)
+    this.forEach = this.forEach.bind(this)
+    this.mutate = this.mutate.bind(this)
+    this.intersection = this.intersection.bind(this)
+    this.union = this.union.bind(this)
+    this.difference = this.difference.bind(this)
+    this.map = this.map.bind(this)
+    this.chain = this.chain.bind(this)
+    this.some = this.some.bind(this)
+    this.every = this.every.bind(this)
+    this.filter = this.filter.bind(this)
+    this.reduce = this.reduce.bind(this)
+    this.toggle = this.toggle.bind(this)
+    this.partition = this.partition.bind(this)
+  }
 
   [Symbol.iterator](): Iterator<V> {
     return HM.keys(this.keyMap)
+  }
+
+  add(v: V): HashSet<V> {
+    return add_(this, v)
+  }
+
+  remove(v: V): HashSet<V> {
+    return remove_(this, v)
+  }
+
+  values(): IterableIterator<V> {
+    return values(this)
+  }
+
+  has(v: V): boolean {
+    return has_(this, v)
+  }
+
+  forEach(f: (v: V) => void): HashSet<V> {
+    return forEach_(this, f)
+  }
+
+  mutate(f: (set: HashSet<V>) => void): HashSet<V> {
+    return mutate_(this, f)
+  }
+
+  intersection(other: Iterable<V>): HashSet<V> {
+    return intersection_(this, other)
+  }
+
+  union(other: Iterable<V>): HashSet<V> {
+    return union_(this, other)
+  }
+
+  difference(other: Iterable<V>): HashSet<V> {
+    return difference_(this, other)
+  }
+
+  map<B>(C: HM.Config<B>): (f: (a: V) => B) => HashSet<B> {
+    const m = map_(C)
+    return (f) => m(this, f)
+  }
+
+  chain<B>(C: HM.Config<B>): (f: (a: V) => Iterable<B>) => HashSet<B> {
+    const m = chain_(C)
+    return (f) => m(this, f)
+  }
+
+  some(p: Predicate<V>): boolean {
+    return some_(this, p)
+  }
+
+  every(p: Predicate<V>): boolean {
+    return every_(this, p)
+  }
+
+  filter<B extends V>(p: Refinement<V, B>): HashSet<B>
+  filter(p: Predicate<V>): HashSet<V>
+  filter(p: Predicate<V>): HashSet<V> {
+    return filter_(this, p)
+  }
+
+  reduce<Z>(z: Z, f: (z: Z, v: V) => Z): Z {
+    return reduce_(this, z, f)
+  }
+
+  toggle(v: V): HashSet<V> {
+    return toggle_(this, v)
+  }
+
+  partition<B extends V>(p: Refinement<V, B>): Separated<HashSet<V>, HashSet<B>> {
+    return partition_(this, p)
   }
 }
 
@@ -54,9 +144,11 @@ export function has_<V>(set: HashSet<V>, v: V) {
  * Apply f to each element
  */
 export function forEach_<V>(map: HashSet<V>, f: (v: V, m: HashSet<V>) => void) {
-  return map.keyMap.forEachWithIndex((k, _, m) => {
-    f(k, new HashSet(m))
-  })
+  return new HashSet(
+    map.keyMap.forEachWithIndex((k, _, m) => {
+      f(k, new HashSet(m))
+    })
+  )
 }
 
 /**
@@ -203,7 +295,7 @@ export function every_<A>(set: HashSet<A>, predicate: Predicate<A>): boolean {
  */
 export function chain<B>(
   E: HM.Config<B>
-): <A>(f: (x: A) => HashSet<B>) => (set: HashSet<A>) => HashSet<B> {
+): <A>(f: (x: A) => Iterable<B>) => (set: HashSet<A>) => HashSet<B> {
   const c = chain_(E)
   return (f) => (set) => c(set, f)
 }
@@ -213,16 +305,16 @@ export function chain<B>(
  */
 export function chain_<B>(
   E: HM.Config<B>
-): <A>(set: HashSet<A>, f: (x: A) => HashSet<B>) => HashSet<B> {
+): <A>(set: HashSet<A>, f: (x: A) => Iterable<B>) => HashSet<B> {
   const r = make<B>(E)
   return (set, f) =>
     mutate_(r, (r) => {
       forEach_(set, (e) => {
-        forEach_(f(e), (e) => {
-          if (!has_(r, e)) {
-            add_(r, e)
+        for (const a of f(e)) {
+          if (!has_(r, a)) {
+            add_(r, a)
           }
-        })
+        }
       })
       return r
     })
