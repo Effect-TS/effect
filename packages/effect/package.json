@@ -55,6 +55,7 @@
       "Persistent/HashMap/Random",
       "Persistent/HashMap/Hash",
       "Persistent/HashMap/Nodes",
+      "Persistent/HashSet",
       "Managed",
       "Managed/ReleaseMap",
       "Map",
