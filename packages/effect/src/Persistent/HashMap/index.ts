@@ -2,7 +2,7 @@
  * Based on https://github.com/mattbierner/hamt_plus/blob/master/lib/hamt.js
  */
 import type { Equal } from "../../Equal"
-import type { Endomorphism, Refinement } from "../../Function"
+import type { Refinement } from "../../Function"
 import { constant, identity, tuple } from "../../Function"
 import type { Hash } from "../../Hash"
 import { randomHash } from "../../Hash"
@@ -25,100 +25,10 @@ export class HashMap<K, V> implements Iterable<readonly [K, V]> {
     readonly config: Config<K>,
     public root: Node<K, V>,
     public size: number
-  ) {
-    this.get = this.get.bind(this)
-    this.set = this.set.bind(this)
-    this.keys = this.keys.bind(this)
-    this.values = this.values.bind(this)
-    this.modify = this.modify.bind(this)
-    this.update = this.update.bind(this)
-    this.has = this.has.bind(this)
-    this.remove = this.remove.bind(this)
-    this.mutate = this.mutate.bind(this)
-    this.reduceWithIndex = this.reduceWithIndex.bind(this)
-    this.reduce = this.reduce.bind(this)
-    this.forEachWithIndex = this.forEachWithIndex.bind(this)
-    this.forEach = this.forEach.bind(this)
-    this.mapWithIndex = this.mapWithIndex.bind(this)
-    this.map = this.map.bind(this)
-    this.chain = this.chain.bind(this)
-    this.chainWithIndex = this.chainWithIndex.bind(this)
-  }
+  ) {}
 
   [Symbol.iterator](): Iterator<readonly [K, V]> {
     return new HashMapIterator(this, identity)
-  }
-
-  get(key: K): O.Option<V> {
-    return get_(this, key)
-  }
-
-  set(key: K, value: V): HashMap<K, V> {
-    return set_(this, key, value)
-  }
-
-  get isEmpty(): boolean {
-    return isEmpty(this)
-  }
-
-  has(key: K): boolean {
-    return has_(this, key)
-  }
-
-  keys(): IterableIterator<K> {
-    return keys(this)
-  }
-
-  values(): IterableIterator<V> {
-    return values(this)
-  }
-
-  modify(key: K, f: UpdateFn<V>): HashMap<K, V> {
-    return modify_(this, key, f)
-  }
-
-  update(key: K, f: Endomorphism<V>): HashMap<K, V> {
-    return update_(this, key, f)
-  }
-
-  remove(key: K): HashMap<K, V> {
-    return remove_(this, key)
-  }
-
-  mutate(f: (map: HashMap<K, V>) => void): HashMap<K, V> {
-    return mutate_(this, f)
-  }
-
-  reduceWithIndex<Z>(z: Z, f: (z: Z, k: K, v: V) => Z): Z {
-    return reduceWithIndex_(this, z, f)
-  }
-
-  reduce<Z>(z: Z, f: (z: Z, v: V) => Z): Z {
-    return reduce_(this, z, f)
-  }
-
-  forEachWithIndex(f: (k: K, v: V, m: HashMap<K, V>) => void): HashMap<K, V> {
-    return forEachWithIndex_(this, f)
-  }
-
-  forEach(f: (v: V, m: HashMap<K, V>) => void): HashMap<K, V> {
-    return forEach_(this, f)
-  }
-
-  map<A>(f: (v: V) => A): HashMap<K, A> {
-    return map_(this, f)
-  }
-
-  mapWithIndex<A>(f: (k: K, v: V) => A): HashMap<K, A> {
-    return mapWithIndex_(this, f)
-  }
-
-  chain<A>(f: (v: V) => HashMap<K, A>): HashMap<K, A> {
-    return chain_(this, f)
-  }
-
-  chainWithIndex<A>(f: (k: K, v: V) => HashMap<K, A>): HashMap<K, A> {
-    return chainWithIndex_(this, f)
   }
 }
 
@@ -630,7 +540,7 @@ export function map<V, A>(f: (v: V) => A) {
  */
 export function chain_<K, V, A>(map: HashMap<K, V>, f: (v: V) => HashMap<K, A>) {
   return reduceWithIndex_(map, make<K, A>(map.config), (z, _, v) =>
-    z.mutate((m) => {
+    mutate_(z, (m) => {
       forEachWithIndex_(f(v), (_k, _a) => {
         set_(m, _k, _a)
       })
@@ -655,7 +565,7 @@ export function chainWithIndex_<K, V, A>(
   f: (k: K, v: V) => HashMap<K, A>
 ) {
   return reduceWithIndex_(map, make<K, A>(map.config), (z, k, v) =>
-    z.mutate((m) => {
+    mutate_(z, (m) => {
       forEachWithIndex_(f(k, v), (_k, _a) => {
         set_(m, _k, _a)
       })
@@ -692,7 +602,7 @@ export function filterMapWithIndex_<K, A, B>(
     for (const [k, a] of fa) {
       const o = f(k, a)
       if (O.isSome(o)) {
-        m.set(k, o.value)
+        set_(m, k, o.value)
       }
     }
   })
@@ -738,7 +648,7 @@ export function filterWithIndex_<K, A>(
   return mutate_(m, (m) => {
     for (const [k, a] of fa) {
       if (p(k, a)) {
-        m.set(k, a)
+        set_(m, k, a)
       }
     }
   })
@@ -790,7 +700,7 @@ export function size<K, V>(map: HashMap<K, V>) {
  * Remove many keys
  */
 export function removeMany_<K, V>(self: HashMap<K, V>, ks: Iterable<K>): HashMap<K, V> {
-  return self.mutate((m) => {
+  return mutate_(self, (m) => {
     for (const k of ks) {
       remove_(m, k)
     }
