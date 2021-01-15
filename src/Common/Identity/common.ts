@@ -17,7 +17,7 @@ export const all: Identity<boolean> = makeIdentity(true, A.all.combine)
 /**
  * Boolean `Identity` under disjunction
  */
-export const any: Identity<boolean> = fromAssociative(A.any)(true)
+export const any: Identity<boolean> = fromAssociative(A.any)(false)
 
 /**
  * Number `Identity` under multiplication
