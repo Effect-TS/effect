@@ -34,7 +34,7 @@
     "eslint": "^7.11.0",
     "eslint-config-prettier": "^7.0.0",
     "eslint-import-resolver-typescript": "^2.3.0",
-    "eslint-plugin-codegen": "^0.14.0",
+    "eslint-plugin-codegen": "^0.15.0",
     "eslint-plugin-import": "^2.22.1",
     "eslint-plugin-jest": "^24.1.0",
     "eslint-plugin-prettier": "^3.1.4",
