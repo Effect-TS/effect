@@ -3419,10 +3419,10 @@ eslint-module-utils@^2.6.0:
     debug "^2.6.9"
     pkg-dir "^2.0.0"
 
-eslint-plugin-codegen@^0.14.0:
-  version "0.14.4"
-  resolved "https://registry.yarnpkg.com/eslint-plugin-codegen/-/eslint-plugin-codegen-0.14.4.tgz#f4ca136e5390aa0227799903369d41ae37f88d32"
-  integrity sha512-MoPXnbREvdqCadI9/vB5sjHq8DVCC1IOPKhUAOLlbHBrCahTusamsHJAzoOFZEoFwpvX7oZC4EwGEdgSZdfEaA==
+eslint-plugin-codegen@^0.15.0:
+  version "0.15.0"
+  resolved "https://registry.yarnpkg.com/eslint-plugin-codegen/-/eslint-plugin-codegen-0.15.0.tgz#8cceb820661d13638a32a4743d18c16f57e4d04a"
+  integrity sha512-hUNmNrOxY/+p5/YTgvylxM35dieSUROWmJxyHlHDHttDfr4JZ0AOFcaU5vSobG5dLv3P/vZIaA8Ybsceki7V0w==
   dependencies:
     "@babel/core" "^7.11.6"
     "@babel/generator" "~7.12.0"
