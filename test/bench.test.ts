@@ -3,6 +3,30 @@ import { defaultRuntime, QIO } from "@qio/core"
 import * as T from "../src/Effect"
 import { makeCustomRuntime } from "../src/Effect"
 import * as F from "../src/Fiber"
+import * as IO from "../src/IO"
+import * as Sync from "../src/Sync"
+
+function fibIO(n: number): IO.IO<number> {
+  if (n < 2) {
+    return IO.succeed(1)
+  }
+  return IO.zipWith_(
+    IO.suspend(() => fibIO(n - 1)),
+    IO.suspend(() => fibIO(n - 2)),
+    (a, b) => a + b
+  )
+}
+
+function fibSync(n: number): Sync.UIO<number> {
+  if (n < 2) {
+    return Sync.succeed(1)
+  }
+  return Sync.zipWith_(
+    Sync.suspend(() => fibSync(n - 1)),
+    Sync.suspend(() => fibSync(n - 2)),
+    (a, b) => a + b
+  )
+}
 
 function fibEffect(n: number): T.UIO<number> {
   if (n < 2) {
@@ -66,6 +90,16 @@ describe("Bench", () => {
     it("qio", async () => {
       for (let i = 0; i < 1000; i++) {
         await qioRuntime.unsafeExecutePromise(fibQIO(10))
+      }
+    })
+    it("io", () => {
+      for (let i = 0; i < 1000; i++) {
+        IO.run(fibIO(10))
+      }
+    })
+    it("sync", () => {
+      for (let i = 0; i < 1000; i++) {
+        Sync.run(fibSync(10))
       }
     })
   })
