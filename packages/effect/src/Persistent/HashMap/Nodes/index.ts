@@ -218,8 +218,9 @@ export class IndexedNode<K, V> {
       newChildren = arraySpliceOut(canEdit, indx, children)
     } else if (!exists && !isEmptyNode(child)) {
       // add
-      if (children.length >= MAX_INDEX_NODE)
+      if (children.length >= MAX_INDEX_NODE) {
         return expand(edit, frag, child, mask, children)
+      }
 
       bitmap |= bit
       newChildren = arraySpliceIn(canEdit, indx, child, children)
@@ -240,11 +241,9 @@ export class IndexedNode<K, V> {
 export class ArrayNode<K, V> {
   readonly _tag = "ArrayNode"
 
-  public size = 0
-
   constructor(
     readonly edit: number,
-    public mask: number,
+    public size: number,
     public children: Node<K, V>[]
   ) {}
 
