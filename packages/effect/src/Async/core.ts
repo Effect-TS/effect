@@ -1,42 +1,14 @@
 /* eslint-disable prefer-const */
 
-import type { Cause } from "../Cause"
+import * as C from "../Cause/cause"
 import type { EffectURI } from "../Effect/effect"
 import { _A, _E, _I, _R, _U } from "../Effect/effect"
-import type { Effect, Instruction } from "../Effect/primitives"
+import * as P from "../Effect/primitives"
 import * as E from "../Either"
 import { pipe } from "../Function"
 import * as O from "../Option"
 import { Stack } from "../Stack"
-import { AtomicReference } from "../Support/AtomicReference"
-import * as S from "../Sync"
 import type * as U from "../Utils"
-
-export const currentIntegration = new AtomicReference<
-  O.Option<<R, E, A>(_: Async<R, E, A>) => Effect<R, E, A>>
->(O.none)
-
-export class IFailEffect<E> {
-  readonly _tag = "Fail"
-  readonly _S1!: (_: unknown) => void
-  readonly _S2!: () => never;
-
-  readonly ["_U"]!: EffectURI;
-  readonly ["_E"]!: () => E;
-  readonly ["_A"]!: () => never;
-  readonly ["_R"]!: (_: unknown) => void
-
-  constructor(readonly fill: () => Cause<E>) {}
-
-  get ["_I"](): Instruction {
-    return this as any
-  }
-}
-
-export const notIimplementedFFI = new IFailEffect(() => ({
-  _tag: "Die",
-  value: new Error("not supported")
-}))
 
 /**
  * `Async[R, E, A]` is a purely functional description of an async computation
@@ -44,8 +16,7 @@ export const notIimplementedFFI = new IFailEffect(() => ({
  * with an `A`.
  */
 export abstract class Async<R, E, A> {
-  readonly _tag = "XPure"
-  readonly _SX!: () => unknown
+  readonly _tag = "FFI"
   readonly _S1!: (_: unknown) => void
   readonly _S2!: () => never;
 
@@ -54,12 +25,33 @@ export abstract class Async<R, E, A> {
   readonly [_A]!: () => A;
   readonly [_R]!: (_: R) => void
 
-  get [_I](): Instruction {
-    const ci = currentIntegration.get
-    if (ci._tag === "Some") {
-      return ci.value(this)["_I"]
-    }
-    return notIimplementedFFI
+  get [_I](): P.Instruction {
+    return new P.IRead(
+      (env) =>
+        new P.IEffectAsync((cb) => {
+          runAsyncEnv(this, env, (ex) => {
+            switch (ex._tag) {
+              case "Success": {
+                cb(new P.ISucceed(ex.a))
+                break
+              }
+              case "Failure": {
+                cb(new P.IFail((t) => C.traced(C.fail(ex.e), t())))
+                break
+              }
+              case "Interrupt": {
+                cb(
+                  new P.IDescriptor(
+                    (d) => new P.IFail((t) => C.traced(C.interrupt(d.id), t()))
+                  )
+                )
+                break
+              }
+            }
+          })
+          return O.none
+        }, [])
+    )
   }
 }
 
@@ -171,7 +163,6 @@ type Concrete<R, E, A> =
   | IPromise<E, A>
   | IDone<E, A>
   | IAll<R, E, A>
-  | S.Sync<R, E, A>
 
 class FoldFrame {
   readonly _asyncTag = "FoldFrame"
@@ -456,10 +447,6 @@ export function runPromiseExitEnv<R, E, A>(
         }
         case "Suspend": {
           curAsync = xp.f()
-          break
-        }
-        case "XPure": {
-          curAsync = fromEither(S.runEitherEnv(r)(xp))
           break
         }
         case "Succeed": {

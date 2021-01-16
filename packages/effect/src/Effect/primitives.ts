@@ -1,3 +1,4 @@
+import type { Async } from "../Async"
 import type * as Cause from "../Cause/core"
 import type * as Exit from "../Exit/exit"
 import type { FiberContext } from "../Fiber/context"
@@ -8,7 +9,6 @@ import type { FiberRef } from "../FiberRef/fiberRef"
 import type * as O from "../Option"
 import type { Scope } from "../Scope"
 import type { Supervisor } from "../Supervisor"
-import type { XPure } from "../XPure"
 import type { Effect, FFI, IFail } from "./effect"
 import { Base } from "./effect"
 
@@ -40,7 +40,7 @@ export type Instruction =
   | ISupervise<any, any, any>
   | IGetForkScope<any, any, any>
   | IOverrideForkScope<any, any, any>
-  | XPure<unknown, never, any, any, any>
+  | Async<any, any, any>
   | FFI<any, any, any>
   | ITracingStatus<any, any, any>
 

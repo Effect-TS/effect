@@ -22,8 +22,6 @@ import * as Sup from "../Supervisor"
 import { AtomicReference } from "../Support/AtomicReference"
 import { RingBuffer } from "../Support/RingBuffer"
 import { defaultScheduler } from "../Support/Scheduler"
-// xpure / internal effect
-import * as X from "../XPure"
 import * as T from "./_internal/effect"
 // fiber
 import * as Fiber from "./core"
@@ -969,20 +967,6 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                         this.pushContinuation(new ApplyFrame(k))
                       }
                     }
-                    break
-                  }
-
-                  case "XPure": {
-                    const res: E.Either<any, any> = X.runEither(
-                      X.provideAll(this.environments?.value || {})(current)
-                    )
-
-                    if (res._tag === "Left") {
-                      current = T.fail(res.left)[T._I]
-                    } else {
-                      current = this.nextInstr(res.right)
-                    }
-
                     break
                   }
 
