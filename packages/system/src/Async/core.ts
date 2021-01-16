@@ -17,6 +17,8 @@ import type * as U from "../Utils"
  */
 export abstract class Async<R, E, A> {
   readonly _tag = "FFI"
+  readonly _idn = "Async"
+
   readonly _S1!: (_: unknown) => void
   readonly _S2!: () => never;
 
