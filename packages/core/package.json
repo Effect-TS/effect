@@ -52,6 +52,7 @@
       "Common/IndexedT",
       "Common/InvariantT",
       "Common/Inverse",
+      "Common/IO",
       "Common/Iterable",
       "Common/Map",
       "Common/NonEmptyArray",

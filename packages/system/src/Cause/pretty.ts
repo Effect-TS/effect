@@ -3,8 +3,8 @@ import type { FiberID } from "../Fiber/id"
 import type { Trace } from "../Fiber/tracing"
 import { prettyTrace } from "../Fiber/tracing"
 import { pipe } from "../Function"
+import * as S from "../IO"
 import * as O from "../Option"
-import * as S from "../Sync"
 import type { Cause } from "./cause"
 
 //
@@ -136,7 +136,7 @@ const renderFailError = (
 
 const lines = (s: string) => s.split("\n").map((s) => s.replace("\r", "")) as string[]
 
-const linearSegments = <E>(cause: Cause<E>, renderer: Renderer): S.UIO<Step[]> =>
+const linearSegments = <E>(cause: Cause<E>, renderer: Renderer): S.IO<Step[]> =>
   S.gen(function* (_) {
     switch (cause._tag) {
       case "Then": {
@@ -151,10 +151,7 @@ const linearSegments = <E>(cause: Cause<E>, renderer: Renderer): S.UIO<Step[]> =
     }
   })
 
-const parallelSegments = <E>(
-  cause: Cause<E>,
-  renderer: Renderer
-): S.UIO<Sequential[]> =>
+const parallelSegments = <E>(cause: Cause<E>, renderer: Renderer): S.IO<Sequential[]> =>
   S.gen(function* (_) {
     switch (cause._tag) {
       case "Both": {
@@ -169,7 +166,7 @@ const parallelSegments = <E>(
     }
   })
 
-const causeToSequential = <E>(cause: Cause<E>, renderer: Renderer): S.UIO<Sequential> =>
+const causeToSequential = <E>(cause: Cause<E>, renderer: Renderer): S.IO<Sequential> =>
   S.gen(function* (_) {
     switch (cause._tag) {
       case "Empty": {
