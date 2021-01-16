@@ -1,3 +1,5 @@
+import "@effect-ts/tracing-utils/Enable"
+
 import { defaultRuntime, QIO } from "@qio/core"
 
 import * as T from "../src/Effect"
