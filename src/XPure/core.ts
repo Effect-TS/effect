@@ -2,6 +2,7 @@
 import type { EffectURI } from "../Effect/effect"
 import { _A, _E, _I, _R, _U } from "../Effect/effect"
 import type { Instruction } from "../Effect/primitives"
+import { IFail, IRead, ISucceed } from "../Effect/primitives"
 import * as E from "../Either"
 import { constant } from "../Function"
 import { Stack } from "../Stack"
@@ -14,9 +15,9 @@ import { Stack } from "../Stack"
  * including context, state, and failure.
  */
 export abstract class XPure<S1, S2, R, E, A> {
-  readonly _tag = "XPure"
-  readonly _asyncTag = "XPure"
-  readonly _SX!: () => never
+  readonly _tag = "FFI"
+  readonly _idn = "XPure"
+
   readonly _S1!: (_: S1) => void
   readonly _S2!: () => S2;
 
@@ -26,7 +27,15 @@ export abstract class XPure<S1, S2, R, E, A> {
   readonly [_R]!: (_: R) => void
 
   get [_I](): Instruction {
-    return this as any
+    return new IRead((env) => {
+      const res: E.Either<any, any> = runEither(provideAll(env)(this as any))
+
+      if (res._tag === "Left") {
+        return new IFail(res.left)
+      } else {
+        return new ISucceed(res.right)
+      }
+    })
   }
 }
 
