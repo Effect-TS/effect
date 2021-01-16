@@ -8,7 +8,7 @@ import * as S from "../IO"
 import * as O from "../Option"
 import { Stack } from "../Stack"
 import type { Cause } from "./cause"
-import { both, empty, fail, then, traced } from "./cause"
+import { both, die, empty, fail, then, traced } from "./cause"
 import { equalsCause } from "./eq"
 import { InterruptedException } from "./errors"
 
@@ -193,14 +193,26 @@ export function failures<E>(cause: Cause<E>) {
 }
 
 /**
- * Filter out all `Die` causes according to the specified function,
+ * Remove all `Die` causes that the specified partial function is defined at,
  * returning `Some` with the remaining causes or `None` if there are no
  * remaining causes.
  */
-export function filterSomeDefects(f: (_: unknown) => boolean) {
+export function stripSomeDefects(f: (_: unknown) => O.Option<unknown>) {
   return <E>(cause: Cause<E>): O.Option<Cause<E>> => {
-    return S.run(filterSomeDefectsSafe(f)(cause))
+    return S.run(stripSomeDefectsSafe(cause, f))
   }
+}
+
+/**
+ * Remove all `Die` causes that the specified partial function is defined at,
+ * returning `Some` with the remaining causes or `None` if there are no
+ * remaining causes.
+ */
+export function stripSomeDefects_<E>(
+  cause: Cause<E>,
+  f: (_: unknown) => O.Option<unknown>
+): O.Option<Cause<E>> {
+  return S.run(stripSomeDefectsSafe(cause, f))
 }
 
 /**
@@ -208,58 +220,59 @@ export function filterSomeDefects(f: (_: unknown) => boolean) {
  * returning `Some` with the remaining causes or `None` if there are no
  * remaining causes.
  */
-export function filterSomeDefectsSafe(f: (_: unknown) => boolean) {
-  return <E>(cause: Cause<E>): S.IO<O.Option<Cause<E>>> => {
-    switch (cause._tag) {
-      case "Empty": {
-        return S.succeed(O.none)
-      }
-      case "Interrupt": {
-        return S.succeed(O.some(cause))
-      }
-      case "Fail": {
-        return S.succeed(O.some(cause))
-      }
-      case "Die": {
-        return S.succeed(f(cause.value) ? O.some(cause) : O.none)
-      }
-      case "Both": {
-        return S.zipWith_(
-          S.suspend(() => filterSomeDefectsSafe(f)(cause.left)),
-          S.suspend(() => filterSomeDefectsSafe(f)(cause.right)),
-          (l, r) => {
-            if (l._tag === "Some" && r._tag === "Some") {
-              return O.some(both(l.value, r.value))
-            } else if (l._tag === "Some") {
-              return l
-            } else if (r._tag === "Some") {
-              return r
-            } else {
-              return O.none
-            }
+export function stripSomeDefectsSafe<E>(
+  cause: Cause<E>,
+  f: (_: unknown) => O.Option<unknown>
+): S.IO<O.Option<Cause<E>>> {
+  switch (cause._tag) {
+    case "Empty": {
+      return S.succeed(O.none)
+    }
+    case "Interrupt": {
+      return S.succeed(O.some(cause))
+    }
+    case "Fail": {
+      return S.succeed(O.some(cause))
+    }
+    case "Die": {
+      return S.succeed(O.map_(f(cause.value), die))
+    }
+    case "Both": {
+      return S.zipWith_(
+        S.suspend(() => stripSomeDefectsSafe(cause.left, f)),
+        S.suspend(() => stripSomeDefectsSafe(cause.right, f)),
+        (l, r) => {
+          if (l._tag === "Some" && r._tag === "Some") {
+            return O.some(both(l.value, r.value))
+          } else if (l._tag === "Some") {
+            return l
+          } else if (r._tag === "Some") {
+            return r
+          } else {
+            return O.none
           }
-        )
-      }
-      case "Then": {
-        return S.zipWith_(
-          S.suspend(() => filterSomeDefectsSafe(f)(cause.left)),
-          S.suspend(() => filterSomeDefectsSafe(f)(cause.right)),
-          (l, r) => {
-            if (l._tag === "Some" && r._tag === "Some") {
-              return O.some(then(l.value, r.value))
-            } else if (l._tag === "Some") {
-              return l
-            } else if (r._tag === "Some") {
-              return r
-            } else {
-              return O.none
-            }
+        }
+      )
+    }
+    case "Then": {
+      return S.zipWith_(
+        S.suspend(() => stripSomeDefectsSafe(cause.left, f)),
+        S.suspend(() => stripSomeDefectsSafe(cause.right, f)),
+        (l, r) => {
+          if (l._tag === "Some" && r._tag === "Some") {
+            return O.some(then(l.value, r.value))
+          } else if (l._tag === "Some") {
+            return l
+          } else if (r._tag === "Some") {
+            return r
+          } else {
+            return O.none
           }
-        )
-      }
-      case "Traced": {
-        return S.suspend(() => filterSomeDefectsSafe(f)(cause.cause))
-      }
+        }
+      )
+    }
+    case "Traced": {
+      return S.suspend(() => stripSomeDefectsSafe(cause.cause, f))
     }
   }
 }
