@@ -1,5 +1,5 @@
 import * as DSL from "../../Prelude/DSL"
-import { Applicative, Covariant, Monad } from "./instances"
+import { Applicative, Covariant } from "./instances"
 
 /**
  * Struct based applicative for IO[+_]
