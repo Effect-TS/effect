@@ -41,17 +41,14 @@ export function run<A>(self: IO<A>): A {
   while (curIO != null) {
     switch (curIO._tag) {
       case "FlatMap": {
-        const nested = curIO.value
-        const continuation = curIO.cont
-
-        switch (nested._tag) {
+        switch (curIO.value._tag) {
           case "Succeed": {
-            curIO = continuation(nested.a)
+            curIO = curIO.cont(curIO.value.a)
             break
           }
           default: {
-            curIO = nested
-            stack = new Stack(continuation, stack)
+            stack = new Stack(curIO.cont, stack)
+            curIO = curIO.value
           }
         }
 
