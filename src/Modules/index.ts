@@ -14,6 +14,7 @@ import type { Id } from "../Common/Id"
 import type { Identity } from "../Common/Identity"
 import type { Ix, IxC } from "../Common/IndexedT"
 import type { Inverse } from "../Common/Inverse"
+import type { IO } from "../Common/IO"
 import type { NonEmptyArray } from "../Common/NonEmptyArray"
 import type { Option } from "../Common/Option"
 import type { Ord } from "../Common/Ord"
@@ -111,6 +112,9 @@ export type SyncURI = typeof SyncURI
 export const XPureURI = "XPure"
 export type XPureURI = typeof XPureURI
 
+export const IOURI = "IO"
+export type IOURI = typeof IOURI
+
 export const XPureReaderCategoryURI = "XPureReaderCategory"
 export type XPureReaderCategoryURI = typeof XPureReaderCategoryURI
 
@@ -175,6 +179,7 @@ declare module "../Prelude/HKT" {
     [TreeURI]: Tree<A>
     [OptionURI]: Option<A>
     [ListURI]: List<A>
+    [IOURI]: IO<A>
   }
   interface URItoIndex<N extends string, K> {
     [ListURI]: number
