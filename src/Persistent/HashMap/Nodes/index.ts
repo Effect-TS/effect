@@ -1,4 +1,5 @@
 import type { Equal } from "../../../Equal"
+import * as IO from "../../../IO"
 import * as O from "../../../Option"
 import { arraySpliceIn, arraySpliceOut, arrayUpdate } from "../Array"
 import { fromBitmap, hashFragment, toBitmap } from "../Bitwise"
@@ -346,18 +347,31 @@ function mergeLeaves<K, V>(
   h2: number,
   n2: Node<K, V>
 ): Node<K, V> {
-  if (h1 === h2) return new CollisionNode(edit, h1, [n2, n1])
+  return IO.run(mergeLeavesSafe(edit, shift, h1, n1, h2, n2))
+}
 
+function mergeLeavesSafe<K, V>(
+  edit: number,
+  shift: number,
+  h1: number,
+  n1: Node<K, V>,
+  h2: number,
+  n2: Node<K, V>
+): IO.IO<Node<K, V>> {
+  if (h1 === h2) return IO.succeed(new CollisionNode(edit, h1, [n2, n1]))
   const subH1 = hashFragment(shift, h1)
   const subH2 = hashFragment(shift, h2)
-
-  return new IndexedNode(
-    edit,
-    toBitmap(subH1) | toBitmap(subH2),
+  const children =
     subH1 === subH2
-      ? [mergeLeaves(edit, shift + SIZE, h1, n1, h2, n2)]
+      ? IO.map_(
+          IO.suspend(() => mergeLeavesSafe(edit, shift + SIZE, h1, n1, h2, n2)),
+          (x) => [x]
+        )
       : subH1 < subH2
-      ? [n1, n2]
-      : [n2, n1]
+      ? IO.succeed([n1, n2])
+      : IO.succeed([n2, n1])
+  return IO.map_(
+    children,
+    (x) => new IndexedNode(edit, toBitmap(subH1) | toBitmap(subH2), x)
   )
 }

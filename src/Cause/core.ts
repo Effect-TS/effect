@@ -4,9 +4,9 @@ import * as E from "../Either"
 import type { Trace } from "../Fiber"
 import type { FiberID } from "../Fiber/id"
 import { identity, pipe } from "../Function"
+import * as S from "../IO"
 import * as O from "../Option"
 import { Stack } from "../Stack"
-import * as S from "../Sync"
 import type { Cause } from "./cause"
 import { both, empty, fail, then, traced } from "./cause"
 import { equalsCause } from "./eq"
@@ -32,7 +32,7 @@ export function as<E1>(e: E1) {
  * Builds a Cause depending on the result of another
  */
 export function chain_<E, E1>(cause: Cause<E>, f: (_: E) => Cause<E1>): Cause<E1> {
-  return S.run(chainSafe(f)(cause))
+  return S.run(chainSafe_(cause, f))
 }
 
 /**
@@ -45,39 +45,41 @@ export function chain<E, E1>(f: (_: E) => Cause<E1>) {
 /**
  * Builds a Cause depending on the result of another
  */
-export function chainSafe<E, E1>(f: (_: E) => Cause<E1>) {
-  return (cause: Cause<E>): S.UIO<Cause<E1>> =>
-    S.gen(function* (_) {
-      switch (cause._tag) {
-        case "Empty": {
-          return empty
-        }
-        case "Fail": {
-          return f(cause.value)
-        }
-        case "Die": {
-          return cause
-        }
-        case "Interrupt": {
-          return cause
-        }
-        case "Then": {
-          return then(
-            yield* _(chainSafe(f)(cause.left)),
-            yield* _(chainSafe(f)(cause.right))
-          )
-        }
-        case "Both": {
-          return both(
-            yield* _(chainSafe(f)(cause.left)),
-            yield* _(chainSafe(f)(cause.right))
-          )
-        }
-        case "Traced": {
-          return traced(yield* _(chainSafe(f)(cause.cause)), cause.trace)
-        }
-      }
-    })
+export function chainSafe_<E, E1>(
+  cause: Cause<E>,
+  f: (_: E) => Cause<E1>
+): S.IO<Cause<E1>> {
+  switch (cause._tag) {
+    case "Empty": {
+      return S.succeed(empty)
+    }
+    case "Fail": {
+      return S.succeed(f(cause.value))
+    }
+    case "Die": {
+      return S.succeed(cause)
+    }
+    case "Interrupt": {
+      return S.succeed(cause)
+    }
+    case "Then": {
+      return S.zipWith_(
+        S.suspend(() => chainSafe_(cause.left, f)),
+        S.suspend(() => chainSafe_(cause.right, f)),
+        (l, r) => then(l, r)
+      )
+    }
+    case "Both": {
+      return S.zipWith_(
+        S.suspend(() => chainSafe_(cause.left, f)),
+        S.suspend(() => chainSafe_(cause.right, f)),
+        (l, r) => both(l, r)
+      )
+    }
+    case "Traced": {
+      return S.map_(chainSafe_(cause.cause, f), (x) => traced(x, cause.trace))
+    }
+  }
 }
 
 /**
@@ -207,54 +209,59 @@ export function filterSomeDefects(f: (_: unknown) => boolean) {
  * remaining causes.
  */
 export function filterSomeDefectsSafe(f: (_: unknown) => boolean) {
-  return <E>(cause: Cause<E>): S.UIO<O.Option<Cause<E>>> =>
-    S.gen(function* (_) {
-      switch (cause._tag) {
-        case "Empty": {
-          return O.none
-        }
-        case "Interrupt": {
-          return O.some(cause)
-        }
-        case "Fail": {
-          return O.some(cause)
-        }
-        case "Die": {
-          return f(cause.value) ? O.some(cause) : O.none
-        }
-        case "Both": {
-          const left = yield* _(filterSomeDefectsSafe(f)(cause.left))
-          const right = yield* _(filterSomeDefectsSafe(f)(cause.right))
-
-          if (left._tag === "Some" && right._tag === "Some") {
-            return O.some(both(left.value, right.value))
-          } else if (left._tag === "Some") {
-            return left
-          } else if (right._tag === "Some") {
-            return right
-          } else {
-            return O.none
-          }
-        }
-        case "Then": {
-          const left = yield* _(filterSomeDefectsSafe(f)(cause.left))
-          const right = yield* _(filterSomeDefectsSafe(f)(cause.right))
-
-          if (left._tag === "Some" && right._tag === "Some") {
-            return O.some(then(left.value, right.value))
-          } else if (left._tag === "Some") {
-            return left
-          } else if (right._tag === "Some") {
-            return right
-          } else {
-            return O.none
-          }
-        }
-        case "Traced": {
-          return yield* _(filterSomeDefectsSafe(f)(cause.cause))
-        }
+  return <E>(cause: Cause<E>): S.IO<O.Option<Cause<E>>> => {
+    switch (cause._tag) {
+      case "Empty": {
+        return S.succeed(O.none)
       }
-    })
+      case "Interrupt": {
+        return S.succeed(O.some(cause))
+      }
+      case "Fail": {
+        return S.succeed(O.some(cause))
+      }
+      case "Die": {
+        return S.succeed(f(cause.value) ? O.some(cause) : O.none)
+      }
+      case "Both": {
+        return S.zipWith_(
+          S.suspend(() => filterSomeDefectsSafe(f)(cause.left)),
+          S.suspend(() => filterSomeDefectsSafe(f)(cause.right)),
+          (l, r) => {
+            if (l._tag === "Some" && r._tag === "Some") {
+              return O.some(both(l.value, r.value))
+            } else if (l._tag === "Some") {
+              return l
+            } else if (r._tag === "Some") {
+              return r
+            } else {
+              return O.none
+            }
+          }
+        )
+      }
+      case "Then": {
+        return S.zipWith_(
+          S.suspend(() => filterSomeDefectsSafe(f)(cause.left)),
+          S.suspend(() => filterSomeDefectsSafe(f)(cause.right)),
+          (l, r) => {
+            if (l._tag === "Some" && r._tag === "Some") {
+              return O.some(then(l.value, r.value))
+            } else if (l._tag === "Some") {
+              return l
+            } else if (r._tag === "Some") {
+              return r
+            } else {
+              return O.none
+            }
+          }
+        )
+      }
+      case "Traced": {
+        return S.suspend(() => filterSomeDefectsSafe(f)(cause.cause))
+      }
+    }
+  }
 }
 
 /**
@@ -271,40 +278,47 @@ export function find<Z, E>(
  */
 export function findSafe<Z, E>(
   f: (cause: Cause<E>) => O.Option<Z>
-): (cause: Cause<E>) => S.UIO<O.Option<Z>> {
-  return (cause) =>
-    S.gen(function* (_) {
-      const apply = f(cause)
+): (cause: Cause<E>) => S.IO<O.Option<Z>> {
+  return (cause) => {
+    const apply = f(cause)
 
-      if (apply._tag === "Some") {
-        return apply
-      }
+    if (apply._tag === "Some") {
+      return S.succeed(apply)
+    }
 
-      switch (cause._tag) {
-        case "Then": {
-          const isLeft = yield* _(findSafe(f)(cause.left))
-          if (isLeft._tag === "Some") {
-            return isLeft
-          } else {
-            return yield* _(findSafe(f)(cause.right))
+    switch (cause._tag) {
+      case "Then": {
+        return S.chain_(
+          S.suspend(() => findSafe(f)(cause.left)),
+          (isLeft) => {
+            if (isLeft._tag === "Some") {
+              return S.succeed(isLeft)
+            } else {
+              return findSafe(f)(cause.right)
+            }
           }
-        }
-        case "Traced": {
-          return yield* _(findSafe(f)(cause.cause))
-        }
-        case "Both": {
-          const isLeft = yield* _(findSafe(f)(cause.left))
-          if (isLeft._tag === "Some") {
-            return isLeft
-          } else {
-            return yield* _(findSafe(f)(cause.right))
-          }
-        }
-        default: {
-          return apply
-        }
+        )
       }
-    })
+      case "Traced": {
+        return S.suspend(() => findSafe(f)(cause.cause))
+      }
+      case "Both": {
+        return S.chain_(
+          S.suspend(() => findSafe(f)(cause.left)),
+          (isLeft) => {
+            if (isLeft._tag === "Some") {
+              return S.succeed(isLeft)
+            } else {
+              return findSafe(f)(cause.right)
+            }
+          }
+        )
+      }
+      default: {
+        return S.succeed(apply)
+      }
+    }
+  }
 }
 
 /**
@@ -351,92 +365,92 @@ export function foldSafe<E, Z>(
   bothCase: (_: Z, __: Z) => Z,
   tracedCase: (_: Z, __: Trace) => Z
 ) {
-  return (cause: Cause<E>): S.UIO<Z> =>
-    S.gen(function* (_) {
-      yield* _(S.unit)
-      switch (cause._tag) {
-        case "Empty": {
-          return empty()
-        }
-        case "Fail": {
-          return failCase(cause.value)
-        }
-        case "Die": {
-          return dieCase(cause.value)
-        }
-        case "Interrupt": {
-          return interruptCase(cause.fiberId)
-        }
-        case "Traced": {
-          return tracedCase(
-            yield* _(
-              foldSafe(
-                empty,
-                failCase,
-                dieCase,
-                interruptCase,
-                thenCase,
-                bothCase,
-                tracedCase
-              )(cause.cause)
-            ),
-            cause.trace
-          )
-        }
-        case "Both": {
-          return bothCase(
-            yield* _(
-              foldSafe(
-                empty,
-                failCase,
-                dieCase,
-                interruptCase,
-                thenCase,
-                bothCase,
-                tracedCase
-              )(cause.left)
-            ),
-            yield* _(
-              foldSafe(
-                empty,
-                failCase,
-                dieCase,
-                interruptCase,
-                thenCase,
-                bothCase,
-                tracedCase
-              )(cause.right)
-            )
-          )
-        }
-        case "Then": {
-          return thenCase(
-            yield* _(
-              foldSafe(
-                empty,
-                failCase,
-                dieCase,
-                interruptCase,
-                thenCase,
-                bothCase,
-                tracedCase
-              )(cause.left)
-            ),
-            yield* _(
-              foldSafe(
-                empty,
-                failCase,
-                dieCase,
-                interruptCase,
-                thenCase,
-                bothCase,
-                tracedCase
-              )(cause.right)
-            )
-          )
-        }
+  return (cause: Cause<E>): S.IO<Z> => {
+    switch (cause._tag) {
+      case "Empty": {
+        return S.sync(empty)
       }
-    })
+      case "Fail": {
+        return S.succeed(failCase(cause.value))
+      }
+      case "Die": {
+        return S.succeed(dieCase(cause.value))
+      }
+      case "Interrupt": {
+        return S.succeed(interruptCase(cause.fiberId))
+      }
+      case "Traced": {
+        return S.map_(
+          S.suspend(() =>
+            foldSafe(
+              empty,
+              failCase,
+              dieCase,
+              interruptCase,
+              thenCase,
+              bothCase,
+              tracedCase
+            )(cause.cause)
+          ),
+          (x) => tracedCase(x, cause.trace)
+        )
+      }
+      case "Both": {
+        return S.zipWith_(
+          S.suspend(() =>
+            foldSafe(
+              empty,
+              failCase,
+              dieCase,
+              interruptCase,
+              thenCase,
+              bothCase,
+              tracedCase
+            )(cause.left)
+          ),
+          S.suspend(() =>
+            foldSafe(
+              empty,
+              failCase,
+              dieCase,
+              interruptCase,
+              thenCase,
+              bothCase,
+              tracedCase
+            )(cause.right)
+          ),
+          (l, r) => bothCase(l, r)
+        )
+      }
+      case "Then": {
+        return S.zipWith_(
+          S.suspend(() =>
+            foldSafe(
+              empty,
+              failCase,
+              dieCase,
+              interruptCase,
+              thenCase,
+              bothCase,
+              tracedCase
+            )(cause.left)
+          ),
+          S.suspend(() =>
+            foldSafe(
+              empty,
+              failCase,
+              dieCase,
+              interruptCase,
+              thenCase,
+              bothCase,
+              tracedCase
+            )(cause.right)
+          ),
+          (l, r) => thenCase(l, r)
+        )
+      }
+    }
+  }
 }
 
 /**
@@ -574,56 +588,61 @@ export function isEmpty<E>(cause: Cause<E>) {
  * Remove all `Fail` and `Interrupt` nodes from this `Cause`,
  * return only `Die` cause/finalizer defects.
  */
-export function keepDefectsSafe<E>(cause: Cause<E>): S.UIO<O.Option<Cause<never>>> {
-  return S.gen(function* (_) {
-    switch (cause._tag) {
-      case "Empty": {
-        return O.none
-      }
-      case "Fail": {
-        return O.none
-      }
-      case "Interrupt": {
-        return O.none
-      }
-      case "Die": {
-        return O.some(cause)
-      }
-      case "Traced": {
-        return O.map_(yield* _(keepDefectsSafe(cause.cause)), (_) =>
-          traced(_, cause.trace)
-        )
-      }
-      case "Then": {
-        const lefts = yield* _(keepDefectsSafe(cause.left))
-        const rights = yield* _(keepDefectsSafe(cause.right))
-
-        if (lefts._tag === "Some" && rights._tag === "Some") {
-          return O.some(then(lefts.value, rights.value))
-        } else if (lefts._tag === "Some") {
-          return lefts
-        } else if (rights._tag === "Some") {
-          return rights
-        } else {
-          return O.none
-        }
-      }
-      case "Both": {
-        const lefts = yield* _(keepDefectsSafe(cause.left))
-        const rights = yield* _(keepDefectsSafe(cause.right))
-
-        if (lefts._tag === "Some" && rights._tag === "Some") {
-          return O.some(both(lefts.value, rights.value))
-        } else if (lefts._tag === "Some") {
-          return lefts
-        } else if (rights._tag === "Some") {
-          return rights
-        } else {
-          return O.none
-        }
-      }
+export function keepDefectsSafe<E>(cause: Cause<E>): S.IO<O.Option<Cause<never>>> {
+  switch (cause._tag) {
+    case "Empty": {
+      return S.succeed(O.none)
     }
-  })
+    case "Fail": {
+      return S.succeed(O.none)
+    }
+    case "Interrupt": {
+      return S.succeed(O.none)
+    }
+    case "Die": {
+      return S.succeed(O.some(cause))
+    }
+    case "Traced": {
+      return S.map_(
+        S.suspend(() => keepDefectsSafe(cause.cause)),
+        (x) => O.map_(x, (_) => traced(_, cause.trace))
+      )
+    }
+    case "Then": {
+      return S.zipWith_(
+        S.suspend(() => keepDefectsSafe(cause.left)),
+        S.suspend(() => keepDefectsSafe(cause.right)),
+        (l, r) => {
+          if (l._tag === "Some" && r._tag === "Some") {
+            return O.some(then(l.value, r.value))
+          } else if (l._tag === "Some") {
+            return l
+          } else if (r._tag === "Some") {
+            return r
+          } else {
+            return O.none
+          }
+        }
+      )
+    }
+    case "Both": {
+      return S.zipWith_(
+        S.suspend(() => keepDefectsSafe(cause.left)),
+        S.suspend(() => keepDefectsSafe(cause.right)),
+        (l, r) => {
+          if (l._tag === "Some" && r._tag === "Some") {
+            return O.some(both(l.value, r.value))
+          } else if (l._tag === "Some") {
+            return l
+          } else if (r._tag === "Some") {
+            return r
+          } else {
+            return O.none
+          }
+        }
+      )
+    }
+  }
 }
 
 /**
@@ -648,62 +667,63 @@ export function sequenceCauseEither<E, A>(
  */
 export function sequenceCauseEitherSafe<E, A>(
   c: Cause<E.Either<E, A>>
-): S.UIO<E.Either<Cause<E>, A>> {
-  return S.gen(function* (_) {
-    switch (c._tag) {
-      case "Empty": {
-        return E.left(empty)
-      }
-      case "Interrupt": {
-        return E.left(c)
-      }
-      case "Fail": {
-        return c.value._tag === "Left"
-          ? E.left(fail(c.value.left))
-          : E.right(c.value.right)
-      }
-      case "Traced": {
-        return E.mapLeft_(yield* _(sequenceCauseEitherSafe(c.cause)), (_) =>
-          traced(_, c.trace)
-        )
-      }
-      case "Die": {
-        return E.left(c)
-      }
-      case "Then": {
-        const [l, r] = [
-          yield* _(sequenceCauseEitherSafe(c.left)),
-          yield* _(sequenceCauseEitherSafe(c.right))
-        ]
-
-        if (l._tag === "Left") {
-          if (r._tag === "Right") {
-            return E.right(r.right)
-          } else {
-            return E.left(then(l.left, r.left))
-          }
-        } else {
-          return E.right(l.right)
-        }
-      }
-      case "Both": {
-        const [l, r] = [
-          yield* _(sequenceCauseEitherSafe(c.left)),
-          yield* _(sequenceCauseEitherSafe(c.right))
-        ]
-
-        if (l._tag === "Left") {
-          if (r._tag === "Right") {
-            return E.right(r.right)
-          } else {
-            return E.left(both(l.left, r.left))
-          }
-        } else {
-          return E.right(l.right)
-        }
-      }
+): S.IO<E.Either<Cause<E>, A>> {
+  switch (c._tag) {
+    case "Empty": {
+      return S.succeed(E.left(empty))
     }
-  })
+    case "Interrupt": {
+      return S.succeed(E.left(c))
+    }
+    case "Fail": {
+      return S.succeed(
+        c.value._tag === "Left" ? E.left(fail(c.value.left)) : E.right(c.value.right)
+      )
+    }
+    case "Traced": {
+      return S.map_(
+        S.suspend(() => sequenceCauseEitherSafe(c.cause)),
+        (x) => E.mapLeft_(x, (_) => traced(_, c.trace))
+      )
+    }
+    case "Die": {
+      return S.succeed(E.left(c))
+    }
+    case "Then": {
+      return S.zipWith_(
+        S.suspend(() => sequenceCauseEitherSafe(c.left)),
+        S.suspend(() => sequenceCauseEitherSafe(c.right)),
+        (l, r) => {
+          if (l._tag === "Left") {
+            if (r._tag === "Right") {
+              return E.right(r.right)
+            } else {
+              return E.left(then(l.left, r.left))
+            }
+          } else {
+            return E.right(l.right)
+          }
+        }
+      )
+    }
+    case "Both": {
+      return S.zipWith_(
+        S.suspend(() => sequenceCauseEitherSafe(c.left)),
+        S.suspend(() => sequenceCauseEitherSafe(c.right)),
+        (l, r) => {
+          if (l._tag === "Left") {
+            if (r._tag === "Right") {
+              return E.right(r.right)
+            } else {
+              return E.left(both(l.left, r.left))
+            }
+          } else {
+            return E.right(l.right)
+          }
+        }
+      )
+    }
+  }
 }
 
 /**
@@ -712,60 +732,61 @@ export function sequenceCauseEitherSafe<E, A>(
  */
 export function sequenceCauseOptionSafe<E>(
   c: Cause<O.Option<E>>
-): S.UIO<O.Option<Cause<E>>> {
-  return S.gen(function* (_) {
-    switch (c._tag) {
-      case "Empty": {
-        return O.some(empty)
-      }
-      case "Interrupt": {
-        return O.some(c)
-      }
-      case "Traced": {
-        return O.map_(yield* _(sequenceCauseOptionSafe(c.cause)), (_) =>
-          traced(_, c.trace)
-        )
-      }
-      case "Fail": {
-        return O.map_(c.value, fail)
-      }
-      case "Die": {
-        return O.some(c)
-      }
-      case "Then": {
-        const [l, r] = [
-          yield* _(sequenceCauseOptionSafe(c.left)),
-          yield* _(sequenceCauseOptionSafe(c.right))
-        ]
-
-        if (l._tag === "Some" && r._tag === "Some") {
-          return O.some(then(l.value, r.value))
-        } else if (l._tag === "Some") {
-          return O.some(l.value)
-        } else if (r._tag === "Some") {
-          return O.some(r.value)
-        } else {
-          return O.none
-        }
-      }
-      case "Both": {
-        const [l, r] = [
-          yield* _(sequenceCauseOptionSafe(c.left)),
-          yield* _(sequenceCauseOptionSafe(c.right))
-        ]
-
-        if (l._tag === "Some" && r._tag === "Some") {
-          return O.some(both(l.value, r.value))
-        } else if (l._tag === "Some") {
-          return O.some(l.value)
-        } else if (r._tag === "Some") {
-          return O.some(r.value)
-        } else {
-          return O.none
-        }
-      }
+): S.IO<O.Option<Cause<E>>> {
+  switch (c._tag) {
+    case "Empty": {
+      return S.succeed(O.some(empty))
     }
-  })
+    case "Interrupt": {
+      return S.succeed(O.some(c))
+    }
+    case "Traced": {
+      return S.map_(
+        S.suspend(() => sequenceCauseOptionSafe(c.cause)),
+        (x) => O.map_(x, (_) => traced(_, c.trace))
+      )
+    }
+    case "Fail": {
+      return S.succeed(O.map_(c.value, fail))
+    }
+    case "Die": {
+      return S.succeed(O.some(c))
+    }
+    case "Then": {
+      return S.zipWith_(
+        S.suspend(() => sequenceCauseOptionSafe(c.left)),
+        S.suspend(() => sequenceCauseOptionSafe(c.right)),
+        (l, r) => {
+          if (l._tag === "Some" && r._tag === "Some") {
+            return O.some(then(l.value, r.value))
+          } else if (l._tag === "Some") {
+            return O.some(l.value)
+          } else if (r._tag === "Some") {
+            return O.some(r.value)
+          } else {
+            return O.none
+          }
+        }
+      )
+    }
+    case "Both": {
+      return S.zipWith_(
+        S.suspend(() => sequenceCauseOptionSafe(c.left)),
+        S.suspend(() => sequenceCauseOptionSafe(c.right)),
+        (l, r) => {
+          if (l._tag === "Some" && r._tag === "Some") {
+            return O.some(both(l.value, r.value))
+          } else if (l._tag === "Some") {
+            return O.some(l.value)
+          } else if (r._tag === "Some") {
+            return O.some(r.value)
+          } else {
+            return O.none
+          }
+        }
+      )
+    }
+  }
 }
 
 /**
@@ -809,88 +830,126 @@ export function squash<E>(f: (e: E) => unknown) {
  * Discards all typed failures kept on this `Cause`.
  */
 export function stripFailures<E>(cause: Cause<E>): Cause<never> {
-  return S.run(stripFailuresSafe(cause))
+  switch (cause._tag) {
+    case "Empty": {
+      return empty
+    }
+    case "Fail": {
+      return empty
+    }
+    case "Interrupt": {
+      return cause
+    }
+    case "Die": {
+      return cause
+    }
+    default: {
+      return S.run(stripFailuresSafe(cause))
+    }
+  }
 }
 
 /**
  * Discards all typed failures kept on this `Cause`.
  */
-export function stripFailuresSafe<E>(cause: Cause<E>): S.UIO<Cause<never>> {
-  return S.gen(function* (_) {
-    switch (cause._tag) {
-      case "Empty": {
-        return empty
-      }
-      case "Fail": {
-        return empty
-      }
-      case "Interrupt": {
-        return cause
-      }
-      case "Die": {
-        return cause
-      }
-      case "Traced": {
-        return traced(yield* _(stripFailuresSafe(cause.cause)), cause.trace)
-      }
-      case "Both": {
-        return both(
-          yield* _(stripFailuresSafe(cause.left)),
-          yield* _(stripFailuresSafe(cause.right))
-        )
-      }
-      case "Then": {
-        return then(
-          yield* _(stripFailuresSafe(cause.left)),
-          yield* _(stripFailuresSafe(cause.right))
-        )
-      }
+export function stripFailuresSafe<E>(cause: Cause<E>): S.IO<Cause<never>> {
+  switch (cause._tag) {
+    case "Empty": {
+      return S.succeed(empty)
     }
-  })
+    case "Fail": {
+      return S.succeed(empty)
+    }
+    case "Interrupt": {
+      return S.succeed(cause)
+    }
+    case "Die": {
+      return S.succeed(cause)
+    }
+    case "Traced": {
+      return S.map_(
+        S.suspend(() => stripFailuresSafe(cause.cause)),
+        (x) => traced(x, cause.trace)
+      )
+    }
+    case "Both": {
+      return S.zipWith_(
+        S.suspend(() => stripFailuresSafe(cause.left)),
+        S.suspend(() => stripFailuresSafe(cause.right)),
+        (l, r) => both(l, r)
+      )
+    }
+    case "Then": {
+      return S.zipWith_(
+        S.suspend(() => stripFailuresSafe(cause.left)),
+        S.suspend(() => stripFailuresSafe(cause.right)),
+        (l, r) => then(l, r)
+      )
+    }
+  }
 }
 
 /**
  * Discards all typed failures kept on this `Cause`.
  */
 export function stripInterrupts<E>(cause: Cause<E>): Cause<E> {
-  return S.run(stripInterruptsSafe(cause))
+  switch (cause._tag) {
+    case "Empty": {
+      return empty
+    }
+    case "Fail": {
+      return cause
+    }
+    case "Interrupt": {
+      return empty
+    }
+    case "Die": {
+      return cause
+    }
+    default: {
+      return S.run(stripInterruptsSafe(cause))
+    }
+  }
 }
 
 /**
  * Discards all typed failures kept on this `Cause`.
  */
-export function stripInterruptsSafe<E>(cause: Cause<E>): S.UIO<Cause<E>> {
-  return S.gen(function* (_) {
-    switch (cause._tag) {
-      case "Empty": {
-        return empty
-      }
-      case "Fail": {
-        return cause
-      }
-      case "Interrupt": {
-        return empty
-      }
-      case "Die": {
-        return cause
-      }
-      case "Traced": {
-        return traced(yield* _(stripInterruptsSafe(cause.cause)), cause.trace)
-      }
-      case "Both": {
-        return both(
-          yield* _(stripInterruptsSafe(cause.left)),
-          yield* _(stripInterruptsSafe(cause.right))
-        )
-      }
-      case "Then": {
-        return then(
-          yield* _(stripInterruptsSafe(cause.left)),
-          yield* _(stripInterruptsSafe(cause.right))
-        )
-      }
+export function stripInterruptsSafe<E>(cause: Cause<E>): S.IO<Cause<E>> {
+  switch (cause._tag) {
+    case "Empty": {
+      return S.succeed(empty)
     }
-  })
+    case "Fail": {
+      return S.succeed(cause)
+    }
+    case "Interrupt": {
+      return S.succeed(empty)
+    }
+    case "Die": {
+      return S.succeed(cause)
+    }
+    case "Traced": {
+      return S.map_(
+        S.suspend(() => stripInterruptsSafe(cause.cause)),
+        (x) => traced(x, cause.trace)
+      )
+    }
+    case "Both": {
+      return S.zipWith_(
+        S.suspend(() => stripInterruptsSafe(cause.left)),
+        S.suspend(() => stripInterruptsSafe(cause.right)),
+        (l, r) => both(l, r)
+      )
+    }
+    case "Then": {
+      return S.zipWith_(
+        S.suspend(() => stripInterruptsSafe(cause.left)),
+        S.suspend(() => stripInterruptsSafe(cause.right)),
+        (l, r) => then(l, r)
+      )
+    }
+  }
 }
 
 export function isCause(u: unknown): u is Cause<unknown> {
@@ -906,33 +965,41 @@ export function isCause(u: unknown): u is Cause<unknown> {
  * Returns a `Cause` that has been stripped of all tracing information.
  */
 export function untraced<E>(cause: Cause<E>): Cause<E> {
-  return S.run(untracedSafe(cause))
+  switch (cause._tag) {
+    case "Die":
+    case "Empty":
+    case "Fail":
+    case "Interrupt":
+      return cause
+    default:
+      return S.run(untracedSafe(cause))
+  }
 }
 
 /**
  * Returns a `Cause` that has been stripped of all tracing information.
  */
-export function untracedSafe<E>(cause: Cause<E>): S.UIO<Cause<E>> {
-  return S.gen(function* (_) {
-    switch (cause._tag) {
-      case "Traced": {
-        return yield* _(untracedSafe(cause.cause))
-      }
-      case "Both": {
-        return both(
-          yield* _(untracedSafe(cause.left)),
-          yield* _(untracedSafe(cause.right))
-        )
-      }
-      case "Then": {
-        return then(
-          yield* _(untracedSafe(cause.left)),
-          yield* _(untracedSafe(cause.right))
-        )
-      }
-      default: {
-        return cause
-      }
+export function untracedSafe<E>(cause: Cause<E>): S.IO<Cause<E>> {
+  switch (cause._tag) {
+    case "Traced": {
+      return S.suspend(() => untracedSafe(cause.cause))
     }
-  })
+    case "Both": {
+      return S.zipWith_(
+        S.suspend(() => untracedSafe(cause.left)),
+        S.suspend(() => untracedSafe(cause.right)),
+        (l, r) => both(l, r)
+      )
+    }
+    case "Then": {
+      return S.zipWith_(
+        S.suspend(() => untracedSafe(cause.left)),
+        S.suspend(() => untracedSafe(cause.right)),
+        (l, r) => then(l, r)
+      )
+    }
+    default: {
+      return S.succeed(cause)
+    }
+  }
 }
