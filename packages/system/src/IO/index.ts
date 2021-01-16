@@ -1,4 +1,7 @@
 /* eslint-disable prefer-const */
+import { _A, _E, _I, _R, _U } from "../Effect/effect"
+import type { EffectURI, Instruction } from "../Effect/primitives"
+import { IEffectTotal } from "../Effect/primitives"
 import { Stack } from "../Stack"
 
 /**
@@ -12,22 +15,47 @@ import { Stack } from "../Stack"
  */
 export type IO<A> = Succeed<A> | FlatMap<any, A> | Suspend<A>
 
-class Succeed<A> {
-  readonly _tag = "Succeed"
+abstract class Base<A> {
+  readonly _tag = "FFI"
+  readonly _idn = "IO"
 
-  constructor(readonly a: A) {}
+  readonly _S1!: (_: unknown) => void
+  readonly _S2!: () => never;
+
+  readonly [_U]!: EffectURI;
+  readonly [_E]!: () => never;
+  readonly [_A]!: () => A;
+  readonly [_R]!: (_: unknown) => void
+
+  get [_I](): Instruction {
+    return new IEffectTotal(() => {
+      return run(this as any)
+    })
+  }
 }
 
-class Suspend<A> {
-  readonly _tag = "Suspend"
+class Succeed<A> extends Base<A> {
+  readonly _iotag = "Succeed"
 
-  constructor(readonly f: () => IO<A>) {}
+  constructor(readonly a: A) {
+    super()
+  }
 }
 
-class FlatMap<A, B> {
-  readonly _tag = "FlatMap"
+class Suspend<A> extends Base<A> {
+  readonly _iotag = "Suspend"
 
-  constructor(readonly value: IO<A>, readonly cont: (a: A) => IO<B>) {}
+  constructor(readonly f: () => IO<A>) {
+    super()
+  }
+}
+
+class FlatMap<A, B> extends Base<A> {
+  readonly _iotag = "FlatMap"
+
+  constructor(readonly value: IO<A>, readonly cont: (a: A) => IO<B>) {
+    super()
+  }
 }
 
 /**
@@ -39,9 +67,9 @@ export function run<A>(self: IO<A>): A {
   let curIO = self as IO<any> | undefined
 
   while (curIO != null) {
-    switch (curIO._tag) {
+    switch (curIO._iotag) {
       case "FlatMap": {
-        switch (curIO.value._tag) {
+        switch (curIO.value._iotag) {
           case "Succeed": {
             curIO = curIO.cont(curIO.value.a)
             break
