@@ -29,17 +29,36 @@ function randomInt() {
   return RANDOM.integer(0x7fffffff)
 }
 
-export function randomHash(key: any) {
-  if (typeof key === "number") {
-    return key
+export function randomHash(key: any): number {
+  switch (typeof key) {
+    case "bigint": {
+      return string(key.toString(10))
+    }
+    case "string": {
+      return string(key)
+    }
+    case "boolean": {
+      return string(String(key))
+    }
+    case "number": {
+      return key
+    }
+    case "symbol": {
+      return 0
+    }
+    case "undefined": {
+      return 0
+    }
+    default: {
+      const hash = CACHE.get(key)
+      if (hash) {
+        return hash
+      }
+      const h = randomInt()
+      CACHE.set(key, h)
+      return h
+    }
   }
-  const hash = CACHE.get(key)
-  if (hash) {
-    return hash
-  }
-  const h = randomInt()
-  CACHE.set(key, h)
-  return h
 }
 
 export function combineHash(a: number, b: number): number {
