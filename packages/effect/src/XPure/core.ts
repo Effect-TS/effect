@@ -1,4 +1,5 @@
 /* eslint-disable prefer-const */
+import * as C from "../Cause/cause"
 import type { EffectURI } from "../Effect/effect"
 import { _A, _E, _I, _R, _U } from "../Effect/effect"
 import type { Instruction } from "../Effect/primitives"
@@ -31,7 +32,7 @@ export abstract class XPure<S1, S2, R, E, A> {
       const res: E.Either<any, any> = runEither(provideAll(env)(this as any))
 
       if (res._tag === "Left") {
-        return new IFail(res.left)
+        return new IFail((t) => C.traced(C.fail(res.left), t()))
       } else {
         return new ISucceed(res.right)
       }
