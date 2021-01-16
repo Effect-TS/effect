@@ -44,6 +44,7 @@
       "GlobalExceptions",
       "Has",
       "Hash",
+      "IO",
       "Iterable",
       "Layer",
       "Persistent",
