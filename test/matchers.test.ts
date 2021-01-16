@@ -4,7 +4,6 @@ import * as T from "../src/Effect"
 import * as Ex from "../src/Effect/Exit"
 import { pipe } from "../src/Function"
 
-T.if_
 export type ADT =
   | { _tag: "A"; a: string }
   | { _tag: "B"; b: string }
