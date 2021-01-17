@@ -72,24 +72,28 @@ export function getEqual<A>(E: Equal<A>): Equal<Tree<A>> {
   }
 }
 
-function draw(indentation: string, forest: Forest<string>): string {
-  let r = ""
-  const len = forest.length
-  let tree: Tree<string>
-  for (let i = 0; i < len; i++) {
-    tree = forest[i]
-    const isLast = i === len - 1
-    r += indentation + (isLast ? "└" : "├") + "─ " + tree.value
-    r += draw(indentation + (len > 1 && !isLast ? "│  " : "   "), tree.forest)
-  }
-  return r
+function draw(indentation: string, forest: Forest<string>): IO.IO<string> {
+  return IO.gen(function* (_) {
+    let r = ""
+    const len = forest.length
+    let tree: Tree<string>
+    for (let i = 0; i < len; i++) {
+      tree = forest[i]
+      const isLast = i === len - 1
+      r += indentation + (isLast ? "└" : "├") + "─ " + tree.value
+      r += yield* _(
+        draw(indentation + (len > 1 && !isLast ? "│  " : "   "), tree.forest)
+      )
+    }
+    return r
+  })
 }
 
 /**
  * Neat 2-dimensional drawing of a forest
  */
 export function drawForest(forest: Forest<string>): string {
-  return draw("\n", forest)
+  return IO.run(draw("\n", forest))
 }
 
 /**
@@ -103,8 +107,18 @@ export function drawTree(tree: Tree<string>): string {
  * Build a tree from a seed value
  */
 export function unfoldTree<A, B>(b: B, f: (b: B) => [A, Array<B>]): Tree<A> {
+  return IO.run(unfoldTreeSafe(b, f))
+}
+
+/**
+ * Build a tree from a seed value
+ */
+export function unfoldTreeSafe<A, B>(b: B, f: (b: B) => [A, Array<B>]): IO.IO<Tree<A>> {
   const [a, bs] = f(b)
-  return { value: a, forest: unfoldForest(bs, f) }
+  return pipe(
+    IO.suspend(() => unfoldForestSafe(bs, f)),
+    IO.map((forest) => ({ value: a, forest }))
+  )
 }
 
 /**
@@ -114,7 +128,20 @@ export function unfoldForest<A, B>(
   bs: Array<B>,
   f: (b: B) => [A, Array<B>]
 ): Forest<A> {
-  return bs.map((b) => unfoldTree(b, f))
+  return IO.run(unfoldForestSafe(bs, f))
+}
+
+/**
+ * Build a tree from a seed value
+ */
+export function unfoldForestSafe<A, B>(
+  bs: Array<B>,
+  f: (b: B) => [A, Array<B>]
+): IO.IO<Forest<A>> {
+  return pipe(
+    bs,
+    IO.foreachArray((b) => unfoldTreeSafe(b, f))
+  )
 }
 
 /**
@@ -165,23 +192,27 @@ export function unfoldForestM<M>(
 }
 
 export function elem_<A>(E: Equal<A>): (fa: Tree<A>, a: A) => boolean {
-  const go = (fa: Tree<A>, a: A): boolean => {
-    if (E.equals(fa.value)(a)) {
-      return true
+  function goForest(forest: Forest<A>, a: A, i = 0): IO.IO<boolean> {
+    if (i === forest.length) {
+      return IO.succeed(false)
     }
-    return fa.forest.some((tree) => go(tree, a))
+    return pipe(
+      IO.suspend(() => go(forest[i], a)),
+      IO.chain((b) => (b ? IO.succeed(true) : goForest(forest, a, i + 1)))
+    )
   }
-  return go
+  function go(fa: Tree<A>, a: A): IO.IO<boolean> {
+    if (E.equals(fa.value)(a)) {
+      return IO.succeed(true)
+    }
+    return IO.suspend(() => goForest(fa.forest, a))
+  }
+  return (fa, a) => IO.run(go(fa, a))
 }
 
 export function elem<A>(E: Equal<A>): (a: A) => (fa: Tree<A>) => boolean {
-  const go = (a: A) => (fa: Tree<A>): boolean => {
-    if (E.equals(fa.value)(a)) {
-      return true
-    }
-    return fa.forest.some(go(a))
-  }
-  return go
+  const el = elem_(E)
+  return (a) => (fa) => el(fa, a)
 }
 
 /**
@@ -191,16 +222,27 @@ export function elem<A>(E: Equal<A>): (a: A) => (fa: Tree<A>) => boolean {
  *
  * This is also known as the catamorphism on trees.
  */
-export function fold<A, B>(f: (a: A, bs: Array<B>) => B): (tree: Tree<A>) => B {
-  const go = (tree: Tree<A>): B => f(tree.value, tree.forest.map(go))
-  return go
+export function fold<A, B>(f: (a: A, bs: readonly B[]) => B): (tree: Tree<A>) => B {
+  function go(tree: Tree<A>): IO.IO<B> {
+    return pipe(
+      tree.forest,
+      IO.foreachArray(go),
+      IO.map((bs) => f(tree.value, bs))
+    )
+  }
+  return (tree) => IO.run(go(tree))
 }
 
 export function map_<A, B>(fa: Tree<A>, f: (a: A) => B): Tree<B> {
-  return {
-    value: f(fa.value),
-    forest: fa.forest.map((t) => map_(t, f))
+  function go(node: Tree<A>): IO.IO<Tree<B>> {
+    return pipe(
+      node.forest,
+      IO.foreachArray(go),
+      IO.map((forest) => ({ value: f(node.value), forest }))
+    )
   }
+
+  return IO.run(go(fa))
 }
 
 export function of<A>(a: A): Tree<A> {
@@ -215,21 +257,30 @@ export function ap_<A, B>(fab: Tree<(a: A) => B>, fa: Tree<A>): Tree<B> {
 }
 
 export function chain_<A, B>(fa: Tree<A>, f: (a: A) => Tree<B>): Tree<B> {
-  const { forest, value } = f(fa.value)
-  const combine = A.getIdentity<Tree<B>>().combine
-  return {
-    value,
-    forest: combine(fa.forest.map((t) => chain_(t, f)))(forest)
+  function go(node: Tree<A>): IO.IO<Tree<B>> {
+    const { forest, value } = f(node.value)
+    return pipe(
+      node.forest,
+      IO.foreachArray(go),
+      IO.map((x) => ({ value, forest: [...forest, ...x] }))
+    )
   }
+
+  return IO.run(go(fa))
 }
 
 export function reduce_<A, B>(fa: Tree<A>, b: B, f: (b: B, a: A) => B): B {
-  let r: B = f(b, fa.value)
-  const len = fa.forest.length
-  for (let i = 0; i < len; i++) {
-    r = reduce_(fa.forest[i], r, f)
+  function go(node: Tree<A>, b: B): IO.IO<B> {
+    return IO.gen(function* (_) {
+      let r: B = f(b, node.value)
+      const len = fa.forest.length
+      for (let i = 0; i < len; i++) {
+        r = yield* _(go(node.forest[i], r))
+      }
+      return r
+    })
   }
-  return r
+  return IO.run(go(fa, b))
 }
 
 export function foldMap_<M>(M: Identity<M>) {
@@ -238,12 +289,17 @@ export function foldMap_<M>(M: Identity<M>) {
 }
 
 export function reduceRight_<A, B>(fa: Tree<A>, b: B, f: (a: A, b: B) => B): B {
-  let r: B = b
-  const len = fa.forest.length
-  for (let i = len - 1; i >= 0; i--) {
-    r = reduceRight_(fa.forest[i], r, f)
+  function go(node: Tree<A>, b: B): IO.IO<B> {
+    return IO.gen(function* (_) {
+      let r: B = b
+      const len = node.forest.length
+      for (let i = len - 1; i >= 0; i--) {
+        r = yield* _(go(node.forest[i], r))
+      }
+      return f(node.value, r)
+    })
   }
-  return f(fa.value, r)
+  return IO.run(go(fa, b))
 }
 
 export const foreachF = P.implementForeachF<[TreeURI]>()((_) => (G) => {
@@ -279,10 +335,14 @@ export function extract<A>(wa: Tree<A>): A {
 }
 
 export function extend_<A, B>(wa: Tree<A>, f: (wa: Tree<A>) => B): Tree<B> {
-  return {
-    value: f(wa),
-    forest: wa.forest.map((t) => extend_(t, f))
+  function go(node: Tree<A>): IO.IO<Tree<B>> {
+    return pipe(
+      node.forest,
+      IO.foreachArray(go),
+      IO.map((forest) => ({ value: f(node), forest }))
+    )
   }
+  return IO.run(go(wa))
 }
 
 export function extend<A, B>(f: (fa: Tree<A>) => B) {
