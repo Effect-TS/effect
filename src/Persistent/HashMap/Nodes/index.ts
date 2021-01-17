@@ -345,9 +345,22 @@ function mergeLeaves<K, V>(
   h1: number,
   n1: Node<K, V>,
   h2: number,
-  n2: Node<K, V>
+  n2: Node<K, V>,
+  i = 0
 ): Node<K, V> {
-  return IO.run(mergeLeavesSafe(edit, shift, h1, n1, h2, n2))
+  if (h1 === h2) return new CollisionNode(edit, h1, [n2, n1])
+  if (i > 10) {
+    return IO.run(mergeLeavesSafe(edit, shift, h1, n1, h2, n2))
+  }
+  const subH1 = hashFragment(shift, h1)
+  const subH2 = hashFragment(shift, h2)
+  const children =
+    subH1 === subH2
+      ? [mergeLeaves(edit, shift + SIZE, h1, n1, h2, n2, i + 1)]
+      : subH1 < subH2
+      ? [n1, n2]
+      : [n2, n1]
+  return new IndexedNode(edit, toBitmap(subH1) | toBitmap(subH2), children)
 }
 
 function mergeLeavesSafe<K, V>(
