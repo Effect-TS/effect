@@ -26,7 +26,6 @@ import type { Tree } from "../RoseTree"
 import type { Show } from "../Show"
 import type { StateIn, StateOut } from "../StateT"
 import type { Sync } from "../Sync"
-import type { Task } from "../Task"
 import type { XPure } from "../XPure"
 import type { XIO } from "../XPure/XIO"
 import type { XReader } from "../XPure/XReader"
@@ -165,7 +164,6 @@ declare module "../Prelude/HKT" {
     [StateInURI]: StateIn<S, A>
     [StateOutURI]: StateOut<S, A>
     [IxURI]: TC extends IxC<infer _I, infer _O> ? Ix<_I, _O, A> : any
-    [TaskURI]: Task<A>
     [ConstURI]: Const<E, A>
     [LayerURI]: Layer<R, E, A>
     [SyncURI]: Sync<R, E, A>

@@ -10,9 +10,9 @@
 
 import * as A from "../Array"
 import type { Equal } from "../Equal"
-import { makeEqual } from "../Equal"
 import { pipe } from "../Function"
 import type { Identity } from "../Identity"
+import * as IO from "../IO"
 import type { TreeURI } from "../Modules"
 import * as P from "../Prelude"
 import { sequenceF } from "../Prelude"
@@ -35,24 +35,41 @@ export function make<A>(value: A, forest: Forest<A> = A.empty): Tree<A> {
 }
 
 export function getShow<A>(S: Show<A>): Show<Tree<A>> {
-  const show = (t: Tree<A>): string => {
-    return t.forest === A.empty || t.forest.length === 0
-      ? `make(${S.show(t.value)})`
-      : `make(${S.show(t.value)}, [${t.forest.map(show).join(", ")}])`
+  function showSafe(t: Tree<A>): IO.IO<string> {
+    if (t.forest === A.empty || t.forest.length === 0) {
+      return IO.succeed(`make(${S.show(t.value)})`)
+    }
+    return pipe(
+      t.forest,
+      IO.foreachArray(showSafe),
+      IO.map((forest) => `make(${S.show(t.value)}, [${forest.join(", ")}])`)
+    )
   }
   return {
-    show
+    show: (x) => IO.run(showSafe(x))
   }
 }
 
 export function getEqual<A>(E: Equal<A>): Equal<Tree<A>> {
-  // eslint-disable-next-line prefer-const
-  let SA: Equal<ReadonlyArray<Tree<A>>>
-  const R: Equal<Tree<A>> = makeEqual((y) => (x) =>
-    E.equals(y.value)(x.value) && SA.equals(y.forest)(x.forest)
-  )
-  SA = A.getEqual(R)
-  return R
+  function equalsForestSafe(x: Forest<A>, y: Forest<A>, i = 0): IO.IO<boolean> {
+    if (i === x.length) {
+      return IO.succeed(true)
+    }
+    return pipe(
+      IO.suspend(() => equalsSafe(x[i], y[i])),
+      IO.chain((b) => (b ? equalsForestSafe(x, y, i + 1) : IO.succeed(false)))
+    )
+  }
+  function equalsSafe(x: Tree<A>, y: Tree<A>): IO.IO<boolean> {
+    return !E.equals(y.value)(x.value)
+      ? IO.succeed(false)
+      : x.forest.length !== y.forest.length
+      ? IO.succeed(false)
+      : equalsForestSafe(x.forest, y.forest)
+  }
+  return {
+    equals: (y) => (x) => IO.run(equalsSafe(x, y))
+  }
 }
 
 function draw(indentation: string, forest: Forest<string>): string {
@@ -363,6 +380,7 @@ export const bind = DSL.bindF(Monad)
 const do_ = DSL.doF({ ...Applicative, ...Monad })
 
 export { do_ as do }
+export { branch as if, branch_ as if_ }
 
 export const struct = DSL.structF(Applicative)
 
@@ -378,5 +396,3 @@ export const { match, matchIn, matchTag, matchTagIn } = DSL.matchers(Monad)
  */
 const branch = DSL.conditionalF(Monad)
 const branch_ = DSL.conditionalF_(Monad)
-
-export { branch as if, branch_ as if_ }
