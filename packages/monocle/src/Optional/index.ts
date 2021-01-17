@@ -11,10 +11,10 @@
  * 2. getOption(set(a)(s)) = getOption(s).map(_ => a)
  * 3. set(a)(set(a)(s)) = set(a)(s)
  */
-import type { Either } from "@effect-ts/core/Common/Either"
-import * as O from "@effect-ts/core/Common/Option"
+import type { Either } from "@effect-ts/core/Either"
 import type { Predicate, Refinement } from "@effect-ts/core/Function"
 import { constant, flow, pipe } from "@effect-ts/core/Function"
+import * as O from "@effect-ts/core/Option"
 import * as P from "@effect-ts/core/Prelude"
 
 import * as _ from "../Internal"
