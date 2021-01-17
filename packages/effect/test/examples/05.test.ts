@@ -1,7 +1,7 @@
 import { constant, pipe } from "@effect-ts/system/Function"
 
-import * as E from "../../src/Common/Either"
-import * as R from "../../src/Common/Record"
+import * as E from "../../src/Either"
+import * as R from "../../src/Record"
 import * as X from "../../src/XPure"
 
 test("05", () => {

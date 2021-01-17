@@ -1,4 +1,4 @@
-import type { Either } from "../../Common/Either"
+import type { Either } from "../../Either"
 import type { Separated } from "../../Utils"
 import type * as HKT from "../HKT"
 

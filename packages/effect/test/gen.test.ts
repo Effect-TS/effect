@@ -1,7 +1,7 @@
+import * as A from "../src/Array"
 import * as T from "../src/Async"
-import * as A from "../src/Common/Array"
-import * as O from "../src/Common/Option"
 import { pipe } from "../src/Function"
+import * as O from "../src/Option"
 
 type A = {
   a: number

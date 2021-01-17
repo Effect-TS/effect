@@ -1,4 +1,4 @@
-import type { Identity } from "../../Common/Identity"
+import type { Identity } from "../../Identity"
 import type * as HKT from "../HKT"
 
 export interface FoldMap<F extends HKT.URIS, C = HKT.Auto> extends HKT.Base<F, C> {

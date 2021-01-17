@@ -1,7 +1,7 @@
 import { constant } from "@effect-ts/system/Function"
 
-import { makeAssociative } from "../../src/Common/Associative"
-import * as E from "../../src/Common/Either"
+import { makeAssociative } from "../../src/Associative"
+import * as E from "../../src/Either"
 import * as DSL from "../../src/Prelude/DSL"
 import * as X from "../../src/XPure"
 
