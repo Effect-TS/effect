@@ -1,7 +1,7 @@
-import * as A from "../src/Common/Array"
-import * as R from "../src/Common/Record"
+import * as A from "../src/Array"
 import * as T from "../src/Effect"
 import { pipe } from "../src/Function"
+import * as R from "../src/Record"
 import * as S from "../src/Sync"
 
 const x: <A>(a: A.Array<A>) => S.UIO<A.Array<A>> = A.foreachF(S.Applicative)(S.succeed)

@@ -5,10 +5,10 @@ import { NoSuchElementException } from "@effect-ts/system/GlobalExceptions"
 import type { _E, _R } from "@effect-ts/system/Utils"
 import { isEither, isOption, isTag } from "@effect-ts/system/Utils"
 
-import type { Either } from "../Common/Either"
-import type { Option } from "../Common/Option"
+import type { Either } from "../Either"
 import { identity, pipe } from "../Function"
 import type { Has, Tag } from "../Has"
+import type { Option } from "../Option"
 import type { Async } from "./core"
 import { accessService, chain, fail, succeed, sync } from "./core"
 

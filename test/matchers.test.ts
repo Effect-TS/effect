@@ -1,7 +1,7 @@
-import * as A from "../src/Common/Array"
-import * as E from "../src/Common/Either"
+import * as A from "../src/Array"
 import * as T from "../src/Effect"
 import * as Ex from "../src/Effect/Exit"
+import * as E from "../src/Either"
 import { pipe } from "../src/Function"
 
 export type ADT =

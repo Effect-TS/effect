@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/no-namespace */
 import { pipe } from "@effect-ts/system/Function"
 
-import * as E from "../../src/Common/Either"
-import * as ReaderT from "../../src/Common/ReaderT"
+import * as E from "../../src/Either"
 import * as DSL from "../../src/Prelude/DSL"
+import * as ReaderT from "../../src/ReaderT"
 
 namespace ReaderEither {
   export const Monad = ReaderT.monad(E.Monad)

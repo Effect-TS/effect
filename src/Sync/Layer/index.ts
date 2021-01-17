@@ -1,6 +1,6 @@
 import { AtomicReference } from "@effect-ts/system/Support/AtomicReference"
 
-import * as A from "../../Common/Array"
+import * as A from "../../Array"
 import { pipe } from "../../Function"
 import type { Has, Tag } from "../../Has"
 import type { Erase, UnionToIntersection } from "../../Utils"

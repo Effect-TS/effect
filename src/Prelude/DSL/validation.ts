@@ -1,7 +1,7 @@
 import * as E from "@effect-ts/system/Either"
 import { pipe, tuple } from "@effect-ts/system/Function"
 
-import type { Associative } from "../../Common/Associative"
+import type { Associative } from "../../Associative"
 import type { Applicative } from "../Applicative"
 import type { Fail } from "../FX/Fail"
 import type { Run } from "../FX/Run"

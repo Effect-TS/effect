@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-namespace */
 import { pipe, tuple } from "@effect-ts/system/Function"
 
-import * as StateT from "../../src/Common/StateT"
 import * as DSL from "../../src/Prelude/DSL"
+import * as StateT from "../../src/StateT"
 import * as IO from "../../src/XPure/XIO"
 
 namespace StateIO {
