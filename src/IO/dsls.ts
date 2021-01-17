@@ -1,3 +1,4 @@
+import * as A from "../Array"
 import * as DSL from "../Prelude/DSL"
 import { Applicative, Covariant } from "./instances"
 
@@ -23,3 +24,9 @@ const branch = DSL.conditionalF(Covariant)
 const branch_ = DSL.conditionalF_(Covariant)
 
 export { branch as if, branch_ as if_ }
+
+/**
+ * Foreach
+ */
+export const foreachArray = A.foreachF(Applicative)
+export const foreachWithIndexArray = A.foreachWithIndexF(Applicative)
