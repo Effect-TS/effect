@@ -1,5 +1,5 @@
-import * as A from "@effect-ts/core/Common/Array"
-import { all, fold } from "@effect-ts/core/Common/Identity"
+import * as A from "@effect-ts/core/Array"
+import { all, fold } from "@effect-ts/core/Identity"
 
 import type { IntersectionURI } from "../../Algebra/Intersection"
 import { interpreter } from "../../HKT"

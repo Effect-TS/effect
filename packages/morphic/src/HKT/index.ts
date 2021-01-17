@@ -1,4 +1,4 @@
-import type { Record } from "@effect-ts/core/Common/Record"
+import type { Record } from "@effect-ts/core/Record"
 import type { UnionToIntersection } from "@effect-ts/core/Utils"
 
 import type { AlgebraIntersections } from "../Algebra/Intersection"

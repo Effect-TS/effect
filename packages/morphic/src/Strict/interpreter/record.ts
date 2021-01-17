@@ -1,5 +1,5 @@
-import * as R from "@effect-ts/core/Common/Record"
 import { pipe } from "@effect-ts/core/Function"
+import * as R from "@effect-ts/core/Record"
 import * as T from "@effect-ts/core/Sync"
 
 import type { RecordURI } from "../../Algebra/Record"

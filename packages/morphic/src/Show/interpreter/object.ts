@@ -1,5 +1,5 @@
-import * as S from "@effect-ts/core/Common/Show"
 import { pipe } from "@effect-ts/core/Function"
+import * as S from "@effect-ts/core/Show"
 
 import { mapRecord, projectFieldWithEnv } from "../..//Utils"
 import type { ObjectURI } from "../../Algebra/Object"

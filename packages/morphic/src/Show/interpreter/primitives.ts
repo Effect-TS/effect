@@ -1,15 +1,15 @@
 /* eslint-disable @typescript-eslint/no-empty-interface */
-import { getShow as AgetShow } from "@effect-ts/core/Common/Array"
-import { getShow as EgetShow } from "@effect-ts/core/Common/Either"
-import { getShow as OgetShow } from "@effect-ts/core/Common/Option"
-import type { Show } from "@effect-ts/core/Common/Show"
+import { getShow as AgetShow } from "@effect-ts/core/Array"
+import { getShow as EgetShow } from "@effect-ts/core/Either"
+import { absurd, pipe } from "@effect-ts/core/Function"
+import { getShow as LgetShow } from "@effect-ts/core/List"
+import { getShow as OgetShow } from "@effect-ts/core/Option"
+import type { Show } from "@effect-ts/core/Show"
 import {
   boolean as showBoolean,
   number as showNumber,
   string as showString
-} from "@effect-ts/core/Common/Show"
-import { absurd, pipe } from "@effect-ts/core/Function"
-import { getShow as LgetShow } from "@effect-ts/core/Persistent/List"
+} from "@effect-ts/core/Show"
 
 import type { LiteralT, PrimitivesURI, UUID } from "../../Algebra/Primitives"
 import { interpreter } from "../../HKT"

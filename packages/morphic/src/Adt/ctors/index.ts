@@ -1,4 +1,4 @@
-import { mapWithIndex } from "@effect-ts/core/Common/Record"
+import { mapWithIndex } from "@effect-ts/core/Record"
 
 import type { ExtractUnion, KeysDefinition, Tagged } from "../utils"
 

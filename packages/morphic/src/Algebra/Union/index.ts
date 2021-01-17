@@ -1,4 +1,4 @@
-import type { Option } from "@effect-ts/core/Common/Option"
+import type { Option } from "@effect-ts/core/Option"
 
 import type {
   AnyEnv,

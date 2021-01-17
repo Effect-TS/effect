@@ -13,7 +13,7 @@ import type { Identity } from "@effect-ts/core/Common/Identity"
 import type { Option } from "@effect-ts/core/Common/Option"
 import type { Predicate, Refinement } from "@effect-ts/core/Function"
 import { identity, pipe } from "@effect-ts/core/Function"
-import * as L from "@effect-ts/core/Persistent/List"
+import * as L from "@effect-ts/core/List"
 import * as P from "@effect-ts/core/Prelude"
 
 import * as _ from "../Internal"

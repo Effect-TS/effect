@@ -1,5 +1,5 @@
-import * as O from "@effect-ts/core/Common/Option"
 import { pipe } from "@effect-ts/core/Function"
+import * as O from "@effect-ts/core/Option"
 import * as T from "@effect-ts/core/Sync"
 
 import type { NewtypeURI } from "../../Algebra/Newtype"

@@ -1,5 +1,5 @@
-import type { Array } from "@effect-ts/core/Common/Array"
-import * as R from "@effect-ts/core/Common/Record"
+import type { Array } from "@effect-ts/core/Array"
+import * as R from "@effect-ts/core/Record"
 
 export const mapRecord = <Dic extends { [k in keyof Dic]: any }, B>(
   d: Dic,

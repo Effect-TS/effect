@@ -1,8 +1,8 @@
-import * as A from "@effect-ts/core/Common/Array"
-import { makeAssociative } from "@effect-ts/core/Common/Associative"
-import * as NA from "@effect-ts/core/Common/NonEmptyArray"
-import * as R from "@effect-ts/core/Common/Record"
+import * as A from "@effect-ts/core/Array"
+import { makeAssociative } from "@effect-ts/core/Associative"
+import * as NA from "@effect-ts/core/NonEmptyArray"
 import * as DSL from "@effect-ts/core/Prelude/DSL"
+import * as R from "@effect-ts/core/Record"
 import * as T from "@effect-ts/core/Sync"
 
 import type { Errors } from "../common"

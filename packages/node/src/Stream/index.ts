@@ -1,11 +1,11 @@
-import type * as C from "@effect-ts/core/Common/Chunk"
-import * as O from "@effect-ts/core/Common/Option"
+import type * as C from "@effect-ts/core/Chunk"
 import * as T from "@effect-ts/core/Effect"
 import * as M from "@effect-ts/core/Effect/Managed"
 import * as S from "@effect-ts/core/Effect/Stream"
 import * as Push from "@effect-ts/core/Effect/Stream/Push"
 import * as Sink from "@effect-ts/core/Effect/Stream/Sink"
 import { pipe, tuple } from "@effect-ts/core/Function"
+import * as O from "@effect-ts/core/Option"
 import type * as stream from "stream"
 
 import type { Byte } from "../Byte"

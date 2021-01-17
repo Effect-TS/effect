@@ -2,14 +2,14 @@ import {
   difference,
   Foldable as foldableArray,
   intersection
-} from "@effect-ts/core/Common/Array"
-import { first } from "@effect-ts/core/Common/Associative"
-import { eqString } from "@effect-ts/core/Common/Equal"
+} from "@effect-ts/core/Array"
+import { first } from "@effect-ts/core/Associative"
+import { eqString } from "@effect-ts/core/Equal"
+import { tuple } from "@effect-ts/core/Function"
 import {
   fromFoldable as RfromFoldable,
   mapWithIndex as RmapWithIndex
-} from "@effect-ts/core/Common/Record"
-import { tuple } from "@effect-ts/core/Function"
+} from "@effect-ts/core/Record"
 
 import type { ADT } from "../../../Adt"
 import { makeADT } from "../../../Adt"

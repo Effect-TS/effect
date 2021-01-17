@@ -1,5 +1,5 @@
-import type { Option } from "@effect-ts/core/Common/Option"
 import { pipe } from "@effect-ts/core/Function"
+import type { Option } from "@effect-ts/core/Option"
 
 import * as _ from "../Internal"
 import type { Iso } from "../Iso"

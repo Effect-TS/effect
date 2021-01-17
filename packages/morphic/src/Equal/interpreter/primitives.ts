@@ -1,15 +1,15 @@
-import { getEqual as AgetEq } from "@effect-ts/core/Common/Array"
-import { getEqual as EgetEq } from "@effect-ts/core/Common/Either"
+import { getEqual as AgetEq } from "@effect-ts/core/Array"
+import { getEqual as EgetEq } from "@effect-ts/core/Either"
 import {
   contramap,
   eqBoolean,
   eqNumber,
   eqStrict,
   eqString
-} from "@effect-ts/core/Common/Equal"
-import { getEqual as OgetEq } from "@effect-ts/core/Common/Option"
+} from "@effect-ts/core/Equal"
 import { pipe } from "@effect-ts/core/Function"
-import { getEqual as LgetEq } from "@effect-ts/core/Persistent/List"
+import { getEqual as LgetEq } from "@effect-ts/core/List"
+import { getEqual as OgetEq } from "@effect-ts/core/Option"
 
 import type { PrimitivesURI, UUID } from "../../Algebra/Primitives"
 import { interpreter } from "../../HKT"

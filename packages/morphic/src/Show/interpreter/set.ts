@@ -1,5 +1,5 @@
-import { getShow as SgetShow } from "@effect-ts/core/Common/Set"
 import { pipe } from "@effect-ts/core/Function"
+import { getShow as SgetShow } from "@effect-ts/core/Set"
 
 import type { SetURI } from "../../Algebra/Set"
 import { interpreter } from "../../HKT"

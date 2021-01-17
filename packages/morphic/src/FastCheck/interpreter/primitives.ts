@@ -1,8 +1,8 @@
-import { isNonEmpty } from "@effect-ts/core/Common/Array"
-import { left, right } from "@effect-ts/core/Common/Either"
-import { fromNullable, none, some } from "@effect-ts/core/Common/Option"
+import { isNonEmpty } from "@effect-ts/core/Array"
+import { left, right } from "@effect-ts/core/Either"
 import { pipe } from "@effect-ts/core/Function"
-import * as L from "@effect-ts/core/Persistent/List"
+import * as L from "@effect-ts/core/List"
+import { fromNullable, none, some } from "@effect-ts/core/Option"
 
 import type { PrimitivesURI } from "../../Algebra/Primitives"
 import { interpreter } from "../../HKT"

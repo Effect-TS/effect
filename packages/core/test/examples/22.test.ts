@@ -1,10 +1,10 @@
 import { pipe } from "@effect-ts/system/Function"
 import { intersect } from "@effect-ts/system/Utils"
 
-import * as O from "../../src/Common/Option"
-import * as OptionT from "../../src/Common/OptionT"
 import * as T from "../../src/Effect"
 import * as Ex from "../../src/Effect/Exit"
+import * as O from "../../src/Option"
+import * as OptionT from "../../src/OptionT"
 import * as P from "../../src/Prelude"
 
 export const Monad = OptionT.monad(T.Monad)

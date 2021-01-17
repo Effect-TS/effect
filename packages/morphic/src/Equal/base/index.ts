@@ -1,4 +1,4 @@
-import type { Equal } from "@effect-ts/core/Common/Equal"
+import type { Equal } from "@effect-ts/core/Equal"
 
 import { getApplyConfig } from "../../HKT"
 

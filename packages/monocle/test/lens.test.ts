@@ -1,5 +1,5 @@
-import { some } from "@effect-ts/core/Common/Option"
 import { pipe } from "@effect-ts/core/Function"
+import { some } from "@effect-ts/core/Option"
 
 import * as L from "../src/Lens"
 import * as O from "../src/Optional"

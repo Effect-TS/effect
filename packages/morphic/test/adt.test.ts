@@ -1,5 +1,5 @@
-import * as E from "@effect-ts/core/Common/Either"
-import * as O from "@effect-ts/core/Common/Option"
+import * as E from "@effect-ts/core/Either"
+import * as O from "@effect-ts/core/Option"
 import * as Sync from "@effect-ts/core/Sync"
 
 import type { AType, EType } from "../src"

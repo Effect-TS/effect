@@ -1,4 +1,4 @@
-import * as C from "@effect-ts/core/Common/Chunk"
+import * as C from "@effect-ts/core/Chunk"
 import * as T from "@effect-ts/core/Effect"
 import * as S from "@effect-ts/core/Effect/Stream"
 import { flow, pipe } from "@effect-ts/core/Function"

@@ -1,4 +1,4 @@
-import { right } from "@effect-ts/core/Common/Either"
+import { right } from "@effect-ts/core/Either"
 import { run, runEither } from "@effect-ts/core/Sync"
 
 import { make } from "../src"

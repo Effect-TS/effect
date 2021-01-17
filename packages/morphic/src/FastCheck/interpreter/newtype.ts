@@ -1,5 +1,5 @@
-import type { Some } from "@effect-ts/core/Common/Option"
 import { pipe } from "@effect-ts/core/Function"
+import type { Some } from "@effect-ts/core/Option"
 
 import type { NewtypeURI } from "../../Algebra/Newtype"
 import { interpreter } from "../../HKT"
