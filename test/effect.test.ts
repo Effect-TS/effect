@@ -292,4 +292,17 @@ describe("Effect", () => {
     const a = await pipe(T.die("LOL"), T.catchAllDefect(T.succeed), T.runPromise)
     expect(a).toEqual("LOL")
   })
+  it("bindAll", async () => {
+    expect(
+      await pipe(
+        T.do,
+        T.bind("a", () => T.succeed(0)),
+        T.bindAll(({ a }) => ({
+          b: T.succeed(a + 1),
+          c: T.succeed(a + 2)
+        })),
+        T.runPromise
+      )
+    ).toEqual({ a: 0, b: 1, c: 2 })
+  })
 })

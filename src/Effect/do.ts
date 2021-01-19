@@ -1,5 +1,5 @@
 import * as R from "../Record"
-import type { EnforceNonEmptyRecord, UnionToIntersection } from "../Utils"
+import type { _E, _R, EnforceNonEmptyRecord } from "../Utils"
 import { chain_, succeed } from "./core"
 import type { Effect } from "./effect"
 import { foreach_, foreachPar_, foreachParN_ } from "./foreach"
@@ -121,21 +121,12 @@ export function bindAll<
 ): <R, E>(
   s: Effect<R, E, K>
 ) => Effect<
-  UnionToIntersection<
+  R & _R<NER[keyof NER]>,
+  E | _E<NER[keyof NER]>,
+  K &
     {
-      [K in keyof NER]: [NER[K]] extends [Effect<infer R, any, any>]
-        ? unknown extends R
-          ? never
-          : R
-        : never
-    }[keyof NER]
-  >,
-  {
-    [K in keyof NER]: [NER[K]] extends [Effect<any, infer E, any>] ? E : never
-  }[keyof NER],
-  {
-    [K in keyof NER]: [NER[K]] extends [Effect<any, any, infer A>] ? A : never
-  }
+      [K in keyof NER]: [NER[K]] extends [Effect<any, any, infer A>] ? A : never
+    }
 > {
   return (s) =>
     chain_(s, (k) =>
@@ -149,7 +140,7 @@ export function bindAll<
           values.forEach(([k, v]) => {
             res[k] = v
           })
-          return res
+          return Object.assign(res, k)
         }
       )
     ) as any
@@ -164,21 +155,12 @@ export function bindAllPar<
 ): <R, E>(
   s: Effect<R, E, K>
 ) => Effect<
-  UnionToIntersection<
+  R & _R<NER[keyof NER]>,
+  E | _E<NER[keyof NER]>,
+  K &
     {
-      [K in keyof NER]: [NER[K]] extends [Effect<infer R, any, any>]
-        ? unknown extends R
-          ? never
-          : R
-        : never
-    }[keyof NER]
-  >,
-  {
-    [K in keyof NER]: [NER[K]] extends [Effect<any, infer E, any>] ? E : never
-  }[keyof NER],
-  {
-    [K in keyof NER]: [NER[K]] extends [Effect<any, any, infer A>] ? A : never
-  }
+      [K in keyof NER]: [NER[K]] extends [Effect<any, any, infer A>] ? A : never
+    }
 > {
   return (s) =>
     chain_(s, (k) =>
@@ -192,7 +174,7 @@ export function bindAllPar<
           values.forEach(([k, v]) => {
             res[k] = v
           })
-          return res
+          return Object.assign(res, k)
         }
       )
     ) as any
@@ -209,21 +191,12 @@ export function bindAllParN(
 ) => <R, E>(
   s: Effect<R, E, K>
 ) => Effect<
-  UnionToIntersection<
+  R & _R<NER[keyof NER]>,
+  E | _E<NER[keyof NER]>,
+  K &
     {
-      [K in keyof NER]: [NER[K]] extends [Effect<infer R, any, any>]
-        ? unknown extends R
-          ? never
-          : R
-        : never
-    }[keyof NER]
-  >,
-  {
-    [K in keyof NER]: [NER[K]] extends [Effect<any, infer E, any>] ? E : never
-  }[keyof NER],
-  {
-    [K in keyof NER]: [NER[K]] extends [Effect<any, any, infer A>] ? A : never
-  }
+      [K in keyof NER]: [NER[K]] extends [Effect<any, any, infer A>] ? A : never
+    }
 > {
   return (r) => (s) =>
     chain_(s, (k) =>
@@ -238,7 +211,7 @@ export function bindAllParN(
           values.forEach(([k, v]) => {
             res[k] = v
           })
-          return res
+          return Object.assign(res, k)
         }
       )
     ) as any
