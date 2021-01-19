@@ -87,11 +87,12 @@ export function bindAll<
 ): <R, E>(
   s: Managed<R, E, K>
 ) => Managed<
-  _R<NER[keyof NER]>,
-  _E<NER[keyof NER]>,
-  {
-    [K in keyof NER]: [NER[K]] extends [Managed<any, any, infer A>] ? A : never
-  }
+  R & _R<NER[keyof NER]>,
+  E | _E<NER[keyof NER]>,
+  K &
+    {
+      [K in keyof NER]: [NER[K]] extends [Managed<any, any, infer A>] ? A : never
+    }
 > {
   return (s) =>
     chain_(s, (k) =>
@@ -105,7 +106,7 @@ export function bindAll<
           values.forEach(([k, v]) => {
             res[k] = v
           })
-          return res
+          return Object.assign(res, k)
         }
       )
     ) as any
@@ -120,11 +121,12 @@ export function bindAllPar<
 ): <R, E>(
   s: Managed<R, E, K>
 ) => Managed<
-  _R<NER[keyof NER]>,
-  _E<NER[keyof NER]>,
-  {
-    [K in keyof NER]: [NER[K]] extends [Managed<any, any, infer A>] ? A : never
-  }
+  R & _R<NER[keyof NER]>,
+  E | _E<NER[keyof NER]>,
+  K &
+    {
+      [K in keyof NER]: [NER[K]] extends [Managed<any, any, infer A>] ? A : never
+    }
 > {
   return (s) =>
     chain_(s, (k) =>
@@ -138,7 +140,7 @@ export function bindAllPar<
           values.forEach(([k, v]) => {
             res[k] = v
           })
-          return res
+          return Object.assign(res, k)
         }
       )
     ) as any
@@ -155,11 +157,12 @@ export function bindAllParN(
 ) => <R, E>(
   s: Managed<R, E, K>
 ) => Managed<
-  _R<NER[keyof NER]>,
-  _E<NER[keyof NER]>,
-  {
-    [K in keyof NER]: [NER[K]] extends [Managed<any, any, infer A>] ? A : never
-  }
+  R & _R<NER[keyof NER]>,
+  E | _E<NER[keyof NER]>,
+  K &
+    {
+      [K in keyof NER]: [NER[K]] extends [Managed<any, any, infer A>] ? A : never
+    }
 > {
   return (r) => (s) =>
     chain_(s, (k) =>
@@ -173,7 +176,7 @@ export function bindAllParN(
           values.forEach(([k, v]) => {
             res[k] = v
           })
-          return res
+          return Object.assign(res, k)
         }
       )
     ) as any
