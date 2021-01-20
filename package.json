@@ -21,6 +21,7 @@
     "@babel/core": "^7.12.3",
     "@effect-ts/tracing-plugin": "^0.2.6",
     "@effect-ts/tracing-utils": "^0.2.4",
+    "@qio/core": "^31.1.1",
     "@types/cpx": "^1.5.1",
     "@types/jest": "^26.0.14",
     "@types/node": "^14.11.10",
