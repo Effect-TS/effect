@@ -6,13 +6,7 @@
     "module": "CommonJS",
     "incremental": true,
     "tsBuildInfoFile": "tsbuildinfo/build.tsbuildinfo",
-    "removeComments": false,
-    "plugins": [
-      {
-        "transform": "../tracing-plugin/src/index.ts",
-        "tracing": false
-      }
-    ]
+    "removeComments": false
   },
   "include": ["src/**/*"],
   "exclude": ["test", "node_modules"]

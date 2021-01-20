@@ -1,0 +1,80 @@
+{
+  "Morphic opaque": {
+    "prefix": "moo",
+    "body": [
+      "export interface $1 extends MO.AType<typeof $1_> {}",
+      "export interface $1E extends MO.EType<typeof $1_> {}",
+      "export const $1 = MO.opaque<$1E, $1>()($1_)",
+      ""
+    ],
+    "description": "Defines a Morphic opaque signature"
+  },
+  "Morphic": {
+    "prefix": "mo",
+    "body": ["const $1_ = MO.make(F => F.$0 )", ""],
+    "description": "Defines a Morphic interface"
+  },
+  "Import Morphic": {
+    "prefix": "+MO",
+    "body": ["import * as MO from \"@effect-ts/morphic\""],
+    "description": "Imports Morphic as MO"
+  },
+  "Morphic Newtype": {
+    "prefix": "mont",
+    "body": [
+      "export interface $1 extends NT.Newtype<\"$1\", $2> {}",
+      "",
+      "export const $1Iso = Iso.newtype<$1>()",
+      "",
+      "export const $1 = MO.make((F) => F.newtypeIso($1Iso, F.$3()))",
+      ""
+    ],
+    "description": "Defines a Morphic newtype via iso"
+  },
+  "Morphic Newtype Prism": {
+    "prefix": "mont-pri",
+    "body": [
+      "export interface $1 extends NT.Newtype<\"$1\", $2> {}",
+      "",
+      "export const $1Prism = Prism.newtype<$1>((_) => $3)",
+      "export const $1Iso = Iso.newtype<$1>()",
+      "",
+      "export const $1 = MO.make((F) => F.newtypePrism($1Prism, F.$4()))",
+      ""
+    ],
+    "description": "Defines a Morphic newtype via prism"
+  },
+  "Morphic interface": {
+    "prefix": "moi",
+    "body": [
+      "const $1_ = MO.make(F => F.interface({ $0 }, { name: \"$1\" }))",
+      "",
+      "export interface $1 extends MO.AType<typeof $1_> {}",
+      "export interface $1E extends MO.EType<typeof $1_> {}",
+      "export const $1 = MO.opaque<$1E, $1>()($1_)",
+      ""
+    ],
+    "description": "Defines a Morphic interface"
+  },
+  "Morphic intersection": {
+    "prefix": "mo&",
+    "body": [
+      "const $1_ = MO.make(F => F.intersection($0)({ name: \"$1\" }))",
+      "",
+      "export interface $1 extends MO.AType<typeof $1_> {}",
+      "export interface $1E extends MO.EType<typeof $1_> {}",
+      "export const $1 = MO.opaque<$1E, $1>()($1_)",
+      ""
+    ],
+    "description": "Defines a Morphic intersection"
+  },
+  "Morphic opaque for tagged unions": {
+    "prefix": "mo|",
+    "body": [
+      "export const $1 = MO.makeADT('$2')({ $3 })",
+      "export type $1 = MO.AType<typeof $1>",
+      ""
+    ],
+    "description": "Defines a Morphic tagged union"
+  }
+}
