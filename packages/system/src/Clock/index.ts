@@ -10,6 +10,9 @@ import { accessService, accessServiceM } from "../Effect/has"
 import { literal } from "../Function"
 import type { HasTag } from "../Has"
 import { tag } from "../Has"
+import type { UIO as SyncUIO } from "../Sync/core"
+import { sync } from "../Sync/core"
+import { accessServiceM as accessServiceMSync } from "../Sync/has"
 
 //
 // Clock Definition
@@ -17,7 +20,7 @@ import { tag } from "../Has"
 export abstract class Clock {
   readonly _tag = literal("@effect-ts/system/Clock")
 
-  abstract readonly currentTime: UIO<number>
+  abstract readonly currentTime: SyncUIO<number>
   abstract readonly sleep: (ms: number) => UIO<void>
 }
 
@@ -32,7 +35,7 @@ export type HasClock = HasTag<typeof HasClock>
 // Live Clock Implementation
 //
 export class LiveClock extends Clock {
-  currentTime: UIO<number> = effectTotal(() => new Date().getTime())
+  currentTime: SyncUIO<number> = sync(() => new Date().getTime())
 
   sleep: (ms: number) => UIO<void> = (ms) =>
     effectAsyncInterrupt((cb) => {
@@ -51,7 +54,7 @@ export class LiveClock extends Clock {
 //
 export class ProxyClock extends Clock {
   constructor(
-    readonly currentTime: UIO<number>,
+    readonly currentTime: SyncUIO<number>,
     readonly sleep: (ms: number) => UIO<void>
   ) {
     super()
@@ -61,7 +64,7 @@ export class ProxyClock extends Clock {
 /**
  * Get the current time in ms since epoch
  */
-export const currentTime = accessServiceM(HasClock)((_) => _.currentTime)
+export const currentTime = accessServiceMSync(HasClock)((_) => _.currentTime)
 
 /**
  * Sleeps for the provided amount of ms
