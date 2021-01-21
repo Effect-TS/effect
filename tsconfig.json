@@ -1,9 +1,8 @@
 {
-  "extends": "../../tsconfig.json",
+  "extends": "./tsconfig.base.json",
+  "files": [],
   "compilerOptions": {
-    "target": "ES2017",
-    "emitDecoratorMetadata": true,
-    "experimentalDecorators": true
-  },
-  "include": ["src/**/*", "scripts/**/*", "bench/**/*", "test/**/*", "demo/**/*"]
+    "baseUrl": ".",
+    "target": "ES2017"
+  }
 }

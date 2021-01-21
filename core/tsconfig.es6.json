@@ -9,7 +9,7 @@
     "removeComments": false,
     "plugins": [
       {
-        "transform": "../tracing-plugin/src/index.ts",
+        "transform": "@effect-ts/tracing-plugin",
         "tracing": false
       }
     ]
