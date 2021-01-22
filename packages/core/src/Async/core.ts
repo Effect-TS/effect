@@ -134,7 +134,9 @@ export function fromSync<R, E, A>(_: Sync<R, E, A>) {
   return A.accessM((r: R) => fromEither(runEitherEnv(r)(_)))
 }
 
-export const { match, matchIn, matchTag, matchTagIn } = P.matchers(Covariant)
+export const { match, matchIn, matchMorph, matchTag, matchTagIn } = P.matchers(
+  Covariant
+)
 
 /**
  * Conditionals

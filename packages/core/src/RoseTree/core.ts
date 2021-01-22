@@ -449,7 +449,7 @@ export const tuple = DSL.tupleF(Applicative)
 /**
  * Matchers
  */
-export const { match, matchIn, matchTag, matchTagIn } = DSL.matchers(Monad)
+export const { match, matchIn, matchMorph, matchTag, matchTagIn } = DSL.matchers(Monad)
 
 /**
  * Conditionals

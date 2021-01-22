@@ -20,7 +20,9 @@ export const gen_ = DSL.genF(Monad)
 /**
  * Matchers
  */
-export const { match, matchIn, matchTag, matchTagIn } = DSL.matchers(Covariant)
+export const { match, matchIn, matchMorph, matchTag, matchTagIn } = DSL.matchers(
+  Covariant
+)
 
 /**
  * Conditionals

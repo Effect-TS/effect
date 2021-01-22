@@ -9,7 +9,9 @@ export const sequence = P.sequenceF(Traversable)
 /**
  * Matchers
  */
-export const { match, matchIn, matchTag, matchTagIn } = P.matchers(Traversable)
+export const { match, matchIn, matchMorph, matchTag, matchTagIn } = P.matchers(
+  Traversable
+)
 
 /**
  * Conditionals
