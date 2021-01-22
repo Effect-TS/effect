@@ -296,9 +296,9 @@
     minimist "^1.2.0"
 
 "@effect-ts/tracing-plugin@^0.2.6":
-  version "0.2.6"
-  resolved "https://registry.yarnpkg.com/@effect-ts/tracing-plugin/-/tracing-plugin-0.2.6.tgz#d45d46f506cb2ab4209276033cc2a315b009f15b"
-  integrity sha512-e+AXaS1T/qnT7y6P6ylPnxBfiPX3CHJ8bJu7GR7i3A7WkVy4toVOBIAsAEKhEn0g/r9o/EaJohqnbPdosEbE7w==
+  version "0.2.7"
+  resolved "https://registry.yarnpkg.com/@effect-ts/tracing-plugin/-/tracing-plugin-0.2.7.tgz#39ae1f0083f219beece5a2ad8d272f6837809d85"
+  integrity sha512-Q76S4Ii97KjBRohgetHPIw+9IB1YWzxe12DDdZV9aTGj+5mYaVNUadzJn7yqsu1GqTPbjvUcGD84V4FuBvMqWA==
 
 "@effect-ts/tracing-utils@^0.2.4":
   version "0.2.4"
