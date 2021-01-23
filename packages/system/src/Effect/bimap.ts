@@ -1,0 +1,28 @@
+import { succeed } from "./core"
+import type { Effect } from "./effect"
+import { fail } from "./fail"
+import { foldM_ } from "./foldM"
+
+/**
+ * Returns an effect whose failure and success channels have been mapped by
+ * the specified pair of functions, `f` and `g`.
+ */
+export function bimap<E, A, E2, B>(f: (e: E) => E2, g: (a: A) => B) {
+  return <R>(self: Effect<R, E, A>) => bimap_(self, f, g)
+}
+
+/**
+ * Returns an effect whose failure and success channels have been mapped by
+ * the specified pair of functions, `f` and `g`.
+ */
+export function bimap_<R, E, A, E2, B>(
+  self: Effect<R, E, A>,
+  f: (e: E) => E2,
+  g: (a: A) => B
+) {
+  return foldM_(
+    self,
+    (e) => fail(f(e)),
+    (a) => succeed(g(a))
+  )
+}

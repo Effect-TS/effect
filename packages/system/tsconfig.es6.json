@@ -1,0 +1,19 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "build/esm",
+    "module": "ES6",
+    "target": "ES2017",
+    "incremental": true,
+    "tsBuildInfoFile": "tsbuildinfo/es6.tsbuildinfo",
+    "removeComments": false,
+    "plugins": [
+      {
+        "transform": "@effect-ts/tracing-plugin",
+        "tracing": false
+      }
+    ]
+  },
+  "include": ["src/**/*"],
+  "exclude": ["test", "node_modules"]
+}

@@ -1,0 +1,137 @@
+{
+  "Effect": {
+    "prefix": "+T",
+    "body": ["import * as T from \"@effect-ts/core/Effect\""],
+    "description": "Effect as T"
+  },
+  "Managed": {
+    "prefix": "+M",
+    "body": ["import * as M from \"@effect-ts/core/Effect/Managed\""],
+    "description": "Managed as M"
+  },
+  "Layer": {
+    "prefix": "+L",
+    "body": ["import * as L from \"@effect-ts/core/Effect/Layer\""],
+    "description": "Layer as L"
+  },
+  "Ref": {
+    "prefix": "+Ref",
+    "body": ["import * as Ref from \"@effect-ts/core/Effect/Ref\""],
+    "description": "Ref"
+  },
+  "RefM": {
+    "prefix": "+RefM",
+    "body": ["import * as RefM from \"@effect-ts/core/Effect/RefM\""],
+    "description": "RefM"
+  },
+  "Map": {
+    "prefix": "+Map",
+    "body": ["import * as Map from \"@effect-ts/core/Classic/Map\""],
+    "description": "Map"
+  },
+  "Array": {
+    "prefix": "+A",
+    "body": ["import * as A from \"@effect-ts/core/Classic/Array\""],
+    "description": "Array as A"
+  },
+  "Record": {
+    "prefix": "+R",
+    "body": ["import * as R from \"@effect-ts/core/Classic/Record\""],
+    "description": "Record as R"
+  },
+  "NonEmptyArray": {
+    "prefix": "+NA",
+    "body": ["import * as NA from \"@effect-ts/core/Classic/NonEmptyArray\""],
+    "description": "NonEmptyArray as NA"
+  },
+  "Prelude": {
+    "prefix": "+P",
+    "body": ["import * as P from \"@effect-ts/core/Prelude\""],
+    "description": "Prelude as NA"
+  },
+  "DSL": {
+    "prefix": "+DSL",
+    "body": ["import * as DSL from \"@effect-ts/core/Prelude/DSL\""],
+    "description": "Prelude DSL as DSL"
+  },
+  "Queue": {
+    "prefix": "+Q",
+    "body": ["import * as Q from \"@effect-ts/core/Effect/Queue\""],
+    "description": "Queue as Q"
+  },
+  "Semaphore": {
+    "prefix": "+Q",
+    "body": ["import * as Sem from \"@effect-ts/core/Effect/Semaphore\""],
+    "description": "Semaphore as Sem"
+  },
+  "Stream": {
+    "prefix": "+S",
+    "body": ["import * as S from \"@effect-ts/core/Effect/Stream\""],
+    "description": "Semaphore as S"
+  },
+  "Async": {
+    "prefix": "+As",
+    "body": ["import * as As from \"@effect-ts/core/Async\""],
+    "description": "Async as As"
+  },
+  "Sync": {
+    "prefix": "+Sy",
+    "body": ["import * as Sy from \"@effect-ts/core/Sync\""],
+    "description": "Sync as Sy"
+  },
+  "Either": {
+    "prefix": "+E",
+    "body": ["import * as E from \"@effect-ts/core/Classic/Either\""],
+    "description": "Either as E"
+  },
+  "Exit": {
+    "prefix": "+Ex",
+    "body": ["import * as Ex from \"@effect-ts/core/Effect/Exit\""],
+    "description": "Exit as Ex"
+  },
+  "Cause": {
+    "prefix": "+C",
+    "body": ["import * as C from \"@effect-ts/core/Effect/Cause\""],
+    "description": "Cause as C"
+  },
+  "Option": {
+    "prefix": "+O",
+    "body": ["import * as O from \"@effect-ts/core/Classic/Option\""],
+    "description": "Option as O"
+  },
+  "Fiber": {
+    "prefix": "+F",
+    "body": ["import * as F from \"@effect-ts/core/Effect/Fiber\""],
+    "description": "Fiber as F"
+  },
+  "Iso": {
+    "prefix": "+Iso",
+    "body": ["import * as Iso from \"@effect-ts/monocle/Iso\""],
+    "description": "Iso as Iso"
+  },
+  "Prism": {
+    "prefix": "+Prism",
+    "body": ["import * as Prism from \"@effect-ts/monocle/Prism\""],
+    "description": "Prism as Prism"
+  },
+  "Lens": {
+    "prefix": "+Lens",
+    "body": ["import * as Lens from \"@effect-ts/monocle/Lens\""],
+    "description": "Lens as Lens"
+  },
+  "Optional": {
+    "prefix": "+Opt",
+    "body": ["import * as Op from \"@effect-ts/monocle/Optional\""],
+    "description": "Optional as Op"
+  },
+  "Traversal": {
+    "prefix": "+Tr",
+    "body": ["import * as Tr from \"@effect-ts/monocle/Traversal\""],
+    "description": "Traversal as Tr"
+  },
+  "Newtype": {
+    "prefix": "+NT",
+    "body": ["import * as NT from \"@effect-ts/core/Newtype\""],
+    "description": "Newtype as NT"
+  }
+}
