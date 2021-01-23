@@ -6,7 +6,7 @@
     "target": "ES2017",
     "plugins": [
       {
-        "transform": "./packages/tracing-plugin/index.ts",
+        "transform": "./packages/tracing-plugin/src/index.ts",
         "moduleMap": {
           "^packages/core/src/(.*)": "(@effect-ts/core): src/$1",
           "^packages/core/test/(.*)": "(@effect-ts/core/test): test/$1",

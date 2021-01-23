@@ -18,7 +18,9 @@ module.exports = {
     "@effect-ts/core/(.*)$": "<rootDir>/packages/core/build/_traced/$1",
     "@effect-ts/core$": "<rootDir>/packages/core/build/_traced",
     "@effect-ts/system/(.*)$": "<rootDir>/packages/system/build/_traced/$1",
-    "@effect-ts/system$": "<rootDir>/packages/system/build/_traced"
+    "@effect-ts/system$": "<rootDir>/packages/system/build/_traced",
+    "@effect-ts/tracing-utils/(.*)$": "<rootDir>/packages/tracing-utils/build/$1",
+    "@effect-ts/tracing-utils$": "<rootDir>/packages/tracing-utils/build"
   },
   globals: {
     "ts-jest": {
