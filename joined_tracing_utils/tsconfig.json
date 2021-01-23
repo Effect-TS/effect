@@ -1,8 +1,0 @@
-{
-  "extends": "./tsconfig.base.json",
-  "files": [],
-  "compilerOptions": {
-    "baseUrl": ".",
-    "target": "ES2017"
-  }
-}

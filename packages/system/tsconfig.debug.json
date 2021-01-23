@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "debug",
+    "target": "ES2017",
+    "module": "CommonJS",
+    "removeComments": false,
+    "plugins": [
+      {
+        "transform": "../tracing-plugin/src/index.ts"
+      }
+    ]
+  },
+  "include": ["test/demo.test.ts"]
+}
