@@ -1,0 +1,13 @@
+{
+  "packages": [
+    "packages/*",
+    "packages_be/*",
+    "packages_fe/*",
+    "packages_http/*",
+    "packages_inc/*",
+    "packages_sys/*"
+  ],
+  "npmClient": "yarn",
+  "useWorkspaces": true,
+  "version": "independent"
+}
