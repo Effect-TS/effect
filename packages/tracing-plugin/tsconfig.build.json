@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "build",
+    "target": "ES2017",
+    "module": "CommonJS",
+    "incremental": true,
+    "tsBuildInfoFile": "tsbuildinfo/build.tsbuildinfo",
+    "removeComments": false
+  },
+  "include": ["src/**/*"],
+  "exclude": ["test", "node_modules"]
+}
