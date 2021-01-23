@@ -16,7 +16,9 @@ module.exports = {
   verbose: true,
   moduleNameMapper: {
     "@effect-ts/core/(.*)$": "<rootDir>/packages/core/build/_traced/$1",
-    "@effect-ts/core$": "<rootDir>/packages/core/build/_traced"
+    "@effect-ts/core$": "<rootDir>/packages/core/build/_traced",
+    "@effect-ts/system/(.*)$": "<rootDir>/packages/system/build/_traced/$1",
+    "@effect-ts/system$": "<rootDir>/packages/system/build/_traced"
   },
   globals: {
     "ts-jest": {
