@@ -43,6 +43,7 @@ export interface WitherWithIndex<F extends HKT.URIS, C = HKT.Auto> {
 
 export interface WitherableWithIndex<F extends HKT.URIS, C = HKT.Auto>
   extends HKT.Base<F, C> {
+  readonly _WitherableWithIndex: "WitherableWithIndex"
   readonly compactWithIndexF: WitherWithIndex<F, C>
 }
 

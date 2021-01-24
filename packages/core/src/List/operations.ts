@@ -15,9 +15,9 @@ import type { Show } from "../Show"
 export * from "@effect-ts/system/Persistent/List"
 
 /**
- * `Traversable`'s `foreachF` function
+ * `ForEeach`'s `foreachF` function
  */
-export const foreachF = P.implementForeachF<[ListURI]>()(() => (G) => (f) => (fa) =>
+export const foreachF = P.implementForEachF<[ListURI]>()(() => (G) => (f) => (fa) =>
   List.reduceRight_(fa, P.succeedF(G)(List.empty()), (a, acc) =>
     pipe(
       f(a),

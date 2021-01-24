@@ -24,7 +24,7 @@ export * from "@effect-ts/system/Record"
 /**
  * Traverse Record with Applicative, passing index to f
  */
-export const foreachWithIndexF = P.implementForeachWithIndexF<[RecordURI], V>()(
+export const foreachWithIndexF = P.implementForEachWithIndexF<[RecordURI], V>()(
   (_) => (G) => {
     const succeed = succeedF(G)
     return (f) => (fa) => {
@@ -42,7 +42,7 @@ export const foreachWithIndexF = P.implementForeachWithIndexF<[RecordURI], V>()(
 /**
  * Traverse Record with Applicative
  */
-export const foreachF = P.implementForeachF<[RecordURI], V>()((_) => (G) => (f) =>
+export const foreachF = P.implementForEachF<[RecordURI], V>()((_) => (G) => (f) =>
   foreachWithIndexF(G)((_, a) => f(a))
 )
 

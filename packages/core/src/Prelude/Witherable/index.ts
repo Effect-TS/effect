@@ -37,6 +37,7 @@ export interface Wither<F extends HKT.URIS, C = HKT.Auto> {
 }
 
 export interface Witherable<F extends HKT.URIS, C = HKT.Auto> extends HKT.Base<F, C> {
+  readonly _Witherable: "Witherable"
   readonly compactF: Wither<F, C>
 }
 

@@ -2,6 +2,7 @@ import type * as HKT from "../HKT"
 
 export interface AssociativeFlatten<F extends HKT.URIS, C = HKT.Auto>
   extends HKT.Base<F, C> {
+  readonly _AssociativeFlatten: "AssociativeFlatten"
   readonly flatten: <
     N extends string,
     K,

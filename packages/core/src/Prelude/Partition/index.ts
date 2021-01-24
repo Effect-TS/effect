@@ -3,6 +3,7 @@ import type { Separated } from "../../Utils"
 import type * as HKT from "../HKT"
 
 export interface Partition<F extends HKT.URIS, C = HKT.Auto> extends HKT.Base<F, C> {
+  readonly _Partition: "Partition"
   readonly partition: {
     <A, B extends A>(refinement: Refinement<A, B>): <
       N extends string,

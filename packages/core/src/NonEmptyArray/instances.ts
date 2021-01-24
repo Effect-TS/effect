@@ -30,16 +30,14 @@ export const Monad = P.instance<P.Monad<[NonEmptyArrayURI]>>({
   ...AssociativeFlatten
 })
 
-export const Traversable = P.instance<P.Traversable<[NonEmptyArrayURI]>>({
+export const ForEeach = P.instance<P.ForEach<[NonEmptyArrayURI]>>({
   map: A.map,
-  foreachF: A.foreachF
+  forEachF: A.foreachF
 })
 
-export const TraversableWithIndex = P.instance<
-  P.TraversableWithIndex<[NonEmptyArrayURI]>
->({
+export const ForEeachWithIndex = P.instance<P.ForEachWithIndex<[NonEmptyArrayURI]>>({
   map: A.map,
-  foreachWithIndexF: A.foreachWithIndexF
+  forEachWithIndexF: A.foreachWithIndexF
 })
 
 export const Extend = P.instance<P.Extend<[NonEmptyArrayURI]>>({

@@ -3,6 +3,7 @@ import * as HKT from "../HKT"
 
 export interface Contravariant<F extends HKT.URIS, C = HKT.Auto>
   extends HKT.Base<F, C> {
+  readonly _Contravariant: "Contravariant"
   readonly contramap: <A, B>(
     f: (a: B) => A
   ) => <N extends string, K, Q, W, X, I, S, R, E>(

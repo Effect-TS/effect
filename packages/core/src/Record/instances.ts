@@ -28,14 +28,14 @@ export const CovariantWithIndex = P.instance<P.CovariantWithIndex<[RecordURI], V
   mapWithIndex
 })
 
-export const Traversable = P.instance<P.Traversable<[RecordURI], V>>({
+export const ForEeach = P.instance<P.ForEach<[RecordURI], V>>({
   map,
-  foreachF
+  forEachF: foreachF
 })
 
-export const TraversableWithIndex = P.instance<P.TraversableWithIndex<[RecordURI], V>>({
+export const ForEeachWithIndex = P.instance<P.ForEachWithIndex<[RecordURI], V>>({
   map,
-  foreachWithIndexF
+  forEachWithIndexF: foreachWithIndexF
 })
 
 export const Reduce = P.instance<P.Reduce<[RecordURI], V>>({

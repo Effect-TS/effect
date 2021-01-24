@@ -22,9 +22,9 @@ import type { PredicateWithIndex, Separated } from "../Utils"
 export * from "@effect-ts/system/Array"
 
 /**
- * `TraversableWithIndex`'s `foreachWithIndexF` function
+ * `ForEeachWithIndex`'s `foreachWithIndexF` function
  */
-export const foreachWithIndexF = P.implementForeachWithIndexF<[ArrayURI]>()(
+export const foreachWithIndexF = P.implementForEachWithIndexF<[ArrayURI]>()(
   (_) => (G) => {
     const succeed = DSL.succeedF(G)
     return (f) => (fa) => {
@@ -41,9 +41,9 @@ export const foreachWithIndexF = P.implementForeachWithIndexF<[ArrayURI]>()(
 )
 
 /**
- * `Traversable`'s `foreachF` function
+ * `ForEeach`'s `foreachF` function
  */
-export const foreachF = P.implementForeachF<[ArrayURI]>()((_) => (G) => (f) =>
+export const foreachF = P.implementForEachF<[ArrayURI]>()((_) => (G) => (f) =>
   foreachWithIndexF(G)((_, a) => f(a))
 )
 

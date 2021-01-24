@@ -1,10 +1,10 @@
 import type * as O from "../Option"
 import * as P from "../Prelude"
 import { isOption } from "../Utils"
-import { Applicative, Covariant, Monad, Traversable } from "./instances"
+import { Applicative, Covariant, ForEeach, Monad } from "./instances"
 import type * as A from "./operations"
 
-export const sequence = P.sequenceF(Traversable)
+export const sequence = P.sequenceF(ForEeach)
 
 const adapter: {
   <A>(_: () => O.Option<A>): P.GenLazyHKT<A.Array<A>, A>

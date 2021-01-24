@@ -1,10 +1,10 @@
 import * as P from "../Prelude"
-import { Applicative, Covariant, Monad, Traversable } from "./instances"
+import { Applicative, Covariant, ForEeach, Monad } from "./instances"
 
 /**
- * `Traversable`'s `sequenceF` derivation
+ * `ForEeach`'s `sequenceF` derivation
  */
-export const sequenceF = P.sequenceF(Traversable)
+export const sequenceF = P.sequenceF(ForEeach)
 
 /**
  * Generator

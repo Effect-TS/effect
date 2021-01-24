@@ -1,6 +1,7 @@
 import type * as HKT from "../HKT"
 
 export interface Id<F extends HKT.URIS, C = HKT.Auto> extends HKT.Base<F, C> {
+  readonly _Id: "Id"
   readonly id: <
     A,
     N extends string = HKT.Initial<C, "N">,

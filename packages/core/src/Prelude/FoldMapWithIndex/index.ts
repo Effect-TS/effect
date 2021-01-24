@@ -3,6 +3,7 @@ import type * as HKT from "../HKT"
 
 export interface FoldMapWithIndex<F extends HKT.URIS, C = HKT.Auto>
   extends HKT.Base<F, C> {
+  readonly _FoldMapWithIndex: "FoldMapWithIndex"
   readonly foldMapWithIndex: FoldMapWithIndexFn<F, C>
 }
 

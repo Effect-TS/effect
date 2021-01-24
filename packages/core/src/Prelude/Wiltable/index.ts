@@ -42,6 +42,7 @@ export interface Wilt<F extends HKT.URIS, C = HKT.Auto> {
 }
 
 export interface Wiltable<F extends HKT.URIS, C = HKT.Auto> extends HKT.Base<F, C> {
+  readonly _Wiltable: "Wiltable"
   readonly separateF: Wilt<F, C>
 }
 

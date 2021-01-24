@@ -9,6 +9,7 @@ import { chainF, succeedF } from "../DSL"
 import type { Monad } from "../Monad"
 
 export interface Select<F extends HKT.URIS, C = HKT.Auto> extends HKT.Base<F, C> {
+  readonly _Select: "Select"
   readonly select: <N2 extends string, K2, Q2, W2, X2, I2, S2, R2, E2, A, B>(
     fab: HKT.Kind<F, C, N2, K2, Q2, W2, X2, I2, S2, R2, E2, (a: A) => B>
   ) => <N extends string, K, Q, W, X, I, S, R, E, B2>(

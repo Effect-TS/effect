@@ -3,6 +3,7 @@ import type * as HKT from "../HKT"
 
 export interface FilterWithIndex<F extends HKT.URIS, C = HKT.Auto>
   extends HKT.Base<F, C> {
+  readonly _FilterWithIndex: "FilterWithIndex"
   readonly filterWithIndex: {
     <N extends string, K, A, B extends A>(
       refinement: RefinementWithIndex<

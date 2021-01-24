@@ -35,9 +35,9 @@ export function zipValidation<E>(
 }
 
 /**
- * `Traversable`'s `foreachF` function
+ * `ForEeach`'s `foreachF` function
  */
-export const foreachF = P.implementForeachF<
+export const foreachF = P.implementForEachF<
   [EitherURI],
   V
 >()((_) => (G) => (f) => (fa) =>

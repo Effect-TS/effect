@@ -1,13 +1,13 @@
 export interface Auto {}
 
 export interface Base<F, C = Auto> {
-  F: F
-  C: C
+  _F: F
+  _C: C
 }
 
 export interface CompositionBase2<F, G, CF = Auto, CG = Auto> {
-  F: F
-  G: G
-  CF: CF
-  CG: CG
+  _F: F
+  _G: G
+  _CF: CF
+  _CG: CG
 }

@@ -2,6 +2,7 @@ import type * as HKT from "../HKT"
 
 export interface ReduceWithIndex<F extends HKT.URIS, C = HKT.Auto>
   extends HKT.Base<F, C> {
+  readonly _ReduceWithIndex: "ReduceWithIndex"
   readonly reduceWithIndex: ReduceWithIndexFn<F, C>
 }
 

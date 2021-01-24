@@ -1,6 +1,7 @@
 import type * as HKT from "../HKT"
 
 export interface Reduce<F extends HKT.URIS, C = HKT.Auto> extends HKT.Base<F, C> {
+  readonly _Reduce: "Reduce"
   readonly reduce: <A, B>(
     b: B,
     f: (b: B, a: A) => B

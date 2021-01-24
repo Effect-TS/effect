@@ -1,6 +1,7 @@
 import type * as HKT from "../HKT"
 
 export interface Any<F extends HKT.URIS, C = HKT.Auto> extends HKT.Base<F, C> {
+  readonly _Any: "Any"
   readonly any: <
     N extends string = HKT.Initial<C, "N">,
     K = HKT.Initial<C, "K">,

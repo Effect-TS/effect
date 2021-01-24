@@ -1,6 +1,7 @@
 import type * as HKT from "../HKT"
 
 export interface None<F extends HKT.URIS, C = HKT.Auto> extends HKT.Base<F, C> {
+  readonly _None: "None"
   readonly never: <
     N extends string = HKT.Initial<C, "N">,
     K = HKT.Initial<C, "K">,

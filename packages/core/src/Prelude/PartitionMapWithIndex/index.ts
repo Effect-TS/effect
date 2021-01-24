@@ -4,6 +4,7 @@ import type * as HKT from "../HKT"
 
 export interface PartitionMapWithIndex<F extends HKT.URIS, C = HKT.Auto>
   extends HKT.Base<F, C> {
+  readonly _PartitionMapWithIndex: "PartitionMapWithIndex"
   readonly partitionMapWithIndex: <N extends string, K, A, B, B1>(
     f: (
       k: HKT.IndexFor<F, HKT.OrFix<"N", C, N>, HKT.OrFix<"K", C, K>>,

@@ -302,7 +302,7 @@ export function reduceRight_<A, B>(fa: Tree<A>, b: B, f: (a: A, b: B) => B): B {
   return IO.run(go(fa, b))
 }
 
-export const foreachF = P.implementForeachF<[TreeURI]>()((_) => (G) => {
+export const foreachF = P.implementForEachF<[TreeURI]>()((_) => (G) => {
   const traverseF = A.foreachF(G)
   const r = <A, B>(f: (a: A) => P.HKT<typeof _.G, B>) => (
     ta: Tree<A>
@@ -323,12 +323,12 @@ export const foreachF = P.implementForeachF<[TreeURI]>()((_) => (G) => {
   return r
 })
 
-export const Traversable = P.instance<P.Traversable<[TreeURI]>>({
-  foreachF,
+export const ForEeach = P.instance<P.ForEach<[TreeURI]>>({
+  forEachF: foreachF,
   map
 })
 
-export const sequence = sequenceF(Traversable)
+export const sequence = sequenceF(ForEeach)
 
 export function extract<A>(wa: Tree<A>): A {
   return wa.value

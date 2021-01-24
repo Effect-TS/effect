@@ -48,6 +48,7 @@ export interface WiltWithIndex<F extends HKT.URIS, C = HKT.Auto> {
 
 export interface WiltableWithIndex<F extends HKT.URIS, C = HKT.Auto>
   extends HKT.Base<F, C> {
+  readonly _WiltableWithIndex: "WiltableWithIndex"
   readonly separateWithIndexF: WiltWithIndex<F, C>
 }
 

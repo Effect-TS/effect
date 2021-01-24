@@ -2,6 +2,7 @@ import type * as HKT from "../HKT"
 
 export interface AssociativeBoth<F extends HKT.URIS, C = HKT.Auto>
   extends HKT.Base<F, C> {
+  readonly _AssociativeBoth: "AssociativeBoth"
   readonly both: <N2 extends string, K2, Q2, W2, X2, I2, S2, R2, E2, B>(
     fb: HKT.Kind<F, C, N2, K2, Q2, W2, X2, I2, S2, R2, E2, B>
   ) => <N extends string, K, Q, W, X, I, S, R, E, A>(

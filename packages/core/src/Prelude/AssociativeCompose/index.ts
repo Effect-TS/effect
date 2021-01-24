@@ -2,7 +2,7 @@ import type * as HKT from "../HKT"
 
 export interface AssociativeCompose<F extends HKT.URIS, TC = HKT.Auto>
   extends HKT.Base<F, TC> {
-  readonly AssociativeCompose: "AssociativeCompose"
+  readonly _AssociativeCompose: "AssociativeCompose"
   readonly compose: <
     B,
     C,

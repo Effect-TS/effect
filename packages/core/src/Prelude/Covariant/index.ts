@@ -1,6 +1,7 @@
 import * as HKT from "../HKT"
 
 export interface Covariant<F extends HKT.URIS, C = HKT.Auto> extends HKT.Base<F, C> {
+  readonly _Covariant: "Covariant"
   readonly map: <A, B>(
     f: (a: A) => B
   ) => <N extends string, K, Q, W, X, I, S, R, E>(

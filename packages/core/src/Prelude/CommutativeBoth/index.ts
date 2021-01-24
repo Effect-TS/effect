@@ -7,5 +7,5 @@ import type { Auto, URIS } from "../HKT"
  */
 export interface CommutativeBoth<F extends URIS, C = Auto>
   extends AssociativeBoth<F, C> {
-  readonly CommutativeBoth: "CommutativeBoth"
+  readonly _CommutativeBoth: "CommutativeBoth"
 }

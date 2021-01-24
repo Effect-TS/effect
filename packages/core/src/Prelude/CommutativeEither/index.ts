@@ -7,5 +7,5 @@ import type { Auto, URIS } from "../HKT"
  */
 export interface CommutativeEither<F extends URIS, C = Auto>
   extends AssociativeEither<F, C> {
-  readonly CommutativeEither: "CommutativeEither"
+  readonly _CommutativeEither: "CommutativeEither"
 }

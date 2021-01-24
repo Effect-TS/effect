@@ -131,9 +131,9 @@ export const Foldable = P.instance<P.Foldable<[IdURI]>>({
   ...FoldMap
 })
 
-export const Traversable = P.instance<P.Traversable<[IdURI]>>({
+export const ForEeach = P.instance<P.ForEach<[IdURI]>>({
   ...Covariant,
-  foreachF: () => (f) => f
+  forEachF: () => (f) => f
 })
 
 export const struct = structF(Applicative)

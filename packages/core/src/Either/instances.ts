@@ -44,9 +44,9 @@ export const Run = P.instance<P.FX.Run<[EitherURI], V>>({
   either: E.right
 })
 
-export const Traversable = P.instance<P.Traversable<[EitherURI], V>>({
+export const ForEeach = P.instance<P.ForEach<[EitherURI], V>>({
   map: E.map,
-  foreachF: E.foreachF
+  forEachF: E.foreachF
 })
 
 export const FoldMap = P.instance<P.FoldMap<[EitherURI], V>>({

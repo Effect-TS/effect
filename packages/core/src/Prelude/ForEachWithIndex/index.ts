@@ -2,7 +2,7 @@ import type { Covariant } from "../Covariant"
 import type * as HKT from "../HKT"
 import type { IdentityBoth } from "../IdentityBoth"
 
-export interface ForeachWithIndex<F extends HKT.URIS, C = HKT.Auto> {
+export interface ForEachWithIndexFn<F extends HKT.URIS, C = HKT.Auto> {
   <G extends HKT.URIS, GC = HKT.Auto>(G: IdentityBoth<G, GC> & Covariant<G, GC>): <
     GN extends string,
     GK,
@@ -40,13 +40,14 @@ export interface ForeachWithIndex<F extends HKT.URIS, C = HKT.Auto> {
   >
 }
 
-export interface TraversableWithIndex<F extends HKT.URIS, C = HKT.Auto>
+export interface ForEachWithIndex<F extends HKT.URIS, C = HKT.Auto>
   extends HKT.Base<F, C>,
     Covariant<F, C> {
-  readonly foreachWithIndexF: ForeachWithIndex<F, C>
+  readonly _ForEachWithIndex: "ForEachWithIndex"
+  readonly forEachWithIndexF: ForEachWithIndexFn<F, C>
 }
 
-export function implementForeachWithIndexF<F extends HKT.URIS, C = HKT.Auto>(): (
+export function implementForEachWithIndexF<F extends HKT.URIS, C = HKT.Auto>(): (
   i: <N extends string, K, Q, W, X, I, S, R, E, A, B, G>(_: {
     A: A
     B: B
@@ -70,7 +71,7 @@ export function implementForeachWithIndexF<F extends HKT.URIS, C = HKT.Auto>(): 
   ) => (
     fa: HKT.Kind<F, C, N, K, Q, W, X, I, S, R, E, A>
   ) => HKT.HKT<G, HKT.Kind<F, C, N, K, Q, W, X, I, S, R, E, B>>
-) => ForeachWithIndex<F, C>
-export function implementForeachWithIndexF() {
+) => ForEachWithIndexFn<F, C>
+export function implementForEachWithIndexF() {
   return (i: any) => i()
 }
