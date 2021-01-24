@@ -1,6 +1,6 @@
 import { sequenceF } from "../Prelude"
 import * as DSL from "../Prelude/DSL"
-import { Applicative, Covariant, Fail, ForEeach, Monad, Run } from "./instances"
+import { Applicative, Covariant, Fail, ForEach, Monad, Run } from "./instances"
 
 export const getValidationApplicative = DSL.getValidationF({
   ...Monad,
@@ -11,7 +11,7 @@ export const getValidationApplicative = DSL.getValidationF({
 
 export const struct = DSL.structF(Applicative)
 
-export const sequence = sequenceF(ForEeach)
+export const sequence = sequenceF(ForEach)
 
 export const tuple = DSL.tupleF(Applicative)
 

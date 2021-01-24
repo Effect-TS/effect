@@ -164,13 +164,13 @@ export interface ForEachComposition<
   readonly forEachF: ForEachCompositionFn<F, G, CF, CG>
 }
 
-export function getForEeachComposition<
+export function getForEachComposition<
   F extends HKT.URIS,
   G extends HKT.URIS,
   CF = HKT.Auto,
   CG = HKT.Auto
 >(F: ForEach<F, CF>, G: ForEach<G, CG>): ForEachComposition<F, G, CF, CG>
-export function getForEeachComposition<F, G>(
+export function getForEachComposition<F, G>(
   F: ForEach<HKT.UHKT<F>>,
   G: ForEach<HKT.UHKT<G>>
 ) {

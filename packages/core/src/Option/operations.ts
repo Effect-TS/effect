@@ -84,13 +84,13 @@ export const Foldable = P.instance<P.Foldable<[OptionURI]>>({
   foldMap: (M) => (f) => (fa) => (O.isNone(fa) ? M.identity : f(fa.value))
 })
 
-export const foreachF = P.implementForEachF<[OptionURI]>()(() => (G) => (f) => (fa) =>
+export const forEachF = P.implementForEachF<[OptionURI]>()(() => (G) => (f) => (fa) =>
   O.isNone(fa) ? P.succeedF(G)(O.none) : pipe(f(fa.value), G.map(O.some))
 )
 
-export const ForEeach = P.instance<P.ForEach<[OptionURI]>>({
+export const ForEach = P.instance<P.ForEach<[OptionURI]>>({
   ...Covariant,
-  forEachF: foreachF
+  forEachF
 })
 
 export const Fail = P.instance<P.FX.Fail<[OptionURI]>>({
@@ -270,7 +270,7 @@ export const Filterable = P.instance<P.Filterable<[OptionURI]>>({
   partitionMap
 })
 
-export const sequence = P.sequenceF(ForEeach)
+export const sequence = P.sequenceF(ForEach)
 
 export const separateF = P.implementSeparateF<[OptionURI]>()(
   (_) => (F) => (f) => (fa) => {

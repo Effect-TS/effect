@@ -22,9 +22,9 @@ import type { PredicateWithIndex, Separated } from "../Utils"
 export * from "@effect-ts/system/Array"
 
 /**
- * `ForEeachWithIndex`'s `foreachWithIndexF` function
+ * `ForEachWithIndex`'s `forEachWithIndexF` function
  */
-export const foreachWithIndexF = P.implementForEachWithIndexF<[ArrayURI]>()(
+export const forEachWithIndexF = P.implementForEachWithIndexF<[ArrayURI]>()(
   (_) => (G) => {
     const succeed = DSL.succeedF(G)
     return (f) => (fa) => {
@@ -41,17 +41,17 @@ export const foreachWithIndexF = P.implementForEachWithIndexF<[ArrayURI]>()(
 )
 
 /**
- * `ForEeach`'s `foreachF` function
+ * `ForEach`'s `forEachF` function
  */
-export const foreachF = P.implementForEachF<[ArrayURI]>()((_) => (G) => (f) =>
-  foreachWithIndexF(G)((_, a) => f(a))
+export const forEachF = P.implementForEachF<[ArrayURI]>()((_) => (G) => (f) =>
+  forEachWithIndexF(G)((_, a) => f(a))
 )
 
 /**
  * `Wilt`'s `separateF` function
  */
 export const separateF = P.implementSeparateF<[ArrayURI]>()((_) => (G) => (f) =>
-  flow(foreachF(G)(f), G.map(A.separate))
+  flow(forEachF(G)(f), G.map(A.separate))
 )
 
 /**
@@ -59,13 +59,13 @@ export const separateF = P.implementSeparateF<[ArrayURI]>()((_) => (G) => (f) =>
  */
 export const separateWithIndexF = P.implementSeparateWithIndexF<
   [ArrayURI]
->()((_) => (G) => (f) => flow(foreachWithIndexF(G)(f), G.map(A.separate)))
+>()((_) => (G) => (f) => flow(forEachWithIndexF(G)(f), G.map(A.separate)))
 
 /**
  * `Wither`'s `compactF` function
  */
 export const compactF = P.implementCompactF<[ArrayURI]>()((_) => (G) => (f) =>
-  flow(foreachF(G)(f), G.map(A.compact))
+  flow(forEachF(G)(f), G.map(A.compact))
 )
 
 /**
@@ -73,7 +73,7 @@ export const compactF = P.implementCompactF<[ArrayURI]>()((_) => (G) => (f) =>
  */
 export const compactWithIndexF = P.implementCompactWithIndexF<
   [ArrayURI]
->()((_) => (G) => (f) => flow(foreachWithIndexF(G)(f), G.map(A.compact)))
+>()((_) => (G) => (f) => flow(forEachWithIndexF(G)(f), G.map(A.compact)))
 
 /**
  * Test if a value is a member of an array. Takes a `Equal<A>` as a single

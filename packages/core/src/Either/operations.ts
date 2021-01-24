@@ -35,9 +35,9 @@ export function zipValidation<E>(
 }
 
 /**
- * `ForEeach`'s `foreachF` function
+ * `ForEach`'s `forEachF` function
  */
-export const foreachF = P.implementForEachF<
+export const forEachF = P.implementForEachF<
   [EitherURI],
   V
 >()((_) => (G) => (f) => (fa) =>
@@ -132,7 +132,7 @@ export function separate<E>(M: Identity<E>) {
 export function getCompactF<E>(M: Identity<E>) {
   const com = compact(M)
   return P.implementCompactF<[EitherURI], P.Fix<"E", E>>()((_) => (G) => {
-    const traverseF = foreachF(G)
+    const traverseF = forEachF(G)
     return (f) => flow(traverseF(f), G.map(com))
   })
 }
@@ -143,7 +143,7 @@ export function getCompactF<E>(M: Identity<E>) {
 export function getSeparateF<E>(M: Identity<E>) {
   const sep = separate(M)
   return P.implementSeparateF<[EitherURI], P.Fix<"E", E>>()((_) => (G) => {
-    const traverseF = foreachF(G)
+    const traverseF = forEachF(G)
     return (f) => flow(traverseF(f), G.map(sep))
   })
 }

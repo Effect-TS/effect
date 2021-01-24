@@ -5,7 +5,7 @@ import { absolve } from "./absolve"
 import type { Effect } from "./effect"
 import { either } from "./either"
 import type { ExecutionStrategy } from "./ExecutionStrategy"
-import { foreach_, foreachExec_, foreachPar_, foreachParN_ } from "./foreach"
+import { forEach_, forEachExec_, forEachPar_, forEachParN_ } from "./forEach"
 import { map_ } from "./map"
 
 /**
@@ -18,7 +18,7 @@ import { map_ } from "./map"
 export function validate_<A, R, E, B>(as: Iterable<A>, f: (a: A) => Effect<R, E, B>) {
   return absolve(
     map_(
-      foreach_(as, (a) => either(f(a))),
+      forEach_(as, (a) => either(f(a))),
       mergeExits<E, B>()
     )
   )
@@ -37,7 +37,7 @@ export function validatePar_<A, R, E, B>(
 ) {
   return absolve(
     map_(
-      foreachPar_(as, (a) => either(f(a))),
+      forEachPar_(as, (a) => either(f(a))),
       mergeExits<E, B>()
     )
   )
@@ -54,7 +54,7 @@ export function validateParN_(n: number) {
   return <A, R, E, B>(as: Iterable<A>, f: (a: A) => Effect<R, E, B>) =>
     absolve(
       map_(
-        foreachParN_(as, n, (a) => either(f(a))),
+        forEachParN_(as, n, (a) => either(f(a))),
         mergeExits<E, B>()
       )
     )
@@ -97,7 +97,7 @@ export function validateExec_<A, R, E, B>(
 ): Effect<R, NA.NonEmptyArray<E>, A.Array<B>> {
   return absolve(
     map_(
-      foreachExec_(as, es, (a) => either(f(a))),
+      forEachExec_(as, es, (a) => either(f(a))),
       mergeExits<E, B>()
     )
   )

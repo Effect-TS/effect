@@ -10,7 +10,7 @@ import * as T from "../_internal/effect"
 import * as M from "../_internal/managed"
 import * as R from "../_internal/ref"
 import type { Stream } from "./definitions"
-import { foreachManaged } from "./foreachManaged"
+import * as forEach from "./forEach"
 
 /**
  * More powerful version of `distributedWith`. This returns a function that will produce
@@ -79,7 +79,7 @@ export function distributedWithDynamic_<R, E, O>(
         R.makeRef(Map.empty as Map.Map<symbol, Q.Queue<Ex.Exit<O.Option<E>, O>>>),
         (acquire) =>
           T.toManaged_(acquire, (_) =>
-            T.chain_(_.get, (qs) => T.foreach_(qs.values(), (q) => q.shutdown))
+            T.chain_(_.get, (qs) => T.forEach_(qs.values(), (q) => q.shutdown))
           )
       )
     ),
@@ -126,7 +126,7 @@ export function distributedWithDynamic_<R, E, O>(
                       T.map_(queuesRef.get, (m) => [...m.values()])
                     ),
                     T.tap(({ queues }) =>
-                      T.foreach_(queues, (queue) =>
+                      T.forEach_(queues, (queue) =>
                         pipe(
                           queue.offer(endTake),
                           T.catchSomeCause((c) =>
@@ -144,7 +144,7 @@ export function distributedWithDynamic_<R, E, O>(
         M.tap(({ finalize }) =>
           pipe(
             self,
-            foreachManaged(offer(queuesRef)),
+            forEach.forEachManaged(offer(queuesRef)),
             M.foldCauseM(
               (cause) => T.toManaged_(finalize(Ex.halt(C.map(O.some)(cause)))),
               () => T.toManaged_(finalize(Ex.fail(O.none)))

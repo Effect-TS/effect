@@ -4,7 +4,7 @@ import * as I from "../Iterable"
 import * as O from "../Option"
 import * as core from "./core"
 import type { Effect } from "./effect"
-import * as foreach from "./foreach"
+import * as forEach from "./forEach"
 import * as map from "./map"
 import * as zipWith from "./zipWith"
 
@@ -42,7 +42,7 @@ export function filterPar_<A, R, E>(
 ) {
   return pipe(
     as,
-    foreach.foreachPar((a) => map.map_(f(a), (b) => (b ? O.some(a) : O.none))),
+    forEach.forEachPar((a) => map.map_(f(a), (b) => (b ? O.some(a) : O.none))),
     map.map(A.compact)
   )
 }
@@ -65,7 +65,7 @@ export function filterParN_(n: number) {
   return <A, R, E>(as: Iterable<A>, f: (a: A) => Effect<R, E, boolean>) =>
     pipe(
       as,
-      foreach.foreachParN(n, (a) => map.map_(f(a), (b) => (b ? O.some(a) : O.none))),
+      forEach.forEachParN(n, (a) => map.map_(f(a), (b) => (b ? O.some(a) : O.none))),
       map.map(A.compact)
     )
 }

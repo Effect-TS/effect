@@ -1,6 +1,6 @@
 import type { Effect } from "./effect"
 import { flip } from "./flip"
-import { foreach_, foreachPar_, foreachParN_ } from "./foreach"
+import { forEach_, forEachPar_, forEachParN_ } from "./forEach"
 
 /**
  * Feeds elements of type `A` to `f` until it succeeds. Returns first success
@@ -10,7 +10,7 @@ export function validateFirst_<A, R, E, B>(
   i: Iterable<A>,
   f: (a: A) => Effect<R, E, B>
 ): Effect<R, readonly E[], B> {
-  return flip(foreach_(i, (a) => flip(f(a))))
+  return flip(forEach_(i, (a) => flip(f(a))))
 }
 
 /**
@@ -31,7 +31,7 @@ export function validateFirstPar_<A, R, E, B>(
   i: Iterable<A>,
   f: (a: A) => Effect<R, E, B>
 ): Effect<R, readonly E[], B> {
-  return flip(foreachPar_(i, (a) => flip(f(a))))
+  return flip(forEachPar_(i, (a) => flip(f(a))))
 }
 
 /**
@@ -58,7 +58,7 @@ export function validateFirstParN_(
   i: Iterable<A>,
   f: (a: A) => Effect<R, E, B>
 ) => Effect<R, readonly E[], B> {
-  return (i, f) => flip(foreachParN_(i, n, (a) => flip(f(a))))
+  return (i, f) => flip(forEachParN_(i, n, (a) => flip(f(a))))
 }
 
 /**

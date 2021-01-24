@@ -84,7 +84,7 @@ export function releaseAll(
               case "Sequential": {
                 return [
                   T.chain_(
-                    T.foreach_(Array.from(s.finalizers()).reverse(), ([_, f]) =>
+                    T.forEach_(Array.from(s.finalizers()).reverse(), ([_, f]) =>
                       T.result(f(exit))
                     ),
                     (e) =>
@@ -98,7 +98,7 @@ export function releaseAll(
               case "Parallel": {
                 return [
                   T.chain_(
-                    T.foreachPar_(Array.from(s.finalizers()).reverse(), ([_, f]) =>
+                    T.forEachPar_(Array.from(s.finalizers()).reverse(), ([_, f]) =>
                       T.result(f(exit))
                     ),
                     (e) =>
@@ -112,7 +112,7 @@ export function releaseAll(
               case "ParallelN": {
                 return [
                   T.chain_(
-                    T.foreachParN_(
+                    T.forEachParN_(
                       Array.from(s.finalizers()).reverse(),
                       execStrategy.n,
                       ([_, f]) => T.result(f(exit))

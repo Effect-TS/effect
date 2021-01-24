@@ -9,7 +9,7 @@ test("06", () => {
     makeAssociative<string>((r) => (l) => `${l} | ${r}`)
   )
 
-  const traverse = R.foreachWithIndexF(ValidationApplicative)
+  const traverse = R.forEachWithIndexF(ValidationApplicative)
 
   const result = pipe(
     { a: 0, b: 1, c: 2, d: 4, e: 5, g: 6 },

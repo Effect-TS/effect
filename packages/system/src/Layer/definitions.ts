@@ -513,7 +513,7 @@ export function scope<R, E, A>(
     case "LayerAllPar": {
       return M.succeed((memo) => {
         return pipe(
-          M.foreachPar_(I.layers as Layer<any, any, any>[], memo.getOrElseMemoize),
+          M.forEachPar_(I.layers as Layer<any, any, any>[], memo.getOrElseMemoize),
           M.map(A.reduce({} as any, (b, a) => ({ ...b, ...a })))
         )
       })
@@ -521,7 +521,7 @@ export function scope<R, E, A>(
     case "LayerAllSeq": {
       return M.succeed((memo) => {
         return pipe(
-          M.foreach_(I.layers as Layer<any, any, any>[], memo.getOrElseMemoize),
+          M.forEach_(I.layers as Layer<any, any, any>[], memo.getOrElseMemoize),
           M.map(A.reduce({} as any, (b, a) => ({ ...b, ...a })))
         )
       })

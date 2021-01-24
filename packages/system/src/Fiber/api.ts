@@ -72,15 +72,15 @@ export function join<E, A>(fiber: Fiber.Fiber<E, A>): T.IO<E, A> {
 export function mapM<E2, A, B>(f: (a: A) => T.IO<E2, B>) {
   return <E>(fiber: Fiber.Fiber<E, A>): Fiber.Synthetic<E | E2, B> => ({
     _tag: "SyntheticFiber",
-    await: T.chain_(fiber.await, Exit.foreach(f)),
+    await: T.chain_(fiber.await, Exit.forEach(f)),
     getRef: (ref) => fiber.getRef(ref),
     inheritRefs: fiber.inheritRefs,
-    interruptAs: (id) => T.chain_(fiber.interruptAs(id), Exit.foreach(f)),
+    interruptAs: (id) => T.chain_(fiber.interruptAs(id), Exit.forEach(f)),
     poll: T.chain_(
       fiber.poll,
       O.fold(
         () => T.succeed(O.none),
-        (a) => T.map_(Exit.foreach_(a, f), O.some)
+        (a) => T.map_(Exit.forEach_(a, f), O.some)
       )
     )
   })
@@ -100,7 +100,7 @@ export function map<A, B>(f: (a: A) => B) {
  */
 export function joinAll<E, A>(as: Iterable<Fiber.Fiber<E, A>>) {
   return T.tap_(T.chain_(waitAll(as), T.done), () =>
-    T.foreach_(as, (f) => f.inheritRefs)
+    T.forEach_(as, (f) => f.inheritRefs)
   )
 }
 
@@ -108,7 +108,7 @@ export function joinAll<E, A>(as: Iterable<Fiber.Fiber<E, A>>) {
  * Awaits on all fibers to be completed, successfully or not.
  */
 export function waitAll<E, A>(as: Iterable<Fiber.Fiber<E, A>>) {
-  return T.result(T.foreachPar_(as, (f) => T.chain_(f.await, T.done)))
+  return T.result(T.forEachPar_(as, (f) => T.chain_(f.await, T.done)))
 }
 
 /**
@@ -285,10 +285,10 @@ export function collectAll<E, A>(fibers: Iterable<Fiber.Fiber<E, A>>) {
           T.map((a2) => ref.join(a, a2))
         )
       ),
-    inheritRefs: T.foreachUnit_(fibers, (f) => f.inheritRefs),
+    inheritRefs: T.forEachUnit_(fibers, (f) => f.inheritRefs),
     interruptAs: (fiberId) =>
       pipe(
-        T.foreach_(fibers, (f) => f.interruptAs(fiberId)),
+        T.forEach_(fibers, (f) => f.interruptAs(fiberId)),
         T.map(
           A.reduceRight(Exit.succeed(A.empty) as Exit.Exit<E, A.Array<A>>, (a, b) =>
             Exit.zipWith_(a, b, (_a, _b) => [_a, ..._b], Cause.both)
@@ -296,7 +296,7 @@ export function collectAll<E, A>(fibers: Iterable<Fiber.Fiber<E, A>>) {
         )
       ),
     poll: pipe(
-      T.foreach_(fibers, (f) => f.poll),
+      T.forEach_(fibers, (f) => f.poll),
       T.map(
         A.reduceRight(
           O.some(Exit.succeed(A.empty) as Exit.Exit<E, readonly A[]>),

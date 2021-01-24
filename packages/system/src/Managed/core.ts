@@ -125,29 +125,29 @@ export function foldCauseM_<R, E, A, R1, E1, A1, R2, E2, A2>(
  * Applies the function `f` to each element of the `Iterable<A>` and
  * returns the results in a new `B[]`.
  *
- * For a parallel version of this method, see `foreachPar`.
- * If you do not need the results, see `foreachUnit` for a more efficient implementation.
+ * For a parallel version of this method, see `forEachPar`.
+ * If you do not need the results, see `forEachUnit` for a more efficient implementation.
  */
-export function foreach<R, E, A, B>(f: (a: A) => Managed<R, E, B>) {
-  return (as: Iterable<A>) => foreach_(as, f)
+export function forEach<R, E, A, B>(f: (a: A) => Managed<R, E, B>) {
+  return (as: Iterable<A>) => forEach_(as, f)
 }
 
 /**
  * Applies the function `f` to each element of the `Iterable<A>` and
  * returns the results in a new `B[]`.
  *
- * For a parallel version of this method, see `foreachPar_`.
- * If you do not need the results, see `foreachUnit_` for a more efficient implementation.
+ * For a parallel version of this method, see `forEachPar_`.
+ * If you do not need the results, see `forEachUnit_` for a more efficient implementation.
  */
-export function foreach_<R, E, A, B>(as: Iterable<A>, f: (a: A) => Managed<R, E, B>) {
+export function forEach_<R, E, A, B>(as: Iterable<A>, f: (a: A) => Managed<R, E, B>) {
   return new Managed<R, E, readonly B[]>(
     T.map_(
-      T.foreach_(as, (a) => f(a).effect),
+      T.forEach_(as, (a) => f(a).effect),
       (res) => {
         const fins = res.map((k) => k[0])
         const as = res.map((k) => k[1])
 
-        return [(e) => T.foreach_(fins.reverse(), (fin) => fin(e)), as]
+        return [(e) => T.forEach_(fins.reverse(), (fin) => fin(e)), as]
       }
     )
   )
@@ -157,20 +157,20 @@ export function foreach_<R, E, A, B>(as: Iterable<A>, f: (a: A) => Managed<R, E,
  * Applies the function `f` to each element of the `Iterable[A]` and runs
  * produced effects sequentially.
  *
- * Equivalent to `foreach(as)(f).unit`, but without the cost of building
+ * Equivalent to `forEach(as)(f).unit`, but without the cost of building
  * the list of results.
  */
-export function foreachUnit_<R, E, A, B>(
+export function forEachUnit_<R, E, A, B>(
   as: Iterable<A>,
   f: (a: A) => Managed<R, E, B>
 ) {
   return new Managed<R, E, void>(
     T.map_(
-      T.foreach_(as, (a) => f(a).effect),
+      T.forEach_(as, (a) => f(a).effect),
       (result) => {
         const [fins] = A.unzip(result)
         return tuple<[Finalizer, void]>(
-          (e) => T.foreach_(A.reverse(fins), (f) => f(e)),
+          (e) => T.forEach_(A.reverse(fins), (f) => f(e)),
           undefined
         )
       }
@@ -182,30 +182,30 @@ export function foreachUnit_<R, E, A, B>(
  * Applies the function `f` to each element of the `Iterable[A]` and runs
  * produced effects sequentially.
  *
- * Equivalent to `foreach(as)(f).unit`, but without the cost of building
+ * Equivalent to `forEach(as)(f).unit`, but without the cost of building
  * the list of results.
  */
-export function foreachUnit<R, E, A, B>(f: (a: A) => Managed<R, E, B>) {
-  return (as: Iterable<A>) => foreachUnit_(as, f)
+export function forEachUnit<R, E, A, B>(f: (a: A) => Managed<R, E, B>) {
+  return (as: Iterable<A>) => forEachUnit_(as, f)
 }
 
 /**
  * Applies the function `f` to each element of the `Iterable<A>` in parallel,
  * and returns the results in a new `B[]`.
  *
- * For a sequential version of this method, see `foreach`.
+ * For a sequential version of this method, see `forEach`.
  */
-export function foreachPar<R, E, A, B>(f: (a: A) => Managed<R, E, B>) {
-  return (as: Iterable<A>): Managed<R, E, readonly B[]> => foreachPar_(as, f)
+export function forEachPar<R, E, A, B>(f: (a: A) => Managed<R, E, B>) {
+  return (as: Iterable<A>): Managed<R, E, readonly B[]> => forEachPar_(as, f)
 }
 
 /**
  * Applies the function `f` to each element of the `Iterable<A>` in parallel,
  * and returns the results in a new `B[]`.
  *
- * For a sequential version of this method, see `foreach_`.
+ * For a sequential version of this method, see `forEach_`.
  */
-export function foreachPar_<R, E, A, B>(
+export function forEachPar_<R, E, A, B>(
   as: Iterable<A>,
   f: (a: A) => Managed<R, E, B>
 ): Managed<R, E, readonly B[]> {
@@ -215,7 +215,7 @@ export function foreachPar_<R, E, A, B>(
       (x: unknown) => tuple(x, parallelReleaseMap)
     )
 
-    return T.foreachPar_(as, (a) =>
+    return T.forEachPar_(as, (a) =>
       T.map_(
         T.chain_(makeInnerMap, (innerMap) =>
           T.provideSome_(f(a).effect, (u: R) => tuple(u, innerMap))
@@ -230,21 +230,21 @@ export function foreachPar_<R, E, A, B>(
  * Applies the function `f` to each element of the `Iterable<A>` in parallel,
  * and returns the results in a new `B[]`.
  *
- * Unlike `foreachPar`, this method will use at most up to `n` fibers.
+ * Unlike `forEachPar`, this method will use at most up to `n` fibers.
  */
-export function foreachParN(n: number) {
+export function forEachParN(n: number) {
   return <R, E, A, B>(f: (a: A) => Managed<R, E, B>) => (
     as: Iterable<A>
-  ): Managed<R, E, readonly B[]> => foreachParN_(n)(as, f)
+  ): Managed<R, E, readonly B[]> => forEachParN_(n)(as, f)
 }
 
 /**
  * Applies the function `f` to each element of the `Iterable<A>` in parallel,
  * and returns the results in a new `B[]`.
  *
- * Unlike `foreachPar_`, this method will use at most up to `n` fibers.
+ * Unlike `forEachPar_`, this method will use at most up to `n` fibers.
  */
-export function foreachParN_(n: number) {
+export function forEachParN_(n: number) {
   return <R, E, A, B>(
     as: Iterable<A>,
     f: (a: A) => Managed<R, E, B>
@@ -255,7 +255,7 @@ export function foreachParN_(n: number) {
         (x: unknown) => tuple(x, parallelReleaseMap)
       )
 
-      return T.foreachParN_(as, n, (a) =>
+      return T.forEachParN_(as, n, (a) =>
         T.map_(
           T.chain_(makeInnerMap, (innerMap) =>
             T.provideSome_(f(a).effect, (u: R) => tuple(u, innerMap))

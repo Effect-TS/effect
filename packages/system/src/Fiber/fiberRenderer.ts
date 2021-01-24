@@ -17,14 +17,14 @@ export function dump<E, A>(fiber: Runtime<E, A>): T.UIO<FiberDump> {
 }
 
 export function dumpFibers(fibers: Iterable<Runtime<any, any>>): UIO<Array<FiberDump>> {
-  return T.foreach_(fibers, dump)
+  return T.forEach_(fibers, dump)
 }
 
 export function dumpStr(
   fibers: Iterable<Runtime<any, any>>,
   withTrace: false
 ): UIO<string> {
-  const du = T.foreach_(fibers, dump)
+  const du = T.forEach_(fibers, dump)
   const now = T.effectTotal(() => new Date().getTime())
   return T.map_(T.zipWith_(du, now, tuple), ([dumps, now]) => {
     const tree = renderHierarchy(dumps)

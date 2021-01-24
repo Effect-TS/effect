@@ -36,7 +36,7 @@ export function tap_<E, A, R, E1>(
   take: Take<E, A>,
   f: (as: A.Chunk<A>) => T.Effect<R, E1, any>
 ): T.Effect<R, E1, void> {
-  return T.asUnit(E.foreach_(take, f))
+  return T.asUnit(E.forEach_(take, f))
 }
 
 export function tap<A, R, E1>(

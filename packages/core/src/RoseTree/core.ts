@@ -41,7 +41,7 @@ export function getShow<A>(S: Show<A>): Show<Tree<A>> {
     }
     return pipe(
       t.forest,
-      IO.foreachArray(showSafe),
+      IO.forEachArray(showSafe),
       IO.map((forest) => `make(${S.show(t.value)}, [${forest.join(", ")}])`)
     )
   }
@@ -140,7 +140,7 @@ export function unfoldForestSafe<A, B>(
 ): IO.IO<Forest<A>> {
   return pipe(
     bs,
-    IO.foreachArray((b) => unfoldTreeSafe(b, f))
+    IO.forEachArray((b) => unfoldTreeSafe(b, f))
   )
 }
 
@@ -183,7 +183,7 @@ export function unfoldForestM<M extends P.URIS, C>(
 export function unfoldForestM<M>(
   M: P.Monad<P.UHKT<M>> & P.Applicative<P.UHKT<M>>
 ): <A, B>(bs: Array<B>, f: (b: B) => P.HKT<M, [A, Array<B>]>) => P.HKT<M, Forest<A>> {
-  const traverseM = A.foreachF(M)
+  const traverseM = A.forEachF(M)
   return (bs, f) =>
     pipe(
       bs,
@@ -226,7 +226,7 @@ export function fold<A, B>(f: (a: A, bs: readonly B[]) => B): (tree: Tree<A>) =>
   function go(tree: Tree<A>): IO.IO<B> {
     return pipe(
       tree.forest,
-      IO.foreachArray(go),
+      IO.forEachArray(go),
       IO.map((bs) => f(tree.value, bs))
     )
   }
@@ -237,7 +237,7 @@ export function map_<A, B>(fa: Tree<A>, f: (a: A) => B): Tree<B> {
   function go(node: Tree<A>): IO.IO<Tree<B>> {
     return pipe(
       node.forest,
-      IO.foreachArray(go),
+      IO.forEachArray(go),
       IO.map((forest) => ({ value: f(node.value), forest }))
     )
   }
@@ -261,7 +261,7 @@ export function chain_<A, B>(fa: Tree<A>, f: (a: A) => Tree<B>): Tree<B> {
     const { forest, value } = f(node.value)
     return pipe(
       node.forest,
-      IO.foreachArray(go),
+      IO.forEachArray(go),
       IO.map((x) => ({ value, forest: [...forest, ...x] }))
     )
   }
@@ -302,8 +302,8 @@ export function reduceRight_<A, B>(fa: Tree<A>, b: B, f: (a: A, b: B) => B): B {
   return IO.run(go(fa, b))
 }
 
-export const foreachF = P.implementForEachF<[TreeURI]>()((_) => (G) => {
-  const traverseF = A.foreachF(G)
+export const forEachF = P.implementForEachF<[TreeURI]>()((_) => (G) => {
+  const traverseF = A.forEachF(G)
   const r = <A, B>(f: (a: A) => P.HKT<typeof _.G, B>) => (
     ta: Tree<A>
   ): P.HKT<typeof _.G, Tree<B>> =>
@@ -323,12 +323,12 @@ export const foreachF = P.implementForEachF<[TreeURI]>()((_) => (G) => {
   return r
 })
 
-export const ForEeach = P.instance<P.ForEach<[TreeURI]>>({
-  forEachF: foreachF,
+export const ForEach = P.instance<P.ForEach<[TreeURI]>>({
+  forEachF,
   map
 })
 
-export const sequence = sequenceF(ForEeach)
+export const sequence = sequenceF(ForEach)
 
 export function extract<A>(wa: Tree<A>): A {
   return wa.value
@@ -338,7 +338,7 @@ export function extend_<A, B>(wa: Tree<A>, f: (wa: Tree<A>) => B): Tree<B> {
   function go(node: Tree<A>): IO.IO<Tree<B>> {
     return pipe(
       node.forest,
-      IO.foreachArray(go),
+      IO.forEachArray(go),
       IO.map((forest) => ({ value: f(node), forest }))
     )
   }

@@ -139,7 +139,7 @@ export function mapM_<R, E, I, O, R1, E1, O1>(
   f: (o: O) => T.Effect<R1, E1, O1>
 ): Transducer<R & R1, E | E1, I, O1> {
   return new Transducer(
-    M.map_(fa.push, (push) => (input) => T.chain_(push(input), T.foreach(f)))
+    M.map_(fa.push, (push) => (input) => T.chain_(push(input), T.forEach(f)))
   )
 }
 

@@ -7,8 +7,8 @@ import {
   compactWithIndexF,
   foldMap,
   foldMapWithIndex,
-  foreachF,
-  foreachWithIndexF,
+  forEachF,
+  forEachWithIndexF,
   map,
   mapWithIndex,
   reduce,
@@ -28,14 +28,14 @@ export const CovariantWithIndex = P.instance<P.CovariantWithIndex<[RecordURI], V
   mapWithIndex
 })
 
-export const ForEeach = P.instance<P.ForEach<[RecordURI], V>>({
+export const ForEach = P.instance<P.ForEach<[RecordURI], V>>({
   map,
-  forEachF: foreachF
+  forEachF
 })
 
-export const ForEeachWithIndex = P.instance<P.ForEachWithIndex<[RecordURI], V>>({
+export const ForEachWithIndex = P.instance<P.ForEachWithIndex<[RecordURI], V>>({
   map,
-  forEachWithIndexF: foreachWithIndexF
+  forEachWithIndexF
 })
 
 export const Reduce = P.instance<P.Reduce<[RecordURI], V>>({

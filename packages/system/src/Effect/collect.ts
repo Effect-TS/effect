@@ -1,7 +1,7 @@
 import * as A from "../Array"
 import type { Option } from "../Option"
 import type { Effect } from "./effect"
-import { foreach_, foreachPar_, foreachParN_ } from "./foreach"
+import { forEach_, forEachPar_, forEachParN_ } from "./forEach"
 import { map_ } from "./map"
 import { optional } from "./optional"
 
@@ -22,7 +22,7 @@ export function collect_<A, R, E, B>(
   f: (a: A) => Effect<R, Option<E>, B>
 ): Effect<R, E, readonly B[]> {
   return map_(
-    foreach_(self, (a) => optional(f(a))),
+    forEach_(self, (a) => optional(f(a))),
     A.compact
   )
 }
@@ -44,7 +44,7 @@ export function collectPar_<A, R, E, B>(
   f: (a: A) => Effect<R, Option<E>, B>
 ): Effect<R, E, readonly B[]> {
   return map_(
-    foreachPar_(self, (a) => optional(f(a))),
+    forEachPar_(self, (a) => optional(f(a))),
     A.compact
   )
 }
@@ -63,7 +63,7 @@ export function collectParN_(
 ) => Effect<R, E, readonly B[]> {
   return (self, f) =>
     map_(
-      foreachParN_(self, n, (a) => optional(f(a))),
+      forEachParN_(self, n, (a) => optional(f(a))),
       A.compact
     )
 }

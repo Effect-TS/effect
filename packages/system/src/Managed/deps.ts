@@ -24,7 +24,7 @@ export { environment } from "../Effect/environment"
 export { parallel, parallelN } from "../Effect/ExecutionStrategy"
 export { fail } from "../Effect/fail"
 export { flatten } from "../Effect/flatten"
-export { foreach, foreachParN_, foreachPar_, foreach_ } from "../Effect/foreach"
+export { forEach, forEachParN_, forEachPar_, forEach_ } from "../Effect/forEach"
 export { interrupt } from "../Effect/interrupt"
 export { map, map_ } from "../Effect/map"
 export { mapError_ } from "../Effect/mapError"
@@ -39,7 +39,7 @@ export { uninterruptibleMask } from "../Effect/uninterruptibleMask"
 export { zipWith, zipWith_ } from "../Effect/zipWith"
 export { zipWithPar_ } from "../Effect/zipWithPar_"
 export { zip_ } from "../Effect/zip_"
-export { foreach as exitForeach } from "../Exit/api"
+export { forEach as exitForeach } from "../Exit/api"
 export {
   collectAll as exitCollectAll,
   collectAllPar as exitCollectAllPar,

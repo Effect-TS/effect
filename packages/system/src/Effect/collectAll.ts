@@ -4,7 +4,7 @@ import * as I from "../Iterable"
 import * as O from "../Option"
 import * as core from "./core"
 import type { Effect } from "./effect"
-import * as foreach from "./foreach"
+import * as forEach from "./forEach"
 import * as map from "./map"
 
 /**
@@ -12,7 +12,7 @@ import * as map from "./map"
  * results. For a parallel version, see `collectAllPar`.
  */
 export function collectAll<R, E, A>(as: Iterable<Effect<R, E, A>>) {
-  return foreach.foreach_(as, identity)
+  return forEach.forEach_(as, identity)
 }
 
 /**
@@ -20,7 +20,7 @@ export function collectAll<R, E, A>(as: Iterable<Effect<R, E, A>>) {
  * results. For a sequential version, see `collectAll`.
  */
 export function collectAllPar<R, E, A>(as: Iterable<Effect<R, E, A>>) {
-  return foreach.foreachPar_(as, identity)
+  return forEach.forEachPar_(as, identity)
 }
 
 /**
@@ -31,7 +31,7 @@ export function collectAllPar<R, E, A>(as: Iterable<Effect<R, E, A>>) {
  */
 export function collectAllParN(n: number) {
   return <R, E, A>(as: Iterable<Effect<R, E, A>>) =>
-    foreach.foreachParN_(as, n, identity)
+    forEach.forEachParN_(as, n, identity)
 }
 
 /**
@@ -39,7 +39,7 @@ export function collectAllParN(n: number) {
  * results. For a parallel version, see `collectAllUnitPar`.
  */
 export function collectAllUnit<R, E, A>(as: Iterable<Effect<R, E, A>>) {
-  return foreach.foreachUnit_(as, identity)
+  return forEach.forEachUnit_(as, identity)
 }
 
 /**
@@ -47,7 +47,7 @@ export function collectAllUnit<R, E, A>(as: Iterable<Effect<R, E, A>>) {
  * results. For a sequential version, see `collectAllUnit`.
  */
 export function collectAllUnitPar<R, E, A>(as: Iterable<Effect<R, E, A>>) {
-  return foreach.foreachUnitPar_(as, identity)
+  return forEach.forEachUnitPar_(as, identity)
 }
 
 /**
@@ -58,7 +58,7 @@ export function collectAllUnitPar<R, E, A>(as: Iterable<Effect<R, E, A>>) {
  */
 export function collectAllUnitParN(n: number) {
   return <R, E, A>(as: Iterable<Effect<R, E, A>>) =>
-    foreach.foreachUnitParN_(as, n, identity)
+    forEach.forEachUnitParN_(as, n, identity)
 }
 
 /**

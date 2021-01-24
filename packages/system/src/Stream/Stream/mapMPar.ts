@@ -7,7 +7,7 @@ import * as T from "../_internal/effect"
 import * as M from "../_internal/managed"
 import * as Pull from "../Pull"
 import { Stream } from "./definitions"
-import { foreachManaged } from "./foreachManaged"
+import { forEachManaged } from "./forEach"
 
 /**
  * Maps over elements of the stream with the specified effectful function,
@@ -29,7 +29,7 @@ export function mapMPar(n: number) {
         M.tap(({ errorSignal, out, permits }) =>
           pipe(
             self,
-            foreachManaged((a) =>
+            forEachManaged((a) =>
               pipe(
                 T.do,
                 T.bind("p", () => P.make<E1, O1>()),

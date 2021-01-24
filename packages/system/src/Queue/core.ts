@@ -103,7 +103,7 @@ export class BackPressureStrategy<A> implements Strategy<A> {
       T.bind("fiberId", () => T.fiberId()),
       T.bind("putters", () => T.effectTotal(() => unsafePollAll(this.putters))),
       T.tap((s) =>
-        T.foreachPar_(s.putters, ([_, p, lastItem]) =>
+        T.forEachPar_(s.putters, ([_, p, lastItem]) =>
           lastItem ? P.interruptAs(s.fiberId)(p) : T.unit
         )
       ),
@@ -308,7 +308,7 @@ export const unsafeCreate = <A>(
         return T.uninterruptible(
           T.whenM(P.succeed<void>(undefined)(shutdownHook))(
             T.chain_(
-              T.foreachPar_(unsafePollAll(takers), P.interruptAs(d.id)),
+              T.forEachPar_(unsafePollAll(takers), P.interruptAs(d.id)),
               () => strategy.shutdown
             )
           )

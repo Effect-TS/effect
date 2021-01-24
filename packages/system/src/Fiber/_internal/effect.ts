@@ -20,12 +20,12 @@ export { effectMaybeAsyncInterrupt } from "../../Effect/effectMaybeAsyncInterrup
 export { fail } from "../../Effect/fail"
 export { fiberId } from "../../Effect/fiberId"
 export {
-  foreach,
-  foreachPar,
-  foreachPar_,
-  foreachUnit_,
-  foreach_
-} from "../../Effect/foreach"
+  forEach,
+  forEachPar,
+  forEachPar_,
+  forEachUnit_,
+  forEach_
+} from "../../Effect/forEach"
 export { interruptAs } from "../../Effect/interruptAs"
 export { map, map_ } from "../../Effect/map"
 export { never } from "../../Effect/never"

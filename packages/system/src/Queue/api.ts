@@ -246,7 +246,7 @@ export const bothWithM_ = <
         const acs = Array.from(cs)
         const all = A.zip_(abs, acs)
 
-        return T.foreach_(all, ([b, c]) => f(b, c))
+        return T.forEach_(all, ([b, c]) => f(b, c))
       }
     )
 
@@ -258,7 +258,7 @@ export const bothWithM_ = <
         const acs = Array.from(cs)
         const all = A.zip_(abs, acs)
 
-        return T.foreach_(all, ([b, c]) => f(b, c))
+        return T.forEach_(all, ([b, c]) => f(b, c))
       })
   })()
 
@@ -355,7 +355,7 @@ export const dimapM_ = <RA, RB, EA, EB, A, B, C, RC, EC, RD, ED, D>(
       T.chain_(f(c), self.offer)
 
     offerAll: (as: Iterable<C>) => T.Effect<RC & RA, EC | EA, boolean> = (cs) =>
-      T.chain_(T.foreach_(cs, f), self.offerAll)
+      T.chain_(T.forEach_(cs, f), self.offerAll)
 
     shutdown: T.UIO<void> = self.shutdown
 
@@ -364,11 +364,11 @@ export const dimapM_ = <RA, RB, EA, EB, A, B, C, RC, EC, RD, ED, D>(
     take: T.Effect<RD & RB, ED | EB, D> = T.chain_(self.take, g)
 
     takeAll: T.Effect<RD & RB, ED | EB, readonly D[]> = T.chain_(self.takeAll, (a) =>
-      T.foreach_(a, g)
+      T.forEach_(a, g)
     )
 
     takeUpTo: (n: number) => T.Effect<RD & RB, ED | EB, readonly D[]> = (max) =>
-      T.chain_(self.takeUpTo(max), (bs) => T.foreach_(bs, g))
+      T.chain_(self.takeUpTo(max), (bs) => T.forEach_(bs, g))
   })()
 
 /**
@@ -420,7 +420,7 @@ export const filterInputM_ = <RA, RB, EA, EB, B, A, A1 extends A, R2, E2>(
     offerAll: (as: Iterable<A1>) => T.Effect<RA & R2, EA | E2, boolean> = (as) =>
       pipe(
         as,
-        T.foreach((a) =>
+        T.forEach((a) =>
           pipe(
             f(a),
             T.map((b) => (b ? O.some(a) : O.none))

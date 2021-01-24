@@ -768,7 +768,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
       if (locals.size === 0) {
         return T.unit
       } else {
-        return T.foreachUnit_(locals, ([fiberRef, value]) =>
+        return T.forEachUnit_(locals, ([fiberRef, value]) =>
           update.update((old) => fiberRef.join(old, value))(fiberRef)
         )
       }

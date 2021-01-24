@@ -44,9 +44,9 @@ export const Run = P.instance<P.FX.Run<[EitherURI], V>>({
   either: E.right
 })
 
-export const ForEeach = P.instance<P.ForEach<[EitherURI], V>>({
+export const ForEach = P.instance<P.ForEach<[EitherURI], V>>({
   map: E.map,
-  forEachF: E.foreachF
+  forEachF: E.forEachF
 })
 
 export const FoldMap = P.instance<P.FoldMap<[EitherURI], V>>({

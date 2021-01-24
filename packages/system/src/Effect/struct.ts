@@ -1,7 +1,7 @@
 import * as R from "../Record"
 import type { _E, _R, EnforceNonEmptyRecord } from "../Utils"
 import type { Effect } from "./effect"
-import { foreach_, foreachPar_, foreachParN_ } from "./foreach"
+import { forEach_, forEachPar_, forEachParN_ } from "./forEach"
 import { map_ } from "./map"
 
 export function struct<NER extends Record<string, Effect<any, any, any>>>(
@@ -14,7 +14,7 @@ export function struct<NER extends Record<string, Effect<any, any, any>>>(
   }
 > {
   return map_(
-    foreach_(
+    forEach_(
       R.collect_(r, (k, v) => [k, v] as const),
       ([_, e]) => map_(e, (a) => [_, a] as const)
     ),
@@ -38,7 +38,7 @@ export function structPar<NER extends Record<string, Effect<any, any, any>>>(
   }
 > {
   return map_(
-    foreachPar_(
+    forEachPar_(
       R.collect_(r, (k, v) => [k, v] as const),
       ([_, e]) => map_(e, (a) => [_, a] as const)
     ),
@@ -65,7 +65,7 @@ export function structParN(
 > {
   return (r) =>
     map_(
-      foreachParN_(
+      forEachParN_(
         R.collect_(r, (k, v) => [k, v] as const),
         n,
         ([_, e]) => map_(e, (a) => [_, a] as const)

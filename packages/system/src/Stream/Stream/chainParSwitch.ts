@@ -9,12 +9,11 @@ import * as Pull from "../../Stream/Pull"
 import * as T from "../_internal/effect"
 import * as F from "../_internal/fiber"
 import * as M from "../_internal/managed"
-import { chain } from "./chain"
+import * as chain from "./chain"
 import { Stream } from "./definitions"
-import { foreachChunk } from "./foreachChunk"
-import { foreachManaged_ } from "./foreachManaged"
+import * as forEach from "./forEach"
 import { managed } from "./managed"
-import { tap } from "./tap"
+import * as tap from "./tap"
 
 /**
  * Maps each element of this stream to another stream and returns the non-deterministic merge
@@ -43,7 +42,7 @@ export function chainParSwitch(n: number, bufferSize = 16) {
           ),
           M.tap(({ cancelers, innerFailure, out, permits }) =>
             pipe(
-              foreachManaged_(self, (a) =>
+              forEach.forEachManaged_(self, (a) =>
                 pipe(
                   T.do,
                   T.bind("canceler", () => P.make<never, void>()),
@@ -64,9 +63,11 @@ export function chainParSwitch(n: number, bufferSize = 16) {
                   T.let("innerStream", ({ latch }) =>
                     pipe(
                       managed(SM.withPermitManaged(permits)),
-                      tap((_) => P.succeed_(latch, undefined)),
-                      chain((_) => f(a)),
-                      foreachChunk((o2s) => T.asUnit(out.offer(T.succeed(o2s)))),
+                      tap.tap((_) => P.succeed_(latch, undefined)),
+                      chain.chain((_) => f(a)),
+                      forEach.forEachChunk((o2s) =>
+                        T.asUnit(out.offer(T.succeed(o2s)))
+                      ),
                       T.foldCauseM(
                         (cause) =>
                           pipe(

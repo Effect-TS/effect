@@ -1,12 +1,12 @@
 import * as P from "../../Promise"
 import * as T from "../_internal/effect"
 import * as M from "../_internal/managed"
-import { chain_ } from "./chain"
-import { crossRight_ } from "./crossRight"
+import * as chain from "./chain"
+import * as crossRight from "./crossRight"
 import type { Stream } from "./definitions"
-import { foreachManaged_ } from "./foreachManaged"
-import { fromEffect } from "./fromEffect"
-import { interruptWhenP_ } from "./interruptWhenP"
+import * as forEach from "./forEach"
+import * as fromEffect from "./fromEffect"
+import * as interruptWhenP from "./interruptWhenP"
 import { managed } from "./managed"
 
 /**
@@ -18,17 +18,17 @@ export function drainFork_<R, R1, E, E1, O>(
   self: Stream<R, E, O>,
   other: Stream<R1, E1, any>
 ): Stream<R1 & R, E | E1, O> {
-  return chain_(fromEffect(P.make<E1, never>()), (bgDied) =>
-    crossRight_(
+  return chain.chain_(fromEffect.fromEffect(P.make<E1, never>()), (bgDied) =>
+    crossRight.crossRight_(
       managed(
         M.fork(
           M.catchAllCause_(
-            foreachManaged_(other, (_) => T.unit),
+            forEach.forEachManaged_(other, (_) => T.unit),
             (_) => T.toManaged_(P.halt_(bgDied, _))
           )
         )
       ),
-      interruptWhenP_(self, bgDied)
+      interruptWhenP.interruptWhenP_(self, bgDied)
     )
   )
 }

@@ -1,6 +1,6 @@
 import * as R from "../Record"
 import type { _E, _R, EnforceNonEmptyRecord } from "../Utils"
-import { chain_, foreach_, foreachPar_, foreachParN_, map_ } from "./core"
+import { chain_, forEach_, forEachPar_, forEachParN_, map_ } from "./core"
 import type { Managed } from "./managed"
 
 export function struct<NER extends Record<string, Managed<any, any, any>>>(
@@ -13,7 +13,7 @@ export function struct<NER extends Record<string, Managed<any, any, any>>>(
   }
 > {
   return map_(
-    foreach_(
+    forEach_(
       R.collect_(r, (k, v) => [k, v] as const),
       ([_, e]) => map_(e, (a) => [_, a] as const)
     ),
@@ -37,7 +37,7 @@ export function structPar<NER extends Record<string, Managed<any, any, any>>>(
   }
 > {
   return map_(
-    foreachPar_(
+    forEachPar_(
       R.collect_(r, (k, v) => [k, v] as const),
       ([_, e]) => map_(e, (a) => [_, a] as const)
     ),
@@ -64,7 +64,7 @@ export function structParN(
 > {
   return (r) =>
     map_(
-      foreachParN_(n)(
+      forEachParN_(n)(
         R.collect_(r, (k, v) => [k, v] as const),
         ([_, e]) => map_(e, (a) => [_, a] as const)
       ),
@@ -97,7 +97,7 @@ export function bindAll<
   return (s) =>
     chain_(s, (k) =>
       map_(
-        foreach_(
+        forEach_(
           R.collect_(r(k), (k, v) => [k, v] as const),
           ([_, e]) => map_(e, (a) => [_, a] as const)
         ),
@@ -131,7 +131,7 @@ export function bindAllPar<
   return (s) =>
     chain_(s, (k) =>
       map_(
-        foreachPar_(
+        forEachPar_(
           R.collect_(r(k), (k, v) => [k, v] as const),
           ([_, e]) => map_(e, (a) => [_, a] as const)
         ),
@@ -167,7 +167,7 @@ export function bindAllParN(
   return (r) => (s) =>
     chain_(s, (k) =>
       map_(
-        foreachParN_(n)(
+        forEachParN_(n)(
           R.collect_(r(k), (k, v) => [k, v] as const),
           ([_, e]) => map_(e, (a) => [_, a] as const)
         ),

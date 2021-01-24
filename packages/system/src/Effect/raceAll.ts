@@ -11,7 +11,7 @@ import { chain, fork, unit } from "./core"
 import * as Do from "./do"
 import type { Effect, UIO } from "./effect"
 import { flatten } from "./flatten"
-import { foreach_ } from "./foreach"
+import { forEach_ } from "./forEach"
 import { interruptible } from "./interruptible"
 import { map } from "./map"
 import { onInterrupt } from "./onInterrupt"
@@ -75,7 +75,7 @@ export function raceAll<R, E, A>(
       uninterruptibleMask(({ restore }) =>
         pipe(
           Do.do,
-          Do.bind("fs", () => foreach_(ios, flow(interruptible, fork))),
+          Do.bind("fs", () => forEach_(ios, flow(interruptible, fork))),
           tap(({ fs }) =>
             A.reduce_(fs, unit as UIO<void>, (io, f) =>
               pipe(
@@ -102,7 +102,7 @@ export function raceAll<R, E, A>(
       )
     ),
     tap(({ c: { fs } }) =>
-      interruptStrategy === "wait" ? foreach_(fs, (f) => f.await) : unit
+      interruptStrategy === "wait" ? forEach_(fs, (f) => f.await) : unit
     ),
     map(({ c: { c } }) => c)
   )

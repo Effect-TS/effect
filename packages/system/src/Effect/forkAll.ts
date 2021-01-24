@@ -3,7 +3,7 @@ import * as Fiber from "../Fiber"
 import * as I from "../Iterable"
 import { chain_, fork, unit } from "./core"
 import type { Effect, RIO } from "./effect"
-import { foreach_ } from "./foreach"
+import { forEach_ } from "./forEach"
 import { map_ } from "./map"
 
 /**
@@ -14,7 +14,7 @@ export function forkAll<R, E, A>(
   effects: Iterable<Effect<R, E, A>>
 ): RIO<R, Fiber.Fiber<E, readonly A[]>> {
   return map_(
-    foreach_(effects, fork),
+    forEach_(effects, fork),
     A.reduce(Fiber.succeed([]) as Fiber.Fiber<E, readonly A[]>, (b, a) =>
       Fiber.zipWith_(b, a, (_a, _b) => [..._a, _b])
     )

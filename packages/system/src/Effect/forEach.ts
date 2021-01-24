@@ -35,10 +35,10 @@ import * as zipWith from "./zipWith"
  * Applies the function `f` to each element of the `Iterable<A>` and
  * returns the results in a new `readonly B[]`.
  *
- * For a parallel version of this method, see `foreachPar`.
- * If you do not need the results, see `foreachUnit` for a more efficient implementation.
+ * For a parallel version of this method, see `forEachPar`.
+ * If you do not need the results, see `forEachUnit` for a more efficient implementation.
  */
-export function foreach_<A, R, E, B>(as: Iterable<A>, f: (a: A) => Effect<R, E, B>) {
+export function forEach_<A, R, E, B>(as: Iterable<A>, f: (a: A) => Effect<R, E, B>) {
   return map.map_(
     IT.reduce_(
       as,
@@ -58,23 +58,23 @@ export function foreach_<A, R, E, B>(as: Iterable<A>, f: (a: A) => Effect<R, E, 
  * Applies the function `f` to each element of the `Iterable<A>` and
  * returns the results in a new `readonly B[]`.
  *
- * For a parallel version of this method, see `foreachPar`.
- * If you do not need the results, see `foreachUnit` for a more efficient implementation.
+ * For a parallel version of this method, see `forEachPar`.
+ * If you do not need the results, see `forEachUnit` for a more efficient implementation.
  *
- * @dataFirst foreach_
+ * @dataFirst forEach_
  */
-export function foreach<A, R, E, B>(f: (a: A) => Effect<R, E, B>) {
-  return (as: Iterable<A>) => foreach_(as, f)
+export function forEach<A, R, E, B>(f: (a: A) => Effect<R, E, B>) {
+  return (as: Iterable<A>) => forEach_(as, f)
 }
 
 /**
  * Applies the function `f` to each element of the `Iterable<A>` and runs
  * produced effects sequentially.
  *
- * Equivalent to `asUnit(foreach(as, f))`, but without the cost of building
+ * Equivalent to `asUnit(forEach(as, f))`, but without the cost of building
  * the list of results.
  */
-export function foreachUnit_<R, E, A>(
+export function forEachUnit_<R, E, A>(
   as: Iterable<A>,
   f: (a: A) => Effect<R, E, any>
 ): Effect<R, E, void> {
@@ -99,22 +99,22 @@ export function foreachUnit_<R, E, A>(
  * Applies the function `f` to each element of the `Iterable<A>` and runs
  * produced effects sequentially.
  *
- * Equivalent to `asUnit(foreach(as, f))`, but without the cost of building
+ * Equivalent to `asUnit(forEach(as, f))`, but without the cost of building
  * the list of results.
  *
- * @dataFirst foreachUnit_
+ * @dataFirst forEachUnit_
  */
-export function foreachUnit<R, E, A>(
+export function forEachUnit<R, E, A>(
   f: (a: A) => Effect<R, E, any>
 ): (as: Iterable<A>) => Effect<R, E, void> {
-  return (as) => foreachUnit_(as, f)
+  return (as) => forEachUnit_(as, f)
 }
 
 /**
  * Applies the function `f` to each element of the `Iterable<A>` and runs
  * produced effects in parallel, discarding the results.
  *
- * For a sequential version of this method, see `foreach_`.
+ * For a sequential version of this method, see `forEach_`.
  *
  * Optimized to avoid keeping full tree of effects, so that method could be
  * able to handle large input sequences.
@@ -122,7 +122,7 @@ export function foreachUnit<R, E, A>(
  *
  * Additionally, interrupts all effects on any failure.
  */
-export function foreachUnitPar_<R, E, A>(
+export function forEachUnitPar_<R, E, A>(
   as: Iterable<A>,
   f: (a: A) => Effect<R, E, any>
 ): Effect<R, E, void> {
@@ -192,7 +192,7 @@ export function foreachUnitPar_<R, E, A>(
       )
     ),
     Do.bind("fibers", ({ task }) =>
-      coreScope.transplant((graft) => foreach_(as, (a) => core.fork(graft(task(a)))))
+      coreScope.transplant((graft) => forEach_(as, (a) => core.fork(graft(task(a)))))
     ),
     Do.let("interrupter", ({ fibers, parentId, result }) =>
       pipe(
@@ -200,7 +200,7 @@ export function foreachUnitPar_<R, E, A>(
         promise.await,
         catchAll.catchAll(() =>
           pipe(
-            foreach_(fibers, (_) => core.fork(_.interruptAs(parentId))),
+            forEach_(fibers, (_) => core.fork(_.interruptAs(parentId))),
             core.chain(Fiber.joinAll)
           )
         ),
@@ -215,7 +215,7 @@ export function foreachUnitPar_<R, E, A>(
           andThen.andThen(pipe(causes.get, core.chain(core.halt))),
           whenM.whenM(
             pipe(
-              foreach_(fibers, (_) => _.await),
+              forEach_(fibers, (_) => _.await),
               map.map((_) => _.findIndex((ex) => !Ex.succeeded(ex)) !== -1)
             )
           ),
@@ -231,7 +231,7 @@ export function foreachUnitPar_<R, E, A>(
  * Applies the function `f` to each element of the `Iterable<A>` and runs
  * produced effects in parallel, discarding the results.
  *
- * For a sequential version of this method, see `foreach_`.
+ * For a sequential version of this method, see `forEach_`.
  *
  * Optimized to avoid keeping full tree of effects, so that method could be
  * able to handle large input sequences.
@@ -239,19 +239,19 @@ export function foreachUnitPar_<R, E, A>(
  *
  * Additionally, interrupts all effects on any failure.
  *
- * @dataFirst foreachUnitPar_
+ * @dataFirst forEachUnitPar_
  */
-export function foreachUnitPar<R, E, A>(f: (a: A) => Effect<R, E, any>) {
-  return (as: Iterable<A>) => foreachUnitPar_(as, f)
+export function forEachUnitPar<R, E, A>(f: (a: A) => Effect<R, E, any>) {
+  return (as: Iterable<A>) => forEachUnitPar_(as, f)
 }
 
 /**
  * Applies the function `f` to each element of the `Iterable<A>` in parallel,
  * and returns the results in a new `readonly B[]`.
  *
- * For a sequential version of this method, see `foreach`.
+ * For a sequential version of this method, see `forEach`.
  */
-export function foreachPar_<R, E, A, B>(
+export function forEachPar_<R, E, A, B>(
   as: Iterable<A>,
   f: (a: A) => Effect<R, E, B>
 ): Effect<R, E, readonly B[]> {
@@ -270,7 +270,7 @@ export function foreachPar_<R, E, A, B>(
         )
       }
       return map.map_(
-        foreachUnitPar_(
+        forEachUnitPar_(
           arr.map((a, n) => [a, n] as [A, number]),
           fn
         ),
@@ -284,21 +284,21 @@ export function foreachPar_<R, E, A, B>(
  * Applies the function `f` to each element of the `Iterable<A>` in parallel,
  * and returns the results in a new `readonly B[]`.
  *
- * For a sequential version of this method, see `foreach`.
+ * For a sequential version of this method, see `forEach`.
  *
- * @dataFirst foreachPar_
+ * @dataFirst forEachPar_
  */
-export function foreachPar<R, E, A, B>(f: (a: A) => Effect<R, E, B>) {
-  return (as: Iterable<A>): Effect<R, E, readonly B[]> => foreachPar_(as, f)
+export function forEachPar<R, E, A, B>(f: (a: A) => Effect<R, E, B>) {
+  return (as: Iterable<A>): Effect<R, E, readonly B[]> => forEachPar_(as, f)
 }
 
 /**
  * Applies the function `f` to each element of the `Iterable[A]` and runs
  * produced effects in parallel, discarding the results.
  *
- * Unlike `foreachUnitPar_`, this method will use at most up to `n` fibers.
+ * Unlike `forEachUnitPar_`, this method will use at most up to `n` fibers.
  */
-export function foreachUnitParN_<R, E, A>(
+export function forEachUnitParN_<R, E, A>(
   as: Iterable<A>,
   n: number,
   f: (a: A) => Effect<R, E, any>
@@ -327,13 +327,13 @@ export function foreachUnitParN_<R, E, A>(
         pipe(
           Do.do,
           Do.bind("ref", () => Ref.makeRef(size)),
-          tap.tap(() => core.fork(foreachUnit_(as, q.offer))),
+          tap.tap(() => core.fork(forEachUnit_(as, q.offer))),
           Do.bind("fibers", ({ ref }) =>
             collectAll.collectAll(
               L.map_(L.range_(0, n), () => core.fork(worker(q, ref)))
             )
           ),
-          tap.tap(({ fibers }) => foreach_(fibers, (_) => _.await))
+          tap.tap(({ fibers }) => forEach_(fibers, (_) => _.await))
         ),
       (q) => q.shutdown
     ),
@@ -345,21 +345,21 @@ export function foreachUnitParN_<R, E, A>(
  * Applies the function `f` to each element of the `Iterable[A]` and runs
  * produced effects in parallel, discarding the results.
  *
- * Unlike `foreachUnitPar_`, this method will use at most up to `n` fibers.
+ * Unlike `forEachUnitPar_`, this method will use at most up to `n` fibers.
  *
- * @dataFirst foreachUnitParN_
+ * @dataFirst forEachUnitParN_
  */
-export function foreachUnitParN<R, E, A>(n: number, f: (a: A) => Effect<R, E, any>) {
-  return (as: Iterable<A>) => foreachUnitParN_(as, n, f)
+export function forEachUnitParN<R, E, A>(n: number, f: (a: A) => Effect<R, E, any>) {
+  return (as: Iterable<A>) => forEachUnitParN_(as, n, f)
 }
 
 /**
  * Applies the functionw `f` to each element of the `Iterable<A>` in parallel,
  * and returns the results in a new `readonly B[]`.
  *
- * Unlike `foreachPar`, this method will use at most up to `n` fibers.
+ * Unlike `forEachPar`, this method will use at most up to `n` fibers.
  */
-export function foreachParN_<R, E, A, B>(
+export function forEachParN_<R, E, A, B>(
   as: Iterable<A>,
   n: number,
   f: (a: A) => Effect<R, E, B>
@@ -375,7 +375,7 @@ export function foreachParN_<R, E, A, B>(
         pipe(
           f(a),
           core.foldCauseM(
-            (c) => foreach_(pairs, (_) => pipe(_[0], promise.halt(c))),
+            (c) => forEach_(pairs, (_) => pipe(_[0], promise.halt(c))),
             (b) => pipe(p, promise.succeed(b))
           )
         )
@@ -397,7 +397,7 @@ export function foreachParN_<R, E, A, B>(
         pipe(
           Do.do,
           Do.bind("pairs", () =>
-            foreach_(as, (a) =>
+            forEach_(as, (a) =>
               pipe(
                 promise.make<E, B>(),
                 map.map((p) => tuple(p, a))
@@ -405,7 +405,7 @@ export function foreachParN_<R, E, A, B>(
             )
           ),
           Do.bind("ref", ({ pairs }) => Ref.makeRef(pairs.length)),
-          tap.tap(({ pairs }) => core.fork(foreach_(pairs, (pair) => q.offer(pair)))),
+          tap.tap(({ pairs }) => core.fork(forEach_(pairs, (pair) => q.offer(pair)))),
           tap.tap(({ pairs, ref }) =>
             collectAll.collectAllUnit(
               pipe(
@@ -414,7 +414,7 @@ export function foreachParN_<R, E, A, B>(
               )
             )
           ),
-          core.chain(({ pairs }) => foreach_(pairs, (_) => promise.await(_[0])))
+          core.chain(({ pairs }) => forEach_(pairs, (_) => promise.await(_[0])))
         ),
       (q) => q.shutdown
     ),
@@ -426,34 +426,34 @@ export function foreachParN_<R, E, A, B>(
  * Applies the functionw `f` to each element of the `Iterable<A>` in parallel,
  * and returns the results in a new `readonly B[]`.
  *
- * Unlike `foreachPar`, this method will use at most up to `n` fibers.
+ * Unlike `forEachPar`, this method will use at most up to `n` fibers.
  *
- * @dataFirst foreachParN_
+ * @dataFirst forEachParN_
  */
-export function foreachParN<R, E, A, B>(n: number, f: (a: A) => Effect<R, E, B>) {
-  return (as: Iterable<A>) => foreachParN_(as, n, f)
+export function forEachParN<R, E, A, B>(n: number, f: (a: A) => Effect<R, E, B>) {
+  return (as: Iterable<A>) => forEachParN_(as, n, f)
 }
 
 /**
  * Applies the function `f` to each element of the `Iterable<A>` in parallel,
  * and returns the results in a new `readonly B[]`.
  *
- * For a sequential version of this method, see `foreach`.
+ * For a sequential version of this method, see `forEach`.
  */
-export function foreachExec_<R, E, A, B>(
+export function forEachExec_<R, E, A, B>(
   as: Iterable<A>,
   es: ExecutionStrategy,
   f: (a: A) => Effect<R, E, B>
 ): Effect<R, E, readonly B[]> {
   switch (es._tag) {
     case "Sequential": {
-      return foreach_(as, f) as any
+      return forEach_(as, f) as any
     }
     case "Parallel": {
-      return foreachPar_(as, f) as any
+      return forEachPar_(as, f) as any
     }
     case "ParallelN": {
-      return foreachParN_(as, es.n, f) as any
+      return forEachParN_(as, es.n, f) as any
     }
   }
 }
@@ -462,13 +462,13 @@ export function foreachExec_<R, E, A, B>(
  * Applies the function `f` to each element of the `Iterable<A>` in parallel,
  * and returns the results in a new `readonly B[]`.
  *
- * For a sequential version of this method, see `foreach`.
+ * For a sequential version of this method, see `forEach`.
  *
- * @dataFirst foreachExec_
+ * @dataFirst forEachExec_
  */
-export function foreachExec<R, E, A, B>(
+export function forEachExec<R, E, A, B>(
   es: ExecutionStrategy,
   f: (a: A) => Effect<R, E, B>
 ): (as: Iterable<A>) => Effect<R, E, readonly B[]> {
-  return (as) => foreachExec_(as, es, f)
+  return (as) => forEachExec_(as, es, f)
 }

@@ -29,10 +29,10 @@ import {
   effectTotal,
   fail,
   foldCauseM_,
-  foreach_,
-  foreachPar_,
-  foreachParN_,
-  foreachUnit_,
+  forEach_,
+  forEachPar_,
+  forEachParN_,
+  forEachUnit_,
   makeExit_,
   makeManagedReleaseMap,
   map_,
@@ -2005,9 +2005,9 @@ export function create<R, E, A>(
  * Applies the function `f` to each element of the `Iterable[A]` and runs
  * produced effects in parallel, discarding the results.
  *
- * For a sequential version of this method, see `foreachUnit_`.
+ * For a sequential version of this method, see `forEachUnit_`.
  */
-export function foreachUnitPar_<R, E, A, B>(
+export function forEachUnitPar_<R, E, A, B>(
   as: Iterable<A>,
   f: (a: A) => Managed<R, E, B>
 ): Managed<R, E, void> {
@@ -2016,7 +2016,7 @@ export function foreachUnitPar_<R, E, A, B>(
       T.map_(makeManagedReleaseMap(T.sequential).effect, ([_, e]) => e),
       (r) => tuple(r, parallelReleaseMap)
     )
-    return T.foreachUnitPar_(as, (a) =>
+    return T.forEachUnitPar_(as, (a) =>
       T.chain_(makeInnerMap, (innerMap) =>
         T.provideSome_(
           T.map_(f(a).effect, ([_, a]) => a),
@@ -2031,19 +2031,19 @@ export function foreachUnitPar_<R, E, A, B>(
  * Applies the function `f` to each element of the `Iterable[A]` and runs
  * produced effects in parallel, discarding the results.
  *
- * For a sequential version of this method, see `foreachUnit_`.
+ * For a sequential version of this method, see `forEachUnit_`.
  */
-export function foreachUnitPar<R, E, A, B>(f: (a: A) => Managed<R, E, B>) {
-  return (as: Iterable<A>) => foreachUnitPar_(as, f)
+export function forEachUnitPar<R, E, A, B>(f: (a: A) => Managed<R, E, B>) {
+  return (as: Iterable<A>) => forEachUnitPar_(as, f)
 }
 
 /**
  * Applies the function `f` to each element of the `Iterable[A]` and runs
  * produced effects in parallel, discarding the results.
  *
- * For a sequential version of this method, see `foreachUnit_`.
+ * For a sequential version of this method, see `forEachUnit_`.
  */
-export function foreachUnitParN_(n: number) {
+export function forEachUnitParN_(n: number) {
   return <R, E, A, B>(
     as: Iterable<A>,
     f: (a: A) => Managed<R, E, B>
@@ -2054,7 +2054,7 @@ export function foreachUnitParN_(n: number) {
         (r) => tuple(r, parallelReleaseMap)
       )
 
-      return T.foreachUnitParN_(as, n, (a) =>
+      return T.forEachUnitParN_(as, n, (a) =>
         T.chain_(makeInnerMap, (innerMap) =>
           T.provideSome_(
             T.map_(f(a).effect, ([_, a]) => a),
@@ -2069,12 +2069,12 @@ export function foreachUnitParN_(n: number) {
  * Applies the function `f` to each element of the `Iterable[A]` and runs
  * produced effects in parallel, discarding the results.
  *
- * For a sequential version of this method, see `foreachUnit_`.
+ * For a sequential version of this method, see `forEachUnit_`.
  */
-export function foreachUnitParN(n: number) {
+export function forEachUnitParN(n: number) {
   return <R, E, A, B>(f: (a: A) => Managed<R, E, B>) => (
     as: Iterable<A>
-  ): Managed<R, E, void> => foreachUnitParN_(n)(as, f)
+  ): Managed<R, E, void> => forEachUnitParN_(n)(as, f)
 }
 
 /**
@@ -2094,7 +2094,7 @@ export function collect_<A, R, E, B>(
   f: (a: A) => Managed<R, Option<E>, B>
 ): Managed<R, E, readonly B[]> {
   return map_(
-    foreach_(self, (a) => optional(f(a))),
+    forEach_(self, (a) => optional(f(a))),
     A.compact
   )
 }
@@ -2116,7 +2116,7 @@ export function collectPar_<A, R, E, B>(
   f: (a: A) => Managed<R, Option<E>, B>
 ): Managed<R, E, readonly B[]> {
   return map_(
-    foreachPar_(self, (a) => optional(f(a))),
+    forEachPar_(self, (a) => optional(f(a))),
     A.compact
   )
 }
@@ -2135,7 +2135,7 @@ export function collectParN_(
 ) => Managed<R, E, readonly B[]> {
   return (self, f) =>
     map_(
-      foreachParN_(n)(self, (a) => optional(f(a))),
+      forEachParN_(n)(self, (a) => optional(f(a))),
       A.compact
     )
 }
@@ -2160,7 +2160,7 @@ export function collectParN(
  * results. For a parallel version, see `collectAllPar`.
  */
 export function collectAll<R, E, A>(as: Iterable<Managed<R, E, A>>) {
-  return foreach_(as, identity)
+  return forEach_(as, identity)
 }
 
 /**
@@ -2168,7 +2168,7 @@ export function collectAll<R, E, A>(as: Iterable<Managed<R, E, A>>) {
  * results. For a sequential version, see `collectAll`.
  */
 export function collectAllPar<R, E, A>(as: Iterable<Managed<R, E, A>>) {
-  return foreachPar_(as, identity)
+  return forEachPar_(as, identity)
 }
 
 /**
@@ -2178,7 +2178,7 @@ export function collectAllPar<R, E, A>(as: Iterable<Managed<R, E, A>>) {
  * Unlike `collectAllPar`, this method will use at most `n` fibers.
  */
 export function collectAllParN(n: number) {
-  return <R, E, A>(as: Iterable<Managed<R, E, A>>) => foreachParN_(n)(as, identity)
+  return <R, E, A>(as: Iterable<Managed<R, E, A>>) => forEachParN_(n)(as, identity)
 }
 
 /**
@@ -2186,7 +2186,7 @@ export function collectAllParN(n: number) {
  * results. For a parallel version, see `collectAllUnitPar`.
  */
 export function collectAllUnit<R, E, A>(as: Iterable<Managed<R, E, A>>) {
-  return foreachUnit_(as, identity)
+  return forEachUnit_(as, identity)
 }
 
 /**
@@ -2194,7 +2194,7 @@ export function collectAllUnit<R, E, A>(as: Iterable<Managed<R, E, A>>) {
  * results. For a sequential version, see `collectAllUnit`.
  */
 export function collectAllUnitPar<R, E, A>(as: Iterable<Managed<R, E, A>>) {
-  return foreachUnitPar_(as, identity)
+  return forEachUnitPar_(as, identity)
 }
 
 /**
@@ -2204,7 +2204,7 @@ export function collectAllUnitPar<R, E, A>(as: Iterable<Managed<R, E, A>>) {
  * Unlike `collectAllUnitPar`, this method will use at most `n` fibers.
  */
 export function collectAllUnitParN(n: number) {
-  return <R, E, A>(as: Iterable<Managed<R, E, A>>) => foreachUnitParN_(n)(as, identity)
+  return <R, E, A>(as: Iterable<Managed<R, E, A>>) => forEachUnitParN_(n)(as, identity)
 }
 
 /**

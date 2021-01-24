@@ -3,7 +3,7 @@ import * as I from "../Iterable"
 import type { Separated } from "../Utils"
 import type { Effect, RIO } from "./effect"
 import { either } from "./either"
-import { foreach_, foreachPar_, foreachParN_ } from "./foreach"
+import { forEach_, forEachPar_, forEachParN_ } from "./forEach"
 import { map_ } from "./map"
 
 /**
@@ -13,7 +13,7 @@ import { map_ } from "./map"
 export function partition<A, R, E, B>(f: (a: A) => Effect<R, E, B>) {
   return (as: Iterable<A>): RIO<R, Separated<Iterable<E>, Iterable<B>>> =>
     map_(
-      foreach_(as, (a) => either(f(a))),
+      forEach_(as, (a) => either(f(a))),
       I.partitionMap(identity)
     )
 }
@@ -26,7 +26,7 @@ export function partition<A, R, E, B>(f: (a: A) => Effect<R, E, B>) {
 export function partitionPar<A, R, E, B>(f: (a: A) => Effect<R, E, B>) {
   return (as: Iterable<A>): Effect<R, never, Separated<Iterable<E>, Iterable<B>>> =>
     map_(
-      foreachPar_(as, (a) => either(f(a))),
+      forEachPar_(as, (a) => either(f(a))),
       I.partitionMap(identity)
     )
 }
@@ -43,7 +43,7 @@ export function partitionParN(n: number) {
     as: Iterable<A>
   ): Effect<R, never, Separated<Iterable<E>, Iterable<B>>> =>
     map_(
-      foreachParN_(as, n, (a) => either(f(a))),
+      forEachParN_(as, n, (a) => either(f(a))),
       I.partitionMap(identity)
     )
 }

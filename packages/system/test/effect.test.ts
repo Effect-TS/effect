@@ -257,10 +257,10 @@ describe("Effect", () => {
 
     expect(result).toEqual("foo - bar")
   })
-  it("foreachParN", async () => {
+  it("forEachParN", async () => {
     const result = await pipe(
       range(0, 100),
-      T.foreachParN(3, (n) =>
+      T.forEachParN(3, (n) =>
         pipe(
           T.sleep(100),
           T.chain(() =>
@@ -274,7 +274,7 @@ describe("Effect", () => {
     )
     const result_ok = await pipe(
       range(0, 100),
-      T.foreachParN(10, (n) =>
+      T.forEachParN(10, (n) =>
         pipe(
           T.sleep(10),
           T.map(() => n)

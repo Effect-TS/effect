@@ -132,7 +132,7 @@ export function contramapM_<R, R1, E, E1, I, I2, L, Z>(
   self: Sink<R, E, I, L, Z>,
   f: (i2: I2) => T.Effect<R1, E1, I>
 ): Sink<R & R1, E | E1, I2, L, Z> {
-  return contramapChunksM_(self, T.foreach(f))
+  return contramapChunksM_(self, T.forEach(f))
 }
 
 /**
@@ -1212,7 +1212,7 @@ export function dieMessage(m: string): Sink<unknown, never, unknown, never, neve
  * A sink that ignores its inputs.
  */
 export const drain: Sink<unknown, never, unknown, never, void> = dropLeftover(
-  foreach((_) => T.unit)
+  forEach((_) => T.unit)
 )
 
 /**
@@ -1446,7 +1446,7 @@ export function reduceLeftM<S>(z: S) {
 /**
  * A sink that executes the provided effectful function for every element fed to it.
  */
-export function foreach<I, R1, E1>(f: (i: I) => T.Effect<R1, E1, any>) {
+export function forEach<I, R1, E1>(f: (i: I) => T.Effect<R1, E1, any>) {
   const go = (
     chunk: A.Chunk<I>,
     idx: number,
@@ -1476,7 +1476,7 @@ export function foreach<I, R1, E1>(f: (i: I) => T.Effect<R1, E1, any>) {
 /**
  * A sink that executes the provided effectful function for every chunk fed to it.
  */
-export function foreachChunk<R, E, I, L>(
+export function forEachChunk<R, E, I, L>(
   f: (a: A.Chunk<I>) => T.Effect<R, E, any>
 ): Sink<R, E, I, never, void> {
   return fromPush((in_: O.Option<A.Chunk<I>>) =>
@@ -1496,7 +1496,7 @@ export function foreachChunk<R, E, I, L>(
  * A sink that executes the provided effectful function for every element fed to it
  * until `f` evaluates to `false`.
  */
-export function foreachWhile<R, E, I>(
+export function forEachWhile<R, E, I>(
   f: (i: I) => T.Effect<R, E, boolean>
 ): Sink<R, E, I, I, void> {
   const go = (

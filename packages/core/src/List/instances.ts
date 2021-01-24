@@ -30,9 +30,9 @@ export const Monad = P.instance<P.Monad<[ListURI]>>({
   ...AssociativeFlatten
 })
 
-export const ForEeach = P.instance<P.ForEach<[ListURI]>>({
+export const ForEach = P.instance<P.ForEach<[ListURI]>>({
   map: L.map,
-  forEachF: L.foreachF
+  forEachF: L.forEachF
 })
 
 export const Wiltable = P.instance<P.Wiltable<[ListURI]>>({

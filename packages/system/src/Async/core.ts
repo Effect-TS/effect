@@ -1053,7 +1053,7 @@ export function tuple<Tasks extends Async<any, any, any>[]>(
 }
 
 // like Promise.all + map on steroids
-export function foreach<R, A, E1, B>(f: (a: A) => Async<R, E1, B>) {
+export function forEach<R, A, E1, B>(f: (a: A) => Async<R, E1, B>) {
   return (as: Iterable<A>) => collectAll(Array.from(as).map(f))
 }
 

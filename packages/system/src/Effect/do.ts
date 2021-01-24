@@ -2,7 +2,7 @@ import * as R from "../Record"
 import type { _E, _R, EnforceNonEmptyRecord } from "../Utils"
 import { chain_, succeed } from "./core"
 import type { Effect } from "./effect"
-import { foreach_, foreachPar_, foreachParN_ } from "./foreach"
+import { forEach_, forEachPar_, forEachParN_ } from "./forEach"
 import { map_ } from "./map"
 
 /**
@@ -131,7 +131,7 @@ export function bindAll<
   return (s) =>
     chain_(s, (k) =>
       map_(
-        foreach_(
+        forEach_(
           R.collect_(r(k), (k, v) => [k, v] as const),
           ([_, e]) => map_(e, (a) => [_, a] as const)
         ),
@@ -165,7 +165,7 @@ export function bindAllPar<
   return (s) =>
     chain_(s, (k) =>
       map_(
-        foreachPar_(
+        forEachPar_(
           R.collect_(r(k), (k, v) => [k, v] as const),
           ([_, e]) => map_(e, (a) => [_, a] as const)
         ),
@@ -201,7 +201,7 @@ export function bindAllParN(
   return (r) => (s) =>
     chain_(s, (k) =>
       map_(
-        foreachParN_(
+        forEachParN_(
           R.collect_(r(k), (k, v) => [k, v] as const),
           n,
           ([_, e]) => map_(e, (a) => [_, a] as const)

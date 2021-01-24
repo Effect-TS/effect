@@ -34,7 +34,7 @@ export const Monad = P.instance<P.Monad<[IterableURI]>>({
   ...AssociativeFlatten
 })
 
-export const ForEeach = P.instance<P.ForEach<[IterableURI]>>({
+export const ForEach = P.instance<P.ForEach<[IterableURI]>>({
   ...Covariant,
-  forEachF: It.foreachF
+  forEachF: It.forEachF
 })

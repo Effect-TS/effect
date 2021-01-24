@@ -30,5 +30,5 @@ export { branch as if, branch_ as if_ }
 /**
  * Foreach
  */
-export const foreachArray = A.foreachF(Applicative)
-export const foreachWithIndexArray = A.foreachWithIndexF(Applicative)
+export const forEachArray = A.forEachF(Applicative)
+export const forEachWithIndexArray = A.forEachWithIndexF(Applicative)

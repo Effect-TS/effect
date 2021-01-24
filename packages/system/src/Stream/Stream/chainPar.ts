@@ -9,12 +9,11 @@ import * as T from "../_internal/effect"
 import * as F from "../_internal/fiber"
 import * as M from "../_internal/managed"
 import * as Pull from "../Pull"
-import { chain } from "./chain"
+import * as chain from "./chain"
 import { Stream } from "./definitions"
-import { foreachChunk } from "./foreachChunk"
-import { foreachManaged_ } from "./foreachManaged"
+import * as forEach from "./forEach"
 import { managed } from "./managed"
-import { tap } from "./tap"
+import * as tap from "./tap"
 
 /**
  * Maps each element of this stream to another stream and returns the
@@ -40,16 +39,16 @@ export function chainPar(n: number, outputBuffer = 16) {
           M.bind("innerFailure", () => T.toManaged_(P.make<C.Cause<E1>, never>())),
           M.tap(({ innerFailure, out, permits }) =>
             pipe(
-              foreachManaged_(self, (a) =>
+              forEach.forEachManaged_(self, (a) =>
                 pipe(
                   T.do,
                   T.bind("latch", () => P.make<never, void>()),
                   T.let("innerStream", ({ latch }) =>
                     pipe(
                       managed(SM.withPermitManaged(permits)),
-                      tap((_) => P.succeed_(latch, undefined)),
-                      chain((_) => f(a)),
-                      foreachChunk((b) => T.asUnit(out.offer(T.succeed(b)))),
+                      tap.tap((_) => P.succeed_(latch, undefined)),
+                      chain.chain((_) => f(a)),
+                      forEach.forEachChunk((b) => T.asUnit(out.offer(T.succeed(b)))),
                       T.foldCauseM(
                         (cause) =>
                           T.asUnit(

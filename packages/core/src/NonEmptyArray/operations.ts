@@ -20,9 +20,9 @@ import type { Show } from "../Show"
 export * from "@effect-ts/system/NonEmptyArray"
 
 /**
- * `ForEeachWithIndex`'s `foreachWithIndexF` function
+ * `ForEachWithIndex`'s `forEachWithIndexF` function
  */
-export const foreachWithIndexF = P.implementForEachWithIndexF<[NonEmptyArrayURI]>()(
+export const forEachWithIndexF = P.implementForEachWithIndexF<[NonEmptyArrayURI]>()(
   (_) => (G) => (f) =>
     flow(
       A.reduceWithIndex(DSL.succeedF(G)(L.empty()), (k, b, a) =>
@@ -37,10 +37,10 @@ export const foreachWithIndexF = P.implementForEachWithIndexF<[NonEmptyArrayURI]
 )
 
 /**
- * `ForEeach`'s `foreachF` function
+ * `ForEach`'s `forEachF` function
  */
-export const foreachF = P.implementForEachF<[NonEmptyArrayURI]>()((_) => (G) => (f) =>
-  foreachWithIndexF(G)((_, a) => f(a))
+export const forEachF = P.implementForEachF<[NonEmptyArrayURI]>()((_) => (G) => (f) =>
+  forEachWithIndexF(G)((_, a) => f(a))
 )
 
 /**

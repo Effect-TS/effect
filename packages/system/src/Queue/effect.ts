@@ -11,7 +11,7 @@ export {
 export { bind, bind_, do } from "../Effect/do"
 export { Effect, UIO } from "../Effect/effect"
 export { fiberId } from "../Effect/fiberId"
-export { foreach, foreachPar_, foreach_ } from "../Effect/foreach"
+export { forEach, forEachPar_, forEach_ } from "../Effect/forEach"
 export { interrupt } from "../Effect/interrupt"
 export { map, map_ } from "../Effect/map"
 export { onInterrupt_ } from "../Effect/onInterrupt_"

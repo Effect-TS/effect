@@ -30,14 +30,14 @@ export const Monad = P.instance<P.Monad<[NonEmptyArrayURI]>>({
   ...AssociativeFlatten
 })
 
-export const ForEeach = P.instance<P.ForEach<[NonEmptyArrayURI]>>({
+export const ForEach = P.instance<P.ForEach<[NonEmptyArrayURI]>>({
   map: A.map,
-  forEachF: A.foreachF
+  forEachF: A.forEachF
 })
 
-export const ForEeachWithIndex = P.instance<P.ForEachWithIndex<[NonEmptyArrayURI]>>({
+export const ForEachWithIndex = P.instance<P.ForEachWithIndex<[NonEmptyArrayURI]>>({
   map: A.map,
-  forEachWithIndexF: A.foreachWithIndexF
+  forEachWithIndexF: A.forEachWithIndexF
 })
 
 export const Extend = P.instance<P.Extend<[NonEmptyArrayURI]>>({
