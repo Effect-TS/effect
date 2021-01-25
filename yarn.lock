@@ -8263,10 +8263,10 @@ typedarray@^0.0.6:
   resolved "https://registry.yarnpkg.com/typedarray/-/typedarray-0.0.6.tgz#867ac74e3864187b1d3d47d996a78ec5c8830777"
   integrity sha1-hnrHTjhkGHsdPUfZlqeOxciDB3c=
 
-typescript@4.2.0-dev.20210121:
-  version "4.2.0-dev.20210121"
-  resolved "https://registry.yarnpkg.com/typescript/-/typescript-4.2.0-dev.20210121.tgz#3af5689455233fe9ad3128f2647091dba777daf4"
-  integrity sha512-3dq9PpGVO6lJOa1LtWVs6bsDpwvIqKhb4uC5YUWsBfXBBRpqxYfO2RKn/0v8WWgwD5dN7AeyIyEZIgRpPEekOQ==
+typescript@4.2.0-dev.20210125:
+  version "4.2.0-dev.20210125"
+  resolved "https://registry.yarnpkg.com/typescript/-/typescript-4.2.0-dev.20210125.tgz#db5f8e5f81bb890a1f9bb0dd5d031003afc046dc"
+  integrity sha512-SQFDH7UOlKuHGwhwcus8akkQ0VxT4y50OEUdh5oDvlE9ZBUr7nG3vjZLXPX+PHv7ZBnyb8h7BwdrNLkYHbnFqQ==
 
 typescript@next:
   version "4.2.0-dev.20210119"
