@@ -1,6 +1,7 @@
 import * as E from "../Either"
 import { identity, pipe } from "../Function"
 import * as O from "../Option"
+import * as L from "../Persistent/List"
 import * as R from "../Ref"
 import { ImmutableQueue } from "../Support/ImmutableQueue"
 import * as T from "./deps"
@@ -117,7 +118,7 @@ export class Semaphore {
                 }
                 return [
                   new Acquisition(T.promiseWait(p), this.restore(p, n)),
-                  E.left(new ImmutableQueue([[p, n - m]]))
+                  E.left(new ImmutableQueue(L.of([p, n - m])))
                 ]
               }
             )

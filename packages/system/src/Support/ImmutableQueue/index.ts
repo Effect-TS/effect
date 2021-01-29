@@ -1,16 +1,15 @@
-import * as A from "../../Array"
-import * as NA from "../../NonEmptyArray"
 import * as O from "../../Option"
+import * as L from "../../Persistent/List"
 
 export class ImmutableQueue<A> {
-  constructor(private readonly backing: readonly A[]) {}
+  constructor(private readonly backing: L.List<A>) {}
 
   push(a: A) {
-    return new ImmutableQueue([...this.backing, a])
+    return new ImmutableQueue(L.append_(this.backing, a))
   }
 
   prepend(a: A) {
-    return new ImmutableQueue([a, ...this.backing])
+    return new ImmutableQueue(L.prepend_(this.backing, a))
   }
 
   get size() {
@@ -18,10 +17,11 @@ export class ImmutableQueue<A> {
   }
 
   dequeue() {
-    if (A.isNonEmpty(this.backing)) {
+    if (!L.isEmpty(this.backing)) {
       return O.some([
-        NA.head(this.backing),
-        new ImmutableQueue(NA.tail(this.backing))
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        L.unsafeFirst(this.backing)!,
+        new ImmutableQueue(L.tail(this.backing))
       ] as const)
     } else {
       return O.none
@@ -29,10 +29,10 @@ export class ImmutableQueue<A> {
   }
 
   find(f: (a: A) => boolean) {
-    return A.findFirst(f)(this.backing)
+    return L.find_(this.backing, f)
   }
 
   filter(f: (a: A) => boolean) {
-    return new ImmutableQueue(A.filter(f)(this.backing))
+    return new ImmutableQueue(L.filter_(this.backing, f))
   }
 }
