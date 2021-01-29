@@ -1,4 +1,4 @@
-import { DoublyLinkedList } from "../DublyLinkedList"
+import { DoublyLinkedList } from "../DoublyLinkedList"
 
 export interface MutableQueue<A> {
   /**

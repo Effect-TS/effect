@@ -87,7 +87,7 @@
       "Support/AtomicBoolean",
       "Support/AtomicNumber",
       "Support/AtomicReference",
-      "Support/DublyLinkedList",
+      "Support/DoublyLinkedList",
       "Support/ImmutableQueue",
       "Support/LinkedList",
       "Support/MutableQueue",

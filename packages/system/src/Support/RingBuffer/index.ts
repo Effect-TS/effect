@@ -1,5 +1,5 @@
 import * as L from "../../Persistent/List"
-import { DoublyLinkedList } from "../DublyLinkedList"
+import { DoublyLinkedList } from "../DoublyLinkedList"
 
 export class RingBuffer<T> {
   private values = new DoublyLinkedList<T>()
@@ -26,6 +26,7 @@ export class RingBuffer<T> {
     })
     return l
   }
+
   get listReverse(): L.List<T> {
     let l = L.empty<T>()
     this.values.forEach((t) => {

@@ -7,9 +7,8 @@
  * `Const` has some useful instances. For example, the `Applicative` instance allows us to collect results using a `Monoid`
  * while ignoring return values.
  */
-import type { Bounded } from "@effect-ts/system/Support/MutableQueue"
-
 import type * as As from "../Associative"
+import type { Bounded } from "../Bounded"
 import type { Equal } from "../Equal"
 import { unsafeCoerce } from "../Function"
 import type * as Id from "../Identity"
