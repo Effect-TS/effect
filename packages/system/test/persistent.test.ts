@@ -6,6 +6,11 @@ import * as HM from "../src/Persistent/HashMap"
 import * as HS from "../src/Persistent/HashSet"
 
 describe("HashMap", () => {
+  it("hashes", () => {
+    expect(Hash.hash({ a: { b: 1 } })).toEqual(490026286)
+    expect(Hash.hash({ a: { b: 2 } })).toEqual(490026285)
+    expect(Hash.hash({ b: { a: 2 } })).toEqual(490075681)
+  })
   it("use hash-map 4", () => {
     class Index {
       constructor(readonly a: number, readonly b: number) {}
@@ -90,11 +95,11 @@ describe("HashMap", () => {
       )
     ).toEqual([
       [new Index(8, 8), new Value(6, 6)],
+      [new Index(4, 4), new Value(6, 7)],
       [new Index(9, 9), new Value(7, 7)],
       [new Index(1, 1), new Value(4, 5)],
-      [new Index(3, 3), new Value(5, 6)],
-      [new Index(4, 4), new Value(6, 7)],
-      [new Index(6, 6), new Value(5, 5)]
+      [new Index(6, 6), new Value(5, 5)],
+      [new Index(3, 3), new Value(5, 6)]
     ])
   })
   it("default", () => {

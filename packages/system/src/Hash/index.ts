@@ -1,4 +1,4 @@
-import { PCGRandom } from "../Persistent/HashMap/Random"
+import { Stack } from "../Stack"
 
 /**
  * `Hash[A]` provides a way to hash a value
@@ -7,60 +7,75 @@ export interface Hash<A> {
   readonly hash: (x: A) => number
 }
 
-/**
- * Get 32 bit hash of string.
- *
- * Based on:
- * http://stackoverflow.com/questions/7616461/generate-a-hash-from-string-in-javascript-jquery
- */
 export function string(str: string) {
+  let h = 5381
+  let i = str.length
+  while (i) h = (h * 33) ^ str.charCodeAt(--i)
+  return h
+}
+
+export function opt(n: number) {
+  return (n & 0xbfffffff) | ((n >>> 1) & 0x40000000)
+}
+
+export function hash(key: unknown): number {
+  let stack: Stack<unknown> | undefined = undefined
+  let current: unknown | undefined = key
   let hash = 0
-  for (let i = 0, len = str.length; i < len; ++i) {
-    const c = str.charCodeAt(i)
-    hash = ((hash << 5) - hash + c) | 0
+
+  while (current) {
+    switch (typeof current) {
+      case "object": {
+        if (current != null) {
+          for (const k of Object.keys(current).sort()) {
+            stack = new Stack(current[k], stack)
+            hash = combineHash(hash, opt(string(k)))
+          }
+        }
+        current = undefined
+        break
+      }
+      case "string": {
+        hash = combineHash(hash, opt(string(current)))
+        current = undefined
+        break
+      }
+      case "bigint": {
+        hash = combineHash(hash, opt(string(current.toString(10))))
+        current = undefined
+        break
+      }
+      case "boolean": {
+        hash = combineHash(hash, opt(string(String(current))))
+        current = undefined
+        break
+      }
+      case "number": {
+        hash = combineHash(hash, opt(current))
+        current = undefined
+        break
+      }
+      case "symbol": {
+        current = undefined
+        break
+      }
+      case "undefined": {
+        current = undefined
+        break
+      }
+      case "function": {
+        current = undefined
+        break
+      }
+    }
+    if (!current && stack) {
+      current = stack.value
+      stack = stack.previous
+    }
   }
   return hash
 }
 
-const RANDOM = new PCGRandom(13)
-const CACHE = new WeakMap<Object, number>()
-
-function randomInt() {
-  return RANDOM.integer(0x7fffffff)
-}
-
-export function randomHash(key: any): number {
-  switch (typeof key) {
-    case "bigint": {
-      return string(key.toString(10))
-    }
-    case "string": {
-      return string(key)
-    }
-    case "boolean": {
-      return string(String(key))
-    }
-    case "number": {
-      return key
-    }
-    case "symbol": {
-      return 0
-    }
-    case "undefined": {
-      return 0
-    }
-    default: {
-      const hash = CACHE.get(key)
-      if (hash) {
-        return hash
-      }
-      const h = randomInt()
-      CACHE.set(key, h)
-      return h
-    }
-  }
-}
-
 export function combineHash(a: number, b: number): number {
-  return (a * 53) ^ b
+  return a === 0 ? b : b === 0 ? a : (a * 53) ^ b
 }

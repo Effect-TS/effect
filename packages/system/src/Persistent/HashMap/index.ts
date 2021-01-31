@@ -5,7 +5,7 @@ import type { Equal } from "../../Equal"
 import type { Refinement } from "../../Function"
 import { constant, identity, tuple } from "../../Function"
 import type { Hash } from "../../Hash"
-import { randomHash } from "../../Hash"
+import { hash } from "../../Hash"
 import * as O from "../../Option"
 import * as S from "../HashSet"
 import { fromBitmap, hashFragment, toBitmap } from "./Bitwise"
@@ -459,7 +459,7 @@ export function reduce<V, Z>(z: Z, f: (z: Z, v: V) => Z) {
 export function makeDefault<K, V>() {
   return make<K, V>({
     equals: (y) => (x) => x === y,
-    hash: randomHash
+    hash
   })
 }
 
