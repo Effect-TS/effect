@@ -1,5 +1,4 @@
-import type { Effect } from "@effect-ts/system/Effect"
-import { EffectURI } from "@effect-ts/system/Effect"
+import type { Effect, EffectURI } from "@effect-ts/system/Effect"
 
 import type { Array } from "../Array"
 import type { Async } from "../Async"
