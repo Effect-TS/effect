@@ -3590,9 +3590,9 @@ extsprintf@^1.2.0:
   integrity sha1-4mifjzVvrWLMplo6kcXfX5VRaS8=
 
 fast-check@^2.5.0:
-  version "2.12.0"
-  resolved "https://registry.yarnpkg.com/fast-check/-/fast-check-2.12.0.tgz#533b969f0e4546bbefb99cbff32a5d14981a227a"
-  integrity sha512-6wZK9r2zymqtj/7k9LB4TTJGiyoGtN7NamXAKOWa4svZlFOdE3p7kbC46Au474E6R6votoQrM5aAjRnYnx0BNg==
+  version "2.12.1"
+  resolved "https://registry.yarnpkg.com/fast-check/-/fast-check-2.12.1.tgz#457d13e36952dd0d660cf781d942a43c067a47ca"
+  integrity sha512-zXCxkvFVlVWbBVky+TPaD1H+g6SC4R7IQYZ5gcxU3lUKHyrOFiLXtWy+xHVDmm9bv+3NJbSzOmeVvhgpnjR7Sw==
   dependencies:
     pure-rand "^4.1.1"
 
