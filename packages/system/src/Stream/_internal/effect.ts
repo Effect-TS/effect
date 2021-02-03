@@ -1,5 +1,6 @@
 export { andThen, andThen_ } from "../../Effect/andThen"
 export { as, as_ } from "../../Effect/as"
+export { effectTotal } from "../../Effect/core"
 export { asSomeError } from "../../Effect/asSomeError"
 export { asUnit } from "../../Effect/asUnit"
 export { bimap, bimap_ } from "../../Effect/bimap"

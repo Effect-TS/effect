@@ -43,35 +43,37 @@ export function distributedWithDynamic_<R, E, O>(
   decide: (o: O) => T.UIO<(_: symbol) => boolean>,
   done: (_: Ex.Exit<O.Option<E>, never>) => T.UIO<any> = (_: any) => T.unit
 ): M.Managed<R, never, T.UIO<readonly [symbol, Q.Dequeue<Ex.Exit<O.Option<E>, O>>]>> {
-  const offer = (
-    queuesRef: R.Ref<ReadonlyMap<symbol, Q.Queue<Ex.Exit<O.Option<E>, O>>>>
-  ) => (o: O) =>
-    pipe(
-      T.do,
-      T.bind("shouldProcess", () => decide(o)),
-      T.bind("queues", () => T.map_(queuesRef.get, (m) => m.entries())),
-      T.chain(({ queues, shouldProcess }) =>
-        pipe(
-          T.reduce_(queues, A.empty as A.Chunk<symbol>, (acc, [id, queue]) => {
-            if (shouldProcess(id)) {
-              return pipe(
-                queue.offer(Ex.succeed(o)),
-                T.foldCauseM(
-                  (c) =>
-                    C.interrupted(c) ? T.succeed(A.concat_(acc, [id])) : T.halt(c),
-                  () => T.succeed(acc)
+  function offer(queuesRef: R.Ref<Map.Map<symbol, Q.Queue<Ex.Exit<O.Option<E>, O>>>>) {
+    return (o: O) =>
+      pipe(
+        T.do,
+        T.bind("shouldProcess", () => decide(o)),
+        T.bind("queues", () => queuesRef.get),
+        T.chain(({ queues, shouldProcess }) =>
+          pipe(
+            T.reduce_(queues, A.empty as A.Chunk<symbol>, (acc, [id, queue]) => {
+              if (shouldProcess(id)) {
+                return pipe(
+                  queue.offer(Ex.succeed(o)),
+                  T.foldCauseM(
+                    (c) =>
+                      C.interrupted(c)
+                        ? T.succeed(A.concat_(A.single(id), acc))
+                        : T.halt(c),
+                    () => T.succeed(acc)
+                  )
                 )
-              )
-            } else {
-              return T.succeed(acc)
-            }
-          }),
-          T.chain((ids) =>
-            A.isNonEmpty(ids) ? R.update_(queuesRef, Map.removeMany(ids)) : T.unit
+              } else {
+                return T.succeed(acc)
+              }
+            }),
+            T.chain((ids) =>
+              A.isNonEmpty(ids) ? R.update_(queuesRef, Map.removeMany(ids)) : T.unit
+            )
           )
         )
       )
-    )
+  }
   return pipe(
     M.do,
     M.bind("queuesRef", () =>
@@ -95,7 +97,7 @@ export function distributedWithDynamic_<R, E, O>(
                 T.bind("queue", () =>
                   Q.makeBounded<Ex.Exit<O.Option<E>, O>>(maximumLag)
                 ),
-                T.let("id", () => Symbol()),
+                T.bind("id", () => T.effectTotal(() => Symbol())),
                 T.tap(({ id, queue }) => R.update_(queuesRef, Map.insert(id, queue))),
                 T.map(({ id, queue }) => [id, queue])
               )
@@ -106,38 +108,35 @@ export function distributedWithDynamic_<R, E, O>(
         M.let("finalize", ({ newQueue, queuesLock }) => {
           return (endTake: Ex.Exit<O.Option<E>, never>) =>
             SM.withPermit(queuesLock)(
-              T.chain_(
-                newQueue.set(
-                  pipe(
-                    T.do,
-                    T.bind("queue", () => Q.makeBounded<Ex.Exit<O.Option<E>, O>>(1)),
-                    T.tap(({ queue }) => queue.offer(endTake)),
-                    T.let("id", () => Symbol()),
-                    T.tap(({ id, queue }) =>
-                      R.update_(queuesRef, Map.insert(id, queue))
-                    ),
-                    T.map(({ id, queue }) => [id, queue] as const)
+              pipe(
+                T.do,
+                T.tap(() =>
+                  newQueue.set(
+                    pipe(
+                      T.do,
+                      T.bind("queue", () => Q.makeBounded<Ex.Exit<O.Option<E>, O>>(1)),
+                      T.tap(({ queue }) => queue.offer(endTake)),
+                      T.bind("id", () => T.effectTotal(() => Symbol())),
+                      T.tap(({ id, queue }) =>
+                        R.update_(queuesRef, Map.insert(id, queue))
+                      ),
+                      T.map(({ id, queue }) => [id, queue] as const)
+                    )
                   )
                 ),
-                () =>
-                  pipe(
-                    T.do,
-                    T.bind("queues", () =>
-                      T.map_(queuesRef.get, (m) => [...m.values()])
-                    ),
-                    T.tap(({ queues }) =>
-                      T.forEach_(queues, (queue) =>
-                        pipe(
-                          queue.offer(endTake),
-                          T.catchSomeCause((c) =>
-                            C.interrupted(c) ? O.some(T.unit) : O.none
-                          )
-                        )
+                T.bind("queues", () => T.map_(queuesRef.get, (m) => m.values())),
+                T.tap(({ queues }) =>
+                  T.forEach_(queues, (queue) =>
+                    pipe(
+                      queue.offer(endTake),
+                      T.catchSomeCause((c) =>
+                        C.interrupted(c) ? O.some(T.unit) : O.none
                       )
-                    ),
-                    T.tap(() => done(endTake)),
-                    T.asUnit
+                    )
                   )
+                ),
+                T.tap(() => done(endTake)),
+                T.asUnit
               )
             )
         }),
