@@ -1,6 +1,7 @@
 import * as T from "../src/Effect"
 import * as Exit from "../src/Exit"
 import { flow, identity, pipe } from "../src/Function"
+import * as M from "../src/Managed"
 import * as O from "../src/Option"
 import * as R from "../src/Ref"
 import * as S from "../src/Stream"
@@ -11,6 +12,43 @@ import { range } from "../src/Stream/Stream/range"
 import { zipN } from "../src/Stream/Stream/zipN"
 
 describe("Stream", () => {
+  describe("Broadcast", () => {
+    it("should broadcast", async () => {
+      const fn = jest.fn()
+
+      const stream = pipe(
+        R.makeRef(0),
+        T.map((ref) =>
+          S.repeatEffect(T.delay(100)(R.updateAndGet_(ref, (n) => n + 1)))
+        ),
+        S.unwrap,
+        S.take(2)
+      )
+
+      const copies = await pipe(
+        stream,
+        S.broadcast(2, Number.MAX_SAFE_INTEGER),
+        M.use(
+          T.forEachPar(
+            flow(
+              S.chain((n) =>
+                S.fromEffect(
+                  T.effectTotal(() => {
+                    fn(`n: ${n}`)
+                  })
+                )
+              ),
+              S.runDrain
+            )
+          )
+        ),
+        T.runPromiseExit
+      )
+
+      expect(copies._tag).toEqual("Success")
+      expect(fn).toHaveBeenCalledTimes(4)
+    })
+  })
   describe("Core", () => {
     it("fromArray", async () => {
       const a = S.fromChunk([0, 1, 2])
