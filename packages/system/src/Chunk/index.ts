@@ -86,7 +86,7 @@ export function reduceRight_<A, B>(fa: Chunk<A>, b: B, f: (a: A, b: B) => B): B 
     return b
   }
   let x = b
-  for (let i = fa.length; i > 0; i--) {
+  for (let i = fa.length - 1; i >= 0; i--) {
     x = f(fa[i], x)
   }
   return x

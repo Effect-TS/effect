@@ -46,7 +46,7 @@ describe("Stream", () => {
       )
 
       expect(copies._tag).toEqual("Success")
-      expect(fn).toHaveBeenCalledTimes(4)
+      expect(fn.mock.calls).toEqual([["n: 1"], ["n: 1"], ["n: 2"], ["n: 2"]])
     })
   })
   describe("Core", () => {

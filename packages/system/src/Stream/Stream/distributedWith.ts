@@ -49,7 +49,7 @@ export function distributedWith_<R, E, O>(
           pipe(
             T.collectAll(
               pipe(
-                A.range(0, n),
+                A.range(0, n - 1),
                 A.map((id) =>
                   T.map_(next, ([key, queue]) => [[key, id], queue] as const)
                 )
@@ -64,14 +64,13 @@ export function distributedWith_<R, E, O>(
                 ] as const,
                 ([mapping, queue], [mappings, queues]) => [
                   Map.insert(mapping[0], mapping[1])(mappings),
-                  A.concat_(queues, [queue])
+                  A.concat_(A.single(queue), queues)
                 ]
               )
               return pipe(
                 P.succeed_(prom, (o: O) =>
-                  T.map_(decide(o), (f) => (key: symbol) =>
-                    f(mappings.get(key) as number)
-                  )
+                  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                  T.map_(decide(o), (f) => (key: symbol) => f(mappings.get(key)!))
                 ),
                 T.as(queues)
               )
