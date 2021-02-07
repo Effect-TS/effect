@@ -11,12 +11,29 @@ import * as O from "../src/Option"
 
 describe("Effect", () => {
   it("interrupt childs", async () => {
+    const g = jest.fn()
+    const f = jest.fn()
+    function sleep(ms: number) {
+      return T.descriptorWith((fib) =>
+        T.effectAsyncInterrupt((cb) => {
+          g()
+          const timeout = setTimeout(() => {
+            cb(T.unit)
+          }, ms)
+
+          return T.effectTotal(() => {
+            f(fib.id.seqNumber)
+            clearTimeout(timeout)
+          })
+        })
+      )
+    }
     const ms = await new Promise<number>((r) => {
       const then = new Date()
       pipe(
         T.do,
-        T.bind("a", () => T.fork(T.sleep(2000))),
-        T.bind("b", () => T.fork(T.sleep(2000))),
+        T.bind("a", () => T.fork(sleep(2000))),
+        T.bind("b", () => T.fork(sleep(2000))),
         (e) =>
           T.run(e, () => {
             const now = new Date()
@@ -25,6 +42,7 @@ describe("Effect", () => {
       )
     })
     expect(ms).toBeLessThan(1000)
+    expect(f).toHaveBeenCalledTimes(g.mock.calls.length)
   })
   it("absolve", async () => {
     const program = T.absolve(T.succeed(E.left("e")))
