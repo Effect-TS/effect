@@ -1,6 +1,7 @@
 import { reduce_ } from "../Array"
-import type { Cause } from "../Cause"
+import * as C from "../Cause"
 import * as T from "../Effect"
+import * as E from "../Either"
 import { identity as idFn, tuple } from "../Function"
 import type { Has, Tag } from "../Has"
 import { mergeEnvironments } from "../Has"
@@ -8,10 +9,9 @@ import * as M from "../Managed"
 import type { Erase, UnionToIntersection } from "../Utils"
 import type { Layer, MergeA, MergeE, MergeR } from "./definitions"
 import {
-  and_,
-  andTo_,
   build,
-  fold_,
+  fold,
+  from,
   fromRawEffect,
   fromRawFunctionM,
   LayerAllPar,
@@ -21,8 +21,7 @@ import {
   LayerManaged,
   LayerMap,
   LayerSuspend,
-  LayerZipWithSeq,
-  using_
+  LayerZipWithSeq
 } from "./definitions"
 
 export * from "./definitions"
@@ -87,63 +86,18 @@ export function fromRawManaged<R, E, A>(resource: M.Managed<R, E, A>): Layer<R, 
 }
 
 export function zip_<R, E, A, R2, E2, A2>(
-  left: Layer<R, E, A>,
-  right: Layer<R2, E2, A2>
+  self: Layer<R, E, A>,
+  that: Layer<R2, E2, A2>
 ): Layer<R & R2, E | E2, readonly [A, A2]> {
-  return new LayerZipWithSeq(left, right, tuple)
+  return new LayerZipWithSeq(self, that, tuple)
 }
 
 export function zip<R2, E2, A2>(right: Layer<R2, E2, A2>) {
   return <R, E, A>(left: Layer<R, E, A>) => zip_(left, right)
 }
 
-export function to<R, E, A>(to: Layer<R, E, A>) {
-  return <R2, E2, A2>(self: Layer<R2, E2, A2>) => to_(self, to)
-}
-
-export function to_<R, E, A, R2, E2, A2>(
-  self: Layer<R2, E2, A2>,
-  to: Layer<R, E, A>
-): Layer<Erase<R & R2, A2> & R2, E | E2, A> {
-  return fold_(
-    self,
-    fromRawFunctionM((_: readonly [Erase<R & R2, A2> & R2, Cause<E2>]) => T.halt(_[1])),
-    to
-  )
-}
-
-export function using<R2, E2, A2>(
-  self: Layer<R2, E2, A2>,
-  noErase: "no-erase"
-): <R, E, A>(to: Layer<R & A2, E, A>) => Layer<R & R2, E2 | E, A & A2>
-export function using<R2, E2, A2>(
-  self: Layer<R2, E2, A2>
-): <R, E, A>(to: Layer<R, E, A>) => Layer<Erase<R & R2, A2> & R2, E2 | E, A & A2>
-export function using<R2, E2, A2>(
-  self: Layer<R2, E2, A2>
-): <R, E, A>(to: Layer<R, E, A>) => Layer<Erase<R & R2, A2> & R2, E2 | E, A & A2> {
-  return <R, E, A>(to: Layer<R, E, A>) => andTo_(self, to)
-}
-
-export function from<R2, E2, A2>(
-  self: Layer<R2, E2, A2>,
-  noErase: "no-erase"
-): <R, E, A>(to: Layer<R & A2, E, A>) => Layer<R & R2, E2 | E, A>
-export function from<R2, E2, A2>(
-  self: Layer<R2, E2, A2>
-): <R, E, A>(to: Layer<R, E, A>) => Layer<Erase<R & R2, A2> & R2, E2 | E, A>
-export function from<R2, E2, A2>(
-  self: Layer<R2, E2, A2>
-): <R, E, A>(to: Layer<R, E, A>) => Layer<Erase<R & R2, A2> & R2, E2 | E, A> {
-  return <R, E, A>(to: Layer<R, E, A>) => to_(self, to)
-}
-
-export function and<R2, E2, A2>(that: Layer<R2, E2, A2>) {
-  return <R, E, A>(self: Layer<R, E, A>) => and_(self, that)
-}
-
 export function andSeq<R2, E2, A2>(that: Layer<R2, E2, A2>) {
-  return <R, E, A>(self: Layer<R, E, A>) => and_(self, that)
+  return <R, E, A>(self: Layer<R, E, A>) => andSeq_(self, that)
 }
 
 export function andSeq_<R, E, A, R2, E2, A2>(
@@ -384,8 +338,7 @@ export function restrict<Tags extends Tag<any>[]>(...ts: Tags) {
       }[number]
     >
   > =>
-    using_(
-      self,
+    from(self)(
       fromRawEffect(
         T.accessServicesT(...ts)((...servises) =>
           servises
@@ -455,4 +408,20 @@ export function toAll<Ls extends readonly Layer<any, any, any>[]>(
   ...layers: Ls
 ): ToAll<Ls> {
   return reduce_(layers, Empty, (b, a) => b[">+>"](a) as any) as any
+}
+
+export function catchAll<R1, E, E1, Out1>(handler: Layer<readonly [R1, E], E1, Out1>) {
+  return <R, Out>(self: Layer<R, E, Out>): Layer<R & R1, E1, Out1 | Out> => {
+    const failure = fromRawFunctionM(([r, cause]: readonly [R1, C.Cause<E>]) =>
+      E.fold_(
+        C.failureOrCause(cause),
+        (e) => T.succeed(tuple(r, e)),
+        (c) => T.halt(c)
+      )
+    )[">>>"](handler)
+
+    const success = fromRawEffect(T.environment<Out>())
+
+    return fold(self)(failure)(success)
+  }
 }

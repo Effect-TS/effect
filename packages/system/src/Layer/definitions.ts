@@ -1,5 +1,5 @@
 import * as A from "../Array"
-import type { Cause } from "../Cause"
+import type * as C from "../Cause"
 import * as T from "../Effect"
 import { sequential } from "../Effect/ExecutionStrategy"
 import type { Exit } from "../Exit"
@@ -39,109 +39,90 @@ export function and_<R, E, A, R2, E2, A2>(
   return new LayerZipWithPar(self, that, (l, r) => ({ ...l, ...r }))
 }
 
-export function fold_<R, E, A, E1, B, R2, E2, C>(
-  self: Layer<R, E, A>,
-  failure: Layer<readonly [R, Cause<E>], E1, B>,
-  success: Layer<R2, E2, C>
-): Layer<R & Erase<R2, A>, E1 | E2, B | C> {
-  return new LayerFold<R, E, E1, E2, A, R2, B, C>(self, failure, success)
+/**
+ * Merge two Layers in parallel without providing any data to each other
+ *
+ * @param that - second Layer to combine
+ */
+export function and<R2, E2, A2>(
+  that: Layer<R2, E2, A2>
+): {
+  /**
+   * @param self - first Layer to combine
+   */
+  <R, E, A>(self: Layer<R, E, A>): Layer<R & R2, E | E2, A & A2>
+} {
+  return (self) => new LayerZipWithPar(self, that, (l, r) => ({ ...l, ...r }))
 }
 
 /**
- * Create a Layer with the data from both Layers, while providing the data from
- * the second Layer into the first Layer. Could be used in rare cases with
- * generics to avoid the usage of `Erase` helper.
- *
- * @param self - Layer with the data for the final Layer
- * @param from - Layer with the data for the final Layer, which is also provided
- *    into the first Layer.
- * @param noErase - type level marker to avoid the use of `Erase` helper
+ * Feeds the error or output services of this layer into the input of either
+ * the specified `failure` or `success` layers, resulting in a new layer with
+ * the inputs of this layer, and the error or outputs of the specified layer.
  */
-export function using_<R, E, A, R2, E2, A2>(
-  self: Layer<R & A2, E, A>,
-  from: Layer<R2, E2, A2>,
-  noErase: "no-erase"
-): Layer<R & R2, E | E2, A & A2>
-/**
- * Create a Layer with the data from both Layers, while providing the data from
- * the second Layer into the first Layer.
- *
- * @param self - Layer with the data for the final Layer
- * @param from - Layer with the data for the final Layer, which is also provided
- *    into the first Layer.
- */
-export function using_<R, E, A, R2, E2, A2>(
-  self: Layer<R, E, A>,
-  from: Layer<R2, E2, A2>
-): Layer<Erase<R & R2, A2> & R2, E | E2, A & A2>
-export function using_<R, E, A, R2, E2, A2>(
-  self: Layer<R, E, A>,
-  from: Layer<R2, E2, A2>
-): Layer<Erase<R & R2, A2> & R2, E | E2, A & A2> {
-  return fold_(
-    from,
-    fromRawFunctionM((_: readonly [Erase<R, A2> & R2, Cause<E2>]) => T.halt(_[1])),
-    and_(from, self)
-  )
-}
-
-export function andTo<R, E, A>(to: Layer<R, E, A>) {
-  return <R2, E2, A2>(self: Layer<R2, E2, A2>) => andTo_(self, to)
+export function fold<R, E, A>(self: Layer<R, E, A>) {
+  return <R2, E2, A2>(failure: Layer<readonly [R2, C.Cause<E>], E2, A2>) => <
+    R3,
+    E3,
+    A3
+  >(
+    success: Layer<R3 & A, E3, A3>
+  ): Layer<R & R3 & R2, E3 | E2, A3 | A2> =>
+    new LayerFold<R, E, A, R2, E2, A2, R3, E3, A3>(self, failure, success)
 }
 
 /**
  * Create a Layer with the data from both Layers, while providing the data from
  * the first Layer into the second Layer
  *
- * @param self - Layer with the data for the final Layer, which is also provided
+ * @param from - Layer with the data for the final Layer, which is also provided
  *    into the second Layer.
- * @param to - Layer with the data for the final Layer
  */
-export function andTo_<R, E, A, R2, E2, A2>(
-  self: Layer<R2, E2, A2>,
-  to: Layer<R, E, A>
-): Layer<R2 & Erase<R & R2, A2>, E | E2, A & A2> {
-  return fold_(
-    self,
-    fromRawFunctionM((_: readonly [R2 & Erase<R & R2, A2>, Cause<E2>]) => T.halt(_[1])),
-    and_(self, to)
-  )
+export function fromAnd<R2, E2, A2>(
+  from: Layer<R2, E2, A2>
+): {
+  /**
+   * @param to - Layer with the data for the final Layer
+   */
+  <R, E, A>(to: Layer<R, E, A>, erase: "erase"): Layer<
+    R2 & Erase<R, A2>,
+    E2 | E,
+    A & A2
+  >
+  /**
+   * @param to - Layer with the data for the final Layer
+   */
+  <R, E, A>(to: Layer<R & A2, E, A>): Layer<R2 & R, E2 | E, A & A2>
+} {
+  return <R, E, A>(to: Layer<R & A2, E, A>): Layer<R2 & R, E2 | E, A2 & A> =>
+    fold(from)(fromRawFunctionM((_: readonly [unknown, C.Cause<E2>]) => T.halt(_[1])))(
+      and_(from, to)
+    )
 }
 
 /**
- * Create a Layer with the data from the first parameter, while providing the
- * data from the second parameter to it. Could be used in rare cases with
- * generics to avoid the usage of `Erase` helper.
+ * Create a Layer with the data from both Layers, while providing the data from
+ * the first Layer into the second Layer
  *
- * @param self - Layer with the data for the final Layer
- * @param to - Layer providing the data for the first Layer
- * @param noErase - type level marker to avoid the use of `Erase` helper
+ * @param from - Layer with the data for the final Layer, which is also provided
+ *    into the second Layer.
  */
-export function from_<R, E, A, R2, E2, A2>(
-  self: Layer<R & A2, E, A>,
-  to: Layer<R2, E2, A2>,
-  noErase: "no-erase"
-): Layer<R & R2, E | E2, A>
-/**
- * Create a Layer with the data from the first parameter, while providing the
- * data from the second parameter to it. Uses the `Erase` helper.
- *
- * @param self - Layer with the data for the final Layer
- * @param to - Layer providing the data for the first Layer
- */
-export function from_<R, E, A, R2, E2, A2>(
-  self: Layer<R, E, A>,
-  to: Layer<R2, E2, A2>
-): Layer<Erase<R, A2> & R2, E | E2, A>
-export function from_<R, E, A, R2, E2, A2>(
-  self: Layer<R, E, A>,
-  to: Layer<R2, E2, A2>
-): Layer<Erase<R, A2> & R2, E | E2, A> {
-  return fold_(
-    to,
-    fromRawFunctionM((_: readonly [Erase<R, A2> & R2, Cause<E2>]) => T.halt(_[1])),
-    self
-  )
+export function from<R2, E2, A2>(
+  from: Layer<R2, E2, A2>
+): {
+  /**
+   * @param to - Layer with the data for the final Layer
+   */
+  <R, E, A>(to: Layer<R, E, A>, erase: "erase"): Layer<R2 & Erase<R, A2>, E2 | E, A>
+  /**
+   * @param to - Layer with the data for the final Layer
+   */
+  <R, E, A>(to: Layer<R & A2, E, A>): Layer<R2 & R, E2 | E, A>
+} {
+  return <R, E, A>(to: Layer<R & A2, E, A>): Layer<R2 & R, E2 | E, A> =>
+    fold(from)(fromRawFunctionM((_: readonly [unknown, C.Cause<E2>]) => T.halt(_[1])))(
+      to
+    )
 }
 
 export abstract class Layer<RIn, E, ROut> {
@@ -182,10 +163,8 @@ export abstract class Layer<RIn, E, ROut> {
    * const live = left["<<<"](right)
    * ```
    */
-  ["<<<"]<R2, E2, A2>(
-    from: Layer<R2, E2, A2>
-  ): Layer<Erase<RIn, A2> & R2, E2 | E, ROut> {
-    return from_(this, from)
+  ["<<<"]<R2, E2, A2>(_: Layer<R2, E2, A2>): Layer<Erase<RIn, A2> & R2, E2 | E, ROut> {
+    return from(_)(this, "erase")
   }
 
   /**
@@ -209,10 +188,8 @@ export abstract class Layer<RIn, E, ROut> {
    * const live = left[">>>"](right)
    * ```
    */
-  [">>>"]<R2, E2, A2>(
-    from: Layer<R2, E2, A2>
-  ): Layer<Erase<R2, ROut> & RIn, E2 | E, A2> {
-    return from_(from, this)
+  [">>>"]<R2, E2, A2>(_: Layer<R2, E2, A2>): Layer<Erase<R2, ROut> & RIn, E2 | E, A2> {
+    return from(this)(_, "erase")
   }
 
   /**
@@ -238,9 +215,9 @@ export abstract class Layer<RIn, E, ROut> {
    * ```
    */
   ["<+<"]<R2, E2, A2>(
-    from: Layer<R2, E2, A2>
+    _: Layer<R2, E2, A2>
   ): Layer<Erase<RIn & R2, A2> & R2, E2 | E, ROut & A2> {
-    return using_(this, from)
+    return fromAnd(_)(this, "erase")
   }
 
   /**
@@ -267,9 +244,9 @@ export abstract class Layer<RIn, E, ROut> {
    * ```
    */
   [">+>"]<R2, E2, A2>(
-    from: Layer<R2, E2, A2>
-  ): Layer<Erase<R2 & RIn, ROut> & RIn, E2 | E, ROut & A2> {
-    return andTo_(this, from)
+    _: Layer<R2, E2, A2>
+  ): Layer<RIn & Erase<R2, ROut>, E2 | E, ROut & A2> {
+    return fromAnd(this)(_, "erase")
   }
 
   /**
@@ -323,7 +300,7 @@ export abstract class Layer<RIn, E, ROut> {
 }
 
 export type LayerInstruction =
-  | LayerFold<any, any, any, any, any, any, any, any>
+  | LayerFold<any, any, any, any, any, any, any, any, any>
   | LayerFresh<any, any, any>
   | LayerManaged<any, any, any>
   | LayerSuspend<any, any, any>
@@ -334,17 +311,17 @@ export type LayerInstruction =
   | LayerMap<any, any, any, any>
   | LayerChain<any, any, any, any, any, any>
 
-export class LayerFold<RIn, E, E1, E2, ROut, R, ROut1, ROut2> extends Layer<
-  RIn & Erase<R, ROut>,
-  E1 | E2,
-  ROut1 | ROut2
+export class LayerFold<R, E, A, R2, E2, A2, R3, E3, A3> extends Layer<
+  R & R2 & R3,
+  E2 | E3,
+  A2 | A3
 > {
   readonly _tag = "LayerFold"
 
   constructor(
-    readonly self: Layer<RIn, E, ROut>,
-    readonly failure: Layer<readonly [RIn, Cause<E>], E1, ROut1>,
-    readonly success: Layer<R, E2, ROut2>
+    readonly self: Layer<R, E, A>,
+    readonly failure: Layer<readonly [R2, C.Cause<E>], E2, A2>,
+    readonly success: Layer<R3 & A, E3, A3>
   ) {
     super()
   }
