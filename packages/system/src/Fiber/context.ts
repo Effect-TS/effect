@@ -395,7 +395,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     }
   }
 
-  kill0(fiberId: Fiber.FiberID): T.UIO<Exit.Exit<E, A>> {
+  interruptAs(fiberId: Fiber.FiberID): T.UIO<Exit.Exit<E, A>> {
     const interruptedCause = Cause.interrupt(fiberId)
 
     return T.suspend(() => {
@@ -428,10 +428,6 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
       return this.await
     })
-  }
-
-  interruptAs(fiberId: Fiber.FiberID): T.UIO<Exit.Exit<E, A>> {
-    return this.kill0(fiberId)
   }
 
   done(v: Exit.Exit<E, A>): T.Instruction | undefined {
