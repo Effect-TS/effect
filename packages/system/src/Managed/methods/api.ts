@@ -3,7 +3,7 @@ import type { Cause } from "../../Cause"
 import { RuntimeError } from "../../Cause"
 import * as C from "../../Cause"
 import type { HasClock } from "../../Clock"
-import type { Effect, Region } from "../../Effect"
+import type { Effect } from "../../Effect"
 import { descriptor, supervised } from "../../Effect"
 import * as T from "../../Effect"
 import * as E from "../../Either"
@@ -465,17 +465,6 @@ export function provideAll_<R, E, A>(self: Managed<R, E, A>, r: R) {
  * Provides some of the environment required to run this effect,
  * leaving the remainder `R0` and combining it automatically using spread.
  */
-export function provide_<E, A, R = unknown, R0 = unknown>(
-  next: Managed<R & R0, E, A>,
-  r: R
-): Managed<R0, E, A> {
-  return provideSome_(next, (r0: R0) => ({ ...r0, ...r }))
-}
-
-/**
- * Provides some of the environment required to run this effect,
- * leaving the remainder `R0` and combining it automatically using spread.
- */
 export function provide<R>(r: R) {
   return <E, A, R0>(next: Managed<R & R0, E, A>): Managed<R0, E, A> =>
     provideSome_(next, (r0: R0) => ({ ...r0, ...r }))
@@ -839,17 +828,6 @@ export function provideLayer_<R, E, A, R2, E2>(
 export function provideSomeLayer<R2, E2, R>(layer: L.Layer<R2, E2, R>) {
   return <R0, E, A>(self: Managed<R & R0, E, A>): Managed<R0 & R2, E | E2, A> =>
     provideLayer(layer["+++"](L.identity<R0>()))(self)
-}
-
-/**
- * Splits the environment into two parts, providing one part using the
- * specified layer and leaving the remainder `R0`.
- */
-export function provideSomeLayer_<R0, E, A, R2, E2, R>(
-  self: Managed<R & R0, E, A>,
-  layer: L.Layer<R2, E2, R>
-): Managed<R0 & R2, E | E2, A> {
-  return provideSomeLayer(layer)(self)
 }
 
 /**
@@ -1748,89 +1726,6 @@ export function replaceService_<R1, E1, A1, T>(
   f: (_: T) => T
 ): Managed<R1 & Has<T>, E1, A1> {
   return accessServiceM(_)((t) => provideServiceM(_)(succeed(f(t)))(ma))
-}
-
-/**
- * Uses the region to provide
- */
-export function useRegion<K, T>(h: Tag<Region<T, K>>) {
-  return <R, E, A>(self: Managed<R & T, E, A>) =>
-    accessServiceM(h)((a) => pipe(self, provide((a as any) as T)))
-}
-
-/**
- * Access the region monadically
- */
-export function accessRegionM<K, T>(h: Tag<Region<T, K>>) {
-  return <R, E, A>(e: (_: T) => Managed<R & T, E, A>) =>
-    accessServiceM(h)((a) => pipe(accessM(e), provide((a as any) as T)))
-}
-
-/**
- * Access the region
- */
-export function accessRegion<K, T>(h: Tag<Region<T, K>>) {
-  return <A>(e: (_: T) => A) =>
-    accessServiceM(h)((a) => pipe(access(e), provide((a as any) as T)))
-}
-
-/**
- * Read the region value
- */
-export function readRegion<K, T>(h: Tag<Region<T, K>>) {
-  return accessServiceM(h)((a) =>
-    pipe(
-      access((r: T) => r),
-      provide((a as any) as T)
-    )
-  )
-}
-
-/**
- * Reads service inside region
- */
-export function readServiceIn<A>(_: Tag<A>) {
-  return <K, T>(h: Tag<Region<Has<A> & T, K>>) =>
-    useRegion(h)(
-      accessServiceM(_)((a) =>
-        pipe(
-          access((r: A) => r),
-          provide((a as any) as A)
-        )
-      )
-    )
-}
-
-/**
- * Access service inside region
- */
-export function accessServiceIn<A>(_: Tag<A>) {
-  return <K, T>(h: Tag<Region<Has<A> & T, K>>) => <B>(f: (_: A) => B) =>
-    useRegion(h)(
-      accessServiceM(_)((a) =>
-        pipe(
-          access((r: A) => f(r)),
-          provide((a as any) as A)
-        )
-      )
-    )
-}
-
-/**
- * Reads service inside region monadically
- */
-export function accessServiceInM<A>(_: Tag<A>) {
-  return <K, T>(h: Tag<Region<Has<A> & T, K>>) => <R, E, B>(
-    f: (_: A) => Managed<R, E, B>
-  ) =>
-    useRegion(h)(
-      accessServiceM(_)((a) =>
-        pipe(
-          accessM((r: A) => f(r)),
-          provide((a as any) as A)
-        )
-      )
-    )
 }
 
 /**

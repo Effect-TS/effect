@@ -4,10 +4,8 @@
 import * as A from "../Array"
 import { access, accessM, chain_, provideAll_, succeed } from "../Effect/core"
 import type { Effect } from "../Effect/effect"
-import { provide } from "../Effect/provide"
-import { pipe } from "../Function"
 import type { Has, Tag } from "../Has"
-import { mergeEnvironments, tag } from "../Has"
+import { mergeEnvironments } from "../Has"
 import * as R from "../Record"
 import type { UnionToIntersection } from "../Utils"
 
@@ -195,105 +193,4 @@ export function replaceService_<R1, E1, A1, T>(
   f: (_: T) => T
 ): Effect<R1 & Has<T>, E1, A1> {
   return accessServiceM(_)((t) => provideServiceM(_)(succeed(f(t)))(ma))
-}
-
-/**
- * Branding sub-environments
- */
-export const RegionURI = Symbol()
-export interface Region<T, K> {
-  [RegionURI]: {
-    _K: () => K
-    _T: () => T
-  }
-}
-
-/**
- * Defines a new region tag
- */
-export function region<K, T>(): Tag<Region<T, K>> {
-  return tag<Region<T, K>>()
-}
-
-/**
- * Uses the region to provide
- */
-export function useRegion<K, T>(h: Tag<Region<T, K>>) {
-  return <R, E, A>(e: Effect<R & T, E, A>) =>
-    accessServiceM(h)((a) => pipe(e, provide((a as any) as T)))
-}
-
-/**
- * Access the region monadically
- */
-export function accessRegionM<K, T>(h: Tag<Region<T, K>>) {
-  return <R, E, A>(e: (_: T) => Effect<R & T, E, A>) =>
-    accessServiceM(h)((a) => pipe(accessM(e), provide((a as any) as T)))
-}
-
-/**
- * Access the region
- */
-export function accessRegion<K, T>(h: Tag<Region<T, K>>) {
-  return <A>(e: (_: T) => A) =>
-    accessServiceM(h)((a) => pipe(access(e), provide((a as any) as T)))
-}
-
-/**
- * Read the region value
- */
-export function readRegion<K, T>(h: Tag<Region<T, K>>) {
-  return accessServiceM(h)((a) =>
-    pipe(
-      access((r: T) => r),
-      provide((a as any) as T)
-    )
-  )
-}
-
-/**
- * Reads service inside region
- */
-export function readServiceIn<A>(_: Tag<A>) {
-  return <K, T>(h: Tag<Region<Has<A> & T, K>>) =>
-    useRegion(h)(
-      accessServiceM(_)((a) =>
-        pipe(
-          access((r: A) => r),
-          provide((a as any) as A)
-        )
-      )
-    )
-}
-
-/**
- * Access service inside region
- */
-export function accessServiceIn<A>(_: Tag<A>) {
-  return <K, T>(h: Tag<Region<Has<A> & T, K>>) => <B>(f: (_: A) => B) =>
-    useRegion(h)(
-      accessServiceM(_)((a) =>
-        pipe(
-          access((r: A) => f(r)),
-          provide((a as any) as A)
-        )
-      )
-    )
-}
-
-/**
- * Reads service inside region monadically
- */
-export function accessServiceInM<A>(_: Tag<A>) {
-  return <K, T>(h: Tag<Region<Has<A> & T, K>>) => <R, E, B>(
-    f: (_: A) => Effect<R, E, B>
-  ) =>
-    useRegion(h)(
-      accessServiceM(_)((a) =>
-        pipe(
-          accessM((r: A) => f(r)),
-          provide((a as any) as A)
-        )
-      )
-    )
 }
