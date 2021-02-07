@@ -13,6 +13,7 @@ import {
   fold,
   from,
   fromRawEffect,
+  fromRawFunction,
   fromRawFunctionM,
   LayerAllPar,
   LayerAllSeq,
@@ -424,4 +425,14 @@ export function catchAll<R1, E, E1, Out1>(handler: Layer<readonly [R1, E], E1, O
 
     return fold(self)(failure)(success)
   }
+}
+
+export function second<A>() {
+  return fromRawFunction(([_, __]: readonly [unknown, A]) => __)
+}
+
+export function mapError<E, E1>(
+  f: (e: E) => E1
+): <R, Out>(self: Layer<R, E, Out>) => Layer<R, E1, Out> {
+  return catchAll(fromRawFunctionM(([_, e]: readonly [unknown, E]) => T.fail(f(e))))
 }

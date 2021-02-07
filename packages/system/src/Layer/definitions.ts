@@ -188,6 +188,11 @@ export abstract class Layer<RIn, E, ROut> {
    * const live = left[">>>"](right)
    * ```
    */
+  [">>>"]<R2, E2, A2>(
+    _: Layer<R2 & ROut, E2, A2>,
+    noErase: "no-erase"
+  ): Layer<R2 & RIn, E2 | E, A2>
+  [">>>"]<R2, E2, A2>(_: Layer<R2, E2, A2>): Layer<Erase<R2, ROut> & RIn, E2 | E, A2>
   [">>>"]<R2, E2, A2>(_: Layer<R2, E2, A2>): Layer<Erase<R2, ROut> & RIn, E2 | E, A2> {
     return from(this)(_, "erase")
   }
@@ -243,6 +248,13 @@ export abstract class Layer<RIn, E, ROut> {
    * const live = left[">+>"](right)
    * ```
    */
+  [">+>"]<R2, E2, A2>(
+    _: Layer<R2 & ROut, E2, A2>,
+    noErase: "no-erase"
+  ): Layer<RIn & R2, E2 | E, ROut & A2>
+  [">+>"]<R2, E2, A2>(
+    _: Layer<R2, E2, A2>
+  ): Layer<RIn & Erase<R2, ROut>, E2 | E, ROut & A2>
   [">+>"]<R2, E2, A2>(
     _: Layer<R2, E2, A2>
   ): Layer<RIn & Erase<R2, ROut>, E2 | E, ROut & A2> {
