@@ -17,16 +17,6 @@ export function provideSomeLayer<R, E, A>(layer: L.Layer<R, E, A>) {
 /**
  * Provides a layer to the given effect
  */
-export function provideSomeLayer_<R, E, A, R1, E1, A1>(
-  eff: Stream<R1 & A, E1, A1>,
-  layer: L.Layer<R, E, A>
-): Stream<R & R1, E | E1, A1> {
-  return provideSomeLayer(layer)(eff)
-}
-
-/**
- * Provides a layer to the given effect
- */
 export function provideLayer_<R, E, A, E1, A1>(
   self: Stream<A, E1, A1>,
   layer: L.Layer<R, E, A>

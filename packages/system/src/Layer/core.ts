@@ -1,11 +1,11 @@
 import { reduce_ } from "../Array"
 import type { Cause } from "../Cause"
 import * as T from "../Effect"
-import { identity as idFn, pipe, tuple } from "../Function"
+import { identity as idFn, tuple } from "../Function"
 import type { Has, Tag } from "../Has"
 import { mergeEnvironments } from "../Has"
 import * as M from "../Managed"
-import type { _E, Erase, UnionToIntersection } from "../Utils"
+import type { Erase, UnionToIntersection } from "../Utils"
 import type { Layer, MergeA, MergeE, MergeR } from "./definitions"
 import {
   and_,
@@ -170,17 +170,6 @@ export function allSeq<Ls extends Layer<any, any, any>[]>(
  */
 export function main<E, A>(layer: Layer<T.DefaultEnv, E, A>) {
   return layer
-}
-
-/**
- * Embed the requird environment in a region
- */
-export function region<K, T>(h: Tag<T.Region<T, K>>) {
-  return <R, E>(_: Layer<R, E, T>): Layer<R, E, Has<T.Region<T, K>>> =>
-    pipe(
-      fromRawEffect(T.access((r: T): Has<T.Region<T, K>> => ({ [h.key]: r } as any))),
-      using(_, "no-erase")
-    )
 }
 
 /**

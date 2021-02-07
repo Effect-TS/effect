@@ -626,17 +626,6 @@ export function provideAll_<S1, S2, R, E, A>(
  * Provides some of the environment required to run this effect,
  * leaving the remainder `R0` and combining it automatically using spread.
  */
-export function provide_<SI, SO, E, A, R = unknown, R0 = unknown>(
-  next: XPure<SI, SO, R & R0, E, A>,
-  r: R
-): XPure<SI, SO, R0, E, A> {
-  return provideSome((r0: R0) => ({ ...r0, ...r }))(next)
-}
-
-/**
- * Provides some of the environment required to run this effect,
- * leaving the remainder `R0` and combining it automatically using spread.
- */
 export function provide<R>(r: R) {
   return <SI, SO, E, A, R0>(
     next: XPure<SI, SO, R & R0, E, A>

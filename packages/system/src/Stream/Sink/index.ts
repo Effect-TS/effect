@@ -1122,17 +1122,6 @@ export function provideSomeLayer<R2, R>(layer: L.Layer<R2, never, R>) {
 }
 
 /**
- * Splits the environment into two parts, providing one part using the
- * specified layer and leaving the remainder `R0`.
- */
-export function provideSomeLayer_<R0, E, I, L, Z, R2, R>(
-  self: Sink<R & R0, E, I, L, Z>,
-  layer: L.Layer<R2, never, R>
-): Sink<R0 & R2, E, I, L, Z> {
-  return provideSomeLayer(layer)(self)
-}
-
-/**
  * Creates a Sink from a managed `Push`
  */
 export function managedPush<R, E, I, L, Z>(
