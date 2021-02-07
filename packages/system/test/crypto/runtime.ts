@@ -67,7 +67,7 @@ export function testRuntime<R>(self: L.Layer<T.DefaultEnv, never, R>) {
         T.runPromise(
           T.suspend(() =>
             pipe(env.get, (e) =>
-              e != null ? T.provide_(self, e) : T.die("environment not ready")
+              e != null ? T.provide(e)(self) : T.die("environment not ready")
             )
           )
         ),
@@ -75,13 +75,13 @@ export function testRuntime<R>(self: L.Layer<T.DefaultEnv, never, R>) {
         T.runPromiseExit(
           T.suspend(() =>
             pipe(env.get, (e) =>
-              e != null ? T.provide_(self, e) : T.die("environment not ready")
+              e != null ? T.provide(e)(self) : T.die("environment not ready")
             )
           )
         ),
       provide: (self) =>
         pipe(env.get, (e) =>
-          e != null ? T.provide_(self, e) : T.die("environment not ready")
+          e != null ? T.provide(e)(self) : T.die("environment not ready")
         )
     }
   }
