@@ -1,6 +1,5 @@
 import * as C from "../Cause"
 import type * as Exit from "../Exit"
-import * as S from "../Sync"
 import type { Status } from "./status"
 import { Done, Running } from "./status"
 
@@ -27,27 +26,28 @@ export class FiberStateDone<E, A> {
   constructor(readonly value: Exit.Exit<E, A>) {}
 }
 
-export const initial = <E, A>(): FiberState<E, A> =>
-  new FiberStateExecuting(new Running(false), [], C.empty)
+export function initial<E, A>(): FiberState<E, A> {
+  return new FiberStateExecuting(new Running(false), [], C.empty)
+}
 
-export const interrupting = <E, A>(state: FiberState<E, A>) => {
-  const loop = (status: Status): S.UIO<boolean> =>
-    S.gen(function* (_) {
-      switch (status._tag) {
-        case "Running": {
-          return status.interrupting
-        }
-        case "Finishing": {
-          return status.interrupting
-        }
-        case "Suspended": {
-          return yield* _(loop(status.previous))
-        }
-        case "Done": {
-          return false
-        }
+export function interrupting<E, A>(state: FiberState<E, A>): boolean {
+  let current: Status | undefined = state.status
+
+  while (current) {
+    switch (current._tag) {
+      case "Running": {
+        return current.interrupting
       }
-    })
-
-  return S.run(loop(state.status))
+      case "Finishing": {
+        return current.interrupting
+      }
+      case "Done": {
+        return false
+      }
+      case "Suspended": {
+        current = current.previous
+      }
+    }
+  }
+  throw new Error("BUG: should never end up here")
 }
