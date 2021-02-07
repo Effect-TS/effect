@@ -3,7 +3,7 @@ import * as A from "../Array"
 import * as Cause from "../Cause/core"
 // effect
 import { RuntimeError } from "../Cause/errors"
-import { ISucceed, IYield } from "../Effect"
+import { ISucceed } from "../Effect"
 // either
 import * as E from "../Either"
 // exit
@@ -433,13 +433,11 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
       }
     }
 
-    return T.chain_(new IYield(), () =>
-      T.suspend(() => {
-        setInterruptedLoop()
+    return T.suspend(() => {
+      setInterruptedLoop()
 
-        return this.await
-      })
-    )
+      return this.await
+    })
   }
 
   interruptAs(fiberId: Fiber.FiberID): T.UIO<Exit.Exit<E, A>> {

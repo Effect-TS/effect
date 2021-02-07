@@ -574,6 +574,9 @@ export function isEmpty<E>(cause: Cause<E>) {
       case "Fail": {
         return false
       }
+      case "Interrupt": {
+        return false
+      }
       case "Then": {
         causes = new Stack(current.right, causes)
         current = current.left
