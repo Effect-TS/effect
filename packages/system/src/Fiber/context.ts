@@ -398,7 +398,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   kill0(fiberId: Fiber.FiberID): T.UIO<Exit.Exit<E, A>> {
     const interruptedCause = Cause.interrupt(fiberId)
 
-    const setInterruptedLoop = (): Cause.Cause<never> => {
+    return T.suspend(() => {
       const oldState = this.state.get
 
       if (
@@ -418,23 +418,13 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
         )
 
         this.evaluateLater(T.interruptAs(this.fiberId)[T._I])
-
-        return newCause
       } else if (oldState._tag === "Executing") {
         const newCause = Cause.then(oldState.interrupted, interruptedCause)
 
         this.state.set(
           new FiberStateExecuting(oldState.status, oldState.observers, newCause)
         )
-
-        return newCause
-      } else {
-        return interruptedCause
       }
-    }
-
-    return T.suspend(() => {
-      setInterruptedLoop()
 
       return this.await
     })
