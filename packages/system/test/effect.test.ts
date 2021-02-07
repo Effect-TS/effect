@@ -10,6 +10,22 @@ import { absurd, flow, pipe, tuple } from "../src/Function"
 import * as O from "../src/Option"
 
 describe("Effect", () => {
+  it("interrupt childs", async () => {
+    const ms = await new Promise<number>((r) => {
+      const then = new Date()
+      pipe(
+        T.do,
+        T.bind("a", () => T.fork(T.sleep(2000))),
+        T.bind("b", () => T.fork(T.sleep(2000))),
+        (e) =>
+          T.run(e, () => {
+            const now = new Date()
+            r(now.getTime() - then.getTime())
+          })
+      )
+    })
+    expect(ms).toBeLessThan(1000)
+  })
   it("absolve", async () => {
     const program = T.absolve(T.succeed(E.left("e")))
 

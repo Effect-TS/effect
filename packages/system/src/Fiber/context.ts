@@ -3,7 +3,7 @@ import * as A from "../Array"
 import * as Cause from "../Cause/core"
 // effect
 import { RuntimeError } from "../Cause/errors"
-import { ISucceed } from "../Effect"
+import { ISucceed, IYield } from "../Effect"
 // either
 import * as E from "../Either"
 // exit
@@ -25,7 +25,7 @@ import { defaultScheduler } from "../Support/Scheduler"
 import * as T from "./_internal/effect"
 // fiber
 import * as Fiber from "./core"
-import type { Platform } from "./platform"
+import { Platform } from "./platform"
 import type { Callback } from "./state"
 import { FiberStateDone, FiberStateExecuting, initial, interrupting } from "./state"
 import * as Status from "./status"
@@ -401,47 +401,45 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     const setInterruptedLoop = (): Cause.Cause<never> => {
       const oldState = this.state.get
 
-      switch (oldState._tag) {
-        case "Executing": {
-          if (
-            oldState.status._tag === "Suspended" &&
-            oldState.status.interruptible &&
-            !interrupting(oldState)
-          ) {
-            const newCause = Cause.then(oldState.interrupted, interruptedCause)
+      if (
+        oldState._tag === "Executing" &&
+        oldState.status._tag === "Suspended" &&
+        oldState.status.interruptible &&
+        !interrupting(oldState)
+      ) {
+        const newCause = Cause.then(oldState.interrupted, interruptedCause)
 
-            this.state.set(
-              new FiberStateExecuting(
-                Status.withInterrupting(true)(oldState.status),
-                oldState.observers,
-                newCause
-              )
-            )
+        this.state.set(
+          new FiberStateExecuting(
+            Status.withInterrupting(true)(oldState.status),
+            oldState.observers,
+            newCause
+          )
+        )
 
-            this.evaluateLater(T.interruptAs(this.fiberId)[T._I])
+        this.evaluateLater(T.interruptAs(this.fiberId)[T._I])
 
-            return newCause
-          } else {
-            const newCause = Cause.then(oldState.interrupted, interruptedCause)
+        return newCause
+      } else if (oldState._tag === "Executing") {
+        const newCause = Cause.then(oldState.interrupted, interruptedCause)
 
-            this.state.set(
-              new FiberStateExecuting(oldState.status, oldState.observers, newCause)
-            )
+        this.state.set(
+          new FiberStateExecuting(oldState.status, oldState.observers, newCause)
+        )
 
-            return newCause
-          }
-        }
-        case "Done": {
-          return interruptedCause
-        }
+        return newCause
+      } else {
+        return interruptedCause
       }
     }
 
-    return T.suspend(() => {
-      setInterruptedLoop()
+    return T.chain_(new IYield(), () =>
+      T.suspend(() => {
+        setInterruptedLoop()
 
-      return this.await
-    })
+        return this.await
+      })
+    )
   }
 
   interruptAs(fiberId: Fiber.FiberID): T.UIO<Exit.Exit<E, A>> {
@@ -469,8 +467,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
           return undefined
         } else {
           /*
-           * We are not done yet, because there are children to interrupt, or
-           * because there are effects to execute on the fiber.
+           * We are not done yet, because we have to close the scope of the fiber.
            */
           this.state.set(
             new FiberStateExecuting(
@@ -629,7 +626,20 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
       childScope,
       this.maxOp,
       O.getOrElse_(reportFailure, () => this.reportFailure),
-      this.platform,
+      new Platform(
+        this.platform.executionTraceLength,
+        this.platform.stackTraceLength,
+        this.platform.traceExecution,
+        this.platform.traceStack,
+        this.platform.traceEffects,
+        this.inTracingRegion,
+        this.platform.ancestorExecutionTraceLength,
+        this.platform.ancestorStackTraceLength,
+        this.platform.ancestryLength,
+        this.platform.renderer,
+        this.platform.reportFailure,
+        this.platform.maxOp
+      ),
       ancestry
     )
 
