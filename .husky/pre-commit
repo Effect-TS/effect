@@ -1,1 +1,4 @@
-sh ../pre-commit.sh
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+sh pre-commit.sh

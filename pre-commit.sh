@@ -1,5 +1,4 @@
 #!/bin/sh
-exit 1
 if yarn yarn-deduplicate -fl; then
     echo "No duplicates found. Pursuing..."
 else
