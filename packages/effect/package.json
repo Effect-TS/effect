@@ -43,7 +43,7 @@
     "fast-safe-stringify": "^2.0.7",
     "fp-ts": "^2.8.4",
     "fp-ts-contrib": "^0.1.21",
-    "husky": "4.3.8",
+    "husky": "5.0.9",
     "jest": "^26.6.0",
     "lerna": "^3.22.1",
     "prettier": "^2.1.2",
