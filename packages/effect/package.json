@@ -56,10 +56,5 @@
     "ultra-runner": "^3.5.0",
     "yarn-deduplicate": "^3.0.0"
   },
-  "husky": {
-    "hooks": {
-      "pre-commit": "./pre-commit.sh"
-    }
-  },
   "dependencies": {}
 }
