@@ -413,17 +413,15 @@ export function toAll<Ls extends readonly Layer<any, any, any>[]>(
 
 export function catchAll<R1, E, E1, Out1>(handler: Layer<readonly [R1, E], E1, Out1>) {
   return <R, Out>(self: Layer<R, E, Out>): Layer<R & R1, E1, Out1 | Out> => {
-    const failure = fromRawFunctionM(([r, cause]: readonly [R1, C.Cause<E>]) =>
-      E.fold_(
-        C.failureOrCause(cause),
-        (e) => T.succeed(tuple(r, e)),
-        (c) => T.halt(c)
-      )
-    )[">>>"](handler)
-
-    const success = fromRawEffect(T.environment<Out>())
-
-    return fold(self)(failure)(success)
+    return fold(self)(
+      fromRawFunctionM(([r, cause]: readonly [R1, C.Cause<E>]) =>
+        E.fold_(
+          C.failureOrCause(cause),
+          (e) => T.succeed(tuple(r, e)),
+          (c) => T.halt(c)
+        )
+      )[">>>"](handler)
+    )(fromRawEffect(T.environment<Out>()))
   }
 }
 

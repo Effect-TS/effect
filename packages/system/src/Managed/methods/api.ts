@@ -1517,6 +1517,13 @@ export function right<C>() {
 }
 
 /**
+ * Joins with environment passing self selectively on the left side
+ */
+export function left<C>() {
+  return <R, E, A>(self: Managed<R, E, A>) => joinEither_(self, environment<C>())
+}
+
+/**
  * Effectfully accesses the environment of the effect.
  */
 export function access<R0, A>(f: (_: R0) => A): RIO<R0, A> {
@@ -1894,6 +1901,14 @@ export function create<R, E, A>(
   effect: T.Effect<readonly [R, RM.ReleaseMap], E, readonly [RM.Finalizer, A]>
 ) {
   return new Managed(effect)
+}
+
+/**
+ * Evaluate the predicate,
+ * return the given A as success if predicate returns true, and the given E as error otherwise
+ */
+export function cond_<E, A>(pred: boolean, result: () => A, error: () => E): IO<E, A> {
+  return pred ? succeed(result()) : fail(error())
 }
 
 /**

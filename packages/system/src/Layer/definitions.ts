@@ -77,26 +77,43 @@ export function fold<R, E, A>(self: Layer<R, E, A>) {
  *
  * @param from - Layer with the data for the final Layer, which is also provided
  *    into the second Layer.
+ *
+ * @param to - Layer with the data for the final Layer
  */
-export function fromAnd<R2, E2, A2>(
+export function usingAnd<R2, E2, A2>(
   from: Layer<R2, E2, A2>
-): {
-  /**
-   * @param to - Layer with the data for the final Layer
-   */
-  <R, E, A>(to: Layer<R, E, A>, erase: "erase"): Layer<
-    R2 & Erase<R, A2>,
-    E2 | E,
-    A & A2
-  >
-  /**
-   * @param to - Layer with the data for the final Layer
-   */
-  <R, E, A>(to: Layer<R & A2, E, A>): Layer<R2 & R, E2 | E, A & A2>
-} {
+): <R, E, A>(to: Layer<R, E, A>) => Layer<R2 & Erase<R, A2>, E2 | E, A & A2>
+export function usingAnd<R2, E2, A2>(
+  from: Layer<R2, E2, A2>,
+  noErase: "no-erase"
+): <R, E, A>(to: Layer<R & A2, E, A>) => Layer<R2 & R, E2 | E, A & A2>
+export function usingAnd<R2, E2, A2>(from: Layer<R2, E2, A2>) {
   return <R, E, A>(to: Layer<R & A2, E, A>): Layer<R2 & R, E2 | E, A2 & A> =>
     fold(from)(fromRawFunctionM((_: readonly [unknown, C.Cause<E2>]) => T.halt(_[1])))(
       and_(from, to)
+    )
+}
+
+/**
+ * Create a Layer with the data from both Layers, while providing the data from
+ * the first Layer into the second Layer
+ *
+ * @param from - Layer with the data for the final Layer, which is also provided
+ *    into the second Layer.
+ *
+ * @param to - Layer with the data for the final Layer
+ */
+export function using<R2, E2, A2>(
+  from: Layer<R2, E2, A2>
+): <R, E, A>(to: Layer<R, E, A>) => Layer<R2 & Erase<R, A2>, E2 | E, A>
+export function using<R2, E2, A2>(
+  from: Layer<R2, E2, A2>,
+  noErase: "no-erase"
+): <R, E, A>(to: Layer<R & A2, E, A>) => Layer<R2 & R, E2 | E, A>
+export function using<R2, E2, A2>(from: Layer<R2, E2, A2>) {
+  return <R, E, A>(to: Layer<R & A2, E, A>): Layer<R2 & R, E2 | E, A> =>
+    fold(from)(fromRawFunctionM((_: readonly [unknown, C.Cause<E2>]) => T.halt(_[1])))(
+      to
     )
 }
 
@@ -222,7 +239,7 @@ export abstract class Layer<RIn, E, ROut> {
   ["<+<"]<R2, E2, A2>(
     _: Layer<R2, E2, A2>
   ): Layer<Erase<RIn & R2, A2> & R2, E2 | E, ROut & A2> {
-    return fromAnd(_)(this, "erase")
+    return usingAnd(_)(this)
   }
 
   /**
@@ -258,7 +275,7 @@ export abstract class Layer<RIn, E, ROut> {
   [">+>"]<R2, E2, A2>(
     _: Layer<R2, E2, A2>
   ): Layer<RIn & Erase<R2, ROut>, E2 | E, ROut & A2> {
-    return fromAnd(this)(_, "erase")
+    return usingAnd(this)(_)
   }
 
   /**
