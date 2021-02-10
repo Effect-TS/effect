@@ -3,6 +3,7 @@ import type { Auto, URIS } from "../HKT"
 import type { Reduce } from "../Reduce"
 import type { ReduceRight } from "../ReduceRight"
 
-export type Foldable<F extends URIS, C = Auto> = ReduceRight<F, C> &
-  Reduce<F, C> &
-  FoldMap<F, C>
+export interface Foldable<F extends URIS, C = Auto>
+  extends ReduceRight<F, C>,
+    Reduce<F, C>,
+    FoldMap<F, C> {}
