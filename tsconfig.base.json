@@ -19,7 +19,7 @@
     "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true,
     "noEmitOnError": false,
-    "noErrorTruncation": true,
+    "noErrorTruncation": false,
     "allowJs": false,
     "checkJs": false,
     "forceConsistentCasingInFileNames": true,

@@ -5,6 +5,7 @@ import type { NonEmptyArray } from "@effect-ts/system/NonEmptyArray"
 import * as NA from "@effect-ts/system/NonEmptyArray"
 import * as L from "@effect-ts/system/Persistent/List"
 
+import { makeAssociative } from "../Associative"
 import type { Equal } from "../Equal"
 import { makeEqual } from "../Equal"
 import type { Identity } from "../Identity"
@@ -239,4 +240,11 @@ export function uniq<A>(E: Equal<A>): (as: NonEmptyArray<A>) => NonEmptyArray<A>
     }
     return len === r.length ? as : (r as any)
   }
+}
+
+/**
+ * Get an Associative instance for NonEmptyArray
+ */
+export function getAssociative<A>() {
+  return makeAssociative<NonEmptyArray<A>>(NA.concat)
 }

@@ -8,7 +8,9 @@ import type { Option } from "../Option"
 import { isNone, isSome, none, some as some_1 } from "../Option"
 import type { PredicateWithIndex, RefinementWithIndex, Separated } from "../Utils"
 
-export type Record<K extends string, T> = Readonly<MutableRecord<K, T>>
+export type Record<K extends string, T> = {
+  readonly [P in K]: T
+}
 
 /**
  * Build a readonly record from a mutable version

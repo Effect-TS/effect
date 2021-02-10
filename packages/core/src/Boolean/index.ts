@@ -10,19 +10,19 @@ import * as I from "../Identity"
 import type { Prod, Sum } from "../Newtype"
 import { And, BooleanProd, BooleanSum, Or } from "../Newtype"
 
-export const ConjunctionClosure = C.makeClosure<And>((l, r) =>
+export const ConjunctionClosure = C.makeClosure<And>((r) => (l) =>
   And.wrap(And.unwrap(l) && And.unwrap(r))
 )
 
-export const DisjunctionClosure = C.makeClosure<Or>((l, r) =>
+export const DisjunctionClosure = C.makeClosure<Or>((r) => (l) =>
   Or.wrap(Or.unwrap(l) || Or.unwrap(r))
 )
 
-export const ProdClosure = C.makeClosure<Prod<boolean>>((l, r) =>
+export const ProdClosure = C.makeClosure<Prod<boolean>>((r) => (l) =>
   BooleanProd.wrap(BooleanProd.unwrap(l) && BooleanProd.unwrap(r))
 )
 
-export const SumClosure = C.makeClosure<Sum<boolean>>((l, r) =>
+export const SumClosure = C.makeClosure<Sum<boolean>>((r) => (l) =>
   BooleanSum.wrap(BooleanSum.unwrap(l) || BooleanSum.unwrap(r))
 )
 

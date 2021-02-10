@@ -12,7 +12,7 @@ import { StringSum } from "../Newtype"
 import * as NA from "../NonEmptyArray"
 import * as O from "../Option"
 
-export const SumClosure = C.makeClosure<Sum<string>>((l, r) =>
+export const SumClosure = C.makeClosure<Sum<string>>((r) => (l) =>
   StringSum.wrap(`${StringSum.unwrap(l)}${StringSum.unwrap(r)}`)
 )
 
