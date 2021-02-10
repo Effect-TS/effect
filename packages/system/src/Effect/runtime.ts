@@ -4,7 +4,7 @@ import { isTracingEnabled } from "@effect-ts/tracing-utils"
 
 import * as Cause from "../Cause/core"
 import type { Renderer } from "../Cause/pretty"
-import { pretty } from "../Cause/pretty"
+import { defaultRenderer, pretty } from "../Cause/pretty"
 // exit
 import { HasClock, LiveClock } from "../Clock"
 import type { Exit } from "../Exit/exit"
@@ -15,7 +15,6 @@ import { interruptible } from "../Fiber/core"
 import { newFiberId } from "../Fiber/id"
 import { Platform } from "../Fiber/platform"
 import type { Callback } from "../Fiber/state"
-import { prettyTrace } from "../Fiber/tracing"
 import { constVoid, identity } from "../Function"
 import { none } from "../Option"
 import { defaultRandom, HasRandom } from "../Random"
@@ -48,7 +47,7 @@ export function defaultEnv(): DefaultEnv {
 export type AsyncCancel<E, A> = UIO<Exit<E, A>>
 
 export const prettyReporter: FailureReporter = (e) => {
-  console.error(pretty(e, prettyTrace))
+  console.error(pretty(e, defaultRenderer))
 }
 
 const defaultPlatform = new Platform(
@@ -61,7 +60,7 @@ const defaultPlatform = new Platform(
   25,
   25,
   25,
-  prettyTrace,
+  defaultRenderer,
   constVoid,
   10_000
 )

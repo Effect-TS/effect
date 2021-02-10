@@ -288,7 +288,7 @@ export function prettyM<E1>(cause: Cause<E1>, renderer: Renderer<E1>) {
 const defaultErrorToLines = (error: unknown) =>
   error instanceof Error ? renderError(error) : lines(renderToString(error))
 
-const defaultRenderer: Renderer = {
+export const defaultRenderer: Renderer = {
   renderError: defaultErrorToLines,
   renderTrace: prettyTrace,
   renderUnknown: defaultErrorToLines
