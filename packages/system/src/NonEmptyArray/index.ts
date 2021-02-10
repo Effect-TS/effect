@@ -493,3 +493,10 @@ export const reduceWithIndex_: <A, B>(
   b: B,
   f: (i: number, b: B, a: A) => B
 ) => B = A.reduceWithIndex_ as any
+
+/**
+ * Constructs a NonEmptyArray
+ */
+export function make<A>(arr: NonEmptyArray<A>): NonEmptyArray<A> {
+  return arr
+}
