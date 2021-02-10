@@ -166,6 +166,18 @@ const parallelSegments = <E>(cause: Cause<E>, renderer: Renderer): S.IO<Sequenti
     }
   })
 
+const renderToString = (u: unknown): string => {
+  if (
+    typeof u === "object" &&
+    u != null &&
+    "toString" in u &&
+    typeof u["toString"] === "function"
+  ) {
+    return u["toString"]()
+  }
+  return JSON.stringify(u, null, 2)
+}
+
 const causeToSequential = <E>(cause: Cause<E>, renderer: Renderer): S.IO<Sequential> =>
   S.gen(function* (_) {
     switch (cause._tag) {
@@ -175,16 +187,12 @@ const causeToSequential = <E>(cause: Cause<E>, renderer: Renderer): S.IO<Sequent
       case "Fail": {
         return cause.value instanceof Error
           ? renderFailError(cause.value, O.none, renderer)
-          : renderFail(lines(JSON.stringify(cause.value, null, 2)), O.none, renderer)
+          : renderFail(lines(renderToString(cause.value)), O.none, renderer)
       }
       case "Die": {
         return cause.value instanceof Error
           ? renderDie(cause.value, O.none, renderer)
-          : renderDieUnknown(
-              lines(JSON.stringify(cause.value, null, 2)),
-              O.none,
-              renderer
-            )
+          : renderDieUnknown(lines(renderToString(cause.value)), O.none, renderer)
       }
       case "Interrupt": {
         return renderInterrupt(cause.fiberId, O.none, renderer)
@@ -201,7 +209,7 @@ const causeToSequential = <E>(cause: Cause<E>, renderer: Renderer): S.IO<Sequent
             return cause.cause.value instanceof Error
               ? renderFailError(cause.cause.value, O.some(cause.trace), renderer)
               : renderFail(
-                  lines(JSON.stringify(cause.cause.value, null, 2)),
+                  lines(renderToString(cause.cause.value)),
                   O.some(cause.trace),
                   renderer
                 )
@@ -210,7 +218,7 @@ const causeToSequential = <E>(cause: Cause<E>, renderer: Renderer): S.IO<Sequent
             return cause.cause.value instanceof Error
               ? renderDie(cause.cause.value, O.some(cause.trace), renderer)
               : renderDieUnknown(
-                  lines(JSON.stringify(cause.cause.value, null, 2)),
+                  lines(renderToString(cause.cause.value)),
                   O.some(cause.trace),
                   renderer
                 )
