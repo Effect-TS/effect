@@ -115,10 +115,10 @@ export const compactF = P.implementCompactF<[RecordURI], V>()(() => (G) => (f) =
 export function fromFoldableMap_<F extends HKT.URIS, C, B>(
   M: Closure<B>,
   F: Foldable<F, C>
-): <N extends string, K, Q, W, X, I, S, R, E, A>(
+): <Z extends string, N extends string, K, Q, W, X, I, S, R, E, A>(
   fa: HKT.Kind<F, C, N, K, Q, W, X, I, S, R, E, A>,
-  f: (a: A) => readonly [string, B]
-) => R.Record<string, B>
+  f: (a: A) => readonly [Z, B]
+) => R.Record<Z, B>
 export function fromFoldableMap_<F, B>(
   M: Closure<B>,
   F: Foldable<HKT.UHKT<F>>
@@ -138,17 +138,17 @@ export function fromFoldableMap_<F, B>(
 export function fromFoldableMap<F extends HKT.URIS, C, B>(
   M: Closure<B>,
   F: Foldable<F, C>
-): <A>(
-  f: (a: A) => readonly [string, B]
+): <Z extends string, A>(
+  f: (a: A) => readonly [Z, B]
 ) => <N extends string, K, Q, W, X, I, S, R, E>(
   fa: HKT.Kind<F, C, N, K, Q, W, X, I, S, R, E, A>
-) => R.Record<string, B>
+) => R.Record<Z, B>
 export function fromFoldableMap<F, B>(
   M: Closure<B>,
   F: Foldable<HKT.UHKT<F>>
-): <A>(
-  f: (a: A) => readonly [string, B]
-) => (fa: HKT.HKT<F, A>) => R.Record<string, B> {
+): <Z extends string, A>(
+  f: (a: A) => readonly [Z, B]
+) => (fa: HKT.HKT<F, A>) => R.Record<Z, B> {
   const ff = fromFoldableMap_(M, F)
   return <A>(f: (a: A) => readonly [string, B]) => (fa: HKT.HKT<F, A>) => ff(fa, f)
 }
@@ -159,9 +159,9 @@ export function fromFoldableMap<F, B>(
 export function fromFoldable<F extends HKT.URIS, C, A>(
   M: Closure<A>,
   F: Foldable<F>
-): <N extends string, K, Q, W, X, I, S, R, E>(
-  fa: HKT.Kind<F, C, N, K, Q, W, X, I, S, R, E, readonly [string, A]>
-) => R.Record<string, A> {
+): <Z extends string, N extends string, K, Q, W, X, I, S, R, E>(
+  fa: HKT.Kind<F, C, N, K, Q, W, X, I, S, R, E, readonly [Z, A]>
+) => R.Record<Z, A> {
   const fromFoldableMapM = fromFoldableMap(M, F)
   return fromFoldableMapM(identity)
 }
