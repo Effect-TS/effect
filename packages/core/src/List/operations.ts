@@ -8,7 +8,6 @@ import type { Identity } from "../Identity"
 import { makeIdentity } from "../Identity"
 import type { ListURI } from "../Modules"
 import type { Ord } from "../Ord"
-import { Ordering, toNumber } from "../Ordering"
 import type { URI } from "../Prelude"
 import * as P from "../Prelude"
 import type { Show } from "../Show"
@@ -63,7 +62,7 @@ export function sortBy_<B>(
     List.forEach_(l, (elm) => arr.push({ idx: i++, elm, prop: f(elm) }))
     arr.sort(({ idx: i, prop: a }, { idx: j, prop: b }) => {
       const c = O.compare(b)(a)
-      return c !== Ordering.wrap("eq") ? toNumber(c) : i < j ? -1 : 1
+      return c !== 0 ? c : i < j ? -1 : 1
     })
     const newL = List.emptyPushable<A>()
     for (let i = 0; i < arr.length; ++i) {

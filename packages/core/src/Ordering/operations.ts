@@ -1,53 +1,31 @@
-import { pipe } from "@effect-ts/system/Function"
-
 import * as A from "../Associative/makeAssociative"
 import * as I from "../Identity/makeIdentity"
-import { Ordering } from "./definition"
-
-/**
- * Ordering => number
- */
-export function toNumber(o: Ordering) {
-  return pipe(Ordering.unwrap(o), (o) => {
-    switch (o) {
-      case "eq": {
-        return 0
-      }
-      case "gt": {
-        return 1
-      }
-      case "lt": {
-        return -1
-      }
-    }
-  })
-}
+import type { Ordering } from "./definition"
 
 /**
  * `number` => `Ordering`
  */
 export function sign(n: number): Ordering {
   if (n < 0) {
-    return Ordering.wrap("lt")
+    return -1
   }
   if (n > 0) {
-    return Ordering.wrap("gt")
+    return 1
   }
-  return Ordering.wrap("eq")
+  return 0
 }
 
 /**
  * Invert Ordering
  */
 export function invert(O: Ordering): Ordering {
-  const _ = toNumber(O)
-  switch (_) {
+  switch (O) {
     case -1:
-      return sign(1)
+      return 1
     case 1:
-      return sign(-1)
+      return -1
     default:
-      return sign(0)
+      return 0
   }
 }
 
@@ -55,13 +33,10 @@ export function invert(O: Ordering): Ordering {
  * `Associative` instance for `Ordering`
  */
 export const Associative: A.Associative<Ordering> = A.makeAssociative((y) => (x) =>
-  x !== Ordering.wrap("eq") ? x : y
+  x !== 0 ? x : y
 )
 
 /**
  * `Identity` instance for `Ordering`
  */
-export const Identity: I.Identity<Ordering> = I.makeIdentity(
-  Ordering.wrap("eq"),
-  Associative.combine
-)
+export const Identity: I.Identity<Ordering> = I.makeIdentity(0, Associative.combine)

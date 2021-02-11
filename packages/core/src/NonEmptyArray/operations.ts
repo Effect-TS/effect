@@ -13,7 +13,6 @@ import type { NonEmptyArrayURI } from "../Modules"
 import * as Ord from "../Ord"
 import { fromCompare } from "../Ord"
 import { ordNumber } from "../Ord/common"
-import { toNumber } from "../Ordering"
 import type { URI } from "../Prelude"
 import * as P from "../Prelude"
 import * as DSL from "../Prelude/DSL"
@@ -117,7 +116,7 @@ export function getOrd<A>(O: Ord.Ord<A>): Ord.Ord<NonEmptyArray<A>> {
     const len = Math.min(aLen, bLen)
     for (let i = 0; i < len; i++) {
       const ordering = O.compare(b[i])(a[i])
-      if (toNumber(ordering) !== 0) {
+      if (ordering !== 0) {
         return ordering
       }
     }
@@ -196,7 +195,7 @@ export function foldMapWithIndex_<M>(
  * Sort the elements of an array in increasing order
  */
 export function sort<A>(O: Ord.Ord<A>): (as: NonEmptyArray<A>) => NonEmptyArray<A> {
-  return (as) => [...as].sort((x, y) => toNumber(O.compare(y)(x))) as any
+  return (as) => [...as].sort((x, y) => O.compare(y)(x)) as any
 }
 
 /**

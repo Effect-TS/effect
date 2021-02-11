@@ -12,7 +12,6 @@ import { fold, fromAssociative, makeIdentity } from "../Identity"
 import type { OptionURI } from "../Modules"
 import type { Ord } from "../Ord"
 import { makeOrd } from "../Ord"
-import { Ordering } from "../Ordering"
 import type { URI } from "../Prelude"
 import * as P from "../Prelude"
 import type { Show } from "../Show"
@@ -222,13 +221,7 @@ export const getLast = <Ts extends O.Option<any>[]>(
  */
 export function getOrd<A>(_: Ord<A>): Ord<O.Option<A>> {
   return makeOrd(getEqual(_).equals, (y) => (x) =>
-    x === y
-      ? Ordering.wrap("eq")
-      : O.isSome(x)
-      ? O.isSome(y)
-        ? _.compare(y.value)(x.value)
-        : Ordering.wrap("gt")
-      : Ordering.wrap("lt")
+    x === y ? 0 : O.isSome(x) ? (O.isSome(y) ? _.compare(y.value)(x.value) : 1) : -1
   )
 }
 
@@ -329,6 +322,7 @@ export const bind = P.bindF(Monad)
 const do_ = P.doF(Monad)
 
 export { do_ as do }
+export { branch as if, branch_ as if_ }
 
 export const struct = P.structF({ ...Monad, ...Applicative })
 
@@ -346,5 +340,3 @@ export const { match, matchIn, matchMorph, matchTag, matchTagIn } = P.matchers(
  */
 const branch = P.conditionalF(Covariant)
 const branch_ = P.conditionalF_(Covariant)
-
-export { branch as if, branch_ as if_ }
