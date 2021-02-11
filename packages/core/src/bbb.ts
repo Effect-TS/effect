@@ -9,3 +9,5 @@ export const rec = pipe(
   NA.make([tuple("a", NA.single("aa")), tuple("b", NA.single("bb"))]),
   toRecord
 )
+
+console.log(rec)
