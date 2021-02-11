@@ -4,7 +4,7 @@ import * as A from "../../src/Array"
 import * as E from "../../src/Either"
 import * as EitherT from "../../src/EitherT"
 import * as InvariantT from "../../src/InvariantT"
-import { chainF } from "../../src/Prelude/DSL"
+import { chainF } from "../../src/Prelude"
 import * as R from "../../src/XPure/XReader"
 import * as ReaderT from "../../src/XPure/XReaderT"
 

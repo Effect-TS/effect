@@ -2,7 +2,7 @@
 import { pipe } from "@effect-ts/system/Function"
 
 import * as E from "../../src/Either"
-import * as DSL from "../../src/Prelude/DSL"
+import * as DSL from "../../src/Prelude"
 import * as StateT from "../../src/StateT/Parametric"
 
 namespace StateStateEither {

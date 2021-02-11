@@ -1,7 +1,7 @@
+import * as Selective from "@effect-ts/prelude/Selective"
 import { pipe } from "@effect-ts/system/Function"
 
 import * as E from "../../src/Either"
-import * as Selective from "../../src/Prelude/Selective"
 import * as IO from "../../src/XPure/XIO"
 
 const SelectiveIO = Selective.monad(IO.Monad)

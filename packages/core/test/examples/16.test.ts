@@ -2,7 +2,7 @@
 import { pipe } from "@effect-ts/system/Function"
 
 import * as E from "../../src/Either"
-import * as DSL from "../../src/Prelude/DSL"
+import * as DSL from "../../src/Prelude"
 import * as ReaderT from "../../src/ReaderT"
 
 namespace ReaderEither {

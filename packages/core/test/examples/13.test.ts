@@ -2,6 +2,7 @@
 
 /* eslint-disable @typescript-eslint/no-namespace */
 
+import * as S from "@effect-ts/prelude/Selective"
 import { pipe } from "@effect-ts/system/Function"
 import { NoSuchElementException } from "@effect-ts/system/GlobalExceptions"
 import { isEither, isOption } from "@effect-ts/system/Utils"
@@ -10,9 +11,8 @@ import { makeAssociative } from "../../src/Associative"
 import * as Either from "../../src/Either"
 import * as EitherT from "../../src/EitherT"
 import * as Option from "../../src/Option"
-import { GenHKT } from "../../src/Prelude/DSL"
-import * as DSL from "../../src/Prelude/DSL"
-import * as S from "../../src/Prelude/Selective"
+import { GenHKT } from "../../src/Prelude"
+import * as DSL from "../../src/Prelude"
 import type { XIO } from "../../src/XPure/XIO"
 import * as IO from "../../src/XPure/XIO"
 import * as Reader from "../../src/XPure/XReader"

@@ -1,5 +1,4 @@
-import { pipe, tuple } from "@effect-ts/core/Function"
-
+import { pipe, tuple } from "./Function"
 import * as NA from "./NonEmptyArray"
 import * as R from "./Record"
 

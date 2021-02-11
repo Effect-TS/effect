@@ -3,9 +3,8 @@ import * as M from "@effect-ts/system/Map"
 
 import * as E from "../../src/Either"
 import * as EitherT from "../../src/EitherT"
+import type * as H from "../../src/Prelude"
 import * as P from "../../src/Prelude"
-import * as DSL from "../../src/Prelude/DSL"
-import type * as H from "../../src/Prelude/HKT"
 import * as T from "../../src/XPure"
 import * as R from "../../src/XPure/XReader"
 import * as ReaderT from "../../src/XPure/XReaderT"
@@ -23,7 +22,7 @@ type StoreKey = "StoreKey"
 type StoreValue = "StoreValue"
 type Params<K, V> = H.CustomType<StoreKey, K> & H.CustomType<StoreValue, V>
 
-declare module "../../src/Prelude/HKT" {
+declare module "@effect-ts/hkt" {
   export interface URItoKind<FC, TC, N extends string, K, Q, W, X, I, S, R, E, A> {
     [KeyValueStoreURI]: Store<
       H.AccessCustom<FC, StoreKey>,
@@ -42,9 +41,9 @@ export const getStoreMonad = <K, V>() =>
 
 export const K = pipe(getStoreMonad<string, number>(), EitherT.monad, ReaderT.monad)
 
-export const chain = DSL.chainF(K)
+export const chain = P.chainF(K)
 
-export const succeed = DSL.succeedF(K)
+export const succeed = P.succeedF(K)
 
 test("17", () => {
   const result = pipe(

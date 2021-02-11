@@ -1,7 +1,7 @@
 import { pipe } from "@effect-ts/system/Function"
 import { tag } from "@effect-ts/system/Has"
 
-import * as DSL from "../../src/Prelude/DSL"
+import * as DSL from "../../src/Prelude"
 import * as X from "../../src/XPure"
 
 test("09", () => {

@@ -3,7 +3,7 @@ import { pipe } from "@effect-ts/system/Function"
 import * as A from "../../src/Array"
 import * as E from "../../src/Either"
 import * as EitherT from "../../src/EitherT"
-import { chainF } from "../../src/Prelude/DSL"
+import { chainF } from "../../src/Prelude"
 import * as R from "../../src/XPure/XReader"
 import * as ReaderT from "../../src/XPure/XReaderT"
 

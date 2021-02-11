@@ -1,8 +1,8 @@
+import { getCovariantComposition } from "@effect-ts/prelude/Covariant"
 import { pipe } from "@effect-ts/system/Function"
 
 import * as A from "../../src/Array"
 import * as E from "../../src/Either"
-import { getCovariantComposition } from "../../src/Prelude/Covariant"
 
 test("01", () => {
   const F = getCovariantComposition(A.Covariant, E.Covariant)
