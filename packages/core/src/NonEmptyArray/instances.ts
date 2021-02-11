@@ -2,80 +2,80 @@ import type { NonEmptyArrayURI } from "../Modules"
 import * as P from "../Prelude"
 import * as A from "./operations"
 
-export const Any = P.instance<P.Any<[NonEmptyArrayURI]>>({
+export const Any = P.instance<P.Any<NonEmptyArrayURI>>({
   any: () => [{}]
 })
 
-export const AssociativeBoth = P.instance<P.AssociativeBoth<[NonEmptyArrayURI]>>({
+export const AssociativeBoth = P.instance<P.AssociativeBoth<NonEmptyArrayURI>>({
   both: A.zip
 })
 
-export const AssociativeFlatten = P.instance<P.AssociativeFlatten<[NonEmptyArrayURI]>>({
+export const AssociativeFlatten = P.instance<P.AssociativeFlatten<NonEmptyArrayURI>>({
   flatten: A.flatten
 })
 
-export const Covariant = P.instance<P.Covariant<[NonEmptyArrayURI]>>({
+export const Covariant = P.instance<P.Covariant<NonEmptyArrayURI>>({
   map: A.map
 })
 
-export const Applicative = P.instance<P.Applicative<[NonEmptyArrayURI]>>({
+export const Applicative = P.instance<P.Applicative<NonEmptyArrayURI>>({
   ...Any,
   ...Covariant,
   ...AssociativeBoth
 })
 
-export const Monad = P.instance<P.Monad<[NonEmptyArrayURI]>>({
+export const Monad = P.instance<P.Monad<NonEmptyArrayURI>>({
   ...Any,
   ...Covariant,
   ...AssociativeFlatten
 })
 
-export const ForEach = P.instance<P.ForEach<[NonEmptyArrayURI]>>({
+export const ForEach = P.instance<P.ForEach<NonEmptyArrayURI>>({
   map: A.map,
   forEachF: A.forEachF
 })
 
-export const ForEachWithIndex = P.instance<P.ForEachWithIndex<[NonEmptyArrayURI]>>({
+export const ForEachWithIndex = P.instance<P.ForEachWithIndex<NonEmptyArrayURI>>({
   map: A.map,
   forEachWithIndexF: A.forEachWithIndexF
 })
 
-export const Extend = P.instance<P.Extend<[NonEmptyArrayURI]>>({
+export const Extend = P.instance<P.Extend<NonEmptyArrayURI>>({
   extend: A.extend
 })
 
-export const Reduce = P.instance<P.Reduce<[NonEmptyArrayURI]>>({
+export const Reduce = P.instance<P.Reduce<NonEmptyArrayURI>>({
   reduce: A.reduce
 })
 
-export const ReduceWithIndex = P.instance<P.ReduceWithIndex<[NonEmptyArrayURI]>>({
+export const ReduceWithIndex = P.instance<P.ReduceWithIndex<NonEmptyArrayURI>>({
   reduceWithIndex: A.reduceWithIndex
 })
 
 export const ReduceRightWithIndex = P.instance<
-  P.ReduceRightWithIndex<[NonEmptyArrayURI]>
+  P.ReduceRightWithIndex<NonEmptyArrayURI>
 >({
   reduceRightWithIndex: A.reduceRightWithIndex
 })
 
-export const ReduceRight = P.instance<P.ReduceRight<[NonEmptyArrayURI]>>({
+export const ReduceRight = P.instance<P.ReduceRight<NonEmptyArrayURI>>({
   reduceRight: A.reduceRight
 })
 
-export const FoldMap = P.instance<P.FoldMap<[NonEmptyArrayURI]>>({
+export const FoldMap = P.instance<P.FoldMap<NonEmptyArrayURI>>({
   foldMap: A.foldMap
 })
 
-export const FoldMapWithIndex = P.instance<P.FoldMapWithIndex<[NonEmptyArrayURI]>>({
+export const FoldMapWithIndex = P.instance<P.FoldMapWithIndex<NonEmptyArrayURI>>({
   foldMapWithIndex: A.foldMapWithIndex
 })
 
-export const Foldable = P.instance<P.Foldable<[NonEmptyArrayURI]>>({
+export const Foldable = P.instance<P.Foldable<NonEmptyArrayURI>>({
   ...FoldMap,
   ...Reduce,
   ...ReduceRight
 })
-export const FoldableWithIndex = P.instance<P.FoldableWithIndex<[NonEmptyArrayURI]>>({
+export const FoldableWithIndex = P.instance<P.FoldableWithIndex<NonEmptyArrayURI>>({
   ...FoldMapWithIndex,
   ...ReduceWithIndex,
   ...ReduceRightWithIndex

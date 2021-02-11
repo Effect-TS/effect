@@ -10,62 +10,62 @@ export { EffectURI } from "../Modules"
 
 export type V = P.V<"R", "-"> & P.V<"E", "+">
 
-export const Any = P.instance<P.Any<[EffectURI], V>>({
+export const Any = P.instance<P.Any<EffectURI, V>>({
   any: () => T.succeed({})
 })
 
-export const AssociativeEither = P.instance<P.AssociativeEither<[EffectURI], V>>({
+export const AssociativeEither = P.instance<P.AssociativeEither<EffectURI, V>>({
   orElseEither: T.orElseEither
 })
 
-export const AssociativeFlatten = P.instance<P.AssociativeFlatten<[EffectURI], V>>({
+export const AssociativeFlatten = P.instance<P.AssociativeFlatten<EffectURI, V>>({
   flatten: T.flatten
 })
 
-export const AssociativeBoth = P.instance<P.AssociativeBoth<[EffectURI], V>>({
+export const AssociativeBoth = P.instance<P.AssociativeBoth<EffectURI, V>>({
   both: T.zip
 })
 
-export const Covariant = P.instance<P.Covariant<[EffectURI], V>>({
+export const Covariant = P.instance<P.Covariant<EffectURI, V>>({
   map: T.map
 })
 
-export const IdentityFlatten = P.instance<P.IdentityFlatten<[EffectURI], V>>({
+export const IdentityFlatten = P.instance<P.IdentityFlatten<EffectURI, V>>({
   ...Any,
   ...AssociativeFlatten
 })
 
-export const IdentityBoth = P.instance<P.IdentityBoth<[EffectURI], V>>({
+export const IdentityBoth = P.instance<P.IdentityBoth<EffectURI, V>>({
   ...Any,
   ...AssociativeBoth
 })
 
-export const Monad = P.instance<P.Monad<[EffectURI], V>>({
+export const Monad = P.instance<P.Monad<EffectURI, V>>({
   ...IdentityFlatten,
   ...Covariant
 })
 
-export const Applicative = P.instance<P.Applicative<[EffectURI], V>>({
+export const Applicative = P.instance<P.Applicative<EffectURI, V>>({
   ...Covariant,
   ...IdentityBoth
 })
 
-export const Fail = P.instance<P.FX.Fail<[EffectURI], V>>({
+export const Fail = P.instance<P.FX.Fail<EffectURI, V>>({
   fail: T.fail
 })
 
-export const Run = P.instance<P.FX.Run<[EffectURI], V>>({
+export const Run = P.instance<P.FX.Run<EffectURI, V>>({
   either: T.either
 })
 
-export const getValidationApplicative = DSL.getValidationF<[EffectURI], V>({
+export const getValidationApplicative = DSL.getValidationF<EffectURI, V>({
   ...Monad,
   ...Run,
   ...Fail,
   ...Applicative
 })
 
-export const Category = P.instance<P.Category<[EffectCategoryURI], V>>({
+export const Category = P.instance<P.Category<EffectCategoryURI, V>>({
   id: T.environment,
   compose: T.compose
 })
