@@ -1,3 +1,1 @@
-export * from "./definition"
-export { InverseURI } from "../Modules"
-export * from "./operations"
+export * from "@effect-ts/prelude/Inverse"

@@ -1,6 +1,17 @@
-import type { ArrayURI } from "../Modules"
 import * as P from "../Prelude"
 import * as A from "./operations"
+
+export const ArrayURI = "Array"
+export type ArrayURI = typeof ArrayURI
+
+declare module "@effect-ts/hkt" {
+  interface URItoKind<FC, TC, N extends string, K, Q, W, X, I, S, R, E, A> {
+    [ArrayURI]: A.Array<A>
+  }
+  interface URItoIndex<N extends string, K> {
+    [ArrayURI]: number
+  }
+}
 
 export const Any = P.instance<P.Any<[ArrayURI]>>({
   any: () => [{}]

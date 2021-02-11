@@ -1,8 +1,16 @@
 import { constant, identity } from "@effect-ts/system/Function"
 import * as X from "@effect-ts/system/Sync"
 
-import type { SyncURI } from "../../Modules"
 import * as P from "../../Prelude"
+
+export const SyncURI = "Sync"
+export type SyncURI = typeof SyncURI
+
+declare module "@effect-ts/hkt" {
+  interface URItoKind<FC, TC, N extends string, K, Q, W, X, I, S, R, E, A> {
+    [SyncURI]: X.Sync<R, E, A>
+  }
+}
 
 export type V = P.V<"R", "-"> & P.V<"E", "+">
 

@@ -1,74 +1,69 @@
 import { flow, pipe } from "../../Function"
 import type { Applicative, Monad } from "../../Prelude"
-import { succeedF } from "../../Prelude/DSL"
-import type { Access, Fail, Provide, Run } from "../../Prelude/FX"
-import * as HKT from "../../Prelude/HKT"
+import * as P from "../../Prelude"
 import * as R from "../XReader"
 
-export function monad<F extends HKT.URIS, C>(
+export function monad<F extends P.URIS, C>(
   M: Monad<F, C>
-): Monad<HKT.PrependURI<R.XReaderURI, F>, HKT.CleanParam<C, "R"> & HKT.V<"R", "-">>
+): Monad<P.PrependURI<R.XReaderURI, F>, P.CleanParam<C, "R"> & P.V<"R", "-">>
 export function monad<F>(
-  M: Monad<HKT.UHKT<F>>
-): Monad<HKT.PrependURI<R.XReaderURI, HKT.UHKT<F>>, HKT.V<"R", "-">> {
-  return HKT.instance({
+  M: Monad<P.UHKT<F>>
+): Monad<P.PrependURI<R.XReaderURI, P.UHKT<F>>, P.V<"R", "-">> {
+  return P.instance({
     any: () => R.succeed(M.any()),
     flatten: <A, R, R2>(
-      ffa: R.XReader<R, HKT.HKT<F, R.XReader<R2, HKT.HKT<F, A>>>>
-    ): R.XReader<R & R2, HKT.HKT<F, A>> =>
+      ffa: R.XReader<R, P.HKT<F, R.XReader<R2, P.HKT<F, A>>>>
+    ): R.XReader<R & R2, P.HKT<F, A>> =>
       pipe(
         R.access((e: R & R2) => pipe(ffa, R.runEnv(e), M.map(R.runEnv(e)))),
         R.map(M.flatten)
       ),
     map: <A, B>(
       f: (a: A) => B
-    ): (<R>(fa: R.XReader<R, HKT.HKT<F, A>>) => R.XReader<R, HKT.HKT<F, B>>) =>
+    ): (<R>(fa: R.XReader<R, P.HKT<F, A>>) => R.XReader<R, P.HKT<F, B>>) =>
       R.map(M.map(f))
   })
 }
 
-export function access<F extends HKT.URIS, C>(
+export function access<F extends P.URIS, C>(
   M: Monad<F, C>
-): Access<HKT.PrependURI<R.XReaderURI, F>, HKT.CleanParam<C, "R"> & HKT.V<"R", "-">>
+): P.FX.Access<P.PrependURI<R.XReaderURI, F>, P.CleanParam<C, "R"> & P.V<"R", "-">>
 export function access<F>(
-  M: Monad<HKT.UHKT<F>>
-): Access<HKT.PrependURI<R.XReaderURI, HKT.UHKT<F>>, HKT.V<"R", "-">> {
-  return HKT.instance({
-    access: flow(R.access, R.map(succeedF(M)))
+  M: Monad<P.UHKT<F>>
+): P.FX.Access<P.PrependURI<R.XReaderURI, P.UHKT<F>>, P.V<"R", "-">> {
+  return P.instance({
+    access: flow(R.access, R.map(P.succeedF(M)))
   })
 }
 
-export function provide<F extends HKT.URIS, C>(
+export function provide<F extends P.URIS, C>(
   M: Monad<F, C>
-): Provide<HKT.PrependURI<R.XReaderURI, F>, HKT.CleanParam<C, "R"> & HKT.V<"R", "-">>
+): P.FX.Provide<P.PrependURI<R.XReaderURI, F>, P.CleanParam<C, "R"> & P.V<"R", "-">>
 export function provide<F>(
-  _: Monad<HKT.UHKT<F>>
-): Provide<HKT.PrependURI<R.XReaderURI, HKT.UHKT<F>>, HKT.V<"R", "-">> {
-  return HKT.instance({
+  _: Monad<P.UHKT<F>>
+): P.FX.Provide<P.PrependURI<R.XReaderURI, P.UHKT<F>>, P.V<"R", "-">> {
+  return P.instance({
     provide: <R>(r: R) => R.provideSome(() => r)
   })
 }
 
-export function applicative<F extends HKT.URIS, C>(
+export function applicative<F extends P.URIS, C>(
   M: Applicative<F, C>
-): Applicative<
-  HKT.PrependURI<R.XReaderURI, F>,
-  HKT.CleanParam<C, "R"> & HKT.V<"R", "-">
->
+): Applicative<P.PrependURI<R.XReaderURI, F>, P.CleanParam<C, "R"> & P.V<"R", "-">>
 export function applicative<F>(
-  M: Applicative<HKT.UHKT<F>>
-): Applicative<HKT.PrependURI<R.XReaderURI, HKT.UHKT<F>>, HKT.V<"R", "-">> {
-  return HKT.instance({
+  M: Applicative<P.UHKT<F>>
+): Applicative<P.PrependURI<R.XReaderURI, P.UHKT<F>>, P.V<"R", "-">> {
+  return P.instance({
     any: () => R.succeed(M.any()),
     map: <A, B>(
       f: (a: A) => B
-    ): (<R>(fa: R.XReader<R, HKT.HKT<F, A>>) => R.XReader<R, HKT.HKT<F, B>>) =>
+    ): (<R>(fa: R.XReader<R, P.HKT<F, A>>) => R.XReader<R, P.HKT<F, B>>) =>
       R.map(M.map(f)),
     both: <R2, B>(
-      fb: R.XReader<R2, HKT.HKT<F, B>>
+      fb: R.XReader<R2, P.HKT<F, B>>
     ): (<R, A>(
-      fa: R.XReader<R, HKT.HKT<F, A>>
-    ) => R.XReader<R & R2, HKT.HKT<F, readonly [A, B]>>) =>
+      fa: R.XReader<R, P.HKT<F, A>>
+    ) => R.XReader<R & R2, P.HKT<F, readonly [A, B]>>) =>
       flow(
         R.zip(fb),
         R.map(([_a, _b]) => pipe(_a, M.both(_b)))
@@ -76,24 +71,24 @@ export function applicative<F>(
   })
 }
 
-export function run<F extends HKT.URIS, C>(
-  M: Run<F, C>
-): Run<HKT.PrependURI<R.XReaderURI, F>, HKT.CleanParam<C, "R"> & HKT.V<"R", "-">>
+export function run<F extends P.URIS, C>(
+  M: P.FX.Run<F, C>
+): P.FX.Run<P.PrependURI<R.XReaderURI, F>, P.CleanParam<C, "R"> & P.V<"R", "-">>
 export function run<F>(
-  M: Run<HKT.UHKT2<F>>
-): Run<HKT.PrependURI<R.XReaderURI, HKT.UHKT2<F>>, HKT.V<"R", "-">> {
-  return HKT.instance({
+  M: P.FX.Run<P.UHKT2<F>>
+): P.FX.Run<P.PrependURI<R.XReaderURI, P.UHKT2<F>>, P.V<"R", "-">> {
+  return P.instance({
     either: flow(R.map(M.either))
   })
 }
 
-export function fail<F extends HKT.URIS, C>(
-  M: Fail<F, C>
-): Fail<HKT.PrependURI<R.XReaderURI, F>, HKT.CleanParam<C, "R"> & HKT.V<"R", "-">>
+export function fail<F extends P.URIS, C>(
+  M: P.FX.Fail<F, C>
+): P.FX.Fail<P.PrependURI<R.XReaderURI, F>, P.CleanParam<C, "R"> & P.V<"R", "-">>
 export function fail<F>(
-  M: Fail<HKT.UHKT2<F>>
-): Fail<HKT.PrependURI<R.XReaderURI, HKT.UHKT2<F>>, HKT.V<"R", "-">> {
-  return HKT.instance({
+  M: P.FX.Fail<P.UHKT2<F>>
+): P.FX.Fail<P.PrependURI<R.XReaderURI, P.UHKT2<F>>, P.V<"R", "-">> {
+  return P.instance({
     fail: flow(M.fail, R.succeed)
   })
 }

@@ -6,13 +6,11 @@ import type { Associative } from "../Associative"
 import { makeAssociative } from "../Associative"
 import type { Equal } from "../Equal"
 import type { Identity } from "../Identity"
-import type { EitherURI } from "../Modules"
 import type { Option } from "../Option"
 import * as P from "../Prelude"
-import * as DSL from "../Prelude/DSL"
 import type { Show } from "../Show"
 import type { Separated } from "../Utils"
-import type { V } from "./definition"
+import type { EitherURI, V } from "./definition"
 
 export * from "@effect-ts/system/Either"
 
@@ -41,7 +39,7 @@ export const forEachF = P.implementForEachF<
   [EitherURI],
   V
 >()((_) => (G) => (f) => (fa) =>
-  E.isLeft(fa) ? DSL.succeedF(G)(fa) : pipe(f(fa.right), G.map(E.right))
+  E.isLeft(fa) ? P.succeedF(G)(fa) : pipe(f(fa.right), G.map(E.right))
 )
 
 /**

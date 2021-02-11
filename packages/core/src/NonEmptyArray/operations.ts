@@ -9,14 +9,24 @@ import { makeAssociative } from "../Associative"
 import type { Equal } from "../Equal"
 import { makeEqual } from "../Equal"
 import type { Identity } from "../Identity"
-import type { NonEmptyArrayURI } from "../Modules"
 import * as Ord from "../Ord"
 import { fromCompare } from "../Ord"
 import { ordNumber } from "../Ord/common"
 import { toNumber } from "../Ordering"
 import * as P from "../Prelude"
-import * as DSL from "../Prelude/DSL"
 import type { Show } from "../Show"
+
+export const NonEmptyArrayURI = "NonEmptyArray"
+export type NonEmptyArrayURI = typeof NonEmptyArrayURI
+
+declare module "@effect-ts/hkt" {
+  interface URItoKind<FC, TC, N extends string, K, Q, W, X, I, S, R, E, A> {
+    [NonEmptyArrayURI]: NonEmptyArray<A>
+  }
+  interface URItoIndex<N extends string, K> {
+    [NonEmptyArrayURI]: number
+  }
+}
 
 export * from "@effect-ts/system/NonEmptyArray"
 
@@ -26,7 +36,7 @@ export * from "@effect-ts/system/NonEmptyArray"
 export const forEachWithIndexF = P.implementForEachWithIndexF<[NonEmptyArrayURI]>()(
   (_) => (G) => (f) =>
     flow(
-      A.reduceWithIndex(DSL.succeedF(G)(L.empty()), (k, b, a) =>
+      A.reduceWithIndex(P.succeedF(G)(L.empty()), (k, b, a) =>
         pipe(
           b,
           G.both(f(k, a as any)),

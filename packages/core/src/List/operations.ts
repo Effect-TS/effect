@@ -6,13 +6,24 @@ import { makeEqual } from "../Equal"
 import { flow, pipe } from "../Function"
 import type { Identity } from "../Identity"
 import { makeIdentity } from "../Identity"
-import type { ListURI } from "../Modules"
 import type { Ord } from "../Ord"
 import { Ordering, toNumber } from "../Ordering"
 import * as P from "../Prelude"
 import type { Show } from "../Show"
 
 export * from "@effect-ts/system/Persistent/List"
+
+export const ListURI = "List"
+export type ListURI = typeof ListURI
+
+declare module "@effect-ts/hkt" {
+  interface URItoKind<FC, TC, N extends string, K, Q, W, X, I, S, R, E, A> {
+    [ListURI]: List.List<A>
+  }
+  interface URItoIndex<N extends string, K> {
+    [ListURI]: number
+  }
+}
 
 /**
  * `ForEach`'s `forEachF` function

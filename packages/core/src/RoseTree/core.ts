@@ -13,12 +13,17 @@ import type { Equal } from "../Equal"
 import { pipe } from "../Function"
 import type { Identity } from "../Identity"
 import * as IO from "../IO"
-import type { TreeURI } from "../Modules"
 import * as P from "../Prelude"
-import { sequenceF } from "../Prelude"
-import * as DSL from "../Prelude/DSL"
-import { getApplicativeF } from "../Prelude/DSL"
 import type { Show } from "../Show"
+
+export const TreeURI = "Tree"
+export type TreeURI = typeof TreeURI
+
+declare module "@effect-ts/hkt" {
+  interface URItoKind<FC, TC, N extends string, K, Q, W, X, I, S, R, E, A> {
+    [TreeURI]: Tree<A>
+  }
+}
 
 export declare type Forest<A> = ReadonlyArray<Tree<A>>
 
@@ -157,8 +162,8 @@ export function unfoldTreeM<M>(
   M: P.Monad<P.UHKT<M>> & P.Applicative<P.UHKT<M>>
 ): <A, B>(b: B, f: (b: B) => P.HKT<M, [A, Array<B>]>) => P.HKT<M, Tree<A>> {
   const unfoldForestMM = unfoldForestM(M)
-  const chain = DSL.chainF(M)
-  const succeed = DSL.succeedF(M)
+  const chain = P.chainF(M)
+  const succeed = P.succeedF(M)
   return (b, f) =>
     pipe(
       f(b),
@@ -313,7 +318,7 @@ export const forEachF = P.implementForEachF<[TreeURI]>()((_) => (G) => {
         value,
         forest
       })),
-      DSL.apF(G)(
+      P.apF(G)(
         pipe(
           ta.forest,
           traverseF((t) => r(f)(t))
@@ -328,7 +333,7 @@ export const ForEach = P.instance<P.ForEach<[TreeURI]>>({
   map
 })
 
-export const sequence = sequenceF(ForEach)
+export const sequence = P.sequenceF(ForEach)
 
 export function extract<A>(wa: Tree<A>): A {
   return wa.value
@@ -431,28 +436,28 @@ export const Monad = P.instance<P.Monad<[TreeURI]>>({
   map
 })
 
-export const Applicative = getApplicativeF(Monad)
+export const Applicative = P.getApplicativeF(Monad)
 
-export const gen = DSL.genF(Monad)
+export const gen = P.genF(Monad)
 
-export const bind = DSL.bindF(Monad)
+export const bind = P.bindF(Monad)
 
-const do_ = DSL.doF({ ...Applicative, ...Monad })
+const do_ = P.doF({ ...Applicative, ...Monad })
 
 export { do_ as do }
 export { branch as if, branch_ as if_ }
 
-export const struct = DSL.structF(Applicative)
+export const struct = P.structF(Applicative)
 
-export const tuple = DSL.tupleF(Applicative)
+export const tuple = P.tupleF(Applicative)
 
 /**
  * Matchers
  */
-export const { match, matchIn, matchMorph, matchTag, matchTagIn } = DSL.matchers(Monad)
+export const { match, matchIn, matchMorph, matchTag, matchTagIn } = P.matchers(Monad)
 
 /**
  * Conditionals
  */
-const branch = DSL.conditionalF(Monad)
-const branch_ = DSL.conditionalF_(Monad)
+const branch = P.conditionalF(Monad)
+const branch_ = P.conditionalF_(Monad)

@@ -1,14 +1,13 @@
 import { pipe } from "@effect-ts/system/Function"
 import * as I from "@effect-ts/system/Iterable"
 
-import type { IterableURI } from "../Modules"
 import * as P from "../Prelude"
-import { succeedF } from "../Prelude/DSL"
+import type { IterableURI } from "./instances"
 
 export * from "@effect-ts/system/Iterable"
 
 export const forEachF = P.implementForEachF<[IterableURI]>()((_) => (G) => (f) =>
-  I.reduce(succeedF(G)(I.never as Iterable<typeof _.B>), (b, a) =>
+  I.reduce(P.succeedF(G)(I.never as Iterable<typeof _.B>), (b, a) =>
     pipe(
       b,
       G.both(f(a)),

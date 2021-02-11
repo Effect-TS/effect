@@ -30,6 +30,9 @@
     "strictNullChecks": true,
     "baseUrl": ".",
     "paths": {
+      "@effect-ts/hkt": ["packages/hkt/build"],
+      "@effect-ts/prelude": ["packages/prelude/build"],
+      "@effect-ts/prelude/*": ["packages/prelude/build/*"],
       "@effect-ts/core/*": ["packages/core/build/*"],
       "@effect-ts/core": ["packages/core/build"],
       "@effect-ts/system/*": ["packages/system/build/*"],

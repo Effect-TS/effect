@@ -1,7 +1,15 @@
 import * as F from "@effect-ts/system/IO"
 
-import type { IOURI } from "../Modules"
 import * as P from "../Prelude"
+
+export const IOURI = "IO"
+export type IOURI = typeof IOURI
+
+declare module "@effect-ts/hkt" {
+  interface URItoKind<FC, TC, N extends string, K, Q, W, X, I, S, R, E, A> {
+    [IOURI]: F.IO<A>
+  }
+}
 
 /**
  * The `Any` instance for `IO[+_]`.

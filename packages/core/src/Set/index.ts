@@ -12,7 +12,6 @@ import { identity, not } from "../Function"
 import type { Identity } from "../Identity"
 import { makeIdentity } from "../Identity"
 import type { Ord } from "../Ord"
-import { toNumber } from "../Ordering"
 import type { Show } from "../Show"
 
 export type Set<A> = ReadonlySet<A>
@@ -99,7 +98,7 @@ export function toArray<A>(O: Ord<A>): (set: Set<A>) => ReadonlyArray<A> {
   return (x) => {
     const r: Array<A> = []
     x.forEach((e) => r.push(e))
-    return r.sort((l, r) => toNumber(O.compare(r)(l)))
+    return r.sort((l, r) => O.compare(r)(l))
   }
 }
 

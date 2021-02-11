@@ -1,6 +1,5 @@
-import type { EitherURI } from "../Modules"
 import * as P from "../Prelude"
-import type { V } from "./definition"
+import type { EitherURI, V } from "./definition"
 import * as E from "./operations"
 
 export const Any = P.instance<P.Any<[EitherURI], V>>({

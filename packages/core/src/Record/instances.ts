@@ -1,6 +1,5 @@
-import type { RecordURI } from "../Modules"
 import * as P from "../Prelude"
-import type { V } from "./definition"
+import type { RecordURI, V } from "./definition"
 import {
   compact,
   compactF,

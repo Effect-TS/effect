@@ -1,2 +1,1 @@
-export * from "./definition"
-export * from "./operations"
+export * from "@effect-ts/prelude/Ordering"

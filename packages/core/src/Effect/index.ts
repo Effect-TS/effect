@@ -1,12 +1,21 @@
 import * as T from "@effect-ts/system/Effect"
 
 import * as I from "../Identity"
-import type { EffectCategoryURI, EffectURI } from "../Modules"
 import * as P from "../Prelude"
-import * as DSL from "../Prelude/DSL"
 
 export * from "@effect-ts/system/Effect"
-export { EffectURI } from "../Modules"
+
+export const EffectURI = "Effect"
+export type EffectURI = typeof EffectURI
+export const EffectCategoryURI = "EffectCategory"
+export type EffectCategoryURI = typeof EffectCategoryURI
+
+declare module "@effect-ts/hkt" {
+  interface URItoKind<FC, TC, N extends string, K, Q, W, X, I, S, R, E, A> {
+    [EffectURI]: T.Effect<R, E, A>
+    [EffectCategoryURI]: T.Effect<I, E, A>
+  }
+}
 
 export type V = P.V<"R", "-"> & P.V<"E", "+">
 
@@ -58,7 +67,7 @@ export const Run = P.instance<P.FX.Run<[EffectURI], V>>({
   either: T.either
 })
 
-export const getValidationApplicative = DSL.getValidationF<[EffectURI], V>({
+export const getValidationApplicative = P.getValidationF<[EffectURI], V>({
   ...Monad,
   ...Run,
   ...Fail,
@@ -70,12 +79,12 @@ export const Category = P.instance<P.Category<[EffectCategoryURI], V>>({
   compose: T.compose
 })
 
-export const gen_ = DSL.genF(Monad)
+export const gen_ = P.genF(Monad)
 
 /**
  * Matchers
  */
-export const { match, matchIn, matchMorph, matchTag, matchTagIn } = DSL.matchers(
+export const { match, matchIn, matchMorph, matchTag, matchTagIn } = P.matchers(
   Covariant
 )
 

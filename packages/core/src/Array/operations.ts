@@ -9,15 +9,14 @@ import type { Equal } from "../Equal"
 import { makeEqual } from "../Equal"
 import type { Identity } from "../Identity"
 import { makeIdentity } from "../Identity"
-import type { ArrayURI } from "../Modules"
 import * as Ord from "../Ord"
 import { fromCompare } from "../Ord"
 import { ordNumber } from "../Ord/common"
 import { toNumber } from "../Ordering"
 import * as P from "../Prelude"
-import * as DSL from "../Prelude/DSL"
 import type { Show } from "../Show"
 import type { PredicateWithIndex, Separated } from "../Utils"
+import type { ArrayURI } from "./instances"
 
 export * from "@effect-ts/system/Array"
 
@@ -26,7 +25,7 @@ export * from "@effect-ts/system/Array"
  */
 export const forEachWithIndexF = P.implementForEachWithIndexF<[ArrayURI]>()(
   (_) => (G) => {
-    const succeed = DSL.succeedF(G)
+    const succeed = P.succeedF(G)
     return (f) => (fa) => {
       let base = succeed([] as typeof _.B[])
       for (let k = 0; k < fa.length; k += 1) {

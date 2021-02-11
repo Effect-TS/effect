@@ -1,6 +1,14 @@
-import type { IterableURI } from "../Modules"
 import * as P from "../Prelude"
 import * as It from "./operations"
+
+export const IterableURI = "Iterable"
+export type IterableURI = typeof IterableURI
+
+declare module "@effect-ts/hkt" {
+  interface URItoKind<FC, TC, N extends string, K, Q, W, X, I, S, R, E, A> {
+    [IterableURI]: Iterable<A>
+  }
+}
 
 export const Any = P.instance<P.Any<[IterableURI]>>({
   any: () => It.of(undefined)

@@ -1,7 +1,7 @@
 import * as F from "@effect-ts/system/XPure"
 
-import type { XIOURI } from "../../Modules"
 import * as P from "../../Prelude"
+import type { XIOURI } from "./definition"
 import { map, zip } from "./operations"
 
 /**

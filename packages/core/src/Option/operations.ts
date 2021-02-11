@@ -9,13 +9,20 @@ import type { Predicate } from "../Function"
 import { pipe } from "../Function"
 import type { Identity } from "../Identity"
 import { fold, fromAssociative, makeIdentity } from "../Identity"
-import type { OptionURI } from "../Modules"
 import type { Ord } from "../Ord"
 import { makeOrd } from "../Ord"
-import { Ordering } from "../Ordering"
 import * as P from "../Prelude"
 import type { Show } from "../Show"
 import type { Separated } from "../Utils"
+
+export const OptionURI = "Option"
+export type OptionURI = typeof OptionURI
+
+declare module "@effect-ts/hkt" {
+  interface URItoKind<FC, TC, N extends string, K, Q, W, X, I, S, R, E, A> {
+    [OptionURI]: O.Option<A>
+  }
+}
 
 export function getEqual<A>(E: Equal<A>): Equal<O.Option<A>> {
   return {
@@ -219,13 +226,7 @@ export const getLast = <Ts extends O.Option<any>[]>(
  */
 export function getOrd<A>(_: Ord<A>): Ord<O.Option<A>> {
   return makeOrd(getEqual(_).equals, (y) => (x) =>
-    x === y
-      ? Ordering.wrap("eq")
-      : O.isSome(x)
-      ? O.isSome(y)
-        ? _.compare(y.value)(x.value)
-        : Ordering.wrap("gt")
-      : Ordering.wrap("lt")
+    x === y ? 0 : O.isSome(x) ? (O.isSome(y) ? _.compare(y.value)(x.value) : 1) : -1
   )
 }
 

@@ -1,29 +1,29 @@
 import * as A from "../Array"
-import * as DSL from "../Prelude/DSL"
+import * as P from "../Prelude"
 import { Applicative, Covariant } from "./instances"
 
 /**
  * Struct based applicative for IO[+_]
  */
-export const struct = DSL.structF(Applicative)
+export const struct = P.structF(Applicative)
 
 /**
  * Tuple based applicative for IO[+_]
  */
-export const tuple = DSL.tupleF(Applicative)
+export const tuple = P.tupleF(Applicative)
 
 /**
  * Matchers
  */
-export const { match, matchIn, matchMorph, matchTag, matchTagIn } = DSL.matchers(
+export const { match, matchIn, matchMorph, matchTag, matchTagIn } = P.matchers(
   Covariant
 )
 
 /**
  * Conditionals
  */
-const branch = DSL.conditionalF(Covariant)
-const branch_ = DSL.conditionalF_(Covariant)
+const branch = P.conditionalF(Covariant)
+const branch_ = P.conditionalF_(Covariant)
 
 export { branch as if, branch_ as if_ }
 

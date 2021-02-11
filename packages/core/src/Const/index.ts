@@ -12,11 +12,19 @@ import type { Bounded } from "../Bounded"
 import type { Equal } from "../Equal"
 import { unsafeCoerce } from "../Function"
 import type * as Id from "../Identity"
-import type { ConstURI } from "../Modules"
 import type { Ord } from "../Ord"
 import * as P from "../Prelude"
 import type { Show } from "../Show"
 import { makeShow } from "../Show"
+
+export const ConstURI = "Const"
+export type ConstURI = typeof ConstURI
+
+declare module "@effect-ts/hkt" {
+  interface URItoKind<FC, TC, N extends string, K, Q, W, X, I, S, R, E, A> {
+    [ConstURI]: Const<E, A>
+  }
+}
 
 /**
  * The `Const` type constructor, which wraps its first type argument and ignores its second.

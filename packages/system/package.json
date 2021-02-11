@@ -3,7 +3,7 @@
   "version": "0.11.9",
   "license": "MIT",
   "private": false,
-  "repository": "https://github.com/Effect-TS/system.git",
+  "repository": "https://github.com/Effect-TS/core.git",
   "homepage": "https://www.matechs.com",
   "scripts": {
     "clean": "rimraf build tsbuildinfo",

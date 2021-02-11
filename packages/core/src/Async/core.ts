@@ -12,10 +12,18 @@ import * as E from "@effect-ts/system/Either"
 import type { Has, Tag } from "@effect-ts/system/Has"
 
 import { flow, identity, pipe } from "../Function"
-import type { AsyncURI } from "../Modules"
 import * as P from "../Prelude"
 import type { Sync } from "../Sync"
 import { runEitherEnv } from "../Sync"
+
+export const AsyncURI = "Async"
+export type AsyncURI = typeof AsyncURI
+
+declare module "@effect-ts/hkt" {
+  interface URItoKind<FC, TC, N extends string, K, Q, W, X, I, S, R, E, A> {
+    [AsyncURI]: A.Async<R, E, A>
+  }
+}
 
 export * from "@effect-ts/system/Async"
 

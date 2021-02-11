@@ -1,12 +1,22 @@
 import { constant, identity } from "@effect-ts/system/Function"
 import * as X from "@effect-ts/system/XPure"
 
-import type {
-  XPureReaderCategoryURI,
-  XPureStateCategoryURI,
-  XPureURI
-} from "../Modules"
 import * as P from "../Prelude"
+
+export const XPureURI = "XPure"
+export type XPureURI = typeof XPureURI
+export const XPureReaderCategoryURI = "XPureReaderCategory"
+export type XPureReaderCategoryURI = typeof XPureReaderCategoryURI
+export const XPureStateCategoryURI = "XPureStateCategory"
+export type XPureStateCategoryURI = typeof XPureStateCategoryURI
+
+declare module "@effect-ts/hkt" {
+  interface URItoKind<FC, TC, N extends string, K, Q, W, X, I, S, R, E, A> {
+    [XPureURI]: X.XPure<S, S, R, E, A>
+    [XPureReaderCategoryURI]: X.XPure<S, S, I, E, A>
+    [XPureStateCategoryURI]: X.XPure<I, A, R, E, A>
+  }
+}
 
 export type V = P.V<"S", "_"> & P.V<"R", "-"> & P.V<"E", "+">
 

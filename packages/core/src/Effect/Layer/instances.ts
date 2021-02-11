@@ -1,8 +1,16 @@
 import * as T from "@effect-ts/system/Effect"
 import * as L from "@effect-ts/system/Layer"
 
-import type { LayerURI } from "../../Modules"
 import * as P from "../../Prelude"
+
+export const LayerURI = "Layer"
+export type LayerURI = typeof LayerURI
+
+declare module "@effect-ts/hkt" {
+  interface URItoKind<FC, TC, N extends string, K, Q, W, X, I, S, R, E, A> {
+    [LayerURI]: L.Layer<R, E, A>
+  }
+}
 
 export type V = P.V<"R", "-"> & P.V<"E", "+">
 

@@ -1,9 +1,8 @@
 import { constant } from "@effect-ts/system/Function"
 import * as F from "@effect-ts/system/XPure"
 
-import type { XStateURI } from "../../Modules"
 import * as P from "../../Prelude"
-import type { V } from "./definition"
+import type { V, XStateURI } from "./definition"
 import { map, zip } from "./operations"
 
 /**

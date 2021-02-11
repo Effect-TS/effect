@@ -11,13 +11,9 @@ import { makeEqual } from "../Equal"
 import { flow, identity, pipe, tuple } from "../Function"
 import type { Identity } from "../Identity"
 import { makeIdentity } from "../Identity"
-import type { RecordURI } from "../Modules"
-import type { Foldable } from "../Prelude"
-import { succeedF } from "../Prelude"
 import * as P from "../Prelude"
-import type * as HKT from "../Prelude/HKT"
 import type { Show } from "../Show"
-import type { V } from "./definition"
+import type { RecordURI, V } from "./definition"
 
 export * from "@effect-ts/system/Record"
 
@@ -26,7 +22,7 @@ export * from "@effect-ts/system/Record"
  */
 export const forEachWithIndexF = P.implementForEachWithIndexF<[RecordURI], V>()(
   (_) => (G) => {
-    const succeed = succeedF(G)
+    const succeed = P.succeedF(G)
     return (f) => (fa) => {
       let base = succeed<Record<typeof _.N, typeof _.B>>({} as any)
       for (const k of Object.keys(fa) as typeof _.N[]) {
@@ -112,18 +108,18 @@ export const compactF = P.implementCompactF<[RecordURI], V>()(() => (G) => (f) =
 /**
  * Like fromFoldable + map
  */
-export function fromFoldableMap_<F extends HKT.URIS, C, B>(
+export function fromFoldableMap_<F extends P.URIS, C, B>(
   M: Closure<B>,
-  F: Foldable<F, C>
+  F: P.Foldable<F, C>
 ): <Z extends string, N extends string, K, Q, W, X, I, S, R, E, A>(
-  fa: HKT.Kind<F, C, N, K, Q, W, X, I, S, R, E, A>,
+  fa: P.Kind<F, C, N, K, Q, W, X, I, S, R, E, A>,
   f: (a: A) => readonly [Z, B]
 ) => R.Record<Z, B>
 export function fromFoldableMap_<F, B>(
   M: Closure<B>,
-  F: Foldable<HKT.UHKT<F>>
-): <A>(fa: HKT.HKT<F, A>, f: (a: A) => readonly [string, B]) => R.Record<string, B> {
-  return <A>(fa: HKT.HKT<F, A>, f: (a: A) => readonly [string, B]) => {
+  F: P.Foldable<P.UHKT<F>>
+): <A>(fa: P.HKT<F, A>, f: (a: A) => readonly [string, B]) => R.Record<string, B> {
+  return <A>(fa: P.HKT<F, A>, f: (a: A) => readonly [string, B]) => {
     return F.reduce<A, MutableRecord<string, B>>({}, (r, a) => {
       const [k, b] = f(a)
       r[k] = Object.prototype.hasOwnProperty.call(r, k) ? M.combine(b)(r[k]) : b
@@ -135,32 +131,32 @@ export function fromFoldableMap_<F, B>(
 /**
  * Like fromFoldable + map
  */
-export function fromFoldableMap<F extends HKT.URIS, C, B>(
+export function fromFoldableMap<F extends P.URIS, C, B>(
   M: Closure<B>,
-  F: Foldable<F, C>
+  F: P.Foldable<F, C>
 ): <Z extends string, A>(
   f: (a: A) => readonly [Z, B]
 ) => <N extends string, K, Q, W, X, I, S, R, E>(
-  fa: HKT.Kind<F, C, N, K, Q, W, X, I, S, R, E, A>
+  fa: P.Kind<F, C, N, K, Q, W, X, I, S, R, E, A>
 ) => R.Record<Z, B>
 export function fromFoldableMap<F, B>(
   M: Closure<B>,
-  F: Foldable<HKT.UHKT<F>>
+  F: P.Foldable<P.UHKT<F>>
 ): <Z extends string, A>(
   f: (a: A) => readonly [Z, B]
-) => (fa: HKT.HKT<F, A>) => R.Record<Z, B> {
+) => (fa: P.HKT<F, A>) => R.Record<Z, B> {
   const ff = fromFoldableMap_(M, F)
-  return <A>(f: (a: A) => readonly [string, B]) => (fa: HKT.HKT<F, A>) => ff(fa, f)
+  return <A>(f: (a: A) => readonly [string, B]) => (fa: P.HKT<F, A>) => ff(fa, f)
 }
 
 /**
  * Construct a Record from a Foldable and a Closure of values
  */
-export function fromFoldable<F extends HKT.URIS, C, A>(
+export function fromFoldable<F extends P.URIS, C, A>(
   M: Closure<A>,
-  F: Foldable<F>
+  F: P.Foldable<F>
 ): <Z extends string, N extends string, K, Q, W, X, I, S, R, E>(
-  fa: HKT.Kind<F, C, N, K, Q, W, X, I, S, R, E, readonly [Z, A]>
+  fa: P.Kind<F, C, N, K, Q, W, X, I, S, R, E, readonly [Z, A]>
 ) => R.Record<Z, A> {
   const fromFoldableMapM = fromFoldableMap(M, F)
   return fromFoldableMapM(identity)

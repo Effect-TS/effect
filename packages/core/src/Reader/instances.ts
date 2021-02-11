@@ -1,5 +1,5 @@
-import type { ReaderURI } from "../Modules"
 import * as P from "../Prelude"
+import type { ReaderURI } from "./definition"
 import { access, map, zip } from "./operations"
 
 export type V = P.V<"R", "-">
