@@ -6,60 +6,61 @@ import type {
   XPureStateCategoryURI,
   XPureURI
 } from "../Modules"
+import type { URI } from "../Prelude"
 import * as P from "../Prelude"
 
 export type V = P.V<"S", "_"> & P.V<"R", "-"> & P.V<"E", "+">
 
-export const Any = P.instance<P.Any<XPureURI, V>>({
+export const Any = P.instance<P.Any<URI<XPureURI>, V>>({
   any: () => X.succeed(constant({}))
 })
 
-export const Covariant = P.instance<P.Covariant<XPureURI, V>>({
+export const Covariant = P.instance<P.Covariant<URI<XPureURI>, V>>({
   map: X.map
 })
 
-export const AssociativeBoth = P.instance<P.AssociativeBoth<XPureURI, V>>({
+export const AssociativeBoth = P.instance<P.AssociativeBoth<URI<XPureURI>, V>>({
   both: X.zip
 })
 
-export const AssociativeEither = P.instance<P.AssociativeEither<XPureURI, V>>({
+export const AssociativeEither = P.instance<P.AssociativeEither<URI<XPureURI>, V>>({
   orElseEither: X.orElseEither
 })
 
-export const AssociativeFlatten = P.instance<P.AssociativeFlatten<XPureURI, V>>({
+export const AssociativeFlatten = P.instance<P.AssociativeFlatten<URI<XPureURI>, V>>({
   flatten: (ffa) => X.chain_(ffa, identity)
 })
 
-export const Applicative = P.instance<P.Applicative<XPureURI, V>>({
+export const Applicative = P.instance<P.Applicative<URI<XPureURI>, V>>({
   ...Any,
   ...Covariant,
   ...AssociativeBoth
 })
 
-export const Access = P.instance<P.FX.Access<XPureURI, V>>({
+export const Access = P.instance<P.FX.Access<URI<XPureURI>, V>>({
   access: X.access
 })
 
-export const Fail = P.instance<P.FX.Fail<XPureURI, V>>({
+export const Fail = P.instance<P.FX.Fail<URI<XPureURI>, V>>({
   fail: X.fail
 })
 
-export const Provide = P.instance<P.FX.Provide<XPureURI, V>>({
+export const Provide = P.instance<P.FX.Provide<URI<XPureURI>, V>>({
   provide: X.provideAll
 })
 
-export const Monad = P.instance<P.Monad<XPureURI, V>>({
+export const Monad = P.instance<P.Monad<URI<XPureURI>, V>>({
   ...Any,
   ...AssociativeFlatten,
   ...Covariant
 })
 
-export const StateCategory = P.instance<P.Category<XPureStateCategoryURI, V>>({
+export const StateCategory = P.instance<P.Category<URI<XPureStateCategoryURI>, V>>({
   id: () => X.modify((a) => [a, a]),
   compose: (bc) => X.chain((_) => bc)
 })
 
-export const Category = P.instance<P.Category<XPureReaderCategoryURI, V>>({
+export const Category = P.instance<P.Category<URI<XPureReaderCategoryURI>, V>>({
   id: () => X.access(identity),
   compose: (bc) => (ab) => X.chain_(ab, (b) => X.provideAll_(bc, b))
 })

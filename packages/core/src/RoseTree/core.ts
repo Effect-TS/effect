@@ -14,6 +14,7 @@ import { pipe } from "../Function"
 import type { Identity } from "../Identity"
 import * as IO from "../IO"
 import type { TreeURI } from "../Modules"
+import type { URI } from "../Prelude"
 import * as P from "../Prelude"
 import { sequenceF } from "../Prelude"
 import * as DSL from "../Prelude/DSL"
@@ -302,7 +303,7 @@ export function reduceRight_<A, B>(fa: Tree<A>, b: B, f: (a: A, b: B) => B): B {
   return IO.run(go(fa, b))
 }
 
-export const forEachF = P.implementForEachF<TreeURI>()((_) => (G) => {
+export const forEachF = P.implementForEachF<URI<TreeURI>>()((_) => (G) => {
   const traverseF = A.forEachF(G)
   const r = <A, B>(f: (a: A) => P.HKT<typeof _.G, B>) => (
     ta: Tree<A>
@@ -323,7 +324,7 @@ export const forEachF = P.implementForEachF<TreeURI>()((_) => (G) => {
   return r
 })
 
-export const ForEach = P.instance<P.ForEach<TreeURI>>({
+export const ForEach = P.instance<P.ForEach<URI<TreeURI>>>({
   forEachF,
   map
 })
@@ -419,13 +420,13 @@ export function reduceRight<A, B>(b: B, f: (a: A, b: B) => B) {
   return (fa: Tree<A>): B => reduceRight_(fa, b, f)
 }
 
-export const Foldable = P.instance<P.Foldable<TreeURI>>({
+export const Foldable = P.instance<P.Foldable<URI<TreeURI>>>({
   foldMap,
   reduce,
   reduceRight
 })
 
-export const Monad = P.instance<P.Monad<TreeURI>>({
+export const Monad = P.instance<P.Monad<URI<TreeURI>>>({
   any: () => of({}),
   flatten,
   map

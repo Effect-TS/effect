@@ -14,6 +14,7 @@ import * as Ord from "../Ord"
 import { fromCompare } from "../Ord"
 import { ordNumber } from "../Ord/common"
 import { toNumber } from "../Ordering"
+import type { URI } from "../Prelude"
 import * as P from "../Prelude"
 import * as DSL from "../Prelude/DSL"
 import type { Show } from "../Show"
@@ -24,7 +25,7 @@ export * from "@effect-ts/system/Array"
 /**
  * `ForEachWithIndex`'s `forEachWithIndexF` function
  */
-export const forEachWithIndexF = P.implementForEachWithIndexF<ArrayURI>()(
+export const forEachWithIndexF = P.implementForEachWithIndexF<URI<ArrayURI>>()(
   (_) => (G) => {
     const succeed = DSL.succeedF(G)
     return (f) => (fa) => {
@@ -43,37 +44,37 @@ export const forEachWithIndexF = P.implementForEachWithIndexF<ArrayURI>()(
 /**
  * `ForEach`'s `forEachF` function
  */
-export const forEachF = P.implementForEachF<ArrayURI>()((_) => (G) => (f) =>
+export const forEachF = P.implementForEachF<URI<ArrayURI>>()((_) => (G) => (f) =>
   forEachWithIndexF(G)((_, a) => f(a))
 )
 
 /**
  * `Wilt`'s `separateF` function
  */
-export const separateF = P.implementSeparateF<ArrayURI>()((_) => (G) => (f) =>
+export const separateF = P.implementSeparateF<URI<ArrayURI>>()((_) => (G) => (f) =>
   flow(forEachF(G)(f), G.map(A.separate))
 )
 
 /**
  * `Wilt`'s `separateF` function
  */
-export const separateWithIndexF = P.implementSeparateWithIndexF<ArrayURI>()(
-  (_) => (G) => (f) => flow(forEachWithIndexF(G)(f), G.map(A.separate))
-)
+export const separateWithIndexF = P.implementSeparateWithIndexF<
+  URI<ArrayURI>
+>()((_) => (G) => (f) => flow(forEachWithIndexF(G)(f), G.map(A.separate)))
 
 /**
  * `Wither`'s `compactF` function
  */
-export const compactF = P.implementCompactF<ArrayURI>()((_) => (G) => (f) =>
+export const compactF = P.implementCompactF<URI<ArrayURI>>()((_) => (G) => (f) =>
   flow(forEachF(G)(f), G.map(A.compact))
 )
 
 /**
  * `WitherWithIndex`'s `compactWithIndexF` function
  */
-export const compactWithIndexF = P.implementCompactWithIndexF<ArrayURI>()(
-  (_) => (G) => (f) => flow(forEachWithIndexF(G)(f), G.map(A.compact))
-)
+export const compactWithIndexF = P.implementCompactWithIndexF<
+  URI<ArrayURI>
+>()((_) => (G) => (f) => flow(forEachWithIndexF(G)(f), G.map(A.compact)))
 
 /**
  * Test if a value is a member of an array. Takes a `Equal<A>` as a single

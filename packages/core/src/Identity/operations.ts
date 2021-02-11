@@ -5,7 +5,7 @@ import type { Endomorphism } from "../Function"
 import { identity } from "../Function"
 import type { IdentityURI } from "../Modules"
 import type { Derive } from "../Prelude/Derive"
-import type { URIS } from "../Prelude/HKT"
+import type { URI, URIS } from "../Prelude/HKT"
 import type { Identity } from "./definition"
 import { makeIdentity } from "./makeIdentity"
 
@@ -13,7 +13,7 @@ import { makeIdentity } from "./makeIdentity"
  * Derive `Identity`
  */
 export function deriveIdentity<F extends URIS, A>(
-  D: Derive<F, IdentityURI>,
+  D: Derive<F, URI<IdentityURI>>,
   I: Identity<A>
 ) {
   return D.derive(I)

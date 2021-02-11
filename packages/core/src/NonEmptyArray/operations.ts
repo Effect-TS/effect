@@ -14,6 +14,7 @@ import * as Ord from "../Ord"
 import { fromCompare } from "../Ord"
 import { ordNumber } from "../Ord/common"
 import { toNumber } from "../Ordering"
+import type { URI } from "../Prelude"
 import * as P from "../Prelude"
 import * as DSL from "../Prelude/DSL"
 import type { Show } from "../Show"
@@ -23,7 +24,7 @@ export * from "@effect-ts/system/NonEmptyArray"
 /**
  * `ForEachWithIndex`'s `forEachWithIndexF` function
  */
-export const forEachWithIndexF = P.implementForEachWithIndexF<NonEmptyArrayURI>()(
+export const forEachWithIndexF = P.implementForEachWithIndexF<URI<NonEmptyArrayURI>>()(
   (_) => (G) => (f) =>
     flow(
       A.reduceWithIndex(DSL.succeedF(G)(L.empty()), (k, b, a) =>
@@ -40,9 +41,9 @@ export const forEachWithIndexF = P.implementForEachWithIndexF<NonEmptyArrayURI>(
 /**
  * `ForEach`'s `forEachF` function
  */
-export const forEachF = P.implementForEachF<NonEmptyArrayURI>()((_) => (G) => (f) =>
-  forEachWithIndexF(G)((_, a) => f(a))
-)
+export const forEachF = P.implementForEachF<
+  URI<NonEmptyArrayURI>
+>()((_) => (G) => (f) => forEachWithIndexF(G)((_, a) => f(a)))
 
 /**
  * Test if a value is a member of an array. Takes a `Equal<A>` as a single

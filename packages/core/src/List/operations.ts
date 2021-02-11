@@ -9,6 +9,7 @@ import { makeIdentity } from "../Identity"
 import type { ListURI } from "../Modules"
 import type { Ord } from "../Ord"
 import { Ordering, toNumber } from "../Ordering"
+import type { URI } from "../Prelude"
 import * as P from "../Prelude"
 import type { Show } from "../Show"
 
@@ -17,7 +18,7 @@ export * from "@effect-ts/system/Persistent/List"
 /**
  * `ForEach`'s `forEachF` function
  */
-export const forEachF = P.implementForEachF<ListURI>()(() => (G) => (f) => (fa) =>
+export const forEachF = P.implementForEachF<URI<ListURI>>()(() => (G) => (f) => (fa) =>
   List.reduceRight_(fa, P.succeedF(G)(List.empty()), (a, acc) =>
     pipe(
       f(a),
@@ -75,14 +76,14 @@ export function sortBy_<B>(
 /**
  * `Wiltable`'s `separateF` function
  */
-export const separateF = P.implementSeparateF<ListURI>()((_) => (G) => (f) =>
+export const separateF = P.implementSeparateF<URI<ListURI>>()((_) => (G) => (f) =>
   flow(forEachF(G)(f), G.map(List.separate))
 )
 
 /**
  * `Wither`'s `compactF` function
  */
-export const compactF = P.implementCompactF<ListURI>()((_) => (G) => (f) =>
+export const compactF = P.implementCompactF<URI<ListURI>>()((_) => (G) => (f) =>
   flow(forEachF(G)(f), G.map(List.compact))
 )
 
