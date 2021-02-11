@@ -27,7 +27,9 @@
   "sideEffects": false,
   "dependencies": {
     "@effect-ts/system": "^0.11.9",
-    "@effect-ts/tracing-utils": "^0.3.0"
+    "@effect-ts/tracing-utils": "^0.3.0",
+    "@effect-ts/prelude": "^0.0.0",
+    "@effect-ts/hkt": "^0.0.0"
   },
   "config": {
     "modules": [

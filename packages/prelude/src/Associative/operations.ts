@@ -1,6 +1,5 @@
-import type { Ord } from "@effect-ts/system/Ord"
-import { max, min } from "@effect-ts/system/Ord"
-
+import type { Ord } from "../Ord"
+import { max, min } from "../Ord"
 import type { Associative } from "./definition"
 import { makeAssociative } from "./makeAssociative"
 

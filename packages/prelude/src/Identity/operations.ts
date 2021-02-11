@@ -1,6 +1,6 @@
-import type { Endomorphism } from "@effect-ts/core/Function"
-import { identity } from "@effect-ts/core/Function"
 import type { URIS } from "@effect-ts/hkt"
+import type { Endomorphism } from "@effect-ts/system/Function"
+import { identity } from "@effect-ts/system/Function"
 
 import type { Associative } from "../Associative"
 import * as A from "../Associative"
