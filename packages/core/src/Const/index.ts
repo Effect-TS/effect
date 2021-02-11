@@ -69,7 +69,7 @@ export function contramap<A, B>(f: (b: B) => A): <E>(fa: Const<E, A>) => Const<E
  * The `Any` instance for `Const[E, +_]`
  */
 export function getAny<E>(e: E) {
-  return P.instance<P.Any<[ConstURI], P.Fix<"E", E>>>({
+  return P.instance<P.Any<ConstURI, P.Fix<"E", E>>>({
     any: makeConst(e)
   })
 }
@@ -78,7 +78,7 @@ export function getAny<E>(e: E) {
  * The `AssociativeBoth` instance for `Const[E, +_]`
  */
 export function getAssociativeBoth<E>(A: As.Associative<E>) {
-  return P.instance<P.AssociativeBoth<[ConstURI], P.Fix<"E", E>>>({
+  return P.instance<P.AssociativeBoth<ConstURI, P.Fix<"E", E>>>({
     both: (fb) => (fa) => makeConst(A.combine(fb)(fa))()
   })
 }
@@ -86,14 +86,14 @@ export function getAssociativeBoth<E>(A: As.Associative<E>) {
 /**
  * The `Contravariant` instance for `Const[+_, +_]`
  */
-export const Contravariant = P.instance<P.Contravariant<[ConstURI], P.V<"E", "+">>>({
+export const Contravariant = P.instance<P.Contravariant<ConstURI, P.V<"E", "+">>>({
   contramap
 })
 
 /**
  * The `Covariant` instance for `Const[E, +_]`
  */
-export const Covariant = P.instance<P.Covariant<[ConstURI], P.V<"E", "+">>>({
+export const Covariant = P.instance<P.Covariant<ConstURI, P.V<"E", "+">>>({
   map
 })
 
@@ -101,7 +101,7 @@ export const Covariant = P.instance<P.Covariant<[ConstURI], P.V<"E", "+">>>({
  * The `IdentityBoth` instance for `Const[E, +_]`
  */
 export function getIdentityBoth<E>(I: Id.Identity<E>) {
-  return P.instance<P.IdentityBoth<[ConstURI], P.Fix<"E", E>>>({
+  return P.instance<P.IdentityBoth<ConstURI, P.Fix<"E", E>>>({
     ...getAny(I.identity),
     ...getAssociativeBoth(I)
   })
@@ -111,7 +111,7 @@ export function getIdentityBoth<E>(I: Id.Identity<E>) {
  * The `Applicative` instance for `Const[E, +_]`
  */
 export function getApplicative<E>(I: Id.Identity<E>) {
-  return P.instance<P.Applicative<[ConstURI], P.Fix<"E", E>>>({
+  return P.instance<P.Applicative<ConstURI, P.Fix<"E", E>>>({
     ...Covariant,
     ...getIdentityBoth(I)
   })

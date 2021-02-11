@@ -6,35 +6,35 @@ import * as P from "../Prelude"
 /**
  * The `Any` instance for `IO[+_]`.
  */
-export const Any = P.instance<P.Any<[IOURI]>>({
+export const Any = P.instance<P.Any<IOURI>>({
   any: () => F.succeed({})
 })
 
 /**
  * The `Covariant` instance for `IO[+_]`.
  */
-export const Covariant = P.instance<P.Covariant<[IOURI]>>({
+export const Covariant = P.instance<P.Covariant<IOURI>>({
   map: F.map
 })
 
 /**
  * The `AssociativeBoth` instance for `IO[+_]`.
  */
-export const AssociativeBoth = P.instance<P.AssociativeBoth<[IOURI]>>({
+export const AssociativeBoth = P.instance<P.AssociativeBoth<IOURI>>({
   both: F.zip
 })
 
 /**
  * The `AssociativeFlatten` instance for `IO[+_]`.
  */
-export const AssociativeFlatten = P.instance<P.AssociativeFlatten<[IOURI]>>({
+export const AssociativeFlatten = P.instance<P.AssociativeFlatten<IOURI>>({
   flatten: (ffa) => F.chain_(ffa, (x) => x)
 })
 
 /**
  * The `IdentityFlatten` instance for `IO[+_]`.
  */
-export const IdentityFlatten = P.instance<P.IdentityFlatten<[IOURI]>>({
+export const IdentityFlatten = P.instance<P.IdentityFlatten<IOURI>>({
   ...Any,
   ...AssociativeFlatten
 })
@@ -42,7 +42,7 @@ export const IdentityFlatten = P.instance<P.IdentityFlatten<[IOURI]>>({
 /**
  * The `Monad` instance for `IO[+_]`.
  */
-export const Monad = P.instance<P.Monad<[IOURI]>>({
+export const Monad = P.instance<P.Monad<IOURI>>({
   ...Any,
   ...Covariant,
   ...AssociativeFlatten
@@ -51,7 +51,7 @@ export const Monad = P.instance<P.Monad<[IOURI]>>({
 /**
  * The `Applicative` instance for `IO[+_]`.
  */
-export const Applicative = P.instance<P.Applicative<[IOURI]>>({
+export const Applicative = P.instance<P.Applicative<IOURI>>({
   ...Any,
   ...Covariant,
   ...AssociativeBoth

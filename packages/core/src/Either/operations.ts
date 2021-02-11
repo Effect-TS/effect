@@ -37,10 +37,7 @@ export function zipValidation<E>(
 /**
  * `ForEach`'s `forEachF` function
  */
-export const forEachF = P.implementForEachF<
-  [EitherURI],
-  V
->()((_) => (G) => (f) => (fa) =>
+export const forEachF = P.implementForEachF<EitherURI, V>()((_) => (G) => (f) => (fa) =>
   E.isLeft(fa) ? DSL.succeedF(G)(fa) : pipe(f(fa.right), G.map(E.right))
 )
 
@@ -131,7 +128,7 @@ export function separate<E>(M: Identity<E>) {
  */
 export function getCompactF<E>(M: Identity<E>) {
   const com = compact(M)
-  return P.implementCompactF<[EitherURI], P.Fix<"E", E>>()((_) => (G) => {
+  return P.implementCompactF<EitherURI, P.Fix<"E", E>>()((_) => (G) => {
     const traverseF = forEachF(G)
     return (f) => flow(traverseF(f), G.map(com))
   })
@@ -142,7 +139,7 @@ export function getCompactF<E>(M: Identity<E>) {
  */
 export function getSeparateF<E>(M: Identity<E>) {
   const sep = separate(M)
-  return P.implementSeparateF<[EitherURI], P.Fix<"E", E>>()((_) => (G) => {
+  return P.implementSeparateF<EitherURI, P.Fix<"E", E>>()((_) => (G) => {
     const traverseF = forEachF(G)
     return (f) => flow(traverseF(f), G.map(sep))
   })
@@ -153,7 +150,7 @@ export function getSeparateF<E>(M: Identity<E>) {
  */
 export function getWitherable<E>(M: Identity<E>) {
   const compactF = getCompactF(M)
-  return P.instance<P.Witherable<[EitherURI], P.Fix<"E", E>>>({
+  return P.instance<P.Witherable<EitherURI, P.Fix<"E", E>>>({
     compactF
   })
 }
@@ -163,7 +160,7 @@ export function getWitherable<E>(M: Identity<E>) {
  */
 export function getWiltable<E>(M: Identity<E>) {
   const separateF = getSeparateF(M)
-  return P.instance<P.Wiltable<[EitherURI], P.Fix<"E", E>>>({
+  return P.instance<P.Wiltable<EitherURI, P.Fix<"E", E>>>({
     separateF
   })
 }
@@ -173,7 +170,7 @@ export function getWiltable<E>(M: Identity<E>) {
  */
 export function getCompact<E>(M: Identity<E>) {
   const _compact = compact(M)
-  return P.instance<P.Compact<[EitherURI], P.Fix<"E", E>>>({
+  return P.instance<P.Compact<EitherURI, P.Fix<"E", E>>>({
     compact: _compact
   })
 }
@@ -183,7 +180,7 @@ export function getCompact<E>(M: Identity<E>) {
  */
 export function getSeparate<E>(M: Identity<E>) {
   const _separate = separate(M)
-  return P.instance<P.Separate<[EitherURI], P.Fix<"E", E>>>({
+  return P.instance<P.Separate<EitherURI, P.Fix<"E", E>>>({
     separate: _separate
   })
 }
@@ -194,7 +191,7 @@ export function getSeparate<E>(M: Identity<E>) {
 export function getCompactable<E>(M: Identity<E>) {
   const C = getCompact(M)
   const S = getSeparate(M)
-  return P.instance<P.Compactable<[EitherURI], P.Fix<"E", E>>>({
+  return P.instance<P.Compactable<EitherURI, P.Fix<"E", E>>>({
     ...C,
     ...S
   })

@@ -77,61 +77,61 @@ export const reduceRight: <A, B>(b: B, f: (a: A, b: B) => B) => (fa: A) => B = (
   f
 ) => (fa) => reduceRight_(fa, b, f)
 
-export const Any = P.instance<P.Any<[IdURI]>>({
+export const Any = P.instance<P.Any<IdURI>>({
   any: () => ({})
 })
 
-export const Covariant = P.instance<P.Covariant<[IdURI]>>({
+export const Covariant = P.instance<P.Covariant<IdURI>>({
   map
 })
 
-export const AssociativeBoth = P.instance<P.AssociativeBoth<[IdURI]>>({
+export const AssociativeBoth = P.instance<P.AssociativeBoth<IdURI>>({
   both: (b) => (a) => [a, b]
 })
 
-export const AssociativeFlatten = P.instance<P.AssociativeFlatten<[IdURI]>>({
+export const AssociativeFlatten = P.instance<P.AssociativeFlatten<IdURI>>({
   flatten: (a) => a
 })
 
-export const IdentityBoth = P.instance<P.IdentityBoth<[IdURI]>>({
+export const IdentityBoth = P.instance<P.IdentityBoth<IdURI>>({
   ...Any,
   ...AssociativeBoth
 })
 
-export const IdentityFlatten = P.instance<P.IdentityFlatten<[IdURI]>>({
+export const IdentityFlatten = P.instance<P.IdentityFlatten<IdURI>>({
   ...Any,
   ...AssociativeFlatten
 })
 
-export const Applicative = P.instance<P.Applicative<[IdURI]>>({
+export const Applicative = P.instance<P.Applicative<IdURI>>({
   ...Covariant,
   ...IdentityBoth
 })
 
-export const Monad = P.instance<P.Monad<[IdURI]>>({
+export const Monad = P.instance<P.Monad<IdURI>>({
   ...Covariant,
   ...IdentityFlatten
 })
 
-export const Reduce = P.instance<P.Reduce<[IdURI]>>({
+export const Reduce = P.instance<P.Reduce<IdURI>>({
   reduce
 })
 
-export const ReduceRight = P.instance<P.ReduceRight<[IdURI]>>({
+export const ReduceRight = P.instance<P.ReduceRight<IdURI>>({
   reduceRight
 })
 
-export const FoldMap = P.instance<P.FoldMap<[IdURI]>>({
+export const FoldMap = P.instance<P.FoldMap<IdURI>>({
   foldMap
 })
 
-export const Foldable = P.instance<P.Foldable<[IdURI]>>({
+export const Foldable = P.instance<P.Foldable<IdURI>>({
   ...Reduce,
   ...ReduceRight,
   ...FoldMap
 })
 
-export const ForEach = P.instance<P.ForEach<[IdURI]>>({
+export const ForEach = P.instance<P.ForEach<IdURI>>({
   ...Covariant,
   forEachF: () => (f) => f
 })

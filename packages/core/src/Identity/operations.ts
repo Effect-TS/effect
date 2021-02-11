@@ -13,7 +13,7 @@ import { makeIdentity } from "./makeIdentity"
  * Derive `Identity`
  */
 export function deriveIdentity<F extends URIS, A>(
-  D: Derive<F, [IdentityURI]>,
+  D: Derive<F, IdentityURI>,
   I: Identity<A>
 ) {
   return D.derive(I)

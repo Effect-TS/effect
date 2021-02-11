@@ -31,69 +31,69 @@ export function getShow<A>(S: Show<A>): Show<O.Option<A>> {
   }
 }
 
-export const AssociativeEither = P.instance<P.AssociativeEither<[OptionURI]>>({
+export const AssociativeEither = P.instance<P.AssociativeEither<OptionURI>>({
   orElseEither: <B>(fb: () => O.Option<B>) => <A>(
     fa: O.Option<A>
   ): O.Option<Either<A, B>> =>
     fa._tag === "Some" ? O.some(left(fa.value)) : O.map_(fb(), right)
 })
 
-export const Covariant = P.instance<P.Covariant<[OptionURI]>>({
+export const Covariant = P.instance<P.Covariant<OptionURI>>({
   map: O.map
 })
 
-export const Any = P.instance<P.Any<[OptionURI]>>({
+export const Any = P.instance<P.Any<OptionURI>>({
   any: () => O.some({})
 })
 
-export const AssociativeFlatten = P.instance<P.AssociativeFlatten<[OptionURI]>>({
+export const AssociativeFlatten = P.instance<P.AssociativeFlatten<OptionURI>>({
   flatten: O.flatten
 })
 
-export const IdentityFlatten = P.instance<P.IdentityFlatten<[OptionURI]>>({
+export const IdentityFlatten = P.instance<P.IdentityFlatten<OptionURI>>({
   ...Any,
   ...AssociativeFlatten
 })
 
-export const Monad = P.instance<P.Monad<[OptionURI]>>({
+export const Monad = P.instance<P.Monad<OptionURI>>({
   ...Covariant,
   ...IdentityFlatten
 })
 
-export const AssociativeBoth = P.instance<P.AssociativeBoth<[OptionURI]>>({
+export const AssociativeBoth = P.instance<P.AssociativeBoth<OptionURI>>({
   both: O.zip
 })
 
-export const IdentityBoth = P.instance<P.IdentityBoth<[OptionURI]>>({
+export const IdentityBoth = P.instance<P.IdentityBoth<OptionURI>>({
   ...Any,
   ...AssociativeBoth
 })
 
-export const Applicative = P.instance<P.Applicative<[OptionURI]>>({
+export const Applicative = P.instance<P.Applicative<OptionURI>>({
   ...Covariant,
   ...IdentityBoth
 })
 
-export const Extend = P.instance<P.Extend<[OptionURI]>>({
+export const Extend = P.instance<P.Extend<OptionURI>>({
   extend: O.extend
 })
 
-export const Foldable = P.instance<P.Foldable<[OptionURI]>>({
+export const Foldable = P.instance<P.Foldable<OptionURI>>({
   reduce: (b, f) => (fa) => (O.isNone(fa) ? b : f(b, fa.value)),
   reduceRight: (b, f) => (fa) => (O.isNone(fa) ? b : f(fa.value, b)),
   foldMap: (M) => (f) => (fa) => (O.isNone(fa) ? M.identity : f(fa.value))
 })
 
-export const forEachF = P.implementForEachF<[OptionURI]>()(() => (G) => (f) => (fa) =>
+export const forEachF = P.implementForEachF<OptionURI>()(() => (G) => (f) => (fa) =>
   O.isNone(fa) ? P.succeedF(G)(O.none) : pipe(f(fa.value), G.map(O.some))
 )
 
-export const ForEach = P.instance<P.ForEach<[OptionURI]>>({
+export const ForEach = P.instance<P.ForEach<OptionURI>>({
   ...Covariant,
   forEachF
 })
 
-export const Fail = P.instance<P.FX.Fail<[OptionURI]>>({
+export const Fail = P.instance<P.FX.Fail<OptionURI>>({
   fail: () => O.none
 })
 
@@ -229,7 +229,7 @@ export function getOrd<A>(_: Ord<A>): Ord<O.Option<A>> {
   )
 }
 
-export const filter: P.Filterable<[OptionURI]>["filter"] = <A>(
+export const filter: P.Filterable<OptionURI>["filter"] = <A>(
   predicate: Predicate<A>
 ) => (fa: O.Option<A>): O.Option<A> =>
   O.isNone(fa) ? O.none : predicate(fa.value) ? fa : O.none
@@ -251,7 +251,7 @@ export function separate<A, B>(
   return O.isNone(o) ? defaultSeparate : o.value
 }
 
-export const partition: P.Filterable<[OptionURI]>["partition"] = <A>(
+export const partition: P.Filterable<OptionURI>["partition"] = <A>(
   predicate: Predicate<A>
 ) => (fa: O.Option<A>) => ({
   left: filter((a: A) => !predicate(a))(fa),
@@ -263,7 +263,7 @@ export const partitionMap: <A, B, B1>(
 ) => (fa: O.Option<A>) => Separated<O.Option<B>, O.Option<B1>> = (f) => (fa) =>
   separate(O.map_(fa, f))
 
-export const Filterable = P.instance<P.Filterable<[OptionURI]>>({
+export const Filterable = P.instance<P.Filterable<OptionURI>>({
   filter,
   filterMap,
   partition,
@@ -272,7 +272,7 @@ export const Filterable = P.instance<P.Filterable<[OptionURI]>>({
 
 export const sequence = P.sequenceF(ForEach)
 
-export const separateF = P.implementSeparateF<[OptionURI]>()(
+export const separateF = P.implementSeparateF<OptionURI>()(
   (_) => (F) => (f) => (fa) => {
     const o = O.map_(fa, (a) =>
       pipe(
@@ -292,21 +292,19 @@ export const separateF = P.implementSeparateF<[OptionURI]>()(
   }
 )
 
-export const compactF = P.implementCompactF<[OptionURI]>()(
-  (_) => (F) => (f) => (fa) => {
-    return O.isNone(fa) ? P.succeedF(F)(O.none) : f(fa.value)
-  }
-)
+export const compactF = P.implementCompactF<OptionURI>()((_) => (F) => (f) => (fa) => {
+  return O.isNone(fa) ? P.succeedF(F)(O.none) : f(fa.value)
+})
 
-export const Wiltable = P.instance<P.Wiltable<[OptionURI]>>({
+export const Wiltable = P.instance<P.Wiltable<OptionURI>>({
   separateF
 })
 
-export const Witherable = P.instance<P.Witherable<[OptionURI]>>({
+export const Witherable = P.instance<P.Witherable<OptionURI>>({
   compactF
 })
 
-export const Compactable = P.instance<P.Compactable<[OptionURI]>>({
+export const Compactable = P.instance<P.Compactable<OptionURI>>({
   compact: O.flatten,
   separate
 })
