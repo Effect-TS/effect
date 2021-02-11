@@ -10,3 +10,5 @@ export const rec = pipe(
 )
 
 console.log(rec)
+console.log(rec)
+console.log(rec)

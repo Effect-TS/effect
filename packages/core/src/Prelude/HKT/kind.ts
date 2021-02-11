@@ -1,11 +1,16 @@
 import type { OrFix } from "./fix"
 import type { ConcreteURIS, URItoIndex, URItoKind } from "./hkt"
 
-export type URIS = URI<ConcreteURIS, any>
+export type URIS = URI<ConcreteURIS, any, any>
 
-export interface URI<F extends ConcreteURIS, C = {}> {
+export interface URI<
+  F extends ConcreteURIS,
+  C = {},
+  N extends URI<any, any, any> | {} = {}
+> {
   _F: F
   _C: C
+  _N: N
 }
 
 export type Kind<
@@ -33,7 +38,9 @@ export type Kind<
   OrFix<"S", F["_C"], OrFix<"S", C, S>>,
   OrFix<"R", F["_C"], OrFix<"R", C, R>>,
   OrFix<"E", F["_C"], OrFix<"E", C, E>>,
-  A
+  F["_N"] extends URI<any, any, any>
+    ? Kind<F["_N"], C, N, K, Q, W, X, I, S, R, E, A>
+    : A
 >[F["_F"]]
 
 export type IndexForBase<
