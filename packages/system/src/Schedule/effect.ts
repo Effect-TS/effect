@@ -1,6 +1,6 @@
 export { andThen, andThen_ } from "../Effect/andThen"
 export { as_ } from "../Effect/as"
-export { bracketExit_ } from "../Effect/bracketExit_"
+export { bracketExit_ } from "../Effect/bracketExit"
 export {
   access,
   accessM,

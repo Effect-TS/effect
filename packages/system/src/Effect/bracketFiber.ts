@@ -1,5 +1,5 @@
 import type { Runtime } from "../Fiber/core"
-import { bracket_ } from "./bracket_"
+import { bracket_ } from "./bracket"
 import { chain_ } from "./core"
 import { forkDaemon } from "./core-scope"
 import type { Effect } from "./effect"

@@ -1,5 +1,5 @@
 import type { Exit } from "../Exit"
-import { bracketExit_ } from "./bracketExit_"
+import { bracketExit_ } from "./bracketExit"
 import { unit } from "./core"
 import type { Effect } from "./effect"
 

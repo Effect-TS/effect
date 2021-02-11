@@ -1,4 +1,4 @@
-export { bracket_ } from "../Effect/bracket_"
+export { bracket_ } from "../Effect/bracket"
 export { chain_, chain, succeed, unit } from "../Effect/core"
 export { die } from "../Effect/die"
 export { UIO, Effect } from "../Effect/effect"

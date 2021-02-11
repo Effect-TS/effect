@@ -2,7 +2,7 @@ import type { Cause } from "../Cause"
 import { failureOrCause } from "../Cause"
 import * as E from "../Either"
 import { pipe } from "../Function"
-import { bracketExit_ } from "./bracketExit_"
+import { bracketExit_ } from "./bracketExit"
 import { unit } from "./core"
 import type { Effect, RIO } from "./effect"
 

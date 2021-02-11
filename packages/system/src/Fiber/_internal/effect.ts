@@ -1,5 +1,5 @@
 export { asUnit } from "../../Effect/asUnit"
-export { bracket_ } from "../../Effect/bracket_"
+export { bracket_ } from "../../Effect/bracket"
 export {
   chain,
   chain_,
