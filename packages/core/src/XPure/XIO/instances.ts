@@ -1,41 +1,42 @@
 import * as F from "@effect-ts/system/XPure"
 
 import type { XIOURI } from "../../Modules"
+import type { URI } from "../../Prelude"
 import * as P from "../../Prelude"
 import { map, zip } from "./operations"
 
 /**
  * The `Any` instance for `IO[+_]`.
  */
-export const Any = P.instance<P.Any<XIOURI>>({
+export const Any = P.instance<P.Any<URI<XIOURI>>>({
   any: () => F.succeed(() => ({}))
 })
 
 /**
  * The `Covariant` instance for `IO[+_]`.
  */
-export const Covariant = P.instance<P.Covariant<XIOURI>>({
+export const Covariant = P.instance<P.Covariant<URI<XIOURI>>>({
   map
 })
 
 /**
  * The `AssociativeBoth` instance for `IO[+_]`.
  */
-export const AssociativeBoth = P.instance<P.AssociativeBoth<XIOURI>>({
+export const AssociativeBoth = P.instance<P.AssociativeBoth<URI<XIOURI>>>({
   both: zip
 })
 
 /**
  * The `AssociativeFlatten` instance for `IO[+_]`.
  */
-export const AssociativeFlatten = P.instance<P.AssociativeFlatten<XIOURI>>({
+export const AssociativeFlatten = P.instance<P.AssociativeFlatten<URI<XIOURI>>>({
   flatten: (ffa) => F.chain_(ffa, (x) => x)
 })
 
 /**
  * The `IdentityFlatten` instance for `IO[+_]`.
  */
-export const IdentityFlatten = P.instance<P.IdentityFlatten<XIOURI>>({
+export const IdentityFlatten = P.instance<P.IdentityFlatten<URI<XIOURI>>>({
   ...Any,
   ...AssociativeFlatten
 })
@@ -43,7 +44,7 @@ export const IdentityFlatten = P.instance<P.IdentityFlatten<XIOURI>>({
 /**
  * The `Monad` instance for `IO[+_]`.
  */
-export const Monad = P.instance<P.Monad<XIOURI>>({
+export const Monad = P.instance<P.Monad<URI<XIOURI>>>({
   ...Any,
   ...Covariant,
   ...AssociativeFlatten
@@ -52,7 +53,7 @@ export const Monad = P.instance<P.Monad<XIOURI>>({
 /**
  * The `Applicative` instance for `IO[+_]`.
  */
-export const Applicative = P.instance<P.Applicative<XIOURI>>({
+export const Applicative = P.instance<P.Applicative<URI<XIOURI>>>({
   ...Any,
   ...Covariant,
   ...AssociativeBoth

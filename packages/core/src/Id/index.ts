@@ -4,6 +4,7 @@ import type { Equal } from "../Equal"
 import { identity as id } from "../Function"
 import type { Identity } from "../Identity"
 import type { IdURI } from "../Modules"
+import type { URI } from "../Prelude"
 import * as P from "../Prelude"
 import { structF, tupleF } from "../Prelude/DSL"
 import type { Show } from "../Show"
@@ -77,61 +78,61 @@ export const reduceRight: <A, B>(b: B, f: (a: A, b: B) => B) => (fa: A) => B = (
   f
 ) => (fa) => reduceRight_(fa, b, f)
 
-export const Any = P.instance<P.Any<IdURI>>({
+export const Any = P.instance<P.Any<URI<IdURI>>>({
   any: () => ({})
 })
 
-export const Covariant = P.instance<P.Covariant<IdURI>>({
+export const Covariant = P.instance<P.Covariant<URI<IdURI>>>({
   map
 })
 
-export const AssociativeBoth = P.instance<P.AssociativeBoth<IdURI>>({
+export const AssociativeBoth = P.instance<P.AssociativeBoth<URI<IdURI>>>({
   both: (b) => (a) => [a, b]
 })
 
-export const AssociativeFlatten = P.instance<P.AssociativeFlatten<IdURI>>({
+export const AssociativeFlatten = P.instance<P.AssociativeFlatten<URI<IdURI>>>({
   flatten: (a) => a
 })
 
-export const IdentityBoth = P.instance<P.IdentityBoth<IdURI>>({
+export const IdentityBoth = P.instance<P.IdentityBoth<URI<IdURI>>>({
   ...Any,
   ...AssociativeBoth
 })
 
-export const IdentityFlatten = P.instance<P.IdentityFlatten<IdURI>>({
+export const IdentityFlatten = P.instance<P.IdentityFlatten<URI<IdURI>>>({
   ...Any,
   ...AssociativeFlatten
 })
 
-export const Applicative = P.instance<P.Applicative<IdURI>>({
+export const Applicative = P.instance<P.Applicative<URI<IdURI>>>({
   ...Covariant,
   ...IdentityBoth
 })
 
-export const Monad = P.instance<P.Monad<IdURI>>({
+export const Monad = P.instance<P.Monad<URI<IdURI>>>({
   ...Covariant,
   ...IdentityFlatten
 })
 
-export const Reduce = P.instance<P.Reduce<IdURI>>({
+export const Reduce = P.instance<P.Reduce<URI<IdURI>>>({
   reduce
 })
 
-export const ReduceRight = P.instance<P.ReduceRight<IdURI>>({
+export const ReduceRight = P.instance<P.ReduceRight<URI<IdURI>>>({
   reduceRight
 })
 
-export const FoldMap = P.instance<P.FoldMap<IdURI>>({
+export const FoldMap = P.instance<P.FoldMap<URI<IdURI>>>({
   foldMap
 })
 
-export const Foldable = P.instance<P.Foldable<IdURI>>({
+export const Foldable = P.instance<P.Foldable<URI<IdURI>>>({
   ...Reduce,
   ...ReduceRight,
   ...FoldMap
 })
 
-export const ForEach = P.instance<P.ForEach<IdURI>>({
+export const ForEach = P.instance<P.ForEach<URI<IdURI>>>({
   ...Covariant,
   forEachF: () => (f) => f
 })
