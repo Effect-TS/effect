@@ -1,4 +1,6 @@
+import * as A from "./Array"
 import * as T from "./Effect"
+import * as ET from "./EitherT"
 import { pipe, tuple } from "./Function"
 import * as NA from "./NonEmptyArray"
 import * as OT from "./OptionT"
@@ -27,6 +29,10 @@ const grouped = pipe(
 console.log(grouped)
 console.log(grouped)
 console.log(grouped)
+console.log(grouped)
 
 const EffectOption = OT.monad(T.Monad)
-export const chain = chainF(EffectOption)
+const ArrayEither = ET.monad(A.Monad)
+
+export const chainEffectOption = chainF(EffectOption)
+export const chainArrayEither = chainF(ArrayEither)
