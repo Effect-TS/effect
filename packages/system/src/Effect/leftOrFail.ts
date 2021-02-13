@@ -1,5 +1,5 @@
 import * as E from "../Either"
-import { flow } from "../Function"
+import { pipe } from "../Function"
 import { NoSuchElementException } from "../GlobalExceptions"
 import { chain_, succeed } from "./core"
 import type { Effect } from "./effect"
@@ -12,7 +12,10 @@ export function leftOrFail_<R, E, B, C, E1>(
   self: Effect<R, E, E.Either<B, C>>,
   orFail: (c: C) => E1
 ) {
-  return chain_(self, E.fold(succeed, flow(orFail, fail)))
+  return chain_(
+    self,
+    E.fold(succeed, (x) => pipe(x, orFail, fail))
+  )
 }
 
 /**

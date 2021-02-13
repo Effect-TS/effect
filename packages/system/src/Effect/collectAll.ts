@@ -1,5 +1,5 @@
 import * as A from "../Array"
-import { flow, identity } from "../Function"
+import { identity, pipe } from "../Function"
 import * as I from "../Iterable"
 import * as O from "../Option"
 import * as core from "./core"
@@ -69,7 +69,7 @@ export function collectAllWith_<R, E, A, B>(
   as: Iterable<Effect<R, E, A>>,
   pf: (a: A) => O.Option<B>
 ): Effect<R, E, readonly B[]> {
-  return map.map_(collectAll(as), flow(A.map(pf), A.compact))
+  return map.map_(collectAll(as), (x) => pipe(x, A.map(pf), A.compact))
 }
 
 /**
@@ -88,7 +88,7 @@ export function collectAllWithPar_<R, E, A, B>(
   as: Iterable<Effect<R, E, A>>,
   pf: (a: A) => O.Option<B>
 ): Effect<R, E, readonly B[]> {
-  return map.map_(collectAllPar(as), flow(A.map(pf), A.compact))
+  return map.map_(collectAllPar(as), (x) => pipe(x, A.map(pf), A.compact))
 }
 
 /**
@@ -112,7 +112,7 @@ export function collectAllWithParN_(
   pf: (a: A) => O.Option<B>
 ) => Effect<R, E, readonly B[]> {
   const c = collectAllParN(n)
-  return (as, pf) => map.map_(c(as), flow(A.map(pf), A.compact))
+  return (as, pf) => map.map_(c(as), (x) => pipe(x, A.map(pf), A.compact))
 }
 
 /**

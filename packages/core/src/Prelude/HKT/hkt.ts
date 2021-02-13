@@ -27,12 +27,12 @@ export interface HKT4<F, S, R, E, A> {
   A: A
 }
 
-export type UHKT<F> = URI<"HKT1", CustomType<"F", F>>
-export type UHKT2<F> = URI<"HKT2", CustomType<"F", F>>
-export type UHKT3<F> = URI<"HKT3", CustomType<"F", F>>
-export type UHKT4<F> = URI<"HKT4", CustomType<"F", F>>
+export type UHKT<F> = [URI<"HKT1", CustomType<"F", F>>]
+export type UHKT2<F> = [URI<"HKT2", CustomType<"F", F>>]
+export type UHKT3<F> = [URI<"HKT3", CustomType<"F", F>>]
+export type UHKT4<F> = [URI<"HKT4", CustomType<"F", F>>]
 
-export type UHKTCategory<F> = URI<"HKTCategory", CustomType<"F", F>>
+export type UHKTCategory<F> = [URI<"HKTCategory", CustomType<"F", F>>]
 
 export interface URItoKind<
   // encodes metadata carried at the URI level (like additional params)

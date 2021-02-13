@@ -2,7 +2,7 @@
 import { accessCallTrace, traceFrom } from "@effect-ts/tracing-utils"
 
 import { squash } from "../Cause"
-import { flow, identity, pipe } from "../Function"
+import { identity, pipe } from "../Function"
 import { succeed } from "./core"
 import type { Effect } from "./effect"
 import { fail } from "./fail"
@@ -26,7 +26,11 @@ export function absorbWith<E>(f: (e: E) => unknown) {
  * @trace 1
  */
 export function absorbWith_<R, A, E>(fa: Effect<R, E, A>, f: (e: E) => unknown) {
-  return pipe(fa, sandbox, foldM(flow(squash(f), fail), succeed))
+  return pipe(
+    fa,
+    sandbox,
+    foldM((x) => pipe(x, squash(f), fail), succeed)
+  )
 }
 
 /**

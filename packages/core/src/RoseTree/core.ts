@@ -303,7 +303,7 @@ export function reduceRight_<A, B>(fa: Tree<A>, b: B, f: (a: A, b: B) => B): B {
   return IO.run(go(fa, b))
 }
 
-export const forEachF = P.implementForEachF<URI<TreeURI>>()((_) => (G) => {
+export const forEachF = P.implementForEachF<[URI<TreeURI>]>()((_) => (G) => {
   const traverseF = A.forEachF(G)
   const r = <A, B>(f: (a: A) => P.HKT<typeof _.G, B>) => (
     ta: Tree<A>
@@ -324,7 +324,7 @@ export const forEachF = P.implementForEachF<URI<TreeURI>>()((_) => (G) => {
   return r
 })
 
-export const ForEach = P.instance<P.ForEach<URI<TreeURI>>>({
+export const ForEach = P.instance<P.ForEach<[URI<TreeURI>]>>({
   forEachF,
   map
 })
@@ -420,13 +420,13 @@ export function reduceRight<A, B>(b: B, f: (a: A, b: B) => B) {
   return (fa: Tree<A>): B => reduceRight_(fa, b, f)
 }
 
-export const Foldable = P.instance<P.Foldable<URI<TreeURI>>>({
+export const Foldable = P.instance<P.Foldable<[URI<TreeURI>]>>({
   foldMap,
   reduce,
   reduceRight
 })
 
-export const Monad = P.instance<P.Monad<URI<TreeURI>>>({
+export const Monad = P.instance<P.Monad<[URI<TreeURI>]>>({
   any: () => of({}),
   flatten,
   map

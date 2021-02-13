@@ -1,5 +1,5 @@
 import * as A from "../Array"
-import { flow, pipe } from "../Function"
+import { pipe } from "../Function"
 import * as I from "../Iterable"
 import * as O from "../Option"
 import * as core from "./core"
@@ -97,9 +97,9 @@ export function filterNot_<A, R, E>(
   as: Iterable<A>,
   f: (a: A) => Effect<R, E, boolean>
 ) {
-  return filter_(
-    as,
-    flow(
+  return filter_(as, (x) =>
+    pipe(
+      x,
       f,
       map.map((b) => !b)
     )
@@ -114,9 +114,9 @@ export function filterNotPar_<A, R, E>(
   as: Iterable<A>,
   f: (a: A) => Effect<R, E, boolean>
 ) {
-  return filterPar_(
-    as,
-    flow(
+  return filterPar_(as, (x) =>
+    pipe(
+      x,
       f,
       map.map((b) => !b)
     )
@@ -137,9 +137,9 @@ export function filterNotPar<A, R, E>(f: (a: A) => Effect<R, E, boolean>) {
  */
 export function filterNotParN_(n: number) {
   return <A, R, E>(as: Iterable<A>, f: (a: A) => Effect<R, E, boolean>) =>
-    filterParN_(n)(
-      as,
-      flow(
+    filterParN_(n)(as, (x) =>
+      pipe(
+        x,
         f,
         map.map((b) => !b)
       )

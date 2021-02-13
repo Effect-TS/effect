@@ -17,14 +17,15 @@ export * from "@effect-ts/system/Persistent/List"
 /**
  * `ForEach`'s `forEachF` function
  */
-export const forEachF = P.implementForEachF<URI<ListURI>>()(() => (G) => (f) => (fa) =>
-  List.reduceRight_(fa, P.succeedF(G)(List.empty()), (a, acc) =>
-    pipe(
-      f(a),
-      G.both(acc),
-      G.map(([b, l]) => List.prepend_(l, b))
+export const forEachF = P.implementForEachF<[URI<ListURI>]>()(
+  () => (G) => (f) => (fa) =>
+    List.reduceRight_(fa, P.succeedF(G)(List.empty()), (a, acc) =>
+      pipe(
+        f(a),
+        G.both(acc),
+        G.map(([b, l]) => List.prepend_(l, b))
+      )
     )
-  )
 )
 
 /**
@@ -75,14 +76,14 @@ export function sortBy_<B>(
 /**
  * `Wiltable`'s `separateF` function
  */
-export const separateF = P.implementSeparateF<URI<ListURI>>()((_) => (G) => (f) =>
+export const separateF = P.implementSeparateF<[URI<ListURI>]>()((_) => (G) => (f) =>
   flow(forEachF(G)(f), G.map(List.separate))
 )
 
 /**
  * `Wither`'s `compactF` function
  */
-export const compactF = P.implementCompactF<URI<ListURI>>()((_) => (G) => (f) =>
+export const compactF = P.implementCompactF<[URI<ListURI>]>()((_) => (G) => (f) =>
   flow(forEachF(G)(f), G.map(List.compact))
 )
 

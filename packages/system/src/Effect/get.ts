@@ -1,5 +1,5 @@
 import { map as mapCause } from "../Cause"
-import { flow } from "../Function"
+import { pipe } from "../Function"
 import type { Option } from "../Option"
 import { fold, none, some } from "../Option"
 import { foldCauseM_, halt, succeed } from "./core"
@@ -12,7 +12,7 @@ import { fail } from "./fail"
 export function get<R, E, A>(self: Effect<R, E, Option<A>>): Effect<R, Option<E>, A> {
   return foldCauseM_(
     self,
-    flow(mapCause(some), halt),
+    (x) => pipe(x, mapCause(some), halt),
     fold(() => fail(none), succeed)
   )
 }

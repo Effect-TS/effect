@@ -11,14 +11,14 @@ export const getAssociative = <A>() => makeAssociative<FA.FreeAssociative<A>>(FA
 export const getIdentity = <A>() =>
   makeIdentity<FA.FreeAssociative<A>>(FA.init<A>(), FA.concat)
 
-export const Covariant = P.instance<P.Covariant<URI<FreeAssociativeURI>>>({
+export const Covariant = P.instance<P.Covariant<[URI<FreeAssociativeURI>]>>({
   map: FA.map
 })
 
-export const Filter = P.instance<P.Filter<URI<FreeAssociativeURI>>>({
+export const Filter = P.instance<P.Filter<[URI<FreeAssociativeURI>]>>({
   filter: FA.filter
 })
 
-export const FilterMap = P.instance<P.FilterMap<URI<FreeAssociativeURI>>>({
+export const FilterMap = P.instance<P.FilterMap<[URI<FreeAssociativeURI>]>>({
   filterMap: FA.filterMap
 })

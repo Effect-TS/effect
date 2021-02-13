@@ -1,5 +1,5 @@
 import * as Fiber from "../Fiber"
-import { flow, pipe } from "../Function"
+import { pipe } from "../Function"
 import { track } from "../Supervisor"
 import { chain, supervised } from "./core"
 import type { Effect, RIO } from "./effect"
@@ -50,7 +50,7 @@ export function ensuringChild_<R, E, A, R2>(
   fa: Effect<R, E, A>,
   f: (_: Fiber.Fiber<any, Iterable<any>>) => RIO<R2, any>
 ) {
-  return ensuringChildren_(fa, flow(Fiber.collectAll, f))
+  return ensuringChildren_(fa, (x) => pipe(x, Fiber.collectAll, f))
 }
 
 /**

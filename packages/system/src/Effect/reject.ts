@@ -1,4 +1,4 @@
-import { flow } from "../Function"
+import { pipe } from "../Function"
 import * as O from "../Option"
 import { chain_, succeed } from "./core"
 import type { Effect } from "./effect"
@@ -47,5 +47,5 @@ export function reject_<R, E, A, E1>(
   self: Effect<R, E, A>,
   pf: (a: A) => O.Option<E1>
 ) {
-  return rejectM_(self, flow(pf, O.map(fail)))
+  return rejectM_(self, (x) => pipe(x, pf, O.map(fail)))
 }
