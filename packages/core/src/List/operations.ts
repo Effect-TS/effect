@@ -3,7 +3,7 @@ import * as List from "@effect-ts/system/Persistent/List"
 import * as A from "../Array"
 import type { Equal } from "../Equal"
 import { makeEqual } from "../Equal"
-import { flow, pipe } from "../Function"
+import { pipe } from "../Function"
 import type { Identity } from "../Identity"
 import { makeIdentity } from "../Identity"
 import type { ListURI } from "../Modules"
@@ -76,16 +76,16 @@ export function sortBy_<B>(
 /**
  * `Wiltable`'s `separateF` function
  */
-export const separateF = P.implementSeparateF<[URI<ListURI>]>()((_) => (G) => (f) =>
-  flow(forEachF(G)(f), G.map(List.separate))
-)
+export const separateF = P.implementSeparateF<
+  [URI<ListURI>]
+>()((_) => (G) => (f) => (x) => pipe(x, forEachF(G)(f), G.map(List.separate)))
 
 /**
  * `Wither`'s `compactF` function
  */
-export const compactF = P.implementCompactF<[URI<ListURI>]>()((_) => (G) => (f) =>
-  flow(forEachF(G)(f), G.map(List.compact))
-)
+export const compactF = P.implementCompactF<
+  [URI<ListURI>]
+>()((_) => (G) => (f) => (x) => pipe(x, forEachF(G)(f), G.map(List.compact)))
 
 /**
  * Test if a value is a member of an array. Takes a `Equal<A>` as a single

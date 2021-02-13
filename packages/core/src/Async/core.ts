@@ -11,7 +11,7 @@ import * as A from "@effect-ts/system/Async"
 import * as E from "@effect-ts/system/Either"
 import type { Has, Tag } from "@effect-ts/system/Has"
 
-import { flow, identity, pipe } from "../Function"
+import { identity, pipe } from "../Function"
 import type { AsyncURI } from "../Modules"
 import type { URI } from "../Prelude"
 import * as P from "../Prelude"
@@ -19,6 +19,7 @@ import type { Sync } from "../Sync"
 import { runEitherEnv } from "../Sync"
 
 export * from "@effect-ts/system/Async"
+export { branch as if, branch_ as if_ }
 
 export type V = P.V<"R", "-"> & P.V<"E", "+">
 
@@ -63,10 +64,12 @@ export const Fail = P.instance<P.FX.Fail<[URI<AsyncURI>], V>>({
 })
 
 export const Run = P.instance<P.FX.Run<[URI<AsyncURI>], V>>({
-  either: flow(
-    A.map(E.right),
-    A.catchAll((e) => A.succeed(E.left(e)))
-  )
+  either: (x) =>
+    pipe(
+      x,
+      A.map(E.right),
+      A.catchAll((e) => A.succeed(E.left(e)))
+    )
 })
 
 export const either: <A, R, E>(
@@ -144,5 +147,3 @@ export const { match, matchIn, matchMorph, matchTag, matchTagIn } = P.matchers(
  */
 const branch = P.conditionalF(Covariant)
 const branch_ = P.conditionalF_(Covariant)
-
-export { branch as if, branch_ as if_ }

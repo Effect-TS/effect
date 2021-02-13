@@ -1,4 +1,4 @@
-import { flow, pipe } from "../../Function"
+import { pipe } from "../../Function"
 import type { Applicative, Monad } from "../../Prelude"
 import { succeedF } from "../../Prelude/DSL"
 import type { Access, Fail, Provide, Run } from "../../Prelude/FX"
@@ -34,7 +34,7 @@ export function access<F>(
   M: Monad<HKT.UHKT<F>>
 ): Access<[HKT.URI<R.XReaderURI>, ...HKT.UHKT<F>], HKT.V<"R", "-">> {
   return HKT.instance({
-    access: flow(R.access, R.map(succeedF(M)))
+    access: (x) => pipe(x, R.access, R.map(succeedF(M)))
   })
 }
 
@@ -65,8 +65,9 @@ export function applicative<F>(
       fb: R.XReader<R2, HKT.HKT<F, B>>
     ): (<R, A>(
       fa: R.XReader<R, HKT.HKT<F, A>>
-    ) => R.XReader<R & R2, HKT.HKT<F, readonly [A, B]>>) =>
-      flow(
+    ) => R.XReader<R & R2, HKT.HKT<F, readonly [A, B]>>) => (x) =>
+      pipe(
+        x,
         R.zip(fb),
         R.map(([_a, _b]) => pipe(_a, M.both(_b)))
       )
@@ -80,7 +81,7 @@ export function run<F>(
   M: Run<HKT.UHKT2<F>>
 ): Run<[HKT.URI<R.XReaderURI>, ...HKT.UHKT2<F>], HKT.V<"R", "-">> {
   return HKT.instance({
-    either: flow(R.map(M.either))
+    either: (x) => pipe(x, R.map(M.either))
   })
 }
 
@@ -91,6 +92,6 @@ export function fail<F>(
   M: Fail<HKT.UHKT2<F>>
 ): Fail<[HKT.URI<R.XReaderURI>, ...HKT.UHKT2<F>], HKT.V<"R", "-">> {
   return HKT.instance({
-    fail: flow(M.fail, R.succeed)
+    fail: (x) => pipe(x, M.fail, R.succeed)
   })
 }

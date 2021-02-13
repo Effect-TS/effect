@@ -5,7 +5,7 @@
 import * as A from "../Array"
 import * as C from "../Closure"
 import * as Eq from "../Equal"
-import { flow, pipe } from "../Function"
+import { pipe } from "../Function"
 import * as I from "../Identity"
 import type { Sum } from "../Newtype"
 import { StringSum } from "../Newtype"
@@ -314,7 +314,7 @@ export function matchAll_(
   s: string,
   r: RegExp
 ): O.Option<NA.NonEmptyArray<RegExpMatchArray>> {
-  return O.chain_(O.fromNullable(s.matchAll(r)), flow(A.from, NA.fromArray))
+  return O.chain_(O.fromNullable(s.matchAll(r)), (x) => pipe(x, A.from, NA.fromArray))
 }
 
 /**

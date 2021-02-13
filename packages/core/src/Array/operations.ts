@@ -1,7 +1,7 @@
 import type { Array } from "@effect-ts/system/Array"
 import * as A from "@effect-ts/system/Array"
 import type { Predicate } from "@effect-ts/system/Function"
-import { flow } from "@effect-ts/system/Function"
+import { pipe } from "@effect-ts/system/Function"
 import type { MutableArray } from "@effect-ts/system/Mutable"
 
 import type { Either } from "../Either"
@@ -50,30 +50,30 @@ export const forEachF = P.implementForEachF<[URI<ArrayURI>]>()((_) => (G) => (f)
 /**
  * `Wilt`'s `separateF` function
  */
-export const separateF = P.implementSeparateF<[URI<ArrayURI>]>()((_) => (G) => (f) =>
-  flow(forEachF(G)(f), G.map(A.separate))
-)
+export const separateF = P.implementSeparateF<
+  [URI<ArrayURI>]
+>()((_) => (G) => (f) => (x) => pipe(x, forEachF(G)(f), G.map(A.separate)))
 
 /**
  * `Wilt`'s `separateF` function
  */
 export const separateWithIndexF = P.implementSeparateWithIndexF<
   [URI<ArrayURI>]
->()((_) => (G) => (f) => flow(forEachWithIndexF(G)(f), G.map(A.separate)))
+>()((_) => (G) => (f) => (x) => pipe(x, forEachWithIndexF(G)(f), G.map(A.separate)))
 
 /**
  * `Wither`'s `compactF` function
  */
-export const compactF = P.implementCompactF<[URI<ArrayURI>]>()((_) => (G) => (f) =>
-  flow(forEachF(G)(f), G.map(A.compact))
-)
+export const compactF = P.implementCompactF<
+  [URI<ArrayURI>]
+>()((_) => (G) => (f) => (x) => pipe(x, forEachF(G)(f), G.map(A.compact)))
 
 /**
  * `WitherWithIndex`'s `compactWithIndexF` function
  */
 export const compactWithIndexF = P.implementCompactWithIndexF<
   [URI<ArrayURI>]
->()((_) => (G) => (f) => flow(forEachWithIndexF(G)(f), G.map(A.compact)))
+>()((_) => (G) => (f) => (x) => pipe(x, forEachWithIndexF(G)(f), G.map(A.compact)))
 
 /**
  * Test if a value is a member of an array. Takes a `Equal<A>` as a single
