@@ -1,5 +1,5 @@
 import type * as CL from "../../Clock"
-import { constVoid, flow } from "../../Function"
+import { constVoid, pipe } from "../../Function"
 import * as SC from "../../Schedule"
 import * as T from "../_internal/effect"
 import type { Stream } from "./definitions"
@@ -13,8 +13,10 @@ import { unwrap } from "./unwrap"
  */
 export const fromSchedule: <R, A>(
   schedule: SC.Schedule<R, unknown, A>
-) => Stream<R & CL.HasClock, never, A> = flow(
-  SC.driver,
-  T.map((driver) => repeatEffectOption(driver.next(constVoid()))),
-  unwrap
-)
+) => Stream<R & CL.HasClock, never, A> = (x) =>
+  pipe(
+    x,
+    SC.driver,
+    T.map((driver) => repeatEffectOption(driver.next(constVoid()))),
+    unwrap
+  )

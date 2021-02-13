@@ -2,7 +2,7 @@ import * as A from "../Array"
 import * as Cause from "../Cause/core"
 import * as E from "../Either"
 import * as Exit from "../Exit/api"
-import { constant, flow, pipe } from "../Function"
+import { constant, pipe } from "../Function"
 import * as IT from "../Iterable"
 import type { Managed } from "../Managed"
 import { make } from "../Managed"
@@ -377,7 +377,8 @@ export const interruptAs = (id: Fiber.FiberID) => done(Exit.interrupt(id))
 
 export const toManaged: <E, A>(
   fiber: Fiber.Fiber<E, A>
-) => Managed<unknown, never, Fiber.Fiber<E, A>> = flow(T.succeed, make(interrupt))
+) => Managed<unknown, never, Fiber.Fiber<E, A>> = (x) =>
+  pipe(x, T.succeed, make(interrupt))
 
 /**
  * A fiber that never fails or succeeds.

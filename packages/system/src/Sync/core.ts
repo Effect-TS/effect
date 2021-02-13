@@ -1,5 +1,5 @@
 import type { Either } from "../Either/core"
-import { flow } from "../Function"
+import { pipe } from "../Function"
 import type { _A, _E, _R } from "../Utils"
 import * as X from "../XPure"
 
@@ -306,7 +306,7 @@ export const runEither: <E, A>(self: Sync<unknown, E, A>) => Either<E, A> = X.ru
  */
 export const runEitherEnv: <R>(r: R) => <E, A>(self: Sync<R, E, A>) => Either<E, A> = (
   r
-) => flow(provideAll(r), runEither)
+) => (x) => pipe(x, provideAll(r), runEither)
 
 /**
  * Runs this non failable computation returning a success of type A

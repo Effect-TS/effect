@@ -1,5 +1,5 @@
 import type { Endomorphism, Predicate, Refinement } from "../Function"
-import { flow } from "../Function"
+import { pipe } from "../Function"
 import type { Option } from "../Option"
 import { isSome } from "../Option"
 import { Stack } from "../Stack"
@@ -78,11 +78,13 @@ export function prepend<A>(a: A): (_: FreeAssociative<A>) => FreeAssociative<A> 
 export function filterMap<A, B>(
   f: (a: A) => Option<B>
 ): (fa: FreeAssociative<A>) => FreeAssociative<B> {
-  return flow(
-    map(f),
-    filter(isSome),
-    map((x) => x.value)
-  )
+  return (x) =>
+    pipe(
+      x,
+      map(f),
+      filter(isSome),
+      map((x) => x.value)
+    )
 }
 
 export type Ops<A> = IFilter<A> | IMap<A>

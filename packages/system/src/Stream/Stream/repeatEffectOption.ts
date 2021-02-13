@@ -1,5 +1,5 @@
 import * as A from "../../Chunk"
-import { flow } from "../../Function"
+import { pipe } from "../../Function"
 import type * as O from "../../Option"
 import * as T from "../_internal/effect"
 import type { Stream } from "./definitions"
@@ -10,4 +10,4 @@ import { repeatEffectChunkOption } from "./repeatEffectChunkOption"
  */
 export const repeatEffectOption: <R, E, A>(
   fa: T.Effect<R, O.Option<E>, A>
-) => Stream<R, E, A> = flow(T.map(A.single), repeatEffectChunkOption)
+) => Stream<R, E, A> = (x) => pipe(x, T.map(A.single), repeatEffectChunkOption)
