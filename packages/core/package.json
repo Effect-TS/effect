@@ -42,6 +42,7 @@
       "Commutative",
       "Const",
       "Either",
+      "EitherT",
       "Equal",
       "FreeAssociative",
       "Hash",
