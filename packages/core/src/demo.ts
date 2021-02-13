@@ -5,6 +5,7 @@ import { pipe, tuple } from "./Function"
 import * as NA from "./NonEmptyArray"
 import * as OT from "./OptionT"
 import { chainF } from "./Prelude"
+import * as RT from "./ReaderT"
 import * as R from "./Record"
 
 type License = "CC" | "MIT"
@@ -33,6 +34,8 @@ console.log(grouped)
 
 const EffectOption = OT.monad(T.Monad)
 const ArrayEither = ET.monad(A.Monad)
+const ReaderArray = RT.monad(A.Monad)
 
 export const chainEffectOption = chainF(EffectOption)
 export const chainArrayEither = chainF(ArrayEither)
+export const chainReaderArray = chainF(ReaderArray)
