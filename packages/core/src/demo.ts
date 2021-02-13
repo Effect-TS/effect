@@ -1,5 +1,8 @@
+import * as T from "./Effect"
 import { pipe, tuple } from "./Function"
 import * as NA from "./NonEmptyArray"
+import * as OT from "./OptionT"
+import { chainF } from "./Prelude"
 import * as R from "./Record"
 
 type License = "CC" | "MIT"
@@ -23,3 +26,7 @@ const grouped = pipe(
 
 console.log(grouped)
 console.log(grouped)
+console.log(grouped)
+
+const EffectOption = OT.monad(T.Monad)
+export const chain = chainF(EffectOption)

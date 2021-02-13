@@ -65,4 +65,4 @@ export type IndexFor<F extends URIS, N extends string, K> = IndexForBase<
   K
 >
 
-export type Rest<F extends [any, any[]]> = F extends [any, ...infer Rest] ? Rest : []
+export type Rest<F extends [any, ...any[]]> = F extends [any, ...infer Rest] ? Rest : []
