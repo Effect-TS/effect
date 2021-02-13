@@ -1,7 +1,7 @@
 import * as C from "../../Cause/core"
 import * as A from "../../Chunk"
 import * as E from "../../Exit/api"
-import { flow, pipe } from "../../Function"
+import { pipe } from "../../Function"
 import * as O from "../../Option"
 import * as T from "../_internal/effect"
 import type { Pull } from "../Pull"
@@ -57,10 +57,12 @@ export function fold_<E, A, Z>(
 ): Z {
   return E.fold_(
     take,
-    flow(
-      C.sequenceCauseOption,
-      O.fold(() => end, error)
-    ),
+    (x) =>
+      pipe(
+        x,
+        C.sequenceCauseOption,
+        O.fold(() => end, error)
+      ),
     value
   )
 }
@@ -89,7 +91,11 @@ export function foldM_<E, A, R, E1, Z>(
   error: (cause: C.Cause<E>) => T.Effect<R, E1, Z>,
   value: (chunk: A.Chunk<A>) => T.Effect<R, E1, Z>
 ): T.Effect<R, E1, Z> {
-  return E.foldM_(take, flow(C.sequenceCauseOption, O.fold(end, error)), value)
+  return E.foldM_(
+    take,
+    (x) => pipe(x, C.sequenceCauseOption, O.fold(end, error)),
+    value
+  )
 }
 
 /**

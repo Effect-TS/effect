@@ -1,6 +1,6 @@
 import { failureOrCause } from "../../Cause"
 import * as E from "../../Either"
-import { flow } from "../../Function"
+import { pipe } from "../../Function"
 import { foldCauseM_ } from "../core"
 import type { Managed } from "../managed"
 import { halt } from "./halt"
@@ -14,5 +14,9 @@ export function foldM_<R, E, A, R1, E1, B, R2, E2, C>(
   failure: (e: E) => Managed<R1, E1, B>,
   success: (a: A) => Managed<R2, E2, C>
 ) {
-  return foldCauseM_(self, flow(failureOrCause, E.fold(failure, halt)), success)
+  return foldCauseM_(
+    self,
+    (x) => pipe(x, failureOrCause, E.fold(failure, halt)),
+    success
+  )
 }

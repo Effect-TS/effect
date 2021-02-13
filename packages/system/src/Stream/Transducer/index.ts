@@ -2,7 +2,7 @@ import type * as C from "../../Cause"
 import * as A from "../../Chunk"
 import * as Ex from "../../Exit"
 import type { Predicate, Refinement } from "../../Function"
-import { flow, not, pipe, tuple } from "../../Function"
+import { not, pipe, tuple } from "../../Function"
 import type { Finalizer } from "../../Managed/ReleaseMap"
 import * as Map from "../../Map"
 import * as O from "../../Option"
@@ -1018,10 +1018,12 @@ export function filterInputM_<R, E, I, O, R1, E1>(
       O.fold_(
         is,
         () => push(O.none),
-        flow(
-          T.filter(predicate),
-          T.chain((in_) => push(O.some(in_)))
-        )
+        (x) =>
+          pipe(
+            x,
+            T.filter(predicate),
+            T.chain((in_) => push(O.some(in_)))
+          )
       )
     )
   )

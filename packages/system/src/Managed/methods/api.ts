@@ -1,15 +1,15 @@
 import * as A from "../../Array"
 import type { Cause } from "../../Cause"
-import { RuntimeError } from "../../Cause"
 import * as C from "../../Cause"
+import { RuntimeError } from "../../Cause"
 import type { HasClock } from "../../Clock"
 import type { Effect } from "../../Effect"
-import { descriptor, supervised } from "../../Effect"
 import * as T from "../../Effect"
+import { descriptor, supervised } from "../../Effect"
 import * as E from "../../Either"
 import * as Ex from "../../Exit"
 import * as F from "../../Fiber"
-import { constVoid, flow, identity, pipe, tuple } from "../../Function"
+import { constVoid, identity, pipe, tuple } from "../../Function"
 import { NoSuchElementException } from "../../GlobalExceptions"
 import type { Has, Tag } from "../../Has"
 import { mergeEnvironments } from "../../Has"
@@ -153,7 +153,7 @@ export function none<R, E, A>(
 ): Managed<R, O.Option<E>, void> {
   return foldM_(
     self,
-    flow(O.some, fail),
+    (x) => pipe(x, O.some, fail),
     O.fold(
       () => unit,
       () => fail(O.none)
@@ -171,7 +171,11 @@ export function fold_<R, E, A, B, C>(
   onFail: (e: E) => B,
   onSuccess: (a: A) => C
 ) {
-  return foldM_(self, flow(onFail, succeed), flow(onSuccess, succeed))
+  return foldM_(
+    self,
+    (x) => pipe(x, onFail, succeed),
+    (x) => pipe(x, onSuccess, succeed)
+  )
 }
 
 /**
@@ -201,7 +205,7 @@ export function optional<R, E, A>(
   return foldM_(
     self,
     O.fold(() => succeed(O.none), fail),
-    flow(O.some, succeed)
+    (x) => pipe(x, O.some, succeed)
   )
 }
 
@@ -281,7 +285,11 @@ export function orElseEither_<R, E, A, R2, E2, A2>(
   self: Managed<R, E, A>,
   that: () => Managed<R2, E2, A2>
 ): Managed<R & R2, E2, E.Either<A2, A>> {
-  return foldM_(self, () => map_(that(), E.left), flow(E.right, succeed))
+  return foldM_(
+    self,
+    () => map_(that(), E.left),
+    (x) => pipe(x, E.right, succeed)
+  )
 }
 
 /**
@@ -434,7 +442,7 @@ export function continueOrFail_<R, E, A, E1, B>(
   e: () => E1,
   pf: (a: A) => O.Option<B>
 ): Managed<R, E | E1, B> {
-  return continueOrFailM_(self, e, flow(pf, O.map(succeed)))
+  return continueOrFailM_(self, e, (x) => pipe(x, pf, O.map(succeed)))
 }
 
 /**
@@ -941,7 +949,7 @@ export function reject_<R, E, A, E1>(
   self: Managed<R, E, A>,
   pf: (a: A) => O.Option<E1>
 ) {
-  return rejectM_(self, flow(pf, O.map(fail)))
+  return rejectM_(self, (x) => pipe(x, pf, O.map(fail)))
 }
 
 /**
@@ -1052,7 +1060,11 @@ export function retry<R1, E, O>(policy: Schedule<R1, E, O>) {
 export function result<R, E, A>(
   self: Managed<R, E, A>
 ): Managed<R, never, Ex.Exit<E, A>> {
-  return foldCauseM_(self, flow(Ex.halt, succeed), flow(Ex.succeed, succeed))
+  return foldCauseM_(
+    self,
+    (x) => pipe(x, Ex.halt, succeed),
+    (x) => pipe(x, Ex.succeed, succeed)
+  )
 }
 
 /**
@@ -1105,7 +1117,7 @@ export function some<R, E, A>(
 ): Managed<R, O.Option<E>, A> {
   return foldM_(
     self,
-    flow(O.some, fail),
+    (x) => pipe(x, O.some, fail),
     O.fold(() => fail(O.none), succeed)
   )
 }
@@ -2125,7 +2137,7 @@ export function collectAllWith_<R, E, A, B>(
   as: Iterable<Managed<R, E, A>>,
   pf: (a: A) => O.Option<B>
 ): Managed<R, E, readonly B[]> {
-  return map_(collectAll(as), flow(A.map(pf), A.compact))
+  return map_(collectAll(as), (x) => pipe(x, A.map(pf), A.compact))
 }
 
 /**
@@ -2144,7 +2156,7 @@ export function collectAllWithPar_<R, E, A, B>(
   as: Iterable<Managed<R, E, A>>,
   pf: (a: A) => O.Option<B>
 ): Managed<R, E, readonly B[]> {
-  return map_(collectAllPar(as), flow(A.map(pf), A.compact))
+  return map_(collectAllPar(as), (x) => pipe(x, A.map(pf), A.compact))
 }
 
 /**
@@ -2168,7 +2180,7 @@ export function collectAllWithParN_(
   pf: (a: A) => O.Option<B>
 ) => Managed<R, E, readonly B[]> {
   const c = collectAllParN(n)
-  return (as, pf) => map_(c(as), flow(A.map(pf), A.compact))
+  return (as, pf) => map_(c(as), (x) => pipe(x, A.map(pf), A.compact))
 }
 
 /**

@@ -2,7 +2,7 @@ import * as A from "../../Chunk"
 import type * as CL from "../../Clock"
 import * as E from "../../Either"
 import * as Ex from "../../Exit"
-import { flow, pipe } from "../../Function"
+import { pipe } from "../../Function"
 import * as O from "../../Option"
 import * as SC from "../../Schedule"
 import * as T from "../_internal/effect"
@@ -195,9 +195,9 @@ export function aggregateAsyncWithinEither_<R, E, O, R1, E1, P, Q>(
           raceNextTime.get,
           T.chain(go),
           T.onInterrupt((_) =>
-            T.chain_(
-              waitingFiber.get,
-              flow(
+            T.chain_(waitingFiber.get, (x) =>
+              pipe(
+                x,
                 O.map(F.interrupt),
                 O.getOrElse(() => T.unit)
               )
