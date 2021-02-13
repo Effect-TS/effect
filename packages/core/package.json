@@ -58,6 +58,7 @@
       "Ord",
       "Ordering",
       "Reader",
+      "ReaderT",
       "Record",
       "Set",
       "Show",
