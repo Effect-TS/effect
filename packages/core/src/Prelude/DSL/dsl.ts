@@ -1,6 +1,6 @@
 import * as A from "@effect-ts/system/Array"
 
-import { constant, flow, pipe, tuple } from "../../Function"
+import { constant, pipe, tuple } from "../../Function"
 import type { Has, Tag } from "../../Has"
 import type { EnforceNonEmptyRecord } from "../../Utils"
 import type { Any } from "../Any"
@@ -110,7 +110,8 @@ export function chainF<F extends HKT.URIS, C = HKT.Auto>(
   B
 >
 export function chainF<F>(F: Monad<HKT.UHKT<F>>) {
-  return <A, B>(f: (a: A) => HKT.HKT<F, B>) => flow(F.map(f), F.flatten)
+  return <A, B>(f: (a: A) => HKT.HKT<F, B>) => (x: HKT.HKT<F, A>) =>
+    pipe(x, F.map(f), F.flatten)
 }
 
 export function accessMF<F extends HKT.URIS, C = HKT.Auto>(
@@ -121,7 +122,7 @@ export function accessMF<F extends HKT.URIS, C = HKT.Auto>(
 export function accessMF<F>(
   F: Access<HKT.UHKT3<F>> & AssociativeFlatten<HKT.UHKT3<F>>
 ): <R, E, A>(f: (r: R) => HKT.HKT3<F, R, E, A>) => HKT.HKT3<F, R, E, A> {
-  return flow(F.access, F.flatten)
+  return (x) => pipe(x, F.access, F.flatten)
 }
 
 export function structF<F extends HKT.URIS, C = HKT.Auto>(
@@ -316,12 +317,11 @@ export function accessServiceMF<F extends HKT.URIS, C extends HKT.V<"R", "-">>(
 ) => HKT.Kind<F, C, N, K, Q, W, X, I, S, R & Has<Service>, E, A>
 export function accessServiceMF<F>(
   F: Monad<HKT.UHKT3<F>, HKT.V<"R", "-">> & Access<HKT.UHKT3<F>, HKT.V<"R", "-">>
-): <Service>(
-  H: Tag<Service>
-) => <R, E, A>(
-  f: (_: Service) => HKT.HKT3<F, R, E, A>
-) => HKT.HKT3<F, Has<Service> & R, E, A> {
-  return (H) => (f) => accessMF(F)(flow(H.read, f))
+) {
+  return <Service>(H: Tag<Service>) => <R, E, A>(
+    f: (_: Service) => HKT.HKT3<F, R, E, A>
+  ): HKT.HKT3<F, Has<Service> & R, E, A> =>
+    accessMF(F)((x: Has<Service>) => pipe(x, H.read, f))
 }
 
 export function provideServiceF<F extends HKT.URIS, C extends HKT.V<"R", "-">>(

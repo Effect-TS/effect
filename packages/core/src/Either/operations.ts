@@ -1,6 +1,6 @@
 import type { Either } from "@effect-ts/system/Either"
 import * as E from "@effect-ts/system/Either"
-import { flow, pipe, tuple } from "@effect-ts/system/Function"
+import { pipe, tuple } from "@effect-ts/system/Function"
 
 import type { Associative } from "../Associative"
 import { makeAssociative } from "../Associative"
@@ -134,7 +134,7 @@ export function getCompactF<E>(M: Identity<E>) {
   const com = compact(M)
   return P.implementCompactF<[URI<EitherURI>], P.Fix<"E", E>>()((_) => (G) => {
     const traverseF = forEachF(G)
-    return (f) => flow(traverseF(f), G.map(com))
+    return (f) => (x) => pipe(x, traverseF(f), G.map(com))
   })
 }
 
@@ -145,7 +145,7 @@ export function getSeparateF<E>(M: Identity<E>) {
   const sep = separate(M)
   return P.implementSeparateF<[URI<EitherURI>], P.Fix<"E", E>>()((_) => (G) => {
     const traverseF = forEachF(G)
-    return (f) => flow(traverseF(f), G.map(sep))
+    return (f) => (x) => pipe(x, traverseF(f), G.map(sep))
   })
 }
 

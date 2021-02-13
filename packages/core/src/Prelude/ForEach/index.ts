@@ -1,4 +1,4 @@
-import { flow, identity } from "../../Function"
+import { identity, pipe } from "../../Function"
 import type { Covariant, CovariantComposition } from "../Covariant"
 import { getCovariantComposition } from "../Covariant"
 import * as HKT from "../HKT"
@@ -176,7 +176,7 @@ export function getForEachComposition<F, G>(
 ) {
   return HKT.instance<ForEachComposition<HKT.UHKT<F>, HKT.UHKT<G>>>({
     ...getCovariantComposition(F, G),
-    forEachF: (H) => flow(G.forEachF(H), F.forEachF(H))
+    forEachF: (H) => (x) => pipe(x, G.forEachF(H), F.forEachF(H))
   })
 }
 

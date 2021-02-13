@@ -1,4 +1,4 @@
-import { flow, pipe, tuple } from "../../Function"
+import { pipe, tuple } from "../../Function"
 import type { StateInURI, StateOutURI } from "../../Modules"
 import type { Auto, Monad } from "../../Prelude"
 import { chainF } from "../../Prelude/DSL"
@@ -31,15 +31,17 @@ export function monad<F>(M: Monad<HKT.UHKT<F>>): Monad<StateT<HKT.UHKT<F>>, V<Au
       ),
     flatten: <A, S2>(
       ffa: (s: S2) => HKT.HKT<F, readonly [(s: S2) => HKT.HKT<F, readonly [A, S2]>, S2]>
-    ): ((s: S2) => HKT.HKT<F, readonly [A, S2]>) =>
-      flow(
+    ): ((s: S2) => HKT.HKT<F, readonly [A, S2]>) => (x) =>
+      pipe(
+        x,
         ffa,
         chainF(M)(([f, us]) => f(us))
       ),
     map: <A, B>(f: (a: A) => B) => <S>(
       fa: (s: S) => HKT.HKT<F, readonly [A, S]>
-    ): ((s: S) => HKT.HKT<F, readonly [B, S]>) =>
-      flow(
+    ): ((s: S) => HKT.HKT<F, readonly [B, S]>) => (x) =>
+      pipe(
+        x,
         fa,
         M.map(([a, s]) => tuple(f(a), s))
       )

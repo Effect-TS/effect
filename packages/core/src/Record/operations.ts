@@ -8,13 +8,13 @@ import type { Closure } from "../Closure"
 import * as E from "../Either"
 import type { Equal } from "../Equal"
 import { makeEqual } from "../Equal"
-import { flow, identity, pipe, tuple } from "../Function"
+import { identity, pipe, tuple } from "../Function"
 import type { Identity } from "../Identity"
 import { makeIdentity } from "../Identity"
 import type { RecordURI } from "../Modules"
 import type { Foldable, URI } from "../Prelude"
-import { succeedF } from "../Prelude"
 import * as P from "../Prelude"
+import { succeedF } from "../Prelude"
 import type * as HKT from "../Prelude/HKT"
 import type { Show } from "../Show"
 import type { V } from "./definition"
@@ -62,8 +62,9 @@ export const foldMap: P.FoldMapFn<[URI<RecordURI>], V> = (I) => (f) =>
  * WiltWithIndex's separate
  */
 export const separateWithIndexF = P.implementSeparateWithIndexF<[URI<RecordURI>], V>()(
-  () => (G) => (f) =>
-    flow(
+  () => (G) => (f) => (x) =>
+    pipe(
+      x,
       R.collect(tuple),
       A.separateF(G)(([k, a]) =>
         pipe(
@@ -94,8 +95,9 @@ export const separateF = P.implementSeparateF<[URI<RecordURI>], V>()(() => (G) =
  * WitherWithIndex's compactWithIndex
  */
 export const compactWithIndexF = P.implementCompactWithIndexF<[URI<RecordURI>], V>()(
-  () => (G) => (f) =>
-    flow(
+  () => (G) => (f) => (x) =>
+    pipe(
+      x,
       R.collect(tuple),
       A.compactF(G)(([k, a]) => pipe(f(k, a), G.map(O.map((b) => tuple(k, b))))),
       G.map(R.fromArray)

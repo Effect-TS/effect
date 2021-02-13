@@ -1,6 +1,6 @@
 import * as E from "@effect-ts/system/Either"
 
-import { constant, flow, identity, pipe } from "../../Function"
+import { constant, identity, pipe } from "../../Function"
 import * as HKT from "../../Prelude/HKT"
 import type { Any } from "../Any"
 import type { Applicative } from "../Applicative"
@@ -142,13 +142,14 @@ export function branchF<F>(F: Selective<HKT.UHKT<F>>) {
   return <A, C, B, D>(
     lhs: HKT.HKT<F, (a: A) => C>,
     rhs: HKT.HKT<F, (a: B) => D>
-  ): ((fe: HKT.HKT<F, E.Either<A, B>>) => HKT.HKT<F, C | D>) =>
-    flow(
+  ): ((fe: HKT.HKT<F, E.Either<A, B>>) => HKT.HKT<F, C | D>) => (x) =>
+    pipe(
+      x,
       F.map(E.map(E.left)),
       F.select(
         pipe(
           lhs,
-          F.map((fac) => flow(fac, E.right, E.widenE<B>()))
+          F.map((fac) => (x) => pipe(x, fac, E.right, E.widenE<B>()))
         )
       ),
       F.select(rhs)
@@ -201,8 +202,9 @@ export function ifF<F>(F: Selective<HKT.UHKT<F>>) {
   return <A, B>(
     then_: HKT.HKT<F, A>,
     else_: HKT.HKT<F, B>
-  ): ((if_: HKT.HKT<F, boolean>) => HKT.HKT<F, A | B>) =>
-    flow(
+  ): ((if_: HKT.HKT<F, boolean>) => HKT.HKT<F, A | B>) => (x) =>
+    pipe(
+      x,
       F.map((x) => (x ? E.left(undefined) : E.right(undefined))),
       branchF(F)(pipe(then_, F.map(constant)), pipe(else_, F.map(constant)))
     )

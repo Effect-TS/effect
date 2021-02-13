@@ -1,5 +1,5 @@
 import * as E from "../Either"
-import { flow, pipe } from "../Function"
+import { pipe } from "../Function"
 import type { Any, Applicative, Covariant, Monad, URI } from "../Prelude"
 import { succeedF } from "../Prelude/DSL"
 import type { Fail, Run } from "../Prelude/FX"
@@ -34,8 +34,9 @@ export function applicative<F>(M: Applicative<HKT.UHKT<F>>) {
     {
       any: () => succeedF(M)(E.right({})),
       map: (f) => M.map(E.map(f)),
-      both: (fb) =>
-        flow(
+      both: (fb) => (x) =>
+        pipe(
+          x,
           M.both(fb),
           M.map(([ea, eb]) => E.AssociativeBoth.both(eb)(ea))
         )
@@ -62,6 +63,6 @@ export function fail<F extends HKT.URIS, C>(
 export function fail<F>(M: Any<HKT.UHKT<F>> & Covariant<HKT.UHKT<F>>) {
   const succeed = succeedF(M)
   return HKT.instance<Fail<[HKT.UHKT<F>[0], URI<E.EitherURI>], HKT.V<"E", "+">>>({
-    fail: flow(E.left, succeed)
+    fail: (x) => pipe(x, E.left, succeed)
   })
 }
