@@ -1,6 +1,6 @@
 import * as C from "../Cause"
 import * as E from "../Either/core"
-import { flow, pipe } from "../Function"
+import { pipe } from "../Function"
 import * as O from "../Option/core"
 import { foldCauseM_, halt, succeed } from "./core"
 import type { Effect } from "./effect"
@@ -28,10 +28,12 @@ export function catchSome_<R, E, A, R2, E2, A2>(
         cause,
         C.failureOrCause,
         E.fold(
-          flow(
-            f,
-            O.getOrElse(() => halt(cause))
-          ),
+          (x) =>
+            pipe(
+              x,
+              f,
+              O.getOrElse(() => halt(cause))
+            ),
           halt
         )
       ),

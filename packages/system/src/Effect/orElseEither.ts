@@ -1,5 +1,5 @@
 import * as E from "../Either"
-import { flow } from "../Function"
+import { pipe } from "../Function"
 import { succeed, tryOrElse_ } from "./core"
 import type { Effect } from "./effect"
 import { map_ } from "./map"
@@ -20,5 +20,9 @@ export function orElseEither_<R, E, A, R2, E2, A2>(
   self: Effect<R, E, A>,
   that: () => Effect<R2, E2, A2>
 ): Effect<R & R2, E2, E.Either<A, A2>> {
-  return tryOrElse_(self, () => map_(that(), E.right), flow(E.left, succeed))
+  return tryOrElse_(
+    self,
+    () => map_(that(), E.right),
+    (x) => pipe(x, E.left, succeed)
+  )
 }

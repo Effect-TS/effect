@@ -24,7 +24,7 @@ export * from "@effect-ts/system/Record"
 /**
  * Traverse Record with Applicative, passing index to f
  */
-export const forEachWithIndexF = P.implementForEachWithIndexF<URI<RecordURI>, V>()(
+export const forEachWithIndexF = P.implementForEachWithIndexF<[URI<RecordURI>], V>()(
   (_) => (G) => {
     const succeed = succeedF(G)
     return (f) => (fa) => {
@@ -42,26 +42,26 @@ export const forEachWithIndexF = P.implementForEachWithIndexF<URI<RecordURI>, V>
 /**
  * Traverse Record with Applicative
  */
-export const forEachF = P.implementForEachF<URI<RecordURI>, V>()((_) => (G) => (f) =>
+export const forEachF = P.implementForEachF<[URI<RecordURI>], V>()((_) => (G) => (f) =>
   forEachWithIndexF(G)((_, a) => f(a))
 )
 
 /**
  * Fold + MapWithIndex
  */
-export const foldMapWithIndex: P.FoldMapWithIndexFn<URI<RecordURI>, V> = (I) => (f) =>
+export const foldMapWithIndex: P.FoldMapWithIndexFn<[URI<RecordURI>], V> = (I) => (f) =>
   R.reduceWithIndex(I.identity, (k, b, a) => I.combine(f(k, a))(b))
 
 /**
  * Fold + Map
  */
-export const foldMap: P.FoldMapFn<URI<RecordURI>, V> = (I) => (f) =>
+export const foldMap: P.FoldMapFn<[URI<RecordURI>], V> = (I) => (f) =>
   foldMapWithIndex(I)((_, a) => f(a))
 
 /**
  * WiltWithIndex's separate
  */
-export const separateWithIndexF = P.implementSeparateWithIndexF<URI<RecordURI>, V>()(
+export const separateWithIndexF = P.implementSeparateWithIndexF<[URI<RecordURI>], V>()(
   () => (G) => (f) =>
     flow(
       R.collect(tuple),
@@ -86,14 +86,14 @@ export const separateWithIndexF = P.implementSeparateWithIndexF<URI<RecordURI>, 
 /**
  * Wilt's separate
  */
-export const separateF = P.implementSeparateF<URI<RecordURI>, V>()(() => (G) => (f) =>
+export const separateF = P.implementSeparateF<[URI<RecordURI>], V>()(() => (G) => (f) =>
   separateWithIndexF(G)((_, a) => f(a))
 )
 
 /**
  * WitherWithIndex's compactWithIndex
  */
-export const compactWithIndexF = P.implementCompactWithIndexF<URI<RecordURI>, V>()(
+export const compactWithIndexF = P.implementCompactWithIndexF<[URI<RecordURI>], V>()(
   () => (G) => (f) =>
     flow(
       R.collect(tuple),
@@ -105,7 +105,7 @@ export const compactWithIndexF = P.implementCompactWithIndexF<URI<RecordURI>, V>
 /**
  * Wither's compact
  */
-export const compactF = P.implementCompactF<URI<RecordURI>, V>()(() => (G) => (f) =>
+export const compactF = P.implementCompactF<[URI<RecordURI>], V>()(() => (G) => (f) =>
   compactWithIndexF(G)((_, a) => f(a))
 )
 

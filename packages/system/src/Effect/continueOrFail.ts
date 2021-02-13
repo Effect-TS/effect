@@ -1,4 +1,4 @@
-import { flow, pipe } from "../Function"
+import { pipe } from "../Function"
 import * as O from "../Option/core"
 import { chain_, succeed } from "./core"
 import type { Effect } from "./effect"
@@ -43,7 +43,7 @@ export function continueOrFail_<R, E, E1, A, A2>(
   f: () => E1,
   pf: (a: A) => O.Option<A2>
 ) {
-  return continueOrFailM_(fa, f, flow(pf, O.map(succeed)))
+  return continueOrFailM_(fa, f, (x) => pipe(x, pf, O.map(succeed)))
 }
 
 /**

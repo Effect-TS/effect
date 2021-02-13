@@ -1,7 +1,7 @@
 import * as A from "../Array"
 import * as Exit from "../Exit"
 import * as Fiber from "../Fiber"
-import { flow, pipe, tuple } from "../Function"
+import { pipe, tuple } from "../Function"
 import type { NonEmptyArray } from "../NonEmptyArray"
 import * as P from "../Promise"
 import * as Ref from "../Ref"
@@ -75,7 +75,7 @@ export function raceAll<R, E, A>(
       uninterruptibleMask(({ restore }) =>
         pipe(
           Do.do,
-          Do.bind("fs", () => forEach_(ios, flow(interruptible, fork))),
+          Do.bind("fs", () => forEach_(ios, (x) => pipe(x, interruptible, fork))),
           tap(({ fs }) =>
             A.reduce_(fs, unit as UIO<void>, (io, f) =>
               pipe(

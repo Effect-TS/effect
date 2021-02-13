@@ -3,7 +3,7 @@
 import { traceAs } from "@effect-ts/tracing-utils"
 
 import type { Lazy } from "../Function"
-import { flow } from "../Function"
+import { pipe } from "../Function"
 import { succeed } from "./core"
 import { die } from "./die"
 import type { IO, UIO } from "./effect"
@@ -22,7 +22,9 @@ export function fromPromiseWith_<E, A>(
 ): IO<E, A> {
   return effectAsync(
     traceAs(promise, (resolve) => {
-      promise().then(flow(succeed, resolve)).catch(flow(onReject, fail, resolve))
+      promise()
+        .then((x) => pipe(x, succeed, resolve))
+        .catch((x) => pipe(x, onReject, fail, resolve))
     })
   )
 }
@@ -49,7 +51,9 @@ export function fromPromiseWith<E>(onReject: (reason: unknown) => E) {
 export function fromPromise<A>(effect: Lazy<Promise<A>>): IO<unknown, A> {
   return effectAsync(
     traceAs(effect, (resolve) => {
-      effect().then(flow(succeed, resolve)).catch(flow(fail, resolve))
+      effect()
+        .then((x) => pipe(x, succeed, resolve))
+        .catch((x) => pipe(x, fail, resolve))
     })
   )
 }
@@ -62,7 +66,9 @@ export function fromPromise<A>(effect: Lazy<Promise<A>>): IO<unknown, A> {
 export function fromPromiseDie<A>(effect: Lazy<Promise<A>>): UIO<A> {
   return effectAsync(
     traceAs(effect, (resolve) => {
-      effect().then(flow(succeed, resolve)).catch(flow(die, resolve))
+      effect()
+        .then((x) => pipe(x, succeed, resolve))
+        .catch((x) => pipe(x, die, resolve))
     })
   )
 }

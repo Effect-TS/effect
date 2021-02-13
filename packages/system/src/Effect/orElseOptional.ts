@@ -1,4 +1,4 @@
-import { flow, pipe } from "../Function"
+import { pipe } from "../Function"
 import * as O from "../Option"
 import { catchAll } from "./catchAll"
 import type { Effect } from "./effect"
@@ -25,7 +25,7 @@ export function orElseOptional_<R, E, A, R2, E2, A2>(
   return pipe(
     self,
     catchAll<R2, O.Option<E | E2>, O.Option<E | E2>, A2>(
-      O.fold(that, flow(O.some, fail))
+      O.fold(that, (x) => pipe(x, O.some, fail))
     )
   )
 }

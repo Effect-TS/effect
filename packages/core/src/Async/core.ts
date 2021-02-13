@@ -22,47 +22,47 @@ export * from "@effect-ts/system/Async"
 
 export type V = P.V<"R", "-"> & P.V<"E", "+">
 
-export const Covariant = P.instance<P.Covariant<URI<AsyncURI>, V>>({
+export const Covariant = P.instance<P.Covariant<[URI<AsyncURI>], V>>({
   map: A.map
 })
 
-export const Any = P.instance<P.Any<URI<AsyncURI>, V>>({
+export const Any = P.instance<P.Any<[URI<AsyncURI>], V>>({
   any: () => A.succeed({})
 })
 
-export const AssociativeBoth = P.instance<P.AssociativeBoth<URI<AsyncURI>, V>>({
+export const AssociativeBoth = P.instance<P.AssociativeBoth<[URI<AsyncURI>], V>>({
   both: A.zip
 })
 
-export const AssociativeFlatten = P.instance<P.AssociativeFlatten<URI<AsyncURI>, V>>({
+export const AssociativeFlatten = P.instance<P.AssociativeFlatten<[URI<AsyncURI>], V>>({
   flatten
 })
 
-export const IdentityBoth = P.instance<P.IdentityBoth<URI<AsyncURI>, V>>({
+export const IdentityBoth = P.instance<P.IdentityBoth<[URI<AsyncURI>], V>>({
   ...Any,
   ...AssociativeBoth
 })
 
-export const IdentityFlatten = P.instance<P.IdentityFlatten<URI<AsyncURI>, V>>({
+export const IdentityFlatten = P.instance<P.IdentityFlatten<[URI<AsyncURI>], V>>({
   ...Any,
   ...AssociativeFlatten
 })
 
-export const Applicative = P.instance<P.Applicative<URI<AsyncURI>, V>>({
+export const Applicative = P.instance<P.Applicative<[URI<AsyncURI>], V>>({
   ...Covariant,
   ...IdentityBoth
 })
 
-export const Monad = P.instance<P.Monad<URI<AsyncURI>, V>>({
+export const Monad = P.instance<P.Monad<[URI<AsyncURI>], V>>({
   ...Covariant,
   ...IdentityFlatten
 })
 
-export const Fail = P.instance<P.FX.Fail<URI<AsyncURI>, V>>({
+export const Fail = P.instance<P.FX.Fail<[URI<AsyncURI>], V>>({
   fail: A.fail
 })
 
-export const Run = P.instance<P.FX.Run<URI<AsyncURI>, V>>({
+export const Run = P.instance<P.FX.Run<[URI<AsyncURI>], V>>({
   either: flow(
     A.map(E.right),
     A.catchAll((e) => A.succeed(E.left(e)))
@@ -80,11 +80,11 @@ export const getValidation = P.getValidationF({
   ...Fail
 })
 
-export const Provide = P.instance<P.FX.Provide<URI<AsyncURI>, V>>({
+export const Provide = P.instance<P.FX.Provide<[URI<AsyncURI>], V>>({
   provide: A.provideAll
 })
 
-export const Access = P.instance<P.FX.Access<URI<AsyncURI>, V>>({
+export const Access = P.instance<P.FX.Access<[URI<AsyncURI>], V>>({
   access: A.access
 })
 

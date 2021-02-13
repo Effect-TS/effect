@@ -1,7 +1,7 @@
 import type { OrFix } from "./fix"
 import type { ConcreteURIS, URItoIndex, URItoKind } from "./hkt"
 
-export type URIS = URI<ConcreteURIS, any>
+export type URIS = [URI<ConcreteURIS, any>, ...URI<ConcreteURIS, any>[]]
 
 export interface URI<F extends ConcreteURIS, C = {}> {
   _F: F
@@ -21,20 +21,37 @@ export type Kind<
   R,
   E,
   A
-> = URItoKind<
-  F["_C"],
-  C,
-  OrFix<"N", F["_C"], OrFix<"N", C, N>>,
-  OrFix<"K", F["_C"], OrFix<"K", C, K>>,
-  OrFix<"Q", F["_C"], OrFix<"Q", C, Q>>,
-  OrFix<"W", F["_C"], OrFix<"W", C, W>>,
-  OrFix<"X", F["_C"], OrFix<"X", C, X>>,
-  OrFix<"I", F["_C"], OrFix<"I", C, I>>,
-  OrFix<"S", F["_C"], OrFix<"S", C, S>>,
-  OrFix<"R", F["_C"], OrFix<"R", C, R>>,
-  OrFix<"E", F["_C"], OrFix<"E", C, E>>,
-  A
->[F["_F"]]
+> = F extends [any, infer Next]
+  ? Next extends URIS
+    ? URItoKind<
+        F[0]["_C"],
+        C,
+        OrFix<"N", F[0]["_C"], OrFix<"N", C, N>>,
+        OrFix<"K", F[0]["_C"], OrFix<"K", C, K>>,
+        OrFix<"Q", F[0]["_C"], OrFix<"Q", C, Q>>,
+        OrFix<"W", F[0]["_C"], OrFix<"W", C, W>>,
+        OrFix<"X", F[0]["_C"], OrFix<"X", C, X>>,
+        OrFix<"I", F[0]["_C"], OrFix<"I", C, I>>,
+        OrFix<"S", F[0]["_C"], OrFix<"S", C, S>>,
+        OrFix<"R", F[0]["_C"], OrFix<"R", C, R>>,
+        OrFix<"E", F[0]["_C"], OrFix<"E", C, E>>,
+        Kind<Next, C, N, K, Q, W, X, I, S, R, E, A>
+      >[F[0]["_F"]]
+    : never
+  : URItoKind<
+      F[0]["_C"],
+      C,
+      OrFix<"N", F[0]["_C"], OrFix<"N", C, N>>,
+      OrFix<"K", F[0]["_C"], OrFix<"K", C, K>>,
+      OrFix<"Q", F[0]["_C"], OrFix<"Q", C, Q>>,
+      OrFix<"W", F[0]["_C"], OrFix<"W", C, W>>,
+      OrFix<"X", F[0]["_C"], OrFix<"X", C, X>>,
+      OrFix<"I", F[0]["_C"], OrFix<"I", C, I>>,
+      OrFix<"S", F[0]["_C"], OrFix<"S", C, S>>,
+      OrFix<"R", F[0]["_C"], OrFix<"R", C, R>>,
+      OrFix<"E", F[0]["_C"], OrFix<"E", C, E>>,
+      A
+    >[F[0]["_F"]]
 
 export type IndexForBase<
   F extends ConcreteURIS,
@@ -43,7 +60,7 @@ export type IndexForBase<
 > = F extends keyof URItoIndex<any, any> ? URItoIndex<N, K>[F] : K
 
 export type IndexFor<F extends URIS, N extends string, K> = IndexForBase<
-  F extends ConcreteURIS ? F : F extends URI<infer U, any> ? U : never,
+  F extends [URI<infer U, any>] ? U : never,
   N,
   K
 >

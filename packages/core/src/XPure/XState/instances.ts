@@ -10,35 +10,37 @@ import { map, zip } from "./operations"
 /**
  * The `Any` instance for `Reader[-_, +_]`.
  */
-export const Any = P.instance<P.Any<URI<XStateURI>, V>>({
+export const Any = P.instance<P.Any<[URI<XStateURI>], V>>({
   any: () => F.succeed(constant({}))
 })
 
 /**
  * The `Covariant` instance for `Reader[-_, +_]`.
  */
-export const Covariant = P.instance<P.Covariant<URI<XStateURI>, V>>({
+export const Covariant = P.instance<P.Covariant<[URI<XStateURI>], V>>({
   map
 })
 
 /**
  * The `AssociativeBoth` instance for `Reader[-_, +_]`.
  */
-export const AssociativeBoth = P.instance<P.AssociativeBoth<URI<XStateURI>, V>>({
+export const AssociativeBoth = P.instance<P.AssociativeBoth<[URI<XStateURI>], V>>({
   both: zip
 })
 
 /**
  * The `AssociativeFlatten` instance for `Reader[-_, +_]`.
  */
-export const AssociativeFlatten = P.instance<P.AssociativeFlatten<URI<XStateURI>, V>>({
-  flatten: (ffa) => F.chain_(ffa, (x) => x)
-})
+export const AssociativeFlatten = P.instance<P.AssociativeFlatten<[URI<XStateURI>], V>>(
+  {
+    flatten: (ffa) => F.chain_(ffa, (x) => x)
+  }
+)
 
 /**
  * The `IdentityFlatten` instance for `Reader[-_, +_]`.
  */
-export const IdentityFlatten = P.instance<P.IdentityFlatten<URI<XStateURI>, V>>({
+export const IdentityFlatten = P.instance<P.IdentityFlatten<[URI<XStateURI>], V>>({
   ...Any,
   ...AssociativeFlatten
 })
@@ -46,7 +48,7 @@ export const IdentityFlatten = P.instance<P.IdentityFlatten<URI<XStateURI>, V>>(
 /**
  * The `Monad` instance for `Reader[-_, +_]`.
  */
-export const Monad = P.instance<P.Monad<URI<XStateURI>, V>>({
+export const Monad = P.instance<P.Monad<[URI<XStateURI>], V>>({
   ...Any,
   ...Covariant,
   ...AssociativeFlatten
@@ -55,7 +57,7 @@ export const Monad = P.instance<P.Monad<URI<XStateURI>, V>>({
 /**
  * The `Applicative` instance for `Reader[-_, +_]`.
  */
-export const Applicative = P.instance<P.Applicative<URI<XStateURI>, V>>({
+export const Applicative = P.instance<P.Applicative<[URI<XStateURI>], V>>({
   ...Any,
   ...Covariant,
   ...AssociativeBoth

@@ -1,6 +1,6 @@
 import { failureOrCause } from "../Cause"
 import { fold } from "../Either"
-import { flow } from "../Function"
+import { pipe } from "../Function"
 import { fork, halt } from "./core"
 import type { Effect, RIO } from "./effect"
 import { onError_ } from "./onExit"
@@ -19,5 +19,5 @@ export function forkWithErrorHandler_<R, R2, E, A>(
   self: Effect<R, E, A>,
   handler: (e: E) => RIO<R2, void>
 ) {
-  return fork(onError_(self, flow(failureOrCause, fold(handler, halt))))
+  return fork(onError_(self, (x) => pipe(x, failureOrCause, fold(handler, halt))))
 }

@@ -1,5 +1,5 @@
 import type { Predicate, Refinement } from "../Function"
-import { flow } from "../Function"
+import { pipe } from "../Function"
 import { chain_, succeed } from "./core"
 import { die } from "./die"
 import type { Effect } from "./effect"
@@ -38,7 +38,7 @@ export function filterOrDie_<R, E, A>(
   p: Predicate<A>,
   dieWith: (a: A) => unknown
 ) {
-  return filterOrElse_(fa, p, flow(dieWith, die))
+  return filterOrElse_(fa, p, (x) => pipe(x, dieWith, die))
 }
 
 /**
@@ -75,7 +75,7 @@ export function filterOrFail_<R, E, E1, A>(
   p: Predicate<A>,
   failWith: (a: A) => E1
 ) {
-  return filterOrElse_(fa, p, flow(failWith, fail))
+  return filterOrElse_(fa, p, (x) => pipe(x, failWith, fail))
 }
 
 /**
