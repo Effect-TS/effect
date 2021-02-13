@@ -53,6 +53,7 @@
       "Map",
       "NonEmptyArray",
       "Option",
+      "OptionT",
       "Ord",
       "Ordering",
       "Reader",
