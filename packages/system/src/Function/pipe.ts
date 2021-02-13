@@ -254,7 +254,16 @@ export function pipe(
   gh?: Function,
   hi?: Function,
   ij?: Function,
-  ...rest: Function[]
+  jk?: Function,
+  kl?: Function,
+  lm?: Function,
+  mn?: Function,
+  no?: Function,
+  op?: Function,
+  pq?: Function,
+  qr?: Function,
+  rs?: Function,
+  st?: Function
 ): unknown {
   switch (arguments.length) {
     case 1:
@@ -277,8 +286,51 @@ export function pipe(
       return hi!(gh!(fg!(ef!(de!(cd!(bc!(ab!(a))))))))
     case 10:
       return ij!(hi!(gh!(fg!(ef!(de!(cd!(bc!(ab!(a)))))))))
+    case 11:
+      return jk!(ij!(hi!(gh!(fg!(ef!(de!(cd!(bc!(ab!(a))))))))))
+    case 12:
+      return kl!(jk!(ij!(hi!(gh!(fg!(ef!(de!(cd!(bc!(ab!(a)))))))))))
+    case 13:
+      return lm!(kl!(jk!(ij!(hi!(gh!(fg!(ef!(de!(cd!(bc!(ab!(a))))))))))))
+    case 14:
+      return mn!(lm!(kl!(jk!(ij!(hi!(gh!(fg!(ef!(de!(cd!(bc!(ab!(a)))))))))))))
+    case 15:
+      return no!(mn!(lm!(kl!(jk!(ij!(hi!(gh!(fg!(ef!(de!(cd!(bc!(ab!(a))))))))))))))
+    case 16:
+      return op!(
+        no!(mn!(lm!(kl!(jk!(ij!(hi!(gh!(fg!(ef!(de!(cd!(bc!(ab!(a))))))))))))))
+      )
+    case 17:
+      return pq!(
+        op!(no!(mn!(lm!(kl!(jk!(ij!(hi!(gh!(fg!(ef!(de!(cd!(bc!(ab!(a)))))))))))))))
+      )
+    case 18:
+      return qr!(
+        pq!(
+          op!(no!(mn!(lm!(kl!(jk!(ij!(hi!(gh!(fg!(ef!(de!(cd!(bc!(ab!(a)))))))))))))))
+        )
+      )
+    case 19:
+      return rs!(
+        qr!(
+          pq!(
+            op!(no!(mn!(lm!(kl!(jk!(ij!(hi!(gh!(fg!(ef!(de!(cd!(bc!(ab!(a)))))))))))))))
+          )
+        )
+      )
+    case 20:
+      return st!(
+        rs!(
+          qr!(
+            pq!(
+              op!(
+                no!(mn!(lm!(kl!(jk!(ij!(hi!(gh!(fg!(ef!(de!(cd!(bc!(ab!(a))))))))))))))
+              )
+            )
+          )
+        )
+      )
     default:
-      // @ts-expect-error
-      return pipe(ij!(hi!(gh!(fg!(ef!(de!(cd!(bc!(ab!(a))))))))), ...(rest as any))
+      throw new Error("BUG")
   }
 }
