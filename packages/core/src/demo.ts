@@ -22,3 +22,4 @@ const grouped = pipe(
 )
 
 console.log(grouped)
+console.log(grouped)
