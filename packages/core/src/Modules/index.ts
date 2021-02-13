@@ -22,6 +22,7 @@ import type { Reader } from "../Reader"
 import type { Record } from "../Record"
 import type { Tree } from "../RoseTree"
 import type { Show } from "../Show"
+import type { StateIn, StateOut } from "../StateT"
 import type { Sync } from "../Sync"
 import type { XPure } from "../XPure"
 import type { XIO } from "../XPure/XIO"
@@ -172,6 +173,8 @@ declare module "../Prelude/HKT" {
     [OptionURI]: Option<A>
     [ListURI]: List<A>
     [IOURI]: IO<A>
+    [StateInURI]: StateIn<S, A>
+    [StateOutURI]: StateOut<S, A>
   }
   interface URItoIndex<N extends string, K> {
     [ListURI]: number

@@ -62,6 +62,7 @@
       "Record",
       "Set",
       "Show",
+      "StateT",
       "String",
       "RoseTree",
       "Effect",
