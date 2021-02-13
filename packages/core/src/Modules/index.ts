@@ -12,6 +12,7 @@ import type { Equal } from "../Equal"
 import type { FreeAssociative } from "../FreeAssociative"
 import type { Id } from "../Id"
 import type { Identity } from "../Identity"
+import type { Ix, IxC } from "../IndexedT"
 import type { Inverse } from "../Inverse"
 import type { IO } from "../IO"
 import type { List } from "../List"
@@ -22,7 +23,7 @@ import type { Reader } from "../Reader"
 import type { Record } from "../Record"
 import type { Tree } from "../RoseTree"
 import type { Show } from "../Show"
-import type { StateIn, StateOut } from "../StateT"
+import type { StateIn, StateOut } from "../StateT/Classic"
 import type { Sync } from "../Sync"
 import type { XPure } from "../XPure"
 import type { XIO } from "../XPure/XIO"
@@ -175,6 +176,7 @@ declare module "../Prelude/HKT" {
     [IOURI]: IO<A>
     [StateInURI]: StateIn<S, A>
     [StateOutURI]: StateOut<S, A>
+    [IxURI]: TC extends IxC<infer _I, infer _O> ? Ix<_I, _O, A> : any
   }
   interface URItoIndex<N extends string, K> {
     [ListURI]: number

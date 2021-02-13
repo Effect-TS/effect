@@ -48,6 +48,8 @@
       "Hash",
       "Id",
       "Identity",
+      "IndexedT",
+      "InvariantT",
       "Inverse",
       "IO",
       "Iterable",
@@ -161,6 +163,7 @@
       "XPure",
       "XPure/XIO",
       "XPure/XReader",
+      "XPure/XReaderT",
       "XPure/XState"
     ]
   }
