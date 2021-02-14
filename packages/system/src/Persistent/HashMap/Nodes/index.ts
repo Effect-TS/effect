@@ -1,6 +1,6 @@
 import type { Equal } from "../../../Equal"
-import * as IO from "../../../IO"
 import * as O from "../../../Option"
+import { Stack } from "../../../Stack"
 import { arraySpliceIn, arraySpliceOut, arrayUpdate } from "../Array"
 import { fromBitmap, hashFragment, toBitmap } from "../Bitwise"
 import { MAX_INDEX_NODE, MIN_ARRAY_NODE, SIZE } from "../Config"
@@ -339,52 +339,50 @@ function expand<K, V>(
   return new ArrayNode(edit, count + 1, arr)
 }
 
-function mergeLeaves<K, V>(
-  edit: number,
-  shift: number,
-  h1: number,
-  n1: Node<K, V>,
-  h2: number,
-  n2: Node<K, V>,
-  i = 0
-): Node<K, V> {
-  if (h1 === h2) return new CollisionNode(edit, h1, [n2, n1])
-  if (i > 10) {
-    return IO.run(mergeLeavesSafe(edit, shift, h1, n1, h2, n2))
-  }
-  const subH1 = hashFragment(shift, h1)
-  const subH2 = hashFragment(shift, h2)
-  const children =
-    subH1 === subH2
-      ? [mergeLeaves(edit, shift + SIZE, h1, n1, h2, n2, i + 1)]
-      : subH1 < subH2
-      ? [n1, n2]
-      : [n2, n1]
-  return new IndexedNode(edit, toBitmap(subH1) | toBitmap(subH2), children)
-}
-
-function mergeLeavesSafe<K, V>(
+function mergeLeavesInner<K, V>(
   edit: number,
   shift: number,
   h1: number,
   n1: Node<K, V>,
   h2: number,
   n2: Node<K, V>
-): IO.IO<Node<K, V>> {
-  if (h1 === h2) return IO.succeed(new CollisionNode(edit, h1, [n2, n1]))
+): Node<K, V> | ((child: Node<K, V>) => Node<K, V>) {
+  if (h1 === h2) return new CollisionNode(edit, h1, [n2, n1])
   const subH1 = hashFragment(shift, h1)
   const subH2 = hashFragment(shift, h2)
-  const children =
-    subH1 === subH2
-      ? IO.map_(
-          IO.suspend(() => mergeLeavesSafe(edit, shift + SIZE, h1, n1, h2, n2)),
-          (x) => [x]
-        )
-      : subH1 < subH2
-      ? IO.succeed([n1, n2])
-      : IO.succeed([n2, n1])
-  return IO.map_(
-    children,
-    (x) => new IndexedNode(edit, toBitmap(subH1) | toBitmap(subH2), x)
-  )
+
+  if (subH1 === subH2) {
+    return (child) => new IndexedNode(edit, toBitmap(subH1) | toBitmap(subH2), [child])
+  } else {
+    const children = subH1 < subH2 ? [n1, n2] : [n2, n1]
+    return new IndexedNode(edit, toBitmap(subH1) | toBitmap(subH2), children)
+  }
+}
+
+function mergeLeaves<K, V>(
+  edit: number,
+  shift: number,
+  h1: number,
+  n1: Node<K, V>,
+  h2: number,
+  n2: Node<K, V>
+): Node<K, V> {
+  let stack: Stack<(node: Node<K, V>) => Node<K, V>> | undefined = undefined
+  let currentShift = shift
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const res = mergeLeavesInner(edit, currentShift, h1, n1, h2, n2)
+
+    if (typeof res === "function") {
+      stack = new Stack(res, stack)
+      currentShift = currentShift + SIZE
+    } else {
+      let final = res
+      while (stack != null) {
+        final = stack.value(final)
+        stack = stack.previous
+      }
+      return final
+    }
+  }
 }
