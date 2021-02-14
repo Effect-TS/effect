@@ -14,3 +14,12 @@ export function fromEffect<R, E, A>(effect: T.Effect<R, E, A>) {
     )
   )
 }
+
+/**
+ * Lifts a `Effect< R, E, A>` into `Managed<R, E, A>` with no release action. The
+ * effect will be performed uninterruptibly. You usually want the `fromEffect`
+ * variant.
+ */
+export function fromEffectUninterruptible<R, E, A>(effect: T.Effect<R, E, A>) {
+  return fromEffect(T.uninterruptible(effect))
+}

@@ -154,6 +154,45 @@ export function forEach_<R, E, A, B>(as: Iterable<A>, f: (a: A) => Managed<R, E,
 }
 
 /**
+ * Applies the function `f` to each element of the `Iterable<A>` in parallel,
+ * and returns the results in a new `readonly B[]`.
+ *
+ * For a sequential version of this method, see `forEach`.
+ */
+export function forEachExec_<R, E, A, B>(
+  as: Iterable<A>,
+  es: ExecutionStrategy,
+  f: (a: A) => Managed<R, E, B>
+) {
+  switch (es._tag) {
+    case "Sequential": {
+      return forEach_(as, f)
+    }
+    case "Parallel": {
+      return forEachPar_(as, f)
+    }
+    case "ParallelN": {
+      return forEachParN_(es.n)(as, f)
+    }
+  }
+}
+
+/**
+ * Applies the function `f` to each element of the `Iterable<A>` in parallel,
+ * and returns the results in a new `readonly B[]`.
+ *
+ * For a sequential version of this method, see `forEach`.
+ *
+ * @dataFirst forEachExec_
+ */
+export function forEachExec<R, E, A, B>(
+  es: ExecutionStrategy,
+  f: (a: A) => Managed<R, E, B>
+) {
+  return (as: Iterable<A>) => forEachExec_(as, es, f)
+}
+
+/**
  * Applies the function `f` to each element of the `Iterable[A]` and runs
  * produced effects sequentially.
  *

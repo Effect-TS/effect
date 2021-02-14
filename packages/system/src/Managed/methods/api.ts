@@ -33,6 +33,7 @@ import {
   forEachPar_,
   forEachParN_,
   forEachUnit_,
+  make_,
   makeExit_,
   makeManagedReleaseMap,
   map_,
@@ -2577,4 +2578,27 @@ export function mapOrFail_<E1, A, B, R, E>(
  */
 export function mapOrFail<E1, A, B>(e: E1, f: (a: A) => O.Option<B>) {
   return <R, E>(self: Managed<R, E, A>) => mapOrFail_(self, e, f)
+}
+
+/**
+ * Creates a `Managed` from an `AutoCloseable` resource. The resource's `close`
+ * method will be used as the release action.
+ */
+export function fromAutoClosable<R, E, A extends { readonly close: () => void }>(
+  fa: T.Effect<R, E, A>
+) {
+  return make_(fa, (a) => T.effectTotal(() => a.close()))
+}
+
+/**
+ * Creates a `Managed` from an `AutoCloseable` resource. The resource's `close`
+ * method will be used as the release action.
+ */
+export function fromAutoClosableM<
+  R,
+  E,
+  R1,
+  A extends { readonly close: T.Effect<R1, never, any> }
+>(fa: T.Effect<R, E, A>) {
+  return make_(fa, (a) => a.close)
 }
