@@ -7,47 +7,39 @@ import * as O from "../../src/Option"
 import * as OptionT from "../../src/OptionT"
 import * as P from "../../src/Prelude"
 
-export const Monad = OptionT.monad(T.Monad)
-export const Applicative = OptionT.applicative(T.Applicative)
+export namespace EO {
+  export const EffectOption = intersect(
+    OptionT.monad(T.Monad),
+    OptionT.applicative(T.Applicative),
+    OptionT.access(intersect(T.Access, T.Covariant)),
+    OptionT.provide(T.Provide)
+  )
 
-function dsl() {
-  const { any, both, flatten, map } = intersect(Monad, Applicative)
+  export const { access, any, both, flatten, map, provide } = EffectOption
 
-  const chain = P.chainF(Monad)
-  const succeed = P.succeedF(Monad)
-  const ap = P.apF(Applicative)
-  const bind = P.bindF(Monad)
-  const do_ = P.doF(Monad)
-  const struct = P.structF(Applicative)
-  const tuple = P.tupleF(Applicative)
-  const gen = P.genF(Monad)
-
-  return {
-    any,
-    both,
-    flatten,
-    map,
-    chain,
-    succeed,
-    ap,
-    bind,
-    do: do_,
-    struct,
-    tuple,
-    gen
-  }
+  export const chain = P.chainF(EffectOption)
+  export const succeed = P.succeedF(EffectOption)
+  export const ap = P.apF(EffectOption)
+  export const bind = P.bindF(EffectOption)
+  export const do_ = P.doF(EffectOption)
+  export const struct = P.structF(EffectOption)
+  export const tuple = P.tupleF(EffectOption)
+  export const gen = P.genF(EffectOption)
 }
-
-const EO = dsl()
 
 it("use effectOption", async () => {
   const program = EO.gen(function* (_) {
     const x = yield* _(EO.succeed(1))
-    const y = yield* _(T.succeed(O.some(2)))
+    const y = yield* _(EO.succeed(2))
     return x + y
   })
 
-  const res = await pipe(program, T.runPromiseExit)
+  const res = await pipe(
+    program,
+    EO.chain((n) => EO.access(({ base }: { base: number }) => n + base)),
+    EO.provide({ base: 1 }),
+    T.runPromiseExit
+  )
 
-  expect(res).toEqual(Ex.succeed(O.some(3)))
+  expect(res).toEqual(Ex.succeed(O.some(4)))
 })

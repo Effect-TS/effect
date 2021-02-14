@@ -2,7 +2,7 @@ import * as E from "../Either"
 import { pipe } from "../Function"
 import type { Any, Applicative, Covariant, Monad, URI } from "../Prelude"
 import { succeedF } from "../Prelude/DSL"
-import type { Fail, Run } from "../Prelude/FX"
+import type { Access, Fail, Provide, Run } from "../Prelude/FX"
 import * as HKT from "../Prelude/HKT"
 
 export type V<C> = HKT.CleanParam<C, "E"> & HKT.V<"E", "+">
@@ -64,5 +64,23 @@ export function fail<F>(M: Any<HKT.UHKT<F>> & Covariant<HKT.UHKT<F>>) {
   const succeed = succeedF(M)
   return HKT.instance<Fail<[HKT.UHKT<F>[0], URI<E.EitherURI>], HKT.V<"E", "+">>>({
     fail: (x) => pipe(x, E.left, succeed)
+  })
+}
+
+export function access<F extends HKT.URIS, C>(
+  M: Access<F, C> & Covariant<F, C>
+): Access<[F[0], ...HKT.Rest<F>, URI<E.EitherURI>], V<C>>
+export function access<F>(M: Access<HKT.UHKT<F>> & Covariant<HKT.UHKT<F>>) {
+  return HKT.instance<Access<[HKT.UHKT<F>[0], URI<E.EitherURI>], HKT.V<"E", "+">>>({
+    access: (f) => pipe(M.access(f), M.map(E.right))
+  })
+}
+
+export function provide<F extends HKT.URIS, C>(
+  M: Provide<F, C>
+): Provide<[F[0], ...HKT.Rest<F>, URI<E.EitherURI>], V<C>>
+export function provide<F>(M: Provide<HKT.UHKT<F>>) {
+  return HKT.instance<Provide<[HKT.UHKT<F>[0], URI<E.EitherURI>], HKT.V<"E", "+">>>({
+    provide: M.provide
   })
 }

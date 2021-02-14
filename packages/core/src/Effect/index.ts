@@ -61,6 +61,14 @@ export const Run = P.instance<P.FX.Run<[URI<EffectURI>], V>>({
   either: T.either
 })
 
+export const Access = P.instance<P.FX.Access<[URI<EffectURI>], V>>({
+  access: T.access
+})
+
+export const Provide = P.instance<P.FX.Provide<[URI<EffectURI>], V>>({
+  provide: T.provideAll
+})
+
 export const getValidationApplicative = DSL.getValidationF<[URI<EffectURI>], V>({
   ...Monad,
   ...Run,
