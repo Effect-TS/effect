@@ -1,7 +1,8 @@
-import { pipe } from "../Function"
-import { chain_, succeed, unit } from "./core"
-import type { Effect } from "./effect"
-import { map } from "./map"
+import { pipe } from "../../Function"
+import { chain_, map } from "../core"
+import type { Managed } from "../managed"
+import { succeed } from "../succeed"
+import { unit } from "./api"
 
 /**
  * Loops with the specified effectual function, collecting the results into a
@@ -20,7 +21,7 @@ import { map } from "./map"
  * ```
  */
 export function loop<Z>(initial: Z, cont: (z: Z) => boolean, inc: (z: Z) => Z) {
-  return <R, E, A>(body: (z: Z) => Effect<R, E, A>): Effect<R, E, readonly A[]> => {
+  return <R, E, A>(body: (z: Z) => Managed<R, E, A>): Managed<R, E, readonly A[]> => {
     if (cont(initial)) {
       return chain_(body(initial), (a) =>
         pipe(
@@ -47,7 +48,7 @@ export function loop<Z>(initial: Z, cont: (z: Z) => boolean, inc: (z: Z) => Z) {
  * ```
  */
 export function loopUnit<Z>(initial: Z, cont: (z: Z) => boolean, inc: (z: Z) => Z) {
-  return <R, E>(body: (z: Z) => Effect<R, E, any>): Effect<R, E, void> => {
+  return <R, E>(body: (z: Z) => Managed<R, E, any>): Managed<R, E, void> => {
     if (cont(initial)) {
       return chain_(body(initial), () => loopUnit(inc(initial), cont, inc)(body))
     }

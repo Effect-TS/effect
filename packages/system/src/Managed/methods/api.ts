@@ -8,6 +8,7 @@ import * as T from "../../Effect"
 import { descriptor, supervised } from "../../Effect"
 import * as E from "../../Either"
 import * as Ex from "../../Exit"
+import type { FiberID } from "../../Fiber"
 import * as F from "../../Fiber"
 import { constVoid, identity, pipe, tuple } from "../../Function"
 import { NoSuchElementException } from "../../GlobalExceptions"
@@ -2601,4 +2602,17 @@ export function fromAutoClosableM<
   A extends { readonly close: T.Effect<R1, never, any> }
 >(fa: T.Effect<R, E, A>) {
   return make_(fa, (a) => a.close)
+}
+
+/**
+ * Returns an effect that is interrupted as if by the fiber calling this
+ * method.
+ */
+export const interrupt = chain_(fromEffect(T.descriptor), (d) => interruptAs(d.id))
+
+/**
+ * Returns an effect that is interrupted as if by the specified fiber.
+ */
+export function interruptAs(id: FiberID) {
+  return halt(C.interrupt(id))
 }
