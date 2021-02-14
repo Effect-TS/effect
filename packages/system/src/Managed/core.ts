@@ -172,7 +172,7 @@ export function forEachExec_<R, E, A, B>(
       return forEachPar_(as, f)
     }
     case "ParallelN": {
-      return forEachParN_(es.n)(as, f)
+      return forEachParN_(as, es.n, f)
     }
   }
 }
@@ -270,11 +270,11 @@ export function forEachPar_<R, E, A, B>(
  * and returns the results in a new `B[]`.
  *
  * Unlike `forEachPar`, this method will use at most up to `n` fibers.
+ *
+ * @dataFirst forEachParN_
  */
-export function forEachParN(n: number) {
-  return <R, E, A, B>(f: (a: A) => Managed<R, E, B>) => (
-    as: Iterable<A>
-  ): Managed<R, E, readonly B[]> => forEachParN_(n)(as, f)
+export function forEachParN<R, E, A, B>(n: number, f: (a: A) => Managed<R, E, B>) {
+  return (as: Iterable<A>): Managed<R, E, readonly B[]> => forEachParN_(as, n, f)
 }
 
 /**
@@ -283,26 +283,26 @@ export function forEachParN(n: number) {
  *
  * Unlike `forEachPar_`, this method will use at most up to `n` fibers.
  */
-export function forEachParN_(n: number) {
-  return <R, E, A, B>(
-    as: Iterable<A>,
-    f: (a: A) => Managed<R, E, B>
-  ): Managed<R, E, readonly B[]> =>
-    mapM_(makeManagedReleaseMap(T.parallelN(n)), (parallelReleaseMap) => {
-      const makeInnerMap = T.provideSome_(
-        T.map_(makeManagedReleaseMap(sequential).effect, ([_, x]) => x),
-        (x: unknown) => tuple(x, parallelReleaseMap)
-      )
+export function forEachParN_<R, E, A, B>(
+  as: Iterable<A>,
+  n: number,
+  f: (a: A) => Managed<R, E, B>
+): Managed<R, E, readonly B[]> {
+  return mapM_(makeManagedReleaseMap(T.parallelN(n)), (parallelReleaseMap) => {
+    const makeInnerMap = T.provideSome_(
+      T.map_(makeManagedReleaseMap(sequential).effect, ([_, x]) => x),
+      (x: unknown) => tuple(x, parallelReleaseMap)
+    )
 
-      return T.forEachParN_(as, n, (a) =>
-        T.map_(
-          T.chain_(makeInnerMap, (innerMap) =>
-            T.provideSome_(f(a).effect, (u: R) => tuple(u, innerMap))
-          ),
-          ([_, b]) => b
-        )
+    return T.forEachParN_(as, n, (a) =>
+      T.map_(
+        T.chain_(makeInnerMap, (innerMap) =>
+          T.provideSome_(f(a).effect, (u: R) => tuple(u, innerMap))
+        ),
+        ([_, b]) => b
       )
-    })
+    )
+  })
 }
 
 /**

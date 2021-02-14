@@ -52,6 +52,9 @@ export function structPar<NER extends Record<string, Effect<any, any, any>>>(
   ) as any
 }
 
+/**
+ * @dataFirst structParN_
+ */
 export function structParN(
   n: number
 ): <NER extends Record<string, Effect<any, any, any>>>(
@@ -78,4 +81,30 @@ export function structParN(
         return res
       }
     ) as any
+}
+
+export function structParN_<NER extends Record<string, Effect<any, any, any>>>(
+  r: EnforceNonEmptyRecord<NER> & Record<string, Effect<any, any, any>>,
+  n: number
+): Effect<
+  _R<NER[keyof NER]>,
+  _E<NER[keyof NER]>,
+  {
+    [K in keyof NER]: [NER[K]] extends [Effect<any, any, infer A>] ? A : never
+  }
+> {
+  return map_(
+    forEachParN_(
+      R.collect_(r, (k, v) => [k, v] as const),
+      n,
+      ([_, e]) => map_(e, (a) => [_, a] as const)
+    ),
+    (values) => {
+      const res = {}
+      values.forEach(([k, v]) => {
+        res[k] = v
+      })
+      return res
+    }
+  ) as any
 }

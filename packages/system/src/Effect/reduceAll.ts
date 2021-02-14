@@ -18,6 +18,8 @@ export function reduceAll_<R, E, A>(
 
 /**
  * Reduces an `Iterable[IO]` to a single `IO`, working sequentially.
+ *
+ * @dataFirst reduceAll_
  */
 export function reduceAll<A>(f: (acc: A, a: A) => A) {
   return <R, E>(as: NA.NonEmptyArray<Effect<R, E, A>>) => reduceAll_(as, f)
@@ -48,6 +50,8 @@ export function reduceAllPar_<R, E, A>(
 
 /**
  * Reduces an `Iterable[IO]` to a single `IO`, working in parallel.
+ *
+ * @dataFirst reduceAllPar_
  */
 export function reduceAllPar<A>(f: (acc: A, a: A) => A) {
   return <R, E>(as: NA.NonEmptyArray<Effect<R, E, A>>) => reduceAllPar_(as, f)
@@ -56,32 +60,33 @@ export function reduceAllPar<A>(f: (acc: A, a: A) => A) {
 /**
  * Reduces an `Iterable[IO]` to a single `IO`, working in up to `n` fibers in parallel.
  */
-export function reduceAllParN_(n: number) {
-  return <R, E, A>(
-    as: NA.NonEmptyArray<Effect<R, E, A>>,
-    f: (acc: A, a: A) => A
-  ): Effect<R, E, A> =>
-    map_(
-      mergeAllParN_(n)(as, <O.Option<A>>O.none, (acc, elem) =>
-        O.some(
-          O.fold_(
-            acc,
-            () => elem,
-            (a) => f(a, elem)
-          )
+export function reduceAllParN_<R, E, A>(
+  as: NA.NonEmptyArray<Effect<R, E, A>>,
+  n: number,
+  f: (acc: A, a: A) => A
+): Effect<R, E, A> {
+  return map_(
+    mergeAllParN_(as, n, <O.Option<A>>O.none, (acc, elem) =>
+      O.some(
+        O.fold_(
+          acc,
+          () => elem,
+          (a) => f(a, elem)
         )
-      ),
-      O.getOrElse(() => {
-        throw new Error("Bug")
-      })
-    )
+      )
+    ),
+    O.getOrElse(() => {
+      throw new Error("Bug")
+    })
+  )
 }
 
 /**
  * Reduces an `Iterable[IO]` to a single `IO`, working in up to `n` fibers in parallel.
+ *
+ * @dataFirst reduceAllParN_
  */
-export function reduceAllParN(n: number) {
-  return <A>(f: (acc: A, a: A) => A) => <R, E>(
-    as: NA.NonEmptyArray<Effect<R, E, A>>
-  ): Effect<R, E, A> => reduceAllParN_(n)(as, f)
+export function reduceAllParN<A>(n: number, f: (acc: A, a: A) => A) {
+  return <R, E>(as: NA.NonEmptyArray<Effect<R, E, A>>): Effect<R, E, A> =>
+    reduceAllParN_(as, n, f)
 }

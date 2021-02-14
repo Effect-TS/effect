@@ -9,6 +9,8 @@ import { zipWithPar_ } from "./zipWithPar_"
 
 /**
  * Merges an `Iterable[IO]` to a single IO, working sequentially.
+ *
+ * @dataFirst mergeAll_
  */
 export function mergeAll<A, B>(zero: B, f: (b: B, a: A) => B) {
   return <R, E>(as: Iterable<Effect<R, E, A>>): Effect<R, E, B> =>
@@ -35,11 +37,12 @@ export function mergeAll_<R, E, A, B>(
  *
  * It's unsafe to execute side effects inside `f`, as `f` may be executed
  * more than once for some of `in` elements during effect execution.
+ *
+ * @dataFirst mergeAllPar_
  */
-export function mergeAllPar<B>(zero: B) {
-  return <A>(f: (b: B, a: A) => B) => <R, E>(
-    as: Iterable<Effect<R, E, A>>
-  ): Effect<R, E, B> => mergeAllPar_(as, zero, f)
+export function mergeAllPar<A, B>(zero: B, f: (b: B, a: A) => B) {
+  return <R, E>(as: Iterable<Effect<R, E, A>>): Effect<R, E, B> =>
+    mergeAllPar_(as, zero, f)
 }
 
 /**
@@ -69,11 +72,12 @@ export function mergeAllPar_<R, E, A, B>(
  *
  * It's unsafe to execute side effects inside `f`, as `f` may be executed
  * more than once for some of `in` elements during effect execution.
+ *
+ * @dataFirst mergeAllParN_
  */
-export function mergeAllParN(n: number) {
-  return <B>(zero: B) => <A>(f: (b: B, a: A) => B) => <R, E>(
-    as: Iterable<Effect<R, E, A>>
-  ): Effect<R, E, B> => mergeAllParN_(n)(as, zero, f)
+export function mergeAllParN<A, B>(n: number, zero: B, f: (b: B, a: A) => B) {
+  return <R, E>(as: Iterable<Effect<R, E, A>>): Effect<R, E, B> =>
+    mergeAllParN_(as, n, zero, f)
 }
 
 /**
@@ -86,25 +90,25 @@ export function mergeAllParN(n: number) {
  * It's unsafe to execute side effects inside `f`, as `f` may be executed
  * more than once for some of `in` elements during effect execution.
  */
-export function mergeAllParN_(n: number) {
-  return <R, E, A, B>(
-    as: Iterable<Effect<R, E, A>>,
-    zero: B,
-    f: (b: B, a: A) => B
-  ): Effect<R, E, B> =>
-    chain_(Ref.makeRef(zero), (acc) =>
-      chain_(
-        forEach.forEachUnitParN_(
-          as,
-          n,
-          chain((a) =>
-            pipe(
-              acc,
-              Ref.update((b) => f(b, a))
-            )
+export function mergeAllParN_<R, E, A, B>(
+  as: Iterable<Effect<R, E, A>>,
+  n: number,
+  zero: B,
+  f: (b: B, a: A) => B
+): Effect<R, E, B> {
+  return chain_(Ref.makeRef(zero), (acc) =>
+    chain_(
+      forEach.forEachUnitParN_(
+        as,
+        n,
+        chain((a) =>
+          pipe(
+            acc,
+            Ref.update((b) => f(b, a))
           )
-        ),
-        () => acc.get
-      )
+        )
+      ),
+      () => acc.get
     )
+  )
 }

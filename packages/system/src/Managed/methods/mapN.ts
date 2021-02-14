@@ -1,9 +1,9 @@
-import type { NonEmptyArray } from "../NonEmptyArray"
-import type { _E, _R } from "../Utils"
-import type { Effect } from "./effect"
-import { map_ } from "./map"
-import type { TupleA } from "./tuple"
-import { tuple, tuplePar, tupleParN } from "./tuple"
+import type { NonEmptyArray } from "../../NonEmptyArray"
+import type { _E, _R } from "../../Utils"
+import { map_ } from "../core"
+import type { Managed } from "../managed"
+import type { TupleA } from "../tuple"
+import { tuple, tuplePar, tupleParN } from "../tuple"
 
 /**
  * Sequentially zips the specified effects using the specified combiner
@@ -11,9 +11,9 @@ import { tuple, tuplePar, tupleParN } from "./tuple"
  *
  * @dataFirst mapN_
  */
-export function mapN<T extends NonEmptyArray<Effect<any, any, any>>, B>(
+export function mapN<T extends NonEmptyArray<Managed<any, any, any>>, B>(
   f: (_: TupleA<T>) => B
-): (t: T) => Effect<_R<T[number]>, _E<T[number]>, B> {
+): (t: T) => Managed<_R<T[number]>, _E<T[number]>, B> {
   return (t) => mapN_(t, f)
 }
 
@@ -21,10 +21,10 @@ export function mapN<T extends NonEmptyArray<Effect<any, any, any>>, B>(
  * Sequentially zips the specified effects using the specified combiner
  * function.
  */
-export function mapN_<T extends NonEmptyArray<Effect<any, any, any>>, B>(
+export function mapN_<T extends NonEmptyArray<Managed<any, any, any>>, B>(
   t: T,
   f: (_: TupleA<T>) => B
-): Effect<_R<T[number]>, _E<T[number]>, B> {
+): Managed<_R<T[number]>, _E<T[number]>, B> {
   return map_(tuple<T>(...t), f)
 }
 
@@ -34,9 +34,9 @@ export function mapN_<T extends NonEmptyArray<Effect<any, any, any>>, B>(
  *
  * @dataFirst mapNPar_
  */
-export function mapNPar<T extends NonEmptyArray<Effect<any, any, any>>, B>(
+export function mapNPar<T extends NonEmptyArray<Managed<any, any, any>>, B>(
   f: (_: TupleA<T>) => B
-): (t: T) => Effect<_R<T[number]>, _E<T[number]>, B> {
+): (t: T) => Managed<_R<T[number]>, _E<T[number]>, B> {
   return (t) => mapNPar_(t, f)
 }
 
@@ -44,10 +44,10 @@ export function mapNPar<T extends NonEmptyArray<Effect<any, any, any>>, B>(
  * Zips the specified effects in parallel using the specified combiner
  * function.
  */
-export function mapNPar_<T extends NonEmptyArray<Effect<any, any, any>>, B>(
+export function mapNPar_<T extends NonEmptyArray<Managed<any, any, any>>, B>(
   t: T,
   f: (_: TupleA<T>) => B
-): Effect<_R<T[number]>, _E<T[number]>, B> {
+): Managed<_R<T[number]>, _E<T[number]>, B> {
   return map_(tuplePar<T>(...t), f)
 }
 
@@ -57,10 +57,10 @@ export function mapNPar_<T extends NonEmptyArray<Effect<any, any, any>>, B>(
  *
  * This variant uses up to N fibers.
  */
-export function mapNParN<T extends NonEmptyArray<Effect<any, any, any>>, B>(
+export function mapNParN<T extends NonEmptyArray<Managed<any, any, any>>, B>(
   n: number,
   f: (_: TupleA<T>) => B
-): (t: T) => Effect<_R<T[number]>, _E<T[number]>, B> {
+): (t: T) => Managed<_R<T[number]>, _E<T[number]>, B> {
   return (t) => mapNParN_(t, n, f)
 }
 
@@ -70,10 +70,10 @@ export function mapNParN<T extends NonEmptyArray<Effect<any, any, any>>, B>(
  *
  * This variant uses up to N fibers.
  */
-export function mapNParN_<T extends NonEmptyArray<Effect<any, any, any>>, B>(
+export function mapNParN_<T extends NonEmptyArray<Managed<any, any, any>>, B>(
   t: T,
   n: number,
   f: (_: TupleA<T>) => B
-): Effect<_R<T[number]>, _E<T[number]>, B> {
+): Managed<_R<T[number]>, _E<T[number]>, B> {
   return map_(tupleParN(n)(...t), f)
 }

@@ -55,17 +55,15 @@ export function collectPar_<A, R, E, B>(
  *
  * Unlike `collectPar`, this method will use at most up to `n` fibers.
  */
-export function collectParN_(
-  n: number
-): <A, R, E, B>(
+export function collectParN_<A, R, E, B>(
   self: Iterable<A>,
+  n: number,
   f: (a: A) => Effect<R, Option<E>, B>
-) => Effect<R, E, readonly B[]> {
-  return (self, f) =>
-    map_(
-      forEachParN_(self, n, (a) => optional(f(a))),
-      A.compact
-    )
+): Effect<R, E, readonly B[]> {
+  return map_(
+    forEachParN_(self, n, (a) => optional(f(a))),
+    A.compact
+  )
 }
 
 /**
@@ -73,12 +71,12 @@ export function collectParN_(
  * the successful values and discarding the empty cases.
  *
  * Unlike `collectPar`, this method will use at most up to `n` fibers.
+ *
+ * @dataFirst collectParN_
  */
-export function collectParN(
-  n: number
-): <A, R, E, B>(
+export function collectParN<A, R, E, B>(
+  n: number,
   f: (a: A) => Effect<R, Option<E>, B>
-) => (self: Iterable<A>) => Effect<R, E, readonly B[]> {
-  const c = collectParN_(n)
-  return (f) => (self) => c(self, f)
+): (self: Iterable<A>) => Effect<R, E, readonly B[]> {
+  return (self) => collectParN_(self, n, f)
 }

@@ -28,10 +28,22 @@ export function collectAllPar<R, E, A>(as: Iterable<Effect<R, E, A>>) {
  * results. For a sequential version, see `collectAll`.
  *
  * Unlike `collectAllPar`, this method will use at most `n` fibers.
+ *
+ * @dataFirst collectAllParN_
  */
 export function collectAllParN(n: number) {
   return <R, E, A>(as: Iterable<Effect<R, E, A>>) =>
     forEach.forEachParN_(as, n, identity)
+}
+
+/**
+ * Evaluate each effect in the structure in parallel, and collect the
+ * results. For a sequential version, see `collectAll`.
+ *
+ * Unlike `collectAllPar`, this method will use at most `n` fibers.
+ */
+export function collectAllParN_<R, E, A>(as: Iterable<Effect<R, E, A>>, n: number) {
+  return forEach.forEachParN_(as, n, identity)
 }
 
 /**
@@ -59,6 +71,16 @@ export function collectAllUnitPar<R, E, A>(as: Iterable<Effect<R, E, A>>) {
 export function collectAllUnitParN(n: number) {
   return <R, E, A>(as: Iterable<Effect<R, E, A>>) =>
     forEach.forEachUnitParN_(as, n, identity)
+}
+
+/**
+ * Evaluate each effect in the structure in parallel, and discard the
+ * results. For a sequential version, see `collectAllUnit`.
+ *
+ * Unlike `collectAllUnitPar`, this method will use at most `n` fibers.
+ */
+export function collectAllUnitParN_<R, E, A>(as: Iterable<Effect<R, E, A>>, n: number) {
+  return forEach.forEachUnitParN_(as, n, identity)
 }
 
 /**
@@ -105,14 +127,13 @@ export function collectAllWithPar<A, B>(pf: (a: A) => O.Option<B>) {
  *
  * Unlike `collectAllWithPar`, this method will use at most up to `n` fibers.
  */
-export function collectAllWithParN_(
-  n: number
-): <R, E, A, B>(
+export function collectAllWithParN_<R, E, A, B>(
   as: Iterable<Effect<R, E, A>>,
+  n: number,
   pf: (a: A) => O.Option<B>
-) => Effect<R, E, readonly B[]> {
+): Effect<R, E, readonly B[]> {
   const c = collectAllParN(n)
-  return (as, pf) => map.map_(c(as), (x) => pipe(x, A.map(pf), A.compact))
+  return map.map_(c(as), (x) => pipe(x, A.map(pf), A.compact))
 }
 
 /**
@@ -121,13 +142,11 @@ export function collectAllWithParN_(
  *
  * Unlike `collectAllWithPar`, this method will use at most up to `n` fibers.
  */
-export function collectAllWithParN(
-  n: number
-): <A, B>(
+export function collectAllWithParN<A, B>(
+  n: number,
   pf: (a: A) => O.Option<B>
-) => <R, E>(as: Iterable<Effect<R, E, A>>) => Effect<R, E, readonly B[]> {
-  const c = collectAllWithParN_(n)
-  return (pf) => (as) => c(as, pf)
+): <R, E>(as: Iterable<Effect<R, E, A>>) => Effect<R, E, readonly B[]> {
+  return (as) => collectAllWithParN_(as, n, pf)
 }
 
 /**
@@ -154,7 +173,8 @@ export function collectAllSuccessesPar<R, E, A>(as: Iterable<Effect<R, E, A>>) {
  * Unlike `collectAllSuccessesPar`, this method will use at most up to `n` fibers.
  */
 export function collectAllSuccessesParN(n: number) {
-  const c = collectAllWithParN_(n)
   return <R, E, A>(as: Iterable<Effect<R, E, A>>) =>
-    c(I.map_(as, core.result), (e) => (e._tag === "Success" ? O.some(e.value) : O.none))
+    collectAllWithParN_(I.map_(as, core.result), n, (e) =>
+      e._tag === "Success" ? O.some(e.value) : O.none
+    )
 }

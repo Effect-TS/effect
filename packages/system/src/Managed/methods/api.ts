@@ -1967,26 +1967,26 @@ export function forEachUnitPar<R, E, A, B>(f: (a: A) => Managed<R, E, B>) {
  *
  * For a sequential version of this method, see `forEachUnit_`.
  */
-export function forEachUnitParN_(n: number) {
-  return <R, E, A, B>(
-    as: Iterable<A>,
-    f: (a: A) => Managed<R, E, B>
-  ): Managed<R, E, void> =>
-    mapM_(makeManagedReleaseMap(T.parallel), (parallelReleaseMap) => {
-      const makeInnerMap = T.provideSome_(
-        T.map_(makeManagedReleaseMap(T.sequential).effect, ([_, e]) => e),
-        (r) => tuple(r, parallelReleaseMap)
-      )
+export function forEachUnitParN_<R, E, A, B>(
+  as: Iterable<A>,
+  n: number,
+  f: (a: A) => Managed<R, E, B>
+): Managed<R, E, void> {
+  return mapM_(makeManagedReleaseMap(T.parallel), (parallelReleaseMap) => {
+    const makeInnerMap = T.provideSome_(
+      T.map_(makeManagedReleaseMap(T.sequential).effect, ([_, e]) => e),
+      (r) => tuple(r, parallelReleaseMap)
+    )
 
-      return T.forEachUnitParN_(as, n, (a) =>
-        T.chain_(makeInnerMap, (innerMap) =>
-          T.provideSome_(
-            T.map_(f(a).effect, ([_, a]) => a),
-            (r: R) => tuple(r, innerMap)
-          )
+    return T.forEachUnitParN_(as, n, (a) =>
+      T.chain_(makeInnerMap, (innerMap) =>
+        T.provideSome_(
+          T.map_(f(a).effect, ([_, a]) => a),
+          (r: R) => tuple(r, innerMap)
         )
       )
-    })
+    )
+  })
 }
 
 /**
@@ -1994,16 +1994,18 @@ export function forEachUnitParN_(n: number) {
  * produced effects in parallel, discarding the results.
  *
  * For a sequential version of this method, see `forEachUnit_`.
+ *
+ * @dataFirst forEachUnitParN
  */
-export function forEachUnitParN(n: number) {
-  return <R, E, A, B>(f: (a: A) => Managed<R, E, B>) => (
-    as: Iterable<A>
-  ): Managed<R, E, void> => forEachUnitParN_(n)(as, f)
+export function forEachUnitParN<R, E, A, B>(n: number, f: (a: A) => Managed<R, E, B>) {
+  return (as: Iterable<A>): Managed<R, E, void> => forEachUnitParN_(as, n, f)
 }
 
 /**
  * Evaluate each effect in the structure from left to right, collecting the
  * the successful values and discarding the empty cases. For a parallel version, see `collectPar`.
+ *
+ * @dataFirst collect_
  */
 export function collect<A, R, E, B>(f: (a: A) => Managed<R, Option<E>, B>) {
   return (self: Iterable<A>): Managed<R, E, readonly B[]> => collect_(self, f)
@@ -2026,6 +2028,8 @@ export function collect_<A, R, E, B>(
 /**
  * Evaluate each effect in the structure in parallel, collecting the
  * the successful values and discarding the empty cases.
+ *
+ * @dataFirst collectPar_
  */
 export function collectPar<A, R, E, B>(f: (a: A) => Managed<R, Option<E>, B>) {
   return (self: Iterable<A>): Managed<R, E, readonly B[]> => collectPar_(self, f)
@@ -2051,17 +2055,15 @@ export function collectPar_<A, R, E, B>(
  *
  * Unlike `collectPar`, this method will use at most up to `n` fibers.
  */
-export function collectParN_(
-  n: number
-): <A, R, E, B>(
+export function collectParN_<A, R, E, B>(
   self: Iterable<A>,
+  n: number,
   f: (a: A) => Managed<R, Option<E>, B>
-) => Managed<R, E, readonly B[]> {
-  return (self, f) =>
-    map_(
-      forEachParN_(n)(self, (a) => optional(f(a))),
-      A.compact
-    )
+): Managed<R, E, readonly B[]> {
+  return map_(
+    forEachParN_(self, n, (a) => optional(f(a))),
+    A.compact
+  )
 }
 
 /**
@@ -2069,14 +2071,14 @@ export function collectParN_(
  * the successful values and discarding the empty cases.
  *
  * Unlike `collectPar`, this method will use at most up to `n` fibers.
+ *
+ * @dataFirst collectParN_
  */
-export function collectParN(
-  n: number
-): <A, R, E, B>(
+export function collectParN<A, R, E, B>(
+  n: number,
   f: (a: A) => Managed<R, Option<E>, B>
-) => (self: Iterable<A>) => Managed<R, E, readonly B[]> {
-  const c = collectParN_(n)
-  return (f) => (self) => c(self, f)
+): (self: Iterable<A>) => Managed<R, E, readonly B[]> {
+  return (self) => collectParN_(self, n, f)
 }
 
 /**
@@ -2100,9 +2102,21 @@ export function collectAllPar<R, E, A>(as: Iterable<Managed<R, E, A>>) {
  * results. For a sequential version, see `collectAll`.
  *
  * Unlike `collectAllPar`, this method will use at most `n` fibers.
+ *
+ * @dataFirst collectAllParN_
  */
 export function collectAllParN(n: number) {
-  return <R, E, A>(as: Iterable<Managed<R, E, A>>) => forEachParN_(n)(as, identity)
+  return <R, E, A>(as: Iterable<Managed<R, E, A>>) => forEachParN_(as, n, identity)
+}
+
+/**
+ * Evaluate each effect in the structure in parallel, and collect the
+ * results. For a sequential version, see `collectAll`.
+ *
+ * Unlike `collectAllPar`, this method will use at most `n` fibers.
+ */
+export function collectAllParN_<R, E, A>(as: Iterable<Managed<R, E, A>>, n: number) {
+  return forEachParN_(as, n, identity)
 }
 
 /**
@@ -2126,9 +2140,24 @@ export function collectAllUnitPar<R, E, A>(as: Iterable<Managed<R, E, A>>) {
  * results. For a sequential version, see `collectAllUnit`.
  *
  * Unlike `collectAllUnitPar`, this method will use at most `n` fibers.
+ *
+ * @dataFirst collectAllUnitParN_
  */
 export function collectAllUnitParN(n: number) {
-  return <R, E, A>(as: Iterable<Managed<R, E, A>>) => forEachUnitParN_(n)(as, identity)
+  return <R, E, A>(as: Iterable<Managed<R, E, A>>) => forEachUnitParN_(as, n, identity)
+}
+
+/**
+ * Evaluate each effect in the structure in parallel, and discard the
+ * results. For a sequential version, see `collectAllUnit`.
+ *
+ * Unlike `collectAllUnitPar`, this method will use at most `n` fibers.
+ */
+export function collectAllUnitParN_<R, E, A>(
+  as: Iterable<Managed<R, E, A>>,
+  n: number
+) {
+  return forEachUnitParN_(as, n, identity)
 }
 
 /**
@@ -2175,14 +2204,12 @@ export function collectAllWithPar<A, B>(pf: (a: A) => O.Option<B>) {
  *
  * Unlike `collectAllWithPar`, this method will use at most up to `n` fibers.
  */
-export function collectAllWithParN_(
-  n: number
-): <R, E, A, B>(
+export function collectAllWithParN_<R, E, A, B>(
   as: Iterable<Managed<R, E, A>>,
+  n: number,
   pf: (a: A) => O.Option<B>
-) => Managed<R, E, readonly B[]> {
-  const c = collectAllParN(n)
-  return (as, pf) => map_(c(as), (x) => pipe(x, A.map(pf), A.compact))
+): Managed<R, E, readonly B[]> {
+  return map_(collectAllParN_(as, n), (x) => pipe(x, A.map(pf), A.compact))
 }
 
 /**
@@ -2190,14 +2217,14 @@ export function collectAllWithParN_(
  * the results with given partial function.
  *
  * Unlike `collectAllWithPar`, this method will use at most up to `n` fibers.
+ *
+ * @dataFirst collectAllWithParN_
  */
-export function collectAllWithParN(
-  n: number
-): <A, B>(
+export function collectAllWithParN<A, B>(
+  n: number,
   pf: (a: A) => O.Option<B>
-) => <R, E>(as: Iterable<Managed<R, E, A>>) => Managed<R, E, readonly B[]> {
-  const c = collectAllWithParN_(n)
-  return (pf) => (as) => c(as, pf)
+): <R, E>(as: Iterable<Managed<R, E, A>>) => Managed<R, E, readonly B[]> {
+  return (as) => collectAllWithParN_(as, n, pf)
 }
 
 /**
@@ -2222,11 +2249,28 @@ export function collectAllSuccessesPar<R, E, A>(as: Iterable<Managed<R, E, A>>) 
  * Evaluate and run each effect in the structure in parallel, and collect discarding failed ones.
  *
  * Unlike `collectAllSuccessesPar`, this method will use at most up to `n` fibers.
+ *
+ * @dataFirst collectAllSuccessesParN_
  */
 export function collectAllSuccessesParN(n: number) {
-  const c = collectAllWithParN_(n)
   return <R, E, A>(as: Iterable<Managed<R, E, A>>) =>
-    c(I.map_(as, result), (e) => (e._tag === "Success" ? O.some(e.value) : O.none))
+    collectAllWithParN_(I.map_(as, result), n, (e) =>
+      e._tag === "Success" ? O.some(e.value) : O.none
+    )
+}
+
+/**
+ * Evaluate and run each effect in the structure in parallel, and collect discarding failed ones.
+ *
+ * Unlike `collectAllSuccessesPar`, this method will use at most up to `n` fibers.
+ */
+export function collectAllSuccessesParN_<R, E, A>(
+  as: Iterable<Managed<R, E, A>>,
+  n: number
+) {
+  return collectAllWithParN_(I.map_(as, result), n, (e) =>
+    e._tag === "Success" ? O.some(e.value) : O.none
+  )
 }
 
 /**
@@ -2262,10 +2306,11 @@ export function reduce_<A, Z, R, E>(
 
 /**
  * Folds an Iterable[A] using an effectual function f, working sequentially from left to right.
+ *
+ * @dataFirst reduce_
  */
-export function reduce<Z>(zero: Z) {
-  return <R, E, A>(f: (z: Z, a: A) => Managed<R, E, Z>) => (i: Iterable<A>) =>
-    reduce_(i, zero, f)
+export function reduce<Z, R, E, A>(zero: Z, f: (z: Z, a: A) => Managed<R, E, Z>) {
+  return (i: Iterable<A>) => reduce_(i, zero, f)
 }
 
 /**
@@ -2283,10 +2328,11 @@ export function reduceRight_<A, Z, R, E>(
 
 /**
  * Folds an Iterable[A] using an effectual function f, working sequentially from left to right.
+ *
+ * @dataFirst reduceRight_
  */
-export function reduceRight<Z>(zero: Z) {
-  return <R, E, A>(f: (a: A, z: Z) => Managed<R, E, Z>) => (i: Iterable<A>) =>
-    reduceRight_(i, zero, f)
+export function reduceRight<Z, R, E, A>(zero: Z, f: (a: A, z: Z) => Managed<R, E, Z>) {
+  return (i: Iterable<A>) => reduceRight_(i, zero, f)
 }
 
 /**
@@ -2301,6 +2347,8 @@ export function reduceAll_<R, E, A>(
 
 /**
  * Reduces an `Iterable[IO]` to a single `IO`, working sequentially.
+ *
+ * @dataFirst reduceAll_
  */
 export function reduceAll<A>(f: (acc: A, a: A) => A) {
   return <R, E>(as: NA.NonEmptyArray<Managed<R, E, A>>) => reduceAll_(as, f)
@@ -2326,6 +2374,8 @@ export function reduceAllPar_<R, E, A>(
 
 /**
  * Reduces an `Iterable[IO]` to a single `IO`, working in parallel.
+ *
+ * @dataFirst reduceAllPar_
  */
 export function reduceAllPar<A>(f: (acc: A, a: A) => A) {
   return <R, E>(as: NA.NonEmptyArray<Managed<R, E, A>>) => reduceAllPar_(as, f)
@@ -2334,39 +2384,41 @@ export function reduceAllPar<A>(f: (acc: A, a: A) => A) {
 /**
  * Reduces an `Iterable[IO]` to a single `IO`, working in up to `n` fibers in parallel.
  */
-export function reduceAllParN_(n: number) {
-  const red = T.reduceAllParN_(n)
-  return <R, E, A>(
-    as: NA.NonEmptyArray<Managed<R, E, A>>,
-    f: (acc: A, a: A) => A
-  ): Managed<R, E, A> =>
-    mapM_(makeManagedReleaseMap(T.parallel), (parallelReleaseMap) =>
-      T.provideSome_(
-        red(
-          NA.map_(as, (_) => T.map_(_.effect, ([_, a]) => a)),
-          f
-        ),
-        (r: R) => tuple(r, parallelReleaseMap)
-      )
+export function reduceAllParN_<R, E, A>(
+  as: NA.NonEmptyArray<Managed<R, E, A>>,
+  n: number,
+  f: (acc: A, a: A) => A
+): Managed<R, E, A> {
+  return mapM_(makeManagedReleaseMap(T.parallel), (parallelReleaseMap) =>
+    T.provideSome_(
+      T.reduceAllParN_(
+        NA.map_(as, (_) => T.map_(_.effect, ([_, a]) => a)),
+        n,
+        f
+      ),
+      (r: R) => tuple(r, parallelReleaseMap)
     )
+  )
 }
 
 /**
  * Reduces an `Iterable[IO]` to a single `IO`, working in up to `n` fibers in parallel.
+ *
+ * @dataFirst reduceAllParN_
  */
-export function reduceAllParN(n: number) {
-  return <A>(f: (acc: A, a: A) => A) => <R, E>(
-    as: NA.NonEmptyArray<Managed<R, E, A>>
-  ): Managed<R, E, A> => reduceAllParN_(n)(as, f)
+export function reduceAllParN<A>(n: number, f: (acc: A, a: A) => A) {
+  return <R, E>(as: NA.NonEmptyArray<Managed<R, E, A>>): Managed<R, E, A> =>
+    reduceAllParN_(as, n, f)
 }
 
 /**
  * Merges an `Iterable[IO]` to a single IO, working sequentially.
+ *
+ * @dataFirst mergeAll_
  */
-export function mergeAll<B>(zero: B) {
-  return <A>(f: (b: B, a: A) => B) => <R, E>(
-    as: Iterable<Managed<R, E, A>>
-  ): Managed<R, E, B> => mergeAll_(as, zero, f)
+export function mergeAll<A, B>(zero: B, f: (b: B, a: A) => B) {
+  return <R, E>(as: Iterable<Managed<R, E, A>>): Managed<R, E, B> =>
+    mergeAll_(as, zero, f)
 }
 
 /**
@@ -2389,11 +2441,12 @@ export function mergeAll_<R, E, A, B>(
  *
  * It's unsafe to execute side effects inside `f`, as `f` may be executed
  * more than once for some of `in` elements during effect execution.
+ *
+ * @dataFirst mergeAllPar_
  */
-export function mergeAllPar<B>(zero: B) {
-  return <A>(f: (b: B, a: A) => B) => <R, E>(
-    as: Iterable<Managed<R, E, A>>
-  ): Managed<R, E, B> => mergeAllPar_(as, zero, f)
+export function mergeAllPar<A, B>(zero: B, f: (b: B, a: A) => B) {
+  return <R, E>(as: Iterable<Managed<R, E, A>>): Managed<R, E, B> =>
+    mergeAllPar_(as, zero, f)
 }
 
 /**
@@ -2432,11 +2485,12 @@ export function mergeAllPar_<R, E, A, B>(
  *
  * It's unsafe to execute side effects inside `f`, as `f` may be executed
  * more than once for some of `in` elements during effect execution.
+ *
+ * @dataFirst mergeAllParN_
  */
-export function mergeAllParN(n: number) {
-  return <B>(zero: B) => <A>(f: (b: B, a: A) => B) => <R, E>(
-    as: Iterable<Managed<R, E, A>>
-  ): Managed<R, E, B> => mergeAllParN_(n)(as, zero, f)
+export function mergeAllParN<A, B>(n: number, zero: B, f: (b: B, a: A) => B) {
+  return <R, E>(as: Iterable<Managed<R, E, A>>): Managed<R, E, B> =>
+    mergeAllParN_(as, n, zero, f)
 }
 
 /**
@@ -2449,23 +2503,23 @@ export function mergeAllParN(n: number) {
  * It's unsafe to execute side effects inside `f`, as `f` may be executed
  * more than once for some of `in` elements during effect execution.
  */
-export function mergeAllParN_(n: number) {
-  const m = T.mergeAllParN_(n)
-  return <R, E, A, B>(
-    as: Iterable<Managed<R, E, A>>,
-    zero: B,
-    f: (b: B, a: A) => B
-  ): Managed<R, E, B> =>
-    mapM_(makeManagedReleaseMap(T.parallel), (parallelReleaseMap) =>
-      T.provideSome_(
-        m(
-          I.map_(as, (_) => T.map_(_.effect, ([_, a]) => a)),
-          zero,
-          f
-        ),
-        (r: R) => tuple(r, parallelReleaseMap)
-      )
+export function mergeAllParN_<R, E, A, B>(
+  as: Iterable<Managed<R, E, A>>,
+  n: number,
+  zero: B,
+  f: (b: B, a: A) => B
+): Managed<R, E, B> {
+  return mapM_(makeManagedReleaseMap(T.parallel), (parallelReleaseMap) =>
+    T.provideSome_(
+      T.mergeAllParN_(
+        I.map_(as, (_) => T.map_(_.effect, ([_, a]) => a)),
+        n,
+        zero,
+        f
+      ),
+      (r: R) => tuple(r, parallelReleaseMap)
     )
+  )
 }
 
 /**

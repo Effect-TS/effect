@@ -180,15 +180,17 @@ export function bindAllPar<
     ) as any
 }
 
-export function bindAllParN(
-  n: number
-): <
+/**
+ * @dataFirst bindAllParN_
+ */
+export function bindAllParN<
   K,
   NER extends Record<string, Effect<any, any, any>> &
     { [k in keyof K & keyof NER]?: never }
 >(
+  n: number,
   r: (k: K) => EnforceNonEmptyRecord<NER> & Record<string, Effect<any, any, any>>
-) => <R, E>(
+): <R, E>(
   s: Effect<R, E, K>
 ) => Effect<
   R & _R<NER[keyof NER]>,
@@ -198,7 +200,7 @@ export function bindAllParN(
       [K in keyof NER]: [NER[K]] extends [Effect<any, any, infer A>] ? A : never
     }
 > {
-  return (r) => (s) =>
+  return (s) =>
     chain_(s, (k) =>
       map_(
         forEachParN_(
@@ -215,4 +217,40 @@ export function bindAllParN(
         }
       )
     ) as any
+}
+
+export function bindAllParN_<
+  K,
+  NER extends Record<string, Effect<any, any, any>> &
+    { [k in keyof K & keyof NER]?: never },
+  R,
+  E
+>(
+  s: Effect<R, E, K>,
+  n: number,
+  r: (k: K) => EnforceNonEmptyRecord<NER> & Record<string, Effect<any, any, any>>
+): Effect<
+  R & _R<NER[keyof NER]>,
+  E | _E<NER[keyof NER]>,
+  K &
+    {
+      [K in keyof NER]: [NER[K]] extends [Effect<any, any, infer A>] ? A : never
+    }
+> {
+  return chain_(s, (k) =>
+    map_(
+      forEachParN_(
+        R.collect_(r(k), (k, v) => [k, v] as const),
+        n,
+        ([_, e]) => map_(e, (a) => [_, a] as const)
+      ),
+      (values) => {
+        const res = {}
+        values.forEach(([k, v]) => {
+          res[k] = v
+        })
+        return Object.assign(res, k)
+      }
+    )
+  ) as any
 }

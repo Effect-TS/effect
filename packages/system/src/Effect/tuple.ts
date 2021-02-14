@@ -1,8 +1,7 @@
-import { identity } from "../Function"
 import type { NonEmptyArray } from "../NonEmptyArray"
 import type { _E, _R } from "../Utils"
+import { collectAll, collectAllPar, collectAllParN_ } from "./collectAll"
 import type { Effect } from "./effect"
-import { forEach_, forEachPar_, forEachParN_ } from "./forEach"
 
 export type TupleA<T extends NonEmptyArray<Effect<any, any, any>>> = {
   [K in keyof T]: [T[K]] extends [Effect<any, any, infer A>] ? A : never
@@ -15,7 +14,7 @@ export type TupleA<T extends NonEmptyArray<Effect<any, any, any>>> = {
 export function tuple<T extends NonEmptyArray<Effect<any, any, any>>>(
   ...t: T
 ): Effect<_R<T[number]>, _E<T[number]>, TupleA<T>> {
-  return forEach_(t, identity) as any
+  return collectAll(t) as any
 }
 
 /**
@@ -24,7 +23,7 @@ export function tuple<T extends NonEmptyArray<Effect<any, any, any>>>(
 export function tuplePar<T extends NonEmptyArray<Effect<any, any, any>>>(
   ...t: T
 ): Effect<_R<T[number]>, _E<T[number]>, TupleA<T>> {
-  return forEachPar_(t, identity) as any
+  return collectAllPar(t) as any
 }
 
 /**
@@ -36,5 +35,5 @@ export function tupleParN(
 ): <T extends NonEmptyArray<Effect<any, any, any>>>(
   ...t: T
 ) => Effect<_R<T[number]>, _E<T[number]>, TupleA<T>> {
-  return ((...t: Effect<any, any, any>[]) => forEachParN_(t, n, identity)) as any
+  return ((...t: Effect<any, any, any>[]) => collectAllParN_(t, n)) as any
 }
