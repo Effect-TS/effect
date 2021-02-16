@@ -49,7 +49,7 @@ export function pullElement<R, E, A>(
         if (i >= c.length) {
           return [T.chain_(update(self), () => pullElement(self)), [[], 0]]
         } else {
-          return [T.succeed(c[i]), [c, i + 1]]
+          return [T.succeed(c[i]!), [c, i + 1]]
         }
       }),
       T.flatten

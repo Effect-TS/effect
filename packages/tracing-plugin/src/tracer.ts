@@ -15,13 +15,13 @@ function checkRegionAt(
       const prevInLine = last[0].filter(([_, c]) => c <= char)
 
       if (prevInLine.length > 0) {
-        on = prevInLine[prevInLine.length - 1][0]
+        on = prevInLine[prevInLine.length - 1]![0]!
       }
     } else {
       const prevOfAll = last[0]
 
       if (prevOfAll.length > 0) {
-        on = prevOfAll[prevOfAll.length - 1][0]
+        on = prevOfAll[prevOfAll.length - 1]![0]!
       }
     }
   }
@@ -116,7 +116,7 @@ export default function tracer(
             if (!tagsX[entry[0]]) {
               tagsX[entry[0]] = []
             }
-            tagsX[entry[0]].push(entry[1])
+            tagsX[entry[0]!]!.push(entry[1])
           }
 
           const z = ts.visitNode(x, visitor)
@@ -157,7 +157,7 @@ export default function tracer(
               if (!tags[entry[0]]) {
                 tags[entry[0]] = []
               }
-              tags[entry[0]].push(entry[1])
+              tags[entry[0]!]!.push(entry[1])
             }
 
             if (signature && tags["trace"] && tags["trace"].includes("call")) {
@@ -187,11 +187,11 @@ export default function tracer(
         }
 
         for (const k of moduleMapKeys) {
-          const matches = finalName.match(k[1])
+          const matches = finalName.match(k[1]!)
           if (matches) {
-            let patchedName = moduleMap[k[0]]
+            let patchedName = moduleMap[k[0]!]!
             for (let j = 1; j < matches.length; j += 1) {
-              patchedName = patchedName.replace("$" + j, matches[j])
+              patchedName = patchedName.replace("$" + j, matches[j]!)
             }
             finalName = patchedName
             break

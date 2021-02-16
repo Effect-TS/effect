@@ -504,7 +504,7 @@ export function fromArray<A>(E: Equal<A>): (as: ReadonlyArray<A>) => Set<A> {
     const r = new Set<A>()
     const has = elem_(E)
     for (let i = 0; i < len; i++) {
-      const a = as[i]
+      const a = as[i]!
       if (!has(r, a)) {
         r.add(a)
       }

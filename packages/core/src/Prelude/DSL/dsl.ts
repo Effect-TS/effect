@@ -198,7 +198,7 @@ export function structF<F>(
       A.reduceRight(succeedF(F)([] as readonly (readonly [string, any])[]), (a, b) =>
         pipe(
           b,
-          F.both(a[1]),
+          F.both(a[1]!),
           F.map(([x, y]) => [...x, tuple(a[0], y)])
         )
       ),
@@ -227,7 +227,7 @@ function getTupleConstructor(len: number): (a: unknown) => any {
   if (!tupleConstructors.hasOwnProperty(len)) {
     tupleConstructors[len] = curried(tuple, len - 1, [])
   }
-  return tupleConstructors[len]
+  return tupleConstructors[len]!
 }
 
 export function tupleF<F extends HKT.URIS, C>(
@@ -300,9 +300,9 @@ export function tupleF<F>(F: Applicative<HKT.UHKT<F>>): any {
   return <A>(...args: Array<HKT.HKT<F, A>>) => {
     const len = args.length
     const f = getTupleConstructor(len)
-    let fas = F.map(f)(args[0])
+    let fas = F.map(f)(args[0]!)
     for (let i = 1; i < len; i++) {
-      fas = ap(args[i])(fas)
+      fas = ap(args[i]!)(fas)
     }
     return fas
   }

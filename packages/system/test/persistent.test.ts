@@ -55,6 +55,7 @@ describe("HashMap", () => {
       [new Index(2, 2), new Value(5, 5)],
       [new Index(3, 3), new Value(6, 6)]
     ])
+    expect(HM.size(map)).toEqual(3)
     expect(Array.from(HM.keys(map))).toEqual([
       new Index(0, 0),
       new Index(2, 2),
@@ -81,19 +82,17 @@ describe("HashMap", () => {
       [new Index(2, 2), 5],
       [new Index(3, 3), 6]
     ])
-    expect(
-      pipe(
-        map,
-        HM.chainWithIndex((k, v) =>
-          pipe(
-            makeMap(),
-            HM.set(new Index(k.a + 1, k.b + 1), new Value(v.c, v.d + 1)),
-            HM.set(new Index(k.a + 6, k.b + 6), new Value(v.c + 1, v.d + 1))
-          )
-        ),
-        Array.from
+    const map2 = pipe(
+      map,
+      HM.chainWithIndex((k, v) =>
+        pipe(
+          makeMap(),
+          HM.set(new Index(k.a + 1, k.b + 1), new Value(v.c, v.d + 1)),
+          HM.set(new Index(k.a + 6, k.b + 6), new Value(v.c + 1, v.d + 1))
+        )
       )
-    ).toEqual([
+    )
+    expect(Array.from(map2)).toEqual([
       [new Index(8, 8), new Value(6, 6)],
       [new Index(4, 4), new Value(6, 7)],
       [new Index(9, 9), new Value(7, 7)],
@@ -101,6 +100,7 @@ describe("HashMap", () => {
       [new Index(6, 6), new Value(5, 5)],
       [new Index(3, 3), new Value(5, 6)]
     ])
+    expect(HM.size(map2)).toEqual(6)
   })
   it("default", () => {
     class Index {
@@ -121,6 +121,7 @@ describe("HashMap", () => {
       [x, new Value(0, 3)],
       [x, new Value(0, 2)]
     ])
+    expect(HM.size(j)).toEqual(2)
   })
   it("keySet", () => {
     class Index {
@@ -153,8 +154,10 @@ describe("HashMap", () => {
         HM.set_(m, new Index(3, 3), new Value(6, 6))
       })
     )
+    expect(HM.size(map)).toEqual(3)
     const keys = HM.keySet(map)
     const diff = HS.difference_(keys, [new Index(2, 2)])
+    expect(HS.size(diff)).toEqual(2)
     expect(Array.from(diff)).toEqual([new Index(0, 0), new Index(3, 3)])
     expect(Array.from(keys)).toEqual([
       new Index(0, 0),

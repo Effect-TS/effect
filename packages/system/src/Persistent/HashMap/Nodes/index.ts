@@ -116,7 +116,7 @@ export class CollisionNode<K, V> {
     hash: number,
     key: K,
     size: SizeRef
-  ) {
+  ): Node<K, V> {
     if (hash === this.hash) {
       const canEdit = canEditNode(edit, this)
       const list = this.updateCollisionList(
@@ -131,7 +131,7 @@ export class CollisionNode<K, V> {
       )
       if (list === this.children) return this
 
-      return list.length > 1 ? new CollisionNode(edit, this.hash, list) : list[0] // collapse single element collision list
+      return list.length > 1 ? new CollisionNode(edit, this.hash, list) : list[0]! // collapse single element collision list
     }
     const v = f(O.none)
     if (O.isNone(v)) return this
@@ -158,7 +158,7 @@ export class CollisionNode<K, V> {
   ) {
     const len = list.length
     for (let i = 0; i < len; ++i) {
-      const child = list[i]
+      const child = list[i]!
       if ("key" in child && keyEq(child.key)(key)) {
         const value = child.value
         const newValue = f(value)
@@ -202,7 +202,7 @@ export class IndexedNode<K, V> {
     const bit = toBitmap(frag)
     const indx = fromBitmap(mask, bit)
     const exists = mask & bit
-    const current = exists ? children[indx] : new Empty<K, V>()
+    const current = exists ? children[indx]! : new Empty<K, V>()
     const child = current.modify(edit, keyEq, shift + SIZE, f, hash, key, size)
 
     if (current === child) return this
@@ -214,7 +214,8 @@ export class IndexedNode<K, V> {
       // remove
       bitmap &= ~bit
       if (!bitmap) return new Empty()
-      if (children.length <= 2 && isLeaf(children[indx ^ 1])) return children[indx ^ 1] // collapse
+      if (children.length <= 2 && isLeaf(children[indx ^ 1]!))
+        return children[indx ^ 1]! // collapse
 
       newChildren = arraySpliceOut(canEdit, indx, children)
     } else if (!exists && !isEmptyNode(child)) {
@@ -332,7 +333,7 @@ function expand<K, V>(
   let bit = bitmap
   let count = 0
   for (let i = 0; bit; ++i) {
-    if (bit & 1) arr[i] = subNodes[count++]
+    if (bit & 1) arr[i] = subNodes[count++]!
     bit >>>= 1
   }
   arr[frag] = child

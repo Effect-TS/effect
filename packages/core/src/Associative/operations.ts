@@ -58,7 +58,7 @@ export function struct<O extends Record<string, any>>(
   return makeAssociative((y) => (x) => {
     const r: any = {}
     for (const key of Object.keys(associatives)) {
-      r[key] = associatives[key].combine(y[key])(x[key])
+      r[key] = associatives[key]!.combine(y[key])(x[key])
     }
     return r
   })

@@ -20,7 +20,7 @@ export default function dataFirst(
             ts.isCallExpression(node.expression) &&
             ts.isPropertyAccessExpression(node.expression.expression) &&
             node.arguments.length === 1 &&
-            !ts.isSpreadElement(node.arguments[0])
+            !ts.isSpreadElement(node.arguments[0]!)
           ) {
             const symbol = checker
               .getTypeAtLocation(node.expression.expression)
@@ -50,7 +50,7 @@ export default function dataFirst(
                     factory.createIdentifier(dataFirstTag)
                   ),
                   undefined,
-                  [node.arguments[0], ...node.expression.arguments]
+                  [node.arguments[0]!, ...node.expression.arguments]
                 ),
                 visitor,
                 ctx

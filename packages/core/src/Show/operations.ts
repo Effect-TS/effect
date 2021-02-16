@@ -8,7 +8,7 @@ export function struct<O extends Record<string, any>>(
   return {
     show: (s) =>
       `{ ${Object.keys(shows)
-        .map((k) => `${k}: ${shows[k].show(s[k])}`)
+        .map((k) => `${k}: ${shows[k]!.show(s[k])}`)
         .join(", ")} }`
   }
 }
@@ -21,7 +21,7 @@ export function tuple<T extends ReadonlyArray<Show<any>>>(
   }
 > {
   return {
-    show: (t) => `[${t.map((a, i) => shows[i].show(a)).join(", ")}]`
+    show: (t) => `[${t.map((a, i) => shows[i]!.show(a)).join(", ")}]`
   }
 }
 

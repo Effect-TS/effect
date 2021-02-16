@@ -31,7 +31,7 @@ function go<R, E, O>(
               i >= chunkSize
                 ? Pull.end
                 : pipe(
-                    switchStream(streams[i].proc),
+                    switchStream(streams[i]!.proc),
                     T.chain(currStream.set),
                     T.andThen(
                       go(streams, chunkSize, currIndex, currStream, switchStream)

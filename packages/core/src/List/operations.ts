@@ -67,7 +67,7 @@ export function sortBy_<B>(
     })
     const newL = List.emptyPushable<A>()
     for (let i = 0; i < arr.length; ++i) {
-      List.push(arr[i].elm, newL)
+      List.push(arr[i]!.elm, newL)
     }
     return newL
   }

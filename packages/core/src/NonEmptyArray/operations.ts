@@ -11,8 +11,6 @@ import { makeEqual } from "../Equal"
 import type { Identity } from "../Identity"
 import type { NonEmptyArrayURI } from "../Modules"
 import * as Ord from "../Ord"
-import { fromCompare } from "../Ord"
-import { ordNumber } from "../Ord/common"
 import type { URI } from "../Prelude"
 import * as P from "../Prelude"
 import * as DSL from "../Prelude/DSL"
@@ -67,7 +65,7 @@ export function elem_<A>(E: Equal<A>): (as: NonEmptyArray<A>, a: A) => boolean {
     let i = 0
     const len = as.length
     for (; i < len; i++) {
-      if (predicate(as[i])) {
+      if (predicate(as[i]!)) {
         return true
       }
     }
@@ -104,7 +102,7 @@ export function difference<A>(
  */
 export function getEqual<A>(E: Equal<A>): Equal<NonEmptyArray<A>> {
   return makeEqual((ys) => (xs) =>
-    xs === ys || (xs.length === ys.length && xs.every((x, i) => E.equals(ys[i])(x)))
+    xs === ys || (xs.length === ys.length && xs.every((x, i) => E.equals(ys[i]!)(x)))
   )
 }
 
@@ -112,17 +110,17 @@ export function getEqual<A>(E: Equal<A>): Equal<NonEmptyArray<A>> {
  * Returns a `Ord` for `NonEmptyArray<A>` given `Ord<A>`
  */
 export function getOrd<A>(O: Ord.Ord<A>): Ord.Ord<NonEmptyArray<A>> {
-  return fromCompare((b) => (a) => {
+  return Ord.fromCompare((b) => (a) => {
     const aLen = a.length
     const bLen = b.length
     const len = Math.min(aLen, bLen)
     for (let i = 0; i < len; i++) {
-      const ordering = O.compare(b[i])(a[i])
+      const ordering = O.compare(b[i]!)(a[i]!)
       if (ordering !== 0) {
         return ordering
       }
     }
-    return ordNumber.compare(bLen)(aLen)
+    return Ord.ordNumber.compare(bLen)(aLen)
   })
 }
 
@@ -235,7 +233,7 @@ export function uniq<A>(E: Equal<A>): (as: NonEmptyArray<A>) => NonEmptyArray<A>
     const len = as.length
     let i = 0
     for (; i < len; i++) {
-      const a = as[i]
+      const a = as[i]!
       if (!elemS(r as any, a)) {
         r.push(a)
       }

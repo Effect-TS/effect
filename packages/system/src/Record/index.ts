@@ -4,8 +4,7 @@ import * as A from "../Array"
 import type { Either } from "../Either"
 import type { Predicate, Refinement } from "../Function"
 import type { MutableRecord } from "../Mutable"
-import type { Option } from "../Option"
-import { isNone, isSome, none, some as some_1 } from "../Option"
+import * as O from "../Option"
 import type { PredicateWithIndex, RefinementWithIndex, Separated } from "../Utils"
 
 export type Record<K extends string, T> = {
@@ -145,7 +144,7 @@ export function deleteAt_<A>(r: Record<string, A>, k: string): Record<string, A>
 export function updateAt<A>(
   k: string,
   a: A
-): <K extends string>(r: Record<K, A>) => Option<Record<K, A>> {
+): <K extends string>(r: Record<K, A>) => O.Option<Record<K, A>> {
   return <K extends string>(r: Record<K, A>) => updateAt_(r, k, a)
 }
 
@@ -156,16 +155,16 @@ export function updateAt_<K extends string, A>(
   r: Record<K, A>,
   k: string,
   a: A
-): Option<Record<K, A>> {
+): O.Option<Record<K, A>> {
   if (!hasOwnProperty(r, k)) {
-    return none
+    return O.none
   }
   if (r[k] === a) {
-    return some_1(r)
+    return O.some(r)
   }
   const out: MutableRecord<K, A> = Object.assign({}, r)
   out[k] = a
-  return some_1(out)
+  return O.some(out)
 }
 
 /**
@@ -174,7 +173,7 @@ export function updateAt_<K extends string, A>(
 export function modifyAt<A>(
   k: string,
   f: (a: A) => A
-): <K extends string>(r: Record<K, A>) => Option<Record<K, A>> {
+): <K extends string>(r: Record<K, A>) => O.Option<Record<K, A>> {
   return <K extends string>(r: Record<K, A>) => modifyAt_(r, k, f)
 }
 
@@ -185,13 +184,13 @@ export function modifyAt_<K extends string, A>(
   r: Record<K, A>,
   k: string,
   f: (a: A) => A
-): Option<Record<K, A>> {
+): O.Option<Record<K, A>> {
   if (!hasOwnProperty(r, k)) {
-    return none
+    return O.none
   }
   const out: MutableRecord<K, A> = Object.assign({}, r)
   out[k] = f(r[k])
-  return some_1(out)
+  return O.some(out)
 }
 
 /**
@@ -201,10 +200,10 @@ export function pop<K extends string>(
   k: K
 ): <KS extends string, A>(
   r: Record<KS, A>
-) => Option<readonly [A, Record<string extends K ? string : Exclude<KS, K>, A>]>
+) => O.Option<readonly [A, Record<string extends K ? string : Exclude<KS, K>, A>]>
 export function pop(
   k: string
-): <A>(r: Record<string, A>) => Option<readonly [A, Record<string, A>]> {
+): <A>(r: Record<string, A>) => O.Option<readonly [A, Record<string, A>]> {
   return (r) => pop_(r, k)
 }
 
@@ -214,28 +213,28 @@ export function pop(
 export function pop_<KS extends string, A, K extends string>(
   r: Record<KS, A>,
   k: K
-): Option<readonly [A, Record<string extends K ? string : Exclude<KS, K>, A>]>
+): O.Option<readonly [A, Record<string extends K ? string : Exclude<KS, K>, A>]>
 export function pop_<A>(
   r: Record<string, A>,
   k: string
-): Option<readonly [A, Record<string, A>]> {
+): O.Option<readonly [A, Record<string, A>]> {
   const deleteAtk = deleteAt(k)
   const oa = lookup_(r, k)
-  return isNone(oa) ? none : some_1([oa.value, deleteAtk(r)])
+  return O.isNone(oa) ? O.none : O.some([oa.value, deleteAtk(r)])
 }
 
 /**
  * Lookup the value for a key in a record
  */
-export function lookup_<A>(r: Record<string, A>, k: string): Option<A> {
-  return Object.prototype.hasOwnProperty.call(r, k) ? some_1(r[k]) : none
+export function lookup_<A>(r: Record<string, A>, k: string): O.Option<A> {
+  return Object.prototype.hasOwnProperty.call(r, k) ? O.some(r[k]!) : O.none
 }
 
 /**
  * Lookup the value for a key in a record
  */
-export function lookup(k: string): <A>(r: Record<string, A>) => Option<A> {
-  return (r) => (Object.prototype.hasOwnProperty.call(r, k) ? some_1(r[k]) : none)
+export function lookup(k: string): <A>(r: Record<string, A>) => O.Option<A> {
+  return (r) => (Object.prototype.hasOwnProperty.call(r, k) ? O.some(r[k]!) : O.none)
 }
 
 /**
@@ -269,7 +268,7 @@ export function mapWithIndex_<A, B>(
   const out: MutableRecord<string, B> = {}
   const keys = Object.keys(fa)
   for (const key of keys) {
-    out[key] = f(key, fa[key])
+    out[key] = f(key, fa[key]!)
   }
   return out
 }
@@ -328,8 +327,8 @@ export function reduceWithIndex_<A, B>(
   const keys = Object.keys(fa).sort()
   const len = keys.length
   for (let i = 0; i < len; i++) {
-    const k = keys[i]
-    out = f(k, out, fa[k])
+    const k = keys[i]!
+    out = f(k, out, fa[k]!)
   }
   return out
 }
@@ -369,8 +368,8 @@ export function reduceRightWithIndex_<A, B>(
   const keys = Object.keys(fa).sort()
   const len = keys.length
   for (let i = len - 1; i >= 0; i--) {
-    const k = keys[i]
-    out = f(k, fa[k], out)
+    const k = keys[i]!
+    out = f(k, fa[k]!, out)
   }
   return out
 }
@@ -409,7 +408,7 @@ export function partitionMapWithIndex_<A, B, C>(
   const right: MutableRecord<string, C> = {}
   const keys = Object.keys(fa)
   for (const key of keys) {
-    const e = f(key, fa[key])
+    const e = f(key, fa[key]!)
     switch (e._tag) {
       case "Left":
         left[key] = e.left
@@ -459,7 +458,7 @@ export function partitionWithIndex_<A>(
   const right: MutableRecord<string, A> = {}
   const keys = Object.keys(fa)
   for (const key of keys) {
-    const a = fa[key]
+    const a = fa[key]!
     if (predicateWithIndex(key, a)) {
       right[key] = a
     } else {
@@ -476,10 +475,10 @@ export function partitionWithIndex_<A>(
  * Filter & map the record entries with f that consumes also the entry index
  */
 export function filterMapWithIndex<K extends string, A, B>(
-  f: (key: K, a: A) => Option<B>
+  f: (key: K, a: A) => O.Option<B>
 ): (fa: Record<K, A>) => Record<string, B>
 export function filterMapWithIndex<A, B>(
-  f: (key: string, a: A) => Option<B>
+  f: (key: string, a: A) => O.Option<B>
 ): (fa: Record<string, A>) => Record<string, B> {
   return (fa) => filterMapWithIndex_(fa, f)
 }
@@ -489,17 +488,17 @@ export function filterMapWithIndex<A, B>(
  */
 export function filterMapWithIndex_<K extends string, A, B>(
   fa: Record<K, A>,
-  f: (key: K, a: A) => Option<B>
+  f: (key: K, a: A) => O.Option<B>
 ): Record<string, B>
 export function filterMapWithIndex_<A, B>(
   fa: Record<string, A>,
-  f: (key: string, a: A) => Option<B>
+  f: (key: string, a: A) => O.Option<B>
 ): Record<string, B> {
   const r: MutableRecord<string, B> = {}
   const keys = Object.keys(fa)
   for (const key of keys) {
-    const optionB = f(key, fa[key])
-    if (isSome(optionB)) {
+    const optionB = f(key, fa[key]!)
+    if (O.isSome(optionB)) {
       r[key] = optionB.value
     }
   }
@@ -540,7 +539,7 @@ export function filterWithIndex_<A>(
   let changed = false
   for (const key in fa) {
     if (Object.prototype.hasOwnProperty.call(fa, key)) {
-      const a = fa[key]
+      const a = fa[key]!
       if (predicateWithIndex(key, a)) {
         out[key] = a
       } else {
@@ -563,7 +562,7 @@ export function every<A>(predicate: Predicate<A>): (r: Record<string, A>) => boo
  */
 export function every_<A>(r: Record<string, A>, predicate: Predicate<A>): boolean {
   for (const k in r) {
-    if (!predicate(r[k])) {
+    if (!predicate(r[k]!)) {
       return false
     }
   }
@@ -584,7 +583,7 @@ export function some<A>(
  */
 export function some_<A>(r: Record<string, A>, predicate: (a: A) => boolean): boolean {
   for (const k in r) {
-    if (predicate(r[k])) {
+    if (predicate(r[k]!)) {
       return true
     }
   }
@@ -594,12 +593,12 @@ export function some_<A>(r: Record<string, A>, predicate: (a: A) => boolean): bo
 /**
  * Drop the None entries
  */
-export const compact = <A>(fa: Record<string, Option<A>>): Record<string, A> => {
+export const compact = <A>(fa: Record<string, O.Option<A>>): Record<string, A> => {
   const r: MutableRecord<string, A> = {}
   const keys = Object.keys(fa)
   for (const key of keys) {
-    const optionA = fa[key]
-    if (isSome(optionA)) {
+    const optionA = fa[key]!
+    if (O.isSome(optionA)) {
       r[key] = optionA.value
     }
   }
@@ -616,7 +615,7 @@ export const separate = <A, B>(
   const right: MutableRecord<string, B> = {}
   const keys = Object.keys(fa)
   for (const key of keys) {
-    const e = fa[key]
+    const e = fa[key]!
     switch (e._tag) {
       case "Left":
         left[key] = e.left
@@ -659,17 +658,17 @@ export const filter_: {
  * Filter & map record entries according to a predicate
  */
 export const filterMap: {
-  <A, B>(f: (a: A) => Option<B>): <K extends string>(fa: Record<K, A>) => Record<K, B>
-  <A, B>(f: (a: A) => Option<B>): (fa: Record<string, A>) => Record<string, B>
-} = <A, B>(f: (a: A) => Option<B>) => (fa: Record<string, A>) => filterMap_(fa, f)
+  <A, B>(f: (a: A) => O.Option<B>): <K extends string>(fa: Record<K, A>) => Record<K, B>
+  <A, B>(f: (a: A) => O.Option<B>): (fa: Record<string, A>) => Record<string, B>
+} = <A, B>(f: (a: A) => O.Option<B>) => (fa: Record<string, A>) => filterMap_(fa, f)
 
 /**
  * Filter & map record entries according to a predicate
  */
 export const filterMap_: {
-  <K extends string, A, B>(fa: Record<K, A>, f: (a: A) => Option<B>): Record<K, B>
-  <A, B>(fa: Record<string, A>, f: (a: A) => Option<B>): Record<string, B>
-} = <A, B>(fa: Record<string, A>, f: (a: A) => Option<B>) =>
+  <K extends string, A, B>(fa: Record<K, A>, f: (a: A) => O.Option<B>): Record<K, B>
+  <A, B>(fa: Record<string, A>, f: (a: A) => O.Option<B>): Record<string, B>
+} = <A, B>(fa: Record<string, A>, f: (a: A) => O.Option<B>) =>
   filterMapWithIndex_(fa, (_, a: A) => f(a))
 
 /**

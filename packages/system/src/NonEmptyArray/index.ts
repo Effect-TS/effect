@@ -97,7 +97,7 @@ export function groupBy_<A>(
     const k = f(a)
     // eslint-disable-next-line no-prototype-builtins
     if (r.hasOwnProperty(k)) {
-      r[k].push(a)
+      r[k]!.push(a)
     } else {
       r[k] = [a]
     }
@@ -109,7 +109,7 @@ export function groupBy_<A>(
  * Takes the last element
  */
 export function last<A>(nea: NonEmptyArray<A>): A {
-  return nea[nea.length - 1]
+  return nea[nea.length - 1]!
 }
 
 /**

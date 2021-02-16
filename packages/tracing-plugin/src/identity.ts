@@ -61,7 +61,7 @@ export default function identity(
               identityOn &&
               optimizeTags.has("identity") &&
               node.arguments.length === 1 &&
-              !ts.isSpreadElement(node.arguments[0])
+              !ts.isSpreadElement(node.arguments[0]!)
             ) {
               return ts.visitEachChild(node, visitor, ctx).arguments[0]
             }

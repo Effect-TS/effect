@@ -9,7 +9,7 @@ export function zipChunks_<A, B, C>(
   const fc: C[] = []
   const len = Math.min(fa.length, fb.length)
   for (let i = 0; i < len; i++) {
-    fc[i] = f(fa[i], fb[i])
+    fc[i] = f(fa[i]!, fb[i]!)
   }
 
   if (fa.length > fb.length) {

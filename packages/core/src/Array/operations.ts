@@ -11,8 +11,6 @@ import type { Identity } from "../Identity"
 import { makeIdentity } from "../Identity"
 import type { ArrayURI } from "../Modules"
 import * as Ord from "../Ord"
-import { fromCompare } from "../Ord"
-import { ordNumber } from "../Ord/common"
 import type { URI } from "../Prelude"
 import * as P from "../Prelude"
 import * as DSL from "../Prelude/DSL"
@@ -33,7 +31,7 @@ export const forEachWithIndexF = P.implementForEachWithIndexF<[URI<ArrayURI>]>()
         base = G.map(([bs, b]: readonly [typeof _.B[], typeof _.B]) => {
           bs.push(b)
           return bs
-        })(G.both(f(k, fa[k]))(base))
+        })(G.both(f(k, fa[k]!))(base))
       }
       return base
     }
@@ -96,7 +94,7 @@ export function elem_<A>(E: Equal<A>): (as: Array<A>, a: A) => boolean {
     let i = 0
     const len = as.length
     for (; i < len; i++) {
-      if (predicate(as[i])) {
+      if (predicate(as[i]!)) {
         return true
       }
     }
@@ -131,7 +129,7 @@ export function difference<A>(
  */
 export function getEqual<A>(E: Equal<A>): Equal<Array<A>> {
   return makeEqual((ys) => (xs) =>
-    xs === ys || (xs.length === ys.length && xs.every((x, i) => E.equals(ys[i])(x)))
+    xs === ys || (xs.length === ys.length && xs.every((x, i) => E.equals(ys[i]!)(x)))
   )
 }
 
@@ -146,17 +144,17 @@ export function getIdentity<A>() {
  * Returns a `Ord` for `Array<A>` given `Ord<A>`
  */
 export function getOrd<A>(O: Ord.Ord<A>): Ord.Ord<Array<A>> {
-  return fromCompare((b) => (a) => {
+  return Ord.fromCompare((b) => (a) => {
     const aLen = a.length
     const bLen = b.length
     const len = Math.min(aLen, bLen)
     for (let i = 0; i < len; i++) {
-      const ordering = O.compare(b[i])(a[i])
+      const ordering = O.compare(b[i]!)(a[i]!)
       if (ordering !== 0) {
         return ordering
       }
     }
-    return ordNumber.compare(bLen)(aLen)
+    return Ord.ordNumber.compare(bLen)(aLen)
   })
 }
 
@@ -273,7 +271,7 @@ export function uniq<A>(E: Equal<A>): (as: Array<A>) => Array<A> {
     const len = as.length
     let i = 0
     for (; i < len; i++) {
-      const a = as[i]
+      const a = as[i]!
       if (!elemS(r, a)) {
         r.push(a)
       }
@@ -312,7 +310,7 @@ export function partitionMapWithIndex_<A, B, C>(
   const left: MutableArray<B> = []
   const right: MutableArray<C> = []
   for (let i = 0; i < fa.length; i++) {
-    const e = f(i, fa[i])
+    const e = f(i, fa[i]!)
     if (e._tag === "Left") {
       left.push(e.left)
     } else {
@@ -344,7 +342,7 @@ export function partitionWithIndex_<A>(
   const left: MutableArray<A> = []
   const right: MutableArray<A> = []
   for (let i = 0; i < fa.length; i++) {
-    const a = fa[i]
+    const a = fa[i]!
     if (predicateWithIndex(i, a)) {
       right.push(a)
     } else {

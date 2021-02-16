@@ -6,6 +6,7 @@ import type { Either } from "../../Either"
 import { identity } from "../../Function"
 import type { Option } from "../../Option"
 import { fromNullable } from "../../Option"
+import type { Ord } from "../../Ord"
 import type { Separated } from "../../Utils"
 
 /**
@@ -54,7 +55,7 @@ function pushElements<A>(
   amount: number
 ): void {
   for (let i = offset; i < offset + amount; ++i) {
-    target.push(source[i])
+    target.push(source[i]!)
   }
 }
 
@@ -88,11 +89,11 @@ function reverseArray<A>(array: A[]): A[] {
 }
 
 function arrayFirst<A>(array: A[]): A {
-  return array[0]
+  return array[0]!
 }
 
 function arrayLast<A>(array: A[]): A {
-  return array[array.length - 1]
+  return array[array.length - 1]!
 }
 
 const pathResult = { path: 0, index: 0, updatedOffset: 0 }
@@ -110,10 +111,10 @@ function getPath(
   }
   let path = (index >> (depth * branchBits)) & mask
   if (sizes !== undefined) {
-    while (sizes[path] <= index) {
+    while (sizes[path]! <= index) {
       path++
     }
-    const traversed = path === 0 ? 0 : sizes[path - 1]
+    const traversed = path === 0 ? 0 : sizes[path - 1]!
     index -= traversed
     pathResult.updatedOffset = offset
   }
@@ -280,11 +281,11 @@ class ForwardListIterator<A> extends ListIterator<A> {
     super(l, 1)
   }
   nextInTree(): void {
-    for (var i = 0; ++this.indices![i] === this.stack![i].length; ++i) {
+    for (var i = 0; ++this.indices![i] === this.stack![i]!.length; ++i) {
       this.indices![i] = 0
     }
     for (; 0 < i; --i) {
-      this.stack![i - 1] = this.stack![i][this.indices![i]].array
+      this.stack![i - 1] = this.stack![i]![this.indices![i]!].array
     }
   }
   next(): IteratorResult<A> {
@@ -294,7 +295,7 @@ class ForwardListIterator<A> extends ListIterator<A> {
       newVal = this.l.prefix[this.prefixSize - idx - 1]
     } else if (idx < this.middleSize) {
       this.nextInTree()
-      newVal = this.stack![0][this.indices![0]]
+      newVal = this.stack![0]![this.indices![0]!]
     } else if (idx < this.l.length) {
       newVal = this.l.suffix[idx - this.middleSize]
     } else {
@@ -315,7 +316,7 @@ class BackwardsListIterator<A> extends ListIterator<A> {
     }
     --this.indices![i]
     for (; 0 < i; --i) {
-      const n = this.stack![i][this.indices![i]].array
+      const n = this.stack![i]![this.indices![i]!].array
       this.stack![i - 1] = n
       this.indices![i - 1] = n.length - 1
     }
@@ -327,7 +328,7 @@ class BackwardsListIterator<A> extends ListIterator<A> {
       newVal = this.l.suffix[idx - this.middleSize]
     } else if (this.prefixSize <= idx) {
       this.prevInTree()
-      newVal = this.stack![0][this.indices![0]]
+      newVal = this.stack![0]![this.indices![0]!]
     } else if (0 <= idx) {
       newVal = this.l.prefix[this.prefixSize - idx - 1]
     } else {
@@ -560,11 +561,11 @@ function nodeNth(node: Node, depth: number, offset: number, index: number): any 
   let current = node
   while (current.sizes !== undefined) {
     path = (index >> (depth * branchBits)) & mask
-    while (current.sizes[path] <= index) {
+    while (current.sizes[path]! <= index) {
       path++
     }
     if (path !== 0) {
-      index -= current.sizes[path - 1]
+      index -= current.sizes[path - 1]!
       offset = 0 // Offset is discarded if the left spine isn't traversed
     }
     depth--
@@ -750,7 +751,7 @@ function nodePrepend(value: any, size: number, node: Node): Node {
     sizes = new Array(node.sizes.length + 1)
     sizes[0] = size
     for (let i = 0; i < node.sizes.length; ++i) {
-      sizes[i + 1] = node.sizes[i] + size
+      sizes[i + 1] = node.sizes[i]! + size
     }
   }
   return new Node(sizes, array)
@@ -927,7 +928,7 @@ export function append<A>(value: A): (l: List<A>) => List<A> {
  *
  * @complexity `O(1)`
  */
-export function length(l: List<any>): number {
+export function size(l: List<any>): number {
   return l.length
 }
 
@@ -986,7 +987,7 @@ export function last<A>(l: List<A>) {
 function mapArray<A, B>(f: (a: A) => B, array: A[]): B[] {
   const result = new Array(array.length)
   for (let i = 0; i < array.length; ++i) {
-    result[i] = f(array[i])
+    result[i] = f(array[i]!)
   }
   return result
 }
@@ -1007,7 +1008,7 @@ function mapNode<A, B>(f: (a: A) => B, node: Node, depth: number): Node {
 function mapPrefix<A, B>(f: (a: A) => B, prefix: A[], length: number): B[] {
   const newPrefix = new Array(length)
   for (let i = length - 1; 0 <= i; --i) {
-    newPrefix[i] = f(prefix[i])
+    newPrefix[i] = f(prefix[i]!)
   }
   return newPrefix
 }
@@ -1015,7 +1016,7 @@ function mapPrefix<A, B>(f: (a: A) => B, prefix: A[], length: number): B[] {
 function mapAffix<A, B>(f: (a: A) => B, suffix: A[], length: number): B[] {
   const newSuffix = new Array(length)
   for (let i = 0; i < length; ++i) {
-    newSuffix[i] = f(suffix[i])
+    newSuffix[i] = f(suffix[i]!)
   }
   return newSuffix
 }
@@ -1078,7 +1079,7 @@ function foldlSuffix<A, B>(
   length: number
 ): B {
   for (let i = 0; i < length; ++i) {
-    acc = f(acc, array[i])
+    acc = f(acc, array[i]!)
   }
   return acc
 }
@@ -1090,7 +1091,7 @@ function foldlPrefix<A, B>(
   length: number
 ): B {
   for (let i = length - 1; 0 <= i; --i) {
-    acc = f(acc, array[i])
+    acc = f(acc, array[i]!)
   }
   return acc
 }
@@ -1392,7 +1393,7 @@ function foldrSuffix<A, B>(
 ): B {
   let acc = initial
   for (let i = length - 1; 0 <= i; --i) {
-    acc = f(array[i], acc)
+    acc = f(array[i]!, acc)
   }
   return acc
 }
@@ -1405,7 +1406,7 @@ function foldrPrefix<A, B>(
 ): B {
   let acc = initial
   for (let i = 0; i < length; ++i) {
-    acc = f(array[i], acc)
+    acc = f(array[i]!, acc)
   }
   return acc
 }
@@ -1508,7 +1509,7 @@ function foldlArrayCb<A, B>(
   from: number,
   to: number
 ): boolean {
-  for (var i = from; i < to && cb(array[i], state); ++i) {
+  for (var i = from; i < to && cb(array[i]!, state); ++i) {
     //
   }
   return i === to
@@ -1521,7 +1522,7 @@ function foldrArrayCb<A, B>(
   from: number,
   to: number
 ): boolean {
-  for (var i = from - 1; to <= i && cb(array[i], state); --i) {
+  for (var i = from - 1; to <= i && cb(array[i]!, state); --i) {
     //
   }
   return i === to - 1
@@ -2021,8 +2022,8 @@ function createConcatPlan(array: Node[]): number[] | undefined {
   const sizes = []
   let sum = 0
   for (let i = 0; i < array.length; ++i) {
-    sum += array[i].array.length // FIXME: maybe only access array once
-    sizes[i] = array[i].array.length
+    sum += array[i]!.array.length // FIXME: maybe only access array once
+    sizes[i] = array[i]!.array.length
   }
   const optimalLength = Math.ceil(sum / branchingFactor)
   let n = array.length
@@ -2031,21 +2032,21 @@ function createConcatPlan(array: Node[]): number[] | undefined {
     return undefined // no rebalancing needed
   }
   while (optimalLength + eMax < n) {
-    while (sizes[i] > branchingFactor - eMax / 2) {
+    while (sizes[i]! > branchingFactor - eMax / 2) {
       // Skip nodes that are already sufficiently balanced
       ++i
     }
     // the node at this index is too short
-    let remaining = sizes[i] // number of elements to re-distribute
+    let remaining = sizes[i]! // number of elements to re-distribute
     do {
-      const size = Math.min(remaining + sizes[i + 1], branchingFactor)
+      const size = Math.min(remaining + sizes[i + 1]!, branchingFactor)
       sizes[i] = size
-      remaining = remaining - (size - sizes[i + 1])
+      remaining = remaining - (size - sizes[i + 1]!)
       ++i
     } while (remaining > 0)
     // Shift nodes after
     for (let j = i; j <= n - 1; ++j) {
-      sizes[j] = sizes[j + 1]
+      sizes[j] = sizes[j + 1]!
     }
     --i
     --n
@@ -2086,7 +2087,7 @@ function executeConcatPlan(merged: Node[], plan: number[], height: number): any[
   let sourceIdx = 0 // the current node we're copying from
   let offset = 0 // elements in source already used
   for (let toMove of plan) {
-    let source = merged[sourceIdx].array
+    let source = merged[sourceIdx]!.array
     if (toMove === source.length && offset === 0) {
       // source matches target exactly, reuse source
       result.push(merged[sourceIdx])
@@ -2099,7 +2100,7 @@ function executeConcatPlan(merged: Node[], plan: number[], height: number): any[
         pushElements(source, node.array, offset, itemsToCopy)
         if (toMove >= available) {
           ++sourceIdx
-          source = merged[sourceIdx].array
+          source = merged[sourceIdx]!.array
           offset = 0
         } else {
           offset += itemsToCopy
@@ -2218,7 +2219,7 @@ function appendNodeToTree<A>(l: MutableList<A>, array: A[]): MutableList<A> {
       index &= ~(mask << shift) // wipe just used bits
     } else {
       childIndex = currentNode.array.length - 1
-      index -= currentNode.sizes[childIndex - 1]
+      index -= currentNode.sizes[childIndex - 1]!
     }
     nodesVisited++
     if (childIndex < mask) {
@@ -2478,7 +2479,7 @@ function sliceNode(
   let sizes = node.sizes
   if (sizes !== undefined) {
     sizes = sizes.slice(pathLeft, pathRight + 1)
-    let slicedOffLeft = pathLeft !== 0 ? node.sizes![pathLeft - 1] : 0
+    let slicedOffLeft = pathLeft !== 0 ? node.sizes![pathLeft - 1]! : 0
     if (childLeft !== undefined) {
       // If the left child has been sliced into a new child we need to know
       // how many elements have been removed from the child.
@@ -3257,8 +3258,6 @@ export function zipWith<A, B, C>(
   return (as) => zipWith_(as, bs, f)
 }
 
-export type Ordering = -1 | 0 | 1
-
 /**
  * Sort the given list by comparing values using the given function.
  * The function receieves two values and should return `-1` if the
@@ -3268,20 +3267,17 @@ export type Ordering = -1 | 0 | 1
  *
  * @complexity O(n * log(n))
  */
-export function sortWith_<A>(
-  l: List<A>,
-  comparator: (a: A, b: A) => Ordering
-): List<A> {
+export function sortWith_<A>(l: List<A>, ord: Ord<A>): List<A> {
   const arr: { idx: number; elm: A }[] = []
   let i = 0
   forEach_(l, (elm) => arr.push({ idx: i++, elm }))
   arr.sort(({ elm: a, idx: i }, { elm: b, idx: j }) => {
-    const c = comparator(a, b)
+    const c = ord.compare(b)(a)
     return c !== 0 ? c : i < j ? -1 : 1
   })
   const newL = emptyPushable<A>()
   for (let i = 0; i < arr.length; ++i) {
-    push(arr[i].elm, newL)
+    push(arr[i]!.elm, newL)
   }
   return newL
 }
@@ -3295,10 +3291,8 @@ export function sortWith_<A>(
  *
  * @complexity O(n * log(n))
  */
-export function sortWith<A>(
-  comparator: (a: A, b: A) => Ordering
-): (l: List<A>) => List<A> {
-  return (l) => sortWith_(l, comparator)
+export function sortWith<A>(ord: Ord<A>): (l: List<A>) => List<A> {
+  return (l) => sortWith_(l, ord)
 }
 
 /**

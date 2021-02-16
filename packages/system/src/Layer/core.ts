@@ -343,7 +343,7 @@ export function restrict<Tags extends Tag<any>[]>(...ts: Tags) {
       fromRawEffect(
         T.accessServicesT(...ts)((...servises) =>
           servises
-            .map((s, i) => ({ [ts[i].key]: s } as any))
+            .map((s, i) => ({ [ts[i]!.key]: s } as any))
             .reduce((x, y) => ({ ...x, ...y }))
         )
       )

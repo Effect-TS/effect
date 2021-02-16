@@ -98,7 +98,7 @@ export function tryGetHash_<K, V>(
         if (hash === node.hash) {
           const children = node.children
           for (let i = 0, len = children.length; i < len; ++i) {
-            const child = children[i]
+            const child = children[i]!
             if ("key" in child && keyEq(child.key)(key)) return child.value
           }
         }
@@ -108,14 +108,14 @@ export function tryGetHash_<K, V>(
         const frag = hashFragment(shift, hash)
         const bit = toBitmap(frag)
         if (node.mask & bit) {
-          node = node.children[fromBitmap(node.mask, bit)]
+          node = node.children[fromBitmap(node.mask, bit)]!
           shift += SIZE
           break
         }
         return O.none
       }
       case "ArrayNode": {
-        node = node.children[hashFragment(shift, hash)]
+        node = node.children[hashFragment(shift, hash)]!
         if (node) {
           shift += SIZE
           break

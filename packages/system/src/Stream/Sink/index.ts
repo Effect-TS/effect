@@ -1236,7 +1236,7 @@ export function reduce<S>(z: S) {
       if (idx === len) {
         return [s, O.none] as const
       } else {
-        const s1 = f(s, chunk[idx])
+        const s1 = f(s, chunk[idx]!)
 
         if (contFn(s1)) {
           return reduceChunk(s1, chunk, idx + 1, len)
@@ -1350,7 +1350,7 @@ export function reduceM<S>(z: S) {
         return T.succeed([s, O.none] as const)
       } else {
         return T.foldM_(
-          f(s, chunk[idx]),
+          f(s, chunk[idx]!),
           (e) => T.fail([e, A.dropLeft_(chunk, idx + 1)] as const),
           (s1) => {
             if (contFn(s1)) {
@@ -1445,7 +1445,7 @@ export function forEach<I, R1, E1>(f: (i: I) => T.Effect<R1, E1, any>) {
       return Push.more
     } else {
       return pipe(
-        f(chunk[idx]),
+        f(chunk[idx]!),
         T.foldM(
           (e) => Push.fail(e, A.dropLeft_(chunk, idx + 1)),
           () => go(chunk, idx + 1, len)
@@ -1497,7 +1497,7 @@ export function forEachWhile<R, E, I>(
       return Push.more
     } else {
       return T.foldM_(
-        f(chunk[idx]),
+        f(chunk[idx]!),
         (e) => Push.fail(e, A.dropLeft_(chunk, idx + 1)),
         (b) => {
           if (b) {
