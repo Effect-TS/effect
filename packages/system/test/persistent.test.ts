@@ -191,4 +191,30 @@ describe("RedBlackTree", () => {
       [3, "e"]
     ])
   })
+  it("iterable", () => {
+    const ordered: [number, string][] = []
+
+    const tree = pipe(
+      RB.make<number, string>(ordNumber),
+      RB.insert(1, "a"),
+      RB.insert(0, "b"),
+      RB.insert(-1, "c"),
+      RB.insert(-2, "d"),
+      RB.insert(3, "e")
+    )
+
+    for (const [k, v] of tree) {
+      ordered.push([k, v])
+    }
+
+    expect(RB.size(tree)).toEqual(5)
+
+    expect(ordered).toEqual([
+      [-2, "d"],
+      [-1, "c"],
+      [0, "b"],
+      [1, "a"],
+      [3, "e"]
+    ])
+  })
 })

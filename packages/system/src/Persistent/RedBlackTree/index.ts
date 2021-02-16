@@ -33,8 +33,27 @@ function recountNode<K, V>(node: Node<K, V>) {
   node.count = 1 + (node.left?.count ?? 0) + (node.right?.count ?? 0)
 }
 
-export class RedBlackTree<K, V> {
+export class RedBlackTree<K, V> implements Iterable<readonly [K, V]> {
   constructor(readonly ord: Ord<K>, readonly root: Node<K, V> | undefined) {}
+
+  [Symbol.iterator](): IterableIterator<readonly [K, V]> {
+    const begin = iteratorBegin(this)
+    let count = 0
+
+    return {
+      next: (): IteratorResult<readonly [K, V]> => {
+        count++
+        const entry = begin.entry
+        begin.next()
+        return O.fold_(
+          entry,
+          () => ({ value: count, done: true }),
+          (entry) => ({ value: entry, done: false })
+        )
+      },
+      [Symbol.iterator]: this[Symbol.iterator]
+    }
+  }
 }
 
 /**
@@ -282,4 +301,216 @@ export function forEach_<K, V>(
  */
 export function forEach<K, V>(visit: (key: K, value: V) => void) {
   return (self: RedBlackTree<K, V>) => forEach_(self, visit)
+}
+
+/**
+ * Stateful iterator
+ */
+export class RedBlackTreeIterator<K, V> {
+  constructor(readonly self: RedBlackTree<K, V>, readonly stack: Node<K, V>[]) {}
+
+  /**
+   * Returns the key
+   */
+  get key(): O.Option<K> {
+    if (this.stack.length > 0) {
+      return O.some(this.stack[this.stack.length - 1]!.key)
+    }
+    return O.none
+  }
+
+  /**
+   * Returns the value
+   */
+  get value(): O.Option<V> {
+    if (this.stack.length > 0) {
+      return O.some(this.stack[this.stack.length - 1]!.value)
+    }
+    return O.none
+  }
+
+  /**
+   * Returns the key
+   */
+  get entry(): O.Option<readonly [K, V]> {
+    if (this.stack.length > 0) {
+      return O.some([
+        this.stack[this.stack.length - 1]!.key,
+        this.stack[this.stack.length - 1]!.value
+      ])
+    }
+    return O.none
+  }
+
+  /**
+   * Returns the position of this iterator in the sorted list
+   */
+  get index(): number {
+    let idx = 0
+    const stack = this.stack
+    if (stack.length === 0) {
+      const r = this.self.root
+      if (r) {
+        return r.count
+      }
+      return 0
+    } else if (stack[stack.length - 1]!.left) {
+      idx = stack[stack.length - 1]!.left!.count
+    }
+    for (let s = stack.length - 2; s >= 0; --s) {
+      if (stack[s + 1] === stack[s]!.right) {
+        ++idx
+        if (stack[s]!.left) {
+          idx += stack[s]!.left!.count
+        }
+      }
+    }
+    return idx
+  }
+
+  /**
+   * Advances iterator to next element in list
+   */
+  next() {
+    const stack = this.stack
+    if (stack.length === 0) {
+      return
+    }
+    let n: Node<K, V> | undefined = stack[stack.length - 1]!
+    if (n.right) {
+      n = n.right
+      while (n) {
+        stack.push(n)
+        n = n.left
+      }
+    } else {
+      stack.pop()
+      while (stack.length > 0 && stack[stack.length - 1]!.right === n) {
+        n = stack[stack.length - 1]
+        stack.pop()
+      }
+    }
+  }
+
+  /**
+   * Checks if there is a next element
+   */
+  get hasNext() {
+    const stack = this.stack
+    if (stack.length === 0) {
+      return false
+    }
+    if (stack[stack.length - 1]!.right) {
+      return true
+    }
+    for (let s = stack.length - 1; s > 0; --s) {
+      if (stack[s - 1]!.left === stack[s]) {
+        return true
+      }
+    }
+    return false
+  }
+
+  /**
+   * Advances iterator to previous element in list
+   */
+  prev() {
+    const stack = this.stack
+    if (stack.length === 0) {
+      return
+    }
+    let n = stack[stack.length - 1]
+    if (n && n.left) {
+      n = n.left
+      while (n) {
+        stack.push(n)
+        n = n.right
+      }
+    } else {
+      stack.pop()
+      while (stack.length > 0 && stack[stack.length - 1]!.left === n) {
+        n = stack[stack.length - 1]
+        stack.pop()
+      }
+    }
+  }
+
+  /**
+   * Checks if there is a previous element
+   */
+  get hasPrev() {
+    const stack = this.stack
+    if (stack.length === 0) {
+      return false
+    }
+    if (stack[stack.length - 1]!.left) {
+      return true
+    }
+    for (let s = stack.length - 1; s > 0; --s) {
+      if (stack[s - 1]!.right === stack[s]) {
+        return true
+      }
+    }
+    return false
+  }
+}
+
+/**
+ * Returns an iterator that points to the beginning of the tree
+ */
+export function iteratorBegin<K, V>(tree: RedBlackTree<K, V>) {
+  const stack: Node<K, V>[] = []
+  let n = tree.root
+  while (n) {
+    stack.push(n)
+    n = n.left
+  }
+  return new RedBlackTreeIterator(tree, stack)
+}
+
+/**
+ * Returns an iterator that points to the end of the tree
+ */
+export function iteratorEnd<K, V>(tree: RedBlackTree<K, V>) {
+  const stack: Node<K, V>[] = []
+  let n = tree.root
+  while (n) {
+    stack.push(n)
+    n = n.right
+  }
+  return new RedBlackTreeIterator(tree, stack)
+}
+
+/**
+ * Returns an iterator that points to the element i of the tree
+ */
+export function iteratorAt_<K, V>(tree: RedBlackTree<K, V>, idx: number) {
+  if (idx < 0) {
+    return new RedBlackTreeIterator(tree, [])
+  }
+  let n = tree.root
+  const stack: Node<K, V>[] = []
+  while (n) {
+    stack.push(n)
+    if (n.left) {
+      if (idx < n.left.count) {
+        n = n.left
+        continue
+      }
+      idx -= n.left.count
+    }
+    if (!idx) {
+      return new RedBlackTreeIterator(tree, stack)
+    }
+    idx -= 1
+    if (n.right) {
+      if (idx >= n.right.count) {
+        break
+      }
+      n = n.right
+    } else {
+      break
+    }
+  }
+  return new RedBlackTreeIterator(tree, [])
 }
