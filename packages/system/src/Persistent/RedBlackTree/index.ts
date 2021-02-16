@@ -1,5 +1,8 @@
+/* eslint-disable prefer-const */
+import * as O from "../../Option"
 import type { Ord } from "../../Ord"
 import type { Ordering } from "../../Ordering"
+import { Stack } from "../../Stack"
 
 type Color = "Red" | "Black"
 
@@ -28,6 +31,13 @@ function recountNode<K, V>(node: Node<K, V>) {
 
 export class RedBlackTree<K, V> {
   constructor(readonly ord: Ord<K>, readonly root: Node<K, V> | undefined) {}
+}
+
+/**
+ * Creates a new Red-Black Tree
+ */
+export function make<K, V>(ord: Ord<K>) {
+  return new RedBlackTree<K, V>(ord, undefined)
 }
 
 /**
@@ -207,4 +217,65 @@ export function insert_<K, V>(self: RedBlackTree<K, V>, key: K, value: V) {
   //Return new tree
   n_stack[0]!.color = "Black"
   return new RedBlackTree(self.ord, n_stack[0])
+}
+
+/**
+ * Insert a new item into the tree
+ */
+export function insert<K, V>(key: K, value: V) {
+  return (self: RedBlackTree<K, V>) => insert_(self, key, value)
+}
+
+/**
+ * Visit all nodes inorder until a Some is returned
+ */
+export function visitFull<K, V, A>(
+  node: Node<K, V>,
+  visit: (key: K, value: V) => O.Option<A>
+): O.Option<A> {
+  let current: Node<K, V> | undefined = node
+  let stack: Stack<Node<K, V>> | undefined = undefined
+  let done = false
+
+  while (!done) {
+    if (current) {
+      stack = new Stack(current, stack)
+      current = current.left
+    } else if (stack) {
+      const v = visit(stack.value.key, stack.value.value)
+
+      if (O.isSome(v)) {
+        return v
+      }
+
+      current = stack.value.right
+      stack = stack.previous
+    } else {
+      done = true
+    }
+  }
+
+  return O.none
+}
+
+/**
+ * Visit each node of the tree in order
+ */
+export function forEach_<K, V>(
+  self: RedBlackTree<K, V>,
+  visit: (key: K, value: V) => void
+) {
+  if (self.root) {
+    visitFull(self.root, (key, value) => {
+      visit(key, value)
+      return O.none
+    })
+  }
+}
+
+/**
+ * Visit each node of the tree in order
+ */
+export function forEach<K, V>(visit: (key: K, value: V) => void) {
+  return (self: RedBlackTree<K, V>) => forEach_(self, visit)
 }

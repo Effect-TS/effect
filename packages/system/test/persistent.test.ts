@@ -2,8 +2,10 @@ import type { Equal } from "../src/Equal"
 import { pipe, tuple } from "../src/Function"
 import * as Hash from "../src/Hash"
 import * as O from "../src/Option"
+import { ordNumber } from "../src/Ord"
 import * as HM from "../src/Persistent/HashMap"
 import * as HS from "../src/Persistent/HashSet"
+import * as RB from "../src/Persistent/RedBlackTree"
 
 describe("HashMap", () => {
   it("hashes", () => {
@@ -163,6 +165,30 @@ describe("HashMap", () => {
       new Index(0, 0),
       new Index(2, 2),
       new Index(3, 3)
+    ])
+  })
+})
+
+describe("RedBlackTree", () => {
+  it("forEach", () => {
+    const ordered: [number, string][] = []
+    pipe(
+      RB.make<number, string>(ordNumber),
+      RB.insert(1, "a"),
+      RB.insert(0, "b"),
+      RB.insert(-1, "c"),
+      RB.insert(-2, "d"),
+      RB.insert(3, "e"),
+      RB.forEach((n, s) => {
+        ordered.push([n, s])
+      })
+    )
+    expect(ordered).toEqual([
+      [-2, "d"],
+      [-1, "c"],
+      [0, "b"],
+      [1, "a"],
+      [3, "e"]
     ])
   })
 })
