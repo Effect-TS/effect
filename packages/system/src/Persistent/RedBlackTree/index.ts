@@ -3,6 +3,7 @@
  *
  * Based on: https://github.com/mikolalysenko/functional-red-black-tree/blob/master/rbtree.js
  */
+import { tuple } from "../../Function"
 import * as O from "../../Option"
 import type { Ord } from "../../Ord"
 import type { Ordering } from "../../Ordering"
@@ -469,6 +470,32 @@ export function iteratorBegin<K, V>(tree: RedBlackTree<K, V>) {
 }
 
 /**
+ * Returns the first entry in the tree
+ */
+export function begin<K, V>(tree: RedBlackTree<K, V>): O.Option<readonly [K, V]> {
+  let n: Node<K, V> | undefined = tree.root
+  let c: Node<K, V> | undefined = tree.root
+  while (n) {
+    c = n
+    n = n.left
+  }
+  return c ? O.some(tuple(c.key, c.value)) : O.none
+}
+
+/**
+ * Returns the last entry in the tree
+ */
+export function end<K, V>(tree: RedBlackTree<K, V>): O.Option<readonly [K, V]> {
+  let n: Node<K, V> | undefined = tree.root
+  let c: Node<K, V> | undefined = tree.root
+  while (n) {
+    c = n
+    n = n.right
+  }
+  return c ? O.some(tuple(c.key, c.value)) : O.none
+}
+
+/**
  * Returns an iterator that points to the end of the tree
  */
 export function iteratorEnd<K, V>(tree: RedBlackTree<K, V>) {
@@ -513,4 +540,73 @@ export function iteratorAt_<K, V>(tree: RedBlackTree<K, V>, idx: number) {
     }
   }
   return new RedBlackTreeIterator(tree, [])
+}
+
+/**
+ * Returns an iterator that points to the element i of the tree
+ */
+export function iteratorAt(idx: number) {
+  return <K, V>(tree: RedBlackTree<K, V>) => iteratorAt_(tree, idx)
+}
+
+/**
+ * Traverse the tree backwards
+ */
+export function backwards<K, V>(
+  self: RedBlackTree<K, V>
+): IterableIterator<readonly [K, V]> {
+  const begin = iteratorEnd(self)
+  let count = 0
+
+  return {
+    next: (): IteratorResult<readonly [K, V]> => {
+      count++
+      const entry = begin.entry
+      begin.prev()
+      return O.fold_(
+        entry,
+        () => ({ value: count, done: true }),
+        (entry) => ({ value: entry, done: false })
+      )
+    },
+    [Symbol.iterator]: () => backwards(self)
+  }
+}
+
+export function values<K, V>(self: RedBlackTree<K, V>): IterableIterator<V> {
+  const begin = iteratorBegin(self)
+  let count = 0
+
+  return {
+    next: (): IteratorResult<V> => {
+      count++
+      const entry = begin.value
+      begin.next()
+      return O.fold_(
+        entry,
+        () => ({ value: count, done: true }),
+        (entry) => ({ value: entry, done: false })
+      )
+    },
+    [Symbol.iterator]: () => values(self)
+  }
+}
+
+export function keys<K, V>(self: RedBlackTree<K, V>): IterableIterator<K> {
+  const begin = iteratorBegin(self)
+  let count = 0
+
+  return {
+    next: (): IteratorResult<K> => {
+      count++
+      const entry = begin.key
+      begin.next()
+      return O.fold_(
+        entry,
+        () => ({ value: count, done: true }),
+        (entry) => ({ value: entry, done: false })
+      )
+    },
+    [Symbol.iterator]: () => keys(self)
+  }
 }

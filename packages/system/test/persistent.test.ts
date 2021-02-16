@@ -217,4 +217,129 @@ describe("RedBlackTree", () => {
       [3, "e"]
     ])
   })
+  it("iterable empty", () => {
+    const ordered: [number, string][] = []
+
+    const tree = pipe(RB.make<number, string>(ordNumber))
+
+    for (const [k, v] of tree) {
+      ordered.push([k, v])
+    }
+
+    expect(RB.size(tree)).toEqual(0)
+
+    expect(ordered).toEqual([])
+  })
+  it("backwards", () => {
+    const ordered: [number, string][] = []
+
+    const tree = pipe(
+      RB.make<number, string>(ordNumber),
+      RB.insert(1, "a"),
+      RB.insert(0, "b"),
+      RB.insert(-1, "c"),
+      RB.insert(-2, "d"),
+      RB.insert(3, "e")
+    )
+
+    for (const [k, v] of RB.backwards(tree)) {
+      ordered.push([k, v])
+    }
+
+    expect(RB.size(tree)).toEqual(5)
+
+    expect(ordered).toEqual([
+      [3, "e"],
+      [1, "a"],
+      [0, "b"],
+      [-1, "c"],
+      [-2, "d"]
+    ])
+  })
+  it("backwards empty", () => {
+    const ordered: [number, string][] = []
+
+    const tree = pipe(RB.make<number, string>(ordNumber))
+
+    for (const [k, v] of RB.backwards(tree)) {
+      ordered.push([k, v])
+    }
+
+    expect(RB.size(tree)).toEqual(0)
+
+    expect(ordered).toEqual([])
+  })
+  it("values", () => {
+    const ordered: string[] = []
+
+    const tree = pipe(
+      RB.make<number, string>(ordNumber),
+      RB.insert(1, "a"),
+      RB.insert(0, "b"),
+      RB.insert(-1, "c"),
+      RB.insert(-2, "d"),
+      RB.insert(3, "e")
+    )
+
+    for (const v of RB.values(tree)) {
+      ordered.push(v)
+    }
+
+    expect(RB.size(tree)).toEqual(5)
+
+    expect(ordered).toEqual(["d", "c", "b", "a", "e"])
+  })
+  it("keys", () => {
+    const ordered: number[] = []
+
+    const tree = pipe(
+      RB.make<number, string>(ordNumber),
+      RB.insert(1, "a"),
+      RB.insert(0, "b"),
+      RB.insert(-1, "c"),
+      RB.insert(-2, "d"),
+      RB.insert(3, "e")
+    )
+
+    for (const v of RB.keys(tree)) {
+      ordered.push(v)
+    }
+
+    expect(RB.size(tree)).toEqual(5)
+
+    expect(ordered).toEqual([-2, -1, 0, 1, 3])
+  })
+  it("keys", () => {
+    const ordered: number[] = []
+
+    const tree = pipe(
+      RB.make<number, string>(ordNumber),
+      RB.insert(1, "a"),
+      RB.insert(0, "b"),
+      RB.insert(-1, "c"),
+      RB.insert(-2, "d"),
+      RB.insert(3, "e")
+    )
+
+    for (const v of RB.keys(tree)) {
+      ordered.push(v)
+    }
+
+    expect(RB.size(tree)).toEqual(5)
+
+    expect(ordered).toEqual([-2, -1, 0, 1, 3])
+  })
+  it("begin/end", () => {
+    const tree = pipe(
+      RB.make<number, string>(ordNumber),
+      RB.insert(1, "a"),
+      RB.insert(0, "b"),
+      RB.insert(-1, "c"),
+      RB.insert(-2, "d"),
+      RB.insert(3, "e")
+    )
+
+    expect(RB.begin(tree)).toEqual(O.some([-2, "d"]))
+    expect(RB.end(tree)).toEqual(O.some([3, "e"]))
+  })
 })
