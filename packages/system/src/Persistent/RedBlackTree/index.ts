@@ -1,4 +1,8 @@
-/* eslint-disable prefer-const */
+/**
+ * Red Black Tree
+ *
+ * Based on: https://github.com/mikolalysenko/functional-red-black-tree/blob/master/rbtree.js
+ */
 import * as O from "../../Option"
 import type { Ord } from "../../Ord"
 import type { Ordering } from "../../Ordering"
