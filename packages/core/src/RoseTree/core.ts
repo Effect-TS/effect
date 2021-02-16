@@ -57,7 +57,7 @@ export function getEqual<A>(E: Equal<A>): Equal<Tree<A>> {
       return IO.succeed(true)
     }
     return pipe(
-      IO.suspend(() => equalsSafe(x[i], y[i])),
+      IO.suspend(() => equalsSafe(x[i]!, y[i]!)),
       IO.chain((b) => (b ? equalsForestSafe(x, y, i + 1) : IO.succeed(false)))
     )
   }
@@ -79,7 +79,7 @@ function draw(indentation: string, forest: Forest<string>): IO.IO<string> {
     const len = forest.length
     let tree: Tree<string>
     for (let i = 0; i < len; i++) {
-      tree = forest[i]
+      tree = forest[i]!
       const isLast = i === len - 1
       r += indentation + (isLast ? "└" : "├") + "─ " + tree.value
       r += yield* _(
@@ -198,7 +198,7 @@ export function elem_<A>(E: Equal<A>): (fa: Tree<A>, a: A) => boolean {
       return IO.succeed(false)
     }
     return pipe(
-      IO.suspend(() => go(forest[i], a)),
+      IO.suspend(() => go(forest[i]!, a)),
       IO.chain((b) => (b ? IO.succeed(true) : goForest(forest, a, i + 1)))
     )
   }
@@ -276,7 +276,7 @@ export function reduce_<A, B>(fa: Tree<A>, b: B, f: (b: B, a: A) => B): B {
       let r: B = f(b, node.value)
       const len = fa.forest.length
       for (let i = 0; i < len; i++) {
-        r = yield* _(go(node.forest[i], r))
+        r = yield* _(go(node.forest[i]!, r))
       }
       return r
     })
@@ -295,7 +295,7 @@ export function reduceRight_<A, B>(fa: Tree<A>, b: B, f: (a: A, b: B) => B): B {
       let r: B = b
       const len = node.forest.length
       for (let i = len - 1; i >= 0; i--) {
-        r = yield* _(go(node.forest[i], r))
+        r = yield* _(go(node.forest[i]!, r))
       }
       return f(node.value, r)
     })

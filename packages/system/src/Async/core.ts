@@ -466,7 +466,7 @@ export function runPromiseExitEnv<R, E, A>(
           const as = []
           let errored = false
           for (let i = 0; i < exits.length && !errored; i += 1) {
-            const e = exits[i]
+            const e = exits[i]!
             switch (e._tag) {
               case "Success": {
                 as.push(e.a)

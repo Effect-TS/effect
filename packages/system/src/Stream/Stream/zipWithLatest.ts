@@ -67,8 +67,8 @@ export function zipWithLatest<R, R1, E, E1, O, O2>(
                     pipe(
                       fromChunk(
                         leftFirst
-                          ? A.map_(r, (_) => f(l[l.length - 1], _))
-                          : A.map_(l, (_) => f(_, r[r.length - 1]))
+                          ? A.map_(r, (_) => f(l[l.length - 1]!, _))
+                          : A.map_(l, (_) => f(_, r[r.length - 1]!))
                       ),
                       concat(
                         pipe(
@@ -91,9 +91,9 @@ export function zipWithLatest<R, R1, E, E1, O, O2>(
                             )
                           )(
                             ([leftChunk, rightLatest]) =>
-                              A.map_(leftChunk, (_) => f(_, rightLatest)),
+                              A.map_(leftChunk, (_) => f(_, rightLatest!)),
                             ([rightChunk, leftLatest]) =>
-                              A.map_(rightChunk, (_) => f(leftLatest, _))
+                              A.map_(rightChunk, (_) => f(leftLatest!, _))
                           ),
                           chain(fromChunk)
                         )

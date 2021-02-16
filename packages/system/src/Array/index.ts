@@ -41,7 +41,7 @@ export function chain_<A, B>(fa: Array<A>, f: (a: A) => Array<B>): Array<B> {
   const l = fa.length
   const temp = new Array(l)
   for (let i = 0; i < l; i++) {
-    const e = fa[i]
+    const e = fa[i]!
     const arr = f(e)
     resLen += arr.length
     temp[i] = arr
@@ -191,7 +191,7 @@ export function comprehension<R>(
     if (input.length === 0) {
       return g(...scope) ? [f(...scope)] : empty
     } else {
-      return chain((x) => go(snoc_(scope, x), input.slice(1)))(input[0])
+      return chain((x) => go(snoc_(scope, x), input.slice(1)))(input[0]!)
     }
   }
   return go(empty, input)
@@ -445,7 +445,7 @@ export function filterMapWithIndex_<A, B>(
 ): Array<B> {
   const result: MutableArray<B> = []
   for (let i = 0; i < fa.length; i++) {
-    const optionB = f(i, fa[i])
+    const optionB = f(i, fa[i]!)
     if (isSome(optionB)) {
       result.push(optionB.value)
     }
@@ -463,7 +463,7 @@ export function collectWhileMap_<A, B>(
   const result: MutableArray<B> = []
 
   for (let i = 0; i < arr.length; i++) {
-    const o = f(arr[i])
+    const o = f(arr[i]!)
 
     if (isSome(o)) {
       result.push(o.value)
@@ -508,8 +508,8 @@ export function findFirst_<A>(as: Array<A>, predicate: Predicate<A>): Option<A>
 export function findFirst_<A>(as: Array<A>, predicate: Predicate<A>): Option<A> {
   const len = as.length
   for (let i = 0; i < len; i++) {
-    if (predicate(as[i])) {
-      return some(as[i])
+    if (predicate(as[i]!)) {
+      return some(as[i]!)
     }
   }
   return none
@@ -542,7 +542,7 @@ export function findFirstMap<A, B>(
 export function findFirstMap_<A, B>(as: Array<A>, f: (a: A) => Option<B>): Option<B> {
   const len = as.length
   for (let i = 0; i < len; i++) {
-    const v = f(as[i])
+    const v = f(as[i]!)
     if (isSome(v)) {
       return v
     }
@@ -570,7 +570,7 @@ export function findIndex<A>(
 export function findIndex_<A>(as: Array<A>, predicate: Predicate<A>): Option<number> {
   const len = as.length
   for (let i = 0; i < len; i++) {
-    if (predicate(as[i])) {
+    if (predicate(as[i]!)) {
       return some(i)
     }
   }
@@ -603,8 +603,8 @@ export function findLast_<A>(as: Array<A>, predicate: Predicate<A>): Option<A>
 export function findLast_<A>(as: Array<A>, predicate: Predicate<A>): Option<A> {
   const len = as.length
   for (let i = len - 1; i >= 0; i--) {
-    if (predicate(as[i])) {
-      return some(as[i])
+    if (predicate(as[i]!)) {
+      return some(as[i]!)
     }
   }
   return none
@@ -638,7 +638,7 @@ export function findLastIndex_<A>(
 ): Option<number> {
   const len = as.length
   for (let i = len - 1; i >= 0; i--) {
-    if (predicate(as[i])) {
+    if (predicate(as[i]!)) {
       return some(i)
     }
   }
@@ -670,7 +670,7 @@ export function findLastMap<A, B>(f: (a: A) => Option<B>): (as: Array<A>) => Opt
 export function findLastMap_<A, B>(as: Array<A>, f: (a: A) => Option<B>): Option<B> {
   const len = as.length
   for (let i = len - 1; i >= 0; i--) {
-    const v = f(as[i])
+    const v = f(as[i]!)
     if (isSome(v)) {
       return v
     }
@@ -712,7 +712,7 @@ export function foldLeft_<A, B>(
   onNil: () => B,
   onCons: (head: A, tail: Array<A>) => B
 ): B {
-  return isEmpty(as) ? onNil() : onCons(as[0], as.slice(1))
+  return isEmpty(as) ? onNil() : onCons(as[0]!, as.slice(1))
 }
 
 /**
@@ -733,7 +733,7 @@ export function foldRight_<A, B>(
   onNil: () => B,
   onCons: (init: Array<A>, last: A) => B
 ): B {
-  return isEmpty(as) ? onNil() : onCons(as.slice(0, as.length - 1), as[as.length - 1])
+  return isEmpty(as) ? onNil() : onCons(as.slice(0, as.length - 1), as[as.length - 1]!)
 }
 
 /**
@@ -760,7 +760,7 @@ export function fromMutable<A>(as: MutableArray<A>): Array<A> {
  * ```
  */
 export function head<A>(as: Array<A>): Option<A> {
-  return isEmpty(as) ? none : some(as[0])
+  return isEmpty(as) ? none : some(as[0]!)
 }
 
 /**
@@ -842,7 +842,7 @@ export function lefts<E, A>(as: Array<Either<E, A>>): Array<E> {
   const r: MutableArray<E> = []
   const len = as.length
   for (let i = 0; i < len; i++) {
-    const a = as[i]
+    const a = as[i]!
     if (a._tag === "Left") {
       r.push(a.left)
     }
@@ -859,7 +859,7 @@ export function lefts<E, A>(as: Array<Either<E, A>>): Array<E> {
  * ```
  */
 export function lookup_<A>(as: Array<A>, i: number): Option<A> {
-  return isOutOfBound(i, as) ? none : some(as[i])
+  return isOutOfBound(i, as) ? none : some(as[i]!)
 }
 
 /**
@@ -934,7 +934,7 @@ export function modifyAt<A>(
   i: number,
   f: (a: A) => A
 ): (as: Array<A>) => Option<Array<A>> {
-  return (as) => (isOutOfBound(i, as) ? none : some(unsafeUpdateAt_(as, i, f(as[i]))))
+  return (as) => (isOutOfBound(i, as) ? none : some(unsafeUpdateAt_(as, i, f(as[i]!))))
 }
 
 /**
@@ -946,7 +946,7 @@ export function modifyAt_<A>(
   i: number,
   f: (a: A) => A
 ): Option<Array<A>> {
-  return isOutOfBound(i, as) ? none : some(unsafeUpdateAt_(as, i, f(as[i])))
+  return isOutOfBound(i, as) ? none : some(unsafeUpdateAt_(as, i, f(as[i]!)))
 }
 
 /**
@@ -1031,7 +1031,7 @@ export function reduceWithIndex_<A, B>(
   const l = fa.length
   let r = b
   for (let i = 0; i < l; i++) {
-    r = f(i, r, fa[i])
+    r = f(i, r, fa[i]!)
   }
   return r
 }
@@ -1080,7 +1080,7 @@ export function rights<E, A>(as: Array<Either<E, A>>): Array<A> {
   const r: MutableArray<A> = []
   const len = as.length
   for (let i = 0; i < len; i++) {
-    const a = as[i]
+    const a = as[i]!
     if (a._tag === "Right") {
       r.push(a.right)
     }
@@ -1134,7 +1134,7 @@ export function scanLeft_<A, B>(as: Array<A>, b: B, f: (b: B, a: A) => B): Array
   const r: MutableArray<B> = new Array(l + 1)
   r[0] = b
   for (let i = 0; i < l; i++) {
-    r[i + 1] = f(r[i], as[i])
+    r[i + 1] = f(r[i]!, as[i]!)
   }
   return r
 }
@@ -1161,7 +1161,7 @@ export function scanRight_<A, B>(as: Array<A>, b: B, f: (a: A, b: B) => B): Arra
   const r: MutableArray<B> = new Array(l + 1)
   r[l] = b
   for (let i = l - 1; i >= 0; i--) {
-    r[i] = f(as[i], r[i + 1])
+    r[i] = f(as[i]!, r[i + 1]!)
   }
   return r
 }
@@ -1197,7 +1197,7 @@ export const spanIndex_ = <A>(as: Array<A>, predicate: Predicate<A>): number => 
   const l = as.length
   let i = 0
   for (; i < l; i++) {
-    if (!predicate(as[i])) {
+    if (!predicate(as[i]!)) {
       break
     }
   }
@@ -1355,8 +1355,8 @@ export function takeUntil_<A>(as: Array<A>, predicate: Predicate<A>): Array<A> {
   const init = []
 
   for (let i = 0; i < as.length; i++) {
-    init[i] = as[i]
-    if (predicate(as[i])) {
+    init[i] = as[i]!
+    if (predicate(as[i]!)) {
       return init
     }
   }
@@ -1486,8 +1486,8 @@ export function unzip<A, B>(as: Array<readonly [A, B]>): readonly [Array<A>, Arr
   const fa: MutableArray<A> = []
   const fb: MutableArray<B> = []
   for (let i = 0; i < as.length; i++) {
-    fa[i] = as[i][0]
-    fb[i] = as[i][1]
+    fa[i] = as[i]![0]!
+    fb[i] = as[i]![1]!
   }
   return [fa, fb]
 }
@@ -1547,7 +1547,7 @@ export function zipWith_<A, B, C>(
   const fc: MutableArray<C> = []
   const len = Math.min(fa.length, fb.length)
   for (let i = 0; i < len; i++) {
-    fc[i] = f(fa[i], fb[i])
+    fc[i] = f(fa[i]!, fb[i]!)
   }
   return fc
 }

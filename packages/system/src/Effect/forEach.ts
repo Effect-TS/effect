@@ -127,7 +127,7 @@ export function forEachUnitPar_<R, E, A>(
   f: (a: A) => Effect<R, E, any>
 ): Effect<R, E, void> {
   const collection = L.from(as)
-  const size = L.length(collection)
+  const size = L.size(collection)
   if (L.isEmpty(collection)) {
     return core.unit
   }
@@ -304,7 +304,7 @@ export function forEachUnitParN_<R, E, A>(
   f: (a: A) => Effect<R, E, any>
 ): Effect<R, E, void> {
   const as_ = L.from(as)
-  const size = L.length(as_)
+  const size = L.size(as_)
 
   function worker(q: Q.Queue<A>, ref: Ref.Ref<number>): Effect<R, E, void> {
     return pipe(

@@ -87,17 +87,17 @@ export function reduceRight_<A, B>(fa: Chunk<A>, b: B, f: (a: A, b: B) => B): B 
   }
   let x = b
   for (let i = fa.length - 1; i >= 0; i--) {
-    x = f(fa[i], x)
+    x = f(fa[i]!, x)
   }
   return x
 }
 
 export function head<A>(as: Chunk<A>): O.Option<A> {
-  return as.length > 0 ? O.some(as[0]) : O.none
+  return as.length > 0 ? O.some(as[0]!) : O.none
 }
 
 export function last<A>(as: Chunk<A>): O.Option<A> {
-  return as.length > 0 ? O.some(as[as.length - 1]) : O.none
+  return as.length > 0 ? O.some(as[as.length - 1]!) : O.none
 }
 
 export function splitAt_<A>(as: Chunk<A>, n: number): readonly [Chunk<A>, Chunk<A>] {
@@ -156,7 +156,7 @@ export const spanIndex_ = <A>(as: Chunk<A>, predicate: Predicate<A>): number => 
   const l = as.length
   let i = 0
   for (; i < l; i++) {
-    if (!predicate(as[i])) {
+    if (!predicate(as[i]!)) {
       break
     }
   }
@@ -215,7 +215,7 @@ export function collectWhileMap_<A, B>(
   const result: B[] = []
 
   for (let i = 0; i < arr.length; i++) {
-    const o = f(arr[i])
+    const o = f(arr[i]!)
 
     if (O.isSome(o)) {
       result.push(o.value)
@@ -235,7 +235,7 @@ export function collectWhile_<A>(arr: Chunk<A>, f: Predicate<A>): Chunk<A>
 export function collectWhile_<A>(arr: Chunk<A>, f: Predicate<A>): Chunk<A> {
   let j = arr.length
   for (let i = 0; i < arr.length; i++) {
-    if (!f(arr[i])) {
+    if (!f(arr[i]!)) {
       j = i
       break
     }
@@ -255,7 +255,7 @@ export function chain_<A, B>(fa: Chunk<A>, f: (a: A) => Chunk<B>): Chunk<B> {
   const l = fa.length
   const temp = new Array(l)
   for (let i = 0; i < l; i++) {
-    const e = fa[i]
+    const e = fa[i]!
     const arr = f(e)
     resLen += arr.length
     temp[i] = arr

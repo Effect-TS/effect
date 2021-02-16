@@ -27,6 +27,7 @@
     "stripInternal": true,
     "noImplicitAny": true,
     "noImplicitThis": true,
+    "noUncheckedIndexedAccess": true,
     "strictNullChecks": true,
     "baseUrl": ".",
     "paths": {

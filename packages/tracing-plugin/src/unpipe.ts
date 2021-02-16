@@ -84,15 +84,15 @@ function optimisePipe(
   factory: ts.NodeFactory
 ): ts.Expression {
   if (args.length === 1) {
-    return args[0]
+    return args[0]!
   }
 
   const newArgs: ts.Expression[] = []
   for (let i = 0; i < args.length - 1; i += 1) {
-    newArgs.push(args[i])
+    newArgs.push(args[i]!)
   }
 
-  return factory.createCallExpression(args[args.length - 1], undefined, [
+  return factory.createCallExpression(args[args.length - 1]!, undefined, [
     optimisePipe(newArgs, factory)
   ])
 }

@@ -175,7 +175,7 @@ export class SlidingStrategy<A> implements Strategy<A> {
       // poll 1 and retry
       queue.poll(undefined)
 
-      if (queue.offer(bs[0])) {
+      if (queue.offer(bs[0]!)) {
         bs.shift()
       }
     }
@@ -387,7 +387,7 @@ export const unsafeOfferAll = <A>(
   const bs = Array.from(as)
 
   while (bs.length > 0) {
-    if (!q.offer(bs[0])) {
+    if (!q.offer(bs[0]!)) {
       return bs
     } else {
       bs.shift()

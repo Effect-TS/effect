@@ -128,7 +128,7 @@ export function fromFoldableMap_<F, B>(
   return <A>(fa: HKT.HKT<F, A>, f: (a: A) => readonly [string, B]) => {
     return F.reduce<A, MutableRecord<string, B>>({}, (r, a) => {
       const [k, b] = f(a)
-      r[k] = Object.prototype.hasOwnProperty.call(r, k) ? M.combine(b)(r[k]) : b
+      r[k] = Object.prototype.hasOwnProperty.call(r, k) ? M.combine(b)(r[k]!) : b
       return r
     })(fa)
   }
@@ -194,7 +194,7 @@ export function isSubrecord_<A>(
 ): (x: R.Record<string, A>, y: R.Record<string, A>) => boolean {
   return (x, y) => {
     for (const k in x) {
-      if (!Object.prototype.hasOwnProperty.call(y, k) || !E.equals(y[k])(x[k])) {
+      if (!Object.prototype.hasOwnProperty.call(y, k) || !E.equals(y[k]!)(x[k]!)) {
         return false
       }
     }
@@ -240,8 +240,8 @@ export function getIdentity<K extends string, A>(
     }
     const r: MutableRecord<K, A> = { ...x }
     for (let i = 0; i < len; i++) {
-      const k = keys[i]
-      r[k] = Object.prototype.hasOwnProperty.call(x, k) ? S.combine(y[k])(x[k]) : y[k]
+      const k = keys[i]!
+      r[k] = Object.prototype.hasOwnProperty.call(x, k) ? S.combine(y[k])(x[k]!) : y[k]!
     }
     return r
   })

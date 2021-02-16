@@ -110,13 +110,13 @@ export class Chain<R_, E_, O, O2> {
         [A.Chunk<O>, number]
       ] => {
         if (nextIdx < chunk.length) {
-          return [T.succeed(chunk[nextIdx]), [chunk, nextIdx + 1]]
+          return [T.succeed(chunk[nextIdx]!), [chunk, nextIdx + 1]]
         } else {
           return [
             pipe(
               this.pullNonEmpty(this.outerStream),
               T.tap((os) => this.currOuterChunk.set([os, 1])),
-              T.map((os) => os[0])
+              T.map((os) => os[0]!)
             ),
             [chunk, nextIdx]
           ]

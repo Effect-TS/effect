@@ -270,7 +270,7 @@ const prettyLines = <E>(cause: Cause<E>, renderer: Renderer<E>) =>
   S.gen(function* (_) {
     const s = yield* _(causeToSequential(cause, renderer))
 
-    if (s.all.length === 1 && s.all[0]._tag === "Failure") {
+    if (s.all.length === 1 && s.all[0] && s.all[0]._tag === "Failure") {
       return s.all[0].lines
     }
 

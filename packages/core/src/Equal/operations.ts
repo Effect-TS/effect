@@ -96,7 +96,7 @@ export function array<A>(EqA: Equal<A>): Equal<A.Array<A>> {
     equals: (y) => (x) => {
       if (x.length === y.length) {
         for (let i = 0; i < x.length; i++) {
-          if (!EqA.equals(y[i])(x[i])) {
+          if (!EqA.equals(y[i]!)(x[i]!)) {
             return false
           }
         }

@@ -72,7 +72,7 @@ export function struct<O extends Record<string, any>>(
 ): Identity<O> {
   const empty: any = {}
   for (const key of Object.keys(identities)) {
-    empty[key] = identities[key].identity
+    empty[key] = identities[key]!.identity
   }
   return makeIdentity(empty, A.struct(identities).combine)
 }
