@@ -14,17 +14,26 @@ type Color = "Red" | "Black"
 class Node<K, V> {
   constructor(
     public color: Color,
-    readonly key: K,
-    readonly value: V,
+    public key: K,
+    public value: V,
     public left: Node<K, V> | undefined,
     public right: Node<K, V> | undefined,
     public count: number
   ) {}
 }
 
-//function cloneNode<K, V>(node: Node<K, V>) {
-//  return new Node(node.color, node.key, node.value, node.left, node.right, node.count)
-//}
+function cloneNode<K, V>(node: Node<K, V>) {
+  return new Node(node.color, node.key, node.value, node.left, node.right, node.count)
+}
+
+function swapNode<K, V>(n: Node<K, V>, v: Node<K, V>) {
+  n.key = v.key
+  n.value = v.value
+  n.left = v.left
+  n.right = v.right
+  n.color = v.color
+  n.count = v.count
+}
 
 function repaintNode<K, V>(node: Node<K, V>, color: Color) {
   return new Node(color, node.key, node.value, node.left, node.right, node.count)
@@ -47,6 +56,8 @@ export interface RedBlackTreeIterable<K, V> extends Iterable<readonly [K, V]> {
  * A Red-Black Tree
  */
 export class RedBlackTree<K, V> implements RedBlackTreeIterable<K, V> {
+  readonly _K!: () => K
+  readonly _V!: () => V
   constructor(readonly ord: Ord<K>, readonly root: Node<K, V> | undefined) {}
 
   [Symbol.iterator](): RedBlackTreeIterator<K, V> {
@@ -78,10 +89,14 @@ export function size<K, V>(self: RedBlackTree<K, V>) {
  * Insert a new item into the tree
  */
 export function insert_<K, V>(
-  self: RedBlackTree<K, V>,
+  _self: RedBlackTree<K, V>,
   key: K,
   value: V
 ): RedBlackTree<K, V> {
+  const self: RedBlackTree<K, V> = O.isSome(find_(_self, key))
+    ? remove_(_self, key)
+    : _self
+
   const cmp = self.ord.compare
   //Find point to insert new node at
   let n: Node<K, V> | undefined = self.root
@@ -314,7 +329,7 @@ export function forEach<K, V>(visit: (key: K, value: V) => void) {
 /**
  * Visit nodes greater than or equal to key
  */
-export function visitGte<K, V, A>(
+export function visitGe<K, V, A>(
   node: Node<K, V>,
   min: K,
   ord: Ord<K>,
@@ -353,13 +368,13 @@ export function visitGte<K, V, A>(
 /**
  * Visit each node of the tree in order with key greater then or equal to max
  */
-export function forEachGte_<K, V>(
+export function forEachGe_<K, V>(
   self: RedBlackTree<K, V>,
   min: K,
   visit: (key: K, value: V) => void
 ) {
   if (self.root) {
-    visitGte(self.root, min, self.ord, (key, value) => {
+    visitGe(self.root, min, self.ord, (key, value) => {
       visit(key, value)
       return O.none
     })
@@ -369,8 +384,8 @@ export function forEachGte_<K, V>(
 /**
  * Visit each node of the tree in order with key greater then or equal to max
  */
-export function forEachGte<K, V>(min: K, visit: (key: K, value: V) => void) {
-  return (self: RedBlackTree<K, V>) => forEachGte_(self, min, visit)
+export function forEachGe<K, V>(min: K, visit: (key: K, value: V) => void) {
+  return (self: RedBlackTree<K, V>) => forEachGe_(self, min, visit)
 }
 
 /**
@@ -500,6 +515,201 @@ export function forEachBetween<K, V>(
 }
 
 export type Direction = "Forward" | "Backward"
+
+/**
+ * Fix up a double black node in a tree
+ */
+function fixDoubleBlack<K, V>(stack: Node<K, V>[]) {
+  let n, p, s, z
+  for (let i = stack.length - 1; i >= 0; --i) {
+    n = stack[i]!
+    if (i === 0) {
+      n.color = "Black"
+      return
+    }
+    //console.log("visit node:", n.key, i, stack[i].key, stack[i-1].key)
+    p = stack[i - 1]!
+    if (p.left === n) {
+      //console.log("left child")
+      s = p.right
+      if (s && s.right && s.right.color === "Red") {
+        //console.log("case 1: right sibling child red")
+        s = p.right = cloneNode(s)
+        z = s.right = cloneNode(s.right!)
+        p.right = s.left
+        s.left = p
+        s.right = z
+        s.color = p.color
+        n.color = "Black"
+        p.color = "Black"
+        z.color = "Black"
+        recountNode(p)
+        recountNode(s)
+        if (i > 1) {
+          const pp = stack[i - 2]!
+          if (pp.left === p) {
+            pp.left = s
+          } else {
+            pp.right = s
+          }
+        }
+        stack[i - 1] = s
+        return
+      } else if (s && s.left && s.left.color === "Red") {
+        //console.log("case 1: left sibling child red")
+        s = p.right = cloneNode(s)
+        z = s.left = cloneNode(s.left!)
+        p.right = z.left
+        s.left = z.right
+        z.left = p
+        z.right = s
+        z.color = p.color
+        p.color = "Black"
+        s.color = "Black"
+        n.color = "Black"
+        recountNode(p)
+        recountNode(s)
+        recountNode(z)
+        if (i > 1) {
+          const pp = stack[i - 2]!
+          if (pp.left === p) {
+            pp.left = z
+          } else {
+            pp.right = z
+          }
+        }
+        stack[i - 1] = z
+        return
+      }
+      if (s && s.color === "Black") {
+        if (p.color === "Red") {
+          //console.log("case 2: black sibling, red parent", p.right.value)
+          p.color = "Black"
+          p.right = repaintNode(s, "Red")
+          return
+        } else {
+          //console.log("case 2: black sibling, black parent", p.right.value)
+          p.right = repaintNode(s, "Red")
+          continue
+        }
+      } else if (s) {
+        //console.log("case 3: red sibling")
+        s = cloneNode(s)
+        p.right = s.left
+        s.left = p
+        s.color = p.color
+        p.color = "Red"
+        recountNode(p)
+        recountNode(s)
+        if (i > 1) {
+          const pp = stack[i - 2]!
+          if (pp.left === p) {
+            pp.left = s
+          } else {
+            pp.right = s
+          }
+        }
+        stack[i - 1] = s
+        stack[i] = p
+        if (i + 1 < stack.length) {
+          stack[i + 1] = n
+        } else {
+          stack.push(n)
+        }
+        i = i + 2
+      }
+    } else {
+      //console.log("right child")
+      s = p.left
+      if (s && s.left && s.left.color === "Red") {
+        //console.log("case 1: left sibling child red", p.value, p._color)
+        s = p.left = cloneNode(s)
+        z = s.left = cloneNode(s.left!)
+        p.left = s.right
+        s.right = p
+        s.left = z
+        s.color = p.color
+        n.color = "Black"
+        p.color = "Black"
+        z.color = "Black"
+        recountNode(p)
+        recountNode(s)
+        if (i > 1) {
+          const pp = stack[i - 2]!
+          if (pp.right === p) {
+            pp.right = s
+          } else {
+            pp.left = s
+          }
+        }
+        stack[i - 1] = s
+        return
+      } else if (s && s.right && s.right.color === "Red") {
+        //console.log("case 1: right sibling child red")
+        s = p.left = cloneNode(s)
+        z = s.right = cloneNode(s.right!)
+        p.left = z.right
+        s.right = z.left
+        z.right = p
+        z.left = s
+        z.color = p.color
+        p.color = "Black"
+        s.color = "Black"
+        n.color = "Black"
+        recountNode(p)
+        recountNode(s)
+        recountNode(z)
+        if (i > 1) {
+          const pp = stack[i - 2]!
+          if (pp.right === p) {
+            pp.right = z
+          } else {
+            pp.left = z
+          }
+        }
+        stack[i - 1] = z
+        return
+      }
+      if (s && s.color === "Black") {
+        if (p.color === "Red") {
+          //console.log("case 2: black sibling, red parent")
+          p.color = "Black"
+          p.left = repaintNode(s, "Red")
+          return
+        } else {
+          //console.log("case 2: black sibling, black parent")
+          p.left = repaintNode(s, "Red")
+          continue
+        }
+      } else if (s) {
+        //console.log("case 3: red sibling")
+        s = cloneNode(s)
+        p.left = s.right
+        s.right = p
+        s.color = p.color
+        p.color = "Red"
+        recountNode(p)
+        recountNode(s)
+        if (i > 1) {
+          const pp = stack[i - 2]!
+          if (pp.right === p) {
+            pp.right = s
+          } else {
+            pp.left = s
+          }
+        }
+        stack[i - 1] = s
+        stack[i] = p
+        if (i + 1 < stack.length) {
+          stack[i + 1] = n
+        } else {
+          stack.push(n)
+        }
+        i = i + 2
+      }
+    }
+  }
+}
 
 /**
  * Stateful iterator
@@ -693,6 +903,117 @@ export class RedBlackTreeIterator<K, V> implements Iterator<readonly [K, V]> {
     }
     return false
   }
+
+  remove() {
+    const stack = this.stack
+    if (stack.length === 0) {
+      return this.self
+    }
+    //First copy path to node
+    const cstack = new Array(stack.length)
+    let n = stack[stack.length - 1]!
+
+    cstack[cstack.length - 1] = new Node(
+      n.color,
+      n.key,
+      n.value,
+      n.left,
+      n.right,
+      n.count
+    )
+
+    for (let i = stack.length - 2; i >= 0; --i) {
+      n = stack[i]!
+      if (n.left === stack[i + 1]) {
+        cstack[i] = new Node(n.color, n.key, n.value, cstack[i + 1], n.right, n.count)
+      } else {
+        cstack[i] = new Node(n.color, n.key, n.value, n.left, cstack[i + 1], n.count)
+      }
+    }
+
+    //Get node
+    n = cstack[cstack.length - 1]
+    //console.log("start remove: ", n.value)
+
+    //If not leaf, then swap with previous node
+    if (n.left && n.right) {
+      //console.log("moving to leaf")
+
+      //First walk to previous leaf
+      const split = cstack.length
+      n = n.left
+      while (n.right) {
+        cstack.push(n)
+        n = n.right
+      }
+      //Copy path to leaf
+      const v = cstack[split - 1]
+      cstack.push(new Node(n.color, v.key, v.value, n.left, n.right, n.count))
+      cstack[split - 1].key = n.key
+      cstack[split - 1].value = n.value
+
+      //Fix up stack
+      for (let i = cstack.length - 2; i >= split; --i) {
+        n = cstack[i]
+        cstack[i] = new Node(n.color, n.key, n.value, n.left, cstack[i + 1], n.count)
+      }
+      cstack[split - 1].left = cstack[split]
+    }
+    //console.log("stack=", cstack.map(function(v) { return v.value }))
+
+    //Remove leaf node
+    n = cstack[cstack.length - 1]
+    if (n.color === "Red") {
+      //Easy case: removing red leaf
+      //console.log("RED leaf")
+      const p = cstack[cstack.length - 2]
+      if (p.left === n) {
+        p.left = null
+      } else if (p.right === n) {
+        p.right = null
+      }
+      cstack.pop()
+      for (let i = 0; i < cstack.length; ++i) {
+        cstack[i]._count--
+      }
+      return new RedBlackTree(this.self.ord, cstack[0])
+    } else {
+      if (n.left || n.right) {
+        //Second easy case:  Single child black parent
+        //console.log("BLACK single child")
+        if (n.left) {
+          swapNode(n, n.left)
+        } else if (n.right) {
+          swapNode(n, n.right)
+        }
+        //Child must be red, so repaint it black to balance color
+        n.color = "Black"
+        for (let i = 0; i < cstack.length - 1; ++i) {
+          cstack[i]._count--
+        }
+        return new RedBlackTree(this.self.ord, cstack[0])
+      } else if (cstack.length === 1) {
+        //Third easy case: root
+        //console.log("ROOT")
+        return new RedBlackTree(this.self.ord, undefined)
+      } else {
+        //Hard case: Repaint n, and then do some nasty stuff
+        //console.log("BLACK leaf no children")
+        for (let i = 0; i < cstack.length; ++i) {
+          cstack[i]._count--
+        }
+        const parent = cstack[cstack.length - 2]
+        fixDoubleBlack(cstack)
+        //Fix up links
+        if (parent.left === n) {
+          parent.left = null
+        } else {
+          parent.right = null
+        }
+      }
+    }
+    return new RedBlackTree(this.self.ord, cstack[0])
+  }
 }
 
 /**
@@ -818,7 +1139,7 @@ export function getAt(
 }
 
 /**
- * Returns an iterator that traverse entries with keys less or equal then key
+ * Returns an iterator that traverse entries with keys less then or equal to key
  */
 export function le_<K, V>(
   tree: RedBlackTree<K, V>,
@@ -851,13 +1172,141 @@ export function le_<K, V>(
 }
 
 /**
- * Returns an iterator that traverse entries with keys less or equal then key
+ * Returns an iterator that traverse entries with keys less then or equal to key
  */
-export function le<K, V>(
+export function le<K>(
   key: K,
   direction: Direction = "Forward"
-): (tree: RedBlackTree<K, V>) => RedBlackTreeIterable<K, V> {
+): <V>(tree: RedBlackTree<K, V>) => RedBlackTreeIterable<K, V> {
   return (tree) => le_(tree, key, direction)
+}
+/**
+ * Returns an iterator that traverse entries with keys less then key
+ */
+export function lt_<K, V>(
+  tree: RedBlackTree<K, V>,
+  key: K,
+  direction: Direction = "Forward"
+): RedBlackTreeIterable<K, V> {
+  return {
+    ord: tree.ord,
+    [Symbol.iterator]: () => {
+      const cmp = tree.ord.compare
+      let n = tree.root
+      const stack = []
+      let last_ptr = 0
+      while (n) {
+        const d = cmp(n.key)(key)
+        stack.push(n)
+        if (d > 0) {
+          last_ptr = stack.length
+        }
+        if (d <= 0) {
+          n = n.left
+        } else {
+          n = n.right
+        }
+      }
+      stack.length = last_ptr
+      return new RedBlackTreeIterator(tree, stack, direction)
+    }
+  }
+}
+
+/**
+ * Returns an iterator that traverse entries with keys less then key
+ */
+export function lt<K>(
+  key: K,
+  direction: Direction = "Forward"
+): <V>(tree: RedBlackTree<K, V>) => RedBlackTreeIterable<K, V> {
+  return (tree) => lt_(tree, key, direction)
+}
+
+/**
+ * Returns an iterator that traverse entries with keys greater then or equal to key
+ */
+export function ge_<K, V>(
+  tree: RedBlackTree<K, V>,
+  key: K,
+  direction: Direction = "Forward"
+): RedBlackTreeIterable<K, V> {
+  return {
+    ord: tree.ord,
+    [Symbol.iterator]: () => {
+      const cmp = tree.ord.compare
+      let n = tree.root
+      const stack = []
+      let last_ptr = 0
+      while (n) {
+        const d = cmp(n.key)(key)
+        stack.push(n)
+        if (d <= 0) {
+          last_ptr = stack.length
+        }
+        if (d <= 0) {
+          n = n.left
+        } else {
+          n = n.right
+        }
+      }
+      stack.length = last_ptr
+      return new RedBlackTreeIterator(tree, stack, direction)
+    }
+  }
+}
+
+/**
+ * Returns an iterator that traverse entries with keys greater then or equal to key
+ */
+export function ge<K>(
+  key: K,
+  direction: Direction = "Forward"
+): <V>(tree: RedBlackTree<K, V>) => RedBlackTreeIterable<K, V> {
+  return (tree) => ge_(tree, key, direction)
+}
+
+/**
+ * Returns an iterator that traverse entries with keys greater then or equal to key
+ */
+export function gt_<K, V>(
+  tree: RedBlackTree<K, V>,
+  key: K,
+  direction: Direction = "Forward"
+): RedBlackTreeIterable<K, V> {
+  return {
+    ord: tree.ord,
+    [Symbol.iterator]: () => {
+      const cmp = tree.ord.compare
+      let n = tree.root
+      const stack = []
+      let last_ptr = 0
+      while (n) {
+        const d = cmp(n.key)(key)
+        stack.push(n)
+        if (d < 0) {
+          last_ptr = stack.length
+        }
+        if (d < 0) {
+          n = n.left
+        } else {
+          n = n.right
+        }
+      }
+      stack.length = last_ptr
+      return new RedBlackTreeIterator(tree, stack, direction)
+    }
+  }
+}
+
+/**
+ * Returns an iterator that traverse entries with keys greater then or equal to key
+ */
+export function gt<K>(
+  key: K,
+  direction: Direction = "Forward"
+): <V>(tree: RedBlackTree<K, V>) => RedBlackTreeIterable<K, V> {
+  return (tree) => gt_(tree, key, direction)
 }
 
 /**
@@ -977,4 +1426,72 @@ export function from<K, V>(
   }
 
   return tree
+}
+
+function findInternal_<K, V>(
+  tree: RedBlackTree<K, V>,
+  key: K,
+  direction: Direction = "Forward"
+): RedBlackTreeIterator<K, V> {
+  const cmp = tree.ord.compare
+  let n = tree.root
+  const stack = []
+  while (n) {
+    const d = cmp(n.key)(key)
+    stack.push(n)
+    if (d === 0) {
+      return new RedBlackTreeIterator(tree, stack, direction)
+    }
+    if (d <= 0) {
+      n = n.left
+    } else {
+      n = n.right
+    }
+  }
+  return new RedBlackTreeIterator(tree, [], direction)
+}
+
+/**
+ * Finds the item with key if it exists
+ */
+export function find_<K, V>(tree: RedBlackTree<K, V>, key: K): O.Option<V> {
+  const cmp = tree.ord.compare
+  let n = tree.root
+  while (n) {
+    const d = cmp(n.key)(key)
+    if (d === 0) {
+      return O.some(n.value)
+    }
+    if (d <= 0) {
+      n = n.left
+    } else {
+      n = n.right
+    }
+  }
+  return O.none
+}
+
+/**
+ * Finds the item with key if it exists
+ */
+export function find<K>(key: K): <V>(tree: RedBlackTree<K, V>) => O.Option<V> {
+  return (tree) => findInternal_(tree, key).value
+}
+
+/**
+ * Removes entry with key
+ */
+export function remove_<K, V>(tree: RedBlackTree<K, V>, key: K): RedBlackTree<K, V> {
+  const iter = findInternal_(tree, key)
+  if (iter) {
+    return iter.remove()
+  }
+  return tree
+}
+
+/**
+ * Removes entry with key
+ */
+export function remove<K>(key: K) {
+  return <V>(tree: RedBlackTree<K, V>) => remove_(tree, key)
 }
