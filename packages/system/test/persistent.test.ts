@@ -300,4 +300,66 @@ describe("RedBlackTree", () => {
     expect(RB.getLast(tree)).toEqual(O.some([3, "e"]))
     expect(RB.getAt_(tree, 1)).toEqual(O.some([-1, "c"]))
   })
+  it("forEachGte", () => {
+    const ordered: [number, string][] = []
+
+    pipe(
+      RB.make<number, string>(ordNumber),
+      RB.insert(1, "a"),
+      RB.insert(0, "b"),
+      RB.insert(-1, "c"),
+      RB.insert(-2, "d"),
+      RB.insert(3, "e"),
+      RB.forEachGte(0, (k, v) => {
+        ordered.push([k, v])
+      })
+    )
+
+    expect(ordered).toEqual([
+      [0, "b"],
+      [1, "a"],
+      [3, "e"]
+    ])
+  })
+  it("forEachLt", () => {
+    const ordered: [number, string][] = []
+
+    pipe(
+      RB.make<number, string>(ordNumber),
+      RB.insert(1, "a"),
+      RB.insert(0, "b"),
+      RB.insert(-1, "c"),
+      RB.insert(-2, "d"),
+      RB.insert(3, "e"),
+      RB.forEachLt(0, (k, v) => {
+        ordered.push([k, v])
+      })
+    )
+
+    expect(ordered).toEqual([
+      [-2, "d"],
+      [-1, "c"]
+    ])
+  })
+  it("forEachBetween", () => {
+    const ordered: [number, string][] = []
+
+    pipe(
+      RB.make<number, string>(ordNumber),
+      RB.insert(1, "a"),
+      RB.insert(0, "b"),
+      RB.insert(-1, "c"),
+      RB.insert(-2, "d"),
+      RB.insert(3, "e"),
+      RB.forEachBetween(-1, 2, (k, v) => {
+        ordered.push([k, v])
+      })
+    )
+
+    expect(ordered).toEqual([
+      [-1, "c"],
+      [0, "b"],
+      [1, "a"]
+    ])
+  })
 })
