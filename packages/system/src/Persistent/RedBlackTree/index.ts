@@ -335,6 +335,9 @@ export class RedBlackTreeIterator<K, V> implements Iterator<readonly [K, V]> {
     )
   }
 
+  /**
+   * Iterator next
+   */
   next(): IteratorResult<readonly [K, V]> {
     const entry = this.entry
     this.count++
