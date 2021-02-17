@@ -339,7 +339,7 @@ describe("RedBlackTree", () => {
       RB.insert(3, "e")
     )
 
-    expect(RB.begin(tree)).toEqual(O.some([-2, "d"]))
-    expect(RB.end(tree)).toEqual(O.some([3, "e"]))
+    expect(RB.getFirst(tree)).toEqual(O.some([-2, "d"]))
+    expect(RB.getLast(tree)).toEqual(O.some([3, "e"]))
   })
 })
