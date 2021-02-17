@@ -38,6 +38,8 @@ function recountNode<K, V>(node: Node<K, V>) {
  * A Red-Black Tree Iterable
  */
 export interface RedBlackTreeIterable<K, V> extends Iterable<readonly [K, V]> {
+  readonly ord: Ord<K>
+
   [Symbol.iterator](): RedBlackTreeIterator<K, V>
 }
 
@@ -309,6 +311,194 @@ export function forEach<K, V>(visit: (key: K, value: V) => void) {
   return (self: RedBlackTree<K, V>) => forEach_(self, visit)
 }
 
+/**
+ * Visit nodes greater than or equal to key
+ */
+export function visitGte<K, V, A>(
+  node: Node<K, V>,
+  min: K,
+  ord: Ord<K>,
+  visit: (key: K, value: V) => O.Option<A>
+): O.Option<A> {
+  let current: Node<K, V> | undefined = node
+  let stack: Stack<Node<K, V>> | undefined = undefined
+  let done = false
+
+  while (!done) {
+    if (current) {
+      stack = new Stack(current, stack)
+      if (ord.compare(current.key)(min) <= 0) {
+        current = current.left
+      } else {
+        current = undefined
+      }
+    } else if (stack) {
+      if (ord.compare(stack.value.key)(min) <= 0) {
+        const v = visit(stack.value.key, stack.value.value)
+
+        if (O.isSome(v)) {
+          return v
+        }
+      }
+      current = stack.value.right
+      stack = stack.previous
+    } else {
+      done = true
+    }
+  }
+
+  return O.none
+}
+
+/**
+ * Visit each node of the tree in order with key greater then or equal to max
+ */
+export function forEachGte_<K, V>(
+  self: RedBlackTree<K, V>,
+  min: K,
+  visit: (key: K, value: V) => void
+) {
+  if (self.root) {
+    visitGte(self.root, min, self.ord, (key, value) => {
+      visit(key, value)
+      return O.none
+    })
+  }
+}
+
+/**
+ * Visit each node of the tree in order with key greater then or equal to max
+ */
+export function forEachGte<K, V>(min: K, visit: (key: K, value: V) => void) {
+  return (self: RedBlackTree<K, V>) => forEachGte_(self, min, visit)
+}
+
+/**
+ * Visit nodes lower than key
+ */
+export function visitLt<K, V, A>(
+  node: Node<K, V>,
+  max: K,
+  ord: Ord<K>,
+  visit: (key: K, value: V) => O.Option<A>
+): O.Option<A> {
+  let current: Node<K, V> | undefined = node
+  let stack: Stack<Node<K, V>> | undefined = undefined
+  let done = false
+
+  while (!done) {
+    if (current) {
+      stack = new Stack(current, stack)
+      current = current.left
+    } else if (stack && ord.compare(stack.value.key)(max) > 0) {
+      const v = visit(stack.value.key, stack.value.value)
+
+      if (O.isSome(v)) {
+        return v
+      }
+
+      current = stack.value.right
+      stack = stack.previous
+    } else {
+      done = true
+    }
+  }
+
+  return O.none
+}
+
+/**
+ * Visit each node of the tree in order with key lower then max
+ */
+export function forEachLt_<K, V>(
+  self: RedBlackTree<K, V>,
+  max: K,
+  visit: (key: K, value: V) => void
+) {
+  if (self.root) {
+    visitLt(self.root, max, self.ord, (key, value) => {
+      visit(key, value)
+      return O.none
+    })
+  }
+}
+
+/**
+ * Visit each node of the tree in order with key lower then max
+ */
+export function forEachLt<K, V>(max: K, visit: (key: K, value: V) => void) {
+  return (self: RedBlackTree<K, V>) => forEachLt_(self, max, visit)
+}
+
+/**
+ * Visit nodes with key lower than max and greater then or equal to min
+ */
+export function visitBetween<K, V, A>(
+  node: Node<K, V>,
+  min: K,
+  max: K,
+  ord: Ord<K>,
+  visit: (key: K, value: V) => O.Option<A>
+): O.Option<A> {
+  let current: Node<K, V> | undefined = node
+  let stack: Stack<Node<K, V>> | undefined = undefined
+  let done = false
+
+  while (!done) {
+    if (current) {
+      stack = new Stack(current, stack)
+      if (ord.compare(current.key)(min) <= 0) {
+        current = current.left
+      } else {
+        current = undefined
+      }
+    } else if (stack && ord.compare(stack.value.key)(max) > 0) {
+      if (ord.compare(stack.value.key)(min) <= 0) {
+        const v = visit(stack.value.key, stack.value.value)
+
+        if (O.isSome(v)) {
+          return v
+        }
+      }
+
+      current = stack.value.right
+      stack = stack.previous
+    } else {
+      done = true
+    }
+  }
+
+  return O.none
+}
+
+/**
+ * Visit each node of the tree in order with key lower than max and greater then or equal to min
+ */
+export function forEachBetween_<K, V>(
+  self: RedBlackTree<K, V>,
+  min: K,
+  max: K,
+  visit: (key: K, value: V) => void
+) {
+  if (self.root) {
+    visitBetween(self.root, min, max, self.ord, (key, value) => {
+      visit(key, value)
+      return O.none
+    })
+  }
+}
+
+/**
+ * Visit each node of the tree in order with key lower than max and greater then or equal to min
+ */
+export function forEachBetween<K, V>(
+  min: K,
+  max: K,
+  visit: (key: K, value: V) => void
+) {
+  return (self: RedBlackTree<K, V>) => forEachBetween_(self, min, max, visit)
+}
+
 export type Direction = "Forward" | "Backward"
 
 /**
@@ -540,6 +730,7 @@ export function at_<K, V>(
   direction: Direction = "Forward"
 ): RedBlackTreeIterable<K, V> {
   return {
+    ord: tree.ord,
     [Symbol.iterator]: () => {
       if (idx < 0) {
         return new RedBlackTreeIterator(tree, [], direction)
@@ -635,6 +826,7 @@ export function le_<K, V>(
   direction: Direction = "Forward"
 ): RedBlackTreeIterable<K, V> {
   return {
+    ord: tree.ord,
     [Symbol.iterator]: () => {
       const cmp = tree.ord.compare
       let n = tree.root
@@ -673,6 +865,7 @@ export function le<K, V>(
  */
 export function backwards<K, V>(self: RedBlackTree<K, V>): RedBlackTreeIterable<K, V> {
   return {
+    ord: self.ord,
     [Symbol.iterator]: () => {
       const stack: Node<K, V>[] = []
       let n = self.root
@@ -764,4 +957,24 @@ export function keys(
   direction: Direction = "Forward"
 ): <K, V>(self: RedBlackTree<K, V>) => Iterable<K> {
   return (self) => keys_(self, direction)
+}
+
+/**
+ * Constructs a new tree from an iterable of key-value pairs
+ */
+export function from<K, V>(iterable: RedBlackTreeIterable<K, V>): RedBlackTree<K, V>
+export function from<K, V>(
+  iterable: Iterable<readonly [K, V]>,
+  ord: Ord<K>
+): RedBlackTree<K, V>
+export function from<K, V>(
+  ...args: [RedBlackTreeIterable<K, V>] | [Iterable<readonly [K, V]>, Ord<K>]
+): RedBlackTree<K, V> {
+  let tree = args.length === 2 ? make<K, V>(args[1]) : make<K, V>(args[0].ord)
+
+  for (const [k, v] of args[0]) {
+    tree = insert_(tree, k, v)
+  }
+
+  return tree
 }
