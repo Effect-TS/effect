@@ -34,26 +34,21 @@ function recountNode<K, V>(node: Node<K, V>) {
   node.count = 1 + (node.left?.count ?? 0) + (node.right?.count ?? 0)
 }
 
+export interface RedBlackTreeIterable<K, V> extends Iterable<readonly [K, V]> {
+  [Symbol.iterator](): RedBlackTreeIterator<K, V>
+}
+
 export class RedBlackTree<K, V> implements Iterable<readonly [K, V]> {
   constructor(readonly ord: Ord<K>, readonly root: Node<K, V> | undefined) {}
 
-  [Symbol.iterator](): IterableIterator<readonly [K, V]> {
-    const begin = iteratorBegin(this)
-    let count = 0
-
-    return {
-      next: (): IteratorResult<readonly [K, V]> => {
-        count++
-        const entry = begin.entry
-        begin.next()
-        return O.fold_(
-          entry,
-          () => ({ value: count, done: true }),
-          (entry) => ({ value: entry, done: false })
-        )
-      },
-      [Symbol.iterator]: this[Symbol.iterator]
+  [Symbol.iterator](): RedBlackTreeIterator<K, V> {
+    const stack: Node<K, V>[] = []
+    let n = this.root
+    while (n) {
+      stack.push(n)
+      n = n.left
     }
+    return new RedBlackTreeIterator(this, stack, "Forward")
   }
 }
 
@@ -74,7 +69,11 @@ export function size<K, V>(self: RedBlackTree<K, V>) {
 /**
  * Insert a new item into the tree
  */
-export function insert_<K, V>(self: RedBlackTree<K, V>, key: K, value: V) {
+export function insert_<K, V>(
+  self: RedBlackTree<K, V>,
+  key: K,
+  value: V
+): RedBlackTree<K, V> {
   const cmp = self.ord.compare
   //Find point to insert new node at
   let n: Node<K, V> | undefined = self.root
@@ -304,11 +303,33 @@ export function forEach<K, V>(visit: (key: K, value: V) => void) {
   return (self: RedBlackTree<K, V>) => forEach_(self, visit)
 }
 
+export type Direction = "Forward" | "Backward"
+
 /**
  * Stateful iterator
  */
-export class RedBlackTreeIterator<K, V> {
-  constructor(readonly self: RedBlackTree<K, V>, readonly stack: Node<K, V>[]) {}
+export class RedBlackTreeIterator<K, V> implements Iterator<readonly [K, V]> {
+  private count = 0
+  constructor(
+    readonly self: RedBlackTree<K, V>,
+    readonly stack: Node<K, V>[],
+    readonly direction: Direction
+  ) {}
+
+  next(): IteratorResult<readonly [K, V]> {
+    const entry = this.entry
+    this.count++
+    if (this.direction === "Forward") {
+      this.moveNext()
+    } else {
+      this.movePrev()
+    }
+    return O.fold_(
+      entry,
+      () => ({ done: true, value: this.count }),
+      (kv) => ({ done: false, value: kv })
+    )
+  }
 
   /**
    * Returns the key
@@ -372,7 +393,7 @@ export class RedBlackTreeIterator<K, V> {
   /**
    * Advances iterator to next element in list
    */
-  next() {
+  moveNext() {
     const stack = this.stack
     if (stack.length === 0) {
       return
@@ -415,7 +436,7 @@ export class RedBlackTreeIterator<K, V> {
   /**
    * Advances iterator to previous element in list
    */
-  prev() {
+  movePrev() {
     const stack = this.stack
     if (stack.length === 0) {
       return
@@ -457,22 +478,9 @@ export class RedBlackTreeIterator<K, V> {
 }
 
 /**
- * Returns an iterator that points to the beginning of the tree
- */
-export function iteratorBegin<K, V>(tree: RedBlackTree<K, V>) {
-  const stack: Node<K, V>[] = []
-  let n = tree.root
-  while (n) {
-    stack.push(n)
-    n = n.left
-  }
-  return new RedBlackTreeIterator(tree, stack)
-}
-
-/**
  * Returns the first entry in the tree
  */
-export function begin<K, V>(tree: RedBlackTree<K, V>): O.Option<readonly [K, V]> {
+export function getFirst<K, V>(tree: RedBlackTree<K, V>): O.Option<readonly [K, V]> {
   let n: Node<K, V> | undefined = tree.root
   let c: Node<K, V> | undefined = tree.root
   while (n) {
@@ -485,7 +493,7 @@ export function begin<K, V>(tree: RedBlackTree<K, V>): O.Option<readonly [K, V]>
 /**
  * Returns the last entry in the tree
  */
-export function end<K, V>(tree: RedBlackTree<K, V>): O.Option<readonly [K, V]> {
+export function getLast<K, V>(tree: RedBlackTree<K, V>): O.Option<readonly [K, V]> {
   let n: Node<K, V> | undefined = tree.root
   let c: Node<K, V> | undefined = tree.root
   while (n) {
@@ -496,117 +504,142 @@ export function end<K, V>(tree: RedBlackTree<K, V>): O.Option<readonly [K, V]> {
 }
 
 /**
- * Returns an iterator that points to the end of the tree
- */
-export function iteratorEnd<K, V>(tree: RedBlackTree<K, V>) {
-  const stack: Node<K, V>[] = []
-  let n = tree.root
-  while (n) {
-    stack.push(n)
-    n = n.right
-  }
-  return new RedBlackTreeIterator(tree, stack)
-}
-
-/**
  * Returns an iterator that points to the element i of the tree
  */
-export function iteratorAt_<K, V>(tree: RedBlackTree<K, V>, idx: number) {
-  if (idx < 0) {
-    return new RedBlackTreeIterator(tree, [])
-  }
-  let n = tree.root
-  const stack: Node<K, V>[] = []
-  while (n) {
-    stack.push(n)
-    if (n.left) {
-      if (idx < n.left.count) {
-        n = n.left
-        continue
+export function at_<K, V>(
+  tree: RedBlackTree<K, V>,
+  idx: number,
+  direction: Direction = "Forward"
+): RedBlackTreeIterable<K, V> {
+  return {
+    [Symbol.iterator]: () => {
+      if (idx < 0) {
+        return new RedBlackTreeIterator(tree, [], direction)
       }
-      idx -= n.left.count
-    }
-    if (!idx) {
-      return new RedBlackTreeIterator(tree, stack)
-    }
-    idx -= 1
-    if (n.right) {
-      if (idx >= n.right.count) {
-        break
+      let n = tree.root
+      const stack: Node<K, V>[] = []
+      while (n) {
+        stack.push(n)
+        if (n.left) {
+          if (idx < n.left.count) {
+            n = n.left
+            continue
+          }
+          idx -= n.left.count
+        }
+        if (!idx) {
+          return new RedBlackTreeIterator(tree, stack, direction)
+        }
+        idx -= 1
+        if (n.right) {
+          if (idx >= n.right.count) {
+            break
+          }
+          n = n.right
+        } else {
+          break
+        }
       }
-      n = n.right
-    } else {
-      break
+      return new RedBlackTreeIterator(tree, [], direction)
     }
   }
-  return new RedBlackTreeIterator(tree, [])
 }
 
 /**
  * Returns an iterator that points to the element i of the tree
  */
 export function iteratorAt(idx: number) {
-  return <K, V>(tree: RedBlackTree<K, V>) => iteratorAt_(tree, idx)
+  return <K, V>(tree: RedBlackTree<K, V>) => at_(tree, idx)
+}
+
+/**
+ * Returns an iterator that traverse entries with keys less or equal then key
+ */
+export function le<K, V>(
+  tree: RedBlackTree<K, V>,
+  key: K,
+  direction: Direction = "Forward"
+): RedBlackTreeIterable<K, V> {
+  return {
+    [Symbol.iterator]: () => {
+      const cmp = tree.ord.compare
+      let n = tree.root
+      const stack = []
+      let last_ptr = 0
+      while (n) {
+        const d = cmp(n.key)(key)
+        stack.push(n)
+        if (d <= 0) {
+          last_ptr = stack.length
+        }
+        if (d <= 0) {
+          n = n.left
+        } else {
+          n = n.right
+        }
+      }
+      stack.length = last_ptr
+      return new RedBlackTreeIterator(tree, stack, direction)
+    }
+  }
 }
 
 /**
  * Traverse the tree backwards
  */
-export function backwards<K, V>(
-  self: RedBlackTree<K, V>
-): IterableIterator<readonly [K, V]> {
-  const begin = iteratorEnd(self)
-  let count = 0
-
+export function backwards<K, V>(self: RedBlackTree<K, V>): RedBlackTreeIterable<K, V> {
   return {
-    next: (): IteratorResult<readonly [K, V]> => {
-      count++
-      const entry = begin.entry
-      begin.prev()
-      return O.fold_(
-        entry,
-        () => ({ value: count, done: true }),
-        (entry) => ({ value: entry, done: false })
-      )
-    },
-    [Symbol.iterator]: () => backwards(self)
+    [Symbol.iterator]: () => {
+      const stack: Node<K, V>[] = []
+      let n = self.root
+      while (n) {
+        stack.push(n)
+        n = n.right
+      }
+      return new RedBlackTreeIterator(self, stack, "Backward")
+    }
   }
 }
 
-export function values<K, V>(self: RedBlackTree<K, V>): IterableIterator<V> {
-  const begin = iteratorBegin(self)
-  let count = 0
-
+export function values<K, V>(self: RedBlackTree<K, V>): Iterable<V> {
   return {
-    next: (): IteratorResult<V> => {
-      count++
-      const entry = begin.value
-      begin.next()
-      return O.fold_(
-        entry,
-        () => ({ value: count, done: true }),
-        (entry) => ({ value: entry, done: false })
-      )
-    },
-    [Symbol.iterator]: () => values(self)
+    [Symbol.iterator]: () => {
+      const begin = self[Symbol.iterator]()
+      let count = 0
+      return {
+        next: (): IteratorResult<V> => {
+          count++
+          const entry = begin.value
+          begin.moveNext()
+          return O.fold_(
+            entry,
+            () => ({ value: count, done: true }),
+            (entry) => ({ value: entry, done: false })
+          )
+        }
+      }
+    }
   }
 }
 
-export function keys<K, V>(self: RedBlackTree<K, V>): IterableIterator<K> {
-  const begin = iteratorBegin(self)
-  let count = 0
-
+export function keys<K, V>(self: RedBlackTree<K, V>): Iterable<K> {
   return {
-    next: (): IteratorResult<K> => {
-      count++
-      const entry = begin.key
-      begin.next()
-      return O.fold_(
-        entry,
-        () => ({ value: count, done: true }),
-        (entry) => ({ value: entry, done: false })
-      )
-    },
-    [Symbol.iterator]: () => keys(self)
+    [Symbol.iterator]: () => {
+      const begin = self[Symbol.iterator]()
+      let count = 0
+
+      return {
+        next: (): IteratorResult<K> => {
+          count++
+          const entry = begin.key
+          begin.moveNext()
+          return O.fold_(
+            entry,
+            () => ({ value: count, done: true }),
+            (entry) => ({ value: entry, done: false })
+          )
+        }
+      }
+    }
   }
 }
