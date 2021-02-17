@@ -904,7 +904,7 @@ export class RedBlackTreeIterator<K, V> implements Iterator<readonly [K, V]> {
     return false
   }
 
-  remove() {
+  remove(): RedBlackTree<K, V> {
     const stack = this.stack
     if (stack.length === 0) {
       return this.self
