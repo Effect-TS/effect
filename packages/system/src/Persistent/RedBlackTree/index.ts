@@ -310,11 +310,30 @@ export type Direction = "Forward" | "Backward"
  */
 export class RedBlackTreeIterator<K, V> implements Iterator<readonly [K, V]> {
   private count = 0
+
   constructor(
     readonly self: RedBlackTree<K, V>,
     readonly stack: Node<K, V>[],
     readonly direction: Direction
   ) {}
+
+  /**
+   * Clones the iterator
+   */
+  clone(): RedBlackTreeIterator<K, V> {
+    return new RedBlackTreeIterator(this.self, this.stack.slice(), this.direction)
+  }
+
+  /**
+   * Reverse the traversal direction
+   */
+  reversed(): RedBlackTreeIterator<K, V> {
+    return new RedBlackTreeIterator(
+      this.self,
+      this.stack.slice(),
+      this.direction === "Forward" ? "Backward" : "Forward"
+    )
+  }
 
   next(): IteratorResult<readonly [K, V]> {
     const entry = this.entry
@@ -548,14 +567,14 @@ export function at_<K, V>(
 /**
  * Returns an iterator that points to the element i of the tree
  */
-export function iteratorAt(idx: number) {
+export function at(idx: number) {
   return <K, V>(tree: RedBlackTree<K, V>) => at_(tree, idx)
 }
 
 /**
  * Returns an iterator that traverse entries with keys less or equal then key
  */
-export function le<K, V>(
+export function le_<K, V>(
   tree: RedBlackTree<K, V>,
   key: K,
   direction: Direction = "Forward"
@@ -585,6 +604,16 @@ export function le<K, V>(
 }
 
 /**
+ * Returns an iterator that traverse entries with keys less or equal then key
+ */
+export function le<K, V>(
+  key: K,
+  direction: Direction = "Forward"
+): (tree: RedBlackTree<K, V>) => RedBlackTreeIterable<K, V> {
+  return (tree) => le_(tree, key, direction)
+}
+
+/**
  * Traverse the tree backwards
  */
 export function backwards<K, V>(self: RedBlackTree<K, V>): RedBlackTreeIterable<K, V> {
@@ -601,7 +630,13 @@ export function backwards<K, V>(self: RedBlackTree<K, V>): RedBlackTreeIterable<
   }
 }
 
-export function values<K, V>(self: RedBlackTree<K, V>): Iterable<V> {
+/**
+ * Get the values of the tree
+ */
+export function values_<K, V>(
+  self: RedBlackTree<K, V>,
+  direction: Direction = "Forward"
+): Iterable<V> {
   return {
     [Symbol.iterator]: () => {
       const begin = self[Symbol.iterator]()
@@ -610,7 +645,11 @@ export function values<K, V>(self: RedBlackTree<K, V>): Iterable<V> {
         next: (): IteratorResult<V> => {
           count++
           const entry = begin.value
-          begin.moveNext()
+          if (direction === "Forward") {
+            begin.moveNext()
+          } else {
+            begin.movePrev()
+          }
           return O.fold_(
             entry,
             () => ({ value: count, done: true }),
@@ -622,7 +661,22 @@ export function values<K, V>(self: RedBlackTree<K, V>): Iterable<V> {
   }
 }
 
-export function keys<K, V>(self: RedBlackTree<K, V>): Iterable<K> {
+/**
+ * Get the values of the tree
+ */
+export function values(
+  direction: Direction = "Forward"
+): <K, V>(self: RedBlackTree<K, V>) => Iterable<V> {
+  return (self) => values_(self, direction)
+}
+
+/**
+ * Get the keys of the tree
+ */
+export function keys_<K, V>(
+  self: RedBlackTree<K, V>,
+  direction: Direction = "Forward"
+): Iterable<K> {
   return {
     [Symbol.iterator]: () => {
       const begin = self[Symbol.iterator]()
@@ -632,7 +686,11 @@ export function keys<K, V>(self: RedBlackTree<K, V>): Iterable<K> {
         next: (): IteratorResult<K> => {
           count++
           const entry = begin.key
-          begin.moveNext()
+          if (direction === "Forward") {
+            begin.moveNext()
+          } else {
+            begin.movePrev()
+          }
           return O.fold_(
             entry,
             () => ({ value: count, done: true }),
@@ -642,4 +700,13 @@ export function keys<K, V>(self: RedBlackTree<K, V>): Iterable<K> {
       }
     }
   }
+}
+
+/**
+ * Get the keys of the tree
+ */
+export function keys(
+  direction: Direction = "Forward"
+): <K, V>(self: RedBlackTree<K, V>) => Iterable<K> {
+  return (self) => keys_(self, direction)
 }

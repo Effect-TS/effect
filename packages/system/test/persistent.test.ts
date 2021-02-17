@@ -281,7 +281,7 @@ describe("RedBlackTree", () => {
       RB.insert(3, "e")
     )
 
-    for (const v of RB.values(tree)) {
+    for (const v of RB.values_(tree)) {
       ordered.push(v)
     }
 
@@ -301,7 +301,7 @@ describe("RedBlackTree", () => {
       RB.insert(3, "e")
     )
 
-    for (const v of RB.keys(tree)) {
+    for (const v of RB.keys_(tree)) {
       ordered.push(v)
     }
 
@@ -321,7 +321,7 @@ describe("RedBlackTree", () => {
       RB.insert(3, "e")
     )
 
-    for (const v of RB.keys(tree)) {
+    for (const v of RB.keys_(tree)) {
       ordered.push(v)
     }
 
