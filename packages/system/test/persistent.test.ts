@@ -300,7 +300,7 @@ describe("RedBlackTree", () => {
     expect(RB.getLast(tree)).toEqual(O.some([3, "e"]))
     expect(RB.getAt_(tree, 1)).toEqual(O.some([-1, "c"]))
   })
-  it("forEachGte", () => {
+  it("forEachGe", () => {
     const ordered: [number, string][] = []
 
     pipe(
@@ -310,7 +310,7 @@ describe("RedBlackTree", () => {
       RB.insert(-1, "c"),
       RB.insert(-2, "d"),
       RB.insert(3, "e"),
-      RB.forEachGte(0, (k, v) => {
+      RB.forEachGe(0, (k, v) => {
         ordered.push([k, v])
       })
     )
@@ -361,5 +361,37 @@ describe("RedBlackTree", () => {
       [0, "b"],
       [1, "a"]
     ])
+  })
+  it("ge", () => {
+    const tree = pipe(
+      RB.make<number, string>(ordNumber),
+      RB.insert(1, "a"),
+      RB.insert(0, "b"),
+      RB.insert(-1, "c"),
+      RB.insert(-2, "d"),
+      RB.insert(3, "e")
+    )
+
+    expect(Array.from(RB.ge_(tree, 0))).toEqual([
+      [0, "b"],
+      [1, "a"],
+      [3, "e"]
+    ])
+    expect(Array.from(RB.ge_(tree, 0, "Backward"))).toEqual([
+      [0, "b"],
+      [-1, "c"],
+      [-2, "d"]
+    ])
+  })
+  it("find", () => {
+    const tree = pipe(
+      RB.make<number, string>(ordNumber),
+      RB.insert(1, "a"),
+      RB.insert(1, "b"),
+      RB.insert(2, "c"),
+      RB.insert(3, "d")
+    )
+
+    expect(RB.find_(tree, 1)).toEqual(O.some("b"))
   })
 })
