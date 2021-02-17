@@ -34,11 +34,17 @@ function recountNode<K, V>(node: Node<K, V>) {
   node.count = 1 + (node.left?.count ?? 0) + (node.right?.count ?? 0)
 }
 
+/**
+ * A Red-Black Tree Iterable
+ */
 export interface RedBlackTreeIterable<K, V> extends Iterable<readonly [K, V]> {
   [Symbol.iterator](): RedBlackTreeIterator<K, V>
 }
 
-export class RedBlackTree<K, V> implements Iterable<readonly [K, V]> {
+/**
+ * A Red-Black Tree
+ */
+export class RedBlackTree<K, V> implements RedBlackTreeIterable<K, V> {
   constructor(readonly ord: Ord<K>, readonly root: Node<K, V> | undefined) {}
 
   [Symbol.iterator](): RedBlackTreeIterator<K, V> {
@@ -572,6 +578,52 @@ export function at_<K, V>(
  */
 export function at(idx: number) {
   return <K, V>(tree: RedBlackTree<K, V>) => at_(tree, idx)
+}
+
+/**
+ * Returns the element i of the tree
+ */
+export function getAt_<K, V>(
+  tree: RedBlackTree<K, V>,
+  idx: number
+): O.Option<readonly [K, V]> {
+  if (idx < 0) {
+    return O.none
+  }
+  let n = tree.root
+  let node: Node<K, V> | undefined = undefined
+  while (n) {
+    node = n
+    if (n.left) {
+      if (idx < n.left.count) {
+        n = n.left
+        continue
+      }
+      idx -= n.left.count
+    }
+    if (!idx) {
+      return O.some([node.key, node.value])
+    }
+    idx -= 1
+    if (n.right) {
+      if (idx >= n.right.count) {
+        break
+      }
+      n = n.right
+    } else {
+      break
+    }
+  }
+  return O.none
+}
+
+/**
+ * Returns the element i of the tree
+ */
+export function getAt(
+  idx: number
+): <K, V>(tree: RedBlackTree<K, V>) => O.Option<readonly [K, V]> {
+  return (tree) => getAt_(tree, idx)
 }
 
 /**
