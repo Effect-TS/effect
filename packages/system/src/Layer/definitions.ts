@@ -55,15 +55,11 @@ export function and_<R, E, A, R2, E2, A2>(
  * Merge two Layers in parallel without providing any data to each other
  *
  * @param that - second Layer to combine
+ * @param self - first Layer to combine
  */
 export function and<R2, E2, A2>(
   that: Layer<R2, E2, A2>
-): {
-  /**
-   * @param self - first Layer to combine
-   */
-  <R, E, A>(self: Layer<R, E, A>): Layer<R & R2, E | E2, A & A2>
-} {
+): <R, E, A>(self: Layer<R, E, A>) => Layer<R & R2, E | E2, A & A2> {
   return (self) => new LayerZipWithPar(self, that, (l, r) => ({ ...l, ...r }))
 }
 
@@ -142,10 +138,26 @@ export abstract class Layer<RIn, E, ROut> {
   }
 
   /**
+   * Create a Layer with the data only from the that Layer, while providing the data from self to that
+   */
+  ["&>>"]<R2, E2, A2>(that: Layer<ROut & R2, E2, A2>): Layer<RIn & R2, E2 | E, A2> {
+    return from(this["+++"](identity<R2>()))(that)
+  }
+
+  /**
    * Create a Layer with the data from both Layers, while providing the data from self to that
    */
   [">+>"]<E2, A2>(that: Layer<ROut, E2, A2>): Layer<RIn, E2 | E, A2 & ROut> {
     return from(this)(that["+++"](identity<ROut>()))
+  }
+
+  /**
+   * Create a Layer with the data from both Layers, while providing the data from self to that
+   */
+  ["&+>"]<R2, E2, A2>(
+    that: Layer<ROut & R2, E2, A2>
+  ): Layer<RIn & R2, E2 | E, A2 & ROut> {
+    return from(this["+++"](identity<R2>()))(that["+++"](identity<ROut>()))
   }
 
   /**
