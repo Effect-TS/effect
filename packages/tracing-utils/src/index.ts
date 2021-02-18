@@ -4,6 +4,9 @@ export const tracingSymbol = "$trace"
 
 let currentTraceCall: string | undefined
 
+/**
+ * @untrace traceCall
+ */
 export function traceCall<F extends Function>(f: F, trace: string | undefined): F {
   if (!isTracingEnabled() || !trace) {
     return f
@@ -17,6 +20,9 @@ export function traceCall<F extends Function>(f: F, trace: string | undefined): 
   }
 }
 
+/**
+ * @untrace accessCallTrace
+ */
 export function accessCallTrace(): string | undefined {
   if (!isTracingEnabled() || !currentTraceCall) {
     return undefined
@@ -26,6 +32,9 @@ export function accessCallTrace(): string | undefined {
   return callTrace
 }
 
+/**
+ * @untrace traceFrom
+ */
 export function traceFrom<F extends Function>(g: string | undefined, f: F): F {
   if (!f[tracingSymbol]) {
     if (g && isTracingEnabled()) {
@@ -37,6 +46,9 @@ export function traceFrom<F extends Function>(g: string | undefined, f: F): F {
   return f
 }
 
+/**
+ * @untrace traceAs
+ */
 export function traceAs<F extends Function>(g: any, f: F): F {
   if (g && g[tracingSymbol] && isTracingEnabled()) {
     const h = (...args: any[]) => f(...args)

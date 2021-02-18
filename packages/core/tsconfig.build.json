@@ -10,7 +10,8 @@
     "plugins": [
       {
         "transform": "../tracing-plugin/src/index.ts",
-        "tracing": false
+        "tracing": false,
+        "untrace": true
       }
     ]
   },
