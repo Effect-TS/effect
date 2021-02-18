@@ -43,7 +43,16 @@ export function isEmpty(r: Record<string, unknown>): boolean {
  * Extract record keys
  */
 export function keys<K extends string>(r: Record<K, unknown>): ReadonlyArray<K> {
-  return (Object.keys(r) as any).sort()
+  return Object.keys(r).sort() as any
+}
+
+/**
+ * Extract record values
+ */
+export function values<K extends string, V>(r: Record<K, V>): ReadonlyArray<V> {
+  return Object.keys(r)
+    .sort()
+    .map((s) => r[s])
 }
 
 /**
