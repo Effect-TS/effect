@@ -1,11 +1,14 @@
 import { reduce_ } from "../Array"
 import * as C from "../Cause"
+import * as CL from "../Clock"
 import * as T from "../Effect"
 import * as E from "../Either"
-import { identity as idFn, tuple } from "../Function"
+import { identity as idFn, pipe, tuple } from "../Function"
 import type { Has, Tag } from "../Has"
 import { mergeEnvironments } from "../Has"
 import * as M from "../Managed"
+import type * as SC from "../Schedule"
+import type * as SCD from "../Schedule/Decision"
 import type { Erase, UnionToIntersection } from "../Utils"
 import type { Layer, MergeA, MergeE, MergeR } from "./definitions"
 import {
@@ -22,6 +25,7 @@ import {
   LayerManaged,
   LayerMap,
   LayerSuspend,
+  LayerZipWithPar,
   LayerZipWithSeq
 } from "./definitions"
 
@@ -425,6 +429,10 @@ export function catchAll<R1, E, E1, Out1>(handler: Layer<readonly [R1, E], E1, O
   }
 }
 
+export function first<A>() {
+  return fromRawFunction(([_, __]: readonly [A, unknown]) => _)
+}
+
 export function second<A>() {
   return fromRawFunction(([_, __]: readonly [unknown, A]) => __)
 }
@@ -433,4 +441,48 @@ export function mapError<E, E1>(
   f: (e: E) => E1
 ): <R, Out>(self: Layer<R, E, Out>) => Layer<R, E1, Out> {
   return catchAll(fromRawFunctionM(([_, e]: readonly [unknown, E]) => T.fail(f(e))))
+}
+
+export function retry<RIn, RIn1, E, ROut>(
+  self: Layer<RIn, E, ROut>,
+  schedule: SC.Schedule<RIn1 & CL.HasClock, E, any>
+): Layer<RIn & CL.HasClock, E, ROut> {
+  type S = SCD.StepFunction<RIn1 & CL.HasClock, E, any>
+
+  const loop = <A>(): Layer<readonly [RIn1, S], E, ROut> => {
+    const update = fromRawFunctionM(
+      // ([[r, s], e]: readonly [readonly [RIn1 & CL.HasClock, S], E]) =>
+      (w: readonly [readonly [RIn1 & CL.HasClock, S], E]) =>
+        pipe(
+          CL.currentTime,
+          T.orDie,
+          T.chain((now) =>
+            pipe(
+              T.chain_(w[0][1](now, w[1]), (result) => {
+                if (result._tag === "Done") {
+                  return T.fail(w[1])
+                } else {
+                  return pipe(
+                    CL.sleep(Math.abs(now - result.interval)),
+                    T.as([w[0][0], result.next] as const)
+                  )
+                }
+              })
+            )
+          ),
+          T.provideAll(w[0][0])
+        )
+    )
+
+    return pipe(
+      fromRawFunction((a: readonly [A, unknown]) => a[0])[">>>"](self),
+      catchAll(update[">>>"](new LayerSuspend(() => fresh(loop())))) as any
+    )
+  }
+
+  return new LayerZipWithPar(
+    identity(),
+    fromRawEffect(T.succeed(schedule.step)),
+    (a, b) => [a, b] as const
+  )[">>>"](loop()) as any
 }
