@@ -74,16 +74,7 @@ export function fail<E>(e: E): Layer<unknown, E, never> {
 /**
  * Constructs a layer from the specified value.
  */
-export function succeed<T>(has: Tag<T>, resource: T): Layer<unknown, never, Has<T>> {
-  return new LayerManaged(
-    M.chain_(M.fromEffect(T.succeed(resource)), (a) => environmentFor(has, a))
-  )
-}
-
-/**
- * Constructs a layer from the specified raw value.
- */
-export function succeedRaw<T>(resource: T): Layer<unknown, never, T> {
+export function succeed<T>(resource: T): Layer<unknown, never, T> {
   return fromRawManaged(M.succeed(resource))
 }
 
