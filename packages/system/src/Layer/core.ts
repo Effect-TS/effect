@@ -17,6 +17,7 @@ import {
   fromRawEffect,
   fromRawFunction,
   fromRawFunctionM,
+  fromRawManaged,
   identity,
   LayerAllPar,
   LayerAllSeq,
@@ -38,6 +39,85 @@ function environmentFor<T>(has: Tag<T>, a: T): M.Managed<unknown, never, any> {
       [has.key]: mergeEnvironments(has, r, a as any)[has.key]
     }))
   )
+}
+
+/**
+ * Lazily constructs a layer. This is useful to avoid infinite recursion when
+ * creating layers that refer to themselves.
+ */
+export function suspend<RIn, E, ROut>(
+  f: () => Layer<RIn, E, ROut>
+): Layer<RIn, E, ROut> {
+  return new LayerSuspend(f)
+}
+
+/**
+ * Combines this layer with the specified layer, producing a new layer that
+ * has the inputs of both layers, and the outputs of both layers combined
+ * using the specified function.
+ */
+export function zipWithPar_<RIn, RIn1, E, E1, ROut, ROut1, ROut2>(
+  self: Layer<RIn, E, ROut>,
+  that: Layer<RIn1, E1, ROut1>,
+  f: (a: ROut, b: ROut1) => ROut2
+): Layer<RIn & RIn1, E | E1, ROut2> {
+  return new LayerZipWithPar(self, that, f)
+}
+
+/**
+ * Constructs a layer that fails with the specified value.
+ */
+export function fail<E>(e: E): Layer<unknown, E, never> {
+  return fromRawManaged(M.fail(e))
+}
+
+/**
+ * Constructs a layer from the specified value.
+ */
+export function succeed<T>(has: Tag<T>, resource: T): Layer<unknown, never, Has<T>> {
+  return new LayerManaged(
+    M.chain_(M.fromEffect(T.succeed(resource)), (a) => environmentFor(has, a))
+  )
+}
+
+/**
+ * Constructs a layer from the specified raw value.
+ */
+export function succeedRaw<T>(resource: T): Layer<unknown, never, T> {
+  return fromRawManaged(M.succeed(resource))
+}
+
+/**
+ * Combines this layer with the specified layer, producing a new layer that
+ * has the inputs of both layers, and the outputs of both layers combined
+ * using the specified function.
+ */
+export function zipWithPar<RIn1, E1, ROut, ROut1, ROut2>(
+  that: Layer<RIn1, E1, ROut1>,
+  f: (a: ROut, b: ROut1) => ROut2
+) {
+  return <RIn, E>(self: Layer<RIn, E, ROut>) => zipWithPar_(self, that, f)
+}
+
+/**
+ * Combines this layer with the specified layer, producing a new layer that
+ * has the inputs of both layers, and the outputs of both layers combined
+ * into a tuple.
+ */
+export function zipPar_<RIn, RIn1, E, E1, ROut, ROut1>(
+  self: Layer<RIn, E, ROut>,
+  that: Layer<RIn1, E1, ROut1>
+): Layer<RIn & RIn1, E | E1, readonly [ROut, ROut1]> {
+  return zipWithPar_(self, that, (a, b) => [a, b] as const)
+}
+
+/**
+ * Combines this layer with the specified layer, producing a new layer that
+ * has the inputs of both layers, and the outputs of both layers combined
+ * into a tuple.
+ */
+export function zipPar<RIn, RIn1, E, E1, ROut, ROut1>(that: Layer<RIn1, E1, ROut1>) {
+  return (self: Layer<RIn, E, ROut>) => zipPar_(self, that)
 }
 
 export function pure<T>(has: Tag<T>) {
@@ -72,16 +152,25 @@ export function create<T>(has: Tag<T>) {
   }
 }
 
+/**
+ * Constructs a layer from the specified effect.
+ */
 export function fromEffect<T>(has: Tag<T>) {
   return <R, E>(resource: T.Effect<R, E, T>): Layer<R, E, Has<T>> =>
     new LayerManaged(M.chain_(M.fromEffect(resource), (a) => environmentFor(has, a)))
 }
 
+/**
+ * Constructs a layer from a managed resource.
+ */
 export function fromManaged<T>(has: Tag<T>) {
   return <R, E>(resource: M.Managed<R, E, T>): Layer<R, E, Has<T>> =>
     new LayerManaged(M.chain_(resource, (a) => environmentFor(has, a)))
 }
 
+/**
+ * Constructs a layer from the environment using the specified function.
+ */
 export function fromFunction<B>(tag: Tag<B>) {
   return <A>(f: (a: A) => B): Layer<A, never, Has<B>> => fromEffect(tag)(T.access(f))
 }
@@ -135,14 +224,14 @@ export function toRuntime<R, E, A>(_: Layer<R, E, A>): M.Managed<R, E, T.Runtime
 }
 
 /**
- * Discards any memoized version
+ * Creates a fresh version of this layer that will not be shared.
  */
 export function fresh<R, E, A>(layer: Layer<R, E, A>): Layer<R, E, A> {
   return new LayerFresh(layer)
 }
 
 /**
- * Maps the output of the layer using f
+ * Returns a new layer whose output is mapped by the specified function.
  */
 export function map<A, B>(f: (a: A) => B) {
   return <R, E>(fa: Layer<R, E, A>): Layer<R, E, B> => map_(fa, f)
@@ -365,6 +454,9 @@ export const Empty: Layer<unknown, never, unknown> = new LayerSuspend(() =>
   identity<unknown>()
 )
 
+/**
+ * Recovers from all errors.
+ */
 export function catchAll<R1, E, E1, Out1>(handler: Layer<readonly [R1, E], E1, Out1>) {
   return <R, Out>(self: Layer<R, E, Out>): Layer<R & R1, E1, Out1 | Out> => {
     return fold(self)(
@@ -379,20 +471,49 @@ export function catchAll<R1, E, E1, Out1>(handler: Layer<readonly [R1, E], E1, O
   }
 }
 
+/**
+ * A layer that passes along the first element of a tuple.
+ */
 export function first<A>() {
   return fromRawFunction(([_, __]: readonly [A, unknown]) => _)
 }
 
+/**
+ * A layer that passes along the second element of a tuple.
+ */
 export function second<A>() {
   return fromRawFunction(([_, __]: readonly [unknown, A]) => __)
 }
 
+/**
+ * Returns a layer with its error channel mapped using the specified
+ * function.
+ */
 export function mapError<E, E1>(
   f: (e: E) => E1
 ): <R, Out>(self: Layer<R, E, Out>) => Layer<R, E1, Out> {
   return catchAll(fromRawFunctionM(([_, e]: readonly [unknown, E]) => T.fail(f(e))))
 }
 
+/**
+ * Translates effect failure into death of the fiber, making all failures
+ * unchecked and not a part of the type of the layer.
+ */
+export function orDie<R, E, Out>(self: Layer<R, E, Out>): Layer<R, never, Out> {
+  return catchAll(fromRawFunctionM(([_, e]: readonly [unknown, E]) => T.die(e)))(self)
+}
+
+/**
+ * Executes this layer and returns its output, if it succeeds, but otherwise
+ * executes the specified layer.
+ */
+export function orElse<RIn1, E1, ROut1>(that: Layer<RIn1, E1, ROut1>) {
+  return catchAll(first<RIn1>()[">>>"](that))
+}
+
+/**
+ * Retries constructing this layer according to the specified schedule.
+ */
 export function retry<RIn, RIn1, E, ROut>(
   self: Layer<RIn, E, ROut>,
   schedule: SC.Schedule<RIn1 & CL.HasClock, E, any>
@@ -424,14 +545,13 @@ export function retry<RIn, RIn1, E, ROut>(
     )
 
     return pipe(
-      fromRawFunction(([r, _]: readonly [RIn & RIn1, unknown]) => r)[">>>"](self),
-      catchAll(update[">>>"](new LayerSuspend(() => fresh(loop()))))
+      first<RIn>()[">>>"](self),
+      catchAll(update[">>>"](suspend(() => fresh(loop()))))
     )
   }
 
-  return new LayerZipWithPar(
+  return zipPar_(
     identity<RIn & RIn1 & CL.HasClock>(),
-    fromRawEffect(T.succeed(schedule.step)),
-    (a, b) => [a, b] as const
+    fromRawEffect(T.succeed(schedule.step))
   )[">>>"](loop())
 }

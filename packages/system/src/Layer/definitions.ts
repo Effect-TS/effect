@@ -436,6 +436,9 @@ export function scope<R, E, A>(
   }
 }
 
+/**
+ * Builds a layer into a managed value.
+ */
 export function build<R, E, A>(_: Layer<R, E, A>): M.Managed<R, E, A> {
   return pipe(
     M.do,
