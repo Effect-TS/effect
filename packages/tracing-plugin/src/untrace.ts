@@ -11,7 +11,6 @@ export default function untrace(
 
   return {
     before(ctx: ts.TransformationContext) {
-      // @ts-expect-error
       const factory = ctx.factory
 
       return (sourceFile: ts.SourceFile) => {
@@ -66,7 +65,20 @@ export default function untrace(
               }
 
               if ("untrace" in tags && tags["untrace"]![0] === "accessCallTrace") {
-                return []
+                return factory.createVariableStatement(
+                  undefined,
+                  factory.createVariableDeclarationList(
+                    [
+                      factory.createVariableDeclaration(
+                        declaration.name,
+                        undefined,
+                        undefined,
+                        factory.createIdentifier("undefined")
+                      )
+                    ],
+                    ts.NodeFlags.Const
+                  )
+                )
               }
             }
           }
