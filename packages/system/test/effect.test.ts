@@ -10,6 +10,25 @@ import { absurd, flow, pipe, tuple } from "../src/Function"
 import * as O from "../src/Option"
 
 describe("Effect", () => {
+  it("catch", async () => {
+    class ErrorA {
+      readonly _tag = "ErrorA"
+      constructor(readonly n: number) {}
+    }
+    class ErrorB {
+      readonly _tag = "ErrorB"
+    }
+    class ErrorC {
+      readonly _tag = "ErrorC"
+    }
+    const program = pipe(
+      T.fail(new ErrorA(0)),
+      T.andThen(T.fail(new ErrorB())),
+      T.andThen(T.fail(new ErrorC())),
+      T.catch("_tag", "ErrorA", ({ n }) => T.succeed(n))
+    )
+    expect(await T.runPromise(program)).toEqual(0)
+  })
   it("interrupt childs", async () => {
     const g = jest.fn()
     const f = jest.fn()
