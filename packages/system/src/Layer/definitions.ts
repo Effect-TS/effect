@@ -12,7 +12,7 @@ import * as P from "../Promise"
 import * as R from "../Ref"
 import * as RM from "../RefM"
 import { AtomicReference } from "../Support/AtomicReference"
-import type { Erase, UnionToIntersection } from "../Utils"
+import type { UnionToIntersection } from "../Utils"
 
 export function fromRawEffect<R, E, A>(resource: T.Effect<R, E, A>): Layer<R, E, A> {
   return new LayerManaged(M.fromEffect(resource))
@@ -24,6 +24,18 @@ export function fromRawFunction<A, B>(f: (a: A) => B) {
 
 export function fromRawFunctionM<A, R, E, B>(f: (a: A) => T.Effect<R, E, B>) {
   return fromRawEffect(T.accessM(f))
+}
+
+export function fromRawManaged<R, E, A>(resource: M.Managed<R, E, A>): Layer<R, E, A> {
+  return new LayerManaged(resource)
+}
+
+/**
+ * Constructs a layer that passes along the specified environment as an
+ * output.
+ */
+export function identity<R>() {
+  return fromRawManaged(M.environment<R>())
 }
 
 /**
@@ -61,14 +73,10 @@ export function and<R2, E2, A2>(
  * the inputs of this layer, and the error or outputs of the specified layer.
  */
 export function fold<R, E, A>(self: Layer<R, E, A>) {
-  return <R2, E2, A2>(failure: Layer<readonly [R2, C.Cause<E>], E2, A2>) => <
-    R3,
-    E3,
-    A3
-  >(
-    success: Layer<R3 & A, E3, A3>
-  ): Layer<R & R3 & R2, E3 | E2, A3 | A2> =>
-    new LayerFold<R, E, A, R2, E2, A2, R3, E3, A3>(self, failure, success)
+  return <R2, E2, A2>(failure: Layer<readonly [R2, C.Cause<E>], E2, A2>) => <E3, A3>(
+    success: Layer<A, E3, A3>
+  ): Layer<R & R2, E3 | E2, A3 | A2> =>
+    new LayerFold<R, E, A, R2, E2, A2, E3, A3>(self, failure, success)
 }
 
 /**
@@ -80,38 +88,8 @@ export function fold<R, E, A>(self: Layer<R, E, A>) {
  *
  * @param to - Layer with the data for the final Layer
  */
-export function usingAnd<R2, E2, A2>(
-  from: Layer<R2, E2, A2>
-): <R, E, A>(to: Layer<R, E, A>) => Layer<R2 & Erase<R, A2>, E2 | E, A & A2>
-export function usingAnd<R2, E2, A2>(
-  from: Layer<R2, E2, A2>,
-  noErase: "no-erase"
-): <R, E, A>(to: Layer<R & A2, E, A>) => Layer<R2 & R, E2 | E, A & A2>
-export function usingAnd<R2, E2, A2>(from: Layer<R2, E2, A2>) {
-  return <R, E, A>(to: Layer<R & A2, E, A>): Layer<R2 & R, E2 | E, A2 & A> =>
-    fold(from)(fromRawFunctionM((_: readonly [unknown, C.Cause<E2>]) => T.halt(_[1])))(
-      and_(from, to)
-    )
-}
-
-/**
- * Create a Layer with the data from both Layers, while providing the data from
- * the first Layer into the second Layer
- *
- * @param from - Layer with the data for the final Layer, which is also provided
- *    into the second Layer.
- *
- * @param to - Layer with the data for the final Layer
- */
-export function using<R2, E2, A2>(
-  from: Layer<R2, E2, A2>
-): <R, E, A>(to: Layer<R, E, A>) => Layer<R2 & Erase<R, A2>, E2 | E, A>
-export function using<R2, E2, A2>(
-  from: Layer<R2, E2, A2>,
-  noErase: "no-erase"
-): <R, E, A>(to: Layer<R & A2, E, A>) => Layer<R2 & R, E2 | E, A>
 export function using<R2, E2, A2>(from: Layer<R2, E2, A2>) {
-  return <R, E, A>(to: Layer<R & A2, E, A>): Layer<R2 & R, E2 | E, A> =>
+  return <E, A>(to: Layer<A2, E, A>): Layer<R2, E2 | E, A> =>
     fold(from)(fromRawFunctionM((_: readonly [unknown, C.Cause<E2>]) => T.halt(_[1])))(
       to
     )
@@ -123,20 +101,11 @@ export function using<R2, E2, A2>(from: Layer<R2, E2, A2>) {
  *
  * @param from - Layer with the data for the final Layer, which is also provided
  *    into the second Layer.
+ *
+ * @param to - Layer with the data for the final Layer
  */
-export function from<R2, E2, A2>(
-  from: Layer<R2, E2, A2>
-): {
-  /**
-   * @param to - Layer with the data for the final Layer
-   */
-  <R, E, A>(to: Layer<R, E, A>, erase: "erase"): Layer<R2 & Erase<R, A2>, E2 | E, A>
-  /**
-   * @param to - Layer with the data for the final Layer
-   */
-  <R, E, A>(to: Layer<R & A2, E, A>): Layer<R2 & R, E2 | E, A>
-} {
-  return <R, E, A>(to: Layer<R & A2, E, A>): Layer<R2 & R, E2 | E, A> =>
+export function from<R2, E2, A2>(from: Layer<R2, E2, A2>) {
+  return <E, A>(to: Layer<A2, E, A>): Layer<R2, E2 | E, A> =>
     fold(from)(fromRawFunctionM((_: readonly [unknown, C.Cause<E2>]) => T.halt(_[1])))(
       to
     )
@@ -159,123 +128,24 @@ export abstract class Layer<RIn, E, ROut> {
   }
 
   /**
-   * Create a Layer with the data only from the left Layer, while providing the data
-   * to it from the Layer on the right.
-   *
-   * @see {@link from_} Underlying implementation
-   *
-   * @example
-   * ```typescript
-   * import * as T from "@effect-ts/core/Effect"
-   * import * as L from "@effect-ts/core/Effect/Layer"
-   * import { tag } from "@effect-ts/core/Has"
-   *
-   * const rightTag = tag<string>()
-   * const right = L.pure(rightTag)("Hello World!")
-   *
-   * const leftTag = tag<number>()
-   * const left = L.fromEffect(leftTag)(T.accessService(rightTag)((s) => s.length))
-   *
-   * // Layer containing the number
-   * const live = left["<<<"](right)
-   * ```
+   * Use that Layer to provide data to self
    */
-  ["<<<"]<R2, E2, A2>(_: Layer<R2, E2, A2>): Layer<Erase<RIn, A2> & R2, E2 | E, ROut> {
-    return from(_)(this, "erase")
+  ["<<<"]<R2, E2>(that: Layer<R2, E2, RIn>): Layer<R2, E2 | E, ROut> {
+    return from(that)(this)
   }
 
   /**
-   * Create a Layer with the data only from the right Layer, while providing the data
-   * to it from the Layer on the left.
-   *
-   * @example
-   * ```typescript
-   * import * as T from "@effect-ts/core/Effect"
-   * import * as L from "@effect-ts/core/Effect/Layer"
-   * import { tag } from "@effect-ts/core/Has"
-   *
-   * const rightTag = tag<string>()
-   * const right = L.pure(rightTag)("Hello World!")
-   *
-   * const leftTag = tag<number>()
-   * const left = L.fromEffect(leftTag)(T.accessService(rightTag)((s) => s.length))
-   *
-   * // Layer containing the string, while also requiring a string to construct
-   * // the 'left' Layer, since we used it, but dropped a value provided by it.
-   * const live = left[">>>"](right)
-   * ```
+   * Create a Layer with the data only from the that Layer, while providing the data from self to that
    */
-  [">>>"]<R2, E2, A2>(
-    _: Layer<R2 & ROut, E2, A2>,
-    noErase: "no-erase"
-  ): Layer<R2 & RIn, E2 | E, A2>
-  [">>>"]<R2, E2, A2>(_: Layer<R2, E2, A2>): Layer<Erase<R2, ROut> & RIn, E2 | E, A2>
-  [">>>"]<R2, E2, A2>(_: Layer<R2, E2, A2>): Layer<Erase<R2, ROut> & RIn, E2 | E, A2> {
-    return from(this)(_, "erase")
+  [">>>"]<E2, A2>(that: Layer<ROut, E2, A2>): Layer<RIn, E2 | E, A2> {
+    return from(this)(that)
   }
 
   /**
-   * Create a Layer with the data from both the left Layer and the right Layer,
-   * while providing the data to the left Layer from the Layer on the right.
-   *
-   * @see {@link using_}
-   *
-   * @example
-   * ```typescript
-   * import * as T from "@effect-ts/core/Effect"
-   * import * as L from "@effect-ts/core/Effect/Layer"
-   * import { tag } from "@effect-ts/core/Has"
-   *
-   * const rightTag = tag<string>()
-   * const right = L.pure(rightTag)("Hello World!")
-   *
-   * const leftTag = tag<number>()
-   * const left = L.fromEffect(leftTag)(T.accessService(rightTag)((s) => s.length))
-   *
-   * // Layer containing the number and the string
-   * const live = left["<+<"](right)
-   * ```
+   * Create a Layer with the data from both Layers, while providing the data from self to that
    */
-  ["<+<"]<R2, E2, A2>(
-    _: Layer<R2, E2, A2>
-  ): Layer<Erase<RIn & R2, A2> & R2, E2 | E, ROut & A2> {
-    return usingAnd(_)(this)
-  }
-
-  /**
-   * Create a Layer with the data from both the left Layer and the right Layer,
-   * while providing the data to the right Layer from the Layer on the left.
-   *
-   * @see {@link andTo_}
-   *
-   * @example
-   * ```typescript
-   * import * as T from "@effect-ts/core/Effect"
-   * import * as L from "@effect-ts/core/Effect/Layer"
-   * import { tag } from "@effect-ts/core/Has"
-   *
-   * const rightTag = tag<string>()
-   * const right = L.pure(rightTag)("Hello World!")
-   *
-   * const leftTag = tag<number>()
-   * const left = L.fromEffect(leftTag)(T.accessService(rightTag)((s) => s.length))
-   *
-   * // Layer containing the number and the string, while also requiring a string to
-   * // construct 'left' Layer, since we used it, but dropped a value provided by it.
-   * const live = left[">+>"](right)
-   * ```
-   */
-  [">+>"]<R2, E2, A2>(
-    _: Layer<R2 & ROut, E2, A2>,
-    noErase: "no-erase"
-  ): Layer<RIn & R2, E2 | E, ROut & A2>
-  [">+>"]<R2, E2, A2>(
-    _: Layer<R2, E2, A2>
-  ): Layer<RIn & Erase<R2, ROut>, E2 | E, ROut & A2>
-  [">+>"]<R2, E2, A2>(
-    _: Layer<R2, E2, A2>
-  ): Layer<RIn & Erase<R2, ROut>, E2 | E, ROut & A2> {
-    return usingAnd(this)(_)
+  [">+>"]<E2, A2>(that: Layer<ROut, E2, A2>): Layer<RIn, E2 | E, A2 & ROut> {
+    return from(this)(that["+++"](identity<ROut>()))
   }
 
   /**
@@ -326,10 +196,14 @@ export abstract class Layer<RIn, E, ROut> {
   use<R, E1, A>(effect: T.Effect<R & ROut, E1, A>): T.Effect<RIn & R, E | E1, A> {
     return T.provideSomeLayer(this)(effect)
   }
+
+  useAll<E1, A>(effect: T.Effect<ROut, E1, A>): T.Effect<RIn, E | E1, A> {
+    return T.provideLayer(this)(effect)
+  }
 }
 
 export type LayerInstruction =
-  | LayerFold<any, any, any, any, any, any, any, any, any>
+  | LayerFold<any, any, any, any, any, any, any, any>
   | LayerFresh<any, any, any>
   | LayerManaged<any, any, any>
   | LayerSuspend<any, any, any>
@@ -340,8 +214,8 @@ export type LayerInstruction =
   | LayerMap<any, any, any, any>
   | LayerChain<any, any, any, any, any, any>
 
-export class LayerFold<R, E, A, R2, E2, A2, R3, E3, A3> extends Layer<
-  R & R2 & R3,
+export class LayerFold<R, E, A, R2, E2, A2, E3, A3> extends Layer<
+  R & R2,
   E2 | E3,
   A2 | A3
 > {
@@ -350,7 +224,7 @@ export class LayerFold<R, E, A, R2, E2, A2, R3, E3, A3> extends Layer<
   constructor(
     readonly self: Layer<R, E, A>,
     readonly failure: Layer<readonly [R2, C.Cause<E>], E2, A2>,
-    readonly success: Layer<R3 & A, E3, A3>
+    readonly success: Layer<A, E3, A3>
   ) {
     super()
   }
@@ -543,15 +417,7 @@ export function scope<R, E, A>(
                 M.provideSome_(memo.getOrElseMemoize(I.failure), () => tuple(r, e))
               )
             ),
-          (r) =>
-            M.provideSome_(memo.getOrElseMemoize(I.success), (x) =>
-              typeof x === "object" && typeof r === "object"
-                ? {
-                    ...x,
-                    ...r
-                  }
-                : r
-            )
+          (r) => M.provideAll_(memo.getOrElseMemoize(I.success), r)
         )
       )
     }
