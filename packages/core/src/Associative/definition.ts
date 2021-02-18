@@ -6,5 +6,5 @@ import type { Closure } from "../Closure"
  * concatenation for strings.
  */
 export interface Associative<A> extends Closure<A> {
-  readonly Associative: "Associative"
+  readonly _Associative: "Associative"
 }

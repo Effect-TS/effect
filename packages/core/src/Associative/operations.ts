@@ -1,5 +1,4 @@
-import type { Ord } from "../Ord"
-import { max, min } from "../Ord"
+import * as Ord from "../Ord"
 import type { Associative } from "./definition"
 import { makeAssociative } from "./makeAssociative"
 
@@ -38,7 +37,7 @@ export function tuple<T extends ReadonlyArray<Associative<any>>>(
 /**
  * The dual of a `Associative`, obtained by swapping the arguments of `combine`.
  */
-export function dual<A>(S: Associative<A>): Associative<A> {
+export function inverted<A>(S: Associative<A>): Associative<A> {
   return makeAssociative((y) => (x) => S.combine(x)(y))
 }
 
@@ -67,15 +66,15 @@ export function struct<O extends Record<string, any>>(
 /**
  * `Associative` that returns last `Min` of elements
  */
-export function meet<A>(O: Ord<A>): Associative<A> {
-  return makeAssociative(min(O))
+export function min<A>(O: Ord.Ord<A>): Associative<A> {
+  return makeAssociative(Ord.min(O))
 }
 
 /**
  * `Associative` that returns last `Max` of elements
  */
-export function join<A>(O: Ord<A>): Associative<A> {
-  return makeAssociative(max(O))
+export function max<A>(O: Ord.Ord<A>): Associative<A> {
+  return makeAssociative(Ord.max(O))
 }
 
 /**

@@ -15,7 +15,13 @@ export const sequence = sequenceF(ForEach)
 
 export const tuple = DSL.tupleF(Applicative)
 
-export const gen_ = DSL.genF(Monad)
+const do_ = DSL.doF(Monad)
+
+export const bind = DSL.bindF(Monad)
+
+const let_ = DSL.bindF(Monad)
+
+export { let_ as let, do_ as do }
 
 /**
  * Matchers

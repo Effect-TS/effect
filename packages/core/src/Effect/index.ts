@@ -81,8 +81,6 @@ export const Category = P.instance<P.Category<[URI<EffectCategoryURI>], V>>({
   compose: T.compose
 })
 
-export const gen_ = DSL.genF(Monad)
-
 /**
  * Matchers
  */

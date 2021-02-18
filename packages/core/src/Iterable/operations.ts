@@ -8,6 +8,9 @@ import { succeedF } from "../Prelude/DSL"
 
 export * from "@effect-ts/system/Iterable"
 
+/**
+ * `ForEach`'s `forEachF` function
+ */
 export const forEachF = P.implementForEachF<[URI<IterableURI>]>()((_) => (G) => (f) =>
   I.reduce(succeedF(G)(I.never as Iterable<typeof _.B>), (b, a) =>
     pipe(

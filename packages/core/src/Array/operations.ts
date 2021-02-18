@@ -280,11 +280,17 @@ export function uniq<A>(E: Equal<A>): (as: Array<A>) => Array<A> {
   }
 }
 
+/**
+ * Separate elements based on a apredicate
+ */
 export function partition<A>(predicate: Predicate<A>) {
   return (fa: readonly A[]): Separated<readonly A[], readonly A[]> =>
     partitionWithIndex((_, a: A) => predicate(a))(fa)
 }
 
+/**
+ * Separate elements based on a apredicate
+ */
 export function partition_<A>(
   fa: readonly A[],
   predicate: Predicate<A>
@@ -292,10 +298,16 @@ export function partition_<A>(
   return partitionWithIndex((_, a: A) => predicate(a))(fa)
 }
 
+/**
+ * Separate elements based on a map function
+ */
 export function partitionMap<A, B, C>(f: (a: A) => Either<B, C>) {
   return partitionMapWithIndex((_, a: A) => f(a))
 }
 
+/**
+ * Separate elements based on a map function
+ */
 export function partitionMap_<A, B, C>(
   fa: readonly A[],
   f: (a: A) => Either<B, C>
@@ -303,6 +315,9 @@ export function partitionMap_<A, B, C>(
   return partitionMapWithIndex_(fa, (_, a) => f(a))
 }
 
+/**
+ * Separate elements based on a map function that also carry the index
+ */
 export function partitionMapWithIndex_<A, B, C>(
   fa: readonly A[],
   f: (i: number, a: A) => Either<B, C>
@@ -323,11 +338,17 @@ export function partitionMapWithIndex_<A, B, C>(
   }
 }
 
+/**
+ * Separate elements based on a map function that also carry the index
+ */
 export function partitionMapWithIndex<A, B, C>(f: (i: number, a: A) => Either<B, C>) {
   return (fa: readonly A[]): Separated<readonly B[], readonly C[]> =>
     partitionMapWithIndex_(fa, f)
 }
 
+/**
+ * Separate elements based on a predicate that also carry the index
+ */
 export function partitionWithIndex<A>(
   predicateWithIndex: PredicateWithIndex<number, A>
 ) {
@@ -335,6 +356,9 @@ export function partitionWithIndex<A>(
     partitionWithIndex_(fa, predicateWithIndex)
 }
 
+/**
+ * Separate elements based on a predicate that also carry the index
+ */
 export function partitionWithIndex_<A>(
   fa: readonly A[],
   predicateWithIndex: PredicateWithIndex<number, A>

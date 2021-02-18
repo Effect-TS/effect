@@ -1,3 +1,4 @@
+import { instance } from "../Prelude"
 import type { Inverse } from "./index"
 
 export function makeInverse<A>(
@@ -5,10 +6,9 @@ export function makeInverse<A>(
   combine: (y: A) => (x: A) => A,
   inverse: (r: A) => (l: A) => A
 ): Inverse<A> {
-  return {
-    Associative: "Associative",
+  return instance({
     combine,
     identity,
     inverse
-  }
+  })
 }

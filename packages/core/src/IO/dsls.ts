@@ -1,6 +1,6 @@
 import * as A from "../Array"
 import * as DSL from "../Prelude/DSL"
-import { Applicative, Covariant } from "./instances"
+import { Applicative, Covariant, Monad } from "./instances"
 
 /**
  * Struct based applicative for IO[+_]
@@ -11,6 +11,23 @@ export const struct = DSL.structF(Applicative)
  * Tuple based applicative for IO[+_]
  */
 export const tuple = DSL.tupleF(Applicative)
+
+/**
+ * Initialize Do
+ */
+export const do_ = DSL.doF(Monad)
+
+/**
+ * Bind variable in scope
+ */
+export const bind = DSL.bindF(Monad)
+
+/**
+ * Bind variable in scope
+ */
+const let_ = DSL.letF(Monad)
+
+export { let_ as let, do_ as do }
 
 /**
  * Matchers

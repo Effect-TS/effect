@@ -30,8 +30,8 @@ export function fold<A>(M: Identity<A>): (as: ReadonlyArray<A>) => A {
 /**
  * The dual of a `Identity`, obtained by swapping the arguments of `concat`.
  */
-export function dual<A>(M: Identity<A>): Identity<A> {
-  return makeIdentity(M.identity, A.dual(M).combine)
+export function inverted<A>(M: Identity<A>): Identity<A> {
+  return makeIdentity(M.identity, A.inverted(M).combine)
 }
 
 /**
@@ -51,15 +51,15 @@ export function func<M>(M: Identity<M>): <A = never>() => Identity<(a: A) => M> 
 /**
  * `Identity` that returns last `Max` of elements
  */
-export function join<A>(B: Bounded<A>): Identity<A> {
-  return makeIdentity(B.bottom, A.join(B).combine)
+export function max<A>(B: Bounded<A>): Identity<A> {
+  return makeIdentity(B.bottom, A.max(B).combine)
 }
 
 /**
  * `Identity` that returns last `Min` of elements
  */
-export function meet<A>(B: Bounded<A>): Identity<A> {
-  return makeIdentity(B.top, A.meet(B).combine)
+export function min<A>(B: Bounded<A>): Identity<A> {
+  return makeIdentity(B.top, A.min(B).combine)
 }
 
 /**

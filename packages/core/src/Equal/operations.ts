@@ -89,6 +89,16 @@ export const string = strict<string>()
 export const symbol = strict<symbol>()
 
 /**
+ * Equality for `boolean` values.
+ */
+export const boolean = strict<boolean>()
+
+/**
+ * Equality for `Date` values.
+ */
+export const date: Equal<Date> = contramap((date: Date) => date.valueOf())(number)
+
+/**
  * Derives an `Equal[Array[A]]` given an `Equal[A]`.
  */
 export function array<A>(EqA: Equal<A>): Equal<A.Array<A>> {
