@@ -1,4 +1,3 @@
-import { reduce_ } from "../Array"
 import * as C from "../Cause"
 import * as CL from "../Clock"
 import * as T from "../Effect"
@@ -9,7 +8,7 @@ import { mergeEnvironments } from "../Has"
 import * as M from "../Managed"
 import type * as SC from "../Schedule"
 import type * as SCD from "../Schedule/Decision"
-import type { Erase, UnionToIntersection } from "../Utils"
+import type { UnionToIntersection } from "../Utils"
 import type { Layer, MergeA, MergeE, MergeR } from "./definitions"
 import {
   build,
@@ -18,6 +17,7 @@ import {
   fromRawEffect,
   fromRawFunction,
   fromRawFunctionM,
+  identity,
   LayerAllPar,
   LayerAllSeq,
   LayerChain,
@@ -84,10 +84,6 @@ export function fromManaged<T>(has: Tag<T>) {
 
 export function fromFunction<B>(tag: Tag<B>) {
   return <A>(f: (a: A) => B): Layer<A, never, Has<B>> => fromEffect(tag)(T.access(f))
-}
-
-export function fromRawManaged<R, E, A>(resource: M.Managed<R, E, A>): Layer<R, E, A> {
-  return new LayerManaged(resource)
 }
 
 export function zip_<R, E, A, R2, E2, A2>(
@@ -363,57 +359,11 @@ export function launch<R, E, A>(self: Layer<R, E, A>): T.Effect<R, E, never> {
 }
 
 /**
- * Constructs a layer that passes along the specified environment as an
- * output.
- */
-export function identity<R>() {
-  return fromRawManaged(M.environment<R>())
-}
-
-/**
  * Empty layer, useful for init cases
  */
 export const Empty: Layer<unknown, never, unknown> = new LayerSuspend(() =>
   identity<unknown>()
 )
-
-export type FromAll<
-  Ls extends readonly Layer<any, any, any>[],
-  R = unknown,
-  E = never,
-  A = unknown
-> = ((...all: Ls) => any) extends (h: infer Head, ...t: infer Tail) => any
-  ? Head extends Layer<infer _R, infer _E, infer _A>
-    ? Tail extends readonly Layer<any, any, any>[]
-      ? FromAll<Tail, _R & Erase<R, _A>, E | _E, _A & A>
-      : Layer<_R & Erase<R, _A>, E | _E, A & _A>
-    : Layer<R, E, A>
-  : Layer<R, E, A>
-
-export function fromAll<Ls extends readonly Layer<any, any, any>[]>(
-  ...layers: Ls
-): FromAll<Ls> {
-  return reduce_(layers, Empty, (b, a) => b["<+<"](a) as any) as any
-}
-
-export type ToAll<
-  Ls extends readonly Layer<any, any, any>[],
-  R = unknown,
-  E = never,
-  A = unknown
-> = ((...all: Ls) => any) extends (h: infer Head, ...t: infer Tail) => any
-  ? Head extends Layer<infer _R, infer _E, infer _A>
-    ? Tail extends readonly Layer<any, any, any>[]
-      ? ToAll<Tail, Erase<_R, A> & R, E | _E, _A & A>
-      : Layer<Erase<_R, A> & R, E | _E, A & _A>
-    : Layer<R, E, A>
-  : Layer<R, E, A>
-
-export function toAll<Ls extends readonly Layer<any, any, any>[]>(
-  ...layers: Ls
-): ToAll<Ls> {
-  return reduce_(layers, Empty, (b, a) => b[">+>"](a) as any) as any
-}
 
 export function catchAll<R1, E, E1, Out1>(handler: Layer<readonly [R1, E], E1, Out1>) {
   return <R, Out>(self: Layer<R, E, Out>): Layer<R & R1, E1, Out1 | Out> => {
@@ -446,43 +396,42 @@ export function mapError<E, E1>(
 export function retry<RIn, RIn1, E, ROut>(
   self: Layer<RIn, E, ROut>,
   schedule: SC.Schedule<RIn1 & CL.HasClock, E, any>
-): Layer<RIn & CL.HasClock, E, ROut> {
-  type S = SCD.StepFunction<RIn1 & CL.HasClock, E, any>
+): Layer<RIn1 & RIn & CL.HasClock, E, ROut> {
+  type S = SCD.StepFunction<RIn & RIn1 & CL.HasClock, E, any>
 
-  const loop = <A>(): Layer<readonly [RIn1, S], E, ROut> => {
+  const loop = (): Layer<readonly [RIn & RIn1 & CL.HasClock, S], E, ROut> => {
     const update = fromRawFunctionM(
-      // ([[r, s], e]: readonly [readonly [RIn1 & CL.HasClock, S], E]) =>
-      (w: readonly [readonly [RIn1 & CL.HasClock, S], E]) =>
+      ([[r, s], e]: readonly [readonly [RIn & RIn1 & CL.HasClock, S], E]) =>
         pipe(
           CL.currentTime,
           T.orDie,
           T.chain((now) =>
             pipe(
-              T.chain_(w[0][1](now, w[1]), (result) => {
+              T.chain_(s(now, e), (result) => {
                 if (result._tag === "Done") {
-                  return T.fail(w[1])
+                  return T.fail(e)
                 } else {
                   return pipe(
                     CL.sleep(Math.abs(now - result.interval)),
-                    T.as([w[0][0], result.next] as const)
+                    T.as([r, result.next] as const)
                   )
                 }
               })
             )
           ),
-          T.provideAll(w[0][0])
+          T.provideAll(r)
         )
     )
 
     return pipe(
-      fromRawFunction((a: readonly [A, unknown]) => a[0])[">>>"](self),
-      catchAll(update[">>>"](new LayerSuspend(() => fresh(loop())))) as any
+      fromRawFunction(([r, _]: readonly [RIn & RIn1, unknown]) => r)[">>>"](self),
+      catchAll(update[">>>"](new LayerSuspend(() => fresh(loop()))))
     )
   }
 
   return new LayerZipWithPar(
-    identity(),
+    identity<RIn & RIn1 & CL.HasClock>(),
     fromRawEffect(T.succeed(schedule.step)),
     (a, b) => [a, b] as const
-  )[">>>"](loop()) as any
+  )[">>>"](loop())
 }
