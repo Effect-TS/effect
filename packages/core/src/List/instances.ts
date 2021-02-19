@@ -7,7 +7,7 @@ export const Any = P.instance<P.Any<[URI<ListURI>]>>({
   any: () => L.of({})
 })
 
-export const AssociativeBoth = P.instance<P.AssociativeBoth<[URI<ListURI>]>>({
+export const AssociativeBothZip = P.instance<P.AssociativeBoth<[URI<ListURI>]>>({
   both: L.zip
 })
 
@@ -19,16 +19,17 @@ export const Covariant = P.instance<P.Covariant<[URI<ListURI>]>>({
   map: L.map
 })
 
-export const Applicative = P.instance<P.Applicative<[URI<ListURI>]>>({
-  ...Any,
-  ...Covariant,
-  ...AssociativeBoth
-})
-
 export const Monad = P.instance<P.Monad<[URI<ListURI>]>>({
   ...Any,
   ...Covariant,
   ...AssociativeFlatten
+})
+
+export const Applicative = P.getApplicativeF(Monad)
+
+export const ApplyZip = P.instance<P.Apply<[URI<ListURI>]>>({
+  ...Covariant,
+  ...AssociativeBothZip
 })
 
 export const ForEach = P.instance<P.ForEach<[URI<ListURI>]>>({
