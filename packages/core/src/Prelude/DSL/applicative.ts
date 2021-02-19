@@ -15,11 +15,11 @@ export function getApplicativeF<F>(F: Monad<HKT.UHKT2<F>>): Applicative<HKT.UHKT
     map: F.map,
     both: (fb) => (fa) =>
       pipe(
-        fa,
+        fb,
         chain((a) =>
           pipe(
-            fb,
-            F.map((b) => tuple(a, b))
+            fa,
+            F.map((b) => tuple(b, a))
           )
         )
       )

@@ -103,6 +103,7 @@
       "HashSet",
       "Prelude",
       "Prelude/Any",
+      "Prelude/Apply",
       "Prelude/Applicative",
       "Prelude/AssociativeBoth",
       "Prelude/AssociativeCompose",

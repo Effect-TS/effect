@@ -1,5 +1,6 @@
 import type { ArrayURI } from "../Modules"
 import type { URI } from "../Prelude"
+import { getApplicativeF } from "../Prelude"
 import * as P from "../Prelude"
 import * as A from "./operations"
 
@@ -7,7 +8,7 @@ export const Any = P.instance<P.Any<[URI<ArrayURI>]>>({
   any: () => [{}]
 })
 
-export const AssociativeBoth = P.instance<P.AssociativeBoth<[URI<ArrayURI>]>>({
+export const AssociativeBothZip = P.instance<P.AssociativeBoth<[URI<ArrayURI>]>>({
   both: A.zip
 })
 
@@ -19,10 +20,9 @@ export const Covariant = P.instance<P.Covariant<[URI<ArrayURI>]>>({
   map: A.map
 })
 
-export const Applicative = P.instance<P.Applicative<[URI<ArrayURI>]>>({
-  ...Any,
+export const ApplyZip = P.instance<P.Apply<[URI<ArrayURI>]>>({
   ...Covariant,
-  ...AssociativeBoth
+  ...AssociativeBothZip
 })
 
 export const Monad = P.instance<P.Monad<[URI<ArrayURI>]>>({
@@ -30,6 +30,8 @@ export const Monad = P.instance<P.Monad<[URI<ArrayURI>]>>({
   ...Covariant,
   ...AssociativeFlatten
 })
+
+export const Applicative = getApplicativeF(Monad)
 
 export const ForEach = P.instance<P.ForEach<[URI<ArrayURI>]>>({
   map: A.map,

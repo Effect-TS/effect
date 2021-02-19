@@ -1,4 +1,5 @@
 export * from "./Any"
+export * from "./Apply"
 export * from "./Applicative"
 export * from "./AssociativeBoth"
 export * from "./AssociativeCompose"

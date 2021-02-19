@@ -1,7 +1,7 @@
 import type * as O from "../Option"
 import * as P from "../Prelude"
 import { isOption } from "../Utils"
-import { Applicative, Covariant, ForEach, Monad } from "./instances"
+import { Applicative, ApplyZip, Covariant, ForEach, Monad } from "./instances"
 import type * as A from "./operations"
 
 export const sequence = P.sequenceF(ForEach)
@@ -21,6 +21,10 @@ const adapter: {
 export const gen = P.genWithHistoryF(Monad, {
   adapter
 })
+
+export const tupleZip = P.tupleF(ApplyZip)
+
+export const structZip = P.structF(ApplyZip)
 
 export const tuple = P.tupleF(Applicative)
 

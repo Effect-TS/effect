@@ -1,10 +1,8 @@
-import * as A from "@effect-ts/system/Array"
-
 import { constant, pipe, tuple } from "../../Function"
 import type { Has, Tag } from "../../Has"
 import type { EnforceNonEmptyRecord } from "../../Utils"
 import type { Any } from "../Any"
-import type { Applicative } from "../Applicative"
+import type { Apply } from "../Apply"
 import type { AssociativeFlatten } from "../AssociativeFlatten"
 import type { Covariant } from "../Covariant"
 import type { Access, Provide } from "../FX"
@@ -12,7 +10,7 @@ import type * as HKT from "../HKT"
 import type { Monad } from "../Monad"
 
 export function apF<F extends HKT.URIS, C>(
-  F: Applicative<F, C>
+  F: Apply<F, C>
 ): <N extends string, K, Q, W, X, I, S, R, E, A>(
   fa: HKT.Kind<F, C, N, K, Q, W, X, I, S, R, E, A>
 ) => <N2 extends string, K2, Q2, W2, X2, I2, S2, R2, E2, B>(
@@ -45,7 +43,7 @@ export function apF<F extends HKT.URIS, C>(
   B
 >
 export function apF<F>(
-  F: Applicative<HKT.UHKT<F>>
+  F: Apply<HKT.UHKT<F>>
 ): <A>(fa: HKT.HKT<F, A>) => <B>(fab: HKT.HKT<F, (a: A) => B>) => HKT.HKT<F, B> {
   return (fa) => (fab) =>
     pipe(
@@ -125,8 +123,23 @@ export function accessMF<F>(
   return (x) => pipe(x, F.access, F.flatten)
 }
 
+function getRecordConstructor(keys: ReadonlyArray<string>) {
+  const len = keys.length
+  return curried(
+    (...args: ReadonlyArray<unknown>) => {
+      const r: Record<string, unknown> = {}
+      for (let i = 0; i < len; i++) {
+        r[keys[i]!] = args[i]
+      }
+      return r
+    },
+    len - 1,
+    []
+  )
+}
+
 export function structF<F extends HKT.URIS, C = HKT.Auto>(
-  F: Applicative<F, C>
+  F: Apply<F, C>
 ): <
   NER extends Record<
     string,
@@ -190,26 +203,19 @@ export function structF<F extends HKT.URIS, C = HKT.Auto>(
   }
 >
 export function structF<F>(
-  F: Applicative<HKT.UHKT<F>>
+  F: Apply<HKT.UHKT<F>>
 ): (r: Record<string, HKT.HKT<F, any>>) => HKT.HKT<F, Record<string, any>> {
-  return (r) =>
-    pipe(
-      Object.keys(r).map((k) => tuple(k, r[k])),
-      A.reduceRight(succeedF(F)([] as readonly (readonly [string, any])[]), (a, b) =>
-        pipe(
-          b,
-          F.both(a[1]!),
-          F.map(([x, y]) => [...x, tuple(a[0], y)])
-        )
-      ),
-      F.map((a) => {
-        const res = {}
-        a.forEach(([k, v]) => {
-          res[k] = v
-        })
-        return res
-      })
-    )
+  const ap = apF(F)
+  return (r) => {
+    const keys = Object.keys(r)
+    const len = keys.length
+    const f = getRecordConstructor(keys)
+    let fr = F.map(f)(r[keys[0]!]!)
+    for (let i = 1; i < len; i++) {
+      fr = ap(r[keys[i]!]!)(fr)
+    }
+    return fr
+  }
 }
 
 function curried(f: Function, n: number, acc: ReadonlyArray<unknown>) {
@@ -231,7 +237,7 @@ function getTupleConstructor(len: number): (a: unknown) => any {
 }
 
 export function tupleF<F extends HKT.URIS, C>(
-  F: Applicative<F, C>
+  F: Apply<F, C>
 ): <
   T extends Array<
     HKT.Kind<
@@ -295,7 +301,7 @@ export function tupleF<F extends HKT.URIS, C>(
       : never
   }
 >
-export function tupleF<F>(F: Applicative<HKT.UHKT<F>>): any {
+export function tupleF<F>(F: Apply<HKT.UHKT<F>>): any {
   const ap = apF(F)
   return <A>(...args: Array<HKT.HKT<F, A>>) => {
     const len = args.length
