@@ -114,7 +114,7 @@ export abstract class Layer<RIn, E, ROut> {
   readonly _E!: () => E
   readonly _ROut!: () => ROut
 
-  setKey(hash: symbol) {
+  setKey(hash: PropertyKey) {
     this.hash.set(hash)
     return this
   }
