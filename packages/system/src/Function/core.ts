@@ -157,3 +157,10 @@ export function untupled<A extends ReadonlyArray<unknown>, B>(
 export function unsafeCoerce<A, B>(a: A): B {
   return a as any
 }
+
+/**
+ * Type Hole, to be used while implementing functions where you need a placeholder
+ */
+export function hole<T>(): T {
+  throw new Error("Hole should never be called")
+}
