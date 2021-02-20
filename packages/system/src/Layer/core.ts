@@ -439,13 +439,6 @@ export function launch<R, E, A>(self: Layer<R, E, A>): T.Effect<R, E, never> {
 }
 
 /**
- * Empty layer, useful for init cases
- */
-export const Empty: Layer<unknown, never, unknown> = new LayerSuspend(() =>
-  identity<unknown>()
-)
-
-/**
  * Recovers from all errors.
  */
 export function catchAll<R1, E, E1, Out1>(handler: Layer<readonly [R1, E], E1, Out1>) {

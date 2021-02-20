@@ -634,3 +634,10 @@ export class MemoMap {
     )
   }
 }
+
+/**
+ * Empty layer, useful for init cases
+ */
+export const Empty: Layer<unknown, never, unknown> = new LayerSuspend(() =>
+  identity<unknown>()
+)
