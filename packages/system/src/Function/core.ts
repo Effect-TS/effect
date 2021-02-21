@@ -169,19 +169,34 @@ export function hole<T>(): T {
  * Requires _A to be the one specified
  */
 export function enforceOutput<A>() {
-  return <T extends { _A: () => A }>(_: T): T => _
+  return (
+    /**
+     * @optimize identity
+     */
+    <T extends { _A: () => A }>(_: T): T => _
+  )
 }
 
 /**
  * Requires _E to be the one specified
  */
 export function enforceError<E>() {
-  return <T extends { _E: () => E }>(_: T): T => _
+  return (
+    /**
+     * @optimize identity
+     */
+    <T extends { _E: () => E }>(_: T): T => _
+  )
 }
 
 /**
  * Requires _R to be the one specified
  */
 export function enforceContext<R>() {
-  return <T extends { _R: (_: R) => void }>(_: T): T => _
+  return (
+    /**
+     * @optimize identity
+     */
+    <T extends { _R: (_: R) => void }>(_: T): T => _
+  )
 }
