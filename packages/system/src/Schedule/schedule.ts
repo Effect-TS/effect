@@ -1,4 +1,4 @@
-import * as A from "../Array"
+import * as A from "../Array/core"
 import * as Clock from "../Clock"
 import * as E from "../Either"
 import { pipe, tuple } from "../Function"

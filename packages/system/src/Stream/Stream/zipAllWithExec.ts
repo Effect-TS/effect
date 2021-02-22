@@ -1,5 +1,5 @@
+import * as A from "../../Array/core"
 import * as C from "../../Cause"
-import * as A from "../../Chunk"
 import * as E from "../../Either"
 import * as Ex from "../../Exit"
 import { pipe } from "../../Function"
@@ -40,13 +40,13 @@ export function zipAllWithExec<R, R1, E, E1, O, O2>(
       readonly _tag = "End"
     }
     type Status = Running | LeftDone | RightDone | End
-    type State = readonly [Status, E.Either<A.Chunk<O>, A.Chunk<O2>>]
+    type State = readonly [Status, E.Either<A.Array<O>, A.Array<O2>>]
 
     const handleSuccess = (
-      maybeO: O.Option<A.Chunk<O>>,
-      maybeO2: O.Option<A.Chunk<O2>>,
-      excess: E.Either<A.Chunk<O>, A.Chunk<O2>>
-    ): Ex.Exit<never, readonly [A.Chunk<O3>, State]> => {
+      maybeO: O.Option<A.Array<O>>,
+      maybeO2: O.Option<A.Array<O2>>,
+      excess: E.Either<A.Array<O>, A.Array<O2>>
+    ): Ex.Exit<never, readonly [A.Array<O3>, State]> => {
       const [excessL, excessR] = E.fold_(
         excess,
         (l) => [l, A.empty] as const,

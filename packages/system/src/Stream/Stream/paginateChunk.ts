@@ -1,4 +1,4 @@
-import * as A from "../../Chunk"
+import * as A from "../../Array/core"
 import type * as O from "../../Option"
 import * as T from "../_internal/effect"
 import { paginateChunkM } from "./paginateChunkM"
@@ -9,6 +9,6 @@ import { paginateChunkM } from "./paginateChunkM"
  * hence the name.
  */
 export function paginateChunk<S>(s: S) {
-  return <A>(f: (s: S) => readonly [A.Chunk<A>, O.Option<S>]) =>
+  return <A>(f: (s: S) => readonly [A.Array<A>, O.Option<S>]) =>
     paginateChunkM(s)((s) => T.succeed(f(s)))
 }

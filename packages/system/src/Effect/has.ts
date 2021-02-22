@@ -1,7 +1,7 @@
 /**
  * Copyright 2020 Michael Arnaldi and the Matechs Garage Contributors.
  */
-import * as A from "../Array"
+import * as A from "../Array/core"
 import { access, accessM, chain_, provideAll_, succeed } from "../Effect/core"
 import type { Effect } from "../Effect/effect"
 import type { Has, Tag } from "../Has"

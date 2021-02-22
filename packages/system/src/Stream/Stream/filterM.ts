@@ -1,4 +1,4 @@
-import * as A from "../../Chunk"
+import * as A from "../../Array/core"
 import * as O from "../../Option"
 import * as BP from "../../Stream/BufferedPull"
 import type * as Pull from "../../Stream/Pull"

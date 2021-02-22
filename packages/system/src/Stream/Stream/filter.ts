@@ -1,4 +1,4 @@
-import * as A from "../../Chunk"
+import * as A from "../../Array/core"
 import type { Predicate, Refinement } from "../../Function"
 import type { Stream } from "./definitions"
 import { mapChunks_ } from "./mapChunks"

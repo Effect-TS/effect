@@ -1,4 +1,4 @@
-import * as A from "../../Array"
+import * as A from "../../Array/core"
 import type { Cause } from "../../Cause"
 import * as C from "../../Cause"
 import { RuntimeError } from "../../Cause"

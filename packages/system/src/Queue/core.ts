@@ -1,4 +1,4 @@
-import * as A from "../Array"
+import * as A from "../Array/core"
 import { pipe } from "../Function"
 import { AtomicBoolean } from "../Support/AtomicBoolean"
 import type { MutableQueue } from "../Support/MutableQueue"

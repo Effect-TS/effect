@@ -1,5 +1,5 @@
+import * as A from "../../Array/core"
 import type * as C from "../../Cause"
-import * as A from "../../Chunk"
 import * as Ex from "../../Exit"
 import type { Predicate, Refinement } from "../../Function"
 import { not, pipe, tuple } from "../../Function"
@@ -22,7 +22,7 @@ export class Transducer<R, E, I, O> {
     readonly push: M.Managed<
       R,
       never,
-      (c: O.Option<A.Chunk<I>>) => T.Effect<R, E, A.Chunk<O>>
+      (c: O.Option<A.Array<I>>) => T.Effect<R, E, A.Array<O>>
     >
   ) {}
 }
@@ -36,7 +36,7 @@ export class Transducer<R, E, I, O> {
  *   result in empty [].
  */
 export const transducer = <R, E, I, O, R1>(
-  push: M.Managed<R, never, (c: O.Option<A.Chunk<I>>) => T.Effect<R1, E, A.Chunk<O>>>
+  push: M.Managed<R, never, (c: O.Option<A.Array<I>>) => T.Effect<R1, E, A.Array<O>>>
 ) => new Transducer<R & R1, E, I, O>(push)
 
 /**
@@ -98,7 +98,7 @@ export function map<O, P>(
  */
 export function mapChunks_<R, E, I, O, O1>(
   fa: Transducer<R, E, I, O>,
-  f: (chunks: A.Chunk<O>) => A.Chunk<O1>
+  f: (chunks: A.Array<O>) => A.Array<O1>
 ): Transducer<R, E, I, O1> {
   return new Transducer(M.map_(fa.push, (push) => (input) => T.map_(push(input), f)))
 }
@@ -107,7 +107,7 @@ export function mapChunks_<R, E, I, O, O1>(
  * Transforms the chunks emitted by this transducer.
  */
 export function mapChunks<O, O1>(
-  f: (chunks: A.Chunk<O>) => A.Chunk<O1>
+  f: (chunks: A.Array<O>) => A.Array<O1>
 ): <R, E, I>(fa: Transducer<R, E, I, O>) => Transducer<R, E, I, O1> {
   return (fa) => mapChunks_(fa, f)
 }
@@ -117,7 +117,7 @@ export function mapChunks<O, O1>(
  */
 export function mapChunksM_<R, E, I, O, R1, E1, O1>(
   fa: Transducer<R, E, I, O>,
-  f: (chunk: A.Chunk<O>) => T.Effect<R1, E1, A.Chunk<O1>>
+  f: (chunk: A.Array<O>) => T.Effect<R1, E1, A.Array<O1>>
 ): Transducer<R & R1, E | E1, I, O1> {
   return new Transducer(M.map_(fa.push, (push) => (input) => T.chain_(push(input), f)))
 }
@@ -126,7 +126,7 @@ export function mapChunksM_<R, E, I, O, R1, E1, O1>(
  * Effectfully transforms the chunks emitted by this transducer.
  */
 export function mapChunksM<O, R1, E1, O1>(
-  f: (chunk: A.Chunk<O>) => T.Effect<R1, E1, A.Chunk<O1>>
+  f: (chunk: A.Array<O>) => T.Effect<R1, E1, A.Array<O1>>
 ): <R, E, I>(fa: Transducer<R, E, I, O>) => Transducer<R & R1, E | E1, I, O1> {
   return (fa) => mapChunksM_(fa, f)
 }
@@ -203,7 +203,7 @@ export function identity<I>(): Transducer<unknown, never, I, I> {
  * Creates a transducer from a chunk processing function.
  */
 export function fromPush<R, E, I, O>(
-  push: (input: O.Option<A.Chunk<I>>) => T.Effect<R, E, A.Chunk<O>>
+  push: (input: O.Option<A.Array<I>>) => T.Effect<R, E, A.Array<O>>
 ): Transducer<R, E, I, O> {
   return new Transducer(M.succeed(push))
 }
@@ -256,16 +256,16 @@ export function last<O>(): Transducer<unknown, never, O, O.Option<O>> {
 /**
  * Emits the provided chunk before emitting any other value.
  */
-export function prepend<O>(values: A.Chunk<O>): Transducer<unknown, never, O, O> {
+export function prepend<O>(values: A.Array<O>): Transducer<unknown, never, O, O> {
   return new Transducer(
-    M.map_(R.makeManagedRef(values), (state) => (is: O.Option<A.Chunk<O>>) =>
+    M.map_(R.makeManagedRef(values), (state) => (is: O.Option<A.Array<O>>) =>
       O.fold_(
         is,
         () => R.getAndSet_(state, A.empty),
         (os) =>
           pipe(
             state,
-            R.getAndSet(A.empty as A.Chunk<O>),
+            R.getAndSet(A.empty as A.Array<O>),
             T.map((c) => (A.isEmpty(c) ? os : A.concat_(c, os)))
           )
       )
@@ -279,16 +279,16 @@ export function prepend<O>(values: A.Chunk<O>): Transducer<unknown, never, O, O>
  */
 export function branchAfter<R, E, I, O>(
   n: number,
-  f: (c: A.Chunk<I>) => Transducer<R, E, I, O>
+  f: (c: A.Array<I>) => Transducer<R, E, I, O>
 ): Transducer<R, E, I, O> {
   interface Collecting {
     _tag: "Collecting"
-    data: A.Chunk<I>
+    data: A.Array<I>
   }
   interface Emitting {
     _tag: "Emitting"
     finalizer: Finalizer
-    push: (is: O.Option<A.Chunk<I>>) => T.Effect<R, E, A.Chunk<O>>
+    push: (is: O.Option<A.Array<I>>) => T.Effect<R, E, A.Array<O>>
   }
   type State = Collecting | Emitting
   const initialState: State = {
@@ -302,7 +302,7 @@ export function branchAfter<R, E, I, O>(
     M.chain_(M.scope, (scope) =>
       M.map_(
         RM.makeManagedRefM<State>(initialState),
-        (state) => (is: O.Option<A.Chunk<I>>) =>
+        (state) => (is: O.Option<A.Array<I>>) =>
           O.fold_(
             is,
             () =>
@@ -327,7 +327,7 @@ export function branchAfter<R, E, I, O>(
                   }
                   case "Collecting": {
                     if (A.isEmpty(data)) {
-                      return T.succeed([A.empty as A.Chunk<O>, s] as const)
+                      return T.succeed([A.empty as A.Array<O>, s] as const)
                     } else {
                       const remaining = toCollect - s.data.length
                       if (remaining <= data.length) {
@@ -364,7 +364,7 @@ export function dropWhile<I>(
   predicate: Predicate<I>
 ): Transducer<unknown, never, I, I> {
   return new Transducer(
-    M.map_(R.makeManagedRef(true), (dropping) => (is: O.Option<A.Chunk<I>>) =>
+    M.map_(R.makeManagedRef(true), (dropping) => (is: O.Option<A.Array<I>>) =>
       O.fold_(
         is,
         () => T.succeed(A.empty),
@@ -396,7 +396,7 @@ export function dropWhileM<R, E, I>(
     pipe(
       M.do,
       M.bind("dropping", () => R.makeManagedRef(true)),
-      M.let("push", ({ dropping }) => (is: O.Option<A.Chunk<I>>) =>
+      M.let("push", ({ dropping }) => (is: O.Option<A.Array<I>>) =>
         O.fold_(
           is,
           () => T.succeed(A.empty),
@@ -407,7 +407,7 @@ export function dropWhileM<R, E, I>(
                 b
                   ? T.map_(
                       T.dropWhile_(is, p),
-                      (l: A.Chunk<I>) => [l, A.isEmpty(l)] as const
+                      (l: A.Array<I>) => [l, A.isEmpty(l)] as const
                     )
                   : T.succeed([is, false] as const)
               ),
@@ -431,13 +431,13 @@ export function fold<I, O>(
   f: (output: O, input: I) => O
 ): Transducer<unknown, never, I, O> {
   const go = (
-    in_: A.Chunk<I>,
+    in_: A.Array<I>,
     state: O,
     progress: boolean
-  ): readonly [A.Chunk<O>, O, boolean] => {
+  ): readonly [A.Array<O>, O, boolean] => {
     return A.reduce_(
       in_,
-      [A.empty as A.Chunk<O>, state, progress] as const,
+      [A.empty as A.Array<O>, state, progress] as const,
       ([os0, state, _], i) => {
         const o = f(state, i)
         if (contFn(o)) {
@@ -449,7 +449,7 @@ export function fold<I, O>(
     )
   }
   return new Transducer(
-    M.map_(R.makeManagedRef(O.some(initial)), (state) => (is: O.Option<A.Chunk<I>>) =>
+    M.map_(R.makeManagedRef(O.some(initial)), (state) => (is: O.Option<A.Array<I>>) =>
       O.fold_(
         is,
         () => pipe(R.getAndSet_(state, O.none), T.map(O.fold(() => A.empty, A.single))),
@@ -492,16 +492,16 @@ export function foldM<R, E, I, O>(
 ): Transducer<R, E, I, O> {
   const init = O.some(initial)
   const go = (
-    in_: A.Chunk<I>,
+    in_: A.Array<I>,
     state: O,
     progress: boolean
-  ): T.Effect<R, E, readonly [A.Chunk<O>, O, boolean]> =>
+  ): T.Effect<R, E, readonly [A.Array<O>, O, boolean]> =>
     A.reduce_(
       in_,
       T.succeed([A.empty, state, progress]) as T.Effect<
         R,
         E,
-        readonly [A.Chunk<O>, O, boolean]
+        readonly [A.Array<O>, O, boolean]
       >,
       (b, i) =>
         T.chain_(b, ([os0, state, _]) =>
@@ -515,7 +515,7 @@ export function foldM<R, E, I, O>(
         )
     )
   return new Transducer(
-    M.map_(R.makeManagedRef(init), (state) => (is: O.Option<A.Chunk<I>>) =>
+    M.map_(R.makeManagedRef(init), (state) => (is: O.Option<A.Array<I>>) =>
       O.fold_(
         is,
         () =>
@@ -620,7 +620,7 @@ export function foldWeightedDecompose<I, O>(
   initial: O,
   costFn: (output: O, input: I) => number,
   max: number,
-  decompose: (input: I) => A.Chunk<I>,
+  decompose: (input: I) => A.Array<I>,
   f: (output: O, input: I) => O
 ): Transducer<unknown, never, I, O> {
   interface FoldWeightedState {
@@ -634,11 +634,11 @@ export function foldWeightedDecompose<I, O>(
   }
 
   const go = (
-    in_: A.Chunk<I>,
-    os0: A.Chunk<O>,
+    in_: A.Array<I>,
+    os0: A.Array<O>,
     state: FoldWeightedState,
     dirty: boolean
-  ): readonly [A.Chunk<O>, FoldWeightedState, boolean] =>
+  ): readonly [A.Array<O>, FoldWeightedState, boolean] =>
     A.reduce_(in_, [os0, state, dirty] as const, ([os0, state, _], i) => {
       const total = state.cost + costFn(state.result, i)
 
@@ -671,7 +671,7 @@ export function foldWeightedDecompose<I, O>(
   return new Transducer(
     M.map_(
       R.makeManagedRef(O.some(initialState)),
-      (state) => (is: O.Option<A.Chunk<I>>) =>
+      (state) => (is: O.Option<A.Array<I>>) =>
         O.fold_(
           is,
           () =>
@@ -722,7 +722,7 @@ export function foldWeightedDecomposeM<R, E, I, O>(
   initial: O,
   costFn: (output: O, input: I) => T.Effect<R, E, number>,
   max: number,
-  decompose: (input: I) => T.Effect<R, E, A.Chunk<I>>,
+  decompose: (input: I) => T.Effect<R, E, A.Array<I>>,
   f: (output: O, input: I) => T.Effect<R, E, O>
 ): Transducer<R, E, I, O> {
   interface FoldWeightedState {
@@ -736,17 +736,17 @@ export function foldWeightedDecomposeM<R, E, I, O>(
   }
 
   const go = (
-    in_: A.Chunk<I>,
-    os: A.Chunk<O>,
+    in_: A.Array<I>,
+    os: A.Array<O>,
     state: FoldWeightedState,
     dirty: boolean
-  ): T.Effect<R, E, readonly [A.Chunk<O>, FoldWeightedState, boolean]> =>
+  ): T.Effect<R, E, readonly [A.Array<O>, FoldWeightedState, boolean]> =>
     A.reduce_(
       in_,
       T.succeed([os, state, dirty]) as T.Effect<
         R,
         E,
-        readonly [A.Chunk<O>, FoldWeightedState, boolean]
+        readonly [A.Array<O>, FoldWeightedState, boolean]
       >,
       (o, i) =>
         T.chain_(o, ([os, state, _]) =>
@@ -787,7 +787,7 @@ export function foldWeightedDecomposeM<R, E, I, O>(
   return new Transducer(
     M.map_(
       R.makeManagedRef(O.some(initialState)),
-      (state) => (is: O.Option<A.Chunk<I>>) =>
+      (state) => (is: O.Option<A.Array<I>>) =>
         O.fold_(
           is,
           () =>
@@ -844,12 +844,12 @@ export function foldWeighted<I, O>(
 /**
  * Creates a transducer accumulating incoming values into chunks of maximum size `n`.
  */
-export function collectAllN<I>(n: number): Transducer<unknown, never, I, A.Chunk<I>> {
+export function collectAllN<I>(n: number): Transducer<unknown, never, I, A.Array<I>> {
   const go = (
-    in_: A.Chunk<I>,
-    leftover: A.Chunk<I>,
-    acc: A.Chunk<A.Chunk<I>>
-  ): [A.Chunk<A.Chunk<I>>, A.Chunk<I>] => {
+    in_: A.Array<I>,
+    leftover: A.Array<I>,
+    acc: A.Array<A.Array<I>>
+  ): [A.Array<A.Array<I>>, A.Array<I>] => {
     const [left, nextIn] = A.splitAt_(in_, n - leftover.length)
     if (leftover.length + left.length < n) return [acc, A.concat_(leftover, left)]
     else {
@@ -862,8 +862,8 @@ export function collectAllN<I>(n: number): Transducer<unknown, never, I, A.Chunk
 
   return new Transducer(
     M.map_(
-      R.makeManagedRef<A.Chunk<I>>(A.empty),
-      (state) => (is: O.Option<A.Chunk<I>>) =>
+      R.makeManagedRef<A.Array<I>>(A.empty),
+      (state) => (is: O.Option<A.Array<I>>) =>
         O.fold_(
           is,
           () =>
@@ -906,9 +906,9 @@ export function collectAllToMapN<K, I>(
  */
 export function collectAllWhile<I>(
   p: Predicate<I>
-): Transducer<unknown, never, I, A.Chunk<I>> {
+): Transducer<unknown, never, I, A.Array<I>> {
   return pipe(
-    fold<I, [A.Chunk<I>, boolean]>(
+    fold<I, [A.Array<I>, boolean]>(
       [A.empty, true],
       (t) => t[1],
       ([is, _], i) => (p(i) ? [A.concat_(is, [i]), true] : [is, false])
@@ -923,9 +923,9 @@ export function collectAllWhile<I>(
  */
 export function collectAllWhileM<R, E, I>(
   p: (i: I) => T.Effect<R, E, boolean>
-): Transducer<R, E, I, A.Chunk<I>> {
+): Transducer<R, E, I, A.Array<I>> {
   return pipe(
-    foldM<R, E, I, [A.Chunk<I>, boolean]>(
+    foldM<R, E, I, [A.Array<I>, boolean]>(
       [A.empty, true],
       (t) => t[1],
       ([is, _], i) =>

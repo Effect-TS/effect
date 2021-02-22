@@ -1,4 +1,4 @@
-import * as A from "../../Chunk"
+import * as A from "../../Array/core"
 import { pipe } from "../../Function"
 import * as O from "../../Option"
 import * as T from "../_internal/effect"
@@ -7,9 +7,9 @@ import * as Pull from "../Pull"
 
 export class BufferedPull<R, E, A> {
   constructor(
-    readonly upstream: T.Effect<R, O.Option<E>, A.Chunk<A>>,
+    readonly upstream: T.Effect<R, O.Option<E>, A.Array<A>>,
     readonly done: R.Ref<boolean>,
-    readonly cursor: R.Ref<[A.Chunk<A>, number]>
+    readonly cursor: R.Ref<[A.Array<A>, number]>
   ) {}
 }
 
@@ -45,7 +45,7 @@ export function pullElement<R, E, A>(
     self,
     pipe(
       self.cursor,
-      R.modify(([c, i]): [T.Effect<R, O.Option<E>, A>, [A.Chunk<A>, number]] => {
+      R.modify(([c, i]): [T.Effect<R, O.Option<E>, A>, [A.Array<A>, number]] => {
         if (i >= c.length) {
           return [T.chain_(update(self), () => pullElement(self)), [[], 0]]
         } else {
@@ -59,14 +59,14 @@ export function pullElement<R, E, A>(
 
 export function pullChunk<R, E, A>(
   self: BufferedPull<R, E, A>
-): T.Effect<R, O.Option<E>, A.Chunk<A>> {
+): T.Effect<R, O.Option<E>, A.Array<A>> {
   return ifNotDone_(
     self,
     pipe(
       self.cursor,
       R.modify(([chunk, idx]): [
-        T.Effect<R, O.Option<E>, A.Chunk<A>>,
-        [A.Chunk<A>, number]
+        T.Effect<R, O.Option<E>, A.Array<A>>,
+        [A.Array<A>, number]
       ] => {
         if (idx >= chunk.length) {
           return [T.chain_(update(self), () => pullChunk(self)), [[], 0]]
@@ -79,11 +79,11 @@ export function pullChunk<R, E, A>(
   )
 }
 
-export function make<R, E, A>(pull: T.Effect<R, O.Option<E>, A.Chunk<A>>) {
+export function make<R, E, A>(pull: T.Effect<R, O.Option<E>, A.Array<A>>) {
   return pipe(
     T.do,
     T.bind("done", () => R.makeRef(false)),
-    T.bind("cursor", () => R.makeRef<[A.Chunk<A>, number]>([[], 0])),
+    T.bind("cursor", () => R.makeRef<[A.Array<A>, number]>([[], 0])),
     T.map(({ cursor, done }) => new BufferedPull(pull, done, cursor))
   )
 }

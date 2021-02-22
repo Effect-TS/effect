@@ -1,4 +1,4 @@
-import * as A from "../Array"
+import * as A from "../Array/core"
 import * as NEA from "../NonEmptyArray"
 import type { Effect } from "./effect"
 import { orElse_ } from "./orElse"

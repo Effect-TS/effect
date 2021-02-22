@@ -1,4 +1,4 @@
-import * as A from "../Array"
+import * as A from "../Array/core"
 import * as C from "../Cause/core"
 import { FiberFailure } from "../Cause/errors"
 import * as E from "../Either"

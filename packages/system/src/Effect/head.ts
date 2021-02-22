@@ -1,4 +1,4 @@
-import * as A from "../Array"
+import * as A from "../Array/core"
 import { map as mapCause } from "../Cause"
 import { pipe } from "../Function"
 import * as O from "../Option"

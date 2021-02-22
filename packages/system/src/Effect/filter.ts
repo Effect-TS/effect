@@ -1,4 +1,4 @@
-import * as A from "../Array"
+import * as A from "../Array/core"
 import { pipe } from "../Function"
 import * as I from "../Iterable"
 import * as O from "../Option"

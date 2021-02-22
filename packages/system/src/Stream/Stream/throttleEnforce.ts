@@ -1,4 +1,4 @@
-import type * as A from "../../Chunk"
+import type * as A from "../../Array/core"
 import * as T from "../_internal/effect"
 import { throttleEnforceM } from "./throttleEnforceM"
 
@@ -9,6 +9,6 @@ import { throttleEnforceM } from "./throttleEnforceM"
  * The weight of each chunk is determined by the `costFn` function.
  */
 export function throttleEnforce(units: number, duration: number, burst = 0) {
-  return <O>(costFn: (c: A.Chunk<O>) => number) =>
-    throttleEnforceM(units, duration, burst)((os: A.Chunk<O>) => T.succeed(costFn(os)))
+  return <O>(costFn: (c: A.Array<O>) => number) =>
+    throttleEnforceM(units, duration, burst)((os: A.Array<O>) => T.succeed(costFn(os)))
 }

@@ -4,7 +4,7 @@
  * Data structure which represents non-empty arrays
  */
 
-import * as A from "../Array"
+import * as A from "../Array/core"
 import type { Predicate, Refinement } from "../Function"
 import type { MutableRecord } from "../Mutable"
 import type { Option } from "../Option"

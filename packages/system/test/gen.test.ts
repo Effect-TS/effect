@@ -1,4 +1,4 @@
-import * as A from "../src/Array"
+import * as A from "../src/Array/core"
 import * as T from "../src/Effect"
 import * as E from "../src/Either"
 import * as Ex from "../src/Exit"

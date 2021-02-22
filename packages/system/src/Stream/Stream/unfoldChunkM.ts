@@ -1,4 +1,4 @@
-import type * as A from "../../Chunk"
+import type * as A from "../../Array/core"
 import { pipe } from "../../Function"
 import * as O from "../../Option"
 import * as T from "../_internal/effect"
@@ -12,7 +12,7 @@ import { Stream } from "./definitions"
  */
 export function unfoldChunkM<Z>(z: Z) {
   return <R, E, A>(
-    f: (z: Z) => T.Effect<R, E, O.Option<readonly [A.Chunk<A>, Z]>>
+    f: (z: Z) => T.Effect<R, E, O.Option<readonly [A.Array<A>, Z]>>
   ): Stream<R, E, A> =>
     new Stream(
       pipe(

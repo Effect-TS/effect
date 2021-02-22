@@ -1,4 +1,4 @@
-import * as A from "../Array"
+import * as A from "../Array/core"
 import * as NA from "../NonEmptyArray"
 import * as O from "../Option"
 import type { Effect } from "./effect"

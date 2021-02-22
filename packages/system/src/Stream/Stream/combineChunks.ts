@@ -1,4 +1,4 @@
-import type * as A from "../../Chunk"
+import type * as A from "../../Array/core"
 import type * as Ex from "../../Exit"
 import { pipe } from "../../Function"
 import type * as Option from "../../Option"
@@ -19,12 +19,12 @@ export function combineChunks_<R1, E1, O2, Z, R, E, O, O3>(
   z: Z,
   f: (
     z: Z,
-    s: T.Effect<R, Option.Option<E>, A.Chunk<O>>,
-    t: T.Effect<R1, Option.Option<E1>, A.Chunk<O2>>
+    s: T.Effect<R, Option.Option<E>, A.Array<O>>,
+    t: T.Effect<R1, Option.Option<E1>, A.Array<O2>>
   ) => T.Effect<
     R & R1,
     never,
-    Ex.Exit<Option.Option<E | E1>, readonly [A.Chunk<O3>, Z]>
+    Ex.Exit<Option.Option<E | E1>, readonly [A.Array<O3>, Z]>
   >
 ): Stream<R & R1, E1 | E, O3> {
   return new Stream(
@@ -58,12 +58,12 @@ export function combineChunks<R1, E1, O2, Z, R, E, O, O3>(
   z: Z,
   f: (
     z: Z,
-    s: T.Effect<R, Option.Option<E>, A.Chunk<O>>,
-    t: T.Effect<R1, Option.Option<E1>, A.Chunk<O2>>
+    s: T.Effect<R, Option.Option<E>, A.Array<O>>,
+    t: T.Effect<R1, Option.Option<E1>, A.Array<O2>>
   ) => T.Effect<
     R & R1,
     never,
-    Ex.Exit<Option.Option<E | E1>, readonly [A.Chunk<O3>, Z]>
+    Ex.Exit<Option.Option<E | E1>, readonly [A.Array<O3>, Z]>
   >
 ) {
   return (self: Stream<R, E, O>) => combineChunks_(self, that, z, f)

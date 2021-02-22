@@ -33,7 +33,6 @@
     "modules": [
       "Async",
       "Array",
-      "Chunk",
       "Associative",
       "Boolean",
       "Bounded",

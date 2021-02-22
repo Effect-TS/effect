@@ -1,4 +1,4 @@
-import * as A from "../Array"
+import * as A from "../Array/core"
 import * as Exit from "../Exit"
 import * as Fiber from "../Fiber"
 import { pipe, tuple } from "../Function"

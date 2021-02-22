@@ -1,4 +1,4 @@
-import * as A from "../Array"
+import * as A from "../Array/core"
 import type { Cause } from "../Cause/cause"
 import { sequential } from "../Effect"
 import type { ExecutionStrategy } from "../Effect/ExecutionStrategy"

@@ -1,4 +1,4 @@
-import * as A from "../Array"
+import * as A from "../Array/core"
 import { chain_, succeed } from "./core"
 import type { Effect } from "./effect"
 

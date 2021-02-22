@@ -1,4 +1,4 @@
-import { range } from "../Array"
+import { range } from "../Array/core"
 import type { Effect } from "./effect"
 
 /**

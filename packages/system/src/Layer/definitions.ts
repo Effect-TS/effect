@@ -1,4 +1,4 @@
-import * as A from "../Array"
+import * as A from "../Array/core"
 import type * as C from "../Cause"
 import * as T from "../Effect"
 import { sequential } from "../Effect/ExecutionStrategy"

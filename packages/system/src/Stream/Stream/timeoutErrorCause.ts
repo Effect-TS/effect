@@ -1,5 +1,5 @@
+import type * as A from "../../Array/core"
 import type * as C from "../../Cause"
-import type * as A from "../../Chunk"
 import type * as CL from "../../Clock"
 import * as O from "../../Option"
 import * as T from "../_internal/effect"
@@ -17,7 +17,7 @@ export function timeoutErrorCause<E1>(cause: C.Cause<E1>) {
     new Stream(
       M.map_(
         self.proc,
-        (next): T.Effect<R & CL.HasClock, O.Option<E | E1>, A.Chunk<O>> =>
+        (next): T.Effect<R & CL.HasClock, O.Option<E | E1>, A.Array<O>> =>
           T.chain_(
             T.timeout_(next, d),
             O.fold(

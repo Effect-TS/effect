@@ -1,4 +1,4 @@
-import * as A from "../../Chunk"
+import * as A from "../../Array/core"
 import { pipe } from "../../Function"
 import * as O from "../../Option"
 import * as T from "../_internal/effect"
@@ -14,7 +14,7 @@ import { Stream } from "./definitions"
  */
 export function paginateChunkM<S>(s: S) {
   return <R, E, A>(
-    f: (s: S) => T.Effect<R, E, readonly [A.Chunk<A>, O.Option<S>]>
+    f: (s: S) => T.Effect<R, E, readonly [A.Array<A>, O.Option<S>]>
   ): Stream<R, E, A> =>
     new Stream(
       pipe(

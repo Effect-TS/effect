@@ -31,7 +31,6 @@
   "config": {
     "modules": [
       "Array",
-      "Chunk",
       "Async",
       "Cause",
       "Clock",

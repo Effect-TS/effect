@@ -1,4 +1,4 @@
-import type { Array } from "../Array"
+import type { Array } from "../Array/core"
 import type { MutableArray } from "../Mutable"
 import { chain_, succeed, suspend } from "./core"
 import type { Effect } from "./effect"

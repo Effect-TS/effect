@@ -1,4 +1,4 @@
-import * as A from "../Array"
+import * as A from "../Array/core"
 import * as Cause from "../Cause/core"
 import * as E from "../Either"
 import * as Exit from "../Exit/api"

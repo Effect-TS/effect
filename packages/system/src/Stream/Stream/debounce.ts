@@ -1,5 +1,5 @@
+import * as A from "../../Array/core"
 import * as C from "../../Cause"
-import * as A from "../../Chunk"
 import * as CL from "../../Clock"
 import * as Ex from "../../Exit"
 import { pipe } from "../../Function"
@@ -25,7 +25,7 @@ export function debounce_<R, E, O>(
   }
   class Current {
     readonly _tag = "Current"
-    constructor(readonly fiber: F.Fiber<O.Option<E>, A.Chunk<O>>) {}
+    constructor(readonly fiber: F.Fiber<O.Option<E>, A.Array<O>>) {}
   }
   class Done {
     readonly _tag = "Done"
@@ -54,7 +54,7 @@ export function debounce_<R, E, O>(
         )
       ),
       M.let("pull", ({ chunks, ref }) => {
-        const store = (chunk: A.Chunk<O>): T.RIO<CL.HasClock, A.Chunk<O>> =>
+        const store = (chunk: A.Array<O>): T.RIO<CL.HasClock, A.Array<O>> =>
           pipe(
             A.last(chunk),
             O.map((last) =>

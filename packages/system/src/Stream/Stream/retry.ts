@@ -1,4 +1,4 @@
-import type * as A from "../../Chunk"
+import type * as A from "../../Array/core"
 import type * as CL from "../../Clock"
 import { pipe } from "../../Function"
 import * as O from "../../Option"
@@ -28,10 +28,10 @@ export function retry_<R, R1, E, O>(
       M.do,
       M.bind("driver", () => T.toManaged_(SC.driver(schedule))),
       M.bind("currStream", () =>
-        T.toManaged_(Ref.makeRef<T.Effect<R, O.Option<E>, A.Chunk<O>>>(Pull.end))
+        T.toManaged_(Ref.makeRef<T.Effect<R, O.Option<E>, A.Array<O>>>(Pull.end))
       ),
       M.bind("switchStream", () =>
-        M.switchable<R, never, T.Effect<R, O.Option<E>, A.Chunk<O>>>()
+        M.switchable<R, never, T.Effect<R, O.Option<E>, A.Array<O>>>()
       ),
       M.tap(({ currStream, switchStream }) =>
         T.toManaged_(T.chain_(switchStream(self.proc), currStream.set))
@@ -40,7 +40,7 @@ export function retry_<R, R1, E, O>(
         const loop: T.Effect<
           R & R1 & CL.HasClock,
           O.Option<E>,
-          A.Chunk<O>
+          A.Array<O>
         > = T.catchSome_(
           T.flatten(currStream.get),
           O.fold(

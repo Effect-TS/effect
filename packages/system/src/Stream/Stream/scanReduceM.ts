@@ -1,4 +1,4 @@
-import * as A from "../../Chunk"
+import * as A from "../../Array/core"
 import { pipe } from "../../Function"
 import * as O from "../../Option"
 import * as T from "../_internal/effect"
@@ -27,7 +27,7 @@ export function scanReduceM_<R, R1, E, E1, O, O1 extends O>(
           T.chain_(
             state.get,
             O.fold(
-              (): T.Effect<R1, O.Option<E | E1>, A.Chunk<O1>> =>
+              (): T.Effect<R1, O.Option<E | E1>, A.Array<O1>> =>
                 T.as_(state.set(O.some(curr as O1)), A.single(curr as O1)),
               (s) =>
                 pipe(

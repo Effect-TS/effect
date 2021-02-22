@@ -1,14 +1,14 @@
+import * as A from "../../Array/core"
 import * as C from "../../Cause/core"
-import * as A from "../../Chunk"
 import * as E from "../../Exit/api"
 import { pipe } from "../../Function"
 import * as O from "../../Option"
 import * as T from "../_internal/effect"
 import type { Pull } from "../Pull"
 
-export type Take<E, A> = E.Exit<O.Option<E>, A.Chunk<A>>
+export type Take<E, A> = E.Exit<O.Option<E>, A.Array<A>>
 
-export const chunk = <A>(as: A.Chunk<A>): Take<never, A> => E.succeed(as)
+export const chunk = <A>(as: A.Array<A>): Take<never, A> => E.succeed(as)
 
 export const halt = <E>(cause: C.Cause<E>): Take<E, never> =>
   E.halt(pipe(cause, C.map(O.some)))
@@ -34,14 +34,14 @@ export const fromPull = <R, E, O>(
 
 export function tap_<E, A, R, E1>(
   take: Take<E, A>,
-  f: (as: A.Chunk<A>) => T.Effect<R, E1, any>
+  f: (as: A.Array<A>) => T.Effect<R, E1, any>
 ): T.Effect<R, E1, void> {
   return T.asUnit(E.forEach_(take, f))
 }
 
 export function tap<A, R, E1>(
-  f: (as: A.Chunk<A>) => T.Effect<R, E1, any>
-): <E>(take: E.Exit<O.Option<E>, A.Chunk<A>>) => T.Effect<R, E1, void> {
+  f: (as: A.Array<A>) => T.Effect<R, E1, any>
+): <E>(take: E.Exit<O.Option<E>, A.Array<A>>) => T.Effect<R, E1, void> {
   return (take) => tap_(take, f)
 }
 
@@ -53,7 +53,7 @@ export function fold_<E, A, Z>(
   take: Take<E, A>,
   end: Z,
   error: (cause: C.Cause<E>) => Z,
-  value: (chunk: A.Chunk<A>) => Z
+  value: (chunk: A.Array<A>) => Z
 ): Z {
   return E.fold_(
     take,
@@ -74,7 +74,7 @@ export function fold_<E, A, Z>(
 export function fold<E, A, Z>(
   end: Z,
   error: (cause: C.Cause<E>) => Z,
-  value: (chunk: A.Chunk<A>) => Z
+  value: (chunk: A.Array<A>) => Z
 ) {
   return (take: Take<E, A>) => fold_(take, end, error, value)
 }
@@ -89,7 +89,7 @@ export function foldM_<E, A, R, E1, Z>(
   take: Take<E, A>,
   end: () => T.Effect<R, E1, Z>,
   error: (cause: C.Cause<E>) => T.Effect<R, E1, Z>,
-  value: (chunk: A.Chunk<A>) => T.Effect<R, E1, Z>
+  value: (chunk: A.Array<A>) => T.Effect<R, E1, Z>
 ): T.Effect<R, E1, Z> {
   return E.foldM_(
     take,
@@ -107,7 +107,7 @@ export function foldM_<E, A, R, E1, Z>(
 export function foldM<E, A, R, E1, Z>(
   end: () => T.Effect<R, E1, Z>,
   error: (cause: C.Cause<E>) => T.Effect<R, E1, Z>,
-  value: (chunk: A.Chunk<A>) => T.Effect<R, E1, Z>
+  value: (chunk: A.Array<A>) => T.Effect<R, E1, Z>
 ): (take: Take<E, A>) => T.Effect<R, E1, Z> {
   return (take) => foldM_(take, end, error, value)
 }
@@ -118,6 +118,6 @@ export function map_<E, A, B>(take: Take<E, A>, f: (a: A) => B): Take<E, B> {
 
 export function map<A, B>(
   f: (a: A) => B
-): <E>(take: E.Exit<O.Option<E>, A.Chunk<A>>) => E.Exit<O.Option<E>, A.Chunk<B>> {
+): <E>(take: E.Exit<O.Option<E>, A.Array<A>>) => E.Exit<O.Option<E>, A.Array<B>> {
   return (take) => map_(take, f)
 }

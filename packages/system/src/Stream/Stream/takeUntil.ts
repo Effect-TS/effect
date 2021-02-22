@@ -1,4 +1,4 @@
-import * as A from "../../Chunk"
+import * as A from "../../Array/core"
 import type { Predicate } from "../../Function"
 import { not, pipe } from "../../Function"
 import * as T from "../_internal/effect"
@@ -28,7 +28,7 @@ export function takeUntil_<R, E, O>(
             return pipe(
               T.do,
               T.bind("chunk", () => chunks),
-              T.let("taken", ({ chunk }) => A.takeWhile_(chunk, not(pred))),
+              T.let("taken", ({ chunk }) => A.takeLeftWhile_(chunk, not(pred))),
               T.let("last", ({ chunk, taken }) =>
                 A.takeLeft_(A.dropLeft_(chunk, taken.length), 1)
               ),

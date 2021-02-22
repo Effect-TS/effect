@@ -1,4 +1,4 @@
-import type * as A from "../../Chunk"
+import type * as A from "../../Array/core"
 import * as T from "../_internal/effect"
 import { throttleShapeM } from "./throttleShapeM"
 
@@ -9,6 +9,6 @@ import { throttleShapeM } from "./throttleShapeM"
  * function.
  */
 export function throttleShape(units: number, duration: number, burst = 0) {
-  return <O>(costFn: (c: A.Chunk<O>) => number) =>
-    throttleShapeM(units, duration, burst)((os: A.Chunk<O>) => T.succeed(costFn(os)))
+  return <O>(costFn: (c: A.Array<O>) => number) =>
+    throttleShapeM(units, duration, burst)((os: A.Array<O>) => T.succeed(costFn(os)))
 }

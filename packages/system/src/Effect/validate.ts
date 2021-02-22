@@ -1,4 +1,4 @@
-import * as A from "../Array"
+import * as A from "../Array/core"
 import * as E from "../Either"
 import type * as NA from "../NonEmptyArray"
 import { absolve } from "./absolve"

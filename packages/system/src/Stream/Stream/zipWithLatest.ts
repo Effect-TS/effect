@@ -1,4 +1,4 @@
-import * as A from "../../Chunk"
+import * as A from "../../Array/core"
 import { pipe } from "../../Function"
 import * as O from "../../Option"
 import * as T from "../_internal/effect"
@@ -26,8 +26,8 @@ export function zipWithLatest<R, R1, E, E1, O, O2>(
   that: Stream<R1, E1, O2>
 ) {
   const pullNonEmpty = <Out>(
-    pull: T.Effect<R & R1, O.Option<E | E1>, A.Chunk<Out>>
-  ): T.Effect<R & R1, O.Option<E | E1>, A.Chunk<Out>> =>
+    pull: T.Effect<R & R1, O.Option<E | E1>, A.Array<Out>>
+  ): T.Effect<R & R1, O.Option<E | E1>, A.Array<Out>> =>
     T.chain_(pull, (chunk) =>
       A.isEmpty(chunk) ? pullNonEmpty(pull) : T.succeed(chunk)
     )

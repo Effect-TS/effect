@@ -1,4 +1,4 @@
-import type * as A from "../../Chunk"
+import type * as A from "../../Array/core"
 import type * as T from "../_internal/effect"
 import type * as M from "../_internal/managed"
 import * as SK from "../Sink"
@@ -47,7 +47,7 @@ export function forEachWhileManaged<R1, E1, O>(f: (o: O) => T.Effect<R1, E1, boo
  */
 export function forEachChunk_<R, R1, E, E1, O>(
   self: Stream<R, E, O>,
-  f: (o: A.Chunk<O>) => T.Effect<R1, E1, any>
+  f: (o: A.Array<O>) => T.Effect<R1, E1, any>
 ): T.Effect<R & R1, E | E1, void> {
   return run_(self, SK.forEachChunk(f))
 }
@@ -55,7 +55,7 @@ export function forEachChunk_<R, R1, E, E1, O>(
 /**
  * Consumes all elements of the stream, passing them to the specified callback.
  */
-export function forEachChunk<R1, E1, O>(f: (o: A.Chunk<O>) => T.Effect<R1, E1, any>) {
+export function forEachChunk<R1, E1, O>(f: (o: A.Array<O>) => T.Effect<R1, E1, any>) {
   return <R, E>(self: Stream<R, E, O>) => run_(self, SK.forEachChunk(f))
 }
 
@@ -104,7 +104,7 @@ export function forEachManaged<A, R1, E1>(f: (i: A) => T.Effect<R1, E1, any>) {
  */
 export function forEachChunkManaged_<R, R1, E, E1, O>(
   self: Stream<R, E, O>,
-  f: (f: A.Chunk<O>) => T.Effect<R1, E1, any>
+  f: (f: A.Array<O>) => T.Effect<R1, E1, any>
 ): M.Managed<R & R1, E | E1, void> {
   return runManaged_(self, SK.forEachChunk(f))
 }
@@ -114,7 +114,7 @@ export function forEachChunkManaged_<R, R1, E, E1, O>(
  * can be controlled.
  */
 export function forEachChunkManaged<R, R1, E, E1, O>(
-  f: (f: A.Chunk<O>) => T.Effect<R1, E1, any>
+  f: (f: A.Array<O>) => T.Effect<R1, E1, any>
 ): (self: Stream<R, E, O>) => M.Managed<R & R1, E | E1, void> {
   return (self) => forEachChunkManaged_(self, f)
 }

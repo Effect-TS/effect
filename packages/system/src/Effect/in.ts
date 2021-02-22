@@ -1,4 +1,4 @@
-import { head } from "../Array"
+import { head } from "../Array/core"
 import * as Fiber from "../Fiber"
 import { pipe } from "../Function"
 import * as O from "../Option"

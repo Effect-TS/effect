@@ -1,4 +1,4 @@
-import type * as A from "../../Chunk"
+import type * as A from "../../Array/core"
 import * as CL from "../../Clock"
 import { pipe } from "../../Function"
 import * as O from "../../Option"
@@ -14,7 +14,7 @@ import { Stream } from "./definitions"
  * The weight of each chunk is determined by the `costFn` effectful function.
  */
 export function throttleEnforceM(units: number, duration: number, burst = 0) {
-  return <O, R1, E1>(costFn: (c: A.Chunk<O>) => T.Effect<R1, E1, number>) => <R, E>(
+  return <O, R1, E1>(costFn: (c: A.Array<O>) => T.Effect<R1, E1, number>) => <R, E>(
     self: Stream<R, E, O>
   ): Stream<R & R1 & CL.HasClock, E | E1, O> =>
     new Stream(
@@ -29,7 +29,7 @@ export function throttleEnforceM(units: number, duration: number, burst = 0) {
           const go: T.Effect<
             R & R1 & CL.HasClock,
             O.Option<E | E1>,
-            A.Chunk<O>
+            A.Array<O>
           > = T.chain_(chunks, (chunk) =>
             pipe(
               pipe(costFn(chunk), T.mapError(O.some), T.zip(CL.currentTime)),

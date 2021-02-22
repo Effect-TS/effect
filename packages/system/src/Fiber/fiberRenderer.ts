@@ -1,4 +1,4 @@
-import type { Array } from "../Array"
+import type { Array } from "../Array/core"
 import { constant, tuple } from "../Function"
 import * as IT from "../Iterable"
 import { fold_ } from "../Option"

@@ -1,4 +1,4 @@
-import { range } from "../src/Array"
+import { range } from "../src/Array/core"
 import type { Cb, Effect } from "../src/Effect"
 import * as T from "../src/Effect"
 import * as E from "../src/Either"

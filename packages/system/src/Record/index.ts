@@ -1,6 +1,6 @@
 /* adapted from https://github.com/gcanti/fp-ts */
 
-import * as A from "../Array"
+import * as A from "../Array/core"
 import type { Either } from "../Either"
 import type { Predicate, Refinement } from "../Function"
 import type { MutableRecord } from "../Mutable"

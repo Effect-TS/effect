@@ -1,4 +1,4 @@
-import type * as A from "../../Chunk"
+import type * as A from "../../Array/core"
 import type * as CL from "../../Clock"
 import { pipe } from "../../Function"
 import * as O from "../../Option"
@@ -26,7 +26,7 @@ export function repeatWith<R1, B>(schedule: SC.Schedule<R1, any, B>) {
         M.do,
         M.bind("sdriver", () => T.toManaged_(SC.driver(schedule))),
         M.bind("switchPull", () =>
-          M.switchable<R & R1, never, T.Effect<R1 & R, O.Option<E>, A.Chunk<C | D>>>()
+          M.switchable<R & R1, never, T.Effect<R1 & R, O.Option<E>, A.Array<C | D>>>()
         ),
         M.bind("currPull", ({ switchPull }) =>
           T.toManaged_(T.chain_(switchPull(map_(self, f).proc), Ref.makeRef))
@@ -36,7 +36,7 @@ export function repeatWith<R1, B>(schedule: SC.Schedule<R1, any, B>) {
           const go: T.Effect<
             R & R1 & CL.HasClock,
             O.Option<E>,
-            A.Chunk<C | D>
+            A.Array<C | D>
           > = T.chain_(doneRef.get, (done) => {
             if (done) {
               return Pull.end

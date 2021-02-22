@@ -1,4 +1,4 @@
-import * as A from "../Array"
+import * as A from "../Array/core"
 import * as Fiber from "../Fiber"
 import * as I from "../Iterable"
 import { chain_, fork, unit } from "./core"

@@ -1,4 +1,4 @@
-import * as A from "../../Chunk"
+import * as A from "../../Array/core"
 import { pipe } from "../../Function"
 import * as O from "../../Option"
 import * as Q from "../../Queue"
@@ -35,12 +35,7 @@ export function takeRight_<R, E, O>(self: Stream<R, E, O>, n: number): Stream<R,
                 T.catchSome(
                   O.fold(
                     () =>
-                      O.some(
-                        T.andThen_(
-                          done.set(true),
-                          T.map_(queue.takeAll, A.fromIterable)
-                        )
-                      ),
+                      O.some(T.andThen_(done.set(true), T.map_(queue.takeAll, A.from))),
                     () => O.none
                   )
                 )

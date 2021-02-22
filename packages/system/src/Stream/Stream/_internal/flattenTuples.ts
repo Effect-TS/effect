@@ -1,4 +1,4 @@
-import type * as A from "../../../Array"
+import type * as A from "../../../Array/core"
 
 type RecursiveTuples<T> = readonly [T | RecursiveTuples<T>, T]
 

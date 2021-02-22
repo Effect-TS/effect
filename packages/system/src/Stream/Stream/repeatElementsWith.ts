@@ -1,4 +1,4 @@
-import * as A from "../../Chunk"
+import * as A from "../../Array/core"
 import type * as CL from "../../Clock"
 import { pipe } from "../../Function"
 import * as O from "../../Option"
@@ -34,7 +34,7 @@ export function repeatElementsWith<R1, O, B>(schedule: SC.Schedule<R1, O, B>) {
           const go: T.Effect<
             R & R1 & CL.HasClock,
             O.Option<E>,
-            A.Chunk<C | D>
+            A.Array<C | D>
           > = T.chain_(
             state.get,
             O.fold(
@@ -42,7 +42,7 @@ export function repeatElementsWith<R1, O, B>(schedule: SC.Schedule<R1, O, B>) {
                 T.chain_(BP.pullElement(as), (o) =>
                   T.as_(state.set(O.some(o)), A.single(f(o)))
                 ),
-              (o): T.Effect<R & R1 & CL.HasClock, O.Option<E>, A.Chunk<C | D>> => {
+              (o): T.Effect<R & R1 & CL.HasClock, O.Option<E>, A.Array<C | D>> => {
                 const advance = T.as_(driver.next(o), A.single(f(o)))
                 const reset = pipe(
                   driver.last,

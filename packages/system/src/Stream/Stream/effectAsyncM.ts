@@ -1,4 +1,4 @@
-import type * as A from "../../Chunk"
+import type * as A from "../../Array/core"
 import type * as Ex from "../../Exit"
 import { pipe } from "../../Function"
 import type * as O from "../../Option"
@@ -22,7 +22,7 @@ import { repeatEffectChunkOption } from "./repeatEffectChunkOption"
 export function effectAsyncM<R, E, A, R1 = R, E1 = E>(
   register: (
     cb: (
-      next: T.Effect<R, O.Option<E>, A.Chunk<A>>,
+      next: T.Effect<R, O.Option<E>, A.Array<A>>,
       offerCb?: F.Callback<never, boolean>
     ) => T.UIO<Ex.Exit<never, boolean>>
   ) => T.Effect<R1, E1, unknown>,

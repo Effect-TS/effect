@@ -1,11 +1,11 @@
-import * as A from "../../Chunk"
+import * as A from "../../Array/core"
 import * as E from "../../Either"
 
 export function zipChunks_<A, B, C>(
-  fa: A.Chunk<A>,
-  fb: A.Chunk<B>,
+  fa: A.Array<A>,
+  fb: A.Array<B>,
   f: (a: A, b: B) => C
-): [A.Chunk<C>, E.Either<A.Chunk<A>, A.Chunk<B>>] {
+): [A.Array<C>, E.Either<A.Array<A>, A.Array<B>>] {
   const fc: C[] = []
   const len = Math.min(fa.length, fb.length)
   for (let i = 0; i < len; i++) {

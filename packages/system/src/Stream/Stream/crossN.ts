@@ -1,4 +1,4 @@
-import * as A from "../../Array"
+import * as A from "../../Array/core"
 import { pipe } from "../../Function"
 import type { _A, _E, _R } from "../../Utils"
 import { flattenTuples } from "./_internal/flattenTuples"

@@ -3,7 +3,7 @@
  *
  * Copyright 2020 Michael Arnaldi and the Matechs Garage Contributors.
  */
-import * as A from "../Array"
+import * as A from "../Array/core"
 import type { Cause } from "../Cause/cause"
 import { empty, then } from "../Cause/cause"
 import { cause } from "../Effect/cause"

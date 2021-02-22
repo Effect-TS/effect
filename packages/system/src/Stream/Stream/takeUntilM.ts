@@ -1,4 +1,4 @@
-import * as A from "../../Chunk"
+import * as A from "../../Array"
 import { pipe } from "../../Function"
 import * as O from "../../Option"
 import * as T from "../_internal/effect"
@@ -23,7 +23,7 @@ export function takeUntilM_<R, R1, E, E1, O>(
       M.let("pull", ({ chunks, keepTakingRef }) => {
         return T.chain_(
           keepTakingRef.get,
-          (keepTaking): T.Effect<R1 & R, O.Option<E | E1>, A.Chunk<O>> => {
+          (keepTaking): T.Effect<R1 & R, O.Option<E | E1>, A.Array<O>> => {
             if (!keepTaking) {
               return Pull.end
             } else {
@@ -31,7 +31,9 @@ export function takeUntilM_<R, R1, E, E1, O>(
                 T.do,
                 T.bind("chunk", () => chunks),
                 T.bind("taken", ({ chunk }) =>
-                  T.asSomeError(A.takeWhileM_(chunk, (_) => T.map_(pred(_), (r) => !r)))
+                  T.asSomeError(
+                    A.takeLeftWhileM_(chunk, (_) => T.map_(pred(_), (r) => !r))
+                  )
                 ),
                 T.let("last", ({ chunk, taken }) =>
                   A.takeLeft_(A.dropLeft_(chunk, taken.length), 1)

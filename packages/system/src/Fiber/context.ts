@@ -1,4 +1,4 @@
-import * as A from "../Array"
+import * as A from "../Array/core"
 // cause
 import * as Cause from "../Cause/core"
 // effect

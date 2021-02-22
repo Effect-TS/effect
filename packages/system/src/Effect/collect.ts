@@ -1,4 +1,4 @@
-import * as A from "../Array"
+import * as A from "../Array/core"
 import type { Option } from "../Option"
 import type { Effect } from "./effect"
 import { forEach_, forEachPar_, forEachParN_ } from "./forEach"

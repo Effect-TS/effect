@@ -1,4 +1,4 @@
-import * as A from "../../Chunk"
+import * as A from "../../Array/core"
 import type { Predicate, Refinement } from "../../Function"
 import { pipe } from "../../Function"
 import * as O from "../../Option"
@@ -29,7 +29,7 @@ export function collectWhileMap_<R, E, O, O2>(
               T.do,
               T.bind("chunk", () => chunks),
               T.chain(({ chunk }) => {
-                const remaining = A.collectWhileMap_(chunk, f)
+                const remaining = A.takeLeftWhileMap_(chunk, f)
 
                 return T.as_(
                   T.when_(doneRef.set(true), () => remaining.length < chunk.length),
@@ -81,7 +81,7 @@ export function collectWhile_<R, E, O>(
               T.do,
               T.bind("chunk", () => chunks),
               T.chain(({ chunk }) => {
-                const remaining = A.collectWhile_(chunk, f)
+                const remaining = A.takeLeftWhile_(chunk, f)
 
                 return T.as_(
                   T.when_(doneRef.set(true), () => remaining.length < chunk.length),

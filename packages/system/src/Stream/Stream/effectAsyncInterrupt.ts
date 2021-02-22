@@ -1,4 +1,4 @@
-import type * as A from "../../Chunk"
+import type * as A from "../../Array/core"
 import * as E from "../../Either"
 import type * as Ex from "../../Exit"
 import type * as Option from "../../Option"
@@ -16,7 +16,7 @@ import { effectAsyncInterruptEither } from "./effectAsyncInterruptEither"
 export function effectAsyncInterrupt<R, E, A>(
   register: (
     cb: (
-      next: T.Effect<R, Option.Option<E>, A.Chunk<A>>,
+      next: T.Effect<R, Option.Option<E>, A.Array<A>>,
       offerCb?: F.Callback<never, boolean>
     ) => T.UIO<Ex.Exit<never, boolean>>
   ) => T.Canceler<R>,
