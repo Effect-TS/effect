@@ -28,6 +28,9 @@
   "dependencies": {
     "@effect-ts/tracing-utils": "^0.4.1"
   },
+  "peerDependencies": {
+    "@typescript": "^4.2.2"
+  },
   "config": {
     "modules": [
       "Array",
