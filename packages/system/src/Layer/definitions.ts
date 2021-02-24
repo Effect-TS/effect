@@ -76,35 +76,46 @@ export function fold<R, E, A>(self: Layer<R, E, A>) {
 }
 
 /**
- * Create a Layer with the data from both Layers, while providing the data from
- * the first Layer into the second Layer
- *
- * @param from - Layer with the data for the final Layer, which is also provided
- *    into the second Layer.
- *
- * @param to - Layer with the data for the final Layer
+ * Use `from` to partially provide environment into `to`
  */
 export function using<R2, E2, A2>(from: Layer<R2, E2, A2>) {
-  return <E, A>(to: Layer<A2, E, A>): Layer<R2, E2 | E, A> =>
-    fold(from)(fromRawFunctionM((_: readonly [unknown, C.Cause<E2>]) => T.halt(_[1])))(
-      to
-    )
+  return <R, E, A>(to: Layer<A2 & R, E, A>): Layer<R2 & R, E2 | E, A> =>
+    compose(from["+++"](identity<R>()), to)
 }
 
 /**
- * Create a Layer with the data from both Layers, while providing the data from
- * the first Layer into the second Layer
- *
- * @param from - Layer with the data for the final Layer, which is also provided
- *    into the second Layer.
- *
- * @param to - Layer with the data for the final Layer
+ * Use `from` to totally provide environment into `to`
  */
-export function from<R2, E2, A2>(from: Layer<R2, E2, A2>) {
-  return <E, A>(to: Layer<A2, E, A>): Layer<R2, E2 | E, A> =>
-    fold(from)(fromRawFunctionM((_: readonly [unknown, C.Cause<E2>]) => T.halt(_[1])))(
-      to
-    )
+export function usingAll<R2, E2, A2>(from: Layer<R2, E2, A2>) {
+  return <E, A>(to: Layer<A2, E, A>): Layer<R2, E2 | E, A> => compose(from, to)
+}
+
+/**
+ * Use `from` to partially provide environment into `to` and merge both
+ */
+export function usingAnd<R2, E2, A2>(from: Layer<R2, E2, A2>) {
+  return <R, E, A>(to: Layer<A2 & R, E, A>): Layer<R2 & R, E2 | E, A & A2> =>
+    compose(from["+++"](identity<R>()), to["+++"](identity<A2>()))
+}
+
+/**
+ * Use `from` to totally provide environment into `to` and merge both
+ */
+export function usingAllAnd<R2, E2, A2>(from: Layer<R2, E2, A2>) {
+  return <E, A>(to: Layer<A2, E, A>): Layer<R2, E2 | E, A & A2> =>
+    compose(from, to["+++"](identity<A2>()))
+}
+
+/**
+ * Compose layers
+ */
+export function compose<R2, E2, A2, E, A>(
+  from: Layer<R2, E2, A2>,
+  to: Layer<A2, E, A>
+): Layer<R2, E2 | E, A> {
+  return fold(from)(
+    fromRawFunctionM((_: readonly [unknown, C.Cause<E2>]) => T.halt(_[1]))
+  )(to)
 }
 
 export abstract class Layer<RIn, E, ROut> {
@@ -114,6 +125,9 @@ export abstract class Layer<RIn, E, ROut> {
   readonly _E!: () => E
   readonly _ROut!: () => ROut
 
+  /**
+   * Set the hash key for memoization
+   */
   setKey(hash: PropertyKey) {
     this.hash.set(hash)
     return this
@@ -127,28 +141,28 @@ export abstract class Layer<RIn, E, ROut> {
    * Use that Layer to provide data to self
    */
   ["<<<"]<R2, E2>(that: Layer<R2, E2, RIn>): Layer<R2, E2 | E, ROut> {
-    return from(that)(this)
+    return compose(that, this)
   }
 
   /**
    * Create a Layer with the data only from the that Layer, while providing the data from self to that
    */
   [">>>"]<E2, A2>(that: Layer<ROut, E2, A2>): Layer<RIn, E2 | E, A2> {
-    return from(this)(that)
+    return compose(this, that)
   }
 
   /**
    * Create a Layer with the data only from the that Layer, while providing the data from self to that
    */
   ["&>>"]<R2, E2, A2>(that: Layer<ROut & R2, E2, A2>): Layer<RIn & R2, E2 | E, A2> {
-    return from(this["+++"](identity<R2>()))(that)
+    return compose(this["+++"](identity<R2>()), that)
   }
 
   /**
    * Create a Layer with the data from both Layers, while providing the data from self to that
    */
   [">+>"]<E2, A2>(that: Layer<ROut, E2, A2>): Layer<RIn, E2 | E, A2 & ROut> {
-    return from(this)(that["+++"](identity<ROut>()))
+    return compose(this, that["+++"](identity<ROut>()))
   }
 
   /**
@@ -157,58 +171,26 @@ export abstract class Layer<RIn, E, ROut> {
   ["&+>"]<R2, E2, A2>(
     that: Layer<ROut & R2, E2, A2>
   ): Layer<RIn & R2, E2 | E, A2 & ROut> {
-    return from(this["+++"](identity<R2>()))(that["+++"](identity<ROut>()))
+    return compose(this["+++"](identity<R2>()), that["+++"](identity<ROut>()))
   }
 
   /**
    * Combine both layers in parallel
-   *
-   * @see {@link and_}
-   *
-   * @example
-   * ```typescript
-   * import * as T from "@effect-ts/core/Effect"
-   * import * as L from "@effect-ts/core/Effect/Layer"
-   * import { tag } from "@effect-ts/core/Has"
-   *
-   * const rightTag = tag<string>()
-   * const right = L.pure(rightTag)("Hello World!")
-   *
-   * const leftTag = tag<number>()
-   * const left = L.fromEffect(leftTag)(T.accessService(rightTag)((s) => s.length))
-   *
-   * // Layer containing the number and the string, while requiring a string to be
-   * // provided for 'left' Layer.
-   * const live = left["+++"](right)
-   * ```
-   *
-   * @example
-   * ```typescript
-   * import * as T from "@effect-ts/core/Effect"
-   * import * as L from "@effect-ts/core/Effect/Layer"
-   * import { tag } from "@effect-ts/core/Has"
-   *
-   * const centerTag = tag<string>()
-   * const center = L.pure(centerTag)("Hello World!")
-   *
-   * const leftTag = tag<number>()
-   * const left = L.fromEffect(leftTag)(T.accessService(centerTag)((s) => s.length))
-   *
-   * const rightTag = tag<readonly string[]>()
-   * const right = L.fromEffect(rightTag)(T.accessService(centerTag)((s) => s.split("")))
-   *
-   * // Layer containing the number, the array of strings and the string.
-   * const live = left["+++"](right)["<+<"](center)
-   * ```
    */
   ["+++"]<R2, E2, A2>(from: Layer<R2, E2, A2>): Layer<R2 & RIn, E2 | E, ROut & A2> {
     return and_(from, this)
   }
 
+  /**
+   * Use the layer to provide partial environment to an effect
+   */
   use<R, E1, A>(effect: T.Effect<R & ROut, E1, A>): T.Effect<RIn & R, E | E1, A> {
     return T.provideSomeLayer(this)(effect)
   }
 
+  /**
+   * Use the layer to provide the full environment to an effect
+   */
   useAll<E1, A>(effect: T.Effect<ROut, E1, A>): T.Effect<RIn, E | E1, A> {
     return T.provideLayer(this)(effect)
   }

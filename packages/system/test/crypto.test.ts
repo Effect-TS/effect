@@ -36,7 +36,7 @@ describe("Crypto Suite", () => {
   })
   describe("Test", () => {
     const { runPromise, runPromiseExit } = pipe(
-      CryptoLive["<<<"](PBKDF2ConfigTest),
+      PBKDF2ConfigTest["&+>"](CryptoLive),
       testRuntime
     )()
 

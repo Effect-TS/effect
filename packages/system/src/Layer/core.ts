@@ -12,8 +12,8 @@ import type { UnionToIntersection } from "../Utils"
 import type { Layer, MergeA, MergeE, MergeR } from "./definitions"
 import {
   build,
+  compose,
   fold,
-  from,
   fromRawEffect,
   fromRawFunction,
   fromRawFunctionM,
@@ -419,7 +419,8 @@ export function restrict<Tags extends Tag<any>[]>(...ts: Tags) {
       }[number]
     >
   > =>
-    from(self)(
+    compose(
+      self,
       fromRawEffect(
         T.accessServicesT(...ts)((...servises) =>
           servises
