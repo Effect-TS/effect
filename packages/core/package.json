@@ -29,9 +29,6 @@
     "@effect-ts/system": "^0.17.3",
     "@effect-ts/tracing-utils": "^0.4.1"
   },
-  "peerDependencies": {
-    "@typescript": "^4.2.2"
-  },
   "config": {
     "modules": [
       "Async",

@@ -21,9 +21,6 @@
     "access": "public",
     "directory": "build"
   },
-  "peerDependencies": {
-    "typescript": "^4.2.2"
-  },
   "sideEffects": false,
   "config": {
     "modules": []
