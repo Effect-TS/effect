@@ -5,7 +5,6 @@ import { RuntimeError } from "../../Cause"
 import type { HasClock } from "../../Clock"
 import type { Effect } from "../../Effect"
 import * as T from "../../Effect"
-import { descriptor, supervised } from "../../Effect"
 import * as E from "../../Either"
 import * as Ex from "../../Exit"
 import type { FiberID } from "../../Fiber"
@@ -2561,10 +2560,10 @@ export function withChildren<R, E, A>(
       track,
       (supervisor) =>
         new Managed(
-          supervised(supervisor)(
+          T.supervised(supervisor)(
             get(
               T.chain_(supervisor.value, (children) =>
-                T.map_(descriptor, (d) => A.filter_(children, (_) => _.id !== d.id))
+                T.map_(T.descriptor, (d) => A.filter_(children, (_) => _.id !== d.id))
               )
             ).effect
           )

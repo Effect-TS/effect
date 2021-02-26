@@ -3,7 +3,7 @@ import * as A from "../Array"
 import * as Cause from "../Cause/core"
 // effect
 import { RuntimeError } from "../Cause/errors"
-import { ISucceed } from "../Effect"
+import { ISucceed } from "../Effect/primitives"
 // either
 import * as E from "../Either"
 // exit

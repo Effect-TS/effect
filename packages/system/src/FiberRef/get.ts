@@ -1,4 +1,4 @@
-import type { UIO } from "../Effect"
+import type { UIO } from "../Effect/primitives"
 import type { FiberRef } from "./fiberRef"
 import { modify } from "./modify"
 

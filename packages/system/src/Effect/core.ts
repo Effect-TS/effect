@@ -32,7 +32,7 @@ import {
   ITracingStatus,
   IYield
 } from "./primitives"
-import type { DefaultEnv } from "./runtime"
+// import type { DefaultEnv } from "./runtime"
 
 /**
  * Effectfully accesses the environment of the effect.
@@ -479,11 +479,11 @@ export function unfailable<R, A>(self: Effect<R, never, A>): RIO<R, A> {
  *
  * @optimize identity
  */
-export function onlyDefaultEnv<E, A>(
-  self: Effect<DefaultEnv, E, A>
-): Effect<DefaultEnv, E, A> {
-  return self
-}
+// export function onlyDefaultEnv<E, A>(
+//   self: Effect<DefaultEnv, E, A>
+// ): Effect<DefaultEnv, E, A> {
+//   return self
+// }
 
 /**
  * Forces `self` to be not require any environment

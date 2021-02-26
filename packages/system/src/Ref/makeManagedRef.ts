@@ -1,6 +1,6 @@
 import { toManaged } from "../Effect/toManaged"
 import { pipe } from "../Function"
-import type { Managed } from "../Managed"
+import type { Managed } from "../Managed/managed"
 import { makeRef } from "./api"
 import type { Ref } from "./XRef"
 
