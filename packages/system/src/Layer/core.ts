@@ -211,8 +211,10 @@ export function main<E, A>(layer: Layer<T.DefaultEnv, E, A>) {
 /**
  * Converts a layer to a managed runtime
  */
-export function toRuntime<R, E, A>(_: Layer<R, E, A>): M.Managed<R, E, T.Runtime<A>> {
-  return M.map_(build(_), T.makeRuntime)
+export function toRuntime<R, E, A>(
+  _: Layer<R, E, A>
+): M.Managed<R, E, T.CustomRuntime<A>> {
+  return M.map_(build(_), (env) => T.makeCustomRuntime(env, T.defaultPlatform))
 }
 
 /**
