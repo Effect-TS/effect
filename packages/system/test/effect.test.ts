@@ -1,4 +1,5 @@
 import { range } from "../src/Array"
+import { HasClock } from "../src/Clock"
 import type { Cb, Effect } from "../src/Effect"
 import * as T from "../src/Effect"
 import * as E from "../src/Either"
@@ -8,6 +9,7 @@ import { dump, prettyPrintM } from "../src/Fiber"
 import * as FiberRef from "../src/FiberRef"
 import { absurd, flow, pipe, tuple } from "../src/Function"
 import * as O from "../src/Option"
+import * as S from "../src/Sync"
 
 describe("Effect", () => {
   it("catch", async () => {
@@ -360,12 +362,20 @@ describe("Effect", () => {
   })
   it("cached", async () => {
     const f = jest.fn()
+    let time = new Date().getTime()
 
     const [eff, inv] = await pipe(
       T.effectTotal(() => {
         f()
       }),
       T.cachedInvalidate(50),
+      T.provide(
+        HasClock.of({
+          _tag: "@effect-ts/system/Clock",
+          currentTime: S.sync(() => time),
+          sleep: () => T.unit
+        })
+      ),
       T.runPromise
     )
 
@@ -378,7 +388,7 @@ describe("Effect", () => {
     expect(f).toHaveBeenCalledTimes(2)
     await T.runPromise(eff)
     expect(f).toHaveBeenCalledTimes(2)
-    await T.runPromise(T.sleep(50))
+    time = time + 55
     await T.runPromise(eff)
     expect(f).toHaveBeenCalledTimes(3)
     await T.runPromise(eff)
