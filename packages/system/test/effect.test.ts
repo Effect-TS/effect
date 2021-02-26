@@ -365,7 +365,7 @@ describe("Effect", () => {
       T.effectTotal(() => {
         f()
       }),
-      T.cachedInvalidate(100),
+      T.cachedInvalidate(50),
       T.runPromise
     )
 
@@ -378,7 +378,7 @@ describe("Effect", () => {
     expect(f).toHaveBeenCalledTimes(2)
     await T.runPromise(eff)
     expect(f).toHaveBeenCalledTimes(2)
-    await T.runPromise(T.sleep(100))
+    await T.runPromise(T.sleep(50))
     await T.runPromise(eff)
     expect(f).toHaveBeenCalledTimes(3)
     await T.runPromise(eff)
