@@ -94,7 +94,7 @@ export class Atomic<A> implements XRefM<unknown, unknown, never, never, A, A> {
   readonly get: T.Effect<unknown, never, A> = this.ref.get
 
   readonly set: (a: A) => T.Effect<unknown, never, void> = (a) =>
-    withPermit(this.semaphore)(this.set(a))
+    withPermit(this.semaphore)(this.ref.set(a))
 }
 
 export class Derived<RA, RB, EA, EB, A, B, S> implements XRefM<RA, RB, EA, EB, A, B> {

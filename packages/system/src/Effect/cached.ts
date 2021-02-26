@@ -1,7 +1,7 @@
 import type { Clock } from "../Clock"
-import { cachedInvalidate_ } from "./cachedInvalidate"
 import { pipe } from "../Function"
 import type { Has } from "../Has"
+import { cachedInvalidate_ } from "./cachedInvalidate"
 import type { Effect, IO, RIO } from "./effect"
 import { map } from "./map"
 
