@@ -1,5 +1,5 @@
 import type * as A from "../../Chunk"
-import type * as CL from "../../Clock"
+import type { Clock } from "../../Clock/definition"
 import type * as H from "../../Has"
 import * as SC from "../../Schedule"
 import * as TR from "../Transducer"
@@ -14,7 +14,7 @@ export function groupedWithin_<R, E, O>(
   self: Stream<R, E, O>,
   chunkSize: number,
   within: number
-): Stream<R & H.Has<CL.Clock>, E, A.Chunk<O>> {
+): Stream<R & H.Has<Clock>, E, A.Chunk<O>> {
   return aggregateAsyncWithin_(self, TR.collectAllN(chunkSize), SC.spaced(within))
 }
 

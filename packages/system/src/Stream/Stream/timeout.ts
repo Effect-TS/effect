@@ -1,4 +1,4 @@
-import type * as CL from "../../Clock"
+import type { HasClock } from "../../Clock/definition"
 import { pipe } from "../../Function"
 import * as O from "../../Option"
 import * as T from "../_internal/effect"
@@ -13,7 +13,7 @@ import { Stream } from "./definitions"
 export function timeout_<R, E, O>(
   self: Stream<R, E, O>,
   d: number
-): Stream<R & CL.HasClock, E, O> {
+): Stream<R & HasClock, E, O> {
   return new Stream(
     pipe(
       M.do,

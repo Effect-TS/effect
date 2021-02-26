@@ -1,4 +1,4 @@
-import type * as CL from "../../Clock"
+import type { HasClock } from "../../Clock/definition"
 import * as O from "../../Option"
 import * as SC from "../../Schedule"
 import * as T from "../_internal/effect"
@@ -16,7 +16,7 @@ import { unfoldM } from "./unfoldM"
 export function repeatEffectWith<R, E, A>(
   effect: T.Effect<R, E, A>,
   schedule: SC.Schedule<R, A, any>
-): Stream<R & CL.HasClock, E, A> {
+): Stream<R & HasClock, E, A> {
   return chain_(fromEffect(T.zip_(effect, SC.driver(schedule))), ([a, driver]) =>
     concat_(
       succeed(a),

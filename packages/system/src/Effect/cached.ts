@@ -1,4 +1,4 @@
-import type { Clock } from "../Clock"
+import type { Clock } from "../Clock/definition"
 import { pipe } from "../Function"
 import type { Has } from "../Has"
 import { cachedInvalidate_ } from "./cachedInvalidate"

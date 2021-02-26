@@ -1,6 +1,7 @@
 import * as C from "../../Cause"
 import * as A from "../../Chunk"
-import * as CL from "../../Clock"
+import * as CL from "../../Clock/core"
+import type { HasClock } from "../../Clock/definition"
 import * as Ex from "../../Exit"
 import { pipe } from "../../Function"
 import * as O from "../../Option"
@@ -15,7 +16,7 @@ import { Stream } from "./definitions"
 export function debounce_<R, E, O>(
   self: Stream<R, E, O>,
   d: number
-): Stream<R & CL.HasClock, E, unknown> {
+): Stream<R & HasClock, E, unknown> {
   class NotStarted {
     readonly _tag = "NotStarted"
   }
@@ -54,7 +55,7 @@ export function debounce_<R, E, O>(
         )
       ),
       M.let("pull", ({ chunks, ref }) => {
-        const store = (chunk: A.Chunk<O>): T.RIO<CL.HasClock, A.Chunk<O>> =>
+        const store = (chunk: A.Chunk<O>): T.RIO<HasClock, A.Chunk<O>> =>
           pipe(
             A.last(chunk),
             O.map((last) =>

@@ -1,5 +1,5 @@
-import type { Clock } from "../Clock"
-import { currentTime } from "../Clock"
+import { currentTime } from "../Clock/core"
+import type { Clock } from "../Clock/definition"
 import { pipe, tuple } from "../Function"
 import type { Has } from "../Has"
 import * as O from "../Option"

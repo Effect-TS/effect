@@ -1,4 +1,4 @@
-import { sleep as clockSleep } from "../Clock"
+import { sleep as clockSleep } from "../Clock/core"
 
 /**
  * Sleeps for `ms` milliseconds

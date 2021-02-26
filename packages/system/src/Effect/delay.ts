@@ -1,4 +1,4 @@
-import type { HasClock } from "../Clock"
+import type { HasClock } from "../Clock/definition"
 import { delay_ } from "./delay_"
 import type { Effect } from "./effect"
 

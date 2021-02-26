@@ -1,4 +1,4 @@
-import type * as CL from "../../Clock"
+import type { Clock } from "../../Clock/definition"
 import * as E from "../../Either"
 import type * as H from "../../Has"
 import * as O from "../../Option"
@@ -13,7 +13,7 @@ import { scheduleEither_ } from "./scheduleEither"
 export function schedule_<R, R1, E, O>(
   self: Stream<R, E, O>,
   schedule: SC.Schedule<R1, O, any>
-): Stream<R & R1 & H.Has<CL.Clock>, E, O> {
+): Stream<R & R1 & H.Has<Clock>, E, O> {
   return collect_(
     scheduleEither_(self, schedule),
     E.fold(

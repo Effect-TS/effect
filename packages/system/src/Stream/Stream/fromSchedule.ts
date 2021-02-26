@@ -1,4 +1,4 @@
-import type * as CL from "../../Clock"
+import type { HasClock } from "../../Clock/definition"
 import { constVoid, pipe } from "../../Function"
 import * as SC from "../../Schedule"
 import * as T from "../_internal/effect"
@@ -13,7 +13,7 @@ import { unwrap } from "./unwrap"
  */
 export const fromSchedule: <R, A>(
   schedule: SC.Schedule<R, unknown, A>
-) => Stream<R & CL.HasClock, never, A> = (x) =>
+) => Stream<R & HasClock, never, A> = (x) =>
   pipe(
     x,
     SC.driver,

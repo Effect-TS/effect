@@ -1,5 +1,5 @@
 import type * as A from "../../Chunk"
-import type * as CL from "../../Clock"
+import type { HasClock } from "../../Clock/definition"
 import { pipe } from "../../Function"
 import * as O from "../../Option"
 import * as SC from "../../Schedule"
@@ -22,7 +22,7 @@ import { Stream } from "./definitions"
 export function retry_<R, R1, E, O>(
   self: Stream<R, E, O>,
   schedule: SC.Schedule<R1, E, void>
-): Stream<R & R1 & CL.HasClock, E, O> {
+): Stream<R & R1 & HasClock, E, O> {
   return new Stream(
     pipe(
       M.do,
@@ -37,11 +37,7 @@ export function retry_<R, R1, E, O>(
         T.toManaged_(T.chain_(switchStream(self.proc), currStream.set))
       ),
       M.let("pull", ({ currStream, driver, switchStream }) => {
-        const loop: T.Effect<
-          R & R1 & CL.HasClock,
-          O.Option<E>,
-          A.Chunk<O>
-        > = T.catchSome_(
+        const loop: T.Effect<R & R1 & HasClock, O.Option<E>, A.Chunk<O>> = T.catchSome_(
           T.flatten(currStream.get),
           O.fold(
             () => O.none,

@@ -1,5 +1,6 @@
 import type * as A from "../../Chunk"
-import * as CL from "../../Clock"
+import * as CL from "../../Clock/core"
+import type { HasClock } from "../../Clock/definition"
 import { pipe } from "../../Function"
 import * as O from "../../Option"
 import * as T from "../_internal/effect"
@@ -16,7 +17,7 @@ import { Stream } from "./definitions"
 export function throttleShapeM(units: number, duration: number, burst = 0) {
   return <O, R1, E1>(costFn: (c: A.Chunk<O>) => T.Effect<R1, E1, number>) => <R, E>(
     self: Stream<R, E, O>
-  ): Stream<CL.HasClock & R1 & R, E | E1, O> => {
+  ): Stream<HasClock & R1 & R, E | E1, O> => {
     return new Stream(
       pipe(
         M.do,
@@ -30,7 +31,7 @@ export function throttleShapeM(units: number, duration: number, burst = 0) {
           ({
             bucket,
             chunks
-          }): T.Effect<CL.HasClock & R1 & R, O.Option<E | E1>, A.Chunk<O>> =>
+          }): T.Effect<HasClock & R1 & R, O.Option<E | E1>, A.Chunk<O>> =>
             pipe(
               T.do,
               T.bind("chunk", () => chunks),

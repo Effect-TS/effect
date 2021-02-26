@@ -1,5 +1,6 @@
 import type * as A from "../../Chunk"
-import * as CL from "../../Clock"
+import * as CL from "../../Clock/core"
+import type { HasClock } from "../../Clock/definition"
 import { pipe } from "../../Function"
 import * as O from "../../Option"
 import * as T from "../_internal/effect"
@@ -16,7 +17,7 @@ import { Stream } from "./definitions"
 export function throttleEnforceM(units: number, duration: number, burst = 0) {
   return <O, R1, E1>(costFn: (c: A.Chunk<O>) => T.Effect<R1, E1, number>) => <R, E>(
     self: Stream<R, E, O>
-  ): Stream<R & R1 & CL.HasClock, E | E1, O> =>
+  ): Stream<R & R1 & HasClock, E | E1, O> =>
     new Stream(
       pipe(
         M.do,
@@ -27,7 +28,7 @@ export function throttleEnforceM(units: number, duration: number, burst = 0) {
         ),
         M.let("pull", ({ bucket, chunks }) => {
           const go: T.Effect<
-            R & R1 & CL.HasClock,
+            R & R1 & HasClock,
             O.Option<E | E1>,
             A.Chunk<O>
           > = T.chain_(chunks, (chunk) =>

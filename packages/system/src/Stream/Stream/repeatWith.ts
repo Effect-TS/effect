@@ -1,5 +1,5 @@
 import type * as A from "../../Chunk"
-import type * as CL from "../../Clock"
+import type { HasClock } from "../../Clock/definition"
 import { pipe } from "../../Function"
 import * as O from "../../Option"
 import * as SC from "../../Schedule"
@@ -20,7 +20,7 @@ import { map_ } from "./map"
 export function repeatWith<R1, B>(schedule: SC.Schedule<R1, any, B>) {
   return <O, C, D>(f: (o: O) => C, g: (b: B) => D) => <R, E>(
     self: Stream<R, E, O>
-  ): Stream<R & R1 & CL.HasClock, E, C | D> =>
+  ): Stream<R & R1 & HasClock, E, C | D> =>
     new Stream(
       pipe(
         M.do,
@@ -33,39 +33,38 @@ export function repeatWith<R1, B>(schedule: SC.Schedule<R1, any, B>) {
         ),
         M.bind("doneRef", () => T.toManaged_(Ref.makeRef(false))),
         M.let("pull", ({ currPull, doneRef, sdriver, switchPull }) => {
-          const go: T.Effect<
-            R & R1 & CL.HasClock,
-            O.Option<E>,
-            A.Chunk<C | D>
-          > = T.chain_(doneRef.get, (done) => {
-            if (done) {
-              return Pull.end
-            } else {
-              return T.foldM_(
-                T.flatten(currPull.get),
-                O.fold(
-                  () => {
-                    const scheduleOutput = pipe(sdriver.last, T.orDie, T.map(g))
-                    const continue_ = pipe(
-                      sdriver.next(undefined),
-                      T.andThen(
-                        switchPull(
-                          concat_(map_(self, f), fromEffect(scheduleOutput)).proc
-                        )
-                      ),
-                      T.tap((_) => currPull.set(_)),
-                      T.andThen(go)
-                    )
-                    const halt = T.andThen_(doneRef.set(true), Pull.end)
+          const go: T.Effect<R & R1 & HasClock, O.Option<E>, A.Chunk<C | D>> = T.chain_(
+            doneRef.get,
+            (done) => {
+              if (done) {
+                return Pull.end
+              } else {
+                return T.foldM_(
+                  T.flatten(currPull.get),
+                  O.fold(
+                    () => {
+                      const scheduleOutput = pipe(sdriver.last, T.orDie, T.map(g))
+                      const continue_ = pipe(
+                        sdriver.next(undefined),
+                        T.andThen(
+                          switchPull(
+                            concat_(map_(self, f), fromEffect(scheduleOutput)).proc
+                          )
+                        ),
+                        T.tap((_) => currPull.set(_)),
+                        T.andThen(go)
+                      )
+                      const halt = T.andThen_(doneRef.set(true), Pull.end)
 
-                    return T.orElse_(continue_, () => halt)
-                  },
-                  (e) => T.fail(O.some(e))
-                ),
-                (_) => T.succeed(_)
-              )
+                      return T.orElse_(continue_, () => halt)
+                    },
+                    (e) => T.fail(O.some(e))
+                  ),
+                  (_) => T.succeed(_)
+                )
+              }
             }
-          })
+          )
 
           return go
         }),

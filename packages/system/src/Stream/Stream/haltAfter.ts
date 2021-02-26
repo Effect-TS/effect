@@ -1,4 +1,5 @@
-import * as CL from "../../Clock"
+import * as CL from "../../Clock/core"
+import type { Clock } from "../../Clock/definition"
 import type * as H from "../../Has"
 import type { Stream } from "./definitions"
 import { haltWhen_ } from "./haltWhen"
@@ -13,7 +14,7 @@ import { haltWhen_ } from "./haltWhen"
 export function haltAfter_<R, E, O>(
   self: Stream<R, E, O>,
   duration: number
-): Stream<H.Has<CL.Clock> & R, E, O> {
+): Stream<H.Has<Clock> & R, E, O> {
   return haltWhen_(self, CL.sleep(duration))
 }
 

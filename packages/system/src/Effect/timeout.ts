@@ -1,4 +1,4 @@
-import type * as CL from "../Clock"
+import type { HasClock } from "../Clock/definition"
 import * as O from "../Option"
 import type { Effect } from "./effect"
 import { timeoutTo_ } from "./timeoutTo"
@@ -42,6 +42,6 @@ export function timeout(d: number) {
 export function timeout_<R, E, A>(
   self: Effect<R, E, A>,
   d: number
-): Effect<R & CL.HasClock, E, O.Option<A>> {
+): Effect<R & HasClock, E, O.Option<A>> {
   return timeoutTo_(self, d, O.none, O.some)
 }

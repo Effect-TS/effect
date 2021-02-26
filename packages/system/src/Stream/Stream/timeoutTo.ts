@@ -1,5 +1,5 @@
 import * as C from "../../Cause"
-import type * as CL from "../../Clock"
+import type { HasClock } from "../../Clock/definition"
 import { pipe } from "../../Function"
 import * as O from "../../Option"
 import { catchSome } from "./catchSome"
@@ -29,7 +29,7 @@ export const isStreamTimeout = (u: unknown): u is StreamTimeoutError =>
 export function timeoutTo(d: number) {
   return <R1, E1, O2>(that: Stream<R1, E1, O2>) => <R, E, O>(
     self: Stream<R, E, O>
-  ): Stream<R & CL.HasClock & R1, E1 | E, O2 | O> =>
+  ): Stream<R & HasClock & R1, E1 | E, O2 | O> =>
     pipe(
       self,
       timeoutErrorCause(C.die(new StreamTimeoutError()))(d),

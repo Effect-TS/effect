@@ -1,5 +1,5 @@
 import type * as A from "../../Chunk"
-import type * as CL from "../../Clock"
+import type { HasClock } from "../../Clock/definition"
 import * as E from "../../Either"
 import * as O from "../../Option"
 import type * as SC from "../../Schedule"
@@ -26,7 +26,7 @@ export function aggregateAsyncWithin_<R, E, O, R1, E1, P>(
   self: Stream<R, E, O>,
   transducer: TR.Transducer<R1, E1, O, P>,
   schedule: SC.Schedule<R1, A.Chunk<P>, any>
-): Stream<R & R1 & CL.HasClock, E | E1, P> {
+): Stream<R & R1 & HasClock, E | E1, P> {
   return filterMap_(
     aggregateAsyncWithinEither_(self, transducer, schedule),
     E.fold(() => O.none, O.some)

@@ -1,4 +1,4 @@
-import type { HasClock } from "../Clock"
+import type { HasClock } from "../Clock/definition"
 import * as E from "../Either"
 import { identity, pipe } from "../Function"
 import type { Driver, Schedule } from "../Schedule"

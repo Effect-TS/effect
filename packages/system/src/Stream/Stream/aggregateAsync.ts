@@ -1,4 +1,4 @@
-import type * as CL from "../../Clock"
+import type { HasClock } from "../../Clock/definition"
 import * as SC from "../../Schedule"
 import type * as TR from "../Transducer"
 import { aggregateAsyncWithin_ } from "./aggregateAsyncWithin"
@@ -35,6 +35,6 @@ export function aggregateAsync<O, R1, E1, P>(transducer: TR.Transducer<R1, E1, O
 export function aggregateAsync_<R, E, O, R1, E1, P>(
   self: Stream<R, E, O>,
   transducer: TR.Transducer<R1, E1, O, P>
-): Stream<R & R1 & CL.HasClock, E | E1, P> {
+): Stream<R & R1 & HasClock, E | E1, P> {
   return aggregateAsyncWithin_(self, transducer, SC.forever)
 }

@@ -1,5 +1,5 @@
 import * as A from "../../Chunk"
-import type * as CL from "../../Clock"
+import type { HasClock } from "../../Clock/definition"
 import * as E from "../../Either"
 import * as Ex from "../../Exit"
 import { pipe } from "../../Function"
@@ -52,7 +52,7 @@ export function aggregateAsyncWithinEither_<R, E, O, R1, E1, P, Q>(
   self: Stream<R, E, O>,
   transducer: TR.Transducer<R1, E1, O, P>,
   schedule: SC.Schedule<R1, A.Chunk<P>, Q>
-): Stream<R & R1 & CL.HasClock, E | E1, E.Either<Q, P>> {
+): Stream<R & R1 & HasClock, E | E1, E.Either<Q, P>> {
   return pipe(
     M.do,
     M.bind("pull", () => self.proc),
@@ -72,7 +72,7 @@ export function aggregateAsyncWithinEither_<R, E, O, R1, E1, P, Q>(
     M.let(
       "consumer",
       ({ handoff, lastChunk, push, raceNextTime, sdriver, waitingFiber }) => {
-        const updateSchedule: T.RIO<R1 & CL.HasClock, O.Option<Q>> = pipe(
+        const updateSchedule: T.RIO<R1 & HasClock, O.Option<Q>> = pipe(
           lastChunk.get,
           T.chain(sdriver.next),
           T.fold((_) => O.none, O.some)
@@ -113,7 +113,7 @@ export function aggregateAsyncWithinEither_<R, E, O, R1, E1, P, Q>(
         const go = (
           race: boolean
         ): T.Effect<
-          R & R1 & CL.HasClock,
+          R & R1 & HasClock,
           O.Option<E | E1>,
           A.Chunk<Take.Take<E1, E.Either<Q, P>>>
         > => {

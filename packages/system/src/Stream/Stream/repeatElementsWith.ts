@@ -1,5 +1,5 @@
 import * as A from "../../Chunk"
-import type * as CL from "../../Clock"
+import type { HasClock } from "../../Clock/definition"
 import { pipe } from "../../Function"
 import * as O from "../../Option"
 import * as SC from "../../Schedule"
@@ -23,7 +23,7 @@ import { Stream } from "./definitions"
 export function repeatElementsWith<R1, O, B>(schedule: SC.Schedule<R1, O, B>) {
   return <C, D>(f: (o: O) => C, g: (b: B) => D) => <R, E>(
     self: Stream<R, E, O>
-  ): Stream<R & R1 & CL.HasClock, E, C | D> =>
+  ): Stream<R & R1 & HasClock, E, C | D> =>
     new Stream(
       pipe(
         M.do,
@@ -31,18 +31,14 @@ export function repeatElementsWith<R1, O, B>(schedule: SC.Schedule<R1, O, B>) {
         M.bind("driver", () => T.toManaged_(SC.driver(schedule))),
         M.bind("state", () => T.toManaged_(Ref.makeRef<O.Option<O>>(O.none))),
         M.let("pull", ({ as, driver, state }) => {
-          const go: T.Effect<
-            R & R1 & CL.HasClock,
-            O.Option<E>,
-            A.Chunk<C | D>
-          > = T.chain_(
+          const go: T.Effect<R & R1 & HasClock, O.Option<E>, A.Chunk<C | D>> = T.chain_(
             state.get,
             O.fold(
               () =>
                 T.chain_(BP.pullElement(as), (o) =>
                   T.as_(state.set(O.some(o)), A.single(f(o)))
                 ),
-              (o): T.Effect<R & R1 & CL.HasClock, O.Option<E>, A.Chunk<C | D>> => {
+              (o): T.Effect<R & R1 & HasClock, O.Option<E>, A.Chunk<C | D>> => {
                 const advance = T.as_(driver.next(o), A.single(f(o)))
                 const reset = pipe(
                   driver.last,

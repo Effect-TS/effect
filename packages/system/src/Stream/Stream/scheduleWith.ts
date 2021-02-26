@@ -1,5 +1,5 @@
 import * as A from "../../Chunk"
-import type * as CL from "../../Clock"
+import type { Clock } from "../../Clock/definition"
 import { pipe } from "../../Function"
 import type * as H from "../../Has"
 import * as SC from "../../Schedule"
@@ -16,7 +16,7 @@ import { Stream } from "./definitions"
 export function scheduleWith<R1, O, B>(schedule: SC.Schedule<R1, O, B>) {
   return <C, D>(f: (o: O) => C, g: (b: B) => D) => <R, E>(
     self: Stream<R, E, O>
-  ): Stream<R & R1 & H.Has<CL.Clock>, E, C | D> => {
+  ): Stream<R & R1 & H.Has<Clock>, E, C | D> => {
     return new Stream(
       pipe(
         M.do,

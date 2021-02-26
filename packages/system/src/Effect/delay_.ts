@@ -1,4 +1,4 @@
-import type { HasClock } from "../Clock"
+import type { HasClock } from "../Clock/definition"
 import { chain_ } from "./core"
 import type { Effect } from "./effect"
 import { sleep } from "./sleep"

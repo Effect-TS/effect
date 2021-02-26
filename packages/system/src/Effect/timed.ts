@@ -1,4 +1,4 @@
-import { currentTime } from "../Clock"
+import { currentTime } from "../Clock/core"
 import type { Effect } from "./effect"
 import { summarized_ } from "./summarized"
 

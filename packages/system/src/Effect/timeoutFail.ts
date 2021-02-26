@@ -1,4 +1,4 @@
-import type { Clock } from "../Clock"
+import type { Clock } from "../Clock/definition"
 import type { Has } from "../Has"
 import { succeed, suspend } from "./core"
 import type { Effect } from "./effect"

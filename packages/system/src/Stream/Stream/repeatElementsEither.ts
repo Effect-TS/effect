@@ -1,4 +1,4 @@
-import type * as CL from "../../Clock"
+import type { HasClock } from "../../Clock/definition"
 import * as E from "../../Either"
 import { pipe } from "../../Function"
 import type * as SC from "../../Schedule"
@@ -15,7 +15,7 @@ import { repeatElementsWith } from "./repeatElementsWith"
 export function repeatElementsEither_<R, R1, E, O, B>(
   self: Stream<R, E, O>,
   schedule: SC.Schedule<R1, O, B>
-): Stream<R & R1 & CL.HasClock, E, E.Either<B, O>> {
+): Stream<R & R1 & HasClock, E, E.Either<B, O>> {
   return pipe(self, repeatElementsWith(schedule)(E.right, E.left))
 }
 

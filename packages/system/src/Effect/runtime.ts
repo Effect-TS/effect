@@ -5,8 +5,9 @@ import { isTracingEnabled } from "@effect-ts/tracing-utils"
 import * as Cause from "../Cause/core"
 import type { Renderer } from "../Cause/pretty"
 import { defaultRenderer, pretty } from "../Cause/pretty"
+import { HasClock } from "../Clock/definition"
 // exit
-import { HasClock, LiveClock } from "../Clock"
+import { LiveClock } from "../Clock/impl"
 import type { Exit } from "../Exit/exit"
 // fiber
 import { FiberContext } from "../Fiber/context"
@@ -36,7 +37,7 @@ export type DefaultEnv = HasClock & HasRandom
 
 export function defaultEnv(): DefaultEnv {
   return {
-    [HasClock.key]: new LiveClock(),
+    [HasClock.key]: LiveClock,
     [HasRandom.key]: defaultRandom
   } as any
 }

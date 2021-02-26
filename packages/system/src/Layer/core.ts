@@ -1,5 +1,6 @@
 import * as C from "../Cause"
-import * as CL from "../Clock"
+import * as CL from "../Clock/core"
+import type { HasClock } from "../Clock/definition"
 import * as T from "../Effect"
 import * as E from "../Either"
 import { identity as idFn, pipe, tuple } from "../Function"
@@ -501,13 +502,13 @@ export function orElse<RIn1, E1, ROut1>(that: Layer<RIn1, E1, ROut1>) {
  */
 export function retry<RIn, RIn1, E, ROut>(
   self: Layer<RIn, E, ROut>,
-  schedule: SC.Schedule<RIn1 & CL.HasClock, E, any>
-): Layer<RIn1 & RIn & CL.HasClock, E, ROut> {
-  type S = SCD.StepFunction<RIn & RIn1 & CL.HasClock, E, any>
+  schedule: SC.Schedule<RIn1 & HasClock, E, any>
+): Layer<RIn1 & RIn & HasClock, E, ROut> {
+  type S = SCD.StepFunction<RIn & RIn1 & HasClock, E, any>
 
-  const loop = (): Layer<readonly [RIn & RIn1 & CL.HasClock, S], E, ROut> => {
+  const loop = (): Layer<readonly [RIn & RIn1 & HasClock, S], E, ROut> => {
     const update = fromRawFunctionM(
-      ([[r, s], e]: readonly [readonly [RIn & RIn1 & CL.HasClock, S], E]) =>
+      ([[r, s], e]: readonly [readonly [RIn & RIn1 & HasClock, S], E]) =>
         pipe(
           CL.currentTime,
           T.orDie,
@@ -536,7 +537,7 @@ export function retry<RIn, RIn1, E, ROut>(
   }
 
   return zipPar_(
-    identity<RIn & RIn1 & CL.HasClock>(),
+    identity<RIn & RIn1 & HasClock>(),
     fromRawEffect(T.succeed(schedule.step))
   )[">>>"](loop())
 }

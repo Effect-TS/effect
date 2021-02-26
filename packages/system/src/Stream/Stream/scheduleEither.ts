@@ -1,4 +1,4 @@
-import type * as CL from "../../Clock"
+import type { Clock } from "../../Clock/definition"
 import * as E from "../../Either"
 import type * as H from "../../Has"
 import type * as SC from "../../Schedule"
@@ -12,7 +12,7 @@ import { scheduleWith } from "./scheduleWith"
 export function scheduleEither_<R, R1, E, O, B>(
   self: Stream<R, E, O>,
   schedule: SC.Schedule<R1, O, B>
-): Stream<R & R1 & H.Has<CL.Clock>, E, E.Either<B, O>> {
+): Stream<R & R1 & H.Has<Clock>, E, E.Either<B, O>> {
   return scheduleWith(schedule)(E.right, E.left)(self)
 }
 

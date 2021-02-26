@@ -1,4 +1,4 @@
-import type { HasClock } from "../Clock"
+import type { HasClock } from "../Clock/definition"
 import * as E from "../Either"
 import { pipe } from "../Function"
 import * as O from "../Option"

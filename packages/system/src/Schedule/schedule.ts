@@ -1,5 +1,6 @@
 import * as A from "../Array"
-import * as Clock from "../Clock"
+import * as Clock from "../Clock/core"
+import type { HasClock } from "../Clock/definition"
 import * as E from "../Either"
 import { pipe, tuple } from "../Function"
 import * as NoSuchElementException from "../GlobalExceptions"
@@ -44,9 +45,9 @@ export class Schedule<Env, In, Out> {
  */
 export function driver<Env, Inp, Out>(
   self: Schedule<Env, Inp, Out>
-): T.UIO<Driver.Driver<Clock.HasClock & Env, Inp, Out>> {
+): T.UIO<Driver.Driver<HasClock & Env, Inp, Out>> {
   return pipe(
-    R.makeRef<[O.Option<Out>, Decision.StepFunction<Env & Clock.HasClock, Inp, Out>]>([
+    R.makeRef<[O.Option<Out>, Decision.StepFunction<Env & HasClock, Inp, Out>]>([
       O.none,
       self.step
     ]),
