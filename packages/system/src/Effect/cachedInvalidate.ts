@@ -5,15 +5,15 @@ import type { Has } from "../Has"
 import * as O from "../Option"
 import * as P from "../Promise"
 import * as Ref from "../RefM"
-import { chain, provideAll } from "./core"
-import { die } from "./die"
+import * as core from "./core"
+import * as die from "./die"
 import * as Do from "./do"
 import type { Effect, IO, RIO, UIO } from "./effect"
 import { environment } from "./environment"
-import { map } from "./map"
-import { tap } from "./tap"
-import { to } from "./to"
-import { uninterruptibleMask } from "./uninterruptibleMask"
+import * as map from "./map"
+import * as tap from "./tap"
+import * as to from "./to"
+import * as uninterruptibleMask from "./uninterruptibleMask"
 
 /**
  * Returns an effect that, if evaluated, will return the cached result of
@@ -41,11 +41,18 @@ export function cachedInvalidate_<R, E, A>(
     Do.bind("cache", () =>
       Ref.makeRefM<O.Option<readonly [number, P.Promise<E, A>]>>(O.none)
     ),
-    map(({ cache, r }) => tuple<[IO<E, A>, UIO<void>]>(provideAll(r)(get(fa, ttl, cache)), invalidate(cache)))
+    map.map(({ cache, r }) =>
+      tuple<[IO<E, A>, UIO<void>]>(
+        core.provideAll(r)(get(fa, ttl, cache)),
+        invalidate(cache)
+      )
+    )
   )
 }
 
-function invalidate<E, A>(cache: Ref.RefM<O.Option<readonly [number, P.Promise<E, A>]>>) {
+function invalidate<E, A>(
+  cache: Ref.RefM<O.Option<readonly [number, P.Promise<E, A>]>>
+) {
   return cache.set(O.none)
 }
 
@@ -53,8 +60,8 @@ function compute<R, E, A>(fa: Effect<R, E, A>, ttl: number, start: number) {
   return pipe(
     Do.do,
     Do.bind("p", () => P.make<E, A>()),
-    tap(({ p }) => to(p)(fa)),
-    map(({ p }) => O.some(tuple(start + ttl, p)))
+    tap.tap(({ p }) => to.to(p)(fa)),
+    map.map(({ p }) => O.some(tuple(start + ttl, p)))
   )
 }
 
@@ -63,10 +70,10 @@ function get<R, E, A>(
   ttl: number,
   cache: Ref.RefM<O.Option<readonly [number, P.Promise<E, A>]>>
 ) {
-  return uninterruptibleMask(({ restore }) =>
+  return uninterruptibleMask.uninterruptibleMask(({ restore }) =>
     pipe(
       currentTime,
-      chain((time) =>
+      core.chain((time) =>
         pipe(
           cache,
           Ref.updateSomeAndGet((o) =>
@@ -78,7 +85,9 @@ function get<R, E, A>(
               )
             )
           ),
-          chain((a) => (a._tag === "None" ? die("bug") : restore(P.await(a.value[1]))))
+          core.chain((a) =>
+            a._tag === "None" ? die.die("bug") : restore(P.await(a.value[1]))
+          )
         )
       )
     )

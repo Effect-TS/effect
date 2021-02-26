@@ -7,7 +7,6 @@ yarn-error.log
 .ionide/
 .metals/
 .ultra.cache.json
-.vscode/
 tsbuildinfo/
 del-tags.sh
 incubation/
