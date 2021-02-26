@@ -358,4 +358,30 @@ describe("Effect", () => {
       )
     ).toEqual({ a: 0, b: 1, c: 2 })
   })
+  it("cached", async () => {
+    const f = jest.fn()
+
+    const [eff, inv] = await pipe(
+      T.effectTotal(() => {
+        f()
+      }),
+      T.cachedInvalidate(100),
+      T.runPromise
+    )
+
+    await T.runPromise(eff)
+    expect(f).toHaveBeenCalledTimes(1)
+    await T.runPromise(eff)
+    expect(f).toHaveBeenCalledTimes(1)
+    await T.runPromise(inv)
+    await T.runPromise(eff)
+    expect(f).toHaveBeenCalledTimes(2)
+    await T.runPromise(eff)
+    expect(f).toHaveBeenCalledTimes(2)
+    await T.runPromise(T.sleep(100))
+    await T.runPromise(eff)
+    expect(f).toHaveBeenCalledTimes(3)
+    await T.runPromise(eff)
+    expect(f).toHaveBeenCalledTimes(3)
+  })
 })
