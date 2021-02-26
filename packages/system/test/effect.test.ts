@@ -1,5 +1,5 @@
 import { range } from "../src/Array"
-import { HasClock } from "../src/Clock"
+import { HasClock, ProxyClock } from "../src/Clock"
 import type { Cb, Effect } from "../src/Effect"
 import * as T from "../src/Effect"
 import * as E from "../src/Either"
@@ -370,11 +370,12 @@ describe("Effect", () => {
       }),
       T.cachedInvalidate(50),
       T.provide(
-        HasClock.of({
-          _tag: "@effect-ts/system/Clock",
-          currentTime: S.sync(() => time),
-          sleep: () => T.unit
-        })
+        HasClock.of(
+          new ProxyClock(
+            S.sync(() => time),
+            () => T.unit
+          )
+        )
       ),
       T.runPromise
     )
