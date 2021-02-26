@@ -5,9 +5,9 @@ import { isTracingEnabled } from "@effect-ts/tracing-utils"
 import * as Cause from "../Cause/core"
 import type { Renderer } from "../Cause/pretty"
 import { defaultRenderer, pretty } from "../Cause/pretty"
+import type { Clock } from "../Clock/definition"
 import { HasClock } from "../Clock/definition"
 // exit
-import { LiveClock } from "../Clock/impl"
 import type { Exit } from "../Exit/exit"
 // fiber
 import { FiberContext } from "../Fiber/context"
@@ -16,15 +16,17 @@ import { interruptible } from "../Fiber/core"
 import { newFiberId } from "../Fiber/id"
 import { Platform } from "../Fiber/platform"
 import type { Callback } from "../Fiber/state"
-import { constVoid, identity } from "../Function"
+import { constVoid, identity, literal } from "../Function"
 import { none } from "../Option"
 import { defaultRandom, HasRandom } from "../Random"
 import * as Scope from "../Scope"
 // supervisor
 import * as Supervisor from "../Supervisor"
-import { accessM, chain_, effectTotal, succeed } from "./core"
+import { sync } from "../Sync/core"
+import { accessM, chain_, effectTotal, succeed, unit } from "./core"
 import type { Effect, UIO } from "./effect"
 import { _I } from "./effect"
+import { effectAsyncInterrupt } from "./effectAsyncInterrupt"
 import type { FailureReporter } from "./primitives"
 import { provideSome_ } from "./provideSome"
 
@@ -34,6 +36,24 @@ const empty = () => {
 }
 
 export type DefaultEnv = HasClock & HasRandom
+
+//
+// Live Clock Implementation
+//
+export const LiveClock: Clock = {
+  _tag: literal("@effect-ts/system/Clock"),
+  currentTime: sync(() => new Date().getTime()),
+  sleep: (ms) =>
+    effectAsyncInterrupt((cb) => {
+      const timeout = setTimeout(() => {
+        cb(unit)
+      }, ms)
+
+      return effectTotal(() => {
+        clearTimeout(timeout)
+      })
+    })
+}
 
 export function defaultEnv(): DefaultEnv {
   return {
