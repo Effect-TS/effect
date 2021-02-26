@@ -1,5 +1,5 @@
 import * as A from "../Array"
-import { succeed } from "../Effect"
+import { succeed } from "../Effect/core"
 import { identity, pipe, tuple } from "../Function"
 import * as O from "../Option"
 import * as T from "./effect"

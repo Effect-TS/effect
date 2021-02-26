@@ -1,4 +1,5 @@
-export { asUnit, tap, tap_ } from "../Effect"
+export { tap, tap_ } from "../Effect/tap"
+export { asUnit } from "../Effect/asUnit"
 export {
   chain,
   chain_,
