@@ -6,11 +6,11 @@ import "../Operator"
  * Copyright 2020 Michael Arnaldi and the Matechs Garage Contributors.
  */
 import { effectTotal, unit } from "../Effect/core"
-import type { UIO } from "../Effect/effect"
+import type { Effect, UIO } from "../Effect/effect"
 import { effectAsyncInterrupt } from "../Effect/effectAsyncInterrupt"
-import { accessService, accessServiceM } from "../Effect/has"
+import { accessService, accessServiceM, provideServiceM } from "../Effect/has"
 import { literal } from "../Function"
-import type { HasTag } from "../Has"
+import type { Has, HasTag, Tag } from "../Has"
 import { tag } from "../Has"
 import type { UIO as SyncUIO } from "../Sync/core"
 import { sync } from "../Sync/core"
@@ -82,3 +82,34 @@ export const withClockM = accessServiceM(HasClock)
  * Access clock from environment
  */
 export const withClock = accessService(HasClock)
+
+//
+// TestClock
+//
+export class TestClock extends Clock {
+  private time = new Date().getTime()
+
+  readonly currentTime: SyncUIO<number> = sync(() => this.time)
+
+  readonly sleep: (ms: number) => UIO<void> = () => unit
+
+  readonly advance = (ms: number) =>
+    sync(() => {
+      this.time = this.time + ms
+    })
+
+  static advance = (ms: number) =>
+    accessServiceMSync(HasTestClock)((_) => _.advance(ms))
+}
+
+/**
+ * Accesses the TestClock
+ */
+export const HasTestClock: Tag<TestClock> = tag<TestClock>().setKey(HasClock.key)
+
+// @ts-expect-error
+export const provideTestClock: <R1, E1, A1>(
+  ma: Effect<R1 & Has<TestClock> & Has<Clock>, E1, A1>
+) => Effect<R1, E1, A1> = provideServiceM(HasTestClock)(
+  effectTotal(() => new TestClock())
+)
