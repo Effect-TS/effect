@@ -25,7 +25,7 @@ import { accessM, chain_, effectTotal, succeed } from "./core"
 import type { Effect, UIO } from "./effect"
 import { _I } from "./effect"
 import type { FailureReporter } from "./primitives"
-import { provideSome_ } from "./provideSome"
+import { IPlatform } from "./primitives"
 
 // empty function
 const empty = () => {
@@ -34,12 +34,10 @@ const empty = () => {
 
 export type DefaultEnv = HasClock & HasRandom
 
-export function defaultEnv(): DefaultEnv {
-  return {
-    [HasClock.key]: new LiveClock(),
-    [HasRandom.key]: defaultRandom
-  } as any
-}
+export const defaultEnv: DefaultEnv = {
+  [HasClock.key]: new LiveClock(),
+  [HasRandom.key]: defaultRandom
+} as any
 
 /**
  * Effect Canceler
@@ -50,7 +48,7 @@ export const prettyReporter: FailureReporter = (e) => {
   console.error(pretty(e, defaultRenderer))
 }
 
-const defaultPlatform = new Platform(
+export const defaultPlatform = new Platform(
   25,
   25,
   isTracingEnabled(),
@@ -117,7 +115,7 @@ export class CustomRuntime<R> {
   /**
    * Runs effect until completion, calling cb with the eventual exit state
    */
-  run<E, A>(_: Effect<DefaultEnv, E, A>, cb?: Callback<E, A>) {
+  run<E, A>(_: Effect<R, E, A>, cb?: Callback<E, A>) {
     const context = this.fiberContext<E, A>()
 
     context.evaluateLater(_[_I])
@@ -127,7 +125,7 @@ export class CustomRuntime<R> {
   /**
    * Runs effect until completion, calling cb with the eventual exit state
    */
-  runAsap<E, A>(_: Effect<DefaultEnv, E, A>, cb?: Callback<E, A>) {
+  runAsap<E, A>(_: Effect<R, E, A>, cb?: Callback<E, A>) {
     const context = this.fiberContext<E, A>()
 
     context.evaluateNow(_[_I])
@@ -138,7 +136,7 @@ export class CustomRuntime<R> {
    * Runs effect until completion returing a cancel effecr that when executed
    * triggers cancellation of the process
    */
-  runCancel<E, A>(_: Effect<DefaultEnv, E, A>, cb?: Callback<E, A>): AsyncCancel<E, A> {
+  runCancel<E, A>(_: Effect<R, E, A>, cb?: Callback<E, A>): AsyncCancel<E, A> {
     const context = this.fiberContext<E, A>()
 
     context.evaluateLater(_[_I])
@@ -150,7 +148,7 @@ export class CustomRuntime<R> {
   /**
    * Run effect as a Promise, throwing a the first error or exception
    */
-  runPromise<E, A>(_: Effect<DefaultEnv, E, A>): Promise<A> {
+  runPromise<E, A>(_: Effect<R, E, A>): Promise<A> {
     const context = this.fiberContext<E, A>()
 
     context.evaluateLater(_[_I])
@@ -175,7 +173,7 @@ export class CustomRuntime<R> {
    * Run effect as a Promise of the Exit state
    * in case of error.
    */
-  runPromiseExit<E, A>(_: Effect<DefaultEnv, E, A>): Promise<Exit<E, A>> {
+  runPromiseExit<E, A>(_: Effect<R, E, A>): Promise<Exit<E, A>> {
     const context = this.fiberContext<E, A>()
 
     context.evaluateLater(_[_I])
@@ -435,14 +433,14 @@ export class CustomRuntime<R> {
 /**
  * Construct custom runtime
  */
-export function makeCustomRuntime() {
-  return new CustomRuntime(defaultEnv(), defaultPlatform)
+export function makeCustomRuntime<R>(env: R, platform: Platform) {
+  return new CustomRuntime(env, platform)
 }
 
 /**
  * Default runtime
  */
-export const defaultRuntime = makeCustomRuntime()
+export const defaultRuntime = makeCustomRuntime(defaultEnv, defaultPlatform)
 
 /**
  * Exports of default runtime
@@ -458,20 +456,6 @@ export const {
 } = defaultRuntime
 
 /**
- * Represent an environment providing function
- */
-export interface Runtime<R0> {
-  in: <R, E, A>(effect: Effect<R & R0, E, A>) => Effect<R, E, A>
-  run: <E, A>(_: Effect<DefaultEnv & R0, E, A>, cb?: Callback<E, A> | undefined) => void
-  runCancel: <E, A>(
-    _: Effect<DefaultEnv & R0, E, A>,
-    cb?: Callback<E, A> | undefined
-  ) => UIO<Exit<E, A>>
-  runPromise: <E, A>(_: Effect<DefaultEnv & R0, E, A>) => Promise<A>
-  runPromiseExit: <E, A>(_: Effect<DefaultEnv & R0, E, A>) => Promise<Exit<E, A>>
-}
-
-/**
  * Use current environment to build a runtime that is capable of
  * providing its content to other effects.
  *
@@ -479,38 +463,24 @@ export interface Runtime<R0> {
  * is valid (i.e. keep attention to closed resources)
  */
 export function runtime<R0>() {
-  return accessM((r0: R0) =>
-    effectTotal(
-      (): Runtime<R0> => {
-        return makeRuntime<R0>(r0)
-      }
-    )
+  return accessM(
+    (r0: R0) =>
+      new IPlatform((platform) =>
+        effectTotal(
+          (): CustomRuntime<R0> => {
+            return makeCustomRuntime<R0>(r0, platform)
+          }
+        )
+      )
   )
 }
 
-export function withRuntimeM<R0, R, E, A>(f: (r: Runtime<R0>) => Effect<R, E, A>) {
+export function withRuntimeM<R0, R, E, A>(
+  f: (r: CustomRuntime<R0>) => Effect<R, E, A>
+) {
   return chain_(runtime<R0>(), f)
 }
 
-export function withRuntime<R0, A>(f: (r: Runtime<R0>) => A) {
+export function withRuntime<R0, A>(f: (r: CustomRuntime<R0>) => A) {
   return chain_(runtime<R0>(), (r) => succeed(f(r)))
-}
-
-export function makeRuntime<R0>(r0: R0): Runtime<R0> {
-  return {
-    in: <R, E, A>(effect: Effect<R & R0, E, A>) =>
-      provideSome_(effect, (r: R) => ({ ...r0, ...r })),
-    run: (_, cb) =>
-      run(
-        provideSome_(_, (r) => ({ ...r0, ...r })),
-        cb
-      ),
-    runCancel: (_, cb) =>
-      runCancel(
-        provideSome_(_, (r) => ({ ...r0, ...r })),
-        cb
-      ),
-    runPromise: (_) => runPromise(provideSome_(_, (r) => ({ ...r0, ...r }))),
-    runPromiseExit: (_) => runPromiseExit(provideSome_(_, (r) => ({ ...r0, ...r })))
-  }
 }
