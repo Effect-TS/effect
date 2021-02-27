@@ -1,5 +1,5 @@
 import { range } from "../src/Array"
-import { HasClock, ProxyClock } from "../src/Clock"
+import { provideTestClock, TestClock } from "../src/Clock"
 import type { Cb, Effect } from "../src/Effect"
 import * as T from "../src/Effect"
 import * as E from "../src/Either"
@@ -9,7 +9,8 @@ import { dump, prettyPrintM } from "../src/Fiber"
 import * as FiberRef from "../src/FiberRef"
 import { absurd, flow, pipe, tuple } from "../src/Function"
 import * as O from "../src/Option"
-import * as S from "../src/Sync"
+import * as Ref from "../src/Ref"
+import { runTest } from "./utils/runTest"
 
 describe("Effect", () => {
   it("catch", async () => {
@@ -360,39 +361,41 @@ describe("Effect", () => {
       )
     ).toEqual({ a: 0, b: 1, c: 2 })
   })
-  it("cached", async () => {
-    const f = jest.fn()
-    let time = new Date().getTime()
+  it("cachedIvalidate", () =>
+    T.gen(function* (_) {
+      const ref = yield* _(Ref.makeRef(0))
 
-    const [eff, inv] = await pipe(
-      T.effectTotal(() => {
-        f()
-      }),
-      T.cachedInvalidate(50),
-      T.provide(
-        HasClock.of(
-          new ProxyClock(
-            S.sync(() => time),
-            () => T.unit
-          )
-        )
-      ),
-      T.runPromise
-    )
+      const [eff, inv] = yield* _(
+        ref["|>"](Ref.update((n) => n + 1))["|>"](T.cachedInvalidate(50))
+      )
 
-    await T.runPromise(eff)
-    expect(f).toHaveBeenCalledTimes(1)
-    await T.runPromise(eff)
-    expect(f).toHaveBeenCalledTimes(1)
-    await T.runPromise(inv)
-    await T.runPromise(eff)
-    expect(f).toHaveBeenCalledTimes(2)
-    await T.runPromise(eff)
-    expect(f).toHaveBeenCalledTimes(2)
-    time = time + 55
-    await T.runPromise(eff)
-    expect(f).toHaveBeenCalledTimes(3)
-    await T.runPromise(eff)
-    expect(f).toHaveBeenCalledTimes(3)
-  })
+      yield* _(eff)
+
+      expect(yield* _(ref.get)).toEqual(1)
+
+      yield* _(eff)
+
+      expect(yield* _(ref.get)).toEqual(1)
+
+      yield* _(inv)
+      yield* _(eff)
+
+      expect(yield* _(ref.get)).toEqual(2)
+
+      yield* _(eff)
+
+      expect(yield* _(ref.get)).toEqual(2)
+
+      yield* _(TestClock.advance(55))
+
+      yield* _(eff)
+
+      expect(yield* _(ref.get)).toEqual(3)
+
+      yield* _(eff)
+
+      expect(yield* _(ref.get)).toEqual(3)
+    })
+      ["|>"](provideTestClock)
+      ["|>"](runTest))
 })
