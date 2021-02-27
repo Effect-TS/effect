@@ -22,6 +22,7 @@ import {
   IFold,
   IFork,
   IInterruptStatus,
+  IPlatform,
   IProvide,
   IRead,
   ISucceed,
@@ -464,3 +465,12 @@ export const unit: UIO<void> = new ISucceed(undefined)
  * overhead.
  */
 export const yieldNow: UIO<void> = new IYield()
+
+/**
+ * Checks the current platform
+ */
+export function checkPlatform<R, E, A>(
+  f: (_: Fiber.Platform) => Effect<R, E, A>
+): Effect<R, E, A> {
+  return new IPlatform(f)
+}

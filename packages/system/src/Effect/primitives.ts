@@ -1,6 +1,7 @@
 import type { Async } from "../Async"
 import type * as Cause from "../Cause/core"
 import type * as Exit from "../Exit/exit"
+import type { Platform } from "../Fiber"
 import type { FiberContext } from "../Fiber/context"
 import type * as Fiber from "../Fiber/core"
 import type { FiberID } from "../Fiber/id"
@@ -43,6 +44,7 @@ export type Instruction =
   | Async<any, any, any>
   | FFI<any, any, any>
   | ITracingStatus<any, any, any>
+  | IPlatform<any, any, any>
 
 export class IFlatMap<R, E, A, R1, E1, A1> extends Base<R & R1, E | E1, A1> {
   readonly _tag = "FlatMap"
@@ -177,6 +179,14 @@ export class IRead<R0, R, E, A> extends Base<R & R0, E, A> {
   readonly _tag = "Read"
 
   constructor(readonly f: (_: R0) => Effect<R, E, A>) {
+    super()
+  }
+}
+
+export class IPlatform<R, E, A> extends Base<R, E, A> {
+  readonly _tag = "Platform"
+
+  constructor(readonly f: (_: Platform) => Effect<R, E, A>) {
     super()
   }
 }

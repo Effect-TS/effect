@@ -3,7 +3,6 @@ import "@effect-ts/tracing-utils/Enable"
 import { defaultRuntime, QIO } from "@qio/core"
 
 import * as T from "../src/Effect"
-import { makeCustomRuntime } from "../src/Effect"
 import * as F from "../src/Fiber"
 import * as IO from "../src/IO"
 import * as Sync from "../src/Sync"
@@ -72,7 +71,7 @@ function fibEffectGen(n: number): T.UIO<number> {
 
 const qioRuntime = defaultRuntime()
 
-const runtime = makeCustomRuntime()
+const runtime = T.makeCustomRuntime(T.defaultEnv, T.defaultPlatform)
   .traceEffect(false)
   .traceExecution(false)
   .traceExecutionLength(0)

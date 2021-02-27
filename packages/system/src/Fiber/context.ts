@@ -1052,6 +1052,11 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                     break
                   }
 
+                  case "Platform": {
+                    current = current.f(this.platform)["_I"]
+                    break
+                  }
+
                   case "Fold": {
                     this.pushContinuation(current)
                     current = current.value[T._I]
