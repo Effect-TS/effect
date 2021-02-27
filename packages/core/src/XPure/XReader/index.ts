@@ -1,3 +1,5 @@
+import "../../Operator"
+
 export * from "./definition"
 export { XReaderURI } from "../../Modules"
 export * from "./operations"

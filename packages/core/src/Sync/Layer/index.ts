@@ -1,3 +1,5 @@
+import "../../Operator"
+
 import { AtomicReference } from "@effect-ts/system/Support/AtomicReference"
 
 import * as A from "../../Array"

@@ -1,5 +1,6 @@
-/* adapted from https://github.com/gcanti/fp-ts */
+import "../Operator"
 
+/* adapted from https://github.com/gcanti/fp-ts */
 import type { Equal } from "../Equal"
 import { identity as id } from "../Function"
 import type { Identity } from "../Identity"

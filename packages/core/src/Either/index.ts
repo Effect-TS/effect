@@ -1,3 +1,5 @@
+import "../Operator"
+
 export * from "./definition"
 export { EitherURI } from "../Modules"
 export * from "./operations"

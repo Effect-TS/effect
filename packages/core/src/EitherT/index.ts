@@ -1,3 +1,5 @@
+import "../Operator"
+
 import * as E from "../Either"
 import { pipe } from "../Function"
 import type { Any, Applicative, Covariant, Monad, URI } from "../Prelude"

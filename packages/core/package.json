@@ -30,6 +30,9 @@
     "@effect-ts/tracing-utils": "^0.4.2"
   },
   "config": {
+    "side": [
+      "Operator"
+    ],
     "modules": [
       "Async",
       "Array",
@@ -97,7 +100,7 @@
       "Has",
       "Modules",
       "Newtype",
-      "Operators",
+      "Operator",
       "List",
       "HashMap",
       "HashSet",

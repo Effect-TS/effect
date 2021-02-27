@@ -5,6 +5,8 @@ declare global {
      * ```ts
      * T.succeed(1)["|>"](T.map(n => n + 1))["|>"](T.map(n => n + 2))
      * ```
+     *
+     * @optimize operator
      */
     ["|>"]<Self, Result>(this: Self, next: (value: Self) => Result): Result
   }

@@ -1,3 +1,5 @@
+import "../Operator"
+
 import { constant, identity } from "@effect-ts/system/Function"
 import * as X from "@effect-ts/system/XPure"
 

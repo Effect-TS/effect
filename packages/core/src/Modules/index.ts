@@ -1,3 +1,5 @@
+import "../Operator"
+
 import type { Effect, EffectURI } from "@effect-ts/system/Effect"
 
 import type { Array } from "../Array"

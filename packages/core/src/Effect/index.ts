@@ -1,3 +1,5 @@
+import "../Operator"
+
 import * as T from "@effect-ts/system/Effect"
 
 import * as I from "../Identity"

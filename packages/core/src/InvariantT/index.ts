@@ -1,3 +1,5 @@
+import "../Operator"
+
 import * as P from "../Prelude"
 import type * as HKT from "../Prelude/HKT"
 

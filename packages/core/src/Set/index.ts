@@ -1,3 +1,5 @@
+import "../Operator"
+
 import type { MutableSet } from "@effect-ts/system/Mutable"
 import type { Option } from "@effect-ts/system/Option"
 import type { Separated } from "@effect-ts/system/Utils"
