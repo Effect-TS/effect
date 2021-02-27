@@ -1,3 +1,5 @@
+import "../Operator"
+
 /**
  * Async is a lightweight Effect data type that support as parameters:
  * - R: environment
@@ -6,7 +8,6 @@
  *
  * And additionally supports interruption
  */
-
 import * as A from "@effect-ts/system/Async"
 import * as E from "@effect-ts/system/Either"
 import { NoSuchElementException } from "@effect-ts/system/GlobalExceptions"

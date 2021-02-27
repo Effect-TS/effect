@@ -11,5 +11,5 @@
       }
     ]
   },
-  "include": ["test/demo.test.ts"]
+  "include": ["test/effect.test.ts"]
 }

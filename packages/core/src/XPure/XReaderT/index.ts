@@ -1,3 +1,5 @@
+import "../../Operator"
+
 import { pipe } from "../../Function"
 import type { Applicative, Monad } from "../../Prelude"
 import { succeedF } from "../../Prelude/DSL"

@@ -1,5 +1,6 @@
-/* adapted from https://github.com/gcanti/fp-ts */
+import "../Operator"
 
+/* adapted from https://github.com/gcanti/fp-ts */
 /**
  * The `Const` type constructor, which wraps its first type argument and ignores its second.
  * That is, `Const<E, A>` is isomorphic to `E` for any `A`.

@@ -1,3 +1,5 @@
+import "../Operator"
+
 import { pipe } from "../Function"
 import * as O from "../Option"
 import type { Applicative, Covariant, Monad } from "../Prelude"

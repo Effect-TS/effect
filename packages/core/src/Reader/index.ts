@@ -1,3 +1,5 @@
+import "../Operator"
+
 export * from "./definition"
 export { ReaderURI } from "../Modules"
 export * from "./operations"

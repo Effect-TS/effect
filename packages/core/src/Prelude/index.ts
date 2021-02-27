@@ -1,3 +1,5 @@
+import "../Operator"
+
 export * from "./Any"
 export * from "./Apply"
 export * from "./Applicative"

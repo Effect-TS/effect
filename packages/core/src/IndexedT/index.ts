@@ -1,3 +1,5 @@
+import "../Operator"
+
 import { pipe } from "../Function"
 import type { IxURI } from "../Modules"
 import { chainF, succeedF } from "../Prelude/DSL"

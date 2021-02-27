@@ -15,7 +15,43 @@ export default function unpipe(
 
       return (sourceFile: ts.SourceFile) => {
         function visitor(node: ts.Node): ts.VisitResult<ts.Node> {
-          if (ts.isCallExpression(node)) {
+          if (
+            ts.isCallExpression(node) &&
+            ts.isElementAccessExpression(node.expression) &&
+            ts.isStringLiteral(node.expression.argumentExpression) &&
+            node.expression.argumentExpression.text === "|>" &&
+            node.arguments.length === 1
+          ) {
+            //const symbol = checker.getTypeAtLocation(node.expression).getSymbol()
+
+            const overloadDeclarations = checker
+              .getResolvedSignature(node)
+              ?.getDeclaration()
+
+            const optimizeTags = overloadDeclarations
+              ? (() => {
+                  try {
+                    return ts
+                      .getAllJSDocTags(
+                        overloadDeclarations,
+                        (t): t is ts.JSDocTag => t.tagName.getText() === "optimize"
+                      )
+                      .map((e) => e.comment)
+                      .filter((s): s is string => s != null)
+                  } catch {
+                    return undefined
+                  }
+                })()
+              : undefined
+
+            return optimizeTags?.includes("operator")
+              ? factory.createCallExpression(
+                  ts.visitNode(node.arguments[0]!, visitor),
+                  [],
+                  [ts.visitNode(node.expression.expression, visitor)]
+                )
+              : ts.visitEachChild(node, visitor, ctx)
+          } else if (ts.isCallExpression(node)) {
             const symbol = checker.getTypeAtLocation(node.expression).getSymbol()
 
             const overloadDeclarations = checker
