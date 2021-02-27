@@ -1,3 +1,5 @@
+import "../../Operator"
+
 import { LinkedList } from "../LinkedList"
 
 export class Scheduler {

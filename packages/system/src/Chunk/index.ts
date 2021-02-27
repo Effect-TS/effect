@@ -1,3 +1,5 @@
+import "../Operator"
+
 import * as A from "../Array"
 import * as T from "../Effect"
 import type { Predicate, Refinement } from "../Function"

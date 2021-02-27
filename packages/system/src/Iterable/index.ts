@@ -1,3 +1,5 @@
+import "../Operator"
+
 import * as A from "../Array"
 import type { Either } from "../Either"
 import { identity } from "../Function"

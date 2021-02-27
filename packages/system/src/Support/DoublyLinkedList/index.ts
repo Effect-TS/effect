@@ -1,3 +1,5 @@
+import "../../Operator"
+
 export class LinkedListNode<T> {
   public removed = false
   public left: LinkedListNode<T> | undefined

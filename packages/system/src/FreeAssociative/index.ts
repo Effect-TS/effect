@@ -1,3 +1,5 @@
+import "../Operator"
+
 import type { Endomorphism, Predicate, Refinement } from "../Function"
 import { pipe } from "../Function"
 import type { Option } from "../Option"

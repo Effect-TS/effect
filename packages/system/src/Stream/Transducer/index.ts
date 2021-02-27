@@ -1,3 +1,5 @@
+import "../../Operator"
+
 import type * as C from "../../Cause"
 import * as A from "../../Chunk"
 import * as Ex from "../../Exit"

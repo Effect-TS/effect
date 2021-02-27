@@ -1,3 +1,5 @@
+import "../../Operator"
+
 /**
  * Based on https://github.com/mattbierner/hamt_plus/blob/master/lib/hamt.js
  */

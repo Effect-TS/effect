@@ -1,3 +1,5 @@
+import "../../Operator"
+
 import { constVoid, pipe } from "../../Function"
 import type { Option } from "../../Option"
 import { none, some } from "../../Option"

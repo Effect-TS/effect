@@ -1,3 +1,5 @@
+import "../../Operator"
+
 import { DoublyLinkedList } from "../DoublyLinkedList"
 
 export interface MutableQueue<A> {

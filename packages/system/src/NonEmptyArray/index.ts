@@ -1,9 +1,9 @@
-/* adapted from https://github.com/gcanti/fp-ts */
+import "../Operator"
 
+/* adapted from https://github.com/gcanti/fp-ts */
 /**
  * Data structure which represents non-empty arrays
  */
-
 import * as A from "../Array"
 import type { Predicate, Refinement } from "../Function"
 import type { MutableRecord } from "../Mutable"

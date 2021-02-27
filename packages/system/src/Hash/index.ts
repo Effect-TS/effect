@@ -1,3 +1,5 @@
+import "../Operator"
+
 import { Stack } from "../Stack"
 
 /**

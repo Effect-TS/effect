@@ -1,3 +1,5 @@
+import "../../Operator"
+
 import * as C from "../../Cause"
 import * as A from "../../Chunk"
 import type { HasClock } from "../../Clock"
