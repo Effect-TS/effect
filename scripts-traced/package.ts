@@ -47,13 +47,19 @@ const getModules = flow(
   )
 )
 
-const writeModulePackageJson = (modules: string[]) =>
-  A.array.traverse(TE.taskEither)(modules, (m) =>
+const getSide = flow(
+  (content: any) => content?.config?.side,
+  (x): string[] => (Array.isArray(x) && x.every((y) => typeof y === "string") ? x : [])
+)
+
+const writeModulePackageJson = (modules: string[], content: any) => {
+  const side = getSide(content)
+  return A.array.traverse(TE.taskEither)(modules, (m) =>
     writeFile(
       `./build/_traced/${m}/package.json`,
       JSON.stringify(
         {
-          sideEffects: false,
+          sideEffects: side.includes(m),
           main: "./index.js",
           module: `${A.range(1, m.split("/").length)
             .map(() => "../")
@@ -65,13 +71,15 @@ const writeModulePackageJson = (modules: string[]) =>
       )
     )
   )
+}
 
 pipe(
   copyReadme,
   TE.apSecond(loadPackageJson),
   TE.chainFirst(writePackageJsonContent),
-  TE.chain(getModules),
-  TE.chainFirst(writeModulePackageJson),
+  TE.bindTo("content"),
+  TE.bind("modules", ({ content }) => getModules(content)),
+  TE.chainFirst(({ content, modules }) => writeModulePackageJson(modules, content)),
   TE.fold(onLeft, onRight("package copy succeeded!")),
   runMain
 )

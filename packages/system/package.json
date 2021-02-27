@@ -29,6 +29,9 @@
     "@effect-ts/tracing-utils": "^0.4.2"
   },
   "config": {
+    "side": [
+      "Operator"
+    ],
     "modules": [
       "Array",
       "Chunk",
@@ -63,6 +66,7 @@
       "Map",
       "Mutable",
       "NonEmptyArray",
+      "Operator",
       "Option",
       "Ord",
       "Ordering",
