@@ -1,3 +1,5 @@
+import "../Operator"
+
 /**
  * Core exports
  */

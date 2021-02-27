@@ -1,5 +1,6 @@
-/* adapted from https://github.com/gcanti/fp-ts */
+import "../Operator"
 
+/* adapted from https://github.com/gcanti/fp-ts */
 import * as A from "../Array"
 import type { Either } from "../Either"
 import type { Predicate, Refinement } from "../Function"

@@ -1,3 +1,5 @@
+import "../Operator"
+
 import type { Either } from "../Either/core"
 import type { Tag } from "../Has"
 import type { Option } from "../Option"

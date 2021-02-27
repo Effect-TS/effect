@@ -1,3 +1,5 @@
+import "../../Operator"
+
 import * as L from "../../Persistent/List"
 import { DoublyLinkedList } from "../DoublyLinkedList"
 

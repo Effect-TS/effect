@@ -1,3 +1,5 @@
+import "../../Operator"
+
 import * as A from "../../Chunk"
 import { pipe } from "../../Function"
 import * as O from "../../Option"

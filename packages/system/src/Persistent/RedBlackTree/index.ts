@@ -1,3 +1,5 @@
+import "../../Operator"
+
 /**
  * Red Black Tree
  *

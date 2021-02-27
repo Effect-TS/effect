@@ -1,3 +1,5 @@
+import "../../Operator"
+
 export class OneShot<A> {
   private internal: A | undefined = undefined
 

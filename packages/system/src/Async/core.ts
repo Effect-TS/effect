@@ -1,5 +1,4 @@
 /* eslint-disable prefer-const */
-
 import * as C from "../Cause/cause"
 import type { EffectURI } from "../Effect/effect"
 import { _A, _E, _I, _R, _U } from "../Effect/effect"

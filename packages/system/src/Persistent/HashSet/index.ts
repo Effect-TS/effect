@@ -1,3 +1,5 @@
+import "../../Operator"
+
 import type { Equal } from "../../Equal"
 import type { Predicate, Refinement } from "../../Function"
 import { not } from "../../Function"

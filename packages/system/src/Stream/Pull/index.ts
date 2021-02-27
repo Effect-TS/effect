@@ -1,3 +1,5 @@
+import "../../Operator"
+
 import type { Cause } from "../../Cause/core"
 import type * as A from "../../Chunk"
 import * as O from "../../Option"

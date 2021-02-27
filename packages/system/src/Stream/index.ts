@@ -1,3 +1,5 @@
+import "../Operator"
+
 /**
  * Ported from https://github.com/zio/zio/blob/master/streams/shared/src/main/scala/zio/stream/ZStream.scala
  *

@@ -1,3 +1,5 @@
+import "../Operator"
+
 /* eslint-disable prefer-const */
 import { _A, _E, _I, _R, _U } from "../Effect/effect"
 import type { EffectURI, Instruction } from "../Effect/primitives"

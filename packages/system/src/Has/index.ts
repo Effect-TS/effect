@@ -1,9 +1,10 @@
+import "../Operator"
+
 /**
  * Ported from https://github.com/zio/zio/blob/master/core/shared/src/main/scala/zio/Has.scala
  *
  * Copyright 2020 Michael Arnaldi and the Matechs Garage Contributors.
  */
-
 import type { Option } from "../Option"
 import { fromNullable, none } from "../Option"
 

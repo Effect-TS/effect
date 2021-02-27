@@ -1,3 +1,5 @@
+import "../../Operator"
+
 export class AtomicReference<A> {
   private current: A
   constructor(readonly initial: A) {

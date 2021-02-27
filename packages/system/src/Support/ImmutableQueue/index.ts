@@ -1,3 +1,5 @@
+import "../../Operator"
+
 import * as O from "../../Option"
 import * as L from "../../Persistent/List"
 
