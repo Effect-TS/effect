@@ -191,7 +191,7 @@ export class IRead<R0, R, E, A> extends Base<R & R0, E, A> {
 export class IPlatform<R, E, A> extends Base<R, E, A> {
   readonly _tag = "Platform"
 
-  constructor(readonly f: (_: Platform) => Effect<R, E, A>) {
+  constructor(readonly f: (_: Platform<unknown>) => Effect<R, E, A>) {
     super()
   }
 }

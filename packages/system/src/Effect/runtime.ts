@@ -48,27 +48,28 @@ export const prettyReporter: FailureReporter = (e) => {
   console.error(pretty(e, defaultRenderer))
 }
 
-export const defaultPlatform = new Platform(
-  25,
-  25,
-  isTracingEnabled(),
-  isTracingEnabled(),
-  isTracingEnabled(),
-  isTracingEnabled(),
-  25,
-  25,
-  25,
-  defaultRenderer,
-  constVoid,
-  10_000
-)
+export const defaultPlatform = new Platform({
+  executionTraceLength: 25,
+  stackTraceLength: 25,
+  traceExecution: isTracingEnabled(),
+  traceStack: isTracingEnabled(),
+  traceEffects: isTracingEnabled(),
+  initialTracingStatus: isTracingEnabled(),
+  ancestorExecutionTraceLength: 25,
+  ancestorStackTraceLength: 25,
+  ancestryLength: 25,
+  renderer: defaultRenderer,
+  reportFailure: constVoid,
+  maxOp: 10_000,
+  supervisor: Supervisor.none
+})
 
-export class CustomRuntime<R> {
-  constructor(readonly env: R, readonly platform: Platform) {
+export class CustomRuntime<R, X> {
+  constructor(readonly env: R, readonly platform: Platform<X>) {
     this.traceExecution = this.traceExecution.bind(this)
-    this.traceExecutionLength = this.traceExecutionLength.bind(this)
+    this.executionTraceLength = this.executionTraceLength.bind(this)
     this.traceStack = this.traceStack.bind(this)
-    this.traceStackLength = this.traceStackLength.bind(this)
+    this.stackTraceLength = this.stackTraceLength.bind(this)
     this.traceEffect = this.traceEffect.bind(this)
     this.initialTracingStatus = this.initialTracingStatus.bind(this)
     this.ancestorExecutionTraceLength = this.ancestorExecutionTraceLength.bind(this)
@@ -97,13 +98,21 @@ export class CustomRuntime<R> {
       new Map(),
       supervisor,
       scope,
-      this.platform.maxOp,
-      this.platform.reportFailure,
+      this.platform.value.maxOp,
+      this.platform.value.reportFailure,
       this.platform,
-      none
+      none,
+      this.platform.value.initialTracingStatus
     )
 
     return context
+  }
+
+  supervised<Y>(supervisor: Supervisor.Supervisor<Y>): CustomRuntime<R, Y> {
+    return new CustomRuntime(
+      this.env,
+      new Platform({ ...this.platform.value, supervisor })
+    )
   }
 
   runFiber<E, A>(self: Effect<R, E, A>): FiberRuntime<E, A> {
@@ -192,248 +201,89 @@ export class CustomRuntime<R> {
   traceRenderer(renderer: Renderer) {
     return new CustomRuntime(
       this.env,
-      new Platform(
-        this.platform.executionTraceLength,
-        this.platform.stackTraceLength,
-        this.platform.traceExecution,
-        this.platform.traceStack,
-        this.platform.traceEffects,
-        this.platform.initialTracingStatus,
-        this.platform.ancestorExecutionTraceLength,
-        this.platform.ancestorStackTraceLength,
-        this.platform.ancestryLength,
-        renderer,
-        this.platform.reportFailure,
-        this.platform.maxOp
-      )
+      new Platform({ ...this.platform.value, renderer })
     )
   }
 
   traceExecution(b: boolean) {
     return new CustomRuntime(
       this.env,
-      new Platform(
-        this.platform.executionTraceLength,
-        this.platform.stackTraceLength,
-        b,
-        this.platform.traceStack,
-        this.platform.traceEffects,
-        this.platform.initialTracingStatus,
-        this.platform.ancestorExecutionTraceLength,
-        this.platform.ancestorStackTraceLength,
-        this.platform.ancestryLength,
-        this.platform.renderer,
-        this.platform.reportFailure,
-        this.platform.maxOp
-      )
+      new Platform({ ...this.platform.value, traceExecution: b })
     )
   }
 
-  traceExecutionLength(n: number) {
+  executionTraceLength(n: number) {
     return new CustomRuntime(
       this.env,
-      new Platform(
-        n,
-        this.platform.stackTraceLength,
-        this.platform.traceExecution,
-        this.platform.traceStack,
-        this.platform.traceEffects,
-        this.platform.initialTracingStatus,
-        this.platform.ancestorExecutionTraceLength,
-        this.platform.ancestorStackTraceLength,
-        this.platform.ancestryLength,
-        this.platform.renderer,
-        this.platform.reportFailure,
-        this.platform.maxOp
-      )
+      new Platform({ ...this.platform.value, executionTraceLength: n })
     )
   }
 
   traceStack(b: boolean) {
     return new CustomRuntime(
       this.env,
-      new Platform(
-        this.platform.executionTraceLength,
-        this.platform.stackTraceLength,
-        this.platform.traceExecution,
-        b,
-        this.platform.traceEffects,
-        this.platform.initialTracingStatus,
-        this.platform.ancestorExecutionTraceLength,
-        this.platform.ancestorStackTraceLength,
-        this.platform.ancestryLength,
-        this.platform.renderer,
-        this.platform.reportFailure,
-        this.platform.maxOp
-      )
+      new Platform({ ...this.platform.value, traceStack: b })
     )
   }
 
-  traceStackLength(n: number) {
+  stackTraceLength(n: number) {
     return new CustomRuntime(
       this.env,
-      new Platform(
-        this.platform.executionTraceLength,
-        n,
-        this.platform.traceExecution,
-        this.platform.traceStack,
-        this.platform.traceEffects,
-        this.platform.initialTracingStatus,
-        this.platform.ancestorExecutionTraceLength,
-        this.platform.ancestorStackTraceLength,
-        this.platform.ancestryLength,
-        this.platform.renderer,
-        this.platform.reportFailure,
-        this.platform.maxOp
-      )
+      new Platform({ ...this.platform.value, stackTraceLength: n })
     )
   }
 
   traceEffect(b: boolean) {
     return new CustomRuntime(
       this.env,
-      new Platform(
-        this.platform.executionTraceLength,
-        this.platform.stackTraceLength,
-        this.platform.traceExecution,
-        this.platform.traceStack,
-        b,
-        this.platform.initialTracingStatus,
-        this.platform.ancestorExecutionTraceLength,
-        this.platform.ancestorStackTraceLength,
-        this.platform.ancestryLength,
-        this.platform.renderer,
-        this.platform.reportFailure,
-        this.platform.maxOp
-      )
+      new Platform({ ...this.platform.value, traceEffects: b })
     )
   }
 
   initialTracingStatus(b: boolean) {
     return new CustomRuntime(
       this.env,
-      new Platform(
-        this.platform.executionTraceLength,
-        this.platform.stackTraceLength,
-        this.platform.traceExecution,
-        this.platform.traceStack,
-        this.platform.traceEffects,
-        b,
-        this.platform.ancestorExecutionTraceLength,
-        this.platform.ancestorStackTraceLength,
-        this.platform.ancestryLength,
-        this.platform.renderer,
-        this.platform.reportFailure,
-        this.platform.maxOp
-      )
+      new Platform({ ...this.platform.value, initialTracingStatus: b })
     )
   }
 
   ancestorExecutionTraceLength(n: number) {
     return new CustomRuntime(
       this.env,
-      new Platform(
-        this.platform.executionTraceLength,
-        this.platform.stackTraceLength,
-        this.platform.traceExecution,
-        this.platform.traceStack,
-        this.platform.traceEffects,
-        this.platform.initialTracingStatus,
-        n,
-        this.platform.ancestorStackTraceLength,
-        this.platform.ancestryLength,
-        this.platform.renderer,
-        this.platform.reportFailure,
-        this.platform.maxOp
-      )
+      new Platform({ ...this.platform.value, ancestorExecutionTraceLength: n })
     )
   }
 
   ancestorStackTraceLength(n: number) {
     return new CustomRuntime(
       this.env,
-      new Platform(
-        this.platform.executionTraceLength,
-        this.platform.stackTraceLength,
-        this.platform.traceExecution,
-        this.platform.traceStack,
-        this.platform.traceEffects,
-        this.platform.initialTracingStatus,
-        this.platform.ancestorExecutionTraceLength,
-        n,
-        this.platform.ancestryLength,
-        this.platform.renderer,
-        this.platform.reportFailure,
-        this.platform.maxOp
-      )
+      new Platform({ ...this.platform.value, ancestorStackTraceLength: n })
     )
   }
 
   ancestryLength(n: number) {
     return new CustomRuntime(
       this.env,
-      new Platform(
-        this.platform.executionTraceLength,
-        this.platform.stackTraceLength,
-        this.platform.traceExecution,
-        this.platform.traceStack,
-        this.platform.traceEffects,
-        this.platform.initialTracingStatus,
-        this.platform.ancestorExecutionTraceLength,
-        this.platform.ancestorStackTraceLength,
-        n,
-        this.platform.renderer,
-        this.platform.reportFailure,
-        this.platform.maxOp
-      )
+      new Platform({ ...this.platform.value, ancestryLength: n })
     )
   }
 
   reportFailure(reportFailure: (_: Cause.Cause<unknown>) => void) {
     return new CustomRuntime(
       this.env,
-      new Platform(
-        this.platform.executionTraceLength,
-        this.platform.stackTraceLength,
-        this.platform.traceExecution,
-        this.platform.traceStack,
-        this.platform.traceEffects,
-        this.platform.initialTracingStatus,
-        this.platform.ancestorExecutionTraceLength,
-        this.platform.ancestorStackTraceLength,
-        this.platform.ancestryLength,
-        this.platform.renderer,
-        reportFailure,
-        this.platform.maxOp
-      )
+      new Platform({ ...this.platform.value, reportFailure })
     )
   }
 
   maxOp(maxOp: number) {
-    return new CustomRuntime(
-      this.env,
-      new Platform(
-        this.platform.executionTraceLength,
-        this.platform.stackTraceLength,
-        this.platform.traceExecution,
-        this.platform.traceStack,
-        this.platform.traceEffects,
-        this.platform.initialTracingStatus,
-        this.platform.ancestorExecutionTraceLength,
-        this.platform.ancestorStackTraceLength,
-        this.platform.ancestryLength,
-        this.platform.renderer,
-        this.platform.reportFailure,
-        maxOp
-      )
-    )
+    return new CustomRuntime(this.env, new Platform({ ...this.platform.value, maxOp }))
   }
 }
 
 /**
  * Construct custom runtime
  */
-export function makeCustomRuntime<R>(env: R, platform: Platform) {
+export function makeCustomRuntime<R, X>(env: R, platform: Platform<X>) {
   return new CustomRuntime(env, platform)
 }
 
@@ -467,8 +317,8 @@ export function runtime<R0>() {
     (r0: R0) =>
       new IPlatform((platform) =>
         effectTotal(
-          (): CustomRuntime<R0> => {
-            return makeCustomRuntime<R0>(r0, platform)
+          (): CustomRuntime<R0, unknown> => {
+            return makeCustomRuntime<R0, unknown>(r0, platform)
           }
         )
       )
@@ -476,11 +326,11 @@ export function runtime<R0>() {
 }
 
 export function withRuntimeM<R0, R, E, A>(
-  f: (r: CustomRuntime<R0>) => Effect<R, E, A>
+  f: (r: CustomRuntime<R0, unknown>) => Effect<R, E, A>
 ) {
   return chain_(runtime<R0>(), f)
 }
 
-export function withRuntime<R0, A>(f: (r: CustomRuntime<R0>) => A) {
+export function withRuntime<R0, A>(f: (r: CustomRuntime<R0, unknown>) => A) {
   return chain_(runtime<R0>(), (r) => succeed(f(r)))
 }

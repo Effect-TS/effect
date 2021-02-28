@@ -105,12 +105,9 @@ export const _stop = new Stop()
 
 export const _continue = new Continue()
 
-/**
- * Creates a new supervisor that tracks children in a set.
- */
-export const track = effectTotal(() => {
-  const set = new Set<Runtime<any, any>>()
-
+export function unsafeTrack(
+  set: Set<Runtime<any, any>> = new Set<Runtime<any, any>>()
+) {
   return new Supervisor<readonly Runtime<any, any>[]>(
     effectTotal(() => Array.from(set)),
     (_, __, ___, fiber) => {
@@ -122,7 +119,12 @@ export const track = effectTotal(() => {
       return _continue
     }
   )
-})
+}
+
+/**
+ * Creates a new supervisor that tracks children in a set.
+ */
+export const track = effectTotal(() => unsafeTrack())
 
 /**
  * Creates a new supervisor that tracks children in a set.

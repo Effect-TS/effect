@@ -212,7 +212,7 @@ export function main<E, A>(layer: Layer<T.DefaultEnv, E, A>) {
  */
 export function toRuntime<R, E, A>(
   _: Layer<R, E, A>
-): M.Managed<R, E, T.CustomRuntime<A>> {
+): M.Managed<R, E, T.CustomRuntime<A, unknown>> {
   return M.chain_(build(_), (a) =>
     M.fromEffect(
       T.checkPlatform((platform) =>
