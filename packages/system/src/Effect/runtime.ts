@@ -11,7 +11,6 @@ import { flatten as exitFlatten } from "../Exit/core"
 import type { Exit } from "../Exit/exit"
 // fiber
 import { FiberContext } from "../Fiber/context"
-import type { Runtime as FiberRuntime } from "../Fiber/core"
 import { interruptible } from "../Fiber/core"
 import { newFiberId } from "../Fiber/id"
 import { Platform } from "../Fiber/platform"
@@ -122,7 +121,7 @@ export class CustomRuntime<R, X> {
     )
   }
 
-  runFiber<E, A>(self: Effect<R, E, A>): FiberRuntime<E, A> {
+  runFiber<E, A>(self: Effect<R, E, A>): FiberContext<E, A> {
     const context = this.fiberContext<E, A>(self)
     context.evaluateLater(self[_I])
     return context
