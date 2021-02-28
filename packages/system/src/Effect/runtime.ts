@@ -7,6 +7,7 @@ import type { Renderer } from "../Cause/pretty"
 import { defaultRenderer, pretty } from "../Cause/pretty"
 // exit
 import { HasClock, LiveClock } from "../Clock"
+import { flatten as exitFlatten } from "../Exit/core"
 import type { Exit } from "../Exit/exit"
 // fiber
 import { FiberContext } from "../Fiber/context"
@@ -16,6 +17,7 @@ import { newFiberId } from "../Fiber/id"
 import { Platform } from "../Fiber/platform"
 import type { Callback } from "../Fiber/state"
 import { constVoid, identity } from "../Function"
+import * as O from "../Option"
 import { none } from "../Option"
 import { defaultRandom, HasRandom } from "../Random"
 import * as Scope from "../Scope"
@@ -61,7 +63,7 @@ export const defaultPlatform = new Platform({
   renderer: defaultRenderer,
   reportFailure: constVoid,
   maxOp: 10_000,
-  supervisor: Supervisor.none
+  supervisor: Supervisor.trackMainFibers
 })
 
 export class CustomRuntime<R, X> {
@@ -85,7 +87,7 @@ export class CustomRuntime<R, X> {
     this.runFiber = this.runFiber.bind(this)
   }
 
-  fiberContext<E, A>() {
+  private fiberContext<E, A>(effect: Effect<R, E, A>) {
     const initialIS = interruptible
     const fiberId = newFiberId()
     const scope = Scope.unsafeMakeScope<Exit<E, A>>()
@@ -105,6 +107,11 @@ export class CustomRuntime<R, X> {
       this.platform.value.initialTracingStatus
     )
 
+    if (supervisor !== Supervisor.none) {
+      supervisor.unsafeOnStart(this.env, effect, O.none, context)
+      context.onDone((exit) => supervisor.unsafeOnEnd(exitFlatten(exit), context))
+    }
+
     return context
   }
 
@@ -116,7 +123,7 @@ export class CustomRuntime<R, X> {
   }
 
   runFiber<E, A>(self: Effect<R, E, A>): FiberRuntime<E, A> {
-    const context = this.fiberContext<E, A>()
+    const context = this.fiberContext<E, A>(self)
     context.evaluateLater(self[_I])
     return context
   }
@@ -124,20 +131,20 @@ export class CustomRuntime<R, X> {
   /**
    * Runs effect until completion, calling cb with the eventual exit state
    */
-  run<E, A>(_: Effect<R, E, A>, cb?: Callback<E, A>) {
-    const context = this.fiberContext<E, A>()
+  run<E, A>(self: Effect<R, E, A>, cb?: Callback<E, A>) {
+    const context = this.fiberContext<E, A>(self)
 
-    context.evaluateLater(_[_I])
+    context.evaluateLater(self[_I])
     context.runAsync(cb || empty)
   }
 
   /**
    * Runs effect until completion, calling cb with the eventual exit state
    */
-  runAsap<E, A>(_: Effect<R, E, A>, cb?: Callback<E, A>) {
-    const context = this.fiberContext<E, A>()
+  runAsap<E, A>(self: Effect<R, E, A>, cb?: Callback<E, A>) {
+    const context = this.fiberContext<E, A>(self)
 
-    context.evaluateNow(_[_I])
+    context.evaluateNow(self[_I])
     context.runAsync(cb || empty)
   }
 
@@ -145,10 +152,10 @@ export class CustomRuntime<R, X> {
    * Runs effect until completion returing a cancel effecr that when executed
    * triggers cancellation of the process
    */
-  runCancel<E, A>(_: Effect<R, E, A>, cb?: Callback<E, A>): AsyncCancel<E, A> {
-    const context = this.fiberContext<E, A>()
+  runCancel<E, A>(self: Effect<R, E, A>, cb?: Callback<E, A>): AsyncCancel<E, A> {
+    const context = this.fiberContext<E, A>(self)
 
-    context.evaluateLater(_[_I])
+    context.evaluateLater(self[_I])
     context.runAsync(cb || empty)
 
     return context.interruptAs(context.id)
@@ -157,10 +164,10 @@ export class CustomRuntime<R, X> {
   /**
    * Run effect as a Promise, throwing a the first error or exception
    */
-  runPromise<E, A>(_: Effect<R, E, A>): Promise<A> {
-    const context = this.fiberContext<E, A>()
+  runPromise<E, A>(self: Effect<R, E, A>): Promise<A> {
+    const context = this.fiberContext<E, A>(self)
 
-    context.evaluateLater(_[_I])
+    context.evaluateLater(self[_I])
 
     return new Promise((res, rej) => {
       context.runAsync((exit) => {
@@ -182,10 +189,10 @@ export class CustomRuntime<R, X> {
    * Run effect as a Promise of the Exit state
    * in case of error.
    */
-  runPromiseExit<E, A>(_: Effect<R, E, A>): Promise<Exit<E, A>> {
-    const context = this.fiberContext<E, A>()
+  runPromiseExit<E, A>(self: Effect<R, E, A>): Promise<Exit<E, A>> {
+    const context = this.fiberContext<E, A>(self)
 
-    context.evaluateLater(_[_I])
+    context.evaluateLater(self[_I])
 
     return new Promise((res) => {
       context.runAsync((exit) => {
@@ -296,7 +303,6 @@ export const defaultRuntime = makeCustomRuntime(defaultEnv, defaultPlatform)
  * Exports of default runtime
  */
 export const {
-  fiberContext,
   run,
   runAsap,
   runCancel,

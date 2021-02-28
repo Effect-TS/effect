@@ -18,7 +18,6 @@ import * as L from "../Persistent/List"
 // supervisor / scope
 import * as Scope from "../Scope"
 import * as Sup from "../Supervisor"
-import { AtomicBoolean } from "../Support/AtomicBoolean"
 // support
 import { AtomicReference } from "../Support/AtomicReference"
 import { RingBuffer } from "../Support/RingBuffer"
@@ -66,44 +65,9 @@ export type Frame =
   | HandlerFrame
   | ApplyFrame
 
-export class FiberRegistry {
-  readonly running = new Set<FiberContext<any, any>>()
-  readonly interval = new AtomicReference<NodeJS.Timeout | undefined>(undefined)
-
-  trace(fiber: FiberContext<any, any>) {
-    if (!this.running.has(fiber)) {
-      if (typeof this.interval.get === "undefined") {
-        this.interval.set(
-          setInterval(() => {
-            // this keeps the process alive if there is something running
-          }, 60000)
-        )
-      }
-
-      this.running.add(fiber)
-
-      fiber.onDone(() => {
-        this.running.delete(fiber)
-
-        if (this.running.size === 0) {
-          const ci = this.interval.get
-
-          if (ci) {
-            clearInterval(ci)
-          }
-        }
-      })
-    }
-  }
-}
-
-export const globalFiberRegistry = new FiberRegistry()
-
 export const currentFiber = new AtomicReference<FiberContext<any, any> | null>(null)
 
 export const unsafeCurrentFiber = () => O.fromNullable(currentFiber.get)
-
-export const globalFiberRegistryEnabled = new AtomicBoolean(false)
 
 const noop = O.some(constVoid)
 
@@ -139,11 +103,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     readonly platform: Platform<unknown>,
     readonly parentTrace: O.Option<Trace>,
     readonly initialTracingStatus: boolean
-  ) {
-    if (globalFiberRegistryEnabled.get) {
-      globalFiberRegistry.trace(this)
-    }
-  }
+  ) {}
 
   get poll() {
     return T.effectTotal(() => this.poll0())

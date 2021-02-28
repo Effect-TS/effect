@@ -5,6 +5,7 @@ import { defaultRuntime, QIO } from "@qio/core"
 import * as T from "../src/Effect"
 import * as F from "../src/Fiber"
 import * as IO from "../src/IO"
+import * as Supervisor from "../src/Supervisor"
 import * as Sync from "../src/Sync"
 
 function fibIO(n: number): IO.IO<number> {
@@ -80,6 +81,7 @@ const runtime = T.makeCustomRuntime(T.defaultEnv, T.defaultPlatform)
   .ancestorExecutionTraceLength(0)
   .ancestorStackTraceLength(0)
   .ancestryLength(0)
+  .supervised(Supervisor.none)
 
 describe("Bench", () => {
   describe("Target", () => {

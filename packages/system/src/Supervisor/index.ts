@@ -13,6 +13,7 @@ import type { Runtime } from "../Fiber/core"
 import { pipe } from "../Function"
 import type * as O from "../Option"
 import * as R from "../Ref"
+import { AtomicReference } from "../Support/AtomicReference"
 
 /**
  * A `Supervisor<A>` is allowed to supervise the launching and termination of
@@ -120,6 +121,41 @@ export function unsafeTrack(
     }
   )
 }
+
+export const mainFibers: Set<Runtime<any, any>> = new Set<Runtime<any, any>>()
+
+function unsafeTrackMain() {
+  const interval = new AtomicReference<NodeJS.Timeout | undefined>(undefined)
+
+  return new Supervisor<Set<Runtime<any, any>>>(
+    effectTotal(() => mainFibers),
+    (_, __, ___, fiber) => {
+      if (mainFibers.has(fiber)) {
+        if (typeof interval.get === "undefined") {
+          interval.set(
+            setInterval(() => {
+              // keep process alive
+            }, 60000)
+          )
+        }
+      }
+      return _continue
+    },
+    (_, fiber) => {
+      mainFibers.delete(fiber)
+      if (mainFibers.size === 0) {
+        const ci = interval.get
+
+        if (ci) {
+          clearInterval(ci)
+        }
+      }
+      return _continue
+    }
+  )
+}
+
+export const trackMainFibers = unsafeTrackMain()
 
 /**
  * Creates a new supervisor that tracks children in a set.
