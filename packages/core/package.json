@@ -115,6 +115,7 @@
       "Prelude/AssociativeEither",
       "Prelude/AssociativeFlatten",
       "Prelude/Category",
+      "Prelude/ChainRec",
       "Prelude/CommutativeBoth",
       "Prelude/CommutativeEither",
       "Prelude/Compact",

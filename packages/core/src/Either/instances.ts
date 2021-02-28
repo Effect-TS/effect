@@ -69,3 +69,16 @@ export const Foldable = P.instance<P.Foldable<[URI<EitherURI>], V>>({
   ...Reduce,
   ...ReduceRight
 })
+
+export const chainRec: P.ChainRec<[URI<EitherURI>]>["chainRec"] = <A, B, E>(
+  f: (a: A) => E.Either<E, E.Either<A, B>>
+) => (a: A): E.Either<E, B> =>
+  P.tailRec<E.Either<E, E.Either<A, B>>, E.Either<E, B>>(f(a), (e) =>
+    E.isLeft(e)
+      ? E.right(E.left(e.left))
+      : E.isLeft(e.right)
+      ? E.left(f(e.right.left))
+      : E.right(E.right(e.right.right))
+  )
+
+export const ChainRec = P.instance<P.ChainRec<[URI<EitherURI>]>>({ chainRec })

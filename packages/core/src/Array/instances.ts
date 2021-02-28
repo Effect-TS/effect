@@ -1,3 +1,5 @@
+import type { Either } from "@effect-ts/system/Either"
+
 import type { ArrayURI } from "../Modules"
 import type { URI } from "../Prelude"
 import { getApplicativeF } from "../Prelude"
@@ -155,4 +157,70 @@ export const FilterableWithIndex = P.instance<P.FilterableWithIndex<[URI<ArrayUR
   ...FilterMapWithIndex,
   ...PartitionWithIndex,
   ...PartitionMapWithIndex
+})
+
+export const depthFirstChainRec: P.ChainRec<[URI<ArrayURI>]>["chainRec"] = <A, B>(
+  f: (a: A) => ReadonlyArray<Either<A, B>>
+): ((a: A) => ReadonlyArray<B>) => {
+  return (a) => {
+    // tslint:disable-next-line: readonly-array
+    const todo: Array<Either<A, B>> = [...f(a)]
+    // tslint:disable-next-line: readonly-array
+    const result: Array<B> = []
+
+    while (todo.length > 0) {
+      const e = todo.shift()!
+      if (e._tag === "Left") {
+        todo.unshift(...f(e.left))
+      } else {
+        result.push(e.right)
+      }
+    }
+
+    return result
+  }
+}
+
+export function breadthFirstChainRec<A, B>(
+  f: (a: A) => ReadonlyArray<Either<A, B>>
+): (a: A) => ReadonlyArray<B> {
+  return (a) => {
+    const initial = f(a)
+    // tslint:disable-next-line: readonly-array
+    const todo: Array<Either<A, B>> = []
+    // tslint:disable-next-line: readonly-array
+    const result: Array<B> = []
+
+    function go(e: Either<A, B>): void {
+      if (e._tag === "Left") {
+        f(e.left).forEach((v) => todo.push(v))
+      } else {
+        result.push(e.right)
+      }
+    }
+
+    for (const e of initial) {
+      go(e)
+    }
+
+    while (todo.length > 0) {
+      go(todo.shift()!)
+    }
+
+    return result
+  }
+}
+
+/**
+ * Exposing depth first recursion
+ */
+export const DepthFirstChainRec = P.instance<P.ChainRec<[URI<ArrayURI>]>>({
+  chainRec: depthFirstChainRec
+})
+
+/**
+ * Exposing breadth first recursion
+ */
+export const BreadthFirstChainRec = P.instance<P.ChainRec<[URI<ArrayURI>]>>({
+  chainRec: breadthFirstChainRec
 })
