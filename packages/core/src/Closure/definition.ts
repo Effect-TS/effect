@@ -2,5 +2,6 @@
  * Base combine
  */
 export interface Closure<A> {
-  combine(r: A): (l: A) => A
+  readonly _Closure: "Closure"
+  readonly combine: (x: A, y: A) => A
 }

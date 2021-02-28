@@ -38,7 +38,7 @@ export function inverted<A>(M: Identity<A>): Identity<A> {
  * `Identity` for endomorphisms
  */
 export function endomorphism<A = never>(): Identity<Endomorphism<A>> {
-  return makeIdentity(identity, (y) => (x) => (a) => x(y(a)))
+  return makeIdentity(identity, (x, y) => (a) => x(y(a)))
 }
 
 /**

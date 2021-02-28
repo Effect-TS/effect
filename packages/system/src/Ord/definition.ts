@@ -6,5 +6,5 @@ import type { Ordering } from "../Ordering"
  * ordering.
  */
 export interface Ord<A> extends Equal<A> {
-  readonly compare: (y: A) => (x: A) => Ordering
+  readonly compare: (x: A, y: A) => Ordering
 }

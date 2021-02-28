@@ -95,8 +95,8 @@ export const { match, matchIn, matchMorph, matchTag, matchTagIn } = DSL.matchers
  */
 export function getIdentity<A>(Id: I.Identity<A>) {
   return <R = unknown, E = never>(): I.Identity<T.Effect<R, E, A>> =>
-    I.makeIdentity(T.succeed(Id.identity) as T.Effect<R, E, A>, (y) => (x) =>
-      T.zipWith_(x, y, (a, b) => Id.combine(b)(a))
+    I.makeIdentity(T.succeed(Id.identity) as T.Effect<R, E, A>, (x, y) =>
+      T.zipWith_(x, y, Id.combine)
     )
 }
 
@@ -105,7 +105,7 @@ export function getIdentity<A>(Id: I.Identity<A>) {
  */
 export function getIdentityPar<A>(Id: I.Identity<A>) {
   return <R = unknown, E = never>(): I.Identity<T.Effect<R, E, A>> =>
-    I.makeIdentity(T.succeed(Id.identity) as T.Effect<R, E, A>, (y) => (x) =>
-      T.zipWithPar_(x, y, (a, b) => Id.combine(b)(a))
+    I.makeIdentity(T.succeed(Id.identity) as T.Effect<R, E, A>, (x, y) =>
+      T.zipWithPar_(x, y, Id.combine)
     )
 }

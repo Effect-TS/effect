@@ -144,7 +144,7 @@ export function size<A>(set: SortedSet<A>) {
  */
 export function equal<A>(): Equal<SortedSet<A>> {
   return {
-    equals: (y) => (x) => {
+    equals: (x, y) => {
       if (y === x) {
         return true
       }

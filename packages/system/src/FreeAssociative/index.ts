@@ -69,6 +69,13 @@ export function concat<A>(
   return (l) => new IConcat(l, r)
 }
 
+export function concat_<A>(
+  l: FreeAssociative<A>,
+  r: FreeAssociative<A>
+): FreeAssociative<A> {
+  return new IConcat(l, r)
+}
+
 export function append<A>(a: A): (_: FreeAssociative<A>) => FreeAssociative<A> {
   return (_) => new IConcat(_, new IElement(a))
 }

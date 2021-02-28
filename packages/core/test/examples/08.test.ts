@@ -6,7 +6,7 @@ import * as DSL from "../../src/Prelude/DSL"
 
 test("08", async () => {
   const ValidationApplicative = T.getValidationApplicative(
-    makeAssociative<string>((r) => (l) => `${l} | ${r}`)
+    makeAssociative<string>((l, r) => `${l} | ${r}`)
   )
 
   const structValidation = DSL.structF(ValidationApplicative)

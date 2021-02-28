@@ -6,5 +6,5 @@ export interface Inverse<A> extends Identity<A> {
    * the value is combined with the inverse (on the right hand side),
    * the identity element is returned.
    */
-  readonly inverse: (r: A) => (l: A) => A
+  readonly inverse: (x: A, y: A) => A
 }

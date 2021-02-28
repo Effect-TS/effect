@@ -32,7 +32,7 @@ export function getValidationF<F>(
               (ea) =>
                 E.fold_(
                   maybeB,
-                  (eb) => F.fail(A.combine(eb)(ea)),
+                  (eb) => F.fail(A.combine(ea, eb)),
                   () => F.fail(ea)
                 ),
               (a) =>

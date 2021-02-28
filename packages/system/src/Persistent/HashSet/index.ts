@@ -163,7 +163,7 @@ export function size<A>(set: HashSet<A>) {
  */
 export function equal<A>(): Equal<HashSet<A>> {
   return {
-    equals: (y) => (x) => {
+    equals: (x, y) => {
       if (y === x) {
         return true
       }

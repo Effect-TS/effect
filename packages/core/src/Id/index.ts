@@ -1,8 +1,7 @@
+/* adapted from https://github.com/gcanti/fp-ts */
 import "../Operator"
 
-/* adapted from https://github.com/gcanti/fp-ts */
 import type { Equal } from "../Equal"
-import { identity as id } from "../Function"
 import type { Identity } from "../Identity"
 import type { IdURI } from "../Modules"
 import type { URI } from "../Prelude"
@@ -12,72 +11,147 @@ import type { Show } from "../Show"
 
 export type Id<A> = A
 
-export const alt_: <A>(fx: A, fy: () => A) => A = id
+/**
+ * @optimize identity
+ */
+export function alt_<A>(fx: A, _fy: () => A): A {
+  return fx
+}
 
-export const alt: <A>(that: () => A) => (fa: A) => A = (that) => (fa) => alt_(fa, that)
+/**
+ * @dataFirst alt_
+ */
+export function alt<A>(that: () => A) {
+  return (fa: A): A => alt_(fa, that)
+}
 
-export const ap_: <A, B>(fab: (a: A) => B, fa: A) => B = (mab, ma) => mab(ma)
+export function ap_<A, B>(fab: (a: A) => B, fa: A): B {
+  return fab(fa)
+}
 
-export const ap: <A>(fa: A) => <B>(fab: (a: A) => B) => B = (fa) => (fab) =>
-  ap_(fab, fa)
+/**
+ * @dataFirst ap_
+ */
+export function ap<A>(fa: A) {
+  return <B>(fab: (a: A) => B): B => ap_(fab, fa)
+}
 
-export const apFirst: <B>(fb: B) => <A>(fa: A) => A = (_) => (fa) => fa
+export function apFirst<B>(_fb: B) {
+  return <A>(fa: A): A => fa
+}
 
-export const apSecond: <B>(fb: B) => <A>(fa: A) => B = (fb) => (_) => fb
+export function apSecond<B>(fb: B) {
+  return <A>(_fa: A): B => fb
+}
 
-export const chain_: <A, B>(fa: A, f: (a: A) => B) => B = (ma, f) => f(ma)
+export function chain_<A, B>(fa: A, f: (a: A) => B): B {
+  return f(fa)
+}
 
-export const chain: <A, B>(f: (a: A) => B) => (ma: A) => B = (f) => (ma) => f(ma)
+/**
+ * @dataFirst chain_
+ */
+export function chain<A, B>(f: (a: A) => B) {
+  return (ma: A): B => f(ma)
+}
 
-export const chainTap: <A, B>(f: (a: A) => B) => (ma: A) => A = (f) => (ma) =>
-  chain_(ma, (x) => map_(f(x), () => x))
+/**
+ * @dataFirst tap_
+ */
+export function tap<A, B>(f: (a: A) => B) {
+  return (ma: A): A => chain_(ma, (x) => map_(f(x), () => x))
+}
 
-export const chainTap_: <A, B>(ma: A, f: (a: A) => B) => A = (ma, f) =>
-  chain_(ma, (x) => map_(f(x), () => x))
+export function tap_<A, B>(ma: A, f: (a: A) => B): A {
+  return chain_(ma, (x) => map_(f(x), () => x))
+}
 
-export const duplicate: <A>(ma: A) => A = (ma) => ma
+/**
+ * @optimize identity
+ */
+export function duplicate<A>(ma: A): A {
+  return ma
+}
 
-export const extend_: <A, B>(wa: A, f: (wa: A) => B) => B = (wa, f) => f(wa)
+export function extend_<A, B>(wa: A, f: (wa: A) => B): B {
+  return f(wa)
+}
 
-export const extend: <A, B>(f: (fa: A) => B) => (ma: A) => B = (f) => (ma) => f(ma)
+/**
+ * @dataFirst extend_
+ */
+export function extend<A, B>(f: (fa: A) => B) {
+  return (ma: A): B => f(ma)
+}
 
-export const extract: <A>(wa: A) => A = id
+/**
+ * @optimize identity
+ */
+export function extract<A>(wa: A): A {
+  return wa
+}
 
-export const flatten: <A>(mma: A) => A = (mma) => mma
+/**
+ * @optimize identity
+ */
+export function flatten<A>(wa: A): A {
+  return wa
+}
 
-export const foldMap_: <M>(M: Identity<M>) => <A>(fa: A, f: (a: A) => M) => M = (_) => (
-  fa,
-  f
-) => f(fa)
+export function foldMap_<M>(M: Identity<M>) {
+  return <A>(fa: A, f: (a: A) => M): M => f(fa)
+}
 
-export const foldMap: <M>(M: Identity<M>) => <A>(f: (a: A) => M) => (fa: A) => M = (
-  M
-) => (f) => (fa) => foldMap_(M)(fa, f)
+export function foldMap<M>(M: Identity<M>) {
+  return <A>(f: (a: A) => M) => (fa: A): M => foldMap_(M)(fa, f)
+}
 
-export const getEq: <A>(E: Equal<A>) => Equal<Id<A>> = id
+/**
+ * @optimize identity
+ */
+export function getEq<A>(E: Equal<A>): Equal<Id<A>> {
+  return E
+}
 
-export const getShow: <A>(S: Show<A>) => Show<Id<A>> = id
+/**
+ * @optimize identity
+ */
+export function getShow<A>(E: Show<A>): Show<Id<A>> {
+  return E
+}
 
-export const map_: <A, B>(fa: A, f: (a: A) => B) => B = (ma, f) => f(ma)
+export function map_<A, B>(fa: A, f: (a: A) => B): B {
+  return f(fa)
+}
 
-export const map: <A, B>(f: (a: A) => B) => (fa: A) => B = (f) => (fa) => map_(fa, f)
+/**
+ * @dataFirst map_
+ */
+export function map<A, B>(f: (a: A) => B) {
+  return (fa: A): B => map_(fa, f)
+}
 
-export const reduce_: <A, B>(fa: A, b: B, f: (b: B, a: A) => B) => B = (fa, b, f) =>
-  f(b, fa)
+export function reduce_<A, B>(fa: A, b: B, f: (b: B, a: A) => B): B {
+  return f(b, fa)
+}
 
-export const reduce: <A, B>(b: B, f: (b: B, a: A) => B) => (fa: A) => B = (b, f) => (
-  fa
-) => reduce_(fa, b, f)
-export const reduceRight_: <A, B>(fa: A, b: B, f: (a: A, b: B) => B) => B = (
-  fa,
-  b,
-  f
-) => f(fa, b)
+/**
+ * @dataFirst reduce_
+ */
+export function reduce<A, B>(b: B, f: (b: B, a: A) => B) {
+  return (fa: A): B => reduce_(fa, b, f)
+}
 
-export const reduceRight: <A, B>(b: B, f: (a: A, b: B) => B) => (fa: A) => B = (
-  b,
-  f
-) => (fa) => reduceRight_(fa, b, f)
+export function reduceRight_<A, B>(fa: A, b: B, f: (a: A, b: B) => B): B {
+  return f(fa, b)
+}
+
+/**
+ * @dataFirst reduceRight_
+ */
+export function reduceRight<A, B>(b: B, f: (a: A, b: B) => B) {
+  return (fa: A): B => reduceRight_(fa, b, f)
+}
 
 export const Any = P.instance<P.Any<[URI<IdURI>]>>({
   any: () => ({})

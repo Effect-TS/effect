@@ -7,3 +7,10 @@ export interface Brand<B> {
 }
 
 export type Branded<A, B> = A & Brand<B>
+
+export function makeBranded<T extends Branded<any, any>>(
+  self: Omit<T, typeof _brand>
+): T {
+  // @ts-expect-error
+  return self
+}

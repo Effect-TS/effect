@@ -94,14 +94,14 @@ export function tryGetHash_<K, V>(
   while (true)
     switch (node._tag) {
       case "LeafNode": {
-        return keyEq(node.key)(key) ? node.value : O.none
+        return keyEq(key, node.key) ? node.value : O.none
       }
       case "CollisionNode": {
         if (hash === node.hash) {
           const children = node.children
           for (let i = 0, len = children.length; i < len; ++i) {
             const child = children[i]!
-            if ("key" in child && keyEq(child.key)(key)) return child.value
+            if ("key" in child && keyEq(key, child.key)) return child.value
           }
         }
         return O.none
@@ -460,7 +460,7 @@ export function reduce<V, Z>(z: Z, f: (z: Z, v: V) => Z) {
  */
 export function makeDefault<K, V>() {
   return make<K, V>({
-    equals: (y) => (x) => x === y,
+    equals: (x, y) => x === y,
     hash
   })
 }

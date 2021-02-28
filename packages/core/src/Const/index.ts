@@ -81,7 +81,7 @@ export function getAny<E>(e: E) {
  */
 export function getAssociativeBoth<E>(A: As.Associative<E>) {
   return P.instance<P.AssociativeBoth<[URI<ConstURI>], P.Fix<"E", E>>>({
-    both: (fb) => (fa) => makeConst(A.combine(fb)(fa))()
+    both: (fb) => (fa) => makeConst(A.combine(fa, fb))()
   })
 }
 

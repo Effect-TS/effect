@@ -21,8 +21,8 @@ describe("HashMap", () => {
     class Value {
       constructor(readonly c: number, readonly d: number) {}
     }
-    const eqIndex = Equal.makeEqual<Index>((y) => (x) =>
-      x === y || (x.a === y.a && x.b === y.b)
+    const eqIndex = Equal.makeEqual<Index>(
+      (x, y) => x === y || (x.a === y.a && x.b === y.b)
     )
     const hashIndex = Hash.makeHash<Index>((x) => Hash.string(`${x.a}-${x.b}`))
 
@@ -133,7 +133,7 @@ describe("HashMap", () => {
       constructor(readonly c: number, readonly d: number) {}
     }
     const eqIndex: Equal.Equal<Index> = {
-      equals: (y) => (x) => x === y || (x.a === y.a && x.b === y.b)
+      equals: (x, y) => x === y || (x.a === y.a && x.b === y.b)
     }
     const hashIndex: Hash.Hash<Index> = {
       hash: (x) => Hash.string(`${x.a}-${x.b}`)

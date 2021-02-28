@@ -72,7 +72,7 @@ export class LeafNode<K, V> {
     key: K,
     size: SizeRef
   ): Node<K, V> {
-    if (keyEq(this.key)(key)) {
+    if (keyEq(key, this.key)) {
       const v = f(this.value)
       if (v === this.value) return this
       else if (O.isNone(v)) {
@@ -159,7 +159,7 @@ export class CollisionNode<K, V> {
     const len = list.length
     for (let i = 0; i < len; ++i) {
       const child = list[i]!
-      if ("key" in child && keyEq(child.key)(key)) {
+      if ("key" in child && keyEq(key, child.key)) {
         const value = child.value
         const newValue = f(value)
         if (newValue === value) return list

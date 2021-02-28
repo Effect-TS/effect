@@ -62,7 +62,7 @@ export function sortBy_<B>(
     let i = 0
     List.forEach_(l, (elm) => arr.push({ idx: i++, elm, prop: f(elm) }))
     arr.sort(({ idx: i, prop: a }, { idx: j, prop: b }) => {
-      const c = O.compare(b)(a)
+      const c = O.compare(a, b)
       return c !== 0 ? c : i < j ? -1 : 1
     })
     const newL = List.emptyPushable<A>()
@@ -103,7 +103,7 @@ export function elem<A>(E: Equal<A>): (a: A) => (as: List.List<A>) => boolean {
  * an list of type `List<A>`.
  */
 export function elem_<A>(E: Equal<A>): (as: List.List<A>, a: A) => boolean {
-  return (as, a) => List.find_(as, E.equals(a))._tag === "Some"
+  return (as, a) => List.find_(as, (y) => E.equals(y, a))._tag === "Some"
 }
 
 /**
@@ -135,9 +135,10 @@ export function difference<A>(
  */
 export function getEqual<A>(E: Equal<A>): Equal<List.List<A>> {
   const eq = A.getEqual(E)
-  return makeEqual((ys) => (xs) =>
-    xs === ys ||
-    (xs.length === ys.length && eq.equals(List.toArray(ys))(List.toArray(xs)))
+  return makeEqual(
+    (xs, ys) =>
+      xs === ys ||
+      (xs.length === ys.length && eq.equals(List.toArray(xs), List.toArray(ys)))
   )
 }
 
@@ -145,7 +146,7 @@ export function getEqual<A>(E: Equal<A>): Equal<List.List<A>> {
  * Returns a `Identity` for `List<A>`
  */
 export function getIdentity<A>() {
-  return makeIdentity(List.empty<A>(), List.concat)
+  return makeIdentity(List.empty<A>(), List.concat_)
 }
 
 /**
@@ -185,7 +186,7 @@ export function intersection<A>(
 export function foldMap_<M>(
   M: Identity<M>
 ): <A>(fa: List.List<A>, f: (a: A) => M) => M {
-  return (fa, f) => List.reduce_(fa, M.identity, (b, a) => M.combine(f(a))(b))
+  return (fa, f) => List.reduce_(fa, M.identity, (b, a) => M.combine(b, f(a)))
 }
 
 /**

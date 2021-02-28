@@ -61,7 +61,7 @@ export function elem<A>(E: Equal<A>): (a: A) => (as: NonEmptyArray<A>) => boolea
  */
 export function elem_<A>(E: Equal<A>): (as: NonEmptyArray<A>, a: A) => boolean {
   return (as, a) => {
-    const predicate = (element: A) => E.equals(a)(element)
+    const predicate = (element: A) => E.equals(element, a)
     let i = 0
     const len = as.length
     for (; i < len; i++) {
@@ -101,8 +101,9 @@ export function difference<A>(
  * different lengths, the result is non equality.
  */
 export function getEqual<A>(E: Equal<A>): Equal<NonEmptyArray<A>> {
-  return makeEqual((ys) => (xs) =>
-    xs === ys || (xs.length === ys.length && xs.every((x, i) => E.equals(ys[i]!)(x)))
+  return makeEqual(
+    (xs, ys) =>
+      xs === ys || (xs.length === ys.length && xs.every((x, i) => E.equals(x, ys[i]!)))
   )
 }
 
@@ -110,17 +111,17 @@ export function getEqual<A>(E: Equal<A>): Equal<NonEmptyArray<A>> {
  * Returns a `Ord` for `NonEmptyArray<A>` given `Ord<A>`
  */
 export function getOrd<A>(O: Ord.Ord<A>): Ord.Ord<NonEmptyArray<A>> {
-  return Ord.fromCompare((b) => (a) => {
+  return Ord.fromCompare((a, b) => {
     const aLen = a.length
     const bLen = b.length
     const len = Math.min(aLen, bLen)
     for (let i = 0; i < len; i++) {
-      const ordering = O.compare(b[i]!)(a[i]!)
+      const ordering = O.compare(a[i]!, b[i]!)
       if (ordering !== 0) {
         return ordering
       }
     }
-    return Ord.number.compare(bLen)(aLen)
+    return Ord.number.compare(aLen, bLen)
   })
 }
 
@@ -188,14 +189,14 @@ export function foldMapWithIndex<M>(
 export function foldMapWithIndex_<M>(
   M: Identity<M>
 ): <A>(fa: readonly A[], f: (i: number, a: A) => M) => M {
-  return (fa, f) => fa.reduce((b, a, i) => M.combine(f(i, a))(b), M.identity)
+  return (fa, f) => fa.reduce((b, a, i) => M.combine(b, f(i, a)), M.identity)
 }
 
 /**
  * Sort the elements of an array in increasing order
  */
 export function sort<A>(O: Ord.Ord<A>): (as: NonEmptyArray<A>) => NonEmptyArray<A> {
-  return (as) => [...as].sort((x, y) => O.compare(y)(x)) as any
+  return (as) => [...as].sort(O.compare) as any
 }
 
 /**
@@ -206,7 +207,7 @@ export function sortBy<A>(
   ords: NonEmptyArray<Ord.Ord<A>>
 ): (as: NonEmptyArray<A>) => NonEmptyArray<A> {
   const M = Ord.getIdentity<A>()
-  return sort(ords.reduce((x, y) => M.combine(y)(x), M.identity))
+  return sort(ords.reduce(M.combine, M.identity))
 }
 
 /**
@@ -246,5 +247,5 @@ export function uniq<A>(E: Equal<A>): (as: NonEmptyArray<A>) => NonEmptyArray<A>
  * Get an Associative instance for NonEmptyArray
  */
 export function getAssociative<A>() {
-  return makeAssociative<NonEmptyArray<A>>(NA.concat)
+  return makeAssociative<NonEmptyArray<A>>(NA.concat_)
 }

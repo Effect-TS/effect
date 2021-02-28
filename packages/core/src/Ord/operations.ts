@@ -13,10 +13,8 @@ import { Associative as OrderingAssociative } from "../Ordering"
  * - its `combine(ord2)(ord1)` operation will order first by `ord1`, and then by `ord2`
  */
 export function getAssociative<A = never>(): Associative<Ord<A>> {
-  return makeAssociative((y) => (x) =>
-    fromCompare((b) => (a) =>
-      OrderingAssociative.combine(y.compare(b)(a))(x.compare(b)(a))
-    )
+  return makeAssociative((x, y) =>
+    fromCompare((a, b) => OrderingAssociative.combine(x.compare(a, b), y.compare(a, b)))
   )
 }
 
@@ -28,7 +26,7 @@ export function getAssociative<A = never>(): Associative<Ord<A>> {
  */
 export function getIdentity<A = never>(): Identity<Ord<A>> {
   return makeIdentity(
-    fromCompare(() => () => 0),
+    fromCompare(() => 0),
     getAssociative<A>().combine
   )
 }

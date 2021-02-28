@@ -71,7 +71,7 @@ namespace ReaderIOEither {
   })
 
   export const StringValidation = getValidation(
-    makeAssociative<string>((l) => (r) => `${l}, ${r}`)
+    makeAssociative<string>((l, r) => `${l}, ${r}`)
   )
 
   export const structValidation = DSL.structF(StringValidation)

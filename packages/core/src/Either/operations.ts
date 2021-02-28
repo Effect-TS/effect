@@ -28,7 +28,7 @@ export function zipValidation<E>(
       (ea) =>
         E.fold_(
           fb,
-          (eb) => E.left(A.combine(eb)(ea)),
+          (eb) => E.left(A.combine(ea, eb)),
           () => E.left(ea)
         ),
       (a) => E.fold_(fb, E.left, (b) => E.right(tuple(a, b)))
@@ -65,8 +65,8 @@ export const foldMap: <M>(
  * Get `Associative` for `Either` given `Associative` of `A`
  */
 export function getAssociative<E, A>(S: Associative<A>): Associative<Either<E, A>> {
-  return makeAssociative((y) => (x) =>
-    E.isLeft(y) ? x : E.isLeft(x) ? y : E.right(S.combine(y.right)(x.right))
+  return makeAssociative((x, y) =>
+    E.isLeft(y) ? x : E.isLeft(x) ? y : E.right(S.combine(x.right, y.right))
   )
 }
 
@@ -88,14 +88,14 @@ export function getValidationAssociative<E, A>(
   SE: Associative<E>,
   SA: Associative<A>
 ): Associative<Either<E, A>> {
-  return makeAssociative((fy) => (fx) =>
+  return makeAssociative((fx, fy) =>
     E.isLeft(fx)
       ? E.isLeft(fy)
-        ? E.left(SE.combine(fy.left)(fx.left))
+        ? E.left(SE.combine(fx.left, fy.left))
         : fx
       : E.isLeft(fy)
       ? fy
-      : E.right(SA.combine(fy.right)(fx.right))
+      : E.right(SA.combine(fx.right, fy.right))
   )
 }
 
@@ -203,10 +203,10 @@ export function getCompactable<E>(M: Identity<E>) {
 
 export function getEqual<E, A>(EL: Equal<E>, EA: Equal<A>): Equal<Either<E, A>> {
   return {
-    equals: (y) => (x) =>
+    equals: (x, y) =>
       x === y ||
       (E.isLeft(x)
-        ? E.isLeft(y) && EL.equals(y.left)(x.left)
-        : E.isRight(y) && EA.equals(y.right)(x.right))
+        ? E.isLeft(y) && EL.equals(x.left, y.left)
+        : E.isRight(y) && EA.equals(x.right, y.right))
   }
 }

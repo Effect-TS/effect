@@ -6,5 +6,5 @@ export interface Equal<A> {
   /**
    * Returns whether two values of type `A` are equal.
    */
-  readonly equals: (y: A) => (x: A) => boolean
+  readonly equals: (x: A, y: A) => boolean
 }

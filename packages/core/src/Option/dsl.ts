@@ -16,13 +16,14 @@ export { branch as if, branch_ as if_ }
 export const struct = P.structF({ ...Monad, ...Applicative })
 
 export const tuple = P.tupleF({ ...Monad, ...Applicative })
+
 /**
  * Matchers
  */
-
 export const { match, matchIn, matchMorph, matchTag, matchTagIn } = P.matchers(
   Covariant
 )
+
 /**
  * Conditionals
  */

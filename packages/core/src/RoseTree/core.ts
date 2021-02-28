@@ -10,6 +10,7 @@
 
 import * as A from "../Array"
 import type { Equal } from "../Equal"
+import { makeEqual } from "../Equal"
 import { pipe } from "../Function"
 import type { Identity } from "../Identity"
 import * as IO from "../IO"
@@ -62,15 +63,13 @@ export function getEqual<A>(E: Equal<A>): Equal<Tree<A>> {
     )
   }
   function equalsSafe(x: Tree<A>, y: Tree<A>): IO.IO<boolean> {
-    return !E.equals(y.value)(x.value)
+    return !E.equals(x.value, y.value)
       ? IO.succeed(false)
       : x.forest.length !== y.forest.length
       ? IO.succeed(false)
       : equalsForestSafe(x.forest, y.forest)
   }
-  return {
-    equals: (y) => (x) => IO.run(equalsSafe(x, y))
-  }
+  return makeEqual((x, y) => IO.run(equalsSafe(x, y)))
 }
 
 function draw(indentation: string, forest: Forest<string>): IO.IO<string> {
@@ -203,7 +202,7 @@ export function elem_<A>(E: Equal<A>): (fa: Tree<A>, a: A) => boolean {
     )
   }
   function go(fa: Tree<A>, a: A): IO.IO<boolean> {
-    if (E.equals(fa.value)(a)) {
+    if (E.equals(a, fa.value)) {
       return IO.succeed(true)
     }
     return IO.suspend(() => goForest(fa.forest, a))
@@ -286,7 +285,7 @@ export function reduce_<A, B>(fa: Tree<A>, b: B, f: (b: B, a: A) => B): B {
 
 export function foldMap_<M>(M: Identity<M>) {
   return <A>(fa: Tree<A>, f: (a: A) => M): M =>
-    reduce_(fa, M.identity, (acc, a) => M.combine(f(a))(acc))
+    reduce_(fa, M.identity, (acc, a) => M.combine(acc, f(a)))
 }
 
 export function reduceRight_<A, B>(fa: Tree<A>, b: B, f: (a: A, b: B) => B): B {

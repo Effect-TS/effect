@@ -6,10 +6,11 @@ import type { FreeAssociativeURI } from "../Modules"
 import type { URI } from "../Prelude"
 import * as P from "../Prelude"
 
-export const getAssociative = <A>() => makeAssociative<FA.FreeAssociative<A>>(FA.concat)
+export const getAssociative = <A>() =>
+  makeAssociative<FA.FreeAssociative<A>>(FA.concat_)
 
 export const getIdentity = <A>() =>
-  makeIdentity<FA.FreeAssociative<A>>(FA.init<A>(), FA.concat)
+  makeIdentity<FA.FreeAssociative<A>>(FA.init<A>(), FA.concat_)
 
 export const Covariant = P.instance<P.Covariant<[URI<FreeAssociativeURI>]>>({
   map: FA.map

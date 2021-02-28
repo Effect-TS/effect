@@ -6,7 +6,7 @@ import * as R from "../../src/Record"
 
 test("04", () => {
   const ValidationApplicative = E.getValidationApplicative(
-    makeAssociative<string>((r) => (l) => `(${l})(${r})`)
+    makeAssociative<string>((l, r) => `(${l})(${r})`)
   )
 
   const traverse = R.forEachF(ValidationApplicative)

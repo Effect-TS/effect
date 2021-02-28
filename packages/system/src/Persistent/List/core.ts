@@ -3272,7 +3272,7 @@ export function sortWith_<A>(l: List<A>, ord: Ord<A>): List<A> {
   let i = 0
   forEach_(l, (elm) => arr.push({ idx: i++, elm }))
   arr.sort(({ elm: a, idx: i }, { elm: b, idx: j }) => {
-    const c = ord.compare(b)(a)
+    const c = ord.compare(a, b)
     return c !== 0 ? c : i < j ? -1 : 1
   })
   const newL = emptyPushable<A>()

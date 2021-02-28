@@ -8,8 +8,8 @@ const c = Tree.make("root", [Tree.make("leaf1"), Tree.make("leafx")])
 const eqTree = Tree.getEqual(Eq.string)
 
 it("should equal", () => {
-  expect(eqTree.equals(b)(a)).toEqual(true)
+  expect(eqTree.equals(a, b)).toEqual(true)
 })
 it("should not equal", () => {
-  expect(eqTree.equals(c)(a)).toEqual(false)
+  expect(eqTree.equals(a, c)).toEqual(false)
 })

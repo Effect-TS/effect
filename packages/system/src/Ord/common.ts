@@ -2,8 +2,8 @@ import type { Ordering } from "../Ordering"
 import type { Ord } from "./definition"
 import { contramap_, fromCompare } from "./operations"
 
-const compare = (y: any): ((x: any) => Ordering) => {
-  return (x) => (x < y ? -1 : x > y ? 1 : 0)
+const compare = (x: any, y: any): Ordering => {
+  return x < y ? -1 : x > y ? 1 : 0
 }
 
 export const boolean: Ord<boolean> = fromCompare(compare)

@@ -19,9 +19,9 @@ import type { Separated } from "../Utils"
 
 export function getEqual<A>(E: Equal<A>): Equal<O.Option<A>> {
   return {
-    equals: (y) => (x) =>
+    equals: (x, y) =>
       x === y ||
-      (O.isNone(x) ? O.isNone(y) : O.isNone(y) ? false : E.equals(y.value)(x.value))
+      (O.isNone(x) ? O.isNone(y) : O.isNone(y) ? false : E.equals(x.value, y.value))
   }
 }
 
@@ -111,7 +111,7 @@ export function elem<A>(E: Equal<A>): (a: A) => (ma: O.Option<A>) => boolean {
  * Returns `true` if `ma` contains `a`
  */
 export function elem_<A>(E: Equal<A>): (ma: O.Option<A>, a: A) => boolean {
-  return (ma, a) => (O.isNone(ma) ? false : E.equals(ma.value)(a))
+  return (ma, a) => (O.isNone(ma) ? false : E.equals(a, ma.value))
 }
 
 /**
@@ -139,8 +139,8 @@ export function getApplyIdentity<A>(M: Identity<A>): Identity<O.Option<A>> {
  * | some(a) | some(b) | some(concat(a, b)) |
  */
 export function getApplyAssociative<A>(S: Associative<A>): Associative<O.Option<A>> {
-  return makeAssociative((y) => (x) =>
-    O.isSome(x) && O.isSome(y) ? O.some(S.combine(y.value)(x.value)) : O.none
+  return makeAssociative((x, y) =>
+    O.isSome(x) && O.isSome(y) ? O.some(S.combine(x.value, y.value)) : O.none
   )
 }
 
@@ -169,7 +169,7 @@ export function getLastIdentity<A>(): Identity<O.Option<A>> {
  * | some(a) | some(b) | some(a)       |
  */
 export function getLastAssociative<A>(): Associative<O.Option<A>> {
-  return makeAssociative((y) => (x) => (O.isNone(x) ? x : y))
+  return makeAssociative((x, y) => (O.isNone(x) ? x : y))
 }
 
 /**
@@ -183,7 +183,7 @@ export function getLastAssociative<A>(): Associative<O.Option<A>> {
  * | some(a) | some(b) | some(a)       |
  */
 export function getFirstAssociative<A>(): Associative<O.Option<A>> {
-  return makeAssociative((y) => (x) => (O.isNone(x) ? y : x))
+  return makeAssociative((x, y) => (O.isNone(x) ? y : x))
 }
 
 /**
@@ -220,8 +220,8 @@ export const getLast = <Ts extends O.Option<any>[]>(
  * `None` is considered to be less than any `Some` value.
  */
 export function getOrd<A>(_: Ord<A>): Ord<O.Option<A>> {
-  return makeOrd(getEqual(_).equals, (y) => (x) =>
-    x === y ? 0 : O.isSome(x) ? (O.isSome(y) ? _.compare(y.value)(x.value) : 1) : -1
+  return makeOrd(getEqual(_).equals, (x, y) =>
+    x === y ? 0 : O.isSome(x) ? (O.isSome(y) ? _.compare(x.value, y.value) : 1) : -1
   )
 }
 
@@ -308,8 +308,8 @@ export const Compactable = P.instance<P.Compactable<[URI<OptionURI>]>>({
 })
 
 export function getIdentity<A>(A: Associative<A>) {
-  return makeIdentity<O.Option<A>>(O.none, (y) => (x) =>
-    O.isNone(x) ? y : O.isNone(y) ? x : O.some(A.combine(y.value)(x.value))
+  return makeIdentity<O.Option<A>>(O.none, (x, y) =>
+    O.isNone(x) ? y : O.isNone(y) ? x : O.some(A.combine(x.value, y.value))
   )
 }
 

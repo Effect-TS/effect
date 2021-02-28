@@ -50,7 +50,7 @@ export const forEachF = P.implementForEachF<[URI<RecordURI>], V>()((_) => (G) =>
  * Fold + MapWithIndex
  */
 export const foldMapWithIndex: P.FoldMapWithIndexFn<[URI<RecordURI>], V> = (I) => (f) =>
-  R.reduceWithIndex(I.identity, (k, b, a) => I.combine(f(k, a))(b))
+  R.reduceWithIndex(I.identity, (k, b, a) => I.combine(b, f(k, a)))
 
 /**
  * Fold + Map
@@ -128,7 +128,7 @@ export function fromFoldableMap_<F, B>(
   return <A>(fa: HKT.HKT<F, A>, f: (a: A) => readonly [string, B]) => {
     return F.reduce<A, MutableRecord<string, B>>({}, (r, a) => {
       const [k, b] = f(a)
-      r[k] = Object.prototype.hasOwnProperty.call(r, k) ? M.combine(b)(r[k]!) : b
+      r[k] = Object.prototype.hasOwnProperty.call(r, k) ? M.combine(r[k]!, b) : b
       return r
     })(fa)
   }
@@ -194,7 +194,7 @@ export function isSubrecord_<A>(
 ): (x: R.Record<string, A>, y: R.Record<string, A>) => boolean {
   return (x, y) => {
     for (const k in x) {
-      if (!Object.prototype.hasOwnProperty.call(y, k) || !E.equals(y[k]!)(x[k]!)) {
+      if (!Object.prototype.hasOwnProperty.call(y, k) || !E.equals(x[k]!, y[k]!)) {
         return false
       }
     }
@@ -217,7 +217,7 @@ export function isSubrecord<A>(
  */
 export function getEqual<K extends string, A>(E: Equal<A>): Equal<R.Record<K, A>> {
   const isSubrecordE = isSubrecord_(E)
-  return makeEqual((y) => (x) => isSubrecordE(x, y) && isSubrecordE(y, x))
+  return makeEqual((x, y) => isSubrecordE(x, y) && isSubrecordE(y, x))
 }
 
 /**
@@ -226,7 +226,7 @@ export function getEqual<K extends string, A>(E: Equal<A>): Equal<R.Record<K, A>
 export function getIdentity<K extends string, A>(
   S: Associative<A>
 ): Identity<R.Record<K, A>> {
-  return makeIdentity(R.empty as R.Record<K, A>, (y) => (x) => {
+  return makeIdentity(R.empty as R.Record<K, A>, (x, y) => {
     if (x === R.empty) {
       return y
     }
@@ -241,7 +241,7 @@ export function getIdentity<K extends string, A>(
     const r: MutableRecord<K, A> = { ...x }
     for (let i = 0; i < len; i++) {
       const k = keys[i]!
-      r[k] = Object.prototype.hasOwnProperty.call(x, k) ? S.combine(y[k])(x[k]!) : y[k]!
+      r[k] = Object.prototype.hasOwnProperty.call(x, k) ? S.combine(x[k]!, y[k]) : y[k]!
     }
     return r
   })

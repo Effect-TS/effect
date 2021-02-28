@@ -13,7 +13,7 @@ test("07", () => {
   })
 
   const ValidationApplicative = E.getValidationApplicative(
-    makeAssociative<string>((r) => (l) => `${l} | ${r}`)
+    makeAssociative<string>((l, r) => `${l} | ${r}`)
   )
 
   const structValidation = DSL.structF(ValidationApplicative)

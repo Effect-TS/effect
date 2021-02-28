@@ -6,7 +6,7 @@ import * as I from "../Identity/makeIdentity"
 /**
  * `Associative` instance for `Ordering`
  */
-export const Associative: A.Associative<Ordering> = A.makeAssociative((y) => (x) =>
+export const Associative: A.Associative<Ordering> = A.makeAssociative((x, y) =>
   x !== 0 ? x : y
 )
 

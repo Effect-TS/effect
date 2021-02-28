@@ -7,7 +7,7 @@ import type { Equal } from "./definition"
  * to first compare the values for reference equality and then compare the
  * values for value equality.
  */
-export function makeEqual<A>(f: (y: A) => (x: A) => boolean): Equal<A> {
+export function makeEqual<A>(f: (x: A, y: A) => boolean): Equal<A> {
   return {
     equals: f
   }
@@ -18,14 +18,14 @@ export function makeEqual<A>(f: (y: A) => (x: A) => boolean): Equal<A> {
  * no information, all values of type `Any` can be treated as equal to each
  * other.
  */
-export const any: Equal<unknown> = makeEqual(() => () => true)
+export const any: Equal<unknown> = makeEqual(() => true)
 
 /**
  * Equality for `Nothing` values. Note that since there are not values of
  * type `Nothing` the `equals` method of this instance can never be called
  * but it can be useful in deriving instances for more complex types.
  */
-export const never: Equal<never> = makeEqual(() => () => false)
+export const never: Equal<never> = makeEqual(() => false)
 
 /**
  * Constructs an `Equal[(A, B)]` given an `Equal[A]` and `Equal[B]` by first
@@ -34,7 +34,7 @@ export const never: Equal<never> = makeEqual(() => () => false)
  */
 export function both<B>(fb: Equal<B>): <A>(fa: Equal<A>) => Equal<readonly [A, B]> {
   return (fa) =>
-    makeEqual(([y0, y1]) => ([x0, x1]) => fa.equals(y0)(x0) && fb.equals(y1)(x1))
+    makeEqual(([x0, x1], [y0, y1]) => fa.equals(x0, y0) && fb.equals(x1, y1))
 }
 
 /**
@@ -46,11 +46,11 @@ export function orElseEither<B>(
   fb: () => Equal<B>
 ): <A>(fa: Equal<A>) => Equal<E.Either<A, B>> {
   return (fa) =>
-    makeEqual((ey) => (ex) =>
+    makeEqual((ex, ey) =>
       ex._tag === "Left" && ey._tag === "Left"
-        ? fa.equals(ey.left)(ex.left)
+        ? fa.equals(ex.left, ey.left)
         : ex._tag === "Right" && ey._tag === "Right"
-        ? fb().equals(ey.right)(ex.right)
+        ? fb().equals(ex.right, ey.right)
         : false
     )
 }
@@ -61,7 +61,7 @@ export function orElseEither<B>(
  * `B` value into an `A` and the compare the `A` values for equality.
  */
 export function contramap<A, B>(f: (a: B) => A): (fa: Equal<A>) => Equal<B> {
-  return (fa) => makeEqual((y) => (x) => fa.equals(f(y))(f(x)))
+  return (fa) => makeEqual((x, y) => fa.equals(f(x), f(y)))
 }
 
 /**
@@ -69,7 +69,7 @@ export function contramap<A, B>(f: (a: B) => A): (fa: Equal<A>) => Equal<B> {
  * embodied in the implementation of `equals` for values of type `A`.
  */
 export function strict<A>() {
-  return makeEqual<A>((y) => (x) => x === y)
+  return makeEqual<A>((x, y) => x === y)
 }
 
 /**
@@ -102,10 +102,10 @@ export const date: Equal<Date> = contramap((date: Date) => date.valueOf())(numbe
  */
 export function array<A>(EqA: Equal<A>): Equal<A.Array<A>> {
   return {
-    equals: (y) => (x) => {
+    equals: (x, y) => {
       if (x.length === y.length) {
         for (let i = 0; i < x.length; i++) {
-          if (!EqA.equals(y[i]!)(x[i]!)) {
+          if (!EqA.equals(x[i]!, y[i]!)) {
             return false
           }
         }
@@ -126,7 +126,7 @@ export function tuple<T extends ReadonlyArray<Equal<any>>>(
     [K in keyof T]: T[K] extends Equal<infer A> ? A : never
   }
 > {
-  return makeEqual((y) => (x) => eqs.every((E, i) => E.equals(y[i])(x[i])))
+  return makeEqual((x, y) => eqs.every((E, i) => E.equals(x[i], y[i])))
 }
 
 /**
@@ -137,9 +137,9 @@ export function struct<O extends Record<string, any>>(
     [K in keyof O]: Equal<O[K]>
   }
 ): Equal<O> {
-  return makeEqual((y) => (x) => {
+  return makeEqual((x, y) => {
     for (const k in eqs) {
-      if (!eqs[k].equals(y[k])(x[k])) {
+      if (!eqs[k].equals(x[k], y[k])) {
         return false
       }
     }

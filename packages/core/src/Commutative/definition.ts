@@ -7,5 +7,5 @@ import type { Associative } from "../Associative"
 export interface Commutative<A> extends Associative<A> {
   readonly _Commutative: "Commutative"
 
-  readonly commute: (y: A) => (x: A) => A
+  readonly commute: (x: A, y: A) => A
 }

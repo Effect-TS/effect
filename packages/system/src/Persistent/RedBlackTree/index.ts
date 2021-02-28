@@ -105,7 +105,7 @@ export function insert_<K, V>(
   const n_stack: Node<K, V>[] = []
   const d_stack: Ordering[] = []
   while (n) {
-    const d = cmp(n.key)(key)
+    const d = cmp(key, n.key)
     n_stack.push(n)
     d_stack.push(d)
     if (d <= 0) {
@@ -344,13 +344,13 @@ export function visitGe<K, V, A>(
   while (!done) {
     if (current) {
       stack = new Stack(current, stack)
-      if (ord.compare(current.key)(min) <= 0) {
+      if (ord.compare(min, current.key) <= 0) {
         current = current.left
       } else {
         current = undefined
       }
     } else if (stack) {
-      if (ord.compare(stack.value.key)(min) <= 0) {
+      if (ord.compare(min, stack.value.key) <= 0) {
         const v = visit(stack.value.key, stack.value.value)
 
         if (O.isSome(v)) {
@@ -407,7 +407,7 @@ export function visitLt<K, V, A>(
     if (current) {
       stack = new Stack(current, stack)
       current = current.left
-    } else if (stack && ord.compare(stack.value.key)(max) > 0) {
+    } else if (stack && ord.compare(max, stack.value.key) > 0) {
       const v = visit(stack.value.key, stack.value.value)
 
       if (O.isSome(v)) {
@@ -464,13 +464,13 @@ export function visitBetween<K, V, A>(
   while (!done) {
     if (current) {
       stack = new Stack(current, stack)
-      if (ord.compare(current.key)(min) <= 0) {
+      if (ord.compare(min, current.key) <= 0) {
         current = current.left
       } else {
         current = undefined
       }
-    } else if (stack && ord.compare(stack.value.key)(max) > 0) {
-      if (ord.compare(stack.value.key)(min) <= 0) {
+    } else if (stack && ord.compare(max, stack.value.key) > 0) {
+      if (ord.compare(min, stack.value.key) <= 0) {
         const v = visit(stack.value.key, stack.value.value)
 
         if (O.isSome(v)) {
@@ -1156,7 +1156,7 @@ export function le_<K, V>(
       const stack = []
       let last_ptr = 0
       while (n) {
-        const d = cmp(n.key)(key)
+        const d = cmp(key, n.key)
         stack.push(n)
         if (d <= 0) {
           last_ptr = stack.length
@@ -1198,7 +1198,7 @@ export function lt_<K, V>(
       const stack = []
       let last_ptr = 0
       while (n) {
-        const d = cmp(n.key)(key)
+        const d = cmp(key, n.key)
         stack.push(n)
         if (d > 0) {
           last_ptr = stack.length
@@ -1241,7 +1241,7 @@ export function ge_<K, V>(
       const stack = []
       let last_ptr = 0
       while (n) {
-        const d = cmp(n.key)(key)
+        const d = cmp(key, n.key)
         stack.push(n)
         if (d <= 0) {
           last_ptr = stack.length
@@ -1284,7 +1284,7 @@ export function gt_<K, V>(
       const stack = []
       let last_ptr = 0
       while (n) {
-        const d = cmp(n.key)(key)
+        const d = cmp(key, n.key)
         stack.push(n)
         if (d < 0) {
           last_ptr = stack.length
@@ -1432,7 +1432,7 @@ function findInternal_<K, V>(
   let n = tree.root
   const stack = []
   while (n) {
-    const d = cmp(n.key)(key)
+    const d = cmp(key, n.key)
     stack.push(n)
     if (d === 0) {
       return new RedBlackTreeIterator(tree, stack, direction)
@@ -1453,7 +1453,7 @@ export function find_<K, V>(tree: RedBlackTree<K, V>, key: K): O.Option<V> {
   const cmp = tree.ord.compare
   let n = tree.root
   while (n) {
-    const d = cmp(n.key)(key)
+    const d = cmp(key, n.key)
     if (d === 0) {
       return O.some(n.value)
     }

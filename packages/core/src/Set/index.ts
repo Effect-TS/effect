@@ -24,14 +24,14 @@ export const empty: Set<never> = new Set()
  * Get an Associative that performs Set intersection
  */
 export function getIntersectionAssociative<A>(E: Equal<A>): Associative<Set<A>> {
-  return makeAssociative(intersection(E))
+  return makeAssociative(intersection_(E))
 }
 
 /**
  * Get an Identity that performs Set union
  */
 export function getUnionIdentity<A>(E: Equal<A>): Identity<Set<A>> {
-  return makeIdentity(empty as Set<A>, union(E))
+  return makeIdentity(empty as Set<A>, union_(E))
 }
 
 /**
@@ -100,7 +100,7 @@ export function toArray<A>(O: Ord<A>): (set: Set<A>) => ReadonlyArray<A> {
   return (x) => {
     const r: Array<A> = []
     x.forEach((e) => r.push(e))
-    return r.sort((l, r) => O.compare(r)(l))
+    return r.sort(O.compare)
   }
 }
 
@@ -116,7 +116,7 @@ export function toArray_<A>(x: Set<A>, O: Ord<A>): ReadonlyArray<A> {
  */
 export function getEqual<A>(E: Equal<A>): Equal<Set<A>> {
   const subsetE = isSubset_(E)
-  return makeEqual((y) => (x) => subsetE(x, y) && subsetE(y, x))
+  return makeEqual((x, y) => subsetE(x, y) && subsetE(y, x))
 }
 
 interface Next<A> {
@@ -317,7 +317,7 @@ export function elem_<A>(E: Equal<A>): (set: Set<A>, a: A) => boolean {
     let e: Next<A>
     let found = false
     while (!found && !(e = values.next()).done) {
-      found = E.equals(e.value)(a)
+      found = E.equals(a, e.value)
     }
     return found
   }
@@ -430,7 +430,7 @@ export function foldMap_<A, M>(
   M: Identity<M>
 ): (fa: Set<A>, f: (a: A) => M) => M {
   const toArrayO = toArray(O)
-  return (fa, f) => toArrayO(fa).reduce((b, a) => M.combine(f(a))(b), M.identity)
+  return (fa, f) => toArrayO(fa).reduce((b, a) => M.combine(b, f(a)), M.identity)
 }
 
 /**
@@ -476,7 +476,7 @@ export function remove<A>(E: Equal<A>): (a: A) => (set: Set<A>) => Set<A> {
  * Delete a value from a set
  */
 export function remove_<A>(E: Equal<A>): (set: Set<A>, a: A) => Set<A> {
-  return (set, a) => filter((ax: A) => !E.equals(ax)(a))(set)
+  return (set, a) => filter((ax: A) => !E.equals(a, ax))(set)
 }
 
 /**
