@@ -9,7 +9,7 @@ import type { Separated } from "../../Utils"
 import * as HM from "../HashMap"
 
 export class HashSet<V> implements Iterable<V> {
-  constructor(readonly keyMap: HM.HashMap<V, any>) {}
+  constructor(readonly keyMap: HM.HashMap<V, unknown>) {}
 
   [Symbol.iterator](): Iterator<V> {
     return HM.keys(this.keyMap)
@@ -27,7 +27,7 @@ export function makeDefault<V>() {
 export function add_<V>(set: HashSet<V>, v: V) {
   return set.keyMap.editable
     ? (HM.set_(set.keyMap, v, true), set)
-    : new HashSet(HM.set_(set.keyMap, v, true))
+    : new HashSet(HM.set_(set.keyMap, v, undefined))
 }
 
 export function add<V>(v: V) {
@@ -55,12 +55,10 @@ export function has_<V>(set: HashSet<V>, v: V) {
 /**
  * Apply f to each element
  */
-export function forEach_<V>(map: HashSet<V>, f: (v: V, m: HashSet<V>) => void) {
-  return new HashSet(
-    HM.forEachWithIndex_(map.keyMap, (k, _, m) => {
-      f(k, new HashSet(m))
-    })
-  )
+export function forEach_<V>(map: HashSet<V>, f: (v: V) => void) {
+  HM.forEachWithIndex_(map.keyMap, (k) => {
+    f(k)
+  })
 }
 
 /**

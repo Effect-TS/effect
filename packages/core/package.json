@@ -71,6 +71,7 @@
       "Set",
       "Show",
       "StateT",
+      "SortedSet",
       "String",
       "Effect",
       "Effect/Cause",

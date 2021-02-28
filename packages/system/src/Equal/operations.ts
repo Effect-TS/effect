@@ -1,6 +1,5 @@
-import type * as E from "@effect-ts/system/Either"
-
 import type * as A from "../Array"
+import type * as E from "../Either"
 import type { Equal } from "./definition"
 
 /**
@@ -19,14 +18,14 @@ export function makeEqual<A>(f: (y: A) => (x: A) => boolean): Equal<A> {
  * no information, all values of type `Any` can be treated as equal to each
  * other.
  */
-export const anyEqual: Equal<unknown> = makeEqual(() => () => true)
+export const any: Equal<unknown> = makeEqual(() => () => true)
 
 /**
  * Equality for `Nothing` values. Note that since there are not values of
  * type `Nothing` the `equals` method of this instance can never be called
  * but it can be useful in deriving instances for more complex types.
  */
-export const nothingEqual: Equal<never> = makeEqual(() => () => false)
+export const never: Equal<never> = makeEqual(() => () => false)
 
 /**
  * Constructs an `Equal[(A, B)]` given an `Equal[A]` and `Equal[B]` by first

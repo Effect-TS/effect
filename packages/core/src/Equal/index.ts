@@ -1,6 +1,5 @@
 import "../Operator"
 
-export * from "./definition"
+export * from "@effect-ts/system/Equal"
 export { EqualURI } from "../Modules"
-export * from "./operations"
 export * from "./instances"

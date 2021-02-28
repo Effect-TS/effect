@@ -6,10 +6,10 @@ const compare = (y: any): ((x: any) => Ordering) => {
   return (x) => (x < y ? -1 : x > y ? 1 : 0)
 }
 
-export const ordBoolean: Ord<boolean> = fromCompare(compare)
+export const boolean: Ord<boolean> = fromCompare(compare)
 
-export const ordNumber: Ord<number> = fromCompare(compare)
+export const number: Ord<number> = fromCompare(compare)
 
-export const ordDate: Ord<Date> = contramap_(ordNumber, (date: Date) => date.valueOf())
+export const date: Ord<Date> = contramap_(number, (date: Date) => date.valueOf())
 
-export const ordString: Ord<string> = fromCompare(compare)
+export const string: Ord<string> = fromCompare(compare)

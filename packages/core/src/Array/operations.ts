@@ -154,7 +154,7 @@ export function getOrd<A>(O: Ord.Ord<A>): Ord.Ord<Array<A>> {
         return ordering
       }
     }
-    return Ord.ordNumber.compare(bLen)(aLen)
+    return Ord.number.compare(bLen)(aLen)
   })
 }
 

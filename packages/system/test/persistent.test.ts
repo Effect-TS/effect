@@ -1,11 +1,12 @@
-import type { Equal } from "../src/Equal"
+import * as Equal from "../src/Equal"
 import { pipe, tuple } from "../src/Function"
 import * as Hash from "../src/Hash"
 import * as O from "../src/Option"
-import { ordNumber } from "../src/Ord"
+import * as Ord from "../src/Ord"
 import * as HM from "../src/Persistent/HashMap"
 import * as HS from "../src/Persistent/HashSet"
 import * as RB from "../src/Persistent/RedBlackTree"
+import * as SS from "../src/Persistent/SortedSet"
 
 describe("HashMap", () => {
   it("hashes", () => {
@@ -20,12 +21,11 @@ describe("HashMap", () => {
     class Value {
       constructor(readonly c: number, readonly d: number) {}
     }
-    const eqIndex: Equal<Index> = {
-      equals: (y) => (x) => x === y || (x.a === y.a && x.b === y.b)
-    }
-    const hashIndex: Hash.Hash<Index> = {
-      hash: (x) => Hash.string(`${x.a}-${x.b}`)
-    }
+    const eqIndex = Equal.makeEqual<Index>((y) => (x) =>
+      x === y || (x.a === y.a && x.b === y.b)
+    )
+    const hashIndex = Hash.makeHash<Index>((x) => Hash.string(`${x.a}-${x.b}`))
+
     const makeMap = () =>
       HM.make<Index, Value>({
         ...eqIndex,
@@ -132,7 +132,7 @@ describe("HashMap", () => {
     class Value {
       constructor(readonly c: number, readonly d: number) {}
     }
-    const eqIndex: Equal<Index> = {
+    const eqIndex: Equal.Equal<Index> = {
       equals: (y) => (x) => x === y || (x.a === y.a && x.b === y.b)
     }
     const hashIndex: Hash.Hash<Index> = {
@@ -173,7 +173,7 @@ describe("RedBlackTree", () => {
   it("forEach", () => {
     const ordered: [number, string][] = []
     pipe(
-      RB.make<number, string>(ordNumber),
+      RB.make<number, string>(Ord.number),
       RB.insert(1, "a"),
       RB.insert(0, "b"),
       RB.insert(-1, "c"),
@@ -193,7 +193,7 @@ describe("RedBlackTree", () => {
   })
   it("iterable", () => {
     const tree = pipe(
-      RB.make<number, string>(ordNumber),
+      RB.make<number, string>(Ord.number),
       RB.insert(1, "a"),
       RB.insert(0, "b"),
       RB.insert(-1, "c"),
@@ -212,7 +212,7 @@ describe("RedBlackTree", () => {
     ])
   })
   it("iterable empty", () => {
-    const tree = RB.make<number, string>(ordNumber)
+    const tree = RB.make<number, string>(Ord.number)
 
     expect(RB.size(tree)).toEqual(0)
 
@@ -220,7 +220,7 @@ describe("RedBlackTree", () => {
   })
   it("backwards", () => {
     const tree = pipe(
-      RB.make<number, string>(ordNumber),
+      RB.make<number, string>(Ord.number),
       RB.insert(1, "a"),
       RB.insert(0, "b"),
       RB.insert(-1, "c"),
@@ -238,7 +238,7 @@ describe("RedBlackTree", () => {
     ])
   })
   it("backwards empty", () => {
-    const tree = RB.make<number, string>(ordNumber)
+    const tree = RB.make<number, string>(Ord.number)
 
     expect(RB.size(tree)).toEqual(0)
 
@@ -246,7 +246,7 @@ describe("RedBlackTree", () => {
   })
   it("values", () => {
     const tree = pipe(
-      RB.make<number, string>(ordNumber),
+      RB.make<number, string>(Ord.number),
       RB.insert(1, "a"),
       RB.insert(0, "b"),
       RB.insert(-1, "c"),
@@ -260,7 +260,7 @@ describe("RedBlackTree", () => {
   })
   it("keys", () => {
     const tree = pipe(
-      RB.make<number, string>(ordNumber),
+      RB.make<number, string>(Ord.number),
       RB.insert(1, "a"),
       RB.insert(0, "b"),
       RB.insert(-1, "c"),
@@ -274,7 +274,7 @@ describe("RedBlackTree", () => {
   })
   it("keys", () => {
     const tree = pipe(
-      RB.make<number, string>(ordNumber),
+      RB.make<number, string>(Ord.number),
       RB.insert(1, "a"),
       RB.insert(0, "b"),
       RB.insert(-1, "c"),
@@ -288,7 +288,7 @@ describe("RedBlackTree", () => {
   })
   it("begin/end", () => {
     const tree = pipe(
-      RB.make<number, string>(ordNumber),
+      RB.make<number, string>(Ord.number),
       RB.insert(1, "a"),
       RB.insert(0, "b"),
       RB.insert(-1, "c"),
@@ -304,7 +304,7 @@ describe("RedBlackTree", () => {
     const ordered: [number, string][] = []
 
     pipe(
-      RB.make<number, string>(ordNumber),
+      RB.make<number, string>(Ord.number),
       RB.insert(1, "a"),
       RB.insert(0, "b"),
       RB.insert(-1, "c"),
@@ -325,7 +325,7 @@ describe("RedBlackTree", () => {
     const ordered: [number, string][] = []
 
     pipe(
-      RB.make<number, string>(ordNumber),
+      RB.make<number, string>(Ord.number),
       RB.insert(1, "a"),
       RB.insert(0, "b"),
       RB.insert(-1, "c"),
@@ -345,7 +345,7 @@ describe("RedBlackTree", () => {
     const ordered: [number, string][] = []
 
     pipe(
-      RB.make<number, string>(ordNumber),
+      RB.make<number, string>(Ord.number),
       RB.insert(1, "a"),
       RB.insert(0, "b"),
       RB.insert(-1, "c"),
@@ -364,7 +364,7 @@ describe("RedBlackTree", () => {
   })
   it("ge", () => {
     const tree = pipe(
-      RB.make<number, string>(ordNumber),
+      RB.make<number, string>(Ord.number),
       RB.insert(1, "a"),
       RB.insert(0, "b"),
       RB.insert(-1, "c"),
@@ -385,7 +385,7 @@ describe("RedBlackTree", () => {
   })
   it("find", () => {
     const tree = pipe(
-      RB.make<number, string>(ordNumber),
+      RB.make<number, string>(Ord.number),
       RB.insert(1, "a"),
       RB.insert(1, "b"),
       RB.insert(2, "c"),
@@ -393,5 +393,21 @@ describe("RedBlackTree", () => {
     )
 
     expect(RB.find_(tree, 1)).toEqual(O.some("b"))
+  })
+})
+
+describe("SortedSet", () => {
+  it("use sortedSet", () => {
+    expect(
+      pipe(
+        SS.make(Ord.number),
+        SS.add(2),
+        SS.add(0),
+        SS.add(1),
+        SS.add(4),
+        SS.add(3),
+        Array.from
+      )
+    ).toEqual([0, 1, 2, 3, 4])
   })
 })

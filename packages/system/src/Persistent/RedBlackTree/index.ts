@@ -1335,27 +1335,24 @@ export function backwards<K, V>(self: RedBlackTree<K, V>): RedBlackTreeIterable<
 export function values_<K, V>(
   self: RedBlackTree<K, V>,
   direction: Direction = "Forward"
-): Iterable<V> {
+): IterableIterator<V> {
+  const begin = self[Symbol.iterator]()
+  let count = 0
   return {
-    [Symbol.iterator]: () => {
-      const begin = self[Symbol.iterator]()
-      let count = 0
-      return {
-        next: (): IteratorResult<V> => {
-          count++
-          const entry = begin.value
-          if (direction === "Forward") {
-            begin.moveNext()
-          } else {
-            begin.movePrev()
-          }
-          return O.fold_(
-            entry,
-            () => ({ value: count, done: true }),
-            (entry) => ({ value: entry, done: false })
-          )
-        }
+    [Symbol.iterator]: () => values_(self, direction),
+    next: (): IteratorResult<V> => {
+      count++
+      const entry = begin.value
+      if (direction === "Forward") {
+        begin.moveNext()
+      } else {
+        begin.movePrev()
       }
+      return O.fold_(
+        entry,
+        () => ({ value: count, done: true }),
+        (entry) => ({ value: entry, done: false })
+      )
     }
   }
 }
@@ -1375,28 +1372,24 @@ export function values(
 export function keys_<K, V>(
   self: RedBlackTree<K, V>,
   direction: Direction = "Forward"
-): Iterable<K> {
+): IterableIterator<K> {
+  const begin = self[Symbol.iterator]()
+  let count = 0
   return {
-    [Symbol.iterator]: () => {
-      const begin = self[Symbol.iterator]()
-      let count = 0
-
-      return {
-        next: (): IteratorResult<K> => {
-          count++
-          const entry = begin.key
-          if (direction === "Forward") {
-            begin.moveNext()
-          } else {
-            begin.movePrev()
-          }
-          return O.fold_(
-            entry,
-            () => ({ value: count, done: true }),
-            (entry) => ({ value: entry, done: false })
-          )
-        }
+    [Symbol.iterator]: () => keys_(self, direction),
+    next: (): IteratorResult<K> => {
+      count++
+      const entry = begin.key
+      if (direction === "Forward") {
+        begin.moveNext()
+      } else {
+        begin.movePrev()
       }
+      return O.fold_(
+        entry,
+        () => ({ value: count, done: true }),
+        (entry) => ({ value: entry, done: false })
+      )
     }
   }
 }
@@ -1406,7 +1399,7 @@ export function keys_<K, V>(
  */
 export function keys(
   direction: Direction = "Forward"
-): <K, V>(self: RedBlackTree<K, V>) => Iterable<K> {
+): <K, V>(self: RedBlackTree<K, V>) => IterableIterator<K> {
   return (self) => keys_(self, direction)
 }
 
@@ -1481,6 +1474,20 @@ export function find<K>(key: K): <V>(tree: RedBlackTree<K, V>) => O.Option<V> {
 }
 
 /**
+ * Finds the item with key if it exists
+ */
+export function has_<K, V>(tree: RedBlackTree<K, V>, key: K): boolean {
+  return find_(tree, key)._tag === "Some"
+}
+
+/**
+ * Finds the item with key if it exists
+ */
+export function has<K>(key: K): <V>(tree: RedBlackTree<K, V>) => boolean {
+  return (tree) => has_(tree, key)
+}
+
+/**
  * Removes entry with key
  */
 export function remove_<K, V>(tree: RedBlackTree<K, V>, key: K): RedBlackTree<K, V> {
@@ -1496,4 +1503,56 @@ export function remove_<K, V>(tree: RedBlackTree<K, V>, key: K): RedBlackTree<K,
  */
 export function remove<K>(key: K) {
   return <V>(tree: RedBlackTree<K, V>) => remove_(tree, key)
+}
+
+/**
+ * Reduce a state over the map entries
+ */
+export function reduceWithIndex_<K, V, Z>(
+  map: RedBlackTree<K, V>,
+  z: Z,
+  f: (z: Z, k: K, v: V) => Z
+): Z {
+  let x = z
+
+  for (const [k, v] of map) {
+    x = f(x, k, v)
+  }
+
+  return x
+}
+
+/**
+ * Reduce a state over the map entries
+ *
+ * @dataFirst reduceWithIndex_
+ */
+export function reduceWithIndex<K, V, Z>(
+  z: Z,
+  f: (z: Z, k: K, v: V) => Z
+): (map: RedBlackTree<K, V>) => Z {
+  return (map) => reduceWithIndex_(map, z, f)
+}
+
+/**
+ * Reduce a state over the map entries
+ */
+export function reduce_<K, V, Z>(
+  map: RedBlackTree<K, V>,
+  z: Z,
+  f: (z: Z, v: V) => Z
+): Z {
+  return reduceWithIndex_(map, z, (z1, _, v) => f(z1, v))
+}
+
+/**
+ * Reduce a state over the map entries
+ *
+ * @dataFirst reduceWithIndex_
+ */
+export function reduce<V, Z>(
+  z: Z,
+  f: (z: Z, v: V) => Z
+): <K>(map: RedBlackTree<K, V>) => Z {
+  return (map) => reduce_(map, z, f)
 }

@@ -468,12 +468,8 @@ export function makeDefault<K, V>() {
 /**
  * Apply f to each element
  */
-export function forEachWithIndex_<K, V>(
-  map: HashMap<K, V>,
-  f: (k: K, v: V, m: HashMap<K, V>) => void
-) {
-  reduceWithIndex_(map, undefined as void, (_, key, value) => f(key, value, map))
-  return map
+export function forEachWithIndex_<K, V>(map: HashMap<K, V>, f: (k: K, v: V) => void) {
+  reduceWithIndex_(map, undefined as void, (_, key, value) => f(key, value))
 }
 
 /**
@@ -481,19 +477,15 @@ export function forEachWithIndex_<K, V>(
  *
  * @dataFirst forEachWithIndex_
  */
-export function forEachWithIndex<K, V>(f: (k: K, v: V, m: HashMap<K, V>) => void) {
+export function forEachWithIndex<K, V>(f: (k: K, v: V) => void) {
   return (map: HashMap<K, V>) => forEachWithIndex_(map, f)
 }
 
 /**
  * Apply f to each element
  */
-export function forEach_<K, V>(
-  map: HashMap<K, V>,
-  f: (v: V, m: HashMap<K, V>) => void
-) {
-  forEachWithIndex_(map, (_, value, map) => f(value, map))
-  return map
+export function forEach_<K, V>(map: HashMap<K, V>, f: (v: V) => void) {
+  forEachWithIndex_(map, (_, value) => f(value))
 }
 
 /**
@@ -501,8 +493,8 @@ export function forEach_<K, V>(
  *
  * @dataFirst forEach_
  */
-export function forEach<K, V>(f: (v: V, m: HashMap<K, V>) => void) {
-  return (map: HashMap<K, V>) => forEach_(map, f)
+export function forEach<V>(f: (v: V) => void) {
+  return <K>(map: HashMap<K, V>) => forEach_(map, f)
 }
 
 /**

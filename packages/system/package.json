@@ -62,6 +62,7 @@
       "Persistent/HashMap/Nodes",
       "Persistent/HashSet",
       "Persistent/RedBlackTree",
+      "Persistent/SortedSet",
       "Managed",
       "Managed/ReleaseMap",
       "Map",

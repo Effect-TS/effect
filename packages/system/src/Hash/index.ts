@@ -9,6 +9,10 @@ export interface Hash<A> {
   readonly hash: (x: A) => number
 }
 
+export function makeHash<A>(hash: (x: A) => number): Hash<A> {
+  return { hash }
+}
+
 export function string(str: string) {
   let h = 5381
   let i = str.length
