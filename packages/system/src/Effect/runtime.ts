@@ -21,9 +21,9 @@ import { defaultRandom, HasRandom } from "../Random"
 import * as Scope from "../Scope"
 // supervisor
 import * as Supervisor from "../Supervisor"
+import { _I } from "./commons"
 import { accessM, chain_, effectTotal, succeed } from "./core"
 import type { Effect, UIO } from "./effect"
-import { _I } from "./effect"
 import type { FailureReporter } from "./primitives"
 import { IPlatform } from "./primitives"
 

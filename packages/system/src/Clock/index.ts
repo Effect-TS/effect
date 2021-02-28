@@ -12,9 +12,6 @@ import { accessService, accessServiceM, provideServiceM } from "../Effect/has"
 import { literal } from "../Function"
 import type { Has, HasTag, Tag } from "../Has"
 import { tag } from "../Has"
-import type { UIO as SyncUIO } from "../Sync/core"
-import { sync } from "../Sync/core"
-import { accessServiceM as accessServiceMSync } from "../Sync/has"
 
 //
 // Clock Definition
@@ -22,7 +19,7 @@ import { accessServiceM as accessServiceMSync } from "../Sync/has"
 export abstract class Clock {
   readonly _tag = literal("@effect-ts/system/Clock")
 
-  abstract readonly currentTime: SyncUIO<number>
+  abstract readonly currentTime: UIO<number>
   abstract readonly sleep: (ms: number) => UIO<void>
 }
 
@@ -37,7 +34,7 @@ export type HasClock = HasTag<typeof HasClock>
 // Live Clock Implementation
 //
 export class LiveClock extends Clock {
-  currentTime: SyncUIO<number> = sync(() => new Date().getTime())
+  currentTime: UIO<number> = effectTotal(() => new Date().getTime())
 
   sleep: (ms: number) => UIO<void> = (ms) =>
     effectAsyncInterrupt((cb) => {
@@ -56,7 +53,7 @@ export class LiveClock extends Clock {
 //
 export class ProxyClock extends Clock {
   constructor(
-    readonly currentTime: SyncUIO<number>,
+    readonly currentTime: UIO<number>,
     readonly sleep: (ms: number) => UIO<void>
   ) {
     super()
@@ -66,7 +63,7 @@ export class ProxyClock extends Clock {
 /**
  * Get the current time in ms since epoch
  */
-export const currentTime = accessServiceMSync(HasClock)((_) => _.currentTime)
+export const currentTime = accessServiceM(HasClock)((_) => _.currentTime)
 
 /**
  * Sleeps for the provided amount of ms
@@ -89,17 +86,16 @@ export const withClock = accessService(HasClock)
 export class TestClock extends Clock {
   private time = new Date().getTime()
 
-  readonly currentTime: SyncUIO<number> = sync(() => this.time)
+  readonly currentTime: UIO<number> = effectTotal(() => this.time)
 
   readonly sleep: (ms: number) => UIO<void> = () => unit
 
   readonly advance = (ms: number) =>
-    sync(() => {
+    effectTotal(() => {
       this.time = this.time + ms
     })
 
-  static advance = (ms: number) =>
-    accessServiceMSync(HasTestClock)((_) => _.advance(ms))
+  static advance = (ms: number) => accessServiceM(HasTestClock)((_) => _.advance(ms))
 }
 
 /**

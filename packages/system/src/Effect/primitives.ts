@@ -1,4 +1,3 @@
-import type { Async } from "../Async"
 import type * as Cause from "../Cause/core"
 import type * as Exit from "../Exit/exit"
 import type { Platform } from "../Fiber"
@@ -10,7 +9,7 @@ import type { FiberRef } from "../FiberRef/fiberRef"
 import type * as O from "../Option"
 import type { Scope } from "../Scope"
 import type { Supervisor } from "../Supervisor"
-import type { Effect, FFI, IFail } from "./effect"
+import type { Effect } from "./effect"
 import { Base } from "./effect"
 
 //
@@ -41,10 +40,16 @@ export type Instruction =
   | ISupervise<any, any, any>
   | IGetForkScope<any, any, any>
   | IOverrideForkScope<any, any, any>
-  | Async<any, any, any>
-  | FFI<any, any, any>
   | ITracingStatus<any, any, any>
   | IPlatform<any, any, any>
+
+export class IFail<E> extends Base<unknown, E, never> {
+  readonly _tag = "Fail"
+
+  constructor(readonly fill: (_: () => Trace) => Cause.Cause<E>) {
+    super()
+  }
+}
 
 export class IFlatMap<R, E, A, R1, E1, A1> extends Base<R & R1, E | E1, A1> {
   readonly _tag = "FlatMap"

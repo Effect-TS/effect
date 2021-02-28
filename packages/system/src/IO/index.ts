@@ -1,9 +1,7 @@
+/* eslint-disable prefer-const */
 import "../Operator"
 
-/* eslint-disable prefer-const */
-import { _A, _E, _I, _R, _U } from "../Effect/effect"
-import type { EffectURI, Instruction } from "../Effect/primitives"
-import { IEffectTotal } from "../Effect/primitives"
+import { _A, _U } from "../Effect/commons"
 import { Stack } from "../Stack"
 
 /**
@@ -18,22 +16,8 @@ import { Stack } from "../Stack"
 export type IO<A> = Succeed<A> | FlatMap<any, A> | Suspend<A>
 
 abstract class Base<A> {
-  readonly _tag = "FFI"
-  readonly _idn = "IO"
-
-  readonly _S1!: (_: unknown) => void
-  readonly _S2!: () => never;
-
-  readonly [_U]!: EffectURI;
-  readonly [_E]!: () => never;
-  readonly [_A]!: () => A;
-  readonly [_R]!: (_: unknown) => void
-
-  get [_I](): Instruction {
-    return new IEffectTotal(() => {
-      return run(this as any)
-    })
-  }
+  readonly [_U]!: "IO";
+  readonly [_A]!: () => A
 }
 
 class Succeed<A> extends Base<A> {

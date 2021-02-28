@@ -983,12 +983,6 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                     break
                   }
 
-                  case "FFI": {
-                    current = current[T._I]
-
-                    break
-                  }
-
                   case "Succeed": {
                     if (this.platform.traceEffects && this.inTracingRegion) {
                       this.addTraceValue(current.trace)

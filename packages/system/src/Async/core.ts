@@ -1,11 +1,7 @@
 /* eslint-disable prefer-const */
-import * as C from "../Cause/cause"
-import type { EffectURI } from "../Effect/effect"
-import { _A, _E, _I, _R, _U } from "../Effect/effect"
-import * as P from "../Effect/primitives"
+import { _A, _E, _R, _U } from "../Effect/commons"
 import * as E from "../Either"
 import { pipe } from "../Function"
-import * as O from "../Option"
 import { Stack } from "../Stack"
 import type * as U from "../Utils"
 
@@ -15,45 +11,10 @@ import type * as U from "../Utils"
  * with an `A`.
  */
 export abstract class Async<R, E, A> {
-  readonly _tag = "FFI"
-  readonly _idn = "Async"
-
-  readonly _S1!: (_: unknown) => void
-  readonly _S2!: () => never;
-
-  readonly [_U]!: EffectURI;
+  readonly [_U]!: "Async";
   readonly [_E]!: () => E;
   readonly [_A]!: () => A;
   readonly [_R]!: (_: R) => void
-
-  get [_I](): P.Instruction {
-    return new P.IRead(
-      (env) =>
-        new P.IEffectAsync((cb) => {
-          runAsyncEnv(this, env, (ex) => {
-            switch (ex._tag) {
-              case "Success": {
-                cb(new P.ISucceed(ex.a))
-                break
-              }
-              case "Failure": {
-                cb(new P.IFail((t) => C.traced(C.fail(ex.e), t())))
-                break
-              }
-              case "Interrupt": {
-                cb(
-                  new P.IDescriptor(
-                    (d) => new P.IFail((t) => C.traced(C.interrupt(d.id), t()))
-                  )
-                )
-                break
-              }
-            }
-          })
-          return O.none
-        }, [])
-    )
-  }
 }
 
 /**

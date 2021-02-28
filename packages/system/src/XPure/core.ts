@@ -1,9 +1,5 @@
 /* eslint-disable prefer-const */
-import * as C from "../Cause/cause"
-import type { EffectURI } from "../Effect/effect"
-import { _A, _E, _I, _R, _U } from "../Effect/effect"
-import type { Instruction } from "../Effect/primitives"
-import { IFail, IRead, ISucceed } from "../Effect/primitives"
+import { _A, _E, _R, _U } from "../Effect/commons"
 import * as E from "../Either"
 import { constant } from "../Function"
 import { Stack } from "../Stack"
@@ -16,28 +12,13 @@ import { Stack } from "../Stack"
  * including context, state, and failure.
  */
 export abstract class XPure<S1, S2, R, E, A> {
-  readonly _tag = "FFI"
-  readonly _idn = "XPure"
-
   readonly _S1!: (_: S1) => void
   readonly _S2!: () => S2;
 
-  readonly [_U]!: EffectURI;
+  readonly [_U]!: "XPure";
   readonly [_E]!: () => E;
   readonly [_A]!: () => A;
   readonly [_R]!: (_: R) => void
-
-  get [_I](): Instruction {
-    return new IRead((env) => {
-      const res: E.Either<any, any> = runEither(provideAll(env)(this as any))
-
-      if (res._tag === "Left") {
-        return new IFail((t) => C.traced(C.fail(res.left), t()))
-      } else {
-        return new ISucceed(res.right)
-      }
-    })
-  }
 }
 
 /**
