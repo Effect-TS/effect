@@ -30,7 +30,7 @@
     "chalk": "^4.1.0",
     "cpx": "^1.5.0",
     "dtslint": "github:gcanti/dtslint",
-    "eslint": "^7.20.0",
+    "eslint": "^7.21.0",
     "eslint-config-prettier": "^8.0.0",
     "eslint-import-resolver-typescript": "^2.3.0",
     "eslint-plugin-codegen": "^0.15.0",
