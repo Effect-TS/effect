@@ -1,15 +1,12 @@
 import * as T from "../src/Effect"
 import * as Exit from "../src/Exit"
-import { flow, identity, pipe } from "../src/Function"
+import { flow, identity, pipe, tuple } from "../src/Function"
 import * as M from "../src/Managed"
 import * as O from "../src/Option"
 import * as R from "../src/Ref"
 import * as S from "../src/Stream"
 import * as BufferedPull from "../src/Stream/BufferedPull"
 import * as Pull from "../src/Stream/Pull"
-import { crossN } from "../src/Stream/Stream/crossN"
-import { range } from "../src/Stream/Stream/range"
-import { zipN } from "../src/Stream/Stream/zipN"
 
 describe("Stream", () => {
   describe("Broadcast", () => {
@@ -200,12 +197,12 @@ describe("Stream", () => {
   it("zipN", async () => {
     expect(
       await pipe(
-        zipN(
+        S.zipN(
           S.fromChunk([1, 1, 1, 1]),
           S.fromChunk(["a", "b", "c", "d"]),
           S.fromChunk([2, 2, 2, 2]),
           S.fromChunk(["e", "f", "g", "h"])
-        )((a, b, c, d) => [a, b, c, d] as const),
+        )(tuple),
         S.runCollect,
         T.runPromise
       )
@@ -220,11 +217,11 @@ describe("Stream", () => {
   it("crossN", async () => {
     expect(
       await pipe(
-        crossN(
+        S.crossN(
           S.fromChunk([1, 2]),
           S.fromChunk(["a", "b"]),
           S.fromChunk([3, 4])
-        )((a, b, c) => [a, b, c] as const),
+        )(tuple),
         S.runCollect,
         T.runPromise
       )
@@ -241,7 +238,7 @@ describe("Stream", () => {
   })
 
   it("range", async () => {
-    expect(await pipe(range(2, 8), S.runCollect, T.runPromise)).toEqual([
+    expect(await pipe(S.range(2, 8), S.runCollect, T.runPromise)).toEqual([
       2,
       3,
       4,
