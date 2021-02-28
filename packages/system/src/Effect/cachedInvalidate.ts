@@ -10,10 +10,10 @@ import * as die from "./die"
 import * as Do from "./do"
 import type { Effect, IO, RIO, UIO } from "./effect"
 import { environment } from "./environment"
+import * as uninterruptibleMask from "./interruption"
 import * as map from "./map"
 import * as tap from "./tap"
 import * as to from "./to"
-import * as uninterruptibleMask from "./uninterruptibleMask"
 
 /**
  * Returns an effect that, if evaluated, will return the cached result of

@@ -4,7 +4,7 @@ import { pipe } from "../Function"
 import * as O from "../Option"
 import { chain, fork } from "./core"
 import type { Effect, RIO } from "./effect"
-import { uninterruptibleMask } from "./uninterruptibleMask"
+import { uninterruptibleMask } from "./interruption"
 
 /**
  * Forks the effect into a new independent fiber, with the specified name.

@@ -8,7 +8,7 @@ import type { Cb } from "./Cb"
 import { chain_, effectAsyncOption, effectTotal, succeed, suspend, unit } from "./core"
 import type { Effect, UIO } from "./effect"
 import { flatten } from "./flatten"
-import { onInterrupt_ } from "./onInterrupt_"
+import { onInterrupt_ } from "./interruption"
 
 /**
  * Imports an asynchronous side-effect into an effect. The side-effect

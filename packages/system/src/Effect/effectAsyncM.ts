@@ -6,10 +6,10 @@ import { catchAllCause } from "./catchAllCause_"
 import { fork } from "./core"
 import * as Do from "./do"
 import type { Effect } from "./effect"
+import { uninterruptibleMask } from "./interruption"
 import { map } from "./map"
 import { runtime } from "./runtime"
 import { to } from "./to"
-import { uninterruptibleMask } from "./uninterruptibleMask"
 
 /**
  * Imports an asynchronous effect into a pure `Effect` value. This formulation is

@@ -1,4 +1,4 @@
-import * as T from "./deps"
+import * as T from "./deps-core"
 import type { Finalizer, ReleaseMap } from "./ReleaseMap"
 
 export const ManagedURI = "@matechs/core/Eff/ManagedURI"

@@ -1,4 +1,4 @@
-import { interruptAs as effectInterruptAs } from "../Effect/interruptAs"
+import { interruptAs as effectInterruptAs } from "../Effect/interruption"
 import type { FiberID } from "../Fiber/id"
 import { completeWith } from "./completeWith"
 import type { Promise } from "./promise"

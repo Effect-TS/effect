@@ -1,6 +1,6 @@
 import { chain_ } from "../Effect/core"
 import { fiberId } from "../Effect/fiberId"
-import { interruptAs as effectInterruptAs } from "../Effect/interruptAs"
+import { interruptAs as effectInterruptAs } from "../Effect/interruption"
 import { completeWith } from "./completeWith"
 import type { Promise } from "./promise"
 

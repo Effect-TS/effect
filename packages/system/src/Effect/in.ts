@@ -6,8 +6,7 @@ import type { Scope } from "../Scope"
 import { chain } from "./core"
 import { forkDaemon } from "./core-scope"
 import type { Effect } from "./effect"
-import { onInterrupt } from "./onInterrupt"
-import { uninterruptibleMask } from "./uninterruptibleMask"
+import { onInterrupt, uninterruptibleMask } from "./interruption"
 
 /**
  * Returns a new effect whose scope will be extended by the specified scope.

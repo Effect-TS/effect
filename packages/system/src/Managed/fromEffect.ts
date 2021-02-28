@@ -1,4 +1,4 @@
-import * as T from "./deps"
+import * as T from "./deps-core"
 import { Managed } from "./managed"
 import * as RelMap from "./ReleaseMap"
 

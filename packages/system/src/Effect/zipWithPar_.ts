@@ -1,7 +1,7 @@
 import { both } from "../Cause/cause"
 import type { Exit } from "../Exit/exit"
-import { join } from "../Fiber/api"
 import type { Fiber } from "../Fiber/core"
+import { join } from "../Fiber/core"
 import type { FiberID } from "../Fiber/id"
 import { chain_, descriptorWith, halt } from "./core"
 import { raceWith_, transplant } from "./core-scope"

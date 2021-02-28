@@ -29,10 +29,6 @@ import {
   effectTotal,
   fail,
   foldCauseM_,
-  forEach_,
-  forEachPar_,
-  forEachParN_,
-  forEachUnit_,
   make_,
   makeExit_,
   makeManagedReleaseMap,
@@ -44,6 +40,7 @@ import {
   zipWith_,
   zipWithPar_
 } from "../core"
+import { forEach_, forEachPar_, forEachParN_, forEachUnit_ } from "../forEach"
 import { fromEffect } from "../fromEffect"
 import type { IO, RIO, UIO } from "../managed"
 import { Managed } from "../managed"

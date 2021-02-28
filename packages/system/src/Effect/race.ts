@@ -1,7 +1,7 @@
 import * as Cause from "../Cause/core"
 import * as E from "../Either"
 import * as Exit from "../Exit/api"
-import * as Fiber from "../Fiber/api"
+import * as Fiber from "../Fiber/core"
 import { pipe } from "../Function"
 import { chain, chain_, descriptorWith, halt, result, succeed } from "./core"
 import { raceWith_ } from "./core-scope"

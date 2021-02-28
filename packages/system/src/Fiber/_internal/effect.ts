@@ -26,7 +26,7 @@ export {
   forEachUnit_,
   forEach_
 } from "../../Effect/forEach"
-export { interruptAs } from "../../Effect/interruptAs"
+export { interruptAs } from "../../Effect/interruption"
 export { map, map_ } from "../../Effect/map"
 export { never } from "../../Effect/never"
 export type { IFold, Instruction, IRaceWith } from "../../Effect/primitives"

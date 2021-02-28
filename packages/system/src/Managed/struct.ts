@@ -1,6 +1,7 @@
 import * as R from "../Record"
 import type { _E, _R, EnforceNonEmptyRecord } from "../Utils"
-import { chain_, forEach_, forEachPar_, forEachParN_, map_ } from "./core"
+import { chain_, map_ } from "./core"
+import { forEach_, forEachPar_, forEachParN_ } from "./forEach"
 import type { Managed } from "./managed"
 
 export function struct<NER extends Record<string, Managed<any, any, any>>>(

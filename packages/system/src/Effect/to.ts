@@ -2,7 +2,7 @@ import { done } from "../Promise/done"
 import type { Promise } from "../Promise/promise"
 import { chain_, result } from "./core"
 import type { Effect } from "./effect"
-import { uninterruptibleMask } from "./uninterruptibleMask"
+import { uninterruptibleMask } from "./interruption"
 
 /**
  * Returns an effect that keeps or breaks a promise based on the result of

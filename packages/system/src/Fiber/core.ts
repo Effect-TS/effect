@@ -1,4 +1,7 @@
-import type { UIO } from "../Effect/effect"
+import { chain_ } from "../Effect/core"
+import { done } from "../Effect/done"
+import type { IO, UIO } from "../Effect/effect"
+import { tap_ } from "../Effect/tap"
 import type * as Exit from "../Exit/core"
 import type { FiberRef } from "../FiberRef/fiberRef"
 import type * as O from "../Option"
@@ -111,3 +114,14 @@ export const uninterruptible = new InterruptStatus(false)
  * Create InterruptStatus from a boolean value
  */
 export const interruptStatus = (b: boolean) => (b ? interruptible : uninterruptible)
+
+/**
+ * Joins the fiber, which suspends the joining fiber until the result of the
+ * fiber has been determined. Attempting to join a fiber that has erred will
+ * result in a catchable error. Joining an interrupted fiber will result in an
+ * "inner interruption" of this fiber, unlike interruption triggered by another
+ * fiber, "inner interruption" can be caught and recovered.
+ */
+export function join<E, A>(fiber: Fiber<E, A>): IO<E, A> {
+  return tap_(chain_(fiber.await, done), () => fiber.inheritRefs)
+}

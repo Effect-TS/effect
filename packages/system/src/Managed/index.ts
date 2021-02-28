@@ -6,9 +6,10 @@ import "../Operator"
  * Copyright 2020 Michael Arnaldi and the Matechs Garage Contributors.
  */
 
-// codegen:start {preset: barrel, include: ./*.ts, exclude: ./deps.ts}
+// codegen:start {preset: barrel, include: ./*.ts, exclude: ./deps*.ts}
 export * from "./core"
 export * from "./do"
+export * from "./forEach"
 export * from "./fromEffect"
 export * from "./managed"
 export * from "./struct"

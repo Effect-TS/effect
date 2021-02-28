@@ -12,11 +12,9 @@ import * as Do from "./do"
 import type { Effect, UIO } from "./effect"
 import { flatten } from "./flatten"
 import { forEach_ } from "./forEach"
-import { interruptible } from "./interruptible"
+import { interruptible, onInterrupt, uninterruptibleMask } from "./interruption"
 import { map } from "./map"
-import { onInterrupt } from "./onInterrupt"
 import { tap, tap_ } from "./tap"
-import { uninterruptibleMask } from "./uninterruptibleMask"
 
 function arbiter<E, A>(
   fibers: readonly Fiber.Fiber<E, A>[],

@@ -56,17 +56,6 @@ export function interruptFork<E, A>(fiber: Fiber.Fiber<E, A>) {
 }
 
 /**
- * Joins the fiber, which suspends the joining fiber until the result of the
- * fiber has been determined. Attempting to join a fiber that has erred will
- * result in a catchable error. Joining an interrupted fiber will result in an
- * "inner interruption" of this fiber, unlike interruption triggered by another
- * fiber, "inner interruption" can be caught and recovered.
- */
-export function join<E, A>(fiber: Fiber.Fiber<E, A>): T.IO<E, A> {
-  return T.tap_(T.chain_(fiber.await, T.done), () => fiber.inheritRefs)
-}
-
-/**
  * Effectually maps over the value the fiber computes.
  */
 export function mapM<E2, A, B>(f: (a: A) => T.IO<E2, B>) {

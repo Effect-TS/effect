@@ -7,7 +7,7 @@ import type { Exit } from "../Exit/exit"
 import { chain_, foldCauseM_, halt, result } from "./core"
 import { done } from "./done"
 import type { Effect } from "./effect"
-import { uninterruptibleMask } from "./uninterruptibleMask"
+import { uninterruptibleMask } from "./interruption"
 
 /**
  * Acquires a resource, uses the resource, and then releases the resource.
