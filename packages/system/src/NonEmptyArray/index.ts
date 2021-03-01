@@ -1,12 +1,11 @@
-import "../Operator"
-
 /* adapted from https://github.com/gcanti/fp-ts */
 /**
  * Data structure which represents non-empty arrays
  */
+import "../Operator"
+
 import * as A from "../Array"
 import type { Predicate, Refinement } from "../Function"
-import type { MutableRecord } from "../Mutable"
 import type { Option } from "../Option"
 import { none, some } from "../Option"
 
@@ -67,43 +66,6 @@ export function tail<A>(nea: NonEmptyArray<A>): A.Array<A> {
  * Reverse the array
  */
 export const reverse: <A>(nea: NonEmptyArray<A>) => NonEmptyArray<A> = A.reverse as any
-
-/**
- * Splits an array into sub-non-empty-arrays stored in an object, based on the result of calling a `string`-returning
- * function on each element, and grouping the results according to values returned
- *
- * @example
- * assert.deepStrictEqual(groupBy((s: string) => String(s.length))(['foo', 'bar', 'foobar']), {
- *   '3': cons('foo', ['bar']),
- *   '6': cons('foobar', [])
- * })
- */
-export function groupBy<A>(
-  f: (a: A) => string
-): (as: A.Array<A>) => Record<string, NonEmptyArray<A>> {
-  return (as) => groupBy_(as, f)
-}
-
-/**
- * Splits an array into sub-non-empty-arrays stored in an object, based on the result of calling a `string`-returning
- * function on each element, and grouping the results according to values returned
- */
-export function groupBy_<A>(
-  as: A.Array<A>,
-  f: (a: A) => string
-): Record<string, NonEmptyArray<A>> {
-  const r: MutableRecord<string, Array<A> & { 0: A }> = {}
-  for (const a of as) {
-    const k = f(a)
-    // eslint-disable-next-line no-prototype-builtins
-    if (r.hasOwnProperty(k)) {
-      r[k]!.push(a)
-    } else {
-      r[k] = [a]
-    }
-  }
-  return r
-}
 
 /**
  * Takes the last element

@@ -2,11 +2,11 @@
  * Copyright 2020 Michael Arnaldi and the Matechs Garage Contributors.
  */
 import * as A from "../Array"
+import * as R from "../Dictionary"
 import { access, accessM, chain_, provideAll_, succeed } from "../Effect/core"
 import type { Effect } from "../Effect/effect"
 import type { Has, Tag } from "../Has"
 import { mergeEnvironments } from "../Has"
-import * as R from "../Record"
 import type { UnionToIntersection } from "../Utils"
 
 /**

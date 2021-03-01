@@ -3,10 +3,11 @@
  */
 import "../Operator"
 
+import type { Dictionary } from "../Dictionary"
 import type { Either } from "../Either/core"
 import type { Predicate, Refinement } from "../Function/core"
 import { identity } from "../Function/core"
-import type { MutableArray } from "../Mutable"
+import type { MutableArray, MutableRecord } from "../Mutable"
 import type { NonEmptyArray } from "../NonEmptyArray"
 import type { Option } from "../Option"
 import { isSome, none, some } from "../Option"
@@ -1626,4 +1627,35 @@ export function join_(as: Array<string>, s: string): string {
  */
 export function join(s: string): (as: Array<string>) => string {
   return (as) => as.join(s)
+}
+
+/**
+ * Splits an array into sub-non-empty-arrays stored in an object, based on the result of calling a `string`-returning
+ * function on each element, and grouping the results according to values returned
+ */
+export function groupBy<A>(
+  f: (a: A) => string
+): (as: Array<A>) => Dictionary<NonEmptyArray<A>> {
+  return (as) => groupBy_(as, f)
+}
+
+/**
+ * Splits an array into sub-non-empty-arrays stored in an object, based on the result of calling a `string`-returning
+ * function on each element, and grouping the results according to values returned
+ */
+export function groupBy_<A>(
+  as: Array<A>,
+  f: (a: A) => string
+): Dictionary<NonEmptyArray<A>> {
+  const r: MutableRecord<string, MutableArray<A> & { 0: A }> = {}
+  for (const a of as) {
+    const k = f(a)
+    // eslint-disable-next-line no-prototype-builtins
+    if (r.hasOwnProperty(k)) {
+      r[k]!.push(a)
+    } else {
+      r[k] = [a]
+    }
+  }
+  return r
 }
