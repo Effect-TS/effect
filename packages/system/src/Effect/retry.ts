@@ -46,9 +46,9 @@ function loop<R, E, A, R1, O, R2, E2, A2>(
  * the schedule is done, then both the value produced by the schedule together with the last
  * error are passed to the specified recovery function.
  */
-export function retryOrElseEither_<R, E, A, R1, O, R2, E2, A2>(
+export function retryOrElseEither_<R, E extends I, A, I, R1, O, R2, E2, A2>(
   self: Effect<R, E, A>,
-  policy: Schedule<R1, E, O>,
+  policy: Schedule<R1, I, O>,
   orElse: (e: E, o: O) => Effect<R2, E2, A2>
 ): Effect<R & R1 & R2 & HasClock, E2, E.Either<A2, A>> {
   return pipe(
@@ -63,8 +63,8 @@ export function retryOrElseEither_<R, E, A, R1, O, R2, E2, A2>(
  * the schedule is done, then both the value produced by the schedule together with the last
  * error are passed to the specified recovery function.
  */
-export function retryOrElseEither<E, R1, O, R2, E2, A2>(
-  policy: Schedule<R1, E, O>,
+export function retryOrElseEither<E extends I, I, R1, O, R2, E2, A2>(
+  policy: Schedule<R1, I, O>,
   orElse: (e: E, o: O) => Effect<R2, E2, A2>
 ) {
   return <R, A>(self: Effect<R, E, A>) => retryOrElseEither_(self, policy, orElse)
@@ -75,9 +75,9 @@ export function retryOrElseEither<E, R1, O, R2, E2, A2>(
  * value produced by the schedule together with the last error are passed to
  * the recovery function.
  */
-export function retryOrElse_<R, E, A, R1, O, R2, E2, A2>(
+export function retryOrElse_<R, E extends I, I, A, R1, O, R2, E2, A2>(
   self: Effect<R, E, A>,
-  policy: Schedule<R1, E, O>,
+  policy: Schedule<R1, I, O>,
   orElse: (e: E, o: O) => Effect<R2, E2, A2>
 ): Effect<R & R1 & R2 & HasClock, E2, A | A2> {
   return map_(retryOrElseEither_(self, policy, orElse), E.fold(identity, identity))
@@ -88,8 +88,8 @@ export function retryOrElse_<R, E, A, R1, O, R2, E2, A2>(
  * value produced by the schedule together with the last error are passed to
  * the recovery function.
  */
-export function retryOrElse<E, R1, O, R2, E2, A2>(
-  policy: Schedule<R1, E, O>,
+export function retryOrElse<E extends I, I, R1, O, R2, E2, A2>(
+  policy: Schedule<R1, I, O>,
   orElse: (e: E, o: O) => Effect<R2, E2, A2>
 ) {
   return <R, A>(self: Effect<R, E, A>) => retryOrElse_(self, policy, orElse)
@@ -101,9 +101,9 @@ export function retryOrElse<E, R1, O, R2, E2, A2>(
  * `once` or `recurs` for example), so that that `io.retry(Schedule.once)` means
  * "execute `io` and in case of failure, try again once".
  */
-export function retry_<R, E, A, R1, O>(
+export function retry_<R, E extends I, I, A, R1, O>(
   self: Effect<R, E, A>,
-  policy: Schedule<R1, E, O>
+  policy: Schedule<R1, I, O>
 ): Effect<R & R1 & HasClock, E, A> {
   return retryOrElse_(self, policy, (e, _) => fail(e))
 }
@@ -114,7 +114,7 @@ export function retry_<R, E, A, R1, O>(
  * `once` or `recurs` for example), so that that `io.retry(Schedule.once)` means
  * "execute `io` and in case of failure, try again once".
  */
-export function retry<R1, E, O>(policy: Schedule<R1, E, O>) {
-  return <R, A>(self: Effect<R, E, A>): Effect<R & R1 & HasClock, E, A> =>
+export function retry<R1, I, O>(policy: Schedule<R1, I, O>) {
+  return <E extends I, R, A>(self: Effect<R, E, A>): Effect<R & R1 & HasClock, E, A> =>
     retry_(self, policy)
 }
