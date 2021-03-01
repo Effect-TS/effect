@@ -396,7 +396,7 @@ export function succeed<A>(a: A): Effect<unknown, never, A> {
  */
 export function supervised(supervisor: Supervisor<any>) {
   return <R, E, A>(fa: Effect<R, E, A>): Effect<R, E, A> =>
-    new ISupervise(fa, supervisor).effect
+    new ISupervise(fa, supervisor)
 }
 
 /**
