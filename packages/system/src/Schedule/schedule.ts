@@ -809,13 +809,13 @@ export function fixed(interval: number): Schedule<unknown, unknown, number> {
             Decision.makeContinue(
               n + 1,
               now + interval,
-              loop(O.some({ startMillis: now, lastRun: now }), n + 1)
+              loop(O.some({ startMillis: now, lastRun: now + interval }), n + 1)
             ),
           ({ lastRun, startMillis }) => {
             const runningBehind = now > lastRun + interval
             const boundary =
               interval === 0 ? interval : interval - ((now - startMillis) % interval)
-            const sleepTime = boundary === 0 ? now : boundary
+            const sleepTime = boundary === 0 ? interval : boundary
             const nextRun = runningBehind ? now : now + sleepTime
 
             return Decision.makeContinue(
@@ -1773,12 +1773,13 @@ function windowedLoop(
             now + interval,
             windowedLoop(interval, O.some(now), n + 1)
           ),
-        (startMillis) =>
-          Decision.makeContinue(
+        (startMillis) => {
+          return Decision.makeContinue(
             n + 1,
-            now + ((now - startMillis) % interval),
+            now + (interval - ((now - startMillis) % interval)),
             windowedLoop(interval, O.some(startMillis), n + 1)
           )
+        }
       )
     )
 }
