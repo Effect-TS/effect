@@ -136,7 +136,6 @@
       "Prelude/FX/Provide",
       "Prelude/FX/Run",
       "Prelude/HKT",
-      "Prelude/Id",
       "Prelude/IdentityBoth",
       "Prelude/IdentityEither",
       "Prelude/IdentityFlatten",
