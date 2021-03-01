@@ -8,8 +8,8 @@ import type { Predicate, Refinement } from "../Function/core"
 import { identity } from "../Function/core"
 import type { MutableArray } from "../Mutable"
 import type { NonEmptyArray } from "../NonEmptyArray"
-import type { Option } from "../Option"
-import { isSome, none, some } from "../Option"
+import * as Option from "../Option"
+import type * as R from "../Record"
 import type { Separated } from "../Utils"
 
 export type Array<A> = ReadonlyArray<A>
@@ -139,8 +139,8 @@ export function chunksOf_<A>(as: Array<A>, n: number): Array<Array<A>> {
 /**
  * Filter out optional values
  */
-export function compact<A>(fa: Array<Option<A>>): Array<A> {
-  return filterMap((x: Option<A>) => x)(fa)
+export function compact<A>(fa: Array<Option.Option<A>>): Array<A> {
+  return filterMap((x: Option.Option<A>) => x)(fa)
 }
 
 /**
@@ -260,15 +260,15 @@ export function cons<A>(head: A): (tail: Array<A>) => Array<A> {
  * assert.deepStrictEqual(deleteAt(1)([]), none)
  * ```
  */
-export function deleteAt(i: number): <A>(as: Array<A>) => Option<Array<A>> {
+export function deleteAt(i: number): <A>(as: Array<A>) => Option.Option<Array<A>> {
   return (as) => deleteAt_(as, i)
 }
 
 /**
  * Delete the element at the specified index, creating a new array, or returning `None` if the index is out of bounds
  */
-export function deleteAt_<A>(as: Array<A>, i: number): Option<Array<A>> {
-  return isOutOfBound(i, as) ? none : some(unsafeDeleteAt_(as, i))
+export function deleteAt_<A>(as: Array<A>, i: number): Option.Option<Array<A>> {
+  return isOutOfBound(i, as) ? Option.none : Option.some(unsafeDeleteAt_(as, i))
 }
 
 /**
@@ -421,20 +421,24 @@ export function filterWithIndex_<A>(
 /**
  * Filters the array also mapping the output
  */
-export const filterMap = <A, B>(f: (a: A) => Option<B>) => (fa: Array<A>): Array<B> =>
-  filterMap_(fa, f)
+export const filterMap = <A, B>(f: (a: A) => Option.Option<B>) => (
+  fa: Array<A>
+): Array<B> => filterMap_(fa, f)
 
 /**
  * Filters the array also mapping the output
  */
-export function filterMap_<A, B>(fa: Array<A>, f: (a: A) => Option<B>): Array<B> {
+export function filterMap_<A, B>(
+  fa: Array<A>,
+  f: (a: A) => Option.Option<B>
+): Array<B> {
   return filterMapWithIndex_(fa, (_, a) => f(a))
 }
 
 /**
  * Filters the array also mapping the output
  */
-export function filterMapWithIndex<A, B>(f: (i: number, a: A) => Option<B>) {
+export function filterMapWithIndex<A, B>(f: (i: number, a: A) => Option.Option<B>) {
   return (fa: Array<A>): Array<B> => filterMapWithIndex_(fa, f)
 }
 
@@ -443,12 +447,12 @@ export function filterMapWithIndex<A, B>(f: (i: number, a: A) => Option<B>) {
  */
 export function filterMapWithIndex_<A, B>(
   fa: Array<A>,
-  f: (i: number, a: A) => Option<B>
+  f: (i: number, a: A) => Option.Option<B>
 ): Array<B> {
   const result: MutableArray<B> = []
   for (let i = 0; i < fa.length; i++) {
     const optionB = f(i, fa[i]!)
-    if (isSome(optionB)) {
+    if (Option.isSome(optionB)) {
       result.push(optionB.value)
     }
   }
@@ -460,14 +464,14 @@ export function filterMapWithIndex_<A, B>(
  */
 export function collectWhileMap_<A, B>(
   arr: Array<A>,
-  f: (x: A) => Option<B>
+  f: (x: A) => Option.Option<B>
 ): Array<B> {
   const result: MutableArray<B> = []
 
   for (let i = 0; i < arr.length; i++) {
     const o = f(arr[i]!)
 
-    if (isSome(o)) {
+    if (Option.isSome(o)) {
       result.push(o.value)
     } else {
       break
@@ -480,7 +484,7 @@ export function collectWhileMap_<A, B>(
 /**
  * Maps an array until `none` is returned
  */
-export function collectWhileMap<A, B>(f: (x: A) => Option<B>) {
+export function collectWhileMap<A, B>(f: (x: A) => Option.Option<B>) {
   return (arr: Array<A>) => collectWhileMap_(arr, f)
 }
 
@@ -493,9 +497,13 @@ export function collectWhileMap<A, B>(f: (x: A) => Option<B>) {
  */
 export function findFirst<A, B extends A>(
   refinement: Refinement<A, B>
-): (as: Array<A>) => Option<B>
-export function findFirst<A>(predicate: Predicate<A>): (as: Array<A>) => Option<A>
-export function findFirst<A>(predicate: Predicate<A>): (as: Array<A>) => Option<A> {
+): (as: Array<A>) => Option.Option<B>
+export function findFirst<A>(
+  predicate: Predicate<A>
+): (as: Array<A>) => Option.Option<A>
+export function findFirst<A>(
+  predicate: Predicate<A>
+): (as: Array<A>) => Option.Option<A> {
   return (as) => findFirst_(as, predicate)
 }
 
@@ -505,16 +513,16 @@ export function findFirst<A>(predicate: Predicate<A>): (as: Array<A>) => Option<
 export function findFirst_<A, B extends A>(
   as: Array<A>,
   refinement: Refinement<A, B>
-): Option<B>
-export function findFirst_<A>(as: Array<A>, predicate: Predicate<A>): Option<A>
-export function findFirst_<A>(as: Array<A>, predicate: Predicate<A>): Option<A> {
+): Option.Option<B>
+export function findFirst_<A>(as: Array<A>, predicate: Predicate<A>): Option.Option<A>
+export function findFirst_<A>(as: Array<A>, predicate: Predicate<A>): Option.Option<A> {
   const len = as.length
   for (let i = 0; i < len; i++) {
     if (predicate(as[i]!)) {
-      return some(as[i]!)
+      return Option.some(as[i]!)
     }
   }
-  return none
+  return Option.none
 }
 
 /**
@@ -533,23 +541,26 @@ export function findFirst_<A>(as: Array<A>, predicate: Predicate<A>): Option<A> 
  * ```
  */
 export function findFirstMap<A, B>(
-  f: (a: A) => Option<B>
-): (as: Array<A>) => Option<B> {
+  f: (a: A) => Option.Option<B>
+): (as: Array<A>) => Option.Option<B> {
   return (as) => findFirstMap_(as, f)
 }
 
 /**
  * Find the first element returned by an option based selector function
  */
-export function findFirstMap_<A, B>(as: Array<A>, f: (a: A) => Option<B>): Option<B> {
+export function findFirstMap_<A, B>(
+  as: Array<A>,
+  f: (a: A) => Option.Option<B>
+): Option.Option<B> {
   const len = as.length
   for (let i = 0; i < len; i++) {
     const v = f(as[i]!)
-    if (isSome(v)) {
+    if (Option.isSome(v)) {
       return v
     }
   }
-  return none
+  return Option.none
 }
 
 /**
@@ -562,21 +573,24 @@ export function findFirstMap_<A, B>(as: Array<A>, f: (a: A) => Option<B>): Optio
  */
 export function findIndex<A>(
   predicate: Predicate<A>
-): (as: Array<A>) => Option<number> {
+): (as: Array<A>) => Option.Option<number> {
   return (as) => findIndex_(as, predicate)
 }
 
 /**
  * Find the first index for which a predicate holds
  */
-export function findIndex_<A>(as: Array<A>, predicate: Predicate<A>): Option<number> {
+export function findIndex_<A>(
+  as: Array<A>,
+  predicate: Predicate<A>
+): Option.Option<number> {
   const len = as.length
   for (let i = 0; i < len; i++) {
     if (predicate(as[i]!)) {
-      return some(i)
+      return Option.some(i)
     }
   }
-  return none
+  return Option.none
 }
 
 /**
@@ -588,9 +602,11 @@ export function findIndex_<A>(as: Array<A>, predicate: Predicate<A>): Option<num
  */
 export function findLast<A, B extends A>(
   refinement: Refinement<A, B>
-): (as: Array<A>) => Option<B>
-export function findLast<A>(predicate: Predicate<A>): (as: Array<A>) => Option<A>
-export function findLast<A>(predicate: Predicate<A>): (as: Array<A>) => Option<A> {
+): (as: Array<A>) => Option.Option<B>
+export function findLast<A>(predicate: Predicate<A>): (as: Array<A>) => Option.Option<A>
+export function findLast<A>(
+  predicate: Predicate<A>
+): (as: Array<A>) => Option.Option<A> {
   return (as) => findLast_(as, predicate)
 }
 
@@ -600,16 +616,16 @@ export function findLast<A>(predicate: Predicate<A>): (as: Array<A>) => Option<A
 export function findLast_<A, B extends A>(
   as: Array<A>,
   refinement: Refinement<A, B>
-): Option<B>
-export function findLast_<A>(as: Array<A>, predicate: Predicate<A>): Option<A>
-export function findLast_<A>(as: Array<A>, predicate: Predicate<A>): Option<A> {
+): Option.Option<B>
+export function findLast_<A>(as: Array<A>, predicate: Predicate<A>): Option.Option<A>
+export function findLast_<A>(as: Array<A>, predicate: Predicate<A>): Option.Option<A> {
   const len = as.length
   for (let i = len - 1; i >= 0; i--) {
     if (predicate(as[i]!)) {
-      return some(as[i]!)
+      return Option.some(as[i]!)
     }
   }
-  return none
+  return Option.none
 }
 
 /**
@@ -627,7 +643,7 @@ export function findLast_<A>(as: Array<A>, predicate: Predicate<A>): Option<A> {
  */
 export function findLastIndex<A>(
   predicate: Predicate<A>
-): (as: Array<A>) => Option<number> {
+): (as: Array<A>) => Option.Option<number> {
   return (as) => findLastIndex_(as, predicate)
 }
 
@@ -637,14 +653,14 @@ export function findLastIndex<A>(
 export function findLastIndex_<A>(
   as: Array<A>,
   predicate: Predicate<A>
-): Option<number> {
+): Option.Option<number> {
   const len = as.length
   for (let i = len - 1; i >= 0; i--) {
     if (predicate(as[i]!)) {
-      return some(i)
+      return Option.some(i)
     }
   }
-  return none
+  return Option.none
 }
 
 /**
@@ -662,22 +678,27 @@ export function findLastIndex_<A>(
  * assert.deepStrictEqual(findLastMap((p: Person) => (p.age === undefined ? none : some(p.name)))(persons), some('Joey'))
  * ```
  */
-export function findLastMap<A, B>(f: (a: A) => Option<B>): (as: Array<A>) => Option<B> {
+export function findLastMap<A, B>(
+  f: (a: A) => Option.Option<B>
+): (as: Array<A>) => Option.Option<B> {
   return (as) => findLastMap_(as, f)
 }
 
 /**
  * Find the last element returned by an option based selector function
  */
-export function findLastMap_<A, B>(as: Array<A>, f: (a: A) => Option<B>): Option<B> {
+export function findLastMap_<A, B>(
+  as: Array<A>,
+  f: (a: A) => Option.Option<B>
+): Option.Option<B> {
   const len = as.length
   for (let i = len - 1; i >= 0; i--) {
     const v = f(as[i]!)
-    if (isSome(v)) {
+    if (Option.isSome(v)) {
       return v
     }
   }
-  return none
+  return Option.none
 }
 
 /**
@@ -761,8 +782,8 @@ export function fromMutable<A>(as: MutableArray<A>): Array<A> {
  * assert.deepStrictEqual(head([]), none)
  * ```
  */
-export function head<A>(as: Array<A>): Option<A> {
-  return isEmpty(as) ? none : some(as[0]!)
+export function head<A>(as: Array<A>): Option.Option<A> {
+  return isEmpty(as) ? Option.none : Option.some(as[0]!)
 }
 
 /**
@@ -773,9 +794,9 @@ export function head<A>(as: Array<A>): Option<A> {
  * assert.deepStrictEqual(init([]), none)
  * ```
  */
-export function init<A>(as: Array<A>): Option<Array<A>> {
+export function init<A>(as: Array<A>): Option.Option<Array<A>> {
   const len = as.length
-  return len === 0 ? none : some(as.slice(0, len - 1))
+  return len === 0 ? Option.none : Option.some(as.slice(0, len - 1))
 }
 
 /**
@@ -785,15 +806,18 @@ export function init<A>(as: Array<A>): Option<Array<A>> {
  * assert.deepStrictEqual(insertAt(2, 5)([1, 2, 3, 4]), some([1, 2, 5, 3, 4]))
  * ```
  */
-export function insertAt<A>(i: number, a: A): (as: Array<A>) => Option<Array<A>> {
+export function insertAt<A>(
+  i: number,
+  a: A
+): (as: Array<A>) => Option.Option<Array<A>> {
   return (as) => insertAt_(as, i, a)
 }
 
 /**
  * Insert an element at the specified index, creating a new array, or returning `None` if the index is out of bounds
  */
-export function insertAt_<A>(as: Array<A>, i: number, a: A): Option<Array<A>> {
-  return i < 0 || i > as.length ? none : some(unsafeInsertAt_(as, i, a))
+export function insertAt_<A>(as: Array<A>, i: number, a: A): Option.Option<Array<A>> {
+  return i < 0 || i > as.length ? Option.none : Option.some(unsafeInsertAt_(as, i, a))
 }
 
 /**
@@ -829,7 +853,7 @@ export function isOutOfBound<A>(i: number, as: Array<A>): boolean {
  * assert.deepStrictEqual(last([]), none)
  * ```
  */
-export function last<A>(as: Array<A>): Option<A> {
+export function last<A>(as: Array<A>): Option.Option<A> {
   return lookup_(as, as.length - 1)
 }
 
@@ -860,14 +884,14 @@ export function lefts<E, A>(as: Array<Either<E, A>>): Array<E> {
  * assert.deepStrictEqual(lookup(3, [1, 2, 3]), none)
  * ```
  */
-export function lookup_<A>(as: Array<A>, i: number): Option<A> {
-  return isOutOfBound(i, as) ? none : some(as[i]!)
+export function lookup_<A>(as: Array<A>, i: number): Option.Option<A> {
+  return isOutOfBound(i, as) ? Option.none : Option.some(as[i]!)
 }
 
 /**
  * This function provides a safe way to read a value at a particular index from an array
  */
-export function lookup(i: number): <A>(as: Array<A>) => Option<A> {
+export function lookup(i: number): <A>(as: Array<A>) => Option.Option<A> {
   return (as) => lookup_(as, i)
 }
 
@@ -935,8 +959,9 @@ export function mapWithIndex_<A, B>(fa: Array<A>, f: (i: number, a: A) => B): Ar
 export function modifyAt<A>(
   i: number,
   f: (a: A) => A
-): (as: Array<A>) => Option<Array<A>> {
-  return (as) => (isOutOfBound(i, as) ? none : some(unsafeUpdateAt_(as, i, f(as[i]!))))
+): (as: Array<A>) => Option.Option<Array<A>> {
+  return (as) =>
+    isOutOfBound(i, as) ? Option.none : Option.some(unsafeUpdateAt_(as, i, f(as[i]!)))
 }
 
 /**
@@ -947,8 +972,10 @@ export function modifyAt_<A>(
   as: Array<A>,
   i: number,
   f: (a: A) => A
-): Option<Array<A>> {
-  return isOutOfBound(i, as) ? none : some(unsafeUpdateAt_(as, i, f(as[i]!)))
+): Option.Option<Array<A>> {
+  return isOutOfBound(i, as)
+    ? Option.none
+    : Option.some(unsafeUpdateAt_(as, i, f(as[i]!)))
 }
 
 /**
@@ -1278,8 +1305,8 @@ export function splitAt_<A>(as: Array<A>, n: number): readonly [Array<A>, Array<
  * assert.deepStrictEqual(tail([]), none)
  * ```
  */
-export function tail<A>(as: Array<A>): Option<Array<A>> {
-  return isEmpty(as) ? none : some(as.slice(1))
+export function tail<A>(as: Array<A>): Option.Option<Array<A>> {
+  return isEmpty(as) ? Option.none : Option.some(as.slice(1))
 }
 
 /**
@@ -1401,13 +1428,16 @@ export function toMutable<A>(ras: Array<A>): MutableArray<A> {
 /**
  * Construct A by unfolding B signaling end with an option
  */
-export function unfold_<A, B>(b: B, f: (b: B) => Option<readonly [A, B]>): Array<A> {
+export function unfold_<A, B>(
+  b: B,
+  f: (b: B) => Option.Option<readonly [A, B]>
+): Array<A> {
   const ret: MutableArray<A> = []
   let bb: B = b
   // eslint-disable-next-line no-constant-condition
   while (true) {
     const mt = f(bb)
-    if (isSome(mt)) {
+    if (Option.isSome(mt)) {
       const [a, b] = mt.value
       ret.push(a)
       bb = b
@@ -1421,7 +1451,7 @@ export function unfold_<A, B>(b: B, f: (b: B) => Option<readonly [A, B]>): Array
 /**
  * Construct A by unfolding B signaling end with an option
  */
-export function unfold<A, B>(f: (b: B) => Option<readonly [A, B]>) {
+export function unfold<A, B>(f: (b: B) => Option.Option<readonly [A, B]>) {
   return (b: B) => unfold_(b, f)
 }
 
@@ -1502,15 +1532,18 @@ export function unzip<A, B>(as: Array<readonly [A, B]>): readonly [Array<A>, Arr
  * assert.deepStrictEqual(updateAt(1, 1)([]), none)
  * ```
  */
-export function updateAt<A>(i: number, a: A): (as: Array<A>) => Option<Array<A>> {
+export function updateAt<A>(
+  i: number,
+  a: A
+): (as: Array<A>) => Option.Option<Array<A>> {
   return (as) => updateAt_(as, i, a)
 }
 
 /**
  * Change the element at the specified index, creating a new array, or returning `None` if the index is out of bounds
  */
-export function updateAt_<A>(as: Array<A>, i: number, a: A): Option<Array<A>> {
-  return isOutOfBound(i, as) ? none : some(unsafeUpdateAt_(as, i, a))
+export function updateAt_<A>(as: Array<A>, i: number, a: A): Option.Option<Array<A>> {
+  return isOutOfBound(i, as) ? Option.none : Option.some(unsafeUpdateAt_(as, i, a))
 }
 
 /**
@@ -1626,4 +1659,50 @@ export function join_(as: Array<string>, s: string): string {
  */
 export function join(s: string): (as: Array<string>) => string {
   return (as) => as.join(s)
+}
+
+/**
+ * Check if a predicate holds true for every array member.
+ */
+export function every<A>(predicate: Predicate<A>) {
+  return (as: Array<A>): boolean => as.every(predicate)
+}
+
+/**
+ * Check if a predicate holds true for any array member.
+ */
+export function some<A>(predicate: Predicate<A>) {
+  return (as: Array<A>): boolean => as.some(predicate)
+}
+
+/**
+ * Splits an array into sub-non-empty-arrays stored in an object, based on the result of calling a `string`-returning
+ * function on each element, and grouping the results according to values returned
+ */
+export function groupBy<A, K extends string>(
+  f: (a: A) => K
+): (as: Array<A>) => R.Record<K, NonEmptyArray<A>> {
+  return (as) => groupBy_(as, f)
+}
+
+/**
+ * Splits an array into sub-non-empty-arrays stored in an object, based on the result of calling a `string`-returning
+ * function on each element, and grouping the results according to values returned
+ */
+export function groupBy_<A, K extends string>(
+  as: Array<A>,
+  f: (a: A) => K
+): R.Record<K, NonEmptyArray<A>> {
+  const r: Record<string, MutableArray<A> & { 0: A }> = {}
+  for (const a of as) {
+    const k = f(a)
+    // eslint-disable-next-line no-prototype-builtins
+    if (r.hasOwnProperty(k)) {
+      r[k]!.push(a)
+    } else {
+      r[k] = [a]
+    }
+  }
+  // @ts-expect-error
+  return r
 }

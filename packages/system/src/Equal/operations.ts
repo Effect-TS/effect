@@ -146,3 +146,10 @@ export function struct<O extends Record<string, any>>(
     return true
   })
 }
+
+/**
+ * Compare to a specified value
+ */
+export function equalsTo<A>(E: Equal<A>) {
+  return (y: A) => (x: A) => E.equals(x, y)
+}
