@@ -8,6 +8,7 @@ import type { Bounded } from "../Bounded"
 import type { Closure } from "../Closure"
 import type { Commutative } from "../Commutative"
 import type { Const } from "../Const"
+import type { Dictionary } from "../Dictionary"
 import type { Layer } from "../Effect/Layer"
 import type { Either } from "../Either"
 import type { Equal } from "../Equal"
@@ -22,7 +23,6 @@ import type { NonEmptyArray } from "../NonEmptyArray"
 import type { Option } from "../Option"
 import type { Ord } from "../Ord"
 import type { Reader } from "../Reader"
-import type { Record } from "../Record"
 import type { Tree } from "../RoseTree"
 import type { Show } from "../Show"
 import type { StateIn, StateOut } from "../StateT/Classic"
@@ -67,8 +67,8 @@ export type IterableURI = typeof IterableURI
 export const OrdURI = "Ord"
 export type OrdURI = typeof OrdURI
 
-export const RecordURI = "Record"
-export type RecordURI = typeof RecordURI
+export const DictionaryURI = "Dictionary"
+export type DictionaryURI = typeof DictionaryURI
 
 export const ShowURI = "Show"
 export type ShowURI = typeof ShowURI
@@ -154,7 +154,7 @@ declare module "../Prelude/HKT" {
     [InverseURI]: Inverse<A>
     [IterableURI]: Iterable<A>
     [OrdURI]: Ord<A>
-    [RecordURI]: Record<N, A>
+    [DictionaryURI]: Dictionary<A>
     [ShowURI]: Show<A>
     [EffectURI]: Effect<R, E, A>
     [EffectCategoryURI]: Effect<I, E, A>
@@ -184,6 +184,6 @@ declare module "../Prelude/HKT" {
     [ListURI]: number
     [ArrayURI]: number
     [NonEmptyArrayURI]: number
-    [RecordURI]: N
+    [DictionaryURI]: string
   }
 }

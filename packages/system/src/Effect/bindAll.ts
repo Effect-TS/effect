@@ -1,4 +1,4 @@
-import * as R from "../Record"
+import * as R from "../Dictionary"
 import type { _E, _R, EnforceNonEmptyRecord } from "../Utils"
 import { chain_ } from "./core"
 import type { Effect } from "./effect"
