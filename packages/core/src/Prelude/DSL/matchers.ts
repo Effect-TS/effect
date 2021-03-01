@@ -16,7 +16,7 @@ export function matchers<URI extends URIS, C>(_: Base<URI, C>) {
               [tag in N]: k
             }
           >
-        ) => Kind<URI, C, any, any, any, any, any, any, any, any, any, any>
+        ) => Kind<URI, C, any, any, any, any, any, any, any, any, any>
       }
     >(
       matcher: K
@@ -25,14 +25,6 @@ export function matchers<URI extends URIS, C>(_: Base<URI, C>) {
     ) => Kind<
       URI,
       C,
-      Infer<
-        URI,
-        C,
-        "N",
-        {
-          [k in keyof K]: ReturnType<K[k]>
-        }[keyof K]
-      >,
       Infer<
         URI,
         C,
@@ -119,10 +111,10 @@ export function matchers<URI extends URIS, C>(_: Base<URI, C>) {
                 [tag in N]: k
               }
             >
-          ) => Kind<URI, C, any, any, any, any, any, any, any, any, any, any>
+          ) => Kind<URI, C, any, any, any, any, any, any, any, any, any>
         }
       >,
-      Ret extends Kind<URI, C, any, any, any, any, any, any, any, any, any, any>
+      Ret extends Kind<URI, C, any, any, any, any, any, any, any, any, any>
     >(
       matcher: K,
       def: (_: Exclude<X, { [tag in N]: keyof K }>) => Ret
@@ -131,17 +123,6 @@ export function matchers<URI extends URIS, C>(_: Base<URI, C>) {
     ) => Kind<
       URI,
       C,
-      Infer<
-        URI,
-        C,
-        "N",
-        | {
-            [k in keyof K]: K[k] extends (...args: any) => any
-              ? ReturnType<K[k]>
-              : never
-          }[keyof K]
-        | Ret
-      >,
       Infer<
         URI,
         C,
@@ -267,7 +248,7 @@ export function matchers<URI extends URIS, C>(_: Base<URI, C>) {
               [tag in N]: k
             }
           >
-        ) => Kind<URI, C, any, any, any, any, any, any, any, any, any, any>
+        ) => Kind<URI, C, any, any, any, any, any, any, any, any, any>
       }
     >(
       matcher: K
@@ -276,14 +257,6 @@ export function matchers<URI extends URIS, C>(_: Base<URI, C>) {
     ) => Kind<
       URI,
       C,
-      Infer<
-        URI,
-        C,
-        "N",
-        {
-          [k in keyof K]: ReturnType<K[k]>
-        }[keyof K]
-      >,
       Infer<
         URI,
         C,
@@ -367,10 +340,10 @@ export function matchers<URI extends URIS, C>(_: Base<URI, C>) {
                 [tag in N]: k
               }
             >
-          ) => Kind<URI, C, any, any, any, any, any, any, any, any, any, any>
+          ) => Kind<URI, C, any, any, any, any, any, any, any, any, any>
         }
       >,
-      Ret extends Kind<URI, C, any, any, any, any, any, any, any, any, any, any>
+      Ret extends Kind<URI, C, any, any, any, any, any, any, any, any, any>
     >(
       matcher: K,
       def: (_: Exclude<X, { [tag in N]: keyof K }>) => Ret
@@ -379,17 +352,6 @@ export function matchers<URI extends URIS, C>(_: Base<URI, C>) {
     ) => Kind<
       URI,
       C,
-      Infer<
-        URI,
-        C,
-        "N",
-        | {
-            [k in keyof K]: K[k] extends (...args: any) => any
-              ? ReturnType<K[k]>
-              : never
-          }[keyof K]
-        | Ret
-      >,
       Infer<
         URI,
         C,
@@ -517,7 +479,7 @@ export function matchers<URI extends URIS, C>(_: Base<URI, C>) {
               [tag in N]: k
             }
           >
-        ) => Kind<URI, C, any, any, any, any, any, any, any, any, any, any>
+        ) => Kind<URI, C, any, any, any, any, any, any, any, any, any>
       }
     >(
       matcher: K
@@ -526,14 +488,6 @@ export function matchers<URI extends URIS, C>(_: Base<URI, C>) {
     ) => Kind<
       URI,
       C,
-      Infer<
-        URI,
-        C,
-        "N",
-        {
-          [k in keyof K]: ReturnType<K[k]>
-        }[keyof K]
-      >,
       Infer<
         URI,
         C,
@@ -620,10 +574,10 @@ export function matchers<URI extends URIS, C>(_: Base<URI, C>) {
                 [tag in N]: k
               }
             >
-          ) => Kind<URI, C, any, any, any, any, any, any, any, any, any, any>
+          ) => Kind<URI, C, any, any, any, any, any, any, any, any, any>
         }
       >,
-      Ret extends Kind<URI, C, any, any, any, any, any, any, any, any, any, any>
+      Ret extends Kind<URI, C, any, any, any, any, any, any, any, any, any>
     >(
       matcher: K,
       def: (_: Exclude<X, { [tag in N]: keyof K }>) => Ret
@@ -632,17 +586,6 @@ export function matchers<URI extends URIS, C>(_: Base<URI, C>) {
     ) => Kind<
       URI,
       C,
-      Infer<
-        URI,
-        C,
-        "N",
-        | {
-            [k in keyof K]: K[k] extends (...args: any) => any
-              ? ReturnType<K[k]>
-              : never
-          }[keyof K]
-        | Ret
-      >,
       Infer<
         URI,
         C,

@@ -10,13 +10,12 @@ import type { Monad } from "../Monad"
 
 export interface Select<F extends HKT.URIS, C = HKT.Auto> extends HKT.Base<F, C> {
   readonly _Select: "Select"
-  readonly select: <N2 extends string, K2, Q2, W2, X2, I2, S2, R2, E2, A, B>(
-    fab: HKT.Kind<F, C, N2, K2, Q2, W2, X2, I2, S2, R2, E2, (a: A) => B>
-  ) => <N extends string, K, Q, W, X, I, S, R, E, B2>(
+  readonly select: <K2, Q2, W2, X2, I2, S2, R2, E2, A, B>(
+    fab: HKT.Kind<F, C, K2, Q2, W2, X2, I2, S2, R2, E2, (a: A) => B>
+  ) => <K, Q, W, X, I, S, R, E, B2>(
     fa: HKT.Kind<
       F,
       C,
-      HKT.Intro<C, "N", N2, N>,
       HKT.Intro<C, "K", K2, K>,
       HKT.Intro<C, "Q", Q2, Q>,
       HKT.Intro<C, "W", W2, W>,
@@ -30,7 +29,6 @@ export interface Select<F extends HKT.URIS, C = HKT.Auto> extends HKT.Base<F, C>
   ) => HKT.Kind<
     F,
     C,
-    HKT.Mix<C, "N", [N2, N]>,
     HKT.Mix<C, "K", [K2, K]>,
     HKT.Mix<C, "Q", [Q2, Q]>,
     HKT.Mix<C, "W", [W2, W]>,
@@ -96,38 +94,14 @@ export function applicative<F>(
 
 export function branchF<F extends HKT.URIS, C = HKT.Auto>(
   F: Selective<F, C>
-): <
-  N2 extends string,
-  K2,
-  Q2,
-  W2,
-  X2,
-  I2,
-  S2,
-  R2,
-  E2,
-  A,
-  D1,
-  N3 extends string,
-  K3,
-  Q3,
-  W3,
-  X3,
-  I3,
-  S3,
-  R3,
-  E3,
-  B,
-  D2
->(
-  lhs: HKT.Kind<F, C, N2, K2, Q2, W2, X2, I2, S2, R2, E2, (a: A) => D1>,
-  rhs: HKT.Kind<F, C, N3, K3, Q3, W3, X3, I3, S3, R3, E3, (a: B) => D2>
-) => <N extends string, K, Q, W, X, I, S, R, E>(
-  fe: HKT.Kind<F, C, N, K, Q, W, X, I, S, R, E, E.Either<A, B>>
+): <K2, Q2, W2, X2, I2, S2, R2, E2, A, D1, K3, Q3, W3, X3, I3, S3, R3, E3, B, D2>(
+  lhs: HKT.Kind<F, C, K2, Q2, W2, X2, I2, S2, R2, E2, (a: A) => D1>,
+  rhs: HKT.Kind<F, C, K3, Q3, W3, X3, I3, S3, R3, E3, (a: B) => D2>
+) => <K, Q, W, X, I, S, R, E>(
+  fe: HKT.Kind<F, C, K, Q, W, X, I, S, R, E, E.Either<A, B>>
 ) => HKT.Kind<
   F,
   C,
-  HKT.Mix<C, "N", [N, N2, N3]>,
   HKT.Mix<C, "K", [K, K2, K3]>,
   HKT.Mix<C, "Q", [Q, Q2, Q3]>,
   HKT.Mix<C, "W", [W, W2, W3]>,
@@ -158,36 +132,14 @@ export function branchF<F>(F: Selective<HKT.UHKT<F>>) {
 
 export function ifF<F extends HKT.URIS, C = HKT.Auto>(
   F: Selective<F, C>
-): <
-  N2 extends string,
-  K2,
-  Q2,
-  W2,
-  X2,
-  I2,
-  S2,
-  R2,
-  E2,
-  A,
-  N3 extends string,
-  K3,
-  Q3,
-  W3,
-  X3,
-  I3,
-  S3,
-  R3,
-  E3,
-  B
->(
-  then_: HKT.Kind<F, C, N2, K2, Q2, W2, X2, I2, S2, R2, E2, A>,
-  else_: HKT.Kind<F, C, N3, K3, Q3, W3, X3, I3, S3, R3, E3, B>
-) => <N extends string, K, Q, W, X, I, S, R, E>(
-  if_: HKT.Kind<F, C, N, K, Q, W, X, I, S, R, E, boolean>
+): <K2, Q2, W2, X2, I2, S2, R2, E2, A, K3, Q3, W3, X3, I3, S3, R3, E3, B>(
+  then_: HKT.Kind<F, C, K2, Q2, W2, X2, I2, S2, R2, E2, A>,
+  else_: HKT.Kind<F, C, K3, Q3, W3, X3, I3, S3, R3, E3, B>
+) => <K, Q, W, X, I, S, R, E>(
+  if_: HKT.Kind<F, C, K, Q, W, X, I, S, R, E, boolean>
 ) => HKT.Kind<
   F,
   C,
-  HKT.Mix<C, "N", [N, N2, N3]>,
   HKT.Mix<C, "K", [K, K2, K3]>,
   HKT.Mix<C, "Q", [Q, Q2, Q3]>,
   HKT.Mix<C, "W", [W, W2, W3]>,
@@ -212,14 +164,13 @@ export function ifF<F>(F: Selective<HKT.UHKT<F>>) {
 
 export function whenF<F extends HKT.URIS, C = HKT.Auto>(
   F: Selective<F, C>
-): <N2 extends string, K2, Q2, W2, X2, I2, S2, R2, E2>(
-  act: HKT.Kind<F, C, N2, K2, Q2, W2, X2, I2, S2, R2, E2, void>
-) => <N extends string, K, Q, W, X, I, S, R, E>(
-  if_: HKT.Kind<F, C, N, K, Q, W, X, I, S, R, E, boolean>
+): <K2, Q2, W2, X2, I2, S2, R2, E2>(
+  act: HKT.Kind<F, C, K2, Q2, W2, X2, I2, S2, R2, E2, void>
+) => <K, Q, W, X, I, S, R, E>(
+  if_: HKT.Kind<F, C, K, Q, W, X, I, S, R, E, boolean>
 ) => HKT.Kind<
   F,
   C,
-  HKT.Mix<C, "N", [N, N2]>,
   HKT.Mix<C, "K", [K, K2]>,
   HKT.Mix<C, "Q", [Q, Q2]>,
   HKT.Mix<C, "W", [W, W2]>,

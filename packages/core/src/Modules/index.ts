@@ -143,7 +143,7 @@ export const ListURI = "List"
 export type ListURI = typeof ListURI
 
 declare module "../Prelude/HKT" {
-  interface URItoKind<FC, TC, N extends string, K, Q, W, X, I, S, R, E, A> {
+  interface URItoKind<FC, TC, K, Q, W, X, I, S, R, E, A> {
     [ArrayURI]: Array<A>
     [BoundedURI]: Bounded<A>
     [ClosureURI]: Closure<A>
@@ -180,7 +180,7 @@ declare module "../Prelude/HKT" {
     [StateOutURI]: StateOut<S, A>
     [IxURI]: TC extends IxC<infer _I, infer _O> ? Ix<_I, _O, A> : any
   }
-  interface URItoIndex<N extends string, K> {
+  interface URItoIndex<K> {
     [ListURI]: number
     [ArrayURI]: number
     [NonEmptyArrayURI]: number

@@ -5,7 +5,6 @@ export type Infer<F extends URIS, C, P extends Param | "A" | "C", K> = [K] exten
   Kind<
     F,
     C,
-    infer N,
     infer K,
     infer Q,
     infer W,
@@ -19,8 +18,6 @@ export type Infer<F extends URIS, C, P extends Param | "A" | "C", K> = [K] exten
 ]
   ? P extends "C"
     ? C
-    : P extends "N"
-    ? N
     : P extends "K"
     ? K
     : P extends "Q"

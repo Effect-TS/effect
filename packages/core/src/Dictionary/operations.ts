@@ -117,8 +117,8 @@ export const compactF = P.implementCompactF<[URI<DictionaryURI>]>()(() => (G) =>
 export function fromFoldableMap_<F extends HKT.URIS, C, B>(
   M: Closure<B>,
   F: Foldable<F, C>
-): <N extends string, K, Q, W, X, I, S, R, E, A>(
-  fa: HKT.Kind<F, C, N, K, Q, W, X, I, S, R, E, A>,
+): <K, Q, W, X, I, S, R, E, A>(
+  fa: HKT.Kind<F, C, K, Q, W, X, I, S, R, E, A>,
   f: (a: A) => readonly [string, B]
 ) => R.Dictionary<B>
 export function fromFoldableMap_<F, B>(
@@ -142,8 +142,8 @@ export function fromFoldableMap<F extends HKT.URIS, C, B>(
   F: Foldable<F, C>
 ): <A>(
   f: (a: A) => readonly [string, B]
-) => <N extends string, K, Q, W, X, I, S, R, E>(
-  fa: HKT.Kind<F, C, N, K, Q, W, X, I, S, R, E, A>
+) => <K, Q, W, X, I, S, R, E>(
+  fa: HKT.Kind<F, C, K, Q, W, X, I, S, R, E, A>
 ) => R.Dictionary<B>
 export function fromFoldableMap<F, B>(
   M: Closure<B>,
@@ -159,8 +159,8 @@ export function fromFoldableMap<F, B>(
 export function fromFoldable<F extends HKT.URIS, C, A>(
   M: Closure<A>,
   F: Foldable<F>
-): <N extends string, K, Q, W, X, I, S, R, E>(
-  fa: HKT.Kind<F, C, N, K, Q, W, X, I, S, R, E, readonly [string, A]>
+): <K, Q, W, X, I, S, R, E>(
+  fa: HKT.Kind<F, C, K, Q, W, X, I, S, R, E, readonly [string, A]>
 ) => R.Dictionary<A>
 export function fromFoldable<F, A>(
   M: Closure<A>,

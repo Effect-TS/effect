@@ -2,8 +2,8 @@ import type { Base, Infer, Kind, URIS } from "../HKT"
 
 export function conditionalF<URI extends URIS, C>(_: Base<URI, C>) {
   return <
-    X extends Kind<URI, C, any, any, any, any, any, any, any, any, any, any>,
-    Y extends Kind<URI, C, any, any, any, any, any, any, any, any, any, any>
+    X extends Kind<URI, C, any, any, any, any, any, any, any, any, any>,
+    Y extends Kind<URI, C, any, any, any, any, any, any, any, any, any>
   >(
     onTrue: () => X,
     onFalse: () => Y
@@ -12,7 +12,6 @@ export function conditionalF<URI extends URIS, C>(_: Base<URI, C>) {
   ) => Kind<
     URI,
     C,
-    Infer<URI, C, "N", X | Y>,
     Infer<URI, C, "K", X | Y>,
     Infer<URI, C, "Q", X | Y>,
     Infer<URI, C, "W", X | Y>,
@@ -27,8 +26,8 @@ export function conditionalF<URI extends URIS, C>(_: Base<URI, C>) {
 
 export function conditionalF_<URI extends URIS, C>(_: Base<URI, C>) {
   return <
-    X extends Kind<URI, C, any, any, any, any, any, any, any, any, any, any>,
-    Y extends Kind<URI, C, any, any, any, any, any, any, any, any, any, any>
+    X extends Kind<URI, C, any, any, any, any, any, any, any, any, any>,
+    Y extends Kind<URI, C, any, any, any, any, any, any, any, any, any>
   >(
     predicate: boolean,
     onTrue: () => X,
@@ -36,7 +35,6 @@ export function conditionalF_<URI extends URIS, C>(_: Base<URI, C>) {
   ): Kind<
     URI,
     C,
-    Infer<URI, C, "N", X | Y>,
     Infer<URI, C, "K", X | Y>,
     Infer<URI, C, "Q", X | Y>,
     Infer<URI, C, "W", X | Y>,

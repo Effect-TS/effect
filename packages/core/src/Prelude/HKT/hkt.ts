@@ -39,8 +39,6 @@ export interface URItoKind<
   FC,
   // encodes constraints on parameters and variance at the typeclass level
   TC,
-  // encodes nominal keys
-  N extends string,
   // encodes generic keys
   K,
   // encodes free logic
@@ -67,10 +65,9 @@ export interface URItoKind<
   ["HKT4"]: HKT4<AccessCustom<FC, "F">, S, R, E, A>
 }
 
-export interface URItoIndex<N extends string, K> {}
+export interface URItoIndex<K> {}
 
 export type ConcreteURIS = keyof URItoKind<
-  any,
   any,
   any,
   any,

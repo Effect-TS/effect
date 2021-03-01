@@ -5,13 +5,12 @@ import type * as HKT from "../HKT"
 export interface AssociativeEither<F extends HKT.URIS, C = HKT.Auto>
   extends HKT.Base<F, C> {
   readonly _AssociativeEither: "AssociativeEither"
-  readonly orElseEither: <N2 extends string, K2, Q2, W2, X2, I2, S2, R2, E2, B>(
-    fb: () => HKT.Kind<F, C, N2, K2, Q2, W2, X2, I2, S2, R2, E2, B>
-  ) => <N extends string, K, Q, W, X, I, S, R, E, A>(
+  readonly orElseEither: <K2, Q2, W2, X2, I2, S2, R2, E2, B>(
+    fb: () => HKT.Kind<F, C, K2, Q2, W2, X2, I2, S2, R2, E2, B>
+  ) => <K, Q, W, X, I, S, R, E, A>(
     fa: HKT.Kind<
       F,
       C,
-      HKT.Intro<C, "N", N2, N>,
       HKT.Intro<C, "K", K2, K>,
       HKT.Intro<C, "Q", Q2, Q>,
       HKT.Intro<C, "W", W2, W>,
@@ -25,7 +24,6 @@ export interface AssociativeEither<F extends HKT.URIS, C = HKT.Auto>
   ) => HKT.Kind<
     F,
     C,
-    HKT.Mix<C, "N", [N2, N]>,
     HKT.Mix<C, "K", [K2, K]>,
     HKT.Mix<C, "Q", [Q2, Q]>,
     HKT.Mix<C, "W", [W2, W]>,

@@ -11,13 +11,12 @@ import type { Monad } from "../Monad"
 
 export function apF<F extends HKT.URIS, C>(
   F: Apply<F, C>
-): <N extends string, K, Q, W, X, I, S, R, E, A>(
-  fa: HKT.Kind<F, C, N, K, Q, W, X, I, S, R, E, A>
-) => <N2 extends string, K2, Q2, W2, X2, I2, S2, R2, E2, B>(
+): <K, Q, W, X, I, S, R, E, A>(
+  fa: HKT.Kind<F, C, K, Q, W, X, I, S, R, E, A>
+) => <K2, Q2, W2, X2, I2, S2, R2, E2, B>(
   fab: HKT.Kind<
     F,
     C,
-    HKT.Intro<C, "N", N, N2>,
     HKT.Intro<C, "K", K, K2>,
     HKT.Intro<C, "Q", Q, Q2>,
     HKT.Intro<C, "W", W, W2>,
@@ -31,7 +30,6 @@ export function apF<F extends HKT.URIS, C>(
 ) => HKT.Kind<
   F,
   C,
-  HKT.Mix<C, "N", [N, N2]>,
   HKT.Mix<C, "K", [K, K2]>,
   HKT.Mix<C, "Q", [Q, Q2]>,
   HKT.Mix<C, "W", [W, W2]>,
@@ -56,7 +54,6 @@ export function succeedF<F extends HKT.URIS, C = HKT.Auto>(
   F: Any<F, C> & Covariant<F, C>
 ): <
   A,
-  N extends string = HKT.Initial<C, "N">,
   K = HKT.Initial<C, "K">,
   Q = HKT.Initial<C, "Q">,
   W = HKT.Initial<C, "W">,
@@ -67,7 +64,7 @@ export function succeedF<F extends HKT.URIS, C = HKT.Auto>(
   E = HKT.Initial<C, "E">
 >(
   a: A
-) => HKT.Kind<F, C, N, K, Q, W, X, I, S, R, E, A>
+) => HKT.Kind<F, C, K, Q, W, X, I, S, R, E, A>
 export function succeedF<F>(
   F: Any<HKT.UHKT<F>> & Covariant<HKT.UHKT<F>>
 ): <A>(a: A) => HKT.HKT<F, A> {
@@ -77,12 +74,11 @@ export function succeedF<F>(
 export function chainF<F extends HKT.URIS, C = HKT.Auto>(
   F: Monad<F, C>
 ): <N2 extends string, K2, Q2, W2, X2, I2, S2, R2, E2, A, B>(
-  f: (a: A) => HKT.Kind<F, C, N2, K2, Q2, W2, X2, I2, S2, R2, E2, B>
+  f: (a: A) => HKT.Kind<F, C, K2, Q2, W2, X2, I2, S2, R2, E2, B>
 ) => <N extends string, K, Q, W, X, I, S, R, E>(
   fa: HKT.Kind<
     F,
     C,
-    HKT.Intro<C, "N", N2, N>,
     HKT.Intro<C, "K", K2, K>,
     HKT.Intro<C, "Q", Q2, Q>,
     HKT.Intro<C, "W", W2, W>,
@@ -96,7 +92,6 @@ export function chainF<F extends HKT.URIS, C = HKT.Auto>(
 ) => HKT.Kind<
   F,
   C,
-  HKT.Mix<C, "N", [N2, N]>,
   HKT.Mix<C, "K", [K2, K]>,
   HKT.Mix<C, "Q", [Q2, Q]>,
   HKT.Mix<C, "W", [W2, W]>,
@@ -114,9 +109,9 @@ export function chainF<F>(F: Monad<HKT.UHKT<F>>) {
 
 export function accessMF<F extends HKT.URIS, C = HKT.Auto>(
   F: Access<F, C> & AssociativeFlatten<F, C>
-): <N extends string, K, Q, W, X, I, S, R, R2, E, A>(
-  f: (r: HKT.OrFix<"R", C, R2>) => HKT.Kind<F, C, N, K, Q, W, X, I, S, R, E, A>
-) => HKT.Kind<F, C, N, K, Q, W, X, I, S, R & R2, E, A>
+): <K, Q, W, X, I, S, R, R2, E, A>(
+  f: (r: HKT.OrFix<"R", C, R2>) => HKT.Kind<F, C, K, Q, W, X, I, S, R, E, A>
+) => HKT.Kind<F, C, K, Q, W, X, I, S, R & R2, E, A>
 export function accessMF<F>(
   F: Access<HKT.UHKT3<F>> & AssociativeFlatten<HKT.UHKT3<F>>
 ): <R, E, A>(f: (r: R) => HKT.HKT3<F, R, E, A>) => HKT.HKT3<F, R, E, A> {
@@ -146,7 +141,6 @@ export function structF<F extends HKT.URIS, C = HKT.Auto>(
     HKT.Kind<
       F,
       C,
-      HKT.Intro<C, "N", N, any>,
       HKT.Intro<C, "K", K, any>,
       HKT.Intro<C, "Q", Q, any>,
       HKT.Intro<C, "W", W, any>,
@@ -158,7 +152,6 @@ export function structF<F extends HKT.URIS, C = HKT.Auto>(
       unknown
     >
   >,
-  N extends string = HKT.Initial<C, "N">,
   K = HKT.Initial<C, "K">,
   Q = HKT.Initial<C, "Q">,
   W = HKT.Initial<C, "W">,
@@ -174,7 +167,6 @@ export function structF<F extends HKT.URIS, C = HKT.Auto>(
       HKT.Kind<
         F,
         C,
-        HKT.Intro<C, "N", N, any>,
         HKT.Intro<C, "K", K, any>,
         HKT.Intro<C, "Q", Q, any>,
         HKT.Intro<C, "W", W, any>,
@@ -189,7 +181,6 @@ export function structF<F extends HKT.URIS, C = HKT.Auto>(
 ) => HKT.Kind<
   F,
   C,
-  HKT.Infer<F, C, "N", NER[keyof NER]>,
   HKT.Infer<F, C, "K", NER[keyof NER]>,
   HKT.Infer<F, C, "Q", NER[keyof NER]>,
   HKT.Infer<F, C, "W", NER[keyof NER]>,
@@ -243,7 +234,6 @@ export function tupleF<F extends HKT.URIS, C>(
     HKT.Kind<
       F,
       C,
-      HKT.Intro<C, "N", N, any>,
       HKT.Intro<C, "K", K, any>,
       HKT.Intro<C, "Q", Q, any>,
       HKT.Intro<C, "W", W, any>,
@@ -255,7 +245,6 @@ export function tupleF<F extends HKT.URIS, C>(
       unknown
     >
   >,
-  N extends string = HKT.Initial<C, "N">,
   K = HKT.Initial<C, "K">,
   Q = HKT.Initial<C, "Q">,
   W = HKT.Initial<C, "W">,
@@ -269,7 +258,6 @@ export function tupleF<F extends HKT.URIS, C>(
     readonly 0: HKT.Kind<
       F,
       C,
-      HKT.Intro<C, "N", N, any>,
       HKT.Intro<C, "K", K, any>,
       HKT.Intro<C, "Q", Q, any>,
       HKT.Intro<C, "W", W, any>,
@@ -284,7 +272,6 @@ export function tupleF<F extends HKT.URIS, C>(
 ) => HKT.Kind<
   F,
   C,
-  HKT.Infer<F, C, "N", T[number]>,
   HKT.Infer<F, C, "K", T[number]>,
   HKT.Infer<F, C, "Q", T[number]>,
   HKT.Infer<F, C, "W", T[number]>,
@@ -295,7 +282,7 @@ export function tupleF<F extends HKT.URIS, C>(
   HKT.Infer<F, C, "E", T[number]>,
   {
     [K in keyof T]: [T[K]] extends [
-      HKT.Kind<F, C, any, any, any, any, any, any, any, any, any, infer A>
+      HKT.Kind<F, C, any, any, any, any, any, any, any, any, infer A>
     ]
       ? A
       : never
@@ -318,9 +305,9 @@ export function accessServiceMF<F extends HKT.URIS, C extends HKT.V<"R", "-">>(
   F: Monad<F, C> & Access<F, C>
 ): <Service>(
   H: Tag<Service>
-) => <N extends string, K, Q, W, X, I, S, R, E, A>(
-  f: (_: Service) => HKT.Kind<F, C, N, K, Q, W, X, I, S, R, E, A>
-) => HKT.Kind<F, C, N, K, Q, W, X, I, S, R & Has<Service>, E, A>
+) => <K, Q, W, X, I, S, R, E, A>(
+  f: (_: Service) => HKT.Kind<F, C, K, Q, W, X, I, S, R, E, A>
+) => HKT.Kind<F, C, K, Q, W, X, I, S, R & Has<Service>, E, A>
 export function accessServiceMF<F>(
   F: Monad<HKT.UHKT3<F>, HKT.V<"R", "-">> & Access<HKT.UHKT3<F>, HKT.V<"R", "-">>
 ) {
@@ -336,9 +323,9 @@ export function provideServiceF<F extends HKT.URIS, C extends HKT.V<"R", "-">>(
   H: Tag<Service>
 ) => (
   S: Service
-) => <N extends string, K, Q, W, X, I, S, R, E, A>(
-  fa: HKT.Kind<F, C, N, K, Q, W, X, I, S, R & Has<Service>, E, A>
-) => HKT.Kind<F, C, N, K, Q, W, X, I, S, R, E, A>
+) => <K, Q, W, X, I, S, R, E, A>(
+  fa: HKT.Kind<F, C, K, Q, W, X, I, S, R & Has<Service>, E, A>
+) => HKT.Kind<F, C, K, Q, W, X, I, S, R, E, A>
 export function provideServiceF<F>(
   F: Monad<HKT.UHKT3<F>, HKT.V<"R", "-">> &
     Access<HKT.UHKT3<F>, HKT.V<"R", "-">> &
@@ -356,9 +343,9 @@ export function provideSomeF<F extends HKT.URIS, C = HKT.Auto>(
   F: Monad<F, C> & Access<F, C> & Provide<F, C>
 ): <R, R2>(
   f: (_: HKT.OrFix<"R", C, R2>) => HKT.OrFix<"R", C, R>
-) => <N extends string, K, Q, W, X, I, S, E, A>(
-  fa: HKT.Kind<F, C, N, K, Q, W, X, I, S, R, E, A>
-) => HKT.Kind<F, C, N, K, Q, W, X, I, S, R2, E, A>
+) => <K, Q, W, X, I, S, E, A>(
+  fa: HKT.Kind<F, C, K, Q, W, X, I, S, R, E, A>
+) => HKT.Kind<F, C, K, Q, W, X, I, S, R2, E, A>
 export function provideSomeF<F>(
   F: Monad<HKT.UHKT3<F>> & Access<HKT.UHKT3<F>> & Provide<HKT.UHKT3<F>>
 ) {
@@ -370,7 +357,6 @@ export function provideSomeF<F>(
 export function doF<F extends HKT.URIS, C = HKT.Auto>(
   F: Any<F, C> & Covariant<F, C>
 ): <
-  N extends string = HKT.Initial<C, "N">,
   K = HKT.Initial<C, "K">,
   Q = HKT.Initial<C, "Q">,
   W = HKT.Initial<C, "W">,
@@ -379,7 +365,7 @@ export function doF<F extends HKT.URIS, C = HKT.Auto>(
   S = HKT.Initial<C, "S">,
   R = HKT.Initial<C, "R">,
   E = HKT.Initial<C, "E">
->() => HKT.Kind<F, C, N, K, Q, W, X, I, S, R, E, {}>
+>() => HKT.Kind<F, C, K, Q, W, X, I, S, R, E, {}>
 export function doF<F>(
   F: Any<HKT.UHKT<F>> & Covariant<HKT.UHKT<F>>
 ): () => HKT.HKT<F, {}> {
@@ -388,14 +374,13 @@ export function doF<F>(
 
 export function bindF<F extends HKT.URIS, C = HKT.Auto>(
   F: Monad<F, C>
-): <N2 extends string, K2, Q2, W2, X2, I2, S2, R2, E2, BK, BN extends string, BA>(
+): <K2, Q2, W2, X2, I2, S2, R2, E2, BK, BN extends string, BA>(
   tag: Exclude<BN, keyof BK>,
-  f: (a: BK) => HKT.Kind<F, C, N2, K2, Q2, W2, X2, I2, S2, R2, E2, BA>
-) => <N extends string, K, Q, W, X, I, S, R, E>(
+  f: (a: BK) => HKT.Kind<F, C, K2, Q2, W2, X2, I2, S2, R2, E2, BA>
+) => <K, Q, W, X, I, S, R, E>(
   fa: HKT.Kind<
     F,
     C,
-    HKT.Intro<C, "N", N2, N>,
     HKT.Intro<C, "K", K2, K>,
     HKT.Intro<C, "Q", Q2, Q>,
     HKT.Intro<C, "W", W2, W>,
@@ -409,7 +394,6 @@ export function bindF<F extends HKT.URIS, C = HKT.Auto>(
 ) => HKT.Kind<
   F,
   C,
-  HKT.Mix<C, "N", [N2, N]>,
   HKT.Mix<C, "K", [K2, K]>,
   HKT.Mix<C, "Q", [Q2, Q]>,
   HKT.Mix<C, "W", [W2, W]>,
@@ -450,9 +434,9 @@ export function letF<F extends HKT.URIS, C = HKT.Auto>(
 ): <BK, BN extends string, BA>(
   tag: Exclude<BN, keyof BK>,
   f: (a: BK) => BA
-) => <N extends string, K, Q, W, X, I, S, R, E>(
-  fa: HKT.Kind<F, C, N, K, Q, W, X, I, S, R, E, BK>
-) => HKT.Kind<F, C, N, K, Q, W, X, I, S, R, E, BK & { [k in BN]: BA }>
+) => <K, Q, W, X, I, S, R, E>(
+  fa: HKT.Kind<F, C, K, Q, W, X, I, S, R, E, BK>
+) => HKT.Kind<F, C, K, Q, W, X, I, S, R, E, BK & { [k in BN]: BA }>
 export function letF<F>(
   F: Monad<HKT.UHKT<F>>
 ): <A, K, N extends string>(

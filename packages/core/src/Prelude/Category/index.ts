@@ -5,7 +5,6 @@ export interface Category<F extends HKT.URIS, C = HKT.Auto>
   extends AssociativeCompose<F, C> {
   readonly id: <
     A,
-    N extends string = HKT.Initial<C, "N">,
     K = HKT.Initial<C, "K">,
     Q = HKT.Initial<C, "Q">,
     W = HKT.Initial<C, "W">,
@@ -13,5 +12,5 @@ export interface Category<F extends HKT.URIS, C = HKT.Auto>
     S = HKT.Initial<C, "S">,
     R = HKT.Initial<C, "R">,
     E = HKT.Initial<C, "E">
-  >() => HKT.Kind<F, C, N, K, Q, W, X, A, S, R, E, A>
+  >() => HKT.Kind<F, C, K, Q, W, X, A, S, R, E, A>
 }
