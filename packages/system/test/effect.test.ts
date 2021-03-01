@@ -66,6 +66,21 @@ describe("Effect", () => {
     expect(ms).toBeLessThan(1000)
     expect(f).toHaveBeenCalledTimes(g.mock.calls.length)
   })
+  it("awaitAllChildren", async () => {
+    let _running = true
+    const f = jest.fn()
+    const program = pipe(
+      T.effectTotal(() => {
+        if (_running) f()
+      }),
+      T.fork,
+      T.awaitAllChildren,
+      T.chain(() => T.effectTotal(() => (_running = false)))
+    )
+
+    await T.runPromise(program)
+    expect(f).toBeCalled()
+  })
   it("absolve", async () => {
     const program = T.absolve(T.succeed(E.left("e")))
 
