@@ -1,10 +1,7 @@
 export const NoSuchElementExceptionTag = "NoSuchElementException"
 
-export class NoSuchElementException extends Error {
+export class NoSuchElementException {
   readonly _tag = NoSuchElementExceptionTag
-  constructor() {
-    super(NoSuchElementExceptionTag)
-  }
 }
 
 export const PrematureGeneratorExitTag = "PrematureGeneratorExit"
