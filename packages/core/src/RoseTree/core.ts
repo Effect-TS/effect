@@ -149,10 +149,10 @@ export function unfoldForestSafe<A, B>(
  */
 export function unfoldTreeM<M extends P.URIS, C>(
   M: P.Monad<M, C> & P.Applicative<M, C>
-): <N extends string, K, Q, W, X, I, S, R, E, A, B>(
+): <K, Q, W, X, I, S, R, E, A, B>(
   b: B,
-  f: (b: B) => P.Kind<M, C, N, K, Q, W, X, I, S, R, E, [A, Array<B>]>
-) => P.Kind<M, C, N, K, Q, W, X, I, S, R, E, Tree<A>>
+  f: (b: B) => P.Kind<M, C, K, Q, W, X, I, S, R, E, [A, Array<B>]>
+) => P.Kind<M, C, K, Q, W, X, I, S, R, E, Tree<A>>
 export function unfoldTreeM<M>(
   M: P.Monad<P.UHKT<M>> & P.Applicative<P.UHKT<M>>
 ): <A, B>(b: B, f: (b: B) => P.HKT<M, [A, Array<B>]>) => P.HKT<M, Tree<A>> {
@@ -176,10 +176,10 @@ export function unfoldTreeM<M>(
  */
 export function unfoldForestM<M extends P.URIS, C>(
   M: P.Monad<M, C> & P.Applicative<M, C>
-): <N extends string, K, Q, W, X, I, S, R, E, A, B>(
+): <K, Q, W, X, I, S, R, E, A, B>(
   bs: Array<B>,
-  f: (b: B) => P.Kind<M, C, N, K, Q, W, X, I, S, R, E, [A, Array<B>]>
-) => P.Kind<M, C, N, K, Q, W, X, I, S, R, E, Forest<A>>
+  f: (b: B) => P.Kind<M, C, K, Q, W, X, I, S, R, E, [A, Array<B>]>
+) => P.Kind<M, C, K, Q, W, X, I, S, R, E, Forest<A>>
 export function unfoldForestM<M>(
   M: P.Monad<P.UHKT<M>> & P.Applicative<P.UHKT<M>>
 ): <A, B>(bs: Array<B>, f: (b: B) => P.HKT<M, [A, Array<B>]>) => P.HKT<M, Forest<A>> {

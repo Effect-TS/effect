@@ -6,7 +6,6 @@ export interface AssociativeCompose<F extends HKT.URIS, TC = HKT.Auto>
   readonly compose: <
     B,
     C,
-    N extends string = HKT.Initial<TC, "N">,
     K = HKT.Initial<TC, "K">,
     Q = HKT.Initial<TC, "Q">,
     W = HKT.Initial<TC, "W">,
@@ -15,10 +14,9 @@ export interface AssociativeCompose<F extends HKT.URIS, TC = HKT.Auto>
     R = HKT.Initial<TC, "R">,
     E = HKT.Initial<TC, "E">
   >(
-    ab: HKT.Kind<F, TC, N, K, Q, W, X, B, S, R, E, C>
+    ab: HKT.Kind<F, TC, K, Q, W, X, B, S, R, E, C>
   ) => <
     A,
-    N2 extends string = HKT.Initial<TC, "N">,
     K2 = HKT.Initial<TC, "K">,
     Q2 = HKT.Initial<TC, "Q">,
     W2 = HKT.Initial<TC, "W">,
@@ -30,7 +28,6 @@ export interface AssociativeCompose<F extends HKT.URIS, TC = HKT.Auto>
     bc: HKT.Kind<
       F,
       TC,
-      HKT.Intro<TC, "N", N, N2>,
       HKT.Intro<TC, "K", K, K2>,
       HKT.Intro<TC, "Q", Q, Q2>,
       HKT.Intro<TC, "W", W, W2>,
@@ -44,7 +41,6 @@ export interface AssociativeCompose<F extends HKT.URIS, TC = HKT.Auto>
   ) => HKT.Kind<
     F,
     TC,
-    HKT.Mix<TC, "N", [N, N2]>,
     HKT.Mix<TC, "K", [K, K2]>,
     HKT.Mix<TC, "Q", [Q, Q2]>,
     HKT.Mix<TC, "W", [W, W2]>,

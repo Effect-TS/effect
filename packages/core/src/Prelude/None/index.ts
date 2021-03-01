@@ -3,7 +3,6 @@ import type * as HKT from "../HKT"
 export interface None<F extends HKT.URIS, C = HKT.Auto> extends HKT.Base<F, C> {
   readonly _None: "None"
   readonly never: <
-    N extends string = HKT.Initial<C, "N">,
     K = HKT.Initial<C, "K">,
     Q = HKT.Initial<C, "Q">,
     W = HKT.Initial<C, "W">,
@@ -12,5 +11,5 @@ export interface None<F extends HKT.URIS, C = HKT.Auto> extends HKT.Base<F, C> {
     S = HKT.Initial<C, "S">,
     R = HKT.Initial<C, "R">,
     E = HKT.Initial<C, "E">
-  >() => HKT.Kind<F, C, N, K, Q, W, X, I, S, R, E, never>
+  >() => HKT.Kind<F, C, K, Q, W, X, I, S, R, E, never>
 }

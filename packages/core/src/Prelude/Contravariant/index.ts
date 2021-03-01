@@ -6,9 +6,9 @@ export interface Contravariant<F extends HKT.URIS, C = HKT.Auto>
   readonly _Contravariant: "Contravariant"
   readonly contramap: <A, B>(
     f: (a: B) => A
-  ) => <N extends string, K, Q, W, X, I, S, R, E>(
-    fa: HKT.Kind<F, C, N, K, Q, W, X, I, S, R, E, A>
-  ) => HKT.Kind<F, C, N, K, Q, W, X, I, S, R, E, B>
+  ) => <K, Q, W, X, I, S, R, E>(
+    fa: HKT.Kind<F, C, K, Q, W, X, I, S, R, E, A>
+  ) => HKT.Kind<F, C, K, Q, W, X, I, S, R, E, B>
 }
 
 export function getContravariantComposition<

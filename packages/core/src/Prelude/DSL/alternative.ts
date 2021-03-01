@@ -5,13 +5,12 @@ import type { HKT, Intro, Kind, Mix, UHKT, URIS } from "../HKT"
 
 export function orElseF<F extends URIS, C>(
   F: AssociativeEither<F, C> & Covariant<F, C>
-): <N2 extends string, K2, Q2, W2, X2, I2, S2, R2, E2, B>(
-  fb: () => Kind<F, C, N2, K2, Q2, W2, X2, I2, S2, R2, E2, B>
+): <K2, Q2, W2, X2, I2, S2, R2, E2, B>(
+  fb: () => Kind<F, C, K2, Q2, W2, X2, I2, S2, R2, E2, B>
 ) => <N extends string, K, Q, W, X, I, S, R, E, A>(
   fa: Kind<
     F,
     C,
-    Intro<C, "N", N2, N>,
     Intro<C, "K", K2, K>,
     Intro<C, "Q", Q2, Q>,
     Intro<C, "W", W2, W>,
@@ -25,7 +24,6 @@ export function orElseF<F extends URIS, C>(
 ) => Kind<
   F,
   C,
-  Mix<C, "N", [N2, N]>,
   Mix<C, "K", [K2, K]>,
   Mix<C, "Q", [Q2, Q]>,
   Mix<C, "W", [W2, W]>,

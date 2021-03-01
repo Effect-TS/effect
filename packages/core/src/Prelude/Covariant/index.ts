@@ -4,9 +4,9 @@ export interface Covariant<F extends HKT.URIS, C = HKT.Auto> extends HKT.Base<F,
   readonly _Covariant: "Covariant"
   readonly map: <A, B>(
     f: (a: A) => B
-  ) => <N extends string, K, Q, W, X, I, S, R, E>(
-    fa: HKT.Kind<F, C, N, K, Q, W, X, I, S, R, E, A>
-  ) => HKT.Kind<F, C, N, K, Q, W, X, I, S, R, E, B>
+  ) => <K, Q, W, X, I, S, R, E>(
+    fa: HKT.Kind<F, C, K, Q, W, X, I, S, R, E, A>
+  ) => HKT.Kind<F, C, K, Q, W, X, I, S, R, E, B>
 }
 
 export interface CovariantComposition<
@@ -17,30 +17,10 @@ export interface CovariantComposition<
 > extends HKT.CompositionBase2<F, G, CF, CG> {
   readonly map: <A, B>(
     f: (a: A) => B
-  ) => <
-    FN extends string,
-    FK,
-    FQ,
-    FW,
-    FX,
-    FI,
-    FS,
-    FR,
-    FE,
-    GN extends string,
-    GK,
-    GQ,
-    GW,
-    GX,
-    GI,
-    GS,
-    GR,
-    GE
-  >(
+  ) => <FK, FQ, FW, FX, FI, FS, FR, FE, GK, GQ, GW, GX, GI, GS, GR, GE>(
     fa: HKT.Kind<
       F,
       CF,
-      FN,
       FK,
       FQ,
       FW,
@@ -49,12 +29,11 @@ export interface CovariantComposition<
       FS,
       FR,
       FE,
-      HKT.Kind<G, CG, GN, GK, GQ, GW, GX, GI, GS, GR, GE, A>
+      HKT.Kind<G, CG, GK, GQ, GW, GX, GI, GS, GR, GE, A>
     >
   ) => HKT.Kind<
     F,
     CF,
-    FN,
     FK,
     FQ,
     FW,
@@ -63,7 +42,7 @@ export interface CovariantComposition<
     FS,
     FR,
     FE,
-    HKT.Kind<G, CG, GN, GK, GQ, GW, GX, GI, GS, GR, GE, B>
+    HKT.Kind<G, CG, GK, GQ, GW, GX, GI, GS, GR, GE, B>
   >
 }
 

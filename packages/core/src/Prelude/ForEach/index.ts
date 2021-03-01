@@ -18,13 +18,12 @@ export interface ForeachFn<F extends HKT.URIS, C = HKT.Auto> {
     A,
     B
   >(
-    f: (a: A) => HKT.Kind<G, GC, GN, GK, GQ, GW, GX, GI, GS, GR, GE, B>
+    f: (a: A) => HKT.Kind<G, GC, GK, GQ, GW, GX, GI, GS, GR, GE, B>
   ) => <FN extends string, FK, FQ, FW, FX, FI, FS, FR, FE>(
-    fa: HKT.Kind<F, C, FN, FK, FQ, FW, FX, FI, FS, FR, FE, A>
+    fa: HKT.Kind<F, C, FK, FQ, FW, FX, FI, FS, FR, FE, A>
   ) => HKT.Kind<
     G,
     GC,
-    GN,
     GK,
     GQ,
     GW,
@@ -33,7 +32,7 @@ export interface ForeachFn<F extends HKT.URIS, C = HKT.Auto> {
     GS,
     GR,
     GE,
-    HKT.Kind<F, C, FN, FK, FQ, FW, FX, FI, FS, FR, FE, B>
+    HKT.Kind<F, C, FK, FQ, FW, FX, FI, FS, FR, FE, B>
   >
 }
 
@@ -63,8 +62,8 @@ export function implementForEachF<F extends HKT.URIS, C = HKT.Auto>(): (
   ) => (
     f: (a: A) => HKT.HKT<G, B>
   ) => (
-    fa: HKT.Kind<F, C, N, K, SI, SO, X, I, S, R, E, A>
-  ) => HKT.HKT<G, HKT.Kind<F, C, N, K, SI, SO, X, I, S, R, E, B>>
+    fa: HKT.Kind<F, C, K, SI, SO, X, I, S, R, E, A>
+  ) => HKT.HKT<G, HKT.Kind<F, C, K, SI, SO, X, I, S, R, E, B>>
 ) => ForeachFn<F, C>
 export function implementForEachF() {
   return (i: any) => i()
@@ -89,7 +88,7 @@ export interface ForEachCompositionFn<
     A,
     B
   >(
-    f: (a: A) => HKT.Kind<H, CH, HN, HK, HQ, HW, HX, HI, HS, HR, HE, B>
+    f: (a: A) => HKT.Kind<H, CH, HK, HQ, HW, HX, HI, HS, HR, HE, B>
   ) => <
     FN extends string,
     FK,
@@ -113,7 +112,6 @@ export interface ForEachCompositionFn<
     fa: HKT.Kind<
       F,
       CF,
-      FN,
       FK,
       FQ,
       FW,
@@ -122,12 +120,11 @@ export interface ForEachCompositionFn<
       FS,
       FR,
       FE,
-      HKT.Kind<G, CG, GN, GK, GQ, GW, GX, GI, GS, GR, GE, A>
+      HKT.Kind<G, CG, GK, GQ, GW, GX, GI, GS, GR, GE, A>
     >
   ) => HKT.Kind<
     H,
     CH,
-    HN,
     HK,
     HQ,
     HW,
@@ -139,7 +136,6 @@ export interface ForEachCompositionFn<
     HKT.Kind<
       F,
       CF,
-      FN,
       FK,
       FQ,
       FW,
@@ -148,7 +144,7 @@ export interface ForEachCompositionFn<
       FS,
       FR,
       FE,
-      HKT.Kind<G, CG, GN, GK, GQ, GW, GX, GI, GS, GR, GE, B>
+      HKT.Kind<G, CG, GK, GQ, GW, GX, GI, GS, GR, GE, B>
     >
   >
 }
@@ -184,31 +180,10 @@ export function sequenceF<T extends HKT.URIS, C>(
   T: ForEach<T, C>
 ): <F extends HKT.URIS, FC>(
   App: Covariant<F, FC> & IdentityBoth<F, FC>
-) => <
-  N extends string,
-  K,
-  Q,
-  W,
-  X,
-  I,
-  S,
-  R,
-  E,
-  FN extends string,
-  FK,
-  FQ,
-  FW,
-  FX,
-  FI,
-  FS,
-  FR,
-  FE,
-  A
->(
+) => <K, Q, W, X, I, S, R, E, FK, FQ, FW, FX, FI, FS, FR, FE, A>(
   _: HKT.Kind<
     T,
     C,
-    N,
     K,
     Q,
     W,
@@ -217,12 +192,11 @@ export function sequenceF<T extends HKT.URIS, C>(
     S,
     R,
     E,
-    HKT.Kind<F, FC, FN, FK, FQ, FW, FX, FI, FS, FR, FE, A>
+    HKT.Kind<F, FC, FK, FQ, FW, FX, FI, FS, FR, FE, A>
   >
 ) => HKT.Kind<
   F,
   FC,
-  FN,
   FK,
   FQ,
   FW,
@@ -231,7 +205,7 @@ export function sequenceF<T extends HKT.URIS, C>(
   FS,
   FR,
   FE,
-  HKT.Kind<T, C, N, K, Q, W, X, I, S, R, E, A>
+  HKT.Kind<T, C, K, Q, W, X, I, S, R, E, A>
 >
 export function sequenceF<F>(
   T: ForEach<HKT.UHKT<F>>

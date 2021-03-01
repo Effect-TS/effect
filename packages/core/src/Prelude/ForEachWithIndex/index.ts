@@ -19,15 +19,14 @@ export interface ForEachWithIndexFn<F extends HKT.URIS, C = HKT.Auto> {
     FK
   >(
     f: (
-      k: HKT.IndexFor<F, HKT.OrFix<"N", C, FN>, HKT.OrFix<"K", C, FK>>,
+      k: HKT.IndexFor<F, HKT.OrFix<"K", C, FK>>,
       a: A
-    ) => HKT.Kind<G, GC, GN, GK, GQ, GW, GX, GI, GS, GR, GE, B>
+    ) => HKT.Kind<G, GC, GK, GQ, GW, GX, GI, GS, GR, GE, B>
   ) => <FQ, FW, FX, FI, FS, FR, FE>(
-    fa: HKT.Kind<F, GC, FN, FK, FQ, FW, FX, FI, FS, FR, FE, A>
+    fa: HKT.Kind<F, GC, FK, FQ, FW, FX, FI, FS, FR, FE, A>
   ) => HKT.Kind<
     G,
     GC,
-    GN,
     GK,
     GQ,
     GW,
@@ -36,7 +35,7 @@ export interface ForEachWithIndexFn<F extends HKT.URIS, C = HKT.Auto> {
     GS,
     GR,
     GE,
-    HKT.Kind<F, GC, FN, FK, FQ, FW, FX, FI, FS, FR, FE, B>
+    HKT.Kind<F, GC, FK, FQ, FW, FX, FI, FS, FR, FE, B>
   >
 }
 
@@ -64,13 +63,10 @@ export function implementForEachWithIndexF<F extends HKT.URIS, C = HKT.Auto>(): 
   }) => (
     G: IdentityBoth<HKT.UHKT<G>> & Covariant<HKT.UHKT<G>>
   ) => (
-    f: (
-      k: HKT.IndexFor<F, HKT.OrFix<"N", C, N>, HKT.OrFix<"K", C, K>>,
-      a: A
-    ) => HKT.HKT<G, B>
+    f: (k: HKT.IndexFor<F, HKT.OrFix<"K", C, K>>, a: A) => HKT.HKT<G, B>
   ) => (
-    fa: HKT.Kind<F, C, N, K, Q, W, X, I, S, R, E, A>
-  ) => HKT.HKT<G, HKT.Kind<F, C, N, K, Q, W, X, I, S, R, E, B>>
+    fa: HKT.Kind<F, C, K, Q, W, X, I, S, R, E, A>
+  ) => HKT.HKT<G, HKT.Kind<F, C, K, Q, W, X, I, S, R, E, B>>
 ) => ForEachWithIndexFn<F, C>
 export function implementForEachWithIndexF() {
   return (i: any) => i()

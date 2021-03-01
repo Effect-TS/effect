@@ -29,7 +29,6 @@ export interface Indexed<
 > {
   iof: <II extends C[IxURI]["_I"]>() => <
     A,
-    N extends string = HKT.Initial<C, "N">,
     K = HKT.Initial<C, "K">,
     Q = HKT.Initial<C, "Q">,
     W = HKT.Initial<C, "W">,
@@ -40,7 +39,7 @@ export interface Indexed<
     E = HKT.Initial<C, "E">
   >(
     a: A
-  ) => HKT.Kind<F, IxCT<C, II, II>, N, K, Q, W, X, I, S, R, E, A>
+  ) => HKT.Kind<F, IxCT<C, II, II>, K, Q, W, X, I, S, R, E, A>
 
   lift: <II extends C[IxURI]["_I"], IO extends C[IxURI]["_I"]>() => <
     N extends string,
@@ -54,11 +53,10 @@ export interface Indexed<
     E,
     A
   >(
-    fa: HKT.Kind<Inner<F>, C, N, K, Q, W, X, I, S, R, E, A>
-  ) => HKT.Kind<F, IxCT<C, II, IO>, N, K, Q, W, X, I, S, R, E, A>
+    fa: HKT.Kind<Inner<F>, C, K, Q, W, X, I, S, R, E, A>
+  ) => HKT.Kind<F, IxCT<C, II, IO>, K, Q, W, X, I, S, R, E, A>
 
   lower: <II extends C[IxURI]["_I"], IO extends C[IxURI]["_I"]>() => <
-    N extends string,
     K,
     Q,
     W,
@@ -69,13 +67,12 @@ export interface Indexed<
     E,
     A
   >(
-    fa: HKT.Kind<F, IxCT<C, II, IO>, N, K, Q, W, X, I, S, R, E, A>
-  ) => HKT.Kind<Inner<F>, C, N, K, Q, W, X, I, S, R, E, A>
+    fa: HKT.Kind<F, IxCT<C, II, IO>, K, Q, W, X, I, S, R, E, A>
+  ) => HKT.Kind<Inner<F>, C, K, Q, W, X, I, S, R, E, A>
 
   ichain<
     IO extends C[IxURI]["_O"],
     IO2 extends C[IxURI]["_I"],
-    N2 extends string,
     K2,
     Q2,
     W2,
@@ -87,12 +84,11 @@ export interface Indexed<
     A,
     B
   >(
-    f: (a: A) => HKT.Kind<F, IxCT<C, IO, IO2>, N2, K2, Q2, W2, X2, I2, S2, R2, E2, B>
-  ): <N extends string, II extends C[IxURI]["_I"], K, Q, W, X, I, S, R, E>(
+    f: (a: A) => HKT.Kind<F, IxCT<C, IO, IO2>, K2, Q2, W2, X2, I2, S2, R2, E2, B>
+  ): <II extends C[IxURI]["_I"], K, Q, W, X, I, S, R, E>(
     fa: HKT.Kind<
       F,
       IxCT<C, II, IO>,
-      HKT.Intro<C, "N", N2, N>,
       HKT.Intro<C, "K", K2, K>,
       HKT.Intro<C, "Q", Q2, Q>,
       HKT.Intro<C, "W", W2, W>,
@@ -106,7 +102,6 @@ export interface Indexed<
   ) => HKT.Kind<
     F,
     IxCT<C, II, IO2>,
-    HKT.Mix<C, "N", [N2, N]>,
     HKT.Mix<C, "K", [K2, K]>,
     HKT.Mix<C, "Q", [Q2, Q]>,
     HKT.Mix<C, "W", [W2, W]>,
@@ -132,12 +127,11 @@ export interface Indexed<
     A,
     B
   >(
-    f: (a: A) => HKT.Kind<F, IxCT<C, IO, IO>, N2, K2, Q2, W2, X2, I2, S2, R2, E2, B>
+    f: (a: A) => HKT.Kind<F, IxCT<C, IO, IO>, K2, Q2, W2, X2, I2, S2, R2, E2, B>
   ): <N extends string, II extends C[IxURI]["_I"], K, Q, W, X, I, S, R, E>(
     fa: HKT.Kind<
       F,
       IxCT<C, II, IO>,
-      HKT.Intro<C, "N", N2, N>,
       HKT.Intro<C, "K", K2, K>,
       HKT.Intro<C, "Q", Q2, Q>,
       HKT.Intro<C, "W", W2, W>,
@@ -151,7 +145,6 @@ export interface Indexed<
   ) => HKT.Kind<
     F,
     IxCT<C, II, IO>,
-    HKT.Mix<C, "N", [N2, N]>,
     HKT.Mix<C, "K", [K2, K]>,
     HKT.Mix<C, "Q", [Q2, Q]>,
     HKT.Mix<C, "W", [W2, W]>,
@@ -163,8 +156,8 @@ export interface Indexed<
     B
   >
 
-  chainLower<N2 extends string, K2, Q2, W2, X2, I2, S2, R2, E2, A, B>(
-    f: (a: A) => HKT.Kind<Inner<F>, C, N2, K2, Q2, W2, X2, I2, S2, R2, E2, B>
+  chainLower<K2, Q2, W2, X2, I2, S2, R2, E2, A, B>(
+    f: (a: A) => HKT.Kind<Inner<F>, C, K2, Q2, W2, X2, I2, S2, R2, E2, B>
   ): <
     N extends string,
     II extends C[IxURI]["_I"],
@@ -181,7 +174,6 @@ export interface Indexed<
     fa: HKT.Kind<
       F,
       IxCT<C, II, IO>,
-      HKT.Intro<C, "N", N2, N>,
       HKT.Intro<C, "K", K2, K>,
       HKT.Intro<C, "Q", Q2, Q>,
       HKT.Intro<C, "W", W2, W>,
@@ -195,7 +187,6 @@ export interface Indexed<
   ) => HKT.Kind<
     F,
     IxCT<C, II, IO>,
-    HKT.Mix<C, "N", [N2, N]>,
     HKT.Mix<C, "K", [K2, K]>,
     HKT.Mix<C, "Q", [Q2, Q]>,
     HKT.Mix<C, "W", [W2, W]>,
