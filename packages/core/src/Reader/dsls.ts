@@ -17,7 +17,7 @@ export const bind = P.bindF(Monad)
 
 const let_ = P.letF(Monad)
 
-const do_ = P.doF(Monad)
+const do_ = P.doF(Monad)()
 
 export { do_ as do, let_ as let }
 
