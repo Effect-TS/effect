@@ -15,7 +15,7 @@ export const tuple = DSL.tupleF(Applicative)
 /**
  * Initialize Do
  */
-export const do_ = DSL.doF(Monad)
+export const do_ = DSL.doF(Monad)()
 
 /**
  * Bind variable in scope

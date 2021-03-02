@@ -437,7 +437,7 @@ export const gen = DSL.genF(Monad)
 
 export const bind = DSL.bindF(Monad)
 
-const do_ = DSL.doF({ ...Applicative, ...Monad })
+const do_ = DSL.doF({ ...Applicative, ...Monad })()
 
 export { do_ as do }
 export { branch as if, branch_ as if_ }
