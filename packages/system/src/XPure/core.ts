@@ -1,6 +1,6 @@
 /* eslint-disable prefer-const */
 import { _A, _E, _R, _U } from "../Effect/commons"
-import * as E from "../Either"
+import * as E from "../Either/core"
 import { constant } from "../Function"
 import { Stack } from "../Stack"
 
