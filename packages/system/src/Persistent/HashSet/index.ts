@@ -6,7 +6,7 @@ import { not } from "../../Function"
 import type { Hash } from "../../Hash"
 import type { Next } from "../../Map"
 import type { Separated } from "../../Utils"
-import * as HM from "../HashMap"
+import * as HM from "../HashMap/core"
 
 export class HashSet<V> implements Iterable<V> {
   constructor(readonly keyMap: HM.HashMap<V, unknown>) {}

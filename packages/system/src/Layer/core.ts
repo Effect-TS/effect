@@ -1,11 +1,9 @@
 import * as C from "../Cause"
 import * as CL from "../Clock"
-import * as T from "../Effect"
 import * as E from "../Either"
 import { identity as idFn, pipe, tuple } from "../Function"
 import type { Has, Tag } from "../Has"
 import { mergeEnvironments } from "../Has"
-import * as M from "../Managed"
 import type * as SC from "../Schedule"
 import type * as SCD from "../Schedule/Decision"
 import type { UnionToIntersection } from "../Utils"
@@ -29,6 +27,8 @@ import {
   LayerZipWithPar,
   LayerZipWithSeq
 } from "./definitions"
+import * as T from "./deps-effect"
+import * as M from "./deps-managed"
 
 export * from "./definitions"
 

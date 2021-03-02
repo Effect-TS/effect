@@ -1,7 +1,10 @@
 import * as C from "../../Cause"
 import * as Ex from "../../Exit"
 import { pipe } from "../../Function"
-import * as RM from "../../Managed/ReleaseMap"
+import type * as RM from "../../Managed/ReleaseMap"
+import * as Finalizer from "../../Managed/ReleaseMap/finalizer"
+import * as makeReleaseMap from "../../Managed/ReleaseMap/makeReleaseMap"
+import * as releaseAll from "../../Managed/ReleaseMap/releaseAll"
 import * as Option from "../../Option"
 import * as T from "../_internal/effect"
 import * as M from "../_internal/managed"
@@ -29,7 +32,11 @@ export function catchAllCause_<R, E, R1, E2, O, O1>(
       M.bind(
         "finalizerRef",
         () =>
-          M.finalizerRef(RM.noopFinalizer) as M.Managed<R, never, Ref.Ref<RM.Finalizer>>
+          M.finalizerRef(Finalizer.noopFinalizer) as M.Managed<
+            R,
+            never,
+            Ref.Ref<RM.Finalizer>
+          >
       ),
       M.bind("ref", () =>
         pipe(
@@ -41,7 +48,7 @@ export function catchAllCause_<R, E, R1, E2, O, O1>(
         const closeCurrent = (cause: C.Cause<any>) =>
           pipe(
             finalizerRef,
-            Ref.getAndSet(RM.noopFinalizer),
+            Ref.getAndSet(Finalizer.noopFinalizer),
             T.chain((f) => f(Ex.halt(cause))),
             T.uninterruptible
           )
@@ -51,11 +58,11 @@ export function catchAllCause_<R, E, R1, E2, O, O1>(
         ) =>
           T.uninterruptibleMask(({ restore }) =>
             pipe(
-              RM.makeReleaseMap,
+              makeReleaseMap.makeReleaseMap,
               T.chain((releaseMap) =>
                 pipe(
                   finalizerRef.set((exit) =>
-                    RM.releaseAll(exit, T.sequential)(releaseMap)
+                    releaseAll.releaseAll(exit, T.sequential)(releaseMap)
                   ),
                   T.chain(() =>
                     pipe(

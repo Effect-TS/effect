@@ -1,5 +1,5 @@
-import type { Stream } from "."
-import { mapAccum } from "."
+import type { Stream } from "./definitions"
+import { mapAccum } from "./mapAccum"
 
 /**
  * Zips this stream together with the index of elements.

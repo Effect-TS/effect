@@ -4,8 +4,8 @@ import type * as NA from "../NonEmptyArray"
 import { absolve } from "./absolve"
 import type { Effect } from "./effect"
 import { either } from "./either"
+import { forEach_, forEachExec_, forEachPar_, forEachParN_ } from "./excl-forEach"
 import type { ExecutionStrategy } from "./ExecutionStrategy"
-import { forEach_, forEachExec_, forEachPar_, forEachParN_ } from "./forEach"
 import { map_ } from "./map"
 
 /**

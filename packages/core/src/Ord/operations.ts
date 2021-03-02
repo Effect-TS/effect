@@ -2,9 +2,9 @@ import type { Ord } from "@effect-ts/system/Ord"
 import { fromCompare } from "@effect-ts/system/Ord"
 
 import type { Associative } from "../Associative"
-import { makeAssociative } from "../Associative"
+import { makeAssociative } from "../Associative/makeAssociative"
 import type { Identity } from "../Identity"
-import { makeIdentity } from "../Identity"
+import { makeIdentity } from "../Identity/makeIdentity"
 import { Associative as OrderingAssociative } from "../Ordering"
 
 /**

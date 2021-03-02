@@ -5,7 +5,7 @@ import { tuple } from "../Function"
 import { makeManagedReleaseMap, mapM_ } from "./core"
 import * as T from "./deps"
 import { Managed } from "./managed"
-import type { Finalizer } from "./ReleaseMap"
+import type { Finalizer } from "./ReleaseMap/finalizer"
 
 /**
  * Applies the function `f` to each element of the `Iterable<A>` and

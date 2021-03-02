@@ -3,7 +3,7 @@ import * as Fiber from "../Fiber"
 import * as I from "../Iterable"
 import { chain_, fork, unit } from "./core"
 import type { Effect, RIO } from "./effect"
-import { forEach_ } from "./forEach"
+import { forEach_ } from "./excl-forEach"
 import { map_ } from "./map"
 
 /**

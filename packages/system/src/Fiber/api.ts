@@ -7,23 +7,15 @@ import * as IT from "../Iterable"
 import { make } from "../Managed/core"
 import type { Managed } from "../Managed/managed"
 import * as O from "../Option"
-import * as T from "./_internal/effect"
+import * as T from "./_internal/effect-api"
 import type * as Fiber from "./core"
+import { interrupt } from "./interrupt"
 
 /**
  * Lifts an IO into a `Fiber`.
  */
 export function fromEffect<E, A>(effect: T.IO<E, A>): T.UIO<Fiber.Synthetic<E, A>> {
   return T.map_(T.result(effect), done)
-}
-
-/**
- * Interrupts the fiber from whichever fiber is calling this method. If the
- * fiber has already exited, the returned effect will resume immediately.
- * Otherwise, the effect will resume when the fiber exits.
- */
-export function interrupt<E, A>(fiber: Fiber.Fiber<E, A>) {
-  return T.chain_(T.fiberId(), (id) => fiber.interruptAs(id))
 }
 
 /**

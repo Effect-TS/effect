@@ -3,7 +3,7 @@ import * as I from "../Iterable"
 import type { Separated } from "../Utils"
 import type { Effect, RIO } from "./effect"
 import { either } from "./either"
-import { forEach_, forEachPar_, forEachParN_ } from "./forEach"
+import { forEach_, forEachPar_, forEachParN_ } from "./excl-forEach"
 import { map_ } from "./map"
 
 /**

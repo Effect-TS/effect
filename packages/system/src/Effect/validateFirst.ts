@@ -1,6 +1,6 @@
 import type { Effect } from "./effect"
+import { forEach_, forEachPar_, forEachParN_ } from "./excl-forEach"
 import { flip } from "./flip"
-import { forEach_, forEachPar_, forEachParN_ } from "./forEach"
 
 /**
  * Feeds elements of type `A` to `f` until it succeeds. Returns first success

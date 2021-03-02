@@ -3,7 +3,7 @@ import * as I from "../Iterable"
 import * as Ref from "../Ref"
 import { chain, chain_, succeed } from "./core"
 import type { Effect } from "./effect"
-import * as forEach from "./forEach"
+import * as forEach from "./excl-forEach"
 import { zipWith_ } from "./zipWith"
 import { zipWithPar_ } from "./zipWithPar_"
 

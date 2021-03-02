@@ -1,14 +1,10 @@
-import { None } from "../Fiber"
+import { None } from "../Fiber/id"
 import { AtomicBoolean } from "../Support/AtomicBoolean"
 import type { MutableQueue } from "../Support/MutableQueue"
 import { Bounded, Unbounded } from "../Support/MutableQueue"
+import { BackPressureStrategy, unsafeCreate } from "./api"
 import type { Strategy } from "./core"
-import {
-  BackPressureStrategy,
-  DroppingStrategy,
-  SlidingStrategy,
-  unsafeCreate
-} from "./core"
+import { DroppingStrategy, SlidingStrategy } from "./core"
 import * as P from "./promise"
 import type { Queue } from "./xqueue"
 

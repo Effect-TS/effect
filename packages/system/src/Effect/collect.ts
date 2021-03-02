@@ -1,7 +1,7 @@
 import * as A from "../Array"
 import type { Option } from "../Option"
 import type { Effect } from "./effect"
-import { forEach_, forEachPar_, forEachParN_ } from "./forEach"
+import { forEach_, forEachPar_, forEachParN_ } from "./excl-forEach"
 import { map_ } from "./map"
 import { optional } from "./optional"
 

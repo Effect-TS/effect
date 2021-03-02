@@ -2,7 +2,7 @@ import * as R from "../Dictionary"
 import type { _E, _R, EnforceNonEmptyRecord } from "../Utils"
 import { chain_ } from "./core"
 import type { Effect } from "./effect"
-import { forEach_, forEachPar_, forEachParN_ } from "./forEach"
+import { forEach_, forEachPar_, forEachParN_ } from "./excl-forEach"
 import { map_ } from "./map"
 
 export function bindAll<

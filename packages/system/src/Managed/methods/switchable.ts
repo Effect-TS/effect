@@ -5,7 +5,10 @@ import { map } from "../core"
 import * as T from "../deps"
 import * as Do from "../do"
 import type { Managed } from "../managed"
-import * as RelMap from "../ReleaseMap"
+import * as addIfOpen from "../ReleaseMap/addIfOpen"
+import * as makeReleaseMap from "../ReleaseMap/makeReleaseMap"
+import * as releaseAll from "../ReleaseMap/releaseAll"
+import * as replace from "../ReleaseMap/replace"
 import { releaseMap } from "./releaseMap"
 
 /**
@@ -32,7 +35,7 @@ export function switchable<R, E, A>(): Managed<
     Do.bind("key", ({ releaseMap }) =>
       pipe(
         releaseMap,
-        RelMap.addIfOpen((_) => T.unit),
+        addIfOpen.addIfOpen((_) => T.unit),
         T.chain(fold(() => T.interrupt, T.succeed)),
         T.toManaged()
       )
@@ -41,7 +44,7 @@ export function switchable<R, E, A>(): Managed<
       T.uninterruptibleMask(({ restore }) =>
         pipe(
           releaseMap,
-          RelMap.replace(key, (_) => T.unit),
+          replace.replace(key, (_) => T.unit),
           T.chain(
             fold(
               () => T.unit,
@@ -50,14 +53,14 @@ export function switchable<R, E, A>(): Managed<
           ),
           T.andThen(T.do),
           T.bind("r", () => T.environment<R>()),
-          T.bind("inner", () => RelMap.makeReleaseMap),
+          T.bind("inner", () => makeReleaseMap.makeReleaseMap),
           T.bind("a", ({ inner, r }) =>
             restore(T.provideAll_(newResource.effect, [r, inner]))
           ),
           T.tap(({ inner }) =>
-            RelMap.replace(key, (exit) => RelMap.releaseAll(exit, sequential)(inner))(
-              releaseMap
-            )
+            replace.replace(key, (exit) =>
+              releaseAll.releaseAll(exit, sequential)(inner)
+            )(releaseMap)
           ),
           T.map(({ a }) => a[1])
         )

@@ -1,6 +1,6 @@
 import "../Operator"
 
-// codegen:start {preset: barrel, include: ./*.ts}
+// codegen:start {preset: barrel, include: ./*.ts, exclude: ./excl-*.ts}
 export * from "./absolve"
 export * from "./absorbWith"
 export * from "./andThen"
@@ -71,7 +71,6 @@ export * from "./fold"
 export * from "./foldCause_"
 export * from "./foldCause"
 export * from "./foldM"
-export * from "./forEach"
 export * from "./forever"
 export * from "./forkAll"
 export * from "./forkAs"
@@ -204,3 +203,38 @@ export * from "./zipWith"
 export * from "./zipWithPar_"
 export * from "./zipWithPar"
 // codegen:end
+
+export {
+  collectAll,
+  collectAllPar,
+  collectAllParN,
+  collectAllParN_,
+  collectAllSuccesses,
+  collectAllSuccessesPar,
+  collectAllSuccessesParN,
+  collectAllUnit,
+  collectAllUnitPar,
+  collectAllUnitParN,
+  collectAllUnitParN_,
+  collectAllWith,
+  collectAllWithPar,
+  collectAllWithParN,
+  collectAllWithParN_,
+  collectAllWithPar_,
+  collectAllWith_,
+  forEach,
+  forEachExec,
+  forEachExec_,
+  forEachPar,
+  forEachParN,
+  forEachParN_,
+  forEachPar_,
+  forEachUnit,
+  forEachUnitPar,
+  forEachUnitParN,
+  forEachUnitParN_,
+  forEachUnitPar_,
+  forEachUnit_,
+  forEach_,
+  forkManaged
+} from "./excl-forEach"

@@ -4,7 +4,7 @@ import * as I from "../Iterable"
 import * as O from "../Option"
 import * as core from "./core"
 import type { Effect } from "./effect"
-import * as forEach from "./forEach"
+import * as forEach from "./excl-forEach"
 import * as map from "./map"
 import * as zipWith from "./zipWith"
 

@@ -1,35 +1,54 @@
 import * as A from "../Array"
 import * as cause from "../Cause"
+import type { Exit } from "../Exit"
 import * as Ex from "../Exit"
-import * as Fiber from "../Fiber"
+import type { FiberContext } from "../Fiber/context"
+import type * as Fiber from "../Fiber/core"
+import { interrupt as fiberInterrupt } from "../Fiber/interrupt"
 import * as FA from "../FreeAssociative"
 import { identity, pipe, tuple } from "../Function"
 import * as I from "../Iterable"
-import * as M from "../Managed/core"
+import { descriptorWith } from "../Managed/deps-core"
+import { Managed } from "../Managed/managed"
+import type { ReleaseMap, State } from "../Managed/ReleaseMap"
+import { add } from "../Managed/ReleaseMap/add"
+import { Exited } from "../Managed/ReleaseMap/Exited"
+import { makeReleaseMap } from "../Managed/ReleaseMap/makeReleaseMap"
 import * as O from "../Option"
 import * as L from "../Persistent/List"
+import type { Promise } from "../Promise"
 import * as promise from "../Promise"
-import * as Q from "../Queue"
-import * as Ref from "../Ref"
+import * as Q from "../Queue/core"
+import { AtomicBoolean } from "../Support/AtomicBoolean"
+import type { MutableQueue } from "../Support/MutableQueue"
+import { Bounded, Unbounded } from "../Support/MutableQueue"
 import * as andThen from "./andThen"
 import * as asUnit from "./asUnit"
 import * as bracket from "./bracket"
+import { bracketExit_ } from "./bracketExit"
 import * as catchAll from "./catchAll"
 import * as core from "./core"
 import * as coreScope from "./core-scope"
 import * as Do from "./do"
-import type { Effect } from "./effect"
+import { done } from "./done"
+import type { Effect, UIO } from "./effect"
 import * as ensuring from "./ensuring"
+import { environment } from "./environment"
+import * as Ref from "./excl-deps-ref"
 import type { ExecutionStrategy } from "./ExecutionStrategy"
+import { sequential } from "./ExecutionStrategy"
 import * as fiberId from "./fiberId"
-import * as forkManaged from "./forkManaged"
+import * as flatten from "./flatten"
 import * as interruption from "./interruption"
 import * as map from "./map"
+import { provideSome_ } from "./provideSome"
 import * as refailWithTrace from "./refailWithTrace"
 import * as tap from "./tap"
 import * as tapCause from "./tapCause"
+import { toManaged } from "./toManaged"
 import * as whenM from "./whenM"
 import * as zipWith from "./zipWith"
+
 /**
  * Applies the function `f` to each element of the `Iterable<A>` and
  * returns the results in a new `readonly B[]`.
@@ -200,14 +219,14 @@ export function forEachUnitPar_<R, E, A>(
         catchAll.catchAll(() =>
           pipe(
             forEach_(fibers, (_) => core.fork(_.interruptAs(parentId))),
-            core.chain(Fiber.joinAll)
+            core.chain(fiberJoinAll)
           )
         ),
-        forkManaged.forkManaged
+        forkManaged
       )
     ),
     tap.tap(({ causes, fibers, interrupter, result }) =>
-      M.use_(interrupter, () => {
+      managedUse_(interrupter, () => {
         return pipe(
           result,
           promise.fail<void>(undefined),
@@ -224,6 +243,17 @@ export function forEachUnitPar_<R, E, A>(
     ),
     asUnit.asUnit
   )
+}
+
+/**
+ * Forks the fiber in a `Managed`. Using the `Managed` value will
+ * execute the effect in the fiber, while ensuring its interruption when
+ * the effect supplied to `use` completes.
+ */
+export function forkManaged<R, E, A>(
+  self: Effect<R, E, A>
+): Managed<R, never, FiberContext<E, A>> {
+  return managedFork(toManaged()(self))
 }
 
 /**
@@ -320,7 +350,7 @@ export function forEachUnitParN_<R, E, A>(
   }
 
   return pipe(
-    Q.makeBounded<A>(n),
+    makeBoundedQueue<A>(n),
     bracket.bracket(
       (q) =>
         pipe(
@@ -388,7 +418,7 @@ export function forEachParN_<R, E, A, B>(
   }
 
   return pipe(
-    Q.makeBounded<readonly [promise.Promise<E, B>, A]>(n),
+    makeBoundedQueue<readonly [promise.Promise<E, B>, A]>(n),
     bracket.bracket(
       (q) =>
         pipe(
@@ -637,5 +667,392 @@ export function collectAllSuccessesParN(n: number) {
   return <R, E, A>(as: Iterable<Effect<R, E, A>>) =>
     collectAllWithParN_(I.map_(as, core.result), n, (e) =>
       e._tag === "Success" ? O.some(e.value) : O.none
+    )
+}
+
+/**
+ * Joins all fibers, awaiting their _successful_ completion.
+ * Attempting to join a fiber that has erred will result in
+ * a catchable error, _if_ that error does not result from interruption.
+ */
+export function fiberJoinAll<E, A>(as: Iterable<Fiber.Fiber<E, A>>) {
+  return tap.tap_(core.chain_(fiberWaitAll(as), done), () =>
+    forEach_(as, (f) => f.inheritRefs)
+  )
+}
+
+/**
+ * Awaits on all fibers to be completed, successfully or not.
+ */
+export function fiberWaitAll<E, A>(as: Iterable<Fiber.Fiber<E, A>>) {
+  return core.result(forEachPar_(as, (f) => core.chain_(f.await, done)))
+}
+
+export function releaseMapReleaseAll(
+  exit: Exit<any, any>,
+  execStrategy: ExecutionStrategy
+): (_: ReleaseMap) => UIO<any> {
+  return (_: ReleaseMap) =>
+    pipe(
+      _.ref,
+      Ref.modify((s): [UIO<any>, State] => {
+        switch (s._tag) {
+          case "Exited": {
+            return [core.unit, s]
+          }
+          case "Running": {
+            switch (execStrategy._tag) {
+              case "Sequential": {
+                return [
+                  core.chain_(
+                    forEach_(Array.from(s.finalizers()).reverse(), ([_, f]) =>
+                      core.result(f(exit))
+                    ),
+                    (e) => done(O.getOrElse_(Ex.collectAll(...e), () => Ex.succeed([])))
+                  ),
+                  new Exited(s.nextKey, exit)
+                ]
+              }
+              case "Parallel": {
+                return [
+                  core.chain_(
+                    forEachPar_(Array.from(s.finalizers()).reverse(), ([_, f]) =>
+                      core.result(f(exit))
+                    ),
+                    (e) =>
+                      done(O.getOrElse_(Ex.collectAllPar(...e), () => Ex.succeed([])))
+                  ),
+                  new Exited(s.nextKey, exit)
+                ]
+              }
+              case "ParallelN": {
+                return [
+                  core.chain_(
+                    forEachParN_(
+                      Array.from(s.finalizers()).reverse(),
+                      execStrategy.n,
+                      ([_, f]) => core.result(f(exit))
+                    ),
+                    (e) =>
+                      done(O.getOrElse_(Ex.collectAllPar(...e), () => Ex.succeed([])))
+                  ),
+                  new Exited(s.nextKey, exit)
+                ]
+              }
+            }
+          }
+        }
+      }),
+      flatten.flatten
+    )
+}
+
+/**
+ * Creates a `Managed` value that acquires the original resource in a fiber,
+ * and provides that fiber. The finalizer for this value will interrupt the fiber
+ * and run the original finalizer.
+ */
+export function managedFork<R, E, A>(
+  self: Managed<R, E, A>
+): Managed<R, never, FiberContext<E, A>> {
+  return new Managed(
+    interruption.uninterruptibleMask(({ restore }) =>
+      pipe(
+        Do.do,
+        Do.bind("tp", () => environment<readonly [R, ReleaseMap]>()),
+        Do.let("r", ({ tp }) => tp[0]),
+        Do.let("outerReleaseMap", ({ tp }) => tp[1]),
+        Do.bind("innerReleaseMap", () => makeReleaseMap),
+        Do.bind("fiber", ({ innerReleaseMap, r }) =>
+          restore(
+            pipe(
+              self.effect,
+              map.map(([_, a]) => a),
+              coreScope.forkDaemon,
+              core.provideAll([r, innerReleaseMap] as const)
+            )
+          )
+        ),
+        Do.bind("releaseMapEntry", ({ fiber, innerReleaseMap, outerReleaseMap }) =>
+          add((e) =>
+            pipe(
+              fiber,
+              fiberInterrupt,
+              core.chain(() => releaseMapReleaseAll(e, sequential)(innerReleaseMap))
+            )
+          )(outerReleaseMap)
+        ),
+        map.map(({ fiber, releaseMapEntry }) => [releaseMapEntry, fiber])
+      )
+    )
+  )
+}
+
+/**
+ * Run an effect while acquiring the resource before and releasing it after
+ */
+export function managedUse_<R, E, A, R2, E2, B>(
+  self: Managed<R, E, A>,
+  f: (a: A) => Effect<R2, E2, B>
+): Effect<R & R2, E | E2, B> {
+  return bracketExit_(
+    makeReleaseMap,
+    (rm) =>
+      core.chain_(
+        provideSome_(self.effect, (r: R) => tuple(r, rm)),
+        (a) => f(a[1])
+      ),
+    (rm, ex) => releaseMapReleaseAll(ex, sequential)(rm)
+  )
+}
+
+export class BackPressureStrategy<A> implements Q.Strategy<A> {
+  private putters = new Unbounded<[A, Promise<never, boolean>, boolean]>()
+
+  handleSurplus(
+    as: readonly A[],
+    queue: MutableQueue<A>,
+    takers: MutableQueue<Promise<never, A>>,
+    isShutdown: AtomicBoolean
+  ): UIO<boolean> {
+    return core.descriptorWith((d) =>
+      core.suspend(() => {
+        const p = promise.unsafeMake<never, boolean>(d.id)
+
+        return interruption.onInterrupt_(
+          core.suspend(() => {
+            this.unsafeOffer(as, p)
+            this.unsafeOnQueueEmptySpace(queue)
+            Q.unsafeCompleteTakers(this, queue, takers)
+            if (isShutdown.get) {
+              return interruption.interrupt
+            } else {
+              return promise.await(p)
+            }
+          }),
+          () => core.effectTotal(() => this.unsafeRemove(p))
+        )
+      })
+    )
+  }
+
+  unsafeRemove(p: Promise<never, boolean>) {
+    Q.unsafeOfferAll(
+      this.putters,
+      Q.unsafePollAll(this.putters).filter(([_, __]) => __ !== p)
+    )
+  }
+
+  unsafeOffer(as: readonly A[], p: Promise<never, boolean>) {
+    const bs = Array.from(as)
+
+    while (bs.length > 0) {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      const head = bs.shift()!
+
+      if (bs.length === 0) {
+        this.putters.offer([head, p, true])
+      } else {
+        this.putters.offer([head, p, false])
+      }
+    }
+  }
+
+  unsafeOnQueueEmptySpace(queue: MutableQueue<A>) {
+    let keepPolling = true
+
+    while (keepPolling && !queue.isFull) {
+      const putter = this.putters.poll(undefined)
+
+      if (putter != null) {
+        const offered = queue.offer(putter[0])
+
+        if (offered && putter[2]) {
+          Q.unsafeCompletePromise(putter[1], true)
+        } else if (!offered) {
+          Q.unsafeOfferAll(this.putters, [putter, ...Q.unsafePollAll(this.putters)])
+        }
+      } else {
+        keepPolling = false
+      }
+    }
+  }
+
+  get shutdown(): UIO<void> {
+    return pipe(
+      Do.do,
+      Do.bind("fiberId", () => fiberId.fiberId()),
+      Do.bind("putters", () => core.effectTotal(() => Q.unsafePollAll(this.putters))),
+      tap.tap((s) =>
+        forEachPar_(s.putters, ([_, p, lastItem]) =>
+          lastItem ? promise.interruptAs(s.fiberId)(p) : core.unit
+        )
+      ),
+      asUnit.asUnit
+    )
+  }
+
+  get surplusSize(): number {
+    return this.putters.size
+  }
+}
+
+export function makeBoundedQueue<A>(capacity: number): UIO<Q.Queue<A>> {
+  return core.chain_(
+    core.effectTotal(() => new Bounded<A>(capacity)),
+    createQueue(new BackPressureStrategy())
+  )
+}
+
+export function unsafeCreateQueue<A>(
+  queue: MutableQueue<A>,
+  takers: MutableQueue<Promise<never, A>>,
+  shutdownHook: Promise<never, void>,
+  shutdownFlag: AtomicBoolean,
+  strategy: Q.Strategy<A>
+): Q.Queue<A> {
+  return new (class extends Q.XQueue<unknown, unknown, never, never, A, A> {
+    awaitShutdown: UIO<void> = promise.await(shutdownHook)
+
+    capacity: number = queue.capacity
+
+    isShutdown: UIO<boolean> = core.effectTotal(() => shutdownFlag.get)
+
+    offer: (a: A) => Effect<unknown, never, boolean> = (a) =>
+      core.suspend(() => {
+        if (shutdownFlag.get) {
+          return interruption.interrupt
+        } else {
+          const taker = takers.poll(undefined)
+
+          if (taker != null) {
+            Q.unsafeCompletePromise(taker, a)
+            return core.succeed(true)
+          } else {
+            const succeeded = queue.offer(a)
+
+            if (succeeded) {
+              return core.succeed(true)
+            } else {
+              return strategy.handleSurplus([a], queue, takers, shutdownFlag)
+            }
+          }
+        }
+      })
+
+    offerAll: (as: Iterable<A>) => Effect<unknown, never, boolean> = (as) => {
+      const arr = Array.from(as)
+      return core.suspend(() => {
+        if (shutdownFlag.get) {
+          return interruption.interrupt
+        } else {
+          const pTakers = queue.isEmpty ? Q.unsafePollN(takers, arr.length) : []
+          const [forTakers, remaining] = A.splitAt(pTakers.length)(arr)
+
+          A.zip_(pTakers, forTakers).forEach(([taker, item]) => {
+            Q.unsafeCompletePromise(taker, item)
+          })
+
+          if (remaining.length === 0) {
+            return core.succeed(true)
+          }
+
+          const surplus = Q.unsafeOfferAll(queue, remaining)
+
+          Q.unsafeCompleteTakers(strategy, queue, takers)
+
+          if (surplus.length === 0) {
+            return core.succeed(true)
+          } else {
+            return strategy.handleSurplus(surplus, queue, takers, shutdownFlag)
+          }
+        }
+      })
+    }
+
+    shutdown: UIO<void> = descriptorWith((d) =>
+      core.suspend(() => {
+        shutdownFlag.set(true)
+
+        return interruption.uninterruptible(
+          whenM.whenM(promise.succeed<void>(undefined)(shutdownHook))(
+            core.chain_(
+              forEachPar_(Q.unsafePollAll(takers), promise.interruptAs(d.id)),
+              () => strategy.shutdown
+            )
+          )
+        )
+      })
+    )
+
+    size: UIO<number> = core.suspend(() => {
+      if (shutdownFlag.get) {
+        return interruption.interrupt
+      } else {
+        return core.succeed(queue.size - takers.size + strategy.surplusSize)
+      }
+    })
+
+    take: Effect<unknown, never, A> = descriptorWith((d) =>
+      core.suspend(() => {
+        if (shutdownFlag.get) {
+          return interruption.interrupt
+        }
+
+        const item = queue.poll(undefined)
+
+        if (item != null) {
+          strategy.unsafeOnQueueEmptySpace(queue)
+          return core.succeed(item)
+        } else {
+          const p = promise.unsafeMake<never, A>(d.id)
+
+          return interruption.onInterrupt_(
+            core.suspend(() => {
+              takers.offer(p)
+              Q.unsafeCompleteTakers(strategy, queue, takers)
+              if (shutdownFlag.get) {
+                return interruption.interrupt
+              } else {
+                return promise.await(p)
+              }
+            }),
+            () => core.effectTotal(() => Q.unsafeRemove(takers, p))
+          )
+        }
+      })
+    )
+
+    takeAll: Effect<unknown, never, readonly A[]> = core.suspend(() => {
+      if (shutdownFlag.get) {
+        return interruption.interrupt
+      } else {
+        return core.effectTotal(() => {
+          const as = Q.unsafePollAll(queue)
+          strategy.unsafeOnQueueEmptySpace(queue)
+          return as
+        })
+      }
+    })
+
+    takeUpTo: (n: number) => Effect<unknown, never, readonly A[]> = (max) =>
+      core.suspend(() => {
+        if (shutdownFlag.get) {
+          return interruption.interrupt
+        } else {
+          return core.effectTotal(() => {
+            const as = Q.unsafePollN(queue, max)
+            strategy.unsafeOnQueueEmptySpace(queue)
+            return as
+          })
+        }
+      })
+  })()
+}
+
+export function createQueue<A>(strategy: Q.Strategy<A>) {
+  return (queue: MutableQueue<A>) =>
+    map.map_(promise.make<never, void>(), (p) =>
+      unsafeCreateQueue(queue, new Unbounded(), p, new AtomicBoolean(false), strategy)
     )
 }

@@ -1,5 +1,5 @@
 import type { FiberContext } from "../Fiber"
-import { fork } from "../Managed/core"
+import { fork } from "../Managed/fork"
 import type { Managed } from "../Managed/managed"
 import type { Effect } from "./effect"
 import { toManaged } from "./toManaged"

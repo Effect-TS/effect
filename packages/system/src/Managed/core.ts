@@ -1,15 +1,20 @@
 import type { Cause } from "../Cause/cause"
 import type { ExecutionStrategy } from "../Effect/ExecutionStrategy"
 import { parallel, sequential } from "../Effect/ExecutionStrategy"
-import type { FiberContext } from "../Fiber"
-import { interrupt } from "../Fiber"
 import { pipe, tuple } from "../Function"
 import { makeRef } from "../Ref"
 import * as T from "./deps-core"
 import { fromEffect } from "./fromEffect"
+import { makeExit, makeExit_ } from "./makeExit"
 import { Managed } from "./managed"
-import type { Finalizer, ReleaseMap } from "./ReleaseMap"
-import * as RelMap from "./ReleaseMap"
+import type { ReleaseMap } from "./ReleaseMap"
+import * as add from "./ReleaseMap/add"
+import * as addIfOpen from "./ReleaseMap/addIfOpen"
+import type { Finalizer } from "./ReleaseMap/finalizer"
+import * as makeReleaseMap from "./ReleaseMap/makeReleaseMap"
+import * as release from "./ReleaseMap/release"
+import * as releaseAll from "./ReleaseMap/releaseAll"
+import { use_ } from "./use"
 
 /**
  * Returns a managed that models the execution of this managed, followed by
@@ -120,47 +125,6 @@ export function foldCauseM_<R, E, A, R1, E1, A1, R2, E2, A2>(
 }
 
 /**
- * Creates a `Managed` value that acquires the original resource in a fiber,
- * and provides that fiber. The finalizer for this value will interrupt the fiber
- * and run the original finalizer.
- */
-export function fork<R, E, A>(
-  self: Managed<R, E, A>
-): Managed<R, never, FiberContext<E, A>> {
-  return new Managed(
-    T.uninterruptibleMask(({ restore }) =>
-      pipe(
-        T.do,
-        T.bind("tp", () => T.environment<readonly [R, ReleaseMap]>()),
-        T.let("r", ({ tp }) => tp[0]),
-        T.let("outerReleaseMap", ({ tp }) => tp[1]),
-        T.bind("innerReleaseMap", () => RelMap.makeReleaseMap),
-        T.bind("fiber", ({ innerReleaseMap, r }) =>
-          restore(
-            pipe(
-              self.effect,
-              T.map(([_, a]) => a),
-              T.forkDaemon,
-              T.provideAll([r, innerReleaseMap] as const)
-            )
-          )
-        ),
-        T.bind("releaseMapEntry", ({ fiber, innerReleaseMap, outerReleaseMap }) =>
-          RelMap.add((e) =>
-            pipe(
-              fiber,
-              interrupt,
-              T.chain(() => RelMap.releaseAll(e, sequential)(innerReleaseMap))
-            )
-          )(outerReleaseMap)
-        ),
-        T.map(({ fiber, releaseMapEntry }) => [releaseMapEntry, fiber])
-      )
-    )
-  )
-}
-
-/**
  * Lifts a `Effect< R, E, A>` into `Managed< R, E, A>` with a release action.
  * The acquire and release actions will be performed uninterruptibly.
  */
@@ -179,39 +143,6 @@ export function make_<R, E, A, R1>(
   release: (a: A) => T.Effect<R1, never, unknown>
 ): Managed<R & R1, E, A> {
   return makeExit_(acquire, release)
-}
-
-/**
- * Lifts a `Effect< R, E, A>` into `Managed< R, E, A>` with a release action
- * that handles `Exit`. The acquire and release actions will be performed uninterruptibly.
- */
-export function makeExit<R1, A>(
-  release: (a: A, exit: T.Exit<any, any>) => T.Effect<R1, never, unknown>
-) {
-  return <R, E>(acquire: T.Effect<R, E, A>) => makeExit_(acquire, release)
-}
-
-/**
- * Lifts a `Effect< R, E, A>` into `Managed< R, E, A>` with a release action
- * that handles `Exit`. The acquire and release actions will be performed uninterruptibly.
- */
-export function makeExit_<R, E, A, R1>(
-  acquire: T.Effect<R, E, A>,
-  release: (a: A, exit: T.Exit<any, any>) => T.Effect<R1, never, unknown>
-) {
-  return new Managed<R & R1, E, A>(
-    T.uninterruptible(
-      pipe(
-        T.do,
-        T.bind("r", () => T.environment<readonly [R & R1, ReleaseMap]>()),
-        T.bind("a", (s) => T.provideAll_(acquire, s.r[0])),
-        T.bind("rm", (s) =>
-          RelMap.add((ex) => T.provideAll_(release(s.a, ex), s.r[0]))(s.r[1])
-        ),
-        T.map((s) => [s.rm, s.a])
-      )
-    )
-  )
 }
 
 /**
@@ -255,7 +186,9 @@ export function makeInterruptible_<R, E, A, R1>(
 export function makeManagedReleaseMap(
   es: ExecutionStrategy
 ): Managed<unknown, never, ReleaseMap> {
-  return makeExit_(RelMap.makeReleaseMap, (rm, e) => RelMap.releaseAll(e, es)(rm))
+  return makeExit_(makeReleaseMap.makeReleaseMap, (rm, e) =>
+    releaseAll.releaseAll(e, es)(rm)
+  )
 }
 
 /**
@@ -279,7 +212,7 @@ export function makeReserve<R, E, R2, E2, A>(
         T.let("releaseMap", (s) => s.tp[1]),
         T.bind("reserved", (s) => T.provideAll_(reservation, s.r)),
         T.bind("releaseKey", (s) =>
-          RelMap.addIfOpen((x) => T.provideAll_(s.reserved.release(x), s.r))(
+          addIfOpen.addIfOpen((x) => T.provideAll_(s.reserved.release(x), s.r))(
             s.releaseMap
           )
         ),
@@ -298,7 +231,7 @@ export function makeReserve<R, E, R2, E2, A>(
                   )
                 ),
                 (a): [Finalizer, A] => [
-                  (e) => RelMap.release(k.value, e)(s.releaseMap),
+                  (e) => release.release(k.value, e)(s.releaseMap),
                   a
                 ]
               )
@@ -374,7 +307,7 @@ export function onExit_<R, E, A, R2>(
         T.bind("tp", () => T.environment<readonly [R & R2, ReleaseMap]>()),
         T.let("r", (s) => s.tp[0]),
         T.let("outerReleaseMap", (s) => s.tp[1]),
-        T.bind("innerReleaseMap", () => RelMap.makeReleaseMap),
+        T.bind("innerReleaseMap", () => makeReleaseMap.makeReleaseMap),
         T.bind("exitEA", (s) =>
           restore(
             T.provideAll_(T.result(T.map_(self.effect, ([_, a]) => a)), [
@@ -384,9 +317,9 @@ export function onExit_<R, E, A, R2>(
           )
         ),
         T.bind("releaseMapEntry", (s) =>
-          RelMap.add((e) =>
+          add.add((e) =>
             pipe(
-              RelMap.releaseAll(e, sequential)(s.innerReleaseMap),
+              releaseAll.releaseAll(e, sequential)(s.innerReleaseMap),
               T.result,
               T.zipWith(pipe(cleanup(s.exitEA), T.provideAll(s.r), T.result), (l, r) =>
                 T.exitZipRight_(l, r)
@@ -436,7 +369,7 @@ export function onExitFirst_<R, E, A, R2>(
         T.bind("tp", () => T.environment<readonly [R & R2, ReleaseMap]>()),
         T.let("r", (s) => s.tp[0]),
         T.let("outerReleaseMap", (s) => s.tp[1]),
-        T.bind("innerReleaseMap", () => RelMap.makeReleaseMap),
+        T.bind("innerReleaseMap", () => makeReleaseMap.makeReleaseMap),
         T.bind("exitEA", (s) =>
           restore(
             T.provideAll_(T.result(T.map_(self.effect, ([_, a]) => a)), [
@@ -446,11 +379,11 @@ export function onExitFirst_<R, E, A, R2>(
           )
         ),
         T.bind("releaseMapEntry", (s) =>
-          RelMap.add((e) =>
+          add.add((e) =>
             T.flatten(
               T.zipWith_(
                 T.result(T.provideAll_(cleanup(s.exitEA), s.r)),
-                T.result(RelMap.releaseAll(e, sequential)(s.innerReleaseMap)),
+                T.result(releaseAll.releaseAll(e, sequential)(s.innerReleaseMap)),
                 (l, r) => T.done(T.exitZipRight_(l, r))
               )
             )
@@ -546,31 +479,6 @@ export function tap_<A, R, R2, E, E2>(
  */
 export function tap<A, R2, E2>(f: (a: A) => Managed<R2, E2, any>) {
   return <R, E>(self: Managed<R, E, A>) => tap_(self, f)
-}
-
-/**
- * Run an effect while acquiring the resource before and releasing it after
- */
-export function use<A, R2, E2, B>(f: (a: A) => T.Effect<R2, E2, B>) {
-  return <R, E>(self: Managed<R, E, A>): T.Effect<R & R2, E | E2, B> => use_(self, f)
-}
-
-/**
- * Run an effect while acquiring the resource before and releasing it after
- */
-export function use_<R, E, A, R2, E2, B>(
-  self: Managed<R, E, A>,
-  f: (a: A) => T.Effect<R2, E2, B>
-): T.Effect<R & R2, E | E2, B> {
-  return T.bracketExit_(
-    RelMap.makeReleaseMap,
-    (rm) =>
-      T.chain_(
-        T.provideSome_(self.effect, (r: R) => tuple(r, rm)),
-        (a) => f(a[1])
-      ),
-    (rm, ex) => RelMap.releaseAll(ex, sequential)(rm)
-  )
 }
 
 /**

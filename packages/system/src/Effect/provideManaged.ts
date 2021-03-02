@@ -1,6 +1,6 @@
 import type { Has, Tag } from "../Has"
-import { use_ } from "../Managed/core"
 import type { Managed } from "../Managed/managed"
+import { use_ } from "../Managed/use"
 import type { Effect } from "./effect"
 import { provideService } from "./has"
 import { provide } from "./provide"

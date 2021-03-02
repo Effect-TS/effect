@@ -3,6 +3,7 @@ import * as A from "../Array"
 import * as Cause from "../Cause/core"
 // effect
 import { RuntimeError } from "../Cause/errors"
+import { forEachUnit_ } from "../Effect/excl-forEach"
 import { ISucceed } from "../Effect/primitives"
 // either
 import * as E from "../Either"
@@ -720,7 +721,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
       if (locals.size === 0) {
         return T.unit
       } else {
-        return T.forEachUnit_(locals, ([fiberRef, value]) =>
+        return forEachUnit_(locals, ([fiberRef, value]) =>
           update.update((old) => fiberRef.join(old, value))(fiberRef)
         )
       }

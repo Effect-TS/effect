@@ -6,7 +6,7 @@ import "../Operator"
  * Copyright 2020 Michael Arnaldi and the Matechs Garage Contributors.
  */
 
-// codegen:start {preset: barrel, include: ./*.ts, exclude: ./+(promise|effect).ts}
+// codegen:start {preset: barrel, include: ./*.ts, exclude: ./+(promise|effect|effect-api).ts}
 export * from "./api"
 export * from "./core"
 export * from "./unsafe"

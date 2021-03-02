@@ -1,18 +1,22 @@
 import * as A from "../Array"
 import type * as C from "../Cause"
-import * as T from "../Effect"
 import { sequential } from "../Effect/ExecutionStrategy"
 import type { Exit } from "../Exit"
 import { pipe, tuple } from "../Function"
-import * as M from "../Managed"
-import type { Finalizer, ReleaseMap } from "../Managed/ReleaseMap"
-import * as RelMap from "../Managed/ReleaseMap"
+import { environment } from "../Managed/methods/environment"
+import type { ReleaseMap } from "../Managed/ReleaseMap"
+import * as add from "../Managed/ReleaseMap/add"
+import * as Finalizer from "../Managed/ReleaseMap/finalizer"
+import * as makeReleaseMap from "../Managed/ReleaseMap/makeReleaseMap"
+import * as releaseAll from "../Managed/ReleaseMap/releaseAll"
 import { insert } from "../Map"
 import * as P from "../Promise"
 import * as R from "../Ref"
 import * as RM from "../RefM"
 import { AtomicReference } from "../Support/AtomicReference"
 import type { UnionToIntersection } from "../Utils"
+import * as T from "./deps-effect"
+import * as M from "./deps-managed"
 
 export function fromRawEffect<R, E, A>(resource: T.Effect<R, E, A>): Layer<R, E, A> {
   return new LayerManaged(M.fromEffect(resource))
@@ -35,7 +39,7 @@ export function fromRawManaged<R, E, A>(resource: M.Managed<R, E, A>): Layer<R, 
  * output.
  */
 export function identity<R>() {
-  return fromRawManaged(M.environment<R>())
+  return fromRawManaged(environment<R>())
 }
 
 /**
@@ -185,15 +189,40 @@ export abstract class Layer<RIn, E, ROut> {
    * Use the layer to provide partial environment to an effect
    */
   use<R, E1, A>(effect: T.Effect<R & ROut, E1, A>): T.Effect<RIn & R, E | E1, A> {
-    return T.provideSomeLayer(this)(effect)
+    return provideSomeLayer(this)(effect)
   }
 
   /**
    * Use the layer to provide the full environment to an effect
    */
   useAll<E1, A>(effect: T.Effect<ROut, E1, A>): T.Effect<RIn, E | E1, A> {
-    return T.provideLayer(this)(effect)
+    return provideLayer(this)(effect)
   }
+}
+
+/**
+ * Provides a layer to the given effect
+ */
+export function provideSomeLayer<R, E, A>(layer: Layer<R, E, A>) {
+  return <R1, E1, A1>(self: T.Effect<R1 & A, E1, A1>): T.Effect<R & R1, E | E1, A1> =>
+    provideLayer_(self, layer["+++"](identity()))
+}
+
+/**
+ * Provides a layer to the given effect
+ */
+export function provideLayer_<R, E, A, E1, A1>(
+  self: T.Effect<A, E1, A1>,
+  layer: Layer<R, E, A>
+): T.Effect<R, E | E1, A1> {
+  return M.use_(build(layer), (p) => T.provideAll_(self, p))
+}
+
+/**
+ * Provides a layer to the given effect
+ */
+export function provideLayer<R, E, A>(layer: Layer<R, E, A>) {
+  return <E1, A1>(self: T.Effect<A, E1, A1>) => provideLayer_(self, layer)
 }
 
 export type LayerInstruction =
@@ -433,9 +462,9 @@ export function build<R, E, A>(_: Layer<R, E, A>): M.Managed<R, E, A> {
 
 export function makeMemoMap() {
   return pipe(
-    RM.makeRefM<ReadonlyMap<PropertyKey, readonly [T.IO<any, any>, Finalizer]>>(
-      new Map()
-    ),
+    RM.makeRefM<
+      ReadonlyMap<PropertyKey, readonly [T.IO<any, any>, Finalizer.Finalizer]>
+    >(new Map()),
     T.chain((r) => T.effectTotal(() => new MemoMap(r)))
   )
 }
@@ -446,7 +475,7 @@ export function makeMemoMap() {
 export class MemoMap {
   constructor(
     readonly ref: RM.RefM<
-      ReadonlyMap<PropertyKey, readonly [T.IO<any, any>, Finalizer]>
+      ReadonlyMap<PropertyKey, readonly [T.IO<any, any>, Finalizer.Finalizer]>
     >
   ) {}
 
@@ -471,14 +500,14 @@ export class MemoMap {
                 T.onExit((ex) => {
                   switch (ex._tag) {
                     case "Success": {
-                      return RelMap.add(release)(rm)
+                      return add.add(release)(rm)
                     }
                     case "Failure": {
                       return T.unit
                     }
                   }
                 }),
-                T.map((x) => [release, x] as readonly [Finalizer, A])
+                T.map((x) => [release, x] as readonly [Finalizer.Finalizer, A])
               )
             )
 
@@ -488,7 +517,9 @@ export class MemoMap {
               T.do,
               T.bind("observers", () => R.makeRef(0)),
               T.bind("promise", () => P.make<E, A>()),
-              T.bind("finalizerRef", () => R.makeRef<Finalizer>(RelMap.noopFinalizer)),
+              T.bind("finalizerRef", () =>
+                R.makeRef<Finalizer.Finalizer>(Finalizer.noopFinalizer)
+              ),
               T.let("resource", ({ finalizerRef, observers, promise }) =>
                 T.uninterruptibleMask(({ restore }) =>
                   pipe(
@@ -499,7 +530,7 @@ export class MemoMap {
                       "outerReleaseMap",
                       ({ env: [_, outerReleaseMap] }) => outerReleaseMap
                     ),
-                    T.bind("innerReleaseMap", () => RelMap.makeReleaseMap),
+                    T.bind("innerReleaseMap", () => makeReleaseMap.makeReleaseMap),
                     T.bind("tp", ({ a, innerReleaseMap, outerReleaseMap }) =>
                       restore(
                         pipe(
@@ -519,7 +550,7 @@ export class MemoMap {
                                   P.halt(e.cause),
                                   T.chain(
                                     () =>
-                                      RelMap.releaseAll(
+                                      releaseAll.releaseAll(
                                         e,
                                         sequential
                                       )(innerReleaseMap) as T.IO<E, any>
@@ -538,7 +569,7 @@ export class MemoMap {
                                           R.modify((n) => [n === 1, n - 1])
                                         )
                                       )(
-                                        RelMap.releaseAll(
+                                        releaseAll.releaseAll(
                                           e,
                                           sequential
                                         )(innerReleaseMap) as T.UIO<any>
@@ -552,7 +583,7 @@ export class MemoMap {
                                     )
                                   ),
                                   T.bind("outerFinalizer", () =>
-                                    RelMap.add((e) =>
+                                    add.add((e) =>
                                       T.chain_(finalizerRef.get, (f) => f(e))
                                     )(outerReleaseMap)
                                   ),
@@ -593,18 +624,18 @@ export class MemoMap {
                       })
                     ),
                     (e: Exit<any, any>) => T.chain_(finalizerRef.get, (f) => f(e))
-                  ] as readonly [T.IO<any, any>, Finalizer]
+                  ] as readonly [T.IO<any, any>, Finalizer.Finalizer]
               ),
               T.map(({ memoized, resource }) =>
                 tuple(
                   resource as T.Effect<
                     readonly [R, ReleaseMap],
                     E,
-                    readonly [Finalizer, A]
+                    readonly [Finalizer.Finalizer, A]
                   >,
                   insert(layer.hash.get, memoized)(m) as ReadonlyMap<
                     symbol,
-                    readonly [T.IO<any, any>, Finalizer]
+                    readonly [T.IO<any, any>, Finalizer.Finalizer]
                   >
                 )
               )

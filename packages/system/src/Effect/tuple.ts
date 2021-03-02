@@ -1,7 +1,7 @@
 import type { NonEmptyArray } from "../NonEmptyArray"
 import type { _E, _R } from "../Utils"
 import type { Effect } from "./effect"
-import { collectAll, collectAllPar, collectAllParN_ } from "./forEach"
+import { collectAll, collectAllPar, collectAllParN_ } from "./excl-forEach"
 
 export type TupleA<T extends NonEmptyArray<Effect<any, any, any>>> = {
   [K in keyof T]: [T[K]] extends [Effect<any, any, infer A>] ? A : never

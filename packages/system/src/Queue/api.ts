@@ -1,9 +1,38 @@
 import * as A from "../Array"
 import { succeed } from "../Effect/core"
+import {
+  BackPressureStrategy,
+  createQueue,
+  makeBoundedQueue as makeBounded,
+  unsafeCreateQueue as unsafeCreate
+} from "../Effect/excl-forEach"
 import { identity, pipe, tuple } from "../Function"
 import * as O from "../Option"
-import * as T from "./effect"
+import { Bounded, Unbounded } from "../Support/MutableQueue"
+import { DroppingStrategy, SlidingStrategy } from "./core"
+import * as T from "./effect-api"
+import type { Queue } from "./xqueue"
 import { XQueue } from "./xqueue"
+
+export { createQueue, makeBounded, unsafeCreate, BackPressureStrategy }
+
+export const makeSliding = <A>(capacity: number): T.UIO<Queue<A>> =>
+  T.chain_(
+    T.effectTotal(() => new Bounded<A>(capacity)),
+    createQueue(new SlidingStrategy())
+  )
+
+export const makeUnbounded = <A>(): T.UIO<Queue<A>> =>
+  T.chain_(
+    T.effectTotal(() => new Unbounded<A>()),
+    createQueue(new DroppingStrategy())
+  )
+
+export const makeDropping = <A>(capacity: number): T.UIO<Queue<A>> =>
+  T.chain_(
+    T.effectTotal(() => new Bounded<A>(capacity)),
+    createQueue(new DroppingStrategy())
+  )
 
 /**
  * Takes between min and max number of values from the queue. If there

@@ -1,5 +1,6 @@
 import type { Reservation } from "../Managed"
-import { makeReserve, use_ } from "../Managed"
+import { makeReserve } from "../Managed/core"
+import { use_ } from "../Managed/use"
 import type { Effect } from "./effect"
 
 /**

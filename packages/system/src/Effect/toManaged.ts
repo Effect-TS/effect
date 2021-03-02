@@ -1,5 +1,5 @@
-import { makeExit_ } from "../Managed/core"
 import { fromEffect } from "../Managed/fromEffect"
+import { makeExit_ } from "../Managed/makeExit"
 import type { Managed } from "../Managed/managed"
 import type { Effect } from "./effect"
 

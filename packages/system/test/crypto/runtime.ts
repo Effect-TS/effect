@@ -3,7 +3,9 @@ import * as T from "../../src/Effect"
 import * as Ex from "../../src/Exit"
 import { pipe, tuple } from "../../src/Function"
 import * as L from "../../src/Layer"
-import * as M from "../../src/Managed/ReleaseMap"
+import type * as M from "../../src/Managed/ReleaseMap"
+import * as makeReleaseMap from "../../src/Managed/ReleaseMap/makeReleaseMap"
+import * as releaseAll from "../../src/Managed/ReleaseMap/releaseAll"
 import { AtomicReference } from "../../src/Support/AtomicReference"
 
 export interface TestRuntime<R> {
@@ -28,7 +30,7 @@ export function testRuntime<R>(self: L.Layer<T.DefaultEnv, never, R>) {
     beforeAll(async () => {
       const res = await pipe(
         T.do,
-        T.bind("rm", () => M.makeReleaseMap),
+        T.bind("rm", () => makeReleaseMap.makeReleaseMap),
         T.bind("res", ({ rm }) =>
           T.provideSome_(L.build(self).effect, (r: T.DefaultEnv) => tuple(r, rm))
         ),
@@ -52,7 +54,7 @@ export function testRuntime<R>(self: L.Layer<T.DefaultEnv, never, R>) {
       const rm = relMap.get
       if (rm) {
         const res = await T.runPromiseExit(
-          M.releaseAll(Ex.succeed(undefined), T.sequential)(rm)
+          releaseAll.releaseAll(Ex.succeed(undefined), T.sequential)(rm)
         )
         if (res._tag === "Failure") {
           console.log(C.pretty(res.cause))

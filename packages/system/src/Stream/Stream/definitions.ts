@@ -2,7 +2,10 @@ import * as C from "../../Cause/core"
 import type * as A from "../../Chunk"
 import * as Exit from "../../Exit/api"
 import { pipe } from "../../Function"
-import * as RM from "../../Managed/ReleaseMap"
+import type * as RM from "../../Managed/ReleaseMap"
+import * as Finalizer from "../../Managed/ReleaseMap/finalizer"
+import * as makeReleaseMap from "../../Managed/ReleaseMap/makeReleaseMap"
+import * as releaseAll from "../../Managed/ReleaseMap/releaseAll"
 import * as O from "../../Option"
 import * as T from "../_internal/effect"
 import type * as M from "../_internal/managed"
@@ -88,7 +91,7 @@ export class Chain<R_, E_, O, O2> {
   closeInner() {
     return pipe(
       this.innerFinalizer,
-      Ref.getAndSet(RM.noopFinalizer),
+      Ref.getAndSet(Finalizer.noopFinalizer),
       T.chain((f) => f(Exit.unit))
     )
   }
@@ -127,7 +130,7 @@ export class Chain<R_, E_, O, O2> {
         T.uninterruptibleMask(({ restore }) =>
           pipe(
             T.do,
-            T.bind("releaseMap", () => RM.makeReleaseMap),
+            T.bind("releaseMap", () => makeReleaseMap.makeReleaseMap),
             T.bind("pull", ({ releaseMap }) =>
               restore(
                 pipe(
@@ -139,7 +142,9 @@ export class Chain<R_, E_, O, O2> {
             ),
             T.tap(({ pull }) => this.currInnerStream.set(pull)),
             T.tap(({ releaseMap }) =>
-              this.innerFinalizer.set((e) => RM.releaseAll(e, T.sequential)(releaseMap))
+              this.innerFinalizer.set((e) =>
+                releaseAll.releaseAll(e, T.sequential)(releaseMap)
+              )
             ),
             T.asUnit
           )

@@ -19,7 +19,7 @@
     "prettier:lib": "prettier --write \"./build/**/*.js\"",
     "tc": "tsc --noEmit",
     "demo": "ts-node -r tsconfig-paths/register",
-    "circular": "madge --circular --extensions ts ./src"
+    "circular": "madge --circular --ts-config ./tsconfig.build.json --extensions ts ./src"
   },
   "publishConfig": {
     "access": "public",

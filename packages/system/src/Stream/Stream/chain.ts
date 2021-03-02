@@ -1,6 +1,7 @@
 import type * as A from "../../Chunk"
 import { pipe } from "../../Function"
-import * as RM from "../../Managed/ReleaseMap"
+import type * as RM from "../../Managed/ReleaseMap"
+import * as Finalizer from "../../Managed/ReleaseMap/finalizer"
 import type * as Option from "../../Option"
 import * as Ref from "../../Ref"
 import type * as T from "../_internal/effect"
@@ -36,7 +37,7 @@ export function chain_<R, R1, E, E1, O, O2>(
       M.bind(
         "innerFinalizer",
         () =>
-          M.finalizerRef(RM.noopFinalizer) as M.Managed<
+          M.finalizerRef(Finalizer.noopFinalizer) as M.Managed<
             R_,
             never,
             Ref.Ref<RM.Finalizer>

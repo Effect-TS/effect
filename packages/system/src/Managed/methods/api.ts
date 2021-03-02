@@ -30,7 +30,6 @@ import {
   fail,
   foldCauseM_,
   make_,
-  makeExit_,
   makeManagedReleaseMap,
   map_,
   mapM_,
@@ -42,14 +41,20 @@ import {
 } from "../core"
 import { forEach_, forEachPar_, forEachParN_, forEachUnit_ } from "../forEach"
 import { fromEffect } from "../fromEffect"
+import { makeExit_ } from "../makeExit"
 import type { IO, RIO, UIO } from "../managed"
 import { Managed } from "../managed"
-import * as RM from "../ReleaseMap"
+import type * as RM from "../ReleaseMap"
+import * as add from "../ReleaseMap/add"
+import * as makeReleaseMap from "../ReleaseMap/makeReleaseMap"
+import * as releaseAll from "../ReleaseMap/releaseAll"
 import { succeed } from "../succeed"
 import { absolve } from "./absolve"
+import { environment } from "./environment"
 import { foldM_ } from "./foldM_"
 import { gen } from "./gen"
 import { halt } from "./halt"
+import { provideAll, provideAll_ } from "./provideAll"
 import { releaseMap } from "./releaseMap"
 import { suspend } from "./suspend"
 
@@ -452,35 +457,12 @@ export function continueOrFail<A, E1, B>(e: () => E1, pf: (a: A) => O.Option<B>)
 }
 
 /**
- * Provides the `Managed` effect with its required environment, which eliminates
- * its dependency on `R`.
- */
-export function provideAll<R>(r: R) {
-  return <E, A>(self: Managed<R, E, A>) => provideAll_(self, r)
-}
-
-/**
- * Provides the `Managed` effect with its required environment, which eliminates
- * its dependency on `R`.
- */
-export function provideAll_<R, E, A>(self: Managed<R, E, A>, r: R) {
-  return provideSome_(self, () => r)
-}
-
-/**
  * Provides some of the environment required to run this effect,
  * leaving the remainder `R0` and combining it automatically using spread.
  */
 export function provide<R>(r: R) {
   return <E, A, R0>(next: Managed<R & R0, E, A>): Managed<R0, E, A> =>
     provideSome_(next, (r0: R0) => ({ ...r0, ...r }))
-}
-
-/**
- * Accesses the whole environment of the effect.
- */
-export function environment<R>() {
-  return fromEffect(T.environment<R>())
 }
 
 /**
@@ -759,7 +741,7 @@ export function mapEffect<A, B>(f: (a: A) => B) {
 export function preallocate<R, E, A>(self: Managed<R, E, A>): T.Effect<R, E, UIO<A>> {
   return T.uninterruptibleMask(({ restore }) =>
     T.gen(function* (_) {
-      const releaseMap = yield* _(RM.makeReleaseMap)
+      const releaseMap = yield* _(makeReleaseMap.makeReleaseMap)
       const tp = yield* _(
         T.result(restore(T.provideSome_(self.effect, (r: R) => tuple(r, releaseMap))))
       )
@@ -769,14 +751,14 @@ export function preallocate<R, E, A>(self: Managed<R, E, A>): T.Effect<R, E, UIO
           (c) =>
             pipe(
               releaseMap,
-              RM.releaseAll(Ex.fail(c), T.sequential),
+              releaseAll.releaseAll(Ex.fail(c), T.sequential),
               T.andThen(T.halt(c))
             ),
           ([release, a]) =>
             T.succeed(
               new Managed(
                 T.accessM(([_, releaseMap]: readonly [unknown, RM.ReleaseMap]) =>
-                  T.map_(RM.add(release)(releaseMap), (_) => tuple(_, a))
+                  T.map_(add.add(release)(releaseMap), (_) => tuple(_, a))
                 )
               )
             )
@@ -801,7 +783,7 @@ export function preallocateManaged<R, E, A>(
         release,
         new Managed(
           T.accessM(([_, releaseMap]: readonly [unknown, RM.ReleaseMap]) =>
-            T.map_(RM.add(release)(releaseMap), (_) => tuple(_, a))
+            T.map_(add.add(release)(releaseMap), (_) => tuple(_, a))
           )
         )
       )
@@ -1291,11 +1273,11 @@ export function timeout(d: number) {
         T.gen(function* (_) {
           const env = yield* _(T.environment<readonly [R & HasClock, RM.ReleaseMap]>())
           const [r, outerReleaseMap] = env
-          const innerReleaseMap = yield* _(RM.makeReleaseMap)
+          const innerReleaseMap = yield* _(makeReleaseMap.makeReleaseMap)
           const earlyRelease = yield* _(
-            RM.add((exit) => RM.releaseAll(exit, T.sequential)(innerReleaseMap))(
-              outerReleaseMap
-            )
+            add.add((exit) =>
+              releaseAll.releaseAll(exit, T.sequential)(innerReleaseMap)
+            )(outerReleaseMap)
           )
           const raceResult: E.Either<
             F.Fiber<E, readonly [RM.Finalizer, A]>,
@@ -1326,7 +1308,10 @@ export function timeout(d: number) {
                     T.forkDaemon(
                       T.ensuring_(
                         F.interrupt(f),
-                        RM.releaseAll(Ex.interrupt(id), T.sequential)(innerReleaseMap)
+                        releaseAll.releaseAll(
+                          Ex.interrupt(id),
+                          T.sequential
+                        )(innerReleaseMap)
                       )
                     )
                   ),
