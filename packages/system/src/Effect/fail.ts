@@ -22,5 +22,5 @@ export function fail<E>(e: E) {
  * @trace call
  */
 export function failWith<E>(e: () => E) {
-  return haltWith(traceAs(e, (trace) => C.traced(C.fail(e), trace())))
+  return haltWith(traceAs(e, (trace) => C.traced(C.fail(e()), trace())))
 }

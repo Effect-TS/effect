@@ -24,5 +24,5 @@ export function die(e: unknown) {
  * @trace 0
  */
 export function dieWith(e: () => unknown) {
-  return haltWith(traceAs(e, (trace) => C.traced(C.die(e), trace())))
+  return haltWith(traceAs(e, (trace) => C.traced(C.die(e()), trace())))
 }
