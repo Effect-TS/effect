@@ -37,6 +37,98 @@ import * as T from "./effect"
  */
 export class Schedule<Env, In, Out> {
   constructor(readonly step: Decision.StepFunction<Env, In, Out>) {}
+
+  /**
+   * Returns a new schedule that performs a geometric intersection on the intervals defined
+   * by both schedules.
+   */
+  readonly ["&&"] = <Env1, In1, Out1>(
+    that: Schedule<Env1, In1, Out1>
+  ): Schedule<Env & Env1, In & In1, readonly [Out, Out1]> => both_(this, that);
+
+  /**
+   * The same as `&&`, but ignores the left output.
+   */
+  readonly ["***"] = <Env1, In1, Out1>(
+    that: Schedule<Env1, In1, Out1>
+  ): Schedule<Env & Env1, readonly [In, In1], readonly [Out, Out1]> =>
+    bothInOut_(this, that);
+
+  /**
+   * The same as `&&`, but ignores the left output.
+   */
+  readonly ["*>"] = <Env1, In1, Out1>(
+    that: Schedule<Env1, In1, Out1>
+  ): Schedule<Env & Env1, In & In1, Out1> => map_(this["&&"](that), ([_, x]) => x);
+
+  /**
+   * Returns a new schedule that allows choosing between feeding inputs to this schedule, or
+   * feeding inputs to the specified schedule.
+   */
+  readonly ["+++"] = <Env1, In1, Out1>(
+    that: Schedule<Env1, In1, Out1>
+  ): Schedule<Env & Env1, E.Either<In, In1>, Out | Out1> => chooseMerge_(this, that);
+
+  /**
+   * A symbolic alias for `andThen`.
+   */
+  readonly ["++"] = <Env1, In1, Out1>(
+    that: Schedule<Env1, In1, Out1>
+  ): Schedule<Env & Env1, In & In1, Out | Out1> => andThen_(this, that);
+
+  /**
+   * The same as `&&`, but ignores the right output.
+   */
+  readonly ["<*"] = <Env1, In1, Out1>(
+    that: Schedule<Env1, In1, Out1>
+  ): Schedule<Env & Env1, In & In1, Out> => map_(this["&&"](that), ([x, _]) => x);
+
+  /**
+   * An operator alias for `zip`.
+   */
+  readonly ["<*>"] = <Env1, In1, Out1>(
+    that: Schedule<Env1, In1, Out1>
+  ): Schedule<Env & Env1, In & In1, readonly [Out, Out1]> => zip_(this, that);
+
+  /**
+   * Returns the composition of this schedule and the specified schedule, by piping the output of
+   * this one into the input of the other. Effects described by this schedule will always be
+   * executed before the effects described by the second schedule.
+   */
+  readonly ["<<<"] = <Env1, In1>(
+    that: Schedule<Env1, In1, In>
+  ): Schedule<Env & Env1, In1, Out> => compose_(that, this);
+
+  /**
+   * Returns the composition of this schedule and the specified schedule, by piping the output of
+   * this one into the input of the other. Effects described by this schedule will always be
+   * executed before the effects described by the second schedule.
+   */
+  readonly [">>>"] = <Env1, Out1>(
+    that: Schedule<Env1, Out, Out1>
+  ): Schedule<Env & Env1, In, Out1> => compose_(this, that);
+
+  /**
+   * Returns a new schedule that performs a geometric union on the intervals defined
+   * by both schedules.
+   */
+  readonly ["||"] = <Env1, In1, Out1>(
+    that: Schedule<Env1, In1, Out1>
+  ): Schedule<Env & Env1, In & In1, readonly [Out, Out1]> => either_(this, that);
+
+  /**
+   * Returns a new schedule that chooses between two schedules with a common output.
+   */
+  readonly ["|||"] = <Env1, In1, Out1>(
+    that: Schedule<Env1, In1, Out1>
+  ): Schedule<Env & Env1, E.Either<In, In1>, Out | Out1> => chooseMerge_(this, that);
+
+  /**
+   * Operator alias for `andThenEither`.
+   */
+  readonly ["<||>"] = <Env1, In1, Out1>(
+    that: Schedule<Env1, In1, Out1>
+  ): Schedule<Env & Env1, In & In1, E.Either<Out, Out1>> => andThenEither_(this, that)
 }
 
 /**
@@ -171,7 +263,7 @@ export function andThen<Env1, Out2, In1>(that: Schedule<Env1, In1, Out2>) {
 export function andThen_<R, B, A, R1, C, A1>(
   self: Schedule<R, A, B>,
   that: Schedule<R1, A1, C>
-) {
+): Schedule<R & R1, A & A1, B | C> {
   return map_(andThenEither_(self, that), (a) => (a._tag === "Left" ? a.left : a.right))
 }
 
@@ -249,7 +341,7 @@ export function bothInOut_<Env, In, Out, Env1, In1, Out1>(
 export function both<Env1, Out1, In1>(that: Schedule<Env1, In1, Out1>) {
   return <Env, In, Out>(
     self: Schedule<Env, In, Out>
-  ): Schedule<Env & Env1, In & In1, [Out, Out1]> => both_(self, that)
+  ): Schedule<Env & Env1, In & In1, readonly [Out, Out1]> => both_(self, that)
 }
 
 /**
@@ -259,8 +351,8 @@ export function both<Env1, Out1, In1>(that: Schedule<Env1, In1, Out1>) {
 export function both_<Env, In, Out, Env1, In1, Out1>(
   self: Schedule<Env, In, Out>,
   that: Schedule<Env1, In1, Out1>
-): Schedule<Env & Env1, In1 & In, [Out, Out1]> {
-  return combineWith_(self, that, (l, r) => Math.max(l, r))
+): Schedule<Env & Env1, In1 & In, readonly [Out, Out1]> {
+  return intersectWith_(self, that, (l, r) => Math.max(l, r))
 }
 
 /**
@@ -466,7 +558,7 @@ export function chooseMerge<Env1, In1, Out1>(that: Schedule<Env1, In1, Out1>) {
 export function chooseMerge_<Env, In, Out, Env1, In1, Out1>(
   self: Schedule<Env, In, Out>,
   that: Schedule<Env1, In1, Out1>
-) {
+): Schedule<Env & Env1, E.Either<In, In1>, Out | Out1> {
   return map_(choose_(self, that), E.merge)
 }
 
@@ -538,7 +630,7 @@ export function compose_<Env1, Out1, Env, In, Out>(
   return new Schedule(composeLoop(self.step, that.step))
 }
 
-function combineWithLoop<Env, In, Out, In1, Env1, Out1>(
+function intersectWithLoop<Env, In, Out, In1, Env1, Out1>(
   self: Decision.StepFunction<Env, In, Out>,
   that: Decision.StepFunction<Env1, In1, Out1>,
   f: (d1: number, d2: number) => number
@@ -568,7 +660,7 @@ function combineWithLoop<Env, In, Out, In1, Env1, Out1>(
               return Decision.makeContinue(
                 [l.out, r.out],
                 f(l.interval, r.interval),
-                combineWithLoop(l.next, r.next, f)
+                intersectWithLoop(l.next, r.next, f)
               )
             }
           }
@@ -576,28 +668,6 @@ function combineWithLoop<Env, In, Out, In1, Env1, Out1>(
       }
     })
   }
-}
-
-/**
- * Returns a new schedule that combines this schedule with the specified schedule, merging the next
- * intervals according to the specified merge function.
- */
-export function combineWith<Env1, In1, Out1>(that: Schedule<Env1, In1, Out1>) {
-  return (f: (d1: number, d2: number) => number) => <Env, In, Out>(
-    self: Schedule<Env, In, Out>
-  ) => new Schedule(combineWithLoop(self.step, that.step, f))
-}
-
-/**
- * Returns a new schedule that combines this schedule with the specified schedule, merging the next
- * intervals according to the specified merge function.
- */
-export function combineWith_<Env, Out, In, Env1, In1, Out1>(
-  self: Schedule<Env, In, Out>,
-  that: Schedule<Env1, In1, Out1>,
-  f: (d1: number, d2: number) => number
-) {
-  return new Schedule(combineWithLoop(self.step, that.step, f))
 }
 
 /**
@@ -705,8 +775,10 @@ export function durations(n: number, ...rest: number[]) {
  * by both schedules.
  */
 export function either<Env1, In1, Out1>(that: Schedule<Env1, In1, Out1>) {
-  return <Env, In, Out>(self: Schedule<Env, In, Out>) =>
-    combineWith_(self, that, (d1, d2) => Math.min(d1, d2))
+  return <Env, In, Out>(
+    self: Schedule<Env, In, Out>
+  ): Schedule<Env & Env1, In & In1, readonly [Out, Out1]> =>
+    intersectWith_(self, that, (d1, d2) => Math.min(d1, d2))
 }
 
 /**
@@ -716,8 +788,8 @@ export function either<Env1, In1, Out1>(that: Schedule<Env1, In1, Out1>) {
 export function either_<Env, Out, Env1, In, In1, Out1>(
   self: Schedule<Env, In, Out>,
   that: Schedule<Env1, In1, Out1>
-) {
-  return combineWith_(self, that, (d1, d2) => Math.min(d1, d2))
+): Schedule<Env & Env1, In & In1, readonly [Out, Out1]> {
+  return intersectWith_(self, that, (d1, d2) => Math.min(d1, d2))
 }
 
 /**
@@ -973,6 +1045,33 @@ function identityLoop<A>(): Decision.StepFunction<unknown, A, A> {
  */
 export function identity<A>() {
   return new Schedule(identityLoop<A>())
+}
+
+/**
+ * Returns a new schedule that combines this schedule with the specified
+ * schedule, continuing as long as both schedules want to continue and
+ * merging the next intervals according to the specified merge function.
+ */
+export function intersectWith_<Env, In, Out, Env2, In2, Out2>(
+  self: Schedule<Env, In, Out>,
+  that: Schedule<Env2, In2, Out2>,
+  f: (selfInterval: number, thatInterval: number) => number
+): Schedule<Env & Env2, In & In2, readonly [Out, Out2]> {
+  return new Schedule(intersectWithLoop(self.step, that.step, f))
+}
+
+/**
+ * Returns a new schedule that combines this schedule with the specified
+ * schedule, continuing as long as both schedules want to continue and
+ * merging the next intervals according to the specified merge function.
+ */
+export function intersectWith<Env2, In2, Out2>(
+  that: Schedule<Env2, In2, Out2>,
+  f: (selfInterval: number, thatInterval: number) => number
+): <Env, In, Out>(
+  self: Schedule<Env, In, Out>
+) => Schedule<Env & Env2, In & In2, readonly [Out, Out2]> {
+  return (self) => intersectWith_(self, that, f)
 }
 
 /**
@@ -1856,7 +1955,7 @@ export function zip_<Env, In, Out, Env1, Out1, In1>(
   self: Schedule<Env, In, Out>,
   that: Schedule<Env1, In1, Out1>
 ) {
-  return combineWith_(self, that, (d, d2) => Math.max(d, d2))
+  return intersectWith_(self, that, (d, d2) => Math.max(d, d2))
 }
 
 /**
@@ -1865,7 +1964,7 @@ export function zip_<Env, In, Out, Env1, Out1, In1>(
  */
 export function zip<Env1, Out1, In1>(that: Schedule<Env1, In1, Out1>) {
   return <Env, In, Out>(self: Schedule<Env, In, Out>) =>
-    combineWith_(self, that, (d, d2) => Math.max(d, d2))
+    intersectWith_(self, that, (d, d2) => Math.max(d, d2))
 }
 
 /**
