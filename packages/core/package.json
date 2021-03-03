@@ -75,6 +75,7 @@
       "String",
       "Effect",
       "Effect/Cause",
+      "Effect/Cause/Pretty",
       "Effect/Clock",
       "Effect/Exit",
       "Effect/Fiber",

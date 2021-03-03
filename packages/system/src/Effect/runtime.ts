@@ -3,8 +3,8 @@
 import { isTracingEnabled } from "@effect-ts/tracing-utils"
 
 import * as Cause from "../Cause/core"
-import type { Renderer } from "../Cause/pretty"
-import { defaultRenderer, pretty } from "../Cause/pretty"
+import type { Renderer } from "../Cause/Pretty"
+import { defaultRenderer, pretty } from "../Cause/Pretty"
 // exit
 import { HasClock, LiveClock } from "../Clock"
 import { flatten as exitFlatten } from "../Exit/core"

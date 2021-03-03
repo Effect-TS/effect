@@ -1,4 +1,5 @@
-import type { Cause, Renderer } from "../Cause"
+import type { Cause } from "../Cause"
+import type { Renderer } from "../Cause/Pretty"
 import type { Supervisor } from "../Supervisor"
 
 export class Platform<X> {

@@ -38,6 +38,7 @@
       "Chunk",
       "Async",
       "Cause",
+      "Cause/Pretty",
       "Clock",
       "Dictionary",
       "Effect",

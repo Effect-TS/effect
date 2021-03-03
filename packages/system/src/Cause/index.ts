@@ -12,5 +12,6 @@ export * from "./core"
 export * from "./do"
 export * from "./eq"
 export * from "./errors"
-export * from "./pretty"
 // codegen:end
+
+export { Renderer, pretty, defaultRenderer } from "./Pretty"

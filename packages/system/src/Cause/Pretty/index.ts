@@ -1,51 +1,57 @@
-import * as A from "../Array"
-import type { FiberID } from "../Fiber/id"
-import type { Trace } from "../Fiber/tracing"
-import { prettyTrace } from "../Fiber/tracing"
-import { pipe } from "../Function"
-import * as S from "../IO"
-import * as O from "../Option"
-import type { Cause } from "./cause"
+import * as A from "../../Array"
+import type { FiberID } from "../../Fiber/id"
+import type { Trace } from "../../Fiber/tracing"
+import { prettyTrace } from "../../Fiber/tracing"
+import { pipe } from "../../Function"
+import * as S from "../../IO"
+import * as O from "../../Option"
+import type { Cause } from "../cause"
 
 //
 // @category PrettyPrint
 //
 
-type Segment = Sequential | Parallel | Failure
+export type Segment = Sequential | Parallel | Failure
 
-type Step = Parallel | Failure
+export type Step = Parallel | Failure
 
-interface Failure {
+export interface Failure {
   _tag: "Failure"
   lines: string[]
 }
 
-interface Parallel {
+export interface Parallel {
   _tag: "Parallel"
   all: Sequential[]
 }
 
-interface Sequential {
+export interface Sequential {
   _tag: "Sequential"
   all: Step[]
 }
 
-const Failure = (lines: string[]): Failure => ({
-  _tag: "Failure",
-  lines
-})
+export function Failure(lines: string[]): Failure {
+  return {
+    _tag: "Failure",
+    lines
+  }
+}
 
-const Sequential = (all: Step[]): Sequential => ({
-  _tag: "Sequential",
-  all
-})
+export function Sequential(all: Step[]): Sequential {
+  return {
+    _tag: "Sequential",
+    all
+  }
+}
 
-const Parallel = (all: Sequential[]): Parallel => ({
-  _tag: "Parallel",
-  all
-})
+export function Parallel(all: Sequential[]): Parallel {
+  return {
+    _tag: "Parallel",
+    all
+  }
+}
 
-type TraceRenderer = (_: Trace) => string
+export type TraceRenderer = (_: Trace) => string
 
 export interface Renderer<E = unknown> {
   renderError: (error: E) => string[]
@@ -53,43 +59,50 @@ export interface Renderer<E = unknown> {
   renderUnknown: (error: unknown) => string[]
 }
 
-const headTail = <A>(a: readonly A[] & { 0: A }): [A, A[]] => {
+export function headTail<A>(a: readonly A[] & { 0: A }): [A, A[]] {
   const x = [...a]
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   const head = x.shift()!
   return [head, x]
 }
 
-const prefixBlock = (values: readonly string[], p1: string, p2: string): string[] =>
-  A.isNonEmpty(values)
+export function prefixBlock(
+  values: readonly string[],
+  p1: string,
+  p2: string
+): string[] {
+  return A.isNonEmpty(values)
     ? pipe(headTail(values), ([head, tail]) => [
         `${p1}${head}`,
         ...tail.map((_) => `${p2}${_}`)
       ])
     : []
+}
 
-const renderInterrupt = (
+export function renderInterrupt(
   fiberId: FiberID,
   trace: O.Option<Trace>,
   traceRenderer: TraceRenderer
-): Sequential =>
-  Sequential([
+): Sequential {
+  return Sequential([
     Failure([
       `An interrupt was produced by #${fiberId.seqNumber}.`,
       "",
       ...renderTrace(trace, traceRenderer)
     ])
   ])
+}
 
-const renderError = (error: Error): string[] =>
-  lines(error.stack ? error.stack : String(error))
+export function renderError(error: Error): string[] {
+  return lines(error.stack ? error.stack : String(error))
+}
 
-const renderDie = (
+export function renderDie(
   error: string[],
   trace: O.Option<Trace>,
   traceRenderer: TraceRenderer
-): Sequential =>
-  Sequential([
+): Sequential {
+  return Sequential([
     Failure([
       "An unchecked error was produced.",
       "",
@@ -97,13 +110,14 @@ const renderDie = (
       ...renderTrace(trace, traceRenderer)
     ])
   ])
+}
 
-const renderFail = (
+export function renderFail(
   error: string[],
   trace: O.Option<Trace>,
   traceRenderer: TraceRenderer
-): Sequential =>
-  Sequential([
+): Sequential {
+  return Sequential([
     Failure([
       "A checked error was not handled.",
       "",
@@ -111,11 +125,17 @@ const renderFail = (
       ...renderTrace(trace, traceRenderer)
     ])
   ])
+}
 
-const lines = (s: string) => s.split("\n").map((s) => s.replace("\r", "")) as string[]
+export function lines(s: string) {
+  return s.split("\n").map((s) => s.replace("\r", "")) as string[]
+}
 
-const linearSegments = <E>(cause: Cause<E>, renderer: Renderer<E>): S.IO<Step[]> =>
-  S.gen(function* (_) {
+export function linearSegments<E>(
+  cause: Cause<E>,
+  renderer: Renderer<E>
+): S.IO<Step[]> {
+  return S.gen(function* (_) {
     switch (cause._tag) {
       case "Then": {
         return [
@@ -128,12 +148,13 @@ const linearSegments = <E>(cause: Cause<E>, renderer: Renderer<E>): S.IO<Step[]>
       }
     }
   })
+}
 
-const parallelSegments = <E>(
+export function parallelSegments<E>(
   cause: Cause<E>,
   renderer: Renderer<E>
-): S.IO<Sequential[]> =>
-  S.gen(function* (_) {
+): S.IO<Sequential[]> {
+  return S.gen(function* (_) {
     switch (cause._tag) {
       case "Both": {
         return [
@@ -146,24 +167,26 @@ const parallelSegments = <E>(
       }
     }
   })
+}
 
-const renderToString = (u: unknown): string => {
+export function renderToString(u: unknown): string {
   if (
     typeof u === "object" &&
     u != null &&
     "toString" in u &&
-    typeof u["toString"] === "function"
+    typeof u["toString"] === "function" &&
+    u["toString"] !== Object.prototype.toString
   ) {
     return u["toString"]()
   }
   return JSON.stringify(u, null, 2)
 }
 
-const causeToSequential = <E>(
+export function causeToSequential<E>(
   cause: Cause<E>,
   renderer: Renderer<E>
-): S.IO<Sequential> =>
-  S.gen(function* (_) {
+): S.IO<Sequential> {
+  return S.gen(function* (_) {
     switch (cause._tag) {
       case "Empty": {
         return Sequential([])
@@ -227,12 +250,13 @@ const causeToSequential = <E>(
       }
     }
   })
+}
 
-function renderTrace(o: O.Option<Trace>, renderTrace: TraceRenderer) {
+export function renderTrace(o: O.Option<Trace>, renderTrace: TraceRenderer) {
   return o._tag === "None" ? [] : lines(renderTrace(o.value))
 }
 
-const times = (s: string, n: number) => {
+export function times(s: string, n: number) {
   let h = ""
 
   for (let i = 0; i < n; i += 1) {
@@ -242,7 +266,7 @@ const times = (s: string, n: number) => {
   return h
 }
 
-const format = (segment: Segment): readonly string[] => {
+export function format(segment: Segment): readonly string[] {
   switch (segment._tag) {
     case "Failure": {
       return prefixBlock(segment.lines, "─", " ")
@@ -266,8 +290,8 @@ const format = (segment: Segment): readonly string[] => {
   }
 }
 
-const prettyLines = <E>(cause: Cause<E>, renderer: Renderer<E>) =>
-  S.gen(function* (_) {
+export function prettyLines<E>(cause: Cause<E>, renderer: Renderer<E>) {
+  return S.gen(function* (_) {
     const s = yield* _(causeToSequential(cause, renderer))
 
     if (s.all.length === 1 && s.all[0] && s.all[0]._tag === "Failure") {
@@ -276,6 +300,7 @@ const prettyLines = <E>(cause: Cause<E>, renderer: Renderer<E>) =>
 
     return O.getOrElse_(A.updateAt_(format(s), 0, "╥"), (): string[] => [])
   })
+}
 
 export function prettyM<E1>(cause: Cause<E1>, renderer: Renderer<E1>) {
   return S.gen(function* (_) {
@@ -285,8 +310,9 @@ export function prettyM<E1>(cause: Cause<E1>, renderer: Renderer<E1>) {
   })
 }
 
-const defaultErrorToLines = (error: unknown) =>
-  error instanceof Error ? renderError(error) : lines(renderToString(error))
+export function defaultErrorToLines(error: unknown) {
+  return error instanceof Error ? renderError(error) : lines(renderToString(error))
+}
 
 export const defaultRenderer: Renderer = {
   renderError: defaultErrorToLines,

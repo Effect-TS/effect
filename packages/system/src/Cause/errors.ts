@@ -1,5 +1,5 @@
 import type { Cause } from "./cause"
-import { pretty } from "./pretty"
+import { pretty } from "./Pretty"
 
 //
 // @category FiberFailure
