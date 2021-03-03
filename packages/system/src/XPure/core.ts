@@ -1,5 +1,7 @@
 /* eslint-disable prefer-const */
-import { _A, _E, _R, _U } from "../Effect/commons"
+import { _A, _E, _I, _R, _U } from "../Effect/commons"
+import type { EffectURI } from "../Effect/effect"
+import type { Instruction } from "../Effect/primitives"
 import * as E from "../Either/core"
 import { constant } from "../Function"
 import { Stack } from "../Stack"
@@ -12,13 +14,19 @@ import { Stack } from "../Stack"
  * including context, state, and failure.
  */
 export abstract class XPure<S1, S2, R, E, A> {
+  readonly _tag = "XPure"
+
   readonly _S1!: (_: S1) => void
   readonly _S2!: () => S2;
 
-  readonly [_U]!: "XPure";
+  readonly [_U]!: EffectURI;
   readonly [_E]!: () => E;
   readonly [_A]!: () => A;
   readonly [_R]!: (_: R) => void
+
+  get [_I](): Instruction {
+    return this as any
+  }
 }
 
 /**

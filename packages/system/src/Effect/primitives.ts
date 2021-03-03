@@ -9,6 +9,7 @@ import type { FiberRef } from "../FiberRef/fiberRef"
 import type * as O from "../Option"
 import type { Scope } from "../Scope"
 import type { Supervisor } from "../Supervisor"
+import type { XPure } from "../XPure/core"
 import type { Effect } from "./effect"
 import { Base } from "./effect"
 
@@ -42,6 +43,7 @@ export type Instruction =
   | IOverrideForkScope<any, any, any>
   | ITracingStatus<any, any, any>
   | IPlatform<any, any, any>
+  | XPure<unknown, never, any, any, any>
 
 export class IFail<E> extends Base<unknown, E, never> {
   readonly _tag = "Fail"

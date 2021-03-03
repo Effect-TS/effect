@@ -4,7 +4,7 @@ import * as Cause from "../Cause/core"
 // effect
 import { RuntimeError } from "../Cause/errors"
 import { forEachUnit_ } from "../Effect/excl-forEach"
-import { ISucceed } from "../Effect/primitives"
+import { IFail, ISucceed } from "../Effect/primitives"
 // either
 import * as E from "../Either"
 // exit
@@ -23,6 +23,7 @@ import * as Sup from "../Supervisor"
 import { AtomicReference } from "../Support/AtomicReference"
 import { RingBuffer } from "../Support/RingBuffer"
 import { defaultScheduler } from "../Support/Scheduler"
+import * as X from "../XPure"
 import * as T from "./_internal/effect"
 // fiber
 import * as Fiber from "./core"
@@ -927,6 +928,17 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                         this.pushContinuation(new ApplyFrame(k))
                       }
                     }
+                    break
+                  }
+
+                  case "XPure": {
+                    const result: E.Either<any, any> = X.runEither(
+                      X.provideAll_(current, this.environments?.value || {})
+                    )
+                    current =
+                      result._tag === "Left"
+                        ? new IFail((t) => Cause.traced(Cause.fail(result.left), t()))
+                        : new ISucceed(result.right)
                     break
                   }
 
