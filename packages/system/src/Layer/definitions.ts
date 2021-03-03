@@ -14,22 +14,34 @@ import * as P from "../Promise"
 import * as R from "../Ref"
 import * as RM from "../RefM"
 import { AtomicReference } from "../Support/AtomicReference"
-import type { UnionToIntersection } from "../Utils"
+import type { Erase, UnionToIntersection } from "../Utils"
 import * as T from "./deps-effect"
 import * as M from "./deps-managed"
 
+/**
+ * Creates a layer from an effect
+ */
 export function fromRawEffect<R, E, A>(resource: T.Effect<R, E, A>): Layer<R, E, A> {
   return new LayerManaged(M.fromEffect(resource))
 }
 
+/**
+ * Creates a layer from a function
+ */
 export function fromRawFunction<A, B>(f: (a: A) => B) {
   return fromRawEffect(T.access(f))
 }
 
+/**
+ * Creates a layer from an effectful function
+ */
 export function fromRawFunctionM<A, R, E, B>(f: (a: A) => T.Effect<R, E, B>) {
   return fromRawEffect(T.accessM(f))
 }
 
+/**
+ * Creates a layer from a managed environment
+ */
 export function fromRawManaged<R, E, A>(resource: M.Managed<R, E, A>): Layer<R, E, A> {
   return new LayerManaged(resource)
 }
@@ -84,14 +96,7 @@ export function fold<R, E, A>(self: Layer<R, E, A>) {
  */
 export function using<R2, E2, A2>(from: Layer<R2, E2, A2>) {
   return <R, E, A>(to: Layer<A2 & R, E, A>): Layer<R2 & R, E2 | E, A> =>
-    compose(from["+++"](identity<R>()), to)
-}
-
-/**
- * Use `from` to totally provide environment into `to`
- */
-export function usingAll<R2, E2, A2>(from: Layer<R2, E2, A2>) {
-  return <E, A>(to: Layer<A2, E, A>): Layer<R2, E2 | E, A> => compose(from, to)
+    compose_(from["++"](identity<R>()), to)
 }
 
 /**
@@ -99,27 +104,28 @@ export function usingAll<R2, E2, A2>(from: Layer<R2, E2, A2>) {
  */
 export function usingAnd<R2, E2, A2>(from: Layer<R2, E2, A2>) {
   return <R, E, A>(to: Layer<A2 & R, E, A>): Layer<R2 & R, E2 | E, A & A2> =>
-    compose(from["+++"](identity<R>()), to["+++"](identity<A2>()))
-}
-
-/**
- * Use `from` to totally provide environment into `to` and merge both
- */
-export function usingAllAnd<R2, E2, A2>(from: Layer<R2, E2, A2>) {
-  return <E, A>(to: Layer<A2, E, A>): Layer<R2, E2 | E, A & A2> =>
-    compose(from, to["+++"](identity<A2>()))
+    compose_(from["++"](identity<R>()), to["++"](identity<A2>()))
 }
 
 /**
  * Compose layers
  */
-export function compose<R2, E2, A2, E, A>(
+export function compose_<R2, E2, A2, E, A>(
   from: Layer<R2, E2, A2>,
   to: Layer<A2, E, A>
 ): Layer<R2, E2 | E, A> {
   return fold(from)(
     fromRawFunctionM((_: readonly [unknown, C.Cause<E2>]) => T.halt(_[1]))
   )(to)
+}
+
+/**
+ * Compose layers
+ */
+export function compose<A2, E, A>(
+  to: Layer<A2, E, A>
+): <R2, E2>(from: Layer<R2, E2, A2>) => Layer<R2, E2 | E, A> {
+  return (from) => compose_(from, to)
 }
 
 export abstract class Layer<RIn, E, ROut> {
@@ -142,46 +148,58 @@ export abstract class Layer<RIn, E, ROut> {
   }
 
   /**
-   * Use that Layer to provide data to self
+   * Use that Layer to provide data to this
    */
   ["<<<"]<R2, E2>(that: Layer<R2, E2, RIn>): Layer<R2, E2 | E, ROut> {
-    return compose(that, this)
+    return compose_(that, this)
   }
 
   /**
-   * Create a Layer with the data only from the that Layer, while providing the data from self to that
+   * Use this Layer to provide data to that
    */
   [">>>"]<E2, A2>(that: Layer<ROut, E2, A2>): Layer<RIn, E2 | E, A2> {
-    return compose(this, that)
+    return compose_(this, that)
   }
 
   /**
-   * Create a Layer with the data only from the that Layer, while providing the data from self to that
+   * Use that Layer to partially provide data to this
    */
-  ["&>>"]<R2, E2, A2>(that: Layer<ROut & R2, E2, A2>): Layer<RIn & R2, E2 | E, A2> {
-    return compose(this["+++"](identity<R2>()), that)
+  ["<<"]<R2, E2, A2>(
+    that: Layer<R2, E2, A2>
+  ): Layer<Erase<RIn, A2> & R2, E2 | E, ROut> {
+    return that[">>"](this)
   }
 
   /**
-   * Create a Layer with the data from both Layers, while providing the data from self to that
+   * Use this Layer to partially provide data to that
    */
-  [">+>"]<E2, A2>(that: Layer<ROut, E2, A2>): Layer<RIn, E2 | E, A2 & ROut> {
-    return compose(this, that["+++"](identity<ROut>()))
+  [">>"]<R2, E2, A2>(that: Layer<R2, E2, A2>): Layer<Erase<R2, ROut> & RIn, E2 | E, A2>
+  [">>"]<R2, E2, A2>(that: Layer<R2 & ROut, E2, A2>): Layer<R2 & RIn, E2 | E, A2> {
+    return compose_(this["++"](identity<R2>()), that)
   }
 
   /**
-   * Create a Layer with the data from both Layers, while providing the data from self to that
+   * Create a Layer with the data from both Layers, while providing the data from this to that
    */
-  ["&+>"]<R2, E2, A2>(
-    that: Layer<ROut & R2, E2, A2>
-  ): Layer<RIn & R2, E2 | E, A2 & ROut> {
-    return compose(this["+++"](identity<R2>()), that["+++"](identity<ROut>()))
+  ["+>"]<R2, E2, A2>(
+    that: Layer<R2, E2, A2>
+  ): Layer<RIn & Erase<ROut & R2, ROut>, E2 | E, ROut & A2> {
+    return this[">>"](that["++"](identity<ROut>()))
+  }
+
+  /**
+   * Create a Layer with the data from both Layers, while providing the data from that to this
+   */
+  ["<+"]<R2, E2, A2>(
+    that: Layer<R2, E2, A2>
+  ): Layer<Erase<RIn & A2, A2> & R2, E | E2, ROut & A2> {
+    return that["+>"](this)
   }
 
   /**
    * Combine both layers in parallel
    */
-  ["+++"]<R2, E2, A2>(from: Layer<R2, E2, A2>): Layer<R2 & RIn, E2 | E, ROut & A2> {
+  ["++"]<R2, E2, A2>(from: Layer<R2, E2, A2>): Layer<R2 & RIn, E2 | E, ROut & A2> {
     return and_(from, this)
   }
 
@@ -198,6 +216,13 @@ export abstract class Layer<RIn, E, ROut> {
   useAll<E1, A>(effect: T.Effect<ROut, E1, A>): T.Effect<RIn, E | E1, A> {
     return provideLayer(this)(effect)
   }
+
+  /**
+   * Use the layer to provide the full environment to an effect
+   */
+  get useForever(): T.Effect<RIn, E, never> {
+    return provideLayer(this)(T.never)
+  }
 }
 
 /**
@@ -205,7 +230,7 @@ export abstract class Layer<RIn, E, ROut> {
  */
 export function provideSomeLayer<R, E, A>(layer: Layer<R, E, A>) {
   return <R1, E1, A1>(self: T.Effect<R1 & A, E1, A1>): T.Effect<R & R1, E | E1, A1> =>
-    provideLayer_(self, layer["+++"](identity()))
+    provideLayer_(self, layer["++"](identity()))
 }
 
 /**
@@ -460,6 +485,9 @@ export function build<R, E, A>(_: Layer<R, E, A>): M.Managed<R, E, A> {
   )
 }
 
+/**
+ * Creates a MemoMap
+ */
 export function makeMemoMap() {
   return pipe(
     RM.makeRefM<
