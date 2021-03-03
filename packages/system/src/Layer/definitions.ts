@@ -96,7 +96,7 @@ export function fold<R, E, A>(self: Layer<R, E, A>) {
  */
 export function using<R2, E2, A2>(from: Layer<R2, E2, A2>) {
   return <R, E, A>(to: Layer<A2 & R, E, A>): Layer<R2 & R, E2 | E, A> =>
-    compose_(from["++"](identity<R>()), to)
+    compose_(from["+++"](identity<R>()), to)
 }
 
 /**
@@ -104,7 +104,7 @@ export function using<R2, E2, A2>(from: Layer<R2, E2, A2>) {
  */
 export function usingAnd<R2, E2, A2>(from: Layer<R2, E2, A2>) {
   return <R, E, A>(to: Layer<A2 & R, E, A>): Layer<R2 & R, E2 | E, A & A2> =>
-    compose_(from["++"](identity<R>()), to["++"](identity<A2>()))
+    compose_(from["+++"](identity<R>()), to["+++"](identity<A2>()))
 }
 
 /**
@@ -175,7 +175,7 @@ export abstract class Layer<RIn, E, ROut> {
    */
   [">>"]<R2, E2, A2>(that: Layer<R2, E2, A2>): Layer<Erase<R2, ROut> & RIn, E2 | E, A2>
   [">>"]<R2, E2, A2>(that: Layer<R2 & ROut, E2, A2>): Layer<R2 & RIn, E2 | E, A2> {
-    return compose_(this["++"](identity<R2>()), that)
+    return compose_(this["+++"](identity<R2>()), that)
   }
 
   /**
@@ -184,7 +184,7 @@ export abstract class Layer<RIn, E, ROut> {
   ["+>"]<R2, E2, A2>(
     that: Layer<R2, E2, A2>
   ): Layer<RIn & Erase<ROut & R2, ROut>, E2 | E, ROut & A2> {
-    return this[">>"](that["++"](identity<ROut>()))
+    return this[">>"](that["+++"](identity<ROut>()))
   }
 
   /**
@@ -199,7 +199,7 @@ export abstract class Layer<RIn, E, ROut> {
   /**
    * Combine both layers in parallel
    */
-  ["++"]<R2, E2, A2>(from: Layer<R2, E2, A2>): Layer<R2 & RIn, E2 | E, ROut & A2> {
+  ["+++"]<R2, E2, A2>(from: Layer<R2, E2, A2>): Layer<R2 & RIn, E2 | E, ROut & A2> {
     return and_(from, this)
   }
 
@@ -230,7 +230,7 @@ export abstract class Layer<RIn, E, ROut> {
  */
 export function provideSomeLayer<R, E, A>(layer: Layer<R, E, A>) {
   return <R1, E1, A1>(self: T.Effect<R1 & A, E1, A1>): T.Effect<R & R1, E | E1, A1> =>
-    provideLayer_(self, layer["++"](identity()))
+    provideLayer_(self, layer["+++"](identity()))
 }
 
 /**
