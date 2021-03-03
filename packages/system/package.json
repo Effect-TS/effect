@@ -1,6 +1,6 @@
 {
   "name": "@effect-ts/system",
-  "version": "0.22.8",
+  "version": "0.23.0",
   "license": "MIT",
   "private": false,
   "repository": "https://github.com/Effect-TS/system.git",
@@ -27,7 +27,7 @@
   },
   "sideEffects": false,
   "dependencies": {
-    "@effect-ts/tracing-utils": "^0.4.2"
+    "@effect-ts/tracing-utils": "^0.4.3"
   },
   "config": {
     "side": [
