@@ -13,7 +13,7 @@ import { testRuntime } from "./crypto/runtime"
 describe("Crypto Suite", () => {
   describe("Live", () => {
     const { runPromise, runPromiseExit } = pipe(
-      PBKDF2ConfigLive["+>"](CryptoLive),
+      PBKDF2ConfigLive[">+>"](CryptoLive),
       testRuntime
     )()
 
@@ -36,7 +36,7 @@ describe("Crypto Suite", () => {
   })
   describe("Test", () => {
     const { runPromise, runPromiseExit } = pipe(
-      CryptoLive["<+"](PBKDF2ConfigTest),
+      CryptoLive["<+<"](PBKDF2ConfigTest),
       testRuntime
     )()
 

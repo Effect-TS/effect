@@ -477,7 +477,7 @@ export function catchAll<R1, E, E1, Out1>(handler: Layer<readonly [R1, E], E1, O
           (e) => T.succeed(tuple(r, e)),
           (c) => T.halt(c)
         )
-      )[">>>"](handler)
+      )[">=>"](handler)
     )(fromRawEffect(T.environment<Out>()))
   }
 }
@@ -519,7 +519,7 @@ export function orDie<R, E, Out>(self: Layer<R, E, Out>): Layer<R, never, Out> {
  * executes the specified layer.
  */
 export function orElse<RIn1, E1, ROut1>(that: Layer<RIn1, E1, ROut1>) {
-  return catchAll(first<RIn1>()[">>>"](that))
+  return catchAll(first<RIn1>()[">=>"](that))
 }
 
 /**
@@ -556,13 +556,13 @@ export function retry<RIn, RIn1, E, ROut>(
     )
 
     return pipe(
-      first<RIn>()[">>>"](self),
-      catchAll(update[">>>"](suspend(() => fresh(loop()))))
+      first<RIn>()[">=>"](self),
+      catchAll(update[">=>"](suspend(() => fresh(loop()))))
     )
   }
 
   return zipPar_(
     identity<RIn & RIn1 & CL.HasClock>(),
     fromRawEffect(T.succeed(schedule.step))
-  )[">>>"](loop())
+  )[">=>"](loop())
 }
