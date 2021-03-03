@@ -1,4 +1,5 @@
 import type { Effect } from "./effect"
+import { fail } from "./fail"
 import { orElse_ } from "./orElse"
 
 /**
@@ -17,5 +18,5 @@ export function orElseFail_<R, E, A, E2>(
   self: Effect<R, E, A>,
   e: E2
 ): Effect<R, E2, A> {
-  return orElse_(self, fail(e))
+  return orElse_(self, () => fail(e))
 }
