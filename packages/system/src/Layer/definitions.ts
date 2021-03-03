@@ -150,50 +150,50 @@ export abstract class Layer<RIn, E, ROut> {
   /**
    * Use that Layer to provide data to this
    */
-  ["<<<"]<R2, E2>(that: Layer<R2, E2, RIn>): Layer<R2, E2 | E, ROut> {
-    return compose_(that, this)
+  ["<=<"]<R2, E2>(that: Layer<R2, E2, RIn>): Layer<R2, E2 | E, ROut> {
+    return that[">=>"](this)
   }
 
   /**
    * Use this Layer to provide data to that
    */
-  [">>>"]<E2, A2>(that: Layer<ROut, E2, A2>): Layer<RIn, E2 | E, A2> {
+  [">=>"]<E2, A2>(that: Layer<ROut, E2, A2>): Layer<RIn, E2 | E, A2> {
     return compose_(this, that)
   }
 
   /**
    * Use that Layer to partially provide data to this
    */
-  ["<<"]<R2, E2, A2>(
+  ["<<<"]<R2, E2, A2>(
     that: Layer<R2, E2, A2>
   ): Layer<Erase<RIn, A2> & R2, E2 | E, ROut> {
-    return that[">>"](this)
+    return that[">>>"](this)
   }
 
   /**
    * Use this Layer to partially provide data to that
    */
-  [">>"]<R2, E2, A2>(that: Layer<R2, E2, A2>): Layer<Erase<R2, ROut> & RIn, E2 | E, A2>
-  [">>"]<R2, E2, A2>(that: Layer<R2 & ROut, E2, A2>): Layer<R2 & RIn, E2 | E, A2> {
-    return compose_(this["+++"](identity<R2>()), that)
+  [">>>"]<R2, E2, A2>(that: Layer<R2, E2, A2>): Layer<Erase<R2, ROut> & RIn, E2 | E, A2>
+  [">>>"]<R2, E2, A2>(that: Layer<R2 & ROut, E2, A2>): Layer<R2 & RIn, E2 | E, A2> {
+    return this["+++"](identity<R2>())[">=>"](that)
   }
 
   /**
    * Create a Layer with the data from both Layers, while providing the data from this to that
    */
-  ["+>"]<R2, E2, A2>(
+  [">+>"]<R2, E2, A2>(
     that: Layer<R2, E2, A2>
   ): Layer<RIn & Erase<ROut & R2, ROut>, E2 | E, ROut & A2> {
-    return this[">>"](that["+++"](identity<ROut>()))
+    return this[">>>"](that["+++"](identity<ROut>()))
   }
 
   /**
    * Create a Layer with the data from both Layers, while providing the data from that to this
    */
-  ["<+"]<R2, E2, A2>(
+  ["<+<"]<R2, E2, A2>(
     that: Layer<R2, E2, A2>
   ): Layer<Erase<RIn & A2, A2> & R2, E | E2, ROut & A2> {
-    return that["+>"](this)
+    return that[">+>"](this)
   }
 
   /**
