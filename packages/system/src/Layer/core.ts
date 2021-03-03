@@ -10,7 +10,7 @@ import type { UnionToIntersection } from "../Utils"
 import type { Layer, MergeA, MergeE, MergeR } from "./definitions"
 import {
   build,
-  compose,
+  compose_,
   fold,
   fromRawEffect,
   fromRawFunction,
@@ -111,6 +111,9 @@ export function zipPar<RIn, RIn1, E, E1, ROut, ROut1>(that: Layer<RIn1, E1, ROut
   return (self: Layer<RIn, E, ROut>) => zipPar_(self, that)
 }
 
+/**
+ * Construct a service layer from a value
+ */
 export function pure<T>(has: Tag<T>) {
   return (resource: T): Layer<unknown, never, Has<T>> =>
     new LayerManaged(
@@ -118,6 +121,9 @@ export function pure<T>(has: Tag<T>) {
     )
 }
 
+/**
+ * DSL to construct service layers with acquire->open->release
+ */
 export function prepare<T>(has: Tag<T>) {
   return <R, E, A extends T>(acquire: T.Effect<R, E, A>) => ({
     open: <R1, E1>(open: (_: A) => T.Effect<R1, E1, any>) => ({
@@ -132,15 +138,6 @@ export function prepare<T>(has: Tag<T>) {
     release: <R2>(release: (_: A) => T.Effect<R2, never, any>) =>
       fromManaged(has)(M.makeExit_(acquire, (a) => release(a)))
   })
-}
-
-export function create<T>(has: Tag<T>) {
-  return {
-    fromEffect: fromEffect(has),
-    fromManaged: fromManaged(has),
-    pure: pure(has),
-    prepare: prepare(has)
-  }
 }
 
 /**
@@ -166,6 +163,9 @@ export function fromFunction<B>(tag: Tag<B>) {
   return <A>(f: (a: A) => B): Layer<A, never, Has<B>> => fromEffect(tag)(T.access(f))
 }
 
+/**
+ * Zips layers together
+ */
 export function zip_<R, E, A, R2, E2, A2>(
   self: Layer<R, E, A>,
   that: Layer<R2, E2, A2>
@@ -173,14 +173,23 @@ export function zip_<R, E, A, R2, E2, A2>(
   return new LayerZipWithSeq(self, that, tuple)
 }
 
+/**
+ * Zips layers together
+ */
 export function zip<R2, E2, A2>(right: Layer<R2, E2, A2>) {
   return <R, E, A>(left: Layer<R, E, A>) => zip_(left, right)
 }
 
+/**
+ * Merges layers sequentially
+ */
 export function andSeq<R2, E2, A2>(that: Layer<R2, E2, A2>) {
   return <R, E, A>(self: Layer<R, E, A>) => andSeq_(self, that)
 }
 
+/**
+ * Merges layers sequentially
+ */
 export function andSeq_<R, E, A, R2, E2, A2>(
   self: Layer<R, E, A>,
   that: Layer<R2, E2, A2>
@@ -188,12 +197,18 @@ export function andSeq_<R, E, A, R2, E2, A2>(
   return new LayerZipWithSeq(self, that, (l, r) => ({ ...l, ...r }))
 }
 
+/**
+ * Merges all layers in parallel
+ */
 export function all<Ls extends Layer<any, any, any>[]>(
   ...ls: Ls & { 0: Layer<any, any, any> }
 ): Layer<MergeR<Ls>, MergeE<Ls>, MergeA<Ls>> {
   return new LayerAllPar(ls)
 }
 
+/**
+ * Merges all layers sequentially
+ */
 export function allSeq<Ls extends Layer<any, any, any>[]>(
   ...ls: Ls & { 0: Layer<any, any, any> }
 ): Layer<MergeR<Ls>, MergeE<Ls>, MergeA<Ls>> {
@@ -407,6 +422,9 @@ export function bracketConstructorM<S>(
       .release(release as any) as any
 }
 
+/**
+ * Restrict output to only contain the specified services
+ */
 export function restrict<Tags extends Tag<any>[]>(...ts: Tags) {
   return <R, E>(
     self: Layer<
@@ -427,7 +445,7 @@ export function restrict<Tags extends Tag<any>[]>(...ts: Tags) {
       }[number]
     >
   > =>
-    compose(
+    compose_(
       self,
       fromRawEffect(
         T.accessServicesT(...ts)((...servises) =>

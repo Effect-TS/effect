@@ -18,7 +18,7 @@ describe("Layer", () => {
           )
         ),
         T.let("layer", ({ effect }) =>
-          L.retry(new L.LayerManaged(M.fromEffect(effect)), SC.recurs(3))
+          L.retry(L.fromRawManaged(M.fromEffect(effect)), SC.recurs(3))
         ),
         T.tap(({ layer }) => pipe(layer, L.build, M.useNow, T.ignore)),
         T.chain(({ ref }) => ref.get),
