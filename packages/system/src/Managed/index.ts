@@ -39,4 +39,5 @@ export * from "./methods/releaseMap"
 export * from "./methods/suspend"
 export * from "./methods/switchable"
 export * from "./methods/union"
+export * from "./methods/updateService"
 // codegen:end

@@ -1237,8 +1237,18 @@ export function tapError<E, R1, E1, X>(f: (e: E) => Managed<R1, E1, X>) {
  * Managed value.
  */
 export function tapM<A, R1, E1, X>(f: (a: A) => Effect<R1, E1, X>) {
-  return <R, E>(self: Managed<R, E, A>): Managed<R & R1, E | E1, A> =>
-    mapM_(self, (a) => T.as_(f(a), a))
+  return <R, E>(self: Managed<R, E, A>): Managed<R & R1, E | E1, A> => tapM_(self, f)
+}
+
+/**
+ * Like `tap`, but uses a function that returns a Effect value rather than a
+ * Managed value.
+ */
+export function tapM_<R, E, A, R1, E1, X>(
+  self: Managed<R, E, A>,
+  f: (a: A) => Effect<R1, E1, X>
+) {
+  return mapM_(self, (a) => T.as_(f(a), a))
 }
 
 /**
@@ -1266,65 +1276,75 @@ export function timed<R, E, A>(
  * If the reservation completes successfully (even after the timeout) the release action will be run on a new fiber.
  * `Some` will be returned if acquisition and reservation complete in time
  */
+export function timeout_<R, E, A>(self: Managed<R, E, A>, d: number) {
+  return new Managed(
+    T.uninterruptibleMask(({ restore }) =>
+      T.gen(function* (_) {
+        const env = yield* _(T.environment<readonly [R & HasClock, RM.ReleaseMap]>())
+        const [r, outerReleaseMap] = env
+        const innerReleaseMap = yield* _(makeReleaseMap.makeReleaseMap)
+        const earlyRelease = yield* _(
+          add.add((exit) => releaseAll.releaseAll(exit, T.sequential)(innerReleaseMap))(
+            outerReleaseMap
+          )
+        )
+        const raceResult: E.Either<
+          F.Fiber<E, readonly [RM.Finalizer, A]>,
+          A
+        > = yield* _(
+          restore(
+            T.provideAll_(
+              T.raceWith_(
+                T.provideAll_(self.effect, tuple(r, innerReleaseMap)),
+                T.as_(T.sleep(d), O.none),
+                (result, sleeper) =>
+                  T.andThen_(
+                    F.interrupt(sleeper),
+                    T.done(Ex.map_(result, (tp) => E.right(tp[1])))
+                  ),
+                (_, resultFiber) => T.succeed(E.left(resultFiber))
+              ),
+              r
+            )
+          )
+        )
+        const a = yield* _(
+          E.fold_(
+            raceResult,
+            (f) =>
+              T.as_(
+                T.chain_(T.fiberId(), (id) =>
+                  T.forkDaemon(
+                    T.ensuring_(
+                      F.interrupt(f),
+                      releaseAll.releaseAll(
+                        Ex.interrupt(id),
+                        T.sequential
+                      )(innerReleaseMap)
+                    )
+                  )
+                ),
+                O.none
+              ),
+            (v) => T.succeed(O.some(v))
+          )
+        )
+
+        return tuple(earlyRelease, a)
+      })
+    )
+  )
+}
+
+/**
+ * Returns an effect that will timeout this resource, returning `None` if the
+ * timeout elapses before the resource was reserved and acquired.
+ * If the reservation completes successfully (even after the timeout) the release action will be run on a new fiber.
+ * `Some` will be returned if acquisition and reservation complete in time
+ */
 export function timeout(d: number) {
   return <R, E, A>(self: Managed<R, E, A>): Managed<R & HasClock, E, O.Option<A>> =>
-    new Managed(
-      T.uninterruptibleMask(({ restore }) =>
-        T.gen(function* (_) {
-          const env = yield* _(T.environment<readonly [R & HasClock, RM.ReleaseMap]>())
-          const [r, outerReleaseMap] = env
-          const innerReleaseMap = yield* _(makeReleaseMap.makeReleaseMap)
-          const earlyRelease = yield* _(
-            add.add((exit) =>
-              releaseAll.releaseAll(exit, T.sequential)(innerReleaseMap)
-            )(outerReleaseMap)
-          )
-          const raceResult: E.Either<
-            F.Fiber<E, readonly [RM.Finalizer, A]>,
-            A
-          > = yield* _(
-            restore(
-              T.provideAll_(
-                T.raceWith_(
-                  T.provideAll_(self.effect, tuple(r, innerReleaseMap)),
-                  T.as_(T.sleep(d), O.none),
-                  (result, sleeper) =>
-                    T.andThen_(
-                      F.interrupt(sleeper),
-                      T.done(Ex.map_(result, (tp) => E.right(tp[1])))
-                    ),
-                  (_, resultFiber) => T.succeed(E.left(resultFiber))
-                ),
-                r
-              )
-            )
-          )
-          const a = yield* _(
-            E.fold_(
-              raceResult,
-              (f) =>
-                T.as_(
-                  T.chain_(T.fiberId(), (id) =>
-                    T.forkDaemon(
-                      T.ensuring_(
-                        F.interrupt(f),
-                        releaseAll.releaseAll(
-                          Ex.interrupt(id),
-                          T.sequential
-                        )(innerReleaseMap)
-                      )
-                    )
-                  ),
-                  O.none
-                ),
-              (v) => T.succeed(O.some(v))
-            )
-          )
-
-          return tuple(earlyRelease, a)
-        })
-      )
-    )
+    timeout_(self, d)
 }
 
 /**
@@ -1528,7 +1548,7 @@ export function access<R0, A>(f: (_: R0) => A): RIO<R0, A> {
 /**
  * Effectfully accesses the environment of the effect.
  */
-export function accessM<R0, R, E, A>(
+export function accessManaged<R0, R, E, A>(
   f: (_: R0) => Managed<R, E, A>
 ): Managed<R & R0, E, A> {
   return chain_(environment<R0>(), f)
@@ -1537,7 +1557,7 @@ export function accessM<R0, R, E, A>(
 /**
  * Effectfully accesses the environment of the effect.
  */
-export function accessEffect<R0, R, E, A>(
+export function accessM<R0, R, E, A>(
   f: (_: R0) => Effect<R, E, A>
 ): Managed<R & R0, E, A> {
   return mapM_(environment<R0>(), f)
@@ -1554,7 +1574,7 @@ export function accessServicesM<SS extends Record<string, Tag<any>>>(s: SS) {
       }
     ) => Managed<R, E, B>
   ) =>
-    accessM(
+    accessManaged(
       (
         r: UnionToIntersection<
           {
@@ -1579,7 +1599,7 @@ export const accessServicesTM = <SS extends Tag<any>[]>(...s: SS) => <
     }
   ) => Managed<R, E, B>
 ) =>
-  accessM(
+  accessManaged(
     (
       r: UnionToIntersection<
         {
@@ -1638,7 +1658,7 @@ export function accessServices<SS extends Record<string, Tag<any>>>(s: SS) {
  */
 export function accessServiceM<T>(s: Tag<T>) {
   return <R, E, B>(f: (a: T) => Managed<R, E, B>) =>
-    accessM((r: Has<T>) => f(r[s.key as any]))
+    accessManaged((r: Has<T>) => f(r[s.key as any]))
 }
 
 /**
@@ -1676,7 +1696,7 @@ export function provideServiceM<T>(_: Tag<T>) {
   return <R, E>(f: Managed<R, E, T>) => <R1, E1, A1>(
     ma: Managed<R1 & Has<T>, E1, A1>
   ): Managed<R & R1, E | E1, A1> =>
-    accessM((r: R & R1) =>
+    accessManaged((r: R & R1) =>
       chain_(f, (t) => provideAll_(ma, mergeEnvironments(_, r, t)))
     )
 }
