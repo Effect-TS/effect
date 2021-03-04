@@ -1,4 +1,5 @@
 // tracing: off
+
 import { accessCallTrace, traceCall, traceFrom } from "@effect-ts/tracing-utils"
 
 import { chain_ } from "./core"
@@ -12,7 +13,7 @@ import type { Effect } from "./effect"
  */
 export function andThen<R1, E1, A1>(fb: Effect<R1, E1, A1>) {
   const trace = accessCallTrace()
-  return traceCall(<R, E, A>(fa: Effect<R, E, A>) => andThen_(fa, fb), trace)
+  return <R, E, A>(fa: Effect<R, E, A>) => traceCall(andThen_, trace)(fa, fb)
 }
 
 /**
