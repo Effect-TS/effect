@@ -1,3 +1,5 @@
+// tracing: off
+
 import type * as O from "../Option"
 import { catchAll_ } from "./catchAll"
 import type { Effect } from "./effect"
@@ -11,6 +13,8 @@ import { unrefineWith_ } from "./unrefine"
  * method should be used only at the boundary between Effect and an external
  * system, to transmit information on a defect for diagnostic or explanatory
  * purposes.
+ *
+ * @trace 1
  */
 export function catchSomeDefect_<R2, E2, A2, R, E, A>(
   fa: Effect<R2, E2, A2>,
@@ -26,6 +30,9 @@ export function catchSomeDefect_<R2, E2, A2, R, E, A>(
  * method should be used only at the boundary between Effect and an external
  * system, to transmit information on a defect for diagnostic or explanatory
  * purposes.
+ *
+ * @dataFist catchSomeDefect_
+ * @trace 0
  */
 export function catchSomeDefect<R, E, A>(f: (_: unknown) => O.Option<Effect<R, E, A>>) {
   return <R2, E2, A2>(effect: Effect<R2, E2, A2>) => catchSomeDefect_(effect, f)
