@@ -1,3 +1,7 @@
+// tracing: off
+
+import { accessCallTrace, traceCall, traceFrom } from "@effect-ts/tracing-utils"
+
 import type { Clock } from "../Clock"
 import { currentTime } from "../Clock"
 import { pipe, tuple } from "../Function"
@@ -20,9 +24,13 @@ import * as to from "./to"
  * this effect. Cached results will expire after `timeToLive` duration. In
  * addition, returns an effect that can be used to invalidate the current
  * cached value before the `timeToLive` duration expires.
+ *
+ * @dataFirst cachedInvalidate_
+ * @trace call
  */
 export function cachedInvalidate(ttl: number) {
-  return <R, E, A>(fa: Effect<R, E, A>) => cachedInvalidate_(fa, ttl)
+  const trace = accessCallTrace()
+  return <R, E, A>(fa: Effect<R, E, A>) => traceCall(cachedInvalidate_, trace)(fa, ttl)
 }
 
 /**
@@ -30,21 +38,26 @@ export function cachedInvalidate(ttl: number) {
  * this effect. Cached results will expire after `timeToLive` duration. In
  * addition, returns an effect that can be used to invalidate the current
  * cached value before the `timeToLive` duration expires.
+ *
+ * @trace call
  */
 export function cachedInvalidate_<R, E, A>(
   fa: Effect<R, E, A>,
   ttl: number
 ): RIO<R & Has<Clock>, readonly [IO<E, A>, UIO<void>]> {
+  const trace = accessCallTrace()
   return pipe(
     Do.do,
     Do.bind("r", () => environment<R & Has<Clock>>()),
     Do.bind("cache", () =>
       Ref.makeRefM<O.Option<readonly [number, P.Promise<E, A>]>>(O.none)
     ),
-    map.map(({ cache, r }) =>
-      tuple<[IO<E, A>, UIO<void>]>(
-        core.provideAll(r)(get(fa, ttl, cache)),
-        invalidate(cache)
+    map.map(
+      traceFrom(trace, ({ cache, r }) =>
+        tuple<[IO<E, A>, UIO<void>]>(
+          core.provideAll(r)(get(fa, ttl, cache)),
+          invalidate(cache)
+        )
       )
     )
   )
