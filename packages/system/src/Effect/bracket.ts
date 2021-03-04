@@ -22,6 +22,7 @@ import type { Effect } from "./effect"
  * if the `use` effect succeeds. If this fail-fast behavior is not desired,
  * errors produced by the `release` effect can be caught and ignored.
  *
+ * @dataFirst bracket_
  * @trace 0
  * @trace 1
  */
