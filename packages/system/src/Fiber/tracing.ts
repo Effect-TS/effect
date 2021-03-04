@@ -69,26 +69,30 @@ export function truncatedParentTrace(
   }
 }
 
-export function prettyLocation(traceElement: TraceElement) {
-  return traceElement._tag === "NoLocation"
-    ? "No Location Present"
-    : `${traceElement.location}`
-}
-
 export function prettyTrace(trace: Trace): string {
   return S.run(prettyTraceSafe(trace))
 }
 
 export function prettyTraceSafe(trace: Trace): S.UIO<string> {
   return S.gen(function* ($) {
-    const execTrace = !L.isEmpty(trace.executionTrace)
+    const execution = L.filter_(
+      trace.executionTrace,
+      (_): _ is SourceLocation => _._tag === "SourceLocation"
+    )
+
+    const stack = L.filter_(
+      trace.stackTrace,
+      (_): _ is SourceLocation => _._tag === "SourceLocation"
+    )
+
+    const execTrace = !L.isEmpty(execution)
     const stackTrace = !L.isEmpty(trace.stackTrace)
 
     const execPrint = execTrace
       ? [
           `Fiber: ${prettyFiberId(trace.fiberId)} Execution trace:`,
           "",
-          ...L.toArray(L.map_(trace.executionTrace, (a) => `  ${prettyLocation(a)}`))
+          ...L.toArray(L.map_(execution, (a) => `  ${a.location}`))
         ]
       : [`Fiber: ${prettyFiberId(trace.fiberId)} Execution trace: <empty trace>`]
 
@@ -96,12 +100,7 @@ export function prettyTraceSafe(trace: Trace): S.UIO<string> {
       ? [
           `Fiber: ${prettyFiberId(trace.fiberId)} was supposed to continue to:`,
           "",
-          ...L.toArray(
-            L.map_(
-              trace.stackTrace,
-              (e) => `  a future continuation at ${prettyLocation(e)}`
-            )
-          )
+          ...L.toArray(L.map_(stack, (e) => `  a future continuation at ${e.location}`))
         ]
       : [
           `Fiber: ${prettyFiberId(
