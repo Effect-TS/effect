@@ -259,17 +259,14 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
           break
         }
         case "Fold": {
+          if (this.platform.value.traceStack && this.inTracingRegion) {
+            this.popStackTrace()
+          }
           if (!this.shouldInterrupt) {
             // Push error handler back onto the stack and halt iteration:
-            if (this.platform.value.traceStack && this.inTracingRegion) {
-              this.popStackTrace()
-            }
             this.pushContinuation(new HandlerFrame(frame.failure))
             unwinding = false
           } else {
-            if (this.platform.value.traceStack && this.inTracingRegion) {
-              this.popStackTrace()
-            }
             discardedFolds = true
           }
           break
