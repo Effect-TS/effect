@@ -1313,7 +1313,7 @@ export function timeout_<R, E, A>(self: Managed<R, E, A>, d: number) {
             raceResult,
             (f) =>
               T.as_(
-                T.chain_(T.fiberId(), (id) =>
+                T.chain_(T.fiberId, (id) =>
                   T.forkDaemon(
                     T.ensuring_(
                       F.interrupt(f),
@@ -1790,9 +1790,7 @@ export function withEarlyReleaseExit<E, A>(exit: Ex.Exit<E, A>) {
 /**
  * Returns an effect that succeeds with the `Fiber.Id` of the caller.
  */
-export function fiberId() {
-  return fromEffect(T.fiberId())
-}
+export const fiberId = fromEffect(T.fiberId)
 
 /**
  * Modifies this `Managed` to provide a canceler that can be used to eagerly
@@ -1803,7 +1801,7 @@ export function fiberId() {
 export function withEarlyRelease<R, E, A>(
   self: Managed<R, E, A>
 ): Managed<R, E, readonly [T.UIO<any>, A]> {
-  return chain_(fiberId(), (id) => withEarlyReleaseExit_(self, Ex.interrupt(id)))
+  return chain_(fiberId, (id) => withEarlyReleaseExit_(self, Ex.interrupt(id)))
 }
 
 /**

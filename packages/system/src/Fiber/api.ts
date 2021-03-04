@@ -33,7 +33,7 @@ export function interruptAllAs(id: Fiber.FiberID) {
  */
 export function interruptAll(fs: Iterable<Fiber.Fiber<any, any>>) {
   return pipe(
-    T.fiberId(),
+    T.fiberId,
     T.chain((id) => interruptAllAs(id)(fs))
   )
 }
