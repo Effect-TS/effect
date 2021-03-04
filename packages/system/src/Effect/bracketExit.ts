@@ -16,6 +16,7 @@ import { uninterruptibleMask } from "./interruption"
  * succeeds. If `use` fails, then after release, the returned effect will fail
  * with the same error.
  *
+ * @dataFirst bracketExit_
  * @trace 0
  * @trace 1
  */
