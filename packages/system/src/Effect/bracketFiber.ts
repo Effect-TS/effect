@@ -15,7 +15,7 @@ export function bracketFiber_<R, E, A, R2, E2, A2>(
   effect: Effect<R, E, A>,
   use: (f: Runtime<E, A>) => Effect<R2, E2, A2>
 ) {
-  return bracket_(forkDaemon(effect), (f) => chain_(fiberId(), f.interruptAs), use)
+  return bracket_(forkDaemon(effect), (f) => chain_(fiberId, f.interruptAs), use)
 }
 
 /**

@@ -7,5 +7,5 @@ import type * as Fiber from "./core"
  * Otherwise, the effect will resume when the fiber exits.
  */
 export function interrupt<E, A>(fiber: Fiber.Fiber<E, A>) {
-  return T.chain_(T.fiberId(), (id) => fiber.interruptAs(id))
+  return T.chain_(T.fiberId, (id) => fiber.interruptAs(id))
 }

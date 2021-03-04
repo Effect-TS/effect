@@ -151,7 +151,7 @@ export function forEachUnitPar_<R, E, A, X>(
   }
   return pipe(
     Do.do,
-    Do.bind("parentId", () => fiberId.fiberId()),
+    Do.bind("parentId", () => fiberId.fiberId),
     Do.bind("causes", () => Ref.makeRef<cause.Cause<E>>(cause.empty)),
     Do.bind("result", () => promise.make<void, void>()),
     Do.bind("status", () =>
@@ -881,7 +881,7 @@ export class BackPressureStrategy<A> implements Q.Strategy<A> {
   get shutdown(): UIO<void> {
     return pipe(
       Do.do,
-      Do.bind("fiberId", () => fiberId.fiberId()),
+      Do.bind("fiberId", () => fiberId.fiberId),
       Do.bind("putters", () => core.effectTotal(() => Q.unsafePollAll(this.putters))),
       tap.tap((s) =>
         forEachPar_(s.putters, ([_, p, lastItem]) =>
