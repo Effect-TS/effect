@@ -9,4 +9,4 @@ import type { Promise } from "./promise"
  * waiting on the value of the promise as by the fiber calling this method.
  */
 export const interrupt = <E, A>(promise: Promise<E, A>) =>
-  chain_(fiberId(), (id) => completeWith<E, A>(effectInterruptAs(id))(promise))
+  chain_(fiberId, (id) => completeWith<E, A>(effectInterruptAs(id))(promise))

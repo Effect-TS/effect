@@ -138,7 +138,7 @@ export function onInterrupt<R2, X>(
  */
 export function disconnect<R, E, A>(effect: Effect<R, E, A>) {
   return uninterruptibleMask(({ restore }) =>
-    chain_(fiberId(), (id) =>
+    chain_(fiberId, (id) =>
       chain_(forkDaemon(restore(effect)), (fiber) =>
         onInterrupt_(restore(Fiber.join(fiber)), () =>
           forkDaemon(fiber.interruptAs(id))
@@ -171,7 +171,7 @@ export function interruptAs(fiberId: FiberID) {
 /**
  * Returns an effect that is interrupted by the current fiber
  */
-export const interrupt = chain_(fiberId(), interruptAs)
+export const interrupt = chain_(fiberId, interruptAs)
 
 /**
  * Returns a new effect that performs the same operations as this effect, but
