@@ -1,9 +1,13 @@
+// tracing: off
+
 import type { Cause } from "../Cause/cause"
 import { foldCauseM_, succeed } from "./core"
 import type { Effect } from "./effect"
 
 /**
  * Recovers from all errors with provided cause.
+ *
+ * @trace 1
  */
 export function catchAllCause_<R2, E2, A2, R, E, A>(
   effect: Effect<R2, E2, A2>,
@@ -14,6 +18,9 @@ export function catchAllCause_<R2, E2, A2, R, E, A>(
 
 /**
  * Recovers from all errors with provided cause.
+ *
+ * @dataFirst catchAllCause_
+ * @trace 0
  */
 export function catchAllCause<R2, E2, A2, R, E, A>(
   f: (_: Cause<E2>) => Effect<R, E, A>

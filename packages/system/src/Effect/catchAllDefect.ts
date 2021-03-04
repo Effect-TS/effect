@@ -1,3 +1,7 @@
+// tracing: off
+
+import { traceAs } from "@effect-ts/tracing-utils"
+
 import * as O from "../Option"
 import { catchSomeDefect_ } from "./catchSomeDefect"
 import type { Effect } from "./effect"
@@ -9,12 +13,17 @@ import type { Effect } from "./effect"
  * method should be used only at the boundary between Effect and an external
  * system, to transmit information on a defect for diagnostic or explanatory
  * purposes.
+ *
+ * @trace 1
  */
 export function catchAllDefect_<R2, E2, A2, R, E, A>(
   fa: Effect<R2, E2, A2>,
   f: (_: unknown) => Effect<R, E, A>
 ) {
-  return catchSomeDefect_(fa, (u) => O.some(f(u)))
+  return catchSomeDefect_(
+    fa,
+    traceAs(f, (u) => O.some(f(u)))
+  )
 }
 
 /**
@@ -24,6 +33,9 @@ export function catchAllDefect_<R2, E2, A2, R, E, A>(
  * method should be used only at the boundary between Effect and an external
  * system, to transmit information on a defect for diagnostic or explanatory
  * purposes.
+ *
+ * @dataFirst catchAllDefect_
+ * @trace 0
  */
 export function catchAllDefect<R, E, A>(f: (_: unknown) => Effect<R, E, A>) {
   return <R2, E2, A2>(effect: Effect<R2, E2, A2>) => catchAllDefect_(effect, f)
