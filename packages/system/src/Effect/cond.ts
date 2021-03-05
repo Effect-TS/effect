@@ -1,3 +1,5 @@
+// tracing: off
+
 import { chain_, effectTotal } from "./core"
 import type { Effect, RIO } from "./effect"
 import { fail } from "./fail"
@@ -6,6 +8,10 @@ import { fail } from "./fail"
  * Evaluate the predicate,
  * return the given A as success if predicate returns true,
  * and the given E as error otherwise
+ *
+ * @dataFirst cond_
+ * @trace 0
+ * @trace 1
  */
 export function cond<E, A>(onTrue: () => A, onFalse: () => E) {
   return (b: boolean): Effect<unknown, E, A> => cond_(b, onTrue, onFalse)
@@ -15,6 +21,9 @@ export function cond<E, A>(onTrue: () => A, onFalse: () => E) {
  * Evaluate the predicate,
  * return the given A as success if predicate returns true,
  * and the given E as error otherwise
+ *
+ * @trace 1
+ * @trace 2
  */
 export function cond_<E, A>(
   b: boolean,
