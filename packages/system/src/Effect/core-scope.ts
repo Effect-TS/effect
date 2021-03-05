@@ -1,3 +1,7 @@
+// tracing: off
+
+import { traceAs } from "@effect-ts/tracing-utils"
+
 import type { Exit } from "../Exit/exit"
 import type * as Fiber from "../Fiber"
 import type { Runtime } from "../Fiber/core"
@@ -25,18 +29,42 @@ export class ForkScopeRestore {
  * Captures the fork scope, before overriding it with the specified new
  * scope, passing a function that allows restoring the fork scope to
  * what it was originally.
+ *
+ * @trace 1
  */
-export function forkScopeMask(newScope: Scope<Exit<any, any>>) {
-  return <R, E, A>(f: (restore: ForkScopeRestore) => Effect<R, E, A>) =>
-    forkScopeWith(
+export function forkScopeMask_<R, E, A>(
+  newScope: Scope<Exit<any, any>>,
+  f: (restore: ForkScopeRestore) => Effect<R, E, A>
+) {
+  return forkScopeWith(
+    traceAs(
+      f,
       (scope) =>
         new IOverrideForkScope(f(new ForkScopeRestore(scope)), O.some(newScope))
     )
+  )
+}
+
+/**
+ * Captures the fork scope, before overriding it with the specified new
+ * scope, passing a function that allows restoring the fork scope to
+ * what it was originally.
+ *
+ * @dataFirst forkScopeMask_
+ * @trace 0
+ */
+export function forkScopeMask<R, E, A>(
+  f: (restore: ForkScopeRestore) => Effect<R, E, A>
+) {
+  return (newScope: Scope<Exit<any, any>>) => forkScopeMask_(newScope, f)
 }
 
 /**
  * Returns an effect that races this effect with the specified effect, calling
  * the specified finisher as soon as one result or the other has been computed.
+ *
+ * @trace 2
+ * @trace 3
  */
 export function raceWith_<R, E, A, R1, E1, A1, R2, E2, A2, R3, E3, A3>(
   left: Effect<R, E, A>,
@@ -51,6 +79,10 @@ export function raceWith_<R, E, A, R1, E1, A1, R2, E2, A2, R3, E3, A3>(
 /**
  * Returns an effect that races this effect with the specified effect, calling
  * the specified finisher as soon as one result or the other has been computed.
+ *
+ * @dataFirst raceWith_
+ * @trace 1
+ * @trace 2
  */
 export function raceWith<E, A, R1, E1, A1, R2, E2, A2, R3, E3, A3>(
   right: Effect<R1, E1, A1>,
@@ -71,9 +103,13 @@ export type Grafter = <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>
  *
  * This can be used to "graft" deep grandchildren onto a higher-level
  * scope, effectively extending their lifespans into the parent scope.
+ *
+ * @trace 0
  */
 export function transplant<R, E, A>(f: (_: Grafter) => Effect<R, E, A>) {
-  return forkScopeWith((scope) => f((e) => new IOverrideForkScope(e, O.some(scope))))
+  return forkScopeWith(
+    traceAs(f, (scope) => f((e) => new IOverrideForkScope(e, O.some(scope))))
+  )
 }
 
 /**
@@ -91,10 +127,24 @@ export function forkDaemon<R, E, A>(
  * Forks the effect into a new fiber attached to the global scope. Because the
  * new fiber is attached to the global scope, when the fiber executing the
  * returned effect terminates, the forked fiber will continue running.
+ *
+ * @dataFirst forkDaemonReport_
  */
 export function forkDaemonReport(reportFailure: FailureReporter) {
   return <R, E, A>(value: Effect<R, E, A>): RIO<R, Fiber.FiberContext<E, A>> =>
-    new IFork(value, O.some(globalScope), O.some(reportFailure))
+    forkDaemonReport_(value, reportFailure)
+}
+
+/**
+ * Forks the effect into a new fiber attached to the global scope. Because the
+ * new fiber is attached to the global scope, when the fiber executing the
+ * returned effect terminates, the forked fiber will continue running.
+ */
+export function forkDaemonReport_<R, E, A>(
+  value: Effect<R, E, A>,
+  reportFailure: FailureReporter
+): RIO<R, Fiber.FiberContext<E, A>> {
+  return new IFork(value, O.some(globalScope), O.some(reportFailure))
 }
 
 /**
@@ -124,24 +174,49 @@ export function forkIn(scope: Scope<Exit<any, any>>) {
  * The fiber is forked with interrupt supervision mode, meaning that when the
  * fiber that forks the child exits, the child will be interrupted.
  */
-export function forkInReport(reportFailure: FailureReporter) {
-  return (scope: Scope<Exit<any, any>>) => <R, E, A>(
-    value: Effect<R, E, A>
-  ): RIO<R, Runtime<E, A>> => new IFork(value, O.some(scope), O.some(reportFailure))
+export function forkInReport(
+  scope: Scope<Exit<any, any>>,
+  reportFailure: FailureReporter
+) {
+  return <R, E, A>(value: Effect<R, E, A>): RIO<R, Runtime<E, A>> =>
+    new IFork(value, O.some(scope), O.some(reportFailure))
+}
+
+/**
+ * Returns an effect that forks this effect into its own separate fiber,
+ * returning the fiber immediately, without waiting for it to begin
+ * executing the effect.
+ *
+ * The returned fiber can be used to interrupt the forked fiber, await its
+ * result, or join the fiber. See `Fiber` for more information.
+ *
+ * The fiber is forked with interrupt supervision mode, meaning that when the
+ * fiber that forks the child exits, the child will be interrupted.
+ */
+export function forkInReport_<R, E, A>(
+  value: Effect<R, E, A>,
+  scope: Scope<Exit<any, any>>,
+  reportFailure: FailureReporter
+): RIO<R, Runtime<E, A>> {
+  return new IFork(value, O.some(scope), O.some(reportFailure))
 }
 
 /**
  * Retrieves the scope that will be used to supervise forked effects.
+ *
+ * @trace 0
  */
 export function forkScopeWith<R, E, A>(
   f: (_: Scope<Exit<any, any>>) => Effect<R, E, A>
-) {
+): Effect<R, E, A> {
   return new IGetForkScope(f)
 }
 
 /**
  * Returns a new effect that will utilize the specified scope to supervise
  * any fibers forked within the original effect.
+ *
+ * @dataFirst overrideForkScope_
  */
 export function overrideForkScope(scope: Scope<Exit<any, any>>) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R, E, A> =>
@@ -160,8 +235,8 @@ export function overrideForkScope_<R, E, A>(
 }
 
 /**
- * Returns a new effect that will utilize the specified scope to supervise
- * any fibers forked within the original effect.
+ * Returns a new effect that will utilize the default scope (fiber scope) to
+ * supervise any fibers forked within the original effect.
  */
 export function resetForkScope<R, E, A>(self: Effect<R, E, A>): Effect<R, E, A> {
   return new IOverrideForkScope(self, O.none)
