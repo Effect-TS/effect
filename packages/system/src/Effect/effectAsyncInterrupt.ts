@@ -1,3 +1,7 @@
+// tracing: off
+
+import { traceAs } from "@effect-ts/tracing-utils"
+
 import * as E from "../Either"
 import type { FiberID } from "../Fiber/id"
 import type { Canceler } from "./Canceler"
@@ -12,10 +16,15 @@ import { effectMaybeAsyncInterrupt } from "./effectMaybeAsyncInterrupt"
  *
  * The list of fibers, that may complete the async callback, is used to
  * provide better diagnostics.
+ *
+ * @trace 0
  */
 export function effectAsyncInterrupt<R, E, A>(
   register: (cb: Cb<Effect<R, E, A>>) => Canceler<R>,
   blockingOn: readonly FiberID[] = []
 ) {
-  return effectMaybeAsyncInterrupt<R, E, A>((cb) => E.left(register(cb)), blockingOn)
+  return effectMaybeAsyncInterrupt<R, E, A>(
+    traceAs(register, (cb) => E.left(register(cb))),
+    blockingOn
+  )
 }
