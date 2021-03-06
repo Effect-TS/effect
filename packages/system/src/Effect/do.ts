@@ -1,9 +1,14 @@
+// tracing: off
+
+import { traceAs } from "@effect-ts/tracing-utils"
+
 import { chain_, succeed } from "./core"
 import type { Effect } from "./effect"
 import { map_ } from "./map"
 
 /**
  * @dataFirst bind_
+ * @trace 1
  */
 function bind<R, E, A, K, N extends string>(
   tag: Exclude<N, keyof K>,
@@ -18,20 +23,12 @@ function bind<R, E, A, K, N extends string>(
       {
         [k in N]: A
       }
-  > =>
-    chain_(mk, (k) =>
-      map_(
-        f(k),
-        (
-          a
-        ): K &
-          {
-            [k in N]: A
-          } => ({ ...k, [tag]: a } as any)
-      )
-    )
+  > => bind_(mk, tag, f)
 }
 
+/**
+ * @trace 2
+ */
 export function bind_<R2, E2, R, E, A, K, N extends string>(
   mk: Effect<R2, E2, K>,
   tag: Exclude<N, keyof K>,
@@ -44,21 +41,25 @@ export function bind_<R2, E2, R, E, A, K, N extends string>(
       [k in N]: A
     }
 > {
-  return chain_(mk, (k) =>
-    map_(
-      f(k),
-      (
-        a
-      ): K &
-        {
-          [k in N]: A
-        } => ({ ...k, [tag]: a } as any)
+  return chain_(
+    mk,
+    traceAs(f, (k) =>
+      map_(
+        f(k),
+        (
+          a
+        ): K &
+          {
+            [k in N]: A
+          } => ({ ...k, [tag]: a } as any)
+      )
     )
   )
 }
 
 /**
  * @dataFirst let_
+ * @trace 1
  */
 function let__<A, K, N extends string>(tag: Exclude<N, keyof K>, f: (_: K) => A) {
   return <R2, E2>(
@@ -70,18 +71,12 @@ function let__<A, K, N extends string>(tag: Exclude<N, keyof K>, f: (_: K) => A)
       {
         [k in N]: A
       }
-  > =>
-    map_(
-      mk,
-      (
-        k
-      ): K &
-        {
-          [k in N]: A
-        } => ({ ...k, [tag]: f(k) } as any)
-    )
+  > => let_(mk, tag, f)
 }
 
+/**
+ * @trace 2
+ */
 export function let_<R2, E2, A, K, N extends string>(
   mk: Effect<R2, E2, K>,
   tag: Exclude<N, keyof K>,
@@ -96,12 +91,15 @@ export function let_<R2, E2, A, K, N extends string>(
 > {
   return map_(
     mk,
-    (
-      k
-    ): K &
-      {
-        [k in N]: A
-      } => ({ ...k, [tag]: f(k) } as any)
+    traceAs(
+      f,
+      (
+        k
+      ): K &
+        {
+          [k in N]: A
+        } => ({ ...k, [tag]: f(k) } as any)
+    )
   )
 }
 

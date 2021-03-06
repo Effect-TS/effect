@@ -1,3 +1,7 @@
+// tracing: off
+
+import { traceAs } from "@effect-ts/tracing-utils"
+
 import type * as E from "../Either"
 import type { FiberID } from "../Fiber/id"
 import * as O from "../Option"
@@ -25,6 +29,8 @@ import { onInterrupt_ } from "./interruption"
  *
  * The list of fibers, that may complete the async callback, is used to
  * provide better diagnostics.
+ *
+ * @trace 0
  */
 export function effectMaybeAsyncInterrupt<R, E, A>(
   register: (cb: Cb<Effect<R, E, A>>) => E.Either<Canceler<R>, Effect<R, E, A>>,
@@ -37,32 +43,35 @@ export function effectMaybeAsyncInterrupt<R, E, A>(
     ([started, cancel]) =>
       onInterrupt_(
         flatten(
-          effectAsyncOption<unknown, never, Effect<R, E, A>>((k) => {
-            started.set(true)
+          effectAsyncOption<unknown, never, Effect<R, E, A>>(
+            traceAs(register, (k) => {
+              started.set(true)
 
-            const ret = new AtomicReference<O.Option<UIO<Effect<R, E, A>>>>(O.none)
+              const ret = new AtomicReference<O.Option<UIO<Effect<R, E, A>>>>(O.none)
 
-            try {
-              const res = register((io) => k(succeed(io)))
+              try {
+                const res = register((io) => k(succeed(io)))
 
-              switch (res._tag) {
-                case "Right": {
-                  ret.set(O.some(succeed(res.right)))
-                  break
+                switch (res._tag) {
+                  case "Right": {
+                    ret.set(O.some(succeed(res.right)))
+                    break
+                  }
+                  case "Left": {
+                    cancel.set(res.left)
+                    break
+                  }
                 }
-                case "Left": {
-                  cancel.set(res.left)
-                  break
+              } finally {
+                if (!cancel.isSet()) {
+                  cancel.set(unit)
                 }
               }
-            } finally {
-              if (!cancel.isSet()) {
-                cancel.set(unit)
-              }
-            }
 
-            return ret.get
-          }, blockingOn)
+              return ret.get
+            }),
+            blockingOn
+          )
         ),
         () => suspend(() => (started.get ? cancel.get() : unit))
       )

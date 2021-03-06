@@ -1,3 +1,5 @@
+// tracing: off
+
 import type { Has, Tag } from "../Has"
 import type { Effect } from "./effect"
 import { accessService, accessServiceM } from "./has"

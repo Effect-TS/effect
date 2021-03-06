@@ -1,5 +1,9 @@
+// tracing: off
+
+import { accessCallTrace, traceFrom } from "@effect-ts/tracing-utils"
+
 import { RuntimeError } from "../Cause"
-import { die } from "./die"
+import { dieWith } from "./die"
 import type { UIO } from "./effect"
 
 /**
@@ -8,5 +12,6 @@ import type { UIO } from "./effect"
  * because a defect has been detected in the code.
  */
 export function dieMessage(message: string): UIO<never> {
-  return die(new RuntimeError(message))
+  const trace = accessCallTrace()
+  return dieWith(traceFrom(trace, () => new RuntimeError(message)))
 }

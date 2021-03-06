@@ -1040,6 +1040,9 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                   }
 
                   case "CheckInterrupt": {
+                    if (this.inTracingRegion && this.platform.value.traceEffects) {
+                      this.addTrace(current.f)
+                    }
                     current = current.f(Fiber.interruptStatus(this.isInterruptible))[
                       T._I
                     ]

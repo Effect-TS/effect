@@ -1,3 +1,5 @@
+import { traceAs } from "@effect-ts/tracing-utils"
+
 import * as Cause from "../Cause/core"
 import type { InterruptStatus } from "../Fiber/core"
 import * as Fiber from "../Fiber/core"
@@ -60,12 +62,14 @@ export class InterruptStatusRestoreImpl implements InterruptStatusRestore {
  * Makes the effect uninterruptible, but passes it a restore function that
  * can be used to restore the inherited interruptibility from whatever region
  * the effect is composed into.
+ *
+ * @trace 0
  */
 export function uninterruptibleMask<R, E, A>(
   f: (restore: InterruptStatusRestore) => Effect<R, E, A>
 ) {
-  return checkInterruptible((flag) =>
-    uninterruptible(f(new InterruptStatusRestoreImpl(flag)))
+  return checkInterruptible(
+    traceAs(f, (flag) => uninterruptible(f(new InterruptStatusRestoreImpl(flag))))
   )
 }
 
