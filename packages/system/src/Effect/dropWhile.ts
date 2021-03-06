@@ -1,3 +1,6 @@
+// tracing: off
+import { traceAs } from "@effect-ts/tracing-utils"
+
 import type { Array } from "../Array"
 import type { MutableArray } from "../Mutable"
 import { chain_, succeed, suspend } from "./core"
@@ -6,6 +9,9 @@ import { map_ } from "./map"
 
 /**
  * Drops all elements so long as the effectful predicate returns true.
+ *
+ * @dataFirst dropWhile_
+ * @trace 0
  */
 export function dropWhile<A, R, E>(p: (a: A) => Effect<R, E, boolean>) {
   return (as: Iterable<A>) => dropWhile_(as, p)
@@ -13,6 +19,8 @@ export function dropWhile<A, R, E>(p: (a: A) => Effect<R, E, boolean>) {
 
 /**
  * Drops all elements so long as the effectful predicate returns true.
+ *
+ * @trace 1
  */
 export function dropWhile_<A, R, E>(
   as: Iterable<A>,
@@ -22,14 +30,17 @@ export function dropWhile_<A, R, E>(
     let dropping = succeed(true) as Effect<R, E, boolean>
     const r: MutableArray<A> = []
     for (const a of as) {
-      dropping = chain_(dropping, (d) => {
-        if (d) {
-          return p(a)
-        } else {
-          r.push(a)
-          return succeed(false)
-        }
-      })
+      dropping = chain_(
+        dropping,
+        traceAs(p, (d) => {
+          if (d) {
+            return p(a)
+          } else {
+            r.push(a)
+            return succeed(false)
+          }
+        })
+      )
     }
     return map_(dropping, () => r)
   })
