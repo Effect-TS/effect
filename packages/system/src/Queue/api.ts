@@ -1,5 +1,6 @@
 import * as A from "../Array"
 import { succeed } from "../Effect/core"
+import * as exclForEach from "../Effect/excl-forEach"
 import {
   BackPressureStrategy,
   createQueue,
@@ -19,19 +20,19 @@ export { createQueue, makeBounded, unsafeCreate, BackPressureStrategy }
 export const makeSliding = <A>(capacity: number): T.UIO<Queue<A>> =>
   T.chain_(
     T.effectTotal(() => new Bounded<A>(capacity)),
-    createQueue(new SlidingStrategy())
+    exclForEach.createQueue(new SlidingStrategy())
   )
 
 export const makeUnbounded = <A>(): T.UIO<Queue<A>> =>
   T.chain_(
     T.effectTotal(() => new Unbounded<A>()),
-    createQueue(new DroppingStrategy())
+    exclForEach.createQueue(new DroppingStrategy())
   )
 
 export const makeDropping = <A>(capacity: number): T.UIO<Queue<A>> =>
   T.chain_(
     T.effectTotal(() => new Bounded<A>(capacity)),
-    createQueue(new DroppingStrategy())
+    exclForEach.createQueue(new DroppingStrategy())
   )
 
 /**
