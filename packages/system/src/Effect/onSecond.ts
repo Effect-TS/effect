@@ -1,6 +1,6 @@
 import type { Effect } from "./effect"
 import { environment } from "./environment"
-import { zip_ } from "./zip_"
+import { zip_ } from "./zip"
 
 /**
  * Propagates the success value to the second element of a tuple, but

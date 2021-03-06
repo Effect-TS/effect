@@ -1,3 +1,7 @@
+// tracing: off
+
+import { traceAs } from "@effect-ts/tracing-utils"
+
 import * as Fiber from "../Fiber"
 import { pipe } from "../Function"
 import { track } from "../Supervisor"
@@ -8,6 +12,9 @@ import { ensuring } from "./ensuring"
 /**
  * Acts on the children of this fiber, guaranteeing the specified callback
  * will be invoked, whether or not this effect succeeds.
+ *
+ * @dataFirst ensuringChildren_
+ * @trace 0
  */
 export function ensuringChildren<R1, X>(
   children: (_: readonly Fiber.Runtime<any, any>[]) => RIO<R1, X>
@@ -19,6 +26,8 @@ export function ensuringChildren<R1, X>(
 /**
  * Acts on the children of this fiber, guaranteeing the specified callback
  * will be invoked, whether or not this effect succeeds.
+ *
+ * @trace 1
  */
 export function ensuringChildren_<R, E, A, R1, X>(
   fa: Effect<R, E, A>,
@@ -30,12 +39,7 @@ export function ensuringChildren_<R, E, A, R1, X>(
       pipe(
         fa,
         supervised(s),
-        ensuring(
-          pipe(
-            s.value,
-            chain((v) => children(v))
-          )
-        )
+        ensuring(pipe(s.value, chain(traceAs(children, (v) => children(v)))))
       )
     )
   )
@@ -45,18 +49,26 @@ export function ensuringChildren_<R, E, A, R1, X>(
  * Acts on the children of this fiber (collected into a single fiber),
  * guaranteeing the specified callback will be invoked, whether or not
  * this effect succeeds.
+ *
+ * @trace 1
  */
 export function ensuringChild_<R, E, A, R2, X>(
   fa: Effect<R, E, A>,
   f: (_: Fiber.Fiber<any, Iterable<any>>) => RIO<R2, X>
 ) {
-  return ensuringChildren_(fa, (x) => pipe(x, Fiber.collectAll, f))
+  return ensuringChildren_(
+    fa,
+    traceAs(f, (x) => pipe(x, Fiber.collectAll, f))
+  )
 }
 
 /**
  * Acts on the children of this fiber (collected into a single fiber),
  * guaranteeing the specified callback will be invoked, whether or not
  * this effect succeeds.
+ *
+ * @dataFirst ensuringChild_
+ * @trace 0
  */
 export function ensuringChild<R, E, A, R2, X>(
   f: (_: Fiber.Fiber<any, Iterable<any>>) => RIO<R2, X>
