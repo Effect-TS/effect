@@ -157,10 +157,12 @@ export function forkDaemonReport_<R, E, A>(
  *
  * The fiber is forked with interrupt supervision mode, meaning that when the
  * fiber that forks the child exits, the child will be interrupted.
+ *
+ * @dataFirst forkIn_
  */
 export function forkIn(scope: Scope<Exit<any, any>>) {
   return <R, E, A>(value: Effect<R, E, A>): RIO<R, Runtime<E, A>> =>
-    new IFork(value, O.some(scope), O.none)
+    forkIn_(value, scope)
 }
 
 /**
@@ -173,6 +175,26 @@ export function forkIn(scope: Scope<Exit<any, any>>) {
  *
  * The fiber is forked with interrupt supervision mode, meaning that when the
  * fiber that forks the child exits, the child will be interrupted.
+ */
+export function forkIn_<R, E, A>(
+  value: Effect<R, E, A>,
+  scope: Scope<Exit<any, any>>
+): RIO<R, Runtime<E, A>> {
+  return new IFork(value, O.some(scope), O.none)
+}
+
+/**
+ * Returns an effect that forks this effect into its own separate fiber,
+ * returning the fiber immediately, without waiting for it to begin
+ * executing the effect.
+ *
+ * The returned fiber can be used to interrupt the forked fiber, await its
+ * result, or join the fiber. See `Fiber` for more information.
+ *
+ * The fiber is forked with interrupt supervision mode, meaning that when the
+ * fiber that forks the child exits, the child will be interrupted.
+ *
+ * @dataFirst forkInReport_
  */
 export function forkInReport(
   scope: Scope<Exit<any, any>>,
