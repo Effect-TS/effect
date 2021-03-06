@@ -329,10 +329,10 @@ export function foldM_<R, R1, R2, E, E1, E2, I, I1, I2, L, L1, L2, Z, Z1, Z2>(
   return new Sink(
     pipe(
       M.do,
-      M.bind("switched", () => T.toManaged_(R.makeRef(false))),
+      M.bind("switched", () => T.toManaged(R.makeRef(false))),
       M.bind("thisPush", () => self.push),
       M.bind("thatPush", () =>
-        T.toManaged_(
+        T.toManaged(
           R.makeRef<Push.Push<R1 & R2, E1 | E2, I & I1 & I2, L1 | L2, Z1 | Z2>>(
             (_) => T.unit
           )
@@ -581,7 +581,7 @@ export function timed<R, E, I, L, Z>(
   return new Sink(
     pipe(
       self.push,
-      M.zipWith(T.toManaged_(currentTime), (push, start) => {
+      M.zipWith(T.toManaged(currentTime), (push, start) => {
         return (in_: O.Option<A.Chunk<I>>) =>
           T.catchAll_(
             push(in_),
@@ -798,7 +798,7 @@ export function zipWithPar_<R, R1, E, E1, I, I1, L, L1, Z, Z1, Z2>(
   return new Sink(
     pipe(
       M.do,
-      M.bind("ref", () => T.toManaged_(R.makeRef<State<Z, Z1>>(bothRunning))),
+      M.bind("ref", () => T.toManaged(R.makeRef<State<Z, Z1>>(bothRunning))),
       M.bind("p1", () => self.push),
       M.bind("p2", () => that.push),
       M.map(({ p1, p2, ref }) => {
@@ -1252,7 +1252,7 @@ export function reduce<S>(z: S) {
       return new Sink(
         pipe(
           M.do,
-          M.bind("state", () => T.toManaged_(R.makeRef(z))),
+          M.bind("state", () => T.toManaged(R.makeRef(z))),
           M.map(({ state }) => {
             return (is: O.Option<A.Chunk<I>>) =>
               O.fold_(
@@ -1303,7 +1303,7 @@ export function reduceChunksM<S>(z: S) {
       return new Sink(
         pipe(
           M.do,
-          M.bind("state", () => T.toManaged_(R.makeRef(z))),
+          M.bind("state", () => T.toManaged(R.makeRef(z))),
           M.map(({ state }) => {
             return (is: O.Option<A.Chunk<I>>) =>
               O.fold_(
@@ -1369,7 +1369,7 @@ export function reduceM<S>(z: S) {
       return new Sink(
         pipe(
           M.do,
-          M.bind("state", () => T.toManaged_(R.makeRef(z))),
+          M.bind("state", () => T.toManaged(R.makeRef(z))),
           M.map(({ state }) => {
             return (is: O.Option<A.Chunk<I>>) =>
               O.fold_(
@@ -1579,7 +1579,7 @@ export function last<I>(): Sink<unknown, never, I, never, O.Option<I>> {
   return new Sink(
     pipe(
       M.do,
-      M.bind("state", () => T.toManaged_(R.makeRef<O.Option<I>>(O.none))),
+      M.bind("state", () => T.toManaged(R.makeRef<O.Option<I>>(O.none))),
       M.map(({ state }) => {
         return (is: O.Option<A.Chunk<I>>) =>
           T.chain_(state.get, (last) => {
@@ -1655,7 +1655,7 @@ export function take<I>(n: number): Sink<unknown, never, I, I, A.Chunk<I>> {
   return new Sink(
     pipe(
       M.do,
-      M.bind("state", () => T.toManaged_(R.makeRef<A.Chunk<I>>(A.empty))),
+      M.bind("state", () => T.toManaged(R.makeRef<A.Chunk<I>>(A.empty))),
       M.map(({ state }) => {
         return (is: O.Option<A.Chunk<I>>) =>
           T.chain_(state.get, (take) => {

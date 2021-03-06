@@ -19,7 +19,7 @@ export function takeUntil_<R, E, O>(
     pipe(
       M.do,
       M.bind("chunks", () => self.proc),
-      M.bind("keepTakingRef", () => T.toManaged_(Ref.makeRef(true))),
+      M.bind("keepTakingRef", () => T.toManaged(Ref.makeRef(true))),
       M.let("pull", ({ chunks, keepTakingRef }) => {
         return T.chain_(keepTakingRef.get, (keepTaking) => {
           if (!keepTaking) {

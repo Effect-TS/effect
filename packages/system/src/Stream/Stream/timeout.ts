@@ -17,7 +17,7 @@ export function timeout_<R, E, O>(
   return new Stream(
     pipe(
       M.do,
-      M.bind("timeout", () => T.toManaged_(Ref.makeRef(false))),
+      M.bind("timeout", () => T.toManaged(Ref.makeRef(false))),
       M.bind("next", () => self.proc),
       M.let("pull", ({ next, timeout }) =>
         T.chain_(timeout.get, (_) => {

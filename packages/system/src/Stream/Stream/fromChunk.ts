@@ -25,7 +25,7 @@ export function fromChunk<O>(c: A.Chunk<O>): UIO<O> {
         )
       ),
       T.map(({ pull }) => pull),
-      T.toManaged()
+      T.toManaged
     )
   )
 }

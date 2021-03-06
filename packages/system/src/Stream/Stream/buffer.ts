@@ -21,7 +21,7 @@ export function buffer_<R, E, O>(
   return new Stream(
     pipe(
       M.do,
-      M.bind("done", () => T.toManaged_(Ref.makeRef(false))),
+      M.bind("done", () => T.toManaged(Ref.makeRef(false))),
       M.bind("queue", () => toQueue_(self, capacity)),
       M.map(({ done, queue }) => {
         return pipe(

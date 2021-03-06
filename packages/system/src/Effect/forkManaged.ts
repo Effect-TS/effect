@@ -12,5 +12,5 @@ import { toManaged } from "./toManaged"
 export function forkManaged<R, E, A>(
   self: Effect<R, E, A>
 ): Managed<R, never, FiberContext<E, A>> {
-  return fork(toManaged()(self))
+  return fork(toManaged(self))
 }

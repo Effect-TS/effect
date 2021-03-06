@@ -10,7 +10,7 @@ export function toQueueUnbounded<R, E, A>(
   stream: Stream<R, E, A>
 ): M.Managed<R, never, Q.Dequeue<TK.Take<E, A>>> {
   return pipe(
-    T.toManaged_(Q.makeUnbounded<TK.Take<E, A>>(), (q) => q.shutdown),
+    T.toManagedRelease_(Q.makeUnbounded<TK.Take<E, A>>(), (q) => q.shutdown),
     M.tap((queue) => M.fork(intoManaged_(stream, queue)))
   )
 }

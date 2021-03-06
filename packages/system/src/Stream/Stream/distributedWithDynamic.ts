@@ -80,7 +80,7 @@ export function distributedWithDynamic_<R, E, O>(
       pipe(
         R.makeRef(Map.empty as Map.Map<symbol, Q.Queue<Ex.Exit<O.Option<E>, O>>>),
         (acquire) =>
-          T.toManaged_(acquire, (_) =>
+          T.toManagedRelease_(acquire, (_) =>
             T.chain_(_.get, (qs) => T.forEach_(qs.values(), (q) => q.shutdown))
           )
       )
@@ -88,7 +88,7 @@ export function distributedWithDynamic_<R, E, O>(
     M.bind("add", ({ queuesRef }) => {
       return pipe(
         M.do,
-        M.bind("queuesLock", () => T.toManaged_(SM.makeSemaphore(1))),
+        M.bind("queuesLock", () => T.toManaged(SM.makeSemaphore(1))),
         M.bind("newQueue", () =>
           pipe(
             R.makeRef<T.UIO<readonly [symbol, Q.Queue<Ex.Exit<O.Option<E>, O>>]>>(
@@ -102,7 +102,7 @@ export function distributedWithDynamic_<R, E, O>(
                 T.map(({ id, queue }) => [id, queue])
               )
             ),
-            T.toManaged()
+            T.toManaged
           )
         ),
         M.let("finalize", ({ newQueue, queuesLock }) => {
@@ -145,8 +145,8 @@ export function distributedWithDynamic_<R, E, O>(
             self,
             forEach.forEachManaged(offer(queuesRef)),
             M.foldCauseM(
-              (cause) => T.toManaged_(finalize(Ex.halt(C.map(O.some)(cause)))),
-              () => T.toManaged_(finalize(Ex.fail(O.none)))
+              (cause) => T.toManaged(finalize(Ex.halt(C.map(O.some)(cause)))),
+              () => T.toManaged(finalize(Ex.fail(O.none)))
             ),
             M.fork
           )

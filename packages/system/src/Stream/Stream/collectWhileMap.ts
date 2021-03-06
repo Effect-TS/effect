@@ -19,7 +19,7 @@ export function collectWhileMap_<R, E, O, O2>(
     pipe(
       M.do,
       M.bind("chunks", () => self.proc),
-      M.bind("doneRef", () => T.toManaged_(Ref.makeRef(false))),
+      M.bind("doneRef", () => T.toManaged(Ref.makeRef(false))),
       M.let("pull", ({ chunks, doneRef }) =>
         T.chain_(doneRef.get, (done) => {
           if (done) {
@@ -71,7 +71,7 @@ export function collectWhile_<R, E, O>(
     pipe(
       M.do,
       M.bind("chunks", () => self.proc),
-      M.bind("doneRef", () => T.toManaged_(Ref.makeRef(false))),
+      M.bind("doneRef", () => T.toManaged(Ref.makeRef(false))),
       M.let("pull", ({ chunks, doneRef }) =>
         T.chain_(doneRef.get, (done) => {
           if (done) {

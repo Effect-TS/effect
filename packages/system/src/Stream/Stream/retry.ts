@@ -26,15 +26,15 @@ export function retry_<R, R1, E, O>(
   return new Stream(
     pipe(
       M.do,
-      M.bind("driver", () => T.toManaged_(SC.driver(schedule))),
+      M.bind("driver", () => T.toManaged(SC.driver(schedule))),
       M.bind("currStream", () =>
-        T.toManaged_(Ref.makeRef<T.Effect<R, O.Option<E>, A.Chunk<O>>>(Pull.end))
+        T.toManaged(Ref.makeRef<T.Effect<R, O.Option<E>, A.Chunk<O>>>(Pull.end))
       ),
       M.bind("switchStream", () =>
         M.switchable<R, never, T.Effect<R, O.Option<E>, A.Chunk<O>>>()
       ),
       M.tap(({ currStream, switchStream }) =>
-        T.toManaged_(T.chain_(switchStream(self.proc), currStream.set))
+        T.toManaged(T.chain_(switchStream(self.proc), currStream.set))
       ),
       M.let("pull", ({ currStream, driver, switchStream }) => {
         const loop: T.Effect<

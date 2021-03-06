@@ -21,7 +21,7 @@ export function scheduleWith<R1, O, B>(schedule: SC.Schedule<R1, O, B>) {
       pipe(
         M.do,
         M.bind("as", () => M.mapM_(self.proc, BP.make)),
-        M.bind("driver", () => T.toManaged_(SC.driver(schedule))),
+        M.bind("driver", () => T.toManaged(SC.driver(schedule))),
         M.let("pull", ({ as, driver }) =>
           T.chain_(BP.pullElement(as), (o) =>
             T.orElse_(T.as_(driver.next(o), A.single(f(o))), () =>

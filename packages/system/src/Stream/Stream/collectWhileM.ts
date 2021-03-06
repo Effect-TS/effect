@@ -19,7 +19,7 @@ export function collectWhileM_<R, R1, E, E1, O, O2>(
     pipe(
       M.do,
       M.bind("as", () => M.mapM_(self.proc, BP.make)),
-      M.bind("done", () => T.toManaged_(Ref.makeRef(false))),
+      M.bind("done", () => T.toManaged(Ref.makeRef(false))),
       M.let("pull", ({ as, done }) =>
         T.chain_(done.get, (_) => {
           if (_) {

@@ -1,3 +1,7 @@
+// tracing: off
+
+import { traceAs } from "@effect-ts/tracing-utils"
+
 import * as A from "../Array"
 import * as cause from "../Cause"
 import type { Exit } from "../Exit"
@@ -55,6 +59,8 @@ import * as zipWith from "./zipWith"
  *
  * For a parallel version of this method, see `forEachPar`.
  * If you do not need the results, see `forEachUnit` for a more efficient implementation.
+ *
+ * @trace 1
  */
 export function forEach_<A, R, E, B>(as: Iterable<A>, f: (a: A) => Effect<R, E, B>) {
   return map.map_(
@@ -62,10 +68,8 @@ export function forEach_<A, R, E, B>(as: Iterable<A>, f: (a: A) => Effect<R, E, 
       as,
       core.succeed(FA.init<B>()) as Effect<R, E, FA.FreeAssociative<B>>,
       (b, a) =>
-        zipWith.zipWith_(
-          b,
-          core.suspend(() => f(a)),
-          (acc, r) => FA.append(r)(acc)
+        zipWith.zipWith_(b, core.suspend(traceAs(f, () => f(a))), (acc, r) =>
+          FA.append(r)(acc)
         )
     ),
     FA.toArray
@@ -80,6 +84,7 @@ export function forEach_<A, R, E, B>(as: Iterable<A>, f: (a: A) => Effect<R, E, 
  * If you do not need the results, see `forEachUnit` for a more efficient implementation.
  *
  * @dataFirst forEach_
+ * @trace 0
  */
 export function forEach<A, R, E, B>(f: (a: A) => Effect<R, E, B>) {
   return (as: Iterable<A>) => forEach_(as, f)
@@ -91,6 +96,8 @@ export function forEach<A, R, E, B>(f: (a: A) => Effect<R, E, B>) {
  *
  * Equivalent to `asUnit(forEach(as, f))`, but without the cost of building
  * the list of results.
+ *
+ * @trace 1
  */
 export function forEachUnit_<R, E, A, X>(
   as: Iterable<A>,
@@ -104,7 +111,7 @@ export function forEachUnit_<R, E, A, X>(
         return next.done
           ? core.unit
           : pipe(
-              f(next.value),
+              core.suspend(traceAs(f, () => f(next.value))),
               core.chain(() => loop())
             )
       }
@@ -121,6 +128,7 @@ export function forEachUnit_<R, E, A, X>(
  * the list of results.
  *
  * @dataFirst forEachUnit_
+ * @trace 0
  */
 export function forEachUnit<R, E, A, X>(
   f: (a: A) => Effect<R, E, X>
@@ -139,6 +147,8 @@ export function forEachUnit<R, E, A, X>(
  * Behaves almost like this code:
  *
  * Additionally, interrupts all effects on any failure.
+ *
+ * @trace 1
  */
 export function forEachUnitPar_<R, E, A, X>(
   as: Iterable<A>,
@@ -177,7 +187,7 @@ export function forEachUnitPar_<R, E, A, X>(
     ),
     Do.let("task", ({ causes, result, startFailure, startTask, status }) => (a: A) =>
       pipe(
-        core.suspend(() => f(a)),
+        core.suspend(traceAs(f, () => f(a))),
         interruption.interruptible,
         tapCause.tapCause((c) =>
           pipe(
@@ -226,8 +236,8 @@ export function forEachUnitPar_<R, E, A, X>(
       )
     ),
     tap.tap(({ causes, fibers, interrupter, result }) =>
-      managedUse_(interrupter, () => {
-        return pipe(
+      managedUse_(interrupter, () =>
+        pipe(
           result,
           promise.fail<void>(undefined),
           andThen.andThen(pipe(causes.get, core.chain(core.halt))),
@@ -239,7 +249,7 @@ export function forEachUnitPar_<R, E, A, X>(
           ),
           refailWithTrace.refailWithTrace
         )
-      })
+      )
     ),
     asUnit.asUnit
   )
@@ -253,7 +263,7 @@ export function forEachUnitPar_<R, E, A, X>(
 export function forkManaged<R, E, A>(
   self: Effect<R, E, A>
 ): Managed<R, never, FiberContext<E, A>> {
-  return managedFork(toManaged()(self))
+  return managedFork(toManaged(self))
 }
 
 /**
@@ -269,6 +279,7 @@ export function forkManaged<R, E, A>(
  * Additionally, interrupts all effects on any failure.
  *
  * @dataFirst forEachUnitPar_
+ * @trace 0
  */
 export function forEachUnitPar<R, E, A, X>(f: (a: A) => Effect<R, E, X>) {
   return (as: Iterable<A>) => forEachUnitPar_(as, f)

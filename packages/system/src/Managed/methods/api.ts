@@ -130,7 +130,7 @@ export function memoize<R, E, A>(self: Managed<R, E, A>): UIO<Managed<R, E, A>> 
         )
       )
 
-      return pipe(complete, T.andThen(P.await(promise)), T.toManaged())
+      return pipe(complete, T.andThen(P.await(promise)), T.toManaged)
     })
   )
 }

@@ -28,8 +28,8 @@ export function repeatElementsWith<R1, O, B>(schedule: SC.Schedule<R1, O, B>) {
       pipe(
         M.do,
         M.bind("as", () => M.mapM_(self.proc, (_) => BP.make(_))),
-        M.bind("driver", () => T.toManaged_(SC.driver(schedule))),
-        M.bind("state", () => T.toManaged_(Ref.makeRef<O.Option<O>>(O.none))),
+        M.bind("driver", () => T.toManaged(SC.driver(schedule))),
+        M.bind("state", () => T.toManaged(Ref.makeRef<O.Option<O>>(O.none))),
         M.let("pull", ({ as, driver, state }) => {
           const go: T.Effect<
             R & R1 & CL.HasClock,
