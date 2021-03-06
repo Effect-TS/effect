@@ -1,4 +1,5 @@
 // tracing: off
+
 import { accessCallTrace, traceAs, traceFrom } from "@effect-ts/tracing-utils"
 
 import type { Cause } from "../Cause/cause"
@@ -33,7 +34,6 @@ import {
   ITracingStatus,
   IYield
 } from "./primitives"
-// import type { DefaultEnv } from "./runtime"
 
 /**
  * Effectfully accesses the environment of the effect.
