@@ -16,7 +16,7 @@ export function ap<R2, E2, A>(
   fa: Effect<R2, E2, A>
 ): <R, E, B>(fab: Effect<R, E, (a: A) => B>) => Effect<R & R2, E2 | E, B> {
   const trace = accessCallTrace()
-  return traceCall((fab) => ap_(fab, fa), trace)
+  return (fab) => traceCall(ap_, trace)(fab, fa)
 }
 
 /**

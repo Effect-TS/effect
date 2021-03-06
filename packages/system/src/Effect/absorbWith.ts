@@ -1,9 +1,9 @@
 // tracing: off
 
-import { accessCallTrace, traceFrom } from "@effect-ts/tracing-utils"
+import { accessCallTrace, traceAs, traceFrom } from "@effect-ts/tracing-utils"
 
 import { squash } from "../Cause"
-import { identity, pipe } from "../Function"
+import { pipe } from "../Function"
 import { succeed } from "./core"
 import type { Effect } from "./effect"
 import { fail } from "./fail"
@@ -30,7 +30,10 @@ export function absorbWith_<R, A, E>(fa: Effect<R, E, A>, f: (e: E) => unknown) 
   return pipe(
     fa,
     sandbox,
-    foldM((x) => pipe(x, squash(f), fail), succeed)
+    foldM(
+      traceAs(f, (x) => pipe(x, squash(f), fail)),
+      succeed
+    )
   )
 }
 
@@ -42,5 +45,8 @@ export function absorbWith_<R, A, E>(fa: Effect<R, E, A>, f: (e: E) => unknown) 
  */
 export function absorb<R, E, A>(self: Effect<R, E, A>) {
   const trace = accessCallTrace()
-  return absorbWith_(self, traceFrom(trace, identity as (e: E) => unknown))
+  return absorbWith_(
+    self,
+    traceFrom(trace, (x) => x)
+  )
 }
