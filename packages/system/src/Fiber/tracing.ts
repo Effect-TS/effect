@@ -86,7 +86,7 @@ export function prettyTraceSafe(trace: Trace): S.UIO<string> {
     )
 
     const execTrace = !L.isEmpty(execution)
-    const stackTrace = !L.isEmpty(trace.stackTrace)
+    const stackTrace = !L.isEmpty(stack)
 
     const execPrint = execTrace
       ? [
