@@ -16,7 +16,7 @@ import { fail } from "./fail"
  *
  * @trace 0
  */
-export function fromPromiseWith_<E, A>(
+export function fromPromiseWith<E, A>(
   promise: Lazy<Promise<A>>,
   onReject: (reason: unknown) => E
 ): IO<E, A> {
@@ -26,19 +26,6 @@ export function fromPromiseWith_<E, A>(
         .then((x) => pipe(x, succeed, resolve))
         .catch((x) => pipe(x, onReject, fail, resolve))
     })
-  )
-}
-
-/**
- * Create an Effect that when executed will construct `promise` and wait for its result,
- * errors will be handled using `onReject`
- */
-export function fromPromiseWith<E>(onReject: (reason: unknown) => E) {
-  return (
-    /**
-     * @trace 0
-     */
-    <A>(effect: Lazy<Promise<A>>): IO<E, A> => fromPromiseWith_(effect, onReject)
   )
 }
 

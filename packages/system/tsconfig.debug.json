@@ -3,6 +3,7 @@
   "compilerOptions": {
     "outDir": "debug",
     "target": "ES2017",
+    "lib": ["DOM", "ES2020"],
     "module": "CommonJS",
     "removeComments": false,
     "plugins": [

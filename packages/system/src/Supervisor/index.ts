@@ -7,7 +7,7 @@ import "../Operator"
  */
 import { effectTotal, unit } from "../Effect/core"
 import type { Effect, UIO } from "../Effect/effect"
-import { zip_ } from "../Effect/zip_"
+import { zip_ } from "../Effect/zip"
 import type { Exit } from "../Exit/exit"
 import type { Runtime } from "../Fiber/core"
 import { pipe } from "../Function"

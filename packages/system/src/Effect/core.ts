@@ -414,15 +414,13 @@ export function suspend<R, E, A>(factory: () => Effect<R, E, A>): Effect<R, E, A
  * When no environment is required (i.e., when R == unknown) it is conceptually equivalent to `flatten(effectPartial(orThrow, io))`.
  *
  * @trace 0
+ * @trace 1
  */
-export function suspendPartial<E2>(onThrow: (u: unknown) => E2) {
-  return (
-    /**
-     * @trace 0
-     */
-    <R, E, A>(factory: () => Effect<R, E, A>): Effect<R, E | E2, A> =>
-      new ISuspendPartial(factory, onThrow)
-  )
+export function suspendPartial<R, E, A, E2>(
+  factory: () => Effect<R, E, A>,
+  onThrow: (u: unknown) => E2
+): Effect<R, E | E2, A> {
+  return new ISuspendPartial(factory, onThrow)
 }
 
 /**
@@ -437,13 +435,18 @@ export function tryOrElse_<R, E, A, R2, E2, A2, R3, E3, A3>(
   that: () => Effect<R2, E2, A2>,
   success: (a: A) => Effect<R3, E3, A3>
 ): Effect<R & R2 & R3, E2 | E3, A2 | A3> {
-  return new IFold(self, (cause) => O.fold_(keepDefects(cause), that, halt), success)
+  return new IFold(
+    self,
+    traceAs(that, (cause) => O.fold_(keepDefects(cause), that, halt)),
+    success
+  )
 }
 
 /**
  * Executed `that` in case `self` fails with a `Cause` that doesn't contain defects,
  * executes `success` in case of successes
  *
+ * @dataFirst tryOrElse_
  * @trace 0
  * @trace 1
  */
@@ -468,6 +471,8 @@ export const yieldNow: UIO<void> = new IYield()
 
 /**
  * Checks the current platform
+ *
+ * @trace 0
  */
 export function checkPlatform<R, E, A>(
   f: (_: Fiber.Platform<unknown>) => Effect<R, E, A>

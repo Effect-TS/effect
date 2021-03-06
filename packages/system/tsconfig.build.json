@@ -3,6 +3,7 @@
   "compilerOptions": {
     "outDir": "build",
     "target": "ES2017",
+    "lib": ["DOM", "ES2020"],
     "module": "CommonJS",
     "incremental": true,
     "tsBuildInfoFile": "tsbuildinfo/build.tsbuildinfo",

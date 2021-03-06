@@ -1,9 +1,13 @@
+// tracing: off
+
 import { succeed, tryOrElse_ } from "./core"
 import type { Effect } from "./effect"
 
 /**
  * Executes this effect and returns its value, if it succeeds, but
  * otherwise executes the specified effect.
+ *
+ * @trace 1
  */
 export function orElse_<R, E, A, R2, E2, A2>(
   self: Effect<R, E, A>,
@@ -15,6 +19,9 @@ export function orElse_<R, E, A, R2, E2, A2>(
 /**
  * Executes this effect and returns its value, if it succeeds, but
  * otherwise executes the specified effect.
+ *
+ * @dataFirst orElse_
+ * @trace 0
  */
 export function orElse<R2, E2, A2>(that: () => Effect<R2, E2, A2>) {
   return <R, E, A>(self: Effect<R, E, A>) => orElse_(self, that)
