@@ -19,7 +19,7 @@ export function paginateChunkM<S>(s: S) {
     new Stream(
       pipe(
         M.do,
-        M.bind("ref", () => T.toManaged_(Ref.makeRef(O.some(s)))),
+        M.bind("ref", () => T.toManaged(Ref.makeRef(O.some(s)))),
         M.map(({ ref }) =>
           T.chain_(
             ref.get,

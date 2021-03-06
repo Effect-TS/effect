@@ -15,7 +15,7 @@ export function fromEffectOption<R, E, A>(
   return new Stream(
     pipe(
       M.do,
-      M.bind("doneRef", () => pipe(Ref.makeRef(false), T.toManaged())),
+      M.bind("doneRef", () => pipe(Ref.makeRef(false), T.toManaged)),
       M.let("pull", ({ doneRef }) =>
         pipe(
           doneRef,

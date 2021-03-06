@@ -20,7 +20,7 @@ export function concat_<R, R1, E, E1, O, O1>(
     pipe(
       M.do,
       M.bind("currStream", () =>
-        T.toManaged_(
+        T.toManaged(
           Ref.makeRef<T.Effect<R & R1, O.Option<E | E1>, A.Chunk<O | O1>>>(Pull.end)
         )
       ),
@@ -31,9 +31,9 @@ export function concat_<R, R1, E, E1, O, O1>(
           T.Effect<R & R1, O.Option<E | E1>, A.Chunk<O | O1>>
         >()
       ),
-      M.bind("switched", () => T.toManaged_(Ref.makeRef(false))),
+      M.bind("switched", () => T.toManaged(Ref.makeRef(false))),
       M.tap(({ currStream, switchStream }) =>
-        T.toManaged_(T.chain_(switchStream(self.proc), currStream.set))
+        T.toManaged(T.chain_(switchStream(self.proc), currStream.set))
       ),
       M.let("pull", ({ currStream, switchStream, switched }) => {
         const go: T.Effect<

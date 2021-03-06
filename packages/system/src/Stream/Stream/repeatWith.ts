@@ -24,14 +24,14 @@ export function repeatWith<R1, B>(schedule: SC.Schedule<R1, any, B>) {
     new Stream(
       pipe(
         M.do,
-        M.bind("sdriver", () => T.toManaged_(SC.driver(schedule))),
+        M.bind("sdriver", () => T.toManaged(SC.driver(schedule))),
         M.bind("switchPull", () =>
           M.switchable<R & R1, never, T.Effect<R1 & R, O.Option<E>, A.Chunk<C | D>>>()
         ),
         M.bind("currPull", ({ switchPull }) =>
-          T.toManaged_(T.chain_(switchPull(map_(self, f).proc), Ref.makeRef))
+          T.toManaged(T.chain_(switchPull(map_(self, f).proc), Ref.makeRef))
         ),
-        M.bind("doneRef", () => T.toManaged_(Ref.makeRef(false))),
+        M.bind("doneRef", () => T.toManaged(Ref.makeRef(false))),
         M.let("pull", ({ currPull, doneRef, sdriver, switchPull }) => {
           const go: T.Effect<
             R & R1 & CL.HasClock,

@@ -24,7 +24,7 @@ export function drainFork_<R, R1, E, E1, O, X>(
         M.fork(
           M.catchAllCause_(
             forEach.forEachManaged_(other, (_) => T.unit),
-            (_) => T.toManaged_(P.halt_(bgDied, _))
+            (_) => T.toManaged(P.halt_(bgDied, _))
           )
         )
       ),

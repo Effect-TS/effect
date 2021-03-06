@@ -31,11 +31,11 @@ export function effectAsyncM<R, E, A, R1 = R, E1 = E>(
   return pipe(
     M.do,
     M.bind("output", () =>
-      pipe(Q.makeBounded<Take.Take<E, A>>(outputBuffer), T.toManaged())
+      pipe(Q.makeBounded<Take.Take<E, A>>(outputBuffer), T.toManaged)
     ),
-    M.bind("runtime", () => pipe(T.runtime<R>(), T.toManaged())),
+    M.bind("runtime", () => pipe(T.runtime<R>(), T.toManaged)),
     M.tap(({ output, runtime }) =>
-      T.toManaged()(
+      T.toManaged(
         register((k, cb) =>
           pipe(Take.fromPull(k), T.chain(output.offer), (x) => runtime.runCancel(x, cb))
         )

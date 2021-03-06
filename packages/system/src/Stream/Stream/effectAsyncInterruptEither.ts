@@ -31,9 +31,9 @@ export function effectAsyncInterruptEither<R, E, A>(
     pipe(
       M.do,
       M.bind("output", () =>
-        pipe(Q.makeBounded<Take.Take<E, A>>(outputBuffer), T.toManaged())
+        pipe(Q.makeBounded<Take.Take<E, A>>(outputBuffer), T.toManaged)
       ),
-      M.bind("runtime", () => pipe(T.runtime<R>(), T.toManaged())),
+      M.bind("runtime", () => pipe(T.runtime<R>(), T.toManaged)),
       M.bind("eitherStream", ({ output, runtime }) =>
         M.effectTotal(() =>
           register((k, cb) =>
@@ -74,7 +74,7 @@ export function effectAsyncInterruptEither<R, E, A>(
           (s) =>
             pipe(
               output.shutdown,
-              T.toManaged(),
+              T.toManaged,
               M.chain(() => s.proc)
             )
         )

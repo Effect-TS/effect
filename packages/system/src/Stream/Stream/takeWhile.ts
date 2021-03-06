@@ -20,7 +20,7 @@ export function takeWhile_<R, E, O>(
     pipe(
       M.do,
       M.bind("chunks", () => self.proc),
-      M.bind("doneRef", () => T.toManaged_(Ref.makeRef(false))),
+      M.bind("doneRef", () => T.toManaged(Ref.makeRef(false))),
       M.let("pull", ({ chunks, doneRef }) =>
         T.chain_(doneRef.get, (_) => {
           if (_) {

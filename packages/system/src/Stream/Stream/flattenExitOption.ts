@@ -15,7 +15,7 @@ export function flattenExitOption<R, E, E1, O1>(
     pipe(
       M.do,
       M.bind("upstream", () => M.mapM_(self.proc, BP.make)),
-      M.bind("done", () => T.toManaged_(Ref.makeRef(false))),
+      M.bind("done", () => T.toManaged(Ref.makeRef(false))),
       M.map(({ done, upstream }) =>
         T.chain_(done.get, (_) => {
           if (_) {

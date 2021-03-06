@@ -44,8 +44,8 @@ export function restartable<R, R1, E, I, L, Z>(
   return pipe(
     M.do,
     M.bind("switchSink", () => M.switchable<R, never, Push<R1, E, I, L, Z>>()),
-    M.bind("initialSink", ({ switchSink }) => T.toManaged_(switchSink(sink))),
-    M.bind("currSink", ({ initialSink }) => T.toManaged_(R.makeRef(initialSink))),
+    M.bind("initialSink", ({ switchSink }) => T.toManaged(switchSink(sink))),
+    M.bind("currSink", ({ initialSink }) => T.toManaged(R.makeRef(initialSink))),
     M.map(({ currSink, switchSink }) => {
       const restart = T.chain_(switchSink(sink), currSink.set)
       const newPush = (input: O.Option<A.Chunk<I>>) =>

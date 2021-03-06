@@ -19,7 +19,7 @@ export function dropWhile_<R, E, O>(
     pipe(
       M.do,
       M.bind("chunks", () => self.proc),
-      M.bind("keepDroppingRef", () => T.toManaged_(Ref.makeRef(true))),
+      M.bind("keepDroppingRef", () => T.toManaged(Ref.makeRef(true))),
       M.let("pull", ({ chunks, keepDroppingRef }) => {
         const go: T.Effect<R, O.Option<E>, A.Chunk<O>> = T.chain_(chunks, (chunk) =>
           T.chain_(keepDroppingRef.get, (keepDropping) => {

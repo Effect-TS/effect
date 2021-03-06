@@ -20,7 +20,7 @@ export function haltWhenP_<R, E, E1, O>(
     pipe(
       M.do,
       M.bind("as", () => self.proc),
-      M.bind("done", () => T.toManaged_(Ref.makeRef(false))),
+      M.bind("done", () => T.toManaged(Ref.makeRef(false))),
       M.let("pull", ({ as, done }) =>
         T.chain_(done.get, (_) => {
           if (_) {

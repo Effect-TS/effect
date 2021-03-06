@@ -17,7 +17,7 @@ export function zipWithNext<R, E, O>(
     pipe(
       M.do,
       M.bind("chunks", () => self.proc),
-      M.bind("ref", () => T.toManaged_(Ref.makeRef<O.Option<O>>(O.none))),
+      M.bind("ref", () => T.toManaged(Ref.makeRef<O.Option<O>>(O.none))),
       M.let("last", ({ ref }) =>
         pipe(
           Ref.getAndSet_(ref, O.none),

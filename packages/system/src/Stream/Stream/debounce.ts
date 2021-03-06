@@ -39,7 +39,7 @@ export function debounce_<R, E, O>(
       M.bind("ref", () =>
         pipe(
           Ref.makeRef<State>(new NotStarted()),
-          T.toManaged((_) =>
+          T.toManagedRelease((_) =>
             T.chain_(_.get, (state) => {
               switch (state._tag) {
                 case "Previous":

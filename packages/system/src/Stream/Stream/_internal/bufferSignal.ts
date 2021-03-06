@@ -22,10 +22,10 @@ export function bufferSignal<R, E, O>(
   return pipe(
     M.do,
     M.bind("as", () => self.proc),
-    M.bind("start", () => T.toManaged_(P.make<never, void>())),
-    M.tap(({ start }) => T.toManaged_(P.succeed_(start, undefined))),
-    M.bind("ref", ({ start }) => T.toManaged_(Ref.makeRef(start))),
-    M.bind("done", () => T.toManaged_(Ref.makeRef(false))),
+    M.bind("start", () => T.toManaged(P.make<never, void>())),
+    M.tap(({ start }) => T.toManaged(P.succeed_(start, undefined))),
+    M.bind("ref", ({ start }) => T.toManaged(Ref.makeRef(start))),
+    M.bind("done", () => T.toManaged(Ref.makeRef(false))),
     M.let("upstream", ({ as, ref }) => {
       const offer = (take: Take.Take<E, O>): T.UIO<void> =>
         Ex.fold_(
@@ -58,7 +58,7 @@ export function bufferSignal<R, E, O>(
         T.asUnit
       )
     }),
-    M.tap(({ upstream }) => M.fork(T.toManaged_(upstream))),
+    M.tap(({ upstream }) => M.fork(T.toManaged(upstream))),
     M.let("pull", ({ done }) =>
       pipe(
         done.get,

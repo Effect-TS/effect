@@ -53,7 +53,7 @@ export function chunkN_<R, E, O>(self: Stream<R, E, O>, n: number): Stream<R, E,
       pipe(
         M.do,
         M.bind("ref", () =>
-          T.toManaged_(Ref.makeRef<State<O>>(new State(A.empty, false)))
+          T.toManaged(Ref.makeRef<State<O>>(new State(A.empty, false)))
         ),
         M.bind("p", () => self.proc),
         M.let("pull", ({ p, ref }) =>
