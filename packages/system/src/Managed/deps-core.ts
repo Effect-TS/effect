@@ -22,7 +22,7 @@ export * from "../Effect/sandbox"
 export * from "../Effect/tap"
 export * from "../Effect/zipWith"
 export * from "../Effect/zipWithPar_"
-export * from "../Effect/zip_"
+export * from "../Effect/zip"
 export { forEach as exitForeach } from "../Exit/api"
 export {
   collectAll as exitCollectAll,

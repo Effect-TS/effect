@@ -4,6 +4,7 @@
     "outDir": "build/esm",
     "module": "ES6",
     "target": "ES2017",
+    "lib": ["DOM", "ES2020"],
     "incremental": true,
     "tsBuildInfoFile": "tsbuildinfo/es6.tsbuildinfo",
     "removeComments": false,
