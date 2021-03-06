@@ -21,9 +21,9 @@ export function throttleEnforceM(units: number, duration: number, burst = 0) {
       pipe(
         M.do,
         M.bind("chunks", () => self.proc),
-        M.bind("currentTime", () => T.toManaged_(CL.currentTime)),
+        M.bind("currentTime", () => T.toManaged(CL.currentTime)),
         M.bind("bucket", ({ currentTime }) =>
-          T.toManaged_(Ref.makeRef([units, currentTime] as const))
+          T.toManaged(Ref.makeRef([units, currentTime] as const))
         ),
         M.let("pull", ({ bucket, chunks }) => {
           const go: T.Effect<

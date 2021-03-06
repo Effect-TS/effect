@@ -18,7 +18,7 @@ export function take_<R, E, O>(self: Stream<R, E, O>, n: number): Stream<R, E, O
       pipe(
         M.do,
         M.bind("chunks", () => self.proc),
-        M.bind("counterRef", () => T.toManaged_(Ref.makeRef(0))),
+        M.bind("counterRef", () => T.toManaged(Ref.makeRef(0))),
         M.let("pull", ({ chunks, counterRef }) =>
           T.chain_(counterRef.get, (cnt) => {
             if (cnt >= n) {

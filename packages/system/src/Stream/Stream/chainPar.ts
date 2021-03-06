@@ -30,13 +30,13 @@ export function chainPar(n: number, outputBuffer = 16) {
         pipe(
           M.do,
           M.bind("out", () =>
-            T.toManaged_(
+            T.toManagedRelease_(
               Q.makeBounded<T.Effect<R1, O.Option<E | E1>, A.Chunk<O2>>>(outputBuffer),
               (q) => q.shutdown
             )
           ),
-          M.bind("permits", () => T.toManaged_(SM.makeSemaphore(n))),
-          M.bind("innerFailure", () => T.toManaged_(P.make<C.Cause<E1>, never>())),
+          M.bind("permits", () => T.toManaged(SM.makeSemaphore(n))),
+          M.bind("innerFailure", () => T.toManaged(P.make<C.Cause<E1>, never>())),
           M.tap(({ innerFailure, out, permits }) =>
             pipe(
               forEach.forEachManaged_(self, (a) =>
@@ -68,7 +68,7 @@ export function chainPar(n: number, outputBuffer = 16) {
               ),
               M.foldCauseM(
                 (cause) =>
-                  T.toManaged_(
+                  T.toManaged(
                     T.andThen_(
                       T.chain_(getChildren, (c) => F.interruptAll(c)),
                       T.asUnit(out.offer(Pull.halt(cause)))
@@ -91,7 +91,7 @@ export function chainPar(n: number, outputBuffer = 16) {
                           T.asUnit(F.interrupt(failureAwait))
                         )
                     ),
-                    T.toManaged()
+                    T.toManaged
                   )
               ),
               M.fork

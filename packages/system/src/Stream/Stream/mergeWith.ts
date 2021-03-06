@@ -110,7 +110,7 @@ export function mergeWith<R1, E1, B>(
               T.repeatWhile(identity),
               T.fork,
               T.interruptible,
-              T.toManaged(F.interrupt)
+              T.toManagedRelease(F.interrupt)
             )
         ),
         M.tap(({ chunksL, handler }) =>

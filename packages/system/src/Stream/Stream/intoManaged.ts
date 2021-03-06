@@ -26,7 +26,7 @@ export function intoManaged_<R, R1, E, A>(
       (a) => T.andThen_(queue.offer(TK.chunk(a)), go)
     )
 
-    return T.toManaged_(go)
+    return T.toManaged(go)
   })
 }
 

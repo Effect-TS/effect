@@ -37,7 +37,7 @@ export function switchable<R, E, A>(): Managed<
         releaseMap,
         addIfOpen.addIfOpen((_) => T.unit),
         T.chain(fold(() => T.interrupt, T.succeed)),
-        T.toManaged()
+        T.toManaged
       )
     ),
     map(({ key, releaseMap }) => (newResource) =>

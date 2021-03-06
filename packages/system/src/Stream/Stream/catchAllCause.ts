@@ -41,7 +41,7 @@ export function catchAllCause_<R, E, R1, E2, O, O1>(
       M.bind("ref", () =>
         pipe(
           Ref.makeRef<State<E>>({ _tag: "NotStarted" }),
-          T.toManaged()
+          T.toManaged
         )
       ),
       M.let("pull", ({ finalizerRef, ref }) => {

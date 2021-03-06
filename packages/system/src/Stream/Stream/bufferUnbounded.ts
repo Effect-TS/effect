@@ -15,7 +15,7 @@ export function bufferUnbounded<R, E, O>(self: Stream<R, E, O>): Stream<R, E, O>
   return new Stream(
     pipe(
       M.do,
-      M.bind("done", () => T.toManaged_(Ref.makeRef(true))),
+      M.bind("done", () => T.toManaged(Ref.makeRef(true))),
       M.bind("queue", () => toQueueUnbounded(self)),
       M.map(({ done, queue }) =>
         T.chain_(done.get, (_) => {

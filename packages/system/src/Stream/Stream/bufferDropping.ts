@@ -21,7 +21,7 @@ export function bufferDropping_<R, E, O>(
     pipe(
       M.do,
       M.bind("queue", () =>
-        T.toManaged_(
+        T.toManagedRelease_(
           Q.makeDropping<readonly [Take.Take<E, O>, P.Promise<never, void>]>(capacity),
           (q) => q.shutdown
         )

@@ -25,7 +25,7 @@ export function peel_<R, R1, E, E1, O, Z>(
     return pipe(
       stream,
       run(s),
-      T.toManaged(),
+      T.toManaged,
       M.map((e) => [e[0], concat_(fromChunk(e[1]), stream)] as const)
     )
   })

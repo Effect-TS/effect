@@ -13,7 +13,7 @@ export function iterate<A>(a: A, f: (a: A) => A): UIO<A> {
   return new Stream(
     pipe(
       Ref.makeRef(a),
-      T.toManaged(),
+      T.toManaged,
       M.map((x) => pipe(x, Ref.getAndUpdate(f), T.map(A.single)))
     )
   )

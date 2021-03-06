@@ -13,13 +13,13 @@ export function forever<R, E, O>(self: Stream<R, E, O>): Stream<R, E, O> {
     pipe(
       M.do,
       M.bind("currStream", () =>
-        T.toManaged_(Ref.makeRef<T.Effect<R, O.Option<E>, A.Chunk<O>>>(Pull.end))
+        T.toManaged(Ref.makeRef<T.Effect<R, O.Option<E>, A.Chunk<O>>>(Pull.end))
       ),
       M.bind("switchStream", () =>
         M.switchable<R, never, T.Effect<R, O.Option<E>, A.Chunk<O>>>()
       ),
       M.tap(({ currStream, switchStream }) => {
-        return T.toManaged_(T.chain_(switchStream(self.proc), currStream.set))
+        return T.toManaged(T.chain_(switchStream(self.proc), currStream.set))
       }),
       M.map(({ currStream, switchStream }) => {
         const go: T.Effect<R, O.Option<E>, A.Chunk<O>> = T.catchAllCause_(

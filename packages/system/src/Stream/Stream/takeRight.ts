@@ -21,7 +21,7 @@ export function takeRight_<R, E, O>(self: Stream<R, E, O>, n: number): Stream<R,
       pipe(
         M.do,
         M.bind("pull", () => M.mapM_(self.proc, BP.make)),
-        M.bind("queue", () => T.toManaged_(Q.makeSliding<O>(n))),
+        M.bind("queue", () => T.toManaged(Q.makeSliding<O>(n))),
         M.bind("done", () => Ref.makeManagedRef(false)),
         M.map(({ done, pull, queue }) =>
           T.chain_(done.get, (_) => {

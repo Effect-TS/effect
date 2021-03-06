@@ -27,7 +27,7 @@ export function groupBy_<R, R1, E, E1, O, K, V>(
     pipe(
       M.do,
       M.bind("decider", () =>
-        T.toManaged_(
+        T.toManaged(
           P.make<
             never,
             (k: K, v: V) => T.Effect<unknown, never, (s: symbol) => boolean>
@@ -35,7 +35,7 @@ export function groupBy_<R, R1, E, E1, O, K, V>(
         )
       ),
       M.bind("out", () =>
-        T.toManaged_(
+        T.toManagedRelease_(
           Q.makeBounded<
             Ex.Exit<
               O.Option<E | E1>,
@@ -45,7 +45,7 @@ export function groupBy_<R, R1, E, E1, O, K, V>(
           (q) => q.shutdown
         )
       ),
-      M.bind("ref", () => T.toManaged_(Ref.makeRef<MP.Map<K, symbol>>(MP.empty))),
+      M.bind("ref", () => T.toManaged(Ref.makeRef<MP.Map<K, symbol>>(MP.empty))),
       M.bind("add", ({ decider, out }) =>
         pipe(
           mapM_(self, f),
@@ -83,7 +83,7 @@ export function groupBy_<R, R1, E, E1, O, K, V>(
               )
             )
           ),
-          T.toManaged()
+          T.toManaged
         )
       ),
       M.map(({ out }) => flattenExitOption(fromQueueWithShutdown(out)))
