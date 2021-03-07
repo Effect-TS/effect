@@ -8,29 +8,52 @@ import { DroppingStrategy, SlidingStrategy } from "./core"
 import * as P from "./promise"
 import type { Queue } from "./xqueue"
 
+/**
+ * Unsafely creates a queue
+ *
+ * @dataFirst unsafeCreateQueue_
+ */
 export function unsafeCreateQueue<A>(strategy: Strategy<A>) {
-  return (queue: MutableQueue<A>) =>
-    unsafeCreate(
-      queue,
-      new Unbounded(),
-      P.unsafeMake<never, void>(None),
-      new AtomicBoolean(false),
-      strategy
-    )
+  return (queue: MutableQueue<A>) => unsafeCreateQueue_(queue, strategy)
 }
 
+/**
+ * Unsafely creates a queue
+ */
+export function unsafeCreateQueue_<A>(queue: MutableQueue<A>, strategy: Strategy<A>) {
+  return unsafeCreate(
+    queue,
+    new Unbounded(),
+    P.unsafeMake<never, void>(None),
+    new AtomicBoolean(false),
+    strategy
+  )
+}
+
+/**
+ * Unsafely creates a sliding queue
+ */
 export function unsafeMakeSliding<A>(capacity: number): Queue<A> {
-  return unsafeCreateQueue(new SlidingStrategy<A>())(new Bounded<A>(capacity))
+  return unsafeCreateQueue_(new Bounded<A>(capacity), new SlidingStrategy<A>())
 }
 
+/**
+ * Unsafely creates a unbounded queue
+ */
 export function unsafeMakeUnbounded<A>(): Queue<A> {
-  return unsafeCreateQueue(new DroppingStrategy<A>())(new Unbounded<A>())
+  return unsafeCreateQueue_(new Unbounded<A>(), new DroppingStrategy<A>())
 }
 
+/**
+ * Unsafely creates a dropping queue
+ */
 export function unsafeMakeDropping<A>(capacity: number): Queue<A> {
-  return unsafeCreateQueue(new DroppingStrategy<A>())(new Bounded<A>(capacity))
+  return unsafeCreateQueue_(new Bounded<A>(capacity), new DroppingStrategy<A>())
 }
 
+/**
+ * Unsafely creates a bounded queue
+ */
 export function unsafeMakeBounded<A>(capacity: number): Queue<A> {
-  return unsafeCreateQueue(new BackPressureStrategy<A>())(new Bounded<A>(capacity))
+  return unsafeCreateQueue_(new Bounded<A>(capacity), new BackPressureStrategy<A>())
 }

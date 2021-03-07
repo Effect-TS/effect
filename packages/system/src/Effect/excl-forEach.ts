@@ -9,7 +9,6 @@ import * as Ex from "../Exit"
 import type { FiberContext } from "../Fiber/context"
 import type * as Fiber from "../Fiber/core"
 import { interrupt as fiberInterrupt } from "../Fiber/interrupt"
-import * as FA from "../FreeAssociative"
 import { identity, pipe, tuple } from "../Function"
 import * as I from "../Iterable"
 import { descriptorWith } from "../Managed/deps-core"
@@ -63,16 +62,11 @@ import * as zipWith from "./zipWith"
  * @trace 1
  */
 export function forEach_<A, R, E, B>(as: Iterable<A>, f: (a: A) => Effect<R, E, B>) {
-  return map.map_(
-    I.reduce_(
-      as,
-      core.succeed(FA.init<B>()) as Effect<R, E, FA.FreeAssociative<B>>,
-      (b, a) =>
-        zipWith.zipWith_(b, core.suspend(traceAs(f, () => f(a))), (acc, r) =>
-          FA.append(r)(acc)
-        )
-    ),
-    FA.toArray
+  return I.reduce_(as, core.effectTotal(() => []) as Effect<R, E, B[]>, (b, a) =>
+    zipWith.zipWith_(b, core.suspend(traceAs(f, () => f(a))), (acc, r) => {
+      acc.push(r)
+      return acc
+    })
   )
 }
 
@@ -747,6 +741,9 @@ export function fiberWaitAll<E, A>(as: Iterable<Fiber.Fiber<E, A>>) {
   return core.result(forEachPar_(as, (f) => core.chain_(f.await, done)))
 }
 
+/**
+ * Releases all the finalizers in the releaseMap according to the ExecutionStrategy
+ */
 export function releaseMapReleaseAll(
   exit: Exit<any, any>,
   execStrategy: ExecutionStrategy
@@ -958,6 +955,9 @@ export class BackPressureStrategy<A> implements Q.Strategy<A> {
   }
 }
 
+/**
+ * Creates a bounded queue
+ */
 export function makeBoundedQueue<A>(capacity: number): UIO<Q.Queue<A>> {
   return core.chain_(
     core.effectTotal(() => new Bounded<A>(capacity)),
@@ -965,6 +965,9 @@ export function makeBoundedQueue<A>(capacity: number): UIO<Q.Queue<A>> {
   )
 }
 
+/**
+ * Unsafely creates a queue
+ */
 export function unsafeCreateQueue<A>(
   queue: MutableQueue<A>,
   takers: MutableQueue<Promise<never, A>>,
@@ -1111,6 +1114,9 @@ export function unsafeCreateQueue<A>(
   })()
 }
 
+/**
+ * Creates a queue
+ */
 export function createQueue_<A>(queue: MutableQueue<A>, strategy: Q.Strategy<A>) {
   return map.map_(promise.make<never, void>(), (p) =>
     unsafeCreateQueue(queue, new Unbounded(), p, new AtomicBoolean(false), strategy)
@@ -1118,6 +1124,8 @@ export function createQueue_<A>(queue: MutableQueue<A>, strategy: Q.Strategy<A>)
 }
 
 /**
+ * Creates a queue
+ *
  * @dataFirst createQueue_
  */
 export function createQueue<A>(strategy: Q.Strategy<A>) {
