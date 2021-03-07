@@ -1,5 +1,7 @@
 // tracing: off
 
+import { accessCallTrace, traceCall, tracingSymbol } from "@effect-ts/tracing-utils"
+
 import { chain_, effectTotal } from "./core"
 import type { Effect, RIO } from "./effect"
 import { fail } from "./fail"
@@ -30,30 +32,40 @@ export function cond_<E, A>(
   onTrue: () => A,
   onFalse: () => E
 ): Effect<unknown, E, A> {
-  return b ? effectTotal(onTrue) : chain_(effectTotal(onFalse), fail)
+  return b
+    ? effectTotal(onTrue)
+    : chain_(effectTotal(onFalse), (x) => traceCall(fail, onFalse[tracingSymbol])(x))
 }
 
 /**
  * Evaluate the predicate,
  * return the given A as success if predicate returns true,
  * and the given E as error otherwise
+ *
+ * @trace call
  */
 export function condM_<R, R2, E, A>(
   b: boolean,
   onTrue: RIO<R, A>,
   onFalse: RIO<R2, E>
 ): Effect<R & R2, E, A> {
-  return b ? onTrue : chain_(onFalse, fail)
+  const trace = accessCallTrace()
+
+  return b ? onTrue : chain_(onFalse, (x) => traceCall(fail, trace)(x))
 }
 
 /**
  * Evaluate the predicate,
  * return the given A as success if predicate returns true,
  * and the given E as error otherwise
+ *
+ * @trace call
  */
 export function condM<R, R2, E, A>(
   onTrue: RIO<R, A>,
   onFalse: RIO<R2, E>
 ): (b: boolean) => Effect<R & R2, E, A> {
-  return (b) => condM_(b, onTrue, onFalse)
+  const trace = accessCallTrace()
+
+  return (b) => traceCall(condM_, trace)(b, onTrue, onFalse)
 }
