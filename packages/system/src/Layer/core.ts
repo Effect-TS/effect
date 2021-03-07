@@ -118,7 +118,7 @@ export function pure<T>(has: Tag<T>) {
   return (resource: T): Layer<unknown, never, Has<T>> =>
     new LayerManaged(
       M.chain_(M.fromEffect(T.succeed(resource)), (a) => environmentFor(has, a))
-    )
+    ).setKey(has.key)
 }
 
 /**
@@ -145,7 +145,9 @@ export function prepare<T>(has: Tag<T>) {
  */
 export function fromEffect<T>(has: Tag<T>) {
   return <R, E>(resource: T.Effect<R, E, T>): Layer<R, E, Has<T>> =>
-    new LayerManaged(M.chain_(M.fromEffect(resource), (a) => environmentFor(has, a)))
+    new LayerManaged(
+      M.chain_(M.fromEffect(resource), (a) => environmentFor(has, a))
+    ).setKey(has.key)
 }
 
 /**
@@ -153,7 +155,7 @@ export function fromEffect<T>(has: Tag<T>) {
  */
 export function fromManaged<T>(has: Tag<T>) {
   return <R, E>(resource: M.Managed<R, E, T>): Layer<R, E, Has<T>> =>
-    new LayerManaged(M.chain_(resource, (a) => environmentFor(has, a)))
+    new LayerManaged(M.chain_(resource, (a) => environmentFor(has, a))).setKey(has.key)
 }
 
 /**
