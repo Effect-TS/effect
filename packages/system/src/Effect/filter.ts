@@ -1,3 +1,7 @@
+// tracing: off
+
+import { traceAs } from "@effect-ts/tracing-utils"
+
 import * as A from "../Array"
 import { pipe } from "../Function"
 import * as I from "../Iterable"
@@ -12,6 +16,7 @@ import * as zipWith from "./zipWith"
  * Filters the collection using the specified effectual predicate.
  *
  * @dataFirst filter_
+ * @trace 0
  */
 export function filter<A, R, E>(f: (a: A) => Effect<R, E, boolean>) {
   return (as: Iterable<A>) => filter_(as, f)
@@ -19,13 +24,15 @@ export function filter<A, R, E>(f: (a: A) => Effect<R, E, boolean>) {
 
 /**
  * Filters the collection using the specified effectual predicate.
+ *
+ * @trace 1
  */
 export function filter_<A, R, E>(
   as: Iterable<A>,
   f: (a: A) => Effect<R, E, boolean>
 ): Effect<R, E, readonly A[]> {
-  return I.reduce_(as, <Effect<R, E, A[]>>core.succeed([]), (io, a) =>
-    zipWith.zipWith_(io, f(a), (as_, p) => {
+  return I.reduce_(as, <Effect<R, E, A[]>>core.effectTotal(() => []), (io, a) =>
+    zipWith.zipWith_(io, core.suspend(traceAs(f, () => f(a))), (as_, p) => {
       if (p) {
         as_.push(a)
       }
