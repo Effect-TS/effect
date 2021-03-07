@@ -6,6 +6,7 @@ import { assertsFailure } from "../src/Exit"
 import { flow, pipe } from "../src/Function"
 
 const addOne = (n: number) => T.effectTotal(() => n + 1)
+
 it("should not break", async () => {
   expect(
     await pipe(

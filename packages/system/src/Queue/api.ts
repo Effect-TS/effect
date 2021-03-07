@@ -17,23 +17,35 @@ import { XQueue } from "./xqueue"
 
 export { createQueue, makeBounded, unsafeCreate, BackPressureStrategy }
 
-export const makeSliding = <A>(capacity: number): T.UIO<Queue<A>> =>
-  T.chain_(
+/**
+ * Creates a sliding queue
+ */
+export function makeSliding<A>(capacity: number): T.UIO<Queue<A>> {
+  return T.chain_(
     T.effectTotal(() => new Bounded<A>(capacity)),
     exclForEach.createQueue(new SlidingStrategy())
   )
+}
 
-export const makeUnbounded = <A>(): T.UIO<Queue<A>> =>
-  T.chain_(
+/**
+ * Creates a unbouded queue
+ */
+export function makeUnbounded<A>(): T.UIO<Queue<A>> {
+  return T.chain_(
     T.effectTotal(() => new Unbounded<A>()),
     exclForEach.createQueue(new DroppingStrategy())
   )
+}
 
-export const makeDropping = <A>(capacity: number): T.UIO<Queue<A>> =>
-  T.chain_(
+/**
+ * Creates a dropping queue
+ */
+export function makeDropping<A>(capacity: number): T.UIO<Queue<A>> {
+  return T.chain_(
     T.effectTotal(() => new Bounded<A>(capacity)),
     exclForEach.createQueue(new DroppingStrategy())
   )
+}
 
 /**
  * Takes between min and max number of values from the queue. If there

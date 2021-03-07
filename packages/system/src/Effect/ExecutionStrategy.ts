@@ -1,3 +1,5 @@
+// tracing: off
+
 export type ExecutionStrategy = Sequential | Parallel | ParallelN
 
 export class Sequential {
@@ -13,10 +15,19 @@ export class ParallelN {
   constructor(readonly n: number) {}
 }
 
-export const sequential = new Sequential()
+/**
+ * Sequential execution strategy
+ */
+export const sequential: ExecutionStrategy = new Sequential()
 
-export const parallel = new Parallel()
+/**
+ * Parallel execution strategy
+ */
+export const parallel: ExecutionStrategy = new Parallel()
 
-export function parallelN(n: number) {
+/**
+ * Parallel (up to N) execution strategy
+ */
+export function parallelN(n: number): ExecutionStrategy {
   return new ParallelN(n)
 }
