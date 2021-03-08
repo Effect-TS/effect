@@ -20,7 +20,7 @@ export function fail<E>(e: E) {
  * Returns an effect that models failure with the specified error.
  * The moral equivalent of `throw` for pure code.
  *
- * @trace call
+ * @trace 0
  */
 export function failWith<E>(e: () => E) {
   return haltWith(traceAs(e, (trace) => C.traced(C.fail(e()), trace())))
