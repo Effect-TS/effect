@@ -76,4 +76,17 @@ describe("Tracing", () => {
       "test/tracing.test.ts:52:19"
     ])
   })
+  it("firstSuccessOf", async () => {
+    const exit = await T.runPromiseExit(
+      T.firstSuccessOf([T.failWith(() => 0), T.failWith(() => 1), T.failWith(() => 2)])
+    )
+
+    assertsFailure(exit)
+    const cause = pretty(exit.cause)
+
+    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:81:78")
+    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:81:57")
+    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:81:36")
+    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:81:23")
+  })
 })
