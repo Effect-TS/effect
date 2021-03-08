@@ -45,7 +45,6 @@ import * as flatten from "./flatten"
 import * as interruption from "./interruption"
 import * as map from "./map"
 import { provideSome_ } from "./provideSome"
-import * as refailWithTrace from "./refailWithTrace"
 import * as tap from "./tap"
 import * as tapCause from "./tapCause"
 import { toManaged } from "./toManaged"
@@ -243,8 +242,7 @@ export function forEachUnitPar_<R, E, A, X>(
               forEach_(fibers, (_) => _.await),
               map.map((_) => _.findIndex((ex) => !Ex.succeeded(ex)) !== -1)
             )
-          ),
-          refailWithTrace.refailWithTrace
+          )
         )
       )
     ),
@@ -374,8 +372,7 @@ export function forEachUnitParN_<R, E, A, X>(
           tap.tap(({ fibers }) => forEach_(fibers, (_) => _.await))
         ),
       (q) => q.shutdown
-    ),
-    refailWithTrace.refailWithTrace
+    )
   )
 }
 
@@ -460,8 +457,7 @@ export function forEachParN_<R, E, A, B>(
           core.chain(({ pairs }) => forEach_(pairs, (_) => promise.await(_[0])))
         ),
       (q) => q.shutdown
-    ),
-    refailWithTrace.refailWithTrace
+    )
   )
 }
 
