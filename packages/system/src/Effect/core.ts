@@ -168,24 +168,9 @@ export function effectAsyncOption<R, E, A>(
  * thrown exceptions into typed failed effects creating with `halt`.
  *
  * @trace 0
- */
-export function effectPartial<E>(onThrow: (u: unknown) => E) {
-  return (
-    /**
-     * @trace 0
-     */
-    <A>(effect: () => A): IO<E, A> => new IEffectPartial(effect, onThrow)
-  )
-}
-
-/**
- * Imports a synchronous side-effect into a pure value, translating any
- * thrown exceptions into typed failed effects creating with `halt`.
- *
- * @trace 0
  * @trace 1
  */
-export function effectPartial_<E, A>(
+export function effectPartial<E, A>(
   effect: () => A,
   onThrow: (u: unknown) => E
 ): IO<E, A> {
@@ -216,6 +201,7 @@ export function effectTotal<A>(effect: () => A): UIO<A> {
 /**
  * A more powerful version of `foldM` that allows recovering from any kind of failure except interruptions.
  *
+ * @dataFirst foldCauseM_
  * @trace 0
  * @trace 1
  */
@@ -268,10 +254,30 @@ export function fork<R, E, A>(
  *
  * The fiber is forked with interrupt supervision mode, meaning that when the
  * fiber that forks the child exits, the child will be interrupted.
+ *
+ * @dataFirst forkReport_
  */
 export function forkReport(reportFailure: FailureReporter) {
   return <R, E, A>(value: Effect<R, E, A>): RIO<R, Fiber.FiberContext<E, A>> =>
     new IFork(value, O.none, O.some(reportFailure))
+}
+
+/**
+ * Returns an effect that forks this effect into its own separate fiber,
+ * returning the fiber immediately, without waiting for it to begin
+ * executing the effect.
+ *
+ * The returned fiber can be used to interrupt the forked fiber, await its
+ * result, or join the fiber. See `Fiber` for more information.
+ *
+ * The fiber is forked with interrupt supervision mode, meaning that when the
+ * fiber that forks the child exits, the child will be interrupted.
+ */
+export function forkReport_<R, E, A>(
+  value: Effect<R, E, A>,
+  reportFailure: FailureReporter
+): RIO<R, Fiber.FiberContext<E, A>> {
+  return new IFork(value, O.none, O.some(reportFailure))
 }
 
 /**
@@ -301,6 +307,8 @@ export function haltWith<E>(cause: (_: () => Fiber.Trace) => Cause<E>): IO<E, ne
  * effect becomes interruptible (the default), while if `false` is used, then
  * the effect becomes uninterruptible. These changes are compositional, so
  * they only affect regions of the effect.
+ *
+ * @dataFirst interruptStatus_
  */
 export function interruptStatus(flag: Fiber.InterruptStatus) {
   return <R, E, A>(effect: Effect<R, E, A>): Effect<R, E, A> =>
@@ -325,6 +333,8 @@ export function interruptStatus_<R, E, A>(
  * effect will accumulate traces, while if `false` is used, then tracing
  * is disabled. These changes are compositional, so they only affect regions
  * of the effect.
+ *
+ * @dataFirst tracingStatus_
  */
 export function tracingStatus(flag: boolean) {
   return <R, E, A>(effect: Effect<R, E, A>): Effect<R, E, A> =>
@@ -347,6 +357,8 @@ export function tracingStatus_<R, E, A>(
 /**
  * Provides the `Effect` effect with its required environment, which eliminates
  * its dependency on `R`.
+ *
+ * @dataFirst provideAll_
  */
 export function provideAll<R>(r: R) {
   return <E, A>(next: Effect<R, E, A>): Effect<unknown, E, A> => new IProvide(r, next)
@@ -366,17 +378,14 @@ export function provideAll_<R, E, A>(
 /**
  * Returns an effect that semantically runs the effect on a fiber,
  * producing an `Exit` for the completion value of the fiber.
- *
- * @trace call
  */
 export function result<R, E, A>(
   value: Effect<R, E, A>
 ): Effect<R, never, Exit.Exit<E, A>> {
-  const trace = accessCallTrace()
   return new IFold(
     value,
-    traceFrom(trace, (cause) => succeed(Exit.halt(cause))),
-    traceFrom(trace, (succ) => succeed(Exit.succeed(succ)))
+    (cause) => succeed(Exit.halt(cause)),
+    (succ) => succeed(Exit.succeed(succ))
   )
 }
 
@@ -386,8 +395,7 @@ export function result<R, E, A>(
  * @trace call
  */
 export function succeed<A>(a: A): Effect<unknown, never, A> {
-  const trace = accessCallTrace()
-  return new ISucceed(a, trace)
+  return new ISucceed(a, accessCallTrace())
 }
 
 /**

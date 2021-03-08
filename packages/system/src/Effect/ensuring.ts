@@ -1,7 +1,5 @@
 // tracing: off
 
-import { accessCallTrace, traceCall, traceFrom } from "@effect-ts/tracing-utils"
-
 import { then } from "../Cause/cause"
 import { foldCauseM_, halt, succeed } from "./core"
 import type { Effect } from "./effect"
@@ -19,12 +17,9 @@ import { uninterruptibleMask } from "./interruption"
  * logic built on `ensuring`, see `bracket`.
  *
  * @dataFirst ensuring_
- * @trace call
  */
 export function ensuring<R1, X>(finalizer: Effect<R1, never, X>) {
-  const trace = accessCallTrace()
-  return <R, E, A>(effect: Effect<R, E, A>) =>
-    traceCall(ensuring_, trace)(effect, finalizer)
+  return <R, E, A>(effect: Effect<R, E, A>) => ensuring_(effect, finalizer)
 }
 
 /**
@@ -37,31 +32,26 @@ export function ensuring<R1, X>(finalizer: Effect<R1, never, X>) {
  * Finalizers offer very powerful guarantees, but they are low-level, and
  * should generally not be used for releasing resources. For higher-level
  * logic built on `ensuring`, see `bracket`.
- *
- * @trace call
  */
 export function ensuring_<R, E, A, R1, X>(
   effect: Effect<R, E, A>,
   finalizer: Effect<R1, never, X>
 ) {
-  const trace = accessCallTrace()
-  return uninterruptibleMask(
-    traceFrom(trace, ({ restore }) =>
-      foldCauseM_(
-        restore(effect),
-        (cause1) =>
-          foldCauseM_(
-            finalizer,
-            (cause2) => halt(then(cause1, cause2)),
-            (_) => halt(cause1)
-          ),
-        (value) =>
-          foldCauseM_(
-            finalizer,
-            (cause1) => halt(cause1),
-            (_) => succeed(value)
-          )
-      )
+  return uninterruptibleMask(({ restore }) =>
+    foldCauseM_(
+      restore(effect),
+      (cause1) =>
+        foldCauseM_(
+          finalizer,
+          (cause2) => halt(then(cause1, cause2)),
+          (_) => halt(cause1)
+        ),
+      (value) =>
+        foldCauseM_(
+          finalizer,
+          (cause1) => halt(cause1),
+          (_) => succeed(value)
+        )
     )
   )
 }

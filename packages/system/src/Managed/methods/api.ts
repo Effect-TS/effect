@@ -683,9 +683,11 @@ export function identityLeft<C>() {
  * Lifts a synchronous side-effect into a `Managed[R, E, A]`,
  * translating any thrown exceptions into typed failed effects using onThrow.
  */
-export function effectPartial<E>(onThrow: (u: unknown) => E) {
-  return <A>(f: () => A): Managed<unknown, E, A> =>
-    fromEffect(T.effectPartial(onThrow)(f))
+export function effectPartial<E, A>(
+  f: () => A,
+  onThrow: (u: unknown) => E
+): Managed<unknown, E, A> {
+  return fromEffect(T.effectPartial(f, onThrow))
 }
 
 /**
@@ -709,7 +711,7 @@ export function mapEffectWith_<R, E, E2, A, B>(
   return foldM_(
     self,
     (e) => fail(e),
-    (a) => effectPartial(onThrow)(() => f(a))
+    (a) => effectPartial(() => f(a), onThrow)
   )
 }
 

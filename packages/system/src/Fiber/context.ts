@@ -1022,6 +1022,9 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                   }
 
                   case "Platform": {
+                    if (this.inTracingRegion && this.platform.value.traceEffects) {
+                      this.addTrace(current.f)
+                    }
                     current = current.f(this.platform)["_I"]
                     break
                   }

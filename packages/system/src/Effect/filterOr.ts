@@ -1,12 +1,19 @@
+import { traceAs } from "@effect-ts/tracing-utils"
+
+import { RuntimeError } from "../Cause"
 import type { Predicate, Refinement } from "../Function"
 import { pipe } from "../Function"
-import { chain_, succeed } from "./core"
+import { chain_, succeed, suspend } from "./core"
 import { die } from "./die"
 import type { Effect } from "./effect"
 import { fail } from "./fail"
 
 /**
  * Dies with specified `unknown` if the predicate fails.
+ *
+ * @dataFirst filterOrDie_
+ * @trace 0
+ * @trace 1
  */
 export function filterOrDie<A, B extends A>(
   p: Refinement<A, B>,
@@ -22,6 +29,9 @@ export function filterOrDie<A>(p: Predicate<A>, dieWith: (a: A) => unknown) {
 
 /**
  * Dies with specified `unknown` if the predicate fails.
+ *
+ * @trace 1
+ * @trace 2
  */
 export function filterOrDie_<R, E, A, B extends A>(
   fa: Effect<R, E, A>,
@@ -38,11 +48,19 @@ export function filterOrDie_<R, E, A>(
   p: Predicate<A>,
   dieWith: (a: A) => unknown
 ) {
-  return filterOrElse_(fa, p, (x) => pipe(x, dieWith, die))
+  return filterOrElse_(
+    fa,
+    p,
+    traceAs(dieWith, (x) => pipe(x, dieWith, die))
+  )
 }
 
 /**
  * Fails with `failWith` if the predicate fails.
+ *
+ * @dataFirst filterOrFail_
+ * @trace 0
+ * @trace 1
  */
 export function filterOrFail<A, B extends A, E1>(
   p: Refinement<A, B>,
@@ -59,6 +77,9 @@ export function filterOrFail<A, E1>(p: Predicate<A>, failWith: (a: A) => E1) {
 
 /**
  * Fails with `failWith` if the predicate fails.
+ *
+ * @trace 1
+ * @trace 2
  */
 export function filterOrFail_<R, E, E1, A, B extends A>(
   fa: Effect<R, E, A>,
@@ -75,11 +96,19 @@ export function filterOrFail_<R, E, E1, A>(
   p: Predicate<A>,
   failWith: (a: A) => E1
 ) {
-  return filterOrElse_(fa, p, (x) => pipe(x, failWith, fail))
+  return filterOrElse_(
+    fa,
+    p,
+    traceAs(failWith, (x) => pipe(x, failWith, fail))
+  )
 }
 
 /**
  * Applies `or` if the predicate fails.
+ *
+ * @dataFirst filterOrElse_
+ * @trace 0
+ * @trace 1
  */
 export function filterOrElse<A, B extends A, R2, E2, A2>(
   p: Refinement<A, B>,
@@ -93,12 +122,14 @@ export function filterOrElse<A, R2, E2, A2>(
   p: Predicate<A>,
   or: (a: A) => Effect<R2, E2, A2>
 ) {
-  return <R, E>(fa: Effect<R, E, A>) =>
-    chain_(fa, (a): Effect<R2, E2, A | A2> => (p(a) ? succeed(a) : or(a)))
+  return <R, E>(fa: Effect<R, E, A>) => filterOrElse_(fa, p, or)
 }
 
 /**
  * Applies `or` if the predicate fails.
+ *
+ * @trace 1
+ * @trace 2
  */
 export function filterOrElse_<R, E, A, B extends A, R2, E2, A2>(
   fa: Effect<R, E, A>,
@@ -115,12 +146,23 @@ export function filterOrElse_<R, E, A, R2, E2, A2>(
   p: Predicate<A>,
   or: (a: A) => Effect<R2, E2, A2>
 ): Effect<R & R2, E | E2, A | A2> {
-  return chain_(fa, (a): Effect<R2, E2, A | A2> => (p(a) ? succeed(a) : or(a)))
+  return chain_(
+    fa,
+    traceAs(
+      p,
+      (a): Effect<R2, E2, A | A2> =>
+        p(a) ? succeed(a) : suspend(traceAs(or, () => or(a)))
+    )
+  )
 }
 
 /**
  * Dies with a `Error` having the specified text message
  * if the predicate fails.
+ *
+ * @dataFirst filterOrDieMessage_
+ * @trace 0
+ * @trace 1
  */
 export function filterOrDieMessage<A, B extends A>(
   p: Refinement<A, B>,
@@ -138,6 +180,9 @@ export function filterOrDieMessage<A>(p: Predicate<A>, message: (a: A) => string
 /**
  * Dies with a `Error` having the specified text message
  * if the predicate fails.
+ *
+ * @trace 1
+ * @trace 2
  */
 export function filterOrDieMessage_<R, E, A, B extends A>(
   fa: Effect<R, E, A>,
@@ -154,5 +199,9 @@ export function filterOrDieMessage_<R, E, A>(
   p: Predicate<A>,
   message: (a: A) => string
 ) {
-  return filterOrDie_(fa, p, (a) => new Error(message(a)))
+  return filterOrDie_(
+    fa,
+    p,
+    traceAs(message, (a) => new RuntimeError(message(a)))
+  )
 }

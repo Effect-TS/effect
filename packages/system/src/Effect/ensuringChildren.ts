@@ -54,7 +54,7 @@ export function ensuringChildren_<R, E, A, R1, X>(
  */
 export function ensuringChild_<R, E, A, R2, X>(
   fa: Effect<R, E, A>,
-  f: (_: Fiber.Fiber<any, Iterable<any>>) => RIO<R2, X>
+  f: (_: Fiber.Fiber<any, readonly any[]>) => RIO<R2, X>
 ) {
   return ensuringChildren_(
     fa,
@@ -71,7 +71,7 @@ export function ensuringChild_<R, E, A, R2, X>(
  * @trace 0
  */
 export function ensuringChild<R, E, A, R2, X>(
-  f: (_: Fiber.Fiber<any, Iterable<any>>) => RIO<R2, X>
+  f: (_: Fiber.Fiber<any, readonly any[]>) => RIO<R2, X>
 ) {
   return (fa: Effect<R, E, A>) => ensuringChild_(fa, f)
 }

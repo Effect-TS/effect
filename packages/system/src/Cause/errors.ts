@@ -54,18 +54,14 @@ export const RuntimeSymbol: unique symbol = Symbol.for(
   "@matechs/core/symbols/errors/Runtime"
 )
 
-export class RuntimeError extends Error {
+export class RuntimeError {
   readonly [RuntimeSymbol] = "RuntimeError"
 
-  constructor(message?: string) {
-    super(message)
-
-    this.name = this[RuntimeSymbol]
-  }
+  constructor(readonly message?: string) {}
 }
 
 export const isRuntime = (u: unknown): u is RuntimeError =>
-  u instanceof Error && u[RuntimeSymbol] === "RuntimeError"
+  u instanceof RuntimeError && u[RuntimeSymbol] === "RuntimeError"
 
 //
 // @category Interrupted

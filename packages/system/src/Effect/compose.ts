@@ -14,8 +14,6 @@ export function compose<A, E1, B>(that: Effect<A, E1, B>) {
 
 /**
  * Uses the output of `that` to provide to `self`
- *
- * @trace call
  */
 export function compose_<A, E1, B, R, E>(
   self: Effect<R, E, A>,

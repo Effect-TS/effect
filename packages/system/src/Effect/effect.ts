@@ -1,3 +1,5 @@
+// tracing: off
+
 import { _A, _E, _I, _R, _U } from "./commons"
 import type { Instruction } from "./primitives"
 

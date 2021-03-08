@@ -1,12 +1,12 @@
 // tracing: off
 
-import { traceAs, traceCall, tracingSymbol } from "@effect-ts/tracing-utils"
+import { traceAs } from "@effect-ts/tracing-utils"
 
 import { pipe } from "../Function"
 import * as O from "../Option/core"
 import { chain_, succeed } from "./core"
 import type { Effect } from "./effect"
-import { fail } from "./fail"
+import { failWith } from "./fail"
 
 /**
  * Fail with `e` if the supplied `PartialFunction` does not match, otherwise
@@ -27,7 +27,7 @@ export function continueOrFailM_<R, E, E1, A, R2, E2, A2>(
       (a): Effect<R2, E1 | E2, A2> =>
         pipe(
           pf(a),
-          O.getOrElse(() => traceCall(fail, f[tracingSymbol])(f()))
+          O.getOrElse(() => failWith(f))
         )
     )
   )
