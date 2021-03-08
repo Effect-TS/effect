@@ -61,7 +61,10 @@ import * as zipWith from "./zipWith"
  *
  * @trace 1
  */
-export function forEach_<A, R, E, B>(as: Iterable<A>, f: (a: A) => Effect<R, E, B>) {
+export function forEach_<A, R, E, B>(
+  as: Iterable<A>,
+  f: (a: A) => Effect<R, E, B>
+): Effect<R, E, readonly B[]> {
   return I.reduce_(as, core.effectTotal(() => []) as Effect<R, E, B[]>, (b, a) =>
     zipWith.zipWith_(b, core.suspend(traceAs(f, () => f(a))), (acc, r) => {
       acc.push(r)

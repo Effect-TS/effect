@@ -39,49 +39,11 @@ export default function untrace(
             if ("untrace" in tags && tags["untrace"]![0] === "traceCall") {
               return ts.visitEachChild(node.arguments[0], visitor, ctx)
             }
-          }
-          if (
-            ts.isVariableStatement(node) &&
-            node.declarationList.declarations.length === 1
-          ) {
-            const declaration = node.declarationList.declarations[0]!
-
-            if (
-              declaration.initializer &&
-              ts.isCallExpression(declaration.initializer)
-            ) {
-              const signature = checker.getResolvedSignature(declaration.initializer)
-
-              const entries: (readonly [string, string | undefined])[] =
-                signature?.getJsDocTags().map((t) => [t.name, t.text] as const) || []
-
-              const tags: Record<string, (string | undefined)[]> = {}
-
-              for (const entry of entries) {
-                if (!tags[entry[0]]) {
-                  tags[entry[0]] = []
-                }
-                tags[entry[0]!]!.push(entry[1])
-              }
-
-              if ("untrace" in tags && tags["untrace"]![0] === "accessCallTrace") {
-                return factory.createVariableStatement(
-                  undefined,
-                  factory.createVariableDeclarationList(
-                    [
-                      factory.createVariableDeclaration(
-                        declaration.name,
-                        undefined,
-                        undefined,
-                        factory.createIdentifier("undefined")
-                      )
-                    ],
-                    ts.NodeFlags.Const
-                  )
-                )
-              }
+            if ("untrace" in tags && tags["untrace"]![0] === "accessCallTrace") {
+              return factory.createIdentifier("undefined")
             }
           }
+
           return ts.visitEachChild(node, visitor, ctx)
         }
 
