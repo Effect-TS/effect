@@ -23,7 +23,8 @@ export function patch() {
     value<Self, Result>(this: Self, next: (value: Self) => Result): Result {
       return next(this)
     },
-    enumerable: false
+    enumerable: false,
+    writable: true
   })
 
   patched = true
