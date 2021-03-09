@@ -387,12 +387,12 @@ describe("RedBlackTree", () => {
     const tree = pipe(
       RB.make<number, string>(Ord.number),
       RB.insert(1, "a"),
-      RB.insert(1, "b"),
       RB.insert(2, "c"),
+      RB.insert(1, "b"),
       RB.insert(3, "d")
     )
 
-    expect(RB.find_(tree, 1)).toEqual(O.some("b"))
+    expect(RB.find_(tree, 1)).toEqual(["a", "b"])
   })
 })
 
@@ -405,6 +405,7 @@ describe("SortedSet", () => {
         SS.add(0),
         SS.add(1),
         SS.add(4),
+        SS.add(0),
         SS.add(3),
         Array.from
       )
