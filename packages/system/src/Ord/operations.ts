@@ -1,26 +1,14 @@
+import type { Equal } from "../Equal"
+import { makeEqual } from "../Equal"
 import type { Ordering } from "../Ordering"
 import type { Ord } from "./definition"
 
 /**
  * Creates Ord[A] from a compare function
  */
-export function fromCompare<A>(compare: (x: A, y: A) => Ordering): Ord<A> {
+export function makeOrd<A>(compare: (x: A, y: A) => Ordering): Ord<A> {
   return {
-    equals: (x, y) => compare(x, y) === 0,
     compare
-  }
-}
-
-/**
- * Creates Ord[A] from equals & compare functions
- */
-export function makeOrd<A>(
-  equals: (x: A, y: A) => boolean,
-  compare: (x: A, y: A) => Ordering
-): Ord<A> {
-  return {
-    compare,
-    equals
   }
 }
 
@@ -35,7 +23,7 @@ export function contramap<A, B>(f: (b: B) => A): (fa: Ord<A>) => Ord<B> {
  * Contramap Ord input
  */
 export function contramap_<A, B>(fa: Ord<A>, f: (b: B) => A): Ord<B> {
-  return fromCompare((x, y) => fa.compare(f(x), f(y)))
+  return makeOrd((x, y) => fa.compare(f(x), f(y)))
 }
 
 /**
@@ -95,5 +83,12 @@ export function clamp<A>(O: Ord<A>): (low: A, hi: A) => (x: A) => A {
  * Get the dual of an Ord
  */
 export function inverted<A>(O: Ord<A>) {
-  return fromCompare<A>((x, y) => O.compare(y, x))
+  return makeOrd<A>((x, y) => O.compare(y, x))
+}
+
+/**
+ * Get an instance of Equal
+ */
+export function getEqual<A>(O: Ord<A>): Equal<A> {
+  return makeEqual((x, y) => O.compare(x, y) === 0)
 }
