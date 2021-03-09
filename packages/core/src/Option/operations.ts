@@ -220,7 +220,7 @@ export const getLast = <Ts extends O.Option<any>[]>(
  * `None` is considered to be less than any `Some` value.
  */
 export function getOrd<A>(_: Ord<A>): Ord<O.Option<A>> {
-  return makeOrd(getEqual(_).equals, (x, y) =>
+  return makeOrd((x, y) =>
     x === y ? 0 : O.isSome(x) ? (O.isSome(y) ? _.compare(x.value, y.value) : 1) : -1
   )
 }

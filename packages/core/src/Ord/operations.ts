@@ -1,5 +1,5 @@
 import type { Ord } from "@effect-ts/system/Ord"
-import { fromCompare } from "@effect-ts/system/Ord"
+import { makeOrd } from "@effect-ts/system/Ord"
 
 import type { Associative } from "../Associative"
 import { makeAssociative } from "../Associative/makeAssociative"
@@ -14,7 +14,7 @@ import { Associative as OrderingAssociative } from "../Ordering"
  */
 export function getAssociative<A = never>(): Associative<Ord<A>> {
   return makeAssociative((x, y) =>
-    fromCompare((a, b) => OrderingAssociative.combine(x.compare(a, b), y.compare(a, b)))
+    makeOrd((a, b) => OrderingAssociative.combine(x.compare(a, b), y.compare(a, b)))
   )
 }
 
@@ -26,7 +26,7 @@ export function getAssociative<A = never>(): Associative<Ord<A>> {
  */
 export function getIdentity<A = never>(): Identity<Ord<A>> {
   return makeIdentity(
-    fromCompare(() => 0),
+    makeOrd(() => 0),
     getAssociative<A>().combine
   )
 }

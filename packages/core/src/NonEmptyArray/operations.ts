@@ -111,7 +111,7 @@ export function getEqual<A>(E: Equal<A>): Equal<NonEmptyArray<A>> {
  * Returns a `Ord` for `NonEmptyArray<A>` given `Ord<A>`
  */
 export function getOrd<A>(O: Ord.Ord<A>): Ord.Ord<NonEmptyArray<A>> {
-  return Ord.fromCompare((a, b) => {
+  return Ord.makeOrd((a, b) => {
     const aLen = a.length
     const bLen = b.length
     const len = Math.min(aLen, bLen)
