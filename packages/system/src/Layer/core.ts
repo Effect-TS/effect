@@ -126,8 +126,8 @@ export function pure<T>(has: Tag<T>) {
  */
 export function prepare<T>(has: Tag<T>) {
   return <R, E, A extends T>(acquire: T.Effect<R, E, A>) => ({
-    open: <R1, E1>(open: (_: A) => T.Effect<R1, E1, any>) => ({
-      release: <R2>(release: (_: A) => T.Effect<R2, never, any>) =>
+    open: <R1, E1, X>(open: (_: A) => T.Effect<R1, E1, X>) => ({
+      release: <R2, Y>(release: (_: A) => T.Effect<R2, never, Y>) =>
         fromManaged(has)(
           M.chain_(
             M.makeExit_(acquire, (a) => release(a)),
@@ -135,7 +135,7 @@ export function prepare<T>(has: Tag<T>) {
           )
         )
     }),
-    release: <R2>(release: (_: A) => T.Effect<R2, never, any>) =>
+    release: <R2, X>(release: (_: A) => T.Effect<R2, never, X>) =>
       fromManaged(has)(M.makeExit_(acquire, (a) => release(a)))
   })
 }

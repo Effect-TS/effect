@@ -31,16 +31,16 @@ export const chain_: <R, E, A, R1, E1, B>(
 /**
  * Returns a computation that effectfully "peeks" at the success of this one.
  */
-export const tap: <A, R1, E1>(
-  f: (a: A) => Sync<R1, E1, any>
+export const tap: <A, R1, E1, X>(
+  f: (a: A) => Sync<R1, E1, X>
 ) => <R, E>(self: Sync<R, E, A>) => Sync<R & R1, E1 | E, A> = X.tap
 
 /**
  * Returns a computation that effectfully "peeks" at the success of this one.
  */
-export const tap_: <R, E, A, R1, E1>(
+export const tap_: <R, E, A, R1, E1, X>(
   self: Sync<R, E, A>,
-  f: (a: A) => Sync<R1, E1, any>
+  f: (a: A) => Sync<R1, E1, X>
 ) => Sync<R & R1, E | E1, A> = X.tap_
 
 /**

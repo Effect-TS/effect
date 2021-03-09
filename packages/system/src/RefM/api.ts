@@ -795,9 +795,9 @@ export const writeOnly = <RA, RB, EA, EB, A, B>(
  * Performs the specified effect every time a value is written to this
  * `XRefM`.
  */
-export const tapInput_ = <RA, RB, EA, EB, B, A, RC, EC, A1 extends A = A>(
+export const tapInput_ = <RA, RB, EA, EB, B, A, RC, EC, X, A1 extends A = A>(
   self: XRefM<RA, RB, EA, EB, A, B>,
-  f: (a: A1) => T.Effect<RC, EC, any>
+  f: (a: A1) => T.Effect<RC, EC, X>
 ) =>
   pipe(
     self,
@@ -808,17 +808,17 @@ export const tapInput_ = <RA, RB, EA, EB, B, A, RC, EC, A1 extends A = A>(
  * Performs the specified effect every time a value is written to this
  * `XRefM`.
  */
-export const tapInput = <A, RC, EC, A1 extends A = A>(
-  f: (a: A1) => T.Effect<RC, EC, any>
+export const tapInput = <A, RC, EC, X, A1 extends A = A>(
+  f: (a: A1) => T.Effect<RC, EC, X>
 ) => <RA, RB, EA, EB, B>(self: XRefM<RA, RB, EA, EB, A, B>) => tapInput_(self, f)
 
 /**
  * Performs the specified effect every time a value is written to this
  * `XRefM`.
  */
-export const tapOutput_ = <RA, RB, EA, EB, A, B, RC, EC>(
+export const tapOutput_ = <RA, RB, EA, EB, A, B, RC, EC, X>(
   self: XRefM<RA, RB, EA, EB, A, B>,
-  f: (b: B) => T.Effect<RC, EC, any>
+  f: (b: B) => T.Effect<RC, EC, X>
 ) =>
   pipe(
     self,
@@ -829,7 +829,7 @@ export const tapOutput_ = <RA, RB, EA, EB, A, B, RC, EC>(
  * Performs the specified effect every time a value is written to this
  * `XRefM`.
  */
-export const tapOutput = <B, RC, EC>(f: (b: B) => T.Effect<RC, EC, any>) => <
+export const tapOutput = <B, RC, EC, X>(f: (b: B) => T.Effect<RC, EC, X>) => <
   RA,
   RB,
   EA,

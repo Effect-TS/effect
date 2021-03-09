@@ -7,9 +7,9 @@ import { managed } from "./managed"
  * Creates a stream from a single value that will get cleaned up after the
  * stream is consumed
  */
-export function bracket_<R, E, A>(
+export function bracket_<R, E, A, X>(
   acquire: T.Effect<R, E, A>,
-  release: (a: A) => T.Effect<R, never, any>
+  release: (a: A) => T.Effect<R, never, X>
 ): Stream<R, E, A> {
   return managed(M.make_(acquire, release))
 }
@@ -18,6 +18,6 @@ export function bracket_<R, E, A>(
  * Creates a stream from a single value that will get cleaned up after the
  * stream is consumed
  */
-export function bracket<R, A>(release: (a: A) => T.Effect<R, never, any>) {
+export function bracket<R, A, X>(release: (a: A) => T.Effect<R, never, X>) {
   return <E>(acquire: T.Effect<R, E, A>) => bracket_(acquire, release)
 }

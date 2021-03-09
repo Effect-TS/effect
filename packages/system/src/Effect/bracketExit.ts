@@ -37,10 +37,10 @@ export function bracketExit<A, E1, R1, A1, R2, E2, A2>(
  * @trace 1
  * @trace 2
  */
-export function bracketExit_<R, E, A, E1, R1, A1, R2, E2>(
+export function bracketExit_<R, E, A, E1, R1, A1, R2, E2, X>(
   acquire: Effect<R, E, A>,
   use: (a: A) => Effect<R1, E1, A1>,
-  release: (a: A, e: Exit<E1, A1>) => Effect<R2, E2, any>
+  release: (a: A, e: Exit<E1, A1>) => Effect<R2, E2, X>
 ): Effect<R & R1 & R2, E | E1 | E2, A1> {
   return uninterruptibleMask(({ restore }) =>
     chain_(

@@ -4,9 +4,9 @@ import { bracketExit_ } from "./bracketExit"
 import { unit } from "./core"
 import type { Effect } from "./effect"
 
-export function onExit_<R, E, A, R2, E2>(
+export function onExit_<R, E, A, R2, E2, X>(
   self: Effect<R, E, A>,
-  cleanup: (exit: Exit<E, A>) => Effect<R2, E2, any>
+  cleanup: (exit: Exit<E, A>) => Effect<R2, E2, X>
 ): Effect<R & R2, E | E2, A> {
   return bracketExit_(
     unit,
@@ -15,8 +15,8 @@ export function onExit_<R, E, A, R2, E2>(
   )
 }
 
-export function onExit<E, A, R2, E2>(
-  cleanup: (exit: Exit<E, A>) => Effect<R2, E2, any>
+export function onExit<E, A, R2, E2, X>(
+  cleanup: (exit: Exit<E, A>) => Effect<R2, E2, X>
 ) {
   return <R>(self: Effect<R, E, A>): Effect<R & R2, E | E2, A> =>
     bracketExit_(
@@ -26,8 +26,8 @@ export function onExit<E, A, R2, E2>(
     )
 }
 
-export function onError<E, A, R2, E2>(
-  cleanup: (exit: Cause<E>) => Effect<R2, E2, any>
+export function onError<E, A, R2, E2, X>(
+  cleanup: (exit: Cause<E>) => Effect<R2, E2, X>
 ) {
   return <R>(self: Effect<R, E, A>): Effect<R & R2, E | E2, A> =>
     onExit_(self, (e) => {
@@ -42,9 +42,9 @@ export function onError<E, A, R2, E2>(
     })
 }
 
-export function onError_<R, E, A, R2, E2>(
+export function onError_<R, E, A, R2, E2, X>(
   self: Effect<R, E, A>,
-  cleanup: (exit: Cause<E>) => Effect<R2, E2, any>
+  cleanup: (exit: Cause<E>) => Effect<R2, E2, X>
 ): Effect<R & R2, E | E2, A> {
   return onExit_(self, (e) => {
     switch (e._tag) {

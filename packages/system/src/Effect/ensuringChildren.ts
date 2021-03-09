@@ -9,8 +9,8 @@ import { ensuring } from "./ensuring"
  * Acts on the children of this fiber, guaranteeing the specified callback
  * will be invoked, whether or not this effect succeeds.
  */
-export function ensuringChildren<R1>(
-  children: (_: readonly Fiber.Runtime<any, any>[]) => RIO<R1, any>
+export function ensuringChildren<R1, X>(
+  children: (_: readonly Fiber.Runtime<any, any>[]) => RIO<R1, X>
 ) {
   return <R, E, A>(fa: Effect<R, E, A>): Effect<R & R1, E, A> =>
     ensuringChildren_(fa, children)
@@ -20,9 +20,9 @@ export function ensuringChildren<R1>(
  * Acts on the children of this fiber, guaranteeing the specified callback
  * will be invoked, whether or not this effect succeeds.
  */
-export function ensuringChildren_<R, E, A, R1>(
+export function ensuringChildren_<R, E, A, R1, X>(
   fa: Effect<R, E, A>,
-  children: (_: readonly Fiber.Runtime<any, any>[]) => RIO<R1, any>
+  children: (_: readonly Fiber.Runtime<any, any>[]) => RIO<R1, X>
 ) {
   return pipe(
     track,
@@ -46,9 +46,9 @@ export function ensuringChildren_<R, E, A, R1>(
  * guaranteeing the specified callback will be invoked, whether or not
  * this effect succeeds.
  */
-export function ensuringChild_<R, E, A, R2>(
+export function ensuringChild_<R, E, A, R2, X>(
   fa: Effect<R, E, A>,
-  f: (_: Fiber.Fiber<any, Iterable<any>>) => RIO<R2, any>
+  f: (_: Fiber.Fiber<any, Iterable<any>>) => RIO<R2, X>
 ) {
   return ensuringChildren_(fa, (x) => pipe(x, Fiber.collectAll, f))
 }
@@ -58,8 +58,8 @@ export function ensuringChild_<R, E, A, R2>(
  * guaranteeing the specified callback will be invoked, whether or not
  * this effect succeeds.
  */
-export function ensuringChild<S, R, E, A, R2>(
-  f: (_: Fiber.Fiber<any, Iterable<any>>) => RIO<R2, any>
+export function ensuringChild<R, E, A, R2, X>(
+  f: (_: Fiber.Fiber<any, Iterable<any>>) => RIO<R2, X>
 ) {
   return (fa: Effect<R, E, A>) => ensuringChild_(fa, f)
 }

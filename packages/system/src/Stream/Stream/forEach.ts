@@ -9,9 +9,9 @@ import { runManaged_ } from "./runManaged"
 /**
  * Consumes all elements of the stream, passing them to the specified callback.
  */
-export function forEach_<R, R1, E, E1, A>(
+export function forEach_<R, R1, E, E1, A, X>(
   self: Stream<R, E, A>,
-  f: (i: A) => T.Effect<R1, E1, any>
+  f: (i: A) => T.Effect<R1, E1, X>
 ): T.Effect<R & R1, E1 | E, void> {
   return run_(self, SK.forEach(f))
 }
@@ -19,7 +19,7 @@ export function forEach_<R, R1, E, E1, A>(
 /**
  * Consumes all elements of the stream, passing them to the specified callback.
  */
-export function forEach<R1, E1, A>(f: (i: A) => T.Effect<R1, E1, any>) {
+export function forEach<R1, E1, A, X>(f: (i: A) => T.Effect<R1, E1, X>) {
   return <R, E>(self: Stream<R, E, A>) => forEach_(self, f)
 }
 
@@ -45,9 +45,9 @@ export function forEachWhileManaged<R1, E1, O>(f: (o: O) => T.Effect<R1, E1, boo
 /**
  * Consumes all elements of the stream, passing them to the specified callback.
  */
-export function forEachChunk_<R, R1, E, E1, O>(
+export function forEachChunk_<R, R1, E, E1, O, X>(
   self: Stream<R, E, O>,
-  f: (o: A.Chunk<O>) => T.Effect<R1, E1, any>
+  f: (o: A.Chunk<O>) => T.Effect<R1, E1, X>
 ): T.Effect<R & R1, E | E1, void> {
   return run_(self, SK.forEachChunk(f))
 }
@@ -55,7 +55,7 @@ export function forEachChunk_<R, R1, E, E1, O>(
 /**
  * Consumes all elements of the stream, passing them to the specified callback.
  */
-export function forEachChunk<R1, E1, O>(f: (o: A.Chunk<O>) => T.Effect<R1, E1, any>) {
+export function forEachChunk<R1, E1, O, X>(f: (o: A.Chunk<O>) => T.Effect<R1, E1, X>) {
   return <R, E>(self: Stream<R, E, O>) => run_(self, SK.forEachChunk(f))
 }
 
@@ -82,9 +82,9 @@ export function forEachWhile<R1, E1, O>(f: (o: O) => T.Effect<R1, E1, boolean>) 
  * Like `forEach`, but returns a `Managed` so the finalization order
  * can be controlled.
  */
-export function forEachManaged_<A, R, R1, E, E1>(
+export function forEachManaged_<A, R, R1, E, E1, X>(
   self: Stream<R, E, A>,
-  f: (i: A) => T.Effect<R1, E1, any>
+  f: (i: A) => T.Effect<R1, E1, X>
 ): M.Managed<R & R1, E1 | E, void> {
   return runManaged_(self, SK.forEach(f))
 }
@@ -93,7 +93,7 @@ export function forEachManaged_<A, R, R1, E, E1>(
  * Like `forEach`, but returns a `Managed` so the finalization order
  * can be controlled.
  */
-export function forEachManaged<A, R1, E1>(f: (i: A) => T.Effect<R1, E1, any>) {
+export function forEachManaged<A, R1, E1, X>(f: (i: A) => T.Effect<R1, E1, X>) {
   return <R, E>(self: Stream<R, E, A>): M.Managed<R & R1, E1 | E, void> =>
     forEachManaged_(self, f)
 }
@@ -102,9 +102,9 @@ export function forEachManaged<A, R1, E1>(f: (i: A) => T.Effect<R1, E1, any>) {
  * Like `Stream#forEachChunk`, but returns a `Managed` so the finalization order
  * can be controlled.
  */
-export function forEachChunkManaged_<R, R1, E, E1, O>(
+export function forEachChunkManaged_<R, R1, E, E1, O, X>(
   self: Stream<R, E, O>,
-  f: (f: A.Chunk<O>) => T.Effect<R1, E1, any>
+  f: (f: A.Chunk<O>) => T.Effect<R1, E1, X>
 ): M.Managed<R & R1, E | E1, void> {
   return runManaged_(self, SK.forEachChunk(f))
 }
@@ -113,8 +113,8 @@ export function forEachChunkManaged_<R, R1, E, E1, O>(
  * Like `Stream#forEachChunk`, but returns a `Managed` so the finalization order
  * can be controlled.
  */
-export function forEachChunkManaged<R, R1, E, E1, O>(
-  f: (f: A.Chunk<O>) => T.Effect<R1, E1, any>
+export function forEachChunkManaged<R, R1, E, E1, O, X>(
+  f: (f: A.Chunk<O>) => T.Effect<R1, E1, X>
 ): (self: Stream<R, E, O>) => M.Managed<R & R1, E | E1, void> {
   return (self) => forEachChunkManaged_(self, f)
 }

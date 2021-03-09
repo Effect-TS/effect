@@ -73,9 +73,9 @@ export function uninterruptibleMask<R, E, A>(
  * Calls the specified function, and runs the effect it returns, if this
  * effect is interrupted.
  */
-export function onInterrupt_<R, E, A, R2>(
+export function onInterrupt_<R, E, A, R2, X>(
   self: Effect<R, E, A>,
-  cleanup: (interruptors: ReadonlySet<FiberID>) => Effect<R2, never, any>
+  cleanup: (interruptors: ReadonlySet<FiberID>) => Effect<R2, never, X>
 ) {
   return uninterruptibleMask(({ restore }) =>
     foldCauseM_(
@@ -93,9 +93,9 @@ export function onInterrupt_<R, E, A, R2>(
  * Calls the specified function, and runs the effect it returns, if this
  * effect is interrupted (allows for expanding error).
  */
-export function onInterruptExtended_<R, E, A, R2, E2>(
+export function onInterruptExtended_<R, E, A, R2, E2, X>(
   self: Effect<R, E, A>,
-  cleanup: () => Effect<R2, E2, any>
+  cleanup: () => Effect<R2, E2, X>
 ) {
   return uninterruptibleMask(({ restore }) =>
     foldCauseM_(
@@ -117,8 +117,8 @@ export function onInterruptExtended_<R, E, A, R2, E2>(
  * Calls the specified function, and runs the effect it returns, if this
  * effect is interrupted.
  */
-export function onInterrupt<R2>(
-  cleanup: (interruptors: ReadonlySet<FiberID>) => Effect<R2, never, any>
+export function onInterrupt<R2, X>(
+  cleanup: (interruptors: ReadonlySet<FiberID>) => Effect<R2, never, X>
 ) {
   return <R, E, A>(self: Effect<R, E, A>) => onInterrupt_(self, cleanup)
 }

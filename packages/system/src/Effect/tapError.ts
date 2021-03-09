@@ -6,9 +6,9 @@ import type { Effect } from "./effect"
 /**
  * Returns an effect that effectfully "peeks" at the failure of this effect.
  */
-export function tapError_<R, E, A, R2, E2>(
+export function tapError_<R, E, A, R2, E2, X>(
   self: Effect<R, E, A>,
-  f: (e: E) => Effect<R2, E2, any>
+  f: (e: E) => Effect<R2, E2, X>
 ) {
   return foldCauseM_(
     self,
@@ -25,6 +25,6 @@ export function tapError_<R, E, A, R2, E2>(
 /**
  * Returns an effect that effectfully "peeks" at the failure of this effect.
  */
-export function tapError<E, R2, E2>(f: (e: E) => Effect<R2, E2, any>) {
+export function tapError<E, R2, E2, X>(f: (e: E) => Effect<R2, E2, X>) {
   return <R, A>(self: Effect<R, E, A>) => tapError_(self, f)
 }

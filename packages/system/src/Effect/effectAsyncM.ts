@@ -15,8 +15,8 @@ import { to } from "./to"
  * Imports an asynchronous effect into a pure `Effect` value. This formulation is
  * necessary when the effect is itself expressed in terms of `Effect`.
  */
-export function effectAsyncM<R, E, R2, E2, A>(
-  register: (cb: (_: Effect<R2, E2, A>) => void) => Effect<R, E, any>
+export function effectAsyncM<R, E, R2, E2, A, X>(
+  register: (cb: (_: Effect<R2, E2, A>) => void) => Effect<R, E, X>
 ): Effect<R & R2, E | E2, A> {
   return pipe(
     Do.do,

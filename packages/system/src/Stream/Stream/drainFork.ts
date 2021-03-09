@@ -14,9 +14,9 @@ import { managed } from "./managed"
  * If this stream ends before `other`, `other` will be interrupted. If `other` fails,
  * this stream will fail with that error.
  */
-export function drainFork_<R, R1, E, E1, O>(
+export function drainFork_<R, R1, E, E1, O, X>(
   self: Stream<R, E, O>,
-  other: Stream<R1, E1, any>
+  other: Stream<R1, E1, X>
 ): Stream<R1 & R, E | E1, O> {
   return chain.chain_(fromEffect.fromEffect(P.make<E1, never>()), (bgDied) =>
     crossRight.crossRight_(
@@ -38,6 +38,6 @@ export function drainFork_<R, R1, E, E1, O>(
  * If this stream ends before `other`, `other` will be interrupted. If `other` fails,
  * this stream will fail with that error.
  */
-export function drainFork<R1, E1>(other: Stream<R1, E1, any>) {
+export function drainFork<R1, E1, X>(other: Stream<R1, E1, X>) {
   return <R, E, O>(self: Stream<R, E, O>) => drainFork_(self, other)
 }

@@ -945,7 +945,7 @@ function ensuringLoop<Env1, Env, In, Out>(
  * to completion. However, if the `Schedule` ever decides not to continue, then the
  * finalizer will be run.
  */
-export function ensuring<Env1>(finalizer: T.Effect<Env1, never, any>) {
+export function ensuring<Env1, X>(finalizer: T.Effect<Env1, never, X>) {
   return <Env, In, Out>(self: Schedule<Env, In, Out>) =>
     new Schedule(ensuringLoop(finalizer, self.step))
 }
@@ -957,9 +957,9 @@ export function ensuring<Env1>(finalizer: T.Effect<Env1, never, any>) {
  * to completion. However, if the `Schedule` ever decides not to continue, then the
  * finalizer will be run.
  */
-export function ensuring_<Env1, Env, In, Out>(
+export function ensuring_<Env1, Env, In, Out, X>(
   self: Schedule<Env, In, Out>,
-  finalizer: T.Effect<Env1, never, any>
+  finalizer: T.Effect<Env1, never, X>
 ) {
   return new Schedule(ensuringLoop(finalizer, self.step))
 }
@@ -1261,9 +1261,9 @@ function onDecisionLoop<Env, In, Out, Env1>(
  * for every decision of this schedule. This can be used to create schedules
  * that log failures, decisions, or computed values.
  */
-export function onDecision_<Env, In, Out, Env1>(
+export function onDecision_<Env, In, Out, Env1, X>(
   self: Schedule<Env, In, Out>,
-  f: (d: Decision.Decision<Env, In, Out>) => T.Effect<Env1, never, any>
+  f: (d: Decision.Decision<Env, In, Out>) => T.Effect<Env1, never, X>
 ) {
   return new Schedule(onDecisionLoop(self.step, f))
 }
@@ -1273,8 +1273,8 @@ export function onDecision_<Env, In, Out, Env1>(
  * for every decision of this schedule. This can be used to create schedules
  * that log failures, decisions, or computed values.
  */
-export function onDecision<Env, In, Out, Env1>(
-  f: (d: Decision.Decision<Env, In, Out>) => T.Effect<Env1, never, any>
+export function onDecision<Env, In, Out, Env1, X>(
+  f: (d: Decision.Decision<Env, In, Out>) => T.Effect<Env1, never, X>
 ) {
   return (self: Schedule<Env, In, Out>) => new Schedule(onDecisionLoop(self.step, f))
 }
@@ -1644,9 +1644,9 @@ export function succeed<A>(a: A) {
 /**
  * Returns a new schedule that effectfully processes every input to this schedule.
  */
-export function tapInput_<Env, In, Out, Env1>(
+export function tapInput_<Env, In, Out, Env1, X>(
   self: Schedule<Env, In, Out>,
-  f: (i: In) => T.Effect<Env1, never, any>
+  f: (i: In) => T.Effect<Env1, never, X>
 ): Schedule<Env & Env1, In, Out> {
   return new Schedule(tapInputLoop(self.step, f))
 }
@@ -1654,7 +1654,7 @@ export function tapInput_<Env, In, Out, Env1>(
 /**
  * Returns a new schedule that effectfully processes every input to this schedule.
  */
-export function tapInput<In, Env1>(f: (i: In) => T.Effect<Env1, never, any>) {
+export function tapInput<In, Env1, X>(f: (i: In) => T.Effect<Env1, never, X>) {
   return <Env, Out>(self: Schedule<Env, In, Out>) =>
     new Schedule(tapInputLoop(self.step, f))
 }
@@ -1682,16 +1682,16 @@ function tapOutputLoop<Env, In, Out, Env1>(
 /**
  * Returns a new schedule that effectfully processes every output from this schedule.
  */
-export function tapOutput<Env1, Out>(f: (o: Out) => T.Effect<Env1, never, any>) {
+export function tapOutput<Env1, Out, X>(f: (o: Out) => T.Effect<Env1, never, X>) {
   return <Env, In>(self: Schedule<Env, In, Out>) => tapOutput_(self, f)
 }
 
 /**
  * Returns a new schedule that effectfully processes every output from this schedule.
  */
-export function tapOutput_<Env, In, Out, Env1>(
+export function tapOutput_<Env, In, Out, Env1, X>(
   self: Schedule<Env, In, Out>,
-  f: (o: Out) => T.Effect<Env1, never, any>
+  f: (o: Out) => T.Effect<Env1, never, X>
 ): Schedule<Env & Env1, In, Out> {
   return new Schedule(tapOutputLoop(self.step, f))
 }

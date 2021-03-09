@@ -11,9 +11,9 @@ import { filterMap_ } from "./filterMap"
 /**
  * Uses `aggregateAsyncWithinEither` but only returns the `Right` results.
  */
-export function aggregateAsyncWithin<O, R1, E1, P>(
+export function aggregateAsyncWithin<O, R1, E1, P, X>(
   transducer: TR.Transducer<R1, E1, O, P>,
-  schedule: SC.Schedule<R1, A.Chunk<P>, any>
+  schedule: SC.Schedule<R1, A.Chunk<P>, X>
 ) {
   return <R, E>(self: Stream<R, E, O>) =>
     aggregateAsyncWithin_(self, transducer, schedule)
@@ -22,10 +22,10 @@ export function aggregateAsyncWithin<O, R1, E1, P>(
 /**
  * Uses `aggregateAsyncWithinEither` but only returns the `Right` results.
  */
-export function aggregateAsyncWithin_<R, E, O, R1, E1, P>(
+export function aggregateAsyncWithin_<R, E, O, R1, E1, P, X>(
   self: Stream<R, E, O>,
   transducer: TR.Transducer<R1, E1, O, P>,
-  schedule: SC.Schedule<R1, A.Chunk<P>, any>
+  schedule: SC.Schedule<R1, A.Chunk<P>, X>
 ): Stream<R & R1 & CL.HasClock, E | E1, P> {
   return filterMap_(
     aggregateAsyncWithinEither_(self, transducer, schedule),

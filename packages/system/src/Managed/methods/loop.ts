@@ -48,7 +48,7 @@ export function loop<Z>(initial: Z, cont: (z: Z) => boolean, inc: (z: Z) => Z) {
  * ```
  */
 export function loopUnit<Z>(initial: Z, cont: (z: Z) => boolean, inc: (z: Z) => Z) {
-  return <R, E>(body: (z: Z) => Managed<R, E, any>): Managed<R, E, void> => {
+  return <R, E, X>(body: (z: Z) => Managed<R, E, X>): Managed<R, E, void> => {
     if (cont(initial)) {
       return chain_(body(initial), () => loopUnit(inc(initial), cont, inc)(body))
     }

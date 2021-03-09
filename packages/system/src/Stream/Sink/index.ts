@@ -1437,7 +1437,7 @@ export function reduceLeftM<S>(z: S) {
 /**
  * A sink that executes the provided effectful function for every element fed to it.
  */
-export function forEach<I, R1, E1>(f: (i: I) => T.Effect<R1, E1, any>) {
+export function forEach<I, R1, E1, X>(f: (i: I) => T.Effect<R1, E1, X>) {
   const go = (
     chunk: A.Chunk<I>,
     idx: number,
@@ -1467,8 +1467,8 @@ export function forEach<I, R1, E1>(f: (i: I) => T.Effect<R1, E1, any>) {
 /**
  * A sink that executes the provided effectful function for every chunk fed to it.
  */
-export function forEachChunk<R, E, I, L>(
-  f: (a: A.Chunk<I>) => T.Effect<R, E, any>
+export function forEachChunk<R, E, I, X>(
+  f: (a: A.Chunk<I>) => T.Effect<R, E, X>
 ): Sink<R, E, I, never, void> {
   return fromPush((in_: O.Option<A.Chunk<I>>) =>
     O.fold_(

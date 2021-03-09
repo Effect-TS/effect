@@ -8,9 +8,9 @@ import { managed } from "./managed"
  * Creates a stream from a single value that will get cleaned up after the
  * stream is consumed
  */
-export function bracketExit_<R, E, A>(
+export function bracketExit_<R, E, A, X>(
   acquire: T.Effect<R, E, A>,
-  release: (a: A, exit: Ex.Exit<any, any>) => T.Effect<R, never, any>
+  release: (a: A, exit: Ex.Exit<any, any>) => T.Effect<R, never, X>
 ): Stream<R, E, A> {
   return managed(M.makeExit_(acquire, release))
 }
@@ -19,8 +19,8 @@ export function bracketExit_<R, E, A>(
  * Creates a stream from a single value that will get cleaned up after the
  * stream is consumed
  */
-export function bracketExit<R, A>(
-  release: (a: A, exit: Ex.Exit<any, any>) => T.Effect<R, never, any>
+export function bracketExit<R, A, X>(
+  release: (a: A, exit: Ex.Exit<any, any>) => T.Effect<R, never, X>
 ) {
   return <E>(acquire: T.Effect<R, E, A>) => bracketExit_(acquire, release)
 }

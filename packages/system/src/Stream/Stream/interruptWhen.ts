@@ -14,9 +14,9 @@ import { Stream } from "./definitions"
  * If the IO completes with a failure before the stream completes, the returned stream
  * will emit that failure.
  */
-export function interruptWhen_<R, R1, E, E1, O>(
+export function interruptWhen_<R, R1, E, E1, O, X>(
   self: Stream<R, E, O>,
-  io: T.Effect<R1, E1, any>
+  io: T.Effect<R1, E1, X>
 ): Stream<R1 & R, E | E1, O> {
   return new Stream(
     pipe(
@@ -40,6 +40,6 @@ export function interruptWhen_<R, R1, E, E1, O>(
  * If the IO completes with a failure before the stream completes, the returned stream
  * will emit that failure.
  */
-export function interruptWhen<R1, E1>(io: T.Effect<R1, E1, any>) {
+export function interruptWhen<R1, E1, X>(io: T.Effect<R1, E1, X>) {
   return <R, E, O>(self: Stream<R, E, O>) => interruptWhen_(self, io)
 }

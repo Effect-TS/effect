@@ -7,9 +7,9 @@ import { repeatEffectWith } from "./repeatEffectWith"
 /**
  * Repeats the value using the provided schedule.
  */
-export function repeatValueWith<R, A>(
+export function repeatValueWith<R, A extends A1, A1, X>(
   a: () => A,
-  schedule: SC.Schedule<R, A, any>
+  schedule: SC.Schedule<R, A1, X>
 ): Stream<R & CL.HasClock, never, A> {
-  return repeatEffectWith(T.succeed(a()), schedule)
+  return repeatEffectWith(T.effectTotal(a), schedule)
 }

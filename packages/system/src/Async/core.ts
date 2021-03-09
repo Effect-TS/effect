@@ -605,16 +605,16 @@ export function chain_<R, E, A, R1, E1, B>(
 /**
  * Returns a computation that effectfully "peeks" at the success of this one.
  */
-export function tap<A, S2, S3, R1, E1>(f: (a: A) => Async<R1, E1, any>) {
+export function tap<A, R1, E1, X>(f: (a: A) => Async<R1, E1, X>) {
   return <R, E>(self: Async<R, E, A>): Async<R & R1, E | E1, A> => tap_(self, f)
 }
 
 /**
  * Returns a computation that effectfully "peeks" at the success of this one.
  */
-export function tap_<R, E, A, R1, E1>(
+export function tap_<R, E, A, R1, E1, X>(
   self: Async<R, E, A>,
-  f: (a: A) => Async<R1, E1, any>
+  f: (a: A) => Async<R1, E1, X>
 ): Async<R & R1, E | E1, A> {
   return chain_(self, (a) => map_(f(a), () => a))
 }

@@ -92,9 +92,9 @@ export function forEach<A, R, E, B>(f: (a: A) => Effect<R, E, B>) {
  * Equivalent to `asUnit(forEach(as, f))`, but without the cost of building
  * the list of results.
  */
-export function forEachUnit_<R, E, A>(
+export function forEachUnit_<R, E, A, X>(
   as: Iterable<A>,
-  f: (a: A) => Effect<R, E, any>
+  f: (a: A) => Effect<R, E, X>
 ): Effect<R, E, void> {
   return pipe(
     core.effectTotal(() => as[Symbol.iterator]()),
@@ -122,8 +122,8 @@ export function forEachUnit_<R, E, A>(
  *
  * @dataFirst forEachUnit_
  */
-export function forEachUnit<R, E, A>(
-  f: (a: A) => Effect<R, E, any>
+export function forEachUnit<R, E, A, X>(
+  f: (a: A) => Effect<R, E, X>
 ): (as: Iterable<A>) => Effect<R, E, void> {
   return (as) => forEachUnit_(as, f)
 }
@@ -140,9 +140,9 @@ export function forEachUnit<R, E, A>(
  *
  * Additionally, interrupts all effects on any failure.
  */
-export function forEachUnitPar_<R, E, A>(
+export function forEachUnitPar_<R, E, A, X>(
   as: Iterable<A>,
-  f: (a: A) => Effect<R, E, any>
+  f: (a: A) => Effect<R, E, X>
 ): Effect<R, E, void> {
   const collection = L.from(as)
   const size = L.size(collection)
@@ -270,7 +270,7 @@ export function forkManaged<R, E, A>(
  *
  * @dataFirst forEachUnitPar_
  */
-export function forEachUnitPar<R, E, A>(f: (a: A) => Effect<R, E, any>) {
+export function forEachUnitPar<R, E, A, X>(f: (a: A) => Effect<R, E, X>) {
   return (as: Iterable<A>) => forEachUnitPar_(as, f)
 }
 
@@ -327,10 +327,10 @@ export function forEachPar<R, E, A, B>(f: (a: A) => Effect<R, E, B>) {
  *
  * Unlike `forEachUnitPar_`, this method will use at most up to `n` fibers.
  */
-export function forEachUnitParN_<R, E, A>(
+export function forEachUnitParN_<R, E, A, X>(
   as: Iterable<A>,
   n: number,
-  f: (a: A) => Effect<R, E, any>
+  f: (a: A) => Effect<R, E, X>
 ): Effect<R, E, void> {
   const as_ = L.from(as)
   const size = L.size(as_)
@@ -376,7 +376,7 @@ export function forEachUnitParN_<R, E, A>(
  *
  * @dataFirst forEachUnitParN_
  */
-export function forEachUnitParN<R, E, A>(n: number, f: (a: A) => Effect<R, E, any>) {
+export function forEachUnitParN<R, E, A, X>(n: number, f: (a: A) => Effect<R, E, X>) {
   return (as: Iterable<A>) => forEachUnitParN_(as, n, f)
 }
 

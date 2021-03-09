@@ -1173,10 +1173,10 @@ export function someOrFailException<R, E, A>(
 /**
  * Returns an effect that effectfully peeks at the failure or success of the acquired resource.
  */
-export function tapBoth_<R, E, A, R1, E1, R2, E2>(
+export function tapBoth_<R, E, A, R1, E1, R2, E2, X, Y>(
   self: Managed<R, E, A>,
-  f: (e: E) => Managed<R1, E1, any>,
-  g: (a: A) => Managed<R2, E2, any>
+  f: (e: E) => Managed<R1, E1, X>,
+  g: (a: A) => Managed<R2, E2, Y>
 ): Managed<R & R1 & R2, E | E1 | E2, A> {
   return foldM_(
     self,
@@ -1188,9 +1188,9 @@ export function tapBoth_<R, E, A, R1, E1, R2, E2>(
 /**
  * Returns an effect that effectfully peeks at the failure or success of the acquired resource.
  */
-export function tapBoth<E, A, R1, E1, R2, E2>(
-  f: (e: E) => Managed<R1, E1, any>,
-  g: (a: A) => Managed<R2, E2, any>
+export function tapBoth<E, A, R1, E1, R2, E2, X, Y>(
+  f: (e: E) => Managed<R1, E1, X>,
+  g: (a: A) => Managed<R2, E2, Y>
 ) {
   return <R>(self: Managed<R, E, A>) => tapBoth_(self, f, g)
 }
@@ -1199,9 +1199,9 @@ export function tapBoth<E, A, R1, E1, R2, E2>(
  * Returns an effect that effectually peeks at the cause of the failure of
  * the acquired resource.
  */
-export function tapCause_<R, E, A, R1, E1>(
+export function tapCause_<R, E, A, R1, E1, X>(
   self: Managed<R, E, A>,
-  f: (c: Cause<E>) => Managed<R1, E1, any>
+  f: (c: Cause<E>) => Managed<R1, E1, X>
 ): Managed<R & R1, E | E1, A> {
   return catchAllCause_(self, (c) => chain_(f(c), () => halt(c)))
 }
@@ -1210,7 +1210,7 @@ export function tapCause_<R, E, A, R1, E1>(
  * Returns an effect that effectually peeks at the cause of the failure of
  * the acquired resource.
  */
-export function tapCause<E, R1, E1>(f: (c: Cause<E>) => Managed<R1, E1, any>) {
+export function tapCause<E, R1, E1, X>(f: (c: Cause<E>) => Managed<R1, E1, X>) {
   return <R, A>(self: Managed<R, E, A>): Managed<R & R1, E | E1, A> =>
     tapCause_(self, f)
 }
@@ -1218,9 +1218,9 @@ export function tapCause<E, R1, E1>(f: (c: Cause<E>) => Managed<R1, E1, any>) {
 /**
  * Returns an effect that effectfully peeks at the failure of the acquired resource.
  */
-export function tapError_<R, E, A, R1, E1>(
+export function tapError_<R, E, A, R1, E1, X>(
   self: Managed<R, E, A>,
-  f: (e: E) => Managed<R1, E1, any>
+  f: (e: E) => Managed<R1, E1, X>
 ): Managed<R & R1, E | E1, A> {
   return tapBoth_(self, f, succeed)
 }
@@ -1228,7 +1228,7 @@ export function tapError_<R, E, A, R1, E1>(
 /**
  * Returns an effect that effectfully peeks at the failure of the acquired resource.
  */
-export function tapError<E, R1, E1>(f: (e: E) => Managed<R1, E1, any>) {
+export function tapError<E, R1, E1, X>(f: (e: E) => Managed<R1, E1, X>) {
   return <R, A>(self: Managed<R, E, A>) => tapError_(self, f)
 }
 
@@ -1236,7 +1236,7 @@ export function tapError<E, R1, E1>(f: (e: E) => Managed<R1, E1, any>) {
  * Like `tap`, but uses a function that returns a Effect value rather than a
  * Managed value.
  */
-export function tapM<A, R1, E1>(f: (a: A) => Effect<R1, E1, any>) {
+export function tapM<A, R1, E1, X>(f: (a: A) => Effect<R1, E1, X>) {
   return <R, E>(self: Managed<R, E, A>): Managed<R & R1, E | E1, A> =>
     mapM_(self, (a) => T.as_(f(a), a))
 }
@@ -2258,8 +2258,8 @@ export function collectAllSuccessesParN_<R, E, A>(
  * Creates an effect that only executes the provided function as its
  * release action.
  */
-export function finalizerExit<R>(
-  f: (exit: Ex.Exit<any, any>) => T.RIO<R, any>
+export function finalizerExit<R, X>(
+  f: (exit: Ex.Exit<any, any>) => T.RIO<R, X>
 ): RIO<R, void> {
   return makeExit_(T.unit, (_, e) => f(e))
 }
@@ -2268,7 +2268,7 @@ export function finalizerExit<R>(
  * Creates an effect that only executes the provided finalizer as its
  * release action.
  */
-export function finalizer<R>(f: T.RIO<R, any>): RIO<R, void> {
+export function finalizer<R, X>(f: T.RIO<R, X>): RIO<R, void> {
   return finalizerExit(() => f)
 }
 

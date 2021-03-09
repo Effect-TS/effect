@@ -10,9 +10,9 @@ import { fromEffect } from "./fromEffect"
  *
  * Note: Unlike `Effect.onError`, there is no guarantee that the provided effect will not be interrupted.
  */
-export function onError_<R, R1, E, O>(
+export function onError_<R, R1, E, O, X>(
   self: Stream<R, E, O>,
-  cleanup: (cause: C.Cause<E>) => T.Effect<R1, never, any>
+  cleanup: (cause: C.Cause<E>) => T.Effect<R1, never, X>
 ): Stream<R & R1, E, O> {
   return catchAllCause_(self, (cause) =>
     fromEffect(pipe(cleanup(cause), T.andThen(T.halt(cause))))
@@ -24,8 +24,8 @@ export function onError_<R, R1, E, O>(
  *
  * Note: Unlike `Effect.onError`, there is no guarantee that the provided effect will not be interrupted.
  */
-export function onError<R, R1, E, O>(
-  cleanup: (cause: C.Cause<E>) => T.Effect<R1, never, any>
+export function onError<R, R1, E, O, X>(
+  cleanup: (cause: C.Cause<E>) => T.Effect<R1, never, X>
 ) {
   return (self: Stream<R, E, O>) => onError_(self, cleanup)
 }

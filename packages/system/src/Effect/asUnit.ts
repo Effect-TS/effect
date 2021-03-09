@@ -9,7 +9,7 @@ import type { Effect } from "./effect"
  *
  * @trace call
  */
-export function asUnit<R, E>(_: Effect<R, E, any>) {
+export function asUnit<R, E, X>(_: Effect<R, E, X>) {
   const trace = accessCallTrace()
   return chain_(
     _,

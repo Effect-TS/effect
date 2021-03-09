@@ -62,9 +62,9 @@ export function effectTotal<A>(effect: () => A) {
  *
  * For usecases that need access to the Managed's result, see `onExit`.
  */
-export function ensuring_<R, E, A, R2>(
+export function ensuring_<R, E, A, R2, X>(
   self: Managed<R, E, A>,
-  f: T.Effect<R2, never, any>
+  f: T.Effect<R2, never, X>
 ) {
   return onExit_(self, () => f)
 }
@@ -75,7 +75,7 @@ export function ensuring_<R, E, A, R2>(
  *
  * For usecases that need access to the Managed's result, see `onExit`.
  */
-export function ensuring<R2>(f: T.Effect<R2, never, any>) {
+export function ensuring<R2, X>(f: T.Effect<R2, never, X>) {
   return <R, E, A>(self: Managed<R, E, A>) => ensuring_(self, f)
 }
 
@@ -296,9 +296,9 @@ export function mapM<A, R2, E2, B>(f: (a: A) => T.Effect<R2, E2, B>) {
  * Ensures that a cleanup function runs when this Managed is finalized, after
  * the existing finalizers.
  */
-export function onExit_<R, E, A, R2>(
+export function onExit_<R, E, A, R2, X>(
   self: Managed<R, E, A>,
-  cleanup: (exit: T.Exit<E, A>) => T.Effect<R2, never, any>
+  cleanup: (exit: T.Exit<E, A>) => T.Effect<R2, never, X>
 ) {
   return new Managed<R & R2, E, A>(
     T.uninterruptibleMask(({ restore }) =>
@@ -338,8 +338,8 @@ export function onExit_<R, E, A, R2>(
  * Ensures that a cleanup function runs when this Managed is finalized, after
  * the existing finalizers.
  */
-export function onExit<E, A, R2>(
-  cleanup: (exit: T.Exit<E, A>) => T.Effect<R2, never, any>
+export function onExit<E, A, R2, X>(
+  cleanup: (exit: T.Exit<E, A>) => T.Effect<R2, never, X>
 ) {
   return <R>(self: Managed<R, E, A>) => onExit_(self, cleanup)
 }
@@ -348,8 +348,8 @@ export function onExit<E, A, R2>(
  * Ensures that a cleanup function runs when this Managed is finalized, before
  * the existing finalizers.
  */
-export function onExitFirst<E, A, R2>(
-  cleanup: (exit: T.Exit<E, A>) => T.Effect<R2, never, any>
+export function onExitFirst<E, A, R2, X>(
+  cleanup: (exit: T.Exit<E, A>) => T.Effect<R2, never, X>
 ) {
   return <R>(self: Managed<R, E, A>) => onExitFirst_(self, cleanup)
 }
@@ -358,9 +358,9 @@ export function onExitFirst<E, A, R2>(
  * Ensures that a cleanup function runs when this Managed is finalized, before
  * the existing finalizers.
  */
-export function onExitFirst_<R, E, A, R2>(
+export function onExitFirst_<R, E, A, R2, X>(
   self: Managed<R, E, A>,
-  cleanup: (exit: T.Exit<E, A>) => T.Effect<R2, never, any>
+  cleanup: (exit: T.Exit<E, A>) => T.Effect<R2, never, X>
 ) {
   return new Managed<R & R2, E, A>(
     T.uninterruptibleMask(({ restore }) =>
@@ -426,12 +426,12 @@ export function provideSome<R, R0>(f: (r0: R0) => R) {
 export class Reservation<R, E, A> {
   static of = <R, E, A, R2>(
     acquire: T.Effect<R, E, A>,
-    release: (exit: T.Exit<any, any>) => T.Effect<R2, never, any>
+    release: (exit: T.Exit<any, any>) => T.Effect<R2, never, unknown>
   ) => new Reservation<R & R2, E, A>(acquire, release)
 
   private constructor(
     readonly acquire: T.Effect<R, E, A>,
-    readonly release: (exit: T.Exit<any, any>) => T.Effect<R, never, any>
+    readonly release: (exit: T.Exit<any, any>) => T.Effect<R, never, unknown>
   ) {}
 }
 
@@ -440,7 +440,7 @@ export class Reservation<R, E, A> {
  */
 export function makeReservation_<R, E, A, R2>(
   acquire: T.Effect<R, E, A>,
-  release: (exit: T.Exit<any, any>) => T.Effect<R2, never, any>
+  release: (exit: T.Exit<any, any>) => T.Effect<R2, never, unknown>
 ) {
   return Reservation.of(acquire, release)
 }
@@ -449,7 +449,7 @@ export function makeReservation_<R, E, A, R2>(
  * Make a new reservation
  */
 export function makeReservation<R2>(
-  release: (exit: T.Exit<any, any>) => T.Effect<R2, never, any>
+  release: (exit: T.Exit<any, any>) => T.Effect<R2, never, unknown>
 ) {
   return <R, E, A>(acquire: T.Effect<R, E, A>) => Reservation.of(acquire, release)
 }
@@ -465,9 +465,9 @@ export function reserve<R, E, A>(reservation: Reservation<R, E, A>) {
 /**
  * Returns a managed that effectfully peeks at the acquired resource.
  */
-export function tap_<A, R, R2, E, E2>(
+export function tap_<A, R, R2, E, E2, X>(
   self: Managed<R, E, A>,
-  f: (a: A) => Managed<R2, E2, any>
+  f: (a: A) => Managed<R2, E2, X>
 ) {
   return chain_(self, (a) => map_(f(a), () => a))
 }
@@ -477,7 +477,7 @@ export function tap_<A, R, R2, E, E2>(
  *
  * @dataFirst tap_
  */
-export function tap<A, R2, E2>(f: (a: A) => Managed<R2, E2, any>) {
+export function tap<A, R2, E2, X>(f: (a: A) => Managed<R2, E2, X>) {
   return <R, E>(self: Managed<R, E, A>) => tap_(self, f)
 }
 

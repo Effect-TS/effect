@@ -10,9 +10,9 @@ import { scheduleEither_ } from "./scheduleEither"
 /**
  * Schedules the output of the stream using the provided `schedule`.
  */
-export function schedule_<R, R1, E, O>(
+export function schedule_<R, R1, E, O extends O1, O1, X>(
   self: Stream<R, E, O>,
-  schedule: SC.Schedule<R1, O, any>
+  schedule: SC.Schedule<R1, O1, X>
 ): Stream<R & R1 & H.Has<CL.Clock>, E, O> {
   return collect_(
     scheduleEither_(self, schedule),
@@ -26,6 +26,6 @@ export function schedule_<R, R1, E, O>(
 /**
  * Schedules the output of the stream using the provided `schedule`.
  */
-export function schedule<R1, O>(schedule: SC.Schedule<R1, O, any>) {
+export function schedule<R1, O extends O1, O1, X>(schedule: SC.Schedule<R1, O1, X>) {
   return <R, E>(self: Stream<R, E, O>) => schedule_(self, schedule)
 }

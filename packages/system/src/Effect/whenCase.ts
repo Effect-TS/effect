@@ -6,7 +6,7 @@ import type { Effect } from "./effect"
 /**
  * Runs an effect when the supplied `PartialFunction` matches for the given value, otherwise does nothing.
  */
-export function whenCase_<R, E, A>(a: A, pf: (a: A) => O.Option<Effect<R, E, any>>) {
+export function whenCase_<R, E, A, X>(a: A, pf: (a: A) => O.Option<Effect<R, E, X>>) {
   return suspend(() => {
     const p = pf(a)
 
@@ -21,6 +21,6 @@ export function whenCase_<R, E, A>(a: A, pf: (a: A) => O.Option<Effect<R, E, any
 /**
  * Runs an effect when the supplied `PartialFunction` matches for the given value, otherwise does nothing.
  */
-export function whenCase<R, E, A>(pf: (a: A) => O.Option<Effect<R, E, any>>) {
+export function whenCase<R, E, A, X>(pf: (a: A) => O.Option<Effect<R, E, X>>) {
   return (a: A) => whenCase_(a, pf)
 }

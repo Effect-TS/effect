@@ -10,14 +10,14 @@ import type { Effect, RIO } from "./effect"
  * Runs the specified effect if this effect is terminated, either because of
  * a defect or because of interruption.
  */
-export function onTermination_<R1, R, E, A>(
+export function onTermination_<R1, R, E, A, X>(
   self: Effect<R, E, A>,
-  cleanup: (_: Cause<never>) => RIO<R1, any>
+  cleanup: (_: Cause<never>) => RIO<R1, X>
 ): Effect<R & R1, E, A> {
   return bracketExit_(
     unit,
     () => self,
-    (_, eb) => {
+    (_, eb): RIO<R1, X | void> => {
       switch (eb._tag) {
         case "Success": {
           return unit
@@ -37,8 +37,8 @@ export function onTermination_<R1, R, E, A>(
  * Runs the specified effect if this effect is terminated, either because of
  * a defect or because of interruption.
  */
-export function onTermination<R1, R, E, A>(
-  cleanup: (_: Cause<never>) => RIO<R1, any>
+export function onTermination<R1, R, E, A, X>(
+  cleanup: (_: Cause<never>) => RIO<R1, X>
 ): (self: Effect<R, E, A>) => Effect<R & R1, E, A> {
   return (self) => onTermination_(self, cleanup)
 }

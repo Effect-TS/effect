@@ -11,9 +11,9 @@ import { repeatElementsEither_ } from "./repeatElementsEither"
  * the original effect, plus an additional recurrence, for a total of two repetitions of each
  * value in the stream.
  */
-export function repeatElements_<R, R1, E, O>(
+export function repeatElements_<R, R1, E, O extends O1, O1, X>(
   self: Stream<R, E, O>,
-  schedule: SC.Schedule<R1, O, any>
+  schedule: SC.Schedule<R1, O1, X>
 ): Stream<R & R1 & CL.HasClock, E, O> {
   return collect_(repeatElementsEither_(self, schedule), O.fromEither)
 }
@@ -24,6 +24,8 @@ export function repeatElements_<R, R1, E, O>(
  * the original effect, plus an additional recurrence, for a total of two repetitions of each
  * value in the stream.
  */
-export function repeatElements<R1, O>(schedule: SC.Schedule<R1, O, any>) {
+export function repeatElements<R1, O extends O1, O1, X>(
+  schedule: SC.Schedule<R1, O1, X>
+) {
   return <R, E>(self: Stream<R, E, O>) => repeatElements_(self, schedule)
 }

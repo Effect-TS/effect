@@ -8,8 +8,8 @@ import * as add from "./ReleaseMap/add"
  * Lifts a `Effect< R, E, A>` into `Managed< R, E, A>` with a release action
  * that handles `Exit`. The acquire and release actions will be performed uninterruptibly.
  */
-export function makeExit<R1, A>(
-  release: (a: A, exit: T.Exit<any, any>) => T.Effect<R1, never, unknown>
+export function makeExit<R1, A, X>(
+  release: (a: A, exit: T.Exit<any, any>) => T.Effect<R1, never, X>
 ) {
   return <R, E>(acquire: T.Effect<R, E, A>) => makeExit_(acquire, release)
 }
@@ -18,9 +18,9 @@ export function makeExit<R1, A>(
  * Lifts a `Effect< R, E, A>` into `Managed< R, E, A>` with a release action
  * that handles `Exit`. The acquire and release actions will be performed uninterruptibly.
  */
-export function makeExit_<R, E, A, R1>(
+export function makeExit_<R, E, A, R1, X>(
   acquire: T.Effect<R, E, A>,
-  release: (a: A, exit: T.Exit<any, any>) => T.Effect<R1, never, unknown>
+  release: (a: A, exit: T.Exit<any, any>) => T.Effect<R1, never, X>
 ) {
   return new Managed<R & R1, E, A>(
     T.uninterruptible(

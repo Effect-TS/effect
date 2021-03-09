@@ -13,10 +13,10 @@ import { unfoldM } from "./unfoldM"
  * Creates a stream from an effect producing a value of type `A`, which is repeated using the
  * specified schedule.
  */
-export function repeatEffectWith<R, E, A>(
+export function repeatEffectWith<R, R1, E, A extends A1, A1, X>(
   effect: T.Effect<R, E, A>,
-  schedule: SC.Schedule<R, A, any>
-): Stream<R & CL.HasClock, E, A> {
+  schedule: SC.Schedule<R1, A1, X>
+): Stream<R & R1 & CL.HasClock, E, A> {
   return chain_(fromEffect(T.zip_(effect, SC.driver(schedule))), ([a, driver]) =>
     concat_(
       succeed(a),

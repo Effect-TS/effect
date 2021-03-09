@@ -34,15 +34,15 @@ export const fromPull = <R, E, O>(
     )
   )
 
-export function tap_<E, A, R, E1>(
+export function tap_<E, A, R, E1, X>(
   take: Take<E, A>,
-  f: (as: A.Chunk<A>) => T.Effect<R, E1, any>
+  f: (as: A.Chunk<A>) => T.Effect<R, E1, X>
 ): T.Effect<R, E1, void> {
   return T.asUnit(E.forEach_(take, f))
 }
 
-export function tap<A, R, E1>(
-  f: (as: A.Chunk<A>) => T.Effect<R, E1, any>
+export function tap<A, R, E1, X>(
+  f: (as: A.Chunk<A>) => T.Effect<R, E1, X>
 ): <E>(take: E.Exit<O.Option<E>, A.Chunk<A>>) => T.Effect<R, E1, void> {
   return (take) => tap_(take, f)
 }
