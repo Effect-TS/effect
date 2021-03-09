@@ -136,7 +136,7 @@ export function tuple<T extends ReadonlyArray<any>>(...t: T): Readonly<T> {
  */
 export function tupled<A extends ReadonlyArray<unknown>, B>(
   f: (...a: A) => B
-): (a: A) => B {
+): (a: Readonly<A>) => B {
   return (a) => f(...a)
 }
 
@@ -144,7 +144,7 @@ export function tupled<A extends ReadonlyArray<unknown>, B>(
  * Inverse function of `tupled`
  */
 export function untupled<A extends ReadonlyArray<unknown>, B>(
-  f: (a: A) => B
+  f: (a: Readonly<A>) => B
 ): (...a: A) => B {
   return (...a) => f(a)
 }

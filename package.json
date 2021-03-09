@@ -56,7 +56,7 @@
     "ts-jest": "^26.5.2",
     "ts-node": "^9.0.0",
     "ttypescript": "^1.5.12",
-    "typescript": "^4.2.2",
+    "typescript": "^4.2.3",
     "ultra-runner": "^3.10.3",
     "yarn-deduplicate": "^3.0.0"
   },
