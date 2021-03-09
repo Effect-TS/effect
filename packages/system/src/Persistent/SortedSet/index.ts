@@ -21,7 +21,7 @@ export function make<V>(K: Ord<V>) {
 }
 
 export function add_<V>(set: SortedSet<V>, v: V) {
-  return new SortedSet(RB.insert_(set.keyTree, v, true))
+  return RB.has_(set.keyTree, v) ? set : new SortedSet(RB.insert_(set.keyTree, v, true))
 }
 
 export function add<V>(v: V) {
@@ -29,7 +29,7 @@ export function add<V>(v: V) {
 }
 
 export function remove_<V>(set: SortedSet<V>, v: V) {
-  return new SortedSet(RB.remove_(set.keyTree, v))
+  return new SortedSet(RB.removeFirst_(set.keyTree, v))
 }
 
 export function remove<V>(v: V) {
