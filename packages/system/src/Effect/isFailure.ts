@@ -1,5 +1,5 @@
 import type { Effect } from "./effect"
-import { fold_ } from "./fold_"
+import { fold_ } from "./fold"
 
 /**
  * Returns whether this effect is a failure.

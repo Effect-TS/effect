@@ -1,3 +1,5 @@
+// tracing: off
+
 import { interruptAll } from "../Fiber"
 import type { Effect } from "./effect"
 import { ensuringChildren_ } from "./ensuringChildren"

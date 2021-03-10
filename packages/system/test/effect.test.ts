@@ -329,16 +329,9 @@ describe("Effect", () => {
     expect(result).toEqual("foo - bar")
   })
   it("forEach", async () => {
-    const a = await pipe(
-      range(0, 100),
-      T.forEach((n) => T.effectTotal(() => n + 1)),
-      T.runPromise
-    )
-    const b = await pipe(
-      range(0, 100),
-      T.forEach((n) => T.effectTotal(() => n + 1)),
-      T.runPromise
-    )
+    const f = T.forEach_(range(0, 100), (n: number) => T.effectTotal(() => n + 1))
+    const a = await pipe(f, T.runPromise)
+    const b = await pipe(f, T.runPromise)
     expect(a).toEqual(b)
     expect(b).toEqual(range(1, 101))
   })

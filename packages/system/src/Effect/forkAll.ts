@@ -1,7 +1,9 @@
+// tracing: off
+
 import * as A from "../Array"
 import * as Fiber from "../Fiber"
 import * as I from "../Iterable"
-import { chain_, fork, unit } from "./core"
+import { chain_, fork, suspend, unit } from "./core"
 import type { Effect, RIO } from "./effect"
 import { forEach_ } from "./excl-forEach"
 import { map_ } from "./map"
@@ -13,10 +15,12 @@ import { map_ } from "./map"
 export function forkAll<R, E, A>(
   effects: Iterable<Effect<R, E, A>>
 ): RIO<R, Fiber.Fiber<E, readonly A[]>> {
-  return map_(
-    forEach_(effects, fork),
-    A.reduce(Fiber.succeed([]) as Fiber.Fiber<E, readonly A[]>, (b, a) =>
-      Fiber.zipWith_(b, a, (_a, _b) => [..._a, _b])
+  return suspend(() =>
+    map_(
+      forEach_(effects, fork),
+      A.reduce(Fiber.succeed([]) as Fiber.Fiber<E, readonly A[]>, (b, a) =>
+        Fiber.zipWith_(b, a, (_a, _b) => [..._a, _b])
+      )
     )
   )
 }
@@ -27,5 +31,7 @@ export function forkAll<R, E, A>(
  * in cases where the results of the forked fibers are not needed.
  */
 export function forkAllUnit<R, E, A>(effects: Iterable<Effect<R, E, A>>) {
-  return I.reduce_(effects, unit as RIO<R, void>, (b, a) => chain_(fork(a), () => b))
+  return suspend(() =>
+    I.reduce_(effects, unit as RIO<R, void>, (b, a) => chain_(fork(a), () => b))
+  )
 }
