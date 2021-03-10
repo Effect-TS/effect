@@ -1,3 +1,5 @@
+// tracing: off
+
 import type { Either } from "../Either"
 import { left, right } from "../Either"
 import * as E from "../Either"
@@ -7,6 +9,8 @@ import { map_ } from "./map"
 
 /**
  * Depending on provided environment returns either this one or the other effect.
+ *
+ * @dataFirst join_
  */
 export function join<R1, E1, A1>(that: Effect<R1, E1, A1>) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<E.Either<R, R1>, E | E1, A | A1> => {
