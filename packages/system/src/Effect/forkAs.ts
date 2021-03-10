@@ -1,3 +1,5 @@
+// tracing: off
+
 import * as Fiber from "../Fiber"
 import * as FR from "../FiberRef"
 import { pipe } from "../Function"
@@ -8,6 +10,8 @@ import { uninterruptibleMask } from "./interruption"
 
 /**
  * Forks the effect into a new independent fiber, with the specified name.
+ *
+ * @dataFirst forkAs_
  */
 export function forkAs(name: string) {
   return <R, E, A>(self: Effect<R, E, A>): RIO<R, Fiber.FiberContext<E, A>> =>

@@ -1,8 +1,12 @@
+// tracing: off
+
 import type { Effect } from "./effect"
 import { flip } from "./flip"
 
 /**
- *  Swaps the error/value parameters, applies the function `f` and flips the parameters back
+ * Swaps the error/value parameters, applies the function `f` and flips the parameters back
+ *
+ * @dataFirst flipWith_
  */
 export function flipWith<R, E, A, R2, E2, A2>(
   f: (self: Effect<R, A, E>) => Effect<R2, A2, E2>
@@ -11,7 +15,7 @@ export function flipWith<R, E, A, R2, E2, A2>(
 }
 
 /**
- *  Swaps the error/value parameters, applies the function `f` and flips the parameters back
+ * Swaps the error/value parameters, applies the function `f` and flips the parameters back
  */
 export function flipWith_<R, E, A, R2, E2, A2>(
   self: Effect<R, E, A>,

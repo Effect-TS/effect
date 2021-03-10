@@ -1,3 +1,5 @@
+// tracing: off
+
 import { succeed } from "./core"
 import type { IO } from "./effect"
 import { effectAsync } from "./effectAsync"

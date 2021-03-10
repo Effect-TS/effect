@@ -1,3 +1,5 @@
+// tracing: off
+
 import { identity } from "../Function"
 import type { Option } from "../Option"
 import { fold } from "../Option"
@@ -6,6 +8,8 @@ import { mapError_ } from "./mapError"
 
 /**
  * Unwraps the optional error, defaulting to the provided value.
+ *
+ * @dataFirst flattenErrorOption_
  */
 export function flattenErrorOption<E2>(def: () => E2) {
   return <R, E, A>(self: Effect<R, Option<E>, A>): Effect<R, E | E2, A> =>

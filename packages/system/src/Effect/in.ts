@@ -1,3 +1,5 @@
+// tracing: off
+
 import { head } from "../Array"
 import * as Fiber from "../Fiber"
 import { pipe } from "../Function"
@@ -12,28 +14,37 @@ import { onInterrupt, uninterruptibleMask } from "./interruption"
  * Returns a new effect whose scope will be extended by the specified scope.
  * This means any finalizers associated with the effect will not be executed
  * until the specified scope is closed.
+ *
+ * @dataFirst in_
  */
-function in_(scope: Scope<any>) {
-  return <R, E, A>(self: Effect<R, E, A>) =>
-    uninterruptibleMask(({ restore }) =>
-      pipe(
-        self,
-        restore,
-        forkDaemon,
-        chain((fiber) =>
-          pipe(
-            scope.extend(fiber.scope),
-            chain(() =>
-              pipe(
-                restore(Fiber.join(fiber)),
-                onInterrupt((x) =>
-                  pipe(
-                    Array.from(x),
-                    head,
-                    O.fold(
-                      () => Fiber.interrupt(fiber),
-                      (id) => fiber.interruptAs(id)
-                    )
+function _in(scope: Scope<any>) {
+  return <R, E, A>(self: Effect<R, E, A>) => in_(self, scope)
+}
+
+/**
+ * Returns a new effect whose scope will be extended by the specified scope.
+ * This means any finalizers associated with the effect will not be executed
+ * until the specified scope is closed.
+ */
+export function in_<R, E, A>(self: Effect<R, E, A>, scope: Scope<any>) {
+  return uninterruptibleMask(({ restore }) =>
+    pipe(
+      self,
+      restore,
+      forkDaemon,
+      chain((fiber) =>
+        pipe(
+          scope.extend(fiber.scope),
+          chain(() =>
+            pipe(
+              restore(Fiber.join(fiber)),
+              onInterrupt((x) =>
+                pipe(
+                  Array.from(x),
+                  head,
+                  O.fold(
+                    () => Fiber.interrupt(fiber),
+                    (id) => fiber.interruptAs(id)
                   )
                 )
               )
@@ -42,6 +53,7 @@ function in_(scope: Scope<any>) {
         )
       )
     )
+  )
 }
 
-export { in_ as in }
+export { _in as in }
