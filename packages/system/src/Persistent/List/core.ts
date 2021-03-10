@@ -237,7 +237,7 @@ export class List<A> implements Iterable<A> {
   }
 }
 
-type MutableList<A> = { -readonly [K in keyof List<A>]: List<A>[K] } & {
+export type MutableList<A> = { -readonly [K in keyof List<A>]: List<A>[K] } & {
   [Symbol.iterator]: () => Iterator<A>
   // This property doesn't exist at run-time. It exists to prevent a
   // MutableList from being assignable to a List.
