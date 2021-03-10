@@ -18,7 +18,8 @@ import {
   haltWith,
   interruptStatus,
   interruptStatus_,
-  succeed
+  succeed,
+  suspend
 } from "./core"
 import { forkDaemon } from "./core-scope"
 import type { Effect } from "./effect"
@@ -78,6 +79,8 @@ export function uninterruptibleMask<R, E, A>(
 /**
  * Calls the specified function, and runs the effect it returns, if this
  * effect is interrupted.
+ *
+ * @trace 1
  */
 export function onInterrupt_<R, E, A, R2, X>(
   self: Effect<R, E, A>,
@@ -88,7 +91,10 @@ export function onInterrupt_<R, E, A, R2, X>(
       restore(self),
       (cause) =>
         Cause.interrupted(cause)
-          ? chain_(cleanup(Cause.interruptors(cause)), () => halt(cause))
+          ? chain_(
+              suspend(traceAs(cleanup, () => cleanup(Cause.interruptors(cause)))),
+              () => halt(cause)
+            )
           : halt(cause),
       succeed
     )
@@ -98,10 +104,12 @@ export function onInterrupt_<R, E, A, R2, X>(
 /**
  * Calls the specified function, and runs the effect it returns, if this
  * effect is interrupted (allows for expanding error).
+ *
+ * @trace 1
  */
 export function onInterruptExtended_<R, E, A, R2, E2, X>(
   self: Effect<R, E, A>,
-  cleanup: () => Effect<R2, E2, X>
+  cleanup: (interruptors: ReadonlySet<FiberID>) => Effect<R2, E2, X>
 ) {
   return uninterruptibleMask(({ restore }) =>
     foldCauseM_(
@@ -109,7 +117,7 @@ export function onInterruptExtended_<R, E, A, R2, E2, X>(
       (cause) =>
         Cause.interrupted(cause)
           ? foldCauseM_(
-              cleanup(),
+              suspend(traceAs(cleanup, () => cleanup(Cause.interruptors(cause)))),
               (_) => halt(_),
               () => halt(cause)
             )
@@ -122,6 +130,9 @@ export function onInterruptExtended_<R, E, A, R2, E2, X>(
 /**
  * Calls the specified function, and runs the effect it returns, if this
  * effect is interrupted.
+ *
+ * @dataFirst onInterrupt_
+ * @trace 0
  */
 export function onInterrupt<R2, X>(
   cleanup: (interruptors: ReadonlySet<FiberID>) => Effect<R2, never, X>
@@ -158,12 +169,14 @@ export function disconnect<R, E, A>(effect: Effect<R, E, A>) {
  * Makes the effect interruptible, but passes it a restore function that
  * can be used to restore the inherited interruptibility from whatever region
  * the effect is composed into.
+ *
+ * @trace 0
  */
 export function interruptibleMask<R, E, A>(
   f: (restore: InterruptStatusRestore) => Effect<R, E, A>
 ) {
-  return checkInterruptible((flag) =>
-    interruptible(f(new InterruptStatusRestoreImpl(flag)))
+  return checkInterruptible(
+    traceAs(f, (flag) => interruptible(f(new InterruptStatusRestoreImpl(flag))))
   )
 }
 

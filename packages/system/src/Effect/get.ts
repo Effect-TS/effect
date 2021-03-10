@@ -1,3 +1,5 @@
+// tracing: off
+
 import { map as mapCause } from "../Cause"
 import { pipe } from "../Function"
 import type { Option } from "../Option"

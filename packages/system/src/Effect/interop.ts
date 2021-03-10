@@ -1,3 +1,5 @@
+// tracing: off
+
 import * as Async from "../Async"
 import * as IO from "../IO"
 import { accessM, effectTotal, succeed } from "./core"

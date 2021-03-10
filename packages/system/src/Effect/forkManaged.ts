@@ -1,3 +1,5 @@
+// tracing: off
+
 import type { FiberContext } from "../Fiber"
 import { fork } from "../Managed/fork"
 import type { Managed } from "../Managed/managed"

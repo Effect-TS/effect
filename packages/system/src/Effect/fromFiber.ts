@@ -1,3 +1,5 @@
+// tracing: off
+
 import * as Fiber from "../Fiber"
 import { chain_, effectTotal } from "./core"
 import type { Effect, IO } from "./effect"
@@ -5,6 +7,8 @@ import type { Effect, IO } from "./effect"
 /**
  * Creates a `Effect` value that represents the exit value of the specified
  * fiber.
+ *
+ * @trace 0
  */
 export function fromFiber<E, A>(fiber: () => Fiber.Fiber<E, A>): IO<E, A> {
   return chain_(effectTotal(fiber), Fiber.join)
