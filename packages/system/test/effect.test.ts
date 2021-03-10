@@ -420,4 +420,18 @@ describe("Effect", () => {
     })
       ["|>"](provideTestClock)
       ["|>"](runTest))
+
+  it("loop", async () => {
+    const x = T.loop(
+      0,
+      (n) => n <= 5,
+      (n) => n + 1
+    )((x) => T.succeed(x + 1))
+
+    const res = await T.runPromise(x)
+    const res2 = await T.runPromise(x)
+
+    expect(res).toEqual(res2)
+    expect(res2).toEqual([1, 2, 3, 4, 5, 6])
+  })
 })
