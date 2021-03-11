@@ -22,7 +22,6 @@ import * as Sup from "../Supervisor"
 // support
 import { AtomicReference } from "../Support/AtomicReference"
 import { RingBuffer } from "../Support/RingBuffer"
-import { defaultScheduler } from "../Support/Scheduler"
 import * as X from "../XPure"
 import * as T from "./_internal/effect"
 // fiber
@@ -76,7 +75,6 @@ const noop = O.some(constVoid)
 export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   readonly _tag = "RuntimeFiber"
   readonly state = new AtomicReference(initial<E, A>())
-  readonly scheduler = defaultScheduler
 
   asyncEpoch = 0 | 0
   stack?: Stack<Frame> = undefined
@@ -105,7 +103,9 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     readonly platform: Platform<unknown>,
     readonly parentTrace: O.Option<Trace>,
     readonly initialTracingStatus: boolean
-  ) {}
+  ) {
+    this.evaluateNow = this.evaluateNow.bind(this)
+  }
 
   get poll() {
     return T.effectTotal(() => this.poll0())
@@ -531,9 +531,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   }
 
   evaluateLater(i0: T.Instruction) {
-    this.scheduler.dispatchLater(() => {
-      this.evaluateNow(i0)
-    })
+    Promise.resolve(i0).then(this.evaluateNow)
   }
 
   get scope(): Scope.Scope<Exit.Exit<E, A>> {
@@ -593,9 +591,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
     const toExecute = this.parentScopeOp(parentScope, childContext, i0)
 
-    this.scheduler.dispatchLater(() => {
-      childContext.evaluateNow(toExecute)
-    })
+    Promise.resolve(toExecute).then(childContext.evaluateNow)
 
     return childContext
   }

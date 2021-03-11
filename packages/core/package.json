@@ -167,7 +167,6 @@
       "Support/MutableQueue",
       "Support/OneShot",
       "Support/RingBuffer",
-      "Support/Scheduler",
       "Utils",
       "XPure",
       "XPure/XIO",
