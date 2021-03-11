@@ -17,13 +17,13 @@ namespace ReaderEither {
   export const { access } = Access
   export const { fail } = Fail
 
-  export const tupled = DSL.tupleF(Applicative)
+  export const tuple = DSL.tupleF(Applicative)
 }
 
 test("20", () => {
   expect(
     pipe(
-      ReaderEither.tupled(
+      ReaderEither.tuple(
         ReaderEither.access((n: { n: number }) => n.n),
         ReaderEither.access((s: { s: string }) => s.s)
       ),

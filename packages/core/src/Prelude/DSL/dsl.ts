@@ -73,9 +73,9 @@ export function succeedF<F>(
 
 export function chainF<F extends HKT.URIS, C = HKT.Auto>(
   F: Monad<F, C>
-): <N2 extends string, K2, Q2, W2, X2, I2, S2, R2, E2, A, B>(
+): <K2, Q2, W2, X2, I2, S2, R2, E2, A, B>(
   f: (a: A) => HKT.Kind<F, C, K2, Q2, W2, X2, I2, S2, R2, E2, B>
-) => <N extends string, K, Q, W, X, I, S, R, E>(
+) => <K, Q, W, X, I, S, R, E>(
   fa: HKT.Kind<
     F,
     C,
@@ -136,22 +136,7 @@ function getRecordConstructor(keys: ReadonlyArray<string>) {
 export function structF<F extends HKT.URIS, C = HKT.Auto>(
   F: Apply<F, C>
 ): <
-  NER extends Record<
-    string,
-    HKT.Kind<
-      F,
-      C,
-      HKT.Intro<C, "K", K, any>,
-      HKT.Intro<C, "Q", Q, any>,
-      HKT.Intro<C, "W", W, any>,
-      HKT.Intro<C, "X", X, any>,
-      HKT.Intro<C, "I", I, any>,
-      HKT.Intro<C, "S", S, any>,
-      HKT.Intro<C, "R", R, any>,
-      HKT.Intro<C, "E", E, any>,
-      unknown
-    >
-  >,
+  NER extends Record<string, any>,
   K = HKT.Initial<C, "K">,
   Q = HKT.Initial<C, "Q">,
   W = HKT.Initial<C, "W">,
