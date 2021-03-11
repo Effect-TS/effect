@@ -136,7 +136,22 @@ function getRecordConstructor(keys: ReadonlyArray<string>) {
 export function structF<F extends HKT.URIS, C = HKT.Auto>(
   F: Apply<F, C>
 ): <
-  NER extends Record<string, any>,
+  NER extends Record<
+    string,
+    HKT.Kind<
+      F,
+      C,
+      HKT.Intro<C, "K", K, any>,
+      HKT.Intro<C, "Q", Q, any>,
+      HKT.Intro<C, "W", W, any>,
+      HKT.Intro<C, "X", X, any>,
+      HKT.Intro<C, "I", I, any>,
+      HKT.Intro<C, "S", S, any>,
+      HKT.Intro<C, "R", R, any>,
+      HKT.Intro<C, "E", E, any>,
+      unknown
+    >
+  >,
   K = HKT.Initial<C, "K">,
   Q = HKT.Initial<C, "Q">,
   W = HKT.Initial<C, "W">,

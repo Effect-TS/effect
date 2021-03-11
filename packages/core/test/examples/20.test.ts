@@ -18,6 +18,7 @@ namespace ReaderEither {
   export const { fail } = Fail
 
   export const tuple = DSL.tupleF(Applicative)
+  export const struct = DSL.structF(Applicative)
 }
 
 test("20", () => {
