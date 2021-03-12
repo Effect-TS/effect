@@ -5,9 +5,7 @@ import { prettyTrace } from "./Fiber"
 import { pipe } from "./Function"
 
 pipe(
-  [T.succeed(0), T.succeed(0), T.succeed(0)],
-  T.collectAll,
-  T.asUnit,
+  T.tupleParN(2)(T.succeed(0), T.succeed(1), T.fail(2)),
   T.andThen(T.trace),
   T.chain((t) =>
     T.effectTotal(() => {

@@ -1,3 +1,5 @@
+// tracing: off
+
 import { effectTotal } from "../Effect/core"
 import type { IO, UIO } from "../Effect/effect"
 import type { Promise } from "./promise"
