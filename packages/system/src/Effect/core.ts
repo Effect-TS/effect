@@ -431,19 +431,18 @@ export function suspendPartial<R, E, A, E2>(
 /**
  * Executed `that` in case `self` fails with a `Cause` that doesn't contain defects,
  * executes `success` in case of successes
- *
- * @trace 1
- * @trace 2
  */
 export function tryOrElse_<R, E, A, R2, E2, A2, R3, E3, A3>(
   self: Effect<R, E, A>,
   that: () => Effect<R2, E2, A2>,
-  success: (a: A) => Effect<R3, E3, A3>
+  success: (a: A) => Effect<R3, E3, A3>,
+  __trace?: string
 ): Effect<R & R2 & R3, E2 | E3, A2 | A3> {
   return new IFold(
     self,
-    traceAs(that, (cause) => O.fold_(keepDefects(cause), that, halt)),
-    success
+    (cause) => O.fold_(keepDefects(cause), that, halt),
+    success,
+    __trace
   )
 }
 
@@ -452,14 +451,13 @@ export function tryOrElse_<R, E, A, R2, E2, A2, R3, E3, A3>(
  * executes `success` in case of successes
  *
  * @dataFirst tryOrElse_
- * @trace 0
- * @trace 1
  */
 export function tryOrElse<A, R2, E2, A2, R3, E3, A3>(
   that: () => Effect<R2, E2, A2>,
-  success: (a: A) => Effect<R3, E3, A3>
+  success: (a: A) => Effect<R3, E3, A3>,
+  __trace?: string
 ): <R, E>(self: Effect<R, E, A>) => Effect<R & R2 & R3, E2 | E3, A2 | A3> {
-  return (self) => tryOrElse_(self, that, success)
+  return (self) => tryOrElse_(self, that, success, __trace)
 }
 
 /**
