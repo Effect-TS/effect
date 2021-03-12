@@ -24,15 +24,14 @@ import type { Effect } from "./effect"
  * errors produced by the `release` effect can be caught and ignored.
  *
  * @dataFirst bracket_
- * @trace 0
- * @trace 1
  */
 export function bracket<A, E1, R1, A1, R2, E2, A2>(
   use: (a: A) => Effect<R1, E1, A1>,
-  release: (a: A) => Effect<R2, E2, A2>
+  release: (a: A) => Effect<R2, E2, A2>,
+  __trace?: string
 ) {
   return <R, E>(acquire: Effect<R, E, A>): Effect<R & R1 & R2, E | E1 | E2, A1> =>
-    bracket_(acquire, use, release)
+    bracket_(acquire, use, release, __trace)
 }
 
 /**
@@ -54,14 +53,12 @@ export function bracket<A, E1, R1, A1, R2, E2, A2>(
  * If the `release` effect fails, then the entire effect will fail even
  * if the `use` effect succeeds. If this fail-fast behavior is not desired,
  * errors produced by the `release` effect can be caught and ignored.
- *
- * @trace 1
- * @trace 2
  */
 export function bracket_<R, E, A, E1, R1, A1, R2, E2, A2>(
   acquire: Effect<R, E, A>,
   use: (a: A) => Effect<R1, E1, A1>,
-  release: (a: A) => Effect<R2, E2, A2>
+  release: (a: A) => Effect<R2, E2, A2>,
+  __trace?: string
 ): Effect<R & R1 & R2, E | E1 | E2, A1> {
-  return bracketExit_(acquire, use, release)
+  return bracketExit_(acquire, use, release, __trace)
 }

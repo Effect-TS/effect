@@ -10,14 +10,18 @@ import { fiberId } from "./fiberId"
 /**
  * Fork the effect into a separate fiber wrapping it in a bracket and returining the
  * `use` handle. Acquisition will fork and release will interrupt the fiber
- *
- * @trace 1
  */
 export function bracketFiber_<R, E, A, R2, E2, A2>(
   effect: Effect<R, E, A>,
-  use: (f: Runtime<E, A>) => Effect<R2, E2, A2>
+  use: (f: Runtime<E, A>) => Effect<R2, E2, A2>,
+  __trace?: string
 ) {
-  return bracket_(forkDaemon(effect), (f) => chain_(fiberId, f.interruptAs), use)
+  return bracket_(
+    forkDaemon(effect),
+    (f) => chain_(fiberId, f.interruptAs),
+    use,
+    __trace
+  )
 }
 
 /**
@@ -25,10 +29,10 @@ export function bracketFiber_<R, E, A, R2, E2, A2>(
  * Acquisition will fork and release will interrupt the fiber.
  *
  * @dataFirst bracketFiber_
- * @trace 0
  */
 export function bracketFiber<R2, E2, A2, E, A>(
-  use: (f: Runtime<E, A>) => Effect<R2, E2, A2>
+  use: (f: Runtime<E, A>) => Effect<R2, E2, A2>,
+  __trace?: string
 ) {
-  return <R>(effect: Effect<R, E, A>) => bracketFiber_(effect, use)
+  return <R>(effect: Effect<R, E, A>) => bracketFiber_(effect, use, __trace)
 }
