@@ -1,7 +1,5 @@
 // tracing: off
 
-import { traceAs } from "@effect-ts/tracing-utils"
-
 import { chain_, succeed } from "./core"
 import type { Effect } from "./effect"
 import { map_ } from "./map"
@@ -12,7 +10,8 @@ import { map_ } from "./map"
  */
 function bind<R, E, A, K, N extends string>(
   tag: Exclude<N, keyof K>,
-  f: (_: K) => Effect<R, E, A>
+  f: (_: K) => Effect<R, E, A>,
+  __trace?: string
 ) {
   return <R2, E2>(
     mk: Effect<R2, E2, K>
@@ -23,7 +22,7 @@ function bind<R, E, A, K, N extends string>(
       {
         [k in N]: A
       }
-  > => bind_(mk, tag, f)
+  > => bind_(mk, tag, f, __trace)
 }
 
 /**
@@ -32,7 +31,8 @@ function bind<R, E, A, K, N extends string>(
 export function bind_<R2, E2, R, E, A, K, N extends string>(
   mk: Effect<R2, E2, K>,
   tag: Exclude<N, keyof K>,
-  f: (_: K) => Effect<R, E, A>
+  f: (_: K) => Effect<R, E, A>,
+  __trace?: string
 ): Effect<
   R & R2,
   E | E2,
@@ -43,7 +43,7 @@ export function bind_<R2, E2, R, E, A, K, N extends string>(
 > {
   return chain_(
     mk,
-    traceAs(f, (k) =>
+    (k) =>
       map_(
         f(k),
         (
@@ -52,16 +52,21 @@ export function bind_<R2, E2, R, E, A, K, N extends string>(
           {
             [k in N]: A
           } => ({ ...k, [tag]: a } as any)
-      )
-    )
+      ),
+    __trace
   )
 }
 
 /**
+ * Like bind for values
+ *
  * @dataFirst let_
- * @trace 1
  */
-function let__<A, K, N extends string>(tag: Exclude<N, keyof K>, f: (_: K) => A) {
+function let__<A, K, N extends string>(
+  tag: Exclude<N, keyof K>,
+  f: (_: K) => A,
+  __trace?: string
+) {
   return <R2, E2>(
     mk: Effect<R2, E2, K>
   ): Effect<
@@ -75,12 +80,13 @@ function let__<A, K, N extends string>(tag: Exclude<N, keyof K>, f: (_: K) => A)
 }
 
 /**
- * @trace 2
+ * Like bind for values
  */
 export function let_<R2, E2, A, K, N extends string>(
   mk: Effect<R2, E2, K>,
   tag: Exclude<N, keyof K>,
-  f: (_: K) => A
+  f: (_: K) => A,
+  __trace?: string
 ): Effect<
   R2,
   E2,
@@ -91,15 +97,13 @@ export function let_<R2, E2, A, K, N extends string>(
 > {
   return map_(
     mk,
-    traceAs(
-      f,
-      (
-        k
-      ): K &
-        {
-          [k in N]: A
-        } => ({ ...k, [tag]: f(k) } as any)
-    )
+    (
+      k
+    ): K &
+      {
+        [k in N]: A
+      } => ({ ...k, [tag]: f(k) } as any),
+    __trace
   )
 }
 

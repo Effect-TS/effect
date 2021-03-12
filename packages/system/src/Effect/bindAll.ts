@@ -1,7 +1,5 @@
 // tracing: off
 
-import { traceAs } from "@effect-ts/tracing-utils"
-
 import * as R from "../Dictionary"
 import type { _E, _R, EnforceNonEmptyRecord } from "../Utils"
 import { chain_ } from "./core"
@@ -13,7 +11,6 @@ import { map_ } from "./map"
  * Bind a record of effects in a do
  *
  * @dataFirst bindAll_
- * @trace 0
  */
 export function bindAll<
   K,
@@ -22,7 +19,8 @@ export function bindAll<
       [k in keyof K & keyof NER]?: never
     }
 >(
-  r: (k: K) => EnforceNonEmptyRecord<NER> & Record<string, Effect<any, any, any>>
+  r: (k: K) => EnforceNonEmptyRecord<NER> & Record<string, Effect<any, any, any>>,
+  __trace?: string
 ): <R, E>(
   s: Effect<R, E, K>
 ) => Effect<
@@ -34,13 +32,11 @@ export function bindAll<
     }
 > {
   // @ts-expect-error
-  return (s) => bindAll_(s, r)
+  return (s) => bindAll_(s, r, __trace)
 }
 
 /**
  * Bind a record of effects in a do
- *
- * @trace 1
  */
 export function bindAll_<
   K,
@@ -52,7 +48,8 @@ export function bindAll_<
   E
 >(
   s: Effect<R, E, K>,
-  r: (k: K) => EnforceNonEmptyRecord<NER> & Record<string, Effect<any, any, any>>
+  r: (k: K) => EnforceNonEmptyRecord<NER> & Record<string, Effect<any, any, any>>,
+  __trace?: string
 ): Effect<
   R & _R<NER[keyof NER]>,
   E | _E<NER[keyof NER]>,
@@ -61,20 +58,23 @@ export function bindAll_<
       [K in keyof NER]: [NER[K]] extends [Effect<any, any, infer A>] ? A : never
     }
 > {
-  return chain_(s, (k) =>
-    map_(
-      forEach_(
-        R.collect_(r(k), (k, v) => [k, v] as const),
-        ([_, e]) => map_(e, (a) => [_, a] as const)
+  return chain_(
+    s,
+    (k) =>
+      map_(
+        forEach_(
+          R.collect_(r(k), (k, v) => [k, v] as const),
+          ([_, e]) => map_(e, (a) => [_, a] as const)
+        ),
+        (values) => {
+          const res = {}
+          values.forEach(([k, v]) => {
+            res[k] = v
+          })
+          return Object.assign(res, k)
+        }
       ),
-      traceAs(r, (values) => {
-        const res = {}
-        values.forEach(([k, v]) => {
-          res[k] = v
-        })
-        return Object.assign(res, k)
-      })
-    )
+    __trace
   ) as any
 }
 
@@ -82,7 +82,6 @@ export function bindAll_<
  * Bind a record of effects, in parallel, in a do
  *
  * @dataFirst bindAllPar_
- * @trace 0
  */
 export function bindAllPar<
   K,
@@ -91,7 +90,8 @@ export function bindAllPar<
       [k in keyof K & keyof NER]?: never
     }
 >(
-  r: (k: K) => EnforceNonEmptyRecord<NER> & Record<string, Effect<any, any, any>>
+  r: (k: K) => EnforceNonEmptyRecord<NER> & Record<string, Effect<any, any, any>>,
+  __trace?: string
 ): <R, E>(
   s: Effect<R, E, K>
 ) => Effect<
@@ -103,13 +103,11 @@ export function bindAllPar<
     }
 > {
   // @ts-expect-error
-  return (s) => bindAllPar_(s, r)
+  return (s) => bindAllPar_(s, r, __trace)
 }
 
 /**
  * Bind a record of effects, in parallel, in a do
- *
- * @trace 1
  */
 export function bindAllPar_<
   K,
@@ -121,7 +119,8 @@ export function bindAllPar_<
   E
 >(
   s: Effect<R, E, K>,
-  r: (k: K) => EnforceNonEmptyRecord<NER> & Record<string, Effect<any, any, any>>
+  r: (k: K) => EnforceNonEmptyRecord<NER> & Record<string, Effect<any, any, any>>,
+  __trace?: string
 ): Effect<
   R & _R<NER[keyof NER]>,
   E | _E<NER[keyof NER]>,
@@ -130,20 +129,23 @@ export function bindAllPar_<
       [K in keyof NER]: [NER[K]] extends [Effect<any, any, infer A>] ? A : never
     }
 > {
-  return chain_(s, (k) =>
-    map_(
-      forEachPar_(
-        R.collect_(r(k), (k, v) => [k, v] as const),
-        ([_, e]) => map_(e, (a) => [_, a] as const)
+  return chain_(
+    s,
+    (k) =>
+      map_(
+        forEachPar_(
+          R.collect_(r(k), (k, v) => [k, v] as const),
+          ([_, e]) => map_(e, (a) => [_, a] as const)
+        ),
+        (values) => {
+          const res = {}
+          values.forEach(([k, v]) => {
+            res[k] = v
+          })
+          return Object.assign(res, k)
+        }
       ),
-      traceAs(r, (values) => {
-        const res = {}
-        values.forEach(([k, v]) => {
-          res[k] = v
-        })
-        return Object.assign(res, k)
-      })
-    )
+    __trace
   ) as any
 }
 
@@ -151,7 +153,6 @@ export function bindAllPar_<
  * Bind a record of effects, in parallel (up to N fibers), in a do
  *
  * @dataFirst bindAllParN_
- * @trace 1
  */
 export function bindAllParN<
   K,
@@ -161,7 +162,8 @@ export function bindAllParN<
     }
 >(
   n: number,
-  r: (k: K) => EnforceNonEmptyRecord<NER> & Record<string, Effect<any, any, any>>
+  r: (k: K) => EnforceNonEmptyRecord<NER> & Record<string, Effect<any, any, any>>,
+  __trace?: string
 ): <R, E>(
   s: Effect<R, E, K>
 ) => Effect<
@@ -173,7 +175,7 @@ export function bindAllParN<
     }
 > {
   // @ts-expect-error
-  return (s) => bindAllParN_(s, n, r)
+  return (s) => bindAllParN_(s, n, r, __trace)
 }
 
 /**
@@ -192,7 +194,8 @@ export function bindAllParN_<
 >(
   s: Effect<R, E, K>,
   n: number,
-  r: (k: K) => EnforceNonEmptyRecord<NER> & Record<string, Effect<any, any, any>>
+  r: (k: K) => EnforceNonEmptyRecord<NER> & Record<string, Effect<any, any, any>>,
+  __trace?: string
 ): Effect<
   R & _R<NER[keyof NER]>,
   E | _E<NER[keyof NER]>,
@@ -201,20 +204,23 @@ export function bindAllParN_<
       [K in keyof NER]: [NER[K]] extends [Effect<any, any, infer A>] ? A : never
     }
 > {
-  return chain_(s, (k) =>
-    map_(
-      forEachParN_(
-        R.collect_(r(k), (k, v) => [k, v] as const),
-        n,
-        ([_, e]) => map_(e, (a) => [_, a] as const)
+  return chain_(
+    s,
+    (k) =>
+      map_(
+        forEachParN_(
+          R.collect_(r(k), (k, v) => [k, v] as const),
+          n,
+          ([_, e]) => map_(e, (a) => [_, a] as const)
+        ),
+        (values) => {
+          const res = {}
+          values.forEach(([k, v]) => {
+            res[k] = v
+          })
+          return Object.assign(res, k)
+        }
       ),
-      traceAs(r, (values) => {
-        const res = {}
-        values.forEach(([k, v]) => {
-          res[k] = v
-        })
-        return Object.assign(res, k)
-      })
-    )
+    __trace
   ) as any
 }
