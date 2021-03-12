@@ -19,8 +19,7 @@ export type TupleA<T extends NonEmptyArray<Effect<any, any, any>>> = {
 export function tuple<T extends NonEmptyArray<Effect<any, any, any>>>(
   ...t: T
 ): Effect<_R<T[number]>, _E<T[number]>, TupleA<T>> {
-  const trace = accessCallTrace()
-  return collectAll(t, trace) as any
+  return collectAll(t, accessCallTrace()) as any
 }
 
 /**
@@ -31,8 +30,7 @@ export function tuple<T extends NonEmptyArray<Effect<any, any, any>>>(
 export function tuplePar<T extends NonEmptyArray<Effect<any, any, any>>>(
   ...t: T
 ): Effect<_R<T[number]>, _E<T[number]>, TupleA<T>> {
-  const trace = accessCallTrace()
-  return collectAllPar(t, trace) as any
+  return collectAllPar(t, accessCallTrace()) as any
 }
 
 /**
@@ -46,9 +44,7 @@ export function tupleParN(n: number) {
      */
     <T extends NonEmptyArray<Effect<any, any, any>>>(
       ...t: T
-    ): Effect<_R<T[number]>, _E<T[number]>, TupleA<T>> => {
-      const trace = accessCallTrace()
-      return collectAllParN_(t, n, trace) as any
-    }
+    ): Effect<_R<T[number]>, _E<T[number]>, TupleA<T>> =>
+      collectAllParN_(t, n, accessCallTrace()) as any
   )
 }
