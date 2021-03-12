@@ -61,25 +61,26 @@ export function accessM<R0, R, E, A>(
  * followed by the effect that it returns.
  *
  * @dataFirst chain_
- * @trace 0
  */
-export function chain<R1, E1, A1, A>(f: (a: A) => Effect<R1, E1, A1>) {
+export function chain<R1, E1, A1, A>(
+  f: (a: A) => Effect<R1, E1, A1>,
+  __trace?: string
+) {
   return <R, E>(val: Effect<R, E, A>): Effect<R & R1, E | E1, A1> =>
-    new IFlatMap(val, f)
+    new IFlatMap(val, f, __trace)
 }
 
 /**
  * Returns an effect that models the execution of this effect, followed by
  * the passing of its value to the specified continuation function `f`,
  * followed by the effect that it returns.
- *
- * @trace 1
  */
 export function chain_<R, E, A, R1, E1, A1>(
   val: Effect<R, E, A>,
-  f: (a: A) => Effect<R1, E1, A1>
+  f: (a: A) => Effect<R1, E1, A1>,
+  __trace?: string
 ): Effect<R & R1, E | E1, A1> {
-  return new IFlatMap(val, f)
+  return new IFlatMap(val, f, __trace)
 }
 
 /**
@@ -191,40 +192,35 @@ export { try_ as try }
 
 /**
  * Imports a synchronous side-effect into a pure value
- *
- * @trace 0
  */
-export function effectTotal<A>(effect: () => A): UIO<A> {
-  return new IEffectTotal(effect)
+export function effectTotal<A>(effect: () => A, __trace?: string): UIO<A> {
+  return new IEffectTotal(effect, __trace)
 }
 
 /**
  * A more powerful version of `foldM` that allows recovering from any kind of failure except interruptions.
  *
  * @dataFirst foldCauseM_
- * @trace 0
- * @trace 1
  */
 export function foldCauseM<E, A, R2, E2, A2, R3, E3, A3>(
   failure: (cause: Cause<E>) => Effect<R2, E2, A2>,
-  success: (a: A) => Effect<R3, E3, A3>
+  success: (a: A) => Effect<R3, E3, A3>,
+  __trace?: string
 ) {
   return <R>(value: Effect<R, E, A>): Effect<R & R2 & R3, E2 | E3, A2 | A3> =>
-    new IFold(value, failure, success)
+    new IFold(value, failure, success, __trace)
 }
 
 /**
  * A more powerful version of `foldM` that allows recovering from any kind of failure except interruptions.
- *
- * @trace 1
- * @trace 2
  */
 export function foldCauseM_<R, E, A, R2, E2, A2, R3, E3, A3>(
   value: Effect<R, E, A>,
   failure: (cause: Cause<E>) => Effect<R2, E2, A2>,
-  success: (a: A) => Effect<R3, E3, A3>
+  success: (a: A) => Effect<R3, E3, A3>,
+  __trace?: string
 ): Effect<R & R2 & R3, E2 | E3, A2 | A3> {
-  return new IFold(value, failure, success)
+  return new IFold(value, failure, success, __trace)
 }
 
 /**
@@ -391,11 +387,9 @@ export function result<R, E, A>(
 
 /**
  * Lift a pure value into an effect
- *
- * @trace call
  */
-export function succeed<A>(a: A): Effect<unknown, never, A> {
-  return new ISucceed(a, accessCallTrace())
+export function succeed<A>(a: A, __trace?: string): Effect<unknown, never, A> {
+  return new ISucceed(a, __trace)
 }
 
 /**

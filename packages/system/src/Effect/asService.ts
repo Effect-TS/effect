@@ -9,13 +9,17 @@ import { map_ } from "./map"
  *
  * @datFirst asService_
  */
-export function asService<A>(has: Tag<A>) {
-  return <R, E>(fa: Effect<R, E, A>) => asService_(fa, has)
+export function asService<A>(has: Tag<A>, __trace?: string) {
+  return <R, E>(fa: Effect<R, E, A>) => asService_(fa, has, __trace)
 }
 
 /**
  * Maps the success value of this effect to a service.
  */
-export function asService_<R, E, A>(fa: Effect<R, E, A>, has: Tag<A>) {
-  return map_(fa, has.of)
+export function asService_<R, E, A>(
+  fa: Effect<R, E, A>,
+  has: Tag<A>,
+  __trace?: string
+) {
+  return map_(fa, has.of, __trace)
 }

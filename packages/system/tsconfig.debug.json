@@ -12,5 +12,5 @@
       }
     ]
   },
-  "include": ["test/effect.test.ts"]
+  "include": ["src/debug.ts"]
 }
