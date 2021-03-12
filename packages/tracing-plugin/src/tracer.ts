@@ -49,7 +49,6 @@ export default function tracer(
       return (sourceFile: ts.SourceFile) => {
         const sourceFullText = sourceFile.getFullText()
         const traced = factory.createIdentifier("traceCall")
-        const traceFrom = factory.createIdentifier("traceFrom")
         const fileVar = factory.createUniqueName("fileName")
         const tracing = factory.createUniqueName("tracing")
 
@@ -61,10 +60,6 @@ export default function tracer(
         }
 
         const tracedIdentifier = factory.createPropertyAccessExpression(tracing, traced)
-        const traceFromIdentifier = factory.createPropertyAccessExpression(
-          tracing,
-          traceFrom
-        )
 
         const regions = sourceFullText
           .split("\n")
@@ -97,49 +92,6 @@ export default function tracer(
           )
         }
 
-        function traceChild(
-          tags: Record<string, (string | undefined)[]>,
-          i: number,
-          factory: ts.NodeFactory,
-          traceFromIdentifier: ts.PropertyAccessExpression,
-          getTrace: (node: ts.Node, pos: "start" | "end") => ts.BinaryExpression,
-          x: ts.Expression
-        ): ts.Expression {
-          const symbol = checker.getSymbolAtLocation(x)
-
-          const entries: (readonly [string, string | undefined])[] =
-            symbol?.getJsDocTags().map((t) => [t.name, t.text] as const) || []
-
-          const tagsX: Record<string, (string | undefined)[]> = {}
-
-          for (const entry of entries) {
-            if (!tagsX[entry[0]]) {
-              tagsX[entry[0]] = []
-            }
-            tagsX[entry[0]!]!.push(entry[1])
-          }
-
-          const z = ts.visitNode(x, visitor)
-
-          const y =
-            tagsX["trace"] && tagsX["trace"].includes("call")
-              ? factory.createCallExpression(tracedIdentifier, undefined, [
-                  z,
-                  getTrace(x, "end")
-                ])
-              : z
-
-          const child =
-            tags["trace"] && tags["trace"].includes(`${i}`)
-              ? factory.createCallExpression(traceFromIdentifier, undefined, [
-                  getTrace(x, "start"),
-                  y
-                ])
-              : y
-
-          return child
-        }
-
         function visitor(node: ts.Node): ts.VisitResult<ts.Node> {
           const nodeStart = sourceFile.getLineAndCharacterOfPosition(node.getStart())
 
@@ -148,6 +100,12 @@ export default function tracer(
 
           if (ts.isCallExpression(node) && isTracing) {
             const signature = checker.getResolvedSignature(node)
+            const declaration = signature?.getDeclaration()
+            const parameters = declaration?.parameters || []
+            const traceLast =
+              parameters.length > 0
+                ? parameters[parameters.length - 1]!.name.getText() === "__trace"
+                : false
 
             const entries: (readonly [string, string | undefined])[] =
               signature?.getJsDocTags().map((t) => [t.name, t.text] as const) || []
@@ -160,27 +118,31 @@ export default function tracer(
               tags[entry[0]!]!.push(entry[1])
             }
 
-            if (signature && tags["trace"] && tags["trace"].includes("call")) {
-              return factory.createCallExpression(
-                factory.createCallExpression(tracedIdentifier, undefined, [
+            const traceCall =
+              signature && tags["trace"] && tags["trace"].includes("call")
+
+            const expression = traceCall
+              ? factory.createCallExpression(tracedIdentifier, undefined, [
                   ts.visitNode(node.expression, visitor),
                   getTrace(node.expression, "end")
-                ]),
-                undefined,
-                node.arguments.map((x, i) =>
-                  traceChild(tags, i, factory, traceFromIdentifier, getTrace, x)
-                )
+                ])
+              : ts.visitNode(node.expression, visitor)
+
+            const args = traceLast
+              ? [
+                  ...node.arguments.map((i) => ts.visitNode(i, visitor)),
+                  getTrace(node.expression, "end")
+                ]
+              : node.arguments.map((i) => ts.visitNode(i, visitor))
+
+            if (traceCall || traceLast) {
+              return factory.updateCallExpression(
+                node,
+                expression,
+                node.typeArguments,
+                args
               )
             }
-
-            return factory.updateCallExpression(
-              node,
-              ts.visitNode(node.expression, visitor),
-              node.typeArguments,
-              node.arguments.map((x, i) =>
-                traceChild(tags, i, factory, traceFromIdentifier, getTrace, x)
-              )
-            )
           }
 
           return ts.visitEachChild(node, visitor, ctx)

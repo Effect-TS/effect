@@ -34,7 +34,7 @@ export type Instruction =
   | IRead<any, any, any, any>
   | IProvide<any, any, any>
   | ISuspend<any, any, any>
-  | ISuspendPartial<any, any, any, any, any>
+  | ISuspendPartial<any, any, any, any>
   | IFiberRefNew<any>
   | IFiberRefModify<any, any>
   | IRaceWith<any, any, any, any, any, any, any, any, any, any, any, any>
@@ -48,7 +48,10 @@ export type Instruction =
 export class IFail<E> extends Base<unknown, E, never> {
   readonly _tag = "Fail"
 
-  constructor(readonly fill: (_: () => Trace) => Cause.Cause<E>) {
+  constructor(
+    readonly fill: (_: () => Trace) => Cause.Cause<E>,
+    readonly trace?: string
+  ) {
     super()
   }
 }
@@ -56,7 +59,11 @@ export class IFail<E> extends Base<unknown, E, never> {
 export class IFlatMap<R, E, A, R1, E1, A1> extends Base<R & R1, E | E1, A1> {
   readonly _tag = "FlatMap"
 
-  constructor(readonly val: Effect<R, E, A>, readonly f: (a: A) => Effect<R1, E1, A1>) {
+  constructor(
+    readonly val: Effect<R, E, A>,
+    readonly f: (a: A) => Effect<R1, E1, A1>,
+    readonly trace?: string
+  ) {
     super()
   }
 }
@@ -96,7 +103,11 @@ export class ICheckTracingStatus<R, E, A> extends Base<R, E, A> {
 export class IEffectPartial<E, A> extends Base<unknown, E, A> {
   readonly _tag = "EffectPartial"
 
-  constructor(readonly effect: () => A, readonly onThrow: (u: unknown) => E) {
+  constructor(
+    readonly effect: () => A,
+    readonly onThrow: (u: unknown) => E,
+    readonly trace?: string
+  ) {
     super()
   }
 }
@@ -104,7 +115,7 @@ export class IEffectPartial<E, A> extends Base<unknown, E, A> {
 export class IEffectTotal<A> extends Base<unknown, never, A> {
   readonly _tag = "EffectTotal"
 
-  constructor(readonly effect: () => A) {
+  constructor(readonly effect: () => A, readonly trace?: string) {
     super()
   }
 }
@@ -114,7 +125,8 @@ export class IEffectAsync<R, E, A> extends Base<R, E, A> {
 
   constructor(
     readonly register: (cb: (_: Effect<R, E, A>) => void) => O.Option<Effect<R, E, A>>,
-    readonly blockingOn: readonly FiberID[]
+    readonly blockingOn: readonly FiberID[],
+    readonly trace?: string
   ) {
     super()
   }
@@ -130,7 +142,8 @@ export class IFold<R, E, A, R2, E2, A2, R3, E3, A3> extends Base<
   constructor(
     readonly value: Effect<R, E, A>,
     readonly failure: (cause: Cause.Cause<E>) => Effect<R2, E2, A2>,
-    readonly apply: (a: A) => Effect<R3, E3, A3>
+    readonly apply: (a: A) => Effect<R3, E3, A3>,
+    readonly trace?: string
   ) {
     super()
   }
@@ -161,7 +174,10 @@ export class IInterruptStatus<R, E, A> extends Base<R, E, A> {
 export class ICheckInterrupt<R, E, A> extends Base<R, E, A> {
   readonly _tag = "CheckInterrupt"
 
-  constructor(readonly f: (_: Fiber.InterruptStatus) => Effect<R, E, A>) {
+  constructor(
+    readonly f: (_: Fiber.InterruptStatus) => Effect<R, E, A>,
+    readonly trace?: string
+  ) {
     super()
   }
 }
@@ -169,7 +185,10 @@ export class ICheckInterrupt<R, E, A> extends Base<R, E, A> {
 export class IDescriptor<R, E, A> extends Base<R, E, A> {
   readonly _tag = "Descriptor"
 
-  constructor(readonly f: (_: Fiber.Descriptor) => Effect<R, E, A>) {
+  constructor(
+    readonly f: (_: Fiber.Descriptor) => Effect<R, E, A>,
+    readonly trace?: string
+  ) {
     super()
   }
 }
@@ -185,7 +204,7 @@ export class IYield extends Base<unknown, never, void> {
 export class IRead<R0, R, E, A> extends Base<R & R0, E, A> {
   readonly _tag = "Read"
 
-  constructor(readonly f: (_: R0) => Effect<R, E, A>) {
+  constructor(readonly f: (_: R0) => Effect<R, E, A>, readonly trace?: string) {
     super()
   }
 }
@@ -193,7 +212,10 @@ export class IRead<R0, R, E, A> extends Base<R & R0, E, A> {
 export class IPlatform<R, E, A> extends Base<R, E, A> {
   readonly _tag = "Platform"
 
-  constructor(readonly f: (_: Platform<unknown>) => Effect<R, E, A>) {
+  constructor(
+    readonly f: (_: Platform<unknown>) => Effect<R, E, A>,
+    readonly trace?: string
+  ) {
     super()
   }
 }
@@ -209,17 +231,18 @@ export class IProvide<R, E, A> extends Base<unknown, E, A> {
 export class ISuspend<R, E, A> extends Base<R, E, A> {
   readonly _tag = "Suspend"
 
-  constructor(readonly factory: () => Effect<R, E, A>) {
+  constructor(readonly factory: () => Effect<R, E, A>, readonly trace?: string) {
     super()
   }
 }
 
-export class ISuspendPartial<S, R, E, A, E2> extends Base<R, E | E2, A> {
+export class ISuspendPartial<R, E, A, E2> extends Base<R, E | E2, A> {
   readonly _tag = "SuspendPartial"
 
   constructor(
     readonly factory: () => Effect<R, E, A>,
-    readonly onThrow: (u: unknown) => E2
+    readonly onThrow: (u: unknown) => E2,
+    readonly trace?: string
   ) {
     super()
   }
@@ -240,7 +263,11 @@ export class IFiberRefNew<A> extends Base<unknown, never, FiberRef<A>> {
 export class IFiberRefModify<A, B> extends Base<unknown, never, B> {
   readonly _tag = "FiberRefModify"
 
-  constructor(readonly fiberRef: FiberRef<A>, readonly f: (a: A) => [B, A]) {
+  constructor(
+    readonly fiberRef: FiberRef<A>,
+    readonly f: (a: A) => [B, A],
+    readonly trace?: string
+  ) {
     super()
   }
 }

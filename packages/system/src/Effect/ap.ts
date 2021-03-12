@@ -6,13 +6,12 @@ import { map_ } from "./map"
 
 /**
  * Applicative's ap
- *
- * @trace call
  */
 export function ap<R2, E2, A>(
-  fa: Effect<R2, E2, A>
+  fa: Effect<R2, E2, A>,
+  __trace?: string
 ): <R, E, B>(fab: Effect<R, E, (a: A) => B>) => Effect<R & R2, E2 | E, B> {
-  return (fab) => ap_(fab, fa)
+  return (fab) => ap_(fab, fa, __trace)
 }
 
 /**
@@ -20,7 +19,8 @@ export function ap<R2, E2, A>(
  */
 export function ap_<R, E, B, R2, E2, A>(
   fab: Effect<R, E, (a: A) => B>,
-  fa: Effect<R2, E2, A>
+  fa: Effect<R2, E2, A>,
+  __trace?: string
 ): Effect<R & R2, E2 | E, B> {
-  return chain_(fab, (ab) => map_(fa, ab))
+  return chain_(fab, (ab) => map_(fa, ab), __trace)
 }

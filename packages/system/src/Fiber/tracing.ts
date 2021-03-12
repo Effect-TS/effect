@@ -14,9 +14,9 @@ export class SourceLocation {
   constructor(readonly location: string) {}
 }
 
-export function traceLocation(k: any): TraceElement {
-  if (k["$trace"]) {
-    return new SourceLocation(k["$trace"])
+export function traceLocation(k: string | undefined): TraceElement {
+  if (k) {
+    return new SourceLocation(k)
   }
   return new NoLocation()
 }
