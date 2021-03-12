@@ -1,6 +1,8 @@
 import * as path from "path"
 import ts from "typescript"
 
+import prepare from "./prepare"
+
 function checkRegionAt(
   regions: (readonly [[boolean, number][], number])[],
   line: number,
@@ -47,33 +49,18 @@ export default function tracer(
       const factory = ctx.factory
 
       return (sourceFile: ts.SourceFile) => {
-        const sourceFullText = sourceFile.getFullText()
         const traced = factory.createIdentifier("traceCall")
         const fileVar = factory.createUniqueName("fileName")
         const tracing = factory.createUniqueName("tracing")
 
         const isModule =
-          sourceFile.statements.find((s) => /(import|export)/.test(s.getText())) != null
+          sourceFile.statements.find((s) => ts.isImportDeclaration(s)) != null
 
         if (!isModule) {
           return sourceFile
         }
 
         const tracedIdentifier = factory.createPropertyAccessExpression(tracing, traced)
-
-        const regions = sourceFullText
-          .split("\n")
-          .map((line, i) => {
-            const x: [boolean, number][] = []
-            const m = line.matchAll(/tracing: (on|off)/g)
-            for (const k of m) {
-              if (k && k.index) {
-                x.push([k[1] === "on", k.index])
-              }
-            }
-            return [x, i] as const
-          })
-          .filter(([x]) => x.length > 0)
 
         const { fileName } = sourceFile
 
@@ -92,56 +79,90 @@ export default function tracer(
           )
         }
 
-        function visitor(node: ts.Node): ts.VisitResult<ts.Node> {
-          const nodeStart = sourceFile.getLineAndCharacterOfPosition(node.getStart())
+        const sourceFullText = sourceFile.getFullText()
 
-          const isTracing =
-            tracingOn && checkRegionAt(regions, nodeStart.line, nodeStart.character)
-
-          if (ts.isCallExpression(node) && isTracing) {
-            const signature = checker.getResolvedSignature(node)
-            const declaration = signature?.getDeclaration()
-            const parameters = declaration?.parameters || []
-            const traceLast =
-              parameters.length > 0
-                ? parameters[parameters.length - 1]!.name.getText() === "__trace"
-                : false
-
-            const entries: (readonly [string, string | undefined])[] =
-              signature?.getJsDocTags().map((t) => [t.name, t.text] as const) || []
-            const tags: Record<string, (string | undefined)[]> = {}
-
-            for (const entry of entries) {
-              if (!tags[entry[0]]) {
-                tags[entry[0]] = []
+        const regions = sourceFullText
+          .split("\n")
+          .map((line, i) => {
+            const x: [boolean, number][] = []
+            const m = line.matchAll(/tracing: (on|off)/g)
+            for (const k of m) {
+              if (k && k.index) {
+                x.push([k[1] === "on", k.index])
               }
-              tags[entry[0]!]!.push(entry[1])
+            }
+            return [x, i] as const
+          })
+          .filter(([x]) => x.length > 0)
+
+        function visitor(node: ts.Node): ts.VisitResult<ts.Node> {
+          if (ts.isCallExpression(node)) {
+            let isTracing: boolean
+
+            try {
+              const nodeStart = sourceFile.getLineAndCharacterOfPosition(
+                node.expression.getStart()
+              )
+
+              isTracing =
+                tracingOn && checkRegionAt(regions, nodeStart.line, nodeStart.character)
+            } catch {
+              isTracing = false
             }
 
-            const traceCall =
-              signature && tags["trace"] && tags["trace"].includes("call")
+            if (isTracing) {
+              const trace = getTrace(node.expression, "end")
+              const signature = checker.getResolvedSignature(node)
+              const declaration =
+                signature?.getDeclaration() ?? getDeclaration(checker, node)
 
-            const expression = traceCall
-              ? factory.createCallExpression(tracedIdentifier, undefined, [
-                  ts.visitNode(node.expression, visitor),
-                  getTrace(node.expression, "end")
-                ])
-              : ts.visitNode(node.expression, visitor)
+              const parameters = declaration?.parameters || []
+              const traceLast =
+                parameters.length > 0
+                  ? parameters[parameters.length - 1]!.name.getText() === "__trace"
+                  : false
 
-            const args = traceLast
-              ? [
-                  ...node.arguments.map((i) => ts.visitNode(i, visitor)),
-                  getTrace(node.expression, "end")
-                ]
-              : node.arguments.map((i) => ts.visitNode(i, visitor))
+              const entries: (readonly [string, string | undefined])[] =
+                signature?.getJsDocTags().map((t) => [t.name, t.text] as const) || []
+              const tags: Record<string, (string | undefined)[]> = {}
 
-            if (traceCall || traceLast) {
-              return factory.updateCallExpression(
-                node,
-                expression,
-                node.typeArguments,
-                args
-              )
+              for (const entry of entries) {
+                if (!tags[entry[0]]) {
+                  tags[entry[0]] = []
+                }
+                tags[entry[0]!]!.push(entry[1])
+              }
+
+              const traceCall = tags["trace"] && tags["trace"].includes("call")
+
+              const argx = node.arguments.map((i) => ts.visitNode(i, visitor))
+
+              const expr = ts.visitNode(node.expression, visitor)
+
+              if (traceCall || traceLast) {
+                const expression = traceCall
+                  ? factory.createCallExpression(tracedIdentifier, undefined, [
+                      expr,
+                      trace
+                    ])
+                  : expr
+
+                const args = traceLast ? [...argx, trace] : argx
+
+                return factory.updateCallExpression(
+                  node,
+                  expression,
+                  node.typeArguments,
+                  args
+                )
+              } else {
+                return factory.updateCallExpression(
+                  node,
+                  expr,
+                  node.typeArguments,
+                  argx
+                )
+              }
             }
           }
 
@@ -176,7 +197,11 @@ export default function tracer(
         )
 
         if (tracingOn) {
-          const visited = ts.visitEachChild(sourceFile, visitor, ctx)
+          const visited = ts.visitEachChild(
+            prepare(_program).before(ctx)(sourceFile),
+            visitor,
+            ctx
+          )
 
           return factory.updateSourceFile(visited, [
             factory.createImportDeclaration(
@@ -198,4 +223,18 @@ export default function tracer(
       }
     }
   }
+}
+
+function getDeclaration(
+  checker: ts.TypeChecker,
+  node: ts.CallExpression
+): ts.SignatureDeclaration | undefined {
+  const ds = checker
+    .getTypeAtLocation(node.expression)
+    .getCallSignatures()
+    .map((s) => s.getDeclaration())
+  if (ds?.length !== 1) {
+    return undefined
+  }
+  return ds?.[0]
 }

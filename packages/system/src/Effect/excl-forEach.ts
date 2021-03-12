@@ -48,6 +48,7 @@ import { provideSome_ } from "./provideSome"
 import * as tap from "./tap"
 import * as tapCause from "./tapCause"
 import { toManaged } from "./toManaged"
+import * as ta from "./traceAfter"
 import * as whenM from "./whenM"
 import * as zipWith from "./zipWith"
 
@@ -57,18 +58,20 @@ import * as zipWith from "./zipWith"
  *
  * For a parallel version of this method, see `forEachPar`.
  * If you do not need the results, see `forEachUnit` for a more efficient implementation.
- *
- * @trace 1
  */
 export function forEach_<A, R, E, B>(
   as: Iterable<A>,
-  f: (a: A) => Effect<R, E, B>
+  f: (a: A) => Effect<R, E, B>,
+  __trace?: string
 ): Effect<R, E, readonly B[]> {
-  return I.reduce_(as, core.effectTotal(() => []) as Effect<R, E, B[]>, (b, a) =>
-    zipWith.zipWith_(b, core.suspend(traceAs(f, () => f(a))), (acc, r) => {
-      acc.push(r)
-      return acc
-    })
+  return ta.traceAfter_(
+    I.reduce_(as, core.effectTotal(() => []) as Effect<R, E, B[]>, (b, a) =>
+      zipWith.zipWith_(b, f(a), (acc, r) => {
+        acc.push(r)
+        return acc
+      })
+    ),
+    __trace
   )
 }
 
@@ -80,10 +83,9 @@ export function forEach_<A, R, E, B>(
  * If you do not need the results, see `forEachUnit` for a more efficient implementation.
  *
  * @dataFirst forEach_
- * @trace 0
  */
-export function forEach<A, R, E, B>(f: (a: A) => Effect<R, E, B>) {
-  return (as: Iterable<A>) => forEach_(as, f)
+export function forEach<A, R, E, B>(f: (a: A) => Effect<R, E, B>, __trace?: string) {
+  return (as: Iterable<A>) => forEach_(as, f, __trace)
 }
 
 /**
@@ -92,12 +94,11 @@ export function forEach<A, R, E, B>(f: (a: A) => Effect<R, E, B>) {
  *
  * Equivalent to `asUnit(forEach(as, f))`, but without the cost of building
  * the list of results.
- *
- * @trace 1
  */
 export function forEachUnit_<R, E, A, X>(
   as: Iterable<A>,
-  f: (a: A) => Effect<R, E, X>
+  f: (a: A) => Effect<R, E, X>,
+  __trace?: string
 ): Effect<R, E, void> {
   return pipe(
     core.effectTotal(() => as[Symbol.iterator]()),
@@ -107,12 +108,13 @@ export function forEachUnit_<R, E, A, X>(
         return next.done
           ? core.unit
           : pipe(
-              core.suspend(traceAs(f, () => f(next.value))),
+              f(next.value),
               core.chain(() => loop())
             )
       }
       return loop()
-    })
+    }),
+    ta.traceAfter(__trace)
   )
 }
 
@@ -124,12 +126,12 @@ export function forEachUnit_<R, E, A, X>(
  * the list of results.
  *
  * @dataFirst forEachUnit_
- * @trace 0
  */
 export function forEachUnit<R, E, A, X>(
-  f: (a: A) => Effect<R, E, X>
+  f: (a: A) => Effect<R, E, X>,
+  __trace?: string
 ): (as: Iterable<A>) => Effect<R, E, void> {
-  return (as) => forEachUnit_(as, f)
+  return (as) => forEachUnit_(as, f, __trace)
 }
 
 /**
@@ -143,12 +145,11 @@ export function forEachUnit<R, E, A, X>(
  * Behaves almost like this code:
  *
  * Additionally, interrupts all effects on any failure.
- *
- * @trace 1
  */
 export function forEachUnitPar_<R, E, A, X>(
   as: Iterable<A>,
-  f: (a: A) => Effect<R, E, X>
+  f: (a: A) => Effect<R, E, X>,
+  __trace?: string
 ): Effect<R, E, void> {
   const collection = L.from(as)
   const size = L.size(collection)
@@ -183,7 +184,7 @@ export function forEachUnitPar_<R, E, A, X>(
     ),
     Do.let("task", ({ causes, result, startFailure, startTask, status }) => (a: A) =>
       pipe(
-        core.suspend(traceAs(f, () => f(a))),
+        core.suspend(() => f(a)),
         interruption.interruptible,
         tapCause.tapCause((c) =>
           pipe(
@@ -246,7 +247,8 @@ export function forEachUnitPar_<R, E, A, X>(
         )
       )
     ),
-    asUnit.asUnit
+    asUnit.asUnit,
+    ta.traceAfter(__trace)
   )
 }
 
@@ -256,9 +258,10 @@ export function forEachUnitPar_<R, E, A, X>(
  * the effect supplied to `use` completes.
  */
 export function forkManaged<R, E, A>(
-  self: Effect<R, E, A>
+  self: Effect<R, E, A>,
+  __trace?: string
 ): Managed<R, never, FiberContext<E, A>> {
-  return managedFork(toManaged(self))
+  return managedFork(toManaged(self), __trace)
 }
 
 /**
@@ -274,10 +277,12 @@ export function forkManaged<R, E, A>(
  * Additionally, interrupts all effects on any failure.
  *
  * @dataFirst forEachUnitPar_
- * @trace 0
  */
-export function forEachUnitPar<R, E, A, X>(f: (a: A) => Effect<R, E, X>) {
-  return (as: Iterable<A>) => forEachUnitPar_(as, f)
+export function forEachUnitPar<R, E, A, X>(
+  f: (a: A) => Effect<R, E, X>,
+  __trace?: string
+) {
+  return (as: Iterable<A>) => forEachUnitPar_(as, f, __trace)
 }
 
 /**
@@ -285,33 +290,36 @@ export function forEachUnitPar<R, E, A, X>(f: (a: A) => Effect<R, E, X>) {
  * and returns the results in a new `readonly B[]`.
  *
  * For a sequential version of this method, see `forEach`.
- *
- * @trace 1
  */
 export function forEachPar_<R, E, A, B>(
   as: Iterable<A>,
-  f: (a: A) => Effect<R, E, B>
+  f: (a: A) => Effect<R, E, B>,
+  __trace?: string
 ): Effect<R, E, readonly B[]> {
   const arr = Array.from(as)
 
-  return core.chain_(
-    core.effectTotal<B[]>(() => []),
-    (array) => {
-      function fn([a, n]: [A, number]) {
-        return core.chain_(core.suspend(traceAs(f, () => f(a))), (b) =>
-          core.effectTotal(() => {
-            array[n] = b
-          })
+  return ta.traceAfter_(
+    core.chain_(
+      core.effectTotal<B[]>(() => []),
+      (array) => {
+        function fn([a, n]: [A, number]) {
+          return core.chain_(core.suspend(traceAs(f, () => f(a))), (b) =>
+            core.effectTotal(() => {
+              array[n] = b
+            })
+          )
+        }
+        return map.map_(
+          forEachUnitPar_(
+            arr.map((a, n) => [a, n] as [A, number]),
+            fn,
+            __trace
+          ),
+          () => array
         )
       }
-      return map.map_(
-        forEachUnitPar_(
-          arr.map((a, n) => [a, n] as [A, number]),
-          fn
-        ),
-        () => array
-      )
-    }
+    ),
+    __trace
   )
 }
 
@@ -322,10 +330,9 @@ export function forEachPar_<R, E, A, B>(
  * For a sequential version of this method, see `forEach`.
  *
  * @dataFirst forEachPar_
- * @trace 0
  */
-export function forEachPar<R, E, A, B>(f: (a: A) => Effect<R, E, B>) {
-  return (as: Iterable<A>): Effect<R, E, readonly B[]> => forEachPar_(as, f)
+export function forEachPar<R, E, A, B>(f: (a: A) => Effect<R, E, B>, __trace?: string) {
+  return (as: Iterable<A>): Effect<R, E, readonly B[]> => forEachPar_(as, f, __trace)
 }
 
 /**
@@ -333,13 +340,12 @@ export function forEachPar<R, E, A, B>(f: (a: A) => Effect<R, E, B>) {
  * produced effects in parallel, discarding the results.
  *
  * Unlike `forEachUnitPar_`, this method will use at most up to `n` fibers.
- *
- * @trace 2
  */
 export function forEachUnitParN_<R, E, A, X>(
   as: Iterable<A>,
   n: number,
-  f: (a: A) => Effect<R, E, X>
+  f: (a: A) => Effect<R, E, X>,
+  __trace?: string
 ): Effect<R, E, void> {
   const as_ = L.from(as)
   const size = L.size(as_)
@@ -372,7 +378,8 @@ export function forEachUnitParN_<R, E, A, X>(
           tap.tap(({ fibers }) => forEach_(fibers, (_) => _.await))
         ),
       (q) => q.shutdown
-    )
+    ),
+    ta.traceAfter(__trace)
   )
 }
 
@@ -383,10 +390,13 @@ export function forEachUnitParN_<R, E, A, X>(
  * Unlike `forEachUnitPar_`, this method will use at most up to `n` fibers.
  *
  * @dataFirst forEachUnitParN_
- * @trace 1
  */
-export function forEachUnitParN<R, E, A, X>(n: number, f: (a: A) => Effect<R, E, X>) {
-  return (as: Iterable<A>) => forEachUnitParN_(as, n, f)
+export function forEachUnitParN<R, E, A, X>(
+  n: number,
+  f: (a: A) => Effect<R, E, X>,
+  __trace?: string
+) {
+  return (as: Iterable<A>) => forEachUnitParN_(as, n, f, __trace)
 }
 
 /**
@@ -394,13 +404,12 @@ export function forEachUnitParN<R, E, A, X>(n: number, f: (a: A) => Effect<R, E,
  * and returns the results in a new `readonly B[]`.
  *
  * Unlike `forEachPar`, this method will use at most up to `n` fibers.
- *
- * @trace 2
  */
 export function forEachParN_<R, E, A, B>(
   as: Iterable<A>,
   n: number,
-  f: (a: A) => Effect<R, E, B>
+  f: (a: A) => Effect<R, E, B>,
+  __trace?: string
 ): Effect<R, E, readonly B[]> {
   function worker(
     q: Q.Queue<readonly [promise.Promise<E, B>, A]>,
@@ -457,7 +466,8 @@ export function forEachParN_<R, E, A, B>(
           core.chain(({ pairs }) => forEach_(pairs, (_) => promise.await(_[0])))
         ),
       (q) => q.shutdown
-    )
+    ),
+    ta.traceAfter(__trace)
   )
 }
 
@@ -468,10 +478,13 @@ export function forEachParN_<R, E, A, B>(
  * Unlike `forEachPar`, this method will use at most up to `n` fibers.
  *
  * @dataFirst forEachParN_
- * @trace 1
  */
-export function forEachParN<R, E, A, B>(n: number, f: (a: A) => Effect<R, E, B>) {
-  return (as: Iterable<A>) => forEachParN_(as, n, f)
+export function forEachParN<R, E, A, B>(
+  n: number,
+  f: (a: A) => Effect<R, E, B>,
+  __trace?: string
+) {
+  return (as: Iterable<A>) => forEachParN_(as, n, f, __trace)
 }
 
 /**
@@ -479,23 +492,22 @@ export function forEachParN<R, E, A, B>(n: number, f: (a: A) => Effect<R, E, B>)
  * and returns the results in a new `readonly B[]`.
  *
  * For a sequential version of this method, see `forEach`.
- *
- * @trace 2
  */
 export function forEachExec_<R, E, A, B>(
   as: Iterable<A>,
   es: ExecutionStrategy,
-  f: (a: A) => Effect<R, E, B>
+  f: (a: A) => Effect<R, E, B>,
+  __trace?: string
 ): Effect<R, E, readonly B[]> {
   switch (es._tag) {
     case "Sequential": {
-      return forEach_(as, f) as any
+      return forEach_(as, f, __trace) as any
     }
     case "Parallel": {
-      return forEachPar_(as, f) as any
+      return forEachPar_(as, f, __trace) as any
     }
     case "ParallelN": {
-      return forEachParN_(as, es.n, f) as any
+      return forEachParN_(as, es.n, f, __trace) as any
     }
   }
 }
@@ -507,29 +519,32 @@ export function forEachExec_<R, E, A, B>(
  * For a sequential version of this method, see `forEach`.
  *
  * @dataFirst forEachExec_
- * @trace 1
  */
 export function forEachExec<R, E, A, B>(
   es: ExecutionStrategy,
-  f: (a: A) => Effect<R, E, B>
+  f: (a: A) => Effect<R, E, B>,
+  __trace?: string
 ): (as: Iterable<A>) => Effect<R, E, readonly B[]> {
-  return (as) => forEachExec_(as, es, f)
+  return (as) => forEachExec_(as, es, f, __trace)
 }
 
 /**
  * Evaluate each effect in the structure from left to right, and collect the
  * results. For a parallel version, see `collectAllPar`.
  */
-export function collectAll<R, E, A>(as: Iterable<Effect<R, E, A>>) {
-  return forEach_(as, identity)
+export function collectAll<R, E, A>(as: Iterable<Effect<R, E, A>>, __trace?: string) {
+  return forEach_(as, identity, __trace)
 }
 
 /**
  * Evaluate each effect in the structure in parallel, and collect the
  * results. For a sequential version, see `collectAll`.
  */
-export function collectAllPar<R, E, A>(as: Iterable<Effect<R, E, A>>) {
-  return forEachPar_(as, identity)
+export function collectAllPar<R, E, A>(
+  as: Iterable<Effect<R, E, A>>,
+  __trace?: string
+) {
+  return forEachPar_(as, identity, __trace)
 }
 
 /**
@@ -540,8 +555,9 @@ export function collectAllPar<R, E, A>(as: Iterable<Effect<R, E, A>>) {
  *
  * @dataFirst collectAllParN_
  */
-export function collectAllParN(n: number) {
-  return <R, E, A>(as: Iterable<Effect<R, E, A>>) => forEachParN_(as, n, identity)
+export function collectAllParN(n: number, __trace?: string) {
+  return <R, E, A>(as: Iterable<Effect<R, E, A>>) =>
+    forEachParN_(as, n, identity, __trace)
 }
 
 /**
@@ -550,24 +566,47 @@ export function collectAllParN(n: number) {
  *
  * Unlike `collectAllPar`, this method will use at most `n` fibers.
  */
-export function collectAllParN_<R, E, A>(as: Iterable<Effect<R, E, A>>, n: number) {
-  return forEachParN_(as, n, identity)
+export function collectAllParN_<R, E, A>(
+  as: Iterable<Effect<R, E, A>>,
+  n: number,
+  __trace?: string
+) {
+  return forEachParN_(as, n, identity, __trace)
 }
 
 /**
  * Evaluate each effect in the structure from left to right, and discard the
  * results. For a parallel version, see `collectAllUnitPar`.
  */
-export function collectAllUnit<R, E, A>(as: Iterable<Effect<R, E, A>>) {
-  return forEachUnit_(as, identity)
+export function collectAllUnit<R, E, A>(
+  as: Iterable<Effect<R, E, A>>,
+  __trace?: string
+) {
+  return forEachUnit_(as, identity, __trace)
 }
 
 /**
  * Evaluate each effect in the structure in parallel, and discard the
  * results. For a sequential version, see `collectAllUnit`.
  */
-export function collectAllUnitPar<R, E, A>(as: Iterable<Effect<R, E, A>>) {
-  return forEachUnitPar_(as, identity)
+export function collectAllUnitPar<R, E, A>(
+  as: Iterable<Effect<R, E, A>>,
+  __trace?: string
+) {
+  return forEachUnitPar_(as, identity, __trace)
+}
+
+/**
+ * Evaluate each effect in the structure in parallel, and discard the
+ * results. For a sequential version, see `collectAllUnit`.
+ *
+ * Unlike `collectAllUnitPar`, this method will use at most `n` fibers.
+ *
+ * @dataFirst collectAllUnitParN_
+ */
+export function collectAllUnitParN(n: number, __trace?: string) {
+  return <R, E, A>(as: Iterable<Effect<R, E, A>>) =>
+    forEachUnitParN_(as, n, identity, __trace)
 }
 
 /**
@@ -576,34 +615,24 @@ export function collectAllUnitPar<R, E, A>(as: Iterable<Effect<R, E, A>>) {
  *
  * Unlike `collectAllUnitPar`, this method will use at most `n` fibers.
  */
-export function collectAllUnitParN(n: number) {
-  return <R, E, A>(as: Iterable<Effect<R, E, A>>) => forEachUnitParN_(as, n, identity)
-}
-
-/**
- * Evaluate each effect in the structure in parallel, and discard the
- * results. For a sequential version, see `collectAllUnit`.
- *
- * Unlike `collectAllUnitPar`, this method will use at most `n` fibers.
- */
-export function collectAllUnitParN_<R, E, A>(as: Iterable<Effect<R, E, A>>, n: number) {
-  return forEachUnitParN_(as, n, identity)
+export function collectAllUnitParN_<R, E, A>(
+  as: Iterable<Effect<R, E, A>>,
+  n: number,
+  __trace?: string
+) {
+  return forEachUnitParN_(as, n, identity, __trace)
 }
 
 /**
  * Evaluate each effect in the structure with `collectAll`, and collect
  * the results with given partial function.
- *
- * @trace 1
  */
 export function collectAllWith_<R, E, A, B>(
   as: Iterable<Effect<R, E, A>>,
-  pf: (a: A) => O.Option<B>
+  pf: (a: A) => O.Option<B>,
+  __trace?: string
 ): Effect<R, E, readonly B[]> {
-  return map.map_(
-    collectAll(as),
-    traceAs(pf, (x) => pipe(x, A.map(pf), A.compact))
-  )
+  return map.map_(collectAll(as, __trace), (x) => pipe(x, A.map(pf), A.compact))
 }
 
 /**
@@ -611,26 +640,21 @@ export function collectAllWith_<R, E, A, B>(
  * the results with given partial function.
  *
  * @dataFirst collectAllWith_
- * @trace 0
  */
-export function collectAllWith<A, B>(pf: (a: A) => O.Option<B>) {
-  return <R, E>(as: Iterable<Effect<R, E, A>>) => collectAllWith_(as, pf)
+export function collectAllWith<A, B>(pf: (a: A) => O.Option<B>, __trace?: string) {
+  return <R, E>(as: Iterable<Effect<R, E, A>>) => collectAllWith_(as, pf, __trace)
 }
 
 /**
  * Evaluate each effect in the structure with `collectAll`, and collect
  * the results with given partial function.
- *
- * @trace 1
  */
 export function collectAllWithPar_<R, E, A, B>(
   as: Iterable<Effect<R, E, A>>,
-  pf: (a: A) => O.Option<B>
+  pf: (a: A) => O.Option<B>,
+  __trace?: string
 ): Effect<R, E, readonly B[]> {
-  return map.map_(
-    collectAllPar(as),
-    traceAs(pf, (x) => pipe(x, A.map(pf), A.compact))
-  )
+  return map.map_(collectAllPar(as, __trace), (x) => pipe(x, A.map(pf), A.compact))
 }
 
 /**
@@ -638,10 +662,9 @@ export function collectAllWithPar_<R, E, A, B>(
  * the results with given partial function.
  *
  * @dataFirst collectAllWithPar_
- * @trace 0
  */
-export function collectAllWithPar<A, B>(pf: (a: A) => O.Option<B>) {
-  return <R, E>(as: Iterable<Effect<R, E, A>>) => collectAllWithPar_(as, pf)
+export function collectAllWithPar<A, B>(pf: (a: A) => O.Option<B>, __trace?: string) {
+  return <R, E>(as: Iterable<Effect<R, E, A>>) => collectAllWithPar_(as, pf, __trace)
 }
 
 /**
@@ -649,18 +672,14 @@ export function collectAllWithPar<A, B>(pf: (a: A) => O.Option<B>) {
  * the results with given partial function.
  *
  * Unlike `collectAllWithPar`, this method will use at most up to `n` fibers.
- *
- * @trace 2
  */
 export function collectAllWithParN_<R, E, A, B>(
   as: Iterable<Effect<R, E, A>>,
   n: number,
-  pf: (a: A) => O.Option<B>
+  pf: (a: A) => O.Option<B>,
+  __trace?: string
 ): Effect<R, E, readonly B[]> {
-  return map.map_(
-    collectAllParN_(as, n),
-    traceAs(pf, (x) => pipe(x, A.map(pf), A.compact))
-  )
+  return map.map_(collectAllParN_(as, n, __trace), (x) => pipe(x, A.map(pf), A.compact))
 }
 
 /**
@@ -670,30 +689,40 @@ export function collectAllWithParN_<R, E, A, B>(
  * Unlike `collectAllWithPar`, this method will use at most up to `n` fibers.
  *
  * @dataFirst collectAllWithParN_
- * @trace 1
  */
 export function collectAllWithParN<A, B>(
   n: number,
-  pf: (a: A) => O.Option<B>
+  pf: (a: A) => O.Option<B>,
+  __trace?: string
 ): <R, E>(as: Iterable<Effect<R, E, A>>) => Effect<R, E, readonly B[]> {
-  return (as) => collectAllWithParN_(as, n, pf)
+  return (as) => collectAllWithParN_(as, n, pf, __trace)
 }
 
 /**
  * Evaluate and run each effect in the structure and collect discarding failed ones.
  */
-export function collectAllSuccesses<R, E, A>(as: Iterable<Effect<R, E, A>>) {
-  return collectAllWith_(I.map_(as, core.result), (e) =>
-    e._tag === "Success" ? O.some(e.value) : O.none
+export function collectAllSuccesses<R, E, A>(
+  as: Iterable<Effect<R, E, A>>,
+  __trace?: string
+) {
+  return collectAllWith_(
+    I.map_(as, (x) => core.result(x)),
+    (e) => (e._tag === "Success" ? O.some(e.value) : O.none),
+    __trace
   )
 }
 
 /**
  * Evaluate and run each effect in the structure in parallel, and collect discarding failed ones.
  */
-export function collectAllSuccessesPar<R, E, A>(as: Iterable<Effect<R, E, A>>) {
-  return collectAllWithPar_(I.map_(as, core.result), (e) =>
-    e._tag === "Success" ? O.some(e.value) : O.none
+export function collectAllSuccessesPar<R, E, A>(
+  as: Iterable<Effect<R, E, A>>,
+  __trace?: string
+) {
+  return collectAllWithPar_(
+    I.map_(as, (x) => core.result(x)),
+    (e) => (e._tag === "Success" ? O.some(e.value) : O.none),
+    __trace
   )
 }
 
@@ -704,10 +733,14 @@ export function collectAllSuccessesPar<R, E, A>(as: Iterable<Effect<R, E, A>>) {
  */
 export function collectAllSuccessesParN_<R, E, A>(
   as: Iterable<Effect<R, E, A>>,
-  n: number
+  n: number,
+  __trace?: string
 ) {
-  return collectAllWithParN_(I.map_(as, core.result), n, (e) =>
-    e._tag === "Success" ? O.some(e.value) : O.none
+  return collectAllWithParN_(
+    I.map_(as, (x) => core.result(x)),
+    n,
+    (e) => (e._tag === "Success" ? O.some(e.value) : O.none),
+    __trace
   )
 }
 
@@ -718,8 +751,9 @@ export function collectAllSuccessesParN_<R, E, A>(
  *
  * @dataFirst collectAllSuccessesParN_
  */
-export function collectAllSuccessesParN(n: number) {
-  return <R, E, A>(as: Iterable<Effect<R, E, A>>) => collectAllSuccessesParN_(as, n)
+export function collectAllSuccessesParN(n: number, __trace?: string) {
+  return <R, E, A>(as: Iterable<Effect<R, E, A>>) =>
+    collectAllSuccessesParN_(as, n, __trace)
 }
 
 /**
@@ -727,17 +761,22 @@ export function collectAllSuccessesParN(n: number) {
  * Attempting to join a fiber that has erred will result in
  * a catchable error, _if_ that error does not result from interruption.
  */
-export function fiberJoinAll<E, A>(as: Iterable<Fiber.Fiber<E, A>>) {
-  return tap.tap_(core.chain_(fiberWaitAll(as), done), () =>
-    forEach_(as, (f) => f.inheritRefs)
+export function fiberJoinAll<E, A>(as: Iterable<Fiber.Fiber<E, A>>, __trace?: string) {
+  return tap.tap_(
+    core.chain_(fiberWaitAll(as), done),
+    () => forEach_(as, (f) => f.inheritRefs),
+    __trace
   )
 }
 
 /**
  * Awaits on all fibers to be completed, successfully or not.
  */
-export function fiberWaitAll<E, A>(as: Iterable<Fiber.Fiber<E, A>>) {
-  return core.result(forEachPar_(as, (f) => core.chain_(f.await, done)))
+export function fiberWaitAll<E, A>(as: Iterable<Fiber.Fiber<E, A>>, __trace?: string) {
+  return core.result(
+    forEachPar_(as, (f) => core.chain_(f.await, done)),
+    __trace
+  )
 }
 
 /**
@@ -808,58 +847,61 @@ export function releaseMapReleaseAll(
  * and run the original finalizer.
  */
 export function managedFork<R, E, A>(
-  self: Managed<R, E, A>
+  self: Managed<R, E, A>,
+  __trace?: string
 ): Managed<R, never, FiberContext<E, A>> {
   return new Managed(
-    interruption.uninterruptibleMask(({ restore }) =>
-      pipe(
-        Do.do,
-        Do.bind("tp", () => environment<readonly [R, ReleaseMap]>()),
-        Do.let("r", ({ tp }) => tp[0]),
-        Do.let("outerReleaseMap", ({ tp }) => tp[1]),
-        Do.bind("innerReleaseMap", () => makeReleaseMap),
-        Do.bind("fiber", ({ innerReleaseMap, r }) =>
-          restore(
-            pipe(
-              self.effect,
-              map.map(([_, a]) => a),
-              coreScope.forkDaemon,
-              core.provideAll([r, innerReleaseMap] as const)
+    interruption.uninterruptibleMask(
+      ({ restore }) =>
+        pipe(
+          Do.do,
+          Do.bind("tp", () => environment<readonly [R, ReleaseMap]>()),
+          Do.let("r", ({ tp }) => tp[0]),
+          Do.let("outerReleaseMap", ({ tp }) => tp[1]),
+          Do.bind("innerReleaseMap", () => makeReleaseMap),
+          Do.bind("fiber", ({ innerReleaseMap, r }) =>
+            restore(
+              pipe(
+                self.effect,
+                map.map(([_, a]) => a),
+                coreScope.forkDaemon,
+                core.provideAll([r, innerReleaseMap] as const)
+              )
             )
-          )
+          ),
+          Do.bind("releaseMapEntry", ({ fiber, innerReleaseMap, outerReleaseMap }) =>
+            add((e) =>
+              pipe(
+                fiber,
+                fiberInterrupt,
+                core.chain(() => releaseMapReleaseAll(e, sequential)(innerReleaseMap))
+              )
+            )(outerReleaseMap)
+          ),
+          map.map(({ fiber, releaseMapEntry }) => [releaseMapEntry, fiber])
         ),
-        Do.bind("releaseMapEntry", ({ fiber, innerReleaseMap, outerReleaseMap }) =>
-          add((e) =>
-            pipe(
-              fiber,
-              fiberInterrupt,
-              core.chain(() => releaseMapReleaseAll(e, sequential)(innerReleaseMap))
-            )
-          )(outerReleaseMap)
-        ),
-        map.map(({ fiber, releaseMapEntry }) => [releaseMapEntry, fiber])
-      )
+      __trace
     )
   )
 }
 
 /**
  * Run an effect while acquiring the resource before and releasing it after
- *
- * @trace 1
  */
 export function managedUse_<R, E, A, R2, E2, B>(
   self: Managed<R, E, A>,
-  f: (a: A) => Effect<R2, E2, B>
+  f: (a: A) => Effect<R2, E2, B>,
+  __trace?: string
 ): Effect<R & R2, E | E2, B> {
   return bracketExit_(
     makeReleaseMap,
     (rm) =>
       core.chain_(
         provideSome_(self.effect, (r: R) => tuple(r, rm)),
-        traceAs(f, (a) => f(a[1]))
+        (a) => f(a[1])
       ),
-    (rm, ex) => releaseMapReleaseAll(ex, sequential)(rm)
+    (rm, ex) => releaseMapReleaseAll(ex, sequential)(rm),
+    __trace
   )
 }
 
@@ -957,10 +999,14 @@ export class BackPressureStrategy<A> implements Q.Strategy<A> {
 /**
  * Creates a bounded queue
  */
-export function makeBoundedQueue<A>(capacity: number): UIO<Q.Queue<A>> {
+export function makeBoundedQueue<A>(
+  capacity: number,
+  __trace?: string
+): UIO<Q.Queue<A>> {
   return core.chain_(
     core.effectTotal(() => new Bounded<A>(capacity)),
-    (x) => createQueue_(x, new BackPressureStrategy())
+    (x) => createQueue_(x, new BackPressureStrategy()),
+    __trace
   )
 }
 
@@ -1116,9 +1162,16 @@ export function unsafeCreateQueue<A>(
 /**
  * Creates a queue
  */
-export function createQueue_<A>(queue: MutableQueue<A>, strategy: Q.Strategy<A>) {
-  return map.map_(promise.make<never, void>(), (p) =>
-    unsafeCreateQueue(queue, new Unbounded(), p, new AtomicBoolean(false), strategy)
+export function createQueue_<A>(
+  queue: MutableQueue<A>,
+  strategy: Q.Strategy<A>,
+  __trace?: string
+) {
+  return map.map_(
+    promise.make<never, void>(),
+    (p) =>
+      unsafeCreateQueue(queue, new Unbounded(), p, new AtomicBoolean(false), strategy),
+    __trace
   )
 }
 
@@ -1127,6 +1180,6 @@ export function createQueue_<A>(queue: MutableQueue<A>, strategy: Q.Strategy<A>)
  *
  * @dataFirst createQueue_
  */
-export function createQueue<A>(strategy: Q.Strategy<A>) {
-  return (queue: MutableQueue<A>) => createQueue_(queue, strategy)
+export function createQueue<A>(strategy: Q.Strategy<A>, __trace?: string) {
+  return (queue: MutableQueue<A>) => createQueue_(queue, strategy, __trace)
 }
