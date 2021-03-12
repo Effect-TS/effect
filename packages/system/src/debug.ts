@@ -10,7 +10,15 @@ pipe(
   T.map((n) => n + 1),
   T.chain((n) => T.effectTotal(() => n + 2)),
   T.andThen(T.fail("ok")),
-  T.catchAll((x) => T.succeed(x)),
+  T.catchAll((x) =>
+    pipe(
+      T.do,
+      T.bind("a", () => T.succeed(x)),
+      T.bind("b", () => T.succeed(x)),
+      T.let("c", ({ a, b }) => a + b),
+      T.map(({ c }) => c)
+    )
+  ),
   T.andThen(T.trace),
   T.chain((t) =>
     T.effectTotal(() => {
