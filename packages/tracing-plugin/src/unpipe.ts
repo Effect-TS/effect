@@ -1,12 +1,6 @@
 import ts from "typescript"
 
-export default function unpipe(
-  _program: ts.Program,
-  _opts?: {
-    pipe?: boolean
-  }
-) {
-  const pipeOn = !(_opts?.pipe === false)
+export default function unpipe(_program: ts.Program) {
   const checker = _program.getTypeChecker()
 
   return {
@@ -22,8 +16,6 @@ export default function unpipe(
             node.expression.argumentExpression.text === "|>" &&
             node.arguments.length === 1
           ) {
-            //const symbol = checker.getTypeAtLocation(node.expression).getSymbol()
-
             const overloadDeclarations = checker
               .getResolvedSignature(node)
               ?.getDeclaration()
@@ -96,7 +88,7 @@ export default function unpipe(
               ...(optimizeTagsOverload || [])
             ])
 
-            if (pipeOn && optimizeTags.has("pipe")) {
+            if (optimizeTags.has("pipe")) {
               if (node.arguments.findIndex((xx) => ts.isSpreadElement(xx)) === -1) {
                 return optimisePipe(
                   ts.visitEachChild(node, visitor, ctx).arguments,
@@ -109,7 +101,7 @@ export default function unpipe(
           return ts.visitEachChild(node, visitor, ctx)
         }
 
-        return pipeOn ? ts.visitEachChild(sourceFile, visitor, ctx) : sourceFile
+        return ts.visitEachChild(sourceFile, visitor, ctx)
       }
     }
   }

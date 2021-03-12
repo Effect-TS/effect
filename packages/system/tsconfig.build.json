@@ -11,8 +11,9 @@
     "plugins": [
       {
         "transform": "../tracing-plugin/src/index.ts",
-        "tracing": false,
-        "untrace": true
+        "moduleMap": {
+          "^src/(.*)": "(@effect-ts/system): _src/$1"
+        }
       }
     ]
   },
