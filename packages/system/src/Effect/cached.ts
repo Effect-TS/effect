@@ -13,7 +13,7 @@ import { map } from "./map"
  *
  * @dataFirst cached_
  */
-export function cached(ttl: number) {
+export function cached(ttl: number, __trace?: string) {
   return <R, E, A>(fa: Effect<R, E, A>) => cached_(fa, ttl)
 }
 
@@ -23,10 +23,11 @@ export function cached(ttl: number) {
  */
 export function cached_<R, E, A>(
   fa: Effect<R, E, A>,
-  ttl: number
+  ttl: number,
+  __trace?: string
 ): RIO<R & Has<Clock>, IO<E, A>> {
   return pipe(
-    cachedInvalidate_(fa, ttl),
+    cachedInvalidate_(fa, ttl, __trace),
     map(([cachedEffect, _]) => cachedEffect)
   )
 }
