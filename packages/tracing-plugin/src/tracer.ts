@@ -97,11 +97,11 @@ export default function tracer(
 
         function visitor(node: ts.Node): ts.VisitResult<ts.Node> {
           if (ts.isCallExpression(node)) {
-            let isTracing: boolean
+            let isTracing = false
 
             try {
               const nodeStart = sourceFile.getLineAndCharacterOfPosition(
-                node.expression.getStart()
+                node.expression.getEnd()
               )
 
               isTracing =
@@ -112,6 +112,7 @@ export default function tracer(
 
             if (isTracing) {
               const trace = getTrace(node.expression, "end")
+
               const signature = checker.getResolvedSignature(node)
               const declaration =
                 signature?.getDeclaration() ?? getDeclaration(checker, node)
@@ -135,19 +136,17 @@ export default function tracer(
 
               const traceCall = tags["trace"] && tags["trace"].includes("call")
 
-              const argx = node.arguments.map((i) => ts.visitNode(i, visitor))
-
-              const expr = ts.visitNode(node.expression, visitor)
+              const child = ts.visitEachChild(node, visitor, ctx)
 
               if (traceCall || traceLast) {
                 const expression = traceCall
                   ? factory.createCallExpression(tracedIdentifier, undefined, [
-                      expr,
+                      child.expression,
                       trace
                     ])
-                  : expr
+                  : child.expression
 
-                const args = traceLast ? [...argx, trace] : argx
+                const args = traceLast ? [...child.arguments, trace] : child.arguments
 
                 return factory.updateCallExpression(
                   node,
@@ -156,12 +155,7 @@ export default function tracer(
                   args
                 )
               } else {
-                return factory.updateCallExpression(
-                  node,
-                  expr,
-                  node.typeArguments,
-                  argx
-                )
+                return child
               }
             }
           }
@@ -197,10 +191,9 @@ export default function tracer(
         )
 
         if (tracingOn) {
-          const visited = ts.visitEachChild(
+          const visited = ts.visitNode(
             prepare(_program).before(ctx)(sourceFile),
-            visitor,
-            ctx
+            visitor
           )
 
           return factory.updateSourceFile(visited, [

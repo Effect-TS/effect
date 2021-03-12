@@ -1,3 +1,5 @@
+// tracing: off
+
 import { effectTotal } from "../Effect/core"
 import type { UIO } from "../Effect/effect"
 import type * as O from "../Option"

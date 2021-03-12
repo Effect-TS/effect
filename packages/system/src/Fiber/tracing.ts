@@ -114,7 +114,7 @@ export function prettyTraceSafe(trace: Trace): S.UIO<string> {
       parent._tag === "None"
         ? [`Fiber: ${prettyFiberId(trace.fiberId)} was spawned by: <empty trace>`]
         : [
-            `Fiber: ${prettyFiberId(trace.fiberId)} was spawned by:\n`,
+            `Fiber: ${prettyFiberId(trace.fiberId)} was spawned by:`,
             yield* $(prettyTraceSafe(parent.value))
           ]
 
