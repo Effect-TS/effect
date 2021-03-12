@@ -49,8 +49,6 @@ function _catch<N extends keyof E, K extends E[N] & string, E, R1, E1, A1>(
 
 /**
  * Recovers from specified error.
- *
- * @trace 3
  */
 export function catch_<N extends keyof E, K extends E[N] & string, E, R, A, R1, E1, A1>(
   self: Effect<R, E, A>,
@@ -91,8 +89,6 @@ export function catchTag<
 
 /**
  * Recovers from specified error.
- *
- * @trace 2
  */
 export function catchTag_<
   K extends E["_tag"] & string,

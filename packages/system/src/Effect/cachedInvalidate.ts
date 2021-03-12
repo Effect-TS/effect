@@ -25,7 +25,7 @@ import * as to from "./to"
  *
  * @dataFirst cachedInvalidate_
  */
-export function cachedInvalidate(ttl: number) {
+export function cachedInvalidate(ttl: number, __trace?: string) {
   return <R, E, A>(fa: Effect<R, E, A>) => cachedInvalidate_(fa, ttl)
 }
 
@@ -37,7 +37,8 @@ export function cachedInvalidate(ttl: number) {
  */
 export function cachedInvalidate_<R, E, A>(
   fa: Effect<R, E, A>,
-  ttl: number
+  ttl: number,
+  __trace?: string
 ): RIO<R & Has<Clock>, readonly [IO<E, A>, UIO<void>]> {
   return pipe(
     Do.do,
@@ -45,11 +46,13 @@ export function cachedInvalidate_<R, E, A>(
     Do.bind("cache", () =>
       Ref.makeRefM<O.Option<readonly [number, P.Promise<E, A>]>>(O.none)
     ),
-    map.map(({ cache, r }) =>
-      tuple<[IO<E, A>, UIO<void>]>(
-        core.provideAll(r)(get(fa, ttl, cache)),
-        invalidate(cache)
-      )
+    map.map(
+      ({ cache, r }) =>
+        tuple<[IO<E, A>, UIO<void>]>(
+          core.provideAll(r)(get(fa, ttl, cache)),
+          invalidate(cache)
+        ),
+      __trace
     )
   )
 }
