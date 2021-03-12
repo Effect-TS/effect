@@ -98,13 +98,12 @@ export function descriptorWith<R, E, A>(
 /**
  * Checks the interrupt status, and produces the effect returned by the
  * specified callback.
- *
- * @trace 0
  */
 export function checkInterruptible<R, E, A>(
-  f: (_: Fiber.InterruptStatus) => Effect<R, E, A>
+  f: (_: Fiber.InterruptStatus) => Effect<R, E, A>,
+  __trace?: string
 ): Effect<R, E, A> {
-  return new ICheckInterrupt(f)
+  return new ICheckInterrupt(f, __trace)
 }
 
 /**
@@ -377,12 +376,14 @@ export function provideAll_<R, E, A>(
  * producing an `Exit` for the completion value of the fiber.
  */
 export function result<R, E, A>(
-  value: Effect<R, E, A>
+  value: Effect<R, E, A>,
+  __trace?: string
 ): Effect<R, never, Exit.Exit<E, A>> {
   return new IFold(
     value,
     (cause) => succeed(Exit.halt(cause)),
-    (succ) => succeed(Exit.succeed(succ))
+    (succ) => succeed(Exit.succeed(succ)),
+    __trace
   )
 }
 
@@ -405,11 +406,12 @@ export function supervised(supervisor: Supervisor<any>) {
 /**
  * Returns a lazily constructed effect, whose construction may itself require effects.
  * When no environment is required (i.e., when R == unknown) it is conceptually equivalent to `flatten(effectTotal(io))`.
- *
- * @trace 0
  */
-export function suspend<R, E, A>(factory: () => Effect<R, E, A>): Effect<R, E, A> {
-  return new ISuspend(factory)
+export function suspend<R, E, A>(
+  factory: () => Effect<R, E, A>,
+  __trace?: string
+): Effect<R, E, A> {
+  return new ISuspend(factory, __trace)
 }
 
 /**

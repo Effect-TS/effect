@@ -1,12 +1,6 @@
 import ts from "typescript"
 
-export default function dataFirst(
-  _program: ts.Program,
-  _opts?: {
-    dataFirst?: boolean
-  }
-) {
-  const dataFirstOn = !(_opts?.dataFirst === false)
+export default function dataFirst(_program: ts.Program) {
   const checker = _program.getTypeChecker()
 
   return {
@@ -61,7 +55,7 @@ export default function dataFirst(
           return ts.visitEachChild(node, visitor, ctx)
         }
 
-        return dataFirstOn ? ts.visitEachChild(sourceFile, visitor, ctx) : sourceFile
+        return ts.visitEachChild(sourceFile, visitor, ctx)
       }
     }
   }

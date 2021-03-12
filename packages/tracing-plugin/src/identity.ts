@@ -1,12 +1,6 @@
 import ts from "typescript"
 
-export default function identity(
-  _program: ts.Program,
-  _opts?: {
-    identity?: boolean
-  }
-) {
-  const identityOn = !(_opts?.identity === false)
+export default function identity(_program: ts.Program) {
   const checker = _program.getTypeChecker()
   return {
     before(ctx: ts.TransformationContext) {
@@ -58,7 +52,6 @@ export default function identity(
             ])
 
             if (
-              identityOn &&
               optimizeTags.has("identity") &&
               node.arguments.length === 1 &&
               !ts.isSpreadElement(node.arguments[0]!)
@@ -70,7 +63,7 @@ export default function identity(
           return ts.visitEachChild(node, visitor, ctx)
         }
 
-        return identityOn ? ts.visitEachChild(sourceFile, visitor, ctx) : sourceFile
+        return ts.visitEachChild(sourceFile, visitor, ctx)
       }
     }
   }
