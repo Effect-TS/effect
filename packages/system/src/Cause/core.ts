@@ -587,6 +587,10 @@ export function isEmpty<E>(cause: Cause<E>) {
         current = current.left
         break
       }
+      case "Traced": {
+        current = current.cause
+        break
+      }
       default: {
         current = undefined
       }
