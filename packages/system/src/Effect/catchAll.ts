@@ -1,7 +1,5 @@
 // tracing: off
 
-import { traceAs } from "@effect-ts/tracing-utils"
-
 import { succeed } from "./core"
 import type { Effect } from "./effect"
 import { fail } from "./fail"
@@ -9,36 +7,34 @@ import { foldM_ } from "./foldM"
 
 /**
  * Recovers from all errors.
- *
- * @trace 1
  */
 export function catchAll_<R2, E2, A2, R, E, A>(
   effect: Effect<R2, E2, A2>,
-  f: (e: E2) => Effect<R, E, A>
+  f: (e: E2) => Effect<R, E, A>,
+  __trace?: string
 ) {
-  return foldM_(effect, f, succeed)
+  return foldM_(effect, f, succeed, __trace)
 }
 
 /**
  * Recovers from all errors.
  *
  * @dataFirst catchAll_
- * @trace 0
  */
-export function catchAll<R, E, E2, A>(f: (e: E2) => Effect<R, E, A>) {
-  return <R2, A2>(effect: Effect<R2, E2, A2>) => catchAll_(effect, f)
+export function catchAll<R, E, E2, A>(f: (e: E2) => Effect<R, E, A>, __trace?: string) {
+  return <R2, A2>(effect: Effect<R2, E2, A2>) => catchAll_(effect, f, __trace)
 }
 
 /**
  * Recovers from specified error.
  *
  * @dataFirst catch_
- * @trace 2
  */
 function _catch<N extends keyof E, K extends E[N] & string, E, R1, E1, A1>(
   tag: N,
   k: K,
-  f: (e: Extract<E, { [n in N]: K }>) => Effect<R1, E1, A1>
+  f: (e: Extract<E, { [n in N]: K }>) => Effect<R1, E1, A1>,
+  __trace?: string
 ) {
   return <R, A>(
     self: Effect<R, E, A>
@@ -60,16 +56,18 @@ export function catch_<N extends keyof E, K extends E[N] & string, E, R, A, R1, 
   self: Effect<R, E, A>,
   tag: N,
   k: K,
-  f: (e: Extract<E, { [n in N]: K }>) => Effect<R1, E1, A1>
+  f: (e: Extract<E, { [n in N]: K }>) => Effect<R1, E1, A1>,
+  __trace?: string
 ): Effect<R & R1, Exclude<E, { [n in N]: K }> | E1, A | A1> {
   return catchAll_(
     self,
-    traceAs(f, (e) => {
+    (e) => {
       if (tag in e && e[tag] === k) {
         return f(e as any)
       }
       return fail(e as any)
-    })
+    },
+    __trace
   )
 }
 
@@ -77,7 +75,6 @@ export function catch_<N extends keyof E, K extends E[N] & string, E, R, A, R1, 
  * Recovers from specified error.
  *
  * @dataFirst catchTag_
- * @trace 1
  */
 export function catchTag<
   K extends E["_tag"] & string,
@@ -85,10 +82,11 @@ export function catchTag<
   R1,
   E1,
   A1
->(k: K, f: (e: Extract<E, { _tag: K }>) => Effect<R1, E1, A1>) {
+>(k: K, f: (e: Extract<E, { _tag: K }>) => Effect<R1, E1, A1>, __trace?: string) {
   return <R, A>(
     self: Effect<R, E, A>
-  ): Effect<R & R1, Exclude<E, { _tag: K }> | E1, A | A1> => catchTag_(self, k, f)
+  ): Effect<R & R1, Exclude<E, { _tag: K }> | E1, A | A1> =>
+    catchTag_(self, k, f, __trace)
 }
 
 /**
@@ -107,16 +105,18 @@ export function catchTag_<
 >(
   self: Effect<R, E, A>,
   k: K,
-  f: (e: Extract<E, { _tag: K }>) => Effect<R1, E1, A1>
+  f: (e: Extract<E, { _tag: K }>) => Effect<R1, E1, A1>,
+  __trace?: string
 ): Effect<R & R1, Exclude<E, { _tag: K }> | E1, A | A1> {
   return catchAll_(
     self,
-    traceAs(f, (e) => {
+    (e) => {
       if ("_tag" in e && e["_tag"] === k) {
         return f(e as any)
       }
       return fail(e as any)
-    })
+    },
+    __trace
   )
 }
 

@@ -6,8 +6,8 @@ import { map_ } from "./map"
 /**
  * Maps the success value of this effect to the specified constant value.
  */
-export function as_<R, E, A, B>(self: Effect<R, E, A>, b: B) {
-  return map_(self, () => b)
+export function as_<R, E, A, B>(self: Effect<R, E, A>, b: B, __trace?: string) {
+  return map_(self, () => b, __trace)
 }
 
 /**
@@ -15,6 +15,6 @@ export function as_<R, E, A, B>(self: Effect<R, E, A>, b: B) {
  *
  * @dataFirst as_
  */
-export function as<B>(b: B) {
-  return <R, E, A>(self: Effect<R, E, A>) => as_(self, b)
+export function as<B>(b: B, __trace?: string) {
+  return <R, E, A>(self: Effect<R, E, A>) => as_(self, b, __trace)
 }
