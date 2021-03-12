@@ -312,8 +312,7 @@ export function forEachPar_<R, E, A, B>(
         return map.map_(
           forEachUnitPar_(
             arr.map((a, n) => [a, n] as [A, number]),
-            fn,
-            __trace
+            fn
           ),
           () => array
         )

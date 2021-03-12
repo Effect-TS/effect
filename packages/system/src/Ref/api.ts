@@ -1,3 +1,5 @@
+// tracing: off
+
 import { absolve } from "../Effect/absolve"
 import { chain, effectTotal } from "../Effect/core"
 import type { IO, UIO } from "../Effect/effect"

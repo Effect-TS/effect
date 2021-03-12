@@ -87,9 +87,54 @@ describe("Tracing", () => {
     assertsFailure(exit)
     const cause = pretty(exit.cause)
 
-    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:84:23")
+    expect(cause).toContain(
+      "a future continuation at (@effect-ts/system/test): test/tracing.test.ts:84:23"
+    )
     expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:84:77")
     expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:84:56")
     expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:84:35")
+  })
+  it("should trace tuple", async () => {
+    const exit = await T.runPromiseExit(T.tuple(T.succeed(0), T.succeed(1), T.fail(0)))
+
+    assertsFailure(exit)
+    const cause = pretty(exit.cause)
+
+    expect(cause).toContain(
+      "a future continuation at (@effect-ts/system/test): test/tracing.test.ts:98:48"
+    )
+    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:98:83")
+    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:98:72")
+    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:98:58")
+  })
+  it("should trace tuplePar", async () => {
+    const exit = await T.runPromiseExit(
+      T.tuplePar(T.succeed(0), T.succeed(1), T.fail(0))
+    )
+
+    assertsFailure(exit)
+    const cause = pretty(exit.cause)
+
+    expect(cause).toContain(
+      "a future continuation at (@effect-ts/system/test): test/tracing.test.ts:112:17"
+    )
+    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:112:52")
+  })
+  it("should trace tupleParN", async () => {
+    const exit = await T.runPromiseExit(
+      T.tupleParN(2)(
+        T.delay(10)(T.succeed(0)),
+        T.delay(10)(T.succeed(1)),
+        T.delay(10)(T.fail(0))
+      )
+    )
+
+    assertsFailure(exit)
+    const cause = pretty(exit.cause)
+
+    expect(cause).toContain(
+      "a future continuation at (@effect-ts/system/test): test/tracing.test.ts:125:21"
+    )
+    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:128:27")
   })
 })
