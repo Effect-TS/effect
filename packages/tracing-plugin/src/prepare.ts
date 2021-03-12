@@ -10,8 +10,10 @@ export default function prepare(_program: ts.Program) {
         function visitor(node: ts.Node): ts.VisitResult<ts.Node> {
           if (ts.isCallExpression(node)) {
             const args = node.arguments.map((arg) => {
-              const symbolArg = checker.getSymbolAtLocation(arg)
-              const declarations = symbolArg?.getDeclarations()
+              const symbolArg = checker.getTypeAtLocation(arg)
+              const declarations = symbolArg
+                ?.getCallSignatures()
+                .map((d) => d.getDeclaration())
               if (declarations?.length === 1) {
                 const declaration = declarations[0]!
                 if (
