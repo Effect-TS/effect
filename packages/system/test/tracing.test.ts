@@ -137,4 +137,22 @@ describe("Tracing", () => {
     )
     expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:128:27")
   })
+  it("should trace pipe operator", async () => {
+    const result = await T.runPromiseExit(
+      T.effectTotal(() => 0)
+        ["|>"](T.andThen(T.effectTotal(() => 1)))
+        ["|>"](T.andThen(T.effectTotal(() => 2)))
+        ["|>"](T.andThen(T.fail("error")))
+    )
+
+    assertsFailure(result)
+    const cause = pretty(result.cause)
+    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:145:32")
+    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:145:25")
+    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:144:39")
+    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:144:25")
+    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:143:39")
+    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:143:25")
+    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:142:20")
+  })
 })
