@@ -8,8 +8,8 @@ import type { Effect } from "./effect"
  *
  * @dataFirst compose_
  */
-export function compose<A, E1, B>(that: Effect<A, E1, B>) {
-  return <R, E>(self: Effect<R, E, A>) => compose_(self, that)
+export function compose<A, E1, B>(that: Effect<A, E1, B>, __trace?: string) {
+  return <R, E>(self: Effect<R, E, A>) => compose_(self, that, __trace)
 }
 
 /**
@@ -17,7 +17,8 @@ export function compose<A, E1, B>(that: Effect<A, E1, B>) {
  */
 export function compose_<A, E1, B, R, E>(
   self: Effect<R, E, A>,
-  that: Effect<A, E1, B>
+  that: Effect<A, E1, B>,
+  __trace?: string
 ) {
-  return chain_(self, (r) => provideAll_(that, r))
+  return chain_(self, (r) => provideAll_(that, r), __trace)
 }

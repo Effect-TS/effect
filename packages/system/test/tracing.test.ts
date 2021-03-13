@@ -155,4 +155,24 @@ describe("Tracing", () => {
     expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:143:25")
     expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:142:20")
   })
+  it("should trace condM", async () => {
+    const result = await T.runPromiseExit(
+      T.effectTotal(() => false)["|>"](
+        T.chain(
+          T.condM(
+            T.effectTotal(() => 0),
+            T.effectTotal(() => 1)
+          )
+        )
+      )
+    )
+
+    assertsFailure(result)
+    const cause = pretty(result.cause)
+
+    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:164:26")
+    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:162:18")
+    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:161:16")
+    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:160:20")
+  })
 })
