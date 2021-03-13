@@ -68,7 +68,7 @@ export default function tracer(
 
         function getTrace(node: ts.Node, pos: "start" | "end") {
           const nodeStart = sourceFile.getLineAndCharacterOfPosition(
-            pos === "start" ? node.getStart(sourceFile) : node.getEnd()
+            pos === "start" ? node.getStart() : node.getEnd()
           )
           return factory.createBinaryExpression(
             fileVar,
@@ -79,7 +79,7 @@ export default function tracer(
           )
         }
 
-        const sourceFullText = sourceFile.getFullText(sourceFile)
+        const sourceFullText = sourceFile.getFullText()
 
         const regions = sourceFullText
           .split("\n")
@@ -97,12 +97,18 @@ export default function tracer(
 
         function visitor(node: ts.Node): ts.VisitResult<ts.Node> {
           if (ts.isCallExpression(node)) {
-            const nodeStart = sourceFile.getLineAndCharacterOfPosition(
-              node.expression.getStart(sourceFile)
-            )
+            let isTracing = false
 
-            const isTracing =
-              tracingOn && checkRegionAt(regions, nodeStart.line, nodeStart.character)
+            try {
+              const nodeStart = sourceFile.getLineAndCharacterOfPosition(
+                node.expression.getEnd()
+              )
+
+              isTracing =
+                tracingOn && checkRegionAt(regions, nodeStart.line, nodeStart.character)
+            } catch {
+              isTracing = false
+            }
 
             if (isTracing) {
               const trace = getTrace(node.expression, "end")
@@ -114,8 +120,7 @@ export default function tracer(
               const parameters = declaration?.parameters || []
               const traceLast =
                 parameters.length > 0
-                  ? parameters[parameters.length - 1]!.name.getText(sourceFile) ===
-                    "__trace"
+                  ? parameters[parameters.length - 1]!.name.getText() === "__trace"
                   : false
 
               const entries: (readonly [string, string | undefined])[] =
