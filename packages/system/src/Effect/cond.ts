@@ -1,8 +1,6 @@
 // tracing: off
 
-import { accessCallTrace, traceCall, tracingSymbol } from "@effect-ts/tracing-utils"
-
-import { chain_, effectTotal } from "./core"
+import { chain_, effectTotal, suspend } from "./core"
 import type { Effect, RIO } from "./effect"
 import { fail } from "./fail"
 
@@ -12,60 +10,51 @@ import { fail } from "./fail"
  * and the given E as error otherwise
  *
  * @dataFirst cond_
- * @trace 0
- * @trace 1
  */
-export function cond<E, A>(onTrue: () => A, onFalse: () => E) {
-  return (b: boolean): Effect<unknown, E, A> => cond_(b, onTrue, onFalse)
+export function cond<E, A>(onTrue: () => A, onFalse: () => E, __trace?: string) {
+  return (b: boolean): Effect<unknown, E, A> => cond_(b, onTrue, onFalse, __trace)
 }
 
 /**
  * Evaluate the predicate,
  * return the given A as success if predicate returns true,
  * and the given E as error otherwise
- *
- * @trace 1
- * @trace 2
  */
 export function cond_<E, A>(
   b: boolean,
   onTrue: () => A,
-  onFalse: () => E
+  onFalse: () => E,
+  __trace?: string
 ): Effect<unknown, E, A> {
-  return b
-    ? effectTotal(onTrue)
-    : chain_(effectTotal(onFalse), (x) => traceCall(fail, onFalse[tracingSymbol])(x))
+  return condM_(b, effectTotal(onTrue), effectTotal(onFalse), __trace)
 }
 
 /**
  * Evaluate the predicate,
  * return the given A as success if predicate returns true,
  * and the given E as error otherwise
- *
- * @trace call
  */
 export function condM_<R, R2, E, A>(
   b: boolean,
   onTrue: RIO<R, A>,
-  onFalse: RIO<R2, E>
+  onFalse: RIO<R2, E>,
+  __trace?: string
 ): Effect<R & R2, E, A> {
-  const trace = accessCallTrace()
-
-  return b ? onTrue : chain_(onFalse, (x) => traceCall(fail, trace)(x))
+  return suspend(
+    (): Effect<R & R2, E, A> => (b ? onTrue : chain_(onFalse, (x) => fail(x))),
+    __trace
+  )
 }
 
 /**
  * Evaluate the predicate,
  * return the given A as success if predicate returns true,
  * and the given E as error otherwise
- *
- * @trace call
  */
 export function condM<R, R2, E, A>(
   onTrue: RIO<R, A>,
-  onFalse: RIO<R2, E>
+  onFalse: RIO<R2, E>,
+  __trace?: string
 ): (b: boolean) => Effect<R & R2, E, A> {
-  const trace = accessCallTrace()
-
-  return (b) => traceCall(condM_, trace)(b, onTrue, onFalse)
+  return (b) => condM_(b, onTrue, onFalse, __trace)
 }
