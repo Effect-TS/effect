@@ -13,11 +13,13 @@ export interface FiberID {
 /**
  * Constructs a Fiber ID
  */
-export const FiberID = (startTimeMillis: number, seqNumber: number): FiberID => ({
-  _tag: "FiberID",
-  seqNumber,
-  startTimeMillis
-})
+export function FiberID(startTimeMillis: number, seqNumber: number): FiberID {
+  return {
+    _tag: "FiberID",
+    seqNumber,
+    startTimeMillis
+  }
+}
 
 /**
  * A sentinel value to indicate a fiber without identity.
@@ -27,16 +29,18 @@ export const None = FiberID(0, 0)
 /**
  * Checks equality of Fiber IDs
  */
-export const equalsFiberID = (x: FiberID, y: FiberID) =>
-  x.seqNumber === y.seqNumber && x.startTimeMillis === y.startTimeMillis
+export function equalsFiberID(x: FiberID, y: FiberID) {
+  return x.seqNumber === y.seqNumber && x.startTimeMillis === y.startTimeMillis
+}
 
 const _fiberCounter = new AtomicNumber(0)
 
 /**
  * Constructs a new Fiber ID using current time and global increment
  */
-export const newFiberId = () =>
-  FiberID(new Date().getTime(), _fiberCounter.getAndIncrement())
+export function newFiberId() {
+  return FiberID(new Date().getTime(), _fiberCounter.getAndIncrement())
+}
 
 /**
  * Format a fiber id

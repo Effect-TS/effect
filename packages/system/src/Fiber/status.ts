@@ -64,11 +64,11 @@ export function withInterrupting(b: boolean) {
   return (s: Status) => S.run(withInterruptingSafe(b)(s))
 }
 
-export const toFinishing = (s: Status): Status => {
+export function toFinishing(s: Status): Status {
   return S.run(toFinishingSafe(s))
 }
 
-export const toFinishingSafe = (s: Status): S.UIO<Status> => {
+export function toFinishingSafe(s: Status): S.UIO<Status> {
   return S.gen(function* (_) {
     switch (s._tag) {
       case "Done": {
