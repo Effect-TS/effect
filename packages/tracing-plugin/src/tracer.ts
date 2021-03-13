@@ -1,8 +1,6 @@
 import * as path from "path"
 import ts from "typescript"
 
-import prepare from "./prepare"
-
 function checkRegionAt(
   regions: (readonly [[boolean, number][], number])[],
   line: number,
@@ -191,10 +189,7 @@ export default function tracer(
         )
 
         if (tracingOn) {
-          const visited = ts.visitNode(
-            prepare(_program).before(ctx)(sourceFile),
-            visitor
-          )
+          const visited = ts.visitNode(sourceFile, visitor)
 
           return factory.updateSourceFile(visited, [
             factory.createImportDeclaration(
