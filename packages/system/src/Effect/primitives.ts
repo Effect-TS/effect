@@ -157,7 +157,8 @@ export class IFork<R, E, A> extends Base<R, never, FiberContext<E, A>> {
   constructor(
     readonly value: Effect<R, E, A>,
     readonly scope: O.Option<Scope<Exit.Exit<any, any>>>,
-    readonly reportFailure: O.Option<FailureReporter>
+    readonly reportFailure: O.Option<FailureReporter>,
+    readonly trace?: string
   ) {
     super()
   }
@@ -290,7 +291,8 @@ export class IRaceWith<R, E, A, R1, E1, A1, R2, E2, A2, R3, E3, A3> extends Base
       exit: Exit.Exit<E1, A1>,
       fiber: Fiber.Fiber<E, A>
     ) => Effect<R3, E3, A3>,
-    readonly scope: O.Option<Scope<Exit.Exit<any, any>>>
+    readonly scope: O.Option<Scope<Exit.Exit<any, any>>>,
+    readonly trace?: string
   ) {
     super()
   }
@@ -307,7 +309,10 @@ export class ISupervise<R, E, A> extends Base<R, E, A> {
 export class IGetForkScope<R, E, A> extends Base<R, E, A> {
   readonly _tag = "GetForkScope"
 
-  constructor(readonly f: (_: Scope<Exit.Exit<any, any>>) => Effect<R, E, A>) {
+  constructor(
+    readonly f: (_: Scope<Exit.Exit<any, any>>) => Effect<R, E, A>,
+    readonly trace?: string
+  ) {
     super()
   }
 }
@@ -317,7 +322,8 @@ export class IOverrideForkScope<R, E, A> extends Base<R, E, A> {
 
   constructor(
     readonly effect: Effect<R, E, A>,
-    readonly forkScope: O.Option<Scope<Exit.Exit<any, any>>>
+    readonly forkScope: O.Option<Scope<Exit.Exit<any, any>>>,
+    readonly trace?: string
   ) {
     super()
   }

@@ -1,7 +1,5 @@
 // tracing: off
 
-import { traceAs } from "@effect-ts/tracing-utils"
-
 import type { Exit } from "../Exit/exit"
 import type * as Fiber from "../Fiber"
 import type { Runtime } from "../Fiber/core"
@@ -21,27 +19,25 @@ export const forkScope: UIO<Scope<Exit<any, any>>> = new IGetForkScope(succeed)
 export class ForkScopeRestore {
   constructor(private scope: Scope<Exit<any, any>>) {}
 
-  readonly restore = <R, E, A>(fa: Effect<R, E, A>): Effect<R, E, A> =>
-    new IOverrideForkScope(fa, O.some(this.scope))
+  readonly restore = <R, E, A>(
+    fa: Effect<R, E, A>,
+    __trace?: string
+  ): Effect<R, E, A> => new IOverrideForkScope(fa, O.some(this.scope), __trace)
 }
 
 /**
  * Captures the fork scope, before overriding it with the specified new
  * scope, passing a function that allows restoring the fork scope to
  * what it was originally.
- *
- * @trace 1
  */
 export function forkScopeMask_<R, E, A>(
   newScope: Scope<Exit<any, any>>,
-  f: (restore: ForkScopeRestore) => Effect<R, E, A>
+  f: (restore: ForkScopeRestore) => Effect<R, E, A>,
+  __trace?: string
 ) {
   return forkScopeWith(
-    traceAs(
-      f,
-      (scope) =>
-        new IOverrideForkScope(f(new ForkScopeRestore(scope)), O.some(newScope))
-    )
+    (scope) => new IOverrideForkScope(f(new ForkScopeRestore(scope)), O.some(newScope)),
+    __trace
   )
 }
 
@@ -51,29 +47,58 @@ export function forkScopeMask_<R, E, A>(
  * what it was originally.
  *
  * @dataFirst forkScopeMask_
- * @trace 0
  */
 export function forkScopeMask<R, E, A>(
-  f: (restore: ForkScopeRestore) => Effect<R, E, A>
+  f: (restore: ForkScopeRestore) => Effect<R, E, A>,
+  __trace?: string
 ) {
-  return (newScope: Scope<Exit<any, any>>) => forkScopeMask_(newScope, f)
+  return (newScope: Scope<Exit<any, any>>) => forkScopeMask_(newScope, f, __trace)
+}
+
+/**
+ * Returns an effect that races this effect with the specified effect, calling
+ * the specified finisher as soon as one result or the other has been computed.
+ */
+export function raceWithScope_<R, E, A, R1, E1, A1, R2, E2, A2, R3, E3, A3>(
+  left: Effect<R, E, A>,
+  right: Effect<R1, E1, A1>,
+  leftWins: (exit: Exit<E, A>, fiber: Fiber.Fiber<E1, A1>) => Effect<R2, E2, A2>,
+  rightWins: (exit: Exit<E1, A1>, fiber: Fiber.Fiber<E, A>) => Effect<R3, E3, A3>,
+  scope: Scope<Exit<any, any>>,
+  __trace?: string
+): Effect<R & R1 & R2 & R3, E2 | E3, A2 | A3> {
+  return new IRaceWith(left, right, leftWins, rightWins, O.some(scope), __trace)
 }
 
 /**
  * Returns an effect that races this effect with the specified effect, calling
  * the specified finisher as soon as one result or the other has been computed.
  *
- * @trace 2
- * @trace 3
+ * @dataFirst raceWithScope_
+ */
+export function raceWithScope<E, A, R1, E1, A1, R2, E2, A2, R3, E3, A3>(
+  right: Effect<R1, E1, A1>,
+  leftWins: (exit: Exit<E, A>, fiber: Fiber.Fiber<E1, A1>) => Effect<R2, E2, A2>,
+  rightWins: (exit: Exit<E1, A1>, fiber: Fiber.Fiber<E, A>) => Effect<R3, E3, A3>,
+  scope: Scope<Exit<any, any>>,
+  __trace?: string
+) {
+  return <R>(left: Effect<R, E, A>) =>
+    raceWithScope_(left, right, leftWins, rightWins, scope, __trace)
+}
+
+/**
+ * Returns an effect that races this effect with the specified effect, calling
+ * the specified finisher as soon as one result or the other has been computed.
  */
 export function raceWith_<R, E, A, R1, E1, A1, R2, E2, A2, R3, E3, A3>(
   left: Effect<R, E, A>,
   right: Effect<R1, E1, A1>,
   leftWins: (exit: Exit<E, A>, fiber: Fiber.Fiber<E1, A1>) => Effect<R2, E2, A2>,
   rightWins: (exit: Exit<E1, A1>, fiber: Fiber.Fiber<E, A>) => Effect<R3, E3, A3>,
-  scope: O.Option<Scope<Exit<any, any>>> = O.none
+  __trace?: string
 ): Effect<R & R1 & R2 & R3, E2 | E3, A2 | A3> {
-  return new IRaceWith(left, right, leftWins, rightWins, scope)
+  return new IRaceWith(left, right, leftWins, rightWins, O.none, __trace)
 }
 
 /**
@@ -81,20 +106,24 @@ export function raceWith_<R, E, A, R1, E1, A1, R2, E2, A2, R3, E3, A3>(
  * the specified finisher as soon as one result or the other has been computed.
  *
  * @dataFirst raceWith_
- * @trace 1
- * @trace 2
  */
 export function raceWith<E, A, R1, E1, A1, R2, E2, A2, R3, E3, A3>(
   right: Effect<R1, E1, A1>,
   leftWins: (exit: Exit<E, A>, fiber: Fiber.Fiber<E1, A1>) => Effect<R2, E2, A2>,
   rightWins: (exit: Exit<E1, A1>, fiber: Fiber.Fiber<E, A>) => Effect<R3, E3, A3>,
-  scope: O.Option<Scope<Exit<any, any>>> = O.none
+  __trace?: string
 ) {
   return <R>(left: Effect<R, E, A>) =>
-    raceWith_(left, right, leftWins, rightWins, scope)
+    raceWith_(left, right, leftWins, rightWins, __trace)
 }
 
-export type Grafter = <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>
+/**
+ * Graft function
+ */
+export type Grafter = <R, E, A>(
+  effect: Effect<R, E, A>,
+  __trace?: string
+) => Effect<R, E, A>
 
 /**
  * Transplants specified effects so that when those effects fork other
@@ -103,12 +132,14 @@ export type Grafter = <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>
  *
  * This can be used to "graft" deep grandchildren onto a higher-level
  * scope, effectively extending their lifespans into the parent scope.
- *
- * @trace 0
  */
-export function transplant<R, E, A>(f: (_: Grafter) => Effect<R, E, A>) {
+export function transplant<R, E, A>(
+  f: (_: Grafter) => Effect<R, E, A>,
+  __trace?: string
+) {
   return forkScopeWith(
-    traceAs(f, (scope) => f((e) => new IOverrideForkScope(e, O.some(scope))))
+    (scope) => f((e, __trace) => new IOverrideForkScope(e, O.some(scope), __trace)),
+    __trace
   )
 }
 
@@ -118,9 +149,10 @@ export function transplant<R, E, A>(f: (_: Grafter) => Effect<R, E, A>) {
  * returned effect terminates, the forked fiber will continue running.
  */
 export function forkDaemon<R, E, A>(
-  value: Effect<R, E, A>
+  value: Effect<R, E, A>,
+  __trace?: string
 ): RIO<R, Fiber.FiberContext<E, A>> {
-  return new IFork(value, O.some(globalScope), O.none)
+  return new IFork(value, O.some(globalScope), O.none, __trace)
 }
 
 /**
@@ -130,9 +162,9 @@ export function forkDaemon<R, E, A>(
  *
  * @dataFirst forkDaemonReport_
  */
-export function forkDaemonReport(reportFailure: FailureReporter) {
+export function forkDaemonReport(reportFailure: FailureReporter, __trace?: string) {
   return <R, E, A>(value: Effect<R, E, A>): RIO<R, Fiber.FiberContext<E, A>> =>
-    forkDaemonReport_(value, reportFailure)
+    forkDaemonReport_(value, reportFailure, __trace)
 }
 
 /**
@@ -142,9 +174,10 @@ export function forkDaemonReport(reportFailure: FailureReporter) {
  */
 export function forkDaemonReport_<R, E, A>(
   value: Effect<R, E, A>,
-  reportFailure: FailureReporter
+  reportFailure: FailureReporter,
+  __trace?: string
 ): RIO<R, Fiber.FiberContext<E, A>> {
-  return new IFork(value, O.some(globalScope), O.some(reportFailure))
+  return new IFork(value, O.some(globalScope), O.some(reportFailure), __trace)
 }
 
 /**
@@ -160,9 +193,9 @@ export function forkDaemonReport_<R, E, A>(
  *
  * @dataFirst forkIn_
  */
-export function forkIn(scope: Scope<Exit<any, any>>) {
+export function forkIn(scope: Scope<Exit<any, any>>, __trace?: string) {
   return <R, E, A>(value: Effect<R, E, A>): RIO<R, Runtime<E, A>> =>
-    forkIn_(value, scope)
+    forkIn_(value, scope, __trace)
 }
 
 /**
@@ -178,9 +211,10 @@ export function forkIn(scope: Scope<Exit<any, any>>) {
  */
 export function forkIn_<R, E, A>(
   value: Effect<R, E, A>,
-  scope: Scope<Exit<any, any>>
+  scope: Scope<Exit<any, any>>,
+  __trace?: string
 ): RIO<R, Runtime<E, A>> {
-  return new IFork(value, O.some(scope), O.none)
+  return new IFork(value, O.some(scope), O.none, __trace)
 }
 
 /**
@@ -198,10 +232,11 @@ export function forkIn_<R, E, A>(
  */
 export function forkInReport(
   scope: Scope<Exit<any, any>>,
-  reportFailure: FailureReporter
+  reportFailure: FailureReporter,
+  __trace?: string
 ) {
   return <R, E, A>(value: Effect<R, E, A>): RIO<R, Runtime<E, A>> =>
-    new IFork(value, O.some(scope), O.some(reportFailure))
+    new IFork(value, O.some(scope), O.some(reportFailure), __trace)
 }
 
 /**
@@ -218,20 +253,20 @@ export function forkInReport(
 export function forkInReport_<R, E, A>(
   value: Effect<R, E, A>,
   scope: Scope<Exit<any, any>>,
-  reportFailure: FailureReporter
+  reportFailure: FailureReporter,
+  __trace?: string
 ): RIO<R, Runtime<E, A>> {
-  return new IFork(value, O.some(scope), O.some(reportFailure))
+  return new IFork(value, O.some(scope), O.some(reportFailure), __trace)
 }
 
 /**
  * Retrieves the scope that will be used to supervise forked effects.
- *
- * @trace 0
  */
 export function forkScopeWith<R, E, A>(
-  f: (_: Scope<Exit<any, any>>) => Effect<R, E, A>
+  f: (_: Scope<Exit<any, any>>) => Effect<R, E, A>,
+  __trace?: string
 ): Effect<R, E, A> {
-  return new IGetForkScope(f)
+  return new IGetForkScope(f, __trace)
 }
 
 /**
@@ -240,9 +275,9 @@ export function forkScopeWith<R, E, A>(
  *
  * @dataFirst overrideForkScope_
  */
-export function overrideForkScope(scope: Scope<Exit<any, any>>) {
+export function overrideForkScope(scope: Scope<Exit<any, any>>, __trace?: string) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R, E, A> =>
-    new IOverrideForkScope(self, O.some(scope))
+    new IOverrideForkScope(self, O.some(scope), __trace)
 }
 
 /**
@@ -251,15 +286,19 @@ export function overrideForkScope(scope: Scope<Exit<any, any>>) {
  */
 export function overrideForkScope_<R, E, A>(
   self: Effect<R, E, A>,
-  scope: Scope<Exit<any, any>>
+  scope: Scope<Exit<any, any>>,
+  __trace?: string
 ): Effect<R, E, A> {
-  return new IOverrideForkScope(self, O.some(scope))
+  return new IOverrideForkScope(self, O.some(scope), __trace)
 }
 
 /**
  * Returns a new effect that will utilize the default scope (fiber scope) to
  * supervise any fibers forked within the original effect.
  */
-export function resetForkScope<R, E, A>(self: Effect<R, E, A>): Effect<R, E, A> {
-  return new IOverrideForkScope(self, O.none)
+export function resetForkScope<R, E, A>(
+  self: Effect<R, E, A>,
+  __trace?: string
+): Effect<R, E, A> {
+  return new IOverrideForkScope(self, O.none, __trace)
 }
