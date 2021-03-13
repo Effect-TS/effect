@@ -14,7 +14,7 @@ import { interrupt } from "./interrupt"
 /**
  * Lifts an IO into a `Fiber`.
  */
-export function fromEffect<E, A>(effect: T.IO<E, A>): T.UIO<Fiber.Synthetic<E, A>> {
+export function fromEffect<E, A>(effect: T.IO<E, A>): T.UIO<Fiber.Fiber<E, A>> {
   return T.map_(T.result(effect), done)
 }
 
@@ -51,20 +51,21 @@ export function interruptFork<E, A>(fiber: Fiber.Fiber<E, A>) {
  * Effectually maps over the value the fiber computes.
  */
 export function mapM<E2, A, B>(f: (a: A) => T.IO<E2, B>) {
-  return <E>(fiber: Fiber.Fiber<E, A>): Fiber.Synthetic<E | E2, B> => ({
-    _tag: "SyntheticFiber",
-    await: T.chain_(fiber.await, Exit.forEach(f)),
-    getRef: (ref) => fiber.getRef(ref),
-    inheritRefs: fiber.inheritRefs,
-    interruptAs: (id) => T.chain_(fiber.interruptAs(id), Exit.forEach(f)),
-    poll: T.chain_(
-      fiber.poll,
-      O.fold(
-        () => T.succeed(O.none),
-        (a) => T.map_(Exit.forEach_(a, f), O.some)
+  return <E>(fiber: Fiber.Fiber<E, A>): Fiber.Fiber<E | E2, B> =>
+    makeSynthetic({
+      _tag: "SyntheticFiber",
+      await: T.chain_(fiber.await, Exit.forEach(f)),
+      getRef: (ref) => fiber.getRef(ref),
+      inheritRefs: fiber.inheritRefs,
+      interruptAs: (id) => T.chain_(fiber.interruptAs(id), Exit.forEach(f)),
+      poll: T.chain_(
+        fiber.poll,
+        O.fold(
+          () => T.succeed(O.none),
+          (a) => T.map_(Exit.forEach_(a, f), O.some)
+        )
       )
-    )
-  })
+    })
 }
 
 /**
@@ -98,7 +99,7 @@ export function waitAll<E, A>(as: Iterable<Fiber.Fiber<E, A>>) {
 export function map_<E, A, B>(
   fiber: Fiber.Fiber<E, A>,
   f: (a: A) => B
-): Fiber.Synthetic<E, B> {
+): Fiber.Fiber<E, B> {
   return map(f)(fiber)
 }
 
@@ -146,28 +147,29 @@ export function mapFiber_<A, E, E2, A2>(
  * will interrupt both fibers, sequentially, from left to right.
  */
 export function orElse<E1, A1>(that: Fiber.Fiber<E1, A1>) {
-  return <E, A>(fiber: Fiber.Fiber<E, A>): Fiber.Synthetic<E | E1, A | A1> => ({
-    _tag: "SyntheticFiber",
-    await: T.zipWith_(fiber.await, that.await, (a, b) =>
-      a._tag === "Success" ? a : b
-    ),
-    getRef: (ref) =>
-      T.zipWith_(fiber.getRef(ref), that.getRef(ref), (a, b) =>
-        a === ref.initial ? b : a
+  return <E, A>(fiber: Fiber.Fiber<E, A>): Fiber.Fiber<E | E1, A | A1> =>
+    makeSynthetic<E | E1, A | A1>({
+      _tag: "SyntheticFiber",
+      await: T.zipWith_(fiber.await, that.await, (a, b) =>
+        a._tag === "Success" ? a : b
       ),
-    inheritRefs: T.chain_(fiber.inheritRefs, () => that.inheritRefs),
-    interruptAs: (id) => T.chain_(fiber.interruptAs(id), () => that.interruptAs(id)),
-    poll: T.zipWith_(fiber.poll, that.poll, (a, b) => {
-      switch (a._tag) {
-        case "Some": {
-          return a.value._tag === "Success" ? a : b
+      getRef: (ref) =>
+        T.zipWith_(fiber.getRef(ref), that.getRef(ref), (a, b) =>
+          a === ref.initial ? b : a
+        ),
+      inheritRefs: T.chain_(fiber.inheritRefs, () => that.inheritRefs),
+      interruptAs: (id) => T.chain_(fiber.interruptAs(id), () => that.interruptAs(id)),
+      poll: T.zipWith_(fiber.poll, that.poll, (a, b) => {
+        switch (a._tag) {
+          case "Some": {
+            return a.value._tag === "Success" ? a : b
+          }
+          case "None": {
+            return O.none
+          }
         }
-        case "None": {
-          return O.none
-        }
-      }
+      })
     })
-  })
 }
 
 /**
@@ -176,7 +178,7 @@ export function orElse<E1, A1>(that: Fiber.Fiber<E1, A1>) {
  * will interrupt both fibers, sequentially, from left to right.
  */
 export function orElseEither<E1, A1>(that: Fiber.Fiber<E1, A1>) {
-  return <E, A>(fiber: Fiber.Fiber<E, A>): Fiber.Synthetic<E1 | E, E.Either<A, A1>> =>
+  return <E, A>(fiber: Fiber.Fiber<E, A>): Fiber.Fiber<E1 | E, E.Either<A, A1>> =>
     orElse(map_(that, E.right))(map_(fiber, E.left))
 }
 
@@ -190,7 +192,7 @@ export function as<B>(b: B) {
 /**
  * Maps the output of this fiber to `void`.
  */
-export function asUnit<E, A>(fiber: Fiber.Fiber<E, A>): Fiber.Synthetic<E, void> {
+export function asUnit<E, A>(fiber: Fiber.Fiber<E, A>): Fiber.Fiber<E, void> {
   return map_(fiber, () => undefined)
 }
 
@@ -203,8 +205,8 @@ export function zipWith_<E, A, E1, A1, B>(
   fiberA: Fiber.Fiber<E, A>,
   fiberB: Fiber.Fiber<E1, A1>,
   f: (a: A, b: A1) => B
-): Fiber.Synthetic<E | E1, B> {
-  return {
+): Fiber.Fiber<E | E1, B> {
+  return makeSynthetic<E | E1, B>({
     _tag: "SyntheticFiber",
     getRef: (ref) =>
       T.zipWith_(fiberA.getRef(ref), fiberB.getRef(ref), (a, b) => ref.join(a, b)),
@@ -219,7 +221,7 @@ export function zipWith_<E, A, E1, A1, B>(
     await: T.result(
       T.zipWithPar_(T.chain_(fiberA.await, T.done), T.chain_(fiberB.await, T.done), f)
     )
-  }
+  })
 }
 
 /**
@@ -228,7 +230,7 @@ export function zipWith_<E, A, E1, A1, B>(
 export function zip_<E, A, E1, A1>(
   fiberA: Fiber.Fiber<E, A>,
   fiberB: Fiber.Fiber<E1, A1>
-): Fiber.Synthetic<E | E1, [A, A1]> {
+): Fiber.Fiber<E | E1, [A, A1]> {
   return zipWith_(fiberA, fiberB, (a, b) => [a, b])
 }
 
@@ -238,7 +240,7 @@ export function zip_<E, A, E1, A1>(
 export function zipRight_<E, A, E1, A1>(
   fiberA: Fiber.Fiber<E, A>,
   fiberB: Fiber.Fiber<E1, A1>
-): Fiber.Synthetic<E | E1, A1> {
+): Fiber.Fiber<E | E1, A1> {
   return zipWith_(fiberA, fiberB, (_, b) => b)
 }
 
@@ -248,7 +250,7 @@ export function zipRight_<E, A, E1, A1>(
 export function zipLeft_<E, A, E1, A1>(
   fiberA: Fiber.Fiber<E, A>,
   fiberB: Fiber.Fiber<E1, A1>
-): Fiber.Synthetic<E | E1, A> {
+): Fiber.Fiber<E | E1, A> {
   return zipWith_(fiberA, fiberB, (a, _) => a)
 }
 
@@ -310,16 +312,18 @@ export function makeSynthetic<E, A>(_: Fiber.Synthetic<E, A>): Fiber.Fiber<E, A>
 /**
  * Folds over the runtime or synthetic fiber.
  */
-export const fold = <E, A, Z>(
+export function fold<E, A, Z>(
   runtime: (_: Fiber.Runtime<E, A>) => Z,
   syntetic: (_: Fiber.Synthetic<E, A>) => Z
-) => (fiber: Fiber.Fiber<E, A>) => {
-  switch (fiber._tag) {
-    case "RuntimeFiber": {
-      return runtime(fiber)
-    }
-    case "SyntheticFiber": {
-      return syntetic(fiber)
+) {
+  return (fiber: Fiber.Fiber<E, A>) => {
+    switch (fiber._tag) {
+      case "RuntimeFiber": {
+        return runtime(fiber)
+      }
+      case "SyntheticFiber": {
+        return syntetic(fiber)
+      }
     }
   }
 }
@@ -327,51 +331,62 @@ export const fold = <E, A, Z>(
 /**
  * A fiber that is done with the specified `Exit` value.
  */
-export const done = <E, A>(exit: Exit.Exit<E, A>): Fiber.Synthetic<E, A> => ({
-  _tag: "SyntheticFiber",
-  await: T.succeed(exit),
-  getRef: (ref) => T.succeed(ref.initial),
-  inheritRefs: T.unit,
-  interruptAs: () => T.succeed(exit),
-  poll: T.succeed(O.some(exit))
-})
+export function done<E, A>(exit: Exit.Exit<E, A>): Fiber.Fiber<E, A> {
+  return makeSynthetic({
+    _tag: "SyntheticFiber",
+    await: T.succeed(exit),
+    getRef: (ref) => T.succeed(ref.initial),
+    inheritRefs: T.unit,
+    interruptAs: () => T.succeed(exit),
+    poll: T.succeed(O.some(exit))
+  })
+}
 
 /**
  * Returns a fiber that has already succeeded with the specified value.
  */
-export const succeed = <A>(a: A) => done(Exit.succeed(a))
+export function succeed<A>(a: A) {
+  return done(Exit.succeed(a))
+}
 
 /**
  * A fiber that has already failed with the specified value.
  */
-export const fail = <E>(e: E) => done(Exit.fail(e))
+export function fail<E>(e: E) {
+  return done(Exit.fail(e))
+}
 
 /**
  * Creates a `Fiber` that is halted with the specified cause.
  */
-export const halt = <E>(cause: Cause.Cause<E>) => done(Exit.halt(cause))
+export function halt<E>(cause: Cause.Cause<E>) {
+  return done(Exit.halt(cause))
+}
 
 /**
  * A fiber that is already interrupted.
  */
-export const interruptAs = (id: Fiber.FiberID) => done(Exit.interrupt(id))
+export function interruptAs(id: Fiber.FiberID) {
+  return done(Exit.interrupt(id))
+}
 
-export const toManaged: <E, A>(
+export function toManaged<E, A>(
   fiber: Fiber.Fiber<E, A>
-) => Managed<unknown, never, Fiber.Fiber<E, A>> = (x) =>
-  pipe(x, T.succeed, make(interrupt))
+): Managed<unknown, never, Fiber.Fiber<E, A>> {
+  return pipe(fiber, T.succeed, make(interrupt))
+}
 
 /**
  * A fiber that never fails or succeeds.
  */
-export const never: Fiber.Synthetic<never, never> = {
+export const never = makeSynthetic<never, never>({
   _tag: "SyntheticFiber",
   await: T.never,
   getRef: (fiberRef) => T.succeed(fiberRef.initial),
   interruptAs: constant(T.never),
   inheritRefs: T.unit,
   poll: T.succeed(O.none)
-}
+})
 
 /**
  * A fiber that has already succeeded with unit.
