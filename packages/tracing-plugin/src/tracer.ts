@@ -68,7 +68,7 @@ export default function tracer(
 
         function getTrace(node: ts.Node, pos: "start" | "end") {
           const nodeStart = sourceFile.getLineAndCharacterOfPosition(
-            pos === "start" ? node.getStart() : node.getEnd()
+            pos === "start" ? node.getStart(sourceFile) : node.getEnd()
           )
           return factory.createBinaryExpression(
             fileVar,
@@ -97,18 +97,12 @@ export default function tracer(
 
         function visitor(node: ts.Node): ts.VisitResult<ts.Node> {
           if (ts.isCallExpression(node)) {
-            let isTracing = false
+            const nodeStart = sourceFile.getLineAndCharacterOfPosition(
+              node.expression.getStart(sourceFile)
+            )
 
-            try {
-              const nodeStart = sourceFile.getLineAndCharacterOfPosition(
-                node.expression.getEnd()
-              )
-
-              isTracing =
-                tracingOn && checkRegionAt(regions, nodeStart.line, nodeStart.character)
-            } catch {
-              isTracing = false
-            }
+            const isTracing =
+              tracingOn && checkRegionAt(regions, nodeStart.line, nodeStart.character)
 
             if (isTracing) {
               const trace = getTrace(node.expression, "end")
