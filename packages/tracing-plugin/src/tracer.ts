@@ -79,7 +79,7 @@ export default function tracer(
           )
         }
 
-        const sourceFullText = sourceFile.getFullText()
+        const sourceFullText = sourceFile.getFullText(sourceFile)
 
         const regions = sourceFullText
           .split("\n")
@@ -114,7 +114,8 @@ export default function tracer(
               const parameters = declaration?.parameters || []
               const traceLast =
                 parameters.length > 0
-                  ? parameters[parameters.length - 1]!.name.getText() === "__trace"
+                  ? parameters[parameters.length - 1]!.name.getText(sourceFile) ===
+                    "__trace"
                   : false
 
               const entries: (readonly [string, string | undefined])[] =
