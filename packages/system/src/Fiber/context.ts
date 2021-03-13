@@ -1101,6 +1101,9 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                   }
 
                   case "Fork": {
+                    if (this.platform.value.traceEffects && this.inTracingRegion) {
+                      this.addTrace(current.trace)
+                    }
                     current = this.nextInstr(
                       this.fork(
                         current.value[T._I],
@@ -1200,6 +1203,9 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                   }
 
                   case "RaceWith": {
+                    if (this.platform.value.traceExecution && this.inTracingRegion) {
+                      this.addTrace(current.trace)
+                    }
                     current = this.raceWithImpl(current)[T._I]
                     break
                   }
@@ -1225,6 +1231,9 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
                   case "GetForkScope": {
                     const c = current
+                    if (this.platform.value.traceExecution && this.inTracingRegion) {
+                      this.addTrace(current.trace)
+                    }
                     current = c.f(
                       O.getOrElse_(
                         this.forkScopeOverride?.value || O.none,
@@ -1236,6 +1245,10 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
                   case "OverrideForkScope": {
                     const c = current
+
+                    if (this.platform.value.traceExecution && this.inTracingRegion) {
+                      this.addTrace(current.trace)
+                    }
 
                     const push = T.effectTotal(() => {
                       this.forkScopeOverride = new Stack(
