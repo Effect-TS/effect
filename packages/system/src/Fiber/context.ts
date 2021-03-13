@@ -101,9 +101,11 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     this.platform.value.executionTraceLength
   )
   stackTraces = new RingBuffer<TraceElement>(this.platform.value.stackTraceLength)
-  traceStatusStack: Stack<boolean> | undefined = new Stack(true)
   traceStatusEnabled =
     this.platform.value.traceExecution || this.platform.value.traceStack
+  traceStatusStack: Stack<boolean> | undefined = this.traceStatusEnabled
+    ? new Stack(this.initialTracingStatus)
+    : undefined
 
   constructor(
     readonly fiberId: Fiber.FiberID,
@@ -131,11 +133,9 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     }
   }
 
-  addTraceValue(trace: string | undefined | TraceElement) {
-    if (this.inTracingRegion && trace) {
-      this.executionTraces.push(
-        typeof trace === "string" ? new SourceLocation(trace) : trace
-      )
+  addTraceValue(trace: TraceElement) {
+    if (this.inTracingRegion) {
+      this.executionTraces.push(trace)
     }
   }
 
@@ -737,10 +737,9 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   }
 
   get inTracingRegion() {
-    return (
-      this.traceStatusEnabled &&
-      (this.traceStatusStack ? this.traceStatusStack.value : this.initialTracingStatus)
-    )
+    return this.traceStatusStack
+      ? this.traceStatusStack.value
+      : this.initialTracingStatus
   }
 
   raceWithImpl<R, E, A, R1, E1, A1, R2, E2, A2, R3, E3, A3>(
@@ -750,7 +749,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     const left = this.fork(race.left[T._I], race.scope, noop)
     const right = this.fork(race.right[T._I], race.scope, noop)
 
-    return T.effectAsync<R & R1 & R2 & R3, E2 | E3, A2 | A3>(
+    return T.effectAsyncBlockingOn<R & R1 & R2 & R3, E2 | E3, A2 | A3>(
       (cb) => {
         const leftRegister = left.register0((exit) => {
           switch (exit._tag) {
@@ -793,7 +792,8 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
           }
         }
       },
-      [left.fiberId, right.fiberId]
+      [left.fiberId, right.fiberId],
+      race.trace
     )
   }
 
@@ -827,7 +827,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     if (this.inTracingRegion) {
       const kTrace = traceLocation(trace)
 
-      if (this.platform.value.traceEffects) {
+      if (effectTrace && this.platform.value.traceEffects) {
         this.addTrace(effectTrace)
       }
       if (this.platform.value.traceStack) {
@@ -871,10 +871,15 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
                     switch (nested._tag) {
                       case "Succeed": {
-                        if (this.platform.value.traceEffects && this.inTracingRegion) {
-                          this.addTraceValue(nested.trace)
+                        if (
+                          nested.trace &&
+                          this.platform.value.traceEffects &&
+                          this.inTracingRegion
+                        ) {
+                          this.addTrace(nested.trace)
                         }
                         if (
+                          c.trace &&
                           this.platform.value.traceExecution &&
                           this.inTracingRegion
                         ) {
@@ -890,6 +895,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                           fastPathFlatMapContinuationTrace
                         )
                         if (
+                          kTrace &&
                           this.platform.value.traceExecution &&
                           this.inTracingRegion
                         ) {
@@ -944,7 +950,14 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                   }
 
                   case "TracingStatus": {
-                    if (this.inTracingRegion) {
+                    if (
+                      current.trace &&
+                      this.platform.value.traceExecution &&
+                      this.inTracingRegion
+                    ) {
+                      this.addTrace(current.trace)
+                    }
+                    if (this.traceStatusStack) {
                       this.pushTracingStatus(current.flag)
                       this.stack = new Stack(this.tracingExit, this.stack)
                     }
@@ -953,6 +966,13 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                   }
 
                   case "CheckTracingStatus": {
+                    if (
+                      current.trace &&
+                      this.platform.value.traceExecution &&
+                      this.inTracingRegion
+                    ) {
+                      this.addTrace(current.trace)
+                    }
                     current = current.f(this.inTracingRegion)[T._I]
                     break
                   }
@@ -963,15 +983,23 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                   }
 
                   case "Succeed": {
-                    if (this.platform.value.traceEffects && this.inTracingRegion) {
-                      this.addTraceValue(current.trace)
+                    if (
+                      current.trace &&
+                      this.platform.value.traceEffects &&
+                      this.inTracingRegion
+                    ) {
+                      this.addTrace(current.trace)
                     }
                     current = this.nextInstr(current.val)
                     break
                   }
 
                   case "EffectTotal": {
-                    if (this.platform.value.traceEffects) {
+                    if (
+                      current.trace &&
+                      this.platform.value.traceEffects &&
+                      this.inTracingRegion
+                    ) {
                       this.addTrace(current.trace)
                     }
                     current = this.nextInstr(current.effect())
@@ -979,7 +1007,11 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                   }
 
                   case "Fail": {
-                    if (this.platform.value.traceEffects && this.inTracingRegion) {
+                    if (
+                      current.trace &&
+                      this.platform.value.traceEffects &&
+                      this.inTracingRegion
+                    ) {
                       this.addTrace(current.trace)
                     }
 
@@ -1026,7 +1058,11 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                   }
 
                   case "Platform": {
-                    if (this.inTracingRegion && this.platform.value.traceEffects) {
+                    if (
+                      current.trace &&
+                      this.inTracingRegion &&
+                      this.platform.value.traceExecution
+                    ) {
                       this.addTrace(current.trace)
                     }
                     current = current.f(this.platform)["_I"]
@@ -1040,6 +1076,13 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                   }
 
                   case "InterruptStatus": {
+                    if (
+                      current.trace &&
+                      this.inTracingRegion &&
+                      this.platform.value.traceExecution
+                    ) {
+                      this.addTrace(current.trace)
+                    }
                     this.pushInterruptStatus(current.flag.toBoolean)
                     this.pushContinuation(this.interruptExit)
                     current = current.effect[T._I]
@@ -1047,7 +1090,11 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                   }
 
                   case "CheckInterrupt": {
-                    if (this.inTracingRegion && this.platform.value.traceEffects) {
+                    if (
+                      current.trace &&
+                      this.inTracingRegion &&
+                      this.platform.value.traceExecution
+                    ) {
                       this.addTrace(current.trace)
                     }
                     current = current.f(Fiber.interruptStatus(this.isInterruptible))[
@@ -1059,7 +1106,11 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                   case "EffectPartial": {
                     const c = current
                     try {
-                      if (this.inTracingRegion && this.platform.value.traceEffects) {
+                      if (
+                        c.trace &&
+                        this.inTracingRegion &&
+                        this.platform.value.traceEffects
+                      ) {
                         this.addTrace(c.trace)
                       }
                       current = this.nextInstr(c.effect())
@@ -1077,7 +1128,11 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
                     if (!current) {
                       const k = c.register
-                      if (this.platform.value.traceEffects && this.inTracingRegion) {
+                      if (
+                        c.trace &&
+                        this.platform.value.traceEffects &&
+                        this.inTracingRegion
+                      ) {
                         this.addTrace(c.trace)
                       }
                       const h = k(this.resumeAsync(epoch))
@@ -1101,7 +1156,11 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                   }
 
                   case "Fork": {
-                    if (this.platform.value.traceEffects && this.inTracingRegion) {
+                    if (
+                      current.trace &&
+                      this.platform.value.traceExecution &&
+                      this.inTracingRegion
+                    ) {
                       this.addTrace(current.trace)
                     }
                     current = this.nextInstr(
@@ -1115,7 +1174,11 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                   }
 
                   case "Descriptor": {
-                    if (this.platform.value.traceExecution && this.inTracingRegion) {
+                    if (
+                      current.trace &&
+                      this.platform.value.traceExecution &&
+                      this.inTracingRegion
+                    ) {
                       this.addTrace(current.trace)
                     }
                     current = current.f(this.getDescriptor())[T._I]
@@ -1129,7 +1192,11 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                   }
 
                   case "Read": {
-                    if (this.platform.value.traceExecution && this.inTracingRegion) {
+                    if (
+                      current.trace &&
+                      this.platform.value.traceExecution &&
+                      this.inTracingRegion
+                    ) {
                       this.addTrace(current.trace)
                     }
                     current = current.f(this.environments?.value || {})[T._I]
@@ -1137,6 +1204,13 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                   }
 
                   case "Provide": {
+                    if (
+                      current.trace &&
+                      this.platform.value.traceExecution &&
+                      this.inTracingRegion
+                    ) {
+                      this.addTrace(current.trace)
+                    }
                     const c = current
                     current = T.bracket_(
                       T.effectTotal(() => {
@@ -1152,7 +1226,11 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                   }
 
                   case "Suspend": {
-                    if (this.platform.value.traceExecution && this.inTracingRegion) {
+                    if (
+                      current.trace &&
+                      this.platform.value.traceExecution &&
+                      this.inTracingRegion
+                    ) {
                       this.addTrace(current.trace)
                     }
                     current = current.factory()[T._I]
@@ -1163,7 +1241,11 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                     const c = current
 
                     try {
-                      if (this.platform.value.traceExecution && this.inTracingRegion) {
+                      if (
+                        current.trace &&
+                        this.platform.value.traceExecution &&
+                        this.inTracingRegion
+                      ) {
                         this.addTrace(current.trace)
                       }
                       current = c.factory()[T._I]
@@ -1191,7 +1273,11 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                   case "FiberRefModify": {
                     const c = current
                     const oldValue = O.fromNullable(this.fiberRefLocals.get(c.fiberRef))
-                    if (this.platform.value.traceExecution && this.inTracingRegion) {
+                    if (
+                      current.trace &&
+                      this.platform.value.traceExecution &&
+                      this.inTracingRegion
+                    ) {
                       this.addTrace(current.trace)
                     }
                     const [result, newValue] = current.f(
@@ -1203,14 +1289,18 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                   }
 
                   case "RaceWith": {
-                    if (this.platform.value.traceExecution && this.inTracingRegion) {
-                      this.addTrace(current.trace)
-                    }
                     current = this.raceWithImpl(current)[T._I]
                     break
                   }
 
                   case "Supervise": {
+                    if (
+                      current.trace &&
+                      this.platform.value.traceExecution &&
+                      this.inTracingRegion
+                    ) {
+                      this.addTrace(current.trace)
+                    }
                     const c = current
                     const lastSupervisor = this.supervisors.value
                     const newSupervisor = c.supervisor.and(lastSupervisor)
@@ -1231,7 +1321,11 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
                   case "GetForkScope": {
                     const c = current
-                    if (this.platform.value.traceExecution && this.inTracingRegion) {
+                    if (
+                      current.trace &&
+                      this.platform.value.traceExecution &&
+                      this.inTracingRegion
+                    ) {
                       this.addTrace(current.trace)
                     }
                     current = c.f(
@@ -1246,7 +1340,11 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                   case "OverrideForkScope": {
                     const c = current
 
-                    if (this.platform.value.traceExecution && this.inTracingRegion) {
+                    if (
+                      current.trace &&
+                      this.platform.value.traceExecution &&
+                      this.inTracingRegion
+                    ) {
                       this.addTrace(current.trace)
                     }
 

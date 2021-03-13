@@ -9,7 +9,14 @@ import { AtomicReference } from "../Support/AtomicReference"
 import { OneShot } from "../Support/OneShot"
 import type { Canceler } from "./Canceler"
 import type { Cb } from "./Cb"
-import { chain_, effectAsyncOption, effectTotal, succeed, suspend, unit } from "./core"
+import {
+  chain_,
+  effectAsyncOptionBlockingOn,
+  effectTotal,
+  succeed,
+  suspend,
+  unit
+} from "./core"
 import type { Effect, UIO } from "./effect"
 import { flatten } from "./flatten"
 import { onInterrupt_ } from "./interruption"
@@ -29,12 +36,34 @@ import { onInterrupt_ } from "./interruption"
  *
  * The list of fibers, that may complete the async callback, is used to
  * provide better diagnostics.
- *
- * @trace 0
  */
 export function effectMaybeAsyncInterrupt<R, E, A>(
   register: (cb: Cb<Effect<R, E, A>>) => E.Either<Canceler<R>, Effect<R, E, A>>,
-  blockingOn: readonly FiberID[] = []
+  __trace?: string
+) {
+  return effectMaybeAsyncInterruptBlockingOn(register, [], __trace)
+}
+
+/**
+ * Imports an asynchronous side-effect into an effect. The side-effect
+ * has the option of returning the value synchronously, which is useful in
+ * cases where it cannot be determined if the effect is synchronous or
+ * asynchronous until the side-effect is actually executed. The effect also
+ * has the option of returning a canceler, which will be used by the runtime
+ * to cancel the asynchronous effect if the fiber executing the effect is
+ * interrupted.
+ *
+ * If the register function returns a value synchronously, then the callback
+ * function must not be called. Otherwise the callback function must be called
+ * at most once.
+ *
+ * The list of fibers, that may complete the async callback, is used to
+ * provide better diagnostics.
+ */
+export function effectMaybeAsyncInterruptBlockingOn<R, E, A>(
+  register: (cb: Cb<Effect<R, E, A>>) => E.Either<Canceler<R>, Effect<R, E, A>>,
+  blockingOn: readonly FiberID[],
+  __trace?: string
 ) {
   return chain_(
     effectTotal(
@@ -43,7 +72,7 @@ export function effectMaybeAsyncInterrupt<R, E, A>(
     ([started, cancel]) =>
       onInterrupt_(
         flatten(
-          effectAsyncOption<unknown, never, Effect<R, E, A>>(
+          effectAsyncOptionBlockingOn<unknown, never, Effect<R, E, A>>(
             traceAs(register, (k) => {
               started.set(true)
 
@@ -70,7 +99,8 @@ export function effectMaybeAsyncInterrupt<R, E, A>(
 
               return ret.get
             }),
-            blockingOn
+            blockingOn,
+            __trace
           )
         ),
         () => suspend(() => (started.get ? cancel.get() : unit))
