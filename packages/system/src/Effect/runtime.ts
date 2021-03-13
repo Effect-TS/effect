@@ -61,7 +61,7 @@ export const defaultPlatform = new Platform({
   ancestryLength: 25,
   renderer: defaultRenderer,
   reportFailure: constVoid,
-  maxOp: 10_000,
+  maxOp: 500,
   supervisor: Supervisor.trackMainFibers
 })
 
@@ -78,7 +78,6 @@ export class CustomRuntime<R, X> {
     this.ancestryLength = this.ancestryLength.bind(this)
     this.fiberContext = this.fiberContext.bind(this)
     this.run = this.run.bind(this)
-    this.runAsap = this.runAsap.bind(this)
     this.runCancel = this.runCancel.bind(this)
     this.runPromise = this.runPromise.bind(this)
     this.runPromiseExit = this.runPromiseExit.bind(this)
@@ -134,16 +133,6 @@ export class CustomRuntime<R, X> {
     const context = this.fiberContext<E, A>(self)
 
     context.evaluateLater(self[_I])
-    context.runAsync(cb || empty)
-  }
-
-  /**
-   * Runs effect until completion, calling cb with the eventual exit state
-   */
-  runAsap<E, A>(self: Effect<R, E, A>, cb?: Callback<E, A>) {
-    const context = this.fiberContext<E, A>(self)
-
-    context.evaluateNow(self[_I])
     context.runAsync(cb || empty)
   }
 
@@ -301,14 +290,7 @@ export const defaultRuntime = makeCustomRuntime(defaultEnv, defaultPlatform)
 /**
  * Exports of default runtime
  */
-export const {
-  run,
-  runAsap,
-  runCancel,
-  runFiber,
-  runPromise,
-  runPromiseExit
-} = defaultRuntime
+export const { run, runCancel, runFiber, runPromise, runPromiseExit } = defaultRuntime
 
 /**
  * Use current environment to build a runtime that is capable of
