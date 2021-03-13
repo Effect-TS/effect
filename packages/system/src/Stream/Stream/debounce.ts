@@ -74,7 +74,7 @@ export function debounce_<R, E, O>(
             case "Previous":
               return pipe(
                 F.join(state.fiber),
-                T.raceWith(
+                T.raceWithScope(
                   chunks,
                   (ex, current) => {
                     if (Ex.succeeded(ex)) {
@@ -105,7 +105,7 @@ export function debounce_<R, E, O>(
                       )
                     }
                   },
-                  O.some(Scope.globalScope)
+                  Scope.globalScope
                 )
               )
             case "Current":
