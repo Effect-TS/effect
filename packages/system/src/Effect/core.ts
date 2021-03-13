@@ -1,7 +1,5 @@
 // tracing: off
 
-import { accessCallTrace, traceAs, traceFrom } from "@effect-ts/tracing-utils"
-
 import type { Cause } from "../Cause/cause"
 import { keepDefects } from "../Cause/core"
 import * as Exit from "../Exit/core"
@@ -37,22 +35,19 @@ import {
 
 /**
  * Effectfully accesses the environment of the effect.
- *
- * @trace 0
  */
-export function access<R0, A>(f: (_: R0) => A): RIO<R0, A> {
-  return new IRead(traceAs(f, (_: R0) => new ISucceed(f(_))))
+export function access<R0, A>(f: (_: R0) => A, __trace?: string): RIO<R0, A> {
+  return new IRead((_: R0) => new ISucceed(f(_)), __trace)
 }
 
 /**
  * Effectfully accesses the environment of the effect.
- *
- * @trace 0
  */
 export function accessM<R0, R, E, A>(
-  f: (_: R0) => Effect<R, E, A>
+  f: (_: R0) => Effect<R, E, A>,
+  __trace?: string
 ): Effect<R & R0, E, A> {
-  return new IRead(f)
+  return new IRead(f, __trace)
 }
 
 /**
@@ -86,13 +81,12 @@ export function chain_<R, E, A, R1, E1, A1>(
 /**
  * Constructs an effect based on information about the current fiber, such as
  * its identity.
- *
- * @trace 0
  */
 export function descriptorWith<R, E, A>(
-  f: (_: Fiber.Descriptor) => Effect<R, E, A>
+  f: (_: Fiber.Descriptor) => Effect<R, E, A>,
+  __trace?: string
 ): Effect<R, E, A> {
-  return new IDescriptor(f)
+  return new IDescriptor(f, __trace)
 }
 
 /**
@@ -116,9 +110,10 @@ export const trace: UIO<Fiber.Trace> = new ITrace()
  * specified callback.
  */
 export function checkTraced<R, E, A>(
-  f: (_: boolean) => Effect<R, E, A>
+  f: (_: boolean) => Effect<R, E, A>,
+  __trace?: string
 ): Effect<R, E, A> {
-  return new ICheckTracingStatus(f)
+  return new ICheckTracingStatus(f, __trace)
 }
 
 /**
@@ -129,8 +124,11 @@ export function checkTraced<R, E, A>(
  * hash map lookup per flatMap). As such, using `untraced` sections
  * is not guaranteed to result in a noticeable performance increase.
  */
-export function untraced<R, E, A>(self: Effect<R, E, A>): Effect<R, E, A> {
-  return new ITracingStatus(self, false)
+export function untraced<R, E, A>(
+  self: Effect<R, E, A>,
+  __trace?: string
+): Effect<R, E, A> {
+  return new ITracingStatus(self, false, __trace)
 }
 
 /**
@@ -139,8 +137,11 @@ export function untraced<R, E, A>(self: Effect<R, E, A>): Effect<R, E, A> {
  * an `untraced` section, or the current fiber has been spawned by a parent
  * inside an `untraced` section.
  */
-export function traced<R, E, A>(self: Effect<R, E, A>): Effect<R, E, A> {
-  return new ITracingStatus(self, true)
+export function traced<R, E, A>(
+  self: Effect<R, E, A>,
+  __trace?: string
+): Effect<R, E, A> {
+  return new ITracingStatus(self, true, __trace)
 }
 
 /**
@@ -153,38 +154,51 @@ export function traced<R, E, A>(self: Effect<R, E, A>): Effect<R, E, A> {
  *
  * The list of fibers, that may complete the async callback, is used to
  * provide better diagnostics.
- *
- * @trace 0
  */
 export function effectAsyncOption<R, E, A>(
   register: (cb: (_: Effect<R, E, A>) => void) => O.Option<Effect<R, E, A>>,
-  blockingOn: readonly Fiber.FiberID[] = []
+  __trace?: string
 ): Effect<R, E, A> {
-  return new IEffectAsync(register, blockingOn)
+  return new IEffectAsync(register, [], __trace)
+}
+
+/**
+ * Imports an asynchronous effect into a pure `Effect` value, possibly returning
+ * the value synchronously.
+ *
+ * If the register function returns a value synchronously, then the callback
+ * function `AsyncRE<R, E, A> => void` must not be called. Otherwise the callback
+ * function must be called at most once.
+ *
+ * The list of fibers, that may complete the async callback, is used to
+ * provide better diagnostics.
+ */
+export function effectAsyncOptionBlockingOn<R, E, A>(
+  register: (cb: (_: Effect<R, E, A>) => void) => O.Option<Effect<R, E, A>>,
+  blockingOn: readonly Fiber.FiberID[],
+  __trace?: string
+): Effect<R, E, A> {
+  return new IEffectAsync(register, blockingOn, __trace)
 }
 
 /**
  * Imports a synchronous side-effect into a pure value, translating any
  * thrown exceptions into typed failed effects creating with `halt`.
- *
- * @trace 0
- * @trace 1
  */
 export function effectPartial<E, A>(
   effect: () => A,
-  onThrow: (u: unknown) => E
+  onThrow: (u: unknown) => E,
+  __trace?: string
 ): IO<E, A> {
-  return new IEffectPartial(effect, onThrow)
+  return new IEffectPartial(effect, onThrow, __trace)
 }
 
 /**
  * Imports a synchronous side-effect into a pure value, translating any
  * thrown exceptions into typed failed effects creating with `halt`.
- *
- * @trace 0
  */
-function try_<A>(effect: () => A): IO<unknown, A> {
-  return new IEffectPartial(effect, identity)
+function try_<A>(effect: () => A, __trace?: string): IO<unknown, A> {
+  return new IEffectPartial(effect, identity, __trace)
 }
 
 export { try_ as try }
@@ -234,9 +248,10 @@ export function foldCauseM_<R, E, A, R2, E2, A2, R3, E3, A3>(
  * fiber that forks the child exits, the child will be interrupted.
  */
 export function fork<R, E, A>(
-  value: Effect<R, E, A>
+  value: Effect<R, E, A>,
+  __trace?: string
 ): RIO<R, Fiber.FiberContext<E, A>> {
-  return new IFork(value, O.none, O.none)
+  return new IFork(value, O.none, O.none, __trace)
 }
 
 /**
@@ -252,9 +267,9 @@ export function fork<R, E, A>(
  *
  * @dataFirst forkReport_
  */
-export function forkReport(reportFailure: FailureReporter) {
+export function forkReport(reportFailure: FailureReporter, __trace?: string) {
   return <R, E, A>(value: Effect<R, E, A>): RIO<R, Fiber.FiberContext<E, A>> =>
-    new IFork(value, O.none, O.some(reportFailure))
+    new IFork(value, O.none, O.some(reportFailure), __trace)
 }
 
 /**
@@ -270,19 +285,17 @@ export function forkReport(reportFailure: FailureReporter) {
  */
 export function forkReport_<R, E, A>(
   value: Effect<R, E, A>,
-  reportFailure: FailureReporter
+  reportFailure: FailureReporter,
+  __trace?: string
 ): RIO<R, Fiber.FiberContext<E, A>> {
-  return new IFork(value, O.none, O.some(reportFailure))
+  return new IFork(value, O.none, O.some(reportFailure), __trace)
 }
 
 /**
  * Returns an effect that models failure with the specified `Cause`.
- *
- * @trace call
  */
-export function halt<E>(cause: Cause<E>): IO<E, never> {
-  const trace = accessCallTrace()
-  return new IFail(traceFrom(trace, () => cause))
+export function halt<E>(cause: Cause<E>, __trace?: string): IO<E, never> {
+  return new IFail(() => cause, __trace)
 }
 
 /**
@@ -306,9 +319,9 @@ export function haltWith<E>(
  *
  * @dataFirst interruptStatus_
  */
-export function interruptStatus(flag: Fiber.InterruptStatus) {
+export function interruptStatus(flag: Fiber.InterruptStatus, __trace?: string) {
   return <R, E, A>(effect: Effect<R, E, A>): Effect<R, E, A> =>
-    new IInterruptStatus(effect, flag)
+    new IInterruptStatus(effect, flag, __trace)
 }
 
 /**
@@ -319,9 +332,10 @@ export function interruptStatus(flag: Fiber.InterruptStatus) {
  */
 export function interruptStatus_<R, E, A>(
   effect: Effect<R, E, A>,
-  flag: Fiber.InterruptStatus
+  flag: Fiber.InterruptStatus,
+  __trace?: string
 ): Effect<R, E, A> {
-  return new IInterruptStatus(effect, flag)
+  return new IInterruptStatus(effect, flag, __trace)
 }
 
 /**
@@ -332,9 +346,9 @@ export function interruptStatus_<R, E, A>(
  *
  * @dataFirst tracingStatus_
  */
-export function tracingStatus(flag: boolean) {
+export function tracingStatus(flag: boolean, __trace?: string) {
   return <R, E, A>(effect: Effect<R, E, A>): Effect<R, E, A> =>
-    new ITracingStatus(effect, flag)
+    new ITracingStatus(effect, flag, __trace)
 }
 
 /**
@@ -345,9 +359,10 @@ export function tracingStatus(flag: boolean) {
  */
 export function tracingStatus_<R, E, A>(
   effect: Effect<R, E, A>,
-  flag: boolean
+  flag: boolean,
+  __trace?: string
 ): Effect<R, E, A> {
-  return new ITracingStatus(effect, flag)
+  return new ITracingStatus(effect, flag, __trace)
 }
 
 /**
@@ -356,8 +371,9 @@ export function tracingStatus_<R, E, A>(
  *
  * @dataFirst provideAll_
  */
-export function provideAll<R>(r: R) {
-  return <E, A>(next: Effect<R, E, A>): Effect<unknown, E, A> => new IProvide(r, next)
+export function provideAll<R>(r: R, __trace?: string) {
+  return <E, A>(next: Effect<R, E, A>): Effect<unknown, E, A> =>
+    new IProvide(r, next, __trace)
 }
 
 /**
@@ -366,9 +382,10 @@ export function provideAll<R>(r: R) {
  */
 export function provideAll_<R, E, A>(
   next: Effect<R, E, A>,
-  r: R
+  r: R,
+  __trace?: string
 ): Effect<unknown, E, A> {
-  return new IProvide(r, next)
+  return new IProvide(r, next, __trace)
 }
 
 /**
@@ -397,10 +414,24 @@ export function succeed<A>(a: A, __trace?: string): Effect<unknown, never, A> {
 /**
  * Returns an effect with the behavior of this one, but where all child
  * fibers forked in the effect are reported to the specified supervisor.
+ *
+ * @dataFirst supervised_
  */
-export function supervised(supervisor: Supervisor<any>) {
+export function supervised(supervisor: Supervisor<any>, __trace?: string) {
   return <R, E, A>(fa: Effect<R, E, A>): Effect<R, E, A> =>
-    new ISupervise(fa, supervisor)
+    new ISupervise(fa, supervisor, __trace)
+}
+
+/**
+ * Returns an effect with the behavior of this one, but where all child
+ * fibers forked in the effect are reported to the specified supervisor.
+ */
+export function supervised_<R, E, A>(
+  fa: Effect<R, E, A>,
+  supervisor: Supervisor<any>,
+  __trace?: string
+): Effect<R, E, A> {
+  return new ISupervise(fa, supervisor, __trace)
 }
 
 /**
@@ -417,15 +448,13 @@ export function suspend<R, E, A>(
 /**
  * Returns a lazily constructed effect, whose construction may itself require effects.
  * When no environment is required (i.e., when R == unknown) it is conceptually equivalent to `flatten(effectPartial(orThrow, io))`.
- *
- * @trace 0
- * @trace 1
  */
 export function suspendPartial<R, E, A, E2>(
   factory: () => Effect<R, E, A>,
-  onThrow: (u: unknown) => E2
+  onThrow: (u: unknown) => E2,
+  __trace?: string
 ): Effect<R, E | E2, A> {
-  return new ISuspendPartial(factory, onThrow)
+  return new ISuspendPartial(factory, onThrow, __trace)
 }
 
 /**
@@ -474,11 +503,10 @@ export const yieldNow: UIO<void> = new IYield()
 
 /**
  * Checks the current platform
- *
- * @trace 0
  */
 export function checkPlatform<R, E, A>(
-  f: (_: Fiber.Platform<unknown>) => Effect<R, E, A>
+  f: (_: Fiber.Platform<unknown>) => Effect<R, E, A>,
+  __trace?: string
 ): Effect<R, E, A> {
-  return new IPlatform(f)
+  return new IPlatform(f, __trace)
 }

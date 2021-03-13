@@ -87,7 +87,11 @@ export class ITrace extends Base<unknown, never, Trace> {
 export class ITracingStatus<R, E, A> extends Base<R, E, A> {
   readonly _tag = "TracingStatus"
 
-  constructor(readonly effect: Effect<R, E, A>, readonly flag: boolean) {
+  constructor(
+    readonly effect: Effect<R, E, A>,
+    readonly flag: boolean,
+    readonly trace?: string
+  ) {
     super()
   }
 }
@@ -95,7 +99,10 @@ export class ITracingStatus<R, E, A> extends Base<R, E, A> {
 export class ICheckTracingStatus<R, E, A> extends Base<R, E, A> {
   readonly _tag = "CheckTracingStatus"
 
-  constructor(readonly f: (tracingStatus: boolean) => Effect<R, E, A>) {
+  constructor(
+    readonly f: (tracingStatus: boolean) => Effect<R, E, A>,
+    readonly trace?: string
+  ) {
     super()
   }
 }
@@ -167,7 +174,11 @@ export class IFork<R, E, A> extends Base<R, never, FiberContext<E, A>> {
 export class IInterruptStatus<R, E, A> extends Base<R, E, A> {
   readonly _tag = "InterruptStatus"
 
-  constructor(readonly effect: Effect<R, E, A>, readonly flag: Fiber.InterruptStatus) {
+  constructor(
+    readonly effect: Effect<R, E, A>,
+    readonly flag: Fiber.InterruptStatus,
+    readonly trace?: string
+  ) {
     super()
   }
 }
@@ -224,7 +235,7 @@ export class IPlatform<R, E, A> extends Base<R, E, A> {
 export class IProvide<R, E, A> extends Base<unknown, E, A> {
   readonly _tag = "Provide"
 
-  constructor(readonly r: R, readonly next: Effect<R, E, A>) {
+  constructor(readonly r: R, readonly next: Effect<R, E, A>, readonly trace?: string) {
     super()
   }
 }
@@ -301,7 +312,11 @@ export class IRaceWith<R, E, A, R1, E1, A1, R2, E2, A2, R3, E3, A3> extends Base
 export class ISupervise<R, E, A> extends Base<R, E, A> {
   readonly _tag = "Supervise"
 
-  constructor(readonly effect: Effect<R, E, A>, readonly supervisor: Supervisor<any>) {
+  constructor(
+    readonly effect: Effect<R, E, A>,
+    readonly supervisor: Supervisor<any>,
+    readonly trace?: string
+  ) {
     super()
   }
 }

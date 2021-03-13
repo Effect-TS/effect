@@ -1,7 +1,5 @@
 // tracing: off
 
-import { traceAs } from "@effect-ts/tracing-utils"
-
 import type { Cause } from "../Cause"
 import { pipe } from "../Function"
 import * as P from "../Promise"
@@ -18,11 +16,10 @@ import { to } from "./to"
 /**
  * Imports an asynchronous effect into a pure `Effect` value. This formulation is
  * necessary when the effect is itself expressed in terms of `Effect`.
- *
- * @trace 0
  */
 export function effectAsyncM<R, E, R2, E2, A, X>(
-  register: (cb: (_: Effect<R2, E2, A>) => void) => Effect<R, E, X>
+  register: (cb: (_: Effect<R2, E2, A>) => void) => Effect<R, E, X>,
+  __trace?: string
 ): Effect<R & R2, E | E2, A> {
   return pipe(
     Do.do,
@@ -30,7 +27,7 @@ export function effectAsyncM<R, E, R2, E2, A, X>(
     Do.bind("r", () => runtime<R & R2>()),
     Do.bind("a", ({ p, r }) =>
       uninterruptibleMask(
-        traceAs(register, ({ restore }) =>
+        ({ restore }) =>
           pipe(
             fork(
               restore(
@@ -43,8 +40,8 @@ export function effectAsyncM<R, E, R2, E2, A, X>(
               )
             ),
             andThen(restore(P.await(p)))
-          )
-        )
+          ),
+        __trace
       )
     ),
     map(({ a }) => a)
