@@ -236,4 +236,25 @@ describe("Tracing", () => {
     expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:228:28")
     expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:228:14")
   })
+  it("should trace effectAsyncM", async () => {
+    const result = await T.runPromiseExit(
+      T.effectAsyncM((cb: T.Cb<T.UIO<number>>) =>
+        T.accessM((_: { n: number }) =>
+          T.effectTotal(() => {
+            cb(T.succeed(_.n))
+          })
+        )
+      )
+        ["|>"](T.andThen(T.fail("ok")))
+        ["|>"](T.provideAll({ n: 1 }))
+    )
+
+    assertsFailure(result)
+    const cause = pretty(result.cause)
+
+    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:248:32")
+    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:248:25")
+    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:241:21")
+    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:249:28")
+  })
 })

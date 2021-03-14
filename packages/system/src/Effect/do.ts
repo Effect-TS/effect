@@ -5,8 +5,8 @@ import type { Effect } from "./effect"
 import { map_ } from "./map"
 
 /**
+ * Binds an effectful value in a `do` scope
  * @dataFirst bind_
- * @trace 1
  */
 function bind<R, E, A, K, N extends string>(
   tag: Exclude<N, keyof K>,
@@ -26,7 +26,7 @@ function bind<R, E, A, K, N extends string>(
 }
 
 /**
- * @trace 2
+ * Binds an effectful value in a `do` scope
  */
 export function bind_<R2, E2, R, E, A, K, N extends string>(
   mk: Effect<R2, E2, K>,

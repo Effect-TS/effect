@@ -1,27 +1,18 @@
 // tracing: off
 
-import { accessCallTrace, traceFrom } from "@effect-ts/tracing-utils"
-
 import type { Exit } from "../Exit/exit"
-import { halt, succeed, suspend } from "./core"
+import { halt, succeed } from "./core"
 
 /**
  * Returns an effect from a `Exit` value.
- *
- * @trace call
  */
-export function done<E = never, A = unknown>(exit: Exit<E, A>) {
-  const trace = accessCallTrace()
-  return suspend(
-    traceFrom(trace, () => {
-      switch (exit._tag) {
-        case "Success": {
-          return succeed(exit.value)
-        }
-        case "Failure": {
-          return halt(exit.cause)
-        }
-      }
-    })
-  )
+export function done<E, A>(exit: Exit<E, A>, __trace?: string) {
+  switch (exit._tag) {
+    case "Success": {
+      return succeed(exit.value, __trace)
+    }
+    case "Failure": {
+      return halt(exit.cause, __trace)
+    }
+  }
 }

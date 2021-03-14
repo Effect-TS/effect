@@ -26,22 +26,21 @@ export function effectAsyncM<R, E, R2, E2, A, X>(
     Do.bind("p", () => P.make<E | E2, A>()),
     Do.bind("r", () => runtime<R & R2>()),
     Do.bind("a", ({ p, r }) =>
-      uninterruptibleMask(
-        ({ restore }) =>
-          pipe(
-            fork(
-              restore(
-                pipe(
-                  register((k) => {
-                    r.run(to(p)(k))
-                  }),
-                  catchAllCause((c) => P.halt(<Cause<E | E2>>c)(p))
-                )
+      uninterruptibleMask(({ restore }) =>
+        pipe(
+          fork(
+            restore(
+              pipe(
+                register((k) => {
+                  r.run(to(p)(k))
+                }),
+                catchAllCause((c) => P.halt(<Cause<E | E2>>c)(p))
               )
             ),
-            andThen(restore(P.await(p)))
+            __trace
           ),
-        __trace
+          andThen(restore(P.await(p)))
+        )
       )
     ),
     map(({ a }) => a)
