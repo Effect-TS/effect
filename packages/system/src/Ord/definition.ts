@@ -1,3 +1,5 @@
+// tracing: off
+
 import type { Ordering } from "../Ordering"
 
 /**

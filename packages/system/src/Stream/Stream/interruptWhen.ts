@@ -1,3 +1,5 @@
+// tracing: off
+
 import { pipe } from "../../Function"
 import * as O from "../../Option"
 import * as Pull from "../../Stream/Pull"

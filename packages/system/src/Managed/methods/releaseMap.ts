@@ -1,3 +1,5 @@
+// tracing: off
+
 import { pipe } from "../../Function"
 import { environment, map } from "../deps"
 import { Managed } from "../managed"

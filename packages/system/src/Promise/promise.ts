@@ -1,3 +1,5 @@
+// tracing: off
+
 import type { FiberID } from "../Fiber/id"
 import type { AtomicReference } from "../Support/AtomicReference"
 import type { State } from "./state"

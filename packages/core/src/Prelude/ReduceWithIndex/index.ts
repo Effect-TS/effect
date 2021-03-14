@@ -1,3 +1,5 @@
+// tracing: off
+
 import type * as HKT from "../HKT"
 
 export interface ReduceWithIndex<F extends HKT.URIS, C = HKT.Auto>

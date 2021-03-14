@@ -1,3 +1,5 @@
+// tracing: off
+
 import type { Generic, TypeOf } from "./newtype"
 import { genericDef, newtype, typeDef } from "./newtype"
 

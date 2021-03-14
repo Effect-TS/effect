@@ -1,3 +1,5 @@
+// tracing: off
+
 import type { XPure } from "@effect-ts/system/XPure"
 
 import type * as P from "../../Prelude"

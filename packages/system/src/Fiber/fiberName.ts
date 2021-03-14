@@ -1,3 +1,5 @@
+// tracing: off
+
 import { FiberRef } from "../FiberRef"
 import { identity } from "../Function"
 import * as O from "../Option"

@@ -1,3 +1,5 @@
+// tracing: off
+
 import { pipe, tuple } from "../../Function"
 import type { StateInURI, StateOutURI } from "../../Modules"
 import type { Auto, Monad } from "../../Prelude"

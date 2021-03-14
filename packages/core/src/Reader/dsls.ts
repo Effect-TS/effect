@@ -1,3 +1,5 @@
+// tracing: off
+
 import * as P from "../Prelude"
 import { Applicative, Covariant, Monad } from "./instances"
 

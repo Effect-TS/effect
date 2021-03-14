@@ -1,3 +1,5 @@
+// tracing: off
+
 import type * as A from "../../Chunk"
 import * as TR from "../Transducer"
 import { aggregate_ } from "./aggregate"

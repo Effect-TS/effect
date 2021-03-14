@@ -1,3 +1,5 @@
+// tracing: off
+
 import * as O from "../../Option"
 import { catchAll_ } from "./catchAll"
 import type { Stream } from "./definitions"

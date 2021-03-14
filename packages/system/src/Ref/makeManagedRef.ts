@@ -1,3 +1,5 @@
+// tracing: off
+
 import { pipe } from "../Function"
 import { fromEffect } from "../Managed/fromEffect"
 import type { Managed } from "../Managed/managed"

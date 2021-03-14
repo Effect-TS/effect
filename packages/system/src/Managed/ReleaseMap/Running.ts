@@ -1,3 +1,5 @@
+// tracing: off
+
 import type { Finalizer } from "./finalizer"
 
 export class Running {

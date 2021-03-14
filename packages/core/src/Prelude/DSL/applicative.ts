@@ -1,3 +1,5 @@
+// tracing: off
+
 import { pipe, tuple } from "@effect-ts/system/Function"
 
 import type { Applicative } from "../Applicative"

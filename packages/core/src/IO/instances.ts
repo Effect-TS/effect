@@ -1,3 +1,5 @@
+// tracing: off
+
 import * as F from "@effect-ts/system/IO"
 
 import type { IOURI } from "../Modules"

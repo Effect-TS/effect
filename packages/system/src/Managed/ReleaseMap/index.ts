@@ -1,3 +1,5 @@
+// tracing: off
+
 // codegen:start {preset: barrel, include: ./*.ts, exclude: ./deps*.ts}
 export * from "./add"
 export * from "./addIfOpen"

@@ -1,3 +1,5 @@
+// tracing: off
+
 import * as E from "../../Either"
 import { catchAll_ } from "./catchAll"
 import type { Stream } from "./definitions"

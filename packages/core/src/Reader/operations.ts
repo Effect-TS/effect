@@ -1,3 +1,5 @@
+// tracing: off
+
 import { identity, tuple } from "../Function"
 import type { Reader } from "./definition"
 

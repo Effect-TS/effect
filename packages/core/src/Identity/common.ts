@@ -1,3 +1,5 @@
+// tracing: off
+
 import * as A from "../Associative/common"
 import type { Identity } from "./definition"
 import { makeIdentity } from "./makeIdentity"

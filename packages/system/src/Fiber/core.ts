@@ -1,3 +1,5 @@
+// tracing: off
+
 import { chain_ } from "../Effect/core"
 import { done } from "../Effect/done"
 import type { IO, UIO } from "../Effect/effect"

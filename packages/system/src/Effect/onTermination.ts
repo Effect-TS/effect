@@ -1,3 +1,5 @@
+// tracing: off
+
 import type { Cause } from "../Cause"
 import { failureOrCause } from "../Cause"
 import * as E from "../Either"

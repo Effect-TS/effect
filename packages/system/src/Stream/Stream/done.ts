@@ -1,3 +1,5 @@
+// tracing: off
+
 import type * as Ex from "../../Exit"
 import * as T from "../_internal/effect"
 import type { IO } from "./definitions"

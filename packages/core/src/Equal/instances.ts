@@ -1,3 +1,5 @@
+// tracing: off
+
 import * as Equal from "@effect-ts/system/Equal"
 
 import type { EqualURI } from "../Modules"

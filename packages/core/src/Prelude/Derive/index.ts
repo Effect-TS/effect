@@ -1,3 +1,5 @@
+// tracing: off
+
 import type * as HKT from "../HKT"
 
 export interface Derive<F extends HKT.URIS, Typeclass extends HKT.URIS, C = HKT.Auto>

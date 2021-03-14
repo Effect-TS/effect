@@ -1,1 +1,8 @@
-export const instance = <T>(_: Omit<T, `_${any}`>): T => _ as any
+// tracing: off
+
+/**
+ * @optimize identity
+ */
+export function instance<T>(_: Omit<T, `_${any}`>): T {
+  return _ as any
+}

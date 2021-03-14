@@ -1,3 +1,5 @@
+// tracing: off
+
 import { absurd, pipe } from "../../Function"
 import { insert, lookup } from "../../Map/core"
 import * as O from "../../Option"

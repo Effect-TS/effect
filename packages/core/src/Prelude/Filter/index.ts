@@ -1,3 +1,5 @@
+// tracing: off
+
 import type { Predicate, Refinement } from "../../Function"
 import type * as HKT from "../HKT"
 

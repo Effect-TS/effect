@@ -1,3 +1,5 @@
+// tracing: off
+
 import type { HasClock } from "../Clock"
 import * as E from "../Either"
 import { identity, pipe } from "../Function"

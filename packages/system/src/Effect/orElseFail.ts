@@ -1,3 +1,5 @@
+// tracing: off
+
 import type { Effect } from "./effect"
 import { fail } from "./fail"
 import { orElse_ } from "./orElse"

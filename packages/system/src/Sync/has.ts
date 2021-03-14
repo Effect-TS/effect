@@ -1,3 +1,5 @@
+// tracing: off
+
 /**
  * Copyright 2020 Michael Arnaldi and the Matechs Garage Contributors.
  */

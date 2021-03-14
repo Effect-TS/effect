@@ -1,3 +1,5 @@
+// tracing: off
+
 import { identity } from "../../Function"
 import type * as O from "../../Option"
 import type { Stream } from "./definitions"

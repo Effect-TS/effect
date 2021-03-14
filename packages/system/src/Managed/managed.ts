@@ -1,3 +1,5 @@
+// tracing: off
+
 import * as T from "./deps-core"
 import type { Finalizer, ReleaseMap } from "./ReleaseMap"
 

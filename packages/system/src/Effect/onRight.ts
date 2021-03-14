@@ -1,3 +1,5 @@
+// tracing: off
+
 import type { Effect } from "./effect"
 import { environment } from "./environment"
 import { joinEither_ } from "./join"

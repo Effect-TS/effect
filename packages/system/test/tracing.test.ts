@@ -4,7 +4,7 @@ import { pretty } from "../src/Cause"
 import * as T from "../src/Effect"
 import { assertsFailure } from "../src/Exit"
 import { prettyTrace } from "../src/Fiber"
-import { literal, pipe } from "../src/Function"
+import { pipe } from "../src/Function"
 import { tag } from "../src/Has"
 
 describe("Tracing", () => {
@@ -288,23 +288,16 @@ describe("Tracing", () => {
   })
   it("should trace filterOrElse", async () => {
     const result = await T.runPromiseExit(
-      T.succeed("no")
-        ["|>"](
-          T.filterOrElse(
-            (a): a is "ok" => a === "ok",
-            () => T.succeed(literal("no"))
-          )
-        )
-        ["|>"](T.chain((x) => T.fail(`error: ${x}`)))
+      T.succeed("no" as "ok" | "no")["|>"](
+        T.filterOrElse((a): a is "ok" => a === "ok", T.fail)
+      )
     )
 
     assertsFailure(result)
     const cause = pretty(result.cause)
 
-    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:298:37")
-    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:298:23")
-    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:295:28")
-    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:293:25")
+    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:292:60")
+    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:292:23")
     expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:291:16")
   })
 })

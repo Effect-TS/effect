@@ -1,3 +1,5 @@
+// tracing: off
+
 import type { UIO } from "./definitions"
 import { fromChunk } from "./fromChunk"
 

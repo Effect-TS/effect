@@ -1,3 +1,5 @@
+// tracing: off
+
 import * as E from "../../Either"
 import { pipe } from "../../Function"
 import type { Stream } from "./definitions"

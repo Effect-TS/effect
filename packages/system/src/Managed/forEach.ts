@@ -1,3 +1,5 @@
+// tracing: off
+
 import * as A from "../Array"
 import type { ExecutionStrategy } from "../Effect/ExecutionStrategy"
 import { sequential } from "../Effect/ExecutionStrategy"

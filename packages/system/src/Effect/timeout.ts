@@ -1,3 +1,5 @@
+// tracing: off
+
 import type * as CL from "../Clock"
 import * as O from "../Option"
 import type { Effect } from "./effect"

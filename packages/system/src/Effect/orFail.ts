@@ -1,3 +1,5 @@
+// tracing: off
+
 import { identity } from "../Function"
 import * as O from "../Option"
 import * as T from "./core"

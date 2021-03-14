@@ -1,3 +1,5 @@
+// tracing: off
+
 import "../Operator"
 
 /* adapted from https://github.com/gcanti/fp-ts */

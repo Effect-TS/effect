@@ -1,3 +1,5 @@
+// tracing: off
+
 import * as A from "../Array"
 import * as Clock from "../Clock"
 import * as E from "../Either"

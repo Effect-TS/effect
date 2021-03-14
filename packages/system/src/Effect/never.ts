@@ -1,3 +1,5 @@
+// tracing: off
+
 import { effectTotal, suspend } from "./core"
 import { effectAsyncInterrupt } from "./effectAsyncInterrupt"
 

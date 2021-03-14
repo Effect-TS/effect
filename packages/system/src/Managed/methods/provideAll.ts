@@ -1,3 +1,5 @@
+// tracing: off
+
 import { provideSome_ } from "../core"
 import type { Managed } from "../managed"
 

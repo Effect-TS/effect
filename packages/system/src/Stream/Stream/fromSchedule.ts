@@ -1,3 +1,5 @@
+// tracing: off
+
 import type * as CL from "../../Clock"
 import { constVoid, pipe } from "../../Function"
 import * as SC from "../../Schedule"

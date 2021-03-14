@@ -1,3 +1,5 @@
+// tracing: off
+
 export interface CustomType<P extends string, V> {
   CustomType: {
     [p in P]: () => V

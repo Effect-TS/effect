@@ -1,3 +1,5 @@
+// tracing: off
+
 import { currentTime } from "../Clock"
 import type { Effect } from "./effect"
 import { summarized_ } from "./summarized"

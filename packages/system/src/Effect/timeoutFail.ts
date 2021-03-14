@@ -1,3 +1,5 @@
+// tracing: off
+
 import type { Clock } from "../Clock"
 import type { Has } from "../Has"
 import { succeed, suspend } from "./core"

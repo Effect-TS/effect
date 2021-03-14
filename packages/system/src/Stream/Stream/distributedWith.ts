@@ -1,3 +1,5 @@
+// tracing: off
+
 import * as A from "../../Chunk"
 import type * as Ex from "../../Exit"
 import { pipe } from "../../Function"

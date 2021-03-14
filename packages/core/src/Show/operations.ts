@@ -1,3 +1,5 @@
+// tracing: off
+
 import type { Show } from "./definitions"
 
 export function struct<O extends Record<string, any>>(

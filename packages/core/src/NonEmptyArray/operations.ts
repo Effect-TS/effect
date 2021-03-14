@@ -1,3 +1,5 @@
+// tracing: off
+
 import * as A from "@effect-ts/system/Array"
 import { pipe } from "@effect-ts/system/Function"
 import type { MutableArray } from "@effect-ts/system/Mutable"

@@ -1,3 +1,5 @@
+// tracing: off
+
 import type { Ordering } from "@effect-ts/system/Ordering"
 
 import * as A from "../Associative/makeAssociative"

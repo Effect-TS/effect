@@ -1,3 +1,5 @@
+// tracing: off
+
 import { pipe, tuple } from "../Function"
 import * as P from "../Promise"
 import * as RefM from "../RefM"

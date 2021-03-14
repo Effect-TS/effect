@@ -1,3 +1,5 @@
+// tracing: off
+
 import type { Any } from "../Any"
 import type { AssociativeFlatten } from "../AssociativeFlatten"
 import type { Auto, URIS } from "../HKT"

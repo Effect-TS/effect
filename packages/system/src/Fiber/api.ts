@@ -1,3 +1,5 @@
+// tracing: off
+
 import * as A from "../Array"
 import * as Cause from "../Cause/core"
 import * as E from "../Either"

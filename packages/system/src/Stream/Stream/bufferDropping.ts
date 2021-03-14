@@ -1,3 +1,5 @@
+// tracing: off
+
 import { pipe } from "../../Function"
 import type * as P from "../../Promise"
 import * as Q from "../../Queue"

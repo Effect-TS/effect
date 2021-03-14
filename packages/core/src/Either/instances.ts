@@ -1,3 +1,5 @@
+// tracing: off
+
 import type { EitherURI } from "../Modules"
 import type { URI } from "../Prelude"
 import * as P from "../Prelude"

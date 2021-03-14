@@ -1,3 +1,5 @@
+// tracing: off
+
 import { both } from "../Cause/cause"
 import type { Exit } from "../Exit/exit"
 import type { Fiber } from "../Fiber/core"

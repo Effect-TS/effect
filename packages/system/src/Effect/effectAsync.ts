@@ -1,7 +1,5 @@
 // tracing: off
 
-import { traceAs } from "@effect-ts/tracing-utils"
-
 import type { FiberID } from "../Fiber/id"
 import * as O from "../Option"
 import type { Cb } from "./Cb"
@@ -41,10 +39,10 @@ export function effectAsyncBlockingOn<R, E, A>(
   __trace?: string
 ): Effect<R, E, A> {
   return effectAsyncOptionBlockingOn(
-    traceAs(register, (cb) => {
+    (cb) => {
       register(cb)
       return O.none
-    }),
+    },
     blockingOn,
     __trace
   )

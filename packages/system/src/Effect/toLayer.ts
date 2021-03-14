@@ -1,3 +1,5 @@
+// tracing: off
+
 import type { Has, Tag } from "../Has"
 import * as L from "../Layer"
 import type { Effect } from "./effect"

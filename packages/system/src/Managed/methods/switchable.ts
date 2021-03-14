@@ -1,3 +1,5 @@
+// tracing: off
+
 import { sequential } from "../../Effect/ExecutionStrategy"
 import { pipe } from "../../Function"
 import { fold } from "../../Option"

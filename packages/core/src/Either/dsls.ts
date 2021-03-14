@@ -1,3 +1,5 @@
+// tracing: off
+
 import { sequenceF } from "../Prelude"
 import * as DSL from "../Prelude/DSL"
 import { Applicative, Covariant, Fail, ForEach, Monad, Run } from "./instances"

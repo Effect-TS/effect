@@ -1,3 +1,5 @@
+// tracing: off
+
 import type { Ref } from "../Ref/XRef"
 import type { Semaphore } from "../Semaphore"
 import { withPermit } from "../Semaphore"

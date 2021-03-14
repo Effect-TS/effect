@@ -1,3 +1,5 @@
+// tracing: off
+
 import type * as T from "../_internal/effect"
 import * as SK from "../Sink"
 import type { Stream } from "./definitions"

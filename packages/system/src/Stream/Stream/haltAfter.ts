@@ -1,3 +1,5 @@
+// tracing: off
+
 import * as CL from "../../Clock"
 import type * as H from "../../Has"
 import type { Stream } from "./definitions"

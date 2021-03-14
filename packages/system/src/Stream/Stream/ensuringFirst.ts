@@ -1,3 +1,5 @@
+// tracing: off
+
 import type * as T from "../_internal/effect"
 import * as M from "../_internal/managed"
 import { Stream } from "./definitions"

@@ -1,3 +1,5 @@
+// tracing: off
+
 import { constant, pipe, tuple } from "../../Function"
 import type { Has, Tag } from "../../Has"
 import type { EnforceNonEmptyRecord } from "../../Utils"

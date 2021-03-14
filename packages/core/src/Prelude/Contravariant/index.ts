@@ -1,3 +1,5 @@
+// tracing: off
+
 import type { CovariantComposition } from "../Covariant"
 import * as HKT from "../HKT"
 

@@ -1,3 +1,5 @@
+// tracing: off
+
 import * as E from "../../Either"
 import { pipe } from "../../Function"
 import * as T from "../_internal/effect"

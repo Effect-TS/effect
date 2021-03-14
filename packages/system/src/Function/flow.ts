@@ -1,3 +1,5 @@
+// tracing: off
+
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable prefer-rest-params */
 /**

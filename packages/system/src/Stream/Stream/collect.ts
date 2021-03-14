@@ -1,3 +1,5 @@
+// tracing: off
+
 import * as A from "../../Chunk"
 import * as O from "../../Option"
 import type { Stream } from "./definitions"

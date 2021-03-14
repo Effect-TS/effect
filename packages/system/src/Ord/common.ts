@@ -1,3 +1,5 @@
+// tracing: off
+
 import type { Ordering } from "../Ordering"
 import type { Ord } from "./definition"
 import { contramap_, makeOrd } from "./operations"

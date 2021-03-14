@@ -1,3 +1,5 @@
+// tracing: off
+
 import { NoSuchElementException } from "../GlobalExceptions"
 import type * as O from "../Option"
 import type { Effect } from "./effect"

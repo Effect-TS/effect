@@ -1,3 +1,5 @@
+// tracing: off
+
 import type { FilterMapWithIndex } from "../FilterMapWithIndex"
 import type { FilterWithIndex } from "../FilterWithIndex"
 import type * as HKT from "../HKT"

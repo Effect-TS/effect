@@ -1,3 +1,5 @@
+// tracing: off
+
 import type * as C from "../../Cause"
 import { pipe } from "../../Function"
 import * as T from "../_internal/effect"

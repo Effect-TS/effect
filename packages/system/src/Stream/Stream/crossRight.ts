@@ -1,3 +1,5 @@
+// tracing: off
+
 import { crossWith_ } from "./crossWith"
 import type { Stream } from "./definitions"
 

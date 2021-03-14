@@ -1,3 +1,5 @@
+// tracing: off
+
 import { tuple } from "../Function"
 import { access } from "../Sync"
 

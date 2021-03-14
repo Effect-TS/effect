@@ -1,3 +1,5 @@
+// tracing: off
+
 import type { PredicateWithIndex, RefinementWithIndex } from "../../Utils"
 import type * as HKT from "../HKT"
 

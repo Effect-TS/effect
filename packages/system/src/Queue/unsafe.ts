@@ -1,3 +1,5 @@
+// tracing: off
+
 import { None } from "../Fiber/id"
 import { AtomicBoolean } from "../Support/AtomicBoolean"
 import type { MutableQueue } from "../Support/MutableQueue"

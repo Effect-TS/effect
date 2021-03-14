@@ -1,3 +1,5 @@
+// tracing: off
+
 import type { Stream } from "./definitions"
 import { succeed } from "./succeed"
 

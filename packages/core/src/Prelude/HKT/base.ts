@@ -1,3 +1,5 @@
+// tracing: off
+
 export interface Auto {}
 
 export interface Base<F, C = Auto> {

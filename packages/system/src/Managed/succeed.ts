@@ -1,3 +1,5 @@
+// tracing: off
+
 import * as T from "./deps"
 import { fromEffect } from "./fromEffect"
 

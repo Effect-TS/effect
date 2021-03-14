@@ -1,3 +1,5 @@
+// tracing: off
+
 import { succeed } from "../_internal/managed"
 import * as Pull from "../Pull"
 import type { UIO } from "./definitions"

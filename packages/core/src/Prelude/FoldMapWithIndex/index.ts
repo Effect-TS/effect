@@ -1,3 +1,5 @@
+// tracing: off
+
 import type { Identity } from "../../Identity"
 import type * as HKT from "../HKT"
 

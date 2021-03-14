@@ -1,3 +1,5 @@
+// tracing: off
+
 import type { Identity } from "../Identity"
 
 export interface Inverse<A> extends Identity<A> {

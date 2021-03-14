@@ -1,3 +1,5 @@
+// tracing: off
+
 import type * as T from "../deps"
 
 export class Exited {

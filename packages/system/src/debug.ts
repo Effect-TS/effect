@@ -1,22 +1,20 @@
 import "@effect-ts/tracing-utils/Enable"
 
+import { pretty } from "./Cause"
 import * as T from "./Effect"
-import { prettyTrace } from "./Fiber"
-import { literal } from "./Function"
 
-T.succeed("no")
-  ["|>"](
-    T.filterOrElse(
-      (a): a is "ok" => a === "ok",
-      () => T.succeed(literal("no"))
-    )
+T.succeed("no" as "ok" | "no")
+  ["|>"](T.filterOrElse((a): a is "ok" => a === "ok", T.fail))
+  ["|>"]((x) =>
+    T.runPromiseExit(x).then((exit) => {
+      switch (exit._tag) {
+        case "Failure": {
+          console.log(pretty(exit.cause))
+          break
+        }
+        case "Success": {
+          break
+        }
+      }
+    })
   )
-  ["|>"](T.andThen(T.trace))
-  ["|>"](
-    T.chain((trace) =>
-      T.effectTotal(() => {
-        console.log(prettyTrace(trace))
-      })
-    )
-  )
-  ["|>"]((x) => T.runPromise(x).catch(console.error))

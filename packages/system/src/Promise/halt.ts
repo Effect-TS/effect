@@ -1,3 +1,5 @@
+// tracing: off
+
 import type { Cause } from "../Cause/cause"
 import { halt as effectHalt } from "../Effect/core"
 import { completeWith } from "./completeWith"

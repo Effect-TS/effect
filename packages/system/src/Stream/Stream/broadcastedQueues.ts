@@ -1,3 +1,5 @@
+// tracing: off
+
 import type * as A from "../../Chunk"
 import type * as Ex from "../../Exit"
 import * as O from "../../Option"

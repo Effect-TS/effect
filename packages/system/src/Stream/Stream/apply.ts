@@ -1,3 +1,5 @@
+// tracing: off
+
 import type * as A from "../../Chunk"
 import type * as O from "../../Option"
 import type * as T from "../_internal/effect"

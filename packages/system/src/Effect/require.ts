@@ -1,3 +1,5 @@
+// tracing: off
+
 import * as O from "../Option"
 import { chain_, effectTotal, succeed } from "./core"
 import type { Effect } from "./effect"

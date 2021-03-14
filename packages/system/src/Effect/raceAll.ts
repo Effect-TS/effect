@@ -1,3 +1,5 @@
+// tracing: off
+
 import * as A from "../Array"
 import * as Exit from "../Exit"
 import * as Fiber from "../Fiber"

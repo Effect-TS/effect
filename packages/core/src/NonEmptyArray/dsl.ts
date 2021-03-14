@@ -1,3 +1,5 @@
+// tracing: off
+
 import type * as O from "../Option"
 import * as P from "../Prelude"
 import { isOption } from "../Utils"

@@ -1,3 +1,5 @@
+// tracing: off
+
 /* eslint-disable prefer-const */
 import * as A from "../Array"
 import * as E from "../Either"

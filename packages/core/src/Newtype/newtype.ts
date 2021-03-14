@@ -1,3 +1,5 @@
+// tracing: off
+
 export interface Newtype<URI, A> {
   readonly _URI: URI
   readonly _A: A

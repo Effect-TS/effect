@@ -1,3 +1,5 @@
+// tracing: off
+
 import type * as A from "../../Chunk"
 import { pipe } from "../../Function"
 import type * as T from "../_internal/effect"

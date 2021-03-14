@@ -1,3 +1,5 @@
+// tracing: off
+
 import * as E from "../Either"
 import { identity, pipe } from "../Function"
 import * as O from "../Option"

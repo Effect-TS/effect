@@ -1,3 +1,5 @@
+// tracing: off
+
 import { asUnit } from "./asUnit"
 import { chain_, suspend, unit } from "./core"
 import type { Effect } from "./effect"

@@ -1,3 +1,5 @@
+// tracing: off
+
 import "../../Operator"
 
 // codegen:start {preset: barrel, include: ./*.ts}
@@ -223,7 +225,6 @@ export * from "./timeoutErrorCause"
 export * from "./timeoutTo"
 export * from "./toQueue"
 export * from "./toQueueUnbounded"
-export * from "./transduce"
 export * from "./unfold"
 export * from "./unfoldChunk"
 export * from "./unfoldChunkM"

@@ -1,3 +1,5 @@
+// tracing: off
+
 import type { Cause } from "../Cause"
 import { flatten } from "../Cause"
 import type { Effect } from "./effect"

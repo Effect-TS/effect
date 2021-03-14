@@ -1,3 +1,5 @@
+// tracing: off
+
 import { pipe } from "../Function"
 import type { Exit } from "./core"
 import { chain, map, succeed } from "./core"

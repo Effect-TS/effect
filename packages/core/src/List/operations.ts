@@ -1,3 +1,5 @@
+// tracing: off
+
 import * as List from "@effect-ts/system/Persistent/List"
 
 import * as A from "../Array"

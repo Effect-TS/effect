@@ -1,3 +1,5 @@
+// tracing: off
+
 import { constant } from "@effect-ts/system/Function"
 import * as F from "@effect-ts/system/XPure"
 

@@ -1,3 +1,5 @@
+// tracing: off
+
 import * as A from "../Array"
 import { chain_, succeed } from "./core"
 import type { Effect } from "./effect"

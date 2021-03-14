@@ -1,3 +1,5 @@
+// tracing: off
+
 import type * as C from "./_internal/cause"
 import * as T from "./_internal/effect"
 import * as Exit from "./core"

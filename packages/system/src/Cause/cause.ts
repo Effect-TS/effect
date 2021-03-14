@@ -1,3 +1,5 @@
+// tracing: off
+
 import type { FiberID } from "../Fiber/id"
 import type { Trace } from "../Fiber/tracing"
 import * as O from "../Option"

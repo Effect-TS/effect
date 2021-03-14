@@ -1,3 +1,5 @@
+// tracing: off
+
 import { pipe } from "../Function"
 import * as I from "../Iterable"
 import * as Ref from "../Ref"

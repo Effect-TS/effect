@@ -1,3 +1,5 @@
+// tracing: off
+
 import { pipe } from "../../Function"
 import { concat } from "./concat"
 import type { Stream } from "./definitions"

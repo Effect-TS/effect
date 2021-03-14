@@ -1,10 +1,11 @@
+// tracing: off
+
 import type { Covariant } from "../Covariant"
 import type * as HKT from "../HKT"
 import type { IdentityBoth } from "../IdentityBoth"
 
 export interface ForEachWithIndexFn<F extends HKT.URIS, C = HKT.Auto> {
   <G extends HKT.URIS, GC = HKT.Auto>(G: IdentityBoth<G, GC> & Covariant<G, GC>): <
-    GN extends string,
     GK,
     GQ,
     GW,
@@ -15,7 +16,6 @@ export interface ForEachWithIndexFn<F extends HKT.URIS, C = HKT.Auto> {
     GE,
     A,
     B,
-    FN extends string,
     FK
   >(
     f: (
@@ -47,11 +47,10 @@ export interface ForEachWithIndex<F extends HKT.URIS, C = HKT.Auto>
 }
 
 export function implementForEachWithIndexF<F extends HKT.URIS, C = HKT.Auto>(): (
-  i: <N extends string, K, Q, W, X, I, S, R, E, A, B, G>(_: {
+  i: <K, Q, W, X, I, S, R, E, A, B, G>(_: {
     A: A
     B: B
     G: G
-    N: N
     K: K
     Q: Q
     W: W

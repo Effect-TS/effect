@@ -1,3 +1,5 @@
+// tracing: off
+
 import * as E from "../../Either"
 import type { Stream } from "./definitions"
 import type { TerminationStrategy } from "./mergeWith"

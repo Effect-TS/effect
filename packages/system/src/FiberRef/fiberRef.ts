@@ -1,3 +1,5 @@
+// tracing: off
+
 export class FiberRef<A> {
   constructor(
     readonly initial: A,

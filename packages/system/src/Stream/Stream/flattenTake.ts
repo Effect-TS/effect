@@ -1,3 +1,5 @@
+// tracing: off
+
 import type * as TK from "../Take"
 import type { Stream } from "./definitions"
 import { flattenChunks } from "./flattenChunks"
