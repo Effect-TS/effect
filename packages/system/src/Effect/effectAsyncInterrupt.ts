@@ -1,7 +1,5 @@
 // tracing: off
 
-import { traceAs } from "@effect-ts/tracing-utils"
-
 import * as E from "../Either"
 import type { FiberID } from "../Fiber/id"
 import type { Canceler } from "./Canceler"
@@ -38,7 +36,7 @@ export function effectAsyncInterruptBlockingOn<R, E, A>(
   __trace?: string
 ) {
   return effectMaybeAsyncInterruptBlockingOn<R, E, A>(
-    traceAs(register, (cb) => E.left(register(cb))),
+    (cb) => E.left(register(cb)),
     blockingOn,
     __trace
   )

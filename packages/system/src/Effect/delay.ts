@@ -10,9 +10,9 @@ import { sleep } from "./sleep"
  *
  * @dataFirst delay_
  */
-export function delay(ms: number) {
+export function delay(ms: number, __trace?: string) {
   return <R, E, A>(effect: Effect<R, E, A>): Effect<R & HasClock, E, A> =>
-    delay_(effect, ms)
+    delay_(effect, ms, __trace)
 }
 
 /**
@@ -20,7 +20,8 @@ export function delay(ms: number) {
  */
 export function delay_<R, E, A>(
   effect: Effect<R, E, A>,
-  ms: number
+  ms: number,
+  __trace?: string
 ): Effect<R & HasClock, E, A> {
-  return chain_(sleep(ms), () => effect)
+  return chain_(sleep(ms, __trace), () => effect)
 }

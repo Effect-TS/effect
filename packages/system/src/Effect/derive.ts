@@ -24,21 +24,11 @@ export type ShapeCn<T> = Pick<
   }[keyof T]
 >
 
-export type ShapePu<T> = Omit<
-  T,
-  | {
-      [k in keyof T]: T[k] extends (...args: any[]) => any ? k : never
-    }[keyof T]
-  | {
-      [k in keyof T]: T[k] extends Effect<any, any, any> ? k : never
-    }[keyof T]
->
-
 export type DerivedLifted<
   T,
   Fns extends keyof ShapeFn<T>,
   Cns extends keyof ShapeCn<T>,
-  Values extends keyof ShapePu<T>
+  Values extends keyof T
 > = {
   [k in Fns]: T[k] extends (...args: infer ARGS) => Effect<infer R, infer E, infer A>
     ? (...args: ARGS) => Effect<R & Has<T>, E, A>
@@ -58,10 +48,10 @@ export function deriveLifted<T>(
 ): <
   Fns extends keyof ShapeFn<T> = never,
   Cns extends keyof ShapeCn<T> = never,
-  Values extends keyof ShapePu<T> = never
+  Values extends keyof T = never
 >(
   functions: Fns[],
-  constants: Cns[],
+  effects: Cns[],
   values: Values[]
 ) => DerivedLifted<T, Fns, Cns, Values> {
   return (functions, constants, values) => {
@@ -85,7 +75,8 @@ export function deriveLifted<T>(
 
 export type DerivedAccessM<T, Gens extends keyof T> = {
   [k in Gens]: <R_, E_, A_>(
-    f: (_: T[k]) => Effect<R_, E_, A_>
+    f: (_: T[k]) => Effect<R_, E_, A_>,
+    __trace?: string
   ) => Effect<R_ & Has<T>, E_, A_>
 }
 
@@ -96,7 +87,7 @@ export function deriveAccessM<T>(
     const ret = {} as any
 
     for (const k of generics) {
-      ret[k] = (f: any) => accessServiceM(H)((h) => f(h[k]))
+      ret[k] = (f: any, trace?: string) => accessServiceM(H)((h) => f(h[k]), trace)
     }
 
     return ret as any
@@ -104,7 +95,7 @@ export function deriveAccessM<T>(
 }
 
 export type DerivedAccess<T, Gens extends keyof T> = {
-  [k in Gens]: <A_>(f: (_: T[k]) => A_) => Effect<Has<T>, never, A_>
+  [k in Gens]: <A_>(f: (_: T[k]) => A_, __trace?: string) => Effect<Has<T>, never, A_>
 }
 
 export function deriveAccess<T>(
@@ -114,7 +105,7 @@ export function deriveAccess<T>(
     const ret = {} as any
 
     for (const k of generics) {
-      ret[k] = (f: any) => accessService(H)((h) => f(h[k]))
+      ret[k] = (f: any, trace?: string) => accessService(H)((h) => f(h[k]), trace)
     }
 
     return ret as any

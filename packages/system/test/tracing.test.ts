@@ -5,6 +5,7 @@ import * as T from "../src/Effect"
 import { assertsFailure } from "../src/Exit"
 import { prettyTrace } from "../src/Fiber"
 import { pipe } from "../src/Function"
+import { tag } from "../src/Has"
 
 describe("Tracing", () => {
   it("should trace andThen", async () => {
@@ -19,13 +20,13 @@ describe("Tracing", () => {
 
     assertsFailure(result)
     const cause = pretty(result.cause)
-    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:16:25")
+    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:17:25")
+    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:17:18")
+    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:16:32")
     expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:16:18")
     expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:15:32")
     expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:15:18")
-    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:14:32")
-    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:14:18")
-    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:13:22")
+    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:14:22")
   })
   it("should trace bracket", async () => {
     const result = await T.runPromiseExit(
@@ -40,10 +41,10 @@ describe("Tracing", () => {
 
     assertsFailure(result)
     const cause = pretty(result.cause)
-    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:36:22")
-    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:35:24")
-    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:34:18")
-    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:33:22")
+    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:37:22")
+    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:36:24")
+    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:35:18")
+    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:34:22")
     expect(cause).toContain("error 0")
     expect(cause).toContain("error release")
   })
@@ -67,16 +68,16 @@ describe("Tracing", () => {
       new RegExp("\\(@effect-ts/system/test\\): (.*)", "g")
     )
     expect(Array.from(cause).map((s) => s[1])).toEqual([
-      "test/tracing.test.ts:62:14",
-      "test/tracing.test.ts:56:29",
-      "test/tracing.test.ts:54:18",
-      "test/tracing.test.ts:58:26",
-      "test/tracing.test.ts:54:18",
-      "test/tracing.test.ts:58:26",
-      "test/tracing.test.ts:54:18",
-      "test/tracing.test.ts:61:21",
-      "test/tracing.test.ts:58:26",
-      "test/tracing.test.ts:54:18"
+      "test/tracing.test.ts:63:14",
+      "test/tracing.test.ts:57:29",
+      "test/tracing.test.ts:55:18",
+      "test/tracing.test.ts:59:26",
+      "test/tracing.test.ts:55:18",
+      "test/tracing.test.ts:59:26",
+      "test/tracing.test.ts:55:18",
+      "test/tracing.test.ts:62:21",
+      "test/tracing.test.ts:59:26",
+      "test/tracing.test.ts:55:18"
     ])
   })
   it("should trace firstSuccessOf", async () => {
@@ -88,11 +89,11 @@ describe("Tracing", () => {
     const cause = pretty(exit.cause)
 
     expect(cause).toContain(
-      "a future continuation at (@effect-ts/system/test): test/tracing.test.ts:84:23"
+      "a future continuation at (@effect-ts/system/test): test/tracing.test.ts:85:23"
     )
-    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:84:77")
-    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:84:56")
-    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:84:35")
+    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:85:77")
+    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:85:56")
+    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:85:35")
   })
   it("should trace tuple", async () => {
     const exit = await T.runPromiseExit(T.tuple(T.succeed(0), T.succeed(1), T.fail(0)))
@@ -101,11 +102,11 @@ describe("Tracing", () => {
     const cause = pretty(exit.cause)
 
     expect(cause).toContain(
-      "a future continuation at (@effect-ts/system/test): test/tracing.test.ts:98:48"
+      "a future continuation at (@effect-ts/system/test): test/tracing.test.ts:99:48"
     )
-    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:98:83")
-    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:98:72")
-    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:98:58")
+    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:99:83")
+    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:99:72")
+    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:99:58")
   })
   it("should trace tuplePar", async () => {
     const exit = await T.runPromiseExit(
@@ -116,9 +117,9 @@ describe("Tracing", () => {
     const cause = pretty(exit.cause)
 
     expect(cause).toContain(
-      "a future continuation at (@effect-ts/system/test): test/tracing.test.ts:112:17"
+      "a future continuation at (@effect-ts/system/test): test/tracing.test.ts:113:17"
     )
-    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:112:52")
+    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:113:52")
   })
   it("should trace tupleParN", async () => {
     const exit = await T.runPromiseExit(
@@ -133,9 +134,9 @@ describe("Tracing", () => {
     const cause = pretty(exit.cause)
 
     expect(cause).toContain(
-      "a future continuation at (@effect-ts/system/test): test/tracing.test.ts:125:21"
+      "a future continuation at (@effect-ts/system/test): test/tracing.test.ts:126:21"
     )
-    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:128:27")
+    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:129:27")
   })
   it("should trace pipe operator", async () => {
     const result = await T.runPromiseExit(
@@ -147,13 +148,13 @@ describe("Tracing", () => {
 
     assertsFailure(result)
     const cause = pretty(result.cause)
-    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:145:32")
+    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:146:32")
+    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:146:25")
+    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:145:39")
     expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:145:25")
     expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:144:39")
     expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:144:25")
-    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:143:39")
-    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:143:25")
-    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:142:20")
+    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:143:20")
   })
   it("should trace condM", async () => {
     const result = await T.runPromiseExit(
@@ -170,9 +171,69 @@ describe("Tracing", () => {
     assertsFailure(result)
     const cause = pretty(result.cause)
 
-    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:164:26")
-    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:162:18")
-    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:161:16")
-    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:160:20")
+    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:165:26")
+    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:163:18")
+    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:162:16")
+    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:161:20")
+  })
+  it("should trace derived access", async () => {
+    interface Service {
+      _tag: "Service"
+      value: number
+    }
+
+    const Service = tag<Service>()
+
+    const { value: accessValue } = T.deriveAccess(Service)(["value"])
+
+    const result = await T.runPromiseExit(
+      accessValue((n) => n + 1)
+        ["|>"](T.chain((n) => T.fail(n)))
+        ["|>"](T.provideService(Service)({ _tag: "Service", value: 0 }))
+    )
+
+    assertsFailure(result)
+    const cause = pretty(result.cause)
+
+    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:191:37")
+    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:191:23")
+    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:190:18")
+    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:192:41")
+  })
+  it("should trace derived accessM", async () => {
+    interface Service {
+      _tag: "Service"
+      value: number
+    }
+
+    const Service = tag<Service>()
+
+    const { value: accessValueM } = T.deriveAccessM(Service)(["value"])
+
+    const result = await T.runPromiseExit(
+      accessValueM((n) => T.fail(n + 1))["|>"](
+        T.provideService(Service)({ _tag: "Service", value: 0 })
+      )
+    )
+
+    assertsFailure(result)
+    const cause = pretty(result.cause)
+
+    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:214:33")
+    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:214:19")
+    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:215:34")
+  })
+  it("should trace delay", async () => {
+    const result = await T.runPromiseExit(
+      T.delay(10)(T.succeed(0))["|>"](T.chain(() => T.fail(0)))
+    )
+
+    assertsFailure(result)
+    const cause = pretty(result.cause)
+
+    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:228:59")
+    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:228:46")
+    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:228:28")
+    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:228:14")
   })
 })

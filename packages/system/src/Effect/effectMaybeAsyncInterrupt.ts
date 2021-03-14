@@ -1,7 +1,5 @@
 // tracing: off
 
-import { traceAs } from "@effect-ts/tracing-utils"
-
 import type * as E from "../Either"
 import type { FiberID } from "../Fiber/id"
 import * as O from "../Option"
@@ -73,7 +71,7 @@ export function effectMaybeAsyncInterruptBlockingOn<R, E, A>(
       onInterrupt_(
         flatten(
           effectAsyncOptionBlockingOn<unknown, never, Effect<R, E, A>>(
-            traceAs(register, (k) => {
+            (k) => {
               started.set(true)
 
               const ret = new AtomicReference<O.Option<UIO<Effect<R, E, A>>>>(O.none)
@@ -98,7 +96,7 @@ export function effectMaybeAsyncInterruptBlockingOn<R, E, A>(
               }
 
               return ret.get
-            }),
+            },
             blockingOn,
             __trace
           )
