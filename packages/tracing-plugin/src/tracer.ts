@@ -1,5 +1,4 @@
 import * as path from "path"
-import {} from "ts-expose-internals"
 import ts from "typescript"
 
 function checkRegionAt(
