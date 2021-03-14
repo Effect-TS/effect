@@ -64,10 +64,8 @@ export default function tracer(
 
         let finalName = path.relative(process.cwd(), fileName)
 
-        function getTrace(node: ts.Node, pos: "start" | "end") {
-          const nodeStart = sourceFile.getLineAndCharacterOfPosition(
-            pos === "start" ? node.getStart() : node.getEnd()
-          )
+        function getTrace(node: ts.Node) {
+          const nodeStart = sourceFile.getLineAndCharacterOfPosition(node.getEnd())
           return factory.createBinaryExpression(
             fileVar,
             factory.createToken(ts.SyntaxKind.PlusToken),
@@ -109,7 +107,7 @@ export default function tracer(
             }
 
             if (isTracing) {
-              const trace = getTrace(node.expression, "end")
+              const trace = getTrace(node.expression)
 
               const signature = checker.getResolvedSignature(node)
               const declaration =
