@@ -18,7 +18,7 @@ export function ensuringChildren<R1, X>(
   __trace?: string
 ) {
   return <R, E, A>(fa: Effect<R, E, A>): Effect<R & R1, E, A> =>
-    ensuringChildren_(fa, children)
+    ensuringChildren_(fa, children, __trace)
 }
 
 /**
@@ -33,7 +33,7 @@ export function ensuringChildren_<R, E, A, R1, X>(
   return pipe(
     track,
     chain((s) =>
-      pipe(fa, supervised(s), ensuring(pipe(s.value, chain(children, __trace))))
+      pipe(fa, supervised(s), ensuring(pipe(s.value, chain(children)), __trace))
     )
   )
 }

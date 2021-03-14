@@ -18,8 +18,8 @@ import { uninterruptibleMask } from "./interruption"
  *
  * @dataFirst ensuring_
  */
-export function ensuring<R1, X>(finalizer: Effect<R1, never, X>) {
-  return <R, E, A>(effect: Effect<R, E, A>) => ensuring_(effect, finalizer)
+export function ensuring<R1, X>(finalizer: Effect<R1, never, X>, __trace?: string) {
+  return <R, E, A>(effect: Effect<R, E, A>) => ensuring_(effect, finalizer, __trace)
 }
 
 /**
@@ -35,7 +35,8 @@ export function ensuring<R1, X>(finalizer: Effect<R1, never, X>) {
  */
 export function ensuring_<R, E, A, R1, X>(
   effect: Effect<R, E, A>,
-  finalizer: Effect<R1, never, X>
+  finalizer: Effect<R1, never, X>,
+  __trace?: string
 ) {
   return uninterruptibleMask(({ restore }) =>
     foldCauseM_(
@@ -51,7 +52,8 @@ export function ensuring_<R, E, A, R1, X>(
           finalizer,
           (cause1) => halt(cause1),
           (_) => succeed(value)
-        )
+        ),
+      __trace
     )
   )
 }
