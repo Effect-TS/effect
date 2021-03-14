@@ -1,3 +1,5 @@
+// tracing: off
+
 import { NoSuchElementException } from "../GlobalExceptions"
 import type { Option } from "../Option"
 import type { _E } from "../Utils"

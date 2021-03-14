@@ -1,3 +1,5 @@
+// tracing: off
+
 import type { Effect } from "./effect"
 import { zipWithPar_ } from "./zipWithPar_"
 

@@ -1,3 +1,5 @@
+// tracing: off
+
 import { identity } from "../Function"
 import * as I from "../Iterable"
 import type { Separated } from "../Utils"

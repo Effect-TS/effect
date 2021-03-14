@@ -1,3 +1,5 @@
+// tracing: off
+
 import * as C from "../../Cause"
 import * as Ex from "../../Exit"
 import { pipe } from "../../Function"

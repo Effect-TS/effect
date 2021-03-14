@@ -1,3 +1,5 @@
+// tracing: off
+
 import type { Either } from "../Either/core"
 import { pipe } from "../Function"
 import type { _A, _E, _R } from "../Utils"

@@ -1,3 +1,5 @@
+// tracing: off
+
 import type { AssociativeBoth } from "../AssociativeBoth"
 import type { Auto, URIS } from "../HKT"
 

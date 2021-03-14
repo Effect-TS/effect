@@ -1,3 +1,5 @@
+// tracing: off
+
 import * as M from "../_internal/managed"
 import { Stream } from "./definitions"
 

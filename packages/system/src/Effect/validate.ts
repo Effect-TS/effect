@@ -1,3 +1,5 @@
+// tracing: off
+
 import * as A from "../Array"
 import * as E from "../Either"
 import type * as NA from "../NonEmptyArray"

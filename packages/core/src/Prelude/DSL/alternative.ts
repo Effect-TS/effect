@@ -1,3 +1,5 @@
+// tracing: off
+
 import { pipe } from "../../Function"
 import type { AssociativeEither } from "../AssociativeEither"
 import type { Covariant } from "../Covariant"
@@ -7,7 +9,7 @@ export function orElseF<F extends URIS, C>(
   F: AssociativeEither<F, C> & Covariant<F, C>
 ): <K2, Q2, W2, X2, I2, S2, R2, E2, B>(
   fb: () => Kind<F, C, K2, Q2, W2, X2, I2, S2, R2, E2, B>
-) => <N extends string, K, Q, W, X, I, S, R, E, A>(
+) => <K, Q, W, X, I, S, R, E, A>(
   fa: Kind<
     F,
     C,

@@ -1,3 +1,5 @@
+// tracing: off
+
 import type { Cause } from "../Cause/cause"
 import type { ExecutionStrategy } from "../Effect/ExecutionStrategy"
 import { parallel, sequential } from "../Effect/ExecutionStrategy"

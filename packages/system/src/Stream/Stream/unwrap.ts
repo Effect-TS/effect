@@ -1,3 +1,5 @@
+// tracing: off
+
 import type { Effect } from "../_internal/effect"
 import type { Stream } from "./definitions"
 import { flatten } from "./flatten"

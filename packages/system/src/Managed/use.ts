@@ -1,3 +1,5 @@
+// tracing: off
+
 import { managedUse_ as use_ } from "../Effect/excl-forEach"
 import type * as T from "./deps"
 import type { Managed } from "./managed"

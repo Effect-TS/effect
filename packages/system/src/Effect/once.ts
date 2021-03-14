@@ -1,3 +1,5 @@
+// tracing: off
+
 import { pipe } from "../Function"
 import { getAndSet, makeRef } from "../Ref"
 import type { Effect, UIO } from "./effect"

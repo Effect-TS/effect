@@ -1,3 +1,5 @@
+// tracing: off
+
 import type { Either } from "../../Either"
 import type { Separated } from "../../Utils"
 import type * as HKT from "../HKT"

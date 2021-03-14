@@ -1,3 +1,5 @@
+// tracing: off
+
 // Configuration
 
 export const SIZE = 5

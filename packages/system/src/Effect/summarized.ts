@@ -1,3 +1,5 @@
+// tracing: off
+
 import { pipe } from "../Function"
 import * as D from "./do"
 import type { Effect } from "./effect"

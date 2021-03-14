@@ -1,4 +1,5 @@
 import * as path from "path"
+import {} from "ts-expose-internals"
 import ts from "typescript"
 
 function checkRegionAt(
@@ -65,13 +66,11 @@ export default function tracer(
         let finalName = path.relative(process.cwd(), fileName)
 
         function getTrace(node: ts.Node) {
-          const nodeStart = sourceFile.getLineAndCharacterOfPosition(node.getEnd())
+          const nodeEnd = sourceFile.getLineAndCharacterOfPosition(node.getEnd())
           return factory.createBinaryExpression(
             fileVar,
             factory.createToken(ts.SyntaxKind.PlusToken),
-            factory.createStringLiteral(
-              `:${nodeStart.line + 1}:${nodeStart.character + 1}`
-            )
+            factory.createStringLiteral(`:${nodeEnd.line + 1}:${nodeEnd.character + 1}`)
           )
         }
 
@@ -132,17 +131,18 @@ export default function tracer(
 
               const traceCall = tags["trace"] && tags["trace"].includes("call")
 
-              const child = ts.visitEachChild(node, visitor, ctx)
+              let expression = ts.visitNode(node.expression, visitor)
+              let args = node.arguments.map((x) => ts.visitNode(x, visitor))
 
               if (traceCall || traceLast) {
-                const expression = traceCall
+                expression = traceCall
                   ? factory.createCallExpression(tracedIdentifier, undefined, [
-                      child.expression,
+                      expression,
                       trace
                     ])
-                  : child.expression
+                  : expression
 
-                const args = traceLast ? [...child.arguments, trace] : child.arguments
+                args = traceLast ? [...args, trace] : args
 
                 return factory.updateCallExpression(
                   node,
@@ -151,7 +151,38 @@ export default function tracer(
                   args
                 )
               } else {
-                return child
+                return factory.updateCallExpression(
+                  node,
+                  expression,
+                  node.typeArguments,
+                  args
+                )
+              }
+            }
+          } else if (ts.isPropertyAccessExpression(node)) {
+            let isTracing: boolean
+
+            try {
+              const nodeStart = sourceFile.getLineAndCharacterOfPosition(node.getEnd())
+
+              isTracing =
+                tracingOn && checkRegionAt(regions, nodeStart.line, nodeStart.character)
+            } catch {
+              isTracing = false
+            }
+
+            if (isTracing) {
+              const ds = checker
+                .getTypeAtLocation(node)
+                .getCallSignatures()
+                .flatMap((s) => s.getJsDocTags())
+                .map((tag) => `${tag.name} ${tag.text}`)
+
+              if (ds.includes("trace call")) {
+                return factory.createCallExpression(tracedIdentifier, undefined, [
+                  node,
+                  getTrace(node)
+                ])
               }
             }
           }
@@ -186,7 +217,10 @@ export default function tracer(
           )
         )
 
-        if (tracingOn) {
+        const disabledAllFile =
+          regions.length > 0 && regions.every(([rs]) => rs.every(([_]) => !_))
+
+        if (tracingOn && !disabledAllFile) {
           const visited = ts.visitNode(sourceFile, visitor)
 
           return factory.updateSourceFile(visited, [

@@ -1,3 +1,5 @@
+// tracing: off
+
 import type { FoldMap } from "../FoldMap"
 import type { Auto, URIS } from "../HKT"
 import type { Reduce } from "../Reduce"

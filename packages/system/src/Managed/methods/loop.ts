@@ -1,3 +1,5 @@
+// tracing: off
+
 import { pipe } from "../../Function"
 import { chain_, map } from "../core"
 import type { Managed } from "../managed"

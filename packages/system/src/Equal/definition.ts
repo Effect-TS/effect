@@ -1,3 +1,5 @@
+// tracing: off
+
 /**
  * `Equal[A]` provides evidence that two values of type `A` can be
  * compared for equality.

@@ -1,3 +1,5 @@
+// tracing: off
+
 import { accessM, provideAll_ } from "./core"
 import type { Effect } from "./effect"
 

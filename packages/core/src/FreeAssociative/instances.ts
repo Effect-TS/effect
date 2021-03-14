@@ -1,3 +1,5 @@
+// tracing: off
+
 import * as FA from "@effect-ts/system/FreeAssociative"
 
 import { makeAssociative } from "../Associative"
@@ -6,11 +8,13 @@ import type { FreeAssociativeURI } from "../Modules"
 import type { URI } from "../Prelude"
 import * as P from "../Prelude"
 
-export const getAssociative = <A>() =>
-  makeAssociative<FA.FreeAssociative<A>>(FA.concat_)
+export function getAssociative<A>() {
+  return makeAssociative<FA.FreeAssociative<A>>(FA.concat_)
+}
 
-export const getIdentity = <A>() =>
-  makeIdentity<FA.FreeAssociative<A>>(FA.init<A>(), FA.concat_)
+export function getIdentity<A>() {
+  return makeIdentity<FA.FreeAssociative<A>>(FA.init<A>(), FA.concat_)
+}
 
 export const Covariant = P.instance<P.Covariant<[URI<FreeAssociativeURI>]>>({
   map: FA.map

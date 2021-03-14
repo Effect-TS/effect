@@ -1,3 +1,5 @@
+// tracing: off
+
 import type { Effect, RIO } from "./effect"
 import type { DefaultEnv } from "./runtime"
 

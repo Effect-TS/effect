@@ -1,3 +1,5 @@
+// tracing: off
+
 import type { Option } from "../../Option"
 import type * as HKT from "../HKT"
 

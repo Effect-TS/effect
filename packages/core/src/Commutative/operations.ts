@@ -1,3 +1,5 @@
+// tracing: off
+
 import { instance } from "../Prelude"
 import type { Commutative } from "./definition"
 

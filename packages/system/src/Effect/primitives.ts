@@ -1,3 +1,5 @@
+// tracing: off
+
 import type * as Cause from "../Cause/core"
 import type * as Exit from "../Exit/exit"
 import type { Platform } from "../Fiber"

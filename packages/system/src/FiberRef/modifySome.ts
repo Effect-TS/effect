@@ -1,3 +1,5 @@
+// tracing: off
+
 import type { Option } from "../Option"
 import { getOrElse_ } from "../Option"
 import { modify } from "./modify"
@@ -8,6 +10,7 @@ import { modify } from "./modify"
  * otherwise it returns a default value.
  * This is a more powerful version of `updateSome`.
  */
-export const modifySome = <B>(defaultValue: () => B) => <A>(
-  f: (a: A) => Option<[B, A]>
-) => modify<A, B>((v) => getOrElse_(f(v), () => [defaultValue(), v]))
+export function modifySome<B>(defaultValue: () => B) {
+  return <A>(f: (a: A) => Option<[B, A]>) =>
+    modify<A, B>((v) => getOrElse_(f(v), () => [defaultValue(), v]))
+}

@@ -1,3 +1,5 @@
+// tracing: off
+
 import * as SK from "../Sink"
 import type { Stream } from "./definitions"
 import { run_ } from "./run"

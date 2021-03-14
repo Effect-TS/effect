@@ -1,3 +1,5 @@
+// tracing: off
+
 import { chainPar } from "./chainPar"
 import type { Stream } from "./definitions"
 

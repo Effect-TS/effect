@@ -1,3 +1,5 @@
+// tracing: off
+
 import type { Base, Infer, Kind, URIS } from "../HKT"
 
 export function matchers<URI extends URIS, C>(_: Base<URI, C>) {

@@ -1,3 +1,5 @@
+// tracing: off
+
 import type { GroupBy } from "../GroupBy/index"
 import type { Stream } from "./definitions"
 

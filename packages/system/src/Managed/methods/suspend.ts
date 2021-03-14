@@ -1,3 +1,5 @@
+// tracing: off
+
 import { suspend as suspendEffect } from "../../Effect/core"
 import { Managed } from "../managed"
 

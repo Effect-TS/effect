@@ -1,3 +1,5 @@
+// tracing: off
+
 import type { Has, Tag } from "../Has"
 import type { Effect } from "./effect"
 import { provideSome_ } from "./provideSome"

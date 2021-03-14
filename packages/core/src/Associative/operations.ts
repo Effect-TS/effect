@@ -1,3 +1,5 @@
+// tracing: off
+
 import * as Ord from "../Ord"
 import type { Associative } from "./definition"
 import { makeAssociative } from "./makeAssociative"

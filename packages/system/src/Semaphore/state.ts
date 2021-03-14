@@ -1,3 +1,5 @@
+// tracing: off
+
 import type * as E from "../Either"
 import * as T from "./deps"
 

@@ -1,3 +1,5 @@
+// tracing: off
+
 import type { NonEmptyArray } from "../../NonEmptyArray"
 import type { _E, _R } from "../../Utils"
 import { map_ } from "../core"

@@ -1,3 +1,5 @@
+// tracing: off
+
 import type { Stream } from "./definitions"
 import { flattenPar_ } from "./flattenPar"
 import { fromIterable } from "./fromIterable"

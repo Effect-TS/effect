@@ -1,3 +1,5 @@
+// tracing: off
+
 import type { UIO } from "../Effect/effect"
 import { IFiberRefModify } from "../Effect/primitives"
 import type { FiberRef } from "./fiberRef"
@@ -7,5 +9,6 @@ import type { FiberRef } from "./fiberRef"
  * a return value for the modification. This is a more powerful version of
  * `update`.
  */
-export const modify = <A, B>(f: (a: A) => [B, A]) => (fiberRef: FiberRef<A>): UIO<B> =>
-  new IFiberRefModify(fiberRef, f)
+export function modify<A, B>(f: (a: A) => [B, A]) {
+  return (fiberRef: FiberRef<A>): UIO<B> => new IFiberRefModify(fiberRef, f)
+}

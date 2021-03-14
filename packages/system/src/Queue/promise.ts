@@ -1,3 +1,5 @@
+// tracing: off
+
 export { interruptAs } from "../Promise/interruptAs"
 export { make } from "../Promise/make"
 export { Promise } from "../Promise/promise"

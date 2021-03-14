@@ -1,3 +1,5 @@
+// tracing: off
+
 import type { Predicate } from "../../Function"
 import { not } from "../../Function"
 import type { Stream } from "./definitions"

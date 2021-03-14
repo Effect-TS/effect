@@ -1,3 +1,5 @@
+// tracing: off
+
 import type { Effect, UIO } from "../Effect/effect"
 
 /**

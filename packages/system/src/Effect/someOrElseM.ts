@@ -1,3 +1,5 @@
+// tracing: off
+
 import { constant, pipe } from "../Function"
 import * as O from "../Option"
 import { chain_, succeed } from "./core"

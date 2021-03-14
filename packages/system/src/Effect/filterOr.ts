@@ -15,7 +15,7 @@ import { fail } from "./fail"
  */
 export function filterOrDie<A, B extends A>(
   p: Refinement<A, B>,
-  dieWith: (a: A) => unknown,
+  dieWith: (a: Exclude<A, B>) => unknown,
   __trace?: string
 ): <R, E>(fa: Effect<R, E, A>) => Effect<R, E, B>
 export function filterOrDie<A>(
@@ -23,13 +23,9 @@ export function filterOrDie<A>(
   dieWith: (a: A) => unknown,
   __trace?: string
 ): <R, E>(fa: Effect<R, E, A>) => Effect<R, E, A>
-export function filterOrDie<A>(
-  p: Predicate<A>,
-  dieWith: (a: A) => unknown,
-  __trace?: string
-) {
+export function filterOrDie<A>(p: Predicate<A>, dieWith: unknown, __trace?: string) {
   return <R, E>(fa: Effect<R, E, A>): Effect<R, E, A> =>
-    filterOrDie_(fa, p, dieWith, __dirname)
+    filterOrDie_(fa, p, dieWith as (a: A) => unknown, __dirname)
 }
 
 /**
@@ -38,7 +34,7 @@ export function filterOrDie<A>(
 export function filterOrDie_<R, E, A, B extends A>(
   fa: Effect<R, E, A>,
   p: Refinement<A, B>,
-  dieWith: (a: A) => unknown,
+  dieWith: (a: Exclude<A, B>) => unknown,
   __trace?: string
 ): Effect<R, E, B>
 export function filterOrDie_<R, E, A>(
@@ -50,10 +46,15 @@ export function filterOrDie_<R, E, A>(
 export function filterOrDie_<R, E, A>(
   fa: Effect<R, E, A>,
   p: Predicate<A>,
-  dieWith: (a: A) => unknown,
+  dieWith: unknown,
   __trace?: string
 ) {
-  return filterOrElse_(fa, p, (x) => pipe(x, dieWith, die), __trace)
+  return filterOrElse_(
+    fa,
+    p,
+    (x) => pipe(x, dieWith as (a: A) => unknown, die),
+    __trace
+  )
 }
 
 /**
@@ -63,7 +64,7 @@ export function filterOrDie_<R, E, A>(
  */
 export function filterOrFail<A, B extends A, E1>(
   p: Refinement<A, B>,
-  failWith: (a: A) => E1,
+  failWith: (a: Exclude<A, B>) => E1,
   __trace?: string
 ): <R, E>(fa: Effect<R, E, A>) => Effect<R, E | E1, B>
 export function filterOrFail<A, E1>(
@@ -73,11 +74,11 @@ export function filterOrFail<A, E1>(
 ): <R, E>(fa: Effect<R, E, A>) => Effect<R, E | E1, A>
 export function filterOrFail<A, E1>(
   p: Predicate<A>,
-  failWith: (a: A) => E1,
+  failWith: unknown,
   __trace?: string
 ) {
   return <R, E>(fa: Effect<R, E, A>): Effect<R, E | E1, A> =>
-    filterOrFail_(fa, p, failWith, __trace)
+    filterOrFail_(fa, p, failWith as (a: A) => E1, __trace)
 }
 
 /**
@@ -86,7 +87,7 @@ export function filterOrFail<A, E1>(
 export function filterOrFail_<R, E, E1, A, B extends A>(
   fa: Effect<R, E, A>,
   p: Refinement<A, B>,
-  failWith: (a: A) => E1,
+  failWith: (a: Exclude<A, B>) => E1,
   __trace?: string
 ): Effect<R, E | E1, B>
 export function filterOrFail_<R, E, E1, A>(
@@ -98,10 +99,10 @@ export function filterOrFail_<R, E, E1, A>(
 export function filterOrFail_<R, E, E1, A>(
   fa: Effect<R, E, A>,
   p: Predicate<A>,
-  failWith: (a: A) => E1,
+  failWith: unknown,
   __trace?: string
 ) {
-  return filterOrElse_(fa, p, (x) => pipe(x, failWith, fail), __trace)
+  return filterOrElse_(fa, p, (x) => pipe(x, failWith as (a: A) => E1, fail), __trace)
 }
 
 /**
@@ -111,7 +112,7 @@ export function filterOrFail_<R, E, E1, A>(
  */
 export function filterOrElse<A, B extends A, R2, E2, A2>(
   p: Refinement<A, B>,
-  or: (a: A) => Effect<R2, E2, A2>,
+  or: (a: Exclude<A, B>) => Effect<R2, E2, A2>,
   __trace?: string
 ): <R, E>(fa: Effect<R, E, A>) => Effect<R & R2, E | E2, B | A2>
 export function filterOrElse<A, R2, E2, A2>(
@@ -121,10 +122,11 @@ export function filterOrElse<A, R2, E2, A2>(
 ): <R, E>(fa: Effect<R, E, A>) => Effect<R & R2, E | E2, A | A2>
 export function filterOrElse<A, R2, E2, A2>(
   p: Predicate<A>,
-  or: (a: A) => Effect<R2, E2, A2>,
+  or: unknown,
   __trace?: string
 ) {
-  return <R, E>(fa: Effect<R, E, A>) => filterOrElse_(fa, p, or, __trace)
+  return <R, E>(fa: Effect<R, E, A>) =>
+    filterOrElse_(fa, p, or as (a: A) => Effect<R2, E2, A2>, __trace)
 }
 
 /**
@@ -133,7 +135,7 @@ export function filterOrElse<A, R2, E2, A2>(
 export function filterOrElse_<R, E, A, B extends A, R2, E2, A2>(
   fa: Effect<R, E, A>,
   p: Refinement<A, B>,
-  or: (a: A) => Effect<R2, E2, A2>,
+  or: (a: Exclude<A, B>) => Effect<R2, E2, A2>,
   __trace?: string
 ): Effect<R & R2, E | E2, B | A2>
 export function filterOrElse_<R, E, A, R2, E2, A2>(
@@ -145,13 +147,15 @@ export function filterOrElse_<R, E, A, R2, E2, A2>(
 export function filterOrElse_<R, E, A, R2, E2, A2>(
   fa: Effect<R, E, A>,
   p: Predicate<A>,
-  or: (a: A) => Effect<R2, E2, A2>,
+  or: unknown,
   __trace?: string
 ): Effect<R & R2, E | E2, A | A2> {
   return chain_(
     fa,
     (a): Effect<R2, E2, A | A2> =>
-      p(a) ? succeed(a, __trace) : suspend(() => or(a), __trace)
+      p(a)
+        ? succeed(a, __trace)
+        : suspend(() => (or as (a: A) => Effect<R2, E2, A2>)(a), __trace)
   )
 }
 
@@ -163,7 +167,7 @@ export function filterOrElse_<R, E, A, R2, E2, A2>(
  */
 export function filterOrDieMessage<A, B extends A>(
   p: Refinement<A, B>,
-  message: (a: A) => string,
+  message: (a: Exclude<A, B>) => string,
   __trace?: string
 ): <R, E>(fa: Effect<R, E, A>) => Effect<R, E, B>
 export function filterOrDieMessage<A>(
@@ -173,11 +177,11 @@ export function filterOrDieMessage<A>(
 ): <R, E>(fa: Effect<R, E, A>) => Effect<R, E, A>
 export function filterOrDieMessage<A>(
   p: Predicate<A>,
-  message: (a: A) => string,
+  message: unknown,
   __trace?: string
 ) {
   return <R, E>(fa: Effect<R, E, A>): Effect<R, E, A> =>
-    filterOrDieMessage_(fa, p, message, __trace)
+    filterOrDieMessage_(fa, p, message as (a: A) => string, __trace)
 }
 
 /**
@@ -187,7 +191,7 @@ export function filterOrDieMessage<A>(
 export function filterOrDieMessage_<R, E, A, B extends A>(
   fa: Effect<R, E, A>,
   p: Refinement<A, B>,
-  message: (a: A) => string,
+  message: (a: Exclude<A, B>) => string,
   __trace?: string
 ): Effect<R, E, B>
 export function filterOrDieMessage_<R, E, A>(
@@ -199,8 +203,13 @@ export function filterOrDieMessage_<R, E, A>(
 export function filterOrDieMessage_<R, E, A>(
   fa: Effect<R, E, A>,
   p: Predicate<A>,
-  message: (a: A) => string,
+  message: unknown,
   __trace?: string
 ) {
-  return filterOrDie_(fa, p, (a) => new RuntimeError(message(a)), __trace)
+  return filterOrDie_(
+    fa,
+    p,
+    (a) => new RuntimeError((message as (a: A) => string)(a)),
+    __trace
+  )
 }

@@ -1,4 +1,5 @@
-import * as C from "../../Cause"
+import // tracing: off
+* as C from "../../Cause"
 import { pipe } from "../../Function"
 import * as Q from "../../Queue"
 import * as T from "../_internal/effect"

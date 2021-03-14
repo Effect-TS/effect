@@ -1,3 +1,5 @@
+// tracing: off
+
 import type { Either } from "@effect-ts/system/Either"
 import * as E from "@effect-ts/system/Either"
 import { pipe, tuple } from "@effect-ts/system/Function"

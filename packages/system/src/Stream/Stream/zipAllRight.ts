@@ -1,3 +1,5 @@
+// tracing: off
+
 import { identity } from "../../Function"
 import type { Stream } from "./definitions"
 import { zipAllWith } from "./zipAllWith"

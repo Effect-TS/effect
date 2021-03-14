@@ -1,3 +1,5 @@
+// tracing: off
+
 import type { ListURI } from "../Modules"
 import type { URI } from "../Prelude"
 import * as P from "../Prelude"

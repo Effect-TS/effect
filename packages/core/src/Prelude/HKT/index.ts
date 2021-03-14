@@ -1,3 +1,5 @@
+// tracing: off
+
 // codegen:start { preset: barrel, include: ./*.ts, exclude: ./hkt.ts }
 export * from "./base"
 export * from "./custom"

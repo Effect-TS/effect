@@ -1,3 +1,5 @@
+// tracing: off
+
 import type { Associative } from "../Associative"
 import * as A from "../Associative"
 import type { Bounded } from "../Bounded"

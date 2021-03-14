@@ -1,3 +1,5 @@
+// tracing: off
+
 import { range } from "../Array"
 import type { Effect } from "./effect"
 

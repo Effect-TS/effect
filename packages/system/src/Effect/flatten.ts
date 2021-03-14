@@ -1,7 +1,8 @@
 // tracing: off
 
-import { accessCallTrace, traceFrom } from "@effect-ts/tracing-utils"
+import { accessCallTrace } from "@effect-ts/tracing-utils"
 
+import { identity } from "../Function"
 import { chain_ } from "./core"
 import type { Effect } from "./effect"
 
@@ -13,9 +14,5 @@ import type { Effect } from "./effect"
  * @trace call
  */
 export function flatten<R, E, R1, E1, A>(effect: Effect<R, E, Effect<R1, E1, A>>) {
-  const trace = accessCallTrace()
-  return chain_(
-    effect,
-    traceFrom(trace, (x) => x)
-  )
+  return chain_(effect, identity, accessCallTrace())
 }

@@ -1,3 +1,5 @@
+// tracing: off
+
 import type { OrFix } from "./fix"
 import type { ConcreteURIS, URItoIndex, URItoKind } from "./hkt"
 

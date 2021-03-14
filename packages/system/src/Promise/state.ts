@@ -1,3 +1,5 @@
+// tracing: off
+
 import type { IO } from "../Effect/effect"
 
 export type State<E, A> = Done<E, A> | Pending<E, A>

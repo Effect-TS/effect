@@ -1,3 +1,5 @@
+// tracing: off
+
 import type { Covariant } from "../Covariant"
 import type { Auto, URIS } from "../HKT"
 import type { IdentityBoth } from "../IdentityBoth"

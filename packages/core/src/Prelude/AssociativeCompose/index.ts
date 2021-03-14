@@ -1,3 +1,5 @@
+// tracing: off
+
 import type * as HKT from "../HKT"
 
 export interface AssociativeCompose<F extends HKT.URIS, TC = HKT.Auto>

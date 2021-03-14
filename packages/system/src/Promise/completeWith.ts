@@ -18,22 +18,22 @@ import { Done } from "./state"
  * completes the promise with the result of an effect see
  * `Promise.complete`.
  */
-export const completeWith = <E, A>(io: IO<E, A>) => (
-  promise: Promise<E, A>
-): UIO<boolean> =>
-  effectTotal(() => {
-    const state = promise.state.get
+export function completeWith<E, A>(io: IO<E, A>) {
+  return (promise: Promise<E, A>): UIO<boolean> =>
+    effectTotal(() => {
+      const state = promise.state.get
 
-    switch (state._tag) {
-      case "Done": {
-        return false
+      switch (state._tag) {
+        case "Done": {
+          return false
+        }
+        case "Pending": {
+          promise.state.set(new Done(io))
+          state.joiners.forEach((f) => {
+            f(io)
+          })
+          return true
+        }
       }
-      case "Pending": {
-        promise.state.set(new Done(io))
-        state.joiners.forEach((f) => {
-          f(io)
-        })
-        return true
-      }
-    }
-  })
+    })
+}

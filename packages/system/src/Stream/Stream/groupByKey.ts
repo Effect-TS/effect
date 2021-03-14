@@ -1,3 +1,5 @@
+// tracing: off
+
 import * as T from "../_internal/effect"
 import type { Stream } from "./definitions"
 import { groupBy_ } from "./groupBy"

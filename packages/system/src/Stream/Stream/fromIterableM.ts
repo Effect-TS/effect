@@ -1,3 +1,5 @@
+// tracing: off
+
 import { identity } from "../../Function"
 import type * as T from "../_internal/effect"
 import type { Stream } from "./definitions"

@@ -1,3 +1,5 @@
+// tracing: off
+
 // forked from https://github.com/sindresorhus/parse-ms/blob/4da2ffbdba02c6e288c08236695bdece0adca173/index.js
 // MIT License
 // Copyright (c) Sindre Sorhus <sindresorhus@gmail.com> (sindresorhus.com)

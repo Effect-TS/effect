@@ -1,3 +1,5 @@
+// tracing: off
+
 import type { Exit } from "../Exit"
 import type { Scope } from "../Scope"
 import { descriptorWith } from "./core"

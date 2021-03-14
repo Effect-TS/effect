@@ -1,3 +1,5 @@
+// tracing: off
+
 import type { Cause } from "../Cause/cause"
 import { isEmpty } from "../Cause/core"
 import { chain_, halt, unit } from "./core"

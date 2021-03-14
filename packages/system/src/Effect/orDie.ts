@@ -1,3 +1,5 @@
+// tracing: off
+
 import type { Effect } from "./effect"
 import { orDieWith } from "./orDieWith"
 

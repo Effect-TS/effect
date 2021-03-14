@@ -1,3 +1,5 @@
+// tracing: off
+
 import * as L from "../../Layer"
 import * as T from "../_internal/effect"
 import * as M from "../_internal/managed"

@@ -1,3 +1,5 @@
+// tracing: off
+
 import type * as C from "../../Cause"
 import type * as A from "../../Chunk"
 import { pipe } from "../../Function"

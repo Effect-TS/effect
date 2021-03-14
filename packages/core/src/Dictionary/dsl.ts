@@ -1,3 +1,5 @@
+// tracing: off
+
 import * as P from "../Prelude"
 import { ForEach } from "./instances"
 

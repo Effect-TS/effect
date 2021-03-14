@@ -1,3 +1,5 @@
+// tracing: off
+
 import type { Cause } from "../Cause"
 import { foldCauseM_, succeed } from "./core"
 import type { Effect } from "./effect"

@@ -1,3 +1,5 @@
+// tracing: off
+
 import { identity, pipe } from "../../Function"
 import type { Covariant, CovariantComposition } from "../Covariant"
 import { getCovariantComposition } from "../Covariant"

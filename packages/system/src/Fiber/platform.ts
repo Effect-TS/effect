@@ -1,3 +1,5 @@
+// tracing: off
+
 import type { Cause } from "../Cause"
 import type { Renderer } from "../Cause/Pretty"
 import type { Supervisor } from "../Supervisor"

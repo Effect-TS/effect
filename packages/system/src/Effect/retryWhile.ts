@@ -1,3 +1,5 @@
+// tracing: off
+
 import { pipe } from "../Function"
 import { catchAll } from "./catchAll"
 import { chain, succeed } from "./core"

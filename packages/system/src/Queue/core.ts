@@ -1,3 +1,5 @@
+// tracing: off
+
 import type { AtomicBoolean } from "../Support/AtomicBoolean"
 import type { MutableQueue } from "../Support/MutableQueue"
 import * as T from "./effect"

@@ -1,3 +1,5 @@
+// tracing: off
+
 import { flow } from "./flow"
 import { pipe } from "./pipe"
 

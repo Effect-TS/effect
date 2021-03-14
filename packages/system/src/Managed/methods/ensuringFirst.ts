@@ -1,3 +1,5 @@
+// tracing: off
+
 import type { Effect } from "../../Effect"
 import { onExitFirst, onExitFirst_ } from "../core"
 import type { Managed } from "../managed"

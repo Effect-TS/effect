@@ -1,3 +1,5 @@
+// tracing: off
+
 import type * as A from "../Array"
 import type * as E from "../Either"
 import type { Equal } from "./definition"

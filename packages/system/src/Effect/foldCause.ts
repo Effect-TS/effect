@@ -1,3 +1,5 @@
+// tracing: off
+
 import { traceAs } from "@effect-ts/tracing-utils"
 
 import type { Cause } from "../Cause/cause"

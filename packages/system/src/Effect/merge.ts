@@ -1,3 +1,5 @@
+// tracing: off
+
 import { succeed } from "./core"
 import type { Effect } from "./effect"
 import { foldM_ } from "./foldM"

@@ -1,3 +1,5 @@
+// tracing: off
+
 import { pipe } from "../../Function"
 import type * as T from "../_internal/effect"
 import * as M from "../_internal/managed"

@@ -1,3 +1,5 @@
+// tracing: off
+
 import type * as M from "../_internal/managed"
 import type { Stream } from "./definitions"
 import { flatten } from "./flatten"

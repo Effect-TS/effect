@@ -1,3 +1,5 @@
+// tracing: off
+
 import type * as E from "../../Either"
 import { NoSuchElementException, PrematureGeneratorExit } from "../../GlobalExceptions"
 import type * as H from "../../Has"

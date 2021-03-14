@@ -1,3 +1,5 @@
+// tracing: off
+
 import * as E from "@effect-ts/system/Either"
 
 import { constant, identity, pipe } from "../../Function"

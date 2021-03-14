@@ -1,3 +1,5 @@
+// tracing: off
+
 import { identity, pipe } from "../Function"
 import * as O from "../Option"
 import { catchAll_ } from "./catchAll"

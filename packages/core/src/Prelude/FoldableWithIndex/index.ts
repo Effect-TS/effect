@@ -1,3 +1,5 @@
+// tracing: off
+
 import type { FoldMapWithIndex } from "../FoldMapWithIndex"
 import type { Auto, URIS } from "../HKT"
 import type { ReduceRightWithIndex } from "../ReduceRightWithIndex"

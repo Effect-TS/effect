@@ -1,3 +1,5 @@
+// tracing: off
+
 import type * as Q from "../../Queue"
 import type * as Take from "../../Stream/Take"
 import * as T from "../_internal/effect"

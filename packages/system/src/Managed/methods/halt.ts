@@ -1,3 +1,5 @@
+// tracing: off
+
 import type { Cause } from "../../Cause"
 import * as T from "../deps"
 import { fromEffect } from "../fromEffect"

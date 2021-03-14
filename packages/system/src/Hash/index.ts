@@ -1,3 +1,5 @@
+// tracing: off
+
 import "../Operator"
 
 import { Stack } from "../Stack"

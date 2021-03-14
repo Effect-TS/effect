@@ -1,3 +1,5 @@
+// tracing: off
+
 import * as T from "../_internal/effect"
 import { bracket_ } from "./bracket"
 import type { RIO } from "./definitions"

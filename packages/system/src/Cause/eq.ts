@@ -1,3 +1,5 @@
+// tracing: off
+
 import { equalsFiberID } from "../Fiber/id"
 import { Stack } from "../Stack"
 import type { Cause } from "./cause"

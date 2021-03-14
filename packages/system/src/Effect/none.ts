@@ -1,3 +1,5 @@
+// tracing: off
+
 import * as O from "../Option"
 import { succeed } from "./core"
 import type { UIO } from "./effect"

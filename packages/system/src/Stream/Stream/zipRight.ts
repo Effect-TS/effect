@@ -1,3 +1,5 @@
+// tracing: off
+
 import type { Stream } from "./definitions"
 import { zipWith_ } from "./zipWith"
 

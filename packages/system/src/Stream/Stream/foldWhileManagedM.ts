@@ -1,3 +1,5 @@
+// tracing: off
+
 import * as O from "../../Option"
 import * as T from "../_internal/effect"
 import * as M from "../_internal/managed"

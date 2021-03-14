@@ -1,3 +1,5 @@
+// tracing: off
+
 import type { Cause } from "./cause"
 import { pretty } from "./Pretty"
 

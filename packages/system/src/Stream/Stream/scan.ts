@@ -1,3 +1,5 @@
+// tracing: off
+
 import { pipe } from "../../Function"
 import * as T from "../_internal/effect"
 import type { Stream } from "./definitions"

@@ -1,3 +1,5 @@
+// tracing: off
+
 import type { Has, Tag } from "../../Has"
 import { provideSome_ } from "../core"
 import type { Managed } from "../managed"

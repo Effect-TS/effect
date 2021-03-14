@@ -1,3 +1,5 @@
+// tracing: off
+
 import * as R from "../Dictionary"
 import type { _E, _R, EnforceNonEmptyRecord } from "../Utils"
 import type { Effect } from "./effect"

@@ -1,3 +1,5 @@
+// tracing: off
+
 import type * as A from "../../../Array"
 
 type RecursiveTuples<T> = readonly [T | RecursiveTuples<T>, T]

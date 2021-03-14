@@ -1,5 +1,7 @@
-import type { URI } from "."
+// tracing: off
+
 import type { AccessCustom, CustomType } from "./custom"
+import type { URI } from "./kind"
 
 export interface HKT<F, A> {
   F: F

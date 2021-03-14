@@ -1,3 +1,5 @@
+// tracing: off
+
 import * as A from "../../Chunk"
 import type { Predicate } from "../../Function"
 import { not, pipe } from "../../Function"

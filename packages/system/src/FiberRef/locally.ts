@@ -1,3 +1,5 @@
+// tracing: off
+
 import { bracket_ } from "../Effect/bracket"
 import { chain } from "../Effect/core"
 import type { Effect } from "../Effect/effect"

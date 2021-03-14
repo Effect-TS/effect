@@ -1,3 +1,5 @@
+// tracing: off
+
 import type * as C from "../../Cause"
 import * as O from "../../Option"
 import { catchAllCause_ } from "./catchAllCause"

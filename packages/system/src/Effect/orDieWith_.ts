@@ -1,3 +1,5 @@
+// tracing: off
+
 import { succeed } from "./core"
 import { die } from "./die"
 import type { Effect } from "./effect"

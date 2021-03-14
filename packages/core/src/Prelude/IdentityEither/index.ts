@@ -1,3 +1,5 @@
+// tracing: off
+
 import type { AssociativeEither } from "../AssociativeEither"
 import type { Auto, URIS } from "../HKT"
 import type { None } from "../None"

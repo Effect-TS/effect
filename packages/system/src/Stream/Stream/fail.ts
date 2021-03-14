@@ -1,3 +1,5 @@
+// tracing: off
+
 import * as T from "../_internal/effect"
 import type { IO } from "./definitions"
 import { fromEffect } from "./fromEffect"

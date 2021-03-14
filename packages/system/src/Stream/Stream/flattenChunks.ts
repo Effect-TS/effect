@@ -1,3 +1,5 @@
+// tracing: off
+
 import type * as Chunk from "../../Chunk"
 import * as M from "../_internal/managed"
 import * as BP from "../BufferedPull"

@@ -1,3 +1,5 @@
+// tracing: off
+
 import type { Stream } from "./definitions"
 import { flattenChunks } from "./flattenChunks"
 import { map_ } from "./map"

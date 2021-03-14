@@ -1,3 +1,5 @@
+// tracing: off
+
 /** from ts-toolbelt, minimal port of Compute */
 
 export type Depth = "flat" | "deep"

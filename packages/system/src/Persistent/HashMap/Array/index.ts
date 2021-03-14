@@ -1,3 +1,5 @@
+// tracing: off
+
 export function arrayUpdate<A>(mutate: boolean, at: number, v: A, arr: A[]) {
   let out = arr
   if (!mutate) {

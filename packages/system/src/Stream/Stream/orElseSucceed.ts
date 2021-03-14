@@ -1,3 +1,5 @@
+// tracing: off
+
 import type { Stream } from "./definitions"
 import { orElse_ } from "./orElse"
 import { succeed } from "./succeed"

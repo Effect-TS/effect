@@ -1,3 +1,5 @@
+// tracing: off
+
 import type { Clock } from "../Clock"
 import { pipe } from "../Function"
 import type { Has } from "../Has"

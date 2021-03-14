@@ -1,3 +1,5 @@
+// tracing: off
+
 import type { Equal } from "../Equal"
 import type { Ordering } from "../Ordering"
 

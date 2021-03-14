@@ -1,3 +1,5 @@
+// tracing: off
+
 import type { Stream } from "./definitions"
 import { forever } from "./forever"
 import { fromChunk } from "./fromChunk"

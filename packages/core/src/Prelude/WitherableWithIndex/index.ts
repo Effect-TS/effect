@@ -1,3 +1,5 @@
+// tracing: off
+
 import type { Option } from "@effect-ts/system/Option"
 
 import type { Applicative } from "../Applicative"
