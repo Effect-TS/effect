@@ -1,6 +1,15 @@
 import * as path from "path"
 import ts from "typescript"
 
+import { getCallExpressionMetadata, getMetadataTagValues } from "./utils"
+
+interface ParsedTraceSyntax {
+  methodExpression: ts.Expression
+  arguments: ts.NodeArray<ts.Expression>
+  traceArgumentIndex: number
+  shouldTraceCall: boolean
+}
+
 function checkRegionAt(
   regions: (readonly [[boolean, number][], number])[],
   line: number,
@@ -46,40 +55,119 @@ export default function tracer(
     before(ctx: ts.TransformationContext) {
       const factory = ctx.factory
 
-      return (sourceFile: ts.SourceFile) => {
-        const traced = factory.createIdentifier("traceCall")
-        const fileVar = factory.createUniqueName("fileName")
-        const tracing = factory.createUniqueName("tracing")
+      function getSourceFilePathForTrace(sourceFile: ts.SourceFile) {
+        // get the relative file name, and apply module regexp
+        let finalName = path.relative(process.cwd(), sourceFile.fileName)
+        for (const k of moduleMapKeys) {
+          const matches = finalName.match(k[1]!)
+          if (matches) {
+            let patchedName = moduleMap[k[0]!]!
+            for (let j = 1; j < matches.length; j += 1) {
+              patchedName = patchedName.replace("$" + j, matches[j]!)
+            }
+            finalName = patchedName
+            break
+          }
+        }
+        return finalName
+      }
 
-        const isModule =
-          sourceFile.statements.find((s) => ts.isImportDeclaration(s)) != null
+      function getTraceForNode(
+        node: ts.Node,
+        sourceFile: ts.SourceFile,
+        fileNameIdentifier: ts.Expression
+      ) {
+        const traceLineAndCharacterPos = sourceFile.getLineAndCharacterOfPosition(
+          node.getEnd()
+        )
+        // builds fileName + ":12:48"
+        return factory.createBinaryExpression(
+          fileNameIdentifier,
+          factory.createToken(ts.SyntaxKind.PlusToken),
+          factory.createStringLiteral(
+            `:${traceLineAndCharacterPos.line + 1}:${
+              traceLineAndCharacterPos.character + 1
+            }`
+          )
+        )
+      }
 
-        if (!isModule) {
-          return sourceFile
+      function parseTraceSyntax(
+        node: ts.Node,
+        sourceFile: ts.SourceFile
+      ): ParsedTraceSyntax | undefined {
+        if (ts.isCallExpression(node)) {
+          const metadata = getCallExpressionMetadata(checker, node, sourceFile)
+
+          // is there a __trace argument?
+          const { traceArgumentIndex } = metadata
+          // should use traceCall(f, trace)(args)?
+          const shouldTraceCall = getMetadataTagValues(metadata, "trace").has("call")
+          // if any of before, this is parsed
+          if (traceArgumentIndex !== -1 || shouldTraceCall) {
+            return {
+              traceArgumentIndex,
+              shouldTraceCall,
+              methodExpression: node.expression,
+              arguments: node.arguments
+            }
+          }
+        }
+        return undefined
+      }
+
+      function applyTraceSyntax(
+        node: ts.Node,
+        sourceFile: ts.SourceFile,
+        fileNameIdentifier: ts.Expression,
+        traceCallIdentifier: ts.Expression,
+        parsedInfo: ParsedTraceSyntax
+      ): ts.VisitResult<ts.Node> {
+        const trace = getTraceForNode(
+          parsedInfo.methodExpression,
+          sourceFile,
+          fileNameIdentifier
+        )
+        let callExpression = parsedInfo.methodExpression
+        let callArguments = parsedInfo.arguments
+
+        // replace the argument __trace, usually at the end
+        if (parsedInfo.traceArgumentIndex !== -1) {
+          callArguments = factory.createNodeArray(
+            callArguments
+              .slice(0, parsedInfo.traceArgumentIndex)
+              .concat([trace])
+              .concat(callArguments.slice(parsedInfo.traceArgumentIndex + 1))
+          )
         }
 
-        const tracedIdentifier = factory.createPropertyAccessExpression(tracing, traced)
-
-        const { fileName } = sourceFile
-
-        let finalName = path.relative(process.cwd(), fileName)
-
-        function getTrace(node: ts.Node, pos: "start" | "end") {
-          const nodeStart = sourceFile.getLineAndCharacterOfPosition(
-            pos === "start" ? node.getStart() : node.getEnd()
-          )
-          return factory.createBinaryExpression(
-            fileVar,
-            factory.createToken(ts.SyntaxKind.PlusToken),
-            factory.createStringLiteral(
-              `:${nodeStart.line + 1}:${nodeStart.character + 1}`
-            )
+        // wraps f(args) to traceCall(f, trace)(args) if needed
+        if (parsedInfo.shouldTraceCall) {
+          callExpression = ts.setOriginalNode(
+            ts.setTextRange(
+              factory.createCallExpression(traceCallIdentifier, undefined, [
+                callExpression,
+                trace
+              ]),
+              callExpression
+            ),
+            callExpression
           )
         }
 
-        const sourceFullText = sourceFile.getFullText()
+        // replace the original call expression with the new one
+        return ts.setOriginalNode(
+          ts.setTextRange(
+            factory.createCallExpression(callExpression, undefined, callArguments),
+            node
+          ),
+          node
+        )
+      }
 
-        const regions = sourceFullText
+      function getTracedRegions(sourceFile: ts.SourceFile) {
+        return sourceFile
+          .getFullText()
           .split("\n")
           .map((line, i) => {
             const x: [boolean, number][] = []
@@ -92,137 +180,99 @@ export default function tracer(
             return [x, i] as const
           })
           .filter(([x]) => x.length > 0)
+      }
+
+      return (sourceFile: ts.SourceFile) => {
+        // collect regions where tracing is enabled/disabled
+        const tracedRegions = getTracedRegions(sourceFile)
+
+        const traceCallName = factory.createIdentifier("traceCall")
+        const fileNameVarName = factory.createUniqueName("fileName")
+        const tracingModuleName = factory.createUniqueName("tracing")
+
+        const traceCallIdentifier = factory.createPropertyAccessExpression(
+          tracingModuleName,
+          traceCallName
+        )
 
         function visitor(node: ts.Node): ts.VisitResult<ts.Node> {
-          if (ts.isCallExpression(node)) {
-            let isTracing = false
+          // is this a fake node?
+          if (node.getEnd() < 0) return ts.visitEachChild(node, visitor, ctx)
 
-            try {
-              const nodeStart = sourceFile.getLineAndCharacterOfPosition(
-                node.expression.getEnd()
-              )
+          // checks if this region should be traced
+          const nodeLineAndCharacter = sourceFile.getLineAndCharacterOfPosition(
+            node.getEnd()
+          )
+          const isRegionTraced = checkRegionAt(
+            tracedRegions,
+            nodeLineAndCharacter.line,
+            nodeLineAndCharacter.character
+          )
 
-              isTracing =
-                tracingOn && checkRegionAt(regions, nodeStart.line, nodeStart.character)
-            } catch {
-              isTracing = false
-            }
+          if (!tracingOn || !isRegionTraced)
+            return ts.visitEachChild(node, visitor, ctx)
 
-            if (isTracing) {
-              const trace = getTrace(node.expression, "end")
-
-              const signature = checker.getResolvedSignature(node)
-              const declaration =
-                signature?.getDeclaration() ?? getDeclaration(checker, node)
-
-              const parameters = declaration?.parameters || []
-              const traceLast =
-                parameters.length > 0
-                  ? parameters[parameters.length - 1]!.name.getText() === "__trace"
-                  : false
-
-              const entries: (readonly [string, string | undefined])[] =
-                signature?.getJsDocTags().map((t) => [t.name, t.text] as const) || []
-              const tags: Record<string, (string | undefined)[]> = {}
-
-              for (const entry of entries) {
-                if (!tags[entry[0]]) {
-                  tags[entry[0]] = []
-                }
-                tags[entry[0]!]!.push(entry[1])
-              }
-
-              const traceCall = tags["trace"] && tags["trace"].includes("call")
-
-              const child = ts.visitEachChild(node, visitor, ctx)
-
-              if (traceCall || traceLast) {
-                const expression = traceCall
-                  ? factory.createCallExpression(tracedIdentifier, undefined, [
-                      child.expression,
-                      trace
-                    ])
-                  : child.expression
-
-                const args = traceLast ? [...child.arguments, trace] : child.arguments
-
-                return factory.updateCallExpression(
-                  node,
-                  expression,
-                  node.typeArguments,
-                  args
-                )
-              } else {
-                return child
-              }
-            }
+          // parse and eventually process found
+          const parsedInfo = parseTraceSyntax(node, sourceFile)
+          if (parsedInfo) {
+            // NOTE: avoid calling visitEachChild on transformed node since it may loop itself
+            parsedInfo.methodExpression = ts.visitNode(
+              parsedInfo.methodExpression,
+              visitor
+            )
+            parsedInfo.arguments = ts.visitNodes(parsedInfo.arguments, visitor)
+            return applyTraceSyntax(
+              node,
+              sourceFile,
+              fileNameVarName,
+              traceCallIdentifier,
+              parsedInfo
+            )
           }
 
+          // continue
           return ts.visitEachChild(node, visitor, ctx)
         }
 
-        for (const k of moduleMapKeys) {
-          const matches = finalName.match(k[1]!)
-          if (matches) {
-            let patchedName = moduleMap[k[0]!]!
-            for (let j = 1; j < matches.length; j += 1) {
-              patchedName = patchedName.replace("$" + j, matches[j]!)
-            }
-            finalName = patchedName
-            break
-          }
-        }
+        // if tracing is disabled, early exit
+        if (!tracingOn) return sourceFile
 
-        const fileNode = factory.createVariableStatement(
-          undefined,
-          factory.createVariableDeclarationList(
-            [
-              factory.createVariableDeclaration(
-                fileVar,
-                undefined,
-                undefined,
-                factory.createStringLiteral(finalName)
-              )
-            ],
-            ts.NodeFlags.Const
-          )
-        )
-
-        if (tracingOn) {
-          const visited = ts.visitNode(sourceFile, visitor)
-
-          return factory.updateSourceFile(visited, [
-            factory.createImportDeclaration(
+        // prepend the import statement from utils
+        const tracedSourceFile = ts.visitEachChild(sourceFile, visitor, ctx)
+        const fileName = getSourceFilePathForTrace(sourceFile)
+        const newSourceFile = factory.updateSourceFile(sourceFile, [
+          factory.createImportDeclaration(
+            undefined,
+            undefined,
+            factory.createImportClause(
+              false,
               undefined,
-              undefined,
-              factory.createImportClause(
-                false,
-                undefined,
-                factory.createNamespaceImport(tracing)
-              ),
-              factory.createStringLiteral("@effect-ts/tracing-utils")
+              factory.createNamespaceImport(tracingModuleName)
             ),
-            fileNode,
-            ...visited.statements
-          ])
-        }
+            factory.createStringLiteral("@effect-ts/tracing-utils")
+          ),
+          factory.createVariableStatement(
+            undefined,
+            factory.createVariableDeclarationList(
+              [
+                factory.createVariableDeclaration(
+                  fileNameVarName,
+                  undefined,
+                  undefined,
+                  factory.createStringLiteral(fileName)
+                )
+              ],
+              ts.NodeFlags.Const
+            )
+          ),
+          ...tracedSourceFile.statements
+        ])
 
-        return sourceFile
+        return ts.setOriginalNode(
+          ts.setTextRange(newSourceFile, sourceFile),
+          sourceFile
+        )
       }
     }
   }
-}
-
-function getDeclaration(
-  checker: ts.TypeChecker,
-  node: ts.CallExpression
-): ts.SignatureDeclaration | undefined {
-  const ds = checker
-    .getTypeAtLocation(node.expression)
-    .getCallSignatures()
-    .map((s) => s.getDeclaration())
-  if (ds?.length !== 1) {
-    return undefined
-  }
-  return ds?.[0]
 }

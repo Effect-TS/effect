@@ -1,5 +1,11 @@
 import ts from "typescript"
 
+import { getCallExpressionMetadata } from "./utils"
+
+interface ParsedPipeSyntaxInfo {
+  arguments: Array<ts.Expression>
+}
+
 export default function unpipe(_program: ts.Program) {
   const checker = _program.getTypeChecker()
 
@@ -7,97 +13,65 @@ export default function unpipe(_program: ts.Program) {
     before(ctx: ts.TransformationContext) {
       const factory = ctx.factory
 
-      return (sourceFile: ts.SourceFile) => {
-        function visitor(node: ts.Node): ts.VisitResult<ts.Node> {
+      function parsePipeSyntax(
+        node: ts.Node,
+        sourceFile: ts.SourceFile
+      ): ParsedPipeSyntaxInfo | undefined {
+        if (ts.isCallExpression(node)) {
+          const { tags } = getCallExpressionMetadata(checker, node, sourceFile)
+
+          // operator pipe call a["|>"](b)
           if (
-            ts.isCallExpression(node) &&
             ts.isElementAccessExpression(node.expression) &&
             ts.isStringLiteral(node.expression.argumentExpression) &&
             node.expression.argumentExpression.text === "|>" &&
             node.arguments.length === 1
           ) {
-            const overloadDeclarations = checker
-              .getResolvedSignature(node)
-              ?.getDeclaration()
-
-            const optimizeTags = overloadDeclarations
-              ? (() => {
-                  try {
-                    return ts
-                      .getAllJSDocTags(
-                        overloadDeclarations,
-                        (t): t is ts.JSDocTag => t.tagName.getText() === "optimize"
-                      )
-                      .map((e) => e.comment)
-                      .filter((s): s is string => s != null)
-                  } catch {
-                    return undefined
-                  }
-                })()
-              : undefined
-
-            return optimizeTags?.includes("operator")
-              ? factory.createCallExpression(
-                  ts.visitNode(node.arguments[0]!, visitor),
-                  [],
-                  [ts.visitNode(node.expression.expression, visitor)]
-                )
-              : ts.visitEachChild(node, visitor, ctx)
-          } else if (ts.isCallExpression(node)) {
-            const symbol = checker.getTypeAtLocation(node.expression).getSymbol()
-
-            const overloadDeclarations = checker
-              .getResolvedSignature(node)
-              ?.getDeclaration()
-
-            const optimizeTagsOverload = overloadDeclarations
-              ? (() => {
-                  try {
-                    return ts
-                      .getAllJSDocTags(
-                        overloadDeclarations,
-                        (t): t is ts.JSDocTag => t.tagName.getText() === "optimize"
-                      )
-                      .map((e) => e.comment)
-                      .filter((s): s is string => s != null)
-                  } catch {
-                    return undefined
-                  }
-                })()
-              : undefined
-
-            const optimizeTagsMain =
-              symbol
-                ?.getDeclarations()
-                ?.map((e) => {
-                  try {
-                    return ts
-                      .getAllJSDocTags(
-                        e,
-                        (t): t is ts.JSDocTag => t.tagName?.getText() === "optimize"
-                      )
-                      .map((e) => e.comment)
-                  } catch {
-                    return []
-                  }
-                })
-                .reduce((flatten, entry) => flatten.concat(entry), []) || []
-
-            const optimizeTags = new Set([
-              ...optimizeTagsMain,
-              ...(optimizeTagsOverload || [])
-            ])
-
-            if (optimizeTags.has("pipe")) {
-              if (node.arguments.findIndex((xx) => ts.isSpreadElement(xx)) === -1) {
-                return optimisePipe(
-                  ts.visitEachChild(node, visitor, ctx).arguments,
-                  factory
-                )
-              }
-            }
+            return { arguments: [node.expression.expression, node.arguments[0]!] }
           }
 
+          // plain old pipe(a, b, c, d) call
+          if (tags["optimize"] && tags["optimize"].has("pipe")) {
+            return { arguments: node.arguments.map((node) => node) }
+          }
+        }
+        return undefined
+      }
+
+      function optimizePipeSyntax(
+        node: ts.Node,
+        parsedInfo: ParsedPipeSyntaxInfo
+      ): ts.VisitResult<ts.Node> {
+        if (parsedInfo.arguments.length === 0) throw new Error("absurd")
+
+        // start reducing with first node, then accumulate next ones as call
+        return parsedInfo.arguments
+          .slice(1)
+          .reduce(
+            (currentNode, memberNode) =>
+              ts.setOriginalNode(
+                ts.setTextRange(
+                  factory.createCallExpression(memberNode, undefined, [currentNode]),
+                  memberNode
+                ),
+                memberNode
+              ),
+            parsedInfo.arguments[0]!
+          )
+      }
+
+      return (sourceFile: ts.SourceFile) => {
+        function visitor(node: ts.Node): ts.VisitResult<ts.Node> {
+          // parse and process node
+          const parsedInfo = parsePipeSyntax(node, sourceFile)
+          if (parsedInfo) {
+            const newNode = ts.visitNode(node, (node) =>
+              optimizePipeSyntax(node, parsedInfo)
+            )
+            return ts.visitEachChild(newNode, visitor, ctx)
+          }
+
+          // continue
           return ts.visitEachChild(node, visitor, ctx)
         }
 
@@ -105,22 +79,4 @@ export default function unpipe(_program: ts.Program) {
       }
     }
   }
-}
-
-function optimisePipe(
-  args: ArrayLike<ts.Expression>,
-  factory: ts.NodeFactory
-): ts.Expression {
-  if (args.length === 1) {
-    return args[0]!
-  }
-
-  const newArgs: ts.Expression[] = []
-  for (let i = 0; i < args.length - 1; i += 1) {
-    newArgs.push(args[i]!)
-  }
-
-  return factory.createCallExpression(args[args.length - 1]!, undefined, [
-    optimisePipe(newArgs, factory)
-  ])
 }

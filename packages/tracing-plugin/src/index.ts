@@ -30,11 +30,11 @@ export default function bundle(
 
       return (sourceFile: ts.SourceFile) => {
         const unpiped = B1.unpipe(sourceFile)
-        const traced = B1.tracer(unpiped)
+        const df = B1.dataFirst(unpiped)
+        const traced = B1.tracer(df)
         const unid = B1.identity(traced)
-        const df = B1.dataFirst(unid)
 
-        return df
+        return unid
       }
     }
   }
