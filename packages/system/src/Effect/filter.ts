@@ -1,7 +1,5 @@
 // tracing: off
 
-import { traceAs } from "@effect-ts/tracing-utils"
-
 import * as A from "../Array"
 import { pipe } from "../Function"
 import * as I from "../Iterable"
@@ -10,52 +8,55 @@ import * as core from "./core"
 import type { Effect } from "./effect"
 import * as forEach from "./excl-forEach"
 import * as map from "./map"
+import { traceAfter_ } from "./traceAfter"
 import * as zipWith from "./zipWith"
 
 /**
  * Filters the collection using the specified effectual predicate.
  *
  * @dataFirst filter_
- * @trace 0
  */
-export function filter<A, R, E>(f: (a: A) => Effect<R, E, boolean>) {
-  return (as: Iterable<A>) => filter_(as, f)
+export function filter<A, R, E>(f: (a: A) => Effect<R, E, boolean>, __trace?: string) {
+  return (as: Iterable<A>) => filter_(as, f, __trace)
 }
 
 /**
  * Filters the collection using the specified effectual predicate.
- *
- * @trace 1
  */
 export function filter_<A, R, E>(
   as: Iterable<A>,
-  f: (a: A) => Effect<R, E, boolean>
+  f: (a: A) => Effect<R, E, boolean>,
+  __trace?: string
 ): Effect<R, E, readonly A[]> {
-  return I.reduce_(as, <Effect<R, E, A[]>>core.effectTotal(() => []), (io, a) =>
-    zipWith.zipWith_(io, core.suspend(traceAs(f, () => f(a))), (as_, p) => {
-      if (p) {
-        as_.push(a)
-      }
-      return as_
-    })
+  return traceAfter_(
+    I.reduce_(as, <Effect<R, E, A[]>>core.effectTotal(() => []), (io, a) =>
+      zipWith.zipWith_(
+        io,
+        core.suspend(() => f(a)),
+        (as_, p) => {
+          if (p) {
+            as_.push(a)
+          }
+          return as_
+        }
+      )
+    ),
+    __trace
   )
 }
 
 /**
  * Filters the collection in parallel using the specified effectual predicate.
  * See `filter` for a sequential version of it.
- *
- * @trace 1
  */
 export function filterPar_<A, R, E>(
   as: Iterable<A>,
-  f: (a: A) => Effect<R, E, boolean>
+  f: (a: A) => Effect<R, E, boolean>,
+  __trace?: string
 ) {
   return pipe(
     as,
-    forEach.forEachPar(
-      traceAs(f, (a) => map.map_(f(a), (b) => (b ? O.some(a) : O.none)))
-    ),
+    forEach.forEachPar((a) => map.map_(f(a), (b) => (b ? O.some(a) : O.none)), __trace),
     map.map(A.compact)
   )
 }
@@ -65,10 +66,12 @@ export function filterPar_<A, R, E>(
  * See `filter` for a sequential version of it.
  *
  * @dataFirst filterPar_
- * @trace 0
  */
-export function filterPar<A, R, E>(f: (a: A) => Effect<R, E, boolean>) {
-  return (as: Iterable<A>) => filterPar_(as, f)
+export function filterPar<A, R, E>(
+  f: (a: A) => Effect<R, E, boolean>,
+  __trace?: string
+) {
+  return (as: Iterable<A>) => filterPar_(as, f, __trace)
 }
 
 /**
@@ -76,19 +79,19 @@ export function filterPar<A, R, E>(f: (a: A) => Effect<R, E, boolean>) {
  * See `filter` for a sequential version of it.
  *
  * This method will use up to `n` fibers.
- *
- * @trace 2
  */
 export function filterParN_<A, R, E>(
   as: Iterable<A>,
   n: number,
-  f: (a: A) => Effect<R, E, boolean>
+  f: (a: A) => Effect<R, E, boolean>,
+  __trace?: string
 ) {
   return pipe(
     as,
     forEach.forEachParN(
       n,
-      traceAs(f, (a) => map.map_(f(a), (b) => (b ? O.some(a) : O.none)))
+      (a) => map.map_(f(a), (b) => (b ? O.some(a) : O.none)),
+      __trace
     ),
     map.map(A.compact)
   )
@@ -101,10 +104,13 @@ export function filterParN_<A, R, E>(
  * This method will use up to `n` fibers.
  *
  * @dataFirst filterParN_
- * @trace 1
  */
-export function filterParN<A, R, E>(n: number, f: (a: A) => Effect<R, E, boolean>) {
-  return (as: Iterable<A>) => filterParN_(as, n, f)
+export function filterParN<A, R, E>(
+  n: number,
+  f: (a: A) => Effect<R, E, boolean>,
+  __trace?: string
+) {
+  return (as: Iterable<A>) => filterParN_(as, n, f, __trace)
 }
 
 /**
@@ -112,42 +118,36 @@ export function filterParN<A, R, E>(n: number, f: (a: A) => Effect<R, E, boolean
  * all elements that satisfy the predicate.
  *
  * @dataFirst filterNot_
- * @trace 0
  */
-export function filterNot<A, R, E>(f: (a: A) => Effect<R, E, boolean>) {
-  return (as: Iterable<A>) => filterNot_(as, f)
+export function filterNot<A, R, E>(
+  f: (a: A) => Effect<R, E, boolean>,
+  __trace?: string
+) {
+  return (as: Iterable<A>) => filterNot_(as, f, __trace)
 }
 
 /**
  * Filters the collection using the specified effectual predicate, removing
  * all elements that satisfy the predicate.
- *
- * @trace 1
  */
 export function filterNot_<A, R, E>(
   as: Iterable<A>,
-  f: (a: A) => Effect<R, E, boolean>
+  f: (a: A) => Effect<R, E, boolean>,
+  __trace?: string
 ) {
-  return filter_(
-    as,
-    traceAs(f, (x) => map.map_(f(x), (b) => !b))
-  )
+  return filter_(as, (x) => map.map_(f(x), (b) => !b), __trace)
 }
 
 /**
  * Filters the collection in parallel using the specified effectual predicate.
  * See `filterNot` for a sequential version of it.
- *
- * @trace 1
  */
 export function filterNotPar_<A, R, E>(
   as: Iterable<A>,
-  f: (a: A) => Effect<R, E, boolean>
+  f: (a: A) => Effect<R, E, boolean>,
+  __trace?: string
 ) {
-  return filterPar_(
-    as,
-    traceAs(f, (x) => map.map_(f(x), (b) => !b))
-  )
+  return filterPar_(as, (x) => map.map_(f(x), (b) => !b), __trace)
 }
 
 /**
@@ -155,28 +155,25 @@ export function filterNotPar_<A, R, E>(
  * See `filterNot` for a sequential version of it.
  *
  * @dataFirst filterNotPar_
- * @trace 0
  */
-export function filterNotPar<A, R, E>(f: (a: A) => Effect<R, E, boolean>) {
-  return (as: Iterable<A>) => filterNotPar_(as, f)
+export function filterNotPar<A, R, E>(
+  f: (a: A) => Effect<R, E, boolean>,
+  __trace?: string
+) {
+  return (as: Iterable<A>) => filterNotPar_(as, f, __trace)
 }
 
 /**
  * Filters the collection in parallel using the specified effectual predicate.
  * See `filterNot` for a sequential version of it.
- *
- * @trace 2
  */
 export function filterNotParN_<A, R, E>(
   as: Iterable<A>,
   n: number,
-  f: (a: A) => Effect<R, E, boolean>
+  f: (a: A) => Effect<R, E, boolean>,
+  __trace?: string
 ) {
-  return filterParN_(
-    as,
-    n,
-    traceAs(f, (x) => map.map_(f(x), (b) => !b))
-  )
+  return filterParN_(as, n, (x) => map.map_(f(x), (b) => !b), __trace)
 }
 
 /**
@@ -184,8 +181,11 @@ export function filterNotParN_<A, R, E>(
  * See `filterNot` for a sequential version of it.
  *
  * @dataFirst filterNotParN_
- * @trace 1
  */
-export function filterNotParN<R, E, A>(n: number, f: (a: A) => Effect<R, E, boolean>) {
-  return (as: Iterable<A>) => filterNotParN_(as, n, f)
+export function filterNotParN<R, E, A>(
+  n: number,
+  f: (a: A) => Effect<R, E, boolean>,
+  __trace?: string
+) {
+  return (as: Iterable<A>) => filterNotParN_(as, n, f, __trace)
 }
