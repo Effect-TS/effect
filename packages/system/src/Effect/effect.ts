@@ -1,6 +1,6 @@
 // tracing: off
 
-import { _A, _E, _I, _R, _U } from "./commons"
+import { _A, _E, _R, _U } from "./commons"
 import type { Instruction } from "./primitives"
 
 export const EffectURI = "Effect"
@@ -11,8 +11,6 @@ export interface Effect<R, E, A> {
   readonly [_E]: () => E
   readonly [_A]: () => A
   readonly [_R]: (_: R) => void
-
-  readonly [_I]: Instruction
 
   readonly _S1: (_: unknown) => void
   readonly _S2: () => never
@@ -30,8 +28,12 @@ export abstract class Base<R, E, A> implements Effect<R, E, A> {
   readonly [_E]: () => E;
   readonly [_A]: () => A;
   readonly [_R]: (_: R) => void
+}
 
-  get [_I]() {
-    return this as any
-  }
+/**
+ * @optimize identity
+ */
+export function instruction<R, E, A>(self: Effect<R, E, A>): Instruction {
+  // @ts-expect-error
+  return self
 }
