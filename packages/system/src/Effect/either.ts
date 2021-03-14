@@ -15,10 +15,14 @@ import { foldM_ } from "./foldM"
  * The error parameter of the returned is `never`, since it is
  * guaranteed the effect does not model failure.
  */
-export function either<R, E, A>(self: Effect<R, E, A>): RIO<R, E.Either<E, A>> {
+export function either<R, E, A>(
+  self: Effect<R, E, A>,
+  __trace?: string
+): RIO<R, E.Either<E, A>> {
   return foldM_(
     self,
     (e) => succeed(E.left(e)),
-    (a) => succeed(E.right(a))
+    (a) => succeed(E.right(a)),
+    __trace
   )
 }

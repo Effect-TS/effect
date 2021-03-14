@@ -1,7 +1,5 @@
 // tracing: off
 
-import { traceAs } from "@effect-ts/tracing-utils"
-
 import * as A from "../Array"
 import * as cause from "../Cause"
 import type { Exit } from "../Exit"
@@ -303,10 +301,12 @@ export function forEachPar_<R, E, A, B>(
       core.effectTotal<B[]>(() => []),
       (array) => {
         function fn([a, n]: [A, number]) {
-          return core.chain_(core.suspend(traceAs(f, () => f(a))), (b) =>
-            core.effectTotal(() => {
-              array[n] = b
-            })
+          return core.chain_(
+            core.suspend(() => f(a)),
+            (b) =>
+              core.effectTotal(() => {
+                array[n] = b
+              })
           )
         }
         return map.map_(
@@ -417,14 +417,12 @@ export function forEachParN_<R, E, A, B>(
   ): Effect<R, never, void> {
     return pipe(
       q.take,
-      core.chain(
-        traceAs(f, ([p, a]) =>
-          pipe(
-            f(a),
-            core.foldCauseM(
-              (c) => forEach_(pairs, (_) => pipe(_[0], promise.halt(c))),
-              (b) => pipe(p, promise.succeed(b))
-            )
+      core.chain(([p, a]) =>
+        pipe(
+          f(a),
+          core.foldCauseM(
+            (c) => forEach_(pairs, (_) => pipe(_[0], promise.halt(c))),
+            (b) => pipe(p, promise.succeed(b))
           )
         )
       ),

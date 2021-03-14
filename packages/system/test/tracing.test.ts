@@ -257,4 +257,19 @@ describe("Tracing", () => {
     expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:241:21")
     expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:249:28")
   })
+  it("should trace collectAllParN", async () => {
+    const result = await T.runPromiseExit(
+      [T.succeed(0), T.succeed(1), T.fail("ok")]["|>"](T.collectAllParN(2))
+    )
+
+    assertsFailure(result)
+    const cause = pretty(result.cause)
+
+    expect(cause).toContain(
+      "a future continuation at (@effect-ts/system/test): test/tracing.test.ts:262:72"
+    )
+    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:262:42")
+    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:262:31")
+    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:262:17")
+  })
 })
