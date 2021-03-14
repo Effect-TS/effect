@@ -272,4 +272,18 @@ describe("Tracing", () => {
     expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:262:31")
     expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:262:17")
   })
+  it("should trace filter", async () => {
+    const result = await T.runPromiseExit(
+      [0, 1, 2]["|>"](T.filter((k) => (k > 1 ? T.fail("ok") : T.succeed(true))))
+    )
+
+    assertsFailure(result)
+    const cause = pretty(result.cause)
+
+    expect(cause).toContain(
+      "a future continuation at (@effect-ts/system/test): test/tracing.test.ts:277:31"
+    )
+    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:277:54")
+    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:277:72")
+  })
 })
