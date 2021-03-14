@@ -1,39 +1,43 @@
 import "../../Operator"
 
+import type { Predicate } from "../../Function"
 import * as L from "../../Persistent/List"
 import { DoublyLinkedList } from "../DoublyLinkedList"
 
 export class RingBuffer<T> {
   private values = new DoublyLinkedList<T>()
+  private ignored = 0
 
-  constructor(readonly size: number) {}
+  constructor(readonly size: number, readonly ignoreFn?: Predicate<T>) {}
 
   push(value: T) {
-    if (this.values.length >= this.size) {
+    if (this.values.length - this.ignored >= this.size) {
       this.values.shift()
     }
     this.values.add(value)
+    if (this.ignoreFn && this.ignoreFn(value)) {
+      this.ignored++
+    }
     return this.values
   }
 
   pop() {
-    this.values.pop()
+    const popped = this.values.pop()
+    if (popped && this.ignoreFn && this.ignoreFn(popped)) {
+      this.ignored--
+    }
     return this.values
   }
 
   get list(): L.List<T> {
-    let l = L.empty<T>()
+    const l = L.emptyPushable<T>()
     this.values.forEach((t) => {
-      l = L.append_(l, t)
+      L.push(t, l)
     })
     return l
   }
 
   get listReverse(): L.List<T> {
-    let l = L.empty<T>()
-    this.values.forEach((t) => {
-      l = L.prepend_(l, t)
-    })
-    return l
+    return L.reverse(this.list)
   }
 }
