@@ -1,7 +1,5 @@
 // tracing: off
 
-import { accessCallTrace } from "@effect-ts/tracing-utils"
-
 import { squash } from "../Cause"
 import { identity, pipe } from "../Function"
 import { succeed } from "./core"
@@ -38,9 +36,7 @@ export function absorbWith_<R, A, E>(
 /**
  * Attempts to convert defects into a failure, throwing away all information
  * about the cause of the failure.
- *
- * @trace call
  */
-export function absorb<R, E, A>(self: Effect<R, E, A>) {
-  return absorbWith_(self, identity, accessCallTrace())
+export function absorb<R, E, A>(self: Effect<R, E, A>, __trace?: string) {
+  return absorbWith_(self, identity, __trace)
 }

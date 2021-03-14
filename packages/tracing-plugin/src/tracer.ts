@@ -47,7 +47,8 @@ export default function tracer(
       const factory = ctx.factory
 
       return (sourceFile: ts.SourceFile) => {
-        const traced = factory.createIdentifier("traceCall")
+        const traceCall = factory.createIdentifier("traceCall")
+        const traceCallLast = factory.createIdentifier("traceCallLast")
         const fileVar = factory.createUniqueName("fileName")
         const tracing = factory.createUniqueName("tracing")
 
@@ -58,7 +59,11 @@ export default function tracer(
           return sourceFile
         }
 
-        const tracedIdentifier = factory.createPropertyAccessExpression(tracing, traced)
+        const traceCallId = factory.createPropertyAccessExpression(tracing, traceCall)
+        const traceCallLastId = factory.createPropertyAccessExpression(
+          tracing,
+          traceCallLast
+        )
 
         const { fileName } = sourceFile
 
@@ -109,9 +114,11 @@ export default function tracer(
 
               const signature = checker.getResolvedSignature(node)
               const declaration =
-                signature?.getDeclaration() ?? getDeclaration(checker, node)
+                signature?.getDeclaration() ?? getDeclaration(checker, node.expression)
 
-              const parameters = declaration?.parameters || []
+              const parameters: Array<ts.ParameterDeclaration> = Array.from(
+                declaration?.parameters || []
+              )
               const traceLast =
                 parameters.length > 0
                   ? parameters[parameters.length - 1]!.name.getText() === "__trace"
@@ -131,11 +138,23 @@ export default function tracer(
               const traceCall = tags["trace"] && tags["trace"].includes("call")
 
               let expression = ts.visitNode(node.expression, visitor)
-              let args = node.arguments.map((x) => ts.visitNode(x, visitor))
+              let args = node.arguments.map((x) => {
+                const ds = getDeclaration(checker, x)
+                const params = ds?.parameters
+
+                if (params?.length === 2 && params[1]?.name.getText() === "__trace") {
+                  return factory.createCallExpression(traceCallLastId, undefined, [
+                    ts.visitNode(x, visitor),
+                    getTrace(x)
+                  ])
+                }
+
+                return ts.visitNode(x, visitor)
+              })
 
               if (traceCall || traceLast) {
                 expression = traceCall
-                  ? factory.createCallExpression(tracedIdentifier, undefined, [
+                  ? factory.createCallExpression(traceCallId, undefined, [
                       expression,
                       trace
                     ])
@@ -156,32 +175,6 @@ export default function tracer(
                   node.typeArguments,
                   args
                 )
-              }
-            }
-          } else if (ts.isPropertyAccessExpression(node)) {
-            let isTracing: boolean
-
-            try {
-              const nodeStart = sourceFile.getLineAndCharacterOfPosition(node.getEnd())
-
-              isTracing =
-                tracingOn && checkRegionAt(regions, nodeStart.line, nodeStart.character)
-            } catch {
-              isTracing = false
-            }
-
-            if (isTracing) {
-              const ds = checker
-                .getTypeAtLocation(node)
-                .getCallSignatures()
-                .flatMap((s) => s.getJsDocTags())
-                .map((tag) => `${tag.name} ${tag.text}`)
-
-              if (ds.includes("trace call")) {
-                return factory.createCallExpression(tracedIdentifier, undefined, [
-                  node,
-                  getTrace(node)
-                ])
               }
             }
           }
@@ -246,10 +239,10 @@ export default function tracer(
 
 function getDeclaration(
   checker: ts.TypeChecker,
-  node: ts.CallExpression
+  node: ts.Expression
 ): ts.SignatureDeclaration | undefined {
   const ds = checker
-    .getTypeAtLocation(node.expression)
+    .getTypeAtLocation(node)
     .getCallSignatures()
     .map((s) => s.getDeclaration())
   if (ds?.length !== 1) {

@@ -20,6 +20,13 @@ export function traceCall<F extends Function>(f: F, trace: string | undefined): 
   }
 }
 
+export function traceCallLast<A, B>(
+  f: (a: A, __trace?: string) => B,
+  __trace: string | undefined
+): (a: A, __trace?: string) => B {
+  return (a, t) => (t ? f(a, t) : f(a, __trace))
+}
+
 /**
  * @untrace accessCallTrace
  */

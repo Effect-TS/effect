@@ -1,7 +1,5 @@
 // tracing: off
 
-import { traceCall } from "@effect-ts/tracing-utils"
-
 import { asUnit } from "./asUnit"
 import { chain_, unit } from "./core"
 import type { Effect } from "./effect"
@@ -14,7 +12,7 @@ export function whenM_<R1, E1, A, R, E>(
   predicate: Effect<R, E, boolean>,
   __trace?: string
 ) {
-  return chain_(predicate, (a) => (a ? traceCall(asUnit, __trace)(self) : unit))
+  return chain_(predicate, (a) => (a ? asUnit(self, __trace) : unit))
 }
 
 /**
