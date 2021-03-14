@@ -112,13 +112,16 @@ export default function tracer(
             if (isTracing) {
               const trace = getTrace(node.expression)
 
-              const signature = checker.getResolvedSignature(node)
-              const declaration =
-                signature?.getDeclaration() ?? getDeclaration(checker, node.expression)
+              const signature =
+                checker.getResolvedSignature(node) ??
+                getSignatureIfSole(checker, node.expression)
 
-              const parameters: Array<ts.ParameterDeclaration> = Array.from(
+              const declaration = signature?.getDeclaration()
+
+              const parameters = Array.from<ts.ParameterDeclaration>(
                 declaration?.parameters || []
               )
+
               const traceLast =
                 parameters.length > 0
                   ? parameters[parameters.length - 1]!.name.getText() === "__trace"
@@ -126,6 +129,7 @@ export default function tracer(
 
               const entries: (readonly [string, string | undefined])[] =
                 signature?.getJsDocTags().map((t) => [t.name, t.text] as const) || []
+
               const tags: Record<string, (string | undefined)[]> = {}
 
               for (const entry of entries) {
@@ -135,11 +139,11 @@ export default function tracer(
                 tags[entry[0]!]!.push(entry[1])
               }
 
-              const traceCall = tags["trace"] && tags["trace"].includes("call")
+              const shouldTraceCall = tags["trace"] && tags["trace"].includes("call")
 
               let expression = ts.visitNode(node.expression, visitor)
               let args = node.arguments.map((x) => {
-                const ds = getDeclaration(checker, x)
+                const ds = getSignatureIfSole(checker, x)?.getDeclaration()
                 const params = ds?.parameters
 
                 if (params?.length === 2 && params[1]?.name.getText() === "__trace") {
@@ -152,15 +156,18 @@ export default function tracer(
                 return ts.visitNode(x, visitor)
               })
 
-              if (traceCall || traceLast) {
-                expression = traceCall
+              const shouldAppendTrace =
+                traceLast && args.length === parameters.length - 1
+
+              if (shouldTraceCall || shouldAppendTrace) {
+                expression = shouldTraceCall
                   ? factory.createCallExpression(traceCallId, undefined, [
                       expression,
                       trace
                     ])
                   : expression
 
-                args = traceLast ? [...args, trace] : args
+                args = shouldAppendTrace ? [...args, trace] : args
 
                 return factory.updateCallExpression(
                   node,
@@ -237,16 +244,15 @@ export default function tracer(
   }
 }
 
-function getDeclaration(
+function getSignatureIfSole(
   checker: ts.TypeChecker,
   node: ts.Expression
-): ts.SignatureDeclaration | undefined {
-  const ds = checker
-    .getTypeAtLocation(node)
-    .getCallSignatures()
-    .map((s) => s.getDeclaration())
+): ts.Signature | undefined {
+  const ds = checker.getTypeAtLocation(node).getCallSignatures()
+
   if (ds?.length !== 1) {
     return undefined
   }
+
   return ds?.[0]
 }
