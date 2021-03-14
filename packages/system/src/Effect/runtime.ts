@@ -22,11 +22,10 @@ import { defaultRandom, HasRandom } from "../Random"
 import * as Scope from "../Scope"
 // supervisor
 import * as Supervisor from "../Supervisor"
-import { _I } from "./commons"
 import { accessM, chain_, effectTotal, succeed } from "./core"
 import type { Effect, UIO } from "./effect"
 import type { FailureReporter } from "./primitives"
-import { IPlatform } from "./primitives"
+import { instruction, IPlatform } from "./primitives"
 
 // empty function
 const empty = () => {
@@ -110,6 +109,8 @@ export class CustomRuntime<R, X> {
       context.onDone((exit) => supervisor.unsafeOnEnd(exitFlatten(exit), context))
     }
 
+    context.evaluateLater(instruction(effect))
+
     return context
   }
 
@@ -122,7 +123,7 @@ export class CustomRuntime<R, X> {
 
   runFiber<E, A>(self: Effect<R, E, A>): FiberContext<E, A> {
     const context = this.fiberContext<E, A>(self)
-    context.evaluateLater(self[_I])
+
     return context
   }
 
@@ -132,7 +133,6 @@ export class CustomRuntime<R, X> {
   run<E, A>(self: Effect<R, E, A>, cb?: Callback<E, A>) {
     const context = this.fiberContext<E, A>(self)
 
-    context.evaluateLater(self[_I])
     context.runAsync(cb || empty)
   }
 
@@ -143,7 +143,6 @@ export class CustomRuntime<R, X> {
   runCancel<E, A>(self: Effect<R, E, A>, cb?: Callback<E, A>): AsyncCancel<E, A> {
     const context = this.fiberContext<E, A>(self)
 
-    context.evaluateLater(self[_I])
     context.runAsync(cb || empty)
 
     return context.interruptAs(context.id)
@@ -154,8 +153,6 @@ export class CustomRuntime<R, X> {
    */
   runPromise<E, A>(self: Effect<R, E, A>): Promise<A> {
     const context = this.fiberContext<E, A>(self)
-
-    context.evaluateLater(self[_I])
 
     return new Promise((res, rej) => {
       context.runAsync((exit) => {
@@ -179,8 +176,6 @@ export class CustomRuntime<R, X> {
    */
   runPromiseExit<E, A>(self: Effect<R, E, A>): Promise<Exit<E, A>> {
     const context = this.fiberContext<E, A>(self)
-
-    context.evaluateLater(self[_I])
 
     return new Promise((res) => {
       context.runAsync((exit) => {
