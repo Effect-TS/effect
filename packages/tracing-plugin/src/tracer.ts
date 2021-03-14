@@ -116,33 +116,13 @@ export default function tracer(
                 checker.getResolvedSignature(node) ??
                 getSignatureIfSole(checker, node.expression)
 
-              const declaration = signature?.getDeclaration()
+              const signatureDeclaration = signature?.getDeclaration()
 
-              const parameters = Array.from<ts.ParameterDeclaration>(
-                declaration?.parameters || []
+              const declarationParameters = Array.from<ts.ParameterDeclaration>(
+                signatureDeclaration?.parameters || []
               )
 
-              const traceLast =
-                parameters.length > 0
-                  ? parameters[parameters.length - 1]!.name.getText() === "__trace"
-                  : false
-
-              const entries: (readonly [string, string | undefined])[] =
-                signature?.getJsDocTags().map((t) => [t.name, t.text] as const) || []
-
-              const tags: Record<string, (string | undefined)[]> = {}
-
-              for (const entry of entries) {
-                if (!tags[entry[0]]) {
-                  tags[entry[0]] = []
-                }
-                tags[entry[0]!]!.push(entry[1])
-              }
-
-              const shouldTraceCall = tags["trace"] && tags["trace"].includes("call")
-
-              let expression = ts.visitNode(node.expression, visitor)
-              let args = node.arguments.map((x) => {
+              const processedArguments = node.arguments.map((x) => {
                 const ds = getSignatureIfSole(checker, x)?.getDeclaration()
                 const params = ds?.parameters
 
@@ -156,33 +136,34 @@ export default function tracer(
                 return ts.visitNode(x, visitor)
               })
 
-              const shouldAppendTrace =
-                traceLast && args.length === parameters.length - 1
+              const processedExpression = ts.visitNode(node.expression, visitor)
 
-              if (shouldTraceCall || shouldAppendTrace) {
-                expression = shouldTraceCall
+              const isTraceLastParameter =
+                declarationParameters.length > 0
+                  ? declarationParameters[
+                      declarationParameters.length - 1
+                    ]!.name.getText() === "__trace"
+                  : false
+
+              const shouldAppendTrace =
+                isTraceLastParameter &&
+                processedArguments.length === declarationParameters.length - 1
+
+              const shouldTraceCall = signatureTags(signature)["trace"]?.includes(
+                "call"
+              )
+
+              return factory.updateCallExpression(
+                node,
+                shouldTraceCall
                   ? factory.createCallExpression(traceCallId, undefined, [
-                      expression,
+                      processedExpression,
                       trace
                     ])
-                  : expression
-
-                args = shouldAppendTrace ? [...args, trace] : args
-
-                return factory.updateCallExpression(
-                  node,
-                  expression,
-                  node.typeArguments,
-                  args
-                )
-              } else {
-                return factory.updateCallExpression(
-                  node,
-                  expression,
-                  node.typeArguments,
-                  args
-                )
-              }
+                  : processedExpression,
+                node.typeArguments,
+                shouldAppendTrace ? [...processedArguments, trace] : processedArguments
+              )
             }
           }
 
@@ -216,10 +197,10 @@ export default function tracer(
           )
         )
 
-        const disabledAllFile =
+        const isDisabledEverywhere =
           regions.length > 0 && regions.every(([rs]) => rs.every(([_]) => !_))
 
-        if (tracingOn && !disabledAllFile) {
+        if (tracingOn && !isDisabledEverywhere) {
           const visited = ts.visitNode(sourceFile, visitor)
 
           return factory.updateSourceFile(visited, [
@@ -242,6 +223,19 @@ export default function tracer(
       }
     }
   }
+}
+
+function signatureTags(signature: ts.Signature | undefined) {
+  const tags: Record<string, (string | undefined)[]> = {}
+
+  for (const entry of signature?.getJsDocTags().map((t) => [t.name, t.text] as const) ||
+    []) {
+    if (!tags[entry[0]]) {
+      tags[entry[0]] = []
+    }
+    tags[entry[0]!]!.push(entry[1])
+  }
+  return tags
 }
 
 function getSignatureIfSole(
