@@ -323,6 +323,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
       if (this.inTracingRegion && this.platform.value.traceExecution) {
         this.addTrace(k.trace)
       }
+
       if (
         this.platform.value.traceStack &&
         k._tag !== "InterruptExit" &&
@@ -1084,7 +1085,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                       this.addTrace(current.trace)
                     }
                     this.pushInterruptStatus(current.flag.toBoolean)
-                    this.pushContinuation(this.interruptExit)
+                    this.stack = new Stack(this.interruptExit, this.stack)
                     current = current.effect[T._I]
                     break
                   }

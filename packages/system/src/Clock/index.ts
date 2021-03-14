@@ -1,3 +1,5 @@
+// tracing: off
+
 import "../Operator"
 
 /**
@@ -20,7 +22,7 @@ export abstract class Clock {
   readonly _tag = literal("@effect-ts/system/Clock")
 
   abstract readonly currentTime: UIO<number>
-  abstract readonly sleep: (ms: number) => UIO<void>
+  abstract readonly sleep: (ms: number, __trace?: string) => UIO<void>
 }
 
 //
@@ -36,7 +38,7 @@ export type HasClock = HasTag<typeof HasClock>
 export class LiveClock extends Clock {
   currentTime: UIO<number> = effectTotal(() => new Date().getTime())
 
-  sleep: (ms: number) => UIO<void> = (ms) =>
+  sleep: (ms: number, __trace?: string) => UIO<void> = (ms, trace) =>
     effectAsyncInterrupt((cb) => {
       const timeout = setTimeout(() => {
         cb(unit)
@@ -45,7 +47,7 @@ export class LiveClock extends Clock {
       return effectTotal(() => {
         clearTimeout(timeout)
       })
-    })
+    }, trace)
 }
 
 //
@@ -54,7 +56,7 @@ export class LiveClock extends Clock {
 export class ProxyClock extends Clock {
   constructor(
     readonly currentTime: UIO<number>,
-    readonly sleep: (ms: number) => UIO<void>
+    readonly sleep: (ms: number, __trace?: string) => UIO<void>
   ) {
     super()
   }
@@ -68,7 +70,9 @@ export const currentTime = accessServiceM(HasClock)((_) => _.currentTime)
 /**
  * Sleeps for the provided amount of ms
  */
-export const sleep = (ms: number) => accessServiceM(HasClock)((_) => _.sleep(ms))
+export function sleep(ms: number, __trace?: string) {
+  return accessServiceM(HasClock)((_) => _.sleep(ms, __trace))
+}
 
 /**
  * Access clock from environment
