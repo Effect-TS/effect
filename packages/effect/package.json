@@ -53,7 +53,6 @@
     "prettier": "^2.1.2",
     "reflect-metadata": "^0.1.13",
     "retry-ts": "^0.1.2",
-    "ts-expose-internals": "^4.2.3",
     "ts-jest": "^26.5.2",
     "ts-node": "^9.0.0",
     "ttypescript": "^1.5.12",
