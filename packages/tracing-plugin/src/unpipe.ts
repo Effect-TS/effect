@@ -91,7 +91,7 @@ export default function unpipe(_program: ts.Program) {
             if (optimizeTags.has("pipe")) {
               if (node.arguments.findIndex((xx) => ts.isSpreadElement(xx)) === -1) {
                 return optimisePipe(
-                  ts.visitEachChild(node, visitor, ctx).arguments,
+                  Array.from(ts.visitEachChild(node, visitor, ctx).arguments),
                   factory
                 )
               }
@@ -108,19 +108,14 @@ export default function unpipe(_program: ts.Program) {
 }
 
 function optimisePipe(
-  args: ArrayLike<ts.Expression>,
+  args: Array<ts.Expression>,
   factory: ts.NodeFactory
 ): ts.Expression {
-  if (args.length === 1) {
-    return args[0]!
-  }
-
-  const newArgs: ts.Expression[] = []
-  for (let i = 0; i < args.length - 1; i += 1) {
-    newArgs.push(args[i]!)
-  }
-
-  return factory.createCallExpression(args[args.length - 1]!, undefined, [
-    optimisePipe(newArgs, factory)
-  ])
+  return args
+    .slice(1)
+    .reduce(
+      (currentNode, memberNode) =>
+        factory.createCallExpression(memberNode, undefined, [currentNode]),
+      args[0]!
+    )
 }
