@@ -1,3 +1,5 @@
+// tracing: off
+
 import { effectMaybeAsyncInterruptBlockingOn } from "../Effect/effectMaybeAsyncInterrupt"
 import * as E from "../Either"
 import { interruptJoiner } from "./interruptJoiner"

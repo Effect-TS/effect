@@ -1,3 +1,5 @@
+// tracing: off
+
 // option
 // cause
 import { isTracingEnabled } from "@effect-ts/tracing-utils"
