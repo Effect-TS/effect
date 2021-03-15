@@ -9,6 +9,6 @@ import { zip_ } from "./zip"
  * passes the effect input `R` along unmodified as the second element
  * of the tuple.
  */
-export function onFirst<R, E, A>(self: Effect<R, E, A>) {
-  return zip_(self, environment<R>())
+export function onFirst<R, E, A>(self: Effect<R, E, A>, __trace?: string) {
+  return zip_(self, environment<R>(), __trace)
 }

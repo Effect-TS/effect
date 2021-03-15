@@ -7,10 +7,11 @@ import type { Effect } from "./effect"
 /**
  * Converts all failures to unchecked exceptions
  */
-export function orDieKeep<R, E, A>(effect: Effect<R, E, A>) {
+export function orDieKeep<R, E, A>(effect: Effect<R, E, A>, __trace?: string) {
   return foldCauseM_(
     effect,
     (ce) => halt(Cause.chain((e: E) => Cause.die(e))(ce)),
-    succeed
+    succeed,
+    __trace
   )
 }

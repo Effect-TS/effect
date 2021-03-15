@@ -1,12 +1,12 @@
 // tracing: off
 
 import type { Effect } from "./effect"
-import { orDieWith } from "./orDieWith"
+import { orDieWith_ } from "./orDieWith"
 
 /**
  * Keeps none of the errors, and terminates the fiber with them, using
  * the specified function to convert the `E` into a `unknown`.
  */
-export function orDie<R, E, A>(effect: Effect<R, E, A>) {
-  return orDieWith((e: E) => e)(effect)
+export function orDie<R, E, A>(effect: Effect<R, E, A>, __trace?: string) {
+  return orDieWith_(effect, (e: E) => e, __trace)
 }
