@@ -18,8 +18,15 @@ import { sleep } from "./sleep"
  *
  * If the timeout elapses without producing a value, the running effect
  * will be safely interrupted
+ *
+ * @dataFirst timeoutTo_
  */
-export function timeoutTo<B, B2, A>(d: number, b: B, f: (a: A) => B2) {
+export function timeoutTo<B, B2, A>(
+  d: number,
+  b: B,
+  f: (a: A) => B2,
+  __trace?: string
+) {
   return <R, E>(self: Effect<R, E, A>): Effect<R & Has<Clock>, E, B | B2> =>
     timeoutTo_(self, d, b, f)
 }
@@ -37,7 +44,8 @@ export function timeoutTo_<R, E, A, B, B2>(
   self: Effect<R, E, A>,
   d: number,
   b: B,
-  f: (a: A) => B2
+  f: (a: A) => B2,
+  __trace?: string
 ): Effect<R & Has<Clock>, E, B | B2> {
-  return pipe(self, map(f), raceFirst(pipe(sleep(d), interruptible, as(b))))
+  return pipe(self, map(f), raceFirst(pipe(sleep(d), interruptible, as(b)), __trace))
 }

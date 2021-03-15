@@ -17,12 +17,17 @@ import { map_ } from "./map"
  * This combinator is lossy meaning that if there are errors all successes
  * will be lost.
  */
-export function validate_<A, R, E, B>(as: Iterable<A>, f: (a: A) => Effect<R, E, B>) {
+export function validate_<A, R, E, B>(
+  as: Iterable<A>,
+  f: (a: A) => Effect<R, E, B>,
+  __trace?: string
+) {
   return absolve(
     map_(
       forEach_(as, (a) => either(f(a))),
       mergeExits<E, B>()
-    )
+    ),
+    __trace
   )
 }
 
@@ -35,13 +40,15 @@ export function validate_<A, R, E, B>(as: Iterable<A>, f: (a: A) => Effect<R, E,
  */
 export function validatePar_<A, R, E, B>(
   as: Iterable<A>,
-  f: (a: A) => Effect<R, E, B>
+  f: (a: A) => Effect<R, E, B>,
+  __trace?: string
 ) {
   return absolve(
     map_(
       forEachPar_(as, (a) => either(f(a))),
       mergeExits<E, B>()
-    )
+    ),
+    __trace
   )
 }
 
@@ -55,13 +62,15 @@ export function validatePar_<A, R, E, B>(
 export function validateParN_<A, R, E, B>(
   as: Iterable<A>,
   n: number,
-  f: (a: A) => Effect<R, E, B>
+  f: (a: A) => Effect<R, E, B>,
+  __trace?: string
 ) {
   return absolve(
     map_(
       forEachParN_(as, n, (a) => either(f(a))),
       mergeExits<E, B>()
-    )
+    ),
+    __trace
   )
 }
 
@@ -98,13 +107,15 @@ function mergeExits<E, B>(): (
 export function validateExec_<A, R, E, B>(
   as: Iterable<A>,
   es: ExecutionStrategy,
-  f: (a: A) => Effect<R, E, B>
+  f: (a: A) => Effect<R, E, B>,
+  __trace?: string
 ): Effect<R, NA.NonEmptyArray<E>, A.Array<B>> {
   return absolve(
     map_(
       forEachExec_(as, es, (a) => either(f(a))),
       mergeExits<E, B>()
-    )
+    ),
+    __trace
   )
 }
 
@@ -117,8 +128,8 @@ export function validateExec_<A, R, E, B>(
  *
  * @dataFirst validate_
  */
-export function validate<A, R, E, B>(f: (a: A) => Effect<R, E, B>) {
-  return (as: Iterable<A>) => validate_(as, f)
+export function validate<A, R, E, B>(f: (a: A) => Effect<R, E, B>, __trace?: string) {
+  return (as: Iterable<A>) => validate_(as, f, __trace)
 }
 
 /**
@@ -130,8 +141,11 @@ export function validate<A, R, E, B>(f: (a: A) => Effect<R, E, B>) {
  *
  * @dataFirst validatePar_
  */
-export function validatePar<A, R, E, B>(f: (a: A) => Effect<R, E, B>) {
-  return (as: Iterable<A>) => validatePar_(as, f)
+export function validatePar<A, R, E, B>(
+  f: (a: A) => Effect<R, E, B>,
+  __trace?: string
+) {
+  return (as: Iterable<A>) => validatePar_(as, f, __trace)
 }
 
 /**
@@ -143,8 +157,12 @@ export function validatePar<A, R, E, B>(f: (a: A) => Effect<R, E, B>) {
  *
  * @dataFirst validateParN_
  */
-export function validateParN<A, R, E, B>(n: number, f: (a: A) => Effect<R, E, B>) {
-  return (as: Iterable<A>) => validateParN_(as, n, f)
+export function validateParN<A, R, E, B>(
+  n: number,
+  f: (a: A) => Effect<R, E, B>,
+  __trace?: string
+) {
+  return (as: Iterable<A>) => validateParN_(as, n, f, __trace)
 }
 
 /**
@@ -158,7 +176,8 @@ export function validateParN<A, R, E, B>(n: number, f: (a: A) => Effect<R, E, B>
  */
 export function validateExec<R, E, A, B>(
   es: ExecutionStrategy,
-  f: (a: A) => Effect<R, E, B>
+  f: (a: A) => Effect<R, E, B>,
+  __trace?: string
 ): (as: Iterable<A>) => Effect<R, NA.NonEmptyArray<E>, A.Array<B>> {
-  return (as) => validateExec_(as, es, f)
+  return (as) => validateExec_(as, es, f, __trace)
 }

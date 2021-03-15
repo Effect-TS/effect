@@ -7,7 +7,7 @@ import { chain, chain_, succeed, suspend } from "./core"
 import type { Effect } from "./effect"
 import * as forEach from "./excl-forEach"
 import { zipWith_ } from "./zipWith"
-import { zipWithPar_ } from "./zipWithPar_"
+import { zipWithPar_ } from "./zipWithPar"
 
 /**
  * Merges an `Iterable[IO]` to a single IO, working sequentially.
