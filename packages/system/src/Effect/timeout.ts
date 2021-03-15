@@ -20,9 +20,11 @@ import { timeoutTo_ } from "./timeoutTo"
  * which first disconnects the effect's interruption signal before performing
  * the timeout, resulting in earliest possible return, before an underlying
  * effect has been successfully interrupted.
+ *
+ * @dataFirst timeout_
  */
-export function timeout(d: number) {
-  return <R, E, A>(self: Effect<R, E, A>) => timeout_(self, d)
+export function timeout(d: number, __trace?: string) {
+  return <R, E, A>(self: Effect<R, E, A>) => timeout_(self, d, __trace)
 }
 
 /**
@@ -43,7 +45,8 @@ export function timeout(d: number) {
  */
 export function timeout_<R, E, A>(
   self: Effect<R, E, A>,
-  d: number
+  d: number,
+  __trace?: string
 ): Effect<R & CL.HasClock, E, O.Option<A>> {
-  return timeoutTo_(self, d, O.none, O.some)
+  return timeoutTo_(self, d, O.none, O.some, __trace)
 }

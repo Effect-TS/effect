@@ -10,9 +10,14 @@ import { provideSome_ } from "./provideSome"
 export function updateService_<T, R, E, A>(
   self: Effect<R, E, A>,
   tag: Tag<T>,
-  f: (_: T) => T
+  f: (_: T) => T,
+  __trace?: string
 ): Effect<R & Has<T>, E, A> {
-  return provideSome_(self, (r: R & Has<T>) => ({ ...r, ...tag.of(f(tag.read(r))) }))
+  return provideSome_(
+    self,
+    (r: R & Has<T>) => ({ ...r, ...tag.of(f(tag.read(r))) }),
+    __trace
+  )
 }
 
 /**
@@ -22,7 +27,8 @@ export function updateService_<T, R, E, A>(
  */
 export function updateService<T>(
   tag: Tag<T>,
-  f: (_: T) => T
+  f: (_: T) => T,
+  __trace?: string
 ): <R, E, A>(self: Effect<R, E, A>) => Effect<R & Has<T>, E, A> {
-  return (self) => updateService_(self, tag, f)
+  return (self) => updateService_(self, tag, f, __trace)
 }

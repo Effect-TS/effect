@@ -12,6 +12,9 @@ import type { Effect, RIO } from "./effect"
  *
  * This operation is the opposite of `cause`.
  */
-export function uncause<R, E>(effect: RIO<R, Cause<E>>): Effect<R, E, void> {
-  return chain_(effect, (a) => (isEmpty(a) ? unit : halt(a)))
+export function uncause<R, E>(
+  effect: RIO<R, Cause<E>>,
+  __trace?: string
+): Effect<R, E, void> {
+  return chain_(effect, (a) => (isEmpty(a) ? unit : halt(a)), __trace)
 }

@@ -17,6 +17,8 @@ export function whenM_<R1, E1, A, R, E>(
 
 /**
  * The moral equivalent of `if (p) exp` when `p` has side-effects
+ *
+ * @dataFirst whenM_
  */
 export function whenM<R, E>(predicate: Effect<R, E, boolean>, __trace?: string) {
   return <R1, E1, A>(self: Effect<R1, E1, A>) => whenM_(self, predicate, __trace)

@@ -12,15 +12,19 @@ import { map_ } from "./map"
  * children that have been forked in the returned effect.
  */
 export function withChildren<R, E, A>(
-  get: (_: UIO<readonly Runtime<any, any>[]>) => Effect<R, E, A>
+  get: (_: UIO<readonly Runtime<any, any>[]>) => Effect<R, E, A>,
+  __trace?: string
 ) {
-  chain_(track, (supervisor) =>
-    supervised(supervisor)(
-      get(
-        chain_(supervisor.value, (children) =>
-          map_(descriptor, (d) => children.filter((_) => _.id !== d.id))
+  return chain_(
+    track,
+    (supervisor) =>
+      supervised(supervisor)(
+        get(
+          chain_(supervisor.value, (children) =>
+            map_(descriptor, (d) => children.filter((_) => _.id !== d.id))
+          )
         )
-      )
-    )
+      ),
+    __trace
   )
 }

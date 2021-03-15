@@ -10,7 +10,8 @@ import type { Effect } from "./effect"
  */
 export function tapError_<R, E, A, R2, E2, X>(
   self: Effect<R, E, A>,
-  f: (e: E) => Effect<R2, E2, X>
+  f: (e: E) => Effect<R2, E2, X>,
+  __trace?: string
 ) {
   return foldCauseM_(
     self,
@@ -20,13 +21,19 @@ export function tapError_<R, E, A, R2, E2, X>(
         (e) => chain_(f(e), () => halt(c)),
         (_) => halt(c)
       ),
-    succeed
+    succeed,
+    __trace
   )
 }
 
 /**
  * Returns an effect that effectfully "peeks" at the failure of this effect.
+ *
+ * @dataFirst tapError_
  */
-export function tapError<E, R2, E2, X>(f: (e: E) => Effect<R2, E2, X>) {
-  return <R, A>(self: Effect<R, E, A>) => tapError_(self, f)
+export function tapError<E, R2, E2, X>(
+  f: (e: E) => Effect<R2, E2, X>,
+  __trace?: string
+) {
+  return <R, A>(self: Effect<R, E, A>) => tapError_(self, f, __trace)
 }
