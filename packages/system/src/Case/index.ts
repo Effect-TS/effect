@@ -1,5 +1,6 @@
 // tracing: off
 
+import type { Compute } from "../Utils"
 import * as CaseEquals from "./_internal/Equals"
 import * as CaseHash from "./_internal/Hash"
 import type { HasEquals } from "./HasEquals"
@@ -7,12 +8,12 @@ import { equalsSym } from "./HasEquals"
 import type { HasHash } from "./HasHash"
 import { hashSym } from "./HasHash"
 
-export type ConstructorArgs<T, K extends PropertyKey> = {} extends Omit<
-  T,
-  "#args" | "copy" | "toJSON" | "toString" | symbol | K
+export type ConstructorArgs<T, K extends PropertyKey> = Compute<
+  {} extends Omit<T, "#args" | "copy" | "toJSON" | "toString" | symbol | K>
+    ? void
+    : Omit<T, "#args" | "copy" | "toJSON" | "toString" | symbol | K>,
+  "flat"
 >
-  ? void
-  : Omit<T, "#args" | "copy" | "toJSON" | "toString" | symbol | K>
 
 export class Case<T, K extends PropertyKey = never> implements HasEquals, HasHash {
   #args: ConstructorArgs<T, K>
