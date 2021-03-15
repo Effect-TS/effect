@@ -8,9 +8,6 @@ import { foldM_ } from "./foldM"
  * Folds over the failure value or the success value to yield an effect that
  * does not fail, but succeeds with the value returned by the left or right
  * function passed to `fold`.
- *
- * @trace 1
- * @trace 2
  */
 export function fold_<R, E, A, A2, A3>(
   value: Effect<R, E, A>,
