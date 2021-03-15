@@ -1,7 +1,5 @@
 // tracing: off
 
-import { traceAs } from "@effect-ts/tracing-utils"
-
 import * as C from "../Cause"
 import { identity, pipe } from "../Function"
 import * as O from "../Option/core"
@@ -61,14 +59,11 @@ export function unrefineWith_<R, E, E1, E2, A>(
 ) {
   return catchAllCause_(
     fa,
-    traceAs(
-      pf,
-      (cause): Effect<R, E1 | E2, A> =>
-        pipe(
-          cause,
-          C.find((c) => (c._tag === "Die" ? pf(c.value) : O.none)),
-          O.fold(() => pipe(cause, C.map(f), halt), fail)
-        )
-    )
+    (cause): Effect<R, E1 | E2, A> =>
+      pipe(
+        cause,
+        C.find((c) => (c._tag === "Die" ? pf(c.value) : O.none)),
+        O.fold(() => pipe(cause, C.map(f), halt), fail)
+      )
   )
 }
