@@ -11,10 +11,14 @@ import { fail } from "./fail"
 /**
  * Unwraps the optional success of this effect, but can fail with an None value.
  */
-export function get<R, E, A>(self: Effect<R, E, Option<A>>): Effect<R, Option<E>, A> {
+export function get<R, E, A>(
+  self: Effect<R, E, Option<A>>,
+  __trace?: string
+): Effect<R, Option<E>, A> {
   return foldCauseM_(
     self,
     (x) => pipe(x, mapCause(some), halt),
-    fold(() => fail(none), succeed)
+    fold(() => fail(none), succeed),
+    __trace
   )
 }
