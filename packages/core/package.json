@@ -37,11 +37,12 @@
     "modules": [
       "Async",
       "Array",
-      "Chunk",
       "Associative",
       "Boolean",
       "Bounded",
       "Branded",
+      "Case",
+      "Chunk",
       "Closure",
       "Commutative",
       "Const",

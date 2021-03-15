@@ -1,0 +1,61 @@
+// tracing: off
+
+import * as CaseEquals from "./_internal/Equals"
+import * as CaseHash from "./_internal/Hash"
+import type { HasEquals } from "./HasEquals"
+import { equalsSym } from "./HasEquals"
+import type { HasHash } from "./HasHash"
+import { hashSym } from "./HasHash"
+
+export type ConstructorArgs<T, K extends PropertyKey> = Omit<
+  T,
+  "#args" | "copy" | "toJSON" | "toString" | symbol | K
+>
+
+export class Case<T, K extends PropertyKey = never> implements HasEquals, HasHash {
+  #args: ConstructorArgs<T, K>
+  #hash: number | undefined
+
+  constructor(args: ConstructorArgs<T, K>) {
+    this.#args = args
+    this.copy = this.copy.bind(this)
+    this[equalsSym] = this[equalsSym].bind(this)
+
+    for (const key in args) {
+      Object.assign(this, { [key]: args[key] })
+    }
+
+    Object.assign(this, {
+      toJSON: () => {
+        return this.#args
+      }
+    })
+  }
+
+  copy(args: Partial<ConstructorArgs<T, K>>): this {
+    // @ts-expect-error
+    return new this.constructor({ ...this.#args, ...args })
+  }
+
+  [equalsSym](other: unknown): boolean {
+    return other instanceof Case ? CaseEquals.equals(this.#args, other.#args) : false
+  }
+
+  [hashSym](): number {
+    if (!this.#hash) {
+      this.#hash = CaseHash.hash(this.#args)
+    }
+    return this.#hash
+  }
+}
+
+export function equals(x: HasEquals, y: unknown) {
+  return x[equalsSym](y)
+}
+
+export function hash(x: HasHash) {
+  return x[hashSym]()
+}
+
+export { equalsSym, hasEquals, HasEquals } from "./HasEquals"
+export { HasHash, hasHash, hashSym } from "./HasHash"
