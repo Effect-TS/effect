@@ -14,7 +14,8 @@ import type { Effect, RIO } from "./effect"
  */
 export function onTermination_<R1, R, E, A, X>(
   self: Effect<R, E, A>,
-  cleanup: (_: Cause<never>) => RIO<R1, X>
+  cleanup: (_: Cause<never>) => RIO<R1, X>,
+  __trace?: string
 ): Effect<R & R1, E, A> {
   return bracketExit_(
     unit,
@@ -31,16 +32,20 @@ export function onTermination_<R1, R, E, A, X>(
           )
         }
       }
-    }
+    },
+    __trace
   )
 }
 
 /**
  * Runs the specified effect if this effect is terminated, either because of
  * a defect or because of interruption.
+ *
+ * @dataFirst onTermination_
  */
 export function onTermination<R1, R, E, A, X>(
-  cleanup: (_: Cause<never>) => RIO<R1, X>
+  cleanup: (_: Cause<never>) => RIO<R1, X>,
+  __trace?: string
 ): (self: Effect<R, E, A>) => Effect<R & R1, E, A> {
-  return (self) => onTermination_(self, cleanup)
+  return (self) => onTermination_(self, cleanup, __trace)
 }

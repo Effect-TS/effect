@@ -3,7 +3,7 @@
 import { pipe } from "../Function"
 import * as I from "../Iterable"
 import * as Ref from "../Ref"
-import { chain, chain_, succeed } from "./core"
+import { chain, chain_, succeed, suspend } from "./core"
 import type { Effect } from "./effect"
 import * as forEach from "./excl-forEach"
 import { zipWith_ } from "./zipWith"
@@ -14,9 +14,9 @@ import { zipWithPar_ } from "./zipWithPar_"
  *
  * @dataFirst mergeAll_
  */
-export function mergeAll<A, B>(zero: B, f: (b: B, a: A) => B) {
+export function mergeAll<A, B>(zero: B, f: (b: B, a: A) => B, __trace?: string) {
   return <R, E>(as: Iterable<Effect<R, E, A>>): Effect<R, E, B> =>
-    mergeAll_(as, zero, f)
+    mergeAll_(as, zero, f, __trace)
 }
 
 /**
@@ -25,9 +25,13 @@ export function mergeAll<A, B>(zero: B, f: (b: B, a: A) => B) {
 export function mergeAll_<R, E, A, B>(
   as: Iterable<Effect<R, E, A>>,
   zero: B,
-  f: (b: B, a: A) => B
+  f: (b: B, a: A) => B,
+  __trace?: string
 ) {
-  return I.reduce_(as, succeed(zero) as Effect<R, E, B>, (b, a) => zipWith_(b, a, f))
+  return suspend(
+    () => I.reduce_(as, succeed(zero) as Effect<R, E, B>, (b, a) => zipWith_(b, a, f)),
+    __trace
+  )
 }
 
 /**
@@ -42,9 +46,9 @@ export function mergeAll_<R, E, A, B>(
  *
  * @dataFirst mergeAllPar_
  */
-export function mergeAllPar<A, B>(zero: B, f: (b: B, a: A) => B) {
+export function mergeAllPar<A, B>(zero: B, f: (b: B, a: A) => B, __trace?: string) {
   return <R, E>(as: Iterable<Effect<R, E, A>>): Effect<R, E, B> =>
-    mergeAllPar_(as, zero, f)
+    mergeAllPar_(as, zero, f, __trace)
 }
 
 /**
@@ -60,9 +64,14 @@ export function mergeAllPar<A, B>(zero: B, f: (b: B, a: A) => B) {
 export function mergeAllPar_<R, E, A, B>(
   as: Iterable<Effect<R, E, A>>,
   zero: B,
-  f: (b: B, a: A) => B
+  f: (b: B, a: A) => B,
+  __trace?: string
 ) {
-  return I.reduce_(as, succeed(zero) as Effect<R, E, B>, (b, a) => zipWithPar_(b, a, f))
+  return suspend(
+    () =>
+      I.reduce_(as, succeed(zero) as Effect<R, E, B>, (b, a) => zipWithPar_(b, a, f)),
+    __trace
+  )
 }
 
 /**
@@ -77,9 +86,14 @@ export function mergeAllPar_<R, E, A, B>(
  *
  * @dataFirst mergeAllParN_
  */
-export function mergeAllParN<A, B>(n: number, zero: B, f: (b: B, a: A) => B) {
+export function mergeAllParN<A, B>(
+  n: number,
+  zero: B,
+  f: (b: B, a: A) => B,
+  __trace?: string
+) {
   return <R, E>(as: Iterable<Effect<R, E, A>>): Effect<R, E, B> =>
-    mergeAllParN_(as, n, zero, f)
+    mergeAllParN_(as, n, zero, f, __trace)
 }
 
 /**
@@ -96,7 +110,8 @@ export function mergeAllParN_<R, E, A, B>(
   as: Iterable<Effect<R, E, A>>,
   n: number,
   zero: B,
-  f: (b: B, a: A) => B
+  f: (b: B, a: A) => B,
+  __trace?: string
 ): Effect<R, E, B> {
   return chain_(Ref.makeRef(zero), (acc) =>
     chain_(
@@ -108,7 +123,8 @@ export function mergeAllParN_<R, E, A, B>(
             acc,
             Ref.update((b) => f(b, a))
           )
-        )
+        ),
+        __trace
       ),
       () => acc.get
     )

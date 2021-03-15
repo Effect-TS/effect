@@ -63,42 +63,45 @@ function arbiter<E, A>(
  *
  * Note: in case of success eventual interruption errors are ignored
  */
-export function raceAll<R, E, A>(
+export function raceAllWithStrategy<R, E, A>(
   ios: NonEmptyArray<Effect<R, E, A>>,
-  interruptStrategy: "background" | "wait" = "background"
+  interruptStrategy: "background" | "wait",
+  __trace?: string
 ): Effect<R, E, A> {
   return pipe(
     Do.do,
     Do.bind("done", () => P.make<E, readonly [A, Fiber.Fiber<E, A>]>()),
     Do.bind("fails", () => Ref.makeRef(ios.length)),
     Do.bind("c", ({ done, fails }) =>
-      uninterruptibleMask(({ restore }) =>
-        pipe(
-          Do.do,
-          Do.bind("fs", () => forEach_(ios, (x) => pipe(x, interruptible, fork))),
-          tap(({ fs }) =>
-            A.reduce_(fs, unit as UIO<void>, (io, f) =>
-              pipe(
-                io,
-                chain(() => pipe(f.await, chain(arbiter(fs, f, done, fails)), fork))
-              )
-            )
-          ),
-          Do.let("inheritRefs", () => (res: readonly [A, Fiber.Fiber<E, A>]) =>
-            pipe(res[1].inheritRefs, as(res[0]))
-          ),
-          Do.bind("c", ({ fs, inheritRefs }) =>
-            pipe(
-              restore(pipe(done, P.await, chain(inheritRefs))),
-              onInterrupt(() =>
-                A.reduce_(fs, unit as UIO<void>, (io, f) =>
-                  tap_(io, () => Fiber.interrupt(f))
+      uninterruptibleMask(
+        ({ restore }) =>
+          pipe(
+            Do.do,
+            Do.bind("fs", () => forEach_(ios, (x) => pipe(x, interruptible, fork))),
+            tap(({ fs }) =>
+              A.reduce_(fs, unit as UIO<void>, (io, f) =>
+                pipe(
+                  io,
+                  chain(() => pipe(f.await, chain(arbiter(fs, f, done, fails)), fork))
                 )
               )
-            )
+            ),
+            Do.let("inheritRefs", () => (res: readonly [A, Fiber.Fiber<E, A>]) =>
+              pipe(res[1].inheritRefs, as(res[0]))
+            ),
+            Do.bind("c", ({ fs, inheritRefs }) =>
+              pipe(
+                restore(pipe(done, P.await, chain(inheritRefs))),
+                onInterrupt(() =>
+                  A.reduce_(fs, unit as UIO<void>, (io, f) =>
+                    tap_(io, () => Fiber.interrupt(f))
+                  )
+                )
+              )
+            ),
+            map(({ c, fs }) => ({ c, fs }))
           ),
-          map(({ c, fs }) => ({ c, fs }))
-        )
+        __trace
       )
     ),
     tap(({ c: { fs } }) =>
@@ -106,4 +109,32 @@ export function raceAll<R, E, A>(
     ),
     map(({ c: { c } }) => c)
   )
+}
+
+/**
+ * Returns an effect that races this effect with all the specified effects,
+ * yielding the value of the first effect to succeed with a value.
+ * Losers of the race will be interrupted immediately.
+ *
+ * Note: in case of success eventual interruption errors are ignored
+ */
+export function raceAll<R, E, A>(
+  ios: NonEmptyArray<Effect<R, E, A>>,
+  __trace?: string
+): Effect<R, E, A> {
+  return raceAllWithStrategy(ios, "background", __trace)
+}
+
+/**
+ * Returns an effect that races this effect with all the specified effects,
+ * yielding the value of the first effect to succeed with a value.
+ * Losers of the race will be interrupted immediately.
+ *
+ * Note: in case of success eventual interruption errors are ignored
+ */
+export function raceAllWait<R, E, A>(
+  ios: NonEmptyArray<Effect<R, E, A>>,
+  __trace?: string
+): Effect<R, E, A> {
+  return raceAllWithStrategy(ios, "wait", __trace)
 }

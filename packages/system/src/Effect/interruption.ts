@@ -176,16 +176,17 @@ export function interruptibleMask<R, E, A>(
   f: (restore: InterruptStatusRestore) => Effect<R, E, A>,
   __trace?: string
 ) {
-  return checkInterruptible((flag) =>
-    interruptible(f(new InterruptStatusRestoreImpl(flag)))
+  return checkInterruptible(
+    (flag) => interruptible(f(new InterruptStatusRestoreImpl(flag))),
+    __trace
   )
 }
 
 /**
  * Returns an effect that is interrupted as if by the specified fiber.
  */
-export function interruptAs(fiberId: FiberID) {
-  return haltWith((trace) => Cause.traced(Cause.interrupt(fiberId), trace()))
+export function interruptAs(fiberId: FiberID, __trace?: string) {
+  return haltWith((trace) => Cause.traced(Cause.interrupt(fiberId), trace()), __trace)
 }
 
 /**

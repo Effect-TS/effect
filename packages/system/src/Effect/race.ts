@@ -37,7 +37,8 @@ function mergeInterruption<A, E2, A2>(a: A): (a: Exit.Exit<E2, A2>) => IO<E2, A>
  */
 export function race_<R, E, A, R2, E2, A2>(
   self: Effect<R, E, A>,
-  that: Effect<R2, E2, A2>
+  that: Effect<R2, E2, A2>,
+  __trace?: string
 ): Effect<R & R2, E | E2, A | A2> {
   return descriptorWith((d) =>
     raceWith_(
@@ -54,7 +55,8 @@ export function race_<R, E, A, R2, E2, A2>(
           exit,
           (cause) => mapErrorCause_(Fiber.join(left), (_) => Cause.both(_, cause)),
           (a) => chain_(left.interruptAs(d.id), mergeInterruption(a))
-        )
+        ),
+      __trace
     )
   )
 }
@@ -67,10 +69,12 @@ export function race_<R, E, A, R2, E2, A2>(
  *
  * WARNING: The raced effect will safely interrupt the "loser", but will not
  * resume until the loser has been cleanly terminated.
+ *
+ * @dataFirst race_
  */
-export function race<R2, E2, A2>(that: Effect<R2, E2, A2>) {
+export function race<R2, E2, A2>(that: Effect<R2, E2, A2>, __trace?: string) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R & R2, E | E2, A | A2> =>
-    race_(self, that)
+    race_(self, that, __trace)
 }
 
 /**
@@ -83,9 +87,10 @@ export function race<R2, E2, A2>(that: Effect<R2, E2, A2>) {
  */
 export function raceEither_<R, E, A, R2, E2, A2>(
   self: Effect<R, E, A>,
-  that: Effect<R2, E2, A2>
+  that: Effect<R2, E2, A2>,
+  __trace?: string
 ): Effect<R & R2, E | E2, E.Either<A, A2>> {
-  return race_(map_(self, E.left), map_(that, E.right))
+  return race_(map_(self, E.left), map_(that, E.right), __trace)
 }
 
 /**
@@ -95,10 +100,12 @@ export function raceEither_<R, E, A, R2, E2, A2>(
  *
  * WARNING: The raced effect will safely interrupt the "loser", but will not
  * resume until the loser has been cleanly terminated.
+ *
+ * @dataFirst raceEither_
  */
-export function raceEither<R2, E2, A2>(that: Effect<R2, E2, A2>) {
+export function raceEither<R2, E2, A2>(that: Effect<R2, E2, A2>, __trace?: string) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R & R2, E | E2, E.Either<A, A2>> =>
-    raceEither_(self, that)
+    raceEither_(self, that, __trace)
 }
 
 /**
@@ -115,10 +122,11 @@ export function raceEither<R2, E2, A2>(that: Effect<R2, E2, A2>) {
  */
 export function raceFirst_<R, R2, E, E2, A, A2>(
   self: Effect<R, E, A>,
-  that: Effect<R2, E2, A2>
+  that: Effect<R2, E2, A2>,
+  __trace?: string
 ): Effect<R & R2, E2 | E, A2 | A> {
   return pipe(
-    race_(result(self), result(that)),
+    race_(result(self), result(that), __trace),
     chain((a) => done(a as Exit.Exit<E | E2, A | A2>))
   )
 }
@@ -134,7 +142,9 @@ export function raceFirst_<R, R2, E, E2, A, A2>(
  * `l.disconnect raceFirst r.disconnect`, which disconnects left and right
  * interrupt signal, allowing a fast return, with interruption performed
  * in the background.
+ *
+ * @dataFirst raceFirst_
  */
-export function raceFirst<R2, E2, A2>(that: Effect<R2, E2, A2>) {
-  return <R, E, A>(self: Effect<R, E, A>) => raceFirst_(self, that)
+export function raceFirst<R2, E2, A2>(that: Effect<R2, E2, A2>, __trace?: string) {
+  return <R, E, A>(self: Effect<R, E, A>) => raceFirst_(self, that, __trace)
 }

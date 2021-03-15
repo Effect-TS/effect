@@ -14,12 +14,9 @@ import { map_ } from "./map"
  *
  * @dataFirst partition_
  */
-export function partition<A, R, E, B>(f: (a: A) => Effect<R, E, B>) {
+export function partition<A, R, E, B>(f: (a: A) => Effect<R, E, B>, __trace?: string) {
   return (as: Iterable<A>): RIO<R, Separated<Iterable<E>, Iterable<B>>> =>
-    map_(
-      forEach_(as, (a) => either(f(a))),
-      I.partitionMap(identity)
-    )
+    partition_(as, f, __trace)
 }
 
 /**
@@ -28,10 +25,11 @@ export function partition<A, R, E, B>(f: (a: A) => Effect<R, E, B>) {
  */
 export function partition_<A, R, E, B>(
   as: Iterable<A>,
-  f: (a: A) => Effect<R, E, B>
+  f: (a: A) => Effect<R, E, B>,
+  __trace?: string
 ): RIO<R, Separated<Iterable<E>, Iterable<B>>> {
   return map_(
-    forEach_(as, (a) => either(f(a))),
+    forEach_(as, (a) => either(f(a)), __trace),
     I.partitionMap(identity)
   )
 }
@@ -43,12 +41,12 @@ export function partition_<A, R, E, B>(
  *
  * @dataFirst partitionPar_
  */
-export function partitionPar<A, R, E, B>(f: (a: A) => Effect<R, E, B>) {
+export function partitionPar<A, R, E, B>(
+  f: (a: A) => Effect<R, E, B>,
+  __trace?: string
+) {
   return (as: Iterable<A>): Effect<R, never, Separated<Iterable<E>, Iterable<B>>> =>
-    map_(
-      forEachPar_(as, (a) => either(f(a))),
-      I.partitionMap(identity)
-    )
+    partitionPar_(as, f, __trace)
 }
 
 /**
@@ -58,10 +56,11 @@ export function partitionPar<A, R, E, B>(f: (a: A) => Effect<R, E, B>) {
  */
 export function partitionPar_<A, R, E, B>(
   as: Iterable<A>,
-  f: (a: A) => Effect<R, E, B>
+  f: (a: A) => Effect<R, E, B>,
+  __trace?: string
 ): Effect<R, never, Separated<Iterable<E>, Iterable<B>>> {
   return map_(
-    forEachPar_(as, (a) => either(f(a))),
+    forEachPar_(as, (a) => either(f(a)), __trace),
     I.partitionMap(identity)
   )
 }
@@ -77,13 +76,10 @@ export function partitionPar_<A, R, E, B>(
  */
 export function partitionParN<A, R, E, B>(
   n: number,
-  f: (a: A) => Effect<R, E, B>
+  f: (a: A) => Effect<R, E, B>,
+  __trace?: string
 ): (as: Iterable<A>) => Effect<R, never, Separated<Iterable<E>, Iterable<B>>> {
-  return (as) =>
-    map_(
-      forEachParN_(as, n, (a) => either(f(a))),
-      I.partitionMap(identity)
-    )
+  return (as) => partitionParN_(as, n, f, __trace)
 }
 
 /**
@@ -96,10 +92,11 @@ export function partitionParN<A, R, E, B>(
 export function partitionParN_<A, R, E, B>(
   as: Iterable<A>,
   n: number,
-  f: (a: A) => Effect<R, E, B>
+  f: (a: A) => Effect<R, E, B>,
+  __trace?: string
 ): Effect<R, never, Separated<Iterable<E>, Iterable<B>>> {
   return map_(
-    forEachParN_(as, n, (a) => either(f(a))),
+    forEachParN_(as, n, (a) => either(f(a)), __trace),
     I.partitionMap(identity)
   )
 }
