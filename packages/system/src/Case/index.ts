@@ -33,19 +33,14 @@ export class Case<T, K extends PropertyKey = never> implements HasEquals, HasHas
   }
 
   [equalsSym](other: unknown): boolean {
-    return other instanceof Case ? CaseEquals.equals(this.#args, other.#args) : false
+    return other instanceof Case ? CaseEquals.equals(this, other) : false
   }
 
   [hashSym](): number {
     if (!this.#hash) {
-      this.#hash = CaseHash.hash(this.#args)
+      this.#hash = CaseHash.hash(this)
     }
     return this.#hash
-  }
-
-  // @ts-expect-error
-  private toJSON() {
-    return this.#args
   }
 }
 
