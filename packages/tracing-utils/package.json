@@ -1,6 +1,6 @@
 {
   "name": "@effect-ts/tracing-utils",
-  "version": "0.4.3",
+  "version": "0.5.0",
   "license": "MIT",
   "repository": "https://github.com/Effect-TS/tracing-utils.git",
   "homepage": "https://www.matechs.com",
