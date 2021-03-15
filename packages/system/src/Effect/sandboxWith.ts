@@ -10,7 +10,8 @@ import { unsandbox } from "./unsandbox"
  * errors and defects alike.
  */
 export function sandboxWith<R, E, A, E2>(
-  f: (_: Effect<R, Cause<E>, A>) => Effect<R, Cause<E2>, A>
+  f: (_: Effect<R, Cause<E>, A>) => Effect<R, Cause<E2>, A>,
+  __trace?: string
 ) {
-  return (self: Effect<R, E, A>) => unsandbox(f(sandbox(self)))
+  return (self: Effect<R, E, A>) => unsandbox(f(sandbox(self)), __trace)
 }

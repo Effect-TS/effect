@@ -13,10 +13,15 @@ import type { Effect } from "./effect"
  * Useful for concurrent data structures and other cases where the
  * 'deallocator' can tell if the allocation succeeded or not just by
  * inspecting internal / external state.
+ *
+ * @dataFirst reserve_
  */
-export function reserve<R3, E3, B, A>(use: (a: A) => Effect<R3, E3, B>) {
+export function reserve<R3, E3, B, A>(
+  use: (a: A) => Effect<R3, E3, B>,
+  __trace?: string
+) {
   return <R, E, R2, E2>(reservation: Effect<R, E, Reservation<R2, E2, A>>) =>
-    reserve_(reservation, use)
+    reserve_(reservation, use, __trace)
 }
 
 /**
@@ -30,7 +35,8 @@ export function reserve<R3, E3, B, A>(use: (a: A) => Effect<R3, E3, B>) {
  */
 export function reserve_<R, E, R2, E2, R3, E3, B, A>(
   reservation: Effect<R, E, Reservation<R2, E2, A>>,
-  use: (a: A) => Effect<R3, E3, B>
+  use: (a: A) => Effect<R3, E3, B>,
+  __trace?: string
 ) {
-  return use_(makeReserve(reservation), use)
+  return use_(makeReserve(reservation), use, __trace)
 }
