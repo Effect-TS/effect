@@ -7,10 +7,12 @@ import { equalsSym } from "./HasEquals"
 import type { HasHash } from "./HasHash"
 import { hashSym } from "./HasHash"
 
-export type ConstructorArgs<T, K extends PropertyKey> = Omit<
+export type ConstructorArgs<T, K extends PropertyKey> = {} extends Omit<
   T,
   "#args" | "copy" | "toJSON" | "toString" | symbol | K
 >
+  ? void
+  : Omit<T, "#args" | "copy" | "toJSON" | "toString" | symbol | K>
 
 export class Case<T, K extends PropertyKey = never> implements HasEquals, HasHash {
   #args: ConstructorArgs<T, K>
@@ -18,18 +20,10 @@ export class Case<T, K extends PropertyKey = never> implements HasEquals, HasHas
 
   constructor(args: ConstructorArgs<T, K>) {
     this.#args = args
-    this.copy = this.copy.bind(this)
-    this[equalsSym] = this[equalsSym].bind(this)
 
     for (const key in args) {
       Object.assign(this, { [key]: args[key] })
     }
-
-    Object.assign(this, {
-      toJSON: () => {
-        return this.#args
-      }
-    })
   }
 
   copy(args: Partial<ConstructorArgs<T, K>>): this {
@@ -46,6 +40,11 @@ export class Case<T, K extends PropertyKey = never> implements HasEquals, HasHas
       this.#hash = CaseHash.hash(this.#args)
     }
     return this.#hash
+  }
+
+  // @ts-expect-error
+  private toJSON() {
+    return this.#args
   }
 }
 
