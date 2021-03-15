@@ -3,6 +3,7 @@
 import * as A from "../Array"
 import * as NA from "../NonEmptyArray"
 import * as O from "../Option"
+import { suspend } from "./core"
 import type { Effect } from "./effect"
 import { map_ } from "./map"
 import { mergeAllPar_, mergeAllParN_ } from "./mergeAll"
@@ -13,9 +14,13 @@ import { zipWith_ } from "./zipWith"
  */
 export function reduceAll_<R, E, A>(
   as: NA.NonEmptyArray<Effect<R, E, A>>,
-  f: (acc: A, a: A) => A
+  f: (acc: A, a: A) => A,
+  __trace?: string
 ): Effect<R, E, A> {
-  return A.reduce_(NA.tail(as), NA.head(as), (acc, a) => zipWith_(acc, a, f))
+  return suspend(
+    () => A.reduce_(NA.tail(as), NA.head(as), (acc, a) => zipWith_(acc, a, f)),
+    __trace
+  )
 }
 
 /**
@@ -23,8 +28,8 @@ export function reduceAll_<R, E, A>(
  *
  * @dataFirst reduceAll_
  */
-export function reduceAll<A>(f: (acc: A, a: A) => A) {
-  return <R, E>(as: NA.NonEmptyArray<Effect<R, E, A>>) => reduceAll_(as, f)
+export function reduceAll<A>(f: (acc: A, a: A) => A, __trace?: string) {
+  return <R, E>(as: NA.NonEmptyArray<Effect<R, E, A>>) => reduceAll_(as, f, __trace)
 }
 
 /**
@@ -32,17 +37,22 @@ export function reduceAll<A>(f: (acc: A, a: A) => A) {
  */
 export function reduceAllPar_<R, E, A>(
   as: NA.NonEmptyArray<Effect<R, E, A>>,
-  f: (acc: A, a: A) => A
+  f: (acc: A, a: A) => A,
+  __trace?: string
 ): Effect<R, E, A> {
   return map_(
-    mergeAllPar_(as, <O.Option<A>>O.none, (acc, elem) =>
-      O.some(
-        O.fold_(
-          acc,
-          () => elem,
-          (a) => f(a, elem)
-        )
-      )
+    mergeAllPar_(
+      as,
+      <O.Option<A>>O.none,
+      (acc, elem) =>
+        O.some(
+          O.fold_(
+            acc,
+            () => elem,
+            (a) => f(a, elem)
+          )
+        ),
+      __trace
     ),
     O.getOrElse(() => {
       throw new Error("Bug")
@@ -55,8 +65,8 @@ export function reduceAllPar_<R, E, A>(
  *
  * @dataFirst reduceAllPar_
  */
-export function reduceAllPar<A>(f: (acc: A, a: A) => A) {
-  return <R, E>(as: NA.NonEmptyArray<Effect<R, E, A>>) => reduceAllPar_(as, f)
+export function reduceAllPar<A>(f: (acc: A, a: A) => A, __trace?: string) {
+  return <R, E>(as: NA.NonEmptyArray<Effect<R, E, A>>) => reduceAllPar_(as, f, __trace)
 }
 
 /**
@@ -65,17 +75,23 @@ export function reduceAllPar<A>(f: (acc: A, a: A) => A) {
 export function reduceAllParN_<R, E, A>(
   as: NA.NonEmptyArray<Effect<R, E, A>>,
   n: number,
-  f: (acc: A, a: A) => A
+  f: (acc: A, a: A) => A,
+  __trace?: string
 ): Effect<R, E, A> {
   return map_(
-    mergeAllParN_(as, n, <O.Option<A>>O.none, (acc, elem) =>
-      O.some(
-        O.fold_(
-          acc,
-          () => elem,
-          (a) => f(a, elem)
-        )
-      )
+    mergeAllParN_(
+      as,
+      n,
+      <O.Option<A>>O.none,
+      (acc, elem) =>
+        O.some(
+          O.fold_(
+            acc,
+            () => elem,
+            (a) => f(a, elem)
+          )
+        ),
+      __trace
     ),
     O.getOrElse(() => {
       throw new Error("Bug")
@@ -88,7 +104,7 @@ export function reduceAllParN_<R, E, A>(
  *
  * @dataFirst reduceAllParN_
  */
-export function reduceAllParN<A>(n: number, f: (acc: A, a: A) => A) {
+export function reduceAllParN<A>(n: number, f: (acc: A, a: A) => A, __trace?: string) {
   return <R, E>(as: NA.NonEmptyArray<Effect<R, E, A>>): Effect<R, E, A> =>
-    reduceAllParN_(as, n, f)
+    reduceAllParN_(as, n, f, __trace)
 }

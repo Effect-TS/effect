@@ -1,7 +1,7 @@
 // tracing: off
 
-import * as A from "../Array"
-import { chain_, succeed } from "./core"
+import * as I from "../Iterable"
+import { chain_, succeed, suspend } from "./core"
 import type { Effect } from "./effect"
 
 /**
@@ -10,19 +10,29 @@ import type { Effect } from "./effect"
 export function reduce_<A, Z, R, E>(
   i: Iterable<A>,
   zero: Z,
-  f: (z: Z, a: A) => Effect<R, E, Z>
+  f: (z: Z, a: A) => Effect<R, E, Z>,
+  __trace?: string
 ): Effect<R, E, Z> {
-  return A.reduce_(Array.from(i), succeed(zero) as Effect<R, E, Z>, (acc, el) =>
-    chain_(acc, (a) => f(a, el))
+  return suspend(
+    () =>
+      I.reduce_(i, succeed(zero) as Effect<R, E, Z>, (acc, el) =>
+        chain_(acc, (a) => f(a, el))
+      ),
+    __trace
   )
 }
 
 /**
  * Folds an Iterable[A] using an effectual function f, working sequentially from left to right.
+ *
+ * @dataFirst reduce_
  */
-export function reduce<Z>(zero: Z) {
-  return <R, E, A>(f: (z: Z, a: A) => Effect<R, E, Z>) => (i: Iterable<A>) =>
-    reduce_(i, zero, f)
+export function reduce<Z, R, E, A>(
+  zero: Z,
+  f: (z: Z, a: A) => Effect<R, E, Z>,
+  __trace?: string
+) {
+  return (i: Iterable<A>) => reduce_(i, zero, f, __trace)
 }
 
 /**
@@ -31,17 +41,27 @@ export function reduce<Z>(zero: Z) {
 export function reduceRight_<A, Z, R, E>(
   i: Iterable<A>,
   zero: Z,
-  f: (a: A, z: Z) => Effect<R, E, Z>
+  f: (a: A, z: Z) => Effect<R, E, Z>,
+  __trace?: string
 ): Effect<R, E, Z> {
-  return A.reduceRight_(Array.from(i), succeed(zero) as Effect<R, E, Z>, (el, acc) =>
-    chain_(acc, (a) => f(el, a))
+  return suspend(
+    () =>
+      I.reduceRight_(i, succeed(zero) as Effect<R, E, Z>, (el, acc) =>
+        chain_(acc, (a) => f(el, a))
+      ),
+    __trace
   )
 }
 
 /**
  * Folds an Iterable[A] using an effectual function f, working sequentially from left to right.
+ *
+ * @dataFirst reduceRight_
  */
-export function reduceRight<Z>(zero: Z) {
-  return <R, E, A>(f: (a: A, z: Z) => Effect<R, E, Z>) => (i: Iterable<A>) =>
-    reduceRight_(i, zero, f)
+export function reduceRight<R, E, A, Z>(
+  zero: Z,
+  f: (a: A, z: Z) => Effect<R, E, Z>,
+  __trace?: string
+) {
+  return (i: Iterable<A>) => reduceRight_(i, zero, f, __trace)
 }

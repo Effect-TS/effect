@@ -10,11 +10,13 @@ import { foldM_ } from "./foldM"
  * Converts an option on values into an option on errors.
  */
 export function some<R, E, A>(
-  self: Effect<R, E, O.Option<A>>
+  self: Effect<R, E, O.Option<A>>,
+  __trace?: string
 ): Effect<R, O.Option<E>, A> {
   return foldM_(
     self,
     (e) => fail(O.some(e)),
-    O.fold(() => fail(O.none), succeed)
+    O.fold(() => fail(O.none), succeed),
+    __trace
   )
 }

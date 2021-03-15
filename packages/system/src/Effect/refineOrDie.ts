@@ -10,12 +10,15 @@ import { fail } from "./fail"
 /**
  * Keeps some of the errors, and terminates the fiber with the rest, using
  * the specified function to convert the `E` into a `Throwable`.
+ *
+ * @dataFirst refineOrDieWith_
  */
 export function refineOrDieWith<E, E1>(
   pf: (e: E) => O.Option<E1>,
-  f: (e: E) => unknown
+  f: (e: E) => unknown,
+  __trace?: string
 ) {
-  return <R, A>(self: Effect<R, E, A>) => refineOrDieWith_(self, pf, f)
+  return <R, A>(self: Effect<R, E, A>) => refineOrDieWith_(self, pf, f, __trace)
 }
 
 /**
@@ -25,25 +28,31 @@ export function refineOrDieWith<E, E1>(
 export function refineOrDieWith_<R, A, E, E1>(
   self: Effect<R, E, A>,
   pf: (e: E) => O.Option<E1>,
-  f: (e: E) => unknown
+  f: (e: E) => unknown,
+  __trace?: string
 ) {
-  return catchAll_(self, (e) =>
-    pipe(
-      e,
-      pf,
-      O.fold(
-        () => die(f(e)),
-        (e1) => fail(e1)
-      )
-    )
+  return catchAll_(
+    self,
+    (e) =>
+      pipe(
+        e,
+        pf,
+        O.fold(
+          () => die(f(e)),
+          (e1) => fail(e1)
+        )
+      ),
+    __trace
   )
 }
 
 /**
  * Keeps some of the errors, and terminates the fiber with the rest
+ *
+ * @dataFirst refineOrDie_
  */
-export function refineOrDie<E, E1>(pf: (e: E) => O.Option<E1>) {
-  return refineOrDieWith(pf, identity)
+export function refineOrDie<E, E1>(pf: (e: E) => O.Option<E1>, __trace?: string) {
+  return <R, A>(self: Effect<R, E, A>) => refineOrDie_(self, pf, __trace)
 }
 
 /**
@@ -51,7 +60,8 @@ export function refineOrDie<E, E1>(pf: (e: E) => O.Option<E1>) {
  */
 export function refineOrDie_<R, A, E, E1>(
   self: Effect<R, E, A>,
-  pf: (e: E) => O.Option<E1>
+  pf: (e: E) => O.Option<E1>,
+  __trace?: string
 ) {
-  return refineOrDie(pf)(self)
+  return refineOrDieWith_(self, pf, identity, __trace)
 }

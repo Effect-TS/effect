@@ -5,10 +5,15 @@ import type { Effect } from "./effect"
 
 /**
  * Repeats this effect while its error satisfies the specified effectful predicate.
+ *
+ * @dataFirst repeatWhileM_
  */
-export function repeatWhileM<A, R1, E1>(f: (a: A) => Effect<R1, E1, boolean>) {
+export function repeatWhileM<A, R1, E1>(
+  f: (a: A) => Effect<R1, E1, boolean>,
+  __trace?: string
+) {
   return <R, E>(self: Effect<R, E, A>): Effect<R & R1, E | E1, A> =>
-    repeatWhileM_(self, f)
+    repeatWhileM_(self, f, __trace)
 }
 
 /**
@@ -16,23 +21,32 @@ export function repeatWhileM<A, R1, E1>(f: (a: A) => Effect<R1, E1, boolean>) {
  */
 export function repeatWhileM_<R, E, A, R1, E1>(
   self: Effect<R, E, A>,
-  f: (a: A) => Effect<R1, E1, boolean>
+  f: (a: A) => Effect<R1, E1, boolean>,
+  __trace?: string
 ): Effect<R & R1, E | E1, A> {
-  return chain_(self, (a) =>
-    chain_(f(a), (b) => (b ? repeatWhileM(f)(self) : succeed(a)))
+  return chain_(
+    self,
+    (a) => chain_(f(a), (b) => (b ? repeatWhileM_(self, f) : succeed(a))),
+    __trace
   )
 }
 
 /**
  * Repeats this effect while its error satisfies the specified predicate.
+ *
+ * @dataFirst repeatWhile_
  */
-export function repeatWhile<A>(f: (a: A) => boolean) {
-  return <R, E>(self: Effect<R, E, A>) => repeatWhile_(self, f)
+export function repeatWhile<A>(f: (a: A) => boolean, __trace?: string) {
+  return <R, E>(self: Effect<R, E, A>) => repeatWhile_(self, f, __trace)
 }
 
 /**
  * Repeats this effect while its error satisfies the specified predicate.
  */
-export function repeatWhile_<R, E, A>(self: Effect<R, E, A>, f: (a: A) => boolean) {
-  return repeatWhileM_(self, (a) => succeed(f(a)))
+export function repeatWhile_<R, E, A>(
+  self: Effect<R, E, A>,
+  f: (a: A) => boolean,
+  __trace?: string
+) {
+  return repeatWhileM_(self, (a) => succeed(f(a)), __trace)
 }

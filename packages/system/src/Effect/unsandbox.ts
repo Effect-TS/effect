@@ -11,6 +11,6 @@ import { mapErrorCause_ } from "./mapErrorCause"
  * Terminates with exceptions on the `Left` side of the `Either` error, if it
  * exists. Otherwise extracts the contained `Effect< R, E, A>`
  */
-export function unsandbox<R, E, A>(fa: Effect<R, Cause<E>, A>) {
-  return mapErrorCause_(fa, flatten)
+export function unsandbox<R, E, A>(fa: Effect<R, Cause<E>, A>, __trace?: string) {
+  return mapErrorCause_(fa, flatten, __trace)
 }

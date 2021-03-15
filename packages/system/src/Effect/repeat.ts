@@ -24,7 +24,8 @@ import { orDie } from "./orDie"
 export function repeatOrElseEither_<R, E, Env1, A, B, R2, E2, C>(
   self: Effect<R, E, A>,
   schedule: S.Schedule<Env1, A, B>,
-  orElse: (_: E, __: O.Option<B>) => Effect<R2, E2, C>
+  orElse: (_: E, __: O.Option<B>) => Effect<R2, E2, C>,
+  __trace?: string
 ): Effect<R & Env1 & R2 & HasClock, E2, E.Either<C, B>> {
   return pipe(
     S.driver(schedule),
@@ -50,18 +51,31 @@ export function repeatOrElseEither_<R, E, Env1, A, B, R2, E2, C>(
         self,
         foldM(
           (e) => pipe(orElse(e, O.none), map(E.left)),
-          (a) => loop(a)
+          (a) => loop(a),
+          __trace
         )
       )
     })
   )
 }
 
+/**
+ * Returns a new effect that repeats this effect according to the specified
+ * schedule or until the first failure, at which point, the failure value
+ * and schedule output are passed to the specified handler.
+ *
+ * Scheduled recurrences are in addition to the first execution, so that
+ * `io.repeat(Schedule.once)` yields an effect that executes `io`, and then
+ * if that succeeds, executes `io` an additional time.
+ *
+ * @dataFirst repeatOrElseEither_
+ */
 export function repeatOrElseEither<R, E, Env1, A, B, R2, E2, C>(
   schedule: S.Schedule<Env1, A, B>,
-  orElse: (_: E, __: O.Option<B>) => Effect<R2, E2, C>
+  orElse: (_: E, __: O.Option<B>) => Effect<R2, E2, C>,
+  __trace?: string
 ): (self: Effect<R, E, A>) => Effect<R & Env1 & R2 & HasClock, E2, E.Either<C, B>> {
-  return (self) => repeatOrElseEither_(self, schedule, orElse)
+  return (self) => repeatOrElseEither_(self, schedule, orElse, __trace)
 }
 
 /**
@@ -76,9 +90,10 @@ export function repeatOrElseEither<R, E, Env1, A, B, R2, E2, C>(
 export function repeatOrElse_<R, E, A, SR, B, R2, E2, C>(
   self: Effect<R, E, A>,
   schedule: S.Schedule<SR, A, B>,
-  orElse: (_: E, __: O.Option<B>) => Effect<R2, E2, C>
+  orElse: (_: E, __: O.Option<B>) => Effect<R2, E2, C>,
+  __trace?: string
 ): Effect<R & SR & R2 & HasClock, E2, C | B> {
-  return map_(repeatOrElseEither_(self, schedule, orElse), E.merge)
+  return map_(repeatOrElseEither_(self, schedule, orElse, __trace), E.merge)
 }
 
 /**
@@ -89,12 +104,15 @@ export function repeatOrElse_<R, E, A, SR, B, R2, E2, C>(
  * Scheduled recurrences are in addition to the first execution, so that
  * `io.repeat(Schedule.once)` yields an effect that executes `io`, and then
  * if that succeeds, executes `io` an additional time.
+ *
+ * @dataFirst repeatOrElse_
  */
 export function repeatOrElse<E, A, SR, B, R2, E2, C>(
   schedule: S.Schedule<SR, A, B>,
-  orElse: (_: E, __: O.Option<B>) => Effect<R2, E2, C>
+  orElse: (_: E, __: O.Option<B>) => Effect<R2, E2, C>,
+  __trace?: string
 ): <R>(self: Effect<R, E, A>) => Effect<R & SR & R2 & HasClock, E2, C | B> {
-  return (self) => repeatOrElse_(self, schedule, orElse)
+  return (self) => repeatOrElse_(self, schedule, orElse, __trace)
 }
 
 /**
@@ -106,9 +124,10 @@ export function repeatOrElse<E, A, SR, B, R2, E2, C>(
  */
 export function repeat_<R, E, A, SR, B>(
   self: Effect<R, E, A>,
-  schedule: S.Schedule<SR, A, B>
+  schedule: S.Schedule<SR, A, B>,
+  __trace?: string
 ): Effect<R & SR & HasClock, E, B> {
-  return repeatOrElse_(self, schedule, (e) => fail(e))
+  return repeatOrElse_(self, schedule, (e) => fail(e), __trace)
 }
 
 /**
@@ -117,8 +136,10 @@ export function repeat_<R, E, A, SR, B>(
  * to the first execution, so that `io.repeat(Schedule.once)` yields an
  * effect that executes `io`, and then if that succeeds, executes `io` an
  * additional time.
+ *
+ * @dataFirst repeat_
  */
-export function repeat<A, SR, B>(schedule: S.Schedule<SR, A, B>) {
+export function repeat<A, SR, B>(schedule: S.Schedule<SR, A, B>, __trace?: string) {
   return <R, E>(self: Effect<R, E, A>): Effect<R & SR & HasClock, E, B> =>
-    repeatOrElse_(self, schedule, (e) => fail(e))
+    repeat_(self, schedule, __trace)
 }

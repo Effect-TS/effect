@@ -1,6 +1,7 @@
 // tracing: off
 
 import { pipe } from "../Function"
+import { suspend } from "./core"
 import * as D from "./do"
 import type { Effect } from "./effect"
 import { map } from "./map"
@@ -13,14 +14,19 @@ import { map } from "./map"
 export function summarized_<R, E, A, R2, E2, B, C>(
   self: Effect<R, E, A>,
   summary: Effect<R2, E2, B>,
-  f: (start: B, end: B) => C
+  f: (start: B, end: B) => C,
+  __trace?: string
 ): Effect<R & R2, E | E2, [C, A]> {
-  return pipe(
-    D.do,
-    D.bind("start", () => summary),
-    D.bind("value", () => self),
-    D.bind("end", () => summary),
-    map((s) => [f(s.start, s.end), s.value])
+  return suspend(
+    () =>
+      pipe(
+        D.do,
+        D.bind("start", () => summary),
+        D.bind("value", () => self),
+        D.bind("end", () => summary),
+        map((s) => [f(s.start, s.end), s.value])
+      ),
+    __trace
   )
 }
 
@@ -28,11 +34,14 @@ export function summarized_<R, E, A, R2, E2, B, C>(
  * Summarizes a effect by computing some value before and after execution, and
  * then combining the values to produce a summary, together with the result of
  * execution.
+ *
+ * @dataFirst summarized_
  */
 export function summarized<R2, E2, B, C>(
   summary: Effect<R2, E2, B>,
-  f: (start: B, end: B) => C
+  f: (start: B, end: B) => C,
+  __trace?: string
 ) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R & R2, E | E2, [C, A]> =>
-    summarized_(self, summary, f)
+    summarized_(self, summary, f, __trace)
 }
