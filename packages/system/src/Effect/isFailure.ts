@@ -6,10 +6,11 @@ import { fold_ } from "./fold"
 /**
  * Returns whether this effect is a failure.
  */
-export function isFailure<R, E, A>(self: Effect<R, E, A>) {
+export function isFailure<R, E, A>(self: Effect<R, E, A>, __trace?: string) {
   return fold_(
     self,
     () => true,
-    () => false
+    () => false,
+    __trace
   )
 }

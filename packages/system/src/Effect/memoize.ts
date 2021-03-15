@@ -14,35 +14,38 @@ import { to } from "./to"
  * Returns a memoized version of the specified effectual function.
  */
 export function memoize<A, R, E, B>(
-  f: (a: A) => Effect<R, E, B>
+  f: (a: A) => Effect<R, E, B>,
+  __trace?: string
 ): UIO<(a: A) => Effect<R, E, B>> {
   return pipe(
     RefM.makeRefM(new Map<A, P.Promise<E, B>>()),
-    map((ref) => (a: A) =>
-      pipe(
-        Do.do,
-        Do.bind("promise", () =>
-          pipe(
-            ref,
-            RefM.modify((m) => {
-              const memo = m.get(a)
+    map(
+      (ref) => (a: A) =>
+        pipe(
+          Do.do,
+          Do.bind("promise", () =>
+            pipe(
+              ref,
+              RefM.modify((m) => {
+                const memo = m.get(a)
 
-              if (memo) {
-                return succeed(tuple(memo, m))
-              }
+                if (memo) {
+                  return succeed(tuple(memo, m))
+                }
 
-              return pipe(
-                Do.do,
-                Do.bind("promise", () => P.make<E, B>()),
-                tap(({ promise }) => fork(to(promise)(f(a)))),
-                map(({ promise }) => tuple(promise, m.set(a, promise)))
-              )
-            })
-          )
+                return pipe(
+                  Do.do,
+                  Do.bind("promise", () => P.make<E, B>()),
+                  tap(({ promise }) => fork(to(promise)(f(a)))),
+                  map(({ promise }) => tuple(promise, m.set(a, promise)))
+                )
+              })
+            )
+          ),
+          Do.bind("b", ({ promise }) => P.await(promise)),
+          map(({ b }) => b)
         ),
-        Do.bind("b", ({ promise }) => P.await(promise)),
-        map(({ b }) => b)
-      )
+      __trace
     )
   )
 }

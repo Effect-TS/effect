@@ -12,9 +12,9 @@ import { map_ } from "./map"
  *
  * @dataFirst join_
  */
-export function join<R1, E1, A1>(that: Effect<R1, E1, A1>) {
+export function join<R1, E1, A1>(that: Effect<R1, E1, A1>, __trace?: string) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<E.Either<R, R1>, E | E1, A | A1> => {
-    return join_(self, that)
+    return join_(self, that, __trace)
   }
 }
 
@@ -23,7 +23,8 @@ export function join<R1, E1, A1>(that: Effect<R1, E1, A1>) {
  */
 export function join_<R, E, A, R1, E1, A1>(
   self: Effect<R, E, A>,
-  that: Effect<R1, E1, A1>
+  that: Effect<R1, E1, A1>,
+  __trace?: string
 ): Effect<E.Either<R, R1>, E | E1, A | A1> {
   return accessM(
     (_: E.Either<R, R1>): Effect<unknown, E | E1, A | A1> =>
@@ -31,7 +32,8 @@ export function join_<R, E, A, R1, E1, A1>(
         _,
         (r) => provideAll_(self, r),
         (r1) => provideAll_(that, r1)
-      )
+      ),
+    __trace
   )
 }
 
@@ -40,7 +42,8 @@ export function join_<R, E, A, R1, E1, A1>(
  */
 export function joinEither_<R, E, A, R1, E1, A1>(
   self: Effect<R, E, A>,
-  that: Effect<R1, E1, A1>
+  that: Effect<R1, E1, A1>,
+  __trace?: string
 ): Effect<E.Either<R, R1>, E | E1, Either<A, A1>> {
   return accessM(
     (_: E.Either<R, R1>): Effect<unknown, E | E1, Either<A, A1>> =>
@@ -48,7 +51,8 @@ export function joinEither_<R, E, A, R1, E1, A1>(
         _,
         (r) => map_(provideAll_(self, r), left),
         (r1) => map_(provideAll_(that, r1), right)
-      )
+      ),
+    __trace
   )
 }
 
@@ -56,7 +60,8 @@ export function joinEither_<R, E, A, R1, E1, A1>(
  * Depending on provided environment returns either this one or the other effect.
  */
 export function joinEither<R, E, A, R1, E1, A1>(
-  that: Effect<R1, E1, A1>
+  that: Effect<R1, E1, A1>,
+  __trace?: string
 ): (self: Effect<R, E, A>) => Effect<E.Either<R, R1>, E | E1, Either<A, A1>> {
-  return (self) => joinEither_(self, that)
+  return (self) => joinEither_(self, that, __trace)
 }

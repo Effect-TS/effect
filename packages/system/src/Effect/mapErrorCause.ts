@@ -11,9 +11,10 @@ import type { Effect } from "./effect"
  */
 export function mapErrorCause_<R, E, A, E2>(
   self: Effect<R, E, A>,
-  f: (cause: Cause<E>) => Cause<E2>
+  f: (cause: Cause<E>) => Cause<E2>,
+  __trace?: string
 ) {
-  return foldCauseM_(self, (c) => halt(f(c)), succeed)
+  return foldCauseM_(self, (c) => halt(f(c)), succeed, __trace)
 }
 
 /**
@@ -21,6 +22,10 @@ export function mapErrorCause_<R, E, A, E2>(
  * the specified function. This can be used to transform errors
  * while preserving the original structure of Cause.
  */
-export function mapErrorCause<E, E2>(f: (cause: Cause<E>) => Cause<E2>) {
-  return <R, A>(self: Effect<R, E, A>) => foldCauseM_(self, (c) => halt(f(c)), succeed)
+export function mapErrorCause<E, E2>(
+  f: (cause: Cause<E>) => Cause<E2>,
+  __trace?: string
+) {
+  return <R, A>(self: Effect<R, E, A>) =>
+    foldCauseM_(self, (c) => halt(f(c)), succeed, __trace)
 }

@@ -11,7 +11,10 @@ import { interrupt } from "./interruption"
 /**
  * Lift Async into Effect
  */
-export function fromAsync<R, E, A>(async: Async.Async<R, E, A>): Effect<R, E, A> {
+export function fromAsync<R, E, A>(
+  async: Async.Async<R, E, A>,
+  __trace?: string
+): Effect<R, E, A> {
   return accessM((r: R) =>
     effectAsyncInterrupt((cb) => {
       const cancel = Async.runAsyncEnv(async, r, (exit) => {
@@ -33,13 +36,13 @@ export function fromAsync<R, E, A>(async: Async.Async<R, E, A>): Effect<R, E, A>
       return effectTotal(() => {
         cancel()
       })
-    })
+    }, __trace)
   )
 }
 
 /**
  * Lift IO into Effect
  */
-export function fromIO<A>(io: IO.IO<A>): Effect<unknown, never, A> {
-  return effectTotal(() => IO.run(io))
+export function fromIO<A>(io: IO.IO<A>, __trace?: string): Effect<unknown, never, A> {
+  return effectTotal(() => IO.run(io), __trace)
 }
