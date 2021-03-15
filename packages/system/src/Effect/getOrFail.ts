@@ -13,7 +13,11 @@ export function getOrFail<A>(
   v: O.Option<A>,
   __trace?: string
 ): IO<NoSuchElementException, A> {
-  return O.fold_(v, () => fail(new NoSuchElementException(), __trace), succeed)
+  return O.fold_(
+    v,
+    () => fail(new NoSuchElementException(), __trace),
+    (x) => succeed(x, __trace)
+  )
 }
 
 /**
@@ -23,6 +27,6 @@ export function getOrFailUnit<A>(v: O.Option<A>, __trace?: string): IO<void, A> 
   return O.fold_(
     v,
     () => fail(undefined, __trace),
-    (a) => succeed(a)
+    (a) => succeed(a, __trace)
   )
 }

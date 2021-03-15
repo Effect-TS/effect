@@ -95,7 +95,15 @@ export default function tracer(
           .filter(([x]) => x.length > 0)
 
         function visitor(node: ts.Node): ts.VisitResult<ts.Node> {
-          if (ts.isCallExpression(node)) {
+          if (ts.isFunctionDeclaration(node)) {
+            const tags = ts
+              .getJSDocTags(node)
+              .map((tag) => `${tag.tagName.escapedText} ${tag.comment}`)
+
+            if (tags.includes("trace off")) {
+              return node
+            }
+          } else if (ts.isCallExpression(node)) {
             let isTracing = false
 
             try {

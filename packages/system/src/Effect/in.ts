@@ -17,8 +17,8 @@ import { onInterrupt, uninterruptibleMask } from "./interruption"
  *
  * @dataFirst in_
  */
-function _in(scope: Scope<any>) {
-  return <R, E, A>(self: Effect<R, E, A>) => in_(self, scope)
+function _in(scope: Scope<any>, __trace?: string) {
+  return <R, E, A>(self: Effect<R, E, A>) => in_(self, scope, __trace)
 }
 
 /**
@@ -26,12 +26,14 @@ function _in(scope: Scope<any>) {
  * This means any finalizers associated with the effect will not be executed
  * until the specified scope is closed.
  */
-export function in_<R, E, A>(self: Effect<R, E, A>, scope: Scope<any>) {
+export function in_<R, E, A>(
+  self: Effect<R, E, A>,
+  scope: Scope<any>,
+  __trace?: string
+) {
   return uninterruptibleMask(({ restore }) =>
     pipe(
-      self,
-      restore,
-      forkDaemon,
+      forkDaemon(restore(self), __trace),
       chain((fiber) =>
         pipe(
           scope.extend(fiber.scope),

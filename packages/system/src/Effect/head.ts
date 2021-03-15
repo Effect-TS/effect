@@ -13,7 +13,8 @@ import { fail } from "./fail"
  * non-empty or fails with the error `None` if the list is empty.
  */
 export function head<R, E, A>(
-  self: Effect<R, E, readonly A[]>
+  self: Effect<R, E, readonly A[]>,
+  __trace?: string
 ): Effect<R, O.Option<E>, A> {
   return foldCauseM_(
     self,
@@ -23,6 +24,7 @@ export function head<R, E, A>(
         x,
         A.head,
         O.fold(() => fail(O.none), succeed)
-      )
+      ),
+    __trace
   )
 }
