@@ -300,4 +300,25 @@ describe("Tracing", () => {
     expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:292:23")
     expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:291:16")
   })
+  it("should trace gen", async () => {
+    const result = await T.runPromiseExit(
+      T.gen(function* (_) {
+        const x = yield* _(T.succeed(0))
+        const y = yield* _(T.succeed(1))
+
+        return `${x} - ${y}`
+      })["|>"](T.chain(T.fail))
+    )
+
+    assertsFailure(result)
+    const cause = pretty(result.cause)
+
+    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:310:30")
+    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:310:23")
+    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:307:37")
+    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:307:27")
+    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:306:37")
+    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:306:27")
+    expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:305:12")
+  })
 })

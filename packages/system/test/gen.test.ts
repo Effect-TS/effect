@@ -31,47 +31,6 @@ const program = T.gen(function* (_) {
   return c
 })
 
-const programNumber = T.gen<number>()(function* (_) {
-  const a = yield* _(T.access((_: A) => _.a))
-  const b = yield* _(T.access((_: B) => _.b))
-
-  const c = a + b
-
-  if (c > 10) {
-    yield* _(T.fail(`${c} should be lower then x`))
-  }
-
-  return c
-})
-
-const programNumberFailString = T.gen<string, number>()(function* (_) {
-  const a = yield* _(T.access((_: A) => _.a))
-  const b = yield* _(T.access((_: B) => _.b))
-
-  const c = a + b
-
-  if (c > 10) {
-    yield* _(T.fail(`${c} should be lower then x`))
-  }
-
-  return c
-})
-
-const programNumberFailStringR = T.gen<A & B & { foo: string }, string, number>()(
-  function* (_) {
-    const a = yield* _(T.access((_: A) => _.a))
-    const b = yield* _(T.access((_: B) => _.b))
-
-    const c = a + b
-
-    if (c > 10) {
-      yield* _(T.fail(`${c} should be lower then x`))
-    }
-
-    return c
-  }
-)
-
 class MyError {
   readonly _tag = "MyError"
 }
@@ -80,39 +39,6 @@ describe("Generator", () => {
   it("should use generator program", async () => {
     const result = await pipe(
       program,
-      T.provideAll<A & B>({ a: 1, b: 2 }),
-      T.result,
-      T.map(Ex.untraced),
-      T.runPromise
-    )
-
-    expect(result).toEqual(Ex.succeed(3))
-  })
-  it("should use generator programNumber", async () => {
-    const result = await pipe(
-      programNumber,
-      T.provideAll<A & B>({ a: 1, b: 2 }),
-      T.result,
-      T.map(Ex.untraced),
-      T.runPromise
-    )
-
-    expect(result).toEqual(Ex.succeed(3))
-  })
-  it("should use generator programNumberFailString", async () => {
-    const result = await pipe(
-      programNumberFailString,
-      T.provideAll<A & B>({ a: 1, b: 2 }),
-      T.result,
-      T.map(Ex.untraced),
-      T.runPromise
-    )
-
-    expect(result).toEqual(Ex.succeed(3))
-  })
-  it("should use generator programNumberFailStringR", async () => {
-    const result = await pipe(
-      programNumberFailStringR,
       T.provideAll<A & B>({ a: 1, b: 2 }),
       T.result,
       T.map(Ex.untraced),

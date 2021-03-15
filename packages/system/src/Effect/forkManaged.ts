@@ -12,7 +12,8 @@ import { toManaged } from "./toManaged"
  * the effect supplied to `use` completes.
  */
 export function forkManaged<R, E, A>(
-  self: Effect<R, E, A>
+  self: Effect<R, E, A>,
+  __trace?: string
 ): Managed<R, never, FiberContext<E, A>> {
-  return fork(toManaged(self))
+  return fork(toManaged(self), __trace)
 }
