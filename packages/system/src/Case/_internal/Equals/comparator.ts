@@ -1,4 +1,3 @@
-import { equalsSym, hasEquals } from "../../HasEquals"
 import type { EqualityComparator } from "./utils"
 import {
   areArraysEqual,
@@ -41,10 +40,6 @@ export function createComparator(createIsEqual?: EqualityComparatorCreator) {
     }
 
     if (a && b && typeof a === OBJECT_TYPEOF && typeof b === OBJECT_TYPEOF) {
-      if (hasEquals(a)) {
-        return a[equalsSym](b)
-      }
-
       if (isPlainObject(a) && isPlainObject(b)) {
         return areObjectsEqual(a, b, isEqual, meta)
       }
