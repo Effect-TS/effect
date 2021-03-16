@@ -90,9 +90,11 @@ export default function unpipe(_program: ts.Program) {
 
             if (optimizeTags.has("pipe")) {
               if (node.arguments.findIndex((xx) => ts.isSpreadElement(xx)) === -1) {
-                return optimisePipe(
-                  Array.from(ts.visitEachChild(node, visitor, ctx).arguments),
-                  factory
+                return factory.createParenthesizedExpression(
+                  optimisePipe(
+                    Array.from(ts.visitEachChild(node, visitor, ctx).arguments),
+                    factory
+                  )
                 )
               }
             }
