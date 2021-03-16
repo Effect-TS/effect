@@ -321,4 +321,24 @@ describe("Tracing", () => {
     expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:306:27")
     expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:305:12")
   })
+  it("pipe should not break with comments and new lines", async () => {
+    const double = (n: number) => n * 2
+    const f = pipe(
+      // comment here
+      T.effectTotal(() => 1),
+      // then double it
+      T.map((v) => {
+        return pipe(
+          // comment here
+          v,
+          // double the value
+          double
+        )
+      })
+      // final comment
+    )
+
+    const res = await T.runPromise(f)
+    expect(res).toEqual(2)
+  })
 })
