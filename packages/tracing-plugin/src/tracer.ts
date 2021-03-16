@@ -29,6 +29,17 @@ function checkRegionAt(
   return on
 }
 
+function normalize(path: string) {
+  const isExtendedLengthPath = /^\\\\\?\\/.test(path)
+  const hasNonAscii = /[^\u0000-\u0080]+/.test(path) // eslint-disable-line no-control-regex
+
+  if (isExtendedLengthPath || hasNonAscii) {
+    return path
+  }
+
+  return path.replace(/\\/g, "/")
+}
+
 export default function tracer(
   _program: ts.Program,
   _opts?: {
@@ -198,7 +209,7 @@ export default function tracer(
                 fileVar,
                 undefined,
                 undefined,
-                factory.createStringLiteral(finalName)
+                factory.createStringLiteral(normalize(finalName))
               )
             ],
             ts.NodeFlags.Const
