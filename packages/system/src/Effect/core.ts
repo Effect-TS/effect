@@ -110,10 +110,9 @@ export const trace: UIO<Fiber.Trace> = new ITrace()
  * specified callback.
  */
 export function checkTraced<R, E, A>(
-  f: (_: boolean) => Effect<R, E, A>,
-  __trace?: string
+  f: (_: boolean) => Effect<R, E, A>
 ): Effect<R, E, A> {
-  return new ICheckTracingStatus(f, __trace)
+  return new ICheckTracingStatus(f)
 }
 
 /**
@@ -124,11 +123,8 @@ export function checkTraced<R, E, A>(
  * hash map lookup per flatMap). As such, using `untraced` sections
  * is not guaranteed to result in a noticeable performance increase.
  */
-export function untraced<R, E, A>(
-  self: Effect<R, E, A>,
-  __trace?: string
-): Effect<R, E, A> {
-  return new ITracingStatus(self, false, __trace)
+export function untraced<R, E, A>(self: Effect<R, E, A>): Effect<R, E, A> {
+  return new ITracingStatus(self, false)
 }
 
 /**
@@ -137,11 +133,8 @@ export function untraced<R, E, A>(
  * an `untraced` section, or the current fiber has been spawned by a parent
  * inside an `untraced` section.
  */
-export function traced<R, E, A>(
-  self: Effect<R, E, A>,
-  __trace?: string
-): Effect<R, E, A> {
-  return new ITracingStatus(self, true, __trace)
+export function traced<R, E, A>(self: Effect<R, E, A>): Effect<R, E, A> {
+  return new ITracingStatus(self, true)
 }
 
 /**
@@ -346,9 +339,9 @@ export function interruptStatus_<R, E, A>(
  *
  * @dataFirst tracingStatus_
  */
-export function tracingStatus(flag: boolean, __trace?: string) {
+export function tracingStatus(flag: boolean) {
   return <R, E, A>(effect: Effect<R, E, A>): Effect<R, E, A> =>
-    new ITracingStatus(effect, flag, __trace)
+    new ITracingStatus(effect, flag)
 }
 
 /**
@@ -359,10 +352,9 @@ export function tracingStatus(flag: boolean, __trace?: string) {
  */
 export function tracingStatus_<R, E, A>(
   effect: Effect<R, E, A>,
-  flag: boolean,
-  __trace?: string
+  flag: boolean
 ): Effect<R, E, A> {
-  return new ITracingStatus(effect, flag, __trace)
+  return new ITracingStatus(effect, flag)
 }
 
 /**

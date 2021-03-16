@@ -89,11 +89,7 @@ export class ITrace extends Base<unknown, never, Trace> {
 export class ITracingStatus<R, E, A> extends Base<R, E, A> {
   readonly _tag = "TracingStatus"
 
-  constructor(
-    readonly effect: Effect<R, E, A>,
-    readonly flag: boolean,
-    readonly trace?: string
-  ) {
+  constructor(readonly effect: Effect<R, E, A>, readonly flag: boolean) {
     super()
   }
 }
@@ -101,10 +97,7 @@ export class ITracingStatus<R, E, A> extends Base<R, E, A> {
 export class ICheckTracingStatus<R, E, A> extends Base<R, E, A> {
   readonly _tag = "CheckTracingStatus"
 
-  constructor(
-    readonly f: (tracingStatus: boolean) => Effect<R, E, A>,
-    readonly trace?: string
-  ) {
+  constructor(readonly f: (tracingStatus: boolean) => Effect<R, E, A>) {
     super()
   }
 }

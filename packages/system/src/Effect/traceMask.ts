@@ -16,10 +16,9 @@ function restore(
 export function untracedMask<R, E, A>(
   f: (
     restore: <R1, E1, A1>(self: Effect<R1, E1, A1>) => Effect<R1, E1, A1>
-  ) => Effect<R, E, A>,
-  __trace?: string
+  ) => Effect<R, E, A>
 ): Effect<R, E, A> {
-  return checkTraced((b) => untraced(f(restore(b))), __trace)
+  return checkTraced((b) => untraced(f(restore(b))))
 }
 
 /**
@@ -29,8 +28,7 @@ export function untracedMask<R, E, A>(
 export function tracedMask<R, E, A>(
   f: (
     restore: <R1, E1, A1>(self: Effect<R1, E1, A1>) => Effect<R1, E1, A1>
-  ) => Effect<R, E, A>,
-  __trace?: string
+  ) => Effect<R, E, A>
 ): Effect<R, E, A> {
-  return checkTraced((b) => traced(f(restore(b))), __trace)
+  return checkTraced((b) => traced(f(restore(b))))
 }

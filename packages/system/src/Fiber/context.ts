@@ -959,13 +959,6 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                   }
 
                   case "TracingStatus": {
-                    if (
-                      current.trace &&
-                      this.platform.value.traceExecution &&
-                      this.inTracingRegion
-                    ) {
-                      this.addTrace(current.trace)
-                    }
                     if (this.traceStatusStack) {
                       this.pushTracingStatus(current.flag)
                       this.stack = new Stack(this.tracingExit, this.stack)
@@ -975,13 +968,6 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                   }
 
                   case "CheckTracingStatus": {
-                    if (
-                      current.trace &&
-                      this.platform.value.traceExecution &&
-                      this.inTracingRegion
-                    ) {
-                      this.addTrace(current.trace)
-                    }
                     current = instruction(current.f(this.inTracingRegion))
                     break
                   }
