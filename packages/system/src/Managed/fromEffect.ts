@@ -8,10 +8,10 @@ import * as Finalizer from "./ReleaseMap/finalizer"
  * Lifts a `Effect< R, E, A>` into `Managed< R, E, A>` with no release action. The
  * effect will be performed interruptibly.
  */
-export function fromEffect<R, E, A>(effect: T.Effect<R, E, A>) {
+export function fromEffect<R, E, A>(effect: T.Effect<R, E, A>, __trace?: string) {
   return new Managed<R, E, A>(
     T.map_(
-      T.provideSome_(effect, ([_]) => _),
+      T.provideSome_(effect, ([_]) => _, __trace),
       (a) => [Finalizer.noopFinalizer, a]
     )
   )
@@ -22,6 +22,9 @@ export function fromEffect<R, E, A>(effect: T.Effect<R, E, A>) {
  * effect will be performed uninterruptibly. You usually want the `fromEffect`
  * variant.
  */
-export function fromEffectUninterruptible<R, E, A>(effect: T.Effect<R, E, A>) {
-  return fromEffect(T.uninterruptible(effect))
+export function fromEffectUninterruptible<R, E, A>(
+  effect: T.Effect<R, E, A>,
+  __trace?: string
+) {
+  return fromEffect(T.uninterruptible(effect), __trace)
 }

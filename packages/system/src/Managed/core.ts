@@ -54,8 +54,8 @@ export function chain_<R, E, A, R2, E2, A2>(
 /**
  * Imports a synchronous side-effect into a pure value
  */
-export function effectTotal<A>(effect: () => A) {
-  return fromEffect(T.effectTotal(effect))
+export function effectTotal<A>(effect: () => A, __trace?: string) {
+  return fromEffect(T.effectTotal(effect, __trace))
 }
 
 /**
@@ -84,8 +84,8 @@ export function ensuring<R2, X>(f: T.Effect<R2, never, X>) {
 /**
  * Returns an effect that models failure with the specified error. The moral equivalent of throw for pure code.
  */
-export function fail<E>(e: E) {
-  return fromEffect(T.fail(e))
+export function fail<E>(e: E, __trace?: string) {
+  return fromEffect(T.fail(e, __trace))
 }
 
 /**
@@ -251,15 +251,19 @@ export function makeReserve<R, E, R2, E2, A>(
  *
  * @dataFirst map_
  */
-export function map<A, B>(f: (a: A) => B) {
-  return <R, E>(self: Managed<R, E, A>) => map_(self, f)
+export function map<A, B>(f: (a: A) => B, __trace?: string) {
+  return <R, E>(self: Managed<R, E, A>) => map_(self, f, __trace)
 }
 
 /**
  * Returns a managed whose success is mapped by the specified `f` function.
  */
-export function map_<R, E, A, B>(self: Managed<R, E, A>, f: (a: A) => B) {
-  return new Managed<R, E, B>(T.map_(self.effect, ([fin, a]) => [fin, f(a)]))
+export function map_<R, E, A, B>(
+  self: Managed<R, E, A>,
+  f: (a: A) => B,
+  __trace?: string
+) {
+  return new Managed<R, E, B>(T.map_(self.effect, ([fin, a]) => [fin, f(a)], __trace))
 }
 
 /**
@@ -267,12 +271,13 @@ export function map_<R, E, A, B>(self: Managed<R, E, A>, f: (a: A) => B) {
  */
 export function mapM_<R, E, A, R2, E2, B>(
   self: Managed<R, E, A>,
-  f: (a: A) => T.Effect<R2, E2, B>
+  f: (a: A) => T.Effect<R2, E2, B>,
+  __trace?: string
 ) {
   return new Managed<R & R2, E | E2, B>(
     T.chain_(self.effect, ([fin, a]) =>
       T.provideSome_(
-        T.map_(f(a), (b) => [fin, b]),
+        T.map_(f(a), (b) => [fin, b], __trace),
         ([r]: readonly [R & R2, ReleaseMap]) => r
       )
     )
@@ -282,16 +287,8 @@ export function mapM_<R, E, A, R2, E2, B>(
 /**
  * Returns a managed whose success is mapped by the specified `f` function.
  */
-export function mapM<A, R2, E2, B>(f: (a: A) => T.Effect<R2, E2, B>) {
-  return <R, E>(self: Managed<R, E, A>) =>
-    new Managed<R & R2, E | E2, B>(
-      T.chain_(self.effect, ([fin, a]) =>
-        T.provideSome_(
-          T.map_(f(a), (b) => [fin, b]),
-          ([r]: readonly [R & R2, ReleaseMap]) => r
-        )
-      )
-    )
+export function mapM<A, R2, E2, B>(f: (a: A) => T.Effect<R2, E2, B>, __trace?: string) {
+  return <R, E>(self: Managed<R, E, A>) => mapM_(self, f, __trace)
 }
 
 /**

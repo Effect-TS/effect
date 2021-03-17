@@ -487,6 +487,12 @@ export function tryOrElse<A, R2, E2, A2, R3, E3, A3>(
 export const unit: UIO<void> = new ISucceed(undefined)
 
 /**
+ * Returns the effect resulting from mapping the success of this effect to unit.
+ */
+export const unitTraced = (__trace?: string): UIO<void> =>
+  new ISucceed(undefined, __trace)
+
+/**
  * Returns an effect that yields to the runtime system, starting on a fresh
  * stack. Manual use of this method can improve fairness, at the cost of
  * overhead.
