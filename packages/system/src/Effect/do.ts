@@ -6,6 +6,7 @@ import { map_ } from "./map"
 
 /**
  * Binds an effectful value in a `do` scope
+ *
  * @dataFirst bind_
  */
 function bind<R, E, A, K, N extends string>(

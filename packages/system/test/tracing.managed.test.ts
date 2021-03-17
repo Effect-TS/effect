@@ -55,4 +55,31 @@ describe("Tracing Managed", () => {
       "test/tracing.managed.test.ts:36:20"
     ])
   })
+  it("should trace forEachPar", async () => {
+    const result = await T.runPromiseExit(
+      pipe(
+        [0, 1, 2],
+        M.forEachPar((n) =>
+          M.makeExit_(
+            T.effectTotal(() => n),
+            () => (n === 2 ? T.die("error") : T.unit)
+          )
+        ),
+        M.use(T.succeed)
+      )
+    )
+
+    assertsFailure(result)
+
+    const cause = pretty(result.cause).matchAll(
+      new RegExp("\\(@effect-ts/system/test\\): (.*)", "g")
+    )
+
+    expect(Array.from(cause).map((s) => s[1])).toEqual([
+      "test/tracing.managed.test.ts:65:35",
+      "test/tracing.managed.test.ts:63:22",
+      "test/tracing.managed.test.ts:62:21",
+      "test/tracing.managed.test.ts:68:24"
+    ])
+  })
 })
