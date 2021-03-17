@@ -174,7 +174,7 @@ export function withPermit(s: Semaphore) {
  */
 export function withPermitsManaged(s: Semaphore, n: number) {
   return M.makeReserve(
-    T.map_(s.prepare(n), (a) => M.makeReservation(() => a.release)(a.waitAcquire))
+    T.map_(s.prepare(n), (a) => M.makeReservation_(a.waitAcquire, () => a.release))
   )
 }
 
