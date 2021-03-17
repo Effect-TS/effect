@@ -862,36 +862,37 @@ export function managedFork<R, E, A>(
   __trace?: string
 ): Managed<R, never, FiberContext<E, A>> {
   return new Managed(
-    interruption.uninterruptibleMask(
-      ({ restore }) =>
-        pipe(
-          Do.do,
-          Do.bind("tp", () => environment<readonly [R, ReleaseMap]>()),
-          Do.let("r", ({ tp }) => tp[0]),
-          Do.let("outerReleaseMap", ({ tp }) => tp[1]),
-          Do.bind("innerReleaseMap", () => makeReleaseMap),
-          Do.bind("fiber", ({ innerReleaseMap, r }) =>
-            restore(
-              pipe(
-                self.effect,
-                map.map(([_, a]) => a),
-                coreScope.forkDaemon,
-                core.provideAll([r, innerReleaseMap] as const)
+    interruption.uninterruptibleMask(({ restore }) =>
+      pipe(
+        Do.do,
+        Do.bind("tp", () => environment<readonly [R, ReleaseMap]>()),
+        Do.let("r", ({ tp }) => tp[0]),
+        Do.let("outerReleaseMap", ({ tp }) => tp[1]),
+        Do.bind("innerReleaseMap", () => makeReleaseMap),
+        Do.bind("fiber", ({ innerReleaseMap, r }) =>
+          restore(
+            pipe(
+              self.effect,
+              map.map(([_, a]) => a),
+              coreScope.forkDaemon,
+              core.provideAll([r, innerReleaseMap] as const, __trace)
+            )
+          )
+        ),
+        Do.bind("releaseMapEntry", ({ fiber, innerReleaseMap, outerReleaseMap }) =>
+          add((e) =>
+            pipe(
+              fiber,
+              fiberInterrupt,
+              core.chain(
+                () => releaseMapReleaseAll(e, sequential)(innerReleaseMap),
+                __trace
               )
             )
-          ),
-          Do.bind("releaseMapEntry", ({ fiber, innerReleaseMap, outerReleaseMap }) =>
-            add((e) =>
-              pipe(
-                fiber,
-                fiberInterrupt,
-                core.chain(() => releaseMapReleaseAll(e, sequential)(innerReleaseMap))
-              )
-            )(outerReleaseMap)
-          ),
-          map.map(({ fiber, releaseMapEntry }) => [releaseMapEntry, fiber])
+          )(outerReleaseMap)
         ),
-      __trace
+        map.map(({ fiber, releaseMapEntry }) => [releaseMapEntry, fiber])
+      )
     )
   )
 }
