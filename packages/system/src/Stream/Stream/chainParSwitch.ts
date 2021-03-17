@@ -106,7 +106,7 @@ export function chainParSwitch(n: number, bufferSize = 16) {
                   pipe(
                     P.await(innerFailure),
                     T.raceWith(
-                      SM.withPermits(n)(permits)(T.unit),
+                      SM.withPermits_(T.unit, permits, n),
                       (_, permitAcquisition) =>
                         pipe(
                           getChildren,

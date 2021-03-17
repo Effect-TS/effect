@@ -81,7 +81,7 @@ export function chainPar(n: number, outputBuffer = 16) {
                     P.await(innerFailure),
                     T.interruptible,
                     T.raceWith(
-                      SM.withPermits(n)(permits)(T.interruptible(T.unit)),
+                      SM.withPermits_(T.interruptible(T.unit), permits, n),
                       (_, permitsAcquisition) =>
                         T.andThen_(
                           T.chain_(getChildren, (c) => F.interruptAll(c)),
