@@ -162,7 +162,7 @@ export function modifyAt_<A>(
  */
 export function filter<A, B extends A>(
   refinement: Refinement<A, B>
-): (nea: NonEmptyArray<A>) => Option<NonEmptyArray<A>>
+): (nea: NonEmptyArray<A>) => Option<NonEmptyArray<B>>
 export function filter<A>(
   predicate: Predicate<A>
 ): (nea: NonEmptyArray<A>) => Option<NonEmptyArray<A>>
@@ -178,7 +178,7 @@ export function filter<A>(
 export function filter_<A, B extends A>(
   nea: NonEmptyArray<A>,
   refinement: Refinement<A, B>
-): Option<NonEmptyArray<A>>
+): Option<NonEmptyArray<B>>
 export function filter_<A>(
   nea: NonEmptyArray<A>,
   predicate: Predicate<A>
