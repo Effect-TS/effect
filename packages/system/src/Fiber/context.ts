@@ -138,7 +138,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   }
 
   addTraceValue(trace: TraceElement) {
-    if (this.inTracingRegion) {
+    if (this.inTracingRegion && trace._tag === "SourceLocation") {
       this.executionTraces!.push(trace)
     }
   }
