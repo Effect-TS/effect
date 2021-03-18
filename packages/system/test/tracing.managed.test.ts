@@ -79,7 +79,8 @@ describe("Tracing Managed", () => {
       "test/tracing.managed.test.ts:65:35",
       "test/tracing.managed.test.ts:63:22",
       "test/tracing.managed.test.ts:62:21",
-      "test/tracing.managed.test.ts:68:24"
+      "test/tracing.managed.test.ts:68:24",
+      "test/tracing.managed.test.ts:62:21"
     ])
   })
 })
