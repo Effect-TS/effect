@@ -586,7 +586,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     const ancestry =
       this.inTracingRegion &&
       (this.platform.value.traceExecution || this.platform.value.traceStack)
-        ? O.some(this.cutAncestryTrace(this.captureTrace(undefined)))
+        ? O.some(this.cutAncestryTrace(this.captureTrace()))
         : O.none
 
     const childContext = new FiberContext(
@@ -806,10 +806,9 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     )
   }
 
-  captureTrace(last: TraceElement | undefined): Trace {
+  captureTrace(): Trace {
     const exec = this.executionTraces ? this.executionTraces.listReverse : L.empty()
-    const stack_ = this.stackTraces ? this.stackTraces.listReverse : L.empty()
-    const stack = last ? L.prepend_(stack_, last) : stack_
+    const stack = this.stackTraces ? this.stackTraces.listReverse : L.empty()
     return new Trace(this.id, exec, stack, this.parentTrace)
   }
 
@@ -828,33 +827,10 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     )
   }
 
-  fastPathTrace(
-    trace: string | undefined,
-    effectTrace: string | undefined,
-    fastPathFlatMapContinuationTrace: AtomicReference<TraceElement | undefined>
-  ): TraceElement | undefined {
-    if (this.inTracingRegion) {
-      const kTrace = traceLocation(trace)
-
-      if (effectTrace && this.platform.value.traceEffects) {
-        this.addTrace(effectTrace)
-      }
-      if (this.platform.value.traceStack) {
-        fastPathFlatMapContinuationTrace.set(kTrace)
-      }
-      return kTrace
-    }
-    return undefined
-  }
-
   evaluateNow(i0: T.Instruction): void {
     try {
       // eslint-disable-next-line prefer-const
       let current: T.Instruction | undefined = i0
-
-      const fastPathFlatMapContinuationTrace = new AtomicReference<
-        TraceElement | undefined
-      >(undefined)
 
       currentFiber.set(this)
 
@@ -874,76 +850,8 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                 // the next instruction in the program:
                 switch (current._tag) {
                   case "FlatMap": {
-                    const nested: T.Instruction = instruction(current.val)
-                    const c = current
-                    const k: (a: any) => T.Effect<any, any, any> = c.f
-
-                    switch (nested._tag) {
-                      case "Succeed": {
-                        if (
-                          nested.trace &&
-                          this.platform.value.traceEffects &&
-                          this.inTracingRegion
-                        ) {
-                          this.addTrace(nested.trace)
-                        }
-                        if (
-                          c.trace &&
-                          this.platform.value.traceExecution &&
-                          this.inTracingRegion
-                        ) {
-                          this.addTrace(c.trace)
-                        }
-                        current = instruction(k(nested.val))
-                        break
-                      }
-                      case "EffectTotal": {
-                        const kTrace = this.fastPathTrace(
-                          c.trace,
-                          nested.trace,
-                          fastPathFlatMapContinuationTrace
-                        )
-                        if (
-                          kTrace &&
-                          this.platform.value.traceExecution &&
-                          this.inTracingRegion
-                        ) {
-                          this.addTraceValue(kTrace)
-                        }
-                        if (this.platform.value.traceStack && kTrace != null) {
-                          fastPathFlatMapContinuationTrace.set(undefined)
-                        }
-                        current = instruction(k(nested.effect()))
-                        break
-                      }
-                      case "EffectPartial": {
-                        const kTrace = this.fastPathTrace(
-                          c.trace,
-                          nested.trace,
-                          fastPathFlatMapContinuationTrace
-                        )
-                        try {
-                          if (this.platform.value.traceStack && kTrace != null) {
-                            fastPathFlatMapContinuationTrace.set(undefined)
-                          }
-                          if (
-                            this.platform.value.traceExecution &&
-                            this.inTracingRegion &&
-                            kTrace != null
-                          ) {
-                            this.addTraceValue(kTrace)
-                          }
-                          current = instruction(k(nested.effect()))
-                        } catch (e) {
-                          current = instruction(T.fail(nested.onThrow(e)))
-                        }
-                        break
-                      }
-                      default: {
-                        current = nested
-                        this.pushContinuation(new ApplyFrame(k, c.trace))
-                      }
-                    }
+                    this.pushContinuation(new ApplyFrame(current.f, current.trace))
+                    current = instruction(current.val)
                     break
                   }
 
@@ -973,7 +881,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                   }
 
                   case "Trace": {
-                    current = this.nextInstr(this.captureTrace(undefined))
+                    current = this.nextInstr(this.captureTrace())
                     break
                   }
 
@@ -1010,9 +918,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                       this.addTrace(current.trace)
                     }
 
-                    const fast = fastPathFlatMapContinuationTrace.get
-                    fastPathFlatMapContinuationTrace.set(undefined)
-                    const fullCause = current.fill(() => this.captureTrace(fast))
+                    const fullCause = current.fill(() => this.captureTrace())
 
                     const discardedFolds = this.unwindStack()
 

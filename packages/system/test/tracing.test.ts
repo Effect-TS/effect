@@ -341,4 +341,27 @@ describe("Tracing", () => {
     const res = await T.runPromise(f)
     expect(res).toEqual(2)
   })
+  it("should trace stack", async () => {
+    const result = await T.runPromiseExit(
+      pipe(
+        T.fail(0),
+        T.andThen(T.succeed(0)),
+        T.andThen(T.succeed(1)),
+        T.andThen(T.succeed(2))
+      )
+    )
+
+    assertsFailure(result)
+    const cause = pretty(result.cause)
+
+    expect(cause).toContain(
+      "a future continuation at (@effect-ts/system/test): test/tracing.test.ts:348:18"
+    )
+    expect(cause).toContain(
+      "a future continuation at (@effect-ts/system/test): test/tracing.test.ts:349:18"
+    )
+    expect(cause).toContain(
+      "a future continuation at (@effect-ts/system/test): test/tracing.test.ts:350:18"
+    )
+  })
 })
