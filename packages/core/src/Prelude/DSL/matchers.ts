@@ -17,6 +17,12 @@ export function matchers<URI extends URIS, C>(_: Base<URI, C>) {
             {
               [tag in N]: k
             }
+          >,
+          __: Extract<
+            X,
+            {
+              [tag in N]: k
+            }
           >
         ) => Kind<URI, C, any, any, any, any, any, any, any, any, any>
       }
@@ -112,6 +118,12 @@ export function matchers<URI extends URIS, C>(_: Base<URI, C>) {
               {
                 [tag in N]: k
               }
+            >,
+            __: Extract<
+              X,
+              {
+                [tag in N]: k
+              }
             >
           ) => Kind<URI, C, any, any, any, any, any, any, any, any, any>
         }
@@ -119,7 +131,10 @@ export function matchers<URI extends URIS, C>(_: Base<URI, C>) {
       Ret extends Kind<URI, C, any, any, any, any, any, any, any, any, any>
     >(
       matcher: K,
-      def: (_: Exclude<X, { [tag in N]: keyof K }>) => Ret
+      def: (
+        _: Exclude<X, { [tag in N]: keyof K }>,
+        __: Exclude<X, { [tag in N]: keyof K }>
+      ) => Ret
     ): (
       _: X
     ) => Kind<
@@ -229,7 +244,7 @@ export function matchers<URI extends URIS, C>(_: Base<URI, C>) {
     return (...args: any[]) => {
       return (_: any) => {
         const matcher = args[0][_[tag]]
-        return matcher ? matcher(_) : args[1](_)
+        return matcher ? matcher(_, _) : args[1](_, _)
       }
     }
   }
@@ -245,6 +260,12 @@ export function matchers<URI extends URIS, C>(_: Base<URI, C>) {
       K extends {
         [k in X[N]]: (
           _: Extract<
+            X,
+            {
+              [tag in N]: k
+            }
+          >,
+          __: Extract<
             X,
             {
               [tag in N]: k
@@ -341,6 +362,12 @@ export function matchers<URI extends URIS, C>(_: Base<URI, C>) {
               {
                 [tag in N]: k
               }
+            >,
+            __: Extract<
+              X,
+              {
+                [tag in N]: k
+              }
             >
           ) => Kind<URI, C, any, any, any, any, any, any, any, any, any>
         }
@@ -348,7 +375,10 @@ export function matchers<URI extends URIS, C>(_: Base<URI, C>) {
       Ret extends Kind<URI, C, any, any, any, any, any, any, any, any, any>
     >(
       matcher: K,
-      def: (_: Exclude<X, { [tag in N]: keyof K }>) => Ret
+      def: (
+        _: Exclude<X, { [tag in N]: keyof K }>,
+        __: Exclude<X, { [tag in N]: keyof K }>
+      ) => Ret
     ): (
       _: X
     ) => Kind<
@@ -458,7 +488,7 @@ export function matchers<URI extends URIS, C>(_: Base<URI, C>) {
     return () => (...args: any[]) => {
       return (_: any) => {
         const matcher = args[0][_[tag]]
-        return matcher ? matcher(_) : args[1](_)
+        return matcher ? matcher(_, _) : args[1](_, _)
       }
     }
   }
@@ -476,6 +506,12 @@ export function matchers<URI extends URIS, C>(_: Base<URI, C>) {
       K extends {
         [k in X[N]]: (
           _: Extract<
+            X,
+            {
+              [tag in N]: k
+            }
+          >,
+          __: Extract<
             X,
             {
               [tag in N]: k
@@ -575,6 +611,12 @@ export function matchers<URI extends URIS, C>(_: Base<URI, C>) {
               {
                 [tag in N]: k
               }
+            >,
+            __: Extract<
+              X,
+              {
+                [tag in N]: k
+              }
             >
           ) => Kind<URI, C, any, any, any, any, any, any, any, any, any>
         }
@@ -582,7 +624,10 @@ export function matchers<URI extends URIS, C>(_: Base<URI, C>) {
       Ret extends Kind<URI, C, any, any, any, any, any, any, any, any, any>
     >(
       matcher: K,
-      def: (_: Exclude<X, { [tag in N]: keyof K }>) => Ret
+      def: (
+        _: Exclude<X, { [tag in N]: keyof K }>,
+        __: Exclude<X, { [tag in N]: keyof K }>
+      ) => Ret
     ): (
       _: X
     ) => Kind<
@@ -692,7 +737,7 @@ export function matchers<URI extends URIS, C>(_: Base<URI, C>) {
     return (...args: any[]) => {
       return (_: any) => {
         const matcher = args[0][_[MorphADT.tag]]
-        return matcher ? matcher(_) : args[1](_)
+        return matcher ? matcher(_, _) : args[1](_, _)
       }
     }
   }

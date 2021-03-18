@@ -5,24 +5,24 @@ import type { UIO } from "../Effect/effect"
 import type * as O from "../Option"
 import type { Atomic } from "./XRef"
 
-export const getAndSet = <A>(a: A) => (self: Atomic<A>): UIO<A> =>
-  effectTotal(() => {
+export function getAndSet<A>(self: Atomic<A>, a: A): UIO<A> {
+  return effectTotal(() => {
     const v = self.value.get
     self.value.set(a)
     return v
   })
+}
 
-export const getAndUpdate = <A>(f: (a: A) => A) => (self: Atomic<A>): UIO<A> =>
-  effectTotal(() => {
+export function getAndUpdate<A>(self: Atomic<A>, f: (a: A) => A): UIO<A> {
+  return effectTotal(() => {
     const v = self.value.get
     self.value.set(f(v))
     return v
   })
+}
 
-export const getAndUpdateSome = <A>(f: (a: A) => O.Option<A>) => (
-  self: Atomic<A>
-): UIO<A> =>
-  effectTotal(() => {
+export function getAndUpdateSome<A>(self: Atomic<A>, f: (a: A) => O.Option<A>): UIO<A> {
+  return effectTotal(() => {
     const v = self.value.get
     const o = f(v)
     if (o._tag === "Some") {
@@ -30,21 +30,23 @@ export const getAndUpdateSome = <A>(f: (a: A) => O.Option<A>) => (
     }
     return v
   })
+}
 
-export const modify = <A, B>(f: (a: A) => readonly [B, A]) => (
-  self: Atomic<A>
-): UIO<B> =>
-  effectTotal(() => {
+export function modify<A, B>(self: Atomic<A>, f: (a: A) => readonly [B, A]): UIO<B> {
+  return effectTotal(() => {
     const v = self.value.get
     const o = f(v)
     self.value.set(o[1])
     return o[0]
   })
+}
 
-export const modifySome = <B>(def: B) => <A>(
+export function modifySome<A, B>(
+  self: Atomic<A>,
+  def: B,
   f: (a: A) => O.Option<readonly [B, A]>
-) => (self: Atomic<A>): UIO<B> =>
-  effectTotal(() => {
+) {
+  return effectTotal(() => {
     const v = self.value.get
     const o = f(v)
 
@@ -55,33 +57,32 @@ export const modifySome = <B>(def: B) => <A>(
 
     return def
   })
+}
 
-export const update = <A>(f: (a: A) => A) => (self: Atomic<A>): UIO<void> =>
-  effectTotal(() => {
+export function update<A>(self: Atomic<A>, f: (a: A) => A): UIO<void> {
+  return effectTotal(() => {
     self.value.set(f(self.value.get))
   })
+}
 
-export const updateAndGet = <A>(f: (a: A) => A) => (self: Atomic<A>): UIO<A> => {
+export function updateAndGet<A>(self: Atomic<A>, f: (a: A) => A): UIO<A> {
   return effectTotal(() => {
     self.value.set(f(self.value.get))
     return self.value.get
   })
 }
 
-export const updateSome = <A>(f: (a: A) => O.Option<A>) => (
-  self: Atomic<A>
-): UIO<void> =>
-  effectTotal(() => {
+export function updateSome<A>(self: Atomic<A>, f: (a: A) => O.Option<A>): UIO<void> {
+  return effectTotal(() => {
     const o = f(self.value.get)
 
     if (o._tag === "Some") {
       self.value.set(o.value)
     }
   })
+}
 
-export const updateSomeAndGet = <A>(f: (a: A) => O.Option<A>) => (
-  self: Atomic<A>
-): UIO<A> => {
+export function updateSomeAndGet<A>(self: Atomic<A>, f: (a: A) => O.Option<A>): UIO<A> {
   return effectTotal(() => {
     const o = f(self.value.get)
 
@@ -93,6 +94,6 @@ export const updateSomeAndGet = <A>(f: (a: A) => O.Option<A>) => (
   })
 }
 
-export const unsafeUpdate = <A>(f: (a: A) => A) => (self: Atomic<A>) => {
+export function unsafeUpdate<A>(self: Atomic<A>, f: (a: A) => A) {
   self.value.set(f(self.value.get))
 }
