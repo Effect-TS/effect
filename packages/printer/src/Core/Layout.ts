@@ -2,7 +2,7 @@
 
 import type { Array } from "@effect-ts/core/Array"
 import * as A from "@effect-ts/core/Array"
-import { absurd, constant, not, pipe } from "@effect-ts/core/Function"
+import { constant, not, pipe } from "@effect-ts/core/Function"
 import * as IO from "@effect-ts/core/IO"
 import type { Option } from "@effect-ts/core/Option"
 import * as O from "@effect-ts/core/Option"
@@ -112,8 +112,6 @@ export const match = <A, R>(patterns: {
         return patterns.Cons(x.indent, x.document, x.pipeline)
       case "UndoAnnotation":
         return patterns.UndoAnnotation(x.pipeline)
-      default:
-        return absurd(x as never)
     }
   }
   return f
@@ -220,14 +218,10 @@ const layoutWadlerLeijen = <A>(fits: FittingPredicate<A>) => (
               const s = yield* _(pipe(p, go(nl, cc, opts)))
               return DS.pushAnnotation(x.document.annotation, s)
             }
-            default:
-              return absurd(x.document)
           }
         }
         case "UndoAnnotation":
           return DS.popAnnotation(yield* _(pipe(x.pipeline, go(nl, cc, opts))))
-        default:
-          return absurd(x)
       }
     })
   return (opts) => IO.run(go(0, 0, opts)(cons(0, doc, nil)))
@@ -251,8 +245,6 @@ const failsOnFirstLine = <A>(stream: DocStream<A>): boolean => {
           return yield* _(go(x.stream))
         case "PopAnnotation":
           return yield* _(go(x.stream))
-        default:
-          return absurd(x)
       }
     })
   return IO.run(go(stream))
@@ -286,8 +278,6 @@ const fitsPretty = (width: number) => <A>(stream: DocStream<A>): boolean => {
           return yield* _(pipe(x.stream, go(w)))
         case "PopAnnotation":
           return yield* _(pipe(x.stream, go(w)))
-        default:
-          return absurd(x)
       }
     })
   return pipe(stream, go(width), IO.run)
@@ -363,8 +353,6 @@ const fitsSmart = (lineWidth: number, ribbonFraction: number) => (
           return yield* _(pipe(x.stream, go(w)))
         case "PopAnnotation":
           return yield* _(pipe(x.stream, go(w)))
-        default:
-          return absurd(x)
       }
     })
 
@@ -545,8 +533,6 @@ export const compact = <A, B>(doc: Doc<A>): DocStream<B> => {
             return yield* _(go(i)(A.cons_(rest, x.react(0))))
           case "Annotated":
             return yield* _(go(i)(A.cons_(rest, x.doc)))
-          default:
-            absurd(x)
         }
       }
       return DS.empty

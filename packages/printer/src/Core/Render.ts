@@ -11,9 +11,9 @@ import type { DocStream } from "./DocStream"
 // operations
 // -------------------------------------------------------------------------------------
 
-const foldS = Ident.fold(Ident.string)
+const fold = Ident.fold(Ident.string)
 
-export const renderS = <A>(stream: DocStream<A>): string => {
+export const render = <A>(stream: DocStream<A>): string => {
   const go = (x: DocStream<A>): IO.IO<string> =>
     IO.gen(function* (_) {
       switch (x._tag) {
@@ -23,16 +23,16 @@ export const renderS = <A>(stream: DocStream<A>): string => {
           return Ident.string.identity
         case "CharStream": {
           const rest = yield* _(go(x.stream))
-          return foldS([x.char, rest])
+          return fold([x.char, rest])
         }
         case "TextStream": {
           const rest = yield* _(go(x.stream))
-          return foldS([x.text, rest])
+          return fold([x.text, rest])
         }
         case "LineStream": {
-          const indent = pipe(x.indentation, A.replicate(" "), A.cons("\n"), foldS)
+          const indent = pipe(x.indentation, A.replicate(" "), A.cons("\n"), fold)
           const rest = yield* _(go(x.stream))
-          return foldS([indent, rest])
+          return fold([indent, rest])
         }
         case "PushAnnotation":
           return yield* _(go(x.stream))

@@ -4,7 +4,7 @@ import type { Array } from "@effect-ts/core/Array"
 import * as A from "@effect-ts/core/Array"
 import type { Associative } from "@effect-ts/core/Associative"
 import * as Assoc from "@effect-ts/core/Associative"
-import { absurd, constant, pipe } from "@effect-ts/core/Function"
+import { absurd, constant, identity, pipe } from "@effect-ts/core/Function"
 import type { Identity } from "@effect-ts/core/Identity"
 import * as Ident from "@effect-ts/core/Identity"
 import * as IO from "@effect-ts/core/IO"
@@ -37,11 +37,11 @@ import type { PageWidth } from "./PageWidth"
  * - whether to show something or not (to allow simple or detailed versions)
  */
 export type Doc<A> =
-  | Fail
-  | Empty
-  | Char
-  | Text
-  | Line
+  | Fail<A>
+  | Empty<A>
+  | Char<A>
+  | Text<A>
+  | Line<A>
   | FlatAlt<A>
   | Cat<A>
   | Nest<A>
@@ -56,15 +56,17 @@ export type Doc<A> =
  * flattening a line. The layout algorithms will reject this document
  * and choose a more suitable rendering.
  */
-export interface Fail {
-  readonly _tag: "Fail"
+export class Fail<A> {
+  readonly _tag = "Fail"
+  constructor(readonly id: (_: never) => A) {}
 }
 
 /**
  * Represents the empty document. Conceptually, the unit of `Cat`.
  */
-export interface Empty {
-  readonly _tag: "Empty"
+export class Empty<A> {
+  readonly _tag = "Empty"
+  constructor(readonly id: (_: never) => A) {}
 }
 
 /**
@@ -73,9 +75,9 @@ export interface Empty {
  * **Invariants**
  * - Cannot be the newline (`"\n"`) character
  */
-export interface Char {
-  readonly _tag: "Char"
-  readonly char: string
+export class Char<A> {
+  readonly _tag = "Char"
+  constructor(readonly char: string, readonly id: (_: never) => A) {}
 }
 
 /**
@@ -85,16 +87,17 @@ export interface Char {
  * - Text cannot be less than two characters long
  * - Text cannot contain a newline (`"\n"`) character
  */
-export interface Text {
-  readonly _tag: "Text"
-  readonly text: string
+export class Text<A> {
+  readonly _tag = "Text"
+  constructor(readonly text: string, readonly id: (_: never) => A) {}
 }
 
 /**
  * Represents a document that contains a hard line break.
  */
-export interface Line {
-  readonly _tag: "Line"
+export class Line<A> {
+  readonly _tag = "Line"
+  constructor(readonly id: (_: never) => A) {}
 }
 
 /**
@@ -106,29 +109,26 @@ export interface Line {
  * first alternative is less wide than the flattened second
  * alternative.
  */
-export interface FlatAlt<A> {
-  readonly _tag: "FlatAlt"
-  readonly left: Doc<A>
-  readonly right: Doc<A>
+export class FlatAlt<A> {
+  readonly _tag = "FlatAlt"
+  constructor(readonly left: Doc<A>, readonly right: Doc<A>) {}
 }
 
 /**
  * Represents the concatenation of two documents.
  */
-export interface Cat<A> {
-  readonly _tag: "Cat"
-  readonly left: Doc<A>
-  readonly right: Doc<A>
+export class Cat<A> {
+  readonly _tag = "Cat"
+  constructor(readonly left: Doc<A>, readonly right: Doc<A>) {}
 }
 
 /**
  * Represents a document that is indented by a certain
  * number of columns.
  */
-export interface Nest<A> {
-  readonly _tag: "Nest"
-  readonly indent: number
-  readonly doc: Doc<A>
+export class Nest<A> {
+  readonly _tag = "Nest"
+  constructor(readonly indent: number, readonly doc: Doc<A>) {}
 }
 
 /**
@@ -140,60 +140,56 @@ export interface Nest<A> {
  * than the first lines of the second document so that the
  * layout algorithm can pick the document with the best fit
  */
-export interface Union<A> {
-  readonly _tag: "Union"
-  readonly left: Doc<A>
-  readonly right: Doc<A>
+export class Union<A> {
+  readonly _tag = "Union"
+  constructor(readonly left: Doc<A>, readonly right: Doc<A>) {}
 }
 
 /**
  * Represents a document that reacts to the current cursor
  * position.
  */
-export interface Column<A> {
-  readonly _tag: "Column"
-  readonly react: (position: number) => Doc<A>
+export class Column<A> {
+  readonly _tag = "Column"
+  constructor(readonly react: (position: number) => Doc<A>) {}
 }
 
 /**
  * Represents a document that reacts to the current page width.
  */
-export interface WithPageWidth<A> {
-  readonly _tag: "WithPageWidth"
-  readonly react: (pageWidth: PageWidth) => Doc<A>
+export class WithPageWidth<A> {
+  readonly _tag = "WithPageWidth"
+  constructor(readonly react: (pageWidth: PageWidth) => Doc<A>) {}
 }
 
 /**
  * Represents a document that reacts to the current nesting level.
  */
-export interface Nesting<A> {
-  readonly _tag: "Nesting"
-  readonly react: (level: number) => Doc<A>
+export class Nesting<A> {
+  readonly _tag = "Nesting"
+  constructor(readonly react: (level: number) => Doc<A>) {}
 }
 
 /**
  * Represents a document with an associated annotation.
  */
-export interface Annotated<A> {
-  readonly _tag: "Annotated"
-  readonly annotation: A
-  readonly doc: Doc<A>
+export class Annotated<A> {
+  readonly _tag = "Annotated"
+  constructor(readonly annotation: A, readonly doc: Doc<A>) {}
 }
 
 // -------------------------------------------------------------------------------------
 // constructors
 // -------------------------------------------------------------------------------------
 
-const line_: Line = { _tag: "Line" }
+const line_: Doc<never> = new Line(identity)
 
 /**
  * The `fail` document is a document that cannot be rendered. Generally
  * occurs when flattening a line. The layout algorithms will reject this
  * document and choose a more suitable rendering.
  */
-export const fail: Doc<never> = {
-  _tag: "Fail"
-}
+export const fail: Doc<never> = new Fail(identity)
 
 /**
  * The `empty` document behaves like a document containing the empty string
@@ -219,9 +215,7 @@ export const fail: Doc<never> = {
  * // world
  * ```
  */
-export const empty: Doc<never> = {
-  _tag: "Empty"
-}
+export const empty: Doc<never> = new Empty(identity)
 
 /**
  * A document containing a single character.
@@ -229,10 +223,7 @@ export const empty: Doc<never> = {
  * **Invariants**
  * - Cannot be the newline (`"\n"`) character
  */
-export const char = <A>(char: string): Doc<A> => ({
-  _tag: "Char",
-  char
-})
+export const char = (char: string): Doc<never> => new Char(char, identity)
 
 /**
  * A document containing a string of text.
@@ -241,10 +232,7 @@ export const char = <A>(char: string): Doc<A> => ({
  * - Text cannot be less than two characters long
  * - Text cannot contain a newline (`"\n"`) character
  */
-export const text = <A>(text: string): Doc<A> => ({
-  _tag: "Text",
-  text
-})
+export const text = (text: string): Doc<never> => new Text(text, identity)
 
 /**
  * The `flatAlt` document will render `left` by default. However, when
@@ -287,23 +275,14 @@ export const text = <A>(text: string): Doc<A> => ({
  * //    putStrLn greet
  *```
  */
-export const flatAlt = <A>(left: Doc<A>, right: Doc<A>): Doc<A> => ({
-  _tag: "FlatAlt",
-  left,
-  right
-})
+export const flatAlt = <A, B>(left: Doc<A>, right: Doc<B>): Doc<A | B> =>
+  new FlatAlt<A | B>(left, right)
 
-export const union = <A>(left: Doc<A>, right: Doc<A>): Doc<A> => ({
-  _tag: "Union",
-  left,
-  right
-})
+export const union = <A, B>(left: Doc<A>, right: Doc<B>): Doc<A | B> =>
+  new Union<A | B>(left, right)
 
-export const cat = <A>(left: Doc<A>, right: Doc<A>): Doc<A> => ({
-  _tag: "Cat",
-  left,
-  right
-})
+export const cat = <A, B>(left: Doc<A>, right: Doc<B>): Doc<A | B> =>
+  new Cat<A | B>(left, right)
 
 /**
  * The `line` document advances to the next line and indents to the
@@ -658,15 +637,15 @@ export const match = <A, R>(patterns: {
 // operations
 // -------------------------------------------------------------------------------------
 
-export const isFail = <A>(doc: Doc<A>): doc is Fail => doc._tag === "Fail"
+export const isFail = <A>(doc: Doc<A>): doc is Fail<A> => doc._tag === "Fail"
 
-export const isEmpty = <A>(doc: Doc<A>): doc is Empty => doc._tag === "Empty"
+export const isEmpty = <A>(doc: Doc<A>): doc is Empty<A> => doc._tag === "Empty"
 
-export const isChar = <A>(doc: Doc<A>): doc is Char => doc._tag === "Char"
+export const isChar = <A>(doc: Doc<A>): doc is Char<A> => doc._tag === "Char"
 
-export const isText = <A>(doc: Doc<A>): doc is Text => doc._tag === "Text"
+export const isText = <A>(doc: Doc<A>): doc is Text<A> => doc._tag === "Text"
 
-export const isLine = <A>(doc: Doc<A>): doc is Line => doc._tag === "Line"
+export const isLine = <A>(doc: Doc<A>): doc is Line<A> => doc._tag === "Line"
 
 export const isFlatAlt = <A>(doc: Doc<A>): doc is FlatAlt<A> => doc._tag === "FlatAlt"
 
@@ -726,8 +705,16 @@ export const alterAnnotations = <A, B>(
           return nesting((level) => IO.run(go(x.react(level))))
         case "Annotated":
           return A.reduceRight_(f(x.annotation), yield* _(go(x.doc)), annotate)
-        default:
-          return x
+        case "Fail":
+          return fail
+        case "Empty":
+          return empty
+        case "Char":
+          return char(x.char)
+        case "Text":
+          return text(x.text)
+        case "Line":
+          return line
       }
     })
   return (_) => IO.run(go(_))
@@ -1502,7 +1489,7 @@ export const hang = (indent: number): (<A>(doc: Doc<A>) => Doc<A>) => (_) =>
  * ```
  */
 export const indent = (indent: number) => <A>(doc: Doc<A>): Doc<A> =>
-  pipe(cat<A>(spaces(indent), doc), hang(indent))
+  pipe(cat(spaces(indent), doc), hang(indent))
 
 /**
  * The `encloseSep` combinator concatenates a list of documents, separating
@@ -1544,13 +1531,13 @@ export const indent = (indent: number) => <A>(doc: Doc<A>): Doc<A> =>
  * //      ,4000]
  * ```
  */
-export const encloseSep = <A>(left: Doc<A>, right: Doc<A>, sep: Doc<A>) => (
-  docs: Array<Doc<A>>
-): Doc<A> => {
+export const encloseSep = <A, B, C>(left: Doc<A>, right: Doc<B>, sep: Doc<C>) => <D>(
+  docs: Array<Doc<D>>
+): Doc<A | B | C | D> => {
   if (docs.length === 0) return cat(left, right)
   if (docs.length === 1) return cat(left, cat(docs[0]!, right))
   const xs = pipe(
-    pipe(docs.length - 1, A.replicate(sep), A.cons(left)),
+    pipe(A.cons_(A.replicate(sep)(docs.length - 1), left as Doc<A | C>)),
     A.zipWith(docs, cat)
   )
   return cat(cats(xs), right)
@@ -1582,8 +1569,8 @@ export const list = <A>(docs: Array<Doc<A>>): Doc<A> =>
   pipe(
     docs,
     encloseSep(
-      flatAlt<A>(char("[ "), lbracket),
-      flatAlt<A>(char(" ]"), rbracket),
+      flatAlt(char("[ "), lbracket),
+      flatAlt(char(" ]"), rbracket),
       char(", ")
     ),
     group
@@ -1614,11 +1601,7 @@ export const list = <A>(docs: Array<Doc<A>>): Doc<A> =>
 export const tupled = <A>(docs: Array<Doc<A>>): Doc<A> =>
   pipe(
     docs,
-    encloseSep(
-      flatAlt<A>(char("( "), lparen),
-      flatAlt<A>(char(" )"), rparen),
-      char(", ")
-    ),
+    encloseSep(flatAlt(char("( "), lparen), flatAlt(char(" )"), rparen), char(", ")),
     group
   )
 
@@ -1661,7 +1644,9 @@ export const tupled = <A>(docs: Array<Doc<A>>): Doc<A> =>
  * //     ---] <- width: 8
  * ```
  */
-export const width = <A>(react: (width: number) => Doc<A>) => (doc: Doc<A>): Doc<A> =>
+export const width = <A>(react: (width: number) => Doc<A>) => <B>(
+  doc: Doc<B>
+): Doc<A | B> =>
   column((colStart) =>
     cat(
       doc,
@@ -1808,7 +1793,7 @@ export const dquotes = <A>(doc: Doc<A>): Doc<A> => pipe(doc, enclose<A>(dquote, 
  * // ["     "]
  * ```
  */
-export const spaces = <A>(n: number): Doc<A> => {
+export const spaces = (n: number): Doc<never> => {
   if (n <= 0) return empty
   if (n === 1) return char(" ")
   return text(textSpaces(n))
@@ -1828,8 +1813,8 @@ export const spaces = <A>(n: number): Doc<A> => {
  * // (lorem, ipsum, dolor)
  * ```
  */
-export const words = <A>(s: string, char = " "): Array<Doc<A>> =>
-  pipe(s.split(char), A.map<string, Doc<A>>(text))
+export const words = (s: string, char = " "): Array<Doc<never>> =>
+  pipe(s.split(char), A.map<string, Doc<never>>(text))
 
 /**
  * Splits a string of words into individual `Text` documents using the
@@ -1856,8 +1841,8 @@ export const words = <A>(s: string, char = " "): Array<Doc<A>> =>
  * // aliqua.
  * ```
  */
-export const reflow = <A>(s: string, char = " "): Doc<A> =>
-  pipe(words<A>(s, char), fillSep)
+export const reflow = (s: string, char = " "): Doc<never> =>
+  pipe(words(s, char), fillSep)
 
 // -------------------------------------------------------------------------------------
 // instances

@@ -1,7 +1,7 @@
 // tracing: off
 
 import type { Endomorphism } from "@effect-ts/core/Function"
-import { absurd, pipe } from "@effect-ts/core/Function"
+import { pipe } from "@effect-ts/core/Function"
 import * as Ord from "@effect-ts/core/Ord"
 import * as MO from "@effect-ts/morphic"
 
@@ -92,8 +92,6 @@ export const match = <R>(patterns: {
         return patterns.AvailablePerLine(x.lineWidth, x.ribbonFraction)
       case "Unbounded":
         return patterns.Unbounded()
-      default:
-        return absurd(x)
     }
   }
   return f

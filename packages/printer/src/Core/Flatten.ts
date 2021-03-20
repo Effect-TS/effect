@@ -1,6 +1,5 @@
 // tracing: off
 
-import { absurd } from "@effect-ts/core/Function"
 import type { URI } from "@effect-ts/core/Prelude"
 import * as P from "@effect-ts/core/Prelude"
 
@@ -73,8 +72,6 @@ export const match = <A, R>(patterns: {
         return patterns.AlreadyFlat()
       case "NeverFlat":
         return patterns.NeverFlat()
-      default:
-        return absurd(x)
     }
   }
   return f
