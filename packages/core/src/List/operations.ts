@@ -3,14 +3,14 @@
 import * as List from "@effect-ts/system/Persistent/List"
 
 import * as A from "../Array"
-import type { Equal } from "../Equal"
-import { makeEqual } from "../Equal"
 import { pipe } from "../Function"
 import type { ListURI } from "../Modules"
-import type { Ord } from "../Ord"
 import type { URI } from "../Prelude"
 import * as P from "../Prelude"
-import type { Show } from "../Show"
+import type { Equal } from "../Prelude/Equal"
+import { makeEqual } from "../Prelude/Equal"
+import type { Ord } from "../Prelude/Ord"
+import type { Show } from "../Prelude/Show"
 import type { Identity } from "../Structure/Identity"
 import { makeIdentity } from "../Structure/Identity"
 

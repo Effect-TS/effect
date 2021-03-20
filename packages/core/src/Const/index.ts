@@ -2,15 +2,15 @@
 
 import "../Operator"
 
-import type { Bounded } from "../Bounded"
-import type { Equal } from "../Equal"
 import { unsafeCoerce } from "../Function"
 import type { ConstURI } from "../Modules"
-import type { Ord } from "../Ord"
 import type { URI } from "../Prelude"
 import * as P from "../Prelude"
-import type { Show } from "../Show"
-import { makeShow } from "../Show"
+import type { Bounded } from "../Prelude/Bounded"
+import type { Equal } from "../Prelude/Equal"
+import type { Ord } from "../Prelude/Ord"
+import type { Show } from "../Prelude/Show"
+import { makeShow } from "../Prelude/Show"
 /* adapted from https://github.com/gcanti/fp-ts */
 /**
  * The `Const` type constructor, which wraps its first type argument and ignores its second.

@@ -1,6 +1,6 @@
 // tracing: off
 
-import type { Ordering } from "../Ordering"
+import type { Ordering } from "../../Ordering"
 import type { Bounded } from "./definition"
 
 /**

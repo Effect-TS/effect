@@ -3,12 +3,12 @@
 /* adapted from https://github.com/gcanti/fp-ts */
 import "../Operator"
 
-import type { Equal } from "../Equal"
 import type { IdURI } from "../Modules"
 import type { URI } from "../Prelude"
 import * as P from "../Prelude"
 import { structF, tupleF } from "../Prelude/DSL"
-import type { Show } from "../Show"
+import type { Equal } from "../Prelude/Equal"
+import type { Show } from "../Prelude/Show"
 import type { Identity } from "../Structure/Identity"
 
 export type Id<A> = A

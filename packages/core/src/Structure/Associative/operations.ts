@@ -1,6 +1,6 @@
 // tracing: off
 
-import * as Ord from "../../Ord"
+import * as Ord from "../../Prelude/Ord"
 import type { Associative } from "./definition"
 import { makeAssociative } from "./makeAssociative"
 

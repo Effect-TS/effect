@@ -1,7 +1,7 @@
 // tracing: off
 
-import "../Operator"
+import "../../Operator"
 
 export * from "@effect-ts/system/Equal"
-export { EqualURI } from "../Modules"
+export { EqualURI } from "../../Modules"
 export * from "./instances"

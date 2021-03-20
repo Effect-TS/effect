@@ -1,7 +1,7 @@
 // tracing: off
 
-import "../Operator"
+import "../../Operator"
 
 export * from "@effect-ts/system/Ord"
-export { OrdURI } from "../Modules"
+export { OrdURI } from "../../Modules"
 export * from "./operations"

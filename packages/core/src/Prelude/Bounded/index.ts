@@ -1,7 +1,7 @@
 // tracing: off
 
-import "../Operator"
+import "../../Operator"
 
 export * from "./definition"
-export { BoundedURI } from "../Modules"
+export { BoundedURI } from "../../Modules"
 export * from "./operations"

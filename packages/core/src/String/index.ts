@@ -7,12 +7,12 @@ import "../Operator"
  * Partially Ported from https://github.com/0x706b/principia
  */
 import * as A from "../Array"
-import * as Eq from "../Equal"
 import { pipe } from "../Function"
 import type { Sum } from "../Newtype"
 import { StringSum } from "../Newtype"
 import * as NA from "../NonEmptyArray"
 import * as O from "../Option"
+import * as Eq from "../Prelude/Equal"
 import * as C from "../Structure/Closure"
 import * as I from "../Structure/Identity"
 
