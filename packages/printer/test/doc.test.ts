@@ -8,13 +8,13 @@ describe("Doc", () => {
   it("dummy", () => {
     expect(
       pipe(
-        D.cats([
+        D.catsT(
           D.text("hello"),
           D.text("world"),
           D.char("I"),
           D.text("am"),
           D.text("alive")
-        ]),
+        ),
         L.compact,
         R.render
       )

@@ -10,6 +10,7 @@ import * as Ident from "@effect-ts/core/Identity"
 import * as IO from "@effect-ts/core/IO"
 import type { URI } from "@effect-ts/core/Prelude"
 import * as P from "@effect-ts/core/Prelude"
+import type { _A } from "@effect-ts/system/Utils"
 
 import type { Flatten } from "./Flatten"
 import * as F from "./Flatten"
@@ -58,6 +59,7 @@ export type Doc<A> =
  */
 export class Fail<A> {
   readonly _tag = "Fail"
+  readonly _A!: () => A
   constructor(readonly id: (_: never) => A) {}
 }
 
@@ -66,6 +68,7 @@ export class Fail<A> {
  */
 export class Empty<A> {
   readonly _tag = "Empty"
+  readonly _A!: () => A
   constructor(readonly id: (_: never) => A) {}
 }
 
@@ -77,6 +80,7 @@ export class Empty<A> {
  */
 export class Char<A> {
   readonly _tag = "Char"
+  readonly _A!: () => A
   constructor(readonly char: string, readonly id: (_: never) => A) {}
 }
 
@@ -89,6 +93,7 @@ export class Char<A> {
  */
 export class Text<A> {
   readonly _tag = "Text"
+  readonly _A!: () => A
   constructor(readonly text: string, readonly id: (_: never) => A) {}
 }
 
@@ -97,6 +102,7 @@ export class Text<A> {
  */
 export class Line<A> {
   readonly _tag = "Line"
+  readonly _A!: () => A
   constructor(readonly id: (_: never) => A) {}
 }
 
@@ -111,6 +117,7 @@ export class Line<A> {
  */
 export class FlatAlt<A> {
   readonly _tag = "FlatAlt"
+  readonly _A!: () => A
   constructor(readonly left: Doc<A>, readonly right: Doc<A>) {}
 }
 
@@ -119,6 +126,7 @@ export class FlatAlt<A> {
  */
 export class Cat<A> {
   readonly _tag = "Cat"
+  readonly _A!: () => A
   constructor(readonly left: Doc<A>, readonly right: Doc<A>) {}
 }
 
@@ -128,6 +136,7 @@ export class Cat<A> {
  */
 export class Nest<A> {
   readonly _tag = "Nest"
+  readonly _A!: () => A
   constructor(readonly indent: number, readonly doc: Doc<A>) {}
 }
 
@@ -142,6 +151,7 @@ export class Nest<A> {
  */
 export class Union<A> {
   readonly _tag = "Union"
+  readonly _A!: () => A
   constructor(readonly left: Doc<A>, readonly right: Doc<A>) {}
 }
 
@@ -151,6 +161,7 @@ export class Union<A> {
  */
 export class Column<A> {
   readonly _tag = "Column"
+  readonly _A!: () => A
   constructor(readonly react: (position: number) => Doc<A>) {}
 }
 
@@ -159,6 +170,7 @@ export class Column<A> {
  */
 export class WithPageWidth<A> {
   readonly _tag = "WithPageWidth"
+  readonly _A!: () => A
   constructor(readonly react: (pageWidth: PageWidth) => Doc<A>) {}
 }
 
@@ -167,6 +179,7 @@ export class WithPageWidth<A> {
  */
 export class Nesting<A> {
   readonly _tag = "Nesting"
+  readonly _A!: () => A
   constructor(readonly react: (level: number) => Doc<A>) {}
 }
 
@@ -175,6 +188,7 @@ export class Nesting<A> {
  */
 export class Annotated<A> {
   readonly _tag = "Annotated"
+  readonly _A!: () => A
   constructor(readonly annotation: A, readonly doc: Doc<A>) {}
 }
 
@@ -453,7 +467,7 @@ export const hardLine: Doc<never> = line_
  * ```
  */
 export const nest = (indent: number) => <A>(doc: Doc<A>): Doc<A> =>
-  indent === 0 ? doc : { _tag: "Nest", indent, doc }
+  indent === 0 ? doc : new Nest(indent, doc)
 
 /**
  * Lays out a document depending upon the column at which the
@@ -491,10 +505,8 @@ export const nest = (indent: number) => <A>(doc: Doc<A>): Doc<A> =>
  * //         prefix | <- column 15
  * ```
  */
-export const column = <A>(react: (position: number) => Doc<A>): Doc<A> => ({
-  _tag: "Column",
-  react
-})
+export const column = <A>(react: (position: number) => Doc<A>): Doc<A> =>
+  new Column(react)
 
 /**
  * Lays out a document depending upon the current nesting level (i.e.,
@@ -522,10 +534,8 @@ export const column = <A>(react: (position: number) => Doc<A>): Doc<A> => ({
  * //         prefix [Nested: 8]
  * ```
  */
-export const nesting = <A>(react: (level: number) => Doc<A>): Doc<A> => ({
-  _tag: "Nesting",
-  react
-})
+export const nesting = <A>(react: (level: number) => Doc<A>): Doc<A> =>
+  new Nesting(react)
 
 /**
  * Lays out a document according to the document's`PageWidth`.
@@ -561,10 +571,8 @@ export const nesting = <A>(react: (level: number) => Doc<A>): Doc<A> => ({
  * //         prefix [Width: 32, ribbon fraction: 1]
  * ```
  */
-export const withPageWidth = <A>(react: (pageWidth: PageWidth) => Doc<A>): Doc<A> => ({
-  _tag: "WithPageWidth",
-  react
-})
+export const withPageWidth = <A>(react: (pageWidth: PageWidth) => Doc<A>): Doc<A> =>
+  new WithPageWidth(react)
 
 /**
  * Adds an annotation to a `Doc`. The annotation can then be used by the rendering
@@ -573,11 +581,8 @@ export const withPageWidth = <A>(react: (pageWidth: PageWidth) => Doc<A>): Doc<A
  * **Note** This function is relevant only for custom formats with their own annotations,
  * and is not relevant for basic pretty printing.
  */
-export const annotate = <A>(annotation: A, doc: Doc<A>): Doc<A> => ({
-  _tag: "Annotated",
-  annotation,
-  doc
-})
+export const annotate = <A>(annotation: A, doc: Doc<A>): Doc<A> =>
+  new Annotated(annotation, doc)
 
 // -------------------------------------------------------------------------------------
 // destructors
@@ -1312,6 +1317,13 @@ export const fillCat: <A>(docs: Array<Doc<A>>) => Doc<A> = concatWith(
  * ```
  */
 export const cats: <A>(docs: Array<Doc<A>>) => Doc<A> = (_) => group(vcat(_))
+
+/**
+ * Tupled variant of cats
+ */
+export const catsT: <Docs extends Array<Doc<any>>>(
+  ...docs: Docs
+) => Doc<_A<Docs[number]>> = (..._) => cats(_)
 
 // -------------------------------------------------------------------------------------
 // filler combinators
