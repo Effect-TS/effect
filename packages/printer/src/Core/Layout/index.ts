@@ -7,11 +7,11 @@ import * as IO from "@effect-ts/core/IO"
 import type { Option } from "@effect-ts/core/Option"
 import * as O from "@effect-ts/core/Option"
 
-import type { Doc } from "./Doc"
-import type { DocStream } from "./DocStream"
-import * as DS from "./DocStream"
-import type { PageWidth } from "./PageWidth"
-import * as PW from "./PageWidth"
+import type { Doc } from "../Doc"
+import type { DocStream } from "../DocStream"
+import * as DS from "../DocStream"
+import type { PageWidth } from "../PageWidth"
+import * as PW from "../PageWidth"
 
 // -------------------------------------------------------------------------------------
 // definition

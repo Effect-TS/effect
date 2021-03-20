@@ -32,6 +32,20 @@
   },
   "config": {
     "side": [],
-    "modules": []
+    "modules": [
+      "Core",
+      "Core/Doc",
+      "Core/DocStream",
+      "Core/Flatten",
+      "Core/Layout",
+      "Core/Optimize",
+      "Core/PageWidth",
+      "Core/Render",
+      "Terminal",
+      "Terminal/Color",
+      "Terminal/Layer",
+      "Terminal/SGR",
+      "Terminal/Style"
+    ]
   }
 }

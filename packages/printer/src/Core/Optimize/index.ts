@@ -2,8 +2,8 @@
 
 import * as S from "@effect-ts/core/IO"
 
-import type { Doc } from "./Doc"
-import * as D from "./Doc"
+import type { Doc } from "../Doc"
+import * as D from "../Doc"
 
 // -------------------------------------------------------------------------------------
 // definition

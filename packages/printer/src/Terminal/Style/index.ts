@@ -10,10 +10,10 @@ import * as O from "@effect-ts/core/Option"
 import * as S from "@effect-ts/core/Show"
 import * as MO from "@effect-ts/morphic"
 
-import type { DocStream } from "../Core/DocStream"
-import type { Color } from "./Color"
-import * as Layer from "./Layer"
-import { setSGRCode, SGR } from "./SGR"
+import type { DocStream } from "../../Core/DocStream"
+import type { Color } from "../Color"
+import * as Layer from "../Layer"
+import { setSGRCode, SGR } from "../SGR"
 
 // -------------------------------------------------------------------------------------
 // definition

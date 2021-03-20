@@ -7,8 +7,8 @@ import * as Ident from "@effect-ts/core/Identity"
 import * as Show from "@effect-ts/core/Show"
 import * as MO from "@effect-ts/morphic"
 
-import { Color, colorToCode } from "./Color"
-import { Layer } from "./Layer"
+import { Color, colorToCode } from "../Color"
+import { Layer } from "../Layer"
 
 // -------------------------------------------------------------------------------------
 // definition

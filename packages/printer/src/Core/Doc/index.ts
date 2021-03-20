@@ -12,9 +12,9 @@ import type { URI } from "@effect-ts/core/Prelude"
 import * as P from "@effect-ts/core/Prelude"
 import type { _A } from "@effect-ts/system/Utils"
 
-import type { Flatten } from "./Flatten"
-import * as F from "./Flatten"
-import type { PageWidth } from "./PageWidth"
+import type { Flatten } from "../Flatten"
+import * as F from "../Flatten"
+import type { PageWidth } from "../PageWidth"
 
 // -------------------------------------------------------------------------------------
 // definition

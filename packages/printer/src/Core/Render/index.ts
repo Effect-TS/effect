@@ -5,7 +5,7 @@ import { pipe } from "@effect-ts/core/Function"
 import * as Ident from "@effect-ts/core/Identity"
 import * as IO from "@effect-ts/core/IO"
 
-import type { DocStream } from "./DocStream"
+import type { DocStream } from "../DocStream"
 
 // -------------------------------------------------------------------------------------
 // operations
