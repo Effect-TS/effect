@@ -2,7 +2,7 @@
 
 import type { Array } from "@effect-ts/core/Array"
 import * as A from "@effect-ts/core/Array"
-import { absurd, pipe } from "@effect-ts/core/Function"
+import { pipe } from "@effect-ts/core/Function"
 import type { Identity } from "@effect-ts/core/Identity"
 import * as IO from "@effect-ts/core/IO"
 import type { Option } from "@effect-ts/core/Option"
@@ -166,8 +166,6 @@ export const match = <A, R>(patterns: {
         return patterns.PushAnnotation(x.annotation, x.stream)
       case "PopAnnotation":
         return patterns.PopAnnotation(x.stream)
-      default:
-        return absurd(x)
     }
   }
   return f
@@ -200,7 +198,7 @@ export const isPopAnnotation = <A>(stream: DocStream<A>): stream is PopAnnotatio
   stream._tag === "PopAnnotation"
 
 export const map = <A, B>(f: (a: A) => B): ((fa: DocStream<A>) => DocStream<B>) =>
-  reAnnotateS(f)
+  reAnnotate(f)
 
 export const foldMap = <I>(I: Identity<I>) => <A>(
   f: (a: A) => I
@@ -228,7 +226,7 @@ export const foldMap = <I>(I: Identity<I>) => <A>(
 /**
  * Modify the annotations of a document.
  */
-export const reAnnotateS = <A, B>(
+export const reAnnotate = <A, B>(
   f: (a: A) => B
 ): ((stream: DocStream<A>) => DocStream<B>) => {
   const go = (x: DocStream<A>): IO.IO<DocStream<B>> =>
@@ -257,7 +255,7 @@ export const reAnnotateS = <A, B>(
  * @category utils
  * @since 0.0.1
  */
-export const unAnnotateS = <A>(stream: DocStream<A>): DocStream<never> => {
+export const unAnnotate = <A>(stream: DocStream<A>): DocStream<never> => {
   const go = (x: DocStream<A>): IO.IO<DocStream<never>> =>
     IO.gen(function* (_) {
       switch (x._tag) {
@@ -288,7 +286,7 @@ const DontRemove: AnnotationRemoval = "DontRemove"
  * Changes the annotation of a document to a different annotation, or to
  * none at all.
  */
-export const alterAnnotationS = <A, B>(
+export const alterAnnotation = <A, B>(
   f: (a: A) => Option<B>
 ): ((stream: DocStream<A>) => DocStream<B>) => {
   const go = (stack: Array<AnnotationRemoval>) => (
@@ -314,7 +312,7 @@ export const alterAnnotationS = <A, B>(
         }
         case "PopAnnotation": {
           if (A.isEmpty(stack)) {
-            absurd<DocStream<B>>(stack as never)
+            throw new Error("bug, we ended up with an empty stack to pop from!")
           }
           const [head, ...tail] = stack
           if (head === DontRemove) {

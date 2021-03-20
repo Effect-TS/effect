@@ -1,7 +1,7 @@
 // tracing: off
 
 import * as A from "@effect-ts/core/Array"
-import { absurd, pipe } from "@effect-ts/core/Function"
+import { pipe } from "@effect-ts/core/Function"
 import * as Ident from "@effect-ts/core/Identity"
 import * as IO from "@effect-ts/core/IO"
 
@@ -18,7 +18,7 @@ export const render = <A>(stream: DocStream<A>): string => {
     IO.gen(function* (_) {
       switch (x._tag) {
         case "Failed":
-          return absurd<string>(x as never)
+          throw new Error("bug, we ended up with a failed in render!")
         case "EmptyStream":
           return Ident.string.identity
         case "CharStream": {
@@ -38,8 +38,6 @@ export const render = <A>(stream: DocStream<A>): string => {
           return yield* _(go(x.stream))
         case "PopAnnotation":
           return yield* _(go(x.stream))
-        default:
-          return absurd(x)
       }
     })
   return IO.run(go(stream))

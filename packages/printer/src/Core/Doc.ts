@@ -4,7 +4,7 @@ import type { Array } from "@effect-ts/core/Array"
 import * as A from "@effect-ts/core/Array"
 import type { Associative } from "@effect-ts/core/Associative"
 import * as Assoc from "@effect-ts/core/Associative"
-import { absurd, constant, identity, pipe } from "@effect-ts/core/Function"
+import { constant, identity, pipe } from "@effect-ts/core/Function"
 import type { Identity } from "@effect-ts/core/Identity"
 import * as Ident from "@effect-ts/core/Identity"
 import * as IO from "@effect-ts/core/IO"
@@ -626,8 +626,6 @@ export const match = <A, R>(patterns: {
         return patterns.Nesting(x.react)
       case "Annotated":
         return patterns.Annotated(x.annotation, x.doc)
-      default:
-        return absurd(x)
     }
   }
   return f
@@ -1053,7 +1051,7 @@ const changesUponFlattening = <A>(doc: Doc<A>): Flatten<Doc<A>> => {
             return F.alreadyFlat
           }
 
-          return absurd(x as never)
+          throw new Error("bug, it seems we didn't manage a branch")
         }
         case "Nest":
           return pipe(yield* _(go(x.doc)), F.map(nest(x.indent)))
