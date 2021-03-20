@@ -1,7 +1,9 @@
-import type { Endomorphism } from '@effect-ts/core/Function'
-import { absurd, pipe } from '@effect-ts/core/Function'
-import * as Ord from '@effect-ts/core/Ord'
-import * as MO from '@effect-ts/morphic'
+// tracing: off
+
+import type { Endomorphism } from "@effect-ts/core/Function"
+import { absurd, pipe } from "@effect-ts/core/Function"
+import * as Ord from "@effect-ts/core/Ord"
+import * as MO from "@effect-ts/morphic"
 
 // -------------------------------------------------------------------------------------
 // definition
@@ -14,7 +16,7 @@ import * as MO from '@effect-ts/morphic'
 const AvailablePerLine_ = MO.make((F) =>
   F.interface(
     {
-      _tag: F.stringLiteral('AvailablePerLine'),
+      _tag: F.stringLiteral("AvailablePerLine"),
       /**
        * The number of characters, including whitespace, that can fit
        * on a single line.
@@ -27,16 +29,15 @@ const AvailablePerLine_ = MO.make((F) =>
        */
       ribbonFraction: F.constrained(F.number(), Ord.between(Ord.number)(0, 1))
     },
-    { name: 'AvailablePerLine' }
+    { name: "AvailablePerLine" }
   )
 )
 
 export interface AvailablePerLine extends MO.AType<typeof AvailablePerLine_> {}
 export interface AvailablePerLineE extends MO.EType<typeof AvailablePerLine_> {}
-export const AvailablePerLine = MO.opaque<
-  AvailablePerLineE,
-  AvailablePerLine
->()(AvailablePerLine_)
+export const AvailablePerLine = MO.opaque<AvailablePerLineE, AvailablePerLine>()(
+  AvailablePerLine_
+)
 
 /**
  * Represents a `PageWidth` setting that informs the layout
@@ -45,9 +46,9 @@ export const AvailablePerLine = MO.opaque<
 const Unbounded_ = MO.make((F) =>
   F.interface(
     {
-      _tag: F.stringLiteral('Unbounded')
+      _tag: F.stringLiteral("Unbounded")
     },
-    { name: 'Unbounded' }
+    { name: "Unbounded" }
   )
 )
 
@@ -61,7 +62,7 @@ export const Unbounded = MO.opaque<UnboundedE, Unbounded>()(Unbounded_)
  * avoid exceeding the set character limit by inserting line
  * breaks where appropriate (e.g., via `softLine`).
  */
-export const PageWidth = MO.makeADT('_tag')({ AvailablePerLine, Unbounded })
+export const PageWidth = MO.makeADT("_tag")({ AvailablePerLine, Unbounded })
 export type PageWidth = MO.AType<typeof PageWidth>
 
 // -------------------------------------------------------------------------------------
@@ -87,9 +88,9 @@ export const match = <R>(patterns: {
 }): ((pageWidth: PageWidth) => R) => {
   const f = (x: PageWidth): R => {
     switch (x._tag) {
-      case 'AvailablePerLine':
+      case "AvailablePerLine":
         return patterns.AvailablePerLine(x.lineWidth, x.ribbonFraction)
-      case 'Unbounded':
+      case "Unbounded":
         return patterns.Unbounded()
       default:
         return absurd(x)
@@ -116,12 +117,7 @@ export const remainingWidth = (
   currentColumn: number
 ): number => {
   const columnsLeftInLine = lineLength - currentColumn
-  const ribbonWidth = pipe(
-    lineLength * ribbonFraction,
-    floor,
-    min(lineLength),
-    max(0)
-  )
+  const ribbonWidth = pipe(lineLength * ribbonFraction, floor, min(lineLength), max(0))
   const columnsLeftInRibbon = lineIndent + ribbonWidth - currentColumn
   return min(columnsLeftInLine)(columnsLeftInRibbon)
 }

@@ -1,8 +1,9 @@
-import type { XReader } from '@effect-ts/core/XPure/XReader'
-import * as R from '@effect-ts/core/XPure/XReader'
+// tracing: off
 
-import type { Doc } from './Doc'
-import * as D from './Doc'
+import * as S from "@effect-ts/core/IO"
+
+import type { Doc } from "./Doc"
+import * as D from "./Doc"
 
 // -------------------------------------------------------------------------------------
 // definition
@@ -12,7 +13,7 @@ import * as D from './Doc'
  * Represents optimization of a given document tree through fusion of redundant
  * document nodes.
  */
-export type Optimize<A> = XReader<FusionDepth, Doc<A>>
+export type Optimize<A> = (depth: FusionDepth) => Doc<A>
 
 /**
  * Represents an instruction that determines how deeply the document fusion optimizer
@@ -24,7 +25,7 @@ export type FusionDepth = Shallow | Deep
  * Instructs the document fusion optimizer to avoid diving deeply into nested
  * documents, fusing mostly concatenations of text nodes together.
  */
-export type Shallow = 'Shallow'
+export type Shallow = "Shallow"
 
 /**
  * Instructs the document fusion optimizer to recurse into all leaves of the document
@@ -37,15 +38,15 @@ export type Shallow = 'Shallow'
  * This value should only be utilized if profiling demonstrates that it is
  * **significantly** faster than using `Shallow`.
  */
-export type Deep = 'Deep'
+export type Deep = "Deep"
 
 // -------------------------------------------------------------------------------------
 // constructors
 // -------------------------------------------------------------------------------------
 
-export const Shallow: FusionDepth = 'Shallow'
+export const Shallow: FusionDepth = "Shallow"
 
-export const Deep: FusionDepth = 'Deep'
+export const Deep: FusionDepth = "Deep"
 
 // -------------------------------------------------------------------------------------
 // operations
@@ -83,18 +84,21 @@ export const Deep: FusionDepth = 'Deep'
  * strings that are used many times.
  */
 export const optimize = <A>(doc: Doc<A>): Optimize<A> => {
-  const go = (x: Doc<A>): Optimize<A> =>
-    R.gen(function* (_) {
+  function go(x: Doc<A>, depth: FusionDepth): S.IO<Doc<A>> {
+    return S.gen(function* (_) {
+      yield* _(S.unit)
+
       switch (x._tag) {
-        case 'FlatAlt':
-          return D.flatAlt(yield* _(go(x.left)), yield* _(go(x.right)))
-        case 'Cat': {
+        case "FlatAlt": {
+          return D.flatAlt(yield* _(go(x.left, depth)), yield* _(go(x.right, depth)))
+        }
+        case "Cat": {
           // Empty documents
           if (D.isEmpty(x.left)) {
-            return yield* _(go(x.right))
+            return yield* _(go(x.right, depth))
           }
           if (D.isEmpty(x.right)) {
-            return yield* _(go(x.left))
+            return yield* _(go(x.left, depth))
           }
 
           // String documents
@@ -112,73 +116,66 @@ export const optimize = <A>(doc: Doc<A>): Optimize<A> => {
           }
           // Nested strings
           if (D.isChar(x.left) && D.isCat(x.right) && D.isChar(x.right.left)) {
-            const inner = yield* _(go(D.cat(x.left, x.right.left)))
-            return yield* _(go(D.cat(inner, x.right.right)))
+            const inner = yield* _(go(D.cat(x.left, x.right.left), depth))
+            return yield* _(go(D.cat(inner, x.right.right), depth))
           }
           if (D.isText(x.left) && D.isCat(x.right) && D.isChar(x.right.left)) {
-            const inner = yield* _(go(D.cat(x.left, x.right.left)))
-            return yield* _(go(D.cat(inner, x.right.right)))
+            const inner = yield* _(go(D.cat(x.left, x.right.left), depth))
+            return yield* _(go(D.cat(inner, x.right.right), depth))
           }
           if (D.isChar(x.left) && D.isCat(x.right) && D.isText(x.right.left)) {
-            const inner = yield* _(go(D.cat(x.left, x.right.left)))
-            return yield* _(go(D.cat(inner, x.right.right)))
+            const inner = yield* _(go(D.cat(x.left, x.right.left), depth))
+            return yield* _(go(D.cat(inner, x.right.right), depth))
           }
           if (D.isText(x.left) && D.isCat(x.right) && D.isText(x.right.left)) {
-            const inner = yield* _(go(D.cat(x.left, x.right.left)))
-            return yield* _(go(D.cat(inner, x.right.right)))
+            const inner = yield* _(go(D.cat(x.left, x.right.left), depth))
+            return yield* _(go(D.cat(inner, x.right.right), depth))
           }
           if (D.isCat(x.left) && D.isChar(x.right)) {
-            const inner = yield* _(go(D.cat(x.left.right, x.right)))
-            return yield* _(go(D.cat(x.left.left, inner)))
+            const inner = yield* _(go(D.cat(x.left.right, x.right), depth))
+            return yield* _(go(D.cat(x.left.left, inner), depth))
           }
           if (D.isCat(x.left) && D.isText(x.left.right)) {
-            const inner = yield* _(go(D.cat(x.left.right, x.right)))
-            return yield* _(go(D.cat(x.left.left, inner)))
+            const inner = yield* _(go(D.cat(x.left.right, x.right), depth))
+            return yield* _(go(D.cat(x.left.left, inner), depth))
           }
-          return D.cat(yield* _(go(x.left)), yield* _(go(x.right)))
+          return D.cat(yield* _(go(x.left, depth)), yield* _(go(x.right, depth)))
         }
-        case 'Nest': {
+        case "Nest": {
           if (D.isEmpty(x.doc)) return x.doc
           if (D.isChar(x.doc)) return x.doc
           if (D.isText(x.doc)) return x.doc
           if (D.isNest(x.doc)) {
-            return yield* _(go(D.nest(x.indent + x.doc.indent)(x.doc)))
+            return yield* _(go(D.nest(x.indent + x.doc.indent)(x.doc), depth))
           }
-          if (x.indent === 0) return yield* _(go(x.doc))
-          return D.nest(x.indent)(yield* _(go(x.doc)))
+          if (x.indent === 0) return yield* _(go(x.doc, depth))
+          return D.nest(x.indent)(yield* _(go(x.doc, depth)))
         }
-        case 'Union':
-          return D.union(yield* _(go(x.left)), yield* _(go(x.right)))
-        case 'Column': {
-          const depth = yield* _(R.access((_: FusionDepth) => _))
-          /* eslint-disable @typescript-eslint/ban-ts-comment */
+        case "Union": {
+          return D.union(yield* _(go(x.left, depth)), yield* _(go(x.right, depth)))
+        }
+        case "Column": {
           return depth === Shallow
             ? D.column(x.react)
-            : // @ts-ignore
-              D.column((position) => yield* _(go(x.react(position))))
+            : D.column((position) => S.run(go(x.react(position), depth)))
         }
-        case 'WithPageWidth': {
-          const depth = yield* _(R.access((_: FusionDepth) => _))
+        case "WithPageWidth": {
           return depth === Shallow
             ? D.withPageWidth(x.react)
-            : // @ts-ignore
-              D.withPageWidth((pageWidth) => yield* _(go(x.react(pageWidth))))
+            : D.withPageWidth((pageWidth) => S.run(go(x.react(pageWidth), depth)))
         }
-        case 'Nesting': {
-          const depth = yield* _(R.access((_: FusionDepth) => _))
+        case "Nesting": {
           return depth === Shallow
             ? D.nesting(x.react)
-            : // @ts-ignore
-              D.nesting((level) => yield* _(go(x.react(level))))
+            : D.nesting((level) => S.run(go(x.react(level), depth)))
         }
-        /* eslint-enable @typescript-eslint/ban-ts-comment */
-        case 'Annotated': {
-          const doc = yield* _(go(x.doc))
-          return D.annotate(x.annotation, doc)
+        case "Annotated": {
+          return D.annotate(x.annotation, yield* _(go(x.doc, depth)))
         }
         default:
           return x
       }
     })
-  return go(doc)
+  }
+  return (_) => S.run(go(doc, _))
 }

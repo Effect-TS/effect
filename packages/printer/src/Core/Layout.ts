@@ -1,23 +1,23 @@
-import type { Array } from '@effect-ts/core/Array'
-import * as A from '@effect-ts/core/Array'
-import { absurd, constant, flow, not, pipe } from '@effect-ts/core/Function'
-import type { Option } from '@effect-ts/core/Option'
-import * as O from '@effect-ts/core/Option'
-import * as Sy from '@effect-ts/core/Sync'
-import type { XReader } from '@effect-ts/core/XPure/XReader'
-import * as R from '@effect-ts/core/XPure/XReader'
+// tracing: off
 
-import type { Doc } from './Doc'
-import type { DocStream } from './DocStream'
-import * as DS from './DocStream'
-import type { PageWidth } from './PageWidth'
-import * as PW from './PageWidth'
+import type { Array } from "@effect-ts/core/Array"
+import * as A from "@effect-ts/core/Array"
+import { absurd, constant, not, pipe } from "@effect-ts/core/Function"
+import * as IO from "@effect-ts/core/IO"
+import type { Option } from "@effect-ts/core/Option"
+import * as O from "@effect-ts/core/Option"
+
+import type { Doc } from "./Doc"
+import type { DocStream } from "./DocStream"
+import * as DS from "./DocStream"
+import type { PageWidth } from "./PageWidth"
+import * as PW from "./PageWidth"
 
 // -------------------------------------------------------------------------------------
 // definition
 // -------------------------------------------------------------------------------------
 
-export interface Layout<A> extends XReader<LayoutOptions, DocStream<A>> {}
+export type Layout<A> = (opts: LayoutOptions) => DocStream<A>
 
 /**
  * Represents the options that will influence the layout algorithms.
@@ -32,18 +32,18 @@ export interface LayoutOptions {
 export type LayoutPipeline<A> = Nil | Cons<A> | UndoAnnotation<A>
 
 export interface Nil {
-  readonly _tag: 'Nil'
+  readonly _tag: "Nil"
 }
 
 export interface Cons<A> {
-  readonly _tag: 'Cons'
+  readonly _tag: "Cons"
   readonly indent: number
   readonly document: Doc<A>
   readonly pipeline: LayoutPipeline<A>
 }
 
 export interface UndoAnnotation<A> {
-  readonly _tag: 'UndoAnnotation'
+  readonly _tag: "UndoAnnotation"
   readonly pipeline: LayoutPipeline<A>
 }
 
@@ -66,7 +66,7 @@ export type FittingPredicate<A> = (
 // -------------------------------------------------------------------------------------
 
 export const nil: LayoutPipeline<never> = {
-  _tag: 'Nil'
+  _tag: "Nil"
 }
 
 export const cons = <A>(
@@ -74,16 +74,14 @@ export const cons = <A>(
   document: Doc<A>,
   pipeline: LayoutPipeline<A>
 ): LayoutPipeline<A> => ({
-  _tag: 'Cons',
+  _tag: "Cons",
   indent,
   document,
   pipeline
 })
 
-export const undoAnnotation = <A>(
-  pipeline: LayoutPipeline<A>
-): LayoutPipeline<A> => ({
-  _tag: 'UndoAnnotation',
+export const undoAnnotation = <A>(pipeline: LayoutPipeline<A>): LayoutPipeline<A> => ({
+  _tag: "UndoAnnotation",
   pipeline
 })
 
@@ -103,20 +101,16 @@ export const defaultLayoutOptions = layoutOptions(PW.defaultPageWidth)
 
 export const match = <A, R>(patterns: {
   readonly Nil: () => R
-  readonly Cons: (
-    indent: number,
-    document: Doc<A>,
-    pipeline: LayoutPipeline<A>
-  ) => R
+  readonly Cons: (indent: number, document: Doc<A>, pipeline: LayoutPipeline<A>) => R
   readonly UndoAnnotation: (pipeline: LayoutPipeline<A>) => R
 }): ((pipeline: LayoutPipeline<A>) => R) => {
   const f = (x: LayoutPipeline<A>): R => {
     switch (x._tag) {
-      case 'Nil':
+      case "Nil":
         return patterns.Nil()
-      case 'Cons':
+      case "Cons":
         return patterns.Cons(x.indent, x.document, x.pipeline)
-      case 'UndoAnnotation':
+      case "UndoAnnotation":
         return patterns.UndoAnnotation(x.pipeline)
       default:
         return absurd(x as never)
@@ -130,20 +124,20 @@ export const match = <A, R>(patterns: {
 // -------------------------------------------------------------------------------------
 
 const initialIndentation = <A>(stream: DocStream<A>): Option<number> => {
-  const go = (x: DocStream<A>): Sy.UIO<Option<number>> =>
-    Sy.gen(function* (_) {
+  const go = (x: DocStream<A>): IO.IO<Option<number>> =>
+    IO.gen(function* (_) {
       switch (x._tag) {
-        case 'LineStream':
+        case "LineStream":
           return O.some(x.indentation)
-        case 'PushAnnotation':
+        case "PushAnnotation":
           return yield* _(go(x.stream))
-        case 'PopAnnotation':
+        case "PopAnnotation":
           return yield* _(go(x.stream))
         default:
           return O.none
       }
     })
-  return pipe(go(stream), Sy.run)
+  return IO.run(go(stream))
 }
 
 const selectNicer = <A>(
@@ -158,150 +152,145 @@ const selectNicer = <A>(
 const layoutWadlerLeijen = <A>(fits: FittingPredicate<A>) => (
   doc: Doc<A>
 ): Layout<A> => {
-  const go = (nl: number, cc: number) => (x: LayoutPipeline<A>): Layout<A> =>
-    R.gen(function* (_) {
+  const go = (nl: number, cc: number, opts: LayoutOptions) => (
+    x: LayoutPipeline<A>
+  ): IO.IO<DocStream<A>> =>
+    IO.gen(function* (_) {
       switch (x._tag) {
-        case 'Nil':
+        case "Nil":
           return DS.empty
-        case 'Cons': {
+        case "Cons": {
           switch (x.document._tag) {
-            case 'Fail':
+            case "Fail":
               return DS.failed
-            case 'Empty':
-              return yield* _(pipe(x.pipeline, go(nl, cc)))
-            case 'Char':
+            case "Empty":
+              return yield* _(pipe(x.pipeline, go(nl, cc, opts)))
+            case "Char":
               return DS.char(
                 x.document.char,
-                yield* _(pipe(x.pipeline, go(nl, cc + 1)))
+                yield* _(pipe(x.pipeline, go(nl, cc + 1, opts)))
               )
-            case 'Text':
+            case "Text":
               return DS.text(
                 x.document.text,
-                yield* _(pipe(x.pipeline, go(nl, cc + x.document.text.length)))
+                yield* _(pipe(x.pipeline, go(nl, cc + x.document.text.length, opts)))
               )
-            case 'Line': {
-              const s = yield* _(pipe(x.pipeline, go(x.indent, x.indent)))
+            case "Line": {
+              const s = yield* _(pipe(x.pipeline, go(x.indent, x.indent, opts)))
               const i = DS.isEmptyStream(s) || DS.isLineStream(s) ? 0 : x.indent
               return DS.line(i, s)
             }
-            case 'FlatAlt': {
+            case "FlatAlt": {
               const s = cons(x.indent, x.document.left, x.pipeline)
-              return yield* _(pipe(s, go(nl, cc)))
+              return yield* _(pipe(s, go(nl, cc, opts)))
             }
-            case 'Cat': {
+            case "Cat": {
               const inner = cons(x.indent, x.document.right, x.pipeline)
               const outer = cons(x.indent, x.document.left, inner)
-              return yield* _(pipe(outer, go(nl, cc)))
+              return yield* _(pipe(outer, go(nl, cc, opts)))
             }
-            case 'Nest': {
+            case "Nest": {
               const i = x.indent + x.document.indent
               const s = cons(i, x.document.doc, x.pipeline)
-              return yield* _(pipe(s, go(nl, cc)))
+              return yield* _(pipe(s, go(nl, cc, opts)))
             }
-            case 'Union': {
+            case "Union": {
               const left = yield* _(
-                pipe(cons(x.indent, x.document.left, x.pipeline), go(nl, cc))
+                pipe(cons(x.indent, x.document.left, x.pipeline), go(nl, cc, opts))
               )
               const right = yield* _(
-                pipe(cons(x.indent, x.document.right, x.pipeline), go(nl, cc))
+                pipe(cons(x.indent, x.document.right, x.pipeline), go(nl, cc, opts))
               )
               return selectNicer(fits, nl, cc, left, right)
             }
-            case 'Column': {
+            case "Column": {
               const s = cons(x.indent, x.document.react(cc), x.pipeline)
-              return yield* _(pipe(s, go(nl, cc)))
+              return yield* _(pipe(s, go(nl, cc, opts)))
             }
-            case 'WithPageWidth': {
-              const pageWidth = yield* _(
-                R.access((_: LayoutOptions) => _.pageWidth)
-              )
-              const s = cons(x.indent, x.document.react(pageWidth), x.pipeline)
-              return yield* _(pipe(s, go(nl, cc)))
+            case "WithPageWidth": {
+              const s = cons(x.indent, x.document.react(opts.pageWidth), x.pipeline)
+              return yield* _(pipe(s, go(nl, cc, opts)))
             }
-            case 'Nesting': {
+            case "Nesting": {
               const s = cons(x.indent, x.document.react(x.indent), x.pipeline)
-              return yield* _(pipe(s, go(nl, cc)))
+              return yield* _(pipe(s, go(nl, cc, opts)))
             }
-            case 'Annotated': {
-              const p = cons(
-                x.indent,
-                x.document.doc,
-                undoAnnotation(x.pipeline)
-              )
-              const s = yield* _(pipe(p, go(nl, cc)))
+            case "Annotated": {
+              const p = cons(x.indent, x.document.doc, undoAnnotation(x.pipeline))
+              const s = yield* _(pipe(p, go(nl, cc, opts)))
               return DS.pushAnnotation(x.document.annotation, s)
             }
             default:
               return absurd(x.document)
           }
         }
-        case 'UndoAnnotation':
-          return DS.popAnnotation(yield* _(pipe(x.pipeline, go(nl, cc))))
+        case "UndoAnnotation":
+          return DS.popAnnotation(yield* _(pipe(x.pipeline, go(nl, cc, opts))))
         default:
           return absurd(x)
       }
     })
-  return pipe(cons(0, doc, nil), go(0, 0))
+  return (opts) => IO.run(go(0, 0, opts)(cons(0, doc, nil)))
 }
 
 const failsOnFirstLine = <A>(stream: DocStream<A>): boolean => {
-  const go = (x: DocStream<A>): Sy.UIO<boolean> =>
-    Sy.gen(function* (_) {
+  const go = (x: DocStream<A>): IO.IO<boolean> =>
+    IO.gen(function* (_) {
       switch (x._tag) {
-        case 'Failed':
+        case "Failed":
           return true
-        case 'EmptyStream':
+        case "EmptyStream":
           return false
-        case 'CharStream':
+        case "CharStream":
           return yield* _(go(x.stream))
-        case 'TextStream':
+        case "TextStream":
           return yield* _(go(x.stream))
-        case 'LineStream':
+        case "LineStream":
           return false
-        case 'PushAnnotation':
+        case "PushAnnotation":
           return yield* _(go(x.stream))
-        case 'PopAnnotation':
+        case "PopAnnotation":
           return yield* _(go(x.stream))
         default:
           return absurd(x)
       }
     })
-  return pipe(go(stream), Sy.run)
+  return IO.run(go(stream))
 }
 
 /**
  * The `layoutUnbounded` layout algorithm will lay out a document an
  * `Unbounded` page width.
  */
-export const layoutUnbounded: <A>(doc: Doc<A>) => DocStream<A> = flow(
-  layoutWadlerLeijen(constant(not(failsOnFirstLine))),
-  R.runEnv(layoutOptions(PW.unbounded))
-)
+export const layoutUnbounded = <A>(doc: Doc<A>): DocStream<A> =>
+  layoutWadlerLeijen<A>(constant(not(failsOnFirstLine)))(doc)(
+    layoutOptions(PW.unbounded)
+  )
 
 const fitsPretty = (width: number) => <A>(stream: DocStream<A>): boolean => {
-  const go = (w: number) => (x: DocStream<A>): Sy.UIO<boolean> =>
-    Sy.gen(function* (_) {
+  const go = (w: number) => (x: DocStream<A>): IO.IO<boolean> =>
+    IO.gen(function* (_) {
       if (w < 0) return false
       switch (x._tag) {
-        case 'Failed':
+        case "Failed":
           return false
-        case 'EmptyStream':
+        case "EmptyStream":
           return true
-        case 'CharStream':
+        case "CharStream":
           return yield* _(pipe(x.stream, go(w - 1)))
-        case 'TextStream':
+        case "TextStream":
           return yield* _(pipe(x.stream, go(w - x.text.length)))
-        case 'LineStream':
+        case "LineStream":
           return true
-        case 'PushAnnotation':
+        case "PushAnnotation":
           return yield* _(pipe(x.stream, go(w)))
-        case 'PopAnnotation':
+        case "PopAnnotation":
           return yield* _(pipe(x.stream, go(w)))
         default:
           return absurd(x)
       }
     })
-  return pipe(stream, go(width), Sy.run)
+  return pipe(stream, go(width), IO.run)
 }
 
 /**
@@ -316,25 +305,16 @@ const fitsPretty = (width: number) => <A>(stream: DocStream<A>): boolean => {
  * algorithm if the results seem to run off to the right before having lots of
  * line breaks.
  */
-export const pretty = <A>(doc: Doc<A>): Layout<A> =>
+export const pretty = <A>(doc: Doc<A>): Layout<A> => (_) =>
   pipe(
-    R.access((_: LayoutOptions) => _),
-    R.map((_) =>
-      pipe(
-        _.pageWidth,
-        PW.match({
-          AvailablePerLine: (lw, rf) =>
-            pipe(
-              doc,
-              layoutWadlerLeijen((nl, cc) =>
-                fitsPretty(PW.remainingWidth(lw, rf, nl, cc))
-              ),
-              R.runEnv(_)
-            ),
-          Unbounded: () => pipe(doc, layoutUnbounded)
-        })
-      )
-    )
+    _.pageWidth,
+    PW.match({
+      AvailablePerLine: (lw, rf) =>
+        layoutWadlerLeijen((nl, cc) => fitsPretty(PW.remainingWidth(lw, rf, nl, cc)))(
+          doc
+        )(_),
+      Unbounded: () => layoutUnbounded(doc)
+    })
   )
 
 const fitsSmart = (lineWidth: number, ribbonFraction: number) => (
@@ -363,32 +343,32 @@ const fitsSmart = (lineWidth: number, ribbonFraction: number) => (
     )
   )
 
-  const go = (w: number) => (x: DocStream<A>): Sy.UIO<boolean> =>
-    Sy.gen(function* (_) {
+  const go = (w: number) => (x: DocStream<A>): IO.IO<boolean> =>
+    IO.gen(function* (_) {
       if (w < 0) return false
       switch (x._tag) {
-        case 'Failed':
+        case "Failed":
           return false
-        case 'EmptyStream':
+        case "EmptyStream":
           return true
-        case 'CharStream':
+        case "CharStream":
           return yield* _(pipe(x.stream, go(w - 1)))
-        case 'TextStream':
+        case "TextStream":
           return yield* _(pipe(x.stream, go(w - x.text.length)))
-        case 'LineStream': {
+        case "LineStream": {
           if (minNestingLevel > x.indentation) return true
           return yield* _(pipe(x.stream, go(x.indentation - lineWidth)))
         }
-        case 'PushAnnotation':
+        case "PushAnnotation":
           return yield* _(pipe(x.stream, go(w)))
-        case 'PopAnnotation':
+        case "PopAnnotation":
           return yield* _(pipe(x.stream, go(w)))
         default:
           return absurd(x)
       }
     })
 
-  return pipe(stream, go(availableWidth), Sy.run)
+  return pipe(stream, go(availableWidth), IO.run)
 }
 
 /**
@@ -481,19 +461,13 @@ const fitsSmart = (lineWidth: number, ribbonFraction: number) => (
  * // the fourth line 4, where the `B` has the same indentation as the first `A`.
  * ```
  */
-export const smart = <A>(doc: Doc<A>): Layout<A> =>
+export const smart = <A>(doc: Doc<A>): Layout<A> => (_) =>
   pipe(
-    R.access((_: LayoutOptions) => _),
-    R.map((_) =>
-      pipe(
-        _.pageWidth,
-        PW.match({
-          AvailablePerLine: (lw, rf) =>
-            pipe(doc, layoutWadlerLeijen<A>(fitsSmart(lw, rf)), R.runEnv(_)),
-          Unbounded: () => pipe(doc, layoutUnbounded)
-        })
-      )
-    )
+    _.pageWidth,
+    PW.match({
+      AvailablePerLine: (lw, rf) => layoutWadlerLeijen<A>(fitsSmart(lw, rf))(doc)(_),
+      Unbounded: () => pipe(doc, layoutUnbounded)
+    })
   )
 
 /**
@@ -534,46 +508,48 @@ export const smart = <A>(doc: Doc<A>): Layout<A> =>
  * ```
  */
 export const compact = <A, B>(doc: Doc<A>): DocStream<B> => {
-  const go = (i: number) => (docs: Array<Doc<A>>): Sy.UIO<DocStream<B>> =>
-    Sy.gen(function* (_) {
-      if (A.isEmpty(docs)) return DS.empty
-      const [x, ...rest] = docs
-      switch (x._tag) {
-        case 'Fail':
-          return DS.failed
-        case 'Empty':
-          return yield* _(pipe(rest, go(i)))
-        case 'Char': {
-          const s = yield* _(pipe(rest, go(i + 1)))
-          return DS.char(x.char, s)
+  const go = (i: number) => (docs: Array<Doc<A>>): IO.IO<DocStream<B>> =>
+    IO.gen(function* (_) {
+      if (A.isNonEmpty(docs)) {
+        const [x, ...rest] = docs
+        switch (x._tag) {
+          case "Fail":
+            return DS.failed
+          case "Empty":
+            return yield* _(go(i)(rest))
+          case "Char": {
+            const s = yield* _(go(i + 1)(rest))
+            return DS.char(x.char, s)
+          }
+          case "Text": {
+            const s = yield* _(go(i + x.text.length)(rest))
+            return DS.text(x.text, s)
+          }
+          case "Line": {
+            const s = yield* _(go(0)(rest))
+            return DS.line(0, s)
+          }
+          case "FlatAlt":
+            return yield* _(go(i)(A.cons_(rest, x.left)))
+          case "Cat":
+            return yield* _(go(i)(A.cons_(A.cons_(rest, x.right), x.left)))
+          case "Nest":
+            return yield* _(go(i)(A.cons_(rest, x.doc)))
+          case "Union":
+            return yield* _(go(i)(A.cons_(rest, x.right)))
+          case "Column":
+            return yield* _(go(i)(A.cons_(rest, x.react(i))))
+          case "WithPageWidth":
+            return yield* _(go(i)(A.cons_(rest, x.react(PW.unbounded))))
+          case "Nesting":
+            return yield* _(go(i)(A.cons_(rest, x.react(0))))
+          case "Annotated":
+            return yield* _(go(i)(A.cons_(rest, x.doc)))
+          default:
+            absurd(x)
         }
-        case 'Text': {
-          const s = yield* _(pipe(rest, go(i + x.text.length)))
-          return DS.text(x.text, s)
-        }
-        case 'Line': {
-          const s = yield* _(pipe(rest, go(0)))
-          return DS.line(0, s)
-        }
-        case 'FlatAlt':
-          return yield* _(pipe(rest, A.cons(x.left), go(i)))
-        case 'Cat':
-          return yield* _(pipe(rest, A.cons(x.right), A.cons(x.left), go(i)))
-        case 'Nest':
-          return yield* _(pipe(rest, A.cons(x.doc), go(i)))
-        case 'Union':
-          return yield* _(pipe(rest, A.cons(x.right), go(i)))
-        case 'Column':
-          return yield* _(pipe(rest, A.cons(x.react(i)), go(i)))
-        case 'WithPageWidth':
-          return yield* _(pipe(rest, A.cons(x.react(PW.unbounded)), go(i)))
-        case 'Nesting':
-          return yield* _(pipe(rest, A.cons(x.react(0)), go(i)))
-        case 'Annotated':
-          return yield* _(pipe(rest, A.cons(x.doc), go(i)))
-        default:
-          return absurd(x)
       }
+      return DS.empty
     })
-  return pipe(A.single(doc), go(0), Sy.run)
+  return IO.run(go(0)(A.single(doc)))
 }

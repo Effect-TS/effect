@@ -1,6 +1,8 @@
-import { absurd } from '@effect-ts/core/Function'
-import type { URI } from '@effect-ts/core/Prelude'
-import * as P from '@effect-ts/core/Prelude'
+// tracing: off
+
+import { absurd } from "@effect-ts/core/Function"
+import type { URI } from "@effect-ts/core/Prelude"
+import * as P from "@effect-ts/core/Prelude"
 
 // -------------------------------------------------------------------------------------
 // definition
@@ -19,7 +21,7 @@ export type Flatten<A> = Flattened<A> | AlreadyFlat | NeverFlat
  * Represents a `FlattenResult` where `A` is likely flatter than the input.
  */
 export interface Flattened<A> {
-  readonly _tag: 'Flattened'
+  readonly _tag: "Flattened"
   readonly value: A
 }
 
@@ -27,14 +29,14 @@ export interface Flattened<A> {
  * Represents a `FlattenResult` where the input was already flat.
  */
 export interface AlreadyFlat {
-  readonly _tag: 'AlreadyFlat'
+  readonly _tag: "AlreadyFlat"
 }
 
 /**
  * Represents a `FlattenResult` where the input cannot be flattened.
  */
 export interface NeverFlat {
-  readonly _tag: 'NeverFlat'
+  readonly _tag: "NeverFlat"
 }
 
 // -------------------------------------------------------------------------------------
@@ -42,16 +44,16 @@ export interface NeverFlat {
 // -------------------------------------------------------------------------------------
 
 export const flattened = <A>(value: A): Flattened<A> => ({
-  _tag: 'Flattened',
+  _tag: "Flattened",
   value
 })
 
 export const alreadyFlat: Flatten<never> = {
-  _tag: 'AlreadyFlat'
+  _tag: "AlreadyFlat"
 }
 
 export const neverFlat: Flatten<never> = {
-  _tag: 'NeverFlat'
+  _tag: "NeverFlat"
 }
 
 // -------------------------------------------------------------------------------------
@@ -65,11 +67,11 @@ export const match = <A, R>(patterns: {
 }): ((flatten: Flatten<A>) => R) => {
   const f = (x: Flatten<A>): R => {
     switch (x._tag) {
-      case 'Flattened':
+      case "Flattened":
         return patterns.Flattened(x.value)
-      case 'AlreadyFlat':
+      case "AlreadyFlat":
         return patterns.AlreadyFlat()
-      case 'NeverFlat':
+      case "NeverFlat":
         return patterns.NeverFlat()
       default:
         return absurd(x)
@@ -83,13 +85,12 @@ export const match = <A, R>(patterns: {
 // -------------------------------------------------------------------------------------
 
 export const isFlattened = <A>(a: Flatten<A>): a is Flattened<A> =>
-  a._tag === 'Flattened'
+  a._tag === "Flattened"
 
 export const isAlreadyFlat = <A>(a: Flatten<A>): a is AlreadyFlat =>
-  a._tag === 'AlreadyFlat'
+  a._tag === "AlreadyFlat"
 
-export const isNeverFlat = <A>(a: Flatten<A>): a is NeverFlat =>
-  a._tag === 'NeverFlat'
+export const isNeverFlat = <A>(a: Flatten<A>): a is NeverFlat => a._tag === "NeverFlat"
 
 export const map = <A, B>(f: (a: A) => B): ((fa: Flatten<A>) => Flatten<B>) =>
   match<A, Flatten<B>>({
@@ -102,11 +103,11 @@ export const map = <A, B>(f: (a: A) => B): ((fa: Flatten<A>) => Flatten<B>) =>
 // instances
 // -------------------------------------------------------------------------------------
 
-export const FlattenURI = '@effect-ts/pretty/Flatten'
+export const FlattenURI = "@effect-ts/pretty/Flatten"
 
 export type FlattenURI = typeof FlattenURI
 
-declare module '@effect-ts/core/Prelude/HKT' {
+declare module "@effect-ts/core/Prelude/HKT" {
   /* eslint-disable @typescript-eslint/no-unused-vars */
   interface URItoKind<FC, TC, K, Q, W, X, I, S, R, E, A> {
     readonly [FlattenURI]: Flatten<A>

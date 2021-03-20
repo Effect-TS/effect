@@ -1,19 +1,21 @@
-import type { Array } from '@effect-ts/core/Array'
-import * as A from '@effect-ts/core/Array'
-import { constant, pipe } from '@effect-ts/core/Function'
-import * as Ident from '@effect-ts/core/Identity'
-import * as Show from '@effect-ts/core/Show'
-import * as MO from '@effect-ts/morphic'
+// tracing: off
 
-import { Color, colorToCode } from './Color'
-import { Layer } from './Layer'
+import type { Array } from "@effect-ts/core/Array"
+import * as A from "@effect-ts/core/Array"
+import { constant, pipe } from "@effect-ts/core/Function"
+import * as Ident from "@effect-ts/core/Identity"
+import * as Show from "@effect-ts/core/Show"
+import * as MO from "@effect-ts/morphic"
+
+import { Color, colorToCode } from "./Color"
+import { Layer } from "./Layer"
 
 // -------------------------------------------------------------------------------------
 // definition
 // -------------------------------------------------------------------------------------
 
 const Reset_ = MO.make((F) =>
-  F.interface({ _tag: F.stringLiteral('Reset') }, { name: 'Reset' })
+  F.interface({ _tag: F.stringLiteral("Reset") }, { name: "Reset" })
 )
 
 export interface Reset extends MO.AType<typeof Reset_> {}
@@ -22,8 +24,8 @@ export const Reset = MO.opaque<ResetE, Reset>()(Reset_)
 
 const SetBold_ = MO.make((F) =>
   F.interface(
-    { _tag: F.stringLiteral('SetBold'), bold: F.boolean() },
-    { name: 'SetBold' }
+    { _tag: F.stringLiteral("SetBold"), bold: F.boolean() },
+    { name: "SetBold" }
   )
 )
 
@@ -33,39 +35,35 @@ export const SetBold = MO.opaque<SetBoldE, SetBold>()(SetBold_)
 
 const SetItalicized_ = MO.make((F) =>
   F.interface(
-    { _tag: F.stringLiteral('SetItalicized'), italicized: F.boolean() },
-    { name: 'SetItalicized' }
+    { _tag: F.stringLiteral("SetItalicized"), italicized: F.boolean() },
+    { name: "SetItalicized" }
   )
 )
 
 export interface SetItalicized extends MO.AType<typeof SetItalicized_> {}
 export interface SetItalicizedE extends MO.EType<typeof SetItalicized_> {}
-export const SetItalicized = MO.opaque<SetItalicizedE, SetItalicized>()(
-  SetItalicized_
-)
+export const SetItalicized = MO.opaque<SetItalicizedE, SetItalicized>()(SetItalicized_)
 
 const SetUnderlined_ = MO.make((F) =>
   F.interface(
-    { _tag: F.stringLiteral('SetUnderlined'), underlined: F.boolean() },
-    { name: 'SetUnderlined' }
+    { _tag: F.stringLiteral("SetUnderlined"), underlined: F.boolean() },
+    { name: "SetUnderlined" }
   )
 )
 
 export interface SetUnderlined extends MO.AType<typeof SetUnderlined_> {}
 export interface SetUnderlinedE extends MO.EType<typeof SetUnderlined_> {}
-export const SetUnderlined = MO.opaque<SetUnderlinedE, SetUnderlined>()(
-  SetUnderlined_
-)
+export const SetUnderlined = MO.opaque<SetUnderlinedE, SetUnderlined>()(SetUnderlined_)
 
 const SetColor_ = MO.make((F) =>
   F.interface(
     {
-      _tag: F.stringLiteral('SetColor'),
+      _tag: F.stringLiteral("SetColor"),
       color: Color(F),
       vivid: F.boolean(),
       layer: Layer(F)
     },
-    { name: 'SetColor' }
+    { name: "SetColor" }
   )
 )
 
@@ -73,7 +71,7 @@ export interface SetColor extends MO.AType<typeof SetColor_> {}
 export interface SetColorE extends MO.EType<typeof SetColor_> {}
 export const SetColor = MO.opaque<SetColorE, SetColor>()(SetColor_)
 
-export const SGR = MO.makeADT('_tag')({
+export const SGR = MO.makeADT("_tag")({
   Reset,
   SetBold,
   SetItalicized,
@@ -90,8 +88,8 @@ export const csi = (controlFunction: string) => (
   controlParameters: Array<number>
 ): string =>
   Ident.fold(Ident.string)([
-    '\u001b[',
-    pipe(controlParameters, A.map(Show.number.show), A.join(';')),
+    "\u001b[",
+    pipe(controlParameters, A.map(Show.number.show), A.join(";")),
     controlFunction
   ])
 
@@ -117,4 +115,4 @@ export const sgrToCode = SGR.matchStrict({
 })
 
 export const setSGRCode = (sgrs: Array<SGR>): string =>
-  pipe(sgrs, A.chain(sgrToCode), csi('m'))
+  pipe(sgrs, A.chain(sgrToCode), csi("m"))

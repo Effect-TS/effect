@@ -1,17 +1,19 @@
-import type { Array } from '@effect-ts/core/Array'
-import * as A from '@effect-ts/core/Array'
-import * as Assoc from '@effect-ts/core/Associative'
-import { absurd, pipe, tuple } from '@effect-ts/core/Function'
-import * as Ident from '@effect-ts/core/Identity'
-import * as O from '@effect-ts/core/Option'
-import * as S from '@effect-ts/core/Show'
-import * as Sy from '@effect-ts/core/Sync'
-import * as MO from '@effect-ts/morphic'
-import type { DocStream } from '@prettyprinter-ts/core/DocStream'
+// tracing: off
 
-import { Color } from './Color'
-import * as Layer from './Layer'
-import { setSGRCode, SGR } from './SGR'
+import type { Array } from "@effect-ts/core/Array"
+import * as A from "@effect-ts/core/Array"
+import * as Assoc from "@effect-ts/core/Associative"
+import { absurd, pipe, tuple } from "@effect-ts/core/Function"
+import * as Ident from "@effect-ts/core/Identity"
+import * as O from "@effect-ts/core/Option"
+import * as S from "@effect-ts/core/Show"
+import * as Sy from "@effect-ts/core/Sync"
+import * as MO from "@effect-ts/morphic"
+
+import type { DocStream } from "../Core/DocStream"
+import type { Color } from "./Color"
+import * as Layer from "./Layer"
+import { setSGRCode, SGR } from "./SGR"
 
 // -------------------------------------------------------------------------------------
 // definition
@@ -26,7 +28,7 @@ const Style_ = MO.make((F) =>
       italicized: F.option(SGR(F)),
       underlined: F.option(SGR(F))
     },
-    { name: 'Style' }
+    { name: "Style" }
   )
 )
 
@@ -61,17 +63,13 @@ export const Identity = Ident.struct<Style>({
 export const color = (color: Color): Style =>
   Style.build({
     ...Identity.identity,
-    foreground: O.some(
-      SGR.as.SetColor({ color, layer: Layer.foreground, vivid: true })
-    )
+    foreground: O.some(SGR.as.SetColor({ color, layer: Layer.foreground, vivid: true }))
   })
 
 export const bgColor = (color: Color): Style =>
   Style.build({
     ...Identity.identity,
-    background: O.some(
-      SGR.as.SetColor({ color, layer: Layer.background, vivid: true })
-    )
+    background: O.some(SGR.as.SetColor({ color, layer: Layer.background, vivid: true }))
   })
 
 export const colorDull = (color: Color): Style =>
@@ -115,9 +113,7 @@ export const render = (stream: DocStream<Style>): string => {
     (x) => x
   )
 
-  const unsafePop: (
-    stack: Array<Style>
-  ) => readonly [Style, Array<Style>] = A.foldLeft(
+  const unsafePop: (stack: Array<Style>) => readonly [Style, Array<Style>] = A.foldLeft(
     () => absurd<readonly [Style, Array<Style>]>(null as never),
     (x, xs) => tuple<readonly [Style, Array<Style>]>(x, xs)
   )
@@ -125,34 +121,30 @@ export const render = (stream: DocStream<Style>): string => {
   const go = (x: DocStream<Style>) => (stack: Array<Style>): Sy.UIO<string> =>
     Sy.gen(function* (_) {
       switch (x._tag) {
-        case 'Failed':
+        case "Failed":
           return absurd<string>(x as never)
-        case 'EmptyStream':
+        case "EmptyStream":
           return Ident.string.identity
-        case 'CharStream': {
+        case "CharStream": {
           const rest = yield* _(pipe(stack, go(x.stream)))
           return Ident.string.combine(x.char, rest)
         }
-        case 'TextStream': {
+        case "TextStream": {
           const rest = yield* _(pipe(stack, go(x.stream)))
           return Ident.string.combine(x.text, rest)
         }
-        case 'LineStream': {
-          const indent = pipe(
-            x.indentation,
-            A.replicate(' '),
-            Ident.fold(Ident.string)
-          )
+        case "LineStream": {
+          const indent = pipe(x.indentation, A.replicate(" "), Ident.fold(Ident.string))
           const rest = yield* _(pipe(stack, go(x.stream)))
-          return Ident.fold(Ident.string)(['\n', indent, rest])
+          return Ident.fold(Ident.string)(["\n", indent, rest])
         }
-        case 'PushAnnotation': {
+        case "PushAnnotation": {
           const currentStyle = unsafePeek(stack)
           const nextStyle = Identity.combine(x.annotation, currentStyle)
           const rest = yield* _(pipe(stack, A.cons(x.annotation), go(x.stream)))
           return Ident.string.combine(Show.show(nextStyle), rest)
         }
-        case 'PopAnnotation': {
+        case "PopAnnotation": {
           const [, styles] = unsafePop(stack)
           const nextStyle = unsafePeek(styles)
           const rest = yield* _(pipe(styles, go(x.stream)))
