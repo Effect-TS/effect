@@ -1,9 +1,9 @@
 // tracing: off
 
-import "../Operator"
+import "../../Operator"
 
-import * as P from "../Prelude"
-import type * as HKT from "../Prelude/HKT"
+import * as P from "../../Prelude"
+import type * as HKT from "../../Prelude/HKT"
 
 export function monad<P extends HKT.Param>(
   _: P

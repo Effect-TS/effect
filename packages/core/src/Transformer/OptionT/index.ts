@@ -1,13 +1,13 @@
 // tracing: off
 
-import "../Operator"
+import "../../Operator"
 
-import { pipe } from "../Function"
-import * as O from "../Option"
-import type { Applicative, Covariant, Monad } from "../Prelude"
-import { succeedF } from "../Prelude/DSL"
-import type { Access, Provide } from "../Prelude/FX"
-import * as HKT from "../Prelude/HKT"
+import { pipe } from "../../Function"
+import * as O from "../../Option"
+import type { Applicative, Covariant, Monad } from "../../Prelude"
+import { succeedF } from "../../Prelude/DSL"
+import type { Access, Provide } from "../../Prelude/FX"
+import * as HKT from "../../Prelude/HKT"
 
 export function monad<F extends HKT.URIS, C>(
   M: Monad<F, C>

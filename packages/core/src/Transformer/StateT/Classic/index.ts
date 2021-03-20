@@ -1,10 +1,10 @@
 // tracing: off
 
-import { pipe, tuple } from "../../Function"
-import type { StateInURI, StateOutURI } from "../../Modules"
-import type { Auto, Monad } from "../../Prelude"
-import { chainF } from "../../Prelude/DSL"
-import * as HKT from "../../Prelude/HKT"
+import { pipe, tuple } from "../../../Function"
+import type { StateInURI, StateOutURI } from "../../../Modules"
+import type { Auto, Monad } from "../../../Prelude"
+import { chainF } from "../../../Prelude/DSL"
+import * as HKT from "../../../Prelude/HKT"
 
 /**
  * Take over ownership of "S" making it invariant
