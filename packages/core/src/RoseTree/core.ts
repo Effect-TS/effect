@@ -14,7 +14,6 @@ import * as A from "../Array"
 import type { Equal } from "../Equal"
 import { makeEqual } from "../Equal"
 import { pipe } from "../Function"
-import type { Identity } from "../Identity"
 import * as IO from "../IO"
 import type { TreeURI } from "../Modules"
 import type { URI } from "../Prelude"
@@ -23,6 +22,7 @@ import { sequenceF } from "../Prelude"
 import * as DSL from "../Prelude/DSL"
 import { getApplicativeF } from "../Prelude/DSL"
 import type { Show } from "../Show"
+import type { Identity } from "../Structure/Identity"
 
 export declare type Forest<A> = ReadonlyArray<Tree<A>>
 

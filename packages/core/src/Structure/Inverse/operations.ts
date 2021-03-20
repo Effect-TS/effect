@@ -1,6 +1,6 @@
 // tracing: off
 
-import { instance } from "../Prelude"
+import { instance } from "../../Prelude"
 import type { Inverse } from "./index"
 
 export function makeInverse<A>(

@@ -1,7 +1,7 @@
 // tracing: off
 
-import "../Operator"
+import "../../Operator"
 
 export * from "./definition"
-export { CommutativeURI } from "../Modules"
+export { InverseURI } from "../../Modules"
 export * from "./operations"

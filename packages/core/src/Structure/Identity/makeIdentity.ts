@@ -1,6 +1,6 @@
 // tracing: off
 
-import { instance } from "../Prelude"
+import { instance } from "../../Prelude"
 import type { Identity } from "./definition"
 
 /**

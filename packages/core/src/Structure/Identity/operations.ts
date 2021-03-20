@@ -1,13 +1,13 @@
 // tracing: off
 
+import type { Bounded } from "../../Bounded"
+import type { Endomorphism } from "../../Function"
+import { identity } from "../../Function"
+import type { IdentityURI } from "../../Modules"
+import type { Derive } from "../../Prelude/Derive"
+import type { URI, URIS } from "../../Prelude/HKT"
 import type { Associative } from "../Associative"
 import * as A from "../Associative"
-import type { Bounded } from "../Bounded"
-import type { Endomorphism } from "../Function"
-import { identity } from "../Function"
-import type { IdentityURI } from "../Modules"
-import type { Derive } from "../Prelude/Derive"
-import type { URI, URIS } from "../Prelude/HKT"
 import type { Identity } from "./definition"
 import { makeIdentity } from "./makeIdentity"
 

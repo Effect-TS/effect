@@ -1,9 +1,9 @@
 // tracing: off
 
-import "../Operator"
+import "../../Operator"
 
 export * from "./definition"
-export { IdentityURI } from "../Modules"
+export { IdentityURI } from "../../Modules"
 export * from "./operations"
 export * from "./makeIdentity"
 export * from "./common"

@@ -1,7 +1,7 @@
 // tracing: off
 
-import "../Operator"
+import "../../Operator"
 
 export * from "./definition"
-export { ClosureURI } from "../Modules"
+export { ClosureURI } from "../../Modules"
 export * from "./operations"

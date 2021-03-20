@@ -3,11 +3,11 @@
 import type { Ord } from "@effect-ts/system/Ord"
 import { makeOrd } from "@effect-ts/system/Ord"
 
-import type { Associative } from "../Associative"
-import { makeAssociative } from "../Associative/makeAssociative"
-import type { Identity } from "../Identity"
-import { makeIdentity } from "../Identity/makeIdentity"
 import { Associative as OrderingAssociative } from "../Ordering"
+import type { Associative } from "../Structure/Associative"
+import { makeAssociative } from "../Structure/Associative/makeAssociative"
+import type { Identity } from "../Structure/Identity"
+import { makeIdentity } from "../Structure/Identity/makeIdentity"
 
 /**
  * Returns a `Associative` such that:

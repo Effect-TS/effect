@@ -1,6 +1,6 @@
 // tracing: off
 
-import "../Operator"
+import "../../Operator"
 
 export * from "./definition"
 export * from "./operations"
