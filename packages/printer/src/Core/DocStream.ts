@@ -4,11 +4,11 @@ import type { Array } from "@effect-ts/core/Array"
 import * as A from "@effect-ts/core/Array"
 import { absurd, pipe } from "@effect-ts/core/Function"
 import type { Identity } from "@effect-ts/core/Identity"
+import * as IO from "@effect-ts/core/IO"
 import type { Option } from "@effect-ts/core/Option"
 import * as O from "@effect-ts/core/Option"
 import type { URI } from "@effect-ts/core/Prelude"
 import * as P from "@effect-ts/core/Prelude"
-import * as Sy from "@effect-ts/core/Sync"
 
 // -------------------------------------------------------------------------------------
 // model
@@ -205,8 +205,8 @@ export const map = <A, B>(f: (a: A) => B): ((fa: DocStream<A>) => DocStream<B>) 
 export const foldMap = <I>(I: Identity<I>) => <A>(
   f: (a: A) => I
 ): ((fa: DocStream<A>) => I) => {
-  const go = (x: DocStream<A>): Sy.UIO<I> =>
-    Sy.gen(function* (_) {
+  const go = (x: DocStream<A>): IO.IO<I> =>
+    IO.gen(function* (_) {
       switch (x._tag) {
         case "CharStream":
           return yield* _(go(x.stream))
@@ -222,7 +222,7 @@ export const foldMap = <I>(I: Identity<I>) => <A>(
           return I.identity
       }
     })
-  return (_) => Sy.run(go(_))
+  return (_) => IO.run(go(_))
 }
 
 /**
@@ -231,8 +231,8 @@ export const foldMap = <I>(I: Identity<I>) => <A>(
 export const reAnnotateS = <A, B>(
   f: (a: A) => B
 ): ((stream: DocStream<A>) => DocStream<B>) => {
-  const go = (x: DocStream<A>): Sy.UIO<DocStream<B>> =>
-    Sy.gen(function* (_) {
+  const go = (x: DocStream<A>): IO.IO<DocStream<B>> =>
+    IO.gen(function* (_) {
       switch (x._tag) {
         case "CharStream":
           return char(x.char, yield* _(go(x.stream)))
@@ -248,7 +248,7 @@ export const reAnnotateS = <A, B>(
           return x
       }
     })
-  return (_) => Sy.run(go(_))
+  return (_) => IO.run(go(_))
 }
 
 /**
@@ -258,8 +258,8 @@ export const reAnnotateS = <A, B>(
  * @since 0.0.1
  */
 export const unAnnotateS = <A>(stream: DocStream<A>): DocStream<never> => {
-  const go = (x: DocStream<A>): Sy.UIO<DocStream<never>> =>
-    Sy.gen(function* (_) {
+  const go = (x: DocStream<A>): IO.IO<DocStream<never>> =>
+    IO.gen(function* (_) {
       switch (x._tag) {
         case "CharStream":
           return char(x.char, yield* _(go(x.stream)))
@@ -275,7 +275,7 @@ export const unAnnotateS = <A>(stream: DocStream<A>): DocStream<never> => {
           return x
       }
     })
-  return pipe(go(stream), Sy.run)
+  return pipe(go(stream), IO.run)
 }
 
 type AnnotationRemoval = "Remove" | "DontRemove"
@@ -293,8 +293,8 @@ export const alterAnnotationS = <A, B>(
 ): ((stream: DocStream<A>) => DocStream<B>) => {
   const go = (stack: Array<AnnotationRemoval>) => (
     x: DocStream<A>
-  ): Sy.UIO<DocStream<B>> =>
-    Sy.gen(function* (_) {
+  ): IO.IO<DocStream<B>> =>
+    IO.gen(function* (_) {
       switch (x._tag) {
         case "CharStream":
           return char(x.char, yield* _(go(stack)(x.stream)))
@@ -326,7 +326,7 @@ export const alterAnnotationS = <A, B>(
           return x
       }
     })
-  return (_) => Sy.run(go(A.empty)(_))
+  return (_) => IO.run(go(A.empty)(_))
 }
 
 // -------------------------------------------------------------------------------------

@@ -377,17 +377,17 @@ const fitsSmart = (lineWidth: number, ribbonFraction: number) => (
  * one line.
  *
  * ```typescript
- * import { flow, pipe } from 'fp-ts/function'
- * import * as M from 'fp-ts/Monoid'
- * import * as RA from 'fp-ts/ReadonlyArray'
+ * import { flow, pipe } from '@effect-ts/core/Function'
+ * import * as M from '@effect-ts/core/Identity'
+ * import * as RA from '@effect-ts/core/Array'
  *
- * import type { Doc } from 'prettyprinter-ts/lib/Doc'
- * import * as D from 'prettyprinter-ts/lib/Doc'
- * import type { Layout, LayoutOptions } from 'prettyprinter-ts/lib/Layout'
- * import * as L from 'prettyprinter-ts/lib/Layout'
- * import type { PageWidth } from 'prettyprinter-ts/lib/PageWidth'
- * import * as PW from 'prettyprinter-ts/lib/PageWidth'
- * import * as R from 'prettyprinter-ts/lib/Render'
+ * import type { Doc } from '@effect-ts/printer/Core/Doc'
+ * import * as D from '@effect-ts/printer/Core/Doc'
+ * import type { Layout, LayoutOptions } from '@effect-ts/printer/Core/Layout'
+ * import * as L from '@effect-ts/printer/Core/Layout'
+ * import type { PageWidth } from '@effect-ts/printer/Core/PageWidth'
+ * import * as PW from '@effect-ts/printer/Core/PageWidth'
+ * import * as R from '@effect-ts/printer/Core/Render'
  *
  * // Consider the following python-ish document:
  * const fun = <A>(doc: Doc<A>): Doc<A> =>
@@ -405,7 +405,7 @@ const fitsSmart = (lineWidth: number, ribbonFraction: number) => (
  *
  * // The document will be rendered using the following pipeline, where the choice
  * // of layout algorithm has been left open:
- * const dashes: Doc<never> = D.text(pipe(RA.replicate(26 - 2, '-'), M.fold(M.monoidString)))
+ * const dashes: Doc<never> = D.text(pipe(RA.replicate(26 - 2, '-'), M.fold(M.string)))
  * const hr: Doc<never> = D.hcat([D.vbar, dashes, D.vbar])
  *
  * const pageWidth: PageWidth = PW.AvailablePerLine(26, 1)
@@ -479,11 +479,11 @@ export const smart = <A>(doc: Doc<A>): Layout<A> => (_) =>
  * can be used for output that is read by other programs.
  *
  * ```typescript
- * import { pipe } from 'fp-ts/function'
+ * import { pipe } from '@effect-ts/core/Function'
  *
- * import * as D from 'prettyprinter-ts/lib/Doc'
- * import * as L from 'prettyprinter-ts/lib/Layout'
- * import * as R from 'prettyprinter-ts/lib/Render'
+ * import * as D from '@effect-ts/printer/Core/Doc'
+ * import * as L from '@effect-ts/printer/Core/Layout'
+ * import * as R from '@effect-ts/printer/Core/Render'
  *
  * const doc = pipe(
  *   D.vsep([

@@ -5,9 +5,9 @@ import * as A from "@effect-ts/core/Array"
 import * as Assoc from "@effect-ts/core/Associative"
 import { absurd, pipe, tuple } from "@effect-ts/core/Function"
 import * as Ident from "@effect-ts/core/Identity"
+import * as IO from "@effect-ts/core/IO"
 import * as O from "@effect-ts/core/Option"
 import * as S from "@effect-ts/core/Show"
-import * as Sy from "@effect-ts/core/Sync"
 import * as MO from "@effect-ts/morphic"
 
 import type { DocStream } from "../Core/DocStream"
@@ -118,8 +118,8 @@ export const render = (stream: DocStream<Style>): string => {
     (x, xs) => tuple<readonly [Style, Array<Style>]>(x, xs)
   )
 
-  const go = (x: DocStream<Style>) => (stack: Array<Style>): Sy.UIO<string> =>
-    Sy.gen(function* (_) {
+  const go = (x: DocStream<Style>) => (stack: Array<Style>): IO.IO<string> =>
+    IO.gen(function* (_) {
       switch (x._tag) {
         case "Failed":
           return absurd<string>(x as never)
@@ -154,7 +154,7 @@ export const render = (stream: DocStream<Style>): string => {
           return absurd(x)
       }
     })
-  return pipe(A.single(Identity.identity), go(stream), Sy.run)
+  return pipe(A.single(Identity.identity), go(stream), IO.run)
 }
 
 // -------------------------------------------------------------------------------------

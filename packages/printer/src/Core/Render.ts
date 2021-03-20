@@ -3,7 +3,7 @@
 import * as A from "@effect-ts/core/Array"
 import { absurd, pipe } from "@effect-ts/core/Function"
 import * as Ident from "@effect-ts/core/Identity"
-import * as Sy from "@effect-ts/core/Sync"
+import * as IO from "@effect-ts/core/IO"
 
 import type { DocStream } from "./DocStream"
 
@@ -14,8 +14,8 @@ import type { DocStream } from "./DocStream"
 const foldS = Ident.fold(Ident.string)
 
 export const renderS = <A>(stream: DocStream<A>): string => {
-  const go = (x: DocStream<A>): Sy.UIO<string> =>
-    Sy.gen(function* (_) {
+  const go = (x: DocStream<A>): IO.IO<string> =>
+    IO.gen(function* (_) {
       switch (x._tag) {
         case "Failed":
           return absurd<string>(x as never)
@@ -42,5 +42,5 @@ export const renderS = <A>(stream: DocStream<A>): string => {
           return absurd(x)
       }
     })
-  return Sy.run(go(stream))
+  return IO.run(go(stream))
 }

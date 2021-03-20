@@ -7,7 +7,7 @@ import * as Assoc from "@effect-ts/core/Associative"
 import { absurd, constant, pipe } from "@effect-ts/core/Function"
 import type { Identity } from "@effect-ts/core/Identity"
 import * as Ident from "@effect-ts/core/Identity"
-import * as Sy from "@effect-ts/core/IO"
+import * as IO from "@effect-ts/core/IO"
 import type { URI } from "@effect-ts/core/Prelude"
 import * as P from "@effect-ts/core/Prelude"
 
@@ -257,11 +257,11 @@ export const text = <A>(text: string): Doc<A> => ({
  * algorithms will fall back to an even wider layout.
  *
  * ```typescript
- * import { pipe } from 'fp-ts/function'
+ * import { pipe } from '@effect-ts/core/Function'
  *
- * import type { Doc } from 'prettyprinter-ts/lib/Doc'
- * import * as D from 'prettyprinter-ts/lib/Doc'
- * import * as R from 'prettyprinter-ts/lib/Render'
+ * import type { Doc } from '@effect-ts/printer/Core/Doc'
+ * import * as D from '@effect-ts/printer/Core/Doc'
+ * import * as R from '@effect-ts/printer/Core/Render'
  *
  * const open = D.flatAlt(D.empty, D.text('{ '))
  * const close = D.flatAlt(D.empty, D.text(' }'))
@@ -311,8 +311,8 @@ export const cat = <A>(left: Doc<A>, right: Doc<A>): Doc<A> => ({
  * if the line break is undone by `group`.
  *
  * ```typescript
- * import * as D from 'prettyprinter-ts/lib/Doc'
- * import * as R from 'prettyprinter-ts/lib/Render'
+ * import * as D from '@effect-ts/printer/Core/Doc'
+ * import * as R from '@effect-ts/printer/Core/Render'
  *
  * const doc = D.hcat([
  *   D.text('lorem ipsum'),
@@ -335,8 +335,8 @@ export const line: Doc<never> = flatAlt(line_, char(" "))
  * line break is undone by `group` (instead of `space`).
  *
  * ```typescript
- * import * as D from 'prettyprinter-ts/lib/Doc'
- * import * as R from 'prettyprinter-ts/lib/Render'
+ * import * as D from '@effect-ts/printer/Core/Doc'
+ * import * as R from '@effect-ts/printer/Core/Render'
  *
  * const doc = D.hcat([
  *   D.text('lorem ipsum'),
@@ -359,10 +359,10 @@ export const lineBreak: Doc<never> = flatAlt(line_, empty)
  * fits onto the page, otherwise it behaves like `line`.
  *
  * ```typescript
- * import { pipe } from 'fp-ts/function'
+ * import { pipe } from '@effect-ts/core/Function'
  *
- * import * as D from 'prettyprinter-ts/lib/Doc'
- * import * as R from 'prettyprinter-ts/lib/Render'
+ * import * as D from '@effect-ts/printer/Core/Doc'
+ * import * as R from '@effect-ts/printer/Core/Render'
  *
  * // Here we have enough space to put everything onto one line:
  *
@@ -391,10 +391,10 @@ export const softLine: Doc<never> = union(char(" "), line_)
  * (instead of `space`).
  *
  * ```typescript
- * import { pipe } from 'fp-ts/function'
+ * import { pipe } from '@effect-ts/core/Function'
  *
- * import * as D from 'prettyprinter-ts/lib/Doc'
- * import * as R from 'prettyprinter-ts/lib/Render'
+ * import * as D from '@effect-ts/printer/Core/Doc'
+ * import * as R from '@effect-ts/printer/Core/Render'
  *
  * // With enough space, we get direct concatenation of documents:
  * const doc = D.hcat([
@@ -421,10 +421,10 @@ export const softLineBreak: Doc<never> = union(empty, line_)
  * `group`'ed.
  *
  * ```typescript
- * import { pipe } from 'fp-ts/function'
+ * import { pipe } from '@effect-ts/core/Function'
  *
- * import * as D from 'prettyprinter-ts/lib/Doc'
- * import * as R from 'prettyprinter-ts/lib/Render'
+ * import * as D from '@effect-ts/printer/Core/Doc'
+ * import * as R from '@effect-ts/printer/Core/Render'
  *
  * const doc = D.hcat([
  *   D.text('lorem ipsum'),
@@ -454,10 +454,10 @@ export const hardLine: Doc<never> = line_
  * any empty space with spaces
  *
  * ```typescript
- * import { pipe } from 'fp-ts/function'
+ * import { pipe } from '@effect-ts/core/Function'
  *
- * import * as D from 'prettyprinter-ts/lib/Doc'
- * import * as R from 'prettyprinter-ts/lib/Render'
+ * import * as D from '@effect-ts/printer/Core/Doc'
+ * import * as R from '@effect-ts/printer/Core/Render'
  *
  * const doc = D.vsep([
  *   pipe(D.vsep(D.words('lorem ipsum dolor')), D.nest(4)),
@@ -481,11 +481,11 @@ export const nest = (indent: number) => <A>(doc: Doc<A>): Doc<A> =>
  * document starts.
  *
  * ```typescript
- * import { pipe } from 'fp-ts/function'
- * import * as RA from 'fp-ts/Array'
+ * import { pipe } from '@effect-ts/core/Function'
+ * import * as RA from '@effect-ts/core/Array'
  *
- * import * as D from 'prettyprinter-ts/lib/Doc'
- * import * as R from 'prettyprinter-ts/lib/Render'
+ * import * as D from '@effect-ts/printer/Core/Doc'
+ * import * as R from '@effect-ts/printer/Core/Render'
  *
  * // Example 1:
  * const example1 = D.column((l) => D.hsep([D.text('Columns are'), D.text(`${l}-based.`)]))
@@ -522,11 +522,11 @@ export const column = <A>(react: (position: number) => Doc<A>): Doc<A> => ({
  * the current indentation of the document).
  *
  * ```typescript
- * import { pipe } from 'fp-ts/function'
- * import * as RA from 'fp-ts/Array'
+ * import { pipe } from '@effect-ts/core/Function'
+ * import * as RA from '@effect-ts/core/Array'
  *
- * import * as D from 'prettyprinter-ts/lib/Doc'
- * import * as R from 'prettyprinter-ts/lib/Render'
+ * import * as D from '@effect-ts/printer/Core/Doc'
+ * import * as R from '@effect-ts/printer/Core/Render'
  *
  * const doc = D.hsep([D.text('prefix'), D.nesting((l) => D.brackets(D.text(`Nested: ${l}`)))])
  *
@@ -552,12 +552,12 @@ export const nesting = <A>(react: (level: number) => Doc<A>): Doc<A> => ({
  * Lays out a document according to the document's`PageWidth`.
  *
  * ```
- * import { pipe } from 'fp-ts/function'
- * import * as RA from 'fp-ts/Array'
+ * import { pipe } from '@effect-ts/core/Function'
+ * import * as RA from '@effect-ts/core/Array'
  *
- * import * as D from 'prettyprinter-ts/lib/Doc'
- * import * as R from 'prettyprinter-ts/lib/Render'
- * import * as PW from 'prettyprinter-ts/lib/PageWidth'
+ * import * as D from '@effect-ts/printer/Core/Doc'
+ * import * as R from '@effect-ts/printer/Core/Render'
+ * import * as PW from '@effect-ts/printer/Core/PageWidth'
  *
  * const doc = D.hsep([
  *   D.text('prefix'),
@@ -707,8 +707,8 @@ export const isAnnotated = <A>(doc: Doc<A>): doc is Annotated<A> =>
 export const alterAnnotations = <A, B>(
   f: (a: A) => Array<B>
 ): ((doc: Doc<A>) => Doc<B>) => {
-  const go = (x: Doc<A>): Sy.IO<Doc<B>> =>
-    Sy.gen(function* (_) {
+  const go = (x: Doc<A>): IO.IO<Doc<B>> =>
+    IO.gen(function* (_) {
       switch (x._tag) {
         case "Cat":
           return cat(yield* _(go(x.left)), yield* _(go(x.right)))
@@ -719,18 +719,18 @@ export const alterAnnotations = <A, B>(
         case "Nest":
           return nest(x.indent)(yield* _(go(x.doc)))
         case "Column":
-          return column((position) => Sy.run(go(x.react(position))))
+          return column((position) => IO.run(go(x.react(position))))
         case "WithPageWidth":
-          return withPageWidth((pageWidth) => Sy.run(go(x.react(pageWidth))))
+          return withPageWidth((pageWidth) => IO.run(go(x.react(pageWidth))))
         case "Nesting":
-          return nesting((level) => Sy.run(go(x.react(level))))
+          return nesting((level) => IO.run(go(x.react(level))))
         case "Annotated":
           return A.reduceRight_(f(x.annotation), yield* _(go(x.doc)), annotate)
         default:
           return x
       }
     })
-  return (_) => Sy.run(go(_))
+  return (_) => IO.run(go(_))
 }
 
 /**
@@ -864,10 +864,10 @@ export const space: Doc<never> = char(" ")
  * a binary function.
  *
  * ```typescript
- * import { pipe } from 'fp-ts/function'
+ * import { pipe } from '@effect-ts/core/Function'
  *
- * import * as D from 'prettyprinter-ts/lib/Doc'
- * import * as R from 'prettyprinter-ts/lib/Render'
+ * import * as D from '@effect-ts/printer/Core/Doc'
+ * import * as R from '@effect-ts/printer/Core/Render'
  *
  * const doc = pipe(
  *   [D.char('a'), D.char('b')],
@@ -891,8 +891,8 @@ export const concatWith: <A>(
  * `space` between them.
  *
  * ```typescript
- * import * as D from 'prettyprinter-ts/lib/Doc'
- * import * as R from 'prettyprinter-ts/lib/Render'
+ * import * as D from '@effect-ts/printer/Core/Doc'
+ * import * as R from '@effect-ts/printer/Core/Render'
  *
  * const doc = D.appendWithSpace(D.char('a'), D.char('b'))
  *
@@ -908,8 +908,8 @@ export const appendWithSpace: <A>(x: Doc<A>, y: Doc<A>) => Doc<A> = (x, y) =>
  * `line` between them.
  *
  * ```typescript
- * import * as D from 'prettyprinter-ts/lib/Doc'
- * import * as R from 'prettyprinter-ts/lib/Render'
+ * import * as D from '@effect-ts/printer/Core/Doc'
+ * import * as R from '@effect-ts/printer/Core/Render'
  *
  * const doc = D.appendWithLine(D.char('a'), D.char('b'))
  *
@@ -926,8 +926,8 @@ export const appendWithLine: <A>(x: Doc<A>, y: Doc<A>) => Doc<A> = (x, y) =>
  * `lineBreak` between them.
  *
  * ```typescript
- * import * as D from 'prettyprinter-ts/lib/Doc'
- * import * as R from 'prettyprinter-ts/lib/Render'
+ * import * as D from '@effect-ts/printer/Core/Doc'
+ * import * as R from '@effect-ts/printer/Core/Render'
  *
  * const doc = D.appendWithLineBreak(D.char('a'), D.char('b'))
  *
@@ -947,10 +947,10 @@ export const appendWithLineBreak: <A>(x: Doc<A>, y: Doc<A>) => Doc<A> = (x, y) =
  * `softLine` between them.
  *
  * ```typescript
- * import { pipe } from 'fp-ts/function'
+ * import { pipe } from '@effect-ts/core/Function'
  *
- * import * as D from 'prettyprinter-ts/lib/Doc'
- * import * as R from 'prettyprinter-ts/lib/Render'
+ * import * as D from '@effect-ts/printer/Core/Doc'
+ * import * as R from '@effect-ts/printer/Core/Render'
  *
  * const doc = D.appendWithSoftLine(D.char('a'), D.char('b'))
  *
@@ -970,10 +970,10 @@ export const appendWithSoftLine: <A>(x: Doc<A>, y: Doc<A>) => Doc<A> = (x, y) =>
  * `softLineBreak` between them.
  *
  * ```typescript
- * import { pipe } from 'fp-ts/function'
+ * import { pipe } from '@effect-ts/core/Function'
  *
- * import * as D from 'prettyprinter-ts/lib/Doc'
- * import * as R from 'prettyprinter-ts/lib/Render'
+ * import * as D from '@effect-ts/printer/Core/Doc'
+ * import * as R from '@effect-ts/printer/Core/Render'
  *
  * const doc = D.appendWithSoftLineBreak(D.char('a'), D.char('b'))
  *
@@ -996,8 +996,8 @@ export const appendWithSoftLineBreak: <A>(x: Doc<A>, y: Doc<A>) => Doc<A> = (x, 
  * Flattens a document but does not report changes.
  */
 const flatten = <A>(doc: Doc<A>): Doc<A> => {
-  const go = (x: Doc<A>): Sy.IO<Doc<A>> =>
-    Sy.gen(function* (_) {
+  const go = (x: Doc<A>): IO.IO<Doc<A>> =>
+    IO.gen(function* (_) {
       switch (x._tag) {
         case "Line":
           return fail
@@ -1010,11 +1010,11 @@ const flatten = <A>(doc: Doc<A>): Doc<A> => {
         case "Nest":
           return nest(x.indent)(yield* _(go(x.doc)))
         case "Column":
-          return column((position) => Sy.run(go(x.react(position))))
+          return column((position) => IO.run(go(x.react(position))))
         case "WithPageWidth":
-          return withPageWidth((pageWidth) => Sy.run(go(x.react(pageWidth))))
+          return withPageWidth((pageWidth) => IO.run(go(x.react(pageWidth))))
         case "Nesting":
-          return nesting((level) => Sy.run(go(x.react(level))))
+          return nesting((level) => IO.run(go(x.react(level))))
         case "Annotated": {
           const doc = yield* _(go(x.doc))
           return annotate(x.annotation, doc)
@@ -1023,7 +1023,7 @@ const flatten = <A>(doc: Doc<A>): Doc<A> => {
           return x
       }
     })
-  return pipe(go(doc), Sy.run)
+  return pipe(go(doc), IO.run)
 }
 
 /**
@@ -1041,8 +1041,8 @@ const flatten = <A>(doc: Doc<A>): Doc<A> => {
  * contains either a hard `Line` or a `Fail`.
  */
 const changesUponFlattening = <A>(doc: Doc<A>): Flatten<Doc<A>> => {
-  const go = (x: Doc<A>): Sy.IO<Flatten<Doc<A>>> =>
-    Sy.gen(function* (_) {
+  const go = (x: Doc<A>): IO.IO<Flatten<Doc<A>>> =>
+    IO.gen(function* (_) {
       switch (x._tag) {
         case "FlatAlt":
           return F.flattened(flatten(x.right))
@@ -1087,7 +1087,7 @@ const changesUponFlattening = <A>(doc: Doc<A>): Flatten<Doc<A>> => {
           return F.alreadyFlat
       }
     })
-  return pipe(go(doc), Sy.run)
+  return pipe(go(doc), IO.run)
 }
 
 /**
@@ -1147,10 +1147,10 @@ export const group = <A>(doc: Doc<A>): Doc<A> => {
  * For automatic line breaks, consider using `fillSep`.
  *
  * ```typescript
- * import { pipe } from 'fp-ts/function'
+ * import { pipe } from '@effect-ts/core/Function'
  *
- * import * as D from 'prettyprinter-ts/lib/Doc'
- * import * as R from 'prettyprinter-ts/lib/Render'
+ * import * as D from '@effect-ts/printer/Core/Doc'
+ * import * as R from '@effect-ts/printer/Core/Render'
  *
  * const doc = D.hsep(D.words('lorem ipsum dolor sit amet'))
  *
@@ -1175,8 +1175,8 @@ export const hsep: <A>(docs: Array<Doc<A>>) => Doc<A> = concatWith(appendWithSpa
  * use case.
  *
  * ```typescript
- * import * as D from 'prettyprinter-ts/lib/Doc'
- * import * as R from 'prettyprinter-ts/lib/Render'
+ * import * as D from '@effect-ts/printer/Core/Doc'
+ * import * as R from '@effect-ts/printer/Core/Render'
  *
  * const unaligned = D.hsep([
  *   D.text('prefix'),
@@ -1211,34 +1211,6 @@ export const vsep: <A>(docs: Array<Doc<A>>) => Doc<A> = concatWith(appendWithLin
  * in the list. **Note** that the use of `line` means that if `group`ed, the documents
  * will be separated with a `space` instead of newlines. See `fillCat` if you do not want
  * a `space`.
- *
- * ```typescript
- * import { intercalate } from 'fp-ts/Foldable'
- * import { pipe } from 'fp-ts/function'
- * import { monoidString } from 'fp-ts/Monoid'
- * import * as RA from 'fp-ts/Array'
- *
- * import * as D from 'prettyprinter-ts/lib/Doc'
- * import * as R from 'prettyprinter-ts/lib/Render'
- *
- * const intercalateSpace = (xs: Array<string>): string =>
- *   intercalate(monoidString, RA.Foldable)(' ', xs)
- *
- * const words = pipe(RA.replicate(4, 'lorem ipsum dolor sit amet'), intercalateSpace, D.words)
- *
- * const doc = D.hsep([D.text('Docs:'), D.fillSep(words)])
- *
- * console.log(pipe(doc, R.renderWidth(80)))
- * // Docs: lorem ipsum dolor sit amet lorem ipsum dolor sit amet lorem ipsum dolor
- * // sit amet lorem ipsum dolor sit amet
- *
- * // If the page width is decreased to 40, printing the same document yields:
- * console.log(pipe(doc, R.renderWidth(40)))
- * // Docs: lorem ipsum dolor sit amet lorem
- * // ipsum dolor sit amet lorem ipsum dolor
- * // sit amet lorem ipsum dolor sit amet
- *
- * ```
  */
 export const fillSep: <A>(docs: Array<Doc<A>>) => Doc<A> = concatWith(
   appendWithSoftLine
@@ -1251,10 +1223,10 @@ export const fillSep: <A>(docs: Array<Doc<A>>) => Doc<A> = concatWith(
  * another.
  *
  * ```typescript
- * import { pipe } from 'fp-ts/function'
+ * import { pipe } from '@effect-ts/core/Function'
  *
- * import * as D from 'prettyprinter-ts/lib/Doc'
- * import * as R from 'prettyprinter-ts/lib/Render'
+ * import * as D from '@effect-ts/printer/Core/Doc'
+ * import * as R from '@effect-ts/printer/Core/Render'
  *
  * const doc = D.hsep([
  *   D.text('prefix'),
@@ -1284,8 +1256,8 @@ export const seps: <A>(docs: Array<Doc<A>>) => Doc<A> = (_) => group(vsep(_))
  * folding an array of documents using the `Semigroup` instance for `Doc`.
  *
  * ```typescript
- * import * as D from 'prettyprinter-ts/lib/Doc'
- * import * as R from 'prettyprinter-ts/lib/Render'
+ * import * as D from '@effect-ts/printer/Core/Doc'
+ * import * as R from '@effect-ts/printer/Core/Render'
  *
  * const doc = D.hcat(D.words('lorem ipsum dolor'))
  *
@@ -1300,8 +1272,8 @@ export const hcat: <A>(docs: Array<Doc<A>>) => Doc<A> = concatWith(cat)
  * output is grouped then the line breaks are removed.
  *
  * ```typescript
- * import * as D from 'prettyprinter-ts/lib/Doc'
- * import * as R from 'prettyprinter-ts/lib/Render'
+ * import * as D from '@effect-ts/printer/Core/Doc'
+ * import * as R from '@effect-ts/printer/Core/Render'
  *
  * const doc = D.vcat(D.words('lorem ipsum dolor'))
  *
@@ -1321,28 +1293,6 @@ export const vcat: <A>(docs: Array<Doc<A>>) => Doc<A> = concatWith(appendWithLin
  *
  * **Note** that the use of `lineBreak` means that if `group`ed, the documents will be
  * separated with `empty` instead of newlines. See `fillSep` if you want a `space` instead.
- *
- * ```typescript
- * import { intercalate } from 'fp-ts/Foldable'
- * import { pipe } from 'fp-ts/function'
- * import { monoidString } from 'fp-ts/Monoid'
- * import * as RA from 'fp-ts/Array'
- *
- * import * as D from 'prettyprinter-ts/lib/Doc'
- * import * as R from 'prettyprinter-ts/lib/Render'
- *
- * const intercalateSpace = (xs: Array<string>): string =>
- *   intercalate(monoidString, RA.Foldable)(' ', xs)
- *
- * const words = pipe(RA.replicate(4, 'lorem ipsum dolor sit amet'), intercalateSpace, D.words)
- *
- * // Compare the behavior of `fillCat` and fillSep` when `group`ed
- * const doc = D.hsep([D.text('Grouped:'), D.group(D.fillCat(words))])
- *
- * console.log(R.render(doc))
- * // Grouped: loremipsumdolorsitametloremipsumdolorsitametloremipsumdolorsitametlorem
- * // ipsumdolorsitamet
- * ```
  */
 export const fillCat: <A>(docs: Array<Doc<A>>) => Doc<A> = concatWith(
   appendWithSoftLineBreak
@@ -1355,10 +1305,10 @@ export const fillCat: <A>(docs: Array<Doc<A>>) => Doc<A> = concatWith(
  * another.
  *
  * ```typescript
- * import { pipe } from 'fp-ts/function'
+ * import { pipe } from '@effect-ts/core/Function'
  *
- * import * as D from 'prettyprinter-ts/lib/Doc'
- * import * as R from 'prettyprinter-ts/lib/Render'
+ * import * as D from '@effect-ts/printer/Core/Doc'
+ * import * as R from '@effect-ts/printer/Core/Render'
  *
  * const doc = D.hsep([
  *   D.text('Docs:'),
@@ -1388,12 +1338,12 @@ export const cats: <A>(docs: Array<Doc<A>>) => Doc<A> = (_) => group(vcat(_))
  * of `x` is already larger than the specified `width`, nothing is appended.
  *
  * ```typescript
- * import { pipe } from 'fp-ts/function'
- * import * as RA from 'fp-ts/ReadonlyArray'
+ * import { pipe } from '@effect-ts/core/Function'
+ * import * as RA from '@effect-ts/core/Array'
  *
- * import type { Doc } from 'prettyprinter-ts/lib/Doc'
- * import * as D from 'prettyprinter-ts/lib/Doc'
- * import * as R from 'prettyprinter-ts/lib/Render'
+ * import type { Doc } from '@effect-ts/printer/Core/Doc'
+ * import * as D from '@effect-ts/printer/Core/Doc'
+ * import * as R from '@effect-ts/printer/Core/Render'
  *
  * type Signature = [name: string, type: string]
  *
@@ -1427,12 +1377,12 @@ export const fill: (width: number) => <A>(doc: Doc<A>) => Doc<A> = (lw) => (x) =
  * the specified `width` and a `line` is appended.
  *
  * ```typescript
- * import { pipe } from 'fp-ts/function'
- * import * as RA from 'fp-ts/ReadonlyArray'
+ * import { pipe } from '@effect-ts/core/Function'
+ * import * as RA from '@effect-ts/core/Array'
  *
- * import type { Doc } from 'prettyprinter-ts/lib/Doc'
- * import * as D from 'prettyprinter-ts/lib/Doc'
- * import * as R from 'prettyprinter-ts/lib/Render'
+ * import type { Doc } from '@effect-ts/printer/Core/Doc'
+ * import * as D from '@effect-ts/printer/Core/Doc'
+ * import * as R from '@effect-ts/printer/Core/Render'
  *
  * type Signature = [name: string, type: string]
  *
@@ -1469,8 +1419,8 @@ export const fillBreak: (width: number) => <A>(doc: Doc<A>) => Doc<A> = (lw) => 
  * the current column.
  *
  * ```typescript
- * import * as D from 'prettyprinter-ts/lib/Doc'
- * import * as R from 'prettyprinter-ts/lib/Render'
+ * import * as D from '@effect-ts/printer/Core/Doc'
+ * import * as R from '@effect-ts/printer/Core/Render'
  *
  * // As an example, the documents below will be placed one above the other
  * // regardless of the current nesting level
@@ -1510,10 +1460,10 @@ export const align = <A>(doc: Doc<A>): Doc<A> =>
  * efficient combinator (`nest`) first.
  *
  * ```typescript
- * import { pipe } from 'fp-ts/function'
+ * import { pipe } from '@effect-ts/core/Function'
  *
- * import * as D from 'prettyprinter-ts/lib/Doc'
- * import * as R from 'prettyprinter-ts/lib/Render'
+ * import * as D from '@effect-ts/printer/Core/Doc'
+ * import * as R from '@effect-ts/printer/Core/Render'
  *
  * const doc = D.hsep([
  *   D.text('prefix'),
@@ -1534,10 +1484,10 @@ export const hang = (indent: number): (<A>(doc: Doc<A>) => Doc<A>) => (_) =>
  * beginning from the current cursor position.
  *
  * ```typescript
- * import { pipe } from 'fp-ts/function'
+ * import { pipe } from '@effect-ts/core/Function'
  *
- * import * as D from 'prettyprinter-ts/lib/Doc'
- * import * as R from 'prettyprinter-ts/lib/Render'
+ * import * as D from '@effect-ts/printer/Core/Doc'
+ * import * as R from '@effect-ts/printer/Core/Render'
  *
  * const doc = D.hsep([
  *   D.text('prefix'),
@@ -1564,12 +1514,12 @@ export const indent = (indent: number) => <A>(doc: Doc<A>): Doc<A> =>
  * `punctuate` combinator.
  *
  * ```typescript
- * import { pipe } from 'fp-ts/function'
- * import * as RA from 'fp-ts/ReadonlyArray'
+ * import { pipe } from '@effect-ts/core/Function'
+ * import * as RA from '@effect-ts/core/Array'
  *
- * import type { Doc } from 'prettyprinter-ts/lib/Doc'
- * import * as D from 'prettyprinter-ts/lib/Doc'
- * import * as R from 'prettyprinter-ts/lib/Render'
+ * import type { Doc } from '@effect-ts/printer/Core/Doc'
+ * import * as D from '@effect-ts/printer/Core/Doc'
+ * import * as R from '@effect-ts/printer/Core/Render'
  *
  * const doc = D.hsep([
  *   D.text('list'),
@@ -1611,12 +1561,12 @@ export const encloseSep = <A>(left: Doc<A>, right: Doc<A>, sep: Doc<A>) => (
  * braces as the enclosure for a list of documents.
  *
  * ```typescript
- * import { pipe } from 'fp-ts/function'
- * import * as RA from 'fp-ts/ReadonlyArray'
+ * import { pipe } from '@effect-ts/core/Function'
+ * import * as RA from '@effect-ts/core/Array'
  *
- * import type { Doc } from 'prettyprinter-ts/lib/Doc'
- * import * as D from 'prettyprinter-ts/lib/Doc'
- * import * as R from 'prettyprinter-ts/lib/Render'
+ * import type { Doc } from '@effect-ts/printer/Core/Doc'
+ * import * as D from '@effect-ts/printer/Core/Doc'
+ * import * as R from '@effect-ts/printer/Core/Render'
  *
  * const doc = pipe(
  *   ['1', '20', '300', '4000'],
@@ -1644,12 +1594,12 @@ export const list = <A>(docs: Array<Doc<A>>): Doc<A> =>
  * parentheses as the enclosure for a list of documents.
  *
  * ```typescript
- * import { pipe } from 'fp-ts/function'
- * import * as RA from 'fp-ts/ReadonlyArray'
+ * import { pipe } from '@effect-ts/core/Function'
+ * import * as RA from '@effect-ts/core/Array'
  *
- * import type { Doc } from 'prettyprinter-ts/lib/Doc'
- * import * as D from 'prettyprinter-ts/lib/Doc'
- * import * as R from 'prettyprinter-ts/lib/Render'
+ * import type { Doc } from '@effect-ts/printer/Core/Doc'
+ * import * as D from '@effect-ts/printer/Core/Doc'
+ * import * as R from '@effect-ts/printer/Core/Render'
  *
  * const doc = pipe(
  *   ['1', '20', '300', '4000'],
@@ -1681,12 +1631,12 @@ export const tupled = <A>(docs: Array<Doc<A>>): Doc<A> =>
  * the document while rendering.
  *
  * ```typescript
- * import { pipe } from 'fp-ts/function'
- * import * as RA from 'fp-ts/ReadonlyArray'
+ * import { pipe } from '@effect-ts/core/Function'
+ * import * as RA from '@effect-ts/core/Array'
  *
- * import type { Doc } from 'prettyprinter-ts/lib/Doc'
- * import * as D from 'prettyprinter-ts/lib/Doc'
- * import * as R from 'prettyprinter-ts/lib/Render'
+ * import type { Doc } from '@effect-ts/printer/Core/Doc'
+ * import * as D from '@effect-ts/printer/Core/Doc'
+ * import * as R from '@effect-ts/printer/Core/Render'
  *
  * const annotate = <A>(doc: Doc<A>): Doc<A> =>
  *   pipe(
@@ -1729,10 +1679,10 @@ export const width = <A>(react: (width: number) => Doc<A>) => (doc: Doc<A>): Doc
  * entries, which can be observed if the result is oriented vertically.
  *
  * ```typescript
- * import { pipe } from 'fp-ts/function'
+ * import { pipe } from '@effect-ts/core/Function'
  *
- * import * as D from 'prettyprinter-ts/lib/Doc'
- * import * as R from 'prettyprinter-ts/lib/Render'
+ * import * as D from '@effect-ts/printer/Core/Doc'
+ * import * as R from '@effect-ts/printer/Core/Render'
  *
  * const docs = pipe(
  *   D.words<never>('lorem ipsum dolor sit amet'),
@@ -1765,10 +1715,10 @@ export const punctuate = <A>(punctuator: Doc<A>) => (
  * documents using `Cat`.
  *
  * ```typescript
- * import { pipe } from 'fp-ts/function'
+ * import { pipe } from '@effect-ts/core/Function'
  *
- * import * as D from 'prettyprinter-ts/lib/Doc'
- * import * as R from 'prettyprinter-ts/lib/Render'
+ * import * as D from '@effect-ts/printer/Core/Doc'
+ * import * as R from '@effect-ts/printer/Core/Render'
  *
  * const doc = pipe(D.char('-'), D.enclose(D.char('A'), D.char('Z')))
  *
@@ -1785,10 +1735,10 @@ export const enclose = <A>(left: Doc<A>, right: Doc<A>) => (doc: Doc<A>): Doc<A>
  *
  *
  * ```typescript
- * import { pipe } from 'fp-ts/function'
+ * import { pipe } from '@effect-ts/core/Function'
  *
- * import * as D from 'prettyprinter-ts/lib/Doc'
- * import * as R from 'prettyprinter-ts/lib/Render'
+ * import * as D from '@effect-ts/printer/Core/Doc'
+ * import * as R from '@effect-ts/printer/Core/Render'
  *
  * // The `surround` combinator is just a reordering of the arguments to `enclose`,
  * // but allows for useful definitions such as:
@@ -1798,7 +1748,7 @@ export const enclose = <A>(left: Doc<A>, right: Doc<A>) => (doc: Doc<A>): Doc<A>
  * )
  *
  * console.log(R.render(doc))
- * // prettyprinter-ts/lib/Doc
+ * // @effect-ts/printer/Core/Doc
  * ```
  */
 export const surround = <A>(doc: Doc<A>) => (left: Doc<A>, right: Doc<A>): Doc<A> =>
@@ -1849,8 +1799,8 @@ export const dquotes = <A>(doc: Doc<A>): Doc<A> => pipe(doc, enclose<A>(dquote, 
  * for `n` count as `0` spaces.
  *
  * ```typescript
- * import * as D from 'prettyprinter-ts/lib/Doc'
- * import * as R from 'prettyprinter-ts/lib/Render'
+ * import * as D from '@effect-ts/printer/Core/Doc'
+ * import * as R from '@effect-ts/printer/Core/Render'
  *
  * const doc = D.brackets(D.dquotes(D.spaces(5)))
  *
@@ -1869,8 +1819,8 @@ export const spaces = <A>(n: number): Doc<A> => {
  * specified `char` to split on (defaults to `' '`).
  *
  * ```typescript
- * import * as D from 'prettyprinter-ts/lib/Doc'
- * import * as R from 'prettyprinter-ts/lib/Render'
+ * import * as D from '@effect-ts/printer/Core/Doc'
+ * import * as R from '@effect-ts/printer/Core/Render'
  *
  * const doc = D.tupled(D.words('Lorem ipsum dolor'))
  *
@@ -1888,10 +1838,10 @@ export const words = <A>(s: string, char = " "): Array<Doc<A>> =>
  * exceeds the available width it will be broken into multiple lines.
  *
  * ```typescript
- * import { pipe } from 'fp-ts/function'
+ * import { pipe } from '@effect-ts/core/Function'
  *
- * import * as D from 'prettyprinter-ts/lib/Doc'
- * import * as R from 'prettyprinter-ts/lib/Render'
+ * import * as D from '@effect-ts/printer/Core/Doc'
+ * import * as R from '@effect-ts/printer/Core/Render'
  *
  * const doc = D.reflow(
  *   'Lorem ipsum dolor sit amet, consectetur adipisicing elit, ' +
