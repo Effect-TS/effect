@@ -17,7 +17,7 @@ export const render = <A>(stream: DocStream<A>): string => {
   const go = (x: DocStream<A>): IO.IO<string> =>
     IO.gen(function* (_) {
       switch (x._tag) {
-        case "Failed":
+        case "FailedStream":
           throw new Error("bug, we ended up with a failed in render!")
         case "EmptyStream":
           return Ident.string.identity
@@ -34,9 +34,9 @@ export const render = <A>(stream: DocStream<A>): string => {
           const rest = yield* _(go(x.stream))
           return fold([indent, rest])
         }
-        case "PushAnnotation":
+        case "PushAnnotationStream":
           return yield* _(go(x.stream))
-        case "PopAnnotation":
+        case "PopAnnotationStream":
           return yield* _(go(x.stream))
       }
     })

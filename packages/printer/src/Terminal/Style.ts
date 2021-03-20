@@ -121,7 +121,7 @@ export const render = (stream: DocStream<Style>): string => {
   const go = (x: DocStream<Style>) => (stack: Array<Style>): IO.IO<string> =>
     IO.gen(function* (_) {
       switch (x._tag) {
-        case "Failed":
+        case "FailedStream":
           return absurd<string>(x as never)
         case "EmptyStream":
           return Ident.string.identity
@@ -138,13 +138,13 @@ export const render = (stream: DocStream<Style>): string => {
           const rest = yield* _(pipe(stack, go(x.stream)))
           return Ident.fold(Ident.string)(["\n", indent, rest])
         }
-        case "PushAnnotation": {
+        case "PushAnnotationStream": {
           const currentStyle = unsafePeek(stack)
           const nextStyle = Identity.combine(x.annotation, currentStyle)
           const rest = yield* _(pipe(stack, A.cons(x.annotation), go(x.stream)))
           return Ident.string.combine(Show.show(nextStyle), rest)
         }
-        case "PopAnnotation": {
+        case "PopAnnotationStream": {
           const [, styles] = unsafePop(stack)
           const nextStyle = unsafePeek(styles)
           const rest = yield* _(pipe(styles, go(x.stream)))

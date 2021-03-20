@@ -127,9 +127,9 @@ const initialIndentation = <A>(stream: DocStream<A>): Option<number> => {
       switch (x._tag) {
         case "LineStream":
           return O.some(x.indentation)
-        case "PushAnnotation":
+        case "PushAnnotationStream":
           return yield* _(go(x.stream))
-        case "PopAnnotation":
+        case "PopAnnotationStream":
           return yield* _(go(x.stream))
         default:
           return O.none
@@ -231,7 +231,7 @@ const failsOnFirstLine = <A>(stream: DocStream<A>): boolean => {
   const go = (x: DocStream<A>): IO.IO<boolean> =>
     IO.gen(function* (_) {
       switch (x._tag) {
-        case "Failed":
+        case "FailedStream":
           return true
         case "EmptyStream":
           return false
@@ -241,9 +241,9 @@ const failsOnFirstLine = <A>(stream: DocStream<A>): boolean => {
           return yield* _(go(x.stream))
         case "LineStream":
           return false
-        case "PushAnnotation":
+        case "PushAnnotationStream":
           return yield* _(go(x.stream))
-        case "PopAnnotation":
+        case "PopAnnotationStream":
           return yield* _(go(x.stream))
       }
     })
@@ -264,7 +264,7 @@ const fitsPretty = (width: number) => <A>(stream: DocStream<A>): boolean => {
     IO.gen(function* (_) {
       if (w < 0) return false
       switch (x._tag) {
-        case "Failed":
+        case "FailedStream":
           return false
         case "EmptyStream":
           return true
@@ -274,9 +274,9 @@ const fitsPretty = (width: number) => <A>(stream: DocStream<A>): boolean => {
           return yield* _(pipe(x.stream, go(w - x.text.length)))
         case "LineStream":
           return true
-        case "PushAnnotation":
+        case "PushAnnotationStream":
           return yield* _(pipe(x.stream, go(w)))
-        case "PopAnnotation":
+        case "PopAnnotationStream":
           return yield* _(pipe(x.stream, go(w)))
       }
     })
@@ -337,7 +337,7 @@ const fitsSmart = (lineWidth: number, ribbonFraction: number) => (
     IO.gen(function* (_) {
       if (w < 0) return false
       switch (x._tag) {
-        case "Failed":
+        case "FailedStream":
           return false
         case "EmptyStream":
           return true
@@ -349,9 +349,9 @@ const fitsSmart = (lineWidth: number, ribbonFraction: number) => (
           if (minNestingLevel > x.indentation) return true
           return yield* _(pipe(x.stream, go(x.indentation - lineWidth)))
         }
-        case "PushAnnotation":
+        case "PushAnnotationStream":
           return yield* _(pipe(x.stream, go(w)))
-        case "PopAnnotation":
+        case "PopAnnotationStream":
           return yield* _(pipe(x.stream, go(w)))
       }
     })

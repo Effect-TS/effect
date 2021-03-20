@@ -2,7 +2,7 @@
 
 import type { Array } from "@effect-ts/core/Array"
 import * as A from "@effect-ts/core/Array"
-import { pipe } from "@effect-ts/core/Function"
+import { identity, pipe } from "@effect-ts/core/Function"
 import type { Identity } from "@effect-ts/core/Identity"
 import * as IO from "@effect-ts/core/IO"
 import type { Option } from "@effect-ts/core/Option"
@@ -25,44 +25,48 @@ import * as P from "@effect-ts/core/Prelude"
  * other formats, such as plaintext or terminal output.
  */
 export type DocStream<A> =
-  | Failed
-  | EmptyStream
+  | FailedStream<A>
+  | EmptyStream<A>
   | CharStream<A>
   | TextStream<A>
   | LineStream<A>
-  | PushAnnotation<A>
-  | PopAnnotation<A>
+  | PushAnnotationStream<A>
+  | PopAnnotationStream<A>
 
 /**
  * Represents a `Doc` that failed to be laid out.
  */
-export interface Failed {
-  readonly _tag: "Failed"
+export class FailedStream<A> {
+  readonly _tag = "FailedStream"
+  readonly _A!: () => A
+  constructor(readonly id: (_: never) => A) {}
 }
 
 /**
  * Represents the an empty `Doc`.
  */
-export interface EmptyStream {
-  readonly _tag: "EmptyStream"
+export class EmptyStream<A> {
+  readonly _tag = "EmptyStream"
+  readonly _A!: () => A
+  constructor(readonly id: (_: never) => A) {}
 }
 
 /**
  * Represents a `Doc` containing a single character.
  */
-export interface CharStream<A> {
-  readonly _tag: "CharStream"
-  readonly char: string
-  readonly stream: DocStream<A>
+export class CharStream<A> {
+  readonly _tag = "CharStream"
+  readonly _A!: () => A
+  constructor(readonly char: string, readonly stream: DocStream<A>) {}
 }
 
 /**
  * Represents a `Doc` containing a string of text.
  */
-export interface TextStream<A> {
-  readonly _tag: "TextStream"
-  readonly text: string
-  readonly stream: DocStream<A>
+export class TextStream<A> {
+  readonly _tag = "TextStream"
+  readonly _A!: () => A
+  constructor(readonly text: string, readonly stream: DocStream<A>) {}
 }
 
 /**
@@ -70,90 +74,70 @@ export interface TextStream<A> {
  * represents the indentation level for the subsequent line in the
  * `Doc`.
  */
-export interface LineStream<A> {
-  readonly _tag: "LineStream"
-  readonly indentation: number
-  readonly stream: DocStream<A>
+export class LineStream<A> {
+  readonly _tag = "LineStream"
+  readonly _A!: () => A
+  constructor(readonly indentation: number, readonly stream: DocStream<A>) {}
 }
 
 /**
  * Represents the addition of an annotation of type `A` to a `Doc`.
  */
-export interface PushAnnotation<A> {
-  readonly _tag: "PushAnnotation"
-  readonly annotation: A
-  readonly stream: DocStream<A>
+export class PushAnnotationStream<A> {
+  readonly _tag = "PushAnnotationStream"
+  readonly _A!: () => A
+  constructor(readonly annotation: A, readonly stream: DocStream<A>) {}
 }
 
 /**
  * Represents the removal of a previously pushed annotation from a `Doc`.
  */
-export interface PopAnnotation<A> {
-  readonly _tag: "PopAnnotation"
-  readonly stream: DocStream<A>
+export class PopAnnotationStream<A> {
+  readonly _tag = "PopAnnotationStream"
+  readonly _A!: () => A
+  constructor(readonly stream: DocStream<A>) {}
 }
 
 // -------------------------------------------------------------------------------------
 // constructors
 // -------------------------------------------------------------------------------------
 
-export const failed: DocStream<never> = {
-  _tag: "Failed"
-}
+export const failed: DocStream<never> = new FailedStream(identity)
 
-export const empty: DocStream<never> = {
-  _tag: "EmptyStream"
-}
+export const empty: DocStream<never> = new EmptyStream(identity)
 
-export const char = <A>(char: string, stream: DocStream<A>): DocStream<A> => ({
-  _tag: "CharStream",
-  char,
-  stream
-})
+export const char = <A>(char: string, stream: DocStream<A>): DocStream<A> =>
+  new CharStream(char, stream)
 
-export const text = <A>(text: string, stream: DocStream<A>): DocStream<A> => ({
-  _tag: "TextStream",
-  text,
-  stream
-})
+export const text = <A>(text: string, stream: DocStream<A>): DocStream<A> =>
+  new TextStream(text, stream)
 
-export const line = <A>(indentation: number, stream: DocStream<A>): DocStream<A> => ({
-  _tag: "LineStream",
-  indentation,
-  stream
-})
+export const line = <A>(indentation: number, stream: DocStream<A>): DocStream<A> =>
+  new LineStream(indentation, stream)
 
-export const pushAnnotation = <A>(
-  annotation: A,
-  stream: DocStream<A>
-): DocStream<A> => ({
-  _tag: "PushAnnotation",
-  annotation,
-  stream
-})
+export const pushAnnotation = <A>(annotation: A, stream: DocStream<A>): DocStream<A> =>
+  new PushAnnotationStream(annotation, stream)
 
-export const popAnnotation = <A>(stream: DocStream<A>): DocStream<A> => ({
-  _tag: "PopAnnotation",
-  stream
-})
+export const popAnnotation = <A>(stream: DocStream<A>): DocStream<A> =>
+  new PopAnnotationStream(stream)
 
 // -------------------------------------------------------------------------------------
 // destructors
 // -------------------------------------------------------------------------------------
 
 export const match = <A, R>(patterns: {
-  readonly Failed: () => R
+  readonly FailedStream: () => R
   readonly EmptyStream: () => R
   readonly CharStream: (char: string, stream: DocStream<A>) => R
   readonly TextStream: (text: string, stream: DocStream<A>) => R
   readonly LineStream: (indentation: number, stream: DocStream<A>) => R
-  readonly PushAnnotation: (annotation: A, stream: DocStream<A>) => R
-  readonly PopAnnotation: (stream: DocStream<A>) => R
+  readonly PushAnnotationStream: (annotation: A, stream: DocStream<A>) => R
+  readonly PopAnnotationStream: (stream: DocStream<A>) => R
 }): ((stream: DocStream<A>) => R) => {
   const f = (x: DocStream<A>): R => {
     switch (x._tag) {
-      case "Failed":
-        return patterns.Failed()
+      case "FailedStream":
+        return patterns.FailedStream()
       case "EmptyStream":
         return patterns.EmptyStream()
       case "CharStream":
@@ -162,10 +146,10 @@ export const match = <A, R>(patterns: {
         return patterns.TextStream(x.text, x.stream)
       case "LineStream":
         return patterns.LineStream(x.indentation, x.stream)
-      case "PushAnnotation":
-        return patterns.PushAnnotation(x.annotation, x.stream)
-      case "PopAnnotation":
-        return patterns.PopAnnotation(x.stream)
+      case "PushAnnotationStream":
+        return patterns.PushAnnotationStream(x.annotation, x.stream)
+      case "PopAnnotationStream":
+        return patterns.PopAnnotationStream(x.stream)
     }
   }
   return f
@@ -175,10 +159,10 @@ export const match = <A, R>(patterns: {
 // operations
 // -------------------------------------------------------------------------------------
 
-export const isFailed = <A>(stream: DocStream<A>): stream is Failed =>
-  stream._tag === "Failed"
+export const isFailed = <A>(stream: DocStream<A>): stream is FailedStream<A> =>
+  stream._tag === "FailedStream"
 
-export const isEmptyStream = <A>(stream: DocStream<A>): stream is EmptyStream =>
+export const isEmptyStream = <A>(stream: DocStream<A>): stream is EmptyStream<A> =>
   stream._tag === "EmptyStream"
 
 export const isCharStream = <A>(stream: DocStream<A>): stream is CharStream<A> =>
@@ -192,10 +176,11 @@ export const isLineStream = <A>(stream: DocStream<A>): stream is LineStream<A> =
 
 export const isPushAnnotation = <A>(
   stream: DocStream<A>
-): stream is PushAnnotation<A> => stream._tag === "PushAnnotation"
+): stream is PushAnnotationStream<A> => stream._tag === "PushAnnotationStream"
 
-export const isPopAnnotation = <A>(stream: DocStream<A>): stream is PopAnnotation<A> =>
-  stream._tag === "PopAnnotation"
+export const isPopAnnotation = <A>(
+  stream: DocStream<A>
+): stream is PopAnnotationStream<A> => stream._tag === "PopAnnotationStream"
 
 export const map = <A, B>(f: (a: A) => B): ((fa: DocStream<A>) => DocStream<B>) =>
   reAnnotate(f)
@@ -212,9 +197,9 @@ export const foldMap = <I>(I: Identity<I>) => <A>(
           return yield* _(go(x.stream))
         case "LineStream":
           return yield* _(go(x.stream))
-        case "PushAnnotation":
+        case "PushAnnotationStream":
           return I.combine(f(x.annotation), yield* _(go(x.stream)))
-        case "PopAnnotation":
+        case "PopAnnotationStream":
           return yield* _(go(x.stream))
         default:
           return I.identity
@@ -238,12 +223,14 @@ export const reAnnotate = <A, B>(
           return text(x.text, yield* _(go(x.stream)))
         case "LineStream":
           return line(x.indentation, yield* _(go(x.stream)))
-        case "PushAnnotation":
+        case "PushAnnotationStream":
           return pushAnnotation(f(x.annotation), yield* _(go(x.stream)))
-        case "PopAnnotation":
+        case "PopAnnotationStream":
           return yield* _(go(x.stream))
-        default:
-          return x
+        case "FailedStream":
+          return failed
+        case "EmptyStream":
+          return empty
       }
     })
   return (_) => IO.run(go(_))
@@ -265,12 +252,14 @@ export const unAnnotate = <A>(stream: DocStream<A>): DocStream<never> => {
           return text(x.text, yield* _(go(x.stream)))
         case "LineStream":
           return line(x.indentation, yield* _(go(x.stream)))
-        case "PushAnnotation":
+        case "PushAnnotationStream":
           return yield* _(go(x.stream))
-        case "PopAnnotation":
+        case "PopAnnotationStream":
           return yield* _(go(x.stream))
-        default:
-          return x
+        case "FailedStream":
+          return failed
+        case "EmptyStream":
+          return empty
       }
     })
   return pipe(go(stream), IO.run)
@@ -300,7 +289,7 @@ export const alterAnnotation = <A, B>(
           return text(x.text, yield* _(go(stack)(x.stream)))
         case "LineStream":
           return line(x.indentation, yield* _(go(stack)(x.stream)))
-        case "PushAnnotation": {
+        case "PushAnnotationStream": {
           const altered = f(x.annotation)
           if (O.isSome(altered)) {
             const s = yield* _(
@@ -310,7 +299,7 @@ export const alterAnnotation = <A, B>(
           }
           return yield* _(go(A.cons_<AnnotationRemoval>(stack, Remove))(x.stream))
         }
-        case "PopAnnotation": {
+        case "PopAnnotationStream": {
           if (A.isEmpty(stack)) {
             throw new Error("bug, we ended up with an empty stack to pop from!")
           }
@@ -320,8 +309,10 @@ export const alterAnnotation = <A, B>(
           }
           return yield* _(go(tail)(x.stream))
         }
-        default:
-          return x
+        case "FailedStream":
+          return failed
+        case "EmptyStream":
+          return empty
       }
     })
   return (_) => IO.run(go(A.empty)(_))
