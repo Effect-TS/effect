@@ -2157,8 +2157,8 @@ export const Covariant = P.instance<P.Covariant<[URI<DocURI>]>>({
  * Constructs a string containing `n` space characters.
  */
 export function textSpaces(n: number) {
-  let s = " "
-  for (let i = 1; i < n; i++) {
+  let s = ""
+  for (let i = 0; i < n; i++) {
     s = s += " "
   }
   return s
