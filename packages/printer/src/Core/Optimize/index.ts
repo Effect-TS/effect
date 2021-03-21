@@ -61,27 +61,20 @@ export const Deep: FusionDepth = "Deep"
  * document is translated directly to the simpler output format. This sometimes
  * yields undesirable chunking when many pieces have been concatenated together.
  *
- * For example:
- *
- * ```typescript
- * const foldDocs = M.fold(D.getMonoid<never>())
- * foldDocs([D.Char('a'), D.Char('b'), D.Char('c'), D.Char('d')])
- * // => abcd
- * ```
- *
- * results in a chain of four entries in the output `DocStream`, although
- * this is fully equivalent to the tightly packed
- *
- * ```typescript
- * D.Text('abcd')
- * // => abcd
- * ```
- *
- * which is only a single entry in the output `DocStream`, and can be processed
- * much more efficiently.
- *
  * It is therefore a good idea to run `fuse` on concatenations of lots of small
  * strings that are used many times.
+ *
+ * ```typescript
+ * import * as D from "../src/Core/Doc"
+ *
+ * // The document below contains a chain of four entries in the output `DocStream`
+ * const doc1 = D.catsT(D.char("a"), D.char("b"), D.char("c"), D.char("d"))
+ *
+ * // but is fully equivalent to the tightly packed document below which is only
+ * // a single entry in the output `DocStream` and can be processed much more
+ * // efficiently.
+ * const doc2 = D.text("abcd")
+ * ```
  */
 export function optimize<A>(doc: Doc<A>): Optimize<A> {
   function go(x: Doc<A>, depth: FusionDepth): S.IO<Doc<A>> {
