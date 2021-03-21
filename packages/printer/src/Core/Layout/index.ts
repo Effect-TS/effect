@@ -138,21 +138,23 @@ export function match<A, R>(patterns: {
 // layout algorithms
 // -------------------------------------------------------------------------------------
 
+function initialIndentationRec<A>(x: DocStream<A>): IO.IO<Option<number>> {
+  return IO.gen(function* (_) {
+    switch (x._tag) {
+      case "LineStream":
+        return O.some(x.indentation)
+      case "PushAnnotationStream":
+        return yield* _(initialIndentationRec(x.stream))
+      case "PopAnnotationStream":
+        return yield* _(initialIndentationRec(x.stream))
+      default:
+        return O.none
+    }
+  })
+}
+
 function initialIndentation<A>(stream: DocStream<A>): Option<number> {
-  const go = (x: DocStream<A>): IO.IO<Option<number>> =>
-    IO.gen(function* (_) {
-      switch (x._tag) {
-        case "LineStream":
-          return O.some(x.indentation)
-        case "PushAnnotationStream":
-          return yield* _(go(x.stream))
-        case "PopAnnotationStream":
-          return yield* _(go(x.stream))
-        default:
-          return O.none
-      }
-    })
-  return IO.run(go(stream))
+  return IO.run(initialIndentationRec(stream))
 }
 
 function selectNicer<A>(
@@ -166,104 +168,141 @@ function selectNicer<A>(
   return fitsLayout ? x : y
 }
 
+function layoutWadlerLeijenRec<A>(
+  nl: number,
+  cc: number,
+  x: LayoutPipeline<A>,
+  fits: FittingPredicate<A>,
+  options: LayoutOptions
+): IO.IO<DocStream<A>> {
+  return IO.gen(function* (_) {
+    switch (x._tag) {
+      case "Nil":
+        return DS.empty
+      case "Cons": {
+        switch (x.document._tag) {
+          case "Fail":
+            return DS.failed
+          case "Empty":
+            return yield* _(layoutWadlerLeijenRec(nl, cc, x.pipeline, fits, options))
+          case "Char":
+            return DS.char_(
+              yield* _(layoutWadlerLeijenRec(nl, cc + 1, x.pipeline, fits, options)),
+              x.document.char
+            )
+          case "Text":
+            return DS.text_(
+              yield* _(
+                layoutWadlerLeijenRec(
+                  nl,
+                  cc + x.document.text.length,
+                  x.pipeline,
+                  fits,
+                  options
+                )
+              ),
+              x.document.text
+            )
+          case "Line": {
+            const s = yield* _(
+              layoutWadlerLeijenRec(x.indent, x.indent, x.pipeline, fits, options)
+            )
+            const i = DS.isEmptyStream(s) || DS.isLineStream(s) ? 0 : x.indent
+            return DS.line_(s, i)
+          }
+          case "FlatAlt": {
+            const s = cons(x.indent, x.document.left, x.pipeline)
+            return yield* _(layoutWadlerLeijenRec(nl, cc, s, fits, options))
+          }
+          case "Cat": {
+            const inner = cons(x.indent, x.document.right, x.pipeline)
+            const outer = cons(x.indent, x.document.left, inner)
+            return yield* _(layoutWadlerLeijenRec(nl, cc, outer, fits, options))
+          }
+          case "Nest": {
+            const i = x.indent + x.document.indent
+            const s = cons(i, x.document.doc, x.pipeline)
+            return yield* _(layoutWadlerLeijenRec(nl, cc, s, fits, options))
+          }
+          case "Union": {
+            const left = yield* _(
+              layoutWadlerLeijenRec(
+                nl,
+                cc,
+                cons(x.indent, x.document.left, x.pipeline),
+                fits,
+                options
+              )
+            )
+            const right = yield* _(
+              layoutWadlerLeijenRec(
+                nl,
+                cc,
+                cons(x.indent, x.document.right, x.pipeline),
+                fits,
+                options
+              )
+            )
+            return selectNicer(fits, nl, cc, left, right)
+          }
+          case "Column": {
+            const s = cons(x.indent, x.document.react(cc), x.pipeline)
+            return yield* _(layoutWadlerLeijenRec(nl, cc, s, fits, options))
+          }
+          case "WithPageWidth": {
+            const s = cons(x.indent, x.document.react(options.pageWidth), x.pipeline)
+            return yield* _(layoutWadlerLeijenRec(nl, cc, s, fits, options))
+          }
+          case "Nesting": {
+            const s = cons(x.indent, x.document.react(x.indent), x.pipeline)
+            return yield* _(layoutWadlerLeijenRec(nl, cc, s, fits, options))
+          }
+          case "Annotated": {
+            const p = cons(x.indent, x.document.doc, undoAnnotation(x.pipeline))
+            const s = yield* _(layoutWadlerLeijenRec(nl, cc, p, fits, options))
+            return DS.pushAnnotation_(s, x.document.annotation)
+          }
+        }
+      }
+      case "UndoAnnotation":
+        return DS.popAnnotation(
+          yield* _(layoutWadlerLeijenRec(nl, cc, x.pipeline, fits, options))
+        )
+    }
+  })
+}
+
 function layoutWadlerLeijen<A>(
   doc: Doc<A>,
   fits: FittingPredicate<A>,
   options: LayoutOptions
 ): DocStream<A> {
-  const go = (nl: number, cc: number, x: LayoutPipeline<A>): IO.IO<DocStream<A>> =>
-    IO.gen(function* (_) {
-      switch (x._tag) {
-        case "Nil":
-          return DS.empty
-        case "Cons": {
-          switch (x.document._tag) {
-            case "Fail":
-              return DS.failed
-            case "Empty":
-              return yield* _(go(nl, cc, x.pipeline))
-            case "Char":
-              return DS.char_(yield* _(go(nl, cc + 1, x.pipeline)), x.document.char)
-            case "Text":
-              return DS.text_(
-                yield* _(go(nl, cc + x.document.text.length, x.pipeline)),
-                x.document.text
-              )
-            case "Line": {
-              const s = yield* _(go(x.indent, x.indent, x.pipeline))
-              const i = DS.isEmptyStream(s) || DS.isLineStream(s) ? 0 : x.indent
-              return DS.line_(s, i)
-            }
-            case "FlatAlt": {
-              const s = cons(x.indent, x.document.left, x.pipeline)
-              return yield* _(go(nl, cc, s))
-            }
-            case "Cat": {
-              const inner = cons(x.indent, x.document.right, x.pipeline)
-              const outer = cons(x.indent, x.document.left, inner)
-              return yield* _(go(nl, cc, outer))
-            }
-            case "Nest": {
-              const i = x.indent + x.document.indent
-              const s = cons(i, x.document.doc, x.pipeline)
-              return yield* _(go(nl, cc, s))
-            }
-            case "Union": {
-              const left = yield* _(
-                go(nl, cc, cons(x.indent, x.document.left, x.pipeline))
-              )
-              const right = yield* _(
-                go(nl, cc, cons(x.indent, x.document.right, x.pipeline))
-              )
-              return selectNicer(fits, nl, cc, left, right)
-            }
-            case "Column": {
-              const s = cons(x.indent, x.document.react(cc), x.pipeline)
-              return yield* _(go(nl, cc, s))
-            }
-            case "WithPageWidth": {
-              const s = cons(x.indent, x.document.react(options.pageWidth), x.pipeline)
-              return yield* _(go(nl, cc, s))
-            }
-            case "Nesting": {
-              const s = cons(x.indent, x.document.react(x.indent), x.pipeline)
-              return yield* _(go(nl, cc, s))
-            }
-            case "Annotated": {
-              const p = cons(x.indent, x.document.doc, undoAnnotation(x.pipeline))
-              const s = yield* _(go(nl, cc, p))
-              return DS.pushAnnotation_(s, x.document.annotation)
-            }
-          }
-        }
-        case "UndoAnnotation":
-          return DS.popAnnotation(yield* _(go(nl, cc, x.pipeline)))
-      }
-    })
-  return IO.run(go(0, 0, cons(0, doc, nil)))
+  return IO.run(layoutWadlerLeijenRec(0, 0, cons(0, doc, nil), fits, options))
+}
+
+function failsOnFirstLineRec<A>(x: DocStream<A>): IO.IO<boolean> {
+  return IO.gen(function* (_) {
+    switch (x._tag) {
+      case "FailedStream":
+        return true
+      case "EmptyStream":
+        return false
+      case "CharStream":
+        return yield* _(failsOnFirstLineRec(x.stream))
+      case "TextStream":
+        return yield* _(failsOnFirstLineRec(x.stream))
+      case "LineStream":
+        return false
+      case "PushAnnotationStream":
+        return yield* _(failsOnFirstLineRec(x.stream))
+      case "PopAnnotationStream":
+        return yield* _(failsOnFirstLineRec(x.stream))
+    }
+  })
 }
 
 function failsOnFirstLine<A>(stream: DocStream<A>): boolean {
-  const go = (x: DocStream<A>): IO.IO<boolean> =>
-    IO.gen(function* (_) {
-      switch (x._tag) {
-        case "FailedStream":
-          return true
-        case "EmptyStream":
-          return false
-        case "CharStream":
-          return yield* _(go(x.stream))
-        case "TextStream":
-          return yield* _(go(x.stream))
-        case "LineStream":
-          return false
-        case "PushAnnotationStream":
-          return yield* _(go(x.stream))
-        case "PopAnnotationStream":
-          return yield* _(go(x.stream))
-      }
-    })
-  return IO.run(go(stream))
+  return IO.run(failsOnFirstLineRec(stream))
 }
 
 /**
@@ -278,29 +317,31 @@ export function layoutUnbounded<A>(doc: Doc<A>): DocStream<A> {
   )
 }
 
+function fitsPrettyRec<A>(x: DocStream<A>, w: number): IO.IO<boolean> {
+  return IO.gen(function* (_) {
+    if (w < 0) return false
+    switch (x._tag) {
+      case "FailedStream":
+        return false
+      case "EmptyStream":
+        return true
+      case "CharStream":
+        return yield* _(fitsPrettyRec(x.stream, w - 1))
+      case "TextStream":
+        return yield* _(fitsPrettyRec(x.stream, w - x.text.length))
+      case "LineStream":
+        return true
+      case "PushAnnotationStream":
+        return yield* _(fitsPrettyRec(x.stream, w))
+      case "PopAnnotationStream":
+        return yield* _(fitsPrettyRec(x.stream, w))
+    }
+  })
+}
+
 function fitsPretty(width: number) {
   return <A>(stream: DocStream<A>): boolean => {
-    const go = (x: DocStream<A>, w: number): IO.IO<boolean> =>
-      IO.gen(function* (_) {
-        if (w < 0) return false
-        switch (x._tag) {
-          case "FailedStream":
-            return false
-          case "EmptyStream":
-            return true
-          case "CharStream":
-            return yield* _(go(x.stream, w - 1))
-          case "TextStream":
-            return yield* _(go(x.stream, w - x.text.length))
-          case "LineStream":
-            return true
-          case "PushAnnotationStream":
-            return yield* _(go(x.stream, w))
-          case "PopAnnotationStream":
-            return yield* _(go(x.stream, w))
-        }
-      })
-    return IO.run(go(stream, width))
+    return IO.run(fitsPrettyRec(stream, width))
   }
 }
 
@@ -343,6 +384,39 @@ export function pretty<A>(doc: Doc<A>): Layout<A> {
   return (options) => pretty_(options, doc)
 }
 
+function fitsSmartRec<A>(
+  x: DocStream<A>,
+  w: number,
+  minNestingLevel: number,
+  lineWidth: number
+): IO.IO<boolean> {
+  return IO.gen(function* (_) {
+    if (w < 0) return false
+    switch (x._tag) {
+      case "FailedStream":
+        return false
+      case "EmptyStream":
+        return true
+      case "CharStream":
+        return yield* _(fitsSmartRec(x.stream, w - 1, minNestingLevel, lineWidth))
+      case "TextStream":
+        return yield* _(
+          fitsSmartRec(x.stream, w - x.text.length, minNestingLevel, lineWidth)
+        )
+      case "LineStream": {
+        if (minNestingLevel > x.indentation) return true
+        return yield* _(
+          fitsSmartRec(x.stream, x.indentation - lineWidth, minNestingLevel, lineWidth)
+        )
+      }
+      case "PushAnnotationStream":
+        return yield* _(fitsSmartRec(x.stream, w, minNestingLevel, lineWidth))
+      case "PopAnnotationStream":
+        return yield* _(fitsSmartRec(x.stream, w, minNestingLevel, lineWidth))
+    }
+  })
+}
+
 function fitsSmart(lineWidth: number, ribbonFraction: number) {
   return (
     lineIndent: number,
@@ -368,30 +442,7 @@ function fitsSmart(lineWidth: number, ribbonFraction: number) {
       (i) => Math.min(i, currentColumn)
     )
 
-    const go = (x: DocStream<A>, w: number): IO.IO<boolean> =>
-      IO.gen(function* (_) {
-        if (w < 0) return false
-        switch (x._tag) {
-          case "FailedStream":
-            return false
-          case "EmptyStream":
-            return true
-          case "CharStream":
-            return yield* _(go(x.stream, w - 1))
-          case "TextStream":
-            return yield* _(go(x.stream, w - x.text.length))
-          case "LineStream": {
-            if (minNestingLevel > x.indentation) return true
-            return yield* _(go(x.stream, x.indentation - lineWidth))
-          }
-          case "PushAnnotationStream":
-            return yield* _(go(x.stream, w))
-          case "PopAnnotationStream":
-            return yield* _(go(x.stream, w))
-        }
-      })
-
-    return IO.run(go(stream, availableWidth))
+    return IO.run(fitsSmartRec(stream, availableWidth, minNestingLevel, lineWidth))
   }
 }
 /**
@@ -499,6 +550,49 @@ export function smart<A>(doc: Doc<A>): Layout<A> {
   return (options) => smart_(options, doc)
 }
 
+function compactRec<A>(docs: Array<Doc<A>>, i: number): IO.IO<DocStream<A>> {
+  return IO.gen(function* (_) {
+    if (A.isNonEmpty(docs)) {
+      const [x, ...rest] = docs
+      switch (x._tag) {
+        case "Fail":
+          return DS.failed
+        case "Empty":
+          return yield* _(compactRec(rest, i))
+        case "Char": {
+          const s = yield* _(compactRec(rest, i + 1))
+          return DS.char_(s, x.char)
+        }
+        case "Text": {
+          const s = yield* _(compactRec(rest, i + x.text.length))
+          return DS.text_(s, x.text)
+        }
+        case "Line": {
+          const s = yield* _(compactRec(rest, 0))
+          return DS.line_(s, 0)
+        }
+        case "FlatAlt":
+          return yield* _(compactRec(A.cons_(rest, x.left), i))
+        case "Cat":
+          return yield* _(compactRec(A.cons_(A.cons_(rest, x.right), x.left), i))
+        case "Nest":
+          return yield* _(compactRec(A.cons_(rest, x.doc), i))
+        case "Union":
+          return yield* _(compactRec(A.cons_(rest, x.right), i))
+        case "Column":
+          return yield* _(compactRec(A.cons_(rest, x.react(i)), i))
+        case "WithPageWidth":
+          return yield* _(compactRec(A.cons_(rest, x.react(PW.unbounded)), i))
+        case "Nesting":
+          return yield* _(compactRec(A.cons_(rest, x.react(0)), i))
+        case "Annotated":
+          return yield* _(compactRec(A.cons_(rest, x.doc), i))
+      }
+    }
+    return DS.empty
+  })
+}
+
 /**
  * A layout algorithm which will lay out a document without adding any
  * indentation and without preserving annotations.
@@ -536,47 +630,6 @@ export function smart<A>(doc: Doc<A>): Layout<A> {
  * // sit
  * ```
  */
-export function compact<A, B>(doc: Doc<A>): DocStream<B> {
-  const go = (docs: Array<Doc<A>>, i: number): IO.IO<DocStream<B>> =>
-    IO.gen(function* (_) {
-      if (A.isNonEmpty(docs)) {
-        const [x, ...rest] = docs
-        switch (x._tag) {
-          case "Fail":
-            return DS.failed
-          case "Empty":
-            return yield* _(go(rest, i))
-          case "Char": {
-            const s = yield* _(go(rest, i + 1))
-            return DS.char_(s, x.char)
-          }
-          case "Text": {
-            const s = yield* _(go(rest, i + x.text.length))
-            return DS.text_(s, x.text)
-          }
-          case "Line": {
-            const s = yield* _(go(rest, 0))
-            return DS.line_(s, 0)
-          }
-          case "FlatAlt":
-            return yield* _(go(A.cons_(rest, x.left), i))
-          case "Cat":
-            return yield* _(go(A.cons_(A.cons_(rest, x.right), x.left), i))
-          case "Nest":
-            return yield* _(go(A.cons_(rest, x.doc), i))
-          case "Union":
-            return yield* _(go(A.cons_(rest, x.right), i))
-          case "Column":
-            return yield* _(go(A.cons_(rest, x.react(i)), i))
-          case "WithPageWidth":
-            return yield* _(go(A.cons_(rest, x.react(PW.unbounded)), i))
-          case "Nesting":
-            return yield* _(go(A.cons_(rest, x.react(0)), i))
-          case "Annotated":
-            return yield* _(go(A.cons_(rest, x.doc), i))
-        }
-      }
-      return DS.empty
-    })
-  return IO.run(go(A.single(doc), 0))
+export function compact<A>(doc: Doc<A>): DocStream<A> {
+  return IO.run(compactRec(A.single(doc), 0))
 }

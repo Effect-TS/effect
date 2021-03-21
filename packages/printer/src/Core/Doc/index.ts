@@ -1175,36 +1175,87 @@ export function appendWithSoftLineBreak<A>(y: Doc<A>) {
 // alternative combinators
 // -------------------------------------------------------------------------------------
 
+function flattenRec<A>(x: Doc<A>): IO.IO<Doc<A>> {
+  return IO.gen(function* (_) {
+    switch (x._tag) {
+      case "Line":
+        return fail
+      case "Cat":
+        return cat_(yield* _(flattenRec(x.left)), yield* _(flattenRec(x.right)))
+      case "FlatAlt":
+        return yield* _(flattenRec(x.right))
+      case "Union":
+        return yield* _(flattenRec(x.left))
+      case "Nest":
+        return nest(x.indent)(yield* _(flattenRec(x.doc)))
+      case "Column":
+        return column((position) => IO.run(flattenRec(x.react(position))))
+      case "WithPageWidth":
+        return withPageWidth((pageWidth) => IO.run(flattenRec(x.react(pageWidth))))
+      case "Nesting":
+        return nesting((level) => IO.run(flattenRec(x.react(level))))
+      case "Annotated":
+        return annotate_(yield* _(flattenRec(x.doc)), x.annotation)
+      default:
+        return x
+    }
+  })
+}
+
 /**
  * Flattens a document but does not report changes.
  */
 const flatten = <A>(doc: Doc<A>): Doc<A> => {
-  const go = (x: Doc<A>): IO.IO<Doc<A>> =>
-    IO.gen(function* (_) {
-      switch (x._tag) {
-        case "Line":
-          return fail
-        case "Cat":
-          return cat_(yield* _(go(x.left)), yield* _(go(x.right)))
-        case "FlatAlt":
-          return yield* _(go(x.right))
-        case "Union":
-          return yield* _(go(x.left))
-        case "Nest":
-          return nest(x.indent)(yield* _(go(x.doc)))
-        case "Column":
-          return column((position) => IO.run(go(x.react(position))))
-        case "WithPageWidth":
-          return withPageWidth((pageWidth) => IO.run(go(x.react(pageWidth))))
-        case "Nesting":
-          return nesting((level) => IO.run(go(x.react(level))))
-        case "Annotated":
-          return annotate_(yield* _(go(x.doc)), x.annotation)
-        default:
-          return x
+  return IO.run(flattenRec(doc))
+}
+
+function changesUponFlatteningRec<A>(x: Doc<A>): IO.IO<Flatten<Doc<A>>> {
+  return IO.gen(function* (_) {
+    switch (x._tag) {
+      case "FlatAlt":
+        return F.flattened(flatten(x.right))
+      case "Cat": {
+        const left = yield* _(changesUponFlatteningRec(x.left))
+        const right = yield* _(changesUponFlatteningRec(x.right))
+
+        if (F.isNeverFlat(left) || F.isNeverFlat(right)) {
+          return F.neverFlat
+        }
+        if (F.isFlattened(left) && F.isFlattened(right)) {
+          return F.flattened(cat_(left.value, right.value))
+        }
+        if (F.isFlattened(left) && F.isAlreadyFlat(right)) {
+          return F.flattened(cat_(left.value, x.right))
+        }
+        if (F.isAlreadyFlat(left) && F.isFlattened(right)) {
+          return F.flattened(cat_(x.left, right.value))
+        }
+        if (F.isAlreadyFlat(left) && F.isAlreadyFlat(right)) {
+          return F.alreadyFlat
+        }
+
+        throw new Error("bug, it seems we didn't manage a branch")
       }
-    })
-  return IO.run(go(doc))
+      case "Nest": {
+        const flatten = yield* _(changesUponFlatteningRec(x.doc))
+        return F.map_(flatten, nest(x.indent))
+      }
+      case "Union":
+        return F.flattened(x.left)
+      case "Column":
+        return F.flattened(column((y) => flatten(x.react(y))))
+      case "WithPageWidth":
+        return F.flattened(withPageWidth((y) => flatten(x.react(y))))
+      case "Nesting":
+        return F.flattened(nesting((y) => flatten(x.react(y))))
+      case "Annotated": {
+        const flatten = yield* _(changesUponFlatteningRec(x.doc))
+        return F.map_(flatten, annotate(x.annotation))
+      }
+      default:
+        return F.alreadyFlat
+    }
+  })
 }
 
 /**
@@ -1222,54 +1273,7 @@ const flatten = <A>(doc: Doc<A>): Doc<A> => {
  * contains either a hard `Line` or a `Fail`.
  */
 const changesUponFlattening = <A>(doc: Doc<A>): Flatten<Doc<A>> => {
-  const go = (x: Doc<A>): IO.IO<Flatten<Doc<A>>> =>
-    IO.gen(function* (_) {
-      switch (x._tag) {
-        case "FlatAlt":
-          return F.flattened(flatten(x.right))
-        case "Cat": {
-          const left = yield* _(go(x.left))
-          const right = yield* _(go(x.right))
-
-          if (F.isNeverFlat(left) || F.isNeverFlat(right)) {
-            return F.neverFlat
-          }
-          if (F.isFlattened(left) && F.isFlattened(right)) {
-            return F.flattened(cat_(left.value, right.value))
-          }
-          if (F.isFlattened(left) && F.isAlreadyFlat(right)) {
-            return F.flattened(cat_(left.value, x.right))
-          }
-          if (F.isAlreadyFlat(left) && F.isFlattened(right)) {
-            return F.flattened(cat_(x.left, right.value))
-          }
-          if (F.isAlreadyFlat(left) && F.isAlreadyFlat(right)) {
-            return F.alreadyFlat
-          }
-
-          throw new Error("bug, it seems we didn't manage a branch")
-        }
-        case "Nest": {
-          const flatten = yield* _(go(x.doc))
-          return F.map_(flatten, nest(x.indent))
-        }
-        case "Union":
-          return F.flattened(x.left)
-        case "Column":
-          return F.flattened(column((y) => flatten(x.react(y))))
-        case "WithPageWidth":
-          return F.flattened(withPageWidth((y) => flatten(x.react(y))))
-        case "Nesting":
-          return F.flattened(nesting((y) => flatten(x.react(y))))
-        case "Annotated": {
-          const flatten = yield* _(go(x.doc))
-          return F.map_(flatten, annotate(x.annotation))
-        }
-        default:
-          return F.alreadyFlat
-      }
-    })
-  return IO.run(go(doc))
+  return IO.run(changesUponFlatteningRec(doc))
 }
 
 /**

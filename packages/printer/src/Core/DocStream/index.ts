@@ -243,30 +243,32 @@ export function isPopAnnotation<A>(
   return stream._tag === "PopAnnotationStream"
 }
 
+function reAnnotateRec_<A, B>(x: DocStream<A>, f: (a: A) => B): IO.IO<DocStream<B>> {
+  return IO.gen(function* (_) {
+    switch (x._tag) {
+      case "CharStream":
+        return char_(yield* _(reAnnotateRec_(x.stream, f)), x.char)
+      case "TextStream":
+        return text_(yield* _(reAnnotateRec_(x.stream, f)), x.text)
+      case "LineStream":
+        return line_(yield* _(reAnnotateRec_(x.stream, f)), x.indentation)
+      case "PushAnnotationStream":
+        return pushAnnotation_(yield* _(reAnnotateRec_(x.stream, f)), f(x.annotation))
+      case "PopAnnotationStream":
+        return yield* _(reAnnotateRec_(x.stream, f))
+      case "FailedStream":
+        return failed
+      case "EmptyStream":
+        return empty
+    }
+  })
+}
+
 /**
  * Modify the annotations of a document.
  */
 export function reAnnotate_<A, B>(stream: DocStream<A>, f: (a: A) => B): DocStream<B> {
-  const go = (x: DocStream<A>): IO.IO<DocStream<B>> =>
-    IO.gen(function* (_) {
-      switch (x._tag) {
-        case "CharStream":
-          return char_(yield* _(go(x.stream)), x.char)
-        case "TextStream":
-          return text_(yield* _(go(x.stream)), x.text)
-        case "LineStream":
-          return line_(yield* _(go(x.stream)), x.indentation)
-        case "PushAnnotationStream":
-          return pushAnnotation_(yield* _(go(x.stream)), f(x.annotation))
-        case "PopAnnotationStream":
-          return yield* _(go(x.stream))
-        case "FailedStream":
-          return failed
-        case "EmptyStream":
-          return empty
-      }
-    })
-  return IO.run(go(stream))
+  return IO.run(reAnnotateRec_(stream, f))
 }
 
 /**
@@ -276,30 +278,32 @@ export function reAnnotate<A, B>(f: (a: A) => B) {
   return (stream: DocStream<A>): DocStream<B> => reAnnotate_(stream, f)
 }
 
+function unAnnotateRec<A>(x: DocStream<A>): IO.IO<DocStream<never>> {
+  return IO.gen(function* (_) {
+    switch (x._tag) {
+      case "CharStream":
+        return char_(yield* _(unAnnotateRec(x.stream)), x.char)
+      case "TextStream":
+        return text_(yield* _(unAnnotateRec(x.stream)), x.text)
+      case "LineStream":
+        return line_(yield* _(unAnnotateRec(x.stream)), x.indentation)
+      case "PushAnnotationStream":
+        return yield* _(unAnnotateRec(x.stream))
+      case "PopAnnotationStream":
+        return yield* _(unAnnotateRec(x.stream))
+      case "FailedStream":
+        return failed
+      case "EmptyStream":
+        return empty
+    }
+  })
+}
+
 /**
  * Remove all annotations from a document.
  */
 export function unAnnotate<A>(stream: DocStream<A>): DocStream<never> {
-  const go = (x: DocStream<A>): IO.IO<DocStream<never>> =>
-    IO.gen(function* (_) {
-      switch (x._tag) {
-        case "CharStream":
-          return char_(yield* _(go(x.stream)), x.char)
-        case "TextStream":
-          return text_(yield* _(go(x.stream)), x.text)
-        case "LineStream":
-          return line_(yield* _(go(x.stream)), x.indentation)
-        case "PushAnnotationStream":
-          return yield* _(go(x.stream))
-        case "PopAnnotationStream":
-          return yield* _(go(x.stream))
-        case "FailedStream":
-          return failed
-        case "EmptyStream":
-          return empty
-      }
-    })
-  return IO.run(go(stream))
+  return IO.run(unAnnotateRec(stream))
 }
 
 type AnnotationRemoval = "Remove" | "DontRemove"
@@ -307,6 +311,47 @@ type AnnotationRemoval = "Remove" | "DontRemove"
 const Remove: AnnotationRemoval = "Remove"
 
 const DontRemove: AnnotationRemoval = "DontRemove"
+
+function alterAnnotationRec_<A, B>(
+  f: (a: A) => Option<B>,
+  stack: Array<AnnotationRemoval>,
+  x: DocStream<A>
+): IO.IO<DocStream<B>> {
+  return IO.gen(function* (_) {
+    switch (x._tag) {
+      case "CharStream":
+        return char_(yield* _(alterAnnotationRec_(f, stack, x.stream)), x.char)
+      case "TextStream":
+        return text_(yield* _(alterAnnotationRec_(f, stack, x.stream)), x.text)
+      case "LineStream":
+        return line_(yield* _(alterAnnotationRec_(f, stack, x.stream)), x.indentation)
+      case "PushAnnotationStream": {
+        const altered = f(x.annotation)
+        if (O.isSome(altered)) {
+          return pushAnnotation_(
+            yield* _(alterAnnotationRec_(f, A.cons_(stack, DontRemove), x.stream)),
+            altered.value
+          )
+        }
+        return yield* _(alterAnnotationRec_(f, A.cons_(stack, Remove), x.stream))
+      }
+      case "PopAnnotationStream": {
+        if (A.isEmpty(stack)) {
+          throw new Error("bug, we ended up with an empty stack to pop from!")
+        }
+        const [head, ...tail] = stack
+        if (head === DontRemove) {
+          return popAnnotation(yield* _(alterAnnotationRec_(f, tail, x.stream)))
+        }
+        return yield* _(alterAnnotationRec_(f, tail, x.stream))
+      }
+      case "FailedStream":
+        return failed
+      case "EmptyStream":
+        return empty
+    }
+  })
+}
 
 /**
  * Changes the annotation of a document to a different annotation, or to
@@ -316,40 +361,7 @@ export function alterAnnotation_<A, B>(
   stream: DocStream<A>,
   f: (a: A) => Option<B>
 ): DocStream<B> {
-  const go = (stack: Array<AnnotationRemoval>, x: DocStream<A>): IO.IO<DocStream<B>> =>
-    IO.gen(function* (_) {
-      switch (x._tag) {
-        case "CharStream":
-          return char_(yield* _(go(stack, x.stream)), x.char)
-        case "TextStream":
-          return text_(yield* _(go(stack, x.stream)), x.text)
-        case "LineStream":
-          return line_(yield* _(go(stack, x.stream)), x.indentation)
-        case "PushAnnotationStream": {
-          const altered = f(x.annotation)
-          if (O.isSome(altered)) {
-            const s = yield* _(go(A.cons_(stack, DontRemove), x.stream))
-            return pushAnnotation_(s, altered.value)
-          }
-          return yield* _(go(A.cons_(stack, Remove), x.stream))
-        }
-        case "PopAnnotationStream": {
-          if (A.isEmpty(stack)) {
-            throw new Error("bug, we ended up with an empty stack to pop from!")
-          }
-          const [head, ...tail] = stack
-          if (head === DontRemove) {
-            return popAnnotation(yield* _(go(tail, x.stream)))
-          }
-          return yield* _(go(tail, x.stream))
-        }
-        case "FailedStream":
-          return failed
-        case "EmptyStream":
-          return empty
-      }
-    })
-  return IO.run(go(A.empty, stream))
+  return IO.run(alterAnnotationRec_(f, A.empty, stream))
 }
 
 /**
@@ -366,26 +378,28 @@ export const map_ = reAnnotate_
  */
 export const map = reAnnotate
 
+function foldMapRec_<A, I>(I: Identity<I>, f: (a: A) => I, x: DocStream<A>): IO.IO<I> {
+  return IO.gen(function* (_) {
+    switch (x._tag) {
+      case "CharStream":
+        return yield* _(foldMapRec_(I, f, x.stream))
+      case "TextStream":
+        return yield* _(foldMapRec_(I, f, x.stream))
+      case "LineStream":
+        return yield* _(foldMapRec_(I, f, x.stream))
+      case "PushAnnotationStream":
+        return I.combine(f(x.annotation), yield* _(foldMapRec_(I, f, x.stream)))
+      case "PopAnnotationStream":
+        return yield* _(foldMapRec_(I, f, x.stream))
+      default:
+        return I.identity
+    }
+  })
+}
+
 export function foldMap_<I>(I: Identity<I>) {
   return <A>(fa: DocStream<A>, f: (a: A) => I): I => {
-    const go = (x: DocStream<A>): IO.IO<I> =>
-      IO.gen(function* (_) {
-        switch (x._tag) {
-          case "CharStream":
-            return yield* _(go(x.stream))
-          case "TextStream":
-            return yield* _(go(x.stream))
-          case "LineStream":
-            return yield* _(go(x.stream))
-          case "PushAnnotationStream":
-            return I.combine(f(x.annotation), yield* _(go(x.stream)))
-          case "PopAnnotationStream":
-            return yield* _(go(x.stream))
-          default:
-            return I.identity
-        }
-      })
-    return IO.run(go(fa))
+    return IO.run(foldMapRec_(I, f, fa))
   }
 }
 
