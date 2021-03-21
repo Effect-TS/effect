@@ -1,7 +1,5 @@
 // tracing: off
 
-import type { Endomorphism } from "@effect-ts/core/Function"
-import { pipe } from "@effect-ts/core/Function"
 import * as Ord from "@effect-ts/core/Ord"
 import * as MO from "@effect-ts/morphic"
 
@@ -69,10 +67,9 @@ export type PageWidth = MO.AType<typeof PageWidth>
 // constructors
 // -------------------------------------------------------------------------------------
 
-export const availablePerLine = (
-  lineWidth: number,
-  ribbonFraction: number
-): PageWidth => PageWidth.as.AvailablePerLine({ lineWidth, ribbonFraction })
+export function availablePerLine(lineWidth: number, ribbonFraction: number): PageWidth {
+  return PageWidth.as.AvailablePerLine({ lineWidth, ribbonFraction })
+}
 
 export const unbounded: PageWidth = PageWidth.as.Unbounded({})
 
@@ -82,40 +79,49 @@ export const defaultPageWidth = availablePerLine(80, 1)
 // destructors
 // -------------------------------------------------------------------------------------
 
-export const match = <R>(patterns: {
+export function match_<R>(
+  pageWidth: PageWidth,
+  patterns: {
+    readonly AvailablePerLine: (lineWidth: number, ribbonFraction: number) => R
+    readonly Unbounded: () => R
+  }
+): R {
+  switch (pageWidth._tag) {
+    case "AvailablePerLine":
+      return patterns.AvailablePerLine(pageWidth.lineWidth, pageWidth.ribbonFraction)
+    case "Unbounded":
+      return patterns.Unbounded()
+  }
+}
+
+/**
+ * @dataFirst match_
+ */
+export function match<R>(patterns: {
   readonly AvailablePerLine: (lineWidth: number, ribbonFraction: number) => R
   readonly Unbounded: () => R
-}): ((pageWidth: PageWidth) => R) => {
-  const f = (x: PageWidth): R => {
-    switch (x._tag) {
-      case "AvailablePerLine":
-        return patterns.AvailablePerLine(x.lineWidth, x.ribbonFraction)
-      case "Unbounded":
-        return patterns.Unbounded()
-    }
-  }
-  return f
+}) {
+  return (pageWidth: PageWidth): R => match_(pageWidth, patterns)
 }
 
 // -------------------------------------------------------------------------------------
 // operations
 // -------------------------------------------------------------------------------------
 
-const min = (x: number) => (y: number): number => Ord.min(Ord.number)(x, y)
-const max = (x: number) => (y: number): number => Ord.max(Ord.number)(x, y)
-const floor: Endomorphism<number> = (x) => Math.floor(x)
-
 /**
  * Calculates the remaining width on the current line.
  */
-export const remainingWidth = (
+export function remainingWidth(
   lineLength: number,
   ribbonFraction: number,
   lineIndent: number,
   currentColumn: number
-): number => {
+): number {
   const columnsLeftInLine = lineLength - currentColumn
-  const ribbonWidth = pipe(lineLength * ribbonFraction, floor, min(lineLength), max(0))
+  const ribbonWidth = Math.max(
+    0,
+    Math.min(lineLength, Math.floor(lineLength * ribbonFraction))
+  )
   const columnsLeftInRibbon = lineIndent + ribbonWidth - currentColumn
-  return min(columnsLeftInLine)(columnsLeftInRibbon)
+  return Math.min(columnsLeftInLine, columnsLeftInRibbon)
 }
