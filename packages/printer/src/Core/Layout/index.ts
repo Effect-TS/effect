@@ -451,61 +451,48 @@ function fitsSmart(lineWidth: number, ribbonFraction: number) {
  * one line.
  *
  * ```typescript
- * import { flow, pipe } from '@effect-ts/core/Function'
- * import * as M from '@effect-ts/core/Identity'
- * import * as RA from '@effect-ts/core/Array'
- *
- * import type { Doc } from '@effect-ts/printer/Core/Doc'
- * import * as D from '@effect-ts/printer/Core/Doc'
- * import type { Layout, LayoutOptions } from '@effect-ts/printer/Core/Layout'
- * import * as L from '@effect-ts/printer/Core/Layout'
- * import type { PageWidth } from '@effect-ts/printer/Core/PageWidth'
- * import * as PW from '@effect-ts/printer/Core/PageWidth'
- * import * as R from '@effect-ts/printer/Core/Render'
+ * import * as A from "@effect-ts/core/Array"
+ * import { flow, pipe } from "@effect-ts/core/Function"
+ * import * as I from "@effect-ts/core/Identity"
+ * import type { Doc } from "@effect-ts/printer/Core/Doc"
+ * import * as D from "@effect-ts/printer/Core/Doc"
+ * import type { Layout, LayoutOptions } from "@effect-ts/printer/Core/Layout"
+ * import * as L from "@effect-ts/printer/Core/Layout"
+ * import type { PageWidth } from "@effect-ts/printer/Core/PageWidth"
+ * import * as PW from "@effect-ts/printer/Core/PageWidth"
+ * import * as R from "@effect-ts/printer/Core/Render"
  *
  * // Consider the following python-ish document:
  * const fun = <A>(doc: Doc<A>): Doc<A> =>
- *   D.hcat([
- *     pipe(
- *       D.hcat<A>([D.text('fun('), D.softLineBreak, doc]),
- *       D.hang(2)
- *     ),
- *     D.text(')')
- *   ])
+ *   D.hcat([D.hang_(D.hcat([D.text("fun("), D.softLineBreak, doc]), 2), D.text(")")])
  *
  * const funs = flow(fun, fun, fun, fun, fun)
  *
- * const doc: Doc<never> = funs(D.align(D.list(D.words('abcdef ghijklm'))))
+ * const doc = funs(D.align(D.list(D.words("abcdef ghijklm"))))
  *
  * // The document will be rendered using the following pipeline, where the choice
  * // of layout algorithm has been left open:
- * const dashes: Doc<never> = D.text(pipe(RA.replicate(26 - 2, '-'), M.fold(M.string)))
- * const hr: Doc<never> = D.hcat([D.vbar, dashes, D.vbar])
+ * const pageWidth: PageWidth = PW.availablePerLine(26, 1)
+ * const layoutOptions: LayoutOptions = L.layoutOptions(pageWidth)
+ * const dashes = D.text(pipe(A.replicate_(26 - 2, "-"), I.fold(I.string)))
+ * const hr = D.hcat([D.vbar, dashes, D.vbar])
  *
- * const pageWidth: PageWidth = PW.AvailablePerLine(26, 1)
- * const layoutOptions: LayoutOptions = L.LayoutOptions(pageWidth)
+ * const render = <A>(doc: Doc<A>) => (
+ *   layoutAlgorithm: (doc: Doc<A>) => Layout<A>
+ * ): string => pipe(layoutOptions, layoutAlgorithm(D.vsep([hr, doc, hr])), R.render)
  *
- * const render = <A>(doc: Doc<A>) => (layoutAlgorithm: (doc: Doc<A>) => Layout<A>): string =>
- *   pipe(
- *     layoutOptions,
- *     layoutAlgorithm(
- *       D.vsep<A>([hr, doc, hr])
- *     ),
- *     R.renderS
- *   )
- *
- * // If rendered using `layoutPretty`, with a page width of `26` characters per line,
+ * // If rendered using `Layout.pretty`, with a page width of `26` characters per line,
  * // all the calls to `fun` will fit into the first line. However, this exceeds the
  * // desired `26` character page width.
- * console.log(pipe(L.layoutPretty, render(doc)))
+ * console.log(pipe(L.pretty, render(doc)))
  * // |------------------------|
  * // fun(fun(fun(fun(fun(
  * //                   [ abcdef
  * //                   , ghijklm ])))))
  * // |------------------------|
  *
- * // The same document, rendered with `layoutSmart`, fits the layout contstraints:
- * console.log(pipe(L.layoutSmart, render(doc)))
+ * // The same document, rendered with `Layout.smart`, fits the layout contstraints:
+ * console.log(pipe(L.smart, render(doc)))
  * // |------------------------|
  * // fun(
  * //   fun(
@@ -516,11 +503,11 @@ function fitsSmart(lineWidth: number, ribbonFraction: number) {
  * //           , ghijklm ])))))
  * // |------------------------|
  *
- * // The key difference between `layoutPretty` and `layoutSmart` is that the
+ * // The key difference between `Layout.pretty` and `Layout.smart` is that the
  * // latter will check the potential document until it encounters a line with the
  * // same indentation or less than the start of the document. Any line encountered
  * // earlier is assumed to belong to the same syntactic structure. In contrast,
- * // `layoutPretty` checks only the first line.
+ * // `Layout.pretty` checks only the first line.
  *
  * // Consider for example the question of whether the `A`s fit into the document
  * // below:
@@ -530,8 +517,8 @@ function fitsSmart(lineWidth: number, ribbonFraction: number) {
  * // > 4 B
  * // > 5   B
  *
- * // `layoutPretty` will check only the first line, ignoring whether the second line
- * // may already be too wide. In contrast, `layoutSmart` stops only once it reaches
+ * // `Layout.pretty` will check only the first line, ignoring whether the second line
+ * // may already be too wide. In contrast, `Layout.smart` stops only once it reaches
  * // the fourth line 4, where the `B` has the same indentation as the first `A`.
  * ```
  */
@@ -602,28 +589,26 @@ function compactRec<A>(docs: Array<Doc<A>>, i: number): IO.IO<DocStream<A>> {
  * can be used for output that is read by other programs.
  *
  * ```typescript
- * import { pipe } from '@effect-ts/core/Function'
- *
- * import * as D from '@effect-ts/printer/Core/Doc'
- * import * as L from '@effect-ts/printer/Core/Layout'
- * import * as R from '@effect-ts/printer/Core/Render'
+ * import { pipe } from "@effect-ts/core/Function"
+ * import * as D from "@effect-ts/printer/Core/Doc"
+ * import * as R from "@effect-ts/printer/Core/Render"
  *
  * const doc = pipe(
  *   D.vsep([
- *     D.text('lorem'),
- *     D.text('ipsum'),
- *     pipe(D.vsep([D.text('dolor'), D.text('sit')]), D.hang(4))
+ *     D.text("lorem"),
+ *     D.text("ipsum"),
+ *     D.hang_(D.vsep([D.text("dolor"), D.text("sit")]), 4)
  *   ]),
  *   D.hang(4)
  * )
  *
- * console.log(R.render(doc))
+ * console.log(R.renderPrettyDefault(doc))
  * // lorem
  * //     ipsum
  * //     dolor
  * //         sit
  *
- * console.log(pipe(doc, L.layoutCompact, R.renderS))
+ * console.log(R.renderCompact(doc))
  * // lorem
  * // ipsum
  * // dolor
