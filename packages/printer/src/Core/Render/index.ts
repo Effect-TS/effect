@@ -1,8 +1,5 @@
 // tracing: off
 
-import * as A from "@effect-ts/core/Array"
-import { pipe } from "@effect-ts/core/Function"
-import * as Ident from "@effect-ts/core/Identity"
 import * as IO from "@effect-ts/core/IO"
 
 import type { DocStream } from "../DocStream"
@@ -11,8 +8,6 @@ import type { DocStream } from "../DocStream"
 // operations
 // -------------------------------------------------------------------------------------
 
-const fold = Ident.fold(Ident.string)
-
 export const render = <A>(stream: DocStream<A>): string => {
   const go = (x: DocStream<A>): IO.IO<string> =>
     IO.gen(function* (_) {
@@ -20,19 +15,22 @@ export const render = <A>(stream: DocStream<A>): string => {
         case "FailedStream":
           throw new Error("bug, we ended up with a failed in render!")
         case "EmptyStream":
-          return Ident.string.identity
+          return ""
         case "CharStream": {
           const rest = yield* _(go(x.stream))
-          return fold([x.char, rest])
+          return x.char + rest
         }
         case "TextStream": {
           const rest = yield* _(go(x.stream))
-          return fold([x.text, rest])
+          return x.text + rest
         }
         case "LineStream": {
-          const indent = pipe(x.indentation, A.replicate(" "), A.cons("\n"), fold)
+          let indent = "\n"
+          for (let i = 1; i < x.indentation; i++) {
+            indent = indent += " "
+          }
           const rest = yield* _(go(x.stream))
-          return fold([indent, rest])
+          return indent + rest
         }
         case "PushAnnotationStream":
           return yield* _(go(x.stream))
