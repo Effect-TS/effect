@@ -69,25 +69,31 @@ export const nil: LayoutPipeline<never> = {
   _tag: "Nil"
 }
 
-export const cons = <A>(
+export function cons<A>(
   indent: number,
   document: Doc<A>,
   pipeline: LayoutPipeline<A>
-): LayoutPipeline<A> => ({
-  _tag: "Cons",
-  indent,
-  document,
-  pipeline
-})
+): LayoutPipeline<A> {
+  return {
+    _tag: "Cons",
+    indent,
+    document,
+    pipeline
+  }
+}
 
-export const undoAnnotation = <A>(pipeline: LayoutPipeline<A>): LayoutPipeline<A> => ({
-  _tag: "UndoAnnotation",
-  pipeline
-})
+export function undoAnnotation<A>(pipeline: LayoutPipeline<A>): LayoutPipeline<A> {
+  return {
+    _tag: "UndoAnnotation",
+    pipeline
+  }
+}
 
-export const layoutOptions = (pageWidth: PageWidth): LayoutOptions => ({
-  pageWidth
-})
+export function layoutOptions(pageWidth: PageWidth): LayoutOptions {
+  return {
+    pageWidth
+  }
+}
 
 /**
  * The default layout options, which are suitable when you want to obtain output
@@ -99,29 +105,40 @@ export const defaultLayoutOptions = layoutOptions(PW.defaultPageWidth)
 // destructors
 // -------------------------------------------------------------------------------------
 
-export const match = <A, R>(patterns: {
+export function match_<A, R>(
+  pipeline: LayoutPipeline<A>,
+  patterns: {
+    readonly Nil: () => R
+    readonly Cons: (indent: number, document: Doc<A>, pipeline: LayoutPipeline<A>) => R
+    readonly UndoAnnotation: (pipeline: LayoutPipeline<A>) => R
+  }
+): R {
+  switch (pipeline._tag) {
+    case "Nil":
+      return patterns.Nil()
+    case "Cons":
+      return patterns.Cons(pipeline.indent, pipeline.document, pipeline.pipeline)
+    case "UndoAnnotation":
+      return patterns.UndoAnnotation(pipeline.pipeline)
+  }
+}
+
+/**
+ * @dataFirst match_
+ */
+export function match<A, R>(patterns: {
   readonly Nil: () => R
   readonly Cons: (indent: number, document: Doc<A>, pipeline: LayoutPipeline<A>) => R
   readonly UndoAnnotation: (pipeline: LayoutPipeline<A>) => R
-}): ((pipeline: LayoutPipeline<A>) => R) => {
-  const f = (x: LayoutPipeline<A>): R => {
-    switch (x._tag) {
-      case "Nil":
-        return patterns.Nil()
-      case "Cons":
-        return patterns.Cons(x.indent, x.document, x.pipeline)
-      case "UndoAnnotation":
-        return patterns.UndoAnnotation(x.pipeline)
-    }
-  }
-  return f
+}) {
+  return (pipeline: LayoutPipeline<A>): R => match_(pipeline, patterns)
 }
 
 // -------------------------------------------------------------------------------------
 // layout algorithms
 // -------------------------------------------------------------------------------------
 
-const initialIndentation = <A>(stream: DocStream<A>): Option<number> => {
+function initialIndentation<A>(stream: DocStream<A>): Option<number> {
   const go = (x: DocStream<A>): IO.IO<Option<number>> =>
     IO.gen(function* (_) {
       switch (x._tag) {
@@ -138,21 +155,23 @@ const initialIndentation = <A>(stream: DocStream<A>): Option<number> => {
   return IO.run(go(stream))
 }
 
-const selectNicer = <A>(
+function selectNicer<A>(
   fits: FittingPredicate<A>,
   lineIndent: number,
   currentColumn: number,
   x: DocStream<A>,
   y: DocStream<A>
-): DocStream<A> =>
-  pipe(x, fits(lineIndent, currentColumn, initialIndentation(y))) ? x : y
+): DocStream<A> {
+  const fitsLayout = fits(lineIndent, currentColumn, initialIndentation(y))(x)
+  return fitsLayout ? x : y
+}
 
-const layoutWadlerLeijen = <A>(fits: FittingPredicate<A>) => (
-  doc: Doc<A>
-): Layout<A> => {
-  const go = (nl: number, cc: number, opts: LayoutOptions) => (
-    x: LayoutPipeline<A>
-  ): IO.IO<DocStream<A>> =>
+function layoutWadlerLeijen<A>(
+  doc: Doc<A>,
+  fits: FittingPredicate<A>,
+  options: LayoutOptions
+): DocStream<A> {
+  const go = (nl: number, cc: number, x: LayoutPipeline<A>): IO.IO<DocStream<A>> =>
     IO.gen(function* (_) {
       switch (x._tag) {
         case "Nil":
@@ -162,72 +181,69 @@ const layoutWadlerLeijen = <A>(fits: FittingPredicate<A>) => (
             case "Fail":
               return DS.failed
             case "Empty":
-              return yield* _(pipe(x.pipeline, go(nl, cc, opts)))
+              return yield* _(go(nl, cc, x.pipeline))
             case "Char":
-              return DS.char(
-                x.document.char,
-                yield* _(pipe(x.pipeline, go(nl, cc + 1, opts)))
-              )
+              return DS.char_(yield* _(go(nl, cc + 1, x.pipeline)), x.document.char)
             case "Text":
-              return DS.text(
-                x.document.text,
-                yield* _(pipe(x.pipeline, go(nl, cc + x.document.text.length, opts)))
+              return DS.text_(
+                yield* _(go(nl, cc + x.document.text.length, x.pipeline)),
+                x.document.text
               )
             case "Line": {
-              const s = yield* _(pipe(x.pipeline, go(x.indent, x.indent, opts)))
+              const s = yield* _(go(x.indent, x.indent, x.pipeline))
               const i = DS.isEmptyStream(s) || DS.isLineStream(s) ? 0 : x.indent
-              return DS.line(i, s)
+              return DS.line_(s, i)
             }
             case "FlatAlt": {
               const s = cons(x.indent, x.document.left, x.pipeline)
-              return yield* _(pipe(s, go(nl, cc, opts)))
+              return yield* _(go(nl, cc, s))
             }
             case "Cat": {
               const inner = cons(x.indent, x.document.right, x.pipeline)
               const outer = cons(x.indent, x.document.left, inner)
-              return yield* _(pipe(outer, go(nl, cc, opts)))
+              return yield* _(go(nl, cc, outer))
             }
             case "Nest": {
               const i = x.indent + x.document.indent
               const s = cons(i, x.document.doc, x.pipeline)
-              return yield* _(pipe(s, go(nl, cc, opts)))
+              return yield* _(go(nl, cc, s))
             }
             case "Union": {
               const left = yield* _(
-                pipe(cons(x.indent, x.document.left, x.pipeline), go(nl, cc, opts))
+                go(nl, cc, cons(x.indent, x.document.left, x.pipeline))
               )
               const right = yield* _(
-                pipe(cons(x.indent, x.document.right, x.pipeline), go(nl, cc, opts))
+                go(nl, cc, cons(x.indent, x.document.right, x.pipeline))
               )
               return selectNicer(fits, nl, cc, left, right)
             }
             case "Column": {
               const s = cons(x.indent, x.document.react(cc), x.pipeline)
-              return yield* _(pipe(s, go(nl, cc, opts)))
+              return yield* _(go(nl, cc, s))
             }
             case "WithPageWidth": {
-              const s = cons(x.indent, x.document.react(opts.pageWidth), x.pipeline)
-              return yield* _(pipe(s, go(nl, cc, opts)))
+              const s = cons(x.indent, x.document.react(options.pageWidth), x.pipeline)
+              return yield* _(go(nl, cc, s))
             }
             case "Nesting": {
               const s = cons(x.indent, x.document.react(x.indent), x.pipeline)
-              return yield* _(pipe(s, go(nl, cc, opts)))
+              return yield* _(go(nl, cc, s))
             }
             case "Annotated": {
               const p = cons(x.indent, x.document.doc, undoAnnotation(x.pipeline))
-              const s = yield* _(pipe(p, go(nl, cc, opts)))
-              return DS.pushAnnotation(x.document.annotation, s)
+              const s = yield* _(go(nl, cc, p))
+              return DS.pushAnnotation_(s, x.document.annotation)
             }
           }
         }
         case "UndoAnnotation":
-          return DS.popAnnotation(yield* _(pipe(x.pipeline, go(nl, cc, opts))))
+          return DS.popAnnotation(yield* _(go(nl, cc, x.pipeline)))
       }
     })
-  return (opts) => IO.run(go(0, 0, opts)(cons(0, doc, nil)))
+  return IO.run(go(0, 0, cons(0, doc, nil)))
 }
 
-const failsOnFirstLine = <A>(stream: DocStream<A>): boolean => {
+function failsOnFirstLine<A>(stream: DocStream<A>): boolean {
   const go = (x: DocStream<A>): IO.IO<boolean> =>
     IO.gen(function* (_) {
       switch (x._tag) {
@@ -254,33 +270,38 @@ const failsOnFirstLine = <A>(stream: DocStream<A>): boolean => {
  * The `layoutUnbounded` layout algorithm will lay out a document an
  * `Unbounded` page width.
  */
-export const layoutUnbounded = <A>(doc: Doc<A>): DocStream<A> =>
-  layoutWadlerLeijen<A>(constant(not(failsOnFirstLine)))(doc)(
+export function layoutUnbounded<A>(doc: Doc<A>): DocStream<A> {
+  return layoutWadlerLeijen<A>(
+    doc,
+    constant(not(failsOnFirstLine)),
     layoutOptions(PW.unbounded)
   )
+}
 
-const fitsPretty = (width: number) => <A>(stream: DocStream<A>): boolean => {
-  const go = (w: number) => (x: DocStream<A>): IO.IO<boolean> =>
-    IO.gen(function* (_) {
-      if (w < 0) return false
-      switch (x._tag) {
-        case "FailedStream":
-          return false
-        case "EmptyStream":
-          return true
-        case "CharStream":
-          return yield* _(pipe(x.stream, go(w - 1)))
-        case "TextStream":
-          return yield* _(pipe(x.stream, go(w - x.text.length)))
-        case "LineStream":
-          return true
-        case "PushAnnotationStream":
-          return yield* _(pipe(x.stream, go(w)))
-        case "PopAnnotationStream":
-          return yield* _(pipe(x.stream, go(w)))
-      }
-    })
-  return pipe(stream, go(width), IO.run)
+function fitsPretty(width: number) {
+  return <A>(stream: DocStream<A>): boolean => {
+    const go = (x: DocStream<A>, w: number): IO.IO<boolean> =>
+      IO.gen(function* (_) {
+        if (w < 0) return false
+        switch (x._tag) {
+          case "FailedStream":
+            return false
+          case "EmptyStream":
+            return true
+          case "CharStream":
+            return yield* _(go(x.stream, w - 1))
+          case "TextStream":
+            return yield* _(go(x.stream, w - x.text.length))
+          case "LineStream":
+            return true
+          case "PushAnnotationStream":
+            return yield* _(go(x.stream, w))
+          case "PopAnnotationStream":
+            return yield* _(go(x.stream, w))
+        }
+      })
+    return IO.run(go(stream, width))
+  }
 }
 
 /**
@@ -295,70 +316,87 @@ const fitsPretty = (width: number) => <A>(stream: DocStream<A>): boolean => {
  * algorithm if the results seem to run off to the right before having lots of
  * line breaks.
  */
-export const pretty = <A>(doc: Doc<A>): Layout<A> => (_) =>
-  pipe(
-    _.pageWidth,
+export function pretty_<A>(options: LayoutOptions, doc: Doc<A>): DocStream<A> {
+  return pipe(
+    options.pageWidth,
     PW.match({
-      AvailablePerLine: (lw, rf) =>
-        layoutWadlerLeijen((nl, cc) => fitsPretty(PW.remainingWidth(lw, rf, nl, cc)))(
-          doc
-        )(_),
+      AvailablePerLine: (lineWidth, ribbonFraction) =>
+        layoutWadlerLeijen(
+          doc,
+          (lineIndent, currentColumn) => {
+            const remainingWidth = PW.remainingWidth(
+              lineWidth,
+              ribbonFraction,
+              lineIndent,
+              currentColumn
+            )
+            return fitsPretty(remainingWidth)
+          },
+          options
+        ),
       Unbounded: () => layoutUnbounded(doc)
     })
   )
-
-const fitsSmart = (lineWidth: number, ribbonFraction: number) => (
-  lineIndent: number,
-  currentColumn: number,
-  initialIndentY: Option<number>
-) => <A>(stream: DocStream<A>): boolean => {
-  const availableWidth = PW.remainingWidth(
-    lineWidth,
-    ribbonFraction,
-    lineIndent,
-    currentColumn
-  )
-
-  const minNestingLevel = pipe(
-    initialIndentY,
-    O.fold(
-      // y is definitely not a hanging layout - let's check x with
-      // the same minNestingLevel that any subsequent lines with
-      // the same indentation use
-      () => currentColumn,
-      // y could be a (less wide) hanging layout - let's check x a
-      // bit more thoroughly to make sure we do not miss a potentially
-      // better fitting y
-      (i) => Math.min(i, currentColumn)
-    )
-  )
-
-  const go = (w: number) => (x: DocStream<A>): IO.IO<boolean> =>
-    IO.gen(function* (_) {
-      if (w < 0) return false
-      switch (x._tag) {
-        case "FailedStream":
-          return false
-        case "EmptyStream":
-          return true
-        case "CharStream":
-          return yield* _(pipe(x.stream, go(w - 1)))
-        case "TextStream":
-          return yield* _(pipe(x.stream, go(w - x.text.length)))
-        case "LineStream": {
-          if (minNestingLevel > x.indentation) return true
-          return yield* _(pipe(x.stream, go(x.indentation - lineWidth)))
-        }
-        case "PushAnnotationStream":
-          return yield* _(pipe(x.stream, go(w)))
-        case "PopAnnotationStream":
-          return yield* _(pipe(x.stream, go(w)))
-      }
-    })
-
-  return pipe(stream, go(availableWidth), IO.run)
 }
 
+/**
+ * @dataFirst pretty_
+ */
+export function pretty<A>(doc: Doc<A>): Layout<A> {
+  return (options) => pretty_(options, doc)
+}
+
+function fitsSmart(lineWidth: number, ribbonFraction: number) {
+  return (
+    lineIndent: number,
+    currentColumn: number,
+    initialIndentY: Option<number>
+  ) => <A>(stream: DocStream<A>): boolean => {
+    const availableWidth = PW.remainingWidth(
+      lineWidth,
+      ribbonFraction,
+      lineIndent,
+      currentColumn
+    )
+
+    const minNestingLevel = O.fold_(
+      initialIndentY,
+      // If `y` is `None`, then it is definitely not a hanging layout,
+      // so we will need to check `x` with the same minNestingLevel
+      // that any subsequent lines with the same indentation use
+      () => currentColumn,
+      // If `y` is some, then `y` could be a (less wide) hanging layout,
+      // so we need to check `x` a bit more thoroughly to make sure we
+      // do not miss a potentially better fitting `y`
+      (i) => Math.min(i, currentColumn)
+    )
+
+    const go = (x: DocStream<A>, w: number): IO.IO<boolean> =>
+      IO.gen(function* (_) {
+        if (w < 0) return false
+        switch (x._tag) {
+          case "FailedStream":
+            return false
+          case "EmptyStream":
+            return true
+          case "CharStream":
+            return yield* _(go(x.stream, w - 1))
+          case "TextStream":
+            return yield* _(go(x.stream, w - x.text.length))
+          case "LineStream": {
+            if (minNestingLevel > x.indentation) return true
+            return yield* _(go(x.stream, x.indentation - lineWidth))
+          }
+          case "PushAnnotationStream":
+            return yield* _(go(x.stream, w))
+          case "PopAnnotationStream":
+            return yield* _(go(x.stream, w))
+        }
+      })
+
+    return IO.run(go(stream, availableWidth))
+  }
+}
 /**
  * A layout algorithm with more look ahead than `layoutPretty`, which will introduce
  * line breaks into a document earlier if the content does not, or will not, fit onto
@@ -449,14 +487,23 @@ const fitsSmart = (lineWidth: number, ribbonFraction: number) => (
  * // the fourth line 4, where the `B` has the same indentation as the first `A`.
  * ```
  */
-export const smart = <A>(doc: Doc<A>): Layout<A> => (_) =>
-  pipe(
-    _.pageWidth,
+export function smart_<A>(options: LayoutOptions, doc: Doc<A>): DocStream<A> {
+  return pipe(
+    options.pageWidth,
     PW.match({
-      AvailablePerLine: (lw, rf) => layoutWadlerLeijen<A>(fitsSmart(lw, rf))(doc)(_),
-      Unbounded: () => pipe(doc, layoutUnbounded)
+      AvailablePerLine: (lineWidth, ribbonFraction) =>
+        layoutWadlerLeijen(doc, fitsSmart(lineWidth, ribbonFraction), options),
+      Unbounded: () => layoutUnbounded(doc)
     })
   )
+}
+
+/**
+ * @dataFirst smart_
+ */
+export function smart<A>(doc: Doc<A>): Layout<A> {
+  return (options) => smart_(options, doc)
+}
 
 /**
  * A layout algorithm which will lay out a document without adding any
@@ -495,8 +542,8 @@ export const smart = <A>(doc: Doc<A>): Layout<A> => (_) =>
  * // sit
  * ```
  */
-export const compact = <A, B>(doc: Doc<A>): DocStream<B> => {
-  const go = (i: number) => (docs: Array<Doc<A>>): IO.IO<DocStream<B>> =>
+export function compact<A, B>(doc: Doc<A>): DocStream<B> {
+  const go = (docs: Array<Doc<A>>, i: number): IO.IO<DocStream<B>> =>
     IO.gen(function* (_) {
       if (A.isNonEmpty(docs)) {
         const [x, ...rest] = docs
@@ -504,38 +551,38 @@ export const compact = <A, B>(doc: Doc<A>): DocStream<B> => {
           case "Fail":
             return DS.failed
           case "Empty":
-            return yield* _(go(i)(rest))
+            return yield* _(go(rest, i))
           case "Char": {
-            const s = yield* _(go(i + 1)(rest))
-            return DS.char(x.char, s)
+            const s = yield* _(go(rest, i + 1))
+            return DS.char_(s, x.char)
           }
           case "Text": {
-            const s = yield* _(go(i + x.text.length)(rest))
-            return DS.text(x.text, s)
+            const s = yield* _(go(rest, i + x.text.length))
+            return DS.text_(s, x.text)
           }
           case "Line": {
-            const s = yield* _(go(0)(rest))
-            return DS.line(0, s)
+            const s = yield* _(go(rest, 0))
+            return DS.line_(s, 0)
           }
           case "FlatAlt":
-            return yield* _(go(i)(A.cons_(rest, x.left)))
+            return yield* _(go(A.cons_(rest, x.left), i))
           case "Cat":
-            return yield* _(go(i)(A.cons_(A.cons_(rest, x.right), x.left)))
+            return yield* _(go(A.cons_(A.cons_(rest, x.right), x.left), i))
           case "Nest":
-            return yield* _(go(i)(A.cons_(rest, x.doc)))
+            return yield* _(go(A.cons_(rest, x.doc), i))
           case "Union":
-            return yield* _(go(i)(A.cons_(rest, x.right)))
+            return yield* _(go(A.cons_(rest, x.right), i))
           case "Column":
-            return yield* _(go(i)(A.cons_(rest, x.react(i))))
+            return yield* _(go(A.cons_(rest, x.react(i)), i))
           case "WithPageWidth":
-            return yield* _(go(i)(A.cons_(rest, x.react(PW.unbounded))))
+            return yield* _(go(A.cons_(rest, x.react(PW.unbounded)), i))
           case "Nesting":
-            return yield* _(go(i)(A.cons_(rest, x.react(0))))
+            return yield* _(go(A.cons_(rest, x.react(0)), i))
           case "Annotated":
-            return yield* _(go(i)(A.cons_(rest, x.doc)))
+            return yield* _(go(A.cons_(rest, x.doc), i))
         }
       }
       return DS.empty
     })
-  return IO.run(go(0)(A.single(doc)))
+  return IO.run(go(A.single(doc), 0))
 }
