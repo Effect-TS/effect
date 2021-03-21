@@ -214,8 +214,8 @@ export const fail: Doc<never> = new Fail(identity)
  * it will render an empty line of output.
  *
  * ```typescript
- * import * as D from '@effect-ts/pretty/Doc'
- * import * as R from '@effect-ts/pretty/Render'
+ * import * as D from '@effect-ts/printer/Core/Doc'
+ * import * as R from '@effect-ts/printer/Core/Render'
  *
  * const doc = D.vsep([
  *   D.text('hello'),
@@ -223,7 +223,7 @@ export const fail: Doc<never> = new Fail(identity)
  *   D.text('world')
  * ])
  *
- * console.log(R.render(doc))
+ * console.log(R.renderPrettyDefault(doc))
  * // hello
  * // ()
  * // world
@@ -274,18 +274,18 @@ export function string(str: string): Doc<never> {
  * algorithms will fall back to an even wider layout.
  *
  * ```typescript
+ * import type { Array } from '@effect-ts/core/Array'
  * import { pipe } from '@effect-ts/core/Function'
- *
  * import type { Doc } from '@effect-ts/printer/Core/Doc'
  * import * as D from '@effect-ts/printer/Core/Doc'
  * import * as R from '@effect-ts/printer/Core/Render'
  *
- * const open = D.flatAlt(D.empty, D.text('{ '))
- * const close = D.flatAlt(D.empty, D.text(' }'))
- * const separator = D.flatAlt(D.empty, D.text('; '))
+ * const open = D.flatAlt_(D.empty, D.text('{ '))
+ * const close = D.flatAlt_(D.empty, D.text(' }'))
+ * const separator = D.flatAlt_(D.empty, D.text('; '))
  *
  * const prettyDo = <A>(xs: Array<Doc<A>>): Doc<A> =>
- *   D.group(D.hsep([D.text('do'), D.align(pipe(xs, D.encloseSep<A>(open, close, separator)))]))
+ *   D.group(D.hsep([D.text('do'), D.align(D.encloseSep_(xs, open, close, separator))]))
  *
  * const statements = [
  *   D.text('name:_ <- getArgs'),
@@ -294,11 +294,11 @@ export function string(str: string): Doc<never> {
  * ]
  *
  * // If it fits, then the content is put onto a single line with the `{;}` style
- * console.log(pipe(prettyDo(statements), R.renderWidth(80)))
+ * console.log(pipe(prettyDo(statements), R.renderPretty(80)))
  * // do { name:_ <- getArgs; let greet = "Hello, " <> name"; putStrLn greet }
  *
  * // When there is not enough space, the content is broken up onto multiple lines
- * console.log(pipe(prettyDo(statements), R.renderWidth(10)))
+ * console.log(pipe(prettyDo(statements), R.renderPretty(10)))
  * // do name:_ <- getArgs
  * //    let greet = "Hello, " <> name"
  * //    putStrLn greet
@@ -352,11 +352,11 @@ export function cat<B>(right: Doc<B>) {
  *   D.text('dolor sit amet')
  * ])
  *
- * console.log(R.render(doc))
+ * console.log(R.renderPrettyDefault(doc))
  * // lorem ipsum
  * // dolor sit amet
  *
- * console.log(R.render(D.group(doc)))
+ * console.log(R.renderPrettyDefault(D.group(doc)))
  * // lorem ipsum dolor sit amet
  *```
  */
@@ -376,11 +376,11 @@ export const line: Doc<never> = flatAlt_(line_, char(" "))
  *   D.text('dolor sit amet')
  * ])
  *
- * console.log(R.render(doc))
+ * console.log(R.renderPrettyDefault(doc))
  * // lorem ipsum
  * // dolor sit amet
  *
- * console.log(R.render(D.group(doc)))
+ * console.log(R.renderPrettyDefault(D.group(doc)))
  * // lorem ipsumdolor sit amet
  * ```
  */
@@ -392,25 +392,22 @@ export const lineBreak: Doc<never> = flatAlt_(line_, empty)
  *
  * ```typescript
  * import { pipe } from '@effect-ts/core/Function'
- *
  * import * as D from '@effect-ts/printer/Core/Doc'
  * import * as R from '@effect-ts/printer/Core/Render'
  *
  * // Here we have enough space to put everything onto one line:
- *
  * const doc = D.hcat([
  *   D.text('lorem ipsum'),
  *   D.softLine,
  *   D.text('dolor sit amet')
  * ])
  *
- * console.log(pipe(doc, R.renderWidth(80)))
+ * console.log(pipe(doc, R.renderPretty(80)))
  * // lorem ipsum dolor sit amet
  *
  * // If the page width is narrowed to `10`, the layout algorithm will
  * // introduce a line break:
- *
- * console.log(pipe(doc, R.renderWidth(10)))
+ * console.log(pipe(doc, R.renderPretty(10)))
  * // lorem ipsum
  * // dolor sit amet
  * ```
@@ -424,7 +421,6 @@ export const softLine: Doc<never> = union_(char(" "), line_)
  *
  * ```typescript
  * import { pipe } from '@effect-ts/core/Function'
- *
  * import * as D from '@effect-ts/printer/Core/Doc'
  * import * as R from '@effect-ts/printer/Core/Render'
  *
@@ -435,12 +431,12 @@ export const softLine: Doc<never> = union_(char(" "), line_)
  *   D.text('IsWayTooLong')
  * ])
  *
- * console.log(pipe(doc, R.renderWidth(80)))
+ * console.log(pipe(doc, R.renderPretty(80)))
  * // ThisTextIsWayTooLong
  *
  * // If the page width is narrowed to `10`, the layout algorithm will
  * // introduce a line break:
- * console.log(pipe(doc, R.renderWidth(10)))
+ * console.log(pipe(doc, R.renderPretty(10)))
  * // ThisText
  * // IsWayTooLong
  * ```
@@ -454,7 +450,6 @@ export const softLineBreak: Doc<never> = union_(empty, line_)
  *
  * ```typescript
  * import { pipe } from '@effect-ts/core/Function'
- *
  * import * as D from '@effect-ts/printer/Core/Doc'
  * import * as R from '@effect-ts/printer/Core/Render'
  *
@@ -464,7 +459,7 @@ export const softLineBreak: Doc<never> = union_(empty, line_)
  *   D.text('dolor sit amet')
  * ])
  *
- * console.log(pipe(doc, R.renderWidth(1000)))
+ * console.log(pipe(doc, R.renderPretty(1000)))
  * // lorem ipsum
  * // dolor sit amet
  * ```
@@ -487,17 +482,16 @@ export const hardLine: Doc<never> = line_
  *
  * ```typescript
  * import { pipe } from '@effect-ts/core/Function'
- *
  * import * as D from '@effect-ts/printer/Core/Doc'
  * import * as R from '@effect-ts/printer/Core/Render'
  *
  * const doc = D.vsep([
- *   pipe(D.vsep(D.words('lorem ipsum dolor')), D.nest(4)),
+ *   D.nest_(D.vsep(D.words('lorem ipsum dolor')), 4),
  *   D.text('sit'),
  *   D.text('amet')
  * ])
  *
- * console.log(R.render(doc))
+ * console.log(R.renderPrettyDefault(doc))
  * // lorem
  * //     ipsum
  * //     dolor
@@ -520,16 +514,14 @@ export function nest_<A>(doc: Doc<A>, indent: number): Doc<A> {
  * document starts.
  *
  * ```typescript
- * import { pipe } from '@effect-ts/core/Function'
- * import * as RA from '@effect-ts/core/Array'
- *
+ * import * as A from '@effect-ts/core/Array'
  * import * as D from '@effect-ts/printer/Core/Doc'
  * import * as R from '@effect-ts/printer/Core/Render'
  *
  * // Example 1:
  * const example1 = D.column((l) => D.hsep([D.text('Columns are'), D.text(`${l}-based.`)]))
  *
- * console.log(R.render(example1))
+ * console.log(R.renderPrettyDefault(example1))
  * // Columns are 0-based.
  *
  * // Example 2:
@@ -538,14 +530,9 @@ export function nest_<A>(doc: Doc<A>, indent: number): Doc<A> {
  *   D.column((l) => D.text(`| <- column ${l}`))
  * ])
  *
- * const example2 = D.vsep(
- *   pipe(
- *     [0, 4, 8],
- *     RA.map((n) => D.indent(n)(doc))
- *   )
- * )
+ * const example2 = D.vsep(A.map_([0, 4, 8], (n) => D.indent_(doc, n)))
  *
- * console.log(R.render(example2))
+ * console.log(R.renderPrettyDefault(example2))
  * // prefix | <- column 7
  * //     prefix | <- column 11
  * //         prefix | <- column 15
@@ -560,22 +547,15 @@ export function column<A>(react: (position: number) => Doc<A>): Doc<A> {
  * the current indentation of the document).
  *
  * ```typescript
- * import { pipe } from '@effect-ts/core/Function'
- * import * as RA from '@effect-ts/core/Array'
- *
+ * import * as A from '@effect-ts/core/Array'
  * import * as D from '@effect-ts/printer/Core/Doc'
  * import * as R from '@effect-ts/printer/Core/Render'
  *
  * const doc = D.hsep([D.text('prefix'), D.nesting((l) => D.brackets(D.text(`Nested: ${l}`)))])
  *
- * const example = D.vsep(
- *   pipe(
- *     [0, 4, 8],
- *     RA.map((n) => D.indent(n)(doc))
- *   )
- * )
+ * const example = D.vsep(A.map_([0, 4, 8], (n) => D.indent_(doc, n)))
  *
- * console.log(R.render(example))
+ * console.log(R.renderPrettyDefault(example))
  * // prefix [Nested: 0]
  * //     prefix [Nested: 4]
  * //         prefix [Nested: 8]
@@ -588,10 +568,9 @@ export function nesting<A>(react: (level: number) => Doc<A>): Doc<A> {
 /**
  * Lays out a document according to the document's`PageWidth`.
  *
- * ```
+ * ```typescript
  * import { pipe } from '@effect-ts/core/Function'
- * import * as RA from '@effect-ts/core/Array'
- *
+ * import * as A from '@effect-ts/core/Array'
  * import * as D from '@effect-ts/printer/Core/Doc'
  * import * as R from '@effect-ts/printer/Core/Render'
  * import * as PW from '@effect-ts/printer/Core/PageWidth'
@@ -606,14 +585,9 @@ export function nesting<A>(react: (level: number) => Doc<A>): Doc<A> {
  *   )
  * ])
  *
- * const example = D.vsep(
- *   pipe(
- *     [0, 4, 8],
- *     RA.map((n) => pipe(doc, D.indent(n)))
- *   )
- * )
+ * const example = D.vsep(A.map_([0, 4, 8], (n) => D.indent_(doc, n)))
  *
- * console.log(pipe(example, R.renderWidth(32)))
+ * console.log(pipe(example, R.renderPretty(32)))
  * // prefix [Width: 32, ribbon fraction: 1]
  * //     prefix [Width: 32, ribbon fraction: 1]
  * //         prefix [Width: 32, ribbon fraction: 1]
@@ -999,16 +973,15 @@ export const space: Doc<never> = char(" ")
  *
  * ```typescript
  * import { pipe } from '@effect-ts/core/Function'
- *
  * import * as D from '@effect-ts/printer/Core/Doc'
  * import * as R from '@effect-ts/printer/Core/Render'
  *
  * const doc = pipe(
  *   [D.char('a'), D.char('b')],
- *   D.concatWith(D.appendWithSpace)
+ *   D.concatWith(D.appendWithSpace_)
  * )
  *
- * console.log(R.render(doc))
+ * console.log(R.renderPrettyDefault(doc))
  * // a b
  * ```
  *
@@ -1022,10 +995,10 @@ export function concatWith_<A>(
   docs: Array<Doc<A>>,
   f: (x: Doc<A>, y: Doc<A>) => Doc<A>
 ): Doc<A> {
-  return A.foldRight_(
+  return A.foldLeft_(
     docs,
     () => empty,
-    (init, last) => A.reduceRight_(init, last, f)
+    (init, last) => A.reduce_(last, init, f)
   )
 }
 
@@ -1037,9 +1010,9 @@ export function concatWith_<A>(
  * import * as D from '@effect-ts/printer/Core/Doc'
  * import * as R from '@effect-ts/printer/Core/Render'
  *
- * const doc = D.appendWithSpace(D.char('a'), D.char('b'))
+ * const doc = D.appendWithSpace_(D.char('a'), D.char('b'))
  *
- * console.log(R.render(doc))
+ * console.log(R.renderPrettyDefault(doc))
  * // a b
  * ```
  */
@@ -1062,9 +1035,9 @@ export function appendWithSpace<A>(y: Doc<A>) {
  * import * as D from '@effect-ts/printer/Core/Doc'
  * import * as R from '@effect-ts/printer/Core/Render'
  *
- * const doc = D.appendWithLine(D.char('a'), D.char('b'))
+ * const doc = D.appendWithLine_(D.char('a'), D.char('b'))
  *
- * console.log(R.render(doc))
+ * console.log(R.renderPrettyDefault(doc))
  * // a
  * // b
  * ```
@@ -1088,13 +1061,13 @@ export function appendWithLine<A>(y: Doc<A>) {
  * import * as D from '@effect-ts/printer/Core/Doc'
  * import * as R from '@effect-ts/printer/Core/Render'
  *
- * const doc = D.appendWithLineBreak(D.char('a'), D.char('b'))
+ * const doc = D.appendWithLineBreak_(D.char('a'), D.char('b'))
  *
- * console.log(R.render(doc))
+ * console.log(R.renderPrettyDefault(doc))
  * // a
  * // b
  *
- * console.log(R.render(D.group(doc)))
+ * console.log(R.renderPrettyDefault(D.group(doc)))
  * // ab
  * ```
  */
@@ -1115,16 +1088,15 @@ export function appendWithLineBreak<A>(y: Doc<A>) {
  *
  * ```typescript
  * import { pipe } from '@effect-ts/core/Function'
- *
  * import * as D from '@effect-ts/printer/Core/Doc'
  * import * as R from '@effect-ts/printer/Core/Render'
  *
- * const doc = D.appendWithSoftLine(D.char('a'), D.char('b'))
+ * const doc = D.appendWithSoftLine_(D.char('a'), D.char('b'))
  *
- * console.log(R.render(doc))
+ * console.log(R.renderPrettyDefault(doc))
  * // a b
  *
- * console.log(pipe(doc, R.renderWidth(1)))
+ * console.log(pipe(doc, R.renderPretty(1)))
  * // a
  * // b
  * ```
@@ -1146,16 +1118,15 @@ export function appendWithSoftLine<A>(y: Doc<A>) {
  *
  * ```typescript
  * import { pipe } from '@effect-ts/core/Function'
- *
  * import * as D from '@effect-ts/printer/Core/Doc'
  * import * as R from '@effect-ts/printer/Core/Render'
  *
- * const doc = D.appendWithSoftLineBreak(D.char('a'), D.char('b'))
+ * const doc = D.appendWithSoftLineBreak_(D.char('a'), D.char('b'))
  *
- * console.log(R.render(doc))
+ * console.log(R.renderPrettyDefault(doc))
  * // ab
  *
- * console.log(pipe(doc, R.renderWidth(1)))
+ * console.log(pipe(doc, R.renderPretty(1)))
  * // a
  * // b
  * ```
@@ -1325,18 +1296,17 @@ export const group = <A>(doc: Doc<A>): Doc<A> => {
  *
  * ```typescript
  * import { pipe } from '@effect-ts/core/Function'
- *
  * import * as D from '@effect-ts/printer/Core/Doc'
  * import * as R from '@effect-ts/printer/Core/Render'
  *
  * const doc = D.hsep(D.words('lorem ipsum dolor sit amet'))
  *
- * console.log(pipe(doc, R.renderWidth(80)))
+ * console.log(pipe(doc, R.renderPretty(80)))
  * // lorem ipsum dolor sit amet
  *
  * // The `hsep` combinator will not introduce line breaks on its own, even when
  * // the page is too narrow
- * console.log(pipe(doc, R.renderWidth(5)))
+ * console.log(pipe(doc, R.renderPretty(5)))
  * // lorem ipsum dolor sit amet
  * ```
  */
@@ -1360,7 +1330,7 @@ export const hsep: <A>(docs: Array<Doc<A>>) => Doc<A> = concatWith(appendWithSpa
  *   D.vsep(D.words('text to lay out'))
  * ])
  *
- * console.log(R.render(unaligned))
+ * console.log(R.renderPrettyDefault(unaligned))
  * // prefix text
  * // to
  * // lay
@@ -1372,7 +1342,7 @@ export const hsep: <A>(docs: Array<Doc<A>>) => Doc<A> = concatWith(appendWithSpa
  *   D.align(D.vsep(D.words('text to lay out')))
  * ])
  *
- * console.log(R.render(aligned))
+ * console.log(R.renderPrettyDefault(aligned))
  * // prefix text
  * //        to
  * //        lay
@@ -1401,7 +1371,6 @@ export const fillSep: <A>(docs: Array<Doc<A>>) => Doc<A> = concatWith(
  *
  * ```typescript
  * import { pipe } from '@effect-ts/core/Function'
- *
  * import * as D from '@effect-ts/printer/Core/Doc'
  * import * as R from '@effect-ts/printer/Core/Render'
  *
@@ -1410,11 +1379,11 @@ export const fillSep: <A>(docs: Array<Doc<A>>) => Doc<A> = concatWith(
  *   D.sep(D.words('text to lay out'))
  * ])
  *
- * console.log(R.render(doc))
+ * console.log(R.renderPrettyDefault(doc))
  * // prefix text to lay out
  *
  * // If the page width is too narrow, documents are separated by newlines
- * console.log(pipe(doc, R.renderWidth(20)))
+ * console.log(pipe(doc, R.renderPretty(20)))
  * // prefix text
  * // to
  * // lay
@@ -1438,7 +1407,7 @@ export const seps: <A>(docs: Array<Doc<A>>) => Doc<A> = (_) => group(vsep(_))
  *
  * const doc = D.hcat(D.words('lorem ipsum dolor'))
  *
- * console.log(R.render(doc))
+ * console.log(R.renderPrettyDefault(doc))
  * // loremipsumdolor
  * ```
  */
@@ -1454,7 +1423,7 @@ export const hcat: <A>(docs: Array<Doc<A>>) => Doc<A> = concatWith(cat_)
  *
  * const doc = D.vcat(D.words('lorem ipsum dolor'))
  *
- * console.log(R.render(doc))
+ * console.log(R.renderPrettyDefault(doc))
  * // lorem
  * // ipsum
  * // dolor
@@ -1483,7 +1452,6 @@ export const fillCat: <A>(docs: Array<Doc<A>>) => Doc<A> = concatWith(
  *
  * ```typescript
  * import { pipe } from '@effect-ts/core/Function'
- *
  * import * as D from '@effect-ts/printer/Core/Doc'
  * import * as R from '@effect-ts/printer/Core/Render'
  *
@@ -1492,12 +1460,12 @@ export const fillCat: <A>(docs: Array<Doc<A>>) => Doc<A> = concatWith(
  *   D.cat(D.words('lorem ipsum dolor'))
  * ])
  *
- * console.log(R.render(doc))
+ * console.log(R.renderPrettyDefault(doc))
  * // Docs: loremipsumdolor
  *
  * // If the document exceeds the width of the page, the documents are rendered
  * // one above another
- * console.log(pipe(doc, R.renderWidth(10)))
+ * console.log(pipe(doc, R.renderPretty(10)))
  * // Docs: lorem
  * // ipsum
  * // dolor
@@ -1526,27 +1494,26 @@ export function catsT<Docs extends Array<Doc<any>>>(
  * of `x` is already larger than the specified `width`, nothing is appended.
  *
  * ```typescript
- * import { pipe } from '@effect-ts/core/Function'
- * import * as RA from '@effect-ts/core/Array'
- *
+ * import type { Array } from '@effect-ts/core/Array'
+ * import * as A from '@effect-ts/core/Array'
  * import type { Doc } from '@effect-ts/printer/Core/Doc'
  * import * as D from '@effect-ts/printer/Core/Doc'
  * import * as R from '@effect-ts/printer/Core/Render'
  *
  * type Signature = [name: string, type: string]
  *
- * const signatures: ReadonlyArray<Signature> = [
+ * const signatures: Array<Signature> = [
  *   ['empty', 'Doc'],
  *   ['nest', 'Int -> Doc -> Doc'],
  *   ['fillSep', '[Doc] -> Doc']
  * ]
  *
  * const prettySignature = <A>([name, type]: Signature): Doc<A> =>
- *   D.hsep([pipe(D.text<never>(name), D.fill(5)), D.text('::'), D.text(type)])
+ *   D.hsep([D.fill_(D.text(name), 5), D.text('::'), D.text(type)])
  *
- * const doc = D.hsep([D.text('let'), D.align(D.vcat(pipe(signatures, RA.map(prettySignature))))])
+ * const doc = D.hsep([D.text('let'), D.align(D.vcat(A.map_(signatures, prettySignature)))])
  *
- * console.log(R.render(doc))
+ * console.log(R.renderPrettyDefault(doc))
  * // let empty :: Doc
  * //     nest :: Int -> Doc -> Doc
  * //     fillSep :: [Doc] -> Doc
@@ -1570,26 +1537,29 @@ export function fill_<A>(doc: Doc<A>, width: number): Doc<A> {
  *
  * ```typescript
  * import { pipe } from '@effect-ts/core/Function'
- * import * as RA from '@effect-ts/core/Array'
- *
+ * import type { Array } from '@effect-ts/core/Array'
+ * import * as A from '@effect-ts/core/Array'
  * import type { Doc } from '@effect-ts/printer/Core/Doc'
  * import * as D from '@effect-ts/printer/Core/Doc'
  * import * as R from '@effect-ts/printer/Core/Render'
  *
  * type Signature = [name: string, type: string]
  *
- * const signatures: ReadonlyArray<Signature> = [
+ * const signatures: Array<Signature> = [
  *   ['empty', 'Doc'],
  *   ['nest', 'Int -> Doc -> Doc'],
  *   ['fillSep', '[Doc] -> Doc']
  * ]
  *
  * const prettySignature = <A>([name, type]: Signature): Doc<A> =>
- *   D.hsep([pipe(D.text<never>(name), D.fillBreak(5)), D.text('::'), D.text(type)])
+ *   D.hsep([D.fillBreak_(D.text(name), 5), D.text('::'), D.text(type)])
  *
- * const doc = D.hsep([D.text('let'), D.align(D.vcat(pipe(signatures, RA.map(prettySignature))))])
+ * const doc = D.hsep([
+ *   D.text('let'),
+ *   D.align(D.vcat(A.map_(signatures, prettySignature)))
+ * ])
  *
- * console.log(R.render(doc))
+ * console.log(R.renderPrettyDefault(doc))
  * // let empty :: Doc
  * //     nest :: Int -> Doc -> Doc
  * //     fillSep
@@ -1628,7 +1598,7 @@ export function fillBreak_<A>(doc: Doc<A>, width: number): Doc<A> {
  *   D.vsep([D.text('ipsum'), D.text('dolor')])
  * ])
  *
- * console.log(R.render(unaligned))
+ * console.log(R.renderPrettyDefault(unaligned))
  * // lorem ipsum
  * // dolor
  *
@@ -1638,13 +1608,13 @@ export function fillBreak_<A>(doc: Doc<A>, width: number): Doc<A> {
  *   D.align(D.vsep([D.text('ipsum'), D.text('dolor')]))
  * ])
  *
- * console.log(R.render(aligned))
+ * console.log(R.renderPrettyDefault(aligned))
  * // lorem ipsum
  * //       dolor
  * ```
  */
 export function align<A>(doc: Doc<A>): Doc<A> {
-  return column((k) => nesting((i) => nest(k - i)(doc)))
+  return column((k) => nesting((i) => nest_(doc, k - i)))
 }
 
 /**
@@ -1658,16 +1628,15 @@ export function align<A>(doc: Doc<A>): Doc<A> {
  *
  * ```typescript
  * import { pipe } from '@effect-ts/core/Function'
- *
  * import * as D from '@effect-ts/printer/Core/Doc'
  * import * as R from '@effect-ts/printer/Core/Render'
  *
  * const doc = D.hsep([
  *   D.text('prefix'),
- *   pipe(D.reflow('Indenting these words with hang'), D.hang(4))
+ *   D.hang_(D.reflow('Indenting these words with hang'), 4)
  * ])
  *
- * console.log(pipe(doc, R.renderWidth(24)))
+ * console.log(pipe(doc, R.renderPretty(24)))
  * // prefix Indenting these
  * //            words with
  * //            hang
@@ -1689,20 +1658,19 @@ export function hang_<A>(doc: Doc<A>, indent: number): Doc<A> {
  *
  * ```typescript
  * import { pipe } from '@effect-ts/core/Function'
- *
  * import * as D from '@effect-ts/printer/Core/Doc'
  * import * as R from '@effect-ts/printer/Core/Render'
  *
- * const doc = D.hsep([
+ * const doc = D.hcat([
  *   D.text('prefix'),
- *   pipe(D.reflow('The indent function indents these words!'), D.indent(4))
+ *   D.indent_(D.reflow('The indent function indents these words!'), 4)
  * ])
  *
- * console.log(pipe(doc, R.renderWidth(24)))
- * //  prefix    The indent
- * //            function
- * //            indents these
- * //            words!
+ * console.log(pipe(doc, R.renderPretty(24)))
+ * // prefix    The indent
+ * //           function
+ * //           indents these
+ * //           words!
  * ```
  *
  * @dataFirst indent_
@@ -1726,29 +1694,28 @@ export function indent_<A>(doc: Doc<A>, indent: number): Doc<A> {
  *
  * ```typescript
  * import { pipe } from '@effect-ts/core/Function'
- * import * as RA from '@effect-ts/core/Array'
- *
- * import type { Doc } from '@effect-ts/printer/Core/Doc'
+ * import * as A from '@effect-ts/core/Array'
  * import * as D from '@effect-ts/printer/Core/Doc'
  * import * as R from '@effect-ts/printer/Core/Render'
  *
  * const doc = D.hsep([
- *   D.text('list'),
+ *   D.text("list"),
  *   D.align(
  *     pipe(
- *       ['1', '20', '300', '4000'],
- *       RA.map<string, Doc<never>>((n) => (n.length === 1 ? D.char(n) : D.text(n))),
+ *       A.map_(["1", "20", "300", "4000"], (n) =>
+ *         n.length === 1 ? D.char(n) : D.text(n)
+ *       ),
  *       D.encloseSep(D.lbracket, D.rbracket, D.comma)
  *     )
  *   )
  * ])
  *
  * // The documents are laid out horizontally if that fits the page:
- * console.log(pipe(doc, R.renderWidth(80)))
+ * console.log(R.renderPrettyDefault(doc))
  * // list [1,20,300,4000]
  *
  * // Otherwise they are laid out vertically, with separators put in the front:
- * console.log(pipe(doc, R.renderWidth(10)))
+ * console.log(pipe(doc, R.renderPretty(10)))
  * // list [1
  * //      ,20
  * //      ,300
@@ -1783,20 +1750,15 @@ export function encloseSep_<A, B, C, D>(
  * braces as the enclosure for a list of documents.
  *
  * ```typescript
- * import { pipe } from '@effect-ts/core/Function'
- * import * as RA from '@effect-ts/core/Array'
+ * import * as A from "@effect-ts/core/Array"
+ * import * as D from "@effect-ts/printer/Core/Doc"
+ * import * as R from "@effect-ts/printer/Core/Render"
  *
- * import type { Doc } from '@effect-ts/printer/Core/Doc'
- * import * as D from '@effect-ts/printer/Core/Doc'
- * import * as R from '@effect-ts/printer/Core/Render'
- *
- * const doc = pipe(
- *   ['1', '20', '300', '4000'],
- *   RA.map<string, Doc<never>>((n) => (n.length === 1 ? D.char(n) : D.text(n))),
- *   D.list
+ * const doc = D.list(
+ *   A.map_(["1", "20", "300", "4000"], (n) => (n.length === 1 ? D.char(n) : D.text(n)))
  * )
  *
- * console.log(pipe(doc, R.renderWidth(80)))
+ * console.log(R.renderPrettyDefault(doc))
  * // [1, 20, 300, 4000]
  * ```
  */
@@ -1816,20 +1778,15 @@ export function list<A>(docs: Array<Doc<A>>): Doc<A> {
  * parentheses as the enclosure for a list of documents.
  *
  * ```typescript
- * import { pipe } from '@effect-ts/core/Function'
- * import * as RA from '@effect-ts/core/Array'
+ * import * as A from "@effect-ts/core/Array"
+ * import * as D from "@effect-ts/printer/Core/Doc"
+ * import * as R from "@effect-ts/printer/Core/Render"
  *
- * import type { Doc } from '@effect-ts/printer/Core/Doc'
- * import * as D from '@effect-ts/printer/Core/Doc'
- * import * as R from '@effect-ts/printer/Core/Render'
- *
- * const doc = pipe(
- *   ['1', '20', '300', '4000'],
- *   RA.map<string, Doc<never>>((n) => (n.length === 1 ? D.char(n) : D.text(n))),
- *   D.tupled
+ * const doc = D.tupled(
+ *   A.map_(["1", "20", "300", "4000"], (n) => (n.length === 1 ? D.char(n) : D.text(n)))
  * )
  *
- * console.log(pipe(doc, R.renderWidth(80)))
+ * console.log(R.renderPrettyDefault(doc))
  * // (1, 20, 300, 4000)
  * ```
  */
@@ -1853,29 +1810,27 @@ export function tupled<A>(docs: Array<Doc<A>>): Doc<A> {
  * the document while rendering.
  *
  * ```typescript
- * import { pipe } from '@effect-ts/core/Function'
- * import * as RA from '@effect-ts/core/Array'
+ * import * as A from "@effect-ts/core/Array"
+ * import { flow } from "@effect-ts/core/Function"
+ * import type { Doc } from "@effect-ts/printer/Core/Doc"
+ * import * as D from "@effect-ts/printer/Core/Doc"
+ * import * as R from "@effect-ts/printer/Core/Render"
  *
- * import type { Doc } from '@effect-ts/printer/Core/Doc'
- * import * as D from '@effect-ts/printer/Core/Doc'
- * import * as R from '@effect-ts/printer/Core/Render'
- *
- * const annotate = <A>(doc: Doc<A>): Doc<A> =>
- *   pipe(
- *     D.brackets(doc),
- *     D.width((w) => D.text(` <- width: ${w}`))
- *   )
+ * const annotate: <A>(doc: Doc<A>) => Doc<A> = flow(
+ *   D.brackets,
+ *   D.width((w) => D.text(` <- width: ${w}`))
+ * )
  *
  * const docs = [
- *   D.text('---'),
- *   D.text('------'),
- *   pipe(D.text('---'), D.indent(3)),
- *   D.vsep([D.text('---'), pipe(D.text('---'), D.indent(4))])
+ *   D.text("---"),
+ *   D.text("------"),
+ *   D.indent_(D.text("---"), 3),
+ *   D.vsep([D.text("---"), D.indent_(D.text("---"), 4)])
  * ]
  *
- * const doc = D.align(D.vsep(pipe(docs, RA.map(annotate))))
+ * const doc = D.align(D.vsep(A.map_(docs, annotate)))
  *
- * console.log(R.render(doc))
+ * console.log(R.renderPrettyDefault(doc))
  * // [---] <- width: 5
  * // [------] <- width: 8
  * // [   ---] <- width: 8
@@ -1911,22 +1866,17 @@ export function width_<A, B>(
  * entries, which can be observed if the result is oriented vertically.
  *
  * ```typescript
- * import { pipe } from '@effect-ts/core/Function'
+ * import * as D from "@effect-ts/printer/Core/Doc"
+ * import * as R from "@effect-ts/printer/Core/Render"
  *
- * import * as D from '@effect-ts/printer/Core/Doc'
- * import * as R from '@effect-ts/printer/Core/Render'
+ * const docs = D.punctuate_(D.words("lorem ipsum dolor sit amet"), D.comma)
  *
- * const docs = pipe(
- *   D.words<never>('lorem ipsum dolor sit amet'),
- *   D.punctuate(D.comma)
- * )
- *
- * console.log(R.render(D.hsep(docs)))
+ * console.log(R.renderPrettyDefault(D.hsep(docs)))
  * // lorem, ipsum, dolor, sit, amet
  *
  * // The separators are put at the end of the entries, which can be better
  * // visualzied if the documents are rendered vertically
- * console.log(R.render(D.vsep(docs)))
+ * console.log(R.renderPrettyDefault(D.vsep(docs)))
  * // lorem,
  * // ipsum,
  * // dolor,
@@ -1955,13 +1905,12 @@ export function punctuate_<A, B>(
  *
  * ```typescript
  * import { pipe } from '@effect-ts/core/Function'
- *
  * import * as D from '@effect-ts/printer/Core/Doc'
  * import * as R from '@effect-ts/printer/Core/Render'
  *
  * const doc = pipe(D.char('-'), D.enclose(D.char('A'), D.char('Z')))
  *
- * console.log(R.render(doc))
+ * console.log(R.renderPrettyDefault(doc))
  * // A-Z
  * ```
  *
@@ -1985,19 +1934,18 @@ export function enclose_<A, B, C>(
  *
  *
  * ```typescript
- * import { pipe } from '@effect-ts/core/Function'
- *
- * import * as D from '@effect-ts/printer/Core/Doc'
- * import * as R from '@effect-ts/printer/Core/Render'
+ * import { pipe } from "@effect-ts/core/Function"
+ * import * as D from "@effect-ts/printer/Core/Doc"
+ * import * as R from "@effect-ts/printer/Core/Render"
  *
  * // The `surround` combinator is just a reordering of the arguments to `enclose`,
  * // but allows for useful definitions such as:
  * const doc = pipe(
- *   D.words<never>('prettyprinter-ts lib Doc'),
+ *   D.words("@effect-ts printer Core Doc"),
  *   D.concatWith(D.surround(D.slash))
  * )
  *
- * console.log(R.render(doc))
+ * console.log(R.renderPrettyDefault(doc))
  * // @effect-ts/printer/Core/Doc
  * ```
  */
@@ -2066,7 +2014,7 @@ export function dquotes<A>(doc: Doc<A>): Doc<A> {
  *
  * const doc = D.brackets(D.dquotes(D.spaces(5)))
  *
- * console.log(R.render(doc))
+ * console.log(R.renderPrettyDefault(doc))
  * // ["     "]
  * ```
  */
@@ -2086,7 +2034,7 @@ export function spaces(n: number): Doc<never> {
  *
  * const doc = D.tupled(D.words('Lorem ipsum dolor'))
  *
- * console.log(R.render(doc))
+ * console.log(R.renderPrettyDefault(doc))
  * // (lorem, ipsum, dolor)
  * ```
  */
