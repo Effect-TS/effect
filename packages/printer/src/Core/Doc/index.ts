@@ -237,7 +237,9 @@ export const empty: Doc<never> = new Empty(identity)
  * **Invariants**
  * - Cannot be the newline (`"\n"`) character
  */
-export const char = (char: string): Doc<never> => new Char(char, identity)
+export function char(char: string): Doc<never> {
+  return new Char(char, identity)
+}
 
 /**
  * A document containing a string of text.
@@ -246,17 +248,20 @@ export const char = (char: string): Doc<never> => new Char(char, identity)
  * - Text cannot be less than two characters long
  * - Text cannot contain a newline (`"\n"`) character
  */
-export const text = (text: string): Doc<never> => new Text(text, identity)
+export function text(text: string): Doc<never> {
+  return new Text(text, identity)
+}
 
 /**
  * A document containing a string of text.
  */
-export const string = (str: string): Doc<never> =>
-  cats(
+export function string(str: string): Doc<never> {
+  return cats(
     str
       .split("\n")
       .map((s) => (s.length === 0 ? empty : s.length === 1 ? char(s) : text(s)))
   )
+}
 
 /**
  * The `flatAlt` document will render `left` by default. However, when
@@ -299,14 +304,38 @@ export const string = (str: string): Doc<never> =>
  * //    putStrLn greet
  *```
  */
-export const flatAlt = <A, B>(left: Doc<A>, right: Doc<B>): Doc<A | B> =>
-  new FlatAlt<A | B>(left, right)
+export function flatAlt_<A, B>(left: Doc<A>, right: Doc<B>): Doc<A | B> {
+  return new FlatAlt<A | B>(left, right)
+}
 
-export const union = <A, B>(left: Doc<A>, right: Doc<B>): Doc<A | B> =>
-  new Union<A | B>(left, right)
+/**
+ * @dataFirst flatAlt_
+ */
+export function flatAlt<B>(right: Doc<B>) {
+  return <A>(left: Doc<A>): Doc<A | B> => new FlatAlt<A | B>(left, right)
+}
 
-export const cat = <A, B>(left: Doc<A>, right: Doc<B>): Doc<A | B> =>
-  new Cat<A | B>(left, right)
+export function union_<A, B>(left: Doc<A>, right: Doc<B>): Doc<A | B> {
+  return new Union<A | B>(left, right)
+}
+
+/**
+ * @dataFirst union_
+ */
+export function union<B>(right: Doc<B>) {
+  return <A>(left: Doc<A>): Doc<A | B> => new Union<A | B>(left, right)
+}
+
+export function cat_<A, B>(left: Doc<A>, right: Doc<B>): Doc<A | B> {
+  return new Cat<A | B>(left, right)
+}
+
+/**
+ * @dataFirst cat_
+ */
+export function cat<B>(right: Doc<B>) {
+  return <A>(left: Doc<A>): Doc<A | B> => new Cat<A | B>(left, right)
+}
 
 /**
  * The `line` document advances to the next line and indents to the
@@ -331,7 +360,7 @@ export const cat = <A, B>(left: Doc<A>, right: Doc<B>): Doc<A | B> =>
  * // lorem ipsum dolor sit amet
  *```
  */
-export const line: Doc<never> = flatAlt(line_, char(" "))
+export const line: Doc<never> = flatAlt_(line_, char(" "))
 
 /**
  * The `lineBreak` document is like `line` but behaves like `empty` if the
@@ -355,7 +384,7 @@ export const line: Doc<never> = flatAlt(line_, char(" "))
  * // lorem ipsumdolor sit amet
  * ```
  */
-export const lineBreak: Doc<never> = flatAlt(line_, empty)
+export const lineBreak: Doc<never> = flatAlt_(line_, empty)
 
 /**
  * The `softLine` document behaves like `space` if the resulting output
@@ -386,7 +415,7 @@ export const lineBreak: Doc<never> = flatAlt(line_, empty)
  * // dolor sit amet
  * ```
  */
-export const softLine: Doc<never> = union(char(" "), line_)
+export const softLine: Doc<never> = union_(char(" "), line_)
 
 /**
  * The `softLineBreak` document is similar to `softLine`, but behaves
@@ -416,7 +445,7 @@ export const softLine: Doc<never> = union(char(" "), line_)
  * // IsWayTooLong
  * ```
  */
-export const softLineBreak: Doc<never> = union(empty, line_)
+export const softLineBreak: Doc<never> = union_(empty, line_)
 
 /**
  * The `hardLine` document is always laid out as a line break,
@@ -475,9 +504,16 @@ export const hardLine: Doc<never> = line_
  * // sit
  * // amet
  * ```
+ *
+ * @dataFirst nest_
  */
-export const nest = (indent: number) => <A>(doc: Doc<A>): Doc<A> =>
-  indent === 0 ? doc : new Nest(indent, doc)
+export function nest(indent: number) {
+  return <A>(doc: Doc<A>): Doc<A> => nest_(doc, indent)
+}
+
+export function nest_<A>(doc: Doc<A>, indent: number): Doc<A> {
+  return indent === 0 ? doc : new Nest(indent, doc)
+}
 
 /**
  * Lays out a document depending upon the column at which the
@@ -515,8 +551,9 @@ export const nest = (indent: number) => <A>(doc: Doc<A>): Doc<A> =>
  * //         prefix | <- column 15
  * ```
  */
-export const column = <A>(react: (position: number) => Doc<A>): Doc<A> =>
-  new Column(react)
+export function column<A>(react: (position: number) => Doc<A>): Doc<A> {
+  return new Column(react)
+}
 
 /**
  * Lays out a document depending upon the current nesting level (i.e.,
@@ -544,8 +581,9 @@ export const column = <A>(react: (position: number) => Doc<A>): Doc<A> =>
  * //         prefix [Nested: 8]
  * ```
  */
-export const nesting = <A>(react: (level: number) => Doc<A>): Doc<A> =>
-  new Nesting(react)
+export function nesting<A>(react: (level: number) => Doc<A>): Doc<A> {
+  return new Nesting(react)
+}
 
 /**
  * Lays out a document according to the document's`PageWidth`.
@@ -581,8 +619,22 @@ export const nesting = <A>(react: (level: number) => Doc<A>): Doc<A> =>
  * //         prefix [Width: 32, ribbon fraction: 1]
  * ```
  */
-export const withPageWidth = <A>(react: (pageWidth: PageWidth) => Doc<A>): Doc<A> =>
-  new WithPageWidth(react)
+export function withPageWidth<A>(react: (pageWidth: PageWidth) => Doc<A>): Doc<A> {
+  return new WithPageWidth(react)
+}
+
+/**
+ * Adds an annotation to a `Doc`. The annotation can then be used by the rendering
+ * algorithm to, for example, add color to certain parts of the output.
+ *
+ * **Note** This function is relevant only for custom formats with their own annotations,
+ * and is not relevant for basic pretty printing.
+ *
+ * @dataFirst anotate_
+ */
+export function annotate<A>(annotation: A) {
+  return <B>(doc: Doc<B>): Doc<A | B> => new Annotated<A | B>(annotation, doc)
+}
 
 /**
  * Adds an annotation to a `Doc`. The annotation can then be used by the rendering
@@ -591,14 +643,18 @@ export const withPageWidth = <A>(react: (pageWidth: PageWidth) => Doc<A>): Doc<A
  * **Note** This function is relevant only for custom formats with their own annotations,
  * and is not relevant for basic pretty printing.
  */
-export const annotate = <A>(annotation: A, doc: Doc<A>): Doc<A> =>
-  new Annotated(annotation, doc)
+export function annotate_<A, B>(doc: Doc<B>, annotation: A): Doc<A | B> {
+  return new Annotated<A | B>(annotation, doc)
+}
 
 // -------------------------------------------------------------------------------------
 // destructors
 // -------------------------------------------------------------------------------------
 
-export const match = <A, R>(patterns: {
+/**
+ * @dataFirst match_
+ */
+export function match<A, R>(patterns: {
   readonly Fail: () => R
   readonly Empty: () => R
   readonly Char: (char: string) => R
@@ -612,71 +668,113 @@ export const match = <A, R>(patterns: {
   readonly WithPageWidth: (react: (pageWidth: PageWidth) => Doc<A>) => R
   readonly Nesting: (react: (level: number) => Doc<A>) => R
   readonly Annotated: (annotation: A, doc: Doc<A>) => R
-}): ((doc: Doc<A>) => R) => {
-  const f = (x: Doc<A>): R => {
-    switch (x._tag) {
-      case "Fail":
-        return patterns.Fail()
-      case "Empty":
-        return patterns.Empty()
-      case "Char":
-        return patterns.Char(x.char)
-      case "Text":
-        return patterns.Text(x.text)
-      case "Line":
-        return patterns.Line()
-      case "FlatAlt":
-        return patterns.FlatAlt(x.left, x.right)
-      case "Cat":
-        return patterns.Cat(x.left, x.right)
-      case "Nest":
-        return patterns.Nest(x.indent, x.doc)
-      case "Union":
-        return patterns.Union(x.left, x.right)
-      case "Column":
-        return patterns.Column(x.react)
-      case "WithPageWidth":
-        return patterns.WithPageWidth(x.react)
-      case "Nesting":
-        return patterns.Nesting(x.react)
-      case "Annotated":
-        return patterns.Annotated(x.annotation, x.doc)
-    }
+}): (doc: Doc<A>) => R {
+  return (doc) => match_(doc, patterns)
+}
+
+export function match_<A, R>(
+  doc: Doc<A>,
+  patterns: {
+    readonly Fail: () => R
+    readonly Empty: () => R
+    readonly Char: (char: string) => R
+    readonly Text: (text: string) => R
+    readonly Line: () => R
+    readonly FlatAlt: (x: Doc<A>, y: Doc<A>) => R
+    readonly Cat: (x: Doc<A>, y: Doc<A>) => R
+    readonly Nest: (indent: number, doc: Doc<A>) => R
+    readonly Union: (x: Doc<A>, y: Doc<A>) => R
+    readonly Column: (react: (position: number) => Doc<A>) => R
+    readonly WithPageWidth: (react: (pageWidth: PageWidth) => Doc<A>) => R
+    readonly Nesting: (react: (level: number) => Doc<A>) => R
+    readonly Annotated: (annotation: A, doc: Doc<A>) => R
   }
-  return f
+): R {
+  switch (doc._tag) {
+    case "Fail":
+      return patterns.Fail()
+    case "Empty":
+      return patterns.Empty()
+    case "Char":
+      return patterns.Char(doc.char)
+    case "Text":
+      return patterns.Text(doc.text)
+    case "Line":
+      return patterns.Line()
+    case "FlatAlt":
+      return patterns.FlatAlt(doc.left, doc.right)
+    case "Cat":
+      return patterns.Cat(doc.left, doc.right)
+    case "Nest":
+      return patterns.Nest(doc.indent, doc.doc)
+    case "Union":
+      return patterns.Union(doc.left, doc.right)
+    case "Column":
+      return patterns.Column(doc.react)
+    case "WithPageWidth":
+      return patterns.WithPageWidth(doc.react)
+    case "Nesting":
+      return patterns.Nesting(doc.react)
+    case "Annotated":
+      return patterns.Annotated(doc.annotation, doc.doc)
+  }
 }
 
 // -------------------------------------------------------------------------------------
 // operations
 // -------------------------------------------------------------------------------------
 
-export const isFail = <A>(doc: Doc<A>): doc is Fail<A> => doc._tag === "Fail"
+export function isFail<A>(doc: Doc<A>): doc is Fail<A> {
+  return doc._tag === "Fail"
+}
 
-export const isEmpty = <A>(doc: Doc<A>): doc is Empty<A> => doc._tag === "Empty"
+export function isEmpty<A>(doc: Doc<A>): doc is Empty<A> {
+  return doc._tag === "Empty"
+}
 
-export const isChar = <A>(doc: Doc<A>): doc is Char<A> => doc._tag === "Char"
+export function isChar<A>(doc: Doc<A>): doc is Char<A> {
+  return doc._tag === "Char"
+}
 
-export const isText = <A>(doc: Doc<A>): doc is Text<A> => doc._tag === "Text"
+export function isText<A>(doc: Doc<A>): doc is Text<A> {
+  return doc._tag === "Text"
+}
 
-export const isLine = <A>(doc: Doc<A>): doc is Line<A> => doc._tag === "Line"
+export function isLine<A>(doc: Doc<A>): doc is Line<A> {
+  return doc._tag === "Line"
+}
 
-export const isFlatAlt = <A>(doc: Doc<A>): doc is FlatAlt<A> => doc._tag === "FlatAlt"
+export function isFlatAlt<A>(doc: Doc<A>): doc is FlatAlt<A> {
+  return doc._tag === "FlatAlt"
+}
 
-export const isCat = <A>(doc: Doc<A>): doc is Cat<A> => doc._tag === "Cat"
+export function isCat<A>(doc: Doc<A>): doc is Cat<A> {
+  return doc._tag === "Cat"
+}
 
-export const isNest = <A>(doc: Doc<A>): doc is Nest<A> => doc._tag === "Nest"
+export function isNest<A>(doc: Doc<A>): doc is Nest<A> {
+  return doc._tag === "Nest"
+}
 
-export const isUnion = <A>(doc: Doc<A>): doc is Union<A> => doc._tag === "Union"
+export function isUnion<A>(doc: Doc<A>): doc is Union<A> {
+  return doc._tag === "Union"
+}
 
-export const isColumn = <A>(doc: Doc<A>): doc is Column<A> => doc._tag === "Column"
+export function isColumn<A>(doc: Doc<A>): doc is Column<A> {
+  return doc._tag === "Column"
+}
 
-export const isWithPageWidth = <A>(doc: Doc<A>): doc is WithPageWidth<A> =>
-  doc._tag === "WithPageWidth"
+export function isWithPageWidth<A>(doc: Doc<A>): doc is WithPageWidth<A> {
+  return doc._tag === "WithPageWidth"
+}
 
-export const isNesting = <A>(doc: Doc<A>): doc is Nesting<A> => doc._tag === "Nesting"
+export function isNesting<A>(doc: Doc<A>): doc is Nesting<A> {
+  return doc._tag === "Nesting"
+}
 
-export const isAnnotated = <A>(doc: Doc<A>): doc is Annotated<A> =>
-  doc._tag === "Annotated"
+export function isAnnotated<A>(doc: Doc<A>): doc is Annotated<A> {
+  return doc._tag === "Annotated"
+}
 
 /**
  * Change the annotations of a document. Individual annotations can be
@@ -694,20 +792,42 @@ export const isAnnotated = <A>(doc: Doc<A>): doc is Annotated<A> =>
  * Since this traverses the entire document tree, including the parts that are
  * not rendered (due to other layouts having better fit), it is preferable to
  * reannotate a document **after** producing the layout by using
- * `alterAnnotationsS` from the `SimpleDocStream` module.
+ * `alterAnnotations` from the `SimpleDocStream` module.
+ *
+ * @dataFirst alterAnnotations_
  */
-export const alterAnnotations = <A, B>(
-  f: (a: A) => Array<B>
-): ((doc: Doc<A>) => Doc<B>) => {
-  const go = (x: Doc<A>): IO.IO<Doc<B>> =>
-    IO.gen(function* (_) {
+export function alterAnnotations<A, B>(f: (a: A) => Array<B>) {
+  return (doc: Doc<A>) => alterAnnotations_(doc, f)
+}
+
+/**
+ * Change the annotations of a document. Individual annotations can be
+ * removed, changed, or replaced by multiple ones.
+ *
+ * This is a general function that combines `unAnnotate` and `reAnnotate`,
+ * and is useful for mapping semantic annotations (such as »this is a keyword«)
+ * to display annotations (such as »this is red and underlined«) because some
+ * backends may not care about certain annotations while others may.
+ *
+ * Annotations earlier in the new list will be applied earlier, so returning
+ * `[Bold, Green]` will result in a bold document that contains green text,
+ * and not vice versa.
+ *
+ * Since this traverses the entire document tree, including the parts that are
+ * not rendered (due to other layouts having better fit), it is preferable to
+ * reannotate a document **after** producing the layout by using
+ * `alterAnnotations` from the `SimpleDocStream` module.
+ */
+export function alterAnnotations_<A, B>(doc: Doc<A>, f: (a: A) => Array<B>): Doc<B> {
+  function go(x: Doc<A>): IO.IO<Doc<B>> {
+    return IO.gen(function* (_) {
       switch (x._tag) {
         case "Cat":
-          return cat(yield* _(go(x.left)), yield* _(go(x.right)))
+          return cat_(yield* _(go(x.left)), yield* _(go(x.right)))
         case "FlatAlt":
-          return flatAlt(yield* _(go(x.left)), yield* _(go(x.right)))
+          return flatAlt_(yield* _(go(x.left)), yield* _(go(x.right)))
         case "Union":
-          return union(yield* _(go(x.left)), yield* _(go(x.right)))
+          return union_(yield* _(go(x.left)), yield* _(go(x.right)))
         case "Nest":
           return nest(x.indent)(yield* _(go(x.doc)))
         case "Column":
@@ -717,7 +837,9 @@ export const alterAnnotations = <A, B>(
         case "Nesting":
           return nesting((level) => IO.run(go(x.react(level))))
         case "Annotated":
-          return A.reduceRight_(f(x.annotation), yield* _(go(x.doc)), annotate)
+          return A.reduceRight_(f(x.annotation), yield* _(go(x.doc)), (ann, doc) =>
+            annotate_(doc, ann)
+          )
         case "Fail":
           return fail
         case "Empty":
@@ -730,7 +852,8 @@ export const alterAnnotations = <A, B>(
           return line
       }
     })
-  return (_) => IO.run(go(_))
+  }
+  return IO.run(go(doc))
 }
 
 /**
@@ -749,12 +872,23 @@ export const unAnnotate: <A>(doc: Doc<A>) => Doc<never> = alterAnnotations(const
  * **Note** that with each invocation, the entire document tree is traversed.
  * If possible, it is preferable to reannotate a document after producing the
  * layout using `reAnnotateS`.
+ *
+ * @dataFirst reAnnotate_
  */
-export const reAnnotate: <A, B>(f: (a: A) => B) => (doc: Doc<A>) => Doc<B> = (f) =>
-  alterAnnotations((_) => A.single(f(_)))
+export function reAnnotate<A, B>(f: (a: A) => B) {
+  return (doc: Doc<A>): Doc<B> => reAnnotate_(doc, f)
+}
 
-export const map: <A, B>(f: (a: A) => B) => (fa: Doc<A>) => Doc<B> = (f) =>
-  reAnnotate(f)
+export function reAnnotate_<A, B>(doc: Doc<A>, f: (a: A) => B): Doc<B> {
+  return alterAnnotations_(doc, (_) => A.single(f(_)))
+}
+
+/**
+ * @dataFirst map_
+ */
+export const map = reAnnotate
+
+export const map_ = reAnnotate_
 
 // -------------------------------------------------------------------------------------
 // primitives
@@ -877,14 +1011,23 @@ export const space: Doc<never> = char(" ")
  * console.log(R.render(doc))
  * // a b
  * ```
+ *
+ * @dataFirst_ concatWith_
  */
-export const concatWith: <A>(
+export function concatWith<A>(f: (x: Doc<A>, y: Doc<A>) => Doc<A>) {
+  return (docs: Array<Doc<A>>): Doc<A> => concatWith_(docs, f)
+}
+
+export function concatWith_<A>(
+  docs: Array<Doc<A>>,
   f: (x: Doc<A>, y: Doc<A>) => Doc<A>
-) => (docs: Array<Doc<A>>) => Doc<A> = (f) =>
-  A.foldRight(
+): Doc<A> {
+  return A.foldRight_(
+    docs,
     () => empty,
     (init, last) => pipe(init, A.reduceRight(last, f))
   )
+}
 
 /**
  * The `appendWithSpace` combinator concatenates two documents, `x` and `y`, with a
@@ -900,8 +1043,16 @@ export const concatWith: <A>(
  * // a b
  * ```
  */
-export const appendWithSpace: <A>(x: Doc<A>, y: Doc<A>) => Doc<A> = (x, y) =>
-  cat(x, cat(space, y))
+export function appendWithSpace_<A>(x: Doc<A>, y: Doc<A>): Doc<A> {
+  return cat_(x, cat_(space, y))
+}
+
+/**
+ * @dataFirst appendWithSpace_
+ */
+export function appendWithSpace<A>(y: Doc<A>) {
+  return (x: Doc<A>) => appendWithSpace_(x, y)
+}
 
 /**
  * The `appendWithLine` combinator concatenates two documents, `x` and `y`, with a
@@ -918,8 +1069,16 @@ export const appendWithSpace: <A>(x: Doc<A>, y: Doc<A>) => Doc<A> = (x, y) =>
  * // b
  * ```
  */
-export const appendWithLine: <A>(x: Doc<A>, y: Doc<A>) => Doc<A> = (x, y) =>
-  cat(x, cat(line, y))
+export function appendWithLine_<A>(x: Doc<A>, y: Doc<A>): Doc<A> {
+  return cat_(x, cat_(line, y))
+}
+
+/**
+ * @dataFirst appendWithLine_
+ */
+export function appendWithLine<A>(y: Doc<A>) {
+  return (x: Doc<A>) => appendWithLine_(x, y)
+}
 
 /**
  * The `appendWithLineBreak` combinator concatenates two documents, `x` and `y`, with a
@@ -939,8 +1098,16 @@ export const appendWithLine: <A>(x: Doc<A>, y: Doc<A>) => Doc<A> = (x, y) =>
  * // ab
  * ```
  */
-export const appendWithLineBreak: <A>(x: Doc<A>, y: Doc<A>) => Doc<A> = (x, y) =>
-  cat(x, cat(lineBreak, y))
+export function appendWithLineBreak_<A>(x: Doc<A>, y: Doc<A>): Doc<A> {
+  return cat_(x, cat_(lineBreak, y))
+}
+
+/**
+ * @dataFirst appendWithLineBreak_
+ */
+export function appendWithLineBreak<A>(y: Doc<A>) {
+  return (x: Doc<A>) => appendWithLineBreak_(x, y)
+}
 
 /**
  * The `appendWithSoftLine` combinator concatenates two documents, `x` and `y`, with a
@@ -962,8 +1129,16 @@ export const appendWithLineBreak: <A>(x: Doc<A>, y: Doc<A>) => Doc<A> = (x, y) =
  * // b
  * ```
  */
-export const appendWithSoftLine: <A>(x: Doc<A>, y: Doc<A>) => Doc<A> = (x, y) =>
-  cat(x, cat(softLine, y))
+export function appendWithSoftLine_<A>(x: Doc<A>, y: Doc<A>): Doc<A> {
+  return cat_(x, cat_(softLine, y))
+}
+
+/**
+ * @dataFirst appendWithSoftLine_
+ */
+export function appendWithSoftLine<A>(y: Doc<A>) {
+  return (x: Doc<A>) => appendWithSoftLine_(x, y)
+}
 
 /**
  * The `appendWithSoftLineBreak` combinator concatenates two documents, `x` and `y`, with a
@@ -985,8 +1160,16 @@ export const appendWithSoftLine: <A>(x: Doc<A>, y: Doc<A>) => Doc<A> = (x, y) =>
  * // b
  * ```
  */
-export const appendWithSoftLineBreak: <A>(x: Doc<A>, y: Doc<A>) => Doc<A> = (x, y) =>
-  cat(x, cat(softLineBreak, y))
+export function appendWithSoftLineBreak_<A>(x: Doc<A>, y: Doc<A>): Doc<A> {
+  return cat_(x, cat_(softLineBreak, y))
+}
+
+/**
+ * @dataFirst appendWithSoftLineBreak_
+ */
+export function appendWithSoftLineBreak<A>(y: Doc<A>) {
+  return (x: Doc<A>) => appendWithSoftLineBreak_(x, y)
+}
 
 // -------------------------------------------------------------------------------------
 // alternative combinators
@@ -1002,7 +1185,7 @@ const flatten = <A>(doc: Doc<A>): Doc<A> => {
         case "Line":
           return fail
         case "Cat":
-          return cat(yield* _(go(x.left)), yield* _(go(x.right)))
+          return cat_(yield* _(go(x.left)), yield* _(go(x.right)))
         case "FlatAlt":
           return yield* _(go(x.right))
         case "Union":
@@ -1015,10 +1198,8 @@ const flatten = <A>(doc: Doc<A>): Doc<A> => {
           return withPageWidth((pageWidth) => IO.run(go(x.react(pageWidth))))
         case "Nesting":
           return nesting((level) => IO.run(go(x.react(level))))
-        case "Annotated": {
-          const doc = yield* _(go(x.doc))
-          return annotate(x.annotation, doc)
-        }
+        case "Annotated":
+          return annotate_(yield* _(go(x.doc)), x.annotation)
         default:
           return x
       }
@@ -1054,13 +1235,13 @@ const changesUponFlattening = <A>(doc: Doc<A>): Flatten<Doc<A>> => {
             return F.neverFlat
           }
           if (F.isFlattened(left) && F.isFlattened(right)) {
-            return F.flattened(cat(left.value, right.value))
+            return F.flattened(cat_(left.value, right.value))
           }
           if (F.isFlattened(left) && F.isAlreadyFlat(right)) {
-            return F.flattened(cat(left.value, x.right))
+            return F.flattened(cat_(left.value, x.right))
           }
           if (F.isAlreadyFlat(left) && F.isFlattened(right)) {
-            return F.flattened(cat(x.left, right.value))
+            return F.flattened(cat_(x.left, right.value))
           }
           if (F.isAlreadyFlat(left) && F.isAlreadyFlat(right)) {
             return F.alreadyFlat
@@ -1081,7 +1262,7 @@ const changesUponFlattening = <A>(doc: Doc<A>): Flatten<Doc<A>> => {
         case "Annotated":
           return pipe(
             yield* _(go(x.doc)),
-            F.map((d) => annotate(x.annotation, d))
+            F.map((d) => annotate_(d, x.annotation))
           )
         default:
           return F.alreadyFlat
@@ -1103,7 +1284,7 @@ export const group = <A>(doc: Doc<A>): Doc<A> => {
     pipe(
       changesUponFlattening(a),
       F.match({
-        Flattened: (b) => union(b, a),
+        Flattened: (b) => union_(b, a),
         AlreadyFlat: () => a,
         NeverFlat: () => a
       })
@@ -1120,8 +1301,8 @@ export const group = <A>(doc: Doc<A>): Doc<A> => {
         pipe(
           changesUponFlattening(b),
           F.match({
-            Flattened: (b_) => union(b_, a),
-            AlreadyFlat: () => union(b, a),
+            Flattened: (b_) => union_(b_, a),
+            AlreadyFlat: () => union_(b, a),
             NeverFlat: () => a
           })
         ),
@@ -1163,7 +1344,7 @@ export const group = <A>(doc: Doc<A>): Doc<A> => {
  * // lorem ipsum dolor sit amet
  * ```
  */
-export const hsep: <A>(docs: Array<Doc<A>>) => Doc<A> = concatWith(appendWithSpace)
+export const hsep: <A>(docs: Array<Doc<A>>) => Doc<A> = concatWith(appendWithSpace_)
 
 /**
  * The `vsep` combinator concatenates all documents in a list vertically. If a `group`
@@ -1202,7 +1383,7 @@ export const hsep: <A>(docs: Array<Doc<A>>) => Doc<A> = concatWith(appendWithSpa
  * //        out
  * ```
  */
-export const vsep: <A>(docs: Array<Doc<A>>) => Doc<A> = concatWith(appendWithLine)
+export const vsep: <A>(docs: Array<Doc<A>>) => Doc<A> = concatWith(appendWithLine_)
 
 /**
  * The `fillSep` combinator concatenates all documents in a list horizontally by placing
@@ -1213,7 +1394,7 @@ export const vsep: <A>(docs: Array<Doc<A>>) => Doc<A> = concatWith(appendWithLin
  * a `space`.
  */
 export const fillSep: <A>(docs: Array<Doc<A>>) => Doc<A> = concatWith(
-  appendWithSoftLine
+  appendWithSoftLine_
 )
 
 /**
@@ -1265,7 +1446,7 @@ export const seps: <A>(docs: Array<Doc<A>>) => Doc<A> = (_) => group(vsep(_))
  * // loremipsumdolor
  * ```
  */
-export const hcat: <A>(docs: Array<Doc<A>>) => Doc<A> = concatWith(cat)
+export const hcat: <A>(docs: Array<Doc<A>>) => Doc<A> = concatWith(cat_)
 
 /**
  * The `vcat` combinator concatenates all documents in a list vertically. If the
@@ -1283,7 +1464,7 @@ export const hcat: <A>(docs: Array<Doc<A>>) => Doc<A> = concatWith(cat)
  * // dolor
  * ```
  */
-export const vcat: <A>(docs: Array<Doc<A>>) => Doc<A> = concatWith(appendWithLineBreak)
+export const vcat: <A>(docs: Array<Doc<A>>) => Doc<A> = concatWith(appendWithLineBreak_)
 
 /**
  * The `fillCat` combinator concatenates all documents in a list horizontally by placing
@@ -1295,7 +1476,7 @@ export const vcat: <A>(docs: Array<Doc<A>>) => Doc<A> = concatWith(appendWithLin
  * separated with `empty` instead of newlines. See `fillSep` if you want a `space` instead.
  */
 export const fillCat: <A>(docs: Array<Doc<A>>) => Doc<A> = concatWith(
-  appendWithSoftLineBreak
+  appendWithSoftLineBreak_
 )
 
 /**
@@ -1326,14 +1507,18 @@ export const fillCat: <A>(docs: Array<Doc<A>>) => Doc<A> = concatWith(
  * // dolor
  * ```
  */
-export const cats: <A>(docs: Array<Doc<A>>) => Doc<A> = (_) => group(vcat(_))
+export function cats<A>(docs: Array<Doc<A>>): Doc<A> {
+  return group(vcat(docs))
+}
 
 /**
  * Tupled variant of cats
  */
-export const catsT: <Docs extends Array<Doc<any>>>(
+export function catsT<Docs extends Array<Doc<any>>>(
   ...docs: Docs
-) => Doc<_A<Docs[number]>> = (..._) => cats(_)
+): Doc<_A<Docs[number]>> {
+  return cats(docs)
+}
 
 // -------------------------------------------------------------------------------------
 // filler combinators
@@ -1370,12 +1555,16 @@ export const catsT: <Docs extends Array<Doc<any>>>(
  * //     nest :: Int -> Doc -> Doc
  * //     fillSep :: [Doc] -> Doc
  * ```
+ *
+ * @dataFirst fill_
  */
-export const fill: (width: number) => <A>(doc: Doc<A>) => Doc<A> = (lw) => (x) =>
-  pipe(
-    x,
-    width((w) => spaces(lw - w))
-  )
+export function fill(width: number) {
+  return <A>(doc: Doc<A>): Doc<A> => fill_(doc, width)
+}
+
+export function fill_<A>(doc: Doc<A>, width: number): Doc<A> {
+  return width_(doc, (x) => spaces(width - x))
+}
 
 /**
  * The `fillBreak` combinator first lays out the document `x` and then appends `space`s
@@ -1410,12 +1599,16 @@ export const fill: (width: number) => <A>(doc: Doc<A>) => Doc<A> = (lw) => (x) =
  * //     fillSep
  * //          :: [Doc] -> Doc
  * ```
+ *
+ * @dataFirst fillBreak_
  */
-export const fillBreak: (width: number) => <A>(doc: Doc<A>) => Doc<A> = (lw) => (x) =>
-  pipe(
-    x,
-    width((w) => (w > lw ? nest(lw)(lineBreak) : spaces(lw - w)))
-  )
+export function fillBreak(width: number) {
+  return <A>(doc: Doc<A>): Doc<A> => fillBreak_(doc, width)
+}
+
+export function fillBreak_<A>(doc: Doc<A>, width: number): Doc<A> {
+  return width_(doc, (w) => (w > width ? nest_(lineBreak, width) : spaces(width - w)))
+}
 
 // -------------------------------------------------------------------------------------
 // alignment combinators
@@ -1454,8 +1647,9 @@ export const fillBreak: (width: number) => <A>(doc: Doc<A>) => Doc<A> = (lw) => 
  * //       dolor
  * ```
  */
-export const align = <A>(doc: Doc<A>): Doc<A> =>
-  column((k) => nesting((i) => nest(k - i)(doc)))
+export function align<A>(doc: Doc<A>): Doc<A> {
+  return column((k) => nesting((i) => nest(k - i)(doc)))
+}
 
 /**
  * The `hang` combinator lays out a document with the nesting level set to
@@ -1482,9 +1676,16 @@ export const align = <A>(doc: Doc<A>): Doc<A> =>
  * //            words with
  * //            hang
  * ```
+ *
+ * @dataFirst hang_
  */
-export const hang = (indent: number): (<A>(doc: Doc<A>) => Doc<A>) => (_) =>
-  align(nest(indent)(_))
+export function hang(indent: number): <A>(doc: Doc<A>) => Doc<A> {
+  return (doc) => hang_(doc, indent)
+}
+
+export function hang_<A>(doc: Doc<A>, indent: number): Doc<A> {
+  return align(nest_(doc, indent))
+}
 
 /**
  * The `indent` combinator indents a document by the specified `indent`
@@ -1507,9 +1708,16 @@ export const hang = (indent: number): (<A>(doc: Doc<A>) => Doc<A>) => (_) =>
  * //            indents these
  * //            words!
  * ```
+ *
+ * @dataFirst indent_
  */
-export const indent = (indent: number) => <A>(doc: Doc<A>): Doc<A> =>
-  pipe(cat(spaces(indent), doc), hang(indent))
+export function indent(indent: number) {
+  return <A>(doc: Doc<A>): Doc<A> => indent_(doc, indent)
+}
+
+export function indent_<A>(doc: Doc<A>, indent: number): Doc<A> {
+  return hang_(cat_(spaces(indent), doc), indent)
+}
 
 /**
  * The `encloseSep` combinator concatenates a list of documents, separating
@@ -1550,17 +1758,27 @@ export const indent = (indent: number) => <A>(doc: Doc<A>): Doc<A> =>
  * //      ,300
  * //      ,4000]
  * ```
+ *
+ * @dataFirst encloseSep_
  */
-export const encloseSep = <A, B, C>(left: Doc<A>, right: Doc<B>, sep: Doc<C>) => <D>(
-  docs: Array<Doc<D>>
-): Doc<A | B | C | D> => {
-  if (docs.length === 0) return cat(left, right)
-  if (docs.length === 1) return cat(left, cat(docs[0]!, right))
+export function encloseSep<A, B, C>(left: Doc<A>, right: Doc<B>, sep: Doc<C>) {
+  return <D>(docs: Array<Doc<D>>): Doc<A | B | C | D> =>
+    encloseSep_(docs, left, right, sep)
+}
+
+export function encloseSep_<A, B, C, D>(
+  docs: Array<Doc<D>>,
+  left: Doc<A>,
+  right: Doc<B>,
+  sep: Doc<C>
+): Doc<A | B | C | D> {
+  if (docs.length === 0) return cat_(left, right)
+  if (docs.length === 1) return cat_(left, cat_(docs[0]!, right))
   const xs = pipe(
     pipe(A.cons_(A.replicate(sep)(docs.length - 1), left as Doc<A | C>)),
-    A.zipWith(docs, cat)
+    A.zipWith(docs, cat_)
   )
-  return cat(cats(xs), right)
+  return cat_(cats(xs), right)
 }
 
 /**
@@ -1585,16 +1803,16 @@ export const encloseSep = <A, B, C>(left: Doc<A>, right: Doc<B>, sep: Doc<C>) =>
  * // [1, 20, 300, 4000]
  * ```
  */
-export const list = <A>(docs: Array<Doc<A>>): Doc<A> =>
-  pipe(
-    docs,
-    encloseSep(
-      flatAlt(char("[ "), lbracket),
-      flatAlt(char(" ]"), rbracket),
+export function list<A>(docs: Array<Doc<A>>): Doc<A> {
+  return group(
+    encloseSep_(
+      docs,
+      flatAlt_(char("[ "), lbracket),
+      flatAlt_(char(" ]"), rbracket),
       char(", ")
-    ),
-    group
+    )
   )
+}
 
 /**
  * A Haskell-inspired variant of `encloseSep` that uses a comma as the separator and
@@ -1618,12 +1836,16 @@ export const list = <A>(docs: Array<Doc<A>>): Doc<A> =>
  * // (1, 20, 300, 4000)
  * ```
  */
-export const tupled = <A>(docs: Array<Doc<A>>): Doc<A> =>
-  pipe(
-    docs,
-    encloseSep(flatAlt(char("( "), lparen), flatAlt(char(" )"), rparen), char(", ")),
-    group
+export function tupled<A>(docs: Array<Doc<A>>): Doc<A> {
+  return group(
+    encloseSep_(
+      docs,
+      flatAlt_(char("( "), lparen),
+      flatAlt_(char(" )"), rparen),
+      char(", ")
+    )
   )
+}
 
 // -------------------------------------------------------------------------------------
 // reactive/conditional combinators
@@ -1663,16 +1885,24 @@ export const tupled = <A>(docs: Array<Doc<A>>): Doc<A> =>
  * // [---
  * //     ---] <- width: 8
  * ```
+ *
+ * @dataFirst width_
  */
-export const width = <A>(react: (width: number) => Doc<A>) => <B>(
-  doc: Doc<B>
-): Doc<A | B> =>
-  column((colStart) =>
-    cat(
+export function width<A>(react: (width: number) => Doc<A>) {
+  return <B>(doc: Doc<B>): Doc<A | B> => width_(doc, react)
+}
+
+export function width_<A, B>(
+  doc: Doc<B>,
+  react: (width: number) => Doc<A>
+): Doc<A | B> {
+  return column((colStart) =>
+    cat_(
       doc,
       column((colEnd) => react(colEnd - colStart))
     )
   )
+}
 
 // -------------------------------------------------------------------------------------
 // general combinators
@@ -1706,14 +1936,21 @@ export const width = <A>(react: (width: number) => Doc<A>) => <B>(
  * // sit,
  * // amet
  * ```
+ *
+ * @dataFirst punctuate_
  */
-export const punctuate = <A>(punctuator: Doc<A>) => (
-  docs: Array<Doc<A>>
-): Array<Doc<A>> =>
-  pipe(
-    docs,
-    A.mapWithIndex((i, x) => (docs.length - 1 === i ? x : cat(x, punctuator)))
+export function punctuate<A>(punctuator: Doc<A>) {
+  return <B>(docs: Array<Doc<B>>): Array<Doc<A | B>> => punctuate_(docs, punctuator)
+}
+
+export function punctuate_<A, B>(
+  docs: Array<Doc<B>>,
+  punctuator: Doc<A>
+): Array<Doc<A | B>> {
+  return A.mapWithIndex_(docs, (i, x) =>
+    docs.length - 1 === i ? x : cat_(x, punctuator)
   )
+}
 
 /**
  * The `enclose` combinator encloses a document `x` in between `left` and `right`
@@ -1730,9 +1967,20 @@ export const punctuate = <A>(punctuator: Doc<A>) => (
  * console.log(R.render(doc))
  * // A-Z
  * ```
+ *
+ * @dataFirst enclose_
  */
-export const enclose = <A>(left: Doc<A>, right: Doc<A>) => (doc: Doc<A>): Doc<A> =>
-  cat(left, cat(doc, right))
+export function enclose<A, B>(left: Doc<A>, right: Doc<B>) {
+  return <C>(doc: Doc<C>): Doc<A | B | C> => enclose_(doc, left, right)
+}
+
+export function enclose_<A, B, C>(
+  doc: Doc<C>,
+  left: Doc<A>,
+  right: Doc<B>
+): Doc<A | B | C> {
+  return cat_(left, cat_(doc, right))
+}
 
 /**
  * The `surround` combinator surrounds a document `x` in between `left` and `right`
@@ -1756,24 +2004,30 @@ export const enclose = <A>(left: Doc<A>, right: Doc<A>) => (doc: Doc<A>): Doc<A>
  * // @effect-ts/printer/Core/Doc
  * ```
  */
-export const surround = <A>(doc: Doc<A>) => (left: Doc<A>, right: Doc<A>): Doc<A> =>
-  cat(left, cat(doc, right))
+export function surround<A>(doc: Doc<A>) {
+  return (left: Doc<A>, right: Doc<A>): Doc<A> => cat_(left, cat_(doc, right))
+}
 
 /**
  * Encloses the input document in parentheses (`()`).
  */
-export const parens = <A>(doc: Doc<A>): Doc<A> => pipe(doc, enclose<A>(lparen, rparen))
+export function parens<A>(doc: Doc<A>): Doc<A> {
+  return enclose_(doc, lparen, rparen)
+}
 
 /**
  * Encloses the input document in angle brackets (`<>`).
  */
-export const angles = <A>(doc: Doc<A>): Doc<A> => pipe(doc, enclose<A>(langle, rangle))
+export function angles<A>(doc: Doc<A>): Doc<A> {
+  return enclose_(doc, langle, rangle)
+}
 
 /**
  * Encloses the input document in brackets (`[]`).
  */
-export const brackets = <A>(doc: Doc<A>): Doc<A> =>
-  pipe(doc, enclose<A>(lbracket, rbracket))
+export function brackets<A>(doc: Doc<A>): Doc<A> {
+  return enclose_(doc, lbracket, rbracket)
+}
 
 /**
  * Encloses the input document in braces (`{}`).
@@ -1781,7 +2035,9 @@ export const brackets = <A>(doc: Doc<A>): Doc<A> =>
  * @category primitive combinators
  * @since 0.0.1
  */
-export const braces = <A>(doc: Doc<A>): Doc<A> => pipe(doc, enclose<A>(lbrace, rbrace))
+export function braces<A>(doc: Doc<A>): Doc<A> {
+  return enclose_(doc, lbrace, rbrace)
+}
 
 /**
  * Encloses the input document in single quotes (`''`).
@@ -1789,7 +2045,9 @@ export const braces = <A>(doc: Doc<A>): Doc<A> => pipe(doc, enclose<A>(lbrace, r
  * @category primitive combinators
  * @since 0.0.1
  */
-export const squotes = <A>(doc: Doc<A>): Doc<A> => pipe(doc, enclose<A>(squote, squote))
+export function squotes<A>(doc: Doc<A>): Doc<A> {
+  return enclose_(doc, squote, squote)
+}
 
 /**
  * Encloses the input document in double quotes (`""`).
@@ -1797,7 +2055,9 @@ export const squotes = <A>(doc: Doc<A>): Doc<A> => pipe(doc, enclose<A>(squote, 
  * @category primitive combinators
  * @since 0.0.1
  */
-export const dquotes = <A>(doc: Doc<A>): Doc<A> => pipe(doc, enclose<A>(dquote, dquote))
+export function dquotes<A>(doc: Doc<A>): Doc<A> {
+  return enclose_(doc, dquote, dquote)
+}
 
 /**
  * The `spaces` combinator lays out a document containing `n` spaces. Negative values
@@ -1813,7 +2073,7 @@ export const dquotes = <A>(doc: Doc<A>): Doc<A> => pipe(doc, enclose<A>(dquote, 
  * // ["     "]
  * ```
  */
-export const spaces = (n: number): Doc<never> => {
+export function spaces(n: number): Doc<never> {
   if (n <= 0) return empty
   if (n === 1) return char(" ")
   return text(textSpaces(n))
@@ -1833,8 +2093,9 @@ export const spaces = (n: number): Doc<never> => {
  * // (lorem, ipsum, dolor)
  * ```
  */
-export const words = (s: string, char = " "): Array<Doc<never>> =>
-  pipe(s.split(char), A.map<string, Doc<never>>(string))
+export function words(s: string, char = " "): Array<Doc<never>> {
+  return A.map_(s.split(char), string)
+}
 
 /**
  * Splits a string of words into individual `Text` documents using the
@@ -1861,8 +2122,9 @@ export const words = (s: string, char = " "): Array<Doc<never>> =>
  * // aliqua.
  * ```
  */
-export const reflow = (s: string, char = " "): Doc<never> =>
-  pipe(words(s, char), fillSep)
+export function reflow(s: string, char = " "): Doc<never> {
+  return fillSep(words(s, char))
+}
 
 // -------------------------------------------------------------------------------------
 // instances
@@ -1873,17 +2135,18 @@ export const DocURI = "@effect-ts/pretty/DocURI"
 export type DocURI = typeof DocURI
 
 declare module "@effect-ts/core/Prelude/HKT" {
-  /* eslint-disable @typescript-eslint/no-unused-vars */
   export interface URItoKind<FC, TC, K, Q, W, X, I, S, R, E, A> {
     readonly [DocURI]: Doc<A>
   }
-  /* eslint-enable @typescript-eslint/no-unused-vars */
 }
 
-export const getAssociative = <A>(): Associative<Doc<A>> => Assoc.makeAssociative(cat)
+export function getAssociative<A>(): Associative<Doc<A>> {
+  return Assoc.makeAssociative(cat_)
+}
 
-export const getIdentity = <A>(): Identity<Doc<A>> =>
-  Ident.makeIdentity<Doc<A>>(empty, cat)
+export function getIdentity<A>(): Identity<Doc<A>> {
+  return Ident.makeIdentity<Doc<A>>(empty, cat_)
+}
 
 export const Covariant = P.instance<P.Covariant<[URI<DocURI>]>>({
   map
@@ -1896,5 +2159,10 @@ export const Covariant = P.instance<P.Covariant<[URI<DocURI>]>>({
 /**
  * Constructs a string containing `n` space characters.
  */
-export const textSpaces: (n: number) => string = (_) =>
-  Ident.fold(Ident.string)(A.replicate(" ")(_))
+export function textSpaces(n: number) {
+  let s = " "
+  for (let i = 1; i < n; i++) {
+    s = s += " "
+  }
+  return s
+}

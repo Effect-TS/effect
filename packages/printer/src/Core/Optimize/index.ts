@@ -90,7 +90,7 @@ export const optimize = <A>(doc: Doc<A>): Optimize<A> => {
 
       switch (x._tag) {
         case "FlatAlt": {
-          return D.flatAlt(yield* _(go(x.left, depth)), yield* _(go(x.right, depth)))
+          return D.flatAlt_(yield* _(go(x.left, depth)), yield* _(go(x.right, depth)))
         }
         case "Cat": {
           // Empty documents
@@ -116,30 +116,30 @@ export const optimize = <A>(doc: Doc<A>): Optimize<A> => {
           }
           // Nested strings
           if (D.isChar(x.left) && D.isCat(x.right) && D.isChar(x.right.left)) {
-            const inner = yield* _(go(D.cat(x.left, x.right.left), depth))
-            return yield* _(go(D.cat(inner, x.right.right), depth))
+            const inner = yield* _(go(D.cat_(x.left, x.right.left), depth))
+            return yield* _(go(D.cat_(inner, x.right.right), depth))
           }
           if (D.isText(x.left) && D.isCat(x.right) && D.isChar(x.right.left)) {
-            const inner = yield* _(go(D.cat(x.left, x.right.left), depth))
-            return yield* _(go(D.cat(inner, x.right.right), depth))
+            const inner = yield* _(go(D.cat_(x.left, x.right.left), depth))
+            return yield* _(go(D.cat_(inner, x.right.right), depth))
           }
           if (D.isChar(x.left) && D.isCat(x.right) && D.isText(x.right.left)) {
-            const inner = yield* _(go(D.cat(x.left, x.right.left), depth))
-            return yield* _(go(D.cat(inner, x.right.right), depth))
+            const inner = yield* _(go(D.cat_(x.left, x.right.left), depth))
+            return yield* _(go(D.cat_(inner, x.right.right), depth))
           }
           if (D.isText(x.left) && D.isCat(x.right) && D.isText(x.right.left)) {
-            const inner = yield* _(go(D.cat(x.left, x.right.left), depth))
-            return yield* _(go(D.cat(inner, x.right.right), depth))
+            const inner = yield* _(go(D.cat_(x.left, x.right.left), depth))
+            return yield* _(go(D.cat_(inner, x.right.right), depth))
           }
           if (D.isCat(x.left) && D.isChar(x.right)) {
-            const inner = yield* _(go(D.cat(x.left.right, x.right), depth))
-            return yield* _(go(D.cat(x.left.left, inner), depth))
+            const inner = yield* _(go(D.cat_(x.left.right, x.right), depth))
+            return yield* _(go(D.cat_(x.left.left, inner), depth))
           }
           if (D.isCat(x.left) && D.isText(x.left.right)) {
-            const inner = yield* _(go(D.cat(x.left.right, x.right), depth))
-            return yield* _(go(D.cat(x.left.left, inner), depth))
+            const inner = yield* _(go(D.cat_(x.left.right, x.right), depth))
+            return yield* _(go(D.cat_(x.left.left, inner), depth))
           }
-          return D.cat(yield* _(go(x.left, depth)), yield* _(go(x.right, depth)))
+          return D.cat_(yield* _(go(x.left, depth)), yield* _(go(x.right, depth)))
         }
         case "Nest": {
           if (D.isEmpty(x.doc)) return x.doc
@@ -152,7 +152,7 @@ export const optimize = <A>(doc: Doc<A>): Optimize<A> => {
           return D.nest(x.indent)(yield* _(go(x.doc, depth)))
         }
         case "Union": {
-          return D.union(yield* _(go(x.left, depth)), yield* _(go(x.right, depth)))
+          return D.union_(yield* _(go(x.left, depth)), yield* _(go(x.right, depth)))
         }
         case "Column": {
           return depth === Shallow
@@ -170,7 +170,7 @@ export const optimize = <A>(doc: Doc<A>): Optimize<A> => {
             : D.nesting((level) => S.run(go(x.react(level), depth)))
         }
         case "Annotated": {
-          return D.annotate(x.annotation, yield* _(go(x.doc, depth)))
+          return D.annotate_(yield* _(go(x.doc, depth)), x.annotation)
         }
         default:
           return x
