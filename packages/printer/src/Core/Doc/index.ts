@@ -249,6 +249,16 @@ export const char = (char: string): Doc<never> => new Char(char, identity)
 export const text = (text: string): Doc<never> => new Text(text, identity)
 
 /**
+ * A document containing a string of text.
+ */
+export const string = (str: string): Doc<never> =>
+  cats(
+    str
+      .split("\n")
+      .map((s) => (s.length === 0 ? empty : s.length === 1 ? char(s) : text(s)))
+  )
+
+/**
  * The `flatAlt` document will render `left` by default. However, when
  * `group`ed, `y` will be preferred with `left` as the fallback for cases
  * where `y` does not fit onto the page.
@@ -1824,7 +1834,7 @@ export const spaces = (n: number): Doc<never> => {
  * ```
  */
 export const words = (s: string, char = " "): Array<Doc<never>> =>
-  pipe(s.split(char), A.map<string, Doc<never>>(text))
+  pipe(s.split(char), A.map<string, Doc<never>>(string))
 
 /**
  * Splits a string of words into individual `Text` documents using the
