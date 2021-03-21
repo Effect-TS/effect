@@ -24,7 +24,7 @@ function renderRec<A>(x: DocStream<A>): IO.IO<string> {
       }
       case "LineStream": {
         let indent = "\n"
-        for (let i = 1; i < x.indentation; i++) {
+        for (let i = 0; i < x.indentation; i++) {
           indent = indent += " "
         }
         const rest = yield* _(renderRec(x.stream))
