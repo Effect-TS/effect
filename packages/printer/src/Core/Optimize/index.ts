@@ -83,7 +83,7 @@ export const Deep: FusionDepth = "Deep"
  * It is therefore a good idea to run `fuse` on concatenations of lots of small
  * strings that are used many times.
  */
-export const optimize = <A>(doc: Doc<A>): Optimize<A> => {
+export function optimize<A>(doc: Doc<A>): Optimize<A> {
   function go(x: Doc<A>, depth: FusionDepth): S.IO<Doc<A>> {
     return S.gen(function* (_) {
       yield* _(S.unit)
