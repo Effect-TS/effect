@@ -4,7 +4,7 @@ import type { Array } from "@effect-ts/core/Array"
 import * as A from "@effect-ts/core/Array"
 import type { Associative } from "@effect-ts/core/Associative"
 import * as Assoc from "@effect-ts/core/Associative"
-import { constant, identity, pipe } from "@effect-ts/core/Function"
+import { constant, identity } from "@effect-ts/core/Function"
 import type { Identity } from "@effect-ts/core/Identity"
 import * as Ident from "@effect-ts/core/Identity"
 import * as IO from "@effect-ts/core/IO"
@@ -1025,7 +1025,7 @@ export function concatWith_<A>(
   return A.foldRight_(
     docs,
     () => empty,
-    (init, last) => pipe(init, A.reduceRight(last, f))
+    (init, last) => A.reduceRight_(init, last, f)
   )
 }
 
@@ -1204,7 +1204,7 @@ const flatten = <A>(doc: Doc<A>): Doc<A> => {
           return x
       }
     })
-  return pipe(go(doc), IO.run)
+  return IO.run(go(doc))
 }
 
 /**
@@ -1249,8 +1249,10 @@ const changesUponFlattening = <A>(doc: Doc<A>): Flatten<Doc<A>> => {
 
           throw new Error("bug, it seems we didn't manage a branch")
         }
-        case "Nest":
-          return pipe(yield* _(go(x.doc)), F.map(nest(x.indent)))
+        case "Nest": {
+          const flatten = yield* _(go(x.doc))
+          return F.map_(flatten, nest(x.indent))
+        }
         case "Union":
           return F.flattened(x.left)
         case "Column":
@@ -1259,16 +1261,15 @@ const changesUponFlattening = <A>(doc: Doc<A>): Flatten<Doc<A>> => {
           return F.flattened(withPageWidth((y) => flatten(x.react(y))))
         case "Nesting":
           return F.flattened(nesting((y) => flatten(x.react(y))))
-        case "Annotated":
-          return pipe(
-            yield* _(go(x.doc)),
-            F.map((d) => annotate_(d, x.annotation))
-          )
+        case "Annotated": {
+          const flatten = yield* _(go(x.doc))
+          return F.map_(flatten, annotate(x.annotation))
+        }
         default:
           return F.alreadyFlat
       }
     })
-  return pipe(go(doc), IO.run)
+  return IO.run(go(doc))
 }
 
 /**
@@ -1281,40 +1282,31 @@ const changesUponFlattening = <A>(doc: Doc<A>): Flatten<Doc<A>> => {
  */
 export const group = <A>(doc: Doc<A>): Doc<A> => {
   const group_ = (a: Doc<A>): Doc<A> =>
-    pipe(
-      changesUponFlattening(a),
-      F.match({
-        Flattened: (b) => union_(b, a),
-        AlreadyFlat: () => a,
-        NeverFlat: () => a
-      })
-    )
-  return pipe(
-    doc,
-    match({
-      Fail: () => group_(doc),
-      Empty: () => group_(doc),
-      Char: () => group_(doc),
-      Text: () => group_(doc),
-      Line: () => group_(doc),
-      FlatAlt: (a, b) =>
-        pipe(
-          changesUponFlattening(b),
-          F.match({
-            Flattened: (b_) => union_(b_, a),
-            AlreadyFlat: () => union_(b, a),
-            NeverFlat: () => a
-          })
-        ),
-      Cat: () => group_(doc),
-      Nest: () => group_(doc),
-      Union: () => doc,
-      Column: () => group_(doc),
-      WithPageWidth: () => group_(doc),
-      Nesting: () => group_(doc),
-      Annotated: () => group_(doc)
+    F.match_(changesUponFlattening(a), {
+      Flattened: (b) => union_(b, a),
+      AlreadyFlat: () => a,
+      NeverFlat: () => a
     })
-  )
+  return match_(doc, {
+    Fail: () => group_(doc),
+    Empty: () => group_(doc),
+    Char: () => group_(doc),
+    Text: () => group_(doc),
+    Line: () => group_(doc),
+    FlatAlt: (a, b) =>
+      F.match_(changesUponFlattening(b), {
+        Flattened: (b_) => union_(b_, a),
+        AlreadyFlat: () => union_(b, a),
+        NeverFlat: () => a
+      }),
+    Cat: () => group_(doc),
+    Nest: () => group_(doc),
+    Union: () => doc,
+    Column: () => group_(doc),
+    WithPageWidth: () => group_(doc),
+    Nesting: () => group_(doc),
+    Annotated: () => group_(doc)
+  })
 }
 
 // -------------------------------------------------------------------------------------
@@ -1774,9 +1766,10 @@ export function encloseSep_<A, B, C, D>(
 ): Doc<A | B | C | D> {
   if (docs.length === 0) return cat_(left, right)
   if (docs.length === 1) return cat_(left, cat_(docs[0]!, right))
-  const xs = pipe(
-    pipe(A.cons_(A.replicate(sep)(docs.length - 1), left as Doc<A | C>)),
-    A.zipWith(docs, cat_)
+  const xs = A.zipWith_(
+    A.cons_(A.replicate_(docs.length - 1, sep), left as Doc<A | C>),
+    docs,
+    cat_
   )
   return cat_(cats(xs), right)
 }
