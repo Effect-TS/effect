@@ -2,7 +2,7 @@
 
 import type { Array } from "@effect-ts/core/Array"
 import * as A from "@effect-ts/core/Array"
-import { identity, pipe } from "@effect-ts/core/Function"
+import { identity } from "@effect-ts/core/Function"
 import type { Identity } from "@effect-ts/core/Identity"
 import * as IO from "@effect-ts/core/IO"
 import type { Option } from "@effect-ts/core/Option"
@@ -299,7 +299,7 @@ export function unAnnotate<A>(stream: DocStream<A>): DocStream<never> {
           return empty
       }
     })
-  return pipe(go(stream), IO.run)
+  return IO.run(go(stream))
 }
 
 type AnnotationRemoval = "Remove" | "DontRemove"
