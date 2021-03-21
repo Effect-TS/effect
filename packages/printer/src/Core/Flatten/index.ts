@@ -42,10 +42,12 @@ export interface NeverFlat {
 // constructors
 // -------------------------------------------------------------------------------------
 
-export const flattened = <A>(value: A): Flattened<A> => ({
-  _tag: "Flattened",
-  value
-})
+export function flattened<A>(value: A): Flattened<A> {
+  return {
+    _tag: "Flattened",
+    value
+  }
+}
 
 export const alreadyFlat: Flatten<never> = {
   _tag: "AlreadyFlat"
@@ -59,42 +61,65 @@ export const neverFlat: Flatten<never> = {
 // destructors
 // -------------------------------------------------------------------------------------
 
-export const match = <A, R>(patterns: {
+export function match_<A, R>(
+  flatten: Flatten<A>,
+  patterns: {
+    readonly Flattened: (value: A) => R
+    readonly AlreadyFlat: () => R
+    readonly NeverFlat: () => R
+  }
+): R {
+  switch (flatten._tag) {
+    case "Flattened":
+      return patterns.Flattened(flatten.value)
+    case "AlreadyFlat":
+      return patterns.AlreadyFlat()
+    case "NeverFlat":
+      return patterns.NeverFlat()
+  }
+}
+
+/**
+ * @dataFirst match_
+ */
+export function match<A, R>(patterns: {
   readonly Flattened: (value: A) => R
   readonly AlreadyFlat: () => R
   readonly NeverFlat: () => R
-}): ((flatten: Flatten<A>) => R) => {
-  const f = (x: Flatten<A>): R => {
-    switch (x._tag) {
-      case "Flattened":
-        return patterns.Flattened(x.value)
-      case "AlreadyFlat":
-        return patterns.AlreadyFlat()
-      case "NeverFlat":
-        return patterns.NeverFlat()
-    }
-  }
-  return f
+}) {
+  return (flatten: Flatten<A>): R => match_(flatten, patterns)
 }
 
 // -------------------------------------------------------------------------------------
 // operations
 // -------------------------------------------------------------------------------------
 
-export const isFlattened = <A>(a: Flatten<A>): a is Flattened<A> =>
-  a._tag === "Flattened"
+export function isFlattened<A>(a: Flatten<A>): a is Flattened<A> {
+  return a._tag === "Flattened"
+}
 
-export const isAlreadyFlat = <A>(a: Flatten<A>): a is AlreadyFlat =>
-  a._tag === "AlreadyFlat"
+export function isAlreadyFlat<A>(a: Flatten<A>): a is AlreadyFlat {
+  return a._tag === "AlreadyFlat"
+}
 
-export const isNeverFlat = <A>(a: Flatten<A>): a is NeverFlat => a._tag === "NeverFlat"
+export function isNeverFlat<A>(a: Flatten<A>): a is NeverFlat {
+  return a._tag === "NeverFlat"
+}
 
-export const map = <A, B>(f: (a: A) => B): ((fa: Flatten<A>) => Flatten<B>) =>
-  match<A, Flatten<B>>({
+export function map_<A, B>(fa: Flatten<A>, f: (a: A) => B): Flatten<B> {
+  return match_<A, Flatten<B>>(fa, {
     Flattened: (a) => flattened(f(a)),
     AlreadyFlat: () => alreadyFlat,
     NeverFlat: () => neverFlat
   })
+}
+
+/**
+ * @dataFirst map_
+ */
+export function map<A, B>(f: (a: A) => B) {
+  return (fa: Flatten<A>): Flatten<B> => map_(fa, f)
+}
 
 // -------------------------------------------------------------------------------------
 // instances
@@ -105,11 +130,9 @@ export const FlattenURI = "@effect-ts/pretty/Flatten"
 export type FlattenURI = typeof FlattenURI
 
 declare module "@effect-ts/core/Prelude/HKT" {
-  /* eslint-disable @typescript-eslint/no-unused-vars */
   interface URItoKind<FC, TC, K, Q, W, X, I, S, R, E, A> {
     readonly [FlattenURI]: Flatten<A>
   }
-  /* eslint-enable @typescript-eslint/no-unused-vars */
 }
 
 export const Covariant = P.instance<P.Covariant<[URI<FlattenURI>]>>({
