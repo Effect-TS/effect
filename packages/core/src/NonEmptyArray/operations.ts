@@ -7,10 +7,10 @@ import type { NonEmptyArray } from "@effect-ts/system/NonEmptyArray"
 import * as NA from "@effect-ts/system/NonEmptyArray"
 import * as L from "@effect-ts/system/Persistent/List"
 
+import type { Associative } from "../Associative"
 import { makeAssociative } from "../Associative"
 import type { Equal } from "../Equal"
 import { makeEqual } from "../Equal"
-import type { Identity } from "../Identity"
 import type { NonEmptyArrayURI } from "../Modules"
 import * as Ord from "../Ord"
 import type { URI } from "../Prelude"
@@ -162,8 +162,8 @@ export function intersection<A>(
  * Fold Identity with a mapping function
  */
 export function foldMap<M>(
-  M: Identity<M>
-): <A>(f: (a: A) => M) => (fa: readonly A[]) => M {
+  M: Associative<M>
+): <A>(f: (a: A) => M) => (fa: NonEmptyArray<A>) => M {
   return (f) => foldMapWithIndex(M)((_, a) => f(a))
 }
 
@@ -171,8 +171,8 @@ export function foldMap<M>(
  * Fold Identity with a mapping function
  */
 export function foldMap_<M>(
-  M: Identity<M>
-): <A>(fa: readonly A[], f: (a: A) => M) => M {
+  M: Associative<M>
+): <A>(fa: NonEmptyArray<A>, f: (a: A) => M) => M {
   return (fa, f) => foldMapWithIndex_(M)(fa, (_, a) => f(a))
 }
 
@@ -180,8 +180,8 @@ export function foldMap_<M>(
  * Fold Identity with a mapping function that consider also the index
  */
 export function foldMapWithIndex<M>(
-  M: Identity<M>
-): <A>(f: (i: number, a: A) => M) => (fa: readonly A[]) => M {
+  M: Associative<M>
+): <A>(f: (i: number, a: A) => M) => (fa: NonEmptyArray<A>) => M {
   return (f) => (fa) => foldMapWithIndex_(M)(fa, f)
 }
 
@@ -189,9 +189,10 @@ export function foldMapWithIndex<M>(
  * Fold Identity with a mapping function that consider also the index
  */
 export function foldMapWithIndex_<M>(
-  M: Identity<M>
-): <A>(fa: readonly A[], f: (i: number, a: A) => M) => M {
-  return (fa, f) => fa.reduce((b, a, i) => M.combine(b, f(i, a)), M.identity)
+  M: Associative<M>
+): <A>(fa: NonEmptyArray<A>, f: (i: number, a: A) => M) => M {
+  return ([fa0, ...fa], f) =>
+    fa.reduce((b, a, i) => M.combine(b, f(i + 1, a)), f(0, fa0))
 }
 
 /**
