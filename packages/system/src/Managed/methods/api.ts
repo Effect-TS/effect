@@ -1924,7 +1924,8 @@ export function cond_<E, A>(pred: boolean, result: () => A, error: () => E): IO<
  */
 export function forEachUnitPar_<R, E, A, B>(
   as: Iterable<A>,
-  f: (a: A) => Managed<R, E, B>
+  f: (a: A) => Managed<R, E, B>,
+  __trace?: string
 ): Managed<R, E, void> {
   return core.mapM_(core.makeManagedReleaseMap(T.parallel), (parallelReleaseMap) => {
     const makeInnerMap = T.provideSome_(
@@ -1948,8 +1949,11 @@ export function forEachUnitPar_<R, E, A, B>(
  *
  * For a sequential version of this method, see `forEachUnit_`.
  */
-export function forEachUnitPar<R, E, A, B>(f: (a: A) => Managed<R, E, B>) {
-  return (as: Iterable<A>) => forEachUnitPar_(as, f)
+export function forEachUnitPar<R, E, A, B>(
+  f: (a: A) => Managed<R, E, B>,
+  __trace?: string
+) {
+  return (as: Iterable<A>) => forEachUnitPar_(as, f, __trace)
 }
 
 /**
@@ -1961,7 +1965,8 @@ export function forEachUnitPar<R, E, A, B>(f: (a: A) => Managed<R, E, B>) {
 export function forEachUnitParN_<R, E, A, B>(
   as: Iterable<A>,
   n: number,
-  f: (a: A) => Managed<R, E, B>
+  f: (a: A) => Managed<R, E, B>,
+  __trace?: string
 ): Managed<R, E, void> {
   return core.mapM_(core.makeManagedReleaseMap(T.parallel), (parallelReleaseMap) => {
     const makeInnerMap = T.provideSome_(
@@ -2123,8 +2128,11 @@ export function collectAllUnit<R, E, A>(as: Iterable<Managed<R, E, A>>) {
  * Evaluate each effect in the structure in parallel, and discard the
  * results. For a sequential version, see `collectAllUnit`.
  */
-export function collectAllUnitPar<R, E, A>(as: Iterable<Managed<R, E, A>>) {
-  return forEachUnitPar_(as, identity)
+export function collectAllUnitPar<R, E, A>(
+  as: Iterable<Managed<R, E, A>>,
+  __trace?: string
+) {
+  return forEachUnitPar_(as, identity, __trace)
 }
 
 /**
@@ -2135,8 +2143,9 @@ export function collectAllUnitPar<R, E, A>(as: Iterable<Managed<R, E, A>>) {
  *
  * @dataFirst collectAllUnitParN_
  */
-export function collectAllUnitParN(n: number) {
-  return <R, E, A>(as: Iterable<Managed<R, E, A>>) => forEachUnitParN_(as, n, identity)
+export function collectAllUnitParN(n: number, __trace?: string) {
+  return <R, E, A>(as: Iterable<Managed<R, E, A>>) =>
+    forEachUnitParN_(as, n, identity, __trace)
 }
 
 /**
@@ -2147,9 +2156,10 @@ export function collectAllUnitParN(n: number) {
  */
 export function collectAllUnitParN_<R, E, A>(
   as: Iterable<Managed<R, E, A>>,
-  n: number
+  n: number,
+  __trace?: string
 ) {
-  return forEachUnitParN_(as, n, identity)
+  return forEachUnitParN_(as, n, identity, __trace)
 }
 
 /**
@@ -2158,7 +2168,8 @@ export function collectAllUnitParN_<R, E, A>(
  */
 export function collectAllWith_<R, E, A, B>(
   as: Iterable<Managed<R, E, A>>,
-  pf: (a: A) => O.Option<B>
+  pf: (a: A) => O.Option<B>,
+  __trace?: string
 ): Managed<R, E, readonly B[]> {
   return core.map_(collectAll(as), (x) => pipe(x, A.map(pf), A.compact))
 }
@@ -2167,8 +2178,8 @@ export function collectAllWith_<R, E, A, B>(
  * Evaluate each effect in the structure with `collectAll`, and collect
  * the results with given partial function.
  */
-export function collectAllWith<A, B>(pf: (a: A) => O.Option<B>) {
-  return <R, E>(as: Iterable<Managed<R, E, A>>) => collectAllWith_(as, pf)
+export function collectAllWith<A, B>(pf: (a: A) => O.Option<B>, __trace?: string) {
+  return <R, E>(as: Iterable<Managed<R, E, A>>) => collectAllWith_(as, pf, __trace)
 }
 
 /**
@@ -2177,7 +2188,8 @@ export function collectAllWith<A, B>(pf: (a: A) => O.Option<B>) {
  */
 export function collectAllWithPar_<R, E, A, B>(
   as: Iterable<Managed<R, E, A>>,
-  pf: (a: A) => O.Option<B>
+  pf: (a: A) => O.Option<B>,
+  __trace?: string
 ): Managed<R, E, readonly B[]> {
   return core.map_(collectAllPar(as), (x) => pipe(x, A.map(pf), A.compact))
 }
@@ -2186,8 +2198,8 @@ export function collectAllWithPar_<R, E, A, B>(
  * Evaluate each effect in the structure with `collectAll`, and collect
  * the results with given partial function.
  */
-export function collectAllWithPar<A, B>(pf: (a: A) => O.Option<B>) {
-  return <R, E>(as: Iterable<Managed<R, E, A>>) => collectAllWithPar_(as, pf)
+export function collectAllWithPar<A, B>(pf: (a: A) => O.Option<B>, __trace?: string) {
+  return <R, E>(as: Iterable<Managed<R, E, A>>) => collectAllWithPar_(as, pf, __trace)
 }
 
 /**
@@ -2199,7 +2211,8 @@ export function collectAllWithPar<A, B>(pf: (a: A) => O.Option<B>) {
 export function collectAllWithParN_<R, E, A, B>(
   as: Iterable<Managed<R, E, A>>,
   n: number,
-  pf: (a: A) => O.Option<B>
+  pf: (a: A) => O.Option<B>,
+  __trace?: string
 ): Managed<R, E, readonly B[]> {
   return core.map_(collectAllParN_(as, n), (x) => pipe(x, A.map(pf), A.compact))
 }
@@ -2214,26 +2227,37 @@ export function collectAllWithParN_<R, E, A, B>(
  */
 export function collectAllWithParN<A, B>(
   n: number,
-  pf: (a: A) => O.Option<B>
+  pf: (a: A) => O.Option<B>,
+  __trace?: string
 ): <R, E>(as: Iterable<Managed<R, E, A>>) => Managed<R, E, readonly B[]> {
-  return (as) => collectAllWithParN_(as, n, pf)
+  return (as) => collectAllWithParN_(as, n, pf, __trace)
 }
 
 /**
  * Evaluate and run each effect in the structure and collect discarding failed ones.
  */
-export function collectAllSuccesses<R, E, A>(as: Iterable<Managed<R, E, A>>) {
-  return collectAllWith_(I.map_(as, result), (e) =>
-    e._tag === "Success" ? O.some(e.value) : O.none
+export function collectAllSuccesses<R, E, A>(
+  as: Iterable<Managed<R, E, A>>,
+  __trace?: string
+) {
+  return collectAllWith_(
+    I.map_(as, result),
+    (e) => (e._tag === "Success" ? O.some(e.value) : O.none),
+    __trace
   )
 }
 
 /**
  * Evaluate and run each effect in the structure in parallel, and collect discarding failed ones.
  */
-export function collectAllSuccessesPar<R, E, A>(as: Iterable<Managed<R, E, A>>) {
-  return collectAllWithPar_(I.map_(as, result), (e) =>
-    e._tag === "Success" ? O.some(e.value) : O.none
+export function collectAllSuccessesPar<R, E, A>(
+  as: Iterable<Managed<R, E, A>>,
+  __trace?: string
+) {
+  return collectAllWithPar_(
+    I.map_(as, result),
+    (e) => (e._tag === "Success" ? O.some(e.value) : O.none),
+    __trace
   )
 }
 
@@ -2244,11 +2268,9 @@ export function collectAllSuccessesPar<R, E, A>(as: Iterable<Managed<R, E, A>>) 
  *
  * @dataFirst collectAllSuccessesParN_
  */
-export function collectAllSuccessesParN(n: number) {
+export function collectAllSuccessesParN(n: number, __trace?: string) {
   return <R, E, A>(as: Iterable<Managed<R, E, A>>) =>
-    collectAllWithParN_(I.map_(as, result), n, (e) =>
-      e._tag === "Success" ? O.some(e.value) : O.none
-    )
+    collectAllSuccessesParN_(as, n, __trace)
 }
 
 /**
@@ -2258,10 +2280,14 @@ export function collectAllSuccessesParN(n: number) {
  */
 export function collectAllSuccessesParN_<R, E, A>(
   as: Iterable<Managed<R, E, A>>,
-  n: number
+  n: number,
+  __trace?: string
 ) {
-  return collectAllWithParN_(I.map_(as, result), n, (e) =>
-    e._tag === "Success" ? O.some(e.value) : O.none
+  return collectAllWithParN_(
+    I.map_(as, result),
+    n,
+    (e) => (e._tag === "Success" ? O.some(e.value) : O.none),
+    __trace
   )
 }
 
@@ -2270,17 +2296,18 @@ export function collectAllSuccessesParN_<R, E, A>(
  * release action.
  */
 export function finalizerExit<R, X>(
-  f: (exit: Ex.Exit<any, any>) => T.RIO<R, X>
+  f: (exit: Ex.Exit<any, any>) => T.RIO<R, X>,
+  __trace?: string
 ): RIO<R, void> {
-  return makeExit_(T.unit, (_, e) => f(e))
+  return makeExit_(T.unit, (_, e) => f(e), __trace)
 }
 
 /**
  * Creates an effect that only executes the provided finalizer as its
  * release action.
  */
-export function finalizer<R, X>(f: T.RIO<R, X>): RIO<R, void> {
-  return finalizerExit(() => f)
+export function finalizer<R, X>(f: T.RIO<R, X>, __trace?: string): RIO<R, void> {
+  return finalizerExit(() => f, __trace)
 }
 
 /**
@@ -2289,7 +2316,8 @@ export function finalizer<R, X>(f: T.RIO<R, X>): RIO<R, void> {
 export function reduce_<A, Z, R, E>(
   i: Iterable<A>,
   zero: Z,
-  f: (z: Z, a: A) => Managed<R, E, Z>
+  f: (z: Z, a: A) => Managed<R, E, Z>,
+  __trace?: string
 ): Managed<R, E, Z> {
   return A.reduce_(Array.from(i), succeed(zero) as Managed<R, E, Z>, (acc, el) =>
     core.chain_(acc, (a) => f(a, el))
@@ -2301,8 +2329,12 @@ export function reduce_<A, Z, R, E>(
  *
  * @dataFirst reduce_
  */
-export function reduce<Z, R, E, A>(zero: Z, f: (z: Z, a: A) => Managed<R, E, Z>) {
-  return (i: Iterable<A>) => reduce_(i, zero, f)
+export function reduce<Z, R, E, A>(
+  zero: Z,
+  f: (z: Z, a: A) => Managed<R, E, Z>,
+  __trace?: string
+) {
+  return (i: Iterable<A>) => reduce_(i, zero, f, __trace)
 }
 
 /**
@@ -2311,7 +2343,8 @@ export function reduce<Z, R, E, A>(zero: Z, f: (z: Z, a: A) => Managed<R, E, Z>)
 export function reduceRight_<A, Z, R, E>(
   i: Iterable<A>,
   zero: Z,
-  f: (a: A, z: Z) => Managed<R, E, Z>
+  f: (a: A, z: Z) => Managed<R, E, Z>,
+  __trace?: string
 ): Managed<R, E, Z> {
   return A.reduceRight_(Array.from(i), succeed(zero) as Managed<R, E, Z>, (el, acc) =>
     core.chain_(acc, (a) => f(el, a))

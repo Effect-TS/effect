@@ -8,7 +8,6 @@ import * as core from "./core"
 import type { Effect } from "./effect"
 import * as forEach from "./excl-forEach"
 import * as map from "./map"
-import { traceAfter_ } from "./traceAfter"
 import * as zipWith from "./zipWith"
 
 /**
@@ -28,19 +27,20 @@ export function filter_<A, R, E>(
   f: (a: A) => Effect<R, E, boolean>,
   __trace?: string
 ): Effect<R, E, readonly A[]> {
-  return traceAfter_(
-    I.reduce_(as, <Effect<R, E, A[]>>core.effectTotal(() => []), (io, a) =>
-      zipWith.zipWith_(
-        io,
-        core.suspend(() => f(a)),
-        (as_, p) => {
-          if (p) {
-            as_.push(a)
+  return core.suspend(
+    () =>
+      I.reduce_(as, <Effect<R, E, A[]>>core.effectTotal(() => []), (io, a) =>
+        zipWith.zipWith_(
+          io,
+          core.suspend(() => f(a)),
+          (as_, p) => {
+            if (p) {
+              as_.push(a)
+            }
+            return as_
           }
-          return as_
-        }
-      )
-    ),
+        )
+      ),
     __trace
   )
 }
