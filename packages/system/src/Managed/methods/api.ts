@@ -2521,12 +2521,8 @@ export function mergeAllParN_<R, E, A, B>(
  * resource to the `apply` method will return an effect that allocates the resource
  * and returns it with an early-release handle.
  */
-export class Scope {
-  constructor(
-    readonly apply: <R, E, A>(
-      ma: Managed<R, E, A>
-    ) => T.Effect<R, E, readonly [RM.Finalizer, A]>
-  ) {}
+export interface Scope {
+  <R, E, A>(ma: Managed<R, E, A>): T.Effect<R, E, readonly [RM.Finalizer, A]>
 }
 
 /**
@@ -2534,12 +2530,11 @@ export class Scope {
  */
 export const scope: Managed<unknown, never, Scope> = core.map_(
   releaseMap,
-  (finalizers) =>
-    new Scope(
-      <R, E, A>(ma: Managed<R, E, A>): T.Effect<R, E, readonly [RM.Finalizer, A]> =>
-        T.chain_(T.environment<R>(), (r) =>
-          T.provideAll_(ma.effect, [r, finalizers] as const)
-        )
+  (finalizers) => <R, E, A>(
+    ma: Managed<R, E, A>
+  ): T.Effect<R, E, readonly [RM.Finalizer, A]> =>
+    T.chain_(T.environment<R>(), (r) =>
+      T.provideAll_(ma.effect, [r, finalizers] as const)
     )
 )
 
