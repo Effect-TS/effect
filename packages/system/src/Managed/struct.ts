@@ -7,7 +7,8 @@ import { forEach_, forEachPar_, forEachParN_ } from "./forEach"
 import type { Managed } from "./managed"
 
 export function struct<NER extends Record<string, Managed<any, any, any>>>(
-  r: EnforceNonEmptyRecord<NER> & Record<string, Managed<any, any, any>>
+  r: EnforceNonEmptyRecord<NER> & Record<string, Managed<any, any, any>>,
+  __trace?: string
 ): Managed<
   _R<NER[keyof NER]>,
   _E<NER[keyof NER]>,
@@ -18,7 +19,8 @@ export function struct<NER extends Record<string, Managed<any, any, any>>>(
   return map_(
     forEach_(
       R.collect_(r, (k, v) => [k, v] as const),
-      ([_, e]) => map_(e, (a) => [_, a] as const)
+      ([_, e]) => map_(e, (a) => [_, a] as const),
+      __trace
     ),
     (values) => {
       const res = {}
@@ -31,7 +33,8 @@ export function struct<NER extends Record<string, Managed<any, any, any>>>(
 }
 
 export function structPar<NER extends Record<string, Managed<any, any, any>>>(
-  r: EnforceNonEmptyRecord<NER> & Record<string, Managed<any, any, any>>
+  r: EnforceNonEmptyRecord<NER> & Record<string, Managed<any, any, any>>,
+  __trace?: string
 ): Managed<
   _R<NER[keyof NER]>,
   _E<NER[keyof NER]>,
@@ -42,7 +45,8 @@ export function structPar<NER extends Record<string, Managed<any, any, any>>>(
   return map_(
     forEachPar_(
       R.collect_(r, (k, v) => [k, v] as const),
-      ([_, e]) => map_(e, (a) => [_, a] as const)
+      ([_, e]) => map_(e, (a) => [_, a] as const),
+      __trace
     ),
     (values) => {
       const res = {}
@@ -58,7 +62,8 @@ export function structPar<NER extends Record<string, Managed<any, any, any>>>(
  * @dataFirst structParN_
  */
 export function structParN(
-  n: number
+  n: number,
+  __trace?: string
 ): <NER extends Record<string, Managed<any, any, any>>>(
   r: EnforceNonEmptyRecord<NER> & Record<string, Managed<any, any, any>>
 ) => Managed<
@@ -68,26 +73,14 @@ export function structParN(
     [K in keyof NER]: [NER[K]] extends [Managed<any, any, infer A>] ? A : never
   }
 > {
-  return (r) =>
-    map_(
-      forEachParN_(
-        R.collect_(r, (k, v) => [k, v] as const),
-        n,
-        ([_, e]) => map_(e, (a) => [_, a] as const)
-      ),
-      (values) => {
-        const res = {}
-        values.forEach(([k, v]) => {
-          res[k] = v
-        })
-        return res
-      }
-    ) as any
+  // @ts-expect-error
+  return (r) => structParN_(r, n, __trace)
 }
 
 export function structParN_<NER extends Record<string, Managed<any, any, any>>>(
   r: EnforceNonEmptyRecord<NER> & Record<string, Managed<any, any, any>>,
-  n: number
+  n: number,
+  __trace?: string
 ): Managed<
   _R<NER[keyof NER]>,
   _E<NER[keyof NER]>,
@@ -99,7 +92,8 @@ export function structParN_<NER extends Record<string, Managed<any, any, any>>>(
     forEachParN_(
       R.collect_(r, (k, v) => [k, v] as const),
       n,
-      ([_, e]) => map_(e, (a) => [_, a] as const)
+      ([_, e]) => map_(e, (a) => [_, a] as const),
+      __trace
     ),
     (values) => {
       const res = {}
@@ -119,7 +113,8 @@ export function bindAll<
   NER extends Record<string, Managed<any, any, any>> &
     { [k in keyof K & keyof NER]?: never }
 >(
-  r: (k: K) => EnforceNonEmptyRecord<NER> & Record<string, Managed<any, any, any>>
+  r: (k: K) => EnforceNonEmptyRecord<NER> & Record<string, Managed<any, any, any>>,
+  __trace?: string
 ): <R, E>(
   s: Managed<R, E, K>
 ) => Managed<
@@ -130,22 +125,8 @@ export function bindAll<
       [K in keyof NER]: [NER[K]] extends [Managed<any, any, infer A>] ? A : never
     }
 > {
-  return (s) =>
-    chain_(s, (k) =>
-      map_(
-        forEach_(
-          R.collect_(r(k), (k, v) => [k, v] as const),
-          ([_, e]) => map_(e, (a) => [_, a] as const)
-        ),
-        (values) => {
-          const res = {}
-          values.forEach(([k, v]) => {
-            res[k] = v
-          })
-          return Object.assign(res, k)
-        }
-      )
-    ) as any
+  // @ts-expect-error
+  return (s) => bindAll_(s, r, __trace)
 }
 
 export function bindAll_<
@@ -156,7 +137,8 @@ export function bindAll_<
   E
 >(
   s: Managed<R, E, K>,
-  r: (k: K) => EnforceNonEmptyRecord<NER> & Record<string, Managed<any, any, any>>
+  r: (k: K) => EnforceNonEmptyRecord<NER> & Record<string, Managed<any, any, any>>,
+  __trace?: string
 ): Managed<
   R & _R<NER[keyof NER]>,
   E | _E<NER[keyof NER]>,
@@ -169,7 +151,8 @@ export function bindAll_<
     map_(
       forEach_(
         R.collect_(r(k), (k, v) => [k, v] as const),
-        ([_, e]) => map_(e, (a) => [_, a] as const)
+        ([_, e]) => map_(e, (a) => [_, a] as const),
+        __trace
       ),
       (values) => {
         const res = {}
@@ -190,7 +173,8 @@ export function bindAllPar<
   NER extends Record<string, Managed<any, any, any>> &
     { [k in keyof K & keyof NER]?: never }
 >(
-  r: (k: K) => EnforceNonEmptyRecord<NER> & Record<string, Managed<any, any, any>>
+  r: (k: K) => EnforceNonEmptyRecord<NER> & Record<string, Managed<any, any, any>>,
+  __trace?: string
 ): <R, E>(
   s: Managed<R, E, K>
 ) => Managed<
@@ -201,22 +185,8 @@ export function bindAllPar<
       [K in keyof NER]: [NER[K]] extends [Managed<any, any, infer A>] ? A : never
     }
 > {
-  return (s) =>
-    chain_(s, (k) =>
-      map_(
-        forEachPar_(
-          R.collect_(r(k), (k, v) => [k, v] as const),
-          ([_, e]) => map_(e, (a) => [_, a] as const)
-        ),
-        (values) => {
-          const res = {}
-          values.forEach(([k, v]) => {
-            res[k] = v
-          })
-          return Object.assign(res, k)
-        }
-      )
-    ) as any
+  // @ts-expect-error
+  return (s) => bindAllPar_(s, r, __trace)
 }
 
 export function bindAllPar_<
@@ -227,7 +197,8 @@ export function bindAllPar_<
   E
 >(
   s: Managed<R, E, K>,
-  r: (k: K) => EnforceNonEmptyRecord<NER> & Record<string, Managed<any, any, any>>
+  r: (k: K) => EnforceNonEmptyRecord<NER> & Record<string, Managed<any, any, any>>,
+  __trace?: string
 ): Managed<
   R & _R<NER[keyof NER]>,
   E | _E<NER[keyof NER]>,
@@ -240,7 +211,8 @@ export function bindAllPar_<
     map_(
       forEachPar_(
         R.collect_(r(k), (k, v) => [k, v] as const),
-        ([_, e]) => map_(e, (a) => [_, a] as const)
+        ([_, e]) => map_(e, (a) => [_, a] as const),
+        __trace
       ),
       (values) => {
         const res = {}
@@ -262,7 +234,8 @@ export function bindAllParN<
     { [k in keyof K & keyof NER]?: never }
 >(
   n: number,
-  r: (k: K) => EnforceNonEmptyRecord<NER> & Record<string, Managed<any, any, any>>
+  r: (k: K) => EnforceNonEmptyRecord<NER> & Record<string, Managed<any, any, any>>,
+  __trace?: string
 ): <R, E>(
   s: Managed<R, E, K>
 ) => Managed<
@@ -273,23 +246,8 @@ export function bindAllParN<
       [K in keyof NER]: [NER[K]] extends [Managed<any, any, infer A>] ? A : never
     }
 > {
-  return (s) =>
-    chain_(s, (k) =>
-      map_(
-        forEachParN_(
-          R.collect_(r(k), (k, v) => [k, v] as const),
-          n,
-          ([_, e]) => map_(e, (a) => [_, a] as const)
-        ),
-        (values) => {
-          const res = {}
-          values.forEach(([k, v]) => {
-            res[k] = v
-          })
-          return Object.assign(res, k)
-        }
-      )
-    ) as any
+  // @ts-expect-error
+  return (s) => bindAllParN_(s, n, r, __trace)
 }
 
 export function bindAllParN_<
@@ -301,7 +259,8 @@ export function bindAllParN_<
 >(
   s: Managed<R, E, K>,
   n: number,
-  r: (k: K) => EnforceNonEmptyRecord<NER> & Record<string, Managed<any, any, any>>
+  r: (k: K) => EnforceNonEmptyRecord<NER> & Record<string, Managed<any, any, any>>,
+  __trace?: string
 ): Managed<
   R & _R<NER[keyof NER]>,
   E | _E<NER[keyof NER]>,
@@ -315,7 +274,8 @@ export function bindAllParN_<
       forEachParN_(
         R.collect_(r(k), (k, v) => [k, v] as const),
         n,
-        ([_, e]) => map_(e, (a) => [_, a] as const)
+        ([_, e]) => map_(e, (a) => [_, a] as const),
+        __trace
       ),
       (values) => {
         const res = {}
