@@ -3,10 +3,8 @@
 import type { Ord } from "@effect-ts/system/Ord"
 import { makeOrd } from "@effect-ts/system/Ord"
 
-import type { Associative } from "../Associative"
-import { makeAssociative } from "../Associative/makeAssociative"
-import type { Identity } from "../Identity"
-import { makeIdentity } from "../Identity/makeIdentity"
+import * as A from "../Associative"
+import * as I from "../Identity"
 import { Associative as OrderingAssociative } from "../Ordering"
 
 /**
@@ -14,8 +12,8 @@ import { Associative as OrderingAssociative } from "../Ordering"
  *
  * - its `combine(ord2)(ord1)` operation will order first by `ord1`, and then by `ord2`
  */
-export function getAssociative<A = never>(): Associative<Ord<A>> {
-  return makeAssociative((x, y) =>
+export function getAssociative<A = never>(): A.Associative<Ord<A>> {
+  return A.makeAssociative((x, y) =>
     makeOrd((a, b) => OrderingAssociative.combine(x.compare(a, b), y.compare(a, b)))
   )
 }
@@ -26,9 +24,16 @@ export function getAssociative<A = never>(): Associative<Ord<A>> {
  * - its `combine(ord2)(ord1)` operation will order first by `ord1`, and then by `ord2`
  * - its `empty` value is an `Ord` that always considers compared elements equal
  */
-export function getIdentity<A = never>(): Identity<Ord<A>> {
-  return makeIdentity(
+export function getIdentity<A = never>(): I.Identity<Ord<A>> {
+  return I.makeIdentity(
     makeOrd(() => 0),
     getAssociative<A>().combine
   )
+}
+
+/**
+ * Order by first, second, third, etc
+ */
+export function consecutive<A>(...ords: Ord<A>[]) {
+  return I.fold(getIdentity<A>())(ords)
 }
