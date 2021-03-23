@@ -272,20 +272,6 @@ describe("RedBlackTree", () => {
 
     expect(Array.from(RB.keys_(tree))).toEqual([-2, -1, 0, 1, 3])
   })
-  it("keys", () => {
-    const tree = pipe(
-      RB.make<number, string>(Ord.number),
-      RB.insert(1, "a"),
-      RB.insert(0, "b"),
-      RB.insert(-1, "c"),
-      RB.insert(-2, "d"),
-      RB.insert(3, "e")
-    )
-
-    expect(RB.size(tree)).toEqual(5)
-
-    expect(Array.from(RB.keys_(tree))).toEqual([-2, -1, 0, 1, 3])
-  })
   it("begin/end", () => {
     const tree = pipe(
       RB.make<number, string>(Ord.number),
@@ -389,10 +375,37 @@ describe("RedBlackTree", () => {
       RB.insert(1, "a"),
       RB.insert(2, "c"),
       RB.insert(1, "b"),
-      RB.insert(3, "d")
+      RB.insert(3, "d"),
+      RB.insert(1, "e")
     )
 
-    expect(RB.find_(tree, 1)).toEqual(["a", "b"])
+    expect(RB.find_(tree, 1)).toEqual(["e", "b", "a"])
+  })
+  it("find Eq/Ord", () => {
+    class Key {
+      constructor(readonly n: number, readonly s: string) {}
+    }
+    const tree = pipe(
+      RB.make<Key, string>(
+        Ord.contramap_(Ord.number, (_) => _.n),
+        Equal.struct({ n: Equal.number, s: Equal.string })
+      ),
+      RB.insert(new Key(1, "0"), "a"),
+      RB.insert(new Key(2, "0"), "c"),
+      RB.insert(new Key(1, "1"), "b"),
+      RB.insert(new Key(3, "0"), "d"),
+      RB.insert(new Key(1, "0"), "e"),
+      RB.insert(new Key(1, "0"), "f"),
+      RB.insert(new Key(1, "1"), "g")
+    )
+    expect(Array.from(RB.values_(tree))).toEqual(["g", "f", "e", "b", "a", "c", "d"])
+    expect(RB.find_(tree, new Key(1, "0"))).toEqual(["f", "e", "a"])
+    expect(
+      Array.from(RB.values_(pipe(tree, RB.removeFirst(new Key(1, "1")))))
+    ).toEqual(["f", "e", "b", "a", "c", "d"])
+    expect(
+      Array.from(RB.values_(pipe(tree, RB.removeFirst(new Key(1, "0")))))
+    ).toEqual(["g", "e", "b", "a", "c", "d"])
   })
 })
 
@@ -410,5 +423,31 @@ describe("SortedSet", () => {
         Array.from
       )
     ).toEqual([0, 1, 2, 3, 4])
+  })
+  it("use sortedSet with different Eq", () => {
+    class Key {
+      constructor(readonly n: number, readonly s: string) {}
+    }
+    const set = pipe(
+      SS.make<Key>(
+        Ord.contramap_(Ord.number, (_) => _.n),
+        Equal.struct({ n: Equal.number, s: Equal.string })
+      ),
+      SS.add(new Key(2, "0")),
+      SS.add(new Key(0, "0")),
+      SS.add(new Key(1, "0")),
+      SS.add(new Key(4, "0")),
+      SS.add(new Key(0, "0")),
+      SS.add(new Key(3, "0")),
+      SS.add(new Key(0, "1"))
+    )
+    expect(Array.from(set)).toEqual([
+      new Key(0, "1"),
+      new Key(0, "0"),
+      new Key(1, "0"),
+      new Key(2, "0"),
+      new Key(3, "0"),
+      new Key(4, "0")
+    ])
   })
 })

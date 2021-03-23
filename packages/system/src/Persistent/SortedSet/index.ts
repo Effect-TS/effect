@@ -18,8 +18,8 @@ export class SortedSet<V> implements Iterable<V> {
   }
 }
 
-export function make<V>(K: Ord<V>) {
-  return new SortedSet(RB.make(K))
+export function make<V>(K: Ord<V>, Eq?: Equal<V>) {
+  return new SortedSet(RB.make(K, Eq))
 }
 
 export function add_<V>(set: SortedSet<V>, v: V) {
