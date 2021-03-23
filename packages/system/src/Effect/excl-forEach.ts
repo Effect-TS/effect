@@ -812,7 +812,8 @@ export function fiberWaitAll<E, A>(as: Iterable<Fiber.Fiber<E, A>>, __trace?: st
  */
 export function releaseMapReleaseAll(
   exit: Exit<any, any>,
-  execStrategy: ExecutionStrategy
+  execStrategy: ExecutionStrategy,
+  __trace?: string
 ): (_: ReleaseMap) => UIO<any> {
   return (_: ReleaseMap) =>
     pipe(
@@ -827,8 +828,10 @@ export function releaseMapReleaseAll(
               case "Sequential": {
                 return [
                   core.chain_(
-                    forEach_(Array.from(s.finalizers()).reverse(), ([_, f]) =>
-                      core.result(f(exit))
+                    forEach_(
+                      Array.from(s.finalizers()).reverse(),
+                      ([_, f]) => core.result(f(exit)),
+                      __trace
                     ),
                     (e) => done(O.getOrElse_(Ex.collectAll(...e), () => Ex.succeed([])))
                   ),
@@ -838,8 +841,10 @@ export function releaseMapReleaseAll(
               case "Parallel": {
                 return [
                   core.chain_(
-                    forEachPar_(Array.from(s.finalizers()).reverse(), ([_, f]) =>
-                      core.result(f(exit))
+                    forEachPar_(
+                      Array.from(s.finalizers()).reverse(),
+                      ([_, f]) => core.result(f(exit)),
+                      __trace
                     ),
                     (e) =>
                       done(O.getOrElse_(Ex.collectAllPar(...e), () => Ex.succeed([])))
@@ -853,7 +858,8 @@ export function releaseMapReleaseAll(
                     forEachParN_(
                       Array.from(s.finalizers()).reverse(),
                       execStrategy.n,
-                      ([_, f]) => core.result(f(exit))
+                      ([_, f]) => core.result(f(exit)),
+                      __trace
                     ),
                     (e) =>
                       done(O.getOrElse_(Ex.collectAllPar(...e), () => Ex.succeed([])))

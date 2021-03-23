@@ -41,7 +41,6 @@ import { succeed } from "../succeed"
 import { absolve } from "./absolve"
 import { environment } from "./environment"
 import { foldM_ } from "./foldM"
-import { gen } from "./gen"
 import { halt } from "./halt"
 import * as provideAll from "./provideAll"
 import { releaseMap } from "./releaseMap"
@@ -774,10 +773,12 @@ export function isSuccess<R, E, A>(self: Managed<R, E, A>, __trace?: string) {
 
 /**
  * Depending on the environment execute this or the other effect
+ *
+ * @dataFirst join_
  */
-export function join<R1, E1, A1>(that: Managed<R1, E1, A1>) {
+export function join<R1, E1, A1>(that: Managed<R1, E1, A1>, __trace?: string) {
   return <R, E, A>(self: Managed<R, E, A>): Managed<E.Either<R, R1>, E | E1, A | A1> =>
-    join_(self, that)
+    join_(self, that, __trace)
 }
 
 /**
@@ -785,28 +786,31 @@ export function join<R1, E1, A1>(that: Managed<R1, E1, A1>) {
  */
 export function join_<R, E, A, R1, E1, A1>(
   self: Managed<R, E, A>,
-  that: Managed<R1, E1, A1>
+  that: Managed<R1, E1, A1>,
+  __trace?: string
 ): Managed<E.Either<R, R1>, E | E1, A | A1> {
-  return gen(function* (_) {
-    const either = yield* _(environment<E.Either<R, R1>>())
-    const a1 = yield* _(
-      E.fold_(
-        either,
+  return pipe(
+    environment<E.Either<R, R1>>(),
+    core.chain(
+      E.fold(
         (r): IO<E | E1, A | A1> => provideAll.provideAll(r)(self),
         (r1) => provideAll.provideAll(r1)(that)
-      )
+      ),
+      __trace
     )
-    return a1
-  })
+  )
 }
 
 /**
  * Depending on provided environment returns either this one or the other effect.
+ *
+ * @dataFirst joinEither_
  */
-export function joinEither<R2, E2, A2>(that: Managed<R2, E2, A2>) {
+export function joinEither<R2, E2, A2>(that: Managed<R2, E2, A2>, __trace?: string) {
   return <R, E, A>(
     self: Managed<R, E, A>
-  ): Managed<E.Either<R, R2>, E | E2, E.Either<A, A2>> => joinEither_(self, that)
+  ): Managed<E.Either<R, R2>, E | E2, E.Either<A, A2>> =>
+    joinEither_(self, that, __trace)
 }
 
 /**
@@ -814,29 +818,30 @@ export function joinEither<R2, E2, A2>(that: Managed<R2, E2, A2>) {
  */
 export function joinEither_<R, E, A, R2, E2, A2>(
   self: Managed<R, E, A>,
-  that: Managed<R2, E2, A2>
+  that: Managed<R2, E2, A2>,
+  __trace?: string
 ): Managed<E.Either<R, R2>, E | E2, E.Either<A, A2>> {
-  return gen(function* (_) {
-    const e = yield* _(environment<E.Either<R, R2>>())
-    const r = yield* _(
-      E.fold_(
-        e,
+  return pipe(
+    environment<E.Either<R, R2>>(),
+    core.chain(
+      E.fold(
         (r0): IO<E | E2, E.Either<A, A2>> =>
           provideAll.provideAll_(core.map_(self, E.left), r0),
         (r1) => provideAll.provideAll_(core.map_(that, E.right), r1)
-      )
+      ),
+      __trace
     )
-    return r
-  })
+  )
 }
 
 /**
  * Join self selectively with C
  */
-export function identityLeft<C>() {
+export function identityLeft<C>(__trace?: string) {
   return <R, E, A>(
     self: Managed<R, E, A>
-  ): Managed<E.Either<R, C>, E, E.Either<A, C>> => joinEither_(self, environment<C>())
+  ): Managed<E.Either<R, C>, E, E.Either<A, C>> =>
+    joinEither_(self, environment<C>(), __trace)
 }
 
 /**
@@ -845,18 +850,25 @@ export function identityLeft<C>() {
  */
 export function effectPartial<E, A>(
   f: () => A,
-  onThrow: (u: unknown) => E
+  onThrow: (u: unknown) => E,
+  __trace?: string
 ): Managed<unknown, E, A> {
-  return fromEffect(T.effectPartial(f, onThrow))
+  return fromEffect(T.effectPartial(f, onThrow), __trace)
 }
 
 /**
  * Returns an effect whose success is mapped by the specified side effecting
  * `f` function, translating any thrown exceptions into typed failed effects.
+ *
+ * @dataFirst mapEffectWith_
  */
-export function mapEffectWith<E2, A, B>(onThrow: (u: unknown) => E2, f: (a: A) => B) {
+export function mapEffectWith<E2, A, B>(
+  onThrow: (u: unknown) => E2,
+  f: (a: A) => B,
+  __trace?: string
+) {
   return <R, E>(self: Managed<R, E, A>): Managed<R, E | E2, B> =>
-    mapEffectWith_(self, onThrow, f)
+    mapEffectWith_(self, onThrow, f, __trace)
 }
 
 /**
@@ -866,12 +878,14 @@ export function mapEffectWith<E2, A, B>(onThrow: (u: unknown) => E2, f: (a: A) =
 export function mapEffectWith_<R, E, E2, A, B>(
   self: Managed<R, E, A>,
   onThrow: (u: unknown) => E2,
-  f: (a: A) => B
+  f: (a: A) => B,
+  __trace?: string
 ): Managed<R, E | E2, B> {
   return foldM_(
     self,
     (e) => core.fail(e),
-    (a) => effectPartial(() => f(a), onThrow)
+    (a) => effectPartial(() => f(a), onThrow),
+    __trace
   )
 }
 
@@ -881,17 +895,21 @@ export function mapEffectWith_<R, E, E2, A, B>(
  */
 export function mapEffect_<R, E, A, B>(
   self: Managed<R, E, A>,
-  f: (a: A) => B
+  f: (a: A) => B,
+  __trace?: string
 ): Managed<R, unknown, B> {
-  return mapEffectWith_(self, identity, f)
+  return mapEffectWith_(self, identity, f, __trace)
 }
 
 /**
  * Returns an effect whose success is mapped by the specified side effecting
  * `f` function, translating any thrown exceptions into typed failed effects.
+ *
+ * @dataFirst mapEffect_
  */
-export function mapEffect<A, B>(f: (a: A) => B) {
-  return <R, E>(self: Managed<R, E, A>): Managed<R, unknown, B> => mapEffect_(self, f)
+export function mapEffect<A, B>(f: (a: A) => B, __trace?: string) {
+  return <R, E>(self: Managed<R, E, A>): Managed<R, unknown, B> =>
+    mapEffect_(self, f, __trace)
 }
 
 /**
@@ -900,20 +918,29 @@ export function mapEffect<A, B>(f: (a: A) => B) {
  * are not interrupted between running preallocate and actually acquiring
  * the resource as you might leak otherwise.
  */
-export function preallocate<R, E, A>(self: Managed<R, E, A>): T.Effect<R, E, UIO<A>> {
+export function preallocate<R, E, A>(
+  self: Managed<R, E, A>,
+  __trace?: string
+): T.Effect<R, E, UIO<A>> {
   return T.uninterruptibleMask(({ restore }) =>
-    T.gen(function* (_) {
-      const releaseMap = yield* _(makeReleaseMap.makeReleaseMap)
-      const tp = yield* _(
-        T.result(restore(T.provideSome_(self.effect, (r: R) => tuple(r, releaseMap))))
-      )
-      const preallocated = yield* _(
+    pipe(
+      T.do,
+      T.bind("releaseMap", () => makeReleaseMap.makeReleaseMap),
+      T.bind("tp", ({ releaseMap }) =>
+        T.result(
+          restore(
+            T.provideSome_(self.effect, (r: R) => tuple(r, releaseMap)),
+            __trace
+          )
+        )
+      ),
+      T.bind("preallocated", ({ releaseMap, tp }) =>
         Ex.foldM_(
           tp,
           (c) =>
             pipe(
               releaseMap,
-              releaseAll.releaseAll(Ex.fail(c), T.sequential),
+              releaseAll.releaseAll(Ex.fail(c), T.sequential, __trace),
               T.andThen(T.halt(c))
             ),
           ([release, a]) =>
@@ -925,10 +952,9 @@ export function preallocate<R, E, A>(self: Managed<R, E, A>): T.Effect<R, E, UIO
               )
             )
         )
-      )
-
-      return preallocated
-    })
+      ),
+      T.map(({ preallocated }) => preallocated)
+    )
   )
 }
 
