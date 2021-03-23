@@ -40,7 +40,7 @@ import * as releaseAll from "../ReleaseMap/releaseAll"
 import { succeed } from "../succeed"
 import { absolve } from "./absolve"
 import { environment } from "./environment"
-import { foldM_ } from "./foldM_"
+import { foldM_ } from "./foldM"
 import { gen } from "./gen"
 import { halt } from "./halt"
 import * as provideAll from "./provideAll"
@@ -50,36 +50,56 @@ import { suspend } from "./suspend"
 /**
  * Attempts to convert defects into a failure, throwing away all information
  * about the cause of the failure.
+ *
+ * @dataFirst absorb_
  */
-export function absorb<E>(f: (e: E) => unknown) {
-  return <R, A>(self: Managed<R, E, A>) =>
-    foldM_(sandbox(self), (c) => core.fail(C.squash(f)(c)), succeed)
+export function absorb<E>(f: (e: E) => unknown, __trace?: string) {
+  return <R, A>(self: Managed<R, E, A>) => absorb_(self, f, __trace)
+}
+
+/**
+ * Attempts to convert defects into a failure, throwing away all information
+ * about the cause of the failure.
+ */
+export function absorb_<R, A, E>(
+  self: Managed<R, E, A>,
+  f: (e: E) => unknown,
+  __trace?: string
+) {
+  return foldM_(sandbox(self), (c) => core.fail(C.squash(f)(c)), succeed, __trace)
 }
 
 /**
  * Unwraps the optional success of this effect, but can fail with None value.
  */
-export function get<R, A>(self: Managed<R, never, O.Option<A>>) {
+export function get<R, A>(self: Managed<R, never, O.Option<A>>, __trace?: string) {
   return absolve(
     core.map_(
       self,
       E.fromOption(() => O.none)
-    )
+    ),
+    __trace
   )
 }
 
 /**
  * Returns an effect whose failure is mapped by the specified `f` function.
  */
-export function mapError_<R, A, E, E2>(self: Managed<R, E, A>, f: (e: E) => E2) {
-  return new Managed(T.mapError_(self.effect, f))
+export function mapError_<R, A, E, E2>(
+  self: Managed<R, E, A>,
+  f: (e: E) => E2,
+  __trace?: string
+) {
+  return new Managed(T.mapError_(self.effect, f, __trace))
 }
 
 /**
  * Returns an effect whose failure is mapped by the specified `f` function.
+ *
+ * @dataFirst mapError_
  */
-export function mapError<E, E2>(f: (e: E) => E2) {
-  return <R, A>(self: Managed<R, E, A>) => mapError_(self, f)
+export function mapError<E, E2>(f: (e: E) => E2, __trace?: string) {
+  return <R, A>(self: Managed<R, E, A>) => mapError_(self, f, __trace)
 }
 
 /**
@@ -87,40 +107,54 @@ export function mapError<E, E2>(f: (e: E) => E2) {
  */
 export function mapErrorCause_<R, A, E, E2>(
   self: Managed<R, E, A>,
-  f: (e: C.Cause<E>) => C.Cause<E2>
+  f: (e: C.Cause<E>) => C.Cause<E2>,
+  __trace?: string
 ) {
-  return new Managed(T.mapErrorCause_(self.effect, f))
+  return new Managed(T.mapErrorCause_(self.effect, f, __trace))
 }
 
 /**
  * Returns an effect whose full failure is mapped by the specified `f` function.
+ *
+ * @dataFirst mapErrorCause_
  */
-export function mapErrorCause<E, E2>(f: (e: C.Cause<E>) => C.Cause<E2>) {
-  return <R, A>(self: Managed<R, E, A>) => mapErrorCause_(self, f)
+export function mapErrorCause<E, E2>(
+  f: (e: C.Cause<E>) => C.Cause<E2>,
+  __trace?: string
+) {
+  return <R, A>(self: Managed<R, E, A>) => mapErrorCause_(self, f, __trace)
 }
 
 /**
  * Returns a memoized version of the specified managed.
  */
-export function memoize<R, E, A>(self: Managed<R, E, A>): UIO<Managed<R, E, A>> {
-  return core.mapM_(releaseMap, (finalizers) =>
-    T.gen(function* (_) {
-      const promise = yield* _(P.make<E, A>())
-      const complete = yield* _(
-        T.once(
-          T.accessM((r: R) =>
-            pipe(
-              self.effect,
-              T.provideAll(tuple(r, finalizers)),
-              T.map(([_, a]) => a),
-              T.to(promise)
+export function memoize<R, E, A>(
+  self: Managed<R, E, A>,
+  __trace?: string
+): UIO<Managed<R, E, A>> {
+  return core.mapM_(
+    releaseMap,
+    (finalizers) =>
+      pipe(
+        T.do,
+        T.bind("promise", () => P.make<E, A>()),
+        T.bind("complete", ({ promise }) =>
+          T.once(
+            T.accessM((r: R) =>
+              pipe(
+                self.effect,
+                T.provideAll(tuple(r, finalizers)),
+                T.map(([_, a]) => a),
+                T.to(promise)
+              )
             )
           )
+        ),
+        T.map(({ complete, promise }) =>
+          pipe(complete, T.andThen(P.await(promise)), T.toManaged)
         )
-      )
-
-      return pipe(complete, T.andThen(P.await(promise)), T.toManaged)
-    })
+      ),
+    __trace
   )
 }
 
@@ -128,8 +162,8 @@ export function memoize<R, E, A>(self: Managed<R, E, A>): UIO<Managed<R, E, A>> 
  * Returns a new effect where the error channel has been merged into the
  * success channel to their common combined type.
  */
-export function merge<R, E, A>(self: Managed<R, E, A>) {
-  return foldM_(self, succeed, succeed)
+export function merge<R, E, A>(self: Managed<R, E, A>, __trace?: string) {
+  return foldM_(self, succeed, succeed, __trace)
 }
 
 /**
@@ -141,7 +175,8 @@ export const unit = suspend(() => fromEffect(T.unit))
  * Requires the option produced by this value to be `None`.
  */
 export function none<R, E, A>(
-  self: Managed<R, E, O.Option<A>>
+  self: Managed<R, E, O.Option<A>>,
+  __trace?: string
 ): Managed<R, O.Option<E>, void> {
   return foldM_(
     self,
@@ -149,7 +184,8 @@ export function none<R, E, A>(
     O.fold(
       () => unit,
       () => core.fail(O.none)
-    )
+    ),
+    __trace
   )
 }
 
@@ -161,12 +197,14 @@ export function none<R, E, A>(
 export function fold_<R, E, A, B, C>(
   self: Managed<R, E, A>,
   onFail: (e: E) => B,
-  onSuccess: (a: A) => C
+  onSuccess: (a: A) => C,
+  __trace?: string
 ) {
   return foldM_(
     self,
     (x) => pipe(x, onFail, succeed),
-    (x) => pipe(x, onSuccess, succeed)
+    (x) => pipe(x, onSuccess, succeed),
+    __trace
   )
 }
 
@@ -174,63 +212,80 @@ export function fold_<R, E, A, B, C>(
  * Folds over the failure value or the success value to yield an effect that
  * does not fail, but succeeds with the value returned by the left or right
  * function passed to `fold`.
+ *
+ * @dataFirst fold_
  */
-export function fold<E, A, B, C>(onFail: (e: E) => B, onSuccess: (a: A) => C) {
-  return <R>(self: Managed<R, E, A>) => fold_(self, onFail, onSuccess)
+export function fold<E, A, B, C>(
+  onFail: (e: E) => B,
+  onSuccess: (a: A) => C,
+  __trace?: string
+) {
+  return <R>(self: Managed<R, E, A>) => fold_(self, onFail, onSuccess, __trace)
 }
 
 /**
  * Executes this effect, skipping the error but returning optionally the success.
  */
 export function option<R, E, A>(
-  self: Managed<R, E, A>
+  self: Managed<R, E, A>,
+  __trace?: string
 ): Managed<R, never, O.Option<A>> {
-  return fold_(self, () => O.none, O.some)
+  return fold_(self, () => O.none, O.some, __trace)
 }
 
 /**
  * Converts an option on errors into an option on values.
  */
 export function optional<R, E, A>(
-  self: Managed<R, O.Option<E>, A>
+  self: Managed<R, O.Option<E>, A>,
+  __trace?: string
 ): Managed<R, E, O.Option<A>> {
   return foldM_(
     self,
     O.fold(() => succeed(O.none), core.fail),
-    (x) => pipe(x, O.some, succeed)
+    (x) => pipe(x, O.some, succeed),
+    __trace
   )
 }
 
 /**
  * Keeps none of the errors, and terminates the fiber with them, using
  * the specified function to convert the `E` into a `Throwable`.
+ *
+ * @dataFirst orDieWith_
  */
-export function orDieWith<E>(f: (e: E) => unknown) {
-  return <R, A>(self: Managed<R, E, A>) => new Managed(T.orDieWith_(self.effect, f))
+export function orDieWith<E>(f: (e: E) => unknown, __trace?: string) {
+  return <R, A>(self: Managed<R, E, A>) => orDieWith_(self, f, __trace)
 }
 
 /**
  * Keeps none of the errors, and terminates the fiber with them, using
  * the specified function to convert the `E` into a `Throwable`.
  */
-export function orDieWith_<R, E, A>(self: Managed<R, E, A>, f: (e: E) => unknown) {
-  return new Managed(T.orDieWith_(self.effect, f))
+export function orDieWith_<R, E, A>(
+  self: Managed<R, E, A>,
+  f: (e: E) => unknown,
+  __trace?: string
+) {
+  return new Managed(T.orDieWith_(self.effect, f, __trace))
 }
 
 /**
  * Translates effect failure into death of the fiber, making all failures unchecked and
  * not a part of the type of the effect.
  */
-export function orDie<R, E, A>(self: Managed<R, E, A>) {
-  return orDieWith_(self, identity)
+export function orDie<R, E, A>(self: Managed<R, E, A>, __trace?: string) {
+  return orDieWith_(self, identity, __trace)
 }
 
 /**
  * Executes this effect and returns its value, if it succeeds, but
  * otherwise executes the specified effect.
+ *
+ * @dataFirst orElse_
  */
-export function orElse<R2, E2, A2>(that: () => Managed<R2, E2, A2>) {
-  return <R, E, A>(self: Managed<R, E, A>) => orElse_(self, that)
+export function orElse<R2, E2, A2>(that: () => Managed<R2, E2, A2>, __trace?: string) {
+  return <R, E, A>(self: Managed<R, E, A>) => orElse_(self, that, __trace)
 }
 
 /**
@@ -239,34 +294,46 @@ export function orElse<R2, E2, A2>(that: () => Managed<R2, E2, A2>) {
  */
 export function orElse_<R, E, A, R2, E2, A2>(
   self: Managed<R, E, A>,
-  that: () => Managed<R2, E2, A2>
+  that: () => Managed<R2, E2, A2>,
+  __trace?: string
 ) {
-  return foldM_(self, () => that(), succeed)
+  return foldM_(self, () => that(), succeed, __trace)
+}
+
+/**
+ * Executes this effect and returns its value, if it succeeds, but
+ * otherwise fails with the specified error.
+ *
+ * @dataFirst orElseFail_
+ */
+export function orElseFail<E2>(e: E2, __trace?: string) {
+  return <R, E, A>(self: Managed<R, E, A>) => orElseFail_(self, e, __trace)
 }
 
 /**
  * Executes this effect and returns its value, if it succeeds, but
  * otherwise fails with the specified error.
  */
-export function orElseFail<E2>(e: E2) {
-  return <R, E, A>(self: Managed<R, E, A>) => orElseFail_(self, e)
-}
-
-/**
- * Executes this effect and returns its value, if it succeeds, but
- * otherwise fails with the specified error.
- */
-export function orElseFail_<R, E, A, E2>(self: Managed<R, E, A>, e: E2) {
-  return orElse_(self, () => core.fail(e))
+export function orElseFail_<R, E, A, E2>(
+  self: Managed<R, E, A>,
+  e: E2,
+  __trace?: string
+) {
+  return orElse_(self, () => core.fail(e), __trace)
 }
 
 /**
  * Executes this effect and returns its value, if it succeeds, but
  * otherwise executes the specified effect.
+ *
+ * @dataFirst orElseEither_
  */
-export function orElseEither<R2, E2, A2>(that: () => Managed<R2, E2, A2>) {
+export function orElseEither<R2, E2, A2>(
+  that: () => Managed<R2, E2, A2>,
+  __trace?: string
+) {
   return <R, E, A>(self: Managed<R, E, A>): Managed<R & R2, E2, E.Either<A2, A>> =>
-    orElseEither_(self, that)
+    orElseEither_(self, that, __trace)
 }
 
 /**
@@ -275,12 +342,14 @@ export function orElseEither<R2, E2, A2>(that: () => Managed<R2, E2, A2>) {
  */
 export function orElseEither_<R, E, A, R2, E2, A2>(
   self: Managed<R, E, A>,
-  that: () => Managed<R2, E2, A2>
+  that: () => Managed<R2, E2, A2>,
+  __trace?: string
 ): Managed<R & R2, E2, E.Either<A2, A>> {
   return foldM_(
     self,
     () => core.map_(that(), E.left),
-    (x) => pipe(x, E.right, succeed)
+    (x) => pipe(x, E.right, succeed),
+    __trace
   )
 }
 
@@ -291,14 +360,16 @@ export function orElseEither_<R, E, A, R2, E2, A2>(
  */
 export function orElseOptional_<R, E, A, R2, E2, A2>(
   self: Managed<R, O.Option<E>, A>,
-  that: () => Managed<R2, O.Option<E2>, A2>
+  that: () => Managed<R2, O.Option<E2>, A2>,
+  __trace?: string
 ): Managed<R & R2, O.Option<E | E2>, A | A2> {
   return catchAll_(
     self,
     O.fold(
       () => that(),
       (e) => core.fail(O.some<E | E2>(e))
-    )
+    ),
+    __trace
   )
 }
 
@@ -308,26 +379,35 @@ export function orElseOptional_<R, E, A, R2, E2, A2>(
  */
 export function orElseSucceed_<R, E, A, A2>(
   self: Managed<R, O.Option<E>, A>,
-  that: () => A2
+  that: () => A2,
+  __trace?: string
 ): Managed<R, O.Option<E>, A | A2> {
-  return orElse_(self, () => succeed(that()))
+  return orElse_(self, () => succeed(that()), __trace)
 }
 
 /**
  * Executes this effect and returns its value, if it succeeds, but
  * otherwise succeeds with the specified value.
+ *
+ * @dataFirst orElseSucceed_
  */
-export function orElseSucceed<R, E, A, A2>(that: () => A2) {
-  return (self: Managed<R, O.Option<E>, A>) => orElseSucceed_(self, that)
+export function orElseSucceed<R, E, A, A2>(that: () => A2, __trace?: string) {
+  return (self: Managed<R, O.Option<E>, A>) => orElseSucceed_(self, that, __trace)
 }
 
 /**
  * Returns an effect that will produce the value of this effect, unless it
  * fails with the `None` value, in which case it will produce the value of
  * the specified effect.
+ *
+ * @dataFirst orElseOptional_
  */
-export function orElseOptional<R2, E2, A2>(that: () => Managed<R2, O.Option<E2>, A2>) {
-  return <R, E, A>(self: Managed<R, O.Option<E>, A>) => orElseOptional_(self, that)
+export function orElseOptional<R2, E2, A2>(
+  that: () => Managed<R2, O.Option<E2>, A2>,
+  __trace?: string
+) {
+  return <R, E, A>(self: Managed<R, O.Option<E>, A>) =>
+    orElseOptional_(self, that, __trace)
 }
 
 /**
@@ -335,16 +415,22 @@ export function orElseOptional<R2, E2, A2>(that: () => Managed<R2, O.Option<E2>,
  */
 export function catchAll_<R, E, A, R2, E2, A2>(
   self: Managed<R, E, A>,
-  f: (e: E) => Managed<R2, E2, A2>
+  f: (e: E) => Managed<R2, E2, A2>,
+  __trace?: string
 ) {
-  return foldM_(self, f, succeed)
+  return foldM_(self, f, succeed, __trace)
 }
 
 /**
  * Recovers from all errors.
+ *
+ * @dataFirst catchAll_
  */
-export function catchAll<E, R2, E2, A2>(f: (e: E) => Managed<R2, E2, A2>) {
-  return <R, A>(self: Managed<R, E, A>) => catchAll_(self, f)
+export function catchAll<E, R2, E2, A2>(
+  f: (e: E) => Managed<R2, E2, A2>,
+  __trace?: string
+) {
+  return <R, A>(self: Managed<R, E, A>) => catchAll_(self, f, __trace)
 }
 
 /**
@@ -352,18 +438,22 @@ export function catchAll<E, R2, E2, A2>(f: (e: E) => Managed<R2, E2, A2>) {
  */
 export function catchAllCause_<R, E, A, R2, E2, A2>(
   self: Managed<R, E, A>,
-  f: (e: C.Cause<E>) => Managed<R2, E2, A2>
+  f: (e: C.Cause<E>) => Managed<R2, E2, A2>,
+  __trace?: string
 ) {
-  return core.foldCauseM_(self, f, succeed)
+  return core.foldCauseM_(self, f, succeed, __trace)
 }
 
 /**
  * Recovers from all errors with provided Cause.
+ *
+ * @dataFirst catchAllCause_
  */
 export function catchAllCause<E, R2, E2, A2>(
-  f: (e: C.Cause<E>) => Managed<R2, E2, A2>
+  f: (e: C.Cause<E>) => Managed<R2, E2, A2>,
+  __trace?: string
 ) {
-  return <R, A>(self: Managed<R, E, A>) => core.foldCauseM_(self, f, succeed)
+  return <R, A>(self: Managed<R, E, A>) => core.foldCauseM_(self, f, succeed, __trace)
 }
 
 /**
@@ -371,16 +461,26 @@ export function catchAllCause<E, R2, E2, A2>(
  */
 export function catchSome_<R, E, A, R2, E2, A2>(
   self: Managed<R, E, A>,
-  pf: (e: E) => O.Option<Managed<R2, E2, A2>>
+  pf: (e: E) => O.Option<Managed<R2, E2, A2>>,
+  __trace?: string
 ): Managed<R & R2, E | E2, A | A2> {
-  return catchAll_(self, (e) => O.getOrElse_(pf(e), () => core.fail<E | E2>(e)))
+  return catchAll_(
+    self,
+    (e) => O.getOrElse_(pf(e), () => core.fail<E | E2>(e)),
+    __trace
+  )
 }
 
 /**
  * Recovers from some or all of the error cases.
+ *
+ * @dataFirst catchSome_
  */
-export function catchSome<E, R2, E2, A2>(pf: (e: E) => O.Option<Managed<R2, E2, A2>>) {
-  return <R, A>(self: Managed<R, E, A>) => catchSome_(self, pf)
+export function catchSome<E, R2, E2, A2>(
+  pf: (e: E) => O.Option<Managed<R2, E2, A2>>,
+  __trace?: string
+) {
+  return <R, A>(self: Managed<R, E, A>) => catchSome_(self, pf, __trace)
 }
 
 /**
@@ -388,18 +488,26 @@ export function catchSome<E, R2, E2, A2>(pf: (e: E) => O.Option<Managed<R2, E2, 
  */
 export function catchSomeCause_<R, E, A, R2, E2, A2>(
   self: Managed<R, E, A>,
-  pf: (e: C.Cause<E>) => O.Option<Managed<R2, E2, A2>>
+  pf: (e: C.Cause<E>) => O.Option<Managed<R2, E2, A2>>,
+  __trace?: string
 ): Managed<R & R2, E | E2, A | A2> {
-  return catchAllCause_(self, (e) => O.getOrElse_(pf(e), () => halt<E | E2>(e)))
+  return catchAllCause_(
+    self,
+    (e) => O.getOrElse_(pf(e), () => halt<E | E2>(e)),
+    __trace
+  )
 }
 
 /**
  * Recovers from some or all of the error cases.
+ *
+ * @dataFirst catchSomeCause_
  */
 export function catchSomeCause<R, E, A, R2, E2, A2>(
-  pf: (e: C.Cause<E>) => O.Option<Managed<R2, E2, A2>>
+  pf: (e: C.Cause<E>) => O.Option<Managed<R2, E2, A2>>,
+  __trace?: string
 ) {
-  return (self: Managed<R, E, A>) => catchSomeCause_(self, pf)
+  return (self: Managed<R, E, A>) => catchSomeCause_(self, pf, __trace)
 }
 
 /**
@@ -409,20 +517,28 @@ export function catchSomeCause<R, E, A, R2, E2, A2>(
 export function continueOrFailM_<R, E, A, E1, R1, E2, B>(
   self: Managed<R, E, A>,
   e: () => E1,
-  pf: (a: A) => O.Option<Managed<R1, E2, B>>
+  pf: (a: A) => O.Option<Managed<R1, E2, B>>,
+  __trace?: string
 ): Managed<R & R1, E | E1 | E2, B> {
-  return core.chain_(self, (a) => O.getOrElse_(pf(a), () => core.fail<E1 | E2>(e())))
+  return core.chain_(
+    self,
+    (a) => O.getOrElse_(pf(a), () => core.fail<E1 | E2>(e())),
+    __trace
+  )
 }
 
 /**
  * Fail with `e` if the supplied `PartialFunction` does not match, otherwise
  * continue with the returned value.
+ *
+ * @dataFirst continueOrFailM
  */
 export function continueOrFailM<A, E1, R1, E2, B>(
   e: () => E1,
-  pf: (a: A) => O.Option<Managed<R1, E2, B>>
+  pf: (a: A) => O.Option<Managed<R1, E2, B>>,
+  __trace?: string
 ) {
-  return <R, E>(self: Managed<R, E, A>) => continueOrFailM_(self, e, pf)
+  return <R, E>(self: Managed<R, E, A>) => continueOrFailM_(self, e, pf, __trace)
 }
 
 /**
@@ -432,39 +548,61 @@ export function continueOrFailM<A, E1, R1, E2, B>(
 export function continueOrFail_<R, E, A, E1, B>(
   self: Managed<R, E, A>,
   e: () => E1,
-  pf: (a: A) => O.Option<B>
+  pf: (a: A) => O.Option<B>,
+  __trace?: string
 ): Managed<R, E | E1, B> {
-  return continueOrFailM_(self, e, (x) => pipe(x, pf, O.map(succeed)))
+  return continueOrFailM_(self, e, (x) => pipe(x, pf, O.map(succeed)), __trace)
 }
 
 /**
  * Fail with `e` if the supplied `PartialFunction` does not match, otherwise
  * succeed with the returned value.
+ *
+ * @dataFirst continueOrFail_
  */
-export function continueOrFail<A, E1, B>(e: () => E1, pf: (a: A) => O.Option<B>) {
-  return <R, E>(self: Managed<R, E, A>) => continueOrFail_(self, e, pf)
+export function continueOrFail<A, E1, B>(
+  e: () => E1,
+  pf: (a: A) => O.Option<B>,
+  __trace?: string
+) {
+  return <R, E>(self: Managed<R, E, A>) => continueOrFail_(self, e, pf, __trace)
 }
 
 /**
  * Provides some of the environment required to run this effect,
  * leaving the remainder `R0` and combining it automatically using spread.
  */
-export function provide<R>(r: R) {
+export function provide<R>(r: R, __trace?: string) {
   return <E, A, R0>(next: Managed<R & R0, E, A>): Managed<R0, E, A> =>
-    core.provideSome_(next, (r0: R0) => ({ ...r0, ...r }))
+    core.provideSome_(next, (r0: R0) => ({ ...r0, ...r }), __trace)
+}
+
+/**
+ * Executes the second effect and then provides its output as an environment to this effect
+ *
+ * @dataFirst compose_
+ */
+export function compose<A, E2, B>(that: Managed<A, E2, B>, __trace?: string) {
+  return <R, E>(self: Managed<R, E, A>) => compose_(self, that, __trace)
 }
 
 /**
  * Executes the second effect and then provides its output as an environment to this effect
  */
-export function compose<A, E2, B>(that: Managed<A, E2, B>) {
-  return <R, E>(self: Managed<R, E, A>) =>
-    gen(function* (_) {
-      const r1 = yield* _(environment<R>())
-      const r = yield* _(provideAll.provideAll(r1)(self))
-
-      return yield* _(provideAll.provideAll(r)(that))
-    })
+export function compose_<R, E, A, E2, B>(
+  self: Managed<R, E, A>,
+  that: Managed<A, E2, B>,
+  __trace?: string
+) {
+  return pipe(
+    environment<R>(),
+    core.chain((r1) =>
+      pipe(
+        provideAll.provideAll(r1)(self),
+        core.chain((r) => provideAll.provideAll(r)(that))
+      )
+    )
+  )
 }
 
 /**
@@ -472,24 +610,28 @@ export function compose<A, E2, B>(that: Managed<A, E2, B>) {
  * `Either`. The resulting effect cannot fail
  */
 export function either<R, E, A>(
-  self: Managed<R, E, A>
+  self: Managed<R, E, A>,
+  __trace?: string
 ): Managed<R, never, E.Either<E, A>> {
-  return fold_(self, E.left, E.right)
+  return fold_(self, E.left, E.right, __trace)
 }
 
 /**
  * Returns a Managed that ignores errors raised by the acquire effect and
  * runs it repeatedly until it eventually succeeds.
  */
-export function eventually<R, E, A>(self: Managed<R, E, A>): Managed<R, never, A> {
-  return new Managed(T.eventually(self.effect))
+export function eventually<R, E, A>(
+  self: Managed<R, E, A>,
+  __trace?: string
+): Managed<R, never, A> {
+  return new Managed(T.eventually(self.effect, __trace))
 }
 
 /**
  * Zips this effect with its environment
  */
-export function first<R, E, A>(self: Managed<R, E, A>) {
-  return core.zip_(self, environment<R>())
+export function first<R, E, A>(self: Managed<R, E, A>, __trace?: string) {
+  return core.zip_(self, environment<R>(), __trace)
 }
 
 /**
@@ -497,23 +639,29 @@ export function first<R, E, A>(self: Managed<R, E, A>) {
  */
 export function chainError_<R, E, A, R2, E2>(
   self: Managed<R, E, A>,
-  f: (e: E) => RIO<R2, E2>
+  f: (e: E) => RIO<R2, E2>,
+  __trace?: string
 ): Managed<R & R2, E2, A> {
-  return flipWith_(self, core.chain(f))
+  return flipWith_(self, core.chain(f, __trace))
 }
 
 /**
  * Effectfully map the error channel
+ *
+ * @dataFirst chainError_
  */
-export function chainError<E, R2, E2>(f: (e: E) => RIO<R2, E2>) {
-  return <R, A>(self: Managed<R, E, A>) => chainError_(self, f)
+export function chainError<E, R2, E2>(f: (e: E) => RIO<R2, E2>, __trace?: string) {
+  return <R, A>(self: Managed<R, E, A>) => chainError_(self, f, __trace)
 }
 
 /**
  * Flip the error and result
  */
-export function flip<R, E, A>(self: Managed<R, E, A>): Managed<R, A, E> {
-  return foldM_(self, succeed, core.fail)
+export function flip<R, E, A>(
+  self: Managed<R, E, A>,
+  __trace?: string
+): Managed<R, A, E> {
+  return foldM_(self, succeed, core.fail, __trace)
 }
 
 /**
@@ -521,18 +669,22 @@ export function flip<R, E, A>(self: Managed<R, E, A>): Managed<R, A, E> {
  */
 export function flipWith_<R, E, A, R2, E1, A1>(
   self: Managed<R, E, A>,
-  f: (_: Managed<R, A, E>) => Managed<R2, A1, E1>
+  f: (_: Managed<R, A, E>) => Managed<R2, A1, E1>,
+  __trace?: string
 ) {
-  return flip(f(flip(self)))
+  return flip(f(flip(self)), __trace)
 }
 
 /**
  * Flip the error and result, then apply an effectful function to the effect
+ *
+ * @dataFirst flipWith_
  */
 export function flipWith<R, E, A, R2, E1, A1>(
-  f: (_: Managed<R, A, E>) => Managed<R2, A1, E1>
+  f: (_: Managed<R, A, E>) => Managed<R2, A1, E1>,
+  __trace?: string
 ) {
-  return (self: Managed<R, E, A>) => flipWith_(self, f)
+  return (self: Managed<R, E, A>) => flipWith_(self, f, __trace)
 }
 
 /**
@@ -541,8 +693,11 @@ export function flipWith<R, E, A, R2, E1, A1>(
  *
  * This method can be used to "flatten" nested effects.
  */
-export function flatten<R2, E2, R, E, A>(self: Managed<R2, E2, Managed<R, E, A>>) {
-  return core.chain_(self, identity)
+export function flatten<R2, E2, R, E, A>(
+  self: Managed<R2, E2, Managed<R, E, A>>,
+  __trace?: string
+) {
+  return core.chain_(self, identity, __trace)
 }
 
 /**
@@ -551,8 +706,11 @@ export function flatten<R2, E2, R, E, A>(self: Managed<R2, E2, Managed<R, E, A>>
  *
  * This method can be used to "flatten" nested effects.
  */
-export function flattenM<R2, E2, R, E, A>(self: Managed<R2, E2, T.Effect<R, E, A>>) {
-  return core.mapM_(self, identity)
+export function flattenM<R2, E2, R, E, A>(
+  self: Managed<R2, E2, T.Effect<R, E, A>>,
+  __trace?: string
+) {
+  return core.mapM_(self, identity, __trace)
 }
 
 /**
@@ -561,44 +719,56 @@ export function flattenM<R2, E2, R, E, A>(self: Managed<R2, E2, T.Effect<R, E, A
 export function foldCause_<R, E, A, B, C>(
   self: Managed<R, E, A>,
   f: (e: C.Cause<E>) => B,
-  g: (a: A) => C
+  g: (a: A) => C,
+  __trace?: string
 ) {
-  return fold_(sandbox(self), f, g)
+  return fold_(sandbox(self), f, g, __trace)
 }
 
 /**
  * A more powerful version of `fold` that allows recovering from any kind of failure except interruptions.
+ *
+ * @dataFirst foldCause_
  */
-export function foldCause<E, A, B, C>(f: (e: C.Cause<E>) => B, g: (a: A) => C) {
-  return <R>(self: Managed<R, E, A>) => fold_(sandbox(self), f, g)
+export function foldCause<E, A, B, C>(
+  f: (e: C.Cause<E>) => B,
+  g: (a: A) => C,
+  __trace?: string
+) {
+  return <R>(self: Managed<R, E, A>) => fold_(sandbox(self), f, g, __trace)
 }
 
 /**
  * Returns a new effect that ignores the success or failure of this effect.
  */
-export function ignore<R, E, A>(self: Managed<R, E, A>): Managed<R, never, void> {
-  return fold_(self, constVoid, constVoid)
+export function ignore<R, E, A>(
+  self: Managed<R, E, A>,
+  __trace?: string
+): Managed<R, never, void> {
+  return fold_(self, constVoid, constVoid, __trace)
 }
 
 /**
  * Returns whether this managed effect is a failure.
  */
-export function isFailure<R, E, A>(self: Managed<R, E, A>) {
+export function isFailure<R, E, A>(self: Managed<R, E, A>, __trace?: string) {
   return fold_(
     self,
     () => true,
-    () => false
+    () => false,
+    __trace
   )
 }
 
 /**
  * Returns whether this managed effect is a success.
  */
-export function isSuccess<R, E, A>(self: Managed<R, E, A>) {
+export function isSuccess<R, E, A>(self: Managed<R, E, A>, __trace?: string) {
   return fold_(
     self,
     () => false,
-    () => true
+    () => true,
+    __trace
   )
 }
 
@@ -1927,20 +2097,23 @@ export function forEachUnitPar_<R, E, A, B>(
   f: (a: A) => Managed<R, E, B>,
   __trace?: string
 ): Managed<R, E, void> {
-  return core.mapM_(core.makeManagedReleaseMap(T.parallel), (parallelReleaseMap) => {
-    const makeInnerMap = T.provideSome_(
-      T.map_(core.makeManagedReleaseMap(T.sequential).effect, ([_, e]) => e),
-      (r) => tuple(r, parallelReleaseMap)
-    )
-    return T.forEachUnitPar_(as, (a) =>
-      T.chain_(makeInnerMap, (innerMap) =>
-        T.provideSome_(
-          T.map_(f(a).effect, ([_, a]) => a),
-          (r: R) => tuple(r, innerMap)
+  return core.mapM_(
+    core.makeManagedReleaseMap(T.parallel, __trace),
+    (parallelReleaseMap) => {
+      const makeInnerMap = T.provideSome_(
+        T.map_(core.makeManagedReleaseMap(T.sequential).effect, ([_, e]) => e),
+        (r) => tuple(r, parallelReleaseMap)
+      )
+      return T.forEachUnitPar_(as, (a) =>
+        T.chain_(makeInnerMap, (innerMap) =>
+          T.provideSome_(
+            T.map_(f(a).effect, ([_, a]) => a),
+            (r: R) => tuple(r, innerMap)
+          )
         )
       )
-    )
-  })
+    }
+  )
 }
 
 /**
@@ -1968,21 +2141,24 @@ export function forEachUnitParN_<R, E, A, B>(
   f: (a: A) => Managed<R, E, B>,
   __trace?: string
 ): Managed<R, E, void> {
-  return core.mapM_(core.makeManagedReleaseMap(T.parallel), (parallelReleaseMap) => {
-    const makeInnerMap = T.provideSome_(
-      T.map_(core.makeManagedReleaseMap(T.sequential).effect, ([_, e]) => e),
-      (r) => tuple(r, parallelReleaseMap)
-    )
+  return core.mapM_(
+    core.makeManagedReleaseMap(T.parallel, __trace),
+    (parallelReleaseMap) => {
+      const makeInnerMap = T.provideSome_(
+        T.map_(core.makeManagedReleaseMap(T.sequential).effect, ([_, e]) => e),
+        (r) => tuple(r, parallelReleaseMap)
+      )
 
-    return T.forEachUnitParN_(as, n, (a) =>
-      T.chain_(makeInnerMap, (innerMap) =>
-        T.provideSome_(
-          T.map_(f(a).effect, ([_, a]) => a),
-          (r: R) => tuple(r, innerMap)
+      return T.forEachUnitParN_(as, n, (a) =>
+        T.chain_(makeInnerMap, (innerMap) =>
+          T.provideSome_(
+            T.map_(f(a).effect, ([_, a]) => a),
+            (r: R) => tuple(r, innerMap)
+          )
         )
       )
-    )
-  })
+    }
+  )
 }
 
 /**
@@ -2081,16 +2257,19 @@ export function collectParN<A, R, E, B>(
  * Evaluate each effect in the structure from left to right, and collect the
  * results. For a parallel version, see `collectAllPar`.
  */
-export function collectAll<R, E, A>(as: Iterable<Managed<R, E, A>>) {
-  return forEach.forEach_(as, identity)
+export function collectAll<R, E, A>(as: Iterable<Managed<R, E, A>>, __trace?: string) {
+  return forEach.forEach_(as, identity, __trace)
 }
 
 /**
  * Evaluate each effect in the structure in parallel, and collect the
  * results. For a sequential version, see `collectAll`.
  */
-export function collectAllPar<R, E, A>(as: Iterable<Managed<R, E, A>>) {
-  return forEach.forEachPar_(as, identity)
+export function collectAllPar<R, E, A>(
+  as: Iterable<Managed<R, E, A>>,
+  __trace?: string
+) {
+  return forEach.forEachPar_(as, identity, __trace)
 }
 
 /**
@@ -2101,9 +2280,9 @@ export function collectAllPar<R, E, A>(as: Iterable<Managed<R, E, A>>) {
  *
  * @dataFirst collectAllParN_
  */
-export function collectAllParN(n: number) {
+export function collectAllParN(n: number, __trace?: string) {
   return <R, E, A>(as: Iterable<Managed<R, E, A>>) =>
-    forEach.forEachParN_(as, n, identity)
+    forEach.forEachParN_(as, n, identity, __trace)
 }
 
 /**
@@ -2112,16 +2291,23 @@ export function collectAllParN(n: number) {
  *
  * Unlike `collectAllPar`, this method will use at most `n` fibers.
  */
-export function collectAllParN_<R, E, A>(as: Iterable<Managed<R, E, A>>, n: number) {
-  return forEach.forEachParN_(as, n, identity)
+export function collectAllParN_<R, E, A>(
+  as: Iterable<Managed<R, E, A>>,
+  n: number,
+  __trace?: string
+) {
+  return forEach.forEachParN_(as, n, identity, __trace)
 }
 
 /**
  * Evaluate each effect in the structure from left to right, and discard the
  * results. For a parallel version, see `collectAllUnitPar`.
  */
-export function collectAllUnit<R, E, A>(as: Iterable<Managed<R, E, A>>) {
-  return forEach.forEachUnit_(as, identity)
+export function collectAllUnit<R, E, A>(
+  as: Iterable<Managed<R, E, A>>,
+  __trace?: string
+) {
+  return forEach.forEachUnit_(as, identity, __trace)
 }
 
 /**
@@ -2171,7 +2357,7 @@ export function collectAllWith_<R, E, A, B>(
   pf: (a: A) => O.Option<B>,
   __trace?: string
 ): Managed<R, E, readonly B[]> {
-  return core.map_(collectAll(as), (x) => pipe(x, A.map(pf), A.compact))
+  return core.map_(collectAll(as, __trace), (x) => pipe(x, A.map(pf), A.compact))
 }
 
 /**
@@ -2191,7 +2377,7 @@ export function collectAllWithPar_<R, E, A, B>(
   pf: (a: A) => O.Option<B>,
   __trace?: string
 ): Managed<R, E, readonly B[]> {
-  return core.map_(collectAllPar(as), (x) => pipe(x, A.map(pf), A.compact))
+  return core.map_(collectAllPar(as, __trace), (x) => pipe(x, A.map(pf), A.compact))
 }
 
 /**
@@ -2214,7 +2400,9 @@ export function collectAllWithParN_<R, E, A, B>(
   pf: (a: A) => O.Option<B>,
   __trace?: string
 ): Managed<R, E, readonly B[]> {
-  return core.map_(collectAllParN_(as, n), (x) => pipe(x, A.map(pf), A.compact))
+  return core.map_(collectAllParN_(as, n, __trace), (x) =>
+    pipe(x, A.map(pf), A.compact)
+  )
 }
 
 /**
@@ -2319,8 +2507,12 @@ export function reduce_<A, Z, R, E>(
   f: (z: Z, a: A) => Managed<R, E, Z>,
   __trace?: string
 ): Managed<R, E, Z> {
-  return A.reduce_(Array.from(i), succeed(zero) as Managed<R, E, Z>, (acc, el) =>
-    core.chain_(acc, (a) => f(a, el))
+  return suspend(
+    () =>
+      A.reduce_(Array.from(i), succeed(zero) as Managed<R, E, Z>, (acc, el) =>
+        core.chain_(acc, (a) => f(a, el))
+      ),
+    __trace
   )
 }
 
@@ -2346,8 +2538,12 @@ export function reduceRight_<A, Z, R, E>(
   f: (a: A, z: Z) => Managed<R, E, Z>,
   __trace?: string
 ): Managed<R, E, Z> {
-  return A.reduceRight_(Array.from(i), succeed(zero) as Managed<R, E, Z>, (el, acc) =>
-    core.chain_(acc, (a) => f(el, a))
+  return suspend(
+    () =>
+      A.reduceRight_(Array.from(i), succeed(zero) as Managed<R, E, Z>, (el, acc) =>
+        core.chain_(acc, (a) => f(el, a))
+      ),
+    __trace
   )
 }
 
