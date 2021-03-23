@@ -253,7 +253,9 @@ export function text(text: string): Doc<never> {
 }
 
 /**
- * A document containing a string of text.
+ * A document containing a string of text. Newline characters (`\n`)
+ * contained in the provided string will be disregarded (i.e. not
+ * rendered) in the output document.
  */
 export function string(str: string): Doc<never> {
   return cats(
@@ -577,9 +579,9 @@ export function nesting<A>(react: (level: number) => Doc<A>): Doc<A> {
  *
  * const doc = D.hsep([
  *   D.text('prefix'),
- *   D.pageWidth(
+ *   D.withPageWidth(
  *     PW.match({
- *       AvailablePerLine: (lw, rf) => D.brackets(D.text(`Width: ${lw}, ribbon fraction: ${rf}`)),
+ *       AvailablePerLine: (lw, rf) => D.brackets(D.text(`Width: ${lw}, Ribbon Fraction: ${rf}`)),
  *       Unbounded: () => D.empty
  *     })
  *   )
@@ -588,9 +590,9 @@ export function nesting<A>(react: (level: number) => Doc<A>): Doc<A> {
  * const example = D.vsep(A.map_([0, 4, 8], (n) => D.indent_(doc, n)))
  *
  * console.log(pipe(example, R.renderPretty(32)))
- * // prefix [Width: 32, ribbon fraction: 1]
- * //     prefix [Width: 32, ribbon fraction: 1]
- * //         prefix [Width: 32, ribbon fraction: 1]
+ * // prefix [Width: 32, Ribbon Fraction: 1]
+ * //     prefix [Width: 32, Ribbon Fraction: 1]
+ * //         prefix [Width: 32, Ribbon Fraction: 1]
  * ```
  */
 export function withPageWidth<A>(react: (pageWidth: PageWidth) => Doc<A>): Doc<A> {
