@@ -1185,6 +1185,10 @@ const flatten = <A>(doc: Doc<A>): Doc<A> => {
 function changesUponFlatteningRec<A>(x: Doc<A>): IO.IO<Flatten<Doc<A>>> {
   return IO.gen(function* (_) {
     switch (x._tag) {
+      case "Fail":
+        return F.neverFlat
+      case "Line":
+        return F.neverFlat
       case "FlatAlt":
         return F.flattened(flatten(x.right))
       case "Cat": {
@@ -1366,7 +1370,7 @@ export const fillSep: <A>(docs: Array<Doc<A>>) => Doc<A> = concatWith(
 )
 
 /**
- * The `sep` combinator will attempt to lay out a list of documents separated by `space`s.
+ * The `seps` combinator will attempt to lay out a list of documents separated by `space`s.
  * If the output does not fit the page, then the documents will be separated by newlines.
  * This is what differentiates it from `vsep`, which always lays out documents beneath one
  * another.
@@ -1378,7 +1382,7 @@ export const fillSep: <A>(docs: Array<Doc<A>>) => Doc<A> = concatWith(
  *
  * const doc = D.hsep([
  *   D.text('prefix'),
- *   D.sep(D.words('text to lay out'))
+ *   D.seps(D.words('text to lay out'))
  * ])
  *
  * console.log(R.renderPrettyDefault(doc))
@@ -1435,7 +1439,7 @@ export const vcat: <A>(docs: Array<Doc<A>>) => Doc<A> = concatWith(appendWithLin
 
 /**
  * The `fillCat` combinator concatenates all documents in a list horizontally by placing
- * a `space` between each pair of documents as long as they fit the page. Once the page
+ * a `empty` between each pair of documents as long as they fit the page. Once the page
  * width is exceeded, a `lineBreak` is inserted and the process is repeated for all
  * documents in the list.
  *
@@ -1447,7 +1451,7 @@ export const fillCat: <A>(docs: Array<Doc<A>>) => Doc<A> = concatWith(
 )
 
 /**
- * The `cat` combinator will attempt to lay out a list of documents separated by nothing.
+ * The `cats` combinator will attempt to lay out a list of documents separated by nothing.
  * If the output does not fit the page, then the documents will be separated by newlines.
  * This is what differentiates it from `vcat`, which always lays out documents beneath one
  * another.
@@ -1459,7 +1463,7 @@ export const fillCat: <A>(docs: Array<Doc<A>>) => Doc<A> = concatWith(
  *
  * const doc = D.hsep([
  *   D.text('Docs:'),
- *   D.cat(D.words('lorem ipsum dolor'))
+ *   D.cats(D.words('lorem ipsum dolor'))
  * ])
  *
  * console.log(R.renderPrettyDefault(doc))
@@ -1517,7 +1521,7 @@ export function catsT<Docs extends Array<Doc<any>>>(
  *
  * console.log(R.renderPrettyDefault(doc))
  * // let empty :: Doc
- * //     nest :: Int -> Doc -> Doc
+ * //     nest  :: Int -> Doc -> Doc
  * //     fillSep :: [Doc] -> Doc
  * ```
  *
@@ -1563,9 +1567,9 @@ export function fill_<A>(doc: Doc<A>, width: number): Doc<A> {
  *
  * console.log(R.renderPrettyDefault(doc))
  * // let empty :: Doc
- * //     nest :: Int -> Doc -> Doc
+ * //     nest  :: Int -> Doc -> Doc
  * //     fillSep
- * //          :: [Doc] -> Doc
+ * //           :: [Doc] -> Doc
  * ```
  *
  * @dataFirst fillBreak_
@@ -2034,7 +2038,7 @@ export function spaces(n: number): Doc<never> {
  * import * as D from '@effect-ts/printer/Core/Doc'
  * import * as R from '@effect-ts/printer/Core/Render'
  *
- * const doc = D.tupled(D.words('Lorem ipsum dolor'))
+ * const doc = D.tupled(D.words('lorem ipsum dolor'))
  *
  * console.log(R.renderPrettyDefault(doc))
  * // (lorem, ipsum, dolor)
@@ -2061,7 +2065,7 @@ export function words(s: string, char = " "): Array<Doc<never>> {
  *     'sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.'
  * )
  *
- * console.log(pipe(doc, R.renderWidth(32)))
+ * console.log(pipe(doc, R.renderPretty(32)))
  * // Lorem ipsum dolor sit amet,
  * // consectetur adipisicing elit,
  * // sed do eiusmod tempor incididunt
