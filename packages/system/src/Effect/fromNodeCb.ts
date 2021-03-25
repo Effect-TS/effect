@@ -6,27 +6,41 @@ import { effectAsync } from "./effectAsync"
 import { fail } from "./fail"
 
 export function fromNodeCb<L, R>(
-  f: (cb: (e: L | null | undefined, r?: R) => void) => void,
+  f: (this: unknown, cb: (e: L | null | undefined, r?: R) => void) => void,
   __trace?: string
 ): () => IO<L, R>
 export function fromNodeCb<A, L, R>(
-  f: (a: A, cb: (e: L | null | undefined, r?: R) => void) => void,
+  f: (this: unknown, a: A, cb: (e: L | null | undefined, r?: R) => void) => void,
   __trace?: string
 ): (a: A) => IO<L, R>
 export function fromNodeCb<A, B, L, R>(
-  f: (a: A, b: B, cb: (e: L | null | undefined, r?: R) => void) => void,
+  f: (this: unknown, a: A, b: B, cb: (e: L | null | undefined, r?: R) => void) => void,
   __trace?: string
 ): (a: A, b: B) => IO<L, R>
 export function fromNodeCb<A, B, C, L, R>(
-  f: (a: A, b: B, c: C, cb: (e: L | null | undefined, r?: R) => void) => void,
+  f: (
+    this: unknown,
+    a: A,
+    b: B,
+    c: C,
+    cb: (e: L | null | undefined, r?: R) => void
+  ) => void,
   __trace?: string
 ): (a: A, b: B, c: C) => IO<L, R>
 export function fromNodeCb<A, B, C, D, L, R>(
-  f: (a: A, b: B, c: C, d: D, cb: (e: L | null | undefined, r?: R) => void) => void,
+  f: (
+    this: unknown,
+    a: A,
+    b: B,
+    c: C,
+    d: D,
+    cb: (e: L | null | undefined, r?: R) => void
+  ) => void,
   __trace?: string
 ): (a: A, b: B, c: C, d: D) => IO<L, R>
 export function fromNodeCb<A, B, C, D, E, L, R>(
   f: (
+    this: unknown,
     a: A,
     b: B,
     c: C,
