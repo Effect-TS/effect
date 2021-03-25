@@ -50,6 +50,10 @@ export function fromNodeCb<A, B, C, D, E, L, R>(
   ) => void,
   __trace?: string
 ): (a: A, b: B, c: C, d: D, e: E) => IO<L, R>
+export function fromNodeCb<A extends any[], L, R>(
+  f: (this: unknown, ...args: [...A, (e: L | null | undefined, r?: R) => void]) => void,
+  __trace?: string
+): (...args: A) => IO<L, R>
 export function fromNodeCb<L, R>(f: Function, __trace?: string): () => IO<L, R> {
   return function () {
     // eslint-disable-next-line prefer-rest-params
