@@ -2,6 +2,7 @@
 
 import * as Fiber from "../Fiber"
 import { pipe } from "../Function"
+import type { HashSet } from "../Persistent/HashSet"
 import { track } from "../Supervisor"
 import { chain, supervised } from "./core"
 import type { Effect, RIO } from "./effect"
@@ -14,7 +15,7 @@ import { ensuring } from "./ensuring"
  * @dataFirst ensuringChildren_
  */
 export function ensuringChildren<R1, X>(
-  children: (_: readonly Fiber.Runtime<any, any>[]) => RIO<R1, X>,
+  children: (_: HashSet<Fiber.Runtime<any, any>>) => RIO<R1, X>,
   __trace?: string
 ) {
   return <R, E, A>(fa: Effect<R, E, A>): Effect<R & R1, E, A> =>
@@ -27,7 +28,7 @@ export function ensuringChildren<R1, X>(
  */
 export function ensuringChildren_<R, E, A, R1, X>(
   fa: Effect<R, E, A>,
-  children: (_: readonly Fiber.Runtime<any, any>[]) => RIO<R1, X>,
+  children: (_: HashSet<Fiber.Runtime<any, any>>) => RIO<R1, X>,
   __trace?: string
 ) {
   return pipe(

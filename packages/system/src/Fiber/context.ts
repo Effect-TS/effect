@@ -627,16 +627,14 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
         T.suspend(
           (): T.UIO<any> => {
             const _interruptors =
-              exit._tag === "Failure"
-                ? Cause.interruptors(exit.cause)
-                : new Set<Fiber.FiberID>()
+              exit._tag === "Failure" ? Cause.interruptors(exit.cause) : []
 
-            const head = _interruptors.values().next()
+            const head = _interruptors[0]
 
-            if (head.done) {
-              return childContext.interruptAs(this.fiberId)
+            if (head) {
+              return childContext.interruptAs(head)
             } else {
-              return childContext.interruptAs(head.value)
+              return childContext.interruptAs(this.fiberId)
             }
           }
         )

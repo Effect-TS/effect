@@ -85,7 +85,7 @@ export function uninterruptibleMask<R, E, A>(
  */
 export function onInterrupt_<R, E, A, R2, X>(
   self: Effect<R, E, A>,
-  cleanup: (interruptors: ReadonlySet<FiberID>) => Effect<R2, never, X>,
+  cleanup: (interruptors: readonly FiberID[]) => Effect<R2, never, X>,
   __trace?: string
 ) {
   return uninterruptibleMask(({ restore }) =>
@@ -107,7 +107,7 @@ export function onInterrupt_<R, E, A, R2, X>(
  */
 export function onInterruptExtended_<R, E, A, R2, E2, X>(
   self: Effect<R, E, A>,
-  cleanup: (interruptors: ReadonlySet<FiberID>) => Effect<R2, E2, X>,
+  cleanup: (interruptors: readonly FiberID[]) => Effect<R2, E2, X>,
   __trace?: string
 ) {
   return uninterruptibleMask(({ restore }) =>
@@ -134,7 +134,7 @@ export function onInterruptExtended_<R, E, A, R2, E2, X>(
  * @dataFirst onInterrupt_
  */
 export function onInterrupt<R2, X>(
-  cleanup: (interruptors: ReadonlySet<FiberID>) => Effect<R2, never, X>,
+  cleanup: (interruptors: readonly FiberID[]) => Effect<R2, never, X>,
   __trace?: string
 ) {
   return <R, E, A>(self: Effect<R, E, A>) => onInterrupt_(self, cleanup, __trace)

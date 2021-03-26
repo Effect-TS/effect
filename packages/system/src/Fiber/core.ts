@@ -24,7 +24,7 @@ export class Descriptor {
   constructor(
     readonly id: FiberID,
     readonly status: Status,
-    readonly interruptors: ReadonlySet<FiberID>,
+    readonly interruptors: readonly FiberID[],
     readonly interruptStatus: InterruptStatus,
     readonly scope: Scope<Exit.Exit<any, any>>
   ) {}

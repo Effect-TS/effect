@@ -1,20 +1,19 @@
 // tracing: off
 
-import "../Operator"
-
 /**
  * Ported from https://github.com/zio/zio/blob/master/core/shared/src/main/scala/zio/Supervisor.scala
  *
  * Copyright 2020 Michael Arnaldi and the Matechs Garage Contributors.
  */
-import { effectTotal, unit } from "../Effect/core"
+import "../Operator"
+
+import { effectTotal, suspend, unit } from "../Effect/core"
 import type { Effect, UIO } from "../Effect/effect"
 import { zip_ } from "../Effect/zip"
 import type { Exit } from "../Exit/exit"
 import type { Runtime } from "../Fiber/core"
-import { pipe } from "../Function"
 import type * as O from "../Option"
-import * as R from "../Ref"
+import * as HS from "../Persistent/HashSet"
 import { AtomicReference } from "../Support/AtomicReference"
 
 /**
@@ -108,22 +107,6 @@ export const _stop = new Stop()
 
 export const _continue = new Continue()
 
-export function unsafeTrack(
-  set: Set<Runtime<any, any>> = new Set<Runtime<any, any>>()
-) {
-  return new Supervisor<readonly Runtime<any, any>[]>(
-    effectTotal(() => Array.from(set)),
-    (_, __, ___, fiber) => {
-      set.add(fiber)
-      return _continue
-    },
-    (_, fiber) => {
-      set.delete(fiber)
-      return _continue
-    }
-  )
-}
-
 export const mainFibers: Set<Runtime<any, any>> = new Set<Runtime<any, any>>()
 
 function unsafeTrackMain() {
@@ -162,35 +145,37 @@ export const trackMainFibers = unsafeTrackMain()
 /**
  * Creates a new supervisor that tracks children in a set.
  */
-export const track = effectTotal(() => unsafeTrack())
+export const track = suspend(() => fibersIn(new AtomicReference(makeFiberSet())))
+
+/**
+ * Creates a fiber set
+ */
+export function makeFiberSet() {
+  return HS.make<Runtime<any, any>>({
+    hash: (_) => _.id.seqNumber,
+    equals: (x, y) => x === y
+  })
+}
 
 /**
  * Creates a new supervisor that tracks children in a set.
  */
-export const fibersIn = (ref: R.Ref<Set<Runtime<any, any>>>) =>
-  effectTotal(
+export function fibersIn(ref: AtomicReference<HS.HashSet<Runtime<any, any>>>) {
+  return effectTotal(
     () =>
       new Supervisor(
-        ref.get,
+        effectTotal(() => ref.get),
         (_, __, ___, fiber) => {
-          pipe(
-            ref,
-            R.unsafeUpdate((s) => s.add(fiber))
-          )
+          ref.set(HS.add_(ref.get, fiber))
           return _continue
         },
         (_, fiber) => {
-          pipe(
-            ref,
-            R.unsafeUpdate((s) => {
-              s.delete(fiber)
-              return s
-            })
-          )
+          ref.set(HS.remove_(ref.get, fiber))
           return _continue
         }
       )
   )
+}
 
 /**
  * A supervisor that doesn't do anything in response to supervision events.

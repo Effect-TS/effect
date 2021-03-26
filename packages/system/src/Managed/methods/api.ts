@@ -21,27 +21,14 @@ import * as L from "../../Layer"
 import * as NA from "../../NonEmptyArray"
 import type { Option } from "../../Option"
 import * as O from "../../Option"
+import type { HashSet } from "../../Persistent/HashSet"
+import * as HS from "../../Persistent/HashSet"
 import * as P from "../../Promise"
 import type { Schedule } from "../../Schedule"
 import { track } from "../../Supervisor"
 import type { UnionToIntersection } from "../../Utils"
-import {
-  chain,
-  chain_,
-  effectTotal,
-  fail,
-  foldCauseM_,
-  make_,
-  makeManagedReleaseMap,
-  map_,
-  mapM_,
-  provideSome_,
-  useNow,
-  zip_,
-  zipWith_,
-  zipWithPar_
-} from "../core"
-import { forEach_, forEachPar_, forEachParN_, forEachUnit_ } from "../forEach"
+import * as core from "../core"
+import * as forEach from "../forEach"
 import { fromEffect } from "../fromEffect"
 import { makeExit_ } from "../makeExit"
 import type { IO, RIO, UIO } from "../managed"
@@ -56,7 +43,7 @@ import { environment } from "./environment"
 import { foldM_ } from "./foldM_"
 import { gen } from "./gen"
 import { halt } from "./halt"
-import { provideAll, provideAll_ } from "./provideAll"
+import * as provideAll from "./provideAll"
 import { releaseMap } from "./releaseMap"
 import { suspend } from "./suspend"
 
@@ -66,7 +53,7 @@ import { suspend } from "./suspend"
  */
 export function absorb<E>(f: (e: E) => unknown) {
   return <R, A>(self: Managed<R, E, A>) =>
-    foldM_(sandbox(self), (c) => fail(C.squash(f)(c)), succeed)
+    foldM_(sandbox(self), (c) => core.fail(C.squash(f)(c)), succeed)
 }
 
 /**
@@ -74,7 +61,7 @@ export function absorb<E>(f: (e: E) => unknown) {
  */
 export function get<R, A>(self: Managed<R, never, O.Option<A>>) {
   return absolve(
-    map_(
+    core.map_(
       self,
       E.fromOption(() => O.none)
     )
@@ -116,7 +103,7 @@ export function mapErrorCause<E, E2>(f: (e: C.Cause<E>) => C.Cause<E2>) {
  * Returns a memoized version of the specified managed.
  */
 export function memoize<R, E, A>(self: Managed<R, E, A>): UIO<Managed<R, E, A>> {
-  return mapM_(releaseMap, (finalizers) =>
+  return core.mapM_(releaseMap, (finalizers) =>
     T.gen(function* (_) {
       const promise = yield* _(P.make<E, A>())
       const complete = yield* _(
@@ -158,10 +145,10 @@ export function none<R, E, A>(
 ): Managed<R, O.Option<E>, void> {
   return foldM_(
     self,
-    (x) => pipe(x, O.some, fail),
+    (x) => pipe(x, O.some, core.fail),
     O.fold(
       () => unit,
-      () => fail(O.none)
+      () => core.fail(O.none)
     )
   )
 }
@@ -209,7 +196,7 @@ export function optional<R, E, A>(
 ): Managed<R, E, O.Option<A>> {
   return foldM_(
     self,
-    O.fold(() => succeed(O.none), fail),
+    O.fold(() => succeed(O.none), core.fail),
     (x) => pipe(x, O.some, succeed)
   )
 }
@@ -270,7 +257,7 @@ export function orElseFail<E2>(e: E2) {
  * otherwise fails with the specified error.
  */
 export function orElseFail_<R, E, A, E2>(self: Managed<R, E, A>, e: E2) {
-  return orElse_(self, () => fail(e))
+  return orElse_(self, () => core.fail(e))
 }
 
 /**
@@ -292,7 +279,7 @@ export function orElseEither_<R, E, A, R2, E2, A2>(
 ): Managed<R & R2, E2, E.Either<A2, A>> {
   return foldM_(
     self,
-    () => map_(that(), E.left),
+    () => core.map_(that(), E.left),
     (x) => pipe(x, E.right, succeed)
   )
 }
@@ -310,7 +297,7 @@ export function orElseOptional_<R, E, A, R2, E2, A2>(
     self,
     O.fold(
       () => that(),
-      (e) => fail(O.some<E | E2>(e))
+      (e) => core.fail(O.some<E | E2>(e))
     )
   )
 }
@@ -367,7 +354,7 @@ export function catchAllCause_<R, E, A, R2, E2, A2>(
   self: Managed<R, E, A>,
   f: (e: C.Cause<E>) => Managed<R2, E2, A2>
 ) {
-  return foldCauseM_(self, f, succeed)
+  return core.foldCauseM_(self, f, succeed)
 }
 
 /**
@@ -376,7 +363,7 @@ export function catchAllCause_<R, E, A, R2, E2, A2>(
 export function catchAllCause<E, R2, E2, A2>(
   f: (e: C.Cause<E>) => Managed<R2, E2, A2>
 ) {
-  return <R, A>(self: Managed<R, E, A>) => foldCauseM_(self, f, succeed)
+  return <R, A>(self: Managed<R, E, A>) => core.foldCauseM_(self, f, succeed)
 }
 
 /**
@@ -386,7 +373,7 @@ export function catchSome_<R, E, A, R2, E2, A2>(
   self: Managed<R, E, A>,
   pf: (e: E) => O.Option<Managed<R2, E2, A2>>
 ): Managed<R & R2, E | E2, A | A2> {
-  return catchAll_(self, (e) => O.getOrElse_(pf(e), () => fail<E | E2>(e)))
+  return catchAll_(self, (e) => O.getOrElse_(pf(e), () => core.fail<E | E2>(e)))
 }
 
 /**
@@ -424,7 +411,7 @@ export function continueOrFailM_<R, E, A, E1, R1, E2, B>(
   e: () => E1,
   pf: (a: A) => O.Option<Managed<R1, E2, B>>
 ): Managed<R & R1, E | E1 | E2, B> {
-  return chain_(self, (a) => O.getOrElse_(pf(a), () => fail<E1 | E2>(e())))
+  return core.chain_(self, (a) => O.getOrElse_(pf(a), () => core.fail<E1 | E2>(e())))
 }
 
 /**
@@ -464,7 +451,7 @@ export function continueOrFail<A, E1, B>(e: () => E1, pf: (a: A) => O.Option<B>)
  */
 export function provide<R>(r: R) {
   return <E, A, R0>(next: Managed<R & R0, E, A>): Managed<R0, E, A> =>
-    provideSome_(next, (r0: R0) => ({ ...r0, ...r }))
+    core.provideSome_(next, (r0: R0) => ({ ...r0, ...r }))
 }
 
 /**
@@ -474,9 +461,9 @@ export function compose<A, E2, B>(that: Managed<A, E2, B>) {
   return <R, E>(self: Managed<R, E, A>) =>
     gen(function* (_) {
       const r1 = yield* _(environment<R>())
-      const r = yield* _(provideAll(r1)(self))
+      const r = yield* _(provideAll.provideAll(r1)(self))
 
-      return yield* _(provideAll(r)(that))
+      return yield* _(provideAll.provideAll(r)(that))
     })
 }
 
@@ -502,7 +489,7 @@ export function eventually<R, E, A>(self: Managed<R, E, A>): Managed<R, never, A
  * Zips this effect with its environment
  */
 export function first<R, E, A>(self: Managed<R, E, A>) {
-  return zip_(self, environment<R>())
+  return core.zip_(self, environment<R>())
 }
 
 /**
@@ -512,7 +499,7 @@ export function chainError_<R, E, A, R2, E2>(
   self: Managed<R, E, A>,
   f: (e: E) => RIO<R2, E2>
 ): Managed<R & R2, E2, A> {
-  return flipWith_(self, chain(f))
+  return flipWith_(self, core.chain(f))
 }
 
 /**
@@ -526,7 +513,7 @@ export function chainError<E, R2, E2>(f: (e: E) => RIO<R2, E2>) {
  * Flip the error and result
  */
 export function flip<R, E, A>(self: Managed<R, E, A>): Managed<R, A, E> {
-  return foldM_(self, succeed, fail)
+  return foldM_(self, succeed, core.fail)
 }
 
 /**
@@ -555,7 +542,7 @@ export function flipWith<R, E, A, R2, E1, A1>(
  * This method can be used to "flatten" nested effects.
  */
 export function flatten<R2, E2, R, E, A>(self: Managed<R2, E2, Managed<R, E, A>>) {
-  return chain_(self, identity)
+  return core.chain_(self, identity)
 }
 
 /**
@@ -565,7 +552,7 @@ export function flatten<R2, E2, R, E, A>(self: Managed<R2, E2, Managed<R, E, A>>
  * This method can be used to "flatten" nested effects.
  */
 export function flattenM<R2, E2, R, E, A>(self: Managed<R2, E2, T.Effect<R, E, A>>) {
-  return mapM_(self, identity)
+  return core.mapM_(self, identity)
 }
 
 /**
@@ -635,8 +622,8 @@ export function join_<R, E, A, R1, E1, A1>(
     const a1 = yield* _(
       E.fold_(
         either,
-        (r): IO<E | E1, A | A1> => provideAll(r)(self),
-        (r1) => provideAll(r1)(that)
+        (r): IO<E | E1, A | A1> => provideAll.provideAll(r)(self),
+        (r1) => provideAll.provideAll(r1)(that)
       )
     )
     return a1
@@ -664,8 +651,9 @@ export function joinEither_<R, E, A, R2, E2, A2>(
     const r = yield* _(
       E.fold_(
         e,
-        (r0): IO<E | E2, E.Either<A, A2>> => provideAll_(map_(self, E.left), r0),
-        (r1) => provideAll_(map_(that, E.right), r1)
+        (r0): IO<E | E2, E.Either<A, A2>> =>
+          provideAll.provideAll_(core.map_(self, E.left), r0),
+        (r1) => provideAll.provideAll_(core.map_(that, E.right), r1)
       )
     )
     return r
@@ -712,7 +700,7 @@ export function mapEffectWith_<R, E, E2, A, B>(
 ): Managed<R, E | E2, B> {
   return foldM_(
     self,
-    (e) => fail(e),
+    (e) => core.fail(e),
     (a) => effectPartial(() => f(a), onThrow)
   )
 }
@@ -810,7 +798,7 @@ export function provideLayer_<R, E, A, R2, E2>(
   self: Managed<R, E, A>,
   layer: L.Layer<R2, E2, R>
 ): Managed<R2, E | E2, A> {
-  return chain_(L.build(layer), (r) => provideAll_(self, r))
+  return core.chain_(L.build(layer), (r) => provideAll.provideAll_(self, r))
 }
 
 /**
@@ -848,7 +836,7 @@ export function refineOrDieWith_<R, A, E, E1>(
       pf,
       O.fold(
         () => die(f(e)),
-        (e1) => fail(e1)
+        (e1) => core.fail(e1)
       )
     )
   )
@@ -908,11 +896,11 @@ export function rejectM_<R, E, A, R1, E1>(
   self: Managed<R, E, A>,
   pf: (a: A) => O.Option<Managed<R1, E1, E1>>
 ) {
-  return chain_(self, (a) =>
+  return core.chain_(self, (a) =>
     O.fold_(
       pf(a),
       () => succeed(a),
-      (_) => chain_(_, (e1) => fail(e1))
+      (_) => core.chain_(_, (e1) => core.fail(e1))
     )
   )
 }
@@ -933,7 +921,7 @@ export function reject_<R, E, A, E1>(
   self: Managed<R, E, A>,
   pf: (a: A) => O.Option<E1>
 ) {
-  return rejectM_(self, (x) => pipe(x, pf, O.map(fail)))
+  return rejectM_(self, (x) => pipe(x, pf, O.map(core.fail)))
 }
 
 /**
@@ -943,7 +931,7 @@ export function reject_<R, E, A, E1>(
  * outside its scope.
  */
 export function release<R, E, A>(self: Managed<R, E, A>) {
-  return fromEffect(useNow(self))
+  return fromEffect(core.useNow(self))
 }
 
 /**
@@ -998,7 +986,7 @@ export function retryOrElse_<R, E, A, R1, O, R2, E2, A2>(
   policy: Schedule<R1, E, O>,
   orElse: (e: E, o: O) => Managed<R2, E2, A2>
 ): Managed<R & R1 & R2 & HasClock, E2, A | A2> {
-  return map_(retryOrElseEither_(self, policy, orElse), E.fold(identity, identity))
+  return core.map_(retryOrElseEither_(self, policy, orElse), E.fold(identity, identity))
 }
 
 /**
@@ -1023,7 +1011,7 @@ export function retry_<R, E, A, R1, O>(
   self: Managed<R, E, A>,
   policy: Schedule<R1, E, O>
 ): Managed<R & R1 & HasClock, E, A> {
-  return retryOrElse_(self, policy, (e, _) => fail(e))
+  return retryOrElse_(self, policy, (e, _) => core.fail(e))
 }
 
 /**
@@ -1044,7 +1032,7 @@ export function retry<R1, E, O>(policy: Schedule<R1, E, O>) {
 export function result<R, E, A>(
   self: Managed<R, E, A>
 ): Managed<R, never, Ex.Exit<E, A>> {
-  return foldCauseM_(
+  return core.foldCauseM_(
     self,
     (x) => pipe(x, Ex.halt, succeed),
     (x) => pipe(x, Ex.succeed, succeed)
@@ -1090,7 +1078,7 @@ export function sandboxWith_<R, E, A, R2, E2, B>(
  * Zips this effect with its environment
  */
 export function second<R, E, A>(self: Managed<R, E, A>) {
-  return zip_(environment<R>(), self)
+  return core.zip_(environment<R>(), self)
 }
 
 /**
@@ -1101,8 +1089,8 @@ export function some<R, E, A>(
 ): Managed<R, O.Option<E>, A> {
   return foldM_(
     self,
-    (x) => pipe(x, O.some, fail),
-    O.fold(() => fail(O.none), succeed)
+    (x) => pipe(x, O.some, core.fail),
+    O.fold(() => core.fail(O.none), succeed)
   )
 }
 
@@ -1121,7 +1109,7 @@ export function someOrElse_<R, E, A, B>(
   self: Managed<R, E, O.Option<A>>,
   orElse: () => B
 ) {
-  return map_(self, O.getOrElse(orElse))
+  return core.map_(self, O.getOrElse(orElse))
 }
 
 /**
@@ -1138,7 +1126,7 @@ export function someOrElseM_<R, E, A, R1, E1, B>(
   self: Managed<R, E, O.Option<A>>,
   orElse: Managed<R1, E1, B>
 ) {
-  return chain_(
+  return core.chain_(
     self,
     O.fold((): Managed<R1, E1, A | B> => orElse, succeed)
   )
@@ -1159,9 +1147,9 @@ export function someOrFail_<R, E, A, E1>(
   self: Managed<R, E, O.Option<A>>,
   e: () => E1
 ) {
-  return chain_(
+  return core.chain_(
     self,
-    O.fold(() => fail(e()), succeed)
+    O.fold(() => core.fail(e()), succeed)
   )
 }
 
@@ -1184,8 +1172,8 @@ export function tapBoth_<R, E, A, R1, E1, R2, E2, X, Y>(
 ): Managed<R & R1 & R2, E | E1 | E2, A> {
   return foldM_(
     self,
-    (e) => chain_(f(e), () => fail(e)),
-    (a) => map_(g(a), () => a)
+    (e) => core.chain_(f(e), () => core.fail(e)),
+    (a) => core.map_(g(a), () => a)
   )
 }
 
@@ -1207,7 +1195,7 @@ export function tapCause_<R, E, A, R1, E1, X>(
   self: Managed<R, E, A>,
   f: (c: Cause<E>) => Managed<R1, E1, X>
 ): Managed<R & R1, E | E1, A> {
-  return catchAllCause_(self, (c) => chain_(f(c), () => halt(c)))
+  return catchAllCause_(self, (c) => core.chain_(f(c), () => halt(c)))
 }
 
 /**
@@ -1252,7 +1240,7 @@ export function tapM_<R, E, A, R1, E1, X>(
   self: Managed<R, E, A>,
   f: (a: A) => Effect<R1, E1, X>
 ) {
-  return mapM_(self, (a) => T.as_(f(a), a))
+  return core.mapM_(self, (a) => T.as_(f(a), a))
 }
 
 /**
@@ -1387,7 +1375,7 @@ export function toLayerMany<Tags extends Tag<any>[]>(...tags: Tags) {
     >
   ) =>
     L.fromRawManaged(
-      map_(
+      core.map_(
         self,
         (
           r
@@ -1430,14 +1418,14 @@ export function unlessM_<R, E, A, R1, E1>(
   self: Managed<R, E, A>,
   b: Managed<R1, E1, boolean>
 ): Managed<R1 & R, E1 | E, void> {
-  return chain_(b, (b) => (b ? unit : asUnit(self)))
+  return core.chain_(b, (b) => (b ? unit : asUnit(self)))
 }
 
 /**
  * The moral equivalent of `if (!p) exp`
  */
 export function unless(b: () => boolean) {
-  return unlessM(effectTotal(b))
+  return unlessM(core.effectTotal(b))
 }
 
 /**
@@ -1452,7 +1440,7 @@ export function unless_<R, E, A>(self: Managed<R, E, A>, b: () => boolean) {
  * effects of this effect.
  */
 export function as_<R, E, A, B>(self: Managed<R, E, A>, b: B) {
-  return map_(self, () => b)
+  return core.map_(self, () => b)
 }
 
 /**
@@ -1467,7 +1455,7 @@ export function as<B>(b: B) {
  * Maps the success value of this effect to an optional value.
  */
 export function asSome<R, E, A>(self: Managed<R, E, A>) {
-  return map_(self, O.some)
+  return core.map_(self, O.some)
 }
 
 /**
@@ -1488,7 +1476,7 @@ export function asService<A>(tag: Tag<A>) {
  * Maps the success value of this effect to a service.
  */
 export function asService_<R, E, A>(self: Managed<R, E, A>, tag: Tag<A>) {
-  return map_(self, tag.of)
+  return core.map_(self, tag.of)
 }
 
 /**
@@ -1498,14 +1486,14 @@ export function andThen_<R, E, A, R1, E1, B>(
   self: Managed<R, E, A>,
   that: Managed<R1, E1, B>
 ) {
-  return chain_(self, () => that)
+  return core.chain_(self, () => that)
 }
 
 /**
  * Executes the this effect and then provides its output as an environment to the second effect
  */
 export function andThen<R1, E1, B>(that: Managed<R1, E1, B>) {
-  return <R, E, A>(self: Managed<R, E, A>) => chain_(self, () => that)
+  return <R, E, A>(self: Managed<R, E, A>) => core.chain_(self, () => that)
 }
 
 /**
@@ -1525,7 +1513,7 @@ export function bimap_<R, E, A, E1, A1>(
   f: (e: E) => E1,
   g: (a: A) => A1
 ) {
-  return map_(mapError_(self, f), g)
+  return core.map_(mapError_(self, f), g)
 }
 
 /**
@@ -1555,7 +1543,7 @@ export function access<R0, A>(f: (_: R0) => A): RIO<R0, A> {
 export function accessManaged<R0, R, E, A>(
   f: (_: R0) => Managed<R, E, A>
 ): Managed<R & R0, E, A> {
-  return chain_(environment<R0>(), f)
+  return core.chain_(environment<R0>(), f)
 }
 
 /**
@@ -1564,7 +1552,7 @@ export function accessManaged<R0, R, E, A>(
 export function accessM<R0, R, E, A>(
   f: (_: R0) => Effect<R, E, A>
 ): Managed<R & R0, E, A> {
-  return mapM_(environment<R0>(), f)
+  return core.mapM_(environment<R0>(), f)
 }
 
 /**
@@ -1701,7 +1689,7 @@ export function provideServiceM<T>(_: Tag<T>) {
     ma: Managed<R1 & Has<T>, E1, A1>
   ): Managed<R & R1, E | E1, A1> =>
     accessManaged((r: R & R1) =>
-      chain_(f, (t) => provideAll_(ma, mergeEnvironments(_, r, t)))
+      core.chain_(f, (t) => provideAll.provideAll_(ma, mergeEnvironments(_, r, t)))
     )
 }
 
@@ -1758,7 +1746,7 @@ export function replaceService_<R1, E1, A1, T>(
  * The moral equivalent of `if (p) exp` when `p` has side-effects
  */
 export function whenM<R1, E1>(b: Managed<R1, E1, boolean>) {
-  return unlessM(map_(b, (b) => !b))
+  return unlessM(core.map_(b, (b) => !b))
 }
 
 /**
@@ -1805,7 +1793,7 @@ export const fiberId = fromEffect(T.fiberId)
 export function withEarlyRelease<R, E, A>(
   self: Managed<R, E, A>
 ): Managed<R, E, readonly [T.UIO<any>, A]> {
-  return chain_(fiberId, (id) => withEarlyReleaseExit_(self, Ex.interrupt(id)))
+  return core.chain_(fiberId, (id) => withEarlyReleaseExit_(self, Ex.interrupt(id)))
 }
 
 /**
@@ -1816,7 +1804,7 @@ export function zipLeft_<R, E, A, R2, E2, A2>(
   a: Managed<R, E, A>,
   b: Managed<R2, E2, A2>
 ): Managed<R & R2, E | E2, A> {
-  return zipWith_(a, b, (a) => a)
+  return core.zipWith_(a, b, (a) => a)
 }
 
 /**
@@ -1835,7 +1823,7 @@ export function zipLeftPar_<R, E, A, R2, E2, A2>(
   a: Managed<R, E, A>,
   b: Managed<R2, E2, A2>
 ): Managed<R & R2, E | E2, A> {
-  return zipWithPar_(a, b, (a) => a)
+  return core.zipWithPar_(a, b, (a) => a)
 }
 
 /**
@@ -1854,7 +1842,7 @@ export function zipRight_<R, E, A, R2, E2, A2>(
   a: Managed<R, E, A>,
   b: Managed<R2, E2, A2>
 ): Managed<R & R2, E | E2, A2> {
-  return zipWith_(a, b, (_, a) => a)
+  return core.zipWith_(a, b, (_, a) => a)
 }
 
 /**
@@ -1873,7 +1861,7 @@ export function zipRightPar_<R, E, A, R2, E2, A2>(
   a: Managed<R, E, A>,
   b: Managed<R2, E2, A2>
 ): Managed<R & R2, E | E2, A2> {
-  return zipWithPar_(a, b, (_, a) => a)
+  return core.zipWithPar_(a, b, (_, a) => a)
 }
 
 /**
@@ -1891,7 +1879,7 @@ export function zipPar_<R, E, A, R2, E2, A2>(
   a: Managed<R, E, A>,
   b: Managed<R2, E2, A2>
 ): Managed<R & R2, E | E2, [A, A2]> {
-  return zipWithPar_(a, b, (a, b) => [a, b])
+  return core.zipWithPar_(a, b, (a, b) => [a, b])
 }
 
 /**
@@ -1925,7 +1913,7 @@ export function create<R, E, A>(
  * return the given A as success if predicate returns true, and the given E as error otherwise
  */
 export function cond_<E, A>(pred: boolean, result: () => A, error: () => E): IO<E, A> {
-  return pred ? succeed(result()) : fail(error())
+  return pred ? succeed(result()) : core.fail(error())
 }
 
 /**
@@ -1938,9 +1926,9 @@ export function forEachUnitPar_<R, E, A, B>(
   as: Iterable<A>,
   f: (a: A) => Managed<R, E, B>
 ): Managed<R, E, void> {
-  return mapM_(makeManagedReleaseMap(T.parallel), (parallelReleaseMap) => {
+  return core.mapM_(core.makeManagedReleaseMap(T.parallel), (parallelReleaseMap) => {
     const makeInnerMap = T.provideSome_(
-      T.map_(makeManagedReleaseMap(T.sequential).effect, ([_, e]) => e),
+      T.map_(core.makeManagedReleaseMap(T.sequential).effect, ([_, e]) => e),
       (r) => tuple(r, parallelReleaseMap)
     )
     return T.forEachUnitPar_(as, (a) =>
@@ -1975,9 +1963,9 @@ export function forEachUnitParN_<R, E, A, B>(
   n: number,
   f: (a: A) => Managed<R, E, B>
 ): Managed<R, E, void> {
-  return mapM_(makeManagedReleaseMap(T.parallel), (parallelReleaseMap) => {
+  return core.mapM_(core.makeManagedReleaseMap(T.parallel), (parallelReleaseMap) => {
     const makeInnerMap = T.provideSome_(
-      T.map_(makeManagedReleaseMap(T.sequential).effect, ([_, e]) => e),
+      T.map_(core.makeManagedReleaseMap(T.sequential).effect, ([_, e]) => e),
       (r) => tuple(r, parallelReleaseMap)
     )
 
@@ -2022,8 +2010,8 @@ export function collect_<A, R, E, B>(
   self: Iterable<A>,
   f: (a: A) => Managed<R, Option<E>, B>
 ): Managed<R, E, readonly B[]> {
-  return map_(
-    forEach_(self, (a) => optional(f(a))),
+  return core.map_(
+    forEach.forEach_(self, (a) => optional(f(a))),
     A.compact
   )
 }
@@ -2046,8 +2034,8 @@ export function collectPar_<A, R, E, B>(
   self: Iterable<A>,
   f: (a: A) => Managed<R, Option<E>, B>
 ): Managed<R, E, readonly B[]> {
-  return map_(
-    forEachPar_(self, (a) => optional(f(a))),
+  return core.map_(
+    forEach.forEachPar_(self, (a) => optional(f(a))),
     A.compact
   )
 }
@@ -2063,8 +2051,8 @@ export function collectParN_<A, R, E, B>(
   n: number,
   f: (a: A) => Managed<R, Option<E>, B>
 ): Managed<R, E, readonly B[]> {
-  return map_(
-    forEachParN_(self, n, (a) => optional(f(a))),
+  return core.map_(
+    forEach.forEachParN_(self, n, (a) => optional(f(a))),
     A.compact
   )
 }
@@ -2089,7 +2077,7 @@ export function collectParN<A, R, E, B>(
  * results. For a parallel version, see `collectAllPar`.
  */
 export function collectAll<R, E, A>(as: Iterable<Managed<R, E, A>>) {
-  return forEach_(as, identity)
+  return forEach.forEach_(as, identity)
 }
 
 /**
@@ -2097,7 +2085,7 @@ export function collectAll<R, E, A>(as: Iterable<Managed<R, E, A>>) {
  * results. For a sequential version, see `collectAll`.
  */
 export function collectAllPar<R, E, A>(as: Iterable<Managed<R, E, A>>) {
-  return forEachPar_(as, identity)
+  return forEach.forEachPar_(as, identity)
 }
 
 /**
@@ -2109,7 +2097,8 @@ export function collectAllPar<R, E, A>(as: Iterable<Managed<R, E, A>>) {
  * @dataFirst collectAllParN_
  */
 export function collectAllParN(n: number) {
-  return <R, E, A>(as: Iterable<Managed<R, E, A>>) => forEachParN_(as, n, identity)
+  return <R, E, A>(as: Iterable<Managed<R, E, A>>) =>
+    forEach.forEachParN_(as, n, identity)
 }
 
 /**
@@ -2119,7 +2108,7 @@ export function collectAllParN(n: number) {
  * Unlike `collectAllPar`, this method will use at most `n` fibers.
  */
 export function collectAllParN_<R, E, A>(as: Iterable<Managed<R, E, A>>, n: number) {
-  return forEachParN_(as, n, identity)
+  return forEach.forEachParN_(as, n, identity)
 }
 
 /**
@@ -2127,7 +2116,7 @@ export function collectAllParN_<R, E, A>(as: Iterable<Managed<R, E, A>>, n: numb
  * results. For a parallel version, see `collectAllUnitPar`.
  */
 export function collectAllUnit<R, E, A>(as: Iterable<Managed<R, E, A>>) {
-  return forEachUnit_(as, identity)
+  return forEach.forEachUnit_(as, identity)
 }
 
 /**
@@ -2171,7 +2160,7 @@ export function collectAllWith_<R, E, A, B>(
   as: Iterable<Managed<R, E, A>>,
   pf: (a: A) => O.Option<B>
 ): Managed<R, E, readonly B[]> {
-  return map_(collectAll(as), (x) => pipe(x, A.map(pf), A.compact))
+  return core.map_(collectAll(as), (x) => pipe(x, A.map(pf), A.compact))
 }
 
 /**
@@ -2190,7 +2179,7 @@ export function collectAllWithPar_<R, E, A, B>(
   as: Iterable<Managed<R, E, A>>,
   pf: (a: A) => O.Option<B>
 ): Managed<R, E, readonly B[]> {
-  return map_(collectAllPar(as), (x) => pipe(x, A.map(pf), A.compact))
+  return core.map_(collectAllPar(as), (x) => pipe(x, A.map(pf), A.compact))
 }
 
 /**
@@ -2212,7 +2201,7 @@ export function collectAllWithParN_<R, E, A, B>(
   n: number,
   pf: (a: A) => O.Option<B>
 ): Managed<R, E, readonly B[]> {
-  return map_(collectAllParN_(as, n), (x) => pipe(x, A.map(pf), A.compact))
+  return core.map_(collectAllParN_(as, n), (x) => pipe(x, A.map(pf), A.compact))
 }
 
 /**
@@ -2303,7 +2292,7 @@ export function reduce_<A, Z, R, E>(
   f: (z: Z, a: A) => Managed<R, E, Z>
 ): Managed<R, E, Z> {
   return A.reduce_(Array.from(i), succeed(zero) as Managed<R, E, Z>, (acc, el) =>
-    chain_(acc, (a) => f(a, el))
+    core.chain_(acc, (a) => f(a, el))
   )
 }
 
@@ -2325,7 +2314,7 @@ export function reduceRight_<A, Z, R, E>(
   f: (a: A, z: Z) => Managed<R, E, Z>
 ): Managed<R, E, Z> {
   return A.reduceRight_(Array.from(i), succeed(zero) as Managed<R, E, Z>, (el, acc) =>
-    chain_(acc, (a) => f(el, a))
+    core.chain_(acc, (a) => f(el, a))
   )
 }
 
@@ -2345,7 +2334,7 @@ export function reduceAll_<R, E, A>(
   as: NA.NonEmptyArray<Managed<R, E, A>>,
   f: (acc: A, a: A) => A
 ): Managed<R, E, A> {
-  return A.reduce_(NA.tail(as), NA.head(as), (acc, a) => zipWith_(acc, a, f))
+  return A.reduce_(NA.tail(as), NA.head(as), (acc, a) => core.zipWith_(acc, a, f))
 }
 
 /**
@@ -2364,7 +2353,7 @@ export function reduceAllPar_<R, E, A>(
   as: NA.NonEmptyArray<Managed<R, E, A>>,
   f: (acc: A, a: A) => A
 ): Managed<R, E, A> {
-  return mapM_(makeManagedReleaseMap(T.parallel), (parallelReleaseMap) =>
+  return core.mapM_(core.makeManagedReleaseMap(T.parallel), (parallelReleaseMap) =>
     T.provideSome_(
       T.reduceAllPar_(
         NA.map_(as, (_) => T.map_(_.effect, ([_, a]) => a)),
@@ -2392,7 +2381,7 @@ export function reduceAllParN_<R, E, A>(
   n: number,
   f: (acc: A, a: A) => A
 ): Managed<R, E, A> {
-  return mapM_(makeManagedReleaseMap(T.parallel), (parallelReleaseMap) =>
+  return core.mapM_(core.makeManagedReleaseMap(T.parallel), (parallelReleaseMap) =>
     T.provideSome_(
       T.reduceAllParN_(
         NA.map_(as, (_) => T.map_(_.effect, ([_, a]) => a)),
@@ -2432,7 +2421,9 @@ export function mergeAll_<R, E, A, B>(
   zero: B,
   f: (b: B, a: A) => B
 ) {
-  return I.reduce_(as, succeed(zero) as Managed<R, E, B>, (b, a) => zipWith_(b, a, f))
+  return I.reduce_(as, succeed(zero) as Managed<R, E, B>, (b, a) =>
+    core.zipWith_(b, a, f)
+  )
 }
 
 /**
@@ -2467,7 +2458,7 @@ export function mergeAllPar_<R, E, A, B>(
   zero: B,
   f: (b: B, a: A) => B
 ) {
-  return mapM_(makeManagedReleaseMap(T.parallel), (parallelReleaseMap) =>
+  return core.mapM_(core.makeManagedReleaseMap(T.parallel), (parallelReleaseMap) =>
     T.provideSome_(
       T.mergeAllPar_(
         I.map_(as, (_) => T.map_(_.effect, ([_, a]) => a)),
@@ -2512,7 +2503,7 @@ export function mergeAllParN_<R, E, A, B>(
   zero: B,
   f: (b: B, a: A) => B
 ): Managed<R, E, B> {
-  return mapM_(makeManagedReleaseMap(T.parallel), (parallelReleaseMap) =>
+  return core.mapM_(core.makeManagedReleaseMap(T.parallel), (parallelReleaseMap) =>
     T.provideSome_(
       T.mergeAllParN_(
         I.map_(as, (_) => T.map_(_.effect, ([_, a]) => a)),
@@ -2541,7 +2532,7 @@ export class Scope {
 /**
  * Creates a scope in which resources can be safely allocated into together with a release action.
  */
-export const scope: Managed<unknown, never, Scope> = map_(
+export const scope: Managed<unknown, never, Scope> = core.map_(
   releaseMap,
   (finalizers) =>
     new Scope(
@@ -2557,7 +2548,7 @@ export const scope: Managed<unknown, never, Scope> = map_(
  * children that have been forked in the returned effect.
  */
 export function withChildren<R, E, A>(
-  get: (io: T.Effect<unknown, never, A.Array<F.Runtime<any, any>>>) => Managed<R, E, A>
+  get: (io: T.Effect<unknown, never, HashSet<F.Runtime<any, any>>>) => Managed<R, E, A>
 ): Managed<R, E, A> {
   return unwrap(
     T.map_(
@@ -2567,7 +2558,7 @@ export function withChildren<R, E, A>(
           T.supervised(supervisor)(
             get(
               T.chain_(supervisor.value, (children) =>
-                T.map_(T.descriptor, (d) => A.filter_(children, (_) => _.id !== d.id))
+                T.map_(T.descriptor, (d) => HS.filter_(children, (_) => _.id !== d.id))
               )
             ).effect
           )
@@ -2592,7 +2583,7 @@ export function unwrap<R, E, A>(
 export function fromAutoClosable<R, E, A extends { readonly close: () => void }>(
   fa: T.Effect<R, E, A>
 ) {
-  return make_(fa, (a) => T.effectTotal(() => a.close()))
+  return core.make_(fa, (a) => T.effectTotal(() => a.close()))
 }
 
 /**
@@ -2605,14 +2596,14 @@ export function fromAutoClosableM<
   R1,
   A extends { readonly close: T.Effect<R1, never, any> }
 >(fa: T.Effect<R, E, A>) {
-  return make_(fa, (a) => a.close)
+  return core.make_(fa, (a) => a.close)
 }
 
 /**
  * Returns an effect that is interrupted as if by the fiber calling this
  * method.
  */
-export const interrupt = chain_(fromEffect(T.descriptor), (d) => interruptAs(d.id))
+export const interrupt = core.chain_(fromEffect(T.descriptor), (d) => interruptAs(d.id))
 
 /**
  * Returns an effect that is interrupted as if by the specified fiber.
