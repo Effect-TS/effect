@@ -76,35 +76,6 @@ export const unbounded: PageWidth = PageWidth.as.Unbounded({})
 export const defaultPageWidth = availablePerLine(80, 1)
 
 // -------------------------------------------------------------------------------------
-// destructors
-// -------------------------------------------------------------------------------------
-
-export function match_<R>(
-  pageWidth: PageWidth,
-  patterns: {
-    readonly AvailablePerLine: (lineWidth: number, ribbonFraction: number) => R
-    readonly Unbounded: () => R
-  }
-): R {
-  switch (pageWidth._tag) {
-    case "AvailablePerLine":
-      return patterns.AvailablePerLine(pageWidth.lineWidth, pageWidth.ribbonFraction)
-    case "Unbounded":
-      return patterns.Unbounded()
-  }
-}
-
-/**
- * @dataFirst match_
- */
-export function match<R>(patterns: {
-  readonly AvailablePerLine: (lineWidth: number, ribbonFraction: number) => R
-  readonly Unbounded: () => R
-}) {
-  return (pageWidth: PageWidth): R => match_(pageWidth, patterns)
-}
-
-// -------------------------------------------------------------------------------------
 // operations
 // -------------------------------------------------------------------------------------
 

@@ -358,8 +358,8 @@ function fitsPretty(width: number) {
  * line breaks.
  */
 export function pretty_<A>(options: LayoutOptions, doc: Doc<A>): DocStream<A> {
-  return PW.match_(options.pageWidth, {
-    AvailablePerLine: (lineWidth, ribbonFraction) =>
+  return PW.PageWidth.matchStrict({
+    AvailablePerLine: ({ lineWidth, ribbonFraction }) =>
       layoutWadlerLeijen(
         doc,
         (lineIndent, currentColumn) => {
@@ -374,7 +374,7 @@ export function pretty_<A>(options: LayoutOptions, doc: Doc<A>): DocStream<A> {
         options
       ),
     Unbounded: () => layoutUnbounded(doc)
-  })
+  })(options.pageWidth)
 }
 
 /**
@@ -523,11 +523,11 @@ function fitsSmart(lineWidth: number, ribbonFraction: number) {
  * ```
  */
 export function smart_<A>(options: LayoutOptions, doc: Doc<A>): DocStream<A> {
-  return PW.match_(options.pageWidth, {
-    AvailablePerLine: (lineWidth, ribbonFraction) =>
+  return PW.PageWidth.matchStrict({
+    AvailablePerLine: ({ lineWidth, ribbonFraction }) =>
       layoutWadlerLeijen(doc, fitsSmart(lineWidth, ribbonFraction), options),
     Unbounded: () => layoutUnbounded(doc)
-  })
+  })(options.pageWidth)
 }
 
 /**

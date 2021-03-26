@@ -191,9 +191,11 @@ prefix [Nested: 0]
       const prefix = D.hsep([
         D.text("prefix"),
         D.withPageWidth(
-          PW.match({
-            AvailablePerLine: (lw, rf) =>
-              D.brackets(D.text(`Width: ${lw}, Ribbon Fraction: ${rf}`)),
+          PW.PageWidth.matchStrict({
+            AvailablePerLine: ({ lineWidth, ribbonFraction }) =>
+              D.brackets(
+                D.text(`Width: ${lineWidth}, Ribbon Fraction: ${ribbonFraction}`)
+              ),
             Unbounded: () => D.empty
           })
         )
