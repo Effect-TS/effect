@@ -211,7 +211,7 @@ export function match<A, R>(patterns: {
 // operations
 // -------------------------------------------------------------------------------------
 
-export function isFailed<A>(stream: DocStream<A>): stream is FailedStream<A> {
+export function isFailedStream<A>(stream: DocStream<A>): stream is FailedStream<A> {
   return stream._tag === "FailedStream"
 }
 
@@ -231,13 +231,13 @@ export function isLineStream<A>(stream: DocStream<A>): stream is LineStream<A> {
   return stream._tag === "LineStream"
 }
 
-export function isPushAnnotation<A>(
+export function isPushAnnotationStream<A>(
   stream: DocStream<A>
 ): stream is PushAnnotationStream<A> {
   return stream._tag === "PushAnnotationStream"
 }
 
-export function isPopAnnotation<A>(
+export function isPopAnnotationStream<A>(
   stream: DocStream<A>
 ): stream is PopAnnotationStream<A> {
   return stream._tag === "PopAnnotationStream"
