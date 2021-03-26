@@ -1420,6 +1420,15 @@ export const seps: <A>(docs: Array<Doc<A>>) => Doc<A> = (_) => group(vsep(_))
 export const hcat: <A>(docs: Array<Doc<A>>) => Doc<A> = concatWith(cat_)
 
 /**
+ * Tupled variant of `hcat`.
+ */
+export function hcatT<Docs extends Array<Doc<any>>>(
+  ...docs: Docs
+): Doc<_A<Docs[number]>> {
+  return hcat(docs)
+}
+
+/**
  * The `vcat` combinator concatenates all documents in a list vertically. If the
  * output is grouped then the line breaks are removed.
  *
@@ -1482,7 +1491,7 @@ export function cats<A>(docs: Array<Doc<A>>): Doc<A> {
 }
 
 /**
- * Tupled variant of cats
+ * Tupled variant of `cats`.
  */
 export function catsT<Docs extends Array<Doc<any>>>(
   ...docs: Docs
