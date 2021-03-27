@@ -33,33 +33,33 @@ export class Semaphore {
   }
 
   private loop(n: number, state: State, acc: T.UIO<void>): [T.UIO<void>, State] {
-    switch (state._tag) {
-      case "Right": {
-        return [acc, E.right(n + state.right)]
-      }
-      case "Left": {
-        return O.fold_(
-          state.left.dequeue(),
-          (): [T.UIO<void>, E.Either<T.ImmutableQueue<Entry>, number>] => [
-            acc,
-            E.right(n)
-          ],
-          ([[p, m], q]): [T.UIO<void>, E.Either<T.ImmutableQueue<Entry>, number>] => {
+    // eslint-disable-next-line no-constant-condition
+    while (1) {
+      switch (state._tag) {
+        case "Right": {
+          return [acc, E.right(n + state.right)]
+        }
+        case "Left": {
+          const d = state.left.dequeue()
+          if (O.isNone(d)) {
+            return [acc, E.right(n)]
+          } else {
+            const [[p, m], q] = d.value
             if (n > m) {
-              return this.loop(
-                n - m,
-                E.left(q),
-                T.zipLeft_(acc, T.promiseSucceed_(p, undefined))
-              )
+              n = n - m
+              state = E.left(q)
+              acc = T.zipLeft_(acc, T.promiseSucceed_(p, undefined))
             } else if (n === m) {
               return [T.zipLeft_(acc, T.promiseSucceed_(p, undefined)), E.left(q)]
             } else {
               return [acc, E.left(q.prepend([p, m - n]))]
             }
+            break
           }
-        )
+        }
       }
     }
+    throw new Error("Bug: we should never get here")
   }
 
   private releaseN(toRelease: number): T.UIO<void> {
@@ -134,48 +134,57 @@ export class Semaphore {
 /**
  * Acquires `n` permits, executes the action and releases the permits right after.
  */
-export const withPermits = (n: number) => (s: Semaphore) => <R, E, A>(
-  e: T.Effect<R, E, A>
-) =>
-  T.bracket_(
-    s.prepare(n),
-    (a) => T.chain_(a.waitAcquire, () => e),
-    (a) => a.release
-  )
+export function withPermits(n: number) {
+  return (s: Semaphore) => <R, E, A>(e: T.Effect<R, E, A>) =>
+    T.bracket_(
+      s.prepare(n),
+      (a) => T.chain_(a.waitAcquire, () => e),
+      (a) => a.release
+    )
+}
 
 /**
  * Acquires a permit, executes the action and releases the permit right after.
  */
-export const withPermit = (s: Semaphore) => withPermits(1)(s)
+export function withPermit(s: Semaphore) {
+  return withPermits(1)(s)
+}
 
 /**
  * Acquires `n` permits in a `Managed` and releases the permits in the finalizer.
  */
-export const withPermitsManaged = (n: number) => (s: Semaphore) =>
-  T.makeReserve(
-    T.map_(s.prepare(n), (a) => T.makeReservation(() => a.release)(a.waitAcquire))
-  )
+export function withPermitsManaged(n: number) {
+  return (s: Semaphore) =>
+    T.makeReserve(
+      T.map_(s.prepare(n), (a) => T.makeReservation(() => a.release)(a.waitAcquire))
+    )
+}
 
 /**
  * Acquires a permit in a `Managed` and releases the permit in the finalizer.
  */
-export const withPermitManaged = (s: Semaphore) => withPermitsManaged(1)(s)
+export function withPermitManaged(s: Semaphore) {
+  return withPermitsManaged(1)(s)
+}
 
 /**
  * The number of permits currently available.
  */
-export const available = (s: Semaphore) => s.available
+export function available(s: Semaphore) {
+  return s.available
+}
 
 /**
  * Creates a new `Sempahore` with the specified number of permits.
  */
-export const makeSemaphore = (permits: number) =>
-  T.map_(R.makeRef<State>(E.right(permits)), (state) => new Semaphore(state))
+export function makeSemaphore(permits: number) {
+  return T.map_(R.makeRef<State>(E.right(permits)), (state) => new Semaphore(state))
+}
 
 /**
  * Creates a new `Sempahore` with the specified number of permits.
  */
-export const unsafeMakeSemaphore = (permits: number) => {
+export function unsafeMakeSemaphore(permits: number) {
   const state = R.unsafeMakeRef<State>(E.right(permits))
 
   return new Semaphore(state)

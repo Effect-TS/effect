@@ -20,7 +20,7 @@ export class ImmutableQueue<A> {
     return this.backing.length
   }
 
-  dequeue() {
+  dequeue(): O.Option<readonly [NonNullable<A>, ImmutableQueue<A>]> {
     if (!L.isEmpty(this.backing)) {
       return O.some([
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
