@@ -32,10 +32,26 @@ export function right<A>(a: A): Either<never, A> {
 }
 
 /**
+ * Constructs a new `Either` holding a `Right` value. This usually represents a successful value due to the right bias
+ * of this structure
+ */
+export function rightW<A, E = never>(a: A): Either<E, A> {
+  return { _tag: "Right", right: a }
+}
+
+/**
  * Constructs a new `Either` holding a `Left` value. This usually represents a failure, due to the right-bias of this
  * structure
  */
 export function left<E>(e: E): Either<E, never> {
+  return { _tag: "Left", left: e }
+}
+
+/**
+ * Constructs a new `Either` holding a `Left` value. This usually represents a failure, due to the right-bias of this
+ * structure
+ */
+export function leftW<E, A = never>(e: E): Either<E, A> {
   return { _tag: "Left", left: e }
 }
 
@@ -66,151 +82,178 @@ export function widenA<A1>() {
 /**
  * Alternatively construct that if self is left
  */
-export const alt_: <E, E2, A, A2>(
+export function alt_<E, E2, A, A2>(
   self: Either<E, A>,
   that: () => Either<E2, A2>
-) => Either<E | E2, A | A2> = (fx, fy) => (isLeft(fx) ? fy() : fx)
+): Either<E | E2, A | A2> {
+  return isLeft(self) ? that() : self
+}
 
 /**
  * Alternatively construct that if self is left
+ *
+ * @dataFirst alt_
  */
-export const alt: <E, A>(
-  that: () => Either<E, A>
-) => <E2, A2>(self: Either<E2, A2>) => Either<E | E2, A | A2> = (that) => (fa) =>
-  alt_(fa, that)
+export function alt<E, A>(that: () => Either<E, A>) {
+  return <E2, A2>(self: Either<E2, A2>): Either<E | E2, A | A2> => alt_(self, that)
+}
 
 /**
  * Classic Applicative
  */
-export const ap_: <E, A, B, E2>(
+export function ap_<E, A, B, E2>(
   fab: Either<E, (a: A) => B>,
   fa: Either<E2, A>
-) => Either<E | E2, B> = (mab, ma) =>
-  isLeft(mab) ? mab : isLeft(ma) ? ma : right(mab.right(ma.right))
+): Either<E | E2, B> {
+  return isLeft(fab) ? fab : isLeft(fa) ? fa : right(fab.right(fa.right))
+}
 
 /**
  * Classic Applicative
+ *
+ * @dataFirst ap_
  */
-export const ap: <E, A>(
-  fa: Either<E, A>
-) => <E2, B>(fab: Either<E2, (a: A) => B>) => Either<E | E2, B> = (fa) => (fab) =>
-  ap_(fab, fa)
+export function ap<E, A>(fa: Either<E, A>) {
+  return <E2, B>(fab: Either<E2, (a: A) => B>): Either<E | E2, B> => ap_(fab, fa)
+}
 
 /**
  * Apply both and return both
  */
-export const zip_: <E2, A, E, B>(
+export function zip_<E2, A, E, B>(
   fa: Either<E2, A>,
   fb: Either<E, B>
-) => Either<E | E2, readonly [A, B]> = (fa, fb) =>
-  chain_(fa, (a) => map_(fb, (b) => tuple(a, b)))
+): Either<E | E2, readonly [A, B]> {
+  return chain_(fa, (a) => map_(fb, (b) => tuple(a, b)))
+}
 
 /**
  * Apply both and return both
+ *
+ * @dataFirst zip_
  */
-export const zip: <E, B>(
-  fb: Either<E, B>
-) => <E2, A>(fa: Either<E2, A>) => Either<E | E2, readonly [A, B]> = (fb) => (fa) =>
-  zip_(fa, fb)
+export function zip<E, B>(fb: Either<E, B>) {
+  return <E2, A>(fa: Either<E2, A>): Either<E | E2, readonly [A, B]> => zip_(fa, fb)
+}
+
+/**
+ * Apply both and return first
+ *
+ * @dataFirst zipFirst_
+ */
+export function zipFirst<E, B>(fb: Either<E, B>) {
+  return <E2, A>(fa: Either<E2, A>): Either<E | E2, A> => zipFirst_(fa, fb)
+}
 
 /**
  * Apply both and return first
  */
-export const zipFirst: <E, B>(
-  fb: Either<E, B>
-) => <E2, A>(fa: Either<E2, A>) => Either<E | E2, A> = (fb) => (fa) => zipFirst_(fa, fb)
-
-/**
- * Apply both and return first
- */
-export const zipFirst_: <E2, A, E, B>(
+export function zipFirst_<E2, A, E, B>(
   fa: Either<E2, A>,
   fb: Either<E, B>
-) => Either<E | E2, A> = (fa, fb) =>
-  ap_(
+): Either<E | E2, A> {
+  return ap_(
     map_(fa, (a) => () => a),
     fb
   )
+}
+
+/**
+ * Apply both and return second
+ *
+ * @dataFirst zipSecond_
+ */
+export function zipSecond<E, B>(fb: Either<E, B>) {
+  return <E2, A>(fa: Either<E2, A>): Either<E | E2, B> => zipSecond_(fa, fb)
+}
 
 /**
  * Apply both and return second
  */
-export const zipSecond = <E, B>(fb: Either<E, B>) => <E2, A>(
-  fa: Either<E2, A>
-): Either<E | E2, B> => zipSecond_(fa, fb)
-
-/**
- * Apply both and return second
- */
-export const zipSecond_ = <E2, A, E, B>(
+export function zipSecond_<E2, A, E, B>(
   fa: Either<E2, A>,
   fb: Either<E, B>
-): Either<E | E2, B> =>
-  ap_(
+): Either<E | E2, B> {
+  return ap_(
     map_(fa, () => (b: B) => b),
     fb
   )
+}
 
 /**
  * Maps both left and right
  */
-export const bimap_: <E, A, G, B>(
+export function bimap_<E, A, G, B>(
   fea: Either<E, A>,
   f: (e: E) => G,
   g: (a: A) => B
-) => Either<G, B> = (fea, f, g) =>
-  isLeft(fea) ? left(f(fea.left)) : right(g(fea.right))
+): Either<G, B> {
+  return isLeft(fea) ? left(f(fea.left)) : right(g(fea.right))
+}
 
 /**
  * Maps both left and right
+ *
+ * @dataFirst bimap_
  */
-export const bimap: <E, G, A, B>(
-  f: (e: E) => G,
-  g: (a: A) => B
-) => (fa: Either<E, A>) => Either<G, B> = (f, g) => (fa) => bimap_(fa, f, g)
+export function bimap<E, G, A, B>(f: (e: E) => G, g: (a: A) => B) {
+  return (fa: Either<E, A>): Either<G, B> => bimap_(fa, f, g)
+}
 
 /**
  * Extends this computation with another computation that depends on the
  * result of this computation by running the first computation, using its
  * result to generate a second computation, and running that computation.
  */
-export const chain_: <E, A, B, E2>(
+export function chain_<E, A, B, E2>(
   fa: Either<E, A>,
   f: (a: A) => Either<E2, B>
-) => Either<E | E2, B> = (ma, f) => (isLeft(ma) ? ma : f(ma.right))
+): Either<E | E2, B> {
+  return isLeft(fa) ? fa : f(fa.right)
+}
 
 /**
  * Extends this computation with another computation that depends on the
  * result of this computation by running the first computation, using its
  * result to generate a second computation, and running that computation.
+ *
+ * @dataFirst chain_
  */
-export const chain: <E, A, B>(
-  f: (a: A) => Either<E, B>
-) => <E2>(ma: Either<E2, A>) => Either<E | E2, B> = (f) => (ma) => chain_(ma, f)
+export function chain<E, A, B>(f: (a: A) => Either<E, B>) {
+  return <E2>(ma: Either<E2, A>): Either<E | E2, B> => chain_(ma, f)
+}
+
+/**
+ * Like chain but ignores the constructed outout
+ *
+ * @dataFirst tap_
+ */
+export function tap<E, A, B>(f: (a: A) => Either<E, B>) {
+  return <E2>(ma: Either<E2, A>): Either<E | E2, A> =>
+    chain_(ma, (a) => map_(f(a), () => a))
+}
 
 /**
  * Like chain but ignores the constructed outout
  */
-export const tap = <E, A, B>(f: (a: A) => Either<E, B>) => <E2>(
-  ma: Either<E2, A>
-): Either<E | E2, A> => chain_(ma, (a) => map_(f(a), () => a))
-
-/**
- * Like chain but ignores the constructed outout
- */
-export const tap_ = <E2, E, A, B>(
+export function tap_<E2, E, A, B>(
   ma: Either<E2, A>,
   f: (a: A) => Either<E, B>
-): Either<E | E2, A> => chain_(ma, (a) => map_(f(a), () => a))
+): Either<E | E2, A> {
+  return chain_(ma, (a) => map_(f(a), () => a))
+}
 
 /**
  * Self embed `Either[E, A]` into `Either[E, Either[E, A]]`
  */
-export const duplicate: <E, A>(ma: Either<E, A>) => Either<E, Either<E, A>> = (ma) =>
-  extend_(ma, (x) => x)
+export function duplicate<E, A>(ma: Either<E, A>): Either<E, Either<E, A>> {
+  return extend_(ma, (x) => x)
+}
 
 /**
  * Returns `false` if `Left` or returns the result of the application of the given predicate to the `Right` value.
+ *
+ * @dataFirst exists_
  */
 export function exists<A>(predicate: Predicate<A>): <E>(ma: Either<E, A>) => boolean {
   return (ma) => (isLeft(ma) ? false : predicate(ma.right))
@@ -226,61 +269,73 @@ export function exists_<E, A>(ma: Either<E, A>, predicate: Predicate<A>): boolea
 /**
  * Apply `Either[E, A] => B` in case self is right returning `Either[E, B]`
  */
-export const extend_: <E, A, B>(
+export function extend_<E, A, B>(
   wa: Either<E, A>,
   f: (wa: Either<E, A>) => B
-) => Either<E, B> = (wa, f) => (isLeft(wa) ? wa : right(f(wa)))
+): Either<E, B> {
+  return isLeft(wa) ? wa : right(f(wa))
+}
 
 /**
  * Apply `Either[E, A] => B` in case self is right returning `Either[E, B]`
+ *
+ * @dataFirst extend_
  */
-export const extend: <E, A, B>(
-  f: (fa: Either<E, A>) => B
-) => (ma: Either<E, A>) => Either<E, B> = (f) => (ma) => extend_(ma, f)
+export function extend<E, A, B>(f: (fa: Either<E, A>) => B) {
+  return (ma: Either<E, A>): Either<E, B> => extend_(ma, f)
+}
+
+/**
+ * Apply predicate to A and construct E in case the predicate is false
+ *
+ * @dataFirst filterOrElse_
+ */
+export function filterOrElse<E, A, B extends A>(
+  refinement: Refinement<A, B>,
+  onFalse: (a: A) => E
+): <E2>(ma: Either<E2, A>) => Either<E | E2, B>
+export function filterOrElse<E, A>(
+  predicate: Predicate<A>,
+  onFalse: (a: A) => E
+): <E2>(ma: Either<E2, A>) => Either<E | E2, A>
+export function filterOrElse<E, A>(predicate: Predicate<A>, onFalse: (a: A) => E) {
+  return (ma: Either<E, A>): Either<E, A> =>
+    chain_(ma, (a) => (predicate(a) ? right(a) : left(onFalse(a))))
+}
 
 /**
  * Apply predicate to A and construct E in case the predicate is false
  */
-export const filterOrElse: {
-  <E, A, B extends A>(refinement: Refinement<A, B>, onFalse: (a: A) => E): <E2>(
-    ma: Either<E2, A>
-  ) => Either<E | E2, B>
-  <E, A>(predicate: Predicate<A>, onFalse: (a: A) => E): <E2>(
-    ma: Either<E2, A>
-  ) => Either<E | E2, A>
-} = <E, A>(predicate: Predicate<A>, onFalse: (a: A) => E) => (
-  ma: Either<E, A>
-): Either<E, A> => chain_(ma, (a) => (predicate(a) ? right(a) : left(onFalse(a))))
-
-/**
- * Apply predicate to A and construct E in case the predicate is false
- */
-export const filterOrElse_: {
-  <E, E2, A, B extends A>(
-    ma: Either<E2, A>,
-    refinement: Refinement<A, B>,
-    onFalse: (a: A) => E
-  ): Either<E | E2, B>
-  <E, E2, A>(ma: Either<E2, A>, predicate: Predicate<A>, onFalse: (a: A) => E): Either<
-    E | E2,
-    A
-  >
-} = <E, A>(
+export function filterOrElse_<E, E2, A, B extends A>(
+  ma: Either<E2, A>,
+  refinement: Refinement<A, B>,
+  onFalse: (a: A) => E
+): Either<E | E2, B>
+export function filterOrElse_<E, E2, A>(
+  ma: Either<E2, A>,
+  predicate: Predicate<A>,
+  onFalse: (a: A) => E
+): Either<E | E2, A>
+export function filterOrElse_<E, A>(
   ma: Either<E, A>,
   predicate: Predicate<A>,
   onFalse: (a: A) => E
-): Either<E, A> => chain_(ma, (a) => (predicate(a) ? right(a) : left(onFalse(a))))
+): Either<E, A> {
+  return chain_(ma, (a) => (predicate(a) ? right(a) : left(onFalse(a))))
+}
 
 /**
  * Flatten nested `Either[E, Either[E1, A]]` into `Either[E | E1, A]`
  */
-export const flatten: <E, E2, A>(mma: Either<E, Either<E2, A>>) => Either<E | E2, A> = (
-  mma
-) => chain_(mma, (x) => x)
+export function flatten<E, E2, A>(mma: Either<E, Either<E2, A>>): Either<E | E2, A> {
+  return chain_(mma, (x) => x)
+}
 
 /**
  * Takes two functions and an `Either` value, if the value is a `Left` the inner value is applied to the first function,
  * if the value is a `Right` the inner value is applied to the second function.
+ *
+ * @dataFirst fold_
  */
 export function fold<E, A, B, C>(
   onLeft: (e: E) => B,
@@ -304,6 +359,8 @@ export function fold_<E, A, B, C>(
 /**
  * Takes a default and a nullable value, if the value is not nully, turn it into a `Right`, if the value is nully use
  * the provided default as a `Left`
+ *
+ * @dataFirst fromNullable_
  */
 export function fromNullable<E>(e: Lazy<E>): <A>(a: A) => Either<E, NonNullable<A>> {
   return <A>(a: A) => (a == null ? left(e()) : right(a as NonNullable<A>))
@@ -319,46 +376,65 @@ export function fromNullable_<A, E>(a: A, e: Lazy<E>): Either<E, NonNullable<A>>
 
 /**
  * Construct `Either[E, A]` from `Option[A]` constructing `E` with `onNone`
+ *
+ * @dataFirst fromOption_
  */
-export const fromOption: <E>(onNone: () => E) => <A>(ma: Option<A>) => Either<E, A> = (
-  onNone
-) => (ma) => (isNone(ma) ? left(onNone()) : right(ma.value))
+export function fromOption<E>(onNone: () => E) {
+  return <A>(ma: Option<A>): Either<E, A> =>
+    isNone(ma) ? left(onNone()) : right(ma.value)
+}
 
 /**
  * Construct `Either[E, A]` from `Option[A]` constructing `E` with `onNone`
  */
-export const fromOption_: <A, E>(ma: Option<A>, onNone: () => E) => Either<E, A> = (
-  ma,
-  onNone
-) => (isNone(ma) ? left(onNone()) : right(ma.value))
+export function fromOption_<A, E>(ma: Option<A>, onNone: () => E): Either<E, A> {
+  return isNone(ma) ? left(onNone()) : right(ma.value)
+}
+
+/**
+ * Construct `Either[E, A]` by applying a predicate to `A` and constructing
+ * `E` if the predicate is false
+ *
+ * @dataFirst fromPredicate_
+ */
+export function fromPredicate<E, A, B extends A>(
+  refinement: Refinement<A, B>,
+  onFalse: (a: A) => E
+): (a: A) => Either<E, B>
+export function fromPredicate<E, A>(
+  predicate: Predicate<A>,
+  onFalse: (a: A) => E
+): (a: A) => Either<E, A>
+export function fromPredicate<E, A>(predicate: Predicate<A>, onFalse: (a: A) => E) {
+  return (a: A): Either<E, A> => (predicate(a) ? right(a) : left(onFalse(a)))
+}
 
 /**
  * Construct `Either[E, A]` by applying a predicate to `A` and constructing
  * `E` if the predicate is false
  */
-export const fromPredicate: {
-  <E, A, B extends A>(refinement: Refinement<A, B>, onFalse: (a: A) => E): (
-    a: A
-  ) => Either<E, B>
-  <E, A>(predicate: Predicate<A>, onFalse: (a: A) => E): (a: A) => Either<E, A>
-} = <E, A>(predicate: Predicate<A>, onFalse: (a: A) => E) => (a: A): Either<E, A> =>
-  predicate(a) ? right(a) : left(onFalse(a))
-
-/**
- * Construct `Either[E, A]` by applying a predicate to `A` and constructing
- * `E` if the predicate is false
- */
-export const fromPredicate_: {
-  <E, A, B extends A>(a: A, refinement: Refinement<A, B>, onFalse: (a: A) => E): Either<
-    E,
-    B
-  >
-  <E, A>(a: A, predicate: Predicate<A>, onFalse: (a: A) => E): Either<E, A>
-} = <E, A>(a: A, predicate: Predicate<A>, onFalse: (a: A) => E): Either<E, A> =>
-  predicate(a) ? right(a) : left(onFalse(a))
+export function fromPredicate_<E, A, B extends A>(
+  a: A,
+  refinement: Refinement<A, B>,
+  onFalse: (a: A) => E
+): Either<E, B>
+export function fromPredicate_<E, A>(
+  a: A,
+  predicate: Predicate<A>,
+  onFalse: (a: A) => E
+): Either<E, A>
+export function fromPredicate_<E, A>(
+  a: A,
+  predicate: Predicate<A>,
+  onFalse: (a: A) => E
+): Either<E, A> {
+  return predicate(a) ? right(a) : left(onFalse(a))
+}
 
 /**
  * Get `A` or in case self is left return `onLeft` result
+ *
+ * @dataFirst getOrElse_
  */
 export function getOrElse<E, A>(onLeft: (e: E) => A): <B>(self: Either<E, B>) => A | B {
   return (ma) => getOrElse_(ma, onLeft)
@@ -393,45 +469,50 @@ export function isRight<E, A>(ma: Either<E, A>): ma is Right<A> {
 /**
  * Use `A => B` to transform `Either[E, A]` to `Either[E, B]`
  */
-export const map_: <E, A, B>(fa: Either<E, A>, f: (a: A) => B) => Either<E, B> = (
-  ma,
-  f
-) => (isLeft(ma) ? ma : right(f(ma.right)))
+export function map_<E, A, B>(fa: Either<E, A>, f: (a: A) => B): Either<E, B> {
+  return isLeft(fa) ? fa : right(f(fa.right))
+}
 
 /**
  * Use `A => B` to transform `Either[E, A]` to `Either[E, B]`
+ *
+ * @dataFirst map_
  */
-export const map: <A, B>(f: (a: A) => B) => <E>(fa: Either<E, A>) => Either<E, B> = (
-  f
-) => (fa) => map_(fa, f)
+export function map<A, B>(f: (a: A) => B) {
+  return <E>(fa: Either<E, A>): Either<E, B> => map_(fa, f)
+}
 
 /**
  * Use `E => E1` to transform `Either[E, A]` to `Either[E1, A]`
  */
-export const mapLeft_: <E, A, G>(fea: Either<E, A>, f: (e: E) => G) => Either<G, A> = (
-  fea,
-  f
-) => (isLeft(fea) ? left(f(fea.left)) : fea)
+export function mapLeft_<E, A, G>(fea: Either<E, A>, f: (e: E) => G): Either<G, A> {
+  return isLeft(fea) ? left(f(fea.left)) : fea
+}
 
 /**
  * Use `E => E1` to transform `Either[E, A]` to `Either[E1, A]`
+ *
+ * @dataFirst mapLeft_
  */
-export const mapLeft: <E, G>(
-  f: (e: E) => G
-) => <A>(fa: Either<E, A>) => Either<G, A> = (f) => (fa) => mapLeft_(fa, f)
+export function mapLeft<E, G>(f: (e: E) => G) {
+  return <A>(fa: Either<E, A>): Either<G, A> => mapLeft_(fa, f)
+}
 
 /**
  * Merges Left<E> | Right<B> into A | B
  */
-export const merge = <E, A>(self: Either<E, A>): E | A =>
-  fold_(
+export function merge<E, A>(self: Either<E, A>): E | A {
+  return fold_(
     self,
     (x) => x,
     (x) => x
   )
+}
 
 /**
  * Alternatively run onLeft
+ *
+ * @dataFirst orElse_
  */
 export function orElse<E, A, M>(
   onLeft: (e: E) => Either<M, A>
@@ -451,6 +532,8 @@ export function orElse_<E, A, B, M>(
 
 /**
  * Alternatively run onLeft returning
+ *
+ * @dataFirst orElseEither_
  */
 export function orElseEither<E, B, M>(onLeft: (e: E) => Either<M, B>) {
   return <A>(ma: Either<E, A>) => orElseEither_(ma, onLeft)
@@ -473,26 +556,39 @@ export function parseJSON_<E>(
   s: string,
   onError: (reason: unknown) => E
 ): Either<E, unknown> {
-  return tryCatch_(() => JSON.parse(s), onError)
+  return tryCatch(() => JSON.parse(s), onError)
 }
 
 /**
  * Converts a JavaScript Object Notation (JSON) string into an object.
+ *
+ * @dataFirst parseJSON_
  */
 export function parseJSON<E>(
   onError: (reason: unknown) => E
 ): (s: string) => Either<E, unknown> {
-  return (s) => tryCatch_(() => JSON.parse(s), onError)
+  return (s) => tryCatch(() => JSON.parse(s), onError)
 }
 
 /**
  * Converts a JavaScript value to a JavaScript Object Notation (JSON) string.
  */
-export function stringifyJSON<E>(
+export function stringifyJSON_<E>(
   u: unknown,
   onError: (reason: unknown) => E
 ): Either<E, string> {
-  return tryCatch_(() => JSON.stringify(u), onError)
+  return tryCatch(() => JSON.stringify(u), onError)
+}
+
+/**
+ * Converts a JavaScript value to a JavaScript Object Notation (JSON) string.
+ *
+ * @dataFirst stringifyJSON_
+ */
+export function stringifyJSON<E>(
+  onError: (reason: unknown) => E
+): (u: unknown) => Either<E, string> {
+  return (u) => tryCatch(() => JSON.stringify(u), onError)
 }
 
 /**
@@ -512,26 +608,11 @@ export function toError(e: unknown): Error {
 /**
  * Constructs a new `Either` from a function that might throw
  */
-export function tryCatch_<E, A>(f: Lazy<A>, onError: (e: unknown) => E): Either<E, A> {
+export function tryCatch<E, A>(f: Lazy<A>, onError: (e: unknown) => E): Either<E, A> {
   try {
     return right(f())
   } catch (e) {
     return left(onError(e))
-  }
-}
-
-/**
- * Constructs a new `Either` from a function that might throw
- */
-export function tryCatch<E>(
-  onError: (e: unknown) => E
-): <A>(f: Lazy<A>) => Either<E, A> {
-  return (f) => {
-    try {
-      return right(f())
-    } catch (e) {
-      return left(onError(e))
-    }
   }
 }
 
@@ -549,33 +630,31 @@ export function compact<E extends Either<any, any>>(
 /**
  * Reduce a value `b` through an `Either`
  */
-export const reduce_: <E, A, B>(fa: Either<E, A>, b: B, f: (b: B, a: A) => B) => B = (
-  fa,
-  b,
-  f
-) => (isLeft(fa) ? b : f(b, fa.right))
+export function reduce_<E, A, B>(fa: Either<E, A>, b: B, f: (b: B, a: A) => B): B {
+  return isLeft(fa) ? b : f(b, fa.right)
+}
 
 /**
  * Reduce a value `b` through an `Either`
+ *
+ * @dataFirst reduce_
  */
-export const reduce: <A, B>(
-  b: B,
-  f: (b: B, a: A) => B
-) => <E>(fa: Either<E, A>) => B = (b, f) => (fa) => reduce_(fa, b, f)
+export function reduce<A, B>(b: B, f: (b: B, a: A) => B): <E>(fa: Either<E, A>) => B {
+  return (fa) => reduce_(fa, b, f)
+}
+
+/**
+ * Reduce a value `b` through an `Either` in inverted order
+ *
+ * @dataFirst reduceRight_
+ */
+export function reduceRight<A, B>(b: B, f: (a: A, b: B) => B) {
+  return <E>(fa: Either<E, A>): B => reduceRight_(fa, b, f)
+}
 
 /**
  * Reduce a value `b` through an `Either` in inverted order
  */
-export const reduceRight: <A, B>(
-  b: B,
-  f: (a: A, b: B) => B
-) => <E>(fa: Either<E, A>) => B = (b, f) => (fa) => reduceRight_(fa, b, f)
-
-/**
- * Reduce a value `b` through an `Either` in inverted order
- */
-export const reduceRight_: <E, A, B>(
-  fa: Either<E, A>,
-  b: B,
-  f: (a: A, b: B) => B
-) => B = (fa, b, f) => (isLeft(fa) ? b : f(fa.right, b))
+export function reduceRight_<E, A, B>(fa: Either<E, A>, b: B, f: (a: A, b: B) => B): B {
+  return isLeft(fa) ? b : f(fa.right, b)
+}
