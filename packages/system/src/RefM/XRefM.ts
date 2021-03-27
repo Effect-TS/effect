@@ -1,12 +1,11 @@
 // tracing: off
 
 import type { Ref } from "../Ref/XRef"
-import type { Semaphore } from "../Semaphore"
-import { withPermit } from "../Semaphore"
+import * as semaphore from "../Semaphore"
 import * as T from "./effect"
 
 /**
- * A `XRefM<RA, RB, EA, EB, A, B>` is a polymorphic, purely functional
+ * A `XRefM[RA, RB, EA, EB, A, B]` is a polymorphic, purely functional
  * description of a mutable reference. The fundamental operations of a `XRefM`
  * are `set` and `get`. `set` takes a value of type `A` and sets the reference
  * to a new value, requiring an environment of type `RA` and potentially
@@ -15,14 +14,21 @@ import * as T from "./effect"
  * `RB` and potentially failing with an error of type `EB`.
  *
  * When the error and value types of the `XRefM` are unified, that is, it is a
- * `XRefM[E, E, A, A]`, the `XRefM` also supports atomic `modify` and `update`
- * operations.
+ * `XRefM<R, R, E, E, A, A>`, the `XRefM` also supports atomic `modify` and
+ * `update` operations.
  *
- * Unlike `ZRef`, `XRefM` allows performing effects within update operations,
- * at some cost to performance. Writes will semantically block other writers,
- * while multiple readers can read simultaneously.
+ * Unlike an ordinary `ZRef`, a `XRefM` allows performing effects within update
+ * operations, at some cost to performance. Writes will semantically block
+ * other writers, while multiple readers can read simultaneously.
  */
 export interface XRefM<RA, RB, EA, EB, A, B> {
+  readonly _RA: (_: RA) => void
+  readonly _RB: (_: RB) => void
+  readonly _EA: () => EA
+  readonly _EB: () => EB
+  readonly _A: (_: A) => void
+  readonly _B: () => B
+
   /**
    * Folds over the error and value types of the `XRefM`. This is a highly
    * polymorphic method that is capable of arbitrarily transforming the error
@@ -63,162 +69,240 @@ export interface XRefM<RA, RB, EA, EB, A, B> {
   readonly set: (a: A) => T.Effect<RA, EA, void>
 }
 
-export class Atomic<A> implements XRefM<unknown, unknown, never, never, A, A> {
-  readonly _tag = "Atomic"
+export class AtomicM<A> implements XRefM<unknown, unknown, never, never, A, A> {
+  readonly _tag = "AtomicM"
 
-  constructor(readonly ref: Ref<A>, readonly semaphore: Semaphore) {}
+  readonly _RA!: (_: unknown) => void
+  readonly _RB!: (_: unknown) => void
+  readonly _EA!: () => never
+  readonly _EB!: () => never
+  readonly _A!: (_: A) => void
+  readonly _B!: () => A
 
-  readonly foldM = <RC, RD, EC, ED, C, D>(
+  constructor(readonly ref: Ref<A>, readonly semaphore: semaphore.Semaphore) {
+    this.foldM = this.foldM.bind(this)
+    this.foldAllM = this.foldAllM.bind(this)
+    this.set = this.set.bind(this)
+  }
+
+  foldM<RC, RD, EC, ED, C, D>(
     _ea: (_: never) => EC,
     _eb: (_: never) => ED,
     ca: (_: C) => T.Effect<RC, EC, A>,
     bd: (_: A) => T.Effect<RD, ED, D>
-  ): XRefM<RC, RD, EC, ED, C, D> =>
-    new Derived<RC, RD, EC, ED, C, D, A>(
-      this,
-      (s) => bd(s),
-      (a) => ca(a)
+  ): XRefM<RC, RD, EC, ED, C, D> {
+    return new DerivedM<RC, RD, EC, ED, C, D>((f) =>
+      f(
+        this,
+        (s) => bd(s),
+        (a) => ca(a)
+      )
     )
+  }
 
-  readonly foldAllM = <RC, RD, EC, ED, C, D>(
+  foldAllM<RC, RD, EC, ED, C, D>(
     _ea: (_: never) => EC,
     _eb: (_: never) => ED,
     _ec: (_: never) => EC,
     ca: (_: C) => (_: A) => T.Effect<RC, EC, A>,
     bd: (_: A) => T.Effect<RD, ED, D>
-  ): XRefM<RC, RD, EC, ED, C, D> =>
-    new DerivedAll<RC, RD, EC, ED, C, D, A>(
-      this,
-      (s) => bd(s),
-      (a) => (s) => ca(a)(s)
+  ): XRefM<RC, RD, EC, ED, C, D> {
+    return new DerivedAllM<RC, RD, EC, ED, C, D>((f) =>
+      f(
+        this,
+        (s) => bd(s),
+        (a) => (s) => ca(a)(s)
+      )
     )
+  }
 
-  readonly get: T.Effect<unknown, never, A> = this.ref.get
+  get get(): T.Effect<unknown, never, A> {
+    return this.ref.get
+  }
 
-  readonly set: (a: A) => T.Effect<unknown, never, void> = (a) =>
-    withPermit(this.semaphore)(this.ref.set(a))
+  set(a: A): T.Effect<unknown, never, void> {
+    return semaphore.withPermit(this.semaphore)(this.ref.set(a))
+  }
 }
 
-export class Derived<RA, RB, EA, EB, A, B, S> implements XRefM<RA, RB, EA, EB, A, B> {
-  readonly _tag = "Derived"
+export class DerivedM<RA, RB, EA, EB, A, B> implements XRefM<RA, RB, EA, EB, A, B> {
+  readonly _tag = "DerivedM"
+
+  readonly _RA!: (_: RA) => void
+  readonly _RB!: (_: RB) => void
+  readonly _EA!: () => EA
+  readonly _EB!: () => EB
+  readonly _A!: (_: A) => void
+  readonly _B!: () => B
 
   constructor(
-    readonly value: Atomic<S>,
-    readonly getEither: (s: S) => T.Effect<RB, EB, B>,
-    readonly setEither: (a: A) => T.Effect<RA, EA, S>
-  ) {}
+    readonly use: <X>(
+      f: <S>(
+        value: AtomicM<S>,
+        getEither: (s: S) => T.Effect<RB, EB, B>,
+        setEither: (a: A) => T.Effect<RA, EA, S>
+      ) => X
+    ) => X
+  ) {
+    this.foldM = this.foldM.bind(this)
+    this.foldAllM = this.foldAllM.bind(this)
+    this.set = this.set.bind(this)
+  }
 
-  readonly foldM = <RC, RD, EC, ED, C, D>(
+  foldM<RC, RD, EC, ED, C, D>(
     ea: (_: EA) => EC,
     eb: (_: EB) => ED,
     ca: (_: C) => T.Effect<RC, EC, A>,
     bd: (_: B) => T.Effect<RD, ED, D>
-  ): XRefM<RA & RC, RB & RD, EC, ED, C, D> =>
-    new Derived<RA & RC, RB & RD, EC, ED, C, D, S>(
-      this.value,
-      (s) =>
-        T.foldM_(
-          this.getEither(s),
-          (e) => T.fail(eb(e)),
-          (a) => bd(a)
-        ),
-      (a) => T.chain_(ca(a), (a) => T.mapError_(this.setEither(a), ea))
+  ): XRefM<RA & RC, RB & RD, EC, ED, C, D> {
+    return this.use(
+      (value, getEither, setEither) =>
+        new DerivedM<RA & RC, RB & RD, EC, ED, C, D>((f) =>
+          f(
+            value,
+            (s) =>
+              T.foldM_(
+                getEither(s),
+                (e) => T.fail(eb(e)),
+                (a) => bd(a)
+              ),
+            (a) => T.chain_(ca(a), (a) => T.mapError_(setEither(a), ea))
+          )
+        )
     )
+  }
 
-  readonly foldAllM = <RC, RD, EC, ED, C, D>(
+  foldAllM<RC, RD, EC, ED, C, D>(
     ea: (_: EA) => EC,
     eb: (_: EB) => ED,
     ec: (_: EB) => EC,
     ca: (_: C) => (_: B) => T.Effect<RC, EC, A>,
     bd: (_: B) => T.Effect<RD, ED, D>
-  ): XRefM<RB & RA & RC, RB & RD, EC, ED, C, D> =>
-    new DerivedAll<RB & RA & RC, RB & RD, EC, ED, C, D, S>(
-      this.value,
-      (s) =>
-        T.foldM_(
-          this.getEither(s),
-          (e) => T.fail(eb(e)),
-          (a) => bd(a)
-        ),
-      (c) => (s) =>
-        T.chain_(
-          T.foldM_(this.getEither(s), (e) => T.fail(ec(e)), ca(c)),
-          (a) => T.mapError_(this.setEither(a), ea)
+  ): XRefM<RB & RA & RC, RB & RD, EC, ED, C, D> {
+    return this.use(
+      (value, getEither, setEither) =>
+        new DerivedAllM<RB & RA & RC, RB & RD, EC, ED, C, D>((f) =>
+          f(
+            value,
+            (s) =>
+              T.foldM_(
+                getEither(s),
+                (e) => T.fail(eb(e)),
+                (a) => bd(a)
+              ),
+            (c) => (s) =>
+              T.chain_(
+                T.foldM_(getEither(s), (e) => T.fail(ec(e)), ca(c)),
+                (a) => T.mapError_(setEither(a), ea)
+              )
+          )
         )
     )
+  }
 
-  get: T.Effect<RB, EB, B> = T.chain_(this.value.get, (a) => this.getEither(a))
+  get get(): T.Effect<RB, EB, B> {
+    return this.use((value, getEither) => T.chain_(value.get, (a) => getEither(a)))
+  }
 
-  set: (a: A) => T.Effect<RA, EA, void> = (a) =>
-    withPermit(this.value.semaphore)(
-      T.chain_(this.setEither(a), (a) => this.value.set(a))
+  set(a: A): T.Effect<RA, EA, void> {
+    return this.use((value, _, setEither) =>
+      semaphore.withPermit(value.semaphore)(T.chain_(setEither(a), (a) => value.set(a)))
     )
+  }
 }
 
-export class DerivedAll<RA, RB, EA, EB, A, B, S>
-  implements XRefM<RA, RB, EA, EB, A, B> {
-  readonly _tag = "DerivedAll"
+export class DerivedAllM<RA, RB, EA, EB, A, B> implements XRefM<RA, RB, EA, EB, A, B> {
+  readonly _tag = "DerivedAllM"
+
+  readonly _RA!: (_: RA) => void
+  readonly _RB!: (_: RB) => void
+  readonly _EA!: () => EA
+  readonly _EB!: () => EB
+  readonly _A!: (_: A) => void
+  readonly _B!: () => B
 
   constructor(
-    readonly value: Atomic<S>,
-    readonly getEither: (s: S) => T.Effect<RB, EB, B>,
-    readonly setEither: (a: A) => (s: S) => T.Effect<RA, EA, S>
-  ) {}
+    readonly use: <X>(
+      f: <S>(
+        value: AtomicM<S>,
+        getEither: (s: S) => T.Effect<RB, EB, B>,
+        setEither: (a: A) => (s: S) => T.Effect<RA, EA, S>
+      ) => X
+    ) => X
+  ) {
+    this.foldM = this.foldM.bind(this)
+    this.foldAllM = this.foldAllM.bind(this)
+    this.set = this.set.bind(this)
+  }
 
-  readonly foldM = <RC, RD, EC, ED, C, D>(
+  foldM<RC, RD, EC, ED, C, D>(
     ea: (_: EA) => EC,
     eb: (_: EB) => ED,
     ca: (_: C) => T.Effect<RC, EC, A>,
     bd: (_: B) => T.Effect<RD, ED, D>
-  ): XRefM<RA & RC, RB & RD, EC, ED, C, D> =>
-    new DerivedAll<RA & RC, RB & RD, EC, ED, C, D, S>(
-      this.value,
-      (s) =>
-        T.foldM_(
-          this.getEither(s),
-          (e) => T.fail(eb(e)),
-          (a) => bd(a)
-        ),
-      (a) => (s) => T.chain_(ca(a), (a) => T.mapError_(this.setEither(a)(s), ea))
+  ): XRefM<RA & RC, RB & RD, EC, ED, C, D> {
+    return this.use(
+      (value, getEither, setEither) =>
+        new DerivedAllM<RA & RC, RB & RD, EC, ED, C, D>((f) =>
+          f(
+            value,
+            (s) =>
+              T.foldM_(
+                getEither(s),
+                (e) => T.fail(eb(e)),
+                (a) => bd(a)
+              ),
+            (a) => (s) => T.chain_(ca(a), (a) => T.mapError_(setEither(a)(s), ea))
+          )
+        )
     )
+  }
 
-  readonly foldAllM = <RC, RD, EC, ED, C, D>(
+  foldAllM<RC, RD, EC, ED, C, D>(
     ea: (_: EA) => EC,
     eb: (_: EB) => ED,
     ec: (_: EB) => EC,
     ca: (_: C) => (_: B) => T.Effect<RC, EC, A>,
     bd: (_: B) => T.Effect<RD, ED, D>
-  ): XRefM<RB & RA & RC, RB & RD, EC, ED, C, D> =>
-    new DerivedAll<RB & RA & RC, RB & RD, EC, ED, C, D, S>(
-      this.value,
-      (s) =>
-        T.foldM_(
-          this.getEither(s),
-          (e) => T.fail(eb(e)),
-          (a) => bd(a)
-        ),
-      (c) => (s) =>
-        T.chain_(
-          T.foldM_(this.getEither(s), (e) => T.fail(ec(e)), ca(c)),
-          (a) => T.mapError_(this.setEither(a)(s), ea)
+  ): XRefM<RB & RA & RC, RB & RD, EC, ED, C, D> {
+    return this.use(
+      (value, getEither, setEither) =>
+        new DerivedAllM<RB & RA & RC, RB & RD, EC, ED, C, D>((f) =>
+          f(
+            value,
+            (s) =>
+              T.foldM_(
+                getEither(s),
+                (e) => T.fail(eb(e)),
+                (a) => bd(a)
+              ),
+            (c) => (s) =>
+              T.chain_(
+                T.foldM_(getEither(s), (e) => T.fail(ec(e)), ca(c)),
+                (a) => T.mapError_(setEither(a)(s), ea)
+              )
+          )
         )
     )
+  }
 
-  get: T.Effect<RB, EB, B> = T.chain_(this.value.get, (a) => this.getEither(a))
+  get get(): T.Effect<RB, EB, B> {
+    return this.use((value, getEither) => T.chain_(value.get, (a) => getEither(a)))
+  }
 
-  set: (a: A) => T.Effect<RA, EA, void> = (a) =>
-    withPermit(this.value.semaphore)(
-      T.chain_(T.chain_(this.value.get, this.setEither(a)), (a) => this.value.set(a))
+  set(a: A): T.Effect<RA, EA, void> {
+    return this.use((value, _, setEither) =>
+      semaphore.withPermit(value.semaphore)(
+        T.chain_(T.chain_(value.get, setEither(a)), (a) => value.set(a))
+      )
     )
+  }
 }
 
-export interface RefMRE<R, E, A> extends XRefM<R, R, E, E, A, A> {}
-export interface RefME<E, A> extends XRefM<unknown, unknown, E, E, A, A> {}
-export interface RefMR<R, A> extends XRefM<R, R, never, never, A, A> {}
 export interface RefM<A> extends XRefM<unknown, unknown, never, never, A, A> {}
 
-export const concrete = <RA, RB, EA, EB, A>(_: XRefM<RA, RB, EA, EB, A, A>) =>
+export const concrete = <RA, RB, EA, EB, A, B>(_: XRefM<RA, RB, EA, EB, A, B>) =>
   _ as
-    | Atomic<A>
-    | Derived<RA, RB, EA, EB, A, A, A>
-    | DerivedAll<RA, RB, EA, EB, A, A, A>
+    | AtomicM<A | B>
+    | DerivedM<RA, RB, EA, EB, A, B>
+    | DerivedAllM<RA, RB, EA, EB, A, B>

@@ -1,22 +1,21 @@
 // tracing: off
 
-import { absolve } from "../Effect/absolve"
-import { chain, effectTotal } from "../Effect/core"
-import type { IO, UIO } from "../Effect/effect"
+import * as absolve from "../Effect/absolve"
 import * as E from "../Either"
 import { identity, pipe, tuple } from "../Function"
 import * as O from "../Option"
 import { AtomicReference } from "../Support/AtomicReference"
 import { matchTag } from "../Utils"
 import * as A from "./atomic"
+import * as T from "./effect"
 import type { Ref, XRef } from "./XRef"
 import { Atomic, concrete } from "./XRef"
 
 /**
  * Creates a new `XRef` with the specified value.
  */
-export function makeRef<A>(a: A): UIO<Ref<A>> {
-  return effectTotal(() => new Atomic(new AtomicReference(a)))
+export function makeRef<A>(a: A): T.UIO<Ref<A>> {
+  return T.effectTotal(() => new Atomic(new AtomicReference(a)))
 }
 
 /**
@@ -298,7 +297,7 @@ export function writeOnly<EA, EB, A, B>(
  * @dataFirst modify_
  */
 export function modify<B, A>(f: (a: A) => readonly [B, A]) {
-  return <EA, EB>(self: XRef<EA, EB, A, A>): IO<EA | EB, B> => modify_(self, f)
+  return <EA, EB>(self: XRef<EA, EB, A, A>): T.IO<EA | EB, B> => modify_(self, f)
 }
 
 /**
@@ -309,58 +308,62 @@ export function modify<B, A>(f: (a: A) => readonly [B, A]) {
 export function modify_<EA, EB, B, A>(
   self: XRef<EA, EB, A, A>,
   f: (a: A) => readonly [B, A]
-): IO<EA | EB, B> {
+): T.IO<EA | EB, B> {
   return pipe(
     self,
     concrete,
     matchTag({
       Atomic: (_) => A.modify(_, f),
       Derived: (self) =>
-        pipe(
-          A.modify(self.value, (s) =>
-            pipe(
-              s,
-              self.getEither,
-              E.fold(
-                (e) => tuple(E.left(e), s),
-                (a1) =>
-                  pipe(f(a1), ([b, a2]) =>
-                    pipe(
-                      a2,
-                      self.setEither,
-                      E.fold(
-                        (e) => tuple(E.left(e), s),
-                        (s) => tuple(E.widenE<EA | EB>()(E.right(b)), s)
+        self.use((value, getEither, setEither) =>
+          pipe(
+            A.modify(value, (s) =>
+              pipe(
+                s,
+                getEither,
+                E.fold(
+                  (e) => tuple(E.left(e), s),
+                  (a1) =>
+                    pipe(f(a1), ([b, a2]) =>
+                      pipe(
+                        a2,
+                        setEither,
+                        E.fold(
+                          (e) => tuple(E.left(e), s),
+                          (s) => tuple(E.widenE<EA | EB>()(E.right(b)), s)
+                        )
                       )
                     )
-                  )
+                )
               )
-            )
-          ),
-          absolve
+            ),
+            absolve.absolve
+          )
         ),
       DerivedAll: (self) =>
-        pipe(
-          A.modify(self.value, (s) =>
-            pipe(
-              s,
-              self.getEither,
-              E.fold(
-                (e) => tuple(E.left(e), s),
-                (a1) =>
-                  pipe(f(a1), ([b, a2]) =>
-                    pipe(
-                      self.setEither(a2)(s),
-                      E.fold(
-                        (e) => tuple(E.left(e), s),
-                        (s) => tuple(E.widenE<EA | EB>()(E.right(b)), s)
+        self.use((value, getEither, setEither) =>
+          pipe(
+            A.modify(value, (s) =>
+              pipe(
+                s,
+                getEither,
+                E.fold(
+                  (e) => tuple(E.left(e), s),
+                  (a1) =>
+                    pipe(f(a1), ([b, a2]) =>
+                      pipe(
+                        setEither(a2)(s),
+                        E.fold(
+                          (e) => tuple(E.left(e), s),
+                          (s) => tuple(E.widenE<EA | EB>()(E.right(b)), s)
+                        )
                       )
                     )
-                  )
+                )
               )
-            )
-          ),
-          absolve
+            ),
+            absolve.absolve
+          )
         )
     })
   )
@@ -375,7 +378,8 @@ export function modify_<EA, EB, B, A>(
  * @dataFirst modifySome_
  */
 export function modifySome<B, A>(def: B, f: (a: A) => O.Option<readonly [B, A]>) {
-  return <EA, EB>(self: XRef<EA, EB, A, A>): IO<EA | EB, B> => modifySome_(self, def, f)
+  return <EA, EB>(self: XRef<EA, EB, A, A>): T.IO<EA | EB, B> =>
+    modifySome_(self, def, f)
 }
 
 /**
@@ -388,7 +392,7 @@ export function modifySome_<EA, EB, A, B>(
   self: XRef<EA, EB, A, A>,
   def: B,
   f: (a: A) => O.Option<readonly [B, A]>
-): IO<EA | EB, B> {
+): T.IO<EA | EB, B> {
   return pipe(
     self,
     concrete,
@@ -410,7 +414,7 @@ export function modifySome_<EA, EB, A, B>(
  * @dataFirst getAndSet_
  */
 export function getAndSet<A>(a: A) {
-  return <EA, EB>(self: XRef<EA, EB, A, A>): IO<EA | EB, A> => getAndSet_(self, a)
+  return <EA, EB>(self: XRef<EA, EB, A, A>): T.IO<EA | EB, A> => getAndSet_(self, a)
 }
 
 /**
@@ -493,7 +497,7 @@ export function getAndUpdateSome_<EA, EB, A>(
  * @dataFirst update_
  */
 export function update<A>(f: (a: A) => A) {
-  return <EA, EB>(self: XRef<EA, EB, A, A>): IO<EA | EB, void> => update_(self, f)
+  return <EA, EB>(self: XRef<EA, EB, A, A>): T.IO<EA | EB, void> => update_(self, f)
 }
 
 /**
@@ -502,7 +506,7 @@ export function update<A>(f: (a: A) => A) {
 export function update_<EA, EB, A>(
   self: XRef<EA, EB, A, A>,
   f: (a: A) => A
-): IO<EA | EB, void> {
+): T.IO<EA | EB, void> {
   return pipe(
     self,
     concrete,
@@ -519,7 +523,7 @@ export function update_<EA, EB, A>(
  * @dataFirst updateAndGet_
  */
 export function updateAndGet<A>(f: (a: A) => A) {
-  return <EA, EB>(self: XRef<EA, EB, A, A>): IO<EA | EB, A> => updateAndGet_(self, f)
+  return <EA, EB>(self: XRef<EA, EB, A, A>): T.IO<EA | EB, A> => updateAndGet_(self, f)
 }
 
 /**
@@ -529,15 +533,14 @@ export function updateAndGet<A>(f: (a: A) => A) {
 export function updateAndGet_<EA, EB, A>(
   self: XRef<EA, EB, A, A>,
   f: (a: A) => A
-): IO<EA | EB, A> {
+): T.IO<EA | EB, A> {
   return pipe(
     self,
     concrete,
     matchTag({ Atomic: (_) => A.updateAndGet(_, f) }, (self) =>
       pipe(
-        self,
-        modify((v) => pipe(f(v), (result) => tuple(result, result))),
-        chain(() => self.get)
+        modify_(self, (v) => pipe(f(v), (result) => tuple(result, result))),
+        T.chain(() => self.get)
       )
     )
   )
@@ -550,7 +553,7 @@ export function updateAndGet_<EA, EB, A>(
  * @dataFirst updateSome_
  */
 export function updateSome<A>(f: (a: A) => O.Option<A>) {
-  return <EA, EB>(self: XRef<EA, EB, A, A>): IO<EA | EB, void> => updateSome_(self, f)
+  return <EA, EB>(self: XRef<EA, EB, A, A>): T.IO<EA | EB, void> => updateSome_(self, f)
 }
 
 /**
@@ -560,7 +563,7 @@ export function updateSome<A>(f: (a: A) => O.Option<A>) {
 export function updateSome_<EA, EB, A>(
   self: XRef<EA, EB, A, A>,
   f: (a: A) => O.Option<A>
-): IO<EA | EB, void> {
+): T.IO<EA | EB, void> {
   return pipe(
     self,
     concrete,
@@ -585,7 +588,7 @@ export function updateSome_<EA, EB, A>(
  * @dataFirst updateSomeAndGet_
  */
 export function updateSomeAndGet<A>(f: (a: A) => O.Option<A>) {
-  return <EA, EB>(self: XRef<EA, EB, A, A>): IO<EA | EB, A> =>
+  return <EA, EB>(self: XRef<EA, EB, A, A>): T.IO<EA | EB, A> =>
     updateSomeAndGet_(self, f)
 }
 
@@ -597,13 +600,12 @@ export function updateSomeAndGet<A>(f: (a: A) => O.Option<A>) {
 export function updateSomeAndGet_<EA, EB, A>(
   self: XRef<EA, EB, A, A>,
   f: (a: A) => O.Option<A>
-): IO<EA | EB, A> {
+): T.IO<EA | EB, A> {
   return pipe(
     self,
     concrete,
-    matchTag(
-      { Atomic: (_) => A.updateSomeAndGet(_, f) },
-      modify((v) =>
+    matchTag({ Atomic: (_) => A.updateSomeAndGet(_, f) }, (_) =>
+      modify_(_, (v) =>
         pipe(
           f(v),
           O.getOrElse(() => v),
@@ -611,36 +613,6 @@ export function updateSomeAndGet_<EA, EB, A>(
         )
       )
     )
-  )
-}
-
-/**
- * Unsafe update value in a Ref<A>
- *
- * @dataFirst unsafeUpdate_
- */
-export function unsafeUpdate<A>(f: (a: A) => A) {
-  return (self: Ref<A>) => unsafeUpdate_(self, f)
-}
-
-/**
- * Unsafe update value in a Ref<A>
- */
-export function unsafeUpdate_<A>(self: Ref<A>, f: (a: A) => A) {
-  return pipe(
-    self,
-    concrete,
-    matchTag({
-      Atomic: (_) => A.unsafeUpdate(_, f),
-      Derived: (self) =>
-        A.unsafeUpdate(self.value, (s) =>
-          pipe(s, self.getEither, E.merge, f, self.setEither, E.merge)
-        ),
-      DerivedAll: (self) =>
-        A.unsafeUpdate(self.value, (s) =>
-          pipe(s, self.getEither, E.merge, f, (a) => self.setEither(a)(s), E.merge)
-        )
-    })
   )
 }
 

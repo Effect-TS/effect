@@ -2,209 +2,195 @@
 
 import * as E from "../Either"
 import { identity, pipe, tuple } from "../Function"
+import type * as M from "../Managed/managed"
 import * as O from "../Option"
 import * as Q from "../Queue"
 import * as R from "../Ref"
 import * as S from "../Semaphore"
 import { matchTag } from "../Utils"
 import * as T from "./effect"
-import type * as M from "./managed"
 import type { RefM, XRefM } from "./XRefM"
-import { Atomic, concrete } from "./XRefM"
+import { AtomicM, concrete } from "./XRefM"
 
 /**
  * Creates a new `XRefM` with the specified value.
  */
-export const makeRefM = <A>(a: A): T.UIO<RefM<A>> =>
-  pipe(
+export function makeRefM<A>(a: A): T.UIO<RefM<A>> {
+  return pipe(
     T.do,
     T.bind("ref", () => R.makeRef(a)),
     T.bind("semaphore", () => S.makeSemaphore(1)),
-    T.map(({ ref, semaphore }) => new Atomic(ref, semaphore))
+    T.map(({ ref, semaphore }) => new AtomicM(ref, semaphore))
   )
+}
 
 /**
  * Creates a new `XRefM` with the specified value.
  */
-export const unsafeMakeRefM = <A>(a: A): RefM<A> => {
+export function unsafeMakeRefM<A>(a: A): RefM<A> {
   const ref = R.unsafeMakeRef(a)
   const semaphore = S.unsafeMakeSemaphore(1)
-  return new Atomic(ref, semaphore)
+  return new AtomicM(ref, semaphore)
 }
 
 /**
  * Creates a new `RefM` with the specified value in the context of a
  * `Managed.`
  */
-export const makeManagedRefM = <A>(a: A): M.UIO<RefM<A>> =>
-  pipe(makeRefM(a), T.toManaged)
+export function makeManagedRefM<A>(a: A): M.UIO<RefM<A>> {
+  return pipe(makeRefM(a), T.toManaged)
+}
 
 /**
  * Creates a new `RefM` and a `Dequeue` that will emit every change to the
  * `RefM`.
  */
-export const dequeueRef = <A>(a: A): T.UIO<[RefM<A>, Q.Dequeue<A>]> =>
-  pipe(
+export function dequeueRef<A>(a: A): T.UIO<[RefM<A>, Q.Dequeue<A>]> {
+  return pipe(
     T.do,
     T.bind("ref", () => makeRefM(a)),
     T.bind("queue", () => Q.makeUnbounded<A>()),
-    T.map(({ queue, ref }) => [
-      pipe(
-        ref,
-        tapInput((a) => queue.offer(a))
-      ),
-      queue
-    ])
+    T.map(({ queue, ref }) => [tapInput_(ref, (a) => queue.offer(a)), queue])
   )
+}
 
 /**
  * Atomically modifies the `RefM` with the specified function, which computes
  * a return value for the modification. This is a more powerful version of
  * `update`.
  */
-export const modify_ = <RA, RB, EA, EB, R1, E1, B, A>(
+export function modify_<RA, RB, EA, EB, R1, E1, B, A>(
   self: XRefM<RA, RB, EA, EB, A, A>,
   f: (a: A) => T.Effect<R1, E1, readonly [B, A]>
-): T.Effect<RA & RB & R1, EA | EB | E1, B> =>
-  pipe(
+): T.Effect<RA & RB & R1, EA | EB | E1, B> {
+  return pipe(
     self,
     concrete,
     matchTag({
-      Atomic: (atomic) =>
+      AtomicM: (atomic) =>
         pipe(
           atomic.ref.get,
           T.chain(f),
           T.chain(([b, a]) => pipe(atomic.ref.set(a), T.as(b))),
           S.withPermit(atomic.semaphore)
         ),
-      Derived: (derived) =>
-        pipe(
-          derived.value.ref.get,
-          T.chain((a) =>
-            pipe(
-              derived.getEither(a),
-              T.chain(f),
-              T.chain(([b, a]) =>
-                pipe(
-                  derived.setEither(a),
-                  T.chain((a) => derived.value.ref.set(a)),
-                  T.as(b)
+      DerivedM: (derived) =>
+        derived.use((value, getEither, setEither) =>
+          pipe(
+            value.ref.get,
+            T.chain((a) =>
+              pipe(
+                getEither(a),
+                T.chain(f),
+                T.chain(([b, a]) =>
+                  pipe(
+                    setEither(a),
+                    T.chain((a) => value.ref.set(a)),
+                    T.as(b)
+                  )
                 )
               )
-            )
-          ),
-          S.withPermit(derived.value.semaphore)
+            ),
+            S.withPermit(value.semaphore)
+          )
         ),
-      DerivedAll: (derivedAll) =>
-        pipe(
-          derivedAll.value.ref.get,
-          T.chain((s) =>
-            pipe(
-              derivedAll.getEither(s),
-              T.chain(f),
-              T.chain(([b, a]) =>
-                pipe(
-                  derivedAll.setEither(a)(s),
-                  T.chain((a) => derivedAll.value.ref.set(a)),
-                  T.as(b)
+      DerivedAllM: (derivedAll) =>
+        derivedAll.use((value, getEither, setEither) =>
+          pipe(
+            value.ref.get,
+            T.chain((s) =>
+              pipe(
+                getEither(s),
+                T.chain(f),
+                T.chain(([b, a]) =>
+                  pipe(
+                    setEither(a)(s),
+                    T.chain((a) => value.ref.set(a)),
+                    T.as(b)
+                  )
                 )
               )
-            )
-          ),
-          S.withPermit(derivedAll.value.semaphore)
+            ),
+            S.withPermit(value.semaphore)
+          )
         )
     })
   )
+}
 
 /**
  * Atomically modifies the `RefM` with the specified function, which computes
  * a return value for the modification. This is a more powerful version of
  * `update`.
  */
-export const modify = <R1, E1, B, A>(
-  f: (a: A) => T.Effect<R1, E1, readonly [B, A]>
-) => <RA, RB, EA, EB>(
-  self: XRefM<RA, RB, EA, EB, A, A>
-): T.Effect<RA & RB & R1, EA | EB | E1, B> => modify_(self, f)
+export function modify<R1, E1, B, A>(f: (a: A) => T.Effect<R1, E1, readonly [B, A]>) {
+  return <RA, RB, EA, EB>(
+    self: XRefM<RA, RB, EA, EB, A, A>
+  ): T.Effect<RA & RB & R1, EA | EB | E1, B> => modify_(self, f)
+}
 
 /**
  * Writes a new value to the `RefM`, returning the value immediately before
  * modification.
  */
-export const getAndSet_ = <RA, RB, EA, EB, A>(
-  self: XRefM<RA, RB, EA, EB, A, A>,
-  a: A
-) =>
-  pipe(
-    self,
-    modify((v) => T.succeed([v, a]))
-  )
+export function getAndSet_<RA, RB, EA, EB, A>(self: XRefM<RA, RB, EA, EB, A, A>, a: A) {
+  return modify_(self, (v) => T.succeed([v, a]))
+}
 
 /**
  * Writes a new value to the `RefM`, returning the value immediately before
  * modification.
  */
-export const getAndSet = <A>(a: A) => <RA, RB, EA, EB>(
-  self: XRefM<RA, RB, EA, EB, A, A>
-) => getAndSet_(self, a)
+export function getAndSet<A>(a: A) {
+  return <RA, RB, EA, EB>(self: XRefM<RA, RB, EA, EB, A, A>) => getAndSet_(self, a)
+}
 
 /**
  * Atomically modifies the `RefM` with the specified function, returning the
  * value immediately before modification.
  */
-export const getAndUpdate_ = <RA, RB, EA, EB, R1, E1, A>(
+export function getAndUpdate_<RA, RB, EA, EB, R1, E1, A>(
   self: XRefM<RA, RB, EA, EB, A, A>,
   f: (a: A) => T.Effect<R1, E1, A>
-) =>
-  pipe(
-    self,
-    modify((v) =>
-      pipe(
-        f(v),
-        T.map((r) => [v, r])
-      )
-    )
-  )
+) {
+  return modify_(self, (v) => T.map_(f(v), (r) => [v, r]))
+}
 
 /**
  * Atomically modifies the `RefM` with the specified function, returning the
  * value immediately before modification.
  */
-export const getAndUpdate = <R1, E1, A>(f: (a: A) => T.Effect<R1, E1, A>) => <
-  RA,
-  RB,
-  EA,
-  EB
->(
-  self: XRefM<RA, RB, EA, EB, A, A>
-) => getAndUpdate_(self, f)
+export function getAndUpdate<R1, E1, A>(f: (a: A) => T.Effect<R1, E1, A>) {
+  return <RA, RB, EA, EB>(self: XRefM<RA, RB, EA, EB, A, A>) => getAndUpdate_(self, f)
+}
 
 /**
  * Atomically modifies the `RefM` with the specified function, returning the
  * value immediately before modification.
  */
-export const getAndUpdateSome_ = <RA, RB, EA, EB, R1, E1, A>(
+export function getAndUpdateSome_<RA, RB, EA, EB, R1, E1, A>(
   self: XRefM<RA, RB, EA, EB, A, A>,
   f: (a: A) => O.Option<T.Effect<R1, E1, A>>
-) =>
-  pipe(
-    self,
-    modify((v) =>
-      pipe(
-        f(v),
-        O.getOrElse(() => T.succeed(v)),
-        T.map((r) => [v, r])
-      )
+) {
+  return modify_(self, (v) =>
+    pipe(
+      f(v),
+      O.getOrElse(() => T.succeed(v)),
+      T.map((r) => [v, r])
     )
   )
+}
 
 /**
  * Atomically modifies the `RefM` with the specified function, returning the
  * value immediately before modification.
  */
-export const getAndUpdateSome = <R1, E1, A>(
+export function getAndUpdateSome<R1, E1, A>(
   f: (a: A) => O.Option<T.Effect<R1, E1, A>>
-) => <RA, RB, EA, EB>(self: XRefM<RA, RB, EA, EB, A, A>) => getAndUpdateSome_(self, f)
+) {
+  return <RA, RB, EA, EB>(self: XRefM<RA, RB, EA, EB, A, A>) =>
+    getAndUpdateSome_(self, f)
+}
 
 /**
  * Atomically modifies the `RefM` with the specified function, which computes
@@ -212,20 +198,13 @@ export const getAndUpdateSome = <R1, E1, A>(
  * otherwise it returns a default value.
  * This is a more powerful version of `updateSome`.
  */
-export const modifySome_ = <RA, RB, EA, EB, R1, E1, A, B>(
+export function modifySome_<RA, RB, EA, EB, R1, E1, A, B>(
   self: XRefM<RA, RB, EA, EB, A, A>,
   def: B,
   f: (a: A) => O.Option<T.Effect<R1, E1, readonly [B, A]>>
-) =>
-  pipe(
-    self,
-    modify((v) =>
-      pipe(
-        f(v),
-        O.getOrElse(() => T.succeed(tuple(def, v)))
-      )
-    )
-  )
+) {
+  return modify_(self, (v) => O.getOrElse_(f(v), () => T.succeed(tuple(def, v))))
+}
 
 /**
  * Atomically modifies the `RefM` with the specified function, which computes
@@ -233,152 +212,147 @@ export const modifySome_ = <RA, RB, EA, EB, R1, E1, A, B>(
  * otherwise it returns a default value.
  * This is a more powerful version of `updateSome`.
  */
-export const modifySome = <B>(def: B) => <R1, E1, A>(
-  f: (a: A) => O.Option<T.Effect<R1, E1, [B, A]>>
-) => <RA, RB, EA, EB>(self: XRefM<RA, RB, EA, EB, A, A>) => modifySome_(self, def, f)
+export function modifySome<B>(def: B) {
+  return <R1, E1, A>(f: (a: A) => O.Option<T.Effect<R1, E1, [B, A]>>) => <
+    RA,
+    RB,
+    EA,
+    EB
+  >(
+    self: XRefM<RA, RB, EA, EB, A, A>
+  ) => modifySome_(self, def, f)
+}
 
 /**
  * Atomically modifies the `RefM` with the specified function.
  */
-export const update_ = <RA, RB, EA, EB, R1, E1, A>(
+export function update_<RA, RB, EA, EB, R1, E1, A>(
   self: XRefM<RA, RB, EA, EB, A, A>,
   f: (a: A) => T.Effect<R1, E1, A>
-): T.Effect<RA & RB & R1, E1 | EA | EB, void> =>
-  pipe(
-    self,
-    modify((v) =>
-      pipe(
-        f(v),
-        T.map((r) => [undefined, r])
-      )
-    )
-  )
+): T.Effect<RA & RB & R1, E1 | EA | EB, void> {
+  return modify_(self, (v) => T.map_(f(v), (r) => [undefined, r]))
+}
 
 /**
  * Atomically modifies the `RefM` with the specified function.
  */
-export const update = <R1, E1, A>(f: (a: A) => T.Effect<R1, E1, A>) => <RA, RB, EA, EB>(
-  self: XRefM<RA, RB, EA, EB, A, A>
-): T.Effect<RA & RB & R1, E1 | EA | EB, void> => update_(self, f)
+export function update<R1, E1, A>(f: (a: A) => T.Effect<R1, E1, A>) {
+  return <RA, RB, EA, EB>(
+    self: XRefM<RA, RB, EA, EB, A, A>
+  ): T.Effect<RA & RB & R1, E1 | EA | EB, void> => update_(self, f)
+}
 
 /**
  * Atomically modifies the `RefM` with the specified function.
  */
-export const updateAndGet_ = <RA, RB, EA, EB, R1, E1, A>(
+export function updateAndGet_<RA, RB, EA, EB, R1, E1, A>(
   self: XRefM<RA, RB, EA, EB, A, A>,
   f: (a: A) => T.Effect<R1, E1, A>
-): T.Effect<RA & RB & R1, E1 | EA | EB, void> =>
-  pipe(
-    self,
-    modify((v) =>
-      pipe(
-        f(v),
-        T.map((r) => [r, r])
-      )
+): T.Effect<RA & RB & R1, E1 | EA | EB, void> {
+  return modify_(self, (v) =>
+    pipe(
+      f(v),
+      T.map((r) => [r, r])
     )
   )
+}
 
 /**
  * Atomically modifies the `RefM` with the specified function.
  */
-export const updateAndGet = <R1, E1, A>(f: (a: A) => T.Effect<R1, E1, A>) => <
-  RA,
-  RB,
-  EA,
-  EB
->(
-  self: XRefM<RA, RB, EA, EB, A, A>
-): T.Effect<RA & RB & R1, E1 | EA | EB, void> => updateAndGet_(self, f)
+export function updateAndGet<R1, E1, A>(f: (a: A) => T.Effect<R1, E1, A>) {
+  return <RA, RB, EA, EB>(
+    self: XRefM<RA, RB, EA, EB, A, A>
+  ): T.Effect<RA & RB & R1, E1 | EA | EB, void> => updateAndGet_(self, f)
+}
 
 /**
  * Atomically modifies the `RefM` with the specified function.
  */
-export const updateSome_ = <RA, RB, EA, EB, R1, E1, A>(
+export function updateSome_<RA, RB, EA, EB, R1, E1, A>(
   self: XRefM<RA, RB, EA, EB, A, A>,
   f: (a: A) => O.Option<T.Effect<R1, E1, A>>
-): T.Effect<RA & RB & R1, E1 | EA | EB, void> =>
-  pipe(
-    self,
-    modify((v) =>
-      pipe(
-        f(v),
-        O.getOrElse(() => T.succeed(v)),
-        T.map((r) => [undefined, r])
-      )
+): T.Effect<RA & RB & R1, E1 | EA | EB, void> {
+  return modify_(self, (v) =>
+    pipe(
+      f(v),
+      O.getOrElse(() => T.succeed(v)),
+      T.map((r) => [undefined, r])
     )
   )
+}
 
 /**
  * Atomically modifies the `RefM` with the specified function.
  */
-export const updateSome = <R1, E1, A>(f: (a: A) => O.Option<T.Effect<R1, E1, A>>) => <
-  RA,
-  RB,
-  EA,
-  EB
->(
-  self: XRefM<RA, RB, EA, EB, A, A>
-): T.Effect<RA & RB & R1, E1 | EA | EB, void> => updateSome_(self, f)
+export function updateSome<R1, E1, A>(f: (a: A) => O.Option<T.Effect<R1, E1, A>>) {
+  return <RA, RB, EA, EB>(
+    self: XRefM<RA, RB, EA, EB, A, A>
+  ): T.Effect<RA & RB & R1, E1 | EA | EB, void> => updateSome_(self, f)
+}
 
 /**
  * Atomically modifies the `RefM` with the specified function.
  */
-export const updateSomeAndGet_ = <RA, RB, EA, EB, R1, E1, A>(
+export function updateSomeAndGet_<RA, RB, EA, EB, R1, E1, A>(
   self: XRefM<RA, RB, EA, EB, A, A>,
   f: (a: A) => O.Option<T.Effect<R1, E1, A>>
-): T.Effect<RA & RB & R1, E1 | EA | EB, A> =>
-  pipe(
-    self,
-    modify((v) =>
-      pipe(
-        f(v),
-        O.getOrElse(() => T.succeed(v)),
-        T.map((r) => [r, r])
-      )
+): T.Effect<RA & RB & R1, E1 | EA | EB, A> {
+  return modify_(self, (v) =>
+    pipe(
+      f(v),
+      O.getOrElse(() => T.succeed(v)),
+      T.map((r) => [r, r])
     )
   )
+}
 
 /**
  * Atomically modifies the `RefM` with the specified function.
  */
-export const updateSomeAndGet = <R1, E1, A>(
+export function updateSomeAndGet<R1, E1, A>(
   f: (a: A) => O.Option<T.Effect<R1, E1, A>>
-) => <RA, RB, EA, EB>(
-  self: XRefM<RA, RB, EA, EB, A, A>
-): T.Effect<RA & RB & R1, E1 | EA | EB, A> => updateSomeAndGet_(self, f)
+) {
+  return <RA, RB, EA, EB>(
+    self: XRefM<RA, RB, EA, EB, A, A>
+  ): T.Effect<RA & RB & R1, E1 | EA | EB, A> => updateSomeAndGet_(self, f)
+}
 
 /**
  * Folds over the error and value types of the `XRefM`.
  */
-export const fold_ = <RA, RB, EA, EB, A, B, EC, ED, C = A, D = B>(
+export function fold_<RA, RB, EA, EB, A, B, EC, ED, C = A, D = B>(
   self: XRefM<RA, RB, EA, EB, A, B>,
   ea: (_: EA) => EC,
   eb: (_: EB) => ED,
   ca: (_: C) => E.Either<EC, A>,
   bd: (_: B) => E.Either<ED, D>
-): XRefM<RA, RB, EC, ED, C, D> =>
-  self.foldM(
+): XRefM<RA, RB, EC, ED, C, D> {
+  return self.foldM(
     ea,
     eb,
     (c) => T.fromEither(() => ca(c)),
     (b) => T.fromEither(() => bd(b))
   )
+}
 
 /**
  * Folds over the error and value types of the `XRefM`.
  */
-export const fold = <EA, EB, A, B, EC, ED, C = A, D = B>(
+export function fold<EA, EB, A, B, EC, ED, C = A, D = B>(
   ea: (_: EA) => EC,
   eb: (_: EB) => ED,
   ca: (_: C) => E.Either<EC, A>,
   bd: (_: B) => E.Either<ED, D>
-) => <RA, RB>(self: XRefM<RA, RB, EA, EB, A, B>): XRefM<RA, RB, EC, ED, C, D> =>
-  self.foldM(
-    ea,
-    eb,
-    (c) => T.fromEither(() => ca(c)),
-    (b) => T.fromEither(() => bd(b))
-  )
+) {
+  return <RA, RB>(self: XRefM<RA, RB, EA, EB, A, B>): XRefM<RA, RB, EC, ED, C, D> =>
+    self.foldM(
+      ea,
+      eb,
+      (c) => T.fromEither(() => ca(c)),
+      (b) => T.fromEither(() => bd(b))
+    )
+}
 
 /**
  * Folds over the error and value types of the `XRefM`. This is a highly
@@ -388,13 +362,15 @@ export const fold = <EA, EB, A, B, EC, ED, C = A, D = B>(
  * ergonomic but this method is extremely useful for implementing new
  * combinators.
  */
-export const foldM_ = <RA, RB, EA, EB, A, B, RC, RD, EC, ED, C = A, D = B>(
+export function foldM_<RA, RB, EA, EB, A, B, RC, RD, EC, ED, C = A, D = B>(
   self: XRefM<RA, RB, EA, EB, A, B>,
   ea: (_: EA) => EC,
   eb: (_: EB) => ED,
   ca: (_: C) => T.Effect<RC, EC, A>,
   bd: (_: B) => T.Effect<RD, ED, D>
-): XRefM<RA & RC, RB & RD, EC, ED, C, D> => self.foldM(ea, eb, ca, bd)
+): XRefM<RA & RC, RB & RD, EC, ED, C, D> {
+  return self.foldM(ea, eb, ca, bd)
+}
 
 /**
  * Folds over the error and value types of the `XRefM`. This is a highly
@@ -404,43 +380,49 @@ export const foldM_ = <RA, RB, EA, EB, A, B, RC, RD, EC, ED, C = A, D = B>(
  * ergonomic but this method is extremely useful for implementing new
  * combinators.
  */
-export const foldM = <EA, EB, A, B, RC, RD, EC, ED, C = A, D = B>(
+export function foldM<EA, EB, A, B, RC, RD, EC, ED, C = A, D = B>(
   ea: (_: EA) => EC,
   eb: (_: EB) => ED,
   ca: (_: C) => T.Effect<RC, EC, A>,
   bd: (_: B) => T.Effect<RD, ED, D>
-) => <RA, RB>(
-  self: XRefM<RA, RB, EA, EB, A, B>
-): XRefM<RA & RC, RB & RD, EC, ED, C, D> => self.foldM(ea, eb, ca, bd)
+) {
+  return <RA, RB>(
+    self: XRefM<RA, RB, EA, EB, A, B>
+  ): XRefM<RA & RC, RB & RD, EC, ED, C, D> => self.foldM(ea, eb, ca, bd)
+}
 
 /**
  * Folds over the error and value types of the `XRefM`, allowing access to
  * the state in transforming the `set` value. This is a more powerful version
  * of `foldM` but requires unifying the environment and error types.
  */
-export const foldAllM_ = <RA, RB, EA, EB, A, B, RC, RD, EC, ED, C = A, D = B>(
+export function foldAllM_<RA, RB, EA, EB, A, B, RC, RD, EC, ED, C = A, D = B>(
   self: XRefM<RA, RB, EA, EB, A, B>,
   ea: (_: EA) => EC,
   eb: (_: EB) => ED,
   ec: (_: EB) => EC,
   ca: (_: C) => (_: B) => T.Effect<RC, EC, A>,
   bd: (_: B) => T.Effect<RD, ED, D>
-): XRefM<RB & RA & RC, RB & RD, EC, ED, C, D> => self.foldAllM(ea, eb, ec, ca, bd)
+): XRefM<RB & RA & RC, RB & RD, EC, ED, C, D> {
+  return self.foldAllM(ea, eb, ec, ca, bd)
+}
 
 /**
  * Folds over the error and value types of the `XRefM`, allowing access to
  * the state in transforming the `set` value. This is a more powerful version
  * of `foldM` but requires unifying the environment and error types.
  */
-export const foldAllM = <EA, EB, A, B, RC, RD, EC, ED, C = A, D = B>(
+export function foldAllM<EA, EB, A, B, RC, RD, EC, ED, C = A, D = B>(
   ea: (_: EA) => EC,
   eb: (_: EB) => ED,
   ec: (_: EB) => EC,
   ca: (_: C) => (_: B) => T.Effect<RC, EC, A>,
   bd: (_: B) => T.Effect<RD, ED, D>
-) => <RA, RB>(
-  self: XRefM<RA, RB, EA, EB, A, B>
-): XRefM<RB & RA & RC, RB & RD, EC, ED, C, D> => self.foldAllM(ea, eb, ec, ca, bd)
+) {
+  return <RA, RB>(
+    self: XRefM<RA, RB, EA, EB, A, B>
+  ): XRefM<RB & RA & RC, RB & RD, EC, ED, C, D> => self.foldAllM(ea, eb, ec, ca, bd)
+}
 
 /**
  * Maps and filters the `get` value of the `XRefM` with the specified
@@ -448,11 +430,11 @@ export const foldAllM = <EA, EB, A, B, RC, RD, EC, ED, C = A, D = B>(
  * succeeds with the result of the partial function if it is defined or else
  * fails with `None`.
  */
-export const collectM_ = <RA, RB, EA, EB, A, B, RC, EC, C>(
+export function collectM_<RA, RB, EA, EB, A, B, RC, EC, C>(
   self: XRefM<RA, RB, EA, EB, A, B>,
   f: (b: B) => O.Option<T.Effect<RC, EC, C>>
-): XRefM<RA, RB & RC, EA, O.Option<EB | EC>, A, C> =>
-  self.foldM(
+): XRefM<RA, RB & RC, EA, O.Option<EB | EC>, A, C> {
+  return self.foldM(
     identity,
     (_) => O.some<EB | EC>(_),
     (_) => T.succeed(_),
@@ -463,6 +445,7 @@ export const collectM_ = <RA, RB, EA, EB, A, B, RC, EC, C>(
         O.getOrElse(() => T.fail(O.none))
       )
   )
+}
 
 /**
  * Maps and filters the `get` value of the `XRefM` with the specified
@@ -470,373 +453,343 @@ export const collectM_ = <RA, RB, EA, EB, A, B, RC, EC, C>(
  * succeeds with the result of the partial function if it is defined or else
  * fails with `None`.
  */
-export const collectM = <B, RC, EC, C>(f: (b: B) => O.Option<T.Effect<RC, EC, C>>) => <
-  RA,
-  RB,
-  EA,
-  EB,
-  A
->(
-  self: XRefM<RA, RB, EA, EB, A, B>
-): XRefM<RA, RB & RC, EA, O.Option<EB | EC>, A, C> => collectM_(self, f)
+export function collectM<B, RC, EC, C>(f: (b: B) => O.Option<T.Effect<RC, EC, C>>) {
+  return <RA, RB, EA, EB, A>(
+    self: XRefM<RA, RB, EA, EB, A, B>
+  ): XRefM<RA, RB & RC, EA, O.Option<EB | EC>, A, C> => collectM_(self, f)
+}
 
 /**
  * Maps and filters the `get` value of the `XRefM` with the specified partial
  * function, returning a `XRefM` with a `get` value that succeeds with the
  * result of the partial function if it is defined or else fails with `None`.
  */
-export const collect_ = <RA, RB, EA, EB, A, B, C>(
+export function collect_<RA, RB, EA, EB, A, B, C>(
   self: XRefM<RA, RB, EA, EB, A, B>,
   f: (b: B) => O.Option<C>
-): XRefM<RA, RB, EA, O.Option<EB>, A, C> =>
-  pipe(
-    self,
-    collectM((b) => pipe(f(b), O.map(T.succeed)))
-  )
+): XRefM<RA, RB, EA, O.Option<EB>, A, C> {
+  return collectM_(self, (b) => pipe(f(b), O.map(T.succeed)))
+}
 
 /**
  * Maps and filters the `get` value of the `XRefM` with the specified partial
  * function, returning a `XRefM` with a `get` value that succeeds with the
  * result of the partial function if it is defined or else fails with `None`.
  */
-export const collect = <B, C>(f: (b: B) => O.Option<C>) => <RA, RB, EA, EB, A>(
-  self: XRefM<RA, RB, EA, EB, A, B>
-): XRefM<RA, RB, EA, O.Option<EB>, A, C> => collect_(self, f)
+export function collect<B, C>(f: (b: B) => O.Option<C>) {
+  return <RA, RB, EA, EB, A>(
+    self: XRefM<RA, RB, EA, EB, A, B>
+  ): XRefM<RA, RB, EA, O.Option<EB>, A, C> => collect_(self, f)
+}
 
 /**
  * Transforms both the `set` and `get` values of the `XRefM` with the
  * specified effectual functions.
  */
-export const dimapM_ = <RA, RB, EA, EB, B, RC, EC, A, RD, ED, C = A, D = B>(
+export function dimapM_<RA, RB, EA, EB, B, RC, EC, A, RD, ED, C = A, D = B>(
   self: XRefM<RA, RB, EA, EB, A, B>,
   f: (c: C) => T.Effect<RC, EC, A>,
   g: (b: B) => T.Effect<RD, ED, D>
-) =>
-  self.foldM(
+) {
+  return self.foldM(
     (ea: EA | EC) => ea,
     (eb: EB | ED) => eb,
     f,
     g
   )
+}
 
 /**
  * Transforms both the `set` and `get` values of the `XRefM` with the
  * specified effectual functions.
  */
-export const dimapM = <B, RC, EC, A, RD, ED, C = A, D = B>(
+export function dimapM<B, RC, EC, A, RD, ED, C = A, D = B>(
   f: (c: C) => T.Effect<RC, EC, A>,
   g: (b: B) => T.Effect<RD, ED, D>
-) => <RA, RB, EA, EB>(self: XRefM<RA, RB, EA, EB, A, B>) => dimapM_(self, f, g)
+) {
+  return <RA, RB, EA, EB>(self: XRefM<RA, RB, EA, EB, A, B>) => dimapM_(self, f, g)
+}
 
 /**
  * Transforms both the `set` and `get` errors of the `XRefM` with the
  * specified functions.
  */
-export const dimapError_ = <RA, RB, A, B, EA, EB, EC, ED>(
+export function dimapError_<RA, RB, A, B, EA, EB, EC, ED>(
   self: XRefM<RA, RB, EA, EB, A, B>,
   f: (ea: EA) => EC,
   g: (eb: EB) => ED
-): XRefM<RA, RB, EC, ED, A, B> =>
-  pipe(
+): XRefM<RA, RB, EC, ED, A, B> {
+  return fold_(
     self,
-    fold(
-      (ea) => f(ea),
-      (eb) => g(eb),
-      (a) => E.right(a),
-      (b) => E.right(b)
-    )
+    (ea) => f(ea),
+    (eb) => g(eb),
+    (a) => E.right(a),
+    (b) => E.right(b)
   )
+}
 
 /**
  * Transforms both the `set` and `get` errors of the `XRefM` with the
  * specified functions.
  */
-export const dimapError = <EA, EB, EC, ED>(f: (ea: EA) => EC, g: (eb: EB) => ED) => <
-  RA,
-  RB,
-  A,
-  B
->(
-  self: XRefM<RA, RB, EA, EB, A, B>
-): XRefM<RA, RB, EC, ED, A, B> => dimapError_(self, f, g)
+export function dimapError<EA, EB, EC, ED>(f: (ea: EA) => EC, g: (eb: EB) => ED) {
+  return <RA, RB, A, B>(
+    self: XRefM<RA, RB, EA, EB, A, B>
+  ): XRefM<RA, RB, EC, ED, A, B> => dimapError_(self, f, g)
+}
 
 /**
  * Filters the `set` value of the `XRefM` with the specified effectual
  * predicate, returning a `XRefM` with a `set` value that succeeds if the
  * predicate is satisfied or else fails with `None`.
  */
-export const filterInputM_ = <RA, RB, EA, EB, B, A, RC, EC, A1 extends A = A>(
+export function filterInputM_<RA, RB, EA, EB, B, A, RC, EC, A1 extends A = A>(
   self: XRefM<RA, RB, EA, EB, A, B>,
   f: (a: A1) => T.Effect<RC, EC, boolean>
-): XRefM<RA & RC, RB, O.Option<EC | EA>, EB, A1, B> =>
-  pipe(
+): XRefM<RA & RC, RB, O.Option<EC | EA>, EB, A1, B> {
+  return foldM_(
     self,
-    foldM(
-      (ea) => O.some<EA | EC>(ea),
-      identity,
-      (a: A1) =>
-        T.ifM_(
-          T.asSomeError(f(a)),
-          () => T.succeed(a),
-          () => T.fail<O.Option<EA | EC>>(O.none)
-        ),
-      T.succeed
-    )
+    (ea) => O.some<EA | EC>(ea),
+    identity,
+    (a: A1) =>
+      T.ifM_(
+        T.asSomeError(f(a)),
+        () => T.succeed(a),
+        () => T.fail<O.Option<EA | EC>>(O.none)
+      ),
+    T.succeed
   )
+}
 
 /**
  * Filters the `set` value of the `XRefM` with the specified effectual
  * predicate, returning a `XRefM` with a `set` value that succeeds if the
  * predicate is satisfied or else fails with `None`.
  */
-export const filterInputM = <A, RC, EC, A1 extends A = A>(
+export function filterInputM<A, RC, EC, A1 extends A = A>(
   f: (a: A1) => T.Effect<RC, EC, boolean>
-) => <RA, RB, EA, EB, B>(
-  self: XRefM<RA, RB, EA, EB, A, B>
-): XRefM<RA & RC, RB, O.Option<EC | EA>, EB, A1, B> => filterInputM_(self, f)
+) {
+  return <RA, RB, EA, EB, B>(
+    self: XRefM<RA, RB, EA, EB, A, B>
+  ): XRefM<RA & RC, RB, O.Option<EC | EA>, EB, A1, B> => filterInputM_(self, f)
+}
 
 /**
  * Filters the `set` value of the `XRefM` with the specified effectual
  * predicate, returning a `XRefM` with a `set` value that succeeds if the
  * predicate is satisfied or else fails with `None`.
  */
-export const filterInput_ = <RA, RB, EA, EB, B, A, A1 extends A = A>(
+export function filterInput_<RA, RB, EA, EB, B, A, A1 extends A = A>(
   self: XRefM<RA, RB, EA, EB, A, B>,
   f: (a: A1) => boolean
-): XRefM<RA, RB, O.Option<EA>, EB, A1, B> =>
-  pipe(
-    self,
-    filterInputM((a) => T.succeed(f(a)))
-  )
+): XRefM<RA, RB, O.Option<EA>, EB, A1, B> {
+  return filterInputM_(self, (a) => T.succeed(f(a)))
+}
 
 /**
  * Filters the `set` value of the `XRefM` with the specified effectual
  * predicate, returning a `XRefM` with a `set` value that succeeds if the
  * predicate is satisfied or else fails with `None`.
  */
-export const filterInput = <A, A1 extends A = A>(f: (a: A1) => boolean) => <
-  RA,
-  RB,
-  EA,
-  EB,
-  B
->(
-  self: XRefM<RA, RB, EA, EB, A, B>
-): XRefM<RA, RB, O.Option<EA>, EB, A1, B> => filterInput_(self, f)
+export function filterInput<A, A1 extends A = A>(f: (a: A1) => boolean) {
+  return <RA, RB, EA, EB, B>(
+    self: XRefM<RA, RB, EA, EB, A, B>
+  ): XRefM<RA, RB, O.Option<EA>, EB, A1, B> => filterInput_(self, f)
+}
 
 /**
  * Filters the `get` value of the `XRefM` with the specified effectual predicate,
  * returning a `XRefM` with a `get` value that succeeds if the predicate is
  * satisfied or else fails with `None`.
  */
-export const filterOutputM_ = <RA, RB, EA, EB, A, B, RC, EC>(
+export function filterOutputM_<RA, RB, EA, EB, A, B, RC, EC>(
   self: XRefM<RA, RB, EA, EB, A, B>,
   f: (b: B) => T.Effect<RC, EC, boolean>
-): XRefM<RA, RB & RC, EA, O.Option<EC | EB>, A, B> =>
-  pipe(
+): XRefM<RA, RB & RC, EA, O.Option<EC | EB>, A, B> {
+  return foldM_(
     self,
-    foldM(
-      (ea) => ea,
-      (eb) => O.some<EB | EC>(eb),
-      (a) => T.succeed(a),
-      (b) =>
-        T.ifM_(
-          T.asSomeError(f(b)),
-          () => T.succeed(b),
-          () => T.fail(O.none)
-        )
-    )
+    (ea) => ea,
+    (eb) => O.some<EB | EC>(eb),
+    (a) => T.succeed(a),
+    (b) =>
+      T.ifM_(
+        T.asSomeError(f(b)),
+        () => T.succeed(b),
+        () => T.fail(O.none)
+      )
   )
+}
 
 /**
  * Filters the `get` value of the `XRefM` with the specified effectual predicate,
  * returning a `XRefM` with a `get` value that succeeds if the predicate is
  * satisfied or else fails with `None`.
  */
-export const filterOutputM = <B, RC, EC>(f: (b: B) => T.Effect<RC, EC, boolean>) => <
-  RA,
-  RB,
-  EA,
-  EB,
-  A
->(
-  self: XRefM<RA, RB, EA, EB, A, B>
-): XRefM<RA, RB & RC, EA, O.Option<EC | EB>, A, B> => filterOutputM_(self, f)
+export function filterOutputM<B, RC, EC>(f: (b: B) => T.Effect<RC, EC, boolean>) {
+  return <RA, RB, EA, EB, A>(
+    self: XRefM<RA, RB, EA, EB, A, B>
+  ): XRefM<RA, RB & RC, EA, O.Option<EC | EB>, A, B> => filterOutputM_(self, f)
+}
 
 /**
  * Filters the `get` value of the `XRefM` with the specified predicate,
  * returning a `XRefM` with a `get` value that succeeds if the predicate is
  * satisfied or else fails with `None`.
  */
-export const filterOutput_ = <RA, RB, EA, EB, A, B>(
+export function filterOutput_<RA, RB, EA, EB, A, B>(
   self: XRefM<RA, RB, EA, EB, A, B>,
   f: (b: B) => boolean
-): XRefM<RA, RB, EA, O.Option<EB>, A, B> =>
-  pipe(
-    self,
-    filterOutputM((b) => T.succeed(f(b)))
-  )
+): XRefM<RA, RB, EA, O.Option<EB>, A, B> {
+  return filterOutputM_(self, (b) => T.succeed(f(b)))
+}
 
 /**
  * Filters the `get` value of the `XRefM` with the specified predicate,
  * returning a `XRefM` with a `get` value that succeeds if the predicate is
  * satisfied or else fails with `None`.
  */
-export const filterOutput = <B>(f: (b: B) => boolean) => <RA, RB, EA, EB, A>(
-  self: XRefM<RA, RB, EA, EB, A, B>
-): XRefM<RA, RB, EA, O.Option<EB>, A, B> => filterOutput_(self, f)
+export function filterOutput<B>(f: (b: B) => boolean) {
+  return <RA, RB, EA, EB, A>(
+    self: XRefM<RA, RB, EA, EB, A, B>
+  ): XRefM<RA, RB, EA, O.Option<EB>, A, B> => filterOutput_(self, f)
+}
 
 /**
  * Transforms the `get` value of the `XRefM` with the specified effectual
  * function.
  */
-export const mapM_ = <RA, RB, EA, EB, A, B, RC, EC, C>(
+export function mapM_<RA, RB, EA, EB, A, B, RC, EC, C>(
   self: XRefM<RA, RB, EA, EB, A, B>,
   f: (b: B) => T.Effect<RC, EC, C>
-) => pipe(self, dimapM(T.succeed, f))
+) {
+  return dimapM_(self, T.succeed, f)
+}
 
 /**
  * Transforms the `get` value of the `XRefM` with the specified effectual
  * function.
  */
-export const mapM = <B, RC, EC, C>(f: (b: B) => T.Effect<RC, EC, C>) => <
-  RA,
-  RB,
-  EA,
-  EB,
-  A
->(
-  self: XRefM<RA, RB, EA, EB, A, B>
-) => mapM_(self, f)
+export function mapM<B, RC, EC, C>(f: (b: B) => T.Effect<RC, EC, C>) {
+  return <RA, RB, EA, EB, A>(self: XRefM<RA, RB, EA, EB, A, B>) => mapM_(self, f)
+}
 
 /**
  * Transforms the `set` value of the `XRefM` with the specified effectual
  * function.
  */
-export const contramapM_ = <RA, RB, EA, EB, B, A, RC, EC, C>(
+export function contramapM_<RA, RB, EA, EB, B, A, RC, EC, C>(
   self: XRefM<RA, RB, EA, EB, A, B>,
   f: (c: C) => T.Effect<RC, EC, A>
-): XRefM<RA & RC, RB, EC | EA, EB, C, B> => pipe(self, dimapM(f, T.succeed))
+): XRefM<RA & RC, RB, EC | EA, EB, C, B> {
+  return dimapM_(self, f, T.succeed)
+}
 
 /**
  * Transforms the `set` value of the `XRefM` with the specified effectual
  * function.
  */
-export const contramapM = <A, RC, EC, C>(f: (c: C) => T.Effect<RC, EC, A>) => <
-  RA,
-  RB,
-  EA,
-  EB,
-  B
->(
-  self: XRefM<RA, RB, EA, EB, A, B>
-): XRefM<RA & RC, RB, EC | EA, EB, C, B> => contramapM_(self, f)
+export function contramapM<A, RC, EC, C>(f: (c: C) => T.Effect<RC, EC, A>) {
+  return <RA, RB, EA, EB, B>(
+    self: XRefM<RA, RB, EA, EB, A, B>
+  ): XRefM<RA & RC, RB, EC | EA, EB, C, B> => contramapM_(self, f)
+}
 
 /**
  * Transforms the `set` value of the `XRefM` with the specified function.
  */
-export const contramap_ = <RA, RB, EA, EB, B, C, A>(
+export function contramap_<RA, RB, EA, EB, B, C, A>(
   self: XRefM<RA, RB, EA, EB, A, B>,
   f: (c: C) => A
-): XRefM<RA, RB, EA, EB, C, B> =>
-  pipe(
-    self,
-    contramapM((c) => T.succeed(f(c)))
-  )
+): XRefM<RA, RB, EA, EB, C, B> {
+  return contramapM_(self, (c) => T.succeed(f(c)))
+}
 
 /**
  * Transforms the `set` value of the `XRefM` with the specified function.
  */
-export const contramap = <C, A>(f: (c: C) => A) => <RA, RB, EA, EB, B>(
-  self: XRefM<RA, RB, EA, EB, A, B>
-): XRefM<RA, RB, EA, EB, C, B> => contramap_(self, f)
+export function contramap<C, A>(f: (c: C) => A) {
+  return <RA, RB, EA, EB, B>(
+    self: XRefM<RA, RB, EA, EB, A, B>
+  ): XRefM<RA, RB, EA, EB, C, B> => contramap_(self, f)
+}
 
 /**
  * Transforms the `get` value of the `XRefM` with the specified function.
  */
-export const map_ = <RA, RB, EA, EB, A, B, C>(
+export function map_<RA, RB, EA, EB, A, B, C>(
   self: XRefM<RA, RB, EA, EB, A, B>,
   f: (b: B) => C
-) =>
-  pipe(
-    self,
-    mapM((b) => T.succeed(f(b)))
-  )
+) {
+  return mapM_(self, (b) => T.succeed(f(b)))
+}
 
 /**
  * Transforms the `get` value of the `XRefM` with the specified function.
  */
-export const map = <B, C>(f: (b: B) => C) => <RA, RB, EA, EB, A>(
-  self: XRefM<RA, RB, EA, EB, A, B>
-) => map_(self, f)
+export function map<B, C>(f: (b: B) => C) {
+  return <RA, RB, EA, EB, A>(self: XRefM<RA, RB, EA, EB, A, B>) => map_(self, f)
+}
 
 /**
  * Returns a read only view of the `XRefM`.
  */
-export const readOnly = <RA, RB, EA, EB, A, B>(
+export function readOnly<RA, RB, EA, EB, A, B>(
   self: XRefM<RA, RB, EA, EB, A, B>
-): XRefM<RA, RB, EA, EB, never, B> => self
+): XRefM<RA, RB, EA, EB, never, B> {
+  return self
+}
 
 /**
  * Returns a read only view of the `XRefM`.
  */
-export const writeOnly = <RA, RB, EA, EB, A, B>(
+export function writeOnly<RA, RB, EA, EB, A, B>(
   self: XRefM<RA, RB, EA, EB, A, B>
-): XRefM<RA, RB, EA, void, A, never> =>
-  pipe(
+): XRefM<RA, RB, EA, void, A, never> {
+  return fold_(
     self,
-    fold(
-      identity,
-      (): void => undefined,
-      E.right,
-      () => E.left<void>(undefined)
-    )
+    identity,
+    (): void => undefined,
+    E.right,
+    () => E.left<void>(undefined)
   )
+}
 
 /**
  * Performs the specified effect every time a value is written to this
  * `XRefM`.
  */
-export const tapInput_ = <RA, RB, EA, EB, B, A, RC, EC, X, A1 extends A = A>(
+export function tapInput_<RA, RB, EA, EB, B, A, RC, EC, X, A1 extends A = A>(
   self: XRefM<RA, RB, EA, EB, A, B>,
   f: (a: A1) => T.Effect<RC, EC, X>
-) =>
-  pipe(
-    self,
-    contramapM((c: A1) => pipe(f(c), T.as(c)))
-  )
+) {
+  return contramapM_(self, (c: A1) => pipe(f(c), T.as(c)))
+}
 
 /**
  * Performs the specified effect every time a value is written to this
  * `XRefM`.
  */
-export const tapInput = <A, RC, EC, X, A1 extends A = A>(
+export function tapInput<A, RC, EC, X, A1 extends A = A>(
   f: (a: A1) => T.Effect<RC, EC, X>
-) => <RA, RB, EA, EB, B>(self: XRefM<RA, RB, EA, EB, A, B>) => tapInput_(self, f)
+) {
+  return <RA, RB, EA, EB, B>(self: XRefM<RA, RB, EA, EB, A, B>) => tapInput_(self, f)
+}
 
 /**
  * Performs the specified effect every time a value is written to this
  * `XRefM`.
  */
-export const tapOutput_ = <RA, RB, EA, EB, A, B, RC, EC, X>(
+export function tapOutput_<RA, RB, EA, EB, A, B, RC, EC, X>(
   self: XRefM<RA, RB, EA, EB, A, B>,
   f: (b: B) => T.Effect<RC, EC, X>
-) =>
-  pipe(
-    self,
-    mapM((b) => pipe(f(b), T.as(b)))
-  )
+) {
+  return mapM_(self, (b) => pipe(f(b), T.as(b)))
+}
 
 /**
  * Performs the specified effect every time a value is written to this
  * `XRefM`.
  */
-export const tapOutput = <B, RC, EC, X>(f: (b: B) => T.Effect<RC, EC, X>) => <
-  RA,
-  RB,
-  EA,
-  EB,
-  A
->(
-  self: XRefM<RA, RB, EA, EB, A, B>
-) => tapOutput_(self, f)
+export function tapOutput<B, RC, EC, X>(f: (b: B) => T.Effect<RC, EC, X>) {
+  return <RA, RB, EA, EB, A>(self: XRefM<RA, RB, EA, EB, A, B>) => tapOutput_(self, f)
+}

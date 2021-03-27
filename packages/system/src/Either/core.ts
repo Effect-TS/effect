@@ -43,14 +43,24 @@ export function left<E>(e: E): Either<E, never> {
  * Widen left side `Either[E, A] => Either[E | E1, A]`
  */
 export function widenE<E1>() {
-  return <E, A>(self: Either<E, A>): Either<E | E1, A> => self
+  return (
+    /**
+     * @optimize identity
+     */
+    <E, A>(self: Either<E, A>): Either<E | E1, A> => self
+  )
 }
 
 /**
  * Widen right side `Either[E, A] => Either[E, A | A1]`
  */
 export function widenA<A1>() {
-  return <E, A>(self: Either<E, A>): Either<E, A | A1> => self
+  return (
+    /**
+     * @optimize identity
+     */
+    <E, A>(self: Either<E, A>): Either<E, A | A1> => self
+  )
 }
 
 /**

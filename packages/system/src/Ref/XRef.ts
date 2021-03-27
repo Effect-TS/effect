@@ -1,15 +1,40 @@
 // tracing: off
 
-import { absolve } from "../Effect/absolve"
-import { chain, effectTotal, succeed } from "../Effect/core"
-import type { IO, UIO } from "../Effect/effect"
-import { fail } from "../Effect/fail"
 import * as E from "../Either"
 import { pipe } from "../Function"
 import type { AtomicReference } from "../Support/AtomicReference"
-import { modify } from "./atomic"
+import * as atomic from "./atomic"
+import * as T from "./effect"
 
+/**
+ * A `XRef<EA, EB, A, B>` is a polymorphic, purely functional
+ * description of a mutable reference. The fundamental operations of a `XRef`
+ * are `set` and `get`. `set` takes a value of type `A` and sets the reference
+ * to a new value, potentially failing with an error of type `EA`.
+ * `get` gets the current value of the reference and returns a value of type `B`,
+ * potentially failing with an error of type `EB`.
+ *
+ * When the error and value types of the `XRef` are unified, that is, it is a
+ * `XRef[E, E, A, A]`, the `XRef` also supports atomic `modify` and
+ * `update` operations.
+ *
+ * By default, `XRef` is implemented in terms of compare and swap operations
+ * for maximum performance and does not support performing effects within
+ * update operations. If you need to perform effects within update operations
+ * you can create a `XRefM`, a specialized type of `XRef` that supports
+ * performing effects within update operations at some cost to performance. In
+ * this case writes will semantically block other writers, while multiple
+ * readers can read simultaneously.
+ *
+ * NOTE: While `XRef` provides the functional equivalent of a mutable
+ * reference, the value inside the `XRef` should normally be immutable.
+ */
 export interface XRef<EA, EB, A, B> {
+  readonly _EA: () => EA
+  readonly _EB: () => EB
+  readonly _A: (_: A) => void
+  readonly _B: () => B
+
   /**
    * Folds over the error and value types of the `XRef`. This is a highly
    * polymorphic method that is capable of arbitrarily transforming the error
@@ -40,17 +65,21 @@ export interface XRef<EA, EB, A, B> {
   /**
    * Reads the value from the `XRef`.
    */
-  readonly get: IO<EB, B>
+  readonly get: T.IO<EB, B>
 
   /**
    * Writes a new value to the `XRef`, with a guarantee of immediate
    * consistency (at some cost to performance).
    */
-  readonly set: (a: A) => IO<EA, void>
+  readonly set: (a: A) => T.IO<EA, void>
 }
 
 export class Atomic<A> implements XRef<never, never, A, A> {
   readonly _tag = "Atomic"
+  readonly _EA!: () => never
+  readonly _EB!: () => never
+  readonly _A!: (_: A) => void
+  readonly _B!: () => A
 
   constructor(readonly value: AtomicReference<A>) {
     this.fold = this.fold.bind(this)
@@ -64,10 +93,12 @@ export class Atomic<A> implements XRef<never, never, A, A> {
     ca: (_: C) => E.Either<EC, A>,
     bd: (_: A) => E.Either<ED, D>
   ): XRef<EC, ED, C, D> {
-    return new Derived<EC, ED, C, D, A>(
-      this,
-      (s) => bd(s),
-      (c) => ca(c)
+    return new Derived<EC, ED, C, D>((f) =>
+      f(
+        this,
+        (s) => bd(s),
+        (c) => ca(c)
+      )
     )
   }
 
@@ -78,31 +109,44 @@ export class Atomic<A> implements XRef<never, never, A, A> {
     ca: (_: C) => (_: A) => E.Either<EC, A>,
     bd: (_: A) => E.Either<ED, D>
   ): XRef<EC, ED, C, D> {
-    return new DerivedAll<EC, ED, C, D, A>(
-      this,
-      (s) => bd(s),
-      (c) => (s) => ca(c)(s)
+    return new DerivedAll<EC, ED, C, D>((f) =>
+      f(
+        this,
+        (s) => bd(s),
+        (c) => (s) => ca(c)(s)
+      )
     )
   }
 
-  get get(): UIO<A> {
-    return effectTotal(() => this.value.get)
+  get get(): T.UIO<A> {
+    return T.effectTotal(() => this.value.get)
   }
 
-  set(a: A): UIO<void> {
-    return effectTotal(() => {
+  set(a: A): T.UIO<void> {
+    return T.effectTotal(() => {
       this.value.set(a)
     })
   }
 }
 
-export class Derived<EA, EB, A, B, S> implements XRef<EA, EB, A, B> {
+export class Derived<EA, EB, A, B> implements XRef<EA, EB, A, B> {
   readonly _tag = "Derived"
 
+  readonly _RA!: (_: unknown) => void
+  readonly _RB!: (_: unknown) => void
+  readonly _EA!: () => EA
+  readonly _EB!: () => EB
+  readonly _A!: (_: A) => void
+  readonly _B!: () => B
+
   constructor(
-    readonly value: Atomic<S>,
-    readonly getEither: (s: S) => E.Either<EB, B>,
-    readonly setEither: (a: A) => E.Either<EA, S>
+    readonly use: <X>(
+      f: <S>(
+        value: Atomic<S>,
+        getEither: (s: S) => E.Either<EB, B>,
+        setEither: (a: A) => E.Either<EA, S>
+      ) => X
+    ) => X
   ) {
     this.fold = this.fold.bind(this)
     this.foldAll = this.foldAll.bind(this)
@@ -115,60 +159,83 @@ export class Derived<EA, EB, A, B, S> implements XRef<EA, EB, A, B> {
     ca: (_: C) => E.Either<EC, A>,
     bd: (_: B) => E.Either<ED, D>
   ): XRef<EC, ED, C, D> {
-    return new Derived<EC, ED, C, D, S>(
-      this.value,
-      (s) => E.fold_(this.getEither(s), (e) => E.left(eb(e)), bd),
-      (c) =>
-        E.chain_(ca(c), (a) =>
-          E.fold_(this.setEither(a), (e) => E.left(ea(e)), E.right)
-        )
-    )
-  }
-
-  foldAll<EC, ED, C, D>(
-    ea: (_: EA) => EC,
-    eb: (_: EB) => ED,
-    ec: (_: EB) => EC,
-    ca: (_: C) => (_: B) => E.Either<EC, A>,
-    bd: (_: B) => E.Either<ED, D>
-  ): XRef<EC, ED, C, D> {
-    return new DerivedAll<EC, ED, C, D, S>(
-      this.value,
-      (s) =>
-        E.fold_(this.getEither(s), (e) => E.left(eb(e)), E.right) as E.Either<ED, D>,
-      (c) => (s) =>
-        pipe(
-          this.getEither(s),
-          E.fold((e) => E.widenA<A>()(E.left(ec(e))), ca(c)),
-          E.chain((a) =>
-            pipe(
-              this.setEither(a),
-              E.fold((e) => E.left(ea(e)), E.right)
-            )
+    return this.use(
+      (value, getEither, setEither) =>
+        new Derived<EC, ED, C, D>((f) =>
+          f(
+            value,
+            (s) => E.fold_(getEither(s), (e) => E.left(eb(e)), bd),
+            (c) =>
+              E.chain_(ca(c), (a) =>
+                E.fold_(setEither(a), (e) => E.left(ea(e)), E.right)
+              )
           )
         )
     )
   }
 
-  get get(): IO<EB, B> {
-    return pipe(
-      this.value.get,
-      chain((s) => E.fold_(this.getEither(s), fail, succeed))
+  foldAll<EC, ED, C, D>(
+    ea: (_: EA) => EC,
+    eb: (_: EB) => ED,
+    ec: (_: EB) => EC,
+    ca: (_: C) => (_: B) => E.Either<EC, A>,
+    _bd: (_: B) => E.Either<ED, D>
+  ): XRef<EC, ED, C, D> {
+    return this.use(
+      (value, getEither, setEither) =>
+        new DerivedAll<EC, ED, C, D>((f) =>
+          f(
+            value,
+            (s) =>
+              E.fold_(getEither(s), (e) => E.left(eb(e)), E.right) as E.Either<ED, D>,
+            (c) => (s) =>
+              pipe(
+                getEither(s),
+                E.fold((e) => E.widenA<A>()(E.left(ec(e))), ca(c)),
+                E.chain((a) =>
+                  pipe(
+                    setEither(a),
+                    E.fold((e) => E.left(ea(e)), E.right)
+                  )
+                )
+              )
+          )
+        )
     )
   }
 
-  set(a: A): IO<EA, void> {
-    return E.fold_(this.setEither(a), fail, this.value.set)
+  get get(): T.IO<EB, B> {
+    return this.use((value, getEither) =>
+      pipe(
+        value.get,
+        T.chain((s) => E.fold_(getEither(s), T.fail, T.succeed))
+      )
+    )
+  }
+
+  set(a: A): T.IO<EA, void> {
+    return this.use((value, _, setEither) => E.fold_(setEither(a), T.fail, value.set))
   }
 }
 
-export class DerivedAll<EA, EB, A, B, S> implements XRef<EA, EB, A, B> {
+export class DerivedAll<EA, EB, A, B> implements XRef<EA, EB, A, B> {
   readonly _tag = "DerivedAll"
 
+  readonly _RA!: (_: unknown) => void
+  readonly _RB!: (_: unknown) => void
+  readonly _EA!: () => EA
+  readonly _EB!: () => EB
+  readonly _A!: (_: A) => void
+  readonly _B!: () => B
+
   constructor(
-    readonly value: Atomic<S>,
-    readonly getEither: (s: S) => E.Either<EB, B>,
-    readonly setEither: (a: A) => (s: S) => E.Either<EA, S>
+    readonly use: <X>(
+      f: <S>(
+        value: Atomic<S>,
+        getEither: (s: S) => E.Either<EB, B>,
+        setEither: (a: A) => (s: S) => E.Either<EA, S>
+      ) => X
+    ) => X
   ) {
     this.fold = this.fold.bind(this)
     this.foldAll = this.foldAll.bind(this)
@@ -181,12 +248,17 @@ export class DerivedAll<EA, EB, A, B, S> implements XRef<EA, EB, A, B> {
     ca: (_: C) => E.Either<EC, A>,
     bd: (_: B) => E.Either<ED, D>
   ): XRef<EC, ED, C, D> {
-    return new DerivedAll(
-      this.value,
-      (s) => E.fold_(this.getEither(s), (e) => E.left(eb(e)), bd),
-      (c) => (s) =>
-        E.chain_(ca(c), (a) =>
-          E.fold_(this.setEither(a)(s), (e) => E.left(ea(e)), E.right)
+    return this.use(
+      (value, getEither, setEither) =>
+        new DerivedAll((f) =>
+          f(
+            value,
+            (s) => E.fold_(getEither(s), (e) => E.left(eb(e)), bd),
+            (c) => (s) =>
+              E.chain_(ca(c), (a) =>
+                E.fold_(setEither(a)(s), (e) => E.left(ea(e)), E.right)
+              )
+          )
         )
     )
   }
@@ -198,54 +270,58 @@ export class DerivedAll<EA, EB, A, B, S> implements XRef<EA, EB, A, B> {
     ca: (_: C) => (_: B) => E.Either<EC, A>,
     bd: (_: B) => E.Either<ED, D>
   ): XRef<EC, ED, C, D> {
-    return new DerivedAll(
-      this.value,
-      (s) => E.fold_(this.getEither(s), (e) => E.left(eb(e)), bd),
-      (c) => (s) =>
-        pipe(
-          this.getEither(s),
-          E.fold((e) => E.widenA<A>()(E.left(ec(e))), ca(c)),
-          E.chain((a) => E.fold_(this.setEither(a)(s), (e) => E.left(ea(e)), E.right))
+    return this.use(
+      (value, getEither, setEither) =>
+        new DerivedAll((f) =>
+          f(
+            value,
+            (s) => E.fold_(getEither(s), (e) => E.left(eb(e)), bd),
+            (c) => (s) =>
+              pipe(
+                getEither(s),
+                E.fold((e) => E.widenA<A>()(E.left(ec(e))), ca(c)),
+                E.chain((a) => E.fold_(setEither(a)(s), (e) => E.left(ea(e)), E.right))
+              )
+          )
         )
     )
   }
 
-  get get(): IO<EB, B> {
-    return pipe(
-      this.value.get,
-      chain((a) => E.fold_(this.getEither(a), fail, succeed))
+  get get(): T.IO<EB, B> {
+    return this.use((value, getEither) =>
+      pipe(
+        value.get,
+        T.chain((a) => E.fold_(getEither(a), T.fail, T.succeed))
+      )
     )
   }
 
-  set(a: A): IO<EA, void> {
-    return pipe(
-      modify(this.value, (s) =>
-        E.fold_(
-          this.setEither(a)(s),
-          (e) => [E.left(e), s] as [E.Either<EA, void>, S],
-          (s) => [E.right(undefined), s] as [E.Either<EA, void>, S]
-        )
-      ),
-      absolve
+  set(a: A): T.IO<EA, void> {
+    return this.use((value, _, setEither) =>
+      pipe(
+        atomic.modify(value, (s) =>
+          E.fold_(
+            setEither(a)(s),
+            (e) => [E.left(e) as E.Either<EA, void>, s],
+            (s) => [E.right(undefined) as E.Either<EA, void>, s]
+          )
+        ),
+        T.absolve
+      )
     )
   }
 }
 
 /**
- * A Ref that can fail with error E
+ * A Ref that cannot fail and requires no environment
  */
-export interface ERef<E, A> extends XRef<E, E, A, A> {}
-
-/**
- * A Ref that cannot fail
- */
-export interface Ref<A> extends ERef<never, A> {}
+export interface Ref<A> extends XRef<never, never, A, A> {}
 
 /**
  * Cast to a sealed union in case of ERef (where it make sense)
  *
  * @optimize identity
  */
-export function concrete<EA, EB, A>(self: XRef<EA, EB, A, A>) {
-  return self as Atomic<A> | DerivedAll<EA, EB, A, A, A> | Derived<EA, EB, A, A, A>
+export function concrete<EA, EB, A, B>(self: XRef<EA, EB, A, B>) {
+  return self as Atomic<A | B> | DerivedAll<EA, EB, A, B> | Derived<EA, EB, A, A>
 }
