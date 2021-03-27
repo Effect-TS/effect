@@ -31,7 +31,7 @@ export const map: <A, B>(f: (a: A) => B) => <S>(self: XState<S, A>) => XState<S,
 /**
  * Succeed with a value A
  */
-export const succeed: <S, A>(a: A) => XState<S, A> = (a) => F.succeed(() => a)
+export const succeed: <S, A>(a: A) => XState<S, A> = F.succeed
 
 /**
  * Run the computation with input S returning updated state and output

@@ -5,7 +5,7 @@ import { pipe } from "../Function"
 import type { _A, _E, _R } from "../Utils"
 import * as X from "../XPure"
 
-export interface Sync<R, E, A> extends X.XPure<unknown, never, R, E, A> {}
+export interface Sync<R, E, A> extends X.XPure<unknown, unknown, R, E, A> {}
 
 export interface UIO<A> extends Sync<unknown, never, A> {}
 export interface RIO<R, A> extends Sync<R, never, A> {}
@@ -49,7 +49,7 @@ export const tap_: <R, E, A, R1, E1, X>(
  * Constructs a computation that always succeeds with the specified value,
  * passing the state through unchanged.
  */
-export const succeed = <A>(a: A): Sync<unknown, never, A> => X.succeed(() => a)
+export const succeed = <A>(a: A): Sync<unknown, never, A> => X.succeed(a)
 
 /**
  * Constructs a computation that always succeeds with the specified value,
@@ -214,7 +214,7 @@ export const access: <R, A>(f: (_: R) => A) => Sync<R, never, A> = X.access
 /**
  * Access the environment
  */
-export const environment = <R>(): Sync<R, never, R> => X.environment<R>()()
+export const environment = <R>(): Sync<R, never, R> => X.environment<R>()
 
 /**
  * Returns a computation whose failure and success have been lifted into an

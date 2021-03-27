@@ -52,7 +52,7 @@ test("17", () => {
     R.map(
       T.chain(
         E.fold(
-          (e) => T.succeed(() => E.left(e)),
+          (e) => T.succeed(E.left(e)),
           (v) =>
             T.modify(
               flow(

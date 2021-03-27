@@ -17,7 +17,7 @@ export const sequence = sequenceF(ForEach)
 
 export const tuple = DSL.tupleF(Applicative)
 
-const do_ = DSL.doF(Monad)()
+const do_ = DSL.doF(Monad)
 
 export const bind = DSL.bindF(Monad)
 

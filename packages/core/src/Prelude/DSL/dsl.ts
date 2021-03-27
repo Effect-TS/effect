@@ -358,20 +358,21 @@ export function provideSomeF<F>(
 
 export function doF<F extends HKT.URIS, C = HKT.Auto>(
   F: Any<F, C> & Covariant<F, C>
-): <
-  K = HKT.Initial<C, "K">,
-  Q = HKT.Initial<C, "Q">,
-  W = HKT.Initial<C, "W">,
-  X = HKT.Initial<C, "X">,
-  I = HKT.Initial<C, "I">,
-  S = HKT.Initial<C, "S">,
-  R = HKT.Initial<C, "R">,
-  E = HKT.Initial<C, "E">
->() => HKT.Kind<F, C, K, Q, W, X, I, S, R, E, {}>
-export function doF<F>(
-  F: Any<HKT.UHKT<F>> & Covariant<HKT.UHKT<F>>
-): () => HKT.HKT<F, {}> {
-  return () => succeedF(F)({})
+): HKT.Kind<
+  F,
+  C,
+  HKT.Initial<C, "K">,
+  HKT.Initial<C, "Q">,
+  HKT.Initial<C, "W">,
+  HKT.Initial<C, "X">,
+  HKT.Initial<C, "I">,
+  HKT.Initial<C, "S">,
+  HKT.Initial<C, "R">,
+  HKT.Initial<C, "E">,
+  {}
+>
+export function doF<F>(F: Any<HKT.UHKT<F>> & Covariant<HKT.UHKT<F>>): HKT.HKT<F, {}> {
+  return succeedF(F)({})
 }
 
 export function bindF<F extends HKT.URIS, C = HKT.Auto>(

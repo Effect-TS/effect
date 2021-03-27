@@ -1,5 +1,3 @@
-import { constant } from "@effect-ts/system/Function"
-
 import { makeAssociative } from "../../src/Associative"
 import * as E from "../../src/Either"
 import * as DSL from "../../src/Prelude/DSL"
@@ -27,7 +25,7 @@ test("07", () => {
   })
 
   const C = X.struct({
-    a: X.succeed(constant(0)),
+    a: X.succeed(0),
     b: X.fail(0)
   })
 

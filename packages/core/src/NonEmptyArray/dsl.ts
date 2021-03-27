@@ -28,7 +28,7 @@ export const tuple = P.tupleF(Applicative)
 
 export const struct = P.structF(Applicative)
 
-const do_ = P.doF(Monad)()
+const do_ = P.doF(Monad)
 
 export const bind = P.bindF(Monad)
 

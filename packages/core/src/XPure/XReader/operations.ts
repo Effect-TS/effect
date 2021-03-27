@@ -12,7 +12,7 @@ export const sync: <A>(f: () => A) => XReader<unknown, A> = F.sync
 /**
  * Reads the current context
  */
-export const environment = <R>(): XReader<R, R> => F.environment<R>()()
+export const environment = <R>(): XReader<R, R> => F.environment<R>()
 
 /**
  * Projects a value from the global context in a Reader
@@ -53,7 +53,7 @@ export const map: <A, B>(f: (a: A) => B) => <R>(self: XReader<R, A>) => XReader<
 /**
  * Succeed with a value A
  */
-export const succeed: <A>(a: A) => XReader<unknown, A> = (a) => F.succeed(() => a)
+export const succeed: <A>(a: A) => XReader<unknown, A> = F.succeed
 
 /**
  * Run the computation

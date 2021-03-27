@@ -54,7 +54,7 @@ namespace ReaderIOEither {
   export const succeed = DSL.succeedF(Monad)
   export const accessM = DSL.accessMF({ ...Monad, ...Access })
 
-  export const Do = DSL.doF(Monad)()
+  export const Do = DSL.doF(Monad)
   export const bind = DSL.bindF(Monad)
 
   export const provideSome = DSL.provideSomeF({

@@ -13,7 +13,7 @@ export interface Effect<R, E, A> {
   readonly [_R]: (_: R) => void
 
   readonly _S1: (_: unknown) => void
-  readonly _S2: () => never
+  readonly _S2: () => unknown
 }
 
 export type IO<E, A> = Effect<unknown, E, A>

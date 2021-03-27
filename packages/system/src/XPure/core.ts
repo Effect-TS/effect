@@ -4,7 +4,6 @@
 import { _A, _E, _R, _U } from "../Effect/commons"
 import type { EffectURI } from "../Effect/effect"
 import * as E from "../Either/core"
-import { constant } from "../Function"
 import { Stack } from "../Stack"
 
 /**
@@ -131,6 +130,159 @@ class ApplyFrame {
 
 type Frame = FoldFrame | ApplyFrame
 
+class Runtime {
+  stack: Stack<Frame> | undefined = undefined
+
+  pop() {
+    const nextInstr = this.stack
+    if (nextInstr) {
+      this.stack = this.stack?.previous
+    }
+    return nextInstr?.value
+  }
+
+  push(cont: Frame) {
+    this.stack = new Stack(cont, this.stack)
+  }
+
+  findNextErrorHandler() {
+    let unwinding = true
+    while (unwinding) {
+      const nextInstr = this.pop()
+
+      if (nextInstr == null) {
+        unwinding = false
+      } else {
+        if (nextInstr._xptag === "FoldFrame") {
+          unwinding = false
+          this.push(new ApplyFrame(nextInstr.failure))
+        }
+      }
+    }
+  }
+
+  runEither<S1, S2, E, A>(
+    self: XPure<S1, S2, unknown, E, A>,
+    s: S1
+  ): E.Either<E, readonly [S2, A]> {
+    let s0 = s as any
+    let a: any = undefined
+    let environments: Stack<any> | undefined = undefined
+    let failed = false
+    let curXPure = self as XPure<any, any, any, any, any> | undefined
+
+    while (curXPure != null) {
+      const xp = concrete(curXPure)
+
+      switch (xp._xptag) {
+        case "FlatMap": {
+          const nested = concrete(xp.value)
+          const continuation = xp.cont
+
+          switch (nested._xptag) {
+            case "Succeed": {
+              curXPure = continuation(nested.a)
+              break
+            }
+            case "Modify": {
+              const updated = nested.run(s0)
+
+              s0 = updated[0]
+              a = updated[1]
+
+              curXPure = continuation(a)
+              break
+            }
+            default: {
+              curXPure = nested
+              this.push(new ApplyFrame(continuation))
+            }
+          }
+
+          break
+        }
+        case "Suspend": {
+          curXPure = xp.f()
+          break
+        }
+        case "Succeed": {
+          a = xp.a
+          const nextInstr = this.pop()
+          if (nextInstr) {
+            curXPure = nextInstr.apply(a)
+          } else {
+            curXPure = undefined
+          }
+          break
+        }
+        case "Fail": {
+          this.findNextErrorHandler()
+          const nextInst = this.pop()
+          if (nextInst) {
+            curXPure = nextInst.apply(xp.e)
+          } else {
+            failed = true
+            a = xp.e
+            curXPure = undefined
+          }
+          break
+        }
+        case "Fold": {
+          const state = s0
+          this.push(
+            new FoldFrame((c) => chain_(set(state), () => xp.failure(c)), xp.success)
+          )
+          curXPure = xp.value
+          break
+        }
+        case "Access": {
+          curXPure = xp.access(environments?.value || {})
+          break
+        }
+        case "Provide": {
+          environments = new Stack(xp.r, environments)
+          curXPure = foldM_(
+            xp.cont,
+            (e) =>
+              chain_(
+                sync(() => {
+                  environments = environments?.previous
+                }),
+                () => fail(e)
+              ),
+            (a) =>
+              chain_(
+                sync(() => {
+                  environments = environments?.previous
+                }),
+                () => succeed(a)
+              )
+          )
+          break
+        }
+        case "Modify": {
+          const updated = xp.run(s0)
+          s0 = updated[0]
+          a = updated[1]
+          const nextInst = this.pop()
+          if (nextInst) {
+            curXPure = nextInst.apply(a)
+          } else {
+            curXPure = undefined
+          }
+          break
+        }
+      }
+    }
+
+    if (failed) {
+      return E.left(a)
+    }
+
+    return E.right([s0, a])
+  }
+}
+
 /**
  * Runs this computation with the specified initial state, returning either a
  * failure or the updated state and the result
@@ -139,131 +291,7 @@ export function runStateEither_<S1, S2, E, A>(
   self: XPure<S1, S2, unknown, E, A>,
   s: S1
 ): E.Either<E, readonly [S2, A]> {
-  let stack: Stack<Frame> | undefined = undefined
-  let s0 = s as any
-  let a = null
-  let r = null
-  let failed = false
-  let curXPure = self as XPure<any, any, any, any, any> | undefined
-
-  function pop() {
-    const nextInstr = stack
-    if (nextInstr) {
-      stack = stack?.previous
-    }
-    return nextInstr?.value
-  }
-
-  function push(cont: Frame) {
-    stack = new Stack(cont, stack)
-  }
-
-  function findNextErrorHandler() {
-    let unwinding = true
-    while (unwinding) {
-      const nextInstr = pop()
-
-      if (nextInstr == null) {
-        unwinding = false
-      } else {
-        if (nextInstr._xptag === "FoldFrame") {
-          unwinding = false
-          push(new ApplyFrame(nextInstr.failure))
-        }
-      }
-    }
-  }
-
-  while (curXPure != null) {
-    const xp = concrete(curXPure)
-
-    switch (xp._xptag) {
-      case "FlatMap": {
-        const nested = concrete(xp.value)
-        const continuation = xp.cont
-
-        switch (nested._xptag) {
-          case "Succeed": {
-            curXPure = continuation(nested.a)
-            break
-          }
-          case "Modify": {
-            const updated = nested.run(s0)
-
-            s0 = updated[0]
-            a = updated[1]
-
-            curXPure = continuation(a)
-            break
-          }
-          default: {
-            curXPure = nested
-            push(new ApplyFrame(continuation))
-          }
-        }
-
-        break
-      }
-      case "Suspend": {
-        curXPure = xp.f()
-        break
-      }
-      case "Succeed": {
-        a = xp.a
-        const nextInstr = pop()
-        if (nextInstr) {
-          curXPure = nextInstr.apply(a)
-        } else {
-          curXPure = undefined
-        }
-        break
-      }
-      case "Fail": {
-        findNextErrorHandler()
-        const nextInst = pop()
-        if (nextInst) {
-          curXPure = nextInst.apply(xp.e)
-        } else {
-          failed = true
-          a = xp.e
-          curXPure = undefined
-        }
-        break
-      }
-      case "Fold": {
-        curXPure = xp.value
-        push(new FoldFrame(xp.failure, xp.success))
-        break
-      }
-      case "Access": {
-        curXPure = xp.access(r)
-        break
-      }
-      case "Provide": {
-        r = xp.r
-        curXPure = xp.cont
-        break
-      }
-      case "Modify": {
-        const updated = xp.run(s0)
-        s0 = updated[0]
-        a = updated[1]
-        const nextInst = pop()
-        if (nextInst) {
-          curXPure = nextInst.apply(a)
-        } else {
-          curXPure = undefined
-        }
-        break
-      }
-    }
-  }
-
-  if (failed) {
-    return E.left(a)
-  }
-
-  return E.right([s0, a])
+  return new Runtime().runEither(self, s)
 }
 
 /**
@@ -405,8 +433,8 @@ export function tap_<S1, R, E, A, S2, S3, R1, E1, X>(
  * Constructs a computation that always succeeds with the specified value,
  * passing the state through unchanged.
  */
-export function succeed<A, S, S1 = S>(a: () => A): XPure<S, S1, unknown, never, A> {
-  return new Succeed(a())
+export function succeed<S, A>(a: A): XPure<S, S, unknown, never, A> {
+  return new Succeed(a)
 }
 
 /**
@@ -423,7 +451,7 @@ export function fail<E>(a: E): XPure<unknown, never, unknown, E, never> {
  * result to generate a second computation, and running that computation.
  */
 export function map_<S1, R, E, A, S2, B>(self: XPure<S1, S2, R, E, A>, f: (a: A) => B) {
-  return chain_(self, (a) => succeed(() => f(a)))
+  return chain_(self, (a) => succeed(f(a)))
 }
 
 /**
@@ -433,20 +461,20 @@ export function map_<S1, R, E, A, S2, B>(self: XPure<S1, S2, R, E, A>, f: (a: A)
  */
 export function map<A, B>(f: (a: A) => B) {
   return <S1, S2, R, E>(self: XPure<S1, S2, R, E, A>) =>
-    chain_(self, (a) => succeed(() => f(a)))
+    chain_(self, (a) => succeed(f(a)))
 }
 
 /**
  * Recovers from errors by accepting one computation to execute for the case
  * of an error, and one computation to execute for the case of success.
  */
-export function foldM_<S1, S2, S5, R, E, A, S3, R1, E1, B, S4, R2, E2, C>(
+export function foldM_<S1, S2, S3, S4, S5, R, E, A, R1, E1, B, R2, E2, C>(
   self: XPure<S1, S2, R, E, A>,
   failure: (e: E) => XPure<S5, S3, R1, E1, B>,
   success: (a: A) => XPure<S2, S4, R2, E2, C>
 ): XPure<S1 & S5, S3 | S4, R & R1 & R2, E1 | E2, B | C> {
   return new Fold(
-    self as XPure<S1 & S5, S2, R & R1 & R2, E, A>,
+    self as XPure<S1, S2, R & R1 & R2, E, A>,
     failure as (e: E) => XPure<S1 & S5, S3 | S4, R1 & R2, E1 | E2, B | C>,
     success
   )
@@ -481,11 +509,11 @@ export function fold_<S1, S2, R, E, A, B, C>(
   self: XPure<S1, S2, R, E, A>,
   failure: (e: E) => B,
   success: (a: A) => C
-): XPure<S1, S2, R, never, B | C> {
+): XPure<S1 & S2, S1 | S2, R, never, B | C> {
   return foldM_(
     self,
-    (e) => succeed(() => failure(e)),
-    (a) => succeed(() => success(a))
+    (e) => succeed(failure(e)),
+    (a) => succeed(success(a))
   )
 }
 
@@ -505,7 +533,7 @@ export function catchAll_<S1, S2, R, E, A, S3, R1, E1, B>(
   self: XPure<S1, S2, R, E, A>,
   failure: (e: E) => XPure<S1, S3, R1, E1, B>
 ) {
-  return foldM_(self, failure, (a) => succeed(() => a))
+  return foldM_(self, failure, (a) => succeed(a))
 }
 
 /**
@@ -528,7 +556,7 @@ export function bimap_<S1, S2, R, E, A, E1, A1>(
   return foldM_(
     self,
     (e) => fail(f(e)),
-    (a) => succeed(() => g(a))
+    (a) => succeed(g(a))
   )
 }
 
@@ -561,6 +589,13 @@ export function modify<S1, S2, A>(
 }
 
 /**
+ * Constructs a computation from the specified modify function.
+ */
+export function set<S>(s: S) {
+  return modify((): [S, void] => [s, undefined])
+}
+
+/**
  * Constructs a computation from the specified update function.
  */
 export function update<S1, S2>(f: (s: S1) => S2): XPure<S1, S2, unknown, never, void> {
@@ -571,7 +606,7 @@ export function update<S1, S2>(f: (s: S1) => S2): XPure<S1, S2, unknown, never, 
  * Constructs a computation that always returns the `Unit` value, passing the
  * state through unchanged.
  */
-export const unit = <S, S1 = S>() => succeed<void, S, S1>(() => undefined)
+export const unit = succeed(undefined as void)
 
 /**
  * Transforms the initial state of this computation` with the specified
@@ -630,15 +665,15 @@ export function accessM<R, S1, S2, R1, E, A>(
 /**
  * Access the environment with the function f
  */
-export function access<R, A, S, S1 = S>(f: (_: R) => A): XPure<S, S1, R, never, A> {
-  return accessM((r: R) => succeed(() => f(r)))
+export function access<R, A, S>(f: (_: R) => A): XPure<S, S, R, never, A> {
+  return accessM((r: R) => succeed(f(r)))
 }
 
 /**
  * Access the environment
  */
-export function environment<R>(): <S, S1 = S>() => XPure<S, S1, R, never, R> {
-  return () => accessM((r: R) => succeed(() => r))
+export function environment<R>(): XPure<unknown, unknown, R, never, R> {
+  return accessM((r: R) => succeed(r))
 }
 
 /**
@@ -648,7 +683,7 @@ export function environment<R>(): <S, S1 = S>() => XPure<S, S1, R, never, R> {
  */
 export function either<S1, S2, R, E, A>(
   self: XPure<S1, S2, R, E, A>
-): XPure<S1, S2, R, never, E.Either<E, A>> {
+): XPure<S1 & S2, S1 | S2, R, never, E.Either<E, A>> {
   return fold_(self, E.left, E.right)
 }
 
@@ -675,7 +710,7 @@ export function orElseEither_<S1, S2, R, E, A, S3, S4, R2, E2, A2>(
   return foldM_(
     self,
     () => map_(that(), (a) => E.right(a)),
-    (a) => succeed(() => E.left(a))
+    (a) => succeed(E.left(a))
   )
 }
 
@@ -739,7 +774,7 @@ export function suspend<S1, S2, R, E, A>(
  * Lift a sync (non failable) computation
  */
 export function sync<A>(f: () => A) {
-  return suspend(() => succeed<A, unknown, never>(() => f()))
+  return suspend(() => succeed(f()))
 }
 
 /**
@@ -749,7 +784,7 @@ export function tryCatch<E>(onThrow: (u: unknown) => E) {
   return <A>(f: () => A) =>
     suspend(() => {
       try {
-        return succeed<A, unknown, never>(constant(f()))
+        return succeed(f())
       } catch (u) {
         return fail(onThrow(u))
       }

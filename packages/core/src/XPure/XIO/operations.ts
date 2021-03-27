@@ -31,7 +31,7 @@ export const map: <A, B>(f: (a: A) => B) => <R>(self: XIO<A>) => XIO<B> = F.map
 /**
  * Succeed with a value A
  */
-export const succeed: <A>(a: A) => XIO<A> = (a) => F.succeed(() => a)
+export const succeed: <A>(a: A) => XIO<A> = F.succeed
 
 /**
  * Run the computation
