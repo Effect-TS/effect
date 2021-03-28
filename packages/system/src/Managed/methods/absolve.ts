@@ -13,5 +13,5 @@ export function absolve<R, E, E2, A>(
   self: Managed<R, E, E.Either<E2, A>>,
   __trace?: string
 ) {
-  return chain_(self, fromEither, __trace)
+  return chain_(self, (x) => fromEither(() => x), __trace)
 }

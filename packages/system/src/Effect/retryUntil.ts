@@ -1,10 +1,10 @@
 // tracing: off
 
 import { pipe } from "../Function"
-import { catchAll } from "./catchAll"
-import { chain, succeed, suspend } from "./core"
+import * as catchAll from "./catchAll"
+import * as core from "./core"
 import type { Effect } from "./effect"
-import { fail } from "./fail"
+import * as fail from "./fail"
 
 /**
  * Retries this effect until its error satisfies the specified effectful predicate.
@@ -27,14 +27,14 @@ export function retryUntilM_<R, E, A, R1, E1>(
   f: (a: E) => Effect<R1, E1, boolean>,
   __trace?: string
 ): Effect<R & R1, E | E1, A> {
-  return suspend(
+  return core.suspend(
     () =>
       pipe(
         self,
-        catchAll((e) =>
+        catchAll.catchAll((e) =>
           pipe(
             f(e),
-            chain((b) => (b ? fail(e) : retryUntilM_(self, f)))
+            core.chain((b) => (b ? fail.fail(e) : retryUntilM_(self, f)))
           )
         )
       ),
@@ -59,5 +59,5 @@ export function retryUntil_<R, E, A>(
   f: (a: E) => boolean,
   __trace?: string
 ) {
-  return retryUntilM_(self, (a) => succeed(f(a)), __trace)
+  return retryUntilM_(self, (a) => core.succeed(f(a)), __trace)
 }

@@ -42,10 +42,16 @@ export function tuplePar<T extends NonEmptyArray<Managed<any, any, any>>>(
  */
 export function tupleParN(
   n: number
-): <T extends NonEmptyArray<Managed<any, any, any>>>(
-  ...t: T & {
-    0: Managed<any, any, any>
-  }
-) => Managed<_R<T[number]>, _E<T[number]>, TupleA<T>> {
-  return ((...t: Managed<any, any, any>[]) => collectAllParN_(t, n)) as any
+): {
+  /**
+   * @trace call
+   */
+  <T extends NonEmptyArray<Managed<any, any, any>>>(
+    ...t: T & {
+      0: Managed<any, any, any>
+    }
+  ): Managed<_R<T[number]>, _E<T[number]>, TupleA<T>>
+} {
+  return ((...t: Managed<any, any, any>[]) =>
+    collectAllParN_(t, n, accessCallTrace())) as any
 }

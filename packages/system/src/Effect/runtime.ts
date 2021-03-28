@@ -24,7 +24,7 @@ import { defaultRandom, HasRandom } from "../Random"
 import * as Scope from "../Scope"
 // supervisor
 import * as Supervisor from "../Supervisor"
-import { accessM, chain_, effectTotal, succeed } from "./core"
+import * as core from "./core"
 import type { Effect, UIO } from "./effect"
 import type { FailureReporter } from "./primitives"
 import { instruction, IPlatform } from "./primitives"
@@ -297,10 +297,10 @@ export const { run, runCancel, runFiber, runPromise, runPromiseExit } = defaultR
  * is valid (i.e. keep attention to closed resources)
  */
 export function runtime<R0>() {
-  return accessM(
+  return core.accessM(
     (r0: R0) =>
       new IPlatform((platform) =>
-        effectTotal(
+        core.effectTotal(
           (): CustomRuntime<R0, unknown> => {
             return makeCustomRuntime<R0, unknown>(r0, platform)
           }
@@ -312,9 +312,9 @@ export function runtime<R0>() {
 export function withRuntimeM<R0, R, E, A>(
   f: (r: CustomRuntime<R0, unknown>) => Effect<R, E, A>
 ) {
-  return chain_(runtime<R0>(), f)
+  return core.chain_(runtime<R0>(), f)
 }
 
 export function withRuntime<R0, A>(f: (r: CustomRuntime<R0, unknown>) => A) {
-  return chain_(runtime<R0>(), (r) => succeed(f(r)))
+  return core.chain_(runtime<R0>(), (r) => core.succeed(f(r)))
 }

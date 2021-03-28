@@ -9,8 +9,9 @@ import type { Managed } from "./managed"
  *
  * @dataFirst use_
  */
-export function use<A, R2, E2, B>(f: (a: A) => T.Effect<R2, E2, B>) {
-  return <R, E>(self: Managed<R, E, A>): T.Effect<R & R2, E | E2, B> => use_(self, f)
+export function use<A, R2, E2, B>(f: (a: A) => T.Effect<R2, E2, B>, __trace?: string) {
+  return <R, E>(self: Managed<R, E, A>): T.Effect<R & R2, E | E2, B> =>
+    use_(self, f, __trace)
 }
 
 export { use_ }

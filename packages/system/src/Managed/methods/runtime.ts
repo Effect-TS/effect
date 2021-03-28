@@ -7,6 +7,8 @@ import type { Managed } from "../managed"
  * (unsafely) execute tasks. This is useful for integration with legacy
  * code that must call back into Effect code.
  */
-export function runtime<R>(): Managed<R, never, R.CustomRuntime<R, unknown>> {
-  return fromEffect(R.runtime<R>())
+export function runtime<R>(
+  __trace?: string
+): Managed<R, never, R.CustomRuntime<R, unknown>> {
+  return fromEffect(R.runtime<R>(), __trace)
 }

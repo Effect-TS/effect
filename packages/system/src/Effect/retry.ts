@@ -4,14 +4,14 @@ import type { HasClock } from "../Clock"
 import * as E from "../Either"
 import { identity, pipe } from "../Function"
 import type { Driver, Schedule } from "../Schedule"
-import { driver } from "../Schedule"
-import { catchAll } from "./catchAll"
-import { chain } from "./core"
+import * as schedule from "../Schedule"
+import * as catchAll from "./catchAll"
+import * as core from "./core"
 import type { Effect } from "./effect"
-import { fail } from "./fail"
-import { foldM } from "./foldM"
-import { map, map_ } from "./map"
-import { orDie } from "./orDie"
+import * as fail from "./fail"
+import * as foldM from "./foldM"
+import * as map from "./map"
+import * as orDie from "./orDie"
 
 function loop<R, E, A, R1, O, R2, E2, A2>(
   self: Effect<R, E, A>,
@@ -20,19 +20,19 @@ function loop<R, E, A, R1, O, R2, E2, A2>(
 ): Effect<R & R1 & R2 & HasClock, E2, E.Either<A2, A>> {
   return pipe(
     self,
-    map((a) => E.right(a)),
-    catchAll((e) =>
+    map.map((a) => E.right(a)),
+    catchAll.catchAll((e) =>
       pipe(
         driver.next(e),
-        foldM(
+        foldM.foldM(
           () =>
             pipe(
               driver.last,
-              orDie,
-              chain((o) =>
+              orDie.orDie,
+              core.chain((o) =>
                 pipe(
                   orElse(e, o),
-                  map((a) => E.left(a))
+                  map.map((a) => E.left(a))
                 )
               )
             ),
@@ -56,8 +56,8 @@ export function retryOrElseEither_<R, E extends I, A, I, R1, O, R2, E2, A2>(
 ): Effect<R & R1 & R2 & HasClock, E2, E.Either<A2, A>> {
   return pipe(
     policy,
-    driver,
-    chain((a) => loop(self, orElse, a), __trace)
+    schedule.driver,
+    core.chain((a) => loop(self, orElse, a), __trace)
   )
 }
 
@@ -88,7 +88,7 @@ export function retryOrElse_<R, E extends I, I, A, R1, O, R2, E2, A2>(
   orElse: (e: E, o: O) => Effect<R2, E2, A2>,
   __trace?: string
 ): Effect<R & R1 & R2 & HasClock, E2, A | A2> {
-  return map_(
+  return map.map_(
     retryOrElseEither_(self, policy, orElse, __trace),
     E.fold(identity, identity)
   )
@@ -120,7 +120,7 @@ export function retry_<R, E extends I, I, A, R1, O>(
   policy: Schedule<R1, I, O>,
   __trace?: string
 ): Effect<R & R1 & HasClock, E, A> {
-  return retryOrElse_(self, policy, (e, _) => fail(e), __trace)
+  return retryOrElse_(self, policy, (e, _) => fail.fail(e), __trace)
 }
 
 /**

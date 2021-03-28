@@ -933,10 +933,10 @@ export function managedUse_<R, E, A, R2, E2, B>(
     (rm) =>
       core.chain_(
         provideSome_(self.effect, (r: R) => tuple(r, rm)),
-        (a) => f(a[1])
+        (a) => f(a[1]),
+        __trace
       ),
-    (rm, ex) => releaseMapReleaseAll(ex, sequential)(rm),
-    __trace
+    (rm, ex) => releaseMapReleaseAll(ex, sequential, __trace)(rm)
   )
 }
 

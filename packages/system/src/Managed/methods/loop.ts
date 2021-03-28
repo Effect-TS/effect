@@ -5,6 +5,7 @@ import { chain_, map } from "../core"
 import type { Managed } from "../managed"
 import { succeed } from "../succeed"
 import { unit } from "./api"
+import { suspend } from "./suspend"
 
 /**
  * Loops with the specified effectual function, collecting the results into a
@@ -23,17 +24,21 @@ import { unit } from "./api"
  * ```
  */
 export function loop<Z>(initial: Z, cont: (z: Z) => boolean, inc: (z: Z) => Z) {
-  return <R, E, A>(body: (z: Z) => Managed<R, E, A>): Managed<R, E, readonly A[]> => {
-    if (cont(initial)) {
-      return chain_(body(initial), (a) =>
-        pipe(
-          loop(inc(initial), cont, inc)(body),
-          map((as) => [a, ...as])
+  return <R, E, A>(
+    body: (z: Z) => Managed<R, E, A>,
+    __trace?: string
+  ): Managed<R, E, readonly A[]> =>
+    suspend(() => {
+      if (cont(initial)) {
+        return chain_(body(initial), (a) =>
+          pipe(
+            loop(inc(initial), cont, inc)(body),
+            map((as) => [a, ...as])
+          )
         )
-      )
-    }
-    return succeed([])
-  }
+      }
+      return succeed([])
+    }, __trace)
 }
 
 /**
@@ -50,10 +55,14 @@ export function loop<Z>(initial: Z, cont: (z: Z) => boolean, inc: (z: Z) => Z) {
  * ```
  */
 export function loopUnit<Z>(initial: Z, cont: (z: Z) => boolean, inc: (z: Z) => Z) {
-  return <R, E, X>(body: (z: Z) => Managed<R, E, X>): Managed<R, E, void> => {
-    if (cont(initial)) {
-      return chain_(body(initial), () => loopUnit(inc(initial), cont, inc)(body))
-    }
-    return unit
-  }
+  return <R, E, X>(
+    body: (z: Z) => Managed<R, E, X>,
+    __trace?: string
+  ): Managed<R, E, void> =>
+    suspend(() => {
+      if (cont(initial)) {
+        return chain_(body(initial), () => loopUnit(inc(initial), cont, inc)(body))
+      }
+      return unit
+    }, __trace)
 }

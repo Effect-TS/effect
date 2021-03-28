@@ -4,36 +4,57 @@ import { chain_ } from "../core"
 import type { Managed } from "../managed"
 import { succeed } from "../succeed"
 
+/**
+ * Conditional logic
+ *
+ * @dataFirst ifM_
+ */
 export function ifM<R1, E1, A1, R2, E2, A2>(
   onTrue: () => Managed<R1, E1, A1>,
-  onFalse: () => Managed<R2, E2, A2>
+  onFalse: () => Managed<R2, E2, A2>,
+  __trace?: string
 ) {
-  return <R, E>(b: Managed<R, E, boolean>) => ifM_(b, onTrue, onFalse)
+  return <R, E>(b: Managed<R, E, boolean>) => ifM_(b, onTrue, onFalse, __trace)
 }
 
+/**
+ * Conditional logic
+ */
 export function ifM_<R, E, R1, E1, A1, R2, E2, A2>(
   b: Managed<R, E, boolean>,
   onTrue: () => Managed<R1, E1, A1>,
-  onFalse: () => Managed<R2, E2, A2>
+  onFalse: () => Managed<R2, E2, A2>,
+  __trace?: string
 ) {
-  return chain_(b, (x) =>
-    x ? (onTrue() as Managed<R & R1 & R2, E | E1 | E2, A1 | A2>) : onFalse()
+  return chain_(
+    b,
+    (x) => (x ? (onTrue() as Managed<R & R1 & R2, E | E1 | E2, A1 | A2>) : onFalse()),
+    __trace
   )
 }
 
+/**
+ * Conditional logic
+ *
+ * @dataFirst if_
+ */
 function _if<R1, E1, A1, R2, E2, A2>(
   onTrue: () => Managed<R1, E1, A1>,
   onFalse: () => Managed<R2, E2, A2>
 ) {
-  return (b: boolean) => _if_(b, onTrue, onFalse)
+  return (b: boolean) => if_(b, onTrue, onFalse)
 }
 
-function _if_<R1, E1, A1, R2, E2, A2>(
+/**
+ * Conditional logic
+ */
+export function if_<R1, E1, A1, R2, E2, A2>(
   b: boolean,
   onTrue: () => Managed<R1, E1, A1>,
-  onFalse: () => Managed<R2, E2, A2>
+  onFalse: () => Managed<R2, E2, A2>,
+  __trace?: string
 ) {
-  return ifM_(succeed(b), onTrue, onFalse)
+  return ifM_(succeed(b), onTrue, onFalse, __trace)
 }
 
-export { _if as if, _if_ as if_ }
+export { _if as if }

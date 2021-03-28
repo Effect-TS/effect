@@ -1,11 +1,10 @@
 // tracing: off
 
 import type { Clock } from "../Clock"
-import { pipe } from "../Function"
 import type { Has } from "../Has"
 import { cachedInvalidate_ } from "./cachedInvalidate"
 import type { Effect, IO, RIO } from "./effect"
-import { map } from "./map"
+import { map_ } from "./map"
 
 /**
  * Returns an effect that, if evaluated, will return the cached result of
@@ -26,8 +25,5 @@ export function cached_<R, E, A>(
   ttl: number,
   __trace?: string
 ): RIO<R & Has<Clock>, IO<E, A>> {
-  return pipe(
-    cachedInvalidate_(fa, ttl, __trace),
-    map(([cachedEffect, _]) => cachedEffect)
-  )
+  return map_(cachedInvalidate_(fa, ttl, __trace), ([cachedEffect, _]) => cachedEffect)
 }

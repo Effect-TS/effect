@@ -9,7 +9,10 @@ import type { Managed } from "../managed"
  */
 export function makeEffectTotal<A, B>(
   acquire: () => A,
-  release: (a: A) => B
+  release: (a: A) => B,
+  __trace?: string
 ): Managed<unknown, never, A> {
-  return make_(effectTotal(acquire), (a) => effectTotal(() => release(a)))
+  return make_(effectTotal(acquire, __trace), (a) =>
+    effectTotal(() => release(a), __trace)
+  )
 }

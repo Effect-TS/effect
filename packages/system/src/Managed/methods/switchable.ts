@@ -26,11 +26,9 @@ import { releaseMap } from "./releaseMap"
  * This constructor can be used to create an expressive control flow that uses
  * several instances of a managed resource.
  */
-export function switchable<R, E, A>(): Managed<
-  R,
-  never,
-  (x: Managed<R, E, A>) => T.Effect<R, E, A>
-> {
+export function switchable<R, E, A>(
+  __trace?: string
+): Managed<R, never, (x: Managed<R, E, A>) => T.Effect<R, E, A>> {
   return pipe(
     Do.do,
     Do.bind("releaseMap", () => releaseMap),
@@ -42,31 +40,33 @@ export function switchable<R, E, A>(): Managed<
         T.toManaged
       )
     ),
-    map(({ key, releaseMap }) => (newResource) =>
-      T.uninterruptibleMask(({ restore }) =>
-        pipe(
-          releaseMap,
-          replace.replace(key, (_) => T.unit),
-          T.chain(
-            fold(
-              () => T.unit,
-              (fin) => fin(T.exitUnit)
-            )
-          ),
-          T.andThen(T.do),
-          T.bind("r", () => T.environment<R>()),
-          T.bind("inner", () => makeReleaseMap.makeReleaseMap),
-          T.bind("a", ({ inner, r }) =>
-            restore(T.provideAll_(newResource.effect, [r, inner]))
-          ),
-          T.tap(({ inner }) =>
-            replace.replace(key, (exit) =>
-              releaseAll.releaseAll(exit, sequential)(inner)
-            )(releaseMap)
-          ),
-          T.map(({ a }) => a[1])
-        )
-      )
+    map(
+      ({ key, releaseMap }) => (newResource) =>
+        T.uninterruptibleMask(({ restore }) =>
+          pipe(
+            releaseMap,
+            replace.replace(key, (_) => T.unit),
+            T.chain(
+              fold(
+                () => T.unit,
+                (fin) => fin(T.exitUnit)
+              )
+            ),
+            T.andThen(T.do),
+            T.bind("r", () => T.environment<R>()),
+            T.bind("inner", () => makeReleaseMap.makeReleaseMap),
+            T.bind("a", ({ inner, r }) =>
+              restore(T.provideAll_(newResource.effect, [r, inner]))
+            ),
+            T.tap(({ inner }) =>
+              replace.replace(key, (exit) =>
+                releaseAll.releaseAll(exit, sequential)(inner)
+              )(releaseMap)
+            ),
+            T.map(({ a }) => a[1])
+          )
+        ),
+      __trace
     )
   )
 }

@@ -50,7 +50,9 @@ describe("Tracing Managed", () => {
     expect(Array.from(cause).map((s) => s[1])).toEqual([
       "test/tracing.managed.test.ts:38:22",
       "test/tracing.managed.test.ts:36:20",
+      "test/tracing.managed.test.ts:40:14",
       "test/tracing.managed.test.ts:40:24",
+      "test/tracing.managed.test.ts:40:14",
       "test/tracing.managed.test.ts:37:24",
       "test/tracing.managed.test.ts:36:20"
     ])
@@ -76,11 +78,13 @@ describe("Tracing Managed", () => {
     )
 
     expect(Array.from(cause).map((s) => s[1])).toEqual([
-      "test/tracing.managed.test.ts:65:35",
-      "test/tracing.managed.test.ts:63:22",
-      "test/tracing.managed.test.ts:62:21",
-      "test/tracing.managed.test.ts:68:24",
-      "test/tracing.managed.test.ts:62:21"
+      "test/tracing.managed.test.ts:67:35",
+      "test/tracing.managed.test.ts:65:22",
+      "test/tracing.managed.test.ts:64:21",
+      "test/tracing.managed.test.ts:70:14",
+      "test/tracing.managed.test.ts:70:24",
+      "test/tracing.managed.test.ts:70:14",
+      "test/tracing.managed.test.ts:64:21"
     ])
   })
 })
