@@ -1,16 +1,12 @@
 // tracing: off
 
-import type { Array } from "@effect-ts/core/Array"
 import * as A from "@effect-ts/core/Array"
 import * as Assoc from "@effect-ts/core/Associative"
-import { absurd, pipe, tuple } from "@effect-ts/core/Function"
 import * as Ident from "@effect-ts/core/Identity"
-import * as IO from "@effect-ts/core/IO"
 import * as O from "@effect-ts/core/Option"
 import * as S from "@effect-ts/core/Show"
 import * as MO from "@effect-ts/morphic"
 
-import type { DocStream } from "../../Core/DocStream"
 import type { Color } from "../Color"
 import * as Layer from "../Layer"
 import { setSGRCode, SGR } from "../SGR"
@@ -104,74 +100,18 @@ export const underlined: Style = Style.build({
 })
 
 // -------------------------------------------------------------------------------------
-// operations
-// -------------------------------------------------------------------------------------
-
-export const render = (stream: DocStream<Style>): string => {
-  const unsafePeek: (stack: Array<Style>) => Style = A.foldLeft(
-    () => absurd<Style>(null as never),
-    (x) => x
-  )
-
-  const unsafePop: (stack: Array<Style>) => readonly [Style, Array<Style>] = A.foldLeft(
-    () => absurd<readonly [Style, Array<Style>]>(null as never),
-    (x, xs) => tuple<readonly [Style, Array<Style>]>(x, xs)
-  )
-
-  const go = (x: DocStream<Style>) => (stack: Array<Style>): IO.IO<string> =>
-    IO.gen(function* (_) {
-      switch (x._tag) {
-        case "FailedStream":
-          return absurd<string>(x as never)
-        case "EmptyStream":
-          return Ident.string.identity
-        case "CharStream": {
-          const rest = yield* _(pipe(stack, go(x.stream)))
-          return Ident.string.combine(x.char, rest)
-        }
-        case "TextStream": {
-          const rest = yield* _(pipe(stack, go(x.stream)))
-          return Ident.string.combine(x.text, rest)
-        }
-        case "LineStream": {
-          const indent = pipe(x.indentation, A.replicate(" "), Ident.fold(Ident.string))
-          const rest = yield* _(pipe(stack, go(x.stream)))
-          return Ident.fold(Ident.string)(["\n", indent, rest])
-        }
-        case "PushAnnotationStream": {
-          const currentStyle = unsafePeek(stack)
-          const nextStyle = Identity.combine(x.annotation, currentStyle)
-          const rest = yield* _(pipe(stack, A.cons(x.annotation), go(x.stream)))
-          return Ident.string.combine(Show.show(nextStyle), rest)
-        }
-        case "PopAnnotationStream": {
-          const [, styles] = unsafePop(stack)
-          const nextStyle = unsafePeek(styles)
-          const rest = yield* _(pipe(styles, go(x.stream)))
-          return Ident.string.combine(Show.show(nextStyle), rest)
-        }
-        default:
-          return absurd(x)
-      }
-    })
-  return pipe(A.single(Identity.identity), go(stream), IO.run)
-}
-
-// -------------------------------------------------------------------------------------
 // instances
 // -------------------------------------------------------------------------------------
 
 export const Show = S.makeShow<Style>((style) =>
-  pipe(
-    [
+  setSGRCode(
+    A.compact([
       O.some(SGR.as.Reset({})),
       style.foreground,
       style.background,
       style.bold,
       style.italicized,
       style.underlined
-    ],
-    A.compact,
-    setSGRCode
+    ])
   )
 )
