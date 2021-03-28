@@ -39,7 +39,7 @@ function renderRec<A>(x: DocStream<A>): IO.IO<string> {
 }
 
 // -------------------------------------------------------------------------------------
-// operations
+// rendering algorithms
 // -------------------------------------------------------------------------------------
 
 export function render<A>(stream: DocStream<A>): string {
