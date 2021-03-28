@@ -1,6 +1,6 @@
 // tracing: off
 
-import { accessM, provideAll_ } from "./core"
+import * as core from "./core"
 import type { Effect } from "./effect"
 
 /**
@@ -12,7 +12,7 @@ export function provideSome_<R0, R, E, A>(
   f: (r0: R0) => R,
   __trace?: string
 ) {
-  return accessM((r0: R0) => provideAll_(effect, f(r0)), __trace)
+  return core.accessM((r0: R0) => core.provideAll_(effect, f(r0)), __trace)
 }
 
 /**

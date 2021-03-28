@@ -9,7 +9,7 @@ import { chain } from "./core"
 import type { Effect } from "./effect"
 import { fail } from "./fail"
 import { foldM } from "./foldM"
-import { map, map_ } from "./map"
+import * as map from "./map"
 import { orDie } from "./orDie"
 
 /**
@@ -34,12 +34,12 @@ export function repeatOrElseEither_<R, E, Env1, A, B, R2, E2, C>(
         return pipe(
           driver.next(a),
           foldM(
-            () => pipe(orDie(driver.last), map(E.right)),
+            () => pipe(orDie(driver.last), map.map(E.right)),
             (b) =>
               pipe(
                 self,
                 foldM(
-                  (e) => pipe(orElse(e, O.some(b)), map(E.left)),
+                  (e) => pipe(orElse(e, O.some(b)), map.map(E.left)),
                   (a) => loop(a)
                 )
               )
@@ -50,7 +50,7 @@ export function repeatOrElseEither_<R, E, Env1, A, B, R2, E2, C>(
       return pipe(
         self,
         foldM(
-          (e) => pipe(orElse(e, O.none), map(E.left)),
+          (e) => pipe(orElse(e, O.none), map.map(E.left)),
           (a) => loop(a),
           __trace
         )
@@ -93,7 +93,7 @@ export function repeatOrElse_<R, E, A, SR, B, R2, E2, C>(
   orElse: (_: E, __: O.Option<B>) => Effect<R2, E2, C>,
   __trace?: string
 ): Effect<R & SR & R2 & HasClock, E2, C | B> {
-  return map_(repeatOrElseEither_(self, schedule, orElse, __trace), E.merge)
+  return map.map_(repeatOrElseEither_(self, schedule, orElse, __trace), E.merge)
 }
 
 /**

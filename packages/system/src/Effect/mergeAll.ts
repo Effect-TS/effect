@@ -3,7 +3,7 @@
 import { pipe } from "../Function"
 import * as I from "../Iterable"
 import * as Ref from "../Ref"
-import { chain, chain_, succeed, suspend } from "./core"
+import * as core from "./core"
 import type { Effect } from "./effect"
 import * as forEach from "./excl-forEach"
 import { zipWith_ } from "./zipWith"
@@ -28,8 +28,9 @@ export function mergeAll_<R, E, A, B>(
   f: (b: B, a: A) => B,
   __trace?: string
 ) {
-  return suspend(
-    () => I.reduce_(as, succeed(zero) as Effect<R, E, B>, (b, a) => zipWith_(b, a, f)),
+  return core.suspend(
+    () =>
+      I.reduce_(as, core.succeed(zero) as Effect<R, E, B>, (b, a) => zipWith_(b, a, f)),
     __trace
   )
 }
@@ -67,9 +68,11 @@ export function mergeAllPar_<R, E, A, B>(
   f: (b: B, a: A) => B,
   __trace?: string
 ) {
-  return suspend(
+  return core.suspend(
     () =>
-      I.reduce_(as, succeed(zero) as Effect<R, E, B>, (b, a) => zipWithPar_(b, a, f)),
+      I.reduce_(as, core.succeed(zero) as Effect<R, E, B>, (b, a) =>
+        zipWithPar_(b, a, f)
+      ),
     __trace
   )
 }
@@ -113,12 +116,12 @@ export function mergeAllParN_<R, E, A, B>(
   f: (b: B, a: A) => B,
   __trace?: string
 ): Effect<R, E, B> {
-  return chain_(Ref.makeRef(zero), (acc) =>
-    chain_(
+  return core.chain_(Ref.makeRef(zero), (acc) =>
+    core.chain_(
       forEach.forEachUnitParN_(
         as,
         n,
-        chain((a) =>
+        core.chain((a) =>
           pipe(
             acc,
             Ref.update((b) => f(b, a))

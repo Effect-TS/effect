@@ -3,12 +3,12 @@
 import type { Clock } from "../Clock"
 import { pipe } from "../Function"
 import type { Has } from "../Has"
-import { as } from "./as"
+import * as as from "./as"
 import type { Effect } from "./effect"
-import { interruptible } from "./interruption"
-import { map } from "./map"
-import { raceFirst } from "./race"
-import { sleep } from "./sleep"
+import * as interruption from "./interruption"
+import * as map from "./map"
+import * as race from "./race"
+import * as sleep from "./sleep"
 
 /**
  * Returns an effect that will timeout this effect, returning either the
@@ -47,5 +47,9 @@ export function timeoutTo_<R, E, A, B, B2>(
   f: (a: A) => B2,
   __trace?: string
 ): Effect<R & Has<Clock>, E, B | B2> {
-  return pipe(self, map(f), raceFirst(pipe(sleep(d), interruptible, as(b)), __trace))
+  return pipe(
+    self,
+    map.map(f),
+    race.raceFirst(pipe(sleep.sleep(d), interruption.interruptible, as.as(b)), __trace)
+  )
 }

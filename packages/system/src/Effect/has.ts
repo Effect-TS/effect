@@ -8,14 +8,7 @@ import { accessCallTrace } from "@effect-ts/tracing-utils"
 
 import * as A from "../Array"
 import * as R from "../Dictionary"
-import {
-  access,
-  accessM,
-  chain_,
-  effectTotal,
-  provideAll_,
-  succeed
-} from "../Effect/core"
+import * as core from "../Effect/core"
 import type { Effect } from "../Effect/effect"
 import type { Has, Tag } from "../Has"
 import { mergeEnvironments } from "../Has"
@@ -33,7 +26,7 @@ export function accessServicesM<SS extends Record<string, Tag<any>>>(s: SS) {
     ) => Effect<R, E, B>,
     __trace?: string
   ) =>
-    accessM(
+    core.accessM(
       (
         r: UnionToIntersection<
           {
@@ -57,7 +50,7 @@ export function accessServicesTM<SS extends Tag<any>[]>(...s: SS) {
     ) => Effect<R, E, B>,
     __trace?: string
   ) =>
-    accessM(
+    core.accessM(
       (
         r: UnionToIntersection<
           {
@@ -81,7 +74,7 @@ export function accessServicesT<SS extends Tag<any>[]>(...s: SS) {
     ) => B,
     __trace?: string
   ) =>
-    access(
+    core.access(
       (
         r: UnionToIntersection<
           {
@@ -105,7 +98,7 @@ export function accessServices<SS extends Record<string, Tag<any>>>(s: SS) {
     ) => B,
     __trace?: string
   ) =>
-    access(
+    core.access(
       (
         r: UnionToIntersection<
           {
@@ -122,7 +115,7 @@ export function accessServices<SS extends Record<string, Tag<any>>>(s: SS) {
  */
 export function accessServiceM<T>(s: Tag<T>) {
   return <R, E, B>(f: (a: T) => Effect<R, E, B>, __trace?: string) =>
-    accessM((r: Has<T>) => f(r[s.key as any]), __trace)
+    core.accessM((r: Has<T>) => f(r[s.key as any]), __trace)
 }
 
 /**
@@ -130,14 +123,14 @@ export function accessServiceM<T>(s: Tag<T>) {
  */
 export function accessService<T>(s: Tag<T>) {
   return <B>(f: (a: T) => B, __trace?: string) =>
-    accessServiceM(s)((a) => succeed(f(a)), __trace)
+    accessServiceM(s)((a) => core.succeed(f(a)), __trace)
 }
 
 /**
  * Accesses the specified service in the environment of the effect.
  */
 export function service<T>(s: Tag<T>, __trace?: string) {
-  return accessServiceM(s)(succeed, __trace)
+  return accessServiceM(s)(core.succeed, __trace)
 }
 
 /**
@@ -146,7 +139,7 @@ export function service<T>(s: Tag<T>, __trace?: string) {
  * @trace call
  */
 export function services<Ts extends readonly Tag<any>[]>(...s: Ts) {
-  return access(
+  return core.access(
     (
       r: UnionToIntersection<
         { [k in keyof Ts]: [Ts[k]] extends [Tag<infer T>] ? Has<T> : never }[number]
@@ -164,8 +157,10 @@ export function provideServiceM<T>(_: Tag<T>) {
   return <R, E>(service: Effect<R, E, T>, __trace?: string) => <R1, E1, A1>(
     ma: Effect<R1 & Has<T>, E1, A1>
   ): Effect<R & R1, E | E1, A1> =>
-    accessM((r: R & R1) =>
-      chain_(service, (t) => provideAll_(ma, mergeEnvironments(_, r, t), __trace))
+    core.accessM((r: R & R1) =>
+      core.chain_(service, (t) =>
+        core.provideAll_(ma, mergeEnvironments(_, r, t), __trace)
+      )
     )
 }
 
@@ -175,7 +170,7 @@ export function provideServiceM<T>(_: Tag<T>) {
 export function provideService<T>(_: Tag<T>) {
   return (service: T, __trace?: string) => <R1, E1, A1>(
     ma: Effect<R1 & Has<T>, E1, A1>
-  ): Effect<R1, E1, A1> => provideServiceM(_)(succeed(service), __trace)(ma)
+  ): Effect<R1, E1, A1> => provideServiceM(_)(core.succeed(service), __trace)(ma)
 }
 
 /**
@@ -227,7 +222,7 @@ export function replaceService_<R1, E1, A1, T>(
 ): Effect<R1 & Has<T>, E1, A1> {
   return accessServiceM(_)((t) =>
     provideServiceM(_)(
-      effectTotal(() => f(t)),
+      core.effectTotal(() => f(t)),
       __trace
     )(ma)
   )

@@ -3,7 +3,7 @@
 import { pipe } from "../Function"
 import { getAndSet, makeRef } from "../Ref"
 import type { Effect, UIO } from "./effect"
-import { map } from "./map"
+import * as map from "./map"
 import { whenM_ } from "./whenM"
 
 /**
@@ -16,6 +16,6 @@ export function once<R, E, A>(
 ): UIO<Effect<R, E, void>> {
   return pipe(
     makeRef(true),
-    map((r) => whenM_(self, getAndSet(false)(r)), __trace)
+    map.map((r) => whenM_(self, getAndSet(false)(r)), __trace)
   )
 }

@@ -7,16 +7,16 @@ import { pipe, tuple } from "../Function"
 import type { NonEmptyArray } from "../NonEmptyArray"
 import * as P from "../Promise"
 import * as Ref from "../Ref"
-import { as } from "./as"
-import { asUnit } from "./asUnit"
-import { chain, fork, unit } from "./core"
+import * as as from "./as"
+import * as asUnit from "./asUnit"
+import * as core from "./core"
 import * as Do from "./do"
 import type { Effect, UIO } from "./effect"
 import { forEach_ } from "./excl-forEach"
 import { flatten } from "./flatten"
-import { interruptible, onInterrupt, uninterruptibleMask } from "./interruption"
-import { map } from "./map"
-import { tap, tap_ } from "./tap"
+import * as interruption from "./interruption"
+import * as map from "./map"
+import * as tap from "./tap"
 
 function arbiter<E, A>(
   fibers: readonly Fiber.Fiber<E, A>[],
@@ -33,7 +33,10 @@ function arbiter<E, A>(
             pipe(
               fails,
               Ref.modify((c) =>
-                tuple(c === 0 ? pipe(promise, P.halt(e), asUnit) : unit, c - 1)
+                tuple(
+                  c === 0 ? pipe(promise, P.halt(e), asUnit.asUnit) : core.unit,
+                  c - 1
+                )
               )
             )
           ),
@@ -41,15 +44,15 @@ function arbiter<E, A>(
           pipe(
             promise,
             P.succeed(tuple(a, winner)),
-            chain((set) =>
+            core.chain((set) =>
               set
                 ? pipe(
                     fibers,
-                    A.reduce(unit as UIO<void>, (io, f) =>
-                      f === winner ? io : tap_(io, () => Fiber.interrupt(f))
+                    A.reduce(core.unit as UIO<void>, (io, f) =>
+                      f === winner ? io : tap.tap_(io, () => Fiber.interrupt(f))
                     )
                   )
-                : unit
+                : core.unit
             )
           )
       )
@@ -73,41 +76,45 @@ export function raceAllWithStrategy<R, E, A>(
     Do.bind("done", () => P.make<E, readonly [A, Fiber.Fiber<E, A>]>()),
     Do.bind("fails", () => Ref.makeRef(ios.length)),
     Do.bind("c", ({ done, fails }) =>
-      uninterruptibleMask(
+      interruption.uninterruptibleMask(
         ({ restore }) =>
           pipe(
             Do.do,
-            Do.bind("fs", () => forEach_(ios, (x) => pipe(x, interruptible, fork))),
-            tap(({ fs }) =>
-              A.reduce_(fs, unit as UIO<void>, (io, f) =>
+            Do.bind("fs", () =>
+              forEach_(ios, (x) => pipe(x, interruption.interruptible, core.fork))
+            ),
+            tap.tap(({ fs }) =>
+              A.reduce_(fs, core.unit as UIO<void>, (io, f) =>
                 pipe(
                   io,
-                  chain(() => pipe(f.await, chain(arbiter(fs, f, done, fails)), fork))
-                )
-              )
-            ),
-            Do.let("inheritRefs", () => (res: readonly [A, Fiber.Fiber<E, A>]) =>
-              pipe(res[1].inheritRefs, as(res[0]))
-            ),
-            Do.bind("c", ({ fs, inheritRefs }) =>
-              pipe(
-                restore(pipe(done, P.await, chain(inheritRefs))),
-                onInterrupt(() =>
-                  A.reduce_(fs, unit as UIO<void>, (io, f) =>
-                    tap_(io, () => Fiber.interrupt(f))
+                  core.chain(() =>
+                    pipe(f.await, core.chain(arbiter(fs, f, done, fails)), core.fork)
                   )
                 )
               )
             ),
-            map(({ c, fs }) => ({ c, fs }))
+            Do.let("inheritRefs", () => (res: readonly [A, Fiber.Fiber<E, A>]) =>
+              pipe(res[1].inheritRefs, as.as(res[0]))
+            ),
+            Do.bind("c", ({ fs, inheritRefs }) =>
+              pipe(
+                restore(pipe(done, P.await, core.chain(inheritRefs))),
+                interruption.onInterrupt(() =>
+                  A.reduce_(fs, core.unit as UIO<void>, (io, f) =>
+                    tap.tap_(io, () => Fiber.interrupt(f))
+                  )
+                )
+              )
+            ),
+            map.map(({ c, fs }) => ({ c, fs }))
           ),
         __trace
       )
     ),
-    tap(({ c: { fs } }) =>
-      interruptStrategy === "wait" ? forEach_(fs, (f) => f.await) : unit
+    tap.tap(({ c: { fs } }) =>
+      interruptStrategy === "wait" ? forEach_(fs, (f) => f.await) : core.unit
     ),
-    map(({ c: { c } }) => c)
+    map.map(({ c: { c } }) => c)
   )
 }
 

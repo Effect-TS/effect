@@ -5,7 +5,7 @@ import * as E from "../Either"
 import * as Exit from "../Exit/api"
 import * as Fiber from "../Fiber/core"
 import { pipe } from "../Function"
-import { chain, chain_, descriptorWith, halt, result, succeed } from "./core"
+import * as core from "./core"
 import { raceWith_ } from "./core-scope"
 import { done } from "./done"
 import type { Effect, IO } from "./effect"
@@ -16,10 +16,10 @@ function mergeInterruption<A, E2, A2>(a: A): (a: Exit.Exit<E2, A2>) => IO<E2, A>
   return (x) => {
     switch (x._tag) {
       case "Success": {
-        return succeed(a)
+        return core.succeed(a)
       }
       case "Failure": {
-        return Cause.interruptedOnly(x.cause) ? succeed(a) : halt(x.cause)
+        return Cause.interruptedOnly(x.cause) ? core.succeed(a) : core.halt(x.cause)
       }
     }
   }
@@ -40,7 +40,7 @@ export function race_<R, E, A, R2, E2, A2>(
   that: Effect<R2, E2, A2>,
   __trace?: string
 ): Effect<R & R2, E | E2, A | A2> {
-  return descriptorWith((d) =>
+  return core.descriptorWith((d) =>
     raceWith_(
       self,
       that,
@@ -48,13 +48,13 @@ export function race_<R, E, A, R2, E2, A2>(
         Exit.foldM_(
           exit,
           (cause) => mapErrorCause_(Fiber.join(right), (_) => Cause.both(cause, _)),
-          (a) => chain_(right.interruptAs(d.id), mergeInterruption(a))
+          (a) => core.chain_(right.interruptAs(d.id), mergeInterruption(a))
         ),
       (exit, left) =>
         Exit.foldM_(
           exit,
           (cause) => mapErrorCause_(Fiber.join(left), (_) => Cause.both(_, cause)),
-          (a) => chain_(left.interruptAs(d.id), mergeInterruption(a))
+          (a) => core.chain_(left.interruptAs(d.id), mergeInterruption(a))
         ),
       __trace
     )
@@ -126,8 +126,8 @@ export function raceFirst_<R, R2, E, E2, A, A2>(
   __trace?: string
 ): Effect<R & R2, E2 | E, A2 | A> {
   return pipe(
-    race_(result(self), result(that), __trace),
-    chain((a) => done(a as Exit.Exit<E | E2, A | A2>))
+    race_(core.result(self), core.result(that), __trace),
+    core.chain((a) => done(a as Exit.Exit<E | E2, A | A2>))
   )
 }
 

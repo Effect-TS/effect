@@ -5,10 +5,10 @@ import * as Fiber from "../Fiber"
 import { pipe } from "../Function"
 import * as O from "../Option"
 import type { Scope } from "../Scope"
-import { chain } from "./core"
+import * as core from "./core"
 import { forkDaemon } from "./core-scope"
 import type { Effect } from "./effect"
-import { onInterrupt, uninterruptibleMask } from "./interruption"
+import * as interruption from "./interruption"
 
 /**
  * Returns a new effect whose scope will be extended by the specified scope.
@@ -31,16 +31,16 @@ export function in_<R, E, A>(
   scope: Scope<any>,
   __trace?: string
 ) {
-  return uninterruptibleMask(({ restore }) =>
+  return interruption.uninterruptibleMask(({ restore }) =>
     pipe(
       forkDaemon(restore(self), __trace),
-      chain((fiber) =>
+      core.chain((fiber) =>
         pipe(
           scope.extend(fiber.scope),
-          chain(() =>
+          core.chain(() =>
             pipe(
               restore(Fiber.join(fiber)),
-              onInterrupt((x) =>
+              interruption.onInterrupt((x) =>
                 pipe(
                   Array.from(x),
                   head,
