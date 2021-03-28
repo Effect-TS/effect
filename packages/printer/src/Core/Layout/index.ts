@@ -306,10 +306,10 @@ function failsOnFirstLine<A>(stream: DocStream<A>): boolean {
 }
 
 /**
- * The `layoutUnbounded` layout algorithm will lay out a document an
+ * The `unbounded` layout algorithm will lay out a document an
  * `Unbounded` page width.
  */
-export function layoutUnbounded<A>(doc: Doc<A>): DocStream<A> {
+export function unbounded<A>(doc: Doc<A>): DocStream<A> {
   return layoutWadlerLeijen<A>(
     doc,
     constant(not(failsOnFirstLine)),
@@ -373,7 +373,7 @@ export function pretty_<A>(options: LayoutOptions, doc: Doc<A>): DocStream<A> {
         },
         options
       ),
-    Unbounded: () => layoutUnbounded(doc)
+    Unbounded: () => unbounded(doc)
   })(options.pageWidth)
 }
 
@@ -526,7 +526,7 @@ export function smart_<A>(options: LayoutOptions, doc: Doc<A>): DocStream<A> {
   return PW.PageWidth.matchStrict({
     AvailablePerLine: ({ lineWidth, ribbonFraction }) =>
       layoutWadlerLeijen(doc, fitsSmart(lineWidth, ribbonFraction), options),
-    Unbounded: () => layoutUnbounded(doc)
+    Unbounded: () => unbounded(doc)
   })(options.pageWidth)
 }
 
