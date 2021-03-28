@@ -35,8 +35,8 @@ export function haltWhenP_<R, E, E1, O>(
                 (v) =>
                   pipe(
                     done.set(true),
-                    T.andThen(T.mapError_(v, (_) => O.some<E | E1>(_))),
-                    T.andThen(Pull.end)
+                    T.zipRight(T.mapError_(v, (_) => O.some<E | E1>(_))),
+                    T.zipRight(Pull.end)
                   )
               )
             )

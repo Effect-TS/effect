@@ -23,7 +23,7 @@ export function drop_<R, E, O>(self: Stream<R, E, O>, n: number): Stream<R, E, O
             if (cnt >= n) {
               return T.succeed(chunk)
             } else if (chunk.length <= n - cnt) {
-              return T.andThen_(counterRef.set(cnt + chunk.length), go)
+              return T.zipRight_(counterRef.set(cnt + chunk.length), go)
             } else {
               return T.as_(counterRef.set(cnt + (n - cnt)), A.dropLeft_(chunk, n - cnt))
             }

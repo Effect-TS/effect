@@ -38,7 +38,7 @@ export function takeRight_<R, E, O>(self: Stream<R, E, O>, n: number): Stream<R,
                   O.fold(
                     () =>
                       O.some(
-                        T.andThen_(
+                        T.zipRight_(
                           done.set(true),
                           T.map_(queue.takeAll, A.fromIterable)
                         )

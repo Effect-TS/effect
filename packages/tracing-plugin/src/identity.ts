@@ -4,6 +4,7 @@ export default function identity(_program: ts.Program) {
   const checker = _program.getTypeChecker()
   return {
     before(ctx: ts.TransformationContext) {
+      const factory = ctx.factory
       return (sourceFile: ts.SourceFile) => {
         function visitor(node: ts.Node): ts.VisitResult<ts.Node> {
           if (ts.isCallExpression(node)) {
@@ -57,6 +58,9 @@ export default function identity(_program: ts.Program) {
               !ts.isSpreadElement(node.arguments[0]!)
             ) {
               return ts.visitEachChild(node, visitor, ctx).arguments[0]
+            }
+            if (optimizeTags.has("remove")) {
+              return factory.createEmptyStatement()
             }
           }
 

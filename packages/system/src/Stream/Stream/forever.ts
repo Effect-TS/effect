@@ -29,7 +29,7 @@ export function forever<R, E, O>(self: Stream<R, E, O>): Stream<R, E, O> {
           (_) =>
             O.fold_(
               C.sequenceCauseOption(_),
-              () => T.andThen_(T.chain_(switchStream(self.proc), currStream.set), go),
+              () => T.zipRight_(T.chain_(switchStream(self.proc), currStream.set), go),
               (e) => Pull.halt(e)
             )
         )

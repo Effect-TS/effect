@@ -82,7 +82,7 @@ export function debounce_<R, E, O>(
                     if (Ex.succeeded(ex)) {
                       return T.as_(ref.set(new Current(current)), A.single(ex.value))
                     } else {
-                      return T.andThen_(F.interrupt(current), Pull.halt(ex.cause))
+                      return T.zipRight_(F.interrupt(current), Pull.halt(ex.cause))
                     }
                   },
                   (ex, previous) => {
@@ -92,7 +92,7 @@ export function debounce_<R, E, O>(
                       if (A.isEmpty(chunk)) {
                         return Pull.empty()
                       } else {
-                        return T.andThen_(F.interrupt(previous), store(chunk))
+                        return T.zipRight_(F.interrupt(previous), store(chunk))
                       }
                     } else {
                       return O.fold_(
@@ -103,7 +103,7 @@ export function debounce_<R, E, O>(
                             T.map(A.single),
                             T.zipLeft(ref.set(new Done()))
                           ),
-                        (e) => T.andThen_(F.interrupt(previous), Pull.halt(e))
+                        (e) => T.zipRight_(F.interrupt(previous), Pull.halt(e))
                       )
                     }
                   },

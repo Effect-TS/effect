@@ -32,7 +32,7 @@ export function chunkN_<R, E, O>(self: Stream<R, E, O>, n: number): Stream<R, E,
         if (A.isEmpty(buffer)) {
           return Pull.end
         } else {
-          return T.andThen_(ref.set(new State(A.empty, true)), Pull.emitChunk(buffer))
+          return T.zipRight_(ref.set(new State(A.empty, true)), Pull.emitChunk(buffer))
         }
       } else {
         return T.foldM_(
@@ -44,7 +44,7 @@ export function chunkN_<R, E, O>(self: Stream<R, E, O>, n: number): Stream<R, E,
     } else {
       const [chunk, leftover] = A.splitAt_(buffer, n)
 
-      return T.andThen_(ref.set(new State(leftover, done)), Pull.emitChunk(chunk))
+      return T.zipRight_(ref.set(new State(leftover, done)), Pull.emitChunk(chunk))
     }
   }
 

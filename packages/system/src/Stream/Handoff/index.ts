@@ -50,7 +50,7 @@ export function offer_<A>(h: Handoff<A>, a: A): T.UIO<void> {
           matchTag({
             Empty: ({ notifyConsumer }) =>
               [
-                pipe(notifyConsumer, P.succeed(constVoid()), T.andThen(P.await(p))),
+                pipe(notifyConsumer, P.succeed(constVoid()), T.zipRight(P.await(p))),
                 new Full(a, p)
               ] as const,
             Full: (s) =>

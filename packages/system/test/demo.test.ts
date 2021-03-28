@@ -11,7 +11,7 @@ it("should not break", async () => {
   expect(
     await pipe(
       T.gen(function* (_) {
-        const f = flow(addOne, T.andThen(T.succeed(yield* _(T.succeed(0)))))
+        const f = flow(addOne, T.zipRight(T.succeed(yield* _(T.succeed(0)))))
         return yield* _(f(0))
       }),
       T.runPromise
@@ -27,7 +27,7 @@ it("should trace generator", async () => {
       return a + b
     }),
     T.chain(T.succeed),
-    T.andThen(T.effectTotal(() => 4)),
+    T.zipRight(T.effectTotal(() => 4)),
     T.chain(T.fail),
     T.runPromiseExit
   )

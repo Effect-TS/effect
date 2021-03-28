@@ -29,7 +29,7 @@ export function timeout_<R, E, O>(
             return T.chain_(
               T.timeout_(next, d),
               O.fold(
-                () => T.andThen_(timeout.set(true), Pull.end),
+                () => T.zipRight_(timeout.set(true), Pull.end),
                 (a) => Pull.emitChunk(a)
               )
             )

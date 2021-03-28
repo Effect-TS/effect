@@ -69,7 +69,7 @@ export function groupBy_<R, R1, E, E1, O, K, V>(
                     T.chain_(add, ([idx, q]) =>
                       pipe(
                         Ref.update_(ref, MP.insert(k, idx)),
-                        T.andThen(
+                        T.zipRight(
                           out.offer(
                             Ex.succeed([
                               k,

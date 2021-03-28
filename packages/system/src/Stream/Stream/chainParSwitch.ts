@@ -77,7 +77,7 @@ export function chainParSwitch(n: number, bufferSize = 16) {
                         (cause) =>
                           pipe(
                             out.offer(Pull.halt(cause)),
-                            T.andThen(P.fail_(innerFailure, cause)),
+                            T.zipRight(P.fail_(innerFailure, cause)),
                             T.asUnit
                           ),
                         (_) => T.unit
@@ -97,7 +97,7 @@ export function chainParSwitch(n: number, bufferSize = 16) {
                     pipe(
                       getChildren,
                       T.chain((_) => F.interruptAll(_)),
-                      T.andThen(out.offer(Pull.halt(cause)))
+                      T.zipRight(out.offer(Pull.halt(cause)))
                     ),
                     T.asUnit,
                     T.toManaged
@@ -111,12 +111,12 @@ export function chainParSwitch(n: number, bufferSize = 16) {
                         pipe(
                           getChildren,
                           T.chain(F.interruptAll),
-                          T.andThen(T.asUnit(F.interrupt(permitAcquisition)))
+                          T.zipRight(T.asUnit(F.interrupt(permitAcquisition)))
                         ),
                       (_, failureAwait) =>
                         pipe(
                           out.offer(Pull.end),
-                          T.andThen(T.asUnit(F.interrupt(failureAwait)))
+                          T.zipRight(T.asUnit(F.interrupt(failureAwait)))
                         )
                     ),
                     T.toManaged

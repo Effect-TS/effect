@@ -27,7 +27,7 @@ export function bufferUnbounded<R, E, O>(self: Stream<R, E, O>): Stream<R, E, O>
             return T.chain_(
               queue.take,
               Take.foldM(
-                () => T.andThen_(done.set(true), Pull.end),
+                () => T.zipRight_(done.set(true), Pull.end),
                 Pull.halt,
                 Pull.emitChunk
               )

@@ -89,7 +89,7 @@ export function collectAllWhileWith<S>(z: S) {
                             return T.as_(restart, s1)
                           }
                         } else {
-                          return T.andThen_(
+                          return T.zipRight_(
                             restart,
                             go(s1, O.some(leftover) as O.Option<A.Chunk<I>>, end)
                           )
@@ -359,7 +359,7 @@ export function foldM_<R, R1, R2, E, E1, E2, I, I1, I2, L, L1, L2, Z, Z1, Z2>(
                   openThatPush(nextSink.push),
                   T.tap(thatPush.set),
                   T.chain((p) =>
-                    T.andThen_(
+                    T.zipRight_(
                       switched.set(true),
                       O.fold_(
                         in_,
@@ -367,7 +367,7 @@ export function foldM_<R, R1, R2, E, E1, E2, I, I1, I2, L, L1, L2, Z, Z1, Z2>(
                           pipe(
                             p(O.some(leftover) as O.Option<A.Chunk<I & I1 & I2>>),
                             T.when(() => A.isNonEmpty(leftover)),
-                            T.andThen(p(O.none))
+                            T.zipRight(p(O.none))
                           ),
                         () =>
                           pipe(
@@ -526,7 +526,7 @@ export function raceBoth_<R, R1, E, E1, I, I1, L, L1, Z, Z1>(
             Ex.foldM_(
               res1,
               (f) =>
-                T.andThen_(
+                T.zipRight_(
                   F.interrupt(fib2),
                   T.halt(
                     pipe(
@@ -545,7 +545,7 @@ export function raceBoth_<R, R1, E, E1, I, I1, L, L1, Z, Z1>(
             Ex.foldM_(
               res2,
               (f) =>
-                T.andThen_(
+                T.zipRight_(
                   F.interrupt(fib1),
                   T.halt(
                     pipe(
@@ -624,7 +624,7 @@ export function toTransducer<R, E, I, L extends I, Z>(
               e,
               (e) => T.fail(e),
               (z) =>
-                T.andThen_(
+                T.zipRight_(
                   restart,
                   A.isEmpty(leftover) || O.isNone(input)
                     ? T.succeed([z])
@@ -1024,7 +1024,7 @@ export function untilOutputM_<R, R1, E, E1, I, L extends I, Z>(
                   } else if (A.isEmpty(leftover)) {
                     return end
                       ? Push.emit(O.none, A.empty)
-                      : T.andThen_(restart, Push.more)
+                      : T.zipRight_(restart, Push.more)
                   } else {
                     return go(O.some(leftover) as O.Option<A.Chunk<I>>, end)
                   }
@@ -1266,7 +1266,7 @@ export function reduce<S>(z: S) {
 
                     return O.fold_(
                       l,
-                      () => T.andThen_(state.set(st), Push.more),
+                      () => T.zipRight_(state.set(st), Push.more),
                       (leftover) => Push.emit(st, leftover)
                     )
                   })
@@ -1318,7 +1318,7 @@ export function reduceChunksM<S>(z: S) {
                     T.mapError((e) => [E.left(e), []] as const),
                     T.chain((s) => {
                       if (contFn(s)) {
-                        return T.andThen_(state.set(s), Push.more)
+                        return T.zipRight_(state.set(s), Push.more)
                       } else {
                         return Push.emit(s, [])
                       }
@@ -1385,7 +1385,7 @@ export function reduceM<S>(z: S) {
                       ([st, l]) => {
                         return O.fold_(
                           l,
-                          () => T.andThen_(state.set(st), Push.more),
+                          () => T.zipRight_(state.set(st), Push.more),
                           (leftover) => Push.emit(st, leftover)
                         )
                       }
@@ -1477,7 +1477,7 @@ export function forEachChunk<R, E, I, X>(
       in_,
       () => Push.emit<never, void>(undefined, A.empty),
       (is) =>
-        T.andThen_(
+        T.zipRight_(
           T.mapError_(f(is), (e) => [E.left(e), A.empty] as const),
           Push.more
         )
@@ -1592,7 +1592,7 @@ export function last<I>(): Sink<unknown, never, I, never, O.Option<I>> {
                 O.fold_(
                   A.last(ch),
                   () => Push.more,
-                  (l) => T.andThen_(state.set(O.some(l)), Push.more)
+                  (l) => T.zipRight_(state.set(O.some(l)), Push.more)
                 )
             )
           })
@@ -1676,12 +1676,12 @@ export function take<I>(n: number): Sink<unknown, never, I, I, A.Chunk<I>> {
                 if (remaining <= ch.length) {
                   const [chunk, leftover] = A.splitAt_(ch, remaining)
 
-                  return T.andThen_(
+                  return T.zipRight_(
                     state.set(A.empty),
                     Push.emit([...take, ...chunk], leftover)
                   )
                 } else {
-                  return T.andThen_(state.set([...take, ...ch]), Push.more)
+                  return T.zipRight_(state.set([...take, ...ch]), Push.more)
                 }
               }
             )

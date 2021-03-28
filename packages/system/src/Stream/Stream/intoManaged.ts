@@ -23,9 +23,9 @@ export function intoManaged_<R, R1, E, A>(
         O.fold_(
           C.sequenceCauseOption(o),
           () => T.asUnit(queue.offer(TK.end)),
-          (c) => T.andThen_(queue.offer(TK.halt(c)), go)
+          (c) => T.zipRight_(queue.offer(TK.halt(c)), go)
         ),
-      (a) => T.andThen_(queue.offer(TK.chunk(a)), go)
+      (a) => T.zipRight_(queue.offer(TK.chunk(a)), go)
     )
 
     return T.toManaged(go)

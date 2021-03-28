@@ -50,7 +50,7 @@ export function concat_<R, R1, E, E1, O, O1>(
                 if (_) {
                   return Pull.end
                 } else {
-                  return T.andThen_(
+                  return T.zipRight_(
                     T.chain_(switchStream(that.proc), currStream.set),
                     go
                   )

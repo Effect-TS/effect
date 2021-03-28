@@ -28,7 +28,7 @@ export function interruptWhenP_<R, E, E1, O>(
       M.let(
         "asPull",
         ({ done }): T.Effect<unknown, O.Option<E1>, never> =>
-          T.andThen_(T.andThen_(T.asSomeError(P.await(p)), done.set(true)), Pull.end)
+          T.zipRight_(T.zipRight_(T.asSomeError(P.await(p)), done.set(true)), Pull.end)
       ),
       M.let("pull", ({ as, asPull, done }) =>
         T.chain_(

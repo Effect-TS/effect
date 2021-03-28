@@ -14,7 +14,7 @@ describe("Layer", () => {
         T.let("effect", ({ ref }) =>
           pipe(
             Ref.update_(ref, (_) => _ + 1),
-            T.andThen(T.fail("fail"))
+            T.zipRight(T.fail("fail"))
           )
         ),
         T.let("layer", ({ effect }) =>
