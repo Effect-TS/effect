@@ -98,7 +98,7 @@ export const sgrToCode: (sgr: SGR) => Array<number> = SGR.matchStrict({
       Foreground: () =>
         vivid ? A.single(90 + colorToCode(color)) : A.single(30 + colorToCode(color)),
       Background: () =>
-        vivid ? A.single(10 + colorToCode(color)) : A.single(40 + colorToCode(color))
+        vivid ? A.single(100 + colorToCode(color)) : A.single(40 + colorToCode(color))
     })(layer)
 })
 

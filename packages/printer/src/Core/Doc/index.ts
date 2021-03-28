@@ -805,7 +805,7 @@ export function alterAnnotations_<A, B>(doc: Doc<A>, f: (a: A) => Array<B>): Doc
         case "Union":
           return union_(yield* _(go(x.left)), yield* _(go(x.right)))
         case "Nest":
-          return nest(x.indent)(yield* _(go(x.doc)))
+          return nest_(yield* _(go(x.doc)), x.indent)
         case "Column":
           return column((position) => IO.run(go(x.react(position))))
         case "WithPageWidth":

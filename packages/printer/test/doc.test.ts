@@ -316,8 +316,6 @@ prefix [Width: 32, Ribbon Fraction: 1]
       expect(D.isAnnotated(D.annotate_(D.char("a"), 1))).toBeTruthy()
       expect(D.isAnnotated(D.char("a"))).toBeFalsy()
     })
-
-    // TODO: figure out a way to test the `annotation` operations
   })
 
   describe("concatenation combinators", () => {

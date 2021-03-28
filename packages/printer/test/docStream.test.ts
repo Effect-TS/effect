@@ -59,6 +59,4 @@ describe("DocStream", () => {
       expect(S.isPopAnnotationStream(S.empty)).toBeFalsy()
     })
   })
-
-  // TODO: figure out a way to test the `annotation` operations
 })
