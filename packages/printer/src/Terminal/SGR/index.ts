@@ -2,8 +2,7 @@
 
 import type { Array } from "@effect-ts/core/Array"
 import * as A from "@effect-ts/core/Array"
-import { constant, pipe } from "@effect-ts/core/Function"
-import * as Ident from "@effect-ts/core/Identity"
+import { constant } from "@effect-ts/core/Function"
 import * as Show from "@effect-ts/core/Show"
 import * as MO from "@effect-ts/morphic"
 
@@ -84,35 +83,24 @@ export type SGR = MO.AType<typeof SGR>
 // operations
 // -------------------------------------------------------------------------------------
 
-export const csi = (controlFunction: string) => (
-  controlParameters: Array<number>
-): string =>
-  Ident.fold(Ident.string)([
-    "\u001b[",
-    pipe(controlParameters, A.map(Show.number.show), A.join(";")),
-    controlFunction
-  ])
+export function csi(controlFunction: string, controlParameters: Array<number>): string {
+  const params = A.map_(controlParameters, Show.number.show).join(";")
+  return `\u001b[${params}${controlFunction}`
+}
 
-export const sgrToCode = SGR.matchStrict({
+export const sgrToCode: (sgr: SGR) => Array<number> = SGR.matchStrict({
   Reset: constant(A.single(0)),
   SetBold: ({ bold }) => (bold ? A.single(1) : A.single(22)),
   SetItalicized: ({ italicized }) => (italicized ? A.single(3) : A.single(23)),
   SetUnderlined: ({ underlined }) => (underlined ? A.single(4) : A.single(24)),
   SetColor: ({ color, layer, vivid }) =>
-    pipe(
-      layer,
-      Layer.matchStrict({
-        Foreground: () =>
-          vivid
-            ? A.single(Ident.sum.combine(90, colorToCode(color)))
-            : A.single(Ident.sum.combine(30, colorToCode(color))),
-        Background: () =>
-          vivid
-            ? A.single(Ident.sum.combine(100, colorToCode(color)))
-            : A.single(Ident.sum.combine(40, colorToCode(color)))
-      })
-    )
+    Layer.matchStrict({
+      Foreground: () =>
+        vivid ? A.single(90 + colorToCode(color)) : A.single(30 + colorToCode(color)),
+      Background: () =>
+        vivid ? A.single(10 + colorToCode(color)) : A.single(40 + colorToCode(color))
+    })(layer)
 })
 
 export const setSGRCode = (sgrs: Array<SGR>): string =>
-  pipe(sgrs, A.chain(sgrToCode), csi("m"))
+  csi("m", A.chain_(sgrs, sgrToCode))
