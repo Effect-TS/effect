@@ -107,7 +107,7 @@ export const white: Color = Color.as.White({})
 // operations
 // -------------------------------------------------------------------------------------
 
-export const colorToCode = Color.matchStrict({
+export const colorToCode: (color: Color) => number = Color.matchStrict({
   Black: constant(0),
   Red: constant(1),
   Green: constant(2),
