@@ -26,7 +26,7 @@ export function interruptWhen_<R, R1, E, E1, O, X>(
       M.bind("as", () => self.proc),
       M.bind("runIO", () =>
         T.forkManaged<R1, O.Option<E | E1>, never>(
-          pipe(T.asSomeError(io), T.andThen(Pull.end))
+          pipe(T.asSomeError(io), T.zipRight(Pull.end))
         )
       ),
       M.map(({ as, runIO }) => pipe(F.join(runIO), T.disconnect, T.raceFirst(as)))

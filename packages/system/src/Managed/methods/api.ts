@@ -150,7 +150,7 @@ export function memoize<R, E, A>(
           )
         ),
         T.map(({ complete, promise }) =>
-          pipe(complete, T.andThen(P.await(promise)), T.toManaged)
+          pipe(complete, T.zipRight(P.await(promise)), T.toManaged)
         )
       ),
     __trace
@@ -941,7 +941,7 @@ export function preallocate<R, E, A>(
             pipe(
               releaseMap,
               releaseAll.releaseAll(Ex.fail(c), T.sequential),
-              T.andThen(T.halt(c))
+              T.zipRight(T.halt(c))
             ),
           ([release, a]) =>
             T.succeed(
@@ -1530,7 +1530,7 @@ export function timeout_<R, E, A>(self: Managed<R, E, A>, d: number) {
                 T.provideAll_(self.effect, tuple(r, innerReleaseMap)),
                 T.as_(T.sleep(d), O.none),
                 (result, sleeper) =>
-                  T.andThen_(
+                  T.zipRight_(
                     F.interrupt(sleeper),
                     T.done(Ex.map_(result, (tp) => E.right(tp[1])))
                   ),

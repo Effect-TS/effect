@@ -540,8 +540,8 @@ export function foldM<R, E, I, O>(
             ),
             T.chain(([os, s, progress]) =>
               progress
-                ? T.andThen_(state.set(O.some(s)), T.succeed(os))
-                : T.andThen_(state.set(O.none), T.succeed(os))
+                ? T.zipRight_(state.set(O.some(s)), T.succeed(os))
+                : T.zipRight_(state.set(O.none), T.succeed(os))
             )
           )
       )
@@ -818,8 +818,8 @@ export function foldWeightedDecomposeM<R, E, I, O>(
               ),
               T.chain(([os, s, dirty]) =>
                 dirty
-                  ? T.andThen_(state.set(O.some(s)), T.succeed(os))
-                  : T.andThen_(state.set(O.none), T.succeed(os))
+                  ? T.zipRight_(state.set(O.some(s)), T.succeed(os))
+                  : T.zipRight_(state.set(O.none), T.succeed(os))
               )
             )
         )

@@ -54,7 +54,7 @@ export function chainPar(n: number, outputBuffer = 16) {
                       T.foldCauseM(
                         (cause) =>
                           T.asUnit(
-                            T.andThen_(
+                            T.zipRight_(
                               out.offer(Pull.halt(cause)),
                               P.fail_(innerFailure, cause)
                             )
@@ -71,7 +71,7 @@ export function chainPar(n: number, outputBuffer = 16) {
               M.foldCauseM(
                 (cause) =>
                   T.toManaged(
-                    T.andThen_(
+                    T.zipRight_(
                       T.chain_(getChildren, (c) => F.interruptAll(c)),
                       T.asUnit(out.offer(Pull.halt(cause)))
                     )
@@ -83,12 +83,12 @@ export function chainPar(n: number, outputBuffer = 16) {
                     T.raceWith(
                       SM.withPermits_(T.interruptible(T.unit), permits, n),
                       (_, permitsAcquisition) =>
-                        T.andThen_(
+                        T.zipRight_(
                           T.chain_(getChildren, (c) => F.interruptAll(c)),
                           T.asUnit(F.interrupt(permitsAcquisition))
                         ),
                       (_, failureAwait) =>
-                        T.andThen_(
+                        T.zipRight_(
                           out.offer(Pull.end),
                           T.asUnit(F.interrupt(failureAwait))
                         )

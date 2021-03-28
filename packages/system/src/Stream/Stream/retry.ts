@@ -57,7 +57,7 @@ export function retry_<R, R1, E, O>(
                       self.proc,
                       switchStream,
                       T.chain(currStream.set),
-                      T.andThen(T.tap_(loop, (_) => driver.reset))
+                      T.zipRight(T.tap_(loop, (_) => driver.reset))
                     )
                 )
               )

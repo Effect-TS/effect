@@ -50,15 +50,15 @@ export function repeatWith<R1, B>(schedule: SC.Schedule<R1, any, B>) {
                     const scheduleOutput = pipe(sdriver.last, T.orDie, T.map(g))
                     const continue_ = pipe(
                       sdriver.next(undefined),
-                      T.andThen(
+                      T.zipRight(
                         switchPull(
                           concat_(map_(self, f), fromEffect(scheduleOutput)).proc
                         )
                       ),
                       T.tap((_) => currPull.set(_)),
-                      T.andThen(go)
+                      T.zipRight(go)
                     )
-                    const halt = T.andThen_(doneRef.set(true), Pull.end)
+                    const halt = T.zipRight_(doneRef.set(true), Pull.end)
 
                     return T.orElse_(continue_, () => halt)
                   },

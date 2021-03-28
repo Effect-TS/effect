@@ -37,7 +37,7 @@ export function buffer_<R, E, O>(
                 T.chain((_) => Take.done(_)),
                 T.catchSome((_) => {
                   if (O.isNone(_)) {
-                    return O.some(T.andThen_(done.set(true), Pull.end))
+                    return O.some(T.zipRight_(done.set(true), Pull.end))
                   }
 
                   return O.none

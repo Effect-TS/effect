@@ -26,14 +26,14 @@ export function flattenExitOption<R, E, E1, O1>(
             return T.foldM_(
               BP.pullElement(upstream),
               O.fold(
-                () => T.andThen_(done.set(true), P.end),
+                () => T.zipRight_(done.set(true), P.end),
                 (e) => P.fail<E | E1>(e)
               ),
               (os) =>
                 T.foldM_(
                   T.done(os),
                   O.fold(
-                    () => T.andThen_(done.set(true), P.end),
+                    () => T.zipRight_(done.set(true), P.end),
                     (e) => P.fail(e)
                   ),
                   (_) => P.emit(_)

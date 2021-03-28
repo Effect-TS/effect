@@ -17,7 +17,7 @@ export function onError_<R, R1, E, O, X>(
   cleanup: (cause: C.Cause<E>) => T.Effect<R1, never, X>
 ): Stream<R & R1, E, O> {
   return catchAllCause_(self, (cause) =>
-    fromEffect(pipe(cleanup(cause), T.andThen(T.halt(cause))))
+    fromEffect(pipe(cleanup(cause), T.zipRight(T.halt(cause))))
   )
 }
 

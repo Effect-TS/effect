@@ -52,7 +52,7 @@ export function switchable<R, E, A>(
                 (fin) => fin(T.exitUnit)
               )
             ),
-            T.andThen(T.do),
+            T.zipRight(T.do),
             T.bind("r", () => T.environment<R>()),
             T.bind("inner", () => makeReleaseMap.makeReleaseMap),
             T.bind("a", ({ inner, r }) =>

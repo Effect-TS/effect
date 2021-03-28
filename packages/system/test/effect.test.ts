@@ -26,8 +26,8 @@ describe("Effect", () => {
     }
     const program = pipe(
       T.fail(new ErrorA(0)),
-      T.andThen(T.fail(new ErrorB())),
-      T.andThen(T.fail(new ErrorC())),
+      T.zipRight(T.fail(new ErrorB())),
+      T.zipRight(T.fail(new ErrorC())),
       T.catch("_tag", "ErrorA", ({ n }) => T.succeed(n))
     )
     expect(await T.runPromise(program)).toEqual(0)

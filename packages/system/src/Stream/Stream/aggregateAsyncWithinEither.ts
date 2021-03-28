@@ -141,7 +141,7 @@ export function aggregateAsyncWithinEither_<R, E, O, R1, E1, P, Q>(
                             T.bind("lastQ", () =>
                               pipe(
                                 lastChunk.set(A.empty),
-                                T.andThen(T.orDie(sdriver.last)),
+                                T.zipRight(T.orDie(sdriver.last)),
                                 T.zipLeft(sdriver.reset)
                               )
                             ),
@@ -184,7 +184,7 @@ export function aggregateAsyncWithinEither_<R, E, O, R1, E1, P, Q>(
                     )
                   ),
                 (producerDone, scheduleWaiting) =>
-                  T.andThen_(
+                  T.zipRight_(
                     F.interrupt(scheduleWaiting),
                     handleTake(Ex.flatten(producerDone))
                   )

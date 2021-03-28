@@ -69,8 +69,8 @@ export function bufferSignal<R, E, O>(
             return Pull.end
           } else {
             return T.chain_(queue.take, ([take, p]) =>
-              T.andThen_(
-                T.andThen_(
+              T.zipRight_(
+                T.zipRight_(
                   P.succeed_(p, undefined),
                   T.when_(done.set(true), () => take === Take.end)
                 ),

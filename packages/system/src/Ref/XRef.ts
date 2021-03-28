@@ -6,6 +6,9 @@ import type { AtomicReference } from "../Support/AtomicReference"
 import * as atomic from "./atomic"
 import * as T from "./effect"
 
+export const TypeId = Symbol()
+export type TypeId = typeof TypeId
+
 /**
  * A `XRef<EA, EB, A, B>` is a polymorphic, purely functional
  * description of a mutable reference. The fundamental operations of a `XRef`
@@ -30,6 +33,7 @@ import * as T from "./effect"
  * reference, the value inside the `XRef` should normally be immutable.
  */
 export interface XRef<EA, EB, A, B> {
+  readonly _typeId: TypeId
   readonly _EA: () => EA
   readonly _EB: () => EB
   readonly _A: (_: A) => void
@@ -76,6 +80,7 @@ export interface XRef<EA, EB, A, B> {
 
 export class Atomic<A> implements XRef<never, never, A, A> {
   readonly _tag = "Atomic"
+  readonly _typeId: TypeId = TypeId
   readonly _EA!: () => never
   readonly _EB!: () => never
   readonly _A!: (_: A) => void
@@ -131,9 +136,7 @@ export class Atomic<A> implements XRef<never, never, A, A> {
 
 export class Derived<EA, EB, A, B> implements XRef<EA, EB, A, B> {
   readonly _tag = "Derived"
-
-  readonly _RA!: (_: unknown) => void
-  readonly _RB!: (_: unknown) => void
+  readonly _typeId: TypeId = TypeId
   readonly _EA!: () => EA
   readonly _EB!: () => EB
   readonly _A!: (_: A) => void
@@ -220,9 +223,7 @@ export class Derived<EA, EB, A, B> implements XRef<EA, EB, A, B> {
 
 export class DerivedAll<EA, EB, A, B> implements XRef<EA, EB, A, B> {
   readonly _tag = "DerivedAll"
-
-  readonly _RA!: (_: unknown) => void
-  readonly _RB!: (_: unknown) => void
+  readonly _typeId: TypeId = TypeId
   readonly _EA!: () => EA
   readonly _EB!: () => EB
   readonly _A!: (_: A) => void
