@@ -431,7 +431,7 @@ export function supervised_<R, E, A>(
  * When no environment is required (i.e., when R == unknown) it is conceptually equivalent to `flatten(effectTotal(io))`.
  */
 export function suspend<R, E, A>(
-  factory: () => Effect<R, E, A>,
+  factory: (platform: Fiber.Platform<unknown>, id: Fiber.FiberID) => Effect<R, E, A>,
   __trace?: string
 ): Effect<R, E, A> {
   return new ISuspend(factory, __trace)
@@ -442,7 +442,7 @@ export function suspend<R, E, A>(
  * When no environment is required (i.e., when R == unknown) it is conceptually equivalent to `flatten(effectPartial(orThrow, io))`.
  */
 export function suspendPartial<R, E, A, E2>(
-  factory: () => Effect<R, E, A>,
+  factory: (platform: Fiber.Platform<unknown>, id: Fiber.FiberID) => Effect<R, E, A>,
   onThrow: (u: unknown) => E2,
   __trace?: string
 ): Effect<R, E | E2, A> {

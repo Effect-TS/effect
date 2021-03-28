@@ -3,15 +3,15 @@
 import type { Cause } from "../Cause"
 import { pipe } from "../Function"
 import * as P from "../Promise"
-import { andThen } from "./andThen"
-import { catchAllCause } from "./catchAllCause_"
+import * as andThen from "./andThen"
+import * as catchAllCause from "./catchAllCause"
 import { fork } from "./core"
 import * as Do from "./do"
 import type { Effect } from "./effect"
 import { uninterruptibleMask } from "./interruption"
-import { map } from "./map"
+import * as map from "./map"
 import { runtime } from "./runtime"
-import { to } from "./to"
+import * as to from "./to"
 
 /**
  * Imports an asynchronous effect into a pure `Effect` value. This formulation is
@@ -32,17 +32,17 @@ export function effectAsyncM<R, E, R2, E2, A, X>(
             restore(
               pipe(
                 register((k) => {
-                  r.run(to(p)(k))
+                  r.run(to.to(p)(k))
                 }),
-                catchAllCause((c) => P.halt(<Cause<E | E2>>c)(p))
+                catchAllCause.catchAllCause((c) => P.halt(<Cause<E | E2>>c)(p))
               )
             ),
             __trace
           ),
-          andThen(restore(P.await(p)))
+          andThen.andThen(restore(P.await(p)))
         )
       )
     ),
-    map(({ a }) => a)
+    map.map(({ a }) => a)
   )
 }

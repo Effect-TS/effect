@@ -1,9 +1,8 @@
 // tracing: off
 
-import { map as mapCause } from "../Cause"
-import { pipe } from "../Function"
+import { map_ as mapCause } from "../Cause"
 import type { Option } from "../Option"
-import { fold, none, some } from "../Option"
+import * as O from "../Option"
 import { foldCauseM_, halt, succeed } from "./core"
 import type { Effect } from "./effect"
 import { fail } from "./fail"
@@ -17,8 +16,8 @@ export function get<R, E, A>(
 ): Effect<R, Option<E>, A> {
   return foldCauseM_(
     self,
-    (x) => pipe(x, mapCause(some), halt),
-    fold(() => fail(none), succeed),
+    (x) => halt(mapCause(x, O.some)),
+    O.fold(() => fail(O.none), succeed),
     __trace
   )
 }

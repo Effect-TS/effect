@@ -238,7 +238,10 @@ export class IProvide<R, E, A> extends Base<unknown, E, A> {
 export class ISuspend<R, E, A> extends Base<R, E, A> {
   readonly _tag = "Suspend"
 
-  constructor(readonly factory: () => Effect<R, E, A>, readonly trace?: string) {
+  constructor(
+    readonly factory: (platform: Platform<unknown>, id: FiberID) => Effect<R, E, A>,
+    readonly trace?: string
+  ) {
     super()
   }
 }
@@ -247,7 +250,7 @@ export class ISuspendPartial<R, E, A, E2> extends Base<R, E | E2, A> {
   readonly _tag = "SuspendPartial"
 
   constructor(
-    readonly factory: () => Effect<R, E, A>,
+    readonly factory: (platform: Platform<unknown>, id: FiberID) => Effect<R, E, A>,
     readonly onThrow: (u: unknown) => E2,
     readonly trace?: string
   ) {

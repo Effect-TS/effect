@@ -2,7 +2,7 @@
 
 import type { Has, Tag } from "../Has"
 import type { Effect } from "./effect"
-import { accessService, accessServiceM } from "./has"
+import * as has from "./has"
 
 export type ShapeFn<T> = Pick<
   T,
@@ -58,15 +58,15 @@ export function deriveLifted<T>(
     const ret = {} as any
 
     for (const k of functions) {
-      ret[k] = (...args: any[]) => accessServiceM(H)((h) => h[k](...args))
+      ret[k] = (...args: any[]) => has.accessServiceM(H)((h) => h[k](...args))
     }
 
     for (const k of constants) {
-      ret[k] = accessServiceM(H)((h) => h[k])
+      ret[k] = has.accessServiceM(H)((h) => h[k])
     }
 
     for (const k of values) {
-      ret[k] = accessService(H)((h) => h[k])
+      ret[k] = has.accessService(H)((h) => h[k])
     }
 
     return ret as any
@@ -87,7 +87,7 @@ export function deriveAccessM<T>(
     const ret = {} as any
 
     for (const k of generics) {
-      ret[k] = (f: any, trace?: string) => accessServiceM(H)((h) => f(h[k]), trace)
+      ret[k] = (f: any, trace?: string) => has.accessServiceM(H)((h) => f(h[k]), trace)
     }
 
     return ret as any
@@ -105,7 +105,7 @@ export function deriveAccess<T>(
     const ret = {} as any
 
     for (const k of generics) {
-      ret[k] = (f: any, trace?: string) => accessService(H)((h) => f(h[k]), trace)
+      ret[k] = (f: any, trace?: string) => has.accessService(H)((h) => f(h[k]), trace)
     }
 
     return ret as any

@@ -4,7 +4,7 @@ import * as Fiber from "../Fiber"
 import * as FR from "../FiberRef"
 import { pipe } from "../Function"
 import * as O from "../Option"
-import { andThen } from "./andThen"
+import * as andThen from "./andThen"
 import { fork } from "./core"
 import type { Effect, RIO } from "./effect"
 import { uninterruptibleMask } from "./interruption"
@@ -28,6 +28,9 @@ export function forkAs_<R, E, A>(
   __trace?: string
 ): RIO<R, Fiber.FiberContext<E, A>> {
   return uninterruptibleMask(({ restore }) =>
-    fork(pipe(FR.set_(Fiber.fiberName, O.some(name)), andThen(restore(self))), __trace)
+    fork(
+      pipe(FR.set_(Fiber.fiberName, O.some(name)), andThen.andThen(restore(self))),
+      __trace
+    )
   )
 }

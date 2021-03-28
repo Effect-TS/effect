@@ -1,6 +1,6 @@
 // tracing: off
 
-import { chain } from "./core"
+import { chain_ } from "./core"
 import type { Effect, RIO } from "./effect"
 import { flipWith_ } from "./flipWith"
 
@@ -23,5 +23,5 @@ export function chainError_<R, E, A, R2, E2>(
   f: (e: E) => RIO<R2, E2>,
   __trace?: string
 ) {
-  return flipWith_(self, chain(f, __trace))
+  return flipWith_(self, (x) => chain_(x, f, __trace))
 }
