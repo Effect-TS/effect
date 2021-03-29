@@ -40,6 +40,7 @@ import type { ExecutionStrategy } from "./ExecutionStrategy"
 import { sequential } from "./ExecutionStrategy"
 import * as fiberId from "./fiberId"
 import * as flatten from "./flatten"
+import * as ifM from "./ifM"
 import * as interruption from "./interruption"
 import * as map from "./map"
 import { provideSome_ } from "./provideSome"
@@ -180,39 +181,52 @@ export function forEachUnitPar_<R, E, A, X>(
         andThen.andThen(promise.fail<void>(undefined)(result))
       )
     ),
-    Do.let("task", ({ causes, result, startFailure, startTask, status }) => (a: A) =>
-      pipe(
-        core.suspend(() => f(a)),
-        interruption.interruptible,
-        tapCause.tapCause((c) =>
-          pipe(
-            causes,
-            Ref.update((_) => cause.both(_, c)),
-            andThen.andThen(startFailure)
-          )
-        ),
-        ensuring.ensuring(
-          (() => {
-            const isComplete = pipe(
-              status,
-              Ref.modify(([started, done, failing]) => {
-                const newDone = done + 1
+    Do.let(
+      "task",
+      ({ causes, parentId, result, startFailure, startTask, status }) => (a: A) =>
+        pipe(
+          ifM.ifM_(
+            startTask,
+            () =>
+              pipe(
+                core.suspend(() => f(a)),
+                interruption.interruptible,
+                tapCause.tapCause((c) =>
+                  pipe(
+                    causes,
+                    Ref.update((_) => cause.both(_, c)),
+                    andThen.andThen(startFailure)
+                  )
+                ),
+                ensuring.ensuring(
+                  (() => {
+                    const isComplete = pipe(
+                      status,
+                      Ref.modify(([started, done, failing]) => {
+                        const newDone = done + 1
 
-                return tuple(
-                  (failing ? started : size) === newDone,
-                  tuple(started, newDone, failing)
+                        return tuple(
+                          (failing ? started : size) === newDone,
+                          tuple(started, newDone, failing)
+                        )
+                      })
+                    )
+
+                    return pipe(
+                      promise.succeed<void>(undefined)(result),
+                      whenM.whenM(isComplete)
+                    )
+                  })()
                 )
-              })
-            )
-            return pipe(
-              promise.succeed<void>(undefined)(result),
-              whenM.whenM(isComplete)
-            )
-          })()
-        ),
-        whenM.whenM(startTask),
-        interruption.uninterruptible
-      )
+              ),
+            () =>
+              pipe(
+                causes,
+                Ref.update((_) => cause.both(_, cause.interrupt(parentId)))
+              )
+          ),
+          interruption.uninterruptible
+        )
     ),
     Do.bind("fibers", ({ task }) =>
       coreScope.transplant((graft) => forEach_(as, (a) => core.fork(graft(task(a)))))

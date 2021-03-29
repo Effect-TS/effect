@@ -1,7 +1,7 @@
 // tracing: off
 
 import * as E from "../Either"
-import { identity, pipe } from "../Function"
+import { identity } from "../Function"
 import * as O from "../Option"
 import * as L from "../Persistent/List"
 import * as R from "../Ref"
@@ -54,8 +54,8 @@ export class Semaphore {
             } else {
               return [acc, E.left(q.prepend([p, m - n]))]
             }
-            break
           }
+          break
         }
       }
     }
@@ -63,11 +63,10 @@ export class Semaphore {
   }
 
   private releaseN(toRelease: number): T.UIO<void> {
-    return T.flatten(
-      T.chain_(assertNonNegative(toRelease), () =>
-        pipe(
-          this.state,
-          R.modify((s) => this.loop(toRelease, s, T.unit))
+    return T.uninterruptible(
+      T.flatten(
+        T.chain_(assertNonNegative(toRelease), () =>
+          R.modify_(this.state, (s) => this.loop(toRelease, s, T.unit))
         )
       )
     )
@@ -75,27 +74,25 @@ export class Semaphore {
 
   private restore(p: T.Promise<never, void>, n: number): T.UIO<void> {
     return T.flatten(
-      pipe(
+      R.modify_(
         this.state,
-        R.modify(
-          E.fold(
-            (q) =>
-              O.fold_(
-                q.find(([a]) => a === p),
-                (): [T.UIO<void>, E.Either<T.ImmutableQueue<Entry>, number>] => [
-                  this.releaseN(n),
-                  E.left(q)
-                ],
-                (x): [T.UIO<void>, E.Either<T.ImmutableQueue<Entry>, number>] => [
-                  this.releaseN(n - x[1]),
-                  E.left(q.filter(([a]) => a != p))
-                ]
-              ),
-            (m): [T.UIO<void>, E.Either<T.ImmutableQueue<Entry>, number>] => [
-              T.unit,
-              E.right(n + m)
-            ]
-          )
+        E.fold(
+          (q) =>
+            O.fold_(
+              q.find(([a]) => a === p),
+              (): [T.UIO<void>, E.Either<T.ImmutableQueue<Entry>, number>] => [
+                this.releaseN(n),
+                E.left(q)
+              ],
+              (x): [T.UIO<void>, E.Either<T.ImmutableQueue<Entry>, number>] => [
+                this.releaseN(n - x[1]),
+                E.left(q.filter(([a]) => a !== p))
+              ]
+            ),
+          (m): [T.UIO<void>, E.Either<T.ImmutableQueue<Entry>, number>] => [
+            T.unit,
+            E.right(n + m)
+          ]
         )
       )
     )
@@ -106,24 +103,22 @@ export class Semaphore {
       return T.succeed(new Acquisition(T.unit, T.unit))
     } else {
       return T.chain_(T.promiseMake<never, void>(), (p) =>
-        pipe(
+        R.modify_(
           this.state,
-          R.modify(
-            E.fold(
-              (q): [Acquisition, E.Either<T.ImmutableQueue<Entry>, number>] => [
-                new Acquisition(T.promiseWait(p), this.restore(p, n)),
-                E.left(q.push([p, n]))
-              ],
-              (m): [Acquisition, E.Either<T.ImmutableQueue<Entry>, number>] => {
-                if (m >= n) {
-                  return [new Acquisition(T.unit, this.releaseN(n)), E.right(m - n)]
-                }
-                return [
-                  new Acquisition(T.promiseWait(p), this.restore(p, n)),
-                  E.left(new ImmutableQueue(L.of([p, n - m])))
-                ]
+          E.fold(
+            (q): [Acquisition, E.Either<T.ImmutableQueue<Entry>, number>] => [
+              new Acquisition(T.promiseWait(p), this.restore(p, n)),
+              E.left(q.push([p, n]))
+            ],
+            (m): [Acquisition, E.Either<T.ImmutableQueue<Entry>, number>] => {
+              if (m >= n) {
+                return [new Acquisition(T.unit, this.releaseN(n)), E.right(m - n)]
               }
-            )
+              return [
+                new Acquisition(T.promiseWait(p), this.restore(p, n)),
+                E.left(new ImmutableQueue(L.of([p, n - m])))
+              ]
+            }
           )
         )
       )
