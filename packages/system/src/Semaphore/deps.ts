@@ -1,9 +1,11 @@
 // tracing: off
 
 export { bracket_ } from "../Effect/bracket"
-export { chain_, chain, succeed, unit } from "../Effect/core"
+export * from "../Effect/core"
 export { die } from "../Effect/die"
 export { UIO, Effect } from "../Effect/effect"
+export { andThen, andThen_ } from "../Effect/andThen"
+export { uninterruptible, interruptible } from "../Effect/interruption"
 export { flatten } from "../Effect/flatten"
 export { map_ } from "../Effect/map"
 export { zipLeft_ } from "../Effect/zips"
