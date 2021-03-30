@@ -5,11 +5,14 @@ import type { Managed } from "./managed"
 import { succeed } from "./succeed"
 
 /**
+ * Binds an effectful value in a `do` scope
+ *
  * @dataFirst bind_
  */
 export function bind<R, E, A, K, N extends string>(
   tag: Exclude<N, keyof K>,
-  f: (_: K) => Managed<R, E, A>
+  f: (_: K) => Managed<R, E, A>,
+  __trace?: string
 ) {
   return <R2, E2>(
     mk: Managed<R2, E2, K>
@@ -20,23 +23,17 @@ export function bind<R, E, A, K, N extends string>(
       {
         [k in N]: A
       }
-  > =>
-    chain_(mk, (k) =>
-      map_(
-        f(k),
-        (
-          a
-        ): K &
-          {
-            [k in N]: A
-          } => ({ ...k, [tag]: a } as any)
-      )
-    )
+  > => bind_(mk, tag, f, __trace)
 }
+
+/**
+ * Binds an effectful value in a `do` scope
+ */
 export function bind_<R2, E2, R, E, A, K, N extends string>(
   mk: Managed<R2, E2, K>,
   tag: Exclude<N, keyof K>,
-  f: (_: K) => Managed<R, E, A>
+  f: (_: K) => Managed<R, E, A>,
+  __trace?: string
 ): Managed<
   R & R2,
   E | E2,
@@ -53,15 +50,22 @@ export function bind_<R2, E2, R, E, A, K, N extends string>(
       ): K &
         {
           [k in N]: A
-        } => ({ ...k, [tag]: a } as any)
+        } => ({ ...k, [tag]: a } as any),
+      __trace
     )
   )
 }
 
 /**
+ * Binds a value in a `do` scope
+ *
  * @dataFirst let_
  */
-function let__<A, K, N extends string>(tag: Exclude<N, keyof K>, f: (_: K) => A) {
+function let__<A, K, N extends string>(
+  tag: Exclude<N, keyof K>,
+  f: (_: K) => A,
+  __trace?: string
+) {
   return <R2, E2>(
     mk: Managed<R2, E2, K>
   ): Managed<
@@ -79,10 +83,14 @@ function let__<A, K, N extends string>(tag: Exclude<N, keyof K>, f: (_: K) => A)
       ): K &
         {
           [k in N]: A
-        } => ({ ...k, [tag]: f(k) } as any)
+        } => ({ ...k, [tag]: f(k) } as any),
+      __trace
     )
 }
 
+/**
+ * Binds a value in a `do` scope
+ */
 export function let_<R2, E2, A, K, N extends string>(
   mk: Managed<R2, E2, K>,
   tag: Exclude<N, keyof K>,
@@ -106,6 +114,9 @@ export function let_<R2, E2, A, K, N extends string>(
   )
 }
 
+/**
+ * Begin a `do` scope
+ */
 const do_ = succeed({})
 
 export { let__ as let, do_ as do }

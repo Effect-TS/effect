@@ -2,7 +2,7 @@
 
 import { pipe } from "../Function"
 import * as O from "../Option"
-import { catchAll } from "./catchAll"
+import * as catchAll from "./catchAll"
 import type { Effect } from "./effect"
 import { fail } from "./fail"
 
@@ -33,7 +33,7 @@ export function orElseOptional_<R, E, A, R2, E2, A2>(
 ): Effect<R & R2, O.Option<E | E2>, A | A2> {
   return pipe(
     self,
-    catchAll<R2, O.Option<E | E2>, O.Option<E | E2>, A2>(
+    catchAll.catchAll<R2, O.Option<E | E2>, O.Option<E | E2>, A2>(
       O.fold(that, (x) => pipe(x, O.some, fail)),
       __trace
     )

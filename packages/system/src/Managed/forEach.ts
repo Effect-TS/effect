@@ -15,9 +15,11 @@ import type { Finalizer } from "./ReleaseMap/finalizer"
  *
  * For a parallel version of this method, see `forEachPar`.
  * If you do not need the results, see `forEachUnit` for a more efficient implementation.
+ *
+ * @dataFirst forEach_
  */
-export function forEach<R, E, A, B>(f: (a: A) => Managed<R, E, B>) {
-  return (as: Iterable<A>) => forEach_(as, f)
+export function forEach<R, E, A, B>(f: (a: A) => Managed<R, E, B>, __trace?: string) {
+  return (as: Iterable<A>) => forEach_(as, f, __trace)
 }
 
 /**
@@ -27,15 +29,19 @@ export function forEach<R, E, A, B>(f: (a: A) => Managed<R, E, B>) {
  * For a parallel version of this method, see `forEachPar_`.
  * If you do not need the results, see `forEachUnit_` for a more efficient implementation.
  */
-export function forEach_<R, E, A, B>(as: Iterable<A>, f: (a: A) => Managed<R, E, B>) {
+export function forEach_<R, E, A, B>(
+  as: Iterable<A>,
+  f: (a: A) => Managed<R, E, B>,
+  __trace?: string
+) {
   return new Managed<R, E, readonly B[]>(
     T.map_(
-      T.forEach_(as, (a) => f(a).effect),
+      T.forEach_(as, (a) => f(a).effect, __trace),
       (res) => {
         const fins = res.map((k) => k[0])
         const as = res.map((k) => k[1])
 
-        return [(e) => T.forEach_(fins.reverse(), (fin) => fin(e)), as]
+        return [(e) => T.forEach_(fins.reverse(), (fin) => fin(e), __trace), as]
       }
     )
   )
@@ -50,17 +56,18 @@ export function forEach_<R, E, A, B>(as: Iterable<A>, f: (a: A) => Managed<R, E,
 export function forEachExec_<R, E, A, B>(
   as: Iterable<A>,
   es: ExecutionStrategy,
-  f: (a: A) => Managed<R, E, B>
+  f: (a: A) => Managed<R, E, B>,
+  __trace?: string
 ) {
   switch (es._tag) {
     case "Sequential": {
-      return forEach_(as, f)
+      return forEach_(as, f, __trace)
     }
     case "Parallel": {
-      return forEachPar_(as, f)
+      return forEachPar_(as, f, __trace)
     }
     case "ParallelN": {
-      return forEachParN_(as, es.n, f)
+      return forEachParN_(as, es.n, f, __trace)
     }
   }
 }
@@ -75,9 +82,10 @@ export function forEachExec_<R, E, A, B>(
  */
 export function forEachExec<R, E, A, B>(
   es: ExecutionStrategy,
-  f: (a: A) => Managed<R, E, B>
+  f: (a: A) => Managed<R, E, B>,
+  __trace?: string
 ) {
-  return (as: Iterable<A>) => forEachExec_(as, es, f)
+  return (as: Iterable<A>) => forEachExec_(as, es, f, __trace)
 }
 
 /**
@@ -89,15 +97,16 @@ export function forEachExec<R, E, A, B>(
  */
 export function forEachUnit_<R, E, A, B>(
   as: Iterable<A>,
-  f: (a: A) => Managed<R, E, B>
+  f: (a: A) => Managed<R, E, B>,
+  __trace?: string
 ) {
   return new Managed<R, E, void>(
     T.map_(
-      T.forEach_(as, (a) => f(a).effect),
+      T.forEach_(as, (a) => f(a).effect, __trace),
       (result) => {
         const [fins] = A.unzip(result)
         return tuple<[Finalizer, void]>(
-          (e) => T.forEach_(A.reverse(fins), (f) => f(e)),
+          (e) => T.forEach_(A.reverse(fins), (f) => f(e), __trace),
           undefined
         )
       }
@@ -111,9 +120,14 @@ export function forEachUnit_<R, E, A, B>(
  *
  * Equivalent to `forEach(as)(f).unit`, but without the cost of building
  * the list of results.
+ *
+ * @dataFirst forEachUnit_
  */
-export function forEachUnit<R, E, A, B>(f: (a: A) => Managed<R, E, B>) {
-  return (as: Iterable<A>) => forEachUnit_(as, f)
+export function forEachUnit<R, E, A, B>(
+  f: (a: A) => Managed<R, E, B>,
+  __trace?: string
+) {
+  return (as: Iterable<A>) => forEachUnit_(as, f, __trace)
 }
 
 /**
@@ -121,9 +135,14 @@ export function forEachUnit<R, E, A, B>(f: (a: A) => Managed<R, E, B>) {
  * and returns the results in a new `B[]`.
  *
  * For a sequential version of this method, see `forEach`.
+ *
+ * @dataFirst forEachPar_
  */
-export function forEachPar<R, E, A, B>(f: (a: A) => Managed<R, E, B>) {
-  return (as: Iterable<A>): Managed<R, E, readonly B[]> => forEachPar_(as, f)
+export function forEachPar<R, E, A, B>(
+  f: (a: A) => Managed<R, E, B>,
+  __trace?: string
+) {
+  return (as: Iterable<A>): Managed<R, E, readonly B[]> => forEachPar_(as, f, __trace)
 }
 
 /**
@@ -134,9 +153,10 @@ export function forEachPar<R, E, A, B>(f: (a: A) => Managed<R, E, B>) {
  */
 export function forEachPar_<R, E, A, B>(
   as: Iterable<A>,
-  f: (a: A) => Managed<R, E, B>
+  f: (a: A) => Managed<R, E, B>,
+  __trace?: string
 ): Managed<R, E, readonly B[]> {
-  return mapM_(makeManagedReleaseMap(T.parallel), (parallelReleaseMap) => {
+  return mapM_(makeManagedReleaseMap(T.parallel, __trace), (parallelReleaseMap) => {
     const makeInnerMap = T.provideSome_(
       T.map_(makeManagedReleaseMap(sequential).effect, ([_, x]) => x),
       (x: unknown) => tuple(x, parallelReleaseMap)
@@ -161,8 +181,13 @@ export function forEachPar_<R, E, A, B>(
  *
  * @dataFirst forEachParN_
  */
-export function forEachParN<R, E, A, B>(n: number, f: (a: A) => Managed<R, E, B>) {
-  return (as: Iterable<A>): Managed<R, E, readonly B[]> => forEachParN_(as, n, f)
+export function forEachParN<R, E, A, B>(
+  n: number,
+  f: (a: A) => Managed<R, E, B>,
+  __trace?: string
+) {
+  return (as: Iterable<A>): Managed<R, E, readonly B[]> =>
+    forEachParN_(as, n, f, __trace)
 }
 
 /**
@@ -174,9 +199,10 @@ export function forEachParN<R, E, A, B>(n: number, f: (a: A) => Managed<R, E, B>
 export function forEachParN_<R, E, A, B>(
   as: Iterable<A>,
   n: number,
-  f: (a: A) => Managed<R, E, B>
+  f: (a: A) => Managed<R, E, B>,
+  __trace?: string
 ): Managed<R, E, readonly B[]> {
-  return mapM_(makeManagedReleaseMap(T.parallelN(n)), (parallelReleaseMap) => {
+  return mapM_(makeManagedReleaseMap(T.parallelN(n), __trace), (parallelReleaseMap) => {
     const makeInnerMap = T.provideSome_(
       T.map_(makeManagedReleaseMap(sequential).effect, ([_, x]) => x),
       (x: unknown) => tuple(x, parallelReleaseMap)

@@ -1,13 +1,12 @@
 // tracing: off
 
+import * as fe from "../../Effect/fromEither"
 import * as E from "../../Either"
-import { fail } from "../core"
-import { succeed } from "../succeed"
-import { suspend } from "./suspend"
+import { fromEffect } from "../fromEffect"
 
 /**
  * Lifts an `Either` into a `Managed` value.
  */
-export function fromEither<E, A>(self: E.Either<E, A>) {
-  return suspend(() => (self._tag === "Left" ? fail(self.left) : succeed(self.right)))
+export function fromEither<E, A>(self: () => E.Either<E, A>, __trace?: string) {
+  return fromEffect(fe.fromEither(self), __trace)
 }

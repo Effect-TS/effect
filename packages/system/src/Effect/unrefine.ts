@@ -3,7 +3,7 @@
 import * as C from "../Cause"
 import { identity, pipe } from "../Function"
 import * as O from "../Option/core"
-import { catchAllCause_ } from "./catchAllCause_"
+import { catchAllCause_ } from "./catchAllCause"
 import { halt } from "./core"
 import type { Effect } from "./effect"
 import { fail } from "./fail"

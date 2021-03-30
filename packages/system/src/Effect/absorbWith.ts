@@ -5,7 +5,7 @@ import { identity, pipe } from "../Function"
 import { succeed } from "./core"
 import type { Effect } from "./effect"
 import { fail } from "./fail"
-import { foldM } from "./foldM"
+import { foldM_ } from "./foldM"
 import { sandbox } from "./sandbox"
 
 /**
@@ -26,11 +26,7 @@ export function absorbWith_<R, A, E>(
   f: (e: E) => unknown,
   __trace?: string
 ) {
-  return pipe(
-    fa,
-    sandbox,
-    foldM((x) => pipe(x, squash(f), fail), succeed, __trace)
-  )
+  return foldM_(sandbox(fa), (x) => pipe(x, squash(f), fail), succeed, __trace)
 }
 
 /**

@@ -66,7 +66,7 @@ export function mapMPar(n: number) {
               (c) => M.fromEffect(out.offer(Pull.halt(c))),
               () =>
                 pipe(
-                  SM.withPermits(n)(permits)(T.unit),
+                  SM.withPermits_(T.unit, permits, n),
                   T.chain(() => out.offer(Pull.end)),
                   M.fromEffect
                 )

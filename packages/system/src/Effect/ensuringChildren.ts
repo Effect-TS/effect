@@ -4,9 +4,9 @@ import * as Fiber from "../Fiber"
 import { pipe } from "../Function"
 import type { HashSet } from "../Persistent/HashSet"
 import { track } from "../Supervisor"
-import { chain, supervised } from "./core"
+import * as core from "./core"
 import type { Effect, RIO } from "./effect"
-import { ensuring } from "./ensuring"
+import * as ensuring from "./ensuring"
 
 /**
  * Acts on the children of this fiber, guaranteeing the specified callback
@@ -33,8 +33,12 @@ export function ensuringChildren_<R, E, A, R1, X>(
 ) {
   return pipe(
     track,
-    chain((s) =>
-      pipe(fa, supervised(s), ensuring(pipe(s.value, chain(children)), __trace))
+    core.chain((s) =>
+      pipe(
+        fa,
+        core.supervised(s),
+        ensuring.ensuring(pipe(s.value, core.chain(children)), __trace)
+      )
     )
   )
 }

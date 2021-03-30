@@ -93,8 +93,6 @@ export class Key {
    * whether the attempt was successful. A value of `true` indicates the
    * finalizer will not be executed, while a value of `false` indicates the
    * finalizer was already executed.
-   *
-   * @return
    */
   remove: UIO<boolean> = succeed(false)
   constructor(remove?: UIO<boolean>) {
@@ -354,7 +352,7 @@ export class Open<A> {
   constructor(readonly close: (_: A) => UIO<boolean>, readonly scope: Local<A>) {}
 }
 
-export const unsafeMakeScope = <A>() => {
+export function unsafeMakeScope<A>() {
   const exitValue = new AtomicReference<A | null>(null)
   const finalizers = new Map<Key, OrderedFinalizer>()
   const scope = new Local(
@@ -377,4 +375,6 @@ export const unsafeMakeScope = <A>() => {
   }, scope)
 }
 
-export const makeScope = <A>() => effectTotal(() => unsafeMakeScope<A>())
+export function makeScope<A>() {
+  return effectTotal(() => unsafeMakeScope<A>())
+}

@@ -6,7 +6,9 @@ import * as O from "../Option"
 import * as L from "../Persistent/List"
 import * as R from "../Ref"
 import { ImmutableQueue } from "../Support/ImmutableQueue"
-import * as T from "./deps"
+import * as T from "./effect"
+import * as M from "./managed"
+import * as P from "./promise"
 import type { Entry, State } from "./state"
 import { Acquisition, assertNonNegative } from "./state"
 
@@ -48,9 +50,9 @@ export class Semaphore {
             if (n > m) {
               n = n - m
               state = E.left(q)
-              acc = T.zipLeft_(acc, T.promiseSucceed_(p, undefined))
+              acc = T.zipLeft_(acc, P.succeed_(p, undefined))
             } else if (n === m) {
-              return [T.zipLeft_(acc, T.promiseSucceed_(p, undefined)), E.left(q)]
+              return [T.zipLeft_(acc, P.succeed_(p, undefined)), E.left(q)]
             } else {
               return [acc, E.left(q.prepend([p, m - n]))]
             }
@@ -72,7 +74,7 @@ export class Semaphore {
     )
   }
 
-  private restore(p: T.Promise<never, void>, n: number): T.UIO<void> {
+  private restore(p: P.Promise<never, void>, n: number): T.UIO<void> {
     return T.flatten(
       R.modify_(
         this.state,
@@ -80,16 +82,16 @@ export class Semaphore {
           (q) =>
             O.fold_(
               q.find(([a]) => a === p),
-              (): [T.UIO<void>, E.Either<T.ImmutableQueue<Entry>, number>] => [
+              (): [T.UIO<void>, E.Either<ImmutableQueue<Entry>, number>] => [
                 this.releaseN(n),
                 E.left(q)
               ],
-              (x): [T.UIO<void>, E.Either<T.ImmutableQueue<Entry>, number>] => [
+              (x): [T.UIO<void>, E.Either<ImmutableQueue<Entry>, number>] => [
                 this.releaseN(n - x[1]),
                 E.left(q.filter(([a]) => a !== p))
               ]
             ),
-          (m): [T.UIO<void>, E.Either<T.ImmutableQueue<Entry>, number>] => [
+          (m): [T.UIO<void>, E.Either<ImmutableQueue<Entry>, number>] => [
             T.unit,
             E.right(n + m)
           ]
@@ -102,20 +104,20 @@ export class Semaphore {
     if (n === 0) {
       return T.succeed(new Acquisition(T.unit, T.unit))
     } else {
-      return T.chain_(T.promiseMake<never, void>(), (p) =>
+      return T.chain_(P.make<never, void>(), (p) =>
         R.modify_(
           this.state,
           E.fold(
-            (q): [Acquisition, E.Either<T.ImmutableQueue<Entry>, number>] => [
-              new Acquisition(T.promiseWait(p), this.restore(p, n)),
+            (q): [Acquisition, E.Either<ImmutableQueue<Entry>, number>] => [
+              new Acquisition(P.await(p), this.restore(p, n)),
               E.left(q.push([p, n]))
             ],
-            (m): [Acquisition, E.Either<T.ImmutableQueue<Entry>, number>] => {
+            (m): [Acquisition, E.Either<ImmutableQueue<Entry>, number>] => {
               if (m >= n) {
                 return [new Acquisition(T.unit, this.releaseN(n)), E.right(m - n)]
               }
               return [
-                new Acquisition(T.promiseWait(p), this.restore(p, n)),
+                new Acquisition(P.await(p), this.restore(p, n)),
                 E.left(new ImmutableQueue(L.of([p, n - m])))
               ]
             }
@@ -129,8 +131,21 @@ export class Semaphore {
 /**
  * Acquires `n` permits, executes the action and releases the permits right after.
  */
-export function withPermits(n: number) {
-  return (s: Semaphore) => <R, E, A>(e: T.Effect<R, E, A>) =>
+export function withPermits_<R, E, A>(e: T.Effect<R, E, A>, s: Semaphore, n: number) {
+  return T.bracket_(
+    s.prepare(n),
+    (a) => T.chain_(a.waitAcquire, () => e),
+    (a) => a.release
+  )
+}
+
+/**
+ * Acquires `n` permits, executes the action and releases the permits right after.
+ *
+ * @dataFirst withPermits_
+ */
+export function withPermits(s: Semaphore, n: number) {
+  return <R, E, A>(e: T.Effect<R, E, A>) =>
     T.bracket_(
       s.prepare(n),
       (a) => T.chain_(a.waitAcquire, () => e),
@@ -141,25 +156,33 @@ export function withPermits(n: number) {
 /**
  * Acquires a permit, executes the action and releases the permit right after.
  */
+export function withPermit_<R, E, A>(self: T.Effect<R, E, A>, s: Semaphore) {
+  return withPermits_(self, s, 1)
+}
+
+/**
+ * Acquires a permit, executes the action and releases the permit right after.
+ *
+ * @dataFirst withPermit_
+ */
 export function withPermit(s: Semaphore) {
-  return withPermits(1)(s)
+  return <R, E, A>(self: T.Effect<R, E, A>) => withPermit_(self, s)
 }
 
 /**
  * Acquires `n` permits in a `Managed` and releases the permits in the finalizer.
  */
-export function withPermitsManaged(n: number) {
-  return (s: Semaphore) =>
-    T.makeReserve(
-      T.map_(s.prepare(n), (a) => T.makeReservation(() => a.release)(a.waitAcquire))
-    )
+export function withPermitsManaged(s: Semaphore, n: number) {
+  return M.makeReserve(
+    T.map_(s.prepare(n), (a) => M.makeReservation_(a.waitAcquire, () => a.release))
+  )
 }
 
 /**
  * Acquires a permit in a `Managed` and releases the permit in the finalizer.
  */
 export function withPermitManaged(s: Semaphore) {
-  return withPermitsManaged(1)(s)
+  return withPermitsManaged(s, 1)
 }
 
 /**

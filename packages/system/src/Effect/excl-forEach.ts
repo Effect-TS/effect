@@ -47,7 +47,6 @@ import { provideSome_ } from "./provideSome"
 import * as tap from "./tap"
 import * as tapCause from "./tapCause"
 import { toManaged } from "./toManaged"
-import * as ta from "./traceAfter"
 import * as whenM from "./whenM"
 import * as zipWith from "./zipWith"
 
@@ -63,13 +62,14 @@ export function forEach_<A, R, E, B>(
   f: (a: A) => Effect<R, E, B>,
   __trace?: string
 ): Effect<R, E, readonly B[]> {
-  return ta.traceAfter_(
-    I.reduce_(as, core.effectTotal(() => []) as Effect<R, E, B[]>, (b, a) =>
-      zipWith.zipWith_(b, f(a), (acc, r) => {
-        acc.push(r)
-        return acc
-      })
-    ),
+  return core.suspend(
+    () =>
+      I.reduce_(as, core.effectTotal(() => []) as Effect<R, E, B[]>, (b, a) =>
+        zipWith.zipWith_(b, f(a), (acc, r) => {
+          acc.push(r)
+          return acc
+        })
+      ),
     __trace
   )
 }
@@ -99,21 +99,24 @@ export function forEachUnit_<R, E, A, X>(
   f: (a: A) => Effect<R, E, X>,
   __trace?: string
 ): Effect<R, E, void> {
-  return pipe(
-    core.effectTotal(() => as[Symbol.iterator]()),
-    core.chain((iterator) => {
-      function loop(): Effect<R, E, void> {
-        const next = iterator.next()
-        return next.done
-          ? core.unit
-          : pipe(
-              f(next.value),
-              core.chain(() => loop())
-            )
-      }
-      return loop()
-    }),
-    ta.traceAfter(__trace)
+  return core.suspend(
+    () =>
+      pipe(
+        core.effectTotal(() => as[Symbol.iterator]()),
+        core.chain((iterator) => {
+          function loop(): Effect<R, E, void> {
+            const next = iterator.next()
+            return next.done
+              ? core.unit
+              : pipe(
+                  f(next.value),
+                  core.chain(() => loop())
+                )
+          }
+          return loop()
+        })
+      ),
+    __trace
   )
 }
 
@@ -155,112 +158,117 @@ export function forEachUnitPar_<R, E, A, X>(
   if (L.isEmpty(collection)) {
     return core.unit
   }
-  return pipe(
-    Do.do,
-    Do.bind("parentId", () => fiberId.fiberId),
-    Do.bind("causes", () => Ref.makeRef<cause.Cause<E>>(cause.empty)),
-    Do.bind("result", () => promise.make<void, void>()),
-    Do.bind("status", () =>
-      Ref.makeRef<readonly [number, number, boolean]>(tuple(0, 0, false))
-    ),
-    Do.let("startTask", ({ status }) =>
+  return core.suspend(
+    () =>
       pipe(
-        status,
-        Ref.modify(([started, done, failing]) => {
-          if (failing) {
-            return tuple(false, tuple(started, done, failing))
-          }
-          return tuple(true, tuple(started + 1, done, failing))
-        })
-      )
-    ),
-    Do.let("startFailure", ({ result, status }) =>
-      pipe(
-        status,
-        Ref.update(([started, done, _]) => tuple(started, done, true)),
-        andThen.andThen(promise.fail<void>(undefined)(result))
-      )
-    ),
-    Do.let(
-      "task",
-      ({ causes, parentId, result, startFailure, startTask, status }) => (a: A) =>
-        pipe(
-          ifM.ifM_(
-            startTask,
-            () =>
-              pipe(
-                core.suspend(() => f(a)),
-                interruption.interruptible,
-                tapCause.tapCause((c) =>
-                  pipe(
-                    causes,
-                    Ref.update((_) => cause.both(_, c)),
-                    andThen.andThen(startFailure)
-                  )
-                ),
-                ensuring.ensuring(
-                  (() => {
-                    const isComplete = pipe(
-                      status,
-                      Ref.modify(([started, done, failing]) => {
-                        const newDone = done + 1
-
-                        return tuple(
-                          (failing ? started : size) === newDone,
-                          tuple(started, newDone, failing)
-                        )
-                      })
-                    )
-
-                    return pipe(
-                      promise.succeed<void>(undefined)(result),
-                      whenM.whenM(isComplete)
-                    )
-                  })()
-                )
-              ),
-            () =>
-              pipe(
-                causes,
-                Ref.update((_) => cause.both(_, cause.interrupt(parentId)))
-              )
-          ),
-          interruption.uninterruptible
-        )
-    ),
-    Do.bind("fibers", ({ task }) =>
-      coreScope.transplant((graft) => forEach_(as, (a) => core.fork(graft(task(a)))))
-    ),
-    Do.let("interrupter", ({ fibers, parentId, result }) =>
-      pipe(
-        result,
-        promise.await,
-        catchAll.catchAll(() =>
+        Do.do,
+        Do.bind("parentId", () => fiberId.fiberId),
+        Do.bind("causes", () => Ref.makeRef<cause.Cause<E>>(cause.empty)),
+        Do.bind("result", () => promise.make<void, void>()),
+        Do.bind("status", () =>
+          Ref.makeRef<readonly [number, number, boolean]>(tuple(0, 0, false))
+        ),
+        Do.let("startTask", ({ status }) =>
           pipe(
-            forEach_(fibers, (_) => core.fork(_.interruptAs(parentId))),
-            core.chain(fiberJoinAll)
+            status,
+            Ref.modify(([started, done, failing]) => {
+              if (failing) {
+                return tuple(false, tuple(started, done, failing))
+              }
+              return tuple(true, tuple(started + 1, done, failing))
+            })
           )
         ),
-        forkManaged
-      )
-    ),
-    tap.tap(({ causes, fibers, interrupter, result }) =>
-      managedUse_(interrupter, () =>
-        pipe(
-          result,
-          promise.fail<void>(undefined),
-          andThen.andThen(pipe(causes.get, core.chain(core.halt))),
-          whenM.whenM(
+        Do.let("startFailure", ({ result, status }) =>
+          pipe(
+            status,
+            Ref.update(([started, done, _]) => tuple(started, done, true)),
+            andThen.andThen(promise.fail<void>(undefined)(result))
+          )
+        ),
+        Do.let(
+          "task",
+          ({ causes, parentId, result, startFailure, startTask, status }) => (a: A) =>
             pipe(
-              forEach_(fibers, (_) => _.await),
-              map.map((_) => _.findIndex((ex) => !Ex.succeeded(ex)) !== -1)
+              ifM.ifM_(
+                startTask,
+                () =>
+                  pipe(
+                    core.suspend(() => f(a)),
+                    interruption.interruptible,
+                    tapCause.tapCause((c) =>
+                      pipe(
+                        causes,
+                        Ref.update((_) => cause.both(_, c)),
+                        andThen.andThen(startFailure)
+                      )
+                    ),
+                    ensuring.ensuring(
+                      (() => {
+                        const isComplete = pipe(
+                          status,
+                          Ref.modify(([started, done, failing]) => {
+                            const newDone = done + 1
+
+                            return tuple(
+                              (failing ? started : size) === newDone,
+                              tuple(started, newDone, failing)
+                            )
+                          })
+                        )
+
+                        return pipe(
+                          promise.succeed<void>(undefined)(result),
+                          whenM.whenM(isComplete)
+                        )
+                      })()
+                    )
+                  ),
+                () =>
+                  pipe(
+                    causes,
+                    Ref.update((_) => cause.both(_, cause.interrupt(parentId)))
+                  )
+              ),
+              interruption.uninterruptible
+            )
+        ),
+        Do.bind("fibers", ({ task }) =>
+          coreScope.transplant((graft) =>
+            forEach_(as, (a) => core.fork(graft(task(a))))
+          )
+        ),
+        Do.let("interrupter", ({ fibers, parentId, result }) =>
+          pipe(
+            result,
+            promise.await,
+            catchAll.catchAll(() =>
+              pipe(
+                forEach_(fibers, (_) => core.fork(_.interruptAs(parentId))),
+                core.chain(fiberJoinAll)
+              )
+            ),
+            forkManaged
+          )
+        ),
+        tap.tap(({ causes, fibers, interrupter, result }) =>
+          managedUse_(interrupter, () =>
+            pipe(
+              result,
+              promise.fail<void>(undefined),
+              andThen.andThen(pipe(causes.get, core.chain(core.halt))),
+              whenM.whenM(
+                pipe(
+                  forEach_(fibers, (_) => _.await),
+                  map.map((_) => _.findIndex((ex) => !Ex.succeeded(ex)) !== -1)
+                )
+              )
             )
           )
-        )
-      )
-    ),
-    asUnit.asUnit,
-    ta.traceAfter(__trace)
+        ),
+        asUnit.asUnit
+      ),
+    __trace
   )
 }
 
@@ -310,28 +318,29 @@ export function forEachPar_<R, E, A, B>(
 ): Effect<R, E, readonly B[]> {
   const arr = Array.from(as)
 
-  return ta.traceAfter_(
-    core.chain_(
-      core.effectTotal<B[]>(() => []),
-      (array) => {
-        function fn([a, n]: [A, number]) {
-          return core.chain_(
-            core.suspend(() => f(a)),
-            (b) =>
-              core.effectTotal(() => {
-                array[n] = b
-              })
+  return core.suspend(
+    () =>
+      core.chain_(
+        core.effectTotal<B[]>(() => []),
+        (array) => {
+          function fn([a, n]: [A, number]) {
+            return core.chain_(
+              core.suspend(() => f(a)),
+              (b) =>
+                core.effectTotal(() => {
+                  array[n] = b
+                })
+            )
+          }
+          return map.map_(
+            forEachUnitPar_(
+              arr.map((a, n) => [a, n] as [A, number]),
+              fn
+            ),
+            () => array
           )
         }
-        return map.map_(
-          forEachUnitPar_(
-            arr.map((a, n) => [a, n] as [A, number]),
-            fn
-          ),
-          () => array
-        )
-      }
-    ),
+      ),
     __trace
   )
 }
@@ -377,22 +386,25 @@ export function forEachUnitParN_<R, E, A, X>(
     )
   }
 
-  return pipe(
-    makeBoundedQueue<A>(n),
-    bracket.bracket(
-      (q) =>
-        pipe(
-          Do.do,
-          Do.bind("ref", () => Ref.makeRef(size)),
-          tap.tap(() => core.fork(forEachUnit_(as, q.offer))),
-          Do.bind("fibers", ({ ref }) =>
-            collectAll(L.map_(L.range_(0, n), () => core.fork(worker(q, ref))))
-          ),
-          tap.tap(({ fibers }) => forEach_(fibers, (_) => _.await))
-        ),
-      (q) => q.shutdown
-    ),
-    ta.traceAfter(__trace)
+  return core.suspend(
+    () =>
+      pipe(
+        makeBoundedQueue<A>(n),
+        bracket.bracket(
+          (q) =>
+            pipe(
+              Do.do,
+              Do.bind("ref", () => Ref.makeRef(size)),
+              tap.tap(() => core.fork(forEachUnit_(as, q.offer))),
+              Do.bind("fibers", ({ ref }) =>
+                collectAll(L.map_(L.range_(0, n), () => core.fork(worker(q, ref))))
+              ),
+              tap.tap(({ fibers }) => forEach_(fibers, (_) => _.await))
+            ),
+          (q) => q.shutdown
+        )
+      ),
+    __trace
   )
 }
 
@@ -450,35 +462,40 @@ export function forEachParN_<R, E, A, B>(
     )
   }
 
-  return pipe(
-    makeBoundedQueue<readonly [promise.Promise<E, B>, A]>(n),
-    bracket.bracket(
-      (q) =>
-        pipe(
-          Do.do,
-          Do.bind("pairs", () =>
-            forEach_(as, (a) =>
-              pipe(
-                promise.make<E, B>(),
-                map.map((p) => tuple(p, a))
-              )
-            )
-          ),
-          Do.bind("ref", ({ pairs }) => Ref.makeRef(pairs.length)),
-          tap.tap(({ pairs }) => core.fork(forEach_(pairs, (pair) => q.offer(pair)))),
-          tap.tap(({ pairs, ref }) =>
-            collectAllUnit(
-              pipe(
-                L.range_(0, n),
-                L.map(() => core.fork(worker(q, pairs, ref)))
-              )
-            )
-          ),
-          core.chain(({ pairs }) => forEach_(pairs, (_) => promise.await(_[0])))
-        ),
-      (q) => q.shutdown
-    ),
-    ta.traceAfter(__trace)
+  return core.suspend(
+    () =>
+      pipe(
+        makeBoundedQueue<readonly [promise.Promise<E, B>, A]>(n),
+        bracket.bracket(
+          (q) =>
+            pipe(
+              Do.do,
+              Do.bind("pairs", () =>
+                forEach_(as, (a) =>
+                  pipe(
+                    promise.make<E, B>(),
+                    map.map((p) => tuple(p, a))
+                  )
+                )
+              ),
+              Do.bind("ref", ({ pairs }) => Ref.makeRef(pairs.length)),
+              tap.tap(({ pairs }) =>
+                core.fork(forEach_(pairs, (pair) => q.offer(pair)))
+              ),
+              tap.tap(({ pairs, ref }) =>
+                collectAllUnit(
+                  pipe(
+                    L.range_(0, n),
+                    L.map(() => core.fork(worker(q, pairs, ref)))
+                  )
+                )
+              ),
+              core.chain(({ pairs }) => forEach_(pairs, (_) => promise.await(_[0])))
+            ),
+          (q) => q.shutdown
+        )
+      ),
+    __trace
   )
 }
 
@@ -795,7 +812,8 @@ export function fiberWaitAll<E, A>(as: Iterable<Fiber.Fiber<E, A>>, __trace?: st
  */
 export function releaseMapReleaseAll(
   exit: Exit<any, any>,
-  execStrategy: ExecutionStrategy
+  execStrategy: ExecutionStrategy,
+  __trace?: string
 ): (_: ReleaseMap) => UIO<any> {
   return (_: ReleaseMap) =>
     pipe(
@@ -810,8 +828,10 @@ export function releaseMapReleaseAll(
               case "Sequential": {
                 return [
                   core.chain_(
-                    forEach_(Array.from(s.finalizers()).reverse(), ([_, f]) =>
-                      core.result(f(exit))
+                    forEach_(
+                      Array.from(s.finalizers()).reverse(),
+                      ([_, f]) => core.result(f(exit)),
+                      __trace
                     ),
                     (e) => done(O.getOrElse_(Ex.collectAll(...e), () => Ex.succeed([])))
                   ),
@@ -821,8 +841,10 @@ export function releaseMapReleaseAll(
               case "Parallel": {
                 return [
                   core.chain_(
-                    forEachPar_(Array.from(s.finalizers()).reverse(), ([_, f]) =>
-                      core.result(f(exit))
+                    forEachPar_(
+                      Array.from(s.finalizers()).reverse(),
+                      ([_, f]) => core.result(f(exit)),
+                      __trace
                     ),
                     (e) =>
                       done(O.getOrElse_(Ex.collectAllPar(...e), () => Ex.succeed([])))
@@ -836,7 +858,8 @@ export function releaseMapReleaseAll(
                     forEachParN_(
                       Array.from(s.finalizers()).reverse(),
                       execStrategy.n,
-                      ([_, f]) => core.result(f(exit))
+                      ([_, f]) => core.result(f(exit)),
+                      __trace
                     ),
                     (e) =>
                       done(O.getOrElse_(Ex.collectAllPar(...e), () => Ex.succeed([])))
@@ -862,36 +885,37 @@ export function managedFork<R, E, A>(
   __trace?: string
 ): Managed<R, never, FiberContext<E, A>> {
   return new Managed(
-    interruption.uninterruptibleMask(
-      ({ restore }) =>
-        pipe(
-          Do.do,
-          Do.bind("tp", () => environment<readonly [R, ReleaseMap]>()),
-          Do.let("r", ({ tp }) => tp[0]),
-          Do.let("outerReleaseMap", ({ tp }) => tp[1]),
-          Do.bind("innerReleaseMap", () => makeReleaseMap),
-          Do.bind("fiber", ({ innerReleaseMap, r }) =>
-            restore(
-              pipe(
-                self.effect,
-                map.map(([_, a]) => a),
-                coreScope.forkDaemon,
-                core.provideAll([r, innerReleaseMap] as const)
+    interruption.uninterruptibleMask(({ restore }) =>
+      pipe(
+        Do.do,
+        Do.bind("tp", () => environment<readonly [R, ReleaseMap]>()),
+        Do.let("r", ({ tp }) => tp[0]),
+        Do.let("outerReleaseMap", ({ tp }) => tp[1]),
+        Do.bind("innerReleaseMap", () => makeReleaseMap),
+        Do.bind("fiber", ({ innerReleaseMap, r }) =>
+          restore(
+            pipe(
+              self.effect,
+              map.map(([_, a]) => a),
+              coreScope.forkDaemon,
+              core.provideAll([r, innerReleaseMap] as const, __trace)
+            )
+          )
+        ),
+        Do.bind("releaseMapEntry", ({ fiber, innerReleaseMap, outerReleaseMap }) =>
+          add((e) =>
+            pipe(
+              fiber,
+              fiberInterrupt,
+              core.chain(
+                () => releaseMapReleaseAll(e, sequential)(innerReleaseMap),
+                __trace
               )
             )
-          ),
-          Do.bind("releaseMapEntry", ({ fiber, innerReleaseMap, outerReleaseMap }) =>
-            add((e) =>
-              pipe(
-                fiber,
-                fiberInterrupt,
-                core.chain(() => releaseMapReleaseAll(e, sequential)(innerReleaseMap))
-              )
-            )(outerReleaseMap)
-          ),
-          map.map(({ fiber, releaseMapEntry }) => [releaseMapEntry, fiber])
+          )(outerReleaseMap)
         ),
-      __trace
+        map.map(({ fiber, releaseMapEntry }) => [releaseMapEntry, fiber])
+      )
     )
   )
 }
@@ -909,10 +933,10 @@ export function managedUse_<R, E, A, R2, E2, B>(
     (rm) =>
       core.chain_(
         provideSome_(self.effect, (r: R) => tuple(r, rm)),
-        (a) => f(a[1])
+        (a) => f(a[1]),
+        __trace
       ),
-    (rm, ex) => releaseMapReleaseAll(ex, sequential)(rm),
-    __trace
+    (rm, ex) => releaseMapReleaseAll(ex, sequential, __trace)(rm)
   )
 }
 

@@ -1,7 +1,7 @@
 // tracing: off
 
 import * as A from "../Array"
-import { map as mapCause } from "../Cause"
+import { map_ as mapCause } from "../Cause"
 import { pipe } from "../Function"
 import * as O from "../Option"
 import { foldCauseM_, halt, succeed } from "./core"
@@ -18,7 +18,7 @@ export function head<R, E, A>(
 ): Effect<R, O.Option<E>, A> {
   return foldCauseM_(
     self,
-    (x) => pipe(x, mapCause(O.some), halt),
+    (x) => halt(mapCause(x, O.some)),
     (x) =>
       pipe(
         x,

@@ -303,7 +303,7 @@ export function branchAfter<R, E, I, O>(
   const toCollect = Math.max(0, n)
 
   return new Transducer(
-    M.chain_(M.scope, (scope) =>
+    M.chain_(M.scope, (allocate) =>
       M.map_(
         RM.makeManagedRefM<State>(initialState),
         (state) => (is: O.Option<A.Chunk<I>>) =>
@@ -337,7 +337,7 @@ export function branchAfter<R, E, I, O>(
                       if (remaining <= data.length) {
                         const [newCollected, remainder] = A.splitAt_(data, remaining)
                         return T.chain_(
-                          scope.apply(f(A.concat_(s.data, newCollected)).push),
+                          allocate(f(A.concat_(s.data, newCollected)).push),
                           ([finalizer, push]) =>
                             T.map_(
                               push(O.some(remainder)),

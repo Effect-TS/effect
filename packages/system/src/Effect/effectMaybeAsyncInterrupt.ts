@@ -7,14 +7,7 @@ import { AtomicReference } from "../Support/AtomicReference"
 import { OneShot } from "../Support/OneShot"
 import type { Canceler } from "./Canceler"
 import type { Cb } from "./Cb"
-import {
-  chain_,
-  effectAsyncOptionBlockingOn,
-  effectTotal,
-  succeed,
-  suspend,
-  unit
-} from "./core"
+import * as core from "./core"
 import type { Effect, UIO } from "./effect"
 import { flatten } from "./flatten"
 import { onInterrupt_ } from "./interruption"
@@ -63,25 +56,25 @@ export function effectMaybeAsyncInterruptBlockingOn<R, E, A>(
   blockingOn: readonly FiberID[],
   __trace?: string
 ) {
-  return chain_(
-    effectTotal(
+  return core.chain_(
+    core.effectTotal(
       () => [new AtomicReference(false), new OneShot<Canceler<R>>()] as const
     ),
     ([started, cancel]) =>
       onInterrupt_(
         flatten(
-          effectAsyncOptionBlockingOn<unknown, never, Effect<R, E, A>>(
+          core.effectAsyncOptionBlockingOn<unknown, never, Effect<R, E, A>>(
             (k) => {
               started.set(true)
 
               const ret = new AtomicReference<O.Option<UIO<Effect<R, E, A>>>>(O.none)
 
               try {
-                const res = register((io) => k(succeed(io)))
+                const res = register((io) => k(core.succeed(io)))
 
                 switch (res._tag) {
                   case "Right": {
-                    ret.set(O.some(succeed(res.right)))
+                    ret.set(O.some(core.succeed(res.right)))
                     break
                   }
                   case "Left": {
@@ -91,7 +84,7 @@ export function effectMaybeAsyncInterruptBlockingOn<R, E, A>(
                 }
               } finally {
                 if (!cancel.isSet()) {
-                  cancel.set(unit)
+                  cancel.set(core.unit)
                 }
               }
 
@@ -101,7 +94,7 @@ export function effectMaybeAsyncInterruptBlockingOn<R, E, A>(
             __trace
           )
         ),
-        () => suspend(() => (started.get ? cancel.get() : unit))
+        () => core.suspend(() => (started.get ? cancel.get() : core.unit))
       )
   )
 }

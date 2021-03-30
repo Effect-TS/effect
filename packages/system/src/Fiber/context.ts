@@ -1134,7 +1134,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                     ) {
                       this.addTrace(current.trace)
                     }
-                    current = instruction(current.factory())
+                    current = instruction(current.factory(this.platform, this.fiberId))
                     break
                   }
 
@@ -1149,7 +1149,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                       ) {
                         this.addTrace(current.trace)
                       }
-                      current = instruction(c.factory())
+                      current = instruction(c.factory(this.platform, this.fiberId))
                     } catch (e) {
                       current = instruction(T.fail(c.onThrow(e)))
                     }

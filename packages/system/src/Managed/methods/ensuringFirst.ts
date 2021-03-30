@@ -9,11 +9,14 @@ import type { Managed } from "../managed"
  * the existing finalizer.
  *
  * For use cases that need access to the Managed's result, see `onExitFirst`.
+ *
+ * @dataFirst ensuringFirst_
  */
 export function ensuringFirst<R1>(
-  f: Effect<R1, never, unknown>
+  f: Effect<R1, never, unknown>,
+  __trace?: string
 ): <R, E, A>(self: Managed<R, E, A>) => Managed<R & R1, E, A> {
-  return onExitFirst(() => f)
+  return onExitFirst(() => f, __trace)
 }
 
 /**
@@ -24,7 +27,8 @@ export function ensuringFirst<R1>(
  */
 export function ensuringFirst_<R, E, A, R1>(
   self: Managed<R, E, A>,
-  f: Effect<R1, never, unknown>
+  f: Effect<R1, never, unknown>,
+  __trace?: string
 ): Managed<R & R1, E, A> {
-  return onExitFirst_(self, () => f)
+  return onExitFirst_(self, () => f, __trace)
 }

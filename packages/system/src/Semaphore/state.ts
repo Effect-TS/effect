@@ -1,10 +1,12 @@
 // tracing: off
 
 import type * as E from "../Either"
-import * as T from "./deps"
+import type { ImmutableQueue } from "../Support/ImmutableQueue"
+import * as T from "./effect"
+import type * as P from "./promise"
 
-export type Entry = [T.Promise<never, void>, number]
-export type State = E.Either<T.ImmutableQueue<Entry>, number>
+export type Entry = [P.Promise<never, void>, number]
+export type State = E.Either<ImmutableQueue<Entry>, number>
 
 export const assertNonNegative = (n: number) =>
   n < 0

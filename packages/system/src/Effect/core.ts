@@ -431,7 +431,7 @@ export function supervised_<R, E, A>(
  * When no environment is required (i.e., when R == unknown) it is conceptually equivalent to `flatten(effectTotal(io))`.
  */
 export function suspend<R, E, A>(
-  factory: () => Effect<R, E, A>,
+  factory: (platform: Fiber.Platform<unknown>, id: Fiber.FiberID) => Effect<R, E, A>,
   __trace?: string
 ): Effect<R, E, A> {
   return new ISuspend(factory, __trace)
@@ -442,7 +442,7 @@ export function suspend<R, E, A>(
  * When no environment is required (i.e., when R == unknown) it is conceptually equivalent to `flatten(effectPartial(orThrow, io))`.
  */
 export function suspendPartial<R, E, A, E2>(
-  factory: () => Effect<R, E, A>,
+  factory: (platform: Fiber.Platform<unknown>, id: Fiber.FiberID) => Effect<R, E, A>,
   onThrow: (u: unknown) => E2,
   __trace?: string
 ): Effect<R, E | E2, A> {
@@ -485,6 +485,12 @@ export function tryOrElse<A, R2, E2, A2, R3, E3, A3>(
  * Returns the effect resulting from mapping the success of this effect to unit.
  */
 export const unit: UIO<void> = new ISucceed(undefined)
+
+/**
+ * Returns the effect resulting from mapping the success of this effect to unit.
+ */
+export const unitTraced = (__trace?: string): UIO<void> =>
+  new ISucceed(undefined, __trace)
 
 /**
  * Returns an effect that yields to the runtime system, starting on a fresh

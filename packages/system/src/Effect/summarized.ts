@@ -4,7 +4,7 @@ import { pipe } from "../Function"
 import { suspend } from "./core"
 import * as D from "./do"
 import type { Effect } from "./effect"
-import { map } from "./map"
+import * as map from "./map"
 
 /**
  * Summarizes a effect by computing some value before and after execution, and
@@ -24,7 +24,7 @@ export function summarized_<R, E, A, R2, E2, B, C>(
         D.bind("start", () => summary),
         D.bind("value", () => self),
         D.bind("end", () => summary),
-        map((s) => [f(s.start, s.end), s.value])
+        map.map((s) => [f(s.start, s.end), s.value])
       ),
     __trace
   )

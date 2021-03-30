@@ -1,5 +1,7 @@
 // tracing: off
 
+import { accessCallTrace } from "@effect-ts/tracing-utils"
+
 import type { NonEmptyArray } from "../NonEmptyArray"
 import type { _E, _R } from "../Utils"
 import type { Managed } from "./managed"
@@ -11,13 +13,16 @@ export type TupleA<T extends NonEmptyArray<Managed<any, any, any>>> = {
 
 /**
  * Like `forEach` + `identity` with a tuple type
+ *
+ * @trace call
  */
 export function tuple<T extends NonEmptyArray<Managed<any, any, any>>>(
   ...t: T & {
     0: Managed<any, any, any>
   }
 ): Managed<_R<T[number]>, _E<T[number]>, TupleA<T>> {
-  return collectAll(t) as any
+  const trace = accessCallTrace()
+  return collectAll(t, trace) as any
 }
 
 /**
@@ -37,10 +42,16 @@ export function tuplePar<T extends NonEmptyArray<Managed<any, any, any>>>(
  */
 export function tupleParN(
   n: number
-): <T extends NonEmptyArray<Managed<any, any, any>>>(
-  ...t: T & {
-    0: Managed<any, any, any>
-  }
-) => Managed<_R<T[number]>, _E<T[number]>, TupleA<T>> {
-  return ((...t: Managed<any, any, any>[]) => collectAllParN_(t, n)) as any
+): {
+  /**
+   * @trace call
+   */
+  <T extends NonEmptyArray<Managed<any, any, any>>>(
+    ...t: T & {
+      0: Managed<any, any, any>
+    }
+  ): Managed<_R<T[number]>, _E<T[number]>, TupleA<T>>
+} {
+  return ((...t: Managed<any, any, any>[]) =>
+    collectAllParN_(t, n, accessCallTrace())) as any
 }

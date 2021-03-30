@@ -1,7 +1,6 @@
 // tracing: off
 
-import { map } from "../Cause/core"
-import { pipe } from "../Function"
+import { map_ } from "../Cause/core"
 import { foldCauseM_, halt, succeed } from "./core"
 import type { Effect } from "./effect"
 
@@ -17,7 +16,7 @@ export function mapError_<R, E, E2, A>(
 ) {
   return foldCauseM_(
     self,
-    (c) => pipe(c, map(f), halt),
+    (c) => halt(map_(c, f)),
     (a) => succeed(a),
     __trace
   )
