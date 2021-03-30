@@ -25,10 +25,10 @@
   },
   "sideEffects": false,
   "peerDependencies": {
-    "@effect-ts/core": "^0.27.4",
-    "@effect-ts/monocle": "^0.24.2",
-    "@effect-ts/morphic": "^0.25.0",
-    "fast-check": "^2.13.0"
+    "@effect-ts/core": "^0.28.0",
+    "@effect-ts/monocle": "^0.25.0",
+    "@effect-ts/morphic": "^0.26.0",
+    "fast-check": "^2.14.0"
   },
   "config": {
     "side": [],
