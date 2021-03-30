@@ -46,7 +46,7 @@ export class Schedule<Env, In, Out> {
    */
   readonly ["&&"] = <Env1, In1, Out1>(
     that: Schedule<Env1, In1, Out1>
-  ): Schedule<Env & Env1, In & In1, readonly [Out, Out1]> => both_(this, that);
+  ): Schedule<Env & Env1, In & In1, readonly [Out, Out1]> => intersection_(this, that);
 
   /**
    * The same as `&&`, but ignores the left output.
@@ -116,7 +116,7 @@ export class Schedule<Env, In, Out> {
    */
   readonly ["||"] = <Env1, In1, Out1>(
     that: Schedule<Env1, In1, Out1>
-  ): Schedule<Env & Env1, In & In1, readonly [Out, Out1]> => either_(this, that);
+  ): Schedule<Env & Env1, In & In1, readonly [Out, Out1]> => union_(this, that);
 
   /**
    * Returns a new schedule that chooses between two schedules with a common output.
@@ -340,17 +340,17 @@ export function bothInOut_<Env, In, Out, Env1, In1, Out1>(
  * Returns a new schedule that has both the inputs and outputs of this and the specified
  * schedule.
  */
-export function both<Env1, Out1, In1>(that: Schedule<Env1, In1, Out1>) {
+export function intersection<Env1, Out1, In1>(that: Schedule<Env1, In1, Out1>) {
   return <Env, In, Out>(
     self: Schedule<Env, In, Out>
-  ): Schedule<Env & Env1, In & In1, readonly [Out, Out1]> => both_(self, that)
+  ): Schedule<Env & Env1, In & In1, readonly [Out, Out1]> => intersection_(self, that)
 }
 
 /**
  * Returns a new schedule that performs a geometric intersection on the intervals defined
  * by both schedules.
  */
-export function both_<Env, In, Out, Env1, In1, Out1>(
+export function intersection_<Env, In, Out, Env1, In1, Out1>(
   self: Schedule<Env, In, Out>,
   that: Schedule<Env1, In1, Out1>
 ): Schedule<Env & Env1, In1 & In, readonly [Out, Out1]> {
@@ -776,42 +776,95 @@ export function durations(n: number, ...rest: number[]) {
  * Returns a new schedule that performs a geometric union on the intervals defined
  * by both schedules.
  */
-export function either<Env1, In1, Out1>(that: Schedule<Env1, In1, Out1>) {
+export function union<Env1, In1, Out1>(that: Schedule<Env1, In1, Out1>) {
   return <Env, In, Out>(
     self: Schedule<Env, In, Out>
-  ): Schedule<Env & Env1, In & In1, readonly [Out, Out1]> =>
-    intersectWith_(self, that, (d1, d2) => Math.min(d1, d2))
+  ): Schedule<Env & Env1, In & In1, readonly [Out, Out1]> => union_(self, that)
 }
 
 /**
- * Returns a new schedule that performs a geometric union on the intervals defined
- * by both schedules.
+ * Returns a new schedule that combines this schedule with the specified
+ * schedule, continuing as long as either schedule wants to continue and
+ * merging the next intervals according to the specified merge function.
  */
-export function either_<Env, Out, Env1, In, In1, Out1>(
+export function union_<Env, Out, Env1, In, In1, Out1>(
   self: Schedule<Env, In, Out>,
   that: Schedule<Env1, In1, Out1>
 ): Schedule<Env & Env1, In & In1, readonly [Out, Out1]> {
-  return intersectWith_(self, that, (d1, d2) => Math.min(d1, d2))
+  return unionWith_(self, that, (d1, d2) => Math.min(d1, d2))
 }
 
 /**
- * The same as `either` followed by `map`.
+ * Returns a new schedule that combines this schedule with the specified
+ * schedule, continuing as long as either schedule wants to continue and
+ * merging the next intervals according to the specified merge function.
  */
-export function eitherWith<Env1, In1, Out1>(that: Schedule<Env1, In1, Out1>) {
-  return <Out, Out2>(f: (o: Out, o1: Out1) => Out2) => <Env, In>(
-    self: Schedule<Env, In, Out>
-  ) => eitherWith_(self, that, f)
+export function unionWith<Env1, In1, Out1>(
+  that: Schedule<Env1, In1, Out1>,
+  f: (d1: number, d2: number) => number
+) {
+  return <Env, In, Out>(self: Schedule<Env, In, Out>) => unionWith_(self, that, f)
+}
+
+function unionWithLoop<Env, Env1, In, In1, Out, Out1>(
+  self: Decision.StepFunction<Env, In, Out>,
+  that: Decision.StepFunction<Env1, In1, Out1>,
+  f: (d1: number, d2: number) => number
+): Decision.StepFunction<Env & Env1, In & In1, readonly [Out, Out1]> {
+  return (now, inp) => {
+    const left = self(now, inp)
+    const right = that(now, inp)
+
+    return T.map_(T.zip_(left, right), ([l, r]) => {
+      switch (l._tag) {
+        case "Done": {
+          switch (r._tag) {
+            case "Done": {
+              return Decision.makeDone([l.out, r.out])
+            }
+            case "Continue": {
+              return Decision.makeContinue(
+                [l.out, r.out],
+                r.interval,
+                unionWithLoop(() => T.succeed(l), r.next, f)
+              )
+            }
+          }
+        }
+        case "Continue": {
+          switch (r._tag) {
+            case "Done": {
+              return Decision.makeContinue(
+                [l.out, r.out],
+                l.interval,
+                unionWithLoop(l.next, () => T.succeed(r), f)
+              )
+            }
+            case "Continue": {
+              return Decision.makeContinue(
+                [l.out, r.out],
+                f(l.interval, r.interval),
+                unionWithLoop(l.next, r.next, f)
+              )
+            }
+          }
+        }
+      }
+    })
+  }
 }
 
 /**
- * The same as `either` followed by `map`.
+ * Returns a new schedule that combines this schedule with the specified
+ * schedule, continuing as long as either schedule wants to continue and
+ * merging the next intervals according to the specified merge function.
  */
-export function eitherWith_<Env, Env1, In, In1, Out, Out1, Out2>(
+export function unionWith_<Env, Env1, In, In1, Out, Out1>(
   self: Schedule<Env, In, Out>,
   that: Schedule<Env1, In1, Out1>,
-  f: (o: Out, o1: Out1) => Out2
-) {
-  return map_(either_(self, that), ([o, o1]) => f(o, o1))
+  f: (d1: number, d2: number) => number
+): Schedule<Env & Env1, In & In1, readonly [Out, Out1]> {
+  return new Schedule(unionWithLoop(self.step, that.step, f))
 }
 
 function elapsedLoop(
