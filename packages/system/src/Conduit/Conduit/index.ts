@@ -1,5 +1,5 @@
 import * as M from "../../Managed"
-import * as Pipe from "../Pipe"
+import * as Channel from "../Channel"
 
 /**
  * Core datatype of the conduit package. This type represents a general
@@ -7,15 +7,15 @@ import * as Pipe from "../Pipe"
  * of output values `O`, perform actions, and produce a final result `R`.
  * The type synonyms provided here are simply wrappers around this type.
  */
-export type Conduit<R, E, I, O, A> = Pipe.Pipe<R, E, I, I, O, void, A>
+export type Conduit<R, E, I, O, A> = Channel.Channel<R, E, I, I, O, void, A>
 
 function isolateGo<A>(n: number): Conduit<unknown, never, A, A, void> {
   if (n <= 0) {
-    return new Pipe.Done(void 0)
+    return new Channel.Done(void 0)
   }
-  return new Pipe.NeedInput(
-    (i) => new Pipe.HaveOutput(isolateGo(n - 1), i),
-    () => new Pipe.Done(void 0)
+  return new Channel.NeedInput(
+    (i) => new Channel.HaveOutput(isolateGo(n - 1), i),
+    () => new Channel.Done(void 0)
   )
 }
 
@@ -31,7 +31,7 @@ export function isolate<A>(n: number): Conduit<unknown, never, A, A, void> {
  * Run a pipeline until processing completes.
  */
 export function run<R, E, A>(self: Conduit<R, E, never, void, A>) {
-  return Pipe.runPipe(Pipe.injectLeftovers(self))
+  return Channel.runChannel(Channel.injectLeftovers(self))
 }
 
 /**
@@ -41,7 +41,7 @@ export function chain_<R, E, R1, E1, O1, I, O, A, B>(
   self: Conduit<R, E, I, O, A>,
   f: (a: A) => Conduit<R1, E1, I, O1, B>
 ): Conduit<R & R1, E | E1, I, O | O1, B> {
-  return Pipe.chain_(self, f)
+  return Channel.chain_(self, f)
 }
 
 /**
@@ -62,7 +62,7 @@ export function map_<R, E, I, O, A, B>(
   self: Conduit<R, E, I, O, A>,
   f: (a: A) => B
 ): Conduit<R, E, I, O, B> {
-  return Pipe.chain_(self, (a) => new Pipe.Done(f(a)))
+  return Channel.chain_(self, (a) => new Channel.Done(f(a)))
 }
 
 /**
@@ -79,62 +79,67 @@ function fuseGoRight<R, E, R1, E1, I, C, A, O>(
   right: Conduit<R1, E1, O, C, A>
 ): Conduit<R & R1, E | E1, I, C, A> {
   switch (right._typeId) {
-    case Pipe.DoneTypeId: {
-      return new Pipe.Done(right.result)
+    case Channel.DoneTypeId: {
+      return new Channel.Done(right.result)
     }
-    case Pipe.PipeMTypeId: {
-      return new Pipe.PipeM(M.map_(right.nextPipe, (p) => fuseGoRight(left, p)))
+    case Channel.ChannelMTypeId: {
+      return new Channel.ChannelM(
+        M.map_(right.nextChannel, (p) => fuseGoRight(left, p))
+      )
     }
-    case Pipe.LeftoverTypeId: {
-      return new Pipe.PipeM(
+    case Channel.LeftoverTypeId: {
+      return new Channel.ChannelM(
         M.effectTotal(() =>
-          fuseGoRight(new Pipe.HaveOutput(left, right.leftover), right.pipe)
+          fuseGoRight(new Channel.HaveOutput(left, right.leftover), right.pipe)
         )
       )
     }
-    case Pipe.HaveOutputTypeId: {
-      return new Pipe.PipeM(
+    case Channel.HaveOutputTypeId: {
+      return new Channel.ChannelM(
         M.effectTotal(
-          () => new Pipe.HaveOutput(fuseGoRight(left, right.nextPipe), right.output)
+          () =>
+            new Channel.HaveOutput(fuseGoRight(left, right.nextChannel), right.output)
         )
       )
     }
-    case Pipe.NeedInputTypeId: {
-      return new Pipe.PipeM(
-        M.effectTotal(() => fuseGoLeft(right.newPipe, right.fromUpstream, left))
+    case Channel.NeedInputTypeId: {
+      return new Channel.ChannelM(
+        M.effectTotal(() => fuseGoLeft(right.newChannel, right.fromUpstream, left))
       )
     }
   }
 }
 
 function fuseGoLeft<R, E, R1, E1, I, C, A, O>(
-  rp: (i: O) => Pipe.Pipe<R, E, O, O, C, void, A>,
-  rc: (u: void) => Pipe.Pipe<R, E, O, O, C, void, A>,
+  rp: (i: O) => Channel.Channel<R, E, O, O, C, void, A>,
+  rc: (u: void) => Channel.Channel<R, E, O, O, C, void, A>,
   left: Conduit<R1, E1, I, O, void>
 ): Conduit<R & R1, E | E1, I, C, A> {
   switch (left._typeId) {
-    case Pipe.DoneTypeId: {
-      return new Pipe.PipeM(
-        M.effectTotal(() => fuseGoRight(new Pipe.Done(left.result), rc(left.result)))
+    case Channel.DoneTypeId: {
+      return new Channel.ChannelM(
+        M.effectTotal(() => fuseGoRight(new Channel.Done(left.result), rc(left.result)))
       )
     }
-    case Pipe.PipeMTypeId: {
-      return new Pipe.PipeM(M.map_(left.nextPipe, (p) => fuseGoLeft(rp, rc, p)))
+    case Channel.ChannelMTypeId: {
+      return new Channel.ChannelM(
+        M.map_(left.nextChannel, (p) => fuseGoLeft(rp, rc, p))
+      )
     }
-    case Pipe.LeftoverTypeId: {
-      return new Pipe.Leftover(
-        new Pipe.PipeM(M.effectTotal(() => fuseGoLeft(rp, rc, left.pipe))),
+    case Channel.LeftoverTypeId: {
+      return new Channel.Leftover(
+        new Channel.ChannelM(M.effectTotal(() => fuseGoLeft(rp, rc, left.pipe))),
         left.leftover
       )
     }
-    case Pipe.HaveOutputTypeId: {
-      return new Pipe.PipeM(
-        M.effectTotal(() => fuseGoRight(left.nextPipe, rp(left.output)))
+    case Channel.HaveOutputTypeId: {
+      return new Channel.ChannelM(
+        M.effectTotal(() => fuseGoRight(left.nextChannel, rp(left.output)))
       )
     }
-    case Pipe.NeedInputTypeId: {
-      return new Pipe.NeedInput(
-        (i) => fuseGoLeft(rp, rc, left.newPipe(i)),
+    case Channel.NeedInputTypeId: {
+      return new Channel.NeedInput(
+        (i) => fuseGoLeft(rp, rc, left.newChannel(i)),
         (u) => fuseGoLeft(rp, rc, left.fromUpstream(u))
       )
     }

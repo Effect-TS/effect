@@ -2,8 +2,8 @@ import type * as T from "../../Effect"
 import { tuple } from "../../Function"
 import * as M from "../../Managed"
 import * as NA from "../../NonEmptyArray"
+import * as Channel from "../Channel"
 import * as Conduit from "../Conduit"
-import * as Pipe from "../Pipe"
 import * as Sink from "../Sink"
 
 /**
@@ -31,24 +31,24 @@ function connectResumeGoRight<R, E, O, A>(
   right: Conduit.Conduit<R, E, O, void, A>
 ): M.Managed<R, E, readonly [Stream<R, E, O>, A]> {
   switch (right._typeId) {
-    case Pipe.HaveOutputTypeId: {
+    case Channel.HaveOutputTypeId: {
       throw new Error(`Sink should not produce outputs: ${right.output}`)
     }
-    case Pipe.DoneTypeId: {
+    case Channel.DoneTypeId: {
       return M.succeed(tuple(left, right.result))
     }
-    case Pipe.LeftoverTypeId: {
+    case Channel.LeftoverTypeId: {
       return M.suspend(() =>
-        connectResumeGoRight(new Pipe.HaveOutput(left, right.leftover), right.pipe)
+        connectResumeGoRight(new Channel.HaveOutput(left, right.leftover), right.pipe)
       )
     }
-    case Pipe.NeedInputTypeId: {
+    case Channel.NeedInputTypeId: {
       return M.suspend(() =>
-        connectResumeGoLeft(right.newPipe, right.fromUpstream, left)
+        connectResumeGoLeft(right.newChannel, right.fromUpstream, left)
       )
     }
-    case Pipe.PipeMTypeId: {
-      return M.chain_(right.nextPipe, (p) => connectResumeGoRight(left, p))
+    case Channel.ChannelMTypeId: {
+      return M.chain_(right.nextChannel, (p) => connectResumeGoRight(left, p))
     }
   }
 }
@@ -59,21 +59,21 @@ function connectResumeGoLeft<R, E, O, A>(
   left: Conduit.Conduit<R, E, never, O, void>
 ): M.Managed<R, E, readonly [Stream<R, E, O>, A]> {
   switch (left._typeId) {
-    case Pipe.DoneTypeId: {
+    case Channel.DoneTypeId: {
       return M.suspend(() =>
-        connectResumeGoRight(new Pipe.Done(left.result), rc(left.result))
+        connectResumeGoRight(new Channel.Done(left.result), rc(left.result))
       )
     }
-    case Pipe.HaveOutputTypeId: {
-      return M.suspend(() => connectResumeGoRight(left.nextPipe, rp(left.output)))
+    case Channel.HaveOutputTypeId: {
+      return M.suspend(() => connectResumeGoRight(left.nextChannel, rp(left.output)))
     }
-    case Pipe.PipeMTypeId: {
-      return M.chain_(left.nextPipe, (l) => connectResumeGoLeft(rp, rc, l))
+    case Channel.ChannelMTypeId: {
+      return M.chain_(left.nextChannel, (l) => connectResumeGoLeft(rp, rc, l))
     }
-    case Pipe.LeftoverTypeId: {
+    case Channel.LeftoverTypeId: {
       return M.suspend(() => connectResumeGoLeft(rp, rc, left.pipe))
     }
-    case Pipe.NeedInputTypeId: {
+    case Channel.NeedInputTypeId: {
       return M.suspend(() => connectResumeGoLeft(rp, rc, left.fromUpstream()))
     }
   }
@@ -102,11 +102,14 @@ export function runCollect<R, E, O>(self: Stream<R, E, O>) {
  * downstream component terminates, this call will never return control.
  */
 export function succeed<O>(o: O): Stream<unknown, never, O> {
-  return new Pipe.HaveOutput(new Pipe.Done(void 0), o)
+  return new Channel.HaveOutput(new Channel.Done(void 0), o)
 }
 
 function iterateGo<O>(x: O, f: (x: O) => O): Stream<unknown, never, O> {
-  return new Pipe.HaveOutput(new Pipe.PipeM(M.effectTotal(() => iterateGo(f(x), f))), x)
+  return new Channel.HaveOutput(
+    new Channel.ChannelM(M.effectTotal(() => iterateGo(f(x), f))),
+    x
+  )
 }
 
 /**
@@ -121,7 +124,7 @@ export function iterate<O>(x: O, f: (x: O) => O): Stream<unknown, never, O> {
  * downstream component terminates, this call will never return control.
  */
 export function fromEffect<R, E, O>(self: T.Effect<R, E, O>): Stream<R, E, O> {
-  return new Pipe.PipeM(M.map_(M.fromEffect(self), succeed))
+  return new Channel.ChannelM(M.map_(M.fromEffect(self), succeed))
 }
 
 /**
@@ -129,7 +132,7 @@ export function fromEffect<R, E, O>(self: T.Effect<R, E, O>): Stream<R, E, O> {
  * downstream component terminates, this call will never return control.
  */
 export function fromManaged<R, E, O>(self: M.Managed<R, E, O>): Stream<R, E, O> {
-  return new Pipe.PipeM(M.map_(self, succeed))
+  return new Channel.ChannelM(M.map_(self, succeed))
 }
 
 /**
@@ -149,23 +152,23 @@ function conduitChainGo<R, E, A, B>(
   f: (x: A) => Stream<R, E, B>
 ): Conduit.Conduit<R, E, A, B, void> {
   switch (self._typeId) {
-    case Pipe.DoneTypeId: {
-      return new Pipe.PipeM(M.effectTotal(() => conduitChain(f)))
+    case Channel.DoneTypeId: {
+      return new Channel.ChannelM(M.effectTotal(() => conduitChain(f)))
     }
-    case Pipe.HaveOutputTypeId: {
-      return new Pipe.HaveOutput(
-        new Pipe.PipeM(M.effectTotal(() => conduitChainGo(self.nextPipe, f))),
+    case Channel.HaveOutputTypeId: {
+      return new Channel.HaveOutput(
+        new Channel.ChannelM(M.effectTotal(() => conduitChainGo(self.nextChannel, f))),
         self.output
       )
     }
-    case Pipe.NeedInputTypeId: {
+    case Channel.NeedInputTypeId: {
       throw new Error("Stream should not reqire inputs")
     }
-    case Pipe.LeftoverTypeId: {
+    case Channel.LeftoverTypeId: {
       throw new Error(`Stream should not have leftover: ${self.leftover}`)
     }
-    case Pipe.PipeMTypeId: {
-      return new Pipe.PipeM(M.map_(self.nextPipe, (p) => conduitChainGo(p, f)))
+    case Channel.ChannelMTypeId: {
+      return new Channel.ChannelM(M.map_(self.nextChannel, (p) => conduitChainGo(p, f)))
     }
   }
 }
@@ -173,9 +176,9 @@ function conduitChainGo<R, E, A, B>(
 function conduitChain<R, E, A, B>(
   f: (x: A) => Stream<R, E, B>
 ): Conduit.Conduit<R, E, A, B, void> {
-  return new Pipe.NeedInput(
+  return new Channel.NeedInput(
     (i) => conduitChainGo(f(i), f),
-    () => new Pipe.Done(void 0)
+    () => new Channel.Done(void 0)
   )
 }
 
