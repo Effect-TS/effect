@@ -30,7 +30,7 @@ export function isolate<A>(n: number): Conduit<unknown, never, A, A, void> {
 /**
  * Run a pipeline until processing completes.
  */
-export function run<R, E, A>(self: Conduit<R, E, void, void, A>) {
+export function run<R, E, A>(self: Conduit<R, E, never, void, A>) {
   return Pipe.runPipe(Pipe.injectLeftovers(self))
 }
 

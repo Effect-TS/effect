@@ -10,7 +10,7 @@ import * as Sink from "../Sink"
  * Provides a stream of output values, without consuming any input or
  * producing a final result.
  */
-export type Stream<R, E, O> = Conduit.Conduit<R, E, void, O, void>
+export type Stream<R, E, O> = Conduit.Conduit<R, E, never, O, void>
 
 /**
  * Take only the first N values from the stream
@@ -27,7 +27,7 @@ export function takeN(n: number): <R, E, A>(self: Stream<R, E, A>) => Stream<R, 
 }
 
 function connectResumeGoRight<R, E, O, A>(
-  left: Conduit.Conduit<R, E, void, O, void>,
+  left: Conduit.Conduit<R, E, never, O, void>,
   right: Conduit.Conduit<R, E, O, void, A>
 ): M.Managed<R, E, readonly [Stream<R, E, O>, A]> {
   switch (right._typeId) {
@@ -56,7 +56,7 @@ function connectResumeGoRight<R, E, O, A>(
 function connectResumeGoLeft<R, E, O, A>(
   rp: (i: O) => Conduit.Conduit<R, E, O, void, A>,
   rc: (u: void) => Conduit.Conduit<R, E, O, void, A>,
-  left: Conduit.Conduit<R, E, void, O, void>
+  left: Conduit.Conduit<R, E, never, O, void>
 ): M.Managed<R, E, readonly [Stream<R, E, O>, A]> {
   switch (left._typeId) {
     case Pipe.DoneTypeId: {

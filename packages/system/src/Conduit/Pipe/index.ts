@@ -135,7 +135,7 @@ export function chain_<R, E, R2, E2, L, I, O, O2, U, A, B>(
  *  Run a pipeline until processing completes.
  */
 export function runPipe<R, E, A>(
-  self: Pipe<R, E, never, void, void, void, A>
+  self: Pipe<R, E, never, never, void, void, A>
 ): M.Managed<R, E, A> {
   switch (self._typeId) {
     case DoneTypeId: {
