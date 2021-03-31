@@ -22,12 +22,12 @@ import * as L from "../Persistent/List"
  * result (`A`). On the receiving end of a `Pipe`, these become the `I` and `U`
  * parameters.
  */
-export type Pipe<L, I, O, U, A> =
-  | HaveOutput<L, I, O, U, A>
-  | NeedInput<L, I, O, U, A>
-  | Done<A>
-  | PipeM<L, I, O, U, A>
-  | Leftover<L, I, O, U, A>
+export type Pipe<R, E, L, I, O, U, A> =
+  | HaveOutput<R, E, L, I, O, U, A>
+  | NeedInput<R, E, L, I, O, U, A>
+  | Done<R, E, A>
+  | PipeM<R, E, L, I, O, U, A>
+  | Leftover<R, E, L, I, O, U, A>
 
 /**
  * Pipe Type Tags
@@ -42,9 +42,11 @@ export const LeftoverTypeId = Symbol()
  * Provide new output to be sent downstream. This constructor has two
  * fields: the next `Pipe` to be used and the output value.
  */
-export class HaveOutput<L, I, O, U, A> {
+export class HaveOutput<R, E, L, I, O, U, A> {
   readonly _typeId: typeof HaveOutputTypeId = HaveOutputTypeId
-  constructor(readonly nextPipe: Pipe<L, I, O, U, A>, readonly output: O) {}
+  readonly _R!: (_: R) => void
+  readonly _E!: () => E
+  constructor(readonly nextPipe: Pipe<R, E, L, I, O, U, A>, readonly output: O) {}
 }
 
 /**
@@ -52,19 +54,23 @@ export class HaveOutput<L, I, O, U, A> {
  * value and provides a new `Pipe`. The second takes an upstream result
  * value, which indicates that upstream is producing no more results
  */
-export class NeedInput<L, I, O, U, A> {
+export class NeedInput<R, E, L, I, O, U, A> {
   readonly _typeId: typeof NeedInputTypeId = NeedInputTypeId
+  readonly _R!: (_: R) => void
+  readonly _E!: () => E
   constructor(
-    readonly newPipe: (i: I) => Pipe<L, I, O, U, A>,
-    readonly fromUpstream: (u: U) => Pipe<L, I, O, U, A>
+    readonly newPipe: (i: I) => Pipe<R, E, L, I, O, U, A>,
+    readonly fromUpstream: (u: U) => Pipe<R, E, L, I, O, U, A>
   ) {}
 }
 
 /**
  * Processing with this `Pipe` is complete, providing the final result.
  */
-export class Done<A> {
+export class Done<R, E, A> {
   readonly _typeId: typeof DoneTypeId = DoneTypeId
+  readonly _R!: (_: R) => void
+  readonly _E!: () => E
   constructor(readonly result: A) {}
 }
 
@@ -72,24 +78,31 @@ export class Done<A> {
  * Provide new output to be sent downstream. This constructor has two
  * fields: the next `Pipe` to be used and the output value.
  */
-export class PipeM<L, I, O, U, A> {
+export class PipeM<R, E, L, I, O, U, A> {
   readonly _typeId: typeof PipeMTypeId = PipeMTypeId
-  constructor(readonly nextPipe: T.UIO<Pipe<L, I, O, U, A>>) {}
+  readonly _R!: (_: R) => void
+  readonly _E!: () => E
+  constructor(readonly nextPipe: T.Effect<R, E, Pipe<R, E, L, I, O, U, A>>) {}
 }
 
 /**
  * Provide new output to be sent downstream. This constructor has two
  * fields: the next `Pipe` to be used and the output value.
  */
-export class Leftover<L, I, O, U, A> {
+export class Leftover<R, E, L, I, O, U, A> {
   readonly _typeId: typeof LeftoverTypeId = LeftoverTypeId
-  constructor(readonly pipe: Pipe<L, I, O, U, A>, readonly leftover: L) {}
+  readonly _R!: (_: R) => void
+  readonly _E!: () => E
+  constructor(readonly pipe: Pipe<R, E, L, I, O, U, A>, readonly leftover: L) {}
 }
 
-export function chain_<L, I, O, U, A, B>(
-  self: Pipe<L, I, O, U, A>,
-  f: (a: A) => Pipe<L, I, O, U, B>
-): Pipe<L, I, O, U, B> {
+/**
+ * Monadic chain
+ */
+export function chain_<R, E, R2, E2, L, I, O, O2, U, A, B>(
+  self: Pipe<R, E, L, I, O, U, A>,
+  f: (a: A) => Pipe<R2, E2, L, I, O2, U, B>
+): Pipe<R & R2, E | E2, L, I, O | O2, U, B> {
   switch (self._typeId) {
     case DoneTypeId: {
       return f(self.result)
@@ -121,7 +134,9 @@ export function chain_<L, I, O, U, A, B>(
 /**
  *  Run a pipeline until processing completes.
  */
-export function runPipe<A>(self: Pipe<never, void, void, void, A>): T.UIO<A> {
+export function runPipe<R, E, A>(
+  self: Pipe<R, E, never, void, void, void, A>
+): T.Effect<R, E, A> {
   switch (self._typeId) {
     case DoneTypeId: {
       return T.succeed(self.result)
@@ -141,10 +156,10 @@ export function runPipe<A>(self: Pipe<never, void, void, void, A>): T.UIO<A> {
   }
 }
 
-function injectLeftoversGo<I, O, U, A>(
+function injectLeftoversGo<R, E, I, O, U, A>(
   ls: L.List<I>,
-  self: Pipe<I, I, O, U, A>
-): Pipe<never, I, O, U, A> {
+  self: Pipe<R, E, I, I, O, U, A>
+): Pipe<R, E, never, I, O, U, A> {
   switch (self._typeId) {
     case DoneTypeId: {
       return new Done(self.result)
@@ -188,8 +203,8 @@ function injectLeftoversGo<I, O, U, A>(
  * calls to `await`. If there are more leftover values than are demanded, the
  * remainder are discarded.
  */
-export function injectLeftovers<I, O, U, A>(
-  self: Pipe<I, I, O, U, A>
-): Pipe<never, I, O, U, A> {
+export function injectLeftovers<R, E, I, O, U, A>(
+  self: Pipe<R, E, I, I, O, U, A>
+): Pipe<R, E, never, I, O, U, A> {
   return injectLeftoversGo(L.empty(), self)
 }
