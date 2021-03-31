@@ -1,5 +1,5 @@
-import * as T from "../../Effect"
 import { identity } from "../../Function"
+import * as M from "../../Managed"
 import * as L from "../../Persistent/List"
 import * as Pipe from "../Pipe"
 
@@ -107,25 +107,25 @@ function fuseGoRight<R, E, R1, E1, I, C, A, O>(
       return new Pipe.Done(right.result)
     }
     case Pipe.PipeMTypeId: {
-      return new Pipe.PipeM(T.map_(right.nextPipe, (p) => fuseGoRight(left, p)))
+      return new Pipe.PipeM(M.map_(right.nextPipe, (p) => fuseGoRight(left, p)))
     }
     case Pipe.LeftoverTypeId: {
       return new Pipe.PipeM(
-        T.effectTotal(() =>
+        M.effectTotal(() =>
           fuseGoRight(new Pipe.HaveOutput(left, right.leftover), right.pipe)
         )
       )
     }
     case Pipe.HaveOutputTypeId: {
       return new Pipe.PipeM(
-        T.effectTotal(
+        M.effectTotal(
           () => new Pipe.HaveOutput(fuseGoRight(left, right.nextPipe), right.output)
         )
       )
     }
     case Pipe.NeedInputTypeId: {
       return new Pipe.PipeM(
-        T.effectTotal(() => fuseGoLeft(right.newPipe, right.fromUpstream, left))
+        M.effectTotal(() => fuseGoLeft(right.newPipe, right.fromUpstream, left))
       )
     }
   }
@@ -139,21 +139,21 @@ function fuseGoLeft<R, E, R1, E1, I, C, A, O>(
   switch (left._typeId) {
     case Pipe.DoneTypeId: {
       return new Pipe.PipeM(
-        T.effectTotal(() => fuseGoRight(new Pipe.Done(left.result), rc(left.result)))
+        M.effectTotal(() => fuseGoRight(new Pipe.Done(left.result), rc(left.result)))
       )
     }
     case Pipe.PipeMTypeId: {
-      return new Pipe.PipeM(T.map_(left.nextPipe, (p) => fuseGoLeft(rp, rc, p)))
+      return new Pipe.PipeM(M.map_(left.nextPipe, (p) => fuseGoLeft(rp, rc, p)))
     }
     case Pipe.LeftoverTypeId: {
       return new Pipe.Leftover(
-        new Pipe.PipeM(T.effectTotal(() => fuseGoLeft(rp, rc, left.pipe))),
+        new Pipe.PipeM(M.effectTotal(() => fuseGoLeft(rp, rc, left.pipe))),
         left.leftover
       )
     }
     case Pipe.HaveOutputTypeId: {
       return new Pipe.PipeM(
-        T.effectTotal(() => fuseGoRight(left.nextPipe, rp(left.output)))
+        M.effectTotal(() => fuseGoRight(left.nextPipe, rp(left.output)))
       )
     }
     case Pipe.NeedInputTypeId: {

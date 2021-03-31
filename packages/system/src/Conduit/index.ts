@@ -6,6 +6,12 @@ import * as S from "./Stream"
 pipe(
   S.iterate(1, (n) => n + 1),
   S.takeN(2),
+  S.chain((n) =>
+    pipe(
+      S.iterate(n, (n) => n + 1),
+      S.takeN(3)
+    )
+  ),
   S.runCollect,
   T.chain((l) =>
     T.effectTotal(() => {

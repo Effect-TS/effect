@@ -1,4 +1,4 @@
-import * as T from "../../Effect"
+import * as M from "../../Managed"
 import * as L from "../../Persistent/List"
 
 /*
@@ -82,7 +82,7 @@ export class PipeM<R, E, L, I, O, U, A> {
   readonly _typeId: typeof PipeMTypeId = PipeMTypeId
   readonly _R!: (_: R) => void
   readonly _E!: () => E
-  constructor(readonly nextPipe: T.Effect<R, E, Pipe<R, E, L, I, O, U, A>>) {}
+  constructor(readonly nextPipe: M.Managed<R, E, Pipe<R, E, L, I, O, U, A>>) {}
 }
 
 /**
@@ -108,17 +108,17 @@ export function chain_<R, E, R2, E2, L, I, O, O2, U, A, B>(
       return f(self.result)
     }
     case PipeMTypeId: {
-      return new PipeM(T.map_(self.nextPipe, (a) => chain_(a, f)))
+      return new PipeM(M.map_(self.nextPipe, (a) => chain_(a, f)))
     }
     case LeftoverTypeId: {
       return new Leftover(
-        new PipeM(T.effectTotal(() => chain_(self.pipe, f))),
+        new PipeM(M.effectTotal(() => chain_(self.pipe, f))),
         self.leftover
       )
     }
     case HaveOutputTypeId: {
       return new HaveOutput(
-        new PipeM(T.effectTotal(() => chain_(self.nextPipe, f))),
+        new PipeM(M.effectTotal(() => chain_(self.nextPipe, f))),
         self.output
       )
     }
@@ -136,22 +136,22 @@ export function chain_<R, E, R2, E2, L, I, O, O2, U, A, B>(
  */
 export function runPipe<R, E, A>(
   self: Pipe<R, E, never, void, void, void, A>
-): T.Effect<R, E, A> {
+): M.Managed<R, E, A> {
   switch (self._typeId) {
     case DoneTypeId: {
-      return T.succeed(self.result)
+      return M.succeed(self.result)
     }
     case HaveOutputTypeId: {
       throw new Error("final pipe should not contain outputs")
     }
     case PipeMTypeId: {
-      return T.chain_(self.nextPipe, runPipe)
+      return M.chain_(self.nextPipe, runPipe)
     }
     case LeftoverTypeId: {
       throw new Error("final pipe should not contain leftovers")
     }
     case NeedInputTypeId: {
-      return T.suspend(() => runPipe(self.fromUpstream()))
+      return M.suspend(() => runPipe(self.fromUpstream()))
     }
   }
 }
@@ -166,15 +166,15 @@ function injectLeftoversGo<R, E, I, O, U, A>(
     }
     case LeftoverTypeId: {
       return new PipeM(
-        T.effectTotal(() => injectLeftoversGo(L.prepend_(ls, self.leftover), self))
+        M.effectTotal(() => injectLeftoversGo(L.prepend_(ls, self.leftover), self))
       )
     }
     case PipeMTypeId: {
-      return new PipeM(T.map_(self.nextPipe, (p) => injectLeftoversGo(ls, p)))
+      return new PipeM(M.map_(self.nextPipe, (p) => injectLeftoversGo(ls, p)))
     }
     case HaveOutputTypeId: {
       return new HaveOutput(
-        new PipeM(T.effectTotal(() => injectLeftoversGo(ls, self.nextPipe))),
+        new PipeM(M.effectTotal(() => injectLeftoversGo(ls, self.nextPipe))),
         self.output
       )
     }
@@ -186,7 +186,7 @@ function injectLeftoversGo<R, E, I, O, U, A>(
         )
       } else {
         return new PipeM(
-          T.effectTotal(() =>
+          M.effectTotal(() =>
             injectLeftoversGo(L.tail(ls), self.newPipe(L.unsafeFirst(ls)!))
           )
         )
