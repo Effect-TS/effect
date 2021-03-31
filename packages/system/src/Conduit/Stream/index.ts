@@ -4,6 +4,7 @@ import * as M from "../../Managed"
 import * as NA from "../../NonEmptyArray"
 import * as Conduit from "../Conduit"
 import * as Pipe from "../Pipe"
+import * as Sink from "../Sink"
 
 /**
  * Provides a stream of output values, without consuming any input or
@@ -84,7 +85,7 @@ function connectResumeGoLeft<R, E, O, A>(
  */
 export function connectResume<R, E, O, A>(
   source: Stream<R, E, O>,
-  sink: Conduit.Sink<R, E, O, A>
+  sink: Sink.Sink<R, E, O, A>
 ): M.Managed<R, E, readonly [Stream<R, E, O>, A]> {
   return connectResumeGoRight(source, sink)
 }
@@ -93,7 +94,7 @@ export function connectResume<R, E, O, A>(
  * Run a pipeline until processing completes.
  */
 export function runCollect<R, E, O>(self: Stream<R, E, O>) {
-  return M.useNow(Conduit.run(Conduit.fuse_(self, Conduit.sinkList())))
+  return M.useNow(Conduit.run(Conduit.fuse_(self, Sink.list())))
 }
 
 /**

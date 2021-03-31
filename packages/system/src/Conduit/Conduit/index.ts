@@ -1,6 +1,4 @@
-import { identity } from "../../Function"
 import * as M from "../../Managed"
-import * as L from "../../Persistent/List"
 import * as Pipe from "../Pipe"
 
 /**
@@ -10,28 +8,6 @@ import * as Pipe from "../Pipe"
  * The type synonyms provided here are simply wrappers around this type.
  */
 export type Conduit<R, E, I, O, A> = Pipe.Pipe<R, E, I, I, O, void, A>
-
-/**
- * Consumes a stream of input values and produces a final result, without
- * producing any output.
- */
-export type Sink<R, E, I, A> = Conduit<R, E, I, never, A>
-
-function sinkListGo<A>(
-  front: (_: L.List<A>) => L.List<A>
-): Sink<unknown, never, A, L.List<A>> {
-  return new Pipe.NeedInput(
-    (i) => sinkListGo((ls) => front(L.prepend_(ls, i))),
-    () => new Pipe.Done(front(L.empty()))
-  )
-}
-
-/**
- * Sink that consumes the Conduit to a List
- */
-export function sinkList<A>(): Sink<unknown, never, A, L.List<A>> {
-  return sinkListGo(identity)
-}
 
 function isolateGo<A>(n: number): Conduit<unknown, never, A, A, void> {
   if (n <= 0) {
