@@ -1,9 +1,7 @@
-import * as T from "../Effect"
-import { identity, tuple } from "../Function"
-import * as NA from "../NonEmptyArray"
-import * as O from "../Option"
-import * as L from "../Persistent/List"
-import * as Pipe from "./pipe"
+import * as T from "../../Effect"
+import { identity } from "../../Function"
+import * as L from "../../Persistent/List"
+import * as Pipe from "../Pipe"
 
 /**
  * Core datatype of the conduit package. This type represents a general
@@ -14,36 +12,17 @@ import * as Pipe from "./pipe"
 export type Conduit<R, E, I, O, A> = Pipe.Pipe<R, E, I, I, O, void, A>
 
 /**
- * Provides a stream of output values, without consuming any input or
- * producing a final result.
- */
-export type Stream<R, E, O> = Conduit<R, E, void, O, void>
-
-/**
  * Consumes a stream of input values and produces a final result, without
  * producing any output.
  */
-export type Sink<R, E, I, A> = Conduit<R, E, I, void, A>
+export type Sink<R, E, I, A> = Conduit<R, E, I, never, A>
 
-/**
- * Wait for a single input value from upstream. If no data is available,
- * returns `Nothing`. Once `await` returns `Nothing`, subsequent calls will
- * also return `Nothing`
- */
-export function sinkAwait<I>(): Sink<unknown, never, I, O.Option<I>> {
-  return new Pipe.NeedInput(
-    (i) => new Pipe.Done(O.some(i)),
-    () => new Pipe.Done(O.none)
-  )
-}
-
-function consumeToListGo<A>(
+function sinkListGo<A>(
   front: (_: L.List<A>) => L.List<A>
 ): Sink<unknown, never, A, L.List<A>> {
-  return chain_(sinkAwait<A>(), (o) =>
-    o._tag === "None"
-      ? new Pipe.Done(front(L.empty()))
-      : consumeToListGo((ls) => front(L.prepend_(ls, o.value)))
+  return new Pipe.NeedInput(
+    (i) => sinkListGo((ls) => front(L.prepend_(ls, i))),
+    () => new Pipe.Done(front(L.empty()))
   )
 }
 
@@ -51,71 +30,25 @@ function consumeToListGo<A>(
  * Sink that consumes the Conduit to a List
  */
 export function sinkList<A>(): Sink<unknown, never, A, L.List<A>> {
-  return consumeToListGo(identity)
+  return sinkListGo(identity)
 }
 
-function connectResumeGoRight<R, E, O, A>(
-  left: Conduit<R, E, void, O, void>,
-  right: Conduit<R, E, O, void, A>
-): T.Effect<R, E, readonly [Stream<R, E, O>, A]> {
-  switch (right._typeId) {
-    case Pipe.HaveOutputTypeId: {
-      throw new Error(`Sink should not produce outputs: ${right.output}`)
-    }
-    case Pipe.DoneTypeId: {
-      return T.succeed(tuple(left, right.result))
-    }
-    case Pipe.LeftoverTypeId: {
-      return T.suspend(() =>
-        connectResumeGoRight(new Pipe.HaveOutput(left, right.leftover), right.pipe)
-      )
-    }
-    case Pipe.NeedInputTypeId: {
-      return T.suspend(() =>
-        connectResumeGoLeft(right.newPipe, right.fromUpstream, left)
-      )
-    }
-    case Pipe.PipeMTypeId: {
-      return T.chain_(right.nextPipe, (p) => connectResumeGoRight(left, p))
-    }
+function isolateGo<A>(n: number): Conduit<unknown, never, A, A, void> {
+  if (n <= 0) {
+    return new Pipe.Done(void 0)
   }
-}
-
-function connectResumeGoLeft<R, E, O, A>(
-  rp: (i: O) => Conduit<R, E, O, void, A>,
-  rc: (u: void) => Conduit<R, E, O, void, A>,
-  left: Conduit<R, E, void, O, void>
-): T.Effect<R, E, readonly [Stream<R, E, O>, A]> {
-  switch (left._typeId) {
-    case Pipe.DoneTypeId: {
-      return T.suspend(() =>
-        connectResumeGoRight(new Pipe.Done(left.result), rc(left.result))
-      )
-    }
-    case Pipe.HaveOutputTypeId: {
-      return T.suspend(() => connectResumeGoRight(left.nextPipe, rp(left.output)))
-    }
-    case Pipe.PipeMTypeId: {
-      return T.chain_(left.nextPipe, (l) => connectResumeGoLeft(rp, rc, l))
-    }
-    case Pipe.LeftoverTypeId: {
-      return T.suspend(() => connectResumeGoLeft(rp, rc, left.pipe))
-    }
-    case Pipe.NeedInputTypeId: {
-      return T.suspend(() => connectResumeGoLeft(rp, rc, left.fromUpstream()))
-    }
-  }
+  return new Pipe.NeedInput(
+    (i) => new Pipe.HaveOutput(isolateGo(n - 1), i),
+    () => new Pipe.Done(void 0)
+  )
 }
 
 /**
- * Connect a `Stream` to a `Sink` until the latter closes. Returns both the
- * most recent state of the `Stream` and the result of the `Sink`.
+ * Ensure that the inner sink consumes no more than the given number of
+ * values.
  */
-export function connectResume<R, E, O, A>(
-  source: Stream<R, E, O>,
-  sink: Sink<R, E, O, A>
-): T.Effect<R, E, readonly [Stream<R, E, O>, A]> {
-  return connectResumeGoRight(source, sink)
+export function isolate<A>(n: number): Conduit<unknown, never, A, A, void> {
+  return isolateGo(n)
 }
 
 /**
@@ -123,33 +56,6 @@ export function connectResume<R, E, O, A>(
  */
 export function run<R, E, A>(self: Conduit<R, E, void, void, A>) {
   return Pipe.runPipe(Pipe.injectLeftovers(self))
-}
-
-/**
- * Run a pipeline until processing completes.
- */
-export function runCollect<R, E, O>(self: Conduit<R, E, void, O, void>) {
-  return run(fuse_(self, sinkList()))
-}
-
-/**
- * Send a value downstream to the next component to consume. If the
- * downstream component terminates, this call will never return control.
- */
-export function succeed<O>(o: O): Stream<unknown, never, O> {
-  return new Pipe.HaveOutput(new Pipe.Done(void 0), o)
-}
-
-/**
- * Send a bunch of values downstream to the next component to consume. If the
- * downstream component terminates, this call will never return control.
- */
-export function succeedMany<O>(...os: NA.NonEmptyArray<O>): Stream<unknown, never, O> {
-  let x = succeed(NA.head(os))
-  for (const y of NA.tail(os)) {
-    x = chain_(x, () => succeed(y))
-  }
-  return x
 }
 
 /**

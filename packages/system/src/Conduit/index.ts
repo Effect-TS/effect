@@ -1,10 +1,11 @@
 import * as T from "../Effect"
 import { pipe } from "../Function"
 import * as L from "../Persistent/List"
-import * as S from "./conduit"
+import * as S from "./Stream"
 
 pipe(
-  S.succeedMany(1, 2, 3, 4, 5),
+  S.iterate(1, (n) => n + 1),
+  S.takeN(2),
   S.runCollect,
   T.chain((l) =>
     T.effectTotal(() => {

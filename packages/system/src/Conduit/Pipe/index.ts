@@ -1,5 +1,5 @@
-import * as T from "../Effect"
-import * as L from "../Persistent/List"
+import * as T from "../../Effect"
+import * as L from "../../Persistent/List"
 
 /*
  * The underlying datatype has five type parameters:
