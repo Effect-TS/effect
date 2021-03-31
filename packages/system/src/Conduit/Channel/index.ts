@@ -139,20 +139,20 @@ export function chain_<R, E, R2, E2, L, I, O, O2, U, A, B>(
  *  Run a pipeline until processing completes.
  */
 export function runChannel<R, E, A>(
-  self: Channel<R, E, never, never, void, void, A>
+  self: Channel<R, E, never, never, never, void, A>
 ): M.Managed<R, E, A> {
   switch (self._typeId) {
     case DoneTypeId: {
       return M.succeed(self.result)
     }
     case HaveOutputTypeId: {
-      throw new Error("final pipe should not contain outputs")
+      throw new Error(`channels in run should not contain outputs: ${self.output}`)
     }
     case ChannelMTypeId: {
       return M.chain_(self.nextChannel, runChannel)
     }
     case LeftoverTypeId: {
-      throw new Error("final pipe should not contain leftovers")
+      throw new Error(`channels in run should not contain leftovers: ${self.leftover}`)
     }
     case NeedInputTypeId: {
       return M.suspend(() => runChannel(self.fromUpstream()))
