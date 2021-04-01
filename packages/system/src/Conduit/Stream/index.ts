@@ -1,4 +1,5 @@
 import type * as T from "../../Effect"
+import * as E from "../../Either"
 import { tuple } from "../../Function"
 import * as M from "../../Managed"
 import * as NA from "../../NonEmptyArray"
@@ -33,57 +34,88 @@ export function takeN(n: number): <R, E, A>(self: Stream<R, E, A>) => Stream<R, 
   return (self) => takeN_(self, n)
 }
 
-function connectResumeGoRight<R, E, O, A>(
-  left: Conduit.Conduit<R, E, never, O, void>,
-  right: Conduit.Conduit<R, E, O, void, A>
-): M.Managed<R, E, readonly [Stream<R, E, O>, A]> {
-  switch (right._typeId) {
-    case Channel.HaveOutputTypeId: {
-      throw new Error(`Sink should not produce outputs: ${right.output}`)
-    }
-    case Channel.DoneTypeId: {
-      return M.succeed(tuple(left, right.result))
-    }
-    case Channel.LeftoverTypeId: {
-      return M.suspend(() =>
-        connectResumeGoRight(new Channel.HaveOutput(left, right.leftover), right.pipe)
-      )
-    }
-    case Channel.NeedInputTypeId: {
-      return M.suspend(() =>
-        connectResumeGoLeft(right.newChannel, right.fromUpstream, left)
-      )
-    }
-    case Channel.ChannelMTypeId: {
-      return M.chain_(right.nextChannel, (p) => connectResumeGoRight(left, p))
-    }
+type ConnectResumeGo<R, E, O, A> = E.Either<
+  {
+    rp: (i: O) => Conduit.Conduit<R, E, O, void, A>
+    rc: (u: void) => Conduit.Conduit<R, E, O, void, A>
+    left: Conduit.Conduit<R, E, never, O, void>
+  },
+  {
+    left: Conduit.Conduit<R, E, never, O, void>
+    right: Conduit.Conduit<R, E, O, void, A>
   }
-}
+>
 
-function connectResumeGoLeft<R, E, O, A>(
-  rp: (i: O) => Conduit.Conduit<R, E, O, void, A>,
-  rc: (u: void) => Conduit.Conduit<R, E, O, void, A>,
-  left: Conduit.Conduit<R, E, never, O, void>
+function connectResumeGo<R, E, O, A>(
+  input: ConnectResumeGo<R, E, O, A>
 ): M.Managed<R, E, readonly [Stream<R, E, O>, A]> {
-  switch (left._typeId) {
-    case Channel.DoneTypeId: {
-      return M.suspend(() =>
-        connectResumeGoRight(new Channel.Done(left.result), rc(left.result))
-      )
-    }
-    case Channel.HaveOutputTypeId: {
-      return M.suspend(() => connectResumeGoRight(left.nextChannel, rp(left.output)))
-    }
-    case Channel.ChannelMTypeId: {
-      return M.chain_(left.nextChannel, (l) => connectResumeGoLeft(rp, rc, l))
-    }
-    case Channel.LeftoverTypeId: {
-      return M.suspend(() => connectResumeGoLeft(rp, rc, left.pipe))
-    }
-    case Channel.NeedInputTypeId: {
-      return M.suspend(() => connectResumeGoLeft(rp, rc, left.fromUpstream()))
+  // eslint-disable-next-line no-constant-condition
+  while (1) {
+    switch (input._tag) {
+      case "Left": {
+        const rp = input.left.rp
+        const rc = input.left.rc
+        const left = input.left.left
+        switch (left._typeId) {
+          case Channel.DoneTypeId: {
+            input = E.right({
+              left: new Channel.Done(left.result),
+              right: rc(left.result)
+            })
+            break
+          }
+          case Channel.HaveOutputTypeId: {
+            input = E.right({ left: left.nextChannel(), right: rp(left.output) })
+            break
+          }
+          case Channel.ChannelMTypeId: {
+            return M.chain_(left.nextChannel, (l) =>
+              connectResumeGo(E.left({ rp, rc, left: l }))
+            )
+          }
+          case Channel.LeftoverTypeId: {
+            input = E.left({ rp, rc, left: left.pipe() })
+            break
+          }
+          case Channel.NeedInputTypeId: {
+            input = E.left({ rp, rc, left: left.fromUpstream() })
+            break
+          }
+        }
+        break
+      }
+      case "Right": {
+        const left = input.right.left
+        const right = input.right.right
+        switch (right._typeId) {
+          case Channel.HaveOutputTypeId: {
+            throw new Error(`Sink should not produce outputs: ${right.output}`)
+          }
+          case Channel.DoneTypeId: {
+            return M.succeed(tuple(left, right.result))
+          }
+          case Channel.LeftoverTypeId: {
+            input = E.right({
+              left: new Channel.HaveOutput(() => left, right.leftover),
+              right: right.pipe()
+            })
+            break
+          }
+          case Channel.NeedInputTypeId: {
+            input = E.left({ rp: right.newChannel, rc: right.fromUpstream, left })
+            break
+          }
+          case Channel.ChannelMTypeId: {
+            return M.chain_(right.nextChannel, (p) =>
+              connectResumeGo(E.right({ left, right: p }))
+            )
+          }
+        }
+        break
+      }
     }
   }
+  throw new Error("Bug")
 }
 
 /**
@@ -94,14 +126,28 @@ export function connectResume<R, E, O, A>(
   source: Stream<R, E, O>,
   sink: Sink.Sink<R, E, O, A>
 ): M.Managed<R, E, readonly [Stream<R, E, O>, A]> {
-  return connectResumeGoRight(source, sink)
+  return connectResumeGo(E.right({ left: source, right: sink }))
 }
 
 /**
- * Run a pipeline until processing completes.
+ * Run a pipeline until processing completes, collecting elements into an array
  */
-export function runCollect<R, E, O>(self: Stream<R, E, O>) {
+export function runArray<R, E, O>(self: Stream<R, E, O>) {
+  return M.useNow(Conduit.run(Conduit.fuse_(self, Sink.array())))
+}
+
+/**
+ * Run a pipeline until processing completes, collecting elements into a list
+ */
+export function runList<R, E, O>(self: Stream<R, E, O>) {
   return M.useNow(Conduit.run(Conduit.fuse_(self, Sink.list())))
+}
+
+/**
+ * Run a pipeline until processing completes, discarding elements
+ */
+export function runDrain<R, E, O>(self: Stream<R, E, O>) {
+  return M.useNow(Conduit.run(Conduit.fuse_(self, Sink.drain())))
 }
 
 /**
@@ -109,11 +155,11 @@ export function runCollect<R, E, O>(self: Stream<R, E, O>) {
  * downstream component terminates, this call will never return control.
  */
 export function succeed<O>(o: O): Stream<unknown, never, O> {
-  return new Channel.HaveOutput(new Channel.Done(void 0), o)
+  return new Channel.HaveOutput(() => Channel.doneUnit, o)
 }
 
 function iterateGo<O>(x: O, f: (x: O) => O): Stream<unknown, never, O> {
-  return Channel.suspend(() => new Channel.HaveOutput(iterateGo(f(x), f), x))
+  return new Channel.HaveOutput(() => iterateGo(f(x), f), x)
 }
 
 /**
@@ -157,11 +203,15 @@ function conduitChainGo<R, E, A, B>(
 ): Conduit.Conduit<R, E, A, B, void> {
   switch (self._typeId) {
     case Channel.DoneTypeId: {
-      return Channel.suspend(() => conduitChain(f))
+      return new Channel.NeedInput(
+        (i) => conduitChainGo(f(i), f),
+        () => Channel.doneUnit
+      )
     }
     case Channel.HaveOutputTypeId: {
-      return Channel.suspend(
-        () => new Channel.HaveOutput(conduitChainGo(self.nextChannel, f), self.output)
+      return new Channel.HaveOutput(
+        () => conduitChainGo(self.nextChannel(), f),
+        self.output
       )
     }
     case Channel.NeedInputTypeId: {
@@ -176,15 +226,6 @@ function conduitChainGo<R, E, A, B>(
   }
 }
 
-function conduitChain<R, E, A, B>(
-  f: (x: A) => Stream<R, E, B>
-): Conduit.Conduit<R, E, A, B, void> {
-  return new Channel.NeedInput(
-    (i) => conduitChainGo(f(i), f),
-    () => new Channel.Done(void 0)
-  )
-}
-
 /**
  * Monadic chain
  */
@@ -192,7 +233,7 @@ export function chain_<R, E, R1, E1, A, B>(
   self: Stream<R, E, A>,
   f: (a: A) => Stream<R1, E1, B>
 ): Stream<R & R1, E | E1, B> {
-  return Conduit.fuse_(self, conduitChain(f))
+  return Conduit.fuse_(self, conduitChainGo(Channel.doneUnit, f))
 }
 
 /**

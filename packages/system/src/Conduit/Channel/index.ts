@@ -1,3 +1,4 @@
+import type { Lazy } from "../../Function"
 import * as M from "../../Managed"
 import * as L from "../../Persistent/List"
 
@@ -59,7 +60,10 @@ export class HaveOutput<R, E, L, I, O, U, A> {
   readonly _typeId: typeof HaveOutputTypeId = HaveOutputTypeId
   readonly _R!: (_: R) => void
   readonly _E!: () => E
-  constructor(readonly nextChannel: Channel<R, E, L, I, O, U, A>, readonly output: O) {}
+  constructor(
+    readonly nextChannel: Lazy<Channel<R, E, L, I, O, U, A>>,
+    readonly output: O
+  ) {}
 }
 
 /**
@@ -106,8 +110,18 @@ export class Leftover<R, E, L, I, O, U, A> {
   readonly _typeId: typeof LeftoverTypeId = LeftoverTypeId
   readonly _R!: (_: R) => void
   readonly _E!: () => E
-  constructor(readonly pipe: Channel<R, E, L, I, O, U, A>, readonly leftover: L) {}
+  constructor(
+    readonly pipe: Lazy<Channel<R, E, L, I, O, U, A>>,
+    readonly leftover: L
+  ) {}
 }
+
+/**
+ * Empty channel with unit result
+ */
+export const doneUnit: Channel<unknown, never, never, any, any, void, void> = new Done(
+  void 0
+)
 
 /**
  * Monadic chain
@@ -124,10 +138,10 @@ export function chain_<R, E, R2, E2, L, I, O, O2, U, A, B>(
       return new ChannelM(M.map_(self.nextChannel, (a) => chain_(a, f)))
     }
     case LeftoverTypeId: {
-      return suspend(() => new Leftover(chain_(self.pipe, f), self.leftover))
+      return new Leftover(() => chain_(self.pipe(), f), self.leftover)
     }
     case HaveOutputTypeId: {
-      return suspend(() => new HaveOutput(chain_(self.nextChannel, f), self.output))
+      return new HaveOutput(() => chain_(self.nextChannel(), f), self.output)
     }
     case NeedInputTypeId: {
       return new NeedInput(
@@ -139,28 +153,63 @@ export function chain_<R, E, R2, E2, L, I, O, O2, U, A, B>(
 }
 
 /**
+ * Monadic chain
+ */
+export function map_<R, E, L, I, O, U, A, B>(
+  self: Channel<R, E, L, I, O, U, A>,
+  f: (a: A) => B
+): Channel<R, E, L, I, O, U, B> {
+  switch (self._typeId) {
+    case DoneTypeId: {
+      return new Done(f(self.result))
+    }
+    case ChannelMTypeId: {
+      return new ChannelM(M.map_(self.nextChannel, (a) => map_(a, f)))
+    }
+    case LeftoverTypeId: {
+      return new Leftover(() => map_(self.pipe(), f), self.leftover)
+    }
+    case HaveOutputTypeId: {
+      return new HaveOutput(() => map_(self.nextChannel(), f), self.output)
+    }
+    case NeedInputTypeId: {
+      return new NeedInput(
+        (i) => map_(self.newChannel(i), f),
+        (u) => map_(self.fromUpstream(u), f)
+      )
+    }
+  }
+}
+
+/**
  *  Run a pipeline until processing completes.
  */
 export function runChannel<R, E, A>(
   self: Channel<R, E, never, never, never, void, A>
 ): M.Managed<R, E, A> {
-  switch (self._typeId) {
-    case DoneTypeId: {
-      return M.succeed(self.result)
-    }
-    case HaveOutputTypeId: {
-      throw new Error(`channels in run should not contain outputs: ${self.output}`)
-    }
-    case ChannelMTypeId: {
-      return M.chain_(self.nextChannel, runChannel)
-    }
-    case LeftoverTypeId: {
-      throw new Error(`channels in run should not contain leftovers: ${self.leftover}`)
-    }
-    case NeedInputTypeId: {
-      return M.suspend(() => runChannel(self.fromUpstream()))
+  // eslint-disable-next-line no-constant-condition
+  while (1) {
+    switch (self._typeId) {
+      case DoneTypeId: {
+        return M.succeed(self.result)
+      }
+      case HaveOutputTypeId: {
+        throw new Error(`channels in run should not contain outputs: ${self.output}`)
+      }
+      case ChannelMTypeId: {
+        return M.chain_(self.nextChannel, runChannel)
+      }
+      case LeftoverTypeId: {
+        throw new Error(
+          `channels in run should not contain leftovers: ${self.leftover}`
+        )
+      }
+      case NeedInputTypeId: {
+        self = self.fromUpstream()
+      }
     }
   }
+  throw new Error("Bug")
 }
 
 function injectLeftoversGo<R, E, I, O, U, A>(
@@ -178,8 +227,9 @@ function injectLeftoversGo<R, E, I, O, U, A>(
       return new ChannelM(M.map_(self.nextChannel, (p) => injectLeftoversGo(ls, p)))
     }
     case HaveOutputTypeId: {
-      return suspend(
-        () => new HaveOutput(injectLeftoversGo(ls, self.nextChannel), self.output)
+      return new HaveOutput(
+        () => injectLeftoversGo(ls, self.nextChannel()),
+        self.output
       )
     }
     case NeedInputTypeId: {

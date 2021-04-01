@@ -1,4 +1,4 @@
-import { identity } from "../../Function"
+import * as FA from "../../FreeAssociative"
 import * as O from "../../Option"
 import * as L from "../../Persistent/List"
 import * as Channel from "../Channel"
@@ -10,20 +10,45 @@ import type { Conduit } from "../Conduit/index"
  */
 export type Sink<R, E, I, A> = Conduit<R, E, I, never, A>
 
-function sinkListGo<A>(
-  front: (_: L.List<A>) => L.List<A>
-): Sink<unknown, never, A, L.List<A>> {
+function sinkArrayGo<A>(
+  fa: FA.FreeAssociative<A>
+): Sink<unknown, never, A, FA.FreeAssociative<A>> {
   return new Channel.NeedInput(
-    (i) => sinkListGo((ls) => front(L.prepend_(ls, i))),
-    () => new Channel.Done(front(L.empty()))
+    (i) => sinkArrayGo(FA.append_(fa, i)),
+    () => new Channel.Done(fa)
   )
 }
 
 /**
- * Sink that consumes the Conduit to a List
+ * Sink that consumes the Conduit to an Array
+ */
+export function array<A>(): Sink<unknown, never, A, readonly A[]> {
+  return Channel.map_(sinkArrayGo(FA.init()), FA.toArray)
+}
+
+/**
+ * Sink that consumes the Conduit to an Array
+ */
+export function drain<A>(): Sink<unknown, never, A, void> {
+  const sink: Sink<unknown, never, A, void> = new Channel.NeedInput(
+    () => sink,
+    () => Channel.doneUnit as Sink<unknown, never, A, void>
+  )
+  return sink
+}
+
+function sinkListGo<A>(fa: L.List<A>): Sink<unknown, never, A, L.List<A>> {
+  return new Channel.NeedInput(
+    (i) => sinkListGo(L.append_(fa, i)),
+    () => new Channel.Done(fa)
+  )
+}
+
+/**
+ * Sink that consumes the Conduit to an List
  */
 export function list<A>(): Sink<unknown, never, A, L.List<A>> {
-  return sinkListGo(identity)
+  return sinkListGo(L.empty())
 }
 
 /**
