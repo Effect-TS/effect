@@ -32,6 +32,7 @@ export interface Channel<R, E, L, I, O, U, A> {
   readonly _R: (_R: R) => void
   readonly _E: () => E
   readonly _A: () => A
+  readonly _O: () => O
   readonly _C:
     | HaveOutput<R, E, L, I, O, U, A>
     | NeedInput<R, E, L, I, O, U, A>
@@ -78,6 +79,7 @@ export class HaveOutput<R, E, L, I, O, U, A> implements Channel<R, E, L, I, O, U
   readonly _R!: (_R: R) => void
   readonly _E!: () => E
   readonly _A!: () => A
+  readonly _O!: () => O
   readonly _C!:
     | HaveOutput<R, E, L, I, O, U, A>
     | NeedInput<R, E, L, I, O, U, A>
@@ -101,6 +103,7 @@ export class NeedInput<R, E, L, I, O, U, A> implements Channel<R, E, L, I, O, U,
   readonly _R!: (_R: R) => void
   readonly _E!: () => E
   readonly _A!: () => A
+  readonly _O!: () => O
   readonly _C!:
     | HaveOutput<R, E, L, I, O, U, A>
     | NeedInput<R, E, L, I, O, U, A>
@@ -122,6 +125,7 @@ export class Done<R, E, L, I, O, U, A> implements Channel<R, E, L, I, O, U, A> {
   readonly _R!: (_R: R) => void
   readonly _E!: () => E
   readonly _A!: () => A
+  readonly _O!: () => O
   readonly _C!:
     | HaveOutput<R, E, L, I, O, U, A>
     | NeedInput<R, E, L, I, O, U, A>
@@ -141,6 +145,7 @@ export class ChannelM<R, E, L, I, O, U, A> implements Channel<R, E, L, I, O, U, 
   readonly _R!: (_R: R) => void
   readonly _E!: () => E
   readonly _A!: () => A
+  readonly _O!: () => O
   readonly _C!:
     | HaveOutput<R, E, L, I, O, U, A>
     | NeedInput<R, E, L, I, O, U, A>
@@ -160,6 +165,7 @@ export class Leftover<R, E, L, I, O, U, A> implements Channel<R, E, L, I, O, U, 
   readonly _R!: (_R: R) => void
   readonly _E!: () => E
   readonly _A!: () => A
+  readonly _O!: () => O
   readonly _C!:
     | HaveOutput<R, E, L, I, O, U, A>
     | NeedInput<R, E, L, I, O, U, A>
