@@ -14,7 +14,7 @@ function sinkListGo<A>(
   front: (_: L.List<A>) => L.List<A>
 ): Sink<unknown, never, A, L.List<A>> {
   return new Channel.NeedInput(
-    (i) => sinkListGo((ls) => front(L.prepend_(ls, i))),
+    (i) => Channel.suspend(() => sinkListGo((ls) => front(L.prepend_(ls, i)))),
     () => new Channel.Done(front(L.empty()))
   )
 }

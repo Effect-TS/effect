@@ -13,6 +13,13 @@ import * as Sink from "../Sink"
 export type Stream<R, E, O> = Conduit.Conduit<R, E, never, O, void>
 
 /**
+ * Suspend stream creation
+ */
+export function suspend<R, E, O>(f: () => Stream<R, E, O>): Stream<R, E, O> {
+  return Channel.suspend(f)
+}
+
+/**
  * Take only the first N values from the stream
  */
 export function takeN_<R, E, A>(self: Stream<R, E, A>, n: number): Stream<R, E, A> {
@@ -106,10 +113,7 @@ export function succeed<O>(o: O): Stream<unknown, never, O> {
 }
 
 function iterateGo<O>(x: O, f: (x: O) => O): Stream<unknown, never, O> {
-  return new Channel.HaveOutput(
-    new Channel.ChannelM(M.effectTotal(() => iterateGo(f(x), f))),
-    x
-  )
+  return Channel.suspend(() => new Channel.HaveOutput(iterateGo(f(x), f), x))
 }
 
 /**
@@ -153,12 +157,11 @@ function conduitChainGo<R, E, A, B>(
 ): Conduit.Conduit<R, E, A, B, void> {
   switch (self._typeId) {
     case Channel.DoneTypeId: {
-      return new Channel.ChannelM(M.effectTotal(() => conduitChain(f)))
+      return Channel.suspend(() => conduitChain(f))
     }
     case Channel.HaveOutputTypeId: {
-      return new Channel.HaveOutput(
-        new Channel.ChannelM(M.effectTotal(() => conduitChainGo(self.nextChannel, f))),
-        self.output
+      return Channel.suspend(
+        () => new Channel.HaveOutput(conduitChainGo(self.nextChannel, f), self.output)
       )
     }
     case Channel.NeedInputTypeId: {

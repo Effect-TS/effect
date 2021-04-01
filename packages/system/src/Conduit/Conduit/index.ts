@@ -14,7 +14,7 @@ function isolateGo<A>(n: number): Conduit<unknown, never, A, A, void> {
     return new Channel.Done(void 0)
   }
   return new Channel.NeedInput(
-    (i) => new Channel.HaveOutput(isolateGo(n - 1), i),
+    (i) => Channel.suspend(() => new Channel.HaveOutput(isolateGo(n - 1), i)),
     () => new Channel.Done(void 0)
   )
 }
@@ -88,23 +88,18 @@ function fuseGoRight<R, E, R1, E1, I, C, A, O>(
       )
     }
     case Channel.LeftoverTypeId: {
-      return new Channel.ChannelM(
-        M.effectTotal(() =>
-          fuseGoRight(new Channel.HaveOutput(left, right.leftover), right.pipe)
-        )
+      return Channel.suspend(() =>
+        fuseGoRight(new Channel.HaveOutput(left, right.leftover), right.pipe)
       )
     }
     case Channel.HaveOutputTypeId: {
-      return new Channel.ChannelM(
-        M.effectTotal(
-          () =>
-            new Channel.HaveOutput(fuseGoRight(left, right.nextChannel), right.output)
-        )
+      return Channel.suspend(
+        () => new Channel.HaveOutput(fuseGoRight(left, right.nextChannel), right.output)
       )
     }
     case Channel.NeedInputTypeId: {
-      return new Channel.ChannelM(
-        M.effectTotal(() => fuseGoLeft(right.newChannel, right.fromUpstream, left))
+      return Channel.suspend(() =>
+        fuseGoLeft(right.newChannel, right.fromUpstream, left)
       )
     }
   }
@@ -117,8 +112,8 @@ function fuseGoLeft<R, E, R1, E1, I, C, A, O>(
 ): Conduit<R & R1, E | E1, I, C, A> {
   switch (left._typeId) {
     case Channel.DoneTypeId: {
-      return new Channel.ChannelM(
-        M.effectTotal(() => fuseGoRight(new Channel.Done(left.result), rc(left.result)))
+      return Channel.suspend(() =>
+        fuseGoRight(new Channel.Done(left.result), rc(left.result))
       )
     }
     case Channel.ChannelMTypeId: {
@@ -127,20 +122,17 @@ function fuseGoLeft<R, E, R1, E1, I, C, A, O>(
       )
     }
     case Channel.LeftoverTypeId: {
-      return new Channel.Leftover(
-        new Channel.ChannelM(M.effectTotal(() => fuseGoLeft(rp, rc, left.pipe))),
-        left.leftover
+      return Channel.suspend(
+        () => new Channel.Leftover(fuseGoLeft(rp, rc, left.pipe), left.leftover)
       )
     }
     case Channel.HaveOutputTypeId: {
-      return new Channel.ChannelM(
-        M.effectTotal(() => fuseGoRight(left.nextChannel, rp(left.output)))
-      )
+      return Channel.suspend(() => fuseGoRight(left.nextChannel, rp(left.output)))
     }
     case Channel.NeedInputTypeId: {
       return new Channel.NeedInput(
-        (i) => fuseGoLeft(rp, rc, left.newChannel(i)),
-        (u) => fuseGoLeft(rp, rc, left.fromUpstream(u))
+        (i) => Channel.suspend(() => fuseGoLeft(rp, rc, left.newChannel(i))),
+        (u) => Channel.suspend(() => fuseGoLeft(rp, rc, left.fromUpstream(u)))
       )
     }
   }

@@ -34,6 +34,15 @@ export type Channel<R, E, L, I, O, U, A> =
   | Leftover<R, E, L, I, O, U, A>
 
 /**
+ * Suspend creation of channel via ChannelM & effectTotal
+ */
+export function suspend<R, E, L, I, O, U, A>(
+  f: () => Channel<R, E, L, I, O, U, A>
+): Channel<R, E, L, I, O, U, A> {
+  return new ChannelM(M.effectTotal(f))
+}
+
+/**
  * Channel Type Tags
  */
 export const HaveOutputTypeId = Symbol()
@@ -115,21 +124,15 @@ export function chain_<R, E, R2, E2, L, I, O, O2, U, A, B>(
       return new ChannelM(M.map_(self.nextChannel, (a) => chain_(a, f)))
     }
     case LeftoverTypeId: {
-      return new Leftover(
-        new ChannelM(M.effectTotal(() => chain_(self.pipe, f))),
-        self.leftover
-      )
+      return suspend(() => new Leftover(chain_(self.pipe, f), self.leftover))
     }
     case HaveOutputTypeId: {
-      return new HaveOutput(
-        new ChannelM(M.effectTotal(() => chain_(self.nextChannel, f))),
-        self.output
-      )
+      return suspend(() => new HaveOutput(chain_(self.nextChannel, f), self.output))
     }
     case NeedInputTypeId: {
       return new NeedInput(
-        (i) => chain_(self.newChannel(i), f),
-        (u) => chain_(self.fromUpstream(u), f)
+        (i) => suspend(() => chain_(self.newChannel(i), f)),
+        (u) => suspend(() => chain_(self.fromUpstream(u), f))
       )
     }
   }
@@ -169,30 +172,25 @@ function injectLeftoversGo<R, E, I, O, U, A>(
       return new Done(self.result)
     }
     case LeftoverTypeId: {
-      return new ChannelM(
-        M.effectTotal(() => injectLeftoversGo(L.prepend_(ls, self.leftover), self))
-      )
+      return suspend(() => injectLeftoversGo(L.prepend_(ls, self.leftover), self))
     }
     case ChannelMTypeId: {
       return new ChannelM(M.map_(self.nextChannel, (p) => injectLeftoversGo(ls, p)))
     }
     case HaveOutputTypeId: {
-      return new HaveOutput(
-        new ChannelM(M.effectTotal(() => injectLeftoversGo(ls, self.nextChannel))),
-        self.output
+      return suspend(
+        () => new HaveOutput(injectLeftoversGo(ls, self.nextChannel), self.output)
       )
     }
     case NeedInputTypeId: {
       if (L.isEmpty(ls)) {
         return new NeedInput(
-          (i) => injectLeftoversGo(L.empty(), self.newChannel(i)),
-          (u) => injectLeftoversGo(L.empty(), self.fromUpstream(u))
+          (i) => suspend(() => injectLeftoversGo(L.empty(), self.newChannel(i))),
+          (u) => suspend(() => injectLeftoversGo(L.empty(), self.fromUpstream(u)))
         )
       } else {
-        return new ChannelM(
-          M.effectTotal(() =>
-            injectLeftoversGo(L.tail(ls), self.newChannel(L.unsafeFirst(ls)!))
-          )
+        return suspend(() =>
+          injectLeftoversGo(L.tail(ls), self.newChannel(L.unsafeFirst(ls)!))
         )
       }
     }
