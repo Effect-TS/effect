@@ -1,7 +1,19 @@
 import * as T from "../Effect"
 import { pipe } from "../Function"
+import { tag } from "../Has"
 import * as L from "../Persistent/List"
 import * as S from "./Stream"
+
+const MapServiceTypeId = Symbol()
+
+interface MapService {
+  readonly _typeId: typeof MapServiceTypeId
+  readonly augment: (s: string) => T.UIO<string>
+}
+
+const MapService = tag<MapService>()
+
+const { augment } = T.deriveLifted(MapService)(["augment"], [], [])
 
 console.time("stream")
 
@@ -13,7 +25,9 @@ const stream = pipe(
       S.iterate(n, (n) => n + 1),
       S.takeN(3)
     )
-  )
+  ),
+  S.map((n) => `(${n})`),
+  S.mapEffect(augment)
 )
 
 pipe(
@@ -21,9 +35,12 @@ pipe(
   S.runList,
   T.chain((l) =>
     T.effectTotal(() => {
-      console.log(L.size(l))
       console.log(L.toArray(l))
     })
   ),
+  T.provideService(MapService)({
+    _typeId: MapServiceTypeId,
+    augment: (s) => T.succeed(`[${s}]`)
+  }),
   T.runPromise
 ).then(() => console.timeEnd("stream"))

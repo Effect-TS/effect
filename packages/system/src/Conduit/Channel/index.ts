@@ -30,6 +30,7 @@ import * as L from "../../Persistent/List"
 export interface Channel<R, E, L, I, O, U, A> {
   readonly _channelTypeId: typeof ChannelTypeId
   readonly _R: (_R: R) => void
+  readonly _I: (_I: I) => void
   readonly _E: () => E
   readonly _A: () => A
   readonly _O: () => O
@@ -77,6 +78,7 @@ export class HaveOutput<R, E, L, I, O, U, A> implements Channel<R, E, L, I, O, U
   readonly _typeId: typeof HaveOutputTypeId = HaveOutputTypeId
   readonly _channelTypeId!: typeof ChannelTypeId
   readonly _R!: (_R: R) => void
+  readonly _I!: (_I: I) => void
   readonly _E!: () => E
   readonly _A!: () => A
   readonly _O!: () => O
@@ -101,6 +103,7 @@ export class NeedInput<R, E, L, I, O, U, A> implements Channel<R, E, L, I, O, U,
   readonly _typeId: typeof NeedInputTypeId = NeedInputTypeId
   readonly _channelTypeId!: typeof ChannelTypeId
   readonly _R!: (_R: R) => void
+  readonly _I!: (_I: I) => void
   readonly _E!: () => E
   readonly _A!: () => A
   readonly _O!: () => O
@@ -123,6 +126,7 @@ export class Done<R, E, L, I, O, U, A> implements Channel<R, E, L, I, O, U, A> {
   readonly _typeId: typeof DoneTypeId = DoneTypeId
   readonly _channelTypeId!: typeof ChannelTypeId
   readonly _R!: (_R: R) => void
+  readonly _I!: (_I: I) => void
   readonly _E!: () => E
   readonly _A!: () => A
   readonly _O!: () => O
@@ -143,6 +147,7 @@ export class ChannelM<R, E, L, I, O, U, A> implements Channel<R, E, L, I, O, U, 
   readonly _typeId: typeof ChannelMTypeId = ChannelMTypeId
   readonly _channelTypeId!: typeof ChannelTypeId
   readonly _R!: (_R: R) => void
+  readonly _I!: (_I: I) => void
   readonly _E!: () => E
   readonly _A!: () => A
   readonly _O!: () => O
@@ -163,6 +168,7 @@ export class Leftover<R, E, L, I, O, U, A> implements Channel<R, E, L, I, O, U, 
   readonly _typeId: typeof LeftoverTypeId = LeftoverTypeId
   readonly _channelTypeId!: typeof ChannelTypeId
   readonly _R!: (_R: R) => void
+  readonly _I!: (_I: I) => void
   readonly _E!: () => E
   readonly _A!: () => A
   readonly _O!: () => O
