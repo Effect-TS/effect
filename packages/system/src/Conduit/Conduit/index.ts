@@ -1,3 +1,5 @@
+// tracing: off
+
 import * as E from "../../Either"
 import * as M from "../../Managed"
 import * as Channel from "../Channel"

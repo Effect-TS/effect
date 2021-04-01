@@ -1,3 +1,5 @@
+// tracing: off
+
 import * as FA from "../../FreeAssociative"
 import * as O from "../../Option"
 import * as L from "../../Persistent/List"

@@ -1,3 +1,5 @@
+// tracing: off
+
 import type * as T from "../../Effect"
 import * as E from "../../Either"
 import { tuple } from "../../Function"
@@ -169,8 +171,12 @@ function iterateGo<O>(x: O, f: (x: O) => O): Stream<unknown, never, O> {
 /**
  * Produces an infinite stream of repeated applications of f to x.
  */
-export function iterate<O>(x: O, f: (x: O) => O): Stream<unknown, never, O> {
-  return iterateGo(x, f)
+export function iterate<O>(
+  x: O,
+  f: (x: O) => O,
+  __trace?: string
+): Stream<unknown, never, O> {
+  return new Channel.ChannelM(M.effectTotal(() => iterateGo(x, f), __trace))
 }
 
 /**

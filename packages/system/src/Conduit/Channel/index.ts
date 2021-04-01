@@ -1,3 +1,5 @@
+// tracing: off
+
 import type { Lazy } from "../../Function"
 import * as M from "../../Managed"
 import * as L from "../../Persistent/List"

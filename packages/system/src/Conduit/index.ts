@@ -1,3 +1,4 @@
+import { pretty } from "../Cause"
 import * as T from "../Effect"
 import { pipe } from "../Function"
 import { tag } from "../Has"
@@ -22,7 +23,10 @@ const stream = pipe(
   S.takeN(2),
   S.chain((n) =>
     pipe(
-      S.iterate(n, (n) => n + 1),
+      S.iterate(n, (n) => {
+        throw "ok"
+        return n + 1
+      }),
       S.takeN(3)
     )
   ),
@@ -42,5 +46,10 @@ pipe(
     _typeId: MapServiceTypeId,
     augment: (s) => T.succeed(`[${s}]`)
   }),
-  T.runPromise
-).then(() => console.timeEnd("stream"))
+  T.runPromiseExit
+).then((x) => {
+  console.timeEnd("stream")
+  if (x._tag === "Failure") {
+    console.log(pretty(x.cause))
+  }
+})
