@@ -22,9 +22,7 @@ export class Case<T, K extends PropertyKey = never> implements HasEquals, HasHas
   constructor(args: ConstructorArgs<T, K>) {
     this.#args = args
 
-    for (const key in args) {
-      Object.assign(this, { [key]: args[key] })
-    }
+    Object.assign(this, args)
   }
 
   copy(args: Partial<ConstructorArgs<T, K>>): this {
