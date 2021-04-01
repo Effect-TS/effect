@@ -1,9 +1,11 @@
 // tracing: off
 
-import type * as T from "../../Effect"
+import * as T from "../../Effect"
 import * as E from "../../Either"
+import * as Ex from "../../Exit"
 import { tuple } from "../../Function"
 import * as M from "../../Managed"
+import * as RM from "../../Managed/ReleaseMap"
 import * as NA from "../../NonEmptyArray"
 import * as Channel from "../Channel"
 import * as Conduit from "../Conduit"
@@ -415,4 +417,89 @@ export function chain<R, E, A, B>(
   f: (a: A) => Stream<R, E, B>
 ): <R1, E1>(self: Stream<R1, E1, A>) => Stream<R & R1, E | E1, B> {
   return (self) => chain_(self, f)
+}
+
+/**
+ * Concat the streams first self then that
+ */
+export function concatL_<R, E, A, R1, E1, B>(
+  self: Stream<R, E, A>,
+  that: () => Stream<R1, E1, B>
+): Stream<R & R1, E | E1, A | B> {
+  Channel.concrete(self)
+  switch (self._typeId) {
+    case Channel.DoneTypeId: {
+      return new Channel.ChannelM(
+        new M.Managed(
+          T.accessM(([_, rm]: readonly [unknown, RM.ReleaseMap]) =>
+            T.map_(
+              RM.releaseAll(Ex.unit, T.sequential)(rm),
+              () => [RM.noopFinalizer, that()] as const
+            )
+          )
+        )
+      )
+    }
+    case Channel.HaveOutputTypeId: {
+      return new Channel.HaveOutput(
+        () => concatL_(self.nextChannel(), that),
+        self.output
+      )
+    }
+    case Channel.NeedInputTypeId: {
+      return new Channel.NeedInput(
+        (i) => concatL_(self.newChannel(i), that),
+        (u) => concatL_(self.fromUpstream(u), that)
+      )
+    }
+    case Channel.ChannelMTypeId: {
+      return new Channel.ChannelM(M.map_(self.nextChannel, (p) => concatL_(p, that)))
+    }
+    case Channel.LeftoverTypeId: {
+      return new Channel.Leftover(() => concatL_(self.pipe(), that), self.leftover)
+    }
+  }
+}
+
+/**
+ * Concat the streams first self then that
+ *
+ * @dataFirst concatL_
+ */
+export function concatL<R1, E1, B>(
+  that: () => Stream<R1, E1, B>
+): <R, E, A>(self: Stream<R, E, A>) => Stream<R & R1, E | E1, A | B> {
+  return (self) => concatL_(self, that)
+}
+
+/**
+ * Concat the streams first self then that
+ */
+export function concat_<R, E, A, R1, E1, B>(
+  self: Stream<R, E, A>,
+  that: Stream<R1, E1, B>
+): Stream<R & R1, E | E1, A | B> {
+  return concatL_(self, () => that)
+}
+
+/**
+ * Concat the streams first self then that
+ *
+ * @dataFirst concat_
+ */
+export function concat<R1, E1, B>(
+  that: Stream<R1, E1, B>
+): <R, E, A>(self: Stream<R, E, A>) => Stream<R & R1, E | E1, A | B> {
+  return (self) => concat_(self, that)
+}
+
+/**
+ * Repeats the stream forever
+ */
+export function forever<R, E, A>(self: Stream<R, E, A>): Stream<R, E, A> {
+  Channel.concrete(self)
+  if (self._typeId === Channel.DoneTypeId) {
+    return self
+  }
+  return concatL_(self, () => forever(self))
 }
