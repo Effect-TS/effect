@@ -37,7 +37,7 @@ const stream = pipe(
   S.chain((n) =>
     pipe(
       S.iterate(n, (n) => {
-        //throw "ok"
+        throw "ok"
         return n + 1
       }),
       S.takeN(3)
