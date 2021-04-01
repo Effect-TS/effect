@@ -1,7 +1,10 @@
 // tracing: off
 
+import type * as T from "../../Effect"
+import * as E from "../../Either"
 import type { Lazy } from "../../Function"
 import * as M from "../../Managed"
+import * as O from "../../Option"
 import * as L from "../../Persistent/List"
 
 /*
@@ -45,7 +48,7 @@ export interface Channel<R, E, L, I, O, U, A> {
 }
 
 /**
- * @optimize remove
+ * ^optimize remove
  */
 export function concrete<R, E, L, I, O, U, A>(
   _: Channel<R, E, L, I, O, U, A>
@@ -187,6 +190,96 @@ export class Leftover<R, E, L, I, O, U, A> implements Channel<R, E, L, I, O, U, 
 }
 
 /**
+ * Done
+ */
+export function done<R, E, L, I, O, U, A>(a: A): Channel<R, E, L, I, O, U, A> {
+  return new Done(a)
+}
+
+/**
+ * Wait for a single input value from upstream.
+ */
+export function awaitOption<R, E, L, I, O, U>(): Channel<
+  R,
+  E,
+  L,
+  I,
+  O,
+  U,
+  O.Option<I>
+> {
+  return new NeedInput(
+    (i: I) => new Done(O.some(i)),
+    () => new Done(O.none)
+  )
+}
+
+/**
+ * This is similar to `awaitOption`, but will return the upstream result value as
+ * Left if available
+ */
+export function awaitEither<R, E, L, I, O, U>(): Channel<
+  R,
+  E,
+  L,
+  I,
+  O,
+  U,
+  E.Either<U, I>
+> {
+  return new NeedInput(
+    (i: I) => new Done(E.right(i)),
+    (u: U) => new Done(E.leftW(u))
+  )
+}
+
+/**
+ * Wait for input forever, calling the given inner `Channel` for each piece of
+ * new input. Returns the upstream result type.
+ */
+export function awaitForever<R, E, L, I, O, A, A1>(
+  inner: (i: I) => Channel<R, E, L, I, O, A, A1>
+): Channel<R, E, L, I, O, A, A> {
+  const go: Channel<R, E, L, I, O, A, A> = chain_(
+    awaitEither(),
+    E.fold(
+      (x) => done(x),
+      (x) => chain_(inner(x), () => go)
+    )
+  )
+  return go
+}
+
+/**
+ * Send a single output value downstream. If the downstream ^Channel^
+ * terminates, this ^Channel^ will terminate as well.
+ */
+export function write<R, E, L, I, O, U>(o: O): Channel<R, E, L, I, O, U, void> {
+  return new HaveOutput(() => done(void 0), o)
+}
+
+/**
+ * Send a single output value downstream. If the downstream ^Channel^
+ * terminates, this ^Channel^ will terminate as well.
+ */
+export function writeM<R, E, L, I, O, U>(
+  o: T.Effect<R, E, O>
+): Channel<R, E, L, I, O, U, void> {
+  return new ChannelM(M.map_(M.fromEffect(o), (x) => write(x)))
+}
+
+/**
+ * Provide a single piece of leftover input to be consumed by the next pipe
+ * in the current monadic binding.
+ *
+ * Note: it is highly encouraged to only return leftover values from input
+ * already consumed from upstream.
+ */
+export function leftover<R, E, L, I, O, U>(l: L): Channel<R, E, L, I, O, U, void> {
+  return new Leftover(() => done(void 0), l)
+}
+
+/**
  * Empty channel with unit result
  */
 export const doneUnit: Channel<unknown, never, never, any, any, void, void> = new Done(
@@ -226,7 +319,7 @@ export function chain_<R, E, R2, E2, L, I, O, O2, U, A, B>(
 /**
  * Monadic chain
  *
- * @dataFirst chain_
+ * ^dataFirst chain_
  */
 export function chain<R2, E2, L, I, O2, U, A, B>(
   f: (a: A) => Channel<R2, E2, L, I, O2, U, B>
@@ -269,7 +362,7 @@ export function map_<R, E, L, I, O, U, A, B>(
 /**
  * Map the channel output
  *
- * @dataFirst map_
+ * ^dataFirst map_
  */
 export function map<A, B>(
   f: (a: A) => B
@@ -283,7 +376,7 @@ export function map<A, B>(
  *  Run a pipeline until processing completes.
  */
 export function runChannel<R, E, A>(
-  self: Channel<R, E, never, never, never, void, A>
+  self: Channel<R, E, never, unknown, void, void, A>
 ): M.Managed<R, E, A> {
   // eslint-disable-next-line no-constant-condition
   while (1) {

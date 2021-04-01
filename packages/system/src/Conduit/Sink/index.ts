@@ -10,7 +10,7 @@ import type { Conduit } from "../Conduit/index"
  * Consumes a stream of input values and produces a final result, without
  * producing any output.
  */
-export interface Sink<R, E, I, A> extends Conduit<R, E, I, never, A> {}
+export interface Sink<R, E, I, A> extends Conduit<R, E, I, void, A> {}
 
 function sinkArrayGo<A>(
   fa: FA.FreeAssociative<A>

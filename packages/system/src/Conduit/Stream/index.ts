@@ -6,7 +6,7 @@ import * as Ex from "../../Exit"
 import { tuple } from "../../Function"
 import * as M from "../../Managed"
 import * as RM from "../../Managed/ReleaseMap"
-import * as NA from "../../NonEmptyArray"
+import type * as NA from "../../NonEmptyArray"
 import * as Channel from "../Channel"
 import * as Conduit from "../Conduit"
 import * as Sink from "../Sink"
@@ -15,7 +15,7 @@ import * as Sink from "../Sink"
  * Provides a stream of output values, without consuming any input or
  * producing a final result.
  */
-export interface Stream<R, E, O> extends Conduit.Conduit<R, E, never, O, void> {}
+export interface Stream<R, E, O> extends Conduit.Conduit<R, E, any, O, void> {}
 
 /**
  * Suspend stream creation
@@ -42,13 +42,13 @@ export function takeN(n: number): <R, E, A>(self: Stream<R, E, A>) => Stream<R, 
 
 type ConnectResumeGo<R, E, O, A> = E.Either<
   {
-    rp: (i: O) => Conduit.Conduit<R, E, O, void, A>
-    rc: (u: void) => Conduit.Conduit<R, E, O, void, A>
-    left: Conduit.Conduit<R, E, never, O, void>
+    rp: (i: O) => Sink.Sink<R, E, O, A>
+    rc: (u: void) => Sink.Sink<R, E, O, A>
+    left: Stream<R, E, O>
   },
   {
-    left: Conduit.Conduit<R, E, never, O, void>
-    right: Conduit.Conduit<R, E, O, void, A>
+    left: Stream<R, E, O>
+    right: Sink.Sink<R, E, O, A>
   }
 >
 
@@ -202,11 +202,7 @@ export function fromManaged<R, E, O>(self: M.Managed<R, E, O>): Stream<R, E, O> 
  * downstream component terminates, this call will never return control.
  */
 export function succeedMany<O>(...os: NA.NonEmptyArray<O>): Stream<unknown, never, O> {
-  let x = succeed(NA.head(os))
-  for (const y of NA.tail(os)) {
-    x = Conduit.chain_(x, () => succeed(y))
-  }
-  return x
+  return fromIterable(os)
 }
 
 function fromIterableGo<O>(
@@ -238,82 +234,14 @@ export function fromIterable<O>(it: Iterable<O>): Stream<unknown, never, O> {
 /**
  * Maps the stream output using the effectul function f
  */
-export function mapManaged_<R, R1, E1, E, A, B>(
-  self: Stream<R, E, A>,
-  f: (a: A) => M.Managed<R1, E1, B>
-): Stream<R & R1, E | E1, B> {
-  Channel.concrete(self)
-  switch (self._typeId) {
-    case Channel.DoneTypeId: {
-      return Channel.doneUnit
-    }
-    case Channel.HaveOutputTypeId: {
-      return new Channel.ChannelM(
-        M.map_(
-          f(self.output),
-          (x) => new Channel.HaveOutput(() => mapManaged_(self.nextChannel(), f), x)
-        )
-      )
-    }
-    case Channel.NeedInputTypeId: {
-      return new Channel.NeedInput(
-        (i) => mapManaged_(self.newChannel(i), f),
-        (i) => mapManaged_(self.fromUpstream(i), f)
-      )
-    }
-    case Channel.LeftoverTypeId: {
-      return new Channel.Leftover(() => mapManaged_(self.pipe(), f), self.leftover)
-    }
-    case Channel.ChannelMTypeId: {
-      return new Channel.ChannelM(M.map_(self.nextChannel, (p) => mapManaged_(p, f)))
-    }
-  }
-}
-
-/**
- * Maps the stream output using the effectul function f
- *
- * @dataFirst mapManaged_
- */
-export function mapManaged<R, R1, E1, E, A, B>(
-  f: (a: A) => M.Managed<R1, E1, B>
-): (self: Stream<R, E, A>) => Stream<R & R1, E | E1, B> {
-  return (self) => mapManaged_(self, f)
-}
-
-/**
- * Maps the stream output using the effectul function f
- */
 export function mapEffect_<R, R1, E1, E, A, B>(
   self: Stream<R, E, A>,
   f: (a: A) => T.Effect<R1, E1, B>
 ): Stream<R & R1, E | E1, B> {
-  Channel.concrete(self)
-  switch (self._typeId) {
-    case Channel.DoneTypeId: {
-      return Channel.doneUnit
-    }
-    case Channel.HaveOutputTypeId: {
-      return new Channel.ChannelM(
-        M.map_(
-          M.fromEffect(f(self.output)),
-          (x) => new Channel.HaveOutput(() => mapEffect_(self.nextChannel(), f), x)
-        )
-      )
-    }
-    case Channel.NeedInputTypeId: {
-      return new Channel.NeedInput(
-        (i) => mapEffect_(self.newChannel(i), f),
-        (i) => mapEffect_(self.fromUpstream(i), f)
-      )
-    }
-    case Channel.LeftoverTypeId: {
-      return new Channel.Leftover(() => mapEffect_(self.pipe(), f), self.leftover)
-    }
-    case Channel.ChannelMTypeId: {
-      return new Channel.ChannelM(M.map_(self.nextChannel, (p) => mapEffect_(p, f)))
-    }
-  }
+  return Conduit.fuse_(
+    self,
+    Channel.awaitForever((x) => Channel.writeM(f(x)))
+  )
 }
 
 /**
@@ -334,27 +262,10 @@ export function map_<R, E, A, B>(
   self: Stream<R, E, A>,
   f: (a: A) => B
 ): Stream<R, E, B> {
-  Channel.concrete(self)
-  switch (self._typeId) {
-    case Channel.DoneTypeId: {
-      return Channel.doneUnit
-    }
-    case Channel.HaveOutputTypeId: {
-      return new Channel.HaveOutput(() => map_(self.nextChannel(), f), f(self.output))
-    }
-    case Channel.NeedInputTypeId: {
-      return new Channel.NeedInput(
-        (i) => map_(self.newChannel(i), f),
-        (i) => map_(self.fromUpstream(i), f)
-      )
-    }
-    case Channel.LeftoverTypeId: {
-      return new Channel.Leftover(() => map_(self.pipe(), f), self.leftover)
-    }
-    case Channel.ChannelMTypeId: {
-      return new Channel.ChannelM(M.map_(self.nextChannel, (p) => map_(p, f)))
-    }
-  }
+  return Conduit.fuse_(
+    self,
+    Channel.awaitForever((x) => Channel.write(f(x)))
+  )
 }
 
 /**
@@ -368,34 +279,52 @@ export function map<A, B>(
   return (self) => map_(self, f)
 }
 
-function conduitChainGo<R, E, A, B>(
-  self: Stream<R, E, B>,
-  f: (x: A) => Stream<R, E, B>
-): Conduit.Conduit<R, E, A, B, void> {
-  Channel.concrete(self)
-  switch (self._typeId) {
-    case Channel.DoneTypeId: {
-      return new Channel.NeedInput(
-        (i: A) => conduitChainGo(f(i), f),
-        () => Channel.doneUnit
-      )
-    }
-    case Channel.HaveOutputTypeId: {
-      return new Channel.HaveOutput(
-        () => conduitChainGo(self.nextChannel(), f),
-        self.output
-      )
-    }
-    case Channel.NeedInputTypeId: {
-      throw new Error("Stream should not reqire inputs")
-    }
-    case Channel.LeftoverTypeId: {
-      throw new Error(`Stream should not have leftover: ${self.leftover}`)
-    }
-    case Channel.ChannelMTypeId: {
-      return new Channel.ChannelM(M.map_(self.nextChannel, (p) => conduitChainGo(p, f)))
-    }
-  }
+/**
+ * Maps the stream output using f
+ */
+export function mapConcat_<R, E, A, B>(
+  self: Stream<R, E, A>,
+  f: (a: A) => Iterable<B>
+): Stream<R, E, B> {
+  return Conduit.fuse_(
+    self,
+    Channel.awaitForever((x) => fromIterable(f(x)))
+  )
+}
+
+/**
+ * Maps the stream output using f
+ *
+ * @dataFirst mapConcat_
+ */
+export function mapConcat<A, B>(
+  f: (a: A) => Iterable<B>
+): <R, E>(self: Stream<R, E, A>) => Stream<R, E, B> {
+  return (self) => mapConcat_(self, f)
+}
+
+/**
+ * Maps the stream output using f
+ */
+export function mapConcatM_<R, E, A, R1, E1, B>(
+  self: Stream<R, E, A>,
+  f: (a: A) => M.Managed<R1, E1, Iterable<B>>
+): Stream<R & R1, E | E1, B> {
+  return Conduit.fuse_(
+    self,
+    Channel.awaitForever((x) => new Channel.ChannelM(M.map_(f(x), fromIterable)))
+  )
+}
+
+/**
+ * Maps the stream output using f
+ *
+ * @dataFirst mapConcatM_
+ */
+export function mapConcatM<R1, E1, A, B>(
+  f: (a: A) => M.Managed<R1, E1, Iterable<B>>
+): <R, E>(self: Stream<R, E, A>) => Stream<R & R1, E | E1, B> {
+  return (self) => mapConcatM_(self, f)
 }
 
 /**
@@ -405,7 +334,7 @@ export function chain_<R, E, R1, E1, A, B>(
   self: Stream<R, E, A>,
   f: (a: A) => Stream<R1, E1, B>
 ): Stream<R & R1, E | E1, B> {
-  return Conduit.fuse_(self, conduitChainGo(Channel.doneUnit, f))
+  return Conduit.fuse_(self, Channel.awaitForever(f))
 }
 
 /**
