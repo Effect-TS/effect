@@ -199,36 +199,6 @@ export function succeedMany<O>(...os: NA.NonEmptyArray<O>): Stream<unknown, neve
   return x
 }
 
-function conduitChainGo<R, E, A, B>(
-  self: Stream<R, E, B>,
-  f: (x: A) => Stream<R, E, B>
-): Conduit.Conduit<R, E, A, B, void> {
-  Channel.concrete(self)
-  switch (self._typeId) {
-    case Channel.DoneTypeId: {
-      return new Channel.NeedInput(
-        (i: A) => conduitChainGo(f(i), f),
-        () => Channel.doneUnit
-      )
-    }
-    case Channel.HaveOutputTypeId: {
-      return new Channel.HaveOutput(
-        () => conduitChainGo(self.nextChannel(), f),
-        self.output
-      )
-    }
-    case Channel.NeedInputTypeId: {
-      throw new Error("Stream should not reqire inputs")
-    }
-    case Channel.LeftoverTypeId: {
-      throw new Error(`Stream should not have leftover: ${self.leftover}`)
-    }
-    case Channel.ChannelMTypeId: {
-      return new Channel.ChannelM(M.map_(self.nextChannel, (p) => conduitChainGo(p, f)))
-    }
-  }
-}
-
 /**
  * Maps the stream output using the effectul function f
  */
@@ -354,6 +324,36 @@ export function map<A, B>(
   f: (a: A) => B
 ): <R, E>(self: Stream<R, E, A>) => Stream<R, E, B> {
   return (self) => map_(self, f)
+}
+
+function conduitChainGo<R, E, A, B>(
+  self: Stream<R, E, B>,
+  f: (x: A) => Stream<R, E, B>
+): Conduit.Conduit<R, E, A, B, void> {
+  Channel.concrete(self)
+  switch (self._typeId) {
+    case Channel.DoneTypeId: {
+      return new Channel.NeedInput(
+        (i: A) => conduitChainGo(f(i), f),
+        () => Channel.doneUnit
+      )
+    }
+    case Channel.HaveOutputTypeId: {
+      return new Channel.HaveOutput(
+        () => conduitChainGo(self.nextChannel(), f),
+        self.output
+      )
+    }
+    case Channel.NeedInputTypeId: {
+      throw new Error("Stream should not reqire inputs")
+    }
+    case Channel.LeftoverTypeId: {
+      throw new Error(`Stream should not have leftover: ${self.leftover}`)
+    }
+    case Channel.ChannelMTypeId: {
+      return new Channel.ChannelM(M.map_(self.nextChannel, (p) => conduitChainGo(p, f)))
+    }
+  }
 }
 
 /**
