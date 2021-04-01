@@ -9,9 +9,9 @@ import type { HasHash } from "./HasHash"
 import { hashSym } from "./HasHash"
 
 export type ConstructorArgs<T, K extends PropertyKey> = Compute<
-  {} extends Omit<T, "#args" | "copy" | "toJSON" | "toString" | symbol | K>
+  {} extends Omit<T, "copy" | "toJSON" | "toString" | symbol | K>
     ? void
-    : Omit<T, "#args" | "copy" | "toJSON" | "toString" | symbol | K>,
+    : Omit<T, "copy" | "toJSON" | "toString" | symbol | K>,
   "flat"
 >
 
