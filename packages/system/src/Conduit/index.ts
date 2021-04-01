@@ -11,17 +11,17 @@ const stream = pipe(
   S.fromManaged(
     M.makeExit_(
       T.effectTotal(() => {
-        console.log("open 1")
+        //console.log("open 1")
         return 1
       }),
       () =>
         T.effectTotal(() => {
-          console.log("close 1")
+          //console.log("close 1")
         })
     )
   ),
   S.forever,
-  S.takeN(3)
+  S.takeN(100000)
 )
 
 pipe(
