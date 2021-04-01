@@ -27,12 +27,27 @@ import * as L from "../../Persistent/List"
  * result (`A`). On the receiving end of a `Channel`, these become the `I` and `U`
  * parameters.
  */
-export type Channel<R, E, L, I, O, U, A> =
-  | HaveOutput<R, E, L, I, O, U, A>
-  | NeedInput<R, E, L, I, O, U, A>
-  | Done<R, E, A>
-  | ChannelM<R, E, L, I, O, U, A>
-  | Leftover<R, E, L, I, O, U, A>
+export interface Channel<R, E, L, I, O, U, A> {
+  readonly _channelTypeId: typeof ChannelTypeId
+  readonly _R: (_R: R) => void
+  readonly _E: () => E
+  readonly _A: () => A
+  readonly _C:
+    | HaveOutput<R, E, L, I, O, U, A>
+    | NeedInput<R, E, L, I, O, U, A>
+    | Done<R, E, L, I, O, U, A>
+    | ChannelM<R, E, L, I, O, U, A>
+    | Leftover<R, E, L, I, O, U, A>
+}
+
+/**
+ * @optimize remove
+ */
+export function concrete<R, E, L, I, O, U, A>(
+  _: Channel<R, E, L, I, O, U, A>
+): asserts _ is typeof _["_C"] {
+  //
+}
 
 /**
  * Suspend creation of channel via ChannelM & effectTotal
@@ -46,6 +61,7 @@ export function suspend<R, E, L, I, O, U, A>(
 /**
  * Channel Type Tags
  */
+export const ChannelTypeId = Symbol()
 export const HaveOutputTypeId = Symbol()
 export const NeedInputTypeId = Symbol()
 export const DoneTypeId = Symbol()
@@ -56,10 +72,18 @@ export const LeftoverTypeId = Symbol()
  * Provide new output to be sent downstream. This constructor has two
  * fields: the next `Channel` to be used and the output value.
  */
-export class HaveOutput<R, E, L, I, O, U, A> {
+export class HaveOutput<R, E, L, I, O, U, A> implements Channel<R, E, L, I, O, U, A> {
   readonly _typeId: typeof HaveOutputTypeId = HaveOutputTypeId
-  readonly _R!: (_: R) => void
+  readonly _channelTypeId!: typeof ChannelTypeId
+  readonly _R!: (_R: R) => void
   readonly _E!: () => E
+  readonly _A!: () => A
+  readonly _C!:
+    | HaveOutput<R, E, L, I, O, U, A>
+    | NeedInput<R, E, L, I, O, U, A>
+    | Done<R, E, L, I, O, U, A>
+    | ChannelM<R, E, L, I, O, U, A>
+    | Leftover<R, E, L, I, O, U, A>
   constructor(
     readonly nextChannel: Lazy<Channel<R, E, L, I, O, U, A>>,
     readonly output: O
@@ -71,10 +95,18 @@ export class HaveOutput<R, E, L, I, O, U, A> {
  * value and provides a new `Channel`. The second takes an upstream result
  * value, which indicates that upstream is producing no more results
  */
-export class NeedInput<R, E, L, I, O, U, A> {
+export class NeedInput<R, E, L, I, O, U, A> implements Channel<R, E, L, I, O, U, A> {
   readonly _typeId: typeof NeedInputTypeId = NeedInputTypeId
-  readonly _R!: (_: R) => void
+  readonly _channelTypeId!: typeof ChannelTypeId
+  readonly _R!: (_R: R) => void
   readonly _E!: () => E
+  readonly _A!: () => A
+  readonly _C!:
+    | HaveOutput<R, E, L, I, O, U, A>
+    | NeedInput<R, E, L, I, O, U, A>
+    | Done<R, E, L, I, O, U, A>
+    | ChannelM<R, E, L, I, O, U, A>
+    | Leftover<R, E, L, I, O, U, A>
   constructor(
     readonly newChannel: (i: I) => Channel<R, E, L, I, O, U, A>,
     readonly fromUpstream: (u: U) => Channel<R, E, L, I, O, U, A>
@@ -84,10 +116,18 @@ export class NeedInput<R, E, L, I, O, U, A> {
 /**
  * Processing with this `Channel` is complete, providing the final result.
  */
-export class Done<R, E, A> {
+export class Done<R, E, L, I, O, U, A> implements Channel<R, E, L, I, O, U, A> {
   readonly _typeId: typeof DoneTypeId = DoneTypeId
-  readonly _R!: (_: R) => void
+  readonly _channelTypeId!: typeof ChannelTypeId
+  readonly _R!: (_R: R) => void
   readonly _E!: () => E
+  readonly _A!: () => A
+  readonly _C!:
+    | HaveOutput<R, E, L, I, O, U, A>
+    | NeedInput<R, E, L, I, O, U, A>
+    | Done<R, E, L, I, O, U, A>
+    | ChannelM<R, E, L, I, O, U, A>
+    | Leftover<R, E, L, I, O, U, A>
   constructor(readonly result: A) {}
 }
 
@@ -95,10 +135,18 @@ export class Done<R, E, A> {
  * Provide new output to be sent downstream. This constructor has two
  * fields: the next `Channel` to be used and the output value.
  */
-export class ChannelM<R, E, L, I, O, U, A> {
+export class ChannelM<R, E, L, I, O, U, A> implements Channel<R, E, L, I, O, U, A> {
   readonly _typeId: typeof ChannelMTypeId = ChannelMTypeId
-  readonly _R!: (_: R) => void
+  readonly _channelTypeId!: typeof ChannelTypeId
+  readonly _R!: (_R: R) => void
   readonly _E!: () => E
+  readonly _A!: () => A
+  readonly _C!:
+    | HaveOutput<R, E, L, I, O, U, A>
+    | NeedInput<R, E, L, I, O, U, A>
+    | Done<R, E, L, I, O, U, A>
+    | ChannelM<R, E, L, I, O, U, A>
+    | Leftover<R, E, L, I, O, U, A>
   constructor(readonly nextChannel: M.Managed<R, E, Channel<R, E, L, I, O, U, A>>) {}
 }
 
@@ -106,10 +154,18 @@ export class ChannelM<R, E, L, I, O, U, A> {
  * Provide new output to be sent downstream. This constructor has two
  * fields: the next `Channel` to be used and the output value.
  */
-export class Leftover<R, E, L, I, O, U, A> {
+export class Leftover<R, E, L, I, O, U, A> implements Channel<R, E, L, I, O, U, A> {
   readonly _typeId: typeof LeftoverTypeId = LeftoverTypeId
-  readonly _R!: (_: R) => void
+  readonly _channelTypeId!: typeof ChannelTypeId
+  readonly _R!: (_R: R) => void
   readonly _E!: () => E
+  readonly _A!: () => A
+  readonly _C!:
+    | HaveOutput<R, E, L, I, O, U, A>
+    | NeedInput<R, E, L, I, O, U, A>
+    | Done<R, E, L, I, O, U, A>
+    | ChannelM<R, E, L, I, O, U, A>
+    | Leftover<R, E, L, I, O, U, A>
   constructor(
     readonly pipe: Lazy<Channel<R, E, L, I, O, U, A>>,
     readonly leftover: L
@@ -130,6 +186,7 @@ export function chain_<R, E, R2, E2, L, I, O, O2, U, A, B>(
   self: Channel<R, E, L, I, O, U, A>,
   f: (a: A) => Channel<R2, E2, L, I, O2, U, B>
 ): Channel<R & R2, E | E2, L, I, O | O2, U, B> {
+  concrete(self)
   switch (self._typeId) {
     case DoneTypeId: {
       return f(self.result)
@@ -159,6 +216,7 @@ export function map_<R, E, L, I, O, U, A, B>(
   self: Channel<R, E, L, I, O, U, A>,
   f: (a: A) => B
 ): Channel<R, E, L, I, O, U, B> {
+  concrete(self)
   switch (self._typeId) {
     case DoneTypeId: {
       return new Done(f(self.result))
@@ -189,6 +247,7 @@ export function runChannel<R, E, A>(
 ): M.Managed<R, E, A> {
   // eslint-disable-next-line no-constant-condition
   while (1) {
+    concrete(self)
     switch (self._typeId) {
       case DoneTypeId: {
         return M.succeed(self.result)
@@ -216,35 +275,39 @@ function injectLeftoversGo<R, E, I, O, U, A>(
   ls: L.List<I>,
   self: Channel<R, E, I, I, O, U, A>
 ): Channel<R, E, never, I, O, U, A> {
-  switch (self._typeId) {
-    case DoneTypeId: {
-      return new Done(self.result)
-    }
-    case LeftoverTypeId: {
-      return suspend(() => injectLeftoversGo(L.prepend_(ls, self.leftover), self))
-    }
-    case ChannelMTypeId: {
-      return new ChannelM(M.map_(self.nextChannel, (p) => injectLeftoversGo(ls, p)))
-    }
-    case HaveOutputTypeId: {
-      return new HaveOutput(
-        () => injectLeftoversGo(ls, self.nextChannel()),
-        self.output
-      )
-    }
-    case NeedInputTypeId: {
-      if (L.isEmpty(ls)) {
-        return new NeedInput(
-          (i) => injectLeftoversGo(L.empty(), self.newChannel(i)),
-          (u) => injectLeftoversGo(L.empty(), self.fromUpstream(u))
-        )
-      } else {
-        return suspend(() =>
-          injectLeftoversGo(L.tail(ls), self.newChannel(L.unsafeFirst(ls)!))
-        )
+  // eslint-disable-next-line no-constant-condition
+  while (1) {
+    const k = self
+    concrete(k)
+    switch (k._typeId) {
+      case DoneTypeId: {
+        return new Done(k.result)
+      }
+      case LeftoverTypeId: {
+        ls = L.prepend_(ls, k.leftover)
+        break
+      }
+      case ChannelMTypeId: {
+        return new ChannelM(M.map_(k.nextChannel, (p) => injectLeftoversGo(ls, p)))
+      }
+      case HaveOutputTypeId: {
+        return new HaveOutput(() => injectLeftoversGo(ls, k.nextChannel()), k.output)
+      }
+      case NeedInputTypeId: {
+        if (L.isEmpty(ls)) {
+          return new NeedInput(
+            (i) => injectLeftoversGo(L.empty(), k.newChannel(i)),
+            (u) => injectLeftoversGo(L.empty(), k.fromUpstream(u))
+          )
+        } else {
+          self = k.newChannel(L.unsafeFirst(ls)!)
+          ls = L.tail(ls)
+        }
+        break
       }
     }
   }
+  throw new Error("Bug")
 }
 
 /**

@@ -8,7 +8,8 @@ import * as Channel from "../Channel"
  * of output values `O`, perform actions, and produce a final result `R`.
  * The type synonyms provided here are simply wrappers around this type.
  */
-export type Conduit<R, E, I, O, A> = Channel.Channel<R, E, I, I, O, void, A>
+export interface Conduit<R, E, I, O, A>
+  extends Channel.Channel<R, E, I, I, O, void, A> {}
 
 function isolateGo<A>(n: number): Conduit<unknown, never, A, A, void> {
   if (n <= 0) {
@@ -94,6 +95,7 @@ function fuseGo<R, E, I, C, A, O>(
         const rp = input.left.rp
         const rc = input.left.rc
         const left = input.left.left
+        Channel.concrete(left)
         switch (left._typeId) {
           case Channel.DoneTypeId: {
             input = E.right({
@@ -129,7 +131,7 @@ function fuseGo<R, E, I, C, A, O>(
       case "Right": {
         const right = input.right.right
         const left = input.right.left
-
+        Channel.concrete(right)
         switch (right._typeId) {
           case Channel.DoneTypeId: {
             return new Channel.Done(right.result)

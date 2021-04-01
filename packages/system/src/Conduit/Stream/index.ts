@@ -11,7 +11,7 @@ import * as Sink from "../Sink"
  * Provides a stream of output values, without consuming any input or
  * producing a final result.
  */
-export type Stream<R, E, O> = Conduit.Conduit<R, E, never, O, void>
+export interface Stream<R, E, O> extends Conduit.Conduit<R, E, never, O, void> {}
 
 /**
  * Suspend stream creation
@@ -56,6 +56,7 @@ function connectResumeGo<R, E, O, A>(
         const rp = input.left.rp
         const rc = input.left.rc
         const left = input.left.left
+        Channel.concrete(left)
         switch (left._typeId) {
           case Channel.DoneTypeId: {
             input = E.right({
@@ -87,6 +88,7 @@ function connectResumeGo<R, E, O, A>(
       case "Right": {
         const left = input.right.left
         const right = input.right.right
+        Channel.concrete(right)
         switch (right._typeId) {
           case Channel.HaveOutputTypeId: {
             throw new Error(`Sink should not produce outputs: ${right.output}`)
@@ -201,6 +203,7 @@ function conduitChainGo<R, E, A, B>(
   self: Stream<R, E, B>,
   f: (x: A) => Stream<R, E, B>
 ): Conduit.Conduit<R, E, A, B, void> {
+  Channel.concrete(self)
   switch (self._typeId) {
     case Channel.DoneTypeId: {
       return new Channel.NeedInput(
