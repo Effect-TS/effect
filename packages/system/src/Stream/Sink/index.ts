@@ -12,6 +12,7 @@ import { identity, pipe } from "../../Function"
 import * as L from "../../Layer"
 import type * as MP from "../../Map"
 import * as O from "../../Option"
+import * as List from "../../Persistent/List"
 import { matchTag } from "../../Utils"
 import * as T from "../_internal/effect"
 import * as F from "../_internal/fiber"
@@ -1148,6 +1149,15 @@ export function accessM<R, R2, E, I, L, Z>(
  */
 export function collectAll<A>(): Sink<unknown, never, A, never, A.Chunk<A>> {
   return reduceLeftChunks(A.empty as A.Chunk<A>)((s, i: A.Chunk<A>) => [...s, ...i])
+}
+
+/**
+ * A sink that collects all of its inputs into an list.
+ */
+export function collectAllToList<A>(): Sink<unknown, never, A, never, List.List<A>> {
+  return reduceLeftChunks(List.empty() as List.List<A>)((s, i: A.Chunk<A>) =>
+    List.concat_(s, List.from(i))
+  )
 }
 
 /**

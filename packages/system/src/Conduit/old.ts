@@ -3,25 +3,25 @@ import * as T from "../Effect"
 import { pipe } from "../Function"
 import * as M from "../Managed"
 import * as L from "../Persistent/List"
-import * as S from "./Stream"
+import * as S from "../Stream"
 
 console.time("stream")
 
 const stream = pipe(
-  S.fromManaged(
+  S.managed(
     M.makeExit_(
       T.effectTotal(() => {
-        console.log("open 1")
+        //console.log("open 1")
         return 1
       }),
       () =>
         T.effectTotal(() => {
-          console.log("close 1")
+          //console.log("close 1")
         })
     )
   ),
   S.forever,
-  S.takeN(3)
+  S.take(100000)
 )
 
 pipe(
