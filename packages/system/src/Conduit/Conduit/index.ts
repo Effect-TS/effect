@@ -131,8 +131,8 @@ function fuseGoLeft<R, E, R1, E1, I, C, A, O>(
     }
     case Channel.NeedInputTypeId: {
       return new Channel.NeedInput(
-        (i) => Channel.suspend(() => fuseGoLeft(rp, rc, left.newChannel(i))),
-        (u) => Channel.suspend(() => fuseGoLeft(rp, rc, left.fromUpstream(u)))
+        (i) => fuseGoLeft(rp, rc, left.newChannel(i)),
+        (u) => fuseGoLeft(rp, rc, left.fromUpstream(u))
       )
     }
   }

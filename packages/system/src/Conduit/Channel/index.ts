@@ -131,8 +131,8 @@ export function chain_<R, E, R2, E2, L, I, O, O2, U, A, B>(
     }
     case NeedInputTypeId: {
       return new NeedInput(
-        (i) => suspend(() => chain_(self.newChannel(i), f)),
-        (u) => suspend(() => chain_(self.fromUpstream(u), f))
+        (i) => chain_(self.newChannel(i), f),
+        (u) => chain_(self.fromUpstream(u), f)
       )
     }
   }
@@ -185,8 +185,8 @@ function injectLeftoversGo<R, E, I, O, U, A>(
     case NeedInputTypeId: {
       if (L.isEmpty(ls)) {
         return new NeedInput(
-          (i) => suspend(() => injectLeftoversGo(L.empty(), self.newChannel(i))),
-          (u) => suspend(() => injectLeftoversGo(L.empty(), self.fromUpstream(u)))
+          (i) => injectLeftoversGo(L.empty(), self.newChannel(i)),
+          (u) => injectLeftoversGo(L.empty(), self.fromUpstream(u))
         )
       } else {
         return suspend(() =>
