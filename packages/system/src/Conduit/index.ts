@@ -2,6 +2,7 @@ import { pretty } from "../Cause"
 import * as T from "../Effect"
 import { pipe } from "../Function"
 import { tag } from "../Has"
+import * as I from "../Iterable"
 import * as M from "../Managed"
 import * as L from "../Persistent/List"
 import * as S from "./Stream"
@@ -32,12 +33,12 @@ const stream = pipe(
         })
     )
   ),
-  S.chain((x) => S.iterate(x, (n) => n + 1)),
+  S.chain((x) => S.fromIterable(I.unfold(x, (n) => n + 1))),
   S.takeN(2),
   S.chain((n) =>
     pipe(
       S.iterate(n, (n) => {
-        throw "ok"
+        //throw "ok"
         return n + 1
       }),
       S.takeN(3)

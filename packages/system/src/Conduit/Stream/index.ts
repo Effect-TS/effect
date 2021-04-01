@@ -207,6 +207,32 @@ export function succeedMany<O>(...os: NA.NonEmptyArray<O>): Stream<unknown, neve
   return x
 }
 
+function fromIterableGo<O>(
+  iterator: Iterator<O, any, undefined>,
+  next: IteratorResult<O, any>
+): Stream<unknown, never, O> {
+  if (next.done) {
+    return Channel.doneUnit
+  } else {
+    return new Channel.HaveOutput(
+      () => fromIterableGo(iterator, iterator.next()),
+      next.value
+    )
+  }
+}
+
+/**
+ * Converts an iterable into a stream (lazy)
+ */
+export function fromIterable<O>(it: Iterable<O>): Stream<unknown, never, O> {
+  return new Channel.ChannelM(
+    M.effectTotal(() => {
+      const iterator = it[Symbol.iterator]()
+      return fromIterableGo(iterator, iterator.next())
+    })
+  )
+}
+
 /**
  * Maps the stream output using the effectul function f
  */

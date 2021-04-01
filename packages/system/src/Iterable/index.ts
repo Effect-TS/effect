@@ -224,3 +224,19 @@ export function partitionMap<A, A1, A2>(f: (a: A) => Either<A1, A2>) {
   return (as: Iterable<A>): Separated<Iterable<A1>, Iterable<A2>> =>
     A.separate(Array.from(map_(as, f)))
 }
+
+/**
+ * Infinite sequence produced by repeated application of f to a
+ */
+export function unfold<A>(a: A, f: (a: A) => A): Iterable<A> {
+  return {
+    *[Symbol.iterator]() {
+      yield a
+      let current = a
+      while (true) {
+        current = f(a)
+        yield current
+      }
+    }
+  }
+}
