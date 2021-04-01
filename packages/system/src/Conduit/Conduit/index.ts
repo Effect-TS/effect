@@ -14,7 +14,7 @@ function isolateGo<A>(n: number): Conduit<unknown, never, A, A, void> {
     return new Channel.Done(void 0)
   }
   return new Channel.NeedInput(
-    (i) => Channel.suspend(() => new Channel.HaveOutput(isolateGo(n - 1), i)),
+    (i) => new Channel.HaveOutput(isolateGo(n - 1), i),
     () => new Channel.Done(void 0)
   )
 }
