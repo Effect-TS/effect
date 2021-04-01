@@ -29,6 +29,8 @@ export function takeN_<R, E, A>(self: Stream<R, E, A>, n: number): Stream<R, E, 
 
 /**
  * Take only the first N values from the stream
+ *
+ * @dataFirst takeN_
  */
 export function takeN(n: number): <R, E, A>(self: Stream<R, E, A>) => Stream<R, E, A> {
   return (self) => takeN_(self, n)
@@ -236,6 +238,8 @@ export function mapManaged_<R, R1, E1, E, A, B>(
 
 /**
  * Maps the stream output using the effectul function f
+ *
+ * @dataFirst mapManaged_
  */
 export function mapManaged<R, R1, E1, E, A, B>(
   f: (a: A) => M.Managed<R1, E1, B>
@@ -280,6 +284,8 @@ export function mapEffect_<R, R1, E1, E, A, B>(
 
 /**
  * Maps the stream output using the effectul function f
+ *
+ * @dataFirst mapEffect_
  */
 export function mapEffect<R, R1, E1, E, A, B>(
   f: (a: A) => T.Effect<R1, E1, B>
@@ -319,6 +325,8 @@ export function map_<R, E, A, B>(
 
 /**
  * Maps the stream output using f
+ *
+ * @dataFirst map_
  */
 export function map<A, B>(
   f: (a: A) => B
@@ -368,6 +376,8 @@ export function chain_<R, E, R1, E1, A, B>(
 
 /**
  * Monadic chain
+ *
+ * @dataFirst chain_
  */
 export function chain<R, E, A, B>(
   f: (a: A) => Stream<R, E, B>

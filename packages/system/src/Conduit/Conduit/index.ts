@@ -11,22 +11,18 @@ import * as Channel from "../Channel"
 export interface Conduit<R, E, I, O, A>
   extends Channel.Channel<R, E, I, I, O, void, A> {}
 
-function isolateGo<A>(n: number): Conduit<unknown, never, A, A, void> {
-  if (n <= 0) {
-    return Channel.doneUnit
-  }
-  return new Channel.NeedInput(
-    (i) => new Channel.HaveOutput(() => isolateGo(n - 1), i),
-    () => Channel.doneUnit
-  )
-}
-
 /**
  * Ensure that the inner sink consumes no more than the given number of
  * values.
  */
 export function isolate<A>(n: number): Conduit<unknown, never, A, A, void> {
-  return isolateGo(n)
+  if (n <= 0) {
+    return Channel.doneUnit
+  }
+  return new Channel.NeedInput(
+    (i) => new Channel.HaveOutput(() => isolate(n - 1), i),
+    () => Channel.doneUnit
+  )
 }
 
 /**
@@ -48,6 +44,8 @@ export function chain_<R, E, R1, E1, O1, I, O, A, B>(
 
 /**
  * Monadic chain
+ *
+ * @dataFirst chain_
  */
 export function chain<R, E, I, O, A, B>(
   f: (a: A) => Conduit<R, E, I, O, B>
@@ -58,7 +56,7 @@ export function chain<R, E, I, O, A, B>(
 }
 
 /**
- * Functor map
+ * Map the Conduit result type
  */
 export function map_<R, E, I, O, A, B>(
   self: Conduit<R, E, I, O, A>,
@@ -68,7 +66,9 @@ export function map_<R, E, I, O, A, B>(
 }
 
 /**
- * Functor map
+ * Map the Conduit result type
+ *
+ * @dataFirst map_
  */
 export function map<A, B>(
   f: (a: A) => B
@@ -166,7 +166,7 @@ function fuseGo<R, E, I, C, A, O>(
   throw new Error("Bug")
 }
 
-/*
+/**
  * Combine two `Conduit`s together into a new `Conduit` (aka 'fuse').
  *
  * Output from the upstream (left) conduit will be fed into the
@@ -175,22 +175,24 @@ function fuseGo<R, E, I, C, A, O>(
  * Leftover data returned from the right `Conduit` will be discarded.
  */
 export function fuse_<R, E, R1, E1, I, O, C, A>(
-  self: Conduit<R, E, I, O, void>,
-  that: Conduit<R1, E1, O, C, A>
+  left: Conduit<R, E, I, O, void>,
+  right: Conduit<R1, E1, O, C, A>
 ): Conduit<R & R1, E | E1, I, C, A> {
-  return fuseGo<R & R1, E | E1, I, C, A, O>(E.right({ left: self, right: that }))
+  return fuseGo<R & R1, E | E1, I, C, A, O>(E.right({ left, right }))
 }
 
-/*
+/**
  * Combine two `Conduit`s together into a new `Conduit` (aka 'fuse').
  *
  * Output from the upstream (left) conduit will be fed into the
  * downstream (right) conduit. Processing will terminate when
  * downstream (right) returns.
  * Leftover data returned from the right `Conduit` will be discarded.
+ *
+ * @dataFirst fuse_
  */
 export function fuse<R, E, O, C, A>(
-  that: Conduit<R, E, O, C, A>
-): <R1, E1, I>(self: Conduit<R1, E1, I, O, void>) => Conduit<R & R1, E | E1, I, C, A> {
-  return (self) => fuse_(self, that)
+  right: Conduit<R, E, O, C, A>
+): <R1, E1, I>(left: Conduit<R1, E1, I, O, void>) => Conduit<R & R1, E | E1, I, C, A> {
+  return (self) => fuse_(self, right)
 }

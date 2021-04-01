@@ -223,6 +223,19 @@ export function chain_<R, E, R2, E2, L, I, O, O2, U, A, B>(
 
 /**
  * Monadic chain
+ *
+ * @dataFirst chain_
+ */
+export function chain<R2, E2, L, I, O2, U, A, B>(
+  f: (a: A) => Channel<R2, E2, L, I, O2, U, B>
+): <R, E, O>(
+  self: Channel<R, E, L, I, O, U, A>
+) => Channel<R & R2, E | E2, L, I, O | O2, U, B> {
+  return (self) => chain_(self, f)
+}
+
+/**
+ * Map the channel output
  */
 export function map_<R, E, L, I, O, U, A, B>(
   self: Channel<R, E, L, I, O, U, A>,
@@ -249,6 +262,19 @@ export function map_<R, E, L, I, O, U, A, B>(
       )
     }
   }
+}
+
+/**
+ * Map the channel output
+ *
+ * @dataFirst map_
+ */
+export function map<A, B>(
+  f: (a: A) => B
+): <R, E, L, I, O, U>(
+  self: Channel<R, E, L, I, O, U, A>
+) => Channel<R, E, L, I, O, U, B> {
+  return (self) => map_(self, f)
 }
 
 /**
