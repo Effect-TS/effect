@@ -4,7 +4,6 @@ import * as T from "../../Effect"
 import * as E from "../../Either"
 import { tuple } from "../../Function"
 import * as M from "../../Managed"
-import type * as NA from "../../NonEmptyArray"
 import * as Channel from "../Channel"
 import * as Pipeline from "../Pipeline"
 import * as Sink from "../Sink"
@@ -16,10 +15,35 @@ import * as Sink from "../Sink"
 export interface Stream<R, E, O> extends Pipeline.Pipeline<R, E, any, O, void> {}
 
 /**
+ * Combine two `Pipeline`s together into a new `Pipeline` (aka 'fuse').
+ *
+ * Output from the upstream (left) conduit will be fed into the
+ * downstream (right) conduit. Processing will terminate when
+ * downstream (right) returns.
+ * Leftover data returned from the right `Pipeline` will be discarded.
+ */
+export const via_: <R, E, R1, E1, A, O>(
+  left: Stream<R, E, A>,
+  right: Pipeline.Pipeline<R1, E1, A, O, void>
+) => Stream<R & R1, E | E1, O> = Pipeline.fuse_
+
+/**
+ * Combine two `Pipeline`s together into a new `Pipeline` (aka 'fuse').
+ *
+ * Output from the upstream (left) conduit will be fed into the
+ * downstream (right) conduit. Processing will terminate when
+ * downstream (right) returns.
+ * Leftover data returned from the right `Pipeline` will be discarded.
+ */
+export const via: <R1, E1, A, O>(
+  right: Pipeline.Pipeline<R1, E1, A, O, void>
+) => <R, E>(left: Stream<R, E, A>) => Stream<R & R1, E | E1, O> = Pipeline.fuse
+
+/**
  * Take only the first N values from the stream
  */
 export function takeN_<R, E, A>(self: Stream<R, E, A>, n: number): Stream<R, E, A> {
-  return Pipeline.fuse_(self, Pipeline.isolate(n))
+  return via_(self, Pipeline.isolate(n))
 }
 
 /**
@@ -153,66 +177,36 @@ export function runDrain<R, E, O>(self: Stream<R, E, O>) {
  * Send a single output value downstream. If the downstream `Channel`
  * terminates, this `Channel` will terminate as well.
  */
-export function write<O>(o: O): Stream<unknown, never, O> {
-  return Channel.haveOutput(() => Channel.unit, o)
-}
+export const write: <O>(o: O) => Stream<unknown, never, O> = Channel.write
 
 /**
  * Send a single output value downstream. If the downstream `Channel`
  * terminates, this `Channel` will terminate as well.
  */
-export function writeEffect<R, E, O>(o: T.Effect<R, E, O>): Stream<R, E, O> {
-  return Channel.effect(T.map_(o, write))
-}
-
-function iterateGo<O>(x: O, f: (x: O) => O): Stream<unknown, never, O> {
-  return Channel.haveOutput(() => iterateGo(f(x), f), x)
-}
+export const writeEffect: <R, E, O>(o: T.Effect<R, E, O>) => Stream<R, E, O> =
+  Channel.writeEffect
 
 /**
  * Produces an infinite stream of repeated applications of f to x.
  */
-export function iterate<O>(
+export const writeIterate: <O>(
   x: O,
   f: (x: O) => O,
   __trace?: string
-): Stream<unknown, never, O> {
-  return Channel.channelM(M.effectTotal(() => iterateGo(x, f), __trace))
-}
+) => Stream<unknown, never, O> = Channel.writeIterate
 
 /**
  * Send a bunch of values downstream to the next component to consume. If the
  * downstream component terminates, this call will never return control.
  */
-export function writeMany<O>(...os: NA.NonEmptyArray<O>): Stream<unknown, never, O> {
-  return writeIterable(os)
-}
-
-function writeIterableGo<O>(
-  iterator: Iterator<O, any, undefined>,
-  next: IteratorResult<O, any>
-): Stream<unknown, never, O> {
-  if (next.done) {
-    return Channel.unit
-  } else {
-    return Channel.haveOutput(
-      () => writeIterableGo(iterator, iterator.next()),
-      next.value
-    )
-  }
-}
+export const writeMany: <O>(...os: Array<O>) => Stream<unknown, never, O> =
+  Channel.writeMany
 
 /**
  * Converts an iterable into a stream (lazy)
  */
-export function writeIterable<O>(it: Iterable<O>): Stream<unknown, never, O> {
-  return new Channel.ChannelM(
-    M.effectTotal(() => {
-      const iterator = it[Symbol.iterator]()
-      return writeIterableGo(iterator, iterator.next())
-    })
-  )
-}
+export const writeIterable: <O>(it: Iterable<O>) => Stream<unknown, never, O> =
+  Channel.writeIterable
 
 /**
  * Maps the stream output using the effectul function f
@@ -221,9 +215,9 @@ export function mapEffect_<R, R1, E1, E, A, B>(
   self: Stream<R, E, A>,
   f: (a: A) => T.Effect<R1, E1, B>
 ): Stream<R & R1, E | E1, B> {
-  return Pipeline.fuse_(
+  return via_(
     self,
-    Channel.awaitForever((x: A) => writeEffect(f(x)))
+    Pipeline.awaitForever((x: A) => writeEffect(f(x)))
   )
 }
 
@@ -245,9 +239,9 @@ export function map_<R, E, A, B>(
   self: Stream<R, E, A>,
   f: (a: A) => B
 ): Stream<R, E, B> {
-  return Pipeline.fuse_(
+  return via_(
     self,
-    Channel.awaitForever((x: A) => write(f(x)))
+    Pipeline.awaitForever((x: A) => write(f(x)))
   )
 }
 
@@ -269,9 +263,9 @@ export function mapConcat_<R, E, A, B>(
   self: Stream<R, E, A>,
   f: (a: A) => Iterable<B>
 ): Stream<R, E, B> {
-  return Pipeline.fuse_(
+  return via_(
     self,
-    Channel.awaitForever((x: A) => writeIterable(f(x)))
+    Pipeline.awaitForever((x: A) => writeIterable(f(x)))
   )
 }
 
@@ -291,11 +285,11 @@ export function mapConcat<A, B>(
  */
 export function mapConcatM_<R, E, A, R1, E1, B>(
   self: Stream<R, E, A>,
-  f: (a: A) => M.Managed<R1, E1, Iterable<B>>
+  f: (a: A) => T.Effect<R1, E1, Iterable<B>>
 ): Stream<R & R1, E | E1, B> {
-  return Pipeline.fuse_(
+  return via_(
     self,
-    Channel.awaitForever((x: A) => Channel.channelM(M.map_(f(x), writeIterable)))
+    Pipeline.awaitForever((x: A) => Channel.effect(T.map_(f(x), writeIterable)))
   )
 }
 
@@ -305,7 +299,7 @@ export function mapConcatM_<R, E, A, R1, E1, B>(
  * @dataFirst mapConcatM_
  */
 export function mapConcatM<R1, E1, A, B>(
-  f: (a: A) => M.Managed<R1, E1, Iterable<B>>
+  f: (a: A) => T.Effect<R1, E1, Iterable<B>>
 ): <R, E>(self: Stream<R, E, A>) => Stream<R & R1, E | E1, B> {
   return (self) => mapConcatM_(self, f)
 }
@@ -317,7 +311,7 @@ export function chain_<R, E, R1, E1, A, B>(
   self: Stream<R, E, A>,
   f: (a: A) => Stream<R1, E1, B>
 ): Stream<R & R1, E | E1, B> {
-  return Pipeline.fuse_(self, Channel.awaitForever(f))
+  return via_(self, Pipeline.awaitForever(f))
 }
 
 /**

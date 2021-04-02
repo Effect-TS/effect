@@ -2,6 +2,7 @@
 
 import * as E from "../../Either"
 import * as M from "../../Managed"
+import * as O from "../../Option"
 import * as Channel from "../Channel"
 
 /**
@@ -155,4 +156,21 @@ export function fuse<R, E, O, C, A>(
   left: Pipeline<R1, E1, I, O, void>
 ) => Pipeline<R & R1, E | E1, I, C, A> {
   return (self) => fuse_(self, right)
+}
+
+/**
+ * Wait for input forever, calling the given inner `Channel` for each piece of
+ * new input. Returns the upstream result type.
+ */
+export function awaitForever<R, E, I, O>(
+  inner: (i: I) => Pipeline<R, E, I, O, void>
+): Pipeline<R, E, I, O, void> {
+  const go: Pipeline<R, E, I, O, void> = Channel.chain_(
+    Channel.awaitOption<I>(),
+    O.fold(
+      () => Channel.unit,
+      (x) => Channel.chain_(inner(x), () => go)
+    )
+  )
+  return go
 }

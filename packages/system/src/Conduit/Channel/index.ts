@@ -1,6 +1,6 @@
 // tracing: off
 
-import type * as T from "../../Effect"
+import * as T from "../../Effect"
 import * as E from "../../Either"
 import type { Lazy } from "../../Function"
 import * as M from "../../Managed"
@@ -496,4 +496,77 @@ export function injectLeftovers<R, E, I, O, U, A>(
   self: Channel<R, E, I, I, O, U, A>
 ): Channel<R, E, never, I, O, U, A> {
   return injectLeftoversGo(L.empty(), self)
+}
+
+/**
+ * Send a single output value downstream. If the downstream `Channel`
+ * terminates, this `Channel` will terminate as well.
+ */
+export function write<O>(
+  o: O
+): Channel<unknown, never, never, unknown, O, unknown, void> {
+  return haveOutput(() => unit, o)
+}
+
+/**
+ * Send a single output value downstream. If the downstream `Channel`
+ * terminates, this `Channel` will terminate as well.
+ */
+export function writeEffect<R, E, O>(
+  o: T.Effect<R, E, O>
+): Channel<R, E, never, unknown, O, unknown, void> {
+  return effect(T.map_(o, write))
+}
+
+function writeIterateGo<O>(
+  x: O,
+  f: (x: O) => O
+): Channel<unknown, never, never, unknown, O, unknown, void> {
+  return haveOutput(() => writeIterateGo(f(x), f), x)
+}
+
+/**
+ * Produces an infinite stream of repeated applications of f to x.
+ */
+export function writeIterate<O>(
+  x: O,
+  f: (x: O) => O,
+  __trace?: string
+): Channel<unknown, never, never, unknown, O, unknown, void> {
+  return channelM(M.effectTotal(() => writeIterateGo(x, f), __trace))
+}
+
+function writeIterableGo<O>(
+  iterator: Iterator<O, any, undefined>,
+  next: IteratorResult<O, any>
+): Channel<unknown, never, never, unknown, O, unknown, void> {
+  if (next.done) {
+    return unit
+  } else {
+    return haveOutput(() => writeIterableGo(iterator, iterator.next()), next.value)
+  }
+}
+
+/**
+ * Converts an iterable into a stream (lazy)
+ */
+export function writeIterable<O>(
+  it: Iterable<O>
+): Channel<unknown, never, never, unknown, O, unknown, void> {
+  return channelM(
+    M.effectTotal(() => {
+      const iterator = it[Symbol.iterator]()
+      return writeIterableGo(iterator, iterator.next())
+    })
+  )
+}
+
+/**
+ * Send a bunch of values downstream to the next component to consume. If the
+ * downstream component terminates, this call will never return control.
+ */
+export function writeMany<O>(
+  ...os: Array<O>
+): Channel<unknown, never, never, unknown, O, unknown, void> {
+  return writeIterable(os)
 }

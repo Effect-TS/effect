@@ -25,7 +25,7 @@ const stream = pipe(
   S.takeN(2),
   S.chain((n) =>
     pipe(
-      S.iterate(n, (n) => n + 1),
+      S.writeIterate(n, (n) => n + 1),
       S.takeN(3)
     )
   ),

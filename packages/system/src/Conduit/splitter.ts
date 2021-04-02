@@ -12,11 +12,13 @@ export function separate(
   const splits = state.split(split)
   if (splits.length > 1) {
     const newState = splits.pop()!
-    return Channel.chain_(S.writeIterable(splits), () => separate(split, newState))
+    return Channel.chain_(Channel.writeIterable(splits), () =>
+      separate(split, newState)
+    )
   }
   return Channel.needInput(
     (i: string) => separate(split, state + i),
-    () => S.writeIterable(splits)
+    () => Channel.writeIterable(splits)
   )
 }
 
@@ -25,19 +27,17 @@ export function group(
   state: L.List<string> = L.empty()
 ): Pipeline.Pipeline<unknown, never, string, L.List<string>, void> {
   if (state.length === size) {
-    return Channel.chain_(S.write(state), () => group(size, L.empty()))
+    return Channel.chain_(Channel.write(state), () => group(size, L.empty()))
   }
   return Channel.needInput(
     (i: string) => group(size, L.append_(state, i)),
-    () => S.write(state)
+    () => Channel.write(state)
   )
 }
 
-const splitAndGroup = pipe(separate("|"), Pipeline.fuse(group(2)))
-
 pipe(
   S.writeMany("a|b|c", "|d", "e|", "f"),
-  Pipeline.fuse(splitAndGroup),
+  S.via(separate("|")["|>"](Pipeline.fuse(group(2)))),
   S.runList,
   T.chain((l) =>
     T.effectTotal(() => {
