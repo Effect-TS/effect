@@ -28,6 +28,7 @@ export function release(key: number, exit: T.Exit<any, any>) {
             ]
           }
         }
-      })
+      }),
+      T.flatten
     )
 }
