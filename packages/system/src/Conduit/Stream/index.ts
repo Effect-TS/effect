@@ -185,10 +185,10 @@ export function iterate<O>(
  * downstream component terminates, this call will never return control.
  */
 export function writeMany<O>(...os: NA.NonEmptyArray<O>): Stream<unknown, never, O> {
-  return fromIterable(os)
+  return writeIterable(os)
 }
 
-function fromIterableGo<O>(
+function writeIterableGo<O>(
   iterator: Iterator<O, any, undefined>,
   next: IteratorResult<O, any>
 ): Stream<unknown, never, O> {
@@ -196,7 +196,7 @@ function fromIterableGo<O>(
     return Channel.unit
   } else {
     return Channel.haveOutput(
-      () => fromIterableGo(iterator, iterator.next()),
+      () => writeIterableGo(iterator, iterator.next()),
       next.value
     )
   }
@@ -205,11 +205,11 @@ function fromIterableGo<O>(
 /**
  * Converts an iterable into a stream (lazy)
  */
-export function fromIterable<O>(it: Iterable<O>): Stream<unknown, never, O> {
+export function writeIterable<O>(it: Iterable<O>): Stream<unknown, never, O> {
   return new Channel.ChannelM(
     M.effectTotal(() => {
       const iterator = it[Symbol.iterator]()
-      return fromIterableGo(iterator, iterator.next())
+      return writeIterableGo(iterator, iterator.next())
     })
   )
 }
@@ -271,7 +271,7 @@ export function mapConcat_<R, E, A, B>(
 ): Stream<R, E, B> {
   return Pipeline.fuse_(
     self,
-    Channel.awaitForever((x: A) => fromIterable(f(x)))
+    Channel.awaitForever((x: A) => writeIterable(f(x)))
   )
 }
 
@@ -295,7 +295,7 @@ export function mapConcatM_<R, E, A, R1, E1, B>(
 ): Stream<R & R1, E | E1, B> {
   return Pipeline.fuse_(
     self,
-    Channel.awaitForever((x: A) => Channel.channelM(M.map_(f(x), fromIterable)))
+    Channel.awaitForever((x: A) => Channel.channelM(M.map_(f(x), writeIterable)))
   )
 }
 

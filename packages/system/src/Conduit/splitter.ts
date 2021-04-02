@@ -12,11 +12,11 @@ export function separate(
   const splits = state.split(split)
   if (splits.length > 1) {
     const newState = splits.pop()!
-    return Channel.chain_(S.fromIterable(splits), () => separate(split, newState))
+    return Channel.chain_(S.writeIterable(splits), () => separate(split, newState))
   }
   return Channel.needInput(
     (i: string) => separate(split, state + i),
-    () => S.fromIterable(splits)
+    () => S.writeIterable(splits)
   )
 }
 

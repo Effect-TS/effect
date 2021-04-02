@@ -21,7 +21,7 @@ console.time("stream")
 
 const stream = pipe(
   S.write(1),
-  S.chain((x) => S.fromIterable(I.unfold(x, (n) => n + 1))),
+  S.chain((x) => S.writeIterable(I.unfold(x, (n) => n + 1))),
   S.takeN(2),
   S.chain((n) =>
     pipe(
