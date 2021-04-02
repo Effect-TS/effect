@@ -20,13 +20,28 @@ export function separate(
   )
 }
 
+export function group(
+  size: number,
+  state: L.List<string> = L.empty()
+): Pipeline.Pipeline<unknown, never, string, L.List<string>, void> {
+  if (state.length === size) {
+    return Channel.chain_(S.write(state), () => group(size, L.empty()))
+  }
+  return Channel.needInput(
+    (i: string) => group(size, L.append_(state, i)),
+    () => S.write(state)
+  )
+}
+
+const splitAndGroup = pipe(separate("|"), Pipeline.fuse(group(2)))
+
 pipe(
   S.writeMany("a|b|c", "|d", "e|", "f"),
-  Pipeline.fuse(separate("|")),
+  Pipeline.fuse(splitAndGroup),
   S.runList,
   T.chain((l) =>
     T.effectTotal(() => {
-      console.log(L.toArray(l))
+      console.log(L.toArray(L.map_(l, L.toArray)))
     })
   ),
   T.runPromise
