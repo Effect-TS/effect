@@ -30,7 +30,8 @@
   },
   "config": {
     "side": [
-      "Operator"
+      "Operator",
+      "Tracing/Enable"
     ],
     "modules": [
       "Async",
@@ -165,6 +166,8 @@
       "Support/MutableQueue",
       "Support/OneShot",
       "Support/RingBuffer",
+      "Tracing",
+      "Tracing/Enable",
       "Transactional",
       "Transactional/STM",
       "Transactional/STM/Entry",
