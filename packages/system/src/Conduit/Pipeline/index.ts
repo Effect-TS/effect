@@ -10,86 +10,42 @@ import * as Channel from "../Channel"
  * of output values `O`, perform actions, and produce a final result `R`.
  * The type synonyms provided here are simply wrappers around this type.
  */
-export interface Conduit<R, E, I, O, A>
-  extends Channel.Channel<R, E, I, I, O, void, A> {}
+export interface Pipeline<R, E, I, O, A>
+  extends Channel.Channel<R, E, I, I, O, unknown, A> {}
 
 /**
  * Ensure that the inner sink consumes no more than the given number of
  * values.
  */
-export function isolate<A>(n: number): Conduit<unknown, never, A, A, void> {
+export function isolate<A>(n: number): Pipeline<unknown, never, A, A, unknown> {
   if (n <= 0) {
-    return Channel.doneUnit
+    return Channel.unit
   }
-  return new Channel.NeedInput(
-    (i) => new Channel.HaveOutput(() => isolate(n - 1), i),
-    () => Channel.doneUnit
+  return Channel.needInput(
+    (i: A) => Channel.haveOutput(() => isolate<A>(n - 1), i),
+    () => Channel.unit
   )
 }
 
 /**
  * Run a pipeline until processing completes.
  */
-export function run<R, E, A>(self: Conduit<R, E, any, void, A>) {
+export function run<R, E, A>(self: Pipeline<R, E, unknown, unknown, A>) {
   return Channel.runChannel(Channel.injectLeftovers(self))
-}
-
-/**
- * Monadic chain
- */
-export function chain_<R, E, R1, E1, O1, I, O, A, B>(
-  self: Conduit<R, E, I, O, A>,
-  f: (a: A) => Conduit<R1, E1, I, O1, B>
-): Conduit<R & R1, E | E1, I, O | O1, B> {
-  return Channel.chain_(self, f)
-}
-
-/**
- * Monadic chain
- *
- * @dataFirst chain_
- */
-export function chain<R, E, I, O, A, B>(
-  f: (a: A) => Conduit<R, E, I, O, B>
-): <R1, E1, O1>(
-  self: Conduit<R1, E1, I, O1, A>
-) => Conduit<R & R1, E | E1, I, O | O1, B> {
-  return (self) => chain_(self, f)
-}
-
-/**
- * Map the Conduit result type
- */
-export function map_<R, E, I, O, A, B>(
-  self: Conduit<R, E, I, O, A>,
-  f: (a: A) => B
-): Conduit<R, E, I, O, B> {
-  return Channel.chain_(self, (a) => new Channel.Done(f(a)))
-}
-
-/**
- * Map the Conduit result type
- *
- * @dataFirst map_
- */
-export function map<A, B>(
-  f: (a: A) => B
-): <R, E, I, O>(self: Conduit<R, E, I, O, A>) => Conduit<R, E, I, O, B> {
-  return (self) => map_(self, f)
 }
 
 type FuseGo<R, E, I, C, A, O> = E.Either<
   {
-    rp: (i: O) => Channel.Channel<R, E, O, O, C, void, A>
-    rc: (u: void) => Channel.Channel<R, E, O, O, C, void, A>
-    left: Conduit<R, E, I, O, void>
+    rp: (i: O) => Channel.Channel<R, E, O, O, C, unknown, A>
+    rc: (u: unknown) => Channel.Channel<R, E, O, O, C, unknown, A>
+    left: Pipeline<R, E, I, O, unknown>
   },
-  { left: Conduit<R, E, I, O, void>; right: Conduit<R, E, O, C, A> }
+  { left: Pipeline<R, E, I, O, unknown>; right: Pipeline<R, E, O, C, A> }
 >
 
 function fuseGo<R, E, I, C, A, O>(
   input: FuseGo<R, E, I, C, A, O>
-): Conduit<R, E, I, C, A> {
+): Pipeline<R, E, I, C, A> {
   // eslint-disable-next-line no-constant-condition
   while (1) {
     switch (input._tag) {
@@ -113,7 +69,7 @@ function fuseGo<R, E, I, C, A, O>(
           }
           case Channel.LeftoverTypeId: {
             return new Channel.Leftover(
-              () => fuseGo(E.left({ rp, rc, left: left.pipe() })),
+              () => fuseGo(E.left({ rp, rc, left: left.nextChannel() })),
               left.leftover
             )
           }
@@ -123,7 +79,7 @@ function fuseGo<R, E, I, C, A, O>(
           }
           case Channel.NeedInputTypeId: {
             return new Channel.NeedInput(
-              (i) => fuseGo(E.left({ rp, rc, left: left.newChannel(i) })),
+              (i) => fuseGo(E.left({ rp, rc, left: left.nextChannel(i) })),
               (u) => fuseGo(E.left({ rp, rc, left: left.fromUpstream(u) }))
             )
           }
@@ -146,7 +102,7 @@ function fuseGo<R, E, I, C, A, O>(
           case Channel.LeftoverTypeId: {
             input = E.right({
               left: new Channel.HaveOutput(() => left, right.leftover),
-              right: right.pipe()
+              right: right.nextChannel()
             })
             break
           }
@@ -157,7 +113,7 @@ function fuseGo<R, E, I, C, A, O>(
             )
           }
           case Channel.NeedInputTypeId: {
-            input = E.left({ rp: right.newChannel, rc: right.fromUpstream, left })
+            input = E.left({ rp: right.nextChannel, rc: right.fromUpstream, left })
             break
           }
         }
@@ -169,32 +125,34 @@ function fuseGo<R, E, I, C, A, O>(
 }
 
 /**
- * Combine two `Conduit`s together into a new `Conduit` (aka 'fuse').
+ * Combine two `Pipeline`s together into a new `Pipeline` (aka 'fuse').
  *
  * Output from the upstream (left) conduit will be fed into the
  * downstream (right) conduit. Processing will terminate when
  * downstream (right) returns.
- * Leftover data returned from the right `Conduit` will be discarded.
+ * Leftover data returned from the right `Pipeline` will be discarded.
  */
 export function fuse_<R, E, R1, E1, I, O, C, A>(
-  left: Conduit<R, E, I, O, void>,
-  right: Conduit<R1, E1, O, C, A>
-): Conduit<R & R1, E | E1, I, C, A> {
+  left: Pipeline<R, E, I, O, unknown>,
+  right: Pipeline<R1, E1, O, C, A>
+): Pipeline<R & R1, E | E1, I, C, A> {
   return fuseGo<R & R1, E | E1, I, C, A, O>(E.right({ left, right }))
 }
 
 /**
- * Combine two `Conduit`s together into a new `Conduit` (aka 'fuse').
+ * Combine two `Pipeline`s together into a new `Pipeline` (aka 'fuse').
  *
  * Output from the upstream (left) conduit will be fed into the
  * downstream (right) conduit. Processing will terminate when
  * downstream (right) returns.
- * Leftover data returned from the right `Conduit` will be discarded.
+ * Leftover data returned from the right `Pipeline` will be discarded.
  *
  * @dataFirst fuse_
  */
 export function fuse<R, E, O, C, A>(
-  right: Conduit<R, E, O, C, A>
-): <R1, E1, I>(left: Conduit<R1, E1, I, O, void>) => Conduit<R & R1, E | E1, I, C, A> {
+  right: Pipeline<R, E, O, C, A>
+): <R1, E1, I>(
+  left: Pipeline<R1, E1, I, O, unknown>
+) => Pipeline<R & R1, E | E1, I, C, A> {
   return (self) => fuse_(self, right)
 }

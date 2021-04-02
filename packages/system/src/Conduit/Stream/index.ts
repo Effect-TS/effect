@@ -2,33 +2,30 @@
 
 import * as T from "../../Effect"
 import * as E from "../../Either"
-import * as Ex from "../../Exit"
 import { tuple } from "../../Function"
 import * as M from "../../Managed"
-import * as RM from "../../Managed/ReleaseMap"
 import type * as NA from "../../NonEmptyArray"
 import * as Channel from "../Channel"
-import * as Conduit from "../Conduit"
+import * as Pipeline from "../Pipeline"
 import * as Sink from "../Sink"
 
 /**
  * Provides a stream of output values, without consuming any input or
  * producing a final result.
  */
-export interface Stream<R, E, O> extends Conduit.Conduit<R, E, any, O, void> {}
+export interface Stream<R, E, O> extends Pipeline.Pipeline<R, E, any, O, unknown> {}
 
 /**
  * Suspend stream creation
  */
-export function suspend<R, E, O>(f: () => Stream<R, E, O>): Stream<R, E, O> {
-  return Channel.suspend(f)
-}
+export const suspend: <R, E, O>(f: () => Stream<R, E, O>) => Stream<R, E, O> =
+  Channel.suspend
 
 /**
  * Take only the first N values from the stream
  */
 export function takeN_<R, E, A>(self: Stream<R, E, A>, n: number): Stream<R, E, A> {
-  return Conduit.fuse_(self, Conduit.isolate(n))
+  return Pipeline.fuse_(self, Pipeline.isolate(n))
 }
 
 /**
@@ -43,7 +40,7 @@ export function takeN(n: number): <R, E, A>(self: Stream<R, E, A>) => Stream<R, 
 type ConnectResumeGo<R, E, O, A> = E.Either<
   {
     rp: (i: O) => Sink.Sink<R, E, O, A>
-    rc: (u: void) => Sink.Sink<R, E, O, A>
+    rc: (u: unknown) => Sink.Sink<R, E, O, A>
     left: Stream<R, E, O>
   },
   {
@@ -81,11 +78,11 @@ function connectResumeGo<R, E, O, A>(
             )
           }
           case Channel.LeftoverTypeId: {
-            input = E.left({ rp, rc, left: left.pipe() })
+            input = E.left({ rp, rc, left: left.nextChannel() })
             break
           }
           case Channel.NeedInputTypeId: {
-            input = E.left({ rp, rc, left: left.fromUpstream() })
+            input = E.left({ rp, rc, left: left.fromUpstream({}) })
             break
           }
         }
@@ -105,12 +102,12 @@ function connectResumeGo<R, E, O, A>(
           case Channel.LeftoverTypeId: {
             input = E.right({
               left: new Channel.HaveOutput(() => left, right.leftover),
-              right: right.pipe()
+              right: right.nextChannel()
             })
             break
           }
           case Channel.NeedInputTypeId: {
-            input = E.left({ rp: right.newChannel, rc: right.fromUpstream, left })
+            input = E.left({ rp: right.nextChannel, rc: right.fromUpstream, left })
             break
           }
           case Channel.ChannelMTypeId: {
@@ -141,33 +138,41 @@ export function connectResume<R, E, O, A>(
  * Run a pipeline until processing completes, collecting elements into an array
  */
 export function runArray<R, E, O>(self: Stream<R, E, O>) {
-  return M.useNow(Conduit.run(Conduit.fuse_(self, Sink.array())))
+  return M.useNow(Pipeline.run(Pipeline.fuse_(self, Sink.array())))
 }
 
 /**
  * Run a pipeline until processing completes, collecting elements into a list
  */
 export function runList<R, E, O>(self: Stream<R, E, O>) {
-  return M.useNow(Conduit.run(Conduit.fuse_(self, Sink.list())))
+  return M.useNow(Pipeline.run(Pipeline.fuse_(self, Sink.list())))
 }
 
 /**
  * Run a pipeline until processing completes, discarding elements
  */
 export function runDrain<R, E, O>(self: Stream<R, E, O>) {
-  return M.useNow(Conduit.run(Conduit.fuse_(self, Sink.drain())))
+  return M.useNow(Pipeline.run(Pipeline.fuse_(self, Sink.drain())))
 }
 
 /**
- * Send a value downstream to the next component to consume. If the
- * downstream component terminates, this call will never return control.
+ * Send a single output value downstream. If the downstream `Channel`
+ * terminates, this `Channel` will terminate as well.
  */
-export function succeed<O>(o: O): Stream<unknown, never, O> {
-  return new Channel.HaveOutput(() => Channel.doneUnit, o)
+export function write<O>(o: O): Stream<unknown, never, O> {
+  return Channel.haveOutput(() => Channel.unit, o)
+}
+
+/**
+ * Send a single output value downstream. If the downstream `Channel`
+ * terminates, this `Channel` will terminate as well.
+ */
+export function writeEffect<R, E, O>(o: T.Effect<R, E, O>): Stream<R, E, O> {
+  return Channel.effect(T.map_(o, write))
 }
 
 function iterateGo<O>(x: O, f: (x: O) => O): Stream<unknown, never, O> {
-  return new Channel.HaveOutput(() => iterateGo(f(x), f), x)
+  return Channel.haveOutput(() => iterateGo(f(x), f), x)
 }
 
 /**
@@ -178,30 +183,14 @@ export function iterate<O>(
   f: (x: O) => O,
   __trace?: string
 ): Stream<unknown, never, O> {
-  return new Channel.ChannelM(M.effectTotal(() => iterateGo(x, f), __trace))
-}
-
-/**
- * Send an effect downstream to the next component to consume. If the
- * downstream component terminates, this call will never return control.
- */
-export function fromEffect<R, E, O>(self: T.Effect<R, E, O>): Stream<R, E, O> {
-  return new Channel.ChannelM(M.map_(M.fromEffect(self), succeed))
-}
-
-/**
- * Send an effect downstream to the next component to consume. If the
- * downstream component terminates, this call will never return control.
- */
-export function fromManaged<R, E, O>(self: M.Managed<R, E, O>): Stream<R, E, O> {
-  return new Channel.ChannelM(M.map_(self, succeed))
+  return Channel.channelM(M.effectTotal(() => iterateGo(x, f), __trace))
 }
 
 /**
  * Send a bunch of values downstream to the next component to consume. If the
  * downstream component terminates, this call will never return control.
  */
-export function succeedMany<O>(...os: NA.NonEmptyArray<O>): Stream<unknown, never, O> {
+export function writeMany<O>(...os: NA.NonEmptyArray<O>): Stream<unknown, never, O> {
   return fromIterable(os)
 }
 
@@ -210,9 +199,9 @@ function fromIterableGo<O>(
   next: IteratorResult<O, any>
 ): Stream<unknown, never, O> {
   if (next.done) {
-    return Channel.doneUnit
+    return Channel.unit
   } else {
-    return new Channel.HaveOutput(
+    return Channel.haveOutput(
       () => fromIterableGo(iterator, iterator.next()),
       next.value
     )
@@ -238,9 +227,9 @@ export function mapEffect_<R, R1, E1, E, A, B>(
   self: Stream<R, E, A>,
   f: (a: A) => T.Effect<R1, E1, B>
 ): Stream<R & R1, E | E1, B> {
-  return Conduit.fuse_(
+  return Pipeline.fuse_(
     self,
-    Channel.awaitForever((x) => Channel.writeM(f(x)))
+    Channel.awaitForever((x: A) => writeEffect(f(x)))
   )
 }
 
@@ -262,9 +251,9 @@ export function map_<R, E, A, B>(
   self: Stream<R, E, A>,
   f: (a: A) => B
 ): Stream<R, E, B> {
-  return Conduit.fuse_(
+  return Pipeline.fuse_(
     self,
-    Channel.awaitForever((x) => Channel.write(f(x)))
+    Channel.awaitForever((x: A) => write(f(x)))
   )
 }
 
@@ -286,9 +275,9 @@ export function mapConcat_<R, E, A, B>(
   self: Stream<R, E, A>,
   f: (a: A) => Iterable<B>
 ): Stream<R, E, B> {
-  return Conduit.fuse_(
+  return Pipeline.fuse_(
     self,
-    Channel.awaitForever((x) => fromIterable(f(x)))
+    Channel.awaitForever((x: A) => fromIterable(f(x)))
   )
 }
 
@@ -310,9 +299,9 @@ export function mapConcatM_<R, E, A, R1, E1, B>(
   self: Stream<R, E, A>,
   f: (a: A) => M.Managed<R1, E1, Iterable<B>>
 ): Stream<R & R1, E | E1, B> {
-  return Conduit.fuse_(
+  return Pipeline.fuse_(
     self,
-    Channel.awaitForever((x) => new Channel.ChannelM(M.map_(f(x), fromIterable)))
+    Channel.awaitForever((x: A) => new Channel.ChannelM(M.map_(f(x), fromIterable)))
   )
 }
 
@@ -334,7 +323,7 @@ export function chain_<R, E, R1, E1, A, B>(
   self: Stream<R, E, A>,
   f: (a: A) => Stream<R1, E1, B>
 ): Stream<R & R1, E | E1, B> {
-  return Conduit.fuse_(self, Channel.awaitForever(f))
+  return Pipeline.fuse_(self, Channel.awaitForever(f))
 }
 
 /**
@@ -358,16 +347,7 @@ export function concatL_<R, E, A, R1, E1, B>(
   Channel.concrete(self)
   switch (self._typeId) {
     case Channel.DoneTypeId: {
-      return new Channel.ChannelM(
-        new M.Managed(
-          T.accessM(([_, rm]: readonly [unknown, RM.ReleaseMap]) =>
-            T.map_(
-              RM.releaseAll(Ex.unit, T.sequential)(rm),
-              () => [RM.noopFinalizer, that()] as const
-            )
-          )
-        )
-      )
+      return that()
     }
     case Channel.HaveOutputTypeId: {
       return new Channel.HaveOutput(
@@ -377,7 +357,7 @@ export function concatL_<R, E, A, R1, E1, B>(
     }
     case Channel.NeedInputTypeId: {
       return new Channel.NeedInput(
-        (i) => concatL_(self.newChannel(i), that),
+        (i) => concatL_(self.nextChannel(i), that),
         (u) => concatL_(self.fromUpstream(u), that)
       )
     }
@@ -385,7 +365,10 @@ export function concatL_<R, E, A, R1, E1, B>(
       return new Channel.ChannelM(M.map_(self.nextChannel, (p) => concatL_(p, that)))
     }
     case Channel.LeftoverTypeId: {
-      return new Channel.Leftover(() => concatL_(self.pipe(), that), self.leftover)
+      return new Channel.Leftover(
+        () => concatL_(self.nextChannel(), that),
+        self.leftover
+      )
     }
   }
 }
