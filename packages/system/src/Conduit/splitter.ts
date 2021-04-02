@@ -2,22 +2,21 @@ import * as T from "../Effect"
 import { pipe } from "../Function"
 import * as L from "../Persistent/List"
 import * as Channel from "./Channel"
-import * as Pipeline from "./Pipeline"
 import * as S from "./Stream"
 
-export function separate(
-  split: string,
+export function split(
+  separator: string,
   state = ""
-): Pipeline.Pipeline<unknown, never, string, string, void> {
-  const splits = state.split(split)
+): Channel.Transducer<unknown, never, string, string> {
+  const splits = state.split(separator)
   if (splits.length > 1) {
     const newState = splits.pop()!
     return Channel.chain_(Channel.writeIterable(splits), () =>
-      separate(split, newState)
+      split(separator, newState)
     )
   }
   return Channel.needInput(
-    (i: string) => separate(split, state + i),
+    (i: string) => split(separator, state + i),
     () => Channel.writeIterable(splits)
   )
 }
@@ -25,7 +24,7 @@ export function separate(
 export function group(
   size: number,
   state: L.List<string> = L.empty()
-): Pipeline.Pipeline<unknown, never, string, L.List<string>, void> {
+): Channel.Transducer<unknown, never, string, L.List<string>> {
   if (state.length === size) {
     return Channel.chain_(Channel.write(state), () => group(size, L.empty()))
   }
@@ -37,7 +36,7 @@ export function group(
 
 pipe(
   S.writeMany("a|b|c", "|d", "e|", "f"),
-  S.via(separate("|")["|>"](Pipeline.fuse(group(2)))),
+  S.combine(split("|")["|>"](Channel.combine(group(2)))),
   S.runList,
   T.chain((l) =>
     T.effectTotal(() => {

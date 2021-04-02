@@ -50,6 +50,12 @@ export interface Channel<R, E, L, I, O, U, A> {
 }
 
 /**
+ * Channel with Input & Output without Leftovers, Result and Upstream
+ */
+export interface Transducer<R, E, I, O>
+  extends Channel<R, E, never, I, O, void, void> {}
+
+/**
  * `optimize remove
  */
 export function concrete<R, E, L, I, O, U, A>(
@@ -569,4 +575,148 @@ export function writeMany<O>(
   ...os: Array<O>
 ): Channel<unknown, never, never, unknown, O, unknown, void> {
   return writeIterable(os)
+}
+
+type CombineGo<R, E, L, I, O, U, A, O2, A1> = E.Either<
+  {
+    rp: (i: O) => Channel<R, E, O, O, O2, A, A1>
+    rc: (u: A) => Channel<R, E, O, O, O2, A, A1>
+    left: Channel<R, E, L, I, O, U, A>
+  },
+  { left: Channel<R, E, L, I, O, U, A>; right: Channel<R, E, O, O, O2, A, A1> }
+>
+
+function combineGo<R, E, L, I, O, U, A, O2, A1>(
+  input: CombineGo<R, E, L, I, O, U, A, O2, A1>
+): Channel<R, E, L, I, O2, U, A1> {
+  // eslint-disable-next-line no-constant-condition
+  while (1) {
+    switch (input._tag) {
+      case "Left": {
+        const rp = input.left.rp
+        const rc = input.left.rc
+        const left = input.left.left
+        concrete(left)
+        switch (left._typeId) {
+          case DoneTypeId: {
+            input = E.right({
+              left: new Done(left.result),
+              right: rc(left.result)
+            })
+            break
+          }
+          case ChannelMTypeId: {
+            return new ChannelM(
+              M.map_(left.nextChannel, (p) => combineGo(E.left({ rp, rc, left: p })))
+            )
+          }
+          case LeftoverTypeId: {
+            return new Leftover(
+              () => combineGo(E.left({ rp, rc, left: left.nextChannel() })),
+              left.leftover
+            )
+          }
+          case HaveOutputTypeId: {
+            input = E.right({ left: left.nextChannel(), right: rp(left.output) })
+            break
+          }
+          case NeedInputTypeId: {
+            return new NeedInput(
+              (i) => combineGo(E.left({ rp, rc, left: left.nextChannel(i) })),
+              (u) => combineGo(E.left({ rp, rc, left: left.fromUpstream(u) }))
+            )
+          }
+        }
+        break
+      }
+      case "Right": {
+        const right = input.right.right
+        const left = input.right.left
+        concrete(right)
+        switch (right._typeId) {
+          case DoneTypeId: {
+            return new Done(right.result)
+          }
+          case ChannelMTypeId: {
+            return new ChannelM(
+              M.map_(right.nextChannel, (right) => combineGo(E.right({ left, right })))
+            )
+          }
+          case LeftoverTypeId: {
+            input = E.right({
+              left: new HaveOutput(() => left, right.leftover),
+              right: right.nextChannel()
+            })
+            break
+          }
+          case HaveOutputTypeId: {
+            return new HaveOutput(
+              () => combineGo(E.right({ left, right: right.nextChannel() })),
+              right.output
+            )
+          }
+          case NeedInputTypeId: {
+            input = E.left({ rp: right.nextChannel, rc: right.fromUpstream, left })
+            break
+          }
+        }
+        break
+      }
+    }
+  }
+  throw new Error("Bug")
+}
+
+/**
+ * Combine two `Channel`s together into a new `Channel` (aka 'fuse').
+ *
+ * Output from the upstream (left) conduit will be fed into the
+ * downstream (right) conduit. Processing will terminate when
+ * downstream (right) returns.
+ * Leftover data returned from the right `Channel` will be discarded.
+ */
+export function combine_<R, E, L, I, O, U, A, R1, E1, O2, A1>(
+  left: Channel<R, E, L, I, O, U, A>,
+  right: Channel<R1, E1, O, O, O2, A, A1>
+): Channel<R & R1, E | E1, L, I, O2, U, A1> {
+  return combineGo<R & R1, E | E1, L, I, O, U, A, O2, A1>(E.right({ left, right }))
+}
+
+/**
+ * Combine two `Channel`s together into a new `Channel` (aka 'fuse').
+ *
+ * Output from the upstream (left) conduit will be fed into the
+ * downstream (right) conduit. Processing will terminate when
+ * downstream (right) returns.
+ * Leftover data returned from the right `Channel` will be discarded.
+ *
+ * @dataFirst combine_
+ */
+export function combine<O, A, R1, E1, O2, A1>(
+  right: Channel<R1, E1, O, O, O2, A, A1>
+): <R, E, L, I, U>(
+  left: Channel<R, E, L, I, O, U, A>
+) => Channel<R & R1, E | E1, L, I, O2, U, A1> {
+  return (left) => combine_(left, right)
+}
+
+/**
+ * Ensure that the inner sink consumes no more than the given number of
+ * values.
+ */
+export function take<A>(n: number): Channel<unknown, never, never, A, A, void, void> {
+  if (n <= 0) {
+    return unit
+  }
+  return needInput(
+    (i: A) => haveOutput(() => take<A>(n - 1), i),
+    () => unit
+  )
+}
+
+/**
+ * Run a pipeline until processing completes.
+ */
+export function run<R, E, A>(self: Channel<R, E, unknown, unknown, void, void, A>) {
+  return runChannel(injectLeftovers(self))
 }
