@@ -11,13 +11,13 @@ import * as Channel from "../Channel"
  * The type synonyms provided here are simply wrappers around this type.
  */
 export interface Pipeline<R, E, I, O, A>
-  extends Channel.Channel<R, E, I, I, O, unknown, A> {}
+  extends Channel.Channel<R, E, I, I, O, void, A> {}
 
 /**
  * Ensure that the inner sink consumes no more than the given number of
  * values.
  */
-export function isolate<A>(n: number): Pipeline<unknown, never, A, A, unknown> {
+export function isolate<A>(n: number): Pipeline<unknown, never, A, A, void> {
   if (n <= 0) {
     return Channel.unit
   }
@@ -30,17 +30,17 @@ export function isolate<A>(n: number): Pipeline<unknown, never, A, A, unknown> {
 /**
  * Run a pipeline until processing completes.
  */
-export function run<R, E, A>(self: Pipeline<R, E, unknown, unknown, A>) {
+export function run<R, E, A>(self: Pipeline<R, E, unknown, void, A>) {
   return Channel.runChannel(Channel.injectLeftovers(self))
 }
 
 type FuseGo<R, E, I, C, A, O> = E.Either<
   {
-    rp: (i: O) => Channel.Channel<R, E, O, O, C, unknown, A>
-    rc: (u: unknown) => Channel.Channel<R, E, O, O, C, unknown, A>
-    left: Pipeline<R, E, I, O, unknown>
+    rp: (i: O) => Channel.Channel<R, E, O, O, C, void, A>
+    rc: (u: void) => Channel.Channel<R, E, O, O, C, void, A>
+    left: Pipeline<R, E, I, O, void>
   },
-  { left: Pipeline<R, E, I, O, unknown>; right: Pipeline<R, E, O, C, A> }
+  { left: Pipeline<R, E, I, O, void>; right: Pipeline<R, E, O, C, A> }
 >
 
 function fuseGo<R, E, I, C, A, O>(
@@ -133,7 +133,7 @@ function fuseGo<R, E, I, C, A, O>(
  * Leftover data returned from the right `Pipeline` will be discarded.
  */
 export function fuse_<R, E, R1, E1, I, O, C, A>(
-  left: Pipeline<R, E, I, O, unknown>,
+  left: Pipeline<R, E, I, O, void>,
   right: Pipeline<R1, E1, O, C, A>
 ): Pipeline<R & R1, E | E1, I, C, A> {
   return fuseGo<R & R1, E | E1, I, C, A, O>(E.right({ left, right }))
@@ -152,7 +152,7 @@ export function fuse_<R, E, R1, E1, I, O, C, A>(
 export function fuse<R, E, O, C, A>(
   right: Pipeline<R, E, O, C, A>
 ): <R1, E1, I>(
-  left: Pipeline<R1, E1, I, O, unknown>
+  left: Pipeline<R1, E1, I, O, void>
 ) => Pipeline<R & R1, E | E1, I, C, A> {
   return (self) => fuse_(self, right)
 }

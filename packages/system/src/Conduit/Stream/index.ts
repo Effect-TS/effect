@@ -13,13 +13,7 @@ import * as Sink from "../Sink"
  * Provides a stream of output values, without consuming any input or
  * producing a final result.
  */
-export interface Stream<R, E, O> extends Pipeline.Pipeline<R, E, any, O, unknown> {}
-
-/**
- * Suspend stream creation
- */
-export const suspend: <R, E, O>(f: () => Stream<R, E, O>) => Stream<R, E, O> =
-  Channel.suspend
+export interface Stream<R, E, O> extends Pipeline.Pipeline<R, E, any, O, void> {}
 
 /**
  * Take only the first N values from the stream
@@ -40,7 +34,7 @@ export function takeN(n: number): <R, E, A>(self: Stream<R, E, A>) => Stream<R, 
 type ConnectResumeGo<R, E, O, A> = E.Either<
   {
     rp: (i: O) => Sink.Sink<R, E, O, A>
-    rc: (u: unknown) => Sink.Sink<R, E, O, A>
+    rc: (u: void) => Sink.Sink<R, E, O, A>
     left: Stream<R, E, O>
   },
   {
@@ -82,7 +76,7 @@ function connectResumeGo<R, E, O, A>(
             break
           }
           case Channel.NeedInputTypeId: {
-            input = E.left({ rp, rc, left: left.fromUpstream({}) })
+            input = E.left({ rp, rc, left: left.fromUpstream() })
             break
           }
         }
@@ -301,7 +295,7 @@ export function mapConcatM_<R, E, A, R1, E1, B>(
 ): Stream<R & R1, E | E1, B> {
   return Pipeline.fuse_(
     self,
-    Channel.awaitForever((x: A) => new Channel.ChannelM(M.map_(f(x), fromIterable)))
+    Channel.awaitForever((x: A) => Channel.channelM(M.map_(f(x), fromIterable)))
   )
 }
 

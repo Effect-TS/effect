@@ -417,7 +417,7 @@ export function map<A, B>(
  *  Run a pipeline until processing completes.
  */
 export function runChannel<R, E, A>(
-  self: Channel<R, E, never, unknown, unknown, unknown, A>
+  self: Channel<R, E, never, unknown, unknown, void, A>
 ): M.Managed<R, E, A> {
   // eslint-disable-next-line no-constant-condition
   while (1) {
@@ -438,7 +438,7 @@ export function runChannel<R, E, A>(
         )
       }
       case NeedInputTypeId: {
-        self = self.fromUpstream(void 0)
+        self = self.fromUpstream()
       }
     }
   }
