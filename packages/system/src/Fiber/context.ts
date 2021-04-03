@@ -883,6 +883,21 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                     break
                   }
 
+                  case "Tracer": {
+                    current = instruction(
+                      current.f((trace) => {
+                        if (
+                          trace &&
+                          this.platform.value.traceExecution &&
+                          this.inTracingRegion
+                        ) {
+                          this.addTrace(trace)
+                        }
+                      })
+                    )
+                    break
+                  }
+
                   case "Succeed": {
                     if (
                       current.trace &&

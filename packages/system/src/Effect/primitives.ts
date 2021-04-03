@@ -45,6 +45,7 @@ export type Instruction =
   | IOverrideForkScope<any, any, any>
   | ITracingStatus<any, any, any>
   | IPlatform<any, any, any>
+  | ITracer<any, any, any>
   | XPureBase<unknown, never, any, any, any>
 
 export class IFail<E> extends Base<unknown, E, never> {
@@ -221,6 +222,17 @@ export class IPlatform<R, E, A> extends Base<R, E, A> {
 
   constructor(
     readonly f: (_: Platform<unknown>) => Effect<R, E, A>,
+    readonly trace?: string
+  ) {
+    super()
+  }
+}
+
+export class ITracer<R, E, A> extends Base<R, E, A> {
+  readonly _tag = "Tracer"
+
+  constructor(
+    readonly f: (tracer: (trace?: string) => void) => Effect<R, E, A>,
     readonly trace?: string
   ) {
     super()

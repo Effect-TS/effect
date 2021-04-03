@@ -8,6 +8,7 @@ import type { HasClock } from "../../Clock"
 import * as R from "../../Dictionary"
 import type { Effect } from "../../Effect"
 import * as T from "../../Effect"
+import { ITracer } from "../../Effect/primitives"
 import * as E from "../../Either"
 import * as Ex from "../../Exit"
 import type { FiberID } from "../../Fiber"
@@ -2904,4 +2905,13 @@ export const interrupt = core.chain_(fromEffect(T.descriptor), (d) => interruptA
  */
 export function interruptAs(id: FiberID) {
   return halt(C.interrupt(id))
+}
+
+/**
+ * Low level expose internal trace pusher
+ */
+export function exposeTracer<R, E, A>(
+  f: (tracer: (trace?: string) => void) => Managed<R, E, A>
+): Managed<R, E, A> {
+  return new Managed(new ITracer((tracer) => f(tracer).effect))
 }
