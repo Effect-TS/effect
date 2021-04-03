@@ -518,6 +518,34 @@ export function writeIterate<O>(
   return channelM(M.effectTotal(() => writeIterateGo(x, f), __trace))
 }
 
+function writeIterateMGo<R, E, O>(
+  x: O,
+  f: (x: O) => T.Effect<R, E, O>,
+  __trace?: string
+): Channel<R, E, never, unknown, O, unknown, void> {
+  return haveOutput(
+    () =>
+      new ChannelM(
+        M.fromEffect(
+          T.map_(f(x), (y) => writeIterateMGo(y, f)),
+          __trace
+        )
+      ),
+    x
+  )
+}
+
+/**
+ * Produces an infinite stream of repeated applications of f to x.
+ */
+export function writeIterateM<R, E, O>(
+  x: O,
+  f: (x: O) => T.Effect<R, E, O>,
+  __trace?: string
+): Channel<R, E, never, unknown, O, unknown, void> {
+  return writeIterateMGo(x, f, __trace)
+}
+
 function writeIterableGo<O>(
   iterator: Iterator<O, any, undefined>,
   next: IteratorResult<O, any>
@@ -695,4 +723,52 @@ export function take<A>(n: number): Channel<unknown, never, never, A, A, void, v
  */
 export function run<R, E, A>(self: Channel<R, E, unknown, unknown, void, void, A>) {
   return runChannel(injectLeftovers(self))
+}
+
+/**
+ * Catch all exceptions thrown by the current component of the pipeline.
+ */
+export function catchAll_<R, E, L, I, A, U, O, R1, E1, L1, I1, A1, U1, O1>(
+  self: Channel<R, E, L, I, A, U, O>,
+  f: (e: E) => Channel<R1, E1, L1, I1, A1, U1, O1>
+): Channel<R & R1, E1, L | L1, I & I1, A | A1, U & U1, O | O1> {
+  concrete(self)
+  switch (self._typeId) {
+    case DoneTypeId: {
+      return new Done(self.result)
+    }
+    case NeedInputTypeId: {
+      return new NeedInput(
+        (i) => catchAll_(self.nextChannel(i), f),
+        (u) => catchAll_(self.fromUpstream(u), f)
+      )
+    }
+    case HaveOutputTypeId: {
+      return new HaveOutput(() => catchAll_(self.nextChannel(), f), self.output)
+    }
+    case LeftoverTypeId: {
+      return new Leftover(() => catchAll_(self.nextChannel(), f), self.leftover)
+    }
+    case ChannelMTypeId: {
+      return new ChannelM(
+        M.catchAll_(
+          M.map_(self.nextChannel, (_) => catchAll_(_, f)),
+          (e) => M.succeed(f(e))
+        )
+      )
+    }
+  }
+}
+
+/**
+ * Catch all exceptions thrown by the current component of the pipeline.
+ *
+ * @dataFirst catchAll_
+ */
+export function catchAll<E, R1, E1, L1, I1, A1, U1, O1>(
+  f: (e: E) => Channel<R1, E1, L1, I1, A1, U1, O1>
+): <R, L, I, A, U, O>(
+  self: Channel<R, E, L, I, A, U, O>
+) => Channel<R & R1, E1, L | L1, I & I1, A | A1, U & U1, O | O1> {
+  return (self) => catchAll_(self, f)
 }

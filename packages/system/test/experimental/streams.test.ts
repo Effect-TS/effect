@@ -145,4 +145,21 @@ describe("Stream", () => {
       L.from([L.from(["a", "b"]), L.from(["c", "de"]), L.from(["f"])])
     )
   })
+
+  it("Catches errors", async () => {
+    const result = await pipe(
+      S.iterateM(0, (n) => {
+        if (n > 2) {
+          return T.fail(10)
+        }
+        return T.succeed(n + 1)
+      }),
+      S.take(5),
+      S.catchAll((n) => S.succeed(n)),
+      S.runList,
+      T.runPromise
+    )
+
+    expect(result).toEqual(L.from([0, 1, 2, 3, 10]))
+  })
 })

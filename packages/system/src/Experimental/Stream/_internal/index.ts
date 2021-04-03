@@ -192,6 +192,15 @@ export const iterate: <O>(
 ) => Stream<unknown, never, O> = Channel.writeIterate
 
 /**
+ * Produces an infinite stream of repeated applications of f to x.
+ */
+export const iterateM: <R, E, O>(
+  x: O,
+  f: (x: O) => T.Effect<R, E, O>,
+  __trace?: string
+) => Stream<R, E, O> = Channel.writeIterateM
+
+/**
  * Send a bunch of values downstream to the next component to consume. If the
  * downstream component terminates, this call will never return control.
  */
@@ -368,3 +377,20 @@ export const combine_: <R, E, R1, E1, A, O>(
 export const combine: <R1, E1, A, O>(
   right: Channel.Channel<R1, E1, A, A, O, void, void>
 ) => <R, E>(left: Stream<R, E, A>) => Stream<R & R1, E | E1, O> = Channel.combine
+
+/**
+ * Catch all exceptions thrown by the current component of the pipeline.
+ */
+export const catchAll_: <R, E, A, R1, E1, A1>(
+  self: Stream<R, E, A>,
+  f: (e: E) => Stream<R1, E1, A1>
+) => Stream<R & R1, E1, A | A1> = Channel.catchAll_
+
+/**
+ * Catch all exceptions thrown by the current component of the pipeline.
+ *
+ * @dataFirst catchAll_
+ */
+export const catchAll: <E, R1, E1, A1>(
+  f: (e: E) => Stream<R1, E1, A1>
+) => <R, A>(self: Stream<R, E, A>) => Stream<R & R1, E1, A | A1> = Channel.catchAll
