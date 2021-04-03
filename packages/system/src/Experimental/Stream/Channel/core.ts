@@ -87,8 +87,8 @@ export abstract class Channel<R, E, L, I, O, U, A>
 /**
  * Channel with Input & Output without Leftovers, Result and Upstream
  */
-export interface Transducer<R, E, I, O>
-  extends Channel<R, E, never, I, O, void, void> {}
+export interface Transducer<R, E, I, O, A = void>
+  extends Channel<R, E, never, I, O, void, A> {}
 
 /**
  * `optimize remove
@@ -909,4 +909,19 @@ export function catchAll<E, R1, E1, L1, I1, A1, U1, O1>(
   self: Channel<R, E, L, I, A, U, O>
 ) => Channel<R & R1, E1, L | L1, I & I1, A | A1, U & U1, O | O1> {
   return (self) => catchAll_(self, f, __trace)
+}
+
+/**
+ * Construct a Transducer
+ */
+export function transducer<S>(state: S) {
+  return <I, R, E, O>(
+    body: (i: O.Option<I>, s: S) => Transducer<R, E, I, O, S>
+  ): Transducer<R, E, I, O> => {
+    return needInput(
+      (i: I) =>
+        chain_(body(O.some(i), state), (newState) => transducer(newState)(body)),
+      () => chain_(body(O.none, state), () => unit)
+    )
+  }
 }

@@ -99,29 +99,20 @@ describe("Stream", () => {
   })
 
   it("Fuse Transducers Together", async () => {
-    function splitLoop(
-      separator: string,
-      state = ""
-    ): Channel.Transducer<unknown, never, string, string> {
-      return Channel.gen(function* (_) {
-        const splits = state.split(separator)
-        if (splits.length > 1) {
-          const newState = splits.pop()!
-          yield* _(Channel.writeIterable(splits))
-          yield* _(splitLoop(separator, newState))
-        } else {
-          const input = yield* _(Channel.readInput<string>())
-          if (O.isSome(input)) {
-            yield* _(splitLoop(separator, state + input.value))
-          } else {
-            yield* _(Channel.writeIterable(splits))
-          }
-        }
-      })
-    }
-
     function split(separator: string) {
-      return splitLoop(separator)
+      return Channel.transducer("")((input: O.Option<string>, state) =>
+        Channel.gen(function* (_) {
+          if (O.isSome(input)) {
+            const splits = (state + input.value).split(separator)
+            const newState = splits.pop()!
+            yield* _(Channel.writeIterable(splits))
+            return newState
+          } else {
+            yield* _(Channel.writeIterable(state))
+            return state
+          }
+        })
+      )
     }
 
     function groupLoop(
@@ -138,7 +129,7 @@ describe("Stream", () => {
     }
 
     function group(size: number) {
-      return groupLoop(size)
+      return Channel.suspend(() => groupLoop(size))
     }
 
     const result = await pipe(
