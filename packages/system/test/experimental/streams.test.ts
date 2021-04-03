@@ -107,10 +107,9 @@ describe("Stream", () => {
             const newState = splits.pop()!
             yield* _(Channel.writeIterable(splits))
             return newState
-          } else {
-            yield* _(Channel.writeIterable(state))
-            return state
           }
+          yield* _(Channel.writeIterable(state))
+          return state
         })
       )
     }
