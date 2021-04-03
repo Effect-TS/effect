@@ -1,3 +1,5 @@
+// tracing: off
+
 import { isTracingEnabled } from "./Global"
 
 export const tracingSymbol = "$trace"

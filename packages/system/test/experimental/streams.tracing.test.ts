@@ -1,4 +1,4 @@
-import "@effect-ts/tracing-utils/Enable"
+import "../../src/Tracing/Enable"
 
 import { pretty } from "../../src/Cause"
 import * as T from "../../src/Effect"

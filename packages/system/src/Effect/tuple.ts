@@ -1,8 +1,7 @@
 // tracing: off
 
-import { accessCallTrace } from "@effect-ts/tracing-utils"
-
 import type { NonEmptyArray } from "../NonEmptyArray"
+import { accessCallTrace } from "../Tracing"
 import type { _E, _R } from "../Utils"
 import type { Effect } from "./effect"
 import { collectAll, collectAllPar, collectAllParN_ } from "./excl-forEach"

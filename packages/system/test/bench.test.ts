@@ -1,4 +1,4 @@
-import "@effect-ts/tracing-utils/Enable"
+import "../src/Tracing/Enable"
 
 import { defaultRuntime, QIO } from "@qio/core"
 

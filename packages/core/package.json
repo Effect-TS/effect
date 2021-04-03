@@ -25,8 +25,7 @@
   },
   "sideEffects": false,
   "dependencies": {
-    "@effect-ts/system": "^0.25.10",
-    "@effect-ts/tracing-utils": "^0.5.2"
+    "@effect-ts/system": "^0.25.10"
   },
   "config": {
     "side": [

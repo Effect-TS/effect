@@ -4,14 +4,13 @@
  * Copyright 2020 Michael Arnaldi and the Matechs Garage Contributors.
  */
 
-import { accessCallTrace } from "@effect-ts/tracing-utils"
-
 import * as A from "../Array"
 import * as R from "../Dictionary"
 import * as core from "../Effect/core"
 import type { Effect } from "../Effect/effect"
 import type { Has, Tag } from "../Has"
 import { mergeEnvironments } from "../Has"
+import { accessCallTrace } from "../Tracing"
 import type { UnionToIntersection } from "../Utils"
 
 /**

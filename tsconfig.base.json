@@ -35,8 +35,6 @@
       "@effect-ts/core": ["packages/core/build"],
       "@effect-ts/system/*": ["packages/system/build/*"],
       "@effect-ts/system": ["packages/system/build"],
-      "@effect-ts/tracing-utils/*": ["packages/tracing-utils/build/*"],
-      "@effect-ts/tracing-utils": ["packages/tracing-utils/build"],
       "@effect-ts/tracing-plugin/*": ["packages/tracing-plugin/build/*"],
       "@effect-ts/tracing-plugin": ["packages/tracing-plugin/build"]
     },
