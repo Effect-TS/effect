@@ -914,14 +914,15 @@ export function catchAll<E, R1, E1, L1, I1, A1, U1, O1>(
 /**
  * Construct a Transducer
  */
-export function transducer<S>(state: S) {
-  return <I, R, E, O>(
-    body: (i: O.Option<I>, s: S) => Transducer<R, E, I, O, S>
-  ): Transducer<R, E, I, O> => {
-    return needInput(
-      (i: I) =>
-        chain_(body(O.some(i), state), (newState) => transducer(newState)(body)),
-      () => chain_(body(O.none, state), () => unit)
-    )
-  }
+export function transducer<S, I, R, E, O>(
+  initial: S,
+  body: (i: O.Option<I>, s: S) => Transducer<R, E, I, O, S>,
+  __trace?: string
+): Transducer<R, E, I, O> {
+  return needInput(
+    (i: I) =>
+      chain_(body(O.some(i), initial), (newState) => transducer(newState, body)),
+    () => chain_(body(O.none, initial), () => unit),
+    __trace
+  )
 }
