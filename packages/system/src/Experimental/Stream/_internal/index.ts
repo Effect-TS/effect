@@ -256,11 +256,12 @@ export function mapM<R, R1, E1, E, A, B>(
  */
 export function map_<R, E, A, B>(
   self: Stream<R, E, A>,
-  f: (a: A) => B
+  f: (a: A) => B,
+  __trace?: string
 ): Stream<R, E, B> {
   return Channel.combine_(
     self,
-    Channel.awaitForever((x: A) => succeed(f(x)))
+    Channel.awaitForever((x: A) => succeed(f(x)), __trace)
   )
 }
 
@@ -270,9 +271,10 @@ export function map_<R, E, A, B>(
  * @dataFirst map_
  */
 export function map<A, B>(
-  f: (a: A) => B
+  f: (a: A) => B,
+  __trace?: string
 ): <R, E>(self: Stream<R, E, A>) => Stream<R, E, B> {
-  return (self) => map_(self, f)
+  return (self) => map_(self, f, __trace)
 }
 
 /**

@@ -316,14 +316,16 @@ export function awaitEither<U, I>(): Channel<
  * new input. Returns the upstream result type.
  */
 export function awaitForever<R, E, L, I, I1, O, A, A1>(
-  inner: (i: I1) => Channel<R, E, L, I, O, A, A1>
+  inner: (i: I1) => Channel<R, E, L, I, O, A, A1>,
+  __trace?: string
 ): Channel<R, E, L, I & I1, O, A, A> {
   const go: Channel<R, E, L, I & I1, O, A, A> = chain_(
     awaitEither<A, I & I1>(),
     E.fold(
       (x) => done(x),
-      (x) => chain_(inner(x), () => go)
-    )
+      (x) => chain_(inner(x), () => go, __trace)
+    ),
+    __trace
   )
   return go
 }
@@ -346,28 +348,33 @@ export const unit: Channel<
  */
 export function chain_<R, E, L, I, O, U, A, R1, E1, L1, I1, O1, U1, A1>(
   self: Channel<R, E, L, I, O, U, A>,
-  f: (a: A) => Channel<R1, E1, L1, I1, O1, U1, A1>
+  f: (a: A) => Channel<R1, E1, L1, I1, O1, U1, A1>,
+  __trace?: string
 ): Channel<R & R1, E | E1, L | L1, I & I1, O | O1, U & U1, A1> {
   concrete(self)
-  switch (self._typeId) {
-    case DoneTypeId: {
-      return f(self.result)
+  try {
+    switch (self._typeId) {
+      case DoneTypeId: {
+        return f(self.result)
+      }
+      case ChannelMTypeId: {
+        return new ChannelM(M.map_(self.nextChannel, (a) => chain_(a, f, __trace)))
+      }
+      case LeftoverTypeId: {
+        return new Leftover(() => chain_(self.nextChannel(), f, __trace), self.leftover)
+      }
+      case HaveOutputTypeId: {
+        return new HaveOutput(() => chain_(self.nextChannel(), f, __trace), self.output)
+      }
+      case NeedInputTypeId: {
+        return new NeedInput(
+          (i) => chain_(self.nextChannel(i), f, __trace),
+          (u) => chain_(self.fromUpstream(u), f, __trace)
+        )
+      }
     }
-    case ChannelMTypeId: {
-      return new ChannelM(M.map_(self.nextChannel, (a) => chain_(a, f)))
-    }
-    case LeftoverTypeId: {
-      return new Leftover(() => chain_(self.nextChannel(), f), self.leftover)
-    }
-    case HaveOutputTypeId: {
-      return new HaveOutput(() => chain_(self.nextChannel(), f), self.output)
-    }
-    case NeedInputTypeId: {
-      return new NeedInput(
-        (i) => chain_(self.nextChannel(i), f),
-        (u) => chain_(self.fromUpstream(u), f)
-      )
-    }
+  } catch (e) {
+    return new ChannelM(M.die(e, __trace))
   }
 }
 
@@ -377,11 +384,12 @@ export function chain_<R, E, L, I, O, U, A, R1, E1, L1, I1, O1, U1, A1>(
  * `dataFirst chain_
  */
 export function chain<A, R1, E1, L1, I1, O1, U1, A1>(
-  f: (a: A) => Channel<R1, E1, L1, I1, O1, U1, A1>
+  f: (a: A) => Channel<R1, E1, L1, I1, O1, U1, A1>,
+  __trace?: string
 ): <R, E, L, I, O, U>(
   self: Channel<R, E, L, I, O, U, A>
 ) => Channel<R & R1, E | E1, L | L1, I & I1, O | O1, U & U1, A1> {
-  return (self) => chain_(self, f)
+  return (self) => chain_(self, f, __trace)
 }
 
 /**
@@ -407,79 +415,81 @@ export function map<A, B>(
   return (self) => map_(self, f)
 }
 
-function runChannelInner<R, E, A>(
-  self: Channel<R, E, never, unknown, unknown, void, A>
-): M.Managed<R, E, A> {
-  // eslint-disable-next-line no-constant-condition
-  while (1) {
-    concrete(self)
-    switch (self._typeId) {
-      case DoneTypeId: {
-        return M.succeed(self.result)
-      }
-      case HaveOutputTypeId: {
-        throw new Error(`channels in run should not contain outputs: ${self.output}`)
-      }
-      case ChannelMTypeId: {
-        return M.chain_(self.nextChannel, runChannelInner)
-      }
-      case LeftoverTypeId: {
-        throw new Error(
-          `channels in run should not contain leftovers: ${self.leftover}`
-        )
-      }
-      case NeedInputTypeId: {
-        self = self.fromUpstream()
-      }
-    }
-  }
-  throw new Error("Bug")
-}
-
 /**
  *  Run a pipeline until processing completes.
  */
 export function runChannel<R, E, A>(
   self: Channel<R, E, never, unknown, unknown, void, A>
 ): M.Managed<R, E, A> {
-  return M.suspend(() => runChannelInner(self))
+  try {
+    // eslint-disable-next-line no-constant-condition
+    while (1) {
+      concrete(self)
+      switch (self._typeId) {
+        case DoneTypeId: {
+          return M.succeed(self.result)
+        }
+        case HaveOutputTypeId: {
+          throw new Error(`channels in run should not contain outputs: ${self.output}`)
+        }
+        case ChannelMTypeId: {
+          return M.chain_(self.nextChannel, runChannel)
+        }
+        case LeftoverTypeId: {
+          throw new Error(
+            `channels in run should not contain leftovers: ${self.leftover}`
+          )
+        }
+        case NeedInputTypeId: {
+          self = self.fromUpstream()
+        }
+      }
+    }
+  } catch (e) {
+    return M.die(e)
+  }
+  throw new Error("Bug")
 }
 
 function injectLeftoversGo<R, E, I, O, U, A>(
   ls: L.List<I>,
   self: Channel<R, E, I, I, O, U, A>
 ): Channel<R, E, never, I, O, U, A> {
-  // eslint-disable-next-line no-constant-condition
-  while (1) {
-    const k = self
-    concrete(k)
-    switch (k._typeId) {
-      case DoneTypeId: {
-        return new Done(k.result)
-      }
-      case LeftoverTypeId: {
-        ls = L.prepend_(ls, k.leftover)
-        break
-      }
-      case ChannelMTypeId: {
-        return new ChannelM(M.map_(k.nextChannel, (p) => injectLeftoversGo(ls, p)))
-      }
-      case HaveOutputTypeId: {
-        return new HaveOutput(() => injectLeftoversGo(ls, k.nextChannel()), k.output)
-      }
-      case NeedInputTypeId: {
-        if (L.isEmpty(ls)) {
-          return new NeedInput(
-            (i) => injectLeftoversGo(L.empty(), k.nextChannel(i)),
-            (u) => injectLeftoversGo(L.empty(), k.fromUpstream(u))
-          )
-        } else {
-          self = k.nextChannel(L.unsafeFirst(ls)!)
-          ls = L.tail(ls)
+  try {
+    // eslint-disable-next-line no-constant-condition
+    while (1) {
+      const k = self
+      concrete(k)
+      switch (k._typeId) {
+        case DoneTypeId: {
+          return new Done(k.result)
         }
-        break
+        case LeftoverTypeId: {
+          ls = L.prepend_(ls, k.leftover)
+          break
+        }
+        case ChannelMTypeId: {
+          return new ChannelM(M.map_(k.nextChannel, (p) => injectLeftoversGo(ls, p)))
+        }
+        case HaveOutputTypeId: {
+          return new HaveOutput(() => injectLeftoversGo(ls, k.nextChannel()), k.output)
+        }
+        case NeedInputTypeId: {
+          if (L.isEmpty(ls)) {
+            return new NeedInput(
+              (i) => injectLeftoversGo(L.empty(), k.nextChannel(i)),
+              (u) => injectLeftoversGo(L.empty(), k.fromUpstream(u))
+            )
+          } else {
+            self = k.nextChannel(L.unsafeFirst(ls)!)
+            ls = L.tail(ls)
+          }
+          break
+        }
       }
     }
+  } catch (e) {
+    return new ChannelM(M.die(e))
   }
   throw new Error("Bug")
 }
@@ -528,6 +538,20 @@ export function writeManaged<R, E, O>(
   return managed(M.map_(o, write))
 }
 
+function writeIterateGo<O>(
+  x: O,
+  f: (x: O) => O,
+  __trace?: string
+): Channel<unknown, never, never, unknown, O, unknown, void> {
+  return haveOutput(() => {
+    try {
+      return writeIterateGo(f(x), f, __trace)
+    } catch (e) {
+      return new ChannelM(M.die(e, __trace))
+    }
+  }, x)
+}
+
 /**
  * Produces an infinite stream of repeated applications of f to x.
  */
@@ -536,7 +560,7 @@ export function writeIterate<O>(
   f: (x: O) => O,
   __trace?: string
 ): Channel<unknown, never, never, unknown, O, unknown, void> {
-  return writeIterateM(x, (y) => T.effectTotal(() => f(y), __trace))
+  return writeIterateGo(x, f, __trace)
 }
 
 function writeIterateMGo<R, E, O>(
@@ -606,80 +630,86 @@ type CombineGo<R, E, L, I, O, U, A, O2, A1> = E.Either<
 function combineGo<R, E, L, I, O, U, A, O2, A1>(
   input: CombineGo<R, E, L, I, O, U, A, O2, A1>
 ): Channel<R, E, L, I, O2, U, A1> {
-  // eslint-disable-next-line no-constant-condition
-  while (1) {
-    switch (input._tag) {
-      case "Left": {
-        const rp = input.left.rp
-        const rc = input.left.rc
-        const left = input.left.left
-        concrete(left)
-        switch (left._typeId) {
-          case DoneTypeId: {
-            input = E.right({
-              left: new Done(left.result),
-              right: rc(left.result)
-            })
-            break
+  try {
+    // eslint-disable-next-line no-constant-condition
+    while (1) {
+      switch (input._tag) {
+        case "Left": {
+          const rp = input.left.rp
+          const rc = input.left.rc
+          const left = input.left.left
+          concrete(left)
+          switch (left._typeId) {
+            case DoneTypeId: {
+              input = E.right({
+                left: new Done(left.result),
+                right: rc(left.result)
+              })
+              break
+            }
+            case ChannelMTypeId: {
+              return new ChannelM(
+                M.map_(left.nextChannel, (p) => combineGo(E.left({ rp, rc, left: p })))
+              )
+            }
+            case LeftoverTypeId: {
+              return new Leftover(
+                () => combineGo(E.left({ rp, rc, left: left.nextChannel() })),
+                left.leftover
+              )
+            }
+            case HaveOutputTypeId: {
+              input = E.right({ left: left.nextChannel(), right: rp(left.output) })
+              break
+            }
+            case NeedInputTypeId: {
+              return new NeedInput(
+                (i) => combineGo(E.left({ rp, rc, left: left.nextChannel(i) })),
+                (u) => combineGo(E.left({ rp, rc, left: left.fromUpstream(u) }))
+              )
+            }
           }
-          case ChannelMTypeId: {
-            return new ChannelM(
-              M.map_(left.nextChannel, (p) => combineGo(E.left({ rp, rc, left: p })))
-            )
-          }
-          case LeftoverTypeId: {
-            return new Leftover(
-              () => combineGo(E.left({ rp, rc, left: left.nextChannel() })),
-              left.leftover
-            )
-          }
-          case HaveOutputTypeId: {
-            input = E.right({ left: left.nextChannel(), right: rp(left.output) })
-            break
-          }
-          case NeedInputTypeId: {
-            return new NeedInput(
-              (i) => combineGo(E.left({ rp, rc, left: left.nextChannel(i) })),
-              (u) => combineGo(E.left({ rp, rc, left: left.fromUpstream(u) }))
-            )
-          }
+          break
         }
-        break
-      }
-      case "Right": {
-        const right = input.right.right
-        const left = input.right.left
-        concrete(right)
-        switch (right._typeId) {
-          case DoneTypeId: {
-            return new Done(right.result)
+        case "Right": {
+          const right = input.right.right
+          const left = input.right.left
+          concrete(right)
+          switch (right._typeId) {
+            case DoneTypeId: {
+              return new Done(right.result)
+            }
+            case ChannelMTypeId: {
+              return new ChannelM(
+                M.map_(right.nextChannel, (right) =>
+                  combineGo(E.right({ left, right }))
+                )
+              )
+            }
+            case LeftoverTypeId: {
+              input = E.right({
+                left: new HaveOutput(() => left, right.leftover),
+                right: right.nextChannel()
+              })
+              break
+            }
+            case HaveOutputTypeId: {
+              return new HaveOutput(
+                () => combineGo(E.right({ left, right: right.nextChannel() })),
+                right.output
+              )
+            }
+            case NeedInputTypeId: {
+              input = E.left({ rp: right.nextChannel, rc: right.fromUpstream, left })
+              break
+            }
           }
-          case ChannelMTypeId: {
-            return new ChannelM(
-              M.map_(right.nextChannel, (right) => combineGo(E.right({ left, right })))
-            )
-          }
-          case LeftoverTypeId: {
-            input = E.right({
-              left: new HaveOutput(() => left, right.leftover),
-              right: right.nextChannel()
-            })
-            break
-          }
-          case HaveOutputTypeId: {
-            return new HaveOutput(
-              () => combineGo(E.right({ left, right: right.nextChannel() })),
-              right.output
-            )
-          }
-          case NeedInputTypeId: {
-            input = E.left({ rp: right.nextChannel, rc: right.fromUpstream, left })
-            break
-          }
+          break
         }
-        break
       }
     }
+  } catch (e) {
+    return new ChannelM(M.die(e))
   }
   throw new Error("Bug")
 }
@@ -746,30 +776,34 @@ export function catchAll_<R, E, L, I, A, U, O, R1, E1, L1, I1, A1, U1, O1>(
   f: (e: E) => Channel<R1, E1, L1, I1, A1, U1, O1>
 ): Channel<R & R1, E1, L | L1, I & I1, A | A1, U & U1, O | O1> {
   concrete(self)
-  switch (self._typeId) {
-    case DoneTypeId: {
-      return new Done(self.result)
-    }
-    case NeedInputTypeId: {
-      return new NeedInput(
-        (i) => catchAll_(self.nextChannel(i), f),
-        (u) => catchAll_(self.fromUpstream(u), f)
-      )
-    }
-    case HaveOutputTypeId: {
-      return new HaveOutput(() => catchAll_(self.nextChannel(), f), self.output)
-    }
-    case LeftoverTypeId: {
-      return new Leftover(() => catchAll_(self.nextChannel(), f), self.leftover)
-    }
-    case ChannelMTypeId: {
-      return new ChannelM(
-        M.catchAll_(
-          M.map_(self.nextChannel, (_) => catchAll_(_, f)),
-          (e) => M.succeed(f(e))
+  try {
+    switch (self._typeId) {
+      case DoneTypeId: {
+        return new Done(self.result)
+      }
+      case NeedInputTypeId: {
+        return new NeedInput(
+          (i) => catchAll_(self.nextChannel(i), f),
+          (u) => catchAll_(self.fromUpstream(u), f)
         )
-      )
+      }
+      case HaveOutputTypeId: {
+        return new HaveOutput(() => catchAll_(self.nextChannel(), f), self.output)
+      }
+      case LeftoverTypeId: {
+        return new Leftover(() => catchAll_(self.nextChannel(), f), self.leftover)
+      }
+      case ChannelMTypeId: {
+        return new ChannelM(
+          M.catchAll_(
+            M.map_(self.nextChannel, (_) => catchAll_(_, f)),
+            (e) => M.succeed(f(e))
+          )
+        )
+      }
     }
+  } catch (e) {
+    return new ChannelM(M.die(e))
   }
 }
 
