@@ -1,4 +1,5 @@
 import * as T from "../../src/Effect"
+import * as Ex from "../../src/Exit"
 import * as S from "../../src/Experimental/Stream"
 import * as Channel from "../../src/Experimental/Stream/Channel"
 import { pipe } from "../../src/Function"
@@ -166,5 +167,21 @@ describe("Stream", () => {
     )
 
     expect(result).toEqual(L.from([0, 1, 2, 3, 10]))
+  })
+
+  it("Catches exceptions", async () => {
+    const result = await pipe(
+      S.iterate(0, (n) => {
+        if (n > 2) {
+          throw "err"
+        }
+        return n + 1
+      }),
+      S.take(5),
+      S.runList,
+      T.runPromiseExit
+    )
+
+    expect(result).toEqual(Ex.die("err"))
   })
 })

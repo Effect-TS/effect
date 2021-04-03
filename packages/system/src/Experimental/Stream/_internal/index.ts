@@ -34,8 +34,8 @@ export function take(n: number): <R, E, A>(self: Stream<R, E, A>) => Stream<R, E
 
 type ConnectResumeGo<R, E, O, A> = E.Either<
   {
-    rp: (i: O) => Sink.Sink<R, E, O, O, A>
-    rc: (u: void) => Sink.Sink<R, E, O, O, A>
+    rp: (i: O, _: Channel.Tracer) => Sink.Sink<R, E, O, O, A>
+    rc: (u: void, _: Channel.Tracer) => Sink.Sink<R, E, O, O, A>
     left: Stream<R, E, O>
   },
   {
@@ -68,12 +68,15 @@ function connectResumeGo<R, E, O, A>(
             case Channel.DoneTypeId: {
               input = E.right({
                 left: new Channel.Done(left.result),
-                right: rc(left.result)
+                right: new Channel.WithTracer((_) => rc(left.result, _))
               })
               break
             }
             case Channel.HaveOutputTypeId: {
-              input = E.right({ left: left.nextChannel(), right: rp(left.output) })
+              input = E.right({
+                left: new Channel.WithTracer((_) => left.nextChannel(_)),
+                right: new Channel.WithTracer((_) => rp(left.output, _))
+              })
               break
             }
             case Channel.ChannelMTypeId: {
@@ -82,11 +85,19 @@ function connectResumeGo<R, E, O, A>(
               )
             }
             case Channel.LeftoverTypeId: {
-              input = E.left({ rp, rc, left: left.nextChannel() })
+              input = E.left({
+                rp,
+                rc,
+                left: new Channel.WithTracer((_) => left.nextChannel(_))
+              })
               break
             }
             case Channel.NeedInputTypeId: {
-              input = E.left({ rp, rc, left: left.fromUpstream() })
+              input = E.left({
+                rp,
+                rc,
+                left: new Channel.WithTracer((_) => left.nextChannel(undefined, _))
+              })
               break
             }
           }
@@ -113,7 +124,7 @@ function connectResumeGo<R, E, O, A>(
             case Channel.LeftoverTypeId: {
               input = E.right({
                 left: new Channel.HaveOutput(() => left, right.leftover),
-                right: right.nextChannel()
+                right: new Channel.WithTracer((_) => right.nextChannel(_))
               })
               break
             }
@@ -249,11 +260,12 @@ export const fromEffectStream: <R, R1, E, E1, A>(
  */
 export function mapM_<R, R1, E1, E, A, B>(
   self: Stream<R, E, A>,
-  f: (a: A) => T.Effect<R1, E1, B>
+  f: (a: A) => T.Effect<R1, E1, B>,
+  __trace?: string
 ): Stream<R & R1, E | E1, B> {
   return Channel.combine_(
     self,
-    Channel.awaitForever((x: A) => fromEffect(f(x)))
+    Channel.awaitForever((x: A) => fromEffect(f(x)), __trace)
   )
 }
 
@@ -263,9 +275,10 @@ export function mapM_<R, R1, E1, E, A, B>(
  * @dataFirst mapM_
  */
 export function mapM<R, R1, E1, E, A, B>(
-  f: (a: A) => T.Effect<R1, E1, B>
+  f: (a: A) => T.Effect<R1, E1, B>,
+  __trace?: string
 ): (self: Stream<R, E, A>) => Stream<R & R1, E | E1, B> {
-  return (self) => mapM_(self, f)
+  return (self) => mapM_(self, f, __trace)
 }
 
 /**
@@ -299,11 +312,12 @@ export function map<A, B>(
  */
 export function mapConcat_<R, E, A, B>(
   self: Stream<R, E, A>,
-  f: (a: A) => Iterable<B>
+  f: (a: A) => Iterable<B>,
+  __trace?: string
 ): Stream<R, E, B> {
   return Channel.combine_(
     self,
-    Channel.awaitForever((x: A) => iterable(f(x)))
+    Channel.awaitForever((x: A) => iterable(f(x)), __trace)
   )
 }
 
@@ -313,9 +327,10 @@ export function mapConcat_<R, E, A, B>(
  * @dataFirst mapConcat_
  */
 export function mapConcat<A, B>(
-  f: (a: A) => Iterable<B>
+  f: (a: A) => Iterable<B>,
+  __trace?: string
 ): <R, E>(self: Stream<R, E, A>) => Stream<R, E, B> {
-  return (self) => mapConcat_(self, f)
+  return (self) => mapConcat_(self, f, __trace)
 }
 
 /**
@@ -323,11 +338,12 @@ export function mapConcat<A, B>(
  */
 export function mapConcatM_<R, E, A, R1, E1, B>(
   self: Stream<R, E, A>,
-  f: (a: A) => T.Effect<R1, E1, Iterable<B>>
+  f: (a: A) => T.Effect<R1, E1, Iterable<B>>,
+  __trace?: string
 ): Stream<R & R1, E | E1, B> {
   return Channel.combine_(
     self,
-    Channel.awaitForever((x: A) => Channel.effect(T.map_(f(x), iterable)))
+    Channel.awaitForever((x: A) => Channel.effect(T.map_(f(x), iterable)), __trace)
   )
 }
 
@@ -337,9 +353,10 @@ export function mapConcatM_<R, E, A, R1, E1, B>(
  * @dataFirst mapConcatM_
  */
 export function mapConcatM<R1, E1, A, B>(
-  f: (a: A) => T.Effect<R1, E1, Iterable<B>>
+  f: (a: A) => T.Effect<R1, E1, Iterable<B>>,
+  __trace?: string
 ): <R, E>(self: Stream<R, E, A>) => Stream<R & R1, E | E1, B> {
-  return (self) => mapConcatM_(self, f)
+  return (self) => mapConcatM_(self, f, __trace)
 }
 
 /**
@@ -347,9 +364,10 @@ export function mapConcatM<R1, E1, A, B>(
  */
 export function chain_<R, E, R1, E1, A, B>(
   self: Stream<R, E, A>,
-  f: (a: A) => Stream<R1, E1, B>
+  f: (a: A) => Stream<R1, E1, B>,
+  __trace?: string
 ): Stream<R & R1, E | E1, B> {
-  return Channel.combine_(self, Channel.awaitForever(f))
+  return Channel.combine_(self, Channel.awaitForever(f, __trace))
 }
 
 /**
@@ -358,9 +376,10 @@ export function chain_<R, E, R1, E1, A, B>(
  * @dataFirst chain_
  */
 export function chain<R, E, A, B>(
-  f: (a: A) => Stream<R, E, B>
+  f: (a: A) => Stream<R, E, B>,
+  __trace?: string
 ): <R1, E1>(self: Stream<R1, E1, A>) => Stream<R & R1, E | E1, B> {
-  return (self) => chain_(self, f)
+  return (self) => chain_(self, f, __trace)
 }
 
 /**
@@ -402,7 +421,8 @@ export const combine: <R1, E1, A, O>(
  */
 export const catchAll_: <R, E, A, R1, E1, A1>(
   self: Stream<R, E, A>,
-  f: (e: E) => Stream<R1, E1, A1>
+  f: (e: E) => Stream<R1, E1, A1>,
+  __trace?: string
 ) => Stream<R & R1, E1, A | A1> = Channel.catchAll_
 
 /**
@@ -411,5 +431,6 @@ export const catchAll_: <R, E, A, R1, E1, A1>(
  * @dataFirst catchAll_
  */
 export const catchAll: <E, R1, E1, A1>(
-  f: (e: E) => Stream<R1, E1, A1>
+  f: (e: E) => Stream<R1, E1, A1>,
+  __trace?: string
 ) => <R, A>(self: Stream<R, E, A>) => Stream<R & R1, E1, A | A1> = Channel.catchAll
