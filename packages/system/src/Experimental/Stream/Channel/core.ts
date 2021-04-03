@@ -215,7 +215,7 @@ export function needInput<R, E, L, I, O, U, A, R1, E1, L1, I1, O1, U1, A1>(
 /**
  * Reads the input and return an optional result
  */
-export function input<I>(): Channel<
+export function readInput<I>(): Channel<
   unknown,
   never,
   never,

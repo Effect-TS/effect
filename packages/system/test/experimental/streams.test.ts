@@ -109,7 +109,7 @@ describe("Stream", () => {
           yield* _(Channel.writeIterable(splits))
           yield* _(splitLoop(separator, newState))
         } else {
-          const input = yield* _(Channel.input<string>())
+          const input = yield* _(Channel.readInput<string>())
           if (O.isSome(input)) {
             yield* _(splitLoop(separator, state + input.value))
           } else {
