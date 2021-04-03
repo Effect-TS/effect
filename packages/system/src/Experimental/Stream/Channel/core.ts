@@ -407,10 +407,7 @@ export function map<A, B>(
   return (self) => map_(self, f)
 }
 
-/**
- *  Run a pipeline until processing completes.
- */
-export function runChannel<R, E, A>(
+function runChannelInner<R, E, A>(
   self: Channel<R, E, never, unknown, unknown, void, A>
 ): M.Managed<R, E, A> {
   // eslint-disable-next-line no-constant-condition
@@ -424,7 +421,7 @@ export function runChannel<R, E, A>(
         throw new Error(`channels in run should not contain outputs: ${self.output}`)
       }
       case ChannelMTypeId: {
-        return M.chain_(self.nextChannel, runChannel)
+        return M.chain_(self.nextChannel, runChannelInner)
       }
       case LeftoverTypeId: {
         throw new Error(
@@ -437,6 +434,15 @@ export function runChannel<R, E, A>(
     }
   }
   throw new Error("Bug")
+}
+
+/**
+ *  Run a pipeline until processing completes.
+ */
+export function runChannel<R, E, A>(
+  self: Channel<R, E, never, unknown, unknown, void, A>
+): M.Managed<R, E, A> {
+  return M.suspend(() => runChannelInner(self))
 }
 
 function injectLeftoversGo<R, E, I, O, U, A>(
@@ -522,13 +528,6 @@ export function writeManaged<R, E, O>(
   return managed(M.map_(o, write))
 }
 
-function writeIterateGo<O>(
-  x: O,
-  f: (x: O) => O
-): Channel<unknown, never, never, unknown, O, unknown, void> {
-  return haveOutput(() => writeIterateGo(f(x), f), x)
-}
-
 /**
  * Produces an infinite stream of repeated applications of f to x.
  */
@@ -537,22 +536,15 @@ export function writeIterate<O>(
   f: (x: O) => O,
   __trace?: string
 ): Channel<unknown, never, never, unknown, O, unknown, void> {
-  return channelM(M.effectTotal(() => writeIterateGo(x, f), __trace))
+  return writeIterateM(x, (y) => T.effectTotal(() => f(y), __trace))
 }
 
 function writeIterateMGo<R, E, O>(
   x: O,
-  f: (x: O) => T.Effect<R, E, O>,
-  __trace?: string
+  f: (x: O) => T.Effect<R, E, O>
 ): Channel<R, E, never, unknown, O, unknown, void> {
   return haveOutput(
-    () =>
-      new ChannelM(
-        M.fromEffect(
-          T.map_(f(x), (y) => writeIterateMGo(y, f)),
-          __trace
-        )
-      ),
+    () => new ChannelM(M.fromEffect(T.map_(f(x), (y) => writeIterateMGo(y, f)))),
     x
   )
 }
@@ -562,10 +554,9 @@ function writeIterateMGo<R, E, O>(
  */
 export function writeIterateM<R, E, O>(
   x: O,
-  f: (x: O) => T.Effect<R, E, O>,
-  __trace?: string
+  f: (x: O) => T.Effect<R, E, O>
 ): Channel<R, E, never, unknown, O, unknown, void> {
-  return writeIterateMGo(x, f, __trace)
+  return writeIterateMGo(x, f)
 }
 
 function writeIterableGo<O>(
