@@ -1,6 +1,6 @@
 // tracing: off
 
-import { accessService } from "../../Effect"
+import { _A, _E, _R, accessService } from "../../Effect"
 import type { Effect } from "../../Effect/effect"
 import { fromEither } from "../../Effect/fromEither"
 import { getOrFail } from "../../Effect/getOrFail"
@@ -9,7 +9,7 @@ import { identity } from "../../Function"
 import type { NoSuchElementException } from "../../GlobalExceptions"
 import type { Has, Tag } from "../../Has"
 import type { Option } from "../../Option"
-import type { _E, _R } from "../../Utils"
+import type * as Utils from "../../Utils"
 import { isEither, isOption, isTag } from "../../Utils"
 import { chain_, fail } from "../core"
 import { fromEffect } from "../fromEffect"
@@ -18,9 +18,9 @@ import { succeed } from "../succeed"
 import { suspend } from "./suspend"
 
 export class GenManaged<R, E, A> {
-  readonly _R!: (_R: R) => void
-  readonly _E!: () => E
-  readonly _A!: () => A
+  readonly [_R]!: (_R: R) => void;
+  readonly [_E]!: () => E;
+  readonly [_A]!: () => A
 
   constructor(readonly effect: Managed<R, E, A>, readonly trace?: string) {}
 
@@ -64,7 +64,7 @@ export function gen<Eff extends GenManaged<any, any, any>, AEff>(
     <R, E, A>(_: Managed<R, E, A>, __trace?: string): GenManaged<R, E, A>
     <R, E, A>(_: Effect<R, E, A>, __trace?: string): GenManaged<R, E, A>
   }) => Generator<Eff, AEff, any>
-): Managed<_R<Eff>, _E<Eff>, AEff> {
+): Managed<Utils._R<Eff>, Utils._E<Eff>, AEff> {
   return suspend(() => {
     const iterator = f(adapter as any)
     const state = iterator.next()

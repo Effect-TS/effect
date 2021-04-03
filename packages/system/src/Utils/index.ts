@@ -2,6 +2,7 @@
 
 import "../Operator"
 
+import type { _A, _E, _R } from "../Effect"
 import type { Either } from "../Either/core"
 import type { Tag } from "../Has"
 import type { Option } from "../Option"
@@ -75,11 +76,11 @@ export type PredicateWithIndex<I, A> = (i: I, a: A) => boolean
 
 export type Erase<R, K> = R & K extends K & infer R1 ? R1 : R
 
-export type _A<T> = [T] extends [{ ["_A"]: () => infer A }] ? A : never
+export type _A<T> = [T] extends [{ [k in typeof _A]: () => infer A }] ? A : never
 
-export type _R<T> = [T] extends [{ ["_R"]: (_: infer R) => void }] ? R : never
+export type _R<T> = [T] extends [{ [k in typeof _R]: (_: infer R) => void }] ? R : never
 
-export type _E<T> = [T] extends [{ ["_E"]: () => infer E }] ? E : never
+export type _E<T> = [T] extends [{ [k in typeof _E]: () => infer E }] ? E : never
 
 export * from "./tool"
 

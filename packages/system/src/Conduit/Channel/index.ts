@@ -3,11 +3,20 @@
 import "../../Operator"
 
 import * as T from "../../Effect"
+import { _A, _C, _E, _I, _L, _O, _R, _U } from "../../Effect"
 import * as E from "../../Either"
 import type { Lazy } from "../../Function"
 import * as M from "../../Managed"
 import * as O from "../../Option"
 import * as L from "../../Persistent/List"
+
+export interface ChannelApi<R, E, L, I, O, U, A> {
+  readonly [".|"]: <R1, E1, O2, A1>(
+    right: Channel<R1, E1, O, O, O2, A, A1>
+  ) => Channel<R & R1, E | E1, L, I, O2, U, A1>
+}
+
+export const ChannelTypeId = Symbol()
 
 /*
  * The underlying datatype has seven type parameters:
@@ -34,21 +43,30 @@ import * as L from "../../Persistent/List"
  * result (`A`). On the receiving end of a `Channel`, these become the `I` and `U`
  * parameters.
  */
-export interface Channel<R, E, L, I, O, U, A> {
-  readonly _channelTypeId: typeof ChannelTypeId
-  readonly _R: (_R: R) => void
-  readonly _E: () => E
-  readonly _L: () => L
-  readonly _I: (_I: I) => void
-  readonly _O: () => O
-  readonly _U: (_U: U) => void
-  readonly _A: () => A
-  readonly _C:
-    | HaveOutput<R, E, L, I, O, U, A>
-    | NeedInput<R, E, L, I, O, U, A>
-    | Done<A>
-    | ChannelM<R, E, L, I, O, U, A>
-    | Leftover<R, E, L, I, O, U, A>
+export abstract class Channel<R, E, L, I, A, U, O>
+  implements ChannelApi<R, E, L, I, A, U, O> {
+  readonly [ChannelTypeId]!: typeof ChannelTypeId;
+  readonly [_R]!: (_R: R) => void;
+  readonly [_E]!: () => E;
+  readonly [_L]!: () => L;
+  readonly [_I]!: (_I: I) => void;
+  readonly [_O]!: () => A;
+  readonly [_U]!: (_U: U) => void;
+  readonly [_A]!: () => O;
+  readonly [_C]!:
+    | HaveOutput<R, E, L, I, A, U, O>
+    | NeedInput<R, E, L, I, A, U, O>
+    | Done<R, E, L, I, A, U, O>
+    | ChannelM<R, E, L, I, A, U, O>
+    | Leftover<R, E, L, I, A, U, O>
+  constructor() {
+    this[".|"] = this[".|"].bind(this)
+  }
+  [".|"]<R1, E1, O2, A1>(
+    right: Channel<R1, E1, A, A, O2, O, A1>
+  ): Channel<R & R1, E | E1, L, I, O2, U, A1> {
+    return combine_(this, right)
+  }
 }
 
 /**
@@ -62,7 +80,7 @@ export interface Transducer<R, E, I, O>
  */
 export function concrete<R, E, L, I, O, U, A>(
   _: Channel<R, E, L, I, O, U, A>
-): asserts _ is typeof _["_C"] {
+): asserts _ is typeof _[typeof _C] {
   //
 }
 
@@ -78,7 +96,6 @@ export function suspend<R, E, L, I, O, U, A>(
 /**
  * Channel Type Tags
  */
-export const ChannelTypeId = Symbol()
 export const HaveOutputTypeId = Symbol()
 export const NeedInputTypeId = Symbol()
 export const DoneTypeId = Symbol()
@@ -89,26 +106,14 @@ export const LeftoverTypeId = Symbol()
  * Provide new output to be sent downstream. This constructor has two
  * fields: the next `Channel` to be used and the output value.
  */
-export class HaveOutput<R, E, L, I, O, U, A> implements Channel<R, E, L, I, O, U, A> {
+export class HaveOutput<R, E, L, I, O, U, A> extends Channel<R, E, L, I, O, U, A> {
   readonly _typeId: typeof HaveOutputTypeId = HaveOutputTypeId
-  readonly _channelTypeId!: typeof ChannelTypeId
-  readonly _R!: (_R: R) => void
-  readonly _E!: () => E
-  readonly _L!: () => L
-  readonly _I!: (_I: I) => void
-  readonly _O!: () => O
-  readonly _U!: (_U: U) => void
-  readonly _A!: () => A
-  readonly _C!:
-    | HaveOutput<R, E, L, I, O, U, A>
-    | NeedInput<R, E, L, I, O, U, A>
-    | Done<A>
-    | ChannelM<R, E, L, I, O, U, A>
-    | Leftover<R, E, L, I, O, U, A>
   constructor(
     readonly nextChannel: Lazy<Channel<R, E, L, I, O, U, A>>,
     readonly output: O
-  ) {}
+  ) {
+    super()
+  }
 }
 
 /**
@@ -116,97 +121,48 @@ export class HaveOutput<R, E, L, I, O, U, A> implements Channel<R, E, L, I, O, U
  * value and provides a new `Channel`. The second takes an upstream result
  * value, which indicates that upstream is producing no more results
  */
-export class NeedInput<R, E, L, I, O, U, A> implements Channel<R, E, L, I, O, U, A> {
+export class NeedInput<R, E, L, I, O, U, A> extends Channel<R, E, L, I, O, U, A> {
   readonly _typeId: typeof NeedInputTypeId = NeedInputTypeId
-  readonly _channelTypeId!: typeof ChannelTypeId
-  readonly _R!: (_R: R) => void
-  readonly _E!: () => E
-  readonly _L!: () => L
-  readonly _I!: (_I: I) => void
-  readonly _O!: () => O
-  readonly _U!: (_U: U) => void
-  readonly _A!: () => A
-  readonly _C!:
-    | HaveOutput<R, E, L, I, O, U, A>
-    | NeedInput<R, E, L, I, O, U, A>
-    | Done<A>
-    | ChannelM<R, E, L, I, O, U, A>
-    | Leftover<R, E, L, I, O, U, A>
   constructor(
     readonly nextChannel: (i: I) => Channel<R, E, L, I, O, U, A>,
     readonly fromUpstream: (u: U) => Channel<R, E, L, I, O, U, A>
-  ) {}
+  ) {
+    super()
+  }
 }
 
 /**
  * Processing with this `Channel` is complete, providing the final result.
  */
-export class Done<A>
-  implements Channel<unknown, never, never, unknown, never, unknown, A> {
+export class Done<R, E, L, I, O, U, A> extends Channel<R, E, L, I, O, U, A> {
   readonly _typeId: typeof DoneTypeId = DoneTypeId
-  readonly _channelTypeId!: typeof ChannelTypeId
-  readonly _R!: (_R: unknown) => void
-  readonly _E!: () => never
-  readonly _L!: () => never
-  readonly _I!: (_I: unknown) => void
-  readonly _O!: () => never
-  readonly _U!: (_U: unknown) => void
-  readonly _A!: () => A
-  readonly _C!:
-    | HaveOutput<unknown, never, never, unknown, never, unknown, A>
-    | NeedInput<unknown, never, never, unknown, never, unknown, A>
-    | Done<A>
-    | ChannelM<unknown, never, never, unknown, never, unknown, A>
-    | Leftover<unknown, never, never, unknown, never, unknown, A>
-  constructor(readonly result: A) {}
+  constructor(readonly result: A) {
+    super()
+  }
 }
 
 /**
  * Require running of a monadic action to get the next `Channel`.
  */
-export class ChannelM<R, E, L, I, O, U, A> implements Channel<R, E, L, I, O, U, A> {
+export class ChannelM<R, E, L, I, O, U, A> extends Channel<R, E, L, I, O, U, A> {
   readonly _typeId: typeof ChannelMTypeId = ChannelMTypeId
-  readonly _channelTypeId!: typeof ChannelTypeId
-  readonly _R!: (_R: R) => void
-  readonly _E!: () => E
-  readonly _L!: () => L
-  readonly _I!: (_I: I) => void
-  readonly _O!: () => O
-  readonly _U!: (_U: U) => void
-  readonly _A!: () => A
-  readonly _C!:
-    | HaveOutput<R, E, L, I, O, U, A>
-    | NeedInput<R, E, L, I, O, U, A>
-    | Done<A>
-    | ChannelM<R, E, L, I, O, U, A>
-    | Leftover<R, E, L, I, O, U, A>
-  constructor(readonly nextChannel: M.Managed<R, E, Channel<R, E, L, I, O, U, A>>) {}
+  constructor(readonly nextChannel: M.Managed<R, E, Channel<R, E, L, I, O, U, A>>) {
+    super()
+  }
 }
 
 /**
  * Provide new output to be sent downstream. This constructor has two
  * fields: the next `Channel` to be used and the output value.
  */
-export class Leftover<R, E, L, I, O, U, A> implements Channel<R, E, L, I, O, U, A> {
+export class Leftover<R, E, L, I, O, U, A> extends Channel<R, E, L, I, O, U, A> {
   readonly _typeId: typeof LeftoverTypeId = LeftoverTypeId
-  readonly _channelTypeId!: typeof ChannelTypeId
-  readonly _R!: (_R: R) => void
-  readonly _E!: () => E
-  readonly _L!: () => L
-  readonly _I!: (_I: I) => void
-  readonly _O!: () => O
-  readonly _U!: (_U: U) => void
-  readonly _A!: () => A
-  readonly _C!:
-    | HaveOutput<R, E, L, I, O, U, A>
-    | NeedInput<R, E, L, I, O, U, A>
-    | Done<A>
-    | ChannelM<R, E, L, I, O, U, A>
-    | Leftover<R, E, L, I, O, U, A>
   constructor(
     readonly nextChannel: Lazy<Channel<R, E, L, I, O, U, A>>,
     readonly leftover: L
-  ) {}
+  ) {
+    super()
+  }
 }
 
 /**

@@ -2,6 +2,7 @@
 
 import "../../Operator"
 
+import { _A, _E, _R } from "@effect-ts/system/Effect/commons"
 import { AtomicReference } from "@effect-ts/system/Support/AtomicReference"
 
 import * as A from "../../Array"
@@ -11,11 +12,11 @@ import type { Erase, UnionToIntersection } from "../../Utils"
 import * as Sy from "../_internal"
 
 export abstract class SyncLayer<R, E, A> {
-  readonly hash = new AtomicReference<PropertyKey>(Symbol())
+  readonly hash = new AtomicReference<PropertyKey>(Symbol());
 
-  readonly _R!: (_: R) => void
-  readonly _E!: () => E
-  readonly _A!: () => A
+  readonly [_R]!: (_: R) => void;
+  readonly [_E]!: () => E;
+  readonly [_A]!: () => A
 
   setKey(key: symbol) {
     this.hash.set(key)

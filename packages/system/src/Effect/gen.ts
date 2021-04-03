@@ -12,9 +12,9 @@ import type { ReleaseMap } from "../Managed/ReleaseMap"
 import { makeReleaseMap } from "../Managed/ReleaseMap/makeReleaseMap"
 import { releaseAll } from "../Managed/ReleaseMap/releaseAll"
 import type { Option } from "../Option"
-import type { _E, _R } from "../Utils"
-import { isEither, isOption, isTag } from "../Utils"
+import * as Utils from "../Utils"
 import { bracketExit_ } from "./bracketExit"
+import { _A, _E, _R } from "./commons"
 import { chain_, succeed, suspend, unit } from "./core"
 import type { Effect } from "./effect"
 import { sequential } from "./ExecutionStrategy"
@@ -26,9 +26,9 @@ import { map_ } from "./map"
 import { provideSome_ } from "./provideSome"
 
 export class GenEffect<R, E, A> {
-  readonly _R!: (_R: R) => void
-  readonly _E!: () => E
-  readonly _A!: () => A
+  readonly [_R]!: (_R: R) => void;
+  readonly [_E]!: () => E;
+  readonly [_A]!: () => A
 
   constructor(
     readonly effect: Effect<R, E, A> | Managed<R, E, A>,
@@ -41,13 +41,13 @@ export class GenEffect<R, E, A> {
 }
 
 function adapter(_: any, __?: any, ___?: any) {
-  if (isEither(_)) {
+  if (Utils.isEither(_)) {
     return new GenEffect(
       fromEither(() => _),
       __
     )
   }
-  if (isOption(_)) {
+  if (Utils.isOption(_)) {
     if (typeof __ === "function") {
       return new GenEffect(
         __ ? (_._tag === "None" ? fail(__()) : succeed(_.value)) : getOrFail(_),
@@ -56,7 +56,7 @@ function adapter(_: any, __?: any, ___?: any) {
     }
     return new GenEffect(getOrFail(_), __)
   }
-  if (isTag(_)) {
+  if (Utils.isTag(_)) {
     return new GenEffect(service(_), __)
   }
   return new GenEffect(_, __)
@@ -77,7 +77,7 @@ export interface AdapterWithManaged extends Adapter {
 export function genM<Eff extends GenEffect<any, any, any>, AEff>(
   f: (i: AdapterWithManaged) => Generator<Eff, AEff, any>,
   __trace?: string
-): Effect<_R<Eff>, _E<Eff>, AEff> {
+): Effect<Utils._R<Eff>, Utils._E<Eff>, AEff> {
   return suspend(() => {
     const iterator = f(adapter as any)
     const state = iterator.next()
@@ -129,7 +129,7 @@ export function genM<Eff extends GenEffect<any, any, any>, AEff>(
 export function gen<Eff extends GenEffect<any, any, any>, AEff>(
   f: (i: Adapter) => Generator<Eff, AEff, any>,
   __trace?: string
-): Effect<_R<Eff>, _E<Eff>, AEff> {
+): Effect<Utils._R<Eff>, Utils._E<Eff>, AEff> {
   return suspend(() => {
     const iterator = f(adapter as any)
     const state = iterator.next()

@@ -1,6 +1,7 @@
 import * as T from "../Effect"
 import { pipe } from "../Function"
 import * as L from "../Persistent/List"
+import { _R } from "../Utils"
 import * as Channel from "./Channel"
 import * as S from "./Stream"
 
@@ -35,8 +36,7 @@ export function group(
 }
 
 pipe(
-  S.writeMany("a|b|c", "|d", "e|", "f"),
-  S.combine(split("|")["|>"](Channel.combine(group(2)))),
+  S.writeMany("a|b|c", "|d", "e|", "f")[".|"](split("|")[".|"](group(2))),
   S.runList,
   T.chain((l) =>
     T.effectTotal(() => {

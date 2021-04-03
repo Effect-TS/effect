@@ -5,9 +5,10 @@ import { NoSuchElementException, PrematureGeneratorExit } from "../../GlobalExce
 import type * as H from "../../Has"
 import type * as O from "../../Option"
 import * as L from "../../Persistent/List"
-import type { _E, _R } from "../../Utils"
+import type * as Utils from "../../Utils"
 import { isEither, isOption, isTag } from "../../Utils"
 import * as T from "../_internal/effect"
+import { _A, _E, _R } from "../_internal/effect"
 import { chain_ } from "./chain"
 import { Stream } from "./definitions"
 import { fail } from "./fail"
@@ -16,9 +17,9 @@ import { succeed } from "./succeed"
 import { suspend } from "./suspend"
 
 export class GenStream<R, E, A> {
-  readonly _R!: (_R: R) => void
-  readonly _E!: () => E
-  readonly _A!: () => A
+  readonly [_R]!: (_R: R) => void;
+  readonly [_E]!: () => E;
+  readonly [_A]!: () => A
   constructor(readonly effect: () => Stream<R, E, A>) {}
   *[Symbol.iterator](): Generator<GenStream<R, E, A>, A, any> {
     return yield this
@@ -52,7 +53,7 @@ export function gen<RBase, EBase, AEff>(): <Eff extends GenStream<RBase, EBase, 
     <R, E, A>(_: () => T.Effect<R, E, A>): GenStream<R, E, A>
     <R, E, A>(_: () => Stream<R, E, A>): GenStream<R, E, A>
   }) => Generator<Eff, AEff, any>
-) => Stream<_R<Eff>, _E<Eff>, AEff>
+) => Stream<Utils._R<Eff>, Utils._E<Eff>, AEff>
 export function gen<EBase, AEff>(): <Eff extends GenStream<any, EBase, any>>(
   f: (i: {
     <A>(_: () => H.Tag<A>): GenStream<H.Has<A>, never, A>
@@ -62,7 +63,7 @@ export function gen<EBase, AEff>(): <Eff extends GenStream<any, EBase, any>>(
     <R, E, A>(_: () => T.Effect<R, E, A>): GenStream<R, E, A>
     <R, E, A>(_: () => Stream<R, E, A>): GenStream<R, E, A>
   }) => Generator<Eff, AEff, any>
-) => Stream<_R<Eff>, _E<Eff>, AEff>
+) => Stream<Utils._R<Eff>, Utils._E<Eff>, AEff>
 export function gen<AEff>(): <Eff extends GenStream<any, any, any>>(
   f: (i: {
     <A>(_: () => H.Tag<A>): GenStream<H.Has<A>, never, A>
@@ -72,7 +73,7 @@ export function gen<AEff>(): <Eff extends GenStream<any, any, any>>(
     <R, E, A>(_: () => T.Effect<R, E, A>): GenStream<R, E, A>
     <R, E, A>(_: () => Stream<R, E, A>): GenStream<R, E, A>
   }) => Generator<Eff, AEff, any>
-) => Stream<_R<Eff>, _E<Eff>, AEff>
+) => Stream<Utils._R<Eff>, Utils._E<Eff>, AEff>
 export function gen<Eff extends GenStream<any, any, any>, AEff>(
   f: (i: {
     <A>(_: () => H.Tag<A>): GenStream<H.Has<A>, never, A>
@@ -82,11 +83,11 @@ export function gen<Eff extends GenStream<any, any, any>, AEff>(
     <R, E, A>(_: () => T.Effect<R, E, A>): GenStream<R, E, A>
     <R, E, A>(_: () => Stream<R, E, A>): GenStream<R, E, A>
   }) => Generator<Eff, AEff, any>
-): Stream<_R<Eff>, _E<Eff>, AEff>
+): Stream<Utils._R<Eff>, Utils._E<Eff>, AEff>
 export function gen(...args: any[]): any {
   function gen_<Eff extends GenStream<any, any, any>, AEff>(
     f: (i: any) => Generator<Eff, AEff, any>
-  ): Stream<_R<Eff>, _E<Eff>, AEff> {
+  ): Stream<Utils._R<Eff>, Utils._E<Eff>, AEff> {
     return suspend(() => {
       function run(replayStack: L.List<any>): Stream<any, any, AEff> {
         const iterator = f(adapter as any)
