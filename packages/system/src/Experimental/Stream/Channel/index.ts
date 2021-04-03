@@ -50,6 +50,10 @@ export const ChannelTypeId = Symbol()
  * `O`, and eventually indicates that this stream is terminated by sending a
  * result (`A`). On the receiving end of a `Channel`, these become the `I` and `U`
  * parameters.
+ *
+ * The encoding of channel is based on the work of Michael Snoyman in `conduit`, a
+ * streaming library for data-processing in Haskell where he introduced the concept
+ * of a `Pipe` as a way to fuse `Sources` and `Sinks`.
  */
 export abstract class Channel<R, E, L, I, A, U, O>
   implements ChannelApi<R, E, L, I, A, U, O> {
