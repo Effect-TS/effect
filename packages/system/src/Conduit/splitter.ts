@@ -5,34 +5,34 @@ import { _R } from "../Utils"
 import * as Channel from "./Channel"
 import * as S from "./Stream"
 
-export function split(
-  separator: string,
-  state = ""
-): Channel.Transducer<unknown, never, string, string> {
-  const splits = state.split(separator)
-  if (splits.length > 1) {
-    const newState = splits.pop()!
-    return Channel.chain_(Channel.writeIterable(splits), () =>
-      split(separator, newState)
+export function split(separator: string) {
+  function loop(state: string): Channel.Transducer<unknown, never, string, string> {
+    const splits = state.split(separator)
+    if (splits.length > 1) {
+      const newState = splits.pop()!
+      return Channel.chain_(Channel.writeIterable(splits), () => loop(newState))
+    }
+    return Channel.needInput(
+      (i: string) => loop(state + i),
+      () => Channel.writeIterable(splits)
     )
   }
-  return Channel.needInput(
-    (i: string) => split(separator, state + i),
-    () => Channel.writeIterable(splits)
-  )
+  return loop("")
 }
 
-export function group(
-  size: number,
-  state: L.List<string> = L.empty()
-): Channel.Transducer<unknown, never, string, L.List<string>> {
-  if (state.length === size) {
-    return Channel.chain_(Channel.write(state), () => group(size, L.empty()))
+export function group(size: number) {
+  function loop(
+    state: L.List<string>
+  ): Channel.Transducer<unknown, never, string, L.List<string>> {
+    if (state.length === size) {
+      return Channel.chain_(Channel.write(state), () => loop(L.empty()))
+    }
+    return Channel.needInput(
+      (i: string) => loop(L.append_(state, i)),
+      () => Channel.write(state)
+    )
   }
-  return Channel.needInput(
-    (i: string) => group(size, L.append_(state, i)),
-    () => Channel.write(state)
-  )
+  return loop(L.empty())
 }
 
 pipe(
