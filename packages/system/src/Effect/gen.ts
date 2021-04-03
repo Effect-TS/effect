@@ -48,11 +48,8 @@ function adapter(_: any, __?: any, ___?: any) {
     )
   }
   if (Utils.isOption(_)) {
-    if (typeof __ === "function") {
-      return new GenEffect(
-        __ ? (_._tag === "None" ? fail(__()) : succeed(_.value)) : getOrFail(_),
-        ___
-      )
+    if (__ && typeof __ === "function") {
+      return new GenEffect(_._tag === "None" ? fail(__()) : succeed(_.value), ___)
     }
     return new GenEffect(getOrFail(_), __)
   }

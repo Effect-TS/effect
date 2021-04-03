@@ -5,6 +5,7 @@ import { pipe } from "../../src/Function"
 import { tag } from "../../src/Has"
 import * as I from "../../src/Iterable"
 import * as M from "../../src/Managed"
+import * as O from "../../src/Option"
 import * as L from "../../src/Persistent/List"
 
 describe("Stream", () => {
@@ -101,17 +102,21 @@ describe("Stream", () => {
       separator: string,
       state = ""
     ): Channel.Transducer<unknown, never, string, string> {
-      const splits = state.split(separator)
-      if (splits.length > 1) {
-        const newState = splits.pop()!
-        return Channel.writeIterable(splits)["|>"](
-          Channel.chain(() => splitLoop(separator, newState))
-        )
-      }
-      return Channel.needInput(
-        (i: string) => splitLoop(separator, state + i),
-        () => Channel.writeIterable(splits)
-      )
+      return Channel.gen(function* (_) {
+        const splits = state.split(separator)
+        if (splits.length > 1) {
+          const newState = splits.pop()!
+          yield* _(Channel.writeIterable(splits))
+          yield* _(splitLoop(separator, newState))
+        } else {
+          const input = yield* _(Channel.input<string>())
+          if (O.isSome(input)) {
+            yield* _(splitLoop(separator, state + input.value))
+          } else {
+            yield* _(Channel.writeIterable(splits))
+          }
+        }
+      })
     }
 
     function split(separator: string) {
