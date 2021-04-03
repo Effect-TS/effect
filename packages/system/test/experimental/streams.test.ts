@@ -114,8 +114,8 @@ describe("Stream", () => {
       )
     }
 
-    function group(size: number) {
-      return Channel.transducer((input: O.Option<string>, state = L.empty<string>()) =>
+    function group<A>(size: number) {
+      return Channel.transducer((input: O.Option<A>, state = L.empty<A>()) =>
         Channel.gen(function* (_) {
           if (O.isSome(input)) {
             const newState = L.append_(state, input.value)
