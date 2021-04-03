@@ -1,5 +1,7 @@
 // tracing: off
 
+import "../../Operator"
+
 import * as FA from "../../FreeAssociative"
 import * as L from "../../Persistent/List"
 import * as Channel from "../Channel"

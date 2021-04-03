@@ -1,5 +1,7 @@
 // tracing: off
 
+import "../../Operator"
+
 import * as T from "../../Effect"
 import * as E from "../../Either"
 import { tuple } from "../../Function"
