@@ -114,21 +114,21 @@ describe("Stream", () => {
       )
     }
 
-    function groupLoop(
-      size: number,
-      state: L.List<string> = L.empty()
-    ): Channel.Transducer<unknown, never, string, L.List<string>> {
-      if (state.length === size) {
-        return Channel.write(state)["|>"](Channel.chain(() => groupLoop(size)))
-      }
-      return Channel.needInput(
-        (i: string) => groupLoop(size, L.append_(state, i)),
-        () => Channel.write(state)
-      )
-    }
-
     function group(size: number) {
-      return Channel.suspend(() => groupLoop(size))
+      return Channel.transducer((input: O.Option<string>, state = L.empty<string>()) =>
+        Channel.gen(function* (_) {
+          if (O.isSome(input)) {
+            const newState = L.append_(state, input.value)
+            if (L.size(newState) === size) {
+              yield* _(Channel.write(newState))
+              return L.empty()
+            }
+            return newState
+          }
+          yield* _(Channel.write(state))
+          return state
+        })
+      )
     }
 
     const result = await pipe(
