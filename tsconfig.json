@@ -3,6 +3,14 @@
   "files": [],
   "compilerOptions": {
     "baseUrl": ".",
+    "paths": {
+      "@effect-ts/core/*": ["packages/core/src/*"],
+      "@effect-ts/core": ["packages/core/src"],
+      "@effect-ts/system/*": ["packages/system/src/*"],
+      "@effect-ts/system": ["packages/system/src"],
+      "@effect-ts/tracing-plugin/*": ["packages/tracing-plugin/src/*"],
+      "@effect-ts/tracing-plugin": ["packages/tracing-plugin/src"]
+    },
     "target": "ES2017"
   }
 }

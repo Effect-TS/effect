@@ -15,12 +15,12 @@ module.exports = {
   ],
   verbose: true,
   moduleNameMapper: {
-    "@effect-ts/core/(.*)$": "<rootDir>/packages/core/build/$1",
-    "@effect-ts/core$": "<rootDir>/packages/core/build",
-    "@effect-ts/system/(.*)$": "<rootDir>/packages/system/build/$1",
-    "@effect-ts/system$": "<rootDir>/packages/system/build",
-    "@effect-ts/tracing-utils/(.*)$": "<rootDir>/packages/tracing-utils/build/$1",
-    "@effect-ts/tracing-utils$": "<rootDir>/packages/tracing-utils/build"
+    "@effect-ts/core/(.*)$": "<rootDir>/packages/core/src/$1",
+    "@effect-ts/core$": "<rootDir>/packages/core/src",
+    "@effect-ts/system/(.*)$": "<rootDir>/packages/system/src/$1",
+    "@effect-ts/system$": "<rootDir>/packages/system/src",
+    "@effect-ts/tracing-utils/(.*)$": "<rootDir>/packages/tracing-utils/src/$1",
+    "@effect-ts/tracing-utils$": "<rootDir>/packages/tracing-utils/src"
   },
   globals: {
     "ts-jest": {
