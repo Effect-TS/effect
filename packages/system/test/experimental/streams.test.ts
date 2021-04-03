@@ -100,7 +100,7 @@ describe("Stream", () => {
 
   it("Fuse Transducers Together", async () => {
     function split(separator: string) {
-      return Channel.transducer("", (input: O.Option<string>, state) =>
+      return Channel.transducer((input: O.Option<string>, state = "") =>
         Channel.gen(function* (_) {
           if (O.isSome(input)) {
             const splits = (state + input.value).split(separator)
