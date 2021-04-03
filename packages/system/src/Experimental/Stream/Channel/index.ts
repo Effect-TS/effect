@@ -1,16 +1,24 @@
 // tracing: off
 
-import "../../Operator"
+import "../../../Operator"
 
-import * as T from "../../Effect"
-import { _A, _C, _E, _I, _L, _O, _R, _U } from "../../Effect"
-import * as E from "../../Either"
-import type { Lazy } from "../../Function"
-import * as M from "../../Managed"
-import * as O from "../../Option"
-import * as L from "../../Persistent/List"
+import * as T from "../../../Effect"
+import { _A, _C, _E, _I, _L, _O, _R, _U } from "../../../Effect"
+import * as E from "../../../Either"
+import type { Lazy } from "../../../Function"
+import * as M from "../../../Managed"
+import * as O from "../../../Option"
+import * as L from "../../../Persistent/List"
 
 export interface ChannelApi<R, E, L, I, O, U, A> {
+  /**
+   * Combine two `Channel`s together into a new `Channel` (aka 'fuse').
+   *
+   * Output from the upstream (left) conduit will be fed into the
+   * downstream (right) conduit. Processing will terminate when
+   * downstream (right) returns.
+   * Leftover data returned from the right `Channel` will be discarded.
+   */
   readonly [".|"]: <R1, E1, O2, A1>(
     right: Channel<R1, E1, O, O, O2, A, A1>
   ) => Channel<R & R1, E | E1, L, I, O2, U, A1>
@@ -210,7 +218,7 @@ export function channelM<R1, E1, R, E, L, I, O, U, A>(
 }
 
 /**
- * Require running of a monadic action to get the next `Channel`.
+ * Construct a `Channel` dependent on a `Managed`.
  *
  * Resources will be released as early as possible.
  */
@@ -480,6 +488,16 @@ export function writeEffect<R, E, O>(
   o: T.Effect<R, E, O>
 ): Channel<R, E, never, unknown, O, unknown, void> {
   return effect(T.map_(o, write))
+}
+
+/**
+ * Send a single output value downstream. If the downstream `Channel`
+ * terminates, this `Channel` will terminate as well.
+ */
+export function writeManaged<R, E, O>(
+  o: M.Managed<R, E, O>
+): Channel<R, E, never, unknown, O, unknown, void> {
+  return managed(M.map_(o, write))
 }
 
 function writeIterateGo<O>(

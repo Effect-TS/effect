@@ -1,11 +1,11 @@
 // tracing: off
 
-import "../../Operator"
+import "../../../Operator"
 
-import * as T from "../../Effect"
-import * as E from "../../Either"
-import { tuple } from "../../Function"
-import * as M from "../../Managed"
+import * as T from "../../../Effect"
+import * as E from "../../../Either"
+import { tuple } from "../../../Function"
+import * as M from "../../../Managed"
 import * as Channel from "../Channel"
 import * as Sink from "../Sink"
 
@@ -26,9 +26,9 @@ export function take_<R, E, A>(self: Stream<R, E, A>, n: number): Stream<R, E, A
 /**
  * Take only the first N values from the stream
  *
- * @dataFirst takeN_
+ * @dataFirst take_
  */
-export function takeN(n: number): <R, E, A>(self: Stream<R, E, A>) => Stream<R, E, A> {
+export function take(n: number): <R, E, A>(self: Stream<R, E, A>) => Stream<R, E, A> {
   return (self) => take_(self, n)
 }
 
@@ -122,11 +122,23 @@ function connectResumeGo<R, E, O, A>(
  * Connect a `Stream` to a `Sink` until the latter closes. Returns both the
  * most recent state of the `Stream` and the result of the `Sink`.
  */
-export function connectResume<R, E, O, A>(
+export function connectResume_<R, E, O, A>(
   source: Stream<R, E, O>,
   sink: Sink.Sink<R, E, O, O, A>
 ): M.Managed<R, E, readonly [Stream<R, E, O>, A]> {
   return connectResumeGo(E.right({ left: source, right: sink }))
+}
+
+/**
+ * Connect a `Stream` to a `Sink` until the latter closes. Returns both the
+ * most recent state of the `Stream` and the result of the `Sink`.
+ *
+ * @dataFirst connectResume_
+ */
+export function connectResume<R, E, O, A>(
+  sink: Sink.Sink<R, E, O, O, A>
+): (source: Stream<R, E, O>) => M.Managed<R, E, readonly [Stream<R, E, O>, A]> {
+  return (self) => connectResume_(self, sink)
 }
 
 /**
@@ -154,19 +166,26 @@ export function runDrain<R, E, O>(self: Stream<R, E, O>) {
  * Send a single output value downstream. If the downstream `Channel`
  * terminates, this `Channel` will terminate as well.
  */
-export const write: <O>(o: O) => Stream<unknown, never, O> = Channel.write
+export const succeed: <O>(o: O) => Stream<unknown, never, O> = Channel.write
 
 /**
  * Send a single output value downstream. If the downstream `Channel`
  * terminates, this `Channel` will terminate as well.
  */
-export const writeEffect: <R, E, O>(o: T.Effect<R, E, O>) => Stream<R, E, O> =
+export const fromEffect: <R, E, O>(o: T.Effect<R, E, O>) => Stream<R, E, O> =
   Channel.writeEffect
+
+/**
+ * Send a single output value downstream. If the downstream `Channel`
+ * terminates, this `Channel` will terminate as well.
+ */
+export const fromManaged: <R, E, A>(self: M.Managed<R, E, A>) => Stream<R, E, A> =
+  Channel.writeManaged
 
 /**
  * Produces an infinite stream of repeated applications of f to x.
  */
-export const writeIterate: <O>(
+export const iterate: <O>(
   x: O,
   f: (x: O) => O,
   __trace?: string
@@ -176,37 +195,51 @@ export const writeIterate: <O>(
  * Send a bunch of values downstream to the next component to consume. If the
  * downstream component terminates, this call will never return control.
  */
-export const writeMany: <O>(...os: Array<O>) => Stream<unknown, never, O> =
+export const succeedMany: <O>(...os: Array<O>) => Stream<unknown, never, O> =
   Channel.writeMany
 
 /**
  * Converts an iterable into a stream (lazy)
  */
-export const writeIterable: <O>(it: Iterable<O>) => Stream<unknown, never, O> =
+export const iterable: <O>(it: Iterable<O>) => Stream<unknown, never, O> =
   Channel.writeIterable
+
+/**
+ * Construct a `Stream` dependent on a `Managed`.
+ */
+export const fromManagedStream: <R, R1, E, E1, A>(
+  self: M.Managed<R, E, Stream<R1, E1, A>>
+) => Stream<R & R1, E | E1, A> = Channel.managed
+
+/**
+ * Construct a `Stream` dependent on a `Effect`.
+ */
+export const fromEffectStream: <R, R1, E, E1, A>(
+  self: T.Effect<R, E, Stream<R1, E1, A>>
+) => Stream<R & R1, E | E1, A> = Channel.effect
 
 /**
  * Maps the stream output using the effectul function f
  */
-export function mapEffect_<R, R1, E1, E, A, B>(
+export function mapM_<R, R1, E1, E, A, B>(
   self: Stream<R, E, A>,
   f: (a: A) => T.Effect<R1, E1, B>
 ): Stream<R & R1, E | E1, B> {
   return Channel.combine_(
     self,
-    Channel.awaitForever((x: A) => writeEffect(f(x)))
+    Channel.awaitForever((x: A) => fromEffect(f(x)))
   )
 }
 
 /**
  * Maps the stream output using the effectul function f
  *
- * @dataFirst mapEffect_
+ * @dataFirst mapM_
  */
-export function mapEffect<R, R1, E1, E, A, B>(
+export function mapM<R, R1, E1, E, A, B>(
   f: (a: A) => T.Effect<R1, E1, B>
 ): (self: Stream<R, E, A>) => Stream<R & R1, E | E1, B> {
-  return (self) => mapEffect_(self, f)
+  return (self) => mapM_(self, f)
 }
 
 /**
@@ -218,7 +251,7 @@ export function map_<R, E, A, B>(
 ): Stream<R, E, B> {
   return Channel.combine_(
     self,
-    Channel.awaitForever((x: A) => write(f(x)))
+    Channel.awaitForever((x: A) => succeed(f(x)))
   )
 }
 
@@ -242,7 +275,7 @@ export function mapConcat_<R, E, A, B>(
 ): Stream<R, E, B> {
   return Channel.combine_(
     self,
-    Channel.awaitForever((x: A) => writeIterable(f(x)))
+    Channel.awaitForever((x: A) => iterable(f(x)))
   )
 }
 
@@ -266,7 +299,7 @@ export function mapConcatM_<R, E, A, R1, E1, B>(
 ): Stream<R & R1, E | E1, B> {
   return Channel.combine_(
     self,
-    Channel.awaitForever((x: A) => Channel.effect(T.map_(f(x), writeIterable)))
+    Channel.awaitForever((x: A) => Channel.effect(T.map_(f(x), iterable)))
   )
 }
 
@@ -310,12 +343,12 @@ export function forever<R, E, A>(self: Stream<R, E, A>): Stream<R, E, A> {
 }
 
 /**
- * Combine two `Pipeline`s together into a new `Pipeline` (aka 'fuse').
+ * Combine two `Channel`s together into a new `Channel` (aka 'fuse').
  *
  * Output from the upstream (left) conduit will be fed into the
  * downstream (right) conduit. Processing will terminate when
  * downstream (right) returns.
- * Leftover data returned from the right `Pipeline` will be discarded.
+ * Leftover data returned from the right `Channel` will be discarded.
  */
 export const combine_: <R, E, R1, E1, A, O>(
   left: Stream<R, E, A>,
@@ -323,12 +356,12 @@ export const combine_: <R, E, R1, E1, A, O>(
 ) => Stream<R & R1, E | E1, O> = Channel.combine_
 
 /**
- * Combine two `Pipeline`s together into a new `Pipeline` (aka 'fuse').
+ * Combine two `Channel`s together into a new `Channel` (aka 'fuse').
  *
  * Output from the upstream (left) conduit will be fed into the
  * downstream (right) conduit. Processing will terminate when
  * downstream (right) returns.
- * Leftover data returned from the right `Pipeline` will be discarded.
+ * Leftover data returned from the right `Channel` will be discarded.
  *
  * @dataFirst combine_
  */

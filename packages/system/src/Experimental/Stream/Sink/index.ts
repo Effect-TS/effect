@@ -1,9 +1,9 @@
 // tracing: off
 
-import "../../Operator"
+import "../../../Operator"
 
-import * as FA from "../../FreeAssociative"
-import * as L from "../../Persistent/List"
+import * as FA from "../../../FreeAssociative"
+import * as L from "../../../Persistent/List"
 import * as Channel from "../Channel"
 
 /**
@@ -23,14 +23,14 @@ function sinkArrayGo<A>(
 }
 
 /**
- * Sink that consumes the Pipeline to an Array
+ * Sink that consumes the Channel to an Array
  */
 export function array<A>(): Sink<unknown, never, never, A, readonly A[]> {
   return Channel.map_(sinkArrayGo(FA.init()), FA.toArray)
 }
 
 /**
- * Sink that consumes the Pipeline to an Array
+ * Sink that consumes the Channel to an Array
  */
 export function drain<A>(): Sink<unknown, never, never, A, void> {
   const sink: Channel.Channel<
@@ -56,7 +56,7 @@ function sinkListGo<A>(fa: L.List<A>): Sink<unknown, never, never, A, L.List<A>>
 }
 
 /**
- * Sink that consumes the Pipeline to an List
+ * Sink that consumes the Channel to an List
  */
 export function list<A>(): Sink<unknown, never, never, A, L.List<A>> {
   return sinkListGo(L.empty())
