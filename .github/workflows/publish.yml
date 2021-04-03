@@ -20,6 +20,7 @@ jobs:
           npm install -g yarn
           yarn
           yarn run ci
+          yarn run test
           cp .ci.npmrc .npmrc
           yarn lerna publish from-package --pre-dist-tag next --yes
         env:
