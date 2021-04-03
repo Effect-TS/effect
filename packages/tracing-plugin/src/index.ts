@@ -10,6 +10,7 @@ export default function bundle(
   _opts?: {
     tracing?: boolean
     moduleMap?: Record<string, string>
+    __importTracingFrom?: string
   }
 ) {
   const B0 = {
