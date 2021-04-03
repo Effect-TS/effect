@@ -433,14 +433,7 @@ export function chain_<R, E, L, I, O, U, A, R1, E1, L1, I1, O1, U1, A1>(
       return new WithTracer((tracer) => chain_(self.nextChannel(tracer), f))
     }
     case DoneTypeId: {
-      return new WithTracer<R & R1, E | E1, L | L1, I & I1, O | O1, U & U1, A1>(
-        (tracer) =>
-          tryOrDie(() => {
-            const x = f(self.result)
-            tracer(__trace)
-            return x
-          }, __trace)
-      )
+      return suspend(() => f(self.result), __trace)
     }
     case ChannelMTypeId: {
       return new ChannelM(M.map_(self.nextChannel, (a) => chain_(a, f, __trace)))
