@@ -1,3 +1,3 @@
-import "@effect-ts/tracing-utils/Enable"
+import "@effect-ts/system/Tracing/Enable"
 
 export {}

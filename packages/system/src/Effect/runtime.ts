@@ -2,8 +2,6 @@
 
 // option
 // cause
-import { isTracingEnabled } from "@effect-ts/tracing-utils"
-
 import * as Cause from "../Cause/core"
 import type { Renderer } from "../Cause/Pretty"
 import { defaultRenderer, pretty } from "../Cause/Pretty"
@@ -24,6 +22,7 @@ import { defaultRandom, HasRandom } from "../Random"
 import * as Scope from "../Scope"
 // supervisor
 import * as Supervisor from "../Supervisor"
+import { isTracingEnabled } from "../Tracing"
 import * as core from "./core"
 import type { Effect, UIO } from "./effect"
 import type { FailureReporter } from "./primitives"

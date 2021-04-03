@@ -1,3 +1,5 @@
+// tracing: off
+
 let _tracing = false
 
 export function enableTracing() {
