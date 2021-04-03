@@ -1,7 +1,7 @@
 // tracing: off
 
 /* eslint-disable prefer-const */
-import { _A, _E, _R, _U } from "../Effect/commons"
+import { _A, _E, _R, _S1, _S2, _U } from "../Effect/commons"
 import type { EffectURI } from "../Effect/effect"
 import * as E from "../Either/core"
 import { Stack } from "../Stack"
@@ -13,11 +13,21 @@ import { Stack } from "../Stack"
  * of its polymorphism `XPure` can be used to model a variety of effects
  * including context, state, and failure.
  */
-export abstract class XPure<S1, S2, R, E, A> {
-  readonly _tag = "XPure"
+export interface XPure<S1, S2, R, E, A> {
+  readonly [_S1]: (_: S1) => void
+  readonly [_S2]: () => S2
 
-  readonly _S1!: (_: S1) => void
-  readonly _S2!: () => S2;
+  readonly [_U]: EffectURI
+  readonly [_E]: () => E
+  readonly [_A]: () => A
+  readonly [_R]: (_: R) => void
+}
+
+export abstract class XPureBase<S1, S2, R, E, A> implements XPure<S1, S2, R, E, A> {
+  readonly _tag = "XPure";
+
+  readonly [_S1]!: (_: S1) => void;
+  readonly [_S2]!: () => S2;
 
   readonly [_U]!: EffectURI;
   readonly [_E]!: () => E;
@@ -34,7 +44,7 @@ function concrete<S1, S2, R, E, A>(
   return _ as any
 }
 
-class Succeed<A> extends XPure<unknown, never, unknown, never, A> {
+class Succeed<A> extends XPureBase<unknown, never, unknown, never, A> {
   readonly _xptag = "Succeed"
 
   constructor(readonly a: A) {
@@ -42,7 +52,7 @@ class Succeed<A> extends XPure<unknown, never, unknown, never, A> {
   }
 }
 
-class Suspend<S1, S2, R, E, A> extends XPure<S1, S2, R, E, A> {
+class Suspend<S1, S2, R, E, A> extends XPureBase<S1, S2, R, E, A> {
   readonly _xptag = "Suspend"
 
   constructor(readonly f: () => XPure<S1, S2, R, E, A>) {
@@ -50,7 +60,7 @@ class Suspend<S1, S2, R, E, A> extends XPure<S1, S2, R, E, A> {
   }
 }
 
-class Fail<E> extends XPure<unknown, never, unknown, E, never> {
+class Fail<E> extends XPureBase<unknown, never, unknown, E, never> {
   readonly _xptag = "Fail"
 
   constructor(readonly e: E) {
@@ -58,7 +68,7 @@ class Fail<E> extends XPure<unknown, never, unknown, E, never> {
   }
 }
 
-class Modify<S1, S2, E, A> extends XPure<S1, S2, unknown, E, A> {
+class Modify<S1, S2, E, A> extends XPureBase<S1, S2, unknown, E, A> {
   readonly _xptag = "Modify"
 
   constructor(readonly run: (s1: S1) => readonly [S2, A]) {
@@ -66,7 +76,13 @@ class Modify<S1, S2, E, A> extends XPure<S1, S2, unknown, E, A> {
   }
 }
 
-class FlatMap<S1, S2, S3, R, R1, E, E1, A, B> extends XPure<S1, S3, R & R1, E1 | E, B> {
+class FlatMap<S1, S2, S3, R, R1, E, E1, A, B> extends XPureBase<
+  S1,
+  S3,
+  R & R1,
+  E1 | E,
+  B
+> {
   readonly _xptag = "FlatMap"
 
   constructor(
@@ -77,7 +93,7 @@ class FlatMap<S1, S2, S3, R, R1, E, E1, A, B> extends XPure<S1, S3, R & R1, E1 |
   }
 }
 
-class Fold<S1, S2, S3, R, E1, E2, A, B> extends XPure<S1, S3, R, E2, B> {
+class Fold<S1, S2, S3, R, E1, E2, A, B> extends XPureBase<S1, S3, R, E2, B> {
   readonly _xptag = "Fold"
 
   constructor(
@@ -89,7 +105,7 @@ class Fold<S1, S2, S3, R, E1, E2, A, B> extends XPure<S1, S3, R, E2, B> {
   }
 }
 
-class Access<S1, S2, R, E, A> extends XPure<S1, S2, R, E, A> {
+class Access<S1, S2, R, E, A> extends XPureBase<S1, S2, R, E, A> {
   readonly _xptag = "Access"
 
   constructor(readonly access: (r: R) => XPure<S1, S2, R, E, A>) {
@@ -97,7 +113,7 @@ class Access<S1, S2, R, E, A> extends XPure<S1, S2, R, E, A> {
   }
 }
 
-class Provide<S1, S2, R, E, A> extends XPure<S1, S2, unknown, E, A> {
+class Provide<S1, S2, R, E, A> extends XPureBase<S1, S2, unknown, E, A> {
   readonly _xptag = "Provide"
 
   constructor(readonly r: R, readonly cont: XPure<S1, S2, R, E, A>) {

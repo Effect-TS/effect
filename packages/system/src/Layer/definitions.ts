@@ -2,6 +2,7 @@
 
 import * as A from "../Array"
 import type * as C from "../Cause"
+import { _E, _RIn, _ROut } from "../Effect/commons"
 import { sequential } from "../Effect/ExecutionStrategy"
 import type { Exit } from "../Exit"
 import { pipe, tuple } from "../Function"
@@ -130,18 +131,20 @@ export function compose<A2, E, A>(
   return (from) => compose_(from, to)
 }
 
-export abstract class Layer<RIn, E, ROut> {
-  readonly hash = new AtomicReference<PropertyKey>(Symbol())
+export const hashSym: unique symbol = Symbol()
 
-  readonly _RIn!: (_: RIn) => void
-  readonly _E!: () => E
-  readonly _ROut!: () => ROut
+export abstract class Layer<RIn, E, ROut> {
+  readonly [hashSym] = new AtomicReference<PropertyKey>(Symbol());
+
+  readonly [_RIn]!: (_: RIn) => void;
+  readonly [_E]!: () => E;
+  readonly [_ROut]!: () => ROut
 
   /**
    * Set the hash key for memoization
    */
   setKey(hash: PropertyKey) {
-    this.hash.set(hash)
+    this[hashSym].set(hash)
     return this
   }
 
@@ -519,7 +522,7 @@ export class MemoMap {
       pipe(
         this.ref,
         RM.modify((m) => {
-          const inMap = m.get(layer.hash.get)
+          const inMap = m.get(layer[hashSym].get)
 
           if (inMap) {
             const [acquire, release] = inMap
@@ -663,7 +666,7 @@ export class MemoMap {
                     E,
                     readonly [Finalizer.Finalizer, A]
                   >,
-                  insert(layer.hash.get, memoized)(m) as ReadonlyMap<
+                  insert(layer[hashSym].get, memoized)(m) as ReadonlyMap<
                     symbol,
                     readonly [T.IO<any, any>, Finalizer.Finalizer]
                   >

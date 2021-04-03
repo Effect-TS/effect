@@ -3,21 +3,22 @@
 /**
  * inspired by https://github.com/tusharmath/qio/pull/22 (revised)
  */
+import { _A, _E, _R } from "../Effect/commons"
 import type { Either } from "../Either"
 import { identity } from "../Function"
 import { NoSuchElementException } from "../GlobalExceptions"
 import type { Has, Tag } from "../Has"
 import type { Option } from "../Option"
-import type { _E, _R } from "../Utils"
+import type * as Utils from "../Utils"
 import { isEither, isOption, isTag } from "../Utils"
 import type { Sync } from "./core"
 import { chain_, fail, succeed, suspend } from "./core"
 import { accessService } from "./has"
 
 export class GenSync<R, E, A> {
-  readonly _R!: (_R: R) => void
-  readonly _E!: () => E
-  readonly _A!: () => A
+  readonly [_R]!: (_R: R) => void;
+  readonly [_E]!: () => E;
+  readonly [_A]!: () => A
 
   constructor(readonly effect: Sync<R, E, A>) {}
 
@@ -51,7 +52,7 @@ export function gen<Eff extends GenSync<any, any, any>, AEff>(
     <E, A>(_: Either<E, A>): GenSync<unknown, E, A>
     <R, E, A>(_: Sync<R, E, A>): GenSync<R, E, A>
   }) => Generator<Eff, AEff, any>
-): Sync<_R<Eff>, _E<Eff>, AEff> {
+): Sync<Utils._R<Eff>, Utils._E<Eff>, AEff> {
   return suspend(() => {
     const iterator = f(adapter as any)
     const state = iterator.next()

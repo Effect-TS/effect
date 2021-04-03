@@ -1,5 +1,6 @@
 // tracing: off
 
+import type { _A, _E, _R } from "../Effect"
 import { flow } from "./flow"
 import { pipe } from "./pipe"
 
@@ -175,7 +176,7 @@ export function enforceOutput<A>() {
     /**
      * @optimize identity
      */
-    <T extends { _A: () => A }>(_: T): T => _
+    <T extends { [k in typeof _A]: () => A }>(_: T): T => _
   )
 }
 
@@ -187,7 +188,7 @@ export function enforceError<E>() {
     /**
      * @optimize identity
      */
-    <T extends { _E: () => E }>(_: T): T => _
+    <T extends { [k in typeof _E]: () => E }>(_: T): T => _
   )
 }
 
@@ -199,6 +200,6 @@ export function enforceContext<R>() {
     /**
      * @optimize identity
      */
-    <T extends { _R: (_: R) => void }>(_: T): T => _
+    <T extends { [k in typeof _R]: (_: R) => void }>(_: T): T => _
   )
 }

@@ -3,14 +3,15 @@
 /**
  * inspired by https://github.com/tusharmath/qio/pull/22 (revised)
  */
-import type { _E, _R } from "../../Utils"
+import { _A, _E, _R } from "../../Effect/commons"
+import type * as Utils from "../../Utils"
 import type { STM } from "./core"
 import { chain_, succeed, suspend } from "./core"
 
 export class GenSTM<R, E, A> {
-  readonly _R!: (_R: R) => void
-  readonly _E!: () => E
-  readonly _A!: () => A
+  readonly [_R]!: (_R: R) => void;
+  readonly [_E]!: () => E;
+  readonly [_A]!: () => A
 
   constructor(readonly effect: STM<R, E, A>) {}
 
@@ -28,7 +29,7 @@ const adapter = (_: any, __?: any) => {
  */
 export function gen<Eff extends GenSTM<any, any, any>, AEff>(
   f: (i: { <R, E, A>(_: STM<R, E, A>): GenSTM<R, E, A> }) => Generator<Eff, AEff, any>
-): STM<_R<Eff>, _E<Eff>, AEff> {
+): STM<Utils._R<Eff>, Utils._E<Eff>, AEff> {
   return suspend(() => {
     const iterator = f(adapter as any)
     const state = iterator.next()
