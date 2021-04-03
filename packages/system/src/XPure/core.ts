@@ -1,7 +1,7 @@
 // tracing: off
 
 /* eslint-disable prefer-const */
-import { _A, _E, _R, _U } from "../Effect/commons"
+import { _A, _E, _R, _S1, _S2, _U } from "../Effect/commons"
 import type { EffectURI } from "../Effect/effect"
 import * as E from "../Either/core"
 import { Stack } from "../Stack"
@@ -14,10 +14,10 @@ import { Stack } from "../Stack"
  * including context, state, and failure.
  */
 export abstract class XPure<S1, S2, R, E, A> {
-  readonly _tag = "XPure"
+  readonly _tag = "XPure";
 
-  readonly _S1!: (_: S1) => void
-  readonly _S2!: () => S2;
+  readonly [_S1]!: (_: S1) => void;
+  readonly [_S2]!: () => S2;
 
   readonly [_U]!: EffectURI;
   readonly [_E]!: () => E;
