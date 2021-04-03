@@ -12,7 +12,8 @@
         "transform": "../tracing-plugin/src/index.ts",
         "moduleMap": {
           "^src/(.*)": "(@effect-ts/core): _src/$1"
-        }
+        },
+        "__importTracingFrom": "@effect-ts/system/Tracing"
       }
     ]
   },

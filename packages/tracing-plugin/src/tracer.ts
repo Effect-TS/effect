@@ -45,6 +45,7 @@ export default function tracer(
   _opts?: {
     tracing?: boolean
     moduleMap?: Record<string, string>
+    __importTracingFrom?: string
   }
 ) {
   const tracingOn = !(_opts?.tracing === false)
@@ -52,6 +53,9 @@ export default function tracer(
 
   const moduleMap = _opts?.moduleMap || {}
   const moduleMapKeys = Object.keys(moduleMap).map((k) => [k, new RegExp(k)] as const)
+
+  const programDir = _program.getCurrentDirectory()
+  const importTracingFrom = _opts?.__importTracingFrom ?? "@effect-ts/core/Tracing"
 
   return {
     before(ctx: ts.TransformationContext) {
@@ -221,6 +225,12 @@ export default function tracer(
 
         if (tracingOn && !isDisabledEverywhere) {
           const visited = ts.visitNode(sourceFile, visitor)
+          const importPath = importTracingFrom.startsWith(".")
+            ? path.relative(
+                path.dirname(sourceFile.fileName),
+                path.join(programDir, importTracingFrom)
+              ) || "."
+            : importTracingFrom
 
           return factory.updateSourceFile(visited, [
             factory.createImportDeclaration(
@@ -231,7 +241,7 @@ export default function tracer(
                 undefined,
                 factory.createNamespaceImport(tracing)
               ),
-              factory.createStringLiteral("@effect-ts/tracing-utils")
+              factory.createStringLiteral(importPath)
             ),
             fileNode,
             ...visited.statements
