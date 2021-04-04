@@ -18,6 +18,7 @@
     "postinstall": "husky install",
     "version:alpha": "lerna version prerelease --conventional-commits --preid=alpha",
     "version:minor": "lerna version preminor --conventional-commits",
+    "version:patch": "lerna version patch --conventional-commits",
     "version:graduate": "lerna version --conventional-commits --conventional-graduate"
   },
   "devDependencies": {
