@@ -573,7 +573,7 @@ export function mergeBuffer<R, E, A>(
       )
     ),
     M.tap(({ queue }) =>
-      M.fromEffect(
+      T.forkManaged(
         T.forEachPar_(streams, (s) =>
           runDrain(mapM_(s, (a) => queue.offer(T.succeed(O.some(a)))))
         )["|>"](
