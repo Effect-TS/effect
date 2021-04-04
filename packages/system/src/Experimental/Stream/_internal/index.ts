@@ -7,6 +7,7 @@ import * as E from "../../../Either"
 import { tuple } from "../../../Function"
 import * as M from "../../../Managed"
 import * as Channel from "../Channel"
+import * as Pipeline from "../Pipeline"
 import * as Sink from "../Sink"
 
 /**
@@ -14,13 +15,13 @@ import * as Sink from "../Sink"
  * producing a final result.
  */
 export interface Stream<R, E, O>
-  extends Channel.Channel<R, E, never, unknown, O, void, void> {}
+  extends Channel.Channel<R, E, never, unknown, O, unknown, unknown> {}
 
 /**
  * Take only the first N values from the stream
  */
 export function take_<R, E, A>(self: Stream<R, E, A>, n: number): Stream<R, E, A> {
-  return Channel.combine_(self, Channel.take(n))
+  return Channel.combine_(self, Pipeline.take(n))
 }
 
 /**
@@ -35,7 +36,7 @@ export function take(n: number): <R, E, A>(self: Stream<R, E, A>) => Stream<R, E
 type ConnectResumeGo<R, E, O, A> = E.Either<
   {
     rp: (i: O, _: Channel.Tracer) => Sink.Sink<R, E, O, O, A>
-    rc: (u: void, _: Channel.Tracer) => Sink.Sink<R, E, O, O, A>
+    rc: (u: unknown, _: Channel.Tracer) => Sink.Sink<R, E, O, O, A>
     left: Stream<R, E, O>
   },
   {
@@ -57,7 +58,7 @@ function connectResumeGo<R, E, O, A>(
         const left = input.left.left
         Channel.concrete(left)
         switch (left._typeId) {
-          case Channel.WithTracerTypeId: {
+          case Channel.SuspendTypeId: {
             input = E.left({
               rp,
               rc,
@@ -108,7 +109,7 @@ function connectResumeGo<R, E, O, A>(
         const right = input.right.right
         Channel.concrete(right)
         switch (right._typeId) {
-          case Channel.WithTracerTypeId: {
+          case Channel.SuspendTypeId: {
             input = E.right({
               left,
               right: right.nextChannel(tracer)
@@ -272,7 +273,7 @@ export function mapM_<R, R1, E1, E, A, B>(
 ): Stream<R & R1, E | E1, B> {
   return Channel.combine_(
     self,
-    Channel.awaitForever((x: A) => fromEffect(f(x)), __trace)
+    Pipeline.channel((x: A) => fromEffect(f(x)), __trace)
   )
 }
 
@@ -296,10 +297,7 @@ export function map_<R, E, A, B>(
   f: (a: A) => B,
   __trace?: string
 ): Stream<R, E, B> {
-  return Channel.combine_(
-    self,
-    Channel.awaitForever((x: A) => succeed(f(x)), __trace)
-  )
+  return Channel.combine_(self, Pipeline.function(f, __trace))
 }
 
 /**
@@ -311,7 +309,7 @@ export function map<A, B>(
   f: (a: A) => B,
   __trace?: string
 ): <R, E>(self: Stream<R, E, A>) => Stream<R, E, B> {
-  return (self) => map_(self, f, __trace)
+  return (self) => map_(self, f)
 }
 
 /**
@@ -322,10 +320,7 @@ export function mapConcat_<R, E, A, B>(
   f: (a: A) => Iterable<B>,
   __trace?: string
 ): Stream<R, E, B> {
-  return Channel.combine_(
-    self,
-    Channel.awaitForever((x: A) => iterable(f(x)), __trace)
-  )
+  return Channel.combine_(self, Pipeline.iterable(f, __trace))
 }
 
 /**
@@ -350,7 +345,7 @@ export function mapConcatM_<R, E, A, R1, E1, B>(
 ): Stream<R & R1, E | E1, B> {
   return Channel.combine_(
     self,
-    Channel.awaitForever((x: A) => Channel.effect(T.map_(f(x), iterable)), __trace)
+    Pipeline.channel((x: A) => Channel.effect(T.map_(f(x), iterable)), __trace)
   )
 }
 
@@ -374,7 +369,7 @@ export function chain_<R, E, R1, E1, A, B>(
   f: (a: A) => Stream<R1, E1, B>,
   __trace?: string
 ): Stream<R & R1, E | E1, B> {
-  return Channel.combine_(self, Channel.awaitForever(f, __trace))
+  return Channel.combine_(self, Pipeline.channel(f, __trace))
 }
 
 /**
@@ -406,7 +401,7 @@ export function forever<R, E, A>(self: Stream<R, E, A>): Stream<R, E, A> {
  */
 export const combine_: <R, E, R1, E1, A, O>(
   left: Stream<R, E, A>,
-  right: Channel.Channel<R1, E1, A, A, O, void, void>
+  right: Channel.Channel<R1, E1, A, A, O, unknown, unknown>
 ) => Stream<R & R1, E | E1, O> = Channel.combine_
 
 /**
@@ -420,7 +415,7 @@ export const combine_: <R, E, R1, E1, A, O>(
  * @dataFirst combine_
  */
 export const combine: <R1, E1, A, O>(
-  right: Channel.Channel<R1, E1, A, A, O, void, void>
+  right: Channel.Channel<R1, E1, A, A, O, unknown, unknown>
 ) => <R, E>(left: Stream<R, E, A>) => Stream<R & R1, E | E1, O> = Channel.combine
 
 /**

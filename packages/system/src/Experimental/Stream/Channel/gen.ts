@@ -38,7 +38,7 @@ function adapter(_: any, __?: any) {
       core.effect(
         T.map_(
           T.fromEither(() => _),
-          core.done
+          core.succeed
         )
       )
     )
@@ -47,19 +47,19 @@ function adapter(_: any, __?: any) {
     if (__ && typeof __ === "function") {
       return new GenChannel(
         core.effect(
-          T.map_(_._tag === "None" ? T.fail(__()) : T.succeed(_.value), core.done)
+          T.map_(_._tag === "None" ? T.fail(__()) : T.succeed(_.value), core.succeed)
         )
       )
     }
-    return new GenChannel(core.effect(T.map_(T.getOrFail(_), core.done)))
+    return new GenChannel(core.effect(T.map_(T.getOrFail(_), core.succeed)))
   }
   if (Utils.isTag(_)) {
-    return new GenChannel(core.effect(T.map_(T.service(_), core.done)))
+    return new GenChannel(core.effect(T.map_(T.service(_), core.succeed)))
   }
   if (isChannel(_)) {
     return new GenChannel(_)
   }
-  return new GenChannel(core.effect(T.map_(_, core.done)))
+  return new GenChannel(core.effect(T.map_(_, core.succeed)))
 }
 
 export interface Adapter {
@@ -151,7 +151,7 @@ export function gen<Eff extends GenChannel<any, any, any, any, any, any, any>, A
       state: IteratorYieldResult<Eff> | IteratorReturnResult<AEff>
     ): core.Channel<any, any, any, any, any, any, AEff> {
       if (state.done) {
-        return core.done(state.value)
+        return core.succeed(state.value)
       }
       return core.chain_(state.value["effect"], (val: any) => run(iterator.next(val)))
     }

@@ -42,7 +42,7 @@ import { succeed } from "../succeed"
 import { absolve } from "./absolve"
 import { environment } from "./environment"
 import { foldM_ } from "./foldM"
-import { halt, haltWith } from "./halt"
+import { halt } from "./halt"
 import * as provideAll from "./provideAll"
 import { releaseMap } from "./releaseMap"
 import { suspend } from "./suspend"
@@ -1079,7 +1079,16 @@ export function refineOrDie_<R, A, E, E1>(
  * detected in the code.
  */
 export function die(e: unknown, __trace?: string) {
-  return haltWith((trace) => C.traced(C.die(e), trace()), __trace)
+  return fromEffect(T.die(e, __trace))
+}
+
+/**
+ * Returns a managed that dies with the specified `unknown`. This method
+ * can be used for terminating a fiber because a defect has been
+ * detected in the code.
+ */
+export function dieWith(e: () => unknown, __trace?: string) {
+  return fromEffect(T.dieWith(e, __trace))
 }
 
 /**

@@ -36,7 +36,7 @@ export const ChannelTypeId = Symbol()
  * `E` is the type of the error that the pipe might produce
  *
  * `L` is the type of values that may be left over from this `Channel`. A `Channel`
- * with no leftovers would use `void` here, and one with leftovers would use
+ * with no leftovers would use `never` here, and one with leftovers would use
  * the same type as the `I` parameter. Leftovers are automatically provided to
  * the next `Channel` in the monadic chain.
  *
@@ -85,12 +85,6 @@ export abstract class Channel<R, E, L, I, O, U, A>
 }
 
 /**
- * Channel with Input & Output without Leftovers, Result and Upstream
- */
-export interface Transducer<R, E, I, O, A = void>
-  extends Channel<R, E, never, I, O, void, A> {}
-
-/**
  * `optimize remove
  */
 export function concrete<R, E, L, I, O, U, A>(
@@ -107,14 +101,14 @@ export const NeedInputTypeId = Symbol()
 export const DoneTypeId = Symbol()
 export const ChannelMTypeId = Symbol()
 export const LeftoverTypeId = Symbol()
-export const WithTracerTypeId = Symbol()
+export const SuspendTypeId = Symbol()
 
 /**
  * Provide new output to be sent downstream. This constructor has two
  * fields: the next `Channel` to be used and the output value.
  */
 export class Suspend<R, E, L, I, O, U, A> extends Channel<R, E, L, I, O, U, A> {
-  readonly _typeId: typeof WithTracerTypeId = WithTracerTypeId
+  readonly _typeId: typeof SuspendTypeId = SuspendTypeId
   constructor(
     private _nextChannel: (
       tracer: (__trace?: string) => void
@@ -264,9 +258,39 @@ export function die(
 }
 
 /**
+ * Dies with an unknown exception u
+ */
+export function dieL(
+  e: () => unknown,
+  __trace?: string
+): Channel<unknown, never, never, unknown, never, unknown, never> {
+  return new ChannelM(M.dieWith(e, __trace))
+}
+
+/**
+ * Fails with a checked error E
+ */
+export function fail<E>(
+  e: E,
+  __trace?: string
+): Channel<unknown, E, never, unknown, never, unknown, never> {
+  return new ChannelM(M.fail(e, __trace))
+}
+
+/**
+ * Fails with a checked error E
+ */
+export function failL<E>(
+  e: () => E,
+  __trace?: string
+): Channel<unknown, E, never, unknown, never, unknown, never> {
+  return new ChannelM(M.failWith(e, __trace))
+}
+
+/**
  * Processing with this `Channel` is complete, providing the final result.
  */
-export function done<A>(
+export function succeed<A>(
   a: A
 ): Channel<unknown, never, never, unknown, never, unknown, A> {
   return new Done(a)
@@ -275,7 +299,7 @@ export function done<A>(
 /**
  * Processing with this `Channel` is complete, providing the final result.
  */
-export function doneL<A>(
+export function succeedL<A>(
   a: () => A,
   __trace?: string
 ): Channel<unknown, never, never, unknown, never, unknown, A> {
@@ -314,18 +338,13 @@ export function needInput<R, E, L, I, O, U, A, R1, E1, L1, I1, O1, U1, A1>(
 /**
  * Reads the input and return an optional result
  */
-export function readInput<I>(): Channel<
-  unknown,
-  never,
-  never,
-  I,
-  never,
-  unknown,
-  O.Option<I>
-> {
+export function readInput<I>(
+  __trace?: string
+): Channel<unknown, never, never, I, never, unknown, O.Option<I>> {
   return needInput(
-    (i: I) => done(O.some(i)),
-    () => done(O.none)
+    (i: I) => succeed(O.some(i)),
+    () => succeed(O.none),
+    __trace
   )
 }
 
@@ -348,7 +367,7 @@ export function managed<R1, E1, R, E, L, I, O, U, A>(
 ): Channel<R & R1, E | E1, L, I, O, U, A> {
   return channelM(
     M.map_(M.withEarlyRelease(self), ([rel, str]) =>
-      chain_(str, (a) => channelM(M.map_(M.fromEffect(rel), () => done(a))))
+      chain_(str, (a) => channelM(M.map_(M.fromEffect(rel), () => succeed(a))))
     )
   )
 }
@@ -375,62 +394,6 @@ export function leftover<R, E, L, L1, I, O, U, A>(
 }
 
 /**
- * Wait for a single input value from upstream.
- */
-export function awaitOption<I>(): Channel<
-  unknown,
-  never,
-  never,
-  I,
-  never,
-  unknown,
-  O.Option<I>
-> {
-  return needInput(
-    (i: I) => done(O.some(i)),
-    () => done(O.none)
-  )
-}
-
-/**
- * This is similar to `awaitOption`, but will return the upstream result value as
- * Left if available
- */
-export function awaitEither<U, I>(): Channel<
-  unknown,
-  never,
-  never,
-  I,
-  never,
-  U,
-  E.Either<U, I>
-> {
-  return needInput(
-    (i: I) => done(E.right(i)),
-    (u: U) => done(E.leftW(u))
-  )
-}
-
-/**
- * Wait for input forever, calling the given inner `Channel` for each piece of
- * new input. Returns the upstream result type.
- */
-export function awaitForever<R, E, L, I, I1, O, A, A1>(
-  inner: (i: I1) => Channel<R, E, L, I, O, A, A1>,
-  __trace?: string
-): Channel<R, E, L, I & I1, O, A, A> {
-  const go: Channel<R, E, L, I & I1, O, A, A> = chain_(
-    awaitEither<A, I & I1>(),
-    E.fold(
-      (x) => done(x),
-      (x) => chain_(inner(x), () => go)
-    ),
-    __trace
-  )
-  return go
-}
-
-/**
  * Empty channel with unit result
  */
 export const unit: Channel<
@@ -441,7 +404,7 @@ export const unit: Channel<
   never,
   unknown,
   void
-> = done<void>(void 0)
+> = succeed(void 0)
 
 /**
  * Monadic chain
@@ -454,11 +417,14 @@ export function chain_<R, E, L, I, O, U, A, R1, E1, L1, I1, O1, U1, A1>(
   concrete(self)
 
   switch (self._typeId) {
-    case WithTracerTypeId: {
+    case SuspendTypeId: {
       return new Suspend((tracer) => chain_(self.nextChannel(tracer), f))
     }
     case DoneTypeId: {
-      return suspend(() => f(self.result), __trace)
+      return new Suspend<R & R1, E | E1, L | L1, I & I1, O | O1, U & U1, A1>(
+        () => f(self.result),
+        __trace
+      )
     }
     case ChannelMTypeId: {
       return new ChannelM(M.map_(self.nextChannel, (a) => chain_(a, f, __trace)))
@@ -497,9 +463,10 @@ export function chain<A, R1, E1, L1, I1, O1, U1, A1>(
  */
 export function map_<R, E, L, I, O, U, A, B>(
   self: Channel<R, E, L, I, O, U, A>,
-  f: (a: A) => B
+  f: (a: A) => B,
+  __trace?: string
 ): Channel<R, E, L, I, O, U, B> {
-  return chain_(self, (a) => done(f(a)))
+  return chain_(self, (a) => succeed(f(a)), __trace)
 }
 
 /**
@@ -520,7 +487,7 @@ export function map<A, B>(
  */
 export function runChannel(tracer: (trace?: string) => void) {
   return function loop<R, E, A>(
-    self: Channel<R, E, never, unknown, unknown, void, A>
+    self: Channel<R, E, never, unknown, unknown, unknown, A>
   ): M.Managed<R, E, A> {
     // eslint-disable-next-line no-constant-condition
     while (1) {
@@ -544,7 +511,7 @@ export function runChannel(tracer: (trace?: string) => void) {
           self = self.fromUpstream(undefined, tracer)
           break
         }
-        case WithTracerTypeId: {
+        case SuspendTypeId: {
           self = self.nextChannel(tracer)
           break
         }
@@ -556,15 +523,17 @@ export function runChannel(tracer: (trace?: string) => void) {
 
 function injectLeftoversGo<R, E, I, O, U, A>(
   ls: L.List<I>,
-  self: Channel<R, E, I, I, O, U, A>
+  self: Channel<R, E, I, I, O, U, A>,
+  tracer: Tracer
 ): Channel<R, E, never, I, O, U, A> {
   // eslint-disable-next-line no-constant-condition
   while (1) {
     const k = self
     concrete(k)
     switch (k._typeId) {
-      case WithTracerTypeId: {
-        return new Suspend((tracer) => injectLeftoversGo(ls, k.nextChannel(tracer)))
+      case SuspendTypeId: {
+        self = k.nextChannel(tracer)
+        break
       }
       case DoneTypeId: {
         return new Done(k.result)
@@ -574,19 +543,24 @@ function injectLeftoversGo<R, E, I, O, U, A>(
         break
       }
       case ChannelMTypeId: {
-        return new ChannelM(M.map_(k.nextChannel, (p) => injectLeftoversGo(ls, p)))
+        return new ChannelM(
+          M.map_(k.nextChannel, (p) => injectLeftoversGo(ls, p, tracer))
+        )
       }
       case HaveOutputTypeId: {
-        return new HaveOutput((_) => injectLeftoversGo(ls, k.nextChannel(_)), k.output)
+        return new HaveOutput(
+          (_) => injectLeftoversGo(ls, k.nextChannel(_), _),
+          k.output
+        )
       }
       case NeedInputTypeId: {
         if (L.isEmpty(ls)) {
           return new NeedInput(
-            (i, _) => injectLeftoversGo(L.empty(), k.nextChannel(i, _)),
-            (u, _) => injectLeftoversGo(L.empty(), k.fromUpstream(u, _))
+            (i, _) => injectLeftoversGo(L.empty(), k.nextChannel(i, _), _),
+            (u, _) => injectLeftoversGo(L.empty(), k.fromUpstream(u, _), _)
           )
         } else {
-          self = new Suspend((_) => k.nextChannel(L.unsafeFirst(ls)!, _))
+          self = k.nextChannel(L.unsafeFirst(ls)!, tracer)
           ls = L.tail(ls)
         }
         break
@@ -605,9 +579,10 @@ function injectLeftoversGo<R, E, I, O, U, A>(
  * remainder are discarded.
  */
 export function injectLeftovers<R, E, I, O, U, A>(
-  self: Channel<R, E, I, I, O, U, A>
+  self: Channel<R, E, I, I, O, U, A>,
+  tracer: Tracer
 ): Channel<R, E, never, I, O, U, A> {
-  return injectLeftoversGo(L.empty(), self)
+  return injectLeftoversGo(L.empty(), self, tracer)
 }
 
 /**
@@ -616,7 +591,7 @@ export function injectLeftovers<R, E, I, O, U, A>(
  */
 export function write<O>(
   o: O
-): Channel<unknown, never, never, unknown, O, unknown, void> {
+): Channel<unknown, never, never, unknown, O, unknown, unknown> {
   return haveOutput(() => unit, o)
 }
 
@@ -627,7 +602,7 @@ export function write<O>(
 export function writeL<O>(
   o: () => O,
   __trace?: string
-): Channel<unknown, never, never, unknown, O, unknown, void> {
+): Channel<unknown, never, never, unknown, O, unknown, unknown> {
   return suspend(() => haveOutput(() => unit, o()), __trace)
 }
 
@@ -637,7 +612,7 @@ export function writeL<O>(
  */
 export function writeEffect<R, E, O>(
   o: T.Effect<R, E, O>
-): Channel<R, E, never, unknown, O, unknown, void> {
+): Channel<R, E, never, unknown, O, unknown, unknown> {
   return effect(T.map_(o, write))
 }
 
@@ -647,7 +622,7 @@ export function writeEffect<R, E, O>(
  */
 export function writeManaged<R, E, O>(
   o: M.Managed<R, E, O>
-): Channel<R, E, never, unknown, O, unknown, void> {
+): Channel<R, E, never, unknown, O, unknown, unknown> {
   return managed(M.map_(o, write))
 }
 
@@ -655,7 +630,7 @@ function writeIterateGo<O>(
   x: O,
   f: (x: O) => O,
   __trace?: string
-): Channel<unknown, never, never, unknown, O, unknown, void> {
+): Channel<unknown, never, never, unknown, O, unknown, unknown> {
   return haveOutput(() => writeIterateGo(f(x), f, __trace), x, __trace)
 }
 
@@ -666,7 +641,7 @@ export function writeIterate<O>(
   x: O,
   f: (x: O) => O,
   __trace?: string
-): Channel<unknown, never, never, unknown, O, unknown, void> {
+): Channel<unknown, never, never, unknown, O, unknown, unknown> {
   return writeIterateGo(x, f, __trace)
 }
 
@@ -674,7 +649,7 @@ function writeIterateMGo<R, E, O>(
   x: O,
   f: (x: O) => T.Effect<R, E, O>,
   __trace?: string
-): Channel<R, E, never, unknown, O, unknown, void> {
+): Channel<R, E, never, unknown, O, unknown, unknown> {
   return haveOutput(
     () =>
       new ChannelM(M.fromEffect(T.map_(f(x), (y) => writeIterateMGo(y, f, __trace)))),
@@ -690,7 +665,7 @@ export function writeIterateM<R, E, O>(
   x: O,
   f: (x: O) => T.Effect<R, E, O>,
   __trace?: string
-): Channel<R, E, never, unknown, O, unknown, void> {
+): Channel<R, E, never, unknown, O, unknown, unknown> {
   return writeIterateMGo(x, f, __trace)
 }
 
@@ -698,7 +673,7 @@ function writeIterableGo<O>(
   iterator: Iterator<O, any, undefined>,
   next: IteratorResult<O, any>,
   __trace?: string
-): Channel<unknown, never, never, unknown, O, unknown, void> {
+): Channel<unknown, never, never, unknown, O, unknown, unknown> {
   if (next.done) {
     return unit
   } else {
@@ -716,7 +691,7 @@ function writeIterableGo<O>(
 export function writeIterable<O>(
   it: Iterable<O>,
   __trace?: string
-): Channel<unknown, never, never, unknown, O, unknown, void> {
+): Channel<unknown, never, never, unknown, O, unknown, unknown> {
   return suspend(() => {
     const iterator = it[Symbol.iterator]()
     return writeIterableGo(iterator, iterator.next(), __trace)
@@ -729,7 +704,7 @@ export function writeIterable<O>(
  */
 export function writeMany<O>(
   ...os: Array<O>
-): Channel<unknown, never, never, unknown, O, unknown, void> {
+): Channel<unknown, never, never, unknown, O, unknown, unknown> {
   return writeIterable(os)
 }
 
@@ -755,7 +730,7 @@ function combineGo<R, E, L, I, O, U, A, O2, A1>(
         const left = input.left.left
         concrete(left)
         switch (left._typeId) {
-          case WithTracerTypeId: {
+          case SuspendTypeId: {
             input = E.left({ rp, rc, left: left.nextChannel(tracer) })
             break
           }
@@ -800,7 +775,7 @@ function combineGo<R, E, L, I, O, U, A, O2, A1>(
         const left = input.right.left
         concrete(right)
         switch (right._typeId) {
-          case WithTracerTypeId: {
+          case SuspendTypeId: {
             input = E.right({ left, right: right.nextChannel(tracer) })
             break
           }
@@ -875,24 +850,12 @@ export function combine<O, A, R1, E1, O2, A1>(
 }
 
 /**
- * Ensure that the inner sink consumes no more than the given number of
- * values.
- */
-export function take<A>(n: number): Channel<unknown, never, never, A, A, void, void> {
-  if (n <= 0) {
-    return unit
-  }
-  return needInput(
-    (i: A) => haveOutput(() => take<A>(n - 1), i),
-    () => unit
-  )
-}
-
-/**
  * Run a pipeline until processing completes.
  */
-export function run<R, E, A>(self: Channel<R, E, unknown, unknown, void, void, A>) {
-  return M.exposeTracer((tracer) => runChannel(tracer)(injectLeftovers(self)))
+export function run<R, E, A>(
+  self: Channel<R, E, unknown, unknown, unknown, unknown, A>
+) {
+  return M.exposeTracer((tracer) => runChannel(tracer)(injectLeftovers(self, tracer)))
 }
 
 /**
@@ -906,7 +869,7 @@ export function catchAll_<R, E, L, I, A, U, O, R1, E1, L1, I1, A1, U1, O1>(
   concrete(self)
 
   switch (self._typeId) {
-    case WithTracerTypeId: {
+    case SuspendTypeId: {
       return new Suspend((tracer) => catchAll_(self.nextChannel(tracer), f))
     }
     case DoneTypeId: {
@@ -947,42 +910,4 @@ export function catchAll<E, R1, E1, L1, I1, A1, U1, O1>(
   self: Channel<R, E, L, I, A, U, O>
 ) => Channel<R & R1, E1, L | L1, I & I1, A | A1, U & U1, O | O1> {
   return (self) => catchAll_(self, f, __trace)
-}
-
-/**
- * Construct a Transducer
- */
-export function transducer<S, I, R, E, O>(
-  body: (i: O.Option<I>) => Transducer<R, E, I, O, S>,
-  __trace?: string
-): Transducer<R, E, I, O>
-export function transducer<S, I, R, E, O>(
-  body: (i: O.Option<I>, s?: S) => Transducer<R, E, I, O, S>,
-  __trace?: string
-): Transducer<R, E, I, O>
-export function transducer<S, I, R, E, O>(
-  body: (i: O.Option<I>, s?: S) => Transducer<R, E, I, O, S>,
-  __trace?: string
-): Transducer<R, E, I, O> {
-  return needInput(
-    (i: I) =>
-      chain_(body(O.some(i)), (newState) =>
-        transducerInternal<S, I, R, E, O>(newState, body, __trace)
-      ),
-    () => chain_(body(O.none), () => unit),
-    __trace
-  )
-}
-
-function transducerInternal<S, I, R, E, O>(
-  state: S,
-  body: (i: O.Option<I>, s: S) => Transducer<R, E, I, O, S>,
-  __trace?: string
-): Transducer<R, E, I, O> {
-  return needInput(
-    (i: I) =>
-      chain_(body(O.some(i), state), (newState) => transducerInternal(newState, body)),
-    () => chain_(body(O.none, state), () => unit),
-    __trace
-  )
 }

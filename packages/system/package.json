@@ -54,6 +54,7 @@
       "Experimental/Stream",
       "Experimental/Stream/_internal",
       "Experimental/Stream/Channel",
+      "Experimental/Stream/Pipeline",
       "Experimental/Stream/Sink",
       "Fiber",
       "FiberRef",

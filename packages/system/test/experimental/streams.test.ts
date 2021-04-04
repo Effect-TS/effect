@@ -2,6 +2,7 @@ import * as T from "../../src/Effect"
 import * as Ex from "../../src/Exit"
 import * as S from "../../src/Experimental/Stream"
 import * as Channel from "../../src/Experimental/Stream/Channel"
+import * as Pipeline from "../../src/Experimental/Stream/Pipeline"
 import { pipe } from "../../src/Function"
 import { tag } from "../../src/Has"
 import * as I from "../../src/Iterable"
@@ -100,7 +101,7 @@ describe("Stream", () => {
 
   it("Fuse Transducers Together", async () => {
     function split(separator: string) {
-      return Channel.transducer((input: O.Option<string>, state = "") =>
+      return Pipeline.transducer((input: O.Option<string>, state = "") =>
         Channel.gen(function* (_) {
           if (O.isSome(input)) {
             const splits = (state + input.value).split(separator)
@@ -115,7 +116,7 @@ describe("Stream", () => {
     }
 
     function group<A>(size: number) {
-      return Channel.transducer((input: O.Option<A>, state = L.empty<A>()) =>
+      return Pipeline.transducer((input: O.Option<A>, state = L.empty<A>()) =>
         Channel.gen(function* (_) {
           if (O.isSome(input)) {
             const newState = L.append_(state, input.value)

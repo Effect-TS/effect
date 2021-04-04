@@ -81,6 +81,7 @@
       "Effect/Experimental",
       "Effect/Experimental/Stream",
       "Effect/Experimental/Stream/Channel",
+      "Effect/Experimental/Stream/Pipeline",
       "Effect/Experimental/Stream/Sink",
       "Effect/Fiber",
       "Effect/FiberRef",

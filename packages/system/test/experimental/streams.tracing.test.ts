@@ -19,6 +19,7 @@ describe("Stream Tracing", () => {
       S.runList,
       T.runPromiseExit
     )
+
     assertsFailure(exit)
 
     const cause = Array.from(

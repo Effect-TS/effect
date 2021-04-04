@@ -10,15 +10,14 @@ import * as Channel from "../Channel"
  * Consumes a stream of input values and produces a final result, without
  * producing any output.
  */
-export interface Sink<R, E, L, I, A>
-  extends Channel.Channel<R, E, L, I, never, void, A> {}
+export type Sink<R, E, L, I, A> = Channel.Channel<R, E, L, I, never, unknown, A>
 
 function sinkArrayGo<A>(
   fa: FA.FreeAssociative<A>
 ): Sink<unknown, never, never, A, FA.FreeAssociative<A>> {
   return Channel.needInput(
     (i: A) => sinkArrayGo(FA.append_(fa, i)),
-    () => Channel.done(fa)
+    () => Channel.succeed(fa)
   )
 }
 
@@ -32,15 +31,15 @@ export function array<A>(): Sink<unknown, never, never, A, readonly A[]> {
 /**
  * Sink that consumes the Channel to an Array
  */
-export function drain<A>(): Sink<unknown, never, never, A, void> {
+export function drain<A>(): Sink<unknown, never, never, A, unknown> {
   const sink: Channel.Channel<
     unknown,
     never,
     never,
     A,
     never,
-    void,
-    void
+    unknown,
+    unknown
   > = Channel.needInput(
     () => sink,
     () => Channel.unit
@@ -51,7 +50,7 @@ export function drain<A>(): Sink<unknown, never, never, A, void> {
 function sinkListGo<A>(fa: L.List<A>): Sink<unknown, never, never, A, L.List<A>> {
   return Channel.needInput(
     (i: A) => sinkListGo(L.append_(fa, i)),
-    () => Channel.done(fa)
+    () => Channel.succeed(fa)
   )
 }
 

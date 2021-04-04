@@ -102,6 +102,13 @@ export function fail<E>(e: E, __trace?: string) {
 }
 
 /**
+ * Returns an effect that models failure with the specified error. The moral equivalent of throw for pure code.
+ */
+export function failWith<E>(e: () => E, __trace?: string) {
+  return fromEffect(T.failWith(e, __trace))
+}
+
+/**
  * Creates an effect that executes a finalizer stored in a `Ref`.
  * The `Ref` is yielded as the result of the effect, allowing for
  * control flows that require mutating finalizers.
