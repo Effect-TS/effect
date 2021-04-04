@@ -214,4 +214,18 @@ describe("Stream", () => {
     assertsFailure(result)
     expect(C.defects(result.cause)).toEqual(["error"])
   })
+
+  it("zipWith", async () => {
+    const result = await pipe(
+      S.zipWith_(
+        S.iterate(10, (n) => n + 1)["|>"](S.take(5)),
+        S.iterate(20, (n) => n + 1)["|>"](S.take(3)),
+        (a, b) => `(${a})(${b})`
+      ),
+      S.runList,
+      T.runPromise
+    )
+
+    expect(result).toEqual(L.from([`(10)(20)`, `(11)(21)`, `(12)(22)`]))
+  })
 })
