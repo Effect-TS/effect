@@ -35,7 +35,7 @@ export function transducer<S, I, R, E, O>(
   body: (i: O.Option<I>, s?: S) => Channel.Channel<R, E, never, I, O, unknown, S>,
   __trace?: string
 ): Pipeline<R, E, I, O> {
-  return Channel.needInput(
+  return new Channel.NeedInput(
     (i: I) =>
       Channel.chain_(body(O.some(i)), (newState) =>
         transducerInternal<S, I, R, E, O>(newState, body, __trace)
@@ -50,7 +50,7 @@ function transducerInternal<S, I, R, E, O>(
   body: (i: O.Option<I>, s: S) => Channel.Channel<R, E, never, I, O, unknown, S>,
   __trace?: string
 ): Pipeline<R, E, I, O> {
-  return Channel.needInput(
+  return new Channel.NeedInput(
     (i: I) =>
       Channel.chain_(body(O.some(i), state), (newState) =>
         transducerInternal(newState, body)
@@ -68,8 +68,8 @@ export function take<A>(n: number, __trace?: string): Pipeline<unknown, never, A
   if (n <= 0) {
     return Channel.unit
   }
-  return Channel.needInput(
-    (i: A) => Channel.haveOutput(() => take<A>(n - 1, __trace), i),
+  return new Channel.NeedInput(
+    (i: A) => new Channel.HaveOutput(() => take<A>(n - 1, __trace), i),
     () => Channel.unit,
     __trace
   )
@@ -81,9 +81,9 @@ export function take<A>(n: number, __trace?: string): Pipeline<unknown, never, A
 export function awaitOption<I>(
   __trace?: string
 ): Channel.Channel<unknown, never, never, I, never, unknown, O.Option<I>> {
-  return Channel.needInput(
-    (i: I) => Channel.succeed(O.some(i)),
-    () => Channel.succeed(O.none),
+  return new Channel.NeedInput(
+    (i: I) => new Channel.Done(O.some(i)),
+    () => new Channel.Done(O.none),
     __trace
   )
 }
@@ -95,9 +95,9 @@ export function awaitOption<I>(
 export function awaitEither<U, I>(
   __trace?: string
 ): Channel.Channel<unknown, never, never, I, never, U, E.Either<U, I>> {
-  return Channel.needInput(
-    (i: I) => Channel.succeed(E.right(i)),
-    (u: U) => Channel.succeed(E.leftW(u)),
+  return new Channel.NeedInput(
+    (i: I) => new Channel.Done(E.right(i)),
+    (u: U) => new Channel.Done(E.leftW(u)),
     __trace
   )
 }
@@ -110,12 +110,9 @@ export function mapChannel<R, E, L, I, O, A, A1>(
   inner: (i: I) => Channel.Channel<R, E, L, I, O, A, A1>,
   __trace?: string
 ): Channel.Channel<R, E, L, I, O, A, A> {
-  const go: Channel.Channel<R, E, L, I, O, A, A> = Channel.chain_(
-    awaitEither<A, I>(),
-    E.fold(
-      (x) => Channel.succeed(x),
-      (x) => Channel.chain_(inner(x), () => go)
-    ),
+  const go: Channel.Channel<R, E, L, I, O, A, A> = new Channel.NeedInput(
+    (x) => Channel.chain_(inner(x), () => go),
+    (x) => new Channel.Done(x),
     __trace
   )
   return go
@@ -170,15 +167,12 @@ function mapAccumGo<S, A, B>(
   f: (s: S, a: A) => readonly [S, B],
   __trace?: string
 ): Pipeline<unknown, never, A, B, S> {
-  return Channel.chain_(
-    awaitOption<A>(),
-    O.fold(
-      () => Channel.succeed(s),
-      (a) => {
-        const [s1, b] = f(s, a)
-        return Channel.chain_(Channel.write(b), () => mapAccumGo(s1, f))
-      }
-    ),
+  return new Channel.NeedInput(
+    (a: A) => {
+      const [s1, b] = f(s, a)
+      return Channel.chain_(Channel.write(b), () => mapAccumGo(s1, f))
+    },
+    () => Channel.succeed(s),
     __trace
   )
 }
