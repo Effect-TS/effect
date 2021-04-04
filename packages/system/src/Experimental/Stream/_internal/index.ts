@@ -4,8 +4,10 @@ import "../../../Operator"
 
 import * as T from "../../../Effect"
 import * as E from "../../../Either"
-import { tuple } from "../../../Function"
+import { pipe, tuple } from "../../../Function"
 import * as M from "../../../Managed"
+import * as O from "../../../Option"
+import * as Q from "../../../Queue"
 import * as Channel from "../Channel"
 import * as Pipeline from "../Pipeline"
 import * as Sink from "../Sink"
@@ -535,4 +537,63 @@ export function scanM<A, R1, E1, S>(
   __trace?: string
 ): <R, E>(self: Stream<R, E, A>) => Stream<R & R1, E | E1, S> {
   return (self) => scanM_(self, s, f, __trace)
+}
+
+/**
+ * Creates a stream of values that pull from the queue until a none is recieved
+ */
+export function fromQueue<R, E, A>(
+  queue: Q.Queue<T.Effect<R, E, O.Option<A>>>
+): Stream<R, E, A> {
+  return Channel.effect(
+    T.map_(
+      T.flatten(queue.take),
+      O.fold(
+        () => Channel.unit,
+        (a) => Channel.chain_(Channel.write(a), () => fromQueue(queue))
+      )
+    )
+  )
+}
+
+/**
+ * Merges an iterable of streams toghether, exits as soon as all streams
+ * are starved or as soon as any of the streams errors, internally uses
+ * a bounded queue with a size of bufferSize
+ */
+export function mergeBuffer<R, E, A>(
+  streams: Iterable<Stream<R, E, A>>,
+  bufferSize: number
+): Stream<R, E, A> {
+  return pipe(
+    M.do,
+    M.bind("queue", () =>
+      Q.makeBounded<T.Effect<unknown, E, O.Option<A>>>(bufferSize)["|>"](
+        M.makeExit(Q.shutdown)
+      )
+    ),
+    M.tap(({ queue }) =>
+      M.fromEffect(
+        T.forEachPar_(streams, (s) =>
+          runDrain(mapM_(s, (a) => queue.offer(T.succeed(O.some(a)))))
+        )["|>"](
+          T.foldCauseM(
+            (cause) => queue.offer(T.halt(cause)),
+            () => queue.offer(T.succeed(O.none))
+          )
+        )
+      )
+    ),
+    M.map(({ queue }) => fromQueue(queue)),
+    Channel.managed
+  )
+}
+
+/**
+ * Merges an iterable of streams toghether, exits as soon as all streams
+ * are starved or as soon as any of the streams errors, internally uses
+ * a bounded queue with a size of 16
+ */
+export function merge<R, E, A>(streams: Iterable<Stream<R, E, A>>): Stream<R, E, A> {
+  return mergeBuffer(streams, 16)
 }
