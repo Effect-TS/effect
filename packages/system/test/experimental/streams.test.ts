@@ -253,7 +253,7 @@ describe("Stream", () => {
     const fn = jest.fn()
 
     const result = await pipe(
-      S.streamAsync((cb) => {
+      S.streamAsync<unknown, never, number>((cb) => {
         let n = 0
         const timer = setInterval(() => {
           cb(O.some(S.range(0, n++)))
