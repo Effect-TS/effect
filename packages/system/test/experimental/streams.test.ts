@@ -1,5 +1,7 @@
+import * as C from "../../src/Cause"
 import * as T from "../../src/Effect"
 import * as Ex from "../../src/Exit"
+import { assertsFailure } from "../../src/Exit"
 import * as S from "../../src/Experimental/Stream"
 import * as Channel from "../../src/Experimental/Stream/Channel"
 import * as Pipeline from "../../src/Experimental/Stream/Pipeline"
@@ -198,5 +200,18 @@ describe("Stream", () => {
     )
 
     expect(new Set(result)).toEqual(new Set([10, 11, 12, 13, 14, 20, 21, 22, 23, 24]))
+  })
+
+  it("merge-error", async () => {
+    const result = await pipe(
+      S.merge([
+        S.iterateM(10, (n) => T.delay(5)(n > 3 ? T.die("error") : T.succeed(n + 1))),
+        S.iterateM(20, (n) => T.delay(10)(T.succeed(n + 1)))
+      ]),
+      S.runList,
+      T.runPromiseExit
+    )
+    assertsFailure(result)
+    expect(C.defects(result.cause)).toEqual(["error"])
   })
 })
