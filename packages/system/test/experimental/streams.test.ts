@@ -256,7 +256,7 @@ describe("Stream", () => {
       S.streamAsync<unknown, never, number>((cb) => {
         let n = 0
         const timer = setInterval(() => {
-          cb(O.some(S.range(0, n++)))
+          cb(S.range(0, n++))
         }, 10)
         return T.effectTotal(() => {
           fn()

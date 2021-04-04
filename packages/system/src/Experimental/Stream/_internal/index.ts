@@ -558,22 +558,6 @@ export function fromQueue<R, E, A>(
 }
 
 /**
- * Creates a stream of values that pull from the queue until a none is recieved,
- * concatenating the received streams
- */
-export function fromStreamQueue<R, E, A>(
-  queue: Q.Queue<O.Option<Stream<R, E, A>>>
-): Stream<R, E, A> {
-  return Channel.effect(
-    T.map_(queue.take, (o) =>
-      o._tag === "None"
-        ? Channel.unit
-        : Channel.chain_(o.value, () => fromStreamQueue(queue))
-    )
-  )
-}
-
-/**
  * Creates a stream of values that pull from both the queues until any one
  * returns a none and merges the results using f
  */
@@ -925,21 +909,36 @@ export function repeatManaged<R, E, A>(a: M.Managed<R, E, A>): Stream<R, E, A> {
 }
 
 /**
+ * Creates a stream of values that pull from the queue until a none is recieved,
+ * concatenating the received streams
+ */
+function fromStreamQueue<R, E, A>(
+  queue: Q.Queue<Stream<R, E, A> | undefined>
+): Stream<R, E, A> {
+  return Channel.effect(
+    T.map_(queue.take, (o) =>
+      o ? Channel.chain_(o, () => fromStreamQueue(queue)) : Channel.unit
+    )
+  )
+}
+
+/**
  * Creates a stream from an asynchronous callback that can be called multiple times.
  */
 export function streamAsyncBuffer<R, E, A>(
   register: (
-    cb: (
-      next: O.Option<Stream<R, E, A>>,
+    nextCb: (
+      next: Stream<R, E, A>,
       offerCb?: Callback<never, boolean>
-    ) => T.UIO<Ex.Exit<never, boolean>>
+    ) => T.UIO<Ex.Exit<never, boolean>>,
+    doneCb: (offerCb?: Callback<never, boolean>) => T.UIO<Ex.Exit<never, boolean>>
   ) => T.UIO<void>,
   outputBuffer: number
 ): Stream<R, E, A> {
   return pipe(
     M.do,
     M.bind("output", () =>
-      Q.makeBounded<O.Option<Stream<R, E, A>>>(outputBuffer)["|>"](
+      Q.makeBounded<Stream<R, E, A> | undefined>(outputBuffer)["|>"](
         M.makeExit(Q.shutdown)
       )
     ),
@@ -947,7 +946,10 @@ export function streamAsyncBuffer<R, E, A>(
     M.bind("maybeStream", ({ output, runtime }) =>
       M.makeExit_(
         T.effectTotal(() =>
-          register((k, cb) => runtime.runCancel(output.offer(k), cb))
+          register(
+            (k, cb) => runtime.runCancel(output.offer(k), cb),
+            (cb) => runtime.runCancel(output.offer(void 0), cb)
+          )
         ),
         identity
       )
@@ -962,10 +964,11 @@ export function streamAsyncBuffer<R, E, A>(
  */
 export function streamAsync<R, E, A>(
   register: (
-    cb: (
-      next: O.Option<Stream<R, E, A>>,
+    nextCb: (
+      next: Stream<R, E, A>,
       offerCb?: Callback<never, boolean>
-    ) => T.UIO<Ex.Exit<never, boolean>>
+    ) => T.UIO<Ex.Exit<never, boolean>>,
+    doneCb: (offerCb?: Callback<never, boolean>) => T.UIO<Ex.Exit<never, boolean>>
   ) => T.UIO<void>
 ): Stream<R, E, A> {
   return streamAsyncBuffer(register, 16)
