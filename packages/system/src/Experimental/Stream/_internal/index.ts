@@ -561,14 +561,14 @@ export function fromQueue<R, E, A>(
  * Creates a stream of values that pull from the queue until a none is recieved,
  * concatenating the received streams
  */
-export function fromStreamQueue<R, E, R1, E1, A>(
-  queue: Q.Queue<T.Effect<R, O.Option<E>, Stream<R1, E1, A>>>
-): Stream<R & R1, E | E1, A> {
+export function fromStreamQueue<R, E, A>(
+  queue: Q.Queue<O.Option<Stream<R, E, A>>>
+): Stream<R, E, A> {
   return Channel.effect(
-    T.foldM_(
-      T.flatten(queue.take),
-      (err) => (err._tag === "Some" ? T.fail(err.value) : T.succeed(Channel.unit)),
-      (a) => T.succeed(Channel.chain_(a, () => fromStreamQueue(queue)))
+    T.map_(queue.take, (o) =>
+      o._tag === "None"
+        ? Channel.unit
+        : Channel.chain_(o.value, () => fromStreamQueue(queue))
     )
   )
 }
@@ -926,13 +926,11 @@ export function repeatManaged<R, E, A>(a: M.Managed<R, E, A>): Stream<R, E, A> {
 
 /**
  * Creates a stream from an asynchronous callback that can be called multiple times.
- * The optionality of the error type `E` can be used to signal the end of the stream,
- * by setting it to `None`.
  */
-export function effectAsyncBuffer<R, E, A>(
+export function streamAsyncBuffer<R, E, A>(
   register: (
     cb: (
-      next: T.Effect<R, O.Option<E>, A>,
+      next: O.Option<Stream<R, E, A>>,
       offerCb?: Callback<never, boolean>
     ) => T.UIO<Ex.Exit<never, boolean>>
   ) => T.UIO<void>,
@@ -941,58 +939,7 @@ export function effectAsyncBuffer<R, E, A>(
   return pipe(
     M.do,
     M.bind("output", () =>
-      Q.makeBounded<T.Effect<R, O.Option<E>, A>>(outputBuffer)["|>"](
-        M.makeExit(Q.shutdown)
-      )
-    ),
-    M.bind("runtime", () => pipe(T.runtime<R>(), T.toManaged)),
-    M.bind("maybeStream", ({ output, runtime }) =>
-      M.makeExit_(
-        T.effectTotal(() =>
-          register((k, cb) => runtime.runCancel(output.offer(k), cb))
-        ),
-        identity
-      )
-    ),
-    M.map(({ output }) => fromQueue(output)),
-    Channel.managed
-  )
-}
-
-/**
- * Creates a stream from an asynchronous callback that can be called multiple times.
- * The optionality of the error type `E` can be used to signal the end of the stream,
- * by setting it to `None`.
- */
-export function effectAsync<R, E, A>(
-  register: (
-    cb: (
-      next: T.Effect<R, O.Option<E>, A>,
-      offerCb?: Callback<never, boolean>
-    ) => T.UIO<Ex.Exit<never, boolean>>
-  ) => T.UIO<void>
-): Stream<R, E, A> {
-  return effectAsyncBuffer(register, 16)
-}
-
-/**
- * Creates a stream from an asynchronous callback that can be called multiple times.
- * The optionality of the error type `E` can be used to signal the end of the stream,
- * by setting it to `None`.
- */
-export function effectStreamAsyncBuffer<R1, E1, R, E, A>(
-  register: (
-    cb: (
-      next: T.Effect<R, O.Option<E>, Stream<R1, E1, A>>,
-      offerCb?: Callback<never, boolean>
-    ) => T.UIO<Ex.Exit<never, boolean>>
-  ) => T.UIO<void>,
-  outputBuffer: number
-): Stream<R & R1, E | E1, A> {
-  return pipe(
-    M.do,
-    M.bind("output", () =>
-      Q.makeBounded<T.Effect<R, O.Option<E>, Stream<R1, E1, A>>>(outputBuffer)["|>"](
+      Q.makeBounded<O.Option<Stream<R, E, A>>>(outputBuffer)["|>"](
         M.makeExit(Q.shutdown)
       )
     ),
@@ -1012,18 +959,16 @@ export function effectStreamAsyncBuffer<R1, E1, R, E, A>(
 
 /**
  * Creates a stream from an asynchronous callback that can be called multiple times.
- * The optionality of the error type `E` can be used to signal the end of the stream,
- * by setting it to `None`.
  */
-export function effectStreamAsync<R1, E1, R, E, A>(
+export function streamAsync<R, E, A>(
   register: (
     cb: (
-      next: T.Effect<R, O.Option<E>, Stream<R1, E1, A>>,
+      next: O.Option<Stream<R, E, A>>,
       offerCb?: Callback<never, boolean>
     ) => T.UIO<Ex.Exit<never, boolean>>
   ) => T.UIO<void>
-): Stream<R & R1, E | E1, A> {
-  return effectStreamAsyncBuffer(register, 16)
+): Stream<R, E, A> {
+  return streamAsyncBuffer(register, 16)
 }
 
 /**
