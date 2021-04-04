@@ -164,6 +164,22 @@ function function_<A, B>(
 
 export { function_ as function }
 
+function mapAccumGo<S, A, B>(
+  s: S,
+  f: (s: S, a: A) => readonly [S, B]
+): Pipeline<unknown, never, A, B, S> {
+  return Channel.chain_(
+    awaitOption<A>(),
+    O.fold(
+      () => Channel.succeed(s),
+      (a) => {
+        const [s1, b] = f(s, a)
+        return Channel.chain_(Channel.write(b), () => mapAccumGo(s1, f))
+      }
+    )
+  )
+}
+
 /**
  * Reduces a state S using f while mapping the output
  */
@@ -171,18 +187,5 @@ export function mapAccum<S, A, B>(
   s: S,
   f: (s: S, a: A) => readonly [S, B]
 ): Pipeline<unknown, never, A, B, S> {
-  function go(s: S): Pipeline<unknown, never, A, B, S> {
-    return Channel.chain_(
-      awaitOption<A>(),
-      O.fold(
-        () => Channel.succeed(s),
-        (a) => {
-          const [s1, b] = f(s, a)
-          return Channel.chain_(Channel.write(b), () => go(s1))
-        }
-      )
-    )
-  }
-
-  return go(s)
+  return mapAccumGo(s, f)
 }
