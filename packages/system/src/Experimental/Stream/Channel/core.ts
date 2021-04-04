@@ -73,7 +73,7 @@ export abstract class Channel<R, E, L, I, O, U, A>
     | Done<R, E, L, I, O, U, A>
     | ChannelM<R, E, L, I, O, U, A>
     | Leftover<R, E, L, I, O, U, A>
-    | WithTracer<R, E, L, I, O, U, A>
+    | Suspend<R, E, L, I, O, U, A>
   constructor() {
     this[".|"] = this[".|"].bind(this)
   }
@@ -100,22 +100,6 @@ export function concrete<R, E, L, I, O, U, A>(
 }
 
 /**
- * Suspend creation of channel via ChannelM & effectTotal
- */
-export function suspend<R, E, L, I, O, U, A>(
-  f: () => Channel<R, E, L, I, O, U, A>,
-  __trace?: string
-): Channel<R, E, L, I, O, U, A> {
-  return new WithTracer((tracer) =>
-    tryOrDie(() => {
-      const x = f()
-      tracer(__trace)
-      return x
-    }, __trace)
-  )
-}
-
-/**
  * Channel Type Tags
  */
 export const HaveOutputTypeId = Symbol()
@@ -129,14 +113,25 @@ export const WithTracerTypeId = Symbol()
  * Provide new output to be sent downstream. This constructor has two
  * fields: the next `Channel` to be used and the output value.
  */
-export class WithTracer<R, E, L, I, O, U, A> extends Channel<R, E, L, I, O, U, A> {
+export class Suspend<R, E, L, I, O, U, A> extends Channel<R, E, L, I, O, U, A> {
   readonly _typeId: typeof WithTracerTypeId = WithTracerTypeId
   constructor(
-    readonly nextChannel: (
+    private _nextChannel: (
       tracer: (__trace?: string) => void
-    ) => Channel<R, E, L, I, O, U, A>
+    ) => Channel<R, E, L, I, O, U, A>,
+    private __trace?: string
   ) {
     super()
+    this._nextChannel = this._nextChannel.bind(this)
+  }
+
+  nextChannel(tracer: (__trace?: string) => void): Channel<R, E, L, I, O, U, A> {
+    tracer(this.__trace)
+    try {
+      return this._nextChannel(tracer)
+    } catch (e) {
+      return die(e)
+    }
   }
 }
 
@@ -146,19 +141,22 @@ export class WithTracer<R, E, L, I, O, U, A> extends Channel<R, E, L, I, O, U, A
  */
 export class HaveOutput<R, E, L, I, O, U, A> extends Channel<R, E, L, I, O, U, A> {
   readonly _typeId: typeof HaveOutputTypeId = HaveOutputTypeId
-  readonly nextChannel: (_: Tracer) => Channel<R, E, L, I, O, U, A>
   constructor(
-    nextChannel: (_: Tracer) => Channel<R, E, L, I, O, U, A>,
+    private _nextChannel: (_: Tracer) => Channel<R, E, L, I, O, U, A>,
     readonly output: O,
-    readonly __trace?: string
+    private __trace?: string
   ) {
     super()
-    this.nextChannel = (_) =>
-      tryOrDie(() => {
-        const x = nextChannel(_)
-        _(__trace)
-        return x
-      }, __trace)
+    this.nextChannel = this.nextChannel.bind(this)
+  }
+
+  nextChannel(tracer: Tracer): Channel<R, E, L, I, O, U, A> {
+    tracer(this.__trace)
+    try {
+      return this._nextChannel(tracer)
+    } catch (e) {
+      return die(e)
+    }
   }
 }
 
@@ -169,26 +167,33 @@ export class HaveOutput<R, E, L, I, O, U, A> extends Channel<R, E, L, I, O, U, A
  */
 export class NeedInput<R, E, L, I, O, U, A> extends Channel<R, E, L, I, O, U, A> {
   readonly _typeId: typeof NeedInputTypeId = NeedInputTypeId
-  readonly nextChannel: (i: I, _: Tracer) => Channel<R, E, L, I, O, U, A>
-  readonly fromUpstream: (u: U, _: Tracer) => Channel<R, E, L, I, O, U, A>
+
   constructor(
-    nextChannel: (i: I, _: Tracer) => Channel<R, E, L, I, O, U, A>,
-    fromUpstream: (u: U, _: Tracer) => Channel<R, E, L, I, O, U, A>,
-    readonly __trace?: string
+    private _nextChannel: (i: I, _: Tracer) => Channel<R, E, L, I, O, U, A>,
+    private _fromUpstream: (u: U, _: Tracer) => Channel<R, E, L, I, O, U, A>,
+    private __trace?: string
   ) {
     super()
-    this.nextChannel = (i, _) =>
-      tryOrDie(() => {
-        const x = nextChannel(i, _)
-        _(__trace)
-        return x
-      }, __trace)
-    this.fromUpstream = (i, _) =>
-      tryOrDie(() => {
-        const x = fromUpstream(i, _)
-        _(__trace)
-        return x
-      }, __trace)
+    this.nextChannel = this.nextChannel.bind(this)
+    this.fromUpstream = this.fromUpstream.bind(this)
+  }
+
+  nextChannel(i: I, tracer: Tracer): Channel<R, E, L, I, O, U, A> {
+    tracer(this.__trace)
+    try {
+      return this._nextChannel(i, tracer)
+    } catch (e) {
+      return die(e)
+    }
+  }
+
+  fromUpstream(u: U, tracer: Tracer): Channel<R, E, L, I, O, U, A> {
+    tracer(this.__trace)
+    try {
+      return this._fromUpstream(u, tracer)
+    } catch (e) {
+      return die(e)
+    }
   }
 }
 
@@ -218,34 +223,44 @@ export class ChannelM<R, E, L, I, O, U, A> extends Channel<R, E, L, I, O, U, A> 
  */
 export class Leftover<R, E, L, I, O, U, A> extends Channel<R, E, L, I, O, U, A> {
   readonly _typeId: typeof LeftoverTypeId = LeftoverTypeId
-  readonly nextChannel: (_: Tracer) => Channel<R, E, L, I, O, U, A>
+
   constructor(
-    nextChannel: (_: Tracer) => Channel<R, E, L, I, O, U, A>,
+    private _nextChannel: (_: Tracer) => Channel<R, E, L, I, O, U, A>,
     readonly leftover: L,
-    readonly __trace?: string
+    private __trace?: string
   ) {
     super()
-    this.nextChannel = (_) =>
-      tryOrDie(() => {
-        const x = nextChannel(_)
-        _(__trace)
-        return x
-      }, __trace)
+    this.nextChannel = this.nextChannel.bind(this)
+  }
+
+  nextChannel(tracer: Tracer): Channel<R, E, L, I, O, U, A> {
+    tracer(this.__trace)
+    try {
+      return this._nextChannel(tracer)
+    } catch (e) {
+      return die(e)
+    }
   }
 }
 
 /**
- * Try or Die
+ * Suspend creation of channel via ChannelM & effectTotal
  */
-export function tryOrDie<R, E, L, I, O, U, A>(
-  f: () => Channel<R, E, L, I, O, U, A>,
+export function suspend<R, E, L, I, O, U, A>(
+  f: (tracer: Tracer) => Channel<R, E, L, I, O, U, A>,
   __trace?: string
 ): Channel<R, E, L, I, O, U, A> {
-  try {
-    return f()
-  } catch (e) {
-    return new ChannelM(M.die(e, __trace))
-  }
+  return new Suspend(f, __trace)
+}
+
+/**
+ * Dies with an unknown exception u
+ */
+export function die(
+  e: unknown,
+  __trace?: string
+): Channel<unknown, never, never, unknown, never, unknown, never> {
+  return new ChannelM(M.die(e, __trace))
 }
 
 /**
@@ -255,6 +270,16 @@ export function done<A>(
   a: A
 ): Channel<unknown, never, never, unknown, never, unknown, A> {
   return new Done(a)
+}
+
+/**
+ * Processing with this `Channel` is complete, providing the final result.
+ */
+export function doneL<A>(
+  a: () => A,
+  __trace?: string
+): Channel<unknown, never, never, unknown, never, unknown, A> {
+  return suspend(() => new Done(a()), __trace)
 }
 
 /**
@@ -430,7 +455,7 @@ export function chain_<R, E, L, I, O, U, A, R1, E1, L1, I1, O1, U1, A1>(
 
   switch (self._typeId) {
     case WithTracerTypeId: {
-      return new WithTracer((tracer) => chain_(self.nextChannel(tracer), f))
+      return new Suspend((tracer) => chain_(self.nextChannel(tracer), f))
     }
     case DoneTypeId: {
       return suspend(() => f(self.result), __trace)
@@ -493,39 +518,40 @@ export function map<A, B>(
 /**
  *  Run a pipeline until processing completes.
  */
-export function runChannel<R, E, A>(
-  self: Channel<R, E, never, unknown, unknown, void, A>,
-  tracer: (trace?: string) => void
-): M.Managed<R, E, A> {
-  // eslint-disable-next-line no-constant-condition
-  while (1) {
-    concrete(self)
-    switch (self._typeId) {
-      case DoneTypeId: {
-        return M.succeed(self.result)
-      }
-      case HaveOutputTypeId: {
-        throw new Error(`channels in run should not contain outputs: ${self.output}`)
-      }
-      case ChannelMTypeId: {
-        return M.chain_(self.nextChannel, (x) => runChannel(x, tracer))
-      }
-      case LeftoverTypeId: {
-        throw new Error(
-          `channels in run should not contain leftovers: ${self.leftover}`
-        )
-      }
-      case NeedInputTypeId: {
-        self = self.fromUpstream(undefined, tracer)
-        break
-      }
-      case WithTracerTypeId: {
-        self = self.nextChannel(tracer)
-        break
+export function runChannel(tracer: (trace?: string) => void) {
+  return function loop<R, E, A>(
+    self: Channel<R, E, never, unknown, unknown, void, A>
+  ): M.Managed<R, E, A> {
+    // eslint-disable-next-line no-constant-condition
+    while (1) {
+      concrete(self)
+      switch (self._typeId) {
+        case DoneTypeId: {
+          return M.succeed(self.result)
+        }
+        case HaveOutputTypeId: {
+          throw new Error(`channels in run should not contain outputs: ${self.output}`)
+        }
+        case ChannelMTypeId: {
+          return M.chain_(self.nextChannel, loop)
+        }
+        case LeftoverTypeId: {
+          throw new Error(
+            `channels in run should not contain leftovers: ${self.leftover}`
+          )
+        }
+        case NeedInputTypeId: {
+          self = self.fromUpstream(undefined, tracer)
+          break
+        }
+        case WithTracerTypeId: {
+          self = self.nextChannel(tracer)
+          break
+        }
       }
     }
+    throw new Error("Bug")
   }
-  throw new Error("Bug")
 }
 
 function injectLeftoversGo<R, E, I, O, U, A>(
@@ -538,7 +564,7 @@ function injectLeftoversGo<R, E, I, O, U, A>(
     concrete(k)
     switch (k._typeId) {
       case WithTracerTypeId: {
-        return new WithTracer((tracer) => injectLeftoversGo(ls, k.nextChannel(tracer)))
+        return new Suspend((tracer) => injectLeftoversGo(ls, k.nextChannel(tracer)))
       }
       case DoneTypeId: {
         return new Done(k.result)
@@ -560,7 +586,7 @@ function injectLeftoversGo<R, E, I, O, U, A>(
             (u, _) => injectLeftoversGo(L.empty(), k.fromUpstream(u, _))
           )
         } else {
-          self = new WithTracer((_) => k.nextChannel(L.unsafeFirst(ls)!, _))
+          self = new Suspend((_) => k.nextChannel(L.unsafeFirst(ls)!, _))
           ls = L.tail(ls)
         }
         break
@@ -592,6 +618,17 @@ export function write<O>(
   o: O
 ): Channel<unknown, never, never, unknown, O, unknown, void> {
   return haveOutput(() => unit, o)
+}
+
+/**
+ * Send a single output value downstream. If the downstream `Channel`
+ * terminates, this `Channel` will terminate as well.
+ */
+export function writeL<O>(
+  o: () => O,
+  __trace?: string
+): Channel<unknown, never, never, unknown, O, unknown, void> {
+  return suspend(() => haveOutput(() => unit, o()), __trace)
 }
 
 /**
@@ -630,7 +667,7 @@ export function writeIterate<O>(
   f: (x: O) => O,
   __trace?: string
 ): Channel<unknown, never, never, unknown, O, unknown, void> {
-  return suspend(() => writeIterateGo(x, f, __trace), __trace)
+  return writeIterateGo(x, f, __trace)
 }
 
 function writeIterateMGo<R, E, O>(
@@ -706,7 +743,8 @@ type CombineGo<R, E, L, I, O, U, A, O2, A1> = E.Either<
 >
 
 function combineGo<R, E, L, I, O, U, A, O2, A1>(
-  input: CombineGo<R, E, L, I, O, U, A, O2, A1>
+  input: CombineGo<R, E, L, I, O, U, A, O2, A1>,
+  tracer: Tracer
 ): Channel<R, E, L, I, O2, U, A1> {
   // eslint-disable-next-line no-constant-condition
   while (1) {
@@ -718,39 +756,40 @@ function combineGo<R, E, L, I, O, U, A, O2, A1>(
         concrete(left)
         switch (left._typeId) {
           case WithTracerTypeId: {
-            return new WithTracer((tracer) =>
-              combineGo(E.left({ rp, rc, left: left.nextChannel(tracer) }))
-            )
+            input = E.left({ rp, rc, left: left.nextChannel(tracer) })
+            break
           }
           case DoneTypeId: {
             input = E.right({
               left: new Done(left.result),
-              right: new WithTracer((_) => rc(left.result, _))
+              right: rc(left.result, tracer)
             })
             break
           }
           case ChannelMTypeId: {
             return new ChannelM(
-              M.map_(left.nextChannel, (p) => combineGo(E.left({ rp, rc, left: p })))
+              M.map_(left.nextChannel, (p) =>
+                combineGo(E.left({ rp, rc, left: p }), tracer)
+              )
             )
           }
           case LeftoverTypeId: {
             return new Leftover(
-              (_) => combineGo(E.left({ rp, rc, left: left.nextChannel(_) })),
+              (_) => combineGo(E.left({ rp, rc, left: left.nextChannel(_) }), _),
               left.leftover
             )
           }
           case HaveOutputTypeId: {
             input = E.right({
-              left: new WithTracer((_) => left.nextChannel(_)),
-              right: new WithTracer((_) => rp(left.output, _))
+              left: left.nextChannel(tracer),
+              right: rp(left.output, tracer)
             })
             break
           }
           case NeedInputTypeId: {
             return new NeedInput(
-              (i, _) => combineGo(E.left({ rp, rc, left: left.nextChannel(i, _) })),
-              (u, _) => combineGo(E.left({ rp, rc, left: left.fromUpstream(u, _) }))
+              (i, _) => combineGo(E.left({ rp, rc, left: left.nextChannel(i, _) }), _),
+              (u, _) => combineGo(E.left({ rp, rc, left: left.fromUpstream(u, _) }), _)
             )
           }
         }
@@ -762,28 +801,29 @@ function combineGo<R, E, L, I, O, U, A, O2, A1>(
         concrete(right)
         switch (right._typeId) {
           case WithTracerTypeId: {
-            return new WithTracer((tracer) =>
-              combineGo(E.right({ left, right: right.nextChannel(tracer) }))
-            )
+            input = E.right({ left, right: right.nextChannel(tracer) })
+            break
           }
           case DoneTypeId: {
             return new Done(right.result)
           }
           case ChannelMTypeId: {
             return new ChannelM(
-              M.map_(right.nextChannel, (right) => combineGo(E.right({ left, right })))
+              M.map_(right.nextChannel, (right) =>
+                combineGo(E.right({ left, right }), tracer)
+              )
             )
           }
           case LeftoverTypeId: {
             input = E.right({
               left: new HaveOutput(() => left, right.leftover),
-              right: new WithTracer((_) => right.nextChannel(_))
+              right: right.nextChannel(tracer)
             })
             break
           }
           case HaveOutputTypeId: {
             return new HaveOutput(
-              (_) => combineGo(E.right({ left, right: right.nextChannel(_) })),
+              (_) => combineGo(E.right({ left, right: right.nextChannel(_) }), _),
               right.output
             )
           }
@@ -811,7 +851,9 @@ export function combine_<R, E, L, I, O, U, A, R1, E1, O2, A1>(
   left: Channel<R, E, L, I, O, U, A>,
   right: Channel<R1, E1, O, O, O2, A, A1>
 ): Channel<R & R1, E | E1, L, I, O2, U, A1> {
-  return combineGo<R & R1, E | E1, L, I, O, U, A, O2, A1>(E.right({ left, right }))
+  return suspend((_) =>
+    combineGo<R & R1, E | E1, L, I, O, U, A, O2, A1>(E.right({ left, right }), _)
+  )
 }
 
 /**
@@ -850,7 +892,7 @@ export function take<A>(n: number): Channel<unknown, never, never, A, A, void, v
  * Run a pipeline until processing completes.
  */
 export function run<R, E, A>(self: Channel<R, E, unknown, unknown, void, void, A>) {
-  return M.exposeTracer((tracer) => runChannel(injectLeftovers(self), tracer))
+  return M.exposeTracer((tracer) => runChannel(tracer)(injectLeftovers(self)))
 }
 
 /**
@@ -865,7 +907,7 @@ export function catchAll_<R, E, L, I, A, U, O, R1, E1, L1, I1, A1, U1, O1>(
 
   switch (self._typeId) {
     case WithTracerTypeId: {
-      return new WithTracer((tracer) => catchAll_(self.nextChannel(tracer), f))
+      return new Suspend((tracer) => catchAll_(self.nextChannel(tracer), f))
     }
     case DoneTypeId: {
       return new Done(self.result)
@@ -886,11 +928,7 @@ export function catchAll_<R, E, L, I, A, U, O, R1, E1, L1, I1, A1, U1, O1>(
       return new ChannelM(
         M.catchAll_(
           M.map_(self.nextChannel, (_) => catchAll_(_, f)),
-          (e) =>
-            M.succeed(
-              tryOrDie(() => f(e), __trace),
-              __trace
-            )
+          (e) => M.succeed(suspend(() => f(e), __trace))
         )
       )
     }

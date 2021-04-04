@@ -45,105 +45,104 @@ type ConnectResumeGo<R, E, O, A> = E.Either<
 >
 
 function connectResumeGo<R, E, O, A>(
-  input: ConnectResumeGo<R, E, O, A>
+  input: ConnectResumeGo<R, E, O, A>,
+  tracer: Channel.Tracer
 ): M.Managed<R, E, readonly [Stream<R, E, O>, A]> {
-  return M.exposeTracer((tracer) => {
-    // eslint-disable-next-line no-constant-condition
-    while (1) {
-      switch (input._tag) {
-        case "Left": {
-          const rp = input.left.rp
-          const rc = input.left.rc
-          const left = input.left.left
-          Channel.concrete(left)
-          switch (left._typeId) {
-            case Channel.WithTracerTypeId: {
-              input = E.left({
-                rp,
-                rc,
-                left: left.nextChannel(tracer)
-              })
-              break
-            }
-            case Channel.DoneTypeId: {
-              input = E.right({
-                left: new Channel.Done(left.result),
-                right: new Channel.WithTracer((_) => rc(left.result, _))
-              })
-              break
-            }
-            case Channel.HaveOutputTypeId: {
-              input = E.right({
-                left: new Channel.WithTracer((_) => left.nextChannel(_)),
-                right: new Channel.WithTracer((_) => rp(left.output, _))
-              })
-              break
-            }
-            case Channel.ChannelMTypeId: {
-              return M.chain_(left.nextChannel, (l) =>
-                connectResumeGo(E.left({ rp, rc, left: l }))
-              )
-            }
-            case Channel.LeftoverTypeId: {
-              input = E.left({
-                rp,
-                rc,
-                left: new Channel.WithTracer((_) => left.nextChannel(_))
-              })
-              break
-            }
-            case Channel.NeedInputTypeId: {
-              input = E.left({
-                rp,
-                rc,
-                left: new Channel.WithTracer((_) => left.nextChannel(undefined, _))
-              })
-              break
-            }
+  // eslint-disable-next-line no-constant-condition
+  while (1) {
+    switch (input._tag) {
+      case "Left": {
+        const rp = input.left.rp
+        const rc = input.left.rc
+        const left = input.left.left
+        Channel.concrete(left)
+        switch (left._typeId) {
+          case Channel.WithTracerTypeId: {
+            input = E.left({
+              rp,
+              rc,
+              left: left.nextChannel(tracer)
+            })
+            break
           }
-          break
-        }
-        case "Right": {
-          const left = input.right.left
-          const right = input.right.right
-          Channel.concrete(right)
-          switch (right._typeId) {
-            case Channel.WithTracerTypeId: {
-              input = E.right({
-                left,
-                right: right.nextChannel(tracer)
-              })
-              break
-            }
-            case Channel.HaveOutputTypeId: {
-              throw new Error(`Sink should not produce outputs: ${right.output}`)
-            }
-            case Channel.DoneTypeId: {
-              return M.succeed(tuple(left, right.result))
-            }
-            case Channel.LeftoverTypeId: {
-              input = E.right({
-                left: new Channel.HaveOutput(() => left, right.leftover),
-                right: new Channel.WithTracer((_) => right.nextChannel(_))
-              })
-              break
-            }
-            case Channel.NeedInputTypeId: {
-              input = E.left({ rp: right.nextChannel, rc: right.fromUpstream, left })
-              break
-            }
-            case Channel.ChannelMTypeId: {
-              return M.chain_(right.nextChannel, (p) =>
-                connectResumeGo(E.right({ left, right: p }))
-              )
-            }
+          case Channel.DoneTypeId: {
+            input = E.right({
+              left: new Channel.Done(left.result),
+              right: rc(left.result, tracer)
+            })
+            break
           }
-          break
+          case Channel.HaveOutputTypeId: {
+            input = E.right({
+              left: left.nextChannel(tracer),
+              right: rp(left.output, tracer)
+            })
+            break
+          }
+          case Channel.ChannelMTypeId: {
+            return M.chain_(left.nextChannel, (l) =>
+              connectResumeGo(E.left({ rp, rc, left: l }), tracer)
+            )
+          }
+          case Channel.LeftoverTypeId: {
+            input = E.left({
+              rp,
+              rc,
+              left: left.nextChannel(tracer)
+            })
+            break
+          }
+          case Channel.NeedInputTypeId: {
+            input = E.left({
+              rp,
+              rc,
+              left: left.nextChannel(undefined, tracer)
+            })
+            break
+          }
         }
+        break
+      }
+      case "Right": {
+        const left = input.right.left
+        const right = input.right.right
+        Channel.concrete(right)
+        switch (right._typeId) {
+          case Channel.WithTracerTypeId: {
+            input = E.right({
+              left,
+              right: right.nextChannel(tracer)
+            })
+            break
+          }
+          case Channel.HaveOutputTypeId: {
+            throw new Error(`Sink should not produce outputs: ${right.output}`)
+          }
+          case Channel.DoneTypeId: {
+            return M.succeed(tuple(left, right.result))
+          }
+          case Channel.LeftoverTypeId: {
+            input = E.right({
+              left: new Channel.HaveOutput(() => left, right.leftover),
+              right: right.nextChannel(tracer)
+            })
+            break
+          }
+          case Channel.NeedInputTypeId: {
+            input = E.left({ rp: right.nextChannel, rc: right.fromUpstream, left })
+            break
+          }
+          case Channel.ChannelMTypeId: {
+            return M.chain_(right.nextChannel, (p) =>
+              connectResumeGo(E.right({ left, right: p }), tracer)
+            )
+          }
+        }
+        break
       }
     }
-    throw new Error("Bug")
-  })
+  }
+  throw new Error("Bug")
 }
 
 /**
@@ -154,7 +153,9 @@ export function connectResume_<R, E, O, A>(
   source: Stream<R, E, O>,
   sink: Sink.Sink<R, E, O, O, A>
 ): M.Managed<R, E, readonly [Stream<R, E, O>, A]> {
-  return connectResumeGo(E.right({ left: source, right: sink }))
+  return M.exposeTracer((tracer) =>
+    connectResumeGo(E.right({ left: source, right: sink }), tracer)
+  )
 }
 
 /**
@@ -195,6 +196,12 @@ export function runDrain<R, E, O>(self: Stream<R, E, O>, __trace?: string) {
  * terminates, this `Channel` will terminate as well.
  */
 export const succeed: <O>(o: O) => Stream<unknown, never, O> = Channel.write
+
+/**
+ * Send a single output value downstream. If the downstream `Channel`
+ * terminates, this `Channel` will terminate as well.
+ */
+export const succeedL: <O>(o: () => O) => Stream<unknown, never, O> = Channel.writeL
 
 /**
  * Send a single output value downstream. If the downstream `Channel`
