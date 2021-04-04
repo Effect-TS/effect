@@ -189,12 +189,12 @@ describe("Stream", () => {
     expect(result).toEqual(L.from(["(0)", "(0)(1)", "(0)(1)(2)"]))
   })
 
-  it("merge", async () => {
+  it("mergeT", async () => {
     const result = await pipe(
-      S.merge([
+      S.mergeT(
         S.iterateM(10, (n) => T.delay(5)(T.succeed(n + 1)))["|>"](S.take(5)),
         S.iterateM(20, (n) => T.delay(10)(T.succeed(n + 1)))["|>"](S.take(5))
-      ]),
+      ),
       S.runList,
       T.runPromise
     )
@@ -202,12 +202,12 @@ describe("Stream", () => {
     expect(new Set(result)).toEqual(new Set([10, 11, 12, 13, 14, 20, 21, 22, 23, 24]))
   })
 
-  it("merge-error", async () => {
+  it("mergeT-error", async () => {
     const result = await pipe(
-      S.merge([
+      S.mergeT(
         S.iterateM(10, (n) => T.delay(5)(n > 3 ? T.die("error") : T.succeed(n + 1))),
         S.iterateM(20, (n) => T.delay(10)(T.succeed(n + 1)))
-      ]),
+      ),
       S.runList,
       T.runPromiseExit
     )

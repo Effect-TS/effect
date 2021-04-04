@@ -6,6 +6,7 @@ import * as T from "../../../Effect"
 import * as E from "../../../Either"
 import { pipe, tuple } from "../../../Function"
 import * as M from "../../../Managed"
+import type { NonEmptyArray } from "../../../NonEmptyArray"
 import * as O from "../../../Option"
 import * as Q from "../../../Queue"
 import * as Channel from "../Channel"
@@ -593,4 +594,35 @@ export function mergeBuffer<R, E, A>(
  */
 export function merge<R, E, A>(streams: Iterable<Stream<R, E, A>>): Stream<R, E, A> {
   return mergeBuffer(streams, 16)
+}
+
+/**
+ * Merges a tuple of streams toghether, exits as soon as all streams
+ * are starved or as soon as any of the streams errors, internally uses
+ * a bounded queue with a size of bufferSize
+ */
+export function mergeBufferT<Streams extends NonEmptyArray<Stream<any, any, any>>>(
+  bufferSize: number,
+  ...streams: Streams
+): Stream<
+  [Streams[number]] extends [Stream<infer R, any, any>] ? R : never,
+  [Streams[number]] extends [Stream<any, infer E, any>] ? E : never,
+  [Streams[number]] extends [Stream<any, any, infer A>] ? A : never
+> {
+  return mergeBuffer(streams, bufferSize)
+}
+
+/**
+ * Merges a tuple of streams toghether, exits as soon as all streams
+ * are starved or as soon as any of the streams errors, internally uses
+ * a bounded queue with a size of bufferSize
+ */
+export function mergeT<Streams extends NonEmptyArray<Stream<any, any, any>>>(
+  ...streams: Streams
+): Stream<
+  [Streams[number]] extends [Stream<infer R, any, any>] ? R : never,
+  [Streams[number]] extends [Stream<any, infer E, any>] ? E : never,
+  [Streams[number]] extends [Stream<any, any, infer A>] ? A : never
+> {
+  return merge(streams)
 }
