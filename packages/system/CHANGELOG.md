@@ -3,6 +3,29 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.25.6](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.25.5...@effect-ts/system@0.25.6) (2021-04-04)
+
+
+### Bug Fixes
+
+* **stream:** drain return type ([de1d915](https://github.com/Effect-TS/core/commit/de1d91559b848bfb4b414aa77d009fef4185ca5c))
+* **streams:** merge should fork ([7c6e16b](https://github.com/Effect-TS/core/commit/7c6e16bdda3bbac7d837d52746cb830be5c0d30c))
+
+
+### Features
+
+* **streams:** mapAccumM / scanM ([c792ae0](https://github.com/Effect-TS/core/commit/c792ae0bf9e743266437df6c1ea92eb632b093e1))
+* **streams:** mergeBuffer / merge / fromQueue ([eb4c55a](https://github.com/Effect-TS/core/commit/eb4c55ac92f6d783102a97f2bb68cceca49fd6ba))
+
+
+### Performance Improvements
+
+* **streams:** use primitives in pipeline ([dd6a2e3](https://github.com/Effect-TS/core/commit/dd6a2e3162c0ad92997cd086ea8ebd5eca040292))
+
+
+
+
+
 ## [0.25.5](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.25.4...@effect-ts/system@0.25.5) (2021-04-04)
 
 
