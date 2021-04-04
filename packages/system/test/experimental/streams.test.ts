@@ -176,7 +176,7 @@ describe("Stream", () => {
     expect(result).toEqual(Ex.die("err"))
   })
 
-  it("MapAccum", async () => {
+  it("scan", async () => {
     const result = await pipe(
       S.iterate(0, (n) => n + 1),
       S.scan("", (s, n) => `${s}(${n})`),
