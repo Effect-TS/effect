@@ -632,48 +632,10 @@ export function mergeT<Streams extends NonEmptyArray<Stream<any, any, any>>>(
  */
 export function zip_<R, E, A, R1, E1, B>(
   left: Stream<R, E, A>,
-  right: Stream<R1, E1, B>
+  right: Stream<R1, E1, B>,
+  __trace?: string
 ): Stream<R & R1, E | E1, readonly [A, B]> {
-  Channel.concrete(left)
-  Channel.concrete(right)
-
-  if (left._typeId === Channel.DoneTypeId || right._typeId === Channel.DoneTypeId) {
-    return Channel.unit
-  }
-  if (left._typeId === Channel.LeftoverTypeId) {
-    return new Channel.Suspend((_) => zip_(left.nextChannel(_), right))
-  }
-  if (right._typeId === Channel.LeftoverTypeId) {
-    return new Channel.Suspend((_) => zip_(left, right.nextChannel(_)))
-  }
-  if (left._typeId === Channel.SuspendTypeId) {
-    return new Channel.Suspend((_) => zip_(left.nextChannel(_), right))
-  }
-  if (right._typeId === Channel.SuspendTypeId) {
-    return new Channel.Suspend((_) => zip_(left, right.nextChannel(_)))
-  }
-  if (left._typeId === Channel.ChannelMTypeId) {
-    return new Channel.ChannelM(M.map_(left.nextChannel, (p) => zip_(p, right)))
-  }
-  if (right._typeId === Channel.ChannelMTypeId) {
-    return new Channel.ChannelM(M.map_(right.nextChannel, (p) => zip_(left, p)))
-  }
-  if (left._typeId === Channel.NeedInputTypeId) {
-    return new Channel.NeedInput(
-      (i, _) => zip_(left.nextChannel(i, _), right),
-      (i, _) => zip_(left.fromUpstream(i, _), right)
-    )
-  }
-  if (right._typeId === Channel.NeedInputTypeId) {
-    return new Channel.NeedInput(
-      (i, _) => zip_(left, right.nextChannel(i, _)),
-      (i, _) => zip_(left, right.fromUpstream(i, _))
-    )
-  }
-  return new Channel.HaveOutput(
-    (_) => zip_(left.nextChannel(_), right.nextChannel(_)),
-    [left.output, right.output]
-  )
+  return zipWith_(left, right, tuple, __trace)
 }
 
 /**
@@ -683,9 +645,10 @@ export function zip_<R, E, A, R1, E1, B>(
  * @dataFirst zip_
  */
 export function zip<R1, E1, B>(
-  right: Stream<R1, E1, B>
+  right: Stream<R1, E1, B>,
+  __trace?: string
 ): <R, E, A>(left: Stream<R, E, A>) => Stream<R & R1, E | E1, readonly [A, B]> {
-  return (left) => zip_(left, right)
+  return (left) => zip_(left, right, __trace)
 }
 
 /**
@@ -695,9 +658,59 @@ export function zip<R1, E1, B>(
 export function zipWith_<R, E, A, R1, E1, B, C>(
   left: Stream<R, E, A>,
   right: Stream<R1, E1, B>,
-  f: (a: A, b: B) => C
+  f: (a: A, b: B) => C,
+  __trace?: string
 ): Stream<R & R1, E | E1, C> {
-  return map_(zip_(left, right), ([a, b]) => f(a, b))
+  {
+    Channel.concrete(left)
+    Channel.concrete(right)
+
+    if (left._typeId === Channel.DoneTypeId || right._typeId === Channel.DoneTypeId) {
+      return Channel.unit
+    }
+    if (left._typeId === Channel.LeftoverTypeId) {
+      return new Channel.Suspend((_) => zipWith_(left.nextChannel(_), right, f))
+    }
+    if (right._typeId === Channel.LeftoverTypeId) {
+      return new Channel.Suspend((_) => zipWith_(left, right.nextChannel(_), f))
+    }
+    if (left._typeId === Channel.SuspendTypeId) {
+      return new Channel.Suspend((_) => zipWith_(left.nextChannel(_), right, f))
+    }
+    if (right._typeId === Channel.SuspendTypeId) {
+      return new Channel.Suspend((_) => zipWith_(left, right.nextChannel(_), f))
+    }
+    if (left._typeId === Channel.ChannelMTypeId) {
+      return new Channel.ChannelM(
+        M.map_(left.nextChannel, (p) => zipWith_(p, right, f))
+      )
+    }
+    if (right._typeId === Channel.ChannelMTypeId) {
+      return new Channel.ChannelM(
+        M.map_(right.nextChannel, (p) => zipWith_(left, p, f))
+      )
+    }
+    if (left._typeId === Channel.NeedInputTypeId) {
+      return new Channel.NeedInput(
+        (i, _) => zipWith_(left.nextChannel(i, _), right, f),
+        (i, _) => zipWith_(left.fromUpstream(i, _), right, f)
+      )
+    }
+    if (right._typeId === Channel.NeedInputTypeId) {
+      return new Channel.NeedInput(
+        (i, _) => zipWith_(left, right.nextChannel(i, _), f),
+        (i, _) => zipWith_(left, right.fromUpstream(i, _), f)
+      )
+    }
+    return new Channel.Suspend(
+      () =>
+        new Channel.HaveOutput(
+          (_) => zipWith_(left.nextChannel(_), right.nextChannel(_), f),
+          f(left.output, right.output)
+        ),
+      __trace
+    )
+  }
 }
 
 /**
@@ -708,7 +721,8 @@ export function zipWith_<R, E, A, R1, E1, B, C>(
  */
 export function zipWith<A, R1, E1, B, C>(
   right: Stream<R1, E1, B>,
-  f: (a: A, b: B) => C
+  f: (a: A, b: B) => C,
+  __trace?: string
 ): <R, E>(left: Stream<R, E, A>) => Stream<R & R1, E | E1, C> {
-  return (left) => zipWith_(left, right, f)
+  return (left) => zipWith_(left, right, f, __trace)
 }
