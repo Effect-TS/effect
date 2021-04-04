@@ -20,6 +20,46 @@ export type Pipeline<R, E, I, O, A = unknown> = Channel.Channel<
 >
 
 /**
+ * Construct a Transducer
+ */
+export function transducer<S, I, R, E, O>(
+  body: (i: O.Option<I>) => Channel.Channel<R, E, never, I, O, unknown, S>,
+  __trace?: string
+): Pipeline<R, E, I, O>
+export function transducer<S, I, R, E, O>(
+  body: (i: O.Option<I>, s?: S) => Channel.Channel<R, E, never, I, O, unknown, S>,
+  __trace?: string
+): Pipeline<R, E, I, O>
+export function transducer<S, I, R, E, O>(
+  body: (i: O.Option<I>, s?: S) => Channel.Channel<R, E, never, I, O, unknown, S>,
+  __trace?: string
+): Pipeline<R, E, I, O> {
+  return Channel.needInput(
+    (i: I) =>
+      Channel.chain_(body(O.some(i)), (newState) =>
+        transducerInternal<S, I, R, E, O>(newState, body, __trace)
+      ),
+    () => Channel.chain_(body(O.none), () => Channel.unit),
+    __trace
+  )
+}
+
+function transducerInternal<S, I, R, E, O>(
+  state: S,
+  body: (i: O.Option<I>, s: S) => Channel.Channel<R, E, never, I, O, unknown, S>,
+  __trace?: string
+): Pipeline<R, E, I, O> {
+  return Channel.needInput(
+    (i: I) =>
+      Channel.chain_(body(O.some(i), state), (newState) =>
+        transducerInternal(newState, body)
+      ),
+    () => Channel.chain_(body(O.none, state), () => Channel.unit),
+    __trace
+  )
+}
+
+/**
  * Ensure that the inner sink consumes no more than the given number of
  * values.
  */
@@ -65,7 +105,7 @@ export function awaitEither<U, I>(
  * Wait for input forever, calling the given inner `Channel` for each piece of
  * new input. Returns the upstream result type.
  */
-export function channel<R, E, L, I, O, A, A1>(
+export function mapChannel<R, E, L, I, O, A, A1>(
   inner: (i: I) => Channel.Channel<R, E, L, I, O, A, A1>,
   __trace?: string
 ): Channel.Channel<R, E, L, I, O, A, A> {
@@ -84,31 +124,31 @@ export function channel<R, E, L, I, O, A, A1>(
  * Apply a transformation to all values in a stream, concatenating the output
  * values.
  */
-export function iterable<A, B>(
+export function mapIterable<A, B>(
   f: (a: A) => Iterable<B>,
   __trace?: string
 ): Pipeline<unknown, never, A, B> {
-  return channel((x: A) => Channel.writeIterable(f(x)), __trace)
+  return mapChannel((x: A) => Channel.writeIterable(f(x)), __trace)
 }
 
 /**
  * Apply an effectful transformation to all values in a stream
  */
-export function effect<R, E, A, B>(
+export function mapEffect<R, E, A, B>(
   f: (a: A) => T.Effect<R, E, B>,
   __trace?: string
 ): Pipeline<R, E, A, B> {
-  return channel((x: A) => Channel.writeEffect(f(x)), __trace)
+  return mapChannel((x: A) => Channel.writeEffect(f(x)), __trace)
 }
 
 /**
  * Apply a managed transformation to all values in a stream
  */
-export function managed<R, E, A, B>(
+export function mapManaged<R, E, A, B>(
   f: (a: A) => M.Managed<R, E, B>,
   __trace?: string
 ): Pipeline<R, E, A, B> {
-  return channel((x: A) => Channel.writeManaged(f(x)), __trace)
+  return mapChannel((x: A) => Channel.writeManaged(f(x)), __trace)
 }
 
 /**
@@ -119,47 +159,30 @@ function function_<A, B>(
   f: (a: A) => B,
   __trace?: string
 ): Pipeline<unknown, never, A, B> {
-  return channel((x: A) => Channel.write(f(x)), __trace)
+  return mapChannel((x: A) => Channel.write(f(x)), __trace)
 }
 
 export { function_ as function }
 
 /**
- * Construct a Transducer
+ * Reduces a state S using f while mapping the output
  */
-export function transducer<S, I, R, E, O>(
-  body: (i: O.Option<I>) => Channel.Channel<R, E, never, I, O, unknown, S>,
-  __trace?: string
-): Pipeline<R, E, I, O>
-export function transducer<S, I, R, E, O>(
-  body: (i: O.Option<I>, s?: S) => Channel.Channel<R, E, never, I, O, unknown, S>,
-  __trace?: string
-): Pipeline<R, E, I, O>
-export function transducer<S, I, R, E, O>(
-  body: (i: O.Option<I>, s?: S) => Channel.Channel<R, E, never, I, O, unknown, S>,
-  __trace?: string
-): Pipeline<R, E, I, O> {
-  return Channel.needInput(
-    (i: I) =>
-      Channel.chain_(body(O.some(i)), (newState) =>
-        transducerInternal<S, I, R, E, O>(newState, body, __trace)
-      ),
-    () => Channel.chain_(body(O.none), () => Channel.unit),
-    __trace
-  )
-}
+export function mapAccum<S, A, B>(
+  s: S,
+  f: (s: S, a: A) => readonly [S, B]
+): Pipeline<unknown, never, A, B, S> {
+  function go(s: S): Pipeline<unknown, never, A, B, S> {
+    return Channel.chain_(
+      awaitOption<A>(),
+      O.fold(
+        () => Channel.succeed(s),
+        (a) => {
+          const [s1, b] = f(s, a)
+          return Channel.chain_(Channel.write(b), () => go(s1))
+        }
+      )
+    )
+  }
 
-function transducerInternal<S, I, R, E, O>(
-  state: S,
-  body: (i: O.Option<I>, s: S) => Channel.Channel<R, E, never, I, O, unknown, S>,
-  __trace?: string
-): Pipeline<R, E, I, O> {
-  return Channel.needInput(
-    (i: I) =>
-      Channel.chain_(body(O.some(i), state), (newState) =>
-        transducerInternal(newState, body)
-      ),
-    () => Channel.chain_(body(O.none, state), () => Channel.unit),
-    __trace
-  )
+  return go(s)
 }

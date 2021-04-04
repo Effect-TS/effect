@@ -273,7 +273,7 @@ export function mapM_<R, R1, E1, E, A, B>(
 ): Stream<R & R1, E | E1, B> {
   return Channel.combine_(
     self,
-    Pipeline.channel((x: A) => fromEffect(f(x)), __trace)
+    Pipeline.mapChannel((x: A) => fromEffect(f(x)), __trace)
   )
 }
 
@@ -320,7 +320,7 @@ export function mapConcat_<R, E, A, B>(
   f: (a: A) => Iterable<B>,
   __trace?: string
 ): Stream<R, E, B> {
-  return Channel.combine_(self, Pipeline.iterable(f, __trace))
+  return Channel.combine_(self, Pipeline.mapIterable(f, __trace))
 }
 
 /**
@@ -345,7 +345,7 @@ export function mapConcatM_<R, E, A, R1, E1, B>(
 ): Stream<R & R1, E | E1, B> {
   return Channel.combine_(
     self,
-    Pipeline.channel((x: A) => Channel.effect(T.map_(f(x), iterable)), __trace)
+    Pipeline.mapChannel((x: A) => Channel.effect(T.map_(f(x), iterable)), __trace)
   )
 }
 
@@ -369,7 +369,7 @@ export function chain_<R, E, R1, E1, A, B>(
   f: (a: A) => Stream<R1, E1, B>,
   __trace?: string
 ): Stream<R & R1, E | E1, B> {
-  return Channel.combine_(self, Pipeline.channel(f, __trace))
+  return Channel.combine_(self, Pipeline.mapChannel(f, __trace))
 }
 
 /**
@@ -436,3 +436,26 @@ export const catchAll: <E, R1, E1, A1>(
   f: (e: E) => Stream<R1, E1, A1>,
   __trace?: string
 ) => <R, A>(self: Stream<R, E, A>) => Stream<R & R1, E1, A | A1> = Channel.catchAll
+
+/**
+ * Reduces a state S using f while mapping the output
+ */
+export function mapAccum_<R, E, A, S, B>(
+  self: Stream<R, E, A>,
+  s: S,
+  f: (s: S, a: A) => readonly [S, B]
+): Stream<R, E, B> {
+  return Channel.combine_(self, Pipeline.mapAccum(s, f))
+}
+
+/**
+ * Reduces a state S using f while mapping the output
+ *
+ * @dataFirst mapAccum_
+ */
+export function mapAccum<A, S, B>(
+  s: S,
+  f: (s: S, a: A) => readonly [S, B]
+): <R, E>(self: Stream<R, E, A>) => Stream<R, E, B> {
+  return (self) => mapAccum_(self, s, f)
+}

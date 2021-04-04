@@ -3,7 +3,7 @@ import * as Ex from "../../src/Exit"
 import * as S from "../../src/Experimental/Stream"
 import * as Channel from "../../src/Experimental/Stream/Channel"
 import * as Pipeline from "../../src/Experimental/Stream/Pipeline"
-import { pipe } from "../../src/Function"
+import { pipe, tuple } from "../../src/Function"
 import { tag } from "../../src/Has"
 import * as I from "../../src/Iterable"
 import * as M from "../../src/Managed"
@@ -174,5 +174,16 @@ describe("Stream", () => {
     )
 
     expect(result).toEqual(Ex.die("err"))
+  })
+
+  it("MapAccum", async () => {
+    const result = await pipe(
+      S.iterate(0, (n) => n + 1),
+      S.mapAccum("", (s, n) => pipe(`${s}(${n})`, (x) => tuple(x, x))),
+      S.take(3),
+      S.runList,
+      T.runPromise
+    )
+    expect(result).toEqual(L.from(["(0)", "(0)(1)", "(0)(1)(2)"]))
   })
 })
