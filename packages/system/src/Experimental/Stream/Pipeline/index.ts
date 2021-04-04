@@ -1,6 +1,6 @@
 // tracing: off
 
-import type * as T from "../../../Effect"
+import * as T from "../../../Effect"
 import * as E from "../../../Either"
 import { pipe } from "../../../Function"
 import type * as M from "../../../Managed"
@@ -197,4 +197,41 @@ export function scan<S, A>(
   __trace?: string
 ): Pipeline<unknown, never, A, S, S> {
   return mapAccumGo(s, (s, a) => pipe(f(s, a), (x) => [x, x]), __trace)
+}
+
+function mapAccumMGo<R, E, S, A, B>(
+  s: S,
+  f: (s: S, a: A) => T.Effect<R, E, readonly [S, B]>,
+  __trace?: string
+): Pipeline<R, E, A, B, S> {
+  return new Channel.NeedInput(
+    (a: A) =>
+      Channel.chain_(Channel.effect(T.map_(f(s, a), Channel.succeed)), ([s1, b]) =>
+        Channel.chain_(Channel.write(b), () => mapAccumMGo(s1, f))
+      ),
+    () => Channel.succeed(s),
+    __trace
+  )
+}
+
+/**
+ * Reduces a state S using f while mapping the output
+ */
+export function mapAccumM<R, E, S, A, B>(
+  s: S,
+  f: (s: S, a: A) => T.Effect<R, E, readonly [S, B]>,
+  __trace?: string
+): Pipeline<R, E, A, B, S> {
+  return mapAccumMGo(s, f, __trace)
+}
+
+/**
+ * Reduces a state S using f while mapping the output
+ */
+export function scanM<R, E, S, A>(
+  s: S,
+  f: (s: S, a: A) => T.Effect<R, E, S>,
+  __trace?: string
+): Pipeline<R, E, A, S, S> {
+  return mapAccumMGo(s, (s, a) => T.map_(f(s, a), (x) => [x, x]), __trace)
 }

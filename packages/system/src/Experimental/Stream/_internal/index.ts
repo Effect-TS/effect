@@ -463,6 +463,31 @@ export function mapAccum<A, S, B>(
 }
 
 /**
+ * Reduces a state S using f while mapping the output
+ */
+export function mapAccumM_<R, E, A, R1, E1, S, B>(
+  self: Stream<R, E, A>,
+  s: S,
+  f: (s: S, a: A) => T.Effect<R1, E1, readonly [S, B]>,
+  __trace?: string
+): Stream<R & R1, E | E1, B> {
+  return Channel.combine_(self, Pipeline.mapAccumM(s, f, __trace))
+}
+
+/**
+ * Reduces a state S using f while mapping the output
+ *
+ * @dataFirst mapAccumM_
+ */
+export function mapAccumM<R1, E1, A, S, B>(
+  s: S,
+  f: (s: S, a: A) => T.Effect<R1, E1, readonly [S, B]>,
+  __trace?: string
+): <R, E>(self: Stream<R, E, A>) => Stream<R & R1, E | E1, B> {
+  return (self) => mapAccumM_(self, s, f, __trace)
+}
+
+/**
  * Scan through a stream using f
  */
 export function scan_<R, E, A, S>(
@@ -485,4 +510,29 @@ export function scan<A, S>(
   __trace?: string
 ): <R, E>(self: Stream<R, E, A>) => Stream<R, E, S> {
   return (self) => scan_(self, s, f, __trace)
+}
+
+/**
+ * Scan through a stream using f
+ */
+export function scanM_<R, E, A, R1, E1, S>(
+  self: Stream<R, E, A>,
+  s: S,
+  f: (s: S, a: A) => T.Effect<R1, E1, S>,
+  __trace?: string
+): Stream<R & R1, E | E1, S> {
+  return Channel.combine_(self, Pipeline.scanM(s, f, __trace))
+}
+
+/**
+ * Scan through a stream using f
+ *
+ * @dataFirst scanM_
+ */
+export function scanM<A, R1, E1, S>(
+  s: S,
+  f: (s: S, a: A) => T.Effect<R1, E1, S>,
+  __trace?: string
+): <R, E>(self: Stream<R, E, A>) => Stream<R & R1, E | E1, S> {
+  return (self) => scanM_(self, s, f, __trace)
 }
