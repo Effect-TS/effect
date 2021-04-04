@@ -39,7 +39,7 @@ export function drain<A>(): Sink<unknown, never, never, A, unknown> {
     A,
     never,
     unknown,
-    unknown
+    void
   > = Channel.needInput(
     () => sink,
     () => Channel.unit
