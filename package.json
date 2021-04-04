@@ -15,7 +15,8 @@
     "autofix": "ultra -r autofix",
     "lint": "ultra -r lint",
     "tc": "ultra -r tc",
-    "postinstall": "husky install"
+    "postinstall": "husky install",
+    "version:pre": "lerna version --conventional-commits --conventional-prerelease"
   },
   "devDependencies": {
     "@babel/cli": "^7.12.1",
