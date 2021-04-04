@@ -443,9 +443,10 @@ export const catchAll: <E, R1, E1, A1>(
 export function mapAccum_<R, E, A, S, B>(
   self: Stream<R, E, A>,
   s: S,
-  f: (s: S, a: A) => readonly [S, B]
+  f: (s: S, a: A) => readonly [S, B],
+  __trace?: string
 ): Stream<R, E, B> {
-  return Channel.combine_(self, Pipeline.mapAccum(s, f))
+  return Channel.combine_(self, Pipeline.mapAccum(s, f, __trace))
 }
 
 /**
@@ -455,7 +456,8 @@ export function mapAccum_<R, E, A, S, B>(
  */
 export function mapAccum<A, S, B>(
   s: S,
-  f: (s: S, a: A) => readonly [S, B]
+  f: (s: S, a: A) => readonly [S, B],
+  __trace?: string
 ): <R, E>(self: Stream<R, E, A>) => Stream<R, E, B> {
-  return (self) => mapAccum_(self, s, f)
+  return (self) => mapAccum_(self, s, f, __trace)
 }

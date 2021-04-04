@@ -166,7 +166,8 @@ export { function_ as function }
 
 function mapAccumGo<S, A, B>(
   s: S,
-  f: (s: S, a: A) => readonly [S, B]
+  f: (s: S, a: A) => readonly [S, B],
+  __trace?: string
 ): Pipeline<unknown, never, A, B, S> {
   return Channel.chain_(
     awaitOption<A>(),
@@ -176,7 +177,8 @@ function mapAccumGo<S, A, B>(
         const [s1, b] = f(s, a)
         return Channel.chain_(Channel.write(b), () => mapAccumGo(s1, f))
       }
-    )
+    ),
+    __trace
   )
 }
 
@@ -185,7 +187,8 @@ function mapAccumGo<S, A, B>(
  */
 export function mapAccum<S, A, B>(
   s: S,
-  f: (s: S, a: A) => readonly [S, B]
+  f: (s: S, a: A) => readonly [S, B],
+  __trace?: string
 ): Pipeline<unknown, never, A, B, S> {
-  return mapAccumGo(s, f)
+  return mapAccumGo(s, f, __trace)
 }
