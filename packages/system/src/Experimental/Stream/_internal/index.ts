@@ -557,6 +557,31 @@ export function fromQueue<R, E, A>(
 }
 
 /**
+ * Creates a stream of values that pull from both the queues until any one
+ * returns a none and merges the results using f
+ */
+export function fromZipQueue<R, R1, E, E1, A, B, C>(
+  leftQueue: Q.Queue<T.Effect<R, E, O.Option<A>>>,
+  rightQueue: Q.Queue<T.Effect<R1, E1, O.Option<B>>>,
+  f: (a: A, b: B) => C
+): Stream<R & R1, E | E1, C> {
+  return Channel.effect(
+    T.map_(
+      T.zipPar_(T.flatten(leftQueue.take), T.flatten(rightQueue.take)),
+      ([oa, ob]) => {
+        if (oa._tag === "Some" && ob._tag === "Some") {
+          return Channel.chain_(Channel.write(f(oa.value, ob.value)), () =>
+            fromZipQueue(leftQueue, rightQueue, f)
+          )
+        } else {
+          return Channel.unit
+        }
+      }
+    )
+  )
+}
+
+/**
  * Merges an iterable of streams toghether, exits as soon as all streams
  * are starved or as soon as any of the streams errors, internally uses
  * a bounded queue with a size of bufferSize
@@ -661,56 +686,50 @@ export function zipWith_<R, E, A, R1, E1, B, C>(
   f: (a: A, b: B) => C,
   __trace?: string
 ): Stream<R & R1, E | E1, C> {
-  {
-    Channel.concrete(left)
-    Channel.concrete(right)
+  Channel.concrete(left)
+  Channel.concrete(right)
 
-    if (left._typeId === Channel.DoneTypeId || right._typeId === Channel.DoneTypeId) {
-      return Channel.unit
-    }
-    if (left._typeId === Channel.LeftoverTypeId) {
-      return new Channel.Suspend((_) => zipWith_(left.nextChannel(_), right, f))
-    }
-    if (right._typeId === Channel.LeftoverTypeId) {
-      return new Channel.Suspend((_) => zipWith_(left, right.nextChannel(_), f))
-    }
-    if (left._typeId === Channel.SuspendTypeId) {
-      return new Channel.Suspend((_) => zipWith_(left.nextChannel(_), right, f))
-    }
-    if (right._typeId === Channel.SuspendTypeId) {
-      return new Channel.Suspend((_) => zipWith_(left, right.nextChannel(_), f))
-    }
-    if (left._typeId === Channel.ChannelMTypeId) {
-      return new Channel.ChannelM(
-        M.map_(left.nextChannel, (p) => zipWith_(p, right, f))
-      )
-    }
-    if (right._typeId === Channel.ChannelMTypeId) {
-      return new Channel.ChannelM(
-        M.map_(right.nextChannel, (p) => zipWith_(left, p, f))
-      )
-    }
-    if (left._typeId === Channel.NeedInputTypeId) {
-      return new Channel.NeedInput(
-        (i, _) => zipWith_(left.nextChannel(i, _), right, f),
-        (i, _) => zipWith_(left.fromUpstream(i, _), right, f)
-      )
-    }
-    if (right._typeId === Channel.NeedInputTypeId) {
-      return new Channel.NeedInput(
-        (i, _) => zipWith_(left, right.nextChannel(i, _), f),
-        (i, _) => zipWith_(left, right.fromUpstream(i, _), f)
-      )
-    }
-    return new Channel.Suspend(
-      () =>
-        new Channel.HaveOutput(
-          (_) => zipWith_(left.nextChannel(_), right.nextChannel(_), f),
-          f(left.output, right.output)
-        ),
-      __trace
+  if (left._typeId === Channel.DoneTypeId || right._typeId === Channel.DoneTypeId) {
+    return Channel.unit
+  }
+  if (left._typeId === Channel.LeftoverTypeId) {
+    return new Channel.Suspend((_) => zipWith_(left.nextChannel(_), right, f))
+  }
+  if (right._typeId === Channel.LeftoverTypeId) {
+    return new Channel.Suspend((_) => zipWith_(left, right.nextChannel(_), f))
+  }
+  if (left._typeId === Channel.SuspendTypeId) {
+    return new Channel.Suspend((_) => zipWith_(left.nextChannel(_), right, f))
+  }
+  if (right._typeId === Channel.SuspendTypeId) {
+    return new Channel.Suspend((_) => zipWith_(left, right.nextChannel(_), f))
+  }
+  if (left._typeId === Channel.ChannelMTypeId) {
+    return new Channel.ChannelM(M.map_(left.nextChannel, (p) => zipWith_(p, right, f)))
+  }
+  if (right._typeId === Channel.ChannelMTypeId) {
+    return new Channel.ChannelM(M.map_(right.nextChannel, (p) => zipWith_(left, p, f)))
+  }
+  if (left._typeId === Channel.NeedInputTypeId) {
+    return new Channel.NeedInput(
+      (i, _) => zipWith_(left.nextChannel(i, _), right, f),
+      (i, _) => zipWith_(left.fromUpstream(i, _), right, f)
     )
   }
+  if (right._typeId === Channel.NeedInputTypeId) {
+    return new Channel.NeedInput(
+      (i, _) => zipWith_(left, right.nextChannel(i, _), f),
+      (i, _) => zipWith_(left, right.fromUpstream(i, _), f)
+    )
+  }
+  return new Channel.Suspend(
+    () =>
+      new Channel.HaveOutput(
+        (_) => zipWith_(left.nextChannel(_), right.nextChannel(_), f),
+        f(left.output, right.output)
+      ),
+    __trace
+  )
 }
 
 /**
@@ -725,4 +744,146 @@ export function zipWith<A, R1, E1, B, C>(
   __trace?: string
 ): <R, E>(left: Stream<R, E, A>) => Stream<R & R1, E | E1, C> {
   return (left) => zipWith_(left, right, f, __trace)
+}
+
+/**
+ * Combines two sources using f in parallel using queues of bufferSize.
+ * The new source will stop producing once either source has been exhausted.
+ */
+export function zipWithParBuffer_<R, E, A, R1, E1, B, C>(
+  left: Stream<R, E, A>,
+  right: Stream<R1, E1, B>,
+  f: (a: A, b: B) => C,
+  bufferSize: number,
+  __trace?: string
+): Stream<R & R1, E | E1, C> {
+  return pipe(
+    M.do,
+    M.bind("leftQueue", () =>
+      Q.makeBounded<T.Effect<unknown, E, O.Option<A>>>(bufferSize)["|>"](
+        M.makeExit(Q.shutdown)
+      )
+    ),
+    M.bind("rightQueue", () =>
+      Q.makeBounded<T.Effect<unknown, E1, O.Option<B>>>(bufferSize)["|>"](
+        M.makeExit(Q.shutdown)
+      )
+    ),
+    M.tap(({ leftQueue }) =>
+      T.forkManaged(
+        runDrain(mapM_(left, (a) => leftQueue.offer(T.succeed(O.some(a)))))["|>"](
+          T.foldCauseM(
+            (cause) => leftQueue.offer(T.halt(cause)),
+            () => leftQueue.offer(T.succeed(O.none))
+          )
+        )
+      )
+    ),
+    M.tap(({ rightQueue }) =>
+      T.forkManaged(
+        runDrain(mapM_(right, (a) => rightQueue.offer(T.succeed(O.some(a)))))["|>"](
+          T.foldCauseM(
+            (cause) => rightQueue.offer(T.halt(cause)),
+            () => rightQueue.offer(T.succeed(O.none))
+          )
+        )
+      )
+    ),
+    M.map(({ leftQueue, rightQueue }) => fromZipQueue(leftQueue, rightQueue, f)),
+    Channel.managed
+  )
+}
+
+/**
+ * Combines two sources using f in parallel using queues of bufferSize.
+ * The new source will stop producing once either source has been exhausted.
+ *
+ * @dataFirst zipWithParBuffer_
+ */
+export function zipWithParBuffer<A, R1, E1, B, C>(
+  right: Stream<R1, E1, B>,
+  f: (a: A, b: B) => C,
+  bufferSize: number,
+  __trace?: string
+): <R, E>(left: Stream<R, E, A>) => Stream<R & R1, E | E1, C> {
+  return (left) => zipWithParBuffer_(left, right, f, bufferSize, __trace)
+}
+
+/**
+ * Combines two sources using f in parallel using queues of size 16.
+ * The new source will stop producing once either source has been exhausted.
+ */
+export function zipWithPar_<R, E, A, R1, E1, B, C>(
+  left: Stream<R, E, A>,
+  right: Stream<R1, E1, B>,
+  f: (a: A, b: B) => C,
+  __trace?: string
+): Stream<R & R1, E | E1, C> {
+  return zipWithParBuffer_(left, right, f, 16, __trace)
+}
+
+/**
+ * Combines two sources using f in parallel using queues of size 16.
+ * The new source will stop producing once either source has been exhausted.
+ *
+ * @dataFirst zipWithPar_
+ */
+export function zipWithPar<A, R1, E1, B, C>(
+  right: Stream<R1, E1, B>,
+  f: (a: A, b: B) => C,
+  __trace?: string
+): <R, E>(left: Stream<R, E, A>) => Stream<R & R1, E | E1, C> {
+  return (left) => zipWithPar_(left, right, f, __trace)
+}
+
+/**
+ * Combines two sources in parallel using queues of bufferSize.
+ * The new source will stop producing once either source has been exhausted.
+ */
+export function zipParBuffer_<R, E, A, R1, E1, B>(
+  left: Stream<R, E, A>,
+  right: Stream<R1, E1, B>,
+  bufferSize: number,
+  __trace?: string
+): Stream<R & R1, E | E1, readonly [A, B]> {
+  return zipWithParBuffer_(left, right, tuple, bufferSize, __trace)
+}
+
+/**
+ * Combines two sources in parallel using queues of bufferSize.
+ * The new source will stop producing once either source has been exhausted.
+ *
+ * @dataFirst zipParBuffer_
+ */
+export function zipParBuffer<R, E, A, R1, E1, B>(
+  right: Stream<R1, E1, B>,
+  bufferSize: number,
+  __trace?: string
+): (left: Stream<R, E, A>) => Stream<R & R1, E | E1, readonly [A, B]> {
+  return (left) => zipParBuffer_(left, right, bufferSize, __trace)
+}
+
+/**
+ * Combines two sources in parallel using queues of size 16.
+ * The new source will stop producing once either source has been exhausted.
+ */
+export function zipPar_<R, E, A, R1, E1, B>(
+  left: Stream<R, E, A>,
+  right: Stream<R1, E1, B>,
+  __trace?: string
+): Stream<R & R1, E | E1, readonly [A, B]> {
+  return zipWithParBuffer_(left, right, tuple, 16, __trace)
+}
+
+/**
+ * Combines two sources in parallel using queues of size 16.
+ * The new source will stop producing once either source has been exhausted.
+ *
+ * @dataFirst zipPar_
+ */
+export function zipPar<R, E, A, R1, E1, B>(
+  right: Stream<R1, E1, B>,
+  __trace?: string
+): (left: Stream<R, E, A>) => Stream<R & R1, E | E1, readonly [A, B]> {
+  return (left) => zipPar_(left, right, __trace)
 }

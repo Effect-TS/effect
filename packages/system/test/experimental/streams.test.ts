@@ -228,4 +228,18 @@ describe("Stream", () => {
 
     expect(result).toEqual(L.from([`(10)(20)`, `(11)(21)`, `(12)(22)`]))
   })
+
+  it("zipWithPar", async () => {
+    const result = await pipe(
+      S.zipWithPar_(
+        S.iterateM(10, (n) => T.delay(10)(T.succeed(n + 1)))["|>"](S.take(5)),
+        S.iterateM(20, (n) => T.delay(10)(T.succeed(n + 1)))["|>"](S.take(3)),
+        (a, b) => `(${a})(${b})`
+      ),
+      S.runList,
+      T.runPromise
+    )
+
+    expect(result).toEqual(L.from([`(10)(20)`, `(11)(21)`, `(12)(22)`]))
+  })
 })
