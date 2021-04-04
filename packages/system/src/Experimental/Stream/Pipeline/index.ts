@@ -2,6 +2,7 @@
 
 import type * as T from "../../../Effect"
 import * as E from "../../../Either"
+import { pipe } from "../../../Function"
 import type * as M from "../../../Managed"
 import * as O from "../../../Option"
 import * as Channel from "../Channel"
@@ -191,4 +192,15 @@ export function mapAccum<S, A, B>(
   __trace?: string
 ): Pipeline<unknown, never, A, B, S> {
   return mapAccumGo(s, f, __trace)
+}
+
+/**
+ * Scan through a stream using f
+ */
+export function scan<S, A>(
+  s: S,
+  f: (s: S, a: A) => S,
+  __trace?: string
+): Pipeline<unknown, never, A, S, S> {
+  return mapAccumGo(s, (s, a) => pipe(f(s, a), (x) => [x, x]), __trace)
 }

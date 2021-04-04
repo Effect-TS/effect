@@ -461,3 +461,28 @@ export function mapAccum<A, S, B>(
 ): <R, E>(self: Stream<R, E, A>) => Stream<R, E, B> {
   return (self) => mapAccum_(self, s, f, __trace)
 }
+
+/**
+ * Scan through a stream using f
+ */
+export function scan_<R, E, A, S>(
+  self: Stream<R, E, A>,
+  s: S,
+  f: (s: S, a: A) => S,
+  __trace?: string
+): Stream<R, E, S> {
+  return Channel.combine_(self, Pipeline.scan(s, f, __trace))
+}
+
+/**
+ * Scan through a stream using f
+ *
+ * @dataFirst scan_
+ */
+export function scan<A, S>(
+  s: S,
+  f: (s: S, a: A) => S,
+  __trace?: string
+): <R, E>(self: Stream<R, E, A>) => Stream<R, E, S> {
+  return (self) => scan_(self, s, f, __trace)
+}
