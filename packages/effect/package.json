@@ -17,7 +17,7 @@
     "tc": "ultra -r tc",
     "postinstall": "husky install",
     "version:alpha": "lerna version prerelease --conventional-commits --preid=alpha",
-    "version:preminor": "lerna version preminor --conventional-commits",
+    "version:minor": "lerna version preminor --conventional-commits",
     "version:graduate": "lerna version --conventional-commits --conventional-graduate"
   },
   "devDependencies": {
