@@ -571,7 +571,7 @@ export function mergeBuffer<R, E, A>(
     ),
     M.tap((queue) =>
       T.forkManaged(
-        T.forEachPar_(streams, (s) =>
+        T.forEachUnitPar_(streams, (s) =>
           runDrain(mapM_(s, (a) => queue.offer(T.succeed(O.some(a)))))
         )["|>"](
           T.foldCauseM(
