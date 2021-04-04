@@ -566,13 +566,10 @@ export function mergeBuffer<R, E, A>(
   bufferSize: number
 ): Stream<R, E, A> {
   return pipe(
-    M.do,
-    M.bind("queue", () =>
-      Q.makeBounded<T.Effect<unknown, E, O.Option<A>>>(bufferSize)["|>"](
-        M.makeExit(Q.shutdown)
-      )
+    Q.makeBounded<T.Effect<unknown, E, O.Option<A>>>(bufferSize)["|>"](
+      M.makeExit(Q.shutdown)
     ),
-    M.tap(({ queue }) =>
+    M.tap((queue) =>
       T.forkManaged(
         T.forEachPar_(streams, (s) =>
           runDrain(mapM_(s, (a) => queue.offer(T.succeed(O.some(a)))))
@@ -584,7 +581,7 @@ export function mergeBuffer<R, E, A>(
         )
       )
     ),
-    M.map(({ queue }) => fromQueue(queue)),
+    M.map((queue) => fromQueue(queue)),
     Channel.managed
   )
 }
