@@ -887,3 +887,24 @@ export function zipPar<R, E, A, R1, E1, B>(
 ): (left: Stream<R, E, A>) => Stream<R & R1, E | E1, readonly [A, B]> {
   return (left) => zipPar_(left, right, __trace)
 }
+
+/**
+ * Produces an infinite stream by repeating the value `a`
+ */
+export function repeat<A>(a: A): Stream<unknown, never, A> {
+  return Channel.chain_(Channel.write(a), () => repeat(a))
+}
+
+/**
+ * Produces an infinite stream by repeating the effect `a`
+ */
+export function repeatM<R, E, A>(a: T.Effect<R, E, A>): Stream<R, E, A> {
+  return Channel.chain_(fromEffect(a), () => repeatM(a))
+}
+
+/**
+ * Produces an infinite stream by repeating the managed `a`
+ */
+export function repeatManaged<R, E, A>(a: M.Managed<R, E, A>): Stream<R, E, A> {
+  return Channel.chain_(fromManaged(a), () => repeatManaged(a))
+}
