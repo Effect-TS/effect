@@ -3,6 +3,32 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.25.7](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.25.6...@effect-ts/system@0.25.7) (2021-04-04)
+
+
+### Bug Fixes
+
+* **streams:** use type for stream ([3b7e76b](https://github.com/Effect-TS/core/commit/3b7e76bb64abbca205cc4e0c88c95c9389221d17))
+
+
+### Features
+
+* **streams:** mergeT / mergeBufferT ([3afff80](https://github.com/Effect-TS/core/commit/3afff8095a702a7a4be0c44ab59ffbe5edf67fb5))
+* **streams:** repeact/repeatM/repeatManaged ([ab0ea92](https://github.com/Effect-TS/core/commit/ab0ea92850410f8faafb2fe8223e000cd34c76fc))
+* **streams:** zip/zipWith ([1dc0bd8](https://github.com/Effect-TS/core/commit/1dc0bd88c81609a71e3c8cfa5f78854725ad852d))
+* **streams:** zipPar/zipParWith/zipParWithBuffer ([7f8eff9](https://github.com/Effect-TS/core/commit/7f8eff98af727e0e441953f0611fedc07ca351a2))
+
+
+### Performance Improvements
+
+* **streams:** avoid non necessary do ([dcaad64](https://github.com/Effect-TS/core/commit/dcaad648a0d3338930cea5b9503ad9a148dab0d4))
+* **streams:** improve zipWith ([e828c2e](https://github.com/Effect-TS/core/commit/e828c2e556b97e39f80fb08ee7eb591755a5d0a1))
+* **streams:** use forEachUnitPar in mergeBuffer ([56913ab](https://github.com/Effect-TS/core/commit/56913abc93159a9850d61da248f100cb12ad5b67))
+
+
+
+
+
 ## [0.25.6](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.25.5...@effect-ts/system@0.25.6) (2021-04-04)
 
 
