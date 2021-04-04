@@ -21,7 +21,7 @@ jobs:
           yarn
           yarn run ci
           cp .ci.npmrc .npmrc
-          yarn lerna publish from-package --yes
+          yarn lerna publish from-package --pre-dist-tag next --yes
         env:
           CI: "true"
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
