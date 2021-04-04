@@ -16,7 +16,9 @@
     "lint": "ultra -r lint",
     "tc": "ultra -r tc",
     "postinstall": "husky install",
-    "version:pre": "lerna version --conventional-commits --conventional-prerelease"
+    "version:alpha": "lerna version prerelease --conventional-commits --preid=alpha",
+    "version:preminor": "lerna version preminor --conventional-commits",
+    "version:graduate": "lerna version --conventional-commits --conventional-graduate"
   },
   "devDependencies": {
     "@babel/cli": "^7.12.1",
