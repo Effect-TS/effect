@@ -2,9 +2,12 @@
 
 import "../../../Operator"
 
+import * as C from "../../../Cause"
 import * as T from "../../../Effect"
 import * as E from "../../../Either"
-import { pipe, tuple } from "../../../Function"
+import type * as Ex from "../../../Exit"
+import type { Callback } from "../../../Fiber"
+import { identity, pipe, tuple } from "../../../Function"
 import * as M from "../../../Managed"
 import type { NonEmptyArray } from "../../../NonEmptyArray"
 import * as O from "../../../Option"
@@ -543,15 +546,29 @@ export function scanM<A, R1, E1, S>(
  * Creates a stream of values that pull from the queue until a none is recieved
  */
 export function fromQueue<R, E, A>(
-  queue: Q.Queue<T.Effect<R, E, O.Option<A>>>
+  queue: Q.Queue<T.Effect<R, O.Option<E>, A>>
 ): Stream<R, E, A> {
   return Channel.effect(
-    T.map_(
+    T.foldM_(
       T.flatten(queue.take),
-      O.fold(
-        () => Channel.unit,
-        (a) => Channel.chain_(Channel.write(a), () => fromQueue(queue))
-      )
+      (err) => (err._tag === "Some" ? T.fail(err.value) : T.succeed(Channel.unit)),
+      (a) => T.succeed(Channel.chain_(Channel.write(a), () => fromQueue(queue)))
+    )
+  )
+}
+
+/**
+ * Creates a stream of values that pull from the queue until a none is recieved,
+ * concatenating the received streams
+ */
+export function fromStreamQueue<R, E, R1, E1, A>(
+  queue: Q.Queue<T.Effect<R, O.Option<E>, Stream<R1, E1, A>>>
+): Stream<R & R1, E | E1, A> {
+  return Channel.effect(
+    T.foldM_(
+      T.flatten(queue.take),
+      (err) => (err._tag === "Some" ? T.fail(err.value) : T.succeed(Channel.unit)),
+      (a) => T.succeed(Channel.chain_(a, () => fromStreamQueue(queue)))
     )
   )
 }
@@ -561,22 +578,20 @@ export function fromQueue<R, E, A>(
  * returns a none and merges the results using f
  */
 export function fromZipQueue<R, R1, E, E1, A, B, C>(
-  leftQueue: Q.Queue<T.Effect<R, E, O.Option<A>>>,
-  rightQueue: Q.Queue<T.Effect<R1, E1, O.Option<B>>>,
+  leftQueue: Q.Queue<T.Effect<R, O.Option<E>, A>>,
+  rightQueue: Q.Queue<T.Effect<R1, O.Option<E1>, B>>,
   f: (a: A, b: B) => C
 ): Stream<R & R1, E | E1, C> {
   return Channel.effect(
-    T.map_(
+    T.foldM_(
       T.zipPar_(T.flatten(leftQueue.take), T.flatten(rightQueue.take)),
-      ([oa, ob]) => {
-        if (oa._tag === "Some" && ob._tag === "Some") {
-          return Channel.chain_(Channel.write(f(oa.value, ob.value)), () =>
+      (err) => (err._tag === "Some" ? T.fail(err.value) : T.succeed(Channel.unit)),
+      ([oa, ob]) =>
+        T.succeed(
+          Channel.chain_(Channel.write(f(oa, ob)), () =>
             fromZipQueue(leftQueue, rightQueue, f)
           )
-        } else {
-          return Channel.unit
-        }
-      }
+        )
     )
   )
 }
@@ -591,17 +606,17 @@ export function mergeBuffer<R, E, A>(
   bufferSize: number
 ): Stream<R, E, A> {
   return pipe(
-    Q.makeBounded<T.Effect<unknown, E, O.Option<A>>>(bufferSize)["|>"](
+    Q.makeBounded<T.Effect<unknown, O.Option<E>, A>>(bufferSize)["|>"](
       M.makeExit(Q.shutdown)
     ),
     M.tap((queue) =>
       T.forkManaged(
         T.forEachUnitPar_(streams, (s) =>
-          runDrain(mapM_(s, (a) => queue.offer(T.succeed(O.some(a)))))
+          runDrain(mapM_(s, (a) => queue.offer(T.succeed(a))))
         )["|>"](
           T.foldCauseM(
-            (cause) => queue.offer(T.halt(cause)),
-            () => queue.offer(T.succeed(O.none))
+            (cause) => queue.offer(T.halt(C.map_(cause, O.some))),
+            () => queue.offer(T.fail(O.none))
           )
         )
       )
@@ -760,31 +775,31 @@ export function zipWithParBuffer_<R, E, A, R1, E1, B, C>(
   return pipe(
     M.do,
     M.bind("leftQueue", () =>
-      Q.makeBounded<T.Effect<unknown, E, O.Option<A>>>(bufferSize)["|>"](
+      Q.makeBounded<T.Effect<unknown, O.Option<E>, A>>(bufferSize)["|>"](
         M.makeExit(Q.shutdown)
       )
     ),
     M.bind("rightQueue", () =>
-      Q.makeBounded<T.Effect<unknown, E1, O.Option<B>>>(bufferSize)["|>"](
+      Q.makeBounded<T.Effect<unknown, O.Option<E1>, B>>(bufferSize)["|>"](
         M.makeExit(Q.shutdown)
       )
     ),
     M.tap(({ leftQueue }) =>
       T.forkManaged(
-        runDrain(mapM_(left, (a) => leftQueue.offer(T.succeed(O.some(a)))))["|>"](
+        runDrain(mapM_(left, (a) => leftQueue.offer(T.succeed(a))))["|>"](
           T.foldCauseM(
-            (cause) => leftQueue.offer(T.halt(cause)),
-            () => leftQueue.offer(T.succeed(O.none))
+            (cause) => leftQueue.offer(T.halt(C.map_(cause, O.some))),
+            () => leftQueue.offer(T.fail(O.none))
           )
         )
       )
     ),
     M.tap(({ rightQueue }) =>
       T.forkManaged(
-        runDrain(mapM_(right, (a) => rightQueue.offer(T.succeed(O.some(a)))))["|>"](
+        runDrain(mapM_(right, (a) => rightQueue.offer(T.succeed(a))))["|>"](
           T.foldCauseM(
-            (cause) => rightQueue.offer(T.halt(cause)),
-            () => rightQueue.offer(T.succeed(O.none))
+            (cause) => rightQueue.offer(T.halt(C.map_(cause, O.some))),
+            () => rightQueue.offer(T.fail(O.none))
           )
         )
       )
@@ -907,4 +922,116 @@ export function repeatM<R, E, A>(a: T.Effect<R, E, A>): Stream<R, E, A> {
  */
 export function repeatManaged<R, E, A>(a: M.Managed<R, E, A>): Stream<R, E, A> {
   return Channel.chain_(fromManaged(a), () => repeatManaged(a))
+}
+
+/**
+ * Creates a stream from an asynchronous callback that can be called multiple times.
+ * The optionality of the error type `E` can be used to signal the end of the stream,
+ * by setting it to `None`.
+ */
+export function effectAsyncBuffer<R, E, A>(
+  register: (
+    cb: (
+      next: T.Effect<R, O.Option<E>, A>,
+      offerCb?: Callback<never, boolean>
+    ) => T.UIO<Ex.Exit<never, boolean>>
+  ) => T.UIO<void>,
+  outputBuffer: number
+): Stream<R, E, A> {
+  return pipe(
+    M.do,
+    M.bind("output", () =>
+      Q.makeBounded<T.Effect<R, O.Option<E>, A>>(outputBuffer)["|>"](
+        M.makeExit(Q.shutdown)
+      )
+    ),
+    M.bind("runtime", () => pipe(T.runtime<R>(), T.toManaged)),
+    M.bind("maybeStream", ({ output, runtime }) =>
+      M.makeExit_(
+        T.effectTotal(() =>
+          register((k, cb) => runtime.runCancel(output.offer(k), cb))
+        ),
+        identity
+      )
+    ),
+    M.map(({ output }) => fromQueue(output)),
+    Channel.managed
+  )
+}
+
+/**
+ * Creates a stream from an asynchronous callback that can be called multiple times.
+ * The optionality of the error type `E` can be used to signal the end of the stream,
+ * by setting it to `None`.
+ */
+export function effectAsync<R, E, A>(
+  register: (
+    cb: (
+      next: T.Effect<R, O.Option<E>, A>,
+      offerCb?: Callback<never, boolean>
+    ) => T.UIO<Ex.Exit<never, boolean>>
+  ) => T.UIO<void>
+): Stream<R, E, A> {
+  return effectAsyncBuffer(register, 16)
+}
+
+/**
+ * Creates a stream from an asynchronous callback that can be called multiple times.
+ * The optionality of the error type `E` can be used to signal the end of the stream,
+ * by setting it to `None`.
+ */
+export function effectStreamAsyncBuffer<R1, E1, R, E, A>(
+  register: (
+    cb: (
+      next: T.Effect<R, O.Option<E>, Stream<R1, E1, A>>,
+      offerCb?: Callback<never, boolean>
+    ) => T.UIO<Ex.Exit<never, boolean>>
+  ) => T.UIO<void>,
+  outputBuffer: number
+): Stream<R & R1, E | E1, A> {
+  return pipe(
+    M.do,
+    M.bind("output", () =>
+      Q.makeBounded<T.Effect<R, O.Option<E>, Stream<R1, E1, A>>>(outputBuffer)["|>"](
+        M.makeExit(Q.shutdown)
+      )
+    ),
+    M.bind("runtime", () => pipe(T.runtime<R>(), T.toManaged)),
+    M.bind("maybeStream", ({ output, runtime }) =>
+      M.makeExit_(
+        T.effectTotal(() =>
+          register((k, cb) => runtime.runCancel(output.offer(k), cb))
+        ),
+        identity
+      )
+    ),
+    M.map(({ output }) => fromStreamQueue(output)),
+    Channel.managed
+  )
+}
+
+/**
+ * Creates a stream from an asynchronous callback that can be called multiple times.
+ * The optionality of the error type `E` can be used to signal the end of the stream,
+ * by setting it to `None`.
+ */
+export function effectStreamAsync<R1, E1, R, E, A>(
+  register: (
+    cb: (
+      next: T.Effect<R, O.Option<E>, Stream<R1, E1, A>>,
+      offerCb?: Callback<never, boolean>
+    ) => T.UIO<Ex.Exit<never, boolean>>
+  ) => T.UIO<void>
+): Stream<R & R1, E | E1, A> {
+  return effectStreamAsyncBuffer(register, 16)
+}
+
+/**
+ * Creates a stream of integer numbers from low to high (both included)
+ */
+export function range(low: number, high: number): Stream<unknown, never, number> {
+  if (low > high) {
+    return Channel.unit
+  }
+  return Channel.chain_(Channel.write(low), () => range(low + 1, high))
 }

@@ -242,4 +242,56 @@ describe("Stream", () => {
 
     expect(result).toEqual(L.from([`(10)(20)`, `(11)(21)`, `(12)(22)`]))
   })
+
+  it("effectAsync", async () => {
+    const fn = jest.fn()
+
+    const result = await pipe(
+      S.effectAsync((cb) => {
+        let n = 0
+        const timer = setInterval(() => {
+          cb(T.succeed(n++))
+        }, 10)
+        return T.effectTotal(() => {
+          fn()
+          clearInterval(timer)
+        })
+      }),
+      S.take(3),
+      S.runList,
+      T.runPromise
+    )
+
+    expect(result).toEqual(L.from([0, 1, 2]))
+    expect(fn).toHaveBeenCalledTimes(1)
+  })
+
+  it("range", async () => {
+    const result = await pipe(S.range(0, 5), S.runList, T.runPromise)
+
+    expect(result).toEqual(L.from([0, 1, 2, 3, 4, 5]))
+  })
+
+  it("effectAsyncStream", async () => {
+    const fn = jest.fn()
+
+    const result = await pipe(
+      S.effectStreamAsync((cb) => {
+        let n = 0
+        const timer = setInterval(() => {
+          cb(T.succeed(S.range(0, n++)))
+        }, 10)
+        return T.effectTotal(() => {
+          fn()
+          clearInterval(timer)
+        })
+      }),
+      S.take(10),
+      S.runList,
+      T.runPromise
+    )
+
+    expect(result).toEqual(L.from([0, 0, 1, 0, 1, 2, 0, 1, 2, 3]))
+    expect(fn).toHaveBeenCalledTimes(1)
+  })
 })
