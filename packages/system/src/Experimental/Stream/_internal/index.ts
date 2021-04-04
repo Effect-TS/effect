@@ -17,8 +17,7 @@ import * as Sink from "../Sink"
  * Provides a stream of output values, without consuming any input or
  * producing a final result.
  */
-export interface Stream<R, E, O>
-  extends Channel.Channel<R, E, never, unknown, O, unknown, unknown> {}
+export type Stream<R, E, O> = Channel.Channel<R, E, never, unknown, O, unknown, unknown>
 
 /**
  * Take only the first N values from the stream
