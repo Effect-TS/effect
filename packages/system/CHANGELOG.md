@@ -3,6 +3,27 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.25.5](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.25.4...@effect-ts/system@0.25.5) (2021-04-04)
+
+
+### Bug Fixes
+
+* trace mapAccum ([2bfa9ea](https://github.com/Effect-TS/core/commit/2bfa9eaf2acd883a463b47ef49b1a6bfd31a6501))
+
+
+### Features
+
+* **streams:** scan ([61888ed](https://github.com/Effect-TS/core/commit/61888ed170a8ee42bc659e26db045f76bd53207e))
+
+
+### Performance Improvements
+
+* extract loop from mapAccum ([8531235](https://github.com/Effect-TS/core/commit/85312359387e137ebd003c8724af0286c1cd456c))
+
+
+
+
+
 ## [0.25.4](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.25.3...@effect-ts/system@0.25.4) (2021-04-04)
 
 
