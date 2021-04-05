@@ -40,7 +40,7 @@
       "@effect-ts/tracing-plugin/*": ["packages/tracing-plugin/build/*"],
       "@effect-ts/tracing-plugin": ["packages/tracing-plugin/build"]
     },
-    "target": "ES2017"
+    "target": "ES2018"
   },
   "exclude": ["node_modules", "build", "lib"]
 }

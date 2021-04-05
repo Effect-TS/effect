@@ -9,8 +9,10 @@
       "@effect-ts/system/*": ["packages/system/src/*"],
       "@effect-ts/system": ["packages/system/src"],
       "@effect-ts/tracing-plugin/*": ["packages/tracing-plugin/src/*"],
-      "@effect-ts/tracing-plugin": ["packages/tracing-plugin/src"]
+      "@effect-ts/tracing-plugin": ["packages/tracing-plugin/src"],
+      "@effect-ts/tracing-utils/*": ["packages/tracing-utils/src/*"],
+      "@effect-ts/tracing-utils": ["packages/tracing-utils/src"]
     },
-    "target": "ES2017"
+    "target": "ES2018"
   }
 }
