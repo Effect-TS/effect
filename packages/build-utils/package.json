@@ -6,9 +6,8 @@
   "repository": "https://github.com/Effect-TS/core.git",
   "homepage": "https://www.matechs.com",
   "scripts": {
-    "nodex": "ts-node --compiler ttypescript --project ../../tsconfig.jest.json",
     "clean": "rimraf build tsbuildinfo",
-    "build:lib": "ttsc --build  tsconfig.build.json && yarn nodex src/package.ts",
+    "build:lib": "ttsc --build  tsconfig.build.json && ts-node ../../scripts/package.ts",
     "build": "yarn run build:lib && yarn run prettier:lib",
     "lint": "eslint . --ext .ts,.tsx",
     "autofix": "yarn prettier && yarn lint --fix && yarn prettier",

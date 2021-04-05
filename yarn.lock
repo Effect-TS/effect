@@ -3870,12 +3870,7 @@ form-data@~2.3.2:
     combined-stream "^1.0.6"
     mime-types "^2.1.12"
 
-fp-ts-contrib@^0.1.21:
-  version "0.1.21"
-  resolved "https://registry.yarnpkg.com/fp-ts-contrib/-/fp-ts-contrib-0.1.21.tgz#9a2b6c108ad9487922890f46219d5639f3cacc66"
-  integrity sha512-Wa1wXpeDDVyPiTZaxbas+y6pigKxiZlf/xzUBhFJ5bPNAsOrzNfFeQliu3bIH9ZjYWrt6HIMuNXAejPh6oSSkA==
-
-fp-ts@^2.1.0, fp-ts@^2.8.4:
+fp-ts@^2.1.0, fp-ts@^2.9.5:
   version "2.9.5"
   resolved "https://registry.yarnpkg.com/fp-ts/-/fp-ts-2.9.5.tgz#6690cd8b76b84214a38fc77cbbbd04a38f86ea90"
   integrity sha512-MiHrA5teO6t8zKArE3DdMPT/Db6v2GUt5yfWnhBTrrsVfeCJUUnV6sgFvjGNBKDmEMqVwRFkEePL7wPwqrLKKA==
@@ -7426,11 +7421,6 @@ ret@~0.1.10:
   version "0.1.15"
   resolved "https://registry.yarnpkg.com/ret/-/ret-0.1.15.tgz#b8a4825d5bdb1fc3f6f53c2bc33f81388681c7bc"
   integrity sha512-TTlYpa+OL+vMMNG24xSlQGEJ3B/RzEfUlLct7b5G/ytav+wPrplCpVMFuwzXbkecJrb6IYo1iFb0S9v37754mg==
-
-retry-ts@^0.1.2:
-  version "0.1.2"
-  resolved "https://registry.yarnpkg.com/retry-ts/-/retry-ts-0.1.2.tgz#83164521ba17b447053fae08d6adaff01c617306"
-  integrity sha512-SwG8UL3V/SdGybVvLlb+GpIJTSY1t5SRzGUqZcEBejXJW5la3SUdglrWpyVSquL5Il+uYskaQfkgUn6zHy6rBA==
 
 retry@^0.12.0:
   version "0.12.0"
