@@ -1,7 +1,7 @@
-import * as A from "fp-ts/Array"
-import { parseJSON } from "fp-ts/Either"
-import { flow, pipe } from "fp-ts/function"
-import * as TE from "fp-ts/TaskEither"
+import * as A from "@effect-ts/core/Array"
+import * as TE from "@effect-ts/core/Effect"
+import { parseJSON_ } from "@effect-ts/core/Either"
+import { flow, pipe } from "@effect-ts/core/Function"
 
 import { copy, onLeft, onRight, readFile, runMain, writeFile } from "./_common"
 
@@ -9,7 +9,9 @@ const copyReadme = copy("./README.md", "./build", { update: true })
 
 const loadPackageJson = pipe(
   readFile("./package.json", "utf8"),
-  TE.chainEitherK((content) => parseJSON(content, () => new Error("json parse error")))
+  TE.chain((content) =>
+    TE.fromEither(() => parseJSON_(content, () => new Error("json parse error")))
+  )
 )
 
 const writePackageJsonContent = (content: any) =>
@@ -53,7 +55,7 @@ const getSide = flow(
 
 const writeModulePackageJson = (modules: string[], content: any) => {
   const side = getSide(content)
-  return A.array.traverse(TE.taskEither)(modules, (m) =>
+  return TE.forEach_(modules, (m) =>
     writeFile(
       `./build/${m}/package.json`,
       JSON.stringify(
@@ -73,12 +75,12 @@ const writeModulePackageJson = (modules: string[], content: any) => {
 }
 
 pipe(
-  copyReadme,
-  TE.apSecond(loadPackageJson),
-  TE.chainFirst(writePackageJsonContent),
-  TE.bindTo("content"),
+  TE.do,
+  TE.bind("content", () =>
+    pipe(copyReadme, TE.zipRight(loadPackageJson), TE.tap(writePackageJsonContent))
+  ),
   TE.bind("modules", ({ content }) => getModules(content)),
-  TE.chainFirst(({ content, modules }) => writeModulePackageJson(modules, content)),
-  TE.fold(onLeft, onRight("package copy succeeded!")),
+  TE.tap(({ content, modules }) => writeModulePackageJson(modules, content)),
+  TE.foldM(onLeft, onRight("package copy succeeded!")),
   runMain
 )

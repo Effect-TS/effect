@@ -11,7 +11,9 @@
       "@effect-ts/tracing-plugin/*": ["packages/tracing-plugin/src/*"],
       "@effect-ts/tracing-plugin": ["packages/tracing-plugin/src"],
       "@effect-ts/tracing-utils/*": ["packages/tracing-utils/src/*"],
-      "@effect-ts/tracing-utils": ["packages/tracing-utils/src"]
+      "@effect-ts/tracing-utils": ["packages/tracing-utils/src"],
+      "@effect-ts/build-utils/*": ["packages/build-utils/src/*"],
+      "@effect-ts/build-utils": ["packages/build-utils/src"]
     },
     "target": "ES2018"
   },

@@ -1,5 +1,5 @@
-import { pipe } from "fp-ts/function"
-import * as TE from "fp-ts/TaskEither"
+import * as TE from "@effect-ts/core/Effect"
+import { pipe } from "@effect-ts/core/Function"
 
 import { modifyGlob, onLeft, onRight, runMain } from "./_common"
 
@@ -13,6 +13,6 @@ pipe(
       `${process.argv[2] ?? "@effect-ts"}/$2`
     )
   ),
-  TE.fold(onLeft, onRight("locals rewrite succeeded!")),
+  TE.foldM(onLeft, onRight("locals rewrite succeeded!")),
   runMain
 )

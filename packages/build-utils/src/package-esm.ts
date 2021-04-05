@@ -1,7 +1,6 @@
-import * as A from "fp-ts/Array"
-import { parseJSON } from "fp-ts/Either"
-import { flow, pipe } from "fp-ts/function"
-import * as TE from "fp-ts/TaskEither"
+import * as Ef from "@effect-ts/core/Effect"
+import { parseJSON_ } from "@effect-ts/core/Either"
+import { flow, pipe } from "@effect-ts/core/Function"
 
 import { copy, onLeft, onRight, readFile, runMain, writeFile } from "./_common"
 
@@ -9,7 +8,9 @@ const copyReadme = copy("./README.md", "./build", { update: true })
 
 const loadPackageJson = pipe(
   readFile("./package.json", "utf8"),
-  TE.chainEitherK((content) => parseJSON(content, () => new Error("json parse error")))
+  Ef.chain((content) =>
+    Ef.fromEither(() => parseJSON_(content, () => new Error("json parse error")))
+  )
 )
 
 const writePackageJsonContent = (content: any) =>
@@ -40,7 +41,7 @@ const writePackageJsonContent = (content: any) =>
 
 const getModules = flow(
   (content: any) => content?.config?.modules,
-  TE.fromPredicate(
+  Ef.fromPredicate(
     (x): x is string[] => Array.isArray(x) && x.every((y) => typeof y === "string"),
     () => new Error("missing modules config")
   )
@@ -53,7 +54,7 @@ const getSide = flow(
 
 const writeModulePackageJson = (modules: string[], content: any) => {
   const side = getSide(content)
-  return A.array.traverse(TE.taskEither)(modules, (m) =>
+  return Ef.forEach_(modules, (m) =>
     writeFile(
       `./build/esm/${m}/package.json`,
       JSON.stringify(
@@ -71,12 +72,12 @@ const writeModulePackageJson = (modules: string[], content: any) => {
 }
 
 pipe(
-  copyReadme,
-  TE.apSecond(loadPackageJson),
-  TE.chainFirst(writePackageJsonContent),
-  TE.bindTo("content"),
-  TE.bind("modules", ({ content }) => getModules(content)),
-  TE.chainFirst(({ content, modules }) => writeModulePackageJson(modules, content)),
-  TE.fold(onLeft, onRight("package copy succeeded!")),
+  Ef.do,
+  Ef.bind("content", () =>
+    pipe(copyReadme, Ef.zipRight(loadPackageJson), Ef.tap(writePackageJsonContent))
+  ),
+  Ef.bind("modules", ({ content }) => getModules(content)),
+  Ef.tap(({ content, modules }) => writeModulePackageJson(modules, content)),
+  Ef.foldM(onLeft, onRight("package copy succeeded!")),
   runMain
 )

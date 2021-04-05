@@ -4,9 +4,10 @@
   "compilerOptions": {
     "baseUrl": ".",
     "target": "ES2018",
+    "module": "CommonJS",
     "plugins": [
       {
-        "transform": "./packages/tracing-plugin/src/index.ts",
+        "transform": "@effect-ts/tracing-plugin/src/index.ts",
         "moduleMap": {
           "^packages/core/src/(.*)": "(@effect-ts/core): src/$1",
           "^packages/core/test/(.*)": "(@effect-ts/core/test): test/$1",

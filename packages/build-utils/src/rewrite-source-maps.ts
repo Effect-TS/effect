@@ -1,13 +1,11 @@
-import chalk from "chalk"
-import { sequenceT } from "fp-ts/Apply"
-import * as A from "fp-ts/Array"
-import * as E from "fp-ts/Either"
-import type { Endomorphism } from "fp-ts/function"
-import { flow, pipe, unsafeCoerce } from "fp-ts/function"
-import * as TE from "fp-ts/TaskEither"
+import * as A from "@effect-ts/core/Array"
+import * as TE from "@effect-ts/core/Effect"
+import * as E from "@effect-ts/core/Either"
+import type { Endomorphism } from "@effect-ts/core/Function"
+import { flow, pipe, unsafeCoerce } from "@effect-ts/core/Function"
 import { posix } from "path"
 
-import { copy, modifyGlob, onLeft, onRight } from "./_common"
+import { copy, modifyGlob, onLeft, onRight, runMain } from "./_common"
 
 const MAP_GLOB_PATTERN = "build/**/*.map"
 
@@ -26,24 +24,22 @@ const replaceString: (path: string) => Endomorphism<string> = (path) => {
 
 const replace = (content: string, path: string): string =>
   pipe(
-    E.parseJSON(
+    E.parseJSON_(
       content,
       (reason) => new Error("could not parse json: " + String(reason))
     ),
-    E.map((x) => unsafeCoerce<E.Json, SourceMapInterface>(x)),
+    E.map((x) => unsafeCoerce<unknown, SourceMapInterface>(x)),
     E.map(
       flow(
         Object.entries,
         A.map(([k, v]) =>
-          k === "sources"
-            ? [k, A.array.map(v as string[], replaceString(path))]
-            : [k, v]
+          k === "sources" ? [k, A.map_(v as string[], replaceString(path))] : [k, v]
         ),
         A.reduce({}, (acc, [k, v]) => ({ ...acc, [k]: v }))
       ) as <A>(x: A) => A
     ),
     E.chain((obj) =>
-      E.stringifyJSON(
+      E.stringifyJSON_(
         obj,
         (reason) => new Error("could not stringify json: " + String(reason))
       )
@@ -52,9 +48,10 @@ const replace = (content: string, path: string): string =>
   )
 
 pipe(
-  sequenceT(TE.taskEither)(
+  TE.tuple(
     copy("src/**/*", "build/_src", { update: true }),
     modifyGlob(replace)(MAP_GLOB_PATTERN)
   ),
-  TE.fold(onLeft, onRight("source map linking succeeded!"))
-)().catch((e) => console.log(chalk.bold.red(`Unexpected error: ${e}`), e.stack))
+  TE.foldM(onLeft, onRight("source map linking succeeded!")),
+  runMain
+)

@@ -1,31 +1,32 @@
+import * as Ef from "@effect-ts/core/Effect"
+import { pipe } from "@effect-ts/core/Function"
 import chalk from "chalk"
 import type { AsyncOptions } from "cpx"
 import { copy as copy_ } from "cpx"
-import { log } from "fp-ts/Console"
-import * as E from "fp-ts/Either"
-import type { FunctionN } from "fp-ts/function"
-import { pipe } from "fp-ts/function"
-import * as IO from "fp-ts/IO"
-import * as T from "fp-ts/Task"
-import * as TE from "fp-ts/TaskEither"
 import fs from "fs"
 import glob_ from "glob"
 
-export const readFile = TE.taskify<fs.PathLike, string, NodeJS.ErrnoException, string>(
-  fs.readFile
-)
+export const log = (message: unknown) =>
+  Ef.effectTotal(() => {
+    console.log(message)
+  })
 
-export const writeFile = TE.taskify<fs.PathLike, string, NodeJS.ErrnoException, void>(
-  fs.writeFile
-)
+export const readFile = Ef.fromNodeCb<
+  fs.PathLike,
+  string,
+  NodeJS.ErrnoException,
+  string
+>(fs.readFile)
 
-const exit = (code: 0 | 1): IO.IO<void> => () => process.exit(code)
+export const writeFile = Ef.fromNodeCb<
+  fs.PathLike,
+  string,
+  NodeJS.ErrnoException,
+  void
+>(fs.writeFile)
 
-export const glob = (
-  glob: string,
-  opts: glob_.IOptions = {}
-): TE.TaskEither<Error, string[]> =>
-  TE.tryCatch(
+export const glob = (glob: string, opts: glob_.IOptions = {}) =>
+  Ef.fromPromiseWith(
     () =>
       new Promise<string[]>((resolve, reject) => {
         glob_(glob, opts, (err, result) =>
@@ -35,60 +36,54 @@ export const glob = (
     (err) => (err instanceof Error ? err : new Error("could not run glob"))
   )
 
-export function onLeft(e: NodeJS.ErrnoException): T.Task<void> {
-  return T.fromIO(
-    pipe(
-      log(e),
-      IO.chain(() => exit(1))
+export function onLeft(e: NodeJS.ErrnoException) {
+  return pipe(
+    log(e),
+    Ef.chain(() =>
+      Ef.effectTotal(() => {
+        process.exit(1)
+      })
     )
   )
 }
 
 export function onRight(msg: string) {
-  return (): T.Task<void> => T.fromIO(log(chalk.bold.green(msg)))
+  return () => log(chalk.bold.green(msg))
 }
 
-function modifyFile(
-  f: (content: string, path: string) => string
-): (path: string) => TE.TaskEither<NodeJS.ErrnoException, void> {
-  return (path) =>
+function modifyFile(f: (content: string, path: string) => string) {
+  return (path: string) =>
     pipe(
       readFile(path, "utf8"),
-      TE.map((original) => ({ original, updated: f(original, path) })),
-      TE.chain(({ original, updated }) =>
-        original === updated ? TE.of(undefined) : writeFile(path, updated)
+      Ef.map((original) => ({ original, updated: f(original, path) })),
+      Ef.chain(({ original, updated }) =>
+        original === updated ? Ef.unit : writeFile(path, updated)
       )
     )
 }
 
-function modifyFiles(
-  f: (content: string, path: string) => string
-): (paths: Array<string>) => TE.TaskEither<NodeJS.ErrnoException, void> {
-  return (paths) => {
-    return async () => {
-      for (const path of paths) {
-        const r = await modifyFile(f)(path)()
-
-        if (r._tag === "Left") {
-          return r
-        }
-      }
-      return E.right(undefined)
-    }
+function modifyFiles(f: (content: string, path: string) => string) {
+  return (paths: Array<string>) => {
+    return Ef.forEach_(paths, modifyFile(f))
   }
 }
 
-export function modifyGlob(
-  f: (content: string, path: string) => string
-): (pattern: string) => TE.TaskEither<NodeJS.ErrnoException, void> {
-  return (pattern) => pipe(glob(pattern), TE.chain(modifyFiles(f)))
+export function modifyGlob(f: (content: string, path: string) => string) {
+  return (pattern: string) => pipe(glob(pattern), Ef.chain(modifyFiles(f)))
 }
 
-export function runMain(t: T.Task<void>): Promise<void> {
-  return t().catch((e) => console.log(chalk.bold.red(`Unexpected error: ${e}`)))
+export async function runMain(t: Ef.UIO<void>): Promise<void> {
+  try {
+    return Ef.runPromise(t)
+  } catch (e) {
+    return console.log(chalk.bold.red(`Unexpected error: ${e}`))
+  }
 }
 
-export const copy: FunctionN<
-  [string, string, AsyncOptions?],
-  TE.TaskEither<Error, void>
-> = TE.taskify<string, string, AsyncOptions | undefined, Error, void>(copy_)
+export const copy = Ef.fromNodeCb<
+  string,
+  string,
+  AsyncOptions | undefined,
+  Error,
+  void
+>(copy_)
