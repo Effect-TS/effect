@@ -62,3 +62,5 @@ export {
   zip_,
   MemoMap
 } from "./core"
+
+export * from "./unsafe"
