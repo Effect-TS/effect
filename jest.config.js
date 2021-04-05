@@ -14,14 +14,6 @@ module.exports = {
     "<rootDir>/_tmp"
   ],
   verbose: true,
-  moduleNameMapper: {
-    "@effect-ts/core/(.*)$": "<rootDir>/packages/core/src/$1",
-    "@effect-ts/core$": "<rootDir>/packages/core/src",
-    "@effect-ts/system/(.*)$": "<rootDir>/packages/system/src/$1",
-    "@effect-ts/system$": "<rootDir>/packages/system/src",
-    "@effect-ts/tracing-utils/(.*)$": "<rootDir>/packages/tracing-utils/src/$1",
-    "@effect-ts/tracing-utils$": "<rootDir>/packages/tracing-utils/src"
-  },
   globals: {
     "ts-jest": {
       tsconfig: "<rootDir>/tsconfig.jest.json",
