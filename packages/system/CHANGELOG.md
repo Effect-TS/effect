@@ -3,6 +3,25 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.25.8](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.25.7...@effect-ts/system@0.25.8) (2021-04-05)
+
+
+### Features
+
+* **layers:** unsafeMainProvider ([eae30ed](https://github.com/Effect-TS/core/commit/eae30edfdc8e8f0cb18d5b05658d7053551f0c0a))
+* **managed:** allocate ([baf018d](https://github.com/Effect-TS/core/commit/baf018d1af12c0711753fc41a0bfa8488403c092))
+* **streams:** effectAsync/effectAsyncStream/range ([960dac8](https://github.com/Effect-TS/core/commit/960dac84aa1de82ea56f1bf6649c3dd82481b7f3))
+* **streams:** unify effectAsyc variants in streamAsync ([5a1b1ee](https://github.com/Effect-TS/core/commit/5a1b1ee28e380e13933950157ddf7cff2eced2d9))
+
+
+### Performance Improvements
+
+* **streams:** avoid wrapping stream in streamAsync ([b5604b5](https://github.com/Effect-TS/core/commit/b5604b5201ac03484836c35c35acc945043d68ec))
+
+
+
+
+
 ## [0.25.7](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.25.6...@effect-ts/system@0.25.7) (2021-04-04)
 
 
@@ -87,8 +106,3 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 ## [0.25.3](https://github.com/Effect-TS/core/compare/@effect-ts/core@0.25.3-alpha.1...@effect-ts/core@0.25.3) (2021-04-04)
 
 **Note:** Version bump only for package @effect-ts/core
-
-
-
-
-
