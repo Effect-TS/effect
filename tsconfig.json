@@ -14,5 +14,6 @@
       "@effect-ts/tracing-utils": ["packages/tracing-utils/src"]
     },
     "target": "ES2018"
-  }
+  },
+  "include": ["scripts/**/*.ts"]
 }

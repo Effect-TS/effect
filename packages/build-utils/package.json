@@ -1,5 +1,5 @@
 {
-  "name": "@effect-ts/tracing-plugin",
+  "name": "@effect-ts/build-utils",
   "version": "0.8.0",
   "license": "MIT",
   "private": false,
@@ -7,10 +7,8 @@
   "homepage": "https://www.matechs.com",
   "scripts": {
     "clean": "rimraf build tsbuildinfo",
-    "build:lib": "ttsc --build tsconfig.build.json && ts-node ../build-utils/src/package.ts",
-    "build:es6": "ttsc --build tsconfig.es6.json && babel build/esm/ -d build/esm/ -s --plugins annotate-pure-calls && ts-node ../build-utils/src/package-esm.ts",
-    "build:post-process": "ts-node ../build-utils/src/rewrite-source-maps.ts && ts-node ../build-utils/src/rewrite-locals.ts && yarn prettier:lib",
-    "build": "yarn run build:lib && yarn run build:es6 && yarn run build:post-process",
+    "build:lib": "ttsc --build  tsconfig.build.json && ts-node src/package.ts",
+    "build": "yarn run build:lib && yarn run prettier:lib",
     "lint": "eslint . --ext .ts,.tsx",
     "autofix": "yarn prettier && yarn lint --fix && yarn prettier",
     "prettier": "prettier --write \"./{src,test,demo}/**/*.ts\"",
