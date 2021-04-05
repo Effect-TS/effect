@@ -1,0 +1,34 @@
+import { tuple } from "../../Function"
+import * as T from "../deps"
+import type { Managed } from "../managed"
+import { makeReleaseMap, releaseAll } from "../ReleaseMap"
+
+export class Allocation<A> {
+  constructor(readonly value: A, readonly release: T.UIO<void>) {}
+}
+
+/**
+ * Allocates the managed for future usage & release.
+ *
+ * Note: in case of failures during acquisition resources that
+ * have been acquired will be immediately released. In case the
+ * managed succeeds in acquiring all the resources an Allocation
+ * will be returned and it is up to the caller to ensure invokation
+ * of `release`, if that is not done resources will not be released.
+ */
+export function allocate<R, E, A>(self: Managed<R, E, A>) {
+  return T.chain_(makeReleaseMap, (rm) =>
+    T.foldCauseM_(
+      T.provideSome_(self.effect, (r: R) => tuple(r, rm)),
+      (cause) =>
+        T.chain_(releaseAll(T.exitHalt(cause), T.sequential)(rm), () => T.halt(cause)),
+      ([_, a]) =>
+        T.succeed(
+          new Allocation(
+            a,
+            T.descriptorWith((d) => releaseAll(T.exitInterrupt(d.id), T.sequential)(rm))
+          )
+        )
+    )
+  )
+}

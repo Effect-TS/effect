@@ -24,6 +24,7 @@ export * from "./use"
 
 // codegen:start { preset: barrel, include: ./methods/*.ts }
 export * from "./methods/absolve"
+export * from "./methods/allocate"
 export * from "./methods/api"
 export * from "./methods/ensuringFirst"
 export * from "./methods/environment"

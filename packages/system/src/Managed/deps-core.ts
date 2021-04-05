@@ -26,7 +26,11 @@ export * from "../Effect/zipWith"
 export * from "../Effect/zipWithPar"
 export * from "../Effect/zip"
 export * from "../Effect/zips"
-export { forEach as exitForeach } from "../Exit/api"
+export {
+  forEach as exitForeach,
+  halt as exitHalt,
+  interrupt as exitInterrupt
+} from "../Exit/api"
 export {
   collectAll as exitCollectAll,
   collectAllPar as exitCollectAllPar,
