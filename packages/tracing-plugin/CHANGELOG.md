@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.8.2](https://github.com/Effect-TS/core/compare/@effect-ts/tracing-plugin@0.8.1...@effect-ts/tracing-plugin@0.8.2) (2021-04-05)
+
+
+### Features
+
+* **build-tools:** write build-tools in terms of effect ([b2c6dbb](https://github.com/Effect-TS/core/commit/b2c6dbb401dc647050bc8b736722e113783cae19))
+
+
+
+
+
 ## [0.8.1](https://github.com/Effect-TS/core/compare/@effect-ts/tracing-plugin@0.8.0...@effect-ts/tracing-plugin@0.8.1) (2021-04-05)
 
 

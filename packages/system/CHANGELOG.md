@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.25.10](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.25.9...@effect-ts/system@0.25.10) (2021-04-05)
+
+
+### Features
+
+* **build-tools:** write build-tools in terms of effect ([b2c6dbb](https://github.com/Effect-TS/core/commit/b2c6dbb401dc647050bc8b736722e113783cae19))
+
+
+
+
+
 ## [0.25.9](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.25.8...@effect-ts/system@0.25.9) (2021-04-05)
 
 
