@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.8.2](https://github.com/Effect-TS/core/compare/@effect-ts/build-utils@0.8.1...@effect-ts/build-utils@0.8.2) (2021-04-05)
+
+
+### Features
+
+* **build-utils:** peerDependencies ([457a1bb](https://github.com/Effect-TS/core/commit/457a1bb5d0ee99d597d07ef3c18d55608fbb3e56))
+
+
+
+
+
 ## 0.8.1 (2021-04-05)
 
 
