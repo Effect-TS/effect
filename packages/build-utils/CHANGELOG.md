@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.8.6](https://github.com/Effect-TS/core/compare/@effect-ts/build-utils@0.8.5...@effect-ts/build-utils@0.8.6) (2021-04-06)
+
+
+### Bug Fixes
+
+* **build-utils:** preserve bin in main package ([e18550e](https://github.com/Effect-TS/core/commit/e18550e1a52f3c441fa7cb75c32419f1ec8c76cd))
+
+
+
+
+
 ## [0.8.5](https://github.com/Effect-TS/core/compare/@effect-ts/build-utils@0.8.4...@effect-ts/build-utils@0.8.5) (2021-04-06)
 
 
