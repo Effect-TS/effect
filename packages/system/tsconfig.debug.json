@@ -10,8 +10,9 @@
       {
         "transform": "../tracing-plugin/src/index.ts",
         "__importTracingFrom": "./src/Tracing"
-      }
+      },
+      { "transform": "typescript-transform-paths" }
     ]
   },
-  "include": ["src/debug.ts"]
+  "include": ["test/experimental/**/*.ts"]
 }

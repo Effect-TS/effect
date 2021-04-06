@@ -17,7 +17,7 @@
           "^packages/tracing-plugin/test/(.*)": "(@effect-ts/tracing-plugin/test): test/$1"
         }
       },
-      { "transform": "@zerollup/ts-transform-paths" }
+      { "transform": "typescript-transform-paths" }
     ]
   }
 }

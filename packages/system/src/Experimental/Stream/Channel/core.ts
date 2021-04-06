@@ -2,6 +2,7 @@
 
 import "../../../Operator"
 
+import type * as C from "../../../Cause"
 import * as T from "../../../Effect"
 import { _A, _C, _E, _I, _L, _O, _R, _U } from "../../../Effect"
 import * as E from "../../../Either"
@@ -9,6 +10,7 @@ import type { Lazy } from "../../../Function"
 import * as M from "../../../Managed"
 import * as O from "../../../Option"
 import * as L from "../../../Persistent/List"
+import { accessCallTrace } from "../../../Tracing"
 
 export type Tracer = (trace?: string) => void
 
@@ -288,6 +290,26 @@ export function failL<E>(
 }
 
 /**
+ * Fails with a specified error cause
+ */
+export function halt<E>(
+  e: C.Cause<E>,
+  __trace?: string
+): Channel<unknown, E, never, unknown, never, unknown, never> {
+  return new ChannelM(M.halt(e, __trace))
+}
+
+/**
+ * Fails with a specified error cause
+ */
+export function haltL<E>(
+  e: () => C.Cause<E>,
+  __trace?: string
+): Channel<unknown, E, never, unknown, never, unknown, never> {
+  return new ChannelM(M.haltWith(e, __trace))
+}
+
+/**
  * Processing with this `Channel` is complete, providing the final result.
  */
 export function succeed<A>(
@@ -363,11 +385,15 @@ export function channelM<R1, E1, R, E, L, I, O, U, A>(
  * Resources will be released as early as possible.
  */
 export function managed<R1, E1, R, E, L, I, O, U, A>(
-  self: M.Managed<R1, E1, Channel<R, E, L, I, O, U, A>>
+  self: M.Managed<R1, E1, Channel<R, E, L, I, O, U, A>>,
+  __trace?: string
 ): Channel<R & R1, E | E1, L, I, O, U, A> {
   return channelM(
-    M.map_(M.withEarlyRelease(self), ([rel, str]) =>
-      chain_(str, (a) => channelM(M.map_(M.fromEffect(rel), () => succeed(a))))
+    M.map_(
+      M.withEarlyRelease(self),
+      ([rel, str]) =>
+        chain_(str, (a) => channelM(M.map_(M.fromEffect(rel), () => succeed(a)))),
+      __trace
     )
   )
 }
@@ -376,9 +402,10 @@ export function managed<R1, E1, R, E, L, I, O, U, A>(
  * Require running of a monadic action to get the next `Channel`.
  */
 export function effect<R1, E1, R, E, L, I, O, U, A>(
-  self: T.Effect<R1, E1, Channel<R, E, L, I, O, U, A>>
+  self: T.Effect<R1, E1, Channel<R, E, L, I, O, U, A>>,
+  __trace?: string
 ): Channel<R & R1, E | E1, L, I, O, U, A> {
-  return new ChannelM<R & R1, E | E1, L, I, O, U, A>(M.fromEffect(self))
+  return new ChannelM<R & R1, E | E1, L, I, O, U, A>(M.fromEffect(self, __trace))
 }
 
 /**
@@ -590,9 +617,10 @@ export function injectLeftovers<R, E, I, O, U, A>(
  * terminates, this `Channel` will terminate as well.
  */
 export function write<O>(
-  o: O
+  o: O,
+  __trace?: string
 ): Channel<unknown, never, never, unknown, O, unknown, unknown> {
-  return haveOutput(() => unit, o)
+  return suspend(() => haveOutput(() => unit, o), __trace)
 }
 
 /**
@@ -611,9 +639,10 @@ export function writeL<O>(
  * terminates, this `Channel` will terminate as well.
  */
 export function writeEffect<R, E, O>(
-  o: T.Effect<R, E, O>
+  o: T.Effect<R, E, O>,
+  __trace?: string
 ): Channel<R, E, never, unknown, O, unknown, unknown> {
-  return effect(T.map_(o, write))
+  return effect(T.map_(o, write, __trace))
 }
 
 /**
@@ -621,9 +650,10 @@ export function writeEffect<R, E, O>(
  * terminates, this `Channel` will terminate as well.
  */
 export function writeManaged<R, E, O>(
-  o: M.Managed<R, E, O>
+  o: M.Managed<R, E, O>,
+  __trace?: string
 ): Channel<R, E, never, unknown, O, unknown, unknown> {
-  return managed(M.map_(o, write))
+  return managed(M.map_(o, write, __trace))
 }
 
 function writeIterateGo<O>(
@@ -701,11 +731,13 @@ export function writeIterable<O>(
 /**
  * Send a bunch of values downstream to the next component to consume. If the
  * downstream component terminates, this call will never return control.
+ *
+ * @trace call
  */
 export function writeMany<O>(
   ...os: Array<O>
 ): Channel<unknown, never, never, unknown, O, unknown, unknown> {
-  return writeIterable(os)
+  return writeIterable(os, accessCallTrace())
 }
 
 type CombineGo<R, E, L, I, O, U, A, O2, A1> = E.Either<
@@ -910,4 +942,58 @@ export function catchAll<E, R1, E1, L1, I1, A1, U1, O1>(
   self: Channel<R, E, L, I, A, U, O>
 ) => Channel<R & R1, E1, L | L1, I & I1, A | A1, U & U1, O | O1> {
   return (self) => catchAll_(self, f, __trace)
+}
+
+/**
+ * Catch all exceptions thrown by the current component of the pipeline exposing full cause.
+ */
+export function catchAllCause_<R, E, L, I, A, U, O, R1, E1, L1, I1, A1, U1, O1>(
+  self: Channel<R, E, L, I, A, U, O>,
+  f: (e: C.Cause<E>) => Channel<R1, E1, L1, I1, A1, U1, O1>,
+  __trace?: string
+): Channel<R & R1, E1, L | L1, I & I1, A | A1, U & U1, O | O1> {
+  concrete(self)
+
+  switch (self._typeId) {
+    case SuspendTypeId: {
+      return new Suspend((tracer) => catchAllCause_(self.nextChannel(tracer), f))
+    }
+    case DoneTypeId: {
+      return new Done(self.result)
+    }
+    case NeedInputTypeId: {
+      return new NeedInput(
+        (i, _) => catchAllCause_(self.nextChannel(i, _), f),
+        (u, _) => catchAllCause_(self.fromUpstream(u, _), f)
+      )
+    }
+    case HaveOutputTypeId: {
+      return new HaveOutput((_) => catchAllCause_(self.nextChannel(_), f), self.output)
+    }
+    case LeftoverTypeId: {
+      return new Leftover((_) => catchAllCause_(self.nextChannel(_), f), self.leftover)
+    }
+    case ChannelMTypeId: {
+      return new ChannelM(
+        M.catchAllCause_(
+          M.map_(self.nextChannel, (_) => catchAllCause_(_, f)),
+          (e) => M.succeed(suspend(() => f(e), __trace))
+        )
+      )
+    }
+  }
+}
+
+/**
+ * Catch all exceptions thrown by the current component of the pipeline exposing full cause.
+ *
+ * @dataFirst catchAllCause_
+ */
+export function catchAllCause<E, R1, E1, L1, I1, A1, U1, O1>(
+  f: (e: C.Cause<E>) => Channel<R1, E1, L1, I1, A1, U1, O1>,
+  __trace?: string
+): <R, L, I, A, U, O>(
+  self: Channel<R, E, L, I, A, U, O>
+) => Channel<R & R1, E1, L | L1, I & I1, A | A1, U & U1, O | O1> {
+  return (self) => catchAllCause_(self, f, __trace)
 }
