@@ -2,7 +2,7 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "outDir": "build",
-    "target": "ES2017",
+    "target": "ES2018",
     "module": "CommonJS",
     "incremental": true,
     "tsBuildInfoFile": "tsbuildinfo/build.tsbuildinfo",

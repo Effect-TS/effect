@@ -3,7 +3,7 @@
   "compilerOptions": {
     "outDir": "build/esm",
     "module": "ES6",
-    "target": "ES2017",
+    "target": "ES2018",
     "incremental": true,
     "tsBuildInfoFile": "tsbuildinfo/es6.tsbuildinfo",
     "removeComments": false,

@@ -1,7 +1,7 @@
 {
   "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "target": "ES2017",
+    "target": "ES2018",
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true
   },
