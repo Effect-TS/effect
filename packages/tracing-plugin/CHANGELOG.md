@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.8.3](https://github.com/Effect-TS/core/compare/@effect-ts/tracing-plugin@0.8.2...@effect-ts/tracing-plugin@0.8.3) (2021-04-06)
+
+
+### Features
+
+* **tracing-plugin:** add exceptions for system and core ([83736c9](https://github.com/Effect-TS/core/commit/83736c978863ade8b6c3fd2e46069ff5d452b92f))
+
+
+
+
+
 ## [0.8.2](https://github.com/Effect-TS/core/compare/@effect-ts/tracing-plugin@0.8.1...@effect-ts/tracing-plugin@0.8.2) (2021-04-05)
 
 

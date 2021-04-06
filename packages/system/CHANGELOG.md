@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.25.11](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.25.10...@effect-ts/system@0.25.11) (2021-04-06)
+
+
+### Features
+
+* **system:** embed tracing utils into system ([0cf1cfb](https://github.com/Effect-TS/core/commit/0cf1cfb79392ec3d53b01e21e5826763c6ea4d9a))
+* **tracing-plugin:** add exceptions for system and core ([83736c9](https://github.com/Effect-TS/core/commit/83736c978863ade8b6c3fd2e46069ff5d452b92f))
+
+
+
+
+
 ## [0.25.10](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.25.9...@effect-ts/system@0.25.10) (2021-04-05)
 
 
