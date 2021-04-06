@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.8.5](https://github.com/Effect-TS/core/compare/@effect-ts/build-utils@0.8.4...@effect-ts/build-utils@0.8.5) (2021-04-06)
+
+
+### Features
+
+* **build-utils:** add bin config ([38157de](https://github.com/Effect-TS/core/commit/38157defd4c25d1c2441af932e6775407ff10cb7))
+
+
+
+
+
 ## [0.8.4](https://github.com/Effect-TS/core/compare/@effect-ts/build-utils@0.8.3...@effect-ts/build-utils@0.8.4) (2021-04-06)
 
 **Note:** Version bump only for package @effect-ts/build-utils
