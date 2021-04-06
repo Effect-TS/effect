@@ -7,16 +7,16 @@
   "private": false,
   "scripts": {
     "clean": "rimraf build tsbuildinfo",
-    "build:lib": "ttsc --build  tsconfig.build.json && ts-node ../../scripts/package.ts",
-    "build:es6": "ttsc --build  tsconfig.es6.json && ts-node ../../scripts/rewrite-esm.ts && babel build/esm/ -d build/esm/ -s --plugins annotate-pure-calls && ts-node ../../scripts/package-esm.ts",
-    "build:post-process": "ts-node ../../scripts/rewrite-source-maps.ts && ts-node ../../scripts/rewrite-locals.ts && yarn prettier:lib",
+    "build:lib": "ttsc --build  tsconfig.build.json && build-utils package",
+    "build:es6": "ttsc --build  tsconfig.es6.json && babel build/esm/ -d build/esm/ -s --plugins annotate-pure-calls && build-utils package-esm",
+    "build:post-process": "build-utils rewrite-source-maps && build-utils rewrite-locals && yarn prettier:lib",
     "build": "yarn run build:lib && yarn run build:es6&& yarn run build:post-process",
     "lint": "eslint . --ext .ts,.tsx",
     "autofix": "yarn prettier && yarn lint --fix && yarn prettier",
     "prettier": "prettier --write \"./{src,test,demo}/**/*.ts\"",
     "prettier:lib": "prettier --write \"./build/**/*.js\"",
     "tc": "tsc --noEmit",
-    "demo": "ts-node -r tsconfig-paths/register",
+    "demo": "ts-node --compiler ttypescript --project tsconfig.build.json",
     "circular": "madge --circular --ts-config ./tsconfig.build.json --extensions ts ./src"
   },
   "publishConfig": {
@@ -25,10 +25,10 @@
   },
   "sideEffects": false,
   "peerDependencies": {
-    "@effect-ts/core": "^0.28.0",
-    "@effect-ts/monocle": "^0.25.0",
-    "@effect-ts/morphic": "^0.26.0",
-    "fast-check": "^2.14.0"
+    "@effect-ts/core": ">= 0.28.12",
+    "@effect-ts/monocle": ">= 0.25.2",
+    "@effect-ts/morphic": ">= 0.26.1",
+    "fast-check": ">= 2.14.0"
   },
   "config": {
     "side": [],
