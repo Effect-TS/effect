@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.25.13](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.25.12...@effect-ts/system@0.25.13) (2021-04-06)
+
+
+### Features
+
+* **streams:** port some functions, reorg alphabetically ([bd6e36a](https://github.com/Effect-TS/core/commit/bd6e36aaf9f8808fad1b85a4854be89968fce6a7))
+
+
+
+
+
 ## [0.25.12](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.25.11...@effect-ts/system@0.25.12) (2021-04-06)
 
 **Note:** Version bump only for package @effect-ts/system
