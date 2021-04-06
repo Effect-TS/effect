@@ -30,7 +30,8 @@ const writePackageJsonContent = (content: any) =>
         typings: "./index.d.ts",
         publishConfig: {
           access: "public"
-        }
+        },
+        bin: content["bin"]
       },
       null,
       2
