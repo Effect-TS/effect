@@ -7,7 +7,7 @@
   "homepage": "https://www.matechs.com",
   "scripts": {
     "clean": "rimraf build tsbuildinfo",
-    "build:lib": "ttsc --build  tsconfig.build.json && ts-node ../../scripts/package.ts",
+    "build:lib": "ttsc --build  tsconfig.build.json && ts-node ../../scripts/package.ts && cpx bin/* build",
     "build": "yarn run build:lib && yarn run prettier:lib",
     "lint": "eslint . --ext .ts,.tsx",
     "autofix": "yarn prettier && yarn lint --fix && yarn prettier",
@@ -24,11 +24,14 @@
     "modules": []
   },
   "peerDependencies": {
-    "@effect-ts/core": "^0.28.9",
-    "chalk": "^4.1.0",
-    "cpx": "^1.5.0"
+    "@effect-ts/core": ">= 0.28.9",
+    "chalk": ">= 4.1.0",
+    "cpx": ">= 1.5.0"
   },
   "devDependencies": {
     "@effect-ts/core": "^0.28.11"
+  },
+  "bin": {
+    "build-utils": "./build-utils"
   }
 }

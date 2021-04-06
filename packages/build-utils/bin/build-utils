@@ -1,0 +1,2 @@
+#!/usr/bin/env node
+require(`@effect-ts/build-utils/${process.argv[2]}`)
