@@ -1,3 +1,4 @@
+import { ArrayIndexOutOfBoundsException } from "../../GlobalExceptions"
 import * as O from "../../Option"
 import * as STM from "../STM"
 import * as TExit from "../STM/TExit"
@@ -32,14 +33,6 @@ export function make<ARGS extends any[]>(
  */
 export function empty<A>(): STM.STM<unknown, never, TArray<A>> {
   return fromIterable<A>([])
-}
-
-export const ArrayIndexOutOfBoundsExceptionTypeId = Symbol()
-export type ArrayIndexOutOfBoundsExceptionTypeId = typeof ArrayIndexOutOfBoundsExceptionTypeId
-
-export class ArrayIndexOutOfBoundsException {
-  readonly _typeId: ArrayIndexOutOfBoundsExceptionTypeId = ArrayIndexOutOfBoundsExceptionTypeId
-  constructor(readonly index: number) {}
 }
 
 /**
