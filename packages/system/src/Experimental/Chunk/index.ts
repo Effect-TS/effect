@@ -455,7 +455,7 @@ export function toArray<A>(self: Chunk<A>): A[] {
  * Safely get a value
  */
 export function get(n: number) {
-  return <A>(self: Chunk<A>): O.Option<A> =>
+  return <A>(self: Chunk<A>): O.Option<NonNullable<A>> =>
     !Number.isInteger(n) || n < 0 || n >= self.length
       ? O.none
       : O.fromNullable(self.get(n))
