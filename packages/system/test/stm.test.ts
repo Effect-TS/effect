@@ -1,5 +1,6 @@
 import * as T from "../src/Effect"
 import * as Ex from "../src/Exit"
+import { ArrayIndexOutOfBoundsException } from "../src/GlobalExceptions"
 import * as O from "../src/Option"
 import * as STM from "../src/Transactional/STM"
 import * as TArray from "../src/Transactional/TArray"
@@ -119,7 +120,7 @@ describe("TArray", () => {
       )
     )
     expect(result).toEqual(Ex.succeed(1))
-    expect(result2).toEqual(Ex.die(new TArray.ArrayIndexOutOfBoundsException(3)))
+    expect(result2).toEqual(Ex.die(new ArrayIndexOutOfBoundsException(3)))
   })
   it("find", async () => {
     const result = await T.runPromise(
