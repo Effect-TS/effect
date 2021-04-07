@@ -112,6 +112,7 @@
       "Effect/Supervisor",
       "Function",
       "Has",
+      "Hub",
       "Modules",
       "Newtype",
       "Operator",

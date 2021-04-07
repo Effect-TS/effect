@@ -494,6 +494,94 @@ export const filterInputM_ = <RA, RB, EA, EB, B, A, A1 extends A, R2, E2>(
   })()
 
 /**
+ * Filters elements dequeued from the queue using the specified effectual
+ * predicate.
+ */
+export function filterOutputM_<RA, RB, RB1, EB1, EA, EB, A, B>(
+  self: XQueue<RA, RB, EA, EB, A, B>,
+  f: (b: B) => T.Effect<RB1, EB1, boolean>
+): XQueue<RA, RB & RB1, EA, EB | EB1, A, B> {
+  return new (class extends XQueue<RA, RB & RB1, EA, EB | EB1, A, B> {
+    awaitShutdown: T.UIO<void> = self.awaitShutdown
+
+    capacity: number = self.capacity
+
+    isShutdown: T.UIO<boolean> = self.isShutdown
+
+    offer: (a: A) => T.Effect<RA, EA, boolean> = (a) => self.offer(a)
+
+    offerAll: (as: Iterable<A>) => T.Effect<RA, EA, boolean> = (as) => self.offerAll(as)
+
+    shutdown: T.UIO<void> = self.shutdown
+
+    size: T.UIO<number> = self.size
+
+    take: T.Effect<RB & RB1, EB1 | EB, B> = T.chain_(self.take, (b) => {
+      return T.chain_(f(b), (p) => {
+        return p ? T.succeed(b) : this.take
+      })
+    })
+
+    takeAll: T.Effect<RB & RB1, EB | EB1, readonly B[]> = T.chain_(self.takeAll, (bs) =>
+      T.filter_(bs, f)
+    )
+
+    takeUpTo: (n: number) => T.Effect<RB & RB1, EB | EB1, readonly B[]> = (max) =>
+      T.suspend(() => {
+        const loop = (
+          max: number,
+          acc: A.Array<B>
+        ): T.Effect<RB & RB1, EB | EB1, A.Array<B>> => {
+          return T.chain_(self.takeUpTo(max), (bs) => {
+            if (A.isEmpty(bs)) {
+              return T.succeed(acc)
+            }
+
+            return T.chain_(T.filter_(bs, f), (filtered) => {
+              const length = filtered.length
+
+              if (length === max) {
+                return T.succeed(A.concat_(acc, filtered))
+              } else {
+                return loop(max - length, A.concat_(acc, filtered))
+              }
+            })
+          })
+        }
+
+        return loop(max, A.empty)
+      })
+  })()
+}
+
+/**
+ * Filters elements dequeued from the queue using the specified effectual
+ * predicate.
+ */
+export function filterOutputM<RB1, EB1, B>(f: (b: B) => T.Effect<RB1, EB1, boolean>) {
+  return <RA, RB, EA, EB, A>(self: XQueue<RA, RB, EA, EB, A, B>) =>
+    filterOutputM_(self, f)
+}
+
+/**
+ * Filters elements dequeued from the queue using the specified predicate.
+ */
+export function filterOutput_<RA, RB, EA, EB, A, B>(
+  self: XQueue<RA, RB, EA, EB, A, B>,
+  f: (b: B) => boolean
+): XQueue<RA, RB, EA, EB, A, B> {
+  return filterOutputM_(self, (b) => T.succeed(f(b)))
+}
+
+/**
+ * Filters elements dequeued from the queue using the specified predicate.
+ */
+export function filterOutput<B>(f: (b: B) => boolean) {
+  return <RA, RB, EA, EB, A>(self: XQueue<RA, RB, EA, EB, A, B>) =>
+    filterOutput_(self, f)
+}
+
+/**
  * Applies a filter to elements enqueued into this queue. Elements that do not
  * pass the filter will be immediately dropped.
  */
