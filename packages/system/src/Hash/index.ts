@@ -3,6 +3,7 @@
 import "../Operator"
 
 import { Stack } from "../Stack"
+import { AtomicNumber } from "../Support/AtomicNumber"
 
 /**
  * `Hash[A]` provides a way to hash a value
@@ -86,4 +87,17 @@ export function hash(key: unknown): number {
 
 export function combineHash(a: number, b: number): number {
   return a === 0 ? b : b === 0 ? a : (a * 53) ^ b
+}
+
+const _cache = new WeakMap<object, number>()
+const _current = new AtomicNumber(0)
+
+export function incrementalHash(a: object): number {
+  const cached = _cache.get(a)
+  if (cached) {
+    return cached
+  }
+  const h = _current.incrementAndGet()
+  _cache.set(a, h)
+  return h
 }

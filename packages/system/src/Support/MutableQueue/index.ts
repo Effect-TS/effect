@@ -2,6 +2,8 @@
 
 import "../../Operator"
 
+import { incrementalHash } from "@effect-ts/system/Hash"
+
 import { DoublyLinkedList } from "../DoublyLinkedList"
 
 export interface MutableQueue<A> {
@@ -44,6 +46,10 @@ export interface MutableQueue<A> {
    * @return if the queue is full
    */
   readonly isFull: boolean
+  /**
+   * @returns the hashCode
+   */
+  readonly hashCode: number
 }
 
 export class Unbounded<A> implements MutableQueue<A> {
@@ -75,6 +81,10 @@ export class Unbounded<A> implements MutableQueue<A> {
       return a
     }
     return this.queue.shift()
+  }
+
+  get hashCode(): number {
+    return incrementalHash(this)
   }
 }
 
@@ -115,5 +125,9 @@ export class Bounded<A> implements MutableQueue<A> {
       return a
     }
     return this.queue.shift()
+  }
+
+  get hashCode(): number {
+    return incrementalHash(this)
   }
 }
