@@ -21,6 +21,14 @@ export interface MutableQueue<A> extends HasHash {
    * @return whether the enqueue was successful or not.
    */
   readonly offer: (a: A) => boolean
+
+  /**
+   * A non-blocking enqueue.
+   *
+   * @return elements that were not enqueued
+   */
+  readonly offerAll: (a: Iterable<A>) => readonly A[]
+
   /**
    * A non-blocking dequeue.
    *
@@ -32,6 +40,13 @@ export interface MutableQueue<A> extends HasHash {
    * to pay for lower heap churn.
    */
   readonly poll: (a: A | undefined) => A | undefined
+
+  /**
+   * A non-blocking dequeue.
+   *
+   * @return an array of up to `n` elements
+   */
+  readonly pollUpTo: (n: number) => readonly A[]
   /**
    * @return the '''current''' number of elements inside the queue.
    *
@@ -73,11 +88,36 @@ export class Unbounded<A> implements MutableQueue<A> {
     return true
   }
 
+  offerAll(as: Iterable<A>): readonly A[] {
+    for (const a of as) {
+      this.offer(a)
+    }
+
+    return []
+  }
+
   poll(a: A | undefined) {
     if (this.isEmpty) {
       return a
     }
     return this.queue.shift()
+  }
+
+  pollUpTo(n: number): readonly A[] {
+    const result: A[] = []
+    const count = 0
+
+    while (count < n) {
+      const elem = this.poll(undefined)
+
+      if (elem === undefined) {
+        break
+      }
+
+      result.push(elem)
+    }
+
+    return result
   }
 
   [hashSym](): number {
@@ -117,11 +157,40 @@ export class Bounded<A> implements MutableQueue<A> {
     return true
   }
 
+  offerAll(as: Iterable<A>): readonly A[] {
+    const allAs = Array.from(as)
+
+    let i = 0
+
+    while (this.offer(allAs[i]!)) {
+      i += 1
+    }
+
+    return allAs.slice(i)
+  }
+
   poll(a: A | undefined) {
     if (this.isEmpty) {
       return a
     }
     return this.queue.shift()
+  }
+
+  pollUpTo(n: number): readonly A[] {
+    const result: A[] = []
+    const count = 0
+
+    while (count < n) {
+      const elem = this.poll(undefined)
+
+      if (elem === undefined) {
+        break
+      }
+
+      result.push(elem)
+    }
+
+    return result
   }
 
   [hashSym](): number {
