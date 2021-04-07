@@ -344,7 +344,7 @@ class PrependN<A> extends Chunk<A> {
       return new PrependN(this.end, this.buffer, this.bufferUsed + 1, this.chain)
     } else {
       const buffer = new Array(BufferSize)
-      buffer[0] = a1
+      buffer[BufferSize - 1] = a1
       const chunk = fromArray(A.takeRight_(this.buffer as A1[], this.bufferUsed))
       return new PrependN(chunk.concat(this.end), buffer, 1, new AtomicNumber(1))
     }
