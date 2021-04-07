@@ -31,7 +31,7 @@ export abstract class Chunk<A> implements Iterable<A> {
 
   abstract get(n: number): A | undefined
 
-  toArray(): Array<A> {
+  toArray(): readonly A[] {
     const arr = new Array(this.length)
     this.copyToArray(0, arr)
     return arr
@@ -210,6 +210,14 @@ class Arr<A> extends Chunk<A> {
       throw new ArrayIndexOutOfBoundsException(n)
     }
     return this.array[n]
+  }
+
+  toArray(): readonly A[] {
+    return this.array
+  }
+
+  [Symbol.iterator](): IterableIterator<A> {
+    return this.array[Symbol.iterator]()
   }
 
   constructor(readonly array: readonly A[]) {
@@ -447,7 +455,7 @@ export function concat<A1>(that: Chunk<A1>) {
 /**
  * Converts a chunk to an Array
  */
-export function toArray<A>(self: Chunk<A>): A[] {
+export function toArray<A>(self: Chunk<A>): readonly A[] {
   return self.toArray()
 }
 
