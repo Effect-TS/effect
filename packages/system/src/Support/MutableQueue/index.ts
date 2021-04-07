@@ -2,10 +2,9 @@
 
 import "../../Operator"
 
-import type { HasHash } from "@effect-ts/system/Case"
-import { hashSym } from "@effect-ts/system/Case"
-import { incrementalHash } from "@effect-ts/system/Hash"
-
+import type { HasHash } from "../../Case"
+import { hashSym } from "../../Case"
+import { incrementalHash } from "../../Hash"
 import { DoublyLinkedList } from "../DoublyLinkedList"
 
 export interface MutableQueue<A> extends HasHash {
