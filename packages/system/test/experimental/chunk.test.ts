@@ -61,4 +61,14 @@ describe("Chunk", () => {
       )
     ).toEqual(O.some(4))
   })
+  it("buffer", () => {
+    expect(
+      pipe(
+        Chunk.fromArray(Buffer.from("hello")),
+        Chunk.concat(Chunk.fromArray(Buffer.from(" "))),
+        Chunk.concat(Chunk.fromArray(Buffer.from("world"))),
+        Chunk.toArray
+      )
+    ).toEqual(Array.from(Buffer.from("hello world")))
+  })
 })

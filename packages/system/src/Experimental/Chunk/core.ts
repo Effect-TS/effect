@@ -1,4 +1,4 @@
-import * as A from "../../Array"
+import * as A from "../../Collections/Immutable/Array"
 import { _A } from "../../Effect/commons"
 import type { Equal } from "../../Equal"
 import { makeEqual } from "../../Equal"
@@ -200,8 +200,10 @@ class AppendN<A> extends Chunk<A> {
 const ArrTypeId = Symbol()
 type ArrTypeId = typeof ArrTypeId
 
-class Arr<A> extends Chunk<A> {
+abstract class Arr<A> extends Chunk<A> {
   readonly _typeId: ArrTypeId = ArrTypeId
+
+  abstract array: ArrayLike<A>
 
   get length(): number {
     return this.array.length
@@ -215,19 +217,30 @@ class Arr<A> extends Chunk<A> {
   }
 
   toArray(): readonly A[] {
-    return this.array
+    if (Array.isArray(this.array)) {
+      return this.array
+    }
+    return Array.from(this.array)
   }
 
   [Symbol.iterator](): IterableIterator<A> {
     return this.array[Symbol.iterator]()
   }
 
+  copyToArray(n: number, array: Array<A>) {
+    _copy(this.array, 0, array, n, this.length)
+  }
+}
+
+class PlainArr<A> extends Arr<A> {
   constructor(readonly array: readonly A[]) {
     super()
   }
+}
 
-  copyToArray(n: number, array: Array<A>) {
-    _copy(this.array, 0, array, n, this.length)
+class Uint8Arr extends Arr<number> {
+  constructor(readonly array: Uint8Array) {
+    super()
   }
 }
 
@@ -362,7 +375,7 @@ class PrependN<A> extends Chunk<A> {
 }
 
 function _copy<A>(
-  src: readonly A[],
+  src: ArrayLike<A>,
   srcPos: number,
   dest: A[],
   destPos: number,
@@ -429,8 +442,13 @@ export function empty<A>(): Chunk<A> {
 /**
  * Builds a chunk from an array
  */
-export function fromArray<A>(array: readonly A[]): Chunk<A> {
-  return new Arr(array)
+export function fromArray(array: Uint8Array): Chunk<number>
+export function fromArray<A>(array: readonly A[]): Chunk<A>
+export function fromArray(array: readonly unknown[] | Uint8Array): Chunk<unknown> {
+  if ("buffer" in array) {
+    return new Uint8Arr(array)
+  }
+  return new PlainArr(array)
 }
 
 /**
