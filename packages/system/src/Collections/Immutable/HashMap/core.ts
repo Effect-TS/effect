@@ -255,14 +255,14 @@ export function set<K, V>(key: K, value: V) {
 }
 
 /**
- *  Remove the entry for `key` in `map` using internal hash.
+ * Remove the entry for `key` in `map` using internal hash.
  */
 export function remove_<K, V>(map: HashMap<K, V>, key: K) {
   return modify_(map, key, constant(O.none))
 }
 
 /**
- *  Remove the entry for `key` in `map` using internal hash.
+ * Remove the entry for `key` in `map` using internal hash.
  *
  * @dataFirst remove_
  */
