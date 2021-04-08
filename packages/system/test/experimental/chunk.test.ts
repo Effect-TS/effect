@@ -74,9 +74,9 @@ describe("Chunk", () => {
   it("stack", () => {
     let a = Chunk.empty<number>()
     for (let i = 0; i < 100_000; i++) {
-      a = Chunk.concat_(a, Chunk.single(i))
+      a = Chunk.concat_(a, Chunk.fromArray([i, i]))
     }
-    expect(Array.from(a).length).toEqual(100_000)
+    expect(Array.from(a).length).toEqual(200_000)
   })
   it("take", () => {
     expect(
