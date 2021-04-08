@@ -78,4 +78,24 @@ describe("Chunk", () => {
     }
     expect(Array.from(a).length).toEqual(100_000)
   })
+  it("take", () => {
+    expect(
+      pipe(
+        Chunk.fromArray([1, 2, 3, 4, 5]),
+        Chunk.concat(Chunk.fromArray([6, 7, 8, 9, 10])),
+        Chunk.take(5),
+        Array.from
+      )
+    ).toEqual([1, 2, 3, 4, 5])
+  })
+  it("drop", () => {
+    expect(
+      pipe(
+        Chunk.fromArray([1, 2, 3, 4, 5]),
+        Chunk.concat(Chunk.fromArray([6, 7, 8, 9, 10])),
+        Chunk.drop(5),
+        Array.from
+      )
+    ).toEqual([6, 7, 8, 9, 10])
+  })
 })
