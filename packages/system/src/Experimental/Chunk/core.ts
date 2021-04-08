@@ -714,3 +714,28 @@ export function drop(n: number): <A>(self: Chunk<A>) => Chunk<A> {
 export function size<A>(self: Chunk<A>) {
   return self.length
 }
+
+/**
+ * Returns a chunk with the elements mapped by the specified function.
+ */
+export function map_<A, B>(self: Chunk<A>, f: (a: A) => B): Chunk<B> {
+  const arr = self.toArray()
+  const len = arr.length
+  const r = new Array<B>(len)
+  for (let i = 0; i < len; i++) {
+    const k = arr[i]
+    if (k) {
+      r[i] = f(k)
+    }
+  }
+  return fromArray(r)
+}
+
+/**
+ * Returns a chunk with the elements mapped by the specified function.
+ *
+ * @dataFirst map_
+ */
+export function map<A, B>(f: (a: A) => B): (self: Chunk<A>) => Chunk<B> {
+  return (self) => map_(self, f)
+}
