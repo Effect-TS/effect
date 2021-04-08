@@ -223,12 +223,21 @@ export default function tracer(
         const isDisabledEverywhere =
           regions.length > 0 && regions.every(([rs]) => rs.every(([_]) => !_))
 
+        function fixRelative(path: string) {
+          if (path.startsWith(".")) {
+            return path
+          }
+          return `./${path}`
+        }
+
         if (tracingOn && !isDisabledEverywhere) {
           const visited = ts.visitNode(sourceFile, visitor)
           const importPath = importTracingFrom.startsWith(".")
-            ? path.relative(
-                path.dirname(sourceFile.fileName),
-                path.join(programDir, importTracingFrom)
+            ? fixRelative(
+                path.relative(
+                  path.dirname(sourceFile.fileName),
+                  path.join(programDir, importTracingFrom)
+                )
               ) || "."
             : importTracingFrom
 
