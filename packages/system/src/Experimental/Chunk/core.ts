@@ -39,9 +39,31 @@ export abstract class Chunk<A> implements Iterable<A> {
     return arr
   }
 
-  [Symbol.iterator](): IterableIterator<A> {
-    const arr = this.toArray()
-    return arr[Symbol.iterator]()
+  [Symbol.iterator](): Iterator<A> {
+    concrete(this)
+    switch (this._typeId) {
+      case EmptyTypeId: {
+        return emptyGen(this)
+      }
+      case ArrTypeId: {
+        return arrGen(this.arrayLike)
+      }
+      case SliceTypeId: {
+        return sliceGen(this)
+      }
+      case ConcatTypeId: {
+        return concatGen(this)
+      }
+      case AppendNTypeId: {
+        return appendGen(this)
+      }
+      case PrependNTypeId: {
+        return prependGen(this)
+      }
+      case SingletonTypeId: {
+        return singletonGen(this)
+      }
+    }
   }
 
   append<A1>(a1: A1): Chunk<A | A1> {
@@ -130,6 +152,58 @@ export abstract class Chunk<A> implements Iterable<A> {
   }
 }
 
+function* prependGen<A>(self: PrependN<A>) {
+  for (let i = BufferSize - self.bufferUsed; i < BufferSize; i++) {
+    yield (self.buffer as A[])[i]!
+  }
+  const el = self.end.length
+  for (let i = 0; i < el; i++) {
+    yield self.end.get(i)!
+  }
+}
+
+function* appendGen<A>(self: AppendN<A>) {
+  const sl = self.start.length
+  for (let i = 0; i < sl; i++) {
+    yield self.start.get(i)!
+  }
+  for (let i = 0; i < self.bufferUsed; i++) {
+    yield (self.buffer as A[])[i]!
+  }
+}
+
+function* arrGen<A>(self: ArrayLike<A>) {
+  for (let i = 0; i < self.length; i++) {
+    yield self[i]!
+  }
+}
+
+function* singletonGen<A>(self: Singleton<A>) {
+  yield self.a
+}
+
+function* emptyGen<A>(_: Empty<A>) {
+  //
+}
+
+function* concatGen<A>(self: Concat<A>) {
+  const sl = self.left.length
+  for (let i = 0; i < sl; i++) {
+    yield self.left.get(i)!
+  }
+  const sr = self.right.length
+  for (let i = 0; i < sr; i++) {
+    yield self.right.get(i)!
+  }
+}
+
+function* sliceGen<A>(self: Slice<A>) {
+  const sl = self.chunk.length
+  for (let i = self.offset; i < Math.min(sl, self.offset + self.l); i++) {
+    yield self.get(i)!
+  }
+}
+
 /**
  * @optimize remove
  */
@@ -203,7 +277,17 @@ type ArrTypeId = typeof ArrTypeId
 abstract class Arr<A> extends Chunk<A> {
   readonly _typeId: ArrTypeId = ArrTypeId
 
-  abstract array: ArrayLike<A>
+  abstract get arrayLike(): ArrayLike<A>
+}
+
+class PlainArr<A> extends Arr<A> {
+  constructor(readonly array: readonly A[]) {
+    super()
+  }
+
+  get arrayLike(): ArrayLike<A> {
+    return this.array
+  }
 
   get length(): number {
     return this.array.length
@@ -217,14 +301,7 @@ abstract class Arr<A> extends Chunk<A> {
   }
 
   toArray(): readonly A[] {
-    if (Array.isArray(this.array)) {
-      return this.array
-    }
-    return Array.from(this.array)
-  }
-
-  [Symbol.iterator](): IterableIterator<A> {
-    return this.array[Symbol.iterator]()
+    return this.array
   }
 
   copyToArray(n: number, array: Array<A>) {
@@ -232,15 +309,32 @@ abstract class Arr<A> extends Chunk<A> {
   }
 }
 
-class PlainArr<A> extends Arr<A> {
-  constructor(readonly array: readonly A[]) {
-    super()
-  }
-}
-
 class Uint8Arr extends Arr<number> {
   constructor(readonly array: Uint8Array) {
     super()
+  }
+
+  get arrayLike(): ArrayLike<number> {
+    return this.array
+  }
+
+  get length(): number {
+    return this.array.length
+  }
+
+  get(n: number): number | undefined {
+    if (n >= this.length || n < 0) {
+      throw new ArrayIndexOutOfBoundsException(n)
+    }
+    return this.array[n]
+  }
+
+  toArray(): readonly number[] {
+    return Array.from(this.array)
+  }
+
+  copyToArray(n: number, array: Array<number>) {
+    _copy(this.array, 0, array, n, this.length)
   }
 }
 

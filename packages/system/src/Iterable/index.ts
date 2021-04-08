@@ -23,23 +23,6 @@ function* genMap<A, B>(iterator: Iterator<A>, mapping: (a: A, i: number) => B) {
   }
 }
 
-function* genConcat<A>(iteratorA: Iterator<A>, iteratorB: Iterator<A>) {
-  while (true) {
-    const result = iteratorA.next()
-    if (result.done) {
-      break
-    }
-    yield result.value
-  }
-  while (true) {
-    const result = iteratorB.next()
-    if (result.done) {
-      break
-    }
-    yield result.value
-  }
-}
-
 function* genChain<A, B>(iterator: Iterator<A>, mapping: (a: A) => Iterable<B>) {
   while (true) {
     const result = iterator.next()
@@ -149,6 +132,33 @@ export function of<A>(a: A): Iterable<A> {
   }
 }
 
+export function take_<A>(a: Iterable<A>, n: number): Iterable<A> {
+  return {
+    *[Symbol.iterator]() {
+      let i = 0
+      for (const x of a) {
+        if (i++ >= n) {
+          return
+        }
+        yield x
+      }
+    }
+  }
+}
+
+export function skip_<A>(a: Iterable<A>, n: number): Iterable<A> {
+  return {
+    *[Symbol.iterator]() {
+      let i = 0
+      for (const x of a) {
+        if (i++ >= n) {
+          yield x
+        }
+      }
+    }
+  }
+}
+
 export const never: Iterable<never> = {
   // eslint-disable-next-line @typescript-eslint/no-empty-function
   *[Symbol.iterator]() {}
@@ -212,7 +222,14 @@ export function reduceRight_<A, B>(
 
 export function concat<A>(a: Iterable<A>, b: Iterable<A>): Iterable<A> {
   return {
-    [Symbol.iterator]: () => genConcat(a[Symbol.iterator](), b[Symbol.iterator]())
+    *[Symbol.iterator]() {
+      for (const x of a) {
+        yield x
+      }
+      for (const x of b) {
+        yield x
+      }
+    }
   }
 }
 
