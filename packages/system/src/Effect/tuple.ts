@@ -1,6 +1,6 @@
 // tracing: off
 
-import type { NonEmptyArray } from "../NonEmptyArray"
+import type { NonEmptyArray } from "../Collections/Immutable/NonEmptyArray"
 import { accessCallTrace } from "../Tracing"
 import type { _E, _R } from "../Utils"
 import type { Effect } from "./effect"

@@ -1,8 +1,8 @@
 // tracing: off
 
-import * as A from "../Array"
 import * as C from "../Cause/core"
 import { FiberFailure } from "../Cause/errors"
+import * as A from "../Collections/Immutable/Array"
 import * as E from "../Either"
 import type { FiberID } from "../Fiber/id"
 import { identity, pipe } from "../Function"

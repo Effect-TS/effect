@@ -4,8 +4,8 @@
  * Copyright 2020 Michael Arnaldi and the Matechs Garage Contributors.
  */
 
-import * as A from "../Array"
-import * as R from "../Dictionary"
+import * as A from "../Collections/Immutable/Array"
+import * as R from "../Collections/Immutable/Dictionary"
 import * as core from "../Effect/core"
 import type { Effect } from "../Effect/effect"
 import type { Has, Tag } from "../Has"

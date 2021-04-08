@@ -1,6 +1,6 @@
 // tracing: off
 
-import * as A from "../Array"
+import * as A from "../Collections/Immutable/Array"
 import type { ExecutionStrategy } from "../Effect/ExecutionStrategy"
 import { sequential } from "../Effect/ExecutionStrategy"
 import { tuple } from "../Function"

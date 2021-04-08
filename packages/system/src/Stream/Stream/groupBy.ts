@@ -1,8 +1,8 @@
 // tracing: off
 
+import * as MP from "../../Collections/Immutable/Map"
 import * as Ex from "../../Exit"
 import { pipe } from "../../Function"
-import * as MP from "../../Map"
 import * as O from "../../Option"
 import * as P from "../../Promise"
 import * as Q from "../../Queue"

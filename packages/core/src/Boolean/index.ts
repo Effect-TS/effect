@@ -2,12 +2,12 @@
 
 import "../Operator"
 
+import * as C from "../Closure"
 /**
  * Partially Ported from https://github.com/samhh/fp-ts-std
  * Partially Ported from https://github.com/0x706b/principia
  */
-import * as A from "../Array"
-import * as C from "../Closure"
+import * as A from "../Collections/Immutable/Array"
 import * as Eq from "../Equal"
 import type { Predicate } from "../Function"
 import * as I from "../Identity"

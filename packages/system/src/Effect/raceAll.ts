@@ -1,10 +1,10 @@
 // tracing: off
 
-import * as A from "../Array"
+import * as A from "../Collections/Immutable/Array"
+import type { NonEmptyArray } from "../Collections/Immutable/NonEmptyArray"
 import * as Exit from "../Exit"
 import * as Fiber from "../Fiber"
 import { pipe, tuple } from "../Function"
-import type { NonEmptyArray } from "../NonEmptyArray"
 import * as P from "../Promise"
 import * as Ref from "../Ref"
 import * as as from "./as"

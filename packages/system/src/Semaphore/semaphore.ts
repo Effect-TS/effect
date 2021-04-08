@@ -1,9 +1,9 @@
 // tracing: off
 
+import * as L from "../Collections/Immutable/List"
 import * as E from "../Either"
 import { identity } from "../Function"
 import * as O from "../Option"
-import * as L from "../Persistent/List"
 import * as R from "../Ref"
 import { ImmutableQueue } from "../Support/ImmutableQueue"
 import * as T from "./effect"

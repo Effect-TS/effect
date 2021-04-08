@@ -2,14 +2,14 @@
 
 import "../Operator"
 
+import type { Cause } from "../Cause/cause"
+import { empty, then } from "../Cause/cause"
 /**
  * Ported from https://github.com/zio/zio/blob/master/core/shared/src/main/scala/zio/Scope.scala
  *
  * Copyright 2020 Michael Arnaldi and the Matechs Garage Contributors.
  */
-import * as A from "../Array"
-import type { Cause } from "../Cause/cause"
-import { empty, then } from "../Cause/cause"
+import * as A from "../Collections/Immutable/Array"
 import { cause } from "../Effect/cause"
 import { effectTotal, succeed, suspend } from "../Effect/core"
 import type { UIO } from "../Effect/effect"

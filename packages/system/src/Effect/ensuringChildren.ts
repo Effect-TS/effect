@@ -1,8 +1,8 @@
 // tracing: off
 
+import type { HashSet } from "../Collections/Immutable/HashSet"
 import * as Fiber from "../Fiber"
 import { pipe } from "../Function"
-import type { HashSet } from "../Persistent/HashSet"
 import { track } from "../Supervisor"
 import * as core from "./core"
 import type { Effect, RIO } from "./effect"

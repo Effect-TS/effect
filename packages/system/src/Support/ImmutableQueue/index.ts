@@ -2,8 +2,8 @@
 
 import "../../Operator"
 
+import * as L from "../../Collections/Immutable/List"
 import * as O from "../../Option"
-import * as L from "../../Persistent/List"
 
 export class ImmutableQueue<A> {
   constructor(private readonly backing: L.List<A>) {}

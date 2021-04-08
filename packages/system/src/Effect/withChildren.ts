@@ -1,7 +1,7 @@
 // tracing: off
 
+import * as HS from "../Collections/Immutable/HashSet"
 import type { Runtime } from "../Fiber"
-import * as HS from "../Persistent/HashSet"
 import { track } from "../Supervisor"
 import { chain_, supervised } from "./core"
 import { descriptor } from "./descriptor"

@@ -1,7 +1,7 @@
 // tracing: off
 
 /* eslint-disable prefer-const */
-import * as A from "../Array"
+import * as A from "../Collections/Immutable/Array"
 import * as E from "../Either"
 import type { Trace } from "../Fiber"
 import type { FiberID } from "../Fiber/id"

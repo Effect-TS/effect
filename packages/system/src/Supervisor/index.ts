@@ -7,13 +7,13 @@
  */
 import "../Operator"
 
+import * as HS from "../Collections/Immutable/HashSet"
 import { effectTotal, suspend, unit } from "../Effect/core"
 import type { Effect, UIO } from "../Effect/effect"
 import { zip_ } from "../Effect/zip"
 import type { Exit } from "../Exit/exit"
 import type { Runtime } from "../Fiber/core"
 import type * as O from "../Option"
-import * as HS from "../Persistent/HashSet"
 import { AtomicReference } from "../Support/AtomicReference"
 
 /**
@@ -151,10 +151,14 @@ export const track = suspend(() => fibersIn(new AtomicReference(makeFiberSet()))
  * Creates a fiber set
  */
 export function makeFiberSet() {
-  return HS.make<Runtime<any, any>>({
-    hash: (_) => _.id.seqNumber,
-    equals: (x, y) => x === y
-  })
+  return HS.make<Runtime<any, any>>(
+    {
+      equals: (x, y) => x === y
+    },
+    {
+      hash: (_) => _.id.seqNumber
+    }
+  )
 }
 
 /**

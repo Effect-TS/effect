@@ -1,7 +1,7 @@
 // tracing: off
 
+import * as L from "@effect-ts/system/Collections/Immutable/List"
 import { PrematureGeneratorExit } from "@effect-ts/system/GlobalExceptions"
-import * as L from "@effect-ts/system/Persistent/List"
 
 import { pipe } from "../../Function"
 import type * as HKT from "../HKT"

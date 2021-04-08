@@ -1,8 +1,8 @@
 // tracing: off
 
 import type * as A from "../../Chunk"
+import type * as L from "../../Collections/Immutable/List"
 import { pipe } from "../../Function"
-import type * as L from "../../Persistent/List"
 import type * as T from "../_internal/effect"
 import * as SK from "../Sink"
 import type { Stream } from "./definitions"

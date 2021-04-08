@@ -5,7 +5,7 @@ import "../../Operator"
 import { _A, _E, _R } from "@effect-ts/system/Effect/commons"
 import { AtomicReference } from "@effect-ts/system/Support/AtomicReference"
 
-import * as A from "../../Array"
+import * as A from "../../Collections/Immutable/Array"
 import { pipe } from "../../Function"
 import type { Has, Tag } from "../../Has"
 import type { Erase, UnionToIntersection } from "../../Utils"

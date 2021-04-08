@@ -1,6 +1,6 @@
 import { pipe } from "@effect-ts/system/Function"
 
-import * as R from "../../src/Dictionary"
+import * as R from "../../src/Collections/Immutable/Dictionary"
 import * as E from "../../src/Either"
 import * as X from "../../src/XPure"
 

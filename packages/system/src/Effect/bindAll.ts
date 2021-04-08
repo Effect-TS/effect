@@ -1,6 +1,6 @@
 // tracing: off
 
-import * as R from "../Dictionary"
+import * as R from "../Collections/Immutable/Dictionary"
 import type { _E, _R, EnforceNonEmptyRecord } from "../Utils"
 import { chain_ } from "./core"
 import type { Effect } from "./effect"

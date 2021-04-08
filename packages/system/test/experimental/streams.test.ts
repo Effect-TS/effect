@@ -1,4 +1,5 @@
 import * as C from "../../src/Cause"
+import * as L from "../../src/Collections/Immutable/List"
 import * as T from "../../src/Effect"
 import * as Ex from "../../src/Exit"
 import { assertsFailure } from "../../src/Exit"
@@ -10,7 +11,6 @@ import { tag } from "../../src/Has"
 import * as I from "../../src/Iterable"
 import * as M from "../../src/Managed"
 import * as O from "../../src/Option"
-import * as L from "../../src/Persistent/List"
 
 describe("Stream", () => {
   const MapServiceTypeId = Symbol()

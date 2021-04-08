@@ -1,5 +1,5 @@
-import { range } from "../src/Array"
 import { provideTestClock, TestClock } from "../src/Clock"
+import { range } from "../src/Collections/Immutable/Array"
 import type { Cb, Effect } from "../src/Effect"
 import * as T from "../src/Effect"
 import * as E from "../src/Either"

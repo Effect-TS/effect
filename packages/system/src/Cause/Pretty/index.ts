@@ -1,6 +1,6 @@
 // tracing: off
 
-import * as A from "../../Array"
+import * as A from "../../Collections/Immutable/Array"
 import type { FiberID } from "../../Fiber/id"
 import type { Trace } from "../../Fiber/tracing"
 import { prettyTrace } from "../../Fiber/tracing"

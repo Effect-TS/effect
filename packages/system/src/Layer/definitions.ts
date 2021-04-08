@@ -1,7 +1,8 @@
 // tracing: off
 
-import * as A from "../Array"
 import type * as C from "../Cause"
+import * as A from "../Collections/Immutable/Array"
+import { insert } from "../Collections/Immutable/Map"
 import { _E, _RIn, _ROut } from "../Effect/commons"
 import { sequential } from "../Effect/ExecutionStrategy"
 import type { Exit } from "../Exit"
@@ -12,7 +13,6 @@ import * as add from "../Managed/ReleaseMap/add"
 import * as Finalizer from "../Managed/ReleaseMap/finalizer"
 import * as makeReleaseMap from "../Managed/ReleaseMap/makeReleaseMap"
 import * as releaseAll from "../Managed/ReleaseMap/releaseAll"
-import { insert } from "../Map"
 import * as P from "../Promise"
 import * as R from "../Ref"
 import * as RM from "../RefM"

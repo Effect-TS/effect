@@ -1,6 +1,6 @@
 // tracing: off
 
-import type { NonEmptyArray } from "../../NonEmptyArray"
+import type { NonEmptyArray } from "../../Collections/Immutable/NonEmptyArray"
 import type { _E, _R } from "../../Utils"
 import { map_ } from "../core"
 import type { Managed } from "../managed"

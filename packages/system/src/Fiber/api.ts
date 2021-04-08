@@ -1,7 +1,7 @@
 // tracing: off
 
-import * as A from "../Array"
 import * as Cause from "../Cause/core"
+import * as A from "../Collections/Immutable/Array"
 import * as E from "../Either"
 import * as Exit from "../Exit/api"
 import { constant, pipe } from "../Function"

@@ -1,7 +1,8 @@
 // tracing: off
 
-import * as A from "../Array"
 import * as cause from "../Cause"
+import * as A from "../Collections/Immutable/Array"
+import * as L from "../Collections/Immutable/List"
 import type { Exit } from "../Exit"
 import * as Ex from "../Exit"
 import type { FiberContext } from "../Fiber/context"
@@ -16,7 +17,6 @@ import { add } from "../Managed/ReleaseMap/add"
 import { Exited } from "../Managed/ReleaseMap/Exited"
 import { makeReleaseMap } from "../Managed/ReleaseMap/makeReleaseMap"
 import * as O from "../Option"
-import * as L from "../Persistent/List"
 import type { Promise } from "../Promise"
 import * as promise from "../Promise"
 import * as Q from "../Queue/core"

@@ -1,10 +1,11 @@
 // tracing: off
 
-import * as A from "../Array"
 // cause
 import * as Cause from "../Cause/core"
 // effect
 import { RuntimeError } from "../Cause/errors"
+import * as A from "../Collections/Immutable/Array"
+import * as L from "../Collections/Immutable/List"
 import { forEachUnit_ } from "../Effect/excl-forEach"
 import { IFail, instruction, ISucceed } from "../Effect/primitives"
 // either
@@ -17,7 +18,6 @@ import * as update from "../FiberRef/update"
 import { constVoid } from "../Function"
 // option
 import * as O from "../Option"
-import * as L from "../Persistent/List"
 // supervisor / scope
 import * as Scope from "../Scope"
 import * as Sup from "../Supervisor"

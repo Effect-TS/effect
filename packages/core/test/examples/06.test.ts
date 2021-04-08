@@ -1,7 +1,7 @@
 import { pipe } from "@effect-ts/system/Function"
 
 import { makeAssociative } from "../../src/Associative"
-import * as R from "../../src/Dictionary"
+import * as R from "../../src/Collections/Immutable/Dictionary"
 import * as E from "../../src/Either"
 
 test("06", () => {

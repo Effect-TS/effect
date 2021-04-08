@@ -2,8 +2,8 @@
 
 import "../../../Operator"
 
+import * as L from "../../../Collections/Immutable/List"
 import * as FA from "../../../FreeAssociative"
-import * as L from "../../../Persistent/List"
 import * as Channel from "../Channel"
 
 /**

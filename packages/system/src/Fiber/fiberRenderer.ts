@@ -1,6 +1,6 @@
 // tracing: off
 
-import type { Array } from "../Array"
+import type { Array } from "../Collections/Immutable/Array"
 import { constant, tuple } from "../Function"
 import * as IT from "../Iterable"
 import { fold_ } from "../Option"

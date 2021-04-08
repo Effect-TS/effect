@@ -1,9 +1,9 @@
 // tracing: off
 
+import * as L from "../Collections/Immutable/List"
 import type { FiberID } from "../Fiber/id"
 import type { Trace } from "../Fiber/tracing"
 import * as O from "../Option"
-import * as L from "../Persistent/List"
 
 /**
  * Cause is a Free Semiring structure that allows tracking of multiple error causes.

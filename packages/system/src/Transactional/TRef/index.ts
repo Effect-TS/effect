@@ -2,11 +2,11 @@
 
 import "../../Operator"
 
+import type { HashMap } from "../../Collections/Immutable/HashMap"
 import type * as T from "../../Effect"
 import * as E from "../../Either"
 import { identity } from "../../Function"
 import * as O from "../../Option"
-import type { HashMap } from "../../Persistent/HashMap"
 import { AtomicReference } from "../../Support/AtomicReference"
 import * as STM from "../STM/core"
 import { makeEntry } from "../STM/Entry"

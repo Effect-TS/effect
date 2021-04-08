@@ -1,4 +1,4 @@
-import * as A from "@effect-ts/core/Array"
+import * as A from "@effect-ts/core/Collections/Immutable/Array"
 import * as TE from "@effect-ts/core/Effect"
 import * as E from "@effect-ts/core/Either"
 import type { Endomorphism } from "@effect-ts/core/Function"

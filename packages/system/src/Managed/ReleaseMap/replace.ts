@@ -1,7 +1,7 @@
 // tracing: off
 
+import { insert, lookup } from "../../Collections/Immutable/Map/core"
 import { absurd, pipe } from "../../Function"
-import { insert, lookup } from "../../Map/core"
 import * as O from "../../Option"
 import * as T from "../deps"
 import * as R from "./deps-ref"

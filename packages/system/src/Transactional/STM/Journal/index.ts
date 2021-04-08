@@ -2,9 +2,9 @@
 
 import "../../../Operator"
 
+import * as HM from "../../../Collections/Immutable/HashMap"
 import * as T from "../../../Effect"
 import type { FiberID } from "../../../Fiber"
-import * as HM from "../../../Persistent/HashMap"
 import type { AtomicBoolean } from "../../../Support/AtomicBoolean"
 import { AtomicNumber } from "../../../Support/AtomicNumber"
 import type { Atomic } from "../../TRef"
@@ -151,10 +151,14 @@ export function run<R, E, A>(
   return result as TExit<E, A>
 }
 
-export const emptyTodoMap = HM.make<TxnId, Todo>({
-  equals: (x, y) => x === y,
-  hash: (_) => _
-})
+export const emptyTodoMap = HM.make<TxnId, Todo>(
+  {
+    equals: (x, y) => x === y
+  },
+  {
+    hash: (_) => _
+  }
+)
 
 /**
  * Atomically collects and clears all the todos from any `TRef` that

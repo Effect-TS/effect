@@ -2,9 +2,9 @@
 
 import * as C from "../../Cause"
 import * as A from "../../Chunk"
+import * as Map from "../../Collections/Immutable/Map"
 import * as Ex from "../../Exit"
 import { pipe } from "../../Function"
-import * as Map from "../../Map"
 import * as O from "../../Option"
 import * as Q from "../../Queue"
 import * as SM from "../../Semaphore"

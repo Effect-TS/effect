@@ -1,6 +1,6 @@
 // tracing: off
 
-import * as A from "../Array"
+import * as A from "../Collections/Immutable/Array"
 import { pipe } from "../Function"
 import * as I from "../Iterable"
 import * as O from "../Option"

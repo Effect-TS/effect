@@ -1,8 +1,8 @@
 // tracing: off
 
-import * as A from "../Array"
+import * as A from "../Collections/Immutable/Array"
+import type * as NA from "../Collections/Immutable/NonEmptyArray"
 import * as E from "../Either"
-import type * as NA from "../NonEmptyArray"
 import { absolve } from "./absolve"
 import type { Effect } from "./effect"
 import { either } from "./either"

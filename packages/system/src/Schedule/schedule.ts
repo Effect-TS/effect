@@ -1,13 +1,13 @@
 // tracing: off
 
-import * as A from "../Array"
 import * as Clock from "../Clock"
+import * as A from "../Collections/Immutable/Array"
+import * as L from "../Collections/Immutable/List"
+import * as NA from "../Collections/Immutable/NonEmptyArray"
 import * as E from "../Either"
 import { pipe, tuple } from "../Function"
 import * as NoSuchElementException from "../GlobalExceptions"
-import * as NA from "../NonEmptyArray"
 import * as O from "../Option"
-import * as L from "../Persistent/List"
 import { nextDouble } from "../Random"
 import * as R from "../Ref"
 import * as Decision from "./Decision"

@@ -3,8 +3,8 @@
 /**
  * Copyright 2020 Michael Arnaldi and the Matechs Garage Contributors.
  */
-import * as A from "../Array"
-import * as R from "../Dictionary"
+import * as A from "../Collections/Immutable/Array"
+import * as R from "../Collections/Immutable/Dictionary"
 import type { Has, Tag } from "../Has"
 import { mergeEnvironments } from "../Has"
 import type { UnionToIntersection } from "../Utils"

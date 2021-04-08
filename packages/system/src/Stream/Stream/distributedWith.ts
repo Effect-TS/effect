@@ -1,9 +1,9 @@
 // tracing: off
 
 import * as A from "../../Chunk"
+import * as Map from "../../Collections/Immutable/Map"
 import type * as Ex from "../../Exit"
 import { pipe } from "../../Function"
-import * as Map from "../../Map"
 import * as O from "../../Option"
 import * as P from "../../Promise"
 import type * as Q from "../../Queue"

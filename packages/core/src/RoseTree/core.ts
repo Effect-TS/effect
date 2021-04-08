@@ -10,7 +10,7 @@
  * ```
  */
 
-import * as A from "../Array"
+import * as A from "../Collections/Immutable/Array"
 import type { Equal } from "../Equal"
 import { makeEqual } from "../Equal"
 import { pipe } from "../Function"

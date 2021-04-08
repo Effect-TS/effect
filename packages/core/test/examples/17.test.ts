@@ -1,5 +1,5 @@
+import * as M from "@effect-ts/system/Collections/Immutable/Map"
 import { flow, identity, pipe } from "@effect-ts/system/Function"
-import * as M from "@effect-ts/system/Map"
 
 import * as E from "../../src/Either"
 import * as EitherT from "../../src/EitherT"

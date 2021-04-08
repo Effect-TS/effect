@@ -1,7 +1,7 @@
 // tracing: off
 
-import * as A from "../Array"
-import * as NEA from "../NonEmptyArray"
+import * as A from "../Collections/Immutable/Array"
+import * as NEA from "../Collections/Immutable/NonEmptyArray"
 import { suspend } from "./core"
 import type { Effect } from "./effect"
 import { orElse_ } from "./orElse"

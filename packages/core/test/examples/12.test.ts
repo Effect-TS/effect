@@ -1,6 +1,6 @@
 import { pipe } from "@effect-ts/system/Function"
 
-import * as A from "../../src/Array"
+import * as A from "../../src/Collections/Immutable/Array"
 import * as E from "../../src/Either"
 import * as EitherT from "../../src/EitherT"
 import * as InvariantT from "../../src/InvariantT"

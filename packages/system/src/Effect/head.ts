@@ -1,7 +1,7 @@
 // tracing: off
 
-import * as A from "../Array"
 import { map_ as mapCause } from "../Cause"
+import * as A from "../Collections/Immutable/Array"
 import { pipe } from "../Function"
 import * as O from "../Option"
 import { foldCauseM_, halt, succeed } from "./core"

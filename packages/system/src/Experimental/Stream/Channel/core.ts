@@ -3,13 +3,13 @@
 import "../../../Operator"
 
 import type * as C from "../../../Cause"
+import * as L from "../../../Collections/Immutable/List"
 import * as T from "../../../Effect"
 import { _A, _C, _E, _I, _L, _O, _R, _U } from "../../../Effect"
 import * as E from "../../../Either"
 import type { Lazy } from "../../../Function"
 import * as M from "../../../Managed"
 import * as O from "../../../Option"
-import * as L from "../../../Persistent/List"
 import { accessCallTrace } from "../../../Tracing"
 
 export type Tracer = (trace?: string) => void

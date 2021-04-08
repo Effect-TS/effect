@@ -2,18 +2,18 @@
 
 import "../Operator"
 
+import * as C from "../Closure"
 /**
  * Partially Ported from https://github.com/samhh/fp-ts-std
  * Partially Ported from https://github.com/0x706b/principia
  */
-import * as A from "../Array"
-import * as C from "../Closure"
+import * as A from "../Collections/Immutable/Array"
+import * as NA from "../Collections/Immutable/NonEmptyArray"
 import * as Eq from "../Equal"
 import { pipe } from "../Function"
 import * as I from "../Identity"
 import type { Sum } from "../Newtype"
 import { StringSum } from "../Newtype"
-import * as NA from "../NonEmptyArray"
 import * as O from "../Option"
 
 export const SumClosure = C.makeClosure<Sum<string>>((l, r) =>

@@ -1,6 +1,6 @@
 // tracing: off
 
-import { range } from "../Array"
+import { range } from "../Collections/Immutable/Array"
 import type { Effect } from "./effect"
 
 /**

@@ -1,6 +1,6 @@
 // tracing: off
 
-import type * as A from "../../../Array"
+import type * as A from "../../../Collections/Immutable/Array"
 
 type RecursiveTuples<T> = readonly [T | RecursiveTuples<T>, T]
 

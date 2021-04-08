@@ -1,6 +1,6 @@
 import { pipe } from "@effect-ts/system/Function"
 
-import * as A from "../../src/Array"
+import * as A from "../../src/Collections/Immutable/Array"
 import * as E from "../../src/Either"
 import { getCovariantComposition } from "../../src/Prelude/Covariant"
 

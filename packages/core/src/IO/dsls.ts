@@ -1,6 +1,6 @@
 // tracing: off
 
-import * as A from "../Array"
+import * as A from "../Collections/Immutable/Array"
 import * as DSL from "../Prelude/DSL"
 import { Applicative, Covariant, Monad } from "./instances"
 

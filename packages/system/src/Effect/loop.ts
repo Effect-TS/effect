@@ -1,7 +1,7 @@
 // tracing: off
 
+import * as L from "../Collections/Immutable/List"
 import { pipe } from "../Function"
-import * as L from "../Persistent/List"
 import * as core from "./core"
 import type { Effect } from "./effect"
 import * as map from "./map"

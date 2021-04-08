@@ -1,5 +1,5 @@
+import * as L from "../src/Collections/Immutable/List"
 import { pipe } from "../src/Function"
-import * as L from "../src/List"
 import * as S from "../src/Sync"
 
 describe("List", () => {

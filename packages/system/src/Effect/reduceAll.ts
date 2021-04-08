@@ -1,7 +1,7 @@
 // tracing: off
 
-import * as A from "../Array"
-import * as NA from "../NonEmptyArray"
+import * as A from "../Collections/Immutable/Array"
+import * as NA from "../Collections/Immutable/NonEmptyArray"
 import * as O from "../Option"
 import { suspend } from "./core"
 import type { Effect } from "./effect"

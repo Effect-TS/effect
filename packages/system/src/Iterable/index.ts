@@ -2,7 +2,7 @@
 
 import "../Operator"
 
-import * as A from "../Array"
+import * as A from "../Collections/Immutable/Array"
 import type { Either } from "../Either"
 import { identity } from "../Function"
 import type { Separated } from "../Utils"

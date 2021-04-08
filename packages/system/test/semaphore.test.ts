@@ -1,4 +1,4 @@
-import * as A from "../src/Array"
+import * as A from "../src/Collections/Immutable/Array"
 import * as T from "../src/Effect"
 import * as F from "../src/Fiber"
 import * as SM from "../src/Semaphore"

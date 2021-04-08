@@ -1,10 +1,10 @@
 // tracing: off
 
+import * as L from "../../Collections/Immutable/List"
 import type * as E from "../../Either"
 import { NoSuchElementException, PrematureGeneratorExit } from "../../GlobalExceptions"
 import type * as H from "../../Has"
 import type * as O from "../../Option"
-import * as L from "../../Persistent/List"
 import type * as Utils from "../../Utils"
 import { isEither, isOption, isTag } from "../../Utils"
 import * as T from "../_internal/effect"

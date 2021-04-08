@@ -1,6 +1,6 @@
 // tracing: off
 
-import * as A from "../Array"
+import * as A from "../Collections/Immutable/Array"
 import type { Option } from "../Option"
 import type { Effect } from "./effect"
 import { forEach_, forEachPar_, forEachParN_ } from "./excl-forEach"

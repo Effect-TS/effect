@@ -1,5 +1,5 @@
-import * as A from "../src/Array"
 import * as T from "../src/Async"
+import * as A from "../src/Collections/Immutable/Array"
 import { pipe } from "../src/Function"
 import * as O from "../src/Option"
 

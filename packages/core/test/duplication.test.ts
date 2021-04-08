@@ -1,5 +1,5 @@
-import * as A from "../src/Array"
-import * as R from "../src/Dictionary"
+import * as A from "../src/Collections/Immutable/Array"
+import * as R from "../src/Collections/Immutable/Dictionary"
 import * as T from "../src/Effect"
 import { pipe } from "../src/Function"
 import * as S from "../src/Sync"

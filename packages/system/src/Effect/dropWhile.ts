@@ -1,7 +1,7 @@
 // tracing: off
 
-import type { Array } from "../Array"
-import type { MutableArray } from "../Mutable"
+import type { Array } from "../Collections/Immutable/Array"
+import type { MutableArray } from "../Support/Mutable"
 import { chain_, succeed, suspend } from "./core"
 import type { Effect } from "./effect"
 import { map_ } from "./map"

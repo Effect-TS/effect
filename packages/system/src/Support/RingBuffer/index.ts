@@ -2,8 +2,8 @@
 
 import "../../Operator"
 
+import * as L from "../../Collections/Immutable/List"
 import type { Predicate } from "../../Function"
-import * as L from "../../Persistent/List"
 import { DoublyLinkedList } from "../DoublyLinkedList"
 
 export class RingBuffer<T> {

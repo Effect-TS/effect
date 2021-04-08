@@ -1,6 +1,6 @@
 // tracing: off
 
-import * as A from "../Array"
+import * as A from "../Collections/Immutable/Array"
 import { succeed } from "../Effect/core"
 import * as exclForEach from "../Effect/excl-forEach"
 import {

@@ -1,6 +1,6 @@
 // tracing: off
 
-import { head } from "../Array"
+import { head } from "../Collections/Immutable/Array"
 import * as Fiber from "../Fiber"
 import { pipe } from "../Function"
 import * as O from "../Option"
