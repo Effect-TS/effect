@@ -21,7 +21,13 @@
     "version:minor": "lerna version preminor --conventional-commits",
     "version:prepatch": "lerna version prepatch --conventional-commits",
     "version:patch": "lerna version patch --conventional-commits",
-    "version:graduate": "lerna version --conventional-commits --conventional-graduate"
+    "version:graduate": "lerna version --conventional-commits --conventional-graduate",
+    "commit": "cz"
+  },
+  "config": {
+    "commitizen": {
+      "path": "cz-conventional-changelog"
+    }
   },
   "devDependencies": {
     "@babel/cli": "^7.12.1",
@@ -35,7 +41,9 @@
     "@typescript-eslint/parser": "^4.21.0",
     "babel-plugin-annotate-pure-calls": "^0.4.0",
     "chalk": "^4.1.0",
+    "commitizen": "^4.2.3",
     "cpx": "^1.5.0",
+    "cz-conventional-changelog": "^3.3.0",
     "dtslint": "github:gcanti/dtslint",
     "eslint": "^7.21.0",
     "eslint-config-prettier": "^8.0.0",
