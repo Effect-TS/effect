@@ -556,11 +556,35 @@ export function toArray<A>(self: Chunk<A>): readonly A[] {
 /**
  * Safely get a value
  */
+export function get_<A>(self: Chunk<A>, n: number): O.Option<NonNullable<A>> {
+  return !Number.isInteger(n) || n < 0 || n >= self.length
+    ? O.none
+    : O.fromNullable(self.get(n))
+}
+
+/**
+ * Safely get a value
+ *
+ * @dataFirst get_
+ */
 export function get(n: number) {
-  return <A>(self: Chunk<A>): O.Option<NonNullable<A>> =>
-    !Number.isInteger(n) || n < 0 || n >= self.length
-      ? O.none
-      : O.fromNullable(self.get(n))
+  return <A>(self: Chunk<A>): O.Option<NonNullable<A>> => get_(self, n)
+}
+
+/**
+ * Unsafely get a value
+ */
+export function unsafeGet_<A>(self: Chunk<A>, n: number): A | undefined {
+  return self.get(n)
+}
+
+/**
+ * Safely get a value
+ *
+ * @dataFirst unsafeGet_
+ */
+export function unsafeGet(n: number) {
+  return <A>(self: Chunk<A>): A | undefined => unsafeGet_(self, n)
 }
 
 /**
@@ -610,15 +634,13 @@ export function equalsWith<A>(
   return (self) => equalsWith_(self, eq, that)
 }
 
+const refEq = makeEqual((x, y) => x === y)
+
 /**
  * Referential equality check
  */
 export function equals_<A>(self: Chunk<A>, that: Chunk<A>): boolean {
-  return equalsWith_(
-    self,
-    makeEqual((x, y) => x === y),
-    that
-  )
+  return equalsWith_(self, refEq, that)
 }
 
 /**
@@ -684,4 +706,11 @@ export function drop_<A>(self: Chunk<A>, n: number): Chunk<A> {
  */
 export function drop(n: number): <A>(self: Chunk<A>) => Chunk<A> {
   return (self) => self.take(n)
+}
+
+/**
+ * Returns the number of elements in the chunk
+ */
+export function size<A>(self: Chunk<A>) {
+  return self.length
 }
