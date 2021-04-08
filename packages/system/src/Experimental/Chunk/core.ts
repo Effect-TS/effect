@@ -79,6 +79,12 @@ export abstract class Chunk<A> implements Iterable<A> {
   concat<A1>(that: Chunk<A1>): Chunk<A | A1> {
     concrete(this)
     concrete(that)
+    if (this._typeId === EmptyTypeId) {
+      return that
+    }
+    if (that._typeId === EmptyTypeId) {
+      return this
+    }
     if (this._typeId === AppendNTypeId) {
       const chunk = fromArray(this.buffer as A1[]).take(this.bufferUsed)
       return this.start.concat(chunk).concat(that)
@@ -156,11 +162,6 @@ class Empty<A> extends Chunk<A> {
 }
 
 const _Empty: Chunk<never> = new Empty()
-
-export function isEmpty<A>(_: Chunk<A>): _ is Empty<A> {
-  concrete(_)
-  return _._typeId === EmptyTypeId
-}
 
 /**
  * @optimize remove
