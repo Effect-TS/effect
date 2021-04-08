@@ -1,6 +1,5 @@
 import * as Chunk from "../../src/Experimental/Chunk"
 import { pipe } from "../../src/Function"
-import * as I from "../../src/Iterable"
 import * as O from "../../src/Option"
 
 describe("Chunk", () => {
@@ -72,8 +71,11 @@ describe("Chunk", () => {
       )
     ).toEqual(Array.from(Buffer.from("hello world")))
   })
-  it("iterable", () => {
-    expect(Array.from(I.take_([0, 1, 2], 2))).toEqual([0, 1])
-    expect(Array.from(I.skip_([0, 1, 2], 1))).toEqual([1, 2])
+  it("stack", () => {
+    let a = Chunk.empty<number>()
+    for (let i = 0; i < 100_000; i++) {
+      a = Chunk.concat_(a, Chunk.single(i))
+    }
+    expect(Array.from(a).length).toEqual(100_000)
   })
 })
