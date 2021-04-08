@@ -15,56 +15,26 @@ export abstract class Chunk<A> implements Iterable<A> {
   readonly [ChunkTypeId]: ChunkTypeId = ChunkTypeId;
   readonly [_A]!: () => A
 
-  abstract length: number
-
-  get left(): Chunk<A> {
-    return new Empty()
-  }
-
-  get right(): Chunk<A> {
-    return new Empty()
-  }
-
-  get depth(): number {
-    return 0
-  }
-
+  abstract readonly length: number
+  abstract readonly depth: number
+  abstract readonly left: Chunk<A>
+  abstract readonly right: Chunk<A>
   abstract copyToArray(n: number, array: Array<A>): void
-
   abstract get(n: number): A | undefined
 
+  private arrayCache: readonly A[] | undefined
+
   toArray(): readonly A[] {
+    if (this.arrayCache) {
+      return this.arrayCache
+    }
     const arr = new Array(this.length)
     this.copyToArray(0, arr)
+    this.arrayCache = arr
     return arr
   }
 
-  [Symbol.iterator](): Iterator<A> {
-    concrete(this)
-    switch (this._typeId) {
-      case EmptyTypeId: {
-        return emptyGen(this)
-      }
-      case ArrTypeId: {
-        return arrGen(this.arrayLike)
-      }
-      case SliceTypeId: {
-        return sliceGen(this)
-      }
-      case ConcatTypeId: {
-        return concatGen(this)
-      }
-      case AppendNTypeId: {
-        return appendGen(this)
-      }
-      case PrependNTypeId: {
-        return prependGen(this)
-      }
-      case SingletonTypeId: {
-        return singletonGen(this)
-      }
-    }
-  }
+  abstract [Symbol.iterator](): Iterator<A>
 
   append<A1>(a1: A1): Chunk<A | A1> {
     const buffer = new Array(BufferSize)
@@ -81,16 +51,16 @@ export abstract class Chunk<A> implements Iterable<A> {
   take(n: number): Chunk<A> {
     concrete(this)
     if (n <= 0) {
-      return new Empty()
+      return _Empty
     } else if (n >= this.length) {
       return this
     } else {
       switch (this._typeId) {
         case EmptyTypeId: {
-          return new Empty()
+          return _Empty
         }
         case SliceTypeId: {
-          if (n >= this.l) {
+          if (n >= this.length) {
             return this
           } else {
             return new Slice(this.chunk, this.offset, n)
@@ -152,56 +122,44 @@ export abstract class Chunk<A> implements Iterable<A> {
   }
 }
 
-function* prependGen<A>(self: PrependN<A>) {
-  for (let i = BufferSize - self.bufferUsed; i < BufferSize; i++) {
-    yield (self.buffer as A[])[i]!
+const EmptyTypeId = Symbol()
+type EmptyTypeId = typeof EmptyTypeId
+
+class Empty<A> extends Chunk<A> {
+  readonly depth = 0
+
+  readonly _typeId: EmptyTypeId = EmptyTypeId
+  readonly left = this
+  readonly right = this
+  readonly length = 0
+
+  get(n: number): A | undefined {
+    throw new ArrayIndexOutOfBoundsException(n)
   }
-  const el = self.end.length
-  for (let i = 0; i < el; i++) {
-    yield self.end.get(i)!
+
+  constructor() {
+    super()
+  }
+
+  copyToArray(_n: number, _array: Array<A>) {
+    // no-op
+  }
+
+  [Symbol.iterator](): Iterator<A> {
+    return {
+      next: () => ({
+        value: 0,
+        done: true
+      })
+    }
   }
 }
 
-function* appendGen<A>(self: AppendN<A>) {
-  const sl = self.start.length
-  for (let i = 0; i < sl; i++) {
-    yield self.start.get(i)!
-  }
-  for (let i = 0; i < self.bufferUsed; i++) {
-    yield (self.buffer as A[])[i]!
-  }
-}
+const _Empty: Chunk<never> = new Empty()
 
-function* arrGen<A>(self: ArrayLike<A>) {
-  for (let i = 0; i < self.length; i++) {
-    yield self[i]!
-  }
-}
-
-function* singletonGen<A>(self: Singleton<A>) {
-  yield self.a
-}
-
-function* emptyGen<A>(_: Empty<A>) {
-  //
-}
-
-function* concatGen<A>(self: Concat<A>) {
-  const sl = self.left.length
-  for (let i = 0; i < sl; i++) {
-    yield self.left.get(i)!
-  }
-  const sr = self.right.length
-  for (let i = 0; i < sr; i++) {
-    yield self.right.get(i)!
-  }
-}
-
-function* sliceGen<A>(self: Slice<A>) {
-  const sl = self.chunk.length
-  for (let i = self.offset; i < Math.min(sl, self.offset + self.l); i++) {
-    yield self.get(i)!
-  }
+export function isEmpty<A>(_: Chunk<A>): _ is Empty<A> {
+  concrete(_)
+  return _._typeId === EmptyTypeId
 }
 
 /**
@@ -226,9 +184,10 @@ type AppendNTypeId = typeof AppendNTypeId
 class AppendN<A> extends Chunk<A> {
   readonly _typeId: AppendNTypeId = AppendNTypeId
 
-  get length(): number {
-    return this.start.length + this.bufferUsed
-  }
+  readonly depth = 0
+  readonly left = _Empty
+  readonly right = _Empty
+  readonly length: number
 
   constructor(
     readonly start: Chunk<A>,
@@ -237,6 +196,7 @@ class AppendN<A> extends Chunk<A> {
     readonly chain: AtomicNumber
   ) {
     super()
+    this.length = this.start.length + this.bufferUsed
   }
 
   get(n: number): A | undefined {
@@ -269,6 +229,11 @@ class AppendN<A> extends Chunk<A> {
     this.start.copyToArray(n, array)
     _copy(this.buffer as A[], 0, array, this.start.length + n, this.bufferUsed)
   }
+
+  [Symbol.iterator](): Iterator<A> {
+    const k = this.toArray()
+    return k[Symbol.iterator]()
+  }
 }
 
 const ArrTypeId = Symbol()
@@ -276,21 +241,17 @@ type ArrTypeId = typeof ArrTypeId
 
 abstract class Arr<A> extends Chunk<A> {
   readonly _typeId: ArrTypeId = ArrTypeId
-
-  abstract get arrayLike(): ArrayLike<A>
 }
 
 class PlainArr<A> extends Arr<A> {
+  readonly depth = 0
+  readonly left = _Empty
+  readonly right = _Empty
+  readonly length: number
+
   constructor(readonly array: readonly A[]) {
     super()
-  }
-
-  get arrayLike(): ArrayLike<A> {
-    return this.array
-  }
-
-  get length(): number {
-    return this.array.length
+    this.length = array.length
   }
 
   get(n: number): A | undefined {
@@ -307,19 +268,21 @@ class PlainArr<A> extends Arr<A> {
   copyToArray(n: number, array: Array<A>) {
     _copy(this.array, 0, array, n, this.length)
   }
+
+  [Symbol.iterator](): Iterator<A> {
+    return this.array[Symbol.iterator]()
+  }
 }
 
 class Uint8Arr extends Arr<number> {
+  readonly depth = 0
+  readonly left = _Empty
+  readonly right = _Empty
+  readonly length: number
+
   constructor(readonly array: Uint8Array) {
     super()
-  }
-
-  get arrayLike(): ArrayLike<number> {
-    return this.array
-  }
-
-  get length(): number {
-    return this.array.length
+    this.length = array.length
   }
 
   get(n: number): number | undefined {
@@ -329,35 +292,12 @@ class Uint8Arr extends Arr<number> {
     return this.array[n]
   }
 
-  toArray(): readonly number[] {
-    return Array.from(this.array)
-  }
-
   copyToArray(n: number, array: Array<number>) {
     _copy(this.array, 0, array, n, this.length)
   }
-}
 
-const EmptyTypeId = Symbol()
-type EmptyTypeId = typeof EmptyTypeId
-
-class Empty<A> extends Chunk<A> {
-  readonly _typeId: EmptyTypeId = EmptyTypeId
-
-  get length(): number {
-    return 0
-  }
-
-  get(n: number): A | undefined {
-    throw new ArrayIndexOutOfBoundsException(n)
-  }
-
-  constructor() {
-    super()
-  }
-
-  copyToArray(_n: number, _array: Array<A>) {
-    //
+  [Symbol.iterator](): Iterator<number> {
+    return this.array[Symbol.iterator]()
   }
 }
 
@@ -365,17 +305,20 @@ const SliceTypeId = Symbol()
 type SliceTypeId = typeof SliceTypeId
 
 class Slice<A> extends Chunk<A> {
+  readonly depth = 0
+  readonly left = _Empty
+  readonly right = _Empty
   readonly _typeId: SliceTypeId = SliceTypeId
-
-  get length(): number {
-    return this.l
-  }
 
   get(n: number): A | undefined {
     return this.chunk.get(n + this.offset)
   }
 
-  constructor(readonly chunk: Chunk<A>, readonly offset: number, readonly l: number) {
+  constructor(
+    readonly chunk: Chunk<A>,
+    readonly offset: number,
+    readonly length: number
+  ) {
     super()
   }
 
@@ -388,17 +331,22 @@ class Slice<A> extends Chunk<A> {
       j += 1
     }
   }
+
+  [Symbol.iterator](): Iterator<A> {
+    const k = this.toArray()
+    return k[Symbol.iterator]()
+  }
 }
 
 const SingletonTypeId = Symbol()
 type SingletonTypeId = typeof SingletonTypeId
 
 class Singleton<A> extends Chunk<A> {
+  readonly depth = 0
+  readonly left = _Empty
+  readonly right = _Empty
+  readonly length = 1
   readonly _typeId: SingletonTypeId = SingletonTypeId
-
-  get length(): number {
-    return 1
-  }
 
   get(n: number): A | undefined {
     if (n === 0) {
@@ -414,17 +362,22 @@ class Singleton<A> extends Chunk<A> {
   copyToArray(n: number, array: Array<A>) {
     array[n] = this.a
   }
+
+  [Symbol.iterator](): Iterator<A> {
+    const k = this.toArray()
+    return k[Symbol.iterator]()
+  }
 }
 
 const PrependNTypeId = Symbol()
 type PrependNTypeId = typeof PrependNTypeId
 
 class PrependN<A> extends Chunk<A> {
+  readonly depth = 0
+  readonly left = _Empty
+  readonly right = _Empty
+  readonly length: number
   readonly _typeId: PrependNTypeId = PrependNTypeId
-
-  get length(): number {
-    return this.end.length + this.bufferUsed
-  }
 
   get(n: number): A | undefined {
     if (n < this.bufferUsed) {
@@ -444,6 +397,7 @@ class PrependN<A> extends Chunk<A> {
     readonly chain: AtomicNumber
   ) {
     super()
+    this.length = this.end.length + this.bufferUsed
   }
 
   copyToArray(n: number, array: Array<A>) {
@@ -466,6 +420,11 @@ class PrependN<A> extends Chunk<A> {
       return new PrependN(chunk.concat(this.end), buffer, 1, new AtomicNumber(1))
     }
   }
+
+  [Symbol.iterator](): Iterator<A> {
+    const k = this.toArray()
+    return k[Symbol.iterator]()
+  }
 }
 
 function _copy<A>(
@@ -485,11 +444,9 @@ const ConcatTypeId = Symbol()
 type ConcatTypeId = typeof ConcatTypeId
 
 class Concat<A> extends Chunk<A> {
+  readonly depth: number
   readonly _typeId: ConcatTypeId = ConcatTypeId
-
-  get length(): number {
-    return this.left.length + this.right.length
-  }
+  readonly length: number
 
   get(n: number): A | undefined {
     return n < this.left.length
@@ -497,25 +454,20 @@ class Concat<A> extends Chunk<A> {
       : this.right.get(n - this.left.length)
   }
 
-  get depth(): number {
-    return 1 + Math.max(this.left.depth, this.right.depth)
-  }
-
-  constructor(readonly _left: Chunk<A>, readonly _right: Chunk<A>) {
+  constructor(readonly left: Chunk<A>, readonly right: Chunk<A>) {
     super()
-  }
-
-  get left(): Chunk<A> {
-    return this._left
-  }
-
-  get right(): Chunk<A> {
-    return this._right
+    this.depth = 1 + Math.max(this.left.depth, this.right.depth)
+    this.length = this.left.length + this.right.length
   }
 
   copyToArray(n: number, array: Array<A>) {
     this.left.copyToArray(n, array)
     this.right.copyToArray(n + this.left.length, array)
+  }
+
+  [Symbol.iterator](): Iterator<A> {
+    const k = this.toArray()
+    return k[Symbol.iterator]()
   }
 }
 
@@ -530,7 +482,7 @@ export function single<A>(a: A): Chunk<A> {
  * Builds an empty chunk
  */
 export function empty<A>(): Chunk<A> {
-  return new Empty()
+  return _Empty
 }
 
 /**
