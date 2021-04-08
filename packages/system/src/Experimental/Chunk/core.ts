@@ -20,7 +20,7 @@ export abstract class Chunk<A> implements Iterable<A> {
   abstract readonly left: Chunk<A>
   abstract readonly right: Chunk<A>
   abstract copyToArray(n: number, array: Array<A>): void
-  abstract get(n: number): A | undefined
+  abstract get(n: number): A
 
   private arrayCache: readonly A[] | undefined
 
@@ -32,6 +32,10 @@ export abstract class Chunk<A> implements Iterable<A> {
     this.copyToArray(0, arr)
     this.arrayCache = arr
     return arr
+  }
+
+  toArrayLike(): ArrayLike<A> {
+    return this.toArray()
   }
 
   abstract [Symbol.iterator](): Iterator<A>
@@ -145,7 +149,7 @@ class Empty<A> extends Chunk<A> {
   readonly right = this
   readonly length = 0
 
-  get(n: number): A | undefined {
+  get(n: number): A {
     throw new ArrayIndexOutOfBoundsException(n)
   }
 
@@ -206,7 +210,7 @@ class AppendN<A> extends Chunk<A> {
     this.length = this.start.length + this.bufferUsed
   }
 
-  get(n: number): A | undefined {
+  get(n: number): A {
     if (n < this.start.length) {
       return this.start.get(n)
     }
@@ -214,7 +218,7 @@ class AppendN<A> extends Chunk<A> {
     if (k >= this.buffer.length || k < 0) {
       throw new ArrayIndexOutOfBoundsException(n)
     }
-    return (this.buffer as A[])[k]
+    return (this.buffer as A[])[k]!
   }
 
   append<A1>(a1: A1): Chunk<A | A1> {
@@ -261,11 +265,11 @@ class PlainArr<A> extends Arr<A> {
     this.length = array.length
   }
 
-  get(n: number): A | undefined {
+  get(n: number): A {
     if (n >= this.length || n < 0) {
       throw new ArrayIndexOutOfBoundsException(n)
     }
-    return this.array[n]
+    return this.array[n]!
   }
 
   toArray(): readonly A[] {
@@ -292,11 +296,15 @@ class Uint8Arr extends Arr<number> {
     this.length = array.length
   }
 
-  get(n: number): number | undefined {
+  toArrayLike() {
+    return this.array
+  }
+
+  get(n: number): number {
     if (n >= this.length || n < 0) {
       throw new ArrayIndexOutOfBoundsException(n)
     }
-    return this.array[n]
+    return this.array[n]!
   }
 
   copyToArray(n: number, array: Array<number>) {
@@ -317,7 +325,7 @@ class Slice<A> extends Chunk<A> {
   readonly right = _Empty
   readonly _typeId: SliceTypeId = SliceTypeId
 
-  get(n: number): A | undefined {
+  get(n: number): A {
     return this.chunk.get(n + this.offset)
   }
 
@@ -355,7 +363,7 @@ class Singleton<A> extends Chunk<A> {
   readonly length = 1
   readonly _typeId: SingletonTypeId = SingletonTypeId
 
-  get(n: number): A | undefined {
+  get(n: number): A {
     if (n === 0) {
       return this.a
     }
@@ -386,13 +394,13 @@ class PrependN<A> extends Chunk<A> {
   readonly length: number
   readonly _typeId: PrependNTypeId = PrependNTypeId
 
-  get(n: number): A | undefined {
+  get(n: number): A {
     if (n < this.bufferUsed) {
       const k = BufferSize - this.bufferUsed + n
       if (k >= this.buffer.length || k < 0) {
         throw new ArrayIndexOutOfBoundsException(n)
       }
-      return (this.buffer as A[])[k]
+      return (this.buffer as A[])[k]!
     }
     return this.end.get(n - this.bufferUsed)
   }
@@ -455,7 +463,7 @@ class Concat<A> extends Chunk<A> {
   readonly _typeId: ConcatTypeId = ConcatTypeId
   readonly length: number
 
-  get(n: number): A | undefined {
+  get(n: number): A {
     return n < this.left.length
       ? this.left.get(n)
       : this.right.get(n - this.left.length)
@@ -493,7 +501,9 @@ export function empty<A>(): Chunk<A> {
 }
 
 /**
- * Builds a chunk from an array
+ * Builds a chunk from an array.
+ *
+ * NOTE: The provided array should be totally filled, no holes are allowed
  */
 export function fromArray(array: Uint8Array): Chunk<number>
 export function fromArray<A>(array: readonly A[]): Chunk<A>
@@ -562,10 +572,10 @@ export function toArray<A>(self: Chunk<A>): readonly A[] {
 /**
  * Safely get a value
  */
-export function get_<A>(self: Chunk<A>, n: number): O.Option<NonNullable<A>> {
+export function get_<A>(self: Chunk<A>, n: number): O.Option<A> {
   return !Number.isInteger(n) || n < 0 || n >= self.length
     ? O.none
-    : O.fromNullable(self.get(n))
+    : O.some(self.get(n))
 }
 
 /**
@@ -574,13 +584,13 @@ export function get_<A>(self: Chunk<A>, n: number): O.Option<NonNullable<A>> {
  * @dataFirst get_
  */
 export function get(n: number) {
-  return <A>(self: Chunk<A>): O.Option<NonNullable<A>> => get_(self, n)
+  return <A>(self: Chunk<A>): O.Option<A> => get_(self, n)
 }
 
 /**
  * Unsafely get a value
  */
-export function unsafeGet_<A>(self: Chunk<A>, n: number): A | undefined {
+export function unsafeGet_<A>(self: Chunk<A>, n: number): A {
   return self.get(n)
 }
 
@@ -590,7 +600,7 @@ export function unsafeGet_<A>(self: Chunk<A>, n: number): A | undefined {
  * @dataFirst unsafeGet_
  */
 export function unsafeGet(n: number) {
-  return <A>(self: Chunk<A>): A | undefined => unsafeGet_(self, n)
+  return <A>(self: Chunk<A>): A => unsafeGet_(self, n)
 }
 
 /**
@@ -616,11 +626,7 @@ export function equalsWith_<A>(self: Chunk<A>, eq: Equal<A>, that: Chunk<A>): bo
     const l = self.get(i)
     const r = that.get(i)
 
-    if (
-      (typeof l !== "undefined" && typeof r === "undefined") ||
-      (typeof l === "undefined" && typeof r !== "undefined") ||
-      (typeof l !== "undefined" && typeof r !== "undefined" && !eq.equals(l, r))
-    ) {
+    if (!eq.equals(l, r)) {
       return false
     }
   }
@@ -725,7 +731,7 @@ export function size<A>(self: Chunk<A>) {
  * Returns a chunk with the elements mapped by the specified function.
  */
 export function map_<A, B>(self: Chunk<A>, f: (a: A) => B): Chunk<B> {
-  const arr = self.toArray()
+  const arr = self.toArrayLike()
   const len = arr.length
   const r = new Array<B>(len)
   for (let i = 0; i < len; i++) {
