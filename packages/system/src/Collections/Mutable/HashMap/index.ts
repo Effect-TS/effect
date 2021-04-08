@@ -57,7 +57,7 @@ export class HashMap<K, V> implements Iterable<readonly [K, V]> {
 
     while (c) {
       if (this.eqKey.equals(k, c.k)) {
-        return O.fromNullable(c.v)
+        return O.some(c.v)
       }
       c = c.next
     }
