@@ -101,4 +101,24 @@ describe("Chunk", () => {
       )
     ).toEqual([6, 7, 8, 9, 10])
   })
+  it("map", () => {
+    expect(
+      pipe(
+        Chunk.from(Buffer.from("hello-world")),
+        Chunk.map((n) => (n === 45 ? 32 : n)),
+        Chunk.toArrayLike
+      )
+    ).toEqual(Buffer.from("hello world"))
+  })
+  it("chain", () => {
+    expect(
+      pipe(
+        Chunk.from(Buffer.from("hello-world")),
+        Chunk.chain((n) =>
+          n === 45 ? Chunk.from(Buffer.from("-|-")) : Chunk.single(n)
+        ),
+        Chunk.toArrayLike
+      )
+    ).toEqual(Buffer.from("hello-|-world"))
+  })
 })
