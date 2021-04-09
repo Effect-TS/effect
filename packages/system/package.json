@@ -58,6 +58,7 @@
       "Collections/Immutable/SortedSet",
       "Collections/Mutable",
       "Collections/Mutable/HashMap",
+      "Collections/Mutable/HashSet",
       "Effect",
       "Either",
       "Equal",

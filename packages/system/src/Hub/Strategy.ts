@@ -1,12 +1,12 @@
 import * as AR from "../Collections/Immutable/Array"
 import * as NEA from "../Collections/Immutable/NonEmptyArray"
+import type * as HS from "../Collections/Mutable/HashSet"
 import * as T from "../Effect"
 import { pipe } from "../Function"
 import * as P from "../Promise"
 import type { AtomicBoolean } from "../Support/AtomicBoolean"
 import * as MQ from "../Support/MutableQueue"
 import * as HP from "./_internal/HashedPair"
-import type * as HS from "./_internal/HashSet"
 import type * as InternalHub from "./_internal/Hub"
 import * as U from "./_internal/unsafe"
 
