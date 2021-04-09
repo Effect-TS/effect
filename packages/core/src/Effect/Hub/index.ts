@@ -1,5 +1,5 @@
 // tracing: off
 
-import "../Operator"
+import "../../Operator"
 
 export * from "@effect-ts/system/Hub"
