@@ -340,3 +340,46 @@ export function corresponds<A, B>(
 ): (self: Chunk<A>) => boolean {
   return (self) => corresponds_(self, that, f)
 }
+
+/**
+ * Returns the first element of this chunk if it exists.
+ */
+export function head<A>(self: Chunk<A>): O.Option<A> {
+  return get_(self, 0)
+}
+
+/**
+ * Returns the last element of this chunk if it exists.
+ */
+export function last<A>(self: Chunk<A>): O.Option<A> {
+  return get_(self, self.length - 1)
+}
+
+/**
+ * Returns the first element of this chunk. Note that this method is partial
+ * in that it will throw an exception if the chunk is empty. Consider using
+ * `head` to explicitly handle the possibility that the chunk is empty
+ * or iterating over the elements of the chunk in lower level, performance
+ * sensitive code unless you really only need the first element of the chunk.
+ */
+export function unsafeHead<A>(self: Chunk<A>): A {
+  return self.get(0)
+}
+
+/**
+ * Returns the last element of this chunk. Note that this method is partial
+ * in that it will throw an exception if the chunk is empty. Consider using
+ * `last` to explicitly handle the possibility that the chunk is empty
+ * or iterating over the elements of the chunk in lower level, performance
+ * sensitive code unless you really only need the last element of the chunk.
+ */
+export function unsafeLast<A>(self: Chunk<A>): A {
+  return self.get(self.length - 1)
+}
+
+/**
+ * Determines if the chunk is empty.
+ */
+export function isEmpty<A>(self: Chunk<A>): boolean {
+  return self.length === 0
+}

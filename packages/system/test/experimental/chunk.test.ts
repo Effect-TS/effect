@@ -307,4 +307,17 @@ describe("Chunk", () => {
     ).toEqual(10)
     expect(order).toEqual([4, 3, 2, 1, 0])
   })
+  it("indexWhere", () => {
+    expect(
+      pipe(
+        Chunk.single(0),
+        Chunk.append(1),
+        Chunk.append(2),
+        Chunk.append(1),
+        Chunk.append(3),
+        Chunk.append(4),
+        Chunk.indexWhere(2, (n) => n > 2)
+      )
+    ).toEqual(4)
+  })
 })
