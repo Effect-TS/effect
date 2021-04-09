@@ -631,8 +631,10 @@ export class PrependN<A> extends Chunk<A> {
       const buffer = binary ? alloc(BufferSize) : new Array(BufferSize)
       buffer[BufferSize - 1] = a1
       const chunk = from(
-        this.buffer.slice(this.buffer.length - this.bufferUsed - 1) as A1[]
-      )
+        "subarray" in this.buffer
+          ? this.buffer.subarray(this.buffer.length - this.bufferUsed)
+          : this.buffer.slice(this.buffer.length - this.bufferUsed)
+      ) as Chunk<A>
       return new PrependN(
         chunk.concat(this.end),
         buffer,
