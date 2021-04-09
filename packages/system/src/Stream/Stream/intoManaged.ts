@@ -12,12 +12,12 @@ import type { Stream } from "./definitions"
  * Like `into`, but provides the result as a `Managed` to allow for scope
  * composition.
  */
-export function intoManaged_<R, R1, E, A>(
-  stream: Stream<R, E, A>,
-  queue: Q.XQueue<R1, unknown, never, unknown, TK.Take<E, A>, unknown>
-): M.Managed<R & R1, E, void> {
+export function intoManaged_<R, E, O>(
+  stream: Stream<R, E, O>,
+  queue: Q.XQueue<R, never, never, unknown, TK.Take<E, O>, unknown>
+): M.Managed<R, E, void> {
   return M.chain_(stream.proc, (as) => {
-    const go: T.Effect<R & R1, never, void> = T.foldCauseM_(
+    const go: T.Effect<R, never, void> = T.foldCauseM_(
       as,
       (o) =>
         O.fold_(
@@ -28,7 +28,7 @@ export function intoManaged_<R, R1, E, A>(
       (a) => T.zipRight_(queue.offer(TK.chunk(a)), go)
     )
 
-    return T.toManaged(go)
+    return M.asUnit(T.toManaged(go))
   })
 }
 
@@ -36,8 +36,8 @@ export function intoManaged_<R, R1, E, A>(
  * Like `into`, but provides the result as a `Managed` to allow for scope
  * composition.
  */
-export function intoManaged<R1, E, A>(
-  queue: Q.XQueue<R1, unknown, never, unknown, TK.Take<E, A>, unknown>
+export function intoManaged<R, E, A>(
+  queue: Q.XQueue<R, never, never, unknown, TK.Take<E, A>, unknown>
 ) {
-  return <R>(self: Stream<R, E, A>) => intoManaged_(self, queue)
+  return (self: Stream<R, E, A>) => intoManaged_(self, queue)
 }

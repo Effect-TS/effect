@@ -1,10 +1,10 @@
 // tracing: off
 
-import * as T from "../_internal/effect"
+import { pipe } from "../../Function"
 import * as M from "../_internal/managed"
+import { broadcastedQueuesDynamic_ } from "./broadcastedQueuesDynamic"
 import type { Stream } from "./definitions"
-import { distributedWithDynamic_ } from "./distributedWithDynamic"
-import { flattenExitOption } from "./flattenExitOption"
+import { flattenTake } from "./flattenTake"
 import { fromQueueWithShutdown } from "./fromQueueWithShutdown"
 
 /**
@@ -15,18 +15,10 @@ import { fromQueueWithShutdown } from "./fromQueueWithShutdown"
 export function broadcastDynamic_<R, E, O>(
   self: Stream<R, E, O>,
   maximumLag: number
-): M.Managed<R, never, T.UIO<Stream<unknown, E, O>>> {
-  return M.map_(
-    M.map_(
-      distributedWithDynamic_(
-        self,
-        maximumLag,
-        (_) => T.succeed((_) => true),
-        (_) => T.unit
-      ),
-      T.map(([_, x]) => x)
-    ),
-    T.map((_) => flattenExitOption(fromQueueWithShutdown(_)))
+): M.Managed<R, never, M.Managed<unknown, never, Stream<unknown, E, O>>> {
+  return pipe(
+    broadcastedQueuesDynamic_(self, maximumLag),
+    M.map(M.map((_) => flattenTake(fromQueueWithShutdown(_))))
   )
 }
 

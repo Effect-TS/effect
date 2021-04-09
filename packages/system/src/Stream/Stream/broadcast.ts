@@ -4,7 +4,7 @@ import * as A from "../../Chunk"
 import * as M from "../_internal/managed"
 import { broadcastedQueues_ } from "./broadcastedQueues"
 import type { Stream } from "./definitions"
-import { flattenExitOption } from "./flattenExitOption"
+import { flattenTake } from "./flattenTake"
 import { fromQueueWithShutdown } from "./fromQueueWithShutdown"
 
 /**
@@ -28,6 +28,6 @@ export function broadcast_<R, E, O>(
 ): M.Managed<R, never, A.Chunk<Stream<unknown, E, O>>> {
   return M.map_(
     broadcastedQueues_(self, n, maximumLag),
-    A.map((q) => flattenExitOption(fromQueueWithShutdown(q)))
+    A.map((q) => flattenTake(fromQueueWithShutdown(q)))
   )
 }

@@ -24,7 +24,7 @@ describe("Stream", () => {
 
       const copies = await pipe(
         stream,
-        S.broadcast(2, Number.MAX_SAFE_INTEGER),
+        S.broadcast(2, 10),
         M.use(
           T.forEachPar(
             flow(
