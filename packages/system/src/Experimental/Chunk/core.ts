@@ -89,12 +89,6 @@ export abstract class Chunk<A> implements Iterable<A> {
     if (that._typeId === EmptyTypeId) {
       return this
     }
-    if (that._typeId === SingletonTypeId) {
-      return this.append(that.a)
-    }
-    if (this._typeId === SingletonTypeId) {
-      return that.prepend(this.a)
-    }
     if (this._typeId === AppendNTypeId) {
       const chunk = fromArray(this.buffer as A1[]).take(this.bufferUsed)
       return this.start.concat(chunk).concat(that)
