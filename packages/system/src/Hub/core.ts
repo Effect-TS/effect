@@ -5,12 +5,14 @@ import * as T from "../Effect"
 import * as ES from "../Effect/ExecutionStrategy"
 import * as EQ from "../Equal"
 import * as Ex from "../Exit"
+import * as F from "../Fiber"
 import { pipe } from "../Function"
 import * as H from "../Hash"
 import * as M from "../Managed"
 import * as RM from "../Managed/ReleaseMap"
 import * as P from "../Promise"
 import * as Q from "../Queue"
+import * as Ref from "../Ref"
 import * as AB from "../Support/AtomicBoolean"
 import * as MQ from "../Support/MutableQueue"
 import * as HP from "./_internal/HashedPair"
@@ -562,6 +564,28 @@ export function makeBounded<A>(requestedCapacity: number): T.UIO<Hub<A>> {
 }
 
 /**
+ * Creates a bounded hub with the back pressure strategy. The hub will retain
+ * messages until they have been taken by all subscribers, applying back
+ * pressure to publishers if the hub is at capacity.
+ *
+ * For best performance use capacities that are powers of two.
+ */
+export function unsafeMakeBounded<A>(requestedCapacity: number): Hub<A> {
+  const releaseMap = new RM.ReleaseMap(
+    Ref.unsafeMakeRef<RM.State>(new RM.Running(0, new Map()))
+  )
+
+  return unsafeMakeHub(
+    HF.makeBounded<A>(requestedCapacity),
+    makeSubscribersHashSet<A>(),
+    releaseMap,
+    P.unsafeMake<never, void>(F.None),
+    new AB.AtomicBoolean(false),
+    new S.BackPressure()
+  )
+}
+
+/**
  * Creates a bounded hub with the dropping strategy. The hub will drop new
  * messages if the hub is at capacity.
  *
@@ -573,6 +597,27 @@ export function makeDropping<A>(requestedCapacity: number): T.UIO<Hub<A>> {
       return HF.makeBounded<A>(requestedCapacity)
     }),
     (_) => makeHub(_, new S.Dropping())
+  )
+}
+
+/**
+ * Creates a bounded hub with the dropping strategy. The hub will drop new
+ * messages if the hub is at capacity.
+ *
+ * For best performance use capacities that are powers of two.
+ */
+export function unsafeMakeDropping<A>(requestedCapacity: number): Hub<A> {
+  const releaseMap = new RM.ReleaseMap(
+    Ref.unsafeMakeRef<RM.State>(new RM.Running(0, new Map()))
+  )
+
+  return unsafeMakeHub(
+    HF.makeBounded<A>(requestedCapacity),
+    makeSubscribersHashSet<A>(),
+    releaseMap,
+    P.unsafeMake<never, void>(F.None),
+    new AB.AtomicBoolean(false),
+    new S.Dropping()
   )
 }
 
@@ -592,6 +637,27 @@ export function makeSliding<A>(requestedCapacity: number): T.UIO<Hub<A>> {
 }
 
 /**
+ * Creates a bounded hub with the sliding strategy. The hub will add new
+ * messages and drop old messages if the hub is at capacity.
+ *
+ * For best performance use capacities that are powers of two.
+ */
+export function unsafeMakeSliding<A>(requestedCapacity: number): Hub<A> {
+  const releaseMap = new RM.ReleaseMap(
+    Ref.unsafeMakeRef<RM.State>(new RM.Running(0, new Map()))
+  )
+
+  return unsafeMakeHub(
+    HF.makeBounded<A>(requestedCapacity),
+    makeSubscribersHashSet<A>(),
+    releaseMap,
+    P.unsafeMake<never, void>(F.None),
+    new AB.AtomicBoolean(false),
+    new S.Sliding()
+  )
+}
+
+/**
  * Creates an unbounded hub.
  */
 export function makeUnbounded<A>(): T.UIO<Hub<A>> {
@@ -602,6 +668,25 @@ export function makeUnbounded<A>(): T.UIO<Hub<A>> {
     (_) => makeHub(_, new S.Dropping())
   )
 }
+
+/**
+ * Creates an unbounded hub.
+ */
+export function unsafeMakeUnbounded<A>(): Hub<A> {
+  const releaseMap = new RM.ReleaseMap(
+    Ref.unsafeMakeRef<RM.State>(new RM.Running(0, new Map()))
+  )
+
+  return unsafeMakeHub(
+    HF.makeUnbounded<A>(),
+    makeSubscribersHashSet<A>(),
+    releaseMap,
+    P.unsafeMake<never, void>(F.None),
+    new AB.AtomicBoolean(false),
+    new S.Dropping()
+  )
+}
+
 class UnsafeMakeHubImplementation<A> extends XHub<
   unknown,
   unknown,
@@ -715,21 +800,11 @@ class UnsafeMakeHubImplementation<A> extends XHub<
 }
 
 function makeHub<A>(hub: InternalHub.Hub<A>, strategy: S.Strategy<A>): T.UIO<Hub<A>> {
-  const eqHashedPair = EQ.makeEqual<HH.HasHash>(
-    (x, y) => x[HH.hashSym]() === y[HH.hashSym]()
-  )
-  const hashHashedPair = H.makeHash<HH.HasHash>((x) => x[HH.hashSym]())
-
   return T.chain_(RM.makeReleaseMap, (releaseMap) => {
     return T.map_(P.make<never, void>(), (promise) => {
       return unsafeMakeHub(
         hub,
-        HS.make<
-          HP.HashedPair<
-            InternalHub.Subscription<A>,
-            MQ.MutableQueue<P.Promise<never, A>>
-          >
-        >(eqHashedPair, hashHashedPair),
+        makeSubscribersHashSet<A>(),
         releaseMap,
         promise,
         new AB.AtomicBoolean(false),
@@ -930,4 +1005,17 @@ function unsafeMakeSubscription<A>(
     shutdownFlag,
     strategy
   )
+}
+
+function makeSubscribersHashSet<A>(): HS.HashSet<
+  HP.HashedPair<InternalHub.Subscription<A>, MQ.MutableQueue<P.Promise<never, A>>>
+> {
+  const eqHashedPair = EQ.makeEqual<HH.HasHash>(
+    (x, y) => x[HH.hashSym]() === y[HH.hashSym]()
+  )
+  const hashHashedPair = H.makeHash<HH.HasHash>((x) => x[HH.hashSym]())
+
+  return HS.make<
+    HP.HashedPair<InternalHub.Subscription<A>, MQ.MutableQueue<P.Promise<never, A>>>
+  >(eqHashedPair, hashHashedPair)
 }
