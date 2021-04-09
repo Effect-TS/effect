@@ -133,7 +133,7 @@ describe("Chunk", () => {
     )
     expect(Chunk.toArray(result)).toEqual([2, 3])
   })
-  it("arrayLikeIterator", async () => {
+  it("arrayLikeIterator", () => {
     const it = pipe(
       Chunk.single(0),
       Chunk.concat(Chunk.single(1)),
@@ -152,7 +152,7 @@ describe("Chunk", () => {
 
     expect(results).toEqual([Buffer.of(0), Buffer.of(1), Buffer.of(2), Buffer.of(3)])
   })
-  it("equals", async () => {
+  it("equals", () => {
     const a = pipe(
       Chunk.single(0),
       Chunk.concat(Chunk.single(1)),
@@ -168,5 +168,32 @@ describe("Chunk", () => {
       Chunk.append(4)
     )
     expect(Chunk.equals_(a, b)).toEqual(true)
+  })
+  it("dropWhile", () => {
+    expect(
+      pipe(
+        Chunk.single(0),
+        Chunk.append(1),
+        Chunk.append(2),
+        Chunk.append(3),
+        Chunk.append(4),
+        Chunk.dropWhile((n) => n < 2),
+        Chunk.toArray
+      )
+    ).toEqual([2, 3, 4])
+  })
+  it("dropWhile", async () => {
+    expect(
+      await pipe(
+        Chunk.single(0),
+        Chunk.append(1),
+        Chunk.append(2),
+        Chunk.append(3),
+        Chunk.append(4),
+        Chunk.dropWhileM((n) => T.delay(1)(T.succeed(n < 2))),
+        T.map(Chunk.toArray),
+        T.runPromise
+      )
+    ).toEqual([2, 3, 4])
   })
 })
