@@ -24,7 +24,7 @@ export type HubDequeue<R, E, A> = Q.XQueue<never, R, unknown, E, never, A>
 
 export type HubEnqueue<R, E, A> = Q.XQueue<R, never, E, unknown, A, unknown>
 
-export type HubType<A> = Hub<unknown, unknown, never, never, A, A>
+export type Hub<A> = XHub<unknown, unknown, never, never, A, A>
 
 export const HubTypeId = Symbol()
 
@@ -36,7 +36,7 @@ export const HubTypeId = Symbol()
  * messages can require an environment of type `RB` and fail with an error of
  * type `EB`.
  */
-export abstract class Hub<RA, RB, EA, EB, A, B> {
+export abstract class XHub<RA, RB, EA, EB, A, B> {
   readonly typeId: typeof HubTypeId = HubTypeId;
 
   readonly [PR._RA]!: (_: RA) => void;
@@ -95,7 +95,7 @@ export abstract class Hub<RA, RB, EA, EB, A, B> {
  * Waits for the hub to be shut down.
  */
 export function awaitShutdown<RA, RB, EA, EB, A, B>(
-  self: Hub<RA, RB, EA, EB, A, B>
+  self: XHub<RA, RB, EA, EB, A, B>
 ): T.UIO<void> {
   return self.awaitShutdown
 }
@@ -104,7 +104,7 @@ export function awaitShutdown<RA, RB, EA, EB, A, B>(
  * The maximum capacity of the hub.
  */
 export function capacity<RA, RB, EA, EB, A, B>(
-  self: Hub<RA, RB, EA, EB, A, B>
+  self: XHub<RA, RB, EA, EB, A, B>
 ): number {
   return self.capacity
 }
@@ -113,7 +113,7 @@ export function capacity<RA, RB, EA, EB, A, B>(
  * Checks whether the hub is shut down.
  */
 export function isShutdown<RA, RB, EA, EB, A, B>(
-  self: Hub<RA, RB, EA, EB, A, B>
+  self: XHub<RA, RB, EA, EB, A, B>
 ): T.UIO<boolean> {
   return self.isShutdown
 }
@@ -123,7 +123,7 @@ export function isShutdown<RA, RB, EA, EB, A, B>(
  * published to the hub.
  */
 export function publish_<RA, RB, EA, EB, A, B>(
-  self: Hub<RA, RB, EA, EB, A, B>,
+  self: XHub<RA, RB, EA, EB, A, B>,
   a: A
 ): T.Effect<RA, EA, boolean> {
   return self.publish(a)
@@ -136,7 +136,7 @@ export function publish_<RA, RB, EA, EB, A, B>(
  * @dataFirst publish_
  */
 export function publish<A>(a: A) {
-  return <RA, RB, EA, EB, B>(self: Hub<RA, RB, EA, EB, A, B>) => publish_(self, a)
+  return <RA, RB, EA, EB, B>(self: XHub<RA, RB, EA, EB, A, B>) => publish_(self, a)
 }
 
 /**
@@ -144,7 +144,7 @@ export function publish<A>(a: A) {
  * they were published to the hub.
  */
 export function publishAll_<RA, RB, EA, EB, A, B>(
-  self: Hub<RA, RB, EA, EB, A, B>,
+  self: XHub<RA, RB, EA, EB, A, B>,
   as: Iterable<A>
 ): T.Effect<RA, EA, boolean> {
   return self.publishAll(as)
@@ -157,14 +157,14 @@ export function publishAll_<RA, RB, EA, EB, A, B>(
  * @dataFirst publishAll_
  */
 export function publishAll<A>(as: Iterable<A>) {
-  return <RA, RB, EA, EB, B>(self: Hub<RA, RB, EA, EB, A, B>) => publishAll_(self, as)
+  return <RA, RB, EA, EB, B>(self: XHub<RA, RB, EA, EB, A, B>) => publishAll_(self, as)
 }
 
 /**
  * Shuts down the hub.
  */
 export function shutdown<RA, RB, EA, EB, A, B>(
-  self: Hub<RA, RB, EA, EB, A, B>
+  self: XHub<RA, RB, EA, EB, A, B>
 ): T.UIO<void> {
   return self.shutdown
 }
@@ -173,7 +173,7 @@ export function shutdown<RA, RB, EA, EB, A, B>(
  * The current number of messages in the hub.
  */
 export function size<RA, RB, EA, EB, A, B>(
-  self: Hub<RA, RB, EA, EB, A, B>
+  self: XHub<RA, RB, EA, EB, A, B>
 ): T.UIO<number> {
   return self.size
 }
@@ -184,7 +184,7 @@ export function size<RA, RB, EA, EB, A, B>(
  * message from the hub each time.
  */
 export function subscribe<RA, RB, EA, EB, A, B>(
-  self: Hub<RA, RB, EA, EB, A, B>
+  self: XHub<RA, RB, EA, EB, A, B>
 ): M.Managed<unknown, never, HubDequeue<RB, EB, B>> {
   return self.subscribe
 }
@@ -194,9 +194,9 @@ export function subscribe<RA, RB, EA, EB, A, B>(
  * function.
  */
 export function contramapM_<RA, RB, RC, EA, EB, EC, A, B, C>(
-  self: Hub<RA, RB, EA, EB, A, B>,
+  self: XHub<RA, RB, EA, EB, A, B>,
   f: (c: C) => T.Effect<RC, EC, A>
-): Hub<RC & RA, RB, EA | EC, EB, C, B> {
+): XHub<RC & RA, RB, EA | EC, EB, C, B> {
   return dimapM_(self, f, T.succeed)
 }
 
@@ -207,7 +207,7 @@ export function contramapM_<RA, RB, RC, EA, EB, EC, A, B, C>(
  * @dataFirst contramapM_
  */
 export function contramapM<RC, EC, A, C>(f: (c: C) => T.Effect<RC, EC, A>) {
-  return <RA, RB, EA, EB, B>(self: Hub<RA, RB, EA, EB, A, B>) => contramapM_(self, f)
+  return <RA, RB, EA, EB, B>(self: XHub<RA, RB, EA, EB, A, B>) => contramapM_(self, f)
 }
 
 /**
@@ -215,10 +215,10 @@ export function contramapM<RC, EC, A, C>(f: (c: C) => T.Effect<RC, EC, A>) {
  * specified functions.
  */
 export function dimap_<RA, RB, EA, EB, A, B, C, D>(
-  self: Hub<RA, RB, EA, EB, A, B>,
+  self: XHub<RA, RB, EA, EB, A, B>,
   f: (c: C) => A,
   g: (b: B) => D
-): Hub<RA, RB, EA, EB, C, D> {
+): XHub<RA, RB, EA, EB, C, D> {
   return dimapM_(
     self,
     (c) => T.succeed(f(c)),
@@ -233,10 +233,10 @@ export function dimap_<RA, RB, EA, EB, A, B, C, D>(
  * @dataFirst dimap_
  */
 export function dimap<A, B, C, D>(f: (c: C) => A, g: (b: B) => D) {
-  return <RA, RB, EA, EB>(self: Hub<RA, RB, EA, EB, A, B>) => dimap_(self, f, g)
+  return <RA, RB, EA, EB>(self: XHub<RA, RB, EA, EB, A, B>) => dimap_(self, f, g)
 }
 
-class DimapMImplementation<RA, RB, RC, RD, EA, EB, EC, ED, A, B, C, D> extends Hub<
+class DimapMImplementation<RA, RB, RC, RD, EA, EB, EC, ED, A, B, C, D> extends XHub<
   RC & RA,
   RD & RB,
   EA | EC,
@@ -252,7 +252,7 @@ class DimapMImplementation<RA, RB, RC, RD, EA, EB, EC, ED, A, B, C, D> extends H
   subscribe: M.Managed<unknown, never, HubDequeue<RD & RB, ED | EB, D>>
 
   constructor(
-    readonly source: Hub<RA, RB, EA, EB, A, B>,
+    readonly source: XHub<RA, RB, EA, EB, A, B>,
     readonly f: (c: C) => T.Effect<RC, EC, A>,
     g: (b: B) => T.Effect<RD, ED, D>
   ) {
@@ -281,10 +281,10 @@ class DimapMImplementation<RA, RB, RC, RD, EA, EB, EC, ED, A, B, C, D> extends H
  * specified effectual functions.
  */
 export function dimapM_<RA, RB, RC, RD, EA, EB, EC, ED, A, B, C, D>(
-  self: Hub<RA, RB, EA, EB, A, B>,
+  self: XHub<RA, RB, EA, EB, A, B>,
   f: (c: C) => T.Effect<RC, EC, A>,
   g: (b: B) => T.Effect<RD, ED, D>
-): Hub<RC & RA, RD & RB, EA | EC, EB | ED, C, D> {
+): XHub<RC & RA, RD & RB, EA | EC, EB | ED, C, D> {
   return new DimapMImplementation(self, f, g)
 }
 
@@ -298,10 +298,10 @@ export function dimapM<A, B, C, D, EC, ED, RC, RD>(
   f: (c: C) => T.Effect<RC, EC, A>,
   g: (b: B) => T.Effect<RD, ED, D>
 ) {
-  return <RA, RB, EA, EB>(self: Hub<RA, RB, EA, EB, A, B>) => dimapM_(self, f, g)
+  return <RA, RB, EA, EB>(self: XHub<RA, RB, EA, EB, A, B>) => dimapM_(self, f, g)
 }
 
-class filterInputMImplementation<RA, RA1, RB, EA, EA1, EB, A, B> extends Hub<
+class filterInputMImplementation<RA, RA1, RB, EA, EA1, EB, A, B> extends XHub<
   RA & RA1,
   RB,
   EA | EA1,
@@ -317,7 +317,7 @@ class filterInputMImplementation<RA, RA1, RB, EA, EA1, EB, A, B> extends Hub<
   subscribe: M.Managed<unknown, never, HubDequeue<RB, EB, B>>
 
   constructor(
-    readonly source: Hub<RA, RB, EA, EB, A, B>,
+    readonly source: XHub<RA, RB, EA, EB, A, B>,
     readonly f: (a: A) => T.Effect<RA1, EA1, boolean>
   ) {
     super()
@@ -346,7 +346,7 @@ class filterInputMImplementation<RA, RA1, RB, EA, EA1, EB, A, B> extends Hub<
  * Filters messages published to the hub using the specified function.
  */
 export function filterInput_<RA, RB, EA, EB, A, B>(
-  self: Hub<RA, RB, EA, EB, A, B>,
+  self: XHub<RA, RB, EA, EB, A, B>,
   f: (a: A) => boolean
 ) {
   return filterInputM_(self, (a) => T.succeed(f(a)))
@@ -358,7 +358,7 @@ export function filterInput_<RA, RB, EA, EB, A, B>(
  * @dataFirst filterInput_
  */
 export function filterInput<A>(f: (a: A) => boolean) {
-  return <RA, RB, EA, EB, B>(self: Hub<RA, RB, EA, EB, A, B>) => filterInput_(self, f)
+  return <RA, RB, EA, EB, B>(self: XHub<RA, RB, EA, EB, A, B>) => filterInput_(self, f)
 }
 
 /**
@@ -366,9 +366,9 @@ export function filterInput<A>(f: (a: A) => boolean) {
  * function.
  */
 export function filterInputM_<RA, RA1, RB, EA, EA1, EB, A, B>(
-  self: Hub<RA, RB, EA, EB, A, B>,
+  self: XHub<RA, RB, EA, EB, A, B>,
   f: (a: A) => T.Effect<RA1, EA1, boolean>
-): Hub<RA & RA1, RB, EA | EA1, EB, A, B> {
+): XHub<RA & RA1, RB, EA | EA1, EB, A, B> {
   return new filterInputMImplementation(self, f)
 }
 
@@ -379,16 +379,16 @@ export function filterInputM_<RA, RA1, RB, EA, EA1, EB, A, B>(
  * @dataFirst filterInputM_
  */
 export function filterInputM<RA1, EA1, A>(f: (a: A) => T.Effect<RA1, EA1, boolean>) {
-  return <RA, RB, EA, EB, B>(self: Hub<RA, RB, EA, EB, A, B>) => filterInputM_(self, f)
+  return <RA, RB, EA, EB, B>(self: XHub<RA, RB, EA, EB, A, B>) => filterInputM_(self, f)
 }
 
 /**
  * Filters messages taken from the hub using the specified function.
  */
 export function filterOutput_<RA, RB, EA, EB, A, B>(
-  self: Hub<RA, RB, EA, EB, A, B>,
+  self: XHub<RA, RB, EA, EB, A, B>,
   f: (b: B) => boolean
-): Hub<RA, RB, EA, EB, A, B> {
+): XHub<RA, RB, EA, EB, A, B> {
   return filterOutputM_(self, (b) => T.succeed(f(b)))
 }
 
@@ -398,10 +398,10 @@ export function filterOutput_<RA, RB, EA, EB, A, B>(
  * @dataFirst filterOutput_
  */
 export function filterOutput<B>(f: (b: B) => boolean) {
-  return <RA, RB, EA, EB, A>(self: Hub<RA, RB, EA, EB, A, B>) => filterOutput_(self, f)
+  return <RA, RB, EA, EB, A>(self: XHub<RA, RB, EA, EB, A, B>) => filterOutput_(self, f)
 }
 
-class filterOutputMImplementation<RA, RB, RB1, EA, EB, EB1, A, B> extends Hub<
+class filterOutputMImplementation<RA, RB, RB1, EA, EB, EB1, A, B> extends XHub<
   RA,
   RB & RB1,
   EA,
@@ -417,7 +417,7 @@ class filterOutputMImplementation<RA, RB, RB1, EA, EB, EB1, A, B> extends Hub<
   subscribe: M.Managed<unknown, never, HubDequeue<RB & RB1, EB | EB1, B>>
 
   constructor(
-    readonly source: Hub<RA, RB, EA, EB, A, B>,
+    readonly source: XHub<RA, RB, EA, EB, A, B>,
     readonly f: (b: B) => T.Effect<RB1, EB1, boolean>
   ) {
     super()
@@ -445,9 +445,9 @@ class filterOutputMImplementation<RA, RB, RB1, EA, EB, EB1, A, B> extends Hub<
  * function.
  */
 export function filterOutputM_<RA, RB, RB1, EA, EB, EB1, A, B>(
-  self: Hub<RA, RB, EA, EB, A, B>,
+  self: XHub<RA, RB, EA, EB, A, B>,
   f: (a: B) => T.Effect<RB1, EB1, boolean>
-): Hub<RA, RB & RB1, EA, EB | EB1, A, B> {
+): XHub<RA, RB & RB1, EA, EB | EB1, A, B> {
   return new filterOutputMImplementation(self, f)
 }
 
@@ -458,16 +458,17 @@ export function filterOutputM_<RA, RB, RB1, EA, EB, EB1, A, B>(
  * @dataFirst filterOutputM_
  */
 export function filterOutputM<RB1, EB1, B>(f: (a: B) => T.Effect<RB1, EB1, boolean>) {
-  return <RA, RB, EA, EB, A>(self: Hub<RA, RB, EA, EB, A, B>) => filterOutputM_(self, f)
+  return <RA, RB, EA, EB, A>(self: XHub<RA, RB, EA, EB, A, B>) =>
+    filterOutputM_(self, f)
 }
 
 /**
  * Transforms messages taken from the hub using the specified function.
  */
 export function map_<RA, RB, EA, EB, A, B, C>(
-  self: Hub<RA, RB, EA, EB, A, B>,
+  self: XHub<RA, RB, EA, EB, A, B>,
   f: (b: B) => C
-): Hub<RA, RB, EA, EB, A, C> {
+): XHub<RA, RB, EA, EB, A, C> {
   return mapM_(self, (b) => T.succeed(f(b)))
 }
 
@@ -477,7 +478,7 @@ export function map_<RA, RB, EA, EB, A, B, C>(
  * @dataFirst map_
  */
 export function map<B, C>(f: (b: B) => C) {
-  return <RA, RB, EA, EB, A>(self: Hub<RA, RB, EA, EB, A, B>) => map_(self, f)
+  return <RA, RB, EA, EB, A>(self: XHub<RA, RB, EA, EB, A, B>) => map_(self, f)
 }
 
 /**
@@ -485,9 +486,9 @@ export function map<B, C>(f: (b: B) => C) {
  * function.
  */
 export function mapM_<RA, RB, RC, EA, EB, EC, A, B, C>(
-  self: Hub<RA, RB, EA, EB, A, B>,
+  self: XHub<RA, RB, EA, EB, A, B>,
   f: (b: B) => T.Effect<RC, EC, C>
-): Hub<RA, RC & RB, EA, EB | EC, A, C> {
+): XHub<RA, RC & RB, EA, EB | EC, A, C> {
   return dimapM_(self, (a) => T.succeed<A>(a), f)
 }
 
@@ -498,7 +499,7 @@ export function mapM_<RA, RB, RC, EA, EB, EC, A, B, C>(
  * @dataFirst mapM_
  */
 export function mapM<B, C, EC, RC>(f: (b: B) => T.Effect<RC, EC, C>) {
-  return <A, EA, EB, RA, RB>(self: Hub<RA, RB, EA, EB, A, B>) => mapM_(self, f)
+  return <A, EA, EB, RA, RB>(self: XHub<RA, RB, EA, EB, A, B>) => mapM_(self, f)
 }
 
 class ToQueueImplementation<RA, RB, EA, EB, A, B> extends Q.XQueue<
@@ -520,7 +521,7 @@ class ToQueueImplementation<RA, RB, EA, EB, A, B> extends Q.XQueue<
   takeAll: T.Effect<unknown, never, AR.Array<any>>
   takeUpTo: (n: number) => T.Effect<unknown, never, AR.Array<any>>
 
-  constructor(source: Hub<RA, RB, EA, EB, A, B>) {
+  constructor(source: XHub<RA, RB, EA, EB, A, B>) {
     super()
     this.awaitShutdown = source.awaitShutdown
     this.capacity = source.capacity
@@ -539,7 +540,7 @@ class ToQueueImplementation<RA, RB, EA, EB, A, B> extends Q.XQueue<
  * Views the hub as a queue that can only be written to.
  */
 export function toQueue<RA, RB, EA, EB, A, B>(
-  self: Hub<RA, RB, EA, EB, A, B>
+  self: XHub<RA, RB, EA, EB, A, B>
 ): HubEnqueue<RA, EA, A> {
   return new ToQueueImplementation(self)
 }
@@ -551,7 +552,7 @@ export function toQueue<RA, RB, EA, EB, A, B>(
  *
  * For best performance use capacities that are powers of two.
  */
-export function makeBounded<A>(requestedCapacity: number): T.UIO<HubType<A>> {
+export function makeBounded<A>(requestedCapacity: number): T.UIO<Hub<A>> {
   return T.chain_(
     T.effectTotal(() => {
       return HF.makeBounded<A>(requestedCapacity)
@@ -566,7 +567,7 @@ export function makeBounded<A>(requestedCapacity: number): T.UIO<HubType<A>> {
  *
  * For best performance use capacities that are powers of two.
  */
-export function makeDropping<A>(requestedCapacity: number): T.UIO<HubType<A>> {
+export function makeDropping<A>(requestedCapacity: number): T.UIO<Hub<A>> {
   return T.chain_(
     T.effectTotal(() => {
       return HF.makeBounded<A>(requestedCapacity)
@@ -581,7 +582,7 @@ export function makeDropping<A>(requestedCapacity: number): T.UIO<HubType<A>> {
  *
  * For best performance use capacities that are powers of two.
  */
-export function makeSliding<A>(requestedCapacity: number): T.UIO<HubType<A>> {
+export function makeSliding<A>(requestedCapacity: number): T.UIO<Hub<A>> {
   return T.chain_(
     T.effectTotal(() => {
       return HF.makeBounded<A>(requestedCapacity)
@@ -593,7 +594,7 @@ export function makeSliding<A>(requestedCapacity: number): T.UIO<HubType<A>> {
 /**
  * Creates an unbounded hub.
  */
-export function makeUnbounded<A>(): T.UIO<HubType<A>> {
+export function makeUnbounded<A>(): T.UIO<Hub<A>> {
   return T.chain_(
     T.effectTotal(() => {
       return HF.makeUnbounded<A>()
@@ -601,7 +602,14 @@ export function makeUnbounded<A>(): T.UIO<HubType<A>> {
     (_) => makeHub(_, new S.Dropping())
   )
 }
-class UnsafeMakeHubImplementation<A> extends Hub<unknown, unknown, never, never, A, A> {
+class UnsafeMakeHubImplementation<A> extends XHub<
+  unknown,
+  unknown,
+  never,
+  never,
+  A,
+  A
+> {
   awaitShutdown: T.UIO<void>
   capacity: number
   isShutdown: T.UIO<boolean>
@@ -706,10 +714,7 @@ class UnsafeMakeHubImplementation<A> extends Hub<unknown, unknown, never, never,
   }
 }
 
-function makeHub<A>(
-  hub: InternalHub.Hub<A>,
-  strategy: S.Strategy<A>
-): T.UIO<HubType<A>> {
+function makeHub<A>(hub: InternalHub.Hub<A>, strategy: S.Strategy<A>): T.UIO<Hub<A>> {
   const eqHashedPair = EQ.makeEqual<HH.HasHash>(
     (x, y) => x[HH.hashSym]() === y[HH.hashSym]()
   )
@@ -746,7 +751,7 @@ function unsafeMakeHub<A>(
   shutdownHook: P.Promise<never, void>,
   shutdownFlag: AB.AtomicBoolean,
   strategy: S.Strategy<A>
-): HubType<A> {
+): Hub<A> {
   return new UnsafeMakeHubImplementation(
     hub,
     subscribers,
