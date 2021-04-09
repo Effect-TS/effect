@@ -1,5 +1,4 @@
-import type { Refinement } from "@effect-ts/system/Function"
-
+import type { Refinement } from "../../../Function"
 import * as O from "../../../Option"
 import type * as Chunk from "../core"
 

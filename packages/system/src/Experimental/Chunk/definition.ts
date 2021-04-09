@@ -15,6 +15,18 @@ export function isByte(u: unknown) {
   return typeof u === "number" && u >= 0 && u <= 255
 }
 
+/**
+ * A `Chunk<A>` represents a chunk of values of type `A`. Chunks are usually
+ * backed by arrays, but expose a purely functional, safe interface
+ * to the underlying elements, and they become lazy on operations that would be
+ * costly with arrays, such as repeated concatenation.
+ *
+ * The implementation of balanced concatenation is based on the one for
+ * Conc-Trees in "Conc-Trees for Functional and Parallel Programming" by
+ * Aleksandar Prokopec and Martin Odersky.
+ *
+ * http://aleksandar-prokopec.com/resources/docs/lcpc-conc-trees.pdf
+ */
 export abstract class Chunk<A> implements Iterable<A> {
   readonly [ChunkTypeId]: ChunkTypeId = ChunkTypeId;
   readonly [_A]!: () => A
