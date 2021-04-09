@@ -40,16 +40,16 @@ export abstract class Chunk<A> implements Iterable<A> {
 
   abstract [Symbol.iterator](): Iterator<A>
 
-  append<A1>(a1: A1): Chunk<A | A1> {
-    const buffer = new Array(BufferSize)
+  append<A1>(a1: A1, binary: boolean): Chunk<A | A1> {
+    const buffer = this.binary && binary ? alloc(BufferSize) : new Array(BufferSize)
     buffer[0] = a1
-    return new AppendN(this, buffer, 1, new AtomicNumber(1))
+    return new AppendN(this, buffer, 1, new AtomicNumber(1), this.binary && binary)
   }
 
-  prepend<A1>(a1: A1): Chunk<A | A1> {
-    const buffer = new Array(BufferSize)
+  prepend<A1>(a1: A1, binary: boolean): Chunk<A | A1> {
+    const buffer = this.binary && binary ? alloc(BufferSize) : new Array(BufferSize)
     buffer[BufferSize - 1] = a1
-    return new PrependN(this, buffer, 1, new AtomicNumber(1))
+    return new PrependN(this, buffer, 1, new AtomicNumber(1), this.binary && binary)
   }
 
   take(n: number): Chunk<A> {
@@ -90,11 +90,11 @@ export abstract class Chunk<A> implements Iterable<A> {
       return this
     }
     if (this._typeId === AppendNTypeId) {
-      const chunk = fromArray(this.buffer as A1[]).take(this.bufferUsed)
+      const chunk = from(this.buffer as A1[]).take(this.bufferUsed)
       return this.start.concat(chunk).concat(that)
     }
     if (that._typeId === PrependNTypeId) {
-      const chunk = fromArray(A.takeRight_(that.buffer as A1[], that.bufferUsed))
+      const chunk = from(A.takeRight_(that.buffer as A1[], that.bufferUsed))
       return this.concat(chunk).concat(that.end)
     }
     const diff = that.depth - this.depth
@@ -193,14 +193,14 @@ class AppendN<A> extends Chunk<A> {
   readonly depth = 0
   readonly left = _Empty
   readonly right = _Empty
-  readonly binary = false
   readonly length: number
 
   constructor(
     readonly start: Chunk<A>,
-    readonly buffer: Array<unknown>,
+    readonly buffer: Array<unknown> | Uint8Array,
     readonly bufferUsed: number,
-    readonly chain: AtomicNumber
+    readonly chain: AtomicNumber,
+    readonly binary: boolean
   ) {
     super()
     this.length = this.start.length + this.bufferUsed
@@ -217,18 +217,44 @@ class AppendN<A> extends Chunk<A> {
     return (this.buffer as A[])[k]!
   }
 
-  append<A1>(a1: A1): Chunk<A | A1> {
+  append<A1>(a1: A1, binary: boolean): Chunk<A | A1> {
     if (
       this.bufferUsed < this.buffer.length &&
       this.chain.compareAndSet(this.bufferUsed, this.bufferUsed + 1)
     ) {
+      if (this.binary && !binary) {
+        const buffer = new Array(BufferSize)
+        for (let i = 0; i < BufferSize; i++) {
+          buffer[i] = this.buffer[i]
+        }
+        buffer[this.bufferUsed] = a1
+        return new AppendN(
+          this.start,
+          buffer,
+          this.bufferUsed + 1,
+          this.chain,
+          this.binary && binary
+        )
+      }
       this.buffer[this.bufferUsed] = a1
-      return new AppendN(this.start, this.buffer, this.bufferUsed + 1, this.chain)
+      return new AppendN(
+        this.start,
+        this.buffer,
+        this.bufferUsed + 1,
+        this.chain,
+        this.binary && binary
+      )
     } else {
-      const buffer = new Array(BufferSize)
+      const buffer = this.binary && binary ? alloc(BufferSize) : new Array(BufferSize)
       buffer[0] = a1
-      const chunk = fromArray(this.buffer as A1[]).take(this.bufferUsed)
-      return new AppendN(this.start.concat(chunk), buffer, 1, new AtomicNumber(1))
+      const chunk = from(this.buffer as A1[]).take(this.bufferUsed)
+      return new AppendN(
+        this.start.concat(chunk),
+        buffer,
+        1,
+        new AtomicNumber(1),
+        this.binary && binary
+      )
     }
   }
 
@@ -361,7 +387,6 @@ class Singleton<A> extends Chunk<A> {
   readonly left = _Empty
   readonly right = _Empty
   readonly length = 1
-  readonly binary = false
   readonly _typeId: SingletonTypeId = SingletonTypeId
 
   get(n: number): A {
@@ -371,7 +396,7 @@ class Singleton<A> extends Chunk<A> {
     throw new ArrayIndexOutOfBoundsException(n)
   }
 
-  constructor(readonly a: A) {
+  constructor(readonly a: A, readonly binary: boolean) {
     super()
   }
 
@@ -393,7 +418,6 @@ class PrependN<A> extends Chunk<A> {
   readonly left = _Empty
   readonly right = _Empty
   readonly length: number
-  readonly binary = false
   readonly _typeId: PrependNTypeId = PrependNTypeId
 
   get(n: number): A {
@@ -409,9 +433,10 @@ class PrependN<A> extends Chunk<A> {
 
   constructor(
     readonly end: Chunk<A>,
-    readonly buffer: Array<unknown>,
+    readonly buffer: Array<unknown> | Uint8Array,
     readonly bufferUsed: number,
-    readonly chain: AtomicNumber
+    readonly chain: AtomicNumber,
+    readonly binary: boolean
   ) {
     super()
     this.length = this.end.length + this.bufferUsed
@@ -423,18 +448,46 @@ class PrependN<A> extends Chunk<A> {
     this.end.copyToArray(n + length, array)
   }
 
-  prepend<A1>(a1: A1): Chunk<A | A1> {
+  prepend<A1>(a1: A1, binary: boolean): Chunk<A | A1> {
     if (
       this.bufferUsed < this.buffer.length &&
       this.chain.compareAndSet(this.bufferUsed, this.bufferUsed + 1)
     ) {
+      if (this.binary && !binary) {
+        const buffer = new Array(BufferSize)
+        for (let i = 0; i < BufferSize; i++) {
+          buffer[i] = this.buffer[i]
+        }
+        buffer[BufferSize - this.bufferUsed - 1] = a1
+        return new PrependN(
+          this.end,
+          this.buffer,
+          this.bufferUsed + 1,
+          this.chain,
+          this.binary && binary
+        )
+      }
       this.buffer[BufferSize - this.bufferUsed - 1] = a1
-      return new PrependN(this.end, this.buffer, this.bufferUsed + 1, this.chain)
+      return new PrependN(
+        this.end,
+        this.buffer,
+        this.bufferUsed + 1,
+        this.chain,
+        this.binary && binary
+      )
     } else {
-      const buffer = new Array(BufferSize)
+      const buffer = binary ? alloc(BufferSize) : new Array(BufferSize)
       buffer[BufferSize - 1] = a1
-      const chunk = fromArray(A.takeRight_(this.buffer as A1[], this.bufferUsed))
-      return new PrependN(chunk.concat(this.end), buffer, 1, new AtomicNumber(1))
+      const chunk = from(
+        this.buffer.slice(this.buffer.length - this.bufferUsed - 1) as A1[]
+      )
+      return new PrependN(
+        chunk.concat(this.end),
+        buffer,
+        1,
+        new AtomicNumber(1),
+        this.binary && binary
+      )
     }
   }
 
@@ -494,7 +547,14 @@ class Concat<A> extends Chunk<A> {
  * Builds a chunk of a single value
  */
 export function single<A>(a: A): Chunk<A> {
-  return new Singleton(a)
+  return new Singleton(a, false)
+}
+
+/**
+ * Builds a chunk of a single byte value
+ */
+export function byte(a: number): Chunk<number> {
+  return new Singleton(a, true)
 }
 
 /**
@@ -509,13 +569,13 @@ export function empty<A>(): Chunk<A> {
  *
  * NOTE: The provided array should be totally filled, no holes are allowed
  */
-export function fromArray(array: Uint8Array): Chunk<number>
-export function fromArray<A>(array: readonly A[]): Chunk<A>
-export function fromArray(array: readonly unknown[] | Uint8Array): Chunk<unknown> {
+export function from(array: Uint8Array): Chunk<number>
+export function from<A>(array: Iterable<A>): Chunk<A>
+export function from(array: Uint8Array | Iterable<unknown>): Chunk<unknown> {
   if ("buffer" in array) {
     return new Uint8Arr(array)
   }
-  return new PlainArr(array)
+  return Array.isArray(array) ? new PlainArr(array) : new PlainArr(Array.from(array))
 }
 
 /**
@@ -524,14 +584,30 @@ export function fromArray(array: readonly unknown[] | Uint8Array): Chunk<unknown
  * @dataFirst append_
  */
 export function append<A1>(a: A1) {
-  return <A>(self: Chunk<A>): Chunk<A | A1> => self.append(a)
+  return <A>(self: Chunk<A>): Chunk<A | A1> => self.append(a, false)
 }
 
 /**
  * Appends a value to a chunk
  */
 export function append_<A, A1>(self: Chunk<A>, a: A1): Chunk<A | A1> {
-  return self.append(a)
+  return self.append(a, false)
+}
+
+/**
+ * Appends a value to a chunk
+ *
+ * @dataFirst appendByte_
+ */
+export function appendByte(a: number) {
+  return (self: Chunk<number>): Chunk<number> => self.append(a, true)
+}
+
+/**
+ * Appends a value to a chunk
+ */
+export function appendByte_(self: Chunk<number>, a: number): Chunk<number> {
+  return self.append(a, true)
 }
 
 /**
@@ -540,14 +616,30 @@ export function append_<A, A1>(self: Chunk<A>, a: A1): Chunk<A | A1> {
  * @dataFirst prepend_
  */
 export function prepend<A1>(a: A1) {
-  return <A>(self: Chunk<A>): Chunk<A | A1> => self.prepend(a)
+  return <A>(self: Chunk<A>): Chunk<A | A1> => self.prepend(a, false)
 }
 
 /**
  * Prepends a value to a chunk
  */
 export function prepend_<A, A1>(self: Chunk<A>, a: A1): Chunk<A | A1> {
-  return self.prepend(a)
+  return self.prepend(a, false)
+}
+
+/**
+ * Appends a value to a chunk
+ *
+ * @dataFirst prependByte_
+ */
+export function prependByte(a: number) {
+  return (self: Chunk<number>): Chunk<number> => self.prepend(a, true)
+}
+
+/**
+ * Appends a value to a chunk
+ */
+export function prependByte_(self: Chunk<number>, a: number): Chunk<number> {
+  return self.prepend(a, true)
 }
 
 /**
@@ -751,7 +843,7 @@ export function map_<A, B>(self: Chunk<A>, f: (a: A) => B): Chunk<B> {
       r[i] = f(k)
     }
   }
-  return fromArray(r)
+  return from(r)
 }
 
 /**

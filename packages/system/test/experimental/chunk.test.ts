@@ -30,7 +30,7 @@ describe("Chunk", () => {
   it("fromArray", () => {
     expect(
       pipe(
-        Chunk.fromArray([1, 2, 3, 4, 5]),
+        Chunk.from([1, 2, 3, 4, 5]),
         Chunk.append(6),
         Chunk.append(7),
         Chunk.toArrayLike
@@ -40,14 +40,14 @@ describe("Chunk", () => {
   it("concat", () => {
     expect(
       pipe(
-        Chunk.fromArray([1, 2, 3, 4, 5]),
-        Chunk.concat(Chunk.fromArray([6, 7, 8, 9, 10])),
+        Chunk.from([1, 2, 3, 4, 5]),
+        Chunk.concat(Chunk.from([6, 7, 8, 9, 10])),
         Chunk.toArrayLike
       )
     ).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
   })
   it("iterable", () => {
-    expect(Chunk.toArrayLike(Chunk.fromArray([0, 1, 2]))).toEqual([0, 1, 2])
+    expect(Chunk.toArrayLike(Chunk.from([0, 1, 2]))).toEqual([0, 1, 2])
   })
   it("get", () => {
     expect(
@@ -64,26 +64,28 @@ describe("Chunk", () => {
   it("buffer", () => {
     expect(
       pipe(
-        Chunk.fromArray(Buffer.from("hello")),
-        Chunk.concat(Chunk.fromArray(Buffer.from(" "))),
-        Chunk.concat(Chunk.fromArray(Buffer.from("world"))),
+        Chunk.from(Buffer.from("hello")),
+        Chunk.concat(Chunk.from(Buffer.from(" "))),
+        Chunk.concat(Chunk.from(Buffer.from("world"))),
         Chunk.drop(6),
+        Chunk.appendByte(32),
+        Chunk.prependByte(32),
         Chunk.toArrayLike
       )
-    ).toEqual(Buffer.from("world"))
+    ).toEqual(Buffer.from(" world "))
   })
   it("stack", () => {
     let a = Chunk.empty<number>()
     for (let i = 0; i < 100_000; i++) {
-      a = Chunk.concat_(a, Chunk.fromArray([i, i]))
+      a = Chunk.concat_(a, Chunk.from([i, i]))
     }
     expect(Chunk.toArrayLike(a).length).toEqual(200_000)
   })
   it("take", () => {
     expect(
       pipe(
-        Chunk.fromArray([1, 2, 3, 4, 5]),
-        Chunk.concat(Chunk.fromArray([6, 7, 8, 9, 10])),
+        Chunk.from([1, 2, 3, 4, 5]),
+        Chunk.concat(Chunk.from([6, 7, 8, 9, 10])),
         Chunk.take(5),
         Chunk.toArrayLike
       )
@@ -92,8 +94,8 @@ describe("Chunk", () => {
   it("drop", () => {
     expect(
       pipe(
-        Chunk.fromArray([1, 2, 3, 4, 5]),
-        Chunk.concat(Chunk.fromArray([6, 7, 8, 9, 10])),
+        Chunk.from([1, 2, 3, 4, 5]),
+        Chunk.concat(Chunk.from([6, 7, 8, 9, 10])),
         Chunk.drop(5),
         Chunk.toArrayLike
       )
