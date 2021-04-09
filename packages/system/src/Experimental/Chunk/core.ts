@@ -1,3 +1,4 @@
+import { identity } from "../../Function"
 import * as O from "../../Option"
 import type { Chunk } from "./definition"
 import {
@@ -251,6 +252,13 @@ export function chain_<A, B>(self: Chunk<A>, f: (a: A) => Chunk<B>): Chunk<B> {
  */
 export function chain<A, B>(f: (a: A) => Chunk<B>): (self: Chunk<A>) => Chunk<B> {
   return (self) => chain_(self, f)
+}
+
+/**
+ * Flattens a chunk of chunks into a single chunk by concatenating all chunks.
+ */
+export function flatten<A>(self: Chunk<Chunk<A>>): Chunk<A> {
+  return chain_(self, identity)
 }
 
 /**

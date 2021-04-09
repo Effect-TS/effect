@@ -245,4 +245,26 @@ describe("Chunk", () => {
       )
     ).toEqual(false)
   })
+  it("find", () => {
+    expect(
+      pipe(
+        Chunk.single(0),
+        Chunk.append(1),
+        Chunk.append(2),
+        Chunk.append(3),
+        Chunk.append(4),
+        Chunk.find((n) => n > 2)
+      )
+    ).toEqual(O.some(3))
+    expect(
+      pipe(
+        Chunk.single(0),
+        Chunk.append(1),
+        Chunk.append(2),
+        Chunk.append(3),
+        Chunk.append(4),
+        Chunk.find((n) => n === 6)
+      )
+    ).toEqual(O.none)
+  })
 })

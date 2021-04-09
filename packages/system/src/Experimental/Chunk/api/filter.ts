@@ -1,8 +1,15 @@
+import type { Refinement } from "@effect-ts/system/Function"
+
 import * as Chunk from "../core"
 
 /**
  * Returns a filtered subset of this chunk.
  */
+export function filter_<A, B extends A>(
+  self: Chunk.Chunk<A>,
+  f: Refinement<A, B>
+): Chunk.Chunk<B>
+export function filter_<A>(self: Chunk.Chunk<A>, f: (a: A) => boolean): Chunk.Chunk<A>
 export function filter_<A>(self: Chunk.Chunk<A>, f: (a: A) => boolean): Chunk.Chunk<A> {
   const iterator = self.arrayLikeIterator()
   let next = iterator.next()
@@ -29,6 +36,12 @@ export function filter_<A>(self: Chunk.Chunk<A>, f: (a: A) => boolean): Chunk.Ch
  *
  * @dataFirst filter_
  */
+export function filter<A, B extends A>(
+  f: Refinement<A, B>
+): (self: Chunk.Chunk<A>) => Chunk.Chunk<B>
+export function filter<A>(
+  f: (a: A) => boolean
+): (self: Chunk.Chunk<A>) => Chunk.Chunk<A>
 export function filter<A>(
   f: (a: A) => boolean
 ): (self: Chunk.Chunk<A>) => Chunk.Chunk<A> {

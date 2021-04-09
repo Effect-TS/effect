@@ -9,4 +9,5 @@ export * from "./api/dropWhileM"
 export * from "./api/exists"
 export * from "./api/filter"
 export * from "./api/filterM"
+export * from "./api/find"
 // codegen:end
