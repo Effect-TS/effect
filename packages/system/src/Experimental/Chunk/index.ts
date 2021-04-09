@@ -14,4 +14,6 @@ export * from "./api/reduce"
 export * from "./api/reduceM"
 export * from "./api/reduceRight"
 export * from "./api/reduceRightM"
+export * from "./api/reduceWhile"
+export * from "./api/reduceWhileM"
 // codegen:end

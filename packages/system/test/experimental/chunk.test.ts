@@ -267,4 +267,44 @@ describe("Chunk", () => {
       )
     ).toEqual(O.none)
   })
+  it("reduceM", async () => {
+    const order = [] as number[]
+    expect(
+      await pipe(
+        Chunk.single(0),
+        Chunk.append(1),
+        Chunk.append(2),
+        Chunk.append(3),
+        Chunk.append(4),
+        Chunk.reduceM(0, (s, a) =>
+          T.effectTotal(() => {
+            order.push(a)
+            return s + a
+          })
+        ),
+        T.runPromise
+      )
+    ).toEqual(10)
+    expect(order).toEqual([0, 1, 2, 3, 4])
+  })
+  it("reduceRightM", async () => {
+    const order = [] as number[]
+    expect(
+      await pipe(
+        Chunk.single(0),
+        Chunk.append(1),
+        Chunk.append(2),
+        Chunk.append(3),
+        Chunk.append(4),
+        Chunk.reduceRightM(0, (a, s) =>
+          T.effectTotal(() => {
+            order.push(a)
+            return s + a
+          })
+        ),
+        T.runPromise
+      )
+    ).toEqual(10)
+    expect(order).toEqual([4, 3, 2, 1, 0])
+  })
 })
