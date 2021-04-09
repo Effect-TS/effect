@@ -21,16 +21,15 @@ export function dropWhileM_<R, E, A>(
       const len = array.length
       let i = 0
       while (i < len) {
-        const j = i
-        dropping = core.chain_(dropping, (d) => {
-          const a = array[j]!
-          return coreMap.map_(d ? f(a) : core.succeed(false), (b) => {
+        const a = array[i]!
+        dropping = core.chain_(dropping, (d) =>
+          coreMap.map_(d ? f(a) : core.succeed(false), (b) => {
             if (!b) {
               builder = Chunk.append_(builder, a)
             }
             return b
           })
-        })
+        )
         i++
       }
       next = iterator.next()
