@@ -133,4 +133,40 @@ describe("Chunk", () => {
     )
     expect(Chunk.toArray(result)).toEqual([2, 3])
   })
+  it("arrayLikeIterator", async () => {
+    const it = pipe(
+      Chunk.single(0),
+      Chunk.concat(Chunk.single(1)),
+      Chunk.concat(Chunk.single(2)),
+      Chunk.concat(Chunk.single(3))
+    ).arrayLikeIterator()
+
+    const results = [] as ArrayLike<number>[]
+
+    let next = it.next()
+
+    while (!next.done) {
+      results.push(next.value)
+      next = it.next()
+    }
+
+    expect(results).toEqual([Buffer.of(0), Buffer.of(1), Buffer.of(2), Buffer.of(3)])
+  })
+  it("equals", async () => {
+    const a = pipe(
+      Chunk.single(0),
+      Chunk.concat(Chunk.single(1)),
+      Chunk.concat(Chunk.single(2)),
+      Chunk.concat(Chunk.single(3)),
+      Chunk.concat(Chunk.single(4))
+    )
+    const b = pipe(
+      Chunk.single(0),
+      Chunk.append(1),
+      Chunk.append(2),
+      Chunk.append(3),
+      Chunk.append(4)
+    )
+    expect(Chunk.equals_(a, b)).toEqual(true)
+  })
 })
