@@ -5,7 +5,6 @@ import {
   ChunkTypeId,
   concrete,
   EmptyTypeId,
-  isByte,
   Singleton,
   SingletonTypeId,
   Slice,
@@ -18,7 +17,7 @@ export { Chunk, from } from "./definition"
  * Builds a chunk of a single value
  */
 export function single<A>(a: A): Chunk<A> {
-  return new Singleton(a, isByte(a))
+  return new Singleton(a)
 }
 
 /**
@@ -34,14 +33,14 @@ export function empty<A>(): Chunk<A> {
  * @dataFirst append_
  */
 export function append<A1>(a: A1) {
-  return <A>(self: Chunk<A>): Chunk<A | A1> => self.append(a, isByte(a))
+  return <A>(self: Chunk<A>): Chunk<A | A1> => self.append(a)
 }
 
 /**
  * Appends a value to a chunk
  */
 export function append_<A, A1>(self: Chunk<A>, a: A1): Chunk<A | A1> {
-  return self.append(a, isByte(a))
+  return self.append(a)
 }
 
 /**
@@ -50,14 +49,14 @@ export function append_<A, A1>(self: Chunk<A>, a: A1): Chunk<A | A1> {
  * @dataFirst prepend_
  */
 export function prepend<A1>(a: A1) {
-  return <A>(self: Chunk<A>): Chunk<A | A1> => self.prepend(a, isByte(a))
+  return <A>(self: Chunk<A>): Chunk<A | A1> => self.prepend(a)
 }
 
 /**
  * Prepends a value to a chunk
  */
 export function prepend_<A, A1>(self: Chunk<A>, a: A1): Chunk<A | A1> {
-  return self.prepend(a, isByte(a))
+  return self.prepend(a)
 }
 
 /**
