@@ -1,5 +1,3 @@
-import type { Equal } from "../../Equal"
-import { makeEqual } from "../../Equal"
 import * as O from "../../Option"
 import type { Chunk } from "./definition"
 import {
@@ -135,47 +133,13 @@ export function isChunk(u: unknown): u is Chunk<unknown> {
   return typeof u === "object" && u != null && ChunkTypeId in u
 }
 
-/**
- * Equality check
- */
-export function equalsWith_<A>(self: Chunk<A>, eq: Equal<A>, that: Chunk<A>): boolean {
-  const len = self.length
-
-  if (len !== that.length) {
-    return false
-  }
-
-  for (let i = 0; i < len; i++) {
-    const l = self.get(i)
-    const r = that.get(i)
-
-    if (!eq.equals(l, r)) {
-      return false
-    }
-  }
-
-  return true
-}
-
-/**
- * Equality check
- *
- * @dataFirst equalsWith_
- */
-export function equalsWith<A>(
-  eq: Equal<A>,
-  that: Chunk<A>
-): (self: Chunk<A>) => boolean {
-  return (self) => equalsWith_(self, eq, that)
-}
-
-const refEq = makeEqual((x, y) => x === y)
+const refEq = (x: unknown, y: unknown) => x === y
 
 /**
  * Referential equality check
  */
-export function equals_<A>(self: Chunk<A>, that: Chunk<A>): boolean {
-  return equalsWith_(self, refEq, that)
+export function equals_<A, B>(self: Chunk<A>, that: Chunk<B>): boolean {
+  return corresponds_(self, that, refEq)
 }
 
 /**
@@ -183,7 +147,7 @@ export function equals_<A>(self: Chunk<A>, that: Chunk<A>): boolean {
  *
  * @dataFirst equals_
  */
-export function equals<A>(that: Chunk<A>): (self: Chunk<A>) => boolean {
+export function equals<B>(that: Chunk<B>): <A>(self: Chunk<A>) => boolean {
   return (self) => equals_(self, that)
 }
 
@@ -288,4 +252,84 @@ export function chain_<A, B>(self: Chunk<A>, f: (a: A) => Chunk<B>): Chunk<B> {
  */
 export function chain<A, B>(f: (a: A) => Chunk<B>): (self: Chunk<A>) => Chunk<B> {
   return (self) => chain_(self, f)
+}
+
+/**
+ * Determines whether this chunk and the specified chunk have the same length
+ * and every pair of corresponding elements of this chunk and the specified
+ * chunk satisfy the specified predicate.
+ */
+export function corresponds_<A, B>(
+  self: Chunk<A>,
+  that: Chunk<B>,
+  f: (a: A, b: B) => boolean
+): boolean {
+  if (self.length !== that.length) {
+    return false
+  }
+
+  const leftIterator = self.arrayLikeIterator()
+  const rightIterator = that.arrayLikeIterator()
+
+  let i = 0
+  let j = 0
+  let equal = true
+  let done = false
+  let leftLength = 0
+  let rightLength = 0
+  let left: ArrayLike<A> | undefined = undefined
+  let right: ArrayLike<B> | undefined = undefined
+
+  while (equal && !done) {
+    if (i < leftLength && j < rightLength) {
+      if (!f(left![i]!, right![j]!)) {
+        equal = false
+      }
+      i++
+      j++
+    } else {
+      let cnt = true
+      if (i === leftLength) {
+        const leftNext = leftIterator.next()
+        if (!leftNext.done) {
+          left = leftNext.value
+          leftLength = left.length
+          i = 0
+          cnt = false
+        }
+      }
+      if (cnt && j === rightLength) {
+        const rightNext = rightIterator.next()
+        if (!rightNext.done) {
+          right = rightNext.value
+          rightLength = right.length
+          j = 0
+          cnt = false
+        }
+      }
+      if (cnt && i === leftLength && j === rightLength) {
+        done = true
+        cnt = false
+      }
+      if (cnt) {
+        equal = false
+      }
+    }
+  }
+
+  return equal
+}
+
+/**
+ * Determines whether this chunk and the specified chunk have the same length
+ * and every pair of corresponding elements of this chunk and the specified
+ * chunk satisfy the specified predicate.
+ *
+ * @dataFirst corresponds_
+ */
+export function corresponds<A, B>(
+  that: Chunk<B>,
+  f: (a: A, b: B) => boolean
+): (self: Chunk<A>) => boolean {
+  return (self) => corresponds_(self, that, f)
 }
