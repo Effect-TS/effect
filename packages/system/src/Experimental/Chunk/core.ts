@@ -799,16 +799,11 @@ export function size<A>(self: Chunk<A>) {
  * Returns a chunk with the elements mapped by the specified function.
  */
 export function map_<A, B>(self: Chunk<A>, f: (a: A) => B): Chunk<B> {
-  const arr = self.toArrayLike()
-  const len = arr.length
-  const r = new Array<B>(len)
-  for (let i = 0; i < len; i++) {
-    const k = arr[i]
-    if (k) {
-      r[i] = f(k)
-    }
+  let r = empty<B>()
+  for (const k of self) {
+    r = append_(r, f(k))
   }
-  return from(r)
+  return r
 }
 
 /**
@@ -818,4 +813,24 @@ export function map_<A, B>(self: Chunk<A>, f: (a: A) => B): Chunk<B> {
  */
 export function map<A, B>(f: (a: A) => B): (self: Chunk<A>) => Chunk<B> {
   return (self) => map_(self, f)
+}
+
+/**
+ * Returns a chunk with the elements mapped by the specified function.
+ */
+export function chain_<A, B>(self: Chunk<A>, f: (a: A) => Chunk<B>): Chunk<B> {
+  let r = empty<B>()
+  for (const k of self) {
+    r = concat_(r, f(k))
+  }
+  return r
+}
+
+/**
+ * Returns a chunk with the elements mapped by the specified function.
+ *
+ * @dataFirst chain_
+ */
+export function chain<A, B>(f: (a: A) => Chunk<B>): (self: Chunk<A>) => Chunk<B> {
+  return (self) => chain_(self, f)
 }
