@@ -11,7 +11,7 @@ describe("Chunk", () => {
         Chunk.append(3),
         Chunk.append(4),
         Chunk.append(5),
-        Array.from
+        Chunk.toArrayLike
       )
     ).toEqual([1, 2, 3, 4, 5])
   })
@@ -23,7 +23,7 @@ describe("Chunk", () => {
         Chunk.prepend(3),
         Chunk.prepend(4),
         Chunk.prepend(5),
-        Array.from
+        Chunk.toArrayLike
       )
     ).toEqual([5, 4, 3, 2, 1])
   })
@@ -33,7 +33,7 @@ describe("Chunk", () => {
         Chunk.fromArray([1, 2, 3, 4, 5]),
         Chunk.append(6),
         Chunk.append(7),
-        Array.from
+        Chunk.toArrayLike
       )
     ).toEqual([1, 2, 3, 4, 5, 6, 7])
   })
@@ -42,12 +42,12 @@ describe("Chunk", () => {
       pipe(
         Chunk.fromArray([1, 2, 3, 4, 5]),
         Chunk.concat(Chunk.fromArray([6, 7, 8, 9, 10])),
-        Array.from
+        Chunk.toArrayLike
       )
     ).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
   })
   it("iterable", () => {
-    expect(Array.from(Chunk.fromArray([0, 1, 2]))).toEqual([0, 1, 2])
+    expect(Chunk.toArrayLike(Chunk.fromArray([0, 1, 2]))).toEqual([0, 1, 2])
   })
   it("get", () => {
     expect(
@@ -67,16 +67,17 @@ describe("Chunk", () => {
         Chunk.fromArray(Buffer.from("hello")),
         Chunk.concat(Chunk.fromArray(Buffer.from(" "))),
         Chunk.concat(Chunk.fromArray(Buffer.from("world"))),
-        Array.from
+        Chunk.drop(6),
+        Chunk.toArrayLike
       )
-    ).toEqual(Array.from(Buffer.from("hello world")))
+    ).toEqual(Buffer.from("world"))
   })
   it("stack", () => {
     let a = Chunk.empty<number>()
     for (let i = 0; i < 100_000; i++) {
       a = Chunk.concat_(a, Chunk.fromArray([i, i]))
     }
-    expect(Array.from(a).length).toEqual(200_000)
+    expect(Chunk.toArrayLike(a).length).toEqual(200_000)
   })
   it("take", () => {
     expect(
@@ -84,7 +85,7 @@ describe("Chunk", () => {
         Chunk.fromArray([1, 2, 3, 4, 5]),
         Chunk.concat(Chunk.fromArray([6, 7, 8, 9, 10])),
         Chunk.take(5),
-        Array.from
+        Chunk.toArrayLike
       )
     ).toEqual([1, 2, 3, 4, 5])
   })
@@ -94,7 +95,7 @@ describe("Chunk", () => {
         Chunk.fromArray([1, 2, 3, 4, 5]),
         Chunk.concat(Chunk.fromArray([6, 7, 8, 9, 10])),
         Chunk.drop(5),
-        Array.from
+        Chunk.toArrayLike
       )
     ).toEqual([6, 7, 8, 9, 10])
   })
