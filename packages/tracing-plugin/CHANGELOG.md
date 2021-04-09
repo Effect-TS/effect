@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.9.0](https://github.com/Effect-TS/core/compare/@effect-ts/tracing-plugin@0.8.4...@effect-ts/tracing-plugin@0.9.0) (2021-04-09)
+
+
+### Bug Fixes
+
+* **tracing-plugin:** fix for first level files like src/demo.ts in system ([6ec3bda](https://github.com/Effect-TS/core/commit/6ec3bda1ff5766f4853a1e9c1932fcb93c82c52d))
+
+
+
+
+
 ## [0.8.4](https://github.com/Effect-TS/core/compare/@effect-ts/tracing-plugin@0.8.3...@effect-ts/tracing-plugin@0.8.4) (2021-04-06)
 
 **Note:** Version bump only for package @effect-ts/tracing-plugin

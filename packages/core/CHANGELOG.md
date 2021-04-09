@@ -3,6 +3,23 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.29.0](https://github.com/Effect-TS/core/compare/@effect-ts/core@0.28.13...@effect-ts/core@0.29.0) (2021-04-09)
+
+
+### Features
+
+* **collections:** restructure collections, begin mutable hashmap ([801be17](https://github.com/Effect-TS/core/commit/801be17cb90a7ca06a2e724c4406d7eed2440318))
+* **hub:** initial port ([8dfd937](https://github.com/Effect-TS/core/commit/8dfd937ffc9c1c1e2e706bf0a0cf709fb1c0d595))
+
+
+### BREAKING CHANGES
+
+* **collections:** The import path for collection is changed
+
+
+
+
+
 ## [0.28.13](https://github.com/Effect-TS/core/compare/@effect-ts/core@0.28.12...@effect-ts/core@0.28.13) (2021-04-06)
 
 **Note:** Version bump only for package @effect-ts/core

@@ -3,6 +3,34 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.26.0](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.25.13...@effect-ts/system@0.26.0) (2021-04-09)
+
+
+### Bug Fixes
+
+* **collections:** avoid fromNullable in mutable hash-set get ([99e8b66](https://github.com/Effect-TS/core/commit/99e8b660d06b9ee224f740edbe086c0b2942578b))
+* **mutable-queue:** fix imports ([9ae22a2](https://github.com/Effect-TS/core/commit/9ae22a2c29dc8327295f46e9770131f67336417c))
+
+
+### Features
+
+* **collections:** remove, update, modify on mutable HashMap ([03a8f49](https://github.com/Effect-TS/core/commit/03a8f49a4c8a0360895f275fd2966a03fdd360d1))
+* **collections:** restructure collections, begin mutable hashmap ([801be17](https://github.com/Effect-TS/core/commit/801be17cb90a7ca06a2e724c4406d7eed2440318))
+* **hub:** added unsafe constructors for hubs ([9d2db9d](https://github.com/Effect-TS/core/commit/9d2db9d96202ae806ce4600dcbc51e5da4cbabe1))
+* **hub:** initial port ([8dfd937](https://github.com/Effect-TS/core/commit/8dfd937ffc9c1c1e2e706bf0a0cf709fb1c0d595))
+* **mutable-queue:** add hashCode ([6e248c5](https://github.com/Effect-TS/core/commit/6e248c598fac4bbf170fbd1c8d5ed451c6b35bc1))
+* **mutable-queue:** use structural HasHash ([5a36753](https://github.com/Effect-TS/core/commit/5a367532b549e9aa8322b24896dc07bf79d05331))
+* **stream:** added hub-related combinators and converted broadcast* functions to use hub ([1459ccb](https://github.com/Effect-TS/core/commit/1459ccb4a7d7067b95dbce5d92305ea8317a74f8))
+
+
+### BREAKING CHANGES
+
+* **collections:** The import path for collection is changed
+
+
+
+
+
 ## [0.25.13](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.25.12...@effect-ts/system@0.25.13) (2021-04-06)
 
 
