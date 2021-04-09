@@ -11,8 +11,10 @@ import type * as MP from "../../Collections/Immutable/Map"
 import * as E from "../../Either"
 import * as Ex from "../../Exit/api"
 import { identity, pipe } from "../../Function"
+import * as H from "../../Hub"
 import * as L from "../../Layer"
 import * as O from "../../Option"
+import type * as Q from "../../Queue"
 import { matchTag } from "../../Utils"
 import * as T from "../_internal/effect"
 import * as F from "../_internal/fiber"
@@ -1708,3 +1710,67 @@ export const timedDrain: Sink<HasClock, never, unknown, never, number> = map_(
   timed(drain),
   ([_, a]) => a
 )
+
+/**
+ * A sink that executes the provided effectful function for every chunk fed to it.
+ */
+export function foreachChunk<R, E, I, A>(
+  f: (c: A.Chunk<I>) => T.Effect<R, E, A>
+): Sink<R, E, I, never, void> {
+  return fromPush((o) =>
+    O.fold_(
+      o,
+      () => Push.emit(undefined, A.empty),
+      (is) =>
+        pipe(
+          f(is),
+          T.mapError((e) => [E.left(e), A.empty] as const),
+          T.zipRight(Push.more)
+        )
+    )
+  )
+}
+
+/**
+ * Create a sink which enqueues each element into the specified queue.
+ */
+export function fromQueue<R, E, I, A>(
+  queue: Q.XQueue<R, never, E, unknown, I, A>
+): Sink<R, E, I, never, void> {
+  return forEachChunk(queue.offerAll)
+}
+
+/**
+ * Create a sink which enqueues each element into the specified queue.
+ * The queue will be shutdown once the stream is closed.
+ */
+export function fromQueueWithShutdown<R, E, I, A>(
+  queue: Q.XQueue<R, never, E, unknown, I, A>
+): Sink<R, E, I, never, void> {
+  return new Sink(
+    pipe(
+      M.make_(T.succeed(queue), (_) => _.shutdown),
+      M.map(fromQueue),
+      M.chain((_) => _.push)
+    )
+  )
+}
+
+/**
+ * Create a sink which publishes each element to the specified hub.
+ */
+export function fromHub<R, E, I, A>(
+  hub: H.XHub<R, never, E, unknown, I, A>
+): Sink<R, E, I, never, void> {
+  return fromQueue(H.toQueue(hub))
+}
+
+/**
+ * Create a sink which publishes each element to the specified hub.
+ * The hub will be shutdown once the stream is closed.
+ */
+export function fromHubWithShutdown<R, E, I, A>(
+  hub: H.XHub<R, never, E, unknown, I, A>
+): Sink<R, E, I, never, void> {
+  return fromQueueWithShutdown(H.toQueue(hub))
+}

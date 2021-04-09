@@ -1,13 +1,14 @@
 // tracing: off
 
 import type * as A from "../../Chunk"
-import type * as Ex from "../../Exit"
-import * as O from "../../Option"
+import { pipe } from "../../Function"
+import * as H from "../../Hub"
 import type * as XQ from "../../Queue"
 import * as T from "../_internal/effect"
-import type * as M from "../_internal/managed"
+import * as M from "../_internal/managed"
+import type * as Take from "../Take"
 import type { Stream } from "./definitions"
-import { distributedWith_ } from "./distributedWith"
+import { intoHubManaged_ } from "./intoHubManaged"
 
 /**
  * Converts the stream to a managed list of queues. Every value will be replicated to every queue with the
@@ -35,7 +36,14 @@ export function broadcastedQueues_<R, E, O>(
   self: Stream<R, E, O>,
   n: number,
   maximumLag: number
-): M.Managed<R, never, A.Chunk<XQ.Dequeue<Ex.Exit<O.Option<E>, O>>>> {
-  const decider = T.succeed((_: number) => true)
-  return distributedWith_(self, n, maximumLag, (_) => decider)
+): M.Managed<R, never, A.Chunk<XQ.Dequeue<Take.Take<E, O>>>> {
+  return pipe(
+    M.do,
+    M.bind("hub", () => T.toManaged(H.makeBounded<Take.Take<E, O>>(maximumLag))),
+    M.bind("queues", ({ hub }) =>
+      M.collectAll(Array.from({ length: n }, () => hub.subscribe))
+    ),
+    M.tap(({ hub }) => M.fork(intoHubManaged_(self, hub))),
+    M.map(({ queues }) => queues)
+  )
 }
