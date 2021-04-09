@@ -28,4 +28,6 @@ export * from "./api/reduceRight"
 export * from "./api/reduceRightM"
 export * from "./api/reduceWhile"
 export * from "./api/reduceWhileM"
+export * from "./api/split"
+export * from "./api/splitAt"
 // codegen:end

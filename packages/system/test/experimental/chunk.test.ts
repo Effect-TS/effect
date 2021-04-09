@@ -320,4 +320,65 @@ describe("Chunk", () => {
       )
     ).toEqual(4)
   })
+  it("split", () => {
+    expect(
+      pipe(
+        Chunk.single(0),
+        Chunk.append(1),
+        Chunk.append(2),
+        Chunk.append(3),
+        Chunk.append(4),
+        Chunk.append(5),
+        Chunk.split(2),
+        Chunk.map(Chunk.toArray),
+        Chunk.toArray
+      )
+    ).toEqual([
+      [0, 1, 2],
+      [3, 4, 5]
+    ])
+
+    expect(
+      pipe(
+        Chunk.single(0),
+        Chunk.append(1),
+        Chunk.append(2),
+        Chunk.append(3),
+        Chunk.append(4),
+        Chunk.append(5),
+        Chunk.split(4),
+        Chunk.map(Chunk.toArray),
+        Chunk.toArray
+      )
+    ).toEqual([[0, 1], [2, 3], [4], [5]])
+
+    expect(
+      pipe(
+        Chunk.single(0),
+        Chunk.append(1),
+        Chunk.append(2),
+        Chunk.append(3),
+        Chunk.append(4),
+        Chunk.append(5),
+        Chunk.split(5),
+        Chunk.map(Chunk.toArray),
+        Chunk.toArray
+      )
+    ).toEqual([[0, 1], [2], [3], [4], [5]])
+
+    expect(
+      pipe(
+        Chunk.single(0),
+        Chunk.append(1),
+        Chunk.append(2),
+        Chunk.append(3),
+        Chunk.append(4),
+        Chunk.append(5),
+        Chunk.append(6),
+        Chunk.split(5),
+        Chunk.map(Chunk.toArray),
+        Chunk.toArray
+      )
+    ).toEqual([[0, 1], [2, 3], [4], [5], [6]])
+  })
 })
