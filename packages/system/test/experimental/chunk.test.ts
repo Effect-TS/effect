@@ -1,3 +1,4 @@
+import * as T from "../../src/Effect"
 import * as Chunk from "../../src/Experimental/Chunk"
 import { pipe } from "../../src/Function"
 import * as O from "../../src/Option"
@@ -120,5 +121,16 @@ describe("Chunk", () => {
         Chunk.toArrayLike
       )
     ).toEqual(Buffer.from("hello-|-world"))
+  })
+  it("collectM", async () => {
+    const result = await pipe(
+      Chunk.single(0),
+      Chunk.append(1),
+      Chunk.append(2),
+      Chunk.append(3),
+      Chunk.collectM((n) => (n >= 2 ? O.some(T.succeed(n)) : O.none)),
+      T.runPromise
+    )
+    expect(Chunk.toArray(result)).toEqual([2, 3])
   })
 })
