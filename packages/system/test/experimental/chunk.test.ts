@@ -11,7 +11,7 @@ describe("Chunk", () => {
         Chunk.append(3),
         Chunk.append(4),
         Chunk.append(5),
-        Chunk.toArrayLike
+        Chunk.toArray
       )
     ).toEqual([1, 2, 3, 4, 5])
   })
@@ -23,7 +23,7 @@ describe("Chunk", () => {
         Chunk.prepend(3),
         Chunk.prepend(4),
         Chunk.prepend(5),
-        Chunk.toArrayLike
+        Chunk.toArray
       )
     ).toEqual([5, 4, 3, 2, 1])
   })
@@ -68,8 +68,8 @@ describe("Chunk", () => {
         Chunk.concat(Chunk.from(Buffer.from(" "))),
         Chunk.concat(Chunk.from(Buffer.from("world"))),
         Chunk.drop(6),
-        Chunk.appendByte(32),
-        Chunk.prependByte(32),
+        Chunk.append(32),
+        Chunk.prepend(32),
         Chunk.toArrayLike
       )
     ).toEqual(Buffer.from(" world "))
