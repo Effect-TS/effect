@@ -10,4 +10,8 @@ export * from "./api/exists"
 export * from "./api/filter"
 export * from "./api/filterM"
 export * from "./api/find"
+export * from "./api/reduce"
+export * from "./api/reduceM"
+export * from "./api/reduceRight"
+export * from "./api/reduceRightM"
 // codegen:end

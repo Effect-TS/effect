@@ -65,6 +65,7 @@ export abstract class Chunk<A> implements Iterable<A> {
 
   abstract [Symbol.iterator](): Iterator<A>
   abstract arrayLikeIterator(): Iterator<ArrayLike<A>>
+  abstract reverseArrayLikeIterator(): Iterator<ArrayLike<A>>
 
   materialize(): Chunk<A> {
     concrete(this)
@@ -216,6 +217,15 @@ export class Empty<A> extends Chunk<A> {
       })
     }
   }
+
+  reverseArrayLikeIterator(): Iterator<ArrayLike<A>> {
+    return {
+      next: () => ({
+        value: 0,
+        done: true
+      })
+    }
+  }
 }
 
 export const _Empty: Chunk<never> = new Empty()
@@ -342,6 +352,27 @@ export class AppendN<A> extends Chunk<A> {
       }
     }
   }
+
+  reverseArrayLikeIterator(): Iterator<ArrayLike<A>> {
+    const array = this.toArrayLike()
+    let done = false
+    return {
+      next: () => {
+        if (!done) {
+          done = true
+          return {
+            value: array,
+            done: false
+          }
+        } else {
+          return {
+            value: 1,
+            done: true
+          }
+        }
+      }
+    }
+  }
 }
 
 export const ArrTypeId = Symbol()
@@ -409,6 +440,26 @@ export class PlainArr<A> extends Arr<A> {
       }
     }
   }
+
+  reverseArrayLikeIterator(): Iterator<ArrayLike<A>> {
+    let done = false
+    return {
+      next: () => {
+        if (!done) {
+          done = true
+          return {
+            value: this.array,
+            done: false
+          }
+        } else {
+          return {
+            value: 1,
+            done: true
+          }
+        }
+      }
+    }
+  }
 }
 
 export class Uint8Arr extends Arr<number> {
@@ -447,6 +498,26 @@ export class Uint8Arr extends Arr<number> {
   }
 
   arrayLikeIterator(): Iterator<ArrayLike<number>> {
+    let done = false
+    return {
+      next: () => {
+        if (!done) {
+          done = true
+          return {
+            value: this.array,
+            done: false
+          }
+        } else {
+          return {
+            value: 1,
+            done: true
+          }
+        }
+      }
+    }
+  }
+
+  reverseArrayLikeIterator(): Iterator<ArrayLike<number>> {
     let done = false
     return {
       next: () => {
@@ -525,6 +596,27 @@ export class Slice<A> extends Chunk<A> {
       }
     }
   }
+
+  reverseArrayLikeIterator(): Iterator<ArrayLike<A>> {
+    const array = this.toArrayLike()
+    let done = false
+    return {
+      next: () => {
+        if (!done) {
+          done = true
+          return {
+            value: array,
+            done: false
+          }
+        } else {
+          return {
+            value: 1,
+            done: true
+          }
+        }
+      }
+    }
+  }
 }
 
 export const SingletonTypeId = Symbol()
@@ -561,6 +653,26 @@ export class Singleton<A> extends Chunk<A> {
   }
 
   arrayLikeIterator(): Iterator<ArrayLike<A>> {
+    let done = false
+    return {
+      next: () => {
+        if (!done) {
+          done = true
+          return {
+            value: this.toArrayLike(),
+            done: false
+          }
+        } else {
+          return {
+            value: 1,
+            done: true
+          }
+        }
+      }
+    }
+  }
+
+  reverseArrayLikeIterator(): Iterator<ArrayLike<A>> {
     let done = false
     return {
       next: () => {
@@ -691,6 +803,27 @@ export class PrependN<A> extends Chunk<A> {
       }
     }
   }
+
+  reverseArrayLikeIterator(): Iterator<ArrayLike<A>> {
+    const array = this.toArrayLike()
+    let done = false
+    return {
+      next: () => {
+        if (!done) {
+          done = true
+          return {
+            value: array,
+            done: false
+          }
+        } else {
+          return {
+            value: 1,
+            done: true
+          }
+        }
+      }
+    }
+  }
 }
 
 export function _copy<A>(
@@ -748,6 +881,41 @@ export class Concat<A> extends Chunk<A> {
         j++
         if (i === 0 && n.done) {
           it = this.right.arrayLikeIterator()
+          const k = it.next()
+          if (k.done) {
+            return {
+              value: j,
+              done: true
+            }
+          }
+          i++
+          n = it.next()
+          return k
+        } else {
+          if (n.done) {
+            return {
+              value: j,
+              done: true
+            }
+          }
+          const k = n
+          n = it.next()
+          return k
+        }
+      }
+    }
+  }
+
+  reverseArrayLikeIterator(): Iterator<ArrayLike<A>> {
+    let it = this.right.arrayLikeIterator()
+    let i = 0
+    let n = it.next()
+    let j = 0
+    return {
+      next: () => {
+        j++
+        if (i === 0 && n.done) {
+          it = this.left.arrayLikeIterator()
           const k = it.next()
           if (k.done) {
             return {
