@@ -69,13 +69,15 @@ export abstract class Chunk<A> implements Iterable<A> {
     }
   }
 
-  append<A1>(a1: A1, binary: boolean): Chunk<A | A1> {
+  append<A1>(a1: A1): Chunk<A | A1> {
+    const binary = isByte(a1)
     const buffer = this.binary && binary ? alloc(BufferSize) : new Array(BufferSize)
     buffer[0] = a1
     return new AppendN(this, buffer, 1, new AtomicNumber(1), this.binary && binary)
   }
 
-  prepend<A1>(a1: A1, binary: boolean): Chunk<A | A1> {
+  prepend<A1>(a1: A1): Chunk<A | A1> {
+    const binary = isByte(a1)
     const buffer = this.binary && binary ? alloc(BufferSize) : new Array(BufferSize)
     buffer[BufferSize - 1] = a1
     return new PrependN(this, buffer, 1, new AtomicNumber(1), this.binary && binary)
@@ -255,7 +257,9 @@ export class AppendN<A> extends Chunk<A> {
     return (this.buffer as A[])[k]!
   }
 
-  append<A1>(a1: A1, binary: boolean): Chunk<A | A1> {
+  append<A1>(a1: A1): Chunk<A | A1> {
+    const binary = isByte(a1)
+
     if (
       this.bufferUsed < this.buffer.length &&
       this.chain.compareAndSet(this.bufferUsed, this.bufferUsed + 1)
@@ -528,8 +532,11 @@ export class Singleton<A> extends Chunk<A> {
     throw new ArrayIndexOutOfBoundsException(n)
   }
 
-  constructor(readonly a: A, readonly binary: boolean) {
+  readonly binary: boolean
+
+  constructor(readonly a: A) {
     super()
+    this.binary = isByte(a)
   }
 
   copyToArray(n: number, array: Array<A> | Uint8Array) {
@@ -600,7 +607,9 @@ export class PrependN<A> extends Chunk<A> {
     this.end.copyToArray(n + length, array)
   }
 
-  prepend<A1>(a1: A1, binary: boolean): Chunk<A | A1> {
+  prepend<A1>(a1: A1): Chunk<A | A1> {
+    const binary = isByte(a1)
+
     if (
       this.bufferUsed < this.buffer.length &&
       this.chain.compareAndSet(this.bufferUsed, this.bufferUsed + 1)
