@@ -595,7 +595,7 @@ export function append_<A, A1>(self: Chunk<A>, a: A1): Chunk<A | A1> {
 }
 
 /**
- * Appends a value to a chunk
+ * Appends a binary value to a chunk
  *
  * @dataFirst appendByte_
  */
@@ -604,7 +604,7 @@ export function appendByte(a: number) {
 }
 
 /**
- * Appends a value to a chunk
+ * Appends a binary value to a chunk
  */
 export function appendByte_(self: Chunk<number>, a: number): Chunk<number> {
   return self.append(a, true)
@@ -627,7 +627,7 @@ export function prepend_<A, A1>(self: Chunk<A>, a: A1): Chunk<A | A1> {
 }
 
 /**
- * Appends a value to a chunk
+ * Prepends a binary value to a chunk
  *
  * @dataFirst prependByte_
  */
@@ -636,7 +636,7 @@ export function prependByte(a: number) {
 }
 
 /**
- * Appends a value to a chunk
+ * Prepends a binary value to a chunk
  */
 export function prependByte_(self: Chunk<number>, a: number): Chunk<number> {
   return self.prepend(a, true)
