@@ -14,6 +14,10 @@ type ChunkTypeId = typeof ChunkTypeId
 const alloc =
   typeof Buffer !== "undefined" ? Buffer.alloc : (n: number) => new Uint8Array(n)
 
+function isByte(u: unknown) {
+  return typeof u === "number" && u >= 0 && u <= 255
+}
+
 export abstract class Chunk<A> implements Iterable<A> {
   readonly [ChunkTypeId]: ChunkTypeId = ChunkTypeId;
   readonly [_A]!: () => A
@@ -547,14 +551,7 @@ class Concat<A> extends Chunk<A> {
  * Builds a chunk of a single value
  */
 export function single<A>(a: A): Chunk<A> {
-  return new Singleton(a, false)
-}
-
-/**
- * Builds a chunk of a single byte value
- */
-export function byte(a: number): Chunk<number> {
-  return new Singleton(a, true)
+  return new Singleton(a, isByte(a))
 }
 
 /**
@@ -584,30 +581,14 @@ export function from(array: Uint8Array | Iterable<unknown>): Chunk<unknown> {
  * @dataFirst append_
  */
 export function append<A1>(a: A1) {
-  return <A>(self: Chunk<A>): Chunk<A | A1> => self.append(a, false)
+  return <A>(self: Chunk<A>): Chunk<A | A1> => self.append(a, isByte(a))
 }
 
 /**
  * Appends a value to a chunk
  */
 export function append_<A, A1>(self: Chunk<A>, a: A1): Chunk<A | A1> {
-  return self.append(a, false)
-}
-
-/**
- * Appends a binary value to a chunk
- *
- * @dataFirst appendByte_
- */
-export function appendByte(a: number) {
-  return (self: Chunk<number>): Chunk<number> => self.append(a, true)
-}
-
-/**
- * Appends a binary value to a chunk
- */
-export function appendByte_(self: Chunk<number>, a: number): Chunk<number> {
-  return self.append(a, true)
+  return self.append(a, isByte(a))
 }
 
 /**
@@ -616,30 +597,14 @@ export function appendByte_(self: Chunk<number>, a: number): Chunk<number> {
  * @dataFirst prepend_
  */
 export function prepend<A1>(a: A1) {
-  return <A>(self: Chunk<A>): Chunk<A | A1> => self.prepend(a, false)
+  return <A>(self: Chunk<A>): Chunk<A | A1> => self.prepend(a, isByte(a))
 }
 
 /**
  * Prepends a value to a chunk
  */
 export function prepend_<A, A1>(self: Chunk<A>, a: A1): Chunk<A | A1> {
-  return self.prepend(a, false)
-}
-
-/**
- * Prepends a binary value to a chunk
- *
- * @dataFirst prependByte_
- */
-export function prependByte(a: number) {
-  return (self: Chunk<number>): Chunk<number> => self.prepend(a, true)
-}
-
-/**
- * Prepends a binary value to a chunk
- */
-export function prependByte_(self: Chunk<number>, a: number): Chunk<number> {
-  return self.prepend(a, true)
+  return self.prepend(a, isByte(a))
 }
 
 /**
