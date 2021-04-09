@@ -182,7 +182,7 @@ describe("Chunk", () => {
       )
     ).toEqual([2, 3, 4])
   })
-  it("dropWhile", async () => {
+  it("dropWhileM", async () => {
     expect(
       await pipe(
         Chunk.single(0),
@@ -195,5 +195,54 @@ describe("Chunk", () => {
         T.runPromise
       )
     ).toEqual([2, 3, 4])
+  })
+  it("filter", () => {
+    expect(
+      pipe(
+        Chunk.single(0),
+        Chunk.append(1),
+        Chunk.append(2),
+        Chunk.append(3),
+        Chunk.append(4),
+        Chunk.filter((n) => n >= 2),
+        Chunk.toArray
+      )
+    ).toEqual([2, 3, 4])
+  })
+  it("filterM", async () => {
+    expect(
+      await pipe(
+        Chunk.single(0),
+        Chunk.append(1),
+        Chunk.append(2),
+        Chunk.append(3),
+        Chunk.append(4),
+        Chunk.filterM((n) => T.delay(1)(T.succeed(n >= 2))),
+        T.map(Chunk.toArray),
+        T.runPromise
+      )
+    ).toEqual([2, 3, 4])
+  })
+  it("exists", () => {
+    expect(
+      pipe(
+        Chunk.single(0),
+        Chunk.append(1),
+        Chunk.append(2),
+        Chunk.append(3),
+        Chunk.append(4),
+        Chunk.exists((n) => n === 3)
+      )
+    ).toEqual(true)
+    expect(
+      pipe(
+        Chunk.single(0),
+        Chunk.append(1),
+        Chunk.append(2),
+        Chunk.append(3),
+        Chunk.append(4),
+        Chunk.exists((n) => n === 6)
+      )
+    ).toEqual(false)
   })
 })
