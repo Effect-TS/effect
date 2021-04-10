@@ -31,4 +31,8 @@ export * from "./api/reduceWhileM"
 export * from "./api/split"
 export * from "./api/splitAt"
 export * from "./api/splitWhere"
+export * from "./api/takeWhile"
+export * from "./api/takeWhileM"
+export * from "./api/zip"
+export * from "./api/zipWith"
 // codegen:end

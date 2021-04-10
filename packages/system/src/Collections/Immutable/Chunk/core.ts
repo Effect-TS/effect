@@ -287,6 +287,8 @@ export function corresponds_<A, B>(
   let rightLength = 0
   let left: ArrayLike<A> | undefined = undefined
   let right: ArrayLike<B> | undefined = undefined
+  let leftNext
+  let rightNext
 
   while (equal && !done) {
     if (i < leftLength && j < rightLength) {
@@ -295,33 +297,22 @@ export function corresponds_<A, B>(
       }
       i++
       j++
+    } else if (i === leftLength && (leftNext = leftIterator.next()) && !leftNext.done) {
+      left = leftNext.value
+      leftLength = left.length
+      i = 0
+    } else if (
+      j === rightLength &&
+      (rightNext = rightIterator.next()) &&
+      !rightNext.done
+    ) {
+      right = rightNext.value
+      rightLength = right.length
+      j = 0
+    } else if (i === leftLength && j === rightLength) {
+      done = true
     } else {
-      let cnt = true
-      if (i === leftLength) {
-        const leftNext = leftIterator.next()
-        if (!leftNext.done) {
-          left = leftNext.value
-          leftLength = left.length
-          i = 0
-          cnt = false
-        }
-      }
-      if (cnt && j === rightLength) {
-        const rightNext = rightIterator.next()
-        if (!rightNext.done) {
-          right = rightNext.value
-          rightLength = right.length
-          j = 0
-          cnt = false
-        }
-      }
-      if (cnt && i === leftLength && j === rightLength) {
-        done = true
-        cnt = false
-      }
-      if (cnt) {
-        equal = false
-      }
+      equal = false
     }
   }
 
