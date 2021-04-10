@@ -1,7 +1,7 @@
 // tracing: off
 
 import * as C from "../../Cause/core"
-import type * as A from "../../Chunk"
+import * as A from "../../Collections/Immutable/Chunk"
 import * as Exit from "../../Exit/api"
 import { pipe } from "../../Function"
 import type * as RM from "../../Managed/ReleaseMap"
@@ -103,7 +103,7 @@ export class Chain<R_, E_, O, O2> {
   ): T.Effect<R, O.Option<E>, A.Chunk<O>> {
     return pipe(
       pull,
-      T.chain((os) => (os.length > 0 ? T.succeed(os) : this.pullNonEmpty(pull)))
+      T.chain((os) => (!A.isEmpty(os) ? T.succeed(os) : this.pullNonEmpty(pull)))
     )
   }
 
@@ -114,14 +114,14 @@ export class Chain<R_, E_, O, O2> {
         T.Effect<R_, O.Option<E_>, O>,
         [A.Chunk<O>, number]
       ] => {
-        if (nextIdx < chunk.length) {
-          return [T.succeed(chunk[nextIdx]!), [chunk, nextIdx + 1]]
+        if (nextIdx < A.size(chunk)) {
+          return [T.succeed(A.unsafeGet_(chunk, nextIdx)), [chunk, nextIdx + 1]]
         } else {
           return [
             pipe(
               this.pullNonEmpty(this.outerStream),
               T.tap((os) => this.currOuterChunk.set([os, 1])),
-              T.map((os) => os[0]!)
+              T.map((os) => A.unsafeGet_(os, 0))
             ),
             [chunk, nextIdx]
           ]

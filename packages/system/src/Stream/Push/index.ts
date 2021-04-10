@@ -3,7 +3,7 @@
 import "../../Operator"
 
 import type { Cause } from "../../Cause"
-import * as A from "../../Chunk"
+import * as A from "../../Collections/Immutable/Chunk"
 import * as E from "../../Either"
 import { pipe } from "../../Function"
 import type * as O from "../../Option"
@@ -32,7 +32,7 @@ export function fail<E, I>(
 export function halt<E>(
   c: Cause<E>
 ): T.IO<[E.Either<E, never>, A.Chunk<never>], never> {
-  return T.mapError_(T.halt(c), (e) => [E.left(e), A.empty])
+  return T.mapError_(T.halt(c), (e) => [E.left(e), A.empty()])
 }
 
 export const more = T.unit

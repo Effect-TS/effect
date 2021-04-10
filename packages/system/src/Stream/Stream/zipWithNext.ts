@@ -1,6 +1,6 @@
 // tracing: off
 
-import * as A from "../../Chunk"
+import * as A from "../../Collections/Immutable/Chunk"
 import { pipe } from "../../Function"
 import * as O from "../../Option"
 import * as T from "../_internal/effect"
@@ -36,7 +36,8 @@ export function zipWithNext<R, E, O>(
           T.let("sc", ({ chunk, prev }) =>
             pipe(
               chunk,
-              A.mapAccum(prev)(
+              A.mapAccum(
+                prev,
                 (prev, curr) =>
                   [O.some(curr), O.map_(prev, (_) => [_, curr] as const)] as const
               )

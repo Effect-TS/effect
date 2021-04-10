@@ -1,9 +1,9 @@
 // tracing: off
 
-import type * as A from "../../Chunk"
+import * as A from "../../Collections/Immutable/Chunk"
 import type * as L from "../../Collections/Immutable/List"
 import { pipe } from "../../Function"
-import type * as T from "../_internal/effect"
+import * as T from "../_internal/effect"
 import * as SK from "../Sink"
 import type { Stream } from "./definitions"
 import { run } from "./run"
@@ -13,7 +13,7 @@ import { run } from "./run"
  */
 export const runCollect = <R, E, O>(
   self: Stream<R, E, O>
-): T.Effect<R, E, A.Chunk<O>> => pipe(self, run(SK.collectAll<O>()))
+): T.Effect<R, E, readonly O[]> => pipe(self, run(SK.collectAll<O>()), T.map(A.toArray))
 
 /**
  * Runs the stream and collects all of its elements to an array.

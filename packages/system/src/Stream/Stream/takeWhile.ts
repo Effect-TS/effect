@@ -1,6 +1,6 @@
 // tracing: off
 
-import * as A from "../../Chunk"
+import * as A from "../../Collections/Immutable/Chunk"
 import type { Predicate } from "../../Function"
 import { pipe } from "../../Function"
 import * as T from "../_internal/effect"
@@ -33,7 +33,7 @@ export function takeWhile_<R, E, O>(
               T.bind("chunk", () => chunks),
               T.let("taken", ({ chunk }) => A.takeWhile_(chunk, pred)),
               T.tap(({ taken }) =>
-                T.when_(doneRef.set(true), () => taken.length < chunk.length)
+                T.when_(doneRef.set(true), () => A.size(taken) < chunk.length)
               ),
               T.map(({ taken }) => taken)
             )

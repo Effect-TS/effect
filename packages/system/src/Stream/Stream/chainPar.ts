@@ -1,7 +1,7 @@
 // tracing: off
 
 import type * as C from "../../Cause"
-import type * as A from "../../Chunk"
+import type * as A from "../../Collections/Immutable/Chunk"
 import { pipe } from "../../Function"
 import * as O from "../../Option"
 import * as P from "../../Promise"

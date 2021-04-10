@@ -1,6 +1,6 @@
 // tracing: off
 
-import * as A from "../../Chunk"
+import * as A from "../../Collections/Immutable/Chunk"
 import type * as O from "../../Option"
 import * as T from "../_internal/effect"
 import { paginateChunkM } from "./paginateChunkM"

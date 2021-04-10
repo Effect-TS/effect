@@ -1,6 +1,6 @@
 // tracing: off
 
-import * as A from "../../Chunk"
+import * as A from "../../Collections/Immutable/Chunk"
 import { pipe } from "../../Function"
 import * as O from "../../Option"
 import * as T from "../_internal/effect"
@@ -36,10 +36,10 @@ export function takeUntilM_<R, R1, E, E1, O>(
                   T.asSomeError(A.takeWhileM_(chunk, (_) => T.map_(pred(_), (r) => !r)))
                 ),
                 T.let("last", ({ chunk, taken }) =>
-                  A.takeLeft_(A.dropLeft_(chunk, taken.length), 1)
+                  A.take_(A.drop_(chunk, A.size(taken)), 1)
                 ),
                 T.tap(({ last }) =>
-                  T.when_(keepTakingRef.set(false), () => A.isNonEmpty(last))
+                  T.when_(keepTakingRef.set(false), () => !A.isEmpty(last))
                 ),
                 T.map(({ last, taken }) => A.concat_(taken, last))
               )

@@ -1,6 +1,6 @@
 // tracing: off
 
-import type * as A from "../../Chunk"
+import * as A from "../../Collections/Immutable/Chunk"
 import { pipe } from "../../Function"
 import type * as O from "../../Option"
 import * as T from "../_internal/effect"
@@ -21,7 +21,7 @@ export function fromChunk<O>(c: A.Chunk<O>): UIO<O> {
         pipe(
           doneRef,
           Ref.modify<T.IO<O.Option<never>, A.Chunk<O>>, boolean>((done) =>
-            done || c.length === 0 ? [Pull.end, true] : [T.succeed(c), true]
+            done || A.isEmpty(c) ? [Pull.end, true] : [T.succeed(c), true]
           ),
           T.flatten
         )

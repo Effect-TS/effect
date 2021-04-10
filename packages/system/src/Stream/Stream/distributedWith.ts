@@ -1,9 +1,9 @@
 // tracing: off
 
-import * as A from "../../Chunk"
+import * as A from "../../Collections/Immutable/Chunk"
 import * as Map from "../../Collections/Immutable/Map"
 import type * as Ex from "../../Exit"
-import { pipe } from "../../Function"
+import { identity, pipe } from "../../Function"
 import * as O from "../../Option"
 import * as P from "../../Promise"
 import type * as Q from "../../Queue"
@@ -49,20 +49,21 @@ export function distributedWith_<R, E, O>(
         ),
         M.chain((next) =>
           pipe(
-            T.collectAll(
+            A.mapM_(
               pipe(
                 A.range(0, n - 1),
                 A.map((id) =>
                   T.map_(next, ([key, queue]) => [[key, id], queue] as const)
                 )
-              )
+              ),
+              identity
             ),
             T.chain((entries) => {
               const [mappings, queues] = A.reduceRight_(
                 entries,
                 [
                   Map.empty as Map.Map<symbol, number>,
-                  A.empty as A.Chunk<Q.Dequeue<Ex.Exit<O.Option<E>, O>>>
+                  A.empty() as A.Chunk<Q.Dequeue<Ex.Exit<O.Option<E>, O>>>
                 ] as const,
                 ([mapping, queue], [mappings, queues]) => [
                   Map.insert(mapping[0], mapping[1])(mappings),

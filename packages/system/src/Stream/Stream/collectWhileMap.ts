@@ -1,6 +1,6 @@
 // tracing: off
 
-import * as A from "../../Chunk"
+import * as A from "../../Collections/Immutable/Chunk"
 import type { Predicate, Refinement } from "../../Function"
 import { pipe } from "../../Function"
 import * as O from "../../Option"
@@ -31,10 +31,10 @@ export function collectWhileMap_<R, E, O, O2>(
               T.do,
               T.bind("chunk", () => chunks),
               T.chain(({ chunk }) => {
-                const remaining = A.collectWhileMap_(chunk, f)
+                const remaining = A.collectWhile_(chunk, f)
 
                 return T.as_(
-                  T.when_(doneRef.set(true), () => remaining.length < chunk.length),
+                  T.when_(doneRef.set(true), () => A.size(remaining) < A.size(chunk)),
                   remaining
                 )
               })
@@ -83,10 +83,10 @@ export function collectWhile_<R, E, O>(
               T.do,
               T.bind("chunk", () => chunks),
               T.chain(({ chunk }) => {
-                const remaining = A.collectWhile_(chunk, f)
+                const remaining = A.collectWhile_(chunk, O.fromPredicate(f))
 
                 return T.as_(
-                  T.when_(doneRef.set(true), () => remaining.length < chunk.length),
+                  T.when_(doneRef.set(true), () => A.size(remaining) < A.size(chunk)),
                   remaining
                 )
               })

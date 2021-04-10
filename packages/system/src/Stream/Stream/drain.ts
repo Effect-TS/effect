@@ -1,6 +1,6 @@
 // tracing: off
 
-import * as A from "../../Chunk"
+import * as A from "../../Collections/Immutable/Chunk"
 import type { Stream } from "./definitions"
 import { mapChunks_ } from "./mapChunks"
 
@@ -9,5 +9,5 @@ import { mapChunks_ } from "./mapChunks"
  * elements. Useful for sequencing effects using streams:
  */
 export function drain<R, E, O>(self: Stream<R, E, O>): Stream<R, E, never> {
-  return mapChunks_(self, (_) => A.empty)
+  return mapChunks_(self, (_) => A.empty())
 }

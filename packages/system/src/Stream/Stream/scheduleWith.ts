@@ -1,7 +1,7 @@
 // tracing: off
 
-import * as A from "../../Chunk"
 import type * as CL from "../../Clock"
+import * as A from "../../Collections/Immutable/Chunk"
 import { pipe } from "../../Function"
 import type * as H from "../../Has"
 import * as SC from "../../Schedule"
@@ -28,7 +28,7 @@ export function scheduleWith<R1, O, B>(schedule: SC.Schedule<R1, O, B>) {
           T.chain_(BP.pullElement(as), (o) =>
             T.orElse_(T.as_(driver.next(o), A.single(f(o))), () =>
               T.zipLeft_(
-                T.map_(T.orDie(driver.last), (b) => [f(o), g(b)]),
+                T.map_(T.orDie(driver.last), (b) => A.append_(A.single(f(o)), g(b))),
                 driver.reset
               )
             )

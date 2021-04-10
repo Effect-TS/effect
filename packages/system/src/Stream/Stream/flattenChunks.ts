@@ -1,6 +1,6 @@
 // tracing: off
 
-import type * as Chunk from "../../Chunk"
+import type * as Chunk from "../../Collections/Immutable/Chunk"
 import * as M from "../_internal/managed"
 import * as BP from "../BufferedPull"
 import { Stream } from "./definitions"

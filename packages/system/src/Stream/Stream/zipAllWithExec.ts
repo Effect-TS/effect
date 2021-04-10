@@ -1,7 +1,7 @@
 // tracing: off
 
 import * as C from "../../Cause"
-import * as A from "../../Chunk"
+import * as A from "../../Collections/Immutable/Chunk"
 import * as E from "../../Either"
 import * as Ex from "../../Exit"
 import { pipe } from "../../Function"
@@ -51,8 +51,8 @@ export function zipAllWithExec<R, R1, E, E1, O, O2>(
     ): Ex.Exit<never, readonly [A.Chunk<O3>, State]> => {
       const [excessL, excessR] = E.fold_(
         excess,
-        (l) => [l, A.empty] as const,
-        (r) => [A.empty, r] as const
+        (l) => [l, A.empty<O2>()] as const,
+        (r) => [A.empty<O>(), r] as const
       )
       const chunkL = O.fold_(
         maybeO,

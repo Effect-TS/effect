@@ -1,5 +1,6 @@
 // tracing: off
 
+import * as A from "../../Collections/Immutable/Chunk"
 import { pipe } from "../../Function"
 import * as O from "../../Option"
 import * as T from "../_internal/effect"
@@ -34,7 +35,7 @@ export function mapAccumM<Z>(z: Z) {
                 T.bind("s", () => state.get),
                 T.bind("t", ({ s }) => f(s, o)),
                 T.tap(({ t }) => state.set(t[0])),
-                T.map(({ t }) => [t[1]]),
+                T.map(({ t }) => A.single(t[1])),
                 T.mapError(O.some)
               )
             )

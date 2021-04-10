@@ -1,5 +1,6 @@
 // tracing: off
 
+import * as A from "../../Collections/Immutable/Chunk"
 import { pipe } from "../../Function"
 import type * as O from "../../Option"
 import * as T from "../_internal/effect"
@@ -27,7 +28,7 @@ export function fromEffectOption<R, E, A>(
               : [
                   pipe(
                     fa,
-                    T.map((a) => [a])
+                    T.map((a) => A.single(a))
                   ),
                   true
                 ]

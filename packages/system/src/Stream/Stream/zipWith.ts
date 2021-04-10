@@ -1,7 +1,7 @@
 // tracing: off
 
 import * as C from "../../Cause"
-import * as A from "../../Chunk"
+import * as A from "../../Collections/Immutable/Chunk"
 import * as E from "../../Either"
 import * as Ex from "../../Exit/api"
 import { pipe, tuple } from "../../Function"
@@ -25,8 +25,8 @@ export function zipWith_<R, R1, E, E1, O, O2, O3>(
   f: (a: O, a1: O2) => O3
 ): Stream<R & R1, E1 | E, O3> {
   type End = { _tag: "End" }
-  type RightDone<W2> = { _tag: "RightDone"; excessR: A.NonEmptyChunk<W2> }
-  type LeftDone<W1> = { _tag: "LeftDone"; excessL: A.NonEmptyChunk<W1> }
+  type RightDone<W2> = { _tag: "RightDone"; excessR: A.Chunk<W2> }
+  type LeftDone<W1> = { _tag: "LeftDone"; excessL: A.Chunk<W1> }
   type Running<W1, W2> = {
     _tag: "Running"
     excess: E.Either<A.Chunk<W1>, A.Chunk<W2>>
@@ -41,8 +41,8 @@ export function zipWith_<R, R1, E, E1, O, O2, O3>(
     const [leftExcess, rightExcess] = pipe(
       excess,
       E.fold(
-        (l) => tuple<[A.Chunk<O>, A.Chunk<O2>]>(l, []),
-        (r) => tuple<[A.Chunk<O>, A.Chunk<O2>]>([], r)
+        (l) => tuple<[A.Chunk<O>, A.Chunk<O2>]>(l, A.empty()),
+        (r) => tuple<[A.Chunk<O>, A.Chunk<O2>]>(A.empty(), r)
       )
     )
 
@@ -51,14 +51,14 @@ export function zipWith_<R, R1, E, E1, O, O2, O3>(
         leftUpd,
         O.fold(
           () => leftExcess,
-          (upd) => [...leftExcess, ...upd] as A.Chunk<O>
+          (upd) => A.concat_(leftExcess, upd) as A.Chunk<O>
         )
       ),
       pipe(
         rightUpd,
         O.fold(
           () => rightExcess,
-          (upd) => [...rightExcess, ...upd] as A.Chunk<O2>
+          (upd) => A.concat_(rightExcess, upd) as A.Chunk<O2>
         )
       )
     ]
@@ -82,14 +82,14 @@ export function zipWith_<R, R1, E, E1, O, O2, O3>(
             newExcess,
             E.fold(
               (l): State<O, O2> =>
-                A.isNonEmpty(l)
+                !A.isEmpty(l)
                   ? {
                       _tag: "LeftDone",
                       excessL: l
                     }
                   : { _tag: "End" },
               (r): State<O, O2> =>
-                A.isNonEmpty(r)
+                !A.isEmpty(r)
                   ? {
                       _tag: "RightDone",
                       excessR: r
@@ -107,7 +107,7 @@ export function zipWith_<R, R1, E, E1, O, O2, O3>(
     that,
     <State<O, O2>>{
       _tag: "Running",
-      excess: E.left([])
+      excess: E.left(A.empty())
     },
     (st, p1, p2) => {
       switch (st._tag) {

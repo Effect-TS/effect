@@ -1,7 +1,7 @@
 // tracing: off
 
 import * as C from "../../Cause"
-import type * as A from "../../Chunk"
+import * as A from "../../Collections/Immutable/Chunk"
 import { pipe } from "../../Function"
 import * as O from "../../Option"
 import * as T from "../_internal/effect"
@@ -33,7 +33,7 @@ function go<R, E, O>(
               i >= chunkSize
                 ? Pull.end
                 : pipe(
-                    switchStream(streams[i]!.proc),
+                    switchStream(A.unsafeGet_(streams, i).proc),
                     T.chain(currStream.set),
                     T.zipRight(
                       go(streams, chunkSize, currIndex, currStream, switchStream)
@@ -51,7 +51,7 @@ function go<R, E, O>(
  * Concatenates all of the streams in the chunk to one stream.
  */
 export function concatAll<R, E, O>(streams: A.Chunk<Stream<R, E, O>>): Stream<R, E, O> {
-  const chunkSize = streams.length
+  const chunkSize = A.size(streams)
   return new Stream(
     pipe(
       M.do,

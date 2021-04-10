@@ -1,6 +1,6 @@
 // tracing: off
 
-import * as A from "../../Chunk"
+import * as A from "../../Collections/Immutable/Chunk"
 import type { Stream } from "./definitions"
 import { mapChunks_ } from "./mapChunks"
 
@@ -12,7 +12,7 @@ export function mapConcat_<R, E, O, O2>(
   self: Stream<R, E, O>,
   f: (_: O) => Iterable<O2>
 ): Stream<R, E, O2> {
-  return mapChunks_(self, (o) => A.chain_(o, (o) => Array.from(f(o))))
+  return mapChunks_(self, (o) => A.chain_(o, (o) => A.fromIterable(f(o))))
 }
 
 /**

@@ -1,6 +1,6 @@
 // tracing: off
 
-import * as Chunk from "../../Chunk"
+import * as Chunk from "../../Collections/Immutable/Chunk"
 import type { Stream } from "./definitions"
 import { mapChunks_ } from "./mapChunks"
 

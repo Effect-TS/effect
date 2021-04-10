@@ -647,7 +647,7 @@ export class Slice<A> extends ChunkInternal<A> {
   }
 
   [Symbol.iterator](): Iterator<A> {
-    const k = this.arrayLike
+    const k = this.arrayLike()
     return k[Symbol.iterator]()
   }
 
@@ -726,7 +726,7 @@ export class Singleton<A> extends ChunkInternal<A> {
   }
 
   [Symbol.iterator](): Iterator<A> {
-    const k = this.arrayLike
+    const k = this.arrayLike()
     return k[Symbol.iterator]()
   }
 
@@ -860,7 +860,7 @@ export class PrependN<A> extends ChunkInternal<A> {
   }
 
   [Symbol.iterator](): Iterator<A> {
-    const k = this.arrayLike
+    const k = this.arrayLike()
     return k[Symbol.iterator]()
   }
 
@@ -954,7 +954,7 @@ export class Concat<A> extends ChunkInternal<A> {
   }
 
   [Symbol.iterator](): Iterator<A> {
-    const k = this.arrayLike
+    const k = this.arrayLike()
     return k[Symbol.iterator]()
   }
 

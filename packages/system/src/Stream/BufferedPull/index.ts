@@ -2,7 +2,7 @@
 
 import "../../Operator"
 
-import * as A from "../../Chunk"
+import * as A from "../../Collections/Immutable/Chunk"
 import { pipe } from "../../Function"
 import * as O from "../../Option"
 import * as T from "../_internal/effect"
@@ -21,7 +21,7 @@ export function ifNotDone_<R, R1, E, E1, A, A1>(
   self: BufferedPull<R, E, A>,
   fa: T.Effect<R1, O.Option<E1>, A1>
 ): T.Effect<R1, O.Option<E1>, A1> {
-  return T.chain_(self.done.get, (b) => (b ? Pull.end : fa))
+  return T.chain_(self.done.get, (b) => (b ? T.fail(O.none) : fa))
 }
 
 export function ifNotDone<R1, E1, A1>(fa: T.Effect<R1, O.Option<E1>, A1>) {
@@ -50,10 +50,10 @@ export function pullElement<R, E, A>(
     pipe(
       self.cursor,
       R.modify(([c, i]): [T.Effect<R, O.Option<E>, A>, [A.Chunk<A>, number]] => {
-        if (i >= c.length) {
-          return [T.chain_(update(self), () => pullElement(self)), [[], 0]]
+        if (i >= A.size(c)) {
+          return [T.chain_(update(self), () => pullElement(self)), [A.empty(), 0]]
         } else {
-          return [T.succeed(c[i]!), [c, i + 1]]
+          return [T.succeed(A.unsafeGet_(c, i)), [c, i + 1]]
         }
       }),
       T.flatten
@@ -72,10 +72,10 @@ export function pullChunk<R, E, A>(
         T.Effect<R, O.Option<E>, A.Chunk<A>>,
         [A.Chunk<A>, number]
       ] => {
-        if (idx >= chunk.length) {
-          return [T.chain_(update(self), () => pullChunk(self)), [[], 0]]
+        if (idx >= A.size(chunk)) {
+          return [T.chain_(update(self), () => pullChunk(self)), [A.empty(), 0]]
         } else {
-          return [T.succeed(A.dropLeft_(chunk, idx)), [[], 0]]
+          return [T.succeed(A.drop_(chunk, idx)), [A.empty(), 0]]
         }
       }),
       T.flatten
@@ -87,7 +87,7 @@ export function make<R, E, A>(pull: T.Effect<R, O.Option<E>, A.Chunk<A>>) {
   return pipe(
     T.do,
     T.bind("done", () => R.makeRef(false)),
-    T.bind("cursor", () => R.makeRef<[A.Chunk<A>, number]>([[], 0])),
+    T.bind("cursor", () => R.makeRef<[A.Chunk<A>, number]>([A.empty(), 0])),
     T.map(({ cursor, done }) => new BufferedPull(pull, done, cursor))
   )
 }

@@ -1,7 +1,7 @@
 // tracing: off
 
 import * as C from "../../Cause"
-import * as A from "../../Chunk"
+import * as A from "../../Collections/Immutable/Chunk"
 import * as Map from "../../Collections/Immutable/Map"
 import * as Ex from "../../Exit"
 import { pipe } from "../../Function"
@@ -53,7 +53,7 @@ export function distributedWithDynamic_<R, E, O>(
         T.bind("queues", () => queuesRef.get),
         T.chain(({ queues, shouldProcess }) =>
           pipe(
-            T.reduce_(queues, A.empty as A.Chunk<symbol>, (acc, [id, queue]) => {
+            T.reduce_(queues, A.empty() as A.Chunk<symbol>, (acc, [id, queue]) => {
               if (shouldProcess(id)) {
                 return pipe(
                   queue.offer(Ex.succeed(o)),
@@ -70,7 +70,7 @@ export function distributedWithDynamic_<R, E, O>(
               }
             }),
             T.chain((ids) =>
-              A.isNonEmpty(ids) ? R.update_(queuesRef, Map.removeMany(ids)) : T.unit
+              !A.isEmpty(ids) ? R.update_(queuesRef, Map.removeMany(ids)) : T.unit
             )
           )
         )

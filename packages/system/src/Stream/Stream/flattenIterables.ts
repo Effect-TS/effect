@@ -1,5 +1,5 @@
 // tracing: off
-
+import * as A from "../../Collections/Immutable/Chunk"
 import type { Stream } from "./definitions"
 import { flattenChunks } from "./flattenChunks"
 import { map_ } from "./map"
@@ -11,5 +11,5 @@ import { map_ } from "./map"
 export function flattenIterables<R, E, O1>(
   self: Stream<R, E, Iterable<O1>>
 ): Stream<R, E, O1> {
-  return flattenChunks(map_(self, (o) => [...o]))
+  return flattenChunks(map_(self, (o) => A.fromIterable(o)))
 }

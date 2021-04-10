@@ -1,6 +1,6 @@
 // tracing: off
 
-import type * as A from "../../Chunk"
+import * as A from "../../Collections/Immutable/Chunk"
 import { pipe } from "../../Function"
 import * as H from "../../Hub"
 import type * as XQ from "../../Queue"
@@ -44,6 +44,6 @@ export function broadcastedQueues_<R, E, O>(
       M.collectAll(Array.from({ length: n }, () => hub.subscribe))
     ),
     M.tap(({ hub }) => M.fork(intoHubManaged_(self, hub))),
-    M.map(({ queues }) => queues)
+    M.map(({ queues }) => A.fromIterable(queues))
   )
 }

@@ -1,5 +1,6 @@
 // tracing: off
 
+import * as A from "../../Collections/Immutable/Chunk"
 import * as E from "../../Either"
 import { pipe } from "../../Function"
 import * as T from "../_internal/effect"
@@ -45,7 +46,7 @@ export function partitionEither_<R, R1, E, E1, O, O2, O3>(
         ] as const)
       } else {
         return M.dieMessage(
-          `partitionEither: expected two streams but got ${queues.length}`
+          `partitionEither: expected two streams but got ${A.size(queues)}`
         )
       }
     })

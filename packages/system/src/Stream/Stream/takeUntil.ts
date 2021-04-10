@@ -1,6 +1,6 @@
 // tracing: off
 
-import * as A from "../../Chunk"
+import * as A from "../../Collections/Immutable/Chunk"
 import type { Predicate } from "../../Function"
 import { not, pipe } from "../../Function"
 import * as T from "../_internal/effect"
@@ -32,7 +32,7 @@ export function takeUntil_<R, E, O>(
               T.bind("chunk", () => chunks),
               T.let("taken", ({ chunk }) => A.takeWhile_(chunk, not(pred))),
               T.let("last", ({ chunk, taken }) =>
-                A.takeLeft_(A.dropLeft_(chunk, taken.length), 1)
+                A.take_(A.drop_(chunk, A.size(taken)), 1)
               ),
               T.map(({ last, taken }) => A.concat_(taken, last))
             )

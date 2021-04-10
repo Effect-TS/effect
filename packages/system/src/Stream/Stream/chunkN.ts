@@ -1,7 +1,7 @@
 // tracing: off
 
 import * as C from "../../Cause"
-import * as A from "../../Chunk"
+import * as A from "../../Collections/Immutable/Chunk"
 import { pipe } from "../../Function"
 import * as O from "../../Option"
 import * as T from "../_internal/effect"
@@ -27,18 +27,21 @@ export function chunkN_<R, E, O>(self: Stream<R, E, O>, n: number): Stream<R, E,
     ref: Ref.Ref<State<O>>,
     pull: T.Effect<R, O.Option<E>, A.Chunk<O>>
   ): T.Effect<R, O.Option<E>, A.Chunk<O>> => {
-    if (buffer.length < n) {
+    if (A.size(buffer) < n) {
       if (done) {
         if (A.isEmpty(buffer)) {
           return Pull.end
         } else {
-          return T.zipRight_(ref.set(new State(A.empty, true)), Pull.emitChunk(buffer))
+          return T.zipRight_(
+            ref.set(new State(A.empty(), true)),
+            Pull.emitChunk(buffer)
+          )
         }
       } else {
         return T.foldM_(
           pull,
           O.fold(() => emitOrAccumulate(buffer, true, ref, pull), Pull.fail),
-          (ch) => emitOrAccumulate([...buffer, ...ch], false, ref, pull)
+          (ch) => emitOrAccumulate(A.concat_(buffer, ch), false, ref, pull)
         )
       }
     } else {
@@ -55,7 +58,7 @@ export function chunkN_<R, E, O>(self: Stream<R, E, O>, n: number): Stream<R, E,
       pipe(
         M.do,
         M.bind("ref", () =>
-          T.toManaged(Ref.makeRef<State<O>>(new State(A.empty, false)))
+          T.toManaged(Ref.makeRef<State<O>>(new State(A.empty(), false)))
         ),
         M.bind("p", () => self.proc),
         M.let("pull", ({ p, ref }) =>

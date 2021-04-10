@@ -1,6 +1,6 @@
 // tracing: off
 
-import type * as A from "../../Chunk"
+import type * as A from "../../Collections/Immutable/Chunk"
 import type * as Ex from "../../Exit"
 import { pipe } from "../../Function"
 import type * as O from "../../Option"

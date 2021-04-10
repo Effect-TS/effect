@@ -54,34 +54,41 @@ export function makeDropping<A>(capacity: number): T.UIO<Queue<A>> {
  * is less than min items available, it'll block until the items are
  * collected.
  */
-export const takeBetween = (min: number, max: number) => <RA, RB, EA, EB, A, B>(
-  self: XQueue<RA, RB, EA, EB, A, B>
-): T.Effect<RB, EB, readonly B[]> => {
-  function takeRemainder(n: number): T.Effect<RB, EB, A.Array<B>> {
-    if (n <= 0) {
+export function takeBetween(min: number, max: number) {
+  return <RA, RB, EA, EB, A, B>(
+    self: XQueue<RA, RB, EA, EB, A, B>
+  ): T.Effect<RB, EB, readonly B[]> => {
+    function takeRemainder(n: number): T.Effect<RB, EB, A.Array<B>> {
+      if (n <= 0) {
+        return T.succeed([])
+      } else {
+        return T.chain_(self.take, (a) =>
+          T.map_(takeRemainder(n - 1), (_) => [a, ..._])
+        )
+      }
+    }
+
+    if (max < min) {
       return T.succeed([])
     } else {
-      return T.chain_(self.take, (a) => T.map_(takeRemainder(n - 1), (_) => [a, ..._]))
+      return pipe(
+        self.takeUpTo(max),
+        T.chain((bs) => {
+          const remaining = min - bs.length
+
+          if (remaining === 1) {
+            return T.map_(self.take, (b) => [...bs, b])
+          } else if (remaining > 1) {
+            return T.map_(takeRemainder(remaining), (list) => [
+              ...bs,
+              ...A.reverse(list)
+            ])
+          } else {
+            return T.succeed(bs)
+          }
+        })
+      )
     }
-  }
-
-  if (max < min) {
-    return T.succeed([])
-  } else {
-    return pipe(
-      self.takeUpTo(max),
-      T.chain((bs) => {
-        const remaining = min - bs.length
-
-        if (remaining === 1) {
-          return T.map_(self.take, (b) => [...bs, b])
-        } else if (remaining > 1) {
-          return T.map_(takeRemainder(remaining), (list) => [...bs, ...A.reverse(list)])
-        } else {
-          return T.succeed(bs)
-        }
-      })
-    )
   }
 }
 
