@@ -1,7 +1,7 @@
-import * as A from "../../Collections/Immutable/Array"
-import { _A } from "../../Effect/commons"
-import { ArrayIndexOutOfBoundsException } from "../../GlobalExceptions"
-import { AtomicNumber } from "../../Support/AtomicNumber"
+import { _A } from "../../../Effect/commons"
+import { ArrayIndexOutOfBoundsException } from "../../../GlobalExceptions"
+import { AtomicNumber } from "../../../Support/AtomicNumber"
+import * as A from "../Array"
 
 export const BufferSize = 64
 

@@ -1,5 +1,5 @@
-import { identity } from "../../Function"
-import * as O from "../../Option"
+import { identity } from "../../../Function"
+import * as O from "../../../Option"
 import type { Chunk } from "./definition"
 import {
   _Empty,

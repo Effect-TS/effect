@@ -1,6 +1,6 @@
-import * as core from "../../../Effect/core"
-import type { Effect } from "../../../Effect/effect"
-import * as coreZip from "../../../Effect/zipWith"
+import * as core from "../../../../Effect/core"
+import type { Effect } from "../../../../Effect/effect"
+import * as coreZip from "../../../../Effect/zipWith"
 import * as Chunk from "../core"
 import { concreteId } from "../definition"
 
