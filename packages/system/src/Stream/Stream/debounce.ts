@@ -1,8 +1,8 @@
 // tracing: off
 
 import * as C from "../../Cause"
-import * as A from "../../Chunk"
 import * as CL from "../../Clock"
+import * as A from "../../Collections/Immutable/Chunk"
 import * as Ex from "../../Exit"
 import { pipe } from "../../Function"
 import * as O from "../../Option"
@@ -68,7 +68,7 @@ export function debounce_<R, E, O>(
               )
             ),
             O.getOrElse(() => ref.set(new NotStarted())),
-            T.as(A.empty)
+            T.as(A.empty())
           )
 
         return T.chain_(ref.get, (state) => {

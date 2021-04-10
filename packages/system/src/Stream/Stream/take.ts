@@ -1,6 +1,6 @@
 // tracing: off
 
-import * as A from "../../Chunk"
+import * as A from "../../Collections/Immutable/Chunk"
 import { pipe } from "../../Function"
 import * as T from "../_internal/effect"
 import * as M from "../_internal/managed"
@@ -30,13 +30,13 @@ export function take_<R, E, O>(self: Stream<R, E, O>, n: number): Stream<R, E, O
                 T.do,
                 T.bind("chunk", () => chunks),
                 T.let("taken", ({ chunk }) => {
-                  if (chunk.length <= n - cnt) {
+                  if (A.size(chunk) <= n - cnt) {
                     return chunk
                   } else {
-                    return A.takeLeft_(chunk, n - cnt)
+                    return A.take_(chunk, n - cnt)
                   }
                 }),
-                T.tap(({ taken }) => counterRef.set(cnt + taken.length)),
+                T.tap(({ taken }) => counterRef.set(cnt + A.size(taken))),
                 T.map(({ taken }) => taken)
               )
             }

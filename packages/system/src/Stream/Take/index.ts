@@ -3,7 +3,7 @@
 import "../../Operator"
 
 import * as C from "../../Cause/core"
-import * as A from "../../Chunk"
+import * as A from "../../Collections/Immutable/Chunk"
 import * as E from "../../Exit/api"
 import { pipe } from "../../Function"
 import * as O from "../../Option"
@@ -12,19 +12,22 @@ import type { Pull } from "../Pull"
 
 export type Take<E, A> = E.Exit<O.Option<E>, A.Chunk<A>>
 
-export const chunk = <A>(as: A.Chunk<A>): Take<never, A> => E.succeed(as)
+export function chunk<A>(as: A.Chunk<A>): Take<never, A> {
+  return E.succeed(as)
+}
 
-export const halt = <E>(cause: C.Cause<E>): Take<E, never> =>
-  E.halt(pipe(cause, C.map(O.some)))
+export function halt<E>(cause: C.Cause<E>): Take<E, never> {
+  return E.halt(pipe(cause, C.map(O.some)))
+}
 
 export const end: Take<never, never> = E.fail(O.none)
 
-export const done = <E, A>(take: Take<E, A>) => T.done(take)
+export function done<E, A>(take: Take<E, A>) {
+  return T.done(take)
+}
 
-export const fromPull = <R, E, O>(
-  pull: Pull<R, E, O>
-): T.Effect<R, never, Take<E, O>> =>
-  pipe(
+export function fromPull<R, E, O>(pull: Pull<R, E, O>): T.Effect<R, never, Take<E, O>> {
+  return pipe(
     pull,
     T.foldCause(
       (c) =>
@@ -35,6 +38,7 @@ export const fromPull = <R, E, O>(
       chunk
     )
   )
+}
 
 export function tap_<E, A, R, E1, X>(
   take: Take<E, A>,

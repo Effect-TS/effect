@@ -1,5 +1,6 @@
 // tracing: off
 
+import * as A from "../../Collections/Immutable/Chunk"
 import { pipe } from "../../Function"
 import * as T from "../_internal/effect"
 import * as M from "../_internal/managed"
@@ -21,15 +22,15 @@ export function intersperse_<R, E, O, O1>(
       M.let("pull", ({ chunks, state }) =>
         T.chain_(chunks, (os) => {
           return Ref.modify_(state, (first) => {
-            const builder: (O | O1)[] = []
+            let builder = A.empty<O | O1>()
             let flagResult = first
 
             for (const o of os) {
               if (flagResult) {
                 flagResult = false
-                builder.push(o)
+                builder = A.append_(builder, o)
               } else {
-                builder.push(middle, o)
+                builder = A.append_(A.append_(builder, middle), o)
               }
             }
 

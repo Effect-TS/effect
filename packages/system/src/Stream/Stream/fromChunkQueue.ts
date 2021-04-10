@@ -1,7 +1,7 @@
 // tracing: off
 
 import * as C from "../../Cause"
-import type * as A from "../../Chunk"
+import type * as A from "../../Collections/Immutable/Chunk"
 import type * as Q from "../../Queue"
 import * as T from "../_internal/effect"
 import * as Pull from "../Pull"

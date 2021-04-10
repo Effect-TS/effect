@@ -1,5 +1,6 @@
-import // tracing: off
-* as C from "../../Cause"
+// tracing: off
+import * as C from "../../Cause"
+import * as A from "../../Collections/Immutable/Chunk"
 import { pipe } from "../../Function"
 import * as Q from "../../Queue"
 import * as T from "../_internal/effect"
@@ -16,6 +17,7 @@ export function fromQueue<R, E, O>(
   return pipe(
     queue,
     Q.takeBetween(1, Number.MAX_SAFE_INTEGER),
+    T.map(A.fromIterable),
     T.catchAllCause((c) =>
       T.chain_(queue.isShutdown, (down) =>
         down && C.interrupted(c) ? Pull.end : Pull.halt(c)

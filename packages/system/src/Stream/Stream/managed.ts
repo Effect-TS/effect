@@ -1,5 +1,6 @@
 // tracing: off
 
+import * as A from "../../Collections/Immutable/Chunk"
 import { pipe } from "../../Function"
 import type * as RM from "../../Managed/ReleaseMap"
 import * as O from "../../Option"
@@ -8,7 +9,6 @@ import * as M from "../_internal/managed"
 import * as Ref from "../_internal/ref"
 import * as Pull from "../Pull"
 import { Stream } from "./definitions"
-
 /**
  * Creates a single-valued stream from a managed resource
  */
@@ -37,7 +37,7 @@ export function managed<R, E, A>(self: M.Managed<R, E, A>): Stream<R, E, A> {
                       )
                     ),
                     T.tap(() => doneRef.set(true)),
-                    T.map(({ a }) => [a]),
+                    T.map(({ a }) => A.single(a)),
                     T.mapError(O.some)
                   )
             )

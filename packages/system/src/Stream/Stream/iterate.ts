@@ -1,6 +1,6 @@
 // tracing: off
 
-import * as A from "../../Chunk"
+import * as A from "../../Collections/Immutable/Chunk"
 import { pipe } from "../../Function"
 import * as T from "../_internal/effect"
 import * as M from "../_internal/managed"

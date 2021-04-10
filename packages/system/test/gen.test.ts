@@ -1,4 +1,5 @@
 import * as A from "../src/Collections/Immutable/Array"
+import * as C from "../src/Collections/Immutable/Chunk"
 import * as T from "../src/Effect"
 import * as E from "../src/Either"
 import * as Ex from "../src/Exit"
@@ -199,7 +200,7 @@ describe("Generator", () => {
       const a = yield* _(() => O.some(0))
       const b = yield* _(() => E.right(1))
       const c = yield* _(() => T.succeed(2))
-      const d = yield* _(() => S.fromChunk([a, b, c]))
+      const d = yield* _(() => S.fromChunk(C.fromIterable([a, b, c])))
 
       return d
     })
@@ -226,7 +227,7 @@ describe("Generator", () => {
         )
       )
       const b = a + 1
-      const c = yield* _(() => S.fromChunk(A.range(b, 10)))
+      const c = yield* _(() => S.fromChunk(C.range(b, 10)))
       return c
     })
     expect(
@@ -237,10 +238,10 @@ describe("Generator", () => {
   it("stream gen #3", async () => {
     let b = 0
     const result = S.gen(function* (_) {
-      const a = yield* _(() => S.fromChunk([0, 1, 2]))
+      const a = yield* _(() => S.fromChunk(C.fromIterable([0, 1, 2])))
       b++ // this is impure stuff that breaks the generator
       if (b > 1) return 0
-      const n = yield* _(() => S.fromChunk(A.range(0, a)))
+      const n = yield* _(() => S.fromChunk(C.range(0, a)))
       return n + 1
     })
     expect(

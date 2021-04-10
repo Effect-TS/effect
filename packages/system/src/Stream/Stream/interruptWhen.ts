@@ -2,7 +2,6 @@
 
 import { pipe } from "../../Function"
 import * as O from "../../Option"
-import * as Pull from "../../Stream/Pull"
 import * as T from "../_internal/effect"
 import * as F from "../_internal/fiber"
 import * as M from "../_internal/managed"
@@ -26,7 +25,7 @@ export function interruptWhen_<R, R1, E, E1, O, X>(
       M.bind("as", () => self.proc),
       M.bind("runIO", () =>
         T.forkManaged<R1, O.Option<E | E1>, never>(
-          pipe(T.asSomeError(io), T.zipRight(Pull.end))
+          pipe(T.asSomeError(io), T.zipRight(T.fail(O.none)))
         )
       ),
       M.map(({ as, runIO }) => pipe(F.join(runIO), T.disconnect, T.raceFirst(as)))

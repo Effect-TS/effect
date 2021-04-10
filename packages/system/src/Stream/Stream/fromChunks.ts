@@ -1,6 +1,6 @@
 // tracing: off
 
-import type * as A from "../../Chunk"
+import type * as A from "../../Collections/Immutable/Chunk"
 import { chain_ } from "./chain"
 import type { UIO } from "./definitions"
 import { fromChunk } from "./fromChunk"

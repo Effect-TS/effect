@@ -1,3 +1,4 @@
+import * as A from "../src/Collections/Immutable/Chunk"
 import * as T from "../src/Effect"
 import * as Exit from "../src/Exit"
 import { flow, identity, pipe, tuple } from "../src/Function"
@@ -48,7 +49,7 @@ describe("Stream", () => {
   })
   describe("Core", () => {
     it("fromArray", async () => {
-      const a = S.fromChunk([0, 1, 2])
+      const a = S.fromChunk(A.fromIterable([0, 1, 2]))
 
       expect(await T.runPromise(S.runCollect(a))).toEqual([0, 1, 2])
     })
@@ -79,8 +80,8 @@ describe("Stream", () => {
   it("interleave", async () => {
     expect(
       await pipe(
-        S.fromChunk([1, 1, 1, 1, 1, 1, 1, 1, 1, 1]),
-        S.interleave(S.fromChunk([2, 2, 2, 2, 2, 2, 2, 2, 2, 2])),
+        S.fromChunk(A.fromIterable([1, 1, 1, 1, 1, 1, 1, 1, 1, 1])),
+        S.interleave(S.fromChunk(A.fromIterable([2, 2, 2, 2, 2, 2, 2, 2, 2, 2]))),
         S.take(5),
         S.runCollect,
         T.runPromise
@@ -91,7 +92,7 @@ describe("Stream", () => {
   it("intersperse", async () => {
     expect(
       await pipe(
-        S.fromChunk([1, 1, 1, 1, 1, 1, 1, 1, 1, 1]),
+        S.fromChunk(A.fromIterable([1, 1, 1, 1, 1, 1, 1, 1, 1, 1])),
         S.intersperse(2),
         S.take(5),
         S.runCollect,
@@ -106,8 +107,8 @@ describe("Stream", () => {
         R.makeRef(0),
         T.chain(
           flow(
-            R.modify((i): [T.IO<O.Option<never>, readonly number[]>, number] => [
-              i < 5 ? T.succeed([i]) : T.fail(O.none),
+            R.modify((i): [T.IO<O.Option<never>, A.Chunk<number>>, number] => [
+              i < 5 ? T.succeed(A.single(i)) : T.fail(O.none),
               i + 1
             ]),
             T.flatten,
@@ -149,7 +150,7 @@ describe("Stream", () => {
               clearInterval(timer)
               cb(T.fail(O.none))
             } else {
-              cb(T.succeed([counter]))
+              cb(T.succeed(A.single(counter)))
               counter++
             }
           }, 10)
@@ -198,10 +199,10 @@ describe("Stream", () => {
     expect(
       await pipe(
         S.zipN(
-          S.fromChunk([1, 1, 1, 1]),
-          S.fromChunk(["a", "b", "c", "d"]),
-          S.fromChunk([2, 2, 2, 2]),
-          S.fromChunk(["e", "f", "g", "h"])
+          S.fromChunk(A.fromIterable([1, 1, 1, 1])),
+          S.fromChunk(A.fromIterable(["a", "b", "c", "d"])),
+          S.fromChunk(A.fromIterable([2, 2, 2, 2])),
+          S.fromChunk(A.fromIterable(["e", "f", "g", "h"]))
         )(tuple),
         S.runCollect,
         T.runPromise
@@ -218,9 +219,9 @@ describe("Stream", () => {
     expect(
       await pipe(
         S.crossN(
-          S.fromChunk([1, 2]),
-          S.fromChunk(["a", "b"]),
-          S.fromChunk([3, 4])
+          S.fromChunk(A.fromIterable([1, 2])),
+          S.fromChunk(A.fromIterable(["a", "b"])),
+          S.fromChunk(A.fromIterable([3, 4]))
         )(tuple),
         S.runCollect,
         T.runPromise

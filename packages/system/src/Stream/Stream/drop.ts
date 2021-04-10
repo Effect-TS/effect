@@ -1,6 +1,6 @@
 // tracing: off
 
-import * as A from "../../Chunk"
+import * as A from "../../Collections/Immutable/Chunk"
 import { pipe } from "../../Function"
 import * as O from "../../Option"
 import * as T from "../_internal/effect"
@@ -22,10 +22,10 @@ export function drop_<R, E, O>(self: Stream<R, E, O>, n: number): Stream<R, E, O
           T.chain_(counterRef.get, (cnt) => {
             if (cnt >= n) {
               return T.succeed(chunk)
-            } else if (chunk.length <= n - cnt) {
-              return T.zipRight_(counterRef.set(cnt + chunk.length), go)
+            } else if (A.size(chunk) <= n - cnt) {
+              return T.zipRight_(counterRef.set(cnt + A.size(chunk)), go)
             } else {
-              return T.as_(counterRef.set(cnt + (n - cnt)), A.dropLeft_(chunk, n - cnt))
+              return T.as_(counterRef.set(cnt + (n - cnt)), A.drop_(chunk, n - cnt))
             }
           })
         )

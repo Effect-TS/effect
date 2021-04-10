@@ -1,7 +1,7 @@
 // tracing: off
 
 import * as C from "../../Cause"
-import * as A from "../../Chunk"
+import * as A from "../../Collections/Immutable/Chunk"
 import * as E from "../../Either"
 import * as Ex from "../../Exit"
 import * as F from "../../Fiber"

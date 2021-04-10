@@ -1,6 +1,6 @@
 // tracing: off
 
-import * as A from "../../Chunk"
+import * as A from "../../Collections/Immutable/Chunk"
 import { pipe } from "../../Function"
 import * as O from "../../Option"
 import * as T from "../_internal/effect"
@@ -63,21 +63,23 @@ export function zipWithLatest<R, R1, E, E1, O, O2>(
               chain(([l, r, leftFirst]) =>
                 pipe(
                   fromEffect(
-                    T.zip_(Ref.makeRef(l[l.length - 1]), Ref.makeRef(r[r.length - 1]))
+                    T.zip_(Ref.makeRef(l[A.size(l) - 1]), Ref.makeRef(r[A.size(r) - 1]))
                   ),
                   chain(([latestLeft, latestRight]) =>
                     pipe(
                       fromChunk(
                         leftFirst
-                          ? A.map_(r, (_) => f(l[l.length - 1]!, _))
-                          : A.map_(l, (_) => f(_, r[r.length - 1]!))
+                          ? A.map_(r, (_) => f(l[A.size(l) - 1]!, _))
+                          : A.map_(l, (_) => f(_, r[A.size(r) - 1]!))
                       ),
                       concat(
                         pipe(
                           repeatEffectOption(
                             pipe(
                               left,
-                              T.tap((chunk) => latestLeft.set(chunk[chunk.length - 1])),
+                              T.tap((chunk) =>
+                                latestLeft.set(chunk[A.size(chunk) - 1])
+                              ),
                               T.zip(latestRight.get)
                             )
                           ),
@@ -86,7 +88,7 @@ export function zipWithLatest<R, R1, E, E1, O, O2>(
                               pipe(
                                 right,
                                 T.tap((chunk) =>
-                                  latestRight.set(chunk[chunk.length - 1])
+                                  latestRight.set(chunk[A.size(chunk) - 1])
                                 ),
                                 T.zip(latestLeft.get)
                               )

@@ -1,10 +1,11 @@
 // tracing: off
 
-import * as A from "../../Chunk"
 import type * as CL from "../../Clock"
+import * as A from "../../Collections/Immutable/Chunk"
 import * as E from "../../Either"
 import * as Ex from "../../Exit"
 import { pipe } from "../../Function"
+import type { Has } from "../../Has"
 import * as O from "../../Option"
 import * as SC from "../../Schedule"
 import * as T from "../_internal/effect"
@@ -65,7 +66,7 @@ export function aggregateAsyncWithinEither_<R, E, O, R1, E1, P, Q>(
       R.makeManagedRef<O.Option<F.Fiber<never, Take.Take<E | E1, O>>>>(O.none)
     ),
     M.bind("sdriver", () => M.fromEffect(SC.driver(schedule))),
-    M.bind("lastChunk", () => R.makeManagedRef<A.Chunk<P>>(A.empty)),
+    M.bind("lastChunk", () => R.makeManagedRef<A.Chunk<P>>(A.empty())),
     M.let("producer", ({ handoff, pull }) =>
       T.repeatWhileM_(Take.fromPull(pull), (take) =>
         pipe(Handoff.offer_(handoff, take), T.as(Ex.succeeded(take)))
@@ -79,6 +80,7 @@ export function aggregateAsyncWithinEither_<R, E, O, R1, E1, P, Q>(
           T.chain(sdriver.next),
           T.fold((_) => O.none, O.some)
         )
+
         const waitForProducer: T.RIO<R1, Take.Take<E | E1, O>> = pipe(
           waitingFiber,
           R.getAndSet(
@@ -91,111 +93,21 @@ export function aggregateAsyncWithinEither_<R, E, O, R1, E1, P, Q>(
             )
           )
         )
-        const updateLastChunk = (take: Take.Take<E1, P>): T.UIO<void> =>
-          Take.tap_(take, lastChunk.set)
-        const handleTake = (
-          take: Take.Take<E | E1, O>
-        ): Pull.Pull<R1, E | E1, Take.Take<E1, E.Either<never, P>>> =>
-          pipe(
-            take,
-            Take.foldM(
-              () =>
-                pipe(
-                  push(O.none),
-                  T.map((ps) => [Take.chunk(A.map_(ps, E.right)), Take.end])
-                ),
-              T.halt,
-              (os) =>
-                T.chain_(Take.fromPull(T.asSomeError(push(O.some(os)))), (take) =>
-                  T.as_(updateLastChunk(take), [Take.map_(take, E.right)])
-                )
-            ),
-            T.mapError(O.some)
-          )
-        const go = (
-          race: boolean
-        ): T.Effect<
-          R & R1 & CL.HasClock,
-          O.Option<E | E1>,
-          A.Chunk<Take.Take<E1, E.Either<Q, P>>>
-        > => {
-          if (!race) {
-            return pipe(
-              waitForProducer,
-              T.chain(handleTake),
-              T.zipLeft(raceNextTime.set(true))
-            )
-          } else {
-            return pipe(
-              T.raceWith_(
-                updateSchedule,
-                waitForProducer,
-                (scheduleDone, producerWaiting) =>
-                  pipe(
-                    T.done(scheduleDone),
-                    T.chain(
-                      O.fold(
-                        () =>
-                          pipe(
-                            T.do,
-                            T.bind("lastQ", () =>
-                              pipe(
-                                lastChunk.set(A.empty),
-                                T.zipRight(T.orDie(sdriver.last)),
-                                T.zipLeft(sdriver.reset)
-                              )
-                            ),
-                            T.let(
-                              "scheduleResult",
-                              ({ lastQ }): Take.Take<E1, E.Either<Q, P>> =>
-                                Ex.succeed([E.left(lastQ)])
-                            ),
-                            T.bind("take", () =>
-                              pipe(
-                                push(O.none),
-                                T.asSomeError,
-                                Take.fromPull,
-                                T.tap(updateLastChunk)
-                              )
-                            ),
-                            T.tap(() => raceNextTime.set(false)),
-                            T.tap(() => waitingFiber.set(O.some(producerWaiting))),
-                            T.map(({ scheduleResult, take }) => [
-                              scheduleResult,
-                              Take.map_(take, E.right)
-                            ])
-                          ),
-                        (_) =>
-                          pipe(
-                            T.do,
-                            T.bind("ps", () =>
-                              pipe(
-                                push(O.none),
-                                T.asSomeError,
-                                Take.fromPull,
-                                T.tap(updateLastChunk)
-                              )
-                            ),
-                            T.tap(() => raceNextTime.set(false)),
-                            T.tap(() => waitingFiber.set(O.some(producerWaiting))),
-                            T.map(({ ps }) => [Take.map_(ps, E.right)])
-                          )
-                      )
-                    )
-                  ),
-                (producerDone, scheduleWaiting) =>
-                  T.zipRight_(
-                    F.interrupt(scheduleWaiting),
-                    handleTake(Ex.flatten(producerDone))
-                  )
-              )
-            )
-          }
-        }
 
         return pipe(
           raceNextTime.get,
-          T.chain(go),
+          T.chain((x) =>
+            go<R, E, O, R1, E1, P, Q>(
+              waitForProducer,
+              push,
+              lastChunk,
+              raceNextTime,
+              updateSchedule,
+              sdriver,
+              waitingFiber,
+              x
+            )
+          ),
           T.onInterrupt((_) =>
             T.chain_(waitingFiber.get, (x) =>
               pipe(
@@ -213,4 +125,121 @@ export function aggregateAsyncWithinEither_<R, E, O, R1, E1, P, Q>(
     (m) => new Stream(m),
     flattenTake
   )
+}
+
+function go<R, E, O, R1, E1, P, Q>(
+  waitForProducer: T.RIO<R1, Take.Take<E | E1, O>>,
+  push: (c: O.Option<A.Chunk<O>>) => T.Effect<R1, E1, A.Chunk<P>>,
+  lastChunk: R.Ref<A.Chunk<P>>,
+  raceNextTime: R.Ref<boolean>,
+  updateSchedule: T.RIO<R1 & Has<CL.Clock>, O.Option<Q>>,
+  sdriver: SC.Driver<Has<CL.Clock> & R1, A.Chunk<P>, Q>,
+  waitingFiber: R.Ref<O.Option<F.Fiber<never, Take.Take<E | E1, O>>>>,
+  race: boolean
+): T.Effect<
+  R & R1 & CL.HasClock,
+  O.Option<E | E1>,
+  A.Chunk<Take.Take<E1, E.Either<Q, P>>>
+> {
+  if (!race) {
+    return pipe(
+      waitForProducer,
+      T.chain((x) => handleTake(push, lastChunk, x)),
+      T.zipLeft(raceNextTime.set(true))
+    )
+  } else {
+    return pipe(
+      T.raceWith_(
+        updateSchedule,
+        waitForProducer,
+        (scheduleDone, producerWaiting) =>
+          pipe(
+            T.done(scheduleDone),
+            T.chain(
+              O.fold(
+                () =>
+                  pipe(
+                    T.do,
+                    T.bind("lastQ", () =>
+                      pipe(
+                        lastChunk.set(A.empty()),
+                        T.zipRight(T.orDie(sdriver.last)),
+                        T.zipLeft(sdriver.reset)
+                      )
+                    ),
+                    T.let(
+                      "scheduleResult",
+                      ({ lastQ }): Take.Take<E1, E.Either<Q, P>> =>
+                        Ex.succeed(A.single(E.left(lastQ)))
+                    ),
+                    T.bind("take", () =>
+                      pipe(
+                        push(O.none),
+                        T.asSomeError,
+                        Take.fromPull,
+                        T.tap((x) => updateLastChunk(lastChunk, x))
+                      )
+                    ),
+                    T.tap(() => raceNextTime.set(false)),
+                    T.tap(() => waitingFiber.set(O.some(producerWaiting))),
+                    T.map(({ scheduleResult, take }) =>
+                      A.from([scheduleResult, Take.map_(take, E.right)])
+                    )
+                  ),
+                (_) =>
+                  pipe(
+                    T.do,
+                    T.bind("ps", () =>
+                      pipe(
+                        push(O.none),
+                        T.asSomeError,
+                        Take.fromPull,
+                        T.tap((x) => updateLastChunk(lastChunk, x))
+                      )
+                    ),
+                    T.tap(() => raceNextTime.set(false)),
+                    T.tap(() => waitingFiber.set(O.some(producerWaiting))),
+                    T.map(({ ps }) => A.from([Take.map_(ps, E.right)]))
+                  )
+              )
+            )
+          ),
+        (producerDone, scheduleWaiting) =>
+          T.zipRight_(
+            F.interrupt(scheduleWaiting),
+            handleTake(push, lastChunk, Ex.flatten(producerDone))
+          )
+      )
+    )
+  }
+}
+
+function handleTake<E, O, R1, E1, P>(
+  push: (c: O.Option<A.Chunk<O>>) => T.Effect<R1, E1, A.Chunk<P>>,
+  lastChunk: R.Ref<A.Chunk<P>>,
+  take: Take.Take<E | E1, O>
+): Pull.Pull<R1, E | E1, Take.Take<E1, E.Either<never, P>>> {
+  return pipe(
+    take,
+    Take.foldM(
+      () =>
+        pipe(
+          push(O.none),
+          T.map((ps) => A.from([Take.chunk(A.map_(ps, E.right)), Take.end]))
+        ),
+      T.halt,
+      (os) =>
+        T.chain_(Take.fromPull(T.asSomeError(push(O.some(os)))), (take) =>
+          T.as_(updateLastChunk(lastChunk, take), A.single(Take.map_(take, E.right)))
+        )
+    ),
+    T.mapError(O.some)
+  )
+}
+
+function updateLastChunk<E1, P>(
+  lastChunk: R.Ref<A.Chunk<P>>,
+  take: Take.Take<E1, P>
+): T.UIO<void> {
+  return Take.tap_(take, lastChunk.set)
 }

@@ -1,8 +1,8 @@
 // tracing: off
 
 import type * as C from "../../Cause"
-import type * as A from "../../Chunk"
 import type * as CL from "../../Clock"
+import type * as A from "../../Collections/Immutable/Chunk"
 import * as O from "../../Option"
 import * as T from "../_internal/effect"
 import * as M from "../_internal/managed"

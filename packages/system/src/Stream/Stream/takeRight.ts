@@ -1,6 +1,6 @@
 // tracing: off
 
-import * as A from "../../Chunk"
+import * as A from "../../Collections/Immutable/Chunk"
 import { pipe } from "../../Function"
 import * as O from "../../Option"
 import * as Q from "../../Queue"
@@ -33,7 +33,7 @@ export function takeRight_<R, E, O>(self: Stream<R, E, O>, n: number): Stream<R,
               return pipe(
                 BP.pullElement(pull),
                 T.tap(queue.offer),
-                T.as(A.empty),
+                T.as(A.empty<O>()),
                 T.catchSome(
                   O.fold(
                     () =>

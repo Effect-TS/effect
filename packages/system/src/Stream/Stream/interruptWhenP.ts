@@ -1,6 +1,6 @@
 // tracing: off
 
-import type * as A from "../../Chunk"
+import type * as A from "../../Collections/Immutable/Chunk"
 import { pipe } from "../../Function"
 import * as O from "../../Option"
 import * as P from "../../Promise"
@@ -28,7 +28,10 @@ export function interruptWhenP_<R, E, E1, O>(
       M.let(
         "asPull",
         ({ done }): T.Effect<unknown, O.Option<E1>, never> =>
-          T.zipRight_(T.zipRight_(T.asSomeError(P.await(p)), done.set(true)), Pull.end)
+          T.zipRight_(
+            T.zipRight_(T.asSomeError(P.await(p)), done.set(true)),
+            T.fail(O.none)
+          )
       ),
       M.let("pull", ({ as, asPull, done }) =>
         T.chain_(

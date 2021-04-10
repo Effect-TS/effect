@@ -1,7 +1,7 @@
 // tracing: off
 
-import type * as A from "../../Chunk"
 import type * as CL from "../../Clock"
+import type * as A from "../../Collections/Immutable/Chunk"
 import * as E from "../../Either"
 import * as O from "../../Option"
 import type * as SC from "../../Schedule"

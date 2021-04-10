@@ -39,7 +39,6 @@
       "Case/_internal/Hash",
       "Cause",
       "Cause/Pretty",
-      "Chunk",
       "Clock",
       "Collections",
       "Collections/Immutable",

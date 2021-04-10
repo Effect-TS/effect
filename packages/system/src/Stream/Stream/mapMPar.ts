@@ -1,5 +1,6 @@
 // tracing: off
 
+import * as A from "../../Collections/Immutable/Chunk"
 import { pipe } from "../../Function"
 import * as O from "../../Option"
 import * as P from "../../Promise"
@@ -10,7 +11,6 @@ import * as M from "../_internal/managed"
 import * as Pull from "../Pull"
 import { Stream } from "./definitions"
 import { forEachManaged } from "./forEach"
-
 /**
  * Maps over elements of the stream with the specified effectful function,
  * executing up to `n` invocations of `f` concurrently. Transformed elements
@@ -78,7 +78,7 @@ export function mapMPar(n: number) {
           pipe(
             out.take,
             T.flatten,
-            T.map((o) => [o])
+            T.map((o) => A.single(o))
           )
         )
       )

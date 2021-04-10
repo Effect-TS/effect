@@ -1,7 +1,7 @@
 // tracing: off
 
-import type * as A from "../../Chunk"
 import * as CL from "../../Clock"
+import type * as A from "../../Collections/Immutable/Chunk"
 import { pipe } from "../../Function"
 import * as O from "../../Option"
 import * as T from "../_internal/effect"

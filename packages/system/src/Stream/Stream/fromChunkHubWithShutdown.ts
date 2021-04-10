@@ -1,4 +1,4 @@
-import type * as A from "../../Chunk"
+import type * as A from "../../Collections/Immutable/Chunk"
 import type * as H from "../../Hub"
 import type { Stream } from "./definitions"
 import { ensuringFirst_ } from "./ensuringFirst"

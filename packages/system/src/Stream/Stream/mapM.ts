@@ -1,12 +1,12 @@
 // tracing: off
 
+import * as A from "../../Collections/Immutable/Chunk"
 import { pipe } from "../../Function"
 import * as O from "../../Option"
 import * as T from "../_internal/effect"
 import * as M from "../_internal/managed"
 import * as BP from "../BufferedPull"
 import { Stream } from "./definitions"
-
 /**
  * Maps over elements of the stream with the specified effectful function.
  */
@@ -25,7 +25,7 @@ export function mapM_<O, R, R1, E, E1, O1>(
           T.chain((o) =>
             pipe(
               f(o),
-              T.bimap(O.some, (o1) => [o1] as [O1])
+              T.bimap(O.some, (o1) => A.single(o1))
             )
           )
         )

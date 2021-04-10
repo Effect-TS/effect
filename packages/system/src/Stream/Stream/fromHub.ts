@@ -1,3 +1,5 @@
+// tracing: off
+
 import type * as H from "../../Hub"
 import { chain_ } from "./chain"
 import type { Stream } from "./definitions"

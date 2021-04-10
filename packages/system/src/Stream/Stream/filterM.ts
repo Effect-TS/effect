@@ -1,6 +1,6 @@
 // tracing: off
 
-import * as A from "../../Chunk"
+import * as A from "../../Collections/Immutable/Chunk"
 import * as O from "../../Option"
 import * as BP from "../../Stream/BufferedPull"
 import type * as Pull from "../../Stream/Pull"

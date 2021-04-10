@@ -3,9 +3,9 @@
 import "../../Operator"
 
 import * as C from "../../Cause"
-import * as A from "../../Chunk"
 import type { HasClock } from "../../Clock"
 import { currentTime } from "../../Clock"
+import * as A from "../../Collections/Immutable/Chunk"
 import * as List from "../../Collections/Immutable/List"
 import type * as MP from "../../Collections/Immutable/Map"
 import * as E from "../../Either"
@@ -87,15 +87,12 @@ export function collectAllWhileWith<S>(z: S) {
 
                         if (A.isEmpty(leftover)) {
                           if (end) {
-                            return Push.emit(s1, A.empty)
+                            return Push.emit(s1, A.empty())
                           } else {
                             return T.as_(restart, s1)
                           }
                         } else {
-                          return T.zipRight_(
-                            restart,
-                            go(s1, O.some(leftover) as O.Option<A.Chunk<I>>, end)
-                          )
+                          return T.zipRight_(restart, go(s1, O.some(leftover), end))
                         }
                       } else {
                         return Push.emit(s, leftover)
@@ -139,7 +136,7 @@ export function contramapM_<R, R1, E, E1, I, I2, L, Z>(
   self: Sink<R, E, I, L, Z>,
   f: (i2: I2) => T.Effect<R1, E1, I>
 ): Sink<R & R1, E | E1, I2, L, Z> {
-  return contramapChunksM_(self, T.forEach(f))
+  return contramapChunksM_(self, A.mapM(f))
 }
 
 /**
@@ -185,7 +182,7 @@ export function contramapChunksM_<R, R1, E, E1, I, I2, L, Z>(
           (value) =>
             pipe(
               f(value),
-              T.mapError((e: E | E1) => [E.left(e), A.empty] as const),
+              T.mapError((e: E | E1) => [E.left(e), A.empty<L>()] as const),
               T.chain((is) => push(O.some(is)))
             )
         )
@@ -369,13 +366,13 @@ export function foldM_<R, R1, R2, E, E1, E2, I, I1, I2, L, L1, L2, Z, Z1, Z2>(
                         () =>
                           pipe(
                             p(O.some(leftover) as O.Option<A.Chunk<I & I1 & I2>>),
-                            T.when(() => A.isNonEmpty(leftover)),
+                            T.when(() => !A.isEmpty(leftover)),
                             T.zipRight(p(O.none))
                           ),
                         () =>
                           pipe(
                             p(O.some(leftover) as O.Option<A.Chunk<I & I1 & I2>>),
-                            T.when(() => A.isNonEmpty(leftover))
+                            T.when(() => !A.isEmpty(leftover))
                           )
                       )
                     )
@@ -630,11 +627,11 @@ export function toTransducer<R, E, I, L extends I, Z>(
                 T.zipRight_(
                   restart,
                   A.isEmpty(leftover) || O.isNone(input)
-                    ? T.succeed([z])
-                    : T.map_(go(O.some(leftover)), (more) => [z, ...more])
+                    ? T.succeed(A.single(z))
+                    : T.map_(go(O.some(leftover)), (more) => A.prepend_(more, z))
                 )
             ),
-          (_) => T.succeed(A.empty)
+          (_) => T.succeed(A.empty())
         )
 
       return (input: O.Option<A.Chunk<I>>) => go(input)
@@ -891,7 +888,7 @@ export function zipWithPar_<R, R1, E, E1, I, I1, L, L1, Z, Z1, Z2>(
 
                           return T.fail([
                             E.right(f(z, z1)),
-                            l.length > l1.length ? l1 : l
+                            A.size(l) > A.size(l1) ? l1 : l
                           ] as const)
                         } else {
                           return T.succeed(new LeftDone(z))
@@ -976,9 +973,11 @@ export function exposeLeftover<R, E, I, L, Z>(
   return new Sink(
     M.map_(self.push, (p) => {
       return (in_: O.Option<A.Chunk<I>>) =>
-        T.mapError_(p(in_), ([v, leftover]) => {
-          return [E.map_(v, (z) => [z, leftover] as const), A.empty] as const
-        })
+        T.mapError_(
+          p(in_),
+          ([v, leftover]) =>
+            [E.map_(v, (z) => [z, leftover] as const), A.empty()] as const
+        )
     })
   )
 }
@@ -991,7 +990,7 @@ export function dropLeftover<R, E, I, L, Z>(
 ): Sink<R, E, I, never, Z> {
   return new Sink(
     M.map_(self.push, (p) => (in_: O.Option<A.Chunk<I>>) =>
-      T.mapError_(p(in_), ([v, _]) => [v, []])
+      T.mapError_(p(in_), ([v, _]) => [v, A.empty()])
     )
   )
 }
@@ -1026,7 +1025,7 @@ export function untilOutputM_<R, R1, E, E1, I, L extends I, Z>(
                     return Push.emit(O.some(z), leftover)
                   } else if (A.isEmpty(leftover)) {
                     return end
-                      ? Push.emit(O.none, A.empty)
+                      ? Push.emit(O.none, A.empty())
                       : T.zipRight_(restart, Push.more)
                   } else {
                     return go(O.some(leftover) as O.Option<A.Chunk<I>>, end)
@@ -1150,14 +1149,14 @@ export function accessM<R, R2, E, I, L, Z>(
  * A sink that collects all of its inputs into an array.
  */
 export function collectAll<A>(): Sink<unknown, never, A, never, A.Chunk<A>> {
-  return reduceLeftChunks(A.empty as A.Chunk<A>)((s, i: A.Chunk<A>) => [...s, ...i])
+  return reduceLeftChunks(A.empty<A>())((s, i: A.Chunk<A>) => A.concat_(s, i))
 }
 
 /**
  * A sink that collects all of its inputs into an list.
  */
 export function collectAllToList<A>(): Sink<unknown, never, A, never, List.List<A>> {
-  return reduceLeftChunks(List.empty() as List.List<A>)((s, i: A.Chunk<A>) =>
+  return reduceLeftChunks(List.empty<A>())((s, i: A.Chunk<A>) =>
     List.concat_(s, List.from(i))
   )
 }
@@ -1228,7 +1227,7 @@ export function fail<E>(e: E) {
     fromPush((c) => {
       const leftover: A.Chunk<I> = O.fold_(
         c,
-        () => A.empty,
+        () => A.empty(),
         (x) => x
       )
 
@@ -1257,7 +1256,7 @@ export function reduce<S>(z: S) {
         if (contFn(s1)) {
           return reduceChunk(s1, chunk, idx + 1, len)
         } else {
-          return [s1, O.some(A.dropLeft_(chunk, idx + 1))] as const
+          return [s1, O.some(A.drop_(chunk, idx + 1))] as const
         }
       }
     }
@@ -1271,10 +1270,10 @@ export function reduce<S>(z: S) {
             return (is: O.Option<A.Chunk<I>>) =>
               O.fold_(
                 is,
-                () => T.chain_(state.get, (s) => Push.emit(s, A.empty)),
+                () => T.chain_(state.get, (s) => Push.emit(s, A.empty())),
                 (is) =>
                   T.chain_(state.get, (s) => {
-                    const [st, l] = reduceChunk(s, is, 0, is.length)
+                    const [st, l] = reduceChunk(s, is, 0, A.size(is))
 
                     return O.fold_(
                       l,
@@ -1322,17 +1321,17 @@ export function reduceChunksM<S>(z: S) {
             return (is: O.Option<A.Chunk<I>>) =>
               O.fold_(
                 is,
-                () => T.chain_(state.get, (s) => Push.emit(s, [])),
+                () => T.chain_(state.get, (s) => Push.emit(s, A.empty<I>())),
                 (is) =>
                   pipe(
                     state.get,
                     T.chain((_) => f(_, is)),
-                    T.mapError((e) => [E.left(e), []] as const),
+                    T.mapError((e) => [E.left(e), A.empty<I>()] as const),
                     T.chain((s) => {
                       if (contFn(s)) {
                         return T.zipRight_(state.set(s), Push.more)
                       } else {
-                        return Push.emit(s, [])
+                        return Push.emit(s, A.empty<I>())
                       }
                     })
                   )
@@ -1366,15 +1365,12 @@ export function reduceM<S>(z: S) {
         return T.succeed([s, O.none] as const)
       } else {
         return T.foldM_(
-          f(s, chunk[idx]!),
-          (e) => T.fail([e, A.dropLeft_(chunk, idx + 1)] as const),
-          (s1) => {
-            if (contFn(s1)) {
-              return reduceChunk(s1, chunk, idx + 1, len)
-            } else {
-              return T.succeed([s1, O.some(A.dropLeft_(chunk, idx + 1))])
-            }
-          }
+          f(s, A.unsafeGet_(chunk, idx)),
+          (e) => T.fail([e, A.drop_(chunk, idx + 1)] as const),
+          (s1) =>
+            contFn(s1)
+              ? reduceChunk(s1, chunk, idx + 1, len)
+              : T.succeed([s1, O.some(A.drop_(chunk, idx + 1))])
         )
       }
     }
@@ -1384,27 +1380,25 @@ export function reduceM<S>(z: S) {
         pipe(
           M.do,
           M.bind("state", () => T.toManaged(R.makeRef(z))),
-          M.map(({ state }) => {
-            return (is: O.Option<A.Chunk<I>>) =>
-              O.fold_(
-                is,
-                () => T.chain_(state.get, (s) => Push.emit(s, A.empty)),
-                (is) =>
-                  T.chain_(state.get, (s) => {
-                    return T.foldM_(
-                      reduceChunk(s, is, 0, is.length),
-                      (err) => Push.fail(...err),
-                      ([st, l]) => {
-                        return O.fold_(
-                          l,
-                          () => T.zipRight_(state.set(st), Push.more),
-                          (leftover) => Push.emit(st, leftover)
-                        )
-                      }
-                    )
-                  })
-              )
-          })
+          M.map(({ state }) => (is: O.Option<A.Chunk<I>>) =>
+            O.fold_(
+              is,
+              () => T.chain_(state.get, (s) => Push.emit(s, A.empty())),
+              (is) =>
+                T.chain_(state.get, (s) =>
+                  T.foldM_(
+                    reduceChunk(s, is, 0, A.size(is)),
+                    (err) => Push.fail(...err),
+                    ([st, l]) =>
+                      O.fold_(
+                        l,
+                        () => T.zipRight_(state.set(st), Push.more),
+                        (leftover) => Push.emit(st, leftover)
+                      )
+                  )
+                )
+            )
+          )
         )
       )
     } else {
@@ -1461,9 +1455,9 @@ export function forEach<I, R1, E1, X>(f: (i: I) => T.Effect<R1, E1, X>) {
       return Push.more
     } else {
       return pipe(
-        f(chunk[idx]!),
+        f(A.unsafeGet_(chunk, idx)),
         T.foldM(
-          (e) => Push.fail(e, A.dropLeft_(chunk, idx + 1)),
+          (e) => Push.fail(e, A.drop_(chunk, idx + 1)),
           () => go(chunk, idx + 1, len)
         )
       )
@@ -1472,8 +1466,8 @@ export function forEach<I, R1, E1, X>(f: (i: I) => T.Effect<R1, E1, X>) {
 
   return fromPush(
     O.fold(
-      () => Push.emit<never, void>(undefined, []),
-      (is: A.Chunk<I>) => go(is, 0, is.length)
+      () => Push.emit<never, void>(undefined, A.empty()),
+      (is: A.Chunk<I>) => go(is, 0, A.size(is))
     )
   )
 }
@@ -1487,10 +1481,10 @@ export function forEachChunk<R, E, I, X>(
   return fromPush((in_: O.Option<A.Chunk<I>>) =>
     O.fold_(
       in_,
-      () => Push.emit<never, void>(undefined, A.empty),
+      () => Push.emit<never, void>(undefined, A.empty()),
       (is) =>
         T.zipRight_(
-          T.mapError_(f(is), (e) => [E.left(e), A.empty] as const),
+          T.mapError_(f(is), (e) => [E.left(e), A.empty()] as const),
           Push.more
         )
     )
@@ -1513,13 +1507,13 @@ export function forEachWhile<R, E, I>(
       return Push.more
     } else {
       return T.foldM_(
-        f(chunk[idx]!),
-        (e) => Push.fail(e, A.dropLeft_(chunk, idx + 1)),
+        f(A.unsafeGet_(chunk, idx)),
+        (e) => Push.fail(e, A.drop_(chunk, idx + 1)),
         (b) => {
           if (b) {
             return go(chunk, idx + 1, len)
           } else {
-            return Push.emit<I, void>(undefined, A.dropLeft_(chunk, idx))
+            return Push.emit<I, void>(undefined, A.drop_(chunk, idx))
           }
         }
       )
@@ -1529,8 +1523,8 @@ export function forEachWhile<R, E, I>(
   return fromPush((in_: O.Option<A.Chunk<I>>) =>
     O.fold_(
       in_,
-      () => Push.emit<never, void>(undefined, A.empty),
-      (is) => go(is, 0, is.length)
+      () => Push.emit<never, void>(undefined, A.empty()),
+      (is) => go(is, 0, A.size(is))
     )
   )
 }
@@ -1541,7 +1535,7 @@ export function forEachWhile<R, E, I>(
 export function fromEffect<R, E, Z>(b: T.Effect<R, E, Z>) {
   return <I>(): Sink<R, E, I, I, Z> =>
     fromPush<R, E, I, I, Z>((in_: O.Option<A.Chunk<I>>) => {
-      const leftover = O.fold_(in_, () => A.empty as A.Chunk<I>, identity)
+      const leftover = O.fold_(in_, () => A.empty<I>(), identity)
 
       return T.foldM_(
         b,
@@ -1573,14 +1567,8 @@ export function head<I>(): Sink<unknown, never, I, I, O.Option<I>> {
     M.succeed((in_: O.Option<A.Chunk<I>>) =>
       O.fold_(
         in_,
-        () => Push.emit(O.none, A.empty),
-        (ch) => {
-          if (A.isEmpty(ch)) {
-            return Push.more
-          } else {
-            return Push.emit(A.head(ch), A.empty)
-          }
-        }
+        () => Push.emit(O.none, A.empty()),
+        (ch) => (A.isEmpty(ch) ? Push.more : Push.emit(A.head(ch), A.empty()))
       )
     )
   )
@@ -1594,21 +1582,20 @@ export function last<I>(): Sink<unknown, never, I, never, O.Option<I>> {
     pipe(
       M.do,
       M.bind("state", () => T.toManaged(R.makeRef<O.Option<I>>(O.none))),
-      M.map(({ state }) => {
-        return (is: O.Option<A.Chunk<I>>) =>
-          T.chain_(state.get, (last) => {
-            return O.fold_(
-              is,
-              () => Push.emit(last, A.empty),
-              (ch) =>
-                O.fold_(
-                  A.last(ch),
-                  () => Push.more,
-                  (l) => T.zipRight_(state.set(O.some(l)), Push.more)
-                )
-            )
-          })
-      })
+      M.map(({ state }) => (is: O.Option<A.Chunk<I>>) =>
+        T.chain_(state.get, (last) =>
+          O.fold_(
+            is,
+            () => Push.emit(last, A.empty()),
+            (ch) =>
+              O.fold_(
+                A.last(ch),
+                () => Push.more,
+                (l) => T.zipRight_(state.set(O.some(l)), Push.more)
+              )
+          )
+        )
+      )
     )
   )
 }
@@ -1647,7 +1634,7 @@ export function succeed<Z, I>(z: Z): Sink<unknown, never, I, I, Z> {
   return fromPush<unknown, never, I, I, Z>((c) => {
     const leftover = O.fold_(
       c,
-      () => [] as A.Chunk<I>,
+      () => A.empty<I>(),
       (x) => x
     )
 
@@ -1669,35 +1656,35 @@ export function take<I>(n: number): Sink<unknown, never, I, I, A.Chunk<I>> {
   return new Sink(
     pipe(
       M.do,
-      M.bind("state", () => T.toManaged(R.makeRef<A.Chunk<I>>(A.empty))),
+      M.bind("state", () => T.toManaged(R.makeRef<A.Chunk<I>>(A.empty()))),
       M.map(({ state }) => {
         return (is: O.Option<A.Chunk<I>>) =>
-          T.chain_(state.get, (take) => {
-            return O.fold_(
+          T.chain_(state.get, (take) =>
+            O.fold_(
               is,
               () => {
                 if (n >= 0) {
-                  return Push.emit(take, A.empty as A.Chunk<I>)
+                  return Push.emit(take, A.empty() as A.Chunk<I>)
                 } else {
-                  return Push.emit(A.empty, take)
+                  return Push.emit(A.empty(), take)
                 }
               },
               (ch) => {
-                const remaining = n - take.length
+                const remaining = n - A.size(take)
 
-                if (remaining <= ch.length) {
+                if (remaining <= A.size(ch)) {
                   const [chunk, leftover] = A.splitAt_(ch, remaining)
 
                   return T.zipRight_(
-                    state.set(A.empty),
-                    Push.emit([...take, ...chunk], leftover)
+                    state.set(A.empty()),
+                    Push.emit(A.concat_(take, chunk), leftover)
                   )
                 } else {
-                  return T.zipRight_(state.set([...take, ...ch]), Push.more)
+                  return T.zipRight_(state.set(A.concat_(take, ch)), Push.more)
                 }
               }
             )
-          })
+          )
       })
     )
   )
@@ -1720,11 +1707,11 @@ export function foreachChunk<R, E, I, A>(
   return fromPush((o) =>
     O.fold_(
       o,
-      () => Push.emit(undefined, A.empty),
+      () => Push.emit(undefined, A.empty<never>()),
       (is) =>
         pipe(
           f(is),
-          T.mapError((e) => [E.left(e), A.empty] as const),
+          T.mapError((e) => [E.left(e), A.empty<never>()] as const),
           T.zipRight(Push.more)
         )
     )

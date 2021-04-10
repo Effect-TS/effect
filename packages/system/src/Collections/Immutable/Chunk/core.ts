@@ -409,3 +409,17 @@ export function materialize<A>(self: Chunk<A>): Chunk<A> {
  * The unit chunk
  */
 export const unit: Chunk<void> = single(void 0)
+
+/**
+ * Transforms an iterable into a chunk
+ *
+ * NOTE: different from Chunk#from this copies the elements 1 by 1
+ * allowing for binary to be correctly stored in typed arrays
+ */
+export function fromIterable<A>(iter: Iterable<A>): Chunk<A> {
+  let builder = empty<A>()
+  for (const x of iter) {
+    builder = append_(builder, x)
+  }
+  return builder
+}

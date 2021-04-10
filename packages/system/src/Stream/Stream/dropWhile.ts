@@ -1,6 +1,6 @@
 // tracing: off
 
-import * as A from "../../Chunk"
+import * as A from "../../Collections/Immutable/Chunk"
 import type { Predicate } from "../../Function"
 import { pipe } from "../../Function"
 import * as O from "../../Option"
@@ -29,7 +29,7 @@ export function dropWhile_<R, E, O>(
               return T.succeed(chunk)
             } else {
               const remaining = A.dropWhile_(chunk, pred)
-              const empty = remaining.length <= 0
+              const empty = A.isEmpty(remaining)
 
               if (empty) {
                 return go
