@@ -34,5 +34,7 @@ export * from "./api/splitWhere"
 export * from "./api/takeWhile"
 export * from "./api/takeWhileM"
 export * from "./api/zip"
+export * from "./api/zipAll"
+export * from "./api/zipAllWith"
 export * from "./api/zipWith"
 // codegen:end
