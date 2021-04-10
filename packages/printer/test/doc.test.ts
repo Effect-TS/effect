@@ -1,5 +1,5 @@
-import type { Array } from "@effect-ts/core/Array"
-import * as A from "@effect-ts/core/Array"
+import type { Array } from "@effect-ts/core/Collections/Immutable/Array"
+import * as A from "@effect-ts/core/Collections/Immutable/Array"
 import { constant, flow, pipe } from "@effect-ts/system/Function"
 
 import type { Doc } from "../src/Core/Doc"

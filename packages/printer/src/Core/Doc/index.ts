@@ -1,9 +1,9 @@
 // tracing: off
 
-import type { Array } from "@effect-ts/core/Array"
-import * as A from "@effect-ts/core/Array"
 import type { Associative } from "@effect-ts/core/Associative"
 import * as Assoc from "@effect-ts/core/Associative"
+import type { Array } from "@effect-ts/core/Collections/Immutable/Array"
+import * as A from "@effect-ts/core/Collections/Immutable/Array"
 import { constant, identity } from "@effect-ts/core/Function"
 import type { Identity } from "@effect-ts/core/Identity"
 import * as Ident from "@effect-ts/core/Identity"

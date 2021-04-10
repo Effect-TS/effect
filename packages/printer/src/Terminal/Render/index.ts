@@ -1,7 +1,7 @@
 // tracing: off
 
-import type { Array } from "@effect-ts/core/Array"
-import * as A from "@effect-ts/core/Array"
+import type { Array } from "@effect-ts/core/Collections/Immutable/Array"
+import * as A from "@effect-ts/core/Collections/Immutable/Array"
 import { tuple } from "@effect-ts/core/Function"
 import * as IO from "@effect-ts/core/IO"
 

@@ -1,4 +1,4 @@
-import * as A from "@effect-ts/core/Array"
+import * as A from "@effect-ts/core/Collections/Immutable/Array"
 import { flow, pipe } from "@effect-ts/core/Function"
 import * as I from "@effect-ts/core/Identity"
 

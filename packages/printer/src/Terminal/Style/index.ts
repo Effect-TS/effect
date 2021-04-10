@@ -1,7 +1,7 @@
 // tracing: off
 
-import * as A from "@effect-ts/core/Array"
 import * as Assoc from "@effect-ts/core/Associative"
+import * as A from "@effect-ts/core/Collections/Immutable/Array"
 import * as Ident from "@effect-ts/core/Identity"
 import * as O from "@effect-ts/core/Option"
 import * as S from "@effect-ts/core/Show"
