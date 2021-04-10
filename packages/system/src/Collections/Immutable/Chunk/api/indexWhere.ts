@@ -1,48 +1,18 @@
 import type * as Chunk from "../core"
-import { concreteId } from "../definition"
+import { indexWhereFrom_ } from "./indexWhereFrom"
 
 /**
- * Returns the first index for which the given predicate is satisfied after or at some given index.
+ * Returns the first index for which the given predicate is satisfied.
  */
-export function indexWhere_<A>(
-  self: Chunk.Chunk<A>,
-  from: number,
-  f: (a: A) => boolean
-): number {
-  const iterator = concreteId(self).arrayLikeIterator()
-  let next
-  let i = 0
-
-  while ((next = iterator.next()) && !next.done) {
-    const array = next.value
-    const len = array.length
-    if (i + len - 1 >= from) {
-      let j = 0
-      while (j < len) {
-        const a = array[j]!
-        if (i >= from && f(a)) {
-          return i
-        }
-        j++
-        i++
-      }
-    } else {
-      i += len
-    }
-    next = iterator.next()
-  }
-
-  return -1
+export function indexWhere_<A>(self: Chunk.Chunk<A>, f: (a: A) => boolean): number {
+  return indexWhereFrom_(self, 0, f)
 }
 
 /**
- * Returns the first index for which the given predicate is satisfied after or at some given index.
+ * Returns the first index for which the given predicate is satisfied.
  *
  * @dataFirst indexWhere_
  */
-export function indexWhere<A>(
-  from: number,
-  f: (a: A) => boolean
-): (self: Chunk.Chunk<A>) => number {
-  return (self) => indexWhere_(self, from, f)
+export function indexWhere<A>(f: (a: A) => boolean): (self: Chunk.Chunk<A>) => number {
+  return (self) => indexWhere_(self, f)
 }

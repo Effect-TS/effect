@@ -404,3 +404,8 @@ export function reverse<A>(self: Chunk<A>): Iterable<A> {
 export function materialize<A>(self: Chunk<A>): Chunk<A> {
   return concreteId(self).materialize()
 }
+
+/**
+ * The unit chunk
+ */
+export const unit: Chunk<void> = single(void 0)

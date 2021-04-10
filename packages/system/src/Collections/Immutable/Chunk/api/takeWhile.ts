@@ -1,5 +1,5 @@
 import * as Chunk from "../core"
-import { concreteId } from "../definition"
+import { ArrTypeId, concrete } from "../definition"
 
 /**
  * Takes all elements so long as the predicate returns true.
@@ -8,27 +8,42 @@ export function takeWhile_<A>(
   self: Chunk.Chunk<A>,
   f: (a: A) => boolean
 ): Chunk.Chunk<A> {
-  const iterator = concreteId(self).arrayLikeIterator()
-  let next
-  let cont = true
-  let i = 0
+  concrete(self)
 
-  while (cont && (next = iterator.next()) && !next.done) {
-    const array = next.value
-    const len = array.length
-    let j = 0
-    while (cont && j < len) {
-      const a = array[j]!
-      if (!f(a)) {
-        cont = false
-      } else {
+  switch (self._typeId) {
+    case ArrTypeId: {
+      const arr = self.arrayLike()
+      const len = arr.length
+      let i = 0
+      while (i < len && f(arr[i]!)) {
         i++
-        j++
       }
+      return Chunk.take_(self, i)
+    }
+    default: {
+      const iterator = self.arrayLikeIterator()
+      let next
+      let cont = true
+      let i = 0
+
+      while (cont && (next = iterator.next()) && !next.done) {
+        const array = next.value
+        const len = array.length
+        let j = 0
+        while (cont && j < len) {
+          const a = array[j]!
+          if (!f(a)) {
+            cont = false
+          } else {
+            i++
+            j++
+          }
+        }
+      }
+
+      return Chunk.take_(self, i)
     }
   }
-
-  return Chunk.take_(self, i)
 }
 
 /**

@@ -312,7 +312,7 @@ describe("Chunk", () => {
         Chunk.append(1),
         Chunk.append(3),
         Chunk.append(4),
-        Chunk.indexWhere(2, (n) => n > 2)
+        Chunk.indexWhereFrom(2, (n) => n > 2)
       )
     ).toEqual(4)
   })
@@ -451,5 +451,30 @@ describe("Chunk", () => {
       [O.some(3), O.some(3)],
       [O.some(4), O.none]
     ])
+  })
+  it("zipWithIndex", () => {
+    expect(
+      pipe(
+        Chunk.single(1),
+        Chunk.append(2),
+        Chunk.append(3),
+        Chunk.append(4),
+        Chunk.zipWithIndex,
+        Chunk.toArray
+      )
+    ).toEqual([
+      [1, 0],
+      [2, 1],
+      [3, 2],
+      [4, 3]
+    ])
+  })
+  it("fill", () => {
+    expect(
+      pipe(
+        Chunk.fill(10, (n) => n + 1),
+        Chunk.toArray
+      )
+    ).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
   })
 })
