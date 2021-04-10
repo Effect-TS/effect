@@ -396,4 +396,60 @@ describe("Chunk", () => {
       [3, 4, 5]
     ])
   })
+  it("zip", () => {
+    const left = pipe(
+      Chunk.single(0),
+      Chunk.append(1),
+      Chunk.append(2),
+      Chunk.append(3)
+    )
+    const right = pipe(
+      Chunk.single(0),
+      Chunk.append(1),
+      Chunk.append(2),
+      Chunk.append(3),
+      Chunk.append(4)
+    )
+    expect(pipe(left, Chunk.zip(right), Chunk.toArray)).toEqual([
+      [0, 0],
+      [1, 1],
+      [2, 2],
+      [3, 3]
+    ])
+    expect(pipe(right, Chunk.zip(left), Chunk.toArray)).toEqual([
+      [0, 0],
+      [1, 1],
+      [2, 2],
+      [3, 3]
+    ])
+  })
+  it("zipAll", () => {
+    const left = pipe(
+      Chunk.single(0),
+      Chunk.append(1),
+      Chunk.append(2),
+      Chunk.append(3)
+    )
+    const right = pipe(
+      Chunk.single(0),
+      Chunk.append(1),
+      Chunk.append(2),
+      Chunk.append(3),
+      Chunk.append(4)
+    )
+    expect(pipe(left, Chunk.zipAll(right), Chunk.toArray)).toEqual([
+      [O.some(0), O.some(0)],
+      [O.some(1), O.some(1)],
+      [O.some(2), O.some(2)],
+      [O.some(3), O.some(3)],
+      [O.none, O.some(4)]
+    ])
+    expect(pipe(right, Chunk.zipAll(left), Chunk.toArray)).toEqual([
+      [O.some(0), O.some(0)],
+      [O.some(1), O.some(1)],
+      [O.some(2), O.some(2)],
+      [O.some(3), O.some(3)],
+      [O.some(4), O.none]
+    ])
+  })
 })
