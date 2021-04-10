@@ -10,10 +10,10 @@ export function reduceRight_<A, S>(
   f: (a: A, s: S) => S
 ): S {
   const iterator = concreteId(self).reverseArrayLikeIterator()
-  let next = iterator.next()
+  let next
   let s1 = s
 
-  while (!next.done) {
+  while ((next = iterator.next()) && !next.done) {
     const array = next.value
     const len = array.length
     let i = len - 1
@@ -22,7 +22,6 @@ export function reduceRight_<A, S>(
       s1 = f(a, s1)
       i--
     }
-    next = iterator.next()
   }
 
   return s1

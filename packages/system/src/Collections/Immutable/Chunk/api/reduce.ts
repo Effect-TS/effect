@@ -6,10 +6,10 @@ import { concreteId } from "../definition"
  */
 export function reduce_<A, S>(self: Chunk.Chunk<A>, s: S, f: (s: S, a: A) => S): S {
   const iterator = concreteId(self).arrayLikeIterator()
-  let next = iterator.next()
+  let next
   let s1 = s
 
-  while (!next.done) {
+  while ((next = iterator.next()) && !next.done) {
     const array = next.value
     const len = array.length
     let i = 0
@@ -18,7 +18,6 @@ export function reduce_<A, S>(self: Chunk.Chunk<A>, s: S, f: (s: S, a: A) => S):
       s1 = f(s1, a)
       i++
     }
-    next = iterator.next()
   }
 
   return s1

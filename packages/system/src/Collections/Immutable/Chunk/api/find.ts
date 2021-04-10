@@ -13,9 +13,9 @@ export function find_<A, B extends A>(
 export function find_<A>(self: Chunk.Chunk<A>, f: (a: A) => boolean): O.Option<A>
 export function find_<A>(self: Chunk.Chunk<A>, f: (a: A) => boolean): O.Option<A> {
   const iterator = concreteId(self).arrayLikeIterator()
-  let next = iterator.next()
+  let next
 
-  while (!next.done) {
+  while ((next = iterator.next()) && !next.done) {
     const array = next.value
     const len = array.length
     let i = 0

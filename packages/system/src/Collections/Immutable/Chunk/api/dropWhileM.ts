@@ -13,11 +13,11 @@ export function dropWhileM_<R, E, A>(
 ): Effect<R, E, Chunk.Chunk<A>> {
   return core.suspend(() => {
     const iterator = concreteId(self).arrayLikeIterator()
-    let next = iterator.next()
+    let next
     let dropping: Effect<R, E, boolean> = core.succeed(true)
     let builder = Chunk.empty<A>()
 
-    while (!next.done) {
+    while ((next = iterator.next()) && !next.done) {
       const array = next.value
       const len = array.length
       let i = 0

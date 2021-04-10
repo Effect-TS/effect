@@ -6,9 +6,9 @@ import { concreteId } from "../definition"
  */
 export function every_<A>(self: Chunk.Chunk<A>, f: (a: A) => boolean): boolean {
   const iterator = concreteId(self).arrayLikeIterator()
-  let next = iterator.next()
+  let next
 
-  while (!next.done) {
+  while ((next = iterator.next()) && !next.done) {
     const array = next.value
     const len = array.length
     let i = 0
@@ -19,7 +19,6 @@ export function every_<A>(self: Chunk.Chunk<A>, f: (a: A) => boolean): boolean {
       }
       i++
     }
-    next = iterator.next()
   }
 
   return true

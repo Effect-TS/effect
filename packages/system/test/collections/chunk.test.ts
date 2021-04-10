@@ -377,4 +377,23 @@ describe("Chunk", () => {
       )
     ).toEqual([[0, 1], [2, 3], [4], [5], [6]])
   })
+  it("splitWhere", () => {
+    expect(
+      pipe(
+        Chunk.single(0),
+        Chunk.append(1),
+        Chunk.append(2),
+        Chunk.append(3),
+        Chunk.append(4),
+        Chunk.append(5),
+        Chunk.splitWhere((n) => n === 3),
+        Chunk.from,
+        Chunk.map(Chunk.toArray),
+        Chunk.toArray
+      )
+    ).toEqual([
+      [0, 1, 2],
+      [3, 4, 5]
+    ])
+  })
 })

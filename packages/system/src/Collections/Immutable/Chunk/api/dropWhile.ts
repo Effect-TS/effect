@@ -11,9 +11,9 @@ export function dropWhile_<A>(
   const iterator = concreteId(self).arrayLikeIterator()
   let cont = true
   let i = 0
-  let next = iterator.next()
+  let next
 
-  while (cont && !next.done) {
+  while (cont && (next = iterator.next()) && !next.done) {
     const array = next.value
     const len = array.length
     let j = 0
@@ -26,7 +26,6 @@ export function dropWhile_<A>(
         cont = false
       }
     }
-    next = iterator.next()
   }
   return Chunk.drop_(self, i)
 }

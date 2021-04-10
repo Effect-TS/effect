@@ -10,11 +10,11 @@ export function mapAccum_<A, B, S>(
   f: (s: S, a: A) => readonly [S, B]
 ): readonly [S, Chunk.Chunk<B>] {
   const iterator = concreteId(self).arrayLikeIterator()
-  let next = iterator.next()
+  let next
   let s1 = s
   let builder = Chunk.empty<B>()
 
-  while (!next.done) {
+  while ((next = iterator.next()) && !next.done) {
     const array = next.value
     const len = array.length
     let i = 0

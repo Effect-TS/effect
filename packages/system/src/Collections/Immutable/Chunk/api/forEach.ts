@@ -6,9 +6,9 @@ import { concreteId } from "../definition"
  */
 export function forEach_<A, U>(self: Chunk.Chunk<A>, f: (a: A) => U): void {
   const iterator = concreteId(self).arrayLikeIterator()
-  let next = iterator.next()
+  let next
 
-  while (!next.done) {
+  while ((next = iterator.next()) && !next.done) {
     const array = next.value
     const len = array.length
     let i = 0
@@ -17,7 +17,6 @@ export function forEach_<A, U>(self: Chunk.Chunk<A>, f: (a: A) => U): void {
       f(a)
       i++
     }
-    next = iterator.next()
   }
 }
 
