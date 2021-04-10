@@ -1,4 +1,5 @@
 import * as Chunk from "../core"
+import { concreteId } from "../definition"
 
 /**
  * Drops all elements so long as the predicate returns true.
@@ -7,7 +8,7 @@ export function dropWhile_<A>(
   self: Chunk.Chunk<A>,
   f: (a: A) => boolean
 ): Chunk.Chunk<A> {
-  const iterator = self.arrayLikeIterator()
+  const iterator = concreteId(self).arrayLikeIterator()
   let cont = true
   let i = 0
   let next = iterator.next()

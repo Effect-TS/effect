@@ -2,6 +2,7 @@ import * as core from "../../../Effect/core"
 import type { Effect } from "../../../Effect/effect"
 import * as coreMap from "../../../Effect/map"
 import * as Chunk from "../core"
+import { concreteId } from "../definition"
 
 /**
  * Statefully and effectfully maps over the elements of this chunk to produce
@@ -13,7 +14,7 @@ export function mapAccumM_<A, B, R, E, S>(
   f: (s: S, a: A) => Effect<R, E, readonly [S, B]>
 ): Effect<R, E, readonly [S, Chunk.Chunk<B>]> {
   return core.suspend(() => {
-    const iterator = self.arrayLikeIterator()
+    const iterator = concreteId(self).arrayLikeIterator()
     let dest: Effect<R, E, S> = core.succeed(s)
     let builder = Chunk.empty<B>()
     let next = iterator.next()

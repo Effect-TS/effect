@@ -16,7 +16,7 @@ export function collectWhileM_<A, R, E, B>(
 
   switch (self._typeId) {
     case ChunkDef.ArrTypeId: {
-      const array = self.toArrayLike()
+      const array = self.arrayLike()
       let dest: Effect<R, E, Chunk.Chunk<B>> = core.succeed(Chunk.empty<B>())
       for (let i = 0; i < array.length; i++) {
         const rhs = f(array[i]!)

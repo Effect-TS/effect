@@ -1,10 +1,11 @@
 import type * as Chunk from "../core"
+import { concreteId } from "../definition"
 
 /**
  * Determines whether a predicate is satisfied for at least one element of this chunk.
  */
 export function exists_<A>(self: Chunk.Chunk<A>, f: (a: A) => boolean): boolean {
-  const iterator = self.arrayLikeIterator()
+  const iterator = concreteId(self).arrayLikeIterator()
   let next = iterator.next()
 
   while (!next.done) {

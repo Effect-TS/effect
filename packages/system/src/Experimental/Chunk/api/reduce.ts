@@ -1,10 +1,11 @@
 import type * as Chunk from "../core"
+import { concreteId } from "../definition"
 
 /**
  * Folds over the elements in this chunk from the left.
  */
 export function reduce_<A, S>(self: Chunk.Chunk<A>, s: S, f: (s: S, a: A) => S): S {
-  const iterator = self.arrayLikeIterator()
+  const iterator = concreteId(self).arrayLikeIterator()
   let next = iterator.next()
   let s1 = s
 

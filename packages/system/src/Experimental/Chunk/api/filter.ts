@@ -1,5 +1,6 @@
 import type { Refinement } from "../../../Function"
 import * as Chunk from "../core"
+import { concreteId } from "../definition"
 
 /**
  * Returns a filtered subset of this chunk.
@@ -10,7 +11,7 @@ export function filter_<A, B extends A>(
 ): Chunk.Chunk<B>
 export function filter_<A>(self: Chunk.Chunk<A>, f: (a: A) => boolean): Chunk.Chunk<A>
 export function filter_<A>(self: Chunk.Chunk<A>, f: (a: A) => boolean): Chunk.Chunk<A> {
-  const iterator = self.arrayLikeIterator()
+  const iterator = concreteId(self).arrayLikeIterator()
   let next = iterator.next()
   let builder = Chunk.empty<A>()
   while (!next.done) {

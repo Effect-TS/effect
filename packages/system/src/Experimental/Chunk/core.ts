@@ -5,6 +5,7 @@ import {
   _Empty,
   ChunkTypeId,
   concrete,
+  concreteId,
   EmptyTypeId,
   Singleton,
   SingletonTypeId,
@@ -34,14 +35,14 @@ export function empty<A>(): Chunk<A> {
  * @dataFirst append_
  */
 export function append<A1>(a: A1) {
-  return <A>(self: Chunk<A>): Chunk<A | A1> => self.append(a)
+  return <A>(self: Chunk<A>): Chunk<A | A1> => concreteId(self).append(a)
 }
 
 /**
  * Appends a value to a chunk
  */
 export function append_<A, A1>(self: Chunk<A>, a: A1): Chunk<A | A1> {
-  return self.append(a)
+  return concreteId(self).append(a)
 }
 
 /**
@@ -50,14 +51,14 @@ export function append_<A, A1>(self: Chunk<A>, a: A1): Chunk<A | A1> {
  * @dataFirst prepend_
  */
 export function prepend<A1>(a: A1) {
-  return <A>(self: Chunk<A>): Chunk<A | A1> => self.prepend(a)
+  return <A>(self: Chunk<A>): Chunk<A | A1> => concreteId(self).prepend(a)
 }
 
 /**
  * Prepends a value to a chunk
  */
 export function prepend_<A, A1>(self: Chunk<A>, a: A1): Chunk<A | A1> {
-  return self.prepend(a)
+  return concreteId(self).prepend(a)
 }
 
 /**
@@ -66,37 +67,37 @@ export function prepend_<A, A1>(self: Chunk<A>, a: A1): Chunk<A | A1> {
  * @dataFirst concat_
  */
 export function concat<A1>(that: Chunk<A1>) {
-  return <A>(self: Chunk<A>): Chunk<A | A1> => self.concat(that)
+  return <A>(self: Chunk<A>): Chunk<A | A1> => concreteId(self).concat(concreteId(that))
 }
 
 /**
  * Concats chunks
  */
 export function concat_<A, A1>(self: Chunk<A>, that: Chunk<A1>): Chunk<A | A1> {
-  return self.concat(that)
+  return concreteId(self).concat(concreteId(that))
 }
 
 /**
  * Converts a chunk to an ArrayLike (either Array or Buffer)
  */
 export function toArrayLike<A>(self: Chunk<A>): ArrayLike<A> {
-  return self.toArrayLike()
+  return concreteId(self).arrayLike()
 }
 
 /**
  * Converts a chunk to an Array
  */
 export function toArray<A>(self: Chunk<A>): readonly A[] {
-  return self.toArray()
+  return concreteId(self).array()
 }
 
 /**
  * Safely get a value
  */
 export function get_<A>(self: Chunk<A>, n: number): O.Option<A> {
-  return !Number.isInteger(n) || n < 0 || n >= self.length
+  return !Number.isInteger(n) || n < 0 || n >= concreteId(self).length
     ? O.none
-    : O.some(self.get(n))
+    : O.some(concreteId(self).get(n))
 }
 
 /**
@@ -112,7 +113,7 @@ export function get(n: number) {
  * Unsafely get a value
  */
 export function unsafeGet_<A>(self: Chunk<A>, n: number): A {
-  return self.get(n)
+  return concreteId(self).get(n)
 }
 
 /**
@@ -155,7 +156,7 @@ export function equals<B>(that: Chunk<B>): <A>(self: Chunk<A>) => boolean {
  * Takes the first n elements
  */
 export function take_<A>(self: Chunk<A>, n: number): Chunk<A> {
-  return self.take(n)
+  return concreteId(self).take(n)
 }
 
 /**
@@ -164,7 +165,7 @@ export function take_<A>(self: Chunk<A>, n: number): Chunk<A> {
  * @dataFirst take_
  */
 export function take(n: number): <A>(self: Chunk<A>) => Chunk<A> {
-  return (self) => self.take(n)
+  return (self) => concreteId(self).take(n)
 }
 
 /**
@@ -204,14 +205,14 @@ export function drop_<A>(self: Chunk<A>, n: number): Chunk<A> {
  * @dataFirst drop_
  */
 export function drop(n: number): <A>(self: Chunk<A>) => Chunk<A> {
-  return (self) => self.take(n)
+  return (self) => concreteId(self).take(n)
 }
 
 /**
  * Returns the number of elements in the chunk
  */
 export function size<A>(self: Chunk<A>) {
-  return self.length
+  return concreteId(self).length
 }
 
 /**
@@ -271,12 +272,12 @@ export function corresponds_<A, B>(
   that: Chunk<B>,
   f: (a: A, b: B) => boolean
 ): boolean {
-  if (self.length !== that.length) {
+  if (concreteId(self).length !== concreteId(that).length) {
     return false
   }
 
-  const leftIterator = self.arrayLikeIterator()
-  const rightIterator = that.arrayLikeIterator()
+  const leftIterator = concreteId(self).arrayLikeIterator()
+  const rightIterator = concreteId(that).arrayLikeIterator()
 
   let i = 0
   let j = 0
@@ -352,7 +353,7 @@ export function head<A>(self: Chunk<A>): O.Option<A> {
  * Returns the last element of this chunk if it exists.
  */
 export function last<A>(self: Chunk<A>): O.Option<A> {
-  return get_(self, self.length - 1)
+  return get_(self, concreteId(self).length - 1)
 }
 
 /**
@@ -363,7 +364,7 @@ export function last<A>(self: Chunk<A>): O.Option<A> {
  * sensitive code unless you really only need the first element of the chunk.
  */
 export function unsafeHead<A>(self: Chunk<A>): A {
-  return self.get(0)
+  return concreteId(self).get(0)
 }
 
 /**
@@ -374,12 +375,41 @@ export function unsafeHead<A>(self: Chunk<A>): A {
  * sensitive code unless you really only need the last element of the chunk.
  */
 export function unsafeLast<A>(self: Chunk<A>): A {
-  return self.get(self.length - 1)
+  return concreteId(self).get(concreteId(self).length - 1)
 }
 
 /**
  * Determines if the chunk is empty.
  */
 export function isEmpty<A>(self: Chunk<A>): boolean {
-  return self.length === 0
+  return concreteId(self).length === 0
+}
+
+/**
+ * Buckets iterator
+ */
+export function buckets<A>(self: Chunk<A>): Iterable<ArrayLike<A>> {
+  return concreteId(self).buckets()
+}
+
+/**
+ * Reverse buckets iterator
+ */
+export function reverseBuckets<A>(self: Chunk<A>): Iterable<ArrayLike<A>> {
+  return concreteId(self).reverseBuckets()
+}
+
+/**
+ * Reverse buckets iterator
+ */
+export function reverse<A>(self: Chunk<A>): Iterable<A> {
+  return concreteId(self).reverse()
+}
+
+/**
+ * Materializes a chunk into a chunk backed by an array. This method can
+ * improve the performance of bulk operations.
+ */
+export function materialize<A>(self: Chunk<A>): Chunk<A> {
+  return concreteId(self).materialize()
 }

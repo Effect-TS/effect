@@ -1,4 +1,5 @@
 import * as Chunk from "../core"
+import { concreteId } from "../definition"
 
 /**
  * Statefully maps over the chunk, producing new elements of type `B`.
@@ -8,7 +9,7 @@ export function mapAccum_<A, B, S>(
   s: S,
   f: (s: S, a: A) => readonly [S, B]
 ): readonly [S, Chunk.Chunk<B>] {
-  const iterator = self.arrayLikeIterator()
+  const iterator = concreteId(self).arrayLikeIterator()
   let next = iterator.next()
   let s1 = s
   let builder = Chunk.empty<B>()
