@@ -1,5 +1,5 @@
-import type { Refinement } from "../../../Function"
-import * as O from "../../../Option"
+import type { Refinement } from "../../../../Function"
+import * as O from "../../../../Option"
 import type * as Chunk from "../core"
 import { concreteId } from "../definition"
 

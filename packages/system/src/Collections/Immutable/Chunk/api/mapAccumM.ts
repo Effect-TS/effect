@@ -1,6 +1,6 @@
-import * as core from "../../../Effect/core"
-import type { Effect } from "../../../Effect/effect"
-import * as coreMap from "../../../Effect/map"
+import * as core from "../../../../Effect/core"
+import type { Effect } from "../../../../Effect/effect"
+import * as coreMap from "../../../../Effect/map"
 import * as Chunk from "../core"
 import { concreteId } from "../definition"
 

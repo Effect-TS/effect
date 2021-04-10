@@ -1,5 +1,5 @@
-import type { Effect } from "../../../Effect/effect"
-import * as forEach from "../../../Effect/excl-forEach"
+import type { Effect } from "../../../../Effect/effect"
+import * as forEach from "../../../../Effect/excl-forEach"
 import type * as Chunk from "../core"
 
 /**

@@ -44,6 +44,7 @@
       "Collections",
       "Collections/Immutable",
       "Collections/Immutable/Array",
+      "Collections/Immutable/Chunk",
       "Collections/Immutable/Dictionary",
       "Collections/Immutable/HashMap",
       "Collections/Immutable/HashMap/Array",

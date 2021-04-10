@@ -1,4 +1,4 @@
-import type { Refinement } from "../../../Function"
+import type { Refinement } from "../../../../Function"
 import * as Chunk from "../core"
 import { concreteId } from "../definition"
 

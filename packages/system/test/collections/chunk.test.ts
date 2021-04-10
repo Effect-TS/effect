@@ -1,5 +1,5 @@
+import * as Chunk from "../../src/Collections/Immutable/Chunk"
 import * as T from "../../src/Effect"
-import * as Chunk from "../../src/Experimental/Chunk"
 import { pipe } from "../../src/Function"
 import * as O from "../../src/Option"
 

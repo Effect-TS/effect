@@ -1,7 +1,7 @@
-import * as core from "../../../Effect/core"
-import type { Effect } from "../../../Effect/effect"
-import * as zipWith from "../../../Effect/zipWith"
-import * as O from "../../../Option"
+import * as core from "../../../../Effect/core"
+import type { Effect } from "../../../../Effect/effect"
+import * as zipWith from "../../../../Effect/zipWith"
+import * as O from "../../../../Option"
 import * as Chunk from "../core"
 import * as ChunkDef from "../definition"
 

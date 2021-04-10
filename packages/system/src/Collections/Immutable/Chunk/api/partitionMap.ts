@@ -1,5 +1,5 @@
-import type * as E from "../../../Either"
-import type { Separated } from "../../../Utils"
+import type * as E from "../../../../Either"
+import type { Separated } from "../../../../Utils"
 import * as Chunk from "../core"
 import { forEach_ } from "./forEach"
 

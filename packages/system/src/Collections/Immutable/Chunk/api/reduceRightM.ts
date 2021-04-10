@@ -1,5 +1,5 @@
-import * as core from "../../../Effect/core"
-import type { Effect } from "../../../Effect/effect"
+import * as core from "../../../../Effect/core"
+import type { Effect } from "../../../../Effect/effect"
 import type * as Chunk from "../core"
 import { reduceRight_ } from "./reduceRight"
 
