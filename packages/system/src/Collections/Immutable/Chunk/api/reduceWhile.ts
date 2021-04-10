@@ -12,11 +12,11 @@ export function reduceWhile_<A, S>(
   f: (s: S, a: A) => S
 ): S {
   const iterator = concreteId(self).arrayLikeIterator()
-  let next = iterator.next()
+  let next
   let s1 = s
   let cont = true
 
-  while (cont && !next.done) {
+  while (cont && (next = iterator.next()) && !next.done) {
     const array = next.value
     const len = array.length
     let i = 0

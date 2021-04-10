@@ -14,10 +14,10 @@ export function filterM_<R, E, A>(
 ): Effect<R, E, Chunk.Chunk<A>> {
   return core.suspend(() => {
     const iterator = concreteId(self).arrayLikeIterator()
-    let next = iterator.next()
+    let next
     let dest: Effect<R, E, Chunk.Chunk<A>> = core.succeed(Chunk.empty<A>())
 
-    while (!next.done) {
+    while ((next = iterator.next()) && !next.done) {
       const array = next.value
       const len = array.length
       let i = 0
@@ -26,7 +26,6 @@ export function filterM_<R, E, A>(
         dest = coreZip.zipWith_(dest, f(a), (d, b) => (b ? Chunk.append_(d, a) : d))
         i++
       }
-      next = iterator.next()
     }
     return dest
   })

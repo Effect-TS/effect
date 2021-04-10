@@ -10,10 +10,10 @@ export function indexWhere_<A>(
   f: (a: A) => boolean
 ): number {
   const iterator = concreteId(self).arrayLikeIterator()
-  let next = iterator.next()
+  let next
   let i = 0
 
-  while (!next.done) {
+  while ((next = iterator.next()) && !next.done) {
     const array = next.value
     const len = array.length
     if (i + len - 1 >= from) {

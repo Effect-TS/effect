@@ -12,9 +12,9 @@ export function filter_<A, B extends A>(
 export function filter_<A>(self: Chunk.Chunk<A>, f: (a: A) => boolean): Chunk.Chunk<A>
 export function filter_<A>(self: Chunk.Chunk<A>, f: (a: A) => boolean): Chunk.Chunk<A> {
   const iterator = concreteId(self).arrayLikeIterator()
-  let next = iterator.next()
+  let next
   let builder = Chunk.empty<A>()
-  while (!next.done) {
+  while ((next = iterator.next()) && !next.done) {
     const array = next.value
     const len = array.length
     let i = 0
@@ -25,7 +25,6 @@ export function filter_<A>(self: Chunk.Chunk<A>, f: (a: A) => boolean): Chunk.Ch
       }
       i++
     }
-    next = iterator.next()
   }
 
   return builder

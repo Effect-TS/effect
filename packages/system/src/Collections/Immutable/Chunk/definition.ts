@@ -1032,8 +1032,7 @@ export class Concat<A> extends ChunkInternal<A> {
 /**
  * Internal Array Chunk Constructor
  */
-function from_<A>(array: Iterable<A>): ChunkInternal<A>
-function from_<A>(array: ArrayLike<A>): ChunkInternal<A>
+function from_<A>(array: ArrayLike<A> | Iterable<A>): ChunkInternal<A>
 function from_(
   array: Uint8Array | Iterable<unknown> | ArrayLike<unknown>
 ): ChunkInternal<unknown> {
@@ -1049,6 +1048,5 @@ function from_(
  * NOTE: The provided array should be totally filled, no holes are allowed
  */
 export const from: {
-  <A>(array: Iterable<A>): Chunk<A>
-  <A>(array: ArrayLike<A>): Chunk<A>
+  <A>(array: ArrayLike<A> | Iterable<A>): Chunk<A>
 } = from_

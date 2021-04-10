@@ -17,8 +17,8 @@ export function mapAccumM_<A, B, R, E, S>(
     const iterator = concreteId(self).arrayLikeIterator()
     let dest: Effect<R, E, S> = core.succeed(s)
     let builder = Chunk.empty<B>()
-    let next = iterator.next()
-    while (!next.done) {
+    let next
+    while ((next = iterator.next()) && !next.done) {
       const array = next.value
       const length = array.length
       let i = 0
@@ -32,7 +32,6 @@ export function mapAccumM_<A, B, R, E, S>(
         )
         i++
       }
-      next = iterator.next()
     }
     return coreMap.map_(dest, (s) => [s, builder] as const)
   })
