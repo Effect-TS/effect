@@ -183,7 +183,7 @@ function go<R, E, O, R1, E1, P, Q>(
                     T.tap(() => raceNextTime.set(false)),
                     T.tap(() => waitingFiber.set(O.some(producerWaiting))),
                     T.map(({ scheduleResult, take }) =>
-                      A.from([scheduleResult, Take.map_(take, E.right)])
+                      A.array([scheduleResult, Take.map_(take, E.right)])
                     )
                   ),
                 (_) =>
@@ -199,7 +199,7 @@ function go<R, E, O, R1, E1, P, Q>(
                     ),
                     T.tap(() => raceNextTime.set(false)),
                     T.tap(() => waitingFiber.set(O.some(producerWaiting))),
-                    T.map(({ ps }) => A.from([Take.map_(ps, E.right)]))
+                    T.map(({ ps }) => A.array([Take.map_(ps, E.right)]))
                   )
               )
             )
@@ -225,7 +225,7 @@ function handleTake<E, O, R1, E1, P>(
       () =>
         pipe(
           push(O.none),
-          T.map((ps) => A.from([Take.chunk(A.map_(ps, E.right)), Take.end]))
+          T.map((ps) => A.array([Take.chunk(A.map_(ps, E.right)), Take.end]))
         ),
       T.halt,
       (os) =>

@@ -31,7 +31,7 @@ describe("Chunk", () => {
   it("fromArray", () => {
     expect(
       pipe(
-        Chunk.from([1, 2, 3, 4, 5]),
+        Chunk.array([1, 2, 3, 4, 5]),
         Chunk.append(6),
         Chunk.append(7),
         Chunk.toArrayLike
@@ -41,14 +41,14 @@ describe("Chunk", () => {
   it("concat", () => {
     expect(
       pipe(
-        Chunk.from([1, 2, 3, 4, 5]),
-        Chunk.concat(Chunk.from([6, 7, 8, 9, 10])),
+        Chunk.array([1, 2, 3, 4, 5]),
+        Chunk.concat(Chunk.array([6, 7, 8, 9, 10])),
         Chunk.toArrayLike
       )
     ).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
   })
   it("iterable", () => {
-    expect(Chunk.toArrayLike(Chunk.from([0, 1, 2]))).toEqual([0, 1, 2])
+    expect(Chunk.toArrayLike(Chunk.array([0, 1, 2]))).toEqual([0, 1, 2])
   })
   it("get", () => {
     expect(
@@ -65,9 +65,9 @@ describe("Chunk", () => {
   it("buffer", () => {
     expect(
       pipe(
-        Chunk.from(Buffer.from("hello")),
-        Chunk.concat(Chunk.from(Buffer.from(" "))),
-        Chunk.concat(Chunk.from(Buffer.from("world"))),
+        Chunk.array(Buffer.from("hello")),
+        Chunk.concat(Chunk.array(Buffer.from(" "))),
+        Chunk.concat(Chunk.array(Buffer.from("world"))),
         Chunk.drop(6),
         Chunk.append(32),
         Chunk.prepend(32),
@@ -78,15 +78,15 @@ describe("Chunk", () => {
   it("stack", () => {
     let a = Chunk.empty<number>()
     for (let i = 0; i < 100_000; i++) {
-      a = Chunk.concat_(a, Chunk.from([i, i]))
+      a = Chunk.concat_(a, Chunk.array([i, i]))
     }
     expect(Chunk.toArrayLike(a).length).toEqual(200_000)
   })
   it("take", () => {
     expect(
       pipe(
-        Chunk.from([1, 2, 3, 4, 5]),
-        Chunk.concat(Chunk.from([6, 7, 8, 9, 10])),
+        Chunk.array([1, 2, 3, 4, 5]),
+        Chunk.concat(Chunk.array([6, 7, 8, 9, 10])),
         Chunk.take(5),
         Chunk.toArrayLike
       )
@@ -95,8 +95,8 @@ describe("Chunk", () => {
   it("drop", () => {
     expect(
       pipe(
-        Chunk.from([1, 2, 3, 4, 5]),
-        Chunk.concat(Chunk.from([6, 7, 8, 9, 10])),
+        Chunk.array([1, 2, 3, 4, 5]),
+        Chunk.concat(Chunk.array([6, 7, 8, 9, 10])),
         Chunk.drop(5),
         Chunk.toArrayLike
       )
@@ -105,7 +105,7 @@ describe("Chunk", () => {
   it("map", () => {
     expect(
       pipe(
-        Chunk.from(Buffer.from("hello-world")),
+        Chunk.array(Buffer.from("hello-world")),
         Chunk.map((n) => (n === 45 ? 32 : n)),
         Chunk.toArrayLike
       )
@@ -114,9 +114,9 @@ describe("Chunk", () => {
   it("chain", () => {
     expect(
       pipe(
-        Chunk.from(Buffer.from("hello-world")),
+        Chunk.array(Buffer.from("hello-world")),
         Chunk.chain((n) =>
-          n === 45 ? Chunk.from(Buffer.from("-|-")) : Chunk.single(n)
+          n === 45 ? Chunk.array(Buffer.from("-|-")) : Chunk.single(n)
         ),
         Chunk.toArrayLike
       )
@@ -387,7 +387,7 @@ describe("Chunk", () => {
         Chunk.append(4),
         Chunk.append(5),
         Chunk.splitWhere((n) => n === 3),
-        Chunk.from,
+        Chunk.array,
         Chunk.map(Chunk.toArray),
         Chunk.toArray
       )

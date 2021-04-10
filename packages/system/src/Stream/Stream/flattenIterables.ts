@@ -11,5 +11,5 @@ import { map_ } from "./map"
 export function flattenIterables<R, E, O1>(
   self: Stream<R, E, Iterable<O1>>
 ): Stream<R, E, O1> {
-  return flattenChunks(map_(self, (o) => A.fromIterable(o)))
+  return flattenChunks(map_(self, (o) => A.from(o)))
 }
