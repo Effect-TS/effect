@@ -44,6 +44,6 @@ export function broadcastedQueues_<R, E, O>(
       M.collectAll(Array.from({ length: n }, () => hub.subscribe))
     ),
     M.tap(({ hub }) => M.fork(intoHubManaged_(self, hub))),
-    M.map(({ queues }) => A.fromIterable(queues))
+    M.map(({ queues }) => A.array(queues))
   )
 }

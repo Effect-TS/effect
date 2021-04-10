@@ -14,7 +14,7 @@ export function mapConcatM_<R, R2, E, E2, O, O2>(
   self: Stream<R, E, O>,
   f: (_: O) => T.Effect<R2, E2, Iterable<O2>>
 ): Stream<R & R2, E2 | E, O2> {
-  return mapConcatChunkM_(self, (o) => pipe(T.map_(f(o), (o) => A.fromIterable(o))))
+  return mapConcatChunkM_(self, (o) => pipe(T.map_(f(o), (o) => A.from(o))))
 }
 
 /**

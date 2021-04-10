@@ -12,7 +12,7 @@ export function mapConcat_<R, E, O, O2>(
   self: Stream<R, E, O>,
   f: (_: O) => Iterable<O2>
 ): Stream<R, E, O2> {
-  return mapChunks_(self, (o) => A.chain_(o, (o) => A.fromIterable(f(o))))
+  return mapChunks_(self, (o) => A.chain_(o, (o) => A.from(f(o))))
 }
 
 /**

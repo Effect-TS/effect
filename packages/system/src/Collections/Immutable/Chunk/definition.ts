@@ -1047,6 +1047,4 @@ function from_(
  *
  * NOTE: The provided array should be totally filled, no holes are allowed
  */
-export const from: {
-  <A>(array: ArrayLike<A> | Iterable<A>): Chunk<A>
-} = from_
+export const array: <A>(array: ArrayLike<A> | Iterable<A>) => Chunk<A> = from_

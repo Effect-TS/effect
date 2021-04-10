@@ -13,7 +13,7 @@ import {
   SliceTypeId
 } from "./definition"
 
-export { Chunk, from } from "./definition"
+export { Chunk, array } from "./definition"
 
 /**
  * Builds a chunk of a single value
@@ -416,8 +416,22 @@ export const unit: Chunk<void> = single(void 0)
  * NOTE: different from Chunk#from this copies the elements 1 by 1
  * allowing for binary to be correctly stored in typed arrays
  */
-export function fromIterable<A>(iter: Iterable<A>): Chunk<A> {
+export function from<A>(iter: Iterable<A>): Chunk<A> {
   let builder = empty<A>()
+  for (const x of iter) {
+    builder = append_(builder, x)
+  }
+  return builder
+}
+
+/**
+ * Build a chunk from a sequence of values
+ *
+ * NOTE: different from Chunk#from this copies the elements 1 by 1
+ * allowing for binary to be correctly stored in typed arrays
+ */
+export function many<Elem extends readonly any[]>(...iter: Elem): Chunk<Elem[number]> {
+  let builder = empty<Elem[number]>()
   for (const x of iter) {
     builder = append_(builder, x)
   }
