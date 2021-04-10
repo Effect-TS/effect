@@ -1,6 +1,7 @@
 import type { Refinement } from "../../../Function"
 import * as O from "../../../Option"
 import type * as Chunk from "../core"
+import { concreteId } from "../definition"
 
 /**
  * Returns the first element that satisfies the predicate.
@@ -11,7 +12,7 @@ export function find_<A, B extends A>(
 ): O.Option<B>
 export function find_<A>(self: Chunk.Chunk<A>, f: (a: A) => boolean): O.Option<A>
 export function find_<A>(self: Chunk.Chunk<A>, f: (a: A) => boolean): O.Option<A> {
-  const iterator = self.arrayLikeIterator()
+  const iterator = concreteId(self).arrayLikeIterator()
   let next = iterator.next()
 
   while (!next.done) {

@@ -1,10 +1,11 @@
 import type * as Chunk from "../core"
+import { concreteId } from "../definition"
 
 /**
  * Iterate over the chunk applying f
  */
 export function forEach_<A, U>(self: Chunk.Chunk<A>, f: (a: A) => U): void {
-  const iterator = self.arrayLikeIterator()
+  const iterator = concreteId(self).arrayLikeIterator()
   let next = iterator.next()
 
   while (!next.done) {

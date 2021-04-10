@@ -1,4 +1,5 @@
 import type * as Chunk from "../core"
+import { concreteId } from "../definition"
 
 /**
  * Folds over the elements in this chunk from the right.
@@ -8,7 +9,7 @@ export function reduceRight_<A, S>(
   s: S,
   f: (a: A, s: S) => S
 ): S {
-  const iterator = self.reverseArrayLikeIterator()
+  const iterator = concreteId(self).reverseArrayLikeIterator()
   let next = iterator.next()
   let s1 = s
 

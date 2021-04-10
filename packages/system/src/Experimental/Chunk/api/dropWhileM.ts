@@ -2,6 +2,7 @@ import * as core from "../../../Effect/core"
 import type { Effect } from "../../../Effect/effect"
 import * as coreMap from "../../../Effect/map"
 import * as Chunk from "../core"
+import { concreteId } from "../definition"
 
 /**
  * Drops all elements so long as the predicate returns true.
@@ -11,7 +12,7 @@ export function dropWhileM_<R, E, A>(
   f: (a: A) => Effect<R, E, boolean>
 ): Effect<R, E, Chunk.Chunk<A>> {
   return core.suspend(() => {
-    const iterator = self.arrayLikeIterator()
+    const iterator = concreteId(self).arrayLikeIterator()
     let next = iterator.next()
     let dropping: Effect<R, E, boolean> = core.succeed(true)
     let builder = Chunk.empty<A>()

@@ -1,4 +1,5 @@
 import type * as Chunk from "../core"
+import { concreteId } from "../definition"
 
 /**
  * Returns the first index for which the given predicate is satisfied after or at some given index.
@@ -8,7 +9,7 @@ export function indexWhere_<A>(
   from: number,
   f: (a: A) => boolean
 ): number {
-  const iterator = self.arrayLikeIterator()
+  const iterator = concreteId(self).arrayLikeIterator()
   let next = iterator.next()
   let i = 0
 

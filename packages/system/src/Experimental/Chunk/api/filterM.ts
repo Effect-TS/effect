@@ -2,6 +2,7 @@ import * as core from "../../../Effect/core"
 import type { Effect } from "../../../Effect/effect"
 import * as coreZip from "../../../Effect/zipWith"
 import * as Chunk from "../core"
+import { concreteId } from "../definition"
 
 /**
  * Filters this chunk by the specified effectful predicate, retaining all elements for
@@ -12,7 +13,7 @@ export function filterM_<R, E, A>(
   f: (a: A) => Effect<R, E, boolean>
 ): Effect<R, E, Chunk.Chunk<A>> {
   return core.suspend(() => {
-    const iterator = self.arrayLikeIterator()
+    const iterator = concreteId(self).arrayLikeIterator()
     let next = iterator.next()
     let dest: Effect<R, E, Chunk.Chunk<A>> = core.succeed(Chunk.empty<A>())
 

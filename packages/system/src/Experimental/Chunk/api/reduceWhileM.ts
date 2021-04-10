@@ -1,6 +1,7 @@
 import * as core from "../../../Effect/core"
 import type { Effect } from "../../../Effect/effect"
 import type * as Chunk from "../core"
+import { concreteId } from "../definition"
 
 function loop<A, R, E, S>(
   s: S,
@@ -41,7 +42,7 @@ export function reduceWhileM_<A, R, E, S>(
   pred: (s: S) => boolean,
   f: (s: S, a: A) => Effect<R, E, S>
 ): Effect<R, E, S> {
-  const iterator = self.arrayLikeIterator()
+  const iterator = concreteId(self).arrayLikeIterator()
   const next = iterator.next()
 
   if (next.done) {

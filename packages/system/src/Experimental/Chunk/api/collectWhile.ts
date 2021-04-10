@@ -13,7 +13,7 @@ export function collectWhile_<A, B>(
 
   switch (self._typeId) {
     case ChunkDef.ArrTypeId: {
-      const array = self.toArrayLike()
+      const array = self.arrayLike()
       let dest = Chunk.empty<B>()
       for (let i = 0; i < array.length; i++) {
         const rhs = f(array[i]!)

@@ -139,18 +139,14 @@ describe("Chunk", () => {
       Chunk.concat(Chunk.single(1)),
       Chunk.concat(Chunk.single(2)),
       Chunk.concat(Chunk.single(3))
-    ).arrayLikeIterator()
+    )
 
-    const results = [] as ArrayLike<number>[]
-
-    let next = it.next()
-
-    while (!next.done) {
-      results.push(next.value)
-      next = it.next()
-    }
-
-    expect(results).toEqual([Buffer.of(0), Buffer.of(1), Buffer.of(2), Buffer.of(3)])
+    expect(Array.from(Chunk.buckets(it))).toEqual([
+      Buffer.of(0),
+      Buffer.of(1),
+      Buffer.of(2),
+      Buffer.of(3)
+    ])
   })
   it("equals", () => {
     const a = pipe(
