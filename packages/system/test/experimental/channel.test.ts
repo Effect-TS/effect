@@ -1,9 +1,9 @@
-import type * as Cause from "../../../src/Cause"
-import * as Chunk from "../../../src/Collections/Immutable/Chunk"
-import * as T from "../../../src/Effect"
-import * as C from "../../../src/Experimental/Stream2/Channel"
-import { pipe } from "../../../src/Function"
-import * as M from "../../../src/Managed"
+import type * as Cause from "../../src/Cause"
+import * as Chunk from "../../src/Collections/Immutable/Chunk"
+import * as T from "../../src/Effect"
+import * as C from "../../src/Experimental/Stream/Channel"
+import { pipe } from "../../src/Function"
+import * as M from "../../src/Managed"
 
 function collectLoop<Err, A>(
   state: Chunk.Chunk<A>
