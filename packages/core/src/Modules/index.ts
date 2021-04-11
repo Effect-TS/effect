@@ -8,6 +8,7 @@ import type { Async } from "../Async"
 import type { Bounded } from "../Bounded"
 import type { Closure } from "../Closure"
 import type { Array } from "../Collections/Immutable/Array"
+import type { Chunk } from "../Collections/Immutable/Chunk"
 import type { Dictionary } from "../Collections/Immutable/Dictionary"
 import type { List } from "../Collections/Immutable/List"
 import type { NonEmptyArray } from "../Collections/Immutable/NonEmptyArray"
@@ -144,6 +145,9 @@ export type OptionURI = typeof OptionURI
 export const ListURI = "List"
 export type ListURI = typeof ListURI
 
+export const ChunkURI = "Chunk"
+export type ChunkURI = typeof ChunkURI
+
 declare module "../Prelude/HKT" {
   interface URItoKind<FC, TC, K, Q, W, X, I, S, R, E, A> {
     [ArrayURI]: Array<A>
@@ -181,6 +185,7 @@ declare module "../Prelude/HKT" {
     [StateInURI]: StateIn<S, A>
     [StateOutURI]: StateOut<S, A>
     [IxURI]: TC extends IxC<infer _I, infer _O> ? Ix<_I, _O, A> : any
+    [ChunkURI]: Chunk<A>
   }
   interface URItoIndex<K> {
     [ListURI]: number

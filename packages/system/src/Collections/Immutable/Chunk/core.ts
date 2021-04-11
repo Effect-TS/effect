@@ -456,16 +456,6 @@ export class ChunkBuilder<A> {
     return this
   }
 
-  prepend(a: A): ChunkBuilder<A> {
-    this.chunk = prepend_(this.chunk, a)
-    return this
-  }
-
-  concat(a: Chunk<A>): ChunkBuilder<A> {
-    this.chunk = concat_(this.chunk, a)
-    return this
-  }
-
   build() {
     return this.chunk
   }

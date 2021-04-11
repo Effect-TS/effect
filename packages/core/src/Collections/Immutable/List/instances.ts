@@ -95,3 +95,7 @@ export const Filterable = P.instance<P.Filterable<[URI<ListURI>]>>({
   ...Partition,
   ...PartitionMap
 })
+
+export const Collection = P.instance<P.Collection<[P.URI<ListURI>]>>({
+  builder: L.builder
+})

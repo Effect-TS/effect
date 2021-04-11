@@ -3360,3 +3360,23 @@ export function intersperse<A>(separator: A): (l: List<A>) => List<A> {
 export function isEmpty(l: List<any>): boolean {
   return l.length === 0
 }
+
+/**
+ * Builder
+ */
+export function builder<A>() {
+  return new ListBuilder<A>(emptyPushable())
+}
+
+export class ListBuilder<A> {
+  constructor(private chunk: MutableList<A>) {}
+
+  append(a: A): ListBuilder<A> {
+    push(a, this.chunk)
+    return this
+  }
+
+  build() {
+    return this.chunk
+  }
+}
