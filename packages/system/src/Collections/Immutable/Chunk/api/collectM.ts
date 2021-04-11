@@ -1,5 +1,6 @@
 import * as core from "../../../../Effect/core"
 import type { Effect } from "../../../../Effect/effect"
+import * as map from "../../../../Effect/map"
 import * as zipWith from "../../../../Effect/zipWith"
 import * as O from "../../../../Option"
 import * as Chunk from "../core"
@@ -15,6 +16,13 @@ export function collectM_<A, R, E, B>(
   ChunkDef.concrete(self)
 
   switch (self._typeId) {
+    case ChunkDef.SingletonTypeId: {
+      return O.fold_(
+        f(self.a),
+        () => core.succeed(Chunk.empty()),
+        (b) => map.map_(b, Chunk.single)
+      )
+    }
     case ChunkDef.ArrTypeId: {
       const array = self.arrayLike()
       let dest: Effect<R, E, Chunk.Chunk<B>> = core.succeed(Chunk.empty<B>())

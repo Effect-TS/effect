@@ -14,4 +14,19 @@ describe("Stream", () => {
 
     expect(Chunk.toArray(result)).toEqual([1, 2, 3])
   })
+  it("runDrain", async () => {
+    const result: number[] = []
+
+    await pipe(
+      S.fromChunk(Chunk.many(0, 1, 2)),
+      S.map((n) => n + 1),
+      S.map((n) => {
+        result.push(n)
+      }),
+      S.runDrain,
+      T.runPromise
+    )
+
+    expect(result).toEqual([1, 2, 3])
+  })
 })
