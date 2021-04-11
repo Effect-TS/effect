@@ -55,3 +55,92 @@ export function forEachOf<F extends P.URIS, C>(
     return (self: any) => forEachOf(C)(self, arguments[0], arguments[1])
   }
 }
+
+/**
+ * Like forEachPar but preserves the type of the collection used
+ */
+export function forEachParOf<F extends P.URIS, C>(
+  C: P.Collection<F, C>
+): {
+  <K, Q, W, X, I, S, R, E, A, RE, EE, AA>(
+    self: P.Kind<F, C, K, Q, W, X, I, S, R, E, A> & Iterable<A>,
+    f: (a: A) => T.Effect<RE, EE, AA>,
+    __trace?: string
+  ): T.Effect<RE, EE, P.Kind<F, C, K, Q, W, X, I, S, R, E, AA>>
+  /**
+   * @dataFirst self
+   */
+  <A, RE, EE, AA>(f: (a: A) => T.Effect<RE, EE, AA>, __trace?: string): <
+    K,
+    Q,
+    W,
+    X,
+    I,
+    S,
+    R,
+    E
+  >(
+    self: P.Kind<F, C, K, Q, W, X, I, S, R, E, A> & Iterable<A>
+  ) => T.Effect<RE, EE, P.Kind<F, C, K, Q, W, X, I, S, R, E, AA>>
+} {
+  // @ts-expect-error
+  return function () {
+    if (arguments.length >= 2 && typeof arguments[1] !== "string") {
+      return T.map_(T.forEachPar_(arguments[0], arguments[1], arguments[2]), (arr) => {
+        let builder = C.builder()
+        for (const b of arr) {
+          builder = builder.append(b)
+        }
+        return builder.build()
+      })
+    }
+    return (self: any) => forEachParOf(C)(self, arguments[0], arguments[1])
+  }
+}
+
+/**
+ * Like forEachParN but preserves the type of the collection used
+ */
+export function forEachParNOf<F extends P.URIS, C>(
+  C: P.Collection<F, C>
+): {
+  <K, Q, W, X, I, S, R, E, A, RE, EE, AA>(
+    self: P.Kind<F, C, K, Q, W, X, I, S, R, E, A> & Iterable<A>,
+    n: number,
+    f: (a: A) => T.Effect<RE, EE, AA>,
+    __trace?: string
+  ): T.Effect<RE, EE, P.Kind<F, C, K, Q, W, X, I, S, R, E, AA>>
+  /**
+   * @dataFirst self
+   */
+  <A, RE, EE, AA>(n: number, f: (a: A) => T.Effect<RE, EE, AA>, __trace?: string): <
+    K,
+    Q,
+    W,
+    X,
+    I,
+    S,
+    R,
+    E
+  >(
+    self: P.Kind<F, C, K, Q, W, X, I, S, R, E, A> & Iterable<A>
+  ) => T.Effect<RE, EE, P.Kind<F, C, K, Q, W, X, I, S, R, E, AA>>
+} {
+  // @ts-expect-error
+  return function () {
+    if (arguments.length >= 3 && typeof arguments[2] !== "string") {
+      return T.map_(
+        T.forEachParN_(arguments[0], arguments[1], arguments[2], arguments[3]),
+        (arr) => {
+          let builder = C.builder()
+          for (const b of arr) {
+            builder = builder.append(b)
+          }
+          return builder.build()
+        }
+      )
+    }
+    return (self: any) =>
+      forEachParNOf(C)(self, arguments[0], arguments[1], arguments[2])
+  }
+}
