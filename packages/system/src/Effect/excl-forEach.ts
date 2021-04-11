@@ -54,7 +54,6 @@ import * as tap from "./tap"
 import * as tapCause from "./tapCause"
 import { toManaged } from "./toManaged"
 import * as whenM from "./whenM"
-import * as zipWith from "./zipWith"
 
 /**
  * Applies the function `f` to each element of the `Iterable<A>` and
@@ -68,16 +67,18 @@ export function forEach_<A, R, E, B>(
   f: (a: A) => Effect<R, E, B>,
   __trace?: string
 ): Effect<R, E, readonly B[]> {
-  return core.suspend(
-    () =>
-      I.reduce_(as, core.effectTotal(() => []) as Effect<R, E, B[]>, (b, a) =>
-        zipWith.zipWith_(b, f(a), (acc, r) => {
-          acc.push(r)
-          return acc
+  return core.suspend(() => {
+    const acc: B[] = []
+
+    return map.map_(
+      forEachUnit_(as, (a) =>
+        map.map_(f(a), (b) => {
+          acc.push(b)
         })
       ),
-    __trace
-  )
+      () => acc
+    )
+  }, __trace)
 }
 
 /**
@@ -93,6 +94,16 @@ export function forEach<A, R, E, B>(f: (a: A) => Effect<R, E, B>, __trace?: stri
   return (as: Iterable<A>) => forEach_(as, f, __trace)
 }
 
+function forEachUnitLoop<R, E, A, X>(
+  iterator: Iterator<A, any, undefined>,
+  f: (a: A) => Effect<R, E, X>
+): Effect<R, E, void> {
+  const next = iterator.next()
+  return next.done
+    ? core.unit
+    : core.chain_(f(next.value), () => forEachUnitLoop(iterator, f))
+}
+
 /**
  * Applies the function `f` to each element of the `Iterable<A>` and runs
  * produced effects sequentially.
@@ -105,25 +116,7 @@ export function forEachUnit_<R, E, A, X>(
   f: (a: A) => Effect<R, E, X>,
   __trace?: string
 ): Effect<R, E, void> {
-  return core.suspend(
-    () =>
-      pipe(
-        core.effectTotal(() => as[Symbol.iterator]()),
-        core.chain((iterator) => {
-          function loop(): Effect<R, E, void> {
-            const next = iterator.next()
-            return next.done
-              ? core.unit
-              : pipe(
-                  f(next.value),
-                  core.chain(() => loop())
-                )
-          }
-          return loop()
-        })
-      ),
-    __trace
-  )
+  return core.suspend(() => forEachUnitLoop(as[Symbol.iterator](), f), __trace)
 }
 
 /**
@@ -322,26 +315,22 @@ export function forEachPar_<R, E, A, B>(
   f: (a: A) => Effect<R, E, B>,
   __trace?: string
 ): Effect<R, E, readonly B[]> {
-  const arr = Array.from(as)
-
   return core.suspend(
     () =>
       core.chain_(
         core.effectTotal<B[]>(() => []),
         (array) => {
-          function fn([a, n]: [A, number]) {
-            return core.chain_(
-              core.suspend(() => f(a)),
-              (b) =>
-                core.effectTotal(() => {
-                  array[n] = b
-                })
-            )
-          }
           return map.map_(
             forEachUnitPar_(
-              arr.map((a, n) => [a, n] as [A, number]),
-              fn
+              I.map_(as, (a, n) => [a, n] as [A, number]),
+              ([a, n]) =>
+                core.chain_(
+                  core.suspend(() => f(a)),
+                  (b) =>
+                    core.effectTotal(() => {
+                      array[n] = b
+                    })
+                )
             ),
             () => array
           )
@@ -451,7 +440,7 @@ export function forEachParN_<R, E, A, B>(
       Q.take(q),
       core.chain(([p, a]) =>
         pipe(
-          f(a),
+          core.suspend(() => f(a)),
           core.foldCauseM(
             (c) => forEach_(pairs, (_) => pipe(_[0], promise.halt(c))),
             (b) => pipe(p, promise.succeed(b))
