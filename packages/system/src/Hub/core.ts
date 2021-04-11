@@ -1,5 +1,6 @@
 import * as HH from "../Case/HasHash"
 import * as AR from "../Collections/Immutable/Array"
+import * as Chunk from "../Collections/Immutable/Chunk"
 import * as HS from "../Collections/Mutable/HashSet"
 import * as T from "../Effect"
 import * as ES from "../Effect/ExecutionStrategy"
@@ -109,8 +110,8 @@ abstract class XHubInternal<RA, RB, EA, EB, A, B>
  * @optimize remove
  */
 function concrete<RA, RB, EA, EB, A, B>(
-  hub: XHub<RA, RB, EA, EB, A, B>
-): asserts hub is XHubInternal<RA, RB, EA, EB, A, B> {
+  _: XHub<RA, RB, EA, EB, A, B>
+): asserts _ is XHubInternal<RA, RB, EA, EB, A, B> {
   //
 }
 
@@ -552,8 +553,8 @@ class ToQueueImplementation<RA, RB, EA, EB, A, B> extends Q.XQueue<
   shutdown: T.UIO<void>
   size: T.UIO<number>
   take: T.Effect<unknown, never, void>
-  takeAll: T.Effect<unknown, never, AR.Array<any>>
-  takeUpTo: (n: number) => T.Effect<unknown, never, AR.Array<any>>
+  takeAll: T.Effect<unknown, never, Chunk.Chunk<any>>
+  takeUpTo: (n: number) => T.Effect<unknown, never, Chunk.Chunk<any>>
 
   constructor(source: XHubInternal<RA, RB, EA, EB, A, B>) {
     super()
@@ -565,8 +566,8 @@ class ToQueueImplementation<RA, RB, EA, EB, A, B> extends Q.XQueue<
     this.shutdown = source.shutdown
     this.size = source.size
     this.take = T.unit
-    this.takeAll = T.succeed(AR.empty)
-    this.takeUpTo = () => T.succeed(AR.empty)
+    this.takeAll = T.succeed(Chunk.empty())
+    this.takeUpTo = () => T.succeed(Chunk.empty())
   }
 }
 
@@ -815,7 +816,7 @@ class UnsafeMakeHubImplementation<A> extends XHubInternal<
 
       this.strategy.unsafeCompleteSubscribers(this.hub, this.subscribers)
 
-      if (AR.isEmpty(surplus)) {
+      if (Chunk.isEmpty(surplus)) {
         return T.succeed(true)
       }
 
@@ -985,27 +986,31 @@ class UnsafeMakeSubscriptionImplementation<A> extends Q.XQueue<
     }
   })
 
-  takeAll: T.Effect<unknown, never, readonly A[]> = T.suspend(() => {
-    if (this.shutdownFlag.get) {
-      return T.interrupt
-    }
+  get takeAll(): T.Effect<unknown, never, Chunk.Chunk<A>> {
+    return T.suspend(() => {
+      if (this.shutdownFlag.get) {
+        return T.interrupt
+      }
 
-    const as = this.pollers.isEmpty
-      ? U.unsafePollAllSubscription(this.subscription)
-      : AR.empty
+      const as = this.pollers.isEmpty
+        ? U.unsafePollAllSubscription(this.subscription)
+        : Chunk.empty<A>()
 
-    this.strategy.unsafeOnHubEmptySpace(this.hub, this.subscribers)
+      this.strategy.unsafeOnHubEmptySpace(this.hub, this.subscribers)
 
-    return T.succeed(as)
-  })
+      return T.succeed(as)
+    })
+  }
 
-  takeUpTo: (n: number) => T.Effect<unknown, never, readonly A[]> = (n) =>
+  takeUpTo: (n: number) => T.Effect<unknown, never, Chunk.Chunk<A>> = (n) =>
     T.suspend(() => {
       if (this.shutdownFlag.get) {
         return T.interrupt
       }
 
-      const as = this.pollers.isEmpty ? U.unsafePollN(this.subscription, n) : AR.empty
+      const as = this.pollers.isEmpty
+        ? U.unsafePollN(this.subscription, n)
+        : Chunk.empty<A>()
 
       this.strategy.unsafeOnHubEmptySpace(this.hub, this.subscribers)
       return T.succeed(as)

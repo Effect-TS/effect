@@ -417,6 +417,9 @@ export const unit: Chunk<void> = single(void 0)
  * allowing for binary to be correctly stored in typed arrays
  */
 export function from<A>(iter: Iterable<A>): Chunk<A> {
+  if (isChunk(iter)) {
+    return iter
+  }
   let builder = empty<A>()
   for (const x of iter) {
     builder = append_(builder, x)
@@ -436,4 +439,34 @@ export function many<Elem extends readonly any[]>(...iter: Elem): Chunk<Elem[num
     builder = append_(builder, x)
   }
   return builder
+}
+
+/**
+ * Builder
+ */
+export function builder<A>() {
+  return new ChunkBuilder<A>(empty())
+}
+
+export class ChunkBuilder<A> {
+  constructor(private chunk: Chunk<A>) {}
+
+  append(a: A): ChunkBuilder<A> {
+    this.chunk = append_(this.chunk, a)
+    return this
+  }
+
+  prepend(a: A): ChunkBuilder<A> {
+    this.chunk = prepend_(this.chunk, a)
+    return this
+  }
+
+  concat(a: Chunk<A>): ChunkBuilder<A> {
+    this.chunk = concat_(this.chunk, a)
+    return this
+  }
+
+  build() {
+    return this.chunk
+  }
 }

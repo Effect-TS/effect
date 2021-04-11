@@ -2,7 +2,12 @@
 
 import * as cause from "../Cause"
 import * as A from "../Collections/Immutable/Array"
-import * as L from "../Collections/Immutable/List"
+import * as ChunkFilter from "../Collections/Immutable/Chunk/api/filter"
+import * as ChunkForEach from "../Collections/Immutable/Chunk/api/forEach"
+import * as ChunkSplitAt from "../Collections/Immutable/Chunk/api/splitAt"
+import * as ChunkZip from "../Collections/Immutable/Chunk/api/zip"
+import * as Chunk from "../Collections/Immutable/Chunk/core"
+import * as L from "../Collections/Immutable/List/core"
 import type { Exit } from "../Exit"
 import * as Ex from "../Exit"
 import type { FiberContext } from "../Fiber/context"
@@ -944,7 +949,7 @@ export class BackPressureStrategy<A> implements Q.Strategy<A> {
   private putters = new Unbounded<[A, Promise<never, boolean>, boolean]>()
 
   handleSurplus(
-    as: readonly A[],
+    as: Chunk.Chunk<A>,
     queue: MutableQueue<A>,
     takers: MutableQueue<Promise<never, A>>,
     isShutdown: AtomicBoolean
@@ -973,18 +978,19 @@ export class BackPressureStrategy<A> implements Q.Strategy<A> {
   unsafeRemove(p: Promise<never, boolean>) {
     Q.unsafeOfferAll(
       this.putters,
-      Q.unsafePollAll(this.putters).filter(([_, __]) => __ !== p)
+      ChunkFilter.filter_(Q.unsafePollAll(this.putters), ([_, __]) => __ !== p)
     )
   }
 
-  unsafeOffer(as: readonly A[], p: Promise<never, boolean>) {
-    const bs = Array.from(as)
+  unsafeOffer(as: Chunk.Chunk<A>, p: Promise<never, boolean>) {
+    let bs = as
 
-    while (bs.length > 0) {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      const head = bs.shift()!
+    while (Chunk.size(bs) > 0) {
+      const head = Chunk.unsafeGet_(bs, 0)!
 
-      if (bs.length === 0) {
+      bs = Chunk.drop_(bs, 1)
+
+      if (Chunk.size(bs) === 0) {
         this.putters.offer([head, p, true])
       } else {
         this.putters.offer([head, p, false])
@@ -1004,7 +1010,10 @@ export class BackPressureStrategy<A> implements Q.Strategy<A> {
         if (offered && putter[2]) {
           Q.unsafeCompletePromise(putter[1], true)
         } else if (!offered) {
-          Q.unsafeOfferAll(this.putters, [putter, ...Q.unsafePollAll(this.putters)])
+          Q.unsafeOfferAll(
+            this.putters,
+            Chunk.prepend_(Q.unsafePollAll(this.putters), putter)
+          )
         }
       } else {
         keepPolling = false
@@ -1078,26 +1087,33 @@ export function unsafeCreateQueue<A>(
             if (succeeded) {
               return core.succeed(true)
             } else {
-              return strategy.handleSurplus([a], queue, takers, shutdownFlag)
+              return strategy.handleSurplus(
+                Chunk.single(a),
+                queue,
+                takers,
+                shutdownFlag
+              )
             }
           }
         }
       })
 
     offerAll: (as: Iterable<A>) => Effect<unknown, never, boolean> = (as) => {
-      const arr = Array.from(as)
+      const arr = Chunk.from(as)
       return core.suspend(() => {
         if (shutdownFlag.get) {
           return interruption.interrupt
         } else {
-          const pTakers = queue.isEmpty ? Q.unsafePollN(takers, arr.length) : []
-          const [forTakers, remaining] = A.splitAt(pTakers.length)(arr)
+          const pTakers = queue.isEmpty
+            ? Q.unsafePollN(takers, Chunk.size(arr))
+            : Chunk.empty<Promise<never, A>>()
+          const [forTakers, remaining] = ChunkSplitAt.splitAt_(arr, Chunk.size(pTakers))
 
-          A.zip_(pTakers, forTakers).forEach(([taker, item]) => {
+          ChunkForEach.forEach_(ChunkZip.zip_(pTakers, forTakers), ([taker, item]) => {
             Q.unsafeCompletePromise(taker, item)
           })
 
-          if (remaining.length === 0) {
+          if (Chunk.size(remaining) === 0) {
             return core.succeed(true)
           }
 
@@ -1105,7 +1121,7 @@ export function unsafeCreateQueue<A>(
 
           Q.unsafeCompleteTakers(strategy, queue, takers)
 
-          if (surplus.length === 0) {
+          if (Chunk.size(surplus) === 0) {
             return core.succeed(true)
           } else {
             return strategy.handleSurplus(surplus, queue, takers, shutdownFlag)
@@ -1167,7 +1183,7 @@ export function unsafeCreateQueue<A>(
       })
     )
 
-    takeAll: Effect<unknown, never, readonly A[]> = core.suspend(() => {
+    takeAll: Effect<unknown, never, Chunk.Chunk<A>> = core.suspend(() => {
       if (shutdownFlag.get) {
         return interruption.interrupt
       } else {
@@ -1179,7 +1195,7 @@ export function unsafeCreateQueue<A>(
       }
     })
 
-    takeUpTo: (n: number) => Effect<unknown, never, readonly A[]> = (max) =>
+    takeUpTo: (n: number) => Effect<unknown, never, Chunk.Chunk<A>> = (max) =>
       core.suspend(() => {
         if (shutdownFlag.get) {
           return interruption.interrupt

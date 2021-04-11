@@ -1,13 +1,13 @@
-import * as AR from "../../Collections/Immutable/Array"
+import * as Chunk from "../../Collections/Immutable/Chunk"
 import type { MutableArray } from "../../Support/Mutable"
 import { Hub, Subscription } from "./Hub"
 
 export class BoundedHubArb<A> extends Hub<A> {
-  private array: MutableArray<A>
-  private publisherIndex = 0
-  private subscribers: MutableArray<number>
-  private subscriberCount = 0
-  private subscribersIndex = 0
+  array: MutableArray<A>
+  publisherIndex = 0
+  subscribers: MutableArray<number>
+  subscriberCount = 0
+  subscribersIndex = 0
 
   readonly capacity: number
 
@@ -43,9 +43,9 @@ export class BoundedHubArb<A> extends Hub<A> {
     return true
   }
 
-  publishAll(as: Iterable<A>): AR.Array<A> {
-    const asArray = AR.from(as)
-    const n = asArray.length
+  publishAll(as: Iterable<A>): Chunk.Chunk<A> {
+    const asArray = Chunk.from(as)
+    const n = Chunk.size(asArray)
     const size = this.publisherIndex - this.subscribersIndex
     const available = this.capacity - size
     const forHub = Math.min(n, available)
@@ -64,7 +64,7 @@ export class BoundedHubArb<A> extends Hub<A> {
       this.publisherIndex += 1
     }
 
-    return AR.dropLeft_(asArray, iteratorIndex - 1)
+    return Chunk.drop_(asArray, iteratorIndex - 1)
   }
 
   size(): number {
@@ -82,100 +82,108 @@ export class BoundedHubArb<A> extends Hub<A> {
   }
 
   subscribe(): Subscription<A> {
-    // eslint-disable-next-line @typescript-eslint/no-this-alias
-    const self = this
-    let subscriberIndex = self.publisherIndex
-    let unsubscribed = false
-
     this.subscriberCount += 1
 
-    return new (class BoundedHubArbSubscription extends Subscription<A> {
-      isEmpty(): boolean {
-        return (
-          unsubscribed ||
-          self.publisherIndex === subscriberIndex ||
-          self.publisherIndex === self.subscribersIndex
-        )
+    return new BoundedHubArbSubscription(this, this.publisherIndex, false)
+  }
+}
+
+class BoundedHubArbSubscription<A> extends Subscription<A> {
+  constructor(
+    private self: BoundedHubArb<A>,
+    private subscriberIndex: number,
+    private unsubscribed: boolean
+  ) {
+    super()
+  }
+
+  isEmpty(): boolean {
+    return (
+      this.unsubscribed ||
+      this.self.publisherIndex === this.subscriberIndex ||
+      this.self.publisherIndex === this.self.subscribersIndex
+    )
+  }
+
+  poll(default_: A): A {
+    if (this.unsubscribed) {
+      return default_
+    }
+
+    this.subscriberIndex = Math.max(this.subscriberIndex, this.self.subscribersIndex)
+
+    if (this.subscriberIndex !== this.self.publisherIndex) {
+      const index = this.subscriberIndex % this.self.capacity
+      const a = this.self.array[index]!
+
+      this.self.subscribers[index] -= 1
+
+      if (this.self.subscribers[index] === 0) {
+        this.self.array[index] = (null as unknown) as A
+        this.self.subscribersIndex += 1
       }
 
-      poll(default_: A): A {
-        if (unsubscribed) {
-          return default_
+      this.subscriberIndex += 1
+      return a
+    }
+
+    return default_
+  }
+
+  pollUpTo(n: number): Chunk.Chunk<A> {
+    if (this.unsubscribed) {
+      return Chunk.empty()
+    }
+
+    this.subscriberIndex = Math.max(this.subscriberIndex, this.self.subscribersIndex)
+    const size = this.self.publisherIndex - this.subscriberIndex
+    const toPoll = Math.min(n, size)
+
+    if (toPoll <= 0) {
+      return Chunk.empty()
+    }
+
+    let builder = Chunk.empty<A>()
+    const pollUpToIndex = this.subscriberIndex + toPoll
+
+    while (this.subscriberIndex !== pollUpToIndex) {
+      const index = this.subscriberIndex % this.self.capacity
+      const a = this.self.array[index] as A
+      builder = Chunk.append_(builder, a)
+      this.subscriberIndex += 1
+    }
+
+    return builder
+  }
+
+  size() {
+    if (this.unsubscribed) {
+      return 0
+    }
+
+    return (
+      this.self.publisherIndex -
+      Math.max(this.subscriberIndex, this.self.subscribersIndex)
+    )
+  }
+
+  unsubscribe(): void {
+    if (!this.unsubscribed) {
+      this.unsubscribed = true
+      this.self.subscriberCount -= 1
+      this.subscriberIndex = Math.max(this.subscriberIndex, this.self.subscribersIndex)
+
+      while (this.subscriberIndex !== this.self.publisherIndex) {
+        const index = this.subscriberIndex % this.self.capacity
+        this.self.subscribers[index] -= 1
+
+        if (this.self.subscribers[index] === 0) {
+          this.self.array[index] = (null as unknown) as A
+          this.self.subscribersIndex += 1
         }
 
-        subscriberIndex = Math.max(subscriberIndex, self.subscribersIndex)
-
-        if (subscriberIndex !== self.publisherIndex) {
-          const index = subscriberIndex % self.capacity
-          const a = self.array[index]!
-
-          self.subscribers[index] -= 1
-
-          if (self.subscribers[index] === 0) {
-            self.array[index] = (null as unknown) as A
-            self.subscribersIndex += 1
-          }
-
-          subscriberIndex += 1
-          return a
-        }
-
-        return default_
+        this.subscriberIndex += 1
       }
-
-      pollUpTo(n: number): AR.Array<A> {
-        if (unsubscribed) {
-          return AR.empty
-        }
-
-        subscriberIndex = Math.max(subscriberIndex, self.subscribersIndex)
-        const size = self.publisherIndex - subscriberIndex
-        const toPoll = Math.min(n, size)
-
-        if (toPoll <= 0) {
-          return AR.empty
-        }
-
-        const builder: MutableArray<A> = []
-        const pollUpToIndex = subscriberIndex + toPoll
-
-        while (subscriberIndex !== pollUpToIndex) {
-          const index = subscriberIndex % self.capacity
-          const a = self.array[index] as A
-          builder.push(a)
-          subscriberIndex += 1
-        }
-
-        return builder
-      }
-
-      size() {
-        if (unsubscribed) {
-          return 0
-        }
-
-        return self.publisherIndex - Math.max(subscriberIndex, self.subscribersIndex)
-      }
-
-      unsubscribe(): void {
-        if (!unsubscribed) {
-          unsubscribed = true
-          self.subscriberCount -= 1
-          subscriberIndex = Math.max(subscriberIndex, self.subscribersIndex)
-
-          while (subscriberIndex !== self.publisherIndex) {
-            const index = subscriberIndex % self.capacity
-            self.subscribers[index] -= 1
-
-            if (self.subscribers[index] === 0) {
-              self.array[index] = (null as unknown) as A
-              self.subscribersIndex += 1
-            }
-
-            subscriberIndex += 1
-          }
-        }
-      }
-    })()
+    }
   }
 }

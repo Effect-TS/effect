@@ -4,6 +4,7 @@ import "../../Operator"
 
 import type { HasHash } from "../../Case"
 import { hashSym } from "../../Case"
+import * as Chunk from "../../Collections/Immutable/Chunk/core"
 import { incrementalHash } from "../../Hash"
 import { DoublyLinkedList } from "../DoublyLinkedList"
 
@@ -15,6 +16,7 @@ export interface MutableQueue<A> extends HasHash {
    * with `capacity = MAX_NUMBER`.
    */
   readonly capacity: number
+
   /**
    * A non-blocking enqueue.
    *
@@ -27,7 +29,7 @@ export interface MutableQueue<A> extends HasHash {
    *
    * @return elements that were not enqueued
    */
-  readonly offerAll: (a: Iterable<A>) => readonly A[]
+  readonly offerAll: (a: Iterable<A>) => Chunk.Chunk<A>
 
   /**
    * A non-blocking dequeue.
@@ -46,7 +48,8 @@ export interface MutableQueue<A> extends HasHash {
    *
    * @return an array of up to `n` elements
    */
-  readonly pollUpTo: (n: number) => readonly A[]
+  readonly pollUpTo: (n: number) => Chunk.Chunk<A>
+
   /**
    * @return the '''current''' number of elements inside the queue.
    *
@@ -54,10 +57,12 @@ export interface MutableQueue<A> extends HasHash {
    * approximate number in a concurrent setting.
    */
   readonly size: number
+
   /**
    * @return if the queue is empty
    */
   readonly isEmpty: boolean
+
   /**
    * @return if the queue is full
    */
@@ -88,12 +93,12 @@ export class Unbounded<A> implements MutableQueue<A> {
     return true
   }
 
-  offerAll(as: Iterable<A>): readonly A[] {
+  offerAll(as: Iterable<A>): Chunk.Chunk<A> {
     for (const a of as) {
       this.offer(a)
     }
 
-    return []
+    return Chunk.empty()
   }
 
   poll(a: A | undefined) {
@@ -103,8 +108,8 @@ export class Unbounded<A> implements MutableQueue<A> {
     return this.queue.shift()
   }
 
-  pollUpTo(n: number): readonly A[] {
-    const result: A[] = []
+  pollUpTo(n: number): Chunk.Chunk<A> {
+    let result = Chunk.empty<A>()
     const count = 0
 
     while (count < n) {
@@ -114,7 +119,7 @@ export class Unbounded<A> implements MutableQueue<A> {
         break
       }
 
-      result.push(elem)
+      result = Chunk.append_(result, elem)
     }
 
     return result
@@ -157,16 +162,22 @@ export class Bounded<A> implements MutableQueue<A> {
     return true
   }
 
-  offerAll(as: Iterable<A>): readonly A[] {
-    const allAs = Array.from(as)
+  offerAll(as: Iterable<A>): Chunk.Chunk<A> {
+    const it = as[Symbol.iterator]()
+    let next
+    let rem = Chunk.empty<A>()
+    let offerig = true
 
-    let i = 0
-
-    while (this.offer(allAs[i]!)) {
-      i += 1
+    while (offerig && (next = it.next()) && !next.done) {
+      offerig = this.offer(next.value)
     }
 
-    return allAs.slice(i)
+    while (next && !next.done) {
+      rem = Chunk.append_(rem, next.value)
+      next = it.next()
+    }
+
+    return rem
   }
 
   poll(a: A | undefined) {
@@ -176,8 +187,8 @@ export class Bounded<A> implements MutableQueue<A> {
     return this.queue.shift()
   }
 
-  pollUpTo(n: number): readonly A[] {
-    const result: A[] = []
+  pollUpTo(n: number): Chunk.Chunk<A> {
+    let result = Chunk.empty<A>()
     const count = 0
 
     while (count < n) {
@@ -187,7 +198,7 @@ export class Bounded<A> implements MutableQueue<A> {
         break
       }
 
-      result.push(elem)
+      result = Chunk.append_(result, elem)
     }
 
     return result

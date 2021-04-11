@@ -1,4 +1,4 @@
-import type * as AR from "../../Collections/Immutable/Array"
+import * as Chunk from "../../Collections/Immutable/Chunk"
 import * as T from "../../Effect"
 import * as P from "../../Promise"
 import type * as MQ from "../../Support/MutableQueue"
@@ -17,14 +17,14 @@ export function unsafeCompletePromise<A>(promise: P.Promise<never, A>, a: A): vo
 export function unsafeOfferAll<A>(
   queue: MQ.MutableQueue<A>,
   as: Iterable<A>
-): AR.Array<A> {
+): Chunk.Chunk<A> {
   return queue.offerAll(as)
 }
 
 /**
  * Unsafely polls all values from a queue.
  */
-export function unsafePollAllQueue<A>(queue: MQ.MutableQueue<A>): AR.Array<A> {
+export function unsafePollAllQueue<A>(queue: MQ.MutableQueue<A>): Chunk.Chunk<A> {
   return queue.pollUpTo(Number.MAX_SAFE_INTEGER)
 }
 
@@ -33,7 +33,7 @@ export function unsafePollAllQueue<A>(queue: MQ.MutableQueue<A>): AR.Array<A> {
  */
 export function unsafePollAllSubscription<A>(
   subscription: HB.Subscription<A>
-): AR.Array<A> {
+): Chunk.Chunk<A> {
   return subscription.pollUpTo(Number.MAX_SAFE_INTEGER)
 }
 
@@ -43,14 +43,14 @@ export function unsafePollAllSubscription<A>(
 export function unsafePollN<A>(
   subscription: HB.Subscription<A>,
   max: number
-): AR.Array<A> {
+): Chunk.Chunk<A> {
   return subscription.pollUpTo(max)
 }
 
 /**
  * Unsafely publishes the specified values to a hub.
  */
-export function unsafePublishAll<A>(hub: HB.Hub<A>, as: Iterable<A>): AR.Array<A> {
+export function unsafePublishAll<A>(hub: HB.Hub<A>, as: Iterable<A>): Chunk.Chunk<A> {
   return hub.publishAll(as)
 }
 
@@ -60,6 +60,6 @@ export function unsafePublishAll<A>(hub: HB.Hub<A>, as: Iterable<A>): AR.Array<A
 export function unsafeRemove<A>(queue: MQ.MutableQueue<A>, a: A): void {
   unsafeOfferAll(
     queue,
-    unsafePollAllQueue(queue).filter((_) => _ !== a)
+    Chunk.filter_(unsafePollAllQueue(queue), (_) => _ !== a)
   )
 }

@@ -1,5 +1,7 @@
 // tracing: off
 
+import * as ChunkFilter from "../Collections/Immutable/Chunk/api/filter"
+import * as Chunk from "../Collections/Immutable/Chunk/core"
 import type { AtomicBoolean } from "../Support/AtomicBoolean"
 import type { MutableQueue } from "../Support/MutableQueue"
 import * as T from "./effect"
@@ -9,7 +11,7 @@ export { Dequeue, Queue, XQueue } from "./xqueue"
 
 export interface Strategy<A> {
   readonly handleSurplus: (
-    as: readonly A[],
+    as: Chunk.Chunk<A>,
     queue: MutableQueue<A>,
     takers: MutableQueue<P.Promise<never, A>>,
     isShutdown: AtomicBoolean
@@ -24,7 +26,7 @@ export interface Strategy<A> {
 
 export class DroppingStrategy<A> implements Strategy<A> {
   handleSurplus(
-    _as: readonly A[],
+    _as: Chunk.Chunk<A>,
     _queue: MutableQueue<A>,
     _takers: MutableQueue<P.Promise<never, A>>,
     _isShutdown: AtomicBoolean
@@ -47,7 +49,7 @@ export class DroppingStrategy<A> implements Strategy<A> {
 
 export class SlidingStrategy<A> implements Strategy<A> {
   handleSurplus(
-    as: readonly A[],
+    as: Chunk.Chunk<A>,
     queue: MutableQueue<A>,
     takers: MutableQueue<P.Promise<never, A>>,
     _isShutdown: AtomicBoolean
@@ -71,31 +73,33 @@ export class SlidingStrategy<A> implements Strategy<A> {
     return 0
   }
 
-  private unsafeSlidingOffer(queue: MutableQueue<A>, as: readonly A[]) {
-    const bs = Array.from(as)
+  private unsafeSlidingOffer(queue: MutableQueue<A>, as: Chunk.Chunk<A>) {
+    let bs = as
 
-    while (bs.length > 0) {
+    while (Chunk.size(bs) > 0) {
       if (queue.capacity === 0) {
         return
       }
+
       // poll 1 and retry
       queue.poll(undefined)
 
-      if (queue.offer(bs[0]!)) {
-        bs.shift()
+      if (queue.offer(Chunk.unsafeGet_(bs, 0))) {
+        bs = Chunk.drop_(bs, 1)
       }
     }
   }
 }
 
-export const unsafeCompletePromise = <A>(p: P.Promise<never, A>, a: A) =>
-  P.unsafeDone(T.succeed(a))(p)
+export function unsafeCompletePromise<A>(p: P.Promise<never, A>, a: A) {
+  return P.unsafeDone(T.succeed(a))(p)
+}
 
-export const unsafeCompleteTakers = <A>(
+export function unsafeCompleteTakers<A>(
   strategy: Strategy<A>,
   queue: MutableQueue<A>,
   takers: MutableQueue<P.Promise<never, A>>
-) => {
+) {
   let keepPolling = true
 
   while (keepPolling && !queue.isEmpty) {
@@ -108,7 +112,7 @@ export const unsafeCompleteTakers = <A>(
         unsafeCompletePromise(taker, element)
         strategy.unsafeOnQueueEmptySpace(queue)
       } else {
-        unsafeOfferAll(takers, [taker, ...unsafePollAll(takers)])
+        unsafeOfferAll(takers, Chunk.prepend_(unsafePollAll(takers), taker))
       }
 
       keepPolling = true
@@ -118,19 +122,19 @@ export const unsafeCompleteTakers = <A>(
   }
 }
 
-export const unsafeRemove = <A>(q: MutableQueue<A>, a: A) => {
-  unsafeOfferAll(q, unsafePollAll(q)).filter((b) => a !== b)
+export function unsafeRemove<A>(q: MutableQueue<A>, a: A) {
+  ChunkFilter.filter_(unsafeOfferAll(q, unsafePollAll(q)), (b) => a !== b)
 }
 
-export const unsafePollN = <A>(q: MutableQueue<A>, max: number): readonly A[] => {
+export function unsafePollN<A>(q: MutableQueue<A>, max: number): Chunk.Chunk<A> {
   let j = 0
-  const as = [] as A[]
+  let as = Chunk.empty<A>()
 
   while (j < max) {
     const p = q.poll(undefined)
 
     if (p != null) {
-      as.push(p)
+      as = Chunk.append_(as, p)
     } else {
       return as
     }
@@ -141,29 +145,28 @@ export const unsafePollN = <A>(q: MutableQueue<A>, max: number): readonly A[] =>
   return as
 }
 
-export const unsafeOfferAll = <A>(
+export function unsafeOfferAll<A>(
   q: MutableQueue<A>,
-  as: readonly A[]
-): readonly A[] => {
-  const bs = Array.from(as)
+  as: Chunk.Chunk<A>
+): Chunk.Chunk<A> {
+  let bs = as
 
-  while (bs.length > 0) {
-    if (!q.offer(bs[0]!)) {
+  while (Chunk.size(bs) > 0) {
+    if (!q.offer(Chunk.unsafeGet_(bs, 0)!)) {
       return bs
     } else {
-      bs.shift()
+      bs = Chunk.drop_(bs, 1)
     }
   }
 
   return bs
 }
 
-export const unsafePollAll = <A>(q: MutableQueue<A>): readonly A[] => {
-  const as = [] as A[]
+export function unsafePollAll<A>(q: MutableQueue<A>): Chunk.Chunk<A> {
+  let as = Chunk.empty<A>()
 
   while (!q.isEmpty) {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    as.push(q.poll(undefined)!)
+    as = Chunk.append_(as, q.poll(undefined)!)
   }
 
   return as

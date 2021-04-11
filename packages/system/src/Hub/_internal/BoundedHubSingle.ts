@@ -1,11 +1,11 @@
-import * as AR from "../../Collections/Immutable/Array"
+import * as Chunk from "../../Collections/Immutable/Chunk"
 import { Hub, Subscription } from "./Hub"
 
 export class BoundedHubSingle<A> extends Hub<A> {
-  private publisherIndex = 0
-  private subscriberCount = 0
-  private subscribers = 0
-  private value: A = (null as unknown) as A
+  publisherIndex = 0
+  subscriberCount = 0
+  subscribers = 0
+  value: A = (null as unknown) as A
 
   readonly capacity = 1
 
@@ -35,19 +35,17 @@ export class BoundedHubSingle<A> extends Hub<A> {
     return true
   }
 
-  publishAll(as: Iterable<A>): AR.Array<A> {
-    const array = AR.from(as)
+  publishAll(as: Iterable<A>): Chunk.Chunk<A> {
+    const list = Chunk.from(as)
 
-    if (AR.isEmpty(array)) {
-      return AR.empty
+    if (Chunk.isEmpty(list)) {
+      return Chunk.empty()
     }
 
-    const [h, ...tail] = array
-
-    if (this.publish(h!)) {
-      return tail
+    if (this.publish(Chunk.unsafeHead(list)!)) {
+      return Chunk.drop_(list, 1)
     } else {
-      return array
+      return list
     }
   }
 
@@ -63,76 +61,81 @@ export class BoundedHubSingle<A> extends Hub<A> {
   }
 
   subscribe(): Subscription<A> {
-    // eslint-disable-next-line @typescript-eslint/no-this-alias
-    const self = this
-    let subscriberIndex = self.publisherIndex
-    let unsubscribed = false
-
     this.subscriberCount += 1
 
-    return new (class BoundedHubSingleSubscription extends Subscription<A> {
-      isEmpty(): boolean {
-        return (
-          unsubscribed ||
-          self.subscribers === 0 ||
-          subscriberIndex === self.publisherIndex
-        )
-      }
+    return new BoundedHubSingleSubscription(this, this.publisherIndex, false)
+  }
+}
 
-      poll(default_: A): A {
-        if (this.isEmpty()) {
-          return default_
+class BoundedHubSingleSubscription<A> extends Subscription<A> {
+  constructor(
+    private self: BoundedHubSingle<A>,
+    private subscriberIndex: number,
+    private unsubscribed: boolean
+  ) {
+    super()
+  }
+
+  isEmpty(): boolean {
+    return (
+      this.unsubscribed ||
+      this.self.subscribers === 0 ||
+      this.subscriberIndex === this.self.publisherIndex
+    )
+  }
+
+  poll(default_: A): A {
+    if (this.isEmpty()) {
+      return default_
+    }
+
+    const a = this.self.value
+
+    this.self.subscribers -= 1
+
+    if (this.self.subscribers === 0) {
+      this.self.value = (null as unknown) as A
+    }
+
+    this.subscriberIndex += 1
+
+    return a
+  }
+
+  pollUpTo(n: number): Chunk.Chunk<A> {
+    if (this.isEmpty() || n < 1) {
+      return Chunk.empty()
+    }
+
+    const a = this.self.value
+
+    this.self.subscribers -= 1
+
+    if (this.self.subscribers === 0) {
+      this.self.value = (null as unknown) as A
+    }
+
+    this.subscriberIndex += 1
+
+    return Chunk.single(a)
+  }
+
+  size() {
+    return this.isEmpty() ? 0 : 1
+  }
+
+  unsubscribe(): void {
+    if (!this.unsubscribed) {
+      this.unsubscribed = true
+      this.self.subscriberCount -= 1
+
+      if (this.subscriberIndex !== this.self.publisherIndex) {
+        this.self.subscribers -= 1
+
+        if (this.self.subscribers === 0) {
+          this.self.value = (null as unknown) as A
         }
-
-        const a = self.value
-
-        self.subscribers -= 1
-
-        if (self.subscribers === 0) {
-          self.value = (null as unknown) as A
-        }
-
-        subscriberIndex += 1
-
-        return a
       }
-
-      pollUpTo(n: number): AR.Array<A> {
-        if (this.isEmpty() || n < 1) {
-          return AR.empty
-        }
-
-        const a = self.value
-
-        self.subscribers -= 1
-
-        if (self.subscribers === 0) {
-          self.value = (null as unknown) as A
-        }
-
-        subscriberIndex += 1
-
-        return AR.single(a as A)
-      }
-
-      size() {
-        return this.isEmpty() ? 0 : 1
-      }
-
-      unsubscribe(): void {
-        if (!unsubscribed) {
-          unsubscribed = true
-          self.subscriberCount -= 1
-
-          if (subscriberIndex !== self.publisherIndex) {
-            self.subscribers -= 1
-
-            if (self.subscribers === 0) {
-              self.value = (null as unknown) as A
-            }
-          }
-        }
-      }
-    })()
+    }
   }
 }

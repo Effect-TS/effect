@@ -31,7 +31,7 @@ describe("Semaphores", () => {
                   )
                 )
 
-                yield* _(T.sleep(1000))
+                yield* _(T.sleep(100))
               })
             )
           )
@@ -39,7 +39,7 @@ describe("Semaphores", () => {
       )
 
       // Give enough time for 2 iterations to completely finish then interrupt
-      yield* _(T.sleep(2000))
+      yield* _(T.sleep(200))
       yield* _(F.interrupt(fiber))
 
       return [blockingExecuted, unblockingExecuted]
@@ -77,7 +77,7 @@ describe("Semaphores", () => {
                     blockingExecuted++
                   })
                 )
-                yield* _(T.sleep(1000))
+                yield* _(T.sleep(100))
               })
             )
           )
@@ -85,7 +85,7 @@ describe("Semaphores", () => {
       )
 
       // Give enough time for 2 iterations to completely finish then interrupt
-      yield* _(T.sleep(2000))
+      yield* _(T.sleep(200))
       yield* _(F.interrupt(fiber))
 
       return [blockingExecuted, unblockingExecuted]

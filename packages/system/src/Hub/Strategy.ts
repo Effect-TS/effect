@@ -1,5 +1,4 @@
-import * as AR from "../Collections/Immutable/Array"
-import * as NEA from "../Collections/Immutable/NonEmptyArray"
+import * as Chunk from "../Collections/Immutable/Chunk"
 import type * as HS from "../Collections/Mutable/HashSet"
 import * as T from "../Effect"
 import { pipe } from "../Function"
@@ -77,7 +76,10 @@ export abstract class Strategy<A> {
         const pollResult = subscription.poll(empty)
 
         if (pollResult === null) {
-          U.unsafeOfferAll(pollers, [poller, ...U.unsafePollAllQueue(pollers)])
+          U.unsafeOfferAll(
+            pollers,
+            Chunk.prepend_(U.unsafePollAllQueue(pollers), poller)
+          )
         } else {
           U.unsafeCompletePromise(poller, pollResult)
           this.unsafeOnHubEmptySpace(hub, subscribers)
@@ -138,19 +140,21 @@ export class BackPressure<A> extends Strategy<A> {
     })
   }
 
-  shutdown: T.UIO<void> = pipe(
-    T.do,
-    T.bind("fiberId", () => T.fiberId),
-    T.bind("publishers", () =>
-      T.effectTotal(() => U.unsafePollAllQueue(this.publishers))
-    ),
-    T.tap(({ fiberId, publishers }) =>
-      T.forEachPar_(publishers, ([_, promise, last]) => {
-        return last ? P.interruptAs(fiberId)(promise) : T.unit
-      })
-    ),
-    T.asUnit
-  )
+  get shutdown(): T.UIO<void> {
+    return pipe(
+      T.do,
+      T.bind("fiberId", () => T.fiberId),
+      T.bind("publishers", () =>
+        T.effectTotal(() => U.unsafePollAllQueue(this.publishers))
+      ),
+      T.tap(({ fiberId, publishers }) =>
+        T.forEachPar_(publishers, ([_, promise, last]) =>
+          last ? P.interruptAs(fiberId)(promise) : T.unit
+        )
+      ),
+      T.asUnit
+    )
+  }
 
   unsafeOnHubEmptySpace(
     hub: InternalHub.Hub<A>,
@@ -172,10 +176,10 @@ export class BackPressure<A> extends Strategy<A> {
         if (published && publisher[2]) {
           U.unsafeCompletePromise(publisher[1], true)
         } else if (!published) {
-          U.unsafeOfferAll(this.publishers, [
-            publisher,
-            ...U.unsafePollAllQueue(this.publishers)
-          ])
+          U.unsafeOfferAll(
+            this.publishers,
+            Chunk.prepend_(U.unsafePollAllQueue(this.publishers), publisher)
+          )
         }
         this.unsafeCompleteSubscribers(hub, subscribers)
       }
@@ -183,24 +187,23 @@ export class BackPressure<A> extends Strategy<A> {
   }
 
   private unsafeOffer(as: Iterable<A>, promise: P.Promise<never, boolean>): void {
-    const array = AR.from(as)
+    const it = as[Symbol.iterator]()
+    let curr = it.next()
 
-    if (AR.isNonEmpty(array)) {
-      let i = 0
-
-      while (i < array.length - 1) {
-        this.publishers.offer([array[i]!, promise, false] as const)
-        i += 1
+    if (!curr.done) {
+      let next
+      while ((next = it.next()) && !next.done) {
+        this.publishers.offer([curr.value, promise, false] as const)
+        curr = next
       }
-
-      this.publishers.offer([NEA.last(array), promise, true] as const)
+      this.publishers.offer([curr.value, promise, true] as const)
     }
   }
 
   private unsafeRemove(promise: P.Promise<never, boolean>): void {
     U.unsafeOfferAll(
       this.publishers,
-      U.unsafePollAllQueue(this.publishers).filter(([_, a]) => a !== promise)
+      Chunk.filter_(U.unsafePollAllQueue(this.publishers), ([_, a]) => a !== promise)
     )
   }
 }
@@ -245,6 +248,25 @@ export class Dropping<A> extends Strategy<A> {
  * not receive some messages published to the hub while it is subscribed.
  */
 export class Sliding<A> extends Strategy<A> {
+  private unsafeSlidingPublish(hub: InternalHub.Hub<A>, as: Iterable<A>): void {
+    const it = as[Symbol.iterator]()
+    let next = it.next()
+
+    if (!next.done && hub.capacity > 0) {
+      let a = next.value
+      let loop = true
+      while (loop) {
+        hub.slide()
+        const pub = hub.publish(a)
+        if (pub && (next = it.next()) && !next.done) {
+          a = next.value
+        } else if (pub) {
+          loop = false
+        }
+      }
+    }
+  }
+
   handleSurplus(
     hub: InternalHub.Hub<A>,
     subscribers: HS.HashSet<
@@ -253,28 +275,8 @@ export class Sliding<A> extends Strategy<A> {
     as: Iterable<A>,
     _isShutdown: AtomicBoolean
   ): T.UIO<boolean> {
-    const unsafeSlidingPublish = (as: Iterable<A>): void => {
-      const array = Array.from(as)
-
-      if (AR.isNonEmpty(array) && hub.capacity > 0) {
-        let i = 0
-
-        while (i < array.length) {
-          hub.slide()
-          const isLastOne = i === array.length - 1
-          const published = hub.publish(array[i]!)
-
-          if (published && !isLastOne) {
-            i += 1
-          } else if (published && isLastOne) {
-            break
-          }
-        }
-      }
-    }
-
     return T.effectTotal(() => {
-      unsafeSlidingPublish(as)
+      this.unsafeSlidingPublish(hub, as)
       this.unsafeCompleteSubscribers(hub, subscribers)
       return true
     })

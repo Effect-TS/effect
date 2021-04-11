@@ -1,6 +1,6 @@
 // tracing: off
 
-import * as L from "../Collections/Immutable/List"
+import * as L from "../Collections/Immutable/List/core"
 import * as O from "../Option"
 import * as S from "../Sync"
 import type { FiberID } from "./id"

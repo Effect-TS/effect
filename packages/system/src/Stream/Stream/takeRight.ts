@@ -36,10 +36,7 @@ export function takeRight_<R, E, O>(self: Stream<R, E, O>, n: number): Stream<R,
                 T.as(A.empty<O>()),
                 T.catchSome(
                   O.fold(
-                    () =>
-                      O.some(
-                        T.zipRight_(done.set(true), T.map_(queue.takeAll, A.from))
-                      ),
+                    () => O.some(T.zipRight_(done.set(true), queue.takeAll)),
                     () => O.none
                   )
                 )

@@ -1,5 +1,4 @@
-import * as AR from "../../Collections/Immutable/Array"
-import type { MutableArray } from "../../Support/Mutable"
+import * as Chunk from "../../Collections/Immutable/Chunk"
 import { Hub, Subscription } from "./Hub"
 
 class Node<A> {
@@ -11,10 +10,10 @@ class Node<A> {
 }
 
 export class UnboundedHub<A> extends Hub<A> {
-  private publisherHead = new Node<A>(null, 0, null)
-  private publisherIndex = 0
-  private publisherTail: Node<A>
-  private subscribersIndex = 0
+  publisherHead = new Node<A>(null, 0, null)
+  publisherIndex = 0
+  publisherTail: Node<A>
+  subscribersIndex = 0
 
   readonly capacity = Number.MAX_SAFE_INTEGER
 
@@ -44,10 +43,11 @@ export class UnboundedHub<A> extends Hub<A> {
     return true
   }
 
-  publishAll(as: Iterable<A>): AR.Array<A> {
-    AR.from(as).forEach((a) => this.publish(a))
-
-    return AR.empty
+  publishAll(as: Iterable<A>): Chunk.Chunk<A> {
+    for (const a of as) {
+      this.publish(a)
+    }
+    return Chunk.empty()
   }
 
   size(): number {
@@ -63,120 +63,133 @@ export class UnboundedHub<A> extends Hub<A> {
   }
 
   subscribe(): Subscription<A> {
-    // eslint-disable-next-line @typescript-eslint/no-this-alias
-    const self = this
-    let subscriberHead = self.publisherTail
-    let subscriberIndex = self.publisherIndex
-    let unsubscribed = false
-
     this.publisherTail.subscribers += 1
 
-    return new (class UnboundedHubSubscription extends Subscription<A> {
-      isEmpty(): boolean {
-        if (unsubscribed) {
-          return true
+    return new UnboundedHubSubscription(
+      this,
+      this.publisherTail,
+      this.publisherIndex,
+      false
+    )
+  }
+}
+
+class UnboundedHubSubscription<A> extends Subscription<A> {
+  constructor(
+    private self: UnboundedHub<A>,
+    private subscriberHead: Node<A>,
+    private subscriberIndex: number,
+    private unsubscribed: boolean
+  ) {
+    super()
+  }
+
+  isEmpty(): boolean {
+    if (this.unsubscribed) {
+      return true
+    }
+
+    let empty = true
+    let loop = true
+
+    while (loop) {
+      if (this.subscriberHead === this.self.publisherTail) {
+        loop = false
+      } else {
+        if (this.subscriberHead.next!.value !== null) {
+          empty = false
+          loop = false
+        } else {
+          this.subscriberHead = this.subscriberHead.next!
+          this.subscriberIndex += 1
+        }
+      }
+    }
+
+    return empty
+  }
+
+  poll(default_: A): A {
+    if (this.unsubscribed) {
+      return default_
+    }
+
+    let loop = true
+    let polled = default_
+
+    while (loop) {
+      if (this.subscriberHead === this.self.publisherTail) {
+        loop = false
+      } else {
+        const a = this.subscriberHead.next!.value
+
+        if (a !== null) {
+          polled = a
+          this.subscriberHead.subscribers -= 1
+
+          if (this.subscriberHead.subscribers === 0) {
+            this.self.publisherHead = this.self.publisherHead.next!
+            this.self.publisherHead.value = null
+            this.self.subscribersIndex += 1
+          }
+
+          loop = false
         }
 
-        let empty = true
-        let loop = true
+        this.subscriberHead = this.subscriberHead.next!
+        this.subscriberIndex += 1
+      }
+    }
 
-        while (loop) {
-          if (subscriberHead === self.publisherTail) {
-            loop = false
-          } else {
-            if (subscriberHead.next!.value !== null) {
-              empty = false
-              loop = false
-            } else {
-              subscriberHead = subscriberHead.next!
-              subscriberIndex += 1
-            }
+    return polled
+  }
+
+  pollUpTo(n: number): Chunk.Chunk<A> {
+    let builder = Chunk.empty<A>()
+    const default_ = null
+    let i = 0
+
+    while (i !== n) {
+      const a = this.poll((default_ as unknown) as A)
+      if (a === default_) {
+        i = n
+      } else {
+        builder = Chunk.append_(builder, a)
+        i += 1
+      }
+    }
+
+    return builder
+  }
+
+  size() {
+    if (this.unsubscribed) {
+      return 0
+    }
+
+    return (
+      this.self.publisherIndex -
+      Math.max(this.subscriberIndex, this.self.subscribersIndex)
+    )
+  }
+
+  unsubscribe(): void {
+    if (!this.unsubscribed) {
+      this.unsubscribed = true
+      this.self.publisherTail.subscribers -= 1
+
+      while (this.subscriberHead !== this.self.publisherTail) {
+        if (this.subscriberHead.next!.value !== null) {
+          this.subscriberHead.subscribers -= 1
+
+          if (this.subscriberHead.subscribers === 0) {
+            this.self.publisherHead = this.self.publisherHead.next!
+            this.self.publisherHead.value = null
+            this.self.subscribersIndex += 1
           }
         }
-
-        return empty
+        this.subscriberHead = this.subscriberHead.next!
       }
-
-      poll(default_: A): A {
-        if (unsubscribed) {
-          return default_
-        }
-
-        let loop = true
-        let polled = default_
-
-        while (loop) {
-          if (subscriberHead === self.publisherTail) {
-            loop = false
-          } else {
-            const a = subscriberHead.next!.value
-
-            if (a !== null) {
-              polled = a
-              subscriberHead.subscribers -= 1
-
-              if (subscriberHead.subscribers === 0) {
-                self.publisherHead = self.publisherHead.next!
-                self.publisherHead.value = null
-                self.subscribersIndex += 1
-              }
-
-              loop = false
-            }
-
-            subscriberHead = subscriberHead.next!
-            subscriberIndex += 1
-          }
-        }
-
-        return polled
-      }
-
-      pollUpTo(n: number): AR.Array<A> {
-        const builder: MutableArray<A> = []
-        const default_ = null
-        let i = 0
-
-        while (i !== n) {
-          const a = this.poll((default_ as unknown) as A)
-          if (a === default_) {
-            i = n
-          } else {
-            builder.push(a)
-            i += 1
-          }
-        }
-
-        return builder
-      }
-
-      size() {
-        if (unsubscribed) {
-          return 0
-        }
-
-        return self.publisherIndex - Math.max(subscriberIndex, self.subscribersIndex)
-      }
-
-      unsubscribe(): void {
-        if (!unsubscribed) {
-          unsubscribed = true
-          self.publisherTail.subscribers -= 1
-
-          while (subscriberHead !== self.publisherTail) {
-            if (subscriberHead.next!.value !== null) {
-              subscriberHead.subscribers -= 1
-
-              if (subscriberHead.subscribers === 0) {
-                self.publisherHead = self.publisherHead.next!
-                self.publisherHead.value = null
-                self.subscribersIndex += 1
-              }
-            }
-            subscriberHead = subscriberHead.next!
-          }
-        }
-      }
-    })()
+    }
   }
 }
