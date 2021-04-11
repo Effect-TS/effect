@@ -1,7 +1,7 @@
-import * as core from "../../../Effect/core"
-import type { Effect } from "../../../Effect/effect"
-import * as coreZip from "../../../Effect/zipWith"
-import * as List from "./core"
+import * as core from "../../../../Effect/core"
+import type { Effect } from "../../../../Effect/effect"
+import * as coreZip from "../../../../Effect/zipWith"
+import * as List from "../core"
 
 /**
  * Filters this list by the specified effectful predicate, retaining all elements for

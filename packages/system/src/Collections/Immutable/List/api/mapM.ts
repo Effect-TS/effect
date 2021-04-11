@@ -1,8 +1,8 @@
-import * as core from "../../../Effect/core"
-import type { Effect } from "../../../Effect/effect"
-import * as forEach from "../../../Effect/excl-forEach"
-import * as coreMap from "../../../Effect/map"
-import * as List from "./core"
+import * as core from "../../../../Effect/core"
+import type { Effect } from "../../../../Effect/effect"
+import * as forEach from "../../../../Effect/excl-forEach"
+import * as coreMap from "../../../../Effect/map"
+import * as List from "../core"
 
 /**
  * Effectfully maps the elements of this list.
