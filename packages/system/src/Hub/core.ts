@@ -47,7 +47,9 @@ export abstract class XHub<RA, RB, EA, EB, A, B> {
   readonly [PR._EB]!: () => EB;
   readonly [PR._A]!: (_: A) => void;
   readonly [PR._B]!: () => B
+}
 
+abstract class XHubInternal<RA, RB, EA, EB, A, B> extends XHub<RA, RB, EA, EB, A, B> {
   /**
    * Waits for the hub to be shut down.
    */
@@ -94,11 +96,21 @@ export abstract class XHub<RA, RB, EA, EB, A, B> {
 }
 
 /**
+ * @optimize remove
+ */
+function concrete<RA, RB, EA, EB, A, B>(
+  hub: XHub<RA, RB, EA, EB, A, B>
+): asserts hub is XHubInternal<RA, RB, EA, EB, A, B> {
+  //
+}
+
+/**
  * Waits for the hub to be shut down.
  */
 export function awaitShutdown<RA, RB, EA, EB, A, B>(
   self: XHub<RA, RB, EA, EB, A, B>
 ): T.UIO<void> {
+  concrete(self)
   return self.awaitShutdown
 }
 
@@ -108,6 +120,7 @@ export function awaitShutdown<RA, RB, EA, EB, A, B>(
 export function capacity<RA, RB, EA, EB, A, B>(
   self: XHub<RA, RB, EA, EB, A, B>
 ): number {
+  concrete(self)
   return self.capacity
 }
 
@@ -117,6 +130,7 @@ export function capacity<RA, RB, EA, EB, A, B>(
 export function isShutdown<RA, RB, EA, EB, A, B>(
   self: XHub<RA, RB, EA, EB, A, B>
 ): T.UIO<boolean> {
+  concrete(self)
   return self.isShutdown
 }
 
@@ -128,6 +142,7 @@ export function publish_<RA, RB, EA, EB, A, B>(
   self: XHub<RA, RB, EA, EB, A, B>,
   a: A
 ): T.Effect<RA, EA, boolean> {
+  concrete(self)
   return self.publish(a)
 }
 
@@ -149,6 +164,7 @@ export function publishAll_<RA, RB, EA, EB, A, B>(
   self: XHub<RA, RB, EA, EB, A, B>,
   as: Iterable<A>
 ): T.Effect<RA, EA, boolean> {
+  concrete(self)
   return self.publishAll(as)
 }
 
@@ -168,6 +184,7 @@ export function publishAll<A>(as: Iterable<A>) {
 export function shutdown<RA, RB, EA, EB, A, B>(
   self: XHub<RA, RB, EA, EB, A, B>
 ): T.UIO<void> {
+  concrete(self)
   return self.shutdown
 }
 
@@ -177,6 +194,7 @@ export function shutdown<RA, RB, EA, EB, A, B>(
 export function size<RA, RB, EA, EB, A, B>(
   self: XHub<RA, RB, EA, EB, A, B>
 ): T.UIO<number> {
+  concrete(self)
   return self.size
 }
 
@@ -188,6 +206,7 @@ export function size<RA, RB, EA, EB, A, B>(
 export function subscribe<RA, RB, EA, EB, A, B>(
   self: XHub<RA, RB, EA, EB, A, B>
 ): M.Managed<unknown, never, HubDequeue<RB, EB, B>> {
+  concrete(self)
   return self.subscribe
 }
 
@@ -254,7 +273,7 @@ class DimapMImplementation<RA, RB, RC, RD, EA, EB, EC, ED, A, B, C, D> extends X
   subscribe: M.Managed<unknown, never, HubDequeue<RD & RB, ED | EB, D>>
 
   constructor(
-    readonly source: XHub<RA, RB, EA, EB, A, B>,
+    readonly source: XHubInternal<RA, RB, EA, EB, A, B>,
     readonly f: (c: C) => T.Effect<RC, EC, A>,
     g: (b: B) => T.Effect<RD, ED, D>
   ) {
@@ -265,16 +284,14 @@ class DimapMImplementation<RA, RB, RC, RD, EA, EB, EC, ED, A, B, C, D> extends X
     this.shutdown = source.shutdown
     this.size = source.size
     this.subscribe = M.map_(source.subscribe, Q.mapM(g))
-    this.publish = this.publish.bind(this)
-    this.publishAll = this.publishAll.bind(this)
   }
 
   publish(c: C) {
-    return T.chain_(this.f(c), this.source.publish)
+    return T.chain_(this.f(c), (a) => this.source.publish(a))
   }
 
   publishAll(cs: Iterable<C>) {
-    return T.chain_(T.forEach_(cs, this.f), this.source.publishAll)
+    return T.chain_(T.forEach_(cs, this.f), (as) => this.source.publishAll(as))
   }
 }
 
@@ -287,6 +304,7 @@ export function dimapM_<RA, RB, RC, RD, EA, EB, EC, ED, A, B, C, D>(
   f: (c: C) => T.Effect<RC, EC, A>,
   g: (b: B) => T.Effect<RD, ED, D>
 ): XHub<RC & RA, RD & RB, EA | EC, EB | ED, C, D> {
+  concrete(self)
   return new DimapMImplementation(self, f, g)
 }
 
@@ -319,7 +337,7 @@ class filterInputMImplementation<RA, RA1, RB, EA, EA1, EB, A, B> extends XHub<
   subscribe: M.Managed<unknown, never, HubDequeue<RB, EB, B>>
 
   constructor(
-    readonly source: XHub<RA, RB, EA, EB, A, B>,
+    readonly source: XHubInternal<RA, RB, EA, EB, A, B>,
     readonly f: (a: A) => T.Effect<RA1, EA1, boolean>
   ) {
     super()
@@ -329,8 +347,6 @@ class filterInputMImplementation<RA, RA1, RB, EA, EA1, EB, A, B> extends XHub<
     this.shutdown = source.shutdown
     this.size = source.size
     this.subscribe = source.subscribe
-    this.publish = this.publish.bind(this)
-    this.publishAll = this.publishAll.bind(this)
   }
 
   publish(a: A) {
@@ -371,6 +387,7 @@ export function filterInputM_<RA, RA1, RB, EA, EA1, EB, A, B>(
   self: XHub<RA, RB, EA, EB, A, B>,
   f: (a: A) => T.Effect<RA1, EA1, boolean>
 ): XHub<RA & RA1, RB, EA | EA1, EB, A, B> {
+  concrete(self)
   return new filterInputMImplementation(self, f)
 }
 
@@ -419,7 +436,7 @@ class filterOutputMImplementation<RA, RB, RB1, EA, EB, EB1, A, B> extends XHub<
   subscribe: M.Managed<unknown, never, HubDequeue<RB & RB1, EB | EB1, B>>
 
   constructor(
-    readonly source: XHub<RA, RB, EA, EB, A, B>,
+    readonly source: XHubInternal<RA, RB, EA, EB, A, B>,
     readonly f: (b: B) => T.Effect<RB1, EB1, boolean>
   ) {
     super()
@@ -429,8 +446,6 @@ class filterOutputMImplementation<RA, RB, RB1, EA, EB, EB1, A, B> extends XHub<
     this.shutdown = source.shutdown
     this.size = source.size
     this.subscribe = M.map_(source.subscribe, Q.filterOutputM(f))
-    this.publish = this.publish.bind(this)
-    this.publishAll = this.publishAll.bind(this)
   }
 
   publish(a: A) {
@@ -450,6 +465,7 @@ export function filterOutputM_<RA, RB, RB1, EA, EB, EB1, A, B>(
   self: XHub<RA, RB, EA, EB, A, B>,
   f: (a: B) => T.Effect<RB1, EB1, boolean>
 ): XHub<RA, RB & RB1, EA, EB | EB1, A, B> {
+  concrete(self)
   return new filterOutputMImplementation(self, f)
 }
 
@@ -523,7 +539,7 @@ class ToQueueImplementation<RA, RB, EA, EB, A, B> extends Q.XQueue<
   takeAll: T.Effect<unknown, never, AR.Array<any>>
   takeUpTo: (n: number) => T.Effect<unknown, never, AR.Array<any>>
 
-  constructor(source: XHub<RA, RB, EA, EB, A, B>) {
+  constructor(source: XHubInternal<RA, RB, EA, EB, A, B>) {
     super()
     this.awaitShutdown = source.awaitShutdown
     this.capacity = source.capacity
@@ -544,6 +560,7 @@ class ToQueueImplementation<RA, RB, EA, EB, A, B> extends Q.XQueue<
 export function toQueue<RA, RB, EA, EB, A, B>(
   self: XHub<RA, RB, EA, EB, A, B>
 ): HubEnqueue<RA, EA, A> {
+  concrete(self)
   return new ToQueueImplementation(self)
 }
 
@@ -750,9 +767,6 @@ class UnsafeMakeHubImplementation<A> extends XHub<
       ),
       M.map(({ dequeue }) => dequeue)
     )
-
-    this.publish = this.publish.bind(this)
-    this.publishAll = this.publishAll.bind(this)
   }
 
   publish(a: A): T.Effect<unknown, never, boolean> {

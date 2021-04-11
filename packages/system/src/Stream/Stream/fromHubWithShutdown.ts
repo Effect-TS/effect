@@ -1,6 +1,6 @@
 // tracing: off
 
-import type * as H from "../../Hub"
+import * as H from "../../Hub"
 import type { Stream } from "./definitions"
 import { ensuringFirst_ } from "./ensuringFirst"
 import { fromHub } from "./fromHub"
@@ -11,5 +11,5 @@ import { fromHub } from "./fromHub"
 export function fromHubWithShutdown<R, E, A>(
   hub: H.XHub<never, R, unknown, E, never, A>
 ): Stream<R, E, A> {
-  return ensuringFirst_(fromHub(hub), hub.shutdown)
+  return ensuringFirst_(fromHub(hub), H.shutdown(hub))
 }
