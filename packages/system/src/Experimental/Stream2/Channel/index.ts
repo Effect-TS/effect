@@ -59,64 +59,121 @@ export function pipeTo_<
   )
 }
 
-export function readWithCause<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
-  inp: (i: InElem) => P.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
+export function readWithCause<
+  Env,
+  Env1,
+  Env2,
+  InErr,
+  InErr1,
+  InErr2,
+  InErr3,
+  InElem,
+  InElem1,
+  InElem2,
+  InElem3,
+  InDone,
+  InDone1,
+  InDone2,
+  InDone3,
+  OutErr,
+  OutErr1,
+  OutErr2,
+  OutElem,
+  OutElem1,
+  OutElem2,
+  OutDone,
+  OutDone1,
+  OutDone2
+>(
+  inp: (
+    i: InElem
+  ) => P.Channel<Env, InErr1, InElem1, InDone1, OutErr, OutElem, OutDone>,
   halt: (
     e: Cause.Cause<InErr>
-  ) => P.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
-  done: (d: InDone) => P.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
-): P.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone> {
-  return new Read<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone, InErr, InDone>(
+  ) => P.Channel<Env1, InErr1, InElem2, InDone2, OutErr1, OutElem1, OutDone1>,
+  done: (
+    d: InDone
+  ) => P.Channel<Env2, InErr3, InElem3, InDone3, OutErr2, OutElem2, OutDone2>
+): P.Channel<
+  Env & Env1 & Env2,
+  InErr & InErr1 & InErr2 & InErr3,
+  InElem & InElem1 & InElem2 & InElem3,
+  InDone & InDone1 & InDone2 & InDone3,
+  OutErr | OutErr1 | OutErr2,
+  OutElem | OutElem1 | OutElem2,
+  OutDone | OutDone1 | OutDone2
+> {
+  return new Read<
+    Env & Env1 & Env2,
+    InErr & InErr1 & InErr2 & InErr3,
+    InElem & InElem1 & InElem2 & InElem3,
+    InDone & InDone1 & InDone2 & InDone3,
+    OutErr | OutErr1 | OutErr2,
+    OutElem | OutElem1 | OutElem2,
+    OutDone | OutDone1 | OutDone2,
+    InErr & InErr1 & InErr2 & InErr3,
+    InDone & InDone1 & InDone2 & InDone3
+  >(
     inp,
-    new P.ContinuationK(done, halt)
+    new P.ContinuationK<
+      Env & Env1 & Env2,
+      InErr & InErr1 & InErr2 & InErr3,
+      InElem & InElem1 & InElem2 & InElem3,
+      InDone & InDone1 & InDone2 & InDone3,
+      InErr & InErr1 & InErr2 & InErr3,
+      OutErr | OutErr1 | OutErr2,
+      OutElem | OutElem1 | OutElem2,
+      InDone & InDone1 & InDone2 & InDone3,
+      OutDone | OutDone1 | OutDone2
+    >(done, halt)
   )
 }
 
-export function endL<InErr, InElem, InDone, OutDone>(
+export function endL<OutDone>(
   result: () => OutDone
-): P.Channel<unknown, InErr, InElem, InDone, never, never, OutDone> {
+): P.Channel<unknown, unknown, unknown, unknown, never, never, OutDone> {
   return new Done(result)
 }
 
-export function end<InErr, InElem, InDone, OutDone>(
+export function end<OutDone>(
   result: OutDone
-): P.Channel<unknown, InErr, InElem, InDone, never, never, OutDone> {
+): P.Channel<unknown, unknown, unknown, unknown, never, never, OutDone> {
   return new Done(() => result)
 }
 
-export function haltL<InErr, InElem, InDone, E>(
+export function haltL<E>(
   result: () => Cause.Cause<E>
-): P.Channel<unknown, InErr, InElem, InDone, E, never, never> {
+): P.Channel<unknown, unknown, unknown, unknown, E, never, never> {
   return new Halt(result)
 }
 
-export function halt<InErr, InElem, InDone, E>(
+export function halt<E>(
   result: Cause.Cause<E>
-): P.Channel<unknown, InErr, InElem, InDone, E, never, never> {
+): P.Channel<unknown, unknown, unknown, unknown, E, never, never> {
   return new Halt(() => result)
 }
 
-export function failL<InErr, InElem, InDone, E>(
+export function failL<E>(
   result: () => E
-): P.Channel<unknown, InErr, InElem, InDone, E, never, never> {
+): P.Channel<unknown, unknown, unknown, unknown, E, never, never> {
   return new Halt(() => Cause.fail(result()))
 }
 
-export function fail<InErr, InElem, InDone, E>(
+export function fail<E>(
   result: E
-): P.Channel<unknown, InErr, InElem, InDone, E, never, never> {
+): P.Channel<unknown, unknown, unknown, unknown, E, never, never> {
   return new Halt(() => Cause.fail(result))
 }
 
-export function writeL<InErr, InElem, InDone, OutElem>(
+export function writeL<OutElem>(
   out: () => OutElem
-): P.Channel<unknown, InErr, InElem, InDone, never, OutElem, void> {
+): P.Channel<unknown, unknown, unknown, unknown, never, OutElem, void> {
   return new Emit(out)
 }
 
-export function write<InErr, InElem, InDone, OutElem>(
+export function write<OutElem>(
   out: OutElem
-): P.Channel<unknown, InErr, InElem, InDone, never, OutElem, void> {
+): P.Channel<unknown, unknown, unknown, unknown, never, OutElem, void> {
   return new Emit(() => out)
 }
 
@@ -257,9 +314,9 @@ export function drain<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
     never,
     OutDone
   > = readWithCause(
-    () => drainer,
-    (e) => halt(e),
-    (d) => end(d)
+    (_: OutElem) => drainer,
+    (e: Cause.Cause<OutErr>) => halt(e),
+    (d: OutDone) => end(d)
   )
   return self[">>>"](drainer)
 }
@@ -269,7 +326,7 @@ function collectLoop<Err, A>(
 ): P.Channel<unknown, Err, A, void, Err, never, Chunk.Chunk<A>> {
   return readWithCause(
     (i: A) => collectLoop(Chunk.append_(state, i)),
-    halt,
+    (e: Cause.Cause<Err>) => halt(e),
     () => end(state)
   )
 }
