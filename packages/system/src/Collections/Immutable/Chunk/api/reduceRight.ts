@@ -1,5 +1,5 @@
 import type * as Chunk from "../core"
-import { ArrTypeId, concrete } from "../definition"
+import { ArrTypeId, concrete, SingletonTypeId } from "../definition"
 
 /**
  * Folds over the elements in this chunk from the right.
@@ -12,6 +12,9 @@ export function reduceRight_<A, S>(
   concrete(self)
 
   switch (self._typeId) {
+    case SingletonTypeId: {
+      return f(self.a, s)
+    }
     case ArrTypeId: {
       const arr = self.arrayLike()
       const len = arr.length

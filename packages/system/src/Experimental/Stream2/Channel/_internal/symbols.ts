@@ -1,5 +1,7 @@
 // tracing: off
 
+import "../../../../Operator"
+
 export const _ChannelTypeId = Symbol()
 export type _ChannelTypeId = typeof _ChannelTypeId
 export const _Env = Symbol()
