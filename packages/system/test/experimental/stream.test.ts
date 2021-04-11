@@ -1,7 +1,7 @@
-import * as Chunk from "../../../src/Collections/Immutable/Chunk"
-import * as T from "../../../src/Effect"
-import * as S from "../../../src/Experimental/Stream2"
-import { pipe } from "../../../src/Function"
+import * as Chunk from "../../src/Collections/Immutable/Chunk"
+import * as T from "../../src/Effect"
+import * as S from "../../src/Experimental/Stream"
+import { pipe } from "../../src/Function"
 
 describe("Stream", () => {
   it("runCollect", async () => {

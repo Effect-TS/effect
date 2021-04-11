@@ -2,61 +2,72 @@
 
 import "../../../Operator"
 
-import * as L from "../../../Collections/Immutable/List"
-import * as FA from "../../../FreeAssociative"
-import * as Channel from "../Channel"
+import type * as Cause from "../../../Cause"
+import * as Chunk from "../../../Collections/Immutable/Chunk"
+import * as C from "../Channel"
 
 /**
- * Consumes a stream of input values and produces a final result, without
- * producing any output.
+ * Sink is a data type that represent a channel that reads elements
+ * of type `In`, handles input errors of type `InErr`, emits errors
+ * of type `OutErr`, emits outputs of type `L` and ends with a value
+ * of type `Z`.
  */
-export type Sink<R, E, L, I, A> = Channel.Channel<R, E, L, I, never, unknown, A>
+export class Sink<R, InErr, In, OutErr, L, Z> {
+  constructor(
+    readonly channel: C.Channel<
+      R,
+      InErr,
+      Chunk.Chunk<In>,
+      unknown,
+      OutErr,
+      Chunk.Chunk<L>,
+      Z
+    >
+  ) {}
+}
 
-function sinkArrayGo<A>(
-  fa: FA.FreeAssociative<A>
-): Sink<unknown, never, never, A, FA.FreeAssociative<A>> {
-  return Channel.needInput(
-    (i: A) => sinkArrayGo(FA.append_(fa, i)),
-    () => Channel.succeed(fa)
+function collectLoop<Err, A>(
+  state: Chunk.Chunk<A>
+): C.Channel<
+  unknown,
+  Err,
+  Chunk.Chunk<A>,
+  unknown,
+  Err,
+  Chunk.Chunk<never>,
+  Chunk.Chunk<A>
+> {
+  return C.readWithCause(
+    (i: Chunk.Chunk<A>) => collectLoop(Chunk.concat_(state, i)),
+    (e: Cause.Cause<Err>) => C.halt(e),
+    () => C.end(state)
   )
 }
 
 /**
- * Sink that consumes the Channel to an Array
+ * A sink that collects all of its inputs into a chunk.
  */
-export function array<A>(): Sink<unknown, never, never, A, readonly A[]> {
-  return Channel.map_(sinkArrayGo(FA.init()), FA.toArray)
+export function collectAll<Err, A>() {
+  return new Sink(collectLoop<Err, A>(Chunk.empty()))
 }
 
 /**
- * Sink that consumes the Channel to an Array
+ * A sink that ignores all of its inputs.
  */
-export function drain<A>(): Sink<unknown, never, never, A, unknown> {
-  const sink: Channel.Channel<
+export function drain<Err, A>() {
+  const drain: C.Channel<
     unknown,
-    never,
-    never,
-    A,
-    never,
+    Err,
+    Chunk.Chunk<A>,
     unknown,
+    Err,
+    Chunk.Chunk<never>,
     void
-  > = Channel.needInput(
-    () => sink,
-    () => Channel.unit
+  > = C.readWithCause(
+    (_: Chunk.Chunk<A>) => drain,
+    (e: Cause.Cause<Err>) => C.halt(e),
+    () => C.unit
   )
-  return sink
-}
 
-function sinkListGo<A>(fa: L.List<A>): Sink<unknown, never, never, A, L.List<A>> {
-  return Channel.needInput(
-    (i: A) => sinkListGo(L.append_(fa, i)),
-    () => Channel.succeed(fa)
-  )
-}
-
-/**
- * Sink that consumes the Channel to an List
- */
-export function list<A>(): Sink<unknown, never, never, A, L.List<A>> {
-  return sinkListGo(L.empty())
+  return new Sink(drain)
 }
