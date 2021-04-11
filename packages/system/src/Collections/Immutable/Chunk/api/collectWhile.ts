@@ -12,6 +12,9 @@ export function collectWhile_<A, B>(
   ChunkDef.concrete(self)
 
   switch (self._typeId) {
+    case ChunkDef.SingletonTypeId: {
+      return O.fold_(f(self.a), () => Chunk.empty(), Chunk.single)
+    }
     case ChunkDef.ArrTypeId: {
       const array = self.arrayLike()
       let dest = Chunk.empty<B>()
