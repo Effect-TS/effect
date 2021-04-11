@@ -128,6 +128,9 @@ export function concreteContinuation<
   //
 }
 
+export const ContinuationKTypeId = Symbol()
+export type ContinuationKTypeId = typeof ContinuationKTypeId
+
 export class ContinuationK<
   Env,
   InErr,
@@ -149,6 +152,8 @@ export class ContinuationK<
   OutDone,
   OutDone2
 > {
+  readonly _typeId: ContinuationKTypeId = ContinuationKTypeId
+
   constructor(
     readonly onSuccess: (
       o: OutDone
@@ -172,6 +177,9 @@ export class ContinuationK<
   }
 }
 
+export const ContinuationFinalizerTypeId = Symbol()
+export type ContinuationFinalizerTypeId = typeof ContinuationFinalizerTypeId
+
 export class ContinuationFinalizer<Env, OutErr, OutDone> extends Continuation<
   Env,
   unknown,
@@ -183,6 +191,8 @@ export class ContinuationFinalizer<Env, OutErr, OutDone> extends Continuation<
   OutDone,
   never
 > {
+  readonly _typeId: ContinuationFinalizerTypeId = ContinuationFinalizerTypeId
+
   constructor(
     readonly finalizer: (e: Exit.Exit<OutErr, OutDone>) => T.RIO<Env, unknown>
   ) {
@@ -206,7 +216,8 @@ export function concrete<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
   | Bridge<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   | Fold<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone, any, any>
   | Provide<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
-  | BracketOut<Env, OutErr, OutElem, OutDone> {
+  | BracketOut<Env, OutErr, OutElem, OutDone>
+  | Ensuring<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone> {
   //
 }
 
@@ -364,7 +375,7 @@ export class Ensuring<
   readonly _typeId: EnsuringTypeId = EnsuringTypeId
   constructor(
     readonly channel: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
-    readonly finalizer: (e: Exit.Exit<OutErr, OutDone>) => Effect<Env, never, unknown>
+    readonly finalizer: (e: Exit.Exit<OutErr, OutDone>) => T.Effect<Env, never, unknown>
   ) {
     super()
   }
