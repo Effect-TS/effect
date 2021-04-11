@@ -1,3 +1,5 @@
+// tracing: off
+
 import type * as Cause from "../../../../Cause"
 import type * as T from "../../../../Effect"
 import type * as Exit from "../../../../Exit"

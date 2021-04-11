@@ -1,3 +1,5 @@
+// tracing: off
+
 import * as T from "../../../Effect"
 import * as M from "../../../Managed"
 import type { ChannelState } from "./_internal/executor"
@@ -9,7 +11,7 @@ import {
 } from "./_internal/executor"
 import type * as C from "./core"
 
-function interpret<Env, InErr, InDone, OutErr, OutDone>(
+function runManagedInterpret<Env, InErr, InDone, OutErr, OutDone>(
   channelState: ChannelState<Env, OutErr>,
   exec: ChannelExecutor<Env, InErr, unknown, InDone, OutErr, never, OutDone>
 ): T.Effect<Env, OutErr, OutDone> {
@@ -18,7 +20,7 @@ function interpret<Env, InErr, InDone, OutErr, OutDone>(
     switch (channelState._typeId) {
       case ChannelStateEffectTypeId: {
         return T.chain_(channelState.effect, () =>
-          interpret(exec.run() as ChannelState<Env, OutErr>, exec)
+          runManagedInterpret(exec.run() as ChannelState<Env, OutErr>, exec)
         )
       }
       case ChannelStateEmitTypeId: {
@@ -33,6 +35,9 @@ function interpret<Env, InErr, InDone, OutErr, OutDone>(
   throw new Error("Bug")
 }
 
+/**
+ * Runs a channel until the end is received
+ */
 export function runManaged<Env, InErr, InDone, OutErr, OutDone>(
   self: C.Channel<Env, InErr, unknown, InDone, OutErr, never, OutDone>
 ): M.Managed<Env, OutErr, OutDone> {
@@ -41,6 +46,9 @@ export function runManaged<Env, InErr, InDone, OutErr, OutDone>(
       T.effectTotal(() => new ChannelExecutor(() => self, undefined)),
       (exec, exit) => exec.close(exit) || T.unit
     ),
-    (exec) => T.suspend(() => interpret(exec.run() as ChannelState<Env, OutErr>, exec))
+    (exec) =>
+      T.suspend(() =>
+        runManagedInterpret(exec.run() as ChannelState<Env, OutErr>, exec)
+      )
   )
 }
