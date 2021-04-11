@@ -12,7 +12,7 @@ export const alloc =
   typeof Buffer !== "undefined" ? Buffer.alloc : (n: number) => new Uint8Array(n)
 
 export function isByte(u: unknown) {
-  return typeof u === "number" && u >= 0 && u <= 255
+  return typeof u === "number" && Number.isInteger(u) && u >= 0 && u <= 255
 }
 
 /**
