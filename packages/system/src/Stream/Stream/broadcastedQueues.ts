@@ -41,7 +41,7 @@ export function broadcastedQueues_<R, E, O>(
     M.do,
     M.bind("hub", () => T.toManaged(H.makeBounded<Take.Take<E, O>>(maximumLag))),
     M.bind("queues", ({ hub }) =>
-      M.collectAll(Array.from({ length: n }, () => hub.subscribe))
+      M.collectAll(Array.from({ length: n }, () => H.subscribe(hub)))
     ),
     M.tap(({ hub }) => M.fork(intoHubManaged_(self, hub))),
     M.map(({ queues }) => A.array(queues))

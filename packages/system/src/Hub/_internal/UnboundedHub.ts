@@ -22,14 +22,6 @@ export class UnboundedHub<A> extends Hub<A> {
     super()
 
     this.publisherTail = this.publisherHead
-
-    this.isEmpty = this.isEmpty.bind(this)
-    this.isFull = this.isFull.bind(this)
-    this.publish = this.publish.bind(this)
-    this.publishAll = this.publishAll.bind(this)
-    this.size = this.size.bind(this)
-    this.slide = this.slide.bind(this)
-    this.subscribe = this.subscribe.bind(this)
   }
 
   isEmpty(): boolean {

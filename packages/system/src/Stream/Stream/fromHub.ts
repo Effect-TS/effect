@@ -1,6 +1,6 @@
 // tracing: off
 
-import type * as H from "../../Hub"
+import * as H from "../../Hub"
 import { chain_ } from "./chain"
 import type { Stream } from "./definitions"
 import { fromQueue } from "./fromQueue"
@@ -12,5 +12,5 @@ import { managed } from "./managed"
 export function fromHub<R, E, A>(
   hub: H.XHub<never, R, unknown, E, never, A>
 ): Stream<R, E, A> {
-  return chain_(managed(hub.subscribe), (queue) => fromQueue(queue))
+  return chain_(managed(H.subscribe(hub)), (queue) => fromQueue(queue))
 }

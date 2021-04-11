@@ -18,7 +18,7 @@ export function toHub_<R, E, O>(
 ): M.Managed<R, never, H.XHub<never, unknown, unknown, never, never, Take.Take<E, O>>> {
   return pipe(
     H.makeBounded<Take.Take<E, O>>(capacity),
-    T.toManagedRelease((_) => _.shutdown),
+    T.toManagedRelease((_) => H.shutdown(_)),
     M.tap((hub) => M.fork(intoHubManaged_(self, hub)))
   )
 }

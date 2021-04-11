@@ -1,5 +1,6 @@
 // tracing: off
 
+import * as H from "../../Hub"
 import type * as Q from "../../Queue"
 import * as M from "../_internal/managed"
 import type * as Take from "../Take"
@@ -19,7 +20,7 @@ export function broadcastedQueuesDynamic_<R, E, O>(
   self: Stream<R, E, O>,
   maximumLag: number
 ): M.Managed<R, never, M.Managed<unknown, never, Q.Dequeue<Take.Take<E, O>>>> {
-  return M.map_(toHub_(self, maximumLag), (_) => _.subscribe)
+  return M.map_(toHub_(self, maximumLag), (_) => H.subscribe(_))
 }
 
 /**
