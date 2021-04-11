@@ -1,4 +1,5 @@
 import * as Cause from "../../../Cause"
+import * as Chunk from "../../../Collections/Immutable/Chunk"
 import type * as T from "../../../Effect"
 import type * as Exit from "../../../Exit"
 import * as P from "./_internal/primitives"
@@ -181,6 +182,10 @@ export function bracketOutExit_<R, E, Z>(
   return new BracketOut(self, release)
 }
 
+/**
+ * Provides the channel with its required environment, which eliminates
+ * its dependency on `Env`.
+ */
 export function provideAll_<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
   self: P.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
   env: Env
@@ -188,4 +193,90 @@ export function provideAll_<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone
   return new Provide(env, self)
 }
 
-const x = write(0)[">>>"](readWithCause((n) => write(n + 1), halt, end))
+/**
+ * Returns a new channel, which sequentially combines this channel, together with the provided
+ * factory function, which creates a second channel based on the terminal value of this channel.
+ * The result is a channel that will first perform the functions of this channel, before
+ * performing the functions of the created channel (including yielding its terminal value).
+ */
+export function chain_<
+  Env,
+  InErr,
+  InElem,
+  InDone,
+  OutErr,
+  OutElem,
+  OutDone,
+  Env1,
+  InErr1,
+  InElem1,
+  InDone1,
+  OutErr1,
+  OutElem1,
+  OutDone2
+>(
+  self: P.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
+  f: (
+    d: OutDone
+  ) => P.Channel<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone2>
+): P.Channel<
+  Env & Env1,
+  InErr & InErr1,
+  InElem & InElem1,
+  InDone & InDone1,
+  OutErr | OutErr1,
+  OutElem | OutElem1,
+  OutDone2
+> {
+  return new P.Fold<
+    Env & Env1,
+    InErr & InErr1,
+    InElem & InElem1,
+    InDone & InDone1,
+    OutErr | OutErr1,
+    OutElem | OutElem1,
+    OutDone2,
+    OutErr | OutErr1,
+    OutDone
+  >(self, new P.ContinuationK(f, halt))
+}
+
+/**
+ * Returns a new channel which reads all the elements from upstream's output channel
+ * and ignores them, then terminates with the upstream result value.
+ */
+export function drain<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
+  self: P.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
+): P.Channel<Env, InErr, InElem, InDone, OutErr, never, OutDone> {
+  const drainer: P.Channel<
+    Env,
+    OutErr,
+    OutElem,
+    OutDone,
+    OutErr,
+    never,
+    OutDone
+  > = readWithCause(
+    () => drainer,
+    (e) => halt(e),
+    (d) => end(d)
+  )
+  return self[">>>"](drainer)
+}
+
+function collectLoop<Err, A>(
+  state: Chunk.Chunk<A>
+): P.Channel<unknown, Err, A, void, Err, never, Chunk.Chunk<A>> {
+  return readWithCause(
+    (i: A) => collectLoop(Chunk.append_(state, i)),
+    halt,
+    () => end(state)
+  )
+}
+
+export function collect<Err, A>() {
+  return collectLoop<Err, A>(Chunk.empty())
+}
+
+export const x = write(0)[">>>"](collect())
+export const y = chain_(write(0), () => write(1))
