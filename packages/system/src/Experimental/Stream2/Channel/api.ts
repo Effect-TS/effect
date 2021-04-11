@@ -1,5 +1,8 @@
 // tracing: off
 
+import "../../../Operator"
+
+import type * as Cause from "../../../Cause"
 import * as T from "../../../Effect"
 import * as M from "../../../Managed"
 import type { ChannelState } from "./_internal/executor"
@@ -9,7 +12,7 @@ import {
   ChannelStateEffectTypeId,
   ChannelStateEmitTypeId
 } from "./_internal/executor"
-import type * as C from "./core"
+import * as C from "./core"
 
 function runManagedInterpret<Env, InErr, InDone, OutErr, OutDone>(
   channelState: ChannelState<Env, OutErr>,
@@ -51,4 +54,59 @@ export function runManaged<Env, InErr, InDone, OutErr, OutDone>(
         runManagedInterpret(exec.run() as ChannelState<Env, OutErr>, exec)
       )
   )
+}
+
+/**
+ * Runs a channel until the end is received
+ */
+export function run<Env, InErr, InDone, OutErr, OutDone>(
+  self: C.Channel<Env, InErr, unknown, InDone, OutErr, never, OutDone>
+): T.Effect<Env, OutErr, OutDone> {
+  return M.useNow(runManaged(self))
+}
+
+/**
+ * Runs a channel until the end is received
+ */
+export function runDrain<Env, InErr, InDone, OutElem, OutErr, OutDone>(
+  self: C.Channel<Env, InErr, unknown, InDone, OutErr, OutElem, OutDone>
+): T.Effect<Env, OutErr, OutDone> {
+  return run(C.drain(self))
+}
+
+/**
+ * Maps the output of this channel using f
+ */
+export function mapOut_<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone, OutElem2>(
+  self: C.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
+  f: (o: OutElem) => OutElem2
+): C.Channel<Env, InErr, InElem, InDone, OutErr, OutElem2, OutDone> {
+  const reader: C.Channel<
+    Env,
+    OutErr,
+    OutElem,
+    OutDone,
+    OutErr,
+    OutElem2,
+    OutDone
+  > = C.readWithCause(
+    (i: OutElem) => C.chain_(C.write(f(i)), () => reader),
+    (e: Cause.Cause<OutErr>) => C.halt(e),
+    (d: OutDone) => C.end(d)
+  )
+
+  return self[">>>"](reader)
+}
+
+/**
+ * Maps the output of this channel using f
+ *
+ * @dataFirst mapOut_
+ */
+export function mapOut<OutElem, OutElem2>(
+  f: (o: OutElem) => OutElem2
+): <Env, InErr, InElem, InDone, OutErr, OutDone>(
+  self: C.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
+) => C.Channel<Env, InErr, InElem, InDone, OutErr, OutElem2, OutDone> {
+  return (self) => mapOut_(self, f)
 }

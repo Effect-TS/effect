@@ -1,8 +1,11 @@
 // tracing: off
 
+import "../../../Operator"
+
 import * as Cause from "../../../Cause"
 import type * as T from "../../../Effect"
 import type * as Exit from "../../../Exit"
+import { identity } from "../../../Function"
 import * as P from "./_internal/primitives"
 import {
   BracketOut,
@@ -348,6 +351,82 @@ export function concatMapWith<
 }
 
 /**
+ * Returns a new channel whose outputs are fed to the specified factory function, which creates
+ * new channels in response. These new channels are sequentially concatenated together, and all
+ * their outputs appear as outputs of the newly returned channel.
+ */
+export function concatMap_<
+  Env,
+  InErr,
+  InElem,
+  InDone,
+  OutErr,
+  OutElem,
+  OutElem2,
+  OutDone,
+  OutDone2,
+  Env2,
+  InErr2,
+  InElem2,
+  InDone2,
+  OutErr2
+>(
+  self: P.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone2>,
+  f: (
+    o: OutElem
+  ) => P.Channel<Env2, InErr2, InElem2, InDone2, OutErr2, OutElem2, OutDone>
+): P.Channel<
+  Env & Env2,
+  InErr & InErr2,
+  InElem & InElem2,
+  InDone & InDone2,
+  OutErr | OutErr2,
+  OutElem2,
+  unknown
+> {
+  return concatMapWith_(
+    self,
+    f,
+    () => void 0,
+    () => void 0
+  )
+}
+
+/**
+ * Returns a new channel whose outputs are fed to the specified factory function, which creates
+ * new channels in response. These new channels are sequentially concatenated together, and all
+ * their outputs appear as outputs of the newly returned channel.
+ *
+ * @dataFirst concatMap_
+ */
+export function concatMap<
+  OutElem,
+  OutElem2,
+  OutDone,
+  Env2,
+  InErr2,
+  InElem2,
+  InDone2,
+  OutErr2
+>(
+  f: (
+    o: OutElem
+  ) => P.Channel<Env2, InErr2, InElem2, InDone2, OutErr2, OutElem2, OutDone>
+): <Env, InErr, InElem, InDone, OutErr, OutDone2>(
+  self: P.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone2>
+) => P.Channel<
+  Env & Env2,
+  InErr & InErr2,
+  InElem & InElem2,
+  InDone & InDone2,
+  OutErr | OutErr2,
+  OutElem2,
+  unknown
+> {
+  return (self) => concatMap_(self, f)
+}
+
+/**
  * Fold the channel exposing success and full error cause
  */
 export function foldCauseM_<
@@ -582,6 +661,8 @@ export function chain_<
  * factory function, which creates a second channel based on the terminal value of this channel.
  * The result is a channel that will first perform the functions of this channel, before
  * performing the functions of the created channel (including yielding its terminal value).
+ *
+ * @dataFirst chain_
  */
 export function chain<
   OutDone,
@@ -632,3 +713,74 @@ export function drain<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
   )
   return self[">>>"](drainer)
 }
+
+/**
+ * Makes a channel with an effect
+ */
+export function fromEffect<R, E, A>(
+  self: T.Effect<R, E, A>
+): P.Channel<R, unknown, unknown, unknown, E, never, A> {
+  return new P.Effect(self)
+}
+
+/**
+ * Returns a new channel, which flattens the terminal value of this channel. This function may
+ * only be called if the terminal value of this channel is another channel of compatible types.
+ */
+export function flatten<
+  Env,
+  InErr,
+  InElem,
+  InDone,
+  OutErr,
+  OutElem,
+  Env1,
+  InErr1,
+  InElem1,
+  InDone1,
+  OutErr1,
+  OutElem1,
+  OutDone2
+>(
+  self: P.Channel<
+    Env,
+    InErr,
+    InElem,
+    InDone,
+    OutErr,
+    OutElem,
+    P.Channel<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone2>
+  >
+): P.Channel<
+  Env & Env1,
+  InErr & InErr1,
+  InElem & InElem1,
+  InDone & InDone1,
+  OutErr | OutErr1,
+  OutElem | OutElem1,
+  OutDone2
+> {
+  return chain_(self, identity)
+}
+
+/**
+ * Makes a channel from an effect that returns a channel in case of success
+ */
+export function unwrap<R, E, Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
+  self: T.Effect<R, E, P.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>>
+): P.Channel<R & Env, InErr, InElem, InDone, E | OutErr, OutElem, OutDone> {
+  return flatten(fromEffect(self))
+}
+
+/**
+ * Unit channel
+ */
+export const unit: P.Channel<
+  unknown,
+  unknown,
+  unknown,
+  unknown,
+  never,
+  never,
+  void
+> = end(void 0)

@@ -1,6 +1,7 @@
 import * as core from "../../../../Effect/core"
 import type { Effect } from "../../../../Effect/effect"
 import type * as Chunk from "../core"
+import { concrete, SingletonTypeId } from "../definition"
 import { reduceRight_ } from "./reduceRight"
 
 /**
@@ -11,6 +12,10 @@ export function reduceRightM_<A, R, E, S>(
   s: S,
   f: (a: A, s: S) => Effect<R, E, S>
 ): Effect<R, E, S> {
+  concrete(self)
+  if (self._typeId === SingletonTypeId) {
+    return f(self.a, s)
+  }
   return reduceRight_(self, core.succeed(s) as Effect<R, E, S>, (a, s) =>
     core.chain_(s, (s1) => f(a, s1))
   )

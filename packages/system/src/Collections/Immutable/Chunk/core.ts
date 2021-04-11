@@ -219,6 +219,12 @@ export function size<A>(self: Chunk<A>) {
  * Returns a chunk with the elements mapped by the specified function.
  */
 export function map_<A, B>(self: Chunk<A>, f: (a: A) => B): Chunk<B> {
+  concrete(self)
+
+  if (self._typeId === SingletonTypeId) {
+    return new Singleton(f(self.a))
+  }
+
   let r = empty<B>()
   for (const k of self) {
     r = append_(r, f(k))
@@ -239,6 +245,12 @@ export function map<A, B>(f: (a: A) => B): (self: Chunk<A>) => Chunk<B> {
  * Returns a chunk with the elements mapped by the specified function.
  */
 export function chain_<A, B>(self: Chunk<A>, f: (a: A) => Chunk<B>): Chunk<B> {
+  concrete(self)
+
+  if (self._typeId === SingletonTypeId) {
+    return f(self.a)
+  }
+
   let r = empty<B>()
   for (const k of self) {
     r = concat_(r, f(k))

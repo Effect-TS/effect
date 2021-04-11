@@ -5,7 +5,7 @@ import * as C from "../../../src/Experimental/Stream2/Channel"
 import { pipe } from "../../../src/Function"
 import * as M from "../../../src/Managed"
 
-export function collectLoop<Err, A>(
+function collectLoop<Err, A>(
   state: Chunk.Chunk<A>
 ): C.Channel<unknown, Err, A, void, Err, never, Chunk.Chunk<A>> {
   return C.readWithCause(

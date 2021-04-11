@@ -1,5 +1,5 @@
 import type * as Chunk from "../core"
-import { ArrTypeId, concrete } from "../definition"
+import { ArrTypeId, concrete, SingletonTypeId } from "../definition"
 
 /**
  * Folds over the elements in this chunk from the left.
@@ -8,6 +8,9 @@ export function reduce_<A, S>(self: Chunk.Chunk<A>, s: S, f: (s: S, a: A) => S):
   concrete(self)
 
   switch (self._typeId) {
+    case SingletonTypeId: {
+      return f(s, self.a)
+    }
     case ArrTypeId: {
       const arr = self.arrayLike()
       const len = arr.length
