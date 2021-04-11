@@ -6,6 +6,7 @@ import * as F from "../src/Fiber"
 import * as H from "../src/Hub"
 import * as M from "../src/Managed"
 import * as P from "../src/Promise"
+import * as Q from "../src/Queue"
 
 describe("Hub", () => {
   it("do one to many", async () => {
@@ -22,7 +23,7 @@ describe("Hub", () => {
             M.use((subscription) =>
               T.zipRight_(
                 P.succeed_(promise1, undefined),
-                T.forEach_(as, (_) => subscription.take)
+                T.forEach_(as, (_) => Q.take(subscription))
               )
             ),
             T.fork
@@ -34,7 +35,7 @@ describe("Hub", () => {
             M.use((subscription) =>
               T.zipRight_(
                 P.succeed_(promise2, undefined),
-                T.forEach_(as, (_) => subscription.take)
+                T.forEach_(as, (_) => Q.take(subscription))
               )
             ),
             T.fork

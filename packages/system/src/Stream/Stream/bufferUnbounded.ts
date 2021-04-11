@@ -1,6 +1,7 @@
 // tracing: off
 
 import { pipe } from "../../Function"
+import * as Q from "../../Queue"
 import * as Ref from "../../Ref"
 import * as T from "../_internal/effect"
 import * as M from "../_internal/managed"
@@ -25,7 +26,7 @@ export function bufferUnbounded<R, E, O>(self: Stream<R, E, O>): Stream<R, E, O>
             return Pull.end
           } else {
             return T.chain_(
-              queue.take,
+              Q.take(queue),
               Take.foldM(
                 () => T.zipRight_(done.set(true), Pull.end),
                 Pull.halt,

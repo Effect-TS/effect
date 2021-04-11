@@ -13,6 +13,7 @@ import * as M from "../Managed"
 import * as RM from "../Managed/ReleaseMap"
 import * as P from "../Promise"
 import * as Q from "../Queue"
+import { XQueueInternal } from "../Queue"
 import * as Ref from "../Ref"
 import * as AB from "../Support/AtomicBoolean"
 import * as MQ from "../Support/MutableQueue"
@@ -25,7 +26,7 @@ import * as S from "./Strategy"
 
 export type HubDequeue<R, E, A> = Q.XQueue<never, R, unknown, E, never, A>
 
-export type HubEnqueue<R, E, A> = Q.XQueue<R, never, E, unknown, A, unknown>
+export type HubEnqueue<R, E, A> = Q.XQueue<R, never, E, unknown, A, never>
 
 export type Hub<A> = XHub<unknown, unknown, never, never, A, A>
 
@@ -537,37 +538,43 @@ export function mapM<B, C, EC, RC>(f: (b: B) => T.Effect<RC, EC, C>) {
   return <A, EA, EB, RA, RB>(self: XHub<RA, RB, EA, EB, A, B>) => mapM_(self, f)
 }
 
-class ToQueueImplementation<RA, RB, EA, EB, A, B> extends Q.XQueue<
+class ToQueueImplementation<RA, RB, EA, EB, A, B> extends XQueueInternal<
   RA,
   never,
   EA,
   unknown,
   A,
-  unknown
+  never
 > {
   awaitShutdown: T.UIO<void>
   capacity: number
   isShutdown: T.UIO<boolean>
-  offer: (a: A) => T.Effect<RA, EA, boolean>
-  offerAll: (as: Iterable<A>) => T.Effect<RA, EA, boolean>
   shutdown: T.UIO<void>
   size: T.UIO<number>
-  take: T.Effect<unknown, never, void>
-  takeAll: T.Effect<unknown, never, Chunk.Chunk<any>>
-  takeUpTo: (n: number) => T.Effect<unknown, never, Chunk.Chunk<any>>
+  take: T.Effect<unknown, never, never>
+  takeAll: T.Effect<unknown, never, Chunk.Chunk<never>>
 
-  constructor(source: XHubInternal<RA, RB, EA, EB, A, B>) {
+  constructor(readonly source: XHubInternal<RA, RB, EA, EB, A, B>) {
     super()
     this.awaitShutdown = source.awaitShutdown
     this.capacity = source.capacity
     this.isShutdown = source.isShutdown
-    this.offer = (a) => source.publish(a)
-    this.offerAll = (as) => source.publishAll(as)
     this.shutdown = source.shutdown
     this.size = source.size
-    this.take = T.unit
+    this.take = T.never
     this.takeAll = T.succeed(Chunk.empty())
-    this.takeUpTo = () => T.succeed(Chunk.empty())
+  }
+
+  offer(a: A): T.Effect<RA, EA, boolean> {
+    return this.source.publish(a)
+  }
+
+  offerAll(as: Iterable<A>): T.Effect<RA, EA, boolean> {
+    return this.source.publishAll(as)
+  }
+
+  takeUpTo(): T.Effect<unknown, never, Chunk.Chunk<never>> {
+    return T.succeed(Chunk.empty())
   }
 }
 
@@ -590,9 +597,7 @@ export function toQueue<RA, RB, EA, EB, A, B>(
  */
 export function makeBounded<A>(requestedCapacity: number): T.UIO<Hub<A>> {
   return T.chain_(
-    T.effectTotal(() => {
-      return HF.makeBounded<A>(requestedCapacity)
-    }),
+    T.effectTotal(() => HF.makeBounded<A>(requestedCapacity)),
     (_) => makeHub(_, new S.BackPressure())
   )
 }
@@ -778,7 +783,7 @@ class UnsafeMakeHubImplementation<A> extends XHubInternal<
         T.toManaged(makeSubscription(hub, subscribers, strategy))
       ),
       M.tap(({ dequeue }) =>
-        M.makeExit_(RM.add((_) => dequeue.shutdown)(releaseMap), (finalizer, exit) =>
+        M.makeExit_(RM.add((_) => Q.shutdown(dequeue))(releaseMap), (finalizer, exit) =>
           finalizer(exit)
         )
       ),
@@ -891,7 +896,7 @@ function makeSubscription<A>(
   })
 }
 
-class UnsafeMakeSubscriptionImplementation<A> extends Q.XQueue<
+class UnsafeMakeSubscriptionImplementation<A> extends XQueueInternal<
   never,
   unknown,
   unknown,
@@ -943,10 +948,13 @@ class UnsafeMakeSubscriptionImplementation<A> extends Q.XQueue<
     return T.succeed(this.subscription.size())
   })
 
-  offer: (a: never) => T.Effect<never, unknown, boolean> = () => T.succeed(false)
+  offer(_: never): T.Effect<never, unknown, boolean> {
+    return T.succeed(false)
+  }
 
-  offerAll: (as: Iterable<never>) => T.Effect<never, unknown, boolean> = () =>
-    T.succeed(false)
+  offerAll(_: Iterable<never>): T.Effect<never, unknown, boolean> {
+    return T.succeed(false)
+  }
 
   take: T.Effect<unknown, never, A> = T.suspend((_, fiberId) => {
     if (this.shutdownFlag.get) {
@@ -986,24 +994,22 @@ class UnsafeMakeSubscriptionImplementation<A> extends Q.XQueue<
     }
   })
 
-  get takeAll(): T.Effect<unknown, never, Chunk.Chunk<A>> {
+  takeAll: T.Effect<unknown, never, Chunk.Chunk<A>> = T.suspend(() => {
+    if (this.shutdownFlag.get) {
+      return T.interrupt
+    }
+
+    const as = this.pollers.isEmpty
+      ? U.unsafePollAllSubscription(this.subscription)
+      : Chunk.empty<A>()
+
+    this.strategy.unsafeOnHubEmptySpace(this.hub, this.subscribers)
+
+    return T.succeed(as)
+  })
+
+  takeUpTo(n: number): T.Effect<unknown, never, Chunk.Chunk<A>> {
     return T.suspend(() => {
-      if (this.shutdownFlag.get) {
-        return T.interrupt
-      }
-
-      const as = this.pollers.isEmpty
-        ? U.unsafePollAllSubscription(this.subscription)
-        : Chunk.empty<A>()
-
-      this.strategy.unsafeOnHubEmptySpace(this.hub, this.subscribers)
-
-      return T.succeed(as)
-    })
-  }
-
-  takeUpTo: (n: number) => T.Effect<unknown, never, Chunk.Chunk<A>> = (n) =>
-    T.suspend(() => {
       if (this.shutdownFlag.get) {
         return T.interrupt
       }
@@ -1015,6 +1021,7 @@ class UnsafeMakeSubscriptionImplementation<A> extends Q.XQueue<
       this.strategy.unsafeOnHubEmptySpace(this.hub, this.subscribers)
       return T.succeed(as)
     })
+  }
 }
 
 /**

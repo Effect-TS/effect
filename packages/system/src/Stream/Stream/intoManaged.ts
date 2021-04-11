@@ -2,7 +2,7 @@
 
 import * as C from "../../Cause"
 import * as O from "../../Option"
-import type * as Q from "../../Queue/xqueue"
+import * as Q from "../../Queue/core"
 import * as T from "../_internal/effect"
 import * as M from "../_internal/managed"
 import * as TK from "../Take"
@@ -22,10 +22,10 @@ export function intoManaged_<R, E, O>(
       (o) =>
         O.fold_(
           C.sequenceCauseOption(o),
-          () => T.asUnit(queue.offer(TK.end)),
-          (c) => T.zipRight_(queue.offer(TK.halt(c)), go)
+          () => T.asUnit(Q.offer_(queue, TK.end)),
+          (c) => T.zipRight_(Q.offer_(queue, TK.halt(c)), go)
         ),
-      (a) => T.zipRight_(queue.offer(TK.chunk(a)), go)
+      (a) => T.zipRight_(Q.offer_(queue, TK.chunk(a)), go)
     )
 
     return M.asUnit(T.toManaged(go))

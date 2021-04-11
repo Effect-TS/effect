@@ -5,7 +5,7 @@ import "../../Operator"
 import type { Cause } from "../../Cause/core"
 import * as A from "../../Collections/Immutable/Chunk"
 import * as O from "../../Option"
-import type { Dequeue } from "../../Queue"
+import * as Q from "../../Queue"
 import * as T from "../_internal/effect"
 import type { Take } from "../Take"
 
@@ -19,8 +19,8 @@ export function emitChunk<A>(as: A.Chunk<A>): Pull<unknown, never, A> {
   return T.succeed(as)
 }
 
-export function fromDequeue<E, A>(d: Dequeue<Take<E, A>>): Pull<unknown, E, A> {
-  return T.chain_(d.take, (_) => T.done(_))
+export function fromDequeue<E, A>(d: Q.Dequeue<Take<E, A>>): Pull<unknown, E, A> {
+  return T.chain_(Q.take(d), (_) => T.done(_))
 }
 
 export function fail<E>(e: E) {

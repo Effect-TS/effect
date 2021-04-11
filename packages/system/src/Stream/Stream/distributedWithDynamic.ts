@@ -56,7 +56,7 @@ export function distributedWithDynamic_<R, E, O>(
             T.reduce_(queues, A.empty() as A.Chunk<symbol>, (acc, [id, queue]) => {
               if (shouldProcess(id)) {
                 return pipe(
-                  queue.offer(Ex.succeed(o)),
+                  Q.offer_(queue, Ex.succeed(o)),
                   T.foldCauseM(
                     (c) =>
                       C.interrupted(c)
@@ -83,7 +83,7 @@ export function distributedWithDynamic_<R, E, O>(
         R.makeRef(Map.empty as Map.Map<symbol, Q.Queue<Ex.Exit<O.Option<E>, O>>>),
         (acquire) =>
           T.toManagedRelease_(acquire, (_) =>
-            T.chain_(_.get, (qs) => T.forEach_(qs.values(), (q) => q.shutdown))
+            T.chain_(_.get, (qs) => T.forEach_(qs.values(), Q.shutdown))
           )
       )
     ),
@@ -117,7 +117,7 @@ export function distributedWithDynamic_<R, E, O>(
                     pipe(
                       T.do,
                       T.bind("queue", () => Q.makeBounded<Ex.Exit<O.Option<E>, O>>(1)),
-                      T.tap(({ queue }) => queue.offer(endTake)),
+                      T.tap(({ queue }) => Q.offer_(queue, endTake)),
                       T.bind("id", () => T.effectTotal(() => Symbol())),
                       T.tap(({ id, queue }) =>
                         R.update_(queuesRef, Map.insert(id, queue))
@@ -130,7 +130,7 @@ export function distributedWithDynamic_<R, E, O>(
                 T.tap(({ queues }) =>
                   T.forEach_(queues, (queue) =>
                     pipe(
-                      queue.offer(endTake),
+                      Q.offer_(queue, endTake),
                       T.catchSomeCause((c) =>
                         C.interrupted(c) ? O.some(T.unit) : O.none
                       )

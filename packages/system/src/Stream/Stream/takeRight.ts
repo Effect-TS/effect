@@ -32,11 +32,11 @@ export function takeRight_<R, E, O>(self: Stream<R, E, O>, n: number): Stream<R,
             } else {
               return pipe(
                 BP.pullElement(pull),
-                T.tap(queue.offer),
+                T.tap((x) => Q.offer_(queue, x)),
                 T.as(A.empty<O>()),
                 T.catchSome(
                   O.fold(
-                    () => O.some(T.zipRight_(done.set(true), queue.takeAll)),
+                    () => O.some(T.zipRight_(done.set(true), Q.takeAll(queue))),
                     () => O.none
                   )
                 )

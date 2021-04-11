@@ -2,6 +2,7 @@
 
 import { pipe } from "../../Function"
 import * as O from "../../Option"
+import * as Q from "../../Queue"
 import * as Ref from "../../Ref"
 import * as T from "../_internal/effect"
 import * as M from "../_internal/managed"
@@ -33,7 +34,7 @@ export function buffer_<R, E, O>(
               return Pull.end
             } else {
               return pipe(
-                queue.take,
+                Q.take(queue),
                 T.chain((_) => Take.done(_)),
                 T.catchSome((_) => {
                   if (O.isNone(_)) {

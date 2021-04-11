@@ -1,6 +1,6 @@
 // tracing: off
 
-import type * as Q from "../../Queue"
+import * as Q from "../../Queue"
 import type { Stream } from "./definitions"
 import { ensuringFirst_ } from "./ensuringFirst"
 import { fromQueue } from "./fromQueue"
@@ -11,5 +11,5 @@ import { fromQueue } from "./fromQueue"
 export function fromQueueWithShutdown<R, E, O>(
   queue: Q.XQueue<never, R, unknown, E, never, O>
 ): Stream<R, E, O> {
-  return ensuringFirst_(fromQueue(queue), queue.shutdown)
+  return ensuringFirst_(fromQueue(queue), Q.shutdown(queue))
 }

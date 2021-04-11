@@ -19,7 +19,7 @@ export function toQueue_<R, E, O>(
   return pipe(
     M.do,
     M.bind("queue", () =>
-      T.toManagedRelease_(Q.makeBounded<TK.Take<E, O>>(capacity), (q) => q.shutdown)
+      T.toManagedRelease_(Q.makeBounded<TK.Take<E, O>>(capacity), Q.shutdown)
     ),
     M.tap(({ queue }) => M.fork(intoManaged_(self, queue))),
     M.map(({ queue }) => queue)

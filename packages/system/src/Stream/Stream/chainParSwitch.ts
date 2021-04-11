@@ -34,16 +34,13 @@ export function chainParSwitch(n: number, bufferSize = 16) {
           M.bind("out", () =>
             T.toManagedRelease_(
               Q.makeBounded<T.Effect<R1, O.Option<E | E1>, A.Chunk<O2>>>(bufferSize),
-              (q) => q.shutdown
+              Q.shutdown
             )
           ),
           M.bind("permits", () => T.toManaged(SM.makeSemaphore(n))),
           M.bind("innerFailure", () => T.toManaged(P.make<C.Cause<E1>, never>())),
           M.bind("cancelers", () =>
-            T.toManagedRelease_(
-              Q.makeBounded<P.Promise<never, void>>(n),
-              (q) => q.shutdown
-            )
+            T.toManagedRelease_(Q.makeBounded<P.Promise<never, void>>(n), Q.shutdown)
           ),
           M.tap(({ cancelers, innerFailure, out, permits }) =>
             pipe(
@@ -52,31 +49,31 @@ export function chainParSwitch(n: number, bufferSize = 16) {
                   T.do,
                   T.bind("canceler", () => P.make<never, void>()),
                   T.bind("latch", () => P.make<never, void>()),
-                  T.bind("size", () => cancelers.size),
+                  T.bind("size", () => Q.size(cancelers)),
                   T.tap(({ size }) => {
                     if (size < n) {
                       return T.unit
                     } else {
                       return pipe(
-                        cancelers.take,
+                        Q.take(cancelers),
                         T.chain((_) => T.succeed(undefined)),
                         T.asUnit
                       )
                     }
                   }),
-                  T.tap(({ canceler }) => cancelers.offer(canceler)),
+                  T.tap(({ canceler }) => Q.offer_(cancelers, canceler)),
                   T.let("innerStream", ({ latch }) =>
                     pipe(
                       managed(SM.withPermitManaged(permits)),
                       tap.tap((_) => P.succeed_(latch, undefined)),
                       chain.chain((_) => f(a)),
                       forEach.forEachChunk((o2s) =>
-                        T.asUnit(out.offer(T.succeed(o2s)))
+                        T.asUnit(Q.offer_(out, T.succeed(o2s)))
                       ),
                       T.foldCauseM(
                         (cause) =>
                           pipe(
-                            out.offer(Pull.halt(cause)),
+                            Q.offer_(out, Pull.halt(cause)),
                             T.zipRight(P.fail_(innerFailure, cause)),
                             T.asUnit
                           ),
@@ -97,7 +94,7 @@ export function chainParSwitch(n: number, bufferSize = 16) {
                     pipe(
                       getChildren,
                       T.chain((_) => F.interruptAll(_)),
-                      T.zipRight(out.offer(Pull.halt(cause)))
+                      T.zipRight(Q.offer_(out, Pull.halt(cause)))
                     ),
                     T.asUnit,
                     T.toManaged
@@ -115,7 +112,7 @@ export function chainParSwitch(n: number, bufferSize = 16) {
                         ),
                       (_, failureAwait) =>
                         pipe(
-                          out.offer(Pull.end),
+                          Q.offer_(out, Pull.end),
                           T.zipRight(T.asUnit(F.interrupt(failureAwait)))
                         )
                     ),
@@ -125,7 +122,7 @@ export function chainParSwitch(n: number, bufferSize = 16) {
               M.fork
             )
           ),
-          M.map(({ out }) => T.flatten(out.take))
+          M.map(({ out }) => T.flatten(Q.take(out)))
         )
       )
     )

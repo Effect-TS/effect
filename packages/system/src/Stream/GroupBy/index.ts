@@ -5,7 +5,7 @@ import "../../Operator"
 import type * as Ex from "../../Exit"
 import { pipe } from "../../Function"
 import type * as O from "../../Option"
-import type * as Q from "../../Queue"
+import * as Q from "../../Queue"
 import * as T from "../_internal/effect"
 import { chainPar } from "../Stream/chainPar"
 import type { Stream } from "../Stream/definitions"
@@ -58,7 +58,7 @@ export function first_<R, E, K, V>(
       if (i < n) {
         return T.as_(T.succeed(elem), true)
       } else {
-        return T.as_(q.shutdown, false)
+        return T.as_(Q.shutdown(q), false)
       }
     }),
     map(([v]) => v)
@@ -89,7 +89,7 @@ export function filter_<R, E, K, V>(
       if (f(k)) {
         return T.as_(T.succeed(elem), true)
       } else {
-        return T.as_(q.shutdown, false)
+        return T.as_(Q.shutdown(q), false)
       }
     })
   )

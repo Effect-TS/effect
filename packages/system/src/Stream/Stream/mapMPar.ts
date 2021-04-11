@@ -36,7 +36,7 @@ export function mapMPar(n: number) {
                 T.do,
                 T.bind("p", () => P.make<E1, O1>()),
                 T.bind("latch", () => P.make<never, void>()),
-                T.tap(({ p }) => out.offer(pipe(p, P.await, T.mapError(O.some)))),
+                T.tap(({ p }) => Q.offer_(out, pipe(p, P.await, T.mapError(O.some)))),
                 T.tap(({ latch, p }) =>
                   pipe(
                     latch,
@@ -63,11 +63,11 @@ export function mapMPar(n: number) {
               )
             ),
             M.foldCauseM(
-              (c) => M.fromEffect(out.offer(Pull.halt(c))),
+              (c) => M.fromEffect(Q.offer_(out, Pull.halt(c))),
               () =>
                 pipe(
                   SM.withPermits_(T.unit, permits, n),
-                  T.chain(() => out.offer(Pull.end)),
+                  T.chain(() => Q.offer_(out, Pull.end)),
                   M.fromEffect
                 )
             ),
@@ -76,7 +76,7 @@ export function mapMPar(n: number) {
         ),
         M.map(({ out }) =>
           pipe(
-            out.take,
+            Q.take(out),
             T.flatten,
             T.map((o) => A.single(o))
           )

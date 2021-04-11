@@ -50,7 +50,7 @@ export function dequeueRef<A>(a: A): T.UIO<[RefM<A>, Q.Dequeue<A>]> {
     T.do,
     T.bind("ref", () => makeRefM(a)),
     T.bind("queue", () => Q.makeUnbounded<A>()),
-    T.map(({ queue, ref }) => [tapInput_(ref, (a) => queue.offer(a)), queue])
+    T.map(({ queue, ref }) => [tapInput_(ref, (a) => Q.offer_(queue, a)), queue])
   )
 }
 

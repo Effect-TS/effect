@@ -14,7 +14,7 @@ import { identity, pipe } from "../../Function"
 import * as H from "../../Hub"
 import * as L from "../../Layer"
 import * as O from "../../Option"
-import type * as Q from "../../Queue"
+import * as Q from "../../Queue"
 import { matchTag } from "../../Utils"
 import * as T from "../_internal/effect"
 import * as F from "../_internal/fiber"
@@ -1724,7 +1724,7 @@ export function foreachChunk<R, E, I, A>(
 export function fromQueue<R, E, I, A>(
   queue: Q.XQueue<R, never, E, unknown, I, A>
 ): Sink<R, E, I, never, void> {
-  return forEachChunk(queue.offerAll)
+  return forEachChunk((x) => Q.offerAll_(queue, x))
 }
 
 /**
@@ -1736,7 +1736,7 @@ export function fromQueueWithShutdown<R, E, I, A>(
 ): Sink<R, E, I, never, void> {
   return new Sink(
     pipe(
-      M.make_(T.succeed(queue), (_) => _.shutdown),
+      M.make_(T.succeed(queue), Q.shutdown),
       M.map(fromQueue),
       M.chain((_) => _.push)
     )

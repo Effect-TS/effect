@@ -25,6 +25,7 @@ import * as O from "../Option"
 import type { Promise } from "../Promise"
 import * as promise from "../Promise"
 import * as Q from "../Queue/core"
+import { XQueueInternal } from "../Queue/xqueue"
 import { AtomicBoolean } from "../Support/AtomicBoolean"
 import type { MutableQueue } from "../Support/MutableQueue"
 import { Bounded, Unbounded } from "../Support/MutableQueue"
@@ -379,7 +380,7 @@ export function forEachUnitParN_<R, E, A, X>(
 
   function worker(q: Q.Queue<A>, ref: Ref.Ref<number>): Effect<R, E, void> {
     return pipe(
-      q.take,
+      Q.take(q),
       core.chain(f),
       core.chain(() => worker(q, ref)),
       whenM.whenM(
@@ -400,13 +401,13 @@ export function forEachUnitParN_<R, E, A, X>(
             pipe(
               Do.do,
               Do.bind("ref", () => Ref.makeRef(size)),
-              tap.tap(() => core.fork(forEachUnit_(as, q.offer))),
+              tap.tap(() => core.fork(forEachUnit_(as, (x) => Q.offer_(q, x)))),
               Do.bind("fibers", ({ ref }) =>
                 collectAll(L.map_(L.range_(0, n), () => core.fork(worker(q, ref))))
               ),
               tap.tap(({ fibers }) => forEach_(fibers, (_) => _.await))
             ),
-          (q) => q.shutdown
+          (q) => Q.shutdown(q)
         )
       ),
     __trace
@@ -447,7 +448,7 @@ export function forEachParN_<R, E, A, B>(
     ref: Ref.Ref<number>
   ): Effect<R, never, void> {
     return pipe(
-      q.take,
+      Q.take(q),
       core.chain(([p, a]) =>
         pipe(
           f(a),
@@ -485,7 +486,7 @@ export function forEachParN_<R, E, A, B>(
               ),
               Do.bind("ref", ({ pairs }) => Ref.makeRef(pairs.length)),
               tap.tap(({ pairs }) =>
-                core.fork(forEach_(pairs, (pair) => q.offer(pair)))
+                core.fork(forEach_(pairs, (pair) => Q.offer_(q, pair)))
               ),
               tap.tap(({ pairs, ref }) =>
                 collectAllUnit(
@@ -497,7 +498,7 @@ export function forEachParN_<R, E, A, B>(
               ),
               core.chain(({ pairs }) => forEach_(pairs, (_) => promise.await(_[0])))
             ),
-          (q) => q.shutdown
+          Q.shutdown
         )
       ),
     __trace
@@ -1064,150 +1065,171 @@ export function unsafeCreateQueue<A>(
   shutdownFlag: AtomicBoolean,
   strategy: Q.Strategy<A>
 ): Q.Queue<A> {
-  return new (class extends Q.XQueue<unknown, unknown, never, never, A, A> {
-    awaitShutdown: UIO<void> = promise.await(shutdownHook)
+  return new UnsafeCreate(queue, takers, shutdownHook, shutdownFlag, strategy)
+}
 
-    capacity: number = queue.capacity
+class UnsafeCreate<A> extends XQueueInternal<unknown, unknown, never, never, A, A> {
+  constructor(
+    readonly queue: MutableQueue<A>,
+    readonly takers: MutableQueue<Promise<never, A>>,
+    readonly shutdownHook: Promise<never, void>,
+    readonly shutdownFlag: AtomicBoolean,
+    readonly strategy: Q.Strategy<A>
+  ) {
+    super()
+  }
 
-    isShutdown: UIO<boolean> = core.effectTotal(() => shutdownFlag.get)
+  awaitShutdown: UIO<void> = promise.await(this.shutdownHook)
 
-    offer: (a: A) => Effect<unknown, never, boolean> = (a) =>
-      core.suspend(() => {
-        if (shutdownFlag.get) {
-          return interruption.interrupt
-        } else {
-          const taker = takers.poll(undefined)
+  capacity: number = this.queue.capacity
 
-          if (taker != null) {
-            Q.unsafeCompletePromise(taker, a)
-            return core.succeed(true)
-          } else {
-            const succeeded = queue.offer(a)
+  isShutdown: UIO<boolean> = core.effectTotal(() => this.shutdownFlag.get)
 
-            if (succeeded) {
-              return core.succeed(true)
-            } else {
-              return strategy.handleSurplus(
-                Chunk.single(a),
-                queue,
-                takers,
-                shutdownFlag
-              )
-            }
-          }
-        }
-      })
-
-    offerAll: (as: Iterable<A>) => Effect<unknown, never, boolean> = (as) => {
-      const arr = Chunk.from(as)
-      return core.suspend(() => {
-        if (shutdownFlag.get) {
-          return interruption.interrupt
-        } else {
-          const pTakers = queue.isEmpty
-            ? Q.unsafePollN(takers, Chunk.size(arr))
-            : Chunk.empty<Promise<never, A>>()
-          const [forTakers, remaining] = ChunkSplitAt.splitAt_(arr, Chunk.size(pTakers))
-
-          ChunkForEach.forEach_(ChunkZip.zip_(pTakers, forTakers), ([taker, item]) => {
-            Q.unsafeCompletePromise(taker, item)
-          })
-
-          if (Chunk.size(remaining) === 0) {
-            return core.succeed(true)
-          }
-
-          const surplus = Q.unsafeOfferAll(queue, remaining)
-
-          Q.unsafeCompleteTakers(strategy, queue, takers)
-
-          if (Chunk.size(surplus) === 0) {
-            return core.succeed(true)
-          } else {
-            return strategy.handleSurplus(surplus, queue, takers, shutdownFlag)
-          }
-        }
-      })
-    }
-
-    shutdown: UIO<void> = descriptorWith((d) =>
-      core.suspend(() => {
-        shutdownFlag.set(true)
-
-        return interruption.uninterruptible(
-          whenM.whenM(promise.succeed<void>(undefined)(shutdownHook))(
-            core.chain_(
-              forEachPar_(Q.unsafePollAll(takers), promise.interruptAs(d.id)),
-              () => strategy.shutdown
-            )
-          )
-        )
-      })
-    )
-
-    size: UIO<number> = core.suspend(() => {
-      if (shutdownFlag.get) {
+  offer(a: A): Effect<unknown, never, boolean> {
+    return core.suspend(() => {
+      if (this.shutdownFlag.get) {
         return interruption.interrupt
       } else {
-        return core.succeed(queue.size - takers.size + strategy.surplusSize)
+        const taker = this.takers.poll(undefined)
+
+        if (taker != null) {
+          Q.unsafeCompletePromise(taker, a)
+          return core.succeed(true)
+        } else {
+          const succeeded = this.queue.offer(a)
+
+          if (succeeded) {
+            return core.succeed(true)
+          } else {
+            return this.strategy.handleSurplus(
+              Chunk.single(a),
+              this.queue,
+              this.takers,
+              this.shutdownFlag
+            )
+          }
+        }
       }
     })
+  }
 
-    take: Effect<unknown, never, A> = descriptorWith((d) =>
-      core.suspend(() => {
-        if (shutdownFlag.get) {
-          return interruption.interrupt
+  offerAll(as: Iterable<A>): Effect<unknown, never, boolean> {
+    const arr = Chunk.from(as)
+    return core.suspend(() => {
+      if (this.shutdownFlag.get) {
+        return interruption.interrupt
+      } else {
+        const pTakers = this.queue.isEmpty
+          ? Q.unsafePollN(this.takers, Chunk.size(arr))
+          : Chunk.empty<Promise<never, A>>()
+        const [forTakers, remaining] = ChunkSplitAt.splitAt_(arr, Chunk.size(pTakers))
+
+        ChunkForEach.forEach_(ChunkZip.zip_(pTakers, forTakers), ([taker, item]) => {
+          Q.unsafeCompletePromise(taker, item)
+        })
+
+        if (Chunk.size(remaining) === 0) {
+          return core.succeed(true)
         }
 
-        const item = queue.poll(undefined)
+        const surplus = Q.unsafeOfferAll(this.queue, remaining)
 
-        if (item != null) {
-          strategy.unsafeOnQueueEmptySpace(queue)
-          return core.succeed(item)
+        Q.unsafeCompleteTakers(this.strategy, this.queue, this.takers)
+
+        if (Chunk.size(surplus) === 0) {
+          return core.succeed(true)
         } else {
-          const p = promise.unsafeMake<never, A>(d.id)
-
-          return interruption.onInterrupt_(
-            core.suspend(() => {
-              takers.offer(p)
-              Q.unsafeCompleteTakers(strategy, queue, takers)
-              if (shutdownFlag.get) {
-                return interruption.interrupt
-              } else {
-                return promise.await(p)
-              }
-            }),
-            () => core.effectTotal(() => Q.unsafeRemove(takers, p))
+          return this.strategy.handleSurplus(
+            surplus,
+            this.queue,
+            this.takers,
+            this.shutdownFlag
           )
         }
-      })
-    )
+      }
+    })
+  }
 
-    takeAll: Effect<unknown, never, Chunk.Chunk<A>> = core.suspend(() => {
-      if (shutdownFlag.get) {
+  shutdown: UIO<void> = descriptorWith((d) =>
+    core.suspend(() => {
+      this.shutdownFlag.set(true)
+
+      return interruption.uninterruptible(
+        whenM.whenM(promise.succeed<void>(undefined)(this.shutdownHook))(
+          core.chain_(
+            forEachPar_(Q.unsafePollAll(this.takers), promise.interruptAs(d.id)),
+            () => this.strategy.shutdown
+          )
+        )
+      )
+    })
+  )
+
+  size: UIO<number> = core.suspend(() => {
+    if (this.shutdownFlag.get) {
+      return interruption.interrupt
+    } else {
+      return core.succeed(
+        this.queue.size - this.takers.size + this.strategy.surplusSize
+      )
+    }
+  })
+
+  take: Effect<unknown, never, A> = descriptorWith((d) =>
+    core.suspend(() => {
+      if (this.shutdownFlag.get) {
+        return interruption.interrupt
+      }
+
+      const item = this.queue.poll(undefined)
+
+      if (item != null) {
+        this.strategy.unsafeOnQueueEmptySpace(this.queue)
+        return core.succeed(item)
+      } else {
+        const p = promise.unsafeMake<never, A>(d.id)
+
+        return interruption.onInterrupt_(
+          core.suspend(() => {
+            this.takers.offer(p)
+            Q.unsafeCompleteTakers(this.strategy, this.queue, this.takers)
+            if (this.shutdownFlag.get) {
+              return interruption.interrupt
+            } else {
+              return promise.await(p)
+            }
+          }),
+          () => core.effectTotal(() => Q.unsafeRemove(this.takers, p))
+        )
+      }
+    })
+  )
+
+  takeAll: Effect<unknown, never, Chunk.Chunk<A>> = core.suspend(() => {
+    if (this.shutdownFlag.get) {
+      return interruption.interrupt
+    } else {
+      return core.effectTotal(() => {
+        const as = Q.unsafePollAll(this.queue)
+        this.strategy.unsafeOnQueueEmptySpace(this.queue)
+        return as
+      })
+    }
+  })
+
+  takeUpTo(n: number): Effect<unknown, never, Chunk.Chunk<A>> {
+    return core.suspend(() => {
+      if (this.shutdownFlag.get) {
         return interruption.interrupt
       } else {
         return core.effectTotal(() => {
-          const as = Q.unsafePollAll(queue)
-          strategy.unsafeOnQueueEmptySpace(queue)
+          const as = Q.unsafePollN(this.queue, n)
+          this.strategy.unsafeOnQueueEmptySpace(this.queue)
           return as
         })
       }
     })
-
-    takeUpTo: (n: number) => Effect<unknown, never, Chunk.Chunk<A>> = (max) =>
-      core.suspend(() => {
-        if (shutdownFlag.get) {
-          return interruption.interrupt
-        } else {
-          return core.effectTotal(() => {
-            const as = Q.unsafePollN(queue, max)
-            strategy.unsafeOnQueueEmptySpace(queue)
-            return as
-          })
-        }
-      })
-  })()
+  }
 }
 
 /**

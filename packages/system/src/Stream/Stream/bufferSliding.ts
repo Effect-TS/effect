@@ -25,7 +25,7 @@ export function bufferSliding_<R, E, O>(
       M.bind("queue", () =>
         T.toManagedRelease_(
           Q.makeSliding<readonly [Take.Take<E, O>, P.Promise<never, void>]>(capacity),
-          (q) => q.shutdown
+          Q.shutdown
         )
       ),
       M.chain(({ queue }) => bufferSignal(self, queue))

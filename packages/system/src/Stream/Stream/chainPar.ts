@@ -34,7 +34,7 @@ export function chainPar(n: number, outputBuffer = 16) {
           M.bind("out", () =>
             T.toManagedRelease_(
               Q.makeBounded<T.Effect<R1, O.Option<E | E1>, A.Chunk<O2>>>(outputBuffer),
-              (q) => q.shutdown
+              Q.shutdown
             )
           ),
           M.bind("permits", () => T.toManaged(SM.makeSemaphore(n))),
@@ -50,12 +50,14 @@ export function chainPar(n: number, outputBuffer = 16) {
                       managed(SM.withPermitManaged(permits)),
                       tap.tap((_) => P.succeed_(latch, undefined)),
                       chain.chain((_) => f(a)),
-                      forEach.forEachChunk((b) => T.asUnit(out.offer(T.succeed(b)))),
+                      forEach.forEachChunk((b) =>
+                        T.asUnit(Q.offer_(out, T.succeed(b)))
+                      ),
                       T.foldCauseM(
                         (cause) =>
                           T.asUnit(
                             T.zipRight_(
-                              out.offer(Pull.halt(cause)),
+                              Q.offer_(out, Pull.halt(cause)),
                               P.fail_(innerFailure, cause)
                             )
                           ),
@@ -73,7 +75,7 @@ export function chainPar(n: number, outputBuffer = 16) {
                   T.toManaged(
                     T.zipRight_(
                       T.chain_(getChildren, (c) => F.interruptAll(c)),
-                      T.asUnit(out.offer(Pull.halt(cause)))
+                      T.asUnit(Q.offer_(out, Pull.halt(cause)))
                     )
                   ),
                 (_) =>
@@ -89,7 +91,7 @@ export function chainPar(n: number, outputBuffer = 16) {
                         ),
                       (_, failureAwait) =>
                         T.zipRight_(
-                          out.offer(Pull.end),
+                          Q.offer_(out, Pull.end),
                           T.asUnit(F.interrupt(failureAwait))
                         )
                     ),
@@ -99,7 +101,7 @@ export function chainPar(n: number, outputBuffer = 16) {
               M.fork
             )
           ),
-          M.map(({ out }) => T.flatten(out.take))
+          M.map(({ out }) => T.flatten(Q.take(out)))
         )
       )
     )

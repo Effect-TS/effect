@@ -38,8 +38,10 @@ export function effectAsyncMaybe<R, E, A>(
       M.bind("maybeStream", ({ output, runtime }) =>
         M.effectTotal(() =>
           register((k, cb) =>
-            pipe(Take.fromPull(k), T.chain(output.offer), (x) =>
-              runtime.runCancel(x, cb)
+            pipe(
+              Take.fromPull(k),
+              T.chain((x) => Q.offer_(output, x)),
+              (x) => runtime.runCancel(x, cb)
             )
           )
         )
@@ -58,12 +60,12 @@ export function effectAsyncMaybe<R, E, A>(
                     b
                       ? Pull.end
                       : pipe(
-                          output.take,
+                          Q.take(output),
                           T.chain(Take.done),
                           T.onError(() =>
                             pipe(
                               done.set(true),
-                              T.chain(() => output.shutdown)
+                              T.chain(() => Q.shutdown(output))
                             )
                           )
                         )
@@ -73,7 +75,7 @@ export function effectAsyncMaybe<R, E, A>(
             ),
           (s) =>
             pipe(
-              output.shutdown,
+              Q.shutdown(output),
               T.toManaged,
               M.chain(() => s.proc)
             )

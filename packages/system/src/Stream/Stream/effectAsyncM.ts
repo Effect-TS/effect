@@ -39,7 +39,11 @@ export function effectAsyncM<R, E, A, R1 = R, E1 = E>(
     M.tap(({ output, runtime }) =>
       T.toManaged(
         register((k, cb) =>
-          pipe(Take.fromPull(k), T.chain(output.offer), (x) => runtime.runCancel(x, cb))
+          pipe(
+            Take.fromPull(k),
+            T.chain((x) => Q.offer_(output, x)),
+            (x) => runtime.runCancel(x, cb)
+          )
         )
       )
     ),
@@ -51,12 +55,12 @@ export function effectAsyncM<R, E, A, R1 = R, E1 = E>(
           b
             ? Pull.end
             : pipe(
-                output.take,
+                Q.take(output),
                 T.chain(Take.done),
                 T.onError(() =>
                   pipe(
                     done.set(true),
-                    T.chain(() => output.shutdown)
+                    T.chain(() => Q.shutdown(output))
                   )
                 )
               )

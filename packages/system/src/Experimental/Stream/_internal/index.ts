@@ -455,7 +455,7 @@ export function fromQueue<R, E, A>(
 ): Stream<R, E, A> {
   return Channel.effect(
     T.foldM_(
-      T.flatten(queue.take),
+      T.flatten(Q.take(queue)),
       (err) => (err._tag === "Some" ? T.fail(err.value) : T.succeed(Channel.unit)),
       (a) => T.succeed(Channel.chain_(Channel.write(a), () => fromQueue(queue)))
     ),
@@ -475,7 +475,7 @@ export function fromZipQueue<R, R1, E, E1, A, B, C>(
 ): Stream<R & R1, E | E1, C> {
   return Channel.effect(
     T.foldM_(
-      T.zipPar_(T.flatten(leftQueue.take), T.flatten(rightQueue.take)),
+      T.zipPar_(T.flatten(Q.take(leftQueue)), T.flatten(Q.take(rightQueue))),
       (err) => (err._tag === "Some" ? T.fail(err.value) : T.succeed(Channel.unit)),
       ([oa, ob]) =>
         T.succeed(
@@ -749,11 +749,11 @@ export function mergeBuffer<R, E, A>(
       M.tap((queue) =>
         T.forkManaged(
           T.forEachUnitPar_(streams, (s) =>
-            runDrain(mapM_(s, (a) => queue.offer(T.succeed(a))))
+            runDrain(mapM_(s, (a) => Q.offer_(queue, T.succeed(a))))
           )["|>"](
             T.foldCauseM(
-              (cause) => queue.offer(T.halt(C.map_(cause, O.some))),
-              () => queue.offer(T.fail(O.none))
+              (cause) => Q.offer_(queue, T.halt(C.map_(cause, O.some))),
+              () => Q.offer_(queue, T.fail(O.none))
             )
           )
         )
@@ -933,7 +933,7 @@ function fromStreamQueue<R, E, A>(
   queue: Q.Queue<Stream<R, E, A> | undefined>
 ): Stream<R, E, A> {
   return Channel.effect(
-    T.map_(queue.take, (o) =>
+    T.map_(Q.take(queue), (o) =>
       o ? Channel.chain_(o, () => fromStreamQueue(queue)) : Channel.unit
     )
   )
@@ -966,8 +966,8 @@ export function streamAsyncBuffer<R, E, A>(
         M.makeExit_(
           T.effectTotal(() =>
             register(
-              (k, cb) => runtime.runCancel(output.offer(k), cb),
-              (cb) => runtime.runCancel(output.offer(void 0), cb)
+              (k, cb) => runtime.runCancel(Q.offer_(output, k), cb),
+              (cb) => runtime.runCancel(Q.offer_(output, void 0), cb)
             )
           ),
           identity
@@ -1224,20 +1224,20 @@ export function zipWithParBuffer_<R, E, A, R1, E1, B, C>(
     ),
     M.tap(({ leftQueue }) =>
       T.forkManaged(
-        runDrain(mapM_(left, (a) => leftQueue.offer(T.succeed(a))))["|>"](
+        runDrain(mapM_(left, (a) => Q.offer_(leftQueue, T.succeed(a))))["|>"](
           T.foldCauseM(
-            (cause) => leftQueue.offer(T.halt(C.map_(cause, O.some))),
-            () => leftQueue.offer(T.fail(O.none))
+            (cause) => Q.offer_(leftQueue, T.halt(C.map_(cause, O.some))),
+            () => Q.offer_(leftQueue, T.fail(O.none))
           )
         )
       )
     ),
     M.tap(({ rightQueue }) =>
       T.forkManaged(
-        runDrain(mapM_(right, (a) => rightQueue.offer(T.succeed(a))))["|>"](
+        runDrain(mapM_(right, (a) => Q.offer_(rightQueue, T.succeed(a))))["|>"](
           T.foldCauseM(
-            (cause) => rightQueue.offer(T.halt(C.map_(cause, O.some))),
-            () => rightQueue.offer(T.fail(O.none))
+            (cause) => Q.offer_(rightQueue, T.halt(C.map_(cause, O.some))),
+            () => Q.offer_(rightQueue, T.fail(O.none))
           )
         )
       )

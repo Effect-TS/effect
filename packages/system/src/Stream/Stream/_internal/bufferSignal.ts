@@ -5,7 +5,7 @@ import * as Ex from "../../../Exit"
 import { pipe } from "../../../Function"
 import * as O from "../../../Option"
 import * as P from "../../../Promise"
-import type * as Q from "../../../Queue"
+import * as Q from "../../../Queue"
 import * as T from "../../_internal/effect"
 import * as M from "../../_internal/managed"
 import * as Ref from "../../_internal/ref"
@@ -38,7 +38,7 @@ export function bufferSignal<R, E, O>(
               T.bind("latch", () => ref.get),
               T.tap(({ latch }) => P.await(latch)),
               T.bind("p", () => P.make<never, void>()),
-              T.tap(({ p }) => queue.offer([take, p])),
+              T.tap(({ p }) => Q.offer_(queue, [take, p])),
               T.tap(({ p }) => ref.set(p)),
               T.tap(({ p }) => P.await(p)),
               T.asUnit
@@ -47,7 +47,7 @@ export function bufferSignal<R, E, O>(
             pipe(
               T.do,
               T.bind("p", () => P.make<never, void>()),
-              T.bind("added", ({ p }) => queue.offer([take, p])),
+              T.bind("added", ({ p }) => Q.offer_(queue, [take, p])),
               T.tap(({ added, p }) => T.when_(ref.set(p), () => added)),
               T.asUnit
             )
@@ -68,7 +68,7 @@ export function bufferSignal<R, E, O>(
           if (_) {
             return Pull.end
           } else {
-            return T.chain_(queue.take, ([take, p]) =>
+            return T.chain_(Q.take(queue), ([take, p]) =>
               T.zipRight_(
                 T.zipRight_(
                   P.succeed_(p, undefined),

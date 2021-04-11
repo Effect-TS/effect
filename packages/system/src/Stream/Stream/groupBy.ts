@@ -44,7 +44,7 @@ export function groupBy_<R, R1, E, E1, O, K, V>(
               readonly [K, Q.Dequeue<Ex.Exit<O.Option<E | E1>, V>>]
             >
           >(buffer),
-          (q) => q.shutdown
+          Q.shutdown
         )
       ),
       M.bind("ref", () => T.toManaged(Ref.makeRef<MP.Map<K, symbol>>(MP.empty))),
@@ -54,7 +54,7 @@ export function groupBy_<R, R1, E, E1, O, K, V>(
           distributedWithDynamic(
             buffer,
             (kv) => T.chain_(P.await(decider), (_) => _(...kv)),
-            out.offer
+            (x) => Q.offer_(out, x)
           )
         )
       ),
@@ -70,11 +70,12 @@ export function groupBy_<R, R1, E, E1, O, K, V>(
                       pipe(
                         Ref.update_(ref, MP.insert(k, idx)),
                         T.zipRight(
-                          out.offer(
+                          Q.offer_(
+                            out,
                             Ex.succeed([
                               k,
                               Q.map_(q, (ex) => Ex.map_(ex, ([_, v]) => v))
-                            ])
+                            ] as const)
                           )
                         ),
                         T.as((_: symbol) => _ === idx)

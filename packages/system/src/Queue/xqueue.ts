@@ -3,6 +3,19 @@
 import type * as Chunk from "../Collections/Immutable/Chunk"
 import type { Effect, UIO } from "../Effect/effect"
 
+export const _RA = Symbol()
+export type _RA = typeof _RA
+export const _RB = Symbol()
+export type _RB = typeof _RB
+export const _EA = Symbol()
+export type _EA = typeof _EA
+export const _EB = Symbol()
+export type _EB = typeof _EB
+export const _A = Symbol()
+export type _A = typeof _A
+export const _B = Symbol()
+export type _B = typeof _B
+
 /**
  * A `XQueue<RA, RB, EA, EB, A, B>` is a lightweight, asynchronous queue into which values of
  * type `A` can be enqueued and of which elements of type `B` can be dequeued. The queue's
@@ -10,7 +23,33 @@ import type { Effect, UIO } from "../Effect/effect"
  * type `EA`. The dequeueing operations may utilize an environment of type `RB` and may fail
  * with errors of type `EB`.
  */
-export abstract class XQueue<RA, RB, EA, EB, A, B> {
+export interface XQueue<RA, RB, EA, EB, A, B> {
+  readonly [_RA]: (_: RA) => void
+  readonly [_RB]: (_: RB) => void
+  readonly [_EA]: () => EA
+  readonly [_EB]: () => EB
+  readonly [_A]: (_: A) => void
+  readonly [_B]: () => B
+}
+
+/**
+ * @optimize remove
+ */
+export function concreteQueue<RA, RB, EA, EB, A, B>(
+  _: XQueue<RA, RB, EA, EB, A, B>
+): asserts _ is XQueueInternal<RA, RB, EA, EB, A, B> {
+  //
+}
+
+export abstract class XQueueInternal<RA, RB, EA, EB, A, B>
+  implements XQueue<RA, RB, EA, EB, A, B> {
+  readonly [_RA]!: (_: RA) => void;
+  readonly [_RB]!: (_: RB) => void;
+  readonly [_EA]!: () => EA;
+  readonly [_EB]!: () => EB;
+  readonly [_A]!: (_: A) => void;
+  readonly [_B]!: () => B
+
   /**
    * Waits until the queue is shutdown.
    * The `IO` returned by this method will not resume until the queue has been shutdown.
@@ -31,7 +70,7 @@ export abstract class XQueue<RA, RB, EA, EB, A, B> {
   /**
    * Places one value in the queue.
    */
-  abstract readonly offer: (a: A) => Effect<RA, EA, boolean>
+  abstract offer(a: A): Effect<RA, EA, boolean>
 
   /**
    * For Bounded Queue: uses the `BackPressure` Strategy, places the values in the queue and always returns true.
@@ -50,7 +89,7 @@ export abstract class XQueue<RA, RB, EA, EB, A, B> {
    * It places the values in the queue but if there is no room it will not enqueue them and return false.
    *
    */
-  abstract readonly offerAll: (as: Iterable<A>) => Effect<RA, EA, boolean>
+  abstract offerAll(as: Iterable<A>): Effect<RA, EA, boolean>
 
   /**
    * Interrupts any fibers that are suspended on `offer` or `take`.
@@ -80,7 +119,7 @@ export abstract class XQueue<RA, RB, EA, EB, A, B> {
   /**
    * Takes up to max number of values in the queue.
    */
-  abstract readonly takeUpTo: (n: number) => Effect<RB, EB, Chunk.Chunk<B>>
+  abstract takeUpTo(n: number): Effect<RB, EB, Chunk.Chunk<B>>
 }
 
 /**
