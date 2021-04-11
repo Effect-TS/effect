@@ -3,6 +3,20 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.30.0](https://github.com/Effect-TS/core/compare/@effect-ts/core@0.29.0...@effect-ts/core@0.30.0) (2021-04-11)
+
+
+### Features
+
+* **effect:** add forEach variants ([1ac303b](https://github.com/Effect-TS/core/commit/1ac303b2e935db380b2f58a1f926c30360bad6bc))
+* **effect:** type preserving forEach via collection typeclass ([d9295cd](https://github.com/Effect-TS/core/commit/d9295cd44c1efa67f3aa906af094ab56a195f682))
+* **streams:** refactor streams to use the new chunk module ([2977d75](https://github.com/Effect-TS/core/commit/2977d755440b34cda2dd73da4d75801a0cc57c00))
+* **streams:** remove conduit port from experiments in favour of zio 2.0 variant ([6856144](https://github.com/Effect-TS/core/commit/6856144417607c0a6912aefc75c0dbdc1fb5f6da))
+
+
+
+
+
 # [0.29.0](https://github.com/Effect-TS/core/compare/@effect-ts/core@0.28.13...@effect-ts/core@0.29.0) (2021-04-09)
 
 

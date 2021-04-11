@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.10.0](https://github.com/Effect-TS/core/compare/@effect-ts/tracing-plugin@0.9.0...@effect-ts/tracing-plugin@0.10.0) (2021-04-11)
+
+
+### Features
+
+* **effect:** type preserving forEach via collection typeclass ([d9295cd](https://github.com/Effect-TS/core/commit/d9295cd44c1efa67f3aa906af094ab56a195f682))
+
+
+
+
+
 # [0.9.0](https://github.com/Effect-TS/core/compare/@effect-ts/tracing-plugin@0.8.4...@effect-ts/tracing-plugin@0.9.0) (2021-04-09)
 
 

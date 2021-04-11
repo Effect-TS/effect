@@ -3,6 +3,73 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.27.0](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.26.0...@effect-ts/system@0.27.0) (2021-04-11)
+
+
+### Bug Fixes
+
+* **chunk:** fix chunk mapMPar, mapMParN. Improve forEach ([a00ce3b](https://github.com/Effect-TS/core/commit/a00ce3b432ea59d47c2e8f647b99132d2167cb35))
+* **chunk:** fix comments ([e7cb390](https://github.com/Effect-TS/core/commit/e7cb3908b9a1884dc59c14677058f15fdaff0a5b))
+* **chunk:** fix prepend ([73c2427](https://github.com/Effect-TS/core/commit/73c2427d37bcb56159c176791843b3606906ab81))
+* **chunk:** fix prepend position ([144cfc1](https://github.com/Effect-TS/core/commit/144cfc1cc4ab1a5920ec8c225760cb4f7ad82d71))
+* **chunk:** get signature ([36e3c85](https://github.com/Effect-TS/core/commit/36e3c85eb63dc586bb59b7835601cd43dd00c0a7))
+* **chunk:** remove concat single -> append rewrite ([ee8f4f1](https://github.com/Effect-TS/core/commit/ee8f4f184f5f5ecf7b3e9ea7481fc1acf762f73e))
+* **chunks:** fix isByte check ([2b557b0](https://github.com/Effect-TS/core/commit/2b557b0721d5480718af0533e02ccad476e41ecd))
+
+
+### Features
+
+* **chunk:** begin port of chunk ([36af9b6](https://github.com/Effect-TS/core/commit/36af9b6b5a3624534eff7dec04c64be70e95450f))
+* **chunk:** change get to return A instead of A | undefined, document fromArray ([9caea0e](https://github.com/Effect-TS/core/commit/9caea0ef6df8c6c05e5615f69597165fa053cf3a))
+* **chunk:** enable buffers to be used in the array-backed primitive ([acbcb8d](https://github.com/Effect-TS/core/commit/acbcb8dcb37c1ba10f0d5abcece5ad7e96f6b8c6))
+* **chunk:** enable preservation of buffer in concat/slice ([4ee02e5](https://github.com/Effect-TS/core/commit/4ee02e5ae0b57f2b2e7454a0b29166f114ae756d))
+* **chunk:** enable preservation of buffers in prepend/append ([c0ff86c](https://github.com/Effect-TS/core/commit/c0ff86cb762f73efc80b0e8840b74153bd4fc5a1))
+* **chunk:** implement chain, improve map ([9a94f73](https://github.com/Effect-TS/core/commit/9a94f73afdb1e02558453fa197d43330730074f3))
+* **chunk:** implement corresponds, collectWhile, collectWhileM, arrayLikeIterator ([1de2ae0](https://github.com/Effect-TS/core/commit/1de2ae0f3d92f602e273ea4c3a6b7a731e4604fb))
+* **chunk:** implement dropWhile/dropWhileM ([d32252d](https://github.com/Effect-TS/core/commit/d32252d0631fd0c29a5111f0f314de048b93d955))
+* **chunk:** implement equals ([4085b1b](https://github.com/Effect-TS/core/commit/4085b1b11ce686c8889c7ac43a16e136a234ab4b))
+* **chunk:** implement every, indexWhere, mapAccum, mapAccumM, mapM* ([07b90dc](https://github.com/Effect-TS/core/commit/07b90dc900e1793d45ce605fa52bf1d08c7d7848))
+* **chunk:** implement exists, filter, filterM ([6807d53](https://github.com/Effect-TS/core/commit/6807d5302ab706c46a1f0b905a79340987c0116e))
+* **chunk:** implement flatten, find ([bc67b2d](https://github.com/Effect-TS/core/commit/bc67b2dcad46029272cacf38e91db18307034499))
+* **chunk:** implement forEach, partitionMap ([d4cb688](https://github.com/Effect-TS/core/commit/d4cb6885e051aabefc8db93b5ac2d5a3709380de))
+* **chunk:** implement get/unsafeGet ([9fe923c](https://github.com/Effect-TS/core/commit/9fe923c0d327d14817fc7bae9491c82a2d297b6c))
+* **chunk:** implement map ([531307e](https://github.com/Effect-TS/core/commit/531307e53343d6ada9bcc71e0d250971527646b4))
+* **chunk:** implement materialize and collectM ([3c34df2](https://github.com/Effect-TS/core/commit/3c34df2644089643d8a67a9b4334d89704486a79))
+* **chunk:** implement reduce/reduceRight ([e9c862f](https://github.com/Effect-TS/core/commit/e9c862fefd13f85c3c2d3bce8c0b47557bc9c594))
+* **chunk:** implement reduceWhile, reduceWhileM ([a133c34](https://github.com/Effect-TS/core/commit/a133c345be1d8798db90cd167e9a8cc5f38a4a48))
+* **chunk:** implement split/splitAt ([d9fbb09](https://github.com/Effect-TS/core/commit/d9fbb0969c4cdc9ebf4260a80ff6d49ee9a5fd64))
+* **chunk:** implement splitWhere, improve iterations ([516e580](https://github.com/Effect-TS/core/commit/516e580a98e2c11fad79329a75c5135dc50cc7ea))
+* **chunk:** implement take and drop ([439a612](https://github.com/Effect-TS/core/commit/439a612950cbb455ddab95bdedef004a922bf195))
+* **chunk:** implement takeWhile, takeWhileM, zipWith, zip ([c98d1c4](https://github.com/Effect-TS/core/commit/c98d1c481d37ebbaa31649b536fd7c052c658750))
+* **chunk:** implement zip, zipWith, zipAll, zipAllWith ([58cad49](https://github.com/Effect-TS/core/commit/58cad49993fc17e127161506118cada8bc3822db))
+* **chunk:** implement zipWithIndex, zipWithIndexOffset, unfold, unfoldM, filterMap, optimize array ([30dc6cb](https://github.com/Effect-TS/core/commit/30dc6cb9fcf64d76e72f1c3648869ce51b2b4f31))
+* **chunk:** improve constructors ([bf456da](https://github.com/Effect-TS/core/commit/bf456da8bad22189819481ef7530b1ae2b870057))
+* **chunk:** unify byte append-prepend-single ([ff06272](https://github.com/Effect-TS/core/commit/ff06272c0bf5ec2c3abc3a29de43b8f4a3bec0dd))
+* **chunks:** optimize some functions for single value chunks ([15cfe09](https://github.com/Effect-TS/core/commit/15cfe09dc6f1d17585d59c9fe60943a9ab0cba1d))
+* **effect:** type preserving forEach via collection typeclass ([d9295cd](https://github.com/Effect-TS/core/commit/d9295cd44c1efa67f3aa906af094ab56a195f682))
+* **hub:** add tracing off comments and default operator import ([75e2f36](https://github.com/Effect-TS/core/commit/75e2f361eb95cb1d5a1b85d9c1c5f004e2532698))
+* **streams:** begin stream and sink module ([16b1dba](https://github.com/Effect-TS/core/commit/16b1dba457d480be7e5cec0526211aaa3a861209))
+* **streams:** channel chain_ ([1687003](https://github.com/Effect-TS/core/commit/16870032b0057430eb044c6b97cd3383c515aade))
+* **streams:** channel primitives and executor ([8d4af93](https://github.com/Effect-TS/core/commit/8d4af9331af88d88edb4636d13af6c093b6bd4eb))
+* **streams:** implement SingleProducerAsyncInput and fix variance in primitive constructors ([78cf950](https://github.com/Effect-TS/core/commit/78cf9500feb6866f924798d7aa39a124db41ddf0))
+* **streams:** refactor streams to use the new chunk module ([2977d75](https://github.com/Effect-TS/core/commit/2977d755440b34cda2dd73da4d75801a0cc57c00))
+* **streams:** remove conduit port from experiments in favour of zio 2.0 variant ([6856144](https://github.com/Effect-TS/core/commit/6856144417607c0a6912aefc75c0dbdc1fb5f6da))
+* **streams:** variance on readWithCause ([67985bf](https://github.com/Effect-TS/core/commit/67985bf3e066761fd4906434e05e1635fb6a97ca))
+* **streams:** zio 2.x primitives ([26976d5](https://github.com/Effect-TS/core/commit/26976d580daa15ef18a859f9ab624b0a232ef0f0))
+
+
+### Performance Improvements
+
+* **chunk:** avoid re-computing depth, length, left, right, empty and use array for cache locality ([ec5a3ef](https://github.com/Effect-TS/core/commit/ec5a3ef0192083ffefa4e520d4dba4b23b1bd6a3))
+* **chunk:** optimise concat with single as append/prepend ([eca4568](https://github.com/Effect-TS/core/commit/eca45682c35d61003e8b9e814502e4d3b80133a8))
+* **chunk:** optimize iterator avoid boxing to array ([6e1e7c3](https://github.com/Effect-TS/core/commit/6e1e7c3d8e1dc97e38d44f043bdc2b04973225b6))
+* **chunk:** override toArray & iterator in Arr ([a5d46dd](https://github.com/Effect-TS/core/commit/a5d46ddf725da921bd299681d3a7594919c0c2cf))
+* **streams:** extract loop in chunkN ([c1e67d2](https://github.com/Effect-TS/core/commit/c1e67d23453a9772ce07002a93938865cf0a8785))
+
+
+
+
+
 # [0.26.0](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.25.13...@effect-ts/system@0.26.0) (2021-04-09)
 
 
