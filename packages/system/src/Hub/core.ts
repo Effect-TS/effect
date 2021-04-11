@@ -38,7 +38,19 @@ export const HubTypeId = Symbol()
  * messages can require an environment of type `RB` and fail with an error of
  * type `EB`.
  */
-export abstract class XHub<RA, RB, EA, EB, A, B> {
+export interface XHub<RA, RB, EA, EB, A, B> {
+  readonly typeId: typeof HubTypeId
+
+  readonly [PR._RA]: (_: RA) => void
+  readonly [PR._RB]: (_: RB) => void
+  readonly [PR._EA]: () => EA
+  readonly [PR._EB]: () => EB
+  readonly [PR._A]: (_: A) => void
+  readonly [PR._B]: () => B
+}
+
+abstract class XHubInternal<RA, RB, EA, EB, A, B>
+  implements XHub<RA, RB, EA, EB, A, B> {
   readonly typeId: typeof HubTypeId = HubTypeId;
 
   readonly [PR._RA]!: (_: RA) => void;
@@ -47,9 +59,7 @@ export abstract class XHub<RA, RB, EA, EB, A, B> {
   readonly [PR._EB]!: () => EB;
   readonly [PR._A]!: (_: A) => void;
   readonly [PR._B]!: () => B
-}
 
-abstract class XHubInternal<RA, RB, EA, EB, A, B> extends XHub<RA, RB, EA, EB, A, B> {
   /**
    * Waits for the hub to be shut down.
    */
@@ -257,14 +267,20 @@ export function dimap<A, B, C, D>(f: (c: C) => A, g: (b: B) => D) {
   return <RA, RB, EA, EB>(self: XHub<RA, RB, EA, EB, A, B>) => dimap_(self, f, g)
 }
 
-class DimapMImplementation<RA, RB, RC, RD, EA, EB, EC, ED, A, B, C, D> extends XHub<
-  RC & RA,
-  RD & RB,
-  EA | EC,
-  EB | ED,
+class DimapMImplementation<
+  RA,
+  RB,
+  RC,
+  RD,
+  EA,
+  EB,
+  EC,
+  ED,
+  A,
+  B,
   C,
   D
-> {
+> extends XHubInternal<RC & RA, RD & RB, EA | EC, EB | ED, C, D> {
   awaitShutdown: T.UIO<void>
   capacity: number
   isShutdown: T.UIO<boolean>
@@ -321,7 +337,7 @@ export function dimapM<A, B, C, D, EC, ED, RC, RD>(
   return <RA, RB, EA, EB>(self: XHub<RA, RB, EA, EB, A, B>) => dimapM_(self, f, g)
 }
 
-class filterInputMImplementation<RA, RA1, RB, EA, EA1, EB, A, B> extends XHub<
+class filterInputMImplementation<RA, RA1, RB, EA, EA1, EB, A, B> extends XHubInternal<
   RA & RA1,
   RB,
   EA | EA1,
@@ -420,7 +436,7 @@ export function filterOutput<B>(f: (b: B) => boolean) {
   return <RA, RB, EA, EB, A>(self: XHub<RA, RB, EA, EB, A, B>) => filterOutput_(self, f)
 }
 
-class filterOutputMImplementation<RA, RB, RB1, EA, EB, EB1, A, B> extends XHub<
+class filterOutputMImplementation<RA, RB, RB1, EA, EB, EB1, A, B> extends XHubInternal<
   RA,
   RB & RB1,
   EA,
@@ -704,7 +720,7 @@ export function unsafeMakeUnbounded<A>(): Hub<A> {
   )
 }
 
-class UnsafeMakeHubImplementation<A> extends XHub<
+class UnsafeMakeHubImplementation<A> extends XHubInternal<
   unknown,
   unknown,
   never,
