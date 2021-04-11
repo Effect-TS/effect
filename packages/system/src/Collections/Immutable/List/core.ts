@@ -6,8 +6,7 @@
 
 import type { Either } from "../../../Either"
 import { identity } from "../../../Function"
-import type { Option } from "../../../Option"
-import { fromNullable } from "../../../Option"
+import * as O from "../../../Option"
 import type { Ord } from "../../../Ord"
 import type { Separated } from "../../../Utils"
 
@@ -587,27 +586,7 @@ function nodeNth(node: Node, depth: number, offset: number, index: number): any 
  * @complexity O(log(n))
  */
 export function unsafeNth_<A>(l: List<A>, index: number): A | undefined {
-  if (index < 0 || l.length <= index) {
-    return undefined
-  }
-  const prefixSize = getPrefixSize(l)
-  const suffixSize = getSuffixSize(l)
-  if (index < prefixSize) {
-    return l.prefix[prefixSize - index - 1]
-  } else if (index >= l.length - suffixSize) {
-    return l.suffix[index - (l.length - suffixSize)]
-  }
-  const { offset } = l
-  const depth = getDepth(l)
-  return l.root!.sizes === undefined
-    ? nodeNthDense(
-        l.root!,
-        depth,
-        offset === 0
-          ? index - prefixSize
-          : handleOffset(depth, offset, index - prefixSize)
-      )
-    : nodeNth(l.root!, depth, offset, index - prefixSize)
+  return O.toUndefined(nth_(l, index))
 }
 
 /**
@@ -626,8 +605,30 @@ export function unsafeNth(index: number): <A>(l: List<A>) => A | undefined {
  *
  * @complexity O(log(n))
  */
-export function nth_<A>(l: List<A>, index: number) {
-  return fromNullable(unsafeNth_(l, index))
+export function nth_<A>(l: List<A>, index: number): O.Option<A> {
+  if (index < 0 || l.length <= index) {
+    return O.none
+  }
+  const prefixSize = getPrefixSize(l)
+  const suffixSize = getSuffixSize(l)
+  if (index < prefixSize) {
+    return O.some(l.prefix[prefixSize - index - 1]!)
+  } else if (index >= l.length - suffixSize) {
+    return O.some(l.suffix[index - (l.length - suffixSize)]!)
+  }
+  const { offset } = l
+  const depth = getDepth(l)
+  return O.some(
+    l.root!.sizes === undefined
+      ? nodeNthDense(
+          l.root!,
+          depth,
+          offset === 0
+            ? index - prefixSize
+            : handleOffset(depth, offset, index - prefixSize)
+        )
+      : nodeNth(l.root!, depth, offset, index - prefixSize)
+  )
 }
 
 /**
@@ -636,7 +637,7 @@ export function nth_<A>(l: List<A>, index: number) {
  *
  * @complexity O(log(n))
  */
-export function nth(index: number): <A>(l: List<A>) => Option<A> {
+export function nth(index: number): <A>(l: List<A>) => O.Option<A> {
   return (l) => nth_(l, index)
 }
 
@@ -941,12 +942,7 @@ export function size(l: List<any>): number {
  * @complexity O(1)
  */
 export function unsafeFirst<A>(l: List<A>): A | undefined {
-  const prefixSize = getPrefixSize(l)
-  return prefixSize !== 0
-    ? l.prefix[prefixSize - 1]
-    : l.length !== 0
-    ? l.suffix[0]
-    : undefined
+  return O.toUndefined(first(l))
 }
 
 /**
@@ -955,8 +951,13 @@ export function unsafeFirst<A>(l: List<A>): A | undefined {
  *
  * @complexity O(1)
  */
-export function first<A>(l: List<A>) {
-  return fromNullable(unsafeFirst(l))
+export function first<A>(l: List<A>): O.Option<A> {
+  const prefixSize = getPrefixSize(l)
+  return prefixSize !== 0
+    ? O.some(l.prefix[prefixSize - 1]!)
+    : l.length !== 0
+    ? O.some(l.suffix[0]!)
+    : O.none
 }
 
 /**
@@ -966,12 +967,7 @@ export function first<A>(l: List<A>) {
  * @complexity O(1)
  */
 export function unsafeLast<A>(l: List<A>): A | undefined {
-  const suffixSize = getSuffixSize(l)
-  return suffixSize !== 0
-    ? l.suffix[suffixSize - 1]
-    : l.length !== 0
-    ? l.prefix[0]
-    : undefined
+  return O.toUndefined(last(l))
 }
 
 /**
@@ -980,8 +976,13 @@ export function unsafeLast<A>(l: List<A>): A | undefined {
  *
  * @complexity O(1)
  */
-export function last<A>(l: List<A>) {
-  return fromNullable(unsafeLast(l))
+export function last<A>(l: List<A>): O.Option<A> {
+  const suffixSize = getSuffixSize(l)
+  return suffixSize !== 0
+    ? O.some(l.suffix[suffixSize - 1]!)
+    : l.length !== 0
+    ? O.some(l.prefix[0]!)
+    : O.none
 }
 
 // map
@@ -1228,7 +1229,7 @@ export function filter<A>(predicate: (a: A) => boolean): (l: List<A>) => List<A>
  *
  * @complexity O(n)
  */
-export function filterMap_<A, B>(l: List<A>, f: (a: A) => Option<B>): List<B> {
+export function filterMap_<A, B>(l: List<A>, f: (a: A) => O.Option<B>): List<B> {
   return reduce_(l, emptyPushable(), (acc, a) => {
     const fa = f(a)
     if (fa._tag === "Some") {
@@ -1244,15 +1245,15 @@ export function filterMap_<A, B>(l: List<A>, f: (a: A) => Option<B>): List<B> {
  *
  * @complexity O(n)
  */
-export function filterMap<A, B>(f: (a: A) => Option<B>): (l: List<A>) => List<B> {
+export function filterMap<A, B>(f: (a: A) => O.Option<B>): (l: List<A>) => List<B> {
   return (l) => filterMap_(l, f)
 }
 
 /**
  * Filter out optional values
  */
-export function compact<A>(fa: List<Option<A>>): List<A> {
-  return filterMap((x: Option<A>) => x)(fa)
+export function compact<A>(fa: List<O.Option<A>>): List<A> {
+  return filterMap((x: O.Option<A>) => x)(fa)
 }
 
 /**
@@ -1727,7 +1728,7 @@ export function none<A>(predicate: (a: A) => boolean): (l: List<A>) => boolean {
 
 function findCb<A>(value: A, state: PredState): boolean {
   if (state.predicate(value)) {
-    state.result = value
+    state.result = O.some(value)
     return false
   } else {
     return true
@@ -1744,7 +1745,7 @@ export function unsafeFind_<A>(
   l: List<A>,
   predicate: (a: A) => boolean
 ): A | undefined {
-  return foldlCb<A, PredState>(findCb, { predicate, result: undefined }, l).result
+  return O.toUndefined(find_(l, predicate))
 }
 
 /**
@@ -1765,8 +1766,8 @@ export function unsafeFind<A>(
  *
  * @complexity O(n)
  */
-export function find_<A>(l: List<A>, predicate: (a: A) => boolean) {
-  return fromNullable(unsafeFind_(l, predicate))
+export function find_<A>(l: List<A>, predicate: (a: A) => boolean): O.Option<A> {
+  return foldlCb<A, PredState>(findCb, { predicate, result: O.none }, l).result
 }
 
 /**
@@ -1789,7 +1790,7 @@ export function unsafeFindLast_<A>(
   l: List<A>,
   predicate: (a: A) => boolean
 ): A | undefined {
-  return foldrCb<A, PredState>(findCb, { predicate, result: undefined }, l).result
+  return O.toUndefined(findLast_(l, predicate))
 }
 
 /**
@@ -1810,8 +1811,8 @@ export function unsafeFindLast<A>(
  *
  * @complexity O(n)
  */
-export function findLast_<A>(l: List<A>, predicate: (a: A) => boolean) {
-  return fromNullable(unsafeFindLast_(l, predicate))
+export function findLast_<A>(l: List<A>, predicate: (a: A) => boolean): O.Option<A> {
+  return foldrCb<A, PredState>(findCb, { predicate, result: O.none }, l).result
 }
 
 /**
@@ -1820,7 +1821,7 @@ export function findLast_<A>(l: List<A>, predicate: (a: A) => boolean) {
  *
  * @complexity O(n)
  */
-export function findLast<A>(predicate: (a: A) => boolean): (l: List<A>) => Option<A> {
+export function findLast<A>(predicate: (a: A) => boolean): (l: List<A>) => O.Option<A> {
   return (l) => findLast_(l, predicate)
 }
 
