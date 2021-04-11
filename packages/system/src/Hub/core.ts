@@ -1,3 +1,7 @@
+// tracing: off
+
+import "../Operator"
+
 import * as HH from "../Case/HasHash"
 import * as AR from "../Collections/Immutable/Array"
 import * as Chunk from "../Collections/Immutable/Chunk"
