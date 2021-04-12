@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.27.1](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.27.0...@effect-ts/system@0.27.1) (2021-04-12)
+
+
+### Features
+
+* **structural:** generalize structural implementations of equals & hash, improve random generator ([da7f3ac](https://github.com/Effect-TS/core/commit/da7f3ac0fb9049baf5aaca8f9c4661901652ddb1))
+
+
+
+
+
 # [0.27.0](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.26.0...@effect-ts/system@0.27.0) (2021-04-11)
 
 
