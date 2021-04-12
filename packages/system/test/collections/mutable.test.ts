@@ -3,6 +3,7 @@ import * as Equal from "../../src/Equal"
 import { pipe } from "../../src/Function"
 import * as Hash from "../../src/Hash"
 import * as O from "../../src/Option"
+import * as St from "../../src/Structural"
 
 describe("Mutable HashMap", () => {
   it("use hash-map", () => {
@@ -15,7 +16,7 @@ describe("Mutable HashMap", () => {
     const eqIndex = Equal.makeEqual<Index>(
       (x, y) => x === y || (x.a === y.a && x.b === y.b)
     )
-    const hashIndex = Hash.makeHash<Index>((x) => Hash.string(`${x.a}-${x.b}`))
+    const hashIndex = Hash.makeHash<Index>((x) => St.hashString(`${x.a}-${x.b}`))
 
     const map = pipe(
       HM.make<Index, Value>(eqIndex, hashIndex),

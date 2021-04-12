@@ -186,6 +186,8 @@ export const getNewCache = ((canUseWeakMap: boolean) => {
   return getNewCacheFallback
 })(HAS_WEAKSET_SUPPORT)
 
+type EqualityComparatorCreator = (fn: EqualityComparator) => EqualityComparator
+
 /**
  * @function createCircularEqualCreator
  *
@@ -195,9 +197,9 @@ export const getNewCache = ((canUseWeakMap: boolean) => {
  * @param [isEqual] the isEqual comparator to use instead of isDeepEqual
  * @returns the method to create the `isEqual` function
  */
-export function createCircularEqualCreator(isEqual?: EqualityComparator) {
+export function createCircularEqualCreator(isEqual?: EqualityComparatorCreator) {
   return function createCircularEqual(comparator: EqualityComparator) {
-    const _comparator = isEqual || comparator
+    const _comparator = isEqual ? isEqual(comparator) : comparator
 
     return function circularEqual(a: any, b: any, cache: Cache = getNewCache()) {
       const hasA = cache.has(a)

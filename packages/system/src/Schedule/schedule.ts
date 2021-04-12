@@ -8,7 +8,7 @@ import * as E from "../Either"
 import { pipe, tuple } from "../Function"
 import * as NoSuchElementException from "../GlobalExceptions"
 import * as O from "../Option"
-import { nextDouble } from "../Random"
+import * as Random from "../Random"
 import * as R from "../Ref"
 import * as Decision from "./Decision"
 import * as Driver from "./Driver"
@@ -1144,7 +1144,7 @@ export function jittered_<Env, In, Out>(
   { max = 0.1, min = 0 }: { min?: number; max?: number } = {}
 ) {
   return delayedM_(self, (d) =>
-    T.map_(nextDouble, (random) => d * min * (1 - random) + d * max * random)
+    T.map_(Random.next, (random) => d * min * (1 - random) + d * max * random)
   )
 }
 

@@ -1,12 +1,8 @@
 // tracing: off
 
+import * as CaseEquals from "../Structural/HasEquals"
+import * as CaseHash from "../Structural/HasHash"
 import type { Compute } from "../Utils"
-import * as CaseEquals from "./_internal/Equals"
-import * as CaseHash from "./_internal/Hash"
-import type { HasEquals } from "./HasEquals"
-import { equalsSym } from "./HasEquals"
-import type { HasHash } from "./HasHash"
-import { hashSym } from "./HasHash"
 
 export type ConstructorArgs<T, K extends PropertyKey> = Compute<
   {} extends Omit<T, "copy" | "toJSON" | "toString" | symbol | K>
@@ -15,9 +11,14 @@ export type ConstructorArgs<T, K extends PropertyKey> = Compute<
   "flat"
 >
 
-export class Case<T, K extends PropertyKey = never> implements HasEquals, HasHash {
+export const CaseBrand = Symbol()
+
+export interface CaseBrand {
+  [CaseBrand](): void
+}
+
+export class Case<T, K extends PropertyKey = never> implements CaseBrand {
   #args: ConstructorArgs<T, K>
-  #hash: number | undefined
 
   constructor(args: ConstructorArgs<T, K>) {
     this.#args = args
@@ -30,25 +31,15 @@ export class Case<T, K extends PropertyKey = never> implements HasEquals, HasHas
     return new this.constructor({ ...this.#args, ...args })
   }
 
-  [equalsSym](other: unknown): boolean {
-    return other instanceof Case ? CaseEquals.equals(this, other) : false
-  }
-
-  [hashSym](): number {
-    if (!this.#hash) {
-      this.#hash = CaseHash.hash(this)
-    }
-    return this.#hash
+  [CaseBrand]() {
+    //
   }
 }
 
-export function equals(x: HasEquals, y: unknown) {
-  return x[equalsSym](y)
+export function equals(x: CaseBrand, y: unknown) {
+  return typeof y === "object" && y != null && CaseBrand in y && CaseEquals.equals(x, y)
 }
 
-export function hash(x: HasHash) {
-  return x[hashSym]()
+export function hash(x: CaseBrand) {
+  return CaseHash.hash(x)
 }
-
-export { equalsSym, hasEquals, HasEquals } from "./HasEquals"
-export { HasHash, hasHash, hashSym } from "./HasHash"

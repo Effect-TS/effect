@@ -2,19 +2,13 @@
 
 import "../../Operator"
 
-import * as H from "../../Case/HasHash"
-import * as HH from "../../Hash"
+import * as St from "../../Structural"
 
-export class HashedPair<A extends H.HasHash, B extends H.HasHash> implements H.HasHash {
-  #hash!: number
-
+export class HashedPair<A extends St.HasHash, B extends St.HasHash>
+  implements St.HasHash {
   constructor(readonly first: A, readonly second: B) {}
 
-  [H.hashSym]() {
-    if (!this.#hash) {
-      this.#hash = HH.combineHash(this.first[H.hashSym](), this.second[H.hashSym]())
-    }
-
-    return this.#hash
+  [St.hashSym]() {
+    return St.combineHash(this.first[St.hashSym](), this.second[St.hashSym]())
   }
 }

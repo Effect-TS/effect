@@ -2,19 +2,18 @@
 
 import "../../Operator"
 
-import * as H from "../../Case/HasHash"
 import type * as Chunk from "../../Collections/Immutable/Chunk"
-import * as HH from "../../Hash"
+import * as St from "../../Structural"
 
-export abstract class Subscription<A> implements H.HasHash {
+export abstract class Subscription<A> implements St.HasHash {
   abstract isEmpty(): boolean
   abstract poll(default_: A): A
   abstract pollUpTo(n: number): Chunk.Chunk<A>
   abstract size(): number
   abstract unsubscribe(): void
 
-  [H.hashSym]() {
-    return HH.incrementalHash(this)
+  [St.hashSym]() {
+    return St.hashIncremental(this)
   }
 }
 

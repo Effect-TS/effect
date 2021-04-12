@@ -9,8 +9,8 @@ import type { Equal } from "../../../Equal"
 import type { Refinement } from "../../../Function"
 import { constant, identity, tuple } from "../../../Function"
 import type { Hash } from "../../../Hash"
-import { hash } from "../../../Hash"
 import * as O from "../../../Option"
+import * as St from "../../../Structural"
 import { fromBitmap, hashFragment, toBitmap } from "./Bitwise"
 import { SIZE } from "./Config"
 import type { Node, UpdateFn } from "./Nodes"
@@ -464,7 +464,7 @@ export function makeDefault<K, V>() {
       equals: (x, y) => x === y
     },
     {
-      hash
+      hash: St.hash
     }
   )
 }

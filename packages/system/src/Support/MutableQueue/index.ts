@@ -2,13 +2,11 @@
 
 import "../../Operator"
 
-import type { HasHash } from "../../Case"
-import { hashSym } from "../../Case"
 import * as Chunk from "../../Collections/Immutable/Chunk/core"
-import { incrementalHash } from "../../Hash"
+import * as St from "../../Structural"
 import { DoublyLinkedList } from "../DoublyLinkedList"
 
-export interface MutableQueue<A> extends HasHash {
+export interface MutableQueue<A> extends St.HasHash {
   /**
    * The '''maximum''' number of elements that a queue can hold.
    *
@@ -125,8 +123,8 @@ export class Unbounded<A> implements MutableQueue<A> {
     return result
   }
 
-  [hashSym](): number {
-    return incrementalHash(this)
+  [St.hashSym](): number {
+    return St.hashIncremental(this)
   }
 }
 
@@ -204,7 +202,7 @@ export class Bounded<A> implements MutableQueue<A> {
     return result
   }
 
-  [hashSym](): number {
-    return incrementalHash(this)
+  [St.hashSym](): number {
+    return St.hashIncremental(this)
   }
 }

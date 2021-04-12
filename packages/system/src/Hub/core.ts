@@ -2,7 +2,6 @@
 
 import "../Operator"
 
-import * as HH from "../Case/HasHash"
 import * as AR from "../Collections/Immutable/Array"
 import * as Chunk from "../Collections/Immutable/Chunk"
 import * as HS from "../Collections/Mutable/HashSet"
@@ -19,6 +18,7 @@ import * as P from "../Promise"
 import * as Q from "../Queue"
 import { XQueueInternal } from "../Queue"
 import * as Ref from "../Ref"
+import * as St from "../Structural"
 import * as AB from "../Support/AtomicBoolean"
 import * as MQ from "../Support/MutableQueue"
 import * as HP from "./_internal/HashedPair"
@@ -1056,10 +1056,10 @@ function unsafeMakeSubscription<A>(
 function makeSubscribersHashSet<A>(): HS.HashSet<
   HP.HashedPair<InternalHub.Subscription<A>, MQ.MutableQueue<P.Promise<never, A>>>
 > {
-  const eqHashedPair = EQ.makeEqual<HH.HasHash>(
-    (x, y) => x[HH.hashSym]() === y[HH.hashSym]()
+  const eqHashedPair = EQ.makeEqual<St.HasHash>(
+    (x, y) => x[St.hashSym]() === y[St.hashSym]()
   )
-  const hashHashedPair = H.makeHash<HH.HasHash>((x) => x[HH.hashSym]())
+  const hashHashedPair = H.makeHash<St.HasHash>((x) => x[St.hashSym]())
 
   return HS.make<
     HP.HashedPair<InternalHub.Subscription<A>, MQ.MutableQueue<P.Promise<never, A>>>

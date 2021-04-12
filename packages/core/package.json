@@ -166,6 +166,7 @@
       "Prelude/Witherable",
       "Prelude/WitherableWithIndex",
       "Sync",
+      "Structural",
       "Support",
       "Support/AtomicBoolean",
       "Support/AtomicNumber",

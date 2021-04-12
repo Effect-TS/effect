@@ -7,12 +7,13 @@ import { pipe, tuple } from "../../src/Function"
 import * as Hash from "../../src/Hash"
 import * as O from "../../src/Option"
 import * as Ord from "../../src/Ord"
+import * as St from "../../src/Structural"
 
 describe("HashMap", () => {
   it("hashes", () => {
-    expect(Hash.hash({ a: { b: 1 } })).toEqual(490026286)
-    expect(Hash.hash({ a: { b: 2 } })).toEqual(490026285)
-    expect(Hash.hash({ b: { a: 2 } })).toEqual(490075681)
+    expect(St.hash({ a: { b: 1 } })).toEqual(510)
+    expect(St.hash({ a: { b: 2 } })).toEqual(509)
+    expect(St.hash({ b: { a: 2 } })).toEqual(509)
   })
   it("use hash-map 4", () => {
     class Index {
@@ -24,7 +25,7 @@ describe("HashMap", () => {
     const eqIndex = Equal.makeEqual<Index>(
       (x, y) => x === y || (x.a === y.a && x.b === y.b)
     )
-    const hashIndex = Hash.makeHash<Index>((x) => Hash.string(`${x.a}-${x.b}`))
+    const hashIndex = Hash.makeHash<Index>((x) => St.hashString(`${x.a}-${x.b}`))
 
     const makeMap = () => HM.make<Index, Value>(eqIndex, hashIndex)
     const map = pipe(
@@ -132,7 +133,7 @@ describe("HashMap", () => {
       equals: (x, y) => x === y || (x.a === y.a && x.b === y.b)
     }
     const hashIndex: Hash.Hash<Index> = {
-      hash: (x) => Hash.string(`${x.a}-${x.b}`)
+      hash: (x) => St.hashString(`${x.a}-${x.b}`)
     }
     const makeMap = () => HM.make<Index, Value>(eqIndex, hashIndex)
     const map = pipe(

@@ -93,5 +93,5 @@ export function createComparator(createIsEqual?: EqualityComparatorCreator) {
     return false
   }
 
-  return comparator
+  return isEqual
 }

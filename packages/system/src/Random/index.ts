@@ -13,7 +13,7 @@ import { accessServiceM, replaceService } from "../Effect/has"
 import { literal } from "../Function"
 import type { HasTag } from "../Has"
 import { tag } from "../Has"
-import { PRNG } from "./Alea"
+import { PCGRandom } from "./PCG"
 
 export abstract class Random {
   readonly _tag = literal("@effect-ts/system/Random")
@@ -21,40 +21,31 @@ export abstract class Random {
   abstract readonly next: UIO<number>
   abstract readonly nextBoolean: UIO<boolean>
   abstract readonly nextInt: UIO<number>
-  abstract readonly nextDouble: UIO<number>
   abstract readonly nextRange: (low: number, high: number) => UIO<number>
   abstract readonly nextIntBetween: (low: number, high: number) => UIO<number>
-  abstract readonly setSeed: (s: string) => UIO<void>
 }
 
 export class LiveRandom extends Random {
-  private PRNG = new PRNG(this.seed)
+  private PRNG = new PCGRandom(this.seed)
 
-  constructor(private seed: string) {
+  constructor(private seed: number) {
     super()
   }
 
-  next: UIO<number> = effectTotal(() => this.PRNG.next())
+  next: UIO<number> = effectTotal(() => this.PRNG.number())
 
   nextBoolean: UIO<boolean> = chain_(this.next, (n) => effectTotal(() => n > 0.5))
 
-  nextInt: UIO<number> = effectTotal(() => this.PRNG.int32())
-
-  nextDouble: UIO<number> = effectTotal(() => this.PRNG.double())
+  nextInt: UIO<number> = effectTotal(() => this.PRNG.integer(Number.MAX_SAFE_INTEGER))
 
   nextRange: (low: number, high: number) => UIO<number> = (low, high) =>
     chain_(this.next, (n) => effectTotal(() => (high - low) * n + low))
 
   nextIntBetween: (low: number, high: number) => UIO<number> = (low, high) =>
-    chain_(this.next, (n) => effectTotal(() => Math.floor((high - low + 1) * n + low)))
-
-  setSeed = (s: string) =>
-    effectTotal(() => {
-      this.PRNG.setSeed(s)
-    })
+    effectTotal(() => this.PRNG.integer(low + high) - low)
 }
 
-export const defaultRandom = new LiveRandom(String(Math.random()))
+export const defaultRandom = new LiveRandom(Math.random())
 
 export const HasRandom = tag(Random)
 export type HasRandom = HasTag<typeof HasRandom>
@@ -68,13 +59,8 @@ export const nextIntBetween = (low: number, high: number) =>
 
 export const nextInt = accessServiceM(HasRandom)((_) => _.nextInt)
 
-export const nextDouble = accessServiceM(HasRandom)((_) => _.nextDouble)
-
 export const nextRange = (low: number, high: number) =>
   accessServiceM(HasRandom)((_) => _.nextRange(low, high))
 
-export const setSeed = (seed: string) =>
-  accessServiceM(HasRandom)((_) => _.setSeed(seed))
-
-export const withSeed = (seed: string) =>
+export const withSeed = (seed: number) =>
   replaceService(HasRandom, () => new LiveRandom(seed))
