@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.3.0](https://github.com/Effect-TS/printer/compare/@effect-ts/printer@0.2.0...@effect-ts/printer@0.3.0) (2021-04-12)
+
+**Note:** Version bump only for package @effect-ts/printer
+
+
+
+
+
 # [0.2.0](https://github.com/Effect-TS/printer/compare/@effect-ts/printer@0.1.1...@effect-ts/printer@0.2.0) (2021-04-10)
 
 
