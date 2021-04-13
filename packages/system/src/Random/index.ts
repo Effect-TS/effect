@@ -36,13 +36,13 @@ export class LiveRandom extends Random {
 
   nextBoolean: UIO<boolean> = chain_(this.next, (n) => effectTotal(() => n > 0.5))
 
-  nextInt: UIO<number> = effectTotal(() => this.PRNG.integer(Number.MAX_SAFE_INTEGER))
+  nextInt: UIO<number> = effectTotal(() => this.PRNG.integer(0))
 
   nextRange: (low: number, high: number) => UIO<number> = (low, high) =>
     chain_(this.next, (n) => effectTotal(() => (high - low) * n + low))
 
   nextIntBetween: (low: number, high: number) => UIO<number> = (low, high) =>
-    effectTotal(() => this.PRNG.integer(low + high) - low)
+    effectTotal(() => this.PRNG.integer(1 + high - low) + low)
 }
 
 export const defaultRandom = new LiveRandom(Math.random())
