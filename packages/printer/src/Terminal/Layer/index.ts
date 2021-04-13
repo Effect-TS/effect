@@ -1,34 +1,22 @@
 // tracing: off
 
-import * as MO from "@effect-ts/morphic"
-
 // -------------------------------------------------------------------------------------
 // definition
 // -------------------------------------------------------------------------------------
+export class Background {
+  readonly _tag = "Background"
+}
 
-const Background_ = MO.make((F) =>
-  F.interface({ _tag: F.stringLiteral("Background") }, { name: "Background" })
-)
+export class Foreground {
+  readonly _tag = "Foreground"
+}
 
-export interface Background extends MO.AType<typeof Background_> {}
-export interface BackgroundE extends MO.EType<typeof Background_> {}
-export const Background = MO.opaque<BackgroundE, Background>()(Background_)
-
-const Foreground_ = MO.make((F) =>
-  F.interface({ _tag: F.stringLiteral("Foreground") }, { name: "Foreground" })
-)
-
-export interface Foreground extends MO.AType<typeof Foreground_> {}
-export interface ForegroundE extends MO.EType<typeof Foreground_> {}
-export const Foreground = MO.opaque<ForegroundE, Foreground>()(Foreground_)
-
-export const Layer = MO.makeADT("_tag")({ Background, Foreground })
-export type Layer = MO.AType<typeof Layer>
+export type Layer = Background | Foreground
 
 // -------------------------------------------------------------------------------------
 // constructors
 // -------------------------------------------------------------------------------------
 
-export const foreground: Layer = Layer.as.Foreground({})
+export const foreground: Layer = new Foreground()
 
-export const background: Layer = Layer.as.Background({})
+export const background: Layer = new Background()

@@ -5,32 +5,22 @@ import * as A from "@effect-ts/core/Collections/Immutable/Array"
 import * as Ident from "@effect-ts/core/Identity"
 import * as O from "@effect-ts/core/Option"
 import * as S from "@effect-ts/core/Show"
-import * as MO from "@effect-ts/morphic"
 
 import type { Color } from "../Color"
 import * as Layer from "../Layer"
-import { setSGRCode, SGR } from "../SGR"
+import * as SGR from "../SGR"
 
 // -------------------------------------------------------------------------------------
 // definition
 // -------------------------------------------------------------------------------------
 
-const Style_ = MO.make((F) =>
-  F.interface(
-    {
-      foreground: F.option(SGR(F)),
-      background: F.option(SGR(F)),
-      bold: F.option(SGR(F)),
-      italicized: F.option(SGR(F)),
-      underlined: F.option(SGR(F))
-    },
-    { name: "Style" }
-  )
-)
-
-export interface Style extends MO.AType<typeof Style_> {}
-export interface StyleE extends MO.EType<typeof Style_> {}
-export const Style = MO.opaque<StyleE, Style>()(Style_)
+export interface Style {
+  foreground: O.Option<SGR.SGR>
+  background: O.Option<SGR.SGR>
+  bold: O.Option<SGR.SGR>
+  italicized: O.Option<SGR.SGR>
+  underlined: O.Option<SGR.SGR>
+}
 
 // -------------------------------------------------------------------------------------
 // instances
@@ -56,57 +46,57 @@ export const Identity = Ident.struct<Style>({
 // operations
 // -------------------------------------------------------------------------------------
 
-export const color = (color: Color): Style =>
-  Style.build({
+export function color(color: Color): Style {
+  return {
     ...Identity.identity,
-    foreground: O.some(SGR.as.SetColor({ color, layer: Layer.foreground, vivid: true }))
-  })
+    foreground: O.some(new SGR.SetColor(color, true, Layer.foreground))
+  }
+}
 
-export const bgColor = (color: Color): Style =>
-  Style.build({
+export function bgColor(color: Color): Style {
+  return {
     ...Identity.identity,
-    background: O.some(SGR.as.SetColor({ color, layer: Layer.background, vivid: true }))
-  })
+    background: O.some(new SGR.SetColor(color, true, Layer.background))
+  }
+}
 
-export const colorDull = (color: Color): Style =>
-  Style.build({
+export function colorDull(color: Color): Style {
+  return {
     ...Identity.identity,
-    foreground: O.some(
-      SGR.as.SetColor({ color, layer: Layer.foreground, vivid: false })
-    )
-  })
+    foreground: O.some(new SGR.SetColor(color, false, Layer.foreground))
+  }
+}
 
-export const bgColorDull = (color: Color): Style =>
-  Style.build({
+export function bgColorDull(color: Color): Style {
+  return {
     ...Identity.identity,
-    background: O.some(
-      SGR.as.SetColor({ color, layer: Layer.background, vivid: false })
-    )
-  })
+    background: O.some(new SGR.SetColor(color, false, Layer.background))
+  }
+}
 
-export const bold: Style = Style.build({
+export const bold: Style = {
   ...Identity.identity,
-  bold: O.some(SGR.as.SetBold({ bold: true }))
-})
+  bold: O.some(new SGR.SetBold(true))
+}
 
-export const italicized: Style = Style.build({
+export const italicized: Style = {
   ...Identity.identity,
-  italicized: O.some(SGR.as.SetItalicized({ italicized: true }))
-})
+  italicized: O.some(new SGR.SetItalicized(true))
+}
 
-export const underlined: Style = Style.build({
+export const underlined: Style = {
   ...Identity.identity,
-  underlined: O.some(SGR.as.SetUnderlined({ underlined: true }))
-})
+  underlined: O.some(new SGR.SetUnderlined(true))
+}
 
 // -------------------------------------------------------------------------------------
 // instances
 // -------------------------------------------------------------------------------------
 
 export const Show = S.makeShow<Style>((style) =>
-  setSGRCode(
+  SGR.setSGRCode(
     A.compact([
-      O.some(SGR.as.Reset({})),
+      O.some(new SGR.Reset()),
       style.foreground,
       style.background,
       style.bold,

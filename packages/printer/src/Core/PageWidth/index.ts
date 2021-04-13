@@ -1,8 +1,5 @@
 // tracing: off
 
-import * as Ord from "@effect-ts/core/Ord"
-import * as MO from "@effect-ts/morphic"
-
 // -------------------------------------------------------------------------------------
 // definition
 // -------------------------------------------------------------------------------------
@@ -11,48 +8,30 @@ import * as MO from "@effect-ts/morphic"
  * Represents a `PageWidth` setting that informs the layout
  * algorithms to avoid exceeding the specified space per line.
  */
-const AvailablePerLine_ = MO.make((F) =>
-  F.interface(
-    {
-      _tag: F.stringLiteral("AvailablePerLine"),
-      /**
-       * The number of characters, including whitespace, that can fit
-       * on a single line.
-       */
-      lineWidth: F.number(),
-      /**
-       * The fraction of the total page width that can be printed on.
-       * This allows limiting the length of printable text per line.
-       * Values must be between `0` and `1` (`0.4` to `1` is typical).
-       */
-      ribbonFraction: F.constrained(F.number(), Ord.between(Ord.number)(0, 1))
-    },
-    { name: "AvailablePerLine" }
-  )
-)
-
-export interface AvailablePerLine extends MO.AType<typeof AvailablePerLine_> {}
-export interface AvailablePerLineE extends MO.EType<typeof AvailablePerLine_> {}
-export const AvailablePerLine = MO.opaque<AvailablePerLineE, AvailablePerLine>()(
-  AvailablePerLine_
-)
+export class AvailablePerLine {
+  readonly _tag = "AvailablePerLine"
+  constructor(
+    /**
+     * The number of characters, including whitespace, that can fit
+     * on a single line.
+     */
+    readonly lineWidth: number,
+    /**
+     * The fraction of the total page width that can be printed on.
+     * This allows limiting the length of printable text per line.
+     * Values must be between `0` and `1` (`0.4` to `1` is typical).
+     */
+    readonly ribbonFraction: number
+  ) {}
+}
 
 /**
  * Represents a `PageWidth` setting that informs the layout
  * algorithms to avoid introducing line breaks into a document.
  */
-const Unbounded_ = MO.make((F) =>
-  F.interface(
-    {
-      _tag: F.stringLiteral("Unbounded")
-    },
-    { name: "Unbounded" }
-  )
-)
-
-export interface Unbounded extends MO.AType<typeof Unbounded_> {}
-export interface UnboundedE extends MO.EType<typeof Unbounded_> {}
-export const Unbounded = MO.opaque<UnboundedE, Unbounded>()(Unbounded_)
+export class Unbounded {
+  readonly _tag = "Unbounded"
+}
 
 /**
  * Represents the maximum number of characters that fit onto a
@@ -60,18 +39,17 @@ export const Unbounded = MO.opaque<UnboundedE, Unbounded>()(Unbounded_)
  * avoid exceeding the set character limit by inserting line
  * breaks where appropriate (e.g., via `softLine`).
  */
-export const PageWidth = MO.makeADT("_tag")({ AvailablePerLine, Unbounded })
-export type PageWidth = MO.AType<typeof PageWidth>
+export type PageWidth = AvailablePerLine | Unbounded
 
 // -------------------------------------------------------------------------------------
 // constructors
 // -------------------------------------------------------------------------------------
 
 export function availablePerLine(lineWidth: number, ribbonFraction: number): PageWidth {
-  return PageWidth.as.AvailablePerLine({ lineWidth, ribbonFraction })
+  return new AvailablePerLine(lineWidth, ribbonFraction)
 }
 
-export const unbounded: PageWidth = PageWidth.as.Unbounded({})
+export const unbounded: PageWidth = new Unbounded()
 
 export const defaultPageWidth = availablePerLine(80, 1)
 

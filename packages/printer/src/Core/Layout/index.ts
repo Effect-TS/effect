@@ -6,6 +6,7 @@ import { constant, not } from "@effect-ts/core/Function"
 import * as IO from "@effect-ts/core/IO"
 import type { Option } from "@effect-ts/core/Option"
 import * as O from "@effect-ts/core/Option"
+import { matchTag } from "@effect-ts/core/Utils"
 
 import type { Doc } from "../Doc"
 import type { DocStream } from "../DocStream"
@@ -358,23 +359,25 @@ function fitsPretty(width: number) {
  * line breaks.
  */
 export function pretty_<A>(options: LayoutOptions, doc: Doc<A>): DocStream<A> {
-  return PW.PageWidth.matchStrict({
-    AvailablePerLine: ({ lineWidth, ribbonFraction }) =>
-      layoutWadlerLeijen(
-        doc,
-        (lineIndent, currentColumn) => {
-          const remainingWidth = PW.remainingWidth(
-            lineWidth,
-            ribbonFraction,
-            lineIndent,
-            currentColumn
-          )
-          return fitsPretty(remainingWidth)
-        },
-        options
-      ),
-    Unbounded: () => unbounded(doc)
-  })(options.pageWidth)
+  return options.pageWidth["|>"](
+    matchTag({
+      AvailablePerLine: ({ lineWidth, ribbonFraction }) =>
+        layoutWadlerLeijen(
+          doc,
+          (lineIndent, currentColumn) => {
+            const remainingWidth = PW.remainingWidth(
+              lineWidth,
+              ribbonFraction,
+              lineIndent,
+              currentColumn
+            )
+            return fitsPretty(remainingWidth)
+          },
+          options
+        ),
+      Unbounded: () => unbounded(doc)
+    })
+  )
 }
 
 /**
@@ -523,11 +526,13 @@ function fitsSmart(lineWidth: number, ribbonFraction: number) {
  * ```
  */
 export function smart_<A>(options: LayoutOptions, doc: Doc<A>): DocStream<A> {
-  return PW.PageWidth.matchStrict({
-    AvailablePerLine: ({ lineWidth, ribbonFraction }) =>
-      layoutWadlerLeijen(doc, fitsSmart(lineWidth, ribbonFraction), options),
-    Unbounded: () => unbounded(doc)
-  })(options.pageWidth)
+  return options.pageWidth["|>"](
+    matchTag({
+      AvailablePerLine: ({ lineWidth, ribbonFraction }) =>
+        layoutWadlerLeijen(doc, fitsSmart(lineWidth, ribbonFraction), options),
+      Unbounded: () => unbounded(doc)
+    })
+  )
 }
 
 /**

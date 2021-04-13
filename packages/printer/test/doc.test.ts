@@ -1,10 +1,10 @@
 import type { Array } from "@effect-ts/core/Collections/Immutable/Array"
 import * as A from "@effect-ts/core/Collections/Immutable/Array"
+import { matchTag } from "@effect-ts/core/Utils"
 import { constant, flow, pipe } from "@effect-ts/system/Function"
 
 import type { Doc } from "../src/Core/Doc"
 import * as D from "../src/Core/Doc"
-import * as PW from "../src/Core/PageWidth"
 import * as R from "../src/Core/Render"
 
 describe("Doc", () => {
@@ -191,7 +191,7 @@ prefix [Nested: 0]
       const prefix = D.hsep([
         D.text("prefix"),
         D.withPageWidth(
-          PW.PageWidth.matchStrict({
+          matchTag({
             AvailablePerLine: ({ lineWidth, ribbonFraction }) =>
               D.brackets(
                 D.text(`Width: ${lineWidth}, Ribbon Fraction: ${ribbonFraction}`)
