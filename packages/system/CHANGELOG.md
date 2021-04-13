@@ -3,6 +3,23 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.27.3](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.27.2...@effect-ts/system@0.27.3) (2021-04-13)
+
+
+### Features
+
+* **stm:** upgrade encoding following zio series/2.x model ([e180c0a](https://github.com/Effect-TS/core/commit/e180c0a0e300cd4ce1c15316feb17a386d463d20))
+* **streams:** implement fail, die, take, forever ([3432824](https://github.com/Effect-TS/core/commit/3432824100a909a19cb043292b3bcb19fff3f27b))
+
+
+### Performance Improvements
+
+* **stm:** use linked stack to lower memory allocation ([5fc50b4](https://github.com/Effect-TS/core/commit/5fc50b42ef1a0e4196c761adffa1be41c23b387b))
+
+
+
+
+
 ## [0.27.2](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.27.1...@effect-ts/system@0.27.2) (2021-04-13)
 
 
