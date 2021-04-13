@@ -1,7 +1,6 @@
 import { ArrayIndexOutOfBoundsException } from "../../GlobalExceptions"
 import * as O from "../../Option"
 import * as STM from "../STM"
-import * as TExit from "../STM/TExit"
 import * as TRef from "../TRef"
 
 export const TArrayTypeId = Symbol()
@@ -61,18 +60,18 @@ export function find_<A>(
   self: TArray<A>,
   p: (a: A) => boolean
 ): STM.STM<unknown, never, O.Option<A>> {
-  return new STM.STM((journal) => {
+  return new STM.STMEffect((journal) => {
     let i = 0
 
     while (i < self.array.length) {
       const a = TRef.unsafeGet_(self.array[i]!, journal)
       if (p(a)) {
-        return TExit.succeed(O.some(a))
+        return O.some(a)
       }
       i++
     }
 
-    return TExit.succeed(O.none)
+    return O.none
   })
 }
 
@@ -94,7 +93,7 @@ export function findLast_<A>(
   self: TArray<A>,
   p: (a: A) => boolean
 ): STM.STM<unknown, never, O.Option<A>> {
-  return new STM.STM((journal) => {
+  return new STM.STMEffect((journal) => {
     let i = 0
     let res = O.emptyOf<A>()
 
@@ -106,7 +105,7 @@ export function findLast_<A>(
       i++
     }
 
-    return TExit.succeed(res)
+    return res
   })
 }
 
