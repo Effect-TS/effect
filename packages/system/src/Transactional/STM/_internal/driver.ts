@@ -1,4 +1,5 @@
 import type { FiberID } from "../../../Fiber"
+import { Stack } from "../../../Stack"
 import type { Journal } from "../Journal/index"
 import * as TExit from "../TExit"
 import type { STMOnFailure, STMOnRetry } from "./primitives"
@@ -10,112 +11,122 @@ type Cont =
   | STMOnRetry<unknown, unknown, unknown>
   | STM.STMOnSuccess<unknown, unknown, unknown, unknown>
 
-function unwindStack(
-  contStack: Cont[],
-  error: unknown,
-  isRetry: boolean
-): Erased | undefined {
-  let result: Erased | undefined = undefined
-  while (contStack.length > 0 && !result) {
-    const cont = contStack.pop()!
-    if (cont._typeId === STM.STMOnFailureTypeId) {
-      if (!isRetry) {
-        result = cont.onFailure(error)
-      }
-    }
-    if (cont._typeId === STM.STMOnRetryTypeId) {
-      if (isRetry) {
-        result = cont.onRetry
-      }
-    }
+export class STMDriver<R, E, A> {
+  private contStack: Stack<Cont> | undefined
+  private envStack: Stack<unknown>
+
+  constructor(
+    readonly self: STM.STM<R, E, A>,
+    readonly journal: Journal,
+    readonly fiberId: FiberID,
+    r0: R
+  ) {
+    this.envStack = new Stack(r0)
   }
-  return result
-}
 
-export function run<R, E, A>(
-  self: STM.STM<R, E, A>,
-  journal: Journal,
-  fiberId: FiberID,
-  r0: R
-): TExit.TExit<E, A> {
-  const contStack = [] as Cont[]
-  const envStack = [r0] as unknown[]
-  let curr = self as Erased | undefined
-  let exit: TExit.TExit<unknown, unknown> | undefined = undefined
+  private unwindStack(error: unknown, isRetry: boolean): Erased | undefined {
+    let result: Erased | undefined = undefined
+    while (this.contStack && !result) {
+      const cont = this.contStack.value
+      this.contStack = this.contStack.previous
+      if (cont._typeId === STM.STMOnFailureTypeId) {
+        if (!isRetry) {
+          result = cont.onFailure(error)
+        }
+      }
+      if (cont._typeId === STM.STMOnRetryTypeId) {
+        if (isRetry) {
+          result = cont.onRetry
+        }
+      }
+    }
+    return result
+  }
 
-  while (!exit && curr) {
-    const k = curr
-    STM.concreteSTM(k)
-    switch (k._typeId) {
-      case STM.STMSucceedTypeId: {
-        const a = k.a()
-        if (contStack.length === 0) {
-          exit = TExit.succeed(a)
-        } else {
-          curr = contStack.pop()!.apply(a)
-        }
-        break
-      }
-      case STM.STMSucceedNowTypeId: {
-        const a = k.a
-        if (contStack.length === 0) {
-          exit = TExit.succeed(a)
-        } else {
-          curr = contStack.pop()!.apply(a)
-        }
-        break
-      }
-      case STM.STMProvideSomeTypeId: {
-        envStack.push(k.f(envStack[envStack.length - 1]))
-        curr = STM.ensuring_(
-          k.stm,
-          STM.succeedL(() => {
-            envStack.pop()
-          })
-        )
-        break
-      }
-      case STM.STMOnRetryTypeId: {
-        contStack.push(k)
-        curr = k.stm
-        break
-      }
-      case STM.STMOnFailureTypeId: {
-        contStack.push(k)
-        curr = k.stm
-        break
-      }
-      case STM.STMOnSuccessTypeId: {
-        contStack.push(k)
-        curr = k.stm
-        break
-      }
-      case STM.STMEffectTypeId: {
-        try {
-          const a = k.f(journal, fiberId, envStack[envStack.length - 1])
-          if (contStack.length === 0) {
+  run(): TExit.TExit<E, A> {
+    let curr = this.self as Erased | undefined
+    let exit: TExit.TExit<unknown, unknown> | undefined = undefined
+
+    while (!exit && curr) {
+      const k = curr
+      STM.concreteSTM(k)
+      switch (k._typeId) {
+        case STM.STMSucceedTypeId: {
+          const a = k.a()
+          if (!this.contStack) {
             exit = TExit.succeed(a)
           } else {
-            curr = contStack.pop()!.apply(a)
+            const cont = this.contStack.value
+            this.contStack = this.contStack.previous
+            curr = cont.apply(a)
           }
-        } catch (e) {
-          if (STM.isFailException(e)) {
-            curr = unwindStack(contStack, e.e, false)
-            if (!curr) {
-              exit = TExit.fail(e.e)
-            }
-          } else if (STM.isRetryException(e)) {
-            curr = unwindStack(contStack, undefined, true)
-            if (!curr) {
-              exit = TExit.retry
-            }
+          break
+        }
+        case STM.STMSucceedNowTypeId: {
+          const a = k.a
+          if (!this.contStack) {
+            exit = TExit.succeed(a)
           } else {
-            throw e
+            const cont = this.contStack.value
+            this.contStack = this.contStack.previous
+            curr = cont.apply(a)
+          }
+          break
+        }
+        case STM.STMProvideSomeTypeId: {
+          this.envStack = new Stack(k.f(this.envStack.value), this.envStack)
+          curr = STM.ensuring_(
+            k.stm,
+            STM.succeedL(() => {
+              this.envStack = this.envStack.previous!
+            })
+          )
+          break
+        }
+        case STM.STMOnRetryTypeId: {
+          this.contStack = new Stack(k, this.contStack)
+          curr = k.stm
+          break
+        }
+        case STM.STMOnFailureTypeId: {
+          this.contStack = new Stack(k, this.contStack)
+          curr = k.stm
+          break
+        }
+        case STM.STMOnSuccessTypeId: {
+          this.contStack = new Stack(k, this.contStack)
+          curr = k.stm
+          break
+        }
+        case STM.STMEffectTypeId: {
+          try {
+            const a = k.f(this.journal, this.fiberId, this.envStack.value)
+            if (!this.contStack) {
+              exit = TExit.succeed(a)
+            } else {
+              const cont = this.contStack.value
+              this.contStack = this.contStack.previous
+              curr = cont.apply(a)
+            }
+          } catch (e) {
+            if (STM.isFailException(e)) {
+              curr = this.unwindStack(e.e, false)
+              if (!curr) {
+                exit = TExit.fail(e.e)
+              }
+            } else if (STM.isRetryException(e)) {
+              curr = this.unwindStack(undefined, true)
+              if (!curr) {
+                exit = TExit.retry
+              }
+            } else {
+              throw e
+            }
           }
         }
       }
     }
-  }
 
-  return exit as TExit.TExit<E, A>
+    return exit as TExit.TExit<E, A>
+  }
 }
