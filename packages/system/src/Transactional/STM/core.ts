@@ -5,7 +5,9 @@ import "../../Operator"
 import { RuntimeError } from "../../Cause"
 import * as T from "../../Effect"
 import * as E from "../../Either"
-import { identity } from "../../Function"
+import type { Predicate, Refinement } from "../../Function"
+import { constVoid, identity } from "../../Function"
+import { NoSuchElementException } from "../../GlobalExceptions"
 import * as O from "../../Option"
 import { AtomicBoolean } from "../../Support/AtomicBoolean"
 import * as P from "./_internal/primitives"
@@ -30,15 +32,30 @@ export {
   provideSome_,
   retry,
   STM,
-  succeed,
-  succeedL,
-  unit,
   STMEffect,
   STMFailException,
-  STMRetryException
+  STMRetryException,
+  succeed,
+  succeedL,
+  unit
 } from "./_internal/primitives"
+export { _catch as catch }
 
 export const MaxFrames = 200
+
+/**
+ * Accesses the environment of the transaction.
+ */
+export function access<R, A>(f: (r: R) => A): P.STM<R, never, A> {
+  return P.map_(environment<R>(), f)
+}
+
+/**
+ * Accesses the environment of the transaction to perform a transaction.
+ */
+export function accessM<R0, R, E, A>(f: (r: R0) => P.STM<R, E, A>) {
+  return P.chain_(environment<R0>(), f)
+}
 
 /**
  * Submerges the error case of an `Either` into the `STM`. The inverse
@@ -51,23 +68,23 @@ export function absolve<R, E, E1, A>(
 }
 
 /**
- * Like chain but ignores the input
+ * Propagates the given environment to self.
  */
-export function andThen_<R, E, A, R1, E1, B>(
+export function andThen_<R, E, A, E1, B>(
   self: P.STM<R, E, A>,
-  that: P.STM<R1, E1, B>
-): P.STM<R1 & R, E | E1, B> {
-  return P.chain_(self, () => that)
+  that: P.STM<A, E1, B>
+): P.STM<R, E | E1, B> {
+  return P.chain_(self, (a) => provideAll_(that, a))
 }
 
 /**
- * Like chain but ignores the input
+ * Propagates the given environment to self.
  *
  * @dataFirst andThen_
  */
-export function andThen<R1, E1, B>(
-  that: P.STM<R1, E1, B>
-): <R, E, A>(self: P.STM<R, E, A>) => P.STM<R1 & R, E | E1, B> {
+export function andThen<A, E1, B>(
+  that: P.STM<A, E1, B>
+): <R, E>(self: P.STM<R, E, A>) => P.STM<R, E | E1, B> {
   return (self) => andThen_(self, that)
 }
 
@@ -131,32 +148,6 @@ export function bimap<R, E, A, E1, B>(
 }
 
 /**
- * Atomically performs a batch of operations in a single transaction.
- */
-export function atomically<R, E, A>(stm: P.STM<R, E, A>) {
-  return T.accessM((r: R) =>
-    T.suspend((_, fiberId) => {
-      const v = tryCommit(fiberId, stm, r)
-
-      switch (v._typeId) {
-        case DoneTypeId: {
-          return v.io
-        }
-        case SuspendTypeId: {
-          const txnId = makeTxnId()
-          const done = new AtomicBoolean(false)
-          const interrupt = T.effectTotal(() => done.set(true))
-          const io = T.effectAsync(
-            tryCommitAsync(v.journal, fiberId, stm, txnId, done, r)
-          )
-          return T.ensuring_(io, interrupt)
-        }
-      }
-    })
-  )
-}
-
-/**
  * Recovers from specified error.
  *
  * @dataFirst catch_
@@ -177,7 +168,6 @@ function _catch<N extends keyof E, K extends E[N] & string, E, R1, E1, A1>(
       return P.fail(e as any)
     })
 }
-export { _catch as catch }
 
 /**
  * Recovers from specified error.
@@ -259,6 +249,50 @@ export function catchSome<E, R1, E1, B>(
   f: (e: E) => O.Option<P.STM<R1, E1, B>>
 ): <R, A>(self: P.STM<R, E, A>) => P.STM<R1 & R, E | E1, A | B> {
   return (self) => catchSome_(self, f)
+}
+
+/**
+ * Simultaneously filters and flatMaps the value produced by this effect.
+ * Continues on the effect returned from pf.
+ */
+export function continueOrRetryM_<R, E, A, R2, E2, A2>(
+  fa: P.STM<R, E, A>,
+  pf: (a: A) => O.Option<P.STM<R2, E2, A2>>
+): P.STM<R2 & R, E | E2, A2> {
+  return P.chain_(fa, (a): P.STM<R2, E2, A2> => O.getOrElse_(pf(a), () => P.retry))
+}
+
+/**
+ * Simultaneously filters and flatMaps the value produced by this effect.
+ * Continues on the effect returned from pf.
+ *
+ * @dataFirst continueOrRetryM_
+ */
+export function continueOrRetryM<A, R2, E2, A2>(
+  pf: (a: A) => O.Option<P.STM<R2, E2, A2>>
+): <R, E>(fa: P.STM<R, E, A>) => P.STM<R2 & R, E | E2, A2> {
+  return (fa) => continueOrRetryM_(fa, pf)
+}
+
+/**
+ * Fail with `e` if the supplied `PartialFunction` does not match, otherwise
+ * succeed with the returned value.
+ */
+export function continueOrRetry_<R, E, A, A2>(
+  fa: P.STM<R, E, A>,
+  pf: (a: A) => O.Option<A2>
+) {
+  return continueOrRetryM_(fa, (x) => O.map_(pf(x), P.succeed))
+}
+
+/**
+ * Fail with `e` if the supplied `PartialFunction` does not match, otherwise
+ * succeed with the returned value.
+ *
+ * @dataFirst continueOrRetry_
+ */
+export function continueOrRetry<A, A2>(pf: (a: A) => O.Option<A2>) {
+  return <R, E>(fa: P.STM<R, E, A>) => continueOrRetry_(fa, pf)
 }
 
 /**
@@ -362,6 +396,27 @@ export function continueOrFailL<E1, A, A2>(e: () => E1, pf: (a: A) => O.Option<A
 }
 
 /**
+ * Creates a composite effect that represents this effect followed by another
+ * one that may depend on the error produced by this one.
+ *
+ * @dataFirst chainError_
+ */
+export function chainError<E, R2, E2>(f: (e: E) => P.STM<R2, never, E2>) {
+  return <R, A>(self: P.STM<R, E, A>) => chainError_(self, f)
+}
+
+/**
+ * Creates a composite effect that represents this effect followed by another
+ * one that may depend on the error produced by this one.
+ */
+export function chainError_<R, E, A, R2, E2>(
+  self: P.STM<R, E, A>,
+  f: (e: E) => P.STM<R2, never, E2>
+) {
+  return flipWith_(self, (x) => P.chain_(x, f))
+}
+
+/**
  * Checks the condition, and if it's true, returns unit, otherwise, retries.
  */
 export function checkL(predicate: () => boolean) {
@@ -373,6 +428,59 @@ export function checkL(predicate: () => boolean) {
  */
 export function check(predicate: boolean) {
   return checkL(() => predicate)
+}
+
+/**
+ * Propagates self environment to that.
+ */
+export function compose_<R, E, A, R1, E1>(
+  self: P.STM<R, E, A>,
+  that: P.STM<R1, E1, R>
+) {
+  return andThen_(that, self)
+}
+
+/**
+ * Propagates self environment to that.
+ *
+ * @dataFirst compose_
+ */
+export function compose<R, R1, E1>(that: P.STM<R1, E1, R>) {
+  return <E, A>(self: P.STM<R, E, A>) => andThen_(that, self)
+}
+
+/**
+ * Commits this transaction atomically.
+ */
+export function commit<R, E, A>(self: P.STM<R, E, A>) {
+  return T.accessM((r: R) =>
+    T.suspend((_, fiberId) => {
+      const v = tryCommit(fiberId, self, r)
+
+      switch (v._typeId) {
+        case DoneTypeId: {
+          return v.io
+        }
+        case SuspendTypeId: {
+          const txnId = makeTxnId()
+          const done = new AtomicBoolean(false)
+          const interrupt = T.effectTotal(() => done.set(true))
+          const io = T.effectAsync(
+            tryCommitAsync(v.journal, fiberId, self, txnId, done, r)
+          )
+          return T.ensuring_(io, interrupt)
+        }
+      }
+    })
+  )
+}
+
+/**
+ * Commits this transaction atomically, regardless of whether the transaction
+ * is a success or a failure.
+ */
+export function commitEither<R, E, A>(self: P.STM<R, E, A>): T.Effect<R, E, A> {
+  return T.absolve(commit(either(self)))
 }
 
 /**
@@ -414,6 +522,222 @@ export function dieMessageL(message: () => string): P.STM<unknown, never, never>
 }
 
 /**
+ * Converts the failure channel into an `Either`.
+ */
+export function either<R, E, A>(self: P.STM<R, E, A>): P.STM<R, never, E.Either<E, A>> {
+  return fold_(
+    self,
+    (x) => E.left(x),
+    (x) => E.right(x)
+  )
+}
+
+/**
+ * Retrieves the environment inside an stm.
+ */
+export function environment<R>(): P.STM<R, never, R> {
+  return new P.STMEffect((_, __, r: R) => r)
+}
+
+/**
+ * Returns an effect that ignores errors and runs repeatedly until it eventually succeeds.
+ */
+export function eventually<R, E, A>(self: P.STM<R, E, A>): P.STM<R, never, A> {
+  return P.foldM_(self, () => eventually(self), P.succeed)
+}
+
+/**
+ * Dies with specified `unknown` if the predicate fails.
+ *
+ * @dataFirst filterOrDie_
+ */
+export function filterOrDie<A, B extends A>(
+  p: Refinement<A, B>,
+  dieWith: (a: Exclude<A, B>) => unknown
+): <R, E>(fa: P.STM<R, E, A>) => P.STM<R, E, B>
+export function filterOrDie<A>(
+  p: Predicate<A>,
+  dieWith: (a: A) => unknown
+): <R, E>(fa: P.STM<R, E, A>) => P.STM<R, E, A>
+export function filterOrDie<A>(p: Predicate<A>, dieWith: unknown) {
+  return <R, E>(fa: P.STM<R, E, A>): P.STM<R, E, A> =>
+    filterOrDie_(fa, p, dieWith as (a: A) => unknown)
+}
+
+/**
+ * Dies with specified `unknown` if the predicate fails.
+ */
+export function filterOrDie_<R, E, A, B extends A>(
+  fa: P.STM<R, E, A>,
+  p: Refinement<A, B>,
+  dieWith: (a: Exclude<A, B>) => unknown
+): P.STM<R, E, B>
+export function filterOrDie_<R, E, A>(
+  fa: P.STM<R, E, A>,
+  p: Predicate<A>,
+  dieWith: (a: A) => unknown
+): P.STM<R, E, A>
+export function filterOrDie_<R, E, A>(
+  fa: P.STM<R, E, A>,
+  p: Predicate<A>,
+  dieWith: unknown
+) {
+  return filterOrElse_(fa, p, (x) => die((dieWith as (a: A) => unknown)(x)))
+}
+
+/**
+ * Fails with `failWith` if the predicate fails.
+ *
+ * @dataFirst filterOrFail_
+ */
+export function filterOrFail<A, B extends A, E1>(
+  p: Refinement<A, B>,
+  failWith: (a: Exclude<A, B>) => E1
+): <R, E>(fa: P.STM<R, E, A>) => P.STM<R, E | E1, B>
+export function filterOrFail<A, E1>(
+  p: Predicate<A>,
+  failWith: (a: A) => E1
+): <R, E>(fa: P.STM<R, E, A>) => P.STM<R, E | E1, A>
+export function filterOrFail<A, E1>(p: Predicate<A>, failWith: unknown) {
+  return <R, E>(fa: P.STM<R, E, A>): P.STM<R, E | E1, A> =>
+    filterOrFail_(fa, p, failWith as (a: A) => E1)
+}
+
+/**
+ * Fails with `failWith` if the predicate fails.
+ */
+export function filterOrFail_<R, E, E1, A, B extends A>(
+  fa: P.STM<R, E, A>,
+  p: Refinement<A, B>,
+  failWith: (a: Exclude<A, B>) => E1
+): P.STM<R, E | E1, B>
+export function filterOrFail_<R, E, E1, A>(
+  fa: P.STM<R, E, A>,
+  p: Predicate<A>,
+  failWith: (a: A) => E1
+): P.STM<R, E | E1, A>
+export function filterOrFail_<R, E, E1, A>(
+  fa: P.STM<R, E, A>,
+  p: Predicate<A>,
+  failWith: unknown
+) {
+  return filterOrElse_(fa, p, (x) => fail((failWith as (a: A) => E1)(x)))
+}
+
+/**
+ * Applies `or` if the predicate fails.
+ *
+ * @dataFirst filterOrElse_
+ */
+export function filterOrElse<A, B extends A, R2, E2, A2>(
+  p: Refinement<A, B>,
+  or: (a: Exclude<A, B>) => P.STM<R2, E2, A2>
+): <R, E>(fa: P.STM<R, E, A>) => P.STM<R & R2, E | E2, B | A2>
+export function filterOrElse<A, R2, E2, A2>(
+  p: Predicate<A>,
+  or: (a: A) => P.STM<R2, E2, A2>
+): <R, E>(fa: P.STM<R, E, A>) => P.STM<R & R2, E | E2, A | A2>
+export function filterOrElse<A, R2, E2, A2>(p: Predicate<A>, or: unknown) {
+  return <R, E>(fa: P.STM<R, E, A>) =>
+    filterOrElse_(fa, p, or as (a: A) => P.STM<R2, E2, A2>)
+}
+
+/**
+ * Applies `or` if the predicate fails.
+ */
+export function filterOrElse_<R, E, A, B extends A, R2, E2, A2>(
+  fa: P.STM<R, E, A>,
+  p: Refinement<A, B>,
+  or: (a: Exclude<A, B>) => P.STM<R2, E2, A2>
+): P.STM<R & R2, E | E2, B | A2>
+export function filterOrElse_<R, E, A, R2, E2, A2>(
+  fa: P.STM<R, E, A>,
+  p: Predicate<A>,
+  or: (a: A) => P.STM<R2, E2, A2>
+): P.STM<R & R2, E | E2, A | A2>
+export function filterOrElse_<R, E, A, R2, E2, A2>(
+  fa: P.STM<R, E, A>,
+  p: Predicate<A>,
+  or: unknown
+): P.STM<R & R2, E | E2, A | A2> {
+  return P.chain_(
+    fa,
+    (a): P.STM<R2, E2, A | A2> =>
+      p(a) ? P.succeed(a) : suspend(() => (or as (a: A) => P.STM<R2, E2, A2>)(a))
+  )
+}
+
+/**
+ * Dies with a `Error` having the specified text message
+ * if the predicate fails.
+ *
+ * @dataFirst filterOrDieMessage_
+ */
+export function filterOrDieMessage<A, B extends A>(
+  p: Refinement<A, B>,
+  message: (a: Exclude<A, B>) => string
+): <R, E>(fa: P.STM<R, E, A>) => P.STM<R, E, B>
+export function filterOrDieMessage<A>(
+  p: Predicate<A>,
+  message: (a: A) => string
+): <R, E>(fa: P.STM<R, E, A>) => P.STM<R, E, A>
+export function filterOrDieMessage<A>(p: Predicate<A>, message: unknown) {
+  return <R, E>(fa: P.STM<R, E, A>): P.STM<R, E, A> =>
+    filterOrDieMessage_(fa, p, message as (a: A) => string)
+}
+
+/**
+ * Dies with a `Error` having the specified text message
+ * if the predicate fails.
+ */
+export function filterOrDieMessage_<R, E, A, B extends A>(
+  fa: P.STM<R, E, A>,
+  p: Refinement<A, B>,
+  message: (a: Exclude<A, B>) => string
+): P.STM<R, E, B>
+export function filterOrDieMessage_<R, E, A>(
+  fa: P.STM<R, E, A>,
+  p: Predicate<A>,
+  message: (a: A) => string
+): P.STM<R, E, A>
+export function filterOrDieMessage_<R, E, A>(
+  fa: P.STM<R, E, A>,
+  p: Predicate<A>,
+  message: unknown
+) {
+  return filterOrDie_(fa, p, (a) => new RuntimeError((message as (a: A) => string)(a)))
+}
+
+/**
+ * Returns an effect that swaps the error/success cases. This allows you to
+ * use all methods on the error channel, possibly before flipping back.
+ */
+export function flip<R, E, A>(self: P.STM<R, E, A>) {
+  return P.foldM_(self, P.succeed, P.fail)
+}
+
+/**
+ * Swaps the error/value parameters, applies the function `f` and flips the parameters back
+ *
+ * @dataFirst flipWith_
+ */
+export function flipWith<R, E, A, R2, E2, A2>(
+  f: (self: P.STM<R, A, E>) => P.STM<R2, A2, E2>
+) {
+  return (self: P.STM<R, E, A>): P.STM<R2, E2, A2> => flipWith_(self, f)
+}
+
+/**
+ * Swaps the error/value parameters, applies the function `f` and flips the parameters back
+ */
+export function flipWith_<R, E, A, R2, E2, A2>(
+  self: P.STM<R, E, A>,
+  f: (self: P.STM<R, A, E>) => P.STM<R2, A2, E2>
+) {
+  return flip(f(flip(self)))
+}
+
+/**
  * Folds over the `STM` effect, handling both P.failure and success, but not
  * retry.
  */
@@ -449,6 +773,49 @@ export function flatten<R, E, R1, E1, B>(
   self: P.STM<R, E, P.STM<R1, E1, B>>
 ): P.STM<R1 & R, E | E1, B> {
   return P.chain_(self, identity)
+}
+
+/**
+ * Unwraps the optional error, defaulting to the provided value.
+ *
+ * @dataFirst flattenErrorOptionL_
+ */
+export function flattenErrorOptionL<E2>(def: () => E2) {
+  return <R, E, A>(self: P.STM<R, O.Option<E>, A>): P.STM<R, E | E2, A> =>
+    flattenErrorOptionL_(self, def)
+}
+
+/**
+ * Unwraps the optional error, defaulting to the provided value.
+ */
+export function flattenErrorOptionL_<R, E, A, E2>(
+  self: P.STM<R, O.Option<E>, A>,
+  def: () => E2
+): P.STM<R, E | E2, A> {
+  return mapError_(self, O.fold(def, identity))
+}
+
+/**
+ * Unwraps the optional error, defaulting to the provided value.
+ *
+ * @dataFirst flattenErrorOption_
+ */
+export function flattenErrorOption<E2>(def: E2) {
+  return <R, E, A>(self: P.STM<R, O.Option<E>, A>): P.STM<R, E | E2, A> =>
+    flattenErrorOption_(self, def)
+}
+
+/**
+ * Unwraps the optional error, defaulting to the provided value.
+ */
+export function flattenErrorOption_<R, E, A, E2>(
+  self: P.STM<R, O.Option<E>, A>,
+  def: E2
+): P.STM<R, E | E2, A> {
+  return mapError_(
+    self,
+    O.fold(() => def, identity)
+  )
 }
 
 /**
@@ -502,6 +869,160 @@ export function fromEither<E, A>(e: E.Either<E, A>): P.STM<unknown, E, A> {
 }
 
 /**
+ * Unwraps the optional success of this effect, but can fail with an None value.
+ */
+export function get<R, E, A>(self: P.STM<R, E, O.Option<A>>): P.STM<R, O.Option<E>, A> {
+  return P.foldM_(
+    self,
+    (x) => P.fail(O.some(x)),
+    O.fold(() => P.fail(O.none), P.succeed)
+  )
+}
+
+/**
+ * Returns a successful effect with the head of the list if the list is
+ * non-empty or fails with the error `None` if the list is empty.
+ */
+export function head<R, E, A>(
+  self: P.STM<R, E, Iterable<A>>
+): P.STM<R, O.Option<E>, A> {
+  return P.foldM_(
+    self,
+    (x) => P.fail(O.some(x)),
+    (x) => {
+      const it = x[Symbol.iterator]()
+      const next = it.next()
+      return next.done ? P.fail(O.none) : P.succeed(next.value)
+    }
+  )
+}
+
+/**
+ * Returns a new effect that ignores the success or failure of this effect.
+ */
+export function ignore<R, E, A>(self: P.STM<R, E, A>): P.STM<R, never, void> {
+  return fold_(self, constVoid, constVoid)
+}
+
+/**
+ * Returns whether this effect is a failure.
+ */
+export function isFailure<R, E, A>(self: P.STM<R, E, A>) {
+  return fold_(
+    self,
+    () => true,
+    () => false
+  )
+}
+
+/**
+ * Returns whether this effect is a success.
+ */
+export function isSuccess<R, E, A>(self: P.STM<R, E, A>) {
+  return fold_(
+    self,
+    () => false,
+    () => true
+  )
+}
+
+/**
+ * Returns a successful effect if the value is `Left`, or fails with the error `None`.
+ */
+export function left<R, E, B, C>(
+  self: P.STM<R, E, E.Either<B, C>>
+): P.STM<R, O.Option<E>, B> {
+  return P.foldM_(
+    self,
+    (e) => P.fail(O.some(e)),
+    E.fold(P.succeed, () => P.fail(O.none))
+  )
+}
+
+/**
+ * Returns a successful effect if the value is `Left`, or fails with the error e.
+ */
+export function leftOrFail_<R, E, B, C, E1>(
+  self: P.STM<R, E, E.Either<B, C>>,
+  orFail: (c: C) => E1
+) {
+  return P.chain_(
+    self,
+    E.fold(P.succeed, (x) => P.failL(() => orFail(x)))
+  )
+}
+
+/**
+ * Returns a successful effect if the value is `Left`, or fails with the error e.
+ *
+ * @dataFirst leftOrFail_
+ */
+export function leftOrFail<C, E1>(orFail: (c: C) => E1) {
+  return <R, E, B>(self: P.STM<R, E, E.Either<B, C>>) => leftOrFail_(self, orFail)
+}
+
+/**
+ * Returns a successful effect if the value is `Left`, or fails with a `NoSuchElementException`.
+ */
+export function leftOrFailException<R, E, B, C>(self: P.STM<R, E, E.Either<B, C>>) {
+  return leftOrFail_(self, () => new NoSuchElementException())
+}
+
+/**
+ * Depending on provided environment returns either this one or the other effect.
+ *
+ * @dataFirst join_
+ */
+export function join<R1, E1, A1>(that: P.STM<R1, E1, A1>) {
+  return <R, E, A>(self: P.STM<R, E, A>): P.STM<E.Either<R, R1>, E | E1, A | A1> => {
+    return join_(self, that)
+  }
+}
+
+/**
+ * Depending on provided environment returns either this one or the other effect.
+ */
+export function join_<R, E, A, R1, E1, A1>(
+  self: P.STM<R, E, A>,
+  that: P.STM<R1, E1, A1>
+): P.STM<E.Either<R, R1>, E | E1, A | A1> {
+  return accessM(
+    (_: E.Either<R, R1>): P.STM<unknown, E | E1, A | A1> =>
+      E.fold_(
+        _,
+        (r) => provideAll_(self, r),
+        (r1) => provideAll_(that, r1)
+      )
+  )
+}
+
+/**
+ * Depending on provided environment returns either this one or the other effect.
+ */
+export function joinEither_<R, E, A, R1, E1, A1>(
+  self: P.STM<R, E, A>,
+  that: P.STM<R1, E1, A1>
+): P.STM<E.Either<R, R1>, E | E1, E.Either<A, A1>> {
+  return accessM(
+    (_: E.Either<R, R1>): P.STM<unknown, E | E1, E.Either<A, A1>> =>
+      E.fold_(
+        _,
+        (r) => P.map_(provideAll_(self, r), E.left),
+        (r1) => P.map_(provideAll_(that, r1), E.right)
+      )
+  )
+}
+
+/**
+ * Depending on provided environment returns either this one or the other effect.
+ */
+export function joinEither<R, E, A, R1, E1, A1>(
+  that: P.STM<R1, E1, A1>
+): (self: P.STM<R, E, A>) => P.STM<E.Either<R, R1>, E | E1, E.Either<A, A1>> {
+  return (self) => joinEither_(self, that)
+}
+
+/**
  * Maps from one error type to another.
  */
 export function mapError_<R, E, A, E1>(
@@ -543,6 +1064,84 @@ export function provideAll<R>(
 }
 
 /**
+ * Repeats this `STM` effect until its result satisfies the specified predicate.
+ *
+ * WARNING:
+ * `repeatUntil` uses a busy loop to repeat the effect and will consume a thread until
+ * it completes (it cannot yield). This is because STM describes a single atomic
+ * transaction which must either complete, retry or fail a transaction before
+ * yielding back to the Effect Runtime.
+ *
+ * - Use `retryUntil` instead if you don't need to maintain transaction state for repeats.
+ * - Ensure repeating the STM effect will eventually satisfy the predicate.
+ */
+export function repeatUntil_<R, E, A>(
+  self: P.STM<R, E, A>,
+  f: (a: A) => boolean
+): P.STM<R, E, A> {
+  return P.chain_(self, (a) => (f(a) ? P.succeed(a) : repeatUntil_(self, f)))
+}
+
+/**
+ * Repeats this `STM` effect until its result satisfies the specified predicate.
+ *
+ * WARNING:
+ * `repeatUntil` uses a busy loop to repeat the effect and will consume a thread until
+ * it completes (it cannot yield). This is because STM describes a single atomic
+ * transaction which must either complete, retry or fail a transaction before
+ * yielding back to the Effect Runtime.
+ *
+ * - Use `retryUntil` instead if you don't need to maintain transaction state for repeats.
+ * - Ensure repeating the STM effect will eventually satisfy the predicate.
+ *
+ * @dataFirst repeatUntil_
+ */
+export function repeatUntil<A>(
+  f: (a: A) => boolean
+): <R, E>(self: P.STM<R, E, A>) => P.STM<R, E, A> {
+  return (self) => repeatUntil_(self, f)
+}
+
+/**
+ * Repeats this `STM` effect while its result satisfies the specified predicate.
+ *
+ * WARNING:
+ * `repeatWhile` uses a busy loop to repeat the effect and will consume a thread until
+ * it completes (it cannot yield). This is because STM describes a single atomic
+ * transaction which must either complete, retry or fail a transaction before
+ * yielding back to the Effect Runtime.
+ *
+ * - Use `retryWhile` instead if you don't need to maintain transaction state for repeats.
+ * - Ensure repeating the STM effect will eventually not satisfy the predicate.
+ */
+export function repeatWhile_<R, E, A>(
+  self: P.STM<R, E, A>,
+  f: (a: A) => boolean
+): P.STM<R, E, A> {
+  return P.chain_(self, (a) => (f(a) ? repeatWhile_(self, f) : P.succeed(a)))
+}
+
+/**
+ * Repeats this `STM` effect while its result satisfies the specified predicate.
+ *
+ * WARNING:
+ * `repeatWhile` uses a busy loop to repeat the effect and will consume a thread until
+ * it completes (it cannot yield). This is because STM describes a single atomic
+ * transaction which must either complete, retry or fail a transaction before
+ * yielding back to the Effect Runtime.
+ *
+ * - Use `retryWhile` instead if you don't need to maintain transaction state for repeats.
+ * - Ensure repeating the STM effect will eventually not satisfy the predicate.
+ *
+ * @dataFirst repeatWhile_
+ */
+export function repeatWhile<R, E, A>(
+  f: (a: A) => boolean
+): (self: P.STM<R, E, A>) => P.STM<R, E, A> {
+  return (self) => repeatWhile_(self, f)
+}
+
+/**
  * Suspends creation of the specified transaction lazily.
  */
 export function suspend<R, E, A>(f: () => P.STM<R, E, A>): P.STM<R, E, A> {
@@ -568,6 +1167,20 @@ export function tap<A, R1, E1, B>(
   f: (a: A) => P.STM<R1, E1, B>
 ): <R, E>(self: P.STM<R, E, A>) => P.STM<R1 & R, E | E1, A> {
   return (self) => tap_(self, f)
+}
+
+/**
+ * Returns an effect with the value on the left part.
+ */
+export function toLeftL<A>(a: () => A): P.STM<unknown, never, E.Either<A, never>> {
+  return P.chain_(P.succeedL(a), (x) => P.succeed(E.left(x)))
+}
+
+/**
+ * Returns an effect with the value on the left part.
+ */
+export function toLeft<A>(a: A): P.STM<unknown, never, E.Either<A, never>> {
+  return P.succeed(E.left(a))
 }
 
 /**

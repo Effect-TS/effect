@@ -15,7 +15,7 @@ describe("TRef", () => {
         yield* _(ref["|>"](TRef.update((n) => n + 1)))
 
         return yield* _(TRef.get(ref))
-      })["|>"](STM.atomically)
+      })["|>"](STM.commit)
     )
 
     expect(result).toEqual(1)
@@ -39,7 +39,7 @@ describe("TRef", () => {
         )
 
         return [yield* _(TRef.get(ref)), v0] as const
-      })["|>"](STM.atomically)
+      })["|>"](STM.commit)
     )
 
     const result2 = await T.runPromise(
@@ -60,7 +60,7 @@ describe("TRef", () => {
         )
 
         return [yield* _(TRef.get(ref)), v0] as const
-      })["|>"](STM.atomically)
+      })["|>"](STM.commit)
     )
 
     expect(result).toEqual([0, 0])
@@ -70,10 +70,10 @@ describe("TRef", () => {
     const f = jest.fn()
 
     await T.gen(function* (_) {
-      const ref = yield* _(STM.atomically(TRef.make(0)))
+      const ref = yield* _(STM.commit(TRef.make(0)))
 
       yield* _(
-        STM.atomically(ref["|>"](TRef.get)["|>"](STM.tap((n) => STM.check(n > 3))))
+        STM.commit(ref["|>"](TRef.get)["|>"](STM.tap((n) => STM.check(n > 3))))
           ["|>"](
             T.chain((n) =>
               T.effectTotal(() => {
@@ -85,7 +85,7 @@ describe("TRef", () => {
       )
 
       yield* _(
-        STM.atomically(ref["|>"](TRef.update((n) => n + 1)))
+        STM.commit(ref["|>"](TRef.update((n) => n + 1)))
           ["|>"](T.delay(10))
           ["|>"](T.repeatN(4))
           ["|>"](T.fork)
@@ -102,7 +102,7 @@ describe("TRef", () => {
 describe("TArray", () => {
   it("make-get", async () => {
     const result = await T.runPromiseExit(
-      STM.atomically(
+      STM.commit(
         STM.gen(function* (_) {
           const arr = yield* _(TArray.make(0, 1, 2))
 
@@ -111,7 +111,7 @@ describe("TArray", () => {
       )
     )
     const result2 = await T.runPromiseExit(
-      STM.atomically(
+      STM.commit(
         STM.gen(function* (_) {
           const arr = yield* _(TArray.make(0, 1, 2))
 
@@ -124,7 +124,7 @@ describe("TArray", () => {
   })
   it("find", async () => {
     const result = await T.runPromise(
-      STM.atomically(
+      STM.commit(
         STM.gen(function* (_) {
           const arr = yield* _(TArray.make(0, 1, 2))
           const a = yield* _(TArray.find_(arr, (n) => n > 1))
@@ -137,7 +137,7 @@ describe("TArray", () => {
   })
   it("findLast", async () => {
     const result = await T.runPromise(
-      STM.atomically(
+      STM.commit(
         STM.gen(function* (_) {
           const arr = yield* _(TArray.make(0, 1, 2))
           const a = yield* _(TArray.findLast_(arr, (n) => n > 0))

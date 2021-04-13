@@ -25,7 +25,7 @@ export function filterOrDie<A>(
 ): <R, E>(fa: Effect<R, E, A>) => Effect<R, E, A>
 export function filterOrDie<A>(p: Predicate<A>, dieWith: unknown, __trace?: string) {
   return <R, E>(fa: Effect<R, E, A>): Effect<R, E, A> =>
-    filterOrDie_(fa, p, dieWith as (a: A) => unknown, __dirname)
+    filterOrDie_(fa, p, dieWith as (a: A) => unknown, __trace)
 }
 
 /**

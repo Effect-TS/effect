@@ -2,9 +2,11 @@
 
 import * as E from "../Either"
 import { NoSuchElementException } from "../GlobalExceptions"
+import * as O from "../Option"
 import { chain_, succeed } from "./core"
 import type { Effect } from "./effect"
-import { failWith } from "./fail"
+import { fail, failWith } from "./fail"
+import { foldM_ } from "./foldM"
 
 /**
  * Returns a successful effect if the value is `Left`, or fails with the error e.
@@ -39,4 +41,17 @@ export function leftOrFailException<R, E, B, C>(
   __trace?: string
 ) {
   return leftOrFail_(self, () => new NoSuchElementException(), __trace)
+}
+
+/**
+ * Returns a successful effect if the value is `Left`, or fails with the error `None`.
+ */
+export function left<R, E, B, C>(
+  self: Effect<R, E, E.Either<B, C>>
+): Effect<R, O.Option<E>, B> {
+  return foldM_(
+    self,
+    (e) => fail(O.some(e)),
+    E.fold(succeed, () => fail(O.none))
+  )
 }

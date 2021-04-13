@@ -698,14 +698,14 @@ export function unsafeMake<A>(a: A): TRef<A> {
  * Makes a new `XTRef` that is initialized to the specified value.
  */
 export function makeCommitL<A>(a: () => A): T.UIO<TRef<A>> {
-  return STM.atomically(makeL(a))
+  return STM.commit(makeL(a))
 }
 
 /**
  * Makes a new `XTRef` that is initialized to the specified value.
  */
 export function makeCommit<A>(a: A): T.UIO<TRef<A>> {
-  return STM.atomically(make(a))
+  return STM.commit(make(a))
 }
 
 /**
