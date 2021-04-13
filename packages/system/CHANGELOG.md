@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.27.2](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.27.1...@effect-ts/system@0.27.2) (2021-04-13)
+
+
+### Bug Fixes
+
+* **random:** nextIntBetween ([4c3b64a](https://github.com/Effect-TS/core/commit/4c3b64a254071be6f9786dcfb9d0f83317f81752))
+
+
+
+
+
 ## [0.27.1](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.27.0...@effect-ts/system@0.27.1) (2021-04-12)
 
 
