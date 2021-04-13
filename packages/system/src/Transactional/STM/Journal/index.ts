@@ -6,10 +6,10 @@ import * as HM from "../../../Collections/Immutable/HashMap"
 import * as T from "../../../Effect"
 import type { FiberID } from "../../../Fiber"
 import type { AtomicBoolean } from "../../../Support/AtomicBoolean"
-import { AtomicNumber } from "../../../Support/AtomicNumber"
 import type { Atomic } from "../../TRef"
+import { run } from "../_internal/driver"
+import type { STM } from "../_internal/primitives"
 import type { Entry } from "../Entry"
-import type { TExit } from "../TExit"
 import { FailTypeId, RetryTypeId, SucceedTypeId } from "../TExit"
 import type { TryCommit } from "../TryCommit"
 import { Done, DoneTypeId, Suspend, SuspendTypeId } from "../TryCommit"
@@ -18,58 +18,6 @@ import type { TxnId } from "../TxnId"
 export type Journal = Map<Atomic<any>, Entry>
 
 export type Todo = () => unknown
-
-export const STMTypeId = Symbol()
-export type STMTypeId = typeof STMTypeId
-
-/**
- * `STM<R, E, A>` represents an effect that can be performed transactionally,
- *  resulting in a failure `E` or a value `A` that may require an environment
- *  `R` to execute.
- *
- * Software Transactional Memory is a technique which allows composition of arbitrary atomic operations.  It is
- *  the software analog of transactions in database systems.
- *
- * The API is lifted directly from the Haskell package Control.Concurrent.STM although the implementation does not
- *  resemble the Haskell one at all.
- *  [[http://hackage.haskell.org/package/stm-2.5.0.0/docs/Control-Concurrent-STM.html]]
- *
- * STM in Haskell was introduced in:
- *  Composable memory transactions, by Tim Harris, Simon Marlow, Simon Peyton Jones, and Maurice Herlihy, in ACM
- *  Conference on Principles and Practice of Parallel Programming 2005.
- *  [[https://www.microsoft.com/en-us/research/publication/composable-memory-transactions/]]
- *
- * See also:
- *  Lock Free Data Structures using STMs in Haskell, by Anthony Discolo, Tim Harris, Simon Marlow, Simon Peyton Jones,
- *  Satnam Singh) FLOPS 2006: Eighth International Symposium on Functional and Logic Programming, Fuji Susono, JAPAN,
- *  April 2006
- *  [[https://www.microsoft.com/en-us/research/publication/lock-free-data-structures-using-stms-in-haskell/]]
- *
- * The implemtation is based on the ZIO STM module, while JS environments have no race conditions from multiple threads
- *  STM provides greater benefits for syncronisation of Fibers and transactional data-types can be quite useful.
- */
-export class STM<R, E, A> {
-  readonly _typeId: STMTypeId = STMTypeId
-  constructor(
-    readonly exec: (
-      journal: Journal,
-      fiberId: FiberID,
-      stackSize: AtomicNumber,
-      r: R
-    ) => TExit<E, A>
-  ) {}
-}
-
-export const ResumableTypeId = Symbol()
-export type ResumableTypeId = typeof ResumableTypeId
-
-export class Resumable<E, E1, A, B> {
-  readonly _typeId: ResumableTypeId = ResumableTypeId
-  constructor(
-    readonly stm: STM<unknown, E, A>,
-    readonly stack: Array<(_: TExit<E, A>) => STM<unknown, E1, B>>
-  ) {}
-}
 
 /**
  * Creates a function that can reset the journal.
@@ -114,41 +62,6 @@ export function analyzeJournal(journal: Journal): "I" | "RW" | "RO" {
     }
   }
   return val
-}
-
-export function run<R, E, A>(
-  self: STM<R, E, A>,
-  journal: Journal,
-  fiberId: FiberID,
-  r: R
-) {
-  type Cont = (_: TExit<unknown, unknown>) => STM<unknown, unknown, unknown>
-  const stackSize = new AtomicNumber(0)
-  const stack = new Array<Cont>()
-  let current = self as STM<R, unknown, unknown>
-  let result = (undefined as unknown) as TExit<unknown, unknown>
-  while (result == null) {
-    try {
-      const v = current.exec(journal, fiberId, stackSize, r)
-      if (stack.length === 0) {
-        result = v
-      } else {
-        const next = stack.pop()!
-        current = next(v)
-      }
-    } catch (e) {
-      if (e instanceof Resumable) {
-        current = e.stm
-        while (e.stack.length > 0) {
-          stack.push(e.stack.pop()!)
-        }
-        stackSize.set(0)
-      } else {
-        throw e
-      }
-    }
-  }
-  return result as TExit<E, A>
 }
 
 export const emptyTodoMap = HM.make<TxnId, Todo>(

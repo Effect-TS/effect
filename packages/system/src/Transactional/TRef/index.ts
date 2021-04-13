@@ -8,11 +8,11 @@ import * as E from "../../Either"
 import { identity } from "../../Function"
 import * as O from "../../Option"
 import { AtomicReference } from "../../Support/AtomicReference"
+import { STMEffect } from "../STM/_internal/primitives"
 import * as STM from "../STM/core"
 import { makeEntry } from "../STM/Entry"
 import type { Journal, Todo } from "../STM/Journal"
 import { emptyTodoMap } from "../STM/Journal"
-import * as TExit from "../STM/TExit"
 import type { TxnId } from "../STM/TxnId"
 import { Versioned } from "../STM/Versioned"
 
@@ -248,9 +248,9 @@ export function get<EA, EB, A, B>(self: XTRef<EA, EB, A, B>): STM.STM<unknown, E
   concrete(self)
   switch (self._tag) {
     case "Atomic": {
-      return new STM.STM((journal) => {
+      return new STMEffect((journal) => {
         const entry = getOrMakeEntry(self, journal)
-        return TExit.succeed(entry.use((_) => _.unsafeGet<B>()))
+        return entry.use((_) => _.unsafeGet<B>())
       })
     }
     case "Derived": {
@@ -286,9 +286,9 @@ export function set_<EA, EB, A, B>(
   concrete(self)
   switch (self._tag) {
     case "Atomic": {
-      return new STM.STM((journal) => {
+      return new STMEffect((journal) => {
         const entry = getOrMakeEntry(self, journal)
-        return TExit.succeed(entry.use((_) => _.unsafeSet(a)))
+        return entry.use((_) => _.unsafeSet(a))
       })
     }
     case "Derived": {
@@ -323,12 +323,12 @@ export function modify_<E, A, B>(
   concrete(self)
   switch (self._tag) {
     case "Atomic": {
-      return new STM.STM((journal) => {
+      return new STMEffect((journal) => {
         const entry = getOrMakeEntry(self, journal)
         const oldValue = entry.use((_) => _.unsafeGet<A>())
         const [retValue, newValue] = f(oldValue)
         entry.use((_) => _.unsafeSet(newValue))
-        return TExit.succeed(retValue)
+        return retValue
       })
     }
     case "Derived": {
@@ -418,11 +418,11 @@ export function getAndSet_<EA, A>(self: ETRef<EA, A>, a: A): STM.STM<unknown, EA
   concrete(self)
   switch (self._tag) {
     case "Atomic": {
-      return new STM.STM((journal) => {
+      return new STMEffect((journal) => {
         const entry = getOrMakeEntry(self, journal)
         const oldValue = entry.use((_) => _.unsafeGet<A>())
         entry.use((_) => _.unsafeSet(a))
-        return TExit.succeed(oldValue)
+        return oldValue
       })
     }
     default: {
@@ -452,11 +452,11 @@ export function getAndUpdate_<EA, A>(
   concrete(self)
   switch (self._tag) {
     case "Atomic": {
-      return new STM.STM((journal) => {
+      return new STMEffect((journal) => {
         const entry = getOrMakeEntry(self, journal)
         const oldValue = entry.use((_) => _.unsafeGet<A>())
         entry.use((_) => _.unsafeSet(f(oldValue)))
-        return TExit.succeed(oldValue)
+        return oldValue
       })
     }
     default: {
@@ -487,14 +487,14 @@ export function getAndUpdateSome_<EA, A>(
   concrete(self)
   switch (self._tag) {
     case "Atomic": {
-      return new STM.STM((journal) => {
+      return new STMEffect((journal) => {
         const entry = getOrMakeEntry(self, journal)
         const oldValue = entry.use((_) => _.unsafeGet<A>())
         const v = f(oldValue)
         if (O.isSome(v)) {
           entry.use((_) => _.unsafeSet(v.value))
         }
-        return TExit.succeed(oldValue)
+        return oldValue
       })
     }
     default: {
@@ -542,11 +542,10 @@ export function update_<E, A>(
   concrete(self)
   switch (self._tag) {
     case "Atomic": {
-      return new STM.STM((journal) => {
+      return new STMEffect((journal) => {
         const entry = getOrMakeEntry(self, journal)
         const newValue = f(entry.use((_) => _.unsafeGet<A>()))
         entry.use((_) => _.unsafeSet(newValue))
-        return TExit.unit
       })
     }
     default:
@@ -617,12 +616,12 @@ export function updateAndGet_<EA, A>(
   concrete(self)
   switch (self._tag) {
     case "Atomic": {
-      return new STM.STM((journal) => {
+      return new STMEffect((journal) => {
         const entry = getOrMakeEntry(self, journal)
         const oldValue = entry.use((_) => _.unsafeGet<A>())
         const x = f(oldValue)
         entry.use((_) => _.unsafeSet(x))
-        return TExit.succeed(x)
+        return x
       })
     }
     default: {
@@ -661,13 +660,13 @@ export function concrete<EA, EB, A, B>(
  * Makes a new `XTRef` that is initialized to the specified value.
  */
 export function makeL<A>(a: () => A): STM.STM<unknown, never, TRef<A>> {
-  return new STM.STM((journal) => {
+  return new STMEffect((journal) => {
     const value = a()
     const versioned = new Versioned(value)
     const todo = new AtomicReference(emptyTodoMap)
     const tref = new Atomic(versioned, todo)
     journal.set(tref, makeEntry(tref, true))
-    return TExit.succeed(tref)
+    return tref
   })
 }
 
@@ -675,13 +674,13 @@ export function makeL<A>(a: () => A): STM.STM<unknown, never, TRef<A>> {
  * Makes a new `XTRef` that is initialized to the specified value.
  */
 export function make<A>(a: A): STM.STM<unknown, never, TRef<A>> {
-  return new STM.STM((journal) => {
+  return new STMEffect((journal) => {
     const value = a
     const versioned = new Versioned(value)
     const todo = new AtomicReference(emptyTodoMap)
     const tref = new Atomic(versioned, todo)
     journal.set(tref, makeEntry(tref, true))
-    return TExit.succeed(tref)
+    return tref
   })
 }
 
