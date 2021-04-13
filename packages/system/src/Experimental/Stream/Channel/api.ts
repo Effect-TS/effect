@@ -110,3 +110,12 @@ export function mapOut<OutElem, OutElem2>(
 ) => C.Channel<Env, InErr, InElem, InDone, OutErr, OutElem2, OutDone> {
   return (self) => mapOut_(self, f)
 }
+
+/**
+ * Repeats this channel forever
+ */
+export function repeated<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
+  self: C.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
+): C.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone> {
+  return C.chain_(self, () => repeated(self))
+}

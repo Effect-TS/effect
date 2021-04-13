@@ -190,18 +190,36 @@ export function halt<E>(
  * Halt a channel with the specified error
  */
 export function failL<E>(
-  result: () => E
+  error: () => E
 ): P.Channel<unknown, unknown, unknown, unknown, E, never, never> {
-  return new Halt(() => Cause.fail(result()))
+  return new Halt(() => Cause.fail(error()))
 }
 
 /**
  * Halt a channel with the specified error
  */
 export function fail<E>(
-  result: E
+  error: E
 ): P.Channel<unknown, unknown, unknown, unknown, E, never, never> {
-  return new Halt(() => Cause.fail(result))
+  return new Halt(() => Cause.fail(error))
+}
+
+/**
+ * Halt a channel with the specified exception
+ */
+export function die(
+  defect: unknown
+): P.Channel<unknown, unknown, unknown, unknown, never, never, never> {
+  return new Halt(() => Cause.die(defect))
+}
+
+/**
+ * Halt a channel with the specified exception
+ */
+export function dieL(
+  defect: () => unknown
+): P.Channel<unknown, unknown, unknown, unknown, never, never, never> {
+  return new Halt(() => Cause.die(defect()))
 }
 
 /**

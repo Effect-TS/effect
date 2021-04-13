@@ -29,4 +29,16 @@ describe("Stream", () => {
 
     expect(result).toEqual([1, 2, 3])
   })
+  it("forever", async () => {
+    expect(
+      await pipe(
+        S.succeed(1),
+        S.forever,
+        S.take(10),
+        S.runCollect,
+        T.map(Chunk.toArray),
+        T.runPromise
+      )
+    ).toEqual([1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
+  })
 })

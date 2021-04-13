@@ -2,6 +2,7 @@
 
 import "../../../Operator"
 
+import * as Cause from "../../../Cause"
 import * as Chunk from "../../../Collections/Immutable/Chunk"
 import * as T from "../../../Effect"
 import * as C from "../Channel"
@@ -47,6 +48,11 @@ export class Stream<R, E, A> {
 }
 
 /**
+ * Empty stream
+ */
+export const empty = fromChunk(Chunk.empty<never>())
+
+/**
  * Creates a single-valued pure stream
  */
 export function succeed<O>(o: O): Stream<unknown, never, O> {
@@ -58,6 +64,34 @@ export function succeed<O>(o: O): Stream<unknown, never, O> {
  */
 export function succeedL<O>(o: () => O): Stream<unknown, never, O> {
   return fromChunkL(() => Chunk.single(o()))
+}
+
+/**
+ * Halt a stream with the specified error
+ */
+export function fail<E>(error: E): Stream<unknown, E, never> {
+  return new Stream(C.fail(error))
+}
+
+/**
+ * Halt a stream with the specified error
+ */
+export function failL<E>(error: () => E): Stream<unknown, E, never> {
+  return new Stream(C.failL(error))
+}
+
+/**
+ * Halt a stream with the specified exception
+ */
+export function die(u: unknown): Stream<unknown, never, never> {
+  return new Stream(C.die(u))
+}
+
+/**
+ * Halt a stream with the specified exception
+ */
+export function dieL(u: () => unknown): Stream<unknown, never, never> {
+  return new Stream(C.dieL(u))
 }
 
 /**
@@ -175,4 +209,51 @@ export function map<O, O1>(
   f: (o: O) => O1
 ): <R, E>(self: Stream<R, E, O>) => Stream<R, E, O1> {
   return (self) => map_(self, f)
+}
+
+/**
+ * Repeats this stream forever.
+ */
+export function forever<R, E, A>(self: Stream<R, E, A>): Stream<R, E, A> {
+  return new Stream(C.repeated(self.channel))
+}
+
+function takeLoop<E, A>(
+  n: number
+): C.Channel<unknown, E, Chunk.Chunk<A>, unknown, E, Chunk.Chunk<A>, unknown> {
+  return C.readWithCause(
+    (i: Chunk.Chunk<A>) => {
+      const taken = Chunk.take_(i, n)
+      const left = Math.max(n - Chunk.size(taken), 0)
+      if (left > 0) {
+        return C.chain_(C.write(taken), () => takeLoop(left))
+      } else {
+        return C.write(taken)
+      }
+    },
+    (e: Cause.Cause<E>) => C.halt(e),
+    (d) => C.end(d)
+  )
+}
+
+/**
+ * Takes the specified number of elements from this stream.
+ */
+export function take_<R, E, A>(self: Stream<R, E, A>, n: number): Stream<R, E, A> {
+  if (n <= 0) {
+    return empty
+  }
+  if (!Number.isInteger(n)) {
+    return die(new Cause.IllegalArgumentException(`${n} should be an integer`))
+  }
+  return new Stream(self.channel[">>>"](takeLoop(n)))
+}
+
+/**
+ * Takes the specified number of elements from this stream.
+ *
+ * @dataFirst take_
+ */
+export function take(n: number): <R, E, A>(self: Stream<R, E, A>) => Stream<R, E, A> {
+  return (self) => take_(self, n)
 }
