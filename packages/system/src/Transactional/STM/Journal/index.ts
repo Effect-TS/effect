@@ -7,7 +7,7 @@ import * as T from "../../../Effect"
 import type { FiberID } from "../../../Fiber"
 import type { AtomicBoolean } from "../../../Support/AtomicBoolean"
 import type { Atomic } from "../../TRef"
-import { run } from "../_internal/driver"
+import { STMDriver } from "../_internal/driver"
 import type { STM } from "../_internal/primitives"
 import type { Entry } from "../Entry"
 import { FailTypeId, RetryTypeId, SucceedTypeId } from "../TExit"
@@ -164,7 +164,7 @@ export function tryCommit<R, E, A>(
   r: R
 ): TryCommit<E, A> {
   const journal: Journal = new Map()
-  const value = run(stm, journal, fiberId, r)
+  const value = new STMDriver(stm, journal, fiberId, r).run()
   const analysis = analyzeJournal(journal)
   if (analysis === "RW") {
     commitJournal(journal)
