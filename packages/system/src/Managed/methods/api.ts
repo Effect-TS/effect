@@ -43,7 +43,6 @@ import { absolve } from "./absolve"
 import { environment } from "./environment"
 import { foldM_ } from "./foldM"
 import { halt } from "./halt"
-import * as provideAll from "./provideAll"
 import { releaseMap } from "./releaseMap"
 import { suspend } from "./suspend"
 
@@ -598,8 +597,8 @@ export function compose_<R, E, A, E2, B>(
     environment<R>(),
     core.chain((r1) =>
       pipe(
-        provideAll.provideAll(r1)(self),
-        core.chain((r) => provideAll.provideAll(r)(that))
+        core.provideAll_(self, r1),
+        core.chain((r) => core.provideAll_(that, r))
       )
     )
   )
@@ -794,8 +793,8 @@ export function join_<R, E, A, R1, E1, A1>(
     environment<E.Either<R, R1>>(),
     core.chain(
       E.fold(
-        (r): IO<E | E1, A | A1> => provideAll.provideAll(r)(self),
-        (r1) => provideAll.provideAll(r1)(that)
+        (r): IO<E | E1, A | A1> => core.provideAll_(self, r),
+        (r1) => core.provideAll_(that, r1)
       ),
       __trace
     )
@@ -827,8 +826,8 @@ export function joinEither_<R, E, A, R2, E2, A2>(
     core.chain(
       E.fold(
         (r0): IO<E | E2, E.Either<A, A2>> =>
-          provideAll.provideAll_(core.map_(self, E.left), r0),
-        (r1) => provideAll.provideAll_(core.map_(that, E.right), r1)
+          core.provideAll_(core.map_(self, E.left), r0),
+        (r1) => core.provideAll_(core.map_(that, E.right), r1)
       ),
       __trace
     )
@@ -1002,7 +1001,7 @@ export function provideLayer_<R, E, A, R2, E2>(
   layer: L.Layer<R2, E2, R>,
   __trace?: string
 ): Managed<R2, E | E2, A> {
-  return core.chain_(L.build(layer), (r) => provideAll.provideAll_(self, r), __trace)
+  return core.chain_(L.build(layer), (r) => core.provideAll_(self, r), __trace)
 }
 
 /**
@@ -1732,18 +1731,18 @@ export function asService_<R, E, A>(self: Managed<R, E, A>, tag: Tag<A>) {
 /**
  * Executes the this effect and then provides its output as an environment to the second effect
  */
-export function andThen_<R, E, A, R1, E1, B>(
+export function andThen_<R, E, A, E1, B>(
   self: Managed<R, E, A>,
-  that: Managed<R1, E1, B>
+  that: Managed<A, E1, B>
 ) {
-  return core.chain_(self, () => that)
+  return core.chain_(self, (a) => core.provideAll_(that, a))
 }
 
 /**
  * Executes the this effect and then provides its output as an environment to the second effect
  */
-export function andThen<R1, E1, B>(that: Managed<R1, E1, B>) {
-  return <R, E, A>(self: Managed<R, E, A>) => core.chain_(self, () => that)
+export function andThen<A, E1, B>(that: Managed<A, E1, B>) {
+  return <R, E>(self: Managed<R, E, A>) => andThen_(self, that)
 }
 
 /**
@@ -1939,7 +1938,7 @@ export function provideServiceM<T>(_: Tag<T>) {
     ma: Managed<R1 & Has<T>, E1, A1>
   ): Managed<R & R1, E | E1, A1> =>
     accessManaged((r: R & R1) =>
-      core.chain_(f, (t) => provideAll.provideAll_(ma, mergeEnvironments(_, r, t)))
+      core.chain_(f, (t) => core.provideAll_(ma, mergeEnvironments(_, r, t)))
     )
 }
 

@@ -463,7 +463,25 @@ export function provideSome<R, R0>(f: (r0: R0) => R, __trace?: string) {
 }
 
 /**
- * A `Reservation< R, E, A>` encapsulates resource acquisition and disposal
+ * Provides the `Managed` effect with its required environment, which eliminates
+ * its dependency on `R`.
+ *
+ * @dataFirst provideAll_
+ */
+export function provideAll<R>(r: R, __trace?: string) {
+  return <E, A>(self: Managed<R, E, A>) => provideAll_(self, r)
+}
+
+/**
+ * Provides the `Managed` effect with its required environment, which eliminates
+ * its dependency on `R`.
+ */
+export function provideAll_<R, E, A>(self: Managed<R, E, A>, r: R, __trace?: string) {
+  return provideSome_(self, () => r, __trace)
+}
+
+/**
+ * A `Reservation<R, E, A>` encapsulates resource acquisition and disposal
  * without specifying when or how that resource might be used.
  *
  * See `Managed#reserve` and `Effect#reserve` for details of usage.

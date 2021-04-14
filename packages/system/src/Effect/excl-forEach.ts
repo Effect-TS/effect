@@ -29,7 +29,6 @@ import { XQueueInternal } from "../Queue/xqueue"
 import { AtomicBoolean } from "../Support/AtomicBoolean"
 import type { MutableQueue } from "../Support/MutableQueue"
 import { Bounded, Unbounded } from "../Support/MutableQueue"
-import * as andThen from "./andThen"
 import * as asUnit from "./asUnit"
 import * as bracket from "./bracket"
 import { bracketExit_ } from "./bracketExit"
@@ -54,6 +53,7 @@ import * as tap from "./tap"
 import * as tapCause from "./tapCause"
 import { toManaged } from "./toManaged"
 import * as whenM from "./whenM"
+import * as zips from "./zips"
 
 /**
  * Applies the function `f` to each element of the `Iterable<A>` and
@@ -182,7 +182,7 @@ export function forEachUnitPar_<R, E, A, X>(
           pipe(
             status,
             Ref.update(([started, done, _]) => tuple(started, done, true)),
-            andThen.andThen(promise.fail<void>(undefined)(result))
+            zips.zipRight(promise.fail<void>(undefined)(result))
           )
         ),
         Do.let(
@@ -199,7 +199,7 @@ export function forEachUnitPar_<R, E, A, X>(
                       pipe(
                         causes,
                         Ref.update((_) => cause.both(_, c)),
-                        andThen.andThen(startFailure)
+                        zips.zipRight(startFailure)
                       )
                     ),
                     ensuring.ensuring(
@@ -255,7 +255,7 @@ export function forEachUnitPar_<R, E, A, X>(
             pipe(
               result,
               promise.fail<void>(undefined),
-              andThen.andThen(pipe(causes.get, core.chain(core.halt))),
+              zips.zipRight(pipe(causes.get, core.chain(core.halt))),
               whenM.whenM(
                 pipe(
                   forEach_(fibers, (_) => _.await),

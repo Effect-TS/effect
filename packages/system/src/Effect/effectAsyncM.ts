@@ -3,7 +3,6 @@
 import type { Cause } from "../Cause"
 import { pipe } from "../Function"
 import * as P from "../Promise"
-import * as andThen from "./andThen"
 import * as catchAllCause from "./catchAllCause"
 import { fork } from "./core"
 import * as Do from "./do"
@@ -12,6 +11,7 @@ import { uninterruptibleMask } from "./interruption"
 import * as map from "./map"
 import { runtime } from "./runtime"
 import * as to from "./to"
+import * as zips from "./zips"
 
 /**
  * Imports an asynchronous effect into a pure `Effect` value. This formulation is
@@ -39,7 +39,7 @@ export function effectAsyncM<R, E, R2, E2, A, X>(
             ),
             __trace
           ),
-          andThen.andThen(restore(P.await(p)))
+          zips.zipRight(restore(P.await(p)))
         )
       )
     ),

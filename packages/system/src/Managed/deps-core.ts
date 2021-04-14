@@ -2,7 +2,7 @@
 
 // minimize circularity by importing only a subset
 
-export * from "../Effect/andThen"
+export * from "../Effect/zips"
 export * from "../Effect/bracketExit"
 export * from "../Effect/core"
 export * from "../Effect/core-scope"
