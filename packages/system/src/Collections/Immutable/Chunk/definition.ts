@@ -1,5 +1,6 @@
 import { _A } from "../../../Effect/commons"
 import { ArrayIndexOutOfBoundsException } from "../../../GlobalExceptions"
+import * as St from "../../../Structural"
 import { AtomicNumber } from "../../../Support/AtomicNumber"
 import * as A from "../Array"
 
@@ -73,6 +74,10 @@ export abstract class ChunkInternal<A> implements Iterable<A>, Chunk<A> {
     return arr
   }
 
+  [St.equalsSym](that: unknown): boolean {
+    return that instanceof ChunkInternal && corresponds_(this, that, St.equals)
+  }
+
   abstract [Symbol.iterator](): Iterator<A>
   abstract arrayLikeIterator(): Iterator<ArrayLike<A>>
   abstract reverseArrayLikeIterator(): Iterator<ArrayLike<A>>
@@ -90,7 +95,7 @@ export abstract class ChunkInternal<A> implements Iterable<A>, Chunk<A> {
   }
 
   reverse(): Iterable<A> {
-    const arr = this.arrayLike
+    const arr = this.arrayLike()
     return {
       [Symbol.iterator]: () => {
         let i = arr.length - 1
@@ -865,14 +870,13 @@ export class PrependN<A> extends ChunkInternal<A> {
   }
 
   arrayLikeIterator(): Iterator<ArrayLike<A>> {
-    const array = this.arrayLike
     let done = false
     return {
       next: () => {
         if (!done) {
           done = true
           return {
-            value: array(),
+            value: this.arrayLike(),
             done: false
           }
         } else {
@@ -886,14 +890,13 @@ export class PrependN<A> extends ChunkInternal<A> {
   }
 
   reverseArrayLikeIterator(): Iterator<ArrayLike<A>> {
-    const array = this.arrayLike
     let done = false
     return {
       next: () => {
         if (!done) {
           done = true
           return {
-            value: array(),
+            value: this.arrayLike(),
             done: false
           }
         } else {
@@ -1048,3 +1051,74 @@ function from_(
  * NOTE: The provided array should be totally filled, no holes are allowed
  */
 export const array: <A>(array: ArrayLike<A> | Iterable<A>) => Chunk<A> = from_
+
+/**
+ * Determines whether this chunk and the specified chunk have the same length
+ * and every pair of corresponding elements of this chunk and the specified
+ * chunk satisfy the specified predicate.
+ */
+export function corresponds_<A, B>(
+  self: Chunk<A>,
+  that: Chunk<B>,
+  f: (a: A, b: B) => boolean
+): boolean {
+  if (concreteId(self).length !== concreteId(that).length) {
+    return false
+  }
+
+  const leftIterator = concreteId(self).arrayLikeIterator()
+  const rightIterator = concreteId(that).arrayLikeIterator()
+
+  let i = 0
+  let j = 0
+  let equal = true
+  let done = false
+  let leftLength = 0
+  let rightLength = 0
+  let left: ArrayLike<A> | undefined = undefined
+  let right: ArrayLike<B> | undefined = undefined
+  let leftNext
+  let rightNext
+
+  while (equal && !done) {
+    if (i < leftLength && j < rightLength) {
+      if (!f(left![i]!, right![j]!)) {
+        equal = false
+      }
+      i++
+      j++
+    } else if (i === leftLength && (leftNext = leftIterator.next()) && !leftNext.done) {
+      left = leftNext.value
+      leftLength = left.length
+      i = 0
+    } else if (
+      j === rightLength &&
+      (rightNext = rightIterator.next()) &&
+      !rightNext.done
+    ) {
+      right = rightNext.value
+      rightLength = right.length
+      j = 0
+    } else if (i === leftLength && j === rightLength) {
+      done = true
+    } else {
+      equal = false
+    }
+  }
+
+  return equal
+}
+
+/**
+ * Determines whether this chunk and the specified chunk have the same length
+ * and every pair of corresponding elements of this chunk and the specified
+ * chunk satisfy the specified predicate.
+ *
+ * @dataFirst corresponds_
+ */
+export function corresponds<A, B>(
+  that: Chunk<B>,
+  f: (a: A, b: B) => boolean
+): (self: Chunk<A>) => boolean {
+  return (self) => corresponds_(self, that, f)
+}

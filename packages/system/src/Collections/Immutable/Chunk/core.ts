@@ -6,6 +6,7 @@ import {
   ChunkTypeId,
   concrete,
   concreteId,
+  corresponds_,
   EmptyTypeId,
   Singleton,
   SingletonTypeId,
@@ -272,77 +273,6 @@ export function chain<A, B>(f: (a: A) => Chunk<B>): (self: Chunk<A>) => Chunk<B>
  */
 export function flatten<A>(self: Chunk<Chunk<A>>): Chunk<A> {
   return chain_(self, identity)
-}
-
-/**
- * Determines whether this chunk and the specified chunk have the same length
- * and every pair of corresponding elements of this chunk and the specified
- * chunk satisfy the specified predicate.
- */
-export function corresponds_<A, B>(
-  self: Chunk<A>,
-  that: Chunk<B>,
-  f: (a: A, b: B) => boolean
-): boolean {
-  if (concreteId(self).length !== concreteId(that).length) {
-    return false
-  }
-
-  const leftIterator = concreteId(self).arrayLikeIterator()
-  const rightIterator = concreteId(that).arrayLikeIterator()
-
-  let i = 0
-  let j = 0
-  let equal = true
-  let done = false
-  let leftLength = 0
-  let rightLength = 0
-  let left: ArrayLike<A> | undefined = undefined
-  let right: ArrayLike<B> | undefined = undefined
-  let leftNext
-  let rightNext
-
-  while (equal && !done) {
-    if (i < leftLength && j < rightLength) {
-      if (!f(left![i]!, right![j]!)) {
-        equal = false
-      }
-      i++
-      j++
-    } else if (i === leftLength && (leftNext = leftIterator.next()) && !leftNext.done) {
-      left = leftNext.value
-      leftLength = left.length
-      i = 0
-    } else if (
-      j === rightLength &&
-      (rightNext = rightIterator.next()) &&
-      !rightNext.done
-    ) {
-      right = rightNext.value
-      rightLength = right.length
-      j = 0
-    } else if (i === leftLength && j === rightLength) {
-      done = true
-    } else {
-      equal = false
-    }
-  }
-
-  return equal
-}
-
-/**
- * Determines whether this chunk and the specified chunk have the same length
- * and every pair of corresponding elements of this chunk and the specified
- * chunk satisfy the specified predicate.
- *
- * @dataFirst corresponds_
- */
-export function corresponds<A, B>(
-  that: Chunk<B>,
-  f: (a: A, b: B) => boolean
-): (self: Chunk<A>) => boolean {
-  return (self) => corresponds_(self, that, f)
 }
 
 /**

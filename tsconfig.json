@@ -15,7 +15,8 @@
       "@effect-ts/build-utils/*": ["packages/build-utils/src/*"],
       "@effect-ts/build-utils": ["packages/build-utils/src"]
     },
-    "target": "ES2018"
+    "target": "ES2018",
+    "typeRoots": ["./node_modules/@types", "./typings"]
   },
   "include": ["scripts/**/*.ts"]
 }
