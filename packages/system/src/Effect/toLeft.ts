@@ -7,7 +7,7 @@ import type { UIO } from "./effect"
 /**
  * Returns an effect with the value on the left part.
  */
-export function toLeftL<A>(a: () => A, __trace?: string): UIO<E.Either<A, never>> {
+export function toLeftWith<A>(a: () => A, __trace?: string): UIO<E.Either<A, never>> {
   return chain_(effectTotal(a), (x) => succeed(E.left(x)), __trace)
 }
 

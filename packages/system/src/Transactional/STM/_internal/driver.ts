@@ -77,7 +77,7 @@ export class STMDriver<R, E, A> {
           this.envStack = new Stack(k.f(this.envStack.value), this.envStack)
           curr = STM.ensuring_(
             k.stm,
-            STM.succeedL(() => {
+            STM.succeedWith(() => {
               this.envStack = this.envStack.previous!
             })
           )

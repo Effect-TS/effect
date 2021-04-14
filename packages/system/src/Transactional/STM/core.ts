@@ -23,7 +23,7 @@ export {
   ensuring,
   ensuring_,
   fail,
-  failL,
+  failWith,
   foldM,
   foldM_,
   map,
@@ -36,7 +36,7 @@ export {
   STMFailException,
   STMRetryException,
   succeed,
-  succeedL,
+  succeedWith,
   unit
 } from "./_internal/primitives"
 export { _catch as catch }
@@ -349,14 +349,14 @@ export function continueOrFail<E1, A, A2>(e: E1, pf: (a: A) => O.Option<A2>) {
  * Fail with `e` if the supplied `PartialFunction` does not match, otherwise
  * continue with the returned value.
  */
-export function continueOrFailML_<R, E, E1, A, R2, E2, A2>(
+export function continueOrFailWithM_<R, E, E1, A, R2, E2, A2>(
   fa: P.STM<R, E, A>,
   e: () => E1,
   pf: (a: A) => O.Option<P.STM<R2, E2, A2>>
 ) {
   return P.chain_(
     fa,
-    (a): P.STM<R2, E1 | E2, A2> => O.getOrElse_(pf(a), () => P.failL(e))
+    (a): P.STM<R2, E1 | E2, A2> => O.getOrElse_(pf(a), () => P.failWith(e))
   )
 }
 
@@ -364,35 +364,35 @@ export function continueOrFailML_<R, E, E1, A, R2, E2, A2>(
  * Fail with `e` if the supplied `PartialFunction` does not match, otherwise
  * continue with the returned value.
  *
- * @dataFirst continueOrFailML_
+ * @dataFirst continueOrFailWithM_
  */
-export function continueOrFailML<E1, A, R2, E2, A2>(
+export function continueOrFailWithM<E1, A, R2, E2, A2>(
   e: () => E1,
   pf: (a: A) => O.Option<P.STM<R2, E2, A2>>
 ) {
-  return <R, E>(fa: P.STM<R, E, A>) => continueOrFailML_(fa, e, pf)
+  return <R, E>(fa: P.STM<R, E, A>) => continueOrFailWithM_(fa, e, pf)
 }
 
 /**
  * Fail with `e` if the supplied `PartialFunction` does not match, otherwise
  * succeed with the returned value.
  */
-export function continueOrFailL_<R, E, E1, A, A2>(
+export function continueOrFailWith_<R, E, E1, A, A2>(
   fa: P.STM<R, E, A>,
   e: () => E1,
   pf: (a: A) => O.Option<A2>
 ) {
-  return continueOrFailML_(fa, e, (x) => O.map_(pf(x), P.succeed))
+  return continueOrFailWithM_(fa, e, (x) => O.map_(pf(x), P.succeed))
 }
 
 /**
  * Fail with `e` if the supplied `PartialFunction` does not match, otherwise
  * succeed with the returned value.
  *
- * @dataFirst continueOrFailL_
+ * @dataFirst continueOrFailWith_
  */
-export function continueOrFailL<E1, A, A2>(e: () => E1, pf: (a: A) => O.Option<A2>) {
-  return <R, E>(fa: P.STM<R, E, A>) => continueOrFailL_(fa, e, pf)
+export function continueOrFailWith<E1, A, A2>(e: () => E1, pf: (a: A) => O.Option<A2>) {
+  return <R, E>(fa: P.STM<R, E, A>) => continueOrFailWith_(fa, e, pf)
 }
 
 /**
@@ -419,7 +419,7 @@ export function chainError_<R, E, A, R2, E2>(
 /**
  * Checks the condition, and if it's true, returns unit, otherwise, retries.
  */
-export function checkL(predicate: () => boolean) {
+export function checkWith(predicate: () => boolean) {
   return suspend(() => (predicate() ? P.unit : P.retry))
 }
 
@@ -427,7 +427,7 @@ export function checkL(predicate: () => boolean) {
  * Checks the condition, and if it's true, returns unit, otherwise, retries.
  */
 export function check(predicate: boolean) {
-  return checkL(() => predicate)
+  return checkWith(() => predicate)
 }
 
 /**
@@ -487,7 +487,7 @@ export function commitEither<R, E, A>(self: P.STM<R, E, A>): T.Effect<R, E, A> {
  * Kills the fiber running the effect.
  */
 export function die(u: unknown): P.STM<unknown, never, never> {
-  return P.succeedL(() => {
+  return P.succeedWith(() => {
     throw u
   })
 }
@@ -495,8 +495,8 @@ export function die(u: unknown): P.STM<unknown, never, never> {
 /**
  * Kills the fiber running the effect.
  */
-export function dieL(u: () => unknown): P.STM<unknown, never, never> {
-  return P.succeedL(() => {
+export function dieWith(u: () => unknown): P.STM<unknown, never, never> {
+  return P.succeedWith(() => {
     throw u()
   })
 }
@@ -506,7 +506,7 @@ export function dieL(u: () => unknown): P.STM<unknown, never, never> {
  * the specified message.
  */
 export function dieMessage(message: string): P.STM<unknown, never, never> {
-  return P.succeedL(() => {
+  return P.succeedWith(() => {
     throw new RuntimeError(message)
   })
 }
@@ -515,8 +515,8 @@ export function dieMessage(message: string): P.STM<unknown, never, never> {
  * Kills the fiber running the effect with a `RuntimeError` that contains
  * the specified message.
  */
-export function dieMessageL(message: () => string): P.STM<unknown, never, never> {
-  return P.succeedL(() => {
+export function dieMessageWith(message: () => string): P.STM<unknown, never, never> {
+  return P.succeedWith(() => {
     throw new RuntimeError(message())
   })
 }
@@ -778,17 +778,17 @@ export function flatten<R, E, R1, E1, B>(
 /**
  * Unwraps the optional error, defaulting to the provided value.
  *
- * @dataFirst flattenErrorOptionL_
+ * @dataFirst flattenErrorOptionWith_
  */
-export function flattenErrorOptionL<E2>(def: () => E2) {
+export function flattenErrorOptionWith<E2>(def: () => E2) {
   return <R, E, A>(self: P.STM<R, O.Option<E>, A>): P.STM<R, E | E2, A> =>
-    flattenErrorOptionL_(self, def)
+    flattenErrorOptionWith_(self, def)
 }
 
 /**
  * Unwraps the optional error, defaulting to the provided value.
  */
-export function flattenErrorOptionL_<R, E, A, E2>(
+export function flattenErrorOptionWith_<R, E, A, E2>(
   self: P.STM<R, O.Option<E>, A>,
   def: () => E2
 ): P.STM<R, E | E2, A> {
@@ -855,7 +855,7 @@ export function forEach<A, R, E, B>(
 /**
  * Lifts an `Either` into a `STM`.
  */
-export function fromEitherL<E, A>(e: () => E.Either<E, A>): P.STM<unknown, E, A> {
+export function fromEitherWith<E, A>(e: () => E.Either<E, A>): P.STM<unknown, E, A> {
   return suspend(() => {
     return E.fold_(e(), P.fail, P.succeed)
   })
@@ -948,7 +948,7 @@ export function leftOrFail_<R, E, B, C, E1>(
 ) {
   return P.chain_(
     self,
-    E.fold(P.succeed, (x) => P.failL(() => orFail(x)))
+    E.fold(P.succeed, (x) => P.failWith(() => orFail(x)))
   )
 }
 
@@ -1145,7 +1145,7 @@ export function repeatWhile<R, E, A>(
  * Suspends creation of the specified transaction lazily.
  */
 export function suspend<R, E, A>(f: () => P.STM<R, E, A>): P.STM<R, E, A> {
-  return flatten(P.succeedL(f))
+  return flatten(P.succeedWith(f))
 }
 
 /**
@@ -1172,8 +1172,8 @@ export function tap<A, R1, E1, B>(
 /**
  * Returns an effect with the value on the left part.
  */
-export function toLeftL<A>(a: () => A): P.STM<unknown, never, E.Either<A, never>> {
-  return P.chain_(P.succeedL(a), (x) => P.succeed(E.left(x)))
+export function toLeftWith<A>(a: () => A): P.STM<unknown, never, E.Either<A, never>> {
+  return P.chain_(P.succeedWith(a), (x) => P.succeed(E.left(x)))
 }
 
 /**

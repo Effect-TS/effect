@@ -153,7 +153,7 @@ export function readWithCause<
 /**
  * End a channel with the specified result
  */
-export function endL<OutDone>(
+export function endWith<OutDone>(
   result: () => OutDone
 ): P.Channel<unknown, unknown, unknown, unknown, never, never, OutDone> {
   return new Done(result)
@@ -171,7 +171,7 @@ export function end<OutDone>(
 /**
  * Halt a channel with the specified cause
  */
-export function haltL<E>(
+export function haltWith<E>(
   result: () => Cause.Cause<E>
 ): P.Channel<unknown, unknown, unknown, unknown, E, never, never> {
   return new Halt(result)
@@ -189,7 +189,7 @@ export function halt<E>(
 /**
  * Halt a channel with the specified error
  */
-export function failL<E>(
+export function failWith<E>(
   error: () => E
 ): P.Channel<unknown, unknown, unknown, unknown, E, never, never> {
   return new Halt(() => Cause.fail(error()))
@@ -216,7 +216,7 @@ export function die(
 /**
  * Halt a channel with the specified exception
  */
-export function dieL(
+export function dieWith(
   defect: () => unknown
 ): P.Channel<unknown, unknown, unknown, unknown, never, never, never> {
   return new Halt(() => Cause.die(defect()))
@@ -225,7 +225,7 @@ export function dieL(
 /**
  * Writes an output to the channel
  */
-export function writeL<OutElem>(
+export function writeWith<OutElem>(
   out: () => OutElem
 ): P.Channel<unknown, unknown, unknown, unknown, never, OutElem, void> {
   return new Emit(out)

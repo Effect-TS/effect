@@ -62,8 +62,8 @@ export function succeed<O>(o: O): Stream<unknown, never, O> {
 /**
  * Creates a single-valued pure stream
  */
-export function succeedL<O>(o: () => O): Stream<unknown, never, O> {
-  return fromChunkL(() => Chunk.single(o()))
+export function succeedWith<O>(o: () => O): Stream<unknown, never, O> {
+  return fromChunkWith(() => Chunk.single(o()))
 }
 
 /**
@@ -76,8 +76,8 @@ export function fail<E>(error: E): Stream<unknown, E, never> {
 /**
  * Halt a stream with the specified error
  */
-export function failL<E>(error: () => E): Stream<unknown, E, never> {
-  return new Stream(C.failL(error))
+export function failWith<E>(error: () => E): Stream<unknown, E, never> {
+  return new Stream(C.failWith(error))
 }
 
 /**
@@ -90,8 +90,8 @@ export function die(u: unknown): Stream<unknown, never, never> {
 /**
  * Halt a stream with the specified exception
  */
-export function dieL(u: () => unknown): Stream<unknown, never, never> {
-  return new Stream(C.dieL(u))
+export function dieWith(u: () => unknown): Stream<unknown, never, never> {
+  return new Stream(C.dieWith(u))
 }
 
 /**
@@ -110,8 +110,8 @@ export function fromChunk<O>(c: Chunk.Chunk<O>): Stream<unknown, never, O> {
  * @param c a chunk of values
  * @return a finite stream of values
  */
-export function fromChunkL<O>(c: () => Chunk.Chunk<O>): Stream<unknown, never, O> {
-  return new Stream(C.unwrap(T.effectTotal(() => C.writeL(c))))
+export function fromChunkWith<O>(c: () => Chunk.Chunk<O>): Stream<unknown, never, O> {
+  return new Stream(C.unwrap(T.effectTotal(() => C.writeWith(c))))
 }
 
 /**

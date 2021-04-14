@@ -659,7 +659,7 @@ export function concrete<EA, EB, A, B>(
 /**
  * Makes a new `XTRef` that is initialized to the specified value.
  */
-export function makeL<A>(a: () => A): STM.STM<unknown, never, TRef<A>> {
+export function makeWith<A>(a: () => A): STM.STM<unknown, never, TRef<A>> {
   return new STMEffect((journal) => {
     const value = a()
     const versioned = new Versioned(value)
@@ -697,8 +697,8 @@ export function unsafeMake<A>(a: A): TRef<A> {
 /**
  * Makes a new `XTRef` that is initialized to the specified value.
  */
-export function makeCommitL<A>(a: () => A): T.UIO<TRef<A>> {
-  return STM.commit(makeL(a))
+export function makeCommitWith<A>(a: () => A): T.UIO<TRef<A>> {
+  return STM.commit(makeWith(a))
 }
 
 /**

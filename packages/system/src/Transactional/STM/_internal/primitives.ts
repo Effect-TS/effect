@@ -178,7 +178,7 @@ export function succeed<A>(a: A): STM<unknown, never, A> {
 /**
  * Returns an `STM` effect that succeeds with the specified value.
  */
-export function succeedL<A>(a: () => A): STM<unknown, never, A> {
+export function succeedWith<A>(a: () => A): STM<unknown, never, A> {
   return new STMSucceed(a)
 }
 
@@ -194,7 +194,7 @@ export function fail<E>(e: E): STM<unknown, E, never> {
 /**
  * Returns a value that models failure in the transaction.
  */
-export function failL<E>(e: () => E): STM<unknown, E, never> {
+export function failWith<E>(e: () => E): STM<unknown, E, never> {
   return new STMEffect(() => {
     throw new STMFailException(e())
   })
