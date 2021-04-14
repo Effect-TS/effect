@@ -1,6 +1,6 @@
 // tracing: off
 
-import { effectTotal } from "../Effect/core"
+import { succeedWith } from "../Effect/core"
 import * as O from "../Option"
 import type { Promise } from "./promise"
 
@@ -9,7 +9,7 @@ import type { Promise } from "./promise"
  * promise has already been completed or a `None` otherwise.
  */
 export function poll<E, A>(promise: Promise<E, A>) {
-  return effectTotal(() => {
+  return succeedWith(() => {
     const state = promise.state.get
 
     switch (state._tag) {

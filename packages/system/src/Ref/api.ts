@@ -15,7 +15,7 @@ import { Atomic, concrete } from "./XRef"
  * Creates a new `XRef` with the specified value.
  */
 export function makeRef<A>(a: A): T.UIO<Ref<A>> {
-  return T.effectTotal(() => new Atomic(new AtomicReference(a)))
+  return T.succeedWith(() => new Atomic(new AtomicReference(a)))
 }
 
 /**

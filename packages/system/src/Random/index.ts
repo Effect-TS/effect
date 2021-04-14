@@ -7,7 +7,7 @@ import "../Operator"
  *
  * Copyright 2020 Michael Arnaldi and the Matechs Garage Contributors.
  */
-import { chain_, effectTotal } from "../Effect/core"
+import { chain_, succeedWith } from "../Effect/core"
 import type { UIO } from "../Effect/effect"
 import { accessServiceM, replaceService } from "../Effect/has"
 import { literal } from "../Function"
@@ -32,17 +32,17 @@ export class LiveRandom extends Random {
     super()
   }
 
-  next: UIO<number> = effectTotal(() => this.PRNG.number())
+  next: UIO<number> = succeedWith(() => this.PRNG.number())
 
-  nextBoolean: UIO<boolean> = chain_(this.next, (n) => effectTotal(() => n > 0.5))
+  nextBoolean: UIO<boolean> = chain_(this.next, (n) => succeedWith(() => n > 0.5))
 
-  nextInt: UIO<number> = effectTotal(() => this.PRNG.integer(0))
+  nextInt: UIO<number> = succeedWith(() => this.PRNG.integer(0))
 
   nextRange: (low: number, high: number) => UIO<number> = (low, high) =>
-    chain_(this.next, (n) => effectTotal(() => (high - low) * n + low))
+    chain_(this.next, (n) => succeedWith(() => (high - low) * n + low))
 
   nextIntBetween: (low: number, high: number) => UIO<number> = (low, high) =>
-    effectTotal(() => this.PRNG.integer(1 + high - low) + low)
+    succeedWith(() => this.PRNG.integer(1 + high - low) + low)
 }
 
 export const defaultRandom = new LiveRandom(Math.random())

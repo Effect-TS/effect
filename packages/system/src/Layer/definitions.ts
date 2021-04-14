@@ -498,7 +498,7 @@ export function makeMemoMap() {
     RM.makeRefM<
       ReadonlyMap<PropertyKey, readonly [T.IO<any, any>, Finalizer.Finalizer]>
     >(new Map()),
-    T.chain((r) => T.effectTotal(() => new MemoMap(r)))
+    T.chain((r) => T.succeedWith(() => new MemoMap(r)))
   )
 }
 

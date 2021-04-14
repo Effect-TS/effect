@@ -102,7 +102,7 @@ describe("Generator", () => {
       const d = yield* _(T.access((_: B) => _.b))
       const e = yield* _(
         M.make_(T.succeed(10), () =>
-          T.effectTotal(() => {
+          T.succeedWith(() => {
             close()
           })
         )
@@ -135,7 +135,7 @@ describe("Generator", () => {
   it("should use services", async () => {
     class CalcService {
       add(x: number, y: number) {
-        return T.effectTotal(() => x + y)
+        return T.succeedWith(() => x + y)
       }
     }
 
@@ -257,7 +257,7 @@ describe("Generator", () => {
       const c = yield* _(T.succeed(2))
       const d = yield* _(
         M.makeExit_(T.succeed(3), () =>
-          T.effectTotal(() => {
+          T.succeedWith(() => {
             fn()
           })
         )

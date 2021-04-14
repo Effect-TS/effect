@@ -9,10 +9,10 @@ describe("Effect", () => {
   it("mix", async () => {
     expect(
       await pipe(
-        S.accessM((n: number) => S.sync(() => n + 1)),
-        T.chain((n) => T.effectTotal(() => n + 1)),
-        T.chain((n) => T.fromIO(IO.sync(() => n + 1))),
-        T.chain((n) => T.fromAsync(A.sync(() => n + 1))),
+        S.accessM((n: number) => S.succeedWith(() => n + 1)),
+        T.chain((n) => T.succeedWith(() => n + 1)),
+        T.chain((n) => T.fromIO(IO.succeedWith(() => n + 1))),
+        T.chain((n) => T.fromAsync(A.succeedWith(() => n + 1))),
         T.provideAll(1),
         T.runPromise
       )

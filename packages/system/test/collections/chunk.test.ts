@@ -256,7 +256,7 @@ describe("Chunk", () => {
         Chunk.append(3),
         Chunk.append(4),
         Chunk.reduceM(0, (s, a) =>
-          T.effectTotal(() => {
+          T.succeedWith(() => {
             order.push(a)
             return s + a
           })
@@ -276,7 +276,7 @@ describe("Chunk", () => {
         Chunk.append(3),
         Chunk.append(4),
         Chunk.reduceRightM(0, (a, s) =>
-          T.effectTotal(() => {
+          T.succeedWith(() => {
             order.push(a)
             return s + a
           })

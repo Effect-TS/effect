@@ -7,7 +7,7 @@ import fs from "fs"
 import glob_ from "glob"
 
 export const log = (message: unknown) =>
-  Ef.effectTotal(() => {
+  Ef.succeedWith(() => {
     console.log(message)
   })
 
@@ -26,7 +26,7 @@ export const writeFile = Ef.fromNodeCb<
 >(fs.writeFile)
 
 export const glob = (glob: string, opts: glob_.IOptions = {}) =>
-  Ef.fromPromiseWith(
+  Ef.tryCatchPromise(
     () =>
       new Promise<string[]>((resolve, reject) => {
         glob_(glob, opts, (err, result) =>
@@ -40,7 +40,7 @@ export function onLeft(e: NodeJS.ErrnoException) {
   return pipe(
     log(e),
     Ef.chain(() =>
-      Ef.effectTotal(() => {
+      Ef.succeedWith(() => {
         process.exit(1)
       })
     )

@@ -1,6 +1,6 @@
 // tracing: off
 
-import { effectTotal } from "../Effect/core"
+import { succeedWith } from "../Effect/core"
 import type { Promise } from "./promise"
 
 /**
@@ -8,5 +8,5 @@ import type { Promise } from "./promise"
  * already been completed with a value or an error and false otherwise.
  */
 export function isDone<E, A>(promise: Promise<E, A>) {
-  return effectTotal(() => promise.state.get._tag === "Done")
+  return succeedWith(() => promise.state.get._tag === "Done")
 }

@@ -464,7 +464,7 @@ export function commit<R, E, A>(self: P.STM<R, E, A>) {
         case SuspendTypeId: {
           const txnId = makeTxnId()
           const done = new AtomicBoolean(false)
-          const interrupt = T.effectTotal(() => done.set(true))
+          const interrupt = T.succeedWith(() => done.set(true))
           const io = T.effectAsync(
             tryCommitAsync(v.journal, fiberId, self, txnId, done, r)
           )

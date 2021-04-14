@@ -221,7 +221,7 @@ export function replaceService_<R1, E1, A1, T>(
 ): Effect<R1 & Has<T>, E1, A1> {
   return accessServiceM(_)((t) =>
     provideServiceM(_)(
-      core.effectTotal(() => f(t)),
+      core.succeedWith(() => f(t)),
       __trace
     )(ma)
   )

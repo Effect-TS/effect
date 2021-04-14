@@ -64,8 +64,8 @@ export function chain_<R, E, A, R2, E2, A2>(
 /**
  * Imports a synchronous side-effect into a pure value
  */
-export function effectTotal<A>(effect: () => A, __trace?: string) {
-  return fromEffect(T.effectTotal(effect, __trace))
+export function succeedWith<A>(effect: () => A, __trace?: string) {
+  return fromEffect(T.succeedWith(effect, __trace))
 }
 
 /**

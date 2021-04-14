@@ -908,29 +908,29 @@ export function suspend<R, E, A>(f: () => Async<R, E, A>): Async<R, E, A> {
 /**
  * Lift a sync (non failable) computation
  */
-export function sync<A>(f: () => A) {
+export function succeedWith<A>(f: () => A) {
   return suspend(() => succeed<A>(f()))
 }
 
 /**
  * Lift a sync (non failable) computation
  */
-export function tryCatch<E>(onThrow: (u: unknown) => E) {
-  return <A>(f: () => A) =>
-    suspend(() => {
-      try {
-        return succeed<A>(f())
-      } catch (u) {
-        return fail(onThrow(u))
-      }
-    })
+export function tryCatch<E, A>(f: () => A, onThrow: (u: unknown) => E) {
+  return suspend(() => {
+    try {
+      return succeed<A>(f())
+    } catch (u) {
+      return fail(onThrow(u))
+    }
+  })
 }
 
 // construct from a promise
-export function promise<E>(onError: (u: unknown) => E) {
-  return <A>(
-    promise: (onInterrupt: (f: () => void) => void) => Promise<A>
-  ): Async<unknown, E, A> => new IPromise(promise, onError)
+export function promise<E, A>(
+  promise: (onInterrupt: (f: () => void) => void) => Promise<A>,
+  onError: (u: unknown) => E
+): Async<unknown, E, A> {
+  return new IPromise(promise, onError)
 }
 
 // construct from a non failable promise
@@ -1010,28 +1010,61 @@ export function forEach<R, A, E1, B>(f: (a: A) => Async<R, E1, B>) {
 
 // binds the output of a computation to a variable
 // useful for imperative style, like using async/await
-export const bind = <K extends string>(k: K) => <R, S, E1, A1>(
-  f: (s: S) => Async<R, E1, A1>
-) => <R1, E>(self: Async<R1, E, S>): Async<R & R1, E | E1, S & { [k in K]: A1 }> =>
-  pipe(
-    self,
-    chain((s) =>
-      pipe(
-        f(s),
-        map((a1) => ({ ...s, [k]: a1 } as S & { [k in K]: A1 }))
+export function bind<K extends string>(k: K) {
+  return <R, S, E1, A1>(f: (s: S) => Async<R, E1, A1>) => <R1, E>(
+    self: Async<R1, E, S>
+  ): Async<
+    R & R1,
+    E | E1,
+    S &
+      {
+        [k in K]: A1
+      }
+  > =>
+    pipe(
+      self,
+      chain((s) =>
+        pipe(
+          f(s),
+          map(
+            (a1) =>
+              ({ ...s, [k]: a1 } as S &
+                {
+                  [k in K]: A1
+                })
+          )
+        )
       )
     )
-  )
+}
 
 // binds the result of a function to a variable
 // useful for imperative style, like using async/await
-const assign = <K extends string>(k: K) => <S, A1>(f: (s: S) => A1) => <R, E>(
-  self: Async<R, E, S>
-): Async<R, E, S & { [k in K]: A1 }> =>
-  pipe(
-    self,
-    map((s) => pipe(f(s), (a1) => ({ ...s, [k]: a1 } as S & { [k in K]: A1 })))
-  )
+function assign<K extends string>(k: K) {
+  return <S, A1>(f: (s: S) => A1) => <R, E>(
+    self: Async<R, E, S>
+  ): Async<
+    R,
+    E,
+    S &
+      {
+        [k in K]: A1
+      }
+  > =>
+    pipe(
+      self,
+      map((s) =>
+        pipe(
+          f(s),
+          (a1) =>
+            ({ ...s, [k]: a1 } as S &
+              {
+                [k in K]: A1
+              })
+        )
+      )
+    )
+}
 
 export { assign as let }
 

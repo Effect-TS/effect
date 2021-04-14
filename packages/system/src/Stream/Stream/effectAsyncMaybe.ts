@@ -36,7 +36,7 @@ export function effectAsyncMaybe<R, E, A>(
       ),
       M.bind("runtime", () => pipe(T.runtime<R>(), T.toManaged)),
       M.bind("maybeStream", ({ output, runtime }) =>
-        M.effectTotal(() =>
+        M.succeedWith(() =>
           register((k, cb) =>
             pipe(
               Take.fromPull(k),

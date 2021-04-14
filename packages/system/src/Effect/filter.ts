@@ -29,7 +29,7 @@ export function filter_<A, R, E>(
 ): Effect<R, E, readonly A[]> {
   return core.suspend(
     () =>
-      I.reduce_(as, <Effect<R, E, A[]>>core.effectTotal(() => []), (io, a) =>
+      I.reduce_(as, <Effect<R, E, A[]>>core.succeedWith(() => []), (io, a) =>
         zipWith.zipWith_(
           io,
           core.suspend(() => f(a)),

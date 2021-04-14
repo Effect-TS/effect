@@ -7,7 +7,7 @@ import type { XReader } from "./definition"
 /**
  * Lift a sync (non failable) computation
  */
-export const sync: <A>(f: () => A) => XReader<unknown, A> = F.sync
+export const succeedWith: <A>(f: () => A) => XReader<unknown, A> = F.succeedWith
 
 /**
  * Reads the current context

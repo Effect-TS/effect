@@ -5,7 +5,7 @@ import { tag } from "../../src/Has"
 
 class ConsoleService {
   logN(n: number) {
-    return T.effectTotal(() => {
+    return T.succeedWith(() => {
       console.log(`Number: ${n}`)
     })
   }
@@ -39,7 +39,7 @@ test("21", async () => {
     program,
     T.provideService(Console)({
       logN: (n) =>
-        T.effectTotal(() => {
+        T.succeedWith(() => {
           f(n)
         })
     }),

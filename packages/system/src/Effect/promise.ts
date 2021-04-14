@@ -12,7 +12,7 @@ import { fail } from "./fail"
  * Create an Effect that when executed will construct `promise` and wait for its result,
  * errors will be handled using `onReject`
  */
-export function fromPromiseWith<E, A>(
+export function tryCatchPromise<E, A>(
   promise: Lazy<Promise<A>>,
   onReject: (reason: unknown) => E,
   __trace?: string
@@ -28,7 +28,7 @@ export function fromPromiseWith<E, A>(
  * Create an Effect that when executed will construct `promise` and wait for its result,
  * errors will produce failure as `unknown`
  */
-export function fromPromise<A>(
+export function tryPromise<A>(
   effect: Lazy<Promise<A>>,
   __trace?: string
 ): IO<unknown, A> {
@@ -40,9 +40,9 @@ export function fromPromise<A>(
 }
 
 /**
- * Like fromPromise but produces a defect in case of errors
+ * Like tryPromise but produces a defect in case of errors
  */
-export function fromPromiseDie<A>(effect: Lazy<Promise<A>>, __trace?: string): UIO<A> {
+export function promise<A>(effect: Lazy<Promise<A>>, __trace?: string): UIO<A> {
   return effectAsync((resolve) => {
     effect()
       .then((x) => pipe(x, succeed, resolve))

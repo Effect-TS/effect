@@ -20,7 +20,7 @@ test("19", () => {
     pipe(
       iof<"DoorOpened">()(0),
       closing,
-      chainLower((n) => IO.sync(() => n + 2)),
+      chainLower((n) => IO.succeedWith(() => n + 2)),
       run
     )
   ).toBe(3)

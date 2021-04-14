@@ -2,7 +2,7 @@
 
 import * as Async from "../Async"
 import * as IO from "../IO"
-import { accessM, effectTotal, succeed } from "./core"
+import { accessM, succeed, succeedWith } from "./core"
 import type { Effect } from "./effect"
 import { effectAsyncInterrupt } from "./effectAsyncInterrupt"
 import { fail } from "./fail"
@@ -33,7 +33,7 @@ export function fromAsync<R, E, A>(
           }
         }
       })
-      return effectTotal(() => {
+      return succeedWith(() => {
         cancel()
       })
     }, __trace)
@@ -44,5 +44,5 @@ export function fromAsync<R, E, A>(
  * Lift IO into Effect
  */
 export function fromIO<A>(io: IO.IO<A>, __trace?: string): Effect<unknown, never, A> {
-  return effectTotal(() => IO.run(io), __trace)
+  return succeedWith(() => IO.run(io), __trace)
 }

@@ -50,22 +50,29 @@ describe("Async", () => {
 
     expect(
       await pipe(
-        () => throwP(),
-        As.promise((_) => "mapped u"),
+        As.promise(
+          () => throwP(),
+          (_) => "mapped u"
+        ),
         As.runPromiseExit
       )
     ).toEqual(As.failExit("mapped u"))
 
     expect(
       await pipe(
-        () => rejectP(),
-        As.promise((_) => "mapped u"),
+        As.promise(
+          () => rejectP(),
+          (_) => "mapped u"
+        ),
         As.runPromiseExit
       )
     ).toEqual(As.failExit("mapped u"))
 
     expect(
-      await pipe(() => rejectP(), As.promise(identity), As.runPromiseExit)
+      await pipe(
+        As.promise(() => rejectP(), identity),
+        As.runPromiseExit
+      )
     ).toEqual(As.failExit("reject"))
   })
 })

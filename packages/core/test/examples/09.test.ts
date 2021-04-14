@@ -7,7 +7,7 @@ import * as X from "../../src/XPure"
 test("09", () => {
   class MyServiceImpl {
     hello(message: string) {
-      return X.sync(() => {
+      return X.succeedWith(() => {
         console.log(`Yeah: ${message}`)
       })
     }

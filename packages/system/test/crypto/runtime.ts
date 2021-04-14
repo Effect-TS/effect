@@ -35,7 +35,7 @@ export function testRuntime<R>(self: L.Layer<T.DefaultEnv, never, R>) {
           T.provideSome_(L.build(self).effect, (r: T.DefaultEnv) => tuple(r, rm))
         ),
         T.tap(({ res, rm }) =>
-          T.effectTotal(() => {
+          T.succeedWith(() => {
             env.set(res[1])
             relMap.set(rm)
           })

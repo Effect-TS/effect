@@ -9,7 +9,7 @@ test("05", () => {
     { a: 0, b: 1, c: 2, d: 3 },
     R.separateF(X.Applicative)((n) => X.succeed(n < 2 ? E.left(n) : E.right(n))),
     X.chain((r) =>
-      X.sync(() => {
+      X.succeedWith(() => {
         console.log(r)
       })
     ),

@@ -5,7 +5,7 @@ import * as T from "../src/Effect"
 import { assertsFailure } from "../src/Exit"
 import { flow, pipe } from "../src/Function"
 
-const addOne = (n: number) => T.effectTotal(() => n + 1)
+const addOne = (n: number) => T.succeedWith(() => n + 1)
 
 it("should not break", async () => {
   expect(
@@ -22,12 +22,12 @@ it("should not break", async () => {
 it("should trace generator", async () => {
   const exit = await pipe(
     T.gen(function* (_) {
-      const a = yield* _(T.effectTotal(() => 1))
+      const a = yield* _(T.succeedWith(() => 1))
       const b = yield* _(T.succeed(2))
       return a + b
     }),
     T.chain(T.succeed),
-    T.zipRight(T.effectTotal(() => 4)),
+    T.zipRight(T.succeedWith(() => 4)),
     T.chain(T.fail),
     T.runPromiseExit
   )

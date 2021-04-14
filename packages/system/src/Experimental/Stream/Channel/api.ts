@@ -46,7 +46,7 @@ export function runManaged<Env, InErr, InDone, OutErr, OutDone>(
 ): M.Managed<Env, OutErr, OutDone> {
   return M.mapM_(
     M.makeExit_(
-      T.effectTotal(() => new ChannelExecutor(() => self, undefined)),
+      T.succeedWith(() => new ChannelExecutor(() => self, undefined)),
       (exec, exit) => exec.close(exit) || T.unit
     ),
     (exec) =>

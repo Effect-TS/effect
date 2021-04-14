@@ -7,7 +7,7 @@ import type { XIO } from "./definition"
 /**
  * Lift a sync (non failable) computation
  */
-export const sync: <A>(f: () => A) => XIO<A> = F.sync
+export const succeedWith: <A>(f: () => A) => XIO<A> = F.succeedWith
 
 /**
  * Combines this computation with the specified computation.

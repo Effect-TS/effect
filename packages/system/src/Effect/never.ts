@@ -1,6 +1,6 @@
 // tracing: off
 
-import { effectTotal, suspend } from "./core"
+import { succeedWith, suspend } from "./core"
 import { effectAsyncInterrupt } from "./effectAsyncInterrupt"
 
 /**
@@ -12,7 +12,7 @@ export const never = suspend(() =>
     const interval = setInterval(() => {
       //
     }, 60000)
-    return effectTotal(() => {
+    return succeedWith(() => {
       clearInterval(interval)
     })
   })

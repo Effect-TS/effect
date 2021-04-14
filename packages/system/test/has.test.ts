@@ -6,12 +6,12 @@ describe("Has", () => {
   it("use services", async () => {
     class AddService {
       sum(a: number, b: number) {
-        return T.effectTotal(() => a + b)
+        return T.succeedWith(() => a + b)
       }
     }
     class MulService {
       prod(a: number, b: number) {
-        return T.effectTotal(() => a * b)
+        return T.succeedWith(() => a * b)
       }
     }
     const Add = tag(AddService)

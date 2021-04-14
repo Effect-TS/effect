@@ -124,11 +124,11 @@ export class Atomic<A> implements XRef<never, never, A, A> {
   }
 
   get get(): T.UIO<A> {
-    return T.effectTotal(() => this.value.get)
+    return T.succeedWith(() => this.value.get)
   }
 
   set(a: A): T.UIO<void> {
-    return T.effectTotal(() => {
+    return T.succeedWith(() => {
       this.value.set(a)
     })
   }

@@ -261,14 +261,14 @@ class Runtime {
             xp.cont,
             (e) =>
               chain_(
-                sync(() => {
+                succeedWith(() => {
                   environments = environments?.previous
                 }),
                 () => fail(e)
               ),
             (a) =>
               chain_(
-                sync(() => {
+                succeedWith(() => {
                   environments = environments?.previous
                 }),
                 () => succeed(a)
@@ -789,7 +789,7 @@ export function suspend<S1, S2, R, E, A>(
 /**
  * Lift a sync (non failable) computation
  */
-export function sync<A>(f: () => A) {
+export function succeedWith<A>(f: () => A) {
   return suspend(() => succeed(f()))
 }
 

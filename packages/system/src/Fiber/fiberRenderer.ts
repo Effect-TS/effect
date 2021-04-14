@@ -27,7 +27,7 @@ export function dumpStr(
   withTrace: false
 ): UIO<string> {
   const du = T.forEach_(fibers, dump)
-  const now = T.effectTotal(() => new Date().getTime())
+  const now = T.succeedWith(() => new Date().getTime())
   return T.map_(T.zipWith_(du, now, tuple), ([dumps, now]) => {
     const tree = renderHierarchy(dumps)
     const dumpStrings = withTrace ? collectTraces(dumps, now) : []

@@ -235,7 +235,7 @@ export function toRuntime<R, E, A>(
   return M.chain_(build(_), (a) =>
     M.fromEffect(
       T.checkPlatform((platform) =>
-        T.effectTotal(() => T.makeCustomRuntime(a, platform))
+        T.succeedWith(() => T.makeCustomRuntime(a, platform))
       )
     )
   )

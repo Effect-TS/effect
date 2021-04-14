@@ -13,5 +13,5 @@ export function repeatValueWith<R, A extends A1, A1, X>(
   a: () => A,
   schedule: SC.Schedule<R, A1, X>
 ): Stream<R & CL.HasClock, never, A> {
-  return repeatEffectWith(T.effectTotal(a), schedule)
+  return repeatEffectWith(T.succeedWith(a), schedule)
 }

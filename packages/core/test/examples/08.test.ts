@@ -25,7 +25,7 @@ test("08", async () => {
     result,
     T.either,
     T.chain((e) =>
-      T.effectTotal(() => {
+      T.succeedWith(() => {
         console.log(e)
       })
     ),

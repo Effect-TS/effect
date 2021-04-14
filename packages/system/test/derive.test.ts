@@ -9,9 +9,9 @@ export function LiveCalculator() {
     factor: 2,
     factorFun: () => 3,
     base: T.succeed(1),
-    add: (x: number, y: number) => T.effectTotal(() => x + y),
-    mul: (x: number, y: number) => T.effectTotal(() => x * y),
-    gen: <A>(a: A) => T.effectTotal(() => a)
+    add: (x: number, y: number) => T.succeedWith(() => x + y),
+    mul: (x: number, y: number) => T.succeedWith(() => x * y),
+    gen: <A>(a: A) => T.succeedWith(() => a)
   }
 }
 

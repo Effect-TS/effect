@@ -1,7 +1,7 @@
 // tracing: off
 
 import * as O from "../Option"
-import { chain_, effectTotal, succeed } from "./core"
+import { chain_, succeed, succeedWith } from "./core"
 import type { Effect } from "./effect"
 import { fail } from "./fail"
 
@@ -24,7 +24,7 @@ export function someOrFail_<R, E, A, E2>(
 ): Effect<R, E | E2, A> {
   return chain_(
     self,
-    O.fold(() => chain_(effectTotal(orFail), fail), succeed),
+    O.fold(() => chain_(succeedWith(orFail), fail), succeed),
     __trace
   )
 }

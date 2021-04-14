@@ -1,6 +1,6 @@
 // tracing: off
 
-import { chain_, effectTotal, suspend } from "./core"
+import { chain_, succeedWith, suspend } from "./core"
 import type { Effect, RIO } from "./effect"
 import { fail } from "./fail"
 
@@ -26,7 +26,7 @@ export function cond_<E, A>(
   onFalse: () => E,
   __trace?: string
 ): Effect<unknown, E, A> {
-  return condM_(b, effectTotal(onTrue), effectTotal(onFalse), __trace)
+  return condM_(b, succeedWith(onTrue), succeedWith(onFalse), __trace)
 }
 
 /**

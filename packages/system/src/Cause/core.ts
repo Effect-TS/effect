@@ -383,7 +383,7 @@ export function foldSafe<E, Z>(
   return (cause: Cause<E>): S.IO<Z> => {
     switch (cause._tag) {
       case "Empty": {
-        return S.sync(empty)
+        return S.succeedWith(empty)
       }
       case "Fail": {
         return S.succeed(failCase(cause.value))

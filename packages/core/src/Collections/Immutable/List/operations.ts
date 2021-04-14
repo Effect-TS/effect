@@ -69,7 +69,7 @@ export function sortBy_<B>(
     })
     const newL = List.emptyPushable<A>()
     for (let i = 0; i < arr.length; ++i) {
-      List.push(arr[i]!.elm, newL)
+      List.push_(newL, arr[i]!.elm)
     }
     return newL
   }
@@ -233,7 +233,7 @@ export function uniq<A>(E: Equal<A>): (as: List.List<A>) => List.List<A> {
   return (as) =>
     List.reduce_(as, List.emptyPushable<A>(), (acc, a) => {
       if (!elemS(acc, a)) {
-        List.push(a, acc)
+        List.push_(acc, a)
       }
       return acc
     })

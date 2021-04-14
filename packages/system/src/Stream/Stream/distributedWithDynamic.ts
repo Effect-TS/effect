@@ -99,7 +99,7 @@ export function distributedWithDynamic_<R, E, O>(
                 T.bind("queue", () =>
                   Q.makeBounded<Ex.Exit<O.Option<E>, O>>(maximumLag)
                 ),
-                T.bind("id", () => T.effectTotal(() => Symbol())),
+                T.bind("id", () => T.succeedWith(() => Symbol())),
                 T.tap(({ id, queue }) => R.update_(queuesRef, Map.insert(id, queue))),
                 T.map(({ id, queue }) => [id, queue])
               )
@@ -118,7 +118,7 @@ export function distributedWithDynamic_<R, E, O>(
                       T.do,
                       T.bind("queue", () => Q.makeBounded<Ex.Exit<O.Option<E>, O>>(1)),
                       T.tap(({ queue }) => Q.offer_(queue, endTake)),
-                      T.bind("id", () => T.effectTotal(() => Symbol())),
+                      T.bind("id", () => T.succeedWith(() => Symbol())),
                       T.tap(({ id, queue }) =>
                         R.update_(queuesRef, Map.insert(id, queue))
                       ),

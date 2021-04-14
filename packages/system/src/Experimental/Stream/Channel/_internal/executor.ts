@@ -224,7 +224,7 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
       if (head._typeId === P.ContinuationKTypeId) {
         return stack
       }
-      L.push(head, builder)
+      L.push_(builder, head)
       stack = L.tail(stack)
     }
     return L.empty()
@@ -258,7 +258,7 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
     const runInProgressFinalizer = this.inProgressFinalizer
       ? T.ensuring_(
           this.inProgressFinalizer,
-          T.effectTotal(() => this.clearInProgressFinalizer())
+          T.succeedWith(() => this.clearInProgressFinalizer())
         )
       : undefined
 
@@ -290,7 +290,7 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
     if (selfFinalizers) {
       closeSelf = T.ensuring_(
         selfFinalizers,
-        T.effectTotal(() => this.clearInProgressFinalizer())
+        T.succeedWith(() => this.clearInProgressFinalizer())
       )
     }
 
@@ -368,7 +368,7 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
                 })
                 result = new ChannelStateEffect(
                   T.chain_(T.fork(drainer), (fiber) =>
-                    T.effectTotal(() => {
+                    T.succeedWith(() => {
                       this.addFinalizer(
                         new P.ContinuationFinalizer((exit) =>
                           T.chain_(F.interrupt(fiber), () =>
@@ -484,7 +484,7 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
               this.currentChannel = currentChannel.channel
               this.addFinalizer(
                 new P.ContinuationFinalizer(() =>
-                  T.effectTotal(() => {
+                  T.succeedWith(() => {
                     this.providedEnv = previousEnv
                   })
                 )
@@ -516,12 +516,12 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
   ): T.RIO<Env, void> {
     switch (state._typeId) {
       case ChannelStateEmitTypeId: {
-        return T.effectTotal(() => {
+        return T.succeedWith(() => {
           this.currentChannel = read.more(input.getEmit())
         })
       }
       case ChannelStateDoneTypeId: {
-        return T.effectTotal(() => {
+        return T.succeedWith(() => {
           this.currentChannel = read.done.onExit(input.getDone())
         })
       }
@@ -529,7 +529,7 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
         return T.foldCauseM_(
           state.effect,
           (cause) =>
-            T.effectTotal(() => {
+            T.succeedWith(() => {
               this.currentChannel = read.done.onHalt(cause)
             }),
           () => this.runReadGo(input.run(), read, input)
@@ -569,7 +569,7 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
             T.foldCauseM_(
               state.effect,
               (cause) =>
-                T.effectTotal(() => {
+                T.succeedWith(() => {
                   this.currentChannel = read.done.onHalt(cause)
                 }),
               () => this.runReadGo(input.run(), read, input)
@@ -590,11 +590,11 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
         T.foldCauseM_(
           mask.restore(bracketOut.acquire),
           (cause) =>
-            T.effectTotal(() => {
+            T.succeedWith(() => {
               this.currentChannel = new P.Halt(() => cause)
             }),
           (out) =>
-            T.effectTotal(() => {
+            T.succeedWith(() => {
               this.addFinalizer(
                 new P.ContinuationFinalizer((e) => bracketOut.finalizer(out, e))
               )
@@ -691,7 +691,7 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
                       return this.finishWithExit(Exit.halt(cause))
                     }
                   },
-                  () => T.effectTotal(() => this.replaceSubexecutor(modifiedRest))
+                  () => T.succeedWith(() => this.replaceSubexecutor(modifiedRest))
                 )
               )
             } else {
@@ -793,12 +793,12 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
             T.uninterruptible(
               T.ensuring_(
                 finalizerEffect,
-                T.effectTotal(() => {
+                T.succeedWith(() => {
                   this.clearInProgressFinalizer()
                 })
               )
             ),
-            () => T.effectTotal(() => this.doneSucceed(z))
+            () => T.succeedWith(() => this.doneSucceed(z))
           )
         )
       }
@@ -853,12 +853,12 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
             T.uninterruptible(
               T.ensuring_(
                 finalizerEffect,
-                T.effectTotal(() => {
+                T.succeedWith(() => {
                   this.clearInProgressFinalizer()
                 })
               )
             ),
-            () => T.effectTotal(() => this.doneHalt(cause))
+            () => T.succeedWith(() => this.doneHalt(cause))
           )
         )
       }

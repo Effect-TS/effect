@@ -289,7 +289,7 @@ export const suspend: <R, E, A>(f: () => Sync<R, E, A>) => Sync<R, E, A> = X.sus
 /**
  * Lift a sync (non failable) computation
  */
-export const sync: <A>(f: () => A) => Sync<unknown, never, A> = X.sync
+export const succeedWith: <A>(f: () => A) => Sync<unknown, never, A> = X.succeedWith
 
 /**
  * Lift a sync (non failable) computation

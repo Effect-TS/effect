@@ -17,7 +17,7 @@ export function mapM_<A, R, E, B>(
     return coreMap.map_(
       forEach.forEachUnit_(self, (a) =>
         coreMap.map_(f(a), (b) => {
-          List.push(b, builder)
+          List.push_(builder, b)
         })
       ),
       () => builder

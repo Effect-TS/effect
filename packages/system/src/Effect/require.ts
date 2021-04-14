@@ -1,7 +1,7 @@
 // tracing: off
 
 import * as O from "../Option"
-import { chain_, effectTotal, succeed } from "./core"
+import { chain_, succeed, succeedWith } from "./core"
 import type { Effect } from "./effect"
 import { fail } from "./fail"
 
@@ -26,7 +26,7 @@ export function require_<R, A, E>(
 ) {
   return chain_(
     io,
-    O.fold(() => chain_(effectTotal(error), fail), succeed),
+    O.fold(() => chain_(succeedWith(error), fail), succeed),
     __trace
   )
 }

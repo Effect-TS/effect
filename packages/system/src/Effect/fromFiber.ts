@@ -1,7 +1,7 @@
 // tracing: off
 
 import * as Fiber from "../Fiber"
-import { chain_, effectTotal } from "./core"
+import { chain_, succeedWith } from "./core"
 import type { Effect, IO } from "./effect"
 
 /**
@@ -12,7 +12,7 @@ export function fromFiber<E, A>(
   fiber: () => Fiber.Fiber<E, A>,
   __trace?: string
 ): IO<E, A> {
-  return chain_(effectTotal(fiber), Fiber.join, __trace)
+  return chain_(succeedWith(fiber), Fiber.join, __trace)
 }
 
 /**

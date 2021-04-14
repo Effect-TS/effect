@@ -1,14 +1,14 @@
 // tracing: off
 
 import type { Canceler } from "../Effect/Canceler"
-import { effectTotal } from "../Effect/core"
+import { succeedWith } from "../Effect/core"
 import type { IO } from "../Effect/effect"
 import type { Promise } from "./promise"
 import { Pending } from "./state"
 
 export function interruptJoiner<E, A>(joiner: (a: IO<E, A>) => void) {
   return (promise: Promise<E, A>): Canceler<unknown> =>
-    effectTotal(() => {
+    succeedWith(() => {
       const state = promise.state.get
 
       if (state._tag === "Pending") {

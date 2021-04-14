@@ -76,7 +76,7 @@ describe("TRef", () => {
         STM.commit(ref["|>"](TRef.get)["|>"](STM.tap((n) => STM.check(n > 3))))
           ["|>"](
             T.chain((n) =>
-              T.effectTotal(() => {
+              T.succeedWith(() => {
                 f(n)
               })
             )

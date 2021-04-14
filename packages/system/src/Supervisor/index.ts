@@ -8,7 +8,7 @@
 import "../Operator"
 
 import * as HS from "../Collections/Immutable/HashSet"
-import { effectTotal, suspend, unit } from "../Effect/core"
+import { succeedWith, suspend, unit } from "../Effect/core"
 import type { Effect, UIO } from "../Effect/effect"
 import { zip_ } from "../Effect/zip"
 import type { Exit } from "../Exit/exit"
@@ -113,7 +113,7 @@ function unsafeTrackMain() {
   const interval = new AtomicReference<NodeJS.Timeout | undefined>(undefined)
 
   return new Supervisor<Set<Runtime<any, any>>>(
-    effectTotal(() => mainFibers),
+    succeedWith(() => mainFibers),
     (_, __, ___, fiber) => {
       if (mainFibers.has(fiber)) {
         if (typeof interval.get === "undefined") {
@@ -165,10 +165,10 @@ export function makeFiberSet() {
  * Creates a new supervisor that tracks children in a set.
  */
 export function fibersIn(ref: AtomicReference<HS.HashSet<Runtime<any, any>>>) {
-  return effectTotal(
+  return succeedWith(
     () =>
       new Supervisor(
-        effectTotal(() => ref.get),
+        succeedWith(() => ref.get),
         (_, __, ___, fiber) => {
           ref.set(HS.add_(ref.get, fiber))
           return _continue

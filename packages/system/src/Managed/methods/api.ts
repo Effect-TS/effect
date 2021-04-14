@@ -848,34 +848,34 @@ export function identityLeft<C>(__trace?: string) {
  * Lifts a synchronous side-effect into a `Managed[R, E, A]`,
  * translating any thrown exceptions into typed failed effects using onThrow.
  */
-export function effectPartial<E, A>(
+export function tryCatch<E, A>(
   f: () => A,
   onThrow: (u: unknown) => E,
   __trace?: string
 ): Managed<unknown, E, A> {
-  return fromEffect(T.effectPartial(f, onThrow), __trace)
+  return fromEffect(T.tryCatch(f, onThrow), __trace)
 }
 
 /**
  * Returns an effect whose success is mapped by the specified side effecting
  * `f` function, translating any thrown exceptions into typed failed effects.
  *
- * @dataFirst mapEffectWith_
+ * @dataFirst mapTryCatch_
  */
-export function mapEffectWith<E2, A, B>(
+export function mapTryCatch<E2, A, B>(
   onThrow: (u: unknown) => E2,
   f: (a: A) => B,
   __trace?: string
 ) {
   return <R, E>(self: Managed<R, E, A>): Managed<R, E | E2, B> =>
-    mapEffectWith_(self, onThrow, f, __trace)
+    mapTryCatch_(self, onThrow, f, __trace)
 }
 
 /**
  * Returns an effect whose success is mapped by the specified side effecting
  * `f` function, translating any thrown exceptions into typed failed effects.
  */
-export function mapEffectWith_<R, E, E2, A, B>(
+export function mapTryCatch_<R, E, E2, A, B>(
   self: Managed<R, E, A>,
   onThrow: (u: unknown) => E2,
   f: (a: A) => B,
@@ -884,7 +884,7 @@ export function mapEffectWith_<R, E, E2, A, B>(
   return foldM_(
     self,
     (e) => core.fail(e),
-    (a) => effectPartial(() => f(a), onThrow),
+    (a) => tryCatch(() => f(a), onThrow),
     __trace
   )
 }
@@ -898,7 +898,7 @@ export function mapEffect_<R, E, A, B>(
   f: (a: A) => B,
   __trace?: string
 ): Managed<R, unknown, B> {
-  return mapEffectWith_(self, identity, f, __trace)
+  return mapTryCatch_(self, identity, f, __trace)
 }
 
 /**
@@ -1698,7 +1698,7 @@ export function unlessM_<R, E, A, R1, E1>(
  * @dataFirst unless_
  */
 export function unless(b: () => boolean) {
-  return unlessM(core.effectTotal(b))
+  return unlessM(core.succeedWith(b))
 }
 
 /**
@@ -2951,7 +2951,7 @@ export function unwrap<R, E, A>(
 export function fromAutoClosable<R, E, A extends { readonly close: () => void }>(
   fa: T.Effect<R, E, A>
 ) {
-  return core.make_(fa, (a) => T.effectTotal(() => a.close()))
+  return core.make_(fa, (a) => T.succeedWith(() => a.close()))
 }
 
 /**

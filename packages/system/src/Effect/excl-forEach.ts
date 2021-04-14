@@ -318,7 +318,7 @@ export function forEachPar_<R, E, A, B>(
   return core.suspend(
     () =>
       core.chain_(
-        core.effectTotal<B[]>(() => []),
+        core.succeedWith<B[]>(() => []),
         (array) => {
           return map.map_(
             forEachUnitPar_(
@@ -327,7 +327,7 @@ export function forEachPar_<R, E, A, B>(
                 core.chain_(
                   core.suspend(() => f(a)),
                   (b) =>
-                    core.effectTotal(() => {
+                    core.succeedWith(() => {
                       array[n] = b
                     })
                 )
@@ -959,7 +959,7 @@ export class BackPressureStrategy<A> implements Q.Strategy<A> {
               return promise.await(p)
             }
           }),
-          () => core.effectTotal(() => this.unsafeRemove(p))
+          () => core.succeedWith(() => this.unsafeRemove(p))
         )
       })
     )
@@ -1015,7 +1015,7 @@ export class BackPressureStrategy<A> implements Q.Strategy<A> {
     return pipe(
       Do.do,
       Do.bind("fiberId", () => fiberId.fiberId),
-      Do.bind("putters", () => core.effectTotal(() => Q.unsafePollAll(this.putters))),
+      Do.bind("putters", () => core.succeedWith(() => Q.unsafePollAll(this.putters))),
       tap.tap((s) =>
         forEachPar_(s.putters, ([_, p, lastItem]) =>
           lastItem ? promise.interruptAs(s.fiberId)(p) : core.unit
@@ -1038,7 +1038,7 @@ export function makeBoundedQueue<A>(
   __trace?: string
 ): UIO<Q.Queue<A>> {
   return core.chain_(
-    core.effectTotal(() => new Bounded<A>(capacity)),
+    core.succeedWith(() => new Bounded<A>(capacity)),
     (x) => createQueue_(x, new BackPressureStrategy()),
     __trace
   )
@@ -1072,7 +1072,7 @@ class UnsafeCreate<A> extends XQueueInternal<unknown, unknown, never, never, A, 
 
   capacity: number = this.queue.capacity
 
-  isShutdown: UIO<boolean> = core.effectTotal(() => this.shutdownFlag.get)
+  isShutdown: UIO<boolean> = core.succeedWith(() => this.shutdownFlag.get)
 
   offer(a: A): Effect<unknown, never, boolean> {
     return core.suspend(() => {
@@ -1188,7 +1188,7 @@ class UnsafeCreate<A> extends XQueueInternal<unknown, unknown, never, never, A, 
               return promise.await(p)
             }
           }),
-          () => core.effectTotal(() => Q.unsafeRemove(this.takers, p))
+          () => core.succeedWith(() => Q.unsafeRemove(this.takers, p))
         )
       }
     })
@@ -1198,7 +1198,7 @@ class UnsafeCreate<A> extends XQueueInternal<unknown, unknown, never, never, A, 
     if (this.shutdownFlag.get) {
       return interruption.interrupt
     } else {
-      return core.effectTotal(() => {
+      return core.succeedWith(() => {
         const as = Q.unsafePollAll(this.queue)
         this.strategy.unsafeOnQueueEmptySpace(this.queue)
         return as
@@ -1211,7 +1211,7 @@ class UnsafeCreate<A> extends XQueueInternal<unknown, unknown, never, never, A, 
       if (this.shutdownFlag.get) {
         return interruption.interrupt
       } else {
-        return core.effectTotal(() => {
+        return core.succeedWith(() => {
           const as = Q.unsafePollN(this.queue, n)
           this.strategy.unsafeOnQueueEmptySpace(this.queue)
           return as

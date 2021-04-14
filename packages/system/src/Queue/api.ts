@@ -25,7 +25,7 @@ export { createQueue, makeBounded, unsafeCreate, BackPressureStrategy }
  */
 export function makeSliding<A>(capacity: number): T.UIO<Queue<A>> {
   return T.chain_(
-    T.effectTotal(() => new Bounded<A>(capacity)),
+    T.succeedWith(() => new Bounded<A>(capacity)),
     exclForEach.createQueue(new SlidingStrategy())
   )
 }
@@ -35,7 +35,7 @@ export function makeSliding<A>(capacity: number): T.UIO<Queue<A>> {
  */
 export function makeUnbounded<A>(): T.UIO<Queue<A>> {
   return T.chain_(
-    T.effectTotal(() => new Unbounded<A>()),
+    T.succeedWith(() => new Unbounded<A>()),
     exclForEach.createQueue(new DroppingStrategy())
   )
 }
@@ -45,7 +45,7 @@ export function makeUnbounded<A>(): T.UIO<Queue<A>> {
  */
 export function makeDropping<A>(capacity: number): T.UIO<Queue<A>> {
   return T.chain_(
-    T.effectTotal(() => new Bounded<A>(capacity)),
+    T.succeedWith(() => new Bounded<A>(capacity)),
     exclForEach.createQueue(new DroppingStrategy())
   )
 }

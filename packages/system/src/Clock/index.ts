@@ -7,7 +7,7 @@ import "../Operator"
  *
  * Copyright 2020 Michael Arnaldi and the Matechs Garage Contributors.
  */
-import { effectTotal, unit } from "../Effect/core"
+import { succeedWith, unit } from "../Effect/core"
 import type { Effect, UIO } from "../Effect/effect"
 import { effectAsyncInterrupt } from "../Effect/effectAsyncInterrupt"
 import { accessService, accessServiceM, provideServiceM } from "../Effect/has"
@@ -36,7 +36,7 @@ export type HasClock = HasTag<typeof HasClock>
 // Live Clock Implementation
 //
 export class LiveClock extends Clock {
-  currentTime: UIO<number> = effectTotal(() => new Date().getTime())
+  currentTime: UIO<number> = succeedWith(() => new Date().getTime())
 
   sleep: (ms: number, __trace?: string) => UIO<void> = (ms, trace) =>
     effectAsyncInterrupt((cb) => {
@@ -44,7 +44,7 @@ export class LiveClock extends Clock {
         cb(unit)
       }, ms)
 
-      return effectTotal(() => {
+      return succeedWith(() => {
         clearTimeout(timeout)
       })
     }, trace)
@@ -90,12 +90,12 @@ export const withClock = accessService(HasClock)
 export class TestClock extends Clock {
   private time = new Date().getTime()
 
-  readonly currentTime: UIO<number> = effectTotal(() => this.time)
+  readonly currentTime: UIO<number> = succeedWith(() => this.time)
 
   readonly sleep: (ms: number) => UIO<void> = () => unit
 
   readonly advance = (ms: number) =>
-    effectTotal(() => {
+    succeedWith(() => {
       this.time = this.time + ms
     })
 
@@ -111,5 +111,5 @@ export const HasTestClock: Tag<TestClock> = tag<TestClock>().setKey(HasClock.key
 export const provideTestClock: <R1, E1, A1>(
   ma: Effect<R1 & Has<TestClock> & Has<Clock>, E1, A1>
 ) => Effect<R1, E1, A1> = provideServiceM(HasTestClock)(
-  effectTotal(() => new TestClock())
+  succeedWith(() => new TestClock())
 )

@@ -178,7 +178,7 @@ export function effectAsyncOptionBlockingOn<R, E, A>(
  * Imports a synchronous side-effect into a pure value, translating any
  * thrown exceptions into typed failed effects creating with `halt`.
  */
-export function effectPartial<E, A>(
+export function tryCatch<E, A>(
   effect: () => A,
   onThrow: (u: unknown) => E,
   __trace?: string
@@ -199,7 +199,7 @@ export { try_ as try }
 /**
  * Imports a synchronous side-effect into a pure value
  */
-export function effectTotal<A>(effect: () => A, __trace?: string): UIO<A> {
+export function succeedWith<A>(effect: () => A, __trace?: string): UIO<A> {
   return new IEffectTotal(effect, __trace)
 }
 
@@ -428,7 +428,7 @@ export function supervised_<R, E, A>(
 
 /**
  * Returns a lazily constructed effect, whose construction may itself require effects.
- * When no environment is required (i.e., when R == unknown) it is conceptually equivalent to `flatten(effectTotal(io))`.
+ * When no environment is required (i.e., when R == unknown) it is conceptually equivalent to `flatten(succeedWith(io))`.
  */
 export function suspend<R, E, A>(
   factory: (platform: Fiber.Platform<unknown>, id: Fiber.FiberID) => Effect<R, E, A>,
@@ -439,9 +439,9 @@ export function suspend<R, E, A>(
 
 /**
  * Returns a lazily constructed effect, whose construction may itself require effects.
- * When no environment is required (i.e., when R == unknown) it is conceptually equivalent to `flatten(effectPartial(orThrow, io))`.
+ * When no environment is required (i.e., when R == unknown) it is conceptually equivalent to `flatten(tryCatch(orThrow, io))`.
  */
-export function suspendPartial<R, E, A, E2>(
+export function tryCatchSuspend<R, E, A, E2>(
   factory: (platform: Fiber.Platform<unknown>, id: Fiber.FiberID) => Effect<R, E, A>,
   onThrow: (u: unknown) => E2,
   __trace?: string

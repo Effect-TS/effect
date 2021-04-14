@@ -1,6 +1,6 @@
 // tracing: off
 
-import { effectTotal } from "../Effect/core"
+import { succeedWith } from "../Effect/core"
 import type { IO, UIO } from "../Effect/effect"
 import type { Promise } from "./promise"
 import { Done } from "./state"
@@ -20,7 +20,7 @@ import { Done } from "./state"
  */
 export function completeWith<E, A>(io: IO<E, A>) {
   return (promise: Promise<E, A>): UIO<boolean> =>
-    effectTotal(() => {
+    succeedWith(() => {
       const state = promise.state.get
 
       switch (state._tag) {

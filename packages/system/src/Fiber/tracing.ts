@@ -49,7 +49,7 @@ export function parents(trace: Trace): L.List<Trace> {
   const pushable = L.emptyPushable<Trace>()
   let parent = O.toUndefined(trace.parentTrace)
   while (parent != null) {
-    L.push(parent, pushable)
+    L.push_(pushable, parent)
     parent = O.toUndefined(parent.parentTrace)
   }
   return pushable

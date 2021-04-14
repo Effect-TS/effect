@@ -28,10 +28,10 @@ export interface PBKDF2Config extends _config {}
 export const PBKDF2Config = tag<PBKDF2Config>()
 
 export const PBKDF2ConfigLive = L.fromEffect(PBKDF2Config)(
-  T.effectTotal(() => defaultConfig)
+  T.succeedWith(() => defaultConfig)
 )
 export const PBKDF2ConfigTest = L.fromEffect(PBKDF2Config)(
-  T.effectTotal(() => ({
+  T.succeedWith(() => ({
     ...defaultConfig,
     iterations: 1
   }))

@@ -101,7 +101,7 @@ export function dieWith(u: () => unknown): Stream<unknown, never, never> {
  * @return a finite stream of values
  */
 export function fromChunk<O>(c: Chunk.Chunk<O>): Stream<unknown, never, O> {
-  return new Stream(C.unwrap(T.effectTotal(() => C.write(c))))
+  return new Stream(C.unwrap(T.succeedWith(() => C.write(c))))
 }
 
 /**
@@ -111,7 +111,7 @@ export function fromChunk<O>(c: Chunk.Chunk<O>): Stream<unknown, never, O> {
  * @return a finite stream of values
  */
 export function fromChunkWith<O>(c: () => Chunk.Chunk<O>): Stream<unknown, never, O> {
-  return new Stream(C.unwrap(T.effectTotal(() => C.writeWith(c))))
+  return new Stream(C.unwrap(T.succeedWith(() => C.writeWith(c))))
 }
 
 /**

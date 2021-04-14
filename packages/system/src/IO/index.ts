@@ -204,7 +204,7 @@ export function suspend<A>(f: () => IO<A>): IO<A> {
 /**
  * Lift a sync (non failable) computation
  */
-export function sync<A>(f: () => A) {
+export function succeedWith<A>(f: () => A) {
   return suspend(() => succeed<A>(f()))
 }
 

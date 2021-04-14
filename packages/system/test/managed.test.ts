@@ -7,7 +7,7 @@ import * as M from "../src/Managed"
 describe("Managed", () => {
   it("absolve", async () => {
     const res = await pipe(
-      M.absolve(M.effectTotal(() => E.left("error"))),
+      M.absolve(M.succeedWith(() => E.left("error"))),
       M.useNow,
       T.result,
       T.map(Ex.untraced),

@@ -12,7 +12,7 @@ describe("Tracing Managed", () => {
   it("should trace fromEffect", async () => {
     const result = await T.runPromiseExit(
       pipe(
-        M.fromEffect(T.effectTotal(() => 1)),
+        M.fromEffect(T.succeedWith(() => 1)),
         M.use((_) => T.fail(_))
       )
     )
@@ -34,7 +34,7 @@ describe("Tracing Managed", () => {
     const result = await T.runPromiseExit(
       pipe(
         M.makeExit_(
-          T.effectTotal(() => 1),
+          T.succeedWith(() => 1),
           () => T.die("release")
         ),
         M.use(T.succeed)
@@ -63,7 +63,7 @@ describe("Tracing Managed", () => {
         [0, 1, 2],
         M.forEachPar((n) =>
           M.makeExit_(
-            T.effectTotal(() => n),
+            T.succeedWith(() => n),
             () => (n === 2 ? T.die("error") : T.unit)
           )
         ),

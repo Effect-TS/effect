@@ -1,5 +1,5 @@
 import { make_ } from "../core"
-import { effectTotal } from "../deps-core"
+import { succeedWith } from "../deps-core"
 import type { Managed } from "../managed"
 
 /**
@@ -12,7 +12,7 @@ export function makeSucceedWith<A, B>(
   release: (a: A) => B,
   __trace?: string
 ): Managed<unknown, never, A> {
-  return make_(effectTotal(acquire, __trace), (a) =>
-    effectTotal(() => release(a), __trace)
+  return make_(succeedWith(acquire, __trace), (a) =>
+    succeedWith(() => release(a), __trace)
   )
 }

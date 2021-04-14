@@ -1972,7 +1972,7 @@ export function unfold<A>(f: (a: A) => A) {
  */
 export function unfold_<A>(a: A, f: (a: A) => A) {
   return new Schedule((now) =>
-    T.effectTotal(() => Decision.makeContinue(a, now, unfoldLoop(f(a), f)))
+    T.succeedWith(() => Decision.makeContinue(a, now, unfoldLoop(f(a), f)))
   )
 }
 

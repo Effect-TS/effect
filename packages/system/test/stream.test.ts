@@ -31,7 +31,7 @@ describe("Stream", () => {
             flow(
               S.chain((n) =>
                 S.fromEffect(
-                  T.effectTotal(() => {
+                  T.succeedWith(() => {
                     fn(`n: ${n}`)
                   })
                 )

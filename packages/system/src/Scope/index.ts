@@ -11,7 +11,7 @@ import { empty, then } from "../Cause/cause"
  */
 import * as A from "../Collections/Immutable/Array"
 import { cause } from "../Effect/cause"
-import { effectTotal, succeed, suspend } from "../Effect/core"
+import { succeed, succeedWith, suspend } from "../Effect/core"
 import type { UIO } from "../Effect/effect"
 import { map_ } from "../Effect/map"
 import { uncause } from "../Effect/uncause"
@@ -133,9 +133,9 @@ export class Global implements CommonScope<never> {
     this.unsafeExtend = this.unsafeExtend.bind(this)
   }
 
-  private unsafeEnsureResult = E.right(new Key(effectTotal(() => true)))
+  private unsafeEnsureResult = E.right(new Key(succeedWith(() => true)))
 
-  private ensureResult = effectTotal(() => this.unsafeEnsureResult)
+  private ensureResult = succeedWith(() => this.unsafeEnsureResult)
 
   get closed(): UIO<boolean> {
     return succeed(false)
@@ -154,7 +154,7 @@ export class Global implements CommonScope<never> {
   }
 
   extend(that: Scope<any>): UIO<boolean> {
-    return effectTotal(() => this.unsafeExtend(that))
+    return succeedWith(() => this.unsafeExtend(that))
   }
 
   get open(): UIO<boolean> {
@@ -202,7 +202,7 @@ export class Local<A> implements CommonScope<A> {
   ) {}
 
   get closed(): UIO<boolean> {
-    return effectTotal(() => this.unsafeClosed)
+    return succeedWith(() => this.unsafeClosed)
   }
 
   get open(): UIO<boolean> {
@@ -210,23 +210,23 @@ export class Local<A> implements CommonScope<A> {
   }
 
   deny(key: Key): UIO<boolean> {
-    return effectTotal(() => this.unsafeDeny(key))
+    return succeedWith(() => this.unsafeDeny(key))
   }
 
   get empty(): UIO<boolean> {
-    return effectTotal(() => this.finalizers.size === 0)
+    return succeedWith(() => this.finalizers.size === 0)
   }
 
   ensure(finalizer: (a: A) => UIO<any>): UIO<E.Either<A, Key>> {
-    return effectTotal(() => this.unsafeEnsure(finalizer))
+    return succeedWith(() => this.unsafeEnsure(finalizer))
   }
 
   extend(that: Scope<any>): UIO<boolean> {
-    return effectTotal(() => this.unsafeExtend(that))
+    return succeedWith(() => this.unsafeExtend(that))
   }
 
   get released(): UIO<boolean> {
-    return effectTotal(() => this.unsafeReleased())
+    return succeedWith(() => this.unsafeReleased())
   }
 
   unsafeExtend(that: Scope<any>): boolean {
@@ -376,5 +376,5 @@ export function unsafeMakeScope<A>() {
 }
 
 export function makeScope<A>() {
-  return effectTotal(() => unsafeMakeScope<A>())
+  return succeedWith(() => unsafeMakeScope<A>())
 }

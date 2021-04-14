@@ -56,7 +56,7 @@ export class SlidingStrategy<A> implements Strategy<A> {
     takers: MutableQueue<P.Promise<never, A>>,
     _isShutdown: AtomicBoolean
   ): T.UIO<boolean> {
-    return T.effectTotal(() => {
+    return T.succeedWith(() => {
       this.unsafeSlidingOffer(queue, as)
       unsafeCompleteTakers(this, queue, takers)
       return true

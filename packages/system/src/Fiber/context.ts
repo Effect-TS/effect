@@ -128,7 +128,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   }
 
   get poll() {
-    return T.effectTotal(() => this.poll0())
+    return T.succeedWith(() => this.poll0())
   }
 
   addTrace(trace?: string) {
@@ -144,7 +144,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   }
 
   getRef<K>(fiberRef: FiberRef<K>): T.UIO<K> {
-    return T.effectTotal(() => this.fiberRefLocals.get(fiberRef) || fiberRef.initial)
+    return T.succeedWith(() => this.fiberRefLocals.get(fiberRef) || fiberRef.initial)
   }
 
   poll0() {
@@ -166,7 +166,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
       return instruction(T.succeed(v))
     } else {
       return instruction(
-        T.effectTotal(() => {
+        T.succeedWith(() => {
           this.popInterruptStatus()
           return v
         })
@@ -365,7 +365,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
         const cb: Callback<never, Exit.Exit<E, A>> = (x) => k(T.done(x))
         return O.fold_(
           this.observe0(cb),
-          () => E.left(T.effectTotal(() => this.interruptObserver(cb))),
+          () => E.left(T.succeedWith(() => this.interruptObserver(cb))),
           E.right
         )
       }
@@ -1128,12 +1128,12 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                     const c = current
                     current = instruction(
                       T.bracket_(
-                        T.effectTotal(() => {
+                        T.succeedWith(() => {
                           this.pushEnv(c.r)
                         }),
                         () => c.next,
                         () =>
-                          T.effectTotal(() => {
+                          T.succeedWith(() => {
                             this.popEnv()
                           })
                       )
@@ -1220,10 +1220,10 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                     const c = current
                     const lastSupervisor = this.supervisors.value
                     const newSupervisor = c.supervisor.and(lastSupervisor)
-                    const push = T.effectTotal(() => {
+                    const push = T.succeedWith(() => {
                       this.supervisors = new Stack(newSupervisor, this.supervisors)
                     })
-                    const pop = T.effectTotal(() => {
+                    const pop = T.succeedWith(() => {
                       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
                       this.supervisors = this.supervisors.previous!
                     })
@@ -1268,14 +1268,14 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                       this.addTrace(current.trace)
                     }
 
-                    const push = T.effectTotal(() => {
+                    const push = T.succeedWith(() => {
                       this.forkScopeOverride = new Stack(
                         c.forkScope,
                         this.forkScopeOverride
                       )
                     })
 
-                    const pop = T.effectTotal(() => {
+                    const pop = T.succeedWith(() => {
                       this.forkScopeOverride = this.forkScopeOverride?.previous
                     })
 

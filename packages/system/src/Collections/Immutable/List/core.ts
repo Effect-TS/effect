@@ -8,6 +8,7 @@ import type { Either } from "../../../Either"
 import { identity } from "../../../Function"
 import * as O from "../../../Option"
 import type { Ord } from "../../../Ord"
+import * as St from "../../../Structural"
 import type { Separated } from "../../../Utils"
 
 /**
@@ -221,7 +222,7 @@ function decrementDepth(bits: number): number {
 /**
  * Represents a list of elements.
  */
-export class List<A> implements Iterable<A> {
+export class List<A> implements Iterable<A>, St.HasEquals {
   constructor(
     readonly bits: number,
     readonly offset: number,
@@ -235,6 +236,9 @@ export class List<A> implements Iterable<A> {
   }
   toJSON(): readonly A[] {
     return toArray(this)
+  }
+  [St.equalsSym](that: unknown): boolean {
+    return that instanceof List && equalsWith_(this, that, St.equals)
   }
 }
 
@@ -358,7 +362,7 @@ export function emptyPushable<A>(): MutableList<A> {
 }
 
 /** Appends the value to the list by _mutating_ the list and its content. */
-export function push<A>(value: A, l: MutableList<A>): MutableList<A> {
+export function push_<A>(l: MutableList<A>, value: A): MutableList<A> {
   const suffixSize = getSuffixSize(l)
   if (l.length === 0) {
     l.bits = setPrefix(1, l.bits)
@@ -404,7 +408,7 @@ export function push<A>(value: A, l: MutableList<A>): MutableList<A> {
 export function list<A>(...elements: A[]): List<A> {
   const l = emptyPushable<A>()
   for (const element of elements) {
-    push(element, l)
+    push_(l, element)
   }
   return l
 }
@@ -455,14 +459,14 @@ export function from<A>(sequence: any): List<A> {
   const l = emptyPushable<A>()
   if (sequence.length > 0 && (sequence[0] !== undefined || 0 in sequence)) {
     for (let i = 0; i < sequence.length; ++i) {
-      push(sequence[i], l)
+      push_(l, sequence[i])
     }
   } else if (Symbol.iterator in sequence) {
     const iterator = sequence[Symbol.iterator]()
     let cur
     // tslint:disable-next-line:no-conditional-assignment
     while (!(cur = iterator.next()).done) {
-      push(cur.value, l)
+      push_(l, cur.value)
     }
   }
   return l
@@ -485,7 +489,7 @@ export function range(end: number): (start: number) => List<number> {
 export function range_(start: number, end: number): List<number> {
   const list = emptyPushable<number>()
   for (let i = start; i < end; ++i) {
-    push(i, list)
+    push_(list, i)
   }
   return list
 }
@@ -509,7 +513,7 @@ export function repeat(times: number): <A>(value: A) => List<A> {
 export function repeat_<A>(value: A, times: number): List<A> {
   const l = emptyPushable<A>()
   while (--times >= 0) {
-    push(value, l)
+    push_(l, value)
   }
   return l
 }
@@ -533,7 +537,7 @@ export function times(times: number): <A>(func: (index: number) => A) => List<A>
 export function times_<A>(func: (index: number) => A, times: number): List<A> {
   const l = emptyPushable<A>()
   for (let i = 0; i < times; i++) {
-    push(func(i), l)
+    push_(l, func(i))
   }
   return l
 }
@@ -1147,8 +1151,8 @@ export function scan_<A, B>(
   initial: B,
   f: (acc: B, value: A) => B
 ): List<B> {
-  return reduce_(l, push(initial, emptyPushable<B>()), (l2, a) =>
-    push(f(unsafeLast(l2)!, a), l2)
+  return reduce_(l, push_(emptyPushable<B>(), initial), (l2, a) =>
+    push_(l2, f(unsafeLast(l2)!, a))
   )
 }
 
@@ -1205,7 +1209,7 @@ export function filter_<A, B extends A>(
 ): List<B>
 export function filter_<A>(l: List<A>, predicate: (a: A) => boolean): List<A>
 export function filter_<A>(l: List<A>, predicate: (a: A) => boolean): List<A> {
-  return reduce_(l, emptyPushable(), (acc, a) => (predicate(a) ? push(a, acc) : acc))
+  return reduce_(l, emptyPushable(), (acc, a) => (predicate(a) ? push_(acc, a) : acc))
 }
 
 /**
@@ -1220,7 +1224,7 @@ export function filter<A, B extends A>(
 export function filter<A>(predicate: (a: A) => boolean): (l: List<A>) => List<A>
 export function filter<A>(predicate: (a: A) => boolean): (l: List<A>) => List<A> {
   return (l) =>
-    reduce_(l, emptyPushable(), (acc, a) => (predicate(a) ? push(a, acc) : acc))
+    reduce_(l, emptyPushable(), (acc, a) => (predicate(a) ? push_(acc, a) : acc))
 }
 
 /**
@@ -1233,7 +1237,7 @@ export function filterMap_<A, B>(l: List<A>, f: (a: A) => O.Option<B>): List<B> 
   return reduce_(l, emptyPushable(), (acc, a) => {
     const fa = f(a)
     if (fa._tag === "Some") {
-      push(fa.value, acc)
+      push_(acc, fa.value)
     }
     return acc
   })
@@ -1263,7 +1267,7 @@ export function compact<A>(fa: List<O.Option<A>>): List<A> {
  * @complexity O(n)
  */
 export function filterNot_<A>(l: List<A>, predicate: (a: A) => boolean): List<A> {
-  return reduce_(l, emptyPushable(), (acc, a) => (predicate(a) ? acc : push(a, acc)))
+  return reduce_(l, emptyPushable(), (acc, a) => (predicate(a) ? acc : push_(acc, a)))
 }
 
 /**
@@ -1301,7 +1305,7 @@ export function partition_<A>(
       MutableList<A>,
       MutableList<A>
     >,
-    (arr, a) => (predicate(a) ? push(a, arr.left) : push(a, arr.right), arr)
+    (arr, a) => (predicate(a) ? push_(arr.left, a) : push_(arr.right, a), arr)
   )
 }
 
@@ -1343,9 +1347,9 @@ export function partitionMap_<A, B, C>(
     (arr, a) => {
       const fa = f(a)
       if (fa._tag === "Left") {
-        push(fa.left, arr.left)
+        push_(arr.left, fa.left)
       } else {
-        push(fa.right, arr.right)
+        push_(arr.right, fa.right)
       }
       return arr
     }
@@ -2940,7 +2944,7 @@ export function dropRepeatsWith_<A>(
   predicate: (a: A, b: A) => boolean
 ): List<A> {
   return reduce_(l, emptyPushable(), (acc, a) =>
-    acc.length !== 0 && predicate(unsafeLast(acc)!, a) ? acc : push(a, acc)
+    acc.length !== 0 && predicate(unsafeLast(acc)!, a) ? acc : push_(acc, a)
   )
 }
 
@@ -3034,15 +3038,15 @@ export function splitEvery_<A>(l: List<A>, size: number): List<List<A>> {
     l,
     { l2: emptyPushable<List<A>>(), buffer: emptyPushable<A>() },
     ({ buffer, l2 }, elm) => {
-      push(elm, buffer)
+      push_(buffer, elm)
       if (buffer.length === size) {
-        return { l2: push(buffer, l2), buffer: emptyPushable<A>() }
+        return { l2: push_(l2, buffer), buffer: emptyPushable<A>() }
       } else {
         return { l2, buffer }
       }
     }
   )
-  return buffer.length === 0 ? l2 : push(buffer, l2)
+  return buffer.length === 0 ? l2 : push_(l2, buffer)
 }
 
 /**
@@ -3280,7 +3284,7 @@ export function sortWith_<A>(l: List<A>, ord: Ord<A>): List<A> {
   })
   const newL = emptyPushable<A>()
   for (let i = 0; i < arr.length; ++i) {
-    push(arr[i]!.elm, newL)
+    push_(newL, arr[i]!.elm)
   }
   return newL
 }
@@ -3319,12 +3323,12 @@ export function groupWith_<A>(l: List<A>, f: (a: A, b: A) => boolean): List<List
   let buffer = emptyPushable<A>()
   forEach_(l, (a) => {
     if (buffer.length !== 0 && !f(unsafeLast(buffer)!, a)) {
-      push(buffer, result)
+      push_(result, buffer)
       buffer = emptyPushable()
     }
-    push(a, buffer)
+    push_(buffer, a)
   })
-  return buffer.length === 0 ? result : push(buffer, result)
+  return buffer.length === 0 ? result : push_(result, buffer)
 }
 
 /**
@@ -3345,7 +3349,7 @@ export function groupWith<A>(
  * Inserts a separator between each element in a list.
  */
 export function intersperse_<A>(l: List<A>, separator: A): List<A> {
-  return pop(reduce_(l, emptyPushable(), (l2, a) => push(separator, push(a, l2))))
+  return pop(reduce_(l, emptyPushable(), (l2, a) => push_(push_(l2, a), separator)))
 }
 
 /**
@@ -3373,7 +3377,7 @@ export class ListBuilder<A> {
   constructor(private chunk: MutableList<A>) {}
 
   append(a: A): ListBuilder<A> {
-    push(a, this.chunk)
+    push_(this.chunk, a)
     return this
   }
 

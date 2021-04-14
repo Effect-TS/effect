@@ -46,13 +46,13 @@ function loopInternal_<Z, R, E, A>(
         pipe(
           loopInternal_(inc(initial), cont, inc, body),
           map.map((as) => {
-            L.push(a, as)
+            L.push_(as, a)
             return as
           })
         )
       )
     }
-    return core.effectTotal(() => L.emptyPushable())
+    return core.succeedWith(() => L.emptyPushable())
   }, __trace)
 }
 

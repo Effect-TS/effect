@@ -34,7 +34,7 @@ export class RingBuffer<T> {
   get list(): L.List<T> {
     const l = L.emptyPushable<T>()
     this.values.forEach((t) => {
-      L.push(t, l)
+      L.push_(l, t)
     })
     return l
   }

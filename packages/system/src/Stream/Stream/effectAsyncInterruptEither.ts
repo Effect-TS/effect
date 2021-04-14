@@ -37,7 +37,7 @@ export function effectAsyncInterruptEither<R, E, A>(
       ),
       M.bind("runtime", () => pipe(T.runtime<R>(), T.toManaged)),
       M.bind("eitherStream", ({ output, runtime }) =>
-        M.effectTotal(() =>
+        M.succeedWith(() =>
           register((k, cb) =>
             pipe(
               Take.fromPull(k),

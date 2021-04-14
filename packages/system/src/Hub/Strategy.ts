@@ -139,7 +139,7 @@ export class BackPressure<A> extends Strategy<A> {
 
           return isShutdown.get ? T.interrupt : P.await(promise)
         }),
-        T.onInterrupt(() => T.effectTotal(() => this.unsafeRemove(promise)))
+        T.onInterrupt(() => T.succeedWith(() => this.unsafeRemove(promise)))
       )
     })
   }
@@ -149,7 +149,7 @@ export class BackPressure<A> extends Strategy<A> {
       T.do,
       T.bind("fiberId", () => T.fiberId),
       T.bind("publishers", () =>
-        T.effectTotal(() => U.unsafePollAllQueue(this.publishers))
+        T.succeedWith(() => U.unsafePollAllQueue(this.publishers))
       ),
       T.tap(({ fiberId, publishers }) =>
         T.forEachPar_(publishers, ([_, promise, last]) =>
@@ -279,7 +279,7 @@ export class Sliding<A> extends Strategy<A> {
     as: Iterable<A>,
     _isShutdown: AtomicBoolean
   ): T.UIO<boolean> {
-    return T.effectTotal(() => {
+    return T.succeedWith(() => {
       this.unsafeSlidingPublish(hub, as)
       this.unsafeCompleteSubscribers(hub, subscribers)
       return true

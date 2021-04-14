@@ -11,9 +11,9 @@ describe("Tracing", () => {
   it("should trace zipRight", async () => {
     const result = await T.runPromiseExit(
       pipe(
-        T.effectTotal(() => 0),
-        T.zipRight(T.effectTotal(() => 1)),
-        T.zipRight(T.effectTotal(() => 2)),
+        T.succeedWith(() => 0),
+        T.zipRight(T.succeedWith(() => 1)),
+        T.zipRight(T.succeedWith(() => 2)),
         T.zipRight(T.fail("error"))
       )
     )
@@ -31,7 +31,7 @@ describe("Tracing", () => {
   it("should trace bracket", async () => {
     const result = await T.runPromiseExit(
       pipe(
-        T.effectTotal(() => 0),
+        T.succeedWith(() => 0),
         T.bracket(
           (n) => T.fail(`error ${n}`),
           () => T.die("error release")
@@ -135,9 +135,9 @@ describe("Tracing", () => {
   })
   it("should trace pipe operator", async () => {
     const result = await T.runPromiseExit(
-      T.effectTotal(() => 0)
-        ["|>"](T.zipRight(T.effectTotal(() => 1)))
-        ["|>"](T.zipRight(T.effectTotal(() => 2)))
+      T.succeedWith(() => 0)
+        ["|>"](T.zipRight(T.succeedWith(() => 1)))
+        ["|>"](T.zipRight(T.succeedWith(() => 2)))
         ["|>"](T.zipRight(T.fail("error")))
     )
 
@@ -154,11 +154,11 @@ describe("Tracing", () => {
   })
   it("should trace condM", async () => {
     const result = await T.runPromiseExit(
-      T.effectTotal(() => false)["|>"](
+      T.succeedWith(() => false)["|>"](
         T.chain(
           T.condM(
-            T.effectTotal(() => 0),
-            T.effectTotal(() => 1)
+            T.succeedWith(() => 0),
+            T.succeedWith(() => 1)
           )
         )
       )
@@ -236,7 +236,7 @@ describe("Tracing", () => {
     const result = await T.runPromiseExit(
       T.effectAsyncM((cb: T.Cb<T.UIO<number>>) =>
         T.accessM((_: { n: number }) =>
-          T.effectTotal(() => {
+          T.succeedWith(() => {
             cb(T.succeed(_.n))
           })
         )
@@ -318,7 +318,7 @@ describe("Tracing", () => {
     const double = (n: number) => n * 2
     const f = pipe(
       // comment here
-      T.effectTotal(() => 1),
+      T.succeedWith(() => 1),
       // then double it
       T.map((v) => {
         return pipe(

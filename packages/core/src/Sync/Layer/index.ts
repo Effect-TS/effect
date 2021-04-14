@@ -57,7 +57,7 @@ export abstract class SyncLayer<R, E, A> {
     const scope = () => this.scope()
 
     return Sy.gen(function* (_) {
-      const memo = yield* _(Sy.sync((): SyncMemoMap => new Map()))
+      const memo = yield* _(Sy.succeedWith((): SyncMemoMap => new Map()))
       const scoped = yield* _(scope())
 
       return yield* _(scoped(memo))
@@ -248,7 +248,7 @@ export type SyncMemoMap = Map<PropertyKey, any>
 export function getMemoOrElseCreate<R, E, A>(layer: SyncLayer<R, E, A>) {
   return (m: SyncMemoMap): Sy.Sync<R, E, A> =>
     Sy.gen(function* (_) {
-      const inMap = yield* _(Sy.sync(() => m.get(layer.hash.get)))
+      const inMap = yield* _(Sy.succeedWith(() => m.get(layer.hash.get)))
 
       if (inMap) {
         return yield* _(Sy.succeed(inMap))
@@ -258,7 +258,7 @@ export function getMemoOrElseCreate<R, E, A>(layer: SyncLayer<R, E, A>) {
             const f = yield* _(layer.scope())
             const a = yield* _(f(m))
             yield* _(
-              Sy.sync(() => {
+              Sy.succeedWith(() => {
                 m.set(layer.hash.get, a)
               })
             )

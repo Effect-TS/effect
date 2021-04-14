@@ -12,6 +12,7 @@ import * as O from "../src/Option"
 import * as Ref from "../src/Ref"
 import { runTest } from "./utils/runTest"
 
+T.succeedWith
 describe("Effect", () => {
   it("catch", async () => {
     class ErrorA {
@@ -43,7 +44,7 @@ describe("Effect", () => {
             cb(T.unit)
           }, ms)
 
-          return T.effectTotal(() => {
+          return T.succeedWith(() => {
             f(fib.id.seqNumber)
             clearTimeout(timeout)
           })
@@ -70,12 +71,12 @@ describe("Effect", () => {
     let _running = true
     const f = jest.fn()
     const program = pipe(
-      T.effectTotal(() => {
+      T.succeedWith(() => {
         if (_running) f()
       }),
       T.fork,
       T.awaitAllChildren,
-      T.chain(() => T.effectTotal(() => (_running = false)))
+      T.chain(() => T.succeedWith(() => (_running = false)))
     )
 
     await T.runPromise(program)
@@ -121,7 +122,7 @@ describe("Effect", () => {
     const m = jest.fn()
     const result = await pipe(
       T.memoize((n: number) =>
-        T.effectTotal(() => {
+        T.succeedWith(() => {
           m(n)
           return n + 1
         })
@@ -155,7 +156,7 @@ describe("Effect", () => {
           const t = setTimeout(() => {
             cb(T.succeed(1))
           }, 5000)
-          return T.effectTotal(() => {
+          return T.succeedWith(() => {
             a()
             clearTimeout(t)
           })
@@ -164,7 +165,7 @@ describe("Effect", () => {
           const t = setTimeout(() => {
             cb(T.succeed(2))
           }, 100)
-          return T.effectTotal(() => {
+          return T.succeedWith(() => {
             b()
             clearTimeout(t)
           })
@@ -173,7 +174,7 @@ describe("Effect", () => {
           const t = setTimeout(() => {
             cb(T.succeed(3))
           }, 5000)
-          return T.effectTotal(() => {
+          return T.succeedWith(() => {
             c()
             clearTimeout(t)
           })
@@ -200,7 +201,7 @@ describe("Effect", () => {
         const t = setTimeout(() => {
           cb(T.succeed(1))
         }, 5000)
-        return T.effectTotal(() => {
+        return T.succeedWith(() => {
           a()
           clearTimeout(t)
         })
@@ -209,7 +210,7 @@ describe("Effect", () => {
         const t = setTimeout(() => {
           cb(T.succeed(2))
         }, 100)
-        return T.effectTotal(() => {
+        return T.succeedWith(() => {
           b()
           clearTimeout(t)
         })
@@ -218,7 +219,7 @@ describe("Effect", () => {
         const t = setTimeout(() => {
           cb(T.succeed(3))
         }, 5000)
-        return T.effectTotal(() => {
+        return T.succeedWith(() => {
           c()
           clearTimeout(t)
         })
@@ -240,7 +241,7 @@ describe("Effect", () => {
         const timer = setTimeout(() => {
           cb(T.succeed(1))
         }, 2000)
-        return T.effectTotal(() => {
+        return T.succeedWith(() => {
           f()
           clearTimeout(timer)
         })
@@ -259,7 +260,7 @@ describe("Effect", () => {
         const timer = setTimeout(() => {
           cb(T.succeed(1))
         }, 2000)
-        return T.effectTotal(() => {
+        return T.succeedWith(() => {
           f()
           clearTimeout(timer)
         })
@@ -276,7 +277,7 @@ describe("Effect", () => {
   it("chainError", async () => {
     const result = await pipe(
       T.fail("error"),
-      T.chainError((e) => T.effectTotal(() => `(${e})`)),
+      T.chainError((e) => T.succeedWith(() => `(${e})`)),
       T.result,
       T.map(Ex.untraced),
       T.runPromise
@@ -295,7 +296,7 @@ describe("Effect", () => {
           flow(
             dump,
             T.chain(prettyPrintM),
-            T.chain((text) => T.effectTotal(() => console.log(text)))
+            T.chain((text) => T.succeedWith(() => console.log(text)))
           )
         ),
         T.tap(
@@ -303,7 +304,7 @@ describe("Effect", () => {
             dump,
             T.delay(10),
             T.chain(prettyPrintM),
-            T.chain((text) => T.effectTotal(() => console.log(text)))
+            T.chain((text) => T.succeedWith(() => console.log(text)))
           )
         ),
         T.chain(Fiber.join),
@@ -329,7 +330,7 @@ describe("Effect", () => {
     expect(result).toEqual("foo - bar")
   })
   it("forEach", async () => {
-    const f = T.forEach_(range(0, 100), (n: number) => T.effectTotal(() => n + 1))
+    const f = T.forEach_(range(0, 100), (n: number) => T.succeedWith(() => n + 1))
     const a = await pipe(f, T.runPromise)
     const b = await pipe(f, T.runPromise)
     expect(a).toEqual(b)

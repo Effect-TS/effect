@@ -601,7 +601,7 @@ export function toQueue<RA, RB, EA, EB, A, B>(
  */
 export function makeBounded<A>(requestedCapacity: number): T.UIO<Hub<A>> {
   return T.chain_(
-    T.effectTotal(() => HF.makeBounded<A>(requestedCapacity)),
+    T.succeedWith(() => HF.makeBounded<A>(requestedCapacity)),
     (_) => makeHub(_, new S.BackPressure())
   )
 }
@@ -636,7 +636,7 @@ export function unsafeMakeBounded<A>(requestedCapacity: number): Hub<A> {
  */
 export function makeDropping<A>(requestedCapacity: number): T.UIO<Hub<A>> {
   return T.chain_(
-    T.effectTotal(() => {
+    T.succeedWith(() => {
       return HF.makeBounded<A>(requestedCapacity)
     }),
     (_) => makeHub(_, new S.Dropping())
@@ -672,7 +672,7 @@ export function unsafeMakeDropping<A>(requestedCapacity: number): Hub<A> {
  */
 export function makeSliding<A>(requestedCapacity: number): T.UIO<Hub<A>> {
   return T.chain_(
-    T.effectTotal(() => {
+    T.succeedWith(() => {
       return HF.makeBounded<A>(requestedCapacity)
     }),
     (_) => makeHub(_, new S.Sliding())
@@ -705,7 +705,7 @@ export function unsafeMakeSliding<A>(requestedCapacity: number): Hub<A> {
  */
 export function makeUnbounded<A>(): T.UIO<Hub<A>> {
   return T.chain_(
-    T.effectTotal(() => {
+    T.succeedWith(() => {
       return HF.makeUnbounded<A>()
     }),
     (_) => makeHub(_, new S.Dropping())
@@ -758,7 +758,7 @@ class UnsafeMakeHubImplementation<A> extends XHubInternal<
     super()
     this.awaitShutdown = P.await(shutdownHook)
     this.capacity = hub.capacity
-    this.isShutdown = T.effectTotal(() => shutdownFlag.get)
+    this.isShutdown = T.succeedWith(() => shutdownFlag.get)
     this.shutdown = T.uninterruptible(
       T.suspend((_, fiberId) => {
         shutdownFlag.set(true)
@@ -926,7 +926,7 @@ class UnsafeMakeSubscriptionImplementation<A> extends XQueueInternal<
 
   capacity: number = this.hub.capacity
 
-  isShutdown: T.UIO<boolean> = T.effectTotal(() => this.shutdownFlag.get)
+  isShutdown: T.UIO<boolean> = T.succeedWith(() => this.shutdownFlag.get)
 
   shutdown: T.UIO<void> = T.uninterruptible(
     T.suspend((_, fiberId) => {
@@ -937,7 +937,7 @@ class UnsafeMakeSubscriptionImplementation<A> extends XQueueInternal<
           T.forEachPar_(U.unsafePollAllQueue(this.pollers), (_) => {
             return P.interruptAs(fiberId)(_)
           }),
-          T.effectTotal(() => this.subscription.unsubscribe())
+          T.succeedWith(() => this.subscription.unsubscribe())
         ),
         P.succeed_(this.shutdownHook, undefined)
       )
@@ -988,7 +988,7 @@ class UnsafeMakeSubscriptionImplementation<A> extends XQueueInternal<
           }
         }),
         () =>
-          T.effectTotal(() => {
+          T.succeedWith(() => {
             U.unsafeRemove(this.pollers, promise)
           })
       )

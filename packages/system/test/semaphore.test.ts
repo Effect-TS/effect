@@ -16,7 +16,7 @@ describe("Semaphores", () => {
               T.gen(function* (_) {
                 // Blocking IO
                 yield* _(
-                  T.effectTotal(() => {
+                  T.succeedWith(() => {
                     blockingExecuted++
                   })
                 )
@@ -25,7 +25,7 @@ describe("Semaphores", () => {
                 yield* _(
                   T.andThen_(
                     T.sleep(10),
-                    T.effectTotal(() => {
+                    T.succeedWith(() => {
                       unblockingExecuted++
                     })
                   )
@@ -65,7 +65,7 @@ describe("Semaphores", () => {
                 yield* _(
                   T.andThen_(
                     T.sleep(10),
-                    T.effectTotal(() => {
+                    T.succeedWith(() => {
                       unblockingExecuted++
                     })
                   )
@@ -73,7 +73,7 @@ describe("Semaphores", () => {
 
                 // Blocking IO
                 yield* _(
-                  T.effectTotal(() => {
+                  T.succeedWith(() => {
                     blockingExecuted++
                   })
                 )

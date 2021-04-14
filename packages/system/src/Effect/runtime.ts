@@ -299,7 +299,7 @@ export function runtime<R0>() {
   return core.accessM(
     (r0: R0) =>
       new IPlatform((platform) =>
-        core.effectTotal(
+        core.succeedWith(
           (): CustomRuntime<R0, unknown> => {
             return makeCustomRuntime<R0, unknown>(r0, platform)
           }

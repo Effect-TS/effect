@@ -57,7 +57,7 @@ export function effectMaybeAsyncInterruptBlockingOn<R, E, A>(
   __trace?: string
 ) {
   return core.chain_(
-    core.effectTotal(
+    core.succeedWith(
       () => [new AtomicReference(false), new OneShot<Canceler<R>>()] as const
     ),
     ([started, cancel]) =>
