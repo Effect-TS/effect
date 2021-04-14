@@ -82,7 +82,7 @@ export class Atomic<A> implements XTRef<never, never, A, A> {
     ca: (c: C) => E.Either<EC, A>,
     bd: (b: A) => E.Either<ED, D>
   ): XTRef<EC, ED, C, D> {
-    return new Derived((f) => f(bd, ca, this), this.atomic)
+    return new Derived(bd, ca, this, this.atomic)
   }
 
   foldAll<EC, ED, C, D>(
@@ -92,11 +92,11 @@ export class Atomic<A> implements XTRef<never, never, A, A> {
     ca: (c: C) => (b: A) => E.Either<EC, A>,
     bd: (b: A) => E.Either<ED, D>
   ): XTRef<EC, ED, C, D> {
-    return new DerivedAll((f) => f(bd, ca, this), this.atomic)
+    return new DerivedAll(bd, ca, this, this.atomic)
   }
 }
 
-export class Derived<EA, EB, A, B> implements XTRef<EA, EB, A, B> {
+export class Derived<S, EA, EB, A, B> implements XTRef<EA, EB, A, B> {
   readonly _typeId: TRefTypeId = TRefTypeId
   readonly _tag = "Derived"
   readonly _EA!: () => EA
@@ -105,13 +105,9 @@ export class Derived<EA, EB, A, B> implements XTRef<EA, EB, A, B> {
   readonly _B!: () => B
 
   constructor(
-    readonly use: <X>(
-      f: <S>(
-        getEither: (s: S) => E.Either<EB, B>,
-        setEither: (a: A) => E.Either<EA, S>,
-        value: Atomic<S>
-      ) => X
-    ) => X,
+    readonly getEither: (s: S) => E.Either<EB, B>,
+    readonly setEither: (a: A) => E.Either<EA, S>,
+    readonly value: Atomic<S>,
     readonly atomic: Atomic<unknown>
   ) {}
 
@@ -121,20 +117,14 @@ export class Derived<EA, EB, A, B> implements XTRef<EA, EB, A, B> {
     ca: (c: C) => E.Either<EC, A>,
     bd: (b: B) => E.Either<ED, D>
   ): XTRef<EC, ED, C, D> {
-    return this.use(
-      (getEither, setEither, value) =>
-        new Derived(
-          (f) =>
-            f(
-              (s) => E.fold_(getEither(s), (e) => E.left(eb(e)), bd),
-              (c) =>
-                E.chain_(ca(c), (a) =>
-                  E.fold_(setEither(a), (e) => E.left(ea(e)), E.right)
-                ),
-              value
-            ),
-          this.atomic
-        )
+    return new Derived(
+      (s) => E.fold_(this.getEither(s), (e) => E.left(eb(e)), bd),
+      (c) =>
+        E.chain_(ca(c), (a) =>
+          E.fold_(this.setEither(a), (e) => E.left(ea(e)), E.right)
+        ),
+      this.value,
+      this.atomic
     )
   }
 
@@ -145,26 +135,20 @@ export class Derived<EA, EB, A, B> implements XTRef<EA, EB, A, B> {
     ca: (c: C) => (b: B) => E.Either<EC, A>,
     bd: (b: B) => E.Either<ED, D>
   ): XTRef<EC, ED, C, D> {
-    return this.use(
-      (getEither, setEither, value) =>
-        new DerivedAll(
-          (f) =>
-            f(
-              (s) => E.fold_(getEither(s), (e) => E.left(eb(e)), bd),
-              (c) => (s) =>
-                E.chain_(
-                  E.fold_(getEither(s), (e) => E.left(ec(e)), ca(c)),
-                  (a) => E.fold_(setEither(a), (e) => E.left(ea(e)), E.right)
-                ),
-              value
-            ),
-          this.atomic
-        )
+    return new DerivedAll(
+      (s) => E.fold_(this.getEither(s), (e) => E.left(eb(e)), bd),
+      (c) => (s) =>
+        E.chain_(
+          E.fold_(this.getEither(s), (e) => E.left(ec(e)), ca(c)),
+          (a) => E.fold_(this.setEither(a), (e) => E.left(ea(e)), E.right)
+        ),
+      this.value,
+      this.atomic
     )
   }
 }
 
-export class DerivedAll<EA, EB, A, B> implements XTRef<EA, EB, A, B> {
+export class DerivedAll<S, EA, EB, A, B> implements XTRef<EA, EB, A, B> {
   readonly _typeId: TRefTypeId = TRefTypeId
   readonly _tag = "DerivedAll"
   readonly _EA!: () => EA
@@ -173,13 +157,9 @@ export class DerivedAll<EA, EB, A, B> implements XTRef<EA, EB, A, B> {
   readonly _B!: () => B
 
   constructor(
-    readonly use: <X>(
-      f: <S>(
-        getEither: (s: S) => E.Either<EB, B>,
-        setEither: (a: A) => (s: S) => E.Either<EA, S>,
-        value: Atomic<S>
-      ) => X
-    ) => X,
+    readonly getEither: (s: S) => E.Either<EB, B>,
+    readonly setEither: (a: A) => (s: S) => E.Either<EA, S>,
+    readonly value: Atomic<S>,
     readonly atomic: Atomic<unknown>
   ) {}
 
@@ -189,20 +169,14 @@ export class DerivedAll<EA, EB, A, B> implements XTRef<EA, EB, A, B> {
     ca: (c: C) => E.Either<EC, A>,
     bd: (b: B) => E.Either<ED, D>
   ): XTRef<EC, ED, C, D> {
-    return this.use(
-      (getEither, setEither, value) =>
-        new DerivedAll(
-          (f) =>
-            f(
-              (s) => E.fold_(getEither(s), (e) => E.left(eb(e)), bd),
-              (c) => (s) =>
-                E.chain_(ca(c), (a) =>
-                  E.fold_(setEither(a)(s), (e) => E.left(ea(e)), E.right)
-                ),
-              value
-            ),
-          this.atomic
-        )
+    return new DerivedAll(
+      (s) => E.fold_(this.getEither(s), (e) => E.left(eb(e)), bd),
+      (c) => (s) =>
+        E.chain_(ca(c), (a) =>
+          E.fold_(this.setEither(a)(s), (e) => E.left(ea(e)), E.right)
+        ),
+      this.value,
+      this.atomic
     )
   }
 
@@ -213,21 +187,15 @@ export class DerivedAll<EA, EB, A, B> implements XTRef<EA, EB, A, B> {
     ca: (c: C) => (b: B) => E.Either<EC, A>,
     bd: (b: B) => E.Either<ED, D>
   ): XTRef<EC, ED, C, D> {
-    return this.use(
-      (getEither, setEither, value) =>
-        new DerivedAll(
-          (f) =>
-            f(
-              (s) => E.fold_(getEither(s), (e) => E.left(eb(e)), bd),
-              (c) => (s) =>
-                E.chain_(
-                  E.fold_(getEither(s), (e) => E.left(ec(e)), ca(c)),
-                  (a) => E.fold_(setEither(a)(s), (e) => E.left(ea(e)), E.right)
-                ),
-              value
-            ),
-          this.atomic
-        )
+    return new DerivedAll(
+      (s) => E.fold_(this.getEither(s), (e) => E.left(eb(e)), bd),
+      (c) => (s) =>
+        E.chain_(
+          E.fold_(this.getEither(s), (e) => E.left(ec(e)), ca(c)),
+          (a) => E.fold_(this.setEither(a)(s), (e) => E.left(ea(e)), E.right)
+        ),
+      this.value,
+      this.atomic
     )
   }
 }
@@ -254,13 +222,13 @@ export function get<EA, EB, A, B>(self: XTRef<EA, EB, A, B>): STM.STM<unknown, E
       })
     }
     case "Derived": {
-      return self.use((getEither, _, value) =>
-        STM.chain_(get(value), (s) => E.fold_(getEither(s), STM.fail, STM.succeed))
+      return STM.chain_(get(self.value), (s) =>
+        E.fold_(self.getEither(s), STM.fail, STM.succeed)
       )
     }
     case "DerivedAll": {
-      return self.use((getEither, _, value) =>
-        STM.chain_(get(value), (s) => E.fold_(getEither(s), STM.fail, STM.succeed))
+      return STM.chain_(get(self.value), (s) =>
+        E.fold_(self.getEither(s), STM.fail, STM.succeed)
       )
     }
   }
@@ -292,19 +260,15 @@ export function set_<EA, EB, A, B>(
       })
     }
     case "Derived": {
-      return self.use((_, setEither, value) =>
-        E.fold_(setEither(a), STM.fail, (s) => set_(value, s))
-      )
+      return E.fold_(self.setEither(a), STM.fail, (s) => set_(self.value, s))
     }
     case "DerivedAll": {
-      return self.use((_, setEither, value) =>
-        STM.absolve(
-          modify_(value, (s) =>
-            E.fold_(
-              setEither(a)(s),
-              (e) => [E.leftW(e), s],
-              (s) => [E.right(undefined), s]
-            )
+      return STM.absolve(
+        modify_(self.value, (s) =>
+          E.fold_(
+            self.setEither(a)(s),
+            (e) => [E.leftW(e), s],
+            (s) => [E.right(undefined), s]
           )
         )
       )
@@ -332,41 +296,37 @@ export function modify_<E, A, B>(
       })
     }
     case "Derived": {
-      return self.use((getEither, setEither, value) =>
-        STM.absolve(
-          modify_(value, (s) =>
-            E.fold_(
-              getEither(s),
-              (e) => [E.leftW<E, B>(e), s],
-              (a1) => {
-                const [b, a2] = f(a1)
-                return E.fold_(
-                  setEither(a2),
-                  (e) => [E.left(e), s],
-                  (s) => [E.right(b), s]
-                )
-              }
-            )
+      return STM.absolve(
+        modify_(self.value, (s) =>
+          E.fold_(
+            self.getEither(s),
+            (e) => [E.leftW<E, B>(e), s],
+            (a1) => {
+              const [b, a2] = f(a1)
+              return E.fold_(
+                self.setEither(a2),
+                (e) => [E.left(e), s],
+                (s) => [E.right(b), s]
+              )
+            }
           )
         )
       )
     }
     case "DerivedAll": {
-      return self.use((getEither, setEither, value) =>
-        STM.absolve(
-          modify_(value, (s) =>
-            E.fold_(
-              getEither(s),
-              (e) => [E.leftW<E, B>(e), s],
-              (a1) => {
-                const [b, a2] = f(a1)
-                return E.fold_(
-                  setEither(a2)(s),
-                  (e) => [E.left(e), s],
-                  (s) => [E.right(b), s]
-                )
-              }
-            )
+      return STM.absolve(
+        modify_(self.value, (s) =>
+          E.fold_(
+            self.getEither(s),
+            (e) => [E.leftW<E, B>(e), s],
+            (a1) => {
+              const [b, a2] = f(a1)
+              return E.fold_(
+                self.setEither(a2)(s),
+                (e) => [E.left(e), s],
+                (s) => [E.right(b), s]
+              )
+            }
           )
         )
       )
@@ -651,8 +611,8 @@ export function concrete<EA, EB, A, B>(
   _: XTRef<EA, EB, A, B>
 ): asserts _ is  // @ts-expect-error
   | (Atomic<A> & Atomic<B>)
-  | Derived<EA, EB, A, B>
-  | DerivedAll<EA, EB, A, B> {
+  | Derived<unknown, EA, EB, A, B>
+  | DerivedAll<unknown, EA, EB, A, B> {
   //
 }
 
