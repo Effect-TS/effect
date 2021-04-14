@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.11.0](https://github.com/Effect-TS/core/compare/@effect-ts/build-utils@0.10.3...@effect-ts/build-utils@0.11.0) (2021-04-14)
+
+
+### Features
+
+* **various:** rename effectTotal to succeedWith and a few others renames ([3386196](https://github.com/Effect-TS/core/commit/33861965ddd521d01e649a0f9b911e2cca895d76))
+
+
+
+
+
 ## [0.10.3](https://github.com/Effect-TS/core/compare/@effect-ts/build-utils@0.10.2...@effect-ts/build-utils@0.10.3) (2021-04-13)
 
 **Note:** Version bump only for package @effect-ts/build-utils

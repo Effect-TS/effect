@@ -3,6 +3,37 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.28.0](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.27.3...@effect-ts/system@0.28.0) (2021-04-14)
+
+
+### Bug Fixes
+
+* **chunks:** fix invalid references ([d7be179](https://github.com/Effect-TS/core/commit/d7be1794087200d9d16382992385742036573cba))
+
+
+### Features
+
+* **effect:** rectify andThen method ([c697237](https://github.com/Effect-TS/core/commit/c697237734069fba064f0abe7e83ccd33b6696d5))
+* **managed:** dataFirst comments ([35952fd](https://github.com/Effect-TS/core/commit/35952fdde682c1499d0845ded1a7fa835c3c1296))
+* **stm:** port some combinators, rename effect left ([9664bd0](https://github.com/Effect-TS/core/commit/9664bd0aaa1832b87a0c861ce864f8998f389ca3))
+* **streams:** improve channel readWithCause and implement readWithError ([55588ad](https://github.com/Effect-TS/core/commit/55588ad89e6e8d3b5cc23d115f6f049026ca90a4))
+* **various:** rename effectTotal to succeedWith and a few others renames ([3386196](https://github.com/Effect-TS/core/commit/33861965ddd521d01e649a0f9b911e2cca895d76))
+
+
+### Performance Improvements
+
+* **stm:** TRef reduce closure allocations ([7f480b2](https://github.com/Effect-TS/core/commit/7f480b2a4e4ab0375dffafd61754a00067ac4016))
+
+
+### BREAKING CHANGES
+
+* **effect:** the implementation is now in line with zio meaning where andThen provides
+environment to the next effect
+
+
+
+
+
 ## [0.27.3](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.27.2...@effect-ts/system@0.27.3) (2021-04-13)
 
 
