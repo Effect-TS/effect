@@ -7,6 +7,16 @@ import { fromEffect } from "../fromEffect"
 /**
  * Lifts an `Either` into a `Managed` value.
  */
-export function fromEither<E, A>(self: () => E.Either<E, A>, __trace?: string) {
+export function fromEitherWith<E, A>(self: () => E.Either<E, A>, __trace?: string) {
   return fromEffect(fe.fromEither(self), __trace)
+}
+
+/**
+ * Lifts an `Either` into a `Managed` value.
+ */
+export function fromEither<E, A>(self: E.Either<E, A>, __trace?: string) {
+  return fromEffect(
+    fe.fromEither(() => self),
+    __trace
+  )
 }

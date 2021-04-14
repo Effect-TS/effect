@@ -10,6 +10,8 @@ import { halt } from "./halt"
 /**
  * Recovers from errors by accepting one effect to execute for the case of an
  * error, and one effect to execute for the case of success.
+ *
+ * @dataFirst foldM_
  */
 export function foldM<R, E, A, R1, E1, B, R2, E2, C>(
   failure: (e: E) => Managed<R1, E1, B>,

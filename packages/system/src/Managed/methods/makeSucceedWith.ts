@@ -7,7 +7,7 @@ import type { Managed } from "../managed"
  * `Managed<unknown, never, A>` with a release action. The acquire and
  * release actions will be performed uninterruptibly.
  */
-export function makeEffectTotal<A, B>(
+export function makeSucceedWith<A, B>(
   acquire: () => A,
   release: (a: A) => B,
   __trace?: string
