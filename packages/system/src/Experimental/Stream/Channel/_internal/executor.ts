@@ -320,7 +320,7 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
     this.cancelled = exit
   }
 
-  run(): ChannelState<Env, unknown> {
+  run(): ChannelState<Env, OutErr> {
     let result: ChannelState<Env, unknown> | undefined = undefined
 
     while (!result) {
@@ -496,7 +496,7 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
       }
     }
 
-    return result!
+    return result! as ChannelState<Env, OutErr>
   }
 
   private runReadGo(

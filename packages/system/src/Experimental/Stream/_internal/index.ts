@@ -5,6 +5,8 @@ import "../../../Operator"
 import * as Cause from "../../../Cause"
 import * as Chunk from "../../../Collections/Immutable/Chunk"
 import * as T from "../../../Effect"
+import * as M from "../../../Managed"
+import * as O from "../../../Option"
 import * as C from "../Channel"
 import * as Sink from "../Sink"
 
@@ -256,4 +258,15 @@ export function take_<R, E, A>(self: Stream<R, E, A>, n: number): Stream<R, E, A
  */
 export function take(n: number): <R, E, A>(self: Stream<R, E, A>) => Stream<R, E, A> {
   return (self) => take_(self, n)
+}
+
+/**
+ * Interpret the stream as a managed pull
+ */
+export function toPull<R, E, A>(
+  self: Stream<R, E, A>
+): M.Managed<R, never, T.Effect<R, O.Option<E>, Chunk.Chunk<A>>> {
+  return M.map_(C.toPull(self.channel), (pull) =>
+    T.mapError_(pull, (e) => (e._tag === "Left" ? O.some(e.left) : O.none))
+  )
 }
