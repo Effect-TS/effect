@@ -2,7 +2,6 @@
 
 import "../../../Operator"
 
-import type * as Cause from "../../../Cause"
 import * as T from "../../../Effect"
 import * as M from "../../../Managed"
 import type { ChannelState } from "./_internal/executor"
@@ -89,11 +88,7 @@ export function mapOut_<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone, Ou
     OutErr,
     OutElem2,
     OutDone
-  > = C.readWithCause(
-    (i: OutElem) => C.chain_(C.write(f(i)), () => reader),
-    (e: Cause.Cause<OutErr>) => C.halt(e),
-    (d: OutDone) => C.end(d)
-  )
+  > = C.readWithCause((i) => C.chain_(C.write(f(i)), () => reader), C.halt, C.end)
 
   return self[">>>"](reader)
 }

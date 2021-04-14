@@ -222,7 +222,7 @@ function takeLoop<E, A>(
   n: number
 ): C.Channel<unknown, E, Chunk.Chunk<A>, unknown, E, Chunk.Chunk<A>, unknown> {
   return C.readWithCause(
-    (i: Chunk.Chunk<A>) => {
+    (i) => {
       const taken = Chunk.take_(i, n)
       const left = Math.max(n - Chunk.size(taken), 0)
       if (left > 0) {
@@ -231,8 +231,8 @@ function takeLoop<E, A>(
         return C.write(taken)
       }
     },
-    (e: Cause.Cause<E>) => C.halt(e),
-    (d) => C.end(d)
+    C.halt,
+    C.end
   )
 }
 

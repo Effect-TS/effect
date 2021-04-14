@@ -2,7 +2,6 @@
 
 import "../../../Operator"
 
-import type * as Cause from "../../../Cause"
 import * as Chunk from "../../../Collections/Immutable/Chunk"
 import * as C from "../Channel"
 
@@ -38,9 +37,9 @@ function collectLoop<Err, A>(
   Chunk.Chunk<A>
 > {
   return C.readWithCause(
-    (i: Chunk.Chunk<A>) => collectLoop(Chunk.concat_(state, i)),
-    (e: Cause.Cause<Err>) => C.halt(e),
-    () => C.end(state)
+    (i) => collectLoop(Chunk.concat_(state, i)),
+    C.halt,
+    (_) => C.end(state)
   )
 }
 
@@ -64,9 +63,9 @@ export function drain<Err, A>() {
     Chunk.Chunk<never>,
     void
   > = C.readWithCause(
-    (_: Chunk.Chunk<A>) => drain,
-    (e: Cause.Cause<Err>) => C.halt(e),
-    () => C.unit
+    (_) => drain,
+    C.halt,
+    (_) => C.unit
   )
 
   return new Sink(drain)

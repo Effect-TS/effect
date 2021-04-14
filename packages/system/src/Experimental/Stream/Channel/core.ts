@@ -4,6 +4,7 @@ import "../../../Operator"
 
 import * as Cause from "../../../Cause"
 import type * as T from "../../../Effect"
+import * as E from "../../../Either"
 import type * as Exit from "../../../Exit"
 import { identity } from "../../../Function"
 import * as P from "./_internal/primitives"
@@ -85,17 +86,8 @@ export function readWithCause<
   Env1,
   Env2,
   InErr,
-  InErr1,
-  InErr2,
-  InErr3,
   InElem,
-  InElem1,
-  InElem2,
-  InElem3,
   InDone,
-  InDone1,
-  InDone2,
-  InDone3,
   OutErr,
   OutErr1,
   OutErr2,
@@ -106,48 +98,85 @@ export function readWithCause<
   OutDone1,
   OutDone2
 >(
-  inp: (
-    i: InElem
-  ) => P.Channel<Env, InErr1, InElem1, InDone1, OutErr, OutElem, OutDone>,
+  inp: (i: InElem) => P.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
   halt: (
     e: Cause.Cause<InErr>
-  ) => P.Channel<Env1, InErr1, InElem2, InDone2, OutErr1, OutElem1, OutDone1>,
+  ) => P.Channel<Env1, InErr, InElem, InDone, OutErr1, OutElem1, OutDone1>,
   done: (
     d: InDone
-  ) => P.Channel<Env2, InErr3, InElem3, InDone3, OutErr2, OutElem2, OutDone2>
+  ) => P.Channel<Env2, InErr, InElem, InDone, OutErr2, OutElem2, OutDone2>
 ): P.Channel<
   Env & Env1 & Env2,
-  InErr & InErr1 & InErr2 & InErr3,
-  InElem & InElem1 & InElem2 & InElem3,
-  InDone & InDone1 & InDone2 & InDone3,
+  InErr,
+  InElem,
+  InDone,
   OutErr | OutErr1 | OutErr2,
   OutElem | OutElem1 | OutElem2,
   OutDone | OutDone1 | OutDone2
 > {
   return new Read<
     Env & Env1 & Env2,
-    InErr & InErr1 & InErr2 & InErr3,
-    InElem & InElem1 & InElem2 & InElem3,
-    InDone & InDone1 & InDone2 & InDone3,
+    InErr,
+    InElem,
+    InDone,
     OutErr | OutErr1 | OutErr2,
     OutElem | OutElem1 | OutElem2,
     OutDone | OutDone1 | OutDone2,
-    InErr & InErr1 & InErr2 & InErr3,
-    InDone & InDone1 & InDone2 & InDone3
+    InErr,
+    InDone
   >(
     inp,
     new P.ContinuationK<
       Env & Env1 & Env2,
-      InErr & InErr1 & InErr2 & InErr3,
-      InElem & InElem1 & InElem2 & InElem3,
-      InDone & InDone1 & InDone2 & InDone3,
-      InErr & InErr1 & InErr2 & InErr3,
+      InErr,
+      InElem,
+      InDone,
+      InErr,
       OutErr | OutErr1 | OutErr2,
       OutElem | OutElem1 | OutElem2,
-      InDone & InDone1 & InDone2 & InDone3,
+      InDone,
       OutDone | OutDone1 | OutDone2
     >(done, halt)
   )
+}
+
+/**
+ * Reads an input and continue exposing both error and completion
+ */
+export function readWith<
+  Env,
+  Env1,
+  Env2,
+  InErr,
+  InElem,
+  InDone,
+  OutErr,
+  OutErr1,
+  OutErr2,
+  OutElem,
+  OutElem1,
+  OutElem2,
+  OutDone,
+  OutDone1,
+  OutDone2
+>(
+  inp: (i: InElem) => P.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
+  error: (
+    e: InErr
+  ) => P.Channel<Env1, InErr, InElem, InDone, OutErr1, OutElem1, OutDone1>,
+  done: (
+    d: InDone
+  ) => P.Channel<Env2, InErr, InElem, InDone, OutErr2, OutElem2, OutDone2>
+): P.Channel<
+  Env & Env1 & Env2,
+  InErr,
+  InElem,
+  InDone,
+  OutErr | OutErr1 | OutErr2,
+  OutElem | OutElem1 | OutElem2,
+  OutDone | OutDone1 | OutDone2
+> {
+  return readWithCause(inp, (c) => E.fold_(Cause.failureOrCause(c), error, halt), done)
 }
 
 /**
@@ -724,11 +753,7 @@ export function drain<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
     OutErr,
     never,
     OutDone
-  > = readWithCause(
-    (_: OutElem) => drainer,
-    (e: Cause.Cause<OutErr>) => halt(e),
-    (d: OutDone) => end(d)
-  )
+  > = readWithCause((_) => drainer, halt, end)
   return self[">>>"](drainer)
 }
 
