@@ -242,6 +242,80 @@ export function flatten<R0, E0, R, E, A>(
 }
 
 /**
+ * Loops over the stream chunks concatenating the result of f
+ */
+export function loopOnChunks_<R, E extends E1, A, R1, E1, A1>(
+  self: Stream<R, E, A>,
+  f: (
+    a: Chunk.Chunk<A>
+  ) => C.Channel<R1, E1, Chunk.Chunk<A>, unknown, E1, Chunk.Chunk<A1>, boolean>
+): Stream<R & R1, E1, A1> {
+  const loop: C.Channel<
+    R1,
+    E1,
+    Chunk.Chunk<A>,
+    unknown,
+    E1,
+    Chunk.Chunk<A1>,
+    boolean
+  > = C.readWithCause(
+    (chunk) => C.chain_(f(chunk), (cont) => (cont ? loop : C.end(false))),
+    C.halt,
+    (_) => C.end(false)
+  )
+  return new Stream(self.channel[">>>"](loop))
+}
+
+/**
+ * Loops on chunks emitting partially
+ */
+export function loopOnPartialChunks_<R, E extends E1, A, R1, E1, A1>(
+  self: Stream<R, E, A>,
+  f: (a: Chunk.Chunk<A>, emit: (a: A1) => T.UIO<void>) => T.Effect<R1, E1, boolean>
+): Stream<R & R1, E1, A1> {
+  return loopOnChunks_(self, (chunk) =>
+    C.unwrap(
+      T.suspend(() => {
+        let outputChunk = Chunk.empty<A1>()
+        return T.catchAll_(
+          T.map_(
+            f(chunk, (a: A1) =>
+              T.succeedWith(() => {
+                outputChunk = Chunk.append_(outputChunk, a)
+              })
+            ),
+            (cont) => C.chain_(C.write(outputChunk), () => C.end(cont))
+          ),
+          (failure) =>
+            T.succeedWith(() => {
+              if (Chunk.isEmpty(outputChunk)) {
+                return C.fail(failure)
+              } else {
+                return C.chain_(C.write(outputChunk), () => C.fail(failure))
+              }
+            })
+        )
+      })
+    )
+  )
+}
+
+/**
+ * Loops on chunks elements emitting partially
+ */
+export function loopOnPartialChunksElements_<R, E extends E1, A, R1, E1, A1>(
+  self: Stream<R, E, A>,
+  f: (a: A, emit: (a: A1) => T.UIO<void>) => T.Effect<R1, E1, void>
+): Stream<R & R1, E1, A1> {
+  return loopOnPartialChunks_(self, (a, emit) =>
+    T.as_(
+      Chunk.mapM_(a, (a) => f(a, emit)),
+      true
+    )
+  )
+}
+
+/**
  * Transforms the elements of this stream using the supplied function.
  */
 export function map_<R, E, O, O1>(
