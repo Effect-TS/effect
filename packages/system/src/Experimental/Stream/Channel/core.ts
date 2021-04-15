@@ -3,10 +3,12 @@
 import "../../../Operator"
 
 import * as Cause from "../../../Cause"
-import type * as T from "../../../Effect"
+import * as T from "../../../Effect"
 import * as E from "../../../Either"
 import type * as Exit from "../../../Exit"
 import { identity } from "../../../Function"
+import type * as M from "../../../Managed"
+import * as ReleaseMap from "../../../Managed/ReleaseMap"
 import * as P from "./_internal/primitives"
 import {
   BracketOut,
@@ -398,6 +400,101 @@ export function concatMapWith<
 }
 
 /**
+ * Concat sequentially a channel of channels
+ */
+export function concatAllWith_<
+  Env,
+  InErr,
+  InElem,
+  InDone,
+  OutErr,
+  OutElem,
+  OutDone,
+  OutDone2,
+  OutDone3,
+  Env2,
+  InErr2,
+  InElem2,
+  InDone2,
+  OutErr2
+>(
+  channels: P.Channel<
+    Env,
+    InErr,
+    InElem,
+    InDone,
+    OutErr,
+    P.Channel<Env2, InErr2, InElem2, InDone2, OutErr2, OutElem, OutDone>,
+    OutDone2
+  >,
+  f: (o: OutDone, o1: OutDone) => OutDone,
+  g: (o: OutDone, o2: OutDone2) => OutDone3
+): P.Channel<
+  Env & Env2,
+  InErr & InErr2,
+  InElem & InElem2,
+  InDone & InDone2,
+  OutErr | OutErr2,
+  OutElem,
+  OutDone3
+> {
+  return new ConcatAll<
+    Env & Env2,
+    InErr & InErr2,
+    InElem & InElem2,
+    InDone & InDone2,
+    OutErr | OutErr2,
+    OutElem,
+    OutDone3,
+    P.Channel<Env2, InErr2, InElem2, InDone2, OutErr2, OutElem, OutDone>,
+    OutDone,
+    OutDone2
+  >(f, g, channels, identity)
+}
+
+/**
+ * Concat sequentially a channel of channels
+ *
+ * @dataFirst concatAllWith
+ */
+export function concatAllWith<OutDone, OutDone2, OutDone3>(
+  f: (o: OutDone, o1: OutDone) => OutDone,
+  g: (o: OutDone, o2: OutDone2) => OutDone3
+): <
+  Env,
+  InErr,
+  InElem,
+  InDone,
+  OutErr,
+  OutElem,
+  Env2,
+  InErr2,
+  InElem2,
+  InDone2,
+  OutErr2
+>(
+  channels: P.Channel<
+    Env,
+    InErr,
+    InElem,
+    InDone,
+    OutErr,
+    P.Channel<Env2, InErr2, InElem2, InDone2, OutErr2, OutElem, OutDone>,
+    OutDone2
+  >
+) => P.Channel<
+  Env & Env2,
+  InErr & InErr2,
+  InElem & InElem2,
+  InDone & InDone2,
+  OutErr | OutErr2,
+  OutElem,
+  OutDone3
+> {
+  return (channels) => concatAllWith_(channels, f, g)
+}
+
+/**
  * Returns a new channel whose outputs are fed to the specified factory function, which creates
  * new channels in response. These new channels are sequentially concatenated together, and all
  * their outputs appear as outputs of the newly returned channel.
@@ -758,12 +855,35 @@ export function drain<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
 }
 
 /**
- * Makes a channel with an effect
+ * Use an effect to end a channel
  */
 export function fromEffect<R, E, A>(
   self: T.Effect<R, E, A>
 ): P.Channel<R, unknown, unknown, unknown, E, never, A> {
   return new P.Effect(self)
+}
+
+/**
+ * Use a managed to emit an output element
+ */
+export function managedOut<R, E, A>(
+  self: M.Managed<R, E, A>
+): P.Channel<R, unknown, unknown, unknown, E, A, unknown> {
+  return concatMap_(
+    bracketOutExit_(ReleaseMap.makeReleaseMap, (rm, ex) =>
+      ReleaseMap.releaseAll(ex, T.sequential)(rm)
+    ),
+    (rm) =>
+      chain_(
+        fromEffect(
+          T.map_(
+            T.provideSome_(self.effect, (r: R) => [r, rm] as const),
+            ([_, x]) => x
+          )
+        ),
+        write
+      )
+  )
 }
 
 /**
@@ -813,6 +933,25 @@ export function unwrap<R, E, Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
   self: T.Effect<R, E, P.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>>
 ): P.Channel<R & Env, InErr, InElem, InDone, E | OutErr, OutElem, OutDone> {
   return flatten(fromEffect(self))
+}
+
+/**
+ * Makes a channel from a managed that returns a channel in case of success
+ */
+export function unwrapManaged<
+  R,
+  E,
+  Env,
+  InErr,
+  InElem,
+  InDone,
+  OutErr,
+  OutElem,
+  OutDone
+>(
+  self: M.Managed<R, E, P.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>>
+): P.Channel<R & Env, InErr, InElem, InDone, E | OutErr, OutElem, OutDone> {
+  return concatAllWith_(managedOut(self), identity, identity)
 }
 
 /**
