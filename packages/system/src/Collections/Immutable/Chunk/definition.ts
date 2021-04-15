@@ -78,6 +78,10 @@ export abstract class ChunkInternal<A> implements Iterable<A>, Chunk<A> {
     return that instanceof ChunkInternal && corresponds_(this, that, St.equals)
   }
 
+  toJSON() {
+    return this.array()
+  }
+
   abstract [Symbol.iterator](): Iterator<A>
   abstract arrayLikeIterator(): Iterator<ArrayLike<A>>
   abstract reverseArrayLikeIterator(): Iterator<ArrayLike<A>>
