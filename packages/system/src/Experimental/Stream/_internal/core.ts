@@ -232,6 +232,29 @@ export function managed<R, E, A>(self: M.Managed<R, E, A>): Stream<R, E, A> {
 }
 
 /**
+ * Maps over elements of the stream with the specified effectful function.
+ */
+export function mapM_<R, E, A, R1, E1, B>(
+  self: Stream<R, E, A>,
+  f: (a: A) => T.Effect<R1, E1, B>
+): Stream<R & R1, E | E1, B> {
+  return loopOnPartialChunksElements_<R, E, A, R1, E1, B>(self, (a, emit) =>
+    T.chain_(f(a), emit)
+  )
+}
+
+/**
+ * Maps over elements of the stream with the specified effectful function.
+ *
+ * @dataFirst mapM_
+ */
+export function mapM<A, R1, E1, B>(
+  f: (a: A) => T.Effect<R1, E1, B>
+): <R, E>(self: Stream<R, E, A>) => Stream<R & R1, E | E1, B> {
+  return (self) => mapM_(self, f)
+}
+
+/**
  * Flattens this stream-of-streams into a stream made of the concatenation in
  * strict order of all the streams.
  */
@@ -244,18 +267,18 @@ export function flatten<R0, E0, R, E, A>(
 /**
  * Loops over the stream chunks concatenating the result of f
  */
-export function loopOnChunks_<R, E extends E1, A, R1, E1, A1>(
+export function loopOnChunks_<R, E, A, R1, E1, A1>(
   self: Stream<R, E, A>,
   f: (
     a: Chunk.Chunk<A>
-  ) => C.Channel<R1, E1, Chunk.Chunk<A>, unknown, E1, Chunk.Chunk<A1>, boolean>
-): Stream<R & R1, E1, A1> {
+  ) => C.Channel<R1, E | E1, Chunk.Chunk<A>, unknown, E | E1, Chunk.Chunk<A1>, boolean>
+): Stream<R & R1, E | E1, A1> {
   const loop: C.Channel<
     R1,
-    E1,
+    E | E1,
     Chunk.Chunk<A>,
     unknown,
-    E1,
+    E | E1,
     Chunk.Chunk<A1>,
     boolean
   > = C.readWithCause(
@@ -269,10 +292,10 @@ export function loopOnChunks_<R, E extends E1, A, R1, E1, A1>(
 /**
  * Loops on chunks emitting partially
  */
-export function loopOnPartialChunks_<R, E extends E1, A, R1, E1, A1>(
+export function loopOnPartialChunks_<R, E, A, R1, E1, A1>(
   self: Stream<R, E, A>,
   f: (a: Chunk.Chunk<A>, emit: (a: A1) => T.UIO<void>) => T.Effect<R1, E1, boolean>
-): Stream<R & R1, E1, A1> {
+): Stream<R & R1, E | E1, A1> {
   return loopOnChunks_(self, (chunk) =>
     C.unwrap(
       T.suspend(() => {
@@ -303,10 +326,10 @@ export function loopOnPartialChunks_<R, E extends E1, A, R1, E1, A1>(
 /**
  * Loops on chunks elements emitting partially
  */
-export function loopOnPartialChunksElements_<R, E extends E1, A, R1, E1, A1>(
+export function loopOnPartialChunksElements_<R, E, A, R1, E1, A1>(
   self: Stream<R, E, A>,
   f: (a: A, emit: (a: A1) => T.UIO<void>) => T.Effect<R1, E1, void>
-): Stream<R & R1, E1, A1> {
+): Stream<R & R1, E | E1, A1> {
   return loopOnPartialChunks_(self, (a, emit) =>
     T.as_(
       Chunk.mapM_(a, (a) => f(a, emit)),

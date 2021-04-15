@@ -45,4 +45,14 @@ describe("Stream", () => {
       )
     ).equals(Chunk.many([0, 1], [0, 1]))
   })
+  it("mapM", async () => {
+    expect(
+      await pipe(
+        S.fromChunk(Chunk.many(0, 1, 2)),
+        S.mapM((n) => T.succeedWith(() => n + 1)),
+        S.runCollect,
+        T.runPromise
+      )
+    ).equals(Chunk.many(1, 2, 3))
+  })
 })
