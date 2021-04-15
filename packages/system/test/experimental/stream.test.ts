@@ -12,7 +12,7 @@ describe("Stream", () => {
       T.runPromise
     )
 
-    expect(Chunk.toArray(result)).toEqual([1, 2, 3])
+    expect(result).equals(Chunk.many(1, 2, 3))
   })
   it("runDrain", async () => {
     const result: number[] = []
@@ -27,18 +27,22 @@ describe("Stream", () => {
       T.runPromise
     )
 
-    expect(result).toEqual([1, 2, 3])
+    expect(result).equals([1, 2, 3])
   })
   it("forever", async () => {
     expect(
+      await pipe(S.succeed(1), S.forever, S.take(10), S.runCollect, T.runPromise)
+    ).equals(Chunk.many(1, 1, 1, 1, 1, 1, 1, 1, 1, 1))
+  })
+  it("zip", async () => {
+    expect(
       await pipe(
-        S.succeed(1),
-        S.forever,
-        S.take(10),
+        S.forever(S.succeed(0)),
+        S.zip(S.forever(S.succeed(1))),
+        S.take(2),
         S.runCollect,
-        T.map(Chunk.toArray),
         T.runPromise
       )
-    ).toEqual([1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
+    ).equals(Chunk.many([0, 1], [0, 1]))
   })
 })
