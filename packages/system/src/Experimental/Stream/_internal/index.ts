@@ -5,6 +5,7 @@ import "../../../Operator"
 import * as Cause from "../../../Cause"
 import * as Chunk from "../../../Collections/Immutable/Chunk"
 import * as T from "../../../Effect"
+import { identity } from "../../../Function"
 import * as M from "../../../Managed"
 import * as O from "../../../Option"
 import * as C from "../Channel"
@@ -55,68 +56,6 @@ export class Stream<R, E, A> {
 export const empty = fromChunk(Chunk.empty<never>())
 
 /**
- * Creates a single-valued pure stream
- */
-export function succeed<O>(o: O): Stream<unknown, never, O> {
-  return fromChunk(Chunk.single(o))
-}
-
-/**
- * Creates a single-valued pure stream
- */
-export function succeedWith<O>(o: () => O): Stream<unknown, never, O> {
-  return fromChunkWith(() => Chunk.single(o()))
-}
-
-/**
- * Halt a stream with the specified error
- */
-export function fail<E>(error: E): Stream<unknown, E, never> {
-  return new Stream(C.fail(error))
-}
-
-/**
- * Halt a stream with the specified error
- */
-export function failWith<E>(error: () => E): Stream<unknown, E, never> {
-  return new Stream(C.failWith(error))
-}
-
-/**
- * Halt a stream with the specified exception
- */
-export function die(u: unknown): Stream<unknown, never, never> {
-  return new Stream(C.die(u))
-}
-
-/**
- * Halt a stream with the specified exception
- */
-export function dieWith(u: () => unknown): Stream<unknown, never, never> {
-  return new Stream(C.dieWith(u))
-}
-
-/**
- * Creates a stream from a `Chunk` of values
- *
- * @param c a chunk of values
- * @return a finite stream of values
- */
-export function fromChunk<O>(c: Chunk.Chunk<O>): Stream<unknown, never, O> {
-  return new Stream(C.unwrap(T.succeedWith(() => C.write(c))))
-}
-
-/**
- * Creates a stream from a `Chunk` of values
- *
- * @param c a chunk of values
- * @return a finite stream of values
- */
-export function fromChunkWith<O>(c: () => Chunk.Chunk<O>): Stream<unknown, never, O> {
-  return new Stream(C.unwrap(T.succeedWith(() => C.writeWith(c))))
-}
-
-/**
  * Returns a stream made of the concatenation in strict order of all the streams
  * produced by passing each element of this stream to `f`
  */
@@ -153,6 +92,123 @@ export function chain<O, R1, E1, O1>(
   f: (o: O) => Stream<R1, E1, O1>
 ): <R, E>(self: Stream<R, E, O>) => Stream<R & R1, E | E1, O1> {
   return (self) => chain_(self, f)
+}
+
+/**
+ * Halt a stream with the specified exception
+ */
+export function die(u: unknown): Stream<unknown, never, never> {
+  return new Stream(C.die(u))
+}
+
+/**
+ * Halt a stream with the specified exception
+ */
+export function dieWith(u: () => unknown): Stream<unknown, never, never> {
+  return new Stream(C.dieWith(u))
+}
+
+/**
+ * Halt a stream with the specified error
+ */
+export function fail<E>(error: E): Stream<unknown, E, never> {
+  return new Stream(C.fail(error))
+}
+
+/**
+ * Halt a stream with the specified error
+ */
+export function failWith<E>(error: () => E): Stream<unknown, E, never> {
+  return new Stream(C.failWith(error))
+}
+
+/**
+ * Repeats this stream forever.
+ */
+export function forever<R, E, A>(self: Stream<R, E, A>): Stream<R, E, A> {
+  return new Stream(C.repeated(self.channel))
+}
+
+/**
+ * Creates a stream from a `Chunk` of values
+ *
+ * @param c a chunk of values
+ * @return a finite stream of values
+ */
+export function fromChunk<O>(c: Chunk.Chunk<O>): Stream<unknown, never, O> {
+  return new Stream(C.unwrap(T.succeedWith(() => C.write(c))))
+}
+
+/**
+ * Creates a stream from a `Chunk` of values
+ *
+ * @param c a chunk of values
+ * @return a finite stream of values
+ */
+export function fromChunkWith<O>(c: () => Chunk.Chunk<O>): Stream<unknown, never, O> {
+  return new Stream(C.unwrap(T.succeedWith(() => C.writeWith(c))))
+}
+
+/**
+ * Creates a stream from an effect producing a value of type `A`
+ */
+export function effect<R, E, A>(self: T.Effect<R, E, A>): Stream<R, E, A> {
+  return new Stream(C.unwrap(T.fold_(self, C.fail, (x) => C.write(Chunk.single(x)))))
+}
+
+/**
+ * Creates a stream from an effect producing a value of type `A` or an empty Stream
+ */
+export function effectOption<R, E, A>(
+  self: T.Effect<R, O.Option<E>, A>
+): Stream<R, E, A> {
+  return new Stream(
+    C.unwrap(
+      T.fold_(
+        self,
+        O.fold(() => C.unit, C.fail),
+        (x) => C.write(Chunk.single(x))
+      )
+    )
+  )
+}
+
+/**
+ * Creates a single-valued stream from a managed resource
+ */
+export function managed<R, E, A>(self: M.Managed<R, E, A>): Stream<R, E, A> {
+  return new Stream(C.managedOut(M.map_(self, Chunk.single)))
+}
+
+/**
+ * Flattens this stream-of-streams into a stream made of the concatenation in
+ * strict order of all the streams.
+ */
+export function flatten<R0, E0, R, E, A>(
+  self: Stream<R0, E0, Stream<R, E, A>>
+): Stream<R0 & R, E0 | E, A> {
+  return chain_(self, identity)
+}
+
+/**
+ * Transforms the elements of this stream using the supplied function.
+ */
+export function map_<R, E, O, O1>(
+  self: Stream<R, E, O>,
+  f: (o: O) => O1
+): Stream<R, E, O1> {
+  return new Stream(C.mapOut_(self.channel, (o) => Chunk.map_(o, f)))
+}
+
+/**
+ * Transforms the elements of this stream using the supplied function.
+ *
+ * @dataFirst map_
+ */
+export function map<O, O1>(
+  f: (o: O) => O1
+): <R, E>(self: Stream<R, E, O>) => Stream<R, E, O1> {
+  return (self) => map_(self, f)
 }
 
 /**
@@ -193,31 +249,17 @@ export function runDrain<R, E, A>(self: Stream<R, E, A>): T.Effect<R, E, void> {
 }
 
 /**
- * Transforms the elements of this stream using the supplied function.
+ * Creates a single-valued pure stream
  */
-export function map_<R, E, O, O1>(
-  self: Stream<R, E, O>,
-  f: (o: O) => O1
-): Stream<R, E, O1> {
-  return new Stream(C.mapOut_(self.channel, (o) => Chunk.map_(o, f)))
+export function succeed<O>(o: O): Stream<unknown, never, O> {
+  return fromChunk(Chunk.single(o))
 }
 
 /**
- * Transforms the elements of this stream using the supplied function.
- *
- * @dataFirst map_
+ * Creates a single-valued pure stream
  */
-export function map<O, O1>(
-  f: (o: O) => O1
-): <R, E>(self: Stream<R, E, O>) => Stream<R, E, O1> {
-  return (self) => map_(self, f)
-}
-
-/**
- * Repeats this stream forever.
- */
-export function forever<R, E, A>(self: Stream<R, E, A>): Stream<R, E, A> {
-  return new Stream(C.repeated(self.channel))
+export function succeedWith<O>(o: () => O): Stream<unknown, never, O> {
+  return fromChunkWith(() => Chunk.single(o()))
 }
 
 function takeLoop<E, A>(
@@ -269,4 +311,22 @@ export function toPull<R, E, A>(
   return M.map_(C.toPull(self.channel), (pull) =>
     T.mapError_(pull, (e) => (e._tag === "Left" ? O.some(e.left) : O.none))
   )
+}
+
+/**
+ * Creates a stream produced from an effect
+ */
+export function unwrap<R0, E0, R, E, A>(
+  self: T.Effect<R0, E0, Stream<R, E, A>>
+): Stream<R0 & R, E0 | E, A> {
+  return flatten(effect(self))
+}
+
+/**
+ * Creates a stream produced from a managed
+ */
+export function unwrapManaged<R0, E0, R, E, A>(
+  self: M.Managed<R0, E0, Stream<R, E, A>>
+): Stream<R0 & R, E0 | E, A> {
+  return flatten(managed(self))
 }
