@@ -171,9 +171,9 @@ declare module "../Prelude/HKT" {
     [ConstURI]: Const<E, A>
     [LayerURI]: Layer<R, E, A>
     [SyncURI]: Sync<R, E, A>
-    [XPureURI]: XPure<S, S, R, E, A>
-    [XPureReaderCategoryURI]: XPure<S, S, I, E, A>
-    [XPureStateCategoryURI]: XPure<I, A, R, E, A>
+    [XPureURI]: XPure<X, S, S, R, E, A>
+    [XPureReaderCategoryURI]: XPure<X, S, S, I, E, A>
+    [XPureStateCategoryURI]: XPure<X, I, A, R, E, A>
     [IdURI]: Id<A>
     [NonEmptyArrayURI]: NonEmptyArray<A>
     [FreeAssociativeURI]: FreeAssociative<A>

@@ -6,4 +6,4 @@ import type * as P from "../../Prelude"
 
 export type V = P.V<"S", "_">
 
-export interface XState<S, A> extends XPure<S, S, unknown, never, A> {}
+export interface XState<S, A> extends XPure<unknown, S, S, unknown, never, A> {}

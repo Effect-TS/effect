@@ -36,7 +36,7 @@ export const succeed: <A>(a: A) => XIO<A> = F.succeed
 /**
  * Run the computation
  */
-export const run = <A>(self: XIO<A>): A => F.runIO(self)
+export const run = <A>(self: XIO<A>): A => F.run(self)
 
 /**
  * Returns a computation that effectfully "peeks" at the success of this one.

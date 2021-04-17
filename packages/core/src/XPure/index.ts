@@ -13,7 +13,7 @@ import type {
 import type { URI } from "../Prelude"
 import * as P from "../Prelude"
 
-export type V = P.V<"S", "_"> & P.V<"R", "-"> & P.V<"E", "+">
+export type V = P.V<"S", "_"> & P.V<"R", "-"> & P.V<"E", "+"> & P.V<"X", "+">
 
 export const Any = P.instance<P.Any<[URI<XPureURI>], V>>({
   any: () => X.succeed(constant({}))

@@ -26,5 +26,5 @@ test("09", () => {
 
   const program = accessServiceM(MyService)((_) => _.hello("hello!"))
 
-  pipe(program, provideService(MyService)(new MyServiceImpl()), X.runIO)
+  pipe(program, provideService(MyService)(new MyServiceImpl()), X.run)
 })

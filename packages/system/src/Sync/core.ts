@@ -5,7 +5,7 @@ import { pipe } from "../Function"
 import type { _A, _E, _R } from "../Utils"
 import * as X from "../XPure"
 
-export interface Sync<R, E, A> extends X.XPure<unknown, unknown, R, E, A> {}
+export interface Sync<R, E, A> extends X.XPure<unknown, unknown, unknown, R, E, A> {}
 
 export interface UIO<A> extends Sync<unknown, never, A> {}
 export interface RIO<R, A> extends Sync<R, never, A> {}
@@ -313,7 +313,7 @@ export const runEitherEnv: <R>(r: R) => <E, A>(self: Sync<R, E, A>) => Either<E,
 /**
  * Runs this non failable computation returning a success of type A
  */
-export const run: <A>(self: Sync<unknown, never, A>) => A = X.runIO
+export const run: <A>(self: Sync<unknown, never, A>) => A = X.run
 
 /**
  * Compact the union produced by the result of f

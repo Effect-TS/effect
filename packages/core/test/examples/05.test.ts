@@ -13,6 +13,6 @@ test("05", () => {
         console.log(r)
       })
     ),
-    X.runIO
+    X.run
   )
 })

@@ -1,6 +1,6 @@
 // tracing: off
 
-import { _A, _E, _R, _S1, _S2, _U } from "./commons"
+import { _A, _E, _R, _S1, _S2, _U, _W } from "./commons"
 import type { Instruction } from "./primitives"
 
 export const EffectURI = "Effect"
@@ -14,6 +14,7 @@ export interface Effect<R, E, A> {
 
   readonly [_S1]: (_: unknown) => void
   readonly [_S2]: () => unknown
+  readonly [_W]: () => unknown
 }
 
 export type IO<E, A> = Effect<unknown, E, A>
@@ -22,7 +23,8 @@ export type UIO<A> = Effect<unknown, never, A>
 
 export abstract class Base<R, E, A> implements Effect<R, E, A> {
   readonly [_S1]!: (_: unknown) => void;
-  readonly [_S2]!: () => never;
+  readonly [_S2]!: () => unknown;
+  readonly [_W]: () => unknown;
 
   readonly [_U]: EffectURI;
   readonly [_E]: () => E;

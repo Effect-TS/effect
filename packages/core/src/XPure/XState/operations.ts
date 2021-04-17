@@ -36,13 +36,14 @@ export const succeed: <S, A>(a: A) => XState<S, A> = F.succeed
 /**
  * Run the computation with input S returning updated state and output
  */
-export const run = <S>(r: S) => <A>(self: XState<S, A>): readonly [S, A] =>
-  F.runStateResult(r)(self)
+export const run = <S>(s: S) => <A>(self: XState<S, A>): readonly [S, A] =>
+  F.runState_(self, s)
 
 /**
  * Run the computation with input S returning the updated state and discarding the output
  */
-export const runState = <S>(r: S) => <A>(self: XState<S, A>): S => F.runState(r)(self)
+export const runState = <S>(s: S) => <A>(self: XState<S, A>): S =>
+  F.runState_(self, s)[0]
 
 /**
  * Run the computation with input S returning the state and discarding the updated state

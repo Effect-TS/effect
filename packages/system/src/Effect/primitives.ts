@@ -46,7 +46,7 @@ export type Instruction =
   | ITracingStatus<any, any, any>
   | IPlatform<any, any, any>
   | ITracer<any, any, any>
-  | XPureBase<unknown, never, any, any, any>
+  | XPureBase<unknown, unknown, unknown, any, any, any>
 
 export class IFail<E> extends Base<unknown, E, never> {
   readonly _tag = "Fail"

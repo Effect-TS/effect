@@ -58,13 +58,13 @@ export const succeed: <A>(a: A) => XReader<unknown, A> = F.succeed
 /**
  * Run the computation
  */
-export const run = <A>(self: XReader<unknown, A>): A => F.runIO(self)
+export const run = <A>(self: XReader<unknown, A>): A => F.run(self)
 
 /**
  * Run the computation with environment R
  */
 export const runEnv = <R>(r: R) => <A>(self: XReader<R, A>): A =>
-  F.runIO(F.provideAll(r)(self))
+  F.run(F.provideAll_(self, r))
 
 /**
  * Returns a computation that effectfully "peeks" at the success of this one.

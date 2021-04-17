@@ -13,7 +13,7 @@ import * as ReaderT from "../../src/XPure/XReaderT"
 type State<K, V> = M.Map<K, V>
 
 export interface Store<K, V, A>
-  extends T.XPure<State<K, V>, State<K, V>, unknown, never, A> {}
+  extends T.XPure<unknown, State<K, V>, State<K, V>, unknown, never, A> {}
 
 export const URI = "Store"
 export type URI = typeof URI
@@ -62,7 +62,7 @@ test("11", () => {
     ),
     chain((x) => T.accessM((y: number) => succeed(x * y))),
     R.runEnv(2),
-    T.runStateResult(M.empty)
+    T.runState(M.empty)
   )
 
   expect(result).toEqual([M.singleton("hello", 5), E.right(10)])
