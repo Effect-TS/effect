@@ -111,23 +111,23 @@ export function map<E, E1>(f: (e: E) => E1) {
  * Determines if this cause contains or is equal to the specified cause.
  */
 export function contains<E, E1 extends E = E>(that: Cause<E1>) {
-  return (cause: Cause<E>) => S.run(containsM(that)(cause))
+  return (cause: Cause<E>) => S.run(containsSafe(that)(cause))
 }
 
 /**
  * Determines if this cause contains or is equal to the specified cause.
  */
-export function containsM<E, E1 extends E = E>(that: Cause<E1>) {
+export function containsSafe<E, E1 extends E = E>(that: Cause<E1>) {
   return (cause: Cause<E>) =>
     S.gen(function* (_) {
-      if (yield* _(cause.equalsM(that))) {
+      if (yield* _(cause.equalsSafe(that))) {
         return true
       }
       return yield* _(
         pipe(
           cause,
           reduceLeft(S.succeed(false))((_, c) =>
-            O.some(S.chain_(_, (b) => (b ? S.succeed(b) : c.equalsM(that))))
+            O.some(S.chain_(_, (b) => (b ? S.succeed(b) : c.equalsSafe(that))))
           )
         )
       )
@@ -363,8 +363,7 @@ export function findSafe<Z, E>(
 /**
  * Equivalent to chain(identity)
  */
-export const flatten = <E>(cause: Cause<Cause<E>>): Cause<E> =>
-  pipe(cause, chain(identity))
+export const flatten: <E>(cause: Cause<Cause<E>>) => Cause<E> = chain(identity)
 
 /**
  * Folds over a cause

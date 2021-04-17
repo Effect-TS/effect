@@ -24,10 +24,10 @@ export class Empty {
   readonly [CauseSym]: typeof CauseSym = CauseSym;
 
   [St.equalsSym](that: unknown): boolean {
-    return isCause(that) && equals(this, that)
+    return isCause(that) && IO.run(this.equalsSafe(that))
   }
 
-  equalsM(that: Cause<unknown>): IO.IO<boolean> {
+  equalsSafe(that: Cause<unknown>): IO.IO<boolean> {
     // eslint-disable-next-line @typescript-eslint/no-this-alias
     const self = this
     return IO.gen(function* (_) {
@@ -35,11 +35,13 @@ export class Empty {
         return true
       } else if (that._tag === "Then") {
         return (
-          (yield* _(self.equalsM(that.left))) && (yield* _(self.equalsM(that.right)))
+          (yield* _(self.equalsSafe(that.left))) &&
+          (yield* _(self.equalsSafe(that.right)))
         )
       } else if (that._tag === "Both") {
         return (
-          (yield* _(self.equalsM(that.left))) && (yield* _(self.equalsM(that.right)))
+          (yield* _(self.equalsSafe(that.left))) &&
+          (yield* _(self.equalsSafe(that.right)))
         )
       } else {
         return false
@@ -55,10 +57,10 @@ export class Fail<E> {
   constructor(readonly value: E) {}
 
   [St.equalsSym](that: unknown): boolean {
-    return isCause(that) && equals(this, that)
+    return isCause(that) && IO.run(this.equalsSafe(that))
   }
 
-  equalsM(that: Cause<unknown>): IO.IO<boolean> {
+  equalsSafe(that: Cause<unknown>): IO.IO<boolean> {
     // eslint-disable-next-line @typescript-eslint/no-this-alias
     const self = this
     return IO.gen(function* (_) {
@@ -73,7 +75,7 @@ export class Fail<E> {
           return yield* _(symM(emptyM)(self, that))
         }
         case "Traced": {
-          return yield* _(self.equalsM(that.cause))
+          return yield* _(self.equalsSafe(that.cause))
         }
       }
       return false
@@ -88,10 +90,10 @@ export class Die {
   constructor(readonly value: unknown) {}
 
   [St.equalsSym](that: unknown): boolean {
-    return isCause(that) && equals(this, that)
+    return isCause(that) && IO.run(this.equalsSafe(that))
   }
 
-  equalsM(that: Cause<unknown>): IO.IO<boolean> {
+  equalsSafe(that: Cause<unknown>): IO.IO<boolean> {
     // eslint-disable-next-line @typescript-eslint/no-this-alias
     const self = this
     return IO.gen(function* (_) {
@@ -106,7 +108,7 @@ export class Die {
           return yield* _(symM(emptyM)(self, that))
         }
         case "Traced": {
-          return yield* _(self.equalsM(that.cause))
+          return yield* _(self.equalsSafe(that.cause))
         }
       }
       return false
@@ -121,10 +123,10 @@ export class Interrupt {
   constructor(readonly fiberId: FiberID) {}
 
   [St.equalsSym](that: unknown): boolean {
-    return isCause(that) && equals(this, that)
+    return isCause(that) && IO.run(this.equalsSafe(that))
   }
 
-  equalsM(that: Cause<unknown>): IO.IO<boolean> {
+  equalsSafe(that: Cause<unknown>): IO.IO<boolean> {
     // eslint-disable-next-line @typescript-eslint/no-this-alias
     const self = this
     return IO.gen(function* (_) {
@@ -142,7 +144,7 @@ export class Interrupt {
           return yield* _(symM(emptyM)(self, that))
         }
         case "Traced": {
-          return yield* _(self.equalsM(that.cause))
+          return yield* _(self.equalsSafe(that.cause))
         }
       }
       return false
@@ -157,17 +159,17 @@ export class Traced<E> {
   constructor(readonly cause: Cause<E>, readonly trace: Trace) {}
 
   [St.equalsSym](that: unknown): boolean {
-    return isCause(that) && equals(this, that)
+    return isCause(that) && IO.run(this.equalsSafe(that))
   }
 
-  equalsM(that: Cause<unknown>): IO.IO<boolean> {
+  equalsSafe(that: Cause<unknown>): IO.IO<boolean> {
     // eslint-disable-next-line @typescript-eslint/no-this-alias
     const self: Traced<E> = this
     return IO.gen(function* (_) {
       if (that._tag === "Traced") {
-        return yield* _(self.cause.equalsM(that.cause))
+        return yield* _(self.cause.equalsSafe(that.cause))
       }
-      return yield* _(self.cause.equalsM(that))
+      return yield* _(self.cause.equalsSafe(that))
     })
   }
 }
@@ -179,16 +181,16 @@ export class Then<E> {
   constructor(readonly left: Cause<E>, readonly right: Cause<E>) {}
 
   [St.equalsSym](that: unknown): boolean {
-    return isCause(that) && equals(this, that)
+    return isCause(that) && IO.run(this.equalsSafe(that))
   }
 
-  equalsM(that: Cause<unknown>): IO.IO<boolean> {
+  equalsSafe(that: Cause<unknown>): IO.IO<boolean> {
     // eslint-disable-next-line @typescript-eslint/no-this-alias
     const self = this
     return IO.gen(function* (_) {
       switch (that._tag) {
         case "Traced": {
-          return yield* _(self.equalsM(that.cause))
+          return yield* _(self.equalsSafe(that.cause))
         }
       }
       return (
@@ -208,16 +210,16 @@ export class Both<E> {
   constructor(readonly left: Cause<E>, readonly right: Cause<E>) {}
 
   [St.equalsSym](that: unknown): boolean {
-    return isCause(that) && equals(this, that)
+    return isCause(that) && IO.run(this.equalsSafe(that))
   }
 
-  equalsM(that: Cause<unknown>): IO.IO<boolean> {
+  equalsSafe(that: Cause<unknown>): IO.IO<boolean> {
     // eslint-disable-next-line @typescript-eslint/no-this-alias
     const self = this
     return IO.gen(function* (_) {
       switch (that._tag) {
         case "Traced": {
-          return yield* _(self.equalsM(that.cause))
+          return yield* _(self.equalsSafe(that.cause))
         }
       }
       return (
@@ -319,8 +321,8 @@ function equalsThenEqM<A>(self: Then<A>, that: Cause<A>): IO.IO<boolean> {
     switch (that._tag) {
       case "Then": {
         return (
-          (yield* _(self.left.equalsM(that.left))) ||
-          (yield* _(self.right.equalsM(that.right)))
+          (yield* _(self.left.equalsSafe(that.left))) ||
+          (yield* _(self.right.equalsSafe(that.right)))
         )
       }
     }
@@ -343,9 +345,9 @@ function equalsThenAssocM<A>(self: Cause<A>, that: Cause<A>): IO.IO<boolean> {
       const br = that.right.left
       const cr = that.right.right
       return (
-        (yield* _(al.equalsM(ar))) &&
-        (yield* _(bl.equalsM(br))) &&
-        (yield* _(cl.equalsM(cr)))
+        (yield* _(al.equalsSafe(ar))) &&
+        (yield* _(bl.equalsSafe(br))) &&
+        (yield* _(cl.equalsSafe(cr)))
       )
     }
     return false
@@ -370,10 +372,10 @@ function equalsThenDistM<A>(self: Cause<A>, that: Cause<A>): IO.IO<boolean> {
       const cr = that.right.right
 
       if (
-        (yield* _(ar1.equalsM(ar2))) &&
-        (yield* _(al.equalsM(ar1))) &&
-        (yield* _(bl.equalsM(br))) &&
-        (yield* _(cl.equalsM(cr)))
+        (yield* _(ar1.equalsSafe(ar2))) &&
+        (yield* _(al.equalsSafe(ar1))) &&
+        (yield* _(bl.equalsSafe(br))) &&
+        (yield* _(cl.equalsSafe(cr)))
       ) {
         return true
       }
@@ -394,10 +396,10 @@ function equalsThenDistM<A>(self: Cause<A>, that: Cause<A>): IO.IO<boolean> {
       const cr2 = that.right.right
 
       if (
-        (yield* _(cr1.equalsM(cr2))) &&
-        (yield* _(al.equalsM(ar))) &&
-        (yield* _(bl.equalsM(br))) &&
-        (yield* _(cl.equalsM(cr1)))
+        (yield* _(cr1.equalsSafe(cr2))) &&
+        (yield* _(al.equalsSafe(ar))) &&
+        (yield* _(bl.equalsSafe(br))) &&
+        (yield* _(cl.equalsSafe(cr1)))
       ) {
         return true
       }
@@ -411,8 +413,8 @@ function equalsBothEqM<A>(self: Both<A>, that: Cause<A>): IO.IO<boolean> {
     switch (that._tag) {
       case "Both": {
         return (
-          (yield* _(self.left.equalsM(that.left))) ||
-          (yield* _(self.right.equalsM(that.right)))
+          (yield* _(self.left.equalsSafe(that.left))) ||
+          (yield* _(self.right.equalsSafe(that.right)))
         )
       }
     }
@@ -435,9 +437,9 @@ function equalsBothAssocM<A>(self: Cause<A>, that: Cause<A>): IO.IO<boolean> {
       const br = that.right.left
       const cr = that.right.right
       return (
-        (yield* _(al.equalsM(ar))) &&
-        (yield* _(bl.equalsM(br))) &&
-        (yield* _(cl.equalsM(cr)))
+        (yield* _(al.equalsSafe(ar))) &&
+        (yield* _(bl.equalsSafe(br))) &&
+        (yield* _(cl.equalsSafe(cr)))
       )
     }
     return false
@@ -462,10 +464,10 @@ function equalsBothDistM<A>(self: Cause<A>, that: Cause<A>): IO.IO<boolean> {
       const cr = that.right.right
 
       if (
-        (yield* _(al1.equalsM(al2))) &&
-        (yield* _(al1.equalsM(ar))) &&
-        (yield* _(bl.equalsM(br))) &&
-        (yield* _(cl.equalsM(cr)))
+        (yield* _(al1.equalsSafe(al2))) &&
+        (yield* _(al1.equalsSafe(ar))) &&
+        (yield* _(bl.equalsSafe(br))) &&
+        (yield* _(cl.equalsSafe(cr)))
       ) {
         return true
       }
@@ -486,10 +488,10 @@ function equalsBothDistM<A>(self: Cause<A>, that: Cause<A>): IO.IO<boolean> {
       const cr = that.right
 
       if (
-        (yield* _(cl1.equalsM(cl2))) &&
-        (yield* _(al.equalsM(ar))) &&
-        (yield* _(bl.equalsM(br))) &&
-        (yield* _(cl1.equalsM(cr)))
+        (yield* _(cl1.equalsSafe(cl2))) &&
+        (yield* _(al.equalsSafe(ar))) &&
+        (yield* _(bl.equalsSafe(br))) &&
+        (yield* _(cl1.equalsSafe(cr)))
       ) {
         return true
       }
@@ -502,8 +504,8 @@ function equalsBothCommM<A>(self: Both<A>, that: Cause<A>): IO.IO<boolean> {
   return IO.gen(function* (_) {
     if (that._tag === "Both") {
       return (
-        (yield* _(self.left.equalsM(that.right))) ||
-        (yield* _(self.right.equalsM(that.left)))
+        (yield* _(self.left.equalsSafe(that.right))) ||
+        (yield* _(self.right.equalsSafe(that.left)))
       )
     }
     return false
@@ -512,16 +514,16 @@ function equalsBothCommM<A>(self: Both<A>, that: Cause<A>): IO.IO<boolean> {
 
 function emptyM<A>(self: Cause<A>, that: Cause<A>) {
   if (self._tag === "Then" && self.right._tag === "Empty") {
-    return self.left.equalsM(that)
+    return self.left.equalsSafe(that)
   }
   if (self._tag === "Then" && self.left._tag === "Empty") {
-    return self.right.equalsM(that)
+    return self.right.equalsSafe(that)
   }
   if (self._tag === "Both" && self.right._tag === "Empty") {
-    return self.left.equalsM(that)
+    return self.left.equalsSafe(that)
   }
   if (self._tag === "Both" && self.left._tag === "Empty") {
-    return self.right.equalsM(that)
+    return self.right.equalsSafe(that)
   }
   return IO.succeed(false)
 }
@@ -536,5 +538,5 @@ function symM<A>(
 }
 
 export function equals<A>(self: Cause<A>, that: Cause<A>): boolean {
-  return IO.run(self.equalsM(that))
+  return IO.run(self.equalsSafe(that))
 }
