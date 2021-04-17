@@ -123,10 +123,12 @@ export function containsM<E, E1 extends E = E>(that: Cause<E1>) {
       if (yield* _(cause.equalsM(that))) {
         return true
       }
-      pipe(
-        cause,
-        reduceLeft(S.succeed(false))((_, c) =>
-          O.some(S.chain_(_, (b) => (b ? S.succeed(b) : c.equalsM(that))))
+      return yield* _(
+        pipe(
+          cause,
+          reduceLeft(S.succeed(false))((_, c) =>
+            O.some(S.chain_(_, (b) => (b ? S.succeed(b) : c.equalsM(that))))
+          )
         )
       )
     })
