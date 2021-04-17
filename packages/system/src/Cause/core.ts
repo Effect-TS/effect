@@ -11,7 +11,7 @@ import * as O from "../Option"
 import { Stack } from "../Stack"
 import type { Cause } from "./cause"
 import { both, die, empty, fail, then, traced } from "./cause"
-import { equalsCause } from "./eq"
+import { equalsM } from "./equals"
 import { InterruptedException } from "./errors"
 
 export { both, Cause, die, empty, fail, interrupt, then, traced } from "./cause"
@@ -102,12 +102,25 @@ export function map<E, E1>(f: (e: E) => E1) {
  * Determines if this cause contains or is equal to the specified cause.
  */
 export function contains<E, E1 extends E = E>(that: Cause<E1>) {
+  return (cause: Cause<E>) => S.run(containsM(that)(cause))
+}
+
+/**
+ * Determines if this cause contains or is equal to the specified cause.
+ */
+export function containsM<E, E1 extends E = E>(that: Cause<E1>) {
   return (cause: Cause<E>) =>
-    equalsCause(that, cause) ||
-    pipe(
-      cause,
-      reduceLeft(false)((_, c) => (equalsCause(that, c) ? O.some(true) : O.none))
-    )
+    S.gen(function* (_) {
+      if (yield* _(equalsM(cause, that))) {
+        return true
+      }
+      pipe(
+        cause,
+        reduceLeft(S.succeed(false))((_, c) =>
+          O.some(S.chain_(_, (b) => (b ? S.succeed(b) : equalsM(c, that))))
+        )
+      )
+    })
 }
 
 /**

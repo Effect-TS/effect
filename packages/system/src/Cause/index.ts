@@ -12,7 +12,7 @@ import "../Operator"
 export * from "./cause"
 export * from "./core"
 export * from "./do"
-export * from "./eq"
+export * from "./equals"
 export * from "./errors"
 // codegen:end
 
