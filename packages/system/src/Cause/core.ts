@@ -14,7 +14,17 @@ import { both, die, empty, fail, then, traced } from "./cause"
 import { equalsM } from "./equals"
 import { InterruptedException } from "./errors"
 
-export { both, Cause, die, empty, fail, interrupt, then, traced } from "./cause"
+export {
+  both,
+  Cause,
+  die,
+  empty,
+  fail,
+  interrupt,
+  then,
+  traced,
+  isEmpty
+} from "./cause"
 
 /**
  * Applicative's ap
@@ -573,56 +583,6 @@ export function interruptors<E>(cause: Cause<E>): readonly FiberID[] {
       )
     )
   )
-}
-
-/**
- * Determines if the `Cause` is empty.
- */
-export function isEmpty<E>(cause: Cause<E>) {
-  if (
-    cause._tag === "Empty" ||
-    (cause._tag === "Traced" && cause.cause._tag === "Empty")
-  ) {
-    return true
-  }
-  let causes: Stack<Cause<E>> | undefined = undefined
-  let current: Cause<E> | undefined = cause
-  while (current) {
-    switch (current._tag) {
-      case "Die": {
-        return false
-      }
-      case "Fail": {
-        return false
-      }
-      case "Interrupt": {
-        return false
-      }
-      case "Then": {
-        causes = new Stack(current.right, causes)
-        current = current.left
-        break
-      }
-      case "Both": {
-        causes = new Stack(current.right, causes)
-        current = current.left
-        break
-      }
-      case "Traced": {
-        current = current.cause
-        break
-      }
-      default: {
-        current = undefined
-      }
-    }
-    if (!current && causes) {
-      current = causes.value
-      causes = causes.previous
-    }
-  }
-
-  return true
 }
 
 /**

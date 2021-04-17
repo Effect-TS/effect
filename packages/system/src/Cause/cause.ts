@@ -4,6 +4,7 @@ import * as L from "../Collections/Immutable/List/core"
 import type { FiberID } from "../Fiber/id"
 import type { Trace } from "../Fiber/tracing"
 import * as O from "../Option"
+import { Stack } from "../Stack"
 
 /**
  * Cause is a Free Semiring structure that allows tracking of multiple error causes.
@@ -88,9 +89,9 @@ export function interrupt(fiberId: FiberID): Cause<never> {
 }
 
 export function then<E1, E2>(left: Cause<E1>, right: Cause<E2>): Cause<E1 | E2> {
-  return left === empty
+  return isEmpty(left)
     ? right
-    : right === empty
+    : isEmpty(right)
     ? left
     : {
         _tag: "Then",
@@ -100,13 +101,63 @@ export function then<E1, E2>(left: Cause<E1>, right: Cause<E2>): Cause<E1 | E2> 
 }
 
 export function both<E1, E2>(left: Cause<E1>, right: Cause<E2>): Cause<E1 | E2> {
-  return left === empty
+  return isEmpty(left)
     ? right
-    : right === empty
+    : isEmpty(right)
     ? left
     : {
         _tag: "Both",
         left,
         right
       }
+}
+
+/**
+ * Determines if the `Cause` is empty.
+ */
+export function isEmpty<E>(cause: Cause<E>) {
+  if (
+    cause._tag === "Empty" ||
+    (cause._tag === "Traced" && cause.cause._tag === "Empty")
+  ) {
+    return true
+  }
+  let causes: Stack<Cause<E>> | undefined = undefined
+  let current: Cause<E> | undefined = cause
+  while (current) {
+    switch (current._tag) {
+      case "Die": {
+        return false
+      }
+      case "Fail": {
+        return false
+      }
+      case "Interrupt": {
+        return false
+      }
+      case "Then": {
+        causes = new Stack(current.right, causes)
+        current = current.left
+        break
+      }
+      case "Both": {
+        causes = new Stack(current.right, causes)
+        current = current.left
+        break
+      }
+      case "Traced": {
+        current = current.cause
+        break
+      }
+      default: {
+        current = undefined
+      }
+    }
+    if (!current && causes) {
+      current = causes.value
+      causes = causes.previous
+    }
+  }
+
+  return true
 }

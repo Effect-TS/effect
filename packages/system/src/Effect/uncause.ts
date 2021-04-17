@@ -1,7 +1,7 @@
 // tracing: off
 
 import type { Cause } from "../Cause/cause"
-import { isEmpty } from "../Cause/core"
+import { isEmpty } from "../Cause/cause"
 import { chain_, halt, unit } from "./core"
 import type { Effect, RIO } from "./effect"
 
