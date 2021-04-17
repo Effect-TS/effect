@@ -51,6 +51,7 @@
       "Collections/Immutable/List",
       "Collections/Immutable/Map",
       "Collections/Immutable/NonEmptyArray",
+      "Collections/Immutable/ParSeq",
       "Collections/Immutable/RedBlackTree",
       "Collections/Immutable/Set",
       "Collections/Immutable/SortedSet",
