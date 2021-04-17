@@ -11,7 +11,6 @@ import * as O from "../Option"
 import { Stack } from "../Stack"
 import type { Cause } from "./cause"
 import { both, die, empty, fail, then, traced } from "./cause"
-import { equalsM } from "./equals"
 import { InterruptedException } from "./errors"
 
 export {
@@ -121,13 +120,13 @@ export function contains<E, E1 extends E = E>(that: Cause<E1>) {
 export function containsM<E, E1 extends E = E>(that: Cause<E1>) {
   return (cause: Cause<E>) =>
     S.gen(function* (_) {
-      if (yield* _(equalsM(cause, that))) {
+      if (yield* _(cause.equalsM(that))) {
         return true
       }
       pipe(
         cause,
         reduceLeft(S.succeed(false))((_, c) =>
-          O.some(S.chain_(_, (b) => (b ? S.succeed(b) : equalsM(c, that))))
+          O.some(S.chain_(_, (b) => (b ? S.succeed(b) : c.equalsM(that))))
         )
       )
     })
@@ -951,15 +950,6 @@ export function stripInterruptsSafe<E>(cause: Cause<E>): S.IO<Cause<E>> {
       )
     }
   }
-}
-
-export function isCause(u: unknown): u is Cause<unknown> {
-  return (
-    typeof u === "object" &&
-    u !== null &&
-    "_tag" in u &&
-    ["Empty", "Fail", "Die", "Interrupt", "Then", "Both", "Traced"].includes(u["_tag"])
-  )
 }
 
 /**
