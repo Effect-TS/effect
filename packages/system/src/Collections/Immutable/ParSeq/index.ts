@@ -1,5 +1,7 @@
-import { _A, _E } from "../../../Effect/commons"
+import * as Cause from "../../../Cause/core"
+import { _A } from "../../../Effect/commons"
 import * as E from "../../../Either"
+import { identity } from "../../../Function"
 import * as O from "../../../Option"
 import * as L from "../List/core"
 
@@ -242,4 +244,157 @@ export function chain_<A, B>(self: ParSeq<A>, f: (a: A) => ParSeq<B>): ParSeq<B>
  */
 export function chain<A, B>(f: (a: A) => ParSeq<B>): (self: ParSeq<A>) => ParSeq<B> {
   return (self) => chain_(self, f)
+}
+
+/**
+ * Flattens a collection of collections of events into a single collection
+ * of events.
+ */
+export function flatten<A>(self: ParSeq<ParSeq<A>>) {
+  return chain_(self, identity)
+}
+
+/**
+ * Converts a ParSeq to a Cause
+ */
+export function toCause<A>(self: ParSeq<A>): Cause.Cause<A> {
+  return fold_(self, Cause.empty as Cause.Cause<A>, Cause.fail, Cause.then, Cause.both)
+}
+
+/**
+ * Transforms the type of events in this collection of events with the
+ * specified function.
+ */
+export function map_<A, B>(self: ParSeq<A>, f: (a: A) => B): ParSeq<B> {
+  return chain_(self, (a) => single(f(a)))
+}
+
+/**
+ * Transforms the type of events in this collection of events with the
+ * specified function.
+ *
+ * @dataFirst map_
+ */
+export function map<A, B>(f: (a: A) => B): (self: ParSeq<A>) => ParSeq<B> {
+  return (self) => map_(self, f)
+}
+
+/**
+ * Combines this collection of events with that collection of events to
+ * return the Cartesian product of events using the specified function.
+ */
+export function zipWith_<A, B, C>(
+  self: ParSeq<A>,
+  that: ParSeq<B>,
+  f: (a: A, b: B) => C
+): ParSeq<C> {
+  return chain_(self, (a) => map_(that, (b) => f(a, b)))
+}
+
+/**
+ * Combines this collection of events with that collection of events to
+ * return the Cartesian product of events using the specified function.
+ *
+ * @dataFirst zipWith_
+ */
+export function zipWith<A, B, C>(
+  that: ParSeq<B>,
+  f: (a: A, b: B) => C
+): (self: ParSeq<A>) => ParSeq<C> {
+  return (self) => zipWith_(self, that, f)
+}
+
+/**
+ * Combines this collection of events with that collection of events to
+ * return the Cartesian product of events, combining the elements into a
+ * tuple.
+ */
+export function zip_<A, B>(self: ParSeq<A>, that: ParSeq<B>): ParSeq<readonly [A, B]> {
+  return zipWith_(self, that, (a, b) => [a, b])
+}
+
+/**
+ * Combines this collection of events with that collection of events to
+ * return the Cartesian product of events, combining the elements into a
+ * tuple.
+ *
+ * @dataFirst zip_
+ */
+export function zip<B>(
+  that: ParSeq<B>
+): <A>(self: ParSeq<A>) => ParSeq<readonly [A, B]> {
+  return (self) => zip_(self, that)
+}
+
+/**
+ * Combines this collection of events with that collection of events to
+ * return the Cartesian product of events, keeping only the events from this
+ * collection.
+ */
+export function zipLeft_<A, B>(self: ParSeq<A>, that: ParSeq<B>): ParSeq<A> {
+  return zipWith_(self, that, (a, _b) => a)
+}
+
+/**
+ * Combines this collection of events with that collection of events to
+ * return the Cartesian product of events, keeping only the events from this
+ * collection.
+ *
+ * @dataFirst zipLeft_
+ */
+export function zipLeft<B>(that: ParSeq<B>): <A>(self: ParSeq<A>) => ParSeq<A> {
+  return (self) => zipLeft_(self, that)
+}
+
+/**
+ * Combines this collection of events with that collection of events to
+ * return the Cartesian product of events, keeping only the events from that
+ * collection.
+ */
+export function zipRight_<A, B>(self: ParSeq<A>, that: ParSeq<B>): ParSeq<B> {
+  return zipWith_(self, that, (_a, b) => b)
+}
+
+/**
+ * Combines this collection of events with that collection of events to
+ * return the Cartesian product of events, keeping only the events from that
+ * collection.
+ *
+ * @dataFirst zipRight_
+ */
+export function zipRight<B>(that: ParSeq<B>): <A>(self: ParSeq<A>) => ParSeq<B> {
+  return (self) => zipRight_(self, that)
+}
+
+function isEmptyLoop<A>(self: L.List<ParSeq<A>>): boolean {
+  while (!L.isEmpty(self)) {
+    const head = L.unsafeFirst(self)!
+    const tail = L.tail(self)
+    concrete(head)
+    switch (head._tag) {
+      case "Empty": {
+        self = tail
+        break
+      }
+      case "Single": {
+        return false
+      }
+      case "Both": {
+        self = L.prepend_(L.prepend_(tail, head.right), head.left)
+        break
+      }
+      case "Then": {
+        self = L.prepend_(L.prepend_(tail, head.right), head.left)
+        break
+      }
+    }
+  }
+  return true
+}
+
+/**
+ * Checks if the ParSeq is empty
+ */
+export function isEmpty<A>(self: ParSeq<A>): boolean {
+  return isEmptyLoop(L.of(self))
 }
