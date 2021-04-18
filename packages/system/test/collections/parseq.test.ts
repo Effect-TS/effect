@@ -1,42 +1,38 @@
-import { identity, pipe } from "@effect-ts/system/Function"
-
 import * as PS from "../../src/Collections/Immutable/ParSeq"
+import * as St from "../../src/Structural"
 
-describe("ParSeq", () => {
-  it("fold", () => {
+describe("Cause", () => {
+  it("equals", () => {
+    expect(PS.empty).equals(PS.empty)
+
+    expect(PS.then_(PS.empty, PS.empty)).equals(PS.empty)
+
+    expect(PS.then_(PS.empty, PS.both_(PS.empty, PS.empty))).equals(PS.empty)
+
+    expect(PS.then_(PS.single("ok"), PS.both_(PS.empty, PS.empty))).equals(
+      PS.single("ok")
+    )
+
+    expect(St.hash(PS.then_(PS.single("ok"), PS.both_(PS.empty, PS.empty)))).equals(
+      St.hash(PS.single("ok"))
+    )
+
+    expect(PS.then_(PS.single("ok"), PS.both_(PS.empty, PS.single("ok")))).equals(
+      PS.then_(PS.single("ok"), PS.single("ok"))
+    )
+
     expect(
-      pipe(
-        PS.empty,
-        PS.then(PS.single("a")),
-        PS.then(PS.single("b")),
-        PS.both(PS.single("c")),
-        PS.fold(
-          "*",
-          identity,
-          (l, r) => `(${l} ++ ${r})`,
-          (l, r) => `(${l} && ${r})`
-        )
-      )
-    ).equals("(((* ++ a) ++ b) && c)")
-  })
-  it("isEmpty", () => {
+      St.hash(PS.then_(PS.single("ok"), PS.both_(PS.empty, PS.single("ok"))))
+    ).equals(St.hash(PS.then_(PS.single("ok"), PS.single("ok"))))
+
     expect(
-      pipe(
-        PS.empty,
-        PS.then(PS.single("a")),
-        PS.then(PS.single("b")),
-        PS.both(PS.single("c")),
-        PS.isEmpty
-      )
-    ).equals(false)
+      PS.then_(PS.single("ok"), PS.both_(PS.single("ok"), PS.single("ok")))
+    ).equals(PS.then_(PS.single("ok"), PS.both_(PS.single("ok"), PS.single("ok"))))
+
     expect(
-      pipe(
-        PS.empty,
-        PS.then(PS.empty),
-        PS.then(PS.empty),
-        PS.both(PS.empty),
-        PS.isEmpty
-      )
-    ).equals(true)
+      St.hash(PS.then_(PS.single("ok"), PS.both_(PS.single("ok"), PS.single("ok"))))
+    ).equals(
+      St.hash(PS.then_(PS.single("ok"), PS.both_(PS.single("ok"), PS.single("ok"))))
+    )
   })
 })
