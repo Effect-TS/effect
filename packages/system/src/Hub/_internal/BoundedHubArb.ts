@@ -3,11 +3,10 @@
 import "../../Operator"
 
 import * as Chunk from "../../Collections/Immutable/Chunk"
-import * as St from "../../Structural"
 import type { MutableArray } from "../../Support/Mutable"
 import { Hub, Subscription } from "./Hub"
 
-export class BoundedHubArb<A> extends Hub<A> implements St.HasEquals, St.HasEquals {
+export class BoundedHubArb<A> extends Hub<A> {
   array: MutableArray<A>
   publisherIndex = 0
   subscribers: MutableArray<number>
@@ -22,14 +21,6 @@ export class BoundedHubArb<A> extends Hub<A> implements St.HasEquals, St.HasEqua
     this.array = Array.from({ length: requestedCapacity })
     this.subscribers = Array.from({ length: requestedCapacity })
     this.capacity = requestedCapacity
-  }
-
-  [St.hashSym](): number {
-    return St.hashIncremental(this)
-  }
-
-  [St.equalsSym](that: unknown): boolean {
-    return this === that
   }
 
   isEmpty(): boolean {

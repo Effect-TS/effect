@@ -3,7 +3,6 @@
 import "../../Operator"
 
 import * as Chunk from "../../Collections/Immutable/Chunk"
-import * as St from "../../Structural"
 import { Hub, Subscription } from "./Hub"
 
 class Node<A> {
@@ -14,7 +13,7 @@ class Node<A> {
   ) {}
 }
 
-export class UnboundedHub<A> extends Hub<A> implements St.HasEquals, St.HasHash {
+export class UnboundedHub<A> extends Hub<A> {
   publisherHead = new Node<A>(null, 0, null)
   publisherIndex = 0
   publisherTail: Node<A>
@@ -26,14 +25,6 @@ export class UnboundedHub<A> extends Hub<A> implements St.HasEquals, St.HasHash 
     super()
 
     this.publisherTail = this.publisherHead
-  }
-
-  [St.hashSym](): number {
-    return St.hashIncremental(this)
-  }
-
-  [St.equalsSym](that: unknown): boolean {
-    return this === that
   }
 
   isEmpty(): boolean {
