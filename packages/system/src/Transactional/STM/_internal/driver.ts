@@ -119,6 +119,11 @@ export class STMDriver<R, E, A> {
               if (!curr) {
                 exit = TExit.retry
               }
+            } else if (STM.isDieException(e)) {
+              curr = this.unwindStack(e.e, false)
+              if (!curr) {
+                exit = TExit.die(e.e)
+              }
             } else {
               throw e
             }

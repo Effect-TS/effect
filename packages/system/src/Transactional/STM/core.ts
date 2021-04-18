@@ -37,7 +37,9 @@ export {
   STMRetryException,
   succeed,
   succeedWith,
-  unit
+  unit,
+  die,
+  dieWith
 } from "./_internal/primitives"
 export { _catch as catch }
 
@@ -484,31 +486,11 @@ export function commitEither<R, E, A>(self: P.STM<R, E, A>): T.Effect<R, E, A> {
 }
 
 /**
- * Kills the fiber running the effect.
- */
-export function die(u: unknown): P.STM<unknown, never, never> {
-  return P.succeedWith(() => {
-    throw u
-  })
-}
-
-/**
- * Kills the fiber running the effect.
- */
-export function dieWith(u: () => unknown): P.STM<unknown, never, never> {
-  return P.succeedWith(() => {
-    throw u()
-  })
-}
-
-/**
  * Kills the fiber running the effect with a `RuntimeError` that contains
  * the specified message.
  */
 export function dieMessage(message: string): P.STM<unknown, never, never> {
-  return P.succeedWith(() => {
-    throw new RuntimeError(message)
-  })
+  return P.dieWith(() => new RuntimeError(message))
 }
 
 /**
@@ -582,7 +564,7 @@ export function filterOrDie_<R, E, A>(
   p: Predicate<A>,
   dieWith: unknown
 ) {
-  return filterOrElse_(fa, p, (x) => die((dieWith as (a: A) => unknown)(x)))
+  return filterOrElse_(fa, p, (x) => P.dieWith(() => (dieWith as (a: A) => unknown)(x)))
 }
 
 /**

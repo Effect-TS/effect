@@ -148,6 +148,23 @@ export function isFailException(u: unknown): u is STMFailException<unknown> {
   )
 }
 
+export const DieExceptionTypeId = Symbol()
+export type DieExceptionTypeId = typeof DieExceptionTypeId
+
+export class STMDieException<E> {
+  readonly _typeId: DieExceptionTypeId = DieExceptionTypeId
+  constructor(readonly e: E) {}
+}
+
+export function isDieException(u: unknown): u is STMDieException<unknown> {
+  return (
+    typeof u === "object" &&
+    u != null &&
+    "_typeId" in u &&
+    u["_typeId"] === DieExceptionTypeId
+  )
+}
+
 export const RetryExceptionTypeId = Symbol()
 export type RetryExceptionTypeId = typeof RetryExceptionTypeId
 
@@ -197,6 +214,24 @@ export function fail<E>(e: E): STM<unknown, E, never> {
 export function failWith<E>(e: () => E): STM<unknown, E, never> {
   return new STMEffect(() => {
     throw new STMFailException(e())
+  })
+}
+
+/**
+ * Kills the fiber running the effect.
+ */
+export function die(u: unknown): STM<unknown, never, never> {
+  return new STMEffect(() => {
+    throw new STMDieException(u)
+  })
+}
+
+/**
+ * Kills the fiber running the effect.
+ */
+export function dieWith(u: () => unknown): STM<unknown, never, never> {
+  return new STMEffect(() => {
+    throw new STMDieException(u())
   })
 }
 

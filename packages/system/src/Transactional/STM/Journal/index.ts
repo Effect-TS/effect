@@ -10,7 +10,7 @@ import type { Atomic } from "../../TRef"
 import { STMDriver } from "../_internal/driver"
 import type { STM } from "../_internal/primitives"
 import type { Entry } from "../Entry"
-import { FailTypeId, RetryTypeId, SucceedTypeId } from "../TExit"
+import { DieTypeId, FailTypeId, RetryTypeId, SucceedTypeId } from "../TExit"
 import type { TryCommit } from "../TryCommit"
 import { Done, DoneTypeId, Suspend, SuspendTypeId } from "../TryCommit"
 import type { TxnId } from "../TxnId"
@@ -173,6 +173,9 @@ export function tryCommit<R, E, A>(
     }
     case FailTypeId: {
       return completeTodos(T.fail(value.value), journal)
+    }
+    case DieTypeId: {
+      return completeTodos(T.die(value.value), journal)
     }
   }
 }
