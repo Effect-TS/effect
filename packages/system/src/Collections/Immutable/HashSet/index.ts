@@ -5,7 +5,6 @@ import "../../../Operator"
 import type { Equal } from "../../../Equal"
 import type { Predicate, Refinement } from "../../../Function"
 import { not } from "../../../Function"
-import type { Hash } from "../../../Hash"
 import type { Separated } from "../../../Utils"
 import * as HM from "../HashMap/core"
 import type { Next } from "../Map"
@@ -18,12 +17,8 @@ export class HashSet<V> implements Iterable<V> {
   }
 }
 
-export function make<V>(E: Equal<V>, H: Hash<V>) {
-  return new HashSet(HM.make(E, H))
-}
-
-export function makeDefault<V>() {
-  return new HashSet<V>(HM.makeDefault())
+export function make<V>() {
+  return new HashSet<V>(HM.make())
 }
 
 export function add_<V>(set: HashSet<V>, v: V) {
@@ -78,7 +73,7 @@ export function mutate_<V>(set: HashSet<V>, transient: (set: HashSet<V>) => void
  * the hash and equal of the 2 sets has to be the same
  */
 export function intersection_<A>(l: HashSet<A>, r: Iterable<A>): HashSet<A> {
-  const x = make<A>(l.keyMap.eqKey, l.keyMap.hashKey)
+  const x = make<A>()
 
   return mutate_(x, (y) => {
     for (const k of r) {
@@ -101,22 +96,17 @@ export function intersection<A>(r: Iterable<A>) {
 /**
  * Projects a Set through a function
  */
-export function map_<B>(
-  E: Equal<B>,
-  H: Hash<B>
-): <A>(set: HashSet<A>, f: (x: A) => B) => HashSet<B> {
-  const r = make(E, H)
-
-  return (set, f) =>
-    mutate_(r, (r) => {
-      forEach_(set, (e) => {
-        const v = f(e)
-        if (!has_(r, v)) {
-          add_(r, v)
-        }
-      })
-      return r
+export function map_<A, B>(set: HashSet<A>, f: (x: A) => B): HashSet<B> {
+  const r = make<B>()
+  mutate_(r, (r) => {
+    forEach_(set, (e) => {
+      const v = f(e)
+      if (!has_(r, v)) {
+        add_(r, v)
+      }
     })
+  })
+  return r
 }
 
 /**
@@ -124,12 +114,8 @@ export function map_<B>(
  *
  * @dataFirst map_
  */
-export function map<B>(
-  E: Equal<B>,
-  H: Hash<B>
-): <A>(f: (x: A) => B) => (set: HashSet<A>) => HashSet<B> {
-  const m = map_(E, H)
-  return (f) => (set) => m(set, f)
+export function map<A, B>(f: (x: A) => B): (set: HashSet<A>) => HashSet<B> {
+  return (set) => map_(set, f)
 }
 
 /**
@@ -207,33 +193,25 @@ export function every_<A>(set: HashSet<A>, predicate: Predicate<A>): boolean {
  *
  * @dataFirst chain_
  */
-export function chain<B>(
-  E: Equal<B>,
-  H: Hash<B>
-): <A>(f: (x: A) => Iterable<B>) => (set: HashSet<A>) => HashSet<B> {
-  const c = chain_(E, H)
-  return (f) => (set) => c(set, f)
+export function chain<A, B>(f: (x: A) => Iterable<B>): (set: HashSet<A>) => HashSet<B> {
+  return (set) => chain_(set, f)
 }
 
 /**
  * Map + Flatten
  */
-export function chain_<B>(
-  E: Equal<B>,
-  H: Hash<B>
-): <A>(set: HashSet<A>, f: (x: A) => Iterable<B>) => HashSet<B> {
-  const r = make<B>(E, H)
-  return (set, f) =>
-    mutate_(r, (r) => {
-      forEach_(set, (e) => {
-        for (const a of f(e)) {
-          if (!has_(r, a)) {
-            add_(r, a)
-          }
+export function chain_<A, B>(set: HashSet<A>, f: (x: A) => Iterable<B>): HashSet<B> {
+  const r = make<B>()
+  mutate_(r, (r) => {
+    forEach_(set, (e) => {
+      for (const a of f(e)) {
+        if (!has_(r, a)) {
+          add_(r, a)
         }
-      })
-      return r
+      }
     })
+  })
+  return r
 }
 
 /**
@@ -278,7 +256,7 @@ export function filter_<A, B extends A>(
 ): HashSet<B>
 export function filter_<A>(set: HashSet<A>, predicate: Predicate<A>): HashSet<A>
 export function filter_<A>(set: HashSet<A>, predicate: Predicate<A>): HashSet<A> {
-  const r = make(set.keyMap.eqKey, set.keyMap.hashKey)
+  const r = make<A>()
 
   return mutate_(r, (r) => {
     const values_ = values(set)
@@ -327,8 +305,8 @@ export function partition_<A>(
 ): Separated<HashSet<A>, HashSet<A>> {
   const values_ = values(set)
   let e: Next<A>
-  const right = beginMutation(make(set.keyMap.eqKey, set.keyMap.hashKey))
-  const left = beginMutation(make(set.keyMap.eqKey, set.keyMap.hashKey))
+  const right = beginMutation(make<A>())
+  const left = beginMutation(make<A>())
   while (!(e = values_.next()).done) {
     const value = e.value
     if (predicate(value)) {
@@ -413,7 +391,7 @@ export function toggle_<A>(set: HashSet<A>, a: A): HashSet<A> {
  * the hash and equal of the 2 sets has to be the same
  */
 export function union_<A>(l: HashSet<A>, r: Iterable<A>): HashSet<A> {
-  const x = make(l.keyMap.eqKey, l.keyMap.hashKey)
+  const x = make<A>()
 
   return mutate_(x, (x) => {
     forEach_(l, (a) => {

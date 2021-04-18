@@ -2,13 +2,8 @@
 
 import "../../../Operator"
 
-/**
- * Based on https://github.com/mattbierner/hamt_plus/blob/master/lib/hamt.js
- */
-import type { Equal } from "../../../Equal"
 import type { Refinement } from "../../../Function"
 import { constant, identity, tuple } from "../../../Function"
-import type { Hash } from "../../../Hash"
 import * as O from "../../../Option"
 import * as St from "../../../Structural"
 import { fromBitmap, hashFragment, toBitmap } from "./Bitwise"
@@ -23,8 +18,6 @@ export class HashMap<K, V> implements Iterable<readonly [K, V]> {
   constructor(
     public editable: boolean,
     public edit: number,
-    readonly eqKey: Equal<K>,
-    readonly hashKey: Hash<K>,
     public root: Node<K, V>,
     public size: number
   ) {}
@@ -56,8 +49,8 @@ export class HashMapIterator<K, V, T> implements IterableIterator<T> {
 /**
  * Creates a new map
  */
-export function make<K, V>(E: Equal<K>, H: Hash<K>) {
-  return new HashMap<K, V>(false, 0, E, H, new Empty(), 0)
+export function make<K, V>() {
+  return new HashMap<K, V>(false, 0, new Empty(), 0)
 }
 
 /**
@@ -75,7 +68,7 @@ export function setTree_<K, V>(
   }
   return newRoot === map.root
     ? map
-    : new HashMap(map.editable, map.edit, map.eqKey, map.hashKey, newRoot, newSize)
+    : new HashMap(map.editable, map.edit, newRoot, newSize)
 }
 
 /**
@@ -88,20 +81,19 @@ export function tryGetHash_<K, V>(
 ): O.Option<V> {
   let node = map.root
   let shift = 0
-  const keyEq = map.eqKey.equals
 
   // eslint-disable-next-line no-constant-condition
   while (true)
     switch (node._tag) {
       case "LeafNode": {
-        return keyEq(key, node.key) ? node.value : O.none
+        return St.equals(key, node.key) ? node.value : O.none
       }
       case "CollisionNode": {
         if (hash === node.hash) {
           const children = node.children
           for (let i = 0, len = children.length; i < len; ++i) {
             const child = children[i]!
-            if ("key" in child && keyEq(key, child.key)) return child.value
+            if ("key" in child && St.equals(key, child.key)) return child.value
           }
         }
         return O.none
@@ -140,7 +132,7 @@ export function getHash_<K, V>(map: HashMap<K, V>, key: K, hash: number): O.Opti
  * Lookup the value for `key` in `map` using internal hash function.
  */
 export function get_<K, V>(map: HashMap<K, V>, key: K): O.Option<V> {
-  return tryGetHash_(map, key, map.hashKey.hash(key))
+  return tryGetHash_(map, key, St.hash(key))
 }
 
 /**
@@ -163,7 +155,7 @@ export function hasHash_<K, V>(map: HashMap<K, V>, key: K, hash: number): boolea
  * Does an entry exist for `key` in `map`? Uses internal hash function.
  */
 export function has_<K, V>(map: HashMap<K, V>, key: K): boolean {
-  return O.isSome(tryGetHash_(map, key, map.hashKey.hash(key)))
+  return O.isSome(tryGetHash_(map, key, St.hash(key)))
 }
 
 /**
@@ -198,15 +190,7 @@ export function modifyHash_<K, V>(
   f: UpdateFn<V>
 ): HashMap<K, V> {
   const size = { value: map.size }
-  const newRoot = map.root.modify(
-    map.editable ? map.edit : NaN,
-    map.eqKey.equals,
-    0,
-    f,
-    hash,
-    key,
-    size
-  )
+  const newRoot = map.root.modify(map.editable ? map.edit : NaN, 0, f, hash, key, size)
   return setTree_(map, newRoot, size.value)
 }
 
@@ -220,7 +204,7 @@ export function modifyHash_<K, V>(
  * Returns a map with the modified value. Does not alter `map`.
  */
 export function modify_<K, V>(map: HashMap<K, V>, key: K, f: UpdateFn<V>) {
-  return modifyHash_(map, key, map.hashKey.hash(key), f)
+  return modifyHash_(map, key, St.hash(key), f)
 }
 
 /**
@@ -274,7 +258,7 @@ export function remove<K>(key: K) {
  * Mark `map` as mutable.
  */
 export function beginMutation<K, V>(map: HashMap<K, V>) {
-  return new HashMap(true, map.edit + 1, map.eqKey, map.hashKey, map.root, map.size)
+  return new HashMap(true, map.edit + 1, map.root, map.size)
 }
 
 /**
@@ -456,20 +440,6 @@ export function reduce<V, Z>(z: Z, f: (z: Z, v: V) => Z) {
 }
 
 /**
- * Make a new map that has randomly cached hash and referential equality
- */
-export function makeDefault<K, V>() {
-  return make<K, V>(
-    {
-      equals: (x, y) => x === y
-    },
-    {
-      hash: St.hash
-    }
-  )
-}
-
-/**
  * Apply f to each element
  */
 export function forEachWithIndex_<K, V>(map: HashMap<K, V>, f: (k: K, v: V) => void) {
@@ -505,9 +475,7 @@ export function forEach<V>(f: (v: V) => void) {
  * Maps over the map entries
  */
 export function mapWithIndex_<K, V, A>(map: HashMap<K, V>, f: (k: K, v: V) => A) {
-  return reduceWithIndex_(map, make<K, A>(map.eqKey, map.hashKey), (z, k, v) =>
-    set_(z, k, f(k, v))
-  )
+  return reduceWithIndex_(map, make<K, A>(), (z, k, v) => set_(z, k, f(k, v)))
 }
 
 /**
@@ -523,9 +491,7 @@ export function mapWithIndex<K, V, A>(f: (k: K, v: V) => A) {
  * Maps over the map entries
  */
 export function map_<K, V, A>(map: HashMap<K, V>, f: (v: V) => A) {
-  return reduceWithIndex_(map, make<K, A>(map.eqKey, map.hashKey), (z, k, v) =>
-    set_(z, k, f(v))
-  )
+  return reduceWithIndex_(map, make<K, A>(), (z, k, v) => set_(z, k, f(v)))
 }
 
 /**
@@ -541,7 +507,7 @@ export function map<V, A>(f: (v: V) => A) {
  * Chain over the map entries, the hash and equal of the 2 maps has to be the same
  */
 export function chain_<K, V, A>(map: HashMap<K, V>, f: (v: V) => HashMap<K, A>) {
-  return reduceWithIndex_(map, make<K, A>(map.eqKey, map.hashKey), (z, _, v) =>
+  return reduceWithIndex_(map, make<K, A>(), (z, _, v) =>
     mutate_(z, (m) => {
       forEachWithIndex_(f(v), (_k, _a) => {
         set_(m, _k, _a)
@@ -566,7 +532,7 @@ export function chainWithIndex_<K, V, A>(
   map: HashMap<K, V>,
   f: (k: K, v: V) => HashMap<K, A>
 ) {
-  return reduceWithIndex_(map, make<K, A>(map.eqKey, map.hashKey), (z, k, v) =>
+  return reduceWithIndex_(map, make<K, A>(), (z, k, v) =>
     mutate_(z, (m) => {
       forEachWithIndex_(f(k, v), (_k, _a) => {
         set_(m, _k, _a)
@@ -598,7 +564,7 @@ export function filterMapWithIndex_<K, A, B>(
   fa: HashMap<K, A>,
   f: (k: K, a: A) => O.Option<B>
 ): HashMap<K, B> {
-  const m = make<K, B>(fa.eqKey, fa.hashKey)
+  const m = make<K, B>()
 
   return mutate_(m, (m) => {
     for (const [k, a] of fa) {
@@ -645,7 +611,7 @@ export function filterWithIndex_<K, A>(
   fa: HashMap<K, A>,
   p: (k: K, a: A) => boolean
 ): HashMap<K, A> {
-  const m = make<K, A>(fa.eqKey, fa.hashKey)
+  const m = make<K, A>()
 
   return mutate_(m, (m) => {
     for (const [k, a] of fa) {

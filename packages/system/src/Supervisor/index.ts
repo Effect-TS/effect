@@ -145,21 +145,9 @@ export const trackMainFibers = unsafeTrackMain()
 /**
  * Creates a new supervisor that tracks children in a set.
  */
-export const track = suspend(() => fibersIn(new AtomicReference(makeFiberSet())))
-
-/**
- * Creates a fiber set
- */
-export function makeFiberSet() {
-  return HS.make<Runtime<any, any>>(
-    {
-      equals: (x, y) => x === y
-    },
-    {
-      hash: (_) => _.id.seqNumber
-    }
-  )
-}
+export const track = suspend(() =>
+  fibersIn(new AtomicReference(HS.make<Runtime<any, any>>()))
+)
 
 /**
  * Creates a new supervisor that tracks children in a set.

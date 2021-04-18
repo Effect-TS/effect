@@ -4,7 +4,6 @@ import * as RB from "../../src/Collections/Immutable/RedBlackTree"
 import * as SS from "../../src/Collections/Immutable/SortedSet"
 import * as Equal from "../../src/Equal"
 import { pipe, tuple } from "../../src/Function"
-import * as Hash from "../../src/Hash"
 import * as O from "../../src/Option"
 import * as Ord from "../../src/Ord"
 import * as St from "../../src/Structural"
@@ -18,16 +17,20 @@ describe("HashMap", () => {
   it("use hash-map 4", () => {
     class Index {
       constructor(readonly a: number, readonly b: number) {}
+
+      [St.equalsSym](that: unknown): boolean {
+        return that instanceof Index && this.a === that.a && this.b === that.b
+      }
+
+      [St.hashSym]() {
+        return St.hashString(`${this.a}-${this.b}`)
+      }
     }
     class Value {
       constructor(readonly c: number, readonly d: number) {}
     }
-    const eqIndex = Equal.makeEqual<Index>(
-      (x, y) => x === y || (x.a === y.a && x.b === y.b)
-    )
-    const hashIndex = Hash.makeHash<Index>((x) => St.hashString(`${x.a}-${x.b}`))
 
-    const makeMap = () => HM.make<Index, Value>(eqIndex, hashIndex)
+    const makeMap = () => HM.make<Index, Value>()
     const map = pipe(
       makeMap(),
       HM.set(new Index(0, 0), new Value(0, 0)),
@@ -104,13 +107,16 @@ describe("HashMap", () => {
   it("default", () => {
     class Index {
       constructor(readonly a: number, readonly b: number) {}
+      [St.equalsSym](that: unknown) {
+        return this === that
+      }
     }
     class Value {
       constructor(readonly c: number, readonly d: number) {}
     }
     const x = new Index(0, 0)
     const m = pipe(
-      HM.makeDefault<Index, Value>(),
+      HM.make<Index, Value>(),
       HM.set(x, new Value(0, 1)),
       HM.set(x, new Value(0, 2))
     )
@@ -125,17 +131,19 @@ describe("HashMap", () => {
   it("keySet", () => {
     class Index {
       constructor(readonly a: number, readonly b: number) {}
+
+      [St.equalsSym](that: unknown): boolean {
+        return that instanceof Index && this.a === that.a && this.b === that.b
+      }
+
+      [St.hashSym]() {
+        return St.hashString(`${this.a}-${this.b}`)
+      }
     }
     class Value {
       constructor(readonly c: number, readonly d: number) {}
     }
-    const eqIndex: Equal.Equal<Index> = {
-      equals: (x, y) => x === y || (x.a === y.a && x.b === y.b)
-    }
-    const hashIndex: Hash.Hash<Index> = {
-      hash: (x) => St.hashString(`${x.a}-${x.b}`)
-    }
-    const makeMap = () => HM.make<Index, Value>(eqIndex, hashIndex)
+    const makeMap = () => HM.make<Index, Value>()
     const map = pipe(
       makeMap(),
       HM.set(new Index(0, 0), new Value(0, 0)),

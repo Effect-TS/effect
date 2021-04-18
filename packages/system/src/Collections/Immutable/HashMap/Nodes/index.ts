@@ -3,6 +3,7 @@
 import type { Equal } from "../../../../Equal"
 import * as O from "../../../../Option"
 import { Stack } from "../../../../Stack"
+import * as St from "../../../../Structural"
 import { arraySpliceIn, arraySpliceOut, arrayUpdate } from "../Array"
 import { fromBitmap, hashFragment, toBitmap } from "../Bitwise"
 import { MAX_INDEX_NODE, MIN_ARRAY_NODE, SIZE } from "../Config"
@@ -23,7 +24,6 @@ export class Empty<K, V> {
 
   modify(
     edit: number,
-    _keyEq: KeyEq<K>,
     _shift: number,
     f: UpdateFn<V>,
     hash: number,
@@ -67,14 +67,13 @@ export class LeafNode<K, V> {
 
   modify(
     edit: number,
-    keyEq: KeyEq<K>,
     shift: number,
     f: UpdateFn<V>,
     hash: number,
     key: K,
     size: SizeRef
   ): Node<K, V> {
-    if (keyEq(key, this.key)) {
+    if (St.equals(key, this.key)) {
       const v = f(this.value)
       if (v === this.value) return this
       else if (O.isNone(v)) {
@@ -112,7 +111,6 @@ export class CollisionNode<K, V> {
 
   modify(
     edit: number,
-    keyEq: KeyEq<K>,
     shift: number,
     f: UpdateFn<V>,
     hash: number,
@@ -124,7 +122,6 @@ export class CollisionNode<K, V> {
       const list = this.updateCollisionList(
         canEdit,
         edit,
-        keyEq,
         this.hash,
         this.children,
         f,
@@ -151,7 +148,6 @@ export class CollisionNode<K, V> {
   updateCollisionList(
     mutate: boolean,
     edit: number,
-    keyEq: KeyEq<K>,
     hash: number,
     list: Node<K, V>[],
     f: UpdateFn<V>,
@@ -161,7 +157,7 @@ export class CollisionNode<K, V> {
     const len = list.length
     for (let i = 0; i < len; ++i) {
       const child = list[i]!
-      if ("key" in child && keyEq(key, child.key)) {
+      if ("key" in child && St.equals(key, child.key)) {
         const value = child.value
         const newValue = f(value)
         if (newValue === value) return list
@@ -191,7 +187,6 @@ export class IndexedNode<K, V> {
 
   modify(
     edit: number,
-    keyEq: KeyEq<K>,
     shift: number,
     f: UpdateFn<V>,
     hash: number,
@@ -205,7 +200,7 @@ export class IndexedNode<K, V> {
     const indx = fromBitmap(mask, bit)
     const exists = mask & bit
     const current = exists ? children[indx]! : new Empty<K, V>()
-    const child = current.modify(edit, keyEq, shift + SIZE, f, hash, key, size)
+    const child = current.modify(edit, shift + SIZE, f, hash, key, size)
 
     if (current === child) return this
 
@@ -253,7 +248,6 @@ export class ArrayNode<K, V> {
 
   modify(
     edit: number,
-    keyEq: KeyEq<K>,
     shift: number,
     f: UpdateFn<V>,
     hash: number,
@@ -266,7 +260,6 @@ export class ArrayNode<K, V> {
     const child = children[frag]
     const newChild = (child || new Empty<K, V>()).modify(
       edit,
-      keyEq,
       shift + SIZE,
       f,
       hash,
