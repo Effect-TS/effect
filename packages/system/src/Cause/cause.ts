@@ -2,6 +2,7 @@
 
 import * as L from "../Collections/Immutable/List/core"
 import type { FiberID } from "../Fiber/id"
+import { equalsFiberID } from "../Fiber/id"
 import type { Trace } from "../Fiber/tracing"
 import * as IO from "../IO"
 import * as O from "../Option"
@@ -69,10 +70,10 @@ export class Fail<E> {
           return St.equals(self.value, that.value)
         }
         case "Then": {
-          return yield* _(symM(emptyM)(self, that))
+          return yield* _(sym(zero)(self, that))
         }
         case "Both": {
-          return yield* _(symM(emptyM)(self, that))
+          return yield* _(sym(zero)(self, that))
         }
         case "Traced": {
           return yield* _(self.equalsSafe(that.cause))
@@ -102,10 +103,10 @@ export class Die {
           return St.equals(self.value, that.value)
         }
         case "Then": {
-          return yield* _(symM(emptyM)(self, that))
+          return yield* _(sym(zero)(self, that))
         }
         case "Both": {
-          return yield* _(symM(emptyM)(self, that))
+          return yield* _(sym(zero)(self, that))
         }
         case "Traced": {
           return yield* _(self.equalsSafe(that.cause))
@@ -132,16 +133,13 @@ export class Interrupt {
     return IO.gen(function* (_) {
       switch (that._tag) {
         case "Interrupt": {
-          return (
-            self.fiberId.seqNumber === that.fiberId.seqNumber &&
-            self.fiberId.startTimeMillis === that.fiberId.startTimeMillis
-          )
+          return equalsFiberID(self.fiberId, that.fiberId)
         }
         case "Then": {
-          return yield* _(symM(emptyM)(self, that))
+          return yield* _(sym(zero)(self, that))
         }
         case "Both": {
-          return yield* _(symM(emptyM)(self, that))
+          return yield* _(sym(zero)(self, that))
         }
         case "Traced": {
           return yield* _(self.equalsSafe(that.cause))
@@ -194,12 +192,26 @@ export class Then<E> {
         }
       }
       return (
-        (yield* _(equalsThenEqM(self, that))) ||
-        (yield* _(symM(equalsThenAssocM)(self, that))) ||
-        (yield* _(symM(equalsThenDistM)(self, that))) ||
-        (yield* _(symM(emptyM)(self, that)))
+        (yield* _(self.eq(that))) ||
+        (yield* _(sym(associativeThen)(self, that))) ||
+        (yield* _(sym(distributiveThen)(self, that))) ||
+        (yield* _(sym(zero)(self, that)))
       )
     })
+  }
+
+  private eq(that: Cause<unknown>): IO.IO<boolean> {
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
+    const self = this
+    if (that._tag === "Both") {
+      return IO.gen(function* (_) {
+        return (
+          (yield* _(self.left.equalsSafe(that.left))) &&
+          (yield* _(self.right.equalsSafe(that.right)))
+        )
+      })
+    }
+    return IO.succeed(false)
   }
 }
 
@@ -223,13 +235,27 @@ export class Both<E> {
         }
       }
       return (
-        (yield* _(equalsBothEqM(self, that))) ||
-        (yield* _(symM(equalsBothAssocM)(self, that))) ||
-        (yield* _(symM(equalsBothDistM)(self, that))) ||
-        (yield* _(equalsBothCommM(self, that))) ||
-        (yield* _(symM(emptyM)(self, that)))
+        (yield* _(self.eq(that))) ||
+        (yield* _(sym(associativeBoth)(self, that))) ||
+        (yield* _(sym(distributiveBoth)(self, that))) ||
+        (yield* _(commutativeBoth(self, that))) ||
+        (yield* _(sym(zero)(self, that)))
       )
     })
+  }
+
+  private eq(that: Cause<unknown>): IO.IO<boolean> {
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
+    const self = this
+    if (that._tag === "Both") {
+      return IO.gen(function* (_) {
+        return (
+          (yield* _(self.left.equalsSafe(that.left))) &&
+          (yield* _(self.right.equalsSafe(that.right)))
+        )
+      })
+    }
+    return IO.succeed(false)
   }
 }
 
@@ -316,21 +342,7 @@ export function isEmpty<E>(cause: Cause<E>) {
   return true
 }
 
-function equalsThenEqM<A>(self: Then<A>, that: Cause<A>): IO.IO<boolean> {
-  return IO.gen(function* (_) {
-    switch (that._tag) {
-      case "Then": {
-        return (
-          (yield* _(self.left.equalsSafe(that.left))) ||
-          (yield* _(self.right.equalsSafe(that.right)))
-        )
-      }
-    }
-    return false
-  })
-}
-
-function equalsThenAssocM<A>(self: Cause<A>, that: Cause<A>): IO.IO<boolean> {
+function associativeThen<A>(self: Cause<A>, that: Cause<A>): IO.IO<boolean> {
   return IO.gen(function* (_) {
     if (
       self._tag === "Then" &&
@@ -354,7 +366,7 @@ function equalsThenAssocM<A>(self: Cause<A>, that: Cause<A>): IO.IO<boolean> {
   })
 }
 
-function equalsThenDistM<A>(self: Cause<A>, that: Cause<A>): IO.IO<boolean> {
+function distributiveThen<A>(self: Cause<A>, that: Cause<A>): IO.IO<boolean> {
   return IO.gen(function* (_) {
     if (
       self._tag === "Then" &&
@@ -408,21 +420,7 @@ function equalsThenDistM<A>(self: Cause<A>, that: Cause<A>): IO.IO<boolean> {
   })
 }
 
-function equalsBothEqM<A>(self: Both<A>, that: Cause<A>): IO.IO<boolean> {
-  return IO.gen(function* (_) {
-    switch (that._tag) {
-      case "Both": {
-        return (
-          (yield* _(self.left.equalsSafe(that.left))) ||
-          (yield* _(self.right.equalsSafe(that.right)))
-        )
-      }
-    }
-    return false
-  })
-}
-
-function equalsBothAssocM<A>(self: Cause<A>, that: Cause<A>): IO.IO<boolean> {
+function associativeBoth<A>(self: Cause<A>, that: Cause<A>): IO.IO<boolean> {
   return IO.gen(function* (_) {
     if (
       self._tag === "Both" &&
@@ -446,7 +444,7 @@ function equalsBothAssocM<A>(self: Cause<A>, that: Cause<A>): IO.IO<boolean> {
   })
 }
 
-function equalsBothDistM<A>(self: Cause<A>, that: Cause<A>): IO.IO<boolean> {
+function distributiveBoth<A>(self: Cause<A>, that: Cause<A>): IO.IO<boolean> {
   return IO.gen(function* (_) {
     if (
       self._tag === "Both" &&
@@ -500,7 +498,7 @@ function equalsBothDistM<A>(self: Cause<A>, that: Cause<A>): IO.IO<boolean> {
   })
 }
 
-function equalsBothCommM<A>(self: Both<A>, that: Cause<A>): IO.IO<boolean> {
+function commutativeBoth<A>(self: Both<A>, that: Cause<A>): IO.IO<boolean> {
   return IO.gen(function* (_) {
     if (that._tag === "Both") {
       return (
@@ -512,7 +510,7 @@ function equalsBothCommM<A>(self: Both<A>, that: Cause<A>): IO.IO<boolean> {
   })
 }
 
-function emptyM<A>(self: Cause<A>, that: Cause<A>) {
+function zero<A>(self: Cause<A>, that: Cause<A>) {
   if (self._tag === "Then" && self.right._tag === "Empty") {
     return self.left.equalsSafe(that)
   }
@@ -528,7 +526,7 @@ function emptyM<A>(self: Cause<A>, that: Cause<A>) {
   return IO.succeed(false)
 }
 
-function symM<A>(
+function sym<A>(
   f: (a: Cause<A>, b: Cause<A>) => IO.IO<boolean>
 ): (a: Cause<A>, b: Cause<A>) => IO.IO<boolean> {
   return (l, r) =>
