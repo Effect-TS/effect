@@ -3,6 +3,41 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.29.0](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.28.0...@effect-ts/system@0.29.0) (2021-04-18)
+
+
+### Bug Fixes
+
+* **cause:** fix cause equals and contains ([fff7ef0](https://github.com/Effect-TS/core/commit/fff7ef0c006546ec290d343da0455ac2e0a64fb6))
+* **cause:** fix containsM ([75cb6bc](https://github.com/Effect-TS/core/commit/75cb6bce657a077489b36f24b1f18725c3ef3f00))
+* **cause:** fix equals ([1204f0e](https://github.com/Effect-TS/core/commit/1204f0e984e01656e7ed72d107957efbe48a1a68))
+* **cause:** fix isEmpty check in then & both ([04353fc](https://github.com/Effect-TS/core/commit/04353fc9ae1343a80fba2d93d937d7f3fe24d7ef))
+* **equals:** fix equality in subscription & improve ([5a0024b](https://github.com/Effect-TS/core/commit/5a0024bc5864503061e740926c534c3fb04a6e04))
+* **fiber:** reserved word ([755a5d9](https://github.com/Effect-TS/core/commit/755a5d9aa27bacdfa8bf3ad2638ad2045cfd3555))
+* **stm:** backport https://github.com/zio/zio/commit/65fcf00806eab0b106d4d9fa0aaa9d0572440d17 ([d306fbb](https://github.com/Effect-TS/core/commit/d306fbb5cb236d4f9a20864da57ef271e6afcf6f))
+
+
+### Features
+
+* **cause:** cause structure equality ([df78aab](https://github.com/Effect-TS/core/commit/df78aab9a06535df821ed32f90f7e05ed209fad6))
+* **chunk:** implemet hash ([4237771](https://github.com/Effect-TS/core/commit/42377710f75f1ffbbd16d5a3b6fdf77fb538412b))
+* **chunks:** implement toJSON on chunk ([9b8262a](https://github.com/Effect-TS/core/commit/9b8262a0e45049555862025103978b0b17b3fdd3))
+* **collections:** use structural equality ([7955838](https://github.com/Effect-TS/core/commit/79558386cfadeaaa348f9cbf14d50280261759ba))
+* **equals:** implement HasHash and HasEquals on the standard lib ([b2722e8](https://github.com/Effect-TS/core/commit/b2722e8a5acc61113fe8223d519a8667bf057d54))
+* **parseq:** begin implementation of ParSeq ([8726d38](https://github.com/Effect-TS/core/commit/8726d38023d37662a0b4b51d812bbcb34bfc7743))
+* **parseq:** implement chain, map, zip, zipWith, isEmpty ([d58f875](https://github.com/Effect-TS/core/commit/d58f875f5a09ade89bcbd862a0822c211ca28bfc))
+* **streams:** implement channel concatAllWith, managedOut and unwrapManaged ([3b37509](https://github.com/Effect-TS/core/commit/3b37509a40b3d0a543074b84051ed692796d1678))
+* **streams:** implement channel toPull and stream toPull ([033b4d8](https://github.com/Effect-TS/core/commit/033b4d86da91d1f2586bb660c0d2940f88aa614c))
+* **streams:** implement combineChunks, zipWith, zip ([b6bc6d0](https://github.com/Effect-TS/core/commit/b6bc6d03697ebd8c35d4d3c4bce334d4c2b3707e))
+* **streams:** implement low level loopOn variants ([a7d1379](https://github.com/Effect-TS/core/commit/a7d1379c57b41c5be8b170e693c12be2b288328a))
+* **streams:** implement mapM ([b8287f1](https://github.com/Effect-TS/core/commit/b8287f12082d5e64f1f15b4c02c3ef3af6c73b4a))
+* **streams:** implement stream managed, unwrap, unwrapManaged, effectOption, flatten ([12418a5](https://github.com/Effect-TS/core/commit/12418a5c860ba8b2a010f6e697744943e090e363))
+* **xpure:** add log primitive and parameter ([46349c3](https://github.com/Effect-TS/core/commit/46349c32883dff60a09777c992ba61febc02fc5a))
+
+
+
+
+
 # [0.28.0](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.27.3...@effect-ts/system@0.28.0) (2021-04-14)
 
 

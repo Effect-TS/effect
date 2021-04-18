@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.32.0](https://github.com/Effect-TS/core/compare/@effect-ts/core@0.31.0...@effect-ts/core@0.32.0) (2021-04-18)
+
+
+### Features
+
+* **parseq:** begin implementation of ParSeq ([8726d38](https://github.com/Effect-TS/core/commit/8726d38023d37662a0b4b51d812bbcb34bfc7743))
+* **xpure:** add log primitive and parameter ([46349c3](https://github.com/Effect-TS/core/commit/46349c32883dff60a09777c992ba61febc02fc5a))
+
+
+
+
+
 # [0.31.0](https://github.com/Effect-TS/core/compare/@effect-ts/core@0.30.3...@effect-ts/core@0.31.0) (2021-04-14)
 
 
