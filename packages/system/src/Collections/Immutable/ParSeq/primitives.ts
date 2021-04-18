@@ -277,7 +277,7 @@ function commutativeBoth(self: Both<unknown>, that: ParSeq<unknown>): IO.IO<bool
   return IO.gen(function* (_) {
     if (that._tag === "Both") {
       return (
-        (yield* _(self.left.equalsSafe(that.right))) ||
+        (yield* _(self.left.equalsSafe(that.right))) &&
         (yield* _(self.right.equalsSafe(that.left)))
       )
     }
