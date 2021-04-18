@@ -3,9 +3,10 @@
 import "../../Operator"
 
 import * as Chunk from "../../Collections/Immutable/Chunk"
+import * as St from "../../Structural"
 import { Hub, Subscription } from "./Hub"
 
-export class BoundedHubSingle<A> extends Hub<A> {
+export class BoundedHubSingle<A> extends Hub<A> implements St.HasHash, St.HasEquals {
   publisherIndex = 0
   subscriberCount = 0
   subscribers = 0
@@ -15,6 +16,14 @@ export class BoundedHubSingle<A> extends Hub<A> {
 
   constructor() {
     super()
+  }
+
+  [St.hashSym](): number {
+    return St.hashIncremental(this)
+  }
+
+  [St.equalsSym](that: unknown): boolean {
+    return this === that
   }
 
   isEmpty(): boolean {

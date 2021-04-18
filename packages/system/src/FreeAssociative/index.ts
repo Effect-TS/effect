@@ -3,18 +3,45 @@
 import "../Operator"
 
 import { Stack } from "../Stack"
+import * as St from "../Structural"
+
+const _brand = Symbol()
+
+export function isFreeAssociative(self: unknown): self is FreeAssociative<unknown> {
+  return typeof self === "object" && self != null && _brand in self
+}
 
 export class IEmpty {
-  readonly _tag = "Empty"
+  readonly _tag = "Empty";
+  readonly [_brand] = _brand;
+
+  [St.hashSym](): number {
+    return St.hash(toArray(this))
+  }
+
+  [St.equalsSym](that: unknown): boolean {
+    return isFreeAssociative(that) && St.equals(toArray(this), toArray(that))
+  }
 }
 
 export class IElement<A> {
-  readonly _tag = "Element"
+  readonly _tag = "Element";
+  readonly [_brand] = _brand
   constructor(readonly element: A) {}
+
+  [St.hashSym](): number {
+    return St.hash(toArray(this))
+  }
+
+  [St.equalsSym](that: unknown): boolean {
+    return isFreeAssociative(that) && St.equals(toArray(this), toArray(that))
+  }
 }
 
 export class IConcat<A> {
-  readonly _tag = "Concat"
+  readonly _tag = "Concat";
+  readonly [_brand] = _brand
+
   constructor(readonly left: FreeAssociative<A>, readonly right: FreeAssociative<A>) {}
 }
 

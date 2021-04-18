@@ -9,6 +9,7 @@ import type * as Exit from "../../../Exit"
 import { identity, pipe } from "../../../Function"
 import * as M from "../../../Managed"
 import * as O from "../../../Option"
+import * as St from "../../../Structural"
 import * as C from "../Channel"
 import * as Sink from "../Sink"
 
@@ -32,7 +33,7 @@ export type StreamTypeId = typeof StreamTypeId
  * adjustments for the multiple-valued nature of `Stream`). These aspects allow
  * for rich and expressive composition of streams.
  */
-export class Stream<R, E, A> {
+export class Stream<R, E, A> implements St.HasHash, St.HasEquals {
   readonly _typeId: StreamTypeId = StreamTypeId;
   readonly [T._R]!: (_: R) => void;
   readonly [T._E]!: () => E;
@@ -49,6 +50,14 @@ export class Stream<R, E, A> {
       unknown
     >
   ) {}
+
+  [St.hashSym](): number {
+    return St.hashIncremental(this)
+  }
+
+  [St.equalsSym](that: unknown): boolean {
+    return this === that
+  }
 }
 
 /**

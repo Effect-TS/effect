@@ -2,6 +2,7 @@
 
 import "../../../Operator"
 
+import * as St from "../../../Structural"
 import type { Atomic } from "../../TRef"
 import { Versioned } from "../Versioned"
 
@@ -12,6 +13,14 @@ export class Entry {
   readonly _typeId: EntryTypeId = EntryTypeId
 
   constructor(readonly use: <X>(f: <S>(entry: EntryOps<S>) => X) => X) {}
+
+  [St.hashSym](): number {
+    return St.hashIncremental(this)
+  }
+
+  [St.equalsSym](that: unknown): boolean {
+    return this === that
+  }
 }
 
 export function makeEntry<A0>(tref0: Atomic<A0>, isNew0: boolean): Entry {
@@ -44,6 +53,14 @@ export class EntryOps<S> {
     this.newValue = newValue
     this.isNew = isNew
     this._isChanged = isChanged
+  }
+
+  [St.hashSym](): number {
+    return St.hashIncremental(this)
+  }
+
+  [St.equalsSym](that: unknown): boolean {
+    return this === that
   }
 
   unsafeSet(value: unknown) {

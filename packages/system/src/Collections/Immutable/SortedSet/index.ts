@@ -6,6 +6,7 @@ import type { Equal } from "../../../Equal"
 import type { Predicate, Refinement } from "../../../Function"
 import { not } from "../../../Function"
 import type { Ord } from "../../../Ord"
+import * as St from "../../../Structural"
 import type { Separated } from "../../../Utils"
 import type { Next } from "../Map"
 import * as RB from "../RedBlackTree"
@@ -15,6 +16,14 @@ export class SortedSet<V> implements Iterable<V> {
 
   [Symbol.iterator](): Iterator<V> {
     return RB.keys_(this.keyTree)
+  }
+
+  [St.hashSym](): number {
+    return this.keyTree[St.hashSym]()
+  }
+
+  [St.equalsSym](that: unknown): boolean {
+    return this.keyTree[St.equalsSym](that)
   }
 }
 

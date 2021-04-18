@@ -5,6 +5,7 @@ import "../Operator"
 
 import { _A, _U } from "../Effect/commons"
 import { Stack } from "../Stack"
+import * as St from "../Structural"
 
 /**
  * `IO[A]` is a purely functional description of a computation.
@@ -17,9 +18,17 @@ import { Stack } from "../Stack"
  */
 export type IO<A> = Succeed<A> | FlatMap<any, A> | Suspend<A>
 
-abstract class Base<A> {
+abstract class Base<A> implements St.HasHash, St.HasEquals {
   readonly [_U]!: "IO";
-  readonly [_A]!: () => A
+  readonly [_A]!: () => A;
+
+  [St.hashSym](): number {
+    return St.hashIncremental(this)
+  }
+
+  [St.equalsSym](that: unknown): boolean {
+    return this === that
+  }
 }
 
 class Succeed<A> extends Base<A> {

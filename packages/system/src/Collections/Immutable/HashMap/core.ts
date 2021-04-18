@@ -4,6 +4,7 @@ import "../../../Operator"
 
 import type { Refinement } from "../../../Function"
 import { constant, identity, tuple } from "../../../Function"
+import * as I from "../../../Iterable"
 import * as O from "../../../Option"
 import * as St from "../../../Structural"
 import { fromBitmap, hashFragment, toBitmap } from "./Bitwise"
@@ -24,6 +25,18 @@ export class HashMap<K, V> implements Iterable<readonly [K, V]> {
 
   [Symbol.iterator](): Iterator<readonly [K, V]> {
     return new HashMapIterator(this, identity)
+  }
+
+  [St.hashSym](): number {
+    return St.hashIterator(this[Symbol.iterator]())
+  }
+
+  [St.equalsSym](that: unknown): boolean {
+    return (
+      that instanceof HashMap &&
+      that.size === this.size &&
+      I.corresponds(this, that, St.equals)
+    )
   }
 }
 

@@ -14,6 +14,7 @@ import { zip_ } from "../Effect/zip"
 import type { Exit } from "../Exit/exit"
 import type { Runtime } from "../Fiber/core"
 import type * as O from "../Option"
+import * as St from "../Structural"
 import { AtomicReference } from "../Support/AtomicReference"
 
 /**
@@ -31,6 +32,14 @@ export class Supervisor<A> {
     ) => Propagation,
     readonly unsafeOnEnd: <E, A>(value: Exit<E, A>, fiber: Runtime<E, A>) => Propagation
   ) {}
+
+  [St.hashSym](): number {
+    return St.hashIncremental(this)
+  }
+
+  [St.equalsSym](that: unknown): boolean {
+    return this === that
+  }
 
   /**
    * Returns a new supervisor that performs the function of this supervisor,

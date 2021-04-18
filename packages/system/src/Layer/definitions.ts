@@ -16,6 +16,7 @@ import * as releaseAll from "../Managed/ReleaseMap/releaseAll"
 import * as P from "../Promise"
 import * as R from "../Ref"
 import * as RM from "../RefM"
+import * as St from "../Structural"
 import { AtomicReference } from "../Support/AtomicReference"
 import type { Erase, UnionToIntersection } from "../Utils"
 import * as T from "./deps-effect"
@@ -133,12 +134,20 @@ export function compose<A2, E, A>(
 
 export const hashSym: unique symbol = Symbol()
 
-export abstract class Layer<RIn, E, ROut> {
+export abstract class Layer<RIn, E, ROut> implements St.HasEquals, St.HasHash {
   readonly [hashSym] = new AtomicReference<PropertyKey>(Symbol());
 
   readonly [_RIn]!: (_: RIn) => void;
   readonly [_E]!: () => E;
-  readonly [_ROut]!: () => ROut
+  readonly [_ROut]!: () => ROut;
+
+  [St.hashSym](): number {
+    return St.hashIncremental(this)
+  }
+
+  [St.equalsSym](that: unknown): boolean {
+    return this === that
+  }
 
   /**
    * Set the hash key for memoization

@@ -3,6 +3,7 @@
 import "../../../Operator"
 
 import { tuple } from "../../../Function"
+import * as I from "../../../Iterable"
 import * as O from "../../../Option"
 import type * as Ord from "../../../Ord"
 import type { Ordering } from "../../../Ordering"
@@ -69,6 +70,18 @@ export class RedBlackTree<K, V> implements RedBlackTreeIterable<K, V> {
       n = n.left
     }
     return new RedBlackTreeIterator(this, stack, "Forward")
+  }
+
+  [St.hashSym](): number {
+    return St.hashIterator(this[Symbol.iterator]())
+  }
+
+  [St.equalsSym](that: unknown): boolean {
+    return (
+      that instanceof RedBlackTree &&
+      size(this) === size(that) &&
+      I.corresponds(this, that, St.equals)
+    )
   }
 }
 

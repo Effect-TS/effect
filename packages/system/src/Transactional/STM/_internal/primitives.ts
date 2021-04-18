@@ -1,6 +1,7 @@
 import * as T from "../../../Effect"
 import * as E from "../../../Either"
 import type { FiberID } from "../../../Fiber"
+import * as St from "../../../Structural"
 import type { Journal } from "../Journal/index"
 
 export const STMTypeId = Symbol()
@@ -36,7 +37,15 @@ export abstract class STM<R, E, A> {
   readonly [STMTypeId]: STMTypeId = STMTypeId;
   readonly [T._R]!: (_: R) => void;
   readonly [T._E]!: () => E;
-  readonly [T._A]!: () => A
+  readonly [T._A]!: () => A;
+
+  [St.hashSym](): number {
+    return St.hashIncremental(this)
+  }
+
+  [St.equalsSym](that: unknown): boolean {
+    return this === that
+  }
 }
 
 export const STMEffectTypeId = Symbol()

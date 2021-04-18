@@ -1,7 +1,5 @@
 // tracing: off
 
-import * as CaseEquals from "../Structural/HasEquals"
-import * as CaseHash from "../Structural/HasHash"
 import type { Compute } from "../Utils"
 
 export type ConstructorArgs<T, K extends PropertyKey> = Compute<
@@ -34,12 +32,4 @@ export class Case<T, K extends PropertyKey = never> implements CaseBrand {
   [CaseBrand]() {
     //
   }
-}
-
-export function equals(x: CaseBrand, y: unknown) {
-  return typeof y === "object" && y != null && CaseBrand in y && CaseEquals.equals(x, y)
-}
-
-export function hash(x: CaseBrand) {
-  return CaseHash.hash(x)
 }

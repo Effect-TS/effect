@@ -2,6 +2,8 @@
 
 import "../../Operator"
 
+import * as St from "../../Structural"
+
 export class LinkedListNode<T> {
   public removed = false
   public left: LinkedListNode<T> | undefined
@@ -15,7 +17,15 @@ export class LinkedListNode<T> {
 
 type Node<T> = LinkedListNode<T> | undefined
 
-export class DoublyLinkedList<T> {
+export class DoublyLinkedList<T> implements St.HasEquals, St.HasHash {
+  [St.hashSym](): number {
+    return St.hashIncremental(this)
+  }
+
+  [St.equalsSym](that: unknown): boolean {
+    return this === that
+  }
+
   public get head(): T | undefined {
     return this.headN === undefined ? undefined : this.headN.value
   }

@@ -222,7 +222,7 @@ function decrementDepth(bits: number): number {
 /**
  * Represents a list of elements.
  */
-export class List<A> implements Iterable<A>, St.HasEquals {
+export class List<A> implements Iterable<A>, St.HasEquals, St.HasHash {
   constructor(
     readonly bits: number,
     readonly offset: number,
@@ -239,6 +239,9 @@ export class List<A> implements Iterable<A>, St.HasEquals {
   }
   [St.equalsSym](that: unknown): boolean {
     return that instanceof List && equalsWith_(this, that, St.equals)
+  }
+  [St.hashSym](): number {
+    return St.hashIterator(this[Symbol.iterator]())
   }
 }
 

@@ -5,6 +5,7 @@ import { _A, _E, _R, _U } from "../Effect/commons"
 import * as E from "../Either"
 import { pipe } from "../Function"
 import { Stack } from "../Stack"
+import * as St from "../Structural"
 import type * as U from "../Utils"
 
 /**
@@ -16,7 +17,15 @@ export abstract class Async<R, E, A> {
   readonly [_U]!: "Async";
   readonly [_E]!: () => E;
   readonly [_A]!: () => A;
-  readonly [_R]!: (_: R) => void
+  readonly [_R]!: (_: R) => void;
+
+  [St.equalsSym](that: unknown): boolean {
+    return this === that
+  }
+
+  [St.hashSym](): number {
+    return St.hashIncremental(this)
+  }
 }
 
 /**

@@ -74,7 +74,7 @@ function isZero(value: any): boolean {
 const RANDOM = new PCGRandom(13)
 const CACHE = new WeakMap<Object, number>()
 
-function randomInt() {
+export function randomInt() {
   return RANDOM.integer(0x7fffffff)
 }
 

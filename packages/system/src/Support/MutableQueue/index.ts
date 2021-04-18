@@ -6,7 +6,7 @@ import * as Chunk from "../../Collections/Immutable/Chunk/core"
 import * as St from "../../Structural"
 import { DoublyLinkedList } from "../DoublyLinkedList"
 
-export interface MutableQueue<A> extends St.HasHash {
+export interface MutableQueue<A> extends St.HasHash, St.HasEquals {
   /**
    * The '''maximum''' number of elements that a queue can hold.
    *
@@ -126,6 +126,10 @@ export class Unbounded<A> implements MutableQueue<A> {
   [St.hashSym](): number {
     return St.hashIncremental(this)
   }
+
+  [St.equalsSym](that: unknown): boolean {
+    return this === that
+  }
 }
 
 export class Bounded<A> implements MutableQueue<A> {
@@ -204,5 +208,9 @@ export class Bounded<A> implements MutableQueue<A> {
 
   [St.hashSym](): number {
     return St.hashIncremental(this)
+  }
+
+  [St.equalsSym](that: unknown): boolean {
+    return this === that
   }
 }

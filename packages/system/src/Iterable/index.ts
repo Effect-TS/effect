@@ -257,3 +257,27 @@ export function unfold<A>(a: A, f: (a: A) => A): Iterable<A> {
     }
   }
 }
+
+export function corresponds<A, B>(
+  left: Iterable<A>,
+  right: Iterable<B>,
+  f: (a: A, b: B) => boolean
+) {
+  const leftIt = left[Symbol.iterator]()
+  const rightIt = right[Symbol.iterator]()
+  // eslint-disable-next-line no-constant-condition
+  while (1) {
+    const lnext = leftIt.next()
+    const rnext = rightIt.next()
+    if (lnext.done !== rnext.done) {
+      return false
+    }
+    if (lnext.done) {
+      return true
+    }
+    if (!f(lnext.value, rnext.value)) {
+      return false
+    }
+  }
+  throw new Error("Bug")
+}

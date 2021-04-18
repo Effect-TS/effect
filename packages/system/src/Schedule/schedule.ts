@@ -10,6 +10,7 @@ import * as NoSuchElementException from "../GlobalExceptions"
 import * as O from "../Option"
 import * as Random from "../Random"
 import * as R from "../Ref"
+import * as St from "../Structural"
 import * as Decision from "./Decision"
 import * as Driver from "./Driver"
 import * as T from "./effect"
@@ -37,7 +38,7 @@ import * as T from "./effect"
  * object for `Schedule` contains all common types of schedules, both for performing retrying, as
  * well as performing repetition.
  */
-export class Schedule<Env, In, Out> {
+export class Schedule<Env, In, Out> implements St.HasHash, St.HasEquals {
   constructor(readonly step: Decision.StepFunction<Env, In, Out>) {}
 
   /**
@@ -130,7 +131,15 @@ export class Schedule<Env, In, Out> {
    */
   readonly ["<||>"] = <Env1, In1, Out1>(
     that: Schedule<Env1, In1, Out1>
-  ): Schedule<Env & Env1, In & In1, E.Either<Out, Out1>> => andThenEither_(this, that)
+  ): Schedule<Env & Env1, In & In1, E.Either<Out, Out1>> => andThenEither_(this, that);
+
+  [St.hashSym](): number {
+    return St.hashIncremental(this)
+  }
+
+  [St.equalsSym](that: unknown): boolean {
+    return this === that
+  }
 }
 
 /**

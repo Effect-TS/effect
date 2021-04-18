@@ -14,15 +14,24 @@ import { accessService, accessServiceM, provideServiceM } from "../Effect/has"
 import { literal } from "../Function"
 import type { Has, HasTag, Tag } from "../Has"
 import { tag } from "../Has"
+import * as St from "../Structural"
 
 //
 // Clock Definition
 //
-export abstract class Clock {
+export abstract class Clock implements St.HasHash, St.HasEquals {
   readonly _tag = literal("@effect-ts/system/Clock")
 
   abstract readonly currentTime: UIO<number>
   abstract readonly sleep: (ms: number, __trace?: string) => UIO<void>
+
+  [St.hashSym](): number {
+    return St.hashIncremental(this)
+  }
+
+  [St.equalsSym](that: unknown): boolean {
+    return this === that
+  }
 }
 
 //

@@ -13,9 +13,10 @@ import { accessServiceM, replaceService } from "../Effect/has"
 import { literal } from "../Function"
 import type { HasTag } from "../Has"
 import { tag } from "../Has"
+import * as St from "../Structural"
 import { PCGRandom } from "./PCG"
 
-export abstract class Random {
+export abstract class Random implements St.HasEquals, St.HasHash {
   readonly _tag = literal("@effect-ts/system/Random")
 
   abstract readonly next: UIO<number>
@@ -23,6 +24,14 @@ export abstract class Random {
   abstract readonly nextInt: UIO<number>
   abstract readonly nextRange: (low: number, high: number) => UIO<number>
   abstract readonly nextIntBetween: (low: number, high: number) => UIO<number>
+
+  [St.hashSym](): number {
+    return St.hashIncremental(this)
+  }
+
+  [St.equalsSym](that: unknown): boolean {
+    return this === that
+  }
 }
 
 export class LiveRandom extends Random {

@@ -11,6 +11,7 @@ import { not, pipe, tuple } from "../../Function"
 import type { Finalizer } from "../../Managed/ReleaseMap"
 import * as O from "../../Option"
 import * as RM from "../../RefM"
+import * as St from "../../Structural"
 import * as T from "../_internal/effect"
 import * as M from "../_internal/managed"
 import * as R from "../_internal/ref"
@@ -29,6 +30,14 @@ export class Transducer<R, E, I, O> {
       (c: O.Option<A.Chunk<I>>) => T.Effect<R, E, A.Chunk<O>>
     >
   ) {}
+
+  [St.hashSym](): number {
+    return St.hashIncremental(this)
+  }
+
+  [St.equalsSym](that: unknown): boolean {
+    return this === that
+  }
 }
 
 /**

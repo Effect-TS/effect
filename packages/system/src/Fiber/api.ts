@@ -10,7 +10,7 @@ import { make } from "../Managed/core"
 import type { Managed } from "../Managed/managed"
 import * as O from "../Option"
 import * as T from "./_internal/effect-api"
-import type * as Fiber from "./core"
+import * as Fiber from "./core"
 import { interrupt } from "./interrupt"
 
 /**
@@ -55,7 +55,6 @@ export function interruptFork<E, A>(fiber: Fiber.Fiber<E, A>) {
 export function mapM<E2, A, B>(f: (a: A) => T.IO<E2, B>) {
   return <E>(fiber: Fiber.Fiber<E, A>): Fiber.Fiber<E | E2, B> =>
     makeSynthetic({
-      _tag: "SyntheticFiber",
       await: T.chain_(fiber.await, Exit.forEach(f)),
       getRef: (ref) => fiber.getRef(ref),
       inheritRefs: fiber.inheritRefs,
@@ -151,7 +150,6 @@ export function mapFiber_<A, E, E2, A2>(
 export function orElse<E1, A1>(that: Fiber.Fiber<E1, A1>) {
   return <E, A>(fiber: Fiber.Fiber<E, A>): Fiber.Fiber<E | E1, A | A1> =>
     makeSynthetic<E | E1, A | A1>({
-      _tag: "SyntheticFiber",
       await: T.zipWith_(fiber.await, that.await, (a, b) =>
         a._tag === "Success" ? a : b
       ),
@@ -209,7 +207,6 @@ export function zipWith_<E, A, E1, A1, B>(
   f: (a: A, b: A1) => B
 ): Fiber.Fiber<E | E1, B> {
   return makeSynthetic<E | E1, B>({
-    _tag: "SyntheticFiber",
     getRef: (ref) =>
       T.zipWith_(fiberA.getRef(ref), fiberB.getRef(ref), (a, b) => ref.join(a, b)),
     inheritRefs: T.chain_(fiberA.inheritRefs, () => fiberB.inheritRefs),
@@ -262,7 +259,6 @@ export function zipLeft_<E, A, E1, A1>(
  */
 export function collectAll<E, A>(fibers: Iterable<Fiber.Fiber<E, A>>) {
   return makeSynthetic({
-    _tag: "SyntheticFiber",
     getRef: (ref) =>
       T.reduce_(fibers, ref.initial, (a, fiber) =>
         pipe(
@@ -307,8 +303,10 @@ export function collectAll<E, A>(fibers: Iterable<Fiber.Fiber<E, A>>) {
 /**
  * @optimize identity
  */
-export function makeSynthetic<E, A>(_: Fiber.Synthetic<E, A>): Fiber.Fiber<E, A> {
-  return _
+export function makeSynthetic<E, A>(
+  _: Omit<Fiber.Synthetic<E, A>, "_tag" | symbol>
+): Fiber.Fiber<E, A> {
+  return new Fiber.Synthetic(_.await, _.getRef, _.inheritRefs, _.interruptAs, _.poll)
 }
 
 /**
@@ -335,7 +333,6 @@ export function fold<E, A, Z>(
  */
 export function done<E, A>(exit: Exit.Exit<E, A>): Fiber.Fiber<E, A> {
   return makeSynthetic({
-    _tag: "SyntheticFiber",
     await: T.succeed(exit),
     getRef: (ref) => T.succeed(ref.initial),
     inheritRefs: T.unit,
@@ -382,7 +379,6 @@ export function toManaged<E, A>(
  * A fiber that never fails or succeeds.
  */
 export const never = makeSynthetic<never, never>({
-  _tag: "SyntheticFiber",
   await: T.never,
   getRef: (fiberRef) => T.succeed(fiberRef.initial),
   interruptAs: constant(T.never),

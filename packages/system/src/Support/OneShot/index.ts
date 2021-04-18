@@ -2,7 +2,9 @@
 
 import "../../Operator"
 
-export class OneShot<A> {
+import * as St from "../../Structural"
+
+export class OneShot<A> implements St.HasEquals, St.HasHash {
   private internal: A | undefined = undefined
 
   set(a: A) {
@@ -24,5 +26,13 @@ export class OneShot<A> {
 
   isSet() {
     return this.internal != null
+  }
+
+  [St.hashSym](): number {
+    return St.hashIncremental(this)
+  }
+
+  [St.equalsSym](that: unknown): boolean {
+    return this === that
   }
 }

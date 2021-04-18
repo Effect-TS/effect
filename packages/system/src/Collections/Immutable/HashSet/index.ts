@@ -5,15 +5,29 @@ import "../../../Operator"
 import type { Equal } from "../../../Equal"
 import type { Predicate, Refinement } from "../../../Function"
 import { not } from "../../../Function"
+import * as I from "../../../Iterable"
+import * as St from "../../../Structural"
 import type { Separated } from "../../../Utils"
 import * as HM from "../HashMap/core"
 import type { Next } from "../Map"
 
-export class HashSet<V> implements Iterable<V> {
+export class HashSet<V> implements Iterable<V>, St.HasHash, St.HasEquals {
   constructor(readonly keyMap: HM.HashMap<V, unknown>) {}
 
   [Symbol.iterator](): Iterator<V> {
     return HM.keys(this.keyMap)
+  }
+
+  [St.hashSym](): number {
+    return St.hashIterator(this[Symbol.iterator]())
+  }
+
+  [St.equalsSym](that: unknown): boolean {
+    return (
+      that instanceof HashSet &&
+      that.keyMap.size === this.keyMap.size &&
+      I.corresponds(this, that, St.equals)
+    )
   }
 }
 

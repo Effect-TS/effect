@@ -1,5 +1,6 @@
 // tracing: off
 
+import * as St from "../Structural"
 import * as T from "./deps-core"
 import type { Finalizer, ReleaseMap } from "./ReleaseMap"
 
@@ -15,6 +16,14 @@ export class Managed<R, E, A> {
   constructor(
     readonly effect: T.Effect<readonly [R, ReleaseMap], E, readonly [Finalizer, A]>
   ) {}
+
+  [St.hashSym](): number {
+    return St.hashIncremental(this)
+  }
+
+  [St.equalsSym](that: unknown): boolean {
+    return this === that
+  }
 }
 
 export type UIO<A> = Managed<unknown, never, A>

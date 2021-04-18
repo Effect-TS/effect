@@ -1,12 +1,21 @@
 import * as I from "../../../Iterable"
 import * as O from "../../../Option"
+import * as St from "../../../Structural"
 import * as MHM from "../HashMap"
 
-export class HashSet<A> {
+export class HashSet<A> implements St.HasHash, St.HasEquals {
   private hashMap: MHM.HashMap<A, boolean>
 
   constructor() {
     this.hashMap = MHM.make()
+  }
+
+  [St.hashSym](): number {
+    return St.hashIncremental(this)
+  }
+
+  [St.equalsSym](that: unknown): boolean {
+    return this === that
   }
 
   size(): number {

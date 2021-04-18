@@ -1,9 +1,11 @@
 // tracing: off
 
+import * as HS from "../Collections/Immutable/HashSet"
 import * as L from "../Collections/Immutable/List/core"
 import type { FiberID } from "../Fiber/id"
 import { equalsFiberID } from "../Fiber/id"
 import type { Trace } from "../Fiber/tracing"
+import { tuple } from "../Function"
 import * as IO from "../IO"
 import * as O from "../Option"
 import { Stack } from "../Stack"
@@ -20,12 +22,18 @@ export function isCause(self: unknown): self is Cause<unknown> {
   return typeof self === "object" && self != null && CauseSym in self
 }
 
-export class Empty {
+const _emptyHash = St.opt(St.randomInt())
+
+export class Empty implements St.HasEquals, St.HasHash {
   readonly _tag = "Empty";
   readonly [CauseSym]: typeof CauseSym = CauseSym;
 
   [St.equalsSym](that: unknown): boolean {
     return isCause(that) && IO.run(this.equalsSafe(that))
+  }
+
+  [St.hashSym](): number {
+    return _emptyHash
   }
 
   equalsSafe(that: Cause<unknown>): IO.IO<boolean> {
@@ -51,7 +59,9 @@ export class Empty {
   }
 }
 
-export class Fail<E> {
+export const empty: Cause<never> = new Empty()
+
+export class Fail<E> implements St.HasEquals, St.HasHash {
   readonly _tag = "Fail";
   readonly [CauseSym]: typeof CauseSym = CauseSym
 
@@ -59,6 +69,10 @@ export class Fail<E> {
 
   [St.equalsSym](that: unknown): boolean {
     return isCause(that) && IO.run(this.equalsSafe(that))
+  }
+
+  [St.hashSym](): number {
+    return St.combineHash(St.hashString(this._tag), St.hash(this.value))
   }
 
   equalsSafe(that: Cause<unknown>): IO.IO<boolean> {
@@ -84,7 +98,7 @@ export class Fail<E> {
   }
 }
 
-export class Die {
+export class Die implements St.HasEquals, St.HasHash {
   readonly _tag = "Die";
   readonly [CauseSym]: typeof CauseSym = CauseSym
 
@@ -92,6 +106,10 @@ export class Die {
 
   [St.equalsSym](that: unknown): boolean {
     return isCause(that) && IO.run(this.equalsSafe(that))
+  }
+
+  [St.hashSym](): number {
+    return St.combineHash(St.hashString(this._tag), St.hash(this.value))
   }
 
   equalsSafe(that: Cause<unknown>): IO.IO<boolean> {
@@ -117,7 +135,7 @@ export class Die {
   }
 }
 
-export class Interrupt {
+export class Interrupt implements St.HasEquals, St.HasHash {
   readonly _tag = "Interrupt";
   readonly [CauseSym]: typeof CauseSym = CauseSym
 
@@ -125,6 +143,10 @@ export class Interrupt {
 
   [St.equalsSym](that: unknown): boolean {
     return isCause(that) && IO.run(this.equalsSafe(that))
+  }
+
+  [St.hashSym](): number {
+    return St.combineHash(St.hashString(this._tag), St.hash(this.fiberId))
   }
 
   equalsSafe(that: Cause<unknown>): IO.IO<boolean> {
@@ -150,7 +172,7 @@ export class Interrupt {
   }
 }
 
-export class Traced<E> {
+export class Traced<E> implements St.HasEquals, St.HasHash {
   readonly _tag = "Traced";
   readonly [CauseSym]: typeof CauseSym = CauseSym
 
@@ -158,6 +180,10 @@ export class Traced<E> {
 
   [St.equalsSym](that: unknown): boolean {
     return isCause(that) && IO.run(this.equalsSafe(that))
+  }
+
+  [St.hashSym](): number {
+    return this.cause[St.hashSym]()
   }
 
   equalsSafe(that: Cause<unknown>): IO.IO<boolean> {
@@ -172,7 +198,7 @@ export class Traced<E> {
   }
 }
 
-export class Then<E> {
+export class Then<E> implements St.HasEquals, St.HasHash {
   readonly _tag = "Then";
   readonly [CauseSym]: typeof CauseSym = CauseSym
 
@@ -180,6 +206,10 @@ export class Then<E> {
 
   [St.equalsSym](that: unknown): boolean {
     return isCause(that) && IO.run(this.equalsSafe(that))
+  }
+
+  [St.hashSym](): number {
+    return hashCode(this)
   }
 
   equalsSafe(that: Cause<unknown>): IO.IO<boolean> {
@@ -203,7 +233,7 @@ export class Then<E> {
   private eq(that: Cause<unknown>): IO.IO<boolean> {
     // eslint-disable-next-line @typescript-eslint/no-this-alias
     const self = this
-    if (that._tag === "Both") {
+    if (that._tag === "Then") {
       return IO.gen(function* (_) {
         return (
           (yield* _(self.left.equalsSafe(that.left))) &&
@@ -215,7 +245,7 @@ export class Then<E> {
   }
 }
 
-export class Both<E> {
+export class Both<E> implements St.HasEquals, St.HasHash {
   readonly _tag = "Both";
   readonly [CauseSym]: typeof CauseSym = CauseSym
 
@@ -223,6 +253,10 @@ export class Both<E> {
 
   [St.equalsSym](that: unknown): boolean {
     return isCause(that) && IO.run(this.equalsSafe(that))
+  }
+
+  [St.hashSym](): number {
+    return hashCode(this)
   }
 
   equalsSafe(that: Cause<unknown>): IO.IO<boolean> {
@@ -258,8 +292,6 @@ export class Both<E> {
     return IO.succeed(false)
   }
 }
-
-export const empty: Cause<never> = new Empty()
 
 export function fail<E>(value: E): Cause<E> {
   return new Fail(value)
@@ -537,4 +569,119 @@ function sym<A>(
 
 export function equals<A>(self: Cause<A>, that: Cause<A>): boolean {
   return IO.run(self.equalsSafe(that))
+}
+
+function stepLoop<A>(
+  cause: Cause<A>,
+  stack: L.List<Cause<A>>,
+  parallel: HS.HashSet<Cause<A>>,
+  sequential: L.List<Cause<A>>
+): readonly [HS.HashSet<Cause<A>>, L.List<Cause<A>>] {
+  // eslint-disable-next-line no-constant-condition
+  while (1) {
+    switch (cause._tag) {
+      case "Empty": {
+        if (L.isEmpty(stack)) {
+          return [parallel, sequential]
+        } else {
+          cause = L.unsafeFirst(stack)!
+          stack = L.tail(stack)
+        }
+        break
+      }
+      case "Traced": {
+        cause = cause.cause
+        break
+      }
+      case "Both": {
+        stack = L.prepend_(stack, cause.right)
+        cause = cause.left
+        break
+      }
+      case "Then": {
+        const left = cause.left
+        const right = cause.right
+        switch (left._tag) {
+          case "Traced": {
+            cause = then(left.cause, right)
+            break
+          }
+          case "Empty": {
+            cause = cause.right
+            break
+          }
+          case "Then": {
+            cause = then(left.left, then(left.right, right))
+            break
+          }
+          case "Both": {
+            cause = both(then(left.left, right), then(left.right, right))
+            break
+          }
+          default: {
+            cause = left
+            sequential = L.prepend_(sequential, right)
+          }
+        }
+        break
+      }
+      default: {
+        if (L.isEmpty(stack)) {
+          return [HS.add_(parallel, cause), sequential]
+        } else {
+          parallel = HS.add_(parallel, cause)
+          cause = L.unsafeFirst(stack)!
+          stack = L.tail(stack)
+          break
+        }
+      }
+    }
+  }
+  throw new Error("Bug")
+}
+
+function step<A>(self: Cause<A>): readonly [HS.HashSet<Cause<A>>, L.List<Cause<A>>] {
+  return stepLoop(self, L.empty(), HS.make(), L.empty())
+}
+
+function flattenLoop<A>(
+  causes: L.List<Cause<A>>,
+  flattened: L.List<HS.HashSet<Cause<A>>>
+): L.List<HS.HashSet<Cause<A>>> {
+  // eslint-disable-next-line no-constant-condition
+  while (1) {
+    const [parallel, sequential] = L.reduce_(
+      causes,
+      tuple(HS.make<Cause<A>>(), L.empty<Cause<A>>()),
+      ([parallel, sequential], cause) => {
+        const [set, seq] = step(cause)
+        return tuple(HS.union_(parallel, set), L.concat_(sequential, seq))
+      }
+    )
+    const updated = HS.size(parallel) > 0 ? L.prepend_(flattened, parallel) : flattened
+    if (L.isEmpty(sequential)) {
+      return L.reverse(updated)
+    } else {
+      causes = sequential
+      flattened = updated
+    }
+  }
+  throw new Error("Bug")
+}
+
+function flatten<A>(self: Cause<A>) {
+  return flattenLoop(L.of(self), L.empty())
+}
+
+function hashCode<A>(self: Cause<A>) {
+  const flat = flatten(self)
+  const size = L.size(flat)
+  let head
+  if (size === 0) {
+    return _emptyHash
+  } else if (size === 1 && (head = L.unsafeFirst(flat)!) && HS.size(head) === 1) {
+    return L.unsafeFirst(L.from(head))![St.hashSym]()
+  } else {
+    return St.hashIterator(flat[Symbol.iterator]())
+  }
 }

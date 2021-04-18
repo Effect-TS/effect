@@ -18,10 +18,10 @@ describe("Case Class", () => {
     expect(JSON.stringify(newPerson)).toEqual(
       '{"firstName":"Mike","lastName":"Arnaldi"}'
     )
-    expect(Case.equals(person, newPerson)).toEqual(false)
-    expect(Case.equals(person, personEq)).toEqual(true)
-    expect(Case.hash(person)).toEqual(Case.hash(personEq))
-    expect(Case.hash(person)).not.toEqual(Case.hash(newPerson))
+    expect(person).not.equals(newPerson)
+    expect(person).equals(personEq)
+    expect(S.hash(person)).equals(S.hash(personEq))
+    expect(S.hash(person)).not.equals(S.hash(newPerson))
   })
   it("should compare using equal", () => {
     class Key implements S.HasEquals {
@@ -54,7 +54,7 @@ describe("Case Class", () => {
       key: new Key("d", "c")
     })
 
-    expect(Case.equals(personA, personB)).toEqual(true)
-    expect(Case.equals(personA, personC)).toEqual(false)
+    expect(personA).equals(personB)
+    expect(personA).not.equals(personC)
   })
 })
