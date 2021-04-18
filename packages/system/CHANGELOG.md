@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.29.1](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.29.0...@effect-ts/system@0.29.1) (2021-04-18)
+
+
+### Features
+
+* **parseq:** implement equals & hash ([55aa154](https://github.com/Effect-TS/core/commit/55aa1548c2f2bea91f76d1374cdbf4740fd04c09))
+
+
+
+
+
 # [0.29.0](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.28.0...@effect-ts/system@0.29.0) (2021-04-18)
 
 
