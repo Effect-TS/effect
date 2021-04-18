@@ -87,13 +87,17 @@ export interface Runtime<E, A> extends CommonFiber<E, A> {
 export class Synthetic<E, A> implements CommonFiber<E, A> {
   readonly _tag = "SyntheticFiber"
 
+  readonly await: UIO<Exit.Exit<E, A>>
+
   constructor(
-    readonly await: UIO<Exit.Exit<E, A>>,
+    _await: UIO<Exit.Exit<E, A>>,
     readonly getRef: <K>(fiberRef: FiberRef<K>) => UIO<K>,
     readonly inheritRefs: UIO<void>,
     readonly interruptAs: (fiberId: FiberID) => UIO<Exit.Exit<E, A>>,
     readonly poll: UIO<O.Option<Exit.Exit<E, A>>>
-  ) {}
+  ) {
+    this.await = _await
+  }
 
   [St.hashSym](): number {
     return St.hashIncremental(this)
