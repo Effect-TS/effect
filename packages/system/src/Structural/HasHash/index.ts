@@ -25,7 +25,7 @@ export function hash(arg: any): number {
   return opt(_hash(arg))
 }
 
-export function hashArray(arr: any[]): number {
+export function hashArray(arr: readonly any[]): number {
   return opt(_hashArray(arr))
 }
 
@@ -100,7 +100,7 @@ export function _hash(arg: any): number {
   }
 }
 
-export function _hashArray(arr: any[]): number {
+export function _hashArray(arr: readonly any[]): number {
   let h = 6151
   for (let i = 0; i < arr.length; i++) {
     h ^= _combineHash(_hashNumber(i), _hash(arr[i]))

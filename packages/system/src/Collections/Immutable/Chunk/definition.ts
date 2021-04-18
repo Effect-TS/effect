@@ -38,7 +38,8 @@ export interface Chunk<A> {
 /**
  * Internal base class
  */
-export abstract class ChunkInternal<A> implements Iterable<A>, Chunk<A> {
+export abstract class ChunkInternal<A>
+  implements Iterable<A>, Chunk<A>, St.HasEquals, St.HasHash {
   readonly [ChunkTypeId]: ChunkTypeId = ChunkTypeId;
   readonly [_A]!: () => A
 
@@ -76,6 +77,10 @@ export abstract class ChunkInternal<A> implements Iterable<A>, Chunk<A> {
 
   [St.equalsSym](that: unknown): boolean {
     return that instanceof ChunkInternal && corresponds_(this, that, St.equals)
+  }
+
+  [St.hashSym](): number {
+    return St.hashIterator(this[Symbol.iterator]())
   }
 
   toJSON() {

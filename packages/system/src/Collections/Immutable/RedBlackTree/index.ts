@@ -2,17 +2,12 @@
 
 import "../../../Operator"
 
-import type { Equal } from "../../../Equal"
-/**
- * Red Black Tree
- *
- * Based on: https://github.com/mikolalysenko/functional-red-black-tree/blob/master/rbtree.js
- */
 import { tuple } from "../../../Function"
 import * as O from "../../../Option"
-import * as Ord from "../../../Ord"
+import type * as Ord from "../../../Ord"
 import type { Ordering } from "../../../Ordering"
 import { Stack } from "../../../Stack"
+import * as St from "../../../Structural"
 import * as A from "../Array"
 
 type Color = "Red" | "Black"
@@ -64,11 +59,7 @@ export interface RedBlackTreeIterable<K, V> extends Iterable<readonly [K, V]> {
 export class RedBlackTree<K, V> implements RedBlackTreeIterable<K, V> {
   readonly _K!: () => K
   readonly _V!: () => V
-  constructor(
-    readonly ord: Ord.Ord<K>,
-    readonly eq: Equal<K>,
-    readonly root: Node<K, V> | undefined
-  ) {}
+  constructor(readonly ord: Ord.Ord<K>, readonly root: Node<K, V> | undefined) {}
 
   [Symbol.iterator](): RedBlackTreeIterator<K, V> {
     const stack: Node<K, V>[] = []
@@ -84,8 +75,8 @@ export class RedBlackTree<K, V> implements RedBlackTreeIterable<K, V> {
 /**
  * Creates a new Red-Black Tree
  */
-export function make<K, V>(ord: Ord.Ord<K>, eq?: Equal<K>) {
-  return new RedBlackTree<K, V>(ord, eq ?? Ord.getEqual(ord), undefined)
+export function make<K, V>(ord: Ord.Ord<K>) {
+  return new RedBlackTree<K, V>(ord, undefined)
 }
 
 /**
@@ -268,7 +259,7 @@ export function insert_<K, V>(
   }
   //Return new tree
   n_stack[0]!.color = "Black"
-  return new RedBlackTree(self.ord, self.eq, n_stack[0])
+  return new RedBlackTree(self.ord, n_stack[0])
 }
 
 /**
@@ -1326,7 +1317,7 @@ export function find_<K, V>(tree: RedBlackTree<K, V>, key: K): A.Array<V> {
   const res: V[] = []
   while (n) {
     const d = cmp(key, n.key)
-    if (d === 0 && tree.eq.equals(key, n.key)) {
+    if (d === 0 && St.equals(key, n.key)) {
       res.push(n.value)
     }
     if (d <= 0) {
@@ -1353,7 +1344,7 @@ export function findFirst_<K, V>(tree: RedBlackTree<K, V>, key: K): O.Option<V> 
   let n = tree.root
   while (n) {
     const d = cmp(key, n.key)
-    if (tree.eq.equals(key, n.key) && (!n.left || !tree.eq.equals(key, n.key))) {
+    if (St.equals(key, n.key) && (!n.left || !St.equals(key, n.key))) {
       return O.some(n.value)
     }
     if (d <= 0) {
@@ -1399,10 +1390,7 @@ export function removeFirst_<K, V>(
   while (node) {
     const d = cmp(key, node.key)
     stack.push(node)
-    if (
-      self.eq.equals(key, node.key) &&
-      (!node.left || !self.eq.equals(key, node.left.key))
-    ) {
+    if (St.equals(key, node.key) && (!node.left || !St.equals(key, node.left.key))) {
       node = undefined
     } else if (d <= 0) {
       node = node.left
@@ -1482,7 +1470,7 @@ export function removeFirst_<K, V>(
     for (let i = 0; i < cstack.length; ++i) {
       cstack[i]._count--
     }
-    return new RedBlackTree(self.ord, self.eq, cstack[0])
+    return new RedBlackTree(self.ord, cstack[0])
   } else {
     if (n.left || n.right) {
       //Second easy case:  Single child black parent
@@ -1497,11 +1485,11 @@ export function removeFirst_<K, V>(
       for (let i = 0; i < cstack.length - 1; ++i) {
         cstack[i]._count--
       }
-      return new RedBlackTree(self.ord, self.eq, cstack[0])
+      return new RedBlackTree(self.ord, cstack[0])
     } else if (cstack.length === 1) {
       //Third easy case: root
       //console.log("ROOT")
-      return new RedBlackTree(self.ord, self.eq, undefined)
+      return new RedBlackTree(self.ord, undefined)
     } else {
       //Hard case: Repaint n, and then do some nasty stuff
       //console.log("BLACK leaf no children")
@@ -1518,7 +1506,7 @@ export function removeFirst_<K, V>(
       }
     }
   }
-  return new RedBlackTree(self.ord, self.eq, cstack[0])
+  return new RedBlackTree(self.ord, cstack[0])
 }
 
 /**

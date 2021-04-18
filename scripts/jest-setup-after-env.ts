@@ -1,26 +1,11 @@
 import { equals } from "@effect-ts/system/Structural"
-
-const safeStringigy = (obj: any, indent = 2) => {
-  let cache: any[] | null = []
-  const retVal = JSON.stringify(
-    obj,
-    (_, value) =>
-      typeof value === "object" && value !== null
-        ? cache?.includes(value)
-          ? undefined // Duplicate reference found, discard key
-          : cache?.push(value) && value // Store value in our collection
-        : value,
-    indent
-  )
-  cache = null
-  return retVal
-}
+import * as U from "jest-matcher-utils"
 
 expect.extend({
   equals: (rec, act) => {
     return {
       message: () =>
-        `expected:\n${safeStringigy(rec)}\nto equal:\n${safeStringigy(act)}`,
+        `expected:\n${U.printReceived(rec)}\nto equal:\n${U.printExpected(act)}`,
       pass: equals(rec, act)
     }
   }
