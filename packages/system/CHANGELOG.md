@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.30.0](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.29.6...@effect-ts/system@0.30.0) (2021-04-19)
+
+
+### Features
+
+* **equals:** change default to be referential ([d5befe1](https://github.com/Effect-TS/core/commit/d5befe10f5885529f8d9ac048e397db8cca3d938))
+
+
+
+
+
 ## [0.29.6](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.29.5...@effect-ts/system@0.29.6) (2021-04-19)
 
 
