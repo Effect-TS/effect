@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.29.5](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.29.4...@effect-ts/system@0.29.5) (2021-04-19)
+
+
+### Bug Fixes
+
+* **effect:** avoid consuming twice original iterable in forEachPar ([92d5c88](https://github.com/Effect-TS/core/commit/92d5c883a3228c45ee2eca77754b30cfc1ed1ac0))
+
+
+
+
+
 ## [0.29.4](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.29.3...@effect-ts/system@0.29.4) (2021-04-19)
 
 
