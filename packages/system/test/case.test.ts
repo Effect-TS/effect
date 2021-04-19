@@ -30,6 +30,9 @@ describe("Case Class", () => {
       [S.equalsSym](u: unknown): boolean {
         return u instanceof Key && this.k === u.k
       }
+      [S.hashSym](): number {
+        return S.hashString(this.k)
+      }
     }
 
     class Person extends Case.Case<Person> {

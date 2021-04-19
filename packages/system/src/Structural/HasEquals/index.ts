@@ -1,5 +1,6 @@
 // forked from https://github.com/planttheidea/fast-equals
 
+import { hash } from "../HasHash"
 import { createComparator } from "./comparator"
 import { createCircularEqualCreator } from "./utils"
 
@@ -24,7 +25,9 @@ export const deepEquals = createComparator(
 )
 
 export function equals(a: unknown, b: unknown): boolean {
-  if (hasEquals(a)) {
+  if (hash(a) !== hash(b)) {
+    return false
+  } else if (hasEquals(a)) {
     return a[equalsSym](b)
   } else if (hasEquals(b)) {
     return b[equalsSym](a)
