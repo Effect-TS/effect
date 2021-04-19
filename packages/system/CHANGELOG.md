@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.30.6](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.30.5...@effect-ts/system@0.30.6) (2021-04-19)
+
+
+### Bug Fixes
+
+* **equals:** use sameValueZeroEqual ([58a9ea4](https://github.com/Effect-TS/core/commit/58a9ea4748a838f61663ae28c17d36c5af3e3812))
+
+
+
+
+
 ## [0.30.5](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.30.4...@effect-ts/system@0.30.5) (2021-04-19)
 
 
