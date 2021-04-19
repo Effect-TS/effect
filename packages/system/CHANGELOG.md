@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.30.7](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.30.6...@effect-ts/system@0.30.7) (2021-04-19)
+
+
+### Features
+
+* **chunk:** enable array storage of binary data ([e8e8c79](https://github.com/Effect-TS/core/commit/e8e8c79ca10ebc0a4ad63674dd120df45e367cbb))
+
+
+
+
+
 ## [0.30.6](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.30.5...@effect-ts/system@0.30.6) (2021-04-19)
 
 
