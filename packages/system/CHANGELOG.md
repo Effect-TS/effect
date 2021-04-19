@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.30.4](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.30.3...@effect-ts/system@0.30.4) (2021-04-19)
+
+
+### Features
+
+* **equals:** optimise equals with hash ([3c01dd7](https://github.com/Effect-TS/core/commit/3c01dd7f5d994c0f51c228158f3350afd4ec15cf))
+
+
+
+
+
 ## [0.30.3](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.30.2...@effect-ts/system@0.30.3) (2021-04-19)
 
 
