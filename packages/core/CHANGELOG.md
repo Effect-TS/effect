@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.32.7](https://github.com/Effect-TS/core/compare/@effect-ts/core@0.32.6...@effect-ts/core@0.32.7) (2021-04-19)
+
+
+### Bug Fixes
+
+* **core:** remove circular dependency ([c3d8aa1](https://github.com/Effect-TS/core/commit/c3d8aa159fb0132ab1229677e4018772c06fcf8a))
+
+
+
+
+
 ## [0.32.6](https://github.com/Effect-TS/core/compare/@effect-ts/core@0.32.5...@effect-ts/core@0.32.6) (2021-04-19)
 
 **Note:** Version bump only for package @effect-ts/core
