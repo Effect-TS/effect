@@ -234,7 +234,7 @@ export function forEachUnitPar_<R, E, A, X>(
         ),
         Do.bind("fibers", ({ task }) =>
           coreScope.transplant((graft) =>
-            forEach_(as, (a) => core.fork(graft(task(a))))
+            forEach_(collection, (a) => core.fork(graft(task(a))))
           )
         ),
         Do.let("interrupter", ({ fibers, parentId, result }) =>
@@ -319,8 +319,8 @@ export function forEachPar_<R, E, A, B>(
     () =>
       core.chain_(
         core.succeedWith<B[]>(() => []),
-        (array) => {
-          return map.map_(
+        (array) =>
+          map.map_(
             forEachUnitPar_(
               I.map_(as, (a, n) => [a, n] as [A, number]),
               ([a, n]) =>
@@ -334,7 +334,6 @@ export function forEachPar_<R, E, A, B>(
             ),
             () => array
           )
-        }
       ),
     __trace
   )
