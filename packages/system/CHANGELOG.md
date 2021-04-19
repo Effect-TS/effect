@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.30.5](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.30.4...@effect-ts/system@0.30.5) (2021-04-19)
+
+
+### Features
+
+* **equals:** use object.is ([b608f61](https://github.com/Effect-TS/core/commit/b608f61a653c626151edfe1ba19888ccc44c1ea3))
+
+
+
+
+
 ## [0.30.4](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.30.3...@effect-ts/system@0.30.4) (2021-04-19)
 
 
