@@ -72,7 +72,7 @@ function isZero(value: any): boolean {
   return value === null || value === void 0 || value === false
 }
 
-const RANDOM = new PCGRandom(13)
+const RANDOM = new PCGRandom((Math.random() * 4294967296) >>> 0)
 const CACHE = new WeakMap<Object, number>()
 
 export function randomInt() {
