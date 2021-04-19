@@ -7,18 +7,36 @@ import type { Lazy, Predicate, Refinement } from "../Function/core"
 import { tuple } from "../Function/core"
 import type { Option } from "../Option/core"
 import { isNone } from "../Option/core"
+import * as St from "../Structural"
+
+const _leftHash = St.hashString("@effect-ts/system/Either/Left")
+const _rightHash = St.hashString("@effect-ts/system/Either/Right")
 
 /**
  * Definitions
  */
-export interface Left<E> {
-  readonly _tag: "Left"
-  readonly left: E
+export class Left<E> {
+  readonly _tag = "Left"
+  constructor(readonly left: E) {}
+
+  [St.equalsSym](that: unknown): boolean {
+    return that instanceof Left && St.equals(this.left, that.left)
+  }
+  [St.hashSym](): number {
+    return St.combineHash(_leftHash, St.hash(this.left))
+  }
 }
 
-export interface Right<A> {
-  readonly _tag: "Right"
-  readonly right: A
+export class Right<A> {
+  readonly _tag = "Right"
+  constructor(readonly right: A) {}
+
+  [St.equalsSym](that: unknown): boolean {
+    return that instanceof Right && St.equals(this.right, that.right)
+  }
+  [St.hashSym](): number {
+    return St.combineHash(_rightHash, St.hash(this.right))
+  }
 }
 
 export type Either<E, A> = Left<E> | Right<A>
@@ -28,7 +46,7 @@ export type Either<E, A> = Left<E> | Right<A>
  * of this structure
  */
 export function right<A>(a: A): Either<never, A> {
-  return { _tag: "Right", right: a }
+  return new Right(a)
 }
 
 /**
@@ -36,7 +54,7 @@ export function right<A>(a: A): Either<never, A> {
  * of this structure
  */
 export function rightW<A, E = never>(a: A): Either<E, A> {
-  return { _tag: "Right", right: a }
+  return new Right(a)
 }
 
 /**
@@ -44,7 +62,7 @@ export function rightW<A, E = never>(a: A): Either<E, A> {
  * structure
  */
 export function left<E>(e: E): Either<E, never> {
-  return { _tag: "Left", left: e }
+  return new Left(e)
 }
 
 /**
@@ -52,7 +70,7 @@ export function left<E>(e: E): Either<E, never> {
  * structure
  */
 export function leftW<E, A = never>(e: E): Either<E, A> {
-  return { _tag: "Left", left: e }
+  return new Left(e)
 }
 
 /**

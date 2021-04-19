@@ -5,17 +5,35 @@
 import type { Either } from "../Either/core"
 import type { Lazy, Predicate, Refinement } from "../Function/core"
 import { identity, tuple } from "../Function/core"
+import * as St from "../Structural"
+
+const _noneHash = St.hashString("@effect-ts/system/Option/None")
+const _someHash = St.hashString("@effect-ts/system/Option/Some")
 
 /**
  * Definitions
  */
-export interface None {
-  readonly _tag: "None"
+export class None {
+  readonly _tag = "None";
+
+  [St.equalsSym](that: unknown): boolean {
+    return that instanceof None
+  }
+  [St.hashSym](): number {
+    return _noneHash
+  }
 }
 
-export interface Some<A> {
-  readonly _tag: "Some"
-  readonly value: A
+export class Some<A> {
+  readonly _tag = "Some"
+  constructor(readonly value: A) {}
+
+  [St.equalsSym](that: unknown): boolean {
+    return that instanceof Some && St.equals(this.value, that.value)
+  }
+  [St.hashSym](): number {
+    return St.combineHash(_someHash, St.hash(this.value))
+  }
 }
 
 export type Option<A> = None | Some<A>
@@ -23,7 +41,7 @@ export type Option<A> = None | Some<A>
 /**
  * Constructs none
  */
-export const none: Option<never> = { _tag: "None" }
+export const none: Option<never> = new None()
 
 /**
  * Constructs none
@@ -34,7 +52,7 @@ export const emptyOf: <A>() => Option<A> = () => none
  * Constructs Some(A)
  */
 export function some<A>(a: A): Option<A> {
-  return { _tag: "Some", value: a }
+  return new Some(a)
 }
 
 /**
