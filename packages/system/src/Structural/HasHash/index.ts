@@ -103,7 +103,7 @@ export function _hash(arg: any): number {
 export function _hashArray(arr: readonly any[]): number {
   let h = 6151
   for (let i = 0; i < arr.length; i++) {
-    h ^= _combineHash(_hashNumber(i), _hash(arr[i]))
+    h = _combineHash(h, _hash(arr[i]))
   }
   return h
 }

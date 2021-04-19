@@ -16,6 +16,8 @@ export function isByte(u: unknown) {
   return typeof u === "number" && Number.isInteger(u) && u >= 0 && u <= 255
 }
 
+export type IterableArrayLike<A> = ArrayLike<A> & Iterable<A>
+
 /**
  * A `Chunk<A>` represents a chunk of values of type `A`. Chunks are usually
  * backed by arrays, but expose a purely functional, safe interface
@@ -51,16 +53,16 @@ export abstract class ChunkInternal<A>
   abstract copyToArray(n: number, array: Array<A> | Uint8Array): void
   abstract get(n: number): A
 
-  private arrayLikeCache: ArrayLike<unknown> | undefined
+  private arrayLikeCache: IterableArrayLike<unknown> | undefined
 
-  arrayLike(): ArrayLike<A> {
+  arrayLike(): IterableArrayLike<A> {
     if (this.arrayLikeCache) {
-      return this.arrayLikeCache as ArrayLike<A>
+      return this.arrayLikeCache as IterableArrayLike<A>
     }
     const arr = this.binary ? alloc(this.length) : new Array(this.length)
     this.copyToArray(0, arr)
     this.arrayLikeCache = arr
-    return arr as ArrayLike<A>
+    return arr as IterableArrayLike<A>
   }
 
   private arrayCache: readonly unknown[] | undefined
@@ -88,16 +90,16 @@ export abstract class ChunkInternal<A>
   }
 
   abstract [Symbol.iterator](): Iterator<A>
-  abstract arrayLikeIterator(): Iterator<ArrayLike<A>>
-  abstract reverseArrayLikeIterator(): Iterator<ArrayLike<A>>
+  abstract arrayLikeIterator(): Iterator<IterableArrayLike<A>>
+  abstract reverseArrayLikeIterator(): Iterator<IterableArrayLike<A>>
 
-  buckets(): Iterable<ArrayLike<A>> {
+  buckets(): Iterable<IterableArrayLike<A>> {
     return {
       [Symbol.iterator]: () => this.arrayLikeIterator()
     }
   }
 
-  reverseBuckets(): Iterable<ArrayLike<A>> {
+  reverseBuckets(): Iterable<IterableArrayLike<A>> {
     return {
       [Symbol.iterator]: () => this.reverseArrayLikeIterator()
     }
@@ -138,7 +140,7 @@ export abstract class ChunkInternal<A>
         return this
       }
       default: {
-        return from_(this.arrayLike())
+        return array_(this.arrayLike())
       }
     }
   }
@@ -195,11 +197,11 @@ export abstract class ChunkInternal<A>
       return this
     }
     if (this._typeId === AppendNTypeId) {
-      const chunk = from_(this.buffer as A1[]).take(this.bufferUsed)
+      const chunk = array_(this.buffer as A1[]).take(this.bufferUsed)
       return this.start.concat(chunk).concat(that)
     }
     if (that._typeId === PrependNTypeId) {
-      const chunk = from_(A.takeRight_(that.buffer as A1[], that.bufferUsed))
+      const chunk = array_(A.takeRight_(that.buffer as A1[], that.bufferUsed))
       return this.concat(chunk).concat(that.end)
     }
     const diff = that.depth - this.depth
@@ -273,7 +275,7 @@ export class Empty<A> extends ChunkInternal<A> {
     }
   }
 
-  arrayLikeIterator(): Iterator<ArrayLike<A>> {
+  arrayLikeIterator(): Iterator<IterableArrayLike<A>> {
     return {
       next: () => ({
         value: 0,
@@ -282,7 +284,7 @@ export class Empty<A> extends ChunkInternal<A> {
     }
   }
 
-  reverseArrayLikeIterator(): Iterator<ArrayLike<A>> {
+  reverseArrayLikeIterator(): Iterator<IterableArrayLike<A>> {
     return {
       next: () => ({
         value: 0,
@@ -388,7 +390,7 @@ export class AppendN<A> extends ChunkInternal<A> {
     } else {
       const buffer = this.binary && binary ? alloc(BufferSize) : new Array(BufferSize)
       buffer[0] = a1
-      const chunk = from_(this.buffer as A1[]).take(this.bufferUsed)
+      const chunk = array_(this.buffer as A1[]).take(this.bufferUsed)
       return new AppendN(
         this.start.concat(chunk),
         buffer,
@@ -409,7 +411,7 @@ export class AppendN<A> extends ChunkInternal<A> {
     return k[Symbol.iterator]()
   }
 
-  arrayLikeIterator(): Iterator<ArrayLike<A>> {
+  arrayLikeIterator(): Iterator<IterableArrayLike<A>> {
     const array = this.arrayLike()
     let done = false
     return {
@@ -430,7 +432,7 @@ export class AppendN<A> extends ChunkInternal<A> {
     }
   }
 
-  reverseArrayLikeIterator(): Iterator<ArrayLike<A>> {
+  reverseArrayLikeIterator(): Iterator<IterableArrayLike<A>> {
     const array = this.arrayLike()
     let done = false
     return {
@@ -504,7 +506,7 @@ export class PlainArr<A> extends Arr<A> {
     return this._array[Symbol.iterator]()
   }
 
-  arrayLikeIterator(): Iterator<ArrayLike<A>> {
+  arrayLikeIterator(): Iterator<IterableArrayLike<A>> {
     let done = false
     return {
       next: () => {
@@ -524,7 +526,7 @@ export class PlainArr<A> extends Arr<A> {
     }
   }
 
-  reverseArrayLikeIterator(): Iterator<ArrayLike<A>> {
+  reverseArrayLikeIterator(): Iterator<IterableArrayLike<A>> {
     let done = false
     return {
       next: () => {
@@ -583,7 +585,7 @@ export class Uint8Arr extends Arr<number> {
     return this._array[Symbol.iterator]()
   }
 
-  arrayLikeIterator(): Iterator<ArrayLike<number>> {
+  arrayLikeIterator(): Iterator<IterableArrayLike<number>> {
     let done = false
     return {
       next: () => {
@@ -603,7 +605,7 @@ export class Uint8Arr extends Arr<number> {
     }
   }
 
-  reverseArrayLikeIterator(): Iterator<ArrayLike<number>> {
+  reverseArrayLikeIterator(): Iterator<IterableArrayLike<number>> {
     let done = false
     return {
       next: () => {
@@ -665,7 +667,7 @@ export class Slice<A> extends ChunkInternal<A> {
     return k[Symbol.iterator]()
   }
 
-  arrayLikeIterator(): Iterator<ArrayLike<A>> {
+  arrayLikeIterator(): Iterator<IterableArrayLike<A>> {
     const array = this.arrayLike()
     let done = false
     return {
@@ -686,7 +688,7 @@ export class Slice<A> extends ChunkInternal<A> {
     }
   }
 
-  reverseArrayLikeIterator(): Iterator<ArrayLike<A>> {
+  reverseArrayLikeIterator(): Iterator<IterableArrayLike<A>> {
     const array = this.arrayLike()
     let done = false
     return {
@@ -744,7 +746,7 @@ export class Singleton<A> extends ChunkInternal<A> {
     return k[Symbol.iterator]()
   }
 
-  arrayLikeIterator(): Iterator<ArrayLike<A>> {
+  arrayLikeIterator(): Iterator<IterableArrayLike<A>> {
     let done = false
     return {
       next: () => {
@@ -764,7 +766,7 @@ export class Singleton<A> extends ChunkInternal<A> {
     }
   }
 
-  reverseArrayLikeIterator(): Iterator<ArrayLike<A>> {
+  reverseArrayLikeIterator(): Iterator<IterableArrayLike<A>> {
     let done = false
     return {
       next: () => {
@@ -858,7 +860,7 @@ export class PrependN<A> extends ChunkInternal<A> {
     } else {
       const buffer = binary ? alloc(BufferSize) : new Array(BufferSize)
       buffer[BufferSize - 1] = a1
-      const chunk = from_(
+      const chunk = array_(
         "subarray" in this.buffer
           ? this.buffer.subarray(this.buffer.length - this.bufferUsed)
           : this.buffer.slice(this.buffer.length - this.bufferUsed)
@@ -878,7 +880,7 @@ export class PrependN<A> extends ChunkInternal<A> {
     return k[Symbol.iterator]()
   }
 
-  arrayLikeIterator(): Iterator<ArrayLike<A>> {
+  arrayLikeIterator(): Iterator<IterableArrayLike<A>> {
     let done = false
     return {
       next: () => {
@@ -898,7 +900,7 @@ export class PrependN<A> extends ChunkInternal<A> {
     }
   }
 
-  reverseArrayLikeIterator(): Iterator<ArrayLike<A>> {
+  reverseArrayLikeIterator(): Iterator<IterableArrayLike<A>> {
     let done = false
     return {
       next: () => {
@@ -923,7 +925,7 @@ export class PrependN<A> extends ChunkInternal<A> {
  * Internal copy arrays
  */
 export function _copy<A>(
-  src: ArrayLike<A>,
+  src: IterableArrayLike<A>,
   srcPos: number,
   dest: A[] | Uint8Array,
   destPos: number,
@@ -970,7 +972,7 @@ export class Concat<A> extends ChunkInternal<A> {
     return k[Symbol.iterator]()
   }
 
-  arrayLikeIterator(): Iterator<ArrayLike<A>> {
+  arrayLikeIterator(): Iterator<IterableArrayLike<A>> {
     let it = this.left.arrayLikeIterator()
     let i = 0
     let n = it.next()
@@ -1005,7 +1007,7 @@ export class Concat<A> extends ChunkInternal<A> {
     }
   }
 
-  reverseArrayLikeIterator(): Iterator<ArrayLike<A>> {
+  reverseArrayLikeIterator(): Iterator<IterableArrayLike<A>> {
     let it = this.right.arrayLikeIterator()
     let i = 0
     let n = it.next()
@@ -1042,12 +1044,25 @@ export class Concat<A> extends ChunkInternal<A> {
 }
 
 /**
+ * Type guard
+ */
+export function isChunk<A>(u: Iterable<A>): u is Chunk<A>
+export function isChunk(u: unknown): u is Chunk<unknown>
+export function isChunk(u: unknown): u is Chunk<unknown> {
+  return typeof u === "object" && u != null && ChunkTypeId in u
+}
+
+/**
  * Internal Array Chunk Constructor
  */
-function from_<A>(array: ArrayLike<A> | Iterable<A>): ChunkInternal<A>
-function from_(
-  array: Uint8Array | Iterable<unknown> | ArrayLike<unknown>
+function array_<A>(array: Iterable<A>): ChunkInternal<A>
+function array_(
+  array: Uint8Array | Iterable<unknown> | IterableArrayLike<unknown>
 ): ChunkInternal<unknown> {
+  if (isChunk(array)) {
+    concrete(array)
+    return array.materialize()
+  }
   if ("buffer" in array) {
     return new Uint8Arr(array)
   }
@@ -1059,7 +1074,7 @@ function from_(
  *
  * NOTE: The provided array should be totally filled, no holes are allowed
  */
-export const array: <A>(array: ArrayLike<A> | Iterable<A>) => Chunk<A> = from_
+export const array: <A>(array: Iterable<A>) => Chunk<A> = array_
 
 /**
  * Determines whether this chunk and the specified chunk have the same length
@@ -1084,8 +1099,8 @@ export function corresponds_<A, B>(
   let done = false
   let leftLength = 0
   let rightLength = 0
-  let left: ArrayLike<A> | undefined = undefined
-  let right: ArrayLike<B> | undefined = undefined
+  let left: IterableArrayLike<A> | undefined = undefined
+  let right: IterableArrayLike<B> | undefined = undefined
   let leftNext
   let rightNext
 

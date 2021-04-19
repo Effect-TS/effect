@@ -3,11 +3,12 @@ import * as O from "../../../Option"
 import type { Chunk } from "./definition"
 import {
   _Empty,
-  ChunkTypeId,
+  array,
   concrete,
   concreteId,
   corresponds_,
   EmptyTypeId,
+  isChunk,
   Singleton,
   SingletonTypeId,
   Slice,
@@ -124,15 +125,6 @@ export function unsafeGet_<A>(self: Chunk<A>, n: number): A {
  */
 export function unsafeGet(n: number) {
   return <A>(self: Chunk<A>): A => unsafeGet_(self, n)
-}
-
-/**
- * Type guard
- */
-export function isChunk<A>(u: Iterable<A>): u is Chunk<A>
-export function isChunk(u: unknown): u is Chunk<unknown>
-export function isChunk(u: unknown): u is Chunk<unknown> {
-  return typeof u === "object" && u != null && ChunkTypeId in u
 }
 
 const refEq = (x: unknown, y: unknown) => x === y
@@ -355,12 +347,15 @@ export const unit: Chunk<void> = single(void 0)
 /**
  * Transforms an iterable into a chunk
  *
- * NOTE: different from Chunk#from this copies the elements 1 by 1
+ * NOTE: different from Chunk#array this copies the elements 1 by 1
  * allowing for binary to be correctly stored in typed arrays
  */
 export function from<A>(iter: Iterable<A>): Chunk<A> {
   if (isChunk(iter)) {
     return iter
+  }
+  if ("buffer" in iter) {
+    return array(iter)
   }
   let builder = empty<A>()
   for (const x of iter) {

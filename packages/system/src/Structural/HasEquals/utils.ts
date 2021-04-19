@@ -317,18 +317,7 @@ export function areMapsEqual(
   const pairsA = toPairs(a)
   const pairsB = toPairs(b)
 
-  const { length } = pairsA
-
-  for (let index = 0; index < length; index++) {
-    if (
-      !hasPair(pairsB, pairsA[index]!, isEqual, meta) ||
-      !hasPair(pairsA, pairsB[index]!, isEqual, meta)
-    ) {
-      return false
-    }
-  }
-
-  return true
+  return isEqual(pairsA, pairsB, meta)
 }
 
 type Dictionary<Type> = {
@@ -437,16 +426,5 @@ export function areSetsEqual(
   const valuesA = toValues(a)
   const valuesB = toValues(b)
 
-  const { length } = valuesA
-
-  for (let index = 0; index < length; index++) {
-    if (
-      !hasValue(valuesB, valuesA[index], isEqual, meta) ||
-      !hasValue(valuesA, valuesB[index], isEqual, meta)
-    ) {
-      return false
-    }
-  }
-
-  return true
+  return isEqual(valuesA, valuesB, meta)
 }
