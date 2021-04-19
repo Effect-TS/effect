@@ -1,26 +1,28 @@
 // tracing: off
 
-import "../Operator"
-
 /**
  * Ported from https://github.com/zio/zio/blob/master/core/shared/src/main/scala/zio/Clock.scala
  *
  * Copyright 2020 Michael Arnaldi and the Matechs Garage Contributors.
  */
+import "../Operator"
+
 import { succeedWith, unit } from "../Effect/core"
 import type { Effect, UIO } from "../Effect/effect"
 import { effectAsyncInterrupt } from "../Effect/effectAsyncInterrupt"
 import { accessService, accessServiceM, provideServiceM } from "../Effect/has"
-import { literal } from "../Function"
 import type { Has, HasTag, Tag } from "../Has"
 import { tag } from "../Has"
 import * as St from "../Structural"
+
+export const ClockSymbol: unique symbol = Symbol.for("@effect-ts/system/Clock")
+export type ClockSymbol = typeof ClockSymbol
 
 //
 // Clock Definition
 //
 export abstract class Clock implements St.HasHash, St.HasEquals {
-  readonly _tag = literal("@effect-ts/system/Clock")
+  readonly _tag = ClockSymbol
 
   abstract readonly currentTime: UIO<number>
   abstract readonly sleep: (ms: number, __trace?: string) => UIO<void>
@@ -37,7 +39,7 @@ export abstract class Clock implements St.HasHash, St.HasEquals {
 //
 // Has Clock
 //
-export const HasClock = tag(Clock)
+export const HasClock = tag(Clock).setKey(ClockSymbol)
 
 export type HasClock = HasTag<typeof HasClock>
 

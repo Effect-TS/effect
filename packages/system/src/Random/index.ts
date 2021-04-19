@@ -1,23 +1,25 @@
 // tracing: off
 
-import "../Operator"
-
 /**
  * Ported from https://github.com/zio/zio/blob/master/core/shared/src/main/scala/zio/Random.scala
  *
  * Copyright 2020 Michael Arnaldi and the Matechs Garage Contributors.
  */
+import "../Operator"
+
 import { chain_, succeedWith } from "../Effect/core"
 import type { UIO } from "../Effect/effect"
 import { accessServiceM, replaceService } from "../Effect/has"
-import { literal } from "../Function"
 import type { HasTag } from "../Has"
 import { tag } from "../Has"
 import * as St from "../Structural"
 import { PCGRandom } from "./PCG"
 
+export const RandomSymbol: unique symbol = Symbol.for("@effect-ts/system/Random")
+export type RandomSymbol = typeof RandomSymbol
+
 export abstract class Random implements St.HasEquals, St.HasHash {
-  readonly _tag = literal("@effect-ts/system/Random")
+  readonly _tag: RandomSymbol = RandomSymbol
 
   abstract readonly next: UIO<number>
   abstract readonly nextBoolean: UIO<boolean>
@@ -56,7 +58,8 @@ export class LiveRandom extends Random {
 
 export const defaultRandom = new LiveRandom(Math.random())
 
-export const HasRandom = tag(Random)
+export const HasRandom = tag(Random).setKey(RandomSymbol)
+
 export type HasRandom = HasTag<typeof HasRandom>
 
 export const next = accessServiceM(HasRandom)((_) => _.next)

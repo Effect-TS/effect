@@ -95,8 +95,13 @@ export function _hash(arg: any): number {
       return _hashObject(arg)
     case "boolean":
       return arg === true ? 1 : 0
-    default:
+    case "symbol":
+      return _hashString(String(arg))
+    case "bigint":
+      return _hashString(arg.toString(10))
+    case "undefined": {
       return 0
+    }
   }
 }
 
