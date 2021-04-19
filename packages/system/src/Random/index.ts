@@ -28,10 +28,11 @@ export abstract class Random {
 }
 
 export class LiveRandom extends Random {
-  private PRNG = new PCGRandom(this.seed)
+  private PRNG
 
-  constructor(private seed: number) {
+  constructor(seed: number) {
     super()
+    this.PRNG = new PCGRandom(seed)
   }
 
   next: UIO<number> = succeedWith(() => this.PRNG.number())
@@ -47,7 +48,7 @@ export class LiveRandom extends Random {
     succeedWith(() => this.PRNG.integer(1 + high - low) + low)
 }
 
-export const defaultRandom = new LiveRandom(Math.random())
+export const defaultRandom = new LiveRandom((Math.random() * 4294967296) >>> 0)
 
 export const HasRandom = tag(Random).setKey(RandomSymbol)
 
