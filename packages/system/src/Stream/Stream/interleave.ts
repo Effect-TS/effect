@@ -15,7 +15,7 @@ export function interleave_<R, R1, E, E1, O, O1>(
   self: Stream<R, E, O>,
   that: Stream<R1, E1, O1>
 ): Stream<R & R1, E1 | E, O1 | O> {
-  return interleaveWith(that)(forever(fromChunk(A.array([true, false]))))(self)
+  return interleaveWith(that)(forever(fromChunk(A.from([true, false]))))(self)
 }
 
 /**

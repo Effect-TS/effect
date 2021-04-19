@@ -472,11 +472,19 @@ export class PlainArr<A> extends Arr<A> {
   readonly left = _Empty
   readonly right = _Empty
   readonly length: number
-  readonly binary = false
+  private isBytes?: boolean
 
   constructor(readonly _array: readonly A[]) {
     super()
     this.length = _array.length
+  }
+
+  get binary(): boolean {
+    if (typeof this.isBytes !== "undefined") {
+      return this.isBytes
+    }
+    this.isBytes = this._array.every(isByte)
+    return this.isBytes
   }
 
   get(n: number): A {
@@ -1061,9 +1069,9 @@ function array_(
 ): ChunkInternal<unknown> {
   if (isChunk(array)) {
     concrete(array)
-    return array.materialize()
+    return array
   }
-  if ("buffer" in array) {
+  if (array instanceof Uint8Array) {
     return new Uint8Arr(array)
   }
   return new PlainArr(Array.isArray(array) ? array : Array.from(array))
@@ -1071,10 +1079,8 @@ function array_(
 
 /**
  * Builds a chunk from an array.
- *
- * NOTE: The provided array should be totally filled, no holes are allowed
  */
-export const array: <A>(array: Iterable<A>) => Chunk<A> = array_
+export const from: <A>(array: Iterable<A>) => Chunk<A> = array_
 
 /**
  * Determines whether this chunk and the specified chunk have the same length

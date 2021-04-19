@@ -3,19 +3,17 @@ import * as O from "../../../Option"
 import type { Chunk } from "./definition"
 import {
   _Empty,
-  array,
   concrete,
   concreteId,
   corresponds_,
   EmptyTypeId,
-  isChunk,
   Singleton,
   SingletonTypeId,
   Slice,
   SliceTypeId
 } from "./definition"
 
-export { Chunk, array } from "./definition"
+export { Chunk, from } from "./definition"
 
 /**
  * Builds a chunk of a single value
@@ -343,26 +341,6 @@ export function materialize<A>(self: Chunk<A>): Chunk<A> {
  * The unit chunk
  */
 export const unit: Chunk<void> = single(void 0)
-
-/**
- * Transforms an iterable into a chunk
- *
- * NOTE: different from Chunk#array this copies the elements 1 by 1
- * allowing for binary to be correctly stored in typed arrays
- */
-export function from<A>(iter: Iterable<A>): Chunk<A> {
-  if (isChunk(iter)) {
-    return iter
-  }
-  if ("buffer" in iter) {
-    return array(iter)
-  }
-  let builder = empty<A>()
-  for (const x of iter) {
-    builder = append_(builder, x)
-  }
-  return builder
-}
 
 /**
  * Build a chunk from a sequence of values
