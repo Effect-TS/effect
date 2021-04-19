@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.29.4](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.29.3...@effect-ts/system@0.29.4) (2021-04-19)
+
+
+### Features
+
+* **hash:** use string repr for hash of symbol ([8a6a84a](https://github.com/Effect-TS/core/commit/8a6a84adf9859ad19878dd5ba4b94e1a4842ce4f))
+
+
+
+
+
 ## [0.29.3](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.29.2...@effect-ts/system@0.29.3) (2021-04-19)
 
 
