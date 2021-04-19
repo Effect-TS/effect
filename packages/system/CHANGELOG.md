@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.29.6](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.29.5...@effect-ts/system@0.29.6) (2021-04-19)
+
+
+### Bug Fixes
+
+* **hash:** remove circular dependency ([cebeb46](https://github.com/Effect-TS/core/commit/cebeb4622991e23e02a9826e0a227dd9aa518b02))
+
+
+
+
+
 ## [0.29.5](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.29.4...@effect-ts/system@0.29.5) (2021-04-19)
 
 
