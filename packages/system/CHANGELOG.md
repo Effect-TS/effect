@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.30.1](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.30.0...@effect-ts/system@0.30.1) (2021-04-19)
+
+
+### Features
+
+* **system:** implement hash & equals in option & either ([013db11](https://github.com/Effect-TS/core/commit/013db11492b8122c26481a9e678206441a018d97))
+
+
+
+
+
 # [0.30.0](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.29.6...@effect-ts/system@0.30.0) (2021-04-19)
 
 
