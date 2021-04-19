@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.30.2](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.30.1...@effect-ts/system@0.30.2) (2021-04-19)
+
+
+### Bug Fixes
+
+* **random:** fix seed init ([0ae7563](https://github.com/Effect-TS/core/commit/0ae75635139dd88d90711dbb48a974b135aec49c))
+
+
+
+
+
 ## [0.30.1](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.30.0...@effect-ts/system@0.30.1) (2021-04-19)
 
 
