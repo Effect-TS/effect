@@ -64,8 +64,8 @@ describe("HashMap", () => {
       [tuple(3, 3), new Value(6, 6)]
     ])
     expect(Array.from(HM.map_(map, (v) => v.d))).equals([
-      [tuple(0, 0), 4],
       [tuple(2, 2), 5],
+      [tuple(0, 0), 4],
       [tuple(3, 3), 6]
     ])
     const map2 = pipe(
@@ -79,12 +79,12 @@ describe("HashMap", () => {
       )
     )
     expect(Array.from(map2)).equals([
-      [tuple(3, 3), new Value(5, 6)],
-      [tuple(8, 8), new Value(6, 6)],
-      [tuple(6, 6), new Value(5, 5)],
-      [tuple(1, 1), new Value(4, 5)],
+      [tuple(4, 4), new Value(6, 7)],
       [tuple(9, 9), new Value(7, 7)],
-      [tuple(4, 4), new Value(6, 7)]
+      [tuple(3, 3), new Value(5, 6)],
+      [tuple(1, 1), new Value(4, 5)],
+      [tuple(6, 6), new Value(5, 5)],
+      [tuple(8, 8), new Value(6, 6)]
     ])
     expect(HM.size(map2)).equals(6)
   })
