@@ -1,7 +1,6 @@
 // forked from https://github.com/frptools
 
 import { PCGRandom } from "../../Random/PCG"
-import { AtomicNumber } from "../../Support/AtomicNumber"
 
 export const hashSym = Symbol()
 
@@ -185,14 +184,14 @@ export function _hashString(str: string): number {
   return h
 }
 
-const _current = new AtomicNumber(0)
+let _current = 0
 
 export function _hashIncremental(a: object): number {
   const cached = CACHE.get(a)
   if (cached) {
     return cached
   }
-  const h = _current.incrementAndGet()
+  const h = _current++
   CACHE.set(a, h)
   return h
 }
