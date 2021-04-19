@@ -7,7 +7,6 @@ import type * as T from "../../Effect"
 import * as E from "../../Either"
 import { identity } from "../../Function"
 import * as O from "../../Option"
-import * as St from "../../Structural"
 import { AtomicReference } from "../../Support/AtomicReference"
 import { STMEffect } from "../STM/_internal/primitives"
 import * as STM from "../STM/core"
@@ -77,14 +76,6 @@ export class Atomic<A> implements XTRef<never, never, A, A> {
     readonly todo: AtomicReference<HashMap<TxnId, Todo>>
   ) {}
 
-  [St.hashSym](): number {
-    return St.hashIncremental(this)
-  }
-
-  [St.equalsSym](that: unknown): boolean {
-    return this === that
-  }
-
   fold<EC, ED, C, D>(
     _ea: (ea: never) => EC,
     _eb: (ea: never) => ED,
@@ -119,14 +110,6 @@ export class Derived<S, EA, EB, A, B> implements XTRef<EA, EB, A, B> {
     readonly value: Atomic<S>,
     readonly atomic: Atomic<unknown>
   ) {}
-
-  [St.hashSym](): number {
-    return St.hashIncremental(this)
-  }
-
-  [St.equalsSym](that: unknown): boolean {
-    return this === that
-  }
 
   fold<EC, ED, C, D>(
     ea: (ea: EA) => EC,
@@ -179,14 +162,6 @@ export class DerivedAll<S, EA, EB, A, B> implements XTRef<EA, EB, A, B> {
     readonly value: Atomic<S>,
     readonly atomic: Atomic<unknown>
   ) {}
-
-  [St.hashSym](): number {
-    return St.hashIncremental(this)
-  }
-
-  [St.equalsSym](that: unknown): boolean {
-    return this === that
-  }
 
   fold<EC, ED, C, D>(
     ea: (ea: EA) => EC,

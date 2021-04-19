@@ -15,7 +15,6 @@ import * as H from "../../Hub"
 import * as L from "../../Layer"
 import * as O from "../../Option"
 import * as Q from "../../Queue"
-import * as St from "../../Structural"
 import { matchTag } from "../../Utils"
 import * as T from "../_internal/effect"
 import * as F from "../_internal/fiber"
@@ -38,14 +37,6 @@ import { transducer } from "../Transducer"
 // - Sinks can assume they will not be pushed again after emitting a value.
 export class Sink<R, E, I, L, Z> {
   constructor(readonly push: M.Managed<R, never, Push.Push<R, E, I, L, Z>>) {}
-
-  [St.hashSym](): number {
-    return St.hashIncremental(this)
-  }
-
-  [St.equalsSym](that: unknown): boolean {
-    return this === that
-  }
 }
 
 /**

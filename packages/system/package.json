@@ -52,6 +52,7 @@
       "Collections/Immutable/ParSeq",
       "Collections/Immutable/RedBlackTree",
       "Collections/Immutable/SortedSet",
+      "Collections/Immutable/Tuple",
       "Collections/Mutable",
       "Collections/Mutable/HashMap",
       "Collections/Mutable/HashSet",

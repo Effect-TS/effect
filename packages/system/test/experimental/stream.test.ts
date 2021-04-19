@@ -1,4 +1,5 @@
 import * as Chunk from "../../src/Collections/Immutable/Chunk"
+import * as Tp from "../../src/Collections/Immutable/Tuple"
 import * as T from "../../src/Effect"
 import * as S from "../../src/Experimental/Stream"
 import { pipe } from "../../src/Function"
@@ -27,7 +28,7 @@ describe("Stream", () => {
       T.runPromise
     )
 
-    expect(result).equals([1, 2, 3])
+    expect(result).toEqual([1, 2, 3])
   })
   it("forever", async () => {
     expect(
@@ -43,7 +44,7 @@ describe("Stream", () => {
         S.runCollect,
         T.runPromise
       )
-    ).equals(Chunk.many([0, 1], [0, 1]))
+    ).equals(Chunk.many(Tp.tuple(0, 1), Tp.tuple(0, 1)))
   })
   it("mapM", async () => {
     expect(

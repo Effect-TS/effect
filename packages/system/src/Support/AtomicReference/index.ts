@@ -2,21 +2,11 @@
 
 import "../../Operator"
 
-import * as St from "../../Structural"
-
-export class AtomicReference<A> implements St.HasEquals, St.HasHash {
+export class AtomicReference<A> {
   private current: A
 
   constructor(readonly initial: A) {
     this.current = initial
-  }
-
-  [St.hashSym](): number {
-    return St.hashIncremental(this)
-  }
-
-  [St.equalsSym](that: unknown): boolean {
-    return this === that
   }
 
   get get() {

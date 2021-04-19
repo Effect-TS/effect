@@ -1,6 +1,5 @@
 import { ArrayIndexOutOfBoundsException } from "../../GlobalExceptions"
 import * as O from "../../Option"
-import * as St from "../../Structural"
 import * as STM from "../STM"
 import * as TRef from "../TRef"
 
@@ -10,14 +9,6 @@ export type TArrayTypeId = typeof TArrayTypeId
 export class TArray<A> {
   readonly _typeId: TArrayTypeId = TArrayTypeId
   constructor(readonly array: readonly TRef.TRef<A>[]) {}
-
-  [St.hashSym](): number {
-    return St.hashIncremental(this)
-  }
-
-  [St.equalsSym](that: unknown): boolean {
-    return this === that
-  }
 }
 
 /**

@@ -37,19 +37,10 @@ class Node<K, V> implements Iterable<readonly [K, V]> {
 /**
  * A Mutable HashMap
  */
-export class HashMap<K, V>
-  implements Iterable<readonly [K, V]>, St.HasEquals, St.HasHash {
+export class HashMap<K, V> implements Iterable<readonly [K, V]> {
   readonly _typeId: HashMapTypeId = HashMapTypeId
   readonly backingMap = new Map<number, Node<K, V>>()
-  readonly length = new AtomicNumber(0);
-
-  [St.hashSym](): number {
-    return St.hashIncremental(this)
-  }
-
-  [St.equalsSym](that: unknown): boolean {
-    return this === that
-  }
+  readonly length = new AtomicNumber(0)
 
   get(k: K): O.Option<V> {
     const hash = St.hash(k)

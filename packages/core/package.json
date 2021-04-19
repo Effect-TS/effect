@@ -55,6 +55,7 @@
       "Collections/Immutable/RedBlackTree",
       "Collections/Immutable/Set",
       "Collections/Immutable/SortedSet",
+      "Collections/Immutable/Tuple",
       "Collections/Mutable",
       "Collections/Mutable/HashMap",
       "Commutative",

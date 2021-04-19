@@ -2,7 +2,6 @@
 
 import * as E from "../Either"
 import { pipe } from "../Function"
-import * as St from "../Structural"
 import type { AtomicReference } from "../Support/AtomicReference"
 import * as atomic from "./atomic"
 import * as T from "./effect"
@@ -79,7 +78,7 @@ export interface XRef<EA, EB, A, B> {
   readonly set: (a: A) => T.IO<EA, void>
 }
 
-export class Atomic<A> implements XRef<never, never, A, A>, St.HasHash, St.HasEquals {
+export class Atomic<A> implements XRef<never, never, A, A> {
   readonly _tag = "Atomic"
   readonly _typeId: TypeId = TypeId
   readonly _EA!: () => never
@@ -91,14 +90,6 @@ export class Atomic<A> implements XRef<never, never, A, A>, St.HasHash, St.HasEq
     this.fold = this.fold.bind(this)
     this.foldAll = this.foldAll.bind(this)
     this.set = this.set.bind(this)
-  }
-
-  [St.hashSym](): number {
-    return St.hashIncremental(this)
-  }
-
-  [St.equalsSym](that: unknown): boolean {
-    return this === that
   }
 
   fold<EC, ED, C, D>(
@@ -143,8 +134,7 @@ export class Atomic<A> implements XRef<never, never, A, A>, St.HasHash, St.HasEq
   }
 }
 
-export class Derived<EA, EB, A, B>
-  implements XRef<EA, EB, A, B>, St.HasEquals, St.HasHash {
+export class Derived<EA, EB, A, B> implements XRef<EA, EB, A, B> {
   readonly _tag = "Derived"
   readonly _typeId: TypeId = TypeId
   readonly _EA!: () => EA
@@ -164,14 +154,6 @@ export class Derived<EA, EB, A, B>
     this.fold = this.fold.bind(this)
     this.foldAll = this.foldAll.bind(this)
     this.set = this.set.bind(this)
-  }
-
-  [St.hashSym](): number {
-    return St.hashIncremental(this)
-  }
-
-  [St.equalsSym](that: unknown): boolean {
-    return this === that
   }
 
   fold<EC, ED, C, D>(
@@ -239,8 +221,7 @@ export class Derived<EA, EB, A, B>
   }
 }
 
-export class DerivedAll<EA, EB, A, B>
-  implements XRef<EA, EB, A, B>, St.HasHash, St.HasEquals {
+export class DerivedAll<EA, EB, A, B> implements XRef<EA, EB, A, B> {
   readonly _tag = "DerivedAll"
   readonly _typeId: TypeId = TypeId
   readonly _EA!: () => EA
@@ -260,14 +241,6 @@ export class DerivedAll<EA, EB, A, B>
     this.fold = this.fold.bind(this)
     this.foldAll = this.foldAll.bind(this)
     this.set = this.set.bind(this)
-  }
-
-  [St.hashSym](): number {
-    return St.hashIncremental(this)
-  }
-
-  [St.equalsSym](that: unknown): boolean {
-    return this === that
   }
 
   fold<EC, ED, C, D>(

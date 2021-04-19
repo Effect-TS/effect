@@ -5,7 +5,6 @@ import "../../../../Operator"
 import type * as Cause from "../../../../Cause"
 import type * as T from "../../../../Effect"
 import type * as Exit from "../../../../Exit"
-import * as St from "../../../../Structural"
 import type { AsyncInputProducer } from "./producer"
 import {
   _Env,
@@ -41,8 +40,7 @@ import {
  *    concatenated together. The first channel and the function that makes the other channels can
  *    be composed into a channel.
  */
-export abstract class Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
-  implements St.HasHash, St.HasEquals {
+export abstract class Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone> {
   readonly [_Env]!: (_: Env) => void;
   readonly [_InErr]!: (_: InErr) => void;
   readonly [_InElem]!: (_: InElem) => void;
@@ -68,15 +66,7 @@ export abstract class Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDo
     >(
       () => this,
       () => that
-    );
-
-  [St.hashSym](): number {
-    return St.hashIncremental(this)
-  }
-
-  [St.equalsSym](that: unknown): boolean {
-    return this === that
-  }
+    )
 }
 
 export abstract class Continuation<

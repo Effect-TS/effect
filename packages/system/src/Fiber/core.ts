@@ -8,7 +8,6 @@ import type * as Exit from "../Exit/core"
 import type { FiberRef } from "../FiberRef/fiberRef"
 import type * as O from "../Option"
 import type { Scope } from "../Scope"
-import * as St from "../Structural"
 import type { FiberID } from "./id"
 import type { Status } from "./status"
 
@@ -97,14 +96,6 @@ export class Synthetic<E, A> implements CommonFiber<E, A> {
     readonly poll: UIO<O.Option<Exit.Exit<E, A>>>
   ) {
     this.await = _await
-  }
-
-  [St.hashSym](): number {
-    return St.hashIncremental(this)
-  }
-
-  [St.equalsSym](that: unknown): boolean {
-    return this === that
   }
 }
 

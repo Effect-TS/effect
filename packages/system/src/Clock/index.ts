@@ -13,7 +13,6 @@ import { effectAsyncInterrupt } from "../Effect/effectAsyncInterrupt"
 import { accessService, accessServiceM, provideServiceM } from "../Effect/has"
 import type { Has, HasTag, Tag } from "../Has"
 import { tag } from "../Has"
-import * as St from "../Structural"
 
 export const ClockSymbol: unique symbol = Symbol.for("@effect-ts/system/Clock")
 export type ClockSymbol = typeof ClockSymbol
@@ -21,19 +20,11 @@ export type ClockSymbol = typeof ClockSymbol
 //
 // Clock Definition
 //
-export abstract class Clock implements St.HasHash, St.HasEquals {
+export abstract class Clock {
   readonly _tag = ClockSymbol
 
   abstract readonly currentTime: UIO<number>
   abstract readonly sleep: (ms: number, __trace?: string) => UIO<void>
-
-  [St.hashSym](): number {
-    return St.hashIncremental(this)
-  }
-
-  [St.equalsSym](that: unknown): boolean {
-    return this === that
-  }
 }
 
 //

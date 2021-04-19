@@ -2,27 +2,17 @@
 
 import "../../Operator"
 
-import * as St from "../../Structural"
-
 export class LinkedListNode<T> {
   constructor(public value: T | null, public next: LinkedListNode<T> | null = null) {}
 }
 
-export class LinkedList<T> implements St.HasHash, St.HasEquals {
+export class LinkedList<T> {
   constructor(
     public head: LinkedListNode<T> | null = null,
     public tail: LinkedListNode<T> | null = null
   ) {
     this.head = null
     this.tail = null
-  }
-
-  [St.hashSym](): number {
-    return St.hashIncremental(this)
-  }
-
-  [St.equalsSym](that: unknown): boolean {
-    return this === that
   }
 
   empty() {

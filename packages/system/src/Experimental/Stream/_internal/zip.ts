@@ -1,5 +1,6 @@
 import * as Cause from "../../../Cause"
 import * as Chunk from "../../../Collections/Immutable/Chunk"
+import * as Tp from "../../../Collections/Immutable/Tuple"
 import * as T from "../../../Effect"
 import * as E from "../../../Either"
 import * as Exit from "../../../Exit"
@@ -29,7 +30,7 @@ function handleSuccess<A, A1, B>(
   leftUpd: O.Option<Chunk.Chunk<A>>,
   rightUpd: O.Option<Chunk.Chunk<A1>>,
   excess: E.Either<Chunk.Chunk<A>, Chunk.Chunk<A1>>
-): Exit.Exit<O.Option<never>, readonly [Chunk.Chunk<B>, State<A, A1>]> {
+): Exit.Exit<O.Option<never>, Tp.Tuple<[Chunk.Chunk<B>, State<A, A1>]>> {
   const [leftExcess, rightExcess] = E.fold_(
     excess,
     (l) => [l, Chunk.empty<A1>()] as const,
@@ -45,10 +46,12 @@ function handleSuccess<A, A1, B>(
     () => rightExcess,
     (upd) => Chunk.concat_(rightExcess, upd)
   )
-  const [emit, newExcess] = zipChunks_(left, right, f)
+  const {
+    tuple: [emit, newExcess]
+  } = zipChunks_(left, right, f)
 
   if (leftUpd._tag === "Some" && rightUpd._tag === "Some") {
-    return Exit.succeed([emit, new Running(newExcess)])
+    return Exit.succeed(Tp.tuple(emit, new Running(newExcess)))
   }
   if (leftUpd._tag === "None" && rightUpd._tag === "None") {
     return Exit.fail(O.none)
@@ -61,7 +64,7 @@ function handleSuccess<A, A1, B>(
       : Chunk.isEmpty(newExcess.right)
       ? new End()
       : new RightDone(newExcess.right)
-  return Exit.succeed([emit, newState])
+  return Exit.succeed(Tp.tuple(emit, newState))
 }
 
 /**
@@ -134,8 +137,8 @@ export function zipWith<A, R1, E1, A1, B>(
 export function zip_<R, E, A, R1, E1, A1>(
   self: S.Stream<R, E, A>,
   that: S.Stream<R1, E1, A1>
-): S.Stream<R1 & R, E | E1, readonly [A, A1]> {
-  return zipWith_(self, that, (a, a1) => [a, a1])
+): S.Stream<R1 & R, E | E1, Tp.Tuple<[A, A1]>> {
+  return zipWith_(self, that, Tp.tuple)
 }
 
 /**
@@ -147,6 +150,6 @@ export function zip_<R, E, A, R1, E1, A1>(
  */
 export function zip<R1, E1, A1>(
   that: S.Stream<R1, E1, A1>
-): <R, E, A>(self: S.Stream<R, E, A>) => S.Stream<R1 & R, E | E1, readonly [A, A1]> {
+): <R, E, A>(self: S.Stream<R, E, A>) => S.Stream<R1 & R, E | E1, Tp.Tuple<[A, A1]>> {
   return (self) => zip_(self, that)
 }

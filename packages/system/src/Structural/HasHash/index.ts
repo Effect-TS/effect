@@ -12,15 +12,17 @@ export function hasHash(u: unknown): u is HasHash {
   return typeof u === "object" && u !== null && hashSym in u
 }
 
-export function hashIncremental(a: object): number {
-  return opt(_hashIncremental(a))
-}
+let _current = 0
 
 export function opt(n: number) {
   return (n & 0xbfffffff) | ((n >>> 1) & 0x40000000)
 }
 
 export function hash(arg: any): number {
+  return opt(_hash(arg))
+}
+
+export function hashUnknown(arg: unknown): number {
   return opt(_hash(arg))
 }
 
@@ -116,11 +118,11 @@ export function _combineHash(a: number, b: number): number {
   return (a * 53) ^ b
 }
 
-function isDefined<T>(value: T | undefined): value is T {
+export function isDefined<T>(value: T | undefined): value is T {
   return value !== void 0
 }
 
-function isIterable(value: object): value is Iterable<unknown> {
+export function isIterable(value: object): value is Iterable<unknown> {
   return Symbol.iterator in <any>value
 }
 
@@ -128,14 +130,10 @@ export function _hashObject(value: object): number {
   let h = CACHE.get(value)
   if (isDefined(h)) return h
 
-  if (Array.isArray(value)) {
-    h = _hashArray(value)
-  } else if (hasHash(value)) {
+  if (hasHash(value)) {
     h = value[hashSym]()
-  } else if (isIterable(value)) {
-    h = _hashIterator(value[Symbol.iterator]())
   } else {
-    h = _hashPlainObject(value)
+    h = _current++
   }
   CACHE.set(value, h)
   return h
@@ -181,17 +179,5 @@ export function _hashString(str: string): number {
   let h = 5381,
     i = str.length
   while (i) h = (h * 33) ^ str.charCodeAt(--i)
-  return h
-}
-
-let _current = 0
-
-export function _hashIncremental(a: object): number {
-  const cached = CACHE.get(a)
-  if (cached) {
-    return cached
-  }
-  const h = _current++
-  CACHE.set(a, h)
   return h
 }

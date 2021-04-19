@@ -1,13 +1,14 @@
 // tracing: off
 
 import * as A from "../../../Collections/Immutable/Chunk"
+import * as Tp from "../../../Collections/Immutable/Tuple"
 import * as E from "../../../Either"
 
 export function zipChunks_<A, B, C>(
   fa: A.Chunk<A>,
   fb: A.Chunk<B>,
   f: (a: A, b: B) => C
-): [A.Chunk<C>, E.Either<A.Chunk<A>, A.Chunk<B>>] {
+): Tp.Tuple<[A.Chunk<C>, E.Either<A.Chunk<A>, A.Chunk<B>>]> {
   let fc = A.empty<C>()
   const len = Math.min(A.size(fa), A.size(fb))
   for (let i = 0; i < len; i++) {
@@ -15,8 +16,8 @@ export function zipChunks_<A, B, C>(
   }
 
   if (A.size(fa) > A.size(fb)) {
-    return [fc, E.left(A.drop_(fa, A.size(fb)))]
+    return Tp.tuple(fc, E.left(A.drop_(fa, A.size(fb))))
   }
 
-  return [fc, E.right(A.drop_(fb, A.size(fa)))]
+  return Tp.tuple(fc, E.right(A.drop_(fb, A.size(fa))))
 }

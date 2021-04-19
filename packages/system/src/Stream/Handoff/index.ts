@@ -6,7 +6,6 @@ import { constVoid, pipe } from "../../Function"
 import type { Option } from "../../Option"
 import { none, some } from "../../Option"
 import * as P from "../../Promise"
-import * as St from "../../Structural"
 import { matchTag } from "../../Utils"
 import * as T from "../_internal/effect"
 import * as R from "../_internal/ref"
@@ -16,27 +15,11 @@ type State<A> = Empty | Full<A>
 class Empty {
   readonly _tag = "Empty"
   constructor(readonly notifyConsumer: P.Promise<never, void>) {}
-
-  [St.hashSym](): number {
-    return St.hashIncremental(this)
-  }
-
-  [St.equalsSym](that: unknown): boolean {
-    return this === that
-  }
 }
 
 class Full<A> {
   readonly _tag = "Full"
   constructor(readonly a: A, readonly notifyProducer: P.Promise<never, void>) {}
-
-  [St.hashSym](): number {
-    return St.hashIncremental(this)
-  }
-
-  [St.equalsSym](that: unknown): boolean {
-    return this === that
-  }
 }
 
 /**
@@ -47,14 +30,6 @@ class Full<A> {
 class Handoff<A> {
   readonly _tag = "Handoff"
   constructor(readonly ref: R.Ref<State<A>>) {}
-
-  [St.hashSym](): number {
-    return St.hashIncremental(this)
-  }
-
-  [St.equalsSym](that: unknown): boolean {
-    return this === that
-  }
 }
 
 export function make<A>(): T.UIO<Handoff<A>> {

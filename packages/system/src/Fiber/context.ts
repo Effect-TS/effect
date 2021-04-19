@@ -20,7 +20,6 @@ import { constVoid } from "../Function"
 import * as O from "../Option"
 // supervisor / scope
 import * as Scope from "../Scope"
-import * as St from "../Structural"
 import * as Sup from "../Supervisor"
 // support
 import { AtomicReference } from "../Support/AtomicReference"
@@ -87,8 +86,7 @@ export const unsafeCurrentFiber = () => O.fromNullable(currentFiber.get)
 
 const noop = O.some(constVoid)
 
-export class FiberContext<E, A>
-  implements Fiber.Runtime<E, A>, St.HasEquals, St.HasHash {
+export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   readonly _tag = "RuntimeFiber"
   readonly state = new AtomicReference(initial<E, A>())
 
@@ -127,14 +125,6 @@ export class FiberContext<E, A>
     readonly initialTracingStatus: boolean
   ) {
     this.evaluateNow = this.evaluateNow.bind(this)
-  }
-
-  [St.hashSym](): number {
-    return St.hashIncremental(this)
-  }
-
-  [St.equalsSym](that: unknown): boolean {
-    return this === that
   }
 
   get poll() {

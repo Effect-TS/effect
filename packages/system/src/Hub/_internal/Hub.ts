@@ -3,25 +3,16 @@
 import "../../Operator"
 
 import type * as Chunk from "../../Collections/Immutable/Chunk"
-import * as St from "../../Structural"
 
-export abstract class Subscription<A> implements St.HasHash, St.HasEquals {
+export abstract class Subscription<A> {
   abstract isEmpty(): boolean
   abstract poll(default_: A): A
   abstract pollUpTo(n: number): Chunk.Chunk<A>
   abstract size(): number
   abstract unsubscribe(): void
-
-  [St.hashSym]() {
-    return St.hashIncremental(this)
-  }
-
-  [St.equalsSym](that: unknown) {
-    return this === that
-  }
 }
 
-export abstract class Hub<A> implements St.HasHash, St.HasEquals {
+export abstract class Hub<A> {
   abstract readonly capacity: number
   abstract isEmpty(): boolean
   abstract isFull(): boolean
@@ -30,12 +21,4 @@ export abstract class Hub<A> implements St.HasHash, St.HasEquals {
   abstract size(): number
   abstract slide(): void
   abstract subscribe(): Subscription<A>
-
-  [St.hashSym]() {
-    return St.hashIncremental(this)
-  }
-
-  [St.equalsSym](that: unknown) {
-    return this === that
-  }
 }

@@ -4,22 +4,13 @@ import "../../Operator"
 
 import * as L from "../../Collections/Immutable/List"
 import type { Predicate } from "../../Function"
-import * as St from "../../Structural"
 import { DoublyLinkedList } from "../DoublyLinkedList"
 
-export class RingBuffer<T> implements St.HasHash, St.HasEquals {
+export class RingBuffer<T> {
   private values = new DoublyLinkedList<T>()
   private ignored = 0
 
   constructor(readonly size: number, readonly ignoreFn?: Predicate<T>) {}
-
-  [St.hashSym](): number {
-    return St.hashIncremental(this)
-  }
-
-  [St.equalsSym](that: unknown): boolean {
-    return this === that
-  }
 
   push(value: T) {
     if (this.values.length - this.ignored >= this.size) {

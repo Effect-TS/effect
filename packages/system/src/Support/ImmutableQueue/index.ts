@@ -4,18 +4,9 @@ import "../../Operator"
 
 import * as L from "../../Collections/Immutable/List"
 import * as O from "../../Option"
-import * as St from "../../Structural"
 
-export class ImmutableQueue<A> implements St.HasHash, St.HasEquals {
+export class ImmutableQueue<A> {
   constructor(private readonly backing: L.List<A>) {}
-
-  [St.hashSym](): number {
-    return St.hashIncremental(this)
-  }
-
-  [St.equalsSym](that: unknown): boolean {
-    return this === that
-  }
 
   push(a: A) {
     return new ImmutableQueue(L.append_(this.backing, a))

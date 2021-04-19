@@ -5,7 +5,6 @@ import * as E from "../Either"
 import { identity } from "../Function"
 import * as O from "../Option"
 import * as R from "../Ref"
-import * as St from "../Structural"
 import { ImmutableQueue } from "../Support/ImmutableQueue"
 import * as T from "./effect"
 import * as M from "./managed"
@@ -20,20 +19,12 @@ import { Acquisition, assertNonNegative } from "./state"
  * available result in the acquiring fiber being suspended until the specified
  * number of permits become available.
  **/
-export class Semaphore implements St.HasHash, St.HasEquals {
+export class Semaphore {
   constructor(private readonly state: R.Ref<State>) {
     this.loop = this.loop.bind(this)
     this.restore = this.restore.bind(this)
     this.releaseN = this.releaseN.bind(this)
     this.restore = this.restore.bind(this)
-  }
-
-  [St.hashSym](): number {
-    return St.hashIncremental(this)
-  }
-
-  [St.equalsSym](that: unknown): boolean {
-    return this === that
   }
 
   get available() {

@@ -3,7 +3,6 @@
 import "../../../Operator"
 
 import * as Chunk from "../../../Collections/Immutable/Chunk"
-import * as St from "../../../Structural"
 import * as C from "../Channel"
 
 /**
@@ -12,7 +11,7 @@ import * as C from "../Channel"
  * of type `OutErr`, emits outputs of type `L` and ends with a value
  * of type `Z`.
  */
-export class Sink<R, InErr, In, OutErr, L, Z> implements St.HasEquals, St.HasHash {
+export class Sink<R, InErr, In, OutErr, L, Z> {
   constructor(
     readonly channel: C.Channel<
       R,
@@ -24,14 +23,6 @@ export class Sink<R, InErr, In, OutErr, L, Z> implements St.HasEquals, St.HasHas
       Z
     >
   ) {}
-
-  [St.hashSym](): number {
-    return St.hashIncremental(this)
-  }
-
-  [St.equalsSym](that: unknown): boolean {
-    return this === that
-  }
 }
 
 function collectLoop<Err, A>(

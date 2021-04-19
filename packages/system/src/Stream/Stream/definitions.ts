@@ -9,7 +9,6 @@ import * as Finalizer from "../../Managed/ReleaseMap/finalizer"
 import * as makeReleaseMap from "../../Managed/ReleaseMap/makeReleaseMap"
 import * as releaseAll from "../../Managed/ReleaseMap/releaseAll"
 import * as O from "../../Option"
-import * as St from "../../Structural"
 import * as T from "../_internal/effect"
 import type * as M from "../_internal/managed"
 import * as Ref from "../_internal/ref"
@@ -51,7 +50,7 @@ export type StreamURI = typeof StreamURI
  * Instead, recursive operators must be defined explicitly. See the definition of
  * `forever` for an example. This limitation will be lifted in the future.
  */
-export class Stream<R, E, A> implements St.HasHash, St.HasEquals {
+export class Stream<R, E, A> {
   readonly [T._U]: StreamURI;
   readonly [T._E]: () => E;
   readonly [T._A]: () => A;
@@ -60,14 +59,6 @@ export class Stream<R, E, A> implements St.HasHash, St.HasEquals {
   constructor(
     readonly proc: M.Managed<R, never, T.Effect<R, O.Option<E>, A.Chunk<A>>>
   ) {}
-
-  [St.hashSym](): number {
-    return St.hashIncremental(this)
-  }
-
-  [St.equalsSym](that: unknown): boolean {
-    return this === that
-  }
 }
 
 /**

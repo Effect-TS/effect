@@ -2,7 +2,6 @@
 
 import type * as Chunk from "../Collections/Immutable/Chunk"
 import type { Effect, UIO } from "../Effect/effect"
-import * as St from "../Structural"
 
 export const _RA = Symbol()
 export type _RA = typeof _RA
@@ -43,7 +42,7 @@ export function concreteQueue<RA, RB, EA, EB, A, B>(
 }
 
 export abstract class XQueueInternal<RA, RB, EA, EB, A, B>
-  implements XQueue<RA, RB, EA, EB, A, B>, St.HasEquals, St.HasHash {
+  implements XQueue<RA, RB, EA, EB, A, B> {
   readonly [_RA]!: (_: RA) => void;
   readonly [_RB]!: (_: RB) => void;
   readonly [_EA]!: () => EA;
@@ -121,14 +120,6 @@ export abstract class XQueueInternal<RA, RB, EA, EB, A, B>
    * Takes up to max number of values in the queue.
    */
   abstract takeUpTo(n: number): Effect<RB, EB, Chunk.Chunk<B>>
-
-  [St.hashSym](): number {
-    return St.hashIncremental(this)
-  }
-
-  [St.equalsSym](that: unknown): boolean {
-    return this === that
-  }
 }
 
 /**

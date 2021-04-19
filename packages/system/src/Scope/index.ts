@@ -17,7 +17,6 @@ import { map_ } from "../Effect/map"
 import { uncause } from "../Effect/uncause"
 import { zipWith_ } from "../Effect/zipWith"
 import * as E from "../Either"
-import * as St from "../Structural"
 import { AtomicNumber } from "../Support/AtomicNumber"
 import { AtomicReference } from "../Support/AtomicReference"
 
@@ -87,7 +86,7 @@ export interface CommonScope<A> {
 /**
  * Represents a key in a scope, which is associated with a single finalizer.
  */
-export class Key implements St.HasEquals, St.HasHash {
+export class Key {
   /**
    * Attempts to remove the finalizer associated with this key from the
    * scope. The returned effect will succeed with a boolean, which indicates
@@ -104,14 +103,6 @@ export class Key implements St.HasEquals, St.HasHash {
 
   setRemove(remove: UIO<boolean>) {
     this.remove = remove
-  }
-
-  [St.hashSym](): number {
-    return St.hashIncremental(this)
-  }
-
-  [St.equalsSym](that: unknown): boolean {
-    return this === that
   }
 }
 
@@ -131,7 +122,7 @@ export type Scope<A> = Global | Local<A>
  * The global scope, which is entirely stateless. Finalizers added to the
  * global scope will never be executed (nor kept in memory).
  */
-export class Global implements CommonScope<never>, St.HasHash, St.HasEquals {
+export class Global implements CommonScope<never> {
   readonly _tag = "Global"
 
   constructor() {
@@ -140,14 +131,6 @@ export class Global implements CommonScope<never>, St.HasHash, St.HasEquals {
     this.extend = this.extend.bind(this)
     this.unsafeEnsure = this.unsafeEnsure.bind(this)
     this.unsafeExtend = this.unsafeExtend.bind(this)
-  }
-
-  [St.hashSym](): number {
-    return St.hashIncremental(this)
-  }
-
-  [St.equalsSym](that: unknown): boolean {
-    return this === that
   }
 
   private unsafeEnsureResult = E.right(new Key(succeedWith(() => true)))
@@ -200,22 +183,15 @@ export class Global implements CommonScope<never>, St.HasHash, St.HasEquals {
   }
 }
 
-export class OrderedFinalizer implements St.HasEquals, St.HasHash {
+export class OrderedFinalizer {
   constructor(readonly order: number, readonly finalizer: (_: any) => UIO<any>) {}
-  [St.hashSym](): number {
-    return St.hashIncremental(this)
-  }
-
-  [St.equalsSym](that: unknown): boolean {
-    return this === that
-  }
 }
 
 const noCause = empty
 
 const noCauseEffect: UIO<Cause<never>> = succeed(noCause)
 
-export class Local<A> implements CommonScope<A>, St.HasHash, St.HasEquals {
+export class Local<A> implements CommonScope<A> {
   readonly _tag = "Local"
 
   constructor(
@@ -224,14 +200,6 @@ export class Local<A> implements CommonScope<A>, St.HasHash, St.HasEquals {
     readonly references: AtomicNumber,
     readonly finalizers: Map<Key, OrderedFinalizer>
   ) {}
-
-  [St.hashSym](): number {
-    return St.hashIncremental(this)
-  }
-
-  [St.equalsSym](that: unknown): boolean {
-    return this === that
-  }
 
   get closed(): UIO<boolean> {
     return succeedWith(() => this.unsafeClosed)
@@ -380,16 +348,8 @@ export const globalScope = new Global()
  * A tuple that contains an open scope, together with a function that closes
  * the scope.
  */
-export class Open<A> implements St.HasEquals, St.HasHash {
+export class Open<A> {
   constructor(readonly close: (_: A) => UIO<boolean>, readonly scope: Local<A>) {}
-
-  [St.hashSym](): number {
-    return St.hashIncremental(this)
-  }
-
-  [St.equalsSym](that: unknown): boolean {
-    return this === that
-  }
 }
 
 export function unsafeMakeScope<A>() {

@@ -12,13 +12,12 @@ import type { UIO } from "../Effect/effect"
 import { accessServiceM, replaceService } from "../Effect/has"
 import type { HasTag } from "../Has"
 import { tag } from "../Has"
-import * as St from "../Structural"
 import { PCGRandom } from "./PCG"
 
 export const RandomSymbol: unique symbol = Symbol.for("@effect-ts/system/Random")
 export type RandomSymbol = typeof RandomSymbol
 
-export abstract class Random implements St.HasEquals, St.HasHash {
+export abstract class Random {
   readonly _tag: RandomSymbol = RandomSymbol
 
   abstract readonly next: UIO<number>
@@ -26,14 +25,6 @@ export abstract class Random implements St.HasEquals, St.HasHash {
   abstract readonly nextInt: UIO<number>
   abstract readonly nextRange: (low: number, high: number) => UIO<number>
   abstract readonly nextIntBetween: (low: number, high: number) => UIO<number>
-
-  [St.hashSym](): number {
-    return St.hashIncremental(this)
-  }
-
-  [St.equalsSym](that: unknown): boolean {
-    return this === that
-  }
 }
 
 export class LiveRandom extends Random {

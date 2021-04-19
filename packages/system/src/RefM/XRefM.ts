@@ -2,7 +2,6 @@
 
 import type { Ref } from "../Ref/XRef"
 import * as semaphore from "../Semaphore"
-import * as St from "../Structural"
 import * as T from "./effect"
 
 /**
@@ -70,8 +69,7 @@ export interface XRefM<RA, RB, EA, EB, A, B> {
   readonly set: (a: A) => T.Effect<RA, EA, void>
 }
 
-export class AtomicM<A>
-  implements XRefM<unknown, unknown, never, never, A, A>, St.HasEquals, St.HasHash {
+export class AtomicM<A> implements XRefM<unknown, unknown, never, never, A, A> {
   readonly _tag = "AtomicM"
 
   readonly _RA!: (_: unknown) => void
@@ -85,14 +83,6 @@ export class AtomicM<A>
     this.foldM = this.foldM.bind(this)
     this.foldAllM = this.foldAllM.bind(this)
     this.set = this.set.bind(this)
-  }
-
-  [St.hashSym](): number {
-    return St.hashIncremental(this)
-  }
-
-  [St.equalsSym](that: unknown): boolean {
-    return this === that
   }
 
   foldM<RC, RD, EC, ED, C, D>(
@@ -135,8 +125,7 @@ export class AtomicM<A>
   }
 }
 
-export class DerivedM<RA, RB, EA, EB, A, B>
-  implements XRefM<RA, RB, EA, EB, A, B>, St.HasHash, St.HasEquals {
+export class DerivedM<RA, RB, EA, EB, A, B> implements XRefM<RA, RB, EA, EB, A, B> {
   readonly _tag = "DerivedM"
 
   readonly _RA!: (_: RA) => void
@@ -158,14 +147,6 @@ export class DerivedM<RA, RB, EA, EB, A, B>
     this.foldM = this.foldM.bind(this)
     this.foldAllM = this.foldAllM.bind(this)
     this.set = this.set.bind(this)
-  }
-
-  [St.hashSym](): number {
-    return St.hashIncremental(this)
-  }
-
-  [St.equalsSym](that: unknown): boolean {
-    return this === that
   }
 
   foldM<RC, RD, EC, ED, C, D>(
@@ -230,8 +211,7 @@ export class DerivedM<RA, RB, EA, EB, A, B>
   }
 }
 
-export class DerivedAllM<RA, RB, EA, EB, A, B>
-  implements XRefM<RA, RB, EA, EB, A, B>, St.HasEquals, St.HasHash {
+export class DerivedAllM<RA, RB, EA, EB, A, B> implements XRefM<RA, RB, EA, EB, A, B> {
   readonly _tag = "DerivedAllM"
 
   readonly _RA!: (_: RA) => void
@@ -253,14 +233,6 @@ export class DerivedAllM<RA, RB, EA, EB, A, B>
     this.foldM = this.foldM.bind(this)
     this.foldAllM = this.foldAllM.bind(this)
     this.set = this.set.bind(this)
-  }
-
-  [St.hashSym](): number {
-    return St.hashIncremental(this)
-  }
-
-  [St.equalsSym](that: unknown): boolean {
-    return this === that
   }
 
   foldM<RC, RD, EC, ED, C, D>(

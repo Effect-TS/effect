@@ -376,9 +376,13 @@ describe("Chunk", () => {
         Chunk.append(3),
         Chunk.append(4),
         Chunk.append(5),
-        Chunk.splitWhere((n) => n === 3)
+        Chunk.splitWhere((n) => n === 3),
+        ([l, r]) => [Chunk.toArray(l), Chunk.toArray(r)] as const
       )
-    ).equals([Chunk.array([0, 1, 2]), Chunk.array([3, 4, 5])])
+    ).toEqual([
+      [0, 1, 2],
+      [3, 4, 5]
+    ])
   })
   it("zip", () => {
     const left = pipe(
@@ -394,12 +398,18 @@ describe("Chunk", () => {
       Chunk.append(3),
       Chunk.append(4)
     )
-    expect(pipe(left, Chunk.zip(right))).equals(
-      Chunk.many([0, 0], [1, 1], [2, 2], [3, 3])
-    )
-    expect(pipe(right, Chunk.zip(left))).equals(
-      Chunk.many([0, 0], [1, 1], [2, 2], [3, 3])
-    )
+    expect(pipe(left, Chunk.zip(right), Chunk.toArray)).toEqual([
+      [0, 0],
+      [1, 1],
+      [2, 2],
+      [3, 3]
+    ])
+    expect(pipe(right, Chunk.zip(left), Chunk.toArray)).toEqual([
+      [0, 0],
+      [1, 1],
+      [2, 2],
+      [3, 3]
+    ])
   })
   it("zipAll", () => {
     const left = pipe(
@@ -415,24 +425,20 @@ describe("Chunk", () => {
       Chunk.append(3),
       Chunk.append(4)
     )
-    expect(pipe(left, Chunk.zipAll(right))).equals(
-      Chunk.many(
-        [O.some(0), O.some(0)],
-        [O.some(1), O.some(1)],
-        [O.some(2), O.some(2)],
-        [O.some(3), O.some(3)],
-        [O.none, O.some(4)]
-      )
-    )
-    expect(pipe(right, Chunk.zipAll(left))).equals(
-      Chunk.many(
-        [O.some(0), O.some(0)],
-        [O.some(1), O.some(1)],
-        [O.some(2), O.some(2)],
-        [O.some(3), O.some(3)],
-        [O.some(4), O.none]
-      )
-    )
+    expect(pipe(left, Chunk.zipAll(right), Chunk.toArray)).toEqual([
+      [O.some(0), O.some(0)],
+      [O.some(1), O.some(1)],
+      [O.some(2), O.some(2)],
+      [O.some(3), O.some(3)],
+      [O.none, O.some(4)]
+    ])
+    expect(pipe(right, Chunk.zipAll(left), Chunk.toArray)).toEqual([
+      [O.some(0), O.some(0)],
+      [O.some(1), O.some(1)],
+      [O.some(2), O.some(2)],
+      [O.some(3), O.some(3)],
+      [O.some(4), O.none]
+    ])
   })
   it("zipWithIndex", () => {
     expect(
@@ -441,9 +447,15 @@ describe("Chunk", () => {
         Chunk.append(2),
         Chunk.append(3),
         Chunk.append(4),
-        Chunk.zipWithIndex
+        Chunk.zipWithIndex,
+        Chunk.toArray
       )
-    ).equals(Chunk.many([1, 0], [2, 1], [3, 2], [4, 3]))
+    ).toEqual([
+      [1, 0],
+      [2, 1],
+      [3, 2],
+      [4, 3]
+    ])
   })
   it("fill", () => {
     expect(Chunk.fill(10, (n) => n + 1)).equals(

@@ -6,7 +6,6 @@ import { _A, _E, _R, _S1, _S2, _U, _W } from "../Effect/commons"
 import type { EffectURI } from "../Effect/effect"
 import * as E from "../Either/core"
 import { Stack } from "../Stack"
-import * as St from "../Structural"
 
 /**
  * `XPure[W, S1, S2, R, E, A]` is a purely functional description of a
@@ -38,15 +37,7 @@ export abstract class XPureBase<W, S1, S2, R, E, A>
   readonly [_W]!: () => W;
   readonly [_E]!: () => E;
   readonly [_A]!: () => A;
-  readonly [_R]!: (_: R) => void;
-
-  [St.equalsSym](that: unknown): boolean {
-    return this === that
-  }
-
-  [St.hashSym](): number {
-    return St.hashIncremental(this)
-  }
+  readonly [_R]!: (_: R) => void
 }
 
 /**

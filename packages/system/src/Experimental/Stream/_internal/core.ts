@@ -4,12 +4,12 @@ import "../../../Operator"
 
 import * as Cause from "../../../Cause"
 import * as Chunk from "../../../Collections/Immutable/Chunk"
+import type * as Tp from "../../../Collections/Immutable/Tuple"
 import * as T from "../../../Effect"
 import type * as Exit from "../../../Exit"
 import { identity, pipe } from "../../../Function"
 import * as M from "../../../Managed"
 import * as O from "../../../Option"
-import * as St from "../../../Structural"
 import * as C from "../Channel"
 import * as Sink from "../Sink"
 
@@ -33,7 +33,7 @@ export type StreamTypeId = typeof StreamTypeId
  * adjustments for the multiple-valued nature of `Stream`). These aspects allow
  * for rich and expressive composition of streams.
  */
-export class Stream<R, E, A> implements St.HasHash, St.HasEquals {
+export class Stream<R, E, A> {
   readonly _typeId: StreamTypeId = StreamTypeId;
   readonly [T._R]!: (_: R) => void;
   readonly [T._E]!: () => E;
@@ -50,14 +50,6 @@ export class Stream<R, E, A> implements St.HasHash, St.HasEquals {
       unknown
     >
   ) {}
-
-  [St.hashSym](): number {
-    return St.hashIncremental(this)
-  }
-
-  [St.equalsSym](that: unknown): boolean {
-    return this === that
-  }
 }
 
 /**
@@ -118,7 +110,7 @@ export function combineChunks_<R, E, A, R1, E1, A1, S, R2, A2>(
     s: S,
     l: T.Effect<R, O.Option<E>, Chunk.Chunk<A>>,
     r: T.Effect<R1, O.Option<E1>, Chunk.Chunk<A1>>
-  ) => T.Effect<R2, never, Exit.Exit<O.Option<E | E1>, readonly [Chunk.Chunk<A2>, S]>>
+  ) => T.Effect<R2, never, Exit.Exit<O.Option<E | E1>, Tp.Tuple<[Chunk.Chunk<A2>, S]>>>
 ): Stream<R1 & R & R2, E | E1, A2> {
   return unwrapManaged(
     pipe(
@@ -149,7 +141,7 @@ export function combineChunks<R, E, A, R1, E1, A1, S, R2, A2>(
     s: S,
     l: T.Effect<R, O.Option<E>, Chunk.Chunk<A>>,
     r: T.Effect<R1, O.Option<E1>, Chunk.Chunk<A1>>
-  ) => T.Effect<R2, never, Exit.Exit<O.Option<E | E1>, readonly [Chunk.Chunk<A2>, S]>>
+  ) => T.Effect<R2, never, Exit.Exit<O.Option<E | E1>, Tp.Tuple<[Chunk.Chunk<A2>, S]>>>
 ): (self: Stream<R, E, A>) => Stream<R1 & R & R2, E | E1, A2> {
   return (self) => combineChunks_(self, that, s, f)
 }
@@ -472,14 +464,14 @@ export function toPull<R, E, A>(
 
 function unfoldChunksLoop<S, R, E, A>(
   s: S,
-  f: (s: S) => T.Effect<R, E, O.Option<readonly [Chunk.Chunk<A>, S]>>
+  f: (s: S) => T.Effect<R, E, O.Option<Tp.Tuple<[Chunk.Chunk<A>, S]>>>
 ): C.Channel<R, unknown, unknown, unknown, E, Chunk.Chunk<A>, unknown> {
   return C.unwrap(
     T.map_(
       f(s),
       O.fold(
         () => C.unit,
-        ([as, s]) => C.chain_(C.write(as), () => unfoldChunksLoop(s, f))
+        ({ tuple: [as, s] }) => C.chain_(C.write(as), () => unfoldChunksLoop(s, f))
       )
     )
   )
@@ -490,7 +482,7 @@ function unfoldChunksLoop<S, R, E, A>(
  */
 export function unfoldChunksM<R, E, A, S>(
   s: S,
-  f: (s: S) => T.Effect<R, E, O.Option<readonly [Chunk.Chunk<A>, S]>>
+  f: (s: S) => T.Effect<R, E, O.Option<Tp.Tuple<[Chunk.Chunk<A>, S]>>>
 ): Stream<R, E, A> {
   return new Stream(unfoldChunksLoop(s, f))
 }
