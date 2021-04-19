@@ -32,5 +32,5 @@ export function equals(a: unknown, b: unknown): boolean {
   } else if (hasEquals(b)) {
     return b[equalsSym](a)
   }
-  return a === b
+  return Object.is(a, b)
 }
