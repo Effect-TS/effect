@@ -3,6 +3,22 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.31.0](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.30.7...@effect-ts/system@0.31.0) (2021-04-20)
+
+
+### Features
+
+* **chunks:** use chunks as core array type ([0fb6732](https://github.com/Effect-TS/core/commit/0fb6732b1d6a4cc92cadd13e141085fa3c64ba35))
+
+
+### Performance Improvements
+
+* **forEach:** use filterMap ([beeb8de](https://github.com/Effect-TS/core/commit/beeb8ded3014cc7a80ada37af0f21bebe9f22624))
+
+
+
+
+
 ## [0.30.7](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.30.6...@effect-ts/system@0.30.7) (2021-04-19)
 
 
