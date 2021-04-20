@@ -1,10 +1,10 @@
 // tracing: off
 
 import type { NonEmptyArray } from "../../Collections/Immutable/NonEmptyArray"
-import type { _E, _R } from "../../Utils"
+import type { Tuple } from "../../Collections/Immutable/Tuple"
+import type { _A, _E, _R, ForcedArray } from "../../Utils"
 import { map_ } from "../core"
 import type { Managed } from "../managed"
-import type { TupleA } from "../tuple"
 import { tuple, tuplePar, tupleParN } from "../tuple"
 
 /**
@@ -14,9 +14,9 @@ import { tuple, tuplePar, tupleParN } from "../tuple"
  * @dataFirst mapN_
  */
 export function mapN<T extends NonEmptyArray<Managed<any, any, any>>, B>(
-  f: (_: TupleA<T>) => B,
+  f: (..._: ForcedArray<{ [k in keyof T]: _A<T[k]> }>) => B,
   __trace?: string
-): (t: T) => Managed<_R<T[number]>, _E<T[number]>, B> {
+): (t: Tuple<T>) => Managed<_R<T[number]>, _E<T[number]>, B> {
   return (t) => mapN_(t, f, __trace)
 }
 
@@ -25,11 +25,12 @@ export function mapN<T extends NonEmptyArray<Managed<any, any, any>>, B>(
  * function.
  */
 export function mapN_<T extends NonEmptyArray<Managed<any, any, any>>, B>(
-  t: T,
-  f: (_: TupleA<T>) => B,
+  t: Tuple<T>,
+  f: (..._: ForcedArray<{ [k in keyof T]: _A<T[k]> }>) => B,
   __trace?: string
 ): Managed<_R<T[number]>, _E<T[number]>, B> {
-  return map_(tuple<T>(...t), f, __trace)
+  // @ts-expect-error
+  return map_(tuple<T>(...t.tuple), (x) => f(...x), __trace)
 }
 
 /**
@@ -39,9 +40,9 @@ export function mapN_<T extends NonEmptyArray<Managed<any, any, any>>, B>(
  * @dataFirst mapNPar_
  */
 export function mapNPar<T extends NonEmptyArray<Managed<any, any, any>>, B>(
-  f: (_: TupleA<T>) => B,
+  f: (..._: ForcedArray<{ [k in keyof T]: _A<T[k]> }>) => B,
   __trace?: string
-): (t: T) => Managed<_R<T[number]>, _E<T[number]>, B> {
+): (t: Tuple<T>) => Managed<_R<T[number]>, _E<T[number]>, B> {
   return (t) => mapNPar_(t, f, __trace)
 }
 
@@ -50,11 +51,12 @@ export function mapNPar<T extends NonEmptyArray<Managed<any, any, any>>, B>(
  * function.
  */
 export function mapNPar_<T extends NonEmptyArray<Managed<any, any, any>>, B>(
-  t: T,
-  f: (_: TupleA<T>) => B,
+  t: Tuple<T>,
+  f: (..._: ForcedArray<{ [k in keyof T]: _A<T[k]> }>) => B,
   __trace?: string
 ): Managed<_R<T[number]>, _E<T[number]>, B> {
-  return map_(tuplePar<T>(...t), f, __trace)
+  // @ts-expect-error
+  return map_(tuplePar<T>(...t.tuple), (x) => f(...x.tuple), __trace)
 }
 
 /**
@@ -67,9 +69,9 @@ export function mapNPar_<T extends NonEmptyArray<Managed<any, any, any>>, B>(
  */
 export function mapNParN<T extends NonEmptyArray<Managed<any, any, any>>, B>(
   n: number,
-  f: (_: TupleA<T>) => B,
+  f: (..._: ForcedArray<{ [k in keyof T]: _A<T[k]> }>) => B,
   __trace?: string
-): (t: T) => Managed<_R<T[number]>, _E<T[number]>, B> {
+): (t: Tuple<T>) => Managed<_R<T[number]>, _E<T[number]>, B> {
   return (t) => mapNParN_(t, n, f, __trace)
 }
 
@@ -80,10 +82,11 @@ export function mapNParN<T extends NonEmptyArray<Managed<any, any, any>>, B>(
  * This variant uses up to N fibers.
  */
 export function mapNParN_<T extends NonEmptyArray<Managed<any, any, any>>, B>(
-  t: T,
+  t: Tuple<T>,
   n: number,
-  f: (_: TupleA<T>) => B,
+  f: (..._: ForcedArray<{ [k in keyof T]: _A<T[k]> }>) => B,
   __trace?: string
 ): Managed<_R<T[number]>, _E<T[number]>, B> {
-  return map_(tupleParN(n)(...t), f, __trace)
+  // @ts-expect-error
+  return map_(tupleParN(n)(...t.tuple), (x) => f(...x.tuple), __trace)
 }

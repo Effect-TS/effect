@@ -659,8 +659,8 @@ class Runtime {
             case "Modify": {
               const updated = nested.run(s0)
 
-              s0 = updated[0]
-              a = updated[1]
+              s0 = updated.get(0)
+              a = updated.get(1)
 
               curXPure = continuation(a)
               break
@@ -741,8 +741,8 @@ class Runtime {
         }
         case "Modify": {
           const updated = xp.run(s0)
-          s0 = updated[0]
-          a = updated[1]
+          s0 = updated.get(0)
+          a = updated.get(1)
           const nextInst = this.pop()
           if (nextInst) {
             curXPure = nextInst.apply(a)

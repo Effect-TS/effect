@@ -1,8 +1,10 @@
 // tracing: off
 
 import type { NonEmptyArray } from "../Collections/Immutable/NonEmptyArray"
+import * as Tp from "../Collections/Immutable/Tuple"
 import { accessCallTrace } from "../Tracing"
-import type { _E, _R } from "../Utils"
+import type { _E, _R, ForcedTuple } from "../Utils"
+import { map_ } from "./core"
 import type { Managed } from "./managed"
 import { collectAll, collectAllPar, collectAllParN_ } from "./methods/api"
 
@@ -19,9 +21,9 @@ export function tuple<T extends NonEmptyArray<Managed<any, any, any>>>(
   ...t: T & {
     0: Managed<any, any, any>
   }
-): Managed<_R<T[number]>, _E<T[number]>, TupleA<T>> {
+): Managed<_R<T[number]>, _E<T[number]>, ForcedTuple<TupleA<T>>> {
   const trace = accessCallTrace()
-  return collectAll(t, trace) as any
+  return map_(collectAll(t, trace), (x) => Tp.tuple(...x)) as any
 }
 
 /**
@@ -31,8 +33,8 @@ export function tuplePar<T extends NonEmptyArray<Managed<any, any, any>>>(
   ...t: T & {
     0: Managed<any, any, any>
   }
-): Managed<_R<T[number]>, _E<T[number]>, TupleA<T>> {
-  return collectAllPar(t) as any
+): Managed<_R<T[number]>, _E<T[number]>, ForcedTuple<TupleA<T>>> {
+  return map_(collectAllPar(t), (x) => Tp.tuple(...x)) as any
 }
 
 /**
@@ -49,8 +51,8 @@ export function tupleParN(
     ...t: T & {
       0: Managed<any, any, any>
     }
-  ): Managed<_R<T[number]>, _E<T[number]>, TupleA<T>>
+  ): Managed<_R<T[number]>, _E<T[number]>, ForcedTuple<TupleA<T>>>
 } {
   return ((...t: Managed<any, any, any>[]) =>
-    collectAllParN_(t, n, accessCallTrace())) as any
+    map_(collectAllParN_(t, n, accessCallTrace()), (x) => Tp.tuple(...x))) as any
 }
