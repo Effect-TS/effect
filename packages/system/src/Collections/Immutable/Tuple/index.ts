@@ -122,3 +122,45 @@ export function update_<Ks extends readonly unknown[], I extends keyof Ks & numb
   }
   return new Tuple(r) as any
 }
+
+/**
+ * Appends a value to a tuple
+ *
+ * @dataFirst append_
+ */
+export function append<K>(
+  k: K
+): <Ks extends unknown[]>(self: Tuple<Ks>) => Tuple<[...Ks, K]> {
+  return (self) => append_(self, k)
+}
+
+/**
+ * Appends a value to a tuple
+ */
+export function append_<Ks extends unknown[], K>(
+  self: Tuple<Ks>,
+  k: K
+): Tuple<[...Ks, K]> {
+  return new Tuple([...self.tuple, k])
+}
+
+/**
+ * Appends a value to a tuple
+ *
+ * @dataFirst prepend_
+ */
+export function prepend<K>(
+  k: K
+): <Ks extends unknown[]>(self: Tuple<Ks>) => Tuple<[K, ...Ks]> {
+  return (self) => prepend_(self, k)
+}
+
+/**
+ * Prepends a value to a tuple
+ */
+export function prepend_<Ks extends unknown[], K>(
+  self: Tuple<Ks>,
+  k: K
+): Tuple<[K, ...Ks]> {
+  return new Tuple([k, ...self.tuple])
+}
