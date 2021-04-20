@@ -2,6 +2,7 @@
 
 import "../Operator"
 
+import * as Tp from "@effect-ts/system/Collections/Immutable/Tuple"
 import { constant, identity } from "@effect-ts/system/Function"
 import * as X from "@effect-ts/system/XPure"
 
@@ -60,7 +61,7 @@ export const Monad = P.instance<P.Monad<[URI<XPureURI>], V>>({
 })
 
 export const StateCategory = P.instance<P.Category<[URI<XPureStateCategoryURI>], V>>({
-  id: () => X.modify((a) => [a, a]),
+  id: () => X.modify((a) => Tp.tuple(a, a)),
   compose: (bc) => X.chain((_) => bc)
 })
 

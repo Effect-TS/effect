@@ -4,6 +4,7 @@ import "../../Operator"
 
 import type { Cause } from "../../Cause"
 import * as A from "../../Collections/Immutable/Chunk"
+import * as Tp from "../../Collections/Immutable/Tuple"
 import * as E from "../../Either"
 import { pipe } from "../../Function"
 import type * as O from "../../Option"
@@ -12,27 +13,27 @@ import * as M from "../_internal/managed"
 import * as R from "../_internal/ref"
 
 export interface Push<R, E, I, L, Z> {
-  (_: O.Option<A.Chunk<I>>): T.Effect<R, readonly [E.Either<E, Z>, A.Chunk<L>], void>
+  (_: O.Option<A.Chunk<I>>): T.Effect<R, Tp.Tuple<[E.Either<E, Z>, A.Chunk<L>]>, void>
 }
 
 export function emit<I, Z>(
   z: Z,
   leftover: A.Chunk<I>
-): T.IO<[E.Either<never, Z>, A.Chunk<I>], never> {
-  return T.fail([E.right(z), leftover])
+): T.IO<Tp.Tuple<[E.Either<never, Z>, A.Chunk<I>]>, never> {
+  return T.fail(Tp.tuple(E.right(z), leftover))
 }
 
 export function fail<E, I>(
   e: E,
   leftover: A.Chunk<I>
-): T.IO<[E.Either<E, never>, A.Chunk<I>], never> {
-  return T.fail([E.left(e), leftover])
+): T.IO<Tp.Tuple<[E.Either<E, never>, A.Chunk<I>]>, never> {
+  return T.fail(Tp.tuple(E.left(e), leftover))
 }
 
 export function halt<E>(
   c: Cause<E>
-): T.IO<[E.Either<E, never>, A.Chunk<never>], never> {
-  return T.mapError_(T.halt(c), (e) => [E.left(e), A.empty()])
+): T.IO<Tp.Tuple<[E.Either<E, never>, A.Chunk<never>]>, never> {
+  return T.mapError_(T.halt(c), (e) => Tp.tuple(E.left(e), A.empty()))
 }
 
 export const more = T.unit
@@ -42,7 +43,7 @@ export const more = T.unit
  */
 export function restartable<R, R1, E, I, L, Z>(
   sink: M.Managed<R, never, Push<R1, E, I, L, Z>>
-): M.Managed<R, never, [Push<R1, E, I, L, Z>, T.Effect<R, never, void>]> {
+): M.Managed<R, never, Tp.Tuple<[Push<R1, E, I, L, Z>, T.Effect<R, never, void>]>> {
   return pipe(
     M.do,
     M.bind("switchSink", () => M.switchable<R, never, Push<R1, E, I, L, Z>>()),
@@ -53,7 +54,7 @@ export function restartable<R, R1, E, I, L, Z>(
       const newPush = (input: O.Option<A.Chunk<I>>) =>
         T.chain_(currSink.get, (f) => f(input))
 
-      return [newPush, restart]
+      return Tp.tuple(newPush, restart)
     })
   )
 }

@@ -1,6 +1,7 @@
 // tracing: off
 
 import * as A from "../../Collections/Immutable/Chunk"
+import * as Tp from "../../Collections/Immutable/Tuple"
 import { pipe } from "../../Function"
 import type * as RM from "../../Managed/ReleaseMap"
 import * as Finalizer from "../../Managed/ReleaseMap/finalizer"
@@ -27,9 +28,7 @@ export function chain_<R, R1, E, E1, O, O2>(
       M.do,
       M.bind("outerStream", () => self.proc),
       M.bind("currOuterChunk", () =>
-        M.fromEffect(
-          Ref.makeRef<[A.Chunk<O>, number]>([A.empty(), 0])
-        )
+        M.fromEffect(Ref.makeRef(Tp.tuple<[A.Chunk<O>, number]>(A.empty(), 0)))
       ),
       M.bind("currInnerStream", () =>
         M.fromEffect(

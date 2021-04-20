@@ -1,5 +1,6 @@
 // tracing: off
 
+import type * as Tp from "@effect-ts/system/Collections/Immutable/Tuple"
 import * as F from "@effect-ts/system/XPure"
 
 import type { XReader } from "./definition"
@@ -31,7 +32,7 @@ export const provideSome: <Q, R>(
  */
 export const zip: <R1, B>(
   fb: XReader<R1, B>
-) => <R, A>(fa: XReader<R, A>) => XReader<R & R1, readonly [A, B]> = F.zip
+) => <R, A>(fa: XReader<R, A>) => XReader<R & R1, Tp.Tuple<[A, B]>> = F.zip
 
 /**
  * Extends this computation with another computation that depends on the

@@ -1,6 +1,7 @@
 // tracing: off
 
 import * as A from "../../Collections/Immutable/Chunk"
+import * as Tp from "../../Collections/Immutable/Tuple"
 import type * as O from "../../Option"
 import * as T from "../_internal/effect"
 import type { Stream } from "./definitions"
@@ -13,7 +14,9 @@ import { paginateChunkM } from "./paginateChunkM"
  */
 export function paginateM<S>(s: S) {
   return <R, E, A>(
-    f: (s: S) => T.Effect<R, E, readonly [A, O.Option<S>]>
+    f: (s: S) => T.Effect<R, E, Tp.Tuple<[A, O.Option<S>]>>
   ): Stream<R, E, A> =>
-    paginateChunkM(s)((_) => T.map_(f(_), ([a, s]) => [A.single(a), s] as const))
+    paginateChunkM(s, (_) =>
+      T.map_(f(_), ({ tuple: [a, s] }) => Tp.tuple(A.single(a), s))
+    )
 }

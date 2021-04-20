@@ -2,8 +2,9 @@
 
 import * as C from "../Cause"
 import * as CL from "../Clock"
+import * as Tp from "../Collections/Immutable/Tuple"
 import * as E from "../Either"
-import { identity as idFn, pipe, tuple } from "../Function"
+import { identity as idFn, pipe } from "../Function"
 import type { Has, Tag } from "../Has"
 import { mergeEnvironments } from "../Has"
 import type * as SC from "../Schedule"
@@ -100,8 +101,8 @@ export function zipWithPar<RIn1, E1, ROut, ROut1, ROut2>(
 export function zipPar_<RIn, RIn1, E, E1, ROut, ROut1>(
   self: Layer<RIn, E, ROut>,
   that: Layer<RIn1, E1, ROut1>
-): Layer<RIn & RIn1, E | E1, readonly [ROut, ROut1]> {
-  return zipWithPar_(self, that, (a, b) => [a, b] as const)
+): Layer<RIn & RIn1, E | E1, Tp.Tuple<[ROut, ROut1]>> {
+  return zipWithPar_(self, that, Tp.tuple)
 }
 
 /**
@@ -173,8 +174,8 @@ export function fromFunction<B>(tag: Tag<B>) {
 export function zip_<R, E, A, R2, E2, A2>(
   self: Layer<R, E, A>,
   that: Layer<R2, E2, A2>
-): Layer<R & R2, E | E2, readonly [A, A2]> {
-  return new LayerZipWithSeq(self, that, tuple)
+): Layer<R & R2, E | E2, Tp.Tuple<[A, A2]>> {
+  return new LayerZipWithSeq(self, that, Tp.tuple)
 }
 
 /**
@@ -472,13 +473,13 @@ export function launch<R, E, A>(self: Layer<R, E, A>): T.Effect<R, E, never> {
 /**
  * Recovers from all errors.
  */
-export function catchAll<R1, E, E1, Out1>(handler: Layer<readonly [R1, E], E1, Out1>) {
+export function catchAll<R1, E, E1, Out1>(handler: Layer<Tp.Tuple<[R1, E]>, E1, Out1>) {
   return <R, Out>(self: Layer<R, E, Out>): Layer<R & R1, E1, Out1 | Out> => {
     return fold(self)(
-      fromRawFunctionM(([r, cause]: readonly [R1, C.Cause<E>]) =>
+      fromRawFunctionM(({ tuple: [r, cause] }: Tp.Tuple<[R1, C.Cause<E>]>) =>
         E.fold_(
           C.failureOrCause(cause),
-          (e) => T.succeed(tuple(r, e)),
+          (e) => T.succeed(Tp.tuple(r, e)),
           (c) => T.halt(c)
         )
       )[">=>"](handler)
@@ -490,14 +491,14 @@ export function catchAll<R1, E, E1, Out1>(handler: Layer<readonly [R1, E], E1, O
  * A layer that passes along the first element of a tuple.
  */
 export function first<A>() {
-  return fromRawFunction(([_, __]: readonly [A, unknown]) => _)
+  return fromRawFunction((_: Tp.Tuple<[A, unknown]>) => _.get(0))
 }
 
 /**
  * A layer that passes along the second element of a tuple.
  */
 export function second<A>() {
-  return fromRawFunction(([_, __]: readonly [unknown, A]) => __)
+  return fromRawFunction((_: Tp.Tuple<[unknown, A]>) => _.get(1))
 }
 
 /**
@@ -507,7 +508,7 @@ export function second<A>() {
 export function mapError<E, E1>(
   f: (e: E) => E1
 ): <R, Out>(self: Layer<R, E, Out>) => Layer<R, E1, Out> {
-  return catchAll(fromRawFunctionM(([_, e]: readonly [unknown, E]) => T.fail(f(e))))
+  return catchAll(fromRawFunctionM((_: Tp.Tuple<[unknown, E]>) => T.fail(f(_.get(1)))))
 }
 
 /**
@@ -515,7 +516,9 @@ export function mapError<E, E1>(
  * unchecked and not a part of the type of the layer.
  */
 export function orDie<R, E, Out>(self: Layer<R, E, Out>): Layer<R, never, Out> {
-  return catchAll(fromRawFunctionM(([_, e]: readonly [unknown, E]) => T.die(e)))(self)
+  return catchAll(fromRawFunctionM((_: Tp.Tuple<[unknown, E]>) => T.die(_.get(1))))(
+    self
+  )
 }
 
 /**
@@ -526,6 +529,58 @@ export function orElse<RIn1, E1, ROut1>(that: Layer<RIn1, E1, ROut1>) {
   return catchAll(first<RIn1>()[">=>"](that))
 }
 
+function retryLoop<RIn, RIn1, E, ROut>(
+  self: Layer<RIn, E, ROut>
+): Layer<
+  Tp.Tuple<
+    [RIn & RIn1 & CL.HasClock, SCD.StepFunction<RIn & RIn1 & CL.HasClock, E, any>]
+  >,
+  E,
+  ROut
+> {
+  const update = fromRawFunctionM(
+    ({
+      tuple: [
+        {
+          tuple: [r, s]
+        },
+        e
+      ]
+    }: Tp.Tuple<
+      [
+        Tp.Tuple<
+          [RIn & RIn1 & CL.HasClock, SCD.StepFunction<RIn & RIn1 & CL.HasClock, E, any>]
+        >,
+        E
+      ]
+    >) =>
+      pipe(
+        CL.currentTime,
+        T.orDie,
+        T.chain((now) =>
+          pipe(
+            T.chain_(s(now, e), (result) => {
+              if (result._tag === "Done") {
+                return T.fail(e)
+              } else {
+                return pipe(
+                  CL.sleep(Math.abs(now - result.interval)),
+                  T.as(Tp.tuple(r, result.next))
+                )
+              }
+            })
+          )
+        ),
+        T.provideAll(r)
+      )
+  )
+
+  return pipe(
+    first<RIn>()[">=>"](self),
+    catchAll(update[">=>"](suspend(() => fresh(retryLoop(self)))))
+  )
+}
+
 /**
  * Retries constructing this layer according to the specified schedule.
  */
@@ -533,40 +588,8 @@ export function retry<RIn, RIn1, E, ROut>(
   self: Layer<RIn, E, ROut>,
   schedule: SC.Schedule<RIn1 & CL.HasClock, E, any>
 ): Layer<RIn1 & RIn & CL.HasClock, E, ROut> {
-  type S = SCD.StepFunction<RIn & RIn1 & CL.HasClock, E, any>
-
-  const loop = (): Layer<readonly [RIn & RIn1 & CL.HasClock, S], E, ROut> => {
-    const update = fromRawFunctionM(
-      ([[r, s], e]: readonly [readonly [RIn & RIn1 & CL.HasClock, S], E]) =>
-        pipe(
-          CL.currentTime,
-          T.orDie,
-          T.chain((now) =>
-            pipe(
-              T.chain_(s(now, e), (result) => {
-                if (result._tag === "Done") {
-                  return T.fail(e)
-                } else {
-                  return pipe(
-                    CL.sleep(Math.abs(now - result.interval)),
-                    T.as([r, result.next] as const)
-                  )
-                }
-              })
-            )
-          ),
-          T.provideAll(r)
-        )
-    )
-
-    return pipe(
-      first<RIn>()[">=>"](self),
-      catchAll(update[">=>"](suspend(() => fresh(loop()))))
-    )
-  }
-
   return zipPar_(
     identity<RIn & RIn1 & CL.HasClock>(),
     fromRawEffect(T.succeed(schedule.step))
-  )[">=>"](loop())
+  )[">=>"](retryLoop<RIn, RIn1, E, ROut>(self))
 }

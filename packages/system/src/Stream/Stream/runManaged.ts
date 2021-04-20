@@ -31,7 +31,7 @@ export function runManaged_<R, R1, E, E1, O, B>(
                   (c) =>
                     pipe(
                       c,
-                      C.map(([_]) => _),
+                      C.map((_) => _.get(0)),
                       C.sequenceCauseEither,
                       E.fold(T.halt, T.succeed)
                     ),
@@ -46,7 +46,7 @@ export function runManaged_<R, R1, E, E1, O, B>(
             (c): T.Effect<unknown, E1, B> =>
               pipe(
                 c,
-                C.map(([_]) => _),
+                C.map((_) => _.get(0)),
                 C.sequenceCauseEither,
                 E.fold(T.halt, T.succeed)
               ),

@@ -1,6 +1,7 @@
 // tracing: off
 
 import * as L from "../Collections/Immutable/List"
+import * as Tp from "../Collections/Immutable/Tuple"
 import * as E from "../Either"
 import { identity } from "../Function"
 import * as O from "../Option"
@@ -9,7 +10,7 @@ import { ImmutableQueue } from "../Support/ImmutableQueue"
 import * as T from "./effect"
 import * as M from "./managed"
 import * as P from "./promise"
-import type { Entry, State } from "./state"
+import type { State } from "./state"
 import { Acquisition, assertNonNegative } from "./state"
 
 /**
@@ -34,27 +35,38 @@ export class Semaphore {
     )
   }
 
-  private loop(n: number, state: State, acc: T.UIO<void>): [T.UIO<void>, State] {
+  private loop(
+    n: number,
+    state: State,
+    acc: T.UIO<void>
+  ): Tp.Tuple<[T.UIO<void>, State]> {
     // eslint-disable-next-line no-constant-condition
     while (1) {
       switch (state._tag) {
         case "Right": {
-          return [acc, E.right(n + state.right)]
+          return Tp.tuple(acc, E.right(n + state.right))
         }
         case "Left": {
           const d = state.left.dequeue()
           if (O.isNone(d)) {
-            return [acc, E.right(n)]
+            return Tp.tuple(acc, E.right(n))
           } else {
-            const [[p, m], q] = d.value
+            const {
+              tuple: [
+                {
+                  tuple: [p, m]
+                },
+                q
+              ]
+            } = d.value
             if (n > m) {
               n = n - m
               state = E.left(q)
               acc = T.zipLeft_(acc, P.succeed_(p, undefined))
             } else if (n === m) {
-              return [T.zipLeft_(acc, P.succeed_(p, undefined)), E.left(q)]
+              return Tp.tuple(T.zipLeft_(acc, P.succeed_(p, undefined)), E.left(q))
             } else {
-              return [acc, E.left(q.prepend([p, m - n]))]
+              return Tp.tuple(acc, E.left(q.prepend(Tp.tuple(p, m - n))))
             }
           }
           break
@@ -81,20 +93,15 @@ export class Semaphore {
         E.fold(
           (q) =>
             O.fold_(
-              q.find(([a]) => a === p),
-              (): [T.UIO<void>, E.Either<ImmutableQueue<Entry>, number>] => [
-                this.releaseN(n),
-                E.left(q)
-              ],
-              (x): [T.UIO<void>, E.Either<ImmutableQueue<Entry>, number>] => [
-                this.releaseN(n - x[1]),
-                E.left(q.filter(([a]) => a !== p))
-              ]
+              q.find(({ tuple: [a] }) => a === p),
+              () => Tp.tuple(this.releaseN(n), E.left(q)),
+              (x) =>
+                Tp.tuple(
+                  this.releaseN(n - x[1]),
+                  E.left(q.filter(({ tuple: [a] }) => a !== p))
+                )
             ),
-          (m): [T.UIO<void>, E.Either<ImmutableQueue<Entry>, number>] => [
-            T.unit,
-            E.right(n + m)
-          ]
+          (m) => Tp.tuple(T.unit, E.right(n + m))
         )
       )
     )
@@ -108,18 +115,22 @@ export class Semaphore {
         R.modify_(
           this.state,
           E.fold(
-            (q): [Acquisition, E.Either<ImmutableQueue<Entry>, number>] => [
-              new Acquisition(P.await(p), this.restore(p, n)),
-              E.left(q.push([p, n]))
-            ],
-            (m): [Acquisition, E.Either<ImmutableQueue<Entry>, number>] => {
-              if (m >= n) {
-                return [new Acquisition(T.unit, this.releaseN(n)), E.right(m - n)]
-              }
-              return [
+            (q) =>
+              Tp.tuple(
                 new Acquisition(P.await(p), this.restore(p, n)),
-                E.left(new ImmutableQueue(L.of([p, n - m])))
-              ]
+                E.left(q.push(Tp.tuple(p, n)))
+              ),
+            (m) => {
+              if (m >= n) {
+                return Tp.tuple(
+                  new Acquisition(T.unit, this.releaseN(n)),
+                  E.right(m - n)
+                )
+              }
+              return Tp.tuple(
+                new Acquisition(P.await(p), this.restore(p, n)),
+                E.left(new ImmutableQueue(L.of(Tp.tuple(p, n - m))))
+              )
             }
           )
         )

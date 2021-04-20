@@ -1,8 +1,27 @@
 // tracing: off
 
+import type { HasClock } from "../../Clock"
 import type * as A from "../../Collections/Immutable/Chunk"
 import * as T from "../_internal/effect"
-import { throttleShapeM } from "./throttleShapeM"
+import type { Stream } from "./definitions"
+import { throttleShapeM_ } from "./throttleShapeM"
+
+/**
+ * Delays the chunks of this stream according to the given bandwidth parameters using the token bucket
+ * algorithm. Allows for burst in the processing of elements by allowing the token bucket to accumulate
+ * tokens up to a `units + burst` threshold. The weight of each chunk is determined by the `costFn`
+ * function.
+ *
+ * @dataFirst throttleShape_
+ */
+export function throttleShape<O>(
+  costFn: (c: A.Chunk<O>) => number,
+  units: number,
+  duration: number,
+  burst = 0
+): <R, E>(self: Stream<R, E, O>) => Stream<HasClock & R, E, O> {
+  return (self) => throttleShape_(self, costFn, units, duration, burst)
+}
 
 /**
  * Delays the chunks of this stream according to the given bandwidth parameters using the token bucket
@@ -10,7 +29,12 @@ import { throttleShapeM } from "./throttleShapeM"
  * tokens up to a `units + burst` threshold. The weight of each chunk is determined by the `costFn`
  * function.
  */
-export function throttleShape(units: number, duration: number, burst = 0) {
-  return <O>(costFn: (c: A.Chunk<O>) => number) =>
-    throttleShapeM(units, duration, burst)((os: A.Chunk<O>) => T.succeed(costFn(os)))
+export function throttleShape_<R, E, O>(
+  self: Stream<R, E, O>,
+  costFn: (c: A.Chunk<O>) => number,
+  units: number,
+  duration: number,
+  burst = 0
+): Stream<HasClock & R, E, O> {
+  return throttleShapeM_(self, (os) => T.succeed(costFn(os)), units, duration, burst)
 }

@@ -1,3 +1,4 @@
+import * as Tp from "../../Tuple"
 import * as Chunk from "../core"
 
 /**
@@ -6,8 +7,8 @@ import * as Chunk from "../core"
 export function splitAt_<A>(
   self: Chunk.Chunk<A>,
   n: number
-): readonly [Chunk.Chunk<A>, Chunk.Chunk<A>] {
-  return [Chunk.take_(self, n), Chunk.drop_(self, n)]
+): Tp.Tuple<[Chunk.Chunk<A>, Chunk.Chunk<A>]> {
+  return Tp.tuple(Chunk.take_(self, n), Chunk.drop_(self, n))
 }
 
 /**
@@ -17,6 +18,6 @@ export function splitAt_<A>(
  */
 export function splitAt(
   n: number
-): <A>(self: Chunk.Chunk<A>) => readonly [Chunk.Chunk<A>, Chunk.Chunk<A>] {
+): <A>(self: Chunk.Chunk<A>) => Tp.Tuple<[Chunk.Chunk<A>, Chunk.Chunk<A>]> {
   return (self) => splitAt_(self, n)
 }

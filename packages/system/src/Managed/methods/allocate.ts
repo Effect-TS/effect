@@ -1,4 +1,4 @@
-import { tuple } from "../../Function"
+import * as Tp from "../../Collections/Immutable/Tuple"
 import * as T from "../deps"
 import type { Managed } from "../managed"
 import { makeReleaseMap, releaseAll } from "../ReleaseMap"
@@ -19,10 +19,10 @@ export class Allocation<A> {
 export function allocate<R, E, A>(self: Managed<R, E, A>) {
   return T.chain_(makeReleaseMap, (rm) =>
     T.foldCauseM_(
-      T.provideSome_(self.effect, (r: R) => tuple(r, rm)),
+      T.provideSome_(self.effect, (r: R) => Tp.tuple(r, rm)),
       (cause) =>
         T.chain_(releaseAll(T.exitHalt(cause), T.sequential)(rm), () => T.halt(cause)),
-      ([_, a]) =>
+      ({ tuple: [_, a] }) =>
         T.succeed(
           new Allocation(
             a,

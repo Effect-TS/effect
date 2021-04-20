@@ -48,7 +48,7 @@ export function apF<F>(
   return (fa) => (fab) =>
     pipe(
       F.both(fab)(fa),
-      F.map(([a, f]) => f(a))
+      F.map(({ tuple: [a, f] }) => f(a))
     )
 }
 

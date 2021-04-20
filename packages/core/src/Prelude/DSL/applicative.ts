@@ -1,6 +1,7 @@
 // tracing: off
 
-import { pipe, tuple } from "@effect-ts/system/Function"
+import * as Tp from "@effect-ts/system/Collections/Immutable/Tuple"
+import { pipe } from "@effect-ts/system/Function"
 
 import type { Applicative } from "../Applicative"
 import * as HKT from "../HKT"
@@ -21,7 +22,7 @@ export function getApplicativeF<F>(F: Monad<HKT.UHKT2<F>>): Applicative<HKT.UHKT
         chain((a) =>
           pipe(
             fa,
-            F.map((b) => tuple(b, a))
+            F.map((b) => Tp.tuple(b, a))
           )
         )
       )

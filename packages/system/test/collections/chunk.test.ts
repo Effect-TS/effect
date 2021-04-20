@@ -1,9 +1,14 @@
 import * as Chunk from "../../src/Collections/Immutable/Chunk"
+import * as Tp from "../../src/Collections/Immutable/Tuple"
 import * as T from "../../src/Effect"
 import { pipe } from "../../src/Function"
 import * as O from "../../src/Option"
 
 describe("Chunk", () => {
+  it("spread", () => {
+    const f = (...args: number[]) => args
+    expect(f(...Chunk.many(0, 1, 2))).toEqual([0, 1, 2])
+  })
   it("append", () => {
     expect(
       pipe(
@@ -377,12 +382,9 @@ describe("Chunk", () => {
         Chunk.append(4),
         Chunk.append(5),
         Chunk.splitWhere((n) => n === 3),
-        ([l, r]) => [Chunk.toArray(l), Chunk.toArray(r)] as const
+        ({ tuple: [l, r] }) => Tp.tuple(Chunk.toArray(l), Chunk.toArray(r))
       )
-    ).toEqual([
-      [0, 1, 2],
-      [3, 4, 5]
-    ])
+    ).toEqual(Tp.tuple([0, 1, 2], [3, 4, 5]))
   })
   it("zip", () => {
     const left = pipe(
@@ -399,16 +401,16 @@ describe("Chunk", () => {
       Chunk.append(4)
     )
     expect(pipe(left, Chunk.zip(right), Chunk.toArray)).toEqual([
-      [0, 0],
-      [1, 1],
-      [2, 2],
-      [3, 3]
+      Tp.tuple(0, 0),
+      Tp.tuple(1, 1),
+      Tp.tuple(2, 2),
+      Tp.tuple(3, 3)
     ])
     expect(pipe(right, Chunk.zip(left), Chunk.toArray)).toEqual([
-      [0, 0],
-      [1, 1],
-      [2, 2],
-      [3, 3]
+      Tp.tuple(0, 0),
+      Tp.tuple(1, 1),
+      Tp.tuple(2, 2),
+      Tp.tuple(3, 3)
     ])
   })
   it("zipAll", () => {
@@ -426,18 +428,18 @@ describe("Chunk", () => {
       Chunk.append(4)
     )
     expect(pipe(left, Chunk.zipAll(right), Chunk.toArray)).toEqual([
-      [O.some(0), O.some(0)],
-      [O.some(1), O.some(1)],
-      [O.some(2), O.some(2)],
-      [O.some(3), O.some(3)],
-      [O.none, O.some(4)]
+      Tp.tuple(O.some(0), O.some(0)),
+      Tp.tuple(O.some(1), O.some(1)),
+      Tp.tuple(O.some(2), O.some(2)),
+      Tp.tuple(O.some(3), O.some(3)),
+      Tp.tuple(O.none, O.some(4))
     ])
     expect(pipe(right, Chunk.zipAll(left), Chunk.toArray)).toEqual([
-      [O.some(0), O.some(0)],
-      [O.some(1), O.some(1)],
-      [O.some(2), O.some(2)],
-      [O.some(3), O.some(3)],
-      [O.some(4), O.none]
+      Tp.tuple(O.some(0), O.some(0)),
+      Tp.tuple(O.some(1), O.some(1)),
+      Tp.tuple(O.some(2), O.some(2)),
+      Tp.tuple(O.some(3), O.some(3)),
+      Tp.tuple(O.some(4), O.none)
     ])
   })
   it("zipWithIndex", () => {
@@ -447,15 +449,9 @@ describe("Chunk", () => {
         Chunk.append(2),
         Chunk.append(3),
         Chunk.append(4),
-        Chunk.zipWithIndex,
-        Chunk.toArray
+        Chunk.zipWithIndex
       )
-    ).toEqual([
-      [1, 0],
-      [2, 1],
-      [3, 2],
-      [4, 3]
-    ])
+    ).equals(Chunk.many(Tp.tuple(1, 0), Tp.tuple(2, 1), Tp.tuple(3, 2), Tp.tuple(4, 3)))
   })
   it("fill", () => {
     expect(Chunk.fill(10, (n) => n + 1)).equals(

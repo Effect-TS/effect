@@ -10,6 +10,7 @@ import * as R from "../../Collections/Immutable/Dictionary"
 import type { HashSet } from "../../Collections/Immutable/HashSet"
 import * as HS from "../../Collections/Immutable/HashSet"
 import * as NA from "../../Collections/Immutable/NonEmptyArray"
+import * as Tp from "../../Collections/Immutable/Tuple"
 import type { Effect } from "../../Effect"
 import * as T from "../../Effect"
 import { ITracer } from "../../Effect/primitives"
@@ -17,7 +18,7 @@ import * as E from "../../Either"
 import * as Ex from "../../Exit"
 import type { FiberID } from "../../Fiber"
 import * as F from "../../Fiber"
-import { constVoid, identity, pipe, tuple } from "../../Function"
+import { constVoid, identity, pipe } from "../../Function"
 import { NoSuchElementException } from "../../GlobalExceptions"
 import type { Has, Tag } from "../../Has"
 import { mergeEnvironments } from "../../Has"
@@ -143,8 +144,8 @@ export function memoize<R, E, A>(
             T.accessM((r: R) =>
               pipe(
                 self.effect,
-                T.provideAll(tuple(r, finalizers)),
-                T.map(([_, a]) => a),
+                T.provideAll(Tp.tuple(r, finalizers)),
+                T.map((_) => _.get(1)),
                 T.to(promise)
               )
             )
@@ -930,7 +931,7 @@ export function preallocate<R, E, A>(
       T.bind("tp", ({ releaseMap }) =>
         T.result(
           restore(
-            T.provideSome_(self.effect, (r: R) => tuple(r, releaseMap)),
+            T.provideSome_(self.effect, (r: R) => Tp.tuple(r, releaseMap)),
             __trace
           )
         )
@@ -944,11 +945,12 @@ export function preallocate<R, E, A>(
               releaseAll.releaseAll(Ex.fail(c), T.sequential),
               T.zipRight(T.halt(c))
             ),
-          ([release, a]) =>
+          ({ tuple: [release, a] }) =>
             T.succeed(
               new Managed(
-                T.accessM(([_, releaseMap]: readonly [unknown, RM.ReleaseMap]) =>
-                  T.map_(add.add(release)(releaseMap), (_) => tuple(_, a))
+                T.accessM(
+                  ({ tuple: [_, releaseMap] }: Tp.Tuple<[unknown, RM.ReleaseMap]>) =>
+                    T.map_(add.add(release)(releaseMap), (_) => Tp.tuple(_, a))
                 )
               )
             )
@@ -970,12 +972,13 @@ export function preallocateManaged<R, E, A>(
   return new Managed(
     T.map_(
       self.effect,
-      ([release, a]) =>
-        tuple(
+      ({ tuple: [release, a] }) =>
+        Tp.tuple(
           release,
           new Managed(
-            T.accessM(([_, releaseMap]: readonly [unknown, RM.ReleaseMap]) =>
-              T.map_(add.add(release)(releaseMap), (_) => tuple(_, a))
+            T.accessM(
+              ({ tuple: [_, releaseMap] }: Tp.Tuple<[unknown, RM.ReleaseMap]>) =>
+                T.map_(add.add(release)(releaseMap), (_) => Tp.tuple(_, a))
             )
           )
         ),
@@ -1179,20 +1182,23 @@ export function retryOrElseEither_<R, E, A, R1, O, R2, E2, A2>(
 ): Managed<R & R1 & R2 & HasClock, E2, E.Either<A2, A>> {
   return new Managed(
     T.map_(
-      T.accessM(([env, releaseMap]: readonly [R & R1 & R2 & HasClock, RM.ReleaseMap]) =>
-        T.provideAll_(
-          T.retryOrElseEither_(
-            T.provideAll_(self.effect, tuple(env, releaseMap)),
-            policy,
-            (e, o) => T.provideAll_(orElse(e, o).effect, tuple(env, releaseMap)),
-            __trace
-          ),
-          env
-        )
+      T.accessM(
+        ({
+          tuple: [env, releaseMap]
+        }: Tp.Tuple<[R & R1 & R2 & HasClock, RM.ReleaseMap]>) =>
+          T.provideAll_(
+            T.retryOrElseEither_(
+              T.provideAll_(self.effect, Tp.tuple(env, releaseMap)),
+              policy,
+              (e, o) => T.provideAll_(orElse(e, o).effect, Tp.tuple(env, releaseMap)),
+              __trace
+            ),
+            env
+          )
       ),
       E.fold(
-        ([f, a]) => tuple<[RM.Finalizer, E.Either<A2, A>]>(f, E.left(a)),
-        ([f, a]) => tuple<[RM.Finalizer, E.Either<A2, A>]>(f, E.right(a))
+        ({ tuple: [f, a] }) => Tp.tuple<[RM.Finalizer, E.Either<A2, A>]>(f, E.left(a)),
+        ({ tuple: [f, a] }) => Tp.tuple<[RM.Finalizer, E.Either<A2, A>]>(f, E.right(a))
       )
     )
   )
@@ -1514,16 +1520,25 @@ export function tapM_<R, E, A, R1, E1, X>(
  */
 export function timed<R, E, A>(
   self: Managed<R, E, A>
-): Managed<R & HasClock, E, readonly [number, A]> {
+): Managed<R & HasClock, E, Tp.Tuple<[number, A]>> {
   return new Managed(
-    T.chain_(T.environment<readonly [R, RM.ReleaseMap]>(), ([r, releaseMap]) =>
-      T.provideSome_(
-        T.map_(
-          T.timed(T.provideAll_(self.effect, [r, releaseMap])),
-          ([duration, [fin, a]]) => tuple(fin, tuple(duration, a))
-        ),
-        (r: readonly [R & HasClock, RM.ReleaseMap]) => r[0]
-      )
+    T.chain_(
+      T.environment<Tp.Tuple<[R, RM.ReleaseMap]>>(),
+      ({ tuple: [r, releaseMap] }) =>
+        T.provideSome_(
+          T.map_(
+            T.timed(T.provideAll_(self.effect, Tp.tuple(r, releaseMap))),
+            ({
+              tuple: [
+                duration,
+                {
+                  tuple: [fin, a]
+                }
+              ]
+            }) => Tp.tuple(fin, Tp.tuple(duration, a))
+          ),
+          (r: Tp.Tuple<[R & HasClock, RM.ReleaseMap]>) => r.get(0)
+        )
     )
   )
 }
@@ -1538,8 +1553,10 @@ export function timeout_<R, E, A>(self: Managed<R, E, A>, d: number) {
   return new Managed(
     T.uninterruptibleMask(({ restore }) =>
       T.gen(function* (_) {
-        const env = yield* _(T.environment<readonly [R & HasClock, RM.ReleaseMap]>())
-        const [r, outerReleaseMap] = env
+        const env = yield* _(T.environment<Tp.Tuple<[R & HasClock, RM.ReleaseMap]>>())
+        const {
+          tuple: [r, outerReleaseMap]
+        } = env
         const innerReleaseMap = yield* _(makeReleaseMap.makeReleaseMap)
         const earlyRelease = yield* _(
           add.add((exit) => releaseAll.releaseAll(exit, T.sequential)(innerReleaseMap))(
@@ -1547,18 +1564,18 @@ export function timeout_<R, E, A>(self: Managed<R, E, A>, d: number) {
           )
         )
         const raceResult: E.Either<
-          F.Fiber<E, readonly [RM.Finalizer, A]>,
+          F.Fiber<E, Tp.Tuple<[RM.Finalizer, A]>>,
           A
         > = yield* _(
           restore(
             T.provideAll_(
               T.raceWith_(
-                T.provideAll_(self.effect, tuple(r, innerReleaseMap)),
+                T.provideAll_(self.effect, Tp.tuple(r, innerReleaseMap)),
                 T.as_(T.sleep(d), O.none),
                 (result, sleeper) =>
                   T.zipRight_(
                     F.interrupt(sleeper),
-                    T.done(Ex.map_(result, (tp) => E.right(tp[1])))
+                    T.done(Ex.map_(result, (tp) => E.right(tp.get(1))))
                   ),
                 (_, resultFiber) => T.succeed(E.left(resultFiber))
               ),
@@ -1588,7 +1605,7 @@ export function timeout_<R, E, A>(self: Managed<R, E, A>, d: number) {
           )
         )
 
-        return tuple(earlyRelease, a)
+        return Tp.tuple(earlyRelease, a)
       })
     )
   )
@@ -2047,10 +2064,10 @@ export function when(b: () => boolean) {
 export function withEarlyReleaseExit_<R, E, A>(
   self: Managed<R, E, A>,
   exit: Ex.Exit<E, A>
-): Managed<R, E, readonly [T.UIO<any>, A]> {
+): Managed<R, E, Tp.Tuple<[T.UIO<any>, A]>> {
   return new Managed(
     T.map_(self.effect, (tp) =>
-      tuple(tp[0], tuple(T.uninterruptible(tp[0](exit)), tp[1]))
+      Tp.tuple(tp.get(0), Tp.tuple(T.uninterruptible(tp.get(0)(exit)), tp.get(1)))
     )
   )
 }
@@ -2078,7 +2095,7 @@ export const fiberId = fromEffect(T.fiberId)
  */
 export function withEarlyRelease<R, E, A>(
   self: Managed<R, E, A>
-): Managed<R, E, readonly [T.UIO<any>, A]> {
+): Managed<R, E, Tp.Tuple<[T.UIO<any>, A]>> {
   return core.chain_(fiberId, (id) => withEarlyReleaseExit_(self, Ex.interrupt(id)))
 }
 
@@ -2199,7 +2216,7 @@ export function zipPar<R2, E2, A2>(b: Managed<R2, E2, A2>) {
  *   to prevent double-finalization.
  */
 export function create<R, E, A>(
-  effect: T.Effect<readonly [R, RM.ReleaseMap], E, readonly [RM.Finalizer, A]>
+  effect: T.Effect<Tp.Tuple<[R, RM.ReleaseMap]>, E, Tp.Tuple<[RM.Finalizer, A]>>
 ) {
   return new Managed(effect)
 }
@@ -2240,14 +2257,14 @@ export function forEachUnitPar_<R, E, A, B>(
     core.makeManagedReleaseMap(T.parallel, __trace),
     (parallelReleaseMap) => {
       const makeInnerMap = T.provideSome_(
-        T.map_(core.makeManagedReleaseMap(T.sequential).effect, ([_, e]) => e),
-        (r) => tuple(r, parallelReleaseMap)
+        T.map_(core.makeManagedReleaseMap(T.sequential).effect, (_) => _.get(1)),
+        (r) => Tp.tuple(r, parallelReleaseMap)
       )
       return T.forEachUnitPar_(as, (a) =>
         T.chain_(makeInnerMap, (innerMap) =>
           T.provideSome_(
-            T.map_(f(a).effect, ([_, a]) => a),
-            (r: R) => tuple(r, innerMap)
+            T.map_(f(a).effect, (_) => _.get(1)),
+            (r: R) => Tp.tuple(r, innerMap)
           )
         )
       )
@@ -2286,15 +2303,15 @@ export function forEachUnitParN_<R, E, A, B>(
     core.makeManagedReleaseMap(T.parallel, __trace),
     (parallelReleaseMap) => {
       const makeInnerMap = T.provideSome_(
-        T.map_(core.makeManagedReleaseMap(T.sequential).effect, ([_, e]) => e),
-        (r) => tuple(r, parallelReleaseMap)
+        T.map_(core.makeManagedReleaseMap(T.sequential).effect, (_) => _.get(1)),
+        (r) => Tp.tuple(r, parallelReleaseMap)
       )
 
       return T.forEachUnitParN_(as, n, (a) =>
         T.chain_(makeInnerMap, (innerMap) =>
           T.provideSome_(
-            T.map_(f(a).effect, ([_, a]) => a),
-            (r: R) => tuple(r, innerMap)
+            T.map_(f(a).effect, (_) => _.get(1)),
+            (r: R) => Tp.tuple(r, innerMap)
           )
         )
       )
@@ -2728,10 +2745,10 @@ export function reduceAllPar_<R, E, A>(
   return core.mapM_(core.makeManagedReleaseMap(T.parallel), (parallelReleaseMap) =>
     T.provideSome_(
       T.reduceAllPar_(
-        NA.map_(as, (_) => T.map_(_.effect, ([_, a]) => a)),
+        NA.map_(as, (_) => T.map_(_.effect, (_) => _.get(1))),
         f
       ),
-      (r: R) => tuple(r, parallelReleaseMap)
+      (r: R) => Tp.tuple(r, parallelReleaseMap)
     )
   )
 }
@@ -2756,11 +2773,11 @@ export function reduceAllParN_<R, E, A>(
   return core.mapM_(core.makeManagedReleaseMap(T.parallel), (parallelReleaseMap) =>
     T.provideSome_(
       T.reduceAllParN_(
-        NA.map_(as, (_) => T.map_(_.effect, ([_, a]) => a)),
+        NA.map_(as, (_) => T.map_(_.effect, (_) => _.get(1))),
         n,
         f
       ),
-      (r: R) => tuple(r, parallelReleaseMap)
+      (r: R) => Tp.tuple(r, parallelReleaseMap)
     )
   )
 }
@@ -2833,11 +2850,11 @@ export function mergeAllPar_<R, E, A, B>(
   return core.mapM_(core.makeManagedReleaseMap(T.parallel), (parallelReleaseMap) =>
     T.provideSome_(
       T.mergeAllPar_(
-        I.map_(as, (_) => T.map_(_.effect, ([_, a]) => a)),
+        I.map_(as, (_) => T.map_(_.effect, (_) => _.get(1))),
         zero,
         f
       ),
-      (r: R) => tuple(r, parallelReleaseMap)
+      (r: R) => Tp.tuple(r, parallelReleaseMap)
     )
   )
 }
@@ -2878,12 +2895,12 @@ export function mergeAllParN_<R, E, A, B>(
   return core.mapM_(core.makeManagedReleaseMap(T.parallel), (parallelReleaseMap) =>
     T.provideSome_(
       T.mergeAllParN_(
-        I.map_(as, (_) => T.map_(_.effect, ([_, a]) => a)),
+        I.map_(as, (_) => T.map_(_.effect, (_) => _.get(1))),
         n,
         zero,
         f
       ),
-      (r: R) => tuple(r, parallelReleaseMap)
+      (r: R) => Tp.tuple(r, parallelReleaseMap)
     )
   )
 }
@@ -2894,7 +2911,7 @@ export function mergeAllParN_<R, E, A, B>(
  * and returns it with an early-release handle.
  */
 export interface Scope {
-  <R, E, A>(ma: Managed<R, E, A>): T.Effect<R, E, readonly [RM.Finalizer, A]>
+  <R, E, A>(ma: Managed<R, E, A>): T.Effect<R, E, Tp.Tuple<[RM.Finalizer, A]>>
 }
 
 /**
@@ -2904,9 +2921,9 @@ export const scope: Managed<unknown, never, Scope> = core.map_(
   releaseMap,
   (finalizers) => <R, E, A>(
     ma: Managed<R, E, A>
-  ): T.Effect<R, E, readonly [RM.Finalizer, A]> =>
+  ): T.Effect<R, E, Tp.Tuple<[RM.Finalizer, A]>> =>
     T.chain_(T.environment<R>(), (r) =>
-      T.provideAll_(ma.effect, [r, finalizers] as const)
+      T.provideAll_(ma.effect, Tp.tuple(r, finalizers))
     )
 )
 

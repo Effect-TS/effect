@@ -3,6 +3,7 @@
 /* eslint-disable prefer-const */
 import "../Operator"
 
+import * as Tp from "../Collections/Immutable/Tuple"
 import { _A, _U } from "../Effect/commons"
 import { Stack } from "../Stack"
 
@@ -191,7 +192,7 @@ export function zip<B>(that: IO<B>) {
  * results of both into a tuple.
  */
 export function zip_<A, B>(self: IO<A>, that: IO<B>) {
-  return zipWith_(self, that, (a, b) => [a, b] as const)
+  return zipWith_(self, that, Tp.tuple)
 }
 
 /**

@@ -1,5 +1,6 @@
 // tracing: off
 
+import * as Tp from "../Collections/Immutable/Tuple"
 import * as T from "./deps-core"
 import { Managed } from "./managed"
 import * as Finalizer from "./ReleaseMap/finalizer"
@@ -11,8 +12,8 @@ import * as Finalizer from "./ReleaseMap/finalizer"
 export function fromEffect<R, E, A>(effect: T.Effect<R, E, A>, __trace?: string) {
   return new Managed<R, E, A>(
     T.map_(
-      T.provideSome_(effect, ([_]) => _, __trace),
-      (a) => [Finalizer.noopFinalizer, a]
+      T.provideSome_(effect, (_) => _.get(0), __trace),
+      (a) => Tp.tuple(Finalizer.noopFinalizer, a)
     )
   )
 }

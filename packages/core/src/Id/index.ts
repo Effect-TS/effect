@@ -3,6 +3,8 @@
 /* adapted from https://github.com/gcanti/fp-ts */
 import "../Operator"
 
+import * as Tp from "@effect-ts/system/Collections/Immutable/Tuple"
+
 import type { Equal } from "../Equal"
 import type { Identity } from "../Identity"
 import type { IdURI } from "../Modules"
@@ -164,7 +166,7 @@ export const Covariant = P.instance<P.Covariant<[URI<IdURI>]>>({
 })
 
 export const AssociativeBoth = P.instance<P.AssociativeBoth<[URI<IdURI>]>>({
-  both: (b) => (a) => [a, b]
+  both: (b) => (a) => Tp.tuple(a, b)
 })
 
 export const AssociativeFlatten = P.instance<P.AssociativeFlatten<[URI<IdURI>]>>({

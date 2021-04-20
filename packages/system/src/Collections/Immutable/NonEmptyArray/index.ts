@@ -10,6 +10,7 @@ import type { Predicate, Refinement } from "../../../Function"
 import type { Option } from "../../../Option"
 import { none, some } from "../../../Option"
 import * as A from "../Array"
+import type * as Tp from "../Tuple"
 
 export type NonEmptyArray<A> = A.Array<A> & {
   readonly 0: A
@@ -260,7 +261,7 @@ export const zipWith: <A, B, C>(
 export const zip_: <A, B>(
   fa: NonEmptyArray<A>,
   fb: NonEmptyArray<B>
-) => NonEmptyArray<readonly [A, B]> = A.zip_ as any
+) => NonEmptyArray<Tp.Tuple<[A, B]>> = A.zip_ as any
 
 /**
  * Takes two arrays and returns an array of corresponding pairs.
@@ -268,15 +269,15 @@ export const zip_: <A, B>(
  */
 export const zip: <B>(
   fb: NonEmptyArray<B>
-) => <A>(fa: NonEmptyArray<A>) => NonEmptyArray<readonly [A, B]> = A.zip as any
+) => <A>(fa: NonEmptyArray<A>) => NonEmptyArray<Tp.Tuple<[A, B]>> = A.zip as any
 
 /**
  * The function is reverse of zip. Takes an array of pairs
  * and return two corresponding arrays
  */
 export const unzip: <A, B>(
-  as: NonEmptyArray<readonly [A, B]>
-) => readonly [NonEmptyArray<A>, NonEmptyArray<B>] = A.unzip as any
+  as: NonEmptyArray<Tp.Tuple<[A, B]>>
+) => Tp.Tuple<[NonEmptyArray<A>, NonEmptyArray<B>]> = A.unzip as any
 
 /**
  * Classic Applicative's ap

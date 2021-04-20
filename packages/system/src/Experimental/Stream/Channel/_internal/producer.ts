@@ -3,6 +3,7 @@
 import "../../../../Operator"
 
 import * as Cause from "../../../../Cause"
+import * as Tp from "../../../../Collections/Immutable/Tuple"
 import * as T from "../../../../Effect"
 import * as E from "../../../../Either"
 import * as Exit from "../../../../Exit"
@@ -93,22 +94,22 @@ export class SingleProducerAsyncInput<Err, Elem, Done>
         Ref.modify_(this.ref, (state) => {
           switch (state._typeId) {
             case EmitTypeId: {
-              return [
+              return Tp.tuple(
                 T.chain_(P.await(state.notifyProducer), () => this.emit(el)),
                 state
-              ] as const
+              )
             }
             case ErrorTypeId: {
-              return [T.interrupt, state] as const
+              return Tp.tuple(T.interrupt, state)
             }
             case DoneTypeId: {
-              return [T.interrupt, state] as const
+              return Tp.tuple(T.interrupt, state)
             }
             case EmptyTypeId: {
-              return [
+              return Tp.tuple(
                 T.chain_(P.succeed_(state.notifyConsumer, void 0), () => P.await(p)),
                 new StateEmit(el, p)
-              ] as const
+              )
             }
           }
         })
@@ -122,22 +123,22 @@ export class SingleProducerAsyncInput<Err, Elem, Done>
         Ref.modify_(this.ref, (state) => {
           switch (state._typeId) {
             case EmitTypeId: {
-              return [
+              return Tp.tuple(
                 T.chain_(P.await(state.notifyProducer), () => this.done(a)),
                 state
-              ] as const
+              )
             }
             case ErrorTypeId: {
-              return [T.interrupt, state] as const
+              return Tp.tuple(T.interrupt, state)
             }
             case DoneTypeId: {
-              return [T.interrupt, state] as const
+              return Tp.tuple(T.interrupt, state)
             }
             case EmptyTypeId: {
-              return [
+              return Tp.tuple(
                 P.succeed_(state.notifyConsumer, void 0),
                 new StateDone(a)
-              ] as const
+              )
             }
           }
         })
@@ -151,22 +152,22 @@ export class SingleProducerAsyncInput<Err, Elem, Done>
         Ref.modify_(this.ref, (state) => {
           switch (state._typeId) {
             case EmitTypeId: {
-              return [
+              return Tp.tuple(
                 T.chain_(P.await(state.notifyProducer), () => this.error(cause)),
                 state
-              ] as const
+              )
             }
             case ErrorTypeId: {
-              return [T.interrupt, state] as const
+              return Tp.tuple(T.interrupt, state)
             }
             case DoneTypeId: {
-              return [T.interrupt, state] as const
+              return Tp.tuple(T.interrupt, state)
             }
             case EmptyTypeId: {
-              return [
+              return Tp.tuple(
                 P.succeed_(state.notifyConsumer, void 0),
                 new StateError(cause)
-              ] as const
+              )
             }
           }
         })
@@ -184,26 +185,26 @@ export class SingleProducerAsyncInput<Err, Elem, Done>
         Ref.modify_(this.ref, (state) => {
           switch (state._typeId) {
             case EmitTypeId: {
-              return [
+              return Tp.tuple(
                 T.map_(P.succeed_(state.notifyProducer, void 0), () =>
                   onElement(state.a)
                 ),
                 new StateEmpty(p)
-              ] as const
+              )
             }
             case ErrorTypeId: {
-              return [T.succeed(onError(state.cause)), state] as const
+              return Tp.tuple(T.succeed(onError(state.cause)), state)
             }
             case DoneTypeId: {
-              return [T.succeed(onDone(state.a)), state] as const
+              return Tp.tuple(T.succeed(onDone(state.a)), state)
             }
             case EmptyTypeId: {
-              return [
+              return Tp.tuple(
                 T.chain_(P.await(state.notifyConsumer), () =>
                   this.takeWith(onError, onElement, onDone)
                 ),
                 state
-              ] as const
+              )
             }
           }
         })

@@ -1,5 +1,6 @@
 // tracing: off
 
+import * as Tp from "../../Collections/Immutable/Tuple"
 import type { Stream } from "./definitions"
 import { zipWith_ } from "./zipWith"
 
@@ -11,8 +12,8 @@ import { zipWith_ } from "./zipWith"
 export function zip_<R, R1, E, E1, O, O2>(
   self: Stream<R, E, O>,
   that: Stream<R1, E1, O2>
-): Stream<R & R1, E | E1, readonly [O, O2]> {
-  return zipWith_(self, that, (a, b) => [a, b] as const)
+): Stream<R & R1, E | E1, Tp.Tuple<[O, O2]>> {
+  return zipWith_(self, that, Tp.tuple)
 }
 
 /**

@@ -1,6 +1,8 @@
 // tracing: off
 
-import { identity, tuple } from "../Function"
+import * as Tp from "@effect-ts/system/Collections/Immutable/Tuple"
+
+import { identity } from "../Function"
 import type { Reader } from "./definition"
 
 /**
@@ -30,9 +32,9 @@ export const provideSome: <Q, R>(
  */
 export const zip: <R1, B>(
   fb: Reader<R1, B>
-) => <R, A>(fa: Reader<R, A>) => Reader<R & R1, readonly [A, B]> = (fb) => (fa) => (
+) => <R, A>(fa: Reader<R, A>) => Reader<R & R1, Tp.Tuple<[A, B]>> = (fb) => (fa) => (
   r
-) => tuple(fa(r), fb(r))
+) => Tp.tuple(fa(r), fb(r))
 
 /**
  * Extends this computation with another computation that depends on the

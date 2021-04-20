@@ -2,6 +2,7 @@
 
 import "../../Operator"
 
+import * as Tp from "../../Collections/Immutable/Tuple"
 import { constVoid, pipe } from "../../Function"
 import type { Option } from "../../Option"
 import { none, some } from "../../Option"
@@ -49,18 +50,18 @@ export function offer_<A>(h: Handoff<A>, a: A): T.UIO<void> {
         R.modify<T.UIO<void>, State<A>>(
           matchTag({
             Empty: ({ notifyConsumer }) =>
-              [
+              Tp.tuple(
                 pipe(notifyConsumer, P.succeed(constVoid()), T.zipRight(P.await(p))),
                 new Full(a, p)
-              ] as const,
+              ),
             Full: (s) =>
-              [
+              Tp.tuple(
                 pipe(
                   P.await(s.notifyProducer),
                   T.chain(() => offer_(h, a))
                 ),
                 s
-              ] as const
+              )
           })
         ),
         T.flatten
@@ -82,19 +83,19 @@ export function take<A>(h: Handoff<A>): T.UIO<A> {
         R.modify<T.UIO<A>, State<A>>(
           matchTag({
             Empty: (s) =>
-              [
+              Tp.tuple(
                 pipe(
                   s.notifyConsumer,
                   P.await,
                   T.chain(() => take(h))
                 ),
                 s
-              ] as const,
+              ),
             Full: ({ a, notifyProducer }) =>
-              [
+              Tp.tuple(
                 pipe(notifyProducer, P.succeed(constVoid()), T.as(a)),
                 new Empty(p)
-              ] as const
+              )
           })
         ),
         T.flatten
@@ -111,12 +112,12 @@ export function poll<A>(h: Handoff<A>): T.UIO<Option<A>> {
         h.ref,
         R.modify<T.UIO<Option<A>>, State<A>>(
           matchTag({
-            Empty: (s) => [T.succeed(none), s] as const,
+            Empty: (s) => Tp.tuple(T.succeed(none), s),
             Full: ({ a, notifyProducer }) =>
-              [
+              Tp.tuple(
                 pipe(notifyProducer, P.succeed(constVoid()), T.as(some(a))),
                 new Empty(p)
-              ] as const
+              )
           })
         ),
         T.flatten

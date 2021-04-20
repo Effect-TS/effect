@@ -14,6 +14,7 @@ import type { MutableArray, MutableRecord } from "../../../Support/Mutable"
 import type { Separated } from "../../../Utils"
 import type { Dictionary } from "../Dictionary"
 import type { NonEmptyArray } from "../NonEmptyArray"
+import * as Tp from "../Tuple"
 
 export type Array<A> = ReadonlyArray<A>
 
@@ -84,7 +85,7 @@ export function tap_<A, B>(ma: Array<A>, f: (a: A) => Array<B>): Array<A> {
  * value and the rest of the array.
  */
 export function chop<A, B>(
-  f: (as: NonEmptyArray<A>) => readonly [B, Array<A>]
+  f: (as: NonEmptyArray<A>) => Tp.Tuple<[B, Array<A>]>
 ): (as: Array<A>) => Array<B> {
   return (as) => chop_(as, f)
 }
@@ -96,12 +97,14 @@ export function chop<A, B>(
  */
 export function chop_<A, B>(
   as: Array<A>,
-  f: (as: NonEmptyArray<A>) => readonly [B, Array<A>]
+  f: (as: NonEmptyArray<A>) => Tp.Tuple<[B, Array<A>]>
 ): Array<B> {
   const result: MutableArray<B> = []
   let cs: Array<A> = as
   while (isNonEmpty(cs)) {
-    const [b, c] = f(cs)
+    const {
+      tuple: [b, c]
+    } = f(cs)
     result.push(b)
     cs = c
   }
@@ -1262,15 +1265,17 @@ export interface Spanned<I, R> {
  * assert.deepStrictEqual(splitAt(2)([1, 2, 3, 4, 5]), [[1, 2], [3, 4, 5]])
  * ```
  */
-export function splitAt(n: number): <A>(as: Array<A>) => readonly [Array<A>, Array<A>] {
-  return (as) => [as.slice(0, n), as.slice(n)]
+export function splitAt(
+  n: number
+): <A>(as: Array<A>) => Tp.Tuple<[Array<A>, Array<A>]> {
+  return (as) => Tp.tuple(as.slice(0, n), as.slice(n))
 }
 
 /**
  * Splits an array into two pieces, the first piece has `n` elements.
  */
-export function splitAt_<A>(as: Array<A>, n: number): readonly [Array<A>, Array<A>] {
-  return [as.slice(0, n), as.slice(n)]
+export function splitAt_<A>(as: Array<A>, n: number): Tp.Tuple<[Array<A>, Array<A>]> {
+  return Tp.tuple(as.slice(0, n), as.slice(n))
 }
 
 /**
@@ -1404,14 +1409,14 @@ export function toMutable<A>(ras: Array<A>): MutableArray<A> {
 /**
  * Construct A by unfolding B signaling end with an option
  */
-export function unfold_<A, B>(b: B, f: (b: B) => Option<readonly [A, B]>): Array<A> {
+export function unfold_<A, B>(b: B, f: (b: B) => Option<Tp.Tuple<[A, B]>>): Array<A> {
   const ret: MutableArray<A> = []
   let bb: B = b
   // eslint-disable-next-line no-constant-condition
   while (true) {
     const mt = f(bb)
     if (isSome(mt)) {
-      const [a, b] = mt.value
+      const [a, b] = mt.value.tuple
       ret.push(a)
       bb = b
     } else {
@@ -1424,7 +1429,7 @@ export function unfold_<A, B>(b: B, f: (b: B) => Option<readonly [A, B]>): Array
 /**
  * Construct A by unfolding B signaling end with an option
  */
-export function unfold<A, B>(f: (b: B) => Option<readonly [A, B]>) {
+export function unfold<A, B>(f: (b: B) => Option<Tp.Tuple<[A, B]>>) {
   return (b: B) => unfold_(b, f)
 }
 
@@ -1487,14 +1492,16 @@ export function unsafeUpdateAt<A>(i: number, a: A): (as: Array<A>) => Array<A> {
  * assert.deepStrictEqual(unzip([[1, 'a'], [2, 'b'], [3, 'c']]), [[1, 2, 3], ['a', 'b', 'c']])
  * ```
  */
-export function unzip<A, B>(as: Array<readonly [A, B]>): readonly [Array<A>, Array<B>] {
+export function unzip<A, B>(
+  as: Array<Tp.Tuple<[A, B]>>
+): Tp.Tuple<[Array<A>, Array<B>]> {
   const fa: MutableArray<A> = []
   const fb: MutableArray<B> = []
   for (let i = 0; i < as.length; i++) {
-    fa[i] = as[i]![0]!
-    fb[i] = as[i]![1]!
+    fa[i] = as[i]!.get(0)!
+    fb[i] = as[i]!.get(1)!
   }
-  return [fa, fb]
+  return Tp.tuple(fa, fb)
 }
 
 /**
@@ -1524,16 +1531,16 @@ export function updateAt_<A>(as: Array<A>, i: number, a: A): Option<Array<A>> {
  * assert.deepStrictEqual(zip([1, 2, 3], ['a', 'b', 'c', 'd']), [[1, 'a'], [2, 'b'], [3, 'c']])
  * ```
  */
-export function zip<B>(fb: Array<B>): <A>(fa: Array<A>) => Array<readonly [A, B]> {
-  return zipWith(fb, (a, b) => [a, b])
+export function zip<B>(fb: Array<B>): <A>(fa: Array<A>) => Array<Tp.Tuple<[A, B]>> {
+  return zipWith(fb, Tp.tuple)
 }
 
 /**
  * Takes two arrays and returns an array of corresponding pairs. If one input array is short, excess elements of the
  * longer array are discarded
  */
-export function zip_<A, B>(fa: Array<A>, fb: Array<B>): Array<readonly [A, B]> {
-  return zipWith_(fa, fb, (a, b) => [a, b])
+export function zip_<A, B>(fa: Array<A>, fb: Array<B>): Array<Tp.Tuple<[A, B]>> {
+  return zipWith_(fa, fb, Tp.tuple)
 }
 
 /**

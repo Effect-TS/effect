@@ -1,3 +1,5 @@
+import * as Tp from "@effect-ts/system/Collections/Immutable/Tuple"
+
 import * as T from "../../src/Effect"
 import * as Ref from "../../src/Effect/Ref"
 import { pipe } from "../../src/Function"
@@ -23,7 +25,7 @@ const program = T.gen(function* (_) {
     yield* _(
       pipe(
         ref,
-        Ref.modify((n) => [n, n + 1]),
+        Ref.modify((n) => Tp.tuple(n, n + 1)),
         T.delay(100),
         T.chain(logN)
       )

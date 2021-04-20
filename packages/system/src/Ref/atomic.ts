@@ -1,5 +1,6 @@
 // tracing: off
 
+import type * as Tp from "../Collections/Immutable/Tuple"
 import { succeedWith } from "../Effect/core"
 import type { UIO } from "../Effect/effect"
 import type * as O from "../Option"
@@ -32,27 +33,27 @@ export function getAndUpdateSome<A>(self: Atomic<A>, f: (a: A) => O.Option<A>): 
   })
 }
 
-export function modify<A, B>(self: Atomic<A>, f: (a: A) => readonly [B, A]): UIO<B> {
+export function modify<A, B>(self: Atomic<A>, f: (a: A) => Tp.Tuple<[B, A]>): UIO<B> {
   return succeedWith(() => {
     const v = self.value.get
     const o = f(v)
-    self.value.set(o[1])
-    return o[0]
+    self.value.set(o.get(1))
+    return o.get(0)
   })
 }
 
 export function modifySome<A, B>(
   self: Atomic<A>,
   def: B,
-  f: (a: A) => O.Option<readonly [B, A]>
+  f: (a: A) => O.Option<Tp.Tuple<[B, A]>>
 ) {
   return succeedWith(() => {
     const v = self.value.get
     const o = f(v)
 
     if (o._tag === "Some") {
-      self.value.set(o.value[1])
-      return o.value[0]
+      self.value.set(o.value.get(1))
+      return o.value.get(0)
     }
 
     return def

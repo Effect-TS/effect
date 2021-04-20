@@ -1,5 +1,6 @@
 // tracing: off
 
+import type * as Tp from "../../Collections/Immutable/Tuple"
 import * as E from "../../Either"
 import * as T from "../_internal/effect"
 import type * as M from "../_internal/managed"
@@ -15,7 +16,7 @@ export function partition_<R, E, O>(
   self: Stream<R, E, O>,
   p: (o: O) => boolean,
   buffer = 16
-): M.Managed<R, never, readonly [Stream<unknown, E, O>, Stream<unknown, E, O>]> {
+): M.Managed<R, never, Tp.Tuple<[Stream<unknown, E, O>, Stream<unknown, E, O>]>> {
   return partitionEither_(
     self,
     (a) => (p(a) ? T.succeed(E.left(a)) : T.succeed(E.right(a))),

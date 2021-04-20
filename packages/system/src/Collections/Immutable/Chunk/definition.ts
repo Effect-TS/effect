@@ -847,7 +847,6 @@ export class PrependN<A> extends ChunkInternal<A> {
 
   prepend<A1>(a1: A1): ChunkInternal<A | A1> {
     const binary = this.binary && isByte(a1)
-
     if (
       this.bufferUsed < this.buffer.length &&
       this.chain.compareAndSet(this.bufferUsed, this.bufferUsed + 1)
@@ -858,13 +857,7 @@ export class PrependN<A> extends ChunkInternal<A> {
           buffer[i] = this.buffer[i]
         }
         buffer[BufferSize - this.bufferUsed - 1] = a1
-        return new PrependN(
-          this.end,
-          this.buffer,
-          this.bufferUsed + 1,
-          this.chain,
-          this.binary && binary
-        )
+        return new PrependN(this.end, buffer, this.bufferUsed + 1, this.chain, false)
       }
       this.buffer[BufferSize - this.bufferUsed - 1] = a1
       return new PrependN(

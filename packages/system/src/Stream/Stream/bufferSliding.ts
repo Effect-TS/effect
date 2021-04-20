@@ -1,5 +1,6 @@
 // tracing: off
 
+import type * as Tp from "../../Collections/Immutable/Tuple"
 import { pipe } from "../../Function"
 import type * as P from "../../Promise"
 import * as Q from "../../Queue"
@@ -24,7 +25,7 @@ export function bufferSliding_<R, E, O>(
       M.do,
       M.bind("queue", () =>
         T.toManagedRelease_(
-          Q.makeSliding<readonly [Take.Take<E, O>, P.Promise<never, void>]>(capacity),
+          Q.makeSliding<Tp.Tuple<[Take.Take<E, O>, P.Promise<never, void>]>>(capacity),
           Q.shutdown
         )
       ),

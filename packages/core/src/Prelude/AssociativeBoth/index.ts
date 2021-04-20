@@ -1,5 +1,7 @@
 // tracing: off
 
+import type * as Tp from "@effect-ts/system/Collections/Immutable/Tuple"
+
 import type * as HKT from "../HKT"
 
 export interface AssociativeBoth<F extends HKT.URIS, C = HKT.Auto>
@@ -32,6 +34,6 @@ export interface AssociativeBoth<F extends HKT.URIS, C = HKT.Auto>
     HKT.Mix<C, "S", [S2, S]>,
     HKT.Mix<C, "R", [R2, R]>,
     HKT.Mix<C, "E", [E2, E]>,
-    readonly [A, B]
+    Tp.Tuple<[A, B]>
   >
 }

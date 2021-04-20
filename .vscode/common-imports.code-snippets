@@ -133,5 +133,10 @@
     "prefix": "+NT",
     "body": ["import * as NT from \"@effect-ts/core/Newtype\""],
     "description": "Newtype as NT"
+  },
+  "Tuple": {
+    "prefix": "+Tp",
+    "body": ["import * as Tp from \"@effect-ts/system/Collections/Immutable/Tuple\""],
+    "description": "Tuple as Tp"
   }
 }

@@ -89,7 +89,7 @@ export function applicative<F>(
       pipe(
         fa,
         F.both(fab),
-        F.map(([ea, f]) => E.fold_(ea, f, identity))
+        F.map(({ tuple: [ea, f] }) => E.fold_(ea, f, identity))
       )
   })
 }

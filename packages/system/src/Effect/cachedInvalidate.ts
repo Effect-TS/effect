@@ -2,7 +2,8 @@
 
 import type { Clock } from "../Clock"
 import { currentTime } from "../Clock"
-import { pipe, tuple } from "../Function"
+import * as Tp from "../Collections/Immutable/Tuple"
+import { pipe } from "../Function"
 import type { Has } from "../Has"
 import * as O from "../Option"
 import * as P from "../Promise"
@@ -39,16 +40,16 @@ export function cachedInvalidate_<R, E, A>(
   fa: Effect<R, E, A>,
   ttl: number,
   __trace?: string
-): RIO<R & Has<Clock>, readonly [IO<E, A>, UIO<void>]> {
+): RIO<R & Has<Clock>, Tp.Tuple<[IO<E, A>, UIO<void>]>> {
   return pipe(
     Do.do,
     Do.bind("r", () => environment<R & Has<Clock>>()),
     Do.bind("cache", () =>
-      Ref.makeRefM<O.Option<readonly [number, P.Promise<E, A>]>>(O.none)
+      Ref.makeRefM<O.Option<Tp.Tuple<[number, P.Promise<E, A>]>>>(O.none)
     ),
     map.map(
       ({ cache, r }) =>
-        tuple<[IO<E, A>, UIO<void>]>(
+        Tp.tuple<[IO<E, A>, UIO<void>]>(
           core.provideAll(r)(get(fa, ttl, cache)),
           invalidate(cache)
         ),
@@ -58,7 +59,7 @@ export function cachedInvalidate_<R, E, A>(
 }
 
 function invalidate<E, A>(
-  cache: Ref.RefM<O.Option<readonly [number, P.Promise<E, A>]>>
+  cache: Ref.RefM<O.Option<Tp.Tuple<[number, P.Promise<E, A>]>>>
 ) {
   return cache.set(O.none)
 }
@@ -68,14 +69,14 @@ function compute<R, E, A>(fa: Effect<R, E, A>, ttl: number, start: number) {
     Do.do,
     Do.bind("p", () => P.make<E, A>()),
     tap.tap(({ p }) => to.to(p)(fa)),
-    map.map(({ p }) => O.some(tuple(start + ttl, p)))
+    map.map(({ p }) => O.some(Tp.tuple(start + ttl, p)))
   )
 }
 
 function get<R, E, A>(
   fa: Effect<R, E, A>,
   ttl: number,
-  cache: Ref.RefM<O.Option<readonly [number, P.Promise<E, A>]>>
+  cache: Ref.RefM<O.Option<Tp.Tuple<[number, P.Promise<E, A>]>>>
 ) {
   return uninterruptibleMask.uninterruptibleMask(({ restore }) =>
     pipe(
@@ -88,12 +89,13 @@ function get<R, E, A>(
               o,
               O.fold(
                 () => O.some(compute(fa, ttl, time)),
-                ([end]) => (end - time <= 0 ? O.some(compute(fa, ttl, time)) : O.none)
+                ({ tuple: [end] }) =>
+                  end - time <= 0 ? O.some(compute(fa, ttl, time)) : O.none
               )
             )
           ),
           core.chain((a) =>
-            a._tag === "None" ? die.die("bug") : restore(P.await(a.value[1]))
+            a._tag === "None" ? die.die("bug") : restore(P.await(a.value.get(1)))
           )
         )
       )

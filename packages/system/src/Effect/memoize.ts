@@ -1,6 +1,7 @@
 // tracing: off
 
-import { pipe, tuple } from "../Function"
+import * as Tp from "../Collections/Immutable/Tuple"
+import { pipe } from "../Function"
 import * as P from "../Promise"
 import * as RefM from "../RefM"
 import { fork, succeed } from "./core"
@@ -30,14 +31,14 @@ export function memoize<A, R, E, B>(
                 const memo = m.get(a)
 
                 if (memo) {
-                  return succeed(tuple(memo, m))
+                  return succeed(Tp.tuple(memo, m))
                 }
 
                 return pipe(
                   Do.do,
                   Do.bind("promise", () => P.make<E, B>()),
                   tap.tap(({ promise }) => fork(to.to(promise)(f(a)))),
-                  map.map(({ promise }) => tuple(promise, m.set(a, promise)))
+                  map.map(({ promise }) => Tp.tuple(promise, m.set(a, promise)))
                 )
               })
             )
@@ -66,9 +67,9 @@ export function memoizeEq<A>(compare: (r: A) => (l: A) => boolean) {
             pipe(
               ref,
               RefM.modify((m) => {
-                for (const [k, v] of Array.from(m)) {
+                for (const [k, v] of m) {
                   if (compare(k)(a)) {
-                    return succeed(tuple(v, m))
+                    return succeed(Tp.tuple(v, m))
                   }
                 }
 
@@ -76,7 +77,7 @@ export function memoizeEq<A>(compare: (r: A) => (l: A) => boolean) {
                   Do.do,
                   Do.bind("promise", () => P.make<E, B>()),
                   tap.tap(({ promise }) => fork(to.to(promise)(f(a)))),
-                  map.map(({ promise }) => tuple(promise, m.set(a, promise)))
+                  map.map(({ promise }) => Tp.tuple(promise, m.set(a, promise)))
                 )
               })
             )

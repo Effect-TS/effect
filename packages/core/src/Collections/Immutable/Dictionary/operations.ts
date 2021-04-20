@@ -1,6 +1,7 @@
 // tracing: off
 
 import * as R from "@effect-ts/system/Collections/Immutable/Dictionary"
+import * as Tp from "@effect-ts/system/Collections/Immutable/Tuple"
 import * as O from "@effect-ts/system/Option"
 import type { MutableRecord } from "@effect-ts/system/Support/Mutable"
 
@@ -31,8 +32,9 @@ export const forEachWithIndexF = P.implementForEachWithIndexF<[URI<DictionaryURI
     return (f) => (fa) => {
       let base = succeed<R.Dictionary<typeof _.B>>({} as any)
       for (const k of Object.keys(fa)) {
-        base = G.map(([x, b]: readonly [R.Dictionary<typeof _.B>, typeof _.B]) =>
-          Object.assign(x, { [k]: b })
+        base = G.map(
+          ({ tuple: [x, b] }: Tp.Tuple<[R.Dictionary<typeof _.B>, typeof _.B]>) =>
+            Object.assign(x, { [k]: b })
         )(G.both(f(k, fa[k]!))(base))
       }
       return base
@@ -73,8 +75,8 @@ export const separateWithIndexF = P.implementSeparateWithIndexF<[URI<DictionaryU
           f(k, a),
           G.map(
             E.bimap(
-              (b) => tuple(k, b),
-              (a) => tuple(k, a)
+              (b) => Tp.tuple(k, b),
+              (a) => Tp.tuple(k, a)
             )
           )
         )
@@ -101,7 +103,7 @@ export const compactWithIndexF = P.implementCompactWithIndexF<[URI<DictionaryURI
     pipe(
       x,
       R.collect(tuple),
-      A.compactF(G)(([k, a]) => pipe(f(k, a), G.map(O.map((b) => tuple(k, b))))),
+      A.compactF(G)(([k, a]) => pipe(f(k, a), G.map(O.map((b) => Tp.tuple(k, b))))),
       G.map(R.fromArray)
     )
 )
@@ -121,15 +123,15 @@ export function fromFoldableMap_<F extends HKT.URIS, C, B>(
   F: Foldable<F, C>
 ): <K, Q, W, X, I, S, R, E, A>(
   fa: HKT.Kind<F, C, K, Q, W, X, I, S, R, E, A>,
-  f: (a: A) => readonly [string, B]
+  f: (a: A) => Tp.Tuple<[string, B]>
 ) => R.Dictionary<B>
 export function fromFoldableMap_<F, B>(
   M: Closure<B>,
   F: Foldable<HKT.UHKT<F>>
-): <A>(fa: HKT.HKT<F, A>, f: (a: A) => readonly [string, B]) => R.Dictionary<B> {
-  return <A>(fa: HKT.HKT<F, A>, f: (a: A) => readonly [string, B]) => {
+): <A>(fa: HKT.HKT<F, A>, f: (a: A) => Tp.Tuple<[string, B]>) => R.Dictionary<B> {
+  return <A>(fa: HKT.HKT<F, A>, f: (a: A) => Tp.Tuple<[string, B]>) => {
     return F.reduce<A, MutableRecord<string, B>>({}, (r, a) => {
-      const [k, b] = f(a)
+      const [k, b] = f(a).tuple
       r[k] = Object.prototype.hasOwnProperty.call(r, k) ? M.combine(r[k]!, b) : b
       return r
     })(fa)
@@ -143,16 +145,16 @@ export function fromFoldableMap<F extends HKT.URIS, C, B>(
   M: Closure<B>,
   F: Foldable<F, C>
 ): <A>(
-  f: (a: A) => readonly [string, B]
+  f: (a: A) => Tp.Tuple<[string, B]>
 ) => <K, Q, W, X, I, S, R, E>(
   fa: HKT.Kind<F, C, K, Q, W, X, I, S, R, E, A>
 ) => R.Dictionary<B>
 export function fromFoldableMap<F, B>(
   M: Closure<B>,
   F: Foldable<HKT.UHKT<F>>
-): <A>(f: (a: A) => readonly [string, B]) => (fa: HKT.HKT<F, A>) => R.Dictionary<B> {
+): <A>(f: (a: A) => Tp.Tuple<[string, B]>) => (fa: HKT.HKT<F, A>) => R.Dictionary<B> {
   const ff = fromFoldableMap_(M, F)
-  return <A>(f: (a: A) => readonly [string, B]) => (fa: HKT.HKT<F, A>) => ff(fa, f)
+  return <A>(f: (a: A) => Tp.Tuple<[string, B]>) => (fa: HKT.HKT<F, A>) => ff(fa, f)
 }
 
 /**
@@ -162,12 +164,12 @@ export function fromFoldable<F extends HKT.URIS, C, A>(
   M: Closure<A>,
   F: Foldable<F>
 ): <K, Q, W, X, I, S, R, E>(
-  fa: HKT.Kind<F, C, K, Q, W, X, I, S, R, E, readonly [string, A]>
+  fa: HKT.Kind<F, C, K, Q, W, X, I, S, R, E, Tp.Tuple<[string, A]>>
 ) => R.Dictionary<A>
 export function fromFoldable<F, A>(
   M: Closure<A>,
   F: Foldable<HKT.UHKT<F>>
-): (fa: HKT.HKT<F, readonly [string, A]>) => R.Dictionary<A> {
+): (fa: HKT.HKT<F, Tp.Tuple<[string, A]>>) => R.Dictionary<A> {
   const fromFoldableMapM = fromFoldableMap(M, F)
   return fromFoldableMapM(identity)
 }

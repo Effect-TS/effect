@@ -2,6 +2,7 @@
 
 import type { Array } from "@effect-ts/system/Collections/Immutable/Array"
 import * as A from "@effect-ts/system/Collections/Immutable/Array"
+import type * as Tp from "@effect-ts/system/Collections/Immutable/Tuple"
 import type { Predicate } from "@effect-ts/system/Function"
 import { pipe } from "@effect-ts/system/Function"
 import type { MutableArray } from "@effect-ts/system/Support/Mutable"
@@ -20,7 +21,6 @@ import type { Show } from "../../../Show"
 import type { PredicateWithIndex, Separated } from "../../../Utils"
 
 export * from "@effect-ts/system/Collections/Immutable/Array"
-
 /**
  * `ForEachWithIndex`'s `forEachWithIndexF` function
  */
@@ -30,7 +30,7 @@ export const forEachWithIndexF = P.implementForEachWithIndexF<[URI<ArrayURI>]>()
     return (f) => (fa) => {
       let base = succeed([] as typeof _.B[])
       for (let k = 0; k < fa.length; k += 1) {
-        base = G.map(([bs, b]: readonly [typeof _.B[], typeof _.B]) => {
+        base = G.map(({ tuple: [bs, b] }: Tp.Tuple<[typeof _.B[], typeof _.B]>) => {
           bs.push(b)
           return bs
         })(G.both(f(k, fa[k]!))(base))

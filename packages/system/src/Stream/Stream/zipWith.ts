@@ -2,6 +2,7 @@
 
 import * as C from "../../Cause"
 import * as A from "../../Collections/Immutable/Chunk"
+import * as Tp from "../../Collections/Immutable/Tuple"
 import * as E from "../../Either"
 import * as Ex from "../../Exit/api"
 import { pipe, tuple } from "../../Function"
@@ -37,7 +38,7 @@ export function zipWith_<R, R1, E, E1, O, O2, O3>(
     leftUpd: O.Option<A.Chunk<O>>,
     rightUpd: O.Option<A.Chunk<O2>>,
     excess: E.Either<A.Chunk<O>, A.Chunk<O2>>
-  ): Ex.Exit<O.Option<never>, readonly [A.Chunk<O3>, State<O, O2>]> => {
+  ): Ex.Exit<O.Option<never>, Tp.Tuple<[A.Chunk<O3>, State<O, O2>]>> => {
     const [leftExcess, rightExcess] = pipe(
       excess,
       E.fold(
@@ -67,7 +68,7 @@ export function zipWith_<R, R1, E, E1, O, O2, O3>(
 
     if (O.isSome(leftUpd) && O.isSome(rightUpd)) {
       return Ex.succeed(
-        tuple<[A.Chunk<O3>, State<O, O2>]>(emit, {
+        Tp.tuple<[A.Chunk<O3>, State<O, O2>]>(emit, {
           _tag: "Running",
           excess: newExcess
         })
@@ -76,7 +77,7 @@ export function zipWith_<R, R1, E, E1, O, O2, O3>(
       return Ex.fail(O.none)
     } else {
       return Ex.succeed(
-        tuple(
+        Tp.tuple(
           emit,
           pipe(
             newExcess,

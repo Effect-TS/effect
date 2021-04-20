@@ -1,6 +1,7 @@
 // tracing: off
 
 import * as C from "../../Cause"
+import * as Tp from "../../Collections/Immutable/Tuple"
 import * as Ex from "../../Exit"
 import { pipe } from "../../Function"
 import type * as RM from "../../Managed/ReleaseMap"
@@ -69,8 +70,8 @@ export function catchAllCause_<R, E, R1, E2, O, O1>(
                   T.chain(() =>
                     pipe(
                       restore(stream.proc.effect),
-                      T.provideSome((_: R) => [_, releaseMap] as [R, RM.ReleaseMap]),
-                      T.map(([_, __]) => __),
+                      T.provideSome((_: R) => Tp.tuple(_, releaseMap)),
+                      T.map(({ tuple: [_, __] }) => __),
                       T.tap((pull) => ref.set(asState(pull)))
                     )
                   )

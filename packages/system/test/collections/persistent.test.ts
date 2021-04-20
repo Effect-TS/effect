@@ -265,9 +265,9 @@ describe("RedBlackTree", () => {
       RB.insert(3, "e")
     )
 
-    expect(RB.getFirst(tree)).toEqual(O.some([-2, "d"]))
-    expect(RB.getLast(tree)).toEqual(O.some([3, "e"]))
-    expect(RB.getAt_(tree, 1)).toEqual(O.some([-1, "c"]))
+    expect(RB.getFirst(tree)).toEqual(O.some(Tp.tuple(-2, "d")))
+    expect(RB.getLast(tree)).toEqual(O.some(Tp.tuple(3, "e")))
+    expect(RB.getAt_(tree, 1)).toEqual(O.some(Tp.tuple(-1, "c")))
   })
   it("forEachGe", () => {
     const ordered: [number, string][] = []

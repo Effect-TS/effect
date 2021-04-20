@@ -3,6 +3,7 @@
 import * as C from "../../Cause"
 import * as A from "../../Collections/Immutable/Chunk"
 import * as Map from "../../Collections/Immutable/Map"
+import * as Tp from "../../Collections/Immutable/Tuple"
 import * as Ex from "../../Exit"
 import { pipe } from "../../Function"
 import * as O from "../../Option"
@@ -31,6 +32,41 @@ export function distributedWithDynamic<E, O>(
     distributedWithDynamic_(stream, maximumLag, decide, done)
 }
 
+function offer<E, O>(
+  o: O,
+  queuesRef: R.Ref<Map.Map<symbol, Q.Queue<Ex.Exit<O.Option<E>, O>>>>,
+  decide: (o: O) => T.UIO<(_: symbol) => boolean>
+) {
+  return pipe(
+    T.do,
+    T.bind("shouldProcess", () => decide(o)),
+    T.bind("queues", () => queuesRef.get),
+    T.chain(({ queues, shouldProcess }) =>
+      pipe(
+        T.reduce_(queues, A.empty() as A.Chunk<symbol>, (acc, [id, queue]) => {
+          if (shouldProcess(id)) {
+            return pipe(
+              Q.offer_(queue, Ex.succeed(o)),
+              T.foldCauseM(
+                (c) =>
+                  C.interrupted(c)
+                    ? T.succeed(A.concat_(A.single(id), acc))
+                    : T.halt(c),
+                () => T.succeed(acc)
+              )
+            )
+          } else {
+            return T.succeed(acc)
+          }
+        }),
+        T.chain((ids) =>
+          !A.isEmpty(ids) ? R.update_(queuesRef, Map.removeMany(ids)) : T.unit
+        )
+      )
+    )
+  )
+}
+
 /**
  * More powerful version of `distributedWith`. This returns a function that will produce
  * new queues and corresponding indices.
@@ -44,38 +80,7 @@ export function distributedWithDynamic_<R, E, O>(
   maximumLag: number,
   decide: (o: O) => T.UIO<(_: symbol) => boolean>,
   done: (_: Ex.Exit<O.Option<E>, never>) => T.UIO<any> = (_: any) => T.unit
-): M.Managed<R, never, T.UIO<readonly [symbol, Q.Dequeue<Ex.Exit<O.Option<E>, O>>]>> {
-  function offer(queuesRef: R.Ref<Map.Map<symbol, Q.Queue<Ex.Exit<O.Option<E>, O>>>>) {
-    return (o: O) =>
-      pipe(
-        T.do,
-        T.bind("shouldProcess", () => decide(o)),
-        T.bind("queues", () => queuesRef.get),
-        T.chain(({ queues, shouldProcess }) =>
-          pipe(
-            T.reduce_(queues, A.empty() as A.Chunk<symbol>, (acc, [id, queue]) => {
-              if (shouldProcess(id)) {
-                return pipe(
-                  Q.offer_(queue, Ex.succeed(o)),
-                  T.foldCauseM(
-                    (c) =>
-                      C.interrupted(c)
-                        ? T.succeed(A.concat_(A.single(id), acc))
-                        : T.halt(c),
-                    () => T.succeed(acc)
-                  )
-                )
-              } else {
-                return T.succeed(acc)
-              }
-            }),
-            T.chain((ids) =>
-              !A.isEmpty(ids) ? R.update_(queuesRef, Map.removeMany(ids)) : T.unit
-            )
-          )
-        )
-      )
-  }
+): M.Managed<R, never, T.UIO<Tp.Tuple<[symbol, Q.Dequeue<Ex.Exit<O.Option<E>, O>>]>>> {
   return pipe(
     M.do,
     M.bind("queuesRef", () =>
@@ -87,13 +92,13 @@ export function distributedWithDynamic_<R, E, O>(
           )
       )
     ),
-    M.bind("add", ({ queuesRef }) => {
-      return pipe(
+    M.bind("add", ({ queuesRef }) =>
+      pipe(
         M.do,
         M.bind("queuesLock", () => T.toManaged(SM.makeSemaphore(1))),
         M.bind("newQueue", () =>
           pipe(
-            R.makeRef<T.UIO<readonly [symbol, Q.Queue<Ex.Exit<O.Option<E>, O>>]>>(
+            R.makeRef<T.UIO<Tp.Tuple<[symbol, Q.Queue<Ex.Exit<O.Option<E>, O>>]>>>(
               pipe(
                 T.do,
                 T.bind("queue", () =>
@@ -101,14 +106,15 @@ export function distributedWithDynamic_<R, E, O>(
                 ),
                 T.bind("id", () => T.succeedWith(() => Symbol())),
                 T.tap(({ id, queue }) => R.update_(queuesRef, Map.insert(id, queue))),
-                T.map(({ id, queue }) => [id, queue])
+                T.map(({ id, queue }) => Tp.tuple(id, queue))
               )
             ),
             T.toManaged
           )
         ),
-        M.let("finalize", ({ newQueue, queuesLock }) => {
-          return (endTake: Ex.Exit<O.Option<E>, never>) =>
+        M.let(
+          "finalize",
+          ({ newQueue, queuesLock }) => (endTake: Ex.Exit<O.Option<E>, never>) =>
             SM.withPermit(queuesLock)(
               pipe(
                 T.do,
@@ -122,7 +128,7 @@ export function distributedWithDynamic_<R, E, O>(
                       T.tap(({ id, queue }) =>
                         R.update_(queuesRef, Map.insert(id, queue))
                       ),
-                      T.map(({ id, queue }) => [id, queue] as const)
+                      T.map(({ id, queue }) => Tp.tuple(id, queue))
                     )
                   )
                 ),
@@ -141,11 +147,11 @@ export function distributedWithDynamic_<R, E, O>(
                 T.asUnit
               )
             )
-        }),
+        ),
         M.tap(({ finalize }) =>
           pipe(
             self,
-            forEach.forEachManaged(offer(queuesRef)),
+            forEach.forEachManaged((o) => offer(o, queuesRef, decide)),
             M.foldCauseM(
               (cause) => T.toManaged(finalize(Ex.halt(C.map(O.some)(cause)))),
               () => T.toManaged(finalize(Ex.fail(O.none)))
@@ -157,7 +163,7 @@ export function distributedWithDynamic_<R, E, O>(
           SM.withPermit(queuesLock)(T.flatten(newQueue.get))
         )
       )
-    }),
+    ),
     M.map(({ add }) => add)
   )
 }

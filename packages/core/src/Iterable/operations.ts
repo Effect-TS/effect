@@ -18,7 +18,7 @@ export const forEachF = P.implementForEachF<[URI<IterableURI>]>()((_) => (G) => 
     pipe(
       b,
       G.both(f(a)),
-      G.map(([x, y]) => I.concat(x, I.of(y)))
+      G.map(({ tuple: [x, y] }) => I.concat(x, I.of(y)))
     )
   )
 )

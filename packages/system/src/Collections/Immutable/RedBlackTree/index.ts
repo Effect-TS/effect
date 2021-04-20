@@ -10,6 +10,7 @@ import type { Ordering } from "../../../Ordering"
 import { Stack } from "../../../Stack"
 import * as St from "../../../Structural"
 import * as A from "../Array"
+import * as Tp from "../Tuple"
 
 type Color = "Red" | "Black"
 
@@ -794,10 +795,12 @@ export class RedBlackTreeIterator<K, V> implements Iterator<readonly [K, V]> {
    */
   get entry(): O.Option<readonly [K, V]> {
     if (this.stack.length > 0) {
-      return O.some([
-        this.stack[this.stack.length - 1]!.key,
-        this.stack[this.stack.length - 1]!.value
-      ])
+      return O.some(
+        tuple(
+          this.stack[this.stack.length - 1]!.key,
+          this.stack[this.stack.length - 1]!.value
+        )
+      )
     }
     return O.none
   }
@@ -918,27 +921,27 @@ export class RedBlackTreeIterator<K, V> implements Iterator<readonly [K, V]> {
 /**
  * Returns the first entry in the tree
  */
-export function getFirst<K, V>(tree: RedBlackTree<K, V>): O.Option<readonly [K, V]> {
+export function getFirst<K, V>(tree: RedBlackTree<K, V>): O.Option<Tp.Tuple<[K, V]>> {
   let n: Node<K, V> | undefined = tree.root
   let c: Node<K, V> | undefined = tree.root
   while (n) {
     c = n
     n = n.left
   }
-  return c ? O.some(tuple(c.key, c.value)) : O.none
+  return c ? O.some(Tp.tuple(c.key, c.value)) : O.none
 }
 
 /**
  * Returns the last entry in the tree
  */
-export function getLast<K, V>(tree: RedBlackTree<K, V>): O.Option<readonly [K, V]> {
+export function getLast<K, V>(tree: RedBlackTree<K, V>): O.Option<Tp.Tuple<[K, V]>> {
   let n: Node<K, V> | undefined = tree.root
   let c: Node<K, V> | undefined = tree.root
   while (n) {
     c = n
     n = n.right
   }
-  return c ? O.some(tuple(c.key, c.value)) : O.none
+  return c ? O.some(Tp.tuple(c.key, c.value)) : O.none
 }
 
 /**
@@ -997,7 +1000,7 @@ export function at(idx: number) {
 export function getAt_<K, V>(
   tree: RedBlackTree<K, V>,
   idx: number
-): O.Option<readonly [K, V]> {
+): O.Option<Tp.Tuple<[K, V]>> {
   if (idx < 0) {
     return O.none
   }
@@ -1013,7 +1016,7 @@ export function getAt_<K, V>(
       idx -= n.left.count
     }
     if (!idx) {
-      return O.some([node.key, node.value])
+      return O.some(Tp.tuple(node.key, node.value))
     }
     idx -= 1
     if (n.right) {
@@ -1033,7 +1036,7 @@ export function getAt_<K, V>(
  */
 export function getAt(
   idx: number
-): <K, V>(tree: RedBlackTree<K, V>) => O.Option<readonly [K, V]> {
+): <K, V>(tree: RedBlackTree<K, V>) => O.Option<Tp.Tuple<[K, V]>> {
   return (tree) => getAt_(tree, idx)
 }
 

@@ -1,23 +1,26 @@
 // tracing: off
 
-import type * as A from "../../../Collections/Immutable/Array"
+import * as Chunk from "../../../Collections/Immutable/Chunk"
+import * as Tp from "../../../Collections/Immutable/Tuple"
 
-type RecursiveTuples<T> = readonly [T | RecursiveTuples<T>, T]
+type RecursiveTuples<T> = Tp.Tuple<[T | RecursiveTuples<T>, T]>
 
-function isTuple(t: unknown): t is readonly [unknown, unknown] {
-  return Array.isArray(t) && t.length === 2
+function isTuple(t: unknown): t is Tp.Tuple<[unknown, unknown]> {
+  return t instanceof Tp.Tuple && t.tuple.length === 2
 }
 
-export function flattenTuples<T>(tuples: RecursiveTuples<T>): A.Array<T> {
-  const result: T[] = []
-  let [a, b] = tuples
+export function flattenTuples<T>(tuples: RecursiveTuples<T>): Chunk.Chunk<T> {
+  let result = Chunk.empty<T>()
+  let {
+    tuple: [a, b]
+  } = tuples
 
   for (;;) {
     if (isTuple(a)) {
-      result.unshift(b)
-      ;[a, b] = a
+      result = Chunk.prepend_(result, b)
+      ;[a, b] = a.tuple
     } else {
-      result.unshift(a, b)
+      result = Chunk.concat_(Chunk.concat_(Chunk.single(a), Chunk.single(b)), result)
       break
     }
   }

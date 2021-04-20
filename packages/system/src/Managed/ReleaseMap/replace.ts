@@ -1,6 +1,7 @@
 // tracing: off
 
 import { insert, lookup } from "../../Collections/Immutable/Map/core"
+import * as Tp from "../../Collections/Immutable/Tuple"
 import { absurd, pipe } from "../../Function"
 import * as O from "../../Option"
 import * as T from "../deps"
@@ -18,15 +19,15 @@ export function replace(key: number, finalizer: Finalizer) {
       R.modify<T.Effect<unknown, never, O.Option<Finalizer>>, State>((s) => {
         switch (s._tag) {
           case "Exited":
-            return [
+            return Tp.tuple(
               T.map_(finalizer(s.exit), () => O.none),
               new Exited(s.nextKey, s.exit)
-            ]
+            )
           case "Running":
-            return [
+            return Tp.tuple(
               T.succeed(lookup(key)(s.finalizers())),
               new Running(s.nextKey, insert(key, finalizer)(s.finalizers()))
-            ]
+            )
           default:
             return absurd(s)
         }

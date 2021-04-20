@@ -2,9 +2,10 @@
 
 import * as Chunk from "../Collections/Immutable/Chunk"
 import type { NonEmptyArray } from "../Collections/Immutable/NonEmptyArray"
+import * as Tp from "../Collections/Immutable/Tuple"
 import * as Exit from "../Exit"
 import * as Fiber from "../Fiber"
-import { pipe, tuple } from "../Function"
+import { pipe } from "../Function"
 import * as P from "../Promise"
 import * as Ref from "../Ref"
 import * as as from "./as"
@@ -21,7 +22,7 @@ import * as tap from "./tap"
 function arbiter<E, A>(
   fibers: Chunk.Chunk<Fiber.Fiber<E, A>>,
   winner: Fiber.Fiber<E, A>,
-  promise: P.Promise<E, readonly [A, Fiber.Fiber<E, A>]>,
+  promise: P.Promise<E, Tp.Tuple<[A, Fiber.Fiber<E, A>]>>,
   fails: Ref.Ref<number>
 ) {
   return (res: Exit.Exit<E, A>): UIO<void> =>
@@ -33,7 +34,7 @@ function arbiter<E, A>(
             pipe(
               fails,
               Ref.modify((c) =>
-                tuple(
+                Tp.tuple(
                   c === 0 ? pipe(promise, P.halt(e), asUnit.asUnit) : core.unit,
                   c - 1
                 )
@@ -43,7 +44,7 @@ function arbiter<E, A>(
         (a) =>
           pipe(
             promise,
-            P.succeed(tuple(a, winner)),
+            P.succeed(Tp.tuple(a, winner)),
             core.chain((set) =>
               set
                 ? pipe(
@@ -73,7 +74,7 @@ export function raceAllWithStrategy<R, E, A>(
 ): Effect<R, E, A> {
   return pipe(
     Do.do,
-    Do.bind("done", () => P.make<E, readonly [A, Fiber.Fiber<E, A>]>()),
+    Do.bind("done", () => P.make<E, Tp.Tuple<[A, Fiber.Fiber<E, A>]>>()),
     Do.bind("fails", () => Ref.makeRef(ios.length)),
     Do.bind("c", ({ done, fails }) =>
       interruption.uninterruptibleMask(
@@ -93,8 +94,8 @@ export function raceAllWithStrategy<R, E, A>(
                 )
               )
             ),
-            Do.let("inheritRefs", () => (res: readonly [A, Fiber.Fiber<E, A>]) =>
-              pipe(res[1].inheritRefs, as.as(res[0]))
+            Do.let("inheritRefs", () => (res: Tp.Tuple<[A, Fiber.Fiber<E, A>]>) =>
+              pipe(res.get(1).inheritRefs, as.as(res.get(0)))
             ),
             Do.bind("c", ({ fs, inheritRefs }) =>
               pipe(

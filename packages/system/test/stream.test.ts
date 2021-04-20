@@ -1,4 +1,5 @@
 import * as A from "../src/Collections/Immutable/Chunk"
+import * as Tp from "../src/Collections/Immutable/Tuple"
 import * as T from "../src/Effect"
 import * as Exit from "../src/Exit"
 import { flow, identity, pipe, tuple } from "../src/Function"
@@ -107,16 +108,15 @@ describe("Stream", () => {
         R.makeRef(0),
         T.chain(
           flow(
-            R.modify((i): [T.IO<O.Option<never>, A.Chunk<number>>, number] => [
-              i < 5 ? T.succeed(A.single(i)) : T.fail(O.none),
-              i + 1
-            ]),
+            R.modify((i) =>
+              Tp.tuple(i < 5 ? T.succeed(A.single(i)) : T.fail(O.none), i + 1)
+            ),
             T.flatten,
             BufferedPull.make
           )
         ),
         T.zip(T.succeed([] as number[])),
-        T.chain(([bp, res]) =>
+        T.chain(({ tuple: [bp, res] }) =>
           T.catchAll_(
             T.repeatWhile_(
               BufferedPull.ifNotDone(

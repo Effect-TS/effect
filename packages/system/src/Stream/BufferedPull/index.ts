@@ -3,6 +3,7 @@
 import "../../Operator"
 
 import * as A from "../../Collections/Immutable/Chunk"
+import * as Tp from "../../Collections/Immutable/Tuple"
 import { pipe } from "../../Function"
 import * as O from "../../Option"
 import * as T from "../_internal/effect"
@@ -13,7 +14,7 @@ export class BufferedPull<R, E, A> {
   constructor(
     readonly upstream: T.Effect<R, O.Option<E>, A.Chunk<A>>,
     readonly done: R.Ref<boolean>,
-    readonly cursor: R.Ref<[A.Chunk<A>, number]>
+    readonly cursor: R.Ref<Tp.Tuple<[A.Chunk<A>, number]>>
   ) {}
 }
 
@@ -37,7 +38,7 @@ export function update<R, E, A>(self: BufferedPull<R, E, A>) {
         () => T.chain_(self.done.set(true), () => Pull.end),
         (e) => Pull.fail(e)
       ),
-      (a) => self.cursor.set([a, 0])
+      (a) => self.cursor.set(Tp.tuple(a, 0))
     )
   )
 }
@@ -49,13 +50,20 @@ export function pullElement<R, E, A>(
     self,
     pipe(
       self.cursor,
-      R.modify(([c, i]): [T.Effect<R, O.Option<E>, A>, [A.Chunk<A>, number]] => {
-        if (i >= A.size(c)) {
-          return [T.chain_(update(self), () => pullElement(self)), [A.empty(), 0]]
-        } else {
-          return [T.succeed(A.unsafeGet_(c, i)), [c, i + 1]]
+      R.modify(
+        ({
+          tuple: [c, i]
+        }): Tp.Tuple<[T.Effect<R, O.Option<E>, A>, Tp.Tuple<[A.Chunk<A>, number]>]> => {
+          if (i >= A.size(c)) {
+            return Tp.tuple(
+              T.chain_(update(self), () => pullElement(self)),
+              Tp.tuple(A.empty(), 0)
+            )
+          } else {
+            return Tp.tuple(T.succeed(A.unsafeGet_(c, i)), Tp.tuple(c, i + 1))
+          }
         }
-      }),
+      ),
       T.flatten
     )
   )
@@ -68,16 +76,22 @@ export function pullChunk<R, E, A>(
     self,
     pipe(
       self.cursor,
-      R.modify(([chunk, idx]): [
-        T.Effect<R, O.Option<E>, A.Chunk<A>>,
-        [A.Chunk<A>, number]
-      ] => {
-        if (idx >= A.size(chunk)) {
-          return [T.chain_(update(self), () => pullChunk(self)), [A.empty(), 0]]
-        } else {
-          return [T.succeed(A.drop_(chunk, idx)), [A.empty(), 0]]
+      R.modify(
+        ({
+          tuple: [chunk, idx]
+        }): Tp.Tuple<
+          [T.Effect<R, O.Option<E>, A.Chunk<A>>, Tp.Tuple<[A.Chunk<A>, number]>]
+        > => {
+          if (idx >= A.size(chunk)) {
+            return Tp.tuple(
+              T.chain_(update(self), () => pullChunk(self)),
+              Tp.tuple(A.empty(), 0)
+            )
+          } else {
+            return Tp.tuple(T.succeed(A.drop_(chunk, idx)), Tp.tuple(A.empty(), 0))
+          }
         }
-      }),
+      ),
       T.flatten
     )
   )
@@ -87,7 +101,7 @@ export function make<R, E, A>(pull: T.Effect<R, O.Option<E>, A.Chunk<A>>) {
   return pipe(
     T.do,
     T.bind("done", () => R.makeRef(false)),
-    T.bind("cursor", () => R.makeRef<[A.Chunk<A>, number]>([A.empty(), 0])),
+    T.bind("cursor", () => R.makeRef(Tp.tuple<[A.Chunk<A>, number]>(A.empty(), 0))),
     T.map(({ cursor, done }) => new BufferedPull(pull, done, cursor))
   )
 }

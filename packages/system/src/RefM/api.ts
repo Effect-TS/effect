@@ -1,7 +1,8 @@
 // tracing: off
 
+import * as Tp from "../Collections/Immutable/Tuple"
 import * as E from "../Either"
-import { identity, pipe, tuple } from "../Function"
+import { identity, pipe } from "../Function"
 import type * as M from "../Managed/managed"
 import * as O from "../Option"
 import * as Q from "../Queue"
@@ -61,7 +62,7 @@ export function dequeueRef<A>(a: A): T.UIO<[RefM<A>, Q.Dequeue<A>]> {
  */
 export function modify_<RA, RB, EA, EB, R1, E1, B, A>(
   self: XRefM<RA, RB, EA, EB, A, A>,
-  f: (a: A) => T.Effect<R1, E1, readonly [B, A]>
+  f: (a: A) => T.Effect<R1, E1, Tp.Tuple<[B, A]>>
 ): T.Effect<RA & RB & R1, EA | EB | E1, B> {
   return pipe(
     self,
@@ -71,7 +72,7 @@ export function modify_<RA, RB, EA, EB, R1, E1, B, A>(
         pipe(
           atomic.ref.get,
           T.chain(f),
-          T.chain(([b, a]) => pipe(atomic.ref.set(a), T.as(b))),
+          T.chain(({ tuple: [b, a] }) => pipe(atomic.ref.set(a), T.as(b))),
           S.withPermit(atomic.semaphore)
         ),
       DerivedM: (derived) =>
@@ -82,7 +83,7 @@ export function modify_<RA, RB, EA, EB, R1, E1, B, A>(
               pipe(
                 getEither(a),
                 T.chain(f),
-                T.chain(([b, a]) =>
+                T.chain(({ tuple: [b, a] }) =>
                   pipe(
                     setEither(a),
                     T.chain((a) => value.ref.set(a)),
@@ -102,7 +103,7 @@ export function modify_<RA, RB, EA, EB, R1, E1, B, A>(
               pipe(
                 getEither(s),
                 T.chain(f),
-                T.chain(([b, a]) =>
+                T.chain(({ tuple: [b, a] }) =>
                   pipe(
                     setEither(a)(s),
                     T.chain((a) => value.ref.set(a)),
@@ -123,7 +124,7 @@ export function modify_<RA, RB, EA, EB, R1, E1, B, A>(
  * a return value for the modification. This is a more powerful version of
  * `update`.
  */
-export function modify<R1, E1, B, A>(f: (a: A) => T.Effect<R1, E1, readonly [B, A]>) {
+export function modify<R1, E1, B, A>(f: (a: A) => T.Effect<R1, E1, Tp.Tuple<[B, A]>>) {
   return <RA, RB, EA, EB>(
     self: XRefM<RA, RB, EA, EB, A, A>
   ): T.Effect<RA & RB & R1, EA | EB | E1, B> => modify_(self, f)
@@ -134,7 +135,7 @@ export function modify<R1, E1, B, A>(f: (a: A) => T.Effect<R1, E1, readonly [B, 
  * modification.
  */
 export function getAndSet_<RA, RB, EA, EB, A>(self: XRefM<RA, RB, EA, EB, A, A>, a: A) {
-  return modify_(self, (v) => T.succeed([v, a]))
+  return modify_(self, (v) => T.succeed(Tp.tuple(v, a)))
 }
 
 /**
@@ -153,7 +154,7 @@ export function getAndUpdate_<RA, RB, EA, EB, R1, E1, A>(
   self: XRefM<RA, RB, EA, EB, A, A>,
   f: (a: A) => T.Effect<R1, E1, A>
 ) {
-  return modify_(self, (v) => T.map_(f(v), (r) => [v, r]))
+  return modify_(self, (v) => T.map_(f(v), (r) => Tp.tuple(v, r)))
 }
 
 /**
@@ -176,7 +177,7 @@ export function getAndUpdateSome_<RA, RB, EA, EB, R1, E1, A>(
     pipe(
       f(v),
       O.getOrElse(() => T.succeed(v)),
-      T.map((r) => [v, r])
+      T.map((r) => Tp.tuple(v, r))
     )
   )
 }
@@ -201,9 +202,9 @@ export function getAndUpdateSome<R1, E1, A>(
 export function modifySome_<RA, RB, EA, EB, R1, E1, A, B>(
   self: XRefM<RA, RB, EA, EB, A, A>,
   def: B,
-  f: (a: A) => O.Option<T.Effect<R1, E1, readonly [B, A]>>
+  f: (a: A) => O.Option<T.Effect<R1, E1, Tp.Tuple<[B, A]>>>
 ) {
-  return modify_(self, (v) => O.getOrElse_(f(v), () => T.succeed(tuple(def, v))))
+  return modify_(self, (v) => O.getOrElse_(f(v), () => T.succeed(Tp.tuple(def, v))))
 }
 
 /**
@@ -213,7 +214,7 @@ export function modifySome_<RA, RB, EA, EB, R1, E1, A, B>(
  * This is a more powerful version of `updateSome`.
  */
 export function modifySome<B>(def: B) {
-  return <R1, E1, A>(f: (a: A) => O.Option<T.Effect<R1, E1, [B, A]>>) => <
+  return <R1, E1, A>(f: (a: A) => O.Option<T.Effect<R1, E1, Tp.Tuple<[B, A]>>>) => <
     RA,
     RB,
     EA,
@@ -230,7 +231,7 @@ export function update_<RA, RB, EA, EB, R1, E1, A>(
   self: XRefM<RA, RB, EA, EB, A, A>,
   f: (a: A) => T.Effect<R1, E1, A>
 ): T.Effect<RA & RB & R1, E1 | EA | EB, void> {
-  return modify_(self, (v) => T.map_(f(v), (r) => [undefined, r]))
+  return modify_(self, (v) => T.map_(f(v), (r) => Tp.tuple(undefined, r)))
 }
 
 /**
@@ -252,7 +253,7 @@ export function updateAndGet_<RA, RB, EA, EB, R1, E1, A>(
   return modify_(self, (v) =>
     pipe(
       f(v),
-      T.map((r) => [r, r])
+      T.map((r) => Tp.tuple(r, r))
     )
   )
 }
@@ -277,7 +278,7 @@ export function updateSome_<RA, RB, EA, EB, R1, E1, A>(
     pipe(
       f(v),
       O.getOrElse(() => T.succeed(v)),
-      T.map((r) => [undefined, r])
+      T.map((r) => Tp.tuple(undefined, r))
     )
   )
 }
@@ -302,7 +303,7 @@ export function updateSomeAndGet_<RA, RB, EA, EB, R1, E1, A>(
     pipe(
       f(v),
       O.getOrElse(() => T.succeed(v)),
-      T.map((r) => [r, r])
+      T.map((r) => Tp.tuple(r, r))
     )
   )
 }

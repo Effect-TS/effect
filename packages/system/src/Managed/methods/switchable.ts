@@ -1,5 +1,6 @@
 // tracing: off
 
+import * as Tp from "../../Collections/Immutable/Tuple"
 import { sequential } from "../../Effect/ExecutionStrategy"
 import { pipe } from "../../Function"
 import { fold } from "../../Option"
@@ -56,14 +57,14 @@ export function switchable<R, E, A>(
             T.bind("r", () => T.environment<R>()),
             T.bind("inner", () => makeReleaseMap.makeReleaseMap),
             T.bind("a", ({ inner, r }) =>
-              restore(T.provideAll_(newResource.effect, [r, inner]))
+              restore(T.provideAll_(newResource.effect, Tp.tuple(r, inner)))
             ),
             T.tap(({ inner }) =>
               replace.replace(key, (exit) =>
                 releaseAll.releaseAll(exit, sequential)(inner)
               )(releaseMap)
             ),
-            T.map(({ a }) => a[1])
+            T.map(({ a }) => a.get(1))
           )
         ),
       __trace

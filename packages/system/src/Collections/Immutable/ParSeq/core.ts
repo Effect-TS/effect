@@ -3,6 +3,7 @@ import * as E from "../../../Either"
 import { identity } from "../../../Function"
 import * as O from "../../../Option"
 import * as L from "../List/core"
+import * as Tp from "../Tuple"
 import type { ParSeq } from "./primitives"
 import * as P from "./primitives"
 
@@ -209,8 +210,8 @@ export function zipWith<A, B, C>(
  * return the Cartesian product of events, combining the elements into a
  * tuple.
  */
-export function zip_<A, B>(self: ParSeq<A>, that: ParSeq<B>): ParSeq<readonly [A, B]> {
-  return zipWith_(self, that, (a, b) => [a, b])
+export function zip_<A, B>(self: ParSeq<A>, that: ParSeq<B>): ParSeq<Tp.Tuple<[A, B]>> {
+  return zipWith_(self, that, Tp.tuple)
 }
 
 /**
@@ -222,7 +223,7 @@ export function zip_<A, B>(self: ParSeq<A>, that: ParSeq<B>): ParSeq<readonly [A
  */
 export function zip<B>(
   that: ParSeq<B>
-): <A>(self: ParSeq<A>) => ParSeq<readonly [A, B]> {
+): <A>(self: ParSeq<A>) => ParSeq<Tp.Tuple<[A, B]>> {
   return (self) => zip_(self, that)
 }
 

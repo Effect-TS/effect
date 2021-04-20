@@ -1,5 +1,6 @@
 // tracing: off
 
+import * as Tp from "../../Collections/Immutable/Tuple"
 import * as T from "../_internal/effect"
 import type { Stream } from "./definitions"
 import { groupBy_ } from "./groupBy"
@@ -21,7 +22,7 @@ export function groupByKey_<R, E, O, K>(
   f: (o: O) => K,
   buffer = 16
 ) {
-  return groupBy_(self, (a) => T.succeed([f(a), a]), buffer)
+  return groupBy_(self, (a) => T.succeed(Tp.tuple(f(a), a)), buffer)
 }
 
 /**

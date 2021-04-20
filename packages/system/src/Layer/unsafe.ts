@@ -1,6 +1,6 @@
+import * as Tp from "../Collections/Immutable/Tuple"
 import * as Ex from "../Exit"
 import * as F from "../Fiber"
-import { tuple } from "../Function"
 import type { State } from "../Managed/ReleaseMap"
 import { releaseAll, ReleaseMap, Running } from "../Managed/ReleaseMap"
 import * as P from "../Promise"
@@ -31,9 +31,9 @@ export function unsafeMainProvider<R1, E, R>(self: Layer<R1, E, R>) {
     T.map_(
       T.provideSome_(
         L.build(self["+++"](L.identity<T.DefaultEnv>())).effect,
-        (r: R1 & T.DefaultEnv) => tuple(r, relMap)
+        (r: R1 & T.DefaultEnv) => Tp.tuple(r, relMap)
       ),
-      ([, r]) => r
+      (_) => _.get(1)
     )["|>"](
       T.foldCauseM(
         (cause) => P.halt_(promise, cause)["|>"](T.chain(() => T.halt(cause))),

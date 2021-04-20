@@ -14,7 +14,7 @@ export function crossLeft_<R, R1, E, E1, O, O2>(
   self: Stream<R, E, O>,
   that: Stream<R1, E1, O2>
 ): Stream<R & R1, E | E1, O> {
-  return crossWith_(self, that)((o) => o)
+  return crossWith_(self, that, (o) => o)
 }
 
 /**
@@ -23,6 +23,8 @@ export function crossLeft_<R, R1, E, E1, O, O2>(
  * The `that` stream would be run multiple times, for every element in the `this` stream.
  *
  * See also `Stream#zip` for the more common point-wise variant.
+ *
+ * @dataFirst crossLeft_
  */
 export function crossLeft<R1, E1, O2>(that: Stream<R1, E1, O2>) {
   return <R, E, O>(self: Stream<R, E, O>) => crossLeft_(self, that)

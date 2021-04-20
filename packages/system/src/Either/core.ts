@@ -3,8 +3,8 @@
 /**
  * adapted from https://github.com/gcanti/fp-ts
  */
+import * as Tp from "../Collections/Immutable/Tuple"
 import type { Lazy, Predicate, Refinement } from "../Function/core"
-import { tuple } from "../Function/core"
 import type { Option } from "../Option/core"
 import { isNone } from "../Option/core"
 import * as St from "../Structural"
@@ -141,8 +141,8 @@ export function ap<E, A>(fa: Either<E, A>) {
 export function zip_<E2, A, E, B>(
   fa: Either<E2, A>,
   fb: Either<E, B>
-): Either<E | E2, readonly [A, B]> {
-  return chain_(fa, (a) => map_(fb, (b) => tuple(a, b)))
+): Either<E | E2, Tp.Tuple<[A, B]>> {
+  return chain_(fa, (a) => map_(fb, (b) => Tp.tuple(a, b)))
 }
 
 /**
@@ -151,7 +151,7 @@ export function zip_<E2, A, E, B>(
  * @dataFirst zip_
  */
 export function zip<E, B>(fb: Either<E, B>) {
-  return <E2, A>(fa: Either<E2, A>): Either<E | E2, readonly [A, B]> => zip_(fa, fb)
+  return <E2, A>(fa: Either<E2, A>): Either<E | E2, Tp.Tuple<[A, B]>> => zip_(fa, fb)
 }
 
 /**

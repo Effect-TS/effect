@@ -221,18 +221,20 @@ class BothWithM<
 
   take: T.Effect<RB & RB1 & R3, E3 | EB | EB1, D> = T.chain_(
     T.zipPar_(this.self.take, this.that.take),
-    ([b, c]) => this.f(b, c)
+    ({ tuple: [b, c] }) => this.f(b, c)
   )
 
   takeAll: T.Effect<RB & RB1 & R3, E3 | EB | EB1, Chunk.Chunk<D>> = T.chain_(
     T.zipPar_(this.self.takeAll, this.that.takeAll),
-    ([bs, cs]) => Chunk.mapM_(Chunk.zip_(bs, cs), ([b, c]) => this.f(b, c))
+    ({ tuple: [bs, cs] }) =>
+      Chunk.mapM_(Chunk.zip_(bs, cs), ({ tuple: [b, c] }) => this.f(b, c))
   )
 
   takeUpTo(max: number): T.Effect<RB & RB1 & R3, E3 | EB | EB1, Chunk.Chunk<D>> {
     return T.chain_(
       T.zipPar_(this.self.takeUpTo(max), this.that.takeUpTo(max)),
-      ([bs, cs]) => Chunk.mapM_(Chunk.zip_(bs, cs), ([b, c]) => this.f(b, c))
+      ({ tuple: [bs, cs] }) =>
+        Chunk.mapM_(Chunk.zip_(bs, cs), ({ tuple: [b, c] }) => this.f(b, c))
     )
   }
 }

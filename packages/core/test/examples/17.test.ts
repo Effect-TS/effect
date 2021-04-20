@@ -1,4 +1,5 @@
 import * as M from "@effect-ts/system/Collections/Immutable/Map"
+import * as Tp from "@effect-ts/system/Collections/Immutable/Tuple"
 import { flow, identity, pipe } from "@effect-ts/system/Function"
 
 import * as E from "../../src/Either"
@@ -59,7 +60,7 @@ test("17", () => {
                 M.toMutable,
                 (s) => s.set(v, v.length),
                 M.fromMutable,
-                (s) => [s, E.right(v.length)]
+                (s) => Tp.tuple(s, E.right(v.length))
               )
             )
         )

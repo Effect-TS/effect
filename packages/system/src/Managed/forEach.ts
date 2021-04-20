@@ -1,14 +1,13 @@
 // tracing: off
 
 import * as Chunk from "../Collections/Immutable/Chunk"
+import * as Tp from "../Collections/Immutable/Tuple"
 import type { ExecutionStrategy } from "../Effect/ExecutionStrategy"
 import { sequential } from "../Effect/ExecutionStrategy"
-import { tuple } from "../Function"
 import { makeManagedReleaseMap, mapM_ } from "./core"
 import * as T from "./deps"
 import { Managed } from "./managed"
 import type { Finalizer } from "./ReleaseMap/finalizer"
-
 /**
  * Applies the function `f` to each element of the `Iterable<A>` and
  * returns the results in a new `B[]`.
@@ -38,10 +37,13 @@ export function forEach_<R, E, A, B>(
     T.map_(
       T.forEach_(as, (a) => f(a).effect, __trace),
       (res) => {
-        const fins = Chunk.map_(res, (k) => k[0])
-        const as = Chunk.map_(res, (k) => k[1])
+        const fins = Chunk.map_(res, (k) => k.get(0))
+        const as = Chunk.map_(res, (k) => k.get(1))
 
-        return [(e) => T.forEach_(Chunk.reverse(fins), (fin) => fin(e), __trace), as]
+        return Tp.tuple(
+          (e) => T.forEach_(Chunk.reverse(fins), (fin) => fin(e), __trace),
+          as
+        )
       }
     )
   )
@@ -104,8 +106,10 @@ export function forEachUnit_<R, E, A, B>(
     T.map_(
       T.forEach_(as, (a) => f(a).effect, __trace),
       (result) => {
-        const [fins] = Chunk.unzip(result)
-        return tuple<[Finalizer, void]>(
+        const {
+          tuple: [fins]
+        } = Chunk.unzip(result)
+        return Tp.tuple<[Finalizer, void]>(
           (e) => T.forEach_(Chunk.reverse(fins), (f) => f(e), __trace),
           undefined
         )
@@ -158,16 +162,16 @@ export function forEachPar_<R, E, A, B>(
 ): Managed<R, E, Chunk.Chunk<B>> {
   return mapM_(makeManagedReleaseMap(T.parallel, __trace), (parallelReleaseMap) => {
     const makeInnerMap = T.provideSome_(
-      T.map_(makeManagedReleaseMap(sequential).effect, ([_, x]) => x),
-      (x: unknown) => tuple(x, parallelReleaseMap)
+      T.map_(makeManagedReleaseMap(sequential).effect, ({ tuple: [_, x] }) => x),
+      (x: unknown) => Tp.tuple(x, parallelReleaseMap)
     )
 
     return T.forEachPar_(as, (a) =>
       T.map_(
         T.chain_(makeInnerMap, (innerMap) =>
-          T.provideSome_(f(a).effect, (u: R) => tuple(u, innerMap))
+          T.provideSome_(f(a).effect, (u: R) => Tp.tuple(u, innerMap))
         ),
-        ([_, b]) => b
+        ({ tuple: [_, b] }) => b
       )
     )
   })
@@ -204,16 +208,16 @@ export function forEachParN_<R, E, A, B>(
 ): Managed<R, E, Chunk.Chunk<B>> {
   return mapM_(makeManagedReleaseMap(T.parallelN(n), __trace), (parallelReleaseMap) => {
     const makeInnerMap = T.provideSome_(
-      T.map_(makeManagedReleaseMap(sequential).effect, ([_, x]) => x),
-      (x: unknown) => tuple(x, parallelReleaseMap)
+      T.map_(makeManagedReleaseMap(sequential).effect, ({ tuple: [_, x] }) => x),
+      (x: unknown) => Tp.tuple(x, parallelReleaseMap)
     )
 
     return T.forEachParN_(as, n, (a) =>
       T.map_(
         T.chain_(makeInnerMap, (innerMap) =>
-          T.provideSome_(f(a).effect, (u: R) => tuple(u, innerMap))
+          T.provideSome_(f(a).effect, (u: R) => Tp.tuple(u, innerMap))
         ),
-        ([_, b]) => b
+        ({ tuple: [_, b] }) => b
       )
     )
   })

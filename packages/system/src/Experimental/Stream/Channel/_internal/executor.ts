@@ -302,7 +302,7 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
             this.ifNotNull(runInProgressFinalizer),
             this.ifNotNull(closeSelf)
           ),
-          ([a, b, c]) => Exit.zipRight_(a, Exit.zipRight_(b, c))
+          ({ tuple: [a, b, c] }) => Exit.zipRight_(a, Exit.zipRight_(b, c))
         )
       )
     }

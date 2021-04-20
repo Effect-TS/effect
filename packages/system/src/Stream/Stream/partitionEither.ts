@@ -1,6 +1,7 @@
 // tracing: off
 
 import * as A from "../../Collections/Immutable/Chunk"
+import * as Tp from "../../Collections/Immutable/Tuple"
 import * as E from "../../Either"
 import { pipe } from "../../Function"
 import * as T from "../_internal/effect"
@@ -23,7 +24,7 @@ export function partitionEither_<R, R1, E, E1, O, O2, O3>(
 ): M.Managed<
   R & R1,
   never,
-  readonly [Stream<unknown, E | E1, O2>, Stream<unknown, E | E1, O3>]
+  Tp.Tuple<[Stream<unknown, E | E1, O2>, Stream<unknown, E | E1, O3>]>
 > {
   return pipe(
     self,
@@ -40,10 +41,12 @@ export function partitionEither_<R, R1, E, E1, O, O2, O3>(
       const [q1, q2] = queues
 
       if (q1 && q2) {
-        return M.succeed([
-          pipe(fromQueueWithShutdown(q1), flattenExitOption, collectLeft),
-          pipe(fromQueueWithShutdown(q2), flattenExitOption, collectRight)
-        ] as const)
+        return M.succeed(
+          Tp.tuple(
+            pipe(fromQueueWithShutdown(q1), flattenExitOption, collectLeft),
+            pipe(fromQueueWithShutdown(q2), flattenExitOption, collectRight)
+          )
+        )
       } else {
         return M.dieMessage(
           `partitionEither: expected two streams but got ${A.size(queues)}`

@@ -3,7 +3,7 @@
 import * as E from "../../Either"
 import type { Stream } from "./definitions"
 import type { TerminationStrategy } from "./mergeWith"
-import { mergeWith } from "./mergeWith"
+import { mergeWith_ } from "./mergeWith"
 
 /**
  * Merges this stream and the specified stream together.
@@ -16,10 +16,13 @@ export function merge_<R, E, A, R1, E1, B>(
   that: Stream<R1, E1, B>,
   strategy: TerminationStrategy = "Both"
 ): Stream<R1 & R, E | E1, A | B> {
-  return mergeWith(that, strategy)(
+  return mergeWith_(
+    self,
+    that,
     (a: A): A | B => a,
-    (b) => b
-  )(self)
+    (b) => b,
+    strategy
+  )
 }
 
 /**
@@ -27,6 +30,8 @@ export function merge_<R, E, A, R1, E1, B>(
  *
  * New produced stream will terminate when both specified stream terminate if no termination
  * strategy is specified.
+ *
+ * @dataFirst merge_
  */
 export function merge<R1, E1, B>(
   that: Stream<R1, E1, B>,
@@ -101,12 +106,14 @@ export function mergeEither_<R, E, A, R1, E1, B>(
   that: Stream<R1, E1, B>,
   strategy: TerminationStrategy = "Both"
 ): Stream<R & R1, E | E1, E.Either<A, B>> {
-  return mergeWith(that, strategy)((l: A) => E.left(l), E.right)(self)
+  return mergeWith_(self, that, (l: A) => E.left(l), E.right, strategy)
 }
 
 /**
  * Merges this stream and the specified stream together to produce a stream of
  * eithers.
+ *
+ * @dataFirst mergeEither_
  */
 export function mergeEither<R1, E1, B>(
   that: Stream<R1, E1, B>,

@@ -8,6 +8,7 @@ import { currentTime } from "../../Clock"
 import * as A from "../../Collections/Immutable/Chunk"
 import * as List from "../../Collections/Immutable/List"
 import type * as MP from "../../Collections/Immutable/Map"
+import * as Tp from "../../Collections/Immutable/Tuple"
 import * as E from "../../Either"
 import * as Ex from "../../Exit/api"
 import { identity, pipe } from "../../Function"
@@ -71,13 +72,13 @@ export function collectAllWhileWith<S>(z: S) {
         M.chain((acc) => {
           return pipe(
             Push.restartable(self.push),
-            M.map(([push, restart]) => {
+            M.map(({ tuple: [push, restart] }) => {
               const go = (
                 s: S,
                 in_: O.Option<A.Chunk<I>>,
                 end: boolean
-              ): T.Effect<R, [E.Either<E, S>, A.Chunk<L>], S> =>
-                T.catchAll_(T.as_(push(in_), s), ([e, leftover]) =>
+              ): T.Effect<R, Tp.Tuple<[E.Either<E, S>, A.Chunk<L>]>, S> =>
+                T.catchAll_(T.as_(push(in_), s), ({ tuple: [e, leftover] }) =>
                   E.fold_(
                     e,
                     (e) => Push.fail(e, leftover),
@@ -182,7 +183,7 @@ export function contramapChunksM_<R, R1, E, E1, I, I2, L, Z>(
           (value) =>
             pipe(
               f(value),
-              T.mapError((e: E | E1) => [E.left(e), A.empty<L>()] as const),
+              T.mapError((e: E | E1) => Tp.tuple(E.left(e), A.empty<L>())),
               T.chain((is) => push(O.some(is)))
             )
         )
@@ -415,7 +416,7 @@ export function map_<R, E, I, L, Z, Z2>(
 ): Sink<R, E, I, L, Z2> {
   return new Sink(
     M.map_(self.push, (sink) => (inputs: O.Option<A.Chunk<I>>) =>
-      T.mapError_(sink(inputs), (e) => [E.map_(e[0], f), e[1]])
+      T.mapError_(sink(inputs), (e) => Tp.tuple(E.map_(e.get(0), f), e.get(1)))
     )
   )
 }
@@ -437,7 +438,7 @@ export function mapError_<R, E, E2, I, L, Z>(
   return new Sink(
     M.map_(self.push, (p) => {
       return (in_: O.Option<A.Chunk<I>>) =>
-        T.mapError_(p(in_), (e) => [E.mapLeft_(e[0], f), e[1]])
+        T.mapError_(p(in_), (e) => Tp.tuple(E.mapLeft_(e.get(0), f), e.get(1)))
     })
   )
 }
@@ -459,7 +460,7 @@ export function mapM_<R, R1, E, E1, I, L, Z, Z2>(
   return new Sink(
     M.map_(self.push, (push) => {
       return (inputs: O.Option<A.Chunk<I>>) =>
-        T.catchAll_(push(inputs), ([e, left]) =>
+        T.catchAll_(push(inputs), ({ tuple: [e, left] }) =>
           E.fold_(
             e,
             (e) => Push.fail(e, left),
@@ -516,7 +517,7 @@ export function raceBoth_<R, R1, E, E1, I, I1, L, L1, Z, Z1>(
       M.bind("p2", () => that.push),
       M.map(({ p1, p2 }) => (i: O.Option<A.Chunk<I & I1>>): T.Effect<
         R1 & R,
-        readonly [E.Either<E | E1, E.Either<Z, Z1>>, A.Chunk<L | L1>],
+        Tp.Tuple<[E.Either<E | E1, E.Either<Z, Z1>>, A.Chunk<L | L1>]>,
         void
       > =>
         T.raceWith_(
@@ -531,14 +532,15 @@ export function raceBoth_<R, R1, E, E1, I, I1, L, L1, Z, Z1>(
                   T.halt(
                     pipe(
                       f,
-                      C.map(([r, leftover]) => [E.map_(r, E.left), leftover] as const)
+                      C.map(({ tuple: [r, leftover] }) =>
+                        Tp.tuple(E.map_(r, E.left), leftover)
+                      )
                     )
                   )
                 ),
               () =>
-                T.mapError_(
-                  F.join(fib2),
-                  ([r, leftover]) => [E.map_(r, E.right), leftover] as const
+                T.mapError_(F.join(fib2), ({ tuple: [r, leftover] }) =>
+                  Tp.tuple(E.map_(r, E.right), leftover)
                 )
             ),
           (res2, fib1) =>
@@ -550,14 +552,15 @@ export function raceBoth_<R, R1, E, E1, I, I1, L, L1, Z, Z1>(
                   T.halt(
                     pipe(
                       f,
-                      C.map(([r, leftover]) => [E.map_(r, E.right), leftover] as const)
+                      C.map(({ tuple: [r, leftover] }) =>
+                        Tp.tuple(E.map_(r, E.right), leftover)
+                      )
                     )
                   )
                 ),
               () =>
-                T.mapError_(
-                  F.join(fib1),
-                  ([r, leftover]) => [E.map_(r, E.left), leftover] as const
+                T.mapError_(F.join(fib1), ({ tuple: [r, leftover] }) =>
+                  Tp.tuple(E.map_(r, E.left), leftover)
                 )
             )
         )
@@ -579,7 +582,7 @@ export function raceBoth<R1, E1, I1, L1, Z1>(that: Sink<R1, E1, I1, L1, Z1>) {
  */
 export function timed<R, E, I, L, Z>(
   self: Sink<R, E, I, L, Z>
-): Sink<R & HasClock, E, I, L, readonly [Z, number]> {
+): Sink<R & HasClock, E, I, L, Tp.Tuple<[Z, number]>> {
   return new Sink(
     pipe(
       self.push,
@@ -587,9 +590,11 @@ export function timed<R, E, I, L, Z>(
         return (in_: O.Option<A.Chunk<I>>) =>
           T.catchAll_(
             push(in_),
-            ([e, leftover]): T.Effect<
+            ({
+              tuple: [e, leftover]
+            }): T.Effect<
               R & HasClock,
-              [E.Either<E, readonly [Z, number]>, A.Chunk<L>],
+              Tp.Tuple<[E.Either<E, Tp.Tuple<[Z, number]>>, A.Chunk<L>]>,
               never
             > =>
               E.fold_(
@@ -597,7 +602,7 @@ export function timed<R, E, I, L, Z>(
                 (e) => Push.fail(e, leftover),
                 (z) =>
                   T.chain_(currentTime, (stop) =>
-                    Push.emit([z, stop - start] as const, leftover)
+                    Push.emit(Tp.tuple(z, stop - start), leftover)
                   )
               )
           )
@@ -615,11 +620,11 @@ export function toTransducer<R, E, I, L extends I, Z>(
   self: Sink<R, E, I, L, Z>
 ): Transducer<R, E, I, Z> {
   return transducer(
-    M.map_(Push.restartable(self.push), ([push, restart]) => {
+    M.map_(Push.restartable(self.push), ({ tuple: [push, restart] }) => {
       const go = (input: O.Option<A.Chunk<I>>): T.Effect<R, E, A.Chunk<Z>> =>
         T.foldM_(
           push(input),
-          ([e, leftover]) =>
+          ({ tuple: [e, leftover] }) =>
             E.fold_(
               e,
               (e) => T.fail(e),
@@ -646,8 +651,8 @@ export function toTransducer<R, E, I, L extends I, Z>(
 export function zip_<R, R1, E, E1, I, I1 extends I, L extends I1, L1, Z, Z1>(
   self: Sink<R, E, I, L, Z>,
   that: Sink<R1, E1, I1, L1, Z1>
-): Sink<R & R1, E | E1, I & I1, L | L1, readonly [Z, Z1]> {
-  return zipWith_(self, that, (z, z1) => [z, z1] as const)
+): Sink<R & R1, E | E1, I & I1, L | L1, Tp.Tuple<[Z, Z1]>> {
+  return zipWith_(self, that, Tp.tuple)
 }
 
 /**
@@ -683,8 +688,8 @@ export function zipLeft<R1, E1, I, I1 extends I, L1, Z1>(
 export function zipPar_<R, R1, E, E1, I, I1, L, L1, Z, Z1>(
   self: Sink<R, E, I, L, Z>,
   that: Sink<R1, E1, I1, L1, Z1>
-): Sink<R & R1, E | E1, I & I1, L | L1, readonly [Z, Z1]> {
-  return zipWithPar_(self, that, (a, b) => [a, b] as const)
+): Sink<R & R1, E | E1, I & I1, L | L1, Tp.Tuple<[Z, Z1]>> {
+  return zipWithPar_(self, that, Tp.tuple)
 }
 
 /**
@@ -811,91 +816,92 @@ export function zipWithPar_<R, R1, E, E1, I, I1, L, L1, Z, Z1, Z2>(
               matchTag({
                 BothRunning: (): T.Effect<
                   R & R1,
-                  readonly [E.Either<E | E1, Z2>, A.Chunk<L | L1>],
+                  Tp.Tuple<[E.Either<E | E1, Z2>, A.Chunk<L | L1>]>,
                   State<Z, Z1>
                 > => {
                   const l: T.Effect<
                     R & R1,
-                    readonly [E.Either<E | E1, Z2>, A.Chunk<L | L1>],
-                    O.Option<readonly [Z, A.Chunk<L>]>
+                    Tp.Tuple<[E.Either<E | E1, Z2>, A.Chunk<L | L1>]>,
+                    O.Option<Tp.Tuple<[Z, A.Chunk<L>]>>
                   > = T.foldM_(
                     p1(in_),
-                    ([e, l]) =>
+                    ({ tuple: [e, l] }) =>
                       E.fold_(
                         e,
                         (e) =>
                           Push.fail(e, l) as T.Effect<
                             R & R1,
-                            [E.Either<E | E1, Z2>, A.Chunk<L | L1>],
-                            O.Option<readonly [Z, A.Chunk<L>]>
+                            Tp.Tuple<[E.Either<E | E1, Z2>, A.Chunk<L | L1>]>,
+                            O.Option<Tp.Tuple<[Z, A.Chunk<L>]>>
                           >,
                         (z) =>
-                          T.succeed(O.some([z, l] as const)) as T.Effect<
+                          T.succeed(O.some(Tp.tuple(z, l))) as T.Effect<
                             R & R1,
-                            [E.Either<E | E1, Z2>, A.Chunk<L | L1>],
-                            O.Option<readonly [Z, A.Chunk<L>]>
+                            Tp.Tuple<[E.Either<E | E1, Z2>, A.Chunk<L | L1>]>,
+                            O.Option<Tp.Tuple<[Z, A.Chunk<L>]>>
                           >
                       ),
                     (_) =>
                       T.succeed(O.none) as T.Effect<
                         R & R1,
-                        [E.Either<E | E1, Z2>, A.Chunk<L | L1>],
-                        O.Option<readonly [Z, A.Chunk<L>]>
+                        Tp.Tuple<[E.Either<E | E1, Z2>, A.Chunk<L | L1>]>,
+                        O.Option<Tp.Tuple<[Z, A.Chunk<L>]>>
                       >
                   )
                   const r: T.Effect<
                     R & R1,
-                    readonly [E.Either<E | E1, never>, A.Chunk<L | L1>],
-                    O.Option<readonly [Z1, A.Chunk<L1>]>
+                    Tp.Tuple<[E.Either<E | E1, never>, A.Chunk<L | L1>]>,
+                    O.Option<Tp.Tuple<[Z1, A.Chunk<L1>]>>
                   > = T.foldM_(
                     p2(in_),
-                    ([e, l]) =>
+                    ({ tuple: [e, l] }) =>
                       E.fold_(
                         e,
                         (e) =>
                           Push.fail(e, l) as T.Effect<
                             R & R1,
-                            [E.Either<E | E1, never>, A.Chunk<L | L1>],
-                            O.Option<readonly [Z1, A.Chunk<L1>]>
+                            Tp.Tuple<[E.Either<E | E1, never>, A.Chunk<L | L1>]>,
+                            O.Option<Tp.Tuple<[Z1, A.Chunk<L1>]>>
                           >,
                         (z) =>
-                          T.succeed(O.some([z, l] as const)) as T.Effect<
+                          T.succeed(O.some(Tp.tuple(z, l))) as T.Effect<
                             R & R1,
-                            [E.Either<E | E1, never>, A.Chunk<L | L1>],
-                            O.Option<readonly [Z1, A.Chunk<L1>]>
+                            Tp.Tuple<[E.Either<E | E1, never>, A.Chunk<L | L1>]>,
+                            O.Option<Tp.Tuple<[Z1, A.Chunk<L1>]>>
                           >
                       ),
                     (_) =>
                       T.succeed(O.none) as T.Effect<
                         R & R1,
-                        [E.Either<E | E1, never>, A.Chunk<L | L1>],
-                        O.Option<readonly [Z1, A.Chunk<L1>]>
+                        Tp.Tuple<[E.Either<E | E1, never>, A.Chunk<L | L1>]>,
+                        O.Option<Tp.Tuple<[Z1, A.Chunk<L1>]>>
                       >
                   )
 
                   return T.chain_(
                     T.zipPar_(l, r),
-                    ([lr, rr]): T.Effect<
+                    ({
+                      tuple: [lr, rr]
+                    }): T.Effect<
                       R & R1,
-                      readonly [E.Either<E1, Z2>, A.Chunk<L | L1>],
+                      Tp.Tuple<[E.Either<E1, Z2>, A.Chunk<L | L1>]>,
                       State<Z, Z1>
                     > => {
                       if (O.isSome(lr)) {
-                        const [z, l] = lr.value
+                        const [z, l] = lr.value.tuple
 
                         if (O.isSome(rr)) {
-                          const [z1, l1] = rr.value
+                          const [z1, l1] = rr.value.tuple
 
-                          return T.fail([
-                            E.right(f(z, z1)),
-                            A.size(l) > A.size(l1) ? l1 : l
-                          ] as const)
+                          return T.fail(
+                            Tp.tuple(E.right(f(z, z1)), A.size(l) > A.size(l1) ? l1 : l)
+                          )
                         } else {
                           return T.succeed(new LeftDone(z))
                         }
                       } else {
                         if (O.isSome(rr)) {
-                          const [z1] = rr.value
+                          const [z1] = rr.value.tuple
 
                           return T.succeed(new RightDone(z1))
                         } else {
@@ -905,7 +911,7 @@ export function zipWithPar_<R, R1, E, E1, I, I1, L, L1, Z, Z1, Z2>(
                     }
                   ) as T.Effect<
                     R & R1,
-                    readonly [E.Either<E1, Z2>, A.Chunk<L | L1>],
+                    Tp.Tuple<[E.Either<E1, Z2>, A.Chunk<L | L1>]>,
                     State<Z, Z1>
                   >
                 },
@@ -913,9 +919,11 @@ export function zipWithPar_<R, R1, E, E1, I, I1, L, L1, Z, Z1, Z2>(
                   T.as_(
                     T.catchAll_(
                       p2(in_),
-                      ([e, leftover]): T.Effect<
+                      ({
+                        tuple: [e, leftover]
+                      }): T.Effect<
                         R & R1,
-                        readonly [E.Either<E | E1, Z2>, A.Chunk<L | L1>],
+                        Tp.Tuple<[E.Either<E | E1, Z2>, A.Chunk<L | L1>]>,
                         State<Z, Z1>
                       > =>
                         E.fold_(
@@ -930,9 +938,11 @@ export function zipWithPar_<R, R1, E, E1, I, I1, L, L1, Z, Z1, Z2>(
                   T.as_(
                     T.catchAll_(
                       p1(in_),
-                      ([e, leftover]): T.Effect<
+                      ({
+                        tuple: [e, leftover]
+                      }): T.Effect<
                         R & R1,
-                        readonly [E.Either<E | E1, Z2>, A.Chunk<L | L1>],
+                        Tp.Tuple<[E.Either<E | E1, Z2>, A.Chunk<L | L1>]>,
                         State<Z, Z1>
                       > =>
                         E.fold_(
@@ -969,14 +979,15 @@ export function zipWithPar<R1, E1, I1, L1, Z, Z1, Z2>(
  */
 export function exposeLeftover<R, E, I, L, Z>(
   self: Sink<R, E, I, L, Z>
-): Sink<R, E, I, never, readonly [Z, A.Chunk<L>]> {
+): Sink<R, E, I, never, Tp.Tuple<[Z, A.Chunk<L>]>> {
   return new Sink(
     M.map_(self.push, (p) => {
       return (in_: O.Option<A.Chunk<I>>) =>
-        T.mapError_(
-          p(in_),
-          ([v, leftover]) =>
-            [E.map_(v, (z) => [z, leftover] as const), A.empty()] as const
+        T.mapError_(p(in_), ({ tuple: [v, leftover] }) =>
+          Tp.tuple(
+            E.map_(v, (z) => Tp.tuple(z, leftover)),
+            A.empty()
+          )
         )
     })
   )
@@ -990,7 +1001,43 @@ export function dropLeftover<R, E, I, L, Z>(
 ): Sink<R, E, I, never, Z> {
   return new Sink(
     M.map_(self.push, (p) => (in_: O.Option<A.Chunk<I>>) =>
-      T.mapError_(p(in_), ([v, _]) => [v, A.empty()])
+      T.mapError_(p(in_), ({ tuple: [v, _] }) => Tp.tuple(v, A.empty()))
+    )
+  )
+}
+
+function untilOutputMGo<E, I, R, R1, E1, L, Z>(
+  in_: O.Option<A.Chunk<I>>,
+  end: boolean,
+  push: Push.Push<R, E, I, L, Z>,
+  restart: T.Effect<R, never, void>,
+  f: (z: Z) => T.Effect<R1, E1, boolean>
+): T.Effect<R & R1, Tp.Tuple<[E.Either<E | E1, O.Option<Z>>, A.Chunk<L>]>, void> {
+  return T.catchAll_(push(in_), ({ tuple: [e, leftover] }) =>
+    E.fold_(
+      e,
+      (e) => Push.fail(e, leftover),
+      (z) =>
+        T.chain_(
+          T.mapError_(f(z), (err) => Tp.tuple(E.left(err), leftover)),
+          (satisfied) => {
+            if (satisfied) {
+              return Push.emit(O.some(z), leftover)
+            } else if (A.isEmpty(leftover)) {
+              return end
+                ? Push.emit(O.none, A.empty())
+                : T.zipRight_(restart, Push.more)
+            } else {
+              return untilOutputMGo(
+                O.some(leftover) as O.Option<A.Chunk<I>>,
+                end,
+                push,
+                restart,
+                f
+              )
+            }
+          }
+        )
     )
   )
 }
@@ -1004,40 +1051,11 @@ export function untilOutputM_<R, R1, E, E1, I, L extends I, Z>(
   f: (z: Z) => T.Effect<R1, E1, boolean>
 ): Sink<R & R1, E | E1, I, L, O.Option<Z>> {
   return new Sink(
-    M.map_(Push.restartable(self.push), ([push, restart]) => {
-      const go = (
-        in_: O.Option<A.Chunk<I>>,
-        end: boolean
-      ): T.Effect<
-        R & R1,
-        readonly [E.Either<E | E1, O.Option<Z>>, A.Chunk<L>],
-        void
-      > => {
-        return T.catchAll_(push(in_), ([e, leftover]) =>
-          E.fold_(
-            e,
-            (e) => Push.fail(e, leftover),
-            (z) =>
-              T.chain_(
-                T.mapError_(f(z), (err) => [E.left(err), leftover] as const),
-                (satisfied) => {
-                  if (satisfied) {
-                    return Push.emit(O.some(z), leftover)
-                  } else if (A.isEmpty(leftover)) {
-                    return end
-                      ? Push.emit(O.none, A.empty())
-                      : T.zipRight_(restart, Push.more)
-                  } else {
-                    return go(O.some(leftover) as O.Option<A.Chunk<I>>, end)
-                  }
-                }
-              )
-          )
-        )
-      }
-
-      return (is: O.Option<A.Chunk<I>>) => go(is, O.isNone(is))
-    })
+    M.map_(
+      Push.restartable(self.push),
+      ({ tuple: [push, restart] }) => (is: O.Option<A.Chunk<I>>) =>
+        untilOutputMGo(is, O.isNone(is), push, restart, f)
+    )
   )
 }
 
@@ -1235,59 +1253,60 @@ export function fail<E>(e: E) {
     })
 }
 
+const reduceChunkGo = <S, I>(
+  s: S,
+  chunk: A.Chunk<I>,
+  idx: number,
+  len: number,
+  contFn: (s: S) => boolean,
+  f: (s: S, i: I) => S
+): readonly [S, O.Option<A.Chunk<I>>] => {
+  if (idx === len) {
+    return [s, O.none] as const
+  } else {
+    const s1 = f(s, chunk[idx]!)
+
+    if (contFn(s1)) {
+      return reduceChunkGo(s1, chunk, idx + 1, len, contFn, f)
+    } else {
+      return [s1, O.some(A.drop_(chunk, idx + 1))] as const
+    }
+  }
+}
+
 /**
  * A sink that folds its inputs with the provided function, termination predicate and initial state.
  */
-export function reduce<S>(z: S) {
-  return (contFn: (s: S) => boolean) => <I>(
-    f: (s: S, i: I) => S
-  ): Sink<unknown, never, I, I, S> => {
-    const reduceChunk = (
-      s: S,
-      chunk: A.Chunk<I>,
-      idx: number,
-      len: number
-    ): readonly [S, O.Option<A.Chunk<I>>] => {
-      if (idx === len) {
-        return [s, O.none] as const
-      } else {
-        const s1 = f(s, chunk[idx]!)
+export function reduce<S, I>(
+  z: S,
+  contFn: (s: S) => boolean,
+  f: (s: S, i: I) => S
+): Sink<unknown, never, I, I, S> {
+  if (contFn(z)) {
+    return new Sink(
+      pipe(
+        M.do,
+        M.bind("state", () => T.toManaged(R.makeRef(z))),
+        M.map(({ state }) => (is: O.Option<A.Chunk<I>>) =>
+          O.fold_(
+            is,
+            () => T.chain_(state.get, (s) => Push.emit(s, A.empty())),
+            (is) =>
+              T.chain_(state.get, (s) => {
+                const [st, l] = reduceChunkGo(s, is, 0, A.size(is), contFn, f)
 
-        if (contFn(s1)) {
-          return reduceChunk(s1, chunk, idx + 1, len)
-        } else {
-          return [s1, O.some(A.drop_(chunk, idx + 1))] as const
-        }
-      }
-    }
-
-    if (contFn(z)) {
-      return new Sink(
-        pipe(
-          M.do,
-          M.bind("state", () => T.toManaged(R.makeRef(z))),
-          M.map(({ state }) => {
-            return (is: O.Option<A.Chunk<I>>) =>
-              O.fold_(
-                is,
-                () => T.chain_(state.get, (s) => Push.emit(s, A.empty())),
-                (is) =>
-                  T.chain_(state.get, (s) => {
-                    const [st, l] = reduceChunk(s, is, 0, A.size(is))
-
-                    return O.fold_(
-                      l,
-                      () => T.zipRight_(state.set(st), Push.more),
-                      (leftover) => Push.emit(st, leftover)
-                    )
-                  })
-              )
-          })
+                return O.fold_(
+                  l,
+                  () => T.zipRight_(state.set(st), Push.more),
+                  (leftover) => Push.emit(st, leftover)
+                )
+              })
+          )
         )
       )
-    } else {
-      return succeed(z)
-    }
+    )
+  } else {
+    return succeed(z)
   }
 }
 
@@ -1326,7 +1345,7 @@ export function reduceChunksM<S>(z: S) {
                   pipe(
                     state.get,
                     T.chain((_) => f(_, is)),
-                    T.mapError((e) => [E.left(e), A.empty<I>()] as const),
+                    T.mapError((e) => Tp.tuple(E.left(e), A.empty<I>())),
                     T.chain((s) => {
                       if (contFn(s)) {
                         return T.zipRight_(state.set(s), Push.more)
@@ -1345,65 +1364,67 @@ export function reduceChunksM<S>(z: S) {
   }
 }
 
+function reduceMGo<R, E, S, I>(
+  s: S,
+  chunk: A.Chunk<I>,
+  idx: number,
+  len: number,
+  contFn: (s: S) => boolean,
+  f: (s: S, i: I) => T.Effect<R, E, S>
+): T.Effect<R, readonly [E, A.Chunk<I>], readonly [S, O.Option<A.Chunk<I>>]> {
+  if (idx === len) {
+    return T.succeed([s, O.none] as const)
+  } else {
+    return T.foldM_(
+      f(s, A.unsafeGet_(chunk, idx)),
+      (e) => T.fail([e, A.drop_(chunk, idx + 1)] as const),
+      (s1) =>
+        contFn(s1)
+          ? reduceMGo(s1, chunk, idx + 1, len, contFn, f)
+          : T.succeed([s1, O.some(A.drop_(chunk, idx + 1))])
+    )
+  }
+}
+
 /**
  * A sink that effectfully folds its inputs with the provided function, termination predicate and initial state.
  *
  * This sink may terminate in the middle of a chunk and discard the rest of it. See the discussion on the
  * ZSink class scaladoc on sinks vs. transducers.
  */
-export function reduceM<S>(z: S) {
-  return (contFn: (s: S) => boolean) => <R, E, I>(
-    f: (s: S, i: I) => T.Effect<R, E, S>
-  ): Sink<R, E, I, I, S> => {
-    function reduceChunk(
-      s: S,
-      chunk: A.Chunk<I>,
-      idx: number,
-      len: number
-    ): T.Effect<R, readonly [E, A.Chunk<I>], readonly [S, O.Option<A.Chunk<I>>]> {
-      if (idx === len) {
-        return T.succeed([s, O.none] as const)
-      } else {
-        return T.foldM_(
-          f(s, A.unsafeGet_(chunk, idx)),
-          (e) => T.fail([e, A.drop_(chunk, idx + 1)] as const),
-          (s1) =>
-            contFn(s1)
-              ? reduceChunk(s1, chunk, idx + 1, len)
-              : T.succeed([s1, O.some(A.drop_(chunk, idx + 1))])
-        )
-      }
-    }
-
-    if (contFn(z)) {
-      return new Sink(
-        pipe(
-          M.do,
-          M.bind("state", () => T.toManaged(R.makeRef(z))),
-          M.map(({ state }) => (is: O.Option<A.Chunk<I>>) =>
-            O.fold_(
-              is,
-              () => T.chain_(state.get, (s) => Push.emit(s, A.empty())),
-              (is) =>
-                T.chain_(state.get, (s) =>
-                  T.foldM_(
-                    reduceChunk(s, is, 0, A.size(is)),
-                    (err) => Push.fail(...err),
-                    ([st, l]) =>
-                      O.fold_(
-                        l,
-                        () => T.zipRight_(state.set(st), Push.more),
-                        (leftover) => Push.emit(st, leftover)
-                      )
-                  )
+export function reduceM<S, R, E, I>(
+  z: S,
+  contFn: (s: S) => boolean,
+  f: (s: S, i: I) => T.Effect<R, E, S>
+): Sink<R, E, I, I, S> {
+  if (contFn(z)) {
+    return new Sink(
+      pipe(
+        M.do,
+        M.bind("state", () => T.toManaged(R.makeRef(z))),
+        M.map(({ state }) => (is: O.Option<A.Chunk<I>>) =>
+          O.fold_(
+            is,
+            () => T.chain_(state.get, (s) => Push.emit(s, A.empty())),
+            (is) =>
+              T.chain_(state.get, (s) =>
+                T.foldM_(
+                  reduceMGo(s, is, 0, A.size(is), contFn, f),
+                  (err) => Push.fail(...err),
+                  ([st, l]) =>
+                    O.fold_(
+                      l,
+                      () => T.zipRight_(state.set(st), Push.more),
+                      (leftover) => Push.emit(st, leftover)
+                    )
                 )
-            )
+              )
           )
         )
       )
-    } else {
-      return succeed(z)
-    }
+    )
+  } else {
+    return succeed(z)
   }
 }
 
@@ -1412,7 +1433,7 @@ export function reduceM<S>(z: S) {
  */
 export function reduceLeft<S>(z: S) {
   return <I>(f: (s: S, i: I) => S): Sink<unknown, never, I, never, S> =>
-    dropLeftover(reduce(z)((_) => true)(f))
+    dropLeftover(reduce(z, (_) => true, f))
 }
 
 /**
@@ -1439,35 +1460,36 @@ export function reduceLeftChunksM<S>(z: S) {
  */
 export function reduceLeftM<S>(z: S) {
   return <R, E, I>(f: (s: S, i: I) => T.Effect<R, E, S>): Sink<R, E, I, never, S> =>
-    dropLeftover(reduceM(z)((_) => true)(f))
+    dropLeftover(reduceM(z, (_) => true, f))
+}
+
+function forEachGo<I, R1, E1, X>(
+  chunk: A.Chunk<I>,
+  idx: number,
+  len: number,
+  f: (i: I) => T.Effect<R1, E1, X>
+): T.Effect<R1, Tp.Tuple<[E.Either<E1, never>, A.Chunk<I>]>, void> {
+  if (idx === len) {
+    return Push.more
+  } else {
+    return pipe(
+      f(A.unsafeGet_(chunk, idx)),
+      T.foldM(
+        (e) => Push.fail(e, A.drop_(chunk, idx + 1)),
+        () => forEachGo(chunk, idx + 1, len, f)
+      )
+    )
+  }
 }
 
 /**
  * A sink that executes the provided effectful function for every element fed to it.
  */
 export function forEach<I, R1, E1, X>(f: (i: I) => T.Effect<R1, E1, X>) {
-  const go = (
-    chunk: A.Chunk<I>,
-    idx: number,
-    len: number
-  ): T.Effect<R1, [E.Either<E1, never>, A.Chunk<I>], void> => {
-    if (idx === len) {
-      return Push.more
-    } else {
-      return pipe(
-        f(A.unsafeGet_(chunk, idx)),
-        T.foldM(
-          (e) => Push.fail(e, A.drop_(chunk, idx + 1)),
-          () => go(chunk, idx + 1, len)
-        )
-      )
-    }
-  }
-
   return fromPush(
     O.fold(
       () => Push.emit<never, void>(undefined, A.empty()),
-      (is: A.Chunk<I>) => go(is, 0, A.size(is))
+      (is: A.Chunk<I>) => forEachGo(is, 0, A.size(is), f)
     )
   )
 }
@@ -1484,7 +1506,7 @@ export function forEachChunk<R, E, I, X>(
       () => Push.emit<never, void>(undefined, A.empty()),
       (is) =>
         T.zipRight_(
-          T.mapError_(f(is), (e) => [E.left(e), A.empty()] as const),
+          T.mapError_(f(is), (e) => Tp.tuple(E.left(e), A.empty())),
           Push.more
         )
     )
@@ -1502,7 +1524,7 @@ export function forEachWhile<R, E, I>(
     chunk: A.Chunk<I>,
     idx: number,
     len: number
-  ): T.Effect<R, readonly [E.Either<E, void>, A.Chunk<I>], void> => {
+  ): T.Effect<R, Tp.Tuple<[E.Either<E, void>, A.Chunk<I>]>, void> => {
     if (idx === len) {
       return Push.more
     } else {
@@ -1673,7 +1695,9 @@ export function take<I>(n: number): Sink<unknown, never, I, I, A.Chunk<I>> {
                 const remaining = n - A.size(take)
 
                 if (remaining <= A.size(ch)) {
-                  const [chunk, leftover] = A.splitAt_(ch, remaining)
+                  const {
+                    tuple: [chunk, leftover]
+                  } = A.splitAt_(ch, remaining)
 
                   return T.zipRight_(
                     state.set(A.empty()),
@@ -1695,7 +1719,7 @@ export function take<I>(n: number): Sink<unknown, never, I, I, A.Chunk<I>> {
  */
 export const timedDrain: Sink<HasClock, never, unknown, never, number> = map_(
   timed(drain),
-  ([_, a]) => a
+  (_) => _.get(1)
 )
 
 /**
@@ -1711,7 +1735,7 @@ export function foreachChunk<R, E, I, A>(
       (is) =>
         pipe(
           f(is),
-          T.mapError((e) => [E.left(e), A.empty<never>()] as const),
+          T.mapError((e) => Tp.tuple(E.left(e), A.empty<never>())),
           T.zipRight(Push.more)
         )
     )

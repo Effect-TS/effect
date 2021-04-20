@@ -1,6 +1,7 @@
 // tracing: off
 
 import * as A from "../../Collections/Immutable/Chunk"
+import * as Tp from "../../Collections/Immutable/Tuple"
 import { pipe } from "../../Function"
 import type * as O from "../../Option"
 import * as T from "../_internal/effect"
@@ -24,14 +25,14 @@ export function fromEffectOption<R, E, A>(
           doneRef,
           Ref.modify((b) =>
             b
-              ? [Pull.end, true]
-              : [
+              ? Tp.tuple(Pull.end, true)
+              : Tp.tuple(
                   pipe(
                     fa,
                     T.map((a) => A.single(a))
                   ),
                   true
-                ]
+                )
           ),
           T.flatten
         )
