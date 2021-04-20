@@ -112,8 +112,9 @@ export function update_<Ks extends readonly unknown[], I extends keyof Ks & numb
     }
   >
 > {
-  const r = []
-  for (let k = 0; k < self.tuple.length; k++) {
+  const len = self.tuple.length
+  const r = new Array(len)
+  for (let k = 0; k < len; k++) {
     if (k === i) {
       r[k] = f(self.tuple[k])
     } else {
