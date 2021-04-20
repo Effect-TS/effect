@@ -44,38 +44,3 @@ export function find<A>(f: (a: A) => boolean): (self: Chunk.Chunk<A>) => O.Optio
 export function find<A>(f: (a: A) => boolean): (self: Chunk.Chunk<A>) => O.Option<A> {
   return (self) => find_(self, f)
 }
-
-/**
- * Returns the index of the first element that satisfies the predicate.
- */
-export function findIndex_<A>(self: Chunk.Chunk<A>, f: (a: A) => boolean): number {
-  const iterator = concreteId(self).arrayLikeIterator()
-  let next
-  let j = 0
-
-  while ((next = iterator.next()) && !next.done) {
-    const array = next.value
-    const len = array.length
-    let i = 0
-    while (i < len) {
-      const a = array[i]!
-      if (f(a)) {
-        return j
-      }
-      i++
-      j++
-    }
-    next = iterator.next()
-  }
-
-  return -1
-}
-
-/**
- * Returns the index of the first element that satisfies the predicate.
- *
- * @dataFirst findIndex_
- */
-export function findIndex<A>(f: (a: A) => boolean): (self: Chunk.Chunk<A>) => number {
-  return (self) => findIndex_(self, f)
-}
