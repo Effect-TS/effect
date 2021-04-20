@@ -66,5 +66,5 @@ test("11", () => {
     T.runState(M.empty)
   )
 
-  expect(result).toEqual([M.singleton("hello", 5), E.right(10)])
+  expect(result).toEqual(Tp.tuple(M.singleton("hello", 5), E.right(10)))
 })

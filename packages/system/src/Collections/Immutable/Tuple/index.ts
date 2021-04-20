@@ -1,4 +1,4 @@
-import * as St from "../../../Structural"
+import * as Tp from "../../../Structural"
 
 export const TupleSym: unique symbol = Symbol.for(
   "@effect-ts/system/Collections/Immutable/Tuple"
@@ -16,15 +16,15 @@ export class Tuple<T extends readonly unknown[]> {
 
   constructor(readonly tuple: T) {}
 
-  [St.hashSym](): number {
-    return St.hashArray(this.tuple)
+  [Tp.hashSym](): number {
+    return Tp.hashArray(this.tuple)
   }
 
-  [St.equalsSym](that: unknown): boolean {
+  [Tp.equalsSym](that: unknown): boolean {
     if (isTuple(that)) {
       return (
         this.tuple.length === that.tuple.length &&
-        this.tuple.every((v, i) => St.equals(v, that.tuple[i]))
+        this.tuple.every((v, i) => Tp.equals(v, that.tuple[i]))
       )
     }
     return false

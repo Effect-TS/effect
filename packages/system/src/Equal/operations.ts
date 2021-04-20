@@ -3,6 +3,7 @@
 import type * as A from "../Collections/Immutable/Array"
 import type * as Tp from "../Collections/Immutable/Tuple"
 import type * as E from "../Either"
+import type { ForcedTuple } from "../Utils"
 import type { Equal } from "./definition"
 
 /**
@@ -128,11 +129,13 @@ export function array<A>(EqA: Equal<A>): Equal<A.Array<A>> {
 export function tuple<T extends ReadonlyArray<Equal<any>>>(
   ...eqs: T
 ): Equal<
-  {
-    [K in keyof T]: T[K] extends Equal<infer A> ? A : never
-  }
+  ForcedTuple<
+    {
+      [K in keyof T]: T[K] extends Equal<infer A> ? A : never
+    }
+  >
 > {
-  return makeEqual((x, y) => eqs.every((E, i) => E.equals(x[i], y[i])))
+  return makeEqual((x, y) => eqs.every((E, i) => E.equals(x.get(i), y.get(i))))
 }
 
 /**

@@ -999,9 +999,11 @@ export function tuple<Tasks extends Async<any, any, any>[]>(
 ): Async<
   U._R<Tasks[number]>,
   U._E<Tasks[number]>,
-  { [k in keyof Tasks]: [Tasks[k]] extends [Async<any, any, infer A>] ? A : never }
+  U.ForcedTuple<
+    { [k in keyof Tasks]: [Tasks[k]] extends [Async<any, any, infer A>] ? A : never }
+  >
 > {
-  return collectAll(tasks) as any
+  return map_(collectAll(tasks), (x) => Tp.tuple(...x)) as any
 }
 
 // like Promise.all + map on steroids
