@@ -1,6 +1,6 @@
 // tracing: off
 
-import type { Array } from "../Collections/Immutable/Array"
+import type { Chunk } from "../Collections/Immutable/Chunk"
 import { constant, tuple } from "../Function"
 import * as IT from "../Iterable"
 import { fold_ } from "../Option"
@@ -18,7 +18,7 @@ export function dump<E, A>(fiber: Runtime<E, A>): T.UIO<FiberDump> {
   )
 }
 
-export function dumpFibers(fibers: Iterable<Runtime<any, any>>): UIO<Array<FiberDump>> {
+export function dumpFibers(fibers: Iterable<Runtime<any, any>>): UIO<Chunk<FiberDump>> {
   return T.forEach_(fibers, dump)
 }
 

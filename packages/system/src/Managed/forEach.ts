@@ -1,6 +1,6 @@
 // tracing: off
 
-import * as A from "../Collections/Immutable/Array"
+import * as Chunk from "../Collections/Immutable/Chunk"
 import type { ExecutionStrategy } from "../Effect/ExecutionStrategy"
 import { sequential } from "../Effect/ExecutionStrategy"
 import { tuple } from "../Function"
@@ -34,14 +34,14 @@ export function forEach_<R, E, A, B>(
   f: (a: A) => Managed<R, E, B>,
   __trace?: string
 ) {
-  return new Managed<R, E, readonly B[]>(
+  return new Managed<R, E, Chunk.Chunk<B>>(
     T.map_(
       T.forEach_(as, (a) => f(a).effect, __trace),
       (res) => {
-        const fins = res.map((k) => k[0])
-        const as = res.map((k) => k[1])
+        const fins = Chunk.map_(res, (k) => k[0])
+        const as = Chunk.map_(res, (k) => k[1])
 
-        return [(e) => T.forEach_(fins.reverse(), (fin) => fin(e), __trace), as]
+        return [(e) => T.forEach_(Chunk.reverse(fins), (fin) => fin(e), __trace), as]
       }
     )
   )
@@ -104,9 +104,9 @@ export function forEachUnit_<R, E, A, B>(
     T.map_(
       T.forEach_(as, (a) => f(a).effect, __trace),
       (result) => {
-        const [fins] = A.unzip(result)
+        const [fins] = Chunk.unzip(result)
         return tuple<[Finalizer, void]>(
-          (e) => T.forEach_(A.reverse(fins), (f) => f(e), __trace),
+          (e) => T.forEach_(Chunk.reverse(fins), (f) => f(e), __trace),
           undefined
         )
       }
@@ -142,7 +142,7 @@ export function forEachPar<R, E, A, B>(
   f: (a: A) => Managed<R, E, B>,
   __trace?: string
 ) {
-  return (as: Iterable<A>): Managed<R, E, readonly B[]> => forEachPar_(as, f, __trace)
+  return (as: Iterable<A>): Managed<R, E, Chunk.Chunk<B>> => forEachPar_(as, f, __trace)
 }
 
 /**
@@ -155,7 +155,7 @@ export function forEachPar_<R, E, A, B>(
   as: Iterable<A>,
   f: (a: A) => Managed<R, E, B>,
   __trace?: string
-): Managed<R, E, readonly B[]> {
+): Managed<R, E, Chunk.Chunk<B>> {
   return mapM_(makeManagedReleaseMap(T.parallel, __trace), (parallelReleaseMap) => {
     const makeInnerMap = T.provideSome_(
       T.map_(makeManagedReleaseMap(sequential).effect, ([_, x]) => x),
@@ -186,7 +186,7 @@ export function forEachParN<R, E, A, B>(
   f: (a: A) => Managed<R, E, B>,
   __trace?: string
 ) {
-  return (as: Iterable<A>): Managed<R, E, readonly B[]> =>
+  return (as: Iterable<A>): Managed<R, E, Chunk.Chunk<B>> =>
     forEachParN_(as, n, f, __trace)
 }
 
@@ -201,7 +201,7 @@ export function forEachParN_<R, E, A, B>(
   n: number,
   f: (a: A) => Managed<R, E, B>,
   __trace?: string
-): Managed<R, E, readonly B[]> {
+): Managed<R, E, Chunk.Chunk<B>> {
   return mapM_(makeManagedReleaseMap(T.parallelN(n), __trace), (parallelReleaseMap) => {
     const makeInnerMap = T.provideSome_(
       T.map_(makeManagedReleaseMap(sequential).effect, ([_, x]) => x),

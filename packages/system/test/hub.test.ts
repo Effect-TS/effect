@@ -1,6 +1,7 @@
 import { pipe } from "@effect-ts/system/Function"
 
 import * as AR from "../src/Collections/Immutable/Array"
+import * as Chunk from "../src/Collections/Immutable/Chunk"
 import * as T from "../src/Effect"
 import * as F from "../src/Fiber"
 import * as H from "../src/Hub"
@@ -55,7 +56,7 @@ describe("Hub", () => {
       T.runPromise
     )
 
-    expect(values1).toEqual(as)
-    expect(values2).toEqual(as)
+    expect(Chunk.toArray(values1)).toEqual(as)
+    expect(Chunk.toArray(values2)).toEqual(as)
   })
 })

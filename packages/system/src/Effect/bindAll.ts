@@ -68,9 +68,9 @@ export function bindAll_<
         ),
         (values) => {
           const res = {}
-          values.forEach(([k, v]) => {
+          for (const [k, v] of values) {
             res[k] = v
-          })
+          }
           return Object.assign(res, k)
         }
       ),
@@ -139,9 +139,9 @@ export function bindAllPar_<
         ),
         (values) => {
           const res = {}
-          values.forEach(([k, v]) => {
+          for (const [k, v] of values) {
             res[k] = v
-          })
+          }
           return Object.assign(res, k)
         }
       ),
@@ -215,9 +215,9 @@ export function bindAllParN_<
         ),
         (values) => {
           const res = {}
-          values.forEach(([k, v]) => {
+          for (const [k, v] of values) {
             res[k] = v
-          })
+          }
           return Object.assign(res, k)
         }
       ),

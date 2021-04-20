@@ -1,7 +1,7 @@
 // tracing: off
 
 import type * as C from "../Cause"
-import * as A from "../Collections/Immutable/Array"
+import * as Chunk from "../Collections/Immutable/Chunk"
 import { insert } from "../Collections/Immutable/Map"
 import { _E, _RIn, _ROut } from "../Effect/commons"
 import { sequential } from "../Effect/ExecutionStrategy"
@@ -447,7 +447,7 @@ export function scope<R, E, A>(
       return M.succeed((memo) => {
         return pipe(
           M.forEachPar_(I.layers as Layer<any, any, any>[], memo.getOrElseMemoize),
-          M.map(A.reduce({} as any, (b, a) => ({ ...b, ...a })))
+          M.map(Chunk.reduce({} as any, (b, a) => ({ ...b, ...a })))
         )
       })
     }
@@ -455,7 +455,7 @@ export function scope<R, E, A>(
       return M.succeed((memo) => {
         return pipe(
           M.forEach_(I.layers as Layer<any, any, any>[], memo.getOrElseMemoize),
-          M.map(A.reduce({} as any, (b, a) => ({ ...b, ...a })))
+          M.map(Chunk.reduce({} as any, (b, a) => ({ ...b, ...a })))
         )
       })
     }

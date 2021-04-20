@@ -1,5 +1,6 @@
 import { provideTestClock, TestClock } from "../src/Clock"
 import { range } from "../src/Collections/Immutable/Array"
+import * as Chunk from "../src/Collections/Immutable/Chunk"
 import type { Cb, Effect } from "../src/Effect"
 import * as T from "../src/Effect"
 import * as E from "../src/Either"
@@ -12,7 +13,6 @@ import * as O from "../src/Option"
 import * as Ref from "../src/Ref"
 import { runTest } from "./utils/runTest"
 
-T.succeedWith
 describe("Effect", () => {
   it("catch", async () => {
     class ErrorA {
@@ -333,8 +333,8 @@ describe("Effect", () => {
     const f = T.forEach_(range(0, 100), (n: number) => T.succeedWith(() => n + 1))
     const a = await pipe(f, T.runPromise)
     const b = await pipe(f, T.runPromise)
-    expect(a).toEqual(b)
-    expect(b).toEqual(range(1, 101))
+    expect(Chunk.toArray(a)).toEqual(Chunk.toArray(b))
+    expect(Chunk.toArray(b)).toEqual(range(1, 101))
   })
   it("forEachParN", async () => {
     const result = await pipe(
@@ -365,7 +365,7 @@ describe("Effect", () => {
     )
 
     expect(result).toEqual(Ex.fail("error in process: 5"))
-    expect(result_ok).toEqual(Ex.succeed(range(0, 100)))
+    expect(Ex.map_(result_ok, Chunk.toArray)).toEqual(Ex.succeed(range(0, 100)))
   })
   it("catchAllDefect", async () => {
     const a = await pipe(T.die("LOL"), T.catchAllDefect(T.succeed), T.runPromise)

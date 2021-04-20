@@ -5,6 +5,7 @@ import * as C from "../../Cause"
 import { RuntimeError } from "../../Cause"
 import type { HasClock } from "../../Clock"
 import * as A from "../../Collections/Immutable/Array"
+import * as Chunk from "../../Collections/Immutable/Chunk"
 import * as R from "../../Collections/Immutable/Dictionary"
 import type { HashSet } from "../../Collections/Immutable/HashSet"
 import * as HS from "../../Collections/Immutable/HashSet"
@@ -2320,7 +2321,7 @@ export function forEachUnitParN<R, E, A, B>(n: number, f: (a: A) => Managed<R, E
  * @dataFirst collect_
  */
 export function collect<A, R, E, B>(f: (a: A) => Managed<R, Option<E>, B>) {
-  return (self: Iterable<A>): Managed<R, E, readonly B[]> => collect_(self, f)
+  return (self: Iterable<A>): Managed<R, E, Chunk.Chunk<B>> => collect_(self, f)
 }
 
 /**
@@ -2330,10 +2331,10 @@ export function collect<A, R, E, B>(f: (a: A) => Managed<R, Option<E>, B>) {
 export function collect_<A, R, E, B>(
   self: Iterable<A>,
   f: (a: A) => Managed<R, Option<E>, B>
-): Managed<R, E, readonly B[]> {
+): Managed<R, E, Chunk.Chunk<B>> {
   return core.map_(
     forEach.forEach_(self, (a) => optional(f(a))),
-    A.compact
+    Chunk.compact
   )
 }
 
@@ -2344,7 +2345,7 @@ export function collect_<A, R, E, B>(
  * @dataFirst collectPar_
  */
 export function collectPar<A, R, E, B>(f: (a: A) => Managed<R, Option<E>, B>) {
-  return (self: Iterable<A>): Managed<R, E, readonly B[]> => collectPar_(self, f)
+  return (self: Iterable<A>): Managed<R, E, Chunk.Chunk<B>> => collectPar_(self, f)
 }
 
 /**
@@ -2354,10 +2355,10 @@ export function collectPar<A, R, E, B>(f: (a: A) => Managed<R, Option<E>, B>) {
 export function collectPar_<A, R, E, B>(
   self: Iterable<A>,
   f: (a: A) => Managed<R, Option<E>, B>
-): Managed<R, E, readonly B[]> {
+): Managed<R, E, Chunk.Chunk<B>> {
   return core.map_(
     forEach.forEachPar_(self, (a) => optional(f(a))),
-    A.compact
+    Chunk.compact
   )
 }
 
@@ -2371,10 +2372,10 @@ export function collectParN_<A, R, E, B>(
   self: Iterable<A>,
   n: number,
   f: (a: A) => Managed<R, Option<E>, B>
-): Managed<R, E, readonly B[]> {
+): Managed<R, E, Chunk.Chunk<B>> {
   return core.map_(
     forEach.forEachParN_(self, n, (a) => optional(f(a))),
-    A.compact
+    Chunk.compact
   )
 }
 
@@ -2389,7 +2390,7 @@ export function collectParN_<A, R, E, B>(
 export function collectParN<A, R, E, B>(
   n: number,
   f: (a: A) => Managed<R, Option<E>, B>
-): (self: Iterable<A>) => Managed<R, E, readonly B[]> {
+): (self: Iterable<A>) => Managed<R, E, Chunk.Chunk<B>> {
   return (self) => collectParN_(self, n, f)
 }
 
@@ -2496,8 +2497,8 @@ export function collectAllWith_<R, E, A, B>(
   as: Iterable<Managed<R, E, A>>,
   pf: (a: A) => O.Option<B>,
   __trace?: string
-): Managed<R, E, readonly B[]> {
-  return core.map_(collectAll(as, __trace), (x) => pipe(x, A.map(pf), A.compact))
+): Managed<R, E, Chunk.Chunk<B>> {
+  return core.map_(collectAll(as, __trace), Chunk.filterMap(pf))
 }
 
 /**
@@ -2518,8 +2519,8 @@ export function collectAllWithPar_<R, E, A, B>(
   as: Iterable<Managed<R, E, A>>,
   pf: (a: A) => O.Option<B>,
   __trace?: string
-): Managed<R, E, readonly B[]> {
-  return core.map_(collectAllPar(as, __trace), (x) => pipe(x, A.map(pf), A.compact))
+): Managed<R, E, Chunk.Chunk<B>> {
+  return core.map_(collectAllPar(as, __trace), Chunk.filterMap(pf))
 }
 
 /**
@@ -2543,10 +2544,8 @@ export function collectAllWithParN_<R, E, A, B>(
   n: number,
   pf: (a: A) => O.Option<B>,
   __trace?: string
-): Managed<R, E, readonly B[]> {
-  return core.map_(collectAllParN_(as, n, __trace), (x) =>
-    pipe(x, A.map(pf), A.compact)
-  )
+): Managed<R, E, Chunk.Chunk<B>> {
+  return core.map_(collectAllParN_(as, n, __trace), Chunk.filterMap(pf))
 }
 
 /**
@@ -2561,7 +2560,7 @@ export function collectAllWithParN<A, B>(
   n: number,
   pf: (a: A) => O.Option<B>,
   __trace?: string
-): <R, E>(as: Iterable<Managed<R, E, A>>) => Managed<R, E, readonly B[]> {
+): <R, E>(as: Iterable<Managed<R, E, A>>) => Managed<R, E, Chunk.Chunk<B>> {
   return (as) => collectAllWithParN_(as, n, pf, __trace)
 }
 

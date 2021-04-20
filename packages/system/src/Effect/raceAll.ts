@@ -1,6 +1,6 @@
 // tracing: off
 
-import * as A from "../Collections/Immutable/Array"
+import * as Chunk from "../Collections/Immutable/Chunk"
 import type { NonEmptyArray } from "../Collections/Immutable/NonEmptyArray"
 import * as Exit from "../Exit"
 import * as Fiber from "../Fiber"
@@ -19,7 +19,7 @@ import * as map from "./map"
 import * as tap from "./tap"
 
 function arbiter<E, A>(
-  fibers: readonly Fiber.Fiber<E, A>[],
+  fibers: Chunk.Chunk<Fiber.Fiber<E, A>>,
   winner: Fiber.Fiber<E, A>,
   promise: P.Promise<E, readonly [A, Fiber.Fiber<E, A>]>,
   fails: Ref.Ref<number>
@@ -48,7 +48,7 @@ function arbiter<E, A>(
               set
                 ? pipe(
                     fibers,
-                    A.reduce(core.unit as UIO<void>, (io, f) =>
+                    Chunk.reduce(core.unit as UIO<void>, (io, f) =>
                       f === winner ? io : tap.tap_(io, () => Fiber.interrupt(f))
                     )
                   )
@@ -84,7 +84,7 @@ export function raceAllWithStrategy<R, E, A>(
               forEach_(ios, (x) => pipe(x, interruption.interruptible, core.fork))
             ),
             tap.tap(({ fs }) =>
-              A.reduce_(fs, core.unit as UIO<void>, (io, f) =>
+              Chunk.reduce_(fs, core.unit as UIO<void>, (io, f) =>
                 pipe(
                   io,
                   core.chain(() =>
@@ -100,7 +100,7 @@ export function raceAllWithStrategy<R, E, A>(
               pipe(
                 restore(pipe(done, P.await, core.chain(inheritRefs))),
                 interruption.onInterrupt(() =>
-                  A.reduce_(fs, core.unit as UIO<void>, (io, f) =>
+                  Chunk.reduce_(fs, core.unit as UIO<void>, (io, f) =>
                     tap.tap_(io, () => Fiber.interrupt(f))
                   )
                 )

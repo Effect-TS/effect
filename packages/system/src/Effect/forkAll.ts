@@ -1,5 +1,6 @@
 // tracing: off
 
+import type * as Chunk from "../Collections/Immutable/Chunk"
 import * as Fiber from "../Fiber"
 import { fork } from "./core"
 import type { Effect, RIO } from "./effect"
@@ -13,7 +14,7 @@ import { map_ } from "./map"
 export function forkAll<R, E, A>(
   effects: Iterable<Effect<R, E, A>>,
   __trace?: string
-): RIO<R, Fiber.Fiber<E, readonly A[]>> {
+): RIO<R, Fiber.Fiber<E, Chunk.Chunk<A>>> {
   return map_(forEach_(effects, fork, __trace), Fiber.collectAll)
 }
 

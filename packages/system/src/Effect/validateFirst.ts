@@ -1,5 +1,6 @@
 // tracing: off
 
+import type { Chunk } from "../Collections/Immutable/Chunk"
 import type { Effect } from "./effect"
 import { forEach_, forEachPar_, forEachParN_ } from "./excl-forEach"
 import { flip } from "./flip"
@@ -12,7 +13,7 @@ export function validateFirst_<A, R, E, B>(
   i: Iterable<A>,
   f: (a: A) => Effect<R, E, B>,
   __trace?: string
-): Effect<R, readonly E[], B> {
+): Effect<R, Chunk<E>, B> {
   return flip(forEach_(i, (a) => flip(f(a)), __trace))
 }
 
@@ -26,7 +27,7 @@ export function validateFirst<A, R, E, B>(
   f: (a: A) => Effect<R, E, B>,
   __trace?: string
 ) {
-  return (i: Iterable<A>): Effect<R, readonly E[], B> => validateFirst_(i, f, __trace)
+  return (i: Iterable<A>): Effect<R, Chunk<E>, B> => validateFirst_(i, f, __trace)
 }
 
 /**
@@ -39,7 +40,7 @@ export function validateFirstPar_<A, R, E, B>(
   i: Iterable<A>,
   f: (a: A) => Effect<R, E, B>,
   __trace?: string
-): Effect<R, readonly E[], B> {
+): Effect<R, Chunk<E>, B> {
   return flip(forEachPar_(i, (a) => flip(f(a)), __trace))
 }
 
@@ -55,8 +56,7 @@ export function validateFirstPar<A, R, E, B>(
   f: (a: A) => Effect<R, E, B>,
   __trace?: string
 ) {
-  return (i: Iterable<A>): Effect<R, readonly E[], B> =>
-    validateFirstPar_(i, f, __trace)
+  return (i: Iterable<A>): Effect<R, Chunk<E>, B> => validateFirstPar_(i, f, __trace)
 }
 
 /**
@@ -72,7 +72,7 @@ export function validateFirstParN_<A, R, E, B>(
   n: number,
   f: (a: A) => Effect<R, E, B>,
   __trace?: string
-): Effect<R, readonly E[], B> {
+): Effect<R, Chunk<E>, B> {
   return flip(forEachParN_(i, n, (a) => flip(f(a)), __trace))
 }
 
@@ -90,6 +90,6 @@ export function validateFirstParN<A, R, E, B>(
   n: number,
   f: (a: A) => Effect<R, E, B>,
   __trace?: string
-): (i: Iterable<A>) => Effect<R, readonly E[], B> {
+): (i: Iterable<A>) => Effect<R, Chunk<E>, B> {
   return (i) => validateFirstParN_(i, n, f, __trace)
 }

@@ -1,6 +1,5 @@
 // tracing: off
 
-import * as A from "../Collections/Immutable/Array"
 import * as Chunk from "../Collections/Immutable/Chunk"
 import { succeed } from "../Effect/core"
 import * as exclForEach from "../Effect/excl-forEach"
@@ -481,9 +480,9 @@ class FilterInputM<RA, RB, EA, EB, B, A, A1 extends A, R2, E2> extends XQueueInt
         )
       ),
       T.chain((maybeAs) => {
-        const filtered = A.filterMap_(maybeAs, identity)
+        const filtered = Chunk.filterMap_(maybeAs, identity)
 
-        if (A.isEmpty(filtered)) {
+        if (Chunk.isEmpty(filtered)) {
           return T.succeed(false)
         } else {
           return this.self.offerAll(filtered)

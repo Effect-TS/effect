@@ -24,9 +24,9 @@ export function struct<NER extends Record<string, Managed<any, any, any>>>(
     ),
     (values) => {
       const res = {}
-      values.forEach(([k, v]) => {
+      for (const [k, v] of values) {
         res[k] = v
-      })
+      }
       return res
     }
   ) as any
@@ -50,9 +50,9 @@ export function structPar<NER extends Record<string, Managed<any, any, any>>>(
     ),
     (values) => {
       const res = {}
-      values.forEach(([k, v]) => {
+      for (const [k, v] of values) {
         res[k] = v
-      })
+      }
       return res
     }
   ) as any
@@ -97,9 +97,9 @@ export function structParN_<NER extends Record<string, Managed<any, any, any>>>(
     ),
     (values) => {
       const res = {}
-      values.forEach(([k, v]) => {
+      for (const [k, v] of values) {
         res[k] = v
-      })
+      }
       return res
     }
   ) as any
@@ -156,9 +156,9 @@ export function bindAll_<
       ),
       (values) => {
         const res = {}
-        values.forEach(([k, v]) => {
+        for (const [k, v] of values) {
           res[k] = v
-        })
+        }
         return Object.assign(res, k)
       }
     )
@@ -216,9 +216,9 @@ export function bindAllPar_<
       ),
       (values) => {
         const res = {}
-        values.forEach(([k, v]) => {
+        for (const [k, v] of values) {
           res[k] = v
-        })
+        }
         return Object.assign(res, k)
       }
     )
@@ -279,9 +279,9 @@ export function bindAllParN_<
       ),
       (values) => {
         const res = {}
-        values.forEach(([k, v]) => {
+        for (const [k, v] of values) {
           res[k] = v
-        })
+        }
         return Object.assign(res, k)
       }
     )

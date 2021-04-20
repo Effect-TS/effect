@@ -1,6 +1,6 @@
 // tracing: off
 
-import * as A from "../Collections/Immutable/Array"
+import * as Chunk from "../Collections/Immutable/Chunk"
 import type { Option } from "../Option"
 import type { Effect } from "./effect"
 import { forEach_, forEachPar_, forEachParN_ } from "./excl-forEach"
@@ -17,7 +17,7 @@ export function collect<A, R, E, B>(
   f: (a: A) => Effect<R, Option<E>, B>,
   __trace?: string
 ) {
-  return (self: Iterable<A>): Effect<R, E, readonly B[]> => collect_(self, f, __trace)
+  return (self: Iterable<A>): Effect<R, E, Chunk.Chunk<B>> => collect_(self, f, __trace)
 }
 
 /**
@@ -28,10 +28,10 @@ export function collect_<A, R, E, B>(
   self: Iterable<A>,
   f: (a: A) => Effect<R, Option<E>, B>,
   __trace?: string
-): Effect<R, E, readonly B[]> {
+): Effect<R, E, Chunk.Chunk<B>> {
   return map_(
     forEach_(self, (a) => optional(f(a)), __trace),
-    A.compact
+    Chunk.compact
   )
 }
 
@@ -45,7 +45,7 @@ export function collectPar<A, R, E, B>(
   f: (a: A) => Effect<R, Option<E>, B>,
   __trace?: string
 ) {
-  return (self: Iterable<A>): Effect<R, E, readonly B[]> =>
+  return (self: Iterable<A>): Effect<R, E, Chunk.Chunk<B>> =>
     collectPar_(self, f, __trace)
 }
 
@@ -57,10 +57,10 @@ export function collectPar_<A, R, E, B>(
   self: Iterable<A>,
   f: (a: A) => Effect<R, Option<E>, B>,
   __trace?: string
-): Effect<R, E, readonly B[]> {
+): Effect<R, E, Chunk.Chunk<B>> {
   return map_(
     forEachPar_(self, (a) => optional(f(a)), __trace),
-    A.compact
+    Chunk.compact
   )
 }
 
@@ -75,10 +75,10 @@ export function collectParN_<A, R, E, B>(
   n: number,
   f: (a: A) => Effect<R, Option<E>, B>,
   __trace?: string
-): Effect<R, E, readonly B[]> {
+): Effect<R, E, Chunk.Chunk<B>> {
   return map_(
     forEachParN_(self, n, (a) => optional(f(a)), __trace),
-    A.compact
+    Chunk.compact
   )
 }
 
@@ -94,6 +94,6 @@ export function collectParN<A, R, E, B>(
   n: number,
   f: (a: A) => Effect<R, Option<E>, B>,
   __trace?: string
-): (self: Iterable<A>) => Effect<R, E, readonly B[]> {
+): (self: Iterable<A>) => Effect<R, E, Chunk.Chunk<B>> {
   return (self) => collectParN_(self, n, f, __trace)
 }

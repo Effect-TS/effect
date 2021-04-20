@@ -1,7 +1,6 @@
 // tracing: off
 
-import * as A from "../Collections/Immutable/Array"
-import type * as NA from "../Collections/Immutable/NonEmptyArray"
+import * as Chunk from "../Collections/Immutable/Chunk"
 import * as E from "../Either"
 import { absolve } from "./absolve"
 import type { Effect } from "./effect"
@@ -75,21 +74,21 @@ export function validateParN_<A, R, E, B>(
 }
 
 function mergeExits<E, B>(): (
-  a: readonly E.Either<E, B>[]
-) => E.Either<NA.NonEmptyArray<E>, B[]> {
+  a: Chunk.Chunk<E.Either<E, B>>
+) => E.Either<Chunk.Chunk<E>, Chunk.Chunk<B>> {
   return (exits) => {
-    const errors = [] as E[]
-    const results = [] as B[]
+    let errors = Chunk.empty<E>()
+    let results = Chunk.empty<B>()
 
-    exits.forEach((e) => {
+    for (const e of exits) {
       if (e._tag === "Left") {
-        errors.push(e.left)
+        errors = Chunk.append_(errors, e.left)
       } else {
-        results.push(e.right)
+        results = Chunk.append_(results, e.right)
       }
-    })
+    }
 
-    if (A.isNonEmpty(errors)) {
+    if (!Chunk.isEmpty(errors)) {
       return E.left(errors)
     } else {
       return E.right(results)
@@ -109,7 +108,7 @@ export function validateExec_<A, R, E, B>(
   es: ExecutionStrategy,
   f: (a: A) => Effect<R, E, B>,
   __trace?: string
-): Effect<R, NA.NonEmptyArray<E>, A.Array<B>> {
+): Effect<R, Chunk.Chunk<E>, Chunk.Chunk<B>> {
   return absolve(
     map_(
       forEachExec_(as, es, (a) => either(f(a))),
@@ -178,6 +177,6 @@ export function validateExec<R, E, A, B>(
   es: ExecutionStrategy,
   f: (a: A) => Effect<R, E, B>,
   __trace?: string
-): (as: Iterable<A>) => Effect<R, NA.NonEmptyArray<E>, A.Array<B>> {
+): (as: Iterable<A>) => Effect<R, Chunk.Chunk<E>, Chunk.Chunk<B>> {
   return (as) => validateExec_(as, es, f, __trace)
 }

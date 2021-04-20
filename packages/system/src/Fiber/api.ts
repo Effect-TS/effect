@@ -1,7 +1,7 @@
 // tracing: off
 
 import * as Cause from "../Cause/core"
-import * as A from "../Collections/Immutable/Array"
+import * as Chunk from "../Collections/Immutable/Chunk"
 import * as E from "../Either"
 import * as Exit from "../Exit/api"
 import { constant, pipe } from "../Function"
@@ -271,16 +271,18 @@ export function collectAll<E, A>(fibers: Iterable<Fiber.Fiber<E, A>>) {
       pipe(
         T.forEach_(fibers, (f) => f.interruptAs(fiberId)),
         T.map(
-          A.reduceRight(Exit.succeed(A.empty) as Exit.Exit<E, A.Array<A>>, (a, b) =>
-            Exit.zipWith_(a, b, (_a, _b) => [_a, ..._b], Cause.both)
+          Chunk.reduceRight(
+            Exit.succeed(Chunk.empty()) as Exit.Exit<E, Chunk.Chunk<A>>,
+            (a, b) =>
+              Exit.zipWith_(a, b, (_a, _b) => Chunk.prepend_(_b, _a), Cause.both)
           )
         )
       ),
     poll: pipe(
       T.forEach_(fibers, (f) => f.poll),
       T.map(
-        A.reduceRight(
-          O.some(Exit.succeed(A.empty) as Exit.Exit<E, readonly A[]>),
+        Chunk.reduceRight(
+          O.some(Exit.succeed(Chunk.empty()) as Exit.Exit<E, Chunk.Chunk<A>>),
           (a, b) =>
             O.fold_(
               a,
@@ -290,7 +292,14 @@ export function collectAll<E, A>(fibers: Iterable<Fiber.Fiber<E, A>>) {
                   b,
                   () => O.none,
                   (rb) =>
-                    O.some(Exit.zipWith_(ra, rb, (_a, _b) => [_a, ..._b], Cause.both))
+                    O.some(
+                      Exit.zipWith_(
+                        ra,
+                        rb,
+                        (_a, _b) => Chunk.prepend_(_b, _a),
+                        Cause.both
+                      )
+                    )
                 )
             )
         )

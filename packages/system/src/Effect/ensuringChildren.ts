@@ -1,5 +1,6 @@
 // tracing: off
 
+import type * as Chunk from "../Collections/Immutable/Chunk"
 import type { HashSet } from "../Collections/Immutable/HashSet"
 import * as Fiber from "../Fiber"
 import { pipe } from "../Function"
@@ -50,7 +51,7 @@ export function ensuringChildren_<R, E, A, R1, X>(
  */
 export function ensuringChild_<R, E, A, R2, X>(
   fa: Effect<R, E, A>,
-  f: (_: Fiber.Fiber<any, readonly any[]>) => RIO<R2, X>,
+  f: (_: Fiber.Fiber<any, Chunk.Chunk<unknown>>) => RIO<R2, X>,
   __trace?: string
 ) {
   return ensuringChildren_(fa, (x) => pipe(x, Fiber.collectAll, f), __trace)
@@ -64,7 +65,7 @@ export function ensuringChild_<R, E, A, R2, X>(
  * @dataFirst ensuringChild_
  */
 export function ensuringChild<R, E, A, R2, X>(
-  f: (_: Fiber.Fiber<any, readonly any[]>) => RIO<R2, X>,
+  f: (_: Fiber.Fiber<any, Chunk.Chunk<unknown>>) => RIO<R2, X>,
   __trace?: string
 ) {
   return (fa: Effect<R, E, A>) => ensuringChild_(fa, f, __trace)

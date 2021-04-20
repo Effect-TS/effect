@@ -27,9 +27,9 @@ export function struct<NER extends Record<string, Effect<any, any, any>>>(
     ),
     (values) => {
       const res = {}
-      values.forEach(([k, v]) => {
+      for (const [k, v] of values) {
         res[k] = v
-      })
+      }
       return res
     }
   ) as any
@@ -56,9 +56,9 @@ export function structPar<NER extends Record<string, Effect<any, any, any>>>(
     ),
     (values) => {
       const res = {}
-      values.forEach(([k, v]) => {
+      for (const [k, v] of values) {
         res[k] = v
-      })
+      }
       return res
     }
   ) as any
@@ -106,9 +106,9 @@ export function structParN_<NER extends Record<string, Effect<any, any, any>>>(
     ),
     (values) => {
       const res = {}
-      values.forEach(([k, v]) => {
+      for (const [k, v] of values) {
         res[k] = v
-      })
+      }
       return res
     }
   ) as any

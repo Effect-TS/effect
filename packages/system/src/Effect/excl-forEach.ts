@@ -1,8 +1,9 @@
 // tracing: off
 
 import * as cause from "../Cause"
-import * as A from "../Collections/Immutable/Array"
+import * as ChunkCompact from "../Collections/Immutable/Chunk/api/compact"
 import * as ChunkFilter from "../Collections/Immutable/Chunk/api/filter"
+import * as ChunkFind from "../Collections/Immutable/Chunk/api/find"
 import * as ChunkForEach from "../Collections/Immutable/Chunk/api/forEach"
 import * as ChunkSplitAt from "../Collections/Immutable/Chunk/api/splitAt"
 import * as ChunkZip from "../Collections/Immutable/Chunk/api/zip"
@@ -66,7 +67,7 @@ export function forEach_<A, R, E, B>(
   as: Iterable<A>,
   f: (a: A) => Effect<R, E, B>,
   __trace?: string
-): Effect<R, E, readonly B[]> {
+): Effect<R, E, Chunk.Chunk<B>> {
   return core.suspend(() => {
     const acc: B[] = []
 
@@ -76,7 +77,7 @@ export function forEach_<A, R, E, B>(
           acc.push(b)
         })
       ),
-      () => acc
+      () => Chunk.from(acc)
     )
   }, __trace)
 }
@@ -259,7 +260,9 @@ export function forEachUnitPar_<R, E, A, X>(
               whenM.whenM(
                 pipe(
                   forEach_(fibers, (_) => _.await),
-                  map.map((_) => _.findIndex((ex) => !Ex.succeeded(ex)) !== -1)
+                  map.map(
+                    (_) => ChunkFind.findIndex_(_, (ex) => !Ex.succeeded(ex)) !== -1
+                  )
                 )
               )
             )
@@ -314,7 +317,7 @@ export function forEachPar_<R, E, A, B>(
   as: Iterable<A>,
   f: (a: A) => Effect<R, E, B>,
   __trace?: string
-): Effect<R, E, readonly B[]> {
+): Effect<R, E, Chunk.Chunk<B>> {
   return core.suspend(
     () =>
       core.chain_(
@@ -332,7 +335,7 @@ export function forEachPar_<R, E, A, B>(
                     })
                 )
             ),
-            () => array
+            () => Chunk.from(array)
           )
       ),
     __trace
@@ -348,7 +351,7 @@ export function forEachPar_<R, E, A, B>(
  * @dataFirst forEachPar_
  */
 export function forEachPar<R, E, A, B>(f: (a: A) => Effect<R, E, B>, __trace?: string) {
-  return (as: Iterable<A>): Effect<R, E, readonly B[]> => forEachPar_(as, f, __trace)
+  return (as: Iterable<A>): Effect<R, E, Chunk.Chunk<B>> => forEachPar_(as, f, __trace)
 }
 
 /**
@@ -429,7 +432,7 @@ export function forEachParN_<R, E, A, B>(
   n: number,
   f: (a: A) => Effect<R, E, B>,
   __trace?: string
-): Effect<R, E, readonly B[]> {
+): Effect<R, E, Chunk.Chunk<B>> {
   function worker(
     q: Q.Queue<readonly [promise.Promise<E, B>, A]>,
     pairs: Iterable<readonly [promise.Promise<E, B>, A]>,
@@ -472,7 +475,7 @@ export function forEachParN_<R, E, A, B>(
                   )
                 )
               ),
-              Do.bind("ref", ({ pairs }) => Ref.makeRef(pairs.length)),
+              Do.bind("ref", ({ pairs }) => Ref.makeRef(Chunk.size(pairs))),
               tap.tap(({ pairs }) =>
                 core.fork(forEach_(pairs, (pair) => Q.offer_(q, pair)))
               ),
@@ -520,7 +523,7 @@ export function forEachExec_<R, E, A, B>(
   es: ExecutionStrategy,
   f: (a: A) => Effect<R, E, B>,
   __trace?: string
-): Effect<R, E, readonly B[]> {
+): Effect<R, E, Chunk.Chunk<B>> {
   switch (es._tag) {
     case "Sequential": {
       return forEach_(as, f, __trace) as any
@@ -546,7 +549,7 @@ export function forEachExec<R, E, A, B>(
   es: ExecutionStrategy,
   f: (a: A) => Effect<R, E, B>,
   __trace?: string
-): (as: Iterable<A>) => Effect<R, E, readonly B[]> {
+): (as: Iterable<A>) => Effect<R, E, Chunk.Chunk<B>> {
   return (as) => forEachExec_(as, es, f, __trace)
 }
 
@@ -653,8 +656,10 @@ export function collectAllWith_<R, E, A, B>(
   as: Iterable<Effect<R, E, A>>,
   pf: (a: A) => O.Option<B>,
   __trace?: string
-): Effect<R, E, readonly B[]> {
-  return map.map_(collectAll(as, __trace), (x) => pipe(x, A.map(pf), A.compact))
+): Effect<R, E, Chunk.Chunk<B>> {
+  return map.map_(collectAll(as, __trace), (x) =>
+    pipe(x, Chunk.map(pf), ChunkCompact.compact)
+  )
 }
 
 /**
@@ -675,8 +680,10 @@ export function collectAllWithPar_<R, E, A, B>(
   as: Iterable<Effect<R, E, A>>,
   pf: (a: A) => O.Option<B>,
   __trace?: string
-): Effect<R, E, readonly B[]> {
-  return map.map_(collectAllPar(as, __trace), (x) => pipe(x, A.map(pf), A.compact))
+): Effect<R, E, Chunk.Chunk<B>> {
+  return map.map_(collectAllPar(as, __trace), (x) =>
+    pipe(x, Chunk.map(pf), ChunkCompact.compact)
+  )
 }
 
 /**
@@ -700,8 +707,10 @@ export function collectAllWithParN_<R, E, A, B>(
   n: number,
   pf: (a: A) => O.Option<B>,
   __trace?: string
-): Effect<R, E, readonly B[]> {
-  return map.map_(collectAllParN_(as, n, __trace), (x) => pipe(x, A.map(pf), A.compact))
+): Effect<R, E, Chunk.Chunk<B>> {
+  return map.map_(collectAllParN_(as, n, __trace), (x) =>
+    pipe(x, Chunk.map(pf), ChunkCompact.compact)
+  )
 }
 
 /**
@@ -716,7 +725,7 @@ export function collectAllWithParN<A, B>(
   n: number,
   pf: (a: A) => O.Option<B>,
   __trace?: string
-): <R, E>(as: Iterable<Effect<R, E, A>>) => Effect<R, E, readonly B[]> {
+): <R, E>(as: Iterable<Effect<R, E, A>>) => Effect<R, E, Chunk.Chunk<B>> {
   return (as) => collectAllWithParN_(as, n, pf, __trace)
 }
 
