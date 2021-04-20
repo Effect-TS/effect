@@ -3,6 +3,23 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.32.0](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.31.1...@effect-ts/system@0.32.0) (2021-04-20)
+
+
+### Bug Fixes
+
+* **tuple:** fix tests and improve mapN ([b3be972](https://github.com/Effect-TS/core/commit/b3be9722f1b5a79e6b11539c9616e59816451953))
+
+
+### Features
+
+* **chunk:** remove duplicate findIndex ([717e161](https://github.com/Effect-TS/core/commit/717e1618c8f355e909ac554b6ca8218848482fa0))
+* **tuples:** use tuple everywhere while fixing bugs ([793427b](https://github.com/Effect-TS/core/commit/793427ba590b7fd499d7c4cd4f7364642601314f))
+
+
+
+
+
 ## [0.31.1](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.31.0...@effect-ts/system@0.31.1) (2021-04-20)
 
 

@@ -3,6 +3,22 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.35.0](https://github.com/Effect-TS/core/compare/@effect-ts/core@0.34.1...@effect-ts/core@0.35.0) (2021-04-20)
+
+
+### Bug Fixes
+
+* **tuple:** fix tests and improve mapN ([b3be972](https://github.com/Effect-TS/core/commit/b3be9722f1b5a79e6b11539c9616e59816451953))
+
+
+### Features
+
+* **tuples:** use tuple everywhere while fixing bugs ([793427b](https://github.com/Effect-TS/core/commit/793427ba590b7fd499d7c4cd4f7364642601314f))
+
+
+
+
+
 ## [0.34.1](https://github.com/Effect-TS/core/compare/@effect-ts/core@0.34.0...@effect-ts/core@0.34.1) (2021-04-20)
 
 **Note:** Version bump only for package @effect-ts/core
