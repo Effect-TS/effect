@@ -164,3 +164,24 @@ export function prepend_<Ks extends unknown[], K>(
 ): Tuple<[K, ...Ks]> {
   return new Tuple([k, ...self.tuple])
 }
+
+/**
+ * Concat tuples
+ *
+ * @dataFirst concat_
+ */
+export function concat<Hs extends unknown[]>(
+  that: Tuple<Hs>
+): <Ks extends unknown[]>(self: Tuple<Ks>) => Tuple<[...Ks, ...Hs]> {
+  return (self) => concat_(self, that)
+}
+
+/**
+ * Concat tuples
+ */
+export function concat_<Ks extends unknown[], Hs extends unknown[]>(
+  self: Tuple<Ks>,
+  that: Tuple<Hs>
+): Tuple<[...Ks, ...Hs]> {
+  return new Tuple([...self.tuple, ...that.tuple])
+}
