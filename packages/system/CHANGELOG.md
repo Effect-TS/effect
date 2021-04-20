@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.32.1](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.32.0...@effect-ts/system@0.32.1) (2021-04-20)
+
+
+### Features
+
+* **tuple:** implement get, update, toNative, fromNative ([6164169](https://github.com/Effect-TS/core/commit/6164169f03281dfe5e491e374090454f7edd661c))
+
+
+
+
+
 # [0.32.0](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.31.1...@effect-ts/system@0.32.0) (2021-04-20)
 
 
