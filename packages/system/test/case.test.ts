@@ -5,8 +5,8 @@ import * as S from "../src/Structural"
 describe("Case Class", () => {
   it("should work with equal and hash", () => {
     class Person extends Case.Case<Person> {
-      readonly firstName: string = this["firstName"]
-      readonly lastName: string = this["lastName"]
+      readonly firstName: string = "OO"
+      readonly lastName!: string
     }
 
     const person = new Person({ firstName: "Michael", lastName: "Arnaldi" })
@@ -37,9 +37,9 @@ describe("Case Class", () => {
     }
 
     class Person extends Case.Case<Person> {
-      readonly key: Key = this["key"]
-      readonly firstName: string = this["firstName"]
-      readonly lastName: string = this["lastName"]
+      readonly key!: Key
+      readonly firstName!: string
+      readonly lastName!: string
     }
 
     const personA = new Person({

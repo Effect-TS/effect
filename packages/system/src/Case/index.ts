@@ -30,6 +30,20 @@ export class Case<T, K extends PropertyKey = never>
     this.#args = args
 
     Object.assign(this, args)
+
+    const keys = Object.keys(this)
+
+    for (let i = 0; i < keys.length; i++) {
+      const k = this[keys[i]!]
+      Object.defineProperty(this, keys[i]!, {
+        set(_: unknown) {
+          //
+        },
+        get() {
+          return k
+        }
+      })
+    }
   }
 
   copy(args: Partial<ConstructorArgs<T, K>>): this {
