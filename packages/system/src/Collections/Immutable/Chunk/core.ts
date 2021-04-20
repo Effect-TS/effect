@@ -1,5 +1,7 @@
 import { identity } from "../../../Function"
 import * as O from "../../../Option"
+import * as St from "../../../Structural"
+import * as A from "../Array"
 import type { Chunk } from "./definition"
 import {
   _Empty,
@@ -87,7 +89,7 @@ export function toArrayLike<A>(self: Chunk<A>): ArrayLike<A> {
 /**
  * Converts a chunk to an Array
  */
-export function toArray<A>(self: Chunk<A>): readonly A[] {
+export function toArray<A>(self: Chunk<A>): A.Array<A> {
   return concreteId(self).array()
 }
 
@@ -125,13 +127,11 @@ export function unsafeGet(n: number) {
   return <A>(self: Chunk<A>): A => unsafeGet_(self, n)
 }
 
-const refEq = (x: unknown, y: unknown) => x === y
-
 /**
  * Referential equality check
  */
 export function equals_<A, B>(self: Chunk<A>, that: Chunk<B>): boolean {
-  return corresponds_(self, that, refEq)
+  return corresponds_(self, that, St.equals)
 }
 
 /**

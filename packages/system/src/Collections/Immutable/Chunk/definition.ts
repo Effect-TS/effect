@@ -53,7 +53,7 @@ export abstract class ChunkInternal<A>
   abstract copyToArray(n: number, array: Array<A> | Uint8Array): void
   abstract get(n: number): A
 
-  private arrayLikeCache: IterableArrayLike<unknown> | undefined
+  protected arrayLikeCache: IterableArrayLike<unknown> | undefined
 
   arrayLike(): IterableArrayLike<A> {
     if (this.arrayLikeCache) {
@@ -495,7 +495,16 @@ export class PlainArr<A> extends Arr<A> {
   }
 
   arrayLike() {
-    return this._array
+    if (!this.binary) {
+      return this._array
+    }
+    if (this.arrayLikeCache) {
+      return this.arrayLikeCache as IterableArrayLike<A>
+    }
+    const arr = alloc(this.length)
+    this.copyToArray(0, arr)
+    this.arrayLikeCache = arr
+    return (arr as unknown) as IterableArrayLike<A>
   }
 
   array() {

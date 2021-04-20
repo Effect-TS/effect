@@ -37,7 +37,7 @@ describe("Chunk", () => {
     ).equals(Chunk.many(1, 2, 3, 4, 5, 6, 7, 8, 9, 10))
   })
   it("iterable", () => {
-    expect(Chunk.toArrayLike(Chunk.from([0, 1, 2]))).toEqual([0, 1, 2])
+    expect(Chunk.toArrayLike(Chunk.from([0, 1, 2]))).toEqual(Buffer.of(0, 1, 2))
   })
   it("get", () => {
     expect(
