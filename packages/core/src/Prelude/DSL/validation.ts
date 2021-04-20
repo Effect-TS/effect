@@ -1,7 +1,8 @@
 // tracing: off
 
+import * as Tp from "@effect-ts/system/Collections/Immutable/Tuple"
 import * as E from "@effect-ts/system/Either"
-import { pipe, tuple } from "@effect-ts/system/Function"
+import { pipe } from "@effect-ts/system/Function"
 
 import type { Associative } from "../../Associative"
 import type { Applicative } from "../Applicative"
@@ -28,7 +29,7 @@ export function getValidationF<F>(
         pipe(
           F.either(fa),
           F.both(F.either(fb)),
-          F.map(([maybeA, maybeB]) =>
+          F.map(({ tuple: [maybeA, maybeB] }) =>
             E.fold_(
               maybeA,
               (ea) =>
@@ -41,7 +42,7 @@ export function getValidationF<F>(
                 E.fold_(
                   maybeB,
                   (e) => F.fail(e),
-                  (b) => succeedF(F)(tuple(a, b))
+                  (b) => succeedF(F)(Tp.tuple(a, b))
                 )
             )
           ),

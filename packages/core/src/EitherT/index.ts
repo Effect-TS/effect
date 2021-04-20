@@ -42,7 +42,7 @@ export function applicative<F>(M: Applicative<HKT.UHKT<F>>) {
         pipe(
           x,
           M.both(fb),
-          M.map(([ea, eb]) => E.AssociativeBoth.both(eb)(ea))
+          M.map(({ tuple: [ea, eb] }) => E.AssociativeBoth.both(eb)(ea))
         )
     }
   )

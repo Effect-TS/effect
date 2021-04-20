@@ -7,8 +7,10 @@ import type { Predicate, Refinement } from "../../../Function"
 import * as O from "../../../Option"
 import type { MutableRecord } from "../../../Support/Mutable"
 import type { PredicateWithIndex, RefinementWithIndex, Separated } from "../../../Utils"
-/* adapted from https://github.com/gcanti/fp-ts */
 import * as A from "../Array"
+import * as Tp from "../Tuple"
+
+/* adapted from https://github.com/gcanti/fp-ts */
 
 export type Dictionary<T> = {
   readonly [P in string]: T
@@ -186,7 +188,7 @@ export function modifyAt_<A>(
  */
 export function pop(
   k: string
-): <A>(r: Dictionary<A>) => O.Option<readonly [A, Dictionary<A>]> {
+): <A>(r: Dictionary<A>) => O.Option<Tp.Tuple<[A, Dictionary<A>]>> {
   return (r) => pop_(r, k)
 }
 
@@ -196,10 +198,10 @@ export function pop(
 export function pop_<A>(
   r: Dictionary<A>,
   k: string
-): O.Option<readonly [A, Dictionary<A>]> {
+): O.Option<Tp.Tuple<[A, Dictionary<A>]>> {
   const deleteAtk = deleteAt(k)
   const oa = lookup_(r, k)
-  return O.isNone(oa) ? O.none : O.some([oa.value, deleteAtk(r)])
+  return O.isNone(oa) ? O.none : O.some(Tp.tuple(oa.value, deleteAtk(r)))
 }
 
 /**
@@ -682,10 +684,12 @@ export const reduceRight_: <A, B>(
  */
 export const toArray: <A>(
   r: Dictionary<A>
-) => ReadonlyArray<readonly [string, A]> = collect((k, a) => [k, a])
+) => ReadonlyArray<Tp.Tuple<[string, A]>> = collect(Tp.tuple)
 
 /**
  * Converts an array of [key, value] into a record
  */
-export const fromArray = <V>(_: ReadonlyArray<readonly [string, V]>): Dictionary<V> =>
-  A.reduce_(_, {} as Dictionary<V>, (b, [k, v]) => Object.assign(b, { [k]: v }))
+export const fromArray = <V>(_: ReadonlyArray<Tp.Tuple<[string, V]>>): Dictionary<V> =>
+  A.reduce_(_, {} as Dictionary<V>, (b, { tuple: [k, v] }) =>
+    Object.assign(b, { [k]: v })
+  )

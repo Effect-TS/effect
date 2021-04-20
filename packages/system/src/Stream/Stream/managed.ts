@@ -1,8 +1,8 @@
 // tracing: off
 
 import * as A from "../../Collections/Immutable/Chunk"
+import * as Tp from "../../Collections/Immutable/Tuple"
 import { pipe } from "../../Function"
-import type * as RM from "../../Managed/ReleaseMap"
 import * as O from "../../Option"
 import * as T from "../_internal/effect"
 import * as M from "../_internal/managed"
@@ -30,8 +30,8 @@ export function managed<R, E, A>(self: M.Managed<R, E, A>): Stream<R, E, A> {
                     T.bind("a", () =>
                       pipe(
                         self.effect,
-                        T.map(([_, __]) => __),
-                        T.provideSome((r: R) => [r, finalizer] as [R, RM.ReleaseMap]),
+                        T.map(({ tuple: [_, __] }) => __),
+                        T.provideSome((r: R) => Tp.tuple(r, finalizer)),
                         restore,
                         T.onError(() => doneRef.set(true))
                       )

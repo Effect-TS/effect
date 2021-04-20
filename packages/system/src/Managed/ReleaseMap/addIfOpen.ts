@@ -1,6 +1,7 @@
 // tracing: off
 
 import { insert } from "../../Collections/Immutable/Map/core"
+import * as Tp from "../../Collections/Immutable/Tuple"
 import { pipe } from "../../Function"
 import * as O from "../../Option"
 import * as T from "../deps-core"
@@ -19,16 +20,16 @@ export function addIfOpen(finalizer: Finalizer) {
       R.modify<T.Effect<unknown, never, O.Option<number>>, State>((s) => {
         switch (s._tag) {
           case "Exited": {
-            return [
+            return Tp.tuple(
               T.map_(finalizer(s.exit), () => O.none),
               new Exited(next(s.nextKey), s.exit)
-            ]
+            )
           }
           case "Running": {
-            return [
+            return Tp.tuple(
               T.succeed(O.some(s.nextKey)),
               new Running(next(s.nextKey), insert(s.nextKey, finalizer)(s.finalizers()))
-            ]
+            )
           }
         }
       }),

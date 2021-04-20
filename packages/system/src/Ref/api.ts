@@ -1,8 +1,9 @@
 // tracing: off
 
+import * as Tp from "../Collections/Immutable/Tuple"
 import * as absolve from "../Effect/absolve"
 import * as E from "../Either"
-import { identity, pipe, tuple } from "../Function"
+import { identity, pipe } from "../Function"
 import * as O from "../Option"
 import { AtomicReference } from "../Support/AtomicReference"
 import { matchTag } from "../Utils"
@@ -296,7 +297,7 @@ export function writeOnly<EA, EB, A, B>(
  *
  * @dataFirst modify_
  */
-export function modify<B, A>(f: (a: A) => readonly [B, A]) {
+export function modify<B, A>(f: (a: A) => Tp.Tuple<[B, A]>) {
   return <EA, EB>(self: XRef<EA, EB, A, A>): T.IO<EA | EB, B> => modify_(self, f)
 }
 
@@ -307,7 +308,7 @@ export function modify<B, A>(f: (a: A) => readonly [B, A]) {
  */
 export function modify_<EA, EB, B, A>(
   self: XRef<EA, EB, A, A>,
-  f: (a: A) => readonly [B, A]
+  f: (a: A) => Tp.Tuple<[B, A]>
 ): T.IO<EA | EB, B> {
   return pipe(
     self,
@@ -322,15 +323,15 @@ export function modify_<EA, EB, B, A>(
                 s,
                 getEither,
                 E.fold(
-                  (e) => tuple(E.left(e), s),
+                  (e) => Tp.tuple(E.left(e), s),
                   (a1) =>
-                    pipe(f(a1), ([b, a2]) =>
+                    pipe(f(a1), ({ tuple: [b, a2] }) =>
                       pipe(
                         a2,
                         setEither,
                         E.fold(
-                          (e) => tuple(E.left(e), s),
-                          (s) => tuple(E.widenE<EA | EB>()(E.right(b)), s)
+                          (e) => Tp.tuple(E.left(e), s),
+                          (s) => Tp.tuple(E.widenE<EA | EB>()(E.right(b)), s)
                         )
                       )
                     )
@@ -348,14 +349,14 @@ export function modify_<EA, EB, B, A>(
                 s,
                 getEither,
                 E.fold(
-                  (e) => tuple(E.left(e), s),
+                  (e) => Tp.tuple(E.left(e), s),
                   (a1) =>
-                    pipe(f(a1), ([b, a2]) =>
+                    pipe(f(a1), ({ tuple: [b, a2] }) =>
                       pipe(
                         setEither(a2)(s),
                         E.fold(
-                          (e) => tuple(E.left(e), s),
-                          (s) => tuple(E.widenE<EA | EB>()(E.right(b)), s)
+                          (e) => Tp.tuple(E.left(e), s),
+                          (s) => Tp.tuple(E.widenE<EA | EB>()(E.right(b)), s)
                         )
                       )
                     )
@@ -377,7 +378,7 @@ export function modify_<EA, EB, B, A>(
  *
  * @dataFirst modifySome_
  */
-export function modifySome<B, A>(def: B, f: (a: A) => O.Option<readonly [B, A]>) {
+export function modifySome<B, A>(def: B, f: (a: A) => O.Option<Tp.Tuple<[B, A]>>) {
   return <EA, EB>(self: XRef<EA, EB, A, A>): T.IO<EA | EB, B> =>
     modifySome_(self, def, f)
 }
@@ -391,18 +392,13 @@ export function modifySome<B, A>(def: B, f: (a: A) => O.Option<readonly [B, A]>)
 export function modifySome_<EA, EB, A, B>(
   self: XRef<EA, EB, A, A>,
   def: B,
-  f: (a: A) => O.Option<readonly [B, A]>
+  f: (a: A) => O.Option<Tp.Tuple<[B, A]>>
 ): T.IO<EA | EB, B> {
   return pipe(
     self,
     concrete,
     matchTag({ Atomic: (_) => A.modifySome(_, def, f) }, (_) =>
-      modify_(_, (a) =>
-        pipe(
-          f(a),
-          O.getOrElse(() => tuple(def, a))
-        )
-      )
+      modify_(_, (a) => O.getOrElse_(f(a), () => Tp.tuple(def, a)))
     )
   )
 }
@@ -421,12 +417,15 @@ export function getAndSet<A>(a: A) {
  * Atomically writes the specified value to the `XRef`, returning the value
  * immediately before modification.
  */
-export function getAndSet_<EA, EB, A>(self: XRef<EA, EB, A, A>, a: A) {
+export function getAndSet_<EA, EB, A>(
+  self: XRef<EA, EB, A, A>,
+  a: A
+): T.IO<EA | EB, A> {
   return pipe(
     self,
     concrete,
     matchTag({ Atomic: (_) => A.getAndSet(_, a) }, (_) =>
-      modify_(_, (v) => tuple(v, a))
+      modify_(_, (v) => Tp.tuple(v, a))
     )
   )
 }
@@ -445,13 +444,16 @@ export function getAndUpdate<A>(f: (a: A) => A) {
  * Atomically modifies the `XRef` with the specified function, returning
  * the value immediately before modification.
  */
-export function getAndUpdate_<EA, EB, A>(self: XRef<EA, EB, A, A>, f: (a: A) => A) {
+export function getAndUpdate_<EA, EB, A>(
+  self: XRef<EA, EB, A, A>,
+  f: (a: A) => A
+): T.IO<EA | EB, A> {
   return pipe(
     self,
     concrete,
     matchTag(
       { Atomic: (_) => A.getAndUpdate(_, f) },
-      modify((v) => tuple(v, f(v)))
+      modify((v) => Tp.tuple(v, f(v)))
     )
   )
 }
@@ -475,7 +477,7 @@ export function getAndUpdateSome<A>(f: (a: A) => O.Option<A>) {
 export function getAndUpdateSome_<EA, EB, A>(
   self: XRef<EA, EB, A, A>,
   f: (a: A) => O.Option<A>
-) {
+): T.IO<EA | EB, A> {
   return pipe(
     self,
     concrete,
@@ -484,7 +486,7 @@ export function getAndUpdateSome_<EA, EB, A>(
         pipe(
           f(v),
           O.getOrElse(() => v),
-          (a) => tuple(v, a)
+          (a) => Tp.tuple(v, a)
         )
       )
     )
@@ -511,7 +513,7 @@ export function update_<EA, EB, A>(
     self,
     concrete,
     matchTag({ Atomic: (_) => A.update(_, f) }, (_) =>
-      modify_(_, (v) => tuple(undefined, f(v)))
+      modify_(_, (v) => Tp.tuple(undefined, f(v)))
     )
   )
 }
@@ -539,7 +541,7 @@ export function updateAndGet_<EA, EB, A>(
     concrete,
     matchTag({ Atomic: (_) => A.updateAndGet(_, f) }, (self) =>
       pipe(
-        modify_(self, (v) => pipe(f(v), (result) => tuple(result, result))),
+        modify_(self, (v) => pipe(f(v), (result) => Tp.tuple(result, result))),
         T.chain(() => self.get)
       )
     )
@@ -573,7 +575,7 @@ export function updateSome_<EA, EB, A>(
         pipe(
           f(v),
           O.getOrElse(() => v),
-          (a) => tuple(undefined, a)
+          (a) => Tp.tuple(undefined, a)
         )
       )
     )
@@ -609,7 +611,7 @@ export function updateSomeAndGet_<EA, EB, A>(
         pipe(
           f(v),
           O.getOrElse(() => v),
-          (result) => tuple(result, result)
+          (result) => Tp.tuple(result, result)
         )
       )
     )

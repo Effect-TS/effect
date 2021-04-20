@@ -1,6 +1,7 @@
 // tracing: off
 
 import * as A from "../../Collections/Immutable/Chunk"
+import * as Tp from "../../Collections/Immutable/Tuple"
 import { pipe } from "../../Function"
 import * as O from "../../Option"
 import * as T from "../_internal/effect"
@@ -14,7 +15,7 @@ import { Stream } from "./definitions"
  */
 export function zipWithNext<R, E, O>(
   self: Stream<R, E, O>
-): Stream<R, E, readonly [O, O.Option<O>]> {
+): Stream<R, E, Tp.Tuple<[O, O.Option<O>]>> {
   return new Stream(
     pipe(
       M.do,
@@ -24,7 +25,7 @@ export function zipWithNext<R, E, O>(
         pipe(
           Ref.getAndSet_(ref, O.none),
           T.some,
-          T.map((_) => [_, O.none] as const),
+          T.map((_) => Tp.tuple(_, O.none)),
           T.map(A.single)
         )
       ),
@@ -36,21 +37,22 @@ export function zipWithNext<R, E, O>(
           T.let("sc", ({ chunk, prev }) =>
             pipe(
               chunk,
-              A.mapAccum(
-                prev,
-                (prev, curr) =>
-                  [O.some(curr), O.map_(prev, (_) => [_, curr] as const)] as const
+              A.mapAccum(prev, (prev, curr) =>
+                Tp.tuple(
+                  O.some(curr),
+                  O.map_(prev, (_) => Tp.tuple(_, curr))
+                )
               )
             )
           ),
-          T.tap(({ sc }) => ref.set(sc[0])),
+          T.tap(({ sc }) => ref.set(sc.get(0))),
           T.bind("result", ({ sc }) =>
             Pull.emitChunk(
               A.filterMap_(
-                sc[1],
+                sc.get(1),
                 O.fold(
                   () => O.none,
-                  ([prev, curr]) => O.some([prev, O.some(curr)] as const)
+                  ({ tuple: [prev, curr] }) => O.some(Tp.tuple(prev, O.some(curr)))
                 )
               )
             )

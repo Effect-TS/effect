@@ -1,6 +1,7 @@
 import * as core from "../../../../Effect/core"
 import type { Effect } from "../../../../Effect/effect"
 import * as coreMap from "../../../../Effect/map"
+import * as Tp from "../../Tuple"
 import * as Chunk from "../core"
 import { concreteId } from "../definition"
 
@@ -11,8 +12,8 @@ import { concreteId } from "../definition"
 export function mapAccumM_<A, B, R, E, S>(
   self: Chunk.Chunk<A>,
   s: S,
-  f: (s: S, a: A) => Effect<R, E, readonly [S, B]>
-): Effect<R, E, readonly [S, Chunk.Chunk<B>]> {
+  f: (s: S, a: A) => Effect<R, E, Tp.Tuple<[S, B]>>
+): Effect<R, E, Tp.Tuple<[S, Chunk.Chunk<B>]>> {
   return core.suspend(() => {
     const iterator = concreteId(self).arrayLikeIterator()
     let dest: Effect<R, E, S> = core.succeed(s)
@@ -25,7 +26,7 @@ export function mapAccumM_<A, B, R, E, S>(
       while (i < length) {
         const a = array[i]!
         dest = core.chain_(dest, (state) =>
-          coreMap.map_(f(state, a), ([s, b]) => {
+          coreMap.map_(f(state, a), ({ tuple: [s, b] }) => {
             builder = Chunk.append_(builder, b)
             return s
           })
@@ -33,7 +34,7 @@ export function mapAccumM_<A, B, R, E, S>(
         i++
       }
     }
-    return coreMap.map_(dest, (s) => [s, builder] as const)
+    return coreMap.map_(dest, (s) => Tp.tuple(s, builder))
   })
 }
 
@@ -45,7 +46,7 @@ export function mapAccumM_<A, B, R, E, S>(
  */
 export function mapAccumM<A, B, R, E, S>(
   s: S,
-  f: (s: S, a: A) => Effect<R, E, readonly [S, B]>
-): (self: Chunk.Chunk<A>) => Effect<R, E, readonly [S, Chunk.Chunk<B>]> {
+  f: (s: S, a: A) => Effect<R, E, Tp.Tuple<[S, B]>>
+): (self: Chunk.Chunk<A>) => Effect<R, E, Tp.Tuple<[S, Chunk.Chunk<B>]>> {
   return (self) => mapAccumM_(self, s, f)
 }

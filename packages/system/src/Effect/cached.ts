@@ -25,5 +25,8 @@ export function cached_<R, E, A>(
   ttl: number,
   __trace?: string
 ): RIO<R & Has<Clock>, IO<E, A>> {
-  return map_(cachedInvalidate_(fa, ttl, __trace), ([cachedEffect, _]) => cachedEffect)
+  return map_(
+    cachedInvalidate_(fa, ttl, __trace),
+    ({ tuple: [cachedEffect, _] }) => cachedEffect
+  )
 }

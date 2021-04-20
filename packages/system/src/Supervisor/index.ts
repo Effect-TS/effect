@@ -8,6 +8,7 @@
 import "../Operator"
 
 import * as HS from "../Collections/Immutable/HashSet"
+import type * as Tp from "../Collections/Immutable/Tuple"
 import { succeedWith, suspend, unit } from "../Effect/core"
 import type { Effect, UIO } from "../Effect/effect"
 import { zip_ } from "../Effect/zip"
@@ -41,7 +42,7 @@ export class Supervisor<A> {
    * supervision event if only both component supervisors indicate they have
    * handled the supervision event.
    */
-  and<B>(that: Supervisor<B>): Supervisor<readonly [A, B]> {
+  and<B>(that: Supervisor<B>): Supervisor<Tp.Tuple<[A, B]>> {
     return new Supervisor(
       zip_(this.value, that.value),
       (environment, effect, parent, fiber) =>
@@ -63,7 +64,7 @@ export class Supervisor<A> {
    * supervision event if either component supervisors indicate they have
    * handled the supervision event.
    */
-  or<B>(that: Supervisor<B>): Supervisor<readonly [A, B]> {
+  or<B>(that: Supervisor<B>): Supervisor<Tp.Tuple<[A, B]>> {
     return new Supervisor(
       zip_(this.value, that.value),
       (environment, effect, parent, fiber) =>

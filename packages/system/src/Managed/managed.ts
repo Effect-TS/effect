@@ -1,5 +1,6 @@
 // tracing: off
 
+import type * as Tp from "../Collections/Immutable/Tuple"
 import * as T from "./deps-core"
 import type { Finalizer, ReleaseMap } from "./ReleaseMap"
 
@@ -13,7 +14,7 @@ export class Managed<R, E, A> {
   readonly [T._R]: (_: R) => void
 
   constructor(
-    readonly effect: T.Effect<readonly [R, ReleaseMap], E, readonly [Finalizer, A]>
+    readonly effect: T.Effect<Tp.Tuple<[R, ReleaseMap]>, E, Tp.Tuple<[Finalizer, A]>>
   ) {}
 }
 

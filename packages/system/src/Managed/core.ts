@@ -1,9 +1,10 @@
 // tracing: off
 
 import type { Cause } from "../Cause/cause"
+import * as Tp from "../Collections/Immutable/Tuple"
 import type { ExecutionStrategy } from "../Effect/ExecutionStrategy"
 import { parallel, sequential } from "../Effect/ExecutionStrategy"
-import { pipe, tuple } from "../Function"
+import { pipe } from "../Function"
 import { makeRef } from "../Ref"
 import * as T from "./deps-core"
 import { fromEffect } from "./fromEffect"
@@ -43,18 +44,19 @@ export function chain_<R, E, A, R2, E2, A2>(
   __trace?: string
 ) {
   return new Managed<R & R2, E | E2, A2>(
-    T.chain_(self.effect, ([releaseSelf, a]) =>
+    T.chain_(self.effect, ({ tuple: [releaseSelf, a] }) =>
       T.map_(
         f(a).effect,
-        ([releaseThat, b]) => [
-          (e) =>
-            T.chain_(T.result(releaseThat(e)), (e1) =>
-              T.chain_(T.result(releaseSelf(e1)), (e2) =>
-                T.done(T.exitZipRight_(e1, e2), __trace)
-              )
-            ),
-          b
-        ],
+        ({ tuple: [releaseThat, b] }) =>
+          Tp.tuple(
+            (e) =>
+              T.chain_(T.result(releaseThat(e)), (e1) =>
+                T.chain_(T.result(releaseSelf(e1)), (e2) =>
+                  T.done(T.exitZipRight_(e1, e2), __trace)
+                )
+              ),
+            b
+          ),
         __trace
       )
     )
@@ -148,7 +150,7 @@ export function foldCauseM_<R, E, A, R1, E1, A1, R2, E2, A2>(
       self.effect,
       T.foldCauseM(
         (c) => f(c).effect,
-        ([_, a]) => g(a).effect,
+        ({ tuple: [_, a] }) => g(a).effect,
         __trace
       )
     )
@@ -241,9 +243,9 @@ export function makeReserve<R, E, R2, E2, A>(
     T.uninterruptibleMask(({ restore }) =>
       pipe(
         T.do,
-        T.bind("tp", () => T.environment<readonly [R & R2, ReleaseMap]>()),
-        T.let("r", (s) => s.tp[0]),
-        T.let("releaseMap", (s) => s.tp[1]),
+        T.bind("tp", () => T.environment<Tp.Tuple<[R & R2, ReleaseMap]>>()),
+        T.let("r", (s) => s.tp.get(0)),
+        T.let("releaseMap", (s) => s.tp.get(1)),
         T.bind("reserved", (s) => T.provideAll_(reservation, s.r)),
         T.bind("releaseKey", (s) =>
           addIfOpen.addIfOpen((x) =>
@@ -261,14 +263,12 @@ export function makeReserve<R, E, R2, E2, A>(
                 restore(
                   T.provideSome_(
                     s.reserved.acquire,
-                    ([r]: readonly [R & R2, ReleaseMap]) => r,
+                    ({ tuple: [r] }: Tp.Tuple<[R & R2, ReleaseMap]>) => r,
                     __trace
                   )
                 ),
-                (a): [Finalizer, A] => [
-                  (e) => release.release(k.value, e)(s.releaseMap),
-                  a
-                ]
+                (a): Tp.Tuple<[Finalizer, A]> =>
+                  Tp.tuple((e) => release.release(k.value, e)(s.releaseMap), a)
               )
             }
           }
@@ -296,7 +296,9 @@ export function map_<R, E, A, B>(
   f: (a: A) => B,
   __trace?: string
 ) {
-  return new Managed<R, E, B>(T.map_(self.effect, ([fin, a]) => [fin, f(a)], __trace))
+  return new Managed<R, E, B>(
+    T.map_(self.effect, ({ tuple: [fin, a] }) => Tp.tuple(fin, f(a)), __trace)
+  )
 }
 
 /**
@@ -308,10 +310,10 @@ export function mapM_<R, E, A, R2, E2, B>(
   __trace?: string
 ) {
   return new Managed<R & R2, E | E2, B>(
-    T.chain_(self.effect, ([fin, a]) =>
+    T.chain_(self.effect, ({ tuple: [fin, a] }) =>
       T.provideSome_(
-        T.map_(f(a), (b) => [fin, b], __trace),
-        ([r]: readonly [R & R2, ReleaseMap]) => r
+        T.map_(f(a), (b) => Tp.tuple(fin, b), __trace),
+        ({ tuple: [r] }: Tp.Tuple<[R & R2, ReleaseMap]>) => r
       )
     )
   )
@@ -337,16 +339,16 @@ export function onExit_<R, E, A, R2, X>(
     T.uninterruptibleMask(({ restore }) =>
       pipe(
         T.do,
-        T.bind("tp", () => T.environment<readonly [R & R2, ReleaseMap]>()),
-        T.let("r", (s) => s.tp[0]),
-        T.let("outerReleaseMap", (s) => s.tp[1]),
+        T.bind("tp", () => T.environment<Tp.Tuple<[R & R2, ReleaseMap]>>()),
+        T.let("r", (s) => s.tp.get(0)),
+        T.let("outerReleaseMap", (s) => s.tp.get(1)),
         T.bind("innerReleaseMap", () => makeReleaseMap.makeReleaseMap),
         T.bind("exitEA", (s) =>
           restore(
-            T.provideAll_(T.result(T.map_(self.effect, ([_, a]) => a)), [
-              s.r,
-              s.innerReleaseMap
-            ])
+            T.provideAll_(
+              T.result(T.map_(self.effect, ({ tuple: [_, a] }) => a)),
+              Tp.tuple(s.r, s.innerReleaseMap)
+            )
           )
         ),
         T.bind("releaseMapEntry", (s) =>
@@ -363,7 +365,7 @@ export function onExit_<R, E, A, R2, X>(
           )(s.outerReleaseMap)
         ),
         T.bind("a", (s) => T.done(s.exitEA)),
-        T.map((s) => [s.releaseMapEntry, s.a])
+        T.map((s) => Tp.tuple(s.releaseMapEntry, s.a))
       )
     )
   )
@@ -408,16 +410,16 @@ export function onExitFirst_<R, E, A, R2, X>(
     T.uninterruptibleMask(({ restore }) =>
       pipe(
         T.do,
-        T.bind("tp", () => T.environment<readonly [R & R2, ReleaseMap]>()),
-        T.let("r", (s) => s.tp[0]),
-        T.let("outerReleaseMap", (s) => s.tp[1]),
+        T.bind("tp", () => T.environment<Tp.Tuple<[R & R2, ReleaseMap]>>()),
+        T.let("r", (s) => s.tp.get(0)),
+        T.let("outerReleaseMap", (s) => s.tp.get(1)),
         T.bind("innerReleaseMap", () => makeReleaseMap.makeReleaseMap),
         T.bind("exitEA", (s) =>
           restore(
-            T.provideAll_(T.result(T.map_(self.effect, ([_, a]) => a)), [
-              s.r,
-              s.innerReleaseMap
-            ])
+            T.provideAll_(
+              T.result(T.map_(self.effect, ({ tuple: [_, a] }) => a)),
+              Tp.tuple(s.r, s.innerReleaseMap)
+            )
           )
         ),
         T.bind("releaseMapEntry", (s) =>
@@ -432,7 +434,7 @@ export function onExitFirst_<R, E, A, R2, X>(
           )(s.outerReleaseMap)
         ),
         T.bind("a", (s) => T.done(s.exitEA)),
-        T.map((s) => [s.releaseMapEntry, s.a])
+        T.map((s) => Tp.tuple(s.releaseMapEntry, s.a))
       )
     )
   )
@@ -447,8 +449,8 @@ export function provideSome_<R, E, A, R0>(
   __trace?: string
 ): Managed<R0, E, A> {
   return new Managed(
-    T.accessM(([r0, rm]: readonly [R0, ReleaseMap]) =>
-      T.provideAll_(self.effect, [f(r0), rm], __trace)
+    T.accessM(({ tuple: [r0, rm] }: Tp.Tuple<[R0, ReleaseMap]>) =>
+      T.provideAll_(self.effect, Tp.tuple(f(r0), rm), __trace)
     )
   )
 }
@@ -642,16 +644,27 @@ export function zipWithPar_<R, E, A, R2, E2, A2, B>(
   return mapM_(makeManagedReleaseMap(parallel), (parallelReleaseMap) => {
     const innerMap = T.provideSome_(
       makeManagedReleaseMap(sequential).effect,
-      (r: R & R2) => tuple(r, parallelReleaseMap)
+      (r: R & R2) => Tp.tuple(r, parallelReleaseMap)
     )
 
-    return T.chain_(T.zip_(innerMap, innerMap, __trace), ([[_, l], [__, r]]) =>
-      T.zipWithPar_(
-        T.provideSome_(self.effect, (_: R & R2) => tuple(_, l)),
-        T.provideSome_(that.effect, (_: R & R2) => tuple(_, r)),
-        ([_, a], [__, a2]) => f(a, a2),
-        __trace
-      )
+    return T.chain_(
+      T.zip_(innerMap, innerMap, __trace),
+      ({
+        tuple: [
+          {
+            tuple: [_, l]
+          },
+          {
+            tuple: [__, r]
+          }
+        ]
+      }) =>
+        T.zipWithPar_(
+          T.provideSome_(self.effect, (_: R & R2) => Tp.tuple(_, l)),
+          T.provideSome_(that.effect, (_: R & R2) => Tp.tuple(_, r)),
+          ({ tuple: [_, a] }, { tuple: [__, a2] }) => f(a, a2),
+          __trace
+        )
     )
   })
 }

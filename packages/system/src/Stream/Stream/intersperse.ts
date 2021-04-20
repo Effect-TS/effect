@@ -1,6 +1,7 @@
 // tracing: off
 
 import * as A from "../../Collections/Immutable/Chunk"
+import * as Tp from "../../Collections/Immutable/Tuple"
 import { pipe } from "../../Function"
 import * as T from "../_internal/effect"
 import * as M from "../_internal/managed"
@@ -34,7 +35,7 @@ export function intersperse_<R, E, O, O1>(
               }
             }
 
-            return [builder, flagResult]
+            return Tp.tuple(builder, flagResult)
           })
         })
       ),

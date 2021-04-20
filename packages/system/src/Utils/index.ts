@@ -2,6 +2,7 @@
 
 import "../Operator"
 
+import type { Tuple } from "../Collections/Immutable/Tuple"
 import type { _A, _E, _R } from "../Effect"
 import type { Either } from "../Either/core"
 import type { Tag } from "../Has"
@@ -149,3 +150,7 @@ export function onGenericAdtElement<T extends string>(_t: T) {
     return none
   }
 }
+
+export type ForcedTuple<A> = A extends unknown[] ? Tuple<A> : never
+
+export type ForcedArray<A> = A extends readonly any[] ? A : []

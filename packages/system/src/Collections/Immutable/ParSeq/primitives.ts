@@ -4,6 +4,7 @@ import * as IO from "../../../IO"
 import * as St from "../../../Structural"
 import * as HS from "../HashSet"
 import * as L from "../List/core"
+import * as Tp from "../Tuple"
 
 export const _ParSeqBrand = Symbol()
 export type _ParSeqBrand = typeof _ParSeqBrand
@@ -413,13 +414,13 @@ function stepLoop<A>(
   stack: L.List<ParSeq<A>>,
   parallel: HS.HashSet<ParSeq<A>>,
   sequential: L.List<ParSeq<A>>
-): readonly [HS.HashSet<ParSeq<A>>, L.List<ParSeq<A>>] {
+): Tp.Tuple<[HS.HashSet<ParSeq<A>>, L.List<ParSeq<A>>]> {
   // eslint-disable-next-line no-constant-condition
   while (1) {
     switch (cause._tag) {
       case "Empty": {
         if (L.isEmpty(stack)) {
-          return [parallel, sequential]
+          return Tp.tuple(parallel, sequential)
         } else {
           cause = L.unsafeFirst(stack)!
           stack = L.tail(stack)
@@ -456,7 +457,7 @@ function stepLoop<A>(
       }
       default: {
         if (L.isEmpty(stack)) {
-          return [HS.add_(parallel, cause), sequential]
+          return Tp.tuple(HS.add_(parallel, cause), sequential)
         } else {
           parallel = HS.add_(parallel, cause)
           cause = L.unsafeFirst(stack)!
@@ -469,7 +470,9 @@ function stepLoop<A>(
   throw new Error("Bug")
 }
 
-function step<A>(self: ParSeq<A>): readonly [HS.HashSet<ParSeq<A>>, L.List<ParSeq<A>>] {
+function step<A>(
+  self: ParSeq<A>
+): Tp.Tuple<[HS.HashSet<ParSeq<A>>, L.List<ParSeq<A>>]> {
   return stepLoop(self, L.empty(), HS.make(), L.empty())
 }
 
@@ -483,7 +486,7 @@ function flattenLoop<A>(
       causes,
       tuple(HS.make<ParSeq<A>>(), L.empty<ParSeq<A>>()),
       ([parallel, sequential], cause) => {
-        const [set, seq] = step(cause)
+        const [set, seq] = step(cause).tuple
         return tuple(HS.union_(parallel, set), L.concat_(sequential, seq))
       }
     )

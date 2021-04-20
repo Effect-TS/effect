@@ -1,6 +1,7 @@
 // tracing: off
 
 /* eslint-disable prefer-const */
+import * as Tp from "../Collections/Immutable/Tuple"
 import { _A, _E, _R, _U } from "../Effect/commons"
 import * as E from "../Either"
 import { pipe } from "../Function"
@@ -895,7 +896,7 @@ export function zip<R1, E1, B>(that: Async<R1, E1, B>) {
  * results of both into a tuple.
  */
 export function zip_<R, E, A, R1, E1, B>(self: Async<R, E, A>, that: Async<R1, E1, B>) {
-  return zipWith_(self, that, (a, b) => [a, b] as const)
+  return zipWith_(self, that, Tp.tuple)
 }
 
 /**

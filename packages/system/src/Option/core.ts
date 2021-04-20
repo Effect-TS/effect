@@ -2,9 +2,10 @@
 
 /* adapted from https://github.com/gcanti/fp-ts */
 
+import * as Tp from "../Collections/Immutable/Tuple"
 import type { Either } from "../Either/core"
 import type { Lazy, Predicate, Refinement } from "../Function/core"
-import { identity, tuple } from "../Function/core"
+import { identity } from "../Function/core"
 import * as St from "../Structural"
 
 const _noneHash = St.hashString("@effect-ts/system/Option/None")
@@ -73,17 +74,17 @@ export const ap: <A>(fa: Option<A>) => <B>(fab: Option<(a: A) => B>) => Option<B
 /**
  * Zips `Option[A]` and `Option[B]` into `Option[(A, B)]
  */
-export const zip_: <A, B>(fa: Option<A>, fb: Option<B>) => Option<readonly [A, B]> = (
+export const zip_: <A, B>(fa: Option<A>, fb: Option<B>) => Option<Tp.Tuple<[A, B]>> = (
   fa,
   fb
-) => chain_(fa, (a) => map_(fb, (b) => tuple(a, b)))
+) => chain_(fa, (a) => map_(fb, (b) => Tp.tuple(a, b)))
 
 /**
  * Zips `Option[A]` and `Option[B]` into `Option[(A, B)]
  */
 export const zip: <B>(
   fb: Option<B>
-) => <A>(fa: Option<A>) => Option<readonly [A, B]> = (fb) => (fa) => zip_(fa, fb)
+) => <A>(fa: Option<A>) => Option<Tp.Tuple<[A, B]>> = (fb) => (fa) => zip_(fa, fb)
 
 /**
  * Apply both and return first

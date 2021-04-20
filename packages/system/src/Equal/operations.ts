@@ -1,6 +1,7 @@
 // tracing: off
 
 import type * as A from "../Collections/Immutable/Array"
+import type * as Tp from "../Collections/Immutable/Tuple"
 import type * as E from "../Either"
 import type { Equal } from "./definition"
 
@@ -34,9 +35,12 @@ export const never: Equal<never> = makeEqual(() => false)
  * comparing the `A` values for equality and then comparing the `B` values
  * for equality, if necessary.
  */
-export function both<B>(fb: Equal<B>): <A>(fa: Equal<A>) => Equal<readonly [A, B]> {
+export function both<B>(fb: Equal<B>): <A>(fa: Equal<A>) => Equal<Tp.Tuple<[A, B]>> {
   return (fa) =>
-    makeEqual(([x0, x1], [y0, y1]) => fa.equals(x0, y0) && fb.equals(x1, y1))
+    makeEqual(
+      ({ tuple: [x0, x1] }, { tuple: [y0, y1] }) =>
+        fa.equals(x0, y0) && fb.equals(x1, y1)
+    )
 }
 
 /**

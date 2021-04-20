@@ -1,5 +1,6 @@
 // tracing: off
 
+import * as Tp from "../Collections/Immutable/Tuple"
 import * as E from "../Either"
 import { pipe } from "../Function"
 import type { AtomicReference } from "../Support/AtomicReference"
@@ -303,8 +304,8 @@ export class DerivedAll<EA, EB, A, B> implements XRef<EA, EB, A, B> {
         atomic.modify(value, (s) =>
           E.fold_(
             setEither(a)(s),
-            (e) => [E.left(e) as E.Either<EA, void>, s],
-            (s) => [E.right(undefined) as E.Either<EA, void>, s]
+            (e) => Tp.tuple(E.leftW<EA, void>(e), s),
+            (s) => Tp.tuple(E.right(undefined), s)
           )
         ),
         T.absolve

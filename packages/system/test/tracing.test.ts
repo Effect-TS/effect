@@ -50,7 +50,7 @@ describe("Tracing", () => {
   })
   it("should trace eventually", async () => {
     let n = 0
-    const [res, trace] = await T.runPromise(
+    const _ = await T.runPromise(
       pipe(
         T.suspend(() => {
           if (n > 2) {
@@ -63,8 +63,8 @@ describe("Tracing", () => {
         T.zip(T.trace)
       )
     )
-    expect(res).toEqual(3)
-    const cause = prettyTrace(trace).matchAll(
+    expect(_.get(0)).toEqual(3)
+    const cause = prettyTrace(_.get(1)).matchAll(
       new RegExp("\\(@effect-ts/system/test\\): (.*)", "g")
     )
     expect(Array.from(cause).map((s) => s[1])).toEqual([

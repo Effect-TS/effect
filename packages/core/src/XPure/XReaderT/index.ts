@@ -2,6 +2,8 @@
 
 import "../../Operator"
 
+import type * as Tp from "@effect-ts/system/Collections/Immutable/Tuple"
+
 import { pipe } from "../../Function"
 import type { Applicative, Monad } from "../../Prelude"
 import { succeedF } from "../../Prelude/DSL"
@@ -69,11 +71,11 @@ export function applicative<F>(
       fb: R.XReader<R2, HKT.HKT<F, B>>
     ): (<R, A>(
       fa: R.XReader<R, HKT.HKT<F, A>>
-    ) => R.XReader<R & R2, HKT.HKT<F, readonly [A, B]>>) => (x) =>
+    ) => R.XReader<R & R2, HKT.HKT<F, Tp.Tuple<[A, B]>>>) => (x) =>
       pipe(
         x,
         R.zip(fb),
-        R.map(([_a, _b]) => pipe(_a, M.both(_b)))
+        R.map(({ tuple: [_a, _b] }) => pipe(_a, M.both(_b)))
       )
   })
 }

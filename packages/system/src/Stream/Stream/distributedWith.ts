@@ -53,7 +53,7 @@ export function distributedWith_<R, E, O>(
               pipe(
                 A.range(0, n - 1),
                 A.map((id) =>
-                  T.map_(next, ([key, queue]) => [[key, id], queue] as const)
+                  T.map_(next, ({ tuple: [key, queue] }) => [[key, id], queue] as const)
                 )
               ),
               identity

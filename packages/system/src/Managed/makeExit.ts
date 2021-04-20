@@ -1,5 +1,6 @@
 // tracing: off
 
+import * as Tp from "../Collections/Immutable/Tuple"
 import { pipe } from "../Function"
 import * as T from "./deps-core"
 import { Managed } from "./managed"
@@ -32,12 +33,14 @@ export function makeExit_<R, E, A, R1, X>(
     T.uninterruptible(
       pipe(
         T.do,
-        T.bind("r", () => T.environment<readonly [R & R1, ReleaseMap]>()),
-        T.bind("a", (s) => T.provideAll_(acquire, s.r[0]), __trace),
+        T.bind("r", () => T.environment<Tp.Tuple<[R & R1, ReleaseMap]>>()),
+        T.bind("a", (s) => T.provideAll_(acquire, s.r.get(0)), __trace),
         T.bind("rm", (s) =>
-          add.add((ex) => T.provideAll_(release(s.a, ex), s.r[0], __trace))(s.r[1])
+          add.add((ex) => T.provideAll_(release(s.a, ex), s.r.get(0), __trace))(
+            s.r.get(1)
+          )
         ),
-        T.map((s) => [s.rm, s.a])
+        T.map((s) => Tp.tuple(s.rm, s.a))
       )
     )
   )

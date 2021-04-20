@@ -1,5 +1,6 @@
 // tracing: off
 
+import type * as Tp from "@effect-ts/system/Collections/Immutable/Tuple"
 import * as F from "@effect-ts/system/XPure"
 
 import type { XState } from "./definition"
@@ -9,7 +10,7 @@ import type { XState } from "./definition"
  */
 export const zip: <S, B>(
   fb: XState<S, B>
-) => <A>(fa: XState<S, A>) => XState<S, readonly [A, B]> = F.zip
+) => <A>(fa: XState<S, A>) => XState<S, Tp.Tuple<[A, B]>> = F.zip
 
 /**
  * Extends this computation with another computation that depends on the
@@ -36,7 +37,7 @@ export const succeed: <S, A>(a: A) => XState<S, A> = F.succeed
 /**
  * Run the computation with input S returning updated state and output
  */
-export const run = <S>(s: S) => <A>(self: XState<S, A>): readonly [S, A] =>
+export const run = <S>(s: S) => <A>(self: XState<S, A>): Tp.Tuple<[S, A]> =>
   F.runState_(self, s)
 
 /**

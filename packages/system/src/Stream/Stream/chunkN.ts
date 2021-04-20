@@ -37,7 +37,9 @@ function emitOrAccumulate<R, E, O>(
       )
     }
   } else {
-    const [chunk, leftover] = A.splitAt_(buffer, n)
+    const {
+      tuple: [chunk, leftover]
+    } = A.splitAt_(buffer, n)
 
     return T.zipRight_(ref.set(new State(leftover, done)), Pull.emitChunk(chunk))
   }

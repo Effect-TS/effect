@@ -3,10 +3,11 @@
 import type * as C from "../Cause"
 import * as Chunk from "../Collections/Immutable/Chunk"
 import { insert } from "../Collections/Immutable/Map"
+import * as Tp from "../Collections/Immutable/Tuple"
 import { _E, _RIn, _ROut } from "../Effect/commons"
 import { sequential } from "../Effect/ExecutionStrategy"
 import type { Exit } from "../Exit"
-import { pipe, tuple } from "../Function"
+import { pipe } from "../Function"
 import { environment } from "../Managed/methods/environment"
 import type { ReleaseMap } from "../Managed/ReleaseMap"
 import * as add from "../Managed/ReleaseMap/add"
@@ -88,7 +89,7 @@ export function and<R2, E2, A2>(
  * the inputs of this layer, and the error or outputs of the specified layer.
  */
 export function fold<R, E, A>(self: Layer<R, E, A>) {
-  return <R2, E2, A2>(failure: Layer<readonly [R2, C.Cause<E>], E2, A2>) => <E3, A3>(
+  return <R2, E2, A2>(failure: Layer<Tp.Tuple<[R2, C.Cause<E>]>, E2, A2>) => <E3, A3>(
     success: Layer<A, E3, A3>
   ): Layer<R & R2, E3 | E2, A3 | A2> =>
     new LayerFold<R, E, A, R2, E2, A2, E3, A3>(self, failure, success)
@@ -118,7 +119,7 @@ export function compose_<R2, E2, A2, E, A>(
   to: Layer<A2, E, A>
 ): Layer<R2, E2 | E, A> {
   return fold(from)(
-    fromRawFunctionM((_: readonly [unknown, C.Cause<E2>]) => T.halt(_[1]))
+    fromRawFunctionM((_: Tp.Tuple<[unknown, C.Cause<E2>]>) => T.halt(_.get(1)))
   )(to)
 }
 
@@ -276,7 +277,7 @@ export class LayerFold<R, E, A, R2, E2, A2, E3, A3> extends Layer<
 
   constructor(
     readonly self: Layer<R, E, A>,
-    readonly failure: Layer<readonly [R2, C.Cause<E>], E2, A2>,
+    readonly failure: Layer<Tp.Tuple<[R2, C.Cause<E>]>, E2, A2>,
     readonly success: Layer<A, E3, A3>
   ) {
     super()
@@ -467,7 +468,7 @@ export function scope<R, E, A>(
             pipe(
               M.fromEffect(T.environment<any>()),
               M.chain((r) =>
-                M.provideSome_(memo.getOrElseMemoize(I.failure), () => tuple(r, e))
+                M.provideSome_(memo.getOrElseMemoize(I.failure), () => Tp.tuple(r, e))
               )
             ),
           (r) => M.provideAll_(memo.getOrElseMemoize(I.success), r)
@@ -496,7 +497,7 @@ export function build<R, E, A>(_: Layer<R, E, A>): M.Managed<R, E, A> {
 export function makeMemoMap() {
   return pipe(
     RM.makeRefM<
-      ReadonlyMap<PropertyKey, readonly [T.IO<any, any>, Finalizer.Finalizer]>
+      ReadonlyMap<PropertyKey, Tp.Tuple<[T.IO<any, any>, Finalizer.Finalizer]>>
     >(new Map()),
     T.chain((r) => T.succeedWith(() => new MemoMap(r)))
   )
@@ -508,7 +509,7 @@ export function makeMemoMap() {
 export class MemoMap {
   constructor(
     readonly ref: RM.RefM<
-      ReadonlyMap<PropertyKey, readonly [T.IO<any, any>, Finalizer.Finalizer]>
+      ReadonlyMap<PropertyKey, Tp.Tuple<[T.IO<any, any>, Finalizer.Finalizer]>>
     >
   ) {}
 
@@ -525,9 +526,11 @@ export class MemoMap {
           const inMap = m.get(layer[hashSym].get)
 
           if (inMap) {
-            const [acquire, release] = inMap
+            const {
+              tuple: [acquire, release]
+            } = inMap
 
-            const cached = T.accessM(([_, rm]: readonly [R, ReleaseMap]) =>
+            const cached = T.accessM(({ tuple: [_, rm] }: Tp.Tuple<[R, ReleaseMap]>) =>
               pipe(
                 acquire as T.IO<E, A>,
                 T.onExit((ex) => {
@@ -540,11 +543,11 @@ export class MemoMap {
                     }
                   }
                 }),
-                T.map((x) => [release, x] as readonly [Finalizer.Finalizer, A])
+                T.map((x) => Tp.tuple(release, x))
               )
             )
 
-            return T.succeed(tuple(cached, m))
+            return T.succeed(Tp.tuple(cached, m))
           } else {
             return pipe(
               T.do,
@@ -557,11 +560,22 @@ export class MemoMap {
                 T.uninterruptibleMask(({ restore }) =>
                   pipe(
                     T.do,
-                    T.bind("env", () => T.environment<readonly [R, ReleaseMap]>()),
-                    T.let("a", ({ env: [a] }) => a),
+                    T.bind("env", () => T.environment<Tp.Tuple<[R, ReleaseMap]>>()),
+                    T.let(
+                      "a",
+                      ({
+                        env: {
+                          tuple: [a]
+                        }
+                      }) => a
+                    ),
                     T.let(
                       "outerReleaseMap",
-                      ({ env: [_, outerReleaseMap] }) => outerReleaseMap
+                      ({
+                        env: {
+                          tuple: [_, outerReleaseMap]
+                        }
+                      }) => outerReleaseMap
                     ),
                     T.bind("innerReleaseMap", () => makeReleaseMap.makeReleaseMap),
                     T.bind("tp", ({ a, innerReleaseMap, outerReleaseMap }) =>
@@ -572,7 +586,7 @@ export class MemoMap {
                               scope(layer),
                               M.chain((_) => _(this))
                             ).effect,
-                            [a, innerReleaseMap]
+                            Tp.tuple(a, innerReleaseMap)
                           ),
                           T.result,
                           T.chain((e) => {
@@ -599,7 +613,7 @@ export class MemoMap {
                                       T.whenM(
                                         pipe(
                                           observers,
-                                          R.modify((n) => [n === 1, n - 1])
+                                          R.modify((n) => Tp.tuple(n === 1, n - 1))
                                         )
                                       )(
                                         releaseAll.releaseAll(
@@ -620,9 +634,9 @@ export class MemoMap {
                                       T.chain_(finalizerRef.get, (f) => f(e))
                                     )(outerReleaseMap)
                                   ),
-                                  T.tap(() => pipe(promise, P.succeed(e.value[1]))),
+                                  T.tap(() => pipe(promise, P.succeed(e.value.get(1)))),
                                   T.map(({ outerFinalizer }) =>
-                                    tuple(outerFinalizer, e.value[1])
+                                    Tp.tuple(outerFinalizer, e.value.get(1))
                                   )
                                 )
                               }
@@ -635,40 +649,38 @@ export class MemoMap {
                   )
                 )
               ),
-              T.let(
-                "memoized",
-                ({ finalizerRef, observers, promise }) =>
-                  [
-                    pipe(
-                      promise,
-                      P.await,
-                      T.onExit((e) => {
-                        switch (e._tag) {
-                          case "Failure": {
-                            return T.unit
-                          }
-                          case "Success": {
-                            return pipe(
-                              observers,
-                              R.update((n) => n + 1)
-                            )
-                          }
+              T.let("memoized", ({ finalizerRef, observers, promise }) =>
+                Tp.tuple(
+                  pipe(
+                    promise,
+                    P.await,
+                    T.onExit((e) => {
+                      switch (e._tag) {
+                        case "Failure": {
+                          return T.unit
                         }
-                      })
-                    ),
-                    (e: Exit<any, any>) => T.chain_(finalizerRef.get, (f) => f(e))
-                  ] as readonly [T.IO<any, any>, Finalizer.Finalizer]
+                        case "Success": {
+                          return pipe(
+                            observers,
+                            R.update((n) => n + 1)
+                          )
+                        }
+                      }
+                    })
+                  ),
+                  (e: Exit<any, any>) => T.chain_(finalizerRef.get, (f) => f(e))
+                )
               ),
               T.map(({ memoized, resource }) =>
-                tuple(
+                Tp.tuple(
                   resource as T.Effect<
-                    readonly [R, ReleaseMap],
+                    Tp.Tuple<[R, ReleaseMap]>,
                     E,
-                    readonly [Finalizer.Finalizer, A]
+                    Tp.Tuple<[Finalizer.Finalizer, A]>
                   >,
                   insert(layer[hashSym].get, memoized)(m) as ReadonlyMap<
                     symbol,
-                    readonly [T.IO<any, any>, Finalizer.Finalizer]
+                    Tp.Tuple<[T.IO<any, any>, Finalizer.Finalizer]>
                   >
                 )
               )

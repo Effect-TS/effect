@@ -1,5 +1,6 @@
 // tracing: off
 
+import * as Tp from "../../Collections/Immutable/Tuple"
 import { pipe } from "../../Function"
 import { environment, map } from "../deps"
 import { Managed } from "../managed"
@@ -11,7 +12,7 @@ import { noopFinalizer } from "../ReleaseMap/finalizer"
  */
 export const releaseMap: Managed<unknown, never, ReleaseMap> = new Managed(
   pipe(
-    environment<readonly [unknown, ReleaseMap]>(),
-    map((tp) => [noopFinalizer, tp[1]])
+    environment<Tp.Tuple<[unknown, ReleaseMap]>>(),
+    map((tp) => Tp.tuple(noopFinalizer, tp.get(1)))
   )
 )

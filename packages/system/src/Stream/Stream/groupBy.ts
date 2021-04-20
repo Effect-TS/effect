@@ -1,6 +1,7 @@
 // tracing: off
 
 import * as MP from "../../Collections/Immutable/Map"
+import * as Tp from "../../Collections/Immutable/Tuple"
 import * as Ex from "../../Exit"
 import { pipe } from "../../Function"
 import * as O from "../../Option"
@@ -22,7 +23,7 @@ import { unwrapManaged } from "./unwrapManaged"
  */
 export function groupBy_<R, R1, E, E1, O, K, V>(
   self: Stream<R, E, O>,
-  f: (o: O) => T.Effect<R1, E1, readonly [K, V]>,
+  f: (o: O) => T.Effect<R1, E1, Tp.Tuple<[K, V]>>,
   buffer = 16
 ): GB.GroupBy<R & R1, E | E1, K, V> {
   const qstream = unwrapManaged(
@@ -41,7 +42,7 @@ export function groupBy_<R, R1, E, E1, O, K, V>(
           Q.makeBounded<
             Ex.Exit<
               O.Option<E | E1>,
-              readonly [K, Q.Dequeue<Ex.Exit<O.Option<E | E1>, V>>]
+              Tp.Tuple<[K, Q.Dequeue<Ex.Exit<O.Option<E | E1>, V>>]>
             >
           >(buffer),
           Q.shutdown
@@ -53,7 +54,7 @@ export function groupBy_<R, R1, E, E1, O, K, V>(
           mapM_(self, f),
           distributedWithDynamic(
             buffer,
-            (kv) => T.chain_(P.await(decider), (_) => _(...kv)),
+            (kv) => T.chain_(P.await(decider), (_) => _(...kv.tuple)),
             (x) => Q.offer_(out, x)
           )
         )
@@ -66,16 +67,18 @@ export function groupBy_<R, R1, E, E1, O, K, V>(
               T.chain(
                 O.fold(
                   () =>
-                    T.chain_(add, ([idx, q]) =>
+                    T.chain_(add, ({ tuple: [idx, q] }) =>
                       pipe(
                         Ref.update_(ref, MP.insert(k, idx)),
                         T.zipRight(
                           Q.offer_(
                             out,
-                            Ex.succeed([
-                              k,
-                              Q.map_(q, (ex) => Ex.map_(ex, ([_, v]) => v))
-                            ] as const)
+                            Ex.succeed(
+                              Tp.tuple(
+                                k,
+                                Q.map_(q, (ex) => Ex.map_(ex, (_) => _.get(1)))
+                              )
+                            )
                           )
                         ),
                         T.as((_: symbol) => _ === idx)
@@ -100,7 +103,7 @@ export function groupBy_<R, R1, E, E1, O, K, V>(
  * More powerful version of `Stream.groupByKey`
  */
 export function groupBy<R1, E1, O, K, V>(
-  f: (o: O) => T.Effect<R1, E1, readonly [K, V]>,
+  f: (o: O) => T.Effect<R1, E1, Tp.Tuple<[K, V]>>,
   buffer = 16
 ): <R, E>(self: Stream<R, E, O>) => GB.GroupBy<R & R1, E | E1, K, V> {
   return (self) => groupBy_(self, f, buffer)

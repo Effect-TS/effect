@@ -9,12 +9,13 @@ import * as ChunkSplitAt from "../Collections/Immutable/Chunk/api/splitAt"
 import * as ChunkZip from "../Collections/Immutable/Chunk/api/zip"
 import * as Chunk from "../Collections/Immutable/Chunk/core"
 import * as L from "../Collections/Immutable/List/core"
+import * as Tp from "../Collections/Immutable/Tuple"
 import type { Exit } from "../Exit"
 import * as Ex from "../Exit"
 import type { FiberContext } from "../Fiber/context"
 import type * as Fiber from "../Fiber/core"
 import { interrupt as fiberInterrupt } from "../Fiber/interrupt"
-import { identity, pipe, tuple } from "../Function"
+import { identity, pipe } from "../Function"
 import * as I from "../Iterable"
 import { descriptorWith } from "../Managed/deps-core"
 import { Managed } from "../Managed/managed"
@@ -166,23 +167,25 @@ export function forEachUnitPar_<R, E, A, X>(
         Do.bind("causes", () => Ref.makeRef<cause.Cause<E>>(cause.empty)),
         Do.bind("result", () => promise.make<void, void>()),
         Do.bind("status", () =>
-          Ref.makeRef<readonly [number, number, boolean]>(tuple(0, 0, false))
+          Ref.makeRef(Tp.tuple<[number, number, boolean]>(0, 0, false))
         ),
         Do.let("startTask", ({ status }) =>
           pipe(
             status,
-            Ref.modify(([started, done, failing]) => {
+            Ref.modify(({ tuple: [started, done, failing] }) => {
               if (failing) {
-                return tuple(false, tuple(started, done, failing))
+                return Tp.tuple(false, Tp.tuple(started, done, failing))
               }
-              return tuple(true, tuple(started + 1, done, failing))
+              return Tp.tuple(true, Tp.tuple(started + 1, done, failing))
             })
           )
         ),
         Do.let("startFailure", ({ result, status }) =>
           pipe(
             status,
-            Ref.update(([started, done, _]) => tuple(started, done, true)),
+            Ref.update(({ tuple: [started, done, _] }) =>
+              Tp.tuple(started, done, true)
+            ),
             zips.zipRight(promise.fail<void>(undefined)(result))
           )
         ),
@@ -207,12 +210,12 @@ export function forEachUnitPar_<R, E, A, X>(
                       (() => {
                         const isComplete = pipe(
                           status,
-                          Ref.modify(([started, done, failing]) => {
+                          Ref.modify(({ tuple: [started, done, failing] }) => {
                             const newDone = done + 1
 
-                            return tuple(
+                            return Tp.tuple(
                               (failing ? started : size) === newDone,
-                              tuple(started, newDone, failing)
+                              Tp.tuple(started, newDone, failing)
                             )
                           })
                         )
@@ -378,7 +381,7 @@ export function forEachUnitParN_<R, E, A, X>(
       whenM.whenM(
         pipe(
           ref,
-          Ref.modify((n) => tuple(n > 0, n - 1))
+          Ref.modify((n) => Tp.tuple(n > 0, n - 1))
         )
       )
     )
@@ -435,17 +438,17 @@ export function forEachParN_<R, E, A, B>(
   __trace?: string
 ): Effect<R, E, Chunk.Chunk<B>> {
   function worker(
-    q: Q.Queue<readonly [promise.Promise<E, B>, A]>,
-    pairs: Iterable<readonly [promise.Promise<E, B>, A]>,
+    q: Q.Queue<Tp.Tuple<[promise.Promise<E, B>, A]>>,
+    pairs: Iterable<Tp.Tuple<[promise.Promise<E, B>, A]>>,
     ref: Ref.Ref<number>
   ): Effect<R, never, void> {
     return pipe(
       Q.take(q),
-      core.chain(([p, a]) =>
+      core.chain(({ tuple: [p, a] }) =>
         pipe(
           core.suspend(() => f(a)),
           core.foldCauseM(
-            (c) => forEach_(pairs, (_) => pipe(_[0], promise.halt(c))),
+            (c) => forEach_(pairs, (_) => pipe(_.get(0), promise.halt(c))),
             (b) => pipe(p, promise.succeed(b))
           )
         )
@@ -454,7 +457,7 @@ export function forEachParN_<R, E, A, B>(
       whenM.whenM(
         pipe(
           ref,
-          Ref.modify((n) => tuple(n > 0, n - 1))
+          Ref.modify((n) => Tp.tuple(n > 0, n - 1))
         )
       )
     )
@@ -463,7 +466,7 @@ export function forEachParN_<R, E, A, B>(
   return core.suspend(
     () =>
       pipe(
-        makeBoundedQueue<readonly [promise.Promise<E, B>, A]>(n),
+        makeBoundedQueue<Tp.Tuple<[promise.Promise<E, B>, A]>>(n),
         bracket.bracket(
           (q) =>
             pipe(
@@ -472,7 +475,7 @@ export function forEachParN_<R, E, A, B>(
                 forEach_(as, (a) =>
                   pipe(
                     promise.make<E, B>(),
-                    map.map((p) => tuple(p, a))
+                    map.map((p) => Tp.tuple(p, a))
                   )
                 )
               ),
@@ -488,7 +491,7 @@ export function forEachParN_<R, E, A, B>(
                   )
                 )
               ),
-              core.chain(({ pairs }) => forEach_(pairs, (_) => promise.await(_[0])))
+              core.chain(({ pairs }) => forEach_(pairs, (_) => promise.await(_.get(0))))
             ),
           Q.shutdown
         )
@@ -816,59 +819,62 @@ export function releaseMapReleaseAll(
   return (_: ReleaseMap) =>
     pipe(
       _.ref,
-      Ref.modify((s): [UIO<any>, State] => {
-        switch (s._tag) {
-          case "Exited": {
-            return [core.unit, s]
-          }
-          case "Running": {
-            switch (execStrategy._tag) {
-              case "Sequential": {
-                return [
-                  core.chain_(
-                    forEach_(
-                      Array.from(s.finalizers()).reverse(),
-                      ([_, f]) => core.result(f(exit)),
-                      __trace
+      Ref.modify(
+        (s): Tp.Tuple<[UIO<any>, State]> => {
+          switch (s._tag) {
+            case "Exited": {
+              return Tp.tuple(core.unit, s)
+            }
+            case "Running": {
+              switch (execStrategy._tag) {
+                case "Sequential": {
+                  return Tp.tuple(
+                    core.chain_(
+                      forEach_(
+                        Array.from(s.finalizers()).reverse(),
+                        ([_, f]) => core.result(f(exit)),
+                        __trace
+                      ),
+                      (e) =>
+                        done(O.getOrElse_(Ex.collectAll(...e), () => Ex.succeed([])))
                     ),
-                    (e) => done(O.getOrElse_(Ex.collectAll(...e), () => Ex.succeed([])))
-                  ),
-                  new Exited(s.nextKey, exit)
-                ]
-              }
-              case "Parallel": {
-                return [
-                  core.chain_(
-                    forEachPar_(
-                      Array.from(s.finalizers()).reverse(),
-                      ([_, f]) => core.result(f(exit)),
-                      __trace
+                    new Exited(s.nextKey, exit)
+                  )
+                }
+                case "Parallel": {
+                  return Tp.tuple(
+                    core.chain_(
+                      forEachPar_(
+                        Array.from(s.finalizers()).reverse(),
+                        ([_, f]) => core.result(f(exit)),
+                        __trace
+                      ),
+                      (e) =>
+                        done(O.getOrElse_(Ex.collectAllPar(...e), () => Ex.succeed([])))
                     ),
-                    (e) =>
-                      done(O.getOrElse_(Ex.collectAllPar(...e), () => Ex.succeed([])))
-                  ),
-                  new Exited(s.nextKey, exit)
-                ]
-              }
-              case "ParallelN": {
-                return [
-                  core.chain_(
-                    forEachParN_(
-                      Array.from(s.finalizers()).reverse(),
-                      execStrategy.n,
-                      ([_, f]) => core.result(f(exit)),
-                      __trace
+                    new Exited(s.nextKey, exit)
+                  )
+                }
+                case "ParallelN": {
+                  return Tp.tuple(
+                    core.chain_(
+                      forEachParN_(
+                        Array.from(s.finalizers()).reverse(),
+                        execStrategy.n,
+                        ([_, f]) => core.result(f(exit)),
+                        __trace
+                      ),
+                      (e) =>
+                        done(O.getOrElse_(Ex.collectAllPar(...e), () => Ex.succeed([])))
                     ),
-                    (e) =>
-                      done(O.getOrElse_(Ex.collectAllPar(...e), () => Ex.succeed([])))
-                  ),
-                  new Exited(s.nextKey, exit)
-                ]
+                    new Exited(s.nextKey, exit)
+                  )
+                }
               }
             }
           }
         }
-      }),
+      ),
       flatten.flatten
     )
 }
@@ -886,17 +892,17 @@ export function managedFork<R, E, A>(
     interruption.uninterruptibleMask(({ restore }) =>
       pipe(
         Do.do,
-        Do.bind("tp", () => environment<readonly [R, ReleaseMap]>()),
-        Do.let("r", ({ tp }) => tp[0]),
-        Do.let("outerReleaseMap", ({ tp }) => tp[1]),
+        Do.bind("tp", () => environment<Tp.Tuple<[R, ReleaseMap]>>()),
+        Do.let("r", ({ tp }) => tp.get(0)),
+        Do.let("outerReleaseMap", ({ tp }) => tp.get(1)),
         Do.bind("innerReleaseMap", () => makeReleaseMap),
         Do.bind("fiber", ({ innerReleaseMap, r }) =>
           restore(
             pipe(
               self.effect,
-              map.map(([_, a]) => a),
+              map.map((_) => _.get(1)),
               coreScope.forkDaemon,
-              core.provideAll([r, innerReleaseMap] as const, __trace)
+              core.provideAll(Tp.tuple(r, innerReleaseMap), __trace)
             )
           )
         ),
@@ -912,7 +918,7 @@ export function managedFork<R, E, A>(
             )
           )(outerReleaseMap)
         ),
-        map.map(({ fiber, releaseMapEntry }) => [releaseMapEntry, fiber])
+        map.map(({ fiber, releaseMapEntry }) => Tp.tuple(releaseMapEntry, fiber))
       )
     )
   )
@@ -930,8 +936,8 @@ export function managedUse_<R, E, A, R2, E2, B>(
     makeReleaseMap,
     (rm) =>
       core.chain_(
-        provideSome_(self.effect, (r: R) => tuple(r, rm)),
-        (a) => f(a[1]),
+        provideSome_(self.effect, (r: R) => Tp.tuple(r, rm)),
+        (a) => f(a.get(1)),
         __trace
       ),
     (rm, ex) => releaseMapReleaseAll(ex, sequential, __trace)(rm)
@@ -1114,11 +1120,16 @@ class UnsafeCreate<A> extends XQueueInternal<unknown, unknown, never, never, A, 
         const pTakers = this.queue.isEmpty
           ? Q.unsafePollN(this.takers, Chunk.size(arr))
           : Chunk.empty<Promise<never, A>>()
-        const [forTakers, remaining] = ChunkSplitAt.splitAt_(arr, Chunk.size(pTakers))
+        const {
+          tuple: [forTakers, remaining]
+        } = ChunkSplitAt.splitAt_(arr, Chunk.size(pTakers))
 
-        ChunkForEach.forEach_(ChunkZip.zip_(pTakers, forTakers), ([taker, item]) => {
-          Q.unsafeCompletePromise(taker, item)
-        })
+        ChunkForEach.forEach_(
+          ChunkZip.zip_(pTakers, forTakers),
+          ({ tuple: [taker, item] }) => {
+            Q.unsafeCompletePromise(taker, item)
+          }
+        )
 
         if (Chunk.size(remaining) === 0) {
           return core.succeed(true)

@@ -1,6 +1,7 @@
 // tracing: off
 
 import type * as A from "../../../Collections/Immutable/Chunk"
+import * as Tp from "../../../Collections/Immutable/Tuple"
 import * as Ex from "../../../Exit"
 import { pipe } from "../../../Function"
 import * as O from "../../../Option"
@@ -19,7 +20,7 @@ import type { Stream } from "../definitions"
  */
 export function bufferSignal<R, E, O>(
   self: Stream<R, E, O>,
-  queue: Q.Queue<readonly [Take.Take<E, O>, P.Promise<never, void>]>
+  queue: Q.Queue<Tp.Tuple<[Take.Take<E, O>, P.Promise<never, void>]>>
 ): M.Managed<R, never, T.Effect<R, O.Option<E>, A.Chunk<O>>> {
   return pipe(
     M.do,
@@ -38,7 +39,7 @@ export function bufferSignal<R, E, O>(
               T.bind("latch", () => ref.get),
               T.tap(({ latch }) => P.await(latch)),
               T.bind("p", () => P.make<never, void>()),
-              T.tap(({ p }) => Q.offer_(queue, [take, p])),
+              T.tap(({ p }) => Q.offer_(queue, Tp.tuple(take, p))),
               T.tap(({ p }) => ref.set(p)),
               T.tap(({ p }) => P.await(p)),
               T.asUnit
@@ -47,7 +48,7 @@ export function bufferSignal<R, E, O>(
             pipe(
               T.do,
               T.bind("p", () => P.make<never, void>()),
-              T.bind("added", ({ p }) => Q.offer_(queue, [take, p])),
+              T.bind("added", ({ p }) => Q.offer_(queue, Tp.tuple(take, p))),
               T.tap(({ added, p }) => T.when_(ref.set(p), () => added)),
               T.asUnit
             )
@@ -68,7 +69,7 @@ export function bufferSignal<R, E, O>(
           if (_) {
             return Pull.end
           } else {
-            return T.chain_(Q.take(queue), ([take, p]) =>
+            return T.chain_(Q.take(queue), ({ tuple: [take, p] }) =>
               T.zipRight_(
                 T.zipRight_(
                   P.succeed_(p, undefined),

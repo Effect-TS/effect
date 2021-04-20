@@ -1,6 +1,7 @@
 // tracing: off
 
 import * as A from "../../Collections/Immutable/Chunk"
+import type * as Tp from "../../Collections/Immutable/Tuple"
 import { pipe } from "../../Function"
 import * as O from "../../Option"
 import * as T from "../_internal/effect"
@@ -14,23 +15,24 @@ import { Stream } from "./definitions"
  * the unfolding of the state. This is useful for embedding paginated APIs,
  * hence the name.
  */
-export function paginateChunkM<S>(s: S) {
-  return <R, E, A>(
-    f: (s: S) => T.Effect<R, E, readonly [A.Chunk<A>, O.Option<S>]>
-  ): Stream<R, E, A> =>
-    new Stream(
-      pipe(
-        M.do,
-        M.bind("ref", () => T.toManaged(Ref.makeRef(O.some(s)))),
-        M.map(({ ref }) =>
-          T.chain_(
-            ref.get,
-            O.fold(
-              () => Pull.end,
-              (s) => T.foldM_(f(s), Pull.fail, ([as, s]) => T.as_(ref.set(s), as))
-            )
+export function paginateChunkM<S, R, E, A>(
+  s: S,
+  f: (s: S) => T.Effect<R, E, Tp.Tuple<[A.Chunk<A>, O.Option<S>]>>
+): Stream<R, E, A> {
+  return new Stream(
+    pipe(
+      M.do,
+      M.bind("ref", () => T.toManaged(Ref.makeRef(O.some(s)))),
+      M.map(({ ref }) =>
+        T.chain_(
+          ref.get,
+          O.fold(
+            () => Pull.end,
+            (s) =>
+              T.foldM_(f(s), Pull.fail, ({ tuple: [as, s] }) => T.as_(ref.set(s), as))
           )
         )
       )
     )
+  )
 }

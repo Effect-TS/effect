@@ -1,5 +1,6 @@
 // tracing: off
 
+import type * as Tp from "../Collections/Immutable/Tuple"
 import { access } from "./core"
 
 /**
@@ -7,5 +8,5 @@ import { access } from "./core"
  * tuple.
  */
 export function first<A>(__trace?: string) {
-  return access((_: readonly [A, unknown]) => _[0], __trace)
+  return access((_: Tp.Tuple<[A, unknown]>) => _.get(0), __trace)
 }

@@ -13,8 +13,9 @@ import { fiberName } from "./fiberName"
 import type { Status } from "./status"
 
 export function dump<E, A>(fiber: Runtime<E, A>): T.UIO<FiberDump> {
-  return T.map_(T.zipPar_(fiber.getRef(fiberName), fiber.status), ([name, status]) =>
-    FiberDump(fiber.id, name, status)
+  return T.map_(
+    T.zipPar_(fiber.getRef(fiberName), fiber.status),
+    ({ tuple: [name, status] }) => FiberDump(fiber.id, name, status)
   )
 }
 

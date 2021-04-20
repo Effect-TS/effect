@@ -1,5 +1,6 @@
 // tracing: off
 
+import type * as Tp from "@effect-ts/system/Collections/Immutable/Tuple"
 import * as F from "@effect-ts/system/XPure"
 
 import type { XIO } from "./definition"
@@ -12,7 +13,7 @@ export const succeedWith: <A>(f: () => A) => XIO<A> = F.succeedWith
 /**
  * Combines this computation with the specified computation.
  */
-export const zip: <B>(fb: XIO<B>) => <A>(fa: XIO<A>) => XIO<readonly [A, B]> = F.zip
+export const zip: <B>(fb: XIO<B>) => <A>(fa: XIO<A>) => XIO<Tp.Tuple<[A, B]>> = F.zip
 
 /**
  * Extends this computation with another computation that depends on the

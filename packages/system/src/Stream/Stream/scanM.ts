@@ -1,11 +1,11 @@
 // tracing: off
 
-import { pipe } from "../../Function"
+import * as Tp from "../../Collections/Immutable/Tuple"
 import * as T from "../_internal/effect"
 import { concat_ } from "./concat"
 import type { Stream } from "./definitions"
 import { fromIterable } from "./fromIterable"
-import { mapAccumM } from "./mapAccumM"
+import { mapAccumM_ } from "./mapAccumM"
 
 /**
  * Statefully and effectfully maps over the elements of this stream to produce all
@@ -17,9 +17,6 @@ export function scanM<S>(s: S) {
   ): Stream<R & R1, E | E1, S> =>
     concat_(
       fromIterable([s]),
-      pipe(
-        self,
-        mapAccumM(s)((s, a) => T.map_(f(s, a), (s) => [s, s]))
-      )
+      mapAccumM_(self, s, (s, a) => T.map_(f(s, a), (s) => Tp.tuple(s, s)))
     )
 }

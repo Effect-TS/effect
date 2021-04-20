@@ -1,14 +1,14 @@
+import type * as Tp from "../../Tuple"
 import type * as Chunk from "../core"
 import { concreteId } from "../definition"
 import { splitAt_ } from "./splitAt"
-
 /**
  * Splits this chunk on the first element that matches this predicate.
  */
 export function splitWhere_<A>(
   self: Chunk.Chunk<A>,
   f: (a: A) => boolean
-): readonly [Chunk.Chunk<A>, Chunk.Chunk<A>] {
+): Tp.Tuple<[Chunk.Chunk<A>, Chunk.Chunk<A>]> {
   const iterator = concreteId(self).arrayLikeIterator()
   let next
   let cont = true
@@ -39,6 +39,6 @@ export function splitWhere_<A>(
  */
 export function splitWhere<A>(
   f: (a: A) => boolean
-): (self: Chunk.Chunk<A>) => readonly [Chunk.Chunk<A>, Chunk.Chunk<A>] {
+): (self: Chunk.Chunk<A>) => Tp.Tuple<[Chunk.Chunk<A>, Chunk.Chunk<A>]> {
   return (self) => splitWhere_(self, f)
 }

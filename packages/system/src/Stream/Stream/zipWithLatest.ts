@@ -1,20 +1,29 @@
 // tracing: off
 
 import * as A from "../../Collections/Immutable/Chunk"
+import * as Tp from "../../Collections/Immutable/Tuple"
 import { pipe } from "../../Function"
-import * as O from "../../Option"
+import type * as O from "../../Option"
 import * as T from "../_internal/effect"
 import * as F from "../_internal/fiber"
 import * as M from "../_internal/managed"
 import * as Ref from "../_internal/ref"
-import { chain } from "./chain"
-import { concat } from "./concat"
+import * as chain from "./chain"
+import * as concat from "./concat"
 import { Stream } from "./definitions"
 import { fromChunk } from "./fromChunk"
 import { fromEffect } from "./fromEffect"
 import { fromEffectOption } from "./fromEffectOption"
-import { mergeWith } from "./mergeWith"
+import * as mergeWith from "./mergeWith"
 import { repeatEffectOption } from "./repeatEffectOption"
+
+function pullNonEmpty<R, E, Out>(
+  pull: T.Effect<R, E, A.Chunk<Out>>
+): T.Effect<R, E, A.Chunk<Out>> {
+  return T.chain_(pull, (chunk) =>
+    A.isEmpty(chunk) ? pullNonEmpty(pull) : T.succeed(chunk)
+  )
+}
 
 /**
  * Zips the two streams so that when a value is emitted by either of the two streams,
@@ -27,13 +36,6 @@ export function zipWithLatest<R, R1, E, E1, O, O2>(
   self: Stream<R, E, O>,
   that: Stream<R1, E1, O2>
 ) {
-  const pullNonEmpty = <Out>(
-    pull: T.Effect<R & R1, O.Option<E | E1>, A.Chunk<Out>>
-  ): T.Effect<R & R1, O.Option<E | E1>, A.Chunk<Out>> =>
-    T.chain_(pull, (chunk) =>
-      A.isEmpty(chunk) ? pullNonEmpty(pull) : T.succeed(chunk)
-    )
-
   return <O3>(f: (o: O, o2: O2) => O3): Stream<R & R1, E | E1, O3> =>
     new Stream(
       pipe(
@@ -46,60 +48,64 @@ export function zipWithLatest<R, R1, E, E1, O, O2>(
             pipe(
               fromEffectOption(
                 T.raceWith_(
-                  left,
+                  left as T.Effect<R & R1, O.Option<E | E1>, A.Chunk<O>>,
                   right,
                   (leftDone, rightFiber) =>
                     pipe(
                       T.done(leftDone),
-                      T.zipWith(F.join(rightFiber), (a, b) => [a, b, true] as const)
+                      T.zipWith(F.join(rightFiber), (a, b) => Tp.tuple(a, b, true))
                     ),
                   (rightDone, leftFiber) =>
                     pipe(
                       T.done(rightDone),
-                      T.zipWith(F.join(leftFiber), (r, l) => [l, r, false] as const)
+                      T.zipWith(F.join(leftFiber), (r, l) => Tp.tuple(l, r, false))
                     )
                 )
               ),
-              chain(([l, r, leftFirst]) =>
+              chain.chain(({ tuple: [l, r, leftFirst] }) =>
                 pipe(
                   fromEffect(
-                    T.zip_(Ref.makeRef(l[A.size(l) - 1]), Ref.makeRef(r[A.size(r) - 1]))
+                    T.zip_(
+                      Ref.makeRef(A.unsafeGet_(l, A.size(l) - 1)),
+                      Ref.makeRef(A.unsafeGet_(r, A.size(r) - 1))
+                    )
                   ),
-                  chain(([latestLeft, latestRight]) =>
+                  chain.chain(({ tuple: [latestLeft, latestRight] }) =>
                     pipe(
                       fromChunk(
                         leftFirst
-                          ? A.map_(r, (_) => f(l[A.size(l) - 1]!, _))
-                          : A.map_(l, (_) => f(_, r[A.size(r) - 1]!))
+                          ? A.map_(r, (_) => f(A.unsafeGet_(l, A.size(l) - 1)!, _))
+                          : A.map_(l, (_) => f(_, A.unsafeGet_(r, A.size(r) - 1)!))
                       ),
-                      concat(
+                      concat.concat(
                         pipe(
                           repeatEffectOption(
                             pipe(
                               left,
                               T.tap((chunk) =>
-                                latestLeft.set(chunk[A.size(chunk) - 1])
+                                latestLeft.set(A.unsafeGet_(chunk, A.size(chunk) - 1))
                               ),
                               T.zip(latestRight.get)
                             )
                           ),
-                          mergeWith(
+                          mergeWith.mergeWith(
                             repeatEffectOption(
                               pipe(
                                 right,
                                 T.tap((chunk) =>
-                                  latestRight.set(chunk[A.size(chunk) - 1])
+                                  latestRight.set(
+                                    A.unsafeGet_(chunk, A.size(chunk) - 1)
+                                  )
                                 ),
                                 T.zip(latestLeft.get)
                               )
-                            )
-                          )(
-                            ([leftChunk, rightLatest]) =>
+                            ),
+                            ({ tuple: [leftChunk, rightLatest] }) =>
                               A.map_(leftChunk, (_) => f(_, rightLatest!)),
-                            ([rightChunk, leftLatest]) =>
+                            ({ tuple: [rightChunk, leftLatest] }) =>
                               A.map_(rightChunk, (_) => f(leftLatest!, _))
                           ),
-                          chain(fromChunk)
+                          chain.chain(fromChunk)
                         )
                       )
                     )

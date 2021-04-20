@@ -1,4 +1,5 @@
 import * as O from "../../../../Option"
+import * as Tp from "../../Tuple"
 import type { Chunk } from "../definition"
 import { zipAllWith_ } from "./zipAllWith"
 
@@ -11,13 +12,13 @@ import { zipAllWith_ } from "./zipAllWith"
 export function zipAll_<A, B>(
   self: Chunk<A>,
   that: Chunk<B>
-): Chunk<readonly [O.Option<A>, O.Option<B>]> {
+): Chunk<Tp.Tuple<[O.Option<A>, O.Option<B>]>> {
   return zipAllWith_(
     self,
     that,
-    (a, b) => [O.some(a), O.some(b)],
-    (a) => [O.some(a), O.none],
-    (b) => [O.none, O.some(b)]
+    (a, b) => Tp.tuple(O.some(a), O.some(b)),
+    (a) => Tp.tuple(O.some(a), O.none),
+    (b) => Tp.tuple(O.none, O.some(b))
   )
 }
 
@@ -31,6 +32,6 @@ export function zipAll_<A, B>(
  */
 export function zipAll<A, B>(
   that: Chunk<B>
-): (self: Chunk<A>) => Chunk<readonly [O.Option<A>, O.Option<B>]> {
+): (self: Chunk<A>) => Chunk<Tp.Tuple<[O.Option<A>, O.Option<B>]>> {
   return (self) => zipAll_(self, that)
 }

@@ -1,3 +1,4 @@
+import * as Tp from "../../Tuple"
 import * as Chunk from "../core"
 import { concreteId } from "../definition"
 
@@ -7,8 +8,8 @@ import { concreteId } from "../definition"
 export function mapAccum_<A, B, S>(
   self: Chunk.Chunk<A>,
   s: S,
-  f: (s: S, a: A) => readonly [S, B]
-): readonly [S, Chunk.Chunk<B>] {
+  f: (s: S, a: A) => Tp.Tuple<[S, B]>
+): Tp.Tuple<[S, Chunk.Chunk<B>]> {
   const iterator = concreteId(self).arrayLikeIterator()
   let next
   let s1 = s
@@ -21,14 +22,14 @@ export function mapAccum_<A, B, S>(
     while (i < len) {
       const a = array[i]!
       const x = f(s1, a)
-      s1 = x[0]
-      builder = Chunk.append_(builder, x[1])
+      s1 = x.get(0)
+      builder = Chunk.append_(builder, x.get(1))
       i++
     }
     next = iterator.next()
   }
 
-  return [s1, builder]
+  return Tp.tuple(s1, builder)
 }
 
 /**
@@ -38,7 +39,7 @@ export function mapAccum_<A, B, S>(
  */
 export function mapAccum<A, B, S>(
   s: S,
-  f: (s: S, a: A) => readonly [S, B]
-): (self: Chunk.Chunk<A>) => readonly [S, Chunk.Chunk<B>] {
+  f: (s: S, a: A) => Tp.Tuple<[S, B]>
+): (self: Chunk.Chunk<A>) => Tp.Tuple<[S, Chunk.Chunk<B>]> {
   return (self) => mapAccum_(self, s, f)
 }

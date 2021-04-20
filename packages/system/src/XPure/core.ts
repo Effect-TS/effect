@@ -2,6 +2,7 @@
 
 /* eslint-disable prefer-const */
 import * as Chunk from "../Collections/Immutable/Chunk/core"
+import * as Tp from "../Collections/Immutable/Tuple"
 import { _A, _E, _R, _S1, _S2, _U, _W } from "../Effect/commons"
 import type { EffectURI } from "../Effect/effect"
 import * as E from "../Either/core"
@@ -84,7 +85,7 @@ class Fail<E> extends XPureBase<never, unknown, never, unknown, E, never> {
 class Modify<S1, S2, E, A> extends XPureBase<never, S1, S2, unknown, E, A> {
   readonly _xptag = "Modify"
 
-  constructor(readonly run: (s1: S1) => readonly [S2, A]) {
+  constructor(readonly run: (s1: S1) => Tp.Tuple<[S2, A]>) {
     super()
   }
 }
@@ -369,7 +370,7 @@ export function mapError_<W, S1, S2, R, E, A, E1>(
  * Constructs a computation from the specified modify function.
  */
 export function modify<S1, S2, A>(
-  f: (s: S1) => readonly [S2, A]
+  f: (s: S1) => Tp.Tuple<[S2, A]>
 ): XPure<never, S1, S2, unknown, never, A> {
   return new Modify(f)
 }
@@ -378,7 +379,7 @@ export function modify<S1, S2, A>(
  * Constructs a computation from the specified modify function.
  */
 export function set<S>(s: S) {
-  return modify((): [S, void] => [s, undefined])
+  return modify(() => Tp.tuple<[S, void]>(s, undefined))
 }
 
 /**
@@ -387,7 +388,7 @@ export function set<S>(s: S) {
 export function update<W, S1, S2>(
   f: (s: S1) => S2
 ): XPure<W, S1, S2, unknown, never, void> {
-  return modify((s) => [f(s), undefined])
+  return modify((s) => Tp.tuple(f(s), undefined))
 }
 
 /**
@@ -550,7 +551,7 @@ export function zip_<W, W1, S1, S2, R, E, A, S3, R1, E1, B>(
   self: XPure<W, S1, S2, R, E, A>,
   that: XPure<W1, S2, S3, R1, E1, B>
 ) {
-  return zipWith_(self, that, (a, b) => [a, b] as const)
+  return zipWith_(self, that, Tp.tuple)
 }
 
 /**
@@ -632,7 +633,7 @@ class Runtime {
   runAll<W, S1, S2, E, A>(
     self: XPure<W, S1, S2, unknown, E, A>,
     s: S1
-  ): readonly [Chunk.Chunk<W>, E.Either<E, readonly [S2, A]>] {
+  ): Tp.Tuple<[Chunk.Chunk<W>, E.Either<E, Tp.Tuple<[S2, A]>>]> {
     let s0 = s as any
     let a: any = undefined
     let environments: Stack<any> | undefined = undefined
@@ -754,10 +755,10 @@ class Runtime {
     }
 
     if (failed) {
-      return [logs, E.left(a)]
+      return Tp.tuple(logs, E.left(a))
     }
 
-    return [logs, E.right([s0, a])]
+    return Tp.tuple(logs, E.right(Tp.tuple(s0, a)))
   }
 }
 
@@ -769,7 +770,7 @@ class Runtime {
 export function runAll_<W, S1, S2, E, A>(
   self: XPure<W, S1, S2, unknown, E, A>,
   s: S1
-): readonly [Chunk.Chunk<W>, E.Either<E, readonly [S2, A]>] {
+): Tp.Tuple<[Chunk.Chunk<W>, E.Either<E, Tp.Tuple<[S2, A]>>]> {
   return new Runtime().runAll(self, s)
 }
 
@@ -781,7 +782,7 @@ export function runAll<S1>(
   s: S1
 ): <W, S2, E, A>(
   self: XPure<W, S1, S2, unknown, E, A>
-) => readonly [Chunk.Chunk<W>, E.Either<E, readonly [S2, A]>] {
+) => Tp.Tuple<[Chunk.Chunk<W>, E.Either<E, Tp.Tuple<[S2, A]>>]> {
   return (self) => runAll_(self, s)
 }
 
@@ -789,7 +790,7 @@ export function runAll<S1>(
  * Runs this computation to produce its result.
  */
 export function run<W, S2, A>(self: XPure<W, unknown, S2, unknown, never, A>): A {
-  return runState_(self, undefined)[1]
+  return runState_(self, undefined).get(1)
 }
 
 /**
@@ -799,8 +800,8 @@ export function run<W, S2, A>(self: XPure<W, unknown, S2, unknown, never, A>): A
 export function runState_<W, S1, S2, A>(
   self: XPure<W, S1, S2, unknown, never, A>,
   s: S1
-): readonly [S2, A] {
-  const result = new Runtime().runAll(self, s)[1]
+): Tp.Tuple<[S2, A]> {
+  const result = new Runtime().runAll(self, s).get(1)
   if (result._tag === "Left") {
     throw result.left
   }
@@ -815,7 +816,7 @@ export function runState_<W, S1, S2, A>(
  */
 export function runState<S1>(
   s: S1
-): <W, S2, A>(self: XPure<W, S1, S2, unknown, never, A>) => readonly [S2, A] {
+): <W, S2, A>(self: XPure<W, S1, S2, unknown, never, A>) => Tp.Tuple<[S2, A]> {
   return (self) => runState_(self, s)
 }
 
@@ -826,7 +827,7 @@ export function runState<S1>(
 export function runEither<W, S2, E, A>(
   self: XPure<W, unknown, S2, unknown, E, A>
 ): E.Either<E, A> {
-  return E.map_(new Runtime().runAll(self, undefined)[1], (x) => x[1])
+  return E.map_(new Runtime().runAll(self, undefined).get(1), (x) => x.get(1))
 }
 
 /**
@@ -834,13 +835,13 @@ export function runEither<W, S2, E, A>(
  */
 export function runLog<W, S2, E, A>(
   self: XPure<W, unknown, S2, unknown, E, A>
-): readonly [Chunk.Chunk<W>, A] {
+): Tp.Tuple<[Chunk.Chunk<W>, A]> {
   const result = new Runtime().runAll(self, undefined)
-  const e = result[1]
+  const e = result.get(1)
   if (e._tag === "Left") {
     throw e.left
   }
-  return [result[0], e.right[1]]
+  return Tp.tuple(result.get(0), e.right.get(1))
 }
 
 /**

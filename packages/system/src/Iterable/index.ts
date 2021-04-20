@@ -3,6 +3,7 @@
 import "../Operator"
 
 import * as A from "../Collections/Immutable/Array"
+import * as Tp from "../Collections/Immutable/Tuple"
 import type { Either } from "../Either"
 import { identity } from "../Function"
 import type { Separated } from "../Utils"
@@ -99,15 +100,14 @@ export function map_<A, B>(i: Iterable<A>, f: (a: A, k: number) => B): Iterable<
 }
 
 export function zip<B>(fb: Iterable<B>) {
-  return <A>(fa: Iterable<A>): Iterable<readonly [A, B]> =>
-    zipWith(fa, fb, (a, b) => [a, b] as const)
+  return <A>(fa: Iterable<A>): Iterable<Tp.Tuple<[A, B]>> => zipWith(fa, fb, Tp.tuple)
 }
 
 export function zip_<A, B>(
   fa: Iterable<A>,
   fb: Iterable<B>
-): Iterable<readonly [A, B]> {
-  return zipWith(fa, fb, (a, b) => [a, b] as const)
+): Iterable<Tp.Tuple<[A, B]>> {
+  return zipWith(fa, fb, Tp.tuple)
 }
 
 export function chain<A, B>(f: (a: A) => Iterable<B>) {

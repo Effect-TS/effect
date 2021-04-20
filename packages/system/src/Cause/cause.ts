@@ -2,6 +2,7 @@
 
 import * as HS from "../Collections/Immutable/HashSet"
 import * as L from "../Collections/Immutable/List/core"
+import * as Tp from "../Collections/Immutable/Tuple"
 import type { FiberID } from "../Fiber/id"
 import { equalsFiberID } from "../Fiber/id"
 import type { Trace } from "../Fiber/tracing"
@@ -576,13 +577,13 @@ function stepLoop<A>(
   stack: L.List<Cause<A>>,
   parallel: HS.HashSet<Cause<A>>,
   sequential: L.List<Cause<A>>
-): readonly [HS.HashSet<Cause<A>>, L.List<Cause<A>>] {
+): Tp.Tuple<[HS.HashSet<Cause<A>>, L.List<Cause<A>>]> {
   // eslint-disable-next-line no-constant-condition
   while (1) {
     switch (cause._tag) {
       case "Empty": {
         if (L.isEmpty(stack)) {
-          return [parallel, sequential]
+          return Tp.tuple(parallel, sequential)
         } else {
           cause = L.unsafeFirst(stack)!
           stack = L.tail(stack)
@@ -627,7 +628,7 @@ function stepLoop<A>(
       }
       default: {
         if (L.isEmpty(stack)) {
-          return [HS.add_(parallel, cause), sequential]
+          return Tp.tuple(HS.add_(parallel, cause), sequential)
         } else {
           parallel = HS.add_(parallel, cause)
           cause = L.unsafeFirst(stack)!
@@ -640,7 +641,7 @@ function stepLoop<A>(
   throw new Error("Bug")
 }
 
-function step<A>(self: Cause<A>): readonly [HS.HashSet<Cause<A>>, L.List<Cause<A>>] {
+function step<A>(self: Cause<A>): Tp.Tuple<[HS.HashSet<Cause<A>>, L.List<Cause<A>>]> {
   return stepLoop(self, L.empty(), HS.make(), L.empty())
 }
 
@@ -654,7 +655,9 @@ function flattenLoop<A>(
       causes,
       tuple(HS.make<Cause<A>>(), L.empty<Cause<A>>()),
       ([parallel, sequential], cause) => {
-        const [set, seq] = step(cause)
+        const {
+          tuple: [set, seq]
+        } = step(cause)
         return tuple(HS.union_(parallel, set), L.concat_(sequential, seq))
       }
     )

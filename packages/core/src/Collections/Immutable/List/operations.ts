@@ -25,7 +25,7 @@ export const forEachF = P.implementForEachF<[URI<ListURI>]>()(
       pipe(
         f(a),
         G.both(acc),
-        G.map(([b, l]) => List.prepend_(l, b))
+        G.map(({ tuple: [b, l] }) => List.prepend_(l, b))
       )
     )
 )

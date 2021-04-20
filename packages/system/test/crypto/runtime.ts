@@ -1,7 +1,8 @@
 import * as C from "../../src/Cause"
+import * as Tp from "../../src/Collections/Immutable/Tuple"
 import * as T from "../../src/Effect"
 import * as Ex from "../../src/Exit"
-import { pipe, tuple } from "../../src/Function"
+import { pipe } from "../../src/Function"
 import * as L from "../../src/Layer"
 import type * as M from "../../src/Managed/ReleaseMap"
 import * as makeReleaseMap from "../../src/Managed/ReleaseMap/makeReleaseMap"
@@ -32,11 +33,11 @@ export function testRuntime<R>(self: L.Layer<T.DefaultEnv, never, R>) {
         T.do,
         T.bind("rm", () => makeReleaseMap.makeReleaseMap),
         T.bind("res", ({ rm }) =>
-          T.provideSome_(L.build(self).effect, (r: T.DefaultEnv) => tuple(r, rm))
+          T.provideSome_(L.build(self).effect, (r: T.DefaultEnv) => Tp.tuple(r, rm))
         ),
         T.tap(({ res, rm }) =>
           T.succeedWith(() => {
-            env.set(res[1])
+            env.set(res.get(1))
             relMap.set(rm)
           })
         ),

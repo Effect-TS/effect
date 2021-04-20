@@ -3,8 +3,8 @@
 /**
  * inspired by https://github.com/tusharmath/qio/pull/22 (revised)
  */
+import * as Tp from "../Collections/Immutable/Tuple"
 import type { Either } from "../Either"
-import { tuple } from "../Function"
 import type { NoSuchElementException } from "../GlobalExceptions"
 import type { Has, Tag } from "../Has"
 import { Managed } from "../Managed/managed"
@@ -93,15 +93,17 @@ export function genM<Eff extends GenEffect<any, any, any>, AEff>(
               ? state.value["effect"] instanceof Managed
                 ? map_(
                     provideSome_(state.value["effect"]["effect"], (r0) =>
-                      tuple(r0, rm)
+                      Tp.tuple(r0, rm)
                     ),
-                    ([_, a]) => a
+                    (_) => _.get(1)
                   )
                 : state.value["effect"]
               : state.value["effect"] instanceof Managed
               ? map_(
-                  provideSome_(state.value["effect"]["effect"], (r0) => tuple(r0, rm)),
-                  ([_, a]) => a
+                  provideSome_(state.value["effect"]["effect"], (r0) =>
+                    Tp.tuple(r0, rm)
+                  ),
+                  (_) => _.get(1)
                 )
               : state.value["effect"],
           state.value.trace

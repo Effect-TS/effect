@@ -42,7 +42,7 @@ export function applicative<F, C>(
       pipe(
         x,
         M.both(fb),
-        M.map(([a, b]) => O.zip_(a, b))
+        M.map(({ tuple: [a, b] }) => O.zip_(a, b))
       )
   })
 }

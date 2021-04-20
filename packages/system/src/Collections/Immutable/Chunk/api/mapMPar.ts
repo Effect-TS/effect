@@ -1,7 +1,6 @@
 import type { Effect } from "../../../../Effect/effect"
 import * as forEach from "../../../../Effect/excl-forEach"
-import * as coreMap from "../../../../Effect/map"
-import * as Chunk from "../core"
+import type * as Chunk from "../core"
 
 /**
  * Effectfully maps the elements of this chunk in parallel.
@@ -10,7 +9,7 @@ export function mapMPar_<A, R, E, B>(
   self: Chunk.Chunk<A>,
   f: (a: A) => Effect<R, E, B>
 ): Effect<R, E, Chunk.Chunk<B>> {
-  return coreMap.map_(forEach.forEachPar_(self, f), Chunk.from)
+  return forEach.forEachPar_(self, f)
 }
 
 /**

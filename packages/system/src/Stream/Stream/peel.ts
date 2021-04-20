@@ -1,5 +1,6 @@
 // tracing: off
 
+import * as Tp from "../../Collections/Immutable/Tuple"
 import { pipe } from "../../Function"
 import * as T from "../_internal/effect"
 import * as M from "../_internal/managed"
@@ -19,7 +20,7 @@ import { run } from "./run"
 export function peel_<R, R1, E, E1, O, Z>(
   self: Stream<R, E, O>,
   sink: SK.Sink<R1, E1, O, O, Z>
-): M.Managed<R & R1, E | E1, readonly [Z, Stream<R, E, O>]> {
+): M.Managed<R & R1, E | E1, Tp.Tuple<[Z, Stream<R, E, O>]>> {
   return M.chain_(self.proc, (pull) => {
     const stream = repeatEffectChunkOption(pull)
     const s = SK.exposeLeftover(sink)
@@ -28,7 +29,7 @@ export function peel_<R, R1, E, E1, O, Z>(
       stream,
       run(s),
       T.toManaged,
-      M.map((e) => [e[0], concat_(fromChunk(e[1]), stream)] as const)
+      M.map((e) => Tp.tuple(e.get(0), concat_(fromChunk(e.get(1)), stream)))
     )
   })
 }

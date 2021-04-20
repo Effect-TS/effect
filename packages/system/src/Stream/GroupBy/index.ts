@@ -2,6 +2,7 @@
 
 import "../../Operator"
 
+import type * as Tp from "../../Collections/Immutable/Tuple"
 import type * as Ex from "../../Exit"
 import { pipe } from "../../Function"
 import type * as O from "../../Option"
@@ -23,7 +24,7 @@ import { zipWithIndex } from "../Stream/zipWithIndex"
  */
 export class GroupBy<R, E, K, V> {
   constructor(
-    readonly grouped: Stream<R, E, readonly [K, Q.Dequeue<Ex.Exit<O.Option<E>, V>>]>,
+    readonly grouped: Stream<R, E, Tp.Tuple<[K, Q.Dequeue<Ex.Exit<O.Option<E>, V>>]>>,
     readonly buffer: number
   ) {
     this.merge = this.merge.bind(this)
@@ -37,7 +38,7 @@ export class GroupBy<R, E, K, V> {
       chainPar(
         Number.MAX_SAFE_INTEGER,
         this.buffer
-      )(([k, q]) => f(k, flattenExitOption(fromQueueWithShutdown(q))))
+      )(({ tuple: [k, q] }) => f(k, flattenExitOption(fromQueueWithShutdown(q))))
     )
   }
 }
@@ -53,7 +54,14 @@ export function first_<R, E, K, V>(
     self.grouped,
     zipWithIndex,
     filterM((elem) => {
-      const [[, q], i] = elem
+      const {
+        tuple: [
+          {
+            tuple: [, q]
+          },
+          i
+        ]
+      } = elem
 
       if (i < n) {
         return T.as_(T.succeed(elem), true)
@@ -61,7 +69,7 @@ export function first_<R, E, K, V>(
         return T.as_(Q.shutdown(q), false)
       }
     }),
-    map(([v]) => v)
+    map((_) => _.get(0))
   )
 
   return new GroupBy(g1, self.buffer)
@@ -84,7 +92,9 @@ export function filter_<R, E, K, V>(
   const g1 = pipe(
     self.grouped,
     filterM((elem) => {
-      const [k, q] = elem
+      const {
+        tuple: [k, q]
+      } = elem
 
       if (f(k)) {
         return T.as_(T.succeed(elem), true)

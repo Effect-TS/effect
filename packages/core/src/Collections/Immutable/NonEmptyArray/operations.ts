@@ -32,7 +32,7 @@ export const forEachWithIndexF = P.implementForEachWithIndexF<
       pipe(
         b,
         G.both(f(k, a as any)),
-        G.map(([x, y]) => L.append_(x, y))
+        G.map(({ tuple: [x, y] }) => L.append_(x, y))
       )
     ),
     G.map(L.toArray)

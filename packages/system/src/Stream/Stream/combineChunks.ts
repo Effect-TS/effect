@@ -1,6 +1,7 @@
 // tracing: off
 
 import type * as A from "../../Collections/Immutable/Chunk"
+import type * as Tp from "../../Collections/Immutable/Tuple"
 import type * as Ex from "../../Exit"
 import { pipe } from "../../Function"
 import type * as Option from "../../Option"
@@ -26,7 +27,7 @@ export function combineChunks_<R1, E1, O2, Z, R, E, O, O3>(
   ) => T.Effect<
     R & R1,
     never,
-    Ex.Exit<Option.Option<E | E1>, readonly [A.Chunk<O3>, Z]>
+    Ex.Exit<Option.Option<E | E1>, Tp.Tuple<[A.Chunk<O3>, Z]>>
   >
 ): Stream<R & R1, E1 | E, O3> {
   return new Stream(
@@ -37,7 +38,7 @@ export function combineChunks_<R1, E1, O2, Z, R, E, O, O3>(
       M.bind(
         "pull",
         ({ left, right }) =>
-          unfoldChunkM(z)((z) =>
+          unfoldChunkM(z, (z) =>
             pipe(
               f(z, left, right),
               T.chain((ex) => T.optional(T.done(ex)))
@@ -65,7 +66,7 @@ export function combineChunks<R1, E1, O2, Z, R, E, O, O3>(
   ) => T.Effect<
     R & R1,
     never,
-    Ex.Exit<Option.Option<E | E1>, readonly [A.Chunk<O3>, Z]>
+    Ex.Exit<Option.Option<E | E1>, Tp.Tuple<[A.Chunk<O3>, Z]>>
   >
 ) {
   return (self: Stream<R, E, O>) => combineChunks_(self, that, z, f)

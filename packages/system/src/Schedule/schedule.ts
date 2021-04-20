@@ -4,6 +4,7 @@ import * as Clock from "../Clock"
 import * as A from "../Collections/Immutable/Array"
 import * as L from "../Collections/Immutable/List"
 import * as NA from "../Collections/Immutable/NonEmptyArray"
+import * as Tp from "../Collections/Immutable/Tuple"
 import * as E from "../Either"
 import { pipe, tuple } from "../Function"
 import * as NoSuchElementException from "../GlobalExceptions"
@@ -46,14 +47,14 @@ export class Schedule<Env, In, Out> {
    */
   readonly ["&&"] = <Env1, In1, Out1>(
     that: Schedule<Env1, In1, Out1>
-  ): Schedule<Env & Env1, In & In1, readonly [Out, Out1]> => intersection_(this, that);
+  ): Schedule<Env & Env1, In & In1, Tp.Tuple<[Out, Out1]>> => intersection_(this, that);
 
   /**
    * The same as `&&`, but ignores the left output.
    */
   readonly ["***"] = <Env1, In1, Out1>(
     that: Schedule<Env1, In1, Out1>
-  ): Schedule<Env & Env1, readonly [In, In1], readonly [Out, Out1]> =>
+  ): Schedule<Env & Env1, Tp.Tuple<[In, In1]>, Tp.Tuple<[Out, Out1]>> =>
     bothInOut_(this, that);
 
   /**
@@ -61,7 +62,7 @@ export class Schedule<Env, In, Out> {
    */
   readonly ["*>"] = <Env1, In1, Out1>(
     that: Schedule<Env1, In1, Out1>
-  ): Schedule<Env & Env1, In & In1, Out1> => map_(this["&&"](that), ([_, x]) => x);
+  ): Schedule<Env & Env1, In & In1, Out1> => map_(this["&&"](that), (_) => _.get(1));
 
   /**
    * Returns a new schedule that allows choosing between feeding inputs to this schedule, or
@@ -83,14 +84,14 @@ export class Schedule<Env, In, Out> {
    */
   readonly ["<*"] = <Env1, In1, Out1>(
     that: Schedule<Env1, In1, Out1>
-  ): Schedule<Env & Env1, In & In1, Out> => map_(this["&&"](that), ([x, _]) => x);
+  ): Schedule<Env & Env1, In & In1, Out> => map_(this["&&"](that), (_) => _.get(0));
 
   /**
    * An operator alias for `zip`.
    */
   readonly ["<*>"] = <Env1, In1, Out1>(
     that: Schedule<Env1, In1, Out1>
-  ): Schedule<Env & Env1, In & In1, readonly [Out, Out1]> => zip_(this, that);
+  ): Schedule<Env & Env1, In & In1, Tp.Tuple<[Out, Out1]>> => zip_(this, that);
 
   /**
    * Returns the composition of this schedule and the specified schedule, by piping the output of
@@ -116,7 +117,7 @@ export class Schedule<Env, In, Out> {
    */
   readonly ["||"] = <Env1, In1, Out1>(
     that: Schedule<Env1, In1, Out1>
-  ): Schedule<Env & Env1, In & In1, readonly [Out, Out1]> => union_(this, that);
+  ): Schedule<Env & Env1, In & In1, Tp.Tuple<[Out, Out1]>> => union_(this, that);
 
   /**
    * Returns a new schedule that chooses between two schedules with a common output.
@@ -279,30 +280,32 @@ export function as<Out2>(o: Out2) {
 function bothLoop<Env, In, Out, Env1, In1, Out1>(
   self: Decision.StepFunction<Env, In, Out>,
   that: Decision.StepFunction<Env1, In1, Out1>
-): Decision.StepFunction<Env & Env1, readonly [In, In1], readonly [Out, Out1]> {
+): Decision.StepFunction<Env & Env1, Tp.Tuple<[In, In1]>, Tp.Tuple<[Out, Out1]>> {
   return (now, t) => {
-    const [in1, in2] = t
+    const {
+      tuple: [in1, in2]
+    } = t
 
-    return T.map_(T.zip_(self(now, in1), that(now, in2)), ([d1, d2]) => {
+    return T.zipWith_(self(now, in1), that(now, in2), (d1, d2) => {
       switch (d1._tag) {
         case "Done": {
           switch (d2._tag) {
             case "Done": {
-              return Decision.makeDone(tuple(d1.out, d2.out))
+              return Decision.makeDone(Tp.tuple(d1.out, d2.out))
             }
             case "Continue": {
-              return Decision.makeDone(tuple(d1.out, d2.out))
+              return Decision.makeDone(Tp.tuple(d1.out, d2.out))
             }
           }
         }
         case "Continue": {
           switch (d2._tag) {
             case "Done": {
-              return Decision.makeDone(tuple(d1.out, d2.out))
+              return Decision.makeDone(Tp.tuple(d1.out, d2.out))
             }
             case "Continue": {
               return Decision.makeContinue(
-                tuple(d1.out, d2.out),
+                Tp.tuple(d1.out, d2.out),
                 Math.min(d1.interval, d2.interval),
                 bothLoop(d1.next, d2.next)
               )
@@ -321,7 +324,7 @@ function bothLoop<Env, In, Out, Env1, In1, Out1>(
 export function bothInOut<Env1, In1, Out1>(that: Schedule<Env1, In1, Out1>) {
   return <Env, In, Out>(
     self: Schedule<Env, In, Out>
-  ): Schedule<Env & Env1, readonly [In, In1], readonly [Out, Out1]> =>
+  ): Schedule<Env & Env1, Tp.Tuple<[In, In1]>, Tp.Tuple<[Out, Out1]>> =>
     new Schedule(bothLoop(self.step, that.step))
 }
 
@@ -332,7 +335,7 @@ export function bothInOut<Env1, In1, Out1>(that: Schedule<Env1, In1, Out1>) {
 export function bothInOut_<Env, In, Out, Env1, In1, Out1>(
   self: Schedule<Env, In, Out>,
   that: Schedule<Env1, In1, Out1>
-): Schedule<Env & Env1, readonly [In, In1], readonly [Out, Out1]> {
+): Schedule<Env & Env1, Tp.Tuple<[In, In1]>, Tp.Tuple<[Out, Out1]>> {
   return new Schedule(bothLoop(self.step, that.step))
 }
 
@@ -343,7 +346,7 @@ export function bothInOut_<Env, In, Out, Env1, In1, Out1>(
 export function intersection<Env1, Out1, In1>(that: Schedule<Env1, In1, Out1>) {
   return <Env, In, Out>(
     self: Schedule<Env, In, Out>
-  ): Schedule<Env & Env1, In & In1, readonly [Out, Out1]> => intersection_(self, that)
+  ): Schedule<Env & Env1, In & In1, Tp.Tuple<[Out, Out1]>> => intersection_(self, that)
 }
 
 /**
@@ -353,7 +356,7 @@ export function intersection<Env1, Out1, In1>(that: Schedule<Env1, In1, Out1>) {
 export function intersection_<Env, In, Out, Env1, In1, Out1>(
   self: Schedule<Env, In, Out>,
   that: Schedule<Env1, In1, Out1>
-): Schedule<Env & Env1, In1 & In, readonly [Out, Out1]> {
+): Schedule<Env & Env1, In1 & In, Tp.Tuple<[Out, Out1]>> {
   return intersectWith_(self, that, (l, r) => Math.max(l, r))
 }
 
@@ -636,31 +639,31 @@ function intersectWithLoop<Env, In, Out, In1, Env1, Out1>(
   self: Decision.StepFunction<Env, In, Out>,
   that: Decision.StepFunction<Env1, In1, Out1>,
   f: (d1: number, d2: number) => number
-): Decision.StepFunction<Env & Env1, In & In1, [Out, Out1]> {
+): Decision.StepFunction<Env & Env1, In & In1, Tp.Tuple<[Out, Out1]>> {
   return (now, i) => {
     const left = self(now, i)
     const right = that(now, i)
 
-    return T.map_(T.zip_(left, right), ([l, r]) => {
+    return T.zipWith_(left, right, (l, r) => {
       switch (l._tag) {
         case "Done": {
           switch (r._tag) {
             case "Done": {
-              return Decision.makeDone<[Out, Out1]>([l.out, r.out])
+              return Decision.makeDone(Tp.tuple(l.out, r.out))
             }
             case "Continue": {
-              return Decision.makeDone<[Out, Out1]>([l.out, r.out])
+              return Decision.makeDone(Tp.tuple(l.out, r.out))
             }
           }
         }
         case "Continue": {
           switch (r._tag) {
             case "Done": {
-              return Decision.makeDone<[Out, Out1]>([l.out, r.out])
+              return Decision.makeDone(Tp.tuple(l.out, r.out))
             }
             case "Continue": {
               return Decision.makeContinue(
-                [l.out, r.out],
+                Tp.tuple(l.out, r.out),
                 f(l.interval, r.interval),
                 intersectWithLoop(l.next, r.next, f)
               )
@@ -779,7 +782,7 @@ export function durations(n: number, ...rest: number[]) {
 export function union<Env1, In1, Out1>(that: Schedule<Env1, In1, Out1>) {
   return <Env, In, Out>(
     self: Schedule<Env, In, Out>
-  ): Schedule<Env & Env1, In & In1, readonly [Out, Out1]> => union_(self, that)
+  ): Schedule<Env & Env1, In & In1, Tp.Tuple<[Out, Out1]>> => union_(self, that)
 }
 
 /**
@@ -790,7 +793,7 @@ export function union<Env1, In1, Out1>(that: Schedule<Env1, In1, Out1>) {
 export function union_<Env, Out, Env1, In, In1, Out1>(
   self: Schedule<Env, In, Out>,
   that: Schedule<Env1, In1, Out1>
-): Schedule<Env & Env1, In & In1, readonly [Out, Out1]> {
+): Schedule<Env & Env1, In & In1, Tp.Tuple<[Out, Out1]>> {
   return unionWith_(self, that, (d1, d2) => Math.min(d1, d2))
 }
 
@@ -810,21 +813,21 @@ function unionWithLoop<Env, Env1, In, In1, Out, Out1>(
   self: Decision.StepFunction<Env, In, Out>,
   that: Decision.StepFunction<Env1, In1, Out1>,
   f: (d1: number, d2: number) => number
-): Decision.StepFunction<Env & Env1, In & In1, readonly [Out, Out1]> {
+): Decision.StepFunction<Env & Env1, In & In1, Tp.Tuple<[Out, Out1]>> {
   return (now, inp) => {
     const left = self(now, inp)
     const right = that(now, inp)
 
-    return T.map_(T.zip_(left, right), ([l, r]) => {
+    return T.zipWith_(left, right, (l, r) => {
       switch (l._tag) {
         case "Done": {
           switch (r._tag) {
             case "Done": {
-              return Decision.makeDone([l.out, r.out])
+              return Decision.makeDone(Tp.tuple(l.out, r.out))
             }
             case "Continue": {
               return Decision.makeContinue(
-                [l.out, r.out],
+                Tp.tuple(l.out, r.out),
                 r.interval,
                 unionWithLoop(() => T.succeed(l), r.next, f)
               )
@@ -835,14 +838,14 @@ function unionWithLoop<Env, Env1, In, In1, Out, Out1>(
           switch (r._tag) {
             case "Done": {
               return Decision.makeContinue(
-                [l.out, r.out],
+                Tp.tuple(l.out, r.out),
                 l.interval,
                 unionWithLoop(l.next, () => T.succeed(r), f)
               )
             }
             case "Continue": {
               return Decision.makeContinue(
-                [l.out, r.out],
+                Tp.tuple(l.out, r.out),
                 f(l.interval, r.interval),
                 unionWithLoop(l.next, r.next, f)
               )
@@ -863,7 +866,7 @@ export function unionWith_<Env, Env1, In, In1, Out, Out1>(
   self: Schedule<Env, In, Out>,
   that: Schedule<Env1, In1, Out1>,
   f: (d1: number, d2: number) => number
-): Schedule<Env & Env1, In & In1, readonly [Out, Out1]> {
+): Schedule<Env & Env1, In & In1, Tp.Tuple<[Out, Out1]>> {
   return new Schedule(unionWithLoop(self.step, that.step, f))
 }
 
@@ -1111,7 +1114,7 @@ export function intersectWith_<Env, In, Out, Env2, In2, Out2>(
   self: Schedule<Env, In, Out>,
   that: Schedule<Env2, In2, Out2>,
   f: (selfInterval: number, thatInterval: number) => number
-): Schedule<Env & Env2, In & In2, readonly [Out, Out2]> {
+): Schedule<Env & Env2, In & In2, Tp.Tuple<[Out, Out2]>> {
   return new Schedule(intersectWithLoop(self.step, that.step, f))
 }
 
@@ -1125,7 +1128,7 @@ export function intersectWith<Env2, In2, Out2>(
   f: (selfInterval: number, thatInterval: number) => number
 ): <Env, In, Out>(
   self: Schedule<Env, In, Out>
-) => Schedule<Env & Env2, In & In2, readonly [Out, Out2]> {
+) => Schedule<Env & Env2, In & In2, Tp.Tuple<[Out, Out2]>> {
   return (self) => intersectWith_(self, that, f)
 }
 
@@ -1507,8 +1510,8 @@ export function repetitions<Env, In, Out>(self: Schedule<Env, In, Out>) {
 export function resetAfter(duration: number) {
   return <Env, In, Out>(self: Schedule<Env, In, Out>) =>
     map_(
-      resetWhen_(zip_(self, elapsed), ([_, d]) => d >= duration),
-      ([o]) => o
+      resetWhen_(zip_(self, elapsed), ({ tuple: [_, d] }) => d >= duration),
+      ({ tuple: [o] }) => o
     )
 }
 
@@ -2036,7 +2039,7 @@ export function zipLeft_<Env, In, Out, Env1, Out1, In1>(
   self: Schedule<Env, In, Out>,
   that: Schedule<Env1, In1, Out1>
 ) {
-  return map_(zip_(self, that), ([_]) => _)
+  return map_(zip_(self, that), (_) => _.get(0))
 }
 
 /**
@@ -2053,7 +2056,7 @@ export function zipRight_<Env, In, Out, Env1, Out1, In1>(
   self: Schedule<Env, In, Out>,
   that: Schedule<Env1, In1, Out1>
 ) {
-  return map_(zip_(self, that), ([_, __]) => __)
+  return map_(zip_(self, that), (_) => _.get(1))
 }
 
 /**
@@ -2074,5 +2077,5 @@ export function zipWith_<Env, In, Out, Env1, Out1, Out2, In1>(
   that: Schedule<Env1, In1, Out1>,
   f: (o: Out, o1: Out1) => Out2
 ) {
-  return map_(zip_(self, that), ([o, o1]) => f(o, o1))
+  return map_(zip_(self, that), ({ tuple: [o, o1] }) => f(o, o1))
 }

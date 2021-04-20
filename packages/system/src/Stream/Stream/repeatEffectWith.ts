@@ -1,6 +1,7 @@
 // tracing: off
 
 import type * as CL from "../../Clock"
+import * as Tp from "../../Collections/Immutable/Tuple"
 import * as O from "../../Option"
 import * as SC from "../../Schedule"
 import * as T from "../_internal/effect"
@@ -19,14 +20,16 @@ export function repeatEffectWith<R, R1, E, A extends A1, A1, X>(
   effect: T.Effect<R, E, A>,
   schedule: SC.Schedule<R1, A1, X>
 ): Stream<R & R1 & CL.HasClock, E, A> {
-  return chain_(fromEffect(T.zip_(effect, SC.driver(schedule))), ([a, driver]) =>
-    concat_(
-      succeed(a),
-      unfoldM(a)((_) =>
-        T.foldM_(driver.next(_), T.succeed, (_) =>
-          T.map_(effect, (nextA) => O.some([nextA, nextA] as const))
+  return chain_(
+    fromEffect(T.zip_(effect, SC.driver(schedule))),
+    ({ tuple: [a, driver] }) =>
+      concat_(
+        succeed(a),
+        unfoldM(a, (_) =>
+          T.foldM_(driver.next(_), T.succeed, (_) =>
+            T.map_(effect, (nextA) => O.some(Tp.tuple(nextA, nextA)))
+          )
         )
       )
-    )
   )
 }

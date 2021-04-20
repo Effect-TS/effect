@@ -3,6 +3,7 @@
 import "../../../Operator"
 
 import * as Cause from "../../../Cause"
+import * as Tp from "../../../Collections/Immutable/Tuple"
 import * as T from "../../../Effect"
 import * as E from "../../../Either"
 import type * as Exit from "../../../Exit"
@@ -877,8 +878,8 @@ export function managedOut<R, E, A>(
       chain_(
         fromEffect(
           T.map_(
-            T.provideSome_(self.effect, (r: R) => [r, rm] as const),
-            ([_, x]) => x
+            T.provideSome_(self.effect, (r: R) => Tp.tuple(r, rm)),
+            (_) => _.get(1)
           )
         ),
         write

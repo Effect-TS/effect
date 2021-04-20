@@ -71,7 +71,7 @@ export function applicative<F>(M: Applicative<HKT.UHKT<F>>) {
       pipe(
         fa,
         R.zip(fb),
-        R.map(([_a, _b]) => M.both(_b)(_a))
+        R.map(({ tuple: [_a, _b] }) => M.both(_b)(_a))
       )
   })
 }

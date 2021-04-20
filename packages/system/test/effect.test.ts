@@ -1,6 +1,7 @@
 import { provideTestClock, TestClock } from "../src/Clock"
 import { range } from "../src/Collections/Immutable/Array"
 import * as Chunk from "../src/Collections/Immutable/Chunk"
+import * as Tp from "../src/Collections/Immutable/Tuple"
 import type { Cb, Effect } from "../src/Effect"
 import * as T from "../src/Effect"
 import * as E from "../src/Either"
@@ -8,7 +9,7 @@ import * as Ex from "../src/Exit"
 import * as Fiber from "../src/Fiber"
 import { dump, prettyPrintM } from "../src/Fiber"
 import * as FiberRef from "../src/FiberRef"
-import { absurd, flow, pipe, tuple } from "../src/Function"
+import { absurd, flow, pipe } from "../src/Function"
 import * as O from "../src/Option"
 import * as Ref from "../src/Ref"
 import { runTest } from "./utils/runTest"
@@ -110,9 +111,9 @@ describe("Effect", () => {
     )
   })
   it("mapN", async () => {
-    const program = pipe(
-      tuple(T.succeed(0), T.fail("e"), T.succeed("ok")),
-      T.mapN(([a, _, c]) => a + c.length)
+    const program = T.mapN_(
+      Tp.tuple(T.succeed(0), T.fail("e"), T.succeed("ok")),
+      (a, _, c) => a + c.length
     )
     expect(await pipe(program, T.result, T.map(Ex.untraced), T.runPromise)).toEqual(
       Ex.fail("e")
@@ -388,9 +389,9 @@ describe("Effect", () => {
     T.gen(function* (_) {
       const ref = yield* _(Ref.makeRef(0))
 
-      const [eff, inv] = yield* _(
-        ref["|>"](Ref.update((n) => n + 1))["|>"](T.cachedInvalidate(50))
-      )
+      const {
+        tuple: [eff, inv]
+      } = yield* _(ref["|>"](Ref.update((n) => n + 1))["|>"](T.cachedInvalidate(50)))
 
       yield* _(eff)
 
