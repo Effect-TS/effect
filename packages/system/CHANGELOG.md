@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.31.1](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.31.0...@effect-ts/system@0.31.1) (2021-04-20)
+
+
+### Bug Fixes
+
+* **chunk:** handle binary data inside arrays ([3ff622a](https://github.com/Effect-TS/core/commit/3ff622a3433ed083e6cb4e9c2de2ec9cab9cfaad))
+
+
+
+
+
 # [0.31.0](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.30.7...@effect-ts/system@0.31.0) (2021-04-20)
 
 
