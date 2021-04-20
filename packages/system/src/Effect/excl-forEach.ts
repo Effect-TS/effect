@@ -3,8 +3,8 @@
 import * as cause from "../Cause"
 import * as ChunkFilter from "../Collections/Immutable/Chunk/api/filter"
 import * as ChunkFilterMap from "../Collections/Immutable/Chunk/api/filterMap"
-import * as ChunkFind from "../Collections/Immutable/Chunk/api/find"
 import * as ChunkForEach from "../Collections/Immutable/Chunk/api/forEach"
+import * as ChunkIndexWhere from "../Collections/Immutable/Chunk/api/indexWhere"
 import * as ChunkSplitAt from "../Collections/Immutable/Chunk/api/splitAt"
 import * as ChunkZip from "../Collections/Immutable/Chunk/api/zip"
 import * as Chunk from "../Collections/Immutable/Chunk/core"
@@ -261,7 +261,8 @@ export function forEachUnitPar_<R, E, A, X>(
                 pipe(
                   forEach_(fibers, (_) => _.await),
                   map.map(
-                    (_) => ChunkFind.findIndex_(_, (ex) => !Ex.succeeded(ex)) !== -1
+                    (_) =>
+                      ChunkIndexWhere.indexWhere_(_, (ex) => !Ex.succeeded(ex)) !== -1
                   )
                 )
               )
