@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.33.0](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.32.7...@effect-ts/system@0.33.0) (2021-04-21)
+
+
+### Features
+
+* **hash:** use getter, provide lazy decorator ([5620826](https://github.com/Effect-TS/core/commit/56208266a01ba8b93f2b88f2c0dea923acfe72a8))
+
+
+
+
+
 ## [0.32.7](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.32.6...@effect-ts/system@0.32.7) (2021-04-21)
 
 
