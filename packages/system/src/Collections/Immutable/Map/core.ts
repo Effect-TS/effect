@@ -6,6 +6,7 @@
 import * as Op from "../../../Option"
 import { fromNullable } from "../../../Option"
 import type { MutableMap } from "../../../Support/Mutable"
+import * as Tp from "../Tuple"
 
 /**
  * Map type
@@ -15,8 +16,18 @@ export type Map<K, T> = ReadonlyMap<K, T>
 /**
  * Create from a key-value array
  */
-export function make<K, V>(values: readonly (readonly [K, V])[]): Map<K, V> {
-  return new Map(values)
+export function make<K, V>(
+  values: Iterable<readonly [K, V] | Tp.Tuple<[K, V]>>
+): Map<K, V> {
+  const map = new Map()
+  for (const _ of values) {
+    if (Tp.isTuple(_)) {
+      map.set(_.get(0), _.get(1))
+    } else {
+      map.set(_[0], _[1])
+    }
+  }
+  return map
 }
 
 /**
