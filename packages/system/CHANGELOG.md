@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.33.2](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.33.1...@effect-ts/system@0.33.2) (2021-04-21)
+
+
+### Features
+
+* **tuple:** implement iterable ([e00bfe1](https://github.com/Effect-TS/core/commit/e00bfe1b0379f63c8aa46d85a139fda255b01802))
+
+
+
+
+
 ## [0.33.1](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.33.0...@effect-ts/system@0.33.1) (2021-04-21)
 
 
