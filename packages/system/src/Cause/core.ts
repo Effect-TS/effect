@@ -9,8 +9,8 @@ import { identity, pipe } from "../Function"
 import * as S from "../IO"
 import * as O from "../Option"
 import { Stack } from "../Stack"
-import type { Cause } from "./cause"
-import { both, die, empty, fail, then, traced } from "./cause"
+import type { Both, Cause, Then, Traced } from "./cause"
+import { both, die, empty, fail, interrupt, then, traced } from "./cause"
 import { InterruptedException } from "./errors"
 
 export {
@@ -994,4 +994,158 @@ export function untracedSafe<E>(cause: Cause<E>): S.IO<Cause<E>> {
       return S.succeed(cause)
     }
   }
+}
+
+const StackFrameDoneTypeId = Symbol()
+class StackFrameDone {
+  readonly _typeId: typeof StackFrameDoneTypeId = StackFrameDoneTypeId
+}
+const StackFrameTracedTypeId = Symbol()
+class StackFrameTraced<E, A> {
+  readonly _typeId: typeof StackFrameTracedTypeId = StackFrameTracedTypeId
+
+  constructor(readonly cause: Traced<E.Either<E, A>>) {}
+}
+
+const StackFrameThenLeftTypeId = Symbol()
+class StackFrameThenLeft<E, A> {
+  readonly _typeId: typeof StackFrameThenLeftTypeId = StackFrameThenLeftTypeId
+
+  constructor(readonly cause: Then<E.Either<E, A>>) {}
+}
+const StackFrameThenRightTypeId = Symbol()
+class StackFrameThenRight<E, A> {
+  readonly _typeId: typeof StackFrameThenRightTypeId = StackFrameThenRightTypeId
+
+  constructor(
+    readonly cause: Then<E.Either<E, A>>,
+    readonly leftResult: E.Either<Cause<E>, A>
+  ) {}
+}
+const StackFrameBothLeftTypeId = Symbol()
+class StackFrameBothLeft<E, A> {
+  readonly _typeId: typeof StackFrameBothLeftTypeId = StackFrameBothLeftTypeId
+
+  constructor(readonly cause: Both<E.Either<E, A>>) {}
+}
+const StackFrameBothRightTypeId = Symbol()
+class StackFrameBothRight<E, A> {
+  readonly _typeId: typeof StackFrameBothRightTypeId = StackFrameBothRightTypeId
+
+  constructor(
+    readonly cause: Both<E.Either<E, A>>,
+    readonly leftResult: E.Either<Cause<E>, A>
+  ) {}
+}
+
+type StackFrame<E, A> =
+  | StackFrameDone
+  | StackFrameTraced<E, A>
+  | StackFrameThenLeft<E, A>
+  | StackFrameThenRight<E, A>
+  | StackFrameBothLeft<E, A>
+  | StackFrameBothRight<E, A>
+
+/**
+ * Converts the specified `Cause<Either<E, A>>` to an `Either<Cause<E>, A>` by
+ * recursively stripping out any failures with the error `None`.
+ */
+export function flipCauseEither<E, A>(c: Cause<E.Either<E, A>>): E.Either<Cause<E>, A> {
+  let stack: Stack<StackFrame<E, A>> = new Stack(new StackFrameDone())
+  let result: E.Either<Cause<E>, A> | undefined
+
+  recursion: while (stack) {
+    // eslint-disable-next-line no-constant-condition
+    pushing: while (true) {
+      switch (c._tag) {
+        case "Empty":
+          result = E.left(empty)
+          break pushing
+        case "Traced":
+          stack = new Stack(new StackFrameTraced(c), stack)
+          c = c.cause
+          continue pushing
+        case "Interrupt":
+          result = E.left(interrupt(c.fiberId))
+          break pushing
+        case "Die":
+          result = E.left(c)
+          break pushing
+        case "Fail":
+          result = E.fold_(
+            c.value,
+            (l) => E.left(fail(l)),
+            (r) => E.right(r)
+          )
+          break pushing
+        case "Then":
+          stack = new Stack(new StackFrameThenLeft(c), stack)
+          c = c.left
+          continue pushing
+        case "Both":
+          stack = new Stack(new StackFrameBothLeft(c), stack)
+          c = c.left
+          continue pushing
+      }
+    }
+
+    // eslint-disable-next-line no-constant-condition
+    popping: while (true) {
+      const top = stack.value
+
+      stack = stack.previous!
+
+      switch (top._typeId) {
+        case StackFrameDoneTypeId:
+          return result
+        case StackFrameTracedTypeId:
+          result = E.mapLeft_(result, (_) => traced(_, top.cause.trace))
+          continue popping
+        case StackFrameThenLeftTypeId:
+          c = top.cause.right
+          stack = new Stack(new StackFrameThenRight(top.cause, result), stack)
+          continue recursion
+        case StackFrameThenRightTypeId: {
+          const l = top.leftResult
+
+          if (E.isLeft(l) && E.isLeft(result)) {
+            result = E.left(then(l.left, result.left))
+          }
+
+          if (E.isRight(l)) {
+            result = E.right(l.right)
+          }
+
+          if (E.isRight(result)) {
+            result = E.right(result.right)
+          }
+
+          continue popping
+        }
+        case StackFrameBothLeftTypeId:
+          c = top.cause.right
+          stack = new Stack(new StackFrameBothRight(top.cause, result), stack)
+          continue recursion
+        case StackFrameBothRightTypeId: {
+          const l = top.leftResult
+
+          if (E.isLeft(l) && E.isLeft(result)) {
+            result = E.left(both(l.left, result.left))
+          }
+
+          if (E.isRight(l)) {
+            result = E.right(l.right)
+          }
+
+          if (E.isRight(result)) {
+            result = E.right(result.right)
+          }
+
+          continue popping
+        }
+      }
+    }
+  }
+
+  throw new Error("Bug")
 }

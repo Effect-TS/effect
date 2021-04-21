@@ -368,6 +368,8 @@ export function concatMapWith_<
  * their outputs appear as outputs of the newly returned channel. The provided merging function
  * is used to merge the terminal values of all channels into the single terminal value of the
  * returned channel.
+ *
+ * @dataFirst concatMapWith_
  */
 export function concatMapWith<
   OutDone,
@@ -456,7 +458,7 @@ export function concatAllWith_<
 /**
  * Concat sequentially a channel of channels
  *
- * @dataFirst concatAllWith
+ * @dataFirst concatAllWith_
  */
 export function concatAllWith<OutDone, OutDone2, OutDone3>(
   f: (o: OutDone, o1: OutDone) => OutDone,
@@ -879,7 +881,7 @@ export function managedOut<R, E, A>(
         fromEffect(
           T.map_(
             T.provideSome_(self.effect, (r: R) => Tp.tuple(r, rm)),
-            (_) => _.get(1)
+            Tp.get(1)
           )
         ),
         write

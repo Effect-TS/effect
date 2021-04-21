@@ -2325,7 +2325,7 @@ export function forEachUnitParN_<R, E, A, B>(
  *
  * For a sequential version of this method, see `forEachUnit_`.
  *
- * @dataFirst forEachUnitParN
+ * @dataFirst forEachUnitParN_
  */
 export function forEachUnitParN<R, E, A, B>(n: number, f: (a: A) => Managed<R, E, B>) {
   return (as: Iterable<A>): Managed<R, E, void> => forEachUnitParN_(as, n, f)

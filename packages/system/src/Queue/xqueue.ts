@@ -132,3 +132,8 @@ export interface Queue<A> extends XQueue<unknown, unknown, never, never, A, A> {
  * A queue that can only be dequeued.
  */
 export interface Dequeue<A> extends XQueue<never, unknown, unknown, never, never, A> {}
+
+/**
+ * A queue that can only be enqueued.
+ */
+export interface Enqueue<A> extends XQueue<unknown, never, never, unknown, A, any> {}

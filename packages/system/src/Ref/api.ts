@@ -179,7 +179,7 @@ export function dimapError_<A, B, EA, EB, EC, ED>(
  * returning a `XRef` with a `set` value that succeeds if the predicate is
  * satisfied or else fails with `None`.
  *
- * @dataFirst _filterInput
+ * @dataFirst filterInput_
  */
 export function filterInput<A, A1 extends A>(f: (_: A1) => boolean) {
   return <EA, EB, B>(self: XRef<EA, EB, A, B>): XRef<O.Option<EA>, EB, A1, B> =>
