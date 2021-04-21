@@ -25,23 +25,20 @@ const h0 = St.hashString("@effect-ts/system/Case")
 export class Case<T, K extends PropertyKey = never>
   implements CaseBrand, St.HasHash, St.HasEquals {
   #args: ConstructorArgs<T, K>
-
   constructor(args: ConstructorArgs<T, K>) {
     this.#args = args
 
-    Object.assign(this, args)
-
-    const keys = Object.keys(this)
+    const keys = Object.keys(args)
 
     for (let i = 0; i < keys.length; i++) {
-      const k = this[keys[i]!]
       Object.defineProperty(this, keys[i]!, {
         set(_: unknown) {
           //
         },
         get() {
-          return k
-        }
+          return args[keys[i]!]
+        },
+        enumerable: true
       })
     }
   }
@@ -64,6 +61,9 @@ export class Case<T, K extends PropertyKey = never>
   }
 
   [St.equalsSym](that: unknown): boolean {
+    if (this === that) {
+      return true
+    }
     if (isCase(that)) {
       const kthis = Object.keys(this)
       const kthat = Object.keys(that)
