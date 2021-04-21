@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.32.6](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.32.5...@effect-ts/system@0.32.6) (2021-04-21)
+
+
+### Bug Fixes
+
+* **case:** check for args to be defined ([712c260](https://github.com/Effect-TS/core/commit/712c260a2422c6062771cb774c517014222f801e))
+
+
+
+
+
 ## [0.32.5](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.32.4...@effect-ts/system@0.32.5) (2021-04-21)
 
 
