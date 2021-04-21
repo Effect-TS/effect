@@ -1,0 +1,21 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "build",
+    "target": "ES2018",
+    "module": "CommonJS",
+    "incremental": true,
+    "tsBuildInfoFile": "tsbuildinfo/build.tsbuildinfo",
+    "removeComments": false,
+    "plugins": [
+      {
+        "transform": "../tracing-plugin/src/index.ts",
+        "moduleMap": {
+          "^src/(.*)": "(@effect-ts/schema): _src/$1"
+        }
+      }
+    ]
+  },
+  "include": ["src/**/*"],
+  "exclude": ["test", "node_modules"]
+}

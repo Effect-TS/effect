@@ -33,6 +33,7 @@ export type IterableArrayLike<A> = ArrayLike<A> & Iterable<A>
 export interface Chunk<A> {
   readonly [ChunkTypeId]: ChunkTypeId
   readonly [_A]: () => A
+  readonly length: number
 
   [Symbol.iterator](): Iterator<A>
 }
@@ -78,7 +79,7 @@ export abstract class ChunkInternal<A>
   }
 
   [St.equalsSym](that: unknown): boolean {
-    return that instanceof ChunkInternal && corresponds_(this, that, St.equals)
+    return isChunk(that) && corresponds_(this, that, St.equals)
   }
 
   get [St.hashSym](): number {

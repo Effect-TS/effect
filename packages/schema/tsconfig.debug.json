@@ -1,0 +1,17 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "debug",
+    "target": "ES2018",
+    "lib": ["DOM", "ES2020"],
+    "module": "CommonJS",
+    "removeComments": false,
+    "plugins": [
+      {
+        "transform": "../tracing-plugin/src/index.ts"
+      },
+      { "transform": "typescript-transform-paths" }
+    ]
+  },
+  "include": ["./src/collections.ts"]
+}

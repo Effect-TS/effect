@@ -7,5 +7,16 @@
       "export const $1 = NT.newtype<$1>()($1_)"
     ],
     "description": "Defines a Morphic newtype via iso"
+  },
+  "Case": {
+    "prefix": "case class",
+    "body": [
+      "class $1 extends Case<$1, \"_tag\"> {",
+      "\treadonly _tag = \"$1\"",
+      "\t$0",
+      "}",
+      ""
+    ],
+    "description": "Defines a case class"
   }
 }

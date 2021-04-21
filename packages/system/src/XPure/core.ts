@@ -17,6 +17,7 @@ import { Stack } from "../Stack"
  * context, state, failure, and logging.
  */
 export interface XPure<W, S1, S2, R, E, A> {
+  readonly _tag: "XPure"
   readonly [_S1]: (_: S1) => void
   readonly [_S2]: () => S2
 
