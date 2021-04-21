@@ -29,20 +29,21 @@ export class Case<T, K extends PropertyKey = never>
   constructor(args: ConstructorArgs<T, K>) {
     this.#args = args
 
-    const keys = Object.keys(args)
+    if (typeof args === "object" && args != null) {
+      const keys = Object.keys(args)
 
-    for (let i = 0; i < keys.length; i++) {
-      Object.defineProperty(this, keys[i]!, {
-        set(_: unknown) {
-          //
-        },
-        get() {
-          return args[keys[i]!]
-        },
-        enumerable: true
-      })
+      for (let i = 0; i < keys.length; i++) {
+        Object.defineProperty(this, keys[i]!, {
+          set(_: unknown) {
+            //
+          },
+          get() {
+            return args[keys[i]!]
+          },
+          enumerable: true
+        })
+      }
     }
-
     this.#keys = Object.keys(this).sort()
   }
 
