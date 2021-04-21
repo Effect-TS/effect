@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.32.7](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.32.6...@effect-ts/system@0.32.7) (2021-04-21)
+
+
+### Features
+
+* **map:** improve make ([665e2fb](https://github.com/Effect-TS/core/commit/665e2fb1488bb20b4867ca5e3129108e086cf608))
+
+
+
+
+
 ## [0.32.6](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.32.5...@effect-ts/system@0.32.6) (2021-04-21)
 
 
