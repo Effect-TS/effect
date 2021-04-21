@@ -10,12 +10,16 @@ export function isTuple(self: unknown): self is Tuple<unknown[]> {
   return typeof self === "object" && self != null && TupleSym in self
 }
 
-export class Tuple<T extends readonly unknown[]> {
+export class Tuple<T extends readonly unknown[]> implements Iterable<T[number]> {
   [TupleSym](): TupleSym {
     return TupleSym
   }
 
   constructor(readonly tuple: T) {}
+
+  [Symbol.iterator](): IterableIterator<T[number]> {
+    return this.tuple[Symbol.iterator]()
+  }
 
   get [Tp.hashSym](): number {
     return Tp.hashArray(this.tuple)
