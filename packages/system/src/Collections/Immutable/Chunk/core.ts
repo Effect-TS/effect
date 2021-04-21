@@ -15,7 +15,7 @@ import {
   SliceTypeId
 } from "./definition"
 
-export { Chunk, from } from "./definition"
+export { Chunk, from, isChunk } from "./definition"
 
 /**
  * Builds a chunk of a single value
