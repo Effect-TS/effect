@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.33.1](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.33.0...@effect-ts/system@0.33.1) (2021-04-21)
+
+
+### Performance Improvements
+
+* **hash:** access sorted keys ([3bc3919](https://github.com/Effect-TS/core/commit/3bc39193e398d31c7610ee567385ff8d76041e5f))
+
+
+
+
+
 # [0.33.0](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.32.7...@effect-ts/system@0.33.0) (2021-04-21)
 
 
