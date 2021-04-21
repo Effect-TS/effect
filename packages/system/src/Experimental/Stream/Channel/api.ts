@@ -218,7 +218,7 @@ export function collect_<
   self: C.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
   f: (o: OutElem) => O.Option<OutElem2>
 ): C.Channel<Env, InErr, InElem, InDone, OutErr, OutElem2, OutDone> {
-  const collector = (): C.Channel<
+  const collector: C.Channel<
     Env,
     OutErr,
     OutElem,
@@ -226,19 +226,18 @@ export function collect_<
     OutErr,
     OutElem2,
     OutDone
-  > =>
-    C.readWith(
-      (o) =>
-        O.fold_(
-          f(o),
-          () => collector(),
-          (out2) => zipRight_(C.write(out2), collector())
-        ),
-      (e) => C.fail(e),
-      (z) => C.end(z)
-    )
+  > = C.readWith(
+    (o) =>
+      O.fold_(
+        f(o),
+        () => collector,
+        (out2) => zipRight_(C.write(out2), collector)
+      ),
+    (e) => C.fail(e),
+    (z) => C.end(z)
+  )
 
-  return C.pipeTo_(self, collector())
+  return C.pipeTo_(self, collector)
 }
 
 /**
