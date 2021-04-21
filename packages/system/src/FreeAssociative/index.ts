@@ -13,9 +13,9 @@ export function isFreeAssociative(self: unknown): self is FreeAssociative<unknow
 
 export class IEmpty {
   readonly _tag = "Empty";
-  readonly [_brand] = _brand;
+  readonly [_brand] = _brand
 
-  [St.hashSym](): number {
+  get [St.hashSym](): number {
     return St.hash(toArray(this))
   }
 
@@ -29,7 +29,7 @@ export class IElement<A> {
   readonly [_brand] = _brand
   constructor(readonly element: A) {}
 
-  [St.hashSym](): number {
+  get [St.hashSym](): number {
     return St.hash(toArray(this))
   }
 

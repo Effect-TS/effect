@@ -73,7 +73,7 @@ export class RedBlackTree<K, V> implements RedBlackTreeIterable<K, V> {
     return new RedBlackTreeIterator(this, stack, "Forward")
   }
 
-  [St.hashSym](): number {
+  get [St.hashSym](): number {
     return St.hashIterator(this[Symbol.iterator]())
   }
 

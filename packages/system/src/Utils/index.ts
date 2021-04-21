@@ -154,3 +154,5 @@ export function onGenericAdtElement<T extends string>(_t: T) {
 export type ForcedTuple<A> = A extends unknown[] ? Tuple<A> : never
 
 export type ForcedArray<A> = A extends readonly any[] ? A : []
+
+export * from "./lazy"

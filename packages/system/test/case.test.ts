@@ -1,6 +1,7 @@
 import * as Case from "../src/Case"
 //import * as Chunk from "../src/Collections/Immutable/Chunk"
 import * as S from "../src/Structural"
+import { LazyGetter } from "../src/Utils"
 
 describe("Case Class", () => {
   it("should work with equal and hash", () => {
@@ -31,7 +32,10 @@ describe("Case Class", () => {
       [S.equalsSym](u: unknown): boolean {
         return u instanceof Key && this.k === u.k
       }
-      [S.hashSym](): number {
+
+      @LazyGetter()
+      get [S.hashSym](): number {
+        console.log("HERE", this.k)
         return S.hashString(this.k)
       }
     }

@@ -33,7 +33,7 @@ export class Empty implements St.HasEquals, St.HasHash {
     return isCause(that) && IO.run(this.equalsSafe(that))
   }
 
-  [St.hashSym](): number {
+  get [St.hashSym](): number {
     return _emptyHash
   }
 
@@ -72,7 +72,7 @@ export class Fail<E> implements St.HasEquals, St.HasHash {
     return isCause(that) && IO.run(this.equalsSafe(that))
   }
 
-  [St.hashSym](): number {
+  get [St.hashSym](): number {
     return St.combineHash(St.hashString(this._tag), St.hash(this.value))
   }
 
@@ -109,7 +109,7 @@ export class Die implements St.HasEquals, St.HasHash {
     return isCause(that) && IO.run(this.equalsSafe(that))
   }
 
-  [St.hashSym](): number {
+  get [St.hashSym](): number {
     return St.combineHash(St.hashString(this._tag), St.hash(this.value))
   }
 
@@ -146,7 +146,7 @@ export class Interrupt implements St.HasEquals, St.HasHash {
     return isCause(that) && IO.run(this.equalsSafe(that))
   }
 
-  [St.hashSym](): number {
+  get [St.hashSym](): number {
     return St.combineHash(St.hashString(this._tag), St.hash(this.fiberId))
   }
 
@@ -183,8 +183,8 @@ export class Traced<E> implements St.HasEquals, St.HasHash {
     return isCause(that) && IO.run(this.equalsSafe(that))
   }
 
-  [St.hashSym](): number {
-    return this.cause[St.hashSym]()
+  get [St.hashSym](): number {
+    return this.cause[St.hashSym]
   }
 
   equalsSafe(that: Cause<unknown>): IO.IO<boolean> {
@@ -209,7 +209,7 @@ export class Then<E> implements St.HasEquals, St.HasHash {
     return isCause(that) && IO.run(this.equalsSafe(that))
   }
 
-  [St.hashSym](): number {
+  get [St.hashSym](): number {
     return hashCode(this)
   }
 
@@ -256,7 +256,7 @@ export class Both<E> implements St.HasEquals, St.HasHash {
     return isCause(that) && IO.run(this.equalsSafe(that))
   }
 
-  [St.hashSym](): number {
+  get [St.hashSym](): number {
     return hashCode(this)
   }
 
@@ -683,7 +683,7 @@ function hashCode<A>(self: Cause<A>) {
   if (size === 0) {
     return _emptyHash
   } else if (size === 1 && (head = L.unsafeFirst(flat)!) && HS.size(head) === 1) {
-    return L.unsafeFirst(L.from(head))![St.hashSym]()
+    return L.unsafeFirst(L.from(head))![St.hashSym]
   } else {
     return St.hashIterator(flat[Symbol.iterator]())
   }

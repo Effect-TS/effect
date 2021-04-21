@@ -17,7 +17,7 @@ export class Tuple<T extends readonly unknown[]> {
 
   constructor(readonly tuple: T) {}
 
-  [Tp.hashSym](): number {
+  get [Tp.hashSym](): number {
     return Tp.hashArray(this.tuple)
   }
 

@@ -33,7 +33,7 @@ export class Empty implements St.HasEquals, St.HasHash {
   [St.equalsSym](that: unknown): boolean {
     return isParSeq(that) && IO.run(this.equalsSafe(that))
   }
-  [St.hashSym](): number {
+  get [St.hashSym](): number {
     return _emptyHash
   }
   equalsSafe(that: ParSeq<unknown>): IO.IO<boolean> {
@@ -49,7 +49,7 @@ export class Then<A> implements St.HasEquals, St.HasHash {
   [St.equalsSym](that: unknown): boolean {
     return isParSeq(that) && IO.run(this.equalsSafe(that))
   }
-  [St.hashSym](): number {
+  get [St.hashSym](): number {
     return hashCode(this)
   }
   equalsSafe(that: ParSeq<unknown>): IO.IO<boolean> {
@@ -165,7 +165,7 @@ export class Both<A> implements St.HasEquals, St.HasHash {
   [St.equalsSym](that: unknown): boolean {
     return isParSeq(that) && IO.run(this.equalsSafe(that))
   }
-  [St.hashSym](): number {
+  get [St.hashSym](): number {
     return hashCode(this)
   }
   equalsSafe(that: ParSeq<unknown>): IO.IO<boolean> {
@@ -294,7 +294,7 @@ export class Single<A> implements St.HasEquals, St.HasHash {
   [St.equalsSym](that: unknown): boolean {
     return isParSeq(that) && IO.run(this.equalsSafe(that))
   }
-  [St.hashSym](): number {
+  get [St.hashSym](): number {
     return St.combineHash(St.hashString(this._tag), St.hash(this.a))
   }
   equalsSafe(that: ParSeq<unknown>): IO.IO<boolean> {
@@ -512,7 +512,7 @@ function hashCode(self: ParSeq<unknown>) {
   if (size === 0) {
     return _emptyHash
   } else if (size === 1 && (head = L.unsafeFirst(flat)!) && HS.size(head) === 1) {
-    return L.unsafeFirst(L.from(head))![St.hashSym]()
+    return L.unsafeFirst(L.from(head))![St.hashSym]
   } else {
     return St.hashIterator(flat[Symbol.iterator]())
   }

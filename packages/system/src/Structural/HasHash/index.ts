@@ -5,7 +5,7 @@ import { PCGRandom } from "../../Random/PCG"
 export const hashSym = Symbol()
 
 export interface HasHash {
-  readonly [hashSym]: () => number
+  readonly [hashSym]: number
 }
 
 export function hasHash(u: unknown): u is HasHash {
@@ -128,7 +128,7 @@ export function isIterable(value: object): value is Iterable<unknown> {
 
 export function _hashObject(value: object): number {
   if (hasHash(value)) {
-    return value[hashSym]()
+    return value[hashSym]
   } else {
     let h = CACHE.get(value)
     if (isDefined(h)) return h

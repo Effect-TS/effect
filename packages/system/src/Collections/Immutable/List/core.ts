@@ -241,7 +241,7 @@ export class List<A> implements Iterable<A>, St.HasEquals, St.HasHash {
   [St.equalsSym](that: unknown): boolean {
     return that instanceof List && equalsWith_(this, that, St.equals)
   }
-  [St.hashSym](): number {
+  get [St.hashSym](): number {
     return St.hashIterator(this[Symbol.iterator]())
   }
 }

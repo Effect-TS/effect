@@ -56,7 +56,7 @@ export class Case<T, K extends PropertyKey = never>
     return this.#keys
   }
 
-  [St.hashSym](): number {
+  get [St.hashSym](): number {
     let h = h0
     for (const k of Object.keys(this).sort()) {
       h = St.combineHash(h, St.hash(this[k]))

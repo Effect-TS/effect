@@ -20,7 +20,7 @@ export class None {
   [St.equalsSym](that: unknown): boolean {
     return that instanceof None
   }
-  [St.hashSym](): number {
+  get [St.hashSym](): number {
     return _noneHash
   }
 }
@@ -32,7 +32,7 @@ export class Some<A> {
   [St.equalsSym](that: unknown): boolean {
     return that instanceof Some && St.equals(this.value, that.value)
   }
-  [St.hashSym](): number {
+  get [St.hashSym](): number {
     return St.combineHash(_someHash, St.hash(this.value))
   }
 }

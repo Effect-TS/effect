@@ -18,8 +18,8 @@ export class SortedSet<V> implements Iterable<V> {
     return RB.keys_(this.keyTree)
   }
 
-  [St.hashSym](): number {
-    return this.keyTree[St.hashSym]()
+  get [St.hashSym](): number {
+    return this.keyTree[St.hashSym]
   }
 
   [St.equalsSym](that: unknown): boolean {

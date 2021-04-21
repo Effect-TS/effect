@@ -18,7 +18,7 @@ export class HashSet<V> implements Iterable<V>, St.HasHash, St.HasEquals {
     return HM.keys(this.keyMap)
   }
 
-  [St.hashSym](): number {
+  get [St.hashSym](): number {
     return St.hashIterator(this[Symbol.iterator]())
   }
 

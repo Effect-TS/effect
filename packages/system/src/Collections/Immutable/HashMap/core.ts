@@ -27,7 +27,7 @@ export class HashMap<K, V> implements Iterable<readonly [K, V]> {
     return new HashMapIterator(this, identity)
   }
 
-  [St.hashSym](): number {
+  get [St.hashSym](): number {
     return St.hashIterator(this[Symbol.iterator]())
   }
 

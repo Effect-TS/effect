@@ -13,7 +13,7 @@ export class Fail<A> {
   readonly _typeId: FailTypeId = FailTypeId
   constructor(readonly value: A) {}
 
-  [St.hashSym](): number {
+  get [St.hashSym](): number {
     return St.hash(this.value)
   }
 
@@ -29,7 +29,7 @@ export class Die {
   readonly _typeId: DieTypeId = DieTypeId
   constructor(readonly value: unknown) {}
 
-  [St.hashSym](): number {
+  get [St.hashSym](): number {
     return St.hash(this.value)
   }
 
@@ -45,7 +45,7 @@ export class Succeed<B> {
   readonly _typeId: SucceedTypeId = SucceedTypeId
   constructor(readonly value: B) {}
 
-  [St.hashSym](): number {
+  get [St.hashSym](): number {
     return St.hash(this.value)
   }
 
@@ -60,9 +60,9 @@ export type RetryTypeId = typeof RetryTypeId
 const _retryHash = St.randomInt()
 
 export class Retry {
-  readonly _typeId: RetryTypeId = RetryTypeId;
+  readonly _typeId: RetryTypeId = RetryTypeId
 
-  [St.hashSym](): number {
+  get [St.hashSym](): number {
     return St.opt(_retryHash)
   }
 

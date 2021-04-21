@@ -22,7 +22,7 @@ export class Left<E> {
   [St.equalsSym](that: unknown): boolean {
     return that instanceof Left && St.equals(this.left, that.left)
   }
-  [St.hashSym](): number {
+  get [St.hashSym](): number {
     return St.combineHash(_leftHash, St.hash(this.left))
   }
 }
@@ -34,7 +34,7 @@ export class Right<A> {
   [St.equalsSym](that: unknown): boolean {
     return that instanceof Right && St.equals(this.right, that.right)
   }
-  [St.hashSym](): number {
+  get [St.hashSym](): number {
     return St.combineHash(_rightHash, St.hash(this.right))
   }
 }

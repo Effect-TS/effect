@@ -81,7 +81,7 @@ export abstract class ChunkInternal<A>
     return that instanceof ChunkInternal && corresponds_(this, that, St.equals)
   }
 
-  [St.hashSym](): number {
+  get [St.hashSym](): number {
     return St.hashIterator(this[Symbol.iterator]())
   }
 
