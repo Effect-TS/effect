@@ -127,16 +127,15 @@ export function isIterable(value: object): value is Iterable<unknown> {
 }
 
 export function _hashObject(value: object): number {
-  let h = CACHE.get(value)
-  if (isDefined(h)) return h
-
   if (hasHash(value)) {
-    h = value[hashSym]()
+    return value[hashSym]()
   } else {
+    let h = CACHE.get(value)
+    if (isDefined(h)) return h
     h = _current++
+    CACHE.set(value, h)
+    return h
   }
-  CACHE.set(value, h)
-  return h
 }
 
 export function _hashMiscRef(o: Object): number {
