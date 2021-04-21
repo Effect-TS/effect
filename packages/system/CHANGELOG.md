@@ -3,6 +3,22 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.33.3](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.33.2...@effect-ts/system@0.33.3) (2021-04-21)
+
+
+### Features
+
+* **channel:** Add missing combinators ([7b1f570](https://github.com/Effect-TS/core/commit/7b1f5701e56cca71e83974b35fd418ae6ca68427))
+
+
+### Performance Improvements
+
+* **channel:** remove useless call ([af10143](https://github.com/Effect-TS/core/commit/af101434710a8e65d58cb39b4bf950ae47254b85))
+
+
+
+
+
 ## [0.33.2](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.33.1...@effect-ts/system@0.33.2) (2021-04-21)
 
 
