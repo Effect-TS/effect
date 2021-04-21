@@ -3,6 +3,22 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.32.5](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.32.4...@effect-ts/system@0.32.5) (2021-04-21)
+
+
+### Bug Fixes
+
+* **hash:** avoid cache on computed hashs ([e4ce7b2](https://github.com/Effect-TS/core/commit/e4ce7b2c3d4ddbadf4b9df8596f7b1e0ef617944))
+
+
+### Performance Improvements
+
+* **case:** presort keys ([f5403a7](https://github.com/Effect-TS/core/commit/f5403a78d143ae130162d81023511a77a86bc9cf))
+
+
+
+
+
 ## [0.32.4](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.32.3...@effect-ts/system@0.32.4) (2021-04-21)
 
 
