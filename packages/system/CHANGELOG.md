@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.32.4](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.32.3...@effect-ts/system@0.32.4) (2021-04-21)
+
+
+### Performance Improvements
+
+* **case:** improve implementation ([dbf09b1](https://github.com/Effect-TS/core/commit/dbf09b1dac350b60c2bb9be41b90c3e7141eb67c))
+* **tuple:** fixed length in update ([fc37bf0](https://github.com/Effect-TS/core/commit/fc37bf0bb3071fc3bfb37b383d3c43cf86639525))
+
+
+
+
+
 ## [0.32.3](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.32.2...@effect-ts/system@0.32.3) (2021-04-20)
 
 
