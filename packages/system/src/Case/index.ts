@@ -13,7 +13,7 @@ export type ConstructorArgs<T, K extends PropertyKey> = Compute<
 export const CaseBrand = Symbol()
 
 export interface CaseBrand {
-  [CaseBrand](): void
+  [CaseBrand]: string[]
 }
 
 export function isCase(self: unknown): self is Case<any, any> {
@@ -25,6 +25,7 @@ const h0 = St.hashString("@effect-ts/system/Case")
 export class Case<T, K extends PropertyKey = never>
   implements CaseBrand, St.HasHash, St.HasEquals {
   #args: ConstructorArgs<T, K>
+  #keys: string[]
   constructor(args: ConstructorArgs<T, K>) {
     this.#args = args
 
@@ -41,6 +42,8 @@ export class Case<T, K extends PropertyKey = never>
         enumerable: true
       })
     }
+
+    this.#keys = Object.keys(this).sort()
   }
 
   copy(args: Partial<ConstructorArgs<T, K>>): this {
@@ -48,8 +51,8 @@ export class Case<T, K extends PropertyKey = never>
     return new this.constructor({ ...this.#args, ...args })
   }
 
-  [CaseBrand]() {
-    //
+  get [CaseBrand](): string[] {
+    return this.#keys
   }
 
   [St.hashSym](): number {
@@ -65,22 +68,20 @@ export class Case<T, K extends PropertyKey = never>
       return true
     }
     if (isCase(that)) {
-      const kthis = Object.keys(this)
-      const kthat = Object.keys(that)
+      const kthat = that[CaseBrand]
       const len = kthat.length
 
-      if (len !== kthis.length) {
+      if (len !== this.#keys.length) {
         return false
       }
-
-      const sthis = kthis.sort()
-      const sthat = kthat.sort()
 
       let eq = true
       let i = 0
 
       while (eq && i < len) {
-        eq = sthis[i] === sthat[i] && St.equals(this[sthis[i]!]!, that[sthat[i]!]!)
+        eq =
+          this.#keys[i] === kthat[i] &&
+          St.equals(this[this.#keys[i]!]!, that[kthat[i]!]!)
         i++
       }
 
