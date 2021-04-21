@@ -145,8 +145,8 @@ describe("HashMap", () => {
     expect(HS.size(diff)).equals(2)
     expect(Array.from(diff)).toEqual([new Index(0, 0), new Index(3, 3)])
     expect(Array.from(keys)).toEqual([
-      new Index(0, 0),
       new Index(2, 2),
+      new Index(0, 0),
       new Index(3, 3)
     ])
   })
