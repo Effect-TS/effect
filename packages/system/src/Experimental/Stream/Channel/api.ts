@@ -3,6 +3,7 @@
 import "../../../Operator"
 
 import * as Cause from "../../../Cause"
+import * as AR from "../../../Collections/Immutable/Array"
 import * as A from "../../../Collections/Immutable/Chunk"
 import * as Tp from "../../../Collections/Immutable/Tuple"
 import * as T from "../../../Effect"
@@ -1886,10 +1887,21 @@ export function interrupt(
   return C.halt(Cause.interrupt(fiberId))
 }
 
-export function managed_<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone, A>(
+export function managed_<
+  Env,
+  Env1,
+  InErr,
+  InElem,
+  InDone,
+  OutErr,
+  OutErr1,
+  OutElem,
+  OutDone,
+  A
+>(
   m: M.Managed<Env, OutErr, A>,
-  use: (a: A) => C.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
-): P.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone> {
+  use: (a: A) => C.Channel<Env1, InErr, InElem, InDone, OutErr1, OutElem, OutDone>
+): P.Channel<Env & Env1, InErr, InElem, InDone, OutErr | OutErr1, OutElem, OutDone> {
   return bracket_(
     RM.makeReleaseMap,
     (releaseMap) => {
@@ -1915,9 +1927,18 @@ export function managed_<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone, A
 /**
  * @dataFirst managed_
  */
-export function managed<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone, A>(
-  use: (a: A) => C.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
-) {
+export function managed<
+  Env,
+  Env1,
+  InErr,
+  InElem,
+  InDone,
+  OutErr,
+  OutErr1,
+  OutElem,
+  OutDone,
+  A
+>(use: (a: A) => C.Channel<Env1, InErr, InElem, InDone, OutErr1, OutElem, OutDone>) {
   return (m: M.Managed<Env, OutErr, A>) => managed_(m, use)
 }
 
@@ -1999,5 +2020,15 @@ export function toQueue<Err, Done, Elem>(
     (cause: Cause.Cause<Err>) =>
       C.fromEffect(Q.offer_(queue, Ex.halt(Cause.map_(cause, (_) => E.left(_))))),
     (done: Done) => C.fromEffect(Q.offer_(queue, Ex.fail(E.right(done))))
+  )
+}
+
+export function writeAll<Out>(
+  ...outs: AR.Array<Out>
+): C.Channel<unknown, unknown, unknown, unknown, never, Out, void> {
+  return AR.reduceRight_(
+    outs,
+    C.end(undefined) as C.Channel<unknown, unknown, unknown, unknown, never, Out, void>,
+    (out, conduit) => zipRight_(C.write(out), conduit)
   )
 }

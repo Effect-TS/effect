@@ -153,3 +153,45 @@ export function zip<R1, E1, A1>(
 ): <R, E, A>(self: S.Stream<R, E, A>) => S.Stream<R1 & R, E | E1, Tp.Tuple<[A, A1]>> {
   return (self) => zip_(self, that)
 }
+
+/**
+ * Zips this stream with another point-wise, but keeps only the outputs of the other stream.
+ *
+ * The new stream will end when one of the sides ends.
+ */
+export function zipRight_<R, R1, E, E1, A, A1>(
+  self: S.Stream<R, E, A>,
+  that: S.Stream<R1, E1, A1>
+): S.Stream<R1 & R, E | E1, A1> {
+  return zipWith_(self, that, (_, o) => o)
+}
+
+/**
+ * Zips this stream with another point-wise, but keeps only the outputs of the other stream.
+ *
+ * The new stream will end when one of the sides ends.
+ */
+export function zipRight<R, R1, E, E1, A, A1>(that: S.Stream<R1, E1, A1>) {
+  return (self: S.Stream<R, E, A>) => zipRight_(self, that)
+}
+
+/**
+ * Zips this stream with another point-wise, but keeps only the outputs of this stream.
+ *
+ * The new stream will end when one of the sides ends.
+ */
+export function zipLeft_<R, R1, E, E1, A, A1>(
+  self: S.Stream<R, E, A>,
+  that: S.Stream<R1, E1, A1>
+): S.Stream<R1 & R, E | E1, A> {
+  return zipWith_(self, that, (o, _) => o)
+}
+
+/**
+ * Zips this stream with another point-wise, but keeps only the outputs of this stream.
+ *
+ * The new stream will end when one of the sides ends.
+ */
+export function zipLeft<R, R1, E, E1, A, A1>(that: S.Stream<R1, E1, A1>) {
+  return (self: S.Stream<R, E, A>) => zipLeft_(self, that)
+}
