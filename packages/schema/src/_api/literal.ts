@@ -2,27 +2,12 @@
 
 import { pipe } from "@effect-ts/core/Function"
 
-import type {
-  CompositionE,
-  LeafE,
-  LiteralE,
-  NextE,
-  PrevE,
-  RefinementE
-} from "../_schema/error"
+import type { LeafE, LiteralE, RefinementE } from "../_schema/error"
 import { leafE, literalE } from "../_schema/error"
-import { arbitrary, constructor, encoder, mapApi, refine } from "../_schema/primitives"
+import { arbitrary, constructor, encoder, mapApi } from "../_schema/primitives"
 import type { Schema } from "../_schema/schema"
 import * as Th from "../These"
-import { unknown } from "./unknown"
-
-export interface MatchStrictLiteral<KS extends readonly string[]> {
-  (
-    i: {
-      [k in keyof KS]: () => void
-    }
-  ): void
-}
+import { refinement } from "./refinement"
 
 export interface LiteralApi<KS extends readonly string[], AS extends KS[number]> {
   readonly matchS: <A>(
@@ -47,7 +32,7 @@ export function literal<KS extends readonly string[]>(
   ...literals: KS
 ): Schema<
   unknown,
-  CompositionE<NextE<RefinementE<LeafE<LiteralE<KS>>>> | PrevE<never>>,
+  RefinementE<LeafE<LiteralE<KS>>>,
   KS[number],
   KS[number],
   never,
@@ -60,8 +45,7 @@ export function literal<KS extends readonly string[]>(
     ko[k] = true
   }
   return pipe(
-    unknown,
-    refine(
+    refinement(
       (u): u is KS[number] => typeof u === "string" && u in ko,
       (actual) => leafE(literalE(literals, actual))
     ),

@@ -25,15 +25,15 @@ import type {
 import { partial } from "./partial"
 
 export type RequiredApi<Props extends Record<PropertyKey, S.SchemaUPI>> = {
-  [K in keyof Props]: S.ApiOf<Props[K]>
+  readonly [K in keyof Props]: S.ApiOf<Props[K]>
 }
 
 export type RequiredParsedShape<Props extends Record<PropertyKey, S.SchemaUPI>> = {
-  [K in keyof Props]: S.ParsedShapeOf<Props[K]>
+  readonly [K in keyof Props]: S.ParsedShapeOf<Props[K]>
 }
 
 export type RequiredConstructorInput<Props extends Record<PropertyKey, S.SchemaUPI>> = {
-  [K in keyof Props]: S.ConstructorInputOf<Props[K]>
+  readonly [K in keyof Props]: S.ConstructorInputOf<Props[K]>
 }
 
 export type RequiredConstructorError<
@@ -45,7 +45,7 @@ export type RequiredConstructorError<
 >
 
 export type RequiredConstructedShape<Props extends Record<PropertyKey, S.SchemaUPI>> = {
-  [K in keyof Props]: S.ConstructedShapeOf<Props[K]>
+  readonly [K in keyof Props]: S.ConstructedShapeOf<Props[K]>
 }
 
 export type RequiredParserError<
@@ -67,7 +67,7 @@ export type RequiredParserError<
 >
 
 export type RequiredEncoded<Props extends Record<PropertyKey, S.SchemaUPI>> = {
-  [K in keyof Props]: S.EncodedOf<Props[K]>
+  readonly [K in keyof Props]: S.EncodedOf<Props[K]>
 }
 
 export type RequiredSchema<Props extends Record<PropertyKey, S.SchemaUPI>> = S.Schema<

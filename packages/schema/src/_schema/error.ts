@@ -31,6 +31,8 @@ export type SchemaError<E> =
   | ChunkE<SchemaError<E>>
   | NamedE<string, SchemaError<E>>
   | IntersectionE<SchemaError<E>>
+  | TaggedUnionE<SchemaError<E>>
+  | TaggedUnionMemberE<string, SchemaError<E>>
   | MemberE<string | number, SchemaError<E>>
 
 export type BuiltinError =
@@ -45,12 +47,35 @@ export type BuiltinError =
   | LiteralE<string[]>
   | NonEmptyE<unknown>
   | UnknownArrayE
+  | TaggedUnionExtractKeyE
 
 export type AnyError = SchemaError<BuiltinError>
 
 //
 // Schema Errors
 //
+
+export class TaggedUnionE<E> extends Data<TaggedUnionE<E>> implements CompoundE<E> {
+  readonly _tag = "TaggedUnion"
+  readonly errors!: Chunk.Chunk<E>
+}
+
+export class TaggedUnionExtractKeyE
+  extends Data<TaggedUnionExtractKeyE>
+  implements Actual<unknown> {
+  readonly _tag = "TaggedUnionExtractKey"
+  readonly field!: string
+  readonly keys!: readonly string[]
+  readonly actual!: unknown
+}
+
+export class TaggedUnionMemberE<K, E>
+  extends Data<TaggedUnionMemberE<K, E>>
+  implements SingleE<E> {
+  readonly _tag = "TaggedUnionMember"
+  readonly key!: K
+  readonly error!: E
+}
 
 export class LeafE<E> extends Data<LeafE<E>> implements SingleE<E> {
   readonly _tag = "Leaf"
@@ -357,6 +382,17 @@ export function toTreeWith<E>(
           Chunk.map_(de.errors, go)
         )
       }
+      case "TaggedUnion": {
+        return tree(
+          `${de.errors.length} error(s) found while processing a tagged union`,
+          Chunk.map_(de.errors, go)
+        )
+      }
+      case "TaggedUnionMember":
+        return tree(
+          `1 error(s) found while decoding member ${JSON.stringify(de.key)}`,
+          Chunk.single(go(de.error))
+        )
       case "Named": {
         return tree(`processing ${de.name}`, Chunk.single(go(de.error)))
       }
@@ -423,6 +459,13 @@ export function toTreeBuiltin(de: BuiltinError): Tree<string> {
     }
     case "NotDateMs": {
       return tree(`cannot decode ${JSON.stringify(de.actual)}, expected a date in ms`)
+    }
+    case "TaggedUnionExtractKey": {
+      return tree(
+        `cannot extract tagged key ${de.field} from ${JSON.stringify(
+          de.actual
+        )}, expected one of ${de.keys.join(", ")}`
+      )
     }
     case "Literal": {
       return tree(

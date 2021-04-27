@@ -19,6 +19,7 @@ export * from "./positiveInt"
 export * from "./refinement"
 export * from "./string"
 export * from "./struct"
+export * from "./tagged"
 export * from "./unknown"
 export * from "./unknownArray"
 // codegen:end

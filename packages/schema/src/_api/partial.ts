@@ -13,15 +13,15 @@ import * as Parser from "../Parser"
 import * as Th from "../These"
 
 export type PartialApi<Props extends Record<PropertyKey, S.SchemaUPI>> = {
-  [K in keyof Props]: S.ApiOf<Props[K]>
+  readonly [K in keyof Props]: S.ApiOf<Props[K]>
 }
 
 export type PartialParsedShape<Props extends Record<PropertyKey, S.SchemaUPI>> = {
-  [K in keyof Props]?: S.ParsedShapeOf<Props[K]>
+  readonly [K in keyof Props]?: S.ParsedShapeOf<Props[K]>
 }
 
 export type PartialConstructorInput<Props extends Record<PropertyKey, S.SchemaUPI>> = {
-  [K in keyof Props]?: S.ConstructorInputOf<Props[K]>
+  readonly [K in keyof Props]?: S.ConstructorInputOf<Props[K]>
 }
 
 export type PartialConstructorError<
@@ -33,7 +33,7 @@ export type PartialConstructorError<
 >
 
 export type PartialConstructedShape<Props extends Record<PropertyKey, S.SchemaUPI>> = {
-  [K in keyof Props]?: S.ConstructedShapeOf<Props[K]>
+  readonly [K in keyof Props]?: S.ConstructedShapeOf<Props[K]>
 }
 
 export type PartialParserError<
@@ -50,7 +50,7 @@ export type PartialParserError<
 >
 
 export type PartialEncoded<Props extends Record<PropertyKey, S.SchemaUPI>> = {
-  [K in keyof Props]?: S.EncodedOf<Props[K]>
+  readonly [K in keyof Props]?: S.EncodedOf<Props[K]>
 }
 
 export type PartialSchema<Props extends Record<PropertyKey, S.SchemaUPI>> = S.Schema<
