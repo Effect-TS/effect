@@ -1,5 +1,7 @@
 // tracing: off
 
+// based on the work of Giulio Canti in io-ts (3.x poc stage)
+
 import { flow } from "@effect-ts/core/Function"
 import * as Chunk from "@effect-ts/system/Collections/Immutable/Chunk"
 
