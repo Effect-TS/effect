@@ -50,7 +50,12 @@ type SchemaK<Key extends string, N extends string> = S.Schema<
 
 export type TaggedApi<
   Key extends string,
-  Props extends readonly SchemaK<Key, string>[]
+  Props extends readonly SchemaK<Key, string>[],
+  AS extends {
+    [K in keyof Props]: Props[K] extends S.SchemaAny ? S.ParsedShapeOf<Props[K]> : never
+  }[number] = {
+    [K in keyof Props]: Props[K] extends S.SchemaAny ? S.ParsedShapeOf<Props[K]> : never
+  }[number]
 > = {
   readonly matchS: <A>(
     _: {
@@ -67,13 +72,7 @@ export type TaggedApi<
         >
       ) => A
     }
-  ) => (
-    ks: {
-      [K in keyof Props]: Props[K] extends S.SchemaAny
-        ? S.ParsedShapeOf<Props[K]>
-        : never
-    }[number]
-  ) => A
+  ) => (ks: AS) => A
   readonly matchW: <
     M extends {
       [K in Props[number]["Api"]["fields"][Key]["value"]]: (
@@ -92,11 +91,7 @@ export type TaggedApi<
   >(
     _: M
   ) => (
-    ks: {
-      [K in keyof Props]: Props[K] extends S.SchemaAny
-        ? S.ParsedShapeOf<Props[K]>
-        : never
-    }[number]
+    ks: AS
   ) => {
     [K in keyof M]: ReturnType<M[K]>
   }[keyof M]

@@ -25,7 +25,12 @@ const Mul_ = S.struct({
 interface Mul extends S.ParsedShapeOf<typeof Mul_> {}
 const Mul = S.opaque<Mul>()(Mul_)
 
-const Operation = S.tagged(Add, Mul)
+const Operation_ = S.tagged(Add, Mul)
+interface OperationBrand {
+  readonly Operation: unique symbol
+}
+type Operation = S.ParsedShapeOf<typeof Operation_> & OperationBrand
+const Operation = Operation_["|>"](S.brand((u) => u as Operation))
 
 const parseOperation = Parser.for(Operation)["|>"](S.condemnFail)
 const constructOperation = Constructor.for(Operation)["|>"](S.condemnFail)
