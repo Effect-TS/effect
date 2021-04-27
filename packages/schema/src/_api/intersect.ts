@@ -38,6 +38,8 @@ export type IntersectionSchema<
   {}
 >
 
+export const intersectIdentifier = Symbol.for("@effect-ts/schema/ids/intersect")
+
 export function intersect_<
   SelfParserError extends S.SchemaError<any>,
   SelfParsedShape extends Record<string, any>,
@@ -217,7 +219,8 @@ export function intersect_<
       const self = arbSelf(FC)
       const that = arbThat(FC)
       return self.chain((a) => that.map((b) => ({ ...a, ...b })))
-    })
+    }),
+    S.identified(intersectIdentifier, { self, that })
   )
 }
 

@@ -14,6 +14,8 @@ export interface TagApi<K> {
   value: K
 }
 
+export const tagIdentifier = Symbol.for("@effect-ts/schema/ids/tag")
+
 export function tag<K extends string>(
   _tag: K
 ): S.Schema<
@@ -26,7 +28,9 @@ export function tag<K extends string>(
   string,
   TagApi<K>
 > {
-  return literal(_tag)["|>"](S.mapApi((_) => ({ value: _tag })))
+  return literal(_tag)
+    ["|>"](S.mapApi((_) => ({ value: _tag })))
+    ["|>"](S.identified(tagIdentifier, { _tag }))
 }
 
 type SchemaK<Key extends string, N extends string> = S.Schema<
@@ -43,25 +47,6 @@ type SchemaK<Key extends string, N extends string> = S.Schema<
     }
   }
 >
-
-export interface LiteralApi__<KS extends readonly string[], AS extends KS[number]> {
-  readonly matchS: <A>(
-    _: {
-      [K in KS[number]]: (_: K) => A
-    }
-  ) => (ks: AS) => A
-  readonly matchW: <
-    M extends {
-      [K in KS[number]]: (_: K) => any
-    }
-  >(
-    _: M
-  ) => (
-    ks: AS
-  ) => {
-    [K in keyof M]: ReturnType<M[K]>
-  }[keyof M]
-}
 
 export type TaggedApi<
   Key extends string,
@@ -116,6 +101,8 @@ export type TaggedApi<
     [K in keyof M]: ReturnType<M[K]>
   }[keyof M]
 }
+
+export const taggedUnionIdentifier = Symbol.for("@effect-ts/schema/ids/tagged")
 
 export function makeTagged<Key extends string>(key: Key) {
   return <Props extends readonly SchemaK<Key, string>[]>(
@@ -403,7 +390,8 @@ export function makeTagged<Key extends string>(key: Key) {
             matchS: (match) => (a) => match[a[key]](a),
             matchW: (match) => (a) => match[a[key]](a)
           } as TaggedApi<Key, Props>)
-      )
+      ),
+      S.identified(taggedUnionIdentifier, { key, props })
     )
   }
 }

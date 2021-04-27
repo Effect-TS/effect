@@ -2,10 +2,7 @@
 
 import { pipe } from "@effect-ts/core/Function"
 
-import type { LeafE, LiteralE, RefinementE } from "../_schema/error"
-import { leafE, literalE } from "../_schema/error"
-import { arbitrary, constructor, encoder, mapApi } from "../_schema/primitives"
-import type { Schema } from "../_schema/schema"
+import * as S from "../_schema"
 import * as Th from "../These"
 import { refinement } from "./refinement"
 
@@ -28,11 +25,13 @@ export interface LiteralApi<KS extends readonly string[], AS extends KS[number]>
   }[keyof M]
 }
 
+export const literalIdentifier = Symbol.for("@effect-ts/schema/ids/literal")
+
 export function literal<KS extends readonly string[]>(
   ...literals: KS
-): Schema<
+): S.Schema<
   unknown,
-  RefinementE<LeafE<LiteralE<KS>>>,
+  S.RefinementE<S.LeafE<S.LiteralE<KS>>>,
   KS[number],
   KS[number],
   never,
@@ -47,16 +46,17 @@ export function literal<KS extends readonly string[]>(
   return pipe(
     refinement(
       (u): u is KS[number] => typeof u === "string" && u in ko,
-      (actual) => leafE(literalE(literals, actual))
+      (actual) => S.leafE(S.literalE(literals, actual))
     ),
-    constructor((s: KS[number]) => Th.succeed(s)),
-    arbitrary((_) => _.oneof(...literals.map((k) => _.constant(k)))),
-    encoder((_) => _ as string),
-    mapApi(
+    S.constructor((s: KS[number]) => Th.succeed(s)),
+    S.arbitrary((_) => _.oneof(...literals.map((k) => _.constant(k)))),
+    S.encoder((_) => _ as string),
+    S.mapApi(
       (): LiteralApi<KS, KS[number]> => ({
         matchS: (m) => (k) => m[k](k),
         matchW: (m) => (k) => m[k](k)
       })
-    )
+    ),
+    S.identified(literalIdentifier, { literals })
   )
 }

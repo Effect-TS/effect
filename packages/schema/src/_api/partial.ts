@@ -72,6 +72,8 @@ export type PartialSchema<Props extends Record<PropertyKey, S.SchemaUPI>> = S.Sc
   }
 >
 
+export const partialIdentifier = Symbol.for("@effect-ts/schema/ids/partial")
+
 export function partial<Props extends Record<PropertyKey, S.SchemaUPI>>(
   props: Props
 ): PartialSchema<Props> {
@@ -254,6 +256,7 @@ export function partial<Props extends Record<PropertyKey, S.SchemaUPI>>(
         },
         fields
       }
-    })
+    }),
+    S.identified(partialIdentifier, { props })
   )
 }

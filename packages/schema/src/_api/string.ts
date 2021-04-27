@@ -6,6 +6,8 @@ import * as S from "../_schema"
 import * as Th from "../These"
 import { refinement } from "./refinement"
 
+export const stringIdentifier = Symbol.for("@effect-ts/schema/ids/string")
+
 export const string: S.Schema<
   unknown,
   S.RefinementE<S.LeafE<S.ParseStringE>>,
@@ -23,5 +25,6 @@ export const string: S.Schema<
   S.constructor((s: string) => Th.succeed(s)),
   S.arbitrary((_) => _.string()),
   S.encoder((s) => s),
-  S.mapApi(() => ({}))
+  S.mapApi(() => ({})),
+  S.identified(stringIdentifier, {})
 )

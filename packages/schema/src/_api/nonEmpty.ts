@@ -2,13 +2,13 @@
 
 import { pipe } from "@effect-ts/core/Function"
 
-import type * as S from "../_schema"
-import { leafE, nonEmptyE } from "../_schema/error"
-import { mapApi, refine } from "../_schema/primitives"
+import * as S from "../_schema"
 
 export interface NonEmptyBrand {
   readonly NonEmpty: unique symbol
 }
+
+export const nonEmptyIdentifier = Symbol.for("@effect-ts/schema/ids/nonEmpty")
 
 export function nonEmpty<
   ParserInput,
@@ -47,10 +47,11 @@ export function nonEmpty<
 > {
   return pipe(
     self,
-    refine(
+    S.refine(
       (n): n is ParsedShape & NonEmptyBrand => n.length > 0,
-      (n) => leafE(nonEmptyE(n))
+      (n) => S.leafE(S.nonEmptyE(n))
     ),
-    mapApi((_) => _.Self)
+    S.mapApi((_) => _.Self),
+    S.identified(nonEmptyIdentifier, { self })
   )
 }

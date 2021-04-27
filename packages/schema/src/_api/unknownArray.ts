@@ -6,6 +6,8 @@ import { pipe } from "@effect-ts/core/Function"
 import * as S from "../_schema"
 import { unknown } from "./unknown"
 
+export const unknownArrayIdentifier = Symbol.for("@effect-ts/schema/ids/unknownArray")
+
 export const unknownArray: S.Schema<
   unknown,
   S.RefinementE<S.LeafE<S.UnknownArrayE>>,
@@ -23,5 +25,6 @@ export const unknownArray: S.Schema<
   ),
   S.mapParserError((_) => Chunk.unsafeHead(_.errors).error),
   S.mapConstructorError((_) => Chunk.unsafeHead(_.errors).error),
-  S.encoder((_) => _)
+  S.encoder((_) => _),
+  S.identified(unknownArrayIdentifier, {})
 )

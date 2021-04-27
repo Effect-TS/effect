@@ -12,6 +12,8 @@ export interface IntBrand {
 
 export type Int = number & IntBrand
 
+export const intIdentifier = Symbol.for("@effect-ts/schema/ids/int")
+
 export const int: S.Schema<
   unknown,
   S.CompositionE<
@@ -33,5 +35,6 @@ export const int: S.Schema<
   ),
   S.encoder((_) => _ as number),
   S.mapConstructorError((_) => Chunk.unsafeHead(_.errors).error),
-  S.mapApi(() => ({}))
+  S.mapApi(() => ({})),
+  S.identified(intIdentifier, {})
 )

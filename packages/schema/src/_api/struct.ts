@@ -89,6 +89,8 @@ export type RequiredSchema<Props extends Record<PropertyKey, S.SchemaUPI>> = S.S
   }
 >
 
+export const requiredIdentifier = Symbol.for("@effect-ts/schema/ids/required")
+
 export function required<Props extends Record<PropertyKey, S.SchemaUPI>>(
   props: Props
 ): RequiredSchema<Props> {
@@ -297,7 +299,8 @@ export function required<Props extends Record<PropertyKey, S.SchemaUPI>>(
         },
         fields
       }
-    })
+    }),
+    S.identified(requiredIdentifier, { props })
   )
 }
 
@@ -341,6 +344,8 @@ export type StructSchema<
   }
 >
 
+export const structIdentifier = Symbol.for("@effect-ts/schema/ids/struct")
+
 export function struct<
   Required extends Record<
     string,
@@ -377,47 +382,52 @@ export function struct<
   if (propsPartial && props) {
     const l = required(props)
     const r = partial(propsPartial)
-    return intersect_(l, r)["|>"](
-      S.mapApi(() => ({
-        omit: (...ks: string[]) => {
-          const nr = {}
-          for (const k of Object.keys(props)) {
-            if (!ks.includes(k)) {
-              nr[k] = props[k]
+    return S.identified(
+      structIdentifier,
+      _
+    )(
+      intersect_(l, r)["|>"](
+        S.mapApi(() => ({
+          omit: (...ks: string[]) => {
+            const nr = {}
+            for (const k of Object.keys(props)) {
+              if (!ks.includes(k)) {
+                nr[k] = props[k]
+              }
             }
-          }
-          const np = {}
-          for (const k of Object.keys(propsPartial)) {
-            if (!ks.includes(k)) {
-              np[k] = propsPartial[k]
+            const np = {}
+            for (const k of Object.keys(propsPartial)) {
+              if (!ks.includes(k)) {
+                np[k] = propsPartial[k]
+              }
             }
-          }
-          return struct({ required: nr, optional: np })
-        },
-        pick: (...ks: string[]) => {
-          const nr = {}
-          for (const k of Object.keys(props)) {
-            if (ks.includes(k)) {
-              nr[k] = props[k]
+            return struct({ required: nr, optional: np })
+          },
+          pick: (...ks: string[]) => {
+            const nr = {}
+            for (const k of Object.keys(props)) {
+              if (ks.includes(k)) {
+                nr[k] = props[k]
+              }
             }
-          }
-          const np = {}
-          for (const k of Object.keys(propsPartial)) {
-            if (ks.includes(k)) {
-              np[k] = propsPartial[k]
+            const np = {}
+            for (const k of Object.keys(propsPartial)) {
+              if (ks.includes(k)) {
+                np[k] = propsPartial[k]
+              }
             }
-          }
-          return struct({ required: nr, optional: np })
-        },
-        fields: { ...l.Api.fields, ...r.Api.fields }
-      }))
+            return struct({ required: nr, optional: np })
+          },
+          fields: { ...l.Api.fields, ...r.Api.fields }
+        }))
+      )
     )
   }
   if (props) {
-    return required(props)
+    return S.identified(structIdentifier, _)(required(props))
   }
   if (propsPartial) {
-    return partial(propsPartial)
+    return S.identified(structIdentifier, _)(partial(propsPartial))
   }
   throw new Error("Bug")
 }
