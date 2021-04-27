@@ -17,11 +17,11 @@ export function array<Self extends S.SchemaAny>(
   unknown,
   S.CompositionE<
     | S.PrevE<S.RefinementE<S.LeafE<S.UnknownArrayE>>>
-    | S.NextE<S.ChunkE<S.OptionalIndexE<number, S.ParserErrorOf<Self>>>>
+    | S.NextE<S.CollectionE<S.OptionalIndexE<number, S.ParserErrorOf<Self>>>>
   >,
   readonly Self[],
   Iterable<S.ConstructorInputOf<Self>>,
-  S.ChunkE<S.OptionalIndexE<number, S.ConstructorErrorOf<Self>>>,
+  S.CollectionE<S.OptionalIndexE<number, S.ConstructorErrorOf<Self>>>,
   readonly Self[],
   readonly Self[],
   S.ApiOf<Self>

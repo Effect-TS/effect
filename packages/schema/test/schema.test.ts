@@ -103,8 +103,8 @@ describe("Schema", () => {
         new S.CondemnException({
           message:
             "processing Person\n" +
-            "└─ 1 error(s) found while decoding an intersection\n" +
-            "   └─ 1 error(s) found while decoding member 0\n" +
+            "└─ 1 error(s) found while processing an intersection\n" +
+            "   └─ 1 error(s) found while processing member 0\n" +
             "      └─ 2 error(s) found while checking keys\n" +
             '         ├─ missing required key "Age"\n' +
             '         └─ missing required key "Sex"'
@@ -145,12 +145,12 @@ describe("Schema", () => {
         new S.CondemnException({
           message:
             "processing Person\n" +
-            "└─ 1 error(s) found while decoding an intersection\n" +
-            "   └─ 1 error(s) found while decoding member 0\n" +
+            "└─ 1 error(s) found while processing an intersection\n" +
+            "   └─ 1 error(s) found while processing member 0\n" +
             "      └─ 1 error(s) found while processing a struct\n" +
             '         └─ 1 error(s) found while processing required key "Name"\n' +
             "            └─ 1 error(s) found while processing a refinement\n" +
-            '               └─ cannot decode "", expected to be not empty'
+            '               └─ cannot process "", expected to be not empty'
         })
       )
     }
@@ -185,11 +185,11 @@ describe("Schema", () => {
       expect(result.left).equals(
         new S.CondemnException({
           message:
-            "1 error(s) found while processing an array\n" +
+            "1 error(s) found while processing a collection\n" +
             "└─ 1 error(s) found while processing optional index 0\n" +
             "   └─ processing Person\n" +
-            "      └─ 1 error(s) found while decoding an intersection\n" +
-            "         └─ 1 error(s) found while decoding member 0\n" +
+            "      └─ 1 error(s) found while processing an intersection\n" +
+            "         └─ 1 error(s) found while processing member 0\n" +
             "            └─ 2 error(s) found while checking keys\n" +
             '               ├─ missing required key "Age"\n' +
             '               └─ missing required key "Sex"'
@@ -206,7 +206,7 @@ describe("Schema", () => {
         new S.CondemnException({
           message:
             "1 error(s) found while processing a refinement\n" +
-            "└─ cannot decode {}, expected an array"
+            "└─ cannot process {}, expected an array"
         })
       )
     }
@@ -288,7 +288,7 @@ describe("Schema", () => {
     if (res_bad._tag === "Left") {
       expect(res_bad.left).toEqual(
         new S.CondemnException({
-          message: 'cannot decode "bad date", expected a date string'
+          message: 'cannot process "bad date", expected a date string'
         })
       )
     }
@@ -327,7 +327,7 @@ describe("Schema", () => {
               "1 error(s) found while processing a struct\n" +
               '└─ 1 error(s) found while processing optional key "streetName"\n' +
               "   └─ 1 error(s) found while processing a refinement\n" +
-              "      └─ cannot decode 0, expected an string"
+              "      └─ cannot process 0, expected an string"
           })
         )
       )
@@ -361,7 +361,7 @@ describe("Schema", () => {
               "1 error(s) found while processing a struct\n" +
               '└─ 1 error(s) found while processing optional key "streetName"\n' +
               "   └─ 1 error(s) found while processing a refinement\n" +
-              '      └─ cannot decode "", expected to be not empty'
+              '      └─ cannot process "", expected to be not empty'
           })
         )
       )
@@ -414,10 +414,10 @@ describe("Intersection", () => {
       E.left(
         new S.CondemnException({
           message:
-            "1 error(s) found while decoding an intersection\n" +
-            "└─ 1 error(s) found while decoding member 0\n" +
-            "   └─ 1 error(s) found while decoding an intersection\n" +
-            "      └─ 1 error(s) found while decoding member 1\n" +
+            "1 error(s) found while processing an intersection\n" +
+            "└─ 1 error(s) found while processing member 0\n" +
+            "   └─ 1 error(s) found while processing an intersection\n" +
+            "      └─ 1 error(s) found while processing member 1\n" +
             "         └─ 1 error(s) found while checking keys\n" +
             '            └─ missing required key "b"'
         })

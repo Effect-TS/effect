@@ -30,7 +30,7 @@ export type SchemaError<E> =
   | CompositionE<SchemaError<E>>
   | MissingKeysE<PropertyKey>
   | OptionalIndexE<number, SchemaError<E>>
-  | ChunkE<SchemaError<E>>
+  | CollectionE<SchemaError<E>>
   | NamedE<string, SchemaError<E>>
   | IntersectionE<SchemaError<E>>
   | TaggedUnionE<SchemaError<E>>
@@ -136,13 +136,13 @@ export function structE<E>(errors: Chunk.Chunk<E>): StructE<E> {
   return new StructE({ errors })
 }
 
-export class ChunkE<E> extends Data<ChunkE<E>> implements CompoundE<E> {
-  readonly _tag = "Chunk"
+export class CollectionE<E> extends Data<CollectionE<E>> implements CompoundE<E> {
+  readonly _tag = "Collection"
   readonly errors!: Chunk.Chunk<E>
 }
 
-export function chunkE<E>(errors: Chunk.Chunk<E>): ChunkE<E> {
-  return new ChunkE({ errors })
+export function chunkE<E>(errors: Chunk.Chunk<E>): CollectionE<E> {
+  return new CollectionE({ errors })
 }
 
 export class UnknownArrayE extends Data<UnknownArrayE> implements Actual<unknown> {
@@ -373,9 +373,9 @@ export function toTreeWith<E>(
           `1 error(s) found while processing optional index ${de.index}`,
           Chunk.single(go(de.error))
         )
-      case "Chunk":
+      case "Collection":
         return tree(
-          `${de.errors.length} error(s) found while processing an array`,
+          `${de.errors.length} error(s) found while processing a collection`,
           Chunk.map_(de.errors, go)
         )
       case "Struct": {
@@ -392,7 +392,7 @@ export function toTreeWith<E>(
       }
       case "TaggedUnionMember":
         return tree(
-          `1 error(s) found while decoding member ${JSON.stringify(de.key)}`,
+          `1 error(s) found while processing member ${JSON.stringify(de.key)}`,
           Chunk.single(go(de.error))
         )
       case "Named": {
@@ -408,12 +408,12 @@ export function toTreeWith<E>(
       }
       case "Member":
         return tree(
-          `1 error(s) found while decoding member ${JSON.stringify(de.member)}`,
+          `1 error(s) found while processing member ${JSON.stringify(de.member)}`,
           Chunk.single(go(de.error))
         )
       case "Intersection":
         return tree(
-          `${de.errors.length} error(s) found while decoding an intersection`,
+          `${de.errors.length} error(s) found while processing an intersection`,
           Chunk.map_(de.errors, go)
         )
       case "Prev":
@@ -436,31 +436,31 @@ export function toTreeWith<E>(
 export function toTreeBuiltin(de: BuiltinError): Tree<string> {
   switch (de._tag) {
     case "NotNumber": {
-      return tree(`cannot decode ${JSON.stringify(de.actual)}, expected a number`)
+      return tree(`cannot process ${JSON.stringify(de.actual)}, expected a number`)
     }
     case "NotInteger": {
-      return tree(`cannot decode ${JSON.stringify(de.actual)}, expected an integer`)
+      return tree(`cannot process ${JSON.stringify(de.actual)}, expected an integer`)
     }
     case "NotObject": {
-      return tree(`cannot decode ${JSON.stringify(de.actual)}, expected an object`)
+      return tree(`cannot process ${JSON.stringify(de.actual)}, expected an object`)
     }
     case "NotString": {
-      return tree(`cannot decode ${JSON.stringify(de.actual)}, expected an string`)
+      return tree(`cannot process ${JSON.stringify(de.actual)}, expected an string`)
     }
     case "NotPositive": {
-      return tree(`cannot decode ${JSON.stringify(de.actual)}, expected a positive`)
+      return tree(`cannot process ${JSON.stringify(de.actual)}, expected a positive`)
     }
     case "NotRecord": {
-      return tree(`cannot decode ${JSON.stringify(de.actual)}, expected a record`)
+      return tree(`cannot process ${JSON.stringify(de.actual)}, expected a record`)
     }
     case "NotArray": {
-      return tree(`cannot decode ${JSON.stringify(de.actual)}, expected an array`)
+      return tree(`cannot process ${JSON.stringify(de.actual)}, expected an array`)
     }
     case "NotDateString": {
-      return tree(`cannot decode ${JSON.stringify(de.actual)}, expected a date string`)
+      return tree(`cannot process ${JSON.stringify(de.actual)}, expected a date string`)
     }
     case "NotDateMs": {
-      return tree(`cannot decode ${JSON.stringify(de.actual)}, expected a date in ms`)
+      return tree(`cannot process ${JSON.stringify(de.actual)}, expected a date in ms`)
     }
     case "TaggedUnionExtractKey": {
       return tree(
@@ -471,13 +471,13 @@ export function toTreeBuiltin(de: BuiltinError): Tree<string> {
     }
     case "Literal": {
       return tree(
-        `cannot decode ${JSON.stringify(de.actual)}, expected one of ` +
+        `cannot process ${JSON.stringify(de.actual)}, expected one of ` +
           de.literals.join(", ")
       )
     }
     case "NonEmpty": {
       return tree(
-        `cannot decode ${JSON.stringify(de.actual)}, expected to be not empty`
+        `cannot process ${JSON.stringify(de.actual)}, expected to be not empty`
       )
     }
   }

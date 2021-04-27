@@ -18,10 +18,10 @@ export function fromChunk<Self extends S.SchemaAny>(
   self: Self
 ): S.Schema<
   readonly S.ParserInputOf<Self>[],
-  S.ChunkE<S.OptionalIndexE<number, ReturnType<Self["_ParserError"]>>>,
+  S.CollectionE<S.OptionalIndexE<number, ReturnType<Self["_ParserError"]>>>,
   Chunk.Chunk<ReturnType<Self["_ParsedShape"]>>,
   Iterable<S.ConstructorInputOf<Self>>,
-  S.ChunkE<S.OptionalIndexE<number, ReturnType<Self["_ConstructorError"]>>>,
+  S.CollectionE<S.OptionalIndexE<number, ReturnType<Self["_ConstructorError"]>>>,
   Chunk.Chunk<ReturnType<Self["_ConstructedShape"]>>,
   readonly S.EncodedOf<Self>[],
   S.ApiOf<Self>
@@ -115,11 +115,11 @@ export function chunk<Self extends S.SchemaAny>(
   unknown,
   S.CompositionE<
     | S.PrevE<S.RefinementE<S.LeafE<S.UnknownArrayE>>>
-    | S.NextE<S.ChunkE<S.OptionalIndexE<number, S.ParserErrorOf<Self>>>>
+    | S.NextE<S.CollectionE<S.OptionalIndexE<number, S.ParserErrorOf<Self>>>>
   >,
   Chunk.Chunk<ReturnType<S.ParsedShapeOf<Self>>>,
   Iterable<S.ConstructorInputOf<Self>>,
-  S.ChunkE<S.OptionalIndexE<number, S.ConstructorErrorOf<Self>>>,
+  S.CollectionE<S.OptionalIndexE<number, S.ConstructorErrorOf<Self>>>,
   Chunk.Chunk<S.ConstructedShapeOf<Self>>,
   readonly S.EncodedOf<Self>[],
   S.ApiOf<Self>
