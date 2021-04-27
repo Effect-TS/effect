@@ -9,6 +9,8 @@ import * as Guard from "../Guard"
 import * as Th from "../These"
 import { chunk } from "./chunk"
 
+export const arrayIdentifier = Symbol.for("@effect-ts/schema/ids/array")
+
 export function array<Self extends S.SchemaAny>(
   self: Self
 ): S.Schema<
@@ -39,6 +41,7 @@ export function array<Self extends S.SchemaAny>(
     S.compose(fromChunk),
     S.mapParserError((_) => Chunk.unsafeHead(_.errors).error),
     S.mapConstructorError((_) => Chunk.unsafeHead(_.errors).error),
-    S.mapApi((_) => _.Self)
+    S.mapApi((_) => _.Self),
+    S.identified(arrayIdentifier, { self })
   )
 }

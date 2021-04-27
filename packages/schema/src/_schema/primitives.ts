@@ -11,6 +11,7 @@ import {
   SchemaCompose,
   SchemaConstructor,
   SchemaEncoder,
+  SchemaIdentified,
   SchemaIdentity,
   SchemaMapApi,
   SchemaMapConstructorError,
@@ -629,4 +630,75 @@ export function mapApi<E, E1>(f: (e: E) => E1) {
     Encoded,
     E1
   > => new SchemaMapApi(self, f)
+}
+
+export function identified_<
+  ParserInput,
+  ParserError,
+  ParsedShape,
+  ConstructorInput,
+  ConstructorError,
+  ConstructedShape extends ParsedShape,
+  Encoded,
+  Api,
+  Meta
+>(
+  self: Schema<
+    ParserInput,
+    ParserError,
+    ParsedShape,
+    ConstructorInput,
+    ConstructorError,
+    ConstructedShape,
+    Encoded,
+    Api
+  >,
+  identifier: symbol,
+  meta: Meta
+): Schema<
+  ParserInput,
+  ParserError,
+  ParsedShape,
+  ConstructorInput,
+  ConstructorError,
+  ConstructedShape,
+  Encoded,
+  Api
+> {
+  return new SchemaIdentified(self, identifier, meta)
+}
+
+export function identified<Api, Meta>(
+  identifier: symbol,
+  meta: Meta
+): <
+  ParserInput,
+  ParserError,
+  ParsedShape,
+  ConstructorInput,
+  ConstructorError,
+  ConstructedShape extends ParsedShape,
+  Encoded
+>(
+  self: Schema<
+    ParserInput,
+    ParserError,
+    ParsedShape,
+    ConstructorInput,
+    ConstructorError,
+    ConstructedShape,
+    Encoded,
+    Api
+  >
+) => Schema<
+  ParserInput,
+  ParserError,
+  ParsedShape,
+  ConstructorInput,
+  ConstructorError,
+  ConstructedShape,
+  Encoded,
+  Api
+> {
+  return (self) => new SchemaIdentified(self, identifier, meta)
 }

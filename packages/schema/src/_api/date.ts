@@ -5,6 +5,8 @@ import { pipe } from "@effect-ts/core/Function"
 import * as S from "../_schema"
 import * as Th from "../These"
 
+export const dateIdentifier = Symbol.for("@effect-ts/schema/ids/date")
+
 export const date: S.Schema<
   unknown,
   S.LeafE<S.ParseDateE>,
@@ -28,8 +30,11 @@ export const date: S.Schema<
   }),
   S.arbitrary((_) => _.date()),
   S.encoder((_) => _.toISOString()),
-  S.mapApi((_) => ({}))
+  S.mapApi((_) => ({})),
+  S.identified(dateIdentifier, {})
 )
+
+export const dateMsIdentifier = Symbol.for("@effect-ts/schema/ids/dateMs")
 
 export const dateMs: S.Schema<
   unknown,
@@ -46,5 +51,6 @@ export const dateMs: S.Schema<
     typeof u === "number" ? Th.succeed(new Date(u)) : Th.fail(S.parseDateMsE(u))
   ),
   S.encoder((_) => _.getTime()),
-  S.mapApi((_) => ({}))
+  S.mapApi((_) => ({})),
+  S.identified(dateMsIdentifier, {})
 )

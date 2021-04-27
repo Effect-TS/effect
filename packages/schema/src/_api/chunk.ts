@@ -12,6 +12,8 @@ import * as Parser from "../Parser"
 import * as Th from "../These"
 import { unknownArray } from "./unknownArray"
 
+export const fromChunkIdentifier = Symbol.for("@effect-ts/schema/ids/fromChunk")
+
 export function fromChunk<Self extends S.SchemaAny>(
   self: Self
 ): S.Schema<
@@ -100,9 +102,12 @@ export function fromChunk<Self extends S.SchemaAny>(
     S.encoder(
       (_) => Chunk.toArray(Chunk.map_(_, encode)) as readonly S.EncodedOf<Self>[]
     ),
-    S.mapApi(() => self.Api as S.ApiOf<Self>)
+    S.mapApi(() => self.Api as S.ApiOf<Self>),
+    S.identified(fromChunkIdentifier, { self })
   )
 }
+
+export const chunkIdentifier = Symbol.for("@effect-ts/schema/ids/chunk")
 
 export function chunk<Self extends S.SchemaAny>(
   self: Self
@@ -126,6 +131,7 @@ export function chunk<Self extends S.SchemaAny>(
     ),
     S.compose(fromChunk(self)),
     S.mapConstructorError((_) => Chunk.unsafeHead(_.errors).error),
-    S.mapApi(() => self.Api as S.ApiOf<Self>)
+    S.mapApi(() => self.Api as S.ApiOf<Self>),
+    S.identified(chunkIdentifier, { self })
   )
 }
