@@ -14,28 +14,28 @@ interface IdBrand {
 }
 type Id = S.Int & S.Positive & IdBrand
 
-const Id = S.positiveInt["|>"](S.brand((_) => _ as Id))
+const idS = S.positiveInt["|>"](S.brand((_) => _ as Id))
 
 interface NameBrand {
   readonly NameBrand: unique symbol
 }
 type Name = S.NonEmptyString & NameBrand
 
-const Name = S.nonEmptyString["|>"](S.brand((_) => _ as Name))
+const nameS = S.nonEmptyString["|>"](S.brand((_) => _ as Name))
 
 interface AddressBrand {
   readonly AddressBrand: unique symbol
 }
 type Address = S.NonEmptyString & AddressBrand
 
-const Address = S.nonEmptyString["|>"](S.brand((_) => _ as Address))
+const addressS = S.nonEmptyString["|>"](S.brand((_) => _ as Address))
 
 interface AgeBrand {
   readonly AgeBrand: unique symbol
 }
 type Age = S.Int & S.Positive & AgeBrand
 
-const Age = S.positiveInt["|>"](S.brand((_) => _ as Age))
+const ageS = S.positiveInt["|>"](S.brand((_) => _ as Age))
 
 interface SexBrand {
   readonly SexBrand: unique symbol
@@ -43,48 +43,48 @@ interface SexBrand {
 
 const Sex_ = S.literal("male", "female", "else")
 type Sex = S.ParsedShapeOf<typeof Sex_> & SexBrand
-const Sex = Sex_["|>"](S.brand((_) => _ as Sex))
+const sexS = Sex_["|>"](S.brand((_) => _ as Sex))
 
 const Person_ = S.struct({
   required: {
-    Id,
-    Name,
-    Age,
-    Sex
+    Id: idS,
+    Name: nameS,
+    Age: ageS,
+    Sex: sexS
   },
   optional: {
-    Addresses: S.chunk(Address)
+    Addresses: S.chunk(addressS)
   }
 })["|>"](S.named("Person"))
 
 interface Person extends S.ParsedShapeOf<typeof Person_> {}
 
-const Person = S.opaque<Person>()(Person_)
+const personS = S.opaque<Person>()(Person_)
 
-const parsePerson = Parser.for(Person)["|>"](S.condemnFail)
-const guardPerson = Guard.for(Person)
-const createPerson = Constructor.for(Person)["|>"](S.condemnFail)
-const arbitraryPerson = Arbitrary.for(Person)(FC)
+const parsePerson = Parser.for(personS)["|>"](S.condemnFail)
+const guardPerson = Guard.for(personS)
+const createPerson = Constructor.for(personS)["|>"](S.condemnFail)
+const arbitraryPerson = Arbitrary.for(personS)(FC)
 
-const PersonArray = S.chunk(Person)
+const personArrayS = S.chunk(personS)
 
-const parsePersonArray = Parser.for(PersonArray)["|>"](S.condemnFail)
-const createPersonArray = Constructor.for(PersonArray)["|>"](S.condemnFail)
-const guardPersonArray = Guard.for(PersonArray)
+const parsePersonArray = Parser.for(personArrayS)["|>"](S.condemnFail)
+const createPersonArray = Constructor.for(personArrayS)["|>"](S.condemnFail)
+const guardPersonArray = Guard.for(personArrayS)
 
-const PersonNoAddresses = Person.Api.omit("Addresses")
+const personNoAddressS = personS.Api.omit("Addresses")
 
-const createPersonNoAddresses = Constructor.for(PersonNoAddresses)["|>"](S.condemnFail)
+const createPersonNoAddresses = Constructor.for(personNoAddressS)["|>"](S.condemnFail)
 
-const PartialAddress = S.partial({
+const partialAddressS = S.partial({
   streetName: S.string["|>"](S.nonEmpty)
 })
 
-const parsePartialAddress = Parser.for(PartialAddress)["|>"](S.condemnFail)
-const createPartialAddress = Constructor.for(PartialAddress)["|>"](S.condemnFail)
-const arbitraryPartialAddress = Arbitrary.for(PartialAddress)(FC)
-const guardPartialAddress = Guard.for(PartialAddress)
-const encodePartialAddress = Encoder.for(PartialAddress)
+const parsePartialAddress = Parser.for(partialAddressS)["|>"](S.condemnFail)
+const createPartialAddress = Constructor.for(partialAddressS)["|>"](S.condemnFail)
+const arbitraryPartialAddress = Arbitrary.for(partialAddressS)(FC)
+const guardPartialAddress = Guard.for(partialAddressS)
+const encodePartialAddress = Encoder.for(partialAddressS)
 
 describe("Schema", () => {
   it("should parse person", async () => {
@@ -246,14 +246,14 @@ describe("Schema", () => {
     FC.assert(
       FC.property(arbitraryPerson, (p) => {
         expect(["E", "F", "M"]).toContain(
-          Person.Api.fields.Sex.matchW({
+          sexS.Api.matchW({
             else: () => "E" as const,
             female: () => "F" as const,
             male: () => "M" as const
           })(p.Sex)
         )
         expect(["E", "F", "M"]).toContain(
-          Person.Api.fields.Sex.matchS({
+          sexS.Api.matchS({
             else: () => "E",
             female: () => "F",
             male: () => "M"

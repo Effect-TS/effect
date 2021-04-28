@@ -12,54 +12,54 @@ interface IdBrand {
 }
 type Id = S.Int & S.Positive & IdBrand
 
-const Id = S.positiveInt["|>"](S.brand((_) => _ as Id))
+const idS = S.positiveInt["|>"](S.brand((_) => _ as Id))
 
 interface NameBrand {
   readonly NameBrand: unique symbol
 }
 type Name = S.NonEmptyString & NameBrand
 
-const Name = S.nonEmptyString["|>"](S.brand((_) => _ as Name))
+const nameS = S.nonEmptyString["|>"](S.brand((_) => _ as Name))
 
 interface AddressBrand {
   readonly AddressBrand: unique symbol
 }
 type Address = S.NonEmptyString & AddressBrand
 
-const Address = S.nonEmptyString["|>"](S.brand((_) => _ as Address))
+const addressS = S.nonEmptyString["|>"](S.brand((_) => _ as Address))
 
 interface AgeBrand {
   readonly AgeBrand: unique symbol
 }
 type Age = S.Int & S.Positive & AgeBrand
 
-const Age = S.positiveInt["|>"](S.brand((_) => _ as Age))
+const ageS = S.positiveInt["|>"](S.brand((_) => _ as Age))
 
 interface SexBrand {
   readonly SexBrand: unique symbol
 }
 
-const Sex_ = S.literal("male", "female", "else")
-type Sex = S.ParsedShapeOf<typeof Sex_> & SexBrand
-const Sex = Sex_["|>"](S.brand((_) => _ as Sex))
+const sexS_ = S.literal("male", "female", "else")
+type Sex = S.ParsedShapeOf<typeof sexS_> & SexBrand
+const sexS = sexS_["|>"](S.brand((_) => _ as Sex))
 
-const Person_ = S.struct({
+const personS_ = S.struct({
   required: {
-    Id,
-    Name,
-    Age,
-    Sex
+    Id: idS,
+    Name: nameS,
+    Age: ageS,
+    Sex: sexS
   },
   optional: {
-    Addresses: S.chunk(Address)
+    Addresses: S.chunk(addressS)
   }
 })["|>"](S.named("Person"))
 
-interface Person extends S.ParsedShapeOf<typeof Person_> {}
+interface Person extends S.ParsedShapeOf<typeof personS_> {}
 
-const Person = S.opaque<Person>()(Person_)
+const personS = S.opaque<Person>()(personS_)
 
-const parsePerson = Parser.for(Person)["|>"](S.condemnFail)
+const parsePerson = Parser.for(personS)["|>"](S.condemnFail)
 
 describe("Tracing", () => {
   it("should trace error", async () => {

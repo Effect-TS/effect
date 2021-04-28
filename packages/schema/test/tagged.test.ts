@@ -5,39 +5,38 @@ import * as Constructor from "../src/Constructor"
 import * as Encoder from "../src/Encoder"
 import * as Parser from "../src/Parser"
 
-const Add_ = S.struct({
+const addS_ = S.struct({
   required: {
     _tag: S.tag("Add"),
     x: S.number,
     y: S.number
   }
 })
-interface Add extends S.ParsedShapeOf<typeof Add_> {}
-const Add = S.opaque<Add>()(Add_)
+interface Add extends S.ParsedShapeOf<typeof addS_> {}
+const addS = S.opaque<Add>()(addS_)
 
-const Mul_ = S.struct({
+const mulS_ = S.struct({
   required: {
     _tag: S.tag("Mul"),
     x: S.number,
     y: S.number
   }
 })
-interface Mul extends S.ParsedShapeOf<typeof Mul_> {}
-const Mul = S.opaque<Mul>()(Mul_)
+interface Mul extends S.ParsedShapeOf<typeof mulS_> {}
+const mulS = S.opaque<Mul>()(mulS_)
 
-const Operation_ = S.tagged(Add, Mul)
 interface OperationBrand {
   readonly Operation: unique symbol
 }
-type Operation = S.ParsedShapeOf<typeof Operation_> & OperationBrand
-const Operation = Operation_["|>"](S.brand((u) => u as Operation))
+type Operation = (Add | Mul) & OperationBrand
+const operationS = S.tagged(addS, mulS)["|>"](S.brand((u) => u as Operation))
 
-const mul = Operation.Api.of.Mul["|>"](S.unsafe)
-const add = Operation.Api.of.Add["|>"](S.unsafe)
+const mul = operationS.Api.of.Mul["|>"](S.unsafe)
+const add = operationS.Api.of.Add["|>"](S.unsafe)
 
-const parseOperation = Parser.for(Operation)["|>"](S.condemnFail)
-const constructOperation = Constructor.for(Operation)["|>"](S.condemnFail)
-const encodeOperation = Encoder.for(Operation)
+const parseOperation = Parser.for(operationS)["|>"](S.condemnFail)
+const constructOperation = Constructor.for(operationS)["|>"](S.condemnFail)
+const encodeOperation = Encoder.for(operationS)
 
 describe("Tagged Union", () => {
   it("parse", async () => {
@@ -97,7 +96,7 @@ describe("Tagged Union", () => {
 
       expect(
         result_construct.right["|>"](
-          Operation.Api.matchS({
+          operationS.Api.matchS({
             Add: (_) => mul({ x: _.x, y: _.y }),
             Mul: (_) => add({ x: _.x, y: _.y })
           })

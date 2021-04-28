@@ -21,7 +21,7 @@ export interface PersonEncoded {
   readonly friends: readonly PersonEncoded[]
 }
 
-const Person = S.recursive<unknown, Person, PersonInput, Person, PersonEncoded>((F) =>
+const personS = S.recursive<unknown, Person, PersonInput, Person, PersonEncoded>((F) =>
   S.struct({
     required: {
       id: S.string,
@@ -30,8 +30,8 @@ const Person = S.recursive<unknown, Person, PersonInput, Person, PersonEncoded>(
   })
 )
 
-const parsePerson = Parser.for(Person)["|>"](S.condemnFail)
-const encodePerson = Encoder.for(Person)
+const parsePerson = Parser.for(personS)["|>"](S.condemnFail)
+const encodePerson = Encoder.for(personS)
 
 describe("Recursive", () => {
   it("parse", async () => {
