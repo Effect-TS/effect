@@ -37,21 +37,24 @@ export type SchemaError<E> =
   | TaggedUnionMemberE<string, SchemaError<E>>
   | MemberE<string | number, SchemaError<E>>
 
-export type BuiltinError =
-  | ParseStringE
-  | ParseNumberE
-  | ParseObjectE
-  | ParseDateE
-  | ParseDateMsE
-  | InvalidIntegerE
-  | PositiveE
-  | UnknownRecordE
-  | LiteralE<string[]>
-  | NonEmptyE<unknown>
-  | UnknownArrayE
-  | TaggedUnionExtractKeyE
+export const defaultLeafSymbol = Symbol.for("@effect-ts/schema/error/defaultLeaf")
+export const toTreeSymbol = Symbol.for("@effect-ts/schema/error/defaultLeaf/toTree")
 
-export type AnyError = SchemaError<BuiltinError>
+export interface HasDefaultLeafE {
+  readonly [toTreeSymbol]: Tree<string>
+}
+
+export abstract class DefaultLeafE<T> extends Data<T> implements HasDefaultLeafE {
+  readonly [defaultLeafSymbol] = defaultLeafSymbol
+
+  abstract get [toTreeSymbol](): Tree<string>
+}
+
+export function isDefaultLeaf<T>(t: T): t is DefaultLeafE<T> & T {
+  return typeof t === "object" && t != null && defaultLeafSymbol in t
+}
+
+export type AnyError = SchemaError<HasDefaultLeafE>
 
 //
 // Schema Errors
@@ -63,12 +66,20 @@ export class TaggedUnionE<E> extends Data<TaggedUnionE<E>> implements CompoundE<
 }
 
 export class TaggedUnionExtractKeyE
-  extends Data<TaggedUnionExtractKeyE>
+  extends DefaultLeafE<TaggedUnionExtractKeyE>
   implements Actual<unknown> {
   readonly _tag = "TaggedUnionExtractKey"
   readonly field!: string
   readonly keys!: readonly string[]
   readonly actual!: unknown
+
+  get [toTreeSymbol](): Tree<string> {
+    return tree(
+      `cannot extract tagged key ${this.field} from ${JSON.stringify(
+        this.actual
+      )}, expected one of ${this.keys.join(", ")}`
+    )
+  }
 }
 
 export class TaggedUnionMemberE<K, E>
@@ -145,9 +156,15 @@ export function chunkE<E>(errors: Chunk.Chunk<E>): CollectionE<E> {
   return new CollectionE({ errors })
 }
 
-export class UnknownArrayE extends Data<UnknownArrayE> implements Actual<unknown> {
+export class UnknownArrayE
+  extends DefaultLeafE<UnknownArrayE>
+  implements Actual<unknown> {
   readonly _tag = "NotArray"
   readonly actual!: unknown
+
+  get [toTreeSymbol]() {
+    return tree(`cannot process ${JSON.stringify(this.actual)}, expected an array`)
+  }
 }
 
 export function unknownArrayE(actual: unknown): UnknownArrayE {
@@ -204,9 +221,15 @@ export function compositionE<E>(errors: Chunk.Chunk<E>): CompositionE<E> {
   return new CompositionE({ errors })
 }
 
-export class UnknownRecordE extends Data<UnknownRecordE> implements Actual<unknown> {
+export class UnknownRecordE
+  extends DefaultLeafE<UnknownRecordE>
+  implements Actual<unknown> {
   readonly _tag = "NotRecord"
   readonly actual!: unknown
+
+  get [toTreeSymbol]() {
+    return tree(`cannot process ${JSON.stringify(this.actual)}, expected a record`)
+  }
 }
 
 export function unknownRecordE(actual: unknown): UnknownRecordE {
@@ -236,18 +259,28 @@ export function intersectionE<E>(errors: Chunk.Chunk<E>): IntersectionE<E> {
 // Builtin
 //
 
-export class ParseDateE extends Data<ParseDateE> implements Actual<unknown> {
+export class ParseDateE extends DefaultLeafE<ParseDateE> implements Actual<unknown> {
   readonly _tag = "NotDateString"
   readonly actual!: unknown
+
+  get [toTreeSymbol]() {
+    return tree(`cannot process ${JSON.stringify(this.actual)}, expected a date string`)
+  }
 }
 
 export function parseDateE(actual: unknown): ParseDateE {
   return new ParseDateE({ actual })
 }
 
-export class ParseDateMsE extends Data<ParseDateMsE> implements Actual<unknown> {
+export class ParseDateMsE
+  extends DefaultLeafE<ParseDateMsE>
+  implements Actual<unknown> {
   readonly _tag = "NotDateMs"
   readonly actual!: unknown
+
+  get [toTreeSymbol]() {
+    return tree(`cannot process ${JSON.stringify(this.actual)}, expected a date in ms`)
+  }
 }
 
 export function parseDateMsE(actual: unknown): ParseDateMsE {
@@ -255,11 +288,18 @@ export function parseDateMsE(actual: unknown): ParseDateMsE {
 }
 
 export class LiteralE<KS extends readonly string[]>
-  extends Data<LiteralE<KS>>
+  extends DefaultLeafE<LiteralE<KS>>
   implements Actual<unknown> {
   readonly _tag = "Literal"
   readonly actual!: unknown
   readonly literals!: KS
+
+  get [toTreeSymbol]() {
+    return tree(
+      `cannot process ${JSON.stringify(this.actual)}, expected one of ` +
+        this.literals.join(", ")
+    )
+  }
 }
 
 export function literalE<KS extends readonly string[]>(
@@ -269,54 +309,90 @@ export function literalE<KS extends readonly string[]>(
   return new LiteralE({ literals, actual })
 }
 
-export class InvalidIntegerE extends Data<InvalidIntegerE> implements Actual<number> {
+export class InvalidIntegerE
+  extends DefaultLeafE<InvalidIntegerE>
+  implements Actual<number> {
   readonly _tag = "NotInteger"
   readonly actual!: number
+
+  get [toTreeSymbol]() {
+    return tree(`cannot process ${JSON.stringify(this.actual)}, expected an integer`)
+  }
 }
 
 export function invalidIntegerE(actual: number): InvalidIntegerE {
   return new InvalidIntegerE({ actual })
 }
 
-export class PositiveE extends Data<PositiveE> implements Actual<number> {
+export class PositiveE extends DefaultLeafE<PositiveE> implements Actual<number> {
   readonly _tag = "NotPositive"
   readonly actual!: number
+
+  get [toTreeSymbol]() {
+    return tree(
+      `cannot process ${JSON.stringify(this.actual)}, expected to be positive`
+    )
+  }
 }
 
 export function positiveE(actual: number): PositiveE {
   return new PositiveE({ actual })
 }
 
-export class NonEmptyE<A> extends Data<NonEmptyE<A>> implements Actual<A> {
+export class NonEmptyE<A> extends DefaultLeafE<NonEmptyE<A>> implements Actual<A> {
   readonly _tag = "NonEmpty"
   readonly actual!: A
+
+  get [toTreeSymbol]() {
+    return tree(
+      `cannot process ${JSON.stringify(this.actual)}, expected to be not empty`
+    )
+  }
 }
 
 export function nonEmptyE<A>(actual: A): NonEmptyE<A> {
   return new NonEmptyE({ actual })
 }
 
-export class ParseNumberE extends Data<ParseNumberE> implements Actual<unknown> {
+export class ParseNumberE
+  extends DefaultLeafE<ParseNumberE>
+  implements Actual<unknown> {
   readonly _tag = "NotNumber"
   readonly actual!: unknown
+
+  get [toTreeSymbol]() {
+    return tree(`cannot process ${JSON.stringify(this.actual)}, expected a number`)
+  }
 }
 
 export function parseNumberE(actual: unknown): ParseNumberE {
   return new ParseNumberE({ actual })
 }
 
-export class ParseObjectE extends Data<ParseObjectE> implements Actual<unknown> {
+export class ParseObjectE
+  extends DefaultLeafE<ParseObjectE>
+  implements Actual<unknown> {
   readonly _tag = "NotObject"
   readonly actual!: unknown
+
+  get [toTreeSymbol]() {
+    return tree(`cannot process ${JSON.stringify(this.actual)}, expected an object`)
+  }
 }
 
 export function parseObjectE(actual: unknown): ParseObjectE {
   return new ParseObjectE({ actual })
 }
 
-export class ParseStringE extends Data<ParseStringE> implements Actual<unknown> {
+export class ParseStringE
+  extends DefaultLeafE<ParseStringE>
+  implements Actual<unknown> {
   readonly _tag = "NotString"
   readonly actual!: unknown
+
+  get [toTreeSymbol]() {
+    return tree(`cannot process ${JSON.stringify(this.actual)}, expected an string`)
+  }
 }
 
 export function parseStringE(actual: unknown): ParseStringE {
@@ -433,56 +509,6 @@ export function toTreeWith<E>(
   return go
 }
 
-export function toTreeBuiltin(de: BuiltinError): Tree<string> {
-  switch (de._tag) {
-    case "NotNumber": {
-      return tree(`cannot process ${JSON.stringify(de.actual)}, expected a number`)
-    }
-    case "NotInteger": {
-      return tree(`cannot process ${JSON.stringify(de.actual)}, expected an integer`)
-    }
-    case "NotObject": {
-      return tree(`cannot process ${JSON.stringify(de.actual)}, expected an object`)
-    }
-    case "NotString": {
-      return tree(`cannot process ${JSON.stringify(de.actual)}, expected an string`)
-    }
-    case "NotPositive": {
-      return tree(`cannot process ${JSON.stringify(de.actual)}, expected a positive`)
-    }
-    case "NotRecord": {
-      return tree(`cannot process ${JSON.stringify(de.actual)}, expected a record`)
-    }
-    case "NotArray": {
-      return tree(`cannot process ${JSON.stringify(de.actual)}, expected an array`)
-    }
-    case "NotDateString": {
-      return tree(`cannot process ${JSON.stringify(de.actual)}, expected a date string`)
-    }
-    case "NotDateMs": {
-      return tree(`cannot process ${JSON.stringify(de.actual)}, expected a date in ms`)
-    }
-    case "TaggedUnionExtractKey": {
-      return tree(
-        `cannot extract tagged key ${de.field} from ${JSON.stringify(
-          de.actual
-        )}, expected one of ${de.keys.join(", ")}`
-      )
-    }
-    case "Literal": {
-      return tree(
-        `cannot process ${JSON.stringify(de.actual)}, expected one of ` +
-          de.literals.join(", ")
-      )
-    }
-    case "NonEmpty": {
-      return tree(
-        `cannot process ${JSON.stringify(de.actual)}, expected to be not empty`
-      )
-    }
-  }
-}
-
 export function drawTree(tree: Tree<string>): string {
   return tree.value + drawForest("\n", tree.forest)
 }
@@ -500,6 +526,6 @@ function drawForest(indentation: string, forest: Chunk.Chunk<Tree<string>>): str
   return r
 }
 
-export const errorToTree = toTreeWith(toTreeBuiltin)
+export const errorToTree = toTreeWith((e: HasDefaultLeafE) => e[toTreeSymbol])
 
 export const drawError = flow(errorToTree, drawTree)
