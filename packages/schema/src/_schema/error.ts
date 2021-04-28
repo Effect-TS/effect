@@ -81,6 +81,10 @@ export class UnionE<E> extends Data<UnionE<E>> implements CompoundE<E> {
   readonly errors!: Chunk.Chunk<E>
 }
 
+export function unionE<E>(errors: Chunk.Chunk<E>): UnionE<E> {
+  return new UnionE({ errors })
+}
+
 export class ExtractKeyE extends DefaultLeafE<ExtractKeyE> implements Actual<unknown> {
   readonly _tag = "ExtractKey"
   readonly field!: string
@@ -94,6 +98,10 @@ export class ExtractKeyE extends DefaultLeafE<ExtractKeyE> implements Actual<unk
       )}, expected one of ${this.keys.join(", ")}`
     )
   }
+}
+
+export function extractKeyE(field: string, keys: readonly string[], actual: unknown) {
+  return new ExtractKeyE({ actual, field, keys })
 }
 
 export class LeafE<E> extends Data<LeafE<E>> implements SingleE<E> {

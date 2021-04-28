@@ -292,8 +292,8 @@ export function makeTagged<Key extends string>(key: Key) {
                   S.compositionE(
                     Chunk.single(
                       S.nextE(
-                        new S.UnionE({
-                          errors: Chunk.single(
+                        S.unionE(
+                          Chunk.single(
                             S.memberE(
                               tag,
                               result.effect.left
@@ -304,7 +304,7 @@ export function makeTagged<Key extends string>(key: Key) {
                                 >
                               : never
                           )
-                        })
+                        )
                       )
                     )
                   )
@@ -317,8 +317,8 @@ export function makeTagged<Key extends string>(key: Key) {
                     S.compositionE(
                       Chunk.single(
                         S.nextE(
-                          new S.UnionE({
-                            errors: Chunk.single(
+                          S.unionE(
+                            Chunk.single(
                               S.memberE(
                                 tag,
                                 warnings.value
@@ -329,7 +329,7 @@ export function makeTagged<Key extends string>(key: Key) {
                                   >
                                 : never
                             )
-                          })
+                          )
                         )
                       )
                     )
@@ -341,11 +341,7 @@ export function makeTagged<Key extends string>(key: Key) {
             }
           }
           return Th.fail(
-            S.compositionE(
-              Chunk.single(
-                S.prevE(S.leafE(new S.ExtractKeyE({ field: key, actual: u, keys })))
-              )
-            )
+            S.compositionE(Chunk.single(S.prevE(S.leafE(S.extractKeyE(key, keys, u)))))
           )
         }
       ),
@@ -385,8 +381,8 @@ export function makeTagged<Key extends string>(key: Key) {
 
           if (result.effect._tag === "Left") {
             return Th.fail(
-              new S.UnionE({
-                errors: Chunk.single(
+              S.unionE(
+                Chunk.single(
                   S.memberE(
                     tag,
                     result.effect.left
@@ -397,7 +393,7 @@ export function makeTagged<Key extends string>(key: Key) {
                       >
                     : never
                 )
-              })
+              )
             )
           }
 
@@ -406,8 +402,8 @@ export function makeTagged<Key extends string>(key: Key) {
           if (warnings._tag === "Some") {
             return Th.warn(
               result.effect.right.get(0) as any,
-              new S.UnionE({
-                errors: Chunk.single(
+              S.unionE(
+                Chunk.single(
                   S.memberE(tag, warnings.value) as Props[number] extends S.SchemaAny
                     ? S.MemberE<
                         S.ConstructedShapeOf<Props[number]>[Key],
@@ -415,7 +411,7 @@ export function makeTagged<Key extends string>(key: Key) {
                       >
                     : never
                 )
-              })
+              )
             )
           }
 
