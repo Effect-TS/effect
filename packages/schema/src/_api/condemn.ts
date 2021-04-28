@@ -50,3 +50,17 @@ export function condemnDie<X, A>(self: (a: X) => These<AnyError, A>) {
   const orFail = condemnFail(self)
   return (a: X, __trace?: string) => T.orDie(orFail(a, __trace))
 }
+
+export function unsafe<X, A>(self: (a: X) => These<AnyError, A>) {
+  return (a: X) => {
+    const res = self(a).effect
+    if (res._tag === "Left") {
+      throw new CondemnException({ message: drawError(res.left) })
+    }
+    const warn = res.right.get(1)
+    if (warn._tag === "Some") {
+      throw new CondemnException({ message: drawError(warn.value) })
+    }
+    return res.right.get(0)
+  }
+}

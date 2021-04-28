@@ -32,6 +32,9 @@ interface OperationBrand {
 type Operation = S.ParsedShapeOf<typeof Operation_> & OperationBrand
 const Operation = Operation_["|>"](S.brand((u) => u as Operation))
 
+const mul = Operation.Api.of.Mul["|>"](S.unsafe)
+const add = Operation.Api.of.Add["|>"](S.unsafe)
+
 const parseOperation = Parser.for(Operation)["|>"](S.condemnFail)
 const constructOperation = Constructor.for(Operation)["|>"](S.condemnFail)
 const encodeOperation = Encoder.for(Operation)
@@ -92,14 +95,15 @@ describe("Tagged Union", () => {
         x: 0,
         y: 1
       })
+
       expect(
         result_construct.right["|>"](
           Operation.Api.matchS({
-            Add: (_) => _._tag,
-            Mul: (_) => _._tag
+            Add: (_) => mul({ x: _.x, y: _.y }),
+            Mul: (_) => add({ x: _.x, y: _.y })
           })
-        )
-      ).toEqual("Add")
+        )._tag
+      ).toEqual("Mul")
     }
   })
 })
