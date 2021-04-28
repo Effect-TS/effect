@@ -117,7 +117,7 @@ export function chunk<Self extends S.SchemaAny>(
     | S.PrevE<S.RefinementE<S.LeafE<S.UnknownArrayE>>>
     | S.NextE<S.CollectionE<S.OptionalIndexE<number, S.ParserErrorOf<Self>>>>
   >,
-  Chunk.Chunk<ReturnType<S.ParsedShapeOf<Self>>>,
+  Chunk.Chunk<S.ParsedShapeOf<Self>>,
   Iterable<S.ConstructorInputOf<Self>>,
   S.CollectionE<S.OptionalIndexE<number, S.ConstructorErrorOf<Self>>>,
   Chunk.Chunk<S.ConstructedShapeOf<Self>>,
