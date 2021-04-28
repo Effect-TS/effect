@@ -2,16 +2,17 @@
 
 import { pipe } from "@effect-ts/core/Function"
 
+import type { ApiSelfType } from "../_schema"
 import * as S from "../_schema"
 import * as Th from "../These"
 import { refinement } from "./refinement"
 
-export interface LiteralApi<KS extends readonly string[], AS extends KS[number]> {
+export interface LiteralApi<KS extends readonly string[]> extends ApiSelfType {
   readonly matchS: <A>(
     _: {
       [K in KS[number]]: (_: K) => A
     }
-  ) => (ks: AS) => A
+  ) => (ks: S.GetApiSelfType<this, KS[number]>) => A
   readonly matchW: <
     M extends {
       [K in KS[number]]: (_: K) => any
@@ -19,7 +20,7 @@ export interface LiteralApi<KS extends readonly string[], AS extends KS[number]>
   >(
     _: M
   ) => (
-    ks: AS
+    ks: S.GetApiSelfType<this, KS[number]>
   ) => {
     [K in keyof M]: ReturnType<M[K]>
   }[keyof M]
@@ -37,7 +38,7 @@ export function literal<KS extends readonly string[]>(
   never,
   KS[number],
   string,
-  LiteralApi<KS, KS[number]>
+  LiteralApi<KS>
 > {
   const ko = {}
   for (const k of literals) {
@@ -52,7 +53,8 @@ export function literal<KS extends readonly string[]>(
     S.arbitrary((_) => _.oneof(...literals.map((k) => _.constant(k)))),
     S.encoder((_) => _ as string),
     S.mapApi(
-      (): LiteralApi<KS, KS[number]> => ({
+      (): LiteralApi<KS> => ({
+        _AS: undefined as any,
         matchS: (m) => (k) => m[k](k),
         matchW: (m) => (k) => m[k](k)
       })

@@ -79,6 +79,14 @@ export abstract class Schema<
 export type SchemaAny = Schema<any, any, any, any, any, any, any, any>
 export type SchemaUPI = Schema<unknown, any, any, any, any, any, any, any>
 
+export interface ApiSelfType<AS = unknown> {
+  _AS: AS
+}
+
+export type GetApiSelfType<T extends ApiSelfType<unknown>, D> = unknown extends T["_AS"]
+  ? D
+  : T["_AS"]
+
 export const SchemaContinuationSymbol = Symbol()
 export type SchemaContinuationSymbol = typeof SchemaContinuationSymbol
 

@@ -5,7 +5,7 @@ import type * as fc from "fast-check"
 
 import type * as Th from "../These"
 import type { AnyError, CompositionE, NamedE, NextE, PrevE, RefinementE } from "./error"
-import type { Schema, SelfApi } from "./schema"
+import type { ApiSelfType, Schema, SelfApi } from "./schema"
 import {
   SchemaArbitrary,
   SchemaCompose,
@@ -42,8 +42,8 @@ export function opaque<Shape>() {
     ConstructorError,
     Shape,
     Encoded,
-    Api
-  > => schema
+    Api & ApiSelfType<Shape>
+  > => schema as any
 }
 
 export function recursive<

@@ -1,7 +1,7 @@
 import * as Chunk from "@effect-ts/core/Collections/Immutable/Chunk"
 import { pipe } from "@effect-ts/system/Function"
 
-import type { UnionE } from "../_schema"
+import type { ApiSelfType, UnionE } from "../_schema"
 import * as S from "../_schema"
 import * as Arbitrary from "../Arbitrary"
 import * as Constructor from "../Constructor"
@@ -49,15 +49,10 @@ type SchemaK<Key extends string, N extends string> = S.Schema<
   }
 >
 
-export type TaggedApi<
+export interface TaggedApi<
   Key extends string,
-  Props extends readonly SchemaK<Key, string>[],
-  AS extends {
-    [K in keyof Props]: Props[K] extends S.SchemaAny ? S.ParsedShapeOf<Props[K]> : never
-  }[number] = {
-    [K in keyof Props]: Props[K] extends S.SchemaAny ? S.ParsedShapeOf<Props[K]> : never
-  }[number]
-> = {
+  Props extends readonly SchemaK<Key, string>[]
+> extends ApiSelfType<unknown> {
   readonly of: {
     [K in Props[number]["Api"]["fields"][Key]["value"]]: (
       _: Omit<
@@ -86,7 +81,14 @@ export type TaggedApi<
           >
         }[number]
       >,
-      AS
+      S.GetApiSelfType<
+        this,
+        {
+          [K in keyof Props]: Props[K] extends S.SchemaAny
+            ? S.ParsedShapeOf<Props[K]>
+            : never
+        }[number]
+      >
     >
   }
   readonly matchS: <A>(
@@ -104,7 +106,16 @@ export type TaggedApi<
         >
       ) => A
     }
-  ) => (ks: AS) => A
+  ) => (
+    ks: S.GetApiSelfType<
+      this,
+      {
+        [K in keyof Props]: Props[K] extends S.SchemaAny
+          ? S.ParsedShapeOf<Props[K]>
+          : never
+      }[number]
+    >
+  ) => A
   readonly matchW: <
     M extends {
       [K in Props[number]["Api"]["fields"][Key]["value"]]: (
@@ -123,7 +134,14 @@ export type TaggedApi<
   >(
     _: M
   ) => (
-    ks: AS
+    ks: S.GetApiSelfType<
+      this,
+      {
+        [K in keyof Props]: Props[K] extends S.SchemaAny
+          ? S.ParsedShapeOf<Props[K]>
+          : never
+      }[number]
+    >
   ) => {
     [K in keyof M]: ReturnType<M[K]>
   }[keyof M]
