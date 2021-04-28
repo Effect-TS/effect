@@ -34,8 +34,6 @@ export type SchemaError<E> =
   | NamedE<string, SchemaError<E>>
   | IntersectionE<SchemaError<E>>
   | UnionE<SchemaError<E>>
-  | UnionMemberE<SchemaError<E>>
-  | KeyedMemberE<string, SchemaError<E>>
   | MemberE<string | number, SchemaError<E>>
 
 export interface LeafErrors {
@@ -96,17 +94,6 @@ export class ExtractKeyE extends DefaultLeafE<ExtractKeyE> implements Actual<unk
       )}, expected one of ${this.keys.join(", ")}`
     )
   }
-}
-
-export class KeyedMemberE<K, E> extends Data<KeyedMemberE<K, E>> implements SingleE<E> {
-  readonly _tag = "KeyedMember"
-  readonly key!: K
-  readonly error!: E
-}
-
-export class UnionMemberE<E> extends Data<UnionMemberE<E>> implements SingleE<E> {
-  readonly _tag = "UnionMember"
-  readonly error!: E
 }
 
 export class LeafE<E> extends Data<LeafE<E>> implements SingleE<E> {
@@ -485,18 +472,11 @@ export function toTreeWith<E>(
           Chunk.map_(de.errors, go)
         )
       }
-      case "UnionMember":
-        return tree(
-          `1 error(s) found while processing a union member`,
-          Chunk.single(go(de.error))
-        )
-      case "KeyedMember":
-        return tree(
-          `1 error(s) found while processing the meber ${JSON.stringify(de.key)}`,
-          Chunk.single(go(de.error))
-        )
       case "Named": {
-        return tree(`processing ${de.name}`, Chunk.single(go(de.error)))
+        return tree(
+          `1 error(s) found while processing ${de.name}`,
+          Chunk.single(go(de.error))
+        )
       }
       case "Missing": {
         return tree(

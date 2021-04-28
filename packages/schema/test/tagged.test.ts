@@ -68,12 +68,11 @@ describe("Tagged Union", () => {
     if (result_bad_element._tag === "Left") {
       expect(result_bad_element.left.message).equals(
         "1 error(s) found while processing a union\n" +
-          "└─ 1 error(s) found while processing a union member\n" +
-          '   └─ 1 error(s) found while processing the meber "Add"\n' +
-          "      └─ 1 error(s) found while processing a struct\n" +
-          '         └─ 1 error(s) found while processing required key "y"\n' +
-          "            └─ 1 error(s) found while processing a refinement\n" +
-          '               └─ cannot process "2", expected a number'
+          '└─ 1 error(s) found while processing member "Add"\n' +
+          "   └─ 1 error(s) found while processing a struct\n" +
+          '      └─ 1 error(s) found while processing required key "y"\n' +
+          "         └─ 1 error(s) found while processing a refinement\n" +
+          '            └─ cannot process "2", expected a number'
       )
     }
 

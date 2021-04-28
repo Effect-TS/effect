@@ -71,14 +71,12 @@ export interface TaggedApi<
     ) => Th.These<
       UnionE<
         {
-          [K in keyof Props]: S.UnionMemberE<
-            Props[K] extends S.SchemaAny
-              ? S.KeyedMemberE<
-                  S.ConstructedShapeOf<Props[K]>[Key],
-                  S.ConstructorErrorOf<Props[K]>
-                >
-              : never
-          >
+          [K in keyof Props]: Props[K] extends S.SchemaAny
+            ? S.MemberE<
+                S.ConstructedShapeOf<Props[K]>[Key],
+                S.ConstructorErrorOf<Props[K]>
+              >
+            : never
         }[number]
       >,
       S.GetApiSelfType<
@@ -159,14 +157,9 @@ export function makeTagged<Key extends string>(key: Key) {
       | S.NextE<
           UnionE<
             {
-              [K in keyof Props]: S.UnionMemberE<
-                Props[K] extends S.SchemaAny
-                  ? S.KeyedMemberE<
-                      S.ParsedShapeOf<Props[K]>[Key],
-                      S.ParserErrorOf<Props[K]>
-                    >
-                  : never
-              >
+              [K in keyof Props]: Props[K] extends S.SchemaAny
+                ? S.MemberE<S.ParsedShapeOf<Props[K]>[Key], S.ParserErrorOf<Props[K]>>
+                : never
             }[number]
           >
         >
@@ -183,14 +176,12 @@ export function makeTagged<Key extends string>(key: Key) {
     }[number],
     UnionE<
       {
-        [K in keyof Props]: S.UnionMemberE<
-          Props[K] extends S.SchemaAny
-            ? S.KeyedMemberE<
-                S.ConstructedShapeOf<Props[K]>[Key],
-                S.ConstructorErrorOf<Props[K]>
-              >
-            : never
-        >
+        [K in keyof Props]: Props[K] extends S.SchemaAny
+          ? S.MemberE<
+              S.ConstructedShapeOf<Props[K]>[Key],
+              S.ConstructorErrorOf<Props[K]>
+            >
+          : never
       }[number]
     >,
     {
@@ -268,14 +259,12 @@ export function makeTagged<Key extends string>(key: Key) {
             | S.NextE<
                 UnionE<
                   {
-                    [K in keyof Props]: S.UnionMemberE<
-                      Props[K] extends S.SchemaAny
-                        ? S.KeyedMemberE<
-                            S.ParsedShapeOf<Props[K]>[Key],
-                            S.ParserErrorOf<Props[K]>
-                          >
-                        : never
-                    >
+                    [K in keyof Props]: Props[K] extends S.SchemaAny
+                      ? S.MemberE<
+                          S.ParsedShapeOf<Props[K]>[Key],
+                          S.ParserErrorOf<Props[K]>
+                        >
+                      : never
                   }[number]
                 >
               >
@@ -305,19 +294,15 @@ export function makeTagged<Key extends string>(key: Key) {
                       S.nextE(
                         new S.UnionE({
                           errors: Chunk.single(
-                            new S.UnionMemberE({
-                              error: new S.KeyedMemberE({
-                                error: result.effect.left,
-                                key: tag
-                              }) as {
-                                [K in keyof Props]: Props[K] extends S.SchemaAny
-                                  ? S.KeyedMemberE<
-                                      S.ParsedShapeOf<Props[K]>[Key],
-                                      S.ConstructedShapeOf<Props[K]>
-                                    >
-                                  : never
-                              }[number]
-                            })
+                            S.memberE(
+                              tag,
+                              result.effect.left
+                            ) as Props[number] extends S.SchemaAny
+                              ? S.MemberE<
+                                  S.ParsedShapeOf<Props[number]>[Key],
+                                  S.ParserErrorOf<Props[number]>
+                                >
+                              : never
                           )
                         })
                       )
@@ -334,19 +319,15 @@ export function makeTagged<Key extends string>(key: Key) {
                         S.nextE(
                           new S.UnionE({
                             errors: Chunk.single(
-                              new S.UnionMemberE({
-                                error: new S.KeyedMemberE({
-                                  error: warnings.value,
-                                  key: tag
-                                }) as {
-                                  [K in keyof Props]: Props[K] extends S.SchemaAny
-                                    ? S.KeyedMemberE<
-                                        S.ParsedShapeOf<Props[K]>[Key],
-                                        S.ConstructedShapeOf<Props[K]>
-                                      >
-                                    : never
-                                }[number]
-                              })
+                              S.memberE(
+                                tag,
+                                warnings.value
+                              ) as Props[number] extends S.SchemaAny
+                                ? S.MemberE<
+                                    S.ParsedShapeOf<Props[number]>[Key],
+                                    S.ParserErrorOf<Props[number]>
+                                  >
+                                : never
                             )
                           })
                         )
@@ -378,14 +359,12 @@ export function makeTagged<Key extends string>(key: Key) {
         ): Th.These<
           UnionE<
             {
-              [K in keyof Props]: S.UnionMemberE<
-                Props[K] extends S.SchemaAny
-                  ? S.KeyedMemberE<
-                      S.ConstructedShapeOf<Props[K]>[Key],
-                      S.ConstructorErrorOf<Props[K]>
-                    >
-                  : never
-              >
+              [K in keyof Props]: Props[K] extends S.SchemaAny
+                ? S.MemberE<
+                    S.ConstructedShapeOf<Props[K]>[Key],
+                    S.ConstructorErrorOf<Props[K]>
+                  >
+                : never
             }[number]
           >,
           {
@@ -408,19 +387,15 @@ export function makeTagged<Key extends string>(key: Key) {
             return Th.fail(
               new S.UnionE({
                 errors: Chunk.single(
-                  new S.UnionMemberE({
-                    error: new S.KeyedMemberE({
-                      error: result.effect.left,
-                      key: tag
-                    }) as {
-                      [K in keyof Props]: Props[K] extends S.SchemaAny
-                        ? S.KeyedMemberE<
-                            S.ConstructedShapeOf<Props[K]>[Key],
-                            S.ConstructorErrorOf<Props[K]>
-                          >
-                        : never
-                    }[number]
-                  })
+                  S.memberE(
+                    tag,
+                    result.effect.left
+                  ) as Props[number] extends S.SchemaAny
+                    ? S.MemberE<
+                        S.ConstructedShapeOf<Props[number]>[Key],
+                        S.ConstructorErrorOf<Props[number]>
+                      >
+                    : never
                 )
               })
             )
@@ -433,19 +408,12 @@ export function makeTagged<Key extends string>(key: Key) {
               result.effect.right.get(0) as any,
               new S.UnionE({
                 errors: Chunk.single(
-                  new S.UnionMemberE({
-                    error: new S.KeyedMemberE({
-                      error: warnings.value,
-                      key: tag
-                    }) as {
-                      [K in keyof Props]: Props[K] extends S.SchemaAny
-                        ? S.KeyedMemberE<
-                            S.ConstructedShapeOf<Props[K]>[Key],
-                            S.ConstructorErrorOf<Props[K]>
-                          >
-                        : never
-                    }[number]
-                  })
+                  S.memberE(tag, warnings.value) as Props[number] extends S.SchemaAny
+                    ? S.MemberE<
+                        S.ConstructedShapeOf<Props[number]>[Key],
+                        S.ConstructorErrorOf<Props[number]>
+                      >
+                    : never
                 )
               })
             )

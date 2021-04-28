@@ -102,7 +102,7 @@ describe("Schema", () => {
       expect(result.left).equals(
         new S.CondemnException({
           message:
-            "processing Person\n" +
+            "1 error(s) found while processing Person\n" +
             "└─ 1 error(s) found while processing an intersection\n" +
             "   └─ 1 error(s) found while processing member 0\n" +
             "      └─ 2 error(s) found while checking keys\n" +
@@ -144,7 +144,7 @@ describe("Schema", () => {
       expect(result.left).equals(
         new S.CondemnException({
           message:
-            "processing Person\n" +
+            "1 error(s) found while processing Person\n" +
             "└─ 1 error(s) found while processing an intersection\n" +
             "   └─ 1 error(s) found while processing member 0\n" +
             "      └─ 1 error(s) found while processing a struct\n" +
@@ -187,7 +187,7 @@ describe("Schema", () => {
           message:
             "1 error(s) found while processing a collection\n" +
             "└─ 1 error(s) found while processing optional index 0\n" +
-            "   └─ processing Person\n" +
+            "   └─ 1 error(s) found while processing Person\n" +
             "      └─ 1 error(s) found while processing an intersection\n" +
             "         └─ 1 error(s) found while processing member 0\n" +
             "            └─ 2 error(s) found while checking keys\n" +
