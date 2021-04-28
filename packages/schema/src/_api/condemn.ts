@@ -4,7 +4,7 @@ import * as T from "@effect-ts/core/Effect"
 import * as E from "@effect-ts/core/Either"
 import { Case } from "@effect-ts/system/Case"
 
-import type { BuiltinError, SchemaError } from "../_schema"
+import type { AnyError } from "../_schema"
 import { drawError } from "../_schema"
 import type { These } from "../These"
 
@@ -31,7 +31,7 @@ export class CondemnException extends Case<CondemnException, "_tag" | "toString"
   }
 }
 
-export function condemnFail<X, A>(self: (a: X) => These<SchemaError<BuiltinError>, A>) {
+export function condemnFail<X, A>(self: (a: X) => These<AnyError, A>) {
   return (a: X, __trace?: string) =>
     T.fromEither(() => {
       const res = self(a).effect
@@ -46,7 +46,7 @@ export function condemnFail<X, A>(self: (a: X) => These<SchemaError<BuiltinError
     }, __trace)
 }
 
-export function condemnDie<X, A>(self: (a: X) => These<SchemaError<BuiltinError>, A>) {
+export function condemnDie<X, A>(self: (a: X) => These<AnyError, A>) {
   const orFail = condemnFail(self)
   return (a: X, __trace?: string) => T.orDie(orFail(a, __trace))
 }

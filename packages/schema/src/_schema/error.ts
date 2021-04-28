@@ -33,9 +33,27 @@ export type SchemaError<E> =
   | CollectionE<SchemaError<E>>
   | NamedE<string, SchemaError<E>>
   | IntersectionE<SchemaError<E>>
-  | TaggedUnionE<SchemaError<E>>
-  | TaggedUnionMemberE<string, SchemaError<E>>
+  | UnionE<SchemaError<E>>
+  | UnionMemberE<SchemaError<E>>
+  | KeyedMemberE<string, SchemaError<E>>
   | MemberE<string | number, SchemaError<E>>
+
+export interface LeafErrors {
+  ParseStringE: ParseStringE
+  ParseNumberE: ParseNumberE
+  ParseObjectE: ParseObjectE
+  ParseDateE: ParseDateE
+  ParseDateMsE: ParseDateMsE
+  InvalidIntegerE: InvalidIntegerE
+  PositiveE: PositiveE
+  UnknownRecordE: UnknownRecordE
+  LiteralE: LiteralE<string[]>
+  NonEmptyE: NonEmptyE<unknown>
+  UnknownArrayE: UnknownArrayE
+  TaggedUnionExtractKeyE: ExtractKeyE
+}
+
+export type LeafError = Extract<LeafErrors[keyof LeafErrors], HasDefaultLeafE>
 
 export const defaultLeafSymbol = Symbol.for("@effect-ts/schema/error/defaultLeaf")
 export const toTreeSymbol = Symbol.for("@effect-ts/schema/error/defaultLeaf/toTree")
@@ -54,39 +72,40 @@ export function isDefaultLeaf<T>(t: T): t is DefaultLeafE<T> & T {
   return typeof t === "object" && t != null && defaultLeafSymbol in t
 }
 
-export type AnyError = SchemaError<HasDefaultLeafE>
+export type AnyError = SchemaError<LeafError>
 
 //
 // Schema Errors
 //
 
-export class TaggedUnionE<E> extends Data<TaggedUnionE<E>> implements CompoundE<E> {
-  readonly _tag = "TaggedUnion"
+export class UnionE<E> extends Data<UnionE<E>> implements CompoundE<E> {
+  readonly _tag = "Union"
   readonly errors!: Chunk.Chunk<E>
 }
 
-export class TaggedUnionExtractKeyE
-  extends DefaultLeafE<TaggedUnionExtractKeyE>
-  implements Actual<unknown> {
-  readonly _tag = "TaggedUnionExtractKey"
+export class ExtractKeyE extends DefaultLeafE<ExtractKeyE> implements Actual<unknown> {
+  readonly _tag = "ExtractKey"
   readonly field!: string
   readonly keys!: readonly string[]
   readonly actual!: unknown
 
   get [toTreeSymbol](): Tree<string> {
     return tree(
-      `cannot extract tagged key ${this.field} from ${JSON.stringify(
+      `cannot extract key ${this.field} from ${JSON.stringify(
         this.actual
       )}, expected one of ${this.keys.join(", ")}`
     )
   }
 }
 
-export class TaggedUnionMemberE<K, E>
-  extends Data<TaggedUnionMemberE<K, E>>
-  implements SingleE<E> {
-  readonly _tag = "TaggedUnionMember"
+export class KeyedMemberE<K, E> extends Data<KeyedMemberE<K, E>> implements SingleE<E> {
+  readonly _tag = "KeyedMember"
   readonly key!: K
+  readonly error!: E
+}
+
+export class UnionMemberE<E> extends Data<UnionMemberE<E>> implements SingleE<E> {
+  readonly _tag = "UnionMember"
   readonly error!: E
 }
 
@@ -460,15 +479,20 @@ export function toTreeWith<E>(
           Chunk.map_(de.errors, go)
         )
       }
-      case "TaggedUnion": {
+      case "Union": {
         return tree(
-          `${de.errors.length} error(s) found while processing a tagged union`,
+          `${de.errors.length} error(s) found while processing a union`,
           Chunk.map_(de.errors, go)
         )
       }
-      case "TaggedUnionMember":
+      case "UnionMember":
         return tree(
-          `1 error(s) found while processing member ${JSON.stringify(de.key)}`,
+          `1 error(s) found while processing a union member`,
+          Chunk.single(go(de.error))
+        )
+      case "KeyedMember":
+        return tree(
+          `1 error(s) found while processing the meber ${JSON.stringify(de.key)}`,
           Chunk.single(go(de.error))
         )
       case "Named": {
@@ -526,6 +550,6 @@ function drawForest(indentation: string, forest: Chunk.Chunk<Tree<string>>): str
   return r
 }
 
-export const errorToTree = toTreeWith((e: HasDefaultLeafE) => e[toTreeSymbol])
+export const errorToTree = toTreeWith((e: LeafError) => e[toTreeSymbol])
 
 export const drawError = flow(errorToTree, drawTree)

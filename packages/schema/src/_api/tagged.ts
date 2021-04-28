@@ -1,7 +1,7 @@
 import * as Chunk from "@effect-ts/core/Collections/Immutable/Chunk"
 import { pipe } from "@effect-ts/system/Function"
 
-import type { TaggedUnionE } from "../_schema"
+import type { UnionE } from "../_schema"
 import * as S from "../_schema"
 import * as Arbitrary from "../Arbitrary"
 import * as Encoder from "../Encoder"
@@ -105,16 +105,18 @@ export function makeTagged<Key extends string>(key: Key) {
   ): S.Schema<
     unknown,
     S.CompositionE<
-      | S.PrevE<S.LeafE<S.TaggedUnionExtractKeyE>>
+      | S.PrevE<S.LeafE<S.ExtractKeyE>>
       | S.NextE<
-          TaggedUnionE<
+          UnionE<
             {
-              [K in keyof Props]: Props[K] extends S.SchemaAny
-                ? S.TaggedUnionMemberE<
-                    S.ParsedShapeOf<Props[K]>[Key],
-                    S.ParserErrorOf<Props[K]>
-                  >
-                : never
+              [K in keyof Props]: S.UnionMemberE<
+                Props[K] extends S.SchemaAny
+                  ? S.KeyedMemberE<
+                      S.ParsedShapeOf<Props[K]>[Key],
+                      S.ParserErrorOf<Props[K]>
+                    >
+                  : never
+              >
             }[number]
           >
         >
@@ -129,14 +131,16 @@ export function makeTagged<Key extends string>(key: Key) {
         ? S.ConstructorInputOf<Props[K]>
         : never
     }[number],
-    TaggedUnionE<
+    UnionE<
       {
-        [K in keyof Props]: Props[K] extends S.SchemaAny
-          ? S.TaggedUnionMemberE<
-              S.ConstructedShapeOf<Props[K]>[Key],
-              S.ConstructorErrorOf<Props[K]>
-            >
-          : never
+        [K in keyof Props]: S.UnionMemberE<
+          Props[K] extends S.SchemaAny
+            ? S.KeyedMemberE<
+                S.ConstructedShapeOf<Props[K]>[Key],
+                S.ConstructorErrorOf<Props[K]>
+              >
+            : never
+        >
       }[number]
     >,
     {
@@ -203,16 +207,18 @@ export function makeTagged<Key extends string>(key: Key) {
           u: unknown
         ): Th.These<
           S.CompositionE<
-            | S.PrevE<S.LeafE<S.TaggedUnionExtractKeyE>>
+            | S.PrevE<S.LeafE<S.ExtractKeyE>>
             | S.NextE<
-                TaggedUnionE<
+                UnionE<
                   {
-                    [K in keyof Props]: Props[K] extends S.SchemaAny
-                      ? S.TaggedUnionMemberE<
-                          S.ParsedShapeOf<Props[K]>[Key],
-                          S.ParserErrorOf<Props[K]>
-                        >
-                      : never
+                    [K in keyof Props]: S.UnionMemberE<
+                      Props[K] extends S.SchemaAny
+                        ? S.KeyedMemberE<
+                            S.ParsedShapeOf<Props[K]>[Key],
+                            S.ParserErrorOf<Props[K]>
+                          >
+                        : never
+                    >
                   }[number]
                 >
               >
@@ -240,19 +246,21 @@ export function makeTagged<Key extends string>(key: Key) {
                   S.compositionE(
                     Chunk.single(
                       S.nextE(
-                        new S.TaggedUnionE({
+                        new S.UnionE({
                           errors: Chunk.single(
-                            new S.TaggedUnionMemberE({
-                              error: result.effect.left,
-                              key: tag
-                            }) as {
-                              [K in keyof Props]: Props[K] extends S.SchemaAny
-                                ? S.TaggedUnionMemberE<
-                                    S.ParsedShapeOf<Props[K]>[Key],
-                                    S.ParserErrorOf<Props[K]>
-                                  >
-                                : never
-                            }[number]
+                            new S.UnionMemberE({
+                              error: new S.KeyedMemberE({
+                                error: result.effect.left,
+                                key: tag
+                              }) as {
+                                [K in keyof Props]: Props[K] extends S.SchemaAny
+                                  ? S.KeyedMemberE<
+                                      S.ParsedShapeOf<Props[K]>[Key],
+                                      S.ConstructedShapeOf<Props[K]>
+                                    >
+                                  : never
+                              }[number]
+                            })
                           )
                         })
                       )
@@ -267,19 +275,21 @@ export function makeTagged<Key extends string>(key: Key) {
                     S.compositionE(
                       Chunk.single(
                         S.nextE(
-                          new S.TaggedUnionE({
+                          new S.UnionE({
                             errors: Chunk.single(
-                              new S.TaggedUnionMemberE({
-                                error: warnings.value,
-                                key: tag
-                              }) as {
-                                [K in keyof Props]: Props[K] extends S.SchemaAny
-                                  ? S.TaggedUnionMemberE<
-                                      S.ParsedShapeOf<Props[K]>[Key],
-                                      S.ParserErrorOf<Props[K]>
-                                    >
-                                  : never
-                              }[number]
+                              new S.UnionMemberE({
+                                error: new S.KeyedMemberE({
+                                  error: warnings.value,
+                                  key: tag
+                                }) as {
+                                  [K in keyof Props]: Props[K] extends S.SchemaAny
+                                    ? S.KeyedMemberE<
+                                        S.ParsedShapeOf<Props[K]>[Key],
+                                        S.ConstructedShapeOf<Props[K]>
+                                      >
+                                    : never
+                                }[number]
+                              })
                             )
                           })
                         )
@@ -295,9 +305,7 @@ export function makeTagged<Key extends string>(key: Key) {
           return Th.fail(
             S.compositionE(
               Chunk.single(
-                S.prevE(
-                  S.leafE(new S.TaggedUnionExtractKeyE({ field: key, actual: u, keys }))
-                )
+                S.prevE(S.leafE(new S.ExtractKeyE({ field: key, actual: u, keys })))
               )
             )
           )
@@ -311,14 +319,16 @@ export function makeTagged<Key extends string>(key: Key) {
               : never
           }[number]
         ): Th.These<
-          TaggedUnionE<
+          UnionE<
             {
-              [K in keyof Props]: Props[K] extends S.SchemaAny
-                ? S.TaggedUnionMemberE<
-                    S.ConstructedShapeOf<Props[K]>[Key],
-                    S.ConstructorErrorOf<Props[K]>
-                  >
-                : never
+              [K in keyof Props]: S.UnionMemberE<
+                Props[K] extends S.SchemaAny
+                  ? S.KeyedMemberE<
+                      S.ConstructedShapeOf<Props[K]>[Key],
+                      S.ConstructorErrorOf<Props[K]>
+                    >
+                  : never
+              >
             }[number]
           >,
           {
@@ -335,19 +345,21 @@ export function makeTagged<Key extends string>(key: Key) {
 
           if (result.effect._tag === "Left") {
             return Th.fail(
-              new S.TaggedUnionE({
+              new S.UnionE({
                 errors: Chunk.single(
-                  new S.TaggedUnionMemberE({
-                    error: result.effect.left,
-                    key: tag
-                  }) as {
-                    [K in keyof Props]: Props[K] extends S.SchemaAny
-                      ? S.TaggedUnionMemberE<
-                          S.ConstructedShapeOf<Props[K]>[Key],
-                          S.ConstructorErrorOf<Props[K]>
-                        >
-                      : never
-                  }[number]
+                  new S.UnionMemberE({
+                    error: new S.KeyedMemberE({
+                      error: result.effect.left,
+                      key: tag
+                    }) as {
+                      [K in keyof Props]: Props[K] extends S.SchemaAny
+                        ? S.KeyedMemberE<
+                            S.ConstructedShapeOf<Props[K]>[Key],
+                            S.ConstructorErrorOf<Props[K]>
+                          >
+                        : never
+                    }[number]
+                  })
                 )
               })
             )
@@ -358,19 +370,21 @@ export function makeTagged<Key extends string>(key: Key) {
           if (warnings._tag === "Some") {
             return Th.warn(
               result.effect.right.get(0) as any,
-              new S.TaggedUnionE({
+              new S.UnionE({
                 errors: Chunk.single(
-                  new S.TaggedUnionMemberE({
-                    error: warnings.value,
-                    key: tag
-                  }) as {
-                    [K in keyof Props]: Props[K] extends S.SchemaAny
-                      ? S.TaggedUnionMemberE<
-                          S.ConstructedShapeOf<Props[K]>[Key],
-                          S.ConstructorErrorOf<Props[K]>
-                        >
-                      : never
-                  }[number]
+                  new S.UnionMemberE({
+                    error: new S.KeyedMemberE({
+                      error: warnings.value,
+                      key: tag
+                    }) as {
+                      [K in keyof Props]: Props[K] extends S.SchemaAny
+                        ? S.KeyedMemberE<
+                            S.ConstructedShapeOf<Props[K]>[Key],
+                            S.ConstructorErrorOf<Props[K]>
+                          >
+                        : never
+                    }[number]
+                  })
                 )
               })
             )

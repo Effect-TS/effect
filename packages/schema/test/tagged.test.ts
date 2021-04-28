@@ -52,7 +52,25 @@ describe("Tagged Union", () => {
 
     if (result_miss_tag._tag === "Left") {
       expect(result_miss_tag.left.message).equals(
-        'cannot extract tagged key _tag from {"_key":"Add","x":1,"y":2}, expected one of Add, Mul'
+        'cannot extract key _tag from {"_key":"Add","x":1,"y":2}, expected one of Add, Mul'
+      )
+    }
+
+    const result_bad_element = await T.runPromise(
+      T.either(parseOperation({ _tag: "Add", x: 1, y: "2" }))
+    )
+
+    expect(result_bad_element._tag).equals("Left")
+
+    if (result_bad_element._tag === "Left") {
+      expect(result_bad_element.left.message).equals(
+        "1 error(s) found while processing a union\n" +
+          "└─ 1 error(s) found while processing a union member\n" +
+          '   └─ 1 error(s) found while processing the meber "Add"\n' +
+          "      └─ 1 error(s) found while processing a struct\n" +
+          '         └─ 1 error(s) found while processing required key "y"\n' +
+          "            └─ 1 error(s) found while processing a refinement\n" +
+          '               └─ cannot process "2", expected a number'
       )
     }
 
