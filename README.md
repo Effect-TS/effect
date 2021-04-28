@@ -45,6 +45,11 @@ We recommend the usage of `yarn` and if you have multiple packages the usage of 
 yarn add @effect-ts/core
 ```
 
+## tsconfig
+
+It's important to make sure 'strict' is enabled.
+For a recommended sample config, see https://github.com/Effect-TS/core/blob/master/tsconfig.base.json
+
 ## Get in touch
 
 Join us using discord at: [https://discord.gg/hdt7t7jpvn](https://discord.gg/hdt7t7jpvn)
