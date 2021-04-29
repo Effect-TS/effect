@@ -8,7 +8,7 @@ export interface CaseBrand {
   [CaseBrand]: string[]
 }
 
-export function isCase(self: unknown): self is CaseBrand {
+export function hasCaseBrand(self: unknown): self is CaseBrand {
   return typeof self === "object" && self != null && CaseBrand in self
 }
 
@@ -64,7 +64,7 @@ export const Case: {
     if (this === that) {
       return true
     }
-    if (isCase(that)) {
+    if (that instanceof this.constructor) {
       const kthat = that[CaseBrand]
       const len = kthat.length
 
