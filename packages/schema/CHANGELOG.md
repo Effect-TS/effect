@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.1.0](https://github.com/Effect-TS/core/compare/@effect-ts/schema@0.0.4...@effect-ts/schema@0.1.0) (2021-04-29)
+
+
+### Bug Fixes
+
+* **case:** fix case classes behaving incorrectly with webpack ([6222fc9](https://github.com/Effect-TS/core/commit/6222fc96e7491e3a4a2fea5f3eaef6dcc43e335d))
+
+
+
+
+
 ## [0.0.4](https://github.com/Effect-TS/core/compare/@effect-ts/schema@0.0.3...@effect-ts/schema@0.0.4) (2021-04-29)
 
 **Note:** Version bump only for package @effect-ts/schema

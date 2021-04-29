@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.34.0](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.33.5...@effect-ts/system@0.34.0) (2021-04-29)
+
+
+### Bug Fixes
+
+* **case:** fix case classes behaving incorrectly with webpack ([6222fc9](https://github.com/Effect-TS/core/commit/6222fc96e7491e3a4a2fea5f3eaef6dcc43e335d))
+
+
+
+
+
 ## [0.33.5](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.33.4...@effect-ts/system@0.33.5) (2021-04-29)
 
 
