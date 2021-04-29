@@ -89,7 +89,7 @@ export function recursive<
   return new SchemaRecursive(f)
 }
 
-export function named<Name extends string>(name: string) {
+export function named<Name extends string>(name: Name) {
   return <
     ParserInput,
     ParserError,
