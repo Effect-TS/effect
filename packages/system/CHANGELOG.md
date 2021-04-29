@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.33.5](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.33.4...@effect-ts/system@0.33.5) (2021-04-29)
+
+
+### Features
+
+* **experimental/stream:** added aggregation, broadcasting and other combinators ([0e92dd7](https://github.com/Effect-TS/core/commit/0e92dd78104841c72ae4daff77f9cd960df8331e))
+
+
+
+
+
 ## [0.33.4](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.33.3...@effect-ts/system@0.33.4) (2021-04-27)
 
 
