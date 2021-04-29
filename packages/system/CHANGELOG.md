@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.34.2](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.34.1...@effect-ts/system@0.34.2) (2021-04-29)
+
+
+### Features
+
+* **case:** improve equals ([5c292c2](https://github.com/Effect-TS/core/commit/5c292c2f8db5409e75dd484165fe35d19ae2f7ce))
+* **case:** remove old trick ([4a0261a](https://github.com/Effect-TS/core/commit/4a0261aed0e908bd2dc1d4deb6ba9f1a776d2f8a))
+
+
+
+
+
 ## [0.34.1](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.34.0...@effect-ts/system@0.34.1) (2021-04-29)
 
 
