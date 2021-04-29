@@ -14,12 +14,17 @@ export function hasCaseBrand(self: unknown): self is CaseBrand {
 
 const h0 = St.hashString("@effect-ts/system/Case")
 
-export const Case: {
-  new <T>(args: {} extends T ? void : T): T &
-    CaseBrand &
-    St.HasHash &
-    St.HasEquals & { copy(args: {} extends T ? void : Partial<T>): T }
-} = <any>class<T> implements CaseBrand, St.HasHash, St.HasEquals {
+export interface Copy<T> {
+  copy(args: {} extends T ? void : Partial<T>): this
+}
+
+export interface CaseConstructor {
+  new <T>(args: {} extends T ? void : T): T & Copy<T>
+}
+
+// @ts-expect-error
+export const Case: CaseConstructor = class<T>
+  implements CaseBrand, St.HasHash, St.HasEquals {
   #args: T
   #keys: string[]
   constructor(args: T) {
