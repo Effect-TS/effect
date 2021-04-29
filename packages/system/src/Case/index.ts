@@ -23,10 +23,10 @@ export function isCase(self: unknown): self is CaseBrand {
 const h0 = St.hashString("@effect-ts/system/Case")
 
 export const Case: {
-  new <T>(args: unknown extends T ? void : T): T &
+  new <T>(args: {} extends T ? void : T): T &
     CaseBrand &
     St.HasHash &
-    St.HasEquals & { copy(args: unknown extends T ? void : Partial<T>): T }
+    St.HasEquals & { copy(args: {} extends T ? void : Partial<T>): T }
 } = <any>class<T> implements CaseBrand, St.HasHash, St.HasEquals {
   #args: T
   #keys: string[]
