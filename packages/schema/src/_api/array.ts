@@ -19,20 +19,25 @@ export function array<Self extends S.SchemaAny>(
     | S.PrevE<S.RefinementE<S.LeafE<S.UnknownArrayE>>>
     | S.NextE<S.CollectionE<S.OptionalIndexE<number, S.ParserErrorOf<Self>>>>
   >,
-  readonly Self[],
+  readonly S.ParsedShapeOf<Self>[],
   Iterable<S.ConstructorInputOf<Self>>,
   S.CollectionE<S.OptionalIndexE<number, S.ConstructorErrorOf<Self>>>,
-  readonly Self[],
-  readonly Self[],
+  readonly S.ConstructedShapeOf<Self>[],
+  readonly S.EncodedOf<Self>[],
   S.ApiOf<Self>
 > {
   const guardSelf = Guard.for(self)
   const arbitrarySelf = Arbitrary.for(self)
 
   const fromChunk = pipe(
-    S.identity((u): u is readonly Self[] => Array.isArray(u) && u.every(guardSelf)),
-    S.parser((u: Chunk.Chunk<Self>) => Th.succeed(Chunk.toArray(u))),
-    S.constructor((u: Chunk.Chunk<Self>) => Th.succeed(Chunk.toArray(u))),
+    S.identity(
+      (u): u is readonly S.ParsedShapeOf<Self>[] =>
+        Array.isArray(u) && u.every(guardSelf)
+    ),
+    S.parser((u: Chunk.Chunk<S.ParsedShapeOf<Self>>) => Th.succeed(Chunk.toArray(u))),
+    S.constructor((u: Chunk.Chunk<S.ConstructedShapeOf<Self>>) =>
+      Th.succeed(Chunk.toArray(u))
+    ),
     S.arbitrary((_) => _.array(arbitrarySelf(_)))
   )
 
