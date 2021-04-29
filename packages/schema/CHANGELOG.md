@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.1.5](https://github.com/Effect-TS/core/compare/@effect-ts/schema@0.1.4...@effect-ts/schema@0.1.5) (2021-04-29)
+
+
+### Bug Fixes
+
+* **schema:** fix array types ([920d10f](https://github.com/Effect-TS/core/commit/920d10f06cbe47d865f3155377ec671da34b6ef2))
+
+
+
+
+
 ## [0.1.4](https://github.com/Effect-TS/core/compare/@effect-ts/schema@0.1.3...@effect-ts/schema@0.1.4) (2021-04-29)
 
 **Note:** Version bump only for package @effect-ts/schema
