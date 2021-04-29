@@ -5,7 +5,7 @@ import { LazyGetter } from "../src/Utils"
 
 describe("Case Class", () => {
   it("should work with equal and hash", () => {
-    class Person extends Case.Case<{
+    class Person extends Case.Tagged("Person")<{
       readonly firstName: string
       readonly lastName: string
     }> {}
@@ -15,10 +15,10 @@ describe("Case Class", () => {
     const newPerson = person.copy({ firstName: "Mike" })
 
     expect(JSON.stringify(person)).toEqual(
-      '{"firstName":"Michael","lastName":"Arnaldi"}'
+      '{"firstName":"Michael","lastName":"Arnaldi","_tag":"Person"}'
     )
     expect(JSON.stringify(newPerson)).toEqual(
-      '{"firstName":"Mike","lastName":"Arnaldi"}'
+      '{"firstName":"Mike","lastName":"Arnaldi","_tag":"Person"}'
     )
     expect(person).not.equals(newPerson)
     expect(person).equals(personEq)
