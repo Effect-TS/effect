@@ -5,10 +5,10 @@ import { LazyGetter } from "../src/Utils"
 
 describe("Case Class", () => {
   it("should work with equal and hash", () => {
-    class Person extends Case.Case<Person> {
-      readonly firstName: string = "OO"
-      readonly lastName!: string
-    }
+    class Person extends Case.Case<{
+      readonly firstName: string
+      readonly lastName: string
+    }> {}
 
     const person = new Person({ firstName: "Michael", lastName: "Arnaldi" })
     const personEq = new Person({ lastName: "Arnaldi", firstName: "Michael" })
@@ -35,16 +35,15 @@ describe("Case Class", () => {
 
       @LazyGetter()
       get [S.hashSym](): number {
-        console.log("HERE", this.k)
         return S.hashString(this.k)
       }
     }
 
-    class Person extends Case.Case<Person> {
-      readonly key!: Key
-      readonly firstName!: string
-      readonly lastName!: string
-    }
+    class Person extends Case.Case<{
+      readonly key: Key
+      readonly firstName: string
+      readonly lastName: string
+    }> {}
 
     const personA = new Person({
       firstName: "Michael",

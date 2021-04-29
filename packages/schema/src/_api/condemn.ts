@@ -22,9 +22,8 @@ export function condemn<X, E, A>(self: (a: X) => These<E, A>): (a: X) => T.IO<E,
     })
 }
 
-export class CondemnException extends Case<CondemnException, "_tag" | "toString"> {
+export class CondemnException extends Case<{ readonly message: string }> {
   readonly _tag = "CondemnException"
-  readonly message!: string
 
   toString() {
     return this.message

@@ -3,9 +3,8 @@
 // based on the work of Giulio Canti in io-ts (3.x poc stage)
 
 import { flow } from "@effect-ts/core/Function"
+import { Case } from "@effect-ts/system/Case"
 import * as Chunk from "@effect-ts/system/Collections/Immutable/Chunk"
-
-import { Data } from "./data"
 
 export interface Actual<A> {
   readonly actual: A
@@ -60,13 +59,16 @@ export interface HasDefaultLeafE {
   readonly [toTreeSymbol]: Tree<string>
 }
 
-export abstract class DefaultLeafE<T> extends Data<T> implements HasDefaultLeafE {
+// @ts-expect-error
+export abstract class DefaultLeafE<T extends object>
+  extends Case<T>
+  implements HasDefaultLeafE {
   readonly [defaultLeafSymbol] = defaultLeafSymbol
 
   abstract get [toTreeSymbol](): Tree<string>
 }
 
-export function isDefaultLeaf<T>(t: T): t is DefaultLeafE<T> & T {
+export function isDefaultLeaf<T extends object>(t: T): t is DefaultLeafE<T> & T {
   return typeof t === "object" && t != null && defaultLeafSymbol in t
 }
 
@@ -76,20 +78,24 @@ export type AnyError = SchemaError<LeafError>
 // Schema Errors
 //
 
-export class UnionE<E> extends Data<UnionE<E>> implements CompoundE<E> {
+export class UnionE<E>
+  extends Case<{ readonly errors: Chunk.Chunk<E> }>
+  implements CompoundE<E> {
   readonly _tag = "Union"
-  readonly errors!: Chunk.Chunk<E>
 }
 
 export function unionE<E>(errors: Chunk.Chunk<E>): UnionE<E> {
   return new UnionE({ errors })
 }
 
-export class ExtractKeyE extends DefaultLeafE<ExtractKeyE> implements Actual<unknown> {
+export class ExtractKeyE
+  extends DefaultLeafE<{
+    readonly field: string
+    readonly keys: readonly string[]
+    readonly actual: unknown
+  }>
+  implements Actual<unknown> {
   readonly _tag = "ExtractKey"
-  readonly field!: string
-  readonly keys!: readonly string[]
-  readonly actual!: unknown
 
   get [toTreeSymbol](): Tree<string> {
     return tree(
@@ -104,36 +110,32 @@ export function extractKeyE(field: string, keys: readonly string[], actual: unkn
   return new ExtractKeyE({ actual, field, keys })
 }
 
-export class LeafE<E> extends Data<LeafE<E>> implements SingleE<E> {
+export class LeafE<E> extends Case<{ readonly error: E }> implements SingleE<E> {
   readonly _tag = "Leaf"
-  readonly error!: E
 }
 
 export function leafE<E>(e: E): LeafE<E> {
   return new LeafE({ error: e })
 }
 
-export class PrevE<E> extends Data<PrevE<E>> implements SingleE<E> {
+export class PrevE<E> extends Case<{ readonly error: E }> implements SingleE<E> {
   readonly _tag = "Prev"
-  readonly error!: E
 }
 
 export function prevE<E>(e: E): PrevE<E> {
   return new PrevE({ error: e })
 }
 
-export class NextE<E> extends Data<NextE<E>> implements SingleE<E> {
+export class NextE<E> extends Case<{ readonly error: E }> implements SingleE<E> {
   readonly _tag = "Next"
-  readonly error!: E
 }
 
 export function nextE<E>(e: E): NextE<E> {
   return new NextE({ error: e })
 }
 
-export class RefinementE<E> extends Data<RefinementE<E>> implements SingleE<E> {
+export class RefinementE<E> extends Case<{ readonly error: E }> implements SingleE<E> {
   readonly _tag = "Refinement"
-  readonly error!: E
 }
 
 export function refinementE<E>(e: E): RefinementE<E> {
@@ -141,29 +143,32 @@ export function refinementE<E>(e: E): RefinementE<E> {
 }
 
 export class NamedE<Name extends string, E>
-  extends Data<NamedE<Name, E>>
+  extends Case<{
+    readonly name: Name
+    readonly error: E
+  }>
   implements SingleE<E> {
   readonly _tag = "Named"
-  readonly name!: string
-  readonly error!: E
 }
 
 export function namedE<N extends string, E>(name: N, error: E): NamedE<N, E> {
   return new NamedE({ error, name })
 }
 
-export class StructE<E> extends Data<StructE<E>> implements CompoundE<E> {
+export class StructE<E>
+  extends Case<{ readonly errors: Chunk.Chunk<E> }>
+  implements CompoundE<E> {
   readonly _tag = "Struct"
-  readonly errors!: Chunk.Chunk<E>
 }
 
 export function structE<E>(errors: Chunk.Chunk<E>): StructE<E> {
   return new StructE({ errors })
 }
 
-export class CollectionE<E> extends Data<CollectionE<E>> implements CompoundE<E> {
+export class CollectionE<E>
+  extends Case<{ readonly errors: Chunk.Chunk<E> }>
+  implements CompoundE<E> {
   readonly _tag = "Collection"
-  readonly errors!: Chunk.Chunk<E>
 }
 
 export function chunkE<E>(errors: Chunk.Chunk<E>): CollectionE<E> {
@@ -171,10 +176,9 @@ export function chunkE<E>(errors: Chunk.Chunk<E>): CollectionE<E> {
 }
 
 export class UnknownArrayE
-  extends DefaultLeafE<UnknownArrayE>
+  extends DefaultLeafE<{ readonly actual: unknown }>
   implements Actual<unknown> {
   readonly _tag = "NotArray"
-  readonly actual!: unknown
 
   get [toTreeSymbol]() {
     return tree(`cannot process ${JSON.stringify(this.actual)}, expected an array`)
@@ -185,20 +189,26 @@ export function unknownArrayE(actual: unknown): UnknownArrayE {
   return new UnknownArrayE({ actual })
 }
 
-export class RequiredKeyE<K, E> extends Data<RequiredKeyE<K, E>> implements SingleE<E> {
+export class RequiredKeyE<K, E>
+  extends Case<{
+    readonly error: E
+    readonly key: K
+  }>
+  implements SingleE<E> {
   readonly _tag = "RequiredKey"
-  readonly error!: E
-  readonly key!: K
 }
 
 export function requiredKeyE<K, E>(key: K, error: E): RequiredKeyE<K, E> {
   return new RequiredKeyE({ error, key })
 }
 
-export class OptionalKeyE<K, E> extends Data<OptionalKeyE<K, E>> implements SingleE<E> {
+export class OptionalKeyE<K, E>
+  extends Case<{
+    readonly error: E
+    readonly key: K
+  }>
+  implements SingleE<E> {
   readonly _tag = "OptionalKey"
-  readonly error!: E
-  readonly key!: K
 }
 
 export function optionalKeyE<K, E>(key: K, error: E): OptionalKeyE<K, E> {
@@ -206,29 +216,32 @@ export function optionalKeyE<K, E>(key: K, error: E): OptionalKeyE<K, E> {
 }
 
 export class OptionalIndexE<I, E>
-  extends Data<OptionalIndexE<I, E>>
+  extends Case<{
+    readonly index: I
+    readonly error: E
+  }>
   implements SingleE<E> {
   readonly _tag = "OptionalIndex"
-  readonly index!: I
-  readonly error!: E
 }
 
 export function optionalIndexE<K, E>(index: K, error: E): OptionalIndexE<K, E> {
   return new OptionalIndexE({ error, index })
 }
 
-export class MissingKeysE<K> extends Data<MissingKeysE<K>> {
+export class MissingKeysE<K> extends Case<{ readonly keys: Chunk.Chunk<K> }> {
   readonly _tag = "Missing"
-  readonly keys!: Chunk.Chunk<K>
 }
 
 export function missingKeysE<K>(keys: Chunk.Chunk<K>): MissingKeysE<K> {
   return new MissingKeysE({ keys })
 }
 
-export class CompositionE<E> extends Data<CompositionE<E>> implements CompoundE<E> {
+export class CompositionE<E>
+  extends Case<{
+    readonly errors: Chunk.Chunk<E>
+  }>
+  implements CompoundE<E> {
   readonly _tag = "Composition"
-  readonly errors!: Chunk.Chunk<E>
 }
 
 export function compositionE<E>(errors: Chunk.Chunk<E>): CompositionE<E> {
@@ -236,10 +249,9 @@ export function compositionE<E>(errors: Chunk.Chunk<E>): CompositionE<E> {
 }
 
 export class UnknownRecordE
-  extends DefaultLeafE<UnknownRecordE>
+  extends DefaultLeafE<{ readonly actual: unknown }>
   implements Actual<unknown> {
   readonly _tag = "NotRecord"
-  readonly actual!: unknown
 
   get [toTreeSymbol]() {
     return tree(`cannot process ${JSON.stringify(this.actual)}, expected a record`)
@@ -250,19 +262,25 @@ export function unknownRecordE(actual: unknown): UnknownRecordE {
   return new UnknownRecordE({ actual })
 }
 
-export class MemberE<M, E> extends Data<MemberE<M, E>> implements SingleE<E> {
+export class MemberE<M, E>
+  extends Case<{
+    readonly member: M
+    readonly error: E
+  }>
+  implements SingleE<E> {
   readonly _tag = "Member"
-  readonly member!: M
-  readonly error!: E
 }
 
 export function memberE<M, E>(member: M, error: E): MemberE<M, E> {
   return new MemberE({ error, member })
 }
 
-export class IntersectionE<E> extends Data<IntersectionE<E>> implements CompoundE<E> {
+export class IntersectionE<E>
+  extends Case<{
+    readonly errors: Chunk.Chunk<E>
+  }>
+  implements CompoundE<E> {
   readonly _tag = "Intersection"
-  readonly errors!: Chunk.Chunk<E>
 }
 
 export function intersectionE<E>(errors: Chunk.Chunk<E>): IntersectionE<E> {
@@ -273,9 +291,12 @@ export function intersectionE<E>(errors: Chunk.Chunk<E>): IntersectionE<E> {
 // Builtin
 //
 
-export class ParseDateE extends DefaultLeafE<ParseDateE> implements Actual<unknown> {
+export class ParseDateE
+  extends DefaultLeafE<{
+    readonly actual: unknown
+  }>
+  implements Actual<unknown> {
   readonly _tag = "NotDateString"
-  readonly actual!: unknown
 
   get [toTreeSymbol]() {
     return tree(`cannot process ${JSON.stringify(this.actual)}, expected a date string`)
@@ -287,10 +308,11 @@ export function parseDateE(actual: unknown): ParseDateE {
 }
 
 export class ParseDateMsE
-  extends DefaultLeafE<ParseDateMsE>
+  extends DefaultLeafE<{
+    readonly actual: unknown
+  }>
   implements Actual<unknown> {
   readonly _tag = "NotDateMs"
-  readonly actual!: unknown
 
   get [toTreeSymbol]() {
     return tree(`cannot process ${JSON.stringify(this.actual)}, expected a date in ms`)
@@ -302,11 +324,12 @@ export function parseDateMsE(actual: unknown): ParseDateMsE {
 }
 
 export class LiteralE<KS extends readonly string[]>
-  extends DefaultLeafE<LiteralE<KS>>
+  extends DefaultLeafE<{
+    readonly actual: unknown
+    readonly literals: KS
+  }>
   implements Actual<unknown> {
   readonly _tag = "Literal"
-  readonly actual!: unknown
-  readonly literals!: KS
 
   get [toTreeSymbol]() {
     return tree(
@@ -324,10 +347,11 @@ export function literalE<KS extends readonly string[]>(
 }
 
 export class InvalidIntegerE
-  extends DefaultLeafE<InvalidIntegerE>
+  extends DefaultLeafE<{
+    readonly actual: number
+  }>
   implements Actual<number> {
   readonly _tag = "NotInteger"
-  readonly actual!: number
 
   get [toTreeSymbol]() {
     return tree(`cannot process ${JSON.stringify(this.actual)}, expected an integer`)
@@ -338,9 +362,12 @@ export function invalidIntegerE(actual: number): InvalidIntegerE {
   return new InvalidIntegerE({ actual })
 }
 
-export class PositiveE extends DefaultLeafE<PositiveE> implements Actual<number> {
+export class PositiveE
+  extends DefaultLeafE<{
+    readonly actual: number
+  }>
+  implements Actual<number> {
   readonly _tag = "NotPositive"
-  readonly actual!: number
 
   get [toTreeSymbol]() {
     return tree(
@@ -353,9 +380,12 @@ export function positiveE(actual: number): PositiveE {
   return new PositiveE({ actual })
 }
 
-export class NonEmptyE<A> extends DefaultLeafE<NonEmptyE<A>> implements Actual<A> {
+export class NonEmptyE<A>
+  extends DefaultLeafE<{
+    readonly actual: A
+  }>
+  implements Actual<A> {
   readonly _tag = "NonEmpty"
-  readonly actual!: A
 
   get [toTreeSymbol]() {
     return tree(
@@ -369,10 +399,11 @@ export function nonEmptyE<A>(actual: A): NonEmptyE<A> {
 }
 
 export class ParseNumberE
-  extends DefaultLeafE<ParseNumberE>
+  extends DefaultLeafE<{
+    readonly actual: unknown
+  }>
   implements Actual<unknown> {
   readonly _tag = "NotNumber"
-  readonly actual!: unknown
 
   get [toTreeSymbol]() {
     return tree(`cannot process ${JSON.stringify(this.actual)}, expected a number`)
@@ -384,10 +415,11 @@ export function parseNumberE(actual: unknown): ParseNumberE {
 }
 
 export class ParseObjectE
-  extends DefaultLeafE<ParseObjectE>
+  extends DefaultLeafE<{
+    readonly actual: unknown
+  }>
   implements Actual<unknown> {
   readonly _tag = "NotObject"
-  readonly actual!: unknown
 
   get [toTreeSymbol]() {
     return tree(`cannot process ${JSON.stringify(this.actual)}, expected an object`)
@@ -399,10 +431,11 @@ export function parseObjectE(actual: unknown): ParseObjectE {
 }
 
 export class ParseStringE
-  extends DefaultLeafE<ParseStringE>
+  extends DefaultLeafE<{
+    readonly actual: unknown
+  }>
   implements Actual<unknown> {
   readonly _tag = "NotString"
-  readonly actual!: unknown
 
   get [toTreeSymbol]() {
     return tree(`cannot process ${JSON.stringify(this.actual)}, expected an string`)

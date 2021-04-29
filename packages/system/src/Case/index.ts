@@ -16,17 +16,21 @@ export interface CaseBrand {
   [CaseBrand]: string[]
 }
 
-export function isCase(self: unknown): self is Case<any, any> {
+export function isCase(self: unknown): self is CaseBrand {
   return typeof self === "object" && self != null && CaseBrand in self
 }
 
 const h0 = St.hashString("@effect-ts/system/Case")
 
-export class Case<T, K extends PropertyKey = never>
-  implements CaseBrand, St.HasHash, St.HasEquals {
-  #args: ConstructorArgs<T, K>
+export const Case: {
+  new <T>(args: unknown extends T ? void : T): T &
+    CaseBrand &
+    St.HasHash &
+    St.HasEquals & { copy(args: unknown extends T ? void : Partial<T>): T }
+} = <any>class<T> implements CaseBrand, St.HasHash, St.HasEquals {
+  #args: T
   #keys: string[]
-  constructor(args: ConstructorArgs<T, K>) {
+  constructor(args: T) {
     this.#args = args
 
     if (typeof args === "object" && args != null) {
@@ -47,7 +51,7 @@ export class Case<T, K extends PropertyKey = never>
     this.#keys = Object.keys(this).sort()
   }
 
-  copy(args: Partial<ConstructorArgs<T, K>>): this {
+  copy(args: Partial<T>): this {
     // @ts-expect-error
     return new this.constructor({ ...this.#args, ...args })
   }
