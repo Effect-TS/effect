@@ -3,6 +3,22 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.34.3](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.34.2...@effect-ts/system@0.34.3) (2021-04-29)
+
+
+### Bug Fixes
+
+* **case:** fix typing of copy ([6426f55](https://github.com/Effect-TS/core/commit/6426f5579bd574225c053e4dcedb8675f9f85f0c))
+
+
+### Features
+
+* **case:** tagged ([4d38ab4](https://github.com/Effect-TS/core/commit/4d38ab41891293b90d9bb007e374fcdd8d36911f))
+
+
+
+
+
 ## [0.34.2](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.34.1...@effect-ts/system@0.34.2) (2021-04-29)
 
 
