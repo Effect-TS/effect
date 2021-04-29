@@ -1,14 +1,6 @@
 // tracing: off
 
 import * as St from "../Structural"
-import type { Compute } from "../Utils"
-
-export type ConstructorArgs<T, K extends PropertyKey> = Compute<
-  {} extends Omit<T, "copy" | "toJSON" | "toString" | symbol | K>
-    ? void
-    : Omit<T, "copy" | "toJSON" | "toString" | symbol | K>,
-  "flat"
->
 
 export const CaseBrand = Symbol()
 
