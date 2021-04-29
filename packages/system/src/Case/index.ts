@@ -29,15 +29,7 @@ export const Case: {
       const keys = Object.keys(args)
 
       for (let i = 0; i < keys.length; i++) {
-        Object.defineProperty(this, keys[i]!, {
-          set(_: unknown) {
-            //
-          },
-          get() {
-            return args[keys[i]!]
-          },
-          enumerable: true
-        })
+        this[keys[i]!] = args[keys[i]!]
       }
     }
     this.#keys = Object.keys(this).sort()
