@@ -1,13 +1,48 @@
 // tracing: off
 
-import type * as O from "@effect-ts/core/Option"
+import * as O from "@effect-ts/core/Option"
 
-import type { Schema, SchemaAny } from "../../_schema"
+import * as S from "../../_schema"
 import { hasContinuation, SchemaContinuationSymbol } from "../../_schema"
 
 export type Guard<T> = { (u: unknown): u is T }
 
-export const interpreters: ((schema: SchemaAny) => O.Option<Guard<unknown>>)[] = []
+const interpreterCache = new WeakMap()
+const interpretedCache = new WeakMap()
+
+export const interpreters: ((schema: S.SchemaAny) => O.Option<Guard<unknown>>)[] = [
+  O.partial((miss) => (schema: S.SchemaAny): Guard<unknown> => {
+    if (schema instanceof S.SchemaGuard) {
+      return schema.guard
+    }
+    if (schema instanceof S.SchemaRecursive) {
+      if (interpreterCache.has(schema)) {
+        return interpreterCache.get(schema)
+      }
+      const parser = (u: unknown): u is unknown => {
+        if (interpretedCache.has(schema)) {
+          return interpretedCache.get(schema)(u)
+        }
+        const e = guardFor(schema.self(schema))
+        interpretedCache.set(schema, e)
+        return e(u)
+      }
+      interpreterCache.set(schema, parser)
+      return parser
+    }
+    if (schema instanceof S.SchemaIdentity) {
+      return schema.guard
+    }
+    if (schema instanceof S.SchemaCompose) {
+      return guardFor(schema.that)
+    }
+    if (schema instanceof S.SchemaRefinement) {
+      const self = guardFor(schema.self)
+      return (u): u is unknown => self(u) && schema.refinement(u)
+    }
+    return miss()
+  })
+]
 
 function guardFor<
   ParserInput,
@@ -19,7 +54,7 @@ function guardFor<
   Encoded,
   Api
 >(
-  schema: Schema<
+  schema: S.Schema<
     ParserInput,
     ParserError,
     ParsedShape,

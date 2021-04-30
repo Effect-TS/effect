@@ -32,24 +32,12 @@
     "fast-check": ">= 2.14.0"
   },
   "config": {
-    "side": [
-      "Arbitrary/Init",
-      "Constructor/Init",
-      "Encoder/Init",
-      "Guard/Init",
-      "Parser/Init"
-    ],
     "modules": [
       "Arbitrary",
-      "Arbitrary/Init",
       "Constructor",
-      "Constructor/Init",
       "Encoder",
-      "Encoder/Init",
       "Guard",
-      "Guard/Init",
       "Parser",
-      "Parser/Init",
       "These"
     ]
   }

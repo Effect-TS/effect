@@ -1,14 +1,49 @@
 // tracing: off
 
-import type * as O from "@effect-ts/core/Option"
+import * as O from "@effect-ts/core/Option"
 import type * as fc from "fast-check"
 
-import type { Schema, SchemaAny } from "../../_schema"
+import * as S from "../../_schema"
 import { hasContinuation, SchemaContinuationSymbol } from "../../_schema"
 
 export type Gen<T> = { (_: typeof fc): fc.Arbitrary<T> }
 
-export const interpreters: ((schema: SchemaAny) => O.Option<Gen<unknown>>)[] = []
+const interpreterCache = new WeakMap()
+const interpretedCache = new WeakMap()
+
+export const interpreters: ((schema: S.SchemaAny) => O.Option<Gen<unknown>>)[] = [
+  O.partial((miss) => (schema: S.SchemaAny): Gen<unknown> => {
+    if (schema instanceof S.SchemaRecursive) {
+      if (interpreterCache.has(schema)) {
+        return interpreterCache.get(schema)
+      }
+      const parser = (_: typeof fc) => {
+        if (interpretedCache.has(schema)) {
+          return interpretedCache.get(schema)
+        }
+        const e = for_(schema.self(schema))(_)
+        interpretedCache.set(schema, e)
+        return e
+      }
+      interpreterCache.set(schema, parser)
+      return parser
+    }
+    if (schema instanceof S.SchemaIdentity) {
+      return (_) => _.anything().filter(schema.guard)
+    }
+    if (schema instanceof S.SchemaCompose) {
+      return for_(schema.that)
+    }
+    if (schema instanceof S.SchemaArbitrary) {
+      return schema.arbitrary
+    }
+    if (schema instanceof S.SchemaRefinement) {
+      const self = for_(schema.self)
+      return (_) => self(_).filter(schema.refinement)
+    }
+    return miss()
+  })
+]
 
 function for_<
   ParserInput,
@@ -20,7 +55,7 @@ function for_<
   Encoded,
   Api
 >(
-  schema: Schema<
+  schema: S.Schema<
     ParserInput,
     ParserError,
     ParsedShape,
