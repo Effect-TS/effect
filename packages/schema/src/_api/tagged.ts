@@ -465,11 +465,14 @@ export function withTag<Key extends string, Value extends string>(
     ConstructorInput,
     ConstructorError,
     ConstructedShape & { readonly [k in Key]: Value },
-    Encoded,
+    Encoded & { readonly [k in Key]: Value },
     Api & { fields: { [k in Key]: TagApi<Value> } }
   > => {
     const parseSelf = Parser.for(self)
     const constructSelf = Constructor.for(self)
+    const arbSelf = Arbitrary.for(self)
+    const encodeSelf = Encoder.for(self)
+    const guardSelf = Guard.for(self)
     return pipe(
       self,
       S.parser((u: any): any => {
@@ -510,6 +513,26 @@ export function withTag<Key extends string, Value extends string>(
         }
         return Th.succeed(x)
       }),
+      S.arbitrary((_) =>
+        arbSelf(_).map((x) => {
+          // @ts-expect-error
+          x[key] = value
+          return x
+        })
+      ),
+      S.encoder((_) => {
+        const x = encodeSelf(_)
+        // @ts-expect-error
+        x[key] = value
+        return x
+      }),
+      S.guard(
+        (u): u is ParsedShape =>
+          guardSelf(u) &&
+          typeof u === "object" &&
+          u != null &&
+          (u as any)[key] === value
+      ),
       S.mapApi(() => ({
         ...self.Api,
         fields: { [key]: { value }, ...(self.Api["fields"] ? self.Api["fields"] : {}) }

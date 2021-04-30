@@ -2,6 +2,7 @@ import { pipe } from "@effect-ts/core/Function"
 import * as St from "@effect-ts/core/Structural"
 
 import * as S from "../_schema"
+import * as Arbitrary from "../Arbitrary"
 import * as Constructor from "../Constructor"
 import * as Parser from "../Parser"
 import * as Th from "../These"
@@ -120,6 +121,7 @@ export function schema<Self extends SchemedOut<any>>(self: Self) {
   const guard = (u: unknown): u is ShapeFromClass<Self> => u instanceof self
   const of_ = Constructor.for(self[schemaField])
   const parse_ = Parser.for(self[schemaField])
+  const arb = Arbitrary.for(self[schemaField])
 
   const schema = pipe(
     self[schemaField],
@@ -154,6 +156,14 @@ export function schema<Self extends SchemedOut<any>>(self: Self) {
       }
       return Th.succeed(x)
     }),
+    S.arbitrary((_) =>
+      arb(_).map((out) => {
+        // @ts-expect-error
+        const x = new self()
+        x[fromFields](out)
+        return x
+      })
+    ),
     S.mapApi(() => self[schemaField].Api)
   )
 

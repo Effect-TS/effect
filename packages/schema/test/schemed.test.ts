@@ -1,7 +1,9 @@
 import * as T from "@effect-ts/core/Effect"
 import { pipe } from "@effect-ts/core/Function"
+import * as FC from "fast-check"
 
 import * as MO from "../src"
+import * as Arbitrary from "../src/Arbitrary"
 import * as Guard from "../src/Guard"
 import * as Parser from "../src/Parser"
 
@@ -14,7 +16,7 @@ export class Person extends MO.Schemed(
     MO.withTag("_tag", "Person")
   )
 ) {
-  static schema = MO.schema(Person)
+  static Model = MO.schema(Person)
 }
 
 export class Animal extends MO.Schemed(
@@ -25,14 +27,14 @@ export class Animal extends MO.Schemed(
     MO.withTag("_tag", "Animal")
   )
 ) {
-  static schema = MO.schema(Animal)
+  static Model = MO.schema(Animal)
 }
 
-const PersonOrAnimal = MO.tagged(Person.schema, Animal.schema)
+const PersonOrAnimal = MO.tagged(Person.Model, Animal.Model)
 
-const parsePerson = Parser.for(Person.schema)["|>"](MO.condemnFail)
+const parsePerson = Parser.for(Person.Model)["|>"](MO.condemnFail)
 const parsePersonOrAnimal = Parser.for(PersonOrAnimal)["|>"](MO.condemnFail)
-const isPerson = Guard.for(Person.schema)
+const isPerson = Guard.for(Person.Model)
 
 describe("Schemed", () => {
   it("construct objects", () => {
@@ -65,5 +67,8 @@ describe("Schemed", () => {
 
     expect(isPerson(person)).toEqual(true)
     expect(person).equals(person2)
+  })
+  it("arbitrary", async () => {
+    FC.check(FC.property(Arbitrary.for(Person.Model)(FC), isPerson))
   })
 })
