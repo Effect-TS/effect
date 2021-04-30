@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.1.9](https://github.com/Effect-TS/core/compare/@effect-ts/schema@0.1.8...@effect-ts/schema@0.1.9) (2021-04-30)
+
+
+### Features
+
+* **schema:** bundle default interpreters ([6b573d1](https://github.com/Effect-TS/core/commit/6b573d122b808a92c5bcaca6fe9754c016fb2999))
+
+
+
+
+
 ## [0.1.8](https://github.com/Effect-TS/core/compare/@effect-ts/schema@0.1.7...@effect-ts/schema@0.1.8) (2021-04-30)
 
 
