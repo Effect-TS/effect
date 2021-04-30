@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.1.6](https://github.com/Effect-TS/core/compare/@effect-ts/schema@0.1.5...@effect-ts/schema@0.1.6) (2021-04-30)
+
+
+### Features
+
+* **schema:** arbitraries and guards for schemed ([80f7bcc](https://github.com/Effect-TS/core/commit/80f7bccd9a11f81dc97d409e5fff3b9afb80eea4))
+* **schema:** preliminary work on schemed classes ([4d209b6](https://github.com/Effect-TS/core/commit/4d209b6a327b9573d850af4701542afc8bc52c18))
+
+
+
+
+
 ## [0.1.5](https://github.com/Effect-TS/core/compare/@effect-ts/schema@0.1.4...@effect-ts/schema@0.1.5) (2021-04-29)
 
 
