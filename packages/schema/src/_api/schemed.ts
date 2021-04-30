@@ -43,9 +43,13 @@ export type SchemaForSchemed<Self extends SchemedOut<any>> = S.Schema<
   S.ApiOf<Self[schemaField]> & S.ApiSelfType<ShapeFromSchemedOut<Self>>
 >
 
+export interface Copy {
+  copy(args: {} extends this ? void : Partial<Omit<this, "copy">>): this
+}
+
 export interface Schemed<Self extends S.SchemaAny> {
   [schemaField]: Self
-  new (_: S.ConstructorInputOf<Self>): S.ParsedShapeOf<Self>
+  new (_: S.ConstructorInputOf<Self>): S.ParsedShapeOf<Self> & Copy
 }
 
 type ShapeFromClass<
@@ -77,6 +81,12 @@ export function Schemed<Self extends S.Schema<any, any, any, any, any, any, any,
       for (const k of Object.keys(fields)) {
         this[k] = fields[k]
       }
+    }
+    copy(partial: any) {
+      // @ts-expect-error
+      const inst = new this.constructor()
+      inst[fromFields]({ ...this, ...partial })
+      return inst
     }
     get [St.hashSym](): number {
       const ka = Object.keys(this).sort()

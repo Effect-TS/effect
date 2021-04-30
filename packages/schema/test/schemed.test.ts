@@ -41,6 +41,8 @@ describe("Schemed", () => {
     const person = new Person({ firstName: "Mike", lastName: "Arnaldi" })
     expect(person._tag).toEqual("Person")
     expect(isPerson(person)).toEqual(true)
+    const newPerson = person.copy({ firstName: "Michael" })
+    expect(newPerson).equals(new Person({ firstName: "Michael", lastName: "Arnaldi" }))
   })
   it("parse person", async () => {
     const person = await T.runPromise(
