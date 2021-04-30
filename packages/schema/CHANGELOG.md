@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.1.7](https://github.com/Effect-TS/core/compare/@effect-ts/schema@0.1.6...@effect-ts/schema@0.1.7) (2021-04-30)
+
+
+### Features
+
+* **schema:** add copy method to schemed ([102e997](https://github.com/Effect-TS/core/commit/102e9979bf8fb69e953869b1b346a7976efa7c36))
+
+
+
+
+
 ## [0.1.6](https://github.com/Effect-TS/core/compare/@effect-ts/schema@0.1.5...@effect-ts/schema@0.1.6) (2021-04-30)
 
 
