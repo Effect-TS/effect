@@ -434,3 +434,86 @@ export function makeTagged<Key extends string>(key: Key) {
 }
 
 export const tagged = makeTagged("_tag")
+
+export function withTag<Key extends string, Value extends string>(
+  key: Key,
+  value: Value
+) {
+  return <
+    ParserError,
+    ParsedShape,
+    ConstructorInput,
+    ConstructorError,
+    ConstructedShape extends ParsedShape,
+    Encoded,
+    Api
+  >(
+    self: S.Schema<
+      unknown,
+      ParserError,
+      ParsedShape,
+      ConstructorInput,
+      ConstructorError,
+      ConstructedShape,
+      Encoded,
+      Api
+    >
+  ): S.Schema<
+    unknown,
+    S.CompositionE<S.PrevE<S.LeafE<S.ExtractKeyE>> | S.NextE<ParserError>>,
+    ParsedShape & { readonly [k in Key]: Value },
+    ConstructorInput,
+    ConstructorError,
+    ConstructedShape & { readonly [k in Key]: Value },
+    Encoded,
+    Api & { fields: { [k in Key]: TagApi<Value> } }
+  > => {
+    const parseSelf = Parser.for(self)
+    const constructSelf = Constructor.for(self)
+    return pipe(
+      self,
+      S.parser((u: any): any => {
+        if (typeof u !== "object" || u == null || u[key] !== value) {
+          return Th.fail(
+            S.compositionE(
+              Chunk.single(S.prevE(S.leafE(S.extractKeyE(key, [value], u))))
+            )
+          )
+        }
+        const res = parseSelf(u)
+        if (res.effect._tag === "Left") {
+          return Th.fail(S.compositionE(Chunk.single(S.nextE(res.effect.left))))
+        }
+        const warnings = res.effect.right.get(1)
+        const x = res.effect.right.get(0)
+        // @ts-expect-error
+        x[key] = value
+        if (warnings._tag === "Some") {
+          return Th.warn(
+            S.compositionE(Chunk.single(S.nextE(warnings))),
+            warnings.value
+          )
+        }
+        return Th.succeed(x)
+      }),
+      S.constructor((u: any): any => {
+        const res = constructSelf(u)
+        if (res.effect._tag === "Left") {
+          return Th.fail(res.effect.left)
+        }
+        const warnings = res.effect.right.get(1)
+        const x = res.effect.right.get(0)
+        // @ts-expect-error
+        x[key] = value
+        if (warnings._tag === "Some") {
+          return Th.warn(warnings, warnings.value)
+        }
+        return Th.succeed(x)
+      }),
+      S.mapApi(() => ({
+        ...self.Api,
+        fields: { [key]: { value }, ...(self.Api["fields"] ? self.Api["fields"] : {}) }
+      }))
+    ) as any
+  }
+}

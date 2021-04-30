@@ -705,3 +705,45 @@ export class SchemaIdentified<
     super()
   }
 }
+
+export class SchemaGuard<
+    ParserInput,
+    ParserError,
+    ParsedShape,
+    ConstructorInput,
+    ConstructorError,
+    ConstructedShape extends ParsedShape,
+    Encoded,
+    Api
+  >
+  extends Schema<
+    ParserInput,
+    ParserError,
+    ParsedShape,
+    ConstructorInput,
+    ConstructorError,
+    ConstructedShape,
+    Encoded,
+    Api
+  >
+  implements HasContinuation {
+  readonly Api = this.self.Api;
+
+  readonly [SchemaContinuationSymbol]: SchemaAny = this.self
+
+  constructor(
+    readonly self: Schema<
+      ParserInput,
+      ParserError,
+      ParsedShape,
+      ConstructorInput,
+      ConstructorError,
+      ConstructedShape,
+      Encoded,
+      Api
+    >,
+    readonly guard: (u: unknown) => u is ParsedShape
+  ) {
+    super()
+  }
+}

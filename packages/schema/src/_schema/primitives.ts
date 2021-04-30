@@ -11,6 +11,7 @@ import {
   SchemaCompose,
   SchemaConstructor,
   SchemaEncoder,
+  SchemaGuard,
   SchemaIdentified,
   SchemaIdentity,
   SchemaMapApi,
@@ -701,4 +702,72 @@ export function identified<Api, Meta>(
   Api
 > {
   return (self) => new SchemaIdentified(self, identifier, meta)
+}
+
+export function guard_<
+  ParserInput,
+  ParserError,
+  ParsedShape,
+  ConstructorInput,
+  ConstructorError,
+  ConstructedShape extends ParsedShape,
+  Encoded,
+  Api
+>(
+  self: Schema<
+    ParserInput,
+    ParserError,
+    ParsedShape,
+    ConstructorInput,
+    ConstructorError,
+    ConstructedShape,
+    Encoded,
+    Api
+  >,
+  guard: (u: unknown) => u is ParsedShape
+): Schema<
+  ParserInput,
+  ParserError,
+  ParsedShape,
+  ConstructorInput,
+  ConstructorError,
+  ConstructedShape,
+  Encoded,
+  Api
+> {
+  return new SchemaGuard(self, guard)
+}
+
+export function guard<ParsedShape>(
+  guard: (u: unknown) => u is ParsedShape
+): <
+  ParserInput,
+  ParserError,
+  ConstructorInput,
+  ConstructorError,
+  ConstructedShape extends ParsedShape,
+  Encoded,
+  Api
+>(
+  self: Schema<
+    ParserInput,
+    ParserError,
+    ParsedShape,
+    ConstructorInput,
+    ConstructorError,
+    ConstructedShape,
+    Encoded,
+    Api
+  >
+) => Schema<
+  ParserInput,
+  ParserError,
+  ParsedShape,
+  ConstructorInput,
+  ConstructorError,
+  ConstructedShape,
+  Encoded,
+  Api
+> {
+  return (self) => new SchemaGuard(self, guard)
 }

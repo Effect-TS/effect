@@ -10,6 +10,9 @@ const interpretedCache = new WeakMap()
 
 Guard.interpreters.push(
   O.partial((miss) => (schema: S.SchemaAny): Guard.Guard<unknown> => {
+    if (schema instanceof S.SchemaGuard) {
+      return schema.guard
+    }
     if (schema instanceof S.SchemaRecursive) {
       if (interpreterCache.has(schema)) {
         return interpreterCache.get(schema)
