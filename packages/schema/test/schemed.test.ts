@@ -70,7 +70,7 @@ describe("Schemed", () => {
     expect(isPerson(person)).toEqual(true)
     expect(person).equals(person2)
   })
-  it("arbitrary", async () => {
+  it("arbitrary", () => {
     FC.check(FC.property(Arbitrary.for(Person.Model)(FC), isPerson))
   })
 })
