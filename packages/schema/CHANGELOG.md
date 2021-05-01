@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.1.10](https://github.com/Effect-TS/core/compare/@effect-ts/schema@0.1.9...@effect-ts/schema@0.1.10) (2021-05-01)
+
+
+### Features
+
+* **schema:** integer from string ([984d788](https://github.com/Effect-TS/core/commit/984d788a3615e8ad4e6e74c46f99238e0572cb62))
+
+
+
+
+
 ## [0.1.9](https://github.com/Effect-TS/core/compare/@effect-ts/schema@0.1.8...@effect-ts/schema@0.1.9) (2021-04-30)
 
 
