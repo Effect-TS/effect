@@ -36,9 +36,7 @@
       "@effect-ts/system/*": ["packages/system/build/*"],
       "@effect-ts/system": ["packages/system/build"],
       "@effect-ts/tracing-plugin/*": ["packages/tracing-plugin/build/*"],
-      "@effect-ts/tracing-plugin": ["packages/tracing-plugin/build"],
-      "@effect-ts/schema/*": ["packages/schema/build/*"],
-      "@effect-ts/schema": ["packages/schema/build"]
+      "@effect-ts/tracing-plugin": ["packages/tracing-plugin/build"]
     },
     "target": "ES2018"
   },

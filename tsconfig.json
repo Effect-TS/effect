@@ -13,9 +13,7 @@
       "@effect-ts/tracing-utils/*": ["packages/tracing-utils/src/*"],
       "@effect-ts/tracing-utils": ["packages/tracing-utils/src"],
       "@effect-ts/build-utils/*": ["packages/build-utils/src/*"],
-      "@effect-ts/build-utils": ["packages/build-utils/src"],
-      "@effect-ts/schema/*": ["packages/schema/src/*"],
-      "@effect-ts/schema": ["packages/schema/src"]
+      "@effect-ts/build-utils": ["packages/build-utils/src"]
     },
     "target": "ES2018",
     "typeRoots": ["./node_modules/@types", "./typings"]
