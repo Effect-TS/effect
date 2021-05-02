@@ -1,15 +1,19 @@
-import * as A from "fp-ts/Array"
-import { parseJSON } from "fp-ts/Either"
-import { flow, pipe } from "fp-ts/function"
+import * as ROA from "fp-ts/Array"
+import * as J from "fp-ts/Json"
 import * as TE from "fp-ts/TaskEither"
+import * as E from "fp-ts/Either"
+import { flow, pipe } from "fp-ts/function"
 
 import { copy, onLeft, onRight, readFile, runMain, writeFile } from "./_common"
 
 const copyReadme = copy("./README.md", "./build", { update: true })
 
+const isStringArray = (x: unknown): x is string[] => Array.isArray(x) && x.every((y) => typeof y === "string")
+
 const loadPackageJson = pipe(
   readFile("./package.json", "utf8"),
-  TE.chainEitherK((content) => parseJSON(content, () => new Error("json parse error")))
+  TE.chainEitherK(J.parse),
+  TE.mapLeft(E.toError)
 )
 
 const writePackageJsonContent = (content: any) =>
@@ -42,32 +46,39 @@ const writePackageJsonContent = (content: any) =>
 const getModules = flow(
   (content: any) => content?.config?.modules,
   TE.fromPredicate(
-    (x): x is string[] => Array.isArray(x) && x.every((y) => typeof y === "string"),
+    isStringArray,
     () => new Error("missing modules config")
   )
 )
 
 const getSide = flow(
   (content: any) => content?.config?.side,
-  (x): string[] => (Array.isArray(x) && x.every((y) => typeof y === "string") ? x : [])
+  (x): string[] => isStringArray(x) ? x : []
 )
+const buildModulePath = (m: string) => `${
+  ROA.range(1, m.split("/").length)
+   .map(() => "../")
+   .join("")
+  }esm/${m}/index.js
+`
 
 const writeModulePackageJson = (modules: string[], content: any) => {
   const side = getSide(content)
-  return A.array.traverse(TE.taskEither)(modules, (m) =>
+  return pipe(
+    modules, 
+    TE.traverseArray((m) =>
     writeFile(
       `./build/${m}/package.json`,
       JSON.stringify(
         {
           sideEffects: side.includes(m),
           main: "./index.js",
-          module: `${A.range(1, m.split("/").length)
-            .map(() => "../")
-            .join("")}esm/${m}/index.js`,
+          module: buildModulePath(m),
           typings: `./index.d.ts`
         },
         null,
         2
+      )
       )
     )
   )
