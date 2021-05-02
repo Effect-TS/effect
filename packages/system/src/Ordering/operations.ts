@@ -28,3 +28,7 @@ export function invert(O: Ordering): Ordering {
       return 0
   }
 }
+
+export function combine(x: Ordering, y: Ordering) {
+  return x !== 0 ? x : y
+}

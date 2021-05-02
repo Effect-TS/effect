@@ -1,0 +1,425 @@
+import { Tagged } from "../Case"
+import * as Chunk from "../Collections/Immutable/Chunk"
+import * as HashMap from "../Collections/Immutable/HashMap"
+import * as List from "../Collections/Immutable/List"
+import * as SortedSet from "../Collections/Immutable/SortedSet"
+import * as Tuple from "../Collections/Immutable/Tuple"
+import * as T from "../Effect"
+import * as Fiber from "../Fiber"
+import { identity, pipe } from "../Function"
+import * as O from "../Option"
+import * as Ord from "../Ord"
+import * as Promise from "../Promise"
+import * as Ref from "../Ref"
+import * as RefM from "../RefM"
+import * as St from "../Structural"
+import type { Annotations } from "./Annotations"
+import { fiberSet } from "./FiberSet"
+import type { Live } from "./Live"
+import type { Restorable } from "./Restorable"
+import { fibers } from "./TestAnnotation"
+
+export interface DurationBrand {
+  readonly DurationBrand: unique symbol
+}
+
+export type Duration = number & DurationBrand
+
+export function Duration(n: number): Duration {
+  return n as Duration
+}
+
+/**
+ * `TestClock` makes it easy to deterministically and efficiently test
+ * effects involving the passage of time.
+ *
+ * Instead of waiting for actual time to pass, `sleep` and methods
+ * implemented in terms of it schedule effects to take place at a given clock
+ * time. Users can adjust the clock time using the `adjust` and `setTime`
+ * methods, and all effects scheduled to take place on or before that time
+ * will automatically be run in order.
+ *
+ * For example, here is how we can test `ZIO#timeout` using `TestClock:
+ *
+ * {{{
+ *  import zio.ZIO
+ *  import zio.duration._
+ *  import zio.test.environment.TestClock
+ *
+ *  for {
+ *    fiber  <- ZIO.sleep(5.minutes).timeout(1.minute).fork
+ *    _      <- TestClock.adjust(1.minute)
+ *    result <- fiber.join
+ *  } yield result == None
+ * }}}
+ *
+ * Note how we forked the fiber that `sleep` was invoked on. Calls to `sleep`
+ * and methods derived from it will semantically block until the time is set
+ * to on or after the time they are scheduled to run. If we didn't fork the
+ * fiber on which we called sleep we would never get to set the time on the
+ * line below. Thus, a useful pattern when using `TestClock` is to fork the
+ * effect being tested, then adjust the clock time, and finally verify that
+ * the expected effects have been performed.
+ *
+ * For example, here is how we can test an effect that recurs with a fixed
+ * delay:
+ *
+ * {{{
+ *  import zio.Queue
+ *  import zio.duration._
+ *  import zio.test.environment.TestClock
+ *
+ *  for {
+ *    q <- Queue.unbounded[Unit]
+ *    _ <- q.offer(()).delay(60.minutes).forever.fork
+ *    a <- q.poll.map(_.isEmpty)
+ *    _ <- TestClock.adjust(60.minutes)
+ *    b <- q.take.as(true)
+ *    c <- q.poll.map(_.isEmpty)
+ *    _ <- TestClock.adjust(60.minutes)
+ *    d <- q.take.as(true)
+ *    e <- q.poll.map(_.isEmpty)
+ *  } yield a && b && c && d && e
+ * }}}
+ *
+ * Here we verify that no effect is performed before the recurrence period,
+ * that an effect is performed after the recurrence period, and that the
+ * effect is performed exactly once. The key thing to note here is that after
+ * each recurrence the next recurrence is scheduled to occur at the
+ * appropriate time in the future, so when we adjust the clock by 60 minutes
+ * exactly one value is placed in the queue, and when we adjust the clock by
+ * another 60 minutes exactly one more value is placed in the queue.
+ */
+export interface TestClock extends Restorable {
+  readonly adjust: (duration: Duration) => T.UIO<void>
+  readonly setTime: (duration: Duration) => T.UIO<void>
+  readonly sleeps: T.UIO<List.List<Duration>>
+}
+
+/**
+ * `Data` represents the state of the `TestClock`, including the clock time
+ */
+export class Data extends Tagged("Data")<{
+  readonly duration: Duration
+  readonly sleeps: List.List<Tuple.Tuple<[Duration, Promise.Promise<never, void>]>>
+}> {}
+
+/**
+ * `WarningData` describes the state of the warning message that is
+ * displayed if a test is using time by is not advancing the `TestClock`.
+ * The possible states are `Start` if a test has not used time, `Pending`
+ * if a test has used time but has not adjusted the `TestClock`, and `Done`
+ * if a test has adjusted the `TestClock` or the warning message has
+ * already been displayed.
+ */
+export type WarningData = Start | Done | Pending
+
+export class Start extends Tagged("Start")<{}> {
+  static of: WarningData = new Start()
+}
+
+export class Done extends Tagged("Done")<{}> {
+  static of: WarningData = new Done()
+}
+
+export class Pending extends Tagged("Pending")<{
+  readonly fiber: Fiber.Fiber<never, void>
+}> {
+  static of = (fiber: Fiber.Fiber<never, void>): WarningData => new Pending({ fiber })
+}
+
+export class Test implements TestClock {
+  constructor(
+    readonly clockState: Ref.Ref<Data>,
+    readonly live: Live,
+    readonly annotations: Annotations,
+    readonly warningState: RefM.RefM<WarningData>
+  ) {}
+
+  /**
+   * Increments the current clock time by the specified duration. Any
+   * effects that were scheduled to occur on or before the new time will be
+   * run in order.
+   */
+  readonly adjust: (duration: Duration) => T.UIO<void> = (duration) =>
+    T.zipRight_(
+      this.warningDone,
+      this.run((_) => Duration(_ + duration))
+    )
+
+  /**
+   * Returns the current clock time.
+   */
+  readonly currentTime: T.UIO<Duration> = pipe(
+    Ref.get(this.clockState),
+    T.map((d) => d.duration)
+  )
+
+  /**
+   * Saves the `TestClock`'s current state in an effect which, when run,
+   * will restore the `TestClock` state to the saved state
+   */
+  readonly save: T.UIO<T.UIO<void>> = pipe(
+    T.do,
+    T.bind("clockData", () => Ref.get(this.clockState)),
+    T.map(({ clockData }) => Ref.set_(this.clockState, clockData))
+  )
+
+  /**
+   * Sets the current clock time to the specified time in terms of duration
+   * since the epoch. Any effects that were scheduled to occur on or before
+   * the new time will immediately be run in order.
+   */
+  readonly setTime: (duration: Duration) => T.UIO<void> = (dateTime) =>
+    pipe(this.warningDone, T.zipRight(this.run(() => dateTime)))
+
+  /**
+   * Semantically blocks the current fiber until the clock time is equal
+   * to or greater than the specified duration. Once the clock time is
+   * adjusted to on or after the duration, the fiber will automatically be
+   * resumed.
+   */
+  readonly sleep: (duration: Duration) => T.UIO<void> = (duration) =>
+    pipe(
+      T.do,
+      T.bind("promise", () => Promise.make<never, void>()),
+      T.bind("shouldAwait", ({ promise }) =>
+        pipe(
+          this.clockState,
+          Ref.modify((data) => {
+            const end = Duration(data.duration + duration)
+
+            if (end > data.duration) {
+              return Tuple.tuple(
+                true,
+                data.copy({
+                  sleeps: pipe(data.sleeps, List.prepend(Tuple.tuple(end, promise)))
+                })
+              )
+            } else {
+              return Tuple.tuple(false, data)
+            }
+          })
+        )
+      ),
+      T.tap(({ promise, shouldAwait }) =>
+        shouldAwait
+          ? pipe(this.warningStart, T.zipRight(Promise.await(promise)))
+          : Promise.succeed_(promise, void 0)
+      ),
+      T.map(() => void 0)
+    )
+
+  /**
+   * Returns a list of the times at which all queued effects are scheduled
+   * to resume.
+   */
+  readonly sleeps: T.UIO<List.List<Duration>> = pipe(
+    this.clockState,
+    Ref.get,
+    T.map((d) =>
+      pipe(
+        d.sleeps,
+        List.map((_) => _.get(0))
+      )
+    )
+  )
+
+  /**
+   * The warning message that will be displayed if a test is using time but
+   * is not advancing the `TestClock`.
+   */
+  private warning =
+    "Warning: A test is using time, but is not advancing the test clock, " +
+    "which may result in the test hanging. Use TestClock.adjust to " +
+    "manually advance the time."
+
+  /**
+   * Forks a fiber that will display a warning message if a test is using
+   * time but is not advancing the `TestClock`.
+   */
+  private warningStart: T.UIO<void> = pipe(
+    this.warningState,
+    RefM.updateSome((_) => {
+      switch (_._tag) {
+        case "Start": {
+          return pipe(
+            T.do,
+            T.bind("fiber", () =>
+              this.live.provide(
+                pipe(
+                  T.succeedWith(() => {
+                    console.log(this.warning)
+                  }),
+                  T.delay(5_000),
+                  T.interruptible,
+                  T.fork
+                )
+              )
+            ),
+            T.map(({ fiber }) => Pending.of(fiber)),
+            O.some
+          )
+        }
+        default:
+          return O.none
+      }
+    })
+  )
+
+  /**
+   * Cancels the warning message that is displayed if a test is using time
+   * but is not advancing the `TestClock`.
+   */
+  private warningDone: T.UIO<void> = pipe(
+    this.warningState,
+    RefM.updateSome((_) => {
+      switch (_._tag) {
+        case "Start": {
+          return O.some(T.succeed(Done.of))
+        }
+        case "Pending": {
+          return pipe(_.fiber, Fiber.interrupt, T.as(Done.of), O.some)
+        }
+        default:
+          return O.none
+      }
+    })
+  )
+
+  /**
+   * Returns a set of all fibers in this test.
+   */
+  readonly supervisedFibers: T.UIO<
+    SortedSet.SortedSet<Fiber.Runtime<unknown, unknown>>
+  > = T.descriptorWith((d) =>
+    pipe(
+      this.annotations.get(fibers),
+      T.chain((fa) => {
+        switch (fa._tag) {
+          case "Left": {
+            return T.succeed(fiberSet)
+          }
+          case "Right": {
+            return pipe(
+              fa.right,
+              T.forEach((ref) => T.succeedWith(() => ref.get)),
+              T.map(Chunk.reduce(fiberSet, SortedSet.union_)),
+              T.map(SortedSet.filter((_) => !St.equals(_.id, d.id)))
+            )
+          }
+        }
+      })
+    )
+  )
+
+  /**
+   * Captures a "snapshot" of the identifier and status of all fibers in
+   * this test other than the current fiber. Fails with the `Unit` value if
+   * any of these fibers are not done or suspended. Note that because we
+   * cannot synchronize on the status of multiple fibers at the same time
+   * this snapshot may not be fully consistent.
+   */
+  readonly freeze: T.IO<void, HashMap.HashMap<Fiber.FiberID, Fiber.Status>> = pipe(
+    this.supervisedFibers,
+    T.chain(
+      T.reduce(HashMap.make<Fiber.FiberID, Fiber.Status>(), (map, fiber) =>
+        pipe(
+          fiber.status,
+          T.chain((status) => {
+            switch (status._tag) {
+              case "Done": {
+                return T.succeed(HashMap.set_(map, fiber.id, status))
+              }
+              case "Suspended": {
+                return T.succeed(HashMap.set_(map, fiber.id, status))
+              }
+              default:
+                return T.fail(void 0)
+            }
+          })
+        )
+      )
+    )
+  )
+
+  /**
+   * Delays for a short period of time.
+   */
+  readonly delay = this.live.provide(T.sleep(5))
+
+  /**
+   * Returns whether all descendants of this fiber are done or suspended.
+   */
+  readonly suspended: T.IO<void, HashMap.HashMap<Fiber.FiberID, Fiber.Status>> = pipe(
+    this.freeze,
+    T.zip(pipe(this.delay, T.zipRight(this.freeze))),
+    T.chain(({ tuple: [first, last] }) =>
+      St.equals(first, last) ? T.succeed(first) : T.fail<void>(void 0)
+    )
+  )
+
+  /**
+   * Polls until all descendants of this fiber are done or suspended.
+   */
+  readonly awaitSuspended: T.UIO<void> = pipe(
+    this.suspended,
+    T.zipWith(
+      pipe(this.live.provide(T.sleep(10)), T.zipRight(this.suspended)),
+      St.equals
+    ),
+    T.filterOrFail(identity, () => void 0 as void),
+    T.eventually,
+    T.asUnit
+  )
+
+  /**
+   * Runs all effects scheduled to occur on or before the specified
+   * duration, which may depend on the current time, in order.
+   */
+  private run: (f: (d: Duration) => Duration) => T.UIO<void> = (f) =>
+    pipe(
+      this.awaitSuspended,
+      T.zipRight(
+        pipe(
+          this.clockState,
+          Ref.modify((data) => {
+            const end = f(data.duration)
+            const sorted = List.sortWith_(
+              data.sleeps,
+              Ord.contramap_(Ord.number, (_) => _.get(0))
+            )
+            if (!List.isEmpty(sorted)) {
+              const {
+                tuple: [duration, promise]
+              } = List.unsafeFirst(sorted)!
+
+              const sleeps = List.tail(sorted)
+
+              if (duration <= end) {
+                return Tuple.tuple(
+                  O.some(Tuple.tuple(end, promise)),
+                  new Data({ duration, sleeps })
+                )
+              }
+            }
+            return Tuple.tuple(O.none, new Data({ duration: end, sleeps: data.sleeps }))
+          }),
+          T.chain((o) => {
+            switch (o._tag) {
+              case "None": {
+                return T.unit
+              }
+              case "Some": {
+                return pipe(
+                  Promise.succeed_(o.value.get(1), void 0),
+                  T.zipRight(T.yieldNow),
+                  T.zipRight(this.run(() => o.value.get(0)))
+                )
+              }
+            }
+          })
+        )
+      )
+    )
+}

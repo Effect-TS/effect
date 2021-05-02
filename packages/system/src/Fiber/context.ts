@@ -18,8 +18,11 @@ import * as update from "../FiberRef/update"
 import { constVoid } from "../Function"
 // option
 import * as O from "../Option"
+import * as Ord from "../Ord"
+import * as Ordering from "../Ordering"
 // supervisor / scope
 import * as Scope from "../Scope"
+import * as St from "../Structural"
 import * as Sup from "../Supervisor"
 // support
 import { AtomicReference } from "../Support/AtomicReference"
@@ -125,6 +128,14 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     readonly initialTracingStatus: boolean
   ) {
     this.evaluateNow = this.evaluateNow.bind(this)
+  }
+
+  get [St.hashSym](): number {
+    return St.hash(this.id)
+  }
+
+  [St.equalsSym](that: unknown): boolean {
+    return that instanceof FiberContext && St.equals(this.id, that.id)
   }
 
   get poll() {
@@ -1307,3 +1318,11 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     }
   }
 }
+
+export const runtimeOrd = <E, A>() =>
+  Ord.makeOrd<Fiber.Runtime<E, A>>((x, y) =>
+    Ordering.combine(
+      Ord.number.compare(x.id.startTimeMillis, y.id.startTimeMillis),
+      Ord.number.compare(x.id.seqNumber, y.id.seqNumber)
+    )
+  )
