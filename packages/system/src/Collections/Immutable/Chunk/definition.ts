@@ -263,6 +263,10 @@ export class Empty<A> extends ChunkInternal<A> {
     super()
   }
 
+  materialize() {
+    return array_([])
+  }
+
   copyToArray(_n: number, _array: Array<A> | Uint8Array) {
     // no-op
   }
