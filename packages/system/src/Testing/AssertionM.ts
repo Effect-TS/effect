@@ -4,6 +4,7 @@ import type { Lazy } from "../Function"
 import { pipe } from "../Function"
 import * as O from "../Option"
 import * as ST from "../Structural"
+import { LazyGetter } from "../Utils"
 import * as AMD from "./AssertionMData"
 import type * as AR from "./AssertionResult"
 import * as ARM from "./AssertionResultM"
@@ -26,16 +27,26 @@ export abstract class AssertionM<A> {
     readonly runM: (a: Lazy<A>) => ARM.AssertResultM
   ) {}
 
+  @LazyGetter()
+  get stringify(): string {
+    return this.render().toString()
+  }
+
+  toString(): string {
+    return this.stringify
+  }
+
   [ST.equalsSym](that: unknown): boolean {
     if (isAssertionM(that)) {
-      return this.toString() === that.toString()
+      return this.stringify === that.stringify
     }
 
     return false
   }
 
-  toString(): string {
-    return this.render().toString()
+  @LazyGetter()
+  get [ST.hashSym](): number {
+    return ST.hashString(this.stringify)
   }
 }
 
