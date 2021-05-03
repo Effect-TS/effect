@@ -1,17 +1,18 @@
 // forked from https://github.com/planttheidea/fast-equals
 
-import { hash } from "../HasHash"
+import type { HasHash } from "../HasHash"
+import { hash, hasHash } from "../HasHash"
 import { createComparator } from "./comparator"
 import { createCircularEqualCreator, sameValueZeroEqual } from "./utils"
 
 export const equalsSym = Symbol()
 
-export interface HasEquals {
+export interface HasEquals extends HasHash {
   readonly [equalsSym]: (other: unknown) => boolean
 }
 
 export function hasEquals(u: unknown): u is HasEquals {
-  return typeof u === "object" && u !== null && equalsSym in u
+  return hasHash(u) && equalsSym in u
 }
 
 export const deepEquals = createComparator(
