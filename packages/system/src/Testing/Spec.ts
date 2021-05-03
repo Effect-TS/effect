@@ -1,10 +1,14 @@
+import * as Tuple from "../Collections/Immutable/Tuple"
 import * as T from "../Effect"
 import { pipe } from "../Function"
-import type * as M from "../Managed"
+import type { Has } from "../Has"
+import * as M from "../Managed"
 import type * as O from "../Option"
+import * as Annotations from "./Annotations"
 import type { SpecCase } from "./SpecCase"
-import { SuiteCase, TestCase } from "./SpecCase"
-import type { TestAnnotationMap } from "./TestAnnotationMap"
+import { concreteSpecCase, SuiteCase, TestCase } from "./SpecCase"
+import type { TestAnnotation } from "./TestAnnotation"
+import * as TAM from "./TestAnnotationMap"
 
 export const SpecTypeId = Symbol.for("@effect-ts/system/Testing/Spec")
 export type SpecTypeId = typeof SpecTypeId
@@ -36,7 +40,7 @@ export function suite<R, E, T>(
 export function test<R, E, T>(
   label: string,
   test: T.Effect<R, E, T>,
-  annotations: TestAnnotationMap
+  annotations: TAM.TestAnnotationMap
 ): Spec<R, E, T> {
   return new Spec(new TestCase(label, test, annotations))
 }
@@ -46,49 +50,90 @@ export type TestSuccess = {}
 
 export type ZSpec<R, E> = Spec<R, TestFailure<E>, TestSuccess>
 
-export const TestAspectTypeId = Symbol.for("@effect-ts/system/Testing/TestAspect")
-export type TestAspectTypeId = typeof TestAspectTypeId
-
-type ZSpecLB<R, E, LowerR> = ZSpec<R, E> & [LowerR] extends [R]
-  ? ZSpec<R, E>
-  : ZSpec<LowerR, E>
-
 /**
- * A `TestAspect` is an aspect that can be weaved into specs. You can think of
- * an aspect as a polymorphic function, capable of transforming one test into
- * another, possibly enlarging the environment or error type.
+ * Transforms the spec one layer at a time.
  */
-export class TestAspect<LowerR, UpperR, LowerE, UpperE> {
-  readonly [TestAspectTypeId]: TestAspectTypeId = TestAspectTypeId
-
-  constructor(
-    readonly some: (
-      predicate: (s: string) => boolean
-    ) => <R, E extends UpperE>(
-      spec: ZSpecLB<R, E, LowerR>
-    ) => ZSpec<R & UpperR, E | LowerE>
-  ) {}
-}
-
-/**
- * An aspect that returns the tests unchanged
- */
-export const identity: TestAspect<
-  never,
-  unknown,
-  never,
-  unknown
-> = new TestAspect(() => (self) => self)
-
-/**
- * Apply an aspect to a specific spec
- */
-export function use<LowerR, UpperR, LowerE, UpperE>(
-  aspect: TestAspect<LowerR, UpperR, LowerE, UpperE>
+export function transform<R, E, T, R1, E1, T1>(
+  f: (_: SpecCase<R, E, T, Spec<R1, E1, T1>>) => SpecCase<R1, E1, T1, Spec<R1, E1, T1>>
 ) {
-  return <R, E extends UpperE>(
-    self: ZSpecLB<R, E, LowerR>
-  ): ZSpec<R & UpperR, E | LowerE> => aspect.some(() => true)(self)
+  return (spec: Spec<R, E, T>): Spec<R1, E1, T1> => {
+    concreteSpecCase(spec.caseValue)
+    switch (spec.caseValue._tag) {
+      case "SuiteCase": {
+        return new Spec(
+          f(
+            new SuiteCase(
+              spec.caseValue.label,
+              M.map_(spec.caseValue.specs, (_) => _.map(transform(f))),
+              spec.caseValue.exec
+            )
+          )
+        )
+      }
+      case "TestCase": {
+        return new Spec(f(spec.caseValue))
+      }
+    }
+  }
 }
 
-export const x = pipe({} as ZSpec<{ foo: string }, "err">, use(identity))
+/**
+ * Annotates each test in this spec with the specified test annotation.
+ */
+export function annotate<V>(key: TestAnnotation<V>, value: V) {
+  return <R, E, T>(self: Spec<R, E, T>): Spec<R, E, T> =>
+    pipe(
+      self,
+      transform((specCase) => {
+        concreteSpecCase(specCase)
+        switch (specCase._tag) {
+          case "SuiteCase": {
+            return specCase
+          }
+          case "TestCase": {
+            return new TestCase(
+              specCase.label,
+              specCase.test,
+              specCase.annotations["|>"](TAM.annotate(key, value))
+            )
+          }
+        }
+      })
+    )
+}
+
+/**
+ * Returns a new spec with the annotation map at each node.
+ */
+export function annotated<R, E, T>(
+  self: Spec<R, E, T>
+): Spec<
+  R & Has<Annotations.Annotations>,
+  Annotations.Annotated<E>,
+  Annotations.Annotated<T>
+> {
+  return pipe(
+    self,
+    transform((specCase) => {
+      concreteSpecCase(specCase)
+      switch (specCase._tag) {
+        case "SuiteCase": {
+          return new SuiteCase(
+            specCase.label,
+            M.mapError_(specCase.specs, (_) =>
+              Tuple.tuple(_, TAM.TestAnnotationMap.empty)
+            ),
+            specCase.exec
+          )
+        }
+        case "TestCase": {
+          return new TestCase(
+            specCase.label,
+            Annotations.withAnnotation(specCase.test),
+            specCase.annotations
+          )
+        }
+      }
+    })
+  )
+}
