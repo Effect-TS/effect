@@ -49,7 +49,7 @@ export function makeDropping<A>(capacity: number): T.UIO<Queue<A>> {
   )
 }
 
-function takeRamainderLoop<RA, RB, EA, EB, A, B>(
+function takeRemainderLoop<RA, RB, EA, EB, A, B>(
   self: XQueue<RA, RB, EA, EB, A, B>,
   n: number
 ): T.Effect<RB, EB, Chunk.Chunk<B>> {
@@ -58,7 +58,7 @@ function takeRamainderLoop<RA, RB, EA, EB, A, B>(
     return T.succeed(Chunk.empty())
   } else {
     return T.chain_(self.take, (a) =>
-      T.map_(takeRamainderLoop(self, n - 1), (_) => Chunk.append_(_, a))
+      T.map_(takeRemainderLoop(self, n - 1), (_) => Chunk.append_(_, a))
     )
   }
 }
@@ -98,7 +98,7 @@ export function takeBetween_<RA, RB, EA, EB, A, B>(
         if (remaining === 1) {
           return T.map_(self.take, (b) => Chunk.append_(bs, b))
         } else if (remaining > 1) {
-          return T.map_(takeRamainderLoop(self, remaining), (list) =>
+          return T.map_(takeRemainderLoop(self, remaining), (list) =>
             Chunk.concat_(bs, list)
           )
         } else {
