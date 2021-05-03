@@ -3,6 +3,22 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.34.4](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.34.3...@effect-ts/system@0.34.4) (2021-05-03)
+
+
+### Bug Fixes
+
+* **queue:** fix typo ([c3817c9](https://github.com/Effect-TS/core/commit/c3817c986f6a07a2e3735c386e6eaba0fd19173e))
+
+
+### Features
+
+* **core:** Add `forEach`and friends to Sync. ([3c24003](https://github.com/Effect-TS/core/commit/3c240037f28e569e7cf9cf0e40c956f2aee6476e))
+
+
+
+
+
 ## [0.34.3](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.34.2...@effect-ts/system@0.34.3) (2021-04-29)
 
 
