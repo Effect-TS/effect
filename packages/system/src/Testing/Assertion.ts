@@ -3,6 +3,7 @@ import * as T from "../Effect"
 import type { Lazy } from "../Function"
 import * as O from "../Option"
 import * as ST from "../Structural"
+import { LazyGetter } from "../Utils"
 import * as AD from "./AssertionData"
 import type * as AM from "./AssertionM"
 import * as AR from "./AssertionResult"
@@ -28,16 +29,26 @@ export class Assertion<A> implements AM.AssertionM<A> {
     return new BAM.BoolAlgebraM(T.succeed(this.run(a)))
   }
 
-  toString(): string {
+  @LazyGetter()
+  get stringify(): string {
     return this.render().toString()
+  }
+
+  toString(): string {
+    return this.stringify
   }
 
   [ST.equalsSym](that: unknown): boolean {
     if (isAssertion(that)) {
-      return this.toString() === that.toString()
+      return this.stringify === that.stringify
     }
 
     return false
+  }
+
+  @LazyGetter()
+  get [ST.hashSym](): number {
+    return ST.hashString(this.stringify)
   }
 }
 
