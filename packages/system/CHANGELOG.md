@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.34.5](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.34.4...@effect-ts/system@0.34.5) (2021-05-03)
+
+
+### Bug Fixes
+
+* **chunk:** materialize empty chunk ([060a7e1](https://github.com/Effect-TS/core/commit/060a7e18ce25c1d59151c21184e174a20ee38728))
+* **system:** force HasEqual to also be HasHash ([55ce8dc](https://github.com/Effect-TS/core/commit/55ce8dcc4858570e37e66ea4bd7608e8f645ad16))
+
+
+
+
+
 ## [0.34.4](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.34.3...@effect-ts/system@0.34.4) (2021-05-03)
 
 
