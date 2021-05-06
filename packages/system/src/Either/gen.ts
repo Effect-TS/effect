@@ -1,15 +1,15 @@
 // tracing: off
 
+import { _A, _E } from "../Effect/commons"
 import { NoSuchElementException } from "../GlobalExceptions"
 import type { Option } from "../Option"
-import type { _E } from "../Utils"
-import { isOption } from "../Utils"
+import * as Utils from "../Utils"
 import type { Either } from "./core"
 import { chain_, left, right } from "./core"
 
 export class GenEither<E, A> {
-  readonly _E!: () => E
-  readonly _A!: () => A
+  readonly [_E]!: () => E;
+  readonly [_A]!: () => A
 
   constructor(readonly effect: Either<E, A>) {}
 
@@ -19,7 +19,7 @@ export class GenEither<E, A> {
 }
 
 function adapter(_: any, __?: any) {
-  return isOption(_)
+  return Utils.isOption(_)
     ? new GenEither(
         _._tag === "Some"
           ? right(_.value)
@@ -28,51 +28,27 @@ function adapter(_: any, __?: any) {
     : new GenEither(_)
 }
 
-export function gen<EBase, AEff>(): <Eff extends GenEither<EBase, any>>(
-  f: (i: {
-    <E, A>(_: Option<A>, onNone: () => E): GenEither<E, A>
-    <A>(_: Option<A>): GenEither<NoSuchElementException, A>
-    <E, A>(_: Either<E, A>): GenEither<E, A>
-  }) => Generator<Eff, AEff, any>
-) => Either<_E<Eff>, AEff>
-export function gen<AEff>(): <Eff extends GenEither<any, any>>(
-  f: (i: {
-    <E, A>(_: Option<A>, onNone: () => E): GenEither<E, A>
-    <A>(_: Option<A>): GenEither<NoSuchElementException, A>
-    <E, A>(_: Either<E, A>): GenEither<E, A>
-  }) => Generator<Eff, AEff, any>
-) => Either<_E<Eff>, AEff>
 export function gen<Eff extends GenEither<any, any>, AEff>(
   f: (i: {
     <E, A>(_: Option<A>, onNone: () => E): GenEither<E, A>
     <A>(_: Option<A>): GenEither<NoSuchElementException, A>
     <E, A>(_: Either<E, A>): GenEither<E, A>
   }) => Generator<Eff, AEff, any>
-): Either<_E<Eff>, AEff>
-export function gen(...args: any[]): any {
-  function gen_<Eff extends GenEither<any, any>, AEff>(
-    f: (i: any) => Generator<Eff, AEff, any>
-  ): Either<_E<Eff>, AEff> {
-    const iterator = f(adapter as any)
-    const state = iterator.next()
+): Either<Utils._E<Eff>, AEff> {
+  const iterator = f(adapter as any)
+  const state = iterator.next()
 
-    function run(
-      state: IteratorYieldResult<Eff> | IteratorReturnResult<AEff>
-    ): Either<any, AEff> {
-      if (state.done) {
-        return right(state.value)
-      }
-      return chain_(state.value["effect"], (val) => {
-        const next = iterator.next(val)
-        return run(next)
-      })
+  function run(
+    state: IteratorYieldResult<Eff> | IteratorReturnResult<AEff>
+  ): Either<any, AEff> {
+    if (state.done) {
+      return right(state.value)
     }
-
-    return run(state)
+    return chain_(state.value["effect"], (val) => {
+      const next = iterator.next(val)
+      return run(next)
+    })
   }
 
-  if (args.length === 0) {
-    return (f: any) => gen_(f)
-  }
-  return gen_(args[0])
+  return run(state)
 }
