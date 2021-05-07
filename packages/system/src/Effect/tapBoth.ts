@@ -4,6 +4,7 @@ import { failureOrCause } from "../Cause"
 import * as E from "../Either"
 import { chain_, foldCauseM_, halt } from "./core"
 import type { Effect } from "./effect"
+import { map_ } from "./map"
 
 /**
  * Returns an effect that effectfully "peeks" at the failure or success of
@@ -37,7 +38,7 @@ export function tapBoth_<R, E, A, R2, E2, R3, E3, X, Y>(
         (e) => chain_(f(e), () => halt(c)),
         (_) => halt(c)
       ),
-    g,
+    (a) => map_(g(a), () => a),
     __trace
   )
 }
