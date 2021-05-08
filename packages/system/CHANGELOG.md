@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.34.7](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.34.6...@effect-ts/system@0.34.7) (2021-05-08)
+
+
+### Bug Fixes
+
+* **effect:** fix tapBoth ([c8ff599](https://github.com/Effect-TS/core/commit/c8ff599d63d1daff850a12c02d324fbc89842019))
+* **hub:** expose internals ([9e09a48](https://github.com/Effect-TS/core/commit/9e09a485420cf1948f0095d759f2fd35abed69a1))
+
+
+
+
+
 ## [0.34.6](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.34.5...@effect-ts/system@0.34.6) (2021-05-06)
 
 
