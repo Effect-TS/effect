@@ -52,7 +52,7 @@ export interface XHub<RA, RB, EA, EB, A, B> {
   readonly [PR._B]: () => B
 }
 
-abstract class XHubInternal<RA, RB, EA, EB, A, B>
+export abstract class XHubInternal<RA, RB, EA, EB, A, B>
   implements XHub<RA, RB, EA, EB, A, B> {
   readonly typeId: typeof HubTypeId = HubTypeId;
 
@@ -111,7 +111,7 @@ abstract class XHubInternal<RA, RB, EA, EB, A, B>
 /**
  * @optimize remove
  */
-function concrete<RA, RB, EA, EB, A, B>(
+export function concrete<RA, RB, EA, EB, A, B>(
   _: XHub<RA, RB, EA, EB, A, B>
 ): asserts _ is XHubInternal<RA, RB, EA, EB, A, B> {
   //
