@@ -1,6 +1,5 @@
-import { ArrayIndexOutOfBoundsException } from "@effect-ts/system/GlobalExceptions"
-
 import { identity } from "../../../Function"
+import { ArrayIndexOutOfBoundsException } from "../../../GlobalExceptions"
 import * as O from "../../../Option"
 import * as St from "../../../Structural"
 import * as A from "../Array"
