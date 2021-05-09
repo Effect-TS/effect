@@ -1,3 +1,5 @@
+import { ArrayIndexOutOfBoundsException } from "@effect-ts/system/GlobalExceptions"
+
 import { identity } from "../../../Function"
 import * as O from "../../../Option"
 import * as St from "../../../Structural"
@@ -273,6 +275,13 @@ export function head<A>(self: Chunk<A>): O.Option<A> {
 }
 
 /**
+ * Returns every elements after the first
+ */
+export function tail<A>(self: Chunk<A>): O.Option<Chunk<A>> {
+  return concreteId(self).length > 0 ? O.some(drop_(self, 1)) : O.none
+}
+
+/**
  * Returns the last element of this chunk if it exists.
  */
 export function last<A>(self: Chunk<A>): O.Option<A> {
@@ -288,6 +297,21 @@ export function last<A>(self: Chunk<A>): O.Option<A> {
  */
 export function unsafeHead<A>(self: Chunk<A>): A {
   return concreteId(self).get(0)
+}
+
+/**
+ * Returns every elements after the first. Note that this method is partial
+ * in that it will throw an exception if the chunk is empty. Consider using
+ * `head` to explicitly handle the possibility that the chunk is empty
+ * or iterating over the elements of the chunk in lower level, performance
+ * sensitive code unless you really only need the first element of the chunk.
+ */
+export function unsafeTail<A>(self: Chunk<A>): Chunk<A> {
+  if (concreteId(self).length === 0) {
+    throw new ArrayIndexOutOfBoundsException(1)
+  }
+
+  return drop_(self, 1)
 }
 
 /**
