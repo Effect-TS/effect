@@ -10,3 +10,4 @@ yarn-error.log
 tsbuildinfo/
 del-tags.sh
 incubation/
+.DS_Store

@@ -7,7 +7,7 @@ import * as T from "../../../Effect"
 import * as E from "../../../Either"
 import * as Ex from "../../../Exit"
 import * as F from "../../../Fiber"
-import { pipe } from "../../../Function"
+import { identity, pipe } from "../../../Function"
 import type { Has } from "../../../Has"
 import * as H from "../../../Hub"
 import * as M from "../../../Managed"
@@ -18,6 +18,7 @@ import * as SC from "../../../Schedule"
 import * as C from "../_internal/core"
 import * as CH from "../Channel"
 import type * as SK from "../Sink"
+import * as BP from "./BufferedPull"
 import { Stream } from "./core"
 import * as HO from "./Handoff"
 import * as Pull from "./Pull"
@@ -757,6 +758,323 @@ export function collectSuccess<R, E, A, L1>(self: Stream<R, E, Ex.Exit<L1, A>>) 
 }
 
 /**
+ * Performs an effectful filter and map in a single step.
+ */
+export function collectM_<R, R1, E, E1, A, A1>(
+  self: Stream<R, E, A>,
+  pf: (a: A) => O.Option<T.Effect<R1, E1, A1>>
+): Stream<R & R1, E | E1, A1> {
+  return C.loopOnPartialChunksElements_(self, (a, emit) =>
+    O.fold_(
+      pf(a),
+      () => T.unit,
+      (_) => T.asUnit(T.chain_(_, emit))
+    )
+  )
+}
+
+/**
+ * Performs an effectful filter and map in a single step.
+ */
+export function collectM<R1, E1, A, A1>(pf: (a: A) => O.Option<T.Effect<R1, E1, A1>>) {
+  return <R, E>(self: Stream<R, E, A>) => collectM_(self, pf)
+}
+
+/**
+ * Transforms all elements of the stream for as long as the specified partial function is defined.
+ */
+export function collectWhile_<R, E, A, A1>(
+  self: Stream<R, E, A>,
+  pf: (a: A) => O.Option<A1>
+): Stream<R, E, A1> {
+  const loop: CH.Channel<R, E, A.Chunk<A>, unknown, E, A.Chunk<A1>, any> = CH.readWith(
+    (_in) => {
+      const mapped = A.collectWhile_(_in, pf)
+
+      if (A.size(mapped) === A.size(_in)) {
+        return CH.zipRight_(CH.write(mapped), loop)
+      } else {
+        return CH.write(mapped)
+      }
+    },
+    CH.fail,
+    CH.succeed
+  )
+
+  return new Stream(self.channel[">>>"](loop))
+}
+
+/**
+ * Transforms all elements of the stream for as long as the specified partial function is defined.
+ */
+export function collectWhile<A, A1>(pf: (a: A) => O.Option<A1>) {
+  return <R, E>(self: Stream<R, E, A>) => collectWhile_(self, pf)
+}
+
+/**
+ * Terminates the stream when encountering the first `Right`.
+ */
+export function collectWhileLeft<R, E, A1, L1>(
+  self: Stream<R, E, E.Either<L1, A1>>
+): Stream<R, E, L1> {
+  return collectWhile_(
+    self,
+    E.fold(
+      (l) => O.some(l),
+      (_) => O.none
+    )
+  )
+}
+
+/**
+ * Effectfully transforms all elements of the stream for as long as the specified partial function is defined.
+ */
+export function collectWhileM_<R, R1, E, E1, A, A1>(
+  self: Stream<R, E, A>,
+  pf: (a: A) => O.Option<T.Effect<R1, E1, A1>>
+): Stream<R & R1, E | E1, A1> {
+  return C.loopOnPartialChunks_(self, (chunk, emit) => {
+    const pfSome = (a: A) =>
+      O.fold_(
+        pf(a),
+        () => T.succeed(false),
+        (_) => T.as_(T.chain_(_, emit), true)
+      )
+
+    const loop = (chunk: A.Chunk<A>): T.Effect<R1, E1, boolean> => {
+      if (A.isEmpty(chunk)) {
+        return T.succeed(true)
+      } else {
+        return T.chain_(pfSome(A.unsafeHead(chunk)), (cont) => {
+          if (cont) {
+            return loop(A.unsafeTail(chunk))
+          } else {
+            return T.succeed(false)
+          }
+        })
+      }
+    }
+
+    return loop(chunk)
+  })
+}
+
+/**
+ * Effectfully transforms all elements of the stream for as long as the specified partial function is defined.
+ */
+export function collectWhileM<R1, E1, A, A1>(
+  pf: (a: A) => O.Option<T.Effect<R1, E1, A1>>
+) {
+  return <R, E>(self: Stream<R, E, A>) => collectWhileM_(self, pf)
+}
+
+/**
+ * Terminates the stream when encountering the first `None`.
+ */
+export function collectWhileSome<R, E, A1>(
+  self: Stream<R, E, O.Option<A1>>
+): Stream<R, E, A1> {
+  return collectWhile_(self, identity)
+}
+
+/**
+ * Terminates the stream when encountering the first `Left`.
+ */
+export function collectWhileRight<R, E, A1, L1>(
+  self: Stream<R, E, E.Either<L1, A1>>
+): Stream<R, E, A1> {
+  return collectWhile_(
+    self,
+    E.fold(
+      () => O.none,
+      (r) => O.some(r)
+    )
+  )
+}
+
+/**
+ * Terminates the stream when encountering the first `Exit.Failure`.
+ */
+export function collectWhileSuccess<R, E, A1, L1>(
+  self: Stream<R, E, Ex.Exit<L1, A1>>
+): Stream<R, E, A1> {
+  return collectWhile_(
+    self,
+    Ex.fold(
+      () => O.none,
+      (r) => O.some(r)
+    )
+  )
+}
+
+/**
+ * Combines the elements from this stream and the specified stream by repeatedly applying the
+ * function `f` to extract an element using both sides and conceptually "offer"
+ * it to the destination stream. `f` can maintain some internal state to control
+ * the combining process, with the initial state being specified by `s`.
+ *
+ * Where possible, prefer `Stream#combineChunks` for a more efficient implementation.
+ */
+export function combine<R, R1, E, E1, A, A2>(
+  self: Stream<R, E, A>,
+  that: Stream<R1, E1, A2>
+) {
+  return <S>(s: S) => <A3>(
+    f: (
+      s: S,
+      eff1: T.Effect<R, O.Option<E>, A>,
+      eff2: T.Effect<R1, O.Option<E1>, A2>
+    ) => T.Effect<R1, never, Ex.Exit<O.Option<E | E1>, Tp.Tuple<[A3, S]>>>
+  ): Stream<R1 & R, E | E1, A3> => {
+    return C.unwrapManaged(
+      pipe(
+        M.do,
+        M.bind("left", () => M.mapM_(C.toPull(self), BP.make)),
+        M.bind("right", () => M.mapM_(C.toPull(that), BP.make)),
+        M.map(({ left, right }) =>
+          unfoldM(s)((s) =>
+            T.chain_(f(s, BP.pullElement(left), BP.pullElement(right)), (_) =>
+              T.optional(T.done(_))
+            )
+          )
+        )
+      )
+    )
+  }
+}
+
+/**
+ * Combines the chunks from this stream and the specified stream by repeatedly applying the
+ * function `f` to extract a chunk using both sides and conceptually "offer"
+ * it to the destination stream. `f` can maintain some internal state to control
+ * the combining process, with the initial state being specified by `s`.
+ */
+export function combineChunks<R, R1, E, E1, A, A2>(
+  self: Stream<R, E, A>,
+  that: Stream<R1, E1, A2>
+) {
+  return <S>(s: S) => <A3>(
+    f: (
+      s: S,
+      eff1: T.Effect<R, O.Option<E>, A.Chunk<A>>,
+      eff2: T.Effect<R1, O.Option<E1>, A.Chunk<A2>>
+    ) => T.Effect<R1, never, Ex.Exit<O.Option<E | E1>, Tp.Tuple<[A.Chunk<A3>, S]>>>
+  ): Stream<R1 & R, E | E1, A3> => {
+    return C.unwrapManaged(
+      pipe(
+        M.do,
+        M.bind("pullLeft", () => C.toPull(self)),
+        M.bind("pullRight", () => C.toPull(that)),
+        M.map(({ pullLeft, pullRight }) =>
+          unfoldChunkM(s)((s) =>
+            T.chain_(f(s, pullLeft, pullRight), (_) => T.optional(T.done(_)))
+          )
+        )
+      )
+    )
+  }
+}
+
+/**
+ * Concatenates the specified stream with this stream, resulting in a stream
+ * that emits the elements from this stream and then the elements from the specified stream.
+ */
+export function concat_<R, R1, E, E1, A, A1>(
+  self: Stream<R, E, A>,
+  that: Stream<R1, E1, A1>
+): Stream<R & R1, E | E1, A | A1> {
+  return new Stream<R & R1, E | E1, A | A1>(CH.zipRight_(self.channel, that.channel))
+}
+
+/**
+ * Concatenates the specified stream with this stream, resulting in a stream
+ * that emits the elements from this stream and then the elements from the specified stream.
+ */
+export function concat<R1, E1, A1>(that: Stream<R1, E1, A1>) {
+  return <R, E, A>(self: Stream<R, E, A>) => concat_(self, that)
+}
+
+/**
+ * Composes this stream with the specified stream to create a cartesian product of elements.
+ * The `that` stream would be run multiple times, for every element in the `this` stream.
+ */
+export function cross_<R, R1, E, E1, A, A1>(
+  self: Stream<R, E, A>,
+  that: Stream<R1, E1, A1>
+): Stream<R & R1, E | E1, Tp.Tuple<[A, A1]>> {
+  return new Stream(
+    CH.concatMap_(self.channel, (a) =>
+      CH.mapOut_(that.channel, (b) =>
+        A.chain_(a, (a) => A.map_(b, (b) => Tp.tuple(a, b)))
+      )
+    )
+  )
+}
+
+/**
+ * Composes this stream with the specified stream to create a cartesian product of elements.
+ * The `that` stream would be run multiple times, for every element in the `this` stream.
+ */
+export function cross<R1, E1, A1>(that: Stream<R1, E1, A1>) {
+  return <R, E, A>(self: Stream<R, E, A>) => cross_(self, that)
+}
+
+/**
+ * Composes this stream with the specified stream to create a cartesian product of elements,
+ * but keeps only elements from this stream.
+ * The `that` stream would be run multiple times, for every element in the `this` stream.
+ */
+export function crossLeft_<R, R1, E, E1, A, A1>(
+  self: Stream<R, E, A>,
+  that: Stream<R1, E1, A1>
+): Stream<R & R1, E | E1, A> {
+  return C.map_(cross_(self, that), Tp.get(0))
+}
+
+/**
+ * Composes this stream with the specified stream to create a cartesian product of elements,
+ * but keeps only elements from this stream.
+ * The `that` stream would be run multiple times, for every element in the `this` stream.
+ */
+export function crossLeft<R1, E1, A1>(that: Stream<R1, E1, A1>) {
+  return <R, E, A>(self: Stream<R, E, A>) => crossLeft_(self, that)
+}
+
+/**
+ * Composes this stream with the specified stream to create a cartesian product of elements,
+ * but keeps only elements from the other stream.
+ * The `that` stream would be run multiple times, for every element in the `this` stream.
+ */
+export function crossRight_<R, R1, E, E1, A, A1>(
+  self: Stream<R, E, A>,
+  that: Stream<R1, E1, A1>
+): Stream<R & R1, E | E1, A1> {
+  return C.map_(cross_(self, that), Tp.get(1))
+}
+
+/**
+ * Composes this stream with the specified stream to create a cartesian product of elements,
+ * but keeps only elements from the other stream.
+ * The `that` stream would be run multiple times, for every element in the `this` stream.
+ */
+export function crossRight<R1, E1, A1>(that: Stream<R1, E1, A1>) {
+  return <R, E, A>(self: Stream<R, E, A>) => crossRight_(self, that)
+}
+
+/**
+ * Composes this stream with the specified stream to create a cartesian product of elements
+ * with a specified function.
+ * The `that` stream would be run multiple times, for every element in the `this` stream.
+ */
+export function crossWith<R, R1, E, E1, A, A1>(
+  self: Stream<R, E, A>,
+  that: Stream<R1, E1, A1>
+) {
+  return <C>(f: (a: A, a1: A1) => C): Stream<R & R1, E | E1, C> =>
+    C.chain_(self, (l) => C.map_(that, (r) => f(l, r)))
+}
+
+/**
  * Creates a stream from an effect producing a value of type `A`
  */
 export function fromEffect<R, E, A>(fa: T.Effect<R, E, A>): Stream<R, E, A> {
@@ -1073,6 +1391,22 @@ export function unfoldChunkM<S>(s: S) {
       )
 
     return new Stream(loop(s))
+  }
+}
+
+/**
+ * Creates a stream by effectfully peeling off the "layers" of a value of type `S`
+ */
+export function unfoldM<S>(s: S) {
+  return <R, E, A>(
+    f: (s: S) => T.Effect<R, E, O.Option<Tp.Tuple<[A, S]>>>
+  ): Stream<R, E, A> => {
+    return unfoldChunkM(s)((_) =>
+      T.map_(
+        f(_),
+        O.map(({ tuple: [a, s] }) => Tp.tuple(A.single(a), s))
+      )
+    )
   }
 }
 
