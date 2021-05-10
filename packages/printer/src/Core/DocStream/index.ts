@@ -407,7 +407,9 @@ export function foldMap_<I>(I: Identity<I>) {
  * @dataFirst foldMap_
  */
 export function foldMap<I>(I: Identity<I>) {
-  return <A>(f: (a: A) => I) => (fa: DocStream<A>): I => foldMap_(I)(fa, f)
+  return <A>(f: (a: A) => I) =>
+    (fa: DocStream<A>): I =>
+      foldMap_(I)(fa, f)
 }
 
 // -------------------------------------------------------------------------------------

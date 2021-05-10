@@ -421,32 +421,29 @@ function fitsSmartRec<A>(
 }
 
 function fitsSmart(lineWidth: number, ribbonFraction: number) {
-  return (
-    lineIndent: number,
-    currentColumn: number,
-    initialIndentY: Option<number>
-  ) => <A>(stream: DocStream<A>): boolean => {
-    const availableWidth = PW.remainingWidth(
-      lineWidth,
-      ribbonFraction,
-      lineIndent,
-      currentColumn
-    )
+  return (lineIndent: number, currentColumn: number, initialIndentY: Option<number>) =>
+    <A>(stream: DocStream<A>): boolean => {
+      const availableWidth = PW.remainingWidth(
+        lineWidth,
+        ribbonFraction,
+        lineIndent,
+        currentColumn
+      )
 
-    const minNestingLevel = O.fold_(
-      initialIndentY,
-      // If `y` is `None`, then it is definitely not a hanging layout,
-      // so we will need to check `x` with the same minNestingLevel
-      // that any subsequent lines with the same indentation use
-      () => currentColumn,
-      // If `y` is some, then `y` could be a (less wide) hanging layout,
-      // so we need to check `x` a bit more thoroughly to make sure we
-      // do not miss a potentially better fitting `y`
-      (i) => Math.min(i, currentColumn)
-    )
+      const minNestingLevel = O.fold_(
+        initialIndentY,
+        // If `y` is `None`, then it is definitely not a hanging layout,
+        // so we will need to check `x` with the same minNestingLevel
+        // that any subsequent lines with the same indentation use
+        () => currentColumn,
+        // If `y` is some, then `y` could be a (less wide) hanging layout,
+        // so we need to check `x` a bit more thoroughly to make sure we
+        // do not miss a potentially better fitting `y`
+        (i) => Math.min(i, currentColumn)
+      )
 
-    return IO.run(fitsSmartRec(stream, availableWidth, minNestingLevel, lineWidth))
-  }
+      return IO.run(fitsSmartRec(stream, availableWidth, minNestingLevel, lineWidth))
+    }
 }
 /**
  * A layout algorithm with more look ahead than `layoutPretty`, which will introduce

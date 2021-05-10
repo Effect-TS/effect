@@ -49,9 +49,10 @@ describe("Layout", () => {
 
     const hr = D.hcat([D.vbar, dashes, D.vbar])
 
-    const render = <A>(doc: Doc<A>) => (
-      layoutAlgorithm: (doc: Doc<A>) => Layout<A>
-    ): string => pipe(layoutOptions, layoutAlgorithm(D.vsep([hr, doc, hr])), R.render)
+    const render =
+      <A>(doc: Doc<A>) =>
+      (layoutAlgorithm: (doc: Doc<A>) => Layout<A>): string =>
+        pipe(layoutOptions, layoutAlgorithm(D.vsep([hr, doc, hr])), R.render)
 
     it("unbounded", () => {
       expect(pipe(L.unbounded(D.vsep([hr, doc, hr])), R.render)).toBe(

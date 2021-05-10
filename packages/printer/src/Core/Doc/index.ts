@@ -1365,9 +1365,8 @@ export const vsep: <A>(docs: Array<Doc<A>>) => Doc<A> = concatWith(appendWithLin
  * will be separated with a `space` instead of newlines. See `fillCat` if you do not want
  * a `space`.
  */
-export const fillSep: <A>(docs: Array<Doc<A>>) => Doc<A> = concatWith(
-  appendWithSoftLine_
-)
+export const fillSep: <A>(docs: Array<Doc<A>>) => Doc<A> =
+  concatWith(appendWithSoftLine_)
 
 /**
  * The `seps` combinator will attempt to lay out a list of documents separated by `space`s.
