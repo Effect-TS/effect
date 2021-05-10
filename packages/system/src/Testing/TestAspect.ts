@@ -50,9 +50,6 @@ export function aspect<LowerR, UpperR, LowerE, UpperE>(
 /**
  * An aspect that returns the tests unchanged
  */
-export const identity: TestAspect<
-  never,
-  unknown,
-  never,
-  unknown
-> = aspect(() => (self) => self)
+export const identity: TestAspect<never, unknown, never, unknown> = aspect(
+  () => (self) => self
+)
