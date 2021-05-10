@@ -3,6 +3,23 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.34.8](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.34.7...@effect-ts/system@0.34.8) (2021-05-10)
+
+
+### Bug Fixes
+
+* **chunk:** fix imports ([245ecbe](https://github.com/Effect-TS/core/commit/245ecbebee6c6d0575eb97626f933042f39da148))
+* **stream:** remove duplicate combineChunks ([d8eaa7e](https://github.com/Effect-TS/core/commit/d8eaa7e092ac17c7ace5831a49ad2a424669b94b))
+
+
+### Features
+
+* **stream:** ported a few more combinators ([911e9c6](https://github.com/Effect-TS/core/commit/911e9c6619d8f1eee4498e25b9d5a14d649039ae))
+
+
+
+
+
 ## [0.34.7](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.34.6...@effect-ts/system@0.34.7) (2021-05-08)
 
 
