@@ -7,6 +7,7 @@ import * as Tuple from "../Collections/Immutable/Tuple"
 import * as T from "../Effect"
 import * as Fiber from "../Fiber"
 import { identity, pipe } from "../Function"
+import { tag } from "../Has"
 import * as O from "../Option"
 import * as Ord from "../Ord"
 import * as Promise from "../Promise"
@@ -95,6 +96,8 @@ export interface TestClock extends Restorable {
   readonly setTime: (duration: Duration) => T.UIO<void>
   readonly sleeps: T.UIO<List.List<Duration>>
 }
+
+export const TestClock = tag<TestClock>()
 
 /**
  * `Data` represents the state of the `TestClock`, including the clock time

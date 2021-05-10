@@ -9,14 +9,13 @@ export const ExecutedSpecCaseTypeId = Symbol.for(
 
 export type ExecutedSpecCaseTypeId = typeof ExecutedSpecCaseTypeId
 
-export abstract class ExecutedSpecCase<E, T, A> {
+export abstract class ExecutedSpecCase<E, A> {
   readonly [ExecutedSpecCaseTypeId]: ExecutedSpecCaseTypeId = ExecutedSpecCaseTypeId;
 
   readonly [T._E]: () => E;
-  readonly [T._T]: () => T;
   readonly [T._A]: () => A
 
-  map<B>(f: (a: A) => B): ExecutedSpecCase<E, T, B> {
+  map<B>(f: (a: A) => B): ExecutedSpecCase<E, B> {
     concreteExecutedSpecCase(this)
 
     switch (this._tag) {
@@ -30,13 +29,13 @@ export abstract class ExecutedSpecCase<E, T, A> {
   }
 }
 
-export function concreteExecutedSpecCase<E, T, A>(
-  _: ExecutedSpecCase<E, T, A>
-): asserts _ is ExecutedSuiteCase<E, A> | ExecutedTestCase<E, T> {
+export function concreteExecutedSpecCase<E, A>(
+  _: ExecutedSpecCase<E, A>
+): asserts _ is ExecutedSuiteCase<E, A> | ExecutedTestCase<E> {
   //
 }
 
-export class ExecutedSuiteCase<E, A> extends ExecutedSpecCase<E, never, A> {
+export class ExecutedSuiteCase<E, A> extends ExecutedSpecCase<E, A> {
   readonly _tag = "SuiteCase"
 
   constructor(readonly label: string, readonly specs: readonly A[]) {
@@ -44,7 +43,7 @@ export class ExecutedSuiteCase<E, A> extends ExecutedSpecCase<E, never, A> {
   }
 }
 
-export class ExecutedTestCase<E, T> extends ExecutedSpecCase<E, T, never> {
+export class ExecutedTestCase<E> extends ExecutedSpecCase<E, never> {
   readonly _tag = "TestCase"
 
   constructor(
@@ -62,11 +61,10 @@ export type SpecTypeId = typeof SpecTypeId
 /**
  * An `ExecutedSpec` is a spec that has been run to produce test results.
  */
-export class ExecutedSpec<E, T> {
+export class ExecutedSpec<E> {
   readonly [SpecTypeId]: SpecTypeId = SpecTypeId;
 
-  readonly [T._E]: () => E;
-  readonly [T._T]: () => T
+  readonly [T._E]: () => E
 
-  constructor(readonly caseValue: ExecutedSpecCase<E, T, ExecutedSpec<E, T>>) {}
+  constructor(readonly caseValue: ExecutedSpecCase<E, ExecutedSpec<E>>) {}
 }
