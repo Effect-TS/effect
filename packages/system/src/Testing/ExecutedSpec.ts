@@ -1,7 +1,8 @@
 import * as T from "../Effect"
 import * as E from "../Either"
-import type { TestFailure, TestSuccess } from "./Spec"
 import type * as TAM from "./TestAnnotationMap"
+import type { TestFailure } from "./TestFailure"
+import type { TestSuccess } from "./TestSuccess"
 
 export const ExecutedSpecCaseTypeId = Symbol.for(
   "@effect-ts/system/Testing/ExecutedSpecCase"

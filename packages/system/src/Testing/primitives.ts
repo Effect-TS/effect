@@ -1,2 +1,2 @@
-export const _A = "_A"
-export const _C = "_C"
+export const _A: unique symbol = Symbol()
+export const _C: unique symbol = Symbol()

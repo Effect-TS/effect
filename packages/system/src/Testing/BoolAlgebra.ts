@@ -39,6 +39,18 @@ export abstract class BoolAlgebra<A> implements ST.HasEquals {
       (a) => ~a
     )
   }
+
+  ["&&"]<A1>(that: BoolAlgebra<A1>): BoolAlgebra<A | A1> {
+    return and_(this, that)
+  }
+
+  ["||"]<A1>(that: BoolAlgebra<A1>): BoolAlgebra<A | A1> {
+    return or_(this, that)
+  }
+
+  get ["!"](): BoolAlgebra<A> {
+    return not(this)
+  }
 }
 
 export class Value<A> extends BoolAlgebra<A> {
@@ -597,8 +609,11 @@ export function all<A>(as: Iterable<BoolAlgebra<A>>): O.Option<BoolAlgebra<A>> {
 /**
  * Constructs a result that is the logical conjunction of two results.
  */
-export function and_<A>(left: BoolAlgebra<A>, right: BoolAlgebra<A>): BoolAlgebra<A> {
-  return new And(left, right)
+export function and_<A, A1>(
+  left: BoolAlgebra<A>,
+  right: BoolAlgebra<A1>
+): BoolAlgebra<A | A1> {
+  return new And<A | A1>(left, right)
 }
 
 /**
@@ -669,8 +684,11 @@ export function not<A>(result: BoolAlgebra<A>): BoolAlgebra<A> {
 /**
  * Constructs a result a that is the logical disjunction of two results.
  */
-export function or_<A>(left: BoolAlgebra<A>, right: BoolAlgebra<A>): BoolAlgebra<A> {
-  return new Or(left, right)
+export function or_<A, A1>(
+  left: BoolAlgebra<A>,
+  right: BoolAlgebra<A1>
+): BoolAlgebra<A | A1> {
+  return new Or<A | A1>(left, right)
 }
 
 /**

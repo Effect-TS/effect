@@ -4,11 +4,13 @@ import type { Platform } from "../Fiber"
 import { pipe } from "../Function"
 import type { Has } from "../Has"
 import * as L from "../Layer"
+import * as Annotations from "./Annotations"
 import type { ExecutedSpec } from "./ExecutedSpec"
 import type { ZSpec } from "./Spec"
 import * as TestAnnotationRenderer from "./TestAnnotationRenderer"
 import { Duration } from "./TestClock"
 import type { TestExecutor } from "./TestExecutor"
+import { defaultExecutor } from "./TestExecutor"
 import type { TestLogger } from "./TestLogger"
 import { FromConsole } from "./TestLogger"
 import type { TestReporter } from "./TestReporter"
@@ -37,3 +39,7 @@ export class TestRunner<R, E> {
       T.chain(({ tuple: [d, e] }) => T.as_(this.reporter(Duration(d), e), e))
     )
 }
+
+export const defaultTestRunner = new TestRunner(
+  defaultExecutor(Annotations.live["+++"](L.succeed(T.defaultEnv)))
+)
