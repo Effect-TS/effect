@@ -88,9 +88,8 @@ export const Category = P.instance<P.Category<[URI<EffectCategoryURI>], V>>({
 /**
  * Matchers
  */
-export const { match, matchIn, matchMorph, matchTag, matchTagIn } = DSL.matchers(
-  Covariant
-)
+export const { match, matchIn, matchMorph, matchTag, matchTagIn } =
+  DSL.matchers(Covariant)
 
 /**
  * Derive sequential identity

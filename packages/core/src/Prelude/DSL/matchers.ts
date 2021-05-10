@@ -28,9 +28,7 @@ export function matchers<URI extends URIS, C>(_: Base<URI, C>) {
       }
     >(
       matcher: K
-    ): (
-      _: X
-    ) => Kind<
+    ): (_: X) => Kind<
       URI,
       C,
       Infer<
@@ -135,9 +133,7 @@ export function matchers<URI extends URIS, C>(_: Base<URI, C>) {
         _: Exclude<X, { [tag in N]: keyof K }>,
         __: Exclude<X, { [tag in N]: keyof K }>
       ) => Ret
-    ): (
-      _: X
-    ) => Kind<
+    ): (_: X) => Kind<
       URI,
       C,
       Infer<
@@ -275,9 +271,7 @@ export function matchers<URI extends URIS, C>(_: Base<URI, C>) {
       }
     >(
       matcher: K
-    ): (
-      _: X
-    ) => Kind<
+    ): (_: X) => Kind<
       URI,
       C,
       Infer<
@@ -379,9 +373,7 @@ export function matchers<URI extends URIS, C>(_: Base<URI, C>) {
         _: Exclude<X, { [tag in N]: keyof K }>,
         __: Exclude<X, { [tag in N]: keyof K }>
       ) => Ret
-    ): (
-      _: X
-    ) => Kind<
+    ): (_: X) => Kind<
       URI,
       C,
       Infer<
@@ -485,12 +477,13 @@ export function matchers<URI extends URIS, C>(_: Base<URI, C>) {
       >
     >
   } {
-    return () => (...args: any[]) => {
-      return (_: any) => {
-        const matcher = args[0][_[tag]]
-        return matcher ? matcher(_, _) : args[1](_, _)
+    return () =>
+      (...args: any[]) => {
+        return (_: any) => {
+          const matcher = args[0][_[tag]]
+          return matcher ? matcher(_, _) : args[1](_, _)
+        }
       }
-    }
   }
 
   function matchMorph<
@@ -521,9 +514,7 @@ export function matchers<URI extends URIS, C>(_: Base<URI, C>) {
       }
     >(
       matcher: K
-    ): (
-      _: X
-    ) => Kind<
+    ): (_: X) => Kind<
       URI,
       C,
       Infer<
@@ -628,9 +619,7 @@ export function matchers<URI extends URIS, C>(_: Base<URI, C>) {
         _: Exclude<X, { [tag in N]: keyof K }>,
         __: Exclude<X, { [tag in N]: keyof K }>
       ) => Ret
-    ): (
-      _: X
-    ) => Kind<
+    ): (_: X) => Kind<
       URI,
       C,
       Infer<

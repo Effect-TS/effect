@@ -11,8 +11,8 @@ import { foldWhileManagedM } from "./foldWhileManagedM"
  * Stops the fold early when the condition is not fulfilled.
  */
 export function foldWhileManaged<S>(s: S) {
-  return (cont: (s: S) => boolean) => <O>(f: (s: S, o: O) => S) => <R, E>(
-    self: Stream<R, E, O>
-  ): M.Managed<R, E, S> =>
-    foldWhileManagedM(s)(cont)((s, a: O) => T.succeed(f(s, a)))(self)
+  return (cont: (s: S) => boolean) =>
+    <O>(f: (s: S, o: O) => S) =>
+    <R, E>(self: Stream<R, E, O>): M.Managed<R, E, S> =>
+      foldWhileManagedM(s)(cont)((s, a: O) => T.succeed(f(s, a)))(self)
 }

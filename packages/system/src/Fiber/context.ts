@@ -360,16 +360,17 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   }
 
   get await(): T.UIO<Exit.Exit<E, A>> {
-    return T.effectMaybeAsyncInterrupt(
-      (k): E.Either<T.UIO<void>, T.UIO<Exit.Exit<E, A>>> => {
-        const cb: Callback<never, Exit.Exit<E, A>> = (x) => k(T.done(x))
-        return O.fold_(
-          this.observe0(cb),
-          () => E.left(T.succeedWith(() => this.interruptObserver(cb))),
-          E.right
-        )
-      }
-    )
+    return T.effectMaybeAsyncInterrupt((k): E.Either<
+      T.UIO<void>,
+      T.UIO<Exit.Exit<E, A>>
+    > => {
+      const cb: Callback<never, Exit.Exit<E, A>> = (x) => k(T.done(x))
+      return O.fold_(
+        this.observe0(cb),
+        () => E.left(T.succeedWith(() => this.interruptObserver(cb))),
+        E.right
+      )
+    })
   }
 
   interruptObserver(k: Callback<never, Exit.Exit<E, A>>) {
@@ -624,20 +625,18 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   ): T.Instruction {
     if (parentScope !== Scope.globalScope) {
       const exitOrKey = parentScope.unsafeEnsure((exit) =>
-        T.suspend(
-          (): T.UIO<any> => {
-            const _interruptors =
-              exit._tag === "Failure" ? Cause.interruptors(exit.cause) : []
+        T.suspend((): T.UIO<any> => {
+          const _interruptors =
+            exit._tag === "Failure" ? Cause.interruptors(exit.cause) : []
 
-            const head = _interruptors[0]
+          const head = _interruptors[0]
 
-            if (head) {
-              return childContext.interruptAs(head)
-            } else {
-              return childContext.interruptAs(this.fiberId)
-            }
+          if (head) {
+            return childContext.interruptAs(head)
+          } else {
+            return childContext.interruptAs(this.fiberId)
           }
-        )
+        })
       )
 
       return E.fold_(

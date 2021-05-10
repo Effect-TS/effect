@@ -18,8 +18,9 @@ export interface PreallocationScope {
  */
 export const preallocationScope: Managed<unknown, never, PreallocationScope> = map_(
   scope,
-  (allocate): PreallocationScope => (managed) =>
-    T.map_(allocate(managed), ({ tuple: [release, res] }) =>
-      makeExit_(T.succeed(res), (_, exit) => release(exit))
-    )
+  (allocate): PreallocationScope =>
+    (managed) =>
+      T.map_(allocate(managed), ({ tuple: [release, res] }) =>
+        makeExit_(T.succeed(res), (_, exit) => release(exit))
+      )
 )

@@ -32,27 +32,24 @@ export function accessServicesM<SS extends Record<string, Tag<any>>>(s: SS) {
     )
 }
 
-export const accessServicesTM = <SS extends Tag<any>[]>(...s: SS) => <
-  S,
-  R = unknown,
-  E = never,
-  B = unknown
->(
-  f: (
-    ...a: {
-      [k in keyof SS]: [SS[k]] extends [Tag<infer T>] ? T : unknown
-    }
-  ) => X.Sync<R, E, B>
-) =>
-  X.accessM(
-    (
-      r: UnionToIntersection<
-        {
-          [k in keyof SS]: [SS[k]] extends [Tag<infer T>] ? Has<T> : never
-        }[keyof SS & number]
-      >
-    ) => f(...(A.map_(s, (v) => r[v.key]) as any))
-  )
+export const accessServicesTM =
+  <SS extends Tag<any>[]>(...s: SS) =>
+  <S, R = unknown, E = never, B = unknown>(
+    f: (
+      ...a: {
+        [k in keyof SS]: [SS[k]] extends [Tag<infer T>] ? T : unknown
+      }
+    ) => X.Sync<R, E, B>
+  ) =>
+    X.accessM(
+      (
+        r: UnionToIntersection<
+          {
+            [k in keyof SS]: [SS[k]] extends [Tag<infer T>] ? Has<T> : never
+          }[keyof SS & number]
+        >
+      ) => f(...(A.map_(s, (v) => r[v.key]) as any))
+    )
 
 export function accessServicesT<SS extends Tag<any>[]>(...s: SS) {
   return <B = unknown>(
@@ -121,20 +118,20 @@ export function service<T>(s: Tag<T>) {
  * Provides the service with the required Service Entry
  */
 export function provideServiceM<T>(_: Tag<T>) {
-  return <R, E>(f: X.Sync<R, E, T>) => <R1, E1, A1>(
-    ma: X.Sync<R1 & Has<T>, E1, A1>
-  ): X.Sync<R & R1, E | E1, A1> =>
-    X.accessM((r: R & R1) =>
-      X.chain_(f, (t) => X.provideAll_(ma, mergeEnvironments(_, r, t)))
-    )
+  return <R, E>(f: X.Sync<R, E, T>) =>
+    <R1, E1, A1>(ma: X.Sync<R1 & Has<T>, E1, A1>): X.Sync<R & R1, E | E1, A1> =>
+      X.accessM((r: R & R1) =>
+        X.chain_(f, (t) => X.provideAll_(ma, mergeEnvironments(_, r, t)))
+      )
 }
 
 /**
  * Provides the service with the required Service Entry
  */
 export function provideService<T>(_: Tag<T>) {
-  return (f: T) => <R1, E1, A1>(ma: X.Sync<R1 & Has<T>, E1, A1>): X.Sync<R1, E1, A1> =>
-    provideServiceM(_)(X.succeed(f))(ma)
+  return (f: T) =>
+    <R1, E1, A1>(ma: X.Sync<R1 & Has<T>, E1, A1>): X.Sync<R1, E1, A1> =>
+      provideServiceM(_)(X.succeed(f))(ma)
 }
 
 /**

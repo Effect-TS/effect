@@ -111,29 +111,25 @@ export class Chain<R_, E_, O, O2> {
   pullOuter() {
     return pipe(
       this.currOuterChunk,
-      Ref.modify(
-        ({
-          tuple: [chunk, nextIdx]
-        }): Tp.Tuple<
-          [T.Effect<R_, O.Option<E_>, O>, Tp.Tuple<[A.Chunk<O>, number]>]
-        > => {
-          if (nextIdx < A.size(chunk)) {
-            return Tp.tuple(
-              T.succeed(A.unsafeGet_(chunk, nextIdx)),
-              Tp.tuple(chunk, nextIdx + 1)
-            )
-          } else {
-            return Tp.tuple(
-              pipe(
-                this.pullNonEmpty(this.outerStream),
-                T.tap((os) => this.currOuterChunk.set(Tp.tuple(os, 1))),
-                T.map((os) => A.unsafeGet_(os, 0))
-              ),
-              Tp.tuple(chunk, nextIdx)
-            )
-          }
+      Ref.modify(({ tuple: [chunk, nextIdx] }): Tp.Tuple<
+        [T.Effect<R_, O.Option<E_>, O>, Tp.Tuple<[A.Chunk<O>, number]>]
+      > => {
+        if (nextIdx < A.size(chunk)) {
+          return Tp.tuple(
+            T.succeed(A.unsafeGet_(chunk, nextIdx)),
+            Tp.tuple(chunk, nextIdx + 1)
+          )
+        } else {
+          return Tp.tuple(
+            pipe(
+              this.pullNonEmpty(this.outerStream),
+              T.tap((os) => this.currOuterChunk.set(Tp.tuple(os, 1))),
+              T.map((os) => A.unsafeGet_(os, 0))
+            ),
+            Tp.tuple(chunk, nextIdx)
+          )
         }
-      ),
+      }),
       T.flatten,
       T.chain((o) =>
         T.uninterruptibleMask(({ restore }) =>

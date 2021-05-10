@@ -845,15 +845,8 @@ export function chain<
 export function drain<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
   self: P.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
 ): P.Channel<Env, InErr, InElem, InDone, OutErr, never, OutDone> {
-  const drainer: P.Channel<
-    Env,
-    OutErr,
-    OutElem,
-    OutDone,
-    OutErr,
-    never,
-    OutDone
-  > = readWithCause((_) => drainer, halt, end)
+  const drainer: P.Channel<Env, OutErr, OutElem, OutDone, OutErr, never, OutDone> =
+    readWithCause((_) => drainer, halt, end)
   return self[">>>"](drainer)
 }
 
@@ -960,12 +953,5 @@ export function unwrapManaged<
 /**
  * Unit channel
  */
-export const unit: P.Channel<
-  unknown,
-  unknown,
-  unknown,
-  unknown,
-  never,
-  never,
-  void
-> = end(void 0)
+export const unit: P.Channel<unknown, unknown, unknown, unknown, never, never, void> =
+  end(void 0)

@@ -13,7 +13,9 @@ export function add(finalizer: Finalizer) {
       addIfOpen(finalizer)(_),
       O.fold(
         (): Finalizer => () => T.unit,
-        (k): Finalizer => (e) => release(k, e)(_)
+        (k): Finalizer =>
+          (e) =>
+            release(k, e)(_)
       )
     )
 }

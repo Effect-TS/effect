@@ -25,26 +25,27 @@ export * from "@effect-ts/system/Collections/Immutable/NonEmptyArray"
  */
 export const forEachWithIndexF = P.implementForEachWithIndexF<
   [URI<NonEmptyArrayURI>]
->()((_) => (G) => (f) => (x) =>
-  pipe(
-    x,
-    A.reduceWithIndex(DSL.succeedF(G)(L.empty()), (k, b, a) =>
-      pipe(
-        b,
-        G.both(f(k, a as any)),
-        G.map(({ tuple: [x, y] }) => L.append_(x, y))
-      )
-    ),
-    G.map(L.toArray)
-  ) as any
+>()(
+  (_) => (G) => (f) => (x) =>
+    pipe(
+      x,
+      A.reduceWithIndex(DSL.succeedF(G)(L.empty()), (k, b, a) =>
+        pipe(
+          b,
+          G.both(f(k, a as any)),
+          G.map(({ tuple: [x, y] }) => L.append_(x, y))
+        )
+      ),
+      G.map(L.toArray)
+    ) as any
 )
 
 /**
  * `ForEach`'s `forEachF` function
  */
-export const forEachF = P.implementForEachF<
-  [URI<NonEmptyArrayURI>]
->()((_) => (G) => (f) => forEachWithIndexF(G)((_, a) => f(a)))
+export const forEachF = P.implementForEachF<[URI<NonEmptyArrayURI>]>()(
+  (_) => (G) => (f) => forEachWithIndexF(G)((_, a) => f(a))
+)
 
 /**
  * Test if a value is a member of an array. Takes a `Equal<A>` as a single

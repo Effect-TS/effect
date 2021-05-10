@@ -41,9 +41,7 @@ export function tuplePar<T extends NonEmptyArray<Managed<any, any, any>>>(
  * Like tuplePar but uses at most n fibers concurrently,
  * same as `forEachParN` + `identity` with a tuple type
  */
-export function tupleParN(
-  n: number
-): {
+export function tupleParN(n: number): {
   /**
    * @trace call
    */

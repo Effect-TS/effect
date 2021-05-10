@@ -12,8 +12,8 @@ import { foldWhileManagedM } from "./foldWhileManagedM"
  * @param cont function which defines the early termination condition
  */
 export function foldWhileM<S>(s: S) {
-  return (cont: (s: S) => boolean) => <O, R1, E1>(
-    f: (s: S, o: O) => T.Effect<R1, E1, S>
-  ) => <R, E>(self: Stream<R, E, O>): T.Effect<R & R1, E1 | E, S> =>
-    M.use_(foldWhileManagedM(s)(cont)(f)(self), T.succeed)
+  return (cont: (s: S) => boolean) =>
+    <O, R1, E1>(f: (s: S, o: O) => T.Effect<R1, E1, S>) =>
+    <R, E>(self: Stream<R, E, O>): T.Effect<R & R1, E1 | E, S> =>
+      M.use_(foldWhileManagedM(s)(cont)(f)(self), T.succeed)
 }

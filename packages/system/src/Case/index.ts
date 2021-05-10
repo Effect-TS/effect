@@ -24,7 +24,8 @@ export interface CaseConstructor {
 
 // @ts-expect-error
 export const Case: CaseConstructor = class<T>
-  implements CaseBrand, St.HasHash, St.HasEquals {
+  implements CaseBrand, St.HasHash, St.HasEquals
+{
   #args: T
   #keys: string[]
   constructor(args: T) {

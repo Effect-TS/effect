@@ -9,7 +9,7 @@ export class BoundedHubSingle<A> extends Hub<A> {
   publisherIndex = 0
   subscriberCount = 0
   subscribers = 0
-  value: A = (null as unknown) as A
+  value: A = null as unknown as A
 
   readonly capacity = 1
 
@@ -60,7 +60,7 @@ export class BoundedHubSingle<A> extends Hub<A> {
   slide(): void {
     if (this.isFull()) {
       this.subscribers = 0
-      this.value = (null as unknown) as A
+      this.value = null as unknown as A
     }
   }
 
@@ -98,7 +98,7 @@ class BoundedHubSingleSubscription<A> extends Subscription<A> {
     this.self.subscribers -= 1
 
     if (this.self.subscribers === 0) {
-      this.self.value = (null as unknown) as A
+      this.self.value = null as unknown as A
     }
 
     this.subscriberIndex += 1
@@ -116,7 +116,7 @@ class BoundedHubSingleSubscription<A> extends Subscription<A> {
     this.self.subscribers -= 1
 
     if (this.self.subscribers === 0) {
-      this.self.value = (null as unknown) as A
+      this.self.value = null as unknown as A
     }
 
     this.subscriberIndex += 1
@@ -137,7 +137,7 @@ class BoundedHubSingleSubscription<A> extends Subscription<A> {
         this.self.subscribers -= 1
 
         if (this.self.subscribers === 0) {
-          this.self.value = (null as unknown) as A
+          this.self.value = null as unknown as A
         }
       }
     }

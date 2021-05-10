@@ -386,12 +386,12 @@ describe("RedBlackTree", () => {
     )
     expect(Array.from(RB.values_(tree))).toEqual(["g", "f", "e", "b", "a", "c", "d"])
     expect(RB.find_(tree, new Key(1, "0"))).toEqual(["f", "e", "a"])
-    expect(
-      Array.from(RB.values_(pipe(tree, RB.removeFirst(new Key(1, "1")))))
-    ).toEqual(["f", "e", "b", "a", "c", "d"])
-    expect(
-      Array.from(RB.values_(pipe(tree, RB.removeFirst(new Key(1, "0")))))
-    ).toEqual(["g", "e", "b", "a", "c", "d"])
+    expect(Array.from(RB.values_(pipe(tree, RB.removeFirst(new Key(1, "1")))))).toEqual(
+      ["f", "e", "b", "a", "c", "d"]
+    )
+    expect(Array.from(RB.values_(pipe(tree, RB.removeFirst(new Key(1, "0")))))).toEqual(
+      ["g", "e", "b", "a", "c", "d"]
+    )
   })
 })
 

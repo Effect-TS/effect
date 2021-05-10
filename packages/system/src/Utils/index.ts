@@ -122,9 +122,9 @@ export function isGenericAdtElement<T extends string>(
 ): <A extends { [k in T]: string }, K extends A[T]>(
   tag: K
 ) => (adt: A) => adt is Extract<A, { [k in T]: K }> {
-  return <A extends { [k in T]: string }, K extends A[T]>(tag: K) => (
-    adt: A
-  ): adt is Extract<A, { [k in T]: K }> => adt[_t] === tag
+  return <A extends { [k in T]: string }, K extends A[T]>(tag: K) =>
+    (adt: A): adt is Extract<A, { [k in T]: K }> =>
+      adt[_t] === tag
 }
 
 export function onAdtElement<A extends { _tag: string }, K extends A["_tag"], B>(
@@ -141,14 +141,15 @@ export function onAdtElement<A extends { _tag: string }, K extends A["_tag"], B>
 
 export function onGenericAdtElement<T extends string>(_t: T) {
   return <A extends { [k in T]: string }, K extends A[T], B>(
-    tag: K,
-    f: (_: Extract<A, { [k in T]: K }>) => B
-  ) => (adt: A): Option<B> => {
-    if (adt[_t] === tag) {
-      return some(f(adt as any))
+      tag: K,
+      f: (_: Extract<A, { [k in T]: K }>) => B
+    ) =>
+    (adt: A): Option<B> => {
+      if (adt[_t] === tag) {
+        return some(f(adt as any))
+      }
+      return none
     }
-    return none
-  }
 }
 
 export type ForcedTuple<A> = A extends unknown[] ? Tuple<A> : never

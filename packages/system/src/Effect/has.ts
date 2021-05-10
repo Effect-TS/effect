@@ -153,23 +153,22 @@ export function services<Ts extends readonly Tag<any>[]>(...s: Ts) {
  * Provides the service with the required Service Entry
  */
 export function provideServiceM<T>(_: Tag<T>) {
-  return <R, E>(service: Effect<R, E, T>, __trace?: string) => <R1, E1, A1>(
-    ma: Effect<R1 & Has<T>, E1, A1>
-  ): Effect<R & R1, E | E1, A1> =>
-    core.accessM((r: R & R1) =>
-      core.chain_(service, (t) =>
-        core.provideAll_(ma, mergeEnvironments(_, r, t), __trace)
+  return <R, E>(service: Effect<R, E, T>, __trace?: string) =>
+    <R1, E1, A1>(ma: Effect<R1 & Has<T>, E1, A1>): Effect<R & R1, E | E1, A1> =>
+      core.accessM((r: R & R1) =>
+        core.chain_(service, (t) =>
+          core.provideAll_(ma, mergeEnvironments(_, r, t), __trace)
+        )
       )
-    )
 }
 
 /**
  * Provides the service with the required Service Entry
  */
 export function provideService<T>(_: Tag<T>) {
-  return (service: T, __trace?: string) => <R1, E1, A1>(
-    ma: Effect<R1 & Has<T>, E1, A1>
-  ): Effect<R1, E1, A1> => provideServiceM(_)(core.succeed(service), __trace)(ma)
+  return (service: T, __trace?: string) =>
+    <R1, E1, A1>(ma: Effect<R1 & Has<T>, E1, A1>): Effect<R1, E1, A1> =>
+      provideServiceM(_)(core.succeed(service), __trace)(ma)
 }
 
 /**

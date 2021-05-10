@@ -69,7 +69,7 @@ export function min<A>(O: Ord<A>): (x: A, y: A) => A {
 export function between<A>(O: Ord<A>): (low: A, hi: A) => (x: A) => boolean {
   const lessThanO = lt(O)
   const greaterThanO = gt(O)
-  return (low, hi) => (x) => (lessThanO(x, low) || greaterThanO(x, hi) ? false : true)
+  return (low, hi) => (x) => lessThanO(x, low) || greaterThanO(x, hi) ? false : true
 }
 
 /**

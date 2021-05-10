@@ -89,12 +89,12 @@ export type ServiceType<T> = [T] extends [Has<infer A>] ? A : never
 /**
  * Replaces the service with the required Service Entry, in the specified environment
  */
-export const replaceServiceIn = <T>(_: Tag<T>, f: (t: T) => T) => <R>(
-  r: R & Has<T>
-): R & Has<T> => ({
-  ...r,
-  [_.key]: f(r[_.key])
-})
+export const replaceServiceIn =
+  <T>(_: Tag<T>, f: (t: T) => T) =>
+  <R>(r: R & Has<T>): R & Has<T> => ({
+    ...r,
+    [_.key]: f(r[_.key])
+  })
 
 /**
  * Replaces the service with the required Service Entry, in the specified environment

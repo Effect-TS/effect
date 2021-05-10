@@ -77,8 +77,7 @@ export const tuple = P.tupleF(Applicative)
 /**
  * Matchers
  */
-export const { match, matchIn, matchMorph, matchTag, matchTagIn } = P.matchers(
-  Covariant
-)
+export const { match, matchIn, matchMorph, matchTag, matchTagIn } =
+  P.matchers(Covariant)
 
 export * from "@effect-ts/system/XPure"

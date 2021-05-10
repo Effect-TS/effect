@@ -172,9 +172,8 @@ export default function tracer(
                 isTraceLastParameter &&
                 processedArguments.length === declarationParameters.length - 1
 
-              const shouldTraceCall = signatureTags(signature)["trace"]?.includes(
-                "call"
-              )
+              const shouldTraceCall =
+                signatureTags(signature)["trace"]?.includes("call")
 
               return factory.updateCallExpression(
                 node,

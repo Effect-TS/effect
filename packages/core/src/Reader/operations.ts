@@ -32,9 +32,9 @@ export const provideSome: <Q, R>(
  */
 export const zip: <R1, B>(
   fb: Reader<R1, B>
-) => <R, A>(fa: Reader<R, A>) => Reader<R & R1, Tp.Tuple<[A, B]>> = (fb) => (fa) => (
-  r
-) => Tp.tuple(fa(r), fb(r))
+) => <R, A>(fa: Reader<R, A>) => Reader<R & R1, Tp.Tuple<[A, B]>> =
+  (fb) => (fa) => (r) =>
+    Tp.tuple(fa(r), fb(r))
 
 /**
  * Extends this computation with another computation that depends on the
@@ -50,9 +50,9 @@ export const chain: <A, R1, B>(
  *  whose argument and return types use the type constructor `F` to represent
  *  some computational context.
  */
-export const map: <A, B>(f: (a: A) => B) => <R>(self: Reader<R, A>) => Reader<R, B> = (
-  f
-) => (fa) => (r) => f(fa(r))
+export const map: <A, B>(f: (a: A) => B) => <R>(self: Reader<R, A>) => Reader<R, B> =
+  (f) => (fa) => (r) =>
+    f(fa(r))
 
 /**
  * Succeed with a value A
@@ -67,7 +67,10 @@ export const run = <A>(self: Reader<unknown, A>): A => self({})
 /**
  * Run the computation with environment R
  */
-export const runEnv = <R>(r: R) => <A>(self: Reader<R, A>): A => self(r)
+export const runEnv =
+  <R>(r: R) =>
+  <A>(self: Reader<R, A>): A =>
+    self(r)
 
 /**
  * Returns a computation that effectfully "peeks" at the success of this one.

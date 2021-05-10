@@ -42,7 +42,8 @@ export interface Chunk<A> {
  * Internal base class
  */
 export abstract class ChunkInternal<A>
-  implements Iterable<A>, Chunk<A>, St.HasEquals, St.HasHash {
+  implements Iterable<A>, Chunk<A>, St.HasEquals, St.HasHash
+{
   readonly [ChunkTypeId]: ChunkTypeId = ChunkTypeId;
   readonly [_A]!: () => A
 
@@ -509,7 +510,7 @@ export class PlainArr<A> extends Arr<A> {
     const arr = alloc(this.length)
     this.copyToArray(0, arr)
     this.arrayLikeCache = arr
-    return (arr as unknown) as IterableArrayLike<A>
+    return arr as unknown as IterableArrayLike<A>
   }
 
   array() {

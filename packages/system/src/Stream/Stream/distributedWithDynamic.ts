@@ -114,39 +114,42 @@ export function distributedWithDynamic_<R, E, O>(
         ),
         M.let(
           "finalize",
-          ({ newQueue, queuesLock }) => (endTake: Ex.Exit<O.Option<E>, never>) =>
-            SM.withPermit(queuesLock)(
-              pipe(
-                T.do,
-                T.tap(() =>
-                  newQueue.set(
-                    pipe(
-                      T.do,
-                      T.bind("queue", () => Q.makeBounded<Ex.Exit<O.Option<E>, O>>(1)),
-                      T.tap(({ queue }) => Q.offer_(queue, endTake)),
-                      T.bind("id", () => T.succeedWith(() => Symbol())),
-                      T.tap(({ id, queue }) =>
-                        R.update_(queuesRef, Map.insert(id, queue))
-                      ),
-                      T.map(({ id, queue }) => Tp.tuple(id, queue))
-                    )
-                  )
-                ),
-                T.bind("queues", () => T.map_(queuesRef.get, (m) => m.values())),
-                T.tap(({ queues }) =>
-                  T.forEach_(queues, (queue) =>
-                    pipe(
-                      Q.offer_(queue, endTake),
-                      T.catchSomeCause((c) =>
-                        C.interrupted(c) ? O.some(T.unit) : O.none
+          ({ newQueue, queuesLock }) =>
+            (endTake: Ex.Exit<O.Option<E>, never>) =>
+              SM.withPermit(queuesLock)(
+                pipe(
+                  T.do,
+                  T.tap(() =>
+                    newQueue.set(
+                      pipe(
+                        T.do,
+                        T.bind("queue", () =>
+                          Q.makeBounded<Ex.Exit<O.Option<E>, O>>(1)
+                        ),
+                        T.tap(({ queue }) => Q.offer_(queue, endTake)),
+                        T.bind("id", () => T.succeedWith(() => Symbol())),
+                        T.tap(({ id, queue }) =>
+                          R.update_(queuesRef, Map.insert(id, queue))
+                        ),
+                        T.map(({ id, queue }) => Tp.tuple(id, queue))
                       )
                     )
-                  )
-                ),
-                T.tap(() => done(endTake)),
-                T.asUnit
+                  ),
+                  T.bind("queues", () => T.map_(queuesRef.get, (m) => m.values())),
+                  T.tap(({ queues }) =>
+                    T.forEach_(queues, (queue) =>
+                      pipe(
+                        Q.offer_(queue, endTake),
+                        T.catchSomeCause((c) =>
+                          C.interrupted(c) ? O.some(T.unit) : O.none
+                        )
+                      )
+                    )
+                  ),
+                  T.tap(() => done(endTake)),
+                  T.asUnit
+                )
               )
-            )
         ),
         M.tap(({ finalize }) =>
           pipe(

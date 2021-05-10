@@ -42,10 +42,7 @@ export function catchAllCause_<R, E, R1, E2, O, O1>(
           >
       ),
       M.bind("ref", () =>
-        pipe(
-          Ref.makeRef<State<E>>({ _tag: "NotStarted" }),
-          T.toManaged
-        )
+        pipe(Ref.makeRef<State<E>>({ _tag: "NotStarted" }), T.toManaged)
       ),
       M.let("pull", ({ finalizerRef, ref }) => {
         const closeCurrent = (cause: C.Cause<any>) =>
@@ -56,29 +53,29 @@ export function catchAllCause_<R, E, R1, E2, O, O1>(
             T.uninterruptible
           )
 
-        const open = <R, E0, O>(stream: Stream<R, E0, O>) => (
-          asState: (_: Pull.Pull<R, E0, O>) => State<E>
-        ) =>
-          T.uninterruptibleMask(({ restore }) =>
-            pipe(
-              makeReleaseMap.makeReleaseMap,
-              T.chain((releaseMap) =>
-                pipe(
-                  finalizerRef.set((exit) =>
-                    releaseAll.releaseAll(exit, T.sequential)(releaseMap)
-                  ),
-                  T.chain(() =>
-                    pipe(
-                      restore(stream.proc.effect),
-                      T.provideSome((_: R) => Tp.tuple(_, releaseMap)),
-                      T.map(({ tuple: [_, __] }) => __),
-                      T.tap((pull) => ref.set(asState(pull)))
+        const open =
+          <R, E0, O>(stream: Stream<R, E0, O>) =>
+          (asState: (_: Pull.Pull<R, E0, O>) => State<E>) =>
+            T.uninterruptibleMask(({ restore }) =>
+              pipe(
+                makeReleaseMap.makeReleaseMap,
+                T.chain((releaseMap) =>
+                  pipe(
+                    finalizerRef.set((exit) =>
+                      releaseAll.releaseAll(exit, T.sequential)(releaseMap)
+                    ),
+                    T.chain(() =>
+                      pipe(
+                        restore(stream.proc.effect),
+                        T.provideSome((_: R) => Tp.tuple(_, releaseMap)),
+                        T.map(({ tuple: [_, __] }) => __),
+                        T.tap((pull) => ref.set(asState(pull)))
+                      )
                     )
                   )
                 )
               )
             )
-          )
 
         const failover = (cause: C.Cause<Option.Option<E>>) =>
           pipe(

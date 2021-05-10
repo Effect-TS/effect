@@ -214,14 +214,9 @@ export function modifySome_<RA, RB, EA, EB, R1, E1, A, B>(
  * This is a more powerful version of `updateSome`.
  */
 export function modifySome<B>(def: B) {
-  return <R1, E1, A>(f: (a: A) => O.Option<T.Effect<R1, E1, Tp.Tuple<[B, A]>>>) => <
-    RA,
-    RB,
-    EA,
-    EB
-  >(
-    self: XRefM<RA, RB, EA, EB, A, A>
-  ) => modifySome_(self, def, f)
+  return <R1, E1, A>(f: (a: A) => O.Option<T.Effect<R1, E1, Tp.Tuple<[B, A]>>>) =>
+    <RA, RB, EA, EB>(self: XRefM<RA, RB, EA, EB, A, A>) =>
+      modifySome_(self, def, f)
 }
 
 /**

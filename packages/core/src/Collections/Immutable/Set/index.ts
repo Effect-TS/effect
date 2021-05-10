@@ -341,7 +341,9 @@ export function partitionMap<B, C>(
   EC: Equal<C>
 ): <A>(f: (a: A) => Either<B, C>) => (set: Set<A>) => Separated<Set<B>, Set<C>> {
   const pm = partitionMap_(EB, EC)
-  return <A>(f: (a: A) => Either<B, C>) => (set: Set<A>) => pm(set, f)
+  return <A>(f: (a: A) => Either<B, C>) =>
+    (set: Set<A>) =>
+      pm(set, f)
 }
 
 /**

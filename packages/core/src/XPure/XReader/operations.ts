@@ -64,8 +64,10 @@ export const run = <A>(self: XReader<unknown, A>): A => F.run(self)
 /**
  * Run the computation with environment R
  */
-export const runEnv = <R>(r: R) => <A>(self: XReader<R, A>): A =>
-  F.run(F.provideAll_(self, r))
+export const runEnv =
+  <R>(r: R) =>
+  <A>(self: XReader<R, A>): A =>
+    F.run(F.provideAll_(self, r))
 
 /**
  * Returns a computation that effectfully "peeks" at the success of this one.

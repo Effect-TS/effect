@@ -107,7 +107,9 @@ export function foldMap_<M>(M: Identity<M>) {
 }
 
 export function foldMap<M>(M: Identity<M>) {
-  return <A>(f: (a: A) => M) => (fa: A): M => foldMap_(M)(fa, f)
+  return <A>(f: (a: A) => M) =>
+    (fa: A): M =>
+      foldMap_(M)(fa, f)
 }
 
 /**

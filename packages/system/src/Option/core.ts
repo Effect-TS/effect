@@ -67,9 +67,9 @@ export const ap_: <A, B>(fab: Option<(a: A) => B>, fa: Option<A>) => Option<B> =
 /**
  * Classic applicative
  */
-export const ap: <A>(fa: Option<A>) => <B>(fab: Option<(a: A) => B>) => Option<B> = (
-  fa
-) => (fab) => ap_(fab, fa)
+export const ap: <A>(fa: Option<A>) => <B>(fab: Option<(a: A) => B>) => Option<B> =
+  (fa) => (fab) =>
+    ap_(fab, fa)
 
 /**
  * Zips `Option[A]` and `Option[B]` into `Option[(A, B)]
@@ -82,29 +82,29 @@ export const zip_: <A, B>(fa: Option<A>, fb: Option<B>) => Option<Tp.Tuple<[A, B
 /**
  * Zips `Option[A]` and `Option[B]` into `Option[(A, B)]
  */
-export const zip: <B>(
-  fb: Option<B>
-) => <A>(fa: Option<A>) => Option<Tp.Tuple<[A, B]>> = (fb) => (fa) => zip_(fa, fb)
+export const zip: <B>(fb: Option<B>) => <A>(fa: Option<A>) => Option<Tp.Tuple<[A, B]>> =
+  (fb) => (fa) => zip_(fa, fb)
 
 /**
  * Apply both and return first
  */
-export const zipFirst: <B>(fb: Option<B>) => <A>(fa: Option<A>) => Option<A> = (fb) => (
-  fa
-) =>
-  ap_(
-    map_(fa, (a) => () => a),
-    fb
-  )
+export const zipFirst: <B>(fb: Option<B>) => <A>(fa: Option<A>) => Option<A> =
+  (fb) => (fa) =>
+    ap_(
+      map_(fa, (a) => () => a),
+      fb
+    )
 
 /**
  * Apply both and return second
  */
-export const zipSecond = <B>(fb: Option<B>) => <A>(fa: Option<A>): Option<B> =>
-  ap_(
-    map_(fa, () => (b: B) => b),
-    fb
-  )
+export const zipSecond =
+  <B>(fb: Option<B>) =>
+  <A>(fa: Option<A>): Option<B> =>
+    ap_(
+      map_(fa, () => (b: B) => b),
+      fb
+    )
 
 /**
  * Builds a new option constructed using the value of self
@@ -117,15 +117,17 @@ export const chain_: <A, B>(self: Option<A>, f: (a: A) => Option<B>) => Option<B
 /**
  * Builds a new option constructed using the value of self
  */
-export const chain: <A, B>(f: (a: A) => Option<B>) => (self: Option<A>) => Option<B> = (
-  f
-) => (ma) => chain_(ma, f)
+export const chain: <A, B>(f: (a: A) => Option<B>) => (self: Option<A>) => Option<B> =
+  (f) => (ma) =>
+    chain_(ma, f)
 
 /**
  * Like chain but ignores the constructed outout
  */
-export const tap = <A>(f: (a: A) => Option<any>) => (ma: Option<A>): Option<A> =>
-  chain_(ma, (a) => map_(f(a), () => a))
+export const tap =
+  <A>(f: (a: A) => Option<any>) =>
+  (ma: Option<A>): Option<A> =>
+    chain_(ma, (a) => map_(f(a), () => a))
 
 /**
  * Like chain but ignores the constructed outout
@@ -177,8 +179,10 @@ export function exists<A>(predicate: Predicate<A>): (ma: Option<A>) => boolean {
 /**
  * Apply `Option[A] => B` in case self is some returning `Option[B]`
  */
-export const extend = <A, B>(f: (fa: Option<A>) => B) => (self: Option<A>): Option<B> =>
-  extend_(self, f)
+export const extend =
+  <A, B>(f: (fa: Option<A>) => B) =>
+  (self: Option<A>): Option<B> =>
+    extend_(self, f)
 
 /**
  * Apply `Option[A] => B` in case self is some returning `Option[B]`
@@ -405,9 +409,9 @@ export const map_: <A, B>(fa: Option<A>, f: (a: A) => B) => Option<B> = (ma, f) 
 /**
  * Use `A => B` to transform `Option[A]` to `Option[B]`
  */
-export const map: <A, B>(f: (a: A) => B) => (fa: Option<A>) => Option<B> = (f) => (
-  fa
-) => map_(fa, f)
+export const map: <A, B>(f: (a: A) => B) => (fa: Option<A>) => Option<B> =
+  (f) => (fa) =>
+    map_(fa, f)
 
 /**
  * This is `chain` + `fromNullable`, useful when working with optional values

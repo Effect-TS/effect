@@ -29,7 +29,8 @@ export interface XPure<W, S1, S2, R, E, A> {
 }
 
 export abstract class XPureBase<W, S1, S2, R, E, A>
-  implements XPure<W, S1, S2, R, E, A> {
+  implements XPure<W, S1, S2, R, E, A>
+{
   readonly _tag = "XPure";
 
   readonly [_S1]!: (_: S1) => void;

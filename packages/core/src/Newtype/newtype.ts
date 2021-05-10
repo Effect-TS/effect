@@ -78,9 +78,10 @@ export function genericDef<URI extends string>(URI: URI): GenericConstructor<URI
   }
 }
 
-export const newtype = <K extends Newtype<any, any>>() => (
-  _: Constructor<K["_A"], K["_URI"]>
-): ConstructorK<K["_A"], K["_URI"], K> => _ as any
+export const newtype =
+  <K extends Newtype<any, any>>() =>
+  (_: Constructor<K["_A"], K["_URI"]>): ConstructorK<K["_A"], K["_URI"], K> =>
+    _ as any
 
 export type TypeOf<T extends Constructor<any, any>> = [T] extends [
   Constructor<infer K, infer URI>

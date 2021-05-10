@@ -90,9 +90,7 @@ export function fromNative<Ks extends readonly unknown[]>(self: Ks): Tuple<Ks> {
 export function update<Ks extends readonly unknown[], I extends keyof Ks & number, J>(
   i: I,
   f: (_: Ks[I]) => J
-): (
-  self: Tuple<Ks>
-) => Tuple<
+): (self: Tuple<Ks>) => Tuple<
   ForcedArray<
     {
       [k in keyof Ks]: k extends `${I}` ? J : Ks[k]

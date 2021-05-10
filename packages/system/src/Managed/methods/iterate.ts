@@ -19,14 +19,12 @@ import { suspend } from "./suspend"
  * ```
  */
 export function iterate<Z>(initial: Z) {
-  return (cont: (z: Z) => boolean) => <R, E>(
-    body: (z: Z) => Managed<R, E, Z>,
-    __trace?: string
-  ): Managed<R, E, Z> =>
-    suspend(() => {
-      if (cont(initial)) {
-        return chain_(body(initial), (z2) => iterate(z2)(cont)(body))
-      }
-      return succeed(initial)
-    }, __trace)
+  return (cont: (z: Z) => boolean) =>
+    <R, E>(body: (z: Z) => Managed<R, E, Z>, __trace?: string): Managed<R, E, Z> =>
+      suspend(() => {
+        if (cont(initial)) {
+          return chain_(body(initial), (z2) => iterate(z2)(cont)(body))
+        }
+        return succeed(initial)
+      }, __trace)
 }

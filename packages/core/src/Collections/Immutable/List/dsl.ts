@@ -36,6 +36,5 @@ export const tupleZip = P.tupleF(ApplyZip)
 /**
  * Matchers
  */
-export const { match, matchIn, matchMorph, matchTag, matchTagIn } = P.matchers(
-  Covariant
-)
+export const { match, matchIn, matchMorph, matchTag, matchTagIn } =
+  P.matchers(Covariant)

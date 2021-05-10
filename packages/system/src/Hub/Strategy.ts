@@ -61,8 +61,8 @@ export abstract class Strategy<A> {
     pollers: MQ.MutableQueue<P.Promise<never, A>>
   ): void {
     let keepPolling = true
-    const nullPoller = (null as unknown) as P.Promise<never, A>
-    const empty = (null as unknown) as A
+    const nullPoller = null as unknown as P.Promise<never, A>
+    const empty = null as unknown as A
 
     while (keepPolling && !subscription.isEmpty()) {
       const poller = pollers.poll(nullPoller)!
@@ -116,9 +116,8 @@ export abstract class Strategy<A> {
  * are published and received by other subscribers.
  */
 export class BackPressure<A> extends Strategy<A> {
-  publishers: MQ.MutableQueue<
-    readonly [A, P.Promise<never, boolean>, boolean]
-  > = new MQ.Unbounded()
+  publishers: MQ.MutableQueue<readonly [A, P.Promise<never, boolean>, boolean]> =
+    new MQ.Unbounded()
 
   handleSurplus(
     hub: InternalHub.Hub<A>,
@@ -166,7 +165,7 @@ export class BackPressure<A> extends Strategy<A> {
       HP.HashedPair<InternalHub.Subscription<A>, MQ.MutableQueue<P.Promise<never, A>>>
     >
   ): void {
-    const empty = (null as unknown) as readonly [A, P.Promise<never, boolean>, boolean]
+    const empty = null as unknown as readonly [A, P.Promise<never, boolean>, boolean]
     let keepPolling = true
 
     while (keepPolling && !hub.isFull()) {

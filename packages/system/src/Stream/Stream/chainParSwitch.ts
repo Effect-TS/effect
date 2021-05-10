@@ -24,107 +24,106 @@ import * as tap from "./tap"
  * elements of the produced streams may be buffered in memory by this operator.
  */
 export function chainParSwitch(n: number, bufferSize = 16) {
-  return <R1, E1, O, O2>(f: (o: O) => Stream<R1, E1, O2>) => <R, E>(
-    self: Stream<R, E, O>
-  ): Stream<R & R1, E | E1, O2> => {
-    return new Stream(
-      M.withChildren((getChildren) =>
-        pipe(
-          M.do,
-          M.bind("out", () =>
-            T.toManagedRelease_(
-              Q.makeBounded<T.Effect<R1, O.Option<E | E1>, A.Chunk<O2>>>(bufferSize),
-              Q.shutdown
-            )
-          ),
-          M.bind("permits", () => T.toManaged(SM.makeSemaphore(n))),
-          M.bind("innerFailure", () => T.toManaged(P.make<C.Cause<E1>, never>())),
-          M.bind("cancelers", () =>
-            T.toManagedRelease_(Q.makeBounded<P.Promise<never, void>>(n), Q.shutdown)
-          ),
-          M.tap(({ cancelers, innerFailure, out, permits }) =>
-            pipe(
-              forEach.forEachManaged_(self, (a) =>
-                pipe(
-                  T.do,
-                  T.bind("canceler", () => P.make<never, void>()),
-                  T.bind("latch", () => P.make<never, void>()),
-                  T.bind("size", () => Q.size(cancelers)),
-                  T.tap(({ size }) => {
-                    if (size < n) {
-                      return T.unit
-                    } else {
-                      return pipe(
-                        Q.take(cancelers),
-                        T.chain((_) => T.succeed(undefined)),
-                        T.asUnit
-                      )
-                    }
-                  }),
-                  T.tap(({ canceler }) => Q.offer_(cancelers, canceler)),
-                  T.let("innerStream", ({ latch }) =>
-                    pipe(
-                      managed(SM.withPermitManaged(permits)),
-                      tap.tap((_) => P.succeed_(latch, undefined)),
-                      chain.chain((_) => f(a)),
-                      forEach.forEachChunk((o2s) =>
-                        T.asUnit(Q.offer_(out, T.succeed(o2s)))
-                      ),
-                      T.foldCauseM(
-                        (cause) =>
-                          pipe(
-                            Q.offer_(out, Pull.halt(cause)),
-                            T.zipRight(P.fail_(innerFailure, cause)),
-                            T.asUnit
-                          ),
-                        (_) => T.unit
-                      )
-                    )
-                  ),
-                  T.tap(({ canceler, innerStream }) =>
-                    T.fork(T.race_(innerStream, P.await(canceler)))
-                  ),
-                  T.tap(({ latch }) => P.await(latch)),
-                  T.asUnit
-                )
-              ),
-              M.foldCauseM(
-                (cause) =>
+  return <R1, E1, O, O2>(f: (o: O) => Stream<R1, E1, O2>) =>
+    <R, E>(self: Stream<R, E, O>): Stream<R & R1, E | E1, O2> => {
+      return new Stream(
+        M.withChildren((getChildren) =>
+          pipe(
+            M.do,
+            M.bind("out", () =>
+              T.toManagedRelease_(
+                Q.makeBounded<T.Effect<R1, O.Option<E | E1>, A.Chunk<O2>>>(bufferSize),
+                Q.shutdown
+              )
+            ),
+            M.bind("permits", () => T.toManaged(SM.makeSemaphore(n))),
+            M.bind("innerFailure", () => T.toManaged(P.make<C.Cause<E1>, never>())),
+            M.bind("cancelers", () =>
+              T.toManagedRelease_(Q.makeBounded<P.Promise<never, void>>(n), Q.shutdown)
+            ),
+            M.tap(({ cancelers, innerFailure, out, permits }) =>
+              pipe(
+                forEach.forEachManaged_(self, (a) =>
                   pipe(
-                    pipe(
-                      getChildren,
-                      T.chain((_) => F.interruptAll(_)),
-                      T.zipRight(Q.offer_(out, Pull.halt(cause)))
-                    ),
-                    T.asUnit,
-                    T.toManaged
-                  ),
-                (_) =>
-                  pipe(
-                    P.await(innerFailure),
-                    T.raceWith(
-                      SM.withPermits_(T.unit, permits, n),
-                      (_, permitAcquisition) =>
-                        pipe(
-                          getChildren,
-                          T.chain(F.interruptAll),
-                          T.zipRight(T.asUnit(F.interrupt(permitAcquisition)))
-                        ),
-                      (_, failureAwait) =>
-                        pipe(
-                          Q.offer_(out, Pull.end),
-                          T.zipRight(T.asUnit(F.interrupt(failureAwait)))
+                    T.do,
+                    T.bind("canceler", () => P.make<never, void>()),
+                    T.bind("latch", () => P.make<never, void>()),
+                    T.bind("size", () => Q.size(cancelers)),
+                    T.tap(({ size }) => {
+                      if (size < n) {
+                        return T.unit
+                      } else {
+                        return pipe(
+                          Q.take(cancelers),
+                          T.chain((_) => T.succeed(undefined)),
+                          T.asUnit
                         )
+                      }
+                    }),
+                    T.tap(({ canceler }) => Q.offer_(cancelers, canceler)),
+                    T.let("innerStream", ({ latch }) =>
+                      pipe(
+                        managed(SM.withPermitManaged(permits)),
+                        tap.tap((_) => P.succeed_(latch, undefined)),
+                        chain.chain((_) => f(a)),
+                        forEach.forEachChunk((o2s) =>
+                          T.asUnit(Q.offer_(out, T.succeed(o2s)))
+                        ),
+                        T.foldCauseM(
+                          (cause) =>
+                            pipe(
+                              Q.offer_(out, Pull.halt(cause)),
+                              T.zipRight(P.fail_(innerFailure, cause)),
+                              T.asUnit
+                            ),
+                          (_) => T.unit
+                        )
+                      )
                     ),
-                    T.toManaged
+                    T.tap(({ canceler, innerStream }) =>
+                      T.fork(T.race_(innerStream, P.await(canceler)))
+                    ),
+                    T.tap(({ latch }) => P.await(latch)),
+                    T.asUnit
                   )
-              ),
-              M.fork
-            )
-          ),
-          M.map(({ out }) => T.flatten(Q.take(out)))
+                ),
+                M.foldCauseM(
+                  (cause) =>
+                    pipe(
+                      pipe(
+                        getChildren,
+                        T.chain((_) => F.interruptAll(_)),
+                        T.zipRight(Q.offer_(out, Pull.halt(cause)))
+                      ),
+                      T.asUnit,
+                      T.toManaged
+                    ),
+                  (_) =>
+                    pipe(
+                      P.await(innerFailure),
+                      T.raceWith(
+                        SM.withPermits_(T.unit, permits, n),
+                        (_, permitAcquisition) =>
+                          pipe(
+                            getChildren,
+                            T.chain(F.interruptAll),
+                            T.zipRight(T.asUnit(F.interrupt(permitAcquisition)))
+                          ),
+                        (_, failureAwait) =>
+                          pipe(
+                            Q.offer_(out, Pull.end),
+                            T.zipRight(T.asUnit(F.interrupt(failureAwait)))
+                          )
+                      ),
+                      T.toManaged
+                    )
+                ),
+                M.fork
+              )
+            ),
+            M.map(({ out }) => T.flatten(Q.take(out)))
+          )
         )
       )
-    )
-  }
+    }
 }

@@ -38,27 +38,24 @@ export function concat_<R, R1, E, E1, O, O1>(
         T.toManaged(T.chain_(switchStream(self.proc), currStream.set))
       ),
       M.let("pull", ({ currStream, switchStream, switched }) => {
-        const go: T.Effect<
-          R & R1,
-          O.Option<E | E1>,
-          A.Chunk<O | O1>
-        > = T.catchAllCause_(T.flatten(currStream.get), (_) =>
-          O.fold_(
-            C.sequenceCauseOption(_),
-            () =>
-              T.chain_(Ref.getAndSet_(switched, true), (_) => {
-                if (_) {
-                  return Pull.end
-                } else {
-                  return T.zipRight_(
-                    T.chain_(switchStream(that.proc), currStream.set),
-                    go
-                  )
-                }
-              }),
-            (e) => Pull.halt(e)
+        const go: T.Effect<R & R1, O.Option<E | E1>, A.Chunk<O | O1>> =
+          T.catchAllCause_(T.flatten(currStream.get), (_) =>
+            O.fold_(
+              C.sequenceCauseOption(_),
+              () =>
+                T.chain_(Ref.getAndSet_(switched, true), (_) => {
+                  if (_) {
+                    return Pull.end
+                  } else {
+                    return T.zipRight_(
+                      T.chain_(switchStream(that.proc), currStream.set),
+                      go
+                    )
+                  }
+                }),
+              (e) => Pull.halt(e)
+            )
           )
-        )
 
         return go
       }),

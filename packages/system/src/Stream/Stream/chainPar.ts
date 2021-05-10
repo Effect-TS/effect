@@ -24,86 +24,87 @@ import * as tap from "./tap"
  * buffered in memory by this operator.
  */
 export function chainPar(n: number, outputBuffer = 16) {
-  return <R1, E1, O, O2>(f: (o: O) => Stream<R1, E1, O2>) => <R, E>(
-    self: Stream<R, E, O>
-  ): Stream<R & R1, E | E1, O2> => {
-    return new Stream(
-      M.withChildren((getChildren) =>
-        pipe(
-          M.do,
-          M.bind("out", () =>
-            T.toManagedRelease_(
-              Q.makeBounded<T.Effect<R1, O.Option<E | E1>, A.Chunk<O2>>>(outputBuffer),
-              Q.shutdown
-            )
-          ),
-          M.bind("permits", () => T.toManaged(SM.makeSemaphore(n))),
-          M.bind("innerFailure", () => T.toManaged(P.make<C.Cause<E1>, never>())),
-          M.tap(({ innerFailure, out, permits }) =>
-            pipe(
-              forEach.forEachManaged_(self, (a) =>
-                pipe(
-                  T.do,
-                  T.bind("latch", () => P.make<never, void>()),
-                  T.let("innerStream", ({ latch }) =>
-                    pipe(
-                      managed(SM.withPermitManaged(permits)),
-                      tap.tap((_) => P.succeed_(latch, undefined)),
-                      chain.chain((_) => f(a)),
-                      forEach.forEachChunk((b) =>
-                        T.asUnit(Q.offer_(out, T.succeed(b)))
-                      ),
-                      T.foldCauseM(
-                        (cause) =>
-                          T.asUnit(
-                            T.zipRight_(
-                              Q.offer_(out, Pull.halt(cause)),
-                              P.fail_(innerFailure, cause)
-                            )
-                          ),
-                        (_) => T.unit
-                      )
-                    )
-                  ),
-                  T.tap(({ innerStream }) => T.fork(innerStream)),
-                  T.tap(({ latch }) => P.await(latch)),
-                  T.asUnit
-                )
-              ),
-              M.foldCauseM(
-                (cause) =>
-                  T.toManaged(
-                    T.zipRight_(
-                      T.chain_(getChildren, (c) => F.interruptAll(c)),
-                      T.asUnit(Q.offer_(out, Pull.halt(cause)))
-                    )
-                  ),
-                (_) =>
+  return <R1, E1, O, O2>(f: (o: O) => Stream<R1, E1, O2>) =>
+    <R, E>(self: Stream<R, E, O>): Stream<R & R1, E | E1, O2> => {
+      return new Stream(
+        M.withChildren((getChildren) =>
+          pipe(
+            M.do,
+            M.bind("out", () =>
+              T.toManagedRelease_(
+                Q.makeBounded<T.Effect<R1, O.Option<E | E1>, A.Chunk<O2>>>(
+                  outputBuffer
+                ),
+                Q.shutdown
+              )
+            ),
+            M.bind("permits", () => T.toManaged(SM.makeSemaphore(n))),
+            M.bind("innerFailure", () => T.toManaged(P.make<C.Cause<E1>, never>())),
+            M.tap(({ innerFailure, out, permits }) =>
+              pipe(
+                forEach.forEachManaged_(self, (a) =>
                   pipe(
-                    P.await(innerFailure),
-                    T.interruptible,
-                    T.raceWith(
-                      SM.withPermits_(T.interruptible(T.unit), permits, n),
-                      (_, permitsAcquisition) =>
-                        T.zipRight_(
-                          T.chain_(getChildren, (c) => F.interruptAll(c)),
-                          T.asUnit(F.interrupt(permitsAcquisition))
+                    T.do,
+                    T.bind("latch", () => P.make<never, void>()),
+                    T.let("innerStream", ({ latch }) =>
+                      pipe(
+                        managed(SM.withPermitManaged(permits)),
+                        tap.tap((_) => P.succeed_(latch, undefined)),
+                        chain.chain((_) => f(a)),
+                        forEach.forEachChunk((b) =>
+                          T.asUnit(Q.offer_(out, T.succeed(b)))
                         ),
-                      (_, failureAwait) =>
-                        T.zipRight_(
-                          Q.offer_(out, Pull.end),
-                          T.asUnit(F.interrupt(failureAwait))
+                        T.foldCauseM(
+                          (cause) =>
+                            T.asUnit(
+                              T.zipRight_(
+                                Q.offer_(out, Pull.halt(cause)),
+                                P.fail_(innerFailure, cause)
+                              )
+                            ),
+                          (_) => T.unit
                         )
+                      )
                     ),
-                    T.toManaged
+                    T.tap(({ innerStream }) => T.fork(innerStream)),
+                    T.tap(({ latch }) => P.await(latch)),
+                    T.asUnit
                   )
-              ),
-              M.fork
-            )
-          ),
-          M.map(({ out }) => T.flatten(Q.take(out)))
+                ),
+                M.foldCauseM(
+                  (cause) =>
+                    T.toManaged(
+                      T.zipRight_(
+                        T.chain_(getChildren, (c) => F.interruptAll(c)),
+                        T.asUnit(Q.offer_(out, Pull.halt(cause)))
+                      )
+                    ),
+                  (_) =>
+                    pipe(
+                      P.await(innerFailure),
+                      T.interruptible,
+                      T.raceWith(
+                        SM.withPermits_(T.interruptible(T.unit), permits, n),
+                        (_, permitsAcquisition) =>
+                          T.zipRight_(
+                            T.chain_(getChildren, (c) => F.interruptAll(c)),
+                            T.asUnit(F.interrupt(permitsAcquisition))
+                          ),
+                        (_, failureAwait) =>
+                          T.zipRight_(
+                            Q.offer_(out, Pull.end),
+                            T.asUnit(F.interrupt(failureAwait))
+                          )
+                      ),
+                      T.toManaged
+                    )
+                ),
+                M.fork
+              )
+            ),
+            M.map(({ out }) => T.flatten(Q.take(out)))
+          )
         )
       )
-    )
-  }
+    }
 }

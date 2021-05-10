@@ -53,7 +53,8 @@ export interface XHub<RA, RB, EA, EB, A, B> {
 }
 
 export abstract class XHubInternal<RA, RB, EA, EB, A, B>
-  implements XHub<RA, RB, EA, EB, A, B> {
+  implements XHub<RA, RB, EA, EB, A, B>
+{
   readonly typeId: typeof HubTypeId = HubTypeId;
 
   readonly [PR._RA]!: (_: RA) => void;
@@ -962,7 +963,7 @@ class UnsafeMakeSubscriptionImplementation<A> extends XQueueInternal<
       return T.interrupt
     }
 
-    const empty = (null as unknown) as A
+    const empty = null as unknown as A
     const message = this.pollers.isEmpty ? this.subscription.poll(empty) : empty
 
     if (message === null) {

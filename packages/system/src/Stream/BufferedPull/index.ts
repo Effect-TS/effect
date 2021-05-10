@@ -50,20 +50,18 @@ export function pullElement<R, E, A>(
     self,
     pipe(
       self.cursor,
-      R.modify(
-        ({
-          tuple: [c, i]
-        }): Tp.Tuple<[T.Effect<R, O.Option<E>, A>, Tp.Tuple<[A.Chunk<A>, number]>]> => {
-          if (i >= A.size(c)) {
-            return Tp.tuple(
-              T.chain_(update(self), () => pullElement(self)),
-              Tp.tuple(A.empty(), 0)
-            )
-          } else {
-            return Tp.tuple(T.succeed(A.unsafeGet_(c, i)), Tp.tuple(c, i + 1))
-          }
+      R.modify(({ tuple: [c, i] }): Tp.Tuple<
+        [T.Effect<R, O.Option<E>, A>, Tp.Tuple<[A.Chunk<A>, number]>]
+      > => {
+        if (i >= A.size(c)) {
+          return Tp.tuple(
+            T.chain_(update(self), () => pullElement(self)),
+            Tp.tuple(A.empty(), 0)
+          )
+        } else {
+          return Tp.tuple(T.succeed(A.unsafeGet_(c, i)), Tp.tuple(c, i + 1))
         }
-      ),
+      }),
       T.flatten
     )
   )
@@ -76,22 +74,18 @@ export function pullChunk<R, E, A>(
     self,
     pipe(
       self.cursor,
-      R.modify(
-        ({
-          tuple: [chunk, idx]
-        }): Tp.Tuple<
-          [T.Effect<R, O.Option<E>, A.Chunk<A>>, Tp.Tuple<[A.Chunk<A>, number]>]
-        > => {
-          if (idx >= A.size(chunk)) {
-            return Tp.tuple(
-              T.chain_(update(self), () => pullChunk(self)),
-              Tp.tuple(A.empty(), 0)
-            )
-          } else {
-            return Tp.tuple(T.succeed(A.drop_(chunk, idx)), Tp.tuple(A.empty(), 0))
-          }
+      R.modify(({ tuple: [chunk, idx] }): Tp.Tuple<
+        [T.Effect<R, O.Option<E>, A.Chunk<A>>, Tp.Tuple<[A.Chunk<A>, number]>]
+      > => {
+        if (idx >= A.size(chunk)) {
+          return Tp.tuple(
+            T.chain_(update(self), () => pullChunk(self)),
+            Tp.tuple(A.empty(), 0)
+          )
+        } else {
+          return Tp.tuple(T.succeed(A.drop_(chunk, idx)), Tp.tuple(A.empty(), 0))
         }
-      ),
+      }),
       T.flatten
     )
   )

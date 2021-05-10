@@ -13,16 +13,17 @@ import { set } from "./set"
  *
  * Guarantees that fiber data is properly restored via `bracket`.
  */
-export const locally = <A>(value: A) => <R, E, B>(use: Effect<R, E, B>) => (
-  fiberRef: FiberRef<A>
-): Effect<R, E, B> =>
-  pipe(
-    get(fiberRef),
-    chain((oldValue) =>
-      bracket_(
-        set(value)(fiberRef),
-        () => use,
-        () => set(oldValue)(fiberRef)
+export const locally =
+  <A>(value: A) =>
+  <R, E, B>(use: Effect<R, E, B>) =>
+  (fiberRef: FiberRef<A>): Effect<R, E, B> =>
+    pipe(
+      get(fiberRef),
+      chain((oldValue) =>
+        bracket_(
+          set(value)(fiberRef),
+          () => use,
+          () => set(oldValue)(fiberRef)
+        )
       )
     )
-  )

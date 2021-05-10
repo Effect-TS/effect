@@ -154,7 +154,7 @@ class UnboundedHubSubscription<A> extends Subscription<A> {
     let i = 0
 
     while (i !== n) {
-      const a = this.poll((default_ as unknown) as A)
+      const a = this.poll(default_ as unknown as A)
       if (a === default_) {
         i = n
       } else {

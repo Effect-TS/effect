@@ -305,11 +305,12 @@ export function fromConstructor<S>(
   never,
   Has<S>
 > {
-  return (f) => (...tags) =>
-    fromEffect(tag)(
-      T.accessServicesT(...tags)(((...services: any[]) =>
-        f(...(services as any))) as any) as any
-    )
+  return (f) =>
+    (...tags) =>
+      fromEffect(tag)(
+        T.accessServicesT(...tags)(((...services: any[]) =>
+          f(...(services as any))) as any) as any
+      )
 }
 
 /**
@@ -329,11 +330,12 @@ export function fromConstructorM<S>(
   E0,
   Has<S>
 > {
-  return (f) => (...tags) =>
-    fromEffect(tag)(
-      T.accessServicesTM(...tags)(((...services: any[]) =>
-        f(...(services as any))) as any) as any
-    )
+  return (f) =>
+    (...tags) =>
+      fromEffect(tag)(
+        T.accessServicesTM(...tags)(((...services: any[]) =>
+          f(...(services as any))) as any) as any
+      )
 }
 
 /**
@@ -353,15 +355,16 @@ export function fromConstructorManaged<S>(
   E0,
   Has<S>
 > {
-  return (f) => (...tags) =>
-    fromManaged(tag)(
-      M.chain_(
-        M.fromEffect(
-          T.accessServicesT(...tags)((...services: any[]) => f(...(services as any)))
-        ),
-        idFn
+  return (f) =>
+    (...tags) =>
+      fromManaged(tag)(
+        M.chain_(
+          M.fromEffect(
+            T.accessServicesT(...tags)((...services: any[]) => f(...(services as any)))
+          ),
+          idFn
+        )
       )
-    )
 }
 
 /**
@@ -386,13 +389,15 @@ export function bracketConstructor<S>(
   E,
   Has<S>
 > {
-  return (f) => (...tags) => (open, release) =>
-    prepare(tag)(
-      T.accessServicesT(...tags)(((...services: any[]) =>
-        f(...(services as any))) as any) as any
-    )
-      .open(open as any)
-      .release(release as any) as any
+  return (f) =>
+    (...tags) =>
+    (open, release) =>
+      prepare(tag)(
+        T.accessServicesT(...tags)(((...services: any[]) =>
+          f(...(services as any))) as any) as any
+      )
+        .open(open as any)
+        .release(release as any) as any
 }
 
 /**
@@ -418,13 +423,15 @@ export function bracketConstructorM<S>(
   E | E0,
   Has<S>
 > {
-  return (f) => (...tags) => (open, release) =>
-    prepare(tag)(
-      T.accessServicesTM(...tags)(((...services: any[]) =>
-        f(...(services as any))) as any) as any
-    )
-      .open(open as any)
-      .release(release as any) as any
+  return (f) =>
+    (...tags) =>
+    (open, release) =>
+      prepare(tag)(
+        T.accessServicesTM(...tags)(((...services: any[]) =>
+          f(...(services as any))) as any) as any
+      )
+        .open(open as any)
+        .release(release as any) as any
 }
 
 /**

@@ -189,9 +189,9 @@ describe("Stream", () => {
         )
       )
 
-      expect(
-        await pipe(streamA, S.merge(streamB), S.runCollect, T.runPromise)
-      ).toEqual([1, 2, 1, 1, 2])
+      expect(await pipe(streamA, S.merge(streamB), S.runCollect, T.runPromise)).toEqual(
+        [1, 2, 1, 1, 2]
+      )
     })
   })
 
@@ -240,12 +240,7 @@ describe("Stream", () => {
 
   it("range", async () => {
     expect(await pipe(S.range(2, 8), S.runCollect, T.runPromise)).toEqual([
-      2,
-      3,
-      4,
-      5,
-      6,
-      7
+      2, 3, 4, 5, 6, 7
     ])
   })
 })

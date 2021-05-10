@@ -57,10 +57,8 @@ export function bimap<E, G, A, B>(
 /**
  * Contramap input
  */
-export const contramap_: <E, A, B>(
-  fa: Const<E, A>,
-  f: (b: B) => A
-) => Const<E, B> = unsafeCoerce
+export const contramap_: <E, A, B>(fa: Const<E, A>, f: (b: B) => A) => Const<E, B> =
+  unsafeCoerce
 
 /**
  * Contramap input
@@ -178,10 +176,8 @@ export const makeConst: <E>(e: E) => <A = never>() => Const<E, A> = (e) => () =>
  *
  * @optimize identity
  */
-export const map_: <E, A, B>(
-  fa: Const<E, A>,
-  f: (a: A) => B
-) => Const<E, B> = unsafeCoerce
+export const map_: <E, A, B>(fa: Const<E, A>, f: (a: A) => B) => Const<E, B> =
+  unsafeCoerce
 
 /**
  * Maps `Const[E, A]` to `Const[E, B]` via `f : A => B`

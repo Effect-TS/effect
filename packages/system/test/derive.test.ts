@@ -40,8 +40,16 @@ const program = pipe(
     factorFun((_) => _())
   ),
   T.chain((_) => T.tuple(base, factor, T.succeed(_))),
-  T.chain(({ tuple: [b, f, { tuple: [x, y] }] }) =>
-    T.chain_(add(b, f), (k) => T.succeed(k + x + y))
+  T.chain(
+    ({
+      tuple: [
+        b,
+        f,
+        {
+          tuple: [x, y]
+        }
+      ]
+    }) => T.chain_(add(b, f), (k) => T.succeed(k + x + y))
   ),
   T.chain((sum) => mul(sum, 3))
 )

@@ -744,8 +744,9 @@ export function delayedM_<Env, In, Out, Env1>(
  * Returns a new schedule that contramaps the input and maps the output.
  */
 export function dimap<In2, In>(f: (i: In2) => In) {
-  return <Out, Out2>(g: (o: Out) => Out2) => <Env>(self: Schedule<Env, In, Out>) =>
-    dimap_(self, f, g)
+  return <Out, Out2>(g: (o: Out) => Out2) =>
+    <Env>(self: Schedule<Env, In, Out>) =>
+      dimap_(self, f, g)
 }
 
 /**
@@ -951,10 +952,7 @@ export function fixed(interval: number): Schedule<unknown, unknown, number> {
             return Decision.makeContinue(
               n + 1,
               nextRun,
-              loop(
-                O.some<State>({ startMillis, lastRun: nextRun }),
-                n + 1
-              )
+              loop(O.some<State>({ startMillis, lastRun: nextRun }), n + 1)
             )
           }
         )
@@ -1054,8 +1052,9 @@ function foldMLoop<Z, Env, In, Out, Env1>(
  * Returns a new schedule that effectfully folds over the outputs of this one.
  */
 export function fold<Z>(z: Z) {
-  return <Out>(f: (z: Z, o: Out) => Z) => <Env, In>(self: Schedule<Env, In, Out>) =>
-    fold_(self, z, f)
+  return <Out>(f: (z: Z, o: Out) => Z) =>
+    <Env, In>(self: Schedule<Env, In, Out>) =>
+      fold_(self, z, f)
 }
 
 /**
@@ -1073,9 +1072,9 @@ export function fold_<Env, In, Out, Z>(
  * Returns a new schedule that effectfully folds over the outputs of this one.
  */
 export function foldM<Z>(z: Z) {
-  return <Env1, Out>(f: (z: Z, o: Out) => T.Effect<Env1, never, Z>) => <Env, In>(
-    self: Schedule<Env, In, Out>
-  ) => foldM_(self, z, f)
+  return <Env1, Out>(f: (z: Z, o: Out) => T.Effect<Env1, never, Z>) =>
+    <Env, In>(self: Schedule<Env, In, Out>) =>
+      foldM_(self, z, f)
 }
 
 /**

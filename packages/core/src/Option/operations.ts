@@ -34,10 +34,10 @@ export function getShow<A>(S: Show<A>): Show<O.Option<A>> {
 }
 
 export const AssociativeEither = P.instance<P.AssociativeEither<[URI<OptionURI>]>>({
-  orElseEither: <B>(fb: () => O.Option<B>) => <A>(
-    fa: O.Option<A>
-  ): O.Option<Either<A, B>> =>
-    fa._tag === "Some" ? O.some(left(fa.value)) : O.map_(fb(), right)
+  orElseEither:
+    <B>(fb: () => O.Option<B>) =>
+    <A>(fa: O.Option<A>): O.Option<Either<A, B>> =>
+      fa._tag === "Some" ? O.some(left(fa.value)) : O.map_(fb(), right)
 })
 
 export const Covariant = P.instance<P.Covariant<[URI<OptionURI>]>>({
@@ -81,15 +81,14 @@ export const Extend = P.instance<P.Extend<[URI<OptionURI>]>>({
 })
 
 export const Foldable = P.instance<P.Foldable<[URI<OptionURI>]>>({
-  reduce: (b, f) => (fa) => (O.isNone(fa) ? b : f(b, fa.value)),
-  reduceRight: (b, f) => (fa) => (O.isNone(fa) ? b : f(fa.value, b)),
-  foldMap: (M) => (f) => (fa) => (O.isNone(fa) ? M.identity : f(fa.value))
+  reduce: (b, f) => (fa) => O.isNone(fa) ? b : f(b, fa.value),
+  reduceRight: (b, f) => (fa) => O.isNone(fa) ? b : f(fa.value, b),
+  foldMap: (M) => (f) => (fa) => O.isNone(fa) ? M.identity : f(fa.value)
 })
 
-export const forEachF = P.implementForEachF<
-  [URI<OptionURI>]
->()(() => (G) => (f) => (fa) =>
-  O.isNone(fa) ? P.succeedF(G)(O.none) : pipe(f(fa.value), G.map(O.some))
+export const forEachF = P.implementForEachF<[URI<OptionURI>]>()(
+  () => (G) => (f) => (fa) =>
+    O.isNone(fa) ? P.succeedF(G)(O.none) : pipe(f(fa.value), G.map(O.some))
 )
 
 export const ForEach = P.instance<P.ForEach<[URI<OptionURI>]>>({
@@ -227,10 +226,10 @@ export function getOrd<A>(_: Ord<A>): Ord<O.Option<A>> {
   )
 }
 
-export const filter: P.Filterable<[URI<OptionURI>]>["filter"] = <A>(
-  predicate: Predicate<A>
-) => (fa: O.Option<A>): O.Option<A> =>
-  O.isNone(fa) ? O.none : predicate(fa.value) ? fa : O.none
+export const filter: P.Filterable<[URI<OptionURI>]>["filter"] =
+  <A>(predicate: Predicate<A>) =>
+  (fa: O.Option<A>): O.Option<A> =>
+    O.isNone(fa) ? O.none : predicate(fa.value) ? fa : O.none
 
 export const filterMap: <A, B>(
   f: (a: A) => O.Option<B>
@@ -249,12 +248,12 @@ export function separate<A, B>(
   return O.isNone(o) ? defaultSeparate : o.value
 }
 
-export const partition: P.Filterable<[URI<OptionURI>]>["partition"] = <A>(
-  predicate: Predicate<A>
-) => (fa: O.Option<A>) => ({
-  left: filter((a: A) => !predicate(a))(fa),
-  right: filter(predicate)(fa)
-})
+export const partition: P.Filterable<[URI<OptionURI>]>["partition"] =
+  <A>(predicate: Predicate<A>) =>
+  (fa: O.Option<A>) => ({
+    left: filter((a: A) => !predicate(a))(fa),
+    right: filter(predicate)(fa)
+  })
 
 export const partitionMap: <A, B, B1>(
   f: (a: A) => Either<B, B1>

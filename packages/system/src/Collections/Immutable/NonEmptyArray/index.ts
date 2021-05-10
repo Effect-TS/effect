@@ -27,9 +27,8 @@ export const cons_: <A>(tail: A.Array<A>, head: A) => NonEmptyArray<A> = A.cons_
 /**
  * Append an element to the front of an array, creating a new non empty array
  */
-export const cons: <A>(
-  head: A
-) => (tail: A.Array<A>) => NonEmptyArray<A> = A.cons as any
+export const cons: <A>(head: A) => (tail: A.Array<A>) => NonEmptyArray<A> =
+  A.cons as any
 
 /**
  * Append an element to the end of an array, creating a new non empty array
@@ -329,9 +328,8 @@ export const tap_: <A, B>(
 /**
  * Array[A] => Array[Array[A]]
  */
-export const duplicate: <A>(
-  ma: NonEmptyArray<A>
-) => NonEmptyArray<NonEmptyArray<A>> = A.duplicate as any
+export const duplicate: <A>(ma: NonEmptyArray<A>) => NonEmptyArray<NonEmptyArray<A>> =
+  A.duplicate as any
 
 /**
  * Extends calls f with all the progressive slices up to the current
@@ -357,24 +355,20 @@ export const extend_: <A, B>(
 /**
  * Removes one level of nesting
  */
-export const flatten: <A>(
-  mma: NonEmptyArray<NonEmptyArray<A>>
-) => NonEmptyArray<A> = A.flatten as any
+export const flatten: <A>(mma: NonEmptyArray<NonEmptyArray<A>>) => NonEmptyArray<A> =
+  A.flatten as any
 
 /**
  * Apply f to every element of Array returning Array
  */
-export const map: <A, B>(
-  f: (a: A) => B
-) => (fa: NonEmptyArray<A>) => NonEmptyArray<B> = A.map as any
+export const map: <A, B>(f: (a: A) => B) => (fa: NonEmptyArray<A>) => NonEmptyArray<B> =
+  A.map as any
 
 /**
  * Apply f to every element of Array returning Array
  */
-export const map_: <A, B>(
-  fa: NonEmptyArray<A>,
-  f: (a: A) => B
-) => NonEmptyArray<B> = A.map_ as any
+export const map_: <A, B>(fa: NonEmptyArray<A>, f: (a: A) => B) => NonEmptyArray<B> =
+  A.map_ as any
 
 /**
  * Like map but also passes the index to f
@@ -394,19 +388,14 @@ export const mapWithIndex_: <A, B>(
 /**
  * Construct B by compacting with f over the array from left to right
  */
-export const reduce: <A, B>(
-  b: B,
-  f: (b: B, a: A) => B
-) => (fa: NonEmptyArray<A>) => B = A.reduce as any
+export const reduce: <A, B>(b: B, f: (b: B, a: A) => B) => (fa: NonEmptyArray<A>) => B =
+  A.reduce as any
 
 /**
  * Construct B by compacting with f over the array from left to right
  */
-export const reduce_: <A, B>(
-  fa: NonEmptyArray<A>,
-  b: B,
-  f: (b: B, a: A) => B
-) => B = A.reduce_ as any
+export const reduce_: <A, B>(fa: NonEmptyArray<A>, b: B, f: (b: B, a: A) => B) => B =
+  A.reduce_ as any
 
 /**
  * Construct B by compacting with f over the array from right to left

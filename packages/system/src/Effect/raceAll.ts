@@ -94,8 +94,10 @@ export function raceAllWithStrategy<R, E, A>(
                 )
               )
             ),
-            Do.let("inheritRefs", () => (res: Tp.Tuple<[A, Fiber.Fiber<E, A>]>) =>
-              pipe(res.get(1).inheritRefs, as.as(res.get(0)))
+            Do.let(
+              "inheritRefs",
+              () => (res: Tp.Tuple<[A, Fiber.Fiber<E, A>]>) =>
+                pipe(res.get(1).inheritRefs, as.as(res.get(0)))
             ),
             Do.bind("c", ({ fs, inheritRefs }) =>
               pipe(

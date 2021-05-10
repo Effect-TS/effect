@@ -191,50 +191,51 @@ export function forEachUnitPar_<R, E, A, X>(
         ),
         Do.let(
           "task",
-          ({ causes, parentId, result, startFailure, startTask, status }) => (a: A) =>
-            pipe(
-              ifM.ifM_(
-                startTask,
-                () =>
-                  pipe(
-                    core.suspend(() => f(a)),
-                    interruption.interruptible,
-                    tapCause.tapCause((c) =>
-                      pipe(
-                        causes,
-                        Ref.update((_) => cause.both(_, c)),
-                        zips.zipRight(startFailure)
+          ({ causes, parentId, result, startFailure, startTask, status }) =>
+            (a: A) =>
+              pipe(
+                ifM.ifM_(
+                  startTask,
+                  () =>
+                    pipe(
+                      core.suspend(() => f(a)),
+                      interruption.interruptible,
+                      tapCause.tapCause((c) =>
+                        pipe(
+                          causes,
+                          Ref.update((_) => cause.both(_, c)),
+                          zips.zipRight(startFailure)
+                        )
+                      ),
+                      ensuring.ensuring(
+                        (() => {
+                          const isComplete = pipe(
+                            status,
+                            Ref.modify(({ tuple: [started, done, failing] }) => {
+                              const newDone = done + 1
+
+                              return Tp.tuple(
+                                (failing ? started : size) === newDone,
+                                Tp.tuple(started, newDone, failing)
+                              )
+                            })
+                          )
+
+                          return pipe(
+                            promise.succeed<void>(undefined)(result),
+                            whenM.whenM(isComplete)
+                          )
+                        })()
                       )
                     ),
-                    ensuring.ensuring(
-                      (() => {
-                        const isComplete = pipe(
-                          status,
-                          Ref.modify(({ tuple: [started, done, failing] }) => {
-                            const newDone = done + 1
-
-                            return Tp.tuple(
-                              (failing ? started : size) === newDone,
-                              Tp.tuple(started, newDone, failing)
-                            )
-                          })
-                        )
-
-                        return pipe(
-                          promise.succeed<void>(undefined)(result),
-                          whenM.whenM(isComplete)
-                        )
-                      })()
+                  () =>
+                    pipe(
+                      causes,
+                      Ref.update((_) => cause.both(_, cause.interrupt(parentId)))
                     )
-                  ),
-                () =>
-                  pipe(
-                    causes,
-                    Ref.update((_) => cause.both(_, cause.interrupt(parentId)))
-                  )
-              ),
-              interruption.uninterruptible
-            )
+                ),
+                interruption.uninterruptible
+              )
         ),
         Do.bind("fibers", ({ task }) =>
           coreScope.transplant((graft) =>
@@ -819,62 +820,59 @@ export function releaseMapReleaseAll(
   return (_: ReleaseMap) =>
     pipe(
       _.ref,
-      Ref.modify(
-        (s): Tp.Tuple<[UIO<any>, State]> => {
-          switch (s._tag) {
-            case "Exited": {
-              return Tp.tuple(core.unit, s)
-            }
-            case "Running": {
-              switch (execStrategy._tag) {
-                case "Sequential": {
-                  return Tp.tuple(
-                    core.chain_(
-                      forEach_(
-                        Array.from(s.finalizers()).reverse(),
-                        ([_, f]) => core.result(f(exit)),
-                        __trace
-                      ),
-                      (e) =>
-                        done(O.getOrElse_(Ex.collectAll(...e), () => Ex.succeed([])))
+      Ref.modify((s): Tp.Tuple<[UIO<any>, State]> => {
+        switch (s._tag) {
+          case "Exited": {
+            return Tp.tuple(core.unit, s)
+          }
+          case "Running": {
+            switch (execStrategy._tag) {
+              case "Sequential": {
+                return Tp.tuple(
+                  core.chain_(
+                    forEach_(
+                      Array.from(s.finalizers()).reverse(),
+                      ([_, f]) => core.result(f(exit)),
+                      __trace
                     ),
-                    new Exited(s.nextKey, exit)
-                  )
-                }
-                case "Parallel": {
-                  return Tp.tuple(
-                    core.chain_(
-                      forEachPar_(
-                        Array.from(s.finalizers()).reverse(),
-                        ([_, f]) => core.result(f(exit)),
-                        __trace
-                      ),
-                      (e) =>
-                        done(O.getOrElse_(Ex.collectAllPar(...e), () => Ex.succeed([])))
+                    (e) => done(O.getOrElse_(Ex.collectAll(...e), () => Ex.succeed([])))
+                  ),
+                  new Exited(s.nextKey, exit)
+                )
+              }
+              case "Parallel": {
+                return Tp.tuple(
+                  core.chain_(
+                    forEachPar_(
+                      Array.from(s.finalizers()).reverse(),
+                      ([_, f]) => core.result(f(exit)),
+                      __trace
                     ),
-                    new Exited(s.nextKey, exit)
-                  )
-                }
-                case "ParallelN": {
-                  return Tp.tuple(
-                    core.chain_(
-                      forEachParN_(
-                        Array.from(s.finalizers()).reverse(),
-                        execStrategy.n,
-                        ([_, f]) => core.result(f(exit)),
-                        __trace
-                      ),
-                      (e) =>
-                        done(O.getOrElse_(Ex.collectAllPar(...e), () => Ex.succeed([])))
+                    (e) =>
+                      done(O.getOrElse_(Ex.collectAllPar(...e), () => Ex.succeed([])))
+                  ),
+                  new Exited(s.nextKey, exit)
+                )
+              }
+              case "ParallelN": {
+                return Tp.tuple(
+                  core.chain_(
+                    forEachParN_(
+                      Array.from(s.finalizers()).reverse(),
+                      execStrategy.n,
+                      ([_, f]) => core.result(f(exit)),
+                      __trace
                     ),
-                    new Exited(s.nextKey, exit)
-                  )
-                }
+                    (e) =>
+                      done(O.getOrElse_(Ex.collectAllPar(...e), () => Ex.succeed([])))
+                  ),
+                  new Exited(s.nextKey, exit)
+                )
               }
             }
           }
         }
-      ),
+      }),
       flatten.flatten
     )
 }

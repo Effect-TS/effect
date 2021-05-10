@@ -39,9 +39,8 @@ export { do_ as do, let_ as let }
 /**
  * Matchers
  */
-export const { match, matchIn, matchMorph, matchTag, matchTagIn } = P.matchers(
-  Covariant
-)
+export const { match, matchIn, matchMorph, matchTag, matchTagIn } =
+  P.matchers(Covariant)
 
 /**
  * Conditionals

@@ -105,8 +105,9 @@ export function chainF<F extends HKT.URIS, C = HKT.Auto>(
   B
 >
 export function chainF<F>(F: Monad<HKT.UHKT<F>>) {
-  return <A, B>(f: (a: A) => HKT.HKT<F, B>) => (x: HKT.HKT<F, A>) =>
-    pipe(x, F.map(f), F.flatten)
+  return <A, B>(f: (a: A) => HKT.HKT<F, B>) =>
+    (x: HKT.HKT<F, A>) =>
+      pipe(x, F.map(f), F.flatten)
 }
 
 export function accessMF<F extends HKT.URIS, C = HKT.Auto>(
@@ -313,10 +314,11 @@ export function accessServiceMF<F extends HKT.URIS, C extends HKT.V<"R", "-">>(
 export function accessServiceMF<F>(
   F: Monad<HKT.UHKT3<F>, HKT.V<"R", "-">> & Access<HKT.UHKT3<F>, HKT.V<"R", "-">>
 ) {
-  return <Service>(H: Tag<Service>) => <R, E, A>(
-    f: (_: Service) => HKT.HKT3<F, R, E, A>
-  ): HKT.HKT3<F, Has<Service> & R, E, A> =>
-    accessMF(F)((x: Has<Service>) => pipe(x, H.read, f))
+  return <Service>(H: Tag<Service>) =>
+    <R, E, A>(
+      f: (_: Service) => HKT.HKT3<F, R, E, A>
+    ): HKT.HKT3<F, Has<Service> & R, E, A> =>
+      accessMF(F)((x: Has<Service>) => pipe(x, H.read, f))
 }
 
 export function provideServiceF<F extends HKT.URIS, C extends HKT.V<"R", "-">>(
@@ -333,12 +335,12 @@ export function provideServiceF<F>(
     Access<HKT.UHKT3<F>, HKT.V<"R", "-">> &
     Provide<HKT.UHKT3<F>, HKT.V<"R", "-">>
 ) {
-  return <Service>(H: Tag<Service>) => <R, E, A>(S: Service) => (
-    fa: HKT.HKT3<F, Has<Service> & R, E, A>
-  ): HKT.HKT3<F, R, E, A> =>
-    accessMF(F)((r: R) =>
-      pipe(fa, F.provide(({ ...r, [H.key]: S } as unknown) as R & Has<Service>))
-    )
+  return <Service>(H: Tag<Service>) =>
+    <R, E, A>(S: Service) =>
+    (fa: HKT.HKT3<F, Has<Service> & R, E, A>): HKT.HKT3<F, R, E, A> =>
+      accessMF(F)((r: R) =>
+        pipe(fa, F.provide({ ...r, [H.key]: S } as unknown as R & Has<Service>))
+      )
 }
 
 export function provideSomeF<F extends HKT.URIS, C = HKT.Auto>(
@@ -351,9 +353,9 @@ export function provideSomeF<F extends HKT.URIS, C = HKT.Auto>(
 export function provideSomeF<F>(
   F: Monad<HKT.UHKT3<F>> & Access<HKT.UHKT3<F>> & Provide<HKT.UHKT3<F>>
 ) {
-  return <R0, R, E, A>(f: (r0: R0) => R) => (
-    fa: HKT.HKT3<F, R, E, A>
-  ): HKT.HKT3<F, R0, E, A> => accessMF(F)((r0: R0) => pipe(fa, F.provide(f(r0))))
+  return <R0, R, E, A>(f: (r0: R0) => R) =>
+    (fa: HKT.HKT3<F, R, E, A>): HKT.HKT3<F, R0, E, A> =>
+      accessMF(F)((r0: R0) => pipe(fa, F.provide(f(r0))))
 }
 
 export function doF<F extends HKT.URIS, C = HKT.Auto>(
@@ -414,22 +416,23 @@ export function bindF<F>(
   f: (_: K) => HKT.HKT<F, A>
 ) => (mk: HKT.HKT<F, K>) => HKT.HKT<F, K & { [k in N]: A }> {
   return <A, K, N extends string>(
-    tag: Exclude<N, keyof K>,
-    f: (_: K) => HKT.HKT<F, A>
-  ) => (mk: HKT.HKT<F, K>): HKT.HKT<F, K & { [k in N]: A }> =>
-    pipe(
-      mk,
-      chainF(F)((k) =>
-        pipe(
-          f(k),
-          F.map((a) =>
-            Object.assign({}, k, { [tag]: a } as {
-              [k in N]: A
-            })
+      tag: Exclude<N, keyof K>,
+      f: (_: K) => HKT.HKT<F, A>
+    ) =>
+    (mk: HKT.HKT<F, K>): HKT.HKT<F, K & { [k in N]: A }> =>
+      pipe(
+        mk,
+        chainF(F)((k) =>
+          pipe(
+            f(k),
+            F.map((a) =>
+              Object.assign({}, k, { [tag]: a } as {
+                [k in N]: A
+              })
+            )
           )
         )
       )
-    )
 }
 
 export function letF<F extends HKT.URIS, C = HKT.Auto>(
@@ -446,15 +449,14 @@ export function letF<F>(
   tag: Exclude<N, keyof K>,
   f: (_: K) => A
 ) => (mk: HKT.HKT<F, K>) => HKT.HKT<F, K & { [k in N]: A }> {
-  return <A, K, N extends string>(tag: Exclude<N, keyof K>, f: (_: K) => A) => (
-    mk: HKT.HKT<F, K>
-  ): HKT.HKT<F, K & { [k in N]: A }> =>
-    pipe(
-      mk,
-      F.map((k) =>
-        Object.assign({}, k, { [tag]: f(k) } as {
-          [k in N]: A
-        })
+  return <A, K, N extends string>(tag: Exclude<N, keyof K>, f: (_: K) => A) =>
+    (mk: HKT.HKT<F, K>): HKT.HKT<F, K & { [k in N]: A }> =>
+      pipe(
+        mk,
+        F.map((k) =>
+          Object.assign({}, k, { [tag]: f(k) } as {
+            [k in N]: A
+          })
+        )
       )
-    )
 }

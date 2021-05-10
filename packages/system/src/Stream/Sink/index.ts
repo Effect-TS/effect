@@ -63,54 +63,54 @@ export function as<Z1>(z: Z1) {
  * using the stepping function `f`.
  */
 export function collectAllWhileWith<S>(z: S) {
-  return <Z>(p: (z: Z) => boolean) => (f: (s: S, z: Z) => S) => <R, E, I, L extends I>(
-    self: Sink<R, E, I, L, Z>
-  ): Sink<R, E, I, L, S> =>
-    new Sink(
-      pipe(
-        R.makeManagedRef(z),
-        M.chain((acc) => {
-          return pipe(
-            Push.restartable(self.push),
-            M.map(({ tuple: [push, restart] }) => {
-              const go = (
-                s: S,
-                in_: O.Option<A.Chunk<I>>,
-                end: boolean
-              ): T.Effect<R, Tp.Tuple<[E.Either<E, S>, A.Chunk<L>]>, S> =>
-                T.catchAll_(T.as_(push(in_), s), ({ tuple: [e, leftover] }) =>
-                  E.fold_(
-                    e,
-                    (e) => Push.fail(e, leftover),
-                    (z) => {
-                      if (p(z)) {
-                        const s1 = f(s, z)
+  return <Z>(p: (z: Z) => boolean) =>
+    (f: (s: S, z: Z) => S) =>
+    <R, E, I, L extends I>(self: Sink<R, E, I, L, Z>): Sink<R, E, I, L, S> =>
+      new Sink(
+        pipe(
+          R.makeManagedRef(z),
+          M.chain((acc) => {
+            return pipe(
+              Push.restartable(self.push),
+              M.map(({ tuple: [push, restart] }) => {
+                const go = (
+                  s: S,
+                  in_: O.Option<A.Chunk<I>>,
+                  end: boolean
+                ): T.Effect<R, Tp.Tuple<[E.Either<E, S>, A.Chunk<L>]>, S> =>
+                  T.catchAll_(T.as_(push(in_), s), ({ tuple: [e, leftover] }) =>
+                    E.fold_(
+                      e,
+                      (e) => Push.fail(e, leftover),
+                      (z) => {
+                        if (p(z)) {
+                          const s1 = f(s, z)
 
-                        if (A.isEmpty(leftover)) {
-                          if (end) {
-                            return Push.emit(s1, A.empty())
+                          if (A.isEmpty(leftover)) {
+                            if (end) {
+                              return Push.emit(s1, A.empty())
+                            } else {
+                              return T.as_(restart, s1)
+                            }
                           } else {
-                            return T.as_(restart, s1)
+                            return T.zipRight_(restart, go(s1, O.some(leftover), end))
                           }
                         } else {
-                          return T.zipRight_(restart, go(s1, O.some(leftover), end))
+                          return Push.emit(s, leftover)
                         }
-                      } else {
-                        return Push.emit(s, leftover)
                       }
-                    }
+                    )
                   )
-                )
 
-              return (in_: O.Option<A.Chunk<I>>) =>
-                T.chain_(acc.get, (s) =>
-                  T.chain_(go(s, in_, O.isNone(in_)), (s1) => acc.set(s1))
-                )
-            })
-          )
-        })
+                return (in_: O.Option<A.Chunk<I>>) =>
+                  T.chain_(acc.get, (s) =>
+                    T.chain_(go(s, in_, O.isNone(in_)), (s1) => acc.set(s1))
+                  )
+              })
+            )
+          })
+        )
       )
-    )
 }
 
 /**
@@ -296,7 +296,7 @@ export function chain_<R, E, I, L extends I1, Z, R1, E1, I1 extends I, L1, Z1>(
 ): Sink<R & R1, E | E1, I1, L1, Z1> {
   return foldM_(
     self,
-    (e) => (fail(e)<I1>() as unknown) as Sink<R1, E | E1, I1, L1, Z1>,
+    (e) => fail(e)<I1>() as unknown as Sink<R1, E | E1, I1, L1, Z1>,
     f
   )
 }
@@ -415,8 +415,10 @@ export function map_<R, E, I, L, Z, Z2>(
   f: (z: Z) => Z2
 ): Sink<R, E, I, L, Z2> {
   return new Sink(
-    M.map_(self.push, (sink) => (inputs: O.Option<A.Chunk<I>>) =>
-      T.mapError_(sink(inputs), (e) => Tp.tuple(E.map_(e.get(0), f), e.get(1)))
+    M.map_(
+      self.push,
+      (sink) => (inputs: O.Option<A.Chunk<I>>) =>
+        T.mapError_(sink(inputs), (e) => Tp.tuple(E.map_(e.get(0), f), e.get(1)))
     )
   )
 }
@@ -515,55 +517,59 @@ export function raceBoth_<R, R1, E, E1, I, I1, L, L1, Z, Z1>(
       M.do,
       M.bind("p1", () => self.push),
       M.bind("p2", () => that.push),
-      M.map(({ p1, p2 }) => (i: O.Option<A.Chunk<I & I1>>): T.Effect<
-        R1 & R,
-        Tp.Tuple<[E.Either<E | E1, E.Either<Z, Z1>>, A.Chunk<L | L1>]>,
-        void
-      > =>
-        T.raceWith_(
-          p1(i),
-          p2(i),
-          (res1, fib2) =>
-            Ex.foldM_(
-              res1,
-              (f) =>
-                T.zipRight_(
-                  F.interrupt(fib2),
-                  T.halt(
-                    pipe(
-                      f,
-                      C.map(({ tuple: [r, leftover] }) =>
-                        Tp.tuple(E.map_(r, E.left), leftover)
+      M.map(
+        ({ p1, p2 }) =>
+          (
+            i: O.Option<A.Chunk<I & I1>>
+          ): T.Effect<
+            R1 & R,
+            Tp.Tuple<[E.Either<E | E1, E.Either<Z, Z1>>, A.Chunk<L | L1>]>,
+            void
+          > =>
+            T.raceWith_(
+              p1(i),
+              p2(i),
+              (res1, fib2) =>
+                Ex.foldM_(
+                  res1,
+                  (f) =>
+                    T.zipRight_(
+                      F.interrupt(fib2),
+                      T.halt(
+                        pipe(
+                          f,
+                          C.map(({ tuple: [r, leftover] }) =>
+                            Tp.tuple(E.map_(r, E.left), leftover)
+                          )
+                        )
                       )
+                    ),
+                  () =>
+                    T.mapError_(F.join(fib2), ({ tuple: [r, leftover] }) =>
+                      Tp.tuple(E.map_(r, E.right), leftover)
                     )
-                  )
                 ),
-              () =>
-                T.mapError_(F.join(fib2), ({ tuple: [r, leftover] }) =>
-                  Tp.tuple(E.map_(r, E.right), leftover)
-                )
-            ),
-          (res2, fib1) =>
-            Ex.foldM_(
-              res2,
-              (f) =>
-                T.zipRight_(
-                  F.interrupt(fib1),
-                  T.halt(
-                    pipe(
-                      f,
-                      C.map(({ tuple: [r, leftover] }) =>
-                        Tp.tuple(E.map_(r, E.right), leftover)
+              (res2, fib1) =>
+                Ex.foldM_(
+                  res2,
+                  (f) =>
+                    T.zipRight_(
+                      F.interrupt(fib1),
+                      T.halt(
+                        pipe(
+                          f,
+                          C.map(({ tuple: [r, leftover] }) =>
+                            Tp.tuple(E.map_(r, E.right), leftover)
+                          )
+                        )
                       )
+                    ),
+                  () =>
+                    T.mapError_(F.join(fib1), ({ tuple: [r, leftover] }) =>
+                      Tp.tuple(E.map_(r, E.left), leftover)
                     )
-                  )
-                ),
-              () =>
-                T.mapError_(F.join(fib1), ({ tuple: [r, leftover] }) =>
-                  Tp.tuple(E.map_(r, E.left), leftover)
                 )
             )
-        )
       )
     )
   )
@@ -878,38 +884,33 @@ export function zipWithPar_<R, R1, E, E1, I, I1, L, L1, Z, Z1, Z2>(
                       >
                   )
 
-                  return T.chain_(
-                    T.zipPar_(l, r),
-                    ({
-                      tuple: [lr, rr]
-                    }): T.Effect<
-                      R & R1,
-                      Tp.Tuple<[E.Either<E1, Z2>, A.Chunk<L | L1>]>,
-                      State<Z, Z1>
-                    > => {
-                      if (O.isSome(lr)) {
-                        const [z, l] = lr.value.tuple
+                  return T.chain_(T.zipPar_(l, r), ({ tuple: [lr, rr] }): T.Effect<
+                    R & R1,
+                    Tp.Tuple<[E.Either<E1, Z2>, A.Chunk<L | L1>]>,
+                    State<Z, Z1>
+                  > => {
+                    if (O.isSome(lr)) {
+                      const [z, l] = lr.value.tuple
 
-                        if (O.isSome(rr)) {
-                          const [z1, l1] = rr.value.tuple
+                      if (O.isSome(rr)) {
+                        const [z1, l1] = rr.value.tuple
 
-                          return T.fail(
-                            Tp.tuple(E.right(f(z, z1)), A.size(l) > A.size(l1) ? l1 : l)
-                          )
-                        } else {
-                          return T.succeed(new LeftDone(z))
-                        }
+                        return T.fail(
+                          Tp.tuple(E.right(f(z, z1)), A.size(l) > A.size(l1) ? l1 : l)
+                        )
                       } else {
-                        if (O.isSome(rr)) {
-                          const [z1] = rr.value.tuple
+                        return T.succeed(new LeftDone(z))
+                      }
+                    } else {
+                      if (O.isSome(rr)) {
+                        const [z1] = rr.value.tuple
 
-                          return T.succeed(new RightDone(z1))
-                        } else {
-                          return T.succeed(bothRunning)
-                        }
+                        return T.succeed(new RightDone(z1))
+                      } else {
+                        return T.succeed(bothRunning)
                       }
                     }
-                  ) as T.Effect<
+                  }) as T.Effect<
                     R & R1,
                     Tp.Tuple<[E.Either<E1, Z2>, A.Chunk<L | L1>]>,
                     State<Z, Z1>
@@ -1000,8 +1001,10 @@ export function dropLeftover<R, E, I, L, Z>(
   self: Sink<R, E, I, L, Z>
 ): Sink<R, E, I, never, Z> {
   return new Sink(
-    M.map_(self.push, (p) => (in_: O.Option<A.Chunk<I>>) =>
-      T.mapError_(p(in_), ({ tuple: [v, _] }) => Tp.tuple(v, A.empty()))
+    M.map_(
+      self.push,
+      (p) => (in_: O.Option<A.Chunk<I>>) =>
+        T.mapError_(p(in_), ({ tuple: [v, _] }) => Tp.tuple(v, A.empty()))
     )
   )
 }
@@ -1053,8 +1056,9 @@ export function untilOutputM_<R, R1, E, E1, I, L extends I, Z>(
   return new Sink(
     M.map_(
       Push.restartable(self.push),
-      ({ tuple: [push, restart] }) => (is: O.Option<A.Chunk<I>>) =>
-        untilOutputMGo(is, O.isNone(is), push, restart, f)
+      ({ tuple: [push, restart] }) =>
+        (is: O.Option<A.Chunk<I>>) =>
+          untilOutputMGo(is, O.isNone(is), push, restart, f)
     )
   )
 }
@@ -1076,8 +1080,9 @@ export function provideAll_<R, E, I, L, Z>(
   r: R
 ): Sink<unknown, E, I, L, Z> {
   return new Sink(
-    M.map_(M.provideAll_(self.push, r), (push) => (i: O.Option<A.Chunk<I>>) =>
-      T.provideAll_(push(i), r)
+    M.map_(
+      M.provideAll_(self.push, r),
+      (push) => (i: O.Option<A.Chunk<I>>) => T.provideAll_(push(i), r)
     )
   )
 }
@@ -1099,8 +1104,9 @@ export function provideSome_<R0, R, E, I, L, Z>(
   f: (r0: R0) => R
 ) {
   return new Sink(
-    M.map_(M.provideSome_(self.push, f), (push) => (i: O.Option<A.Chunk<I>>) =>
-      T.provideSome_(push(i), f)
+    M.map_(
+      M.provideSome_(self.push, f),
+      (push) => (i: O.Option<A.Chunk<I>>) => T.provideSome_(push(i), f)
     )
   )
 }
@@ -1129,8 +1135,9 @@ export function provideLayer_<R, E, I, L, Z, R2>(
 ) {
   return new Sink<R2, E, I, L, Z>(
     M.chain_(L.build(layer), (r) =>
-      M.map_(M.provideAll_(self.push, r), (push) => (i: O.Option<A.Chunk<I>>) =>
-        T.provideAll_(push(i), r)
+      M.map_(
+        M.provideAll_(self.push, r),
+        (push) => (i: O.Option<A.Chunk<I>>) => T.provideAll_(push(i), r)
       )
     )
   )
@@ -1287,21 +1294,23 @@ export function reduce<S, I>(
       pipe(
         M.do,
         M.bind("state", () => T.toManaged(R.makeRef(z))),
-        M.map(({ state }) => (is: O.Option<A.Chunk<I>>) =>
-          O.fold_(
-            is,
-            () => T.chain_(state.get, (s) => Push.emit(s, A.empty())),
-            (is) =>
-              T.chain_(state.get, (s) => {
-                const [st, l] = reduceChunkGo(s, is, 0, A.size(is), contFn, f)
+        M.map(
+          ({ state }) =>
+            (is: O.Option<A.Chunk<I>>) =>
+              O.fold_(
+                is,
+                () => T.chain_(state.get, (s) => Push.emit(s, A.empty())),
+                (is) =>
+                  T.chain_(state.get, (s) => {
+                    const [st, l] = reduceChunkGo(s, is, 0, A.size(is), contFn, f)
 
-                return O.fold_(
-                  l,
-                  () => T.zipRight_(state.set(st), Push.more),
-                  (leftover) => Push.emit(st, leftover)
-                )
-              })
-          )
+                    return O.fold_(
+                      l,
+                      () => T.zipRight_(state.set(st), Push.more),
+                      (leftover) => Push.emit(st, leftover)
+                    )
+                  })
+              )
         )
       )
     )
@@ -1316,10 +1325,9 @@ export function reduce<S, I>(
  * `f` and `contFn` must preserve chunking-invariance.
  */
 export function reduceChunks<Z>(z: Z) {
-  return (contFn: (s: Z) => boolean) => <I>(
-    f: (s: Z, i: A.Chunk<I>) => Z
-  ): Sink<unknown, never, I, I, Z> =>
-    reduceChunksM(z)(contFn)((z, i: A.Chunk<I>) => T.succeed(f(z, i)))
+  return (contFn: (s: Z) => boolean) =>
+    <I>(f: (s: Z, i: A.Chunk<I>) => Z): Sink<unknown, never, I, I, Z> =>
+      reduceChunksM(z)(contFn)((z, i: A.Chunk<I>) => T.succeed(f(z, i)))
 }
 
 /**
@@ -1328,40 +1336,39 @@ export function reduceChunks<Z>(z: Z) {
  * `f` and `contFn` must preserve chunking-invariance.
  */
 export function reduceChunksM<S>(z: S) {
-  return (contFn: (s: S) => boolean) => <R, E, I>(
-    f: (a: S, i: A.Chunk<I>) => T.Effect<R, E, S>
-  ): Sink<R, E, I, I, S> => {
-    if (contFn(z)) {
-      return new Sink(
-        pipe(
-          M.do,
-          M.bind("state", () => T.toManaged(R.makeRef(z))),
-          M.map(({ state }) => {
-            return (is: O.Option<A.Chunk<I>>) =>
-              O.fold_(
-                is,
-                () => T.chain_(state.get, (s) => Push.emit(s, A.empty<I>())),
-                (is) =>
-                  pipe(
-                    state.get,
-                    T.chain((_) => f(_, is)),
-                    T.mapError((e) => Tp.tuple(E.left(e), A.empty<I>())),
-                    T.chain((s) => {
-                      if (contFn(s)) {
-                        return T.zipRight_(state.set(s), Push.more)
-                      } else {
-                        return Push.emit(s, A.empty<I>())
-                      }
-                    })
-                  )
-              )
-          })
+  return (contFn: (s: S) => boolean) =>
+    <R, E, I>(f: (a: S, i: A.Chunk<I>) => T.Effect<R, E, S>): Sink<R, E, I, I, S> => {
+      if (contFn(z)) {
+        return new Sink(
+          pipe(
+            M.do,
+            M.bind("state", () => T.toManaged(R.makeRef(z))),
+            M.map(({ state }) => {
+              return (is: O.Option<A.Chunk<I>>) =>
+                O.fold_(
+                  is,
+                  () => T.chain_(state.get, (s) => Push.emit(s, A.empty<I>())),
+                  (is) =>
+                    pipe(
+                      state.get,
+                      T.chain((_) => f(_, is)),
+                      T.mapError((e) => Tp.tuple(E.left(e), A.empty<I>())),
+                      T.chain((s) => {
+                        if (contFn(s)) {
+                          return T.zipRight_(state.set(s), Push.more)
+                        } else {
+                          return Push.emit(s, A.empty<I>())
+                        }
+                      })
+                    )
+                )
+            })
+          )
         )
-      )
-    } else {
-      return succeed(z)
+      } else {
+        return succeed(z)
+      }
     }
-  }
 }
 
 function reduceMGo<R, E, S, I>(
@@ -1402,24 +1409,26 @@ export function reduceM<S, R, E, I>(
       pipe(
         M.do,
         M.bind("state", () => T.toManaged(R.makeRef(z))),
-        M.map(({ state }) => (is: O.Option<A.Chunk<I>>) =>
-          O.fold_(
-            is,
-            () => T.chain_(state.get, (s) => Push.emit(s, A.empty())),
-            (is) =>
-              T.chain_(state.get, (s) =>
-                T.foldM_(
-                  reduceMGo(s, is, 0, A.size(is), contFn, f),
-                  (err) => Push.fail(...err),
-                  ([st, l]) =>
-                    O.fold_(
-                      l,
-                      () => T.zipRight_(state.set(st), Push.more),
-                      (leftover) => Push.emit(st, leftover)
+        M.map(
+          ({ state }) =>
+            (is: O.Option<A.Chunk<I>>) =>
+              O.fold_(
+                is,
+                () => T.chain_(state.get, (s) => Push.emit(s, A.empty())),
+                (is) =>
+                  T.chain_(state.get, (s) =>
+                    T.foldM_(
+                      reduceMGo(s, is, 0, A.size(is), contFn, f),
+                      (err) => Push.fail(...err),
+                      ([st, l]) =>
+                        O.fold_(
+                          l,
+                          () => T.zipRight_(state.set(st), Push.more),
+                          (leftover) => Push.emit(st, leftover)
+                        )
                     )
-                )
+                  )
               )
-          )
         )
       )
     )
@@ -1604,19 +1613,21 @@ export function last<I>(): Sink<unknown, never, I, never, O.Option<I>> {
     pipe(
       M.do,
       M.bind("state", () => T.toManaged(R.makeRef<O.Option<I>>(O.none))),
-      M.map(({ state }) => (is: O.Option<A.Chunk<I>>) =>
-        T.chain_(state.get, (last) =>
-          O.fold_(
-            is,
-            () => Push.emit(last, A.empty()),
-            (ch) =>
+      M.map(
+        ({ state }) =>
+          (is: O.Option<A.Chunk<I>>) =>
+            T.chain_(state.get, (last) =>
               O.fold_(
-                A.last(ch),
-                () => Push.more,
-                (l) => T.zipRight_(state.set(O.some(l)), Push.more)
+                is,
+                () => Push.emit(last, A.empty()),
+                (ch) =>
+                  O.fold_(
+                    A.last(ch),
+                    () => Push.more,
+                    (l) => T.zipRight_(state.set(O.some(l)), Push.more)
+                  )
               )
-          )
-        )
+            )
       )
     )
   )

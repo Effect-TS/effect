@@ -34,9 +34,8 @@ export { let_ as let, do_ as do }
 /**
  * Matchers
  */
-export const { match, matchIn, matchMorph, matchTag, matchTagIn } = DSL.matchers(
-  Covariant
-)
+export const { match, matchIn, matchMorph, matchTag, matchTagIn } =
+  DSL.matchers(Covariant)
 
 /**
  * Conditionals

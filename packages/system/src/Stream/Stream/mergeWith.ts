@@ -60,76 +60,78 @@ export function mergeWith_<R, E, R1, E1, B, A, C, C1>(
       M.bind("chunksR", () => that.proc),
       M.let(
         "handler",
-        ({ done, handoff }) => (
-          pull: Pull.Pull<R & R1, E | E1, C | C1>,
-          terminate: boolean
-        ) =>
-          pipe(
-            done.get,
-            T.chain((o) => {
-              if (o._tag === "Some" && o.value) {
-                return T.succeed(false)
-              } else {
-                return pipe(
-                  pull,
-                  T.result,
-                  T.chain((exit) =>
-                    pipe(
-                      done,
-                      RefM.modify((o) => {
-                        const causeOrChunk = pipe(
-                          exit,
-                          Ex.fold(
-                            (c): E.Either<O.Option<C.Cause<E | E1>>, A.Chunk<C | C1>> =>
-                              E.left(C.sequenceCauseOption(c)),
-                            E.right
+        ({ done, handoff }) =>
+          (pull: Pull.Pull<R & R1, E | E1, C | C1>, terminate: boolean) =>
+            pipe(
+              done.get,
+              T.chain((o) => {
+                if (o._tag === "Some" && o.value) {
+                  return T.succeed(false)
+                } else {
+                  return pipe(
+                    pull,
+                    T.result,
+                    T.chain((exit) =>
+                      pipe(
+                        done,
+                        RefM.modify((o) => {
+                          const causeOrChunk = pipe(
+                            exit,
+                            Ex.fold(
+                              (
+                                c
+                              ): E.Either<O.Option<C.Cause<E | E1>>, A.Chunk<C | C1>> =>
+                                E.left(C.sequenceCauseOption(c)),
+                              E.right
+                            )
                           )
-                        )
 
-                        if (o._tag === "Some" && o.value) {
-                          return T.succeed(Tp.tuple(false, o))
-                        } else if (causeOrChunk._tag === "Right") {
-                          return pipe(
-                            H.offer_(
-                              handoff,
-                              <TK.Take<E | E1, C | C1>>TK.chunk(causeOrChunk.right)
-                            ),
-                            T.as(Tp.tuple(true, o))
-                          )
-                        } else if (
-                          causeOrChunk._tag === "Left" &&
-                          causeOrChunk.left._tag === "Some"
-                        ) {
-                          return pipe(
-                            H.offer_(
-                              handoff,
-                              <TK.Take<E | E1, C | C1>>TK.halt(causeOrChunk.left.value)
-                            ),
-                            T.as(Tp.tuple(false, O.some(true)))
-                          )
-                        } else if (
-                          causeOrChunk._tag === "Left" &&
-                          causeOrChunk.left._tag === "None" &&
-                          (terminate || o._tag === "Some")
-                        ) {
-                          return pipe(
-                            H.offer_(handoff, <TK.Take<E | E1, C | C1>>TK.end),
-                            T.as(Tp.tuple(false, O.some(true)))
-                          )
-                        } else {
-                          return T.succeed(Tp.tuple(false, O.some(false)))
-                        }
-                      })
+                          if (o._tag === "Some" && o.value) {
+                            return T.succeed(Tp.tuple(false, o))
+                          } else if (causeOrChunk._tag === "Right") {
+                            return pipe(
+                              H.offer_(
+                                handoff,
+                                <TK.Take<E | E1, C | C1>>TK.chunk(causeOrChunk.right)
+                              ),
+                              T.as(Tp.tuple(true, o))
+                            )
+                          } else if (
+                            causeOrChunk._tag === "Left" &&
+                            causeOrChunk.left._tag === "Some"
+                          ) {
+                            return pipe(
+                              H.offer_(
+                                handoff,
+                                <TK.Take<E | E1, C | C1>>(
+                                  TK.halt(causeOrChunk.left.value)
+                                )
+                              ),
+                              T.as(Tp.tuple(false, O.some(true)))
+                            )
+                          } else if (
+                            causeOrChunk._tag === "Left" &&
+                            causeOrChunk.left._tag === "None" &&
+                            (terminate || o._tag === "Some")
+                          ) {
+                            return pipe(
+                              H.offer_(handoff, <TK.Take<E | E1, C | C1>>TK.end),
+                              T.as(Tp.tuple(false, O.some(true)))
+                            )
+                          } else {
+                            return T.succeed(Tp.tuple(false, O.some(false)))
+                          }
+                        })
+                      )
                     )
                   )
-                )
-              }
-            }),
-            T.repeatWhile(identity),
-            T.fork,
-            T.interruptible,
-            T.toManagedRelease(F.interrupt)
-          )
+                }
+              }),
+              T.repeatWhile(identity),
+              T.fork,
+              T.interruptible,
+              T.toManagedRelease(F.interrupt)
+            )
       ),
       M.tap(({ chunksL, handler }) =>
         handler(

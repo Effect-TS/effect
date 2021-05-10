@@ -89,10 +89,9 @@ export function and<R2, E2, A2>(
  * the inputs of this layer, and the error or outputs of the specified layer.
  */
 export function fold<R, E, A>(self: Layer<R, E, A>) {
-  return <R2, E2, A2>(failure: Layer<Tp.Tuple<[R2, C.Cause<E>]>, E2, A2>) => <E3, A3>(
-    success: Layer<A, E3, A3>
-  ): Layer<R & R2, E3 | E2, A3 | A2> =>
-    new LayerFold<R, E, A, R2, E2, A2, E3, A3>(self, failure, success)
+  return <R2, E2, A2>(failure: Layer<Tp.Tuple<[R2, C.Cause<E>]>, E2, A2>) =>
+    <E3, A3>(success: Layer<A, E3, A3>): Layer<R & R2, E3 | E2, A3 | A2> =>
+      new LayerFold<R, E, A, R2, E2, A2, E3, A3>(self, failure, success)
 }
 
 /**

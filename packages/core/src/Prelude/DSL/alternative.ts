@@ -37,10 +37,11 @@ export function orElseF<F extends URIS, C>(
   A | B
 >
 export function orElseF<F>(F: AssociativeEither<UHKT<F>> & Covariant<UHKT<F>>) {
-  return <B>(fb: () => HKT<F, B>) => <A>(fa: HKT<F, A>): HKT<F, A | B> =>
-    pipe(
-      fa,
-      F.orElseEither(fb),
-      F.map((e) => (e._tag === "Left" ? e.left : e.right))
-    )
+  return <B>(fb: () => HKT<F, B>) =>
+    <A>(fa: HKT<F, A>): HKT<F, A | B> =>
+      pipe(
+        fa,
+        F.orElseEither(fb),
+        F.map((e) => (e._tag === "Left" ? e.left : e.right))
+      )
 }

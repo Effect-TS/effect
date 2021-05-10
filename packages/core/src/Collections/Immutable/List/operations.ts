@@ -42,7 +42,9 @@ export function sortBy<B>(
   O: Ord<B>
 ): <A>(f: (a: A) => B) => (l: List.List<A>) => List.List<A> {
   const so = sortBy_(O)
-  return <A>(f: (a: A) => B) => (l: List.List<A>): List.List<A> => so(l, f)
+  return <A>(f: (a: A) => B) =>
+    (l: List.List<A>): List.List<A> =>
+      so(l, f)
 }
 
 /**
@@ -78,16 +80,16 @@ export function sortBy_<B>(
 /**
  * `Wiltable`'s `separateF` function
  */
-export const separateF = P.implementSeparateF<
-  [URI<ListURI>]
->()((_) => (G) => (f) => (x) => pipe(x, forEachF(G)(f), G.map(List.separate)))
+export const separateF = P.implementSeparateF<[URI<ListURI>]>()(
+  (_) => (G) => (f) => (x) => pipe(x, forEachF(G)(f), G.map(List.separate))
+)
 
 /**
  * `Wither`'s `compactF` function
  */
-export const compactF = P.implementCompactF<
-  [URI<ListURI>]
->()((_) => (G) => (f) => (x) => pipe(x, forEachF(G)(f), G.map(List.compact)))
+export const compactF = P.implementCompactF<[URI<ListURI>]>()(
+  (_) => (G) => (f) => (x) => pipe(x, forEachF(G)(f), G.map(List.compact))
+)
 
 /**
  * Test if a value is a member of an array. Takes a `Equal<A>` as a single

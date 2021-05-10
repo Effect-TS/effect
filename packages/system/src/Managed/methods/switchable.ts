@@ -42,31 +42,32 @@ export function switchable<R, E, A>(
       )
     ),
     map(
-      ({ key, releaseMap }) => (newResource) =>
-        T.uninterruptibleMask(({ restore }) =>
-          pipe(
-            releaseMap,
-            replace.replace(key, (_) => T.unit),
-            T.chain(
-              fold(
-                () => T.unit,
-                (fin) => fin(T.exitUnit)
-              )
-            ),
-            T.zipRight(T.do),
-            T.bind("r", () => T.environment<R>()),
-            T.bind("inner", () => makeReleaseMap.makeReleaseMap),
-            T.bind("a", ({ inner, r }) =>
-              restore(T.provideAll_(newResource.effect, Tp.tuple(r, inner)))
-            ),
-            T.tap(({ inner }) =>
-              replace.replace(key, (exit) =>
-                releaseAll.releaseAll(exit, sequential)(inner)
-              )(releaseMap)
-            ),
-            T.map(({ a }) => a.get(1))
-          )
-        ),
+      ({ key, releaseMap }) =>
+        (newResource) =>
+          T.uninterruptibleMask(({ restore }) =>
+            pipe(
+              releaseMap,
+              replace.replace(key, (_) => T.unit),
+              T.chain(
+                fold(
+                  () => T.unit,
+                  (fin) => fin(T.exitUnit)
+                )
+              ),
+              T.zipRight(T.do),
+              T.bind("r", () => T.environment<R>()),
+              T.bind("inner", () => makeReleaseMap.makeReleaseMap),
+              T.bind("a", ({ inner, r }) =>
+                restore(T.provideAll_(newResource.effect, Tp.tuple(r, inner)))
+              ),
+              T.tap(({ inner }) =>
+                replace.replace(key, (exit) =>
+                  releaseAll.releaseAll(exit, sequential)(inner)
+                )(releaseMap)
+              ),
+              T.map(({ a }) => a.get(1))
+            )
+          ),
       __trace
     )
   )

@@ -165,21 +165,22 @@ export const never: Iterable<never> = {
 }
 
 export function foldMap<M>(M: { empty: M; concat: (x: M, y: M) => M }) {
-  return <A>(f: (a: A, k: number) => M) => (fa: Iterable<A>): M => {
-    let res = M.empty
-    let n = -1
-    const iterator = fa[Symbol.iterator]()
-    // eslint-disable-next-line no-constant-condition
-    while (true) {
-      const result = iterator.next()
-      if (result.done) {
-        break
+  return <A>(f: (a: A, k: number) => M) =>
+    (fa: Iterable<A>): M => {
+      let res = M.empty
+      let n = -1
+      const iterator = fa[Symbol.iterator]()
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const result = iterator.next()
+        if (result.done) {
+          break
+        }
+        n += 1
+        res = M.concat(res, f(result.value, n))
       }
-      n += 1
-      res = M.concat(res, f(result.value, n))
+      return res
     }
-    return res
-  }
 }
 
 export function reduce<A, B>(b: B, f: (b: B, a: A, i: number) => B) {

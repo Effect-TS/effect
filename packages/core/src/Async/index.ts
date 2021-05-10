@@ -99,9 +99,8 @@ export const Access = P.instance<P.FX.Access<[URI<AsyncURI>], V>>({
 
 export const accessServiceM: <Service>(
   H: Tag<Service>
-) => <R, E, A>(
-  f: (_: Service) => A.Async<R, E, A>
-) => A.Async<R & Has<Service>, E, A> = P.accessServiceMF({ ...Monad, ...Access })
+) => <R, E, A>(f: (_: Service) => A.Async<R, E, A>) => A.Async<R & Has<Service>, E, A> =
+  P.accessServiceMF({ ...Monad, ...Access })
 
 export const accessService: <Service>(
   H: Tag<Service>
@@ -112,21 +111,19 @@ export const provideService: <Service>(
   H: Tag<Service>
 ) => (
   S: Service
-) => <R, E, A>(
-  fa: A.Async<R & Has<Service>, E, A>
-) => A.Async<R, E, A> = P.provideServiceF({ ...Monad, ...Provide, ...Access })
+) => <R, E, A>(fa: A.Async<R & Has<Service>, E, A>) => A.Async<R, E, A> =
+  P.provideServiceF({ ...Monad, ...Provide, ...Access })
 
 export const provideServiceM: <Service>(
   H: Tag<Service>
 ) => <R2, E2>(
   SM: A.Async<R2, E2, Service>
-) => <R, E, A>(fa: A.Async<R & Has<Service>, E, A>) => A.Async<R & R2, E | E2, A> = (
-  tag
-) => (SM) => (fa) =>
-  pipe(
-    SM,
-    A.chain((s) => pipe(fa, provideService(tag)(s)))
-  )
+) => <R, E, A>(fa: A.Async<R & Has<Service>, E, A>) => A.Async<R & R2, E | E2, A> =
+  (tag) => (SM) => (fa) =>
+    pipe(
+      SM,
+      A.chain((s) => pipe(fa, provideService(tag)(s)))
+    )
 
 const genAdapter: {
   <A>(_: Tag<A>): P.GenHKT<A.Async<Has<A>, never, A>, A>
@@ -169,9 +166,8 @@ export function fromSync<R, E, A>(_: Sync<R, E, A>) {
   return A.accessM((r: R) => fromEither(runEitherEnv(r)(_)))
 }
 
-export const { match, matchIn, matchMorph, matchTag, matchTagIn } = P.matchers(
-  Covariant
-)
+export const { match, matchIn, matchMorph, matchTag, matchTagIn } =
+  P.matchers(Covariant)
 
 /**
  * Conditionals

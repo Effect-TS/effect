@@ -307,9 +307,9 @@ export const runEither: <E, A>(self: Sync<unknown, E, A>) => Either<E, A> = X.ru
 /**
  * Runs this computation returning either an error of type E or a success of type A
  */
-export const runEitherEnv: <R>(r: R) => <E, A>(self: Sync<R, E, A>) => Either<E, A> = (
-  r
-) => (x) => pipe(x, provideAll(r), runEither)
+export const runEitherEnv: <R>(r: R) => <E, A>(self: Sync<R, E, A>) => Either<E, A> =
+  (r) => (x) =>
+    pipe(x, provideAll(r), runEither)
 
 /**
  * Runs this non failable computation returning a success of type A

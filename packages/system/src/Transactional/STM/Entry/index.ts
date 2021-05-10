@@ -52,7 +52,7 @@ export class EntryOps<S> {
   }
 
   unsafeGet<B>(): B {
-    return (this.newValue as unknown) as B
+    return this.newValue as unknown as B
   }
 
   commit() {

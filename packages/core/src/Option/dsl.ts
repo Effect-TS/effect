@@ -22,9 +22,8 @@ export const tuple = P.tupleF({ ...Monad, ...Applicative })
 /**
  * Matchers
  */
-export const { match, matchIn, matchMorph, matchTag, matchTagIn } = P.matchers(
-  Covariant
-)
+export const { match, matchIn, matchMorph, matchTag, matchTagIn } =
+  P.matchers(Covariant)
 
 /**
  * Conditionals

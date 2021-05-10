@@ -43,37 +43,37 @@ export const forEachWithIndexF = P.implementForEachWithIndexF<[URI<ArrayURI>]>()
 /**
  * `ForEach`'s `forEachF` function
  */
-export const forEachF = P.implementForEachF<[URI<ArrayURI>]>()((_) => (G) => (f) =>
-  forEachWithIndexF(G)((_, a) => f(a))
+export const forEachF = P.implementForEachF<[URI<ArrayURI>]>()(
+  (_) => (G) => (f) => forEachWithIndexF(G)((_, a) => f(a))
 )
 
 /**
  * `Wilt`'s `separateF` function
  */
-export const separateF = P.implementSeparateF<
-  [URI<ArrayURI>]
->()((_) => (G) => (f) => (x) => pipe(x, forEachF(G)(f), G.map(A.separate)))
+export const separateF = P.implementSeparateF<[URI<ArrayURI>]>()(
+  (_) => (G) => (f) => (x) => pipe(x, forEachF(G)(f), G.map(A.separate))
+)
 
 /**
  * `Wilt`'s `separateF` function
  */
-export const separateWithIndexF = P.implementSeparateWithIndexF<
-  [URI<ArrayURI>]
->()((_) => (G) => (f) => (x) => pipe(x, forEachWithIndexF(G)(f), G.map(A.separate)))
+export const separateWithIndexF = P.implementSeparateWithIndexF<[URI<ArrayURI>]>()(
+  (_) => (G) => (f) => (x) => pipe(x, forEachWithIndexF(G)(f), G.map(A.separate))
+)
 
 /**
  * `Wither`'s `compactF` function
  */
-export const compactF = P.implementCompactF<
-  [URI<ArrayURI>]
->()((_) => (G) => (f) => (x) => pipe(x, forEachF(G)(f), G.map(A.compact)))
+export const compactF = P.implementCompactF<[URI<ArrayURI>]>()(
+  (_) => (G) => (f) => (x) => pipe(x, forEachF(G)(f), G.map(A.compact))
+)
 
 /**
  * `WitherWithIndex`'s `compactWithIndexF` function
  */
-export const compactWithIndexF = P.implementCompactWithIndexF<
-  [URI<ArrayURI>]
->()((_) => (G) => (f) => (x) => pipe(x, forEachWithIndexF(G)(f), G.map(A.compact)))
+export const compactWithIndexF = P.implementCompactWithIndexF<[URI<ArrayURI>]>()(
+  (_) => (G) => (f) => (x) => pipe(x, forEachWithIndexF(G)(f), G.map(A.compact))
+)
 
 /**
  * Test if a value is a member of an array. Takes a `Equal<A>` as a single

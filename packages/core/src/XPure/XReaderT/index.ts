@@ -67,16 +67,18 @@ export function applicative<F>(
       f: (a: A) => B
     ): (<R>(fa: R.XReader<R, HKT.HKT<F, A>>) => R.XReader<R, HKT.HKT<F, B>>) =>
       R.map(M.map(f)),
-    both: <R2, B>(
-      fb: R.XReader<R2, HKT.HKT<F, B>>
-    ): (<R, A>(
-      fa: R.XReader<R, HKT.HKT<F, A>>
-    ) => R.XReader<R & R2, HKT.HKT<F, Tp.Tuple<[A, B]>>>) => (x) =>
-      pipe(
-        x,
-        R.zip(fb),
-        R.map(({ tuple: [_a, _b] }) => pipe(_a, M.both(_b)))
-      )
+    both:
+      <R2, B>(
+        fb: R.XReader<R2, HKT.HKT<F, B>>
+      ): (<R, A>(
+        fa: R.XReader<R, HKT.HKT<F, A>>
+      ) => R.XReader<R & R2, HKT.HKT<F, Tp.Tuple<[A, B]>>>) =>
+      (x) =>
+        pipe(
+          x,
+          R.zip(fb),
+          R.map(({ tuple: [_a, _b] }) => pipe(_a, M.both(_b)))
+        )
   })
 }
 

@@ -571,8 +571,10 @@ export const separate = <A, B>(
 export const filter: {
   <A, B extends A>(refinement: Refinement<A, B>): (fa: Dictionary<A>) => Dictionary<B>
   <A>(predicate: Predicate<A>): (fa: Dictionary<A>) => Dictionary<A>
-} = <A>(predicate: Predicate<A>) => (fa: Dictionary<A>): Dictionary<A> =>
-  filter_(fa, predicate)
+} =
+  <A>(predicate: Predicate<A>) =>
+  (fa: Dictionary<A>): Dictionary<A> =>
+    filter_(fa, predicate)
 
 /**
  * Filter record entries according to a predicate
@@ -586,8 +588,10 @@ export const filter_: {
 /**
  * Filter & map record entries according to a predicate
  */
-export const filterMap = <A, B>(f: (a: A) => O.Option<B>) => (fa: Dictionary<A>) =>
-  filterMap_(fa, f)
+export const filterMap =
+  <A, B>(f: (a: A) => O.Option<B>) =>
+  (fa: Dictionary<A>) =>
+    filterMap_(fa, f)
 
 /**
  * Filter & map record entries according to a predicate
@@ -605,9 +609,10 @@ export const partition: {
   <A>(predicate: Predicate<A>): <K extends string>(
     fa: Dictionary<A>
   ) => Separated<Dictionary<A>, Dictionary<A>>
-} = <A>(predicate: Predicate<A>) => (
-  fa: Dictionary<A>
-): Separated<Dictionary<A>, Dictionary<A>> => partition_(fa, predicate)
+} =
+  <A>(predicate: Predicate<A>) =>
+  (fa: Dictionary<A>): Separated<Dictionary<A>, Dictionary<A>> =>
+    partition_(fa, predicate)
 
 /**
  * Partition record entries according to a predicate
@@ -637,7 +642,10 @@ export const partitionMap: {
   <A, B, C>(f: (a: A) => Either<B, C>): (
     fa: Dictionary<A>
   ) => Separated<Dictionary<B>, Dictionary<C>>
-} = <A, B, C>(f: (a: A) => Either<B, C>) => (fa: Dictionary<A>) => partitionMap_(fa, f)
+} =
+  <A, B, C>(f: (a: A) => Either<B, C>) =>
+  (fa: Dictionary<A>) =>
+    partitionMap_(fa, f)
 
 /**
  * Partition & map record entries
@@ -648,10 +656,9 @@ export const partitionMap_ = <A, B, C>(fa: Dictionary<A>, f: (a: A) => Either<B,
 /**
  * Reduce record entries
  */
-export const reduce: <A, B>(b: B, f: (b: B, a: A) => B) => (fa: Dictionary<A>) => B = (
-  b,
-  f
-) => (fa) => reduce_(fa, b, f)
+export const reduce: <A, B>(b: B, f: (b: B, a: A) => B) => (fa: Dictionary<A>) => B =
+  (b, f) => (fa) =>
+    reduce_(fa, b, f)
 
 /**
  * Reduce record entries
@@ -682,9 +689,8 @@ export const reduceRight_: <A, B>(
 /**
  * Converts a record into an array of [key, value]
  */
-export const toArray: <A>(
-  r: Dictionary<A>
-) => ReadonlyArray<Tp.Tuple<[string, A]>> = collect(Tp.tuple)
+export const toArray: <A>(r: Dictionary<A>) => ReadonlyArray<Tp.Tuple<[string, A]>> =
+  collect(Tp.tuple)
 
 /**
  * Converts an array of [key, value] into a record

@@ -228,32 +228,36 @@ function indexed_<_I, _O, F>(
   F: Monad<HKT.UHKT<F>, HKT.Auto>
 ): IndexedT<HKT.UHKT<F>, HKT.Auto, _I, _O> {
   return HKT.instance<IndexedT<HKT.UHKT<F>, HKT.Auto, _I, _O>>({
-    iof: <II extends _I>() => <A>(a: A): Ix<II, II, HKT.HKT<F, A>> =>
-      makeIx<II, II>()(succeedF(F)(a)),
-    ichain: <IO extends _O, IO2 extends _I, A, B>(
-      f: (a: A) => Ix<IO, IO2, HKT.HKT<F, B>>
-    ) => <II extends _I>(fa: Ix<II, IO, HKT.HKT<F, A>>): Ix<II, IO2, HKT.HKT<F, B>> =>
-      pipe(
-        fa.value,
-        chainF(F)((a) => f(a).value),
-        makeIx<II, IO2>()
-      ),
-    lift: <II extends _I, IO extends _I>() => <A>(
-      fa: HKT.HKT<F, A>
-    ): Ix<II, IO, HKT.HKT<F, A>> => makeIx<II, IO>()(fa),
+    iof:
+      <II extends _I>() =>
+      <A>(a: A): Ix<II, II, HKT.HKT<F, A>> =>
+        makeIx<II, II>()(succeedF(F)(a)),
+    ichain:
+      <IO extends _O, IO2 extends _I, A, B>(f: (a: A) => Ix<IO, IO2, HKT.HKT<F, B>>) =>
+      <II extends _I>(fa: Ix<II, IO, HKT.HKT<F, A>>): Ix<II, IO2, HKT.HKT<F, B>> =>
+        pipe(
+          fa.value,
+          chainF(F)((a) => f(a).value),
+          makeIx<II, IO2>()
+        ),
+    lift:
+      <II extends _I, IO extends _I>() =>
+      <A>(fa: HKT.HKT<F, A>): Ix<II, IO, HKT.HKT<F, A>> =>
+        makeIx<II, IO>()(fa),
     lower: () => (fa) => fa.value,
-    chain: <IO extends _O, A, B>(f: (a: A) => Ix<IO, IO, HKT.HKT<F, B>>) => <
-      II extends _I
-    >(
-      fa: Ix<II, IO, HKT.HKT<F, A>>
-    ): Ix<II, IO, HKT.HKT<F, B>> =>
-      pipe(
-        fa.value,
-        chainF(F)((a) => f(a).value),
-        makeIx<II, IO>()
-      ),
-    chainLower: <A, B>(f: (a: A) => HKT.HKT<F, B>) => <II extends _I, IO extends _O>(
-      fa: Ix<II, IO, HKT.HKT<F, A>>
-    ): Ix<II, IO, HKT.HKT<F, B>> => pipe(fa.value, chainF(F)(f), makeIx<II, IO>())
+    chain:
+      <IO extends _O, A, B>(f: (a: A) => Ix<IO, IO, HKT.HKT<F, B>>) =>
+      <II extends _I>(fa: Ix<II, IO, HKT.HKT<F, A>>): Ix<II, IO, HKT.HKT<F, B>> =>
+        pipe(
+          fa.value,
+          chainF(F)((a) => f(a).value),
+          makeIx<II, IO>()
+        ),
+    chainLower:
+      <A, B>(f: (a: A) => HKT.HKT<F, B>) =>
+      <II extends _I, IO extends _O>(
+        fa: Ix<II, IO, HKT.HKT<F, A>>
+      ): Ix<II, IO, HKT.HKT<F, B>> =>
+        pipe(fa.value, chainF(F)(f), makeIx<II, IO>())
   })
 }

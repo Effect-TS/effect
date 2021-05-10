@@ -42,7 +42,8 @@ export function concreteQueue<RA, RB, EA, EB, A, B>(
 }
 
 export abstract class XQueueInternal<RA, RB, EA, EB, A, B>
-  implements XQueue<RA, RB, EA, EB, A, B> {
+  implements XQueue<RA, RB, EA, EB, A, B>
+{
   readonly [_RA]!: (_: RA) => void;
   readonly [_RB]!: (_: RB) => void;
   readonly [_EA]!: () => EA;

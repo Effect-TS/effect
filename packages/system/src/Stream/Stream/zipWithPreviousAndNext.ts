@@ -18,12 +18,20 @@ export function zipWithPreviousAndNext<R, E, O>(
     self,
     zipWithPrevious,
     zipWithNext,
-    map(({ tuple: [{ tuple: [prev, curr] }, next] }) =>
-      Tp.tuple(
-        prev,
-        curr,
-        O.map_(next, ({ tuple: [_, r] }) => r)
-      )
+    map(
+      ({
+        tuple: [
+          {
+            tuple: [prev, curr]
+          },
+          next
+        ]
+      }) =>
+        Tp.tuple(
+          prev,
+          curr,
+          O.map_(next, ({ tuple: [_, r] }) => r)
+        )
     )
   )
 }

@@ -45,16 +45,16 @@ export const forEachWithIndexF = P.implementForEachWithIndexF<[URI<DictionaryURI
 /**
  * Traverse Record with Applicative
  */
-export const forEachF = P.implementForEachF<[URI<DictionaryURI>]>()((_) => (G) => (f) =>
-  forEachWithIndexF(G)((_, a) => f(a))
+export const forEachF = P.implementForEachF<[URI<DictionaryURI>]>()(
+  (_) => (G) => (f) => forEachWithIndexF(G)((_, a) => f(a))
 )
 
 /**
  * Fold + MapWithIndex
  */
-export const foldMapWithIndex: P.FoldMapWithIndexFn<[URI<DictionaryURI>]> = (I) => (
-  f
-) => R.reduceWithIndex(I.identity, (k, b, a) => I.combine(b, f(k, a)))
+export const foldMapWithIndex: P.FoldMapWithIndexFn<[URI<DictionaryURI>]> =
+  (I) => (f) =>
+    R.reduceWithIndex(I.identity, (k, b, a) => I.combine(b, f(k, a)))
 
 /**
  * Fold + Map
@@ -91,9 +91,9 @@ export const separateWithIndexF = P.implementSeparateWithIndexF<[URI<DictionaryU
 /**
  * Wilt's separate
  */
-export const separateF = P.implementSeparateF<
-  [URI<DictionaryURI>]
->()(() => (G) => (f) => separateWithIndexF(G)((_, a) => f(a)))
+export const separateF = P.implementSeparateF<[URI<DictionaryURI>]>()(
+  () => (G) => (f) => separateWithIndexF(G)((_, a) => f(a))
+)
 
 /**
  * WitherWithIndex's compactWithIndex
@@ -111,8 +111,8 @@ export const compactWithIndexF = P.implementCompactWithIndexF<[URI<DictionaryURI
 /**
  * Wither's compact
  */
-export const compactF = P.implementCompactF<[URI<DictionaryURI>]>()(() => (G) => (f) =>
-  compactWithIndexF(G)((_, a) => f(a))
+export const compactF = P.implementCompactF<[URI<DictionaryURI>]>()(
+  () => (G) => (f) => compactWithIndexF(G)((_, a) => f(a))
 )
 
 /**
@@ -154,7 +154,9 @@ export function fromFoldableMap<F, B>(
   F: Foldable<HKT.UHKT<F>>
 ): <A>(f: (a: A) => Tp.Tuple<[string, B]>) => (fa: HKT.HKT<F, A>) => R.Dictionary<B> {
   const ff = fromFoldableMap_(M, F)
-  return <A>(f: (a: A) => Tp.Tuple<[string, B]>) => (fa: HKT.HKT<F, A>) => ff(fa, f)
+  return <A>(f: (a: A) => Tp.Tuple<[string, B]>) =>
+    (fa: HKT.HKT<F, A>) =>
+      ff(fa, f)
 }
 
 /**

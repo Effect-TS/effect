@@ -82,7 +82,7 @@ export class BoundedHubPow2<A> extends Hub<A> {
     if (this.subscribersIndex !== this.publisherIndex) {
       const index = this.subscribersIndex & this.mask
 
-      this.array[index] = (null as unknown) as A
+      this.array[index] = null as unknown as A
       this.subscribers[index] = 0
       this.subscribersIndex += 1
     }
@@ -126,7 +126,7 @@ class BoundedHubPow2Subcription<A> extends Subscription<A> {
       this.self.subscribers[index] -= 1
 
       if (this.self.subscribers[index] === 0) {
-        this.self.array[index] = (null as unknown) as A
+        this.self.array[index] = null as unknown as A
         this.self.subscribersIndex += 1
       }
 
@@ -185,7 +185,7 @@ class BoundedHubPow2Subcription<A> extends Subscription<A> {
         this.self.subscribers[index] -= 1
 
         if (this.self.subscribers[index] === 0) {
-          this.self.array[index] = (null as unknown) as A
+          this.self.array[index] = null as unknown as A
           this.self.subscribersIndex += 1
         }
 

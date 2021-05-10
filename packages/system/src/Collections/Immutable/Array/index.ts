@@ -248,7 +248,7 @@ export function cons_<A>(tail: Array<A>, head: A): Array<A> {
     r[i + 1] = tail[i]
   }
   r[0] = head
-  return (r as unknown) as Array<A>
+  return r as unknown as Array<A>
 }
 
 /**
@@ -427,8 +427,10 @@ export function filterWithIndex_<A>(
 /**
  * Filters the array also mapping the output
  */
-export const filterMap = <A, B>(f: (a: A) => Option<B>) => (fa: Array<A>): Array<B> =>
-  filterMap_(fa, f)
+export const filterMap =
+  <A, B>(f: (a: A) => Option<B>) =>
+  (fa: Array<A>): Array<B> =>
+    filterMap_(fa, f)
 
 /**
  * Filters the array also mapping the output
@@ -1188,7 +1190,7 @@ export function snoc_<A>(init: Array<A>, end: A): Array<A> {
     r[i] = init[i]
   }
   r[len] = end
-  return (r as unknown) as Array<A>
+  return r as unknown as Array<A>
 }
 
 /**

@@ -39,30 +39,27 @@ export function retry_<R, R1, E, O>(
         T.toManaged(T.chain_(switchStream(self.proc), currStream.set))
       ),
       M.let("pull", ({ currStream, driver, switchStream }) => {
-        const loop: T.Effect<
-          R & R1 & CL.HasClock,
-          O.Option<E>,
-          A.Chunk<O>
-        > = T.catchSome_(
-          T.flatten(currStream.get),
-          O.fold(
-            () => O.none,
-            (e) =>
-              O.some(
-                T.foldM_(
-                  driver.next(e),
-                  (_) => Pull.fail(e),
-                  (_) =>
-                    pipe(
-                      self.proc,
-                      switchStream,
-                      T.chain(currStream.set),
-                      T.zipRight(T.tap_(loop, (_) => driver.reset))
-                    )
+        const loop: T.Effect<R & R1 & CL.HasClock, O.Option<E>, A.Chunk<O>> =
+          T.catchSome_(
+            T.flatten(currStream.get),
+            O.fold(
+              () => O.none,
+              (e) =>
+                O.some(
+                  T.foldM_(
+                    driver.next(e),
+                    (_) => Pull.fail(e),
+                    (_) =>
+                      pipe(
+                        self.proc,
+                        switchStream,
+                        T.chain(currStream.set),
+                        T.zipRight(T.tap_(loop, (_) => driver.reset))
+                      )
+                  )
                 )
-              )
+            )
           )
-        )
 
         return loop
       }),

@@ -12,11 +12,10 @@ import { mapAccumM_ } from "./mapAccumM"
  * intermediate results of type `S` given an initial S.
  */
 export function scanM<S>(s: S) {
-  return <R1, E1, O>(f: (s: S, o: O) => T.Effect<R1, E1, S>) => <R, E>(
-    self: Stream<R, E, O>
-  ): Stream<R & R1, E | E1, S> =>
-    concat_(
-      fromIterable([s]),
-      mapAccumM_(self, s, (s, a) => T.map_(f(s, a), (s) => Tp.tuple(s, s)))
-    )
+  return <R1, E1, O>(f: (s: S, o: O) => T.Effect<R1, E1, S>) =>
+    <R, E>(self: Stream<R, E, O>): Stream<R & R1, E | E1, S> =>
+      concat_(
+        fromIterable([s]),
+        mapAccumM_(self, s, (s, a) => T.map_(f(s, a), (s) => Tp.tuple(s, s)))
+      )
 }

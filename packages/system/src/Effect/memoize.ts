@@ -60,31 +60,32 @@ export function memoizeEq<A>(compare: (r: A) => (l: A) => boolean) {
   return <R, E, B>(f: (a: A) => Effect<R, E, B>): UIO<(a: A) => Effect<R, E, B>> =>
     pipe(
       RefM.makeRefM(new Map<A, P.Promise<E, B>>()),
-      map.map((ref) => (a: A) =>
-        pipe(
-          Do.do,
-          Do.bind("promise", () =>
-            pipe(
-              ref,
-              RefM.modify((m) => {
-                for (const [k, v] of m) {
-                  if (compare(k)(a)) {
-                    return succeed(Tp.tuple(v, m))
+      map.map(
+        (ref) => (a: A) =>
+          pipe(
+            Do.do,
+            Do.bind("promise", () =>
+              pipe(
+                ref,
+                RefM.modify((m) => {
+                  for (const [k, v] of m) {
+                    if (compare(k)(a)) {
+                      return succeed(Tp.tuple(v, m))
+                    }
                   }
-                }
 
-                return pipe(
-                  Do.do,
-                  Do.bind("promise", () => P.make<E, B>()),
-                  tap.tap(({ promise }) => fork(to.to(promise)(f(a)))),
-                  map.map(({ promise }) => Tp.tuple(promise, m.set(a, promise)))
-                )
-              })
-            )
-          ),
-          Do.bind("b", ({ promise }) => P.await(promise)),
-          map.map(({ b }) => b)
-        )
+                  return pipe(
+                    Do.do,
+                    Do.bind("promise", () => P.make<E, B>()),
+                    tap.tap(({ promise }) => fork(to.to(promise)(f(a)))),
+                    map.map(({ promise }) => Tp.tuple(promise, m.set(a, promise)))
+                  )
+                })
+              )
+            ),
+            Do.bind("b", ({ promise }) => P.await(promise)),
+            map.map(({ b }) => b)
+          )
       )
     )
 }

@@ -133,12 +133,11 @@ function updateNode(
   offset: number,
   value: any
 ): Node {
-  const { index: newIndex, path, updatedOffset } = getPath(
-    index,
-    offset,
-    depth,
-    node.sizes
-  )
+  const {
+    index: newIndex,
+    path,
+    updatedOffset
+  } = getPath(index, offset, depth, node.sizes)
   const array = copyArray(node.array)
   array[path] =
     depth > 0
@@ -2531,12 +2530,11 @@ function sliceLeft(
   offset: number,
   top: boolean
 ): Node | undefined {
-  let { index: newIndex, path, updatedOffset } = getPath(
-    index,
-    offset,
-    depth,
-    tree.sizes
-  )
+  let {
+    index: newIndex,
+    path,
+    updatedOffset
+  } = getPath(index, offset, depth, tree.sizes)
   if (depth === 0) {
     newAffix = tree.array.slice(path).reverse()
     // This leaf node is moved up as a suffix so there is nothing here

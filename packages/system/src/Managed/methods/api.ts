@@ -1563,26 +1563,24 @@ export function timeout_<R, E, A>(self: Managed<R, E, A>, d: number) {
             outerReleaseMap
           )
         )
-        const raceResult: E.Either<
-          F.Fiber<E, Tp.Tuple<[RM.Finalizer, A]>>,
-          A
-        > = yield* _(
-          restore(
-            T.provideAll_(
-              T.raceWith_(
-                T.provideAll_(self.effect, Tp.tuple(r, innerReleaseMap)),
-                T.as_(T.sleep(d), O.none),
-                (result, sleeper) =>
-                  T.zipRight_(
-                    F.interrupt(sleeper),
-                    T.done(Ex.map_(result, (tp) => E.right(tp.get(1))))
-                  ),
-                (_, resultFiber) => T.succeed(E.left(resultFiber))
-              ),
-              r
+        const raceResult: E.Either<F.Fiber<E, Tp.Tuple<[RM.Finalizer, A]>>, A> =
+          yield* _(
+            restore(
+              T.provideAll_(
+                T.raceWith_(
+                  T.provideAll_(self.effect, Tp.tuple(r, innerReleaseMap)),
+                  T.as_(T.sleep(d), O.none),
+                  (result, sleeper) =>
+                    T.zipRight_(
+                      F.interrupt(sleeper),
+                      T.done(Ex.map_(result, (tp) => E.right(tp.get(1))))
+                    ),
+                  (_, resultFiber) => T.succeed(E.left(resultFiber))
+                ),
+                r
+              )
             )
           )
-        )
         const a = yield* _(
           E.fold_(
             raceResult,
@@ -1662,24 +1660,17 @@ export function toLayerMany<Tags extends Tag<any>[]>(...tags: Tags) {
     >
   ) =>
     L.fromRawManaged(
-      core.map_(
-        self,
-        (
-          r
-        ): UnionToIntersection<
-          {
-            [k in keyof Tags & number]: [Tags[k]] extends [Tag<infer A>]
-              ? Has<A>
-              : never
-          }[number]
-        > => {
-          const env: any = {}
-          for (const tag of tags) {
-            env[tag.key] = tag.read(r as any)
-          }
-          return env
+      core.map_(self, (r): UnionToIntersection<
+        {
+          [k in keyof Tags & number]: [Tags[k]] extends [Tag<infer A>] ? Has<A> : never
+        }[number]
+      > => {
+        const env: any = {}
+        for (const tag of tags) {
+          env[tag.key] = tag.read(r as any)
         }
-      )
+        return env
+      })
     )
 }
 
@@ -1982,21 +1973,20 @@ export function services<Ts extends readonly Tag<any>[]>(...s: Ts) {
  * Provides the service with the required Service Entry
  */
 export function provideServiceM<T>(_: Tag<T>) {
-  return <R, E>(f: Managed<R, E, T>) => <R1, E1, A1>(
-    ma: Managed<R1 & Has<T>, E1, A1>
-  ): Managed<R & R1, E | E1, A1> =>
-    accessManaged((r: R & R1) =>
-      core.chain_(f, (t) => core.provideAll_(ma, mergeEnvironments(_, r, t)))
-    )
+  return <R, E>(f: Managed<R, E, T>) =>
+    <R1, E1, A1>(ma: Managed<R1 & Has<T>, E1, A1>): Managed<R & R1, E | E1, A1> =>
+      accessManaged((r: R & R1) =>
+        core.chain_(f, (t) => core.provideAll_(ma, mergeEnvironments(_, r, t)))
+      )
 }
 
 /**
  * Provides the service with the required Service Entry
  */
 export function provideService<T>(_: Tag<T>) {
-  return (f: T) => <R1, E1, A1>(
-    ma: Managed<R1 & Has<T>, E1, A1>
-  ): Managed<R1, E1, A1> => provideServiceM(_)(succeed(f))(ma)
+  return (f: T) =>
+    <R1, E1, A1>(ma: Managed<R1 & Has<T>, E1, A1>): Managed<R1, E1, A1> =>
+      provideServiceM(_)(succeed(f))(ma)
 }
 
 /**
@@ -2919,12 +2909,11 @@ export interface Scope {
  */
 export const scope: Managed<unknown, never, Scope> = core.map_(
   releaseMap,
-  (finalizers) => <R, E, A>(
-    ma: Managed<R, E, A>
-  ): T.Effect<R, E, Tp.Tuple<[RM.Finalizer, A]>> =>
-    T.chain_(T.environment<R>(), (r) =>
-      T.provideAll_(ma.effect, Tp.tuple(r, finalizers))
-    )
+  (finalizers) =>
+    <R, E, A>(ma: Managed<R, E, A>): T.Effect<R, E, Tp.Tuple<[RM.Finalizer, A]>> =>
+      T.chain_(T.environment<R>(), (r) =>
+        T.provideAll_(ma.effect, Tp.tuple(r, finalizers))
+      )
 )
 
 /**

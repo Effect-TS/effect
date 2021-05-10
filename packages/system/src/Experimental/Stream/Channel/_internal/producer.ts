@@ -85,7 +85,8 @@ export type State<Err, Elem, Done> =
  *   results in an interruption.
  */
 export class SingleProducerAsyncInput<Err, Elem, Done>
-  implements AsyncInputProducer<Err, Elem, Done>, AsyncInputConsumer<Err, Elem, Done> {
+  implements AsyncInputProducer<Err, Elem, Done>, AsyncInputConsumer<Err, Elem, Done>
+{
   constructor(readonly ref: Ref.Ref<State<Err, Elem, Done>>) {}
 
   emit(el: Elem): T.UIO<unknown> {

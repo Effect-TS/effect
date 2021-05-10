@@ -306,22 +306,22 @@ export function reduceRight_<A, B>(fa: Tree<A>, b: B, f: (a: A, b: B) => B): B {
 
 export const forEachF = P.implementForEachF<[URI<TreeURI>]>()((_) => (G) => {
   const traverseF = A.forEachF(G)
-  const r = <A, B>(f: (a: A) => P.HKT<typeof _.G, B>) => (
-    ta: Tree<A>
-  ): P.HKT<typeof _.G, Tree<B>> =>
-    pipe(
-      f(ta.value),
-      G.map((value: B) => (forest: Forest<B>) => ({
-        value,
-        forest
-      })),
-      DSL.apF(G)(
-        pipe(
-          ta.forest,
-          traverseF((t) => r(f)(t))
+  const r =
+    <A, B>(f: (a: A) => P.HKT<typeof _.G, B>) =>
+    (ta: Tree<A>): P.HKT<typeof _.G, Tree<B>> =>
+      pipe(
+        f(ta.value),
+        G.map((value: B) => (forest: Forest<B>) => ({
+          value,
+          forest
+        })),
+        DSL.apF(G)(
+          pipe(
+            ta.forest,
+            traverseF((t) => r(f)(t))
+          )
         )
       )
-    )
   return r
 })
 
@@ -406,7 +406,9 @@ export function flatten<A>(mma: Tree<Tree<A>>): Tree<A> {
 }
 
 export function foldMap<M>(M: Identity<M>) {
-  return <A>(f: (a: A) => M) => (fa: Tree<A>): M => foldMap_(M)(fa, f)
+  return <A>(f: (a: A) => M) =>
+    (fa: Tree<A>): M =>
+      foldMap_(M)(fa, f)
 }
 
 export function map<A, B>(f: (a: A) => B) {

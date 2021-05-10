@@ -40,11 +40,9 @@ export function zipValidation<E>(
 /**
  * `ForEach`'s `forEachF` function
  */
-export const forEachF = P.implementForEachF<
-  [URI<EitherURI>],
-  V
->()((_) => (G) => (f) => (fa) =>
-  E.isLeft(fa) ? DSL.succeedF(G)(fa) : pipe(f(fa.right), G.map(E.right))
+export const forEachF = P.implementForEachF<[URI<EitherURI>], V>()(
+  (_) => (G) => (f) => (fa) =>
+    E.isLeft(fa) ? DSL.succeedF(G)(fa) : pipe(f(fa.right), G.map(E.right))
 )
 
 /**

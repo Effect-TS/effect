@@ -219,24 +219,17 @@ export function collect_<
   self: C.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
   f: (o: OutElem) => O.Option<OutElem2>
 ): C.Channel<Env, InErr, InElem, InDone, OutErr, OutElem2, OutDone> {
-  const collector: C.Channel<
-    Env,
-    OutErr,
-    OutElem,
-    OutDone,
-    OutErr,
-    OutElem2,
-    OutDone
-  > = C.readWith(
-    (o) =>
-      O.fold_(
-        f(o),
-        () => collector,
-        (out2) => zipRight_(C.write(out2), collector)
-      ),
-    (e) => C.fail(e),
-    (z) => C.end(z)
-  )
+  const collector: C.Channel<Env, OutErr, OutElem, OutDone, OutErr, OutElem2, OutDone> =
+    C.readWith(
+      (o) =>
+        O.fold_(
+          f(o),
+          () => collector,
+          (out2) => zipRight_(C.write(out2), collector)
+        ),
+      (e) => C.fail(e),
+      (z) => C.end(z)
+    )
 
   return C.pipeTo_(self, collector)
 }
@@ -979,97 +972,101 @@ export function mergeWith_<
         OutDone2 | OutDone3
       >
 
-      const handleSide = <Err, Done, Err2, Done2>(
-        exit: Ex.Exit<E.Either<Err, Done>, OutElem | OutElem1>,
-        fiber: F.Fiber<E.Either<Err2, Done2>, OutElem | OutElem1>,
-        pull: T.Effect<Env & Env1, E.Either<Err, Done>, OutElem | OutElem1>
-      ) => (
-        done: (
-          ex: Ex.Exit<Err, Done>
-        ) => MH.MergeDecision<
-          Env & Env1,
-          Err2,
-          Done2,
-          OutErr2 | OutErr3,
-          OutDone2 | OutDone3
-        >,
-        both: (
-          f1: F.Fiber<E.Either<Err, Done>, OutElem | OutElem1>,
-          f2: F.Fiber<E.Either<Err2, Done2>, OutElem | OutElem1>
-        ) => MergeState,
-        single: (
-          f: (
-            ex: Ex.Exit<Err2, Done2>
-          ) => T.Effect<Env & Env1, OutErr2 | OutErr3, OutDone2 | OutDone3>
-        ) => MergeState
-      ): T.Effect<
-        Env & Env1,
-        never,
-        C.Channel<
-          Env & Env1,
-          unknown,
-          unknown,
-          unknown,
-          OutErr2 | OutErr3,
-          OutElem | OutElem1,
-          OutDone2 | OutDone3
-        >
-      > =>
-        Ex.fold_(
-          exit,
-          (
-            cause
-          ): T.Effect<
+      const handleSide =
+        <Err, Done, Err2, Done2>(
+          exit: Ex.Exit<E.Either<Err, Done>, OutElem | OutElem1>,
+          fiber: F.Fiber<E.Either<Err2, Done2>, OutElem | OutElem1>,
+          pull: T.Effect<Env & Env1, E.Either<Err, Done>, OutElem | OutElem1>
+        ) =>
+        (
+          done: (
+            ex: Ex.Exit<Err, Done>
+          ) => MH.MergeDecision<
             Env & Env1,
-            never,
-            C.Channel<
+            Err2,
+            Done2,
+            OutErr2 | OutErr3,
+            OutDone2 | OutDone3
+          >,
+          both: (
+            f1: F.Fiber<E.Either<Err, Done>, OutElem | OutElem1>,
+            f2: F.Fiber<E.Either<Err2, Done2>, OutElem | OutElem1>
+          ) => MergeState,
+          single: (
+            f: (
+              ex: Ex.Exit<Err2, Done2>
+            ) => T.Effect<Env & Env1, OutErr2 | OutErr3, OutDone2 | OutDone3>
+          ) => MergeState
+        ): T.Effect<
+          Env & Env1,
+          never,
+          C.Channel<
+            Env & Env1,
+            unknown,
+            unknown,
+            unknown,
+            OutErr2 | OutErr3,
+            OutElem | OutElem1,
+            OutDone2 | OutDone3
+          >
+        > =>
+          Ex.fold_(
+            exit,
+            (
+              cause
+            ): T.Effect<
               Env & Env1,
-              unknown,
-              unknown,
-              unknown,
-              OutErr2 | OutErr3,
-              OutElem1 | OutElem,
-              OutDone2 | OutDone3
-            >
-          > => {
-            const result = done(
-              E.fold_(
-                Cause.flipCauseEither(cause),
-                (_) => Ex.halt(_),
-                (_) => Ex.succeed(_)
-              )
-            )
-
-            MH.concrete(result)
-
-            if (result._typeId === MH.DoneTypeId) {
-              return T.succeed(C.fromEffect(T.zipRight_(F.interrupt(fiber), result.io)))
-            } else if (result._typeId === MH.AwaitTypeId) {
-              return T.map_(
-                fiber.await,
-                Ex.fold(
-                  (cause) =>
-                    C.fromEffect(
-                      result.f(
-                        E.fold_(
-                          Cause.flipCauseEither(cause),
-                          (_) => Ex.halt(_),
-                          (_) => Ex.succeed(_)
-                        )
-                      )
-                    ),
-                  (elem) => zipRight_(C.write(elem), go(single(result.f)))
+              never,
+              C.Channel<
+                Env & Env1,
+                unknown,
+                unknown,
+                unknown,
+                OutErr2 | OutErr3,
+                OutElem1 | OutElem,
+                OutDone2 | OutDone3
+              >
+            > => {
+              const result = done(
+                E.fold_(
+                  Cause.flipCauseEither(cause),
+                  (_) => Ex.halt(_),
+                  (_) => Ex.succeed(_)
                 )
               )
-            }
 
-            throw new Error("Unexpected")
-          },
-          (elem) =>
-            T.map_(T.fork(pull), (leftFiber) =>
-              zipRight_(C.write(elem), go(both(leftFiber, fiber)))
-            )
-        )
+              MH.concrete(result)
+
+              if (result._typeId === MH.DoneTypeId) {
+                return T.succeed(
+                  C.fromEffect(T.zipRight_(F.interrupt(fiber), result.io))
+                )
+              } else if (result._typeId === MH.AwaitTypeId) {
+                return T.map_(
+                  fiber.await,
+                  Ex.fold(
+                    (cause) =>
+                      C.fromEffect(
+                        result.f(
+                          E.fold_(
+                            Cause.flipCauseEither(cause),
+                            (_) => Ex.halt(_),
+                            (_) => Ex.succeed(_)
+                          )
+                        )
+                      ),
+                    (elem) => zipRight_(C.write(elem), go(single(result.f)))
+                  )
+                )
+              }
+
+              throw new Error("Unexpected")
+            },
+            (elem) =>
+              T.map_(T.fork(pull), (leftFiber) =>
+                zipRight_(C.write(elem), go(both(leftFiber, fiber)))
+              )
+          )
 
       const go = (
         state: MergeState
@@ -1083,16 +1080,10 @@ export function mergeWith_<
         OutDone2 | OutDone3
       > => {
         if (state._typeId === MH.BothRunningTypeId) {
-          const lj: T.Effect<
-            Env1,
-            E.Either<OutErr, OutDone>,
-            OutElem | OutElem1
-          > = F.join(state.left)
-          const rj: T.Effect<
-            Env1,
-            E.Either<OutErr1, OutDone1>,
-            OutElem | OutElem1
-          > = F.join(state.right)
+          const lj: T.Effect<Env1, E.Either<OutErr, OutDone>, OutElem | OutElem1> =
+            F.join(state.left)
+          const rj: T.Effect<Env1, E.Either<OutErr1, OutDone1>, OutElem | OutElem1> =
+            F.join(state.right)
 
           return C.unwrap(
             T.raceWith_(
@@ -1222,15 +1213,8 @@ export function mapOut_<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone, Ou
   self: C.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
   f: (o: OutElem) => OutElem2
 ): C.Channel<Env, InErr, InElem, InDone, OutErr, OutElem2, OutDone> {
-  const reader: C.Channel<
-    Env,
-    OutErr,
-    OutElem,
-    OutDone,
-    OutErr,
-    OutElem2,
-    OutDone
-  > = C.readWithCause((i) => C.chain_(C.write(f(i)), () => reader), C.halt, C.end)
+  const reader: C.Channel<Env, OutErr, OutElem, OutDone, OutErr, OutElem2, OutDone> =
+    C.readWithCause((i) => C.chain_(C.write(f(i)), () => reader), C.halt, C.end)
 
   return self[">>>"](reader)
 }
@@ -1295,15 +1279,8 @@ export function mapOutM<Env1, OutErr1, OutElem, OutElem1>(
   ) => mapOutM_(self, f)
 }
 
-export const never: C.Channel<
-  unknown,
-  unknown,
-  unknown,
-  unknown,
-  never,
-  never,
-  never
-> = C.fromEffect(T.never)
+export const never: C.Channel<unknown, unknown, unknown, unknown, never, never, never> =
+  C.fromEffect(T.never)
 
 export function orDie_<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone, E>(
   self: C.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
