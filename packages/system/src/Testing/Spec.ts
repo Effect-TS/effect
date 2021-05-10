@@ -7,6 +7,8 @@ import type * as O from "../Option"
 import * as Annotations from "./Annotations"
 import type { TestAnnotation } from "./TestAnnotation"
 import * as TAM from "./TestAnnotationMap"
+import type { TestFailure } from "./TestFailure"
+import type { TestSuccess } from "./TestSuccess"
 
 export const SpecCaseTypeId = Symbol.for("@effect-ts/system/Testing/SpecCase")
 export type SpecCaseTypeId = typeof SpecCaseTypeId
@@ -101,9 +103,6 @@ export function test<R, E, T>(
 ): Spec<R, E, T> {
   return new Spec(new TestCase(label, test, annotations))
 }
-
-export type TestFailure<E> = ["TF", E]
-export type TestSuccess = {}
 
 export type ZSpec<R, E> = Spec<R, TestFailure<E>, TestSuccess>
 
