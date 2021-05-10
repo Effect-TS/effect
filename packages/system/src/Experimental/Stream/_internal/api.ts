@@ -944,38 +944,6 @@ export function combine<R, R1, E, E1, A, A2>(
 }
 
 /**
- * Combines the chunks from this stream and the specified stream by repeatedly applying the
- * function `f` to extract a chunk using both sides and conceptually "offer"
- * it to the destination stream. `f` can maintain some internal state to control
- * the combining process, with the initial state being specified by `s`.
- */
-export function combineChunks<R, R1, E, E1, A, A2>(
-  self: Stream<R, E, A>,
-  that: Stream<R1, E1, A2>
-) {
-  return <S>(s: S) => <A3>(
-    f: (
-      s: S,
-      eff1: T.Effect<R, O.Option<E>, A.Chunk<A>>,
-      eff2: T.Effect<R1, O.Option<E1>, A.Chunk<A2>>
-    ) => T.Effect<R1, never, Ex.Exit<O.Option<E | E1>, Tp.Tuple<[A.Chunk<A3>, S]>>>
-  ): Stream<R1 & R, E | E1, A3> => {
-    return C.unwrapManaged(
-      pipe(
-        M.do,
-        M.bind("pullLeft", () => C.toPull(self)),
-        M.bind("pullRight", () => C.toPull(that)),
-        M.map(({ pullLeft, pullRight }) =>
-          unfoldChunkM(s)((s) =>
-            T.chain_(f(s, pullLeft, pullRight), (_) => T.optional(T.done(_)))
-          )
-        )
-      )
-    )
-  }
-}
-
-/**
  * Concatenates the specified stream with this stream, resulting in a stream
  * that emits the elements from this stream and then the elements from the specified stream.
  */
