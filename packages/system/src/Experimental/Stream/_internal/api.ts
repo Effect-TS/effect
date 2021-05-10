@@ -919,28 +919,29 @@ export function combine<R, R1, E, E1, A, A2>(
   self: Stream<R, E, A>,
   that: Stream<R1, E1, A2>
 ) {
-  return <S>(s: S) => <A3>(
-    f: (
-      s: S,
-      eff1: T.Effect<R, O.Option<E>, A>,
-      eff2: T.Effect<R1, O.Option<E1>, A2>
-    ) => T.Effect<R1, never, Ex.Exit<O.Option<E | E1>, Tp.Tuple<[A3, S]>>>
-  ): Stream<R1 & R, E | E1, A3> => {
-    return C.unwrapManaged(
-      pipe(
-        M.do,
-        M.bind("left", () => M.mapM_(C.toPull(self), BP.make)),
-        M.bind("right", () => M.mapM_(C.toPull(that), BP.make)),
-        M.map(({ left, right }) =>
-          unfoldM(s)((s) =>
-            T.chain_(f(s, BP.pullElement(left), BP.pullElement(right)), (_) =>
-              T.optional(T.done(_))
+  return <S>(s: S) =>
+    <A3>(
+      f: (
+        s: S,
+        eff1: T.Effect<R, O.Option<E>, A>,
+        eff2: T.Effect<R1, O.Option<E1>, A2>
+      ) => T.Effect<R1, never, Ex.Exit<O.Option<E | E1>, Tp.Tuple<[A3, S]>>>
+    ): Stream<R1 & R, E | E1, A3> => {
+      return C.unwrapManaged(
+        pipe(
+          M.do,
+          M.bind("left", () => M.mapM_(C.toPull(self), BP.make)),
+          M.bind("right", () => M.mapM_(C.toPull(that), BP.make)),
+          M.map(({ left, right }) =>
+            unfoldM(s)((s) =>
+              T.chain_(f(s, BP.pullElement(left), BP.pullElement(right)), (_) =>
+                T.optional(T.done(_))
+              )
             )
           )
         )
       )
-    )
-  }
+    }
 }
 
 /**
