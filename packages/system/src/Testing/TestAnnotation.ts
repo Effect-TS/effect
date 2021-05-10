@@ -1,4 +1,5 @@
 import * as Chunk from "../Collections/Immutable/Chunk"
+import * as List from "../Collections/Immutable/List"
 import type { SortedSet } from "../Collections/Immutable/SortedSet"
 import * as E from "../Either"
 import type * as Fiber from "../Fiber"
@@ -60,3 +61,14 @@ function compose<A>(
     return E.right((right as E.Right<Chunk.Chunk<A>>).right)
   }
 }
+
+export type LocationAnnotation = List.List<Fiber.SourceLocation>
+
+export const LocationAnnotation = tag<LocationAnnotation>()
+
+export const location: TestAnnotation<LocationAnnotation> = new TestAnnotation(
+  "location",
+  List.empty(),
+  List.concat_,
+  LocationAnnotation
+)
