@@ -23,7 +23,7 @@ export function concrete<A>(_: BoolAlgebra<A>): asserts _ is typeof _[typeof PR.
  * `A`.
  */
 export abstract class BoolAlgebra<A> implements ST.HasEquals {
-  readonly boolAlgebraTypeId: typeof BoolAlgebraTypeId = BoolAlgebraTypeId;
+  readonly [BoolAlgebraTypeId]: typeof BoolAlgebraTypeId = BoolAlgebraTypeId;
   readonly [PR._A]: () => A;
   readonly [PR._C]: Value<A> | And<A> | Or<A> | Not<A>;
 
