@@ -136,22 +136,22 @@ export function makeAssertionM(name: string, ...params: R.RenderParam[]) {
  * Makes a new `AssertionM` from a pretty-printing and a function.
  */
 export function makeAssertionRecM(name: string, ...params: R.RenderParam[]) {
-  return <B>(assertion: AssertionM<B>) => <A>(
-    get: (a: Lazy<A>) => T.Effect<unknown, never, O.Option<B>>,
-    orElse: (amd: AMD.AssertionMData) => ARM.AssertResultM = AMD.asFailureM
-  ): AssertionM<A> => {
-    const resultAssertion = () =>
-      makeAssertionDirect(
-        name,
-        ...params
-      )<A>((a) => {
-        const actualValue = a()
+  return <B>(assertion: AssertionM<B>) =>
+    <A>(
+      get: (a: Lazy<A>) => T.Effect<unknown, never, O.Option<B>>,
+      orElse: (amd: AMD.AssertionMData) => ARM.AssertResultM = AMD.asFailureM
+    ): AssertionM<A> => {
+      const resultAssertion = () =>
+        makeAssertionDirect(
+          name,
+          ...params
+        )<A>((a) => {
+          const actualValue = a()
 
-        return pipe(
-          get(() => actualValue),
-          BAM.fromEffect,
-          BAM.chain(
-            (p): ARM.AssertResultM => {
+          return pipe(
+            get(() => actualValue),
+            BAM.fromEffect,
+            BAM.chain((p): ARM.AssertResultM => {
               return O.fold_(
                 p,
                 () =>
@@ -166,7 +166,7 @@ export function makeAssertionRecM(name: string, ...params: R.RenderParam[]) {
                             ? BA.success(
                                 AV.makeAssertionValue(
                                   assertion,
-                                  () => (actualValue as unknown) as B,
+                                  () => actualValue as unknown as B,
                                   result
                                 )
                               )
@@ -184,13 +184,12 @@ export function makeAssertionRecM(name: string, ...params: R.RenderParam[]) {
                   )
                 }
               )
-            }
+            })
           )
-        )
-      })
+        })
 
-    return resultAssertion()
-  }
+      return resultAssertion()
+    }
 }
 
 /**

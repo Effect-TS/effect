@@ -5,6 +5,7 @@ import * as E from "../Either"
 import { flow, identity, pipe } from "../Function"
 import * as O from "../Option"
 import * as ST from "../Structural"
+import { LazyGetter } from "../Utils"
 import * as PR from "./primitives"
 
 export const BoolAlgebraTypeId = Symbol()
@@ -27,6 +28,17 @@ export abstract class BoolAlgebra<A> implements ST.HasEquals {
   readonly [PR._C]: Value<A> | And<A> | Or<A> | Not<A>;
 
   abstract [ST.equalsSym](that: unknown): boolean
+
+  @LazyGetter()
+  get [ST.hashSym](): number {
+    return fold_(
+      this,
+      (a) => ST.hash(a),
+      (a, b) => a & b,
+      (a, b) => a | b,
+      (a) => ~a
+    )
+  }
 }
 
 export class Value<A> extends BoolAlgebra<A> {
