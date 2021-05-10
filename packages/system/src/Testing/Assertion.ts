@@ -127,7 +127,7 @@ export function makeAssertionRec(name: string, ...params: R.RenderParam[]) {
                   : BA.failure(
                       AV.makeAssertionValue(
                         resultAssertion(),
-                        () => (b as unknown) as A,
+                        () => b as unknown as A,
                         () => innerResult
                       )
                     )
