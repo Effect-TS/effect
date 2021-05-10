@@ -1,4 +1,5 @@
 import * as HashMap from "../Collections/Immutable/HashMap"
+import * as L from "../Collections/Immutable/List"
 import type { Endomorphism } from "../Function"
 import * as O from "../Option"
 import type * as TestAnnotation from "./TestAnnotation"
@@ -9,6 +10,25 @@ export class TestAnnotationMap {
   constructor(
     readonly map: HashMap.HashMap<TestAnnotation.TestAnnotation<unknown>, unknown>
   ) {}
+}
+
+export function concat(self: TestAnnotationMap, that: TestAnnotationMap) {
+  const l = L.from(self.map)
+  const r = L.from(that.map)
+
+  return new TestAnnotationMap(
+    L.reduce_(L.concat_(l, r), TestAnnotationMap.empty.map, (acc, [key, value]) =>
+      HashMap.set_(
+        acc,
+        key,
+        O.fold_(
+          HashMap.get_(acc, key),
+          () => value,
+          (x) => key.combine(x, value)
+        )
+      )
+    )
+  )
 }
 
 export function get<V>(key: TestAnnotation.TestAnnotation<V>) {

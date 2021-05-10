@@ -1,9 +1,13 @@
+import type { Cause } from "../Cause"
+import * as Chunk from "../Collections/Immutable/Chunk"
 import * as Tuple from "../Collections/Immutable/Tuple"
 import * as T from "../Effect"
 import { pipe } from "../Function"
 import type { Has } from "../Has"
+import type { Layer } from "../Layer"
+import type { Managed } from "../Managed"
 import * as M from "../Managed"
-import type * as O from "../Option"
+import * as O from "../Option"
 import * as Annotations from "./Annotations"
 import type { TestAnnotation } from "./TestAnnotation"
 import * as TAM from "./TestAnnotationMap"
@@ -192,4 +196,92 @@ export function annotated<R, E, T>(
       }
     })
   )
+}
+
+export function provideLayer<R0, E, R>(layer: Layer<R0, E, R>) {
+  return <E1, T1>(self: Spec<R, E1, T1>): Spec<R0, E | E1, T1> =>
+    pipe(
+      self,
+      transform<R, E1, T1, R0, E | E1, T1>((_) => {
+        concreteSpecCase(_)
+        switch (_._tag) {
+          case "SuiteCase":
+            return new SuiteCase(_.label, M.provideLayer_(_.specs, layer), _.exec)
+          case "TestCase":
+            return new TestCase(_.label, T.provideLayer_(_.test, layer), _.annotations)
+        }
+      })
+    )
+}
+
+export function forEachExec<E, T, R1, E1, A1, R2, E2, A2>(
+  defExec: T.ExecutionStrategy,
+  failure: (_: Cause<E>) => T.Effect<R1, E1, A1>,
+  success: (_: T) => T.Effect<R2, E2, A2>
+) {
+  return <R>(
+    self: Spec<R, E, T>
+  ): Managed<R & R1 & R2, E1 | E2, Spec<R1 & R2, E1 | E2, A1 | A2>> =>
+    pipe(
+      self,
+      foldM<R & R1 & R2, E1 | E2, Spec<R1 & R2, E1 | E2, A1 | A2>>(defExec)((_) => {
+        concreteSpecCase(_)
+        switch (_._tag) {
+          case "SuiteCase": {
+            const v = _
+            return pipe(
+              v.specs,
+              M.foldCause(
+                (e) => test(v.label, failure(e), TAM.TestAnnotationMap.empty),
+                (t) => suite(v.label, M.succeed(t), v.exec)
+              )
+            )
+          }
+          case "TestCase": {
+            const v = _
+
+            return pipe(
+              v.test,
+              T.foldCause(
+                (e) => test(v.label, failure(e), v.annotations),
+                (e) => test(v.label, success(e), v.annotations)
+              ),
+              T.toManaged
+            )
+          }
+        }
+      })
+    )
+}
+
+export function foldM<R1, E1, Z>(defExec: T.ExecutionStrategy) {
+  return <R, E, T>(f: (_: SpecCase<R, E, T, Z>) => M.Managed<R1, E1, Z>) =>
+    (self: Spec<R, E, T>): Managed<R & R1, E1, Z> => {
+      concreteSpecCase(self.caseValue)
+      switch (self.caseValue._tag) {
+        case "SuiteCase": {
+          const v = self.caseValue
+
+          return pipe(
+            v.specs,
+            M.foldCauseM(
+              (c) => f(new SuiteCase(v.label, M.halt(c), v.exec)),
+              (_) =>
+                pipe(
+                  _,
+                  M.forEachExec(
+                    O.getOrElse_(v.exec, () => defExec),
+                    (s) => pipe(s, foldM<R1, E1, Z>(defExec)(f), M.release)
+                  ),
+                  M.chain((z) =>
+                    f(new SuiteCase(v.label, M.succeed(Chunk.toArray(z)), v.exec))
+                  )
+                )
+            )
+          )
+        }
+        case "TestCase":
+          return f(self.caseValue)
+      }
+    }
 }
