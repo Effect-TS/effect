@@ -5,7 +5,7 @@ import { pipe } from "../../Function"
 import * as O from "../../Option"
 import * as AMD from "../AssertionMData"
 import type * as AR from "../AssertionResult"
-import * as ARM from "../AssertionResultM"
+import type * as ARM from "../AssertionResultM"
 import * as makeAssertionValue from "../AssertionValue/makeAssertionValue"
 import * as BA from "../BoolAlgebra"
 import * as BAM from "../BoolAlgebraM"
@@ -19,7 +19,7 @@ import { AssertionM } from "./AssertionM"
 export function and<A>(self: AssertionM<A>, that: Lazy<AssertionM<A>>): AssertionM<A> {
   return new (class extends AssertionM<A> {})(
     () => R.infix(R.param(self), "&&", R.param(that)),
-    (actual) => ARM.and_(self.runM(actual), that().runM(actual))
+    (actual) => BAM.and_(self.runM(actual), that().runM(actual))
   )
 }
 
@@ -29,7 +29,7 @@ export function and<A>(self: AssertionM<A>, that: Lazy<AssertionM<A>>): Assertio
 export function or<A>(self: AssertionM<A>, that: Lazy<AssertionM<A>>): AssertionM<A> {
   return new (class extends AssertionM<A> {})(
     () => R.infix(R.param(self), "||", R.param(that)),
-    (actual) => ARM.or_(self.runM(actual), that().runM(actual))
+    (actual) => BAM.or_(self.runM(actual), that().runM(actual))
   )
 }
 
@@ -163,5 +163,5 @@ export function not<A>(assertion: AssertionM<A>) {
   return makeAssertionDirect(
     "not",
     R.param(assertion)
-  )<A>((_) => ARM.not(assertion.runM(_)))
+  )<A>((_) => BAM.not(assertion.runM(_)))
 }
