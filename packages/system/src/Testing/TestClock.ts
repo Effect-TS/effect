@@ -1,4 +1,5 @@
 import { Tagged } from "../Case"
+import * as Clock from "../Clock"
 import * as Chunk from "../Collections/Immutable/Chunk"
 import * as HashMap from "../Collections/Immutable/HashMap"
 import * as List from "../Collections/Immutable/List"
@@ -8,15 +9,18 @@ import * as T from "../Effect"
 import * as Fiber from "../Fiber"
 import { identity, pipe } from "../Function"
 import { tag } from "../Has"
+import * as L from "../Layer"
+import * as M from "../Managed"
 import * as O from "../Option"
 import * as Ord from "../Ord"
 import * as Promise from "../Promise"
 import * as Ref from "../Ref"
 import * as RefM from "../RefM"
 import * as St from "../Structural"
-import type { Annotations } from "./Annotations"
+import { intersect } from "../Utils"
+import { Annotations } from "./Annotations"
 import { fiberSet } from "./FiberSet"
-import type { Live } from "./Live"
+import { Live } from "./Live"
 import type { Restorable } from "./Restorable"
 import { fibers } from "./TestAnnotation"
 
@@ -144,11 +148,12 @@ export class Test implements TestClock {
    * effects that were scheduled to occur on or before the new time will be
    * run in order.
    */
-  readonly adjust: (duration: Duration) => T.UIO<void> = (duration) =>
-    T.zipRight_(
+  readonly adjust: (duration: Duration) => T.UIO<void> = (duration) => {
+    return T.zipRight_(
       this.warningDone,
       this.run((_) => Duration(_ + duration))
     )
+  }
 
   /**
    * Returns the current clock time.
@@ -274,7 +279,7 @@ export class Test implements TestClock {
    * Cancels the warning message that is displayed if a test is using time
    * but is not advancing the `TestClock`.
    */
-  private warningDone: T.UIO<void> = pipe(
+  readonly warningDone: T.UIO<void> = pipe(
     this.warningState,
     RefM.updateSome((_) => {
       switch (_._tag) {
@@ -426,3 +431,35 @@ export class Test implements TestClock {
       )
     )
 }
+
+export function live(data: Data) {
+  return M.gen(function* (_) {
+    const live = yield* _(Live)
+    const annotations = yield* _(Annotations)
+    const ref = yield* _(Ref.makeRef(data))
+    const refM = yield* _(RefM.makeRefM(Start.of))
+
+    const test = yield* _(
+      T.succeedWith(() => new Test(ref, live, annotations, refM))["|>"](
+        M.make((_) => _.warningDone)
+      )
+    )
+
+    const clock = Clock.HasClock.of({
+      currentTime: test.currentTime,
+      _tag: Clock.ClockSymbol,
+      sleep: (ms) => test.sleep(Duration(ms))
+    })
+
+    const testClock = TestClock.of(test)
+
+    return intersect(testClock, clock)
+  })["|>"](L.fromRawManaged)
+}
+
+export const defaultTestClock = live(
+  new Data({
+    duration: Duration(0),
+    sleeps: List.empty()
+  })
+)

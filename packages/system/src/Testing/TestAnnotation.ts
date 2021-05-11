@@ -1,12 +1,17 @@
 import * as Chunk from "../Collections/Immutable/Chunk"
 import * as List from "../Collections/Immutable/List"
-import type { SortedSet } from "../Collections/Immutable/SortedSet"
+import * as SS from "../Collections/Immutable/SortedSet"
+import * as T from "../Effect"
 import * as E from "../Either"
 import type * as Fiber from "../Fiber"
+import { runtimeOrd } from "../Fiber"
+import { pipe } from "../Function"
 import type { Tag } from "../Has"
 import { tag } from "../Has"
 import * as St from "../Structural"
-import type { AtomicReference } from "../Support/AtomicReference"
+import * as Supervisor from "../Supervisor"
+import { AtomicReference } from "../Support/AtomicReference"
+import * as Annotations from "./Annotations"
 import { Int } from "./Int"
 
 /**
@@ -35,7 +40,7 @@ export class TestAnnotation<V> implements St.HasHash, St.HasEquals {
 
 export type FibersAnnotation = E.Either<
   Int,
-  Chunk.Chunk<AtomicReference<SortedSet<Fiber.Runtime<unknown, unknown>>>>
+  Chunk.Chunk<AtomicReference<SS.SortedSet<Fiber.Runtime<unknown, unknown>>>>
 >
 
 export const FibersAnnotation = tag<FibersAnnotation>()
@@ -46,6 +51,41 @@ export const fibers: TestAnnotation<FibersAnnotation> = new TestAnnotation(
   compose,
   FibersAnnotation
 )
+
+export function fibersPerTest<R, E, A>(self: T.Effect<R, E, A>) {
+  const acquire = pipe(
+    T.succeedWith(() => new AtomicReference(SS.make(runtimeOrd()))),
+    T.tap((ref) => Annotations.annotate(fibers, E.right(Chunk.single(ref))))
+  )
+
+  const release = pipe(
+    Annotations.get(fibers),
+    T.chain((f) => {
+      switch (f._tag) {
+        case "Left":
+          return T.unit
+        case "Right":
+          return pipe(
+            f.right,
+            T.forEach((_) => T.succeedWith(() => _.get)),
+            T.map(Chunk.reduce(SS.make(runtimeOrd()), SS.union_)),
+            T.map(SS.size),
+            T.tap((n) => Annotations.annotate(fibers, E.left(Int(n))))
+          )
+      }
+    })
+  )
+
+  return T.bracket_(
+    acquire,
+    (ref) =>
+      pipe(
+        Supervisor.fibersIn(ref),
+        T.chain((supervisor) => T.supervised_(self, supervisor))
+      ),
+    () => release
+  )
+}
 
 function compose<A>(
   left: E.Either<Int, Chunk.Chunk<A>>,

@@ -1,4 +1,6 @@
-import type * as T from "../Effect"
+import * as T from "../Effect"
+import { tag } from "../Has"
+import * as L from "../Layer"
 
 /**
  * The `Live` trait provides access to the "live" environment from within the
@@ -18,3 +20,11 @@ export interface Live {
     effect: T.Effect<T.DefaultEnv, E, A>
   ) => T.Effect<unknown, E, A>
 }
+
+export const Live = tag<Live>()
+
+export const live = L.fromEffect(Live)(
+  T.access((r: T.DefaultEnv) => ({
+    provide: T.provideAll(r)
+  }))
+)

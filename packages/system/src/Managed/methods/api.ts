@@ -7,9 +7,8 @@ import type { HasClock } from "../../Clock"
 import * as A from "../../Collections/Immutable/Array"
 import * as Chunk from "../../Collections/Immutable/Chunk"
 import * as R from "../../Collections/Immutable/Dictionary"
-import type { HashSet } from "../../Collections/Immutable/HashSet"
-import * as HS from "../../Collections/Immutable/HashSet"
 import * as NA from "../../Collections/Immutable/NonEmptyArray"
+import * as SS from "../../Collections/Immutable/SortedSet"
 import * as Tp from "../../Collections/Immutable/Tuple"
 import type { Effect } from "../../Effect"
 import * as T from "../../Effect"
@@ -2921,7 +2920,9 @@ export const scope: Managed<unknown, never, Scope> = core.map_(
  * children that have been forked in the returned effect.
  */
 export function withChildren<R, E, A>(
-  get: (io: T.Effect<unknown, never, HashSet<F.Runtime<any, any>>>) => Managed<R, E, A>
+  get: (
+    io: T.Effect<unknown, never, SS.SortedSet<F.Runtime<any, any>>>
+  ) => Managed<R, E, A>
 ): Managed<R, E, A> {
   return unwrap(
     T.map_(
@@ -2931,7 +2932,7 @@ export function withChildren<R, E, A>(
           T.supervised(supervisor)(
             get(
               T.chain_(supervisor.value, (children) =>
-                T.map_(T.descriptor, (d) => HS.filter_(children, (_) => _.id !== d.id))
+                T.map_(T.descriptor, (d) => SS.filter_(children, (_) => _.id !== d.id))
               )
             ).effect
           )

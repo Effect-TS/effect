@@ -18,8 +18,6 @@ import * as update from "../FiberRef/update"
 import { constVoid } from "../Function"
 // option
 import * as O from "../Option"
-import * as Ord from "../Ord"
-import * as Ordering from "../Ordering"
 // supervisor / scope
 import * as Scope from "../Scope"
 import * as St from "../Structural"
@@ -1318,11 +1316,3 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     }
   }
 }
-
-export const runtimeOrd = <E, A>() =>
-  Ord.makeOrd<Fiber.Runtime<E, A>>((x, y) =>
-    Ordering.combine(
-      Ord.number.compare(x.id.startTimeMillis, y.id.startTimeMillis),
-      Ord.number.compare(x.id.seqNumber, y.id.seqNumber)
-    )
-  )
