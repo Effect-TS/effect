@@ -2,7 +2,7 @@ import type { Lazy } from "../../Function"
 import * as ST from "../../Structural"
 import { LazyGetter } from "../../Utils"
 import type * as ARM from "../AssertionResultM"
-import * as PR from "../primitives"
+import * as PR from "../Primitives"
 import type * as R from "../Render"
 
 /**

@@ -3,7 +3,7 @@ import * as Ex from "../../src/Exit"
 import * as F from "../../src/Fiber"
 import { pipe } from "../../src/Function"
 import * as FPT from "../../src/Testing/FibersPerTest"
-import { Duration, TestClock } from "../../src/Testing/TestClock"
+import { TestClock } from "../../src/Testing/TestClock"
 import { TestEnvironment } from "../../src/Testing/TestEnvironment"
 
 it("test env", async () => {
@@ -13,7 +13,7 @@ it("test env", async () => {
 
       const sleeping = yield* _(T.fork(T.sleep(10_000)))
 
-      yield* _(TC.adjust(Duration(10_000)))
+      yield* _(TC.adjust(10_000))
 
       return yield* _(F.join(sleeping))
     }),

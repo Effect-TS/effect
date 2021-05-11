@@ -1,5 +1,5 @@
 import * as AM from "../AssertionM/api"
-import * as AR from "../AssertionResult"
+import * as BA from "../BoolAlgebra"
 import type { AssertionValue } from "./AssertionValue"
 import { makeAssertionValue } from "./makeAssertionValue"
 
@@ -7,7 +7,7 @@ export function negate(self: AssertionValue): AssertionValue {
   return makeAssertionValue(
     AM.not(self.assertion),
     self.value,
-    () => AR.not(self.result()),
+    () => BA.not(self.result()),
     self.expression,
     self.sourceLocation
   )
