@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.34.9](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.34.8...@effect-ts/system@0.34.9) (2021-05-11)
+
+
+### Bug Fixes
+
+* **core:** add equals and hash to exit ([4963f12](https://github.com/Effect-TS/core/commit/4963f1235e7b52f2539a1d6fde5b518e72dc9c52))
+
+
+
+
+
 ## [0.34.8](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.34.7...@effect-ts/system@0.34.8) (2021-05-10)
 
 
