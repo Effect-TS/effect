@@ -399,3 +399,12 @@ export const never = makeSynthetic<never, never>({
  * A fiber that has already succeeded with unit.
  */
 export const unit = succeed<void>(undefined)
+
+/**
+ * Awaits the fiber, which suspends the awaiting fiber until the result of the fiber has been determined.
+ */
+function wait<E, A>(fiber: Fiber.Fiber<E, A>) {
+  return fiber.await
+}
+
+export { wait as await }
