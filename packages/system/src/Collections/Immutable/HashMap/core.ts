@@ -7,6 +7,7 @@ import { constant, identity, tuple } from "../../../Function"
 import * as I from "../../../Iterable"
 import * as O from "../../../Option"
 import * as St from "../../../Structural"
+import * as Tp from "../Tuple"
 import { fromBitmap, hashFragment, toBitmap } from "./Bitwise"
 import { SIZE } from "./Config"
 import type { Node, UpdateFn } from "./Nodes"
@@ -27,15 +28,21 @@ export class HashMap<K, V> implements Iterable<readonly [K, V]> {
     return new HashMapIterator(this, identity)
   }
 
+  readonly tupleIterator: Iterable<Tp.Tuple<[K, V]>> = {
+    [Symbol.iterator]: () => new HashMapIterator(this, ([k, v]) => Tp.tuple(k, v))
+  }
+
   get [St.hashSym](): number {
-    return St.hashIterator(this[Symbol.iterator]())
+    return St.hashIterator(
+      new HashMapIterator(this, ([k, v]) => St.combineHash(St.hash(k), St.hash(v)))
+    )
   }
 
   [St.equalsSym](that: unknown): boolean {
     return (
       that instanceof HashMap &&
       that.size === this.size &&
-      I.corresponds(this, that, St.equals)
+      I.corresponds(this.tupleIterator, that.tupleIterator, St.equals)
     )
   }
 }

@@ -7,13 +7,14 @@
  */
 import "../Operator"
 
-import * as HS from "../Collections/Immutable/HashSet"
+import * as SS from "../Collections/Immutable/SortedSet"
 import type * as Tp from "../Collections/Immutable/Tuple"
 import { succeedWith, suspend, unit } from "../Effect/core"
 import type { Effect, UIO } from "../Effect/effect"
 import { zip_ } from "../Effect/zip"
 import type { Exit } from "../Exit/exit"
 import type { Runtime } from "../Fiber/core"
+import { runtimeOrd } from "../Fiber/runtimeOrd"
 import type * as O from "../Option"
 import { AtomicReference } from "../Support/AtomicReference"
 
@@ -146,24 +147,22 @@ export const trackMainFibers = unsafeTrackMain()
 /**
  * Creates a new supervisor that tracks children in a set.
  */
-export const track = suspend(() =>
-  fibersIn(new AtomicReference(HS.make<Runtime<any, any>>()))
-)
+export const track = suspend(() => fibersIn(new AtomicReference(SS.make(runtimeOrd()))))
 
 /**
  * Creates a new supervisor that tracks children in a set.
  */
-export function fibersIn(ref: AtomicReference<HS.HashSet<Runtime<any, any>>>) {
+export function fibersIn(ref: AtomicReference<SS.SortedSet<Runtime<any, any>>>) {
   return succeedWith(
     () =>
       new Supervisor(
         succeedWith(() => ref.get),
         (_, __, ___, fiber) => {
-          ref.set(HS.add_(ref.get, fiber))
+          ref.set(SS.add_(ref.get, fiber))
           return _continue
         },
         (_, fiber) => {
-          ref.set(HS.remove_(ref.get, fiber))
+          ref.set(SS.remove_(ref.get, fiber))
           return _continue
         }
       )

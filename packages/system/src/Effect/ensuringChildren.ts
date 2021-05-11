@@ -1,7 +1,7 @@
 // tracing: off
 
 import type * as Chunk from "../Collections/Immutable/Chunk"
-import type { HashSet } from "../Collections/Immutable/HashSet"
+import type { SortedSet } from "../Collections/Immutable/SortedSet"
 import * as Fiber from "../Fiber"
 import { pipe } from "../Function"
 import { track } from "../Supervisor"
@@ -16,7 +16,7 @@ import * as ensuring from "./ensuring"
  * @dataFirst ensuringChildren_
  */
 export function ensuringChildren<R1, X>(
-  children: (_: HashSet<Fiber.Runtime<any, any>>) => RIO<R1, X>,
+  children: (_: SortedSet<Fiber.Runtime<any, any>>) => RIO<R1, X>,
   __trace?: string
 ) {
   return <R, E, A>(fa: Effect<R, E, A>): Effect<R & R1, E, A> =>
@@ -29,7 +29,7 @@ export function ensuringChildren<R1, X>(
  */
 export function ensuringChildren_<R, E, A, R1, X>(
   fa: Effect<R, E, A>,
-  children: (_: HashSet<Fiber.Runtime<any, any>>) => RIO<R1, X>,
+  children: (_: SortedSet<Fiber.Runtime<any, any>>) => RIO<R1, X>,
   __trace?: string
 ) {
   return pipe(

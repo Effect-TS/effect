@@ -1,6 +1,6 @@
 // tracing: off
 
-import * as HS from "../Collections/Immutable/HashSet"
+import * as SS from "../Collections/Immutable/SortedSet"
 import type { Runtime } from "../Fiber"
 import { track } from "../Supervisor"
 import { chain_, supervised } from "./core"
@@ -13,7 +13,7 @@ import { map_ } from "./map"
  * children that have been forked in the returned effect.
  */
 export function withChildren<R, E, A>(
-  get: (_: UIO<HS.HashSet<Runtime<any, any>>>) => Effect<R, E, A>,
+  get: (_: UIO<SS.SortedSet<Runtime<any, any>>>) => Effect<R, E, A>,
   __trace?: string
 ) {
   return chain_(
@@ -22,7 +22,7 @@ export function withChildren<R, E, A>(
       supervised(supervisor)(
         get(
           chain_(supervisor.value, (children) =>
-            map_(descriptor, (d) => HS.filter_(children, (_) => _.id !== d.id))
+            map_(descriptor, (d) => SS.filter_(children, (_) => _.id !== d.id))
           )
         )
       ),
