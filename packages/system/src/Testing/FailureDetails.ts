@@ -1,5 +1,6 @@
 import * as NEA from "../Collections/Immutable/NonEmptyArray"
-import * as AV from "./AssertionValue"
+import type * as AV from "./AssertionValue/AssertionValue"
+import * as l from "./AssertionValue/label"
 
 export const failureDetailsTypeId = Symbol()
 
@@ -15,7 +16,7 @@ export class FailureDetails {
 export function label_(self: FailureDetails, str: string): FailureDetails {
   const [h, ...tail] = self.assertion
 
-  return new FailureDetails(NEA.make([AV.label_(h, str), ...tail]))
+  return new FailureDetails(NEA.make([l.label_(h, str), ...tail]))
 }
 
 export function label(str: string) {

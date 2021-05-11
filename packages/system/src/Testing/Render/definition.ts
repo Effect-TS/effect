@@ -1,5 +1,5 @@
-import * as L from "../Collections/Immutable/List"
-import * as AM from "./AssertionM"
+import * as L from "../../Collections/Immutable/List"
+import type * as AM from "../AssertionM/AssertionM"
 
 export const AssertionMTypeId = Symbol()
 
@@ -69,54 +69,3 @@ export class Infix {
 }
 
 export type Render = Function_ | Infix
-
-/**
- * Creates a string representation of a class name.
- */
-export function className(cons: new (...args: any[]) => any): string {
-  return cons.prototype.constructor.name
-}
-
-/**
- * Creates a string representation of a field accessor.
- */
-export function field(name: string): string {
-  return `_.${name}`
-}
-
-/**
- * Create a `Render` from an assertion combinator that should be rendered
- * using standard function notation.
- */
-export function function_(
-  name: string,
-  paramLists: L.List<L.List<RenderParam>>
-): Render {
-  return new Function_(name, paramLists)
-}
-
-/**
- * Create a `Render` from an assertion combinator that should be rendered
- * using infix function notation.
- */
-export function infix(left: RenderParam, op: string, right: RenderParam): Render {
-  return new Infix(left, op, right)
-}
-
-/**
- * Construct a `RenderParam` from an `AssertionM`.
- */
-export function param<A>(value: AM.AssertionM<A> | A): RenderParam {
-  if (AM.isAssertionM(value)) {
-    return new AssertionM(value)
-  }
-
-  return new Value(value)
-}
-
-/**
- * Quote a string so it renders as a valid Scala string when rendered.
- */
-export function quoted(str: string): string {
-  return `"${str}"`
-}

@@ -2,7 +2,7 @@ import * as T from "../../src/Effect"
 import * as Ex from "../../src/Exit"
 import * as F from "../../src/Fiber"
 import { pipe } from "../../src/Function"
-import * as Ta from "../../src/Testing/TestAnnotation"
+import * as FPT from "../../src/Testing/FibersPerTest"
 import { Duration, TestClock } from "../../src/Testing/TestClock"
 import { TestEnvironment } from "../../src/Testing/TestEnvironment"
 
@@ -17,7 +17,7 @@ it("test env", async () => {
 
       return yield* _(F.join(sleeping))
     }),
-    Ta.fibersPerTest,
+    FPT.fibersPerTest,
     T.provideLayer(TestEnvironment),
     T.runPromiseExit
   )

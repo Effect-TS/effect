@@ -5,16 +5,16 @@ import * as O from "../Option"
 import * as ST from "../Structural"
 import { LazyGetter } from "../Utils"
 import * as AD from "./AssertionData"
-import type * as AM from "./AssertionM"
+import type * as AssertionM from "./AssertionM/AssertionM"
 import * as AR from "./AssertionResult"
 import type * as ARM from "./AssertionResultM"
-import * as AV from "./AssertionValue"
+import * as makeAssertionValue from "./AssertionValue/makeAssertionValue"
 import * as BA from "./BoolAlgebra"
 import * as BAM from "./BoolAlgebraM"
 import * as PR from "./primitives"
 import * as R from "./Render"
 
-export class Assertion<A> implements AM.AssertionM<A> {
+export class Assertion<A> implements AssertionM.AssertionM<A> {
   readonly [PR._A]: (_: A) => void
 
   constructor(
@@ -65,8 +65,20 @@ export function makeAssertion(name: string, ...params: R.RenderParam[]) {
       const actualValue = actual()
       const result = (): AR.AssertResult =>
         run(() => actualValue)
-          ? BA.success(AV.makeAssertionValue(assertion, () => actualValue, result))
-          : BA.failure(AV.makeAssertionValue(assertion, () => actualValue, result))
+          ? BA.success(
+              makeAssertionValue.makeAssertionValue(
+                assertion,
+                () => actualValue,
+                result
+              )
+            )
+          : BA.failure(
+              makeAssertionValue.makeAssertionValue(
+                assertion,
+                () => actualValue,
+                result
+              )
+            )
 
       return result()
     })
@@ -118,14 +130,14 @@ export function makeAssertionRec(name: string, ...params: R.RenderParam[]) {
               const result = (): AR.AssertResult =>
                 AR.isSuccess(innerResult)
                   ? BA.success(
-                      AV.makeAssertionValue(
+                      makeAssertionValue.makeAssertionValue(
                         resultAssertion(),
                         () => actualValue,
                         result
                       )
                     )
                   : BA.failure(
-                      AV.makeAssertionValue(
+                      makeAssertionValue.makeAssertionValue(
                         resultAssertion(),
                         () => b as unknown as A,
                         () => innerResult

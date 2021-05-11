@@ -1,8 +1,8 @@
 import * as T from "../Effect"
-import type * as AM from "./AssertionM"
+import type * as AM from "./AssertionM/AssertionM"
 import type * as AR from "./AssertionResult"
 import type * as ARM from "./AssertionResultM"
-import * as AV from "./AssertionValue"
+import * as makeAssertionValue from "./AssertionValue/makeAssertionValue"
 import * as BA from "./BoolAlgebra"
 import * as BAM from "./BoolAlgebraM"
 
@@ -20,13 +20,17 @@ export function makeAssertionMData(
 
 export function asFailure(amd: AssertionMData): AR.AssertResult {
   return BA.failure(
-    AV.makeAssertionValue(amd.assertion, amd.value, () => asFailure(amd))
+    makeAssertionValue.makeAssertionValue(amd.assertion, amd.value, () =>
+      asFailure(amd)
+    )
   )
 }
 
 export function asSuccess(amd: AssertionMData): AR.AssertResult {
   return BA.failure(
-    AV.makeAssertionValue(amd.assertion, amd.value, () => asSuccess(amd))
+    makeAssertionValue.makeAssertionValue(amd.assertion, amd.value, () =>
+      asSuccess(amd)
+    )
   )
 }
 

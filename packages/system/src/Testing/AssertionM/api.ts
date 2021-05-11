@@ -1,66 +1,22 @@
-import * as L from "../Collections/Immutable/List"
-import * as T from "../Effect"
-import type { Lazy } from "../Function"
-import { pipe } from "../Function"
-import * as O from "../Option"
-import * as ST from "../Structural"
-import { LazyGetter } from "../Utils"
-import * as AMD from "./AssertionMData"
-import type * as AR from "./AssertionResult"
-import * as ARM from "./AssertionResultM"
-import * as AV from "./AssertionValue"
-import * as BA from "./BoolAlgebra"
-import * as BAM from "./BoolAlgebraM"
-import * as PR from "./primitives"
-import * as R from "./Render"
-
-/**
- * An `AssertionM[A]` is capable of producing assertion results on an `A`. As a
- * proposition, assertions compose using logical conjunction and disjunction,
- * and can be negated.
- */
-export abstract class AssertionM<A> {
-  readonly [PR._A]: (_: A) => void
-
-  constructor(
-    readonly render: () => R.Render,
-    readonly runM: (a: Lazy<A>) => ARM.AssertResultM
-  ) {}
-
-  @LazyGetter()
-  get stringify(): string {
-    return this.render().toString()
-  }
-
-  toString(): string {
-    return this.stringify
-  }
-
-  [ST.equalsSym](that: unknown): boolean {
-    if (isAssertionM(that)) {
-      return this.stringify === that.stringify
-    }
-
-    return false
-  }
-
-  @LazyGetter()
-  get [ST.hashSym](): number {
-    return ST.hashString(this.stringify)
-  }
-}
-
-export function apply<A>(
-  render: () => R.Render,
-  runM: (a: Lazy<A>) => ARM.AssertResultM
-): AssertionM<A> {
-  return new (class extends AssertionM<A> {})(render, runM)
-}
+import * as L from "../../Collections/Immutable/List"
+import * as T from "../../Effect"
+import type { Lazy } from "../../Function"
+import { pipe } from "../../Function"
+import * as O from "../../Option"
+import * as AMD from "../AssertionMData"
+import type * as AR from "../AssertionResult"
+import * as ARM from "../AssertionResultM"
+import * as makeAssertionValue from "../AssertionValue/makeAssertionValue"
+import * as BA from "../BoolAlgebra"
+import * as BAM from "../BoolAlgebraM"
+import * as R from "../Render"
+import { apply } from "./apply"
+import { AssertionM } from "./AssertionM"
 
 /**
  * Returns a new assertion that succeeds only if both assertions succeed.
  */
-export function and<A>(self: AssertionM<A>, that: Lazy<AssertionM<A>>) {
+export function and<A>(self: AssertionM<A>, that: Lazy<AssertionM<A>>): AssertionM<A> {
   return new (class extends AssertionM<A> {})(
     () => R.infix(R.param(self), "&&", R.param(that)),
     (actual) => ARM.and_(self.runM(actual), that().runM(actual))
@@ -70,15 +26,11 @@ export function and<A>(self: AssertionM<A>, that: Lazy<AssertionM<A>>) {
 /**
  * Returns a new assertion that succeeds if either assertion succeeds.
  */
-export function or<A>(self: AssertionM<A>, that: Lazy<AssertionM<A>>) {
+export function or<A>(self: AssertionM<A>, that: Lazy<AssertionM<A>>): AssertionM<A> {
   return new (class extends AssertionM<A> {})(
     () => R.infix(R.param(self), "||", R.param(that)),
     (actual) => ARM.or_(self.runM(actual), that().runM(actual))
   )
-}
-
-export function isAssertionM(that: unknown): that is AssertionM<unknown> {
-  return that instanceof AssertionM
 }
 
 /**
@@ -120,8 +72,20 @@ export function makeAssertionM(name: string, ...params: R.RenderParam[]) {
         BAM.chain((p) => {
           const result = (): AR.AssertResult =>
             p
-              ? BA.success(AV.makeAssertionValue(assertion, () => actualValue, result))
-              : BA.failure(AV.makeAssertionValue(assertion, () => actualValue, result))
+              ? BA.success(
+                  makeAssertionValue.makeAssertionValue(
+                    assertion,
+                    () => actualValue,
+                    result
+                  )
+                )
+              : BA.failure(
+                  makeAssertionValue.makeAssertionValue(
+                    assertion,
+                    () => actualValue,
+                    result
+                  )
+                )
 
           return new BAM.BoolAlgebraM(T.succeed(result()))
         })
@@ -164,14 +128,14 @@ export function makeAssertionRecM(name: string, ...params: R.RenderParam[]) {
                         const result = (): AR.AssertResult =>
                           BA.isSuccess(p)
                             ? BA.success(
-                                AV.makeAssertionValue(
+                                makeAssertionValue.makeAssertionValue(
                                   assertion,
                                   () => actualValue as unknown as B,
                                   result
                                 )
                               )
                             : BA.failure(
-                                AV.makeAssertionValue(
+                                makeAssertionValue.makeAssertionValue(
                                   assertion,
                                   () => b,
                                   () => p
