@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.35.1](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.35.0...@effect-ts/system@0.35.1) (2021-05-11)
+
+
+### Features
+
+* **fiber:** export await ([ad3d0b0](https://github.com/Effect-TS/core/commit/ad3d0b05605872e9f96786194e1f929051b5089b))
+
+
+
+
+
 # [0.35.0](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.34.9...@effect-ts/system@0.35.0) (2021-05-11)
 
 
