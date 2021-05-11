@@ -7,7 +7,9 @@ import * as O from "../Option"
 import type * as Assert from "./Assertion"
 import type { AssertionM } from "./AssertionM"
 import * as AR from "./AssertionResult"
-import * as AV from "./AssertionValue"
+import type * as AV from "./AssertionValue/AssertionValue"
+import * as makeAssertionValue from "./AssertionValue/makeAssertionValue"
+import * as sameAssertion_ from "./AssertionValue/sameAssertion"
 import * as BA from "./BoolAlgebra"
 import { FailureDetails } from "./FailureDetails"
 import * as Spec from "./Spec"
@@ -88,7 +90,7 @@ function traverseResult<A>(
         whole: AV.AssertionValue,
         failureDetails: FailureDetails
       ): TestResult {
-        if (AV.sameAssertion_(whole, failureDetails.assertion[0])) {
+        if (sameAssertion_.sameAssertion_(whole, failureDetails.assertion[0])) {
           return BA.success(failureDetails)
         }
 
@@ -102,7 +104,7 @@ function traverseResult<A>(
       return loop(
         fragment,
         new FailureDetails([
-          AV.makeAssertionValue(
+          makeAssertionValue.makeAssertionValue(
             assertion,
             value,
             () => assertResult,
