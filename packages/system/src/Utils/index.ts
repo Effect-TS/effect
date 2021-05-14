@@ -67,6 +67,46 @@ export const pattern: <N extends string>(
 
 export const matchTag = pattern("_tag")
 
+export const patternFor: <N extends string>(
+  n: N
+) => <X extends { [k in N]: string }>() => {
+  <
+    K extends {
+      [k in X[N]]: (
+        _: Extract<X, { [_tag in N]: k }>,
+        __: Extract<X, { [_tag in N]: k }>
+      ) => any
+    }
+  >(
+    _: K
+  ): (m: X) => Unify<ReturnType<K[keyof K]>>
+  <
+    K extends Partial<
+      {
+        [k in X[N]]: (
+          _: Extract<X, { [_tag in N]: k }>,
+          __: Extract<X, { [_tag in N]: k }>
+        ) => any
+      }
+    >,
+    H
+  >(
+    _: K &
+      {
+        [k in X[N]]?: (
+          _: Extract<X, { [_tag in N]: k }>,
+          __: Extract<X, { [_tag in N]: k }>
+        ) => any
+      },
+    __: (_: Exclude<X, { _tag: keyof K }>, __: Exclude<X, { _tag: keyof K }>) => H
+  ): (m: X) => Unify<{ [k in keyof K]: ReturnType<NonNullable<K[k]>> }[keyof K] | H>
+} = (n) => () =>
+  ((_: any, d: any) => (m: any) => {
+    return (_[m[n]] ? _[m[n]](m, m) : d(m, m)) as any
+  }) as any
+
+export const matchTagFor = patternFor("_tag")
+
 export interface Separated<A, B> {
   readonly left: A
   readonly right: B

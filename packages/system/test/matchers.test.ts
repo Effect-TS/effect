@@ -3,7 +3,7 @@ import { pipe } from "../src/Function"
 import * as IO from "../src/IO"
 import * as M from "../src/Managed"
 import * as S from "../src/Sync"
-import { matchTag } from "../src/Utils"
+import { matchTag, matchTagFor } from "../src/Utils"
 
 interface A {
   _tag: "A"
@@ -62,6 +62,16 @@ export const matchIO = pipe(
   })
 )
 
+export const matchIOFor = matchTagFor<ADT>()({
+  A: (_) => IO.succeed(_),
+  B: (_) => IO.succeed(_),
+  C: (_) => IO.succeed(_)
+})
+
 it("io", () => {
   expect(IO.run(matchIO)).toEqual({ _tag: "A", a: 0 })
+})
+
+it("ioFor", () => {
+  expect(IO.run(matchIOFor(adt()))).toEqual({ _tag: "A", a: 0 })
 })
