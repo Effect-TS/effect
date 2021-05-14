@@ -23,7 +23,7 @@ export default function identity(_program: ts.Program) {
                         (t): t is ts.JSDocTag => t.tagName.getText() === "optimize"
                       )
                       .map((e) => e.comment)
-                      .filter((s): s is string => s != null)
+                      .filter((s): s is string => typeof s === "string")
                   } catch {
                     return undefined
                   }
@@ -41,6 +41,7 @@ export default function identity(_program: ts.Program) {
                         (t): t is ts.JSDocTag => t.tagName?.getText() === "optimize"
                       )
                       .map((e) => e.comment)
+                      .filter((s): s is string => typeof s === "string")
                   } catch {
                     return []
                   }
@@ -60,7 +61,8 @@ export default function identity(_program: ts.Program) {
               return ts.visitEachChild(node, visitor, ctx).arguments[0]
             }
             if (optimizeTags.has("remove")) {
-              return factory.createEmptyStatement()
+              // TODO: figure how to remove node properly
+              return factory.createNull()
             }
           }
 
