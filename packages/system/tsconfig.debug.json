@@ -14,5 +14,5 @@
       { "transform": "typescript-transform-paths" }
     ]
   },
-  "include": ["test/experimental/**/*.ts"]
+  "include": ["test/tracing.test.ts"]
 }

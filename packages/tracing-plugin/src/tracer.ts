@@ -270,7 +270,9 @@ function signatureTags(signature: ts.Signature | undefined) {
     if (!tags[entry[0]]) {
       tags[entry[0]] = []
     }
-    tags[entry[0]!]!.push(entry[1])
+    if (entry[1] && entry[1][0]) {
+      tags[entry[0]!]!.push(entry[1][0].text)
+    }
   }
   return tags
 }
