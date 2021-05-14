@@ -9,6 +9,7 @@ import type { Tag } from "../Has"
 import type { Option } from "../Option"
 import { none, some } from "../Option"
 import type { Sync } from "../Sync"
+import type { Unify } from "./union"
 
 export type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (
   k: infer I
@@ -37,7 +38,7 @@ export const pattern: <N extends string>(
     }
   >(
     _: K
-  ): (m: X) => ReturnType<K[keyof K]>
+  ): (m: X) => Unify<ReturnType<K[keyof K]>>
   <
     X extends { [k in N]: string },
     K extends Partial<
@@ -58,7 +59,7 @@ export const pattern: <N extends string>(
         ) => any
       },
     __: (_: Exclude<X, { _tag: keyof K }>, __: Exclude<X, { _tag: keyof K }>) => H
-  ): (m: X) => { [k in keyof K]: ReturnType<NonNullable<K[k]>> }[keyof K] | H
+  ): (m: X) => Unify<{ [k in keyof K]: ReturnType<NonNullable<K[k]>> }[keyof K] | H>
 } = (n) =>
   ((_: any, d: any) => (m: any) => {
     return (_[m[n]] ? _[m[n]](m, m) : d(m, m)) as any
@@ -156,4 +157,7 @@ export type ForcedTuple<A> = A extends unknown[] ? Tuple<A> : never
 
 export type ForcedArray<A> = A extends readonly any[] ? A : []
 
+export interface UnifiableIndexed<X> {}
+
 export * from "./lazy"
+export * from "./union"
