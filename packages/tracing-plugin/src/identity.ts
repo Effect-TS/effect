@@ -1,10 +1,10 @@
-import ts from "typescript"
+import ts, { factory } from "typescript"
 
 export default function identity(_program: ts.Program) {
   const checker = _program.getTypeChecker()
   return {
     before(ctx: ts.TransformationContext) {
-      const factory = ctx.factory
+      //const factory = ctx.factory
       return (sourceFile: ts.SourceFile) => {
         function visitor(node: ts.Node): ts.VisitResult<ts.Node> {
           if (ts.isCallExpression(node)) {
@@ -61,8 +61,7 @@ export default function identity(_program: ts.Program) {
               return ts.visitEachChild(node, visitor, ctx).arguments[0]
             }
             if (optimizeTags.has("remove")) {
-              // TODO: figure how to remove node properly
-              return factory.createNull()
+              return factory.createNotEmittedStatement(node)
             }
           }
 
