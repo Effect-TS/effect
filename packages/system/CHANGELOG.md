@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.36.1](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.36.0...@effect-ts/system@0.36.1) (2021-05-16)
+
+
+### Features
+
+* **chunk:** add missing functions ([0d357fa](https://github.com/Effect-TS/core/commit/0d357fa4f894dd1b3f02fdfa584c26ac46e7e06c))
+
+
+
+
+
 # [0.36.0](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.35.1...@effect-ts/system@0.36.0) (2021-05-14)
 
 
