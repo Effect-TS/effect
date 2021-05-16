@@ -1,75 +1,87 @@
 // tracing: off
 
-import type { Array } from "@effect-ts/system/Collections/Immutable/Array"
-import * as A from "@effect-ts/system/Collections/Immutable/Array"
+import * as Chunk from "@effect-ts/system/Collections/Immutable/Chunk"
+import type * as Tp from "@effect-ts/system/Collections/Immutable/Tuple"
 import type { Predicate } from "@effect-ts/system/Function"
-import { pipe } from "@effect-ts/system/Function"
-import type { MutableArray } from "@effect-ts/system/Support/Mutable"
+import { identity, pipe } from "@effect-ts/system/Function"
 
 import type { Either } from "../../../Either"
 import type { Equal } from "../../../Equal"
 import { makeEqual } from "../../../Equal"
 import type { Identity } from "../../../Identity"
 import { makeIdentity } from "../../../Identity"
-import type { ArrayURI } from "../../../Modules"
+import type { ChunkURI } from "../../../Modules"
 import * as Ord from "../../../Ord"
 import type { URI } from "../../../Prelude"
 import * as P from "../../../Prelude"
+import * as DSL from "../../../Prelude/DSL"
 import type { Show } from "../../../Show"
 import type { PredicateWithIndex, Separated } from "../../../Utils"
-import * as C from "../Chunk/operations"
 
-export * from "@effect-ts/system/Collections/Immutable/Array"
+export * from "@effect-ts/system/Collections/Immutable/Chunk"
 
 /**
  * `ForEachWithIndex`'s `forEachWithIndexF` function
  */
-export const forEachWithIndexF = P.implementForEachWithIndexF<[URI<ArrayURI>]>()(
-  (_) => (G) => (f) => (fa) =>
-    pipe(C.from(fa), C.forEachWithIndexF(G)(f), G.map(C.toArray))
+export const forEachWithIndexF = P.implementForEachWithIndexF<[URI<ChunkURI>]>()(
+  (_) => (G) => {
+    const succeed = DSL.succeedF(G)
+    return (f) => (fa) => {
+      let base = succeed(Chunk.empty<typeof _.B>())
+      for (let k = 0; k < fa.length; k += 1) {
+        base = G.map(
+          ({ tuple: [bs, b] }: Tp.Tuple<[Chunk.Chunk<typeof _.B>, typeof _.B]>) =>
+            Chunk.append_(bs, b)
+        )(G.both(f(k, fa[k]!))(base))
+      }
+      return base
+    }
+  }
 )
 
 /**
  * `ForEach`'s `forEachF` function
  */
-export const forEachF = P.implementForEachF<[URI<ArrayURI>]>()(
+export const forEachF = P.implementForEachF<[URI<ChunkURI>]>()(
   (_) => (G) => (f) => forEachWithIndexF(G)((_, a) => f(a))
 )
 
 /**
  * `Wilt`'s `separateF` function
  */
-export const separateF = P.implementSeparateF<[URI<ArrayURI>]>()(
-  (_) => (G) => (f) => (x) => pipe(x, forEachF(G)(f), G.map(A.separate))
+export const separateF = P.implementSeparateF<[URI<ChunkURI>]>()(
+  (_) => (G) => (f) => (x) =>
+    pipe(x, forEachF(G)(f), G.map(Chunk.partitionMap(identity)))
 )
 
 /**
  * `Wilt`'s `separateF` function
  */
-export const separateWithIndexF = P.implementSeparateWithIndexF<[URI<ArrayURI>]>()(
-  (_) => (G) => (f) => (x) => pipe(x, forEachWithIndexF(G)(f), G.map(A.separate))
+export const separateWithIndexF = P.implementSeparateWithIndexF<[URI<ChunkURI>]>()(
+  (_) => (G) => (f) => (x) =>
+    pipe(x, forEachWithIndexF(G)(f), G.map(Chunk.partitionMap(identity)))
 )
 
 /**
  * `Wither`'s `compactF` function
  */
-export const compactF = P.implementCompactF<[URI<ArrayURI>]>()(
-  (_) => (G) => (f) => (x) => pipe(x, forEachF(G)(f), G.map(A.compact))
+export const compactF = P.implementCompactF<[URI<ChunkURI>]>()(
+  (_) => (G) => (f) => (x) => pipe(x, forEachF(G)(f), G.map(Chunk.compact))
 )
 
 /**
  * `WitherWithIndex`'s `compactWithIndexF` function
  */
-export const compactWithIndexF = P.implementCompactWithIndexF<[URI<ArrayURI>]>()(
-  (_) => (G) => (f) => (x) => pipe(x, forEachWithIndexF(G)(f), G.map(A.compact))
+export const compactWithIndexF = P.implementCompactWithIndexF<[URI<ChunkURI>]>()(
+  (_) => (G) => (f) => (x) => pipe(x, forEachWithIndexF(G)(f), G.map(Chunk.compact))
 )
 
 /**
  * Test if a value is a member of an array. Takes a `Equal<A>` as a single
  * argument which returns the function to use to search for a value of type `A` in
- * an array of type `Array<A>`.
+ * an array of type `Chunk<A>`.
  */
-export function elem<A>(E: Equal<A>): (a: A) => (as: Array<A>) => boolean {
+export function elem<A>(E: Equal<A>): (a: A) => (as: Chunk.Chunk<A>) => boolean {
   const elemE = elem_(E)
   return (a) => (as) => elemE(as, a)
 }
@@ -77,15 +89,15 @@ export function elem<A>(E: Equal<A>): (a: A) => (as: Array<A>) => boolean {
 /**
  * Test if a value is a member of an array. Takes a `Equal<A>` as a single
  * argument which returns the function to use to search for a value of type `A` in
- * an array of type `Array<A>`.
+ * an array of type `Chunk<A>`.
  */
-export function elem_<A>(E: Equal<A>): (as: Array<A>, a: A) => boolean {
+export function elem_<A>(E: Equal<A>): (as: Chunk.Chunk<A>, a: A) => boolean {
   return (as, a) => {
     const predicate = (element: A) => E.equals(element, a)
     let i = 0
     const len = as.length
     for (; i < len; i++) {
-      if (predicate(as[i]!)) {
+      if (predicate(Chunk.unsafeGet_(as, i)!)) {
         return true
       }
     }
@@ -97,9 +109,11 @@ export function elem_<A>(E: Equal<A>): (as: Array<A>, a: A) => boolean {
  * Creates an array of array values not included in the other given array using a `Equal` for equality
  * comparisons. The order and references of result values are determined by the first array.
  */
-export function difference_<A>(E: Equal<A>): (xs: Array<A>, ys: Array<A>) => Array<A> {
+export function difference_<A>(
+  E: Equal<A>
+): (xs: Chunk.Chunk<A>, ys: Chunk.Chunk<A>) => Chunk.Chunk<A> {
   const elemE = elem_(E)
-  return (xs, ys) => xs.filter((a) => !elemE(ys, a))
+  return (xs, ys) => Chunk.filter_(xs, (a) => !elemE(ys, a))
 }
 
 /**
@@ -108,40 +122,37 @@ export function difference_<A>(E: Equal<A>): (xs: Array<A>, ys: Array<A>) => Arr
  */
 export function difference<A>(
   E: Equal<A>
-): (ys: Array<A>) => (xs: Array<A>) => Array<A> {
-  const elemE = elem_(E)
-  return (ys) => (xs) => xs.filter((a) => !elemE(ys, a))
+): (ys: Chunk.Chunk<A>) => (xs: Chunk.Chunk<A>) => Chunk.Chunk<A> {
+  const diff = difference_(E)
+  return (ys) => (xs) => diff(xs, ys)
 }
 
 /**
- * Derives an `Equal` over the `Array` of a given element type from the `Equal` of that type. The derived `Equal` defines two
+ * Derives an `Equal` over the `Chunk` of a given element type from the `Equal` of that type. The derived `Equal` defines two
  * arrays as equal if all elements of both arrays are compared equal pairwise with the given `E`. In case of arrays of
  * different lengths, the result is non equality.
  */
-export function getEqual<A>(E: Equal<A>): Equal<Array<A>> {
-  return makeEqual(
-    (xs, ys) =>
-      xs === ys || (xs.length === ys.length && xs.every((x, i) => E.equals(x, ys[i]!)))
-  )
+export function getEqual<A>(E: Equal<A>): Equal<Chunk.Chunk<A>> {
+  return makeEqual((xs, ys) => xs === ys || Chunk.corresponds_(xs, ys, E.equals))
 }
 
 /**
- * Returns a `Identity` for `Array<A>`
+ * Returns a `Identity` for `Chunk<A>`
  */
 export function getIdentity<A>() {
-  return makeIdentity(A.empty as Array<A>, A.concat_)
+  return makeIdentity(Chunk.empty<A>(), Chunk.concat_)
 }
 
 /**
- * Returns a `Ord` for `Array<A>` given `Ord<A>`
+ * Returns a `Ord` for `Chunk<A>` given `Ord<A>`
  */
-export function getOrd<A>(O: Ord.Ord<A>): Ord.Ord<Array<A>> {
+export function getOrd<A>(O: Ord.Ord<A>): Ord.Ord<Chunk.Chunk<A>> {
   return Ord.makeOrd((a, b) => {
     const aLen = a.length
     const bLen = b.length
     const len = Math.min(aLen, bLen)
     for (let i = 0; i < len; i++) {
-      const ordering = O.compare(a[i]!, b[i]!)
+      const ordering = O.compare(Chunk.unsafeGet_(a, i)!, Chunk.unsafeGet_(b, i)!)
       if (ordering !== 0) {
         return ordering
       }
@@ -151,11 +162,11 @@ export function getOrd<A>(O: Ord.Ord<A>): Ord.Ord<Array<A>> {
 }
 
 /**
- * Returns a `Show` for `Array<A>` given `Show<A>`
+ * Returns a `Show` for `Chunk<A>` given `Show<A>`
  */
-export function getShow<A>(S: Show<A>): Show<Array<A>> {
+export function getShow<A>(S: Show<A>): Show<Chunk.Chunk<A>> {
   return {
-    show: (as) => `[${as.map(S.show).join(", ")}]`
+    show: (as) => `[${Chunk.map_(as, S.show)["|>"](Chunk.join(", "))}]`
   }
 }
 
@@ -165,9 +176,9 @@ export function getShow<A>(S: Show<A>): Show<Array<A>> {
  */
 export function intersection_<A>(
   E: Equal<A>
-): (xs: Array<A>, ys: Array<A>) => Array<A> {
+): (xs: Chunk.Chunk<A>, ys: Chunk.Chunk<A>) => Chunk.Chunk<A> {
   const elemE = elem_(E)
-  return (xs, ys) => xs.filter((a) => elemE(ys, a))
+  return (xs, ys) => Chunk.filter_(xs, (a) => elemE(ys, a))
 }
 
 /**
@@ -176,7 +187,7 @@ export function intersection_<A>(
  */
 export function intersection<A>(
   E: Equal<A>
-): (ys: Array<A>) => (xs: Array<A>) => Array<A> {
+): (ys: Chunk.Chunk<A>) => (xs: Chunk.Chunk<A>) => Chunk.Chunk<A> {
   const int = intersection_(E)
   return (ys) => (xs) => int(xs, ys)
 }
@@ -186,7 +197,7 @@ export function intersection<A>(
  */
 export function foldMap<M>(
   M: Identity<M>
-): <A>(f: (a: A) => M) => (fa: readonly A[]) => M {
+): <A>(f: (a: A) => M) => (fa: Chunk.Chunk<A>) => M {
   return (f) => foldMapWithIndex(M)((_, a) => f(a))
 }
 
@@ -195,7 +206,7 @@ export function foldMap<M>(
  */
 export function foldMap_<M>(
   M: Identity<M>
-): <A>(fa: readonly A[], f: (a: A) => M) => M {
+): <A>(fa: Chunk.Chunk<A>, f: (a: A) => M) => M {
   return (fa, f) => foldMapWithIndex_(M)(fa, (_, a) => f(a))
 }
 
@@ -204,7 +215,7 @@ export function foldMap_<M>(
  */
 export function foldMapWithIndex<M>(
   M: Identity<M>
-): <A>(f: (i: number, a: A) => M) => (fa: readonly A[]) => M {
+): <A>(f: (i: number, a: A) => M) => (fa: Chunk.Chunk<A>) => M {
   return (f) => (fa) => foldMapWithIndex_(M)(fa, f)
 }
 
@@ -213,22 +224,27 @@ export function foldMapWithIndex<M>(
  */
 export function foldMapWithIndex_<M>(
   M: Identity<M>
-): <A>(fa: readonly A[], f: (i: number, a: A) => M) => M {
-  return (fa, f) => fa.reduce((b, a, i) => M.combine(b, f(i, a)), M.identity)
+): <A>(fa: Chunk.Chunk<A>, f: (i: number, a: A) => M) => M {
+  return (fa, f) =>
+    Chunk.reduce_(Chunk.zipWithIndex(fa), M.identity, (b, { tuple: [a, i] }) =>
+      M.combine(b, f(i, a))
+    )
 }
 
 /**
  * Sort the elements of an array in increasing order
  */
-export function sort<A>(O: Ord.Ord<A>): (as: Array<A>) => Array<A> {
-  return (as) => [...as].sort((x, y) => O.compare(x, y))
+export function sort<A>(O: Ord.Ord<A>): (as: Chunk.Chunk<A>) => Chunk.Chunk<A> {
+  return (as) => Chunk.from([...Chunk.toArray(as)].sort((x, y) => O.compare(x, y)))
 }
 
 /**
  * Sort the elements of an array in increasing order, where elements are compared using first `ords[0]`,
  * then `ords[1]`, then `ords[2]`, etc...
  */
-export function sortBy<A>(ords: Array<Ord.Ord<A>>): (as: Array<A>) => Array<A> {
+export function sortBy<A>(
+  ords: Array<Ord.Ord<A>>
+): (as: Chunk.Chunk<A>) => Chunk.Chunk<A> {
   const M = Ord.getIdentity<A>()
   return sort(ords.reduce((x, y) => M.combine(x, y), M.identity))
 }
@@ -236,19 +252,23 @@ export function sortBy<A>(ords: Array<Ord.Ord<A>>): (as: Array<A>) => Array<A> {
 /**
  * Creates an array of unique values, in order, from all given arrays using a `Equal` for equality comparisons
  */
-export function union_<A>(E: Equal<A>): (xs: Array<A>, ys: Array<A>) => Array<A> {
+export function union_<A>(
+  E: Equal<A>
+): (xs: Chunk.Chunk<A>, ys: Chunk.Chunk<A>) => Chunk.Chunk<A> {
   const elemE = elem_(E)
   return (xs, ys) =>
-    A.concat_(
+    Chunk.concat_(
       xs,
-      ys.filter((a) => !elemE(xs, a))
+      Chunk.filter_(ys, (a) => !elemE(xs, a))
     )
 }
 
 /**
  * Creates an array of unique values, in order, from all given arrays using a `Equal` for equality comparisons
  */
-export function union<A>(E: Equal<A>): (ys: Array<A>) => (xs: Array<A>) => Array<A> {
+export function union<A>(
+  E: Equal<A>
+): (ys: Chunk.Chunk<A>) => (xs: Chunk.Chunk<A>) => Chunk.Chunk<A> {
   const un = union_(E)
   return (ys) => (xs) => un(xs, ys)
 }
@@ -256,16 +276,16 @@ export function union<A>(E: Equal<A>): (ys: Array<A>) => (xs: Array<A>) => Array
 /**
  * Remove duplicates from an array, keeping the first occurrence of an element.
  */
-export function uniq<A>(E: Equal<A>): (as: Array<A>) => Array<A> {
+export function uniq<A>(E: Equal<A>): (as: Chunk.Chunk<A>) => Chunk.Chunk<A> {
   const elemS = elem_(E)
   return (as) => {
-    const r: MutableArray<A> = []
+    let r: Chunk.Chunk<A> = Chunk.empty()
     const len = as.length
     let i = 0
     for (; i < len; i++) {
       const a = as[i]!
       if (!elemS(r, a)) {
-        r.push(a)
+        r = Chunk.append_(r, a)
       }
     }
     return len === r.length ? as : r
@@ -276,7 +296,7 @@ export function uniq<A>(E: Equal<A>): (as: Array<A>) => Array<A> {
  * Separate elements based on a apredicate
  */
 export function partition<A>(predicate: Predicate<A>) {
-  return (fa: readonly A[]): Separated<readonly A[], readonly A[]> =>
+  return (fa: Chunk.Chunk<A>): Separated<Chunk.Chunk<A>, Chunk.Chunk<A>> =>
     partitionWithIndex((_, a: A) => predicate(a))(fa)
 }
 
@@ -284,40 +304,23 @@ export function partition<A>(predicate: Predicate<A>) {
  * Separate elements based on a apredicate
  */
 export function partition_<A>(
-  fa: readonly A[],
+  fa: Chunk.Chunk<A>,
   predicate: Predicate<A>
-): Separated<readonly A[], readonly A[]> {
+): Separated<Chunk.Chunk<A>, Chunk.Chunk<A>> {
   return partitionWithIndex((_, a: A) => predicate(a))(fa)
-}
-
-/**
- * Separate elements based on a map function
- */
-export function partitionMap<A, B, C>(f: (a: A) => Either<B, C>) {
-  return partitionMapWithIndex((_, a: A) => f(a))
-}
-
-/**
- * Separate elements based on a map function
- */
-export function partitionMap_<A, B, C>(
-  fa: readonly A[],
-  f: (a: A) => Either<B, C>
-): Separated<readonly B[], readonly C[]> {
-  return partitionMapWithIndex_(fa, (_, a) => f(a))
 }
 
 /**
  * Separate elements based on a map function that also carry the index
  */
 export function partitionMapWithIndex_<A, B, C>(
-  fa: readonly A[],
+  fa: Chunk.Chunk<A>,
   f: (i: number, a: A) => Either<B, C>
-): Separated<readonly B[], readonly C[]> {
-  const left: MutableArray<B> = []
-  const right: MutableArray<C> = []
+): Separated<Chunk.Chunk<B>, Chunk.Chunk<C>> {
+  const left: Array<B> = []
+  const right: Array<C> = []
   for (let i = 0; i < fa.length; i++) {
-    const e = f(i, fa[i]!)
+    const e = f(i, Chunk.unsafeGet_(fa, i)!)
     if (e._tag === "Left") {
       left.push(e.left)
     } else {
@@ -325,8 +328,8 @@ export function partitionMapWithIndex_<A, B, C>(
     }
   }
   return {
-    left,
-    right
+    left: Chunk.from(left),
+    right: Chunk.from(right)
   }
 }
 
@@ -334,7 +337,7 @@ export function partitionMapWithIndex_<A, B, C>(
  * Separate elements based on a map function that also carry the index
  */
 export function partitionMapWithIndex<A, B, C>(f: (i: number, a: A) => Either<B, C>) {
-  return (fa: readonly A[]): Separated<readonly B[], readonly C[]> =>
+  return (fa: Chunk.Chunk<A>): Separated<Chunk.Chunk<B>, Chunk.Chunk<C>> =>
     partitionMapWithIndex_(fa, f)
 }
 
@@ -344,7 +347,7 @@ export function partitionMapWithIndex<A, B, C>(f: (i: number, a: A) => Either<B,
 export function partitionWithIndex<A>(
   predicateWithIndex: PredicateWithIndex<number, A>
 ) {
-  return (fa: readonly A[]): Separated<readonly A[], readonly A[]> =>
+  return (fa: Chunk.Chunk<A>): Separated<Chunk.Chunk<A>, Chunk.Chunk<A>> =>
     partitionWithIndex_(fa, predicateWithIndex)
 }
 
@@ -352,13 +355,13 @@ export function partitionWithIndex<A>(
  * Separate elements based on a predicate that also carry the index
  */
 export function partitionWithIndex_<A>(
-  fa: readonly A[],
+  fa: Chunk.Chunk<A>,
   predicateWithIndex: PredicateWithIndex<number, A>
-): Separated<readonly A[], readonly A[]> {
-  const left: MutableArray<A> = []
-  const right: MutableArray<A> = []
+): Separated<Chunk.Chunk<A>, Chunk.Chunk<A>> {
+  const left: Array<A> = []
+  const right: Array<A> = []
   for (let i = 0; i < fa.length; i++) {
-    const a = fa[i]!
+    const a = Chunk.unsafeGet_(fa, i)!
     if (predicateWithIndex(i, a)) {
       right.push(a)
     } else {
@@ -366,7 +369,7 @@ export function partitionWithIndex_<A>(
     }
   }
   return {
-    left,
-    right
+    left: Chunk.from(left),
+    right: Chunk.from(right)
   }
 }

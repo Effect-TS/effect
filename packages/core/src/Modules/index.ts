@@ -190,6 +190,7 @@ declare module "../Prelude/HKT" {
   interface URItoIndex<K> {
     [ListURI]: number
     [ArrayURI]: number
+    [ChunkURI]: number
     [NonEmptyArrayURI]: number
     [DictionaryURI]: string
   }

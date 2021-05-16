@@ -2,5 +2,5 @@
 
 import "../../../Operator"
 
-export * from "@effect-ts/system/Collections/Immutable/Chunk"
 export * from "./instances"
+export * from "./operations"

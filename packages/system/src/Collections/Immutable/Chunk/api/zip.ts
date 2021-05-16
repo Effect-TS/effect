@@ -14,6 +14,6 @@ export function zip_<A, B>(self: Chunk<A>, that: Chunk<B>): Chunk<Tp.Tuple<[A, B
  *
  * @dataFirst zip_
  */
-export function zip<A, B>(that: Chunk<B>): (self: Chunk<A>) => Chunk<Tp.Tuple<[A, B]>> {
+export function zip<B>(that: Chunk<B>): <A>(self: Chunk<A>) => Chunk<Tp.Tuple<[A, B]>> {
   return (self) => zip_(self, that)
 }
