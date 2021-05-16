@@ -32,7 +32,7 @@ export const forEachWithIndexF = P.implementForEachWithIndexF<[URI<ChunkURI>]>()
         base = G.map(
           ({ tuple: [bs, b] }: Tp.Tuple<[Chunk.Chunk<typeof _.B>, typeof _.B]>) =>
             Chunk.append_(bs, b)
-        )(G.both(f(k, fa[k]!))(base))
+        )(G.both(f(k, Chunk.unsafeGet_(fa, k)!))(base))
       }
       return base
     }
