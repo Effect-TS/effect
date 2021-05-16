@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.39.2](https://github.com/Effect-TS/core/compare/@effect-ts/core@0.39.1...@effect-ts/core@0.39.2) (2021-05-16)
+
+
+### Bug Fixes
+
+* **chunk:** fix forEachWithIndexF ([ca17ec5](https://github.com/Effect-TS/core/commit/ca17ec538df524ab36674e2c621a8a0fd75fb024))
+
+
+
+
+
 ## [0.39.1](https://github.com/Effect-TS/core/compare/@effect-ts/core@0.39.0...@effect-ts/core@0.39.1) (2021-05-16)
 
 
