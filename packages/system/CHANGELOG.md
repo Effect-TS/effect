@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.36.2](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.36.1...@effect-ts/system@0.36.2) (2021-05-18)
+
+
+### Bug Fixes
+
+* **core:** guard against unknown ops ([fda2cb8](https://github.com/Effect-TS/core/commit/fda2cb8e93b514616e60ba9acec7a5ef54066be3))
+
+
+
+
+
 ## [0.36.1](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.36.0...@effect-ts/system@0.36.1) (2021-05-16)
 
 
