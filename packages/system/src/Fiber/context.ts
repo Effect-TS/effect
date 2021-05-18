@@ -1297,6 +1297,12 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
                     break
                   }
+
+                  default: {
+                    throw new RuntimeError(
+                      `operation not supported: ${JSON.stringify(current)}`
+                    )
+                  }
                 }
               }
             } else {
