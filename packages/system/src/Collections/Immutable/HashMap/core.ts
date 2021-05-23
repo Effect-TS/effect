@@ -4,6 +4,7 @@ import "../../../Operator"
 
 import type { Refinement } from "../../../Function"
 import { constant, identity, tuple } from "../../../Function"
+import { NoSuchElementException } from "../../../GlobalExceptions"
 import * as I from "../../../Iterable"
 import * as O from "../../../Option"
 import * as St from "../../../Structural"
@@ -146,6 +147,26 @@ export function tryGetHash_<K, V>(
  */
 export function getHash_<K, V>(map: HashMap<K, V>, key: K, hash: number): O.Option<V> {
   return tryGetHash_(map, key, hash)
+}
+
+/**
+ * Lookup the value for `key` in `map` using internal hash function.
+ */
+export function unsafeGet_<K, V>(map: HashMap<K, V>, key: K): V {
+  const element = tryGetHash_(map, key, St.hash(key))
+  if (O.isNone(element)) {
+    throw new NoSuchElementException()
+  }
+  return element.value
+}
+
+/**
+ * Lookup the value for `key` in `map` using internal hash function.
+ *
+ * @dataFirst unsafeGet_
+ */
+export function unsafeGet<K>(key: K) {
+  return <V>(map: HashMap<K, V>) => unsafeGet_(map, key)
 }
 
 /**
