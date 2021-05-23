@@ -80,15 +80,31 @@ export function drain<Err, A>() {
  * A sink that executes the provided effectful function for every element fed to it
  * until `f` evaluates to `false`.
  */
-export function forEachWhile<R, Err, In>(
-  f: (_in: In) => T.Effect<R, Err, boolean>
-): Sink<R, Err, In, Err, In, void> {
+export function forEachWhile<R, ErrIn, ErrOut, In>(
+  f: (_in: In) => T.Effect<R, ErrOut, boolean>
+): Sink<R, ErrIn, In, ErrIn | ErrOut, In, void> {
   const go = (
     chunk: Chunk.Chunk<In>,
     idx: number,
     len: number,
-    cont: C.Channel<R, Err, Chunk.Chunk<In>, unknown, Err, Chunk.Chunk<In>, void>
-  ): C.Channel<R, Err, Chunk.Chunk<In>, unknown, Err, Chunk.Chunk<In>, void> => {
+    cont: C.Channel<
+      R,
+      ErrIn,
+      Chunk.Chunk<In>,
+      unknown,
+      ErrIn | ErrOut,
+      Chunk.Chunk<In>,
+      void
+    >
+  ): C.Channel<
+    R,
+    ErrIn,
+    Chunk.Chunk<In>,
+    unknown,
+    ErrIn | ErrOut,
+    Chunk.Chunk<In>,
+    void
+  > => {
     if (idx === len) {
       return cont
     } else {
@@ -108,10 +124,10 @@ export function forEachWhile<R, Err, In>(
 
   const process: C.Channel<
     R,
-    Err,
+    ErrIn,
     Chunk.Chunk<In>,
     unknown,
-    Err,
+    ErrIn | ErrOut,
     Chunk.Chunk<In>,
     void
   > = C.readWithCause(
@@ -126,9 +142,9 @@ export function forEachWhile<R, Err, In>(
 /**
  * A sink that executes the provided effectful function for every element fed to it.
  */
-export function forEach<R, Err, In, B>(
-  f: (_in: In) => T.Effect<R, Err, B>
-): Sink<R, Err, In, Err, In, void> {
+export function forEach<R, ErrIn, ErrOut, In, B>(
+  f: (_in: In) => T.Effect<R, ErrOut, B>
+): Sink<R, ErrIn, In, ErrIn | ErrOut, In, void> {
   return forEachWhile((_) => T.as_(f(_), true))
 }
 
@@ -136,119 +152,121 @@ export function forEach<R, Err, In, B>(
  * A sink that folds its inputs with the provided function, termination predicate and initial state.
  */
 export function fold<S>(z: S) {
-  return (cont: Predicate<S>) => <In, Err>(
-    f: (s: S, _in: In) => S
-  ): Sink<unknown, Err, In, Err, In, S> => {
-    const foldChunkSplit = (z: S, chunk: Chunk.Chunk<In>) => (cont: Predicate<S>) => (
-      f: (s: S, _in: In) => S
-    ) => {
-      const fold = (
-        s: S,
-        chunk: Chunk.Chunk<In>,
-        idx: number,
-        len: number
-      ): Tp.Tuple<[S, Chunk.Chunk<In>]> => {
-        if (idx === len) {
-          return Tp.tuple(s, Chunk.empty<In>())
-        } else {
-          const s1 = f(s, Chunk.unsafeGet_(chunk, idx))
+  return (cont: Predicate<S>) =>
+    <In, Err>(f: (s: S, _in: In) => S): Sink<unknown, Err, In, Err, In, S> => {
+      const foldChunkSplit =
+        (z: S, chunk: Chunk.Chunk<In>) =>
+        (cont: Predicate<S>) =>
+        (f: (s: S, _in: In) => S) => {
+          const fold = (
+            s: S,
+            chunk: Chunk.Chunk<In>,
+            idx: number,
+            len: number
+          ): Tp.Tuple<[S, Chunk.Chunk<In>]> => {
+            if (idx === len) {
+              return Tp.tuple(s, Chunk.empty<In>())
+            } else {
+              const s1 = f(s, Chunk.unsafeGet_(chunk, idx))
 
-          if (cont(s1)) {
-            return fold(s1, chunk, idx + 1, len)
-          } else {
-            return Tp.tuple(s1, Chunk.drop_(chunk, idx + 1))
+              if (cont(s1)) {
+                return fold(s1, chunk, idx + 1, len)
+              } else {
+                return Tp.tuple(s1, Chunk.drop_(chunk, idx + 1))
+              }
+            }
           }
+
+          return fold(z, chunk, 0, Chunk.size(chunk))
+        }
+
+      const reader = (
+        s: S
+      ): C.Channel<unknown, Err, Chunk.Chunk<In>, unknown, Err, Chunk.Chunk<In>, S> => {
+        if (!cont(s)) {
+          return C.end(s)
+        } else {
+          return C.readWith(
+            (_in) => {
+              const {
+                tuple: [nextS, leftovers]
+              } = foldChunkSplit(s, _in)(cont)(f)
+
+              if (!Chunk.isEmpty(leftovers)) {
+                return C.as_(C.write(leftovers), nextS)
+              } else {
+                return reader(nextS)
+              }
+            },
+            (err) => C.fail(err),
+            (_) => C.end(s)
+          )
         }
       }
 
-      return fold(z, chunk, 0, Chunk.size(chunk))
+      return new Sink(reader(z))
     }
-
-    const reader = (
-      s: S
-    ): C.Channel<unknown, Err, Chunk.Chunk<In>, unknown, Err, Chunk.Chunk<In>, S> => {
-      if (!cont(s)) {
-        return C.end(s)
-      } else {
-        return C.readWith(
-          (_in) => {
-            const {
-              tuple: [nextS, leftovers]
-            } = foldChunkSplit(s, _in)(cont)(f)
-
-            if (!Chunk.isEmpty(leftovers)) {
-              return C.as_(C.write(leftovers), nextS)
-            } else {
-              return reader(nextS)
-            }
-          },
-          (err) => C.fail(err),
-          (_) => C.end(s)
-        )
-      }
-    }
-
-    return new Sink(reader(z))
-  }
 }
 
 /**
  * A sink that effectfully folds its inputs with the provided function, termination predicate and initial state.
  */
 export function foldM<S>(z: S) {
-  return (cont: Predicate<S>) => <Env, In, Err>(
-    f: (s: S, _in: In) => T.Effect<Env, Err, S>
-  ): Sink<Env, Err, In, Err, In, S> => {
-    const foldChunkSplit = (z: S, chunk: Chunk.Chunk<In>) => (cont: Predicate<S>) => (
+  return (cont: Predicate<S>) =>
+    <Env, In, Err>(
       f: (s: S, _in: In) => T.Effect<Env, Err, S>
-    ) => {
-      const fold = (
-        s: S,
-        chunk: Chunk.Chunk<In>,
-        idx: number,
-        len: number
-      ): T.Effect<Env, Err, Tp.Tuple<[S, O.Option<Chunk.Chunk<In>>]>> => {
-        if (idx === len) {
-          return T.succeed(Tp.tuple(s, O.none))
-        } else {
-          return T.chain_(f(s, Chunk.unsafeGet_(chunk, idx)), (s1) => {
-            if (cont(s1)) {
-              return fold(s1, chunk, idx + 1, len)
+    ): Sink<Env, Err, In, Err, In, S> => {
+      const foldChunkSplit =
+        (z: S, chunk: Chunk.Chunk<In>) =>
+        (cont: Predicate<S>) =>
+        (f: (s: S, _in: In) => T.Effect<Env, Err, S>) => {
+          const fold = (
+            s: S,
+            chunk: Chunk.Chunk<In>,
+            idx: number,
+            len: number
+          ): T.Effect<Env, Err, Tp.Tuple<[S, O.Option<Chunk.Chunk<In>>]>> => {
+            if (idx === len) {
+              return T.succeed(Tp.tuple(s, O.none))
             } else {
-              return T.succeed(Tp.tuple(s1, O.some(Chunk.drop_(chunk, idx + 1))))
+              return T.chain_(f(s, Chunk.unsafeGet_(chunk, idx)), (s1) => {
+                if (cont(s1)) {
+                  return fold(s1, chunk, idx + 1, len)
+                } else {
+                  return T.succeed(Tp.tuple(s1, O.some(Chunk.drop_(chunk, idx + 1))))
+                }
+              })
             }
-          })
+          }
+
+          return fold(z, chunk, 0, Chunk.size(chunk))
+        }
+
+      const reader = (
+        s: S
+      ): C.Channel<Env, Err, Chunk.Chunk<In>, unknown, Err, Chunk.Chunk<In>, S> => {
+        if (!cont(s)) {
+          return C.end(s)
+        } else {
+          return C.readWith(
+            (_in) => {
+              return pipe(
+                C.fromEffect(foldChunkSplit(s, _in)(cont)(f)),
+                C.chain(({ tuple: [nextS, leftovers] }) => {
+                  return O.fold_(
+                    leftovers,
+                    () => reader(nextS),
+                    (l) => C.as_(C.write(l), nextS)
+                  )
+                })
+              )
+            },
+            (err) => C.fail(err),
+            (_) => C.end(s)
+          )
         }
       }
 
-      return fold(z, chunk, 0, Chunk.size(chunk))
+      return new Sink(reader(z))
     }
-
-    const reader = (
-      s: S
-    ): C.Channel<Env, Err, Chunk.Chunk<In>, unknown, Err, Chunk.Chunk<In>, S> => {
-      if (!cont(s)) {
-        return C.end(s)
-      } else {
-        return C.readWith(
-          (_in) => {
-            return pipe(
-              C.fromEffect(foldChunkSplit(s, _in)(cont)(f)),
-              C.chain(({ tuple: [nextS, leftovers] }) => {
-                return O.fold_(
-                  leftovers,
-                  () => reader(nextS),
-                  (l) => C.as_(C.write(l), nextS)
-                )
-              })
-            )
-          },
-          (err) => C.fail(err),
-          (_) => C.end(s)
-        )
-      }
-    }
-
-    return new Sink(reader(z))
-  }
 }
