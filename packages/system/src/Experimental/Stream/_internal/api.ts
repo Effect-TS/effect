@@ -1191,42 +1191,45 @@ export function distributedWithDynamic_<R, E, A, A1>(
         ),
         M.let(
           "finalize",
-          ({ newQueue, queuesLock }) => (endTake: Ex.Exit<O.Option<E>, never>) =>
-            SM.withPermit_(
-              pipe(
-                T.do,
-                T.tap(() =>
-                  Ref.set_(
-                    newQueue,
-                    pipe(
-                      T.do,
-                      T.bind("queue", () => Q.makeBounded<Ex.Exit<O.Option<E>, A>>(1)),
-                      T.tap(({ queue }) => Q.offer_(queue, endTake)),
-                      T.let("id", () => Symbol()),
-                      T.tap(({ id, queue }) =>
-                        Ref.update_(queuesRef, Map.insert(id, queue))
-                      ),
-                      T.map(({ id, queue }) => Tp.tuple(id, queue))
+          ({ newQueue, queuesLock }) =>
+            (endTake: Ex.Exit<O.Option<E>, never>) =>
+              SM.withPermit_(
+                pipe(
+                  T.do,
+                  T.tap(() =>
+                    Ref.set_(
+                      newQueue,
+                      pipe(
+                        T.do,
+                        T.bind("queue", () =>
+                          Q.makeBounded<Ex.Exit<O.Option<E>, A>>(1)
+                        ),
+                        T.tap(({ queue }) => Q.offer_(queue, endTake)),
+                        T.let("id", () => Symbol()),
+                        T.tap(({ id, queue }) =>
+                          Ref.update_(queuesRef, Map.insert(id, queue))
+                        ),
+                        T.map(({ id, queue }) => Tp.tuple(id, queue))
+                      )
                     )
-                  )
+                  ),
+                  T.bind("queues", () => T.map_(Ref.get(queuesRef), (_) => _.values())),
+                  T.tap(({ queues }) =>
+                    T.forEach_(queues, (queue) =>
+                      T.catchSomeCause_(Q.offer_(queue, endTake), (c) => {
+                        if (CS.interrupted(c)) {
+                          return O.some(T.unit)
+                        } else {
+                          return O.none
+                        }
+                      })
+                    )
+                  ),
+                  T.tap((_) => done(endTake)),
+                  T.asUnit
                 ),
-                T.bind("queues", () => T.map_(Ref.get(queuesRef), (_) => _.values())),
-                T.tap(({ queues }) =>
-                  T.forEach_(queues, (queue) =>
-                    T.catchSomeCause_(Q.offer_(queue, endTake), (c) => {
-                      if (CS.interrupted(c)) {
-                        return O.some(T.unit)
-                      } else {
-                        return O.none
-                      }
-                    })
-                  )
-                ),
-                T.tap((_) => done(endTake)),
-                T.asUnit
-              ),
-              queuesLock
-            )
+                queuesLock
+              )
         ),
         M.tap(({ finalize }) =>
           pipe(
@@ -1463,11 +1466,12 @@ export function runFoldManagedM<R, E, A, S>(self: Stream<R, E, A>, s: S) {
  * Stops the fold early when the condition is not fulfilled.
  */
 export function runFoldWhile<R, E, A, S>(self: Stream<R, E, A>, s: S) {
-  return (cont: Predicate<S>) => (f: (s: S, a: A) => S): T.Effect<R, E, S> =>
-    M.use_(
-      runFoldWhileManaged(self, s)(cont)((s, a) => f(s, a)),
-      T.succeed
-    )
+  return (cont: Predicate<S>) =>
+    (f: (s: S, a: A) => S): T.Effect<R, E, S> =>
+      M.use_(
+        runFoldWhileManaged(self, s)(cont)((s, a) => f(s, a)),
+        T.succeed
+      )
 }
 
 /**
@@ -1475,10 +1479,9 @@ export function runFoldWhile<R, E, A, S>(self: Stream<R, E, A>, s: S) {
  * Stops the fold early when the condition is not fulfilled.
  */
 export function runFoldWhileM<R, E, A, S>(self: Stream<R, E, A>, s: S) {
-  return (cont: Predicate<S>) => <R1, E1>(
-    f: (s: S, a: A) => T.Effect<R1, E1, S>
-  ): T.Effect<R & R1, E | E1, S> =>
-    M.use_(runFoldWhileManagedM(self, s)(cont)(f), T.succeed)
+  return (cont: Predicate<S>) =>
+    <R1, E1>(f: (s: S, a: A) => T.Effect<R1, E1, S>): T.Effect<R & R1, E | E1, S> =>
+      M.use_(runFoldWhileManagedM(self, s)(cont)(f), T.succeed)
 }
 
 /**
@@ -1487,8 +1490,9 @@ export function runFoldWhileM<R, E, A, S>(self: Stream<R, E, A>, s: S) {
  * Stops the fold early when the condition is not fulfilled.
  */
 export function runFoldWhileManaged<R, E, A, S>(self: Stream<R, E, A>, s: S) {
-  return (cont: Predicate<S>) => (f: (s: S, a: A) => S): M.Managed<R, E, S> =>
-    runManaged_(self, SK.fold(s)(cont)(f))
+  return (cont: Predicate<S>) =>
+    (f: (s: S, a: A) => S): M.Managed<R, E, S> =>
+      runManaged_(self, SK.fold(s)(cont)(f))
 }
 
 /**
@@ -1497,8 +1501,9 @@ export function runFoldWhileManaged<R, E, A, S>(self: Stream<R, E, A>, s: S) {
  * Stops the fold early when the condition is not fulfilled.
  */
 export function runFoldWhileManagedM<R, E, A, S>(self: Stream<R, E, A>, s: S) {
-  return (cont: Predicate<S>) => <R1, E1>(f: (s: S, a: A) => T.Effect<R1, E1, S>) =>
-    runManaged_(self, SK.foldM(s)(cont)<R1, A, E | E1>(f))
+  return (cont: Predicate<S>) =>
+    <R1, E1>(f: (s: S, a: A) => T.Effect<R1, E1, S>) =>
+      runManaged_(self, SK.foldM(s)(cont)<R1, A, E | E1>(f))
 }
 
 /**
@@ -1517,7 +1522,7 @@ export function forEach<R, R1, E, E1, A>(
 export function runForEach<R, R1, E, E1, A>(
   self: Stream<R, E, A>,
   f: (a: A) => T.Effect<R1, E1, any>
-): T.Effect<R & R1, E1, void> {
+): T.Effect<R & R1, E | E1, void> {
   return C.run_(self, SK.forEach(f))
 }
 
