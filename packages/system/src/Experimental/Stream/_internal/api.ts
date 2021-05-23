@@ -2,22 +2,26 @@ import * as CS from "../../../Cause"
 import type * as CL from "../../../Clock"
 import * as A from "../../../Collections/Immutable/Chunk"
 import * as L from "../../../Collections/Immutable/List"
+import * as Map from "../../../Collections/Immutable/Map"
 import * as Tp from "../../../Collections/Immutable/Tuple"
 import * as T from "../../../Effect"
 import * as E from "../../../Either"
 import * as Ex from "../../../Exit"
 import * as F from "../../../Fiber"
+import type { Predicate, Refinement } from "../../../Function"
 import { identity, pipe } from "../../../Function"
 import type { Has } from "../../../Has"
 import * as H from "../../../Hub"
 import * as M from "../../../Managed"
 import * as O from "../../../Option"
+import * as P from "../../../Promise"
 import * as Q from "../../../Queue"
 import * as Ref from "../../../Ref"
 import * as SC from "../../../Schedule"
+import * as SM from "../../../Semaphore"
 import * as C from "../_internal/core"
 import * as CH from "../Channel"
-import type * as SK from "../Sink"
+import * as SK from "../Sink"
 import * as BP from "./BufferedPull"
 import { Stream } from "./core"
 import * as HO from "./Handoff"
@@ -1044,6 +1048,480 @@ export function crossWith<R, R1, E, E1, A, A1>(
 }
 
 /**
+ * More powerful version of `Stream#broadcast`. Allows to provide a function that determines what
+ * queues should receive which elements. The decide function will receive the indices of the queues
+ * in the resulting list.
+ */
+export function distributedWith_<R, E, A>(
+  self: Stream<R, E, A>,
+  n: number,
+  maximumLag: number,
+  decide: (a: A) => T.UIO<Predicate<number>>
+): M.Managed<R, never, L.List<Q.Dequeue<Ex.Exit<O.Option<E>, A>>>> {
+  return M.chain_(
+    T.toManaged(P.make<never, (a: A) => T.UIO<Predicate<symbol>>>()),
+    (prom) => {
+      return M.chain_(
+        distributedWithDynamic_(
+          self,
+          maximumLag,
+          (a: A) => T.chain_(P.await(prom), (_) => _(a)),
+          (_) => T.unit
+        ),
+        (next) =>
+          pipe(
+            T.collectAll(
+              A.map_(A.range(0, n), (id) =>
+                T.map_(next, ({ tuple: [key, queue] }) =>
+                  Tp.tuple(Tp.tuple(key, id), queue)
+                )
+              )
+            ),
+            T.chain((entries) => {
+              const {
+                tuple: [mappings, queues]
+              } = A.reduceRight_(
+                entries,
+                Tp.tuple(
+                  Map.make<symbol, number>([]),
+                  L.empty<Q.Dequeue<Ex.Exit<O.Option<E>, A>>>()
+                ),
+                ({ tuple: [mapping, queue] }, { tuple: [mappings, queues] }) =>
+                  Tp.tuple(
+                    Map.insert_(mappings, Tp.get_(mapping, 0), Tp.get_(mapping, 1)),
+                    L.prepend_(queues, queue)
+                  )
+              )
+
+              return T.as_(
+                P.succeed_(prom, (a: A) =>
+                  T.map_(decide(a), (f) => (key: symbol) => f(mappings.get(key)!))
+                ),
+                queues
+              )
+            }),
+            T.toManaged
+          )
+      )
+    }
+  )
+}
+
+/**
+ * More powerful version of `Stream#broadcast`. Allows to provide a function that determines what
+ * queues should receive which elements. The decide function will receive the indices of the queues
+ * in the resulting list.
+ */
+export function distributedWith<A>(
+  n: number,
+  maximumLag: number,
+  decide: (a: A) => T.UIO<Predicate<number>>
+) {
+  return <R, E>(self: Stream<R, E, A>) => distributedWith_(self, n, maximumLag, decide)
+}
+
+/**
+ * More powerful version of `Stream#distributedWith`. This returns a function that will produce
+ * new queues and corresponding indices.
+ * You can also provide a function that will be executed after the final events are enqueued in all queues.
+ * Shutdown of the queues is handled by the driver.
+ * Downstream users can also shutdown queues manually. In this case the driver will
+ * continue but no longer backpressure on them.
+ */
+export function distributedWithDynamic_<R, E, A, A1>(
+  self: Stream<R, E, A>,
+  maximumLag: number,
+  decide: (a: A) => T.UIO<Predicate<symbol>>,
+  done: (ex: Ex.Exit<O.Option<E>, never>) => T.UIO<A1>
+): M.Managed<R, never, T.UIO<Tp.Tuple<[symbol, Q.Dequeue<Ex.Exit<O.Option<E>, A>>]>>> {
+  return pipe(
+    M.do,
+    M.bind("queuesRef", () =>
+      T.toManagedRelease_(
+        Ref.makeRef<Map.Map<symbol, Q.Queue<Ex.Exit<O.Option<E>, A>>>>(Map.empty),
+        (_) =>
+          T.chain_(Ref.get(_), (qs) => T.forEach_(qs.values(), (_) => Q.shutdown(_)))
+      )
+    ),
+    M.bind("add", ({ queuesRef }) => {
+      const offer = (a: A) =>
+        pipe(
+          T.do,
+          T.bind("shouldProcess", () => decide(a)),
+          T.bind("queues", () => Ref.get(queuesRef)),
+          T.tap(({ queues, shouldProcess }) =>
+            pipe(
+              T.reduce_(queues.entries(), L.empty<symbol>(), (acc, [id, queue]) => {
+                if (shouldProcess(id)) {
+                  return T.foldCauseM_(
+                    Q.offer_(queue, Ex.succeed(a)),
+                    (c) =>
+                      CS.interrupted(c) ? T.succeed(L.prepend_(acc, id)) : T.halt(c),
+                    (_) => T.succeed(acc)
+                  )
+                } else {
+                  return T.succeed(acc)
+                }
+              }),
+              T.chain((ids) =>
+                L.isEmpty(ids) ? T.unit : Ref.update_(queuesRef, Map.removeMany(ids))
+              )
+            )
+          ),
+          T.asUnit
+        )
+
+      return pipe(
+        M.do,
+        M.bind("queuesLock", () => T.toManaged(SM.makeSemaphore(1))),
+        M.bind("newQueue", () =>
+          T.toManaged(
+            Ref.makeRef<T.UIO<Tp.Tuple<[symbol, Q.Queue<Ex.Exit<O.Option<E>, A>>]>>>(
+              pipe(
+                T.do,
+                T.bind("queue", () =>
+                  Q.makeBounded<Ex.Exit<O.Option<E>, A>>(maximumLag)
+                ),
+                T.let("id", () => Symbol()),
+                T.tap(({ id, queue }) => Ref.update_(queuesRef, Map.insert(id, queue))),
+                T.map(({ id, queue }) => Tp.tuple(id, queue))
+              )
+            )
+          )
+        ),
+        M.let(
+          "finalize",
+          ({ newQueue, queuesLock }) => (endTake: Ex.Exit<O.Option<E>, never>) =>
+            SM.withPermit_(
+              pipe(
+                T.do,
+                T.tap(() =>
+                  Ref.set_(
+                    newQueue,
+                    pipe(
+                      T.do,
+                      T.bind("queue", () => Q.makeBounded<Ex.Exit<O.Option<E>, A>>(1)),
+                      T.tap(({ queue }) => Q.offer_(queue, endTake)),
+                      T.let("id", () => Symbol()),
+                      T.tap(({ id, queue }) =>
+                        Ref.update_(queuesRef, Map.insert(id, queue))
+                      ),
+                      T.map(({ id, queue }) => Tp.tuple(id, queue))
+                    )
+                  )
+                ),
+                T.bind("queues", () => T.map_(Ref.get(queuesRef), (_) => _.values())),
+                T.tap(({ queues }) =>
+                  T.forEach_(queues, (queue) =>
+                    T.catchSomeCause_(Q.offer_(queue, endTake), (c) => {
+                      if (CS.interrupted(c)) {
+                        return O.some(T.unit)
+                      } else {
+                        return O.none
+                      }
+                    })
+                  )
+                ),
+                T.tap((_) => done(endTake)),
+                T.asUnit
+              ),
+              queuesLock
+            )
+        ),
+        M.tap(({ finalize }) =>
+          pipe(
+            runForEachManaged_(self, offer),
+            M.foldCauseM(
+              (cause) => T.toManaged(finalize(Ex.halt(CS.map_(cause, O.some)))),
+              (_) => T.toManaged(finalize(Ex.fail(O.none)))
+            ),
+            M.fork
+          )
+        ),
+        M.map(({ newQueue, queuesLock }) =>
+          SM.withPermit_(T.flatten(Ref.get(newQueue)), queuesLock)
+        )
+      )
+    }),
+    M.map(({ add }) => add)
+  )
+}
+
+/**
+ * More powerful version of `Stream#distributedWith`. This returns a function that will produce
+ * new queues and corresponding indices.
+ * You can also provide a function that will be executed after the final events are enqueued in all queues.
+ * Shutdown of the queues is handled by the driver.
+ * Downstream users can also shutdown queues manually. In this case the driver will
+ * continue but no longer backpressure on them.
+ */
+export function distributedWithDynamic<E, A, A1>(
+  maximumLag: number,
+  decide: (a: A) => T.UIO<Predicate<symbol>>,
+  done: (ex: Ex.Exit<O.Option<E>, never>) => T.UIO<A1>
+) {
+  return <R>(self: Stream<R, E, A>) =>
+    distributedWithDynamic_(self, maximumLag, decide, done)
+}
+
+/**
+ * Converts this stream to a stream that executes its effects but emits no
+ * elements. Useful for sequencing effects using streams:
+ */
+export function drain<R, E, A>(self: Stream<R, E, A>): Stream<R, E, never> {
+  return new Stream(CH.drain(self.channel))
+}
+
+/**
+ * Drains the provided stream in the background for as long as this stream is running.
+ * If this stream ends before `other`, `other` will be interrupted. If `other` fails,
+ * this stream will fail with that error.
+ */
+export function drainFork<R, R1, E, E1, A>(
+  self: Stream<R, E, A>,
+  other: Stream<R1, E1, any>
+): Stream<R & R1, E | E1, A> {
+  return C.chain_(fromEffect(P.make<E1, never>()), (bgDied) =>
+    Z.zipRight_(
+      C.managed(
+        pipe(
+          runForEachManaged_(other, (_) => T.unit),
+          M.catchAllCause((_) => T.toManaged(P.halt_(bgDied, _))),
+          M.fork
+        )
+      ),
+      interruptWhenP_(self, bgDied)
+    )
+  )
+}
+
+/**
+ * Drops the specified number of elements from this stream.
+ */
+export function drop_<R, E, A>(self: Stream<R, E, A>, n: number): Stream<R, E, A> {
+  const loop = (r: number): CH.Channel<R, E, A.Chunk<A>, unknown, E, A.Chunk<A>, any> =>
+    CH.readWith(
+      (_in) => {
+        const dropped = A.drop_(_in, r)
+        const leftover = Math.max(r - A.size(_in), 0)
+        const more = A.isEmpty(_in) || leftover > 0
+
+        if (more) {
+          return loop(leftover)
+        } else {
+          return CH.zipRight_(CH.write(dropped), CH.identity<E, A.Chunk<A>, any>())
+        }
+      },
+      (e) => CH.fail(e),
+      (_) => CH.unit
+    )
+
+  return new Stream(self.channel[">>>"](loop(n)))
+}
+
+/**
+ * Drops the specified number of elements from this stream.
+ */
+export function drop(n: number) {
+  return <R, E, A>(self: Stream<R, E, A>) => drop_(self, n)
+}
+
+/**
+ * Drops all elements of the stream for as long as the specified predicate
+ * evaluates to `true`.
+ */
+export function dropWhile_<R, E, A>(
+  self: Stream<R, E, A>,
+  f: Predicate<A>
+): Stream<R, E, A> {
+  const loop: CH.Channel<R, E, A.Chunk<A>, unknown, E, A.Chunk<A>, any> = CH.readWith(
+    (_in) => {
+      const leftover = A.dropWhile_(_in, f)
+      const more = A.isEmpty(_in)
+
+      if (more) {
+        return loop
+      } else {
+        return CH.zipRight_(CH.write(leftover), CH.identity<E, A.Chunk<A>, any>())
+      }
+    },
+    (e) => CH.fail(e),
+    (_) => CH.unit
+  )
+
+  return new Stream(self.channel[">>>"](loop))
+}
+
+/**
+ * Drops all elements of the stream for as long as the specified predicate
+ * evaluates to `true`.
+ */
+export function dropWhile<A>(f: Predicate<A>) {
+  return <R, E>(self: Stream<R, E, A>) => dropWhile_(self, f)
+}
+
+/**
+ * Drops all elements of the stream until the specified predicate evaluates
+ * to `true`.
+ */
+export function dropUntil_<R, E, A>(
+  self: Stream<R, E, A>,
+  f: Predicate<A>
+): Stream<R, E, A> {
+  return drop_(
+    dropWhile_(self, (_) => !f(_)),
+    1
+  )
+}
+
+/**
+ * Drops all elements of the stream until the specified predicate evaluates
+ * to `true`.
+ */
+export function dropUntil<A>(f: Predicate<A>) {
+  return <R, E>(self: Stream<R, E, A>) => dropUntil_(self, f)
+}
+
+/**
+ * Returns a stream whose failures and successes have been lifted into an
+ * `Either`. The resulting stream cannot fail, because the failures have
+ * been exposed as part of the `Either` success case.
+ *
+ * @note the stream will end as soon as the first error occurs.
+ */
+export function either<R, E, A>(
+  self: Stream<R, E, A>
+): Stream<R, never, E.Either<E, A>> {
+  return catchAll_(C.map_(self, E.right), (e) => C.succeed(E.left(e)))
+}
+
+/**
+ * Executes the provided finalizer after this stream's finalizers run.
+ */
+export function ensuring<R, R1, E, A>(
+  self: Stream<R, E, A>,
+  fin: T.Effect<R1, never, any>
+): Stream<R & R1, E, A> {
+  return new Stream(CH.ensuring_(self.channel, fin))
+}
+
+/**
+ * Filters the elements emitted by this stream using the provided function.
+ */
+export function filter<R, E, A, B extends A>(
+  self: Stream<R, E, A>,
+  f: Refinement<A, B>
+): Stream<R, E, A>
+export function filter<R, E, A>(self: Stream<R, E, A>, f: Predicate<A>): Stream<R, E, A>
+export function filter<R, E, A>(
+  self: Stream<R, E, A>,
+  f: Predicate<A>
+): Stream<R, E, A> {
+  return mapChunks_(self, A.filter(f))
+}
+
+/**
+ * Executes a pure fold over the stream of values - reduces all elements in the stream to a value of type `S`.
+ */
+export function runFold<R, E, A, S>(self: Stream<R, E, A>, s: S) {
+  return (f: (s: S, a: A) => S): T.Effect<R, E, S> =>
+    M.use_(
+      runFoldWhileManaged(self, s)((_) => true)((s, a) => f(s, a)),
+      T.succeed
+    )
+}
+
+/**
+ * Executes an effectful fold over the stream of values.
+ */
+export function runFoldM<R, E, A, S>(self: Stream<R, E, A>, s: S) {
+  return <R1, E1>(f: (s: S, a: A) => T.Effect<R1, E1, S>) =>
+    M.use_(runFoldWhileManagedM(self, s)((_) => true)(f), T.succeed)
+}
+
+/**
+ * Executes a pure fold over the stream of values.
+ * Returns a Managed value that represents the scope of the stream.
+ */
+export function runFoldManaged<R, E, A, S>(self: Stream<R, E, A>, s: S) {
+  return (f: (s: S, a: A) => S): M.Managed<R, E, S> =>
+    runFoldWhileManaged(self, s)((_) => true)((s, a) => f(s, a))
+}
+
+/**
+ * Executes an effectful fold over the stream of values.
+ * Returns a Managed value that represents the scope of the stream.
+ */
+export function runFoldManagedM<R, E, A, S>(self: Stream<R, E, A>, s: S) {
+  return <R1, E1>(
+    f: (s: S, a: A) => T.Effect<R1, E1, S>
+  ): M.Managed<R & R1, E | E1, S> => runFoldWhileManagedM(self, s)((_) => true)(f)
+}
+
+/**
+ * Reduces the elements in the stream to a value of type `S`.
+ * Stops the fold early when the condition is not fulfilled.
+ */
+export function runFoldWhile<R, E, A, S>(self: Stream<R, E, A>, s: S) {
+  return (cont: Predicate<S>) => (f: (s: S, a: A) => S): T.Effect<R, E, S> =>
+    M.use_(
+      runFoldWhileManaged(self, s)(cont)((s, a) => f(s, a)),
+      T.succeed
+    )
+}
+
+/**
+ * Executes an effectful fold over the stream of values.
+ * Stops the fold early when the condition is not fulfilled.
+ */
+export function runFoldWhileM<R, E, A, S>(self: Stream<R, E, A>, s: S) {
+  return (cont: Predicate<S>) => <R1, E1>(
+    f: (s: S, a: A) => T.Effect<R1, E1, S>
+  ): T.Effect<R & R1, E | E1, S> =>
+    M.use_(runFoldWhileManagedM(self, s)(cont)(f), T.succeed)
+}
+
+/**
+ * Executes a pure fold over the stream of values.
+ * Returns a Managed value that represents the scope of the stream.
+ * Stops the fold early when the condition is not fulfilled.
+ */
+export function runFoldWhileManaged<R, E, A, S>(self: Stream<R, E, A>, s: S) {
+  return (cont: Predicate<S>) => (f: (s: S, a: A) => S): M.Managed<R, E, S> =>
+    runManaged_(self, SK.fold(s)(cont)(f))
+}
+
+/**
+ * Executes an effectful fold over the stream of values.
+ * Returns a Managed value that represents the scope of the stream.
+ * Stops the fold early when the condition is not fulfilled.
+ */
+export function runFoldWhileManagedM<R, E, A, S>(self: Stream<R, E, A>, s: S) {
+  return (cont: Predicate<S>) => <R1, E1>(f: (s: S, a: A) => T.Effect<R1, E1, S>) =>
+    runManaged_(self, SK.foldM(s)(cont)<R1, A, E | E1>(f))
+}
+
+/**
+ * Consumes all elements of the stream, passing them to the specified callback.
+ */
+export function forEach<R, R1, E, E1, A>(
+  self: Stream<R, E, A>,
+  f: (a: A) => T.Effect<R1, E1, any>
+) {
+  return runForEach(self, f)
+}
+
+/**
+ * Consumes all elements of the stream, passing them to the specified callback.
+ */
+export function runForEach<R, R1, E, E1, A>(
+  self: Stream<R, E, A>,
+  f: (a: A) => T.Effect<R1, E1, any>
+): T.Effect<R & R1, E1, void> {
+  return C.run_(self, SK.forEach(f))
+}
+
+/**
  * Creates a stream from an effect producing a value of type `A`
  */
 export function fromEffect<R, E, A>(fa: T.Effect<R, E, A>): Stream<R, E, A> {
@@ -1436,4 +1914,84 @@ export function fromHub<R, E, A>(
   hub: H.XHub<never, R, unknown, E, never, A>
 ): Stream<R, E, A> {
   return C.chain_(C.managed(H.subscribe(hub)), fromQueue())
+}
+
+/**
+ * Like `Stream#forEach`, but returns a `Managed` so the finalization order
+ * can be controlled.
+ */
+export function runForEachManaged_<R, R1, E, A, B>(
+  self: Stream<R, E, A>,
+  f: (a: A) => T.Effect<R1, E, B>
+): M.Managed<R & R1, E, void> {
+  return runManaged_(self, SK.forEach(f))
+}
+
+/**
+ * Like `Stream#forEach`, but returns a `Managed` so the finalization order
+ * can be controlled.
+ */
+export function runForEachManaged<R1, E, A, B>(f: (a: A) => T.Effect<R1, E, B>) {
+  return <R>(self: Stream<R, E, A>) => runForEachManaged_(self, f)
+}
+
+export function runManaged_<R, R1, E, A, E2, B, L>(
+  self: Stream<R, E, A>,
+  sink: SK.Sink<R1, E, A, E2, L, B>
+): M.Managed<R & R1, E2, B> {
+  return pipe(CH.pipeTo_(self.channel, sink.channel), CH.drain, CH.runManaged)
+}
+
+export function runManaged<R1, E, A, E2, B>(sink: SK.Sink<R1, E, A, E2, any, B>) {
+  return <R>(self: Stream<R, E, A>) => runManaged_(self, sink)
+}
+
+/**
+ * Interrupts the evaluation of this stream when the provided IO completes. The given
+ * IO will be forked as part of this stream, and its success will be discarded. This
+ * combinator will also interrupt any in-progress element being pulled from upstream.
+ *
+ * If the IO completes with a failure before the stream completes, the returned stream
+ * will emit that failure.
+ */
+export function interruptWhen_<R, R1, E, E1, A>(
+  self: Stream<R, E, A>,
+  io: T.Effect<R1, E1, any>
+): Stream<R1 & R, E | E1, A> {
+  return new Stream(CH.interruptWhen_(self.channel, io))
+}
+
+/**
+ * Interrupts the evaluation of this stream when the provided IO completes. The given
+ * IO will be forked as part of this stream, and its success will be discarded. This
+ * combinator will also interrupt any in-progress element being pulled from upstream.
+ *
+ * If the IO completes with a failure before the stream completes, the returned stream
+ * will emit that failure.
+ */
+export function interruptWhen<R1, E1>(io: T.Effect<R1, E1, any>) {
+  return <R, E, A>(self: Stream<R, E, A>) => interruptWhen_(self, io)
+}
+
+/**
+ * Interrupts the evaluation of this stream when the provided promise resolves. This
+ * combinator will also interrupt any in-progress element being pulled from upstream.
+ *
+ * If the promise completes with a failure, the stream will emit that failure.
+ */
+export function interruptWhenP_<R, E, A, E1>(
+  self: Stream<R, E, A>,
+  p: P.Promise<E1, never>
+): Stream<R, E | E1, A> {
+  return new Stream(CH.interruptWhenP_(self.channel, p))
+}
+
+/**
+ * Interrupts the evaluation of this stream when the provided promise resolves. This
+ * combinator will also interrupt any in-progress element being pulled from upstream.
+ *
+ * If the promise completes with a failure, the stream will emit that failure.
+ */
+export function interruptWhenP<E1>(p: P.Promise<E1, never>) {
+  return <R, E, A>(self: Stream<R, E, A>) => interruptWhenP_(self, p)
 }
