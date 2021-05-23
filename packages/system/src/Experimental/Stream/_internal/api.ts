@@ -1,8 +1,8 @@
 import * as CS from "../../../Cause"
 import type * as CL from "../../../Clock"
 import * as A from "../../../Collections/Immutable/Chunk"
+import * as HashMap from "../../../Collections/Immutable/HashMap"
 import * as L from "../../../Collections/Immutable/List"
-import * as Map from "../../../Collections/Immutable/Map"
 import * as Tp from "../../../Collections/Immutable/Tuple"
 import * as T from "../../../Effect"
 import * as E from "../../../Either"
@@ -19,6 +19,7 @@ import * as Q from "../../../Queue"
 import * as Ref from "../../../Ref"
 import * as SC from "../../../Schedule"
 import * as SM from "../../../Semaphore"
+import { AtomicNumber } from "../../../Support/AtomicNumber"
 import * as C from "../_internal/core"
 import * as CH from "../Channel"
 import * as SK from "../Sink"
@@ -1059,7 +1060,7 @@ export function distributedWith_<R, E, A>(
   decide: (a: A) => T.UIO<Predicate<number>>
 ): M.Managed<R, never, L.List<Q.Dequeue<Ex.Exit<O.Option<E>, A>>>> {
   return M.chain_(
-    T.toManaged(P.make<never, (a: A) => T.UIO<Predicate<symbol>>>()),
+    T.toManaged(P.make<never, (a: A) => T.UIO<Predicate<number>>>()),
     (prom) => {
       return M.chain_(
         distributedWithDynamic_(
@@ -1083,19 +1084,22 @@ export function distributedWith_<R, E, A>(
               } = A.reduceRight_(
                 entries,
                 Tp.tuple(
-                  Map.make<symbol, number>([]),
+                  HashMap.make<number, number>(),
                   L.empty<Q.Dequeue<Ex.Exit<O.Option<E>, A>>>()
                 ),
                 ({ tuple: [mapping, queue] }, { tuple: [mappings, queues] }) =>
                   Tp.tuple(
-                    Map.insert_(mappings, Tp.get_(mapping, 0), Tp.get_(mapping, 1)),
+                    HashMap.set_(mappings, Tp.get_(mapping, 0), Tp.get_(mapping, 1)),
                     L.prepend_(queues, queue)
                   )
               )
 
               return T.as_(
                 P.succeed_(prom, (a: A) =>
-                  T.map_(decide(a), (f) => (key: symbol) => f(mappings.get(key)!))
+                  T.map_(
+                    decide(a),
+                    (f) => (key: number) => f(HashMap.unsafeGet_(mappings, key))
+                  )
                 ),
                 queues
               )
@@ -1120,6 +1124,8 @@ export function distributedWith<A>(
   return <R, E>(self: Stream<R, E, A>) => distributedWith_(self, n, maximumLag, decide)
 }
 
+const distributedWithDynamicId = new AtomicNumber(0)
+
 /**
  * More powerful version of `Stream#distributedWith`. This returns a function that will produce
  * new queues and corresponding indices.
@@ -1131,16 +1137,20 @@ export function distributedWith<A>(
 export function distributedWithDynamic_<R, E, A, A1>(
   self: Stream<R, E, A>,
   maximumLag: number,
-  decide: (a: A) => T.UIO<Predicate<symbol>>,
+  decide: (a: A) => T.UIO<Predicate<number>>,
   done: (ex: Ex.Exit<O.Option<E>, never>) => T.UIO<A1>
-): M.Managed<R, never, T.UIO<Tp.Tuple<[symbol, Q.Dequeue<Ex.Exit<O.Option<E>, A>>]>>> {
+): M.Managed<R, never, T.UIO<Tp.Tuple<[number, Q.Dequeue<Ex.Exit<O.Option<E>, A>>]>>> {
   return pipe(
     M.do,
     M.bind("queuesRef", () =>
       T.toManagedRelease_(
-        Ref.makeRef<Map.Map<symbol, Q.Queue<Ex.Exit<O.Option<E>, A>>>>(Map.empty),
+        Ref.makeRef<HashMap.HashMap<number, Q.Queue<Ex.Exit<O.Option<E>, A>>>>(
+          HashMap.make()
+        ),
         (_) =>
-          T.chain_(Ref.get(_), (qs) => T.forEach_(qs.values(), (_) => Q.shutdown(_)))
+          T.chain_(Ref.get(_), (qs) =>
+            T.forEach_(HashMap.values(qs), (_) => Q.shutdown(_))
+          )
       )
     ),
     M.bind("add", ({ queuesRef }) => {
@@ -1151,7 +1161,7 @@ export function distributedWithDynamic_<R, E, A, A1>(
           T.bind("queues", () => Ref.get(queuesRef)),
           T.tap(({ queues, shouldProcess }) =>
             pipe(
-              T.reduce_(queues.entries(), L.empty<symbol>(), (acc, [id, queue]) => {
+              T.reduce_(queues, L.empty<number>(), (acc, [id, queue]) => {
                 if (shouldProcess(id)) {
                   return T.foldCauseM_(
                     Q.offer_(queue, Ex.succeed(a)),
@@ -1164,7 +1174,9 @@ export function distributedWithDynamic_<R, E, A, A1>(
                 }
               }),
               T.chain((ids) =>
-                L.isEmpty(ids) ? T.unit : Ref.update_(queuesRef, Map.removeMany(ids))
+                L.isEmpty(ids)
+                  ? T.unit
+                  : Ref.update_(queuesRef, HashMap.removeMany(ids))
               )
             )
           ),
@@ -1176,14 +1188,18 @@ export function distributedWithDynamic_<R, E, A, A1>(
         M.bind("queuesLock", () => T.toManaged(SM.makeSemaphore(1))),
         M.bind("newQueue", () =>
           T.toManaged(
-            Ref.makeRef<T.UIO<Tp.Tuple<[symbol, Q.Queue<Ex.Exit<O.Option<E>, A>>]>>>(
+            Ref.makeRef<T.UIO<Tp.Tuple<[number, Q.Queue<Ex.Exit<O.Option<E>, A>>]>>>(
               pipe(
                 T.do,
                 T.bind("queue", () =>
                   Q.makeBounded<Ex.Exit<O.Option<E>, A>>(maximumLag)
                 ),
-                T.let("id", () => Symbol()),
-                T.tap(({ id, queue }) => Ref.update_(queuesRef, Map.insert(id, queue))),
+                T.bind("id", () =>
+                  T.succeedWith(() => distributedWithDynamicId.incrementAndGet())
+                ),
+                T.tap(({ id, queue }) =>
+                  Ref.update_(queuesRef, HashMap.set(id, queue))
+                ),
                 T.map(({ id, queue }) => Tp.tuple(id, queue))
               )
             )
@@ -1205,15 +1221,19 @@ export function distributedWithDynamic_<R, E, A, A1>(
                           Q.makeBounded<Ex.Exit<O.Option<E>, A>>(1)
                         ),
                         T.tap(({ queue }) => Q.offer_(queue, endTake)),
-                        T.let("id", () => Symbol()),
+                        T.bind("id", () =>
+                          T.succeedWith(() =>
+                            distributedWithDynamicId.incrementAndGet()
+                          )
+                        ),
                         T.tap(({ id, queue }) =>
-                          Ref.update_(queuesRef, Map.insert(id, queue))
+                          Ref.update_(queuesRef, HashMap.set(id, queue))
                         ),
                         T.map(({ id, queue }) => Tp.tuple(id, queue))
                       )
                     )
                   ),
-                  T.bind("queues", () => T.map_(Ref.get(queuesRef), (_) => _.values())),
+                  T.bind("queues", () => T.map_(Ref.get(queuesRef), HashMap.values)),
                   T.tap(({ queues }) =>
                     T.forEach_(queues, (queue) =>
                       T.catchSomeCause_(Q.offer_(queue, endTake), (c) => {
@@ -1260,7 +1280,7 @@ export function distributedWithDynamic_<R, E, A, A1>(
  */
 export function distributedWithDynamic<E, A, A1>(
   maximumLag: number,
-  decide: (a: A) => T.UIO<Predicate<symbol>>,
+  decide: (a: A) => T.UIO<Predicate<number>>,
   done: (ex: Ex.Exit<O.Option<E>, never>) => T.UIO<A1>
 ) {
   return <R>(self: Stream<R, E, A>) =>
