@@ -270,3 +270,39 @@ export function foldM<S>(z: S) {
       return new Sink(reader(z))
     }
 }
+
+/**
+ * A sink that executes the provided effectful function for every chunk fed to it.
+ */
+export function forEachChunk<R, ErrIn, ErrOut, In, Z>(
+  f: (c: Chunk.Chunk<In>) => T.Effect<R, ErrOut, Z>
+) {
+  return forEachChunkWhile<R, ErrIn, ErrOut, In>((_) => T.as_(f(_), true))
+}
+
+/**
+ * A sink that executes the provided effectful function for every chunk fed to it
+ * until `f` evaluates to `false`.
+ */
+export function forEachChunkWhile<R, ErrIn, ErrOut, In>(
+  f: (_in: Chunk.Chunk<In>) => T.Effect<R, ErrOut, boolean>
+): Sink<R, ErrIn, In, ErrIn | ErrOut, unknown, void> {
+  const reader: C.Channel<
+    R,
+    ErrIn,
+    Chunk.Chunk<In>,
+    unknown,
+    ErrIn | ErrOut,
+    never,
+    void
+  > = C.readWith(
+    (_in) =>
+      C.chain_(C.fromEffect(f(_in)), (continue_) =>
+        continue_ ? reader : C.end(undefined)
+      ),
+    (err) => C.fail(err),
+    (_) => C.unit
+  )
+
+  return new Sink(reader)
+}
