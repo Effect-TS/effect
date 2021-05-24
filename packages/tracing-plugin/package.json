@@ -1,6 +1,6 @@
 {
   "name": "@effect-ts/tracing-plugin",
-  "version": "0.10.2",
+  "version": "0.10.3",
   "license": "MIT",
   "private": false,
   "repository": "https://github.com/Effect-TS/core.git",
