@@ -1300,9 +1300,9 @@ export function drain<R, E, A>(self: Stream<R, E, A>): Stream<R, E, never> {
  * If this stream ends before `other`, `other` will be interrupted. If `other` fails,
  * this stream will fail with that error.
  */
-export function drainFork<R, R1, E, E1, A>(
+export function drainFork_<R, R1, E, E1, A, Z>(
   self: Stream<R, E, A>,
-  other: Stream<R1, E1, any>
+  other: Stream<R1, E1, Z>
 ): Stream<R & R1, E | E1, A> {
   return C.chain_(fromEffect(P.make<E1, never>()), (bgDied) =>
     Z.zipRight_(
@@ -1316,6 +1316,15 @@ export function drainFork<R, R1, E, E1, A>(
       interruptWhenP_(self, bgDied)
     )
   )
+}
+
+/**
+ * Drains the provided stream in the background for as long as this stream is running.
+ * If this stream ends before `other`, `other` will be interrupted. If `other` fails,
+ * this stream will fail with that error.
+ */
+export function drainFork<R1, E1, A, Z>(other: Stream<R1, E1, Z>) {
+  return <R, E>(self: Stream<R, E, A>) => drainFork_(self, other)
 }
 
 /**
@@ -1421,26 +1430,51 @@ export function either<R, E, A>(
 /**
  * Executes the provided finalizer after this stream's finalizers run.
  */
-export function ensuring<R, R1, E, A>(
+export function ensuring_<R, R1, E, A, Z>(
   self: Stream<R, E, A>,
-  fin: T.Effect<R1, never, any>
+  fin: T.Effect<R1, never, Z>
 ): Stream<R & R1, E, A> {
   return new Stream(CH.ensuring_(self.channel, fin))
 }
 
 /**
+ * Executes the provided finalizer after this stream's finalizers run.
+ */
+export function ensuring<R1, Z>(fin: T.Effect<R1, never, Z>) {
+  return <R, E, A>(self: Stream<R, E, A>) => ensuring_(self, fin)
+}
+
+/**
  * Filters the elements emitted by this stream using the provided function.
  */
-export function filter<R, E, A, B extends A>(
+export function filter_<R, E, A, B extends A>(
   self: Stream<R, E, A>,
   f: Refinement<A, B>
+): Stream<R, E, B>
+export function filter_<R, E, A>(
+  self: Stream<R, E, A>,
+  f: Predicate<A>
 ): Stream<R, E, A>
-export function filter<R, E, A>(self: Stream<R, E, A>, f: Predicate<A>): Stream<R, E, A>
-export function filter<R, E, A>(
+export function filter_<R, E, A>(
   self: Stream<R, E, A>,
   f: Predicate<A>
 ): Stream<R, E, A> {
   return mapChunks_(self, A.filter(f))
+}
+
+/**
+ * Filters the elements emitted by this stream using the provided function.
+ */
+export function filter<A, B extends A>(
+  f: Refinement<A, B>
+): <R, E>(self: C.Stream<R, E, A>) => C.Stream<R, E, B>
+export function filter<A>(
+  f: Predicate<A>
+): <R, E>(self: C.Stream<R, E, A>) => C.Stream<R, E, A>
+export function filter<A>(
+  f: Predicate<A>
+): <R, E>(self: C.Stream<R, E, A>) => C.Stream<R, E, A> {
+  return <R, E>(self: Stream<R, E, A>) => filter_(self, f)
 }
 
 /**
@@ -1558,17 +1592,24 @@ export function runFoldWhileManagedM<R, E, A, S>(self: Stream<R, E, A>, s: S) {
 /**
  * Consumes all elements of the stream, passing them to the specified callback.
  */
-export function forEach<R, R1, E, E1, A, X>(
+export function forEach_<R, R1, E, E1, A, X>(
   self: Stream<R, E, A>,
   f: (a: A) => T.Effect<R1, E1, X>
-) {
-  return runForEach(self, f)
+): T.Effect<R & R1, E | E1, void> {
+  return runForEach_(self, f)
 }
 
 /**
  * Consumes all elements of the stream, passing them to the specified callback.
  */
-export function runForEach<R, R1, E, E1, A, X>(
+export function forEach<R1, E1, A, X>(f: (a: A) => T.Effect<R1, E1, X>) {
+  return <R, E>(self: Stream<R, E, A>) => forEach_(self, f)
+}
+
+/**
+ * Consumes all elements of the stream, passing them to the specified callback.
+ */
+export function runForEach_<R, R1, E, E1, A, X>(
   self: Stream<R, E, A>,
   f: (a: A) => T.Effect<R1, E1, X>
 ): T.Effect<R & R1, E | E1, void> {
@@ -1576,128 +1617,200 @@ export function runForEach<R, R1, E, E1, A, X>(
 }
 
 /**
- * Creates a stream from an effect producing a value of type `A`
+ * Consumes all elements of the stream, passing them to the specified callback.
  */
-export function fromEffect<R, E, A>(fa: T.Effect<R, E, A>): Stream<R, E, A> {
-  return fromEffectOption(T.mapError_(fa, O.some))
+export function runForEach<R1, E1, A, X>(f: (a: A) => T.Effect<R1, E1, X>) {
+  return <R, E>(self: Stream<R, E, A>) => runForEach_(self, f)
 }
 
 /**
- * Creates a stream from an effect producing a value of type `A` or an empty Stream
+ * Consumes all elements of the stream, passing them to the specified callback.
  */
-export function fromEffectOption<R, E, A>(
-  fa: T.Effect<R, O.Option<E>, A>
+export function runForEachChunk_<R, R1, E, E1, A, Z>(
+  self: Stream<R, E, A>,
+  f: (c: A.Chunk<A>) => T.Effect<R1, E1, Z>
+): T.Effect<R & R1, E | E1, void> {
+  return C.run_(self, SK.forEachChunk(f))
+}
+
+/**
+ * Consumes all elements of the stream, passing them to the specified callback.
+ */
+export function runForEachChunk<R1, E1, A, Z>(
+  f: (c: A.Chunk<A>) => T.Effect<R1, E1, Z>
+) {
+  return <R, E>(self: Stream<R, E, A>) => runForEachChunk_(self, f)
+}
+
+/**
+ * Like `Stream#forEachChunk`, but returns a `Managed` so the finalization order
+ * can be controlled.
+ */
+export function runForEachChunkManaged_<R, R1, E, E1, A, Z>(
+  self: Stream<R, E, A>,
+  f: (c: A.Chunk<A>) => T.Effect<R1, E1, Z>
+): M.Managed<R & R1, E | E1, void> {
+  return runManaged_(self, SK.forEachChunk(f))
+}
+
+/**
+ * Like `Stream#forEachChunk`, but returns a `Managed` so the finalization order
+ * can be controlled.
+ */
+export function runForEachChunkManaged<R1, E1, A, Z>(
+  f: (c: A.Chunk<A>) => T.Effect<R1, E1, Z>
+) {
+  return <R, E>(self: Stream<R, E, A>) => runForEachChunkManaged_(self, f)
+}
+
+/**
+ * Like `Stream#forEach`, but returns a `Managed` so the finalization order
+ * can be controlled.
+ */
+export function runForEachManaged_<R, R1, E, A, Z>(
+  self: Stream<R, E, A>,
+  f: (a: A) => T.Effect<R1, E, Z>
+): M.Managed<R & R1, E, void> {
+  return runManaged_(self, SK.forEach(f))
+}
+
+/**
+ * Like `Stream#forEach`, but returns a `Managed` so the finalization order
+ * can be controlled.
+ */
+export function runForEachManaged<R1, E, A, B>(f: (a: A) => T.Effect<R1, E, B>) {
+  return <R>(self: Stream<R, E, A>) => runForEachManaged_(self, f)
+}
+
+/**
+ * Consumes elements of the stream, passing them to the specified callback,
+ * and terminating consumption when the callback returns `false`.
+ */
+export function runForEachWhile_<R, R1, E, E1, A>(
+  self: Stream<R, E, A>,
+  f: (a: A) => T.Effect<R1, E1, boolean>
+): T.Effect<R & R1, E | E1, void> {
+  return C.run_(self, SK.forEachWhile(f))
+}
+
+/**
+ * Consumes elements of the stream, passing them to the specified callback,
+ * and terminating consumption when the callback returns `false`.
+ */
+export function runForEachWhile<R1, E1, A>(f: (a: A) => T.Effect<R1, E1, boolean>) {
+  return <R, E>(self: Stream<R, E, A>) => runForEachWhile_(self, f)
+}
+
+/**
+ * Like `Stream#forEachWhile`, but returns a `ZManaged` so the finalization order
+ * can be controlled.
+ */
+export function runForEachWhileManaged_<R, R1, E, E1, A>(
+  self: Stream<R, E, A>,
+  f: (a: A) => T.Effect<R1, E1, boolean>
+): M.Managed<R & R1, E | E1, void> {
+  return runManaged_(self, SK.forEachWhile(f))
+}
+
+/**
+ * Like `Stream#forEachWhile`, but returns a `ZManaged` so the finalization order
+ * can be controlled.
+ */
+export function runForEachWhileManaged<R1, E1, A>(
+  f: (a: A) => T.Effect<R1, E1, boolean>
+) {
+  return <R, E>(self: Stream<R, E, A>) => runForEachWhileManaged_(self, f)
+}
+
+/**
+ * Effectfully filters the elements emitted by this stream.
+ */
+export function filterM_<R, R1, E, E1, A>(
+  self: Stream<R, E, A>,
+  f: (a: A) => T.Effect<R1, E1, A>
+): Stream<R & R1, E | E1, A> {
+  return C.loopOnPartialChunksElements_(self, (a, emit) =>
+    T.chain_(f(a), (r) => (r ? emit(a) : T.unit))
+  )
+}
+
+/**
+ * Effectfully filters the elements emitted by this stream.
+ */
+export function filterM<R1, E1, A>(f: (a: A) => T.Effect<R1, E1, A>) {
+  return <R, E>(self: Stream<R, E, A>) => filterM_(self, f)
+}
+
+/**
+ * Filters this stream by the specified predicate, removing all elements for
+ * which the predicate evaluates to true.
+ */
+export function filterNot_<R, E, A, B extends A>(
+  self: Stream<R, E, A>,
+  pred: Refinement<A, B>
+): Stream<R, E, B>
+export function filterNot_<R, E, A>(
+  self: Stream<R, E, A>,
+  pred: Predicate<A>
+): Stream<R, E, A>
+export function filterNot_<R, E, A>(
+  self: Stream<R, E, A>,
+  pred: Predicate<A>
 ): Stream<R, E, A> {
-  return new Stream(
-    CH.unwrap(
-      T.fold_(
-        fa,
-        O.fold(
-          () => CH.end(undefined),
-          (e) => CH.fail(e)
-        ),
-        (a) => CH.write(A.single(a))
-      )
-    )
-  )
+  return filter_(self, (a) => !pred(a))
 }
 
 /**
- * Transforms the chunks emitted by this stream.
+ * Filters this stream by the specified predicate, removing all elements for
+ * which the predicate evaluates to true.
  */
-export function mapChunks_<R, E, A, A1>(
+export function filterNot<A, B extends A>(
+  pred: Refinement<A, B>
+): <R, E>(self: C.Stream<R, E, A>) => C.Stream<R, E, B>
+export function filterNot<A>(
+  pred: Predicate<A>
+): <R, E>(self: C.Stream<R, E, A>) => C.Stream<R, E, A>
+export function filterNot<A>(
+  pred: Predicate<A>
+): <R, E>(self: C.Stream<R, E, A>) => C.Stream<R, E, A> {
+  return <R, E>(self: Stream<R, E, A>) => filterNot_(self, pred)
+}
+
+/**
+ * Emits elements of this stream with a fixed delay in between, regardless of how long it
+ * takes to produce a value.
+ */
+export function fixed<R, E, A>(
   self: Stream<R, E, A>,
-  f: (chunk: A.Chunk<A>) => A.Chunk<A1>
-): Stream<R, E, A1> {
-  return new Stream(CH.mapOut_(self.channel, f))
+  duration: number
+): Stream<R & Has<CL.Clock>, E, A> {
+  return schedule_(self, SC.fixed(duration))
 }
 
 /**
- * Transforms the chunks emitted by this stream.
+ * Submerges the chunks carried by this stream into the stream's structure, while
+ * still preserving them.
  */
-export function mapChunks<A, A1>(f: (chunk: A.Chunk<A>) => A.Chunk<A1>) {
-  return <R, E>(self: Stream<R, E, A>) => mapChunks_(self, f)
+export function flattenChunks<R, E, A>(
+  self: Stream<R, E, A.Chunk<A>>
+): Stream<R, E, A> {
+  return new Stream(CH.mapOut_(self.channel, A.flatten))
 }
 
 /**
- * Transforms the errors emitted by this stream using `f`.
+ * Flattens `Exit` values. `Exit.Failure` values translate to stream failures
+ * while `Exit.Success` values translate to stream elements.
  */
-export function mapError_<R, E, E1, A>(
-  self: Stream<R, E, A>,
-  f: (e: E) => E1
-): Stream<R, E1, A> {
-  return new Stream(CH.mapError_(self.channel, f))
-}
-
-/**
- * Transforms the errors emitted by this stream using `f`.
- */
-export function mapError<E, E1>(f: (e: E) => E1) {
-  return <R, A>(self: Stream<R, E, A>) => mapError_(self, f)
-}
-
-/**
- * Like `Stream#runIntoHub`, but provides the result as a `Managed` to allow for scope
- * composition.
- */
-export function runIntoHubManaged_<R, R1, E extends E1, E1, A>(
-  self: Stream<R, E, A>,
-  hub: H.XHub<R1, never, never, unknown, Take.Take<E1, A>, any>
-): M.Managed<R & R1, E | E1, void> {
-  return runIntoManaged_(self, H.toQueue(hub))
-}
-
-/**
- * Like `Stream#runIntoHub`, but provides the result as a `Managed` to allow for scope
- * composition.
- */
-export function runIntoHubManaged<R1, E1, A>(
-  hub: H.XHub<R1, never, never, unknown, Take.Take<E1, A>, any>
-) {
-  return <R, E extends E1>(self: Stream<R, E, A>) => runIntoHubManaged_(self, hub)
-}
-
-/**
- * Like `Stream#into`, but provides the result as a `Managed` to allow for scope
- * composition.
- */
-export function runIntoManaged_<R, R1, E extends E1, E1, A>(
-  self: Stream<R, E, A>,
-  queue: Q.XQueue<R1, never, never, unknown, Take.Take<E1, A>, any>
-): M.Managed<R & R1, E | E1, void> {
-  const writer: CH.Channel<R, E, A.Chunk<A>, unknown, E, Take.Take<E | E1, A>, any> =
-    CH.readWithCause(
-      (in_) => CH.zipRight_(CH.write(Take.chunk(in_)), writer),
-      (cause) => CH.write(Take.halt(cause)),
-      (_) => CH.write(Take.end)
-    )
-
-  return pipe(
-    self.channel[">>>"](writer),
-    CH.mapOutM((_) => Q.offer_(queue, _)),
-    CH.drain,
-    CH.runManaged,
-    M.asUnit
-  )
-}
-
-/**
- * Like `Stream#into`, but provides the result as a `Managed` to allow for scope
- * composition.
- */
-export function runIntoManaged<R1, E1, A>(
-  queue: Q.XQueue<R1, never, never, unknown, Take.Take<E1, A>, any>
-) {
-  return <R, E extends E1>(self: Stream<R, E, A>) => runIntoManaged_(self, queue)
+export function flattenExit<R, E, E1, A>(
+  self: Stream<R, E, Ex.Exit<E1, A>>
+): Stream<R, E | E1, A> {
+  return C.mapM_(self, (a) => T.done(a))
 }
 
 /**
  * Unwraps `Exit` values that also signify end-of-stream by failing with `None`.
  *
  * For `Exit<E, A>` values that do not signal end-of-stream, prefer:
- * {{{
- * mapM(stream, _ => T.done(_))
- * }}}
  */
 export function flattenExitOption<R, E, E1, A>(
   self: Stream<R, E, Ex.Exit<O.Option<E1>, A>>
@@ -1771,6 +1884,16 @@ export function flattenExitOption<R, E, E1, A>(
 }
 
 /**
+ * Submerges the iterables carried by this stream into the stream's structure, while
+ * still preserving them.
+ */
+export function flattenIterables<R, E, A>(
+  self: Stream<R, E, Iterable<A>>
+): Stream<R, E, A> {
+  return flattenChunks(C.map_(self, (a) => A.from(a)))
+}
+
+/**
  * Unwraps `Exit` values and flatten chunks that also signify end-of-stream by failing with `None`.
  */
 export function flattenTake<R, E, E1, A>(
@@ -1785,13 +1908,119 @@ export function flattenTake<R, E, E1, A>(
 }
 
 /**
- * Submerges the chunks carried by this stream into the stream's structure, while
- * still preserving them.
+ * Creates a stream from an effect producing a value of type `A`
  */
-export function flattenChunks<R, E, A>(
-  self: Stream<R, E, A.Chunk<A>>
+export function fromEffect<R, E, A>(fa: T.Effect<R, E, A>): Stream<R, E, A> {
+  return fromEffectOption(T.mapError_(fa, O.some))
+}
+
+/**
+ * Creates a stream from an effect producing a value of type `A` or an empty Stream
+ */
+export function fromEffectOption<R, E, A>(
+  fa: T.Effect<R, O.Option<E>, A>
 ): Stream<R, E, A> {
-  return new Stream(CH.mapOut_(self.channel, A.flatten))
+  return new Stream(
+    CH.unwrap(
+      T.fold_(
+        fa,
+        O.fold(
+          () => CH.end(undefined),
+          (e) => CH.fail(e)
+        ),
+        (a) => CH.write(A.single(a))
+      )
+    )
+  )
+}
+
+/**
+ * Transforms the chunks emitted by this stream.
+ */
+export function mapChunks_<R, E, A, A1>(
+  self: Stream<R, E, A>,
+  f: (chunk: A.Chunk<A>) => A.Chunk<A1>
+): Stream<R, E, A1> {
+  return new Stream(CH.mapOut_(self.channel, f))
+}
+
+/**
+ * Transforms the chunks emitted by this stream.
+ */
+export function mapChunks<A, A1>(f: (chunk: A.Chunk<A>) => A.Chunk<A1>) {
+  return <R, E>(self: Stream<R, E, A>) => mapChunks_(self, f)
+}
+
+/**
+ * Transforms the errors emitted by this stream using `f`.
+ */
+export function mapError_<R, E, E1, A>(
+  self: Stream<R, E, A>,
+  f: (e: E) => E1
+): Stream<R, E1, A> {
+  return new Stream(CH.mapError_(self.channel, f))
+}
+
+/**
+ * Transforms the errors emitted by this stream using `f`.
+ */
+export function mapError<E, E1>(f: (e: E) => E1) {
+  return <R, A>(self: Stream<R, E, A>) => mapError_(self, f)
+}
+
+/**
+ * Like `Stream#runIntoHub`, but provides the result as a `Managed` to allow for scope
+ * composition.
+ */
+export function runIntoHubManaged_<R, R1, E extends E1, E1, A, Z>(
+  self: Stream<R, E, A>,
+  hub: H.XHub<R1, never, never, unknown, Take.Take<E1, A>, Z>
+): M.Managed<R & R1, E | E1, void> {
+  return runIntoManaged_(self, H.toQueue(hub))
+}
+
+/**
+ * Like `Stream#runIntoHub`, but provides the result as a `Managed` to allow for scope
+ * composition.
+ */
+export function runIntoHubManaged<R1, E1, A, Z>(
+  hub: H.XHub<R1, never, never, unknown, Take.Take<E1, A>, Z>
+) {
+  return <R, E extends E1>(self: Stream<R, E, A>) => runIntoHubManaged_(self, hub)
+}
+
+/**
+ * Like `Stream#into`, but provides the result as a `Managed` to allow for scope
+ * composition.
+ */
+export function runIntoManaged_<R, R1, E extends E1, E1, A, Z>(
+  self: Stream<R, E, A>,
+  queue: Q.XQueue<R1, never, never, unknown, Take.Take<E1, A>, Z>
+): M.Managed<R & R1, E | E1, void> {
+  const writer: CH.Channel<R, E, A.Chunk<A>, unknown, E, Take.Take<E | E1, A>, any> =
+    CH.readWithCause(
+      (in_) => CH.zipRight_(CH.write(Take.chunk(in_)), writer),
+      (cause) => CH.write(Take.halt(cause)),
+      (_) => CH.write(Take.end)
+    )
+
+  return pipe(
+    self.channel[">>>"](writer),
+    CH.mapOutM((_) => Q.offer_(queue, _)),
+    CH.drain,
+    CH.runManaged,
+    M.asUnit
+  )
+}
+
+/**
+ * Like `Stream#into`, but provides the result as a `Managed` to allow for scope
+ * composition.
+ */
+export function runIntoManaged<R1, E1, A, Z>(
+  queue: Q.XQueue<R1, never, never, unknown, Take.Take<E1, A>, Z>
+) {
+  return <R, E extends E1>(self: Stream<R, E, A>) => runIntoManaged_(self, queue)
 }
 
 export const DEFAULT_CHUNK_SIZE = 4096
@@ -1970,25 +2199,6 @@ export function fromHub<R, E, A>(
   return C.chain_(C.managed(H.subscribe(hub)), fromQueue())
 }
 
-/**
- * Like `Stream#forEach`, but returns a `Managed` so the finalization order
- * can be controlled.
- */
-export function runForEachManaged_<R, R1, E, A, B>(
-  self: Stream<R, E, A>,
-  f: (a: A) => T.Effect<R1, E, B>
-): M.Managed<R & R1, E, void> {
-  return runManaged_(self, SK.forEach(f))
-}
-
-/**
- * Like `Stream#forEach`, but returns a `Managed` so the finalization order
- * can be controlled.
- */
-export function runForEachManaged<R1, E, A, B>(f: (a: A) => T.Effect<R1, E, B>) {
-  return <R>(self: Stream<R, E, A>) => runForEachManaged_(self, f)
-}
-
 export function runManaged_<R, R1, E, A, E2, B, L>(
   self: Stream<R, E, A>,
   sink: SK.Sink<R1, E, A, E2, L, B>
@@ -2008,9 +2218,9 @@ export function runManaged<R1, E, A, E2, B>(sink: SK.Sink<R1, E, A, E2, any, B>)
  * If the IO completes with a failure before the stream completes, the returned stream
  * will emit that failure.
  */
-export function interruptWhen_<R, R1, E, E1, A>(
+export function interruptWhen_<R, R1, E, E1, A, Z>(
   self: Stream<R, E, A>,
-  io: T.Effect<R1, E1, any>
+  io: T.Effect<R1, E1, Z>
 ): Stream<R1 & R, E | E1, A> {
   return new Stream(CH.interruptWhen_(self.channel, io))
 }
@@ -2023,7 +2233,7 @@ export function interruptWhen_<R, R1, E, E1, A>(
  * If the IO completes with a failure before the stream completes, the returned stream
  * will emit that failure.
  */
-export function interruptWhen<R1, E1>(io: T.Effect<R1, E1, any>) {
+export function interruptWhen<R1, E1, Z>(io: T.Effect<R1, E1, Z>) {
   return <R, E, A>(self: Stream<R, E, A>) => interruptWhen_(self, io)
 }
 
@@ -2048,4 +2258,78 @@ export function interruptWhenP_<R, E, A, E1>(
  */
 export function interruptWhenP<E1>(p: P.Promise<E1, never>) {
   return <R, E, A>(self: Stream<R, E, A>) => interruptWhenP_(self, p)
+}
+
+/**
+ * Schedules the output of the stream using the provided `schedule`.
+ */
+export function schedule_<R, R1, E, A, Z>(
+  self: Stream<R, E, A>,
+  schedule: SC.Schedule<R1, A, Z>
+): Stream<R & Has<CL.Clock> & R1, E, A> {
+  return collect_(
+    scheduleEither_(self, schedule),
+    E.fold(
+      (_) => O.none,
+      (r) => O.some(r)
+    )
+  )
+}
+
+/**
+ * Schedules the output of the stream using the provided `schedule`.
+ */
+export function schedule<R1, A, Z>(schedule: SC.Schedule<R1, A, Z>) {
+  return <R, E>(self: Stream<R, E, A>) => schedule_(self, schedule)
+}
+
+/**
+ * Schedules the output of the stream using the provided `schedule` and emits its output at
+ * the end (if `schedule` is finite).
+ */
+export function scheduleEither_<R, R1, E, A, B>(
+  self: Stream<R, E, A>,
+  schedule: SC.Schedule<R1, A, B>
+): Stream<R & Has<CL.Clock> & R1, E, E.Either<B, A>> {
+  return scheduleWith(self, schedule)(
+    (r) => E.right(r),
+    (l) => E.left(l)
+  )
+}
+
+/**
+ * Schedules the output of the stream using the provided `schedule` and emits its output at
+ * the end (if `schedule` is finite).
+ */
+export function scheduleEither<R1, A, B>(schedule: SC.Schedule<R1, A, B>) {
+  return <R, E>(self: Stream<R, E, A>) => scheduleEither_(self, schedule)
+}
+
+/**
+ * Schedules the output of the stream using the provided `schedule` and emits its output at
+ * the end (if `schedule` is finite).
+ * Uses the provided function to align the stream and schedule outputs on the same type.
+ */
+export function scheduleWith<R, R1, E, A, B>(
+  self: Stream<R, E, A>,
+  schedule: SC.Schedule<R1, A, B>
+) {
+  return <C1, C2>(
+    f: (a: A) => C1,
+    g: (b: B) => C2
+  ): Stream<R & Has<CL.Clock> & R1, E, C1 | C2> =>
+    C.unwrap(
+      T.map_(SC.driver(schedule), (driver) =>
+        C.loopOnPartialChunksElements_(self, (a, emit) =>
+          T.orElse_(T.zipRight_(driver.next(a), emit(f(a))), () =>
+            pipe(
+              driver.last,
+              T.orDie,
+              T.chain((b) => T.zipRight_(emit(f(a)), emit(g(b)))),
+              T.zipLeft(driver.reset)
+            )
+          )
+        )
+      )
+    )
 }
