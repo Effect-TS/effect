@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.36.4](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.36.2...@effect-ts/system@0.36.4) (2021-05-24)
+
+
+### Bug Fixes
+
+* **case:** add proper equality check ([e063a9c](https://github.com/Effect-TS/core/commit/e063a9c50dd0951415ed90b77a4e8de7acdcd559))
+
+
+
+
+
 ## [0.36.3](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.36.2...@effect-ts/system@0.36.3) (2021-05-24)
 
 

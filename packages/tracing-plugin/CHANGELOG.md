@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.10.4](https://github.com/Effect-TS/core/compare/@effect-ts/tracing-plugin@0.10.3...@effect-ts/tracing-plugin@0.10.4) (2021-05-24)
+
+**Note:** Version bump only for package @effect-ts/tracing-plugin
+
+
+
+
+
 ## [0.10.3](https://github.com/Effect-TS/core/compare/@effect-ts/tracing-plugin@0.10.2...@effect-ts/tracing-plugin@0.10.3) (2021-05-24)
 
 **Note:** Version bump only for package @effect-ts/tracing-plugin
