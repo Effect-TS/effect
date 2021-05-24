@@ -201,3 +201,4 @@ export interface UnifiableIndexed<X> {}
 
 export * from "./lazy"
 export * from "./union"
+export * from "./equal"

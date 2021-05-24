@@ -1,6 +1,7 @@
 // tracing: off
 
 import * as St from "../Structural"
+import type { IsEqualTo } from "../Utils"
 
 export const CaseBrand = Symbol()
 
@@ -15,11 +16,11 @@ export function hasCaseBrand(self: unknown): self is CaseBrand {
 const h0 = St.hashString("@effect-ts/system/Case")
 
 export interface Copy<T> {
-  copy(args: {} extends T ? void : Partial<T>): this
+  copy(args: IsEqualTo<T, {}> extends true ? void : Partial<T>): this
 }
 
 export interface CaseConstructor {
-  new <T>(args: {} extends T ? void : T): T & Copy<T>
+  new <T>(args: IsEqualTo<T, {}> extends true ? void : T): T & Copy<T>
 }
 
 // @ts-expect-error
@@ -90,7 +91,9 @@ export interface CaseConstructorTagged<
   Tag extends string | symbol,
   K extends string | symbol
 > {
-  new <T>(args: {} extends T ? void : T): T & Copy<T> & { readonly [k in K]: Tag }
+  new <T>(args: IsEqualTo<T, {}> extends true ? void : T): T &
+    Copy<T> &
+    { readonly [k in K]: Tag }
 }
 
 export function Tagged<Tag extends string | symbol, Key extends string | symbol>(

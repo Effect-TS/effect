@@ -1,5 +1,4 @@
 import * as Case from "../src/Case"
-//import * as Chunk from "../src/Collections/Immutable/Chunk"
 import * as S from "../src/Structural"
 import { LazyGetter } from "../src/Utils"
 
