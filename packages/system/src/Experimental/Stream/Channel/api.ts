@@ -420,11 +420,9 @@ function doneCollectReader<Env, OutErr, OutElem, OutDone>(
   return C.readWith(
     (out) =>
       zipRight_(
-        C.fromEffect(
-          T.succeedWith(() => {
-            builder.append(out)
-          })
-        ),
+        C.succeedWith(() => {
+          builder.append(out)
+        }),
         doneCollectReader(builder)
       ),
     (err) => C.fail(err),
@@ -451,15 +449,13 @@ export function doneCollect<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone
   never,
   Tp.Tuple<[A.Chunk<OutElem>, OutDone]>
 > {
-  return C.unwrap(
-    T.succeedWith(() => {
-      const builder = A.builder<OutElem>()
+  return C.suspend(() => {
+    const builder = A.builder<OutElem>()
 
-      return mapM_(C.pipeTo_(self, doneCollectReader(builder)), (z) =>
-        T.succeed(Tp.tuple(builder.build(), z))
-      )
-    })
-  )
+    return C.chain_(C.pipeTo_(self, doneCollectReader(builder)), (z) =>
+      C.succeedWith(() => Tp.tuple(builder.build(), z))
+    )
+  })
 }
 
 /**
@@ -2008,4 +2004,18 @@ export function writeAll<Out>(
     C.end(undefined) as C.Channel<unknown, unknown, unknown, unknown, never, Out, void>,
     (out, conduit) => zipRight_(C.write(out), conduit)
   )
+}
+
+export function writeChunk<Out>(
+  outs: A.Chunk<Out>
+): P.Channel<unknown, unknown, unknown, unknown, never, Out, void> {
+  const writer = (
+    idx: number,
+    len: number
+  ): C.Channel<unknown, unknown, unknown, unknown, never, Out, void> =>
+    idx === len
+      ? C.unit
+      : zipRight_(C.write(A.unsafeGet_(outs, idx)), writer(idx + 1, len))
+
+  return writer(0, A.size(outs))
 }
