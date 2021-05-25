@@ -1480,10 +1480,10 @@ export function filter<A>(
 /**
  * Executes a pure fold over the stream of values - reduces all elements in the stream to a value of type `S`.
  */
-export function runFold<R, E, A, S>(self: Stream<R, E, A>, s: S) {
+export function runReduce<R, E, A, S>(self: Stream<R, E, A>, s: S) {
   return (f: (s: S, a: A) => S): T.Effect<R, E, S> =>
     M.use_(
-      runFoldWhileManaged_(
+      runReduceWhileManaged_(
         self,
         s,
         (_) => true,
@@ -1496,18 +1496,18 @@ export function runFold<R, E, A, S>(self: Stream<R, E, A>, s: S) {
 /**
  * Executes an effectful fold over the stream of values.
  */
-export function runFoldM<R, E, A, S>(self: Stream<R, E, A>, s: S) {
+export function runReduceM<R, E, A, S>(self: Stream<R, E, A>, s: S) {
   return <R1, E1>(f: (s: S, a: A) => T.Effect<R1, E1, S>) =>
-    M.use_(runFoldWhileManagedM(self, s)((_) => true)(f), T.succeed)
+    M.use_(runReduceWhileManagedM(self, s)((_) => true)(f), T.succeed)
 }
 
 /**
  * Executes a pure fold over the stream of values.
  * Returns a Managed value that represents the scope of the stream.
  */
-export function runFoldManaged<R, E, A, S>(self: Stream<R, E, A>, s: S) {
+export function runReduceManaged<R, E, A, S>(self: Stream<R, E, A>, s: S) {
   return (f: (s: S, a: A) => S): M.Managed<R, E, S> =>
-    runFoldWhileManaged_(
+    runReduceWhileManaged_(
       self,
       s,
       (_) => true,
@@ -1519,21 +1519,21 @@ export function runFoldManaged<R, E, A, S>(self: Stream<R, E, A>, s: S) {
  * Executes an effectful fold over the stream of values.
  * Returns a Managed value that represents the scope of the stream.
  */
-export function runFoldManagedM<R, E, A, S>(self: Stream<R, E, A>, s: S) {
+export function runReduceManagedM<R, E, A, S>(self: Stream<R, E, A>, s: S) {
   return <R1, E1>(
     f: (s: S, a: A) => T.Effect<R1, E1, S>
-  ): M.Managed<R & R1, E | E1, S> => runFoldWhileManagedM(self, s)((_) => true)(f)
+  ): M.Managed<R & R1, E | E1, S> => runReduceWhileManagedM(self, s)((_) => true)(f)
 }
 
 /**
  * Reduces the elements in the stream to a value of type `S`.
  * Stops the fold early when the condition is not fulfilled.
  */
-export function runFoldWhile<R, E, A, S>(self: Stream<R, E, A>, s: S) {
+export function runReduceWhile<R, E, A, S>(self: Stream<R, E, A>, s: S) {
   return (cont: Predicate<S>) =>
     (f: (s: S, a: A) => S): T.Effect<R, E, S> =>
       M.use_(
-        runFoldWhileManaged_(self, s, cont, (s, a) => f(s, a)),
+        runReduceWhileManaged_(self, s, cont, (s, a) => f(s, a)),
         T.succeed
       )
 }
@@ -1542,10 +1542,10 @@ export function runFoldWhile<R, E, A, S>(self: Stream<R, E, A>, s: S) {
  * Executes an effectful fold over the stream of values.
  * Stops the fold early when the condition is not fulfilled.
  */
-export function runFoldWhileM<R, E, A, S>(self: Stream<R, E, A>, s: S) {
+export function runReduceWhileM<R, E, A, S>(self: Stream<R, E, A>, s: S) {
   return (cont: Predicate<S>) =>
     <R1, E1>(f: (s: S, a: A) => T.Effect<R1, E1, S>): T.Effect<R & R1, E | E1, S> =>
-      M.use_(runFoldWhileManagedM(self, s)(cont)(f), T.succeed)
+      M.use_(runReduceWhileManagedM(self, s)(cont)(f), T.succeed)
 }
 
 /**
@@ -1553,13 +1553,13 @@ export function runFoldWhileM<R, E, A, S>(self: Stream<R, E, A>, s: S) {
  * Returns a Managed value that represents the scope of the stream.
  * Stops the fold early when the condition is not fulfilled.
  */
-export function runFoldWhileManaged_<S, R, E, A>(
+export function runReduceWhileManaged_<S, R, E, A>(
   self: Stream<R, E, A>,
   s: S,
   cont: Predicate<S>,
   f: (s: S, a: A) => S
 ): M.Managed<R, E, S> {
-  return runManaged_(self, SK.fold(s)(cont)(f))
+  return runManaged_(self, SK.reduce(s)(cont)(f))
 }
 
 /**
@@ -1569,13 +1569,13 @@ export function runFoldWhileManaged_<S, R, E, A>(
  *
  * @dataFirst runFoldWhileManaged_
  */
-export function runFoldWhileManaged<S, A>(
+export function runReduceWhileManaged<S, A>(
   s: S,
   cont: Predicate<S>,
   f: (s: S, a: A) => S
 ) {
   return <R, E>(self: Stream<R, E, A>): M.Managed<R, E, S> =>
-    runFoldWhileManaged_(self, s, cont, f)
+    runReduceWhileManaged_(self, s, cont, f)
 }
 
 /**
@@ -1583,10 +1583,10 @@ export function runFoldWhileManaged<S, A>(
  * Returns a Managed value that represents the scope of the stream.
  * Stops the fold early when the condition is not fulfilled.
  */
-export function runFoldWhileManagedM<R, E, A, S>(self: Stream<R, E, A>, s: S) {
+export function runReduceWhileManagedM<R, E, A, S>(self: Stream<R, E, A>, s: S) {
   return (cont: Predicate<S>) =>
     <R1, E1>(f: (s: S, a: A) => T.Effect<R1, E1, S>) =>
-      runManaged_(self, SK.foldM(s)(cont)<R1, A, E | E1>(f))
+      runManaged_(self, SK.reduceM(s)(cont)<R1, A, E | E1>(f))
 }
 
 /**
