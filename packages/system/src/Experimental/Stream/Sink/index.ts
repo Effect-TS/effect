@@ -8,6 +8,7 @@ import * as T from "../../../Effect"
 import type { Predicate } from "../../../Function"
 import { pipe } from "../../../Function"
 import * as O from "../../../Option"
+import { AtomicReference } from "../../../Support/AtomicReference"
 import * as C from "../Channel"
 
 /**
@@ -151,14 +152,14 @@ export function forEach<R, ErrIn, ErrOut, In, B>(
 /**
  * A sink that folds its inputs with the provided function, termination predicate and initial state.
  */
-export function fold<S>(z: S) {
+export function reduce<S>(z: S) {
   return (cont: Predicate<S>) =>
     <In, Err>(f: (s: S, _in: In) => S): Sink<unknown, Err, In, Err, In, S> => {
-      const foldChunkSplit =
+      const reduceChunkSplit =
         (z: S, chunk: Chunk.Chunk<In>) =>
         (cont: Predicate<S>) =>
         (f: (s: S, _in: In) => S) => {
-          const fold = (
+          const reduce = (
             s: S,
             chunk: Chunk.Chunk<In>,
             idx: number,
@@ -170,14 +171,14 @@ export function fold<S>(z: S) {
               const s1 = f(s, Chunk.unsafeGet_(chunk, idx))
 
               if (cont(s1)) {
-                return fold(s1, chunk, idx + 1, len)
+                return reduce(s1, chunk, idx + 1, len)
               } else {
                 return Tp.tuple(s1, Chunk.drop_(chunk, idx + 1))
               }
             }
           }
 
-          return fold(z, chunk, 0, Chunk.size(chunk))
+          return reduce(z, chunk, 0, Chunk.size(chunk))
         }
 
       const reader = (
@@ -190,7 +191,7 @@ export function fold<S>(z: S) {
             (_in) => {
               const {
                 tuple: [nextS, leftovers]
-              } = foldChunkSplit(s, _in)(cont)(f)
+              } = reduceChunkSplit(s, _in)(cont)(f)
 
               if (!Chunk.isEmpty(leftovers)) {
                 return C.as_(C.write(leftovers), nextS)
@@ -211,16 +212,16 @@ export function fold<S>(z: S) {
 /**
  * A sink that effectfully folds its inputs with the provided function, termination predicate and initial state.
  */
-export function foldM<S>(z: S) {
+export function reduceM<S>(z: S) {
   return (cont: Predicate<S>) =>
     <Env, In, Err>(
       f: (s: S, _in: In) => T.Effect<Env, Err, S>
     ): Sink<Env, Err, In, Err, In, S> => {
-      const foldChunkSplit =
+      const reduceChunkSplit =
         (z: S, chunk: Chunk.Chunk<In>) =>
         (cont: Predicate<S>) =>
         (f: (s: S, _in: In) => T.Effect<Env, Err, S>) => {
-          const fold = (
+          const reduce = (
             s: S,
             chunk: Chunk.Chunk<In>,
             idx: number,
@@ -231,7 +232,7 @@ export function foldM<S>(z: S) {
             } else {
               return T.chain_(f(s, Chunk.unsafeGet_(chunk, idx)), (s1) => {
                 if (cont(s1)) {
-                  return fold(s1, chunk, idx + 1, len)
+                  return reduce(s1, chunk, idx + 1, len)
                 } else {
                   return T.succeed(Tp.tuple(s1, O.some(Chunk.drop_(chunk, idx + 1))))
                 }
@@ -239,7 +240,7 @@ export function foldM<S>(z: S) {
             }
           }
 
-          return fold(z, chunk, 0, Chunk.size(chunk))
+          return reduce(z, chunk, 0, Chunk.size(chunk))
         }
 
       const reader = (
@@ -251,7 +252,7 @@ export function foldM<S>(z: S) {
           return C.readWith(
             (_in) => {
               return pipe(
-                C.fromEffect(foldChunkSplit(s, _in)(cont)(f)),
+                C.fromEffect(reduceChunkSplit(s, _in)(cont)(f)),
                 C.chain(({ tuple: [nextS, leftovers] }) => {
                   return O.fold_(
                     leftovers,
@@ -305,4 +306,143 @@ export function forEachChunkWhile<R, ErrIn, ErrOut, In>(
   )
 
   return new Sink(reader)
+}
+
+/**
+ * Runs this sink until it yields a result, then uses that result to create another
+ * sink from the provided function which will continue to run until it yields a result.
+ *
+ * This function essentially runs sinks in sequence.
+ */
+export function chain_<
+  R,
+  R1,
+  InErr,
+  InErr1,
+  In,
+  In1 extends In,
+  OutErr,
+  OutErr1,
+  L,
+  L1 extends L,
+  Z,
+  Z1
+>(
+  self: Sink<R, InErr, In, OutErr, L, Z>,
+  f: (z: Z) => Sink<R1, InErr1, In1, OutErr1, L1, Z1>
+): Sink<R & R1, InErr & InErr1, In & In1, OutErr | OutErr1, L1, Z1> {
+  return foldM_(self, (_) => fail(_), f)
+}
+
+/**
+ * Runs this sink until it yields a result, then uses that result to create another
+ * sink from the provided function which will continue to run until it yields a result.
+ *
+ * This function essentially runs sinks in sequence.
+ */
+export function chain<R1, InErr1, In, In1 extends In, OutErr1, L, L1 extends L, Z, Z1>(
+  f: (z: Z) => Sink<R1, InErr1, In1, OutErr1, L1, Z1>
+) {
+  return <R, InErr, OutErr>(self: Sink<R, InErr, In, OutErr, L, Z>) => chain_(self, f)
+}
+
+export function foldM_<
+  R,
+  R1,
+  R2,
+  InErr,
+  InErr1,
+  InErr2,
+  In,
+  In1 extends In,
+  In2 extends In,
+  OutErr,
+  OutErr2,
+  OutErr3,
+  L,
+  L1 extends L,
+  L2 extends L,
+  Z,
+  Z1,
+  Z2
+>(
+  self: Sink<R, InErr, In, OutErr, L, Z>,
+  failure: (err: OutErr) => Sink<R1, InErr1, In1, OutErr2, L1, Z1>,
+  success: (z: Z) => Sink<R2, InErr2, In2, OutErr3, L2, Z2>
+): Sink<
+  R & R1 & R2,
+  InErr & InErr1 & InErr2,
+  In1 & In2,
+  OutErr2 | OutErr3,
+  L1 | L2,
+  Z1 | Z2
+> {
+  return new Sink(
+    C.foldM_(
+      C.doneCollect(self.channel),
+      (_) => failure(_).channel,
+      ({ tuple: [leftovers, z] }) =>
+        C.suspend(() => {
+          const leftoversRef = new AtomicReference(
+            Chunk.filter_(
+              leftovers,
+              (a): a is Chunk.Chunk<L1 | L2> => !Chunk.isEmpty(a)
+            )
+          )
+          const refReader = C.chain_(
+            C.succeedWith(() => leftoversRef.getAndSet(Chunk.empty())),
+            (chunk) =>
+              C.writeChunk(chunk as unknown as Chunk.Chunk<Chunk.Chunk<In1 & In2>>)
+          )
+          const passthrough = C.identity<InErr2, Chunk.Chunk<In1 & In2>, unknown>()
+          const continationSink = C.zipRight_(refReader, passthrough)[">>>"](
+            success(z).channel
+          )
+
+          return C.chain_(
+            C.doneCollect(continationSink),
+            ({ tuple: [newLeftovers, z1] }) =>
+              C.zipRight_(
+                C.chain_(
+                  C.succeedWith(() => leftoversRef.get),
+                  (_) => C.writeChunk(_)
+                ),
+                C.as_(C.writeChunk(newLeftovers), z1)
+              )
+          )
+        })
+    )
+  )
+}
+
+export function foldM<
+  R1,
+  R2,
+  InErr1,
+  InErr2,
+  In,
+  In1 extends In,
+  In2 extends In,
+  OutErr,
+  OutErr2,
+  OutErr3,
+  L,
+  L1 extends L,
+  L2 extends L,
+  Z,
+  Z1,
+  Z2
+>(
+  failure: (err: OutErr) => Sink<R1, InErr1, In1, OutErr2, L1, Z1>,
+  success: (z: Z) => Sink<R2, InErr2, In2, OutErr3, L2, Z2>
+) {
+  return <R, InErr>(self: Sink<R, InErr, In, OutErr, L, Z>) =>
+    foldM_(self, failure, success)
+}
+
+/**
+ * A sink that always fails with the specified error.
+ */
+export function fail<E>(e: E): Sink<unknown, unknown, unknown, E, never, never> {
+  return new Sink(C.fail(e))
 }

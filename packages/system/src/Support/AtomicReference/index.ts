@@ -13,6 +13,13 @@ export class AtomicReference<A> {
     return this.current
   }
 
+  getAndSet(value: A) {
+    const old = this.current
+
+    this.set(value)
+    return old
+  }
+
   set(value: A) {
     this.current = value
   }
