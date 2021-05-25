@@ -19,7 +19,9 @@ import * as Q from "../../../Queue"
 import * as Ref from "../../../Ref"
 import * as SC from "../../../Schedule"
 import * as SM from "../../../Semaphore"
+import { AtomicBoolean } from "../../../Support/AtomicBoolean"
 import { AtomicNumber } from "../../../Support/AtomicNumber"
+import { AtomicReference } from "../../../Support/AtomicReference"
 import * as C from "../_internal/core"
 import * as CH from "../Channel"
 import * as SK from "../Sink"
@@ -2332,4 +2334,86 @@ export function scheduleWith<R, R1, E, A, B>(
         )
       )
     )
+}
+
+/**
+ * Applies the transducer to the stream and emits its outputs.
+ */
+export function transduce_<R, R1, E, E1, A, Z>(
+  self: Stream<R, E, A>,
+  sink: SK.Sink<R1, E, A, E1, A, Z>
+): Stream<R & R1, E1, Z> {
+  return new Stream(
+    CH.suspend(() => {
+      const leftovers = new AtomicReference(A.empty<A.Chunk<A>>())
+      const upstreamDone = new AtomicBoolean(false)
+      const buffer: CH.Channel<unknown, E, A.Chunk<A>, unknown, E, A.Chunk<A>, any> =
+        CH.suspend(() => {
+          const l = leftovers.get
+
+          if (A.isEmpty(l)) {
+            return CH.readWith(
+              (c) => CH.zipRight_(CH.write(c), buffer),
+              (e) => CH.fail(e),
+              (done) => CH.end(done)
+            )
+          } else {
+            leftovers.set(A.empty())
+
+            return CH.zipRight_(CH.writeChunk(l), buffer)
+          }
+        })
+
+      const concatAndGet = (c: A.Chunk<A.Chunk<A>>): A.Chunk<A.Chunk<A>> => {
+        const ls = leftovers.get
+        const concat = A.concat_(
+          ls,
+          A.filter_(c, (a) => !A.isEmpty(a))
+        )
+
+        leftovers.set(concat)
+
+        return concat
+      }
+      const upstreamMarker: CH.Channel<
+        unknown,
+        E,
+        A.Chunk<A>,
+        unknown,
+        E,
+        A.Chunk<A>,
+        any
+      > = CH.readWith(
+        (_in) => CH.zipRight_(CH.write(_in), upstreamMarker),
+        (err) => CH.fail(err),
+        (done) =>
+          CH.zipRight_(
+            CH.succeedWith(() => upstreamDone.set(true)),
+            CH.end(done)
+          )
+      )
+
+      const transducer: CH.Channel<R1, E, A.Chunk<A>, unknown, E1, A.Chunk<Z>, void> =
+        CH.chain_(CH.doneCollect(sink.channel), ({ tuple: [leftover, z] }) =>
+          CH.chain_(
+            CH.succeedWith(() => Tp.tuple(upstreamDone.get, concatAndGet(leftover))),
+            ({ tuple: [done, newLeftovers] }) => {
+              const nextChannel =
+                done && A.isEmpty(newLeftovers) ? CH.end(undefined) : transducer
+
+              return CH.zipRight_(CH.write(A.single(z)), nextChannel)
+            }
+          )
+        )
+
+      return self.channel[">>>"](upstreamMarker)[">>>"](buffer)[">>>"](transducer)
+    })
+  )
+}
+
+/**
+ * Applies the transducer to the stream and emits its outputs.
+ */
+export function transduce<R, R1, E, E1, A, Z>(sink: SK.Sink<R1, E, A, E1, A, Z>) {
+  return (self: Stream<R, E, A>) => transduce_(self, sink)
 }
