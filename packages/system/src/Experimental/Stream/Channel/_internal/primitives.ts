@@ -221,7 +221,9 @@ export function concrete<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
   | Fold<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone, any, any>
   | Provide<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   | BracketOut<Env, OutErr, OutElem, OutDone>
-  | Ensuring<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone> {
+  | Ensuring<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
+  | EffectTotal<OutDone>
+  | EffectSuspendTotal<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone> {
   //
 }
 
@@ -504,6 +506,44 @@ export class Provide<
   constructor(
     readonly env: Env,
     readonly channel: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
+  ) {
+    super()
+  }
+}
+
+export const EffectTotalTypeId: unique symbol = Symbol()
+export type EffectTotalTypeId = typeof EffectTotalTypeId
+
+export class EffectTotal<OutDone> extends Channel<
+  unknown,
+  unknown,
+  unknown,
+  unknown,
+  never,
+  never,
+  OutDone
+> {
+  readonly _typeId: EffectTotalTypeId = EffectTotalTypeId
+  constructor(readonly effect: () => OutDone) {
+    super()
+  }
+}
+
+export const EffectSuspendTotalTypeId: unique symbol = Symbol()
+export type EffectSuspendTotalTypeId = typeof EffectSuspendTotalTypeId
+
+export class EffectSuspendTotal<
+  Env,
+  InErr,
+  InElem,
+  InDone,
+  OutErr,
+  OutElem,
+  OutDone
+> extends Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone> {
+  readonly _typeId: EffectSuspendTotalTypeId = EffectSuspendTotalTypeId
+  constructor(
+    readonly effect: () => Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   ) {
     super()
   }
