@@ -36,6 +36,9 @@ export function ifNotDone_<R, R1, E, E1, A, A1>(
   })
 }
 
+/**
+ * @dataFirst ifNotDone_
+ */
 export function ifNotDone<R1, E1, A1>(fa: T.Effect<R1, O.Option<E1>, A1>) {
   return <R, E, A>(self: BufferedPull<R, E, A>) => ifNotDone_(self, fa)
 }

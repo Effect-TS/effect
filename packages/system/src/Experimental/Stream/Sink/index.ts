@@ -339,6 +339,8 @@ export function chain_<
  * sink from the provided function which will continue to run until it yields a result.
  *
  * This function essentially runs sinks in sequence.
+ *
+ * @dataFirst chain_
  */
 export function chain<R1, InErr1, In, In1 extends In, OutErr1, L, L1 extends L, Z, Z1>(
   f: (z: Z) => Sink<R1, InErr1, In1, OutErr1, L1, Z1>
@@ -415,6 +417,10 @@ export function foldM_<
   )
 }
 
+/**
+ *
+ * @dataFirst foldM_
+ */
 export function foldM<
   R1,
   R2,
