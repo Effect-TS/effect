@@ -17,7 +17,7 @@ import { Stream } from "./definitions"
 export function debounce_<R, E, O>(
   self: Stream<R, E, O>,
   d: number
-): Stream<R & CL.HasClock, E, unknown> {
+): Stream<R & CL.HasClock, E, O> {
   class NotStarted {
     readonly _tag = "NotStarted"
   }
@@ -90,7 +90,7 @@ export function debounce_<R, E, O>(
                       const chunk = ex.value
 
                       if (A.isEmpty(chunk)) {
-                        return Pull.empty()
+                        return Pull.empty<O>()
                       } else {
                         return T.zipRight_(F.interrupt(previous), store(chunk))
                       }
