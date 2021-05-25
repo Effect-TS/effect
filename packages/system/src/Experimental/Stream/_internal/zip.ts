@@ -170,6 +170,8 @@ export function zipRight_<R, R1, E, E1, A, A1>(
  * Zips this stream with another point-wise, but keeps only the outputs of the other stream.
  *
  * The new stream will end when one of the sides ends.
+ *
+ * @dataFirst zipRight_
  */
 export function zipRight<R, R1, E, E1, A, A1>(that: S.Stream<R1, E1, A1>) {
   return (self: S.Stream<R, E, A>) => zipRight_(self, that)
@@ -191,6 +193,8 @@ export function zipLeft_<R, R1, E, E1, A, A1>(
  * Zips this stream with another point-wise, but keeps only the outputs of this stream.
  *
  * The new stream will end when one of the sides ends.
+ *
+ * @dataFirst zipLeft_
  */
 export function zipLeft<R, R1, E, E1, A, A1>(that: S.Stream<R1, E1, A1>) {
   return (self: S.Stream<R, E, A>) => zipLeft_(self, that)

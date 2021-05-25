@@ -45,6 +45,8 @@ export function fold_<E, A, Z>(
 /**
  * Folds over the failure cause, success value and end-of-stream marker to
  * yield a value.
+ *
+ * @dataFirst fold_
  */
 export function fold<E, A, Z>(
   end: Z,
@@ -79,6 +81,8 @@ export function foldM_<R, R1, R2, E, E1, E2, E3, A, Z>(
  *
  * Folds over the failure cause, success value and end-of-stream marker to
  * yield an effect.
+ *
+ * @dataFirst foldM_
  */
 export function foldM<R, R1, R2, E, E1, E2, E3, A, Z>(
   end: T.Effect<R, E1, Z>,
@@ -130,6 +134,8 @@ export function map_<E, A, B>(self: Take<E, A>, f: (a: A) => B): Take<E, B> {
 
 /**
  * Transforms `Take<E, A>` to `Take<E, B>` by applying function `f`.
+ *
+ * @dataFirst map_
  */
 export function map<A, B>(f: (a: A) => B) {
   return <E>(self: Take<E, A>) => map_(self, f)
@@ -147,6 +153,8 @@ export function tap_<R, E, E1, A>(
 
 /**
  * Returns an effect that effectfully "peeks" at the success of this take.
+ *
+ * @dataFirst tap_
  */
 export function tap<R, E1, A>(f: (chunk: A.Chunk<A>) => T.Effect<R, E1, any>) {
   return <E>(self: Take<E, A>) => tap_(self, f)

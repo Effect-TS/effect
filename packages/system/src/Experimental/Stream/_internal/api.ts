@@ -72,6 +72,8 @@ export function aggregateAsync_<R, R1, E extends E1, E1, E2, A extends A1, A1, B
  *
  * Any sink can be used here, but see `Sink.foldWeightedM` and `Sink.foldUntilM` for
  * sinks that cover the common usecases.
+ *
+ * @dataFirst aggregateAsync_
  */
 export function aggregateAsync<R1, E1, E2, A1, B>(
   sink: SK.Sink<R1, E1, A1, E2, A1, B>
@@ -110,6 +112,8 @@ export function aggregateAsyncWithin_<
 
 /**
  * Like `aggregateAsyncWithinEither`, but only returns the `Right` results.
+ *
+ * @dataFirst aggregateAsyncWithin_
  */
 export function aggregateAsyncWithin<R1, R2, E1, E2, A1, B, C>(
   sink: SK.Sink<R1, E1, A1, E2, A1, B>,
@@ -301,6 +305,8 @@ export function aggregateAsyncWithinEither_<
  *
  * Aggregated elements will be fed into the schedule to determine the delays between
  * pulls.
+ *
+ * @dataFirst aggregateAsyncWithinEither_
  */
 export function aggregateAsyncWithinEither<R1, R2, E1, E2, A1, B, C>(
   sink: SK.Sink<R1, E1, A1, E2, A1, B>,
@@ -319,6 +325,8 @@ export function as_<R, E, A, A2>(self: Stream<R, E, A>, a2: A2): Stream<R, E, A2
 
 /**
  * Maps the success values of this stream to the specified constant value.
+ *
+ * @dataFirst as_
  */
 export function as<A2>(a2: A2) {
   return <R, E, A>(self: Stream<R, E, A>) => as_(self, a2)
@@ -339,6 +347,8 @@ export function bimap_<R, E, E1, A, A1>(
 /**
  * Returns a stream whose failure and success channels have been mapped by
  * the specified pair of functions, `f` and `g`.
+ *
+ * @dataFirst bimap_
  */
 export function bimap<E, E1, A, A1>(f: (e: E) => E1, g: (a: A) => A1) {
   return <R>(self: Stream<R, E, A>) => bimap_(self, f, g)
@@ -362,6 +372,8 @@ export function broadcastDynamic_<R, E, A>(
  * Fan out the stream, producing a dynamic number of streams that have the same elements as this stream.
  * The driver stream will only ever advance of the `maximumLag` chunks before the
  * slowest downstream stream.
+ *
+ * @dataFirst broadcastDynamic_
  */
 export function broadcastDynamic(maximumLag: number) {
   return <R, E, A>(self: Stream<R, E, A>) => broadcastDynamic_(self, maximumLag)
@@ -392,6 +404,8 @@ export function broadcastedQueues_<R, E, A>(
  * slowest queue being allowed to buffer `maximumLag` chunks before the driver is backpressured.
  *
  * Queues can unsubscribe from upstream by shutting down.
+ *
+ * @dataFirst broadcastedQueues_
  */
 export function broadcastedQueues(n: number, maximumLag: number) {
   return <R, E, A>(self: Stream<R, E, A>) => broadcastedQueues_(self, n, maximumLag)
@@ -419,6 +433,8 @@ export function broadcastedQueuesDynamic_<R, E, A>(
  * slowest queue being allowed to buffer `maximumLag` chunks before the driver is backpressured.
  *
  * Queues can unsubscribe from upstream by shutting down.
+ *
+ * @dataFirst broadcastedQueuesDynamic_
  */
 export function broadcastedQueuesDynamic(maximumLag: number) {
   return <R, E, A>(self: Stream<R, E, A>) => broadcastedQueuesDynamic_(self, maximumLag)
@@ -461,6 +477,8 @@ export function buffer_<R, E, A>(
 /**
  * Allows a faster producer to progress independently of a slower consumer by buffering
  * up to `capacity` chunks in a queue.
+ *
+ * @dataFirst buffer_
  */
 export function buffer(capacity: number) {
   return <R, E, A>(self: Stream<R, E, A>) => buffer_(self, capacity)
@@ -511,6 +529,8 @@ export function catchAll_<R, R1, E, E1, A, A1>(
 /**
  * Switches over to the stream produced by the provided function in case this one
  * fails with a typed error.
+ *
+ * @dataFirst catchAll_
  */
 export function catchAll<R1, E, E1, A1>(f: (e: E) => Stream<R1, E1, A1>) {
   return <R, A>(self: Stream<R, E, A>) => catchAll_(self, f)
@@ -542,6 +562,8 @@ export function catchAllCause_<R, R1, E, E1, A, A1>(
  * Switches over to the stream produced by the provided function in case this one
  * fails. Allows recovery from all causes of failure, including interruption if the
  * stream is uninterruptible.
+ *
+ * @dataFirst catchAllCause_
  */
 export function catchAllCause<R1, E, E1, A1>(
   f: (cause: CS.Cause<E>) => Stream<R1, E1, A1>
@@ -569,6 +591,8 @@ export function catchSome_<R, R1, E, E1, A, A1>(
 /**
  * Switches over to the stream produced by the provided function in case this one
  * fails with some typed error.
+ *
+ * @dataFirst catchSome_
  */
 export function catchSome<R1, E, E1, A1>(pf: (e: E) => O.Option<Stream<R1, E1, A1>>) {
   return <R, A>(self: Stream<R, E, A>) => catchSome_(self, pf)
@@ -598,6 +622,8 @@ export function catchSomeCause_<R, R1, E, E1, A, A1>(
  * Switches over to the stream produced by the provided function in case this one
  * fails with some errors. Allows recovery from all causes of failure, including interruption if the
  * stream is uninterruptible.
+ *
+ * @dataFirst catchSomeCause_
  */
 export function catchSomeCause<R1, E, E1, A1>(
   pf: (e: CS.Cause<E>) => O.Option<Stream<R1, E1, A1>>
@@ -685,6 +711,8 @@ export function chunkN_<R, E, A>(self: Stream<R, E, A>, n: number): Stream<R, E,
  * Re-chunks the elements of the stream into chunks of
  * `n` elements each.
  * The last chunk might contain less than `n` elements
+ *
+ * @dataFirst chunkN_
  */
 export function chunkN(n: number) {
   return <R, E, A>(self: Stream<R, E, A>) => chunkN_(self, n)
@@ -709,6 +737,8 @@ export function collect_<R, E, A, B>(
 
 /**
  * Performs a filter and map in a single step.
+ *
+ * @dataFirst collect_
  */
 export function collect<A, B>(f: (a: A) => O.Option<B>) {
   return <R, E>(self: Stream<R, E, A>) => collect_(self, f)
@@ -782,6 +812,8 @@ export function collectM_<R, R1, E, E1, A, A1>(
 
 /**
  * Performs an effectful filter and map in a single step.
+ *
+ * @dataFirst collectM_
  */
 export function collectM<R1, E1, A, A1>(pf: (a: A) => O.Option<T.Effect<R1, E1, A1>>) {
   return <R, E>(self: Stream<R, E, A>) => collectM_(self, pf)
@@ -813,6 +845,8 @@ export function collectWhile_<R, E, A, A1>(
 
 /**
  * Transforms all elements of the stream for as long as the specified partial function is defined.
+ *
+ * @dataFirst collectWhile_
  */
 export function collectWhile<A, A1>(pf: (a: A) => O.Option<A1>) {
   return <R, E>(self: Stream<R, E, A>) => collectWhile_(self, pf)
@@ -868,6 +902,8 @@ export function collectWhileM_<R, R1, E, E1, A, A1>(
 
 /**
  * Effectfully transforms all elements of the stream for as long as the specified partial function is defined.
+ *
+ * @dataFirst collectWhileM_
  */
 export function collectWhileM<R1, E1, A, A1>(
   pf: (a: A) => O.Option<T.Effect<R1, E1, A1>>
@@ -965,6 +1001,8 @@ export function concat_<R, R1, E, E1, A, A1>(
 /**
  * Concatenates the specified stream with this stream, resulting in a stream
  * that emits the elements from this stream and then the elements from the specified stream.
+ *
+ * @dataFirst concat_
  */
 export function concat<R1, E1, A1>(that: Stream<R1, E1, A1>) {
   return <R, E, A>(self: Stream<R, E, A>) => concat_(self, that)
@@ -990,6 +1028,8 @@ export function cross_<R, R1, E, E1, A, A1>(
 /**
  * Composes this stream with the specified stream to create a cartesian product of elements.
  * The `that` stream would be run multiple times, for every element in the `this` stream.
+ *
+ * @dataFirst cross_
  */
 export function cross<R1, E1, A1>(that: Stream<R1, E1, A1>) {
   return <R, E, A>(self: Stream<R, E, A>) => cross_(self, that)
@@ -1011,6 +1051,8 @@ export function crossLeft_<R, R1, E, E1, A, A1>(
  * Composes this stream with the specified stream to create a cartesian product of elements,
  * but keeps only elements from this stream.
  * The `that` stream would be run multiple times, for every element in the `this` stream.
+ *
+ * @dataFirst crossLeft_
  */
 export function crossLeft<R1, E1, A1>(that: Stream<R1, E1, A1>) {
   return <R, E, A>(self: Stream<R, E, A>) => crossLeft_(self, that)
@@ -1032,6 +1074,8 @@ export function crossRight_<R, R1, E, E1, A, A1>(
  * Composes this stream with the specified stream to create a cartesian product of elements,
  * but keeps only elements from the other stream.
  * The `that` stream would be run multiple times, for every element in the `this` stream.
+ *
+ * @dataFirst crossRight_
  */
 export function crossRight<R1, E1, A1>(that: Stream<R1, E1, A1>) {
   return <R, E, A>(self: Stream<R, E, A>) => crossRight_(self, that)
@@ -1117,6 +1161,8 @@ export function distributedWith_<R, E, A>(
  * More powerful version of `Stream#broadcast`. Allows to provide a function that determines what
  * queues should receive which elements. The decide function will receive the indices of the queues
  * in the resulting list.
+ *
+ * @dataFirst distributedWith_
  */
 export function distributedWith<A>(
   n: number,
@@ -1279,6 +1325,8 @@ export function distributedWithDynamic_<R, E, A, A1>(
  * Shutdown of the queues is handled by the driver.
  * Downstream users can also shutdown queues manually. In this case the driver will
  * continue but no longer backpressure on them.
+ *
+ * @dataFirst distributedWithDynamic_
  */
 export function distributedWithDynamic<E, A, A1>(
   maximumLag: number,
@@ -1324,6 +1372,8 @@ export function drainFork_<R, R1, E, E1, A, Z>(
  * Drains the provided stream in the background for as long as this stream is running.
  * If this stream ends before `other`, `other` will be interrupted. If `other` fails,
  * this stream will fail with that error.
+ *
+ * @dataFirst drainFork_
  */
 export function drainFork<R1, E1, A, Z>(other: Stream<R1, E1, Z>) {
   return <R, E>(self: Stream<R, E, A>) => drainFork_(self, other)
@@ -1355,6 +1405,8 @@ export function drop_<R, E, A>(self: Stream<R, E, A>, n: number): Stream<R, E, A
 
 /**
  * Drops the specified number of elements from this stream.
+ *
+ * @dataFirst drop_
  */
 export function drop(n: number) {
   return <R, E, A>(self: Stream<R, E, A>) => drop_(self, n)
@@ -1389,6 +1441,8 @@ export function dropWhile_<R, E, A>(
 /**
  * Drops all elements of the stream for as long as the specified predicate
  * evaluates to `true`.
+ *
+ * @dataFirst dropWhile_
  */
 export function dropWhile<A>(f: Predicate<A>) {
   return <R, E>(self: Stream<R, E, A>) => dropWhile_(self, f)
@@ -1411,6 +1465,8 @@ export function dropUntil_<R, E, A>(
 /**
  * Drops all elements of the stream until the specified predicate evaluates
  * to `true`.
+ *
+ * @dataFirst dropUntil_
  */
 export function dropUntil<A>(f: Predicate<A>) {
   return <R, E>(self: Stream<R, E, A>) => dropUntil_(self, f)
@@ -1441,6 +1497,8 @@ export function ensuring_<R, R1, E, A, Z>(
 
 /**
  * Executes the provided finalizer after this stream's finalizers run.
+ *
+ * @dataFirst ensuring_
  */
 export function ensuring<R1, Z>(fin: T.Effect<R1, never, Z>) {
   return <R, E, A>(self: Stream<R, E, A>) => ensuring_(self, fin)
@@ -1466,6 +1524,8 @@ export function filter_<R, E, A>(
 
 /**
  * Filters the elements emitted by this stream using the provided function.
+ *
+ * @dataFirst filter_
  */
 export function filter<A, B extends A>(
   f: Refinement<A, B>
@@ -1603,6 +1663,8 @@ export function forEach_<R, R1, E, E1, A, X>(
 
 /**
  * Consumes all elements of the stream, passing them to the specified callback.
+ *
+ * @dataFirst forEach_
  */
 export function forEach<R1, E1, A, X>(f: (a: A) => T.Effect<R1, E1, X>) {
   return <R, E>(self: Stream<R, E, A>) => forEach_(self, f)
@@ -1620,6 +1682,8 @@ export function runForEach_<R, R1, E, E1, A, X>(
 
 /**
  * Consumes all elements of the stream, passing them to the specified callback.
+ *
+ * @dataFirst runForEach_
  */
 export function runForEach<R1, E1, A, X>(f: (a: A) => T.Effect<R1, E1, X>) {
   return <R, E>(self: Stream<R, E, A>) => runForEach_(self, f)
@@ -1637,6 +1701,8 @@ export function runForEachChunk_<R, R1, E, E1, A, Z>(
 
 /**
  * Consumes all elements of the stream, passing them to the specified callback.
+ *
+ * @dataFirst runForEachChunk_
  */
 export function runForEachChunk<R1, E1, A, Z>(
   f: (c: A.Chunk<A>) => T.Effect<R1, E1, Z>
@@ -1679,6 +1745,8 @@ export function runForEachManaged_<R, R1, E, A, Z>(
 /**
  * Like `Stream#forEach`, but returns a `Managed` so the finalization order
  * can be controlled.
+ *
+ * @dataFirst runForEachManaged_
  */
 export function runForEachManaged<R1, E, A, B>(f: (a: A) => T.Effect<R1, E, B>) {
   return <R>(self: Stream<R, E, A>) => runForEachManaged_(self, f)
@@ -1698,6 +1766,8 @@ export function runForEachWhile_<R, R1, E, E1, A>(
 /**
  * Consumes elements of the stream, passing them to the specified callback,
  * and terminating consumption when the callback returns `false`.
+ *
+ * @dataFirst runForEachWhile_
  */
 export function runForEachWhile<R1, E1, A>(f: (a: A) => T.Effect<R1, E1, boolean>) {
   return <R, E>(self: Stream<R, E, A>) => runForEachWhile_(self, f)
@@ -1717,6 +1787,8 @@ export function runForEachWhileManaged_<R, R1, E, E1, A>(
 /**
  * Like `Stream#forEachWhile`, but returns a `ZManaged` so the finalization order
  * can be controlled.
+ *
+ * @dataFirst runForEachWhileManaged_
  */
 export function runForEachWhileManaged<R1, E1, A>(
   f: (a: A) => T.Effect<R1, E1, boolean>
@@ -1738,6 +1810,8 @@ export function filterM_<R, R1, E, E1, A>(
 
 /**
  * Effectfully filters the elements emitted by this stream.
+ *
+ * @dataFirst filterM_
  */
 export function filterM<R1, E1, A>(f: (a: A) => T.Effect<R1, E1, A>) {
   return <R, E>(self: Stream<R, E, A>) => filterM_(self, f)
@@ -1765,6 +1839,8 @@ export function filterNot_<R, E, A>(
 /**
  * Filters this stream by the specified predicate, removing all elements for
  * which the predicate evaluates to true.
+ *
+ * @dataFirst filterNot_
  */
 export function filterNot<A, B extends A>(
   pred: Refinement<A, B>
@@ -1782,11 +1858,21 @@ export function filterNot<A>(
  * Emits elements of this stream with a fixed delay in between, regardless of how long it
  * takes to produce a value.
  */
-export function fixed<R, E, A>(
+export function fixed_<R, E, A>(
   self: Stream<R, E, A>,
   duration: number
 ): Stream<R & Has<CL.Clock>, E, A> {
   return schedule_(self, SC.fixed(duration))
+}
+
+/**
+ * Emits elements of this stream with a fixed delay in between, regardless of how long it
+ * takes to produce a value.
+ *
+ * @dataFirst fixed_
+ */
+export function fixed(duration: number) {
+  return <R, E, A>(self: Stream<R, E, A>) => fixed_(self, duration)
 }
 
 /**
@@ -1948,6 +2034,8 @@ export function mapChunks_<R, E, A, A1>(
 
 /**
  * Transforms the chunks emitted by this stream.
+ *
+ * @dataFirst mapChunks_
  */
 export function mapChunks<A, A1>(f: (chunk: A.Chunk<A>) => A.Chunk<A1>) {
   return <R, E>(self: Stream<R, E, A>) => mapChunks_(self, f)
@@ -1965,6 +2053,8 @@ export function mapError_<R, E, E1, A>(
 
 /**
  * Transforms the errors emitted by this stream using `f`.
+ *
+ * @dataFirst mapError_
  */
 export function mapError<E, E1>(f: (e: E) => E1) {
   return <R, A>(self: Stream<R, E, A>) => mapError_(self, f)
@@ -1984,6 +2074,8 @@ export function runIntoHubManaged_<R, R1, E extends E1, E1, A, Z>(
 /**
  * Like `Stream#runIntoHub`, but provides the result as a `Managed` to allow for scope
  * composition.
+ *
+ * @dataFirst runIntoHubManaged_
  */
 export function runIntoHubManaged<R1, E1, A, Z>(
   hub: H.XHub<R1, never, never, unknown, Take.Take<E1, A>, Z>
@@ -2018,6 +2110,8 @@ export function runIntoManaged_<R, R1, E extends E1, E1, A, Z>(
 /**
  * Like `Stream#into`, but provides the result as a `Managed` to allow for scope
  * composition.
+ *
+ * @dataFirst runIntoManaged_
  */
 export function runIntoManaged<R1, E1, A, Z>(
   queue: Q.XQueue<R1, never, never, unknown, Take.Take<E1, A>, Z>
@@ -2050,6 +2144,8 @@ export function toHub_<R, E, A>(
 /**
  * Converts the stream to a managed hub of chunks. After the managed hub is used,
  * the hub will never again produce values and should be discarded.
+ *
+ * @dataFirst toHub_
  */
 export function toHub(capacity: number) {
   return <R, E, A>(self: Stream<R, E, A>) => toHub_(self, capacity)
@@ -2163,6 +2259,8 @@ export function toQueue_<R, E, A>(
 /**
  * Converts the stream to a managed queue of chunks. After the managed queue is used,
  * the queue will never again produce values and should be discarded.
+ *
+ * @dataFirst toQueue_
  */
 export function toQueue(capacity = 2) {
   return <R, E, A>(self: Stream<R, E, A>) => toQueue_(self, capacity)
@@ -2208,6 +2306,9 @@ export function runManaged_<R, R1, E, A, E2, B, L>(
   return pipe(CH.pipeTo_(self.channel, sink.channel), CH.drain, CH.runManaged)
 }
 
+/**
+ * @dataFirst runManaged_
+ */
 export function runManaged<R1, E, A, E2, B>(sink: SK.Sink<R1, E, A, E2, any, B>) {
   return <R>(self: Stream<R, E, A>) => runManaged_(self, sink)
 }
@@ -2234,6 +2335,8 @@ export function interruptWhen_<R, R1, E, E1, A, Z>(
  *
  * If the IO completes with a failure before the stream completes, the returned stream
  * will emit that failure.
+ *
+ * @dataFirst interruptWhen_
  */
 export function interruptWhen<R1, E1, Z>(io: T.Effect<R1, E1, Z>) {
   return <R, E, A>(self: Stream<R, E, A>) => interruptWhen_(self, io)
@@ -2257,6 +2360,8 @@ export function interruptWhenP_<R, E, A, E1>(
  * combinator will also interrupt any in-progress element being pulled from upstream.
  *
  * If the promise completes with a failure, the stream will emit that failure.
+ *
+ * @dataFirst interruptWhenP_
  */
 export function interruptWhenP<E1>(p: P.Promise<E1, never>) {
   return <R, E, A>(self: Stream<R, E, A>) => interruptWhenP_(self, p)
@@ -2280,6 +2385,8 @@ export function schedule_<R, R1, E, A, Z>(
 
 /**
  * Schedules the output of the stream using the provided `schedule`.
+ *
+ * @dataFirst schedule_
  */
 export function schedule<R1, A, Z>(schedule: SC.Schedule<R1, A, Z>) {
   return <R, E>(self: Stream<R, E, A>) => schedule_(self, schedule)
@@ -2302,6 +2409,8 @@ export function scheduleEither_<R, R1, E, A, B>(
 /**
  * Schedules the output of the stream using the provided `schedule` and emits its output at
  * the end (if `schedule` is finite).
+ *
+ * @dataFirst scheduleEither_
  */
 export function scheduleEither<R1, A, B>(schedule: SC.Schedule<R1, A, B>) {
   return <R, E>(self: Stream<R, E, A>) => scheduleEither_(self, schedule)
@@ -2413,6 +2522,8 @@ export function transduce_<R, R1, E, E1, A, Z>(
 
 /**
  * Applies the transducer to the stream and emits its outputs.
+ *
+ * @dataFirst transduce_
  */
 export function transduce<R, R1, E, E1, A, Z>(sink: SK.Sink<R1, E, A, E1, A, Z>) {
   return (self: Stream<R, E, A>) => transduce_(self, sink)
