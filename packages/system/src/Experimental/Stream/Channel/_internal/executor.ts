@@ -491,6 +491,14 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
               )
               break
             }
+            case P.EffectTotalTypeId: {
+              result = this.doneSucceed(currentChannel.effect())
+              break
+            }
+            case P.EffectSuspendTotalTypeId: {
+              this.currentChannel = currentChannel.effect()
+              break
+            }
           }
         }
       }

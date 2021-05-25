@@ -955,3 +955,15 @@ export function unwrapManaged<
  */
 export const unit: P.Channel<unknown, unknown, unknown, unknown, never, never, void> =
   end(void 0)
+
+export function succeedWith<OutDone>(
+  effect: () => OutDone
+): P.Channel<unknown, unknown, unknown, unknown, never, never, OutDone> {
+  return new P.EffectTotal(effect)
+}
+
+export function suspend<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
+  effect: () => P.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
+): P.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone> {
+  return new P.EffectSuspendTotal(effect)
+}
