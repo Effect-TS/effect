@@ -3,6 +3,29 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.36.5](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.36.4...@effect-ts/system@0.36.5) (2021-05-30)
+
+
+### Bug Fixes
+
+* **stream:** debounce now has its proper signature ([f1c4cc0](https://github.com/Effect-TS/core/commit/f1c4cc068912f994ff42d49d638f9d993201a54d))
+* **stream:** fix types of forEach ([5675f24](https://github.com/Effect-TS/core/commit/5675f24d0a043d735896dcaf454abf52eb5f12dd))
+
+
+### Features
+
+* **channel:** add EffectTotal & EffectSuspendTotal primitives, add succeedWith/suspend ([91b55af](https://github.com/Effect-TS/core/commit/91b55afce15091e64e520e4c5e2d5d5a44ca04db))
+* **exp-stream:** added sink foldM+chain ([cea40c3](https://github.com/Effect-TS/core/commit/cea40c3cb16a3eecc947bf0766c7eaeb8b7fada5))
+* **exp-stream:** more combinators ([8996302](https://github.com/Effect-TS/core/commit/8996302b1323cb9ce63f1ffe75ca198a1f984eb7))
+* **exp-stream:** transduce ([0069943](https://github.com/Effect-TS/core/commit/0069943ecbb6c6d30c5ae8a0d0ea4fa44e705217))
+* **exp-stream:** updated code with suspend/succeedwith ([052c1bb](https://github.com/Effect-TS/core/commit/052c1bb36bc3bf0b426e465601c64de6e1fcc88b))
+* **stream:** pipeable combinators ([8c327ab](https://github.com/Effect-TS/core/commit/8c327abdc7380adab70447669639855b8e48fec0))
+* **stream:** use hashmap ([e3b674f](https://github.com/Effect-TS/core/commit/e3b674fe806d3bb7616a5810e95641eb8e7940ad))
+
+
+
+
+
 ## [0.36.4](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.36.2...@effect-ts/system@0.36.4) (2021-05-24)
 
 
