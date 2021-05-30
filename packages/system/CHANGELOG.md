@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.37.0](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.36.5...@effect-ts/system@0.37.0) (2021-05-30)
+
+
+### Bug Fixes
+
+* **plugin:** support ts 4.3 ([342ab83](https://github.com/Effect-TS/core/commit/342ab835bd1ac715727254498f8a9595a5633af1))
+
+
+
+
+
 ## [0.36.5](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.36.4...@effect-ts/system@0.36.5) (2021-05-30)
 
 

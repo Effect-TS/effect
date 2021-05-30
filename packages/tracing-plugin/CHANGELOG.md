@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.11.0](https://github.com/Effect-TS/core/compare/@effect-ts/tracing-plugin@0.10.4...@effect-ts/tracing-plugin@0.11.0) (2021-05-30)
+
+
+### Bug Fixes
+
+* **plugin:** support ts 4.3 ([342ab83](https://github.com/Effect-TS/core/commit/342ab835bd1ac715727254498f8a9595a5633af1))
+* **plugin:** use not emitted statement ([9a562e7](https://github.com/Effect-TS/core/commit/9a562e7cda61303487809cc07a6779d2ecbd9bbc))
+
+
+
+
+
 ## [0.10.4](https://github.com/Effect-TS/core/compare/@effect-ts/tracing-plugin@0.10.3...@effect-ts/tracing-plugin@0.10.4) (2021-05-24)
 
 **Note:** Version bump only for package @effect-ts/tracing-plugin
