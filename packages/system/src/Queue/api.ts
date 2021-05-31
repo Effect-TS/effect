@@ -362,11 +362,11 @@ class DimapM<RA, RB, EA, EB, A, B, C, RC, EC, RD, ED, D> extends XQueueInternal<
   isShutdown: T.UIO<boolean> = this.self.isShutdown
 
   offer(a: C): T.Effect<RC & RA, EA | EC, boolean> {
-    return T.chain_(this.f(a), this.self.offer)
+    return T.chain_(this.f(a), (a) => this.self.offer(a))
   }
 
   offerAll(as: Iterable<C>): T.Effect<RC & RA, EC | EA, boolean> {
-    return T.chain_(T.forEach_(as, this.f), this.self.offerAll)
+    return T.chain_(T.forEach_(as, this.f), (as) => this.self.offerAll(as))
   }
 
   shutdown: T.UIO<void> = this.self.shutdown
