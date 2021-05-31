@@ -8,8 +8,8 @@ describe("Queue", () => {
     const result = await pipe(
       Q.makeUnbounded<number>(),
       T.map(Q.map((x) => `The number is ${x}`)),
-      T.tap((x) => Q.offer_(x, 10)),
-      T.tap((x) => Q.offer_(x, 20)),
+      T.tap(Q.offer(10)),
+      T.tap(Q.offer(20)),
       T.chain(Q.takeAll),
       T.runPromise
     )
