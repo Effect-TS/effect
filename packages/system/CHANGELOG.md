@@ -3,6 +3,22 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.37.1](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.37.0...@effect-ts/system@0.37.1) (2021-06-02)
+
+
+### Bug Fixes
+
+* **queue:** fix unbound offer* functions in Dimap implementation ([665ff4d](https://github.com/Effect-TS/core/commit/665ff4da712d54417551499f71a2444a657bf754))
+
+
+### Features
+
+* **system:** add matchTag_ ([5264e1b](https://github.com/Effect-TS/core/commit/5264e1bcf129867afdb54d1280afc43356583a30))
+
+
+
+
+
 # [0.37.0](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.36.5...@effect-ts/system@0.37.0) (2021-05-30)
 
 
