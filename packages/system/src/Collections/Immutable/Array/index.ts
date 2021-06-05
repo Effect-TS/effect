@@ -208,7 +208,7 @@ export function comprehension<R>(
 /**
  * Concatenate
  */
-export function concat_<A>(x: Array<A>, y: Array<A>): Array<A> {
+export function concat_<A, A1>(x: Array<A>, y: Array<A1>): Array<A | A1> {
   const lenx = x.length
   if (lenx === 0) {
     return y
@@ -230,8 +230,22 @@ export function concat_<A>(x: Array<A>, y: Array<A>): Array<A> {
 /**
  * Concatenate
  */
-export function concat<A>(y: Array<A>): (x: Array<A>) => Array<A> {
-  return (x) => concat_(x, y)
+export function concat<A1>(y: Array<A1>) {
+  return <A>(x: Array<A>): Array<A | A1> => concat_(x, y)
+}
+
+/**
+ * Concatenate strictly
+ */
+export function concatS_<A>(x: Array<A>, y: Array<A>): Array<A> {
+  return concat_(x, y)
+}
+
+/**
+ * Concatenate strictly
+ */
+export function concatS<A>(y: Array<A>): (x: Array<A>) => Array<A> {
+  return (x) => concatS_(x, y)
 }
 
 /**
