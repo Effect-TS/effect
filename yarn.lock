@@ -8750,12 +8750,7 @@ typescript@^3.9.5, typescript@^3.9.7:
   resolved "https://registry.yarnpkg.com/typescript/-/typescript-3.9.9.tgz#e69905c54bc0681d0518bd4d587cc6f2d0b1a674"
   integrity sha512-kdMjTiekY+z/ubJCATUPlRDl39vXYiMV9iyeMuEuXZh2we6zz80uovNN2WlAxmmdE/Z/YQe+EbOEXB5RHEED3w==
 
-typescript@^4.3.2:
-  version "4.3.2"
-  resolved "https://registry.yarnpkg.com/typescript/-/typescript-4.3.2.tgz#399ab18aac45802d6f2498de5054fcbbe716a805"
-  integrity sha512-zZ4hShnmnoVnAHpVHWpTcxdv7dWP60S2FsydQLV8V5PbS3FifjWFFRiHSWpDJahly88PRyV5teTSLoq4eG7mKw==
-
-typescript@next:
+typescript@^4.4.0-dev.20210606, typescript@next:
   version "4.4.0-dev.20210606"
   resolved "https://registry.yarnpkg.com/typescript/-/typescript-4.4.0-dev.20210606.tgz#98113eb42c290d41ec61d07eb6c5264258b7cc44"
   integrity sha512-7pn++UPl4Ep39NOlFy1SLyDOuJWd0z3uNhlmyV8EKvYvpKe+JDoJ361V/RB4SCCM8ZaFzHAUBRG/7mP+caIl6w==
