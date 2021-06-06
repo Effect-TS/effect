@@ -390,7 +390,7 @@ describe("RedBlackTree", () => {
       ["f", "e", "b", "a", "c", "d"]
     )
     expect(Array.from(RB.values_(pipe(tree, RB.removeFirst(new Key(1, "0")))))).toEqual(
-      ["g", "e", "b", "a", "c", "d"]
+      ["g", "f", "e", "b", "c", "d"]
     )
   })
 })

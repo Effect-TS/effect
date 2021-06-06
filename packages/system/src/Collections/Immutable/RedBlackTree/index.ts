@@ -1360,7 +1360,7 @@ export function findFirst_<K, V>(tree: RedBlackTree<K, V>, key: K): O.Option<V> 
   let n = tree.root
   while (n) {
     const d = cmp(key, n.key)
-    if (St.equals(key, n.key) && (!n.left || !St.equals(key, n.key))) {
+    if (St.equals(key, n.key)) {
       return O.some(n.value)
     }
     if (d <= 0) {
@@ -1406,7 +1406,7 @@ export function removeFirst_<K, V>(
   while (node) {
     const d = cmp(key, node.key)
     stack.push(node)
-    if (St.equals(key, node.key) && (!node.left || !St.equals(key, node.left.key))) {
+    if (St.equals(key, node.key)) {
       node = undefined
     } else if (d <= 0) {
       node = node.left
