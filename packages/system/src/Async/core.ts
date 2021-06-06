@@ -5,6 +5,7 @@ import * as Tp from "../Collections/Immutable/Tuple"
 import { _A, _E, _R, _U } from "../Effect/commons"
 import * as E from "../Either"
 import { pipe } from "../Function"
+import type { Option } from "../Option"
 import { Stack } from "../Stack"
 import type * as U from "../Utils"
 
@@ -1098,4 +1099,20 @@ export function union<Ret extends Async<any, any, any>>(
   _: Ret
 ): Async<U._R<Ret>, U._E<Ret>, U._A<Ret>> {
   return _ as any
+}
+
+/**
+ * Get the A from an option
+ */
+export default function tryCatchOption_<A, E>(ma: Option<A>, onNone: () => E) {
+  return pipe(E.fromOption_(ma, onNone), fromEither)
+}
+
+/**
+ * Get the A from an option
+ *
+ * @dataFirst tryCatchOption_
+ */
+export function tryCatchOption<A, E>(onNone: () => E) {
+  return (ma: Option<A>) => tryCatchOption_(ma, onNone)
 }
