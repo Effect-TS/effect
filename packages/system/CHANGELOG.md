@@ -3,6 +3,23 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.37.2](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.37.1...@effect-ts/system@0.37.2) (2021-06-06)
+
+
+### Bug Fixes
+
+* **core:** fix missing comments and rename ([9ac5876](https://github.com/Effect-TS/core/commit/9ac58760bd97304f282eda3d11246a912f529f9e))
+
+
+### Features
+
+* **core:** Add `fromOptionWith` to Async, Effect and Sync. ([d165bab](https://github.com/Effect-TS/core/commit/d165babbd40f19c7ca439eb18b41286903ab8404))
+* **effect:** Array concat should default to Widen, instead of Strict. ([f518e3f](https://github.com/Effect-TS/core/commit/f518e3f54e9bdee2669d12a38434caaf8065f529))
+
+
+
+
+
 ## [0.37.1](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.37.0...@effect-ts/system@0.37.1) (2021-06-02)
 
 
