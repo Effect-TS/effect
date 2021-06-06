@@ -151,14 +151,14 @@ export function maybeCloseBoth<Env>(
 const endUnit = new P.Done(() => void 0)
 
 export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone> {
-  private input?: ErasedExecutor<Env>
-  private inProgressFinalizer?: T.RIO<Env, Exit.Exit<unknown, unknown>>
-  private subexecutorStack?: SubexecutorStack<Env>
+  private input?: ErasedExecutor<Env> | undefined
+  private inProgressFinalizer?: T.RIO<Env, Exit.Exit<unknown, unknown>> | undefined
+  private subexecutorStack?: SubexecutorStack<Env> | undefined
   private doneStack: L.List<ErasedContinuation<Env>> = L.empty()
-  private done?: Exit.Exit<unknown, unknown>
-  private cancelled?: Exit.Exit<OutErr, OutDone>
-  private emitted?: unknown
-  private currentChannel?: ErasedChannel<Env>
+  private done?: Exit.Exit<unknown, unknown> | undefined
+  private cancelled?: Exit.Exit<OutErr, OutDone> | undefined
+  private emitted?: unknown | undefined
+  private currentChannel?: ErasedChannel<Env> | undefined
 
   constructor(
     initialChannel: () => P.Channel<

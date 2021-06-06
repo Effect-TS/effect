@@ -92,11 +92,12 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   readonly state = new AtomicReference(initial<E, A>())
 
   asyncEpoch = 0 | 0
-  stack?: Stack<Frame> = undefined
-  environments?: Stack<any> = new Stack(this.startEnv)
-  interruptStatus?: Stack<boolean> = new Stack(this.startIStatus.toBoolean)
+  stack?: Stack<Frame> | undefined = undefined
+  environments?: Stack<any> | undefined = new Stack(this.startEnv)
+  interruptStatus?: Stack<boolean> | undefined = new Stack(this.startIStatus.toBoolean)
   supervisors: Stack<Sup.Supervisor<any>> = new Stack(this.supervisor0)
-  forkScopeOverride?: Stack<O.Option<Scope.Scope<Exit.Exit<any, any>>>> = undefined
+  forkScopeOverride?: Stack<O.Option<Scope.Scope<Exit.Exit<any, any>>>> | undefined =
+    undefined
   scopeKey: Scope.Key | undefined = undefined
   traceStatusEnabled =
     this.platform.value.traceExecution || this.platform.value.traceStack

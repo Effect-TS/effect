@@ -20,7 +20,7 @@ export class FiberFailure<E> extends Error {
     super()
 
     this.name = this[FiberFailureSymbol]
-    this.stack = undefined
+    delete this.stack
   }
 }
 
@@ -40,7 +40,7 @@ export class Untraced extends Error {
 
   constructor(message?: string) {
     super(message)
-    this.stack = undefined
+    delete this.stack
     this.name = this[UntracedSymbol]
   }
 }
