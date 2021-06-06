@@ -1562,24 +1562,26 @@ export function timeout_<R, E, A>(self: Managed<R, E, A>, d: number) {
             outerReleaseMap
           )
         )
-        const raceResult: E.Either<F.Fiber<E, Tp.Tuple<[RM.Finalizer, A]>>, A> =
-          yield* _(
-            restore(
-              T.provideAll_(
-                T.raceWith_(
-                  T.provideAll_(self.effect, Tp.tuple(r, innerReleaseMap)),
-                  T.as_(T.sleep(d), O.none),
-                  (result, sleeper) =>
-                    T.zipRight_(
-                      F.interrupt(sleeper),
-                      T.done(Ex.map_(result, (tp) => E.right(tp.get(1))))
-                    ),
-                  (_, resultFiber) => T.succeed(E.left(resultFiber))
-                ),
-                r
-              )
+        const raceResult: E.Either<
+          F.Fiber<E, Tp.Tuple<[RM.Finalizer, A]>>,
+          A
+        > = yield* _(
+          restore(
+            T.provideAll_(
+              T.raceWith_(
+                T.provideAll_(self.effect, Tp.tuple(r, innerReleaseMap)),
+                T.as_(T.sleep(d), O.none),
+                (result, sleeper) =>
+                  T.zipRight_(
+                    F.interrupt(sleeper),
+                    T.done(Ex.map_(result, (tp) => E.right(tp.get(1))))
+                  ),
+                (_, resultFiber) => T.succeed(E.left(resultFiber))
+              ),
+              r
             )
           )
+        )
         const a = yield* _(
           E.fold_(
             raceResult,
@@ -1659,17 +1661,24 @@ export function toLayerMany<Tags extends Tag<any>[]>(...tags: Tags) {
     >
   ) =>
     L.fromRawManaged(
-      core.map_(self, (r): UnionToIntersection<
-        {
-          [k in keyof Tags & number]: [Tags[k]] extends [Tag<infer A>] ? Has<A> : never
-        }[number]
-      > => {
-        const env: any = {}
-        for (const tag of tags) {
-          env[tag.key] = tag.read(r as any)
+      core.map_(
+        self,
+        (
+          r
+        ): UnionToIntersection<
+          {
+            [k in keyof Tags & number]: [Tags[k]] extends [Tag<infer A>]
+              ? Has<A>
+              : never
+          }[number]
+        > => {
+          const env: any = {}
+          for (const tag of tags) {
+            env[tag.key] = tag.read(r as any)
+          }
+          return env
         }
-        return env
-      })
+      )
     )
 }
 

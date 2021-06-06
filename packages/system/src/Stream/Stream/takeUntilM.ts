@@ -23,30 +23,29 @@ export function takeUntilM_<R, R1, E, E1, O>(
       M.bind("chunks", () => self.proc),
       M.bind("keepTakingRef", () => T.toManaged(Ref.makeRef(true))),
       M.let("pull", ({ chunks, keepTakingRef }) => {
-        return T.chain_(keepTakingRef.get, (keepTaking): T.Effect<
-          R1 & R,
-          O.Option<E | E1>,
-          A.Chunk<O>
-        > => {
-          if (!keepTaking) {
-            return Pull.end
-          } else {
-            return pipe(
-              T.do,
-              T.bind("chunk", () => chunks),
-              T.bind("taken", ({ chunk }) =>
-                T.asSomeError(A.takeWhileM_(chunk, (_) => T.map_(pred(_), (r) => !r)))
-              ),
-              T.let("last", ({ chunk, taken }) =>
-                A.take_(A.drop_(chunk, A.size(taken)), 1)
-              ),
-              T.tap(({ last }) =>
-                T.when_(keepTakingRef.set(false), () => !A.isEmpty(last))
-              ),
-              T.map(({ last, taken }) => A.concat_(taken, last))
-            )
+        return T.chain_(
+          keepTakingRef.get,
+          (keepTaking): T.Effect<R1 & R, O.Option<E | E1>, A.Chunk<O>> => {
+            if (!keepTaking) {
+              return Pull.end
+            } else {
+              return pipe(
+                T.do,
+                T.bind("chunk", () => chunks),
+                T.bind("taken", ({ chunk }) =>
+                  T.asSomeError(A.takeWhileM_(chunk, (_) => T.map_(pred(_), (r) => !r)))
+                ),
+                T.let("last", ({ chunk, taken }) =>
+                  A.take_(A.drop_(chunk, A.size(taken)), 1)
+                ),
+                T.tap(({ last }) =>
+                  T.when_(keepTakingRef.set(false), () => !A.isEmpty(last))
+                ),
+                T.map(({ last, taken }) => A.concat_(taken, last))
+              )
+            }
           }
-        })
+        )
       }),
       M.map(({ pull }) => pull)
     )

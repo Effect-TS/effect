@@ -46,42 +46,40 @@ export function defaultExecutor<R extends Has<Annotations>, E>(
         M.use((_) =>
           pipe(
             _,
-            Spec.foldM<unknown, never, ES.ExecutedSpec<E>>(defExec)((_): M.Managed<
-              unknown,
-              never,
-              ES.ExecutedSpec<E>
-            > => {
-              Spec.concreteSpecCase(_)
-              switch (_._tag) {
-                case "SuiteCase": {
-                  const v = _
-                  return pipe(
-                    v.specs,
-                    M.map(
-                      (specs) =>
-                        new ES.ExecutedSpec(new ES.ExecutedSuiteCase(v.label, specs))
+            Spec.foldM<unknown, never, ES.ExecutedSpec<E>>(defExec)(
+              (_): M.Managed<unknown, never, ES.ExecutedSpec<E>> => {
+                Spec.concreteSpecCase(_)
+                switch (_._tag) {
+                  case "SuiteCase": {
+                    const v = _
+                    return pipe(
+                      v.specs,
+                      M.map(
+                        (specs) =>
+                          new ES.ExecutedSpec(new ES.ExecutedSuiteCase(v.label, specs))
+                      )
                     )
-                  )
-                }
-                case "TestCase": {
-                  const v = _
-                  return pipe(
-                    v.test,
-                    T.map(
-                      ({ tuple: [result, dynamicAnnotations] }) =>
-                        new ES.ExecutedSpec(
-                          new ES.ExecutedTestCase(
-                            v.label,
-                            result,
-                            TAM.concat(v.annotations, dynamicAnnotations)
+                  }
+                  case "TestCase": {
+                    const v = _
+                    return pipe(
+                      v.test,
+                      T.map(
+                        ({ tuple: [result, dynamicAnnotations] }) =>
+                          new ES.ExecutedSpec(
+                            new ES.ExecutedTestCase(
+                              v.label,
+                              result,
+                              TAM.concat(v.annotations, dynamicAnnotations)
+                            )
                           )
-                        )
-                    ),
-                    T.toManaged
-                  )
+                      ),
+                      T.toManaged
+                    )
+                  }
                 }
               }
-            }),
+            ),
             M.useNow
           )
         )

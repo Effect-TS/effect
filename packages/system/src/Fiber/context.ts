@@ -369,17 +369,16 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   }
 
   get await(): T.UIO<Exit.Exit<E, A>> {
-    return T.effectMaybeAsyncInterrupt((k): E.Either<
-      T.UIO<void>,
-      T.UIO<Exit.Exit<E, A>>
-    > => {
-      const cb: Callback<never, Exit.Exit<E, A>> = (x) => k(T.done(x))
-      return O.fold_(
-        this.observe0(cb),
-        () => E.left(T.succeedWith(() => this.interruptObserver(cb))),
-        E.right
-      )
-    })
+    return T.effectMaybeAsyncInterrupt(
+      (k): E.Either<T.UIO<void>, T.UIO<Exit.Exit<E, A>>> => {
+        const cb: Callback<never, Exit.Exit<E, A>> = (x) => k(T.done(x))
+        return O.fold_(
+          this.observe0(cb),
+          () => E.left(T.succeedWith(() => this.interruptObserver(cb))),
+          E.right
+        )
+      }
+    )
   }
 
   interruptObserver(k: Callback<never, Exit.Exit<E, A>>) {

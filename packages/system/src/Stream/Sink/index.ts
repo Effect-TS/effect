@@ -884,33 +884,38 @@ export function zipWithPar_<R, R1, E, E1, I, I1, L, L1, Z, Z1, Z2>(
                       >
                   )
 
-                  return T.chain_(T.zipPar_(l, r), ({ tuple: [lr, rr] }): T.Effect<
-                    R & R1,
-                    Tp.Tuple<[E.Either<E1, Z2>, A.Chunk<L | L1>]>,
-                    State<Z, Z1>
-                  > => {
-                    if (O.isSome(lr)) {
-                      const [z, l] = lr.value.tuple
+                  return T.chain_(
+                    T.zipPar_(l, r),
+                    ({
+                      tuple: [lr, rr]
+                    }): T.Effect<
+                      R & R1,
+                      Tp.Tuple<[E.Either<E1, Z2>, A.Chunk<L | L1>]>,
+                      State<Z, Z1>
+                    > => {
+                      if (O.isSome(lr)) {
+                        const [z, l] = lr.value.tuple
 
-                      if (O.isSome(rr)) {
-                        const [z1, l1] = rr.value.tuple
+                        if (O.isSome(rr)) {
+                          const [z1, l1] = rr.value.tuple
 
-                        return T.fail(
-                          Tp.tuple(E.right(f(z, z1)), A.size(l) > A.size(l1) ? l1 : l)
-                        )
+                          return T.fail(
+                            Tp.tuple(E.right(f(z, z1)), A.size(l) > A.size(l1) ? l1 : l)
+                          )
+                        } else {
+                          return T.succeed(new LeftDone(z))
+                        }
                       } else {
-                        return T.succeed(new LeftDone(z))
-                      }
-                    } else {
-                      if (O.isSome(rr)) {
-                        const [z1] = rr.value.tuple
+                        if (O.isSome(rr)) {
+                          const [z1] = rr.value.tuple
 
-                        return T.succeed(new RightDone(z1))
-                      } else {
-                        return T.succeed(bothRunning)
+                          return T.succeed(new RightDone(z1))
+                        } else {
+                          return T.succeed(bothRunning)
+                        }
                       }
                     }
-                  }) as T.Effect<
+                  ) as T.Effect<
                     R & R1,
                     Tp.Tuple<[E.Either<E1, Z2>, A.Chunk<L | L1>]>,
                     State<Z, Z1>

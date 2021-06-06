@@ -671,36 +671,43 @@ export function chunkN_<R, E, A>(self: Stream<R, E, A>, n: number): Stream<R, E,
   return C.unwrap(
     T.succeedWith(() => {
       const rechunker = new Rechunker<A>(n)
-      const process: CH.Channel<R, E, A.Chunk<A>, unknown, E, A.Chunk<A>, void> =
-        CH.readWithCause(
-          (chunk) => {
-            const chunkSize = A.size(chunk)
+      const process: CH.Channel<
+        R,
+        E,
+        A.Chunk<A>,
+        unknown,
+        E,
+        A.Chunk<A>,
+        void
+      > = CH.readWithCause(
+        (chunk) => {
+          const chunkSize = A.size(chunk)
 
-            if (chunkSize > 0) {
-              let chunks = L.empty<A.Chunk<A>>()
-              let result: A.Chunk<A> | null = null
-              let i = 0
+          if (chunkSize > 0) {
+            let chunks = L.empty<A.Chunk<A>>()
+            let result: A.Chunk<A> | null = null
+            let i = 0
 
-              while (i < chunkSize) {
-                while (i < chunkSize && result === null) {
-                  result = rechunker.write(A.unsafeGet_(chunk, i))
-                  i += 1
-                }
-
-                if (result !== null) {
-                  chunks = L.prepend_(chunks, result)
-                  result = null
-                }
+            while (i < chunkSize) {
+              while (i < chunkSize && result === null) {
+                result = rechunker.write(A.unsafeGet_(chunk, i))
+                i += 1
               }
 
-              return CH.zipRight_(CH.writeAll(...L.toArray(L.reverse(chunks))), process)
+              if (result !== null) {
+                chunks = L.prepend_(chunks, result)
+                result = null
+              }
             }
 
-            return process
-          },
-          (cause) => CH.zipRight_(rechunker.emitOfNotEmpty(), CH.halt(cause)),
-          (_) => rechunker.emitOfNotEmpty()
-        )
+            return CH.zipRight_(CH.writeAll(...L.toArray(L.reverse(chunks))), process)
+          }
+
+          return process
+        },
+        (cause) => CH.zipRight_(rechunker.emitOfNotEmpty(), CH.halt(cause)),
+        (_) => rechunker.emitOfNotEmpty()
+      )
 
       return new Stream(self.channel[">>>"](process))
     })
@@ -2091,12 +2098,19 @@ export function runIntoManaged_<R, R1, E extends E1, E1, A, Z>(
   self: Stream<R, E, A>,
   queue: Q.XQueue<R1, never, never, unknown, Take.Take<E1, A>, Z>
 ): M.Managed<R & R1, E | E1, void> {
-  const writer: CH.Channel<R, E, A.Chunk<A>, unknown, E, Take.Take<E | E1, A>, any> =
-    CH.readWithCause(
-      (in_) => CH.zipRight_(CH.write(Take.chunk(in_)), writer),
-      (cause) => CH.write(Take.halt(cause)),
-      (_) => CH.write(Take.end)
-    )
+  const writer: CH.Channel<
+    R,
+    E,
+    A.Chunk<A>,
+    unknown,
+    E,
+    Take.Take<E | E1, A>,
+    any
+  > = CH.readWithCause(
+    (in_) => CH.zipRight_(CH.write(Take.chunk(in_)), writer),
+    (cause) => CH.write(Take.halt(cause)),
+    (_) => CH.write(Take.end)
+  )
 
   return pipe(
     self.channel[">>>"](writer),
@@ -2456,22 +2470,29 @@ export function transduce_<R, R1, E, E1, A, Z>(
     CH.suspend(() => {
       const leftovers = new AtomicReference(A.empty<A.Chunk<A>>())
       const upstreamDone = new AtomicBoolean(false)
-      const buffer: CH.Channel<unknown, E, A.Chunk<A>, unknown, E, A.Chunk<A>, any> =
-        CH.suspend(() => {
-          const l = leftovers.get
+      const buffer: CH.Channel<
+        unknown,
+        E,
+        A.Chunk<A>,
+        unknown,
+        E,
+        A.Chunk<A>,
+        any
+      > = CH.suspend(() => {
+        const l = leftovers.get
 
-          if (A.isEmpty(l)) {
-            return CH.readWith(
-              (c) => CH.zipRight_(CH.write(c), buffer),
-              (e) => CH.fail(e),
-              (done) => CH.end(done)
-            )
-          } else {
-            leftovers.set(A.empty())
+        if (A.isEmpty(l)) {
+          return CH.readWith(
+            (c) => CH.zipRight_(CH.write(c), buffer),
+            (e) => CH.fail(e),
+            (done) => CH.end(done)
+          )
+        } else {
+          leftovers.set(A.empty())
 
-            return CH.zipRight_(CH.writeChunk(l), buffer)
-          }
-        })
+          return CH.zipRight_(CH.writeChunk(l), buffer)
+        }
+      })
 
       const concatAndGet = (c: A.Chunk<A.Chunk<A>>): A.Chunk<A.Chunk<A>> => {
         const ls = leftovers.get
@@ -2502,18 +2523,25 @@ export function transduce_<R, R1, E, E1, A, Z>(
           )
       )
 
-      const transducer: CH.Channel<R1, E, A.Chunk<A>, unknown, E1, A.Chunk<Z>, void> =
-        CH.chain_(CH.doneCollect(sink.channel), ({ tuple: [leftover, z] }) =>
-          CH.chain_(
-            CH.succeedWith(() => Tp.tuple(upstreamDone.get, concatAndGet(leftover))),
-            ({ tuple: [done, newLeftovers] }) => {
-              const nextChannel =
-                done && A.isEmpty(newLeftovers) ? CH.end(undefined) : transducer
+      const transducer: CH.Channel<
+        R1,
+        E,
+        A.Chunk<A>,
+        unknown,
+        E1,
+        A.Chunk<Z>,
+        void
+      > = CH.chain_(CH.doneCollect(sink.channel), ({ tuple: [leftover, z] }) =>
+        CH.chain_(
+          CH.succeedWith(() => Tp.tuple(upstreamDone.get, concatAndGet(leftover))),
+          ({ tuple: [done, newLeftovers] }) => {
+            const nextChannel =
+              done && A.isEmpty(newLeftovers) ? CH.end(undefined) : transducer
 
-              return CH.zipRight_(CH.write(A.single(z)), nextChannel)
-            }
-          )
+            return CH.zipRight_(CH.write(A.single(z)), nextChannel)
+          }
         )
+      )
 
       return self.channel[">>>"](upstreamMarker)[">>>"](buffer)[">>>"](transducer)
     })

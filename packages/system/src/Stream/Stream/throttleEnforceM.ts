@@ -50,42 +50,45 @@ export function throttleEnforceM_<R, E, O, R1, E1>(
         T.toManaged(Ref.makeRef(Tp.tuple(units, currentTime)))
       ),
       M.let("pull", ({ bucket, chunks }) => {
-        const go: T.Effect<R & R1 & CL.HasClock, O.Option<E | E1>, A.Chunk<O>> =
-          T.chain_(chunks, (chunk) =>
-            pipe(
-              pipe(costFn(chunk), T.mapError(O.some), T.zip(CL.currentTime)),
-              T.chain(({ tuple: [weight, current] }) =>
-                pipe(
-                  bucket,
-                  Ref.modify(({ tuple: [tokens, timestamp] }) => {
-                    const elapsed = current - timestamp
-                    const cycles = elapsed / duration
-                    const available = (() => {
-                      const sum = tokens + cycles * units
-                      const max = units + burst < 0 ? Number.MAX_VALUE : units + burst
+        const go: T.Effect<
+          R & R1 & CL.HasClock,
+          O.Option<E | E1>,
+          A.Chunk<O>
+        > = T.chain_(chunks, (chunk) =>
+          pipe(
+            pipe(costFn(chunk), T.mapError(O.some), T.zip(CL.currentTime)),
+            T.chain(({ tuple: [weight, current] }) =>
+              pipe(
+                bucket,
+                Ref.modify(({ tuple: [tokens, timestamp] }) => {
+                  const elapsed = current - timestamp
+                  const cycles = elapsed / duration
+                  const available = (() => {
+                    const sum = tokens + cycles * units
+                    const max = units + burst < 0 ? Number.MAX_VALUE : units + burst
 
-                      return sum < 0 ? max : Math.min(sum, max)
-                    })()
+                    return sum < 0 ? max : Math.min(sum, max)
+                  })()
 
-                    if (weight <= available) {
-                      return Tp.tuple(
-                        O.some(chunk),
-                        Tp.tuple(available - weight, current)
-                      )
-                    } else {
-                      return Tp.tuple(O.none, Tp.tuple(available, current))
-                    }
-                  }),
-                  T.chain(
-                    O.fold(
-                      () => go,
-                      (os) => T.succeed(os)
+                  if (weight <= available) {
+                    return Tp.tuple(
+                      O.some(chunk),
+                      Tp.tuple(available - weight, current)
                     )
+                  } else {
+                    return Tp.tuple(O.none, Tp.tuple(available, current))
+                  }
+                }),
+                T.chain(
+                  O.fold(
+                    () => go,
+                    (os) => T.succeed(os)
                   )
                 )
               )
             )
           )
+        )
         //
         return go
       }),

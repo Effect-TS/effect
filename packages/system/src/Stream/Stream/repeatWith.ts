@@ -34,36 +34,39 @@ export function repeatWith<R1, B>(schedule: SC.Schedule<R1, any, B>) {
           ),
           M.bind("doneRef", () => T.toManaged(Ref.makeRef(false))),
           M.let("pull", ({ currPull, doneRef, sdriver, switchPull }) => {
-            const go: T.Effect<R & R1 & CL.HasClock, O.Option<E>, A.Chunk<C | D>> =
-              T.chain_(doneRef.get, (done) => {
-                if (done) {
-                  return Pull.end
-                } else {
-                  return T.foldM_(
-                    T.flatten(currPull.get),
-                    O.fold(
-                      () => {
-                        const scheduleOutput = pipe(sdriver.last, T.orDie, T.map(g))
-                        const continue_ = pipe(
-                          sdriver.next(undefined),
-                          T.zipRight(
-                            switchPull(
-                              concat_(map_(self, f), fromEffect(scheduleOutput)).proc
-                            )
-                          ),
-                          T.tap((_) => currPull.set(_)),
-                          T.zipRight(go)
-                        )
-                        const halt = T.zipRight_(doneRef.set(true), Pull.end)
+            const go: T.Effect<
+              R & R1 & CL.HasClock,
+              O.Option<E>,
+              A.Chunk<C | D>
+            > = T.chain_(doneRef.get, (done) => {
+              if (done) {
+                return Pull.end
+              } else {
+                return T.foldM_(
+                  T.flatten(currPull.get),
+                  O.fold(
+                    () => {
+                      const scheduleOutput = pipe(sdriver.last, T.orDie, T.map(g))
+                      const continue_ = pipe(
+                        sdriver.next(undefined),
+                        T.zipRight(
+                          switchPull(
+                            concat_(map_(self, f), fromEffect(scheduleOutput)).proc
+                          )
+                        ),
+                        T.tap((_) => currPull.set(_)),
+                        T.zipRight(go)
+                      )
+                      const halt = T.zipRight_(doneRef.set(true), Pull.end)
 
-                        return T.orElse_(continue_, () => halt)
-                      },
-                      (e) => T.fail(O.some(e))
-                    ),
-                    (_) => T.succeed(_)
-                  )
-                }
-              })
+                      return T.orElse_(continue_, () => halt)
+                    },
+                    (e) => T.fail(O.some(e))
+                  ),
+                  (_) => T.succeed(_)
+                )
+              }
+            })
 
             return go
           }),

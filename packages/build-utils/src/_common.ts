@@ -80,5 +80,10 @@ export async function runMain(t: Ef.UIO<void>): Promise<void> {
   }
 }
 
-export const copy =
-  Ef.fromNodeCb<string, string, AsyncOptions | undefined, Error, void>(copy_)
+export const copy = Ef.fromNodeCb<
+  string,
+  string,
+  AsyncOptions | undefined,
+  Error,
+  void
+>(copy_)

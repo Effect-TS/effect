@@ -1083,10 +1083,16 @@ export function mergeWith_<
         OutDone2 | OutDone3
       > => {
         if (state._typeId === MH.BothRunningTypeId) {
-          const lj: T.Effect<Env1, E.Either<OutErr, OutDone>, OutElem | OutElem1> =
-            F.join(state.left)
-          const rj: T.Effect<Env1, E.Either<OutErr1, OutDone1>, OutElem | OutElem1> =
-            F.join(state.right)
+          const lj: T.Effect<
+            Env1,
+            E.Either<OutErr, OutDone>,
+            OutElem | OutElem1
+          > = F.join(state.left)
+          const rj: T.Effect<
+            Env1,
+            E.Either<OutErr1, OutDone1>,
+            OutElem | OutElem1
+          > = F.join(state.right)
 
           return C.unwrap(
             T.raceWith_(
