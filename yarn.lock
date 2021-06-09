@@ -8823,10 +8823,10 @@ typescript-transform-paths@^2.2.4:
   dependencies:
     minimatch "^3.0.4"
 
-typescript@4.4.0-dev.20210605:
-  version "4.4.0-dev.20210605"
-  resolved "https://registry.yarnpkg.com/typescript/-/typescript-4.4.0-dev.20210605.tgz#fb81bafe98e9353f950c182016605ffe1ce3fa40"
-  integrity sha512-JnhEPl5U2fOwF27Xv/953RsajBi7bp448TiGx0r+pEZr9BF45EhVItO4tVAtMhb0Sr17XF5exJMgT736xw1PMw==
+typescript@4.4.0-dev.20210608:
+  version "4.4.0-dev.20210608"
+  resolved "https://registry.yarnpkg.com/typescript/-/typescript-4.4.0-dev.20210608.tgz#c81b8592c0aee6c8d4b8f233d1a7a4d87db17ef4"
+  integrity sha512-es0oGUFQdAKLkz043/oTP4IKnEJ5LtNRz9jGCeNkCYsx3qLrN4idKjWPicKjlwXS3FoVWj20XwML6UKbBdwzWw==
 
 typescript@^3.9.5, typescript@^3.9.7:
   version "3.9.9"
