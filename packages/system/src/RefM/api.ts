@@ -772,7 +772,7 @@ export function tapInput<A, RC, EC, X, A1 extends A = A>(
 }
 
 /**
- * Performs the specified effect every time a value is written to this
+ * Performs the specified effect every time a value is read to this
  * `XRefM`.
  */
 export function tapOutput_<RA, RB, EA, EB, A, B, RC, EC, X>(
@@ -783,7 +783,7 @@ export function tapOutput_<RA, RB, EA, EB, A, B, RC, EC, X>(
 }
 
 /**
- * Performs the specified effect every time a value is written to this
+ * Performs the specified effect every time a value is read to this
  * `XRefM`.
  */
 export function tapOutput<B, RC, EC, X>(f: (b: B) => T.Effect<RC, EC, X>) {
