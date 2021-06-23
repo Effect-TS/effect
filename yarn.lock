@@ -5999,9 +5999,9 @@ lru-cache@^6.0.0:
     yallist "^4.0.0"
 
 madge@^5.0.0:
-  version "5.0.0"
-  resolved "https://registry.yarnpkg.com/madge/-/madge-5.0.0.tgz#c05e18ff84c0e9d3601b967099fbf9d5bc0c4701"
-  integrity sha512-mS4cSRNP5jrJHhYKYaw+Kp+BJvwZBycK37Rpl2k4IcUJALNrn9WOyx88F1OgGnMWlxIawkhkUZA14Akrq1CtyQ==
+  version "5.0.1"
+  resolved "https://registry.yarnpkg.com/madge/-/madge-5.0.1.tgz#2096d9006558ea0669b3ade89c2cda708a24e22b"
+  integrity sha512-krmSWL9Hkgub74bOjnjWRoFPAJvPwSG6Dbta06qhWOq6X/n/FPzO3ESZvbFYVIvG2g4UHXvCJN1b+RZLaSs9nA==
   dependencies:
     chalk "^4.1.1"
     commander "^7.2.0"
