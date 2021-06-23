@@ -19,7 +19,10 @@ export const writeFile = TE.taskify<fs.PathLike, string, NodeJS.ErrnoException, 
   fs.writeFile
 )
 
-const exit = (code: 0 | 1): IO.IO<void> => () => process.exit(code)
+const exit =
+  (code: 0 | 1): IO.IO<void> =>
+  () =>
+    process.exit(code)
 
 export const glob = (
   glob: string,

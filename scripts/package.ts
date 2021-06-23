@@ -1,14 +1,15 @@
 import * as ROA from "fp-ts/Array"
-import * as J from "fp-ts/Json"
-import * as TE from "fp-ts/TaskEither"
 import * as E from "fp-ts/Either"
 import { flow, pipe } from "fp-ts/function"
+import * as J from "fp-ts/Json"
+import * as TE from "fp-ts/TaskEither"
 
 import { copy, onLeft, onRight, readFile, runMain, writeFile } from "./_common"
 
 const copyReadme = copy("./README.md", "./build", { update: true })
 
-const isStringArray = (x: unknown): x is string[] => Array.isArray(x) && x.every((y) => typeof y === "string")
+const isStringArray = (x: unknown): x is string[] =>
+  Array.isArray(x) && x.every((y) => typeof y === "string")
 
 const loadPackageJson = pipe(
   readFile("./package.json", "utf8"),
@@ -45,40 +46,35 @@ const writePackageJsonContent = (content: any) =>
 
 const getModules = flow(
   (content: any) => content?.config?.modules,
-  TE.fromPredicate(
-    isStringArray,
-    () => new Error("missing modules config")
-  )
+  TE.fromPredicate(isStringArray, () => new Error("missing modules config"))
 )
 
 const getSide = flow(
   (content: any) => content?.config?.side,
-  (x): string[] => isStringArray(x) ? x : []
+  (x): string[] => (isStringArray(x) ? x : [])
 )
-const buildModulePath = (m: string) => `${
-  ROA.range(1, m.split("/").length)
-   .map(() => "../")
-   .join("")
-  }esm/${m}/index.js
+const buildModulePath = (m: string) => `${ROA.range(1, m.split("/").length)
+  .map(() => "../")
+  .join("")}esm/${m}/index.js
 `
 
 const writeModulePackageJson = (modules: string[], content: any) => {
   const side = getSide(content)
   return pipe(
-    modules, 
+    modules,
     TE.traverseArray((m) =>
-    writeFile(
-      `./build/${m}/package.json`,
-      JSON.stringify(
-        {
-          sideEffects: side.includes(m),
-          main: "./index.js",
-          module: buildModulePath(m),
-          typings: `./index.d.ts`
-        },
-        null,
-        2
-      )
+      writeFile(
+        `./build/${m}/package.json`,
+        JSON.stringify(
+          {
+            sideEffects: side.includes(m),
+            main: "./index.js",
+            module: buildModulePath(m),
+            typings: `./index.d.ts`
+          },
+          null,
+          2
+        )
       )
     )
   )
