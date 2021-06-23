@@ -8815,20 +8815,15 @@ typescript-transform-paths@2.2.4:
   dependencies:
     minimatch "^3.0.4"
 
-typescript@4.4.0-dev.20210605:
-  version "4.4.0-dev.20210605"
-  resolved "https://registry.yarnpkg.com/typescript/-/typescript-4.4.0-dev.20210605.tgz#fb81bafe98e9353f950c182016605ffe1ce3fa40"
-  integrity sha512-JnhEPl5U2fOwF27Xv/953RsajBi7bp448TiGx0r+pEZr9BF45EhVItO4tVAtMhb0Sr17XF5exJMgT736xw1PMw==
+typescript@4.4.0-dev.20210622, typescript@next:
+  version "4.4.0-dev.20210622"
+  resolved "https://registry.yarnpkg.com/typescript/-/typescript-4.4.0-dev.20210622.tgz#e31a026a4445513e59bea439ff30029ec7e5ae08"
+  integrity sha512-kT0baBQag0PVrvpC1NWpL4/kg9zKL51KN0DKyymK+pZX3hdJRYM/CnMndEZufzBYz6Axz4xwlc50/pl7PO+KpA==
 
 typescript@^3.9.5, typescript@^3.9.7:
   version "3.9.10"
   resolved "https://registry.yarnpkg.com/typescript/-/typescript-3.9.10.tgz#70f3910ac7a51ed6bef79da7800690b19bf778b8"
   integrity sha512-w6fIxVE/H1PkLKcCPsFqKE7Kv7QUwhU8qQY2MueZXWx5cPZdwFupLgKK3vntcK98BtNHZtAF4LA/yl2a7k8R6Q==
-
-typescript@next:
-  version "4.4.0-dev.20210622"
-  resolved "https://registry.yarnpkg.com/typescript/-/typescript-4.4.0-dev.20210622.tgz#e31a026a4445513e59bea439ff30029ec7e5ae08"
-  integrity sha512-kT0baBQag0PVrvpC1NWpL4/kg9zKL51KN0DKyymK+pZX3hdJRYM/CnMndEZufzBYz6Axz4xwlc50/pl7PO+KpA==
 
 uglify-js@^3.1.4:
   version "3.13.9"
