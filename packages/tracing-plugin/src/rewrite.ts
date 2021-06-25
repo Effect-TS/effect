@@ -16,13 +16,10 @@ export default function rewrite(_program: ts.Program) {
             ts.isPropertyAccessExpression(node.expression)
           ) {
             const rewrite = checker
-              .getTypeAtLocation(node.expression)
-              .getCallSignatures()
-              .flatMap((_) =>
-                _.getJsDocTags()
-                  .map((_) => `${_.name} ${_.text?.map((_) => _.text).join(" ")}`)
-                  .filter((_) => _.startsWith("rewrite"))
-              )[0]
+              .getResolvedSignature(node)
+              ?.getJsDocTags()
+              .map((_) => `${_.name} ${_.text?.map((_) => _.text).join(" ")}`)
+              .filter((_) => _.startsWith("rewrite"))[0]
 
             if (rewrite) {
               const [fn, mod] = rewrite.match(/rewrite (.*) from "(.*)"/)!.splice(1)
