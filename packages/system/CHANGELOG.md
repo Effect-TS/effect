@@ -3,6 +3,22 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.37.7](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.37.6...@effect-ts/system@0.37.7) (2021-06-25)
+
+
+### Bug Fixes
+
+* **effect:** add missing export ([e9f4807](https://github.com/Effect-TS/core/commit/e9f4807f04e8276d83ea16bf6bfe6da251cd753b))
+
+
+### Features
+
+* **effect:** add data first providers ([9571fde](https://github.com/Effect-TS/core/commit/9571fded1f240e4d73c73deae32e9900952ad932))
+
+
+
+
+
 ## [0.37.6](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.37.5...@effect-ts/system@0.37.6) (2021-06-25)
 
 
