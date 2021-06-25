@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.37.6](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.37.5...@effect-ts/system@0.37.6) (2021-06-25)
+
+
+### Features
+
+* **layer:** add provideSomeLayer_ ([6815bb8](https://github.com/Effect-TS/core/commit/6815bb83b4459e390d9302c001cfa87c6c688b7d))
+
+
+
+
+
 ## [0.37.5](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.37.4...@effect-ts/system@0.37.5) (2021-06-25)
 
 
