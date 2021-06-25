@@ -241,6 +241,16 @@ export function provideSomeLayer<R, E, A>(layer: Layer<R, E, A>) {
 /**
  * Provides a layer to the given effect
  */
+export function provideSomeLayer_<R1, E1, A1, R, E, A>(
+  self: T.Effect<R1 & A, E1, A1>,
+  layer: Layer<R, E, A>
+): T.Effect<R & R1, E | E1, A1> {
+  return provideLayer_(self, layer["+++"](identity()))
+}
+
+/**
+ * Provides a layer to the given effect
+ */
 export function provideLayer_<R, E, A, E1, A1>(
   self: T.Effect<A, E1, A1>,
   layer: Layer<R, E, A>
