@@ -230,7 +230,6 @@ function LazyGetter(
         Object.defineProperty(on, prop, isLegacy ? ret : ret.descriptor || ret)
       }
 
-  // @ts-expect-error
   return decorator
 }
 
