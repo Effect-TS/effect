@@ -165,10 +165,38 @@ export function provideServiceM<T>(_: Tag<T>) {
 /**
  * Provides the service with the required Service Entry
  */
+export function provideServiceM_<R1, E1, A1, R, E, T>(
+  ma: Effect<R1 & Has<T>, E1, A1>,
+  _: Tag<T>,
+  service: Effect<R, E, T>,
+  __trace?: string
+): Effect<R & R1, E | E1, A1> {
+  return core.accessM((r: R & R1) =>
+    core.chain_(service, (t) =>
+      core.provideAll_(ma, mergeEnvironments(_, r, t), __trace)
+    )
+  )
+}
+
+/**
+ * Provides the service with the required Service Entry
+ */
 export function provideService<T>(_: Tag<T>) {
   return (service: T, __trace?: string) =>
     <R1, E1, A1>(ma: Effect<R1 & Has<T>, E1, A1>): Effect<R1, E1, A1> =>
       provideServiceM(_)(core.succeed(service), __trace)(ma)
+}
+
+/**
+ * Provides the service with the required Service Entry
+ */
+export function provideService_<R1, E1, A1, T>(
+  ma: Effect<R1 & Has<T>, E1, A1>,
+  _: Tag<T>,
+  service: T,
+  __trace?: string
+): Effect<R1, E1, A1> {
+  return provideServiceM(_)(core.succeed(service), __trace)(ma)
 }
 
 /**
