@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.11.1](https://github.com/Effect-TS/core/compare/@effect-ts/tracing-plugin@0.11.0...@effect-ts/tracing-plugin@0.11.1) (2021-06-25)
+
+
+### Features
+
+* **tracing:** allow rewrites ([6f6a6e2](https://github.com/Effect-TS/core/commit/6f6a6e23621f134b5596d790282f6cca0f1b1a21))
+
+
+
+
+
 # [0.11.0](https://github.com/Effect-TS/core/compare/@effect-ts/tracing-plugin@0.10.4...@effect-ts/tracing-plugin@0.11.0) (2021-05-30)
 
 
