@@ -122,6 +122,44 @@ export default function rewrite(
           .filter(([x]) => x.length > 0)
 
         function visitor(node: ts.Node): ts.VisitResult<ts.Node> {
+          if (ts.isPropertyAccessExpression(node)) {
+            const rewrite = checker
+              .getSymbolAtLocation(node)
+              ?.getJsDocTags()
+              .map((_) => `${_.name} ${_.text?.map((_) => _.text).join(" ")}`)
+              .filter((_) => _.startsWith("rewriteGetter"))[0]
+
+            if (rewrite) {
+              const [fn, mod, attachTrace] = rewrite
+                .match(/rewriteGetter (.*) from "(.*)"(?:(.*))/)!
+                .splice(1)
+
+              if (!mods.has(mod!)) {
+                mods.set(mod!, factory.createUniqueName("module"))
+              }
+
+              const id = mods.get(mod!)!
+
+              const post = [] as ts.Expression[]
+
+              if (attachTrace?.trim() === "trace") {
+                post.push(getTrace(node))
+              }
+
+              return ts.visitEachChild(
+                factory.createCallExpression(
+                  factory.createPropertyAccessExpression(
+                    id,
+                    factory.createIdentifier(fn!)
+                  ),
+                  undefined,
+                  [node.expression, ...post]
+                ),
+                visitor,
+                ctx
+              )
+            }
+          }
           if (
             ts.isCallExpression(node) &&
             ts.isPropertyAccessExpression(node.expression)
