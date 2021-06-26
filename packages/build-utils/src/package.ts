@@ -14,7 +14,7 @@ const loadPackageJson = pipe(
   )
 )
 
-const writePackageJsonContent = (content: any) =>
+const writePackageJsonContent = (modules: string[], content: any) =>
   pipe(
     JSON.stringify(
       {
@@ -33,7 +33,21 @@ const writePackageJsonContent = (content: any) =>
         publishConfig: {
           access: "public"
         },
-        bin: content["bin"]
+        bin: content["bin"],
+        exports: {
+          ".": {
+            node: "./index.js",
+            default: "./esm/index.js"
+          },
+          ...A.reduce_(modules, {}, (b, m) => ({
+            ...b,
+            [`./${m}`]: {
+              node: `./${m}/index.js`,
+              default: `./esm/${m}/index.js`
+            }
+          })),
+          "./package.json": "./package.json"
+        }
       },
       null,
       2
@@ -77,10 +91,9 @@ const writeModulePackageJson = (modules: string[], content: any) => {
 
 pipe(
   TE.do,
-  TE.bind("content", () =>
-    pipe(copyReadme, TE.zipRight(loadPackageJson), TE.tap(writePackageJsonContent))
-  ),
+  TE.bind("content", () => pipe(copyReadme, TE.zipRight(loadPackageJson))),
   TE.bind("modules", ({ content }) => getModules(content)),
+  TE.tap(({ content, modules }) => writePackageJsonContent(modules, content)),
   TE.tap(({ content, modules }) => writeModulePackageJson(modules, content)),
   TE.foldM(onLeft, onRight("package copy succeeded!")),
   runMain
