@@ -15,7 +15,7 @@ export default function bundle(
   }
 ) {
   const B0 = {
-    rewrite: rewrite(_program),
+    rewrite: rewrite(_program, _opts),
     dataFirst: dataFirst(_program),
     identity: identity(_program),
     tracer: tracer(_program, _opts),
