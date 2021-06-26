@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.20.9](https://github.com/Effect-TS/core/compare/@effect-ts/build-utils@0.20.8...@effect-ts/build-utils@0.20.9) (2021-06-26)
+
+
+### Bug Fixes
+
+* **build-utils:** have export ([cf18b0d](https://github.com/Effect-TS/core/commit/cf18b0d6fb0e6482aa78fee16a9dad382c9b3e6d))
+
+
+
+
+
 ## [0.20.8](https://github.com/Effect-TS/core/compare/@effect-ts/build-utils@0.20.7...@effect-ts/build-utils@0.20.8) (2021-06-26)
 
 
