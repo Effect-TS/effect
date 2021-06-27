@@ -1,158 +1,24 @@
-import * as path from "path"
 import ts from "typescript"
 
-function checkRegionAt(
-  regions: (readonly [[boolean, number][], number])[],
-  line: number,
-  char: number
-) {
-  const previous = regions.filter(([_, __]) => __ <= line)
-  const last = previous[previous.length - 1]
-  let on = true
+import type { Config } from "./shared"
 
-  if (last) {
-    if (last[1] === line) {
-      const prevInLine = last[0].filter(([_, c]) => c <= char)
-
-      if (prevInLine.length > 0) {
-        on = prevInLine[prevInLine.length - 1]![0]!
-      }
-    } else {
-      const prevOfAll = last[0]
-
-      if (prevOfAll.length > 0) {
-        on = prevOfAll[prevOfAll.length - 1]![0]!
-      }
-    }
-  }
-
-  return on
-}
-
-function normalize(path: string) {
-  const isExtendedLengthPath = /^\\\\\?\\/.test(path)
-  const hasNonAscii = /[^\u0000-\u0080]+/.test(path) // eslint-disable-line no-control-regex
-
-  if (isExtendedLengthPath || hasNonAscii) {
-    return path
-  }
-
-  return path.replace(/\\/g, "/")
-}
-
-export default function tracer(
-  _program: ts.Program,
-  _opts?: {
-    tracing?: boolean
-    moduleMap?: Record<string, string>
-    __importTracingFrom?: string
-  }
-) {
-  const tracingOn = !(_opts?.tracing === false)
-  const checker = _program.getTypeChecker()
-
-  const moduleMap = _opts?.moduleMap || {}
-  const moduleMapKeys = Object.keys(moduleMap).map((k) => [k, new RegExp(k)] as const)
-
-  const programDir = _program.getCurrentDirectory()
-  const importTracingFrom = _opts?.__importTracingFrom ?? "@effect-ts/core/Tracing"
-
+export default function tracer(_program: ts.Program) {
   return {
     before(ctx: ts.TransformationContext) {
-      const factory = ctx.factory
-
-      return (sourceFile: ts.SourceFile) => {
-        const traceCall = factory.createIdentifier("traceCall")
-        const traceCallLast = factory.createIdentifier("traceCallLast")
-
-        const { fileName } = sourceFile
-
-        let finalName = path.relative(process.cwd(), fileName)
-
-        for (const k of moduleMapKeys) {
-          const matches = finalName.match(k[1]!)
-          if (matches) {
-            let patchedName = moduleMap[k[0]!]!
-            for (let j = 1; j < matches.length; j += 1) {
-              patchedName = patchedName.replace("$" + j, matches[j]!)
-            }
-            finalName = patchedName
-            break
-          }
-        }
-
-        finalName = normalize(finalName)
-
-        let tracingFound = undefined as undefined | ts.Identifier
-        let fileNodeFound = undefined as undefined | ts.Identifier
-
-        function finder(node: ts.Node): ts.VisitResult<ts.Node> {
-          if (
-            ts.isImportDeclaration(node) &&
-            node.importClause &&
-            ts.isStringLiteral(node.moduleSpecifier) &&
-            node.moduleSpecifier.text === importTracingFrom &&
-            node.importClause.namedBindings &&
-            ts.isNamespaceImport(node.importClause.namedBindings)
-          ) {
-            tracingFound = node.importClause.namedBindings.name
-          }
-          if (
-            ts.isVariableDeclaration(node) &&
-            node.initializer &&
-            ts.isStringLiteral(node.initializer) &&
-            node.initializer.text === finalName &&
-            ts.isIdentifier(node.name)
-          ) {
-            fileNodeFound = node.name
-          }
-          return ts.visitEachChild(node, finder, ctx)
-        }
-
-        ts.visitNode(sourceFile, finder)
-
-        const fileVar = fileNodeFound || factory.createUniqueName("fileName")
-
-        const tracing = tracingFound || factory.createUniqueName("tracing")
-
-        const isModule =
-          sourceFile.statements.find((s) => ts.isImportDeclaration(s)) != null
-
-        if (!isModule) {
-          return sourceFile
-        }
-
-        const traceCallId = factory.createPropertyAccessExpression(tracing, traceCall)
-        const traceCallLastId = factory.createPropertyAccessExpression(
-          tracing,
-          traceCallLast
-        )
-
-        function getTrace(node: ts.Node) {
-          const nodeEnd = sourceFile.getLineAndCharacterOfPosition(node.getEnd())
-          return factory.createBinaryExpression(
-            fileVar,
-            factory.createToken(ts.SyntaxKind.PlusToken),
-            factory.createStringLiteral(`:${nodeEnd.line + 1}:${nodeEnd.character + 1}`)
-          )
-        }
-
-        const sourceFullText = sourceFile.getFullText()
-
-        const regions = sourceFullText
-          .split("\n")
-          .map((line, i) => {
-            const x: [boolean, number][] = []
-            const m = line.matchAll(/tracing: (on|off)/g)
-            for (const k of m) {
-              if (k && k.index) {
-                x.push([k[1] === "on", k.index])
-              }
-            }
-            return [x, i] as const
-          })
-          .filter(([x]) => x.length > 0)
-
+      return (
+        sourceFile: ts.SourceFile,
+        {
+          checkRegionAt,
+          checker,
+          factory,
+          getTrace,
+          isDisabledEverywhere,
+          regions,
+          traceCallId,
+          traceCallLastId,
+          tracingOn
+        }: Config
+      ) => {
         function visitor(node: ts.Node): ts.VisitResult<ts.Node> {
           if (ts.isFunctionDeclaration(node)) {
             const tags = ts
@@ -236,64 +102,8 @@ export default function tracer(
           return ts.visitEachChild(node, visitor, ctx)
         }
 
-        const isDisabledEverywhere =
-          regions.length > 0 && regions.every(([rs]) => rs.every(([_]) => !_))
-
-        function fixRelative(path: string) {
-          if (path.startsWith(".")) {
-            return path
-          }
-          return `./${path}`
-        }
-
         if (tracingOn && !isDisabledEverywhere) {
-          const visited = ts.visitNode(sourceFile, visitor)
-          const importPath = importTracingFrom.startsWith(".")
-            ? fixRelative(
-                path.relative(
-                  path.dirname(sourceFile.fileName),
-                  path.join(programDir, importTracingFrom)
-                )
-              ) || "."
-            : importTracingFrom
-
-          const pre = [] as ts.Statement[]
-
-          if (!tracingFound) {
-            pre.push(
-              factory.createImportDeclaration(
-                undefined,
-                undefined,
-                factory.createImportClause(
-                  false,
-                  undefined,
-                  factory.createNamespaceImport(tracing)
-                ),
-                factory.createStringLiteral(importPath)
-              )
-            )
-          }
-
-          if (!fileNodeFound) {
-            pre.push(
-              factory.createVariableStatement(
-                undefined,
-                factory.createVariableDeclarationList(
-                  [
-                    factory.createVariableDeclaration(
-                      fileVar,
-                      undefined,
-                      undefined,
-                      factory.createStringLiteral(finalName)
-                    )
-                  ],
-                  ts.NodeFlags.Const
-                )
-              )
-            )
-          }
-
-          return factory.updateSourceFile(visited, [...pre, ...visited.statements])
+          return ts.visitNode(sourceFile, visitor)
         }
 
         return sourceFile
