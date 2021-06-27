@@ -11,16 +11,10 @@ export default function rewrite(_program: ts.Program) {
           checkRegionAt,
           checker,
           factory,
-          fileVar,
-          finalName,
           getTrace,
-          importTracingFrom,
           mods,
-          normalize,
-          programDir,
           regions,
           traceCallLastId,
-          tracing,
           tracingOn
         }: Config
       ) => {
@@ -89,7 +83,33 @@ export default function rewrite(_program: ts.Program) {
                 .filter((_) => _.startsWith("rewrite"))[0]
 
               if (rewrite) {
+                const processedArguments = node.arguments.map((x) => {
+                  const ds = getSignatureIfSole(checker, x)?.getDeclaration()
+                  const params = ds?.parameters
+
+                  if (params?.length === 2 && params[1]?.name.getText() === "__trace") {
+                    return factory.createCallExpression(traceCallLastId, undefined, [
+                      ts.visitNode(x, visitor),
+                      getTrace(x)
+                    ])
+                  }
+
+                  return ts.visitNode(x, visitor)
+                })
+
                 const [fn, mod] = rewrite.match(/rewrite (.*) from "(.*)"/)!.splice(1)
+
+                if (mod === "smart:identity") {
+                  return ts.visitNode(node.expression.expression, visitor)
+                }
+
+                if (mod === "smart:pipe") {
+                  return factory.createCallExpression(
+                    processedArguments[0]!,
+                    [],
+                    [ts.visitNode(node.expression.expression, visitor)]
+                  )
+                }
 
                 const additions = [] as ts.Expression[]
 
@@ -106,31 +126,17 @@ export default function rewrite(_program: ts.Program) {
                   mods.set(mod!, factory.createUniqueName("module"))
                 }
 
-                const processedArguments = node.arguments.map((x) => {
-                  const ds = getSignatureIfSole(checker, x)?.getDeclaration()
-                  const params = ds?.parameters
-
-                  if (params?.length === 2 && params[1]?.name.getText() === "__trace") {
-                    return factory.createCallExpression(traceCallLastId, undefined, [
-                      ts.visitNode(x, visitor),
-                      getTrace(x)
-                    ])
-                  }
-
-                  return ts.visitNode(x, visitor)
-                })
-
-                return ts.visitEachChild(
-                  factory.createCallExpression(
-                    factory.createPropertyAccessExpression(
-                      mods.get(mod!)!,
-                      factory.createIdentifier(fn!)
-                    ),
-                    undefined,
-                    [node.expression.expression, ...processedArguments, ...additions]
+                return factory.createCallExpression(
+                  factory.createPropertyAccessExpression(
+                    mods.get(mod!)!,
+                    factory.createIdentifier(fn!)
                   ),
-                  visitor,
-                  ctx
+                  undefined,
+                  [
+                    ts.visitNode(node.expression.expression, visitor),
+                    ...processedArguments,
+                    ...additions
+                  ]
                 )
               }
             }
