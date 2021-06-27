@@ -131,6 +131,13 @@ export function modify<R1, E1, B, A>(f: (a: A) => T.Effect<R1, E1, Tp.Tuple<[B, 
 }
 
 /**
+ * Reads the value from the `XRefM`.
+ */
+export function get<RA, RB, EA, EB, A, B>(self: XRefM<RA, RB, EA, EB, A, B>) {
+  return self.get
+}
+
+/**
  * Writes a new value to the `RefM`, returning the value immediately before
  * modification.
  */
