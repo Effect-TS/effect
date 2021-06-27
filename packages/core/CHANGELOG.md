@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.40.15](https://github.com/Effect-TS/core/compare/@effect-ts/core@0.40.14...@effect-ts/core@0.40.15) (2021-06-27)
+
+
+### Bug Fixes
+
+* **core:** fixes imports ([b748bb0](https://github.com/Effect-TS/core/commit/b748bb0f8a99f6e4f7119e0423dd298498de9b36))
+
+
+
+
+
 ## [0.40.14](https://github.com/Effect-TS/core/compare/@effect-ts/core@0.40.13...@effect-ts/core@0.40.14) (2021-06-27)
 
 
