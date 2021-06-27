@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.40.12](https://github.com/Effect-TS/core/compare/@effect-ts/core@0.40.11...@effect-ts/core@0.40.12) (2021-06-27)
+
+**Note:** Version bump only for package @effect-ts/core
+
+
+
+
+
 ## [0.40.11](https://github.com/Effect-TS/core/compare/@effect-ts/core@0.40.10...@effect-ts/core@0.40.11) (2021-06-27)
 
 
