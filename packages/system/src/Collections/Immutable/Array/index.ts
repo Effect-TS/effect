@@ -1634,7 +1634,7 @@ export function dropWhile<A>(predicate: Predicate<A>): (as: Array<A>) => Array<A
 }
 
 /**
- * Constructs a new readpnly array from an interable.
+ * Constructs a new readonly array from an interable.
  */
 export function from<A>(as: Iterable<A>): Array<A> {
   return Array.from(as)
