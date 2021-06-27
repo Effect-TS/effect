@@ -3,6 +3,7 @@
 import type { Either } from "@effect-ts/system/Either"
 import * as E from "@effect-ts/system/Either"
 import { pipe, tuple } from "@effect-ts/system/Function"
+import * as O from "@effect-ts/system/Option"
 
 import type { Associative } from "../Associative"
 import { makeAssociative } from "../Associative"
@@ -209,4 +210,32 @@ export function getEqual<E, A>(EL: Equal<E>, EA: Equal<A>): Equal<Either<E, A>> 
         ? E.isLeft(y) && EL.equals(x.left, y.left)
         : E.isRight(y) && EA.equals(x.right, y.right))
   }
+}
+
+/**
+ * Gets Left
+ */
+export function unsafeGetLeft<E, A>(self: Either<E, A>): E | undefined {
+  return self._tag === "Left" ? self.left : void 0
+}
+
+/**
+ * Gets Left as Option
+ */
+export function getLeft<E, A>(self: Either<E, A>): O.Option<E> {
+  return self._tag === "Left" ? O.some(self.left) : O.none
+}
+
+/**
+ * Gets Right as Option
+ */
+export function getRight<E, A>(self: Either<E, A>): O.Option<A> {
+  return self._tag === "Right" ? O.some(self.right) : O.none
+}
+
+/**
+ * Gets Right
+ */
+export function unsafeGetRight<E, A>(self: Either<E, A>): A | undefined {
+  return self._tag === "Right" ? self.right : void 0
 }

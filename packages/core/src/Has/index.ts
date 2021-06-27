@@ -2,9 +2,9 @@
 
 import "../Operator"
 
-import * as T from "@effect-ts/core/Effect"
-import type { Has, Tag } from "@effect-ts/core/Has"
-import type { Compute, IsEqualTo, UnionToIntersection } from "@effect-ts/core/Utils"
+import * as T from "@effect-ts/system/Effect"
+import type { Has, Tag } from "@effect-ts/system/Has"
+import type { Compute, IsEqualTo, UnionToIntersection } from "@effect-ts/system/Utils"
 
 export * from "@effect-ts/system/Has"
 
