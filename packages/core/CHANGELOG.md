@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.40.14](https://github.com/Effect-TS/core/compare/@effect-ts/core@0.40.13...@effect-ts/core@0.40.14) (2021-06-27)
+
+
+### Features
+
+* **core:** add missing utils ([ad018d2](https://github.com/Effect-TS/core/commit/ad018d24eb75f7955f0a0f489d9b7b883683ba90))
+
+
+
+
+
 ## [0.40.13](https://github.com/Effect-TS/core/compare/@effect-ts/core@0.40.12...@effect-ts/core@0.40.13) (2021-06-27)
 
 
