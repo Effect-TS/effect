@@ -7,7 +7,7 @@ import { makeAssociative } from "../Associative"
 import type { Either } from "../Either"
 import { left, right } from "../Either"
 import type { Equal } from "../Equal"
-import type { Predicate } from "../Function"
+import type { Predicate, Refinement } from "../Function"
 import { pipe } from "../Function"
 import type { Identity } from "../Identity"
 import { fold, fromAssociative, makeIdentity } from "../Identity"
@@ -102,6 +102,8 @@ export const Fail = P.instance<P.FX.Fail<[URI<OptionURI>]>>({
 
 /**
  * Returns `true` if `ma` contains `a`
+ *
+ * @dataFirst elem_
  */
 export function elem<A>(E: Equal<A>): (a: A) => (ma: O.Option<A>) => boolean {
   const el = elem_(E)
@@ -205,13 +207,17 @@ export type AOfOptions<Ts extends O.Option<any>[]> = {
   [k in keyof Ts]: Ts[k] extends O.Option<infer A> ? A : never
 }[number]
 
-export const getFirst = <Ts extends O.Option<any>[]>(
+export function getFirst<Ts extends O.Option<any>[]>(
   ...items: Ts
-): O.Option<AOfOptions<Ts>> => fold(getFirstIdentity<AOfOptions<Ts>>())(items)
+): O.Option<AOfOptions<Ts>> {
+  return fold(getFirstIdentity<AOfOptions<Ts>>())(items)
+}
 
-export const getLast = <Ts extends O.Option<any>[]>(
+export function getLast<Ts extends O.Option<any>[]>(
   ...items: Ts
-): O.Option<AOfOptions<Ts>> => fold(getLastIdentity<AOfOptions<Ts>>())(items)
+): O.Option<AOfOptions<Ts>> {
+  return fold(getLastIdentity<AOfOptions<Ts>>())(items)
+}
 
 /**
  * The `Ord` instance allows `Option` values to be compared with
@@ -226,15 +232,65 @@ export function getOrd<A>(_: Ord<A>): Ord<O.Option<A>> {
   )
 }
 
-export const filter: P.Filterable<[URI<OptionURI>]>["filter"] =
-  <A>(predicate: Predicate<A>) =>
-  (fa: O.Option<A>): O.Option<A> =>
-    O.isNone(fa) ? O.none : predicate(fa.value) ? fa : O.none
+/**
+ * Filter using refinement
+ *
+ * @dataFirst filter_
+ */
+export function filter<A, B extends A>(
+  refinement: Refinement<A, B>
+): (fa: O.Option<A>) => O.Option<B>
+/**
+ * Filter using predicate
+ *
+ * @dataFirst filter_
+ */
+export function filter<A>(predicate: Predicate<A>): (fa: O.Option<A>) => O.Option<A>
+/**
+ * Filter using predicate/refinement
+ *
+ * @dataFirst filter_
+ */
+export function filter<A>(predicate: Predicate<A>): (fa: O.Option<A>) => O.Option<A> {
+  return (fa) => filter_(fa, predicate)
+}
 
-export const filterMap: <A, B>(
+/**
+ * Filter using refinement
+ */
+export function filter_<A, B extends A>(
+  fa: O.Option<A>,
+  refinement: Refinement<A, B>
+): O.Option<B>
+/**
+ * Filter using refinement
+ */
+export function filter_<A>(fa: O.Option<A>, predicate: Predicate<A>): O.Option<A>
+/**
+ * Filter using predicate/refinement
+ */
+export function filter_<A>(fa: O.Option<A>, predicate: Predicate<A>): O.Option<A> {
+  return O.isNone(fa) ? O.none : predicate(fa.value) ? fa : O.none
+}
+
+/**
+ * Filter + Map
+ *
+ * @dataFirst filterMap_
+ */
+export function filterMap<A, B>(f: (a: A) => O.Option<B>) {
+  return (fa: O.Option<A>): O.Option<B> => filterMap_(fa, f)
+}
+
+/**
+ * Filter + Map
+ */
+export function filterMap_<A, B>(
+  fa: O.Option<A>,
   f: (a: A) => O.Option<B>
-) => (fa: O.Option<A>) => O.Option<B> = (f) => (ma) =>
-  O.isNone(ma) ? O.none : f(ma.value)
+): O.Option<B> {
+  return O.isNone(fa) ? O.none : f(fa.value)
+}
 
 const defaultSeparate = { left: O.none, right: O.none }
 
@@ -248,17 +304,78 @@ export function separate<A, B>(
   return O.isNone(o) ? defaultSeparate : o.value
 }
 
-export const partition: P.Filterable<[URI<OptionURI>]>["partition"] =
-  <A>(predicate: Predicate<A>) =>
-  (fa: O.Option<A>) => ({
+/**
+ * Partition
+ *
+ * @dataFirst partition_
+ */
+export function partition<A, B extends A>(
+  refinement: Refinement<A, B>
+): (fa: O.Option<A>) => Separated<O.Option<A>, O.Option<B>>
+/**
+ * Partition
+ *
+ * @dataFirst partition_
+ */
+export function partition<A>(
+  predicate: Predicate<A>
+): (fa: O.Option<A>) => Separated<O.Option<A>, O.Option<A>>
+/**
+ * Partition
+ *
+ * @dataFirst partition_
+ */
+export function partition<A>(
+  predicate: Predicate<A>
+): (fa: O.Option<A>) => Separated<O.Option<A>, O.Option<A>> {
+  return (fa) => partition_(fa, predicate)
+}
+
+/**
+ * Partition
+ */
+export function partition_<A, B extends A>(
+  fa: O.Option<A>,
+  refinement: Refinement<A, B>
+): Separated<O.Option<A>, O.Option<B>>
+/**
+ * Partition
+ */
+export function partition_<A>(
+  fa: O.Option<A>,
+  predicate: Predicate<A>
+): Separated<O.Option<A>, O.Option<A>>
+/**
+ * Partition
+ */
+export function partition_<A>(
+  fa: O.Option<A>,
+  predicate: Predicate<A>
+): Separated<O.Option<A>, O.Option<A>> {
+  return {
     left: filter((a: A) => !predicate(a))(fa),
     right: filter(predicate)(fa)
-  })
+  }
+}
 
-export const partitionMap: <A, B, B1>(
+/**
+ * Partition + Map
+ *
+ * @dataFirst partitionMap_
+ */
+export function partitionMap<A, B, B1>(f: (a: A) => Either<B, B1>) {
+  return (fa: O.Option<A>): Separated<O.Option<B>, O.Option<B1>> => partitionMap_(fa, f)
+}
+
+/**
+ * Partition + Map
+ */
+export function partitionMap_<A, B, B1>(
+  fa: O.Option<A>,
   f: (a: A) => Either<B, B1>
-) => (fa: O.Option<A>) => Separated<O.Option<B>, O.Option<B1>> = (f) => (fa) =>
-  separate(O.map_(fa, f))
+): Separated<O.Option<B>, O.Option<B1>> {
+  return separate(O.map_(fa, f))
+}
 
 export const Filterable = P.instance<P.Filterable<[URI<OptionURI>]>>({
   filter,
