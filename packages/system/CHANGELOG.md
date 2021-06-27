@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.37.9](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.37.8...@effect-ts/system@0.37.9) (2021-06-27)
+
+
+### Features
+
+* **system:** add get to RefM ([45a15ff](https://github.com/Effect-TS/core/commit/45a15ff0f6ce6da6e86965ce30592a1cc337fca8))
+
+
+
+
+
 ## [0.37.8](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.37.7...@effect-ts/system@0.37.8) (2021-06-26)
 
 **Note:** Version bump only for package @effect-ts/system
