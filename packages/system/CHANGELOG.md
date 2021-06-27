@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.37.10](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.37.9...@effect-ts/system@0.37.10) (2021-06-27)
+
+
+### Features
+
+* **core:** Array mapEffect ([f420cbb](https://github.com/Effect-TS/core/commit/f420cbbb5ac2a784d1d1826d9c9eea0bf9a13f7d))
+
+
+
+
+
 ## [0.37.9](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.37.8...@effect-ts/system@0.37.9) (2021-06-27)
 
 
