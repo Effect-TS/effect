@@ -13,6 +13,7 @@ export {
   compose,
   fail,
   fromEffect,
+  fromEffect_,
   map_,
   andSeq,
   andSeq_,
