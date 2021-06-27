@@ -2,7 +2,7 @@
 
 import "../../Operator"
 
-import { _A, _E, _R } from "@effect-ts/system/Effect/commons"
+import { _A, _E, _R } from "@effect-ts/system/Effect"
 import { AtomicReference } from "@effect-ts/system/Support/AtomicReference"
 
 import * as A from "../../Collections/Immutable/Array"
