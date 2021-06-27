@@ -145,12 +145,24 @@ export function prepare<T>(has: Tag<T>) {
 
 /**
  * Constructs a layer from the specified effect.
+ *
+ * @dataFirst fromEffect_
  */
 export function fromEffect<T>(has: Tag<T>) {
   return <R, E>(resource: T.Effect<R, E, T>): Layer<R, E, Has<T>> =>
-    new LayerManaged(
-      M.chain_(M.fromEffect(resource), (a) => environmentFor(has, a))
-    ).setKey(has.key)
+    fromEffect_(resource, has)
+}
+
+/**
+ * Constructs a layer from the specified effect.
+ */
+export function fromEffect_<R, E, T>(
+  resource: T.Effect<R, E, T>,
+  has: Tag<T>
+): Layer<R, E, Has<T>> {
+  return new LayerManaged(
+    M.chain_(M.fromEffect(resource), (a) => environmentFor(has, a))
+  ).setKey(has.key)
 }
 
 /**

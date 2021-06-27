@@ -432,3 +432,31 @@ export function getIdentity<A>(A: Associative<A>) {
 }
 
 export const alt = P.orElseF({ ...Covariant, ...AssociativeEither })
+
+/**
+ * Gets Left
+ */
+export function unsafeGetLeft<E, A>(self: Either<E, A>): E | undefined {
+  return self._tag === "Left" ? self.left : void 0
+}
+
+/**
+ * Gets Left as Option
+ */
+export function getLeft<E, A>(self: Either<E, A>): O.Option<E> {
+  return self._tag === "Left" ? O.some(self.left) : O.none
+}
+
+/**
+ * Gets Right as Option
+ */
+export function getRight<E, A>(self: Either<E, A>): O.Option<A> {
+  return self._tag === "Right" ? O.some(self.right) : O.none
+}
+
+/**
+ * Gets Right
+ */
+export function unsafeGetRight<E, A>(self: Either<E, A>): A | undefined {
+  return self._tag === "Right" ? self.right : void 0
+}
