@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.37.13](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.37.12...@effect-ts/system@0.37.13) (2021-06-27)
+
+
+### Bug Fixes
+
+* **system:** fix export ([baa8a20](https://github.com/Effect-TS/core/commit/baa8a2066eb819dea10453197e8eb87ff43637fb))
+
+
+
+
+
 ## [0.37.12](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.37.11...@effect-ts/system@0.37.12) (2021-06-27)
 
 
