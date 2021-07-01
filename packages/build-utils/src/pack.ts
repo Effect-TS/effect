@@ -1,6 +1,6 @@
 import * as TE from "@effect-ts/core/Effect"
 import { parseJSON_ } from "@effect-ts/core/Either"
-import { pipe } from "@effect-ts/core/Function"
+import { flow, pipe } from "@effect-ts/core/Function"
 import * as fs from "fs"
 
 import { copy, exec, onLeft, onRight, readFile, runMain, writeFile } from "./_common"
@@ -14,30 +14,98 @@ const loadPackageJson = pipe(
   )
 )
 
+const isStringArray = (x: unknown): x is string[] =>
+  Array.isArray(x) && x.every((y) => typeof y === "string")
+
+const getModules = flow(
+  (content: any) => content?.config?.modules,
+  TE.fromPredicate(isStringArray, () => new Error("missing modules config"))
+)
+
+const getSide = flow(
+  (content: any) => content?.config?.side,
+  TE.fromPredicate(isStringArray, () => new Error("missing side config"))
+)
+
+function carry(s: string, root: any, target: any) {
+  if (s in root) {
+    target[s] = root[s]
+  }
+}
+
 const writePackageJsonContent = pipe(
-  loadPackageJson,
-  TE.map((content: any) =>
-    JSON.stringify(
+  TE.do,
+  TE.bind("content", () => loadPackageJson),
+  TE.bind("modules", ({ content }) => getModules(content)),
+  TE.bind("side", ({ content }) => getSide(content)),
+  TE.map(({ content, modules, side }) => {
+    const packageJson = {}
+
+    carry("name", content, packageJson)
+    carry("version", content, packageJson)
+    carry("private", content, packageJson)
+    carry("license", content, packageJson)
+    carry("repository", content, packageJson)
+    carry("dependencies", content, packageJson)
+    carry("peerDependencies", content, packageJson)
+    carry("gitHead", content, packageJson)
+    carry("bin", content, packageJson)
+
+    const exports = {}
+    const mainExports = {}
+
+    if (fs.existsSync(`./build/esm/index.js`)) {
+      mainExports["module"] = `./_esm/index.js`
+    }
+    if (fs.existsSync(`./build/cjs/index.js`)) {
+      mainExports["require"] = `./index.js`
+    }
+
+    if (mainExports["require"]) {
+      packageJson["main"] = mainExports["require"]
+    } else if (mainExports["module"]) {
+      packageJson["main"] = mainExports["module"]
+    }
+
+    if (Object.keys(mainExports).length > 0) {
+      exports["./"] = mainExports
+    }
+
+    modules.forEach((m) => {
+      exports[`./${m}`] = {}
+      if (fs.existsSync(`./build/esm/${m}/index.js`)) {
+        exports[`./${m}`]["module"] = `./_esm/${m}/index.js`
+      }
+      if (fs.existsSync(`./build/cjs/${m}/index.js`)) {
+        exports[`./${m}`]["require"] = `./${m}/index.js`
+      }
+      if (Object.keys(exports[`./${m}`]).length === 0) {
+        delete exports[`./${m}`]
+      }
+    })
+
+    return JSON.stringify(
       {
-        name: content["name"],
-        version: content["version"],
-        private: false,
-        license: content["license"],
-        repository: content["repository"],
-        sideEffects: content["sideEffects"],
-        dependencies: content["dependencies"],
-        peerDependencies: content["peerDependencies"],
-        gitHead: content["gitHead"],
+        ...packageJson,
         publishConfig: {
           access: "public"
         },
-        bin: content["bin"],
-        exports: content["exports"]
+        sideEffects: side.flatMap((m) => {
+          const map = []
+          if (fs.existsSync(`./build/cjs/${m}/index.js`)) {
+            map.push(`./${m}/index.js`)
+          }
+          if (fs.existsSync(`./build/esm/${m}/index.js`)) {
+            map.push(`./_esm/${m}/index.js`)
+          }
+          return map
+        }),
+        exports
       },
       null,
       2
     )
-  ),
+  }),
   TE.chain((str) => writeFile("./dist/package.json", str))
 )
 
@@ -45,20 +113,23 @@ pipe(
   exec("rm -rf build/dist"),
   TE.tap(() => exec("mkdir -p dist")),
   TE.tap(() =>
-    pipe(
-      ["build/cjs", "build/esm", "src-imports", "src"],
-      TE.forEach((s) =>
-        TE.when(() => fs.existsSync(`./${s}`))(
-          exec(`mkdir -p ./dist/${s}/ && cp -r ./${s}/* ./dist/${s}`)
-        )
-      )
+    TE.when(() => fs.existsSync(`./src`))(
+      exec(`mkdir -p ./dist/_src && cp -r ./src/* ./dist/_src`)
     )
+  ),
+  TE.tap(() =>
+    TE.when(() => fs.existsSync(`./build/esm`))(
+      exec(`mkdir -p ./dist/_esm && cp -r ./build/esm/* ./dist/_esm`)
+    )
+  ),
+  TE.tap(() =>
+    TE.when(() => fs.existsSync(`./build/cjs`))(exec(`cp -r ./build/cjs/* ./dist`))
   ),
   TE.tap(() =>
     TE.when(() => fs.existsSync(`./build/dts`))(exec(`cp -r ./build/dts/* ./dist`))
   ),
   TE.tap(() => writePackageJsonContent),
   TE.tap(() => copyReadme),
-  TE.foldM(onLeft, onRight("package copy succeeded!")),
+  TE.fold(onLeft, onRight("pack succeeded!")),
   runMain
 )
