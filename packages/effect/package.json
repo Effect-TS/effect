@@ -43,6 +43,7 @@
     "babel-plugin-annotate-pure-calls": "^0.4.0",
     "chalk": "^4.1.1",
     "commitizen": "^4.2.4",
+    "concurrently": "^6.2.0",
     "cpx": "^1.5.0",
     "cz-conventional-changelog": "^3.3.0",
     "dtslint": "github:gcanti/dtslint",
