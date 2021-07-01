@@ -32,5 +32,8 @@
       "module": "./build/esm/*",
       "require": "./build/cjs/*"
     }
+  },
+  "dependencies": {
+    "@effect-ts/system": "^0.38.0"
   }
 }
