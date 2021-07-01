@@ -32,7 +32,6 @@ const writePackageJsonContent = pipe(
           access: "public"
         },
         bin: content["bin"],
-        type: "module",
         exports: content["exports"]
       },
       null,
