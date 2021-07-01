@@ -1,6 +1,6 @@
 {
   "name": "@effect-ts/build-utils",
-  "version": "0.22.2",
+  "version": "0.22.3",
   "license": "MIT",
   "private": false,
   "repository": "https://github.com/Effect-TS/core.git",
