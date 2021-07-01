@@ -5,7 +5,7 @@ import * as fs from "fs"
 
 import { copy, exec, onLeft, onRight, readFile, runMain, writeFile } from "./_common"
 
-const copyReadme = copy("./README.md", "./build", { update: true })
+const copyReadme = copy("./README.md", "./dist", { update: true })
 
 const loadPackageJson = pipe(
   readFile("./package.json", "utf8"),
