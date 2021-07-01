@@ -1,18 +1,22 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "outDir": "debug",
+    "outDir": "build/cjs",
     "target": "ES2018",
-    "lib": ["DOM", "ES2020"],
     "module": "CommonJS",
+    "incremental": true,
+    "tsBuildInfoFile": "tsbuildinfo/build.tsbuildinfo",
+    "declarationDir": "build/dts",
     "removeComments": false,
     "plugins": [
       {
         "transform": "../tracing-plugin/src/index.ts",
+        "moduleMap": {
+          "^src/(.*)": "(@effect-ts/system): _src/$1"
+        },
         "__importTracingFrom": "./src/Tracing"
-      },
-      { "transform": "typescript-transform-paths" }
+      }
     ]
   },
-  "include": ["test/tracing.test.ts"]
+  "include": ["src/**/*.ts"]
 }

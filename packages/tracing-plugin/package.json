@@ -6,23 +6,30 @@
   "repository": "https://github.com/Effect-TS/core.git",
   "homepage": "https://www.matechs.com",
   "scripts": {
-    "clean": "rimraf build tsbuildinfo",
-    "build:lib": "ttsc --build tsconfig.build.json && ts-node ../../scripts/package.ts",
-    "build:es6": "ttsc --build tsconfig.es6.json && babel build/esm/ -d build/esm/ -s --plugins annotate-pure-calls && ts-node ../../scripts/package-esm.ts",
-    "build:post-process": "ts-node ../../scripts/rewrite-source-maps.ts && ts-node ../../scripts/rewrite-locals.ts && yarn prettier:lib",
-    "build": "yarn run build:lib && yarn run build:es6 && yarn run build:post-process",
+    "clean": "rimraf build tsbuildinfo dist",
+    "build-cjs": "ttsc -p tsconfig.build.cjs.json",
+    "build-esm": "ttsc -p tsconfig.build.esm.json",
+    "build-post": "ts-node ../../scripts/pack.ts",
+    "build": "concurrently \"yarn build-cjs\" \"yarn build-esm\" && yarn build-post",
     "lint": "eslint . --ext .ts,.tsx",
     "autofix": "yarn prettier && yarn lint --fix && yarn prettier",
     "prettier": "prettier --write \"./{src,test,demo}/**/*.ts\"",
-    "prettier:lib": "prettier --write \"./build/**/*.ts\"",
-    "tc": "tsc --noEmit"
+    "tc": "tsc --noEmit",
+    "circular": "madge --circular --ts-config ./tsconfig.json --extensions ts ./src"
   },
   "publishConfig": {
     "access": "public",
-    "directory": "build"
+    "directory": "dist"
   },
-  "sideEffects": false,
-  "config": {
-    "modules": []
+  "sideEffects": [],
+  "exports": {
+    ".": {
+      "module": "./build/esm/index.js",
+      "require": "./build/cjs/index.js"
+    },
+    "./*": {
+      "module": "./build/esm/*",
+      "require": "./build/cjs/*"
+    }
   }
 }

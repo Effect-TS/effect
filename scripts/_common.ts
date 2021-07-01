@@ -1,4 +1,5 @@
 import chalk from "chalk"
+import * as P from "child_process"
 import type { AsyncOptions } from "cpx"
 import { copy as copy_ } from "cpx"
 import { log } from "fp-ts/Console"
@@ -95,3 +96,7 @@ export const copy: FunctionN<
   [string, string, AsyncOptions?],
   TE.TaskEither<Error, void>
 > = TE.taskify<string, string, AsyncOptions | undefined, Error, void>(copy_)
+
+// @ts-expect-error
+export const exec: (a: string) => TE.TaskEither<NodeJS.ErrnoException, void> =
+  TE.taskify(P.exec)

@@ -1,12 +1,14 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "outDir": "build",
+    "outDir": "build/esm",
     "target": "ES2018",
-    "lib": ["DOM", "ES2020"],
-    "module": "CommonJS",
+    "module": "ES6",
+    "moduleResolution": "Node",
     "incremental": true,
-    "tsBuildInfoFile": "tsbuildinfo/build.tsbuildinfo",
+    "tsBuildInfoFile": "tsbuildinfo/esm.tsbuildinfo",
+    "declaration": false,
+    "declarationMap": false,
     "removeComments": false,
     "plugins": [
       {
@@ -18,6 +20,5 @@
       }
     ]
   },
-  "include": ["src/**/*"],
-  "exclude": ["test", "node_modules"]
+  "include": ["src/**/*.ts"]
 }
