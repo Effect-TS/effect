@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.37.14](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.37.13...@effect-ts/system@0.37.14) (2021-07-01)
+
+
+### Features
+
+* **system:** expose missing data first ([ef3ca5f](https://github.com/Effect-TS/core/commit/ef3ca5f2be3a61ad5a3b927d8c783c4b0dab8b6c))
+
+
+
+
+
 ## [0.37.13](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.37.12...@effect-ts/system@0.37.13) (2021-06-27)
 
 
