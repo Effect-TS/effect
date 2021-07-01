@@ -1,6 +1,7 @@
 import * as Ef from "@effect-ts/core/Effect"
 import { pipe } from "@effect-ts/core/Function"
 import chalk from "chalk"
+import cp from "child_process"
 import type { AsyncOptions } from "cpx"
 import { copy as copy_ } from "cpx"
 import fs from "fs"
@@ -10,6 +11,8 @@ export const log = (message: unknown) =>
   Ef.succeedWith(() => {
     console.log(message)
   })
+
+export const exec = Ef.fromNodeCb<string, cp.ExecException, string>(cp.exec)
 
 export const readFile = Ef.fromNodeCb<
   fs.PathLike,
@@ -36,7 +39,7 @@ export const glob = (glob: string, opts: glob_.IOptions = {}) =>
     (err) => (err instanceof Error ? err : new Error("could not run glob"))
   )
 
-export function onLeft(e: NodeJS.ErrnoException) {
+export function onLeft(e: NodeJS.ErrnoException | cp.ExecException) {
   return pipe(
     log(e),
     Ef.chain(() =>
