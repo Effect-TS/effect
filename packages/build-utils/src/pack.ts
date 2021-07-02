@@ -68,14 +68,14 @@ const writePackageJsonContent = pipe(
     }
 
     if (Object.keys(mainExports).length > 0) {
-      exports["./"] = mainExports
+      exports["."] = mainExports
 
-      if (exports["./"]["require"]) {
-        exports["./"]["default"] = exports["./"]["require"]
-        delete exports["./"]["require"]
-      } else if (exports["./"]["module"]) {
-        exports["./"]["default"] = exports["./"]["module"]
-        delete exports["./"]["module"]
+      if (exports["."]["require"]) {
+        exports["."]["default"] = exports["."]["require"]
+        delete exports["."]["require"]
+      } else if (exports["."]["module"]) {
+        exports["."]["default"] = exports["."]["module"]
+        delete exports["."]["module"]
       }
     }
 
