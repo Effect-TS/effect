@@ -69,6 +69,14 @@ const writePackageJsonContent = pipe(
 
     if (Object.keys(mainExports).length > 0) {
       exports["./"] = mainExports
+
+      if (exports["./"]["require"]) {
+        exports["./"]["default"] = exports["./"]["require"]
+        delete exports["./"]["require"]
+      } else if (exports["./"]["module"]) {
+        exports["./"]["default"] = exports["./"]["module"]
+        delete exports["./"]["module"]
+      }
     }
 
     modules.forEach((m) => {
@@ -78,6 +86,13 @@ const writePackageJsonContent = pipe(
       }
       if (fs.existsSync(`./build/cjs/${m}/index.js`)) {
         exports[`./${m}`]["require"] = `./${m}/index.js`
+      }
+      if (exports[`./${m}`]["require"]) {
+        exports[`./${m}`]["default"] = exports[`./${m}`]["require"]
+        delete exports[`./${m}`]["require"]
+      } else if (exports[`./${m}`]["module"]) {
+        exports[`./${m}`]["default"] = exports[`./${m}`]["module"]
+        delete exports[`./${m}`]["module"]
       }
       if (Object.keys(exports[`./${m}`]).length === 0) {
         delete exports[`./${m}`]
