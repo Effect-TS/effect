@@ -26,11 +26,13 @@ export interface EffectAspect<X extends EffectAspectConfig> {
   >
 }
 
-/**
- * @optimize identity
- */
 export function aspect<X extends EffectAspectConfig>(
   _: (_: <A>() => A) => X
-): (_: EffectAspect<X>) => EffectAspect<X> {
+): {
+  /**
+   * @optimize identity
+   */
+  (_: EffectAspect<X>): EffectAspect<X>
+} {
   return (_) => _
 }
