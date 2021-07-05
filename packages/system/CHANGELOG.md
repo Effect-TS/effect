@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.39.6](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.39.5...@effect-ts/system@0.39.6) (2021-07-05)
+
+
+### Features
+
+* **core:** add effect aspect ([a58bd0d](https://github.com/Effect-TS/core/commit/a58bd0db7ae037e261a9d5d51b459a78d0260918))
+
+
+
+
+
 ## [0.39.5](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.39.4...@effect-ts/system@0.39.5) (2021-07-02)
 
 **Note:** Version bump only for package @effect-ts/system
