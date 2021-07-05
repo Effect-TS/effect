@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.39.8](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.39.7...@effect-ts/system@0.39.8) (2021-07-05)
+
+
+### Bug Fixes
+
+* **core:** remove aspects ([ef0ec69](https://github.com/Effect-TS/core/commit/ef0ec6925bd386cae2e3041d550e61a4db9cfa18))
+
+
+
+
+
 ## [0.39.7](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.39.6...@effect-ts/system@0.39.7) (2021-07-05)
 
 
