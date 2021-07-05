@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.39.7](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.39.6...@effect-ts/system@0.39.7) (2021-07-05)
+
+
+### Bug Fixes
+
+* **core:** fix aspect annotation ([ffea7c0](https://github.com/Effect-TS/core/commit/ffea7c0b190696ee40a71380220ba16fd4267d99))
+* **core:** revise effect aspect ([ee628b0](https://github.com/Effect-TS/core/commit/ee628b07646a666e2438c85a65e5be2677e8ac89))
+
+
+
+
+
 ## [0.39.6](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.39.5...@effect-ts/system@0.39.6) (2021-07-05)
 
 
