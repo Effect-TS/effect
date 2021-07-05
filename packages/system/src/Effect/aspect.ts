@@ -10,15 +10,17 @@ export interface EffectAspectConfig {
 }
 
 export interface EffectAspect<X extends EffectAspectConfig> {
-  <R, E, A>(
-    effect: Effect<R & ([X] extends [{ ProvideEnv: infer K }] ? K : unknown), E, A> &
-      ([X] extends [{ LimitEnv: infer K }] ? Effect<K, unknown, A> : unknown) &
-      ([X] extends [{ LimitError: infer K }]
-        ? Effect<R & ([X] extends [{ ProvideEnv: infer K }] ? K : unknown), K, A>
-        : unknown)
+  <R = unknown, E = never, A = never>(
+    effect: Effect<
+      (R | ([X] extends [{ LimitEnv: infer K }] ? K : never)) &
+        ([X] extends [{ ProvideEnv: infer K }] ? K : unknown),
+      | (E & ([X] extends [{ LimitError: infer K }] ? K : unknown))
+      | ([X] extends [{ HandleError: infer K }] ? K : never),
+      A
+    >
   ): Effect<
     R & ([X] extends [{ RequireEnv: infer K }] ? K : unknown),
-    | Exclude<E, [X] extends [{ HandleError: infer K }] ? K : never>
+    | (E & ([X] extends [{ LimitError: infer K }] ? K : unknown))
     | ([X] extends [{ ProduceError: infer K }] ? K : never),
     A
   >
