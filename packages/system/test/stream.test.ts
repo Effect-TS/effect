@@ -9,6 +9,7 @@ import * as R from "../src/Ref"
 import * as S from "../src/Stream"
 import * as BufferedPull from "../src/Stream/BufferedPull"
 import * as Pull from "../src/Stream/Pull"
+import * as SK from "../src/Stream/Sink"
 
 describe("Stream", () => {
   describe("Broadcast", () => {
@@ -242,5 +243,11 @@ describe("Stream", () => {
     expect(await pipe(S.range(2, 8), S.runCollect, T.runPromise)).toEqual([
       2, 3, 4, 5, 6, 7
     ])
+  })
+
+  it("sums", async () => {
+    expect(await pipe(S.fromIterable([1, 2, 3]), S.run(SK.sum), T.runPromise)).toEqual(
+      6
+    )
   })
 })

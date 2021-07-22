@@ -1276,7 +1276,7 @@ const reduceChunkGo = <S, I>(
   if (idx === len) {
     return [s, O.none] as const
   } else {
-    const s1 = f(s, chunk[idx]!)
+    const s1 = f(s, A.unsafeGet_(chunk, idx))
 
     if (contFn(s1)) {
       return reduceChunkGo(s1, chunk, idx + 1, len, contFn, f)
