@@ -286,6 +286,23 @@ describe("Effect", () => {
 
     expect(result).toEqual(Ex.fail("(error)"))
   })
+  it("fiberRef", async () => {
+    const fa = pipe(T.environment<FiberRef.FiberRef<boolean>>(), T.chain(FiberRef.get))
+    const result = await pipe(
+      FiberRef.make(true, (_) => _),
+      T.tap((ref) => FiberRef.set_(ref, false)),
+      T.chain((ref) =>
+        pipe(
+          T.zipWithPar_(fa, fa, (a, b) => {
+            return [a, b]
+          }),
+          T.provide(ref)
+        )
+      ),
+      T.runPromise
+    )
+    expect(result).toEqual([false, false])
+  })
   it(
     "forkAs",
     async () => {
