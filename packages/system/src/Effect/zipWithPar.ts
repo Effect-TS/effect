@@ -28,40 +28,38 @@ export function zipWithPar_<R, E, A, R2, E2, A2, B>(
       raceWith_(
         graft(a),
         graft(b),
-        (ex, fi) => coordinateZipPar<E, E2>()(d.id, f, true, ex, fi),
-        (ex, fi) => coordinateZipPar<E, E2>()(d.id, g, false, ex, fi),
+        (ex, fi) => coordinateZipPar<E | E2, B, A, A2>(d.id, f, true, ex, fi),
+        (ex, fi) => coordinateZipPar<E | E2, B, A2, A>(d.id, g, false, ex, fi),
         __trace
       )
     )
   )
 }
 
-function coordinateZipPar<E, E2>() {
-  return <B, X, Y>(
-    fiberId: FiberID,
-    f: (a: X, b: Y) => B,
-    leftWinner: boolean,
-    winner: Exit<E | E2, X>,
-    loser: Fiber<E | E2, Y>
-  ) => {
-    switch (winner._tag) {
-      case "Success": {
-        return map_(join(loser), (y) => f(winner.value, y))
-      }
-      case "Failure": {
-        return chain_(loser.interruptAs(fiberId), (e) => {
-          switch (e._tag) {
-            case "Success": {
-              return halt(winner.cause)
-            }
-            case "Failure": {
-              return leftWinner
-                ? halt(both(winner.cause, e.cause))
-                : halt(both(e.cause, winner.cause))
-            }
+function coordinateZipPar<E, B, X, Y>(
+  fiberId: FiberID,
+  f: (a: X, b: Y) => B,
+  leftWinner: boolean,
+  winner: Exit<E, X>,
+  loser: Fiber<E, Y>
+) {
+  switch (winner._tag) {
+    case "Success": {
+      return map_(join(loser), (y) => f(winner.value, y))
+    }
+    case "Failure": {
+      return chain_(loser.interruptAs(fiberId), (e) => {
+        switch (e._tag) {
+          case "Success": {
+            return halt(winner.cause)
           }
-        })
-      }
+          case "Failure": {
+            return leftWinner
+              ? halt(both(winner.cause, e.cause))
+              : halt(both(e.cause, winner.cause))
+          }
+        }
+      })
     }
   }
 }
