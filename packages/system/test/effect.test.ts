@@ -296,7 +296,7 @@ describe("Effect", () => {
           T.zipWithPar_(fa, fa, (a, b) => {
             return [a, b]
           }),
-          T.provide(ref)
+          T.provideAll(ref)
         )
       ),
       T.runPromise
