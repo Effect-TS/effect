@@ -88,7 +88,7 @@ export default function unpipe(_program: ts.Program) {
               ...(optimizeTagsOverload || [])
             ])
 
-            if (optimizeTags.has("ets_pipe")) {
+            if (optimizeTags.has("pipe")) {
               if (node.arguments.findIndex((xx) => ts.isSpreadElement(xx)) === -1) {
                 return factory.createParenthesizedExpression(
                   optimisePipe(

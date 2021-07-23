@@ -197,7 +197,7 @@ export function drop_<A>(self: Chunk<A>, n: number): Chunk<A> {
  * @ets_data_first drop_
  */
 export function drop(n: number): <A>(self: Chunk<A>) => Chunk<A> {
-  return (self) => concreteId(self).take(n)
+  return (self) => drop_(self, n)
 }
 
 /**
