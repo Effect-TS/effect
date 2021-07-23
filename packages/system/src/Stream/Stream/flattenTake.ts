@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type * as TK from "../Take"
 import type { Stream } from "./definitions"

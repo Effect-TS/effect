@@ -25,7 +25,7 @@ export default function tracer(_program: ts.Program) {
               .getJSDocTags(node)
               .map((tag) => `${tag.tagName.escapedText} ${tag.comment}`)
 
-            if (tags.includes("trace off")) {
+            if (tags.includes("ets_trace off")) {
               return node
             }
           } else if (ts.isCallExpression(node)) {
@@ -83,7 +83,7 @@ export default function tracer(_program: ts.Program) {
                 processedArguments.length === declarationParameters.length - 1
 
               const shouldTraceCall =
-                signatureTags(signature)["trace"]?.includes("call")
+                signatureTags(signature)["ets_trace"]?.includes("call")
 
               return factory.updateCallExpression(
                 node,

@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type { Base, Infer, Kind, URIS } from "../HKT"
 

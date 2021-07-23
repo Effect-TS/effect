@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import { failureOrCause } from "../Cause"
 import { fold } from "../Either"
@@ -10,7 +10,7 @@ import { onError_ } from "./onExit"
 /**
  * Like fork but handles an error with the provided handler.
  *
- * @dataFirst forkWithErrorHandler_
+ * @ets_data_first forkWithErrorHandler_
  */
 export function forkWithErrorHandler<R2, E>(
   handler: (e: E) => RIO<R2, void>,

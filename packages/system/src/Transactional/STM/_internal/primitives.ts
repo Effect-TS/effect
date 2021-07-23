@@ -115,7 +115,7 @@ export class STMProvideSome<R0, R, E, A> extends STM<R, E, A> {
   }
 }
 /**
- * @optimize remove
+ * @ets_optimize remove
  */
 
 export function concreteSTM<R, E, A>(
@@ -245,7 +245,7 @@ export function map_<R, E, A, B>(self: STM<R, E, A>, f: (a: A) => B): STM<R, E, 
 /**
  * Maps the value produced by the effect.
  *
- * @dataFirst map_
+ * @ets_data_first map_
  */
 export function map<A, B>(f: (a: A) => B): <R, E>(self: STM<R, E, A>) => STM<R, E, B> {
   return (self) => map_(self, f)
@@ -266,7 +266,7 @@ export function chain_<R, E, A, R1, E1, B>(
  * Feeds the value produced by this effect to the specified function,
  * and then runs the returned effect as well to produce its results.
  *
- * @dataFirst chain_
+ * @ets_data_first chain_
  */
 export function chain<A, R1, E1, B>(
   f: (a: A) => STM<R1, E1, B>
@@ -287,7 +287,7 @@ export function catchAll_<R, E, A, R1, E1, B>(
 /**
  * Recovers from all errors.
  *
- * @dataFirst catchAll_
+ * @ets_data_first catchAll_
  */
 export function catchAll<E, R1, E1, B>(
   f: (e: E) => STM<R1, E1, B>
@@ -314,7 +314,7 @@ export function foldM_<R, E, A, R1, E1, B, R2, E2, C>(
  * Effectfully folds over the `STM` effect, handling both failure and
  * success.
  *
- * @dataFirst foldM_
+ * @ets_data_first foldM_
  */
 export function foldM<E, A, R1, E1, B, R2, E2, C>(
   g: (e: E) => STM<R2, E2, C>,
@@ -344,7 +344,7 @@ export function ensuring_<R, E, A, R1, B>(
  * not this effect succeeds. Note that as with all STM transactions,
  * if the full transaction fails, everything will be rolled back.
  *
- * @dataFirst ensuring_
+ * @ets_data_first ensuring_
  */
 export function ensuring<R1, B>(
   finalizer: STM<R1, never, B>
@@ -380,7 +380,7 @@ export function provideSome_<R, E, A, R0>(
  * Provides some of the environment required to run this effect,
  * leaving the remainder `R0`.
  *
- * @dataFirst provideSome_
+ * @ets_data_first provideSome_
  */
 export function provideSome<R, R0>(
   f: (r: R0) => R

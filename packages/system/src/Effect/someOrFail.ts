@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import * as O from "../Option"
 import { chain_, succeed, succeedWith } from "./core"
@@ -8,7 +8,7 @@ import { fail } from "./fail"
 /**
  * Extracts the optional value, or fails with the given error 'e'.
  *
- * @dataFirst someOrFail_
+ * @ets_data_first someOrFail_
  */
 export function someOrFail<E2>(orFail: () => E2, __trace?: string) {
   return <R, E, A>(self: Effect<R, E, O.Option<A>>) => someOrFail_(self, orFail)

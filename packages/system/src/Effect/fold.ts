@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import { succeed } from "./core"
 import type { Effect, RIO } from "./effect"
@@ -28,7 +28,7 @@ export function fold_<R, E, A, A2, A3>(
  * does not fail, but succeeds with the value returned by the left or right
  * function passed to `fold`.
  *
- * @dataFirst fold_
+ * @ets_data_first fold_
  */
 export function fold<E, A, A2, A3>(
   failure: (failure: E) => A2,

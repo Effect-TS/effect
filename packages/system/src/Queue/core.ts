@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import * as ChunkFilter from "../Collections/Immutable/Chunk/api/filter"
 import * as Chunk from "../Collections/Immutable/Chunk/core"
@@ -205,7 +205,7 @@ export function isShutdown<RA, RB, EA, EB, A, B>(self: XQueue<RA, RB, EA, EB, A,
 /**
  * Places one value in the queue.
  *
- * @dataFirst offer_
+ * @ets_data_first offer_
  */
 export function offer<A>(a: A) {
   return <RA, RB, EA, EB, B>(self: XQueue<RA, RB, EA, EB, A, B>) => offer_(self, a)
@@ -222,7 +222,7 @@ export function offer_<RA, RB, EA, EB, A, B>(self: XQueue<RA, RB, EA, EB, A, B>,
 /**
  * Places one value in the queue.
  *
- * @dataFirst offerTo_
+ * @ets_data_first offerTo_
  */
 export function offerTo<RA, RB, EA, EB, A, B>(self: XQueue<RA, RB, EA, EB, A, B>) {
   return (a: A) => offer_(self, a)
@@ -231,7 +231,7 @@ export function offerTo<RA, RB, EA, EB, A, B>(self: XQueue<RA, RB, EA, EB, A, B>
 /**
  * Places one value in the queue.
  *
- * @dataFirst offerTo_
+ * @ets_data_first offerTo_
  */
 export function offerTo_<RA, RB, EA, EB, A, B>(
   a: A,
@@ -256,7 +256,7 @@ export function offerTo_<RA, RB, EA, EB, A, B>(
  * For Dropping Queue: uses `Dropping` Strategy,
  * It places the values in the queue but if there is no room it will not enqueue them and return false.
  *
- * @dataFirst offerAll_
+ * @ets_data_first offerAll_
  */
 export function offerAll<A>(as: Iterable<A>) {
   return <RA, RB, EA, EB, B>(self: XQueue<RA, RB, EA, EB, A, B>) => offerAll_(self, as)
@@ -326,7 +326,7 @@ export function takeAll<RA, RB, EA, EB, A, B>(self: XQueue<RA, RB, EA, EB, A, B>
 /**
  * Takes up to max number of values in the queue.
  *
- * @dataFirst takeAllUpTo_
+ * @ets_data_first takeAllUpTo_
  */
 export function takeAllUpTo(n: number) {
   return <RA, RB, EA, EB, A, B>(self: XQueue<RA, RB, EA, EB, A, B>) =>

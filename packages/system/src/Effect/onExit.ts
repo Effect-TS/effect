@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type { Cause } from "../Cause/cause"
 import type { Exit } from "../Exit/exit"
@@ -25,7 +25,7 @@ export function onExit_<R, E, A, R2, E2, X>(
 /**
  * Execute a cleanup function when the effect completes
  *
- * @dataFirst onExit_
+ * @ets_data_first onExit_
  */
 export function onExit<E, A, R2, E2, X>(
   cleanup: (exit: Exit<E, A>) => Effect<R2, E2, X>,
@@ -38,7 +38,7 @@ export function onExit<E, A, R2, E2, X>(
 /**
  * Execute a cleanup function when the effect errors
  *
- * @dataFirst onError_
+ * @ets_data_first onError_
  */
 export function onError<E, A, R2, E2, X>(
   cleanup: (exit: Cause<E>) => Effect<R2, E2, X>,

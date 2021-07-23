@@ -33,7 +33,7 @@ export function partitionMap_<A, B, C>(
  * Partitions the elements of this chunk into two chunks using the specified
  * function.
  *
- * @dataFirst partitionMap_
+ * @ets_data_first partitionMap_
  */
 export function partitionMap<A, B, C>(
   f: (a: A) => E.Either<B, C>

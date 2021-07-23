@@ -28,7 +28,7 @@ export function mapM_<A, R, E, B>(
 /**
  * Effectfully maps the elements of this list.
  *
- * @dataFirst mapM_
+ * @ets_data_first mapM_
  */
 export function mapM<A, R, E, B>(
   f: (a: A) => Effect<R, E, B>

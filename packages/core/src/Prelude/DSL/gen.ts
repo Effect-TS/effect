@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import * as L from "@effect-ts/system/Collections/Immutable/List"
 import { PrematureGeneratorExit } from "@effect-ts/system/GlobalExceptions"

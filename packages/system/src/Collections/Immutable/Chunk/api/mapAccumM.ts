@@ -42,7 +42,7 @@ export function mapAccumM_<A, B, R, E, S>(
  * Statefully and effectfully maps over the elements of this chunk to produce
  * new elements.
  *
- * @dataFirst mapAccumM_
+ * @ets_data_first mapAccumM_
  */
 export function mapAccumM<A, B, R, E, S>(
   s: S,

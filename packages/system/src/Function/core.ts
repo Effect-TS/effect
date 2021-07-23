@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type { _A, _E, _R } from "../Effect"
 import { flow } from "./flow"
@@ -100,7 +100,7 @@ export function flip<A, B, C>(f: (a: A, b: B) => C): (b: B, a: A) => C {
 /**
  * Identity function
  *
- * @optimize identity
+ * @ets_optimize identity
  */
 export function identity<A>(a: A): A {
   return a
@@ -109,7 +109,7 @@ export function identity<A>(a: A): A {
 /**
  * Force string to be literal
  *
- * @optimize identity
+ * @ets_optimize identity
  */
 export function literal<K extends string>(k: K): K {
   return k
@@ -155,7 +155,7 @@ export function untupled<A extends ReadonlyArray<unknown>, B>(
 /**
  * Performs unsafe coercion of types
  *
- * @optimize identity
+ * @ets_optimize identity
  */
 export function unsafeCoerce<A, B>(a: A): B {
   return a as any
@@ -174,7 +174,7 @@ export function hole<T>(): T {
 export function enforceOutput<A>() {
   return (
     /**
-     * @optimize identity
+     * @ets_optimize identity
      */
     <T extends { [k in typeof _A]: () => A }>(_: T): T => _
   )
@@ -186,7 +186,7 @@ export function enforceOutput<A>() {
 export function enforceError<E>() {
   return (
     /**
-     * @optimize identity
+     * @ets_optimize identity
      */
     <T extends { [k in typeof _E]: () => E }>(_: T): T => _
   )
@@ -198,7 +198,7 @@ export function enforceError<E>() {
 export function enforceContext<R>() {
   return (
     /**
-     * @optimize identity
+     * @ets_optimize identity
      */
     <T extends { [k in typeof _R]: (_: R) => void }>(_: T): T => _
   )

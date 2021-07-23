@@ -1,5 +1,5 @@
 /* eslint-disable prefer-rest-params */
-// tracing: off
+// ets_tracing: off
 
 import "../Operator"
 
@@ -19,7 +19,7 @@ export function forEachOf<F extends P.URIS, C>(
     __trace?: string
   ): T.Effect<RE, EE, P.Kind<F, C, K, Q, W, X, I, S, R, E, AA>>
   /**
-   * @dataFirst self
+   * @ets_data_first self
    */
   <A, RE, EE, AA>(f: (a: A) => T.Effect<RE, EE, AA>, __trace?: string): <
     K,
@@ -68,7 +68,7 @@ export function forEachParOf<F extends P.URIS, C>(
     __trace?: string
   ): T.Effect<RE, EE, P.Kind<F, C, K, Q, W, X, I, S, R, E, AA>>
   /**
-   * @dataFirst self
+   * @ets_data_first self
    */
   <A, RE, EE, AA>(f: (a: A) => T.Effect<RE, EE, AA>, __trace?: string): <
     K,
@@ -111,7 +111,7 @@ export function forEachParNOf<F extends P.URIS, C>(
     __trace?: string
   ): T.Effect<RE, EE, P.Kind<F, C, K, Q, W, X, I, S, R, E, AA>>
   /**
-   * @dataFirst self
+   * @ets_data_first self
    */
   <A, RE, EE, AA>(n: number, f: (a: A) => T.Effect<RE, EE, AA>, __trace?: string): <
     K,

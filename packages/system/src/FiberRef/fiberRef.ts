@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 export class FiberRef<A> {
   constructor(

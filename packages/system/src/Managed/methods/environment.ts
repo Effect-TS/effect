@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import * as T from "../../Effect/environment"
 import { fromEffect } from "../fromEffect"

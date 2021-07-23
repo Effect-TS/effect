@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import { head } from "../Collections/Immutable/Array"
 import * as Fiber from "../Fiber"
@@ -15,7 +15,7 @@ import * as interruption from "./interruption"
  * This means any finalizers associated with the effect will not be executed
  * until the specified scope is closed.
  *
- * @dataFirst in_
+ * @ets_data_first in_
  */
 function _in(scope: Scope<any>, __trace?: string) {
   return <R, E, A>(self: Effect<R, E, A>) => in_(self, scope, __trace)

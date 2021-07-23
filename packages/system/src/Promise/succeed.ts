@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import { succeed as effectSucceed } from "../Effect/core"
 import { completeWith } from "./completeWith"

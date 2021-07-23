@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type * as T from "../../Effect"
 import * as M from "../_internal/managed"

@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type { Stream } from "./definitions"
 import { map_ } from "./map"

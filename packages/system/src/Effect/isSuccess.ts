@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type { Effect } from "./effect"
 import { fold_ } from "./fold"

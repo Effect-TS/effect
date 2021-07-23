@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type { Compact } from "../Compact"
 import type { Auto, URIS } from "../HKT"

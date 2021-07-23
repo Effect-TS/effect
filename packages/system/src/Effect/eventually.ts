@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type { Effect } from "./effect"
 import { orElse_ } from "./orElse"

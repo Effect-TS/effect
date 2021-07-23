@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import * as C from "../Cause"
 import * as E from "../Either/core"
@@ -10,7 +10,7 @@ import type { Effect } from "./effect"
 /**
  * Recovers from some or all of the error cases.
  *
- * @dataFirst catchSome_
+ * @ets_data_first catchSome_
  */
 export function catchSome<R, E, A, R2, E2, A2>(
   f: (e: E) => O.Option<Effect<R2, E2, A2>>,

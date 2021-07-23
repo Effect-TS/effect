@@ -48,7 +48,7 @@ export function dropWhile_<A>(
 /**
  * Drops all elements so long as the predicate returns true.
  *
- * @dataFirst dropWhile_
+ * @ets_data_first dropWhile_
  */
 export function dropWhile<A>(
   f: (a: A) => boolean

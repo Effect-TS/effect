@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import { _A, _E, _R, accessService } from "../../Effect"
 import type { Effect } from "../../Effect/effect"

@@ -26,7 +26,7 @@ export function filterM_<R, E, A>(
  * Filters this list by the specified effectful predicate, retaining all elements for
  * which the predicate evaluates to true.
  *
- * @dataFirst filterM_
+ * @ets_data_first filterM_
  */
 export function filterM<R, E, A>(
   f: (a: A) => Effect<R, E, boolean>

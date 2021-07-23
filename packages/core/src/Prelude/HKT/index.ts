@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 // codegen:start { preset: barrel, include: ./*.ts, exclude: ./hkt.ts }
 export * from "./base"

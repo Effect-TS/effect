@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import * as C from "../../Cause"
 import * as A from "../../Collections/Immutable/Chunk"
@@ -25,7 +25,7 @@ export type TerminationStrategy = "Left" | "Right" | "Both" | "Either"
  * New produced stream will terminate when both specified stream terminate if
  * no termination strategy is specified.
  *
- * @dataFirst mergeWith_
+ * @ets_data_first mergeWith_
  */
 export function mergeWith<R1, E1, B, A, C, C1>(
   that: Stream<R1, E1, B>,

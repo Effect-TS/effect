@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import * as C from "../Cause/core"
 import { FiberFailure } from "../Cause/errors"
@@ -23,7 +23,7 @@ export function ap_<E, A, B>(fa: Exit<E, A>, fab: Exit<E, (a: A) => B>): Exit<E,
 /**
  * Applicative's ap
  *
- * @dataFirst ap_
+ * @ets_data_first ap_
  */
 export function ap<E, A>(fa: Exit<E, A>) {
   return <B>(fab: Exit<E, (a: A) => B>): Exit<E, B> => ap_(fa, fab)
@@ -39,7 +39,7 @@ export function as_<E, B>(exit: Exit<E, unknown>, b: B) {
 /**
  * Replaces the success value with the one provided.
  *
- * @dataFirst as_
+ * @ets_data_first as_
  */
 export function as<B>(b: B) {
   return <E>(exit: Exit<E, unknown>) => as_(exit, b)
@@ -59,7 +59,7 @@ export function bimap_<E, E1, A, A1>(
 /**
  * Maps over both the error and value type.
  *
- * @dataFirst bimap_
+ * @ets_data_first bimap_
  */
 export function bimap<E, E1, A, A1>(f: (e: E) => E1, g: (a: A) => A1) {
   return (exit: Exit<E, A>) => bimap_(exit, f, g)
@@ -85,7 +85,7 @@ export function chain_<E, A, A1, E1>(
 /**
  * Flat maps over the value type.
  *
- * @dataFirst chain_
+ * @ets_data_first chain_
  */
 export function chain<A, A1, E1>(f: (a: A) => Exit<E1, A1>) {
   return <E>(exit: Exit<E, A>): Exit<E | E1, A1> => chain_(exit, f)
@@ -156,7 +156,7 @@ export function zipWith_<E, E1, A, B, C>(
 /**
  * Zips this together with the specified result using the combination functions.
  *
- * @dataFirst zipWith_
+ * @ets_data_first zipWith_
  */
 export function zipWith<E, E1, A, B, C>(
   that: Exit<E1, B>,
@@ -214,7 +214,7 @@ export function exists_<A, E>(exit: Exit<E, A>, f: (a: A) => boolean): boolean {
 /**
  * Returns f(a) if the exit is successful
  *
- * @dataFirst exists_
+ * @ets_data_first exists_
  */
 export function exists<A>(f: (a: A) => boolean) {
   return <E>(exit: Exit<E, A>): boolean => exists_(exit, f)
@@ -255,7 +255,7 @@ export function fold_<E, A, Z>(
 /**
  * Folds over the value or cause.
  *
- * @dataFirst fold_
+ * @ets_data_first fold_
  */
 export function fold<E, A, Z>(failed: (e: C.Cause<E>) => Z, succeed: (a: A) => Z) {
   return (exit: Exit<E, A>): Z => fold_(exit, failed, succeed)
@@ -296,7 +296,7 @@ export function getOrElse_<E, A, A1>(
 /**
  * Get successful result falling back to orElse result in case of failure
  *
- * @dataFirst getOrElse_
+ * @ets_data_first getOrElse_
  */
 export function getOrElse<E, A1>(orElse: (_: C.Cause<E>) => A1) {
   return <A>(exit: Exit<E, A>): A | A1 => getOrElse_(exit, orElse)
@@ -343,7 +343,7 @@ export function map_<E, A, A1>(exit: Exit<E, A>, f: (a: A) => A1): Exit<E, A1> {
 /**
  * Maps over the value type.
  *
- * @dataFirst map_
+ * @ets_data_first map_
  */
 export function map<A, A1>(f: (a: A) => A1) {
   return <E>(exit: Exit<E, A>): Exit<E, A1> => map_(exit, f)
@@ -366,7 +366,7 @@ export function mapError_<E, E1, A>(exit: Exit<E, A>, f: (e: E) => E1): Exit<E1,
 /**
  * Maps over the error type.
  *
- * @dataFirst mapError_
+ * @ets_data_first mapError_
  */
 export function mapError<E, E1>(f: (e: E) => E1) {
   return <A>(exit: Exit<E, A>): Exit<E1, A> => mapError_(exit, f)
@@ -392,7 +392,7 @@ export function mapErrorCause_<E, E1, A>(
 /**
  * Maps over the cause type.
  *
- * @dataFirst mapErrorCause_
+ * @ets_data_first mapErrorCause_
  */
 export function mapErrorCause<E, E1>(f: (e: C.Cause<E>) => C.Cause<E1>) {
   return <A>(exit: Exit<E, A>): Exit<E1, A> => mapErrorCause_(exit, f)
@@ -411,7 +411,7 @@ export function orElseFail_<E, E1, A>(exit: Exit<E, A>, e: E1): Exit<E1, A> {
 /**
  * Replaces the error value with the one provided.
  *
- * @dataFirst orElseFail_
+ * @ets_data_first orElseFail_
  */
 export function orElseFail<E1>(e: E1) {
   return <E, A>(exit: Exit<E, A>) => orElseFail_(exit, e)
@@ -474,7 +474,7 @@ export function zip_<E, E1, A, B>(
 /**
  * Sequentially zips the this result with the specified result or else returns the failed `Cause[E1]`
  *
- * @dataFirst zip_
+ * @ets_data_first zip_
  */
 export function zip<E1, B>(that: Exit<E1, B>) {
   return <E, A>(exit: Exit<E, A>): Exit<E | E1, Tp.Tuple<[A, B]>> => zip_(exit, that)
@@ -496,7 +496,7 @@ export function zipLeft_<E, E1, A, B>(
 /**
  * Sequentially zips the this result with the specified result discarding the second element of the tuple or else returns the failed `Cause[E1]`
  *
- * @dataFirst zipLeft_
+ * @ets_data_first zipLeft_
  */
 export function zipLeft<E1, B>(that: Exit<E1, B>) {
   return <E, A>(exit: Exit<E, A>): Exit<E | E1, A> => zipLeft_(exit, that)
@@ -518,7 +518,7 @@ export function zipPar_<E, E1, A, B>(
 /**
  * Parallelly zips the this result with the specified result or else returns the failed `Cause[E1]`
  *
- * @dataFirst zipPar_
+ * @ets_data_first zipPar_
  */
 export function zipPar<E1, B>(that: Exit<E1, B>) {
   return <E, A>(exit: Exit<E, A>): Exit<E | E1, Tp.Tuple<[A, B]>> => zipPar_(exit, that)
@@ -540,7 +540,7 @@ export function zipParLeft_<E, E1, A, B>(
 /**
  * Parallelly zips the this result with the specified result discarding the second element of the tuple or else returns the failed `Cause[E1]`
  *
- * @dataFirst zipParLeft_
+ * @ets_data_first zipParLeft_
  */
 export function zipParLeft<E1, B>(that: Exit<E1, B>) {
   return <E, A>(exit: Exit<E, A>): Exit<E | E1, A> => zipParLeft_(exit, that)
@@ -562,7 +562,7 @@ export function zipParRight_<E, E1, A, B>(
 /**
  * Parallelly zips the this result with the specified result discarding the first element of the tuple or else returns the failed `Cause[E1]`
  *
- * @dataFirst zipParRight_
+ * @ets_data_first zipParRight_
  */
 export function zipParRight<E1, B>(that: Exit<E1, B>) {
   return <E, A>(exit: Exit<E, A>): Exit<E | E1, B> => zipParRight_(exit, that)
@@ -584,7 +584,7 @@ export function zipRight_<E, A, E1, B>(
 /**
  * Sequentially zips the this result with the specified result discarding the first element of the tuple or else returns the failed `Cause[E1]`
  *
- * @dataFirst zipRight_
+ * @ets_data_first zipRight_
  */
 export function zipRight<E1, B>(that: Exit<E1, B>) {
   return <E, A>(exit: Exit<E, A>): Exit<E | E1, B> => zipRight_(exit, that)

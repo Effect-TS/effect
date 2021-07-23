@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import { isTracingEnabled } from "./Global"
 

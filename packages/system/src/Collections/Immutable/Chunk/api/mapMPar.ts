@@ -15,7 +15,7 @@ export function mapMPar_<A, R, E, B>(
 /**
  * Effectfully maps the elements of this chunk in parallel.
  *
- * @dataFirst mapMPar_
+ * @ets_data_first mapMPar_
  */
 export function mapMPar<A, R, E, B>(
   f: (a: A) => Effect<R, E, B>

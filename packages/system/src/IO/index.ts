@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 /* eslint-disable prefer-const */
 import "../Operator"
@@ -107,7 +107,7 @@ export function run<A>(self: IO<A>): A {
  * result of this computation by running the first computation, using its
  * result to generate a second computation, and running that computation.
  *
- * @dataFirst chain_
+ * @ets_data_first chain_
  */
 export function chain<A, B>(f: (a: A) => IO<B>) {
   return (self: IO<A>): IO<B> => new FlatMap(self, f)
@@ -125,7 +125,7 @@ export function chain_<A, B>(self: IO<A>, f: (a: A) => IO<B>): IO<B> {
 /**
  * Returns a computation that effectfully "peeks" at the success of this one.
  *
- * @dataFirst tap_
+ * @ets_data_first tap_
  */
 export function tap<A>(f: (a: A) => IO<any>) {
   return (self: IO<A>): IO<A> => tap_(self, f)
@@ -159,7 +159,7 @@ export function map_<A, B>(self: IO<A>, f: (a: A) => B) {
  * result of this computation by running the first computation, using its
  * result to generate a second computation, and running that computation.
  *
- * @dataFirst map_
+ * @ets_data_first map_
  */
 export function map<A, B>(f: (a: A) => B) {
   return (self: IO<A>) => map_(self, f)
@@ -174,7 +174,7 @@ export const unit: IO<void> = new Succeed(undefined)
  * Combines this computation with the specified computation combining the
  * results of both using the specified function.
  *
- * @dataFirst zipWith_
+ * @ets_data_first zipWith_
  */
 export function zipWith<A, B, C>(that: IO<B>, f: (a: A, b: B) => C) {
   return (self: IO<A>): IO<C> => zipWith_(self, that, f)
@@ -192,7 +192,7 @@ export function zipWith_<A, B, C>(self: IO<A>, that: IO<B>, f: (a: A, b: B) => C
  * Combines this computation with the specified computation, combining the
  * results of both into a tuple.
  *
- * @dataFirst zip_
+ * @ets_data_first zip_
  */
 export function zip<B>(that: IO<B>) {
   return <A>(self: IO<A>) => zip_(self, that)

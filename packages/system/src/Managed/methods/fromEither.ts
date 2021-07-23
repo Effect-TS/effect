@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import * as fe from "../../Effect/fromEither"
 import * as E from "../../Either"

@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import { identity, pipe } from "../Function"
 import * as O from "../Option"
@@ -11,7 +11,7 @@ import { fail } from "./fail"
  * Keeps some of the errors, and terminates the fiber with the rest, using
  * the specified function to convert the `E` into a `Throwable`.
  *
- * @dataFirst refineOrDieWith_
+ * @ets_data_first refineOrDieWith_
  */
 export function refineOrDieWith<E, E1>(
   pf: (e: E) => O.Option<E1>,
@@ -49,7 +49,7 @@ export function refineOrDieWith_<R, A, E, E1>(
 /**
  * Keeps some of the errors, and terminates the fiber with the rest
  *
- * @dataFirst refineOrDie_
+ * @ets_data_first refineOrDie_
  */
 export function refineOrDie<E, E1>(pf: (e: E) => O.Option<E1>, __trace?: string) {
   return <R, A>(self: Effect<R, E, A>) => refineOrDie_(self, pf, __trace)

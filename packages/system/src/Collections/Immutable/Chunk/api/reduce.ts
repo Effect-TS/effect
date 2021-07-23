@@ -46,7 +46,7 @@ export function reduce_<A, S>(self: Chunk.Chunk<A>, s: S, f: (s: S, a: A) => S):
 /**
  * Folds over the elements in this chunk from the left.
  *
- * @dataFirst reduce_
+ * @ets_data_first reduce_
  */
 export function reduce<A, S>(s: S, f: (s: S, a: A) => S): (self: Chunk.Chunk<A>) => S {
   return (self) => reduce_(self, s, f)

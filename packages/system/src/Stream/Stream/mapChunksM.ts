@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type * as Chunk from "../../Collections/Immutable/Chunk"
 import { pipe } from "../../Function"

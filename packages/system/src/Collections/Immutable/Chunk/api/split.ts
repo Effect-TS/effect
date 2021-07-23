@@ -41,7 +41,7 @@ export function split_<A>(
 /**
  * Splits this chunk into `n` equally sized chunks.
  *
- * @dataFirst split_
+ * @ets_data_first split_
  */
 export function split(
   n: number

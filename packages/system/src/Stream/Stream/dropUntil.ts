@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type { Predicate } from "../../Function"
 import { not } from "../../Function"

@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type { Exit } from "../Exit/exit"
 import type * as Fiber from "../Fiber"
@@ -46,7 +46,7 @@ export function forkScopeMask_<R, E, A>(
  * scope, passing a function that allows restoring the fork scope to
  * what it was originally.
  *
- * @dataFirst forkScopeMask_
+ * @ets_data_first forkScopeMask_
  */
 export function forkScopeMask<R, E, A>(
   f: (restore: ForkScopeRestore) => Effect<R, E, A>,
@@ -74,7 +74,7 @@ export function raceWithScope_<R, E, A, R1, E1, A1, R2, E2, A2, R3, E3, A3>(
  * Returns an effect that races this effect with the specified effect, calling
  * the specified finisher as soon as one result or the other has been computed.
  *
- * @dataFirst raceWithScope_
+ * @ets_data_first raceWithScope_
  */
 export function raceWithScope<E, A, R1, E1, A1, R2, E2, A2, R3, E3, A3>(
   right: Effect<R1, E1, A1>,
@@ -105,7 +105,7 @@ export function raceWith_<R, E, A, R1, E1, A1, R2, E2, A2, R3, E3, A3>(
  * Returns an effect that races this effect with the specified effect, calling
  * the specified finisher as soon as one result or the other has been computed.
  *
- * @dataFirst raceWith_
+ * @ets_data_first raceWith_
  */
 export function raceWith<E, A, R1, E1, A1, R2, E2, A2, R3, E3, A3>(
   right: Effect<R1, E1, A1>,
@@ -160,7 +160,7 @@ export function forkDaemon<R, E, A>(
  * new fiber is attached to the global scope, when the fiber executing the
  * returned effect terminates, the forked fiber will continue running.
  *
- * @dataFirst forkDaemonReport_
+ * @ets_data_first forkDaemonReport_
  */
 export function forkDaemonReport(reportFailure: FailureReporter, __trace?: string) {
   return <R, E, A>(value: Effect<R, E, A>): RIO<R, Fiber.FiberContext<E, A>> =>
@@ -191,7 +191,7 @@ export function forkDaemonReport_<R, E, A>(
  * The fiber is forked with interrupt supervision mode, meaning that when the
  * fiber that forks the child exits, the child will be interrupted.
  *
- * @dataFirst forkIn_
+ * @ets_data_first forkIn_
  */
 export function forkIn(scope: Scope<Exit<any, any>>, __trace?: string) {
   return <R, E, A>(value: Effect<R, E, A>): RIO<R, Runtime<E, A>> =>
@@ -228,7 +228,7 @@ export function forkIn_<R, E, A>(
  * The fiber is forked with interrupt supervision mode, meaning that when the
  * fiber that forks the child exits, the child will be interrupted.
  *
- * @dataFirst forkInReport_
+ * @ets_data_first forkInReport_
  */
 export function forkInReport(
   scope: Scope<Exit<any, any>>,
@@ -273,7 +273,7 @@ export function forkScopeWith<R, E, A>(
  * Returns a new effect that will utilize the specified scope to supervise
  * any fibers forked within the original effect.
  *
- * @dataFirst overrideForkScope_
+ * @ets_data_first overrideForkScope_
  */
 export function overrideForkScope(scope: Scope<Exit<any, any>>, __trace?: string) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R, E, A> =>

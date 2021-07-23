@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type { Cause } from "../Cause/cause"
 import { chain_, foldCauseM_, halt, succeed } from "./core"
@@ -8,7 +8,7 @@ import type { Effect } from "./effect"
  * Returns an effect that effectually "peeks" at the cause of the failure of
  * this effect.
  *
- * @dataFirst tapCause_
+ * @ets_data_first tapCause_
  */
 export function tapCause<R, E, E2, X>(
   f: (e: Cause<E2>) => Effect<R, E, X>,

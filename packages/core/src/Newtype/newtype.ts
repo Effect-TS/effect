@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 export interface Newtype<URI, A> {
   readonly _URI: URI
@@ -11,13 +11,13 @@ export interface Constructor<T, URI> {
   URI: URI
   wrap: {
     /**
-     * @optimize identity
+     * @ets_optimize identity
      */
     (_: T): Newtype<URI, T>
   }
   unwrap: {
     /**
-     * @optimize identity
+     * @ets_optimize identity
      */
     (_: Newtype<URI, T>): T
   }
@@ -27,13 +27,13 @@ export interface GenericConstructor<URI> {
   URI: URI
   wrap: {
     /**
-     * @optimize identity
+     * @ets_optimize identity
      */
     <T>(_: T): Newtype<URI, T>
   }
   unwrap: {
     /**
-     * @optimize identity
+     * @ets_optimize identity
      */
     <T>(_: Newtype<URI, T>): T
   }
@@ -43,13 +43,13 @@ export interface GenericConstructor<URI> {
 export interface ConstructorK<T, URI, K extends Newtype<URI, T>> {
   wrap: {
     /**
-     * @optimize identity
+     * @ets_optimize identity
      */
     (_: T): K
   }
   unwrap: {
     /**
-     * @optimize identity
+     * @ets_optimize identity
      */
     (_: K): T
   }

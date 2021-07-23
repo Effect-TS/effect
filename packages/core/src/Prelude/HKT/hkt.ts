@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type { AccessCustom, CustomType } from "./custom"
 import type { URI } from "./kind"

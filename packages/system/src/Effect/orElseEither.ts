@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import * as E from "../Either"
 import { pipe } from "../Function"
@@ -10,7 +10,7 @@ import { map_ } from "./map"
  * Returns an effect that will produce the value of this effect, unless it
  * fails, in which case, it will produce the value of the specified effect.
  *
- * @dataFirst orElseEither_
+ * @ets_data_first orElseEither_
  */
 export function orElseEither<R2, E2, A2>(
   that: () => Effect<R2, E2, A2>,

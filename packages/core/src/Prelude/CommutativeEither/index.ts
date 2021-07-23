@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type { AssociativeEither } from "../AssociativeEither"
 import type { Auto, URIS } from "../HKT"

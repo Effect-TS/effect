@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import * as cause from "../Cause"
 import * as ChunkFilter from "../Collections/Immutable/Chunk/api/filter"
@@ -90,7 +90,7 @@ export function forEach_<A, R, E, B>(
  * For a parallel version of this method, see `forEachPar`.
  * If you do not need the results, see `forEachUnit` for a more efficient implementation.
  *
- * @dataFirst forEach_
+ * @ets_data_first forEach_
  */
 export function forEach<A, R, E, B>(f: (a: A) => Effect<R, E, B>, __trace?: string) {
   return (as: Iterable<A>) => forEach_(as, f, __trace)
@@ -128,7 +128,7 @@ export function forEachUnit_<R, E, A, X>(
  * Equivalent to `asUnit(forEach(as, f))`, but without the cost of building
  * the list of results.
  *
- * @dataFirst forEachUnit_
+ * @ets_data_first forEachUnit_
  */
 export function forEachUnit<R, E, A, X>(
   f: (a: A) => Effect<R, E, X>,
@@ -303,7 +303,7 @@ export function forkManaged<R, E, A>(
  *
  * Additionally, interrupts all effects on any failure.
  *
- * @dataFirst forEachUnitPar_
+ * @ets_data_first forEachUnitPar_
  */
 export function forEachUnitPar<R, E, A, X>(
   f: (a: A) => Effect<R, E, X>,
@@ -353,7 +353,7 @@ export function forEachPar_<R, E, A, B>(
  *
  * For a sequential version of this method, see `forEach`.
  *
- * @dataFirst forEachPar_
+ * @ets_data_first forEachPar_
  */
 export function forEachPar<R, E, A, B>(f: (a: A) => Effect<R, E, B>, __trace?: string) {
   return (as: Iterable<A>): Effect<R, E, Chunk.Chunk<B>> => forEachPar_(as, f, __trace)
@@ -416,7 +416,7 @@ export function forEachUnitParN_<R, E, A, X>(
  *
  * Unlike `forEachUnitPar_`, this method will use at most up to `n` fibers.
  *
- * @dataFirst forEachUnitParN_
+ * @ets_data_first forEachUnitParN_
  */
 export function forEachUnitParN<R, E, A, X>(
   n: number,
@@ -507,7 +507,7 @@ export function forEachParN_<R, E, A, B>(
  *
  * Unlike `forEachPar`, this method will use at most up to `n` fibers.
  *
- * @dataFirst forEachParN_
+ * @ets_data_first forEachParN_
  */
 export function forEachParN<R, E, A, B>(
   n: number,
@@ -548,7 +548,7 @@ export function forEachExec_<R, E, A, B>(
  *
  * For a sequential version of this method, see `forEach`.
  *
- * @dataFirst forEachExec_
+ * @ets_data_first forEachExec_
  */
 export function forEachExec<R, E, A, B>(
   es: ExecutionStrategy,
@@ -583,7 +583,7 @@ export function collectAllPar<R, E, A>(
  *
  * Unlike `collectAllPar`, this method will use at most `n` fibers.
  *
- * @dataFirst collectAllParN_
+ * @ets_data_first collectAllParN_
  */
 export function collectAllParN(n: number, __trace?: string) {
   return <R, E, A>(as: Iterable<Effect<R, E, A>>) =>
@@ -632,7 +632,7 @@ export function collectAllUnitPar<R, E, A>(
  *
  * Unlike `collectAllUnitPar`, this method will use at most `n` fibers.
  *
- * @dataFirst collectAllUnitParN_
+ * @ets_data_first collectAllUnitParN_
  */
 export function collectAllUnitParN(n: number, __trace?: string) {
   return <R, E, A>(as: Iterable<Effect<R, E, A>>) =>
@@ -669,7 +669,7 @@ export function collectAllWith_<R, E, A, B>(
  * Evaluate each effect in the structure with `collectAll`, and collect
  * the results with given partial function.
  *
- * @dataFirst collectAllWith_
+ * @ets_data_first collectAllWith_
  */
 export function collectAllWith<A, B>(pf: (a: A) => O.Option<B>, __trace?: string) {
   return <R, E>(as: Iterable<Effect<R, E, A>>) => collectAllWith_(as, pf, __trace)
@@ -691,7 +691,7 @@ export function collectAllWithPar_<R, E, A, B>(
  * Evaluate each effect in the structure with `collectAll`, and collect
  * the results with given partial function.
  *
- * @dataFirst collectAllWithPar_
+ * @ets_data_first collectAllWithPar_
  */
 export function collectAllWithPar<A, B>(pf: (a: A) => O.Option<B>, __trace?: string) {
   return <R, E>(as: Iterable<Effect<R, E, A>>) => collectAllWithPar_(as, pf, __trace)
@@ -718,7 +718,7 @@ export function collectAllWithParN_<R, E, A, B>(
  *
  * Unlike `collectAllWithPar`, this method will use at most up to `n` fibers.
  *
- * @dataFirst collectAllWithParN_
+ * @ets_data_first collectAllWithParN_
  */
 export function collectAllWithParN<A, B>(
   n: number,
@@ -779,7 +779,7 @@ export function collectAllSuccessesParN_<R, E, A>(
  *
  * Unlike `collectAllSuccessesPar`, this method will use at most up to `n` fibers.
  *
- * @dataFirst collectAllSuccessesParN_
+ * @ets_data_first collectAllSuccessesParN_
  */
 export function collectAllSuccessesParN(n: number, __trace?: string) {
   return <R, E, A>(as: Iterable<Effect<R, E, A>>) =>
@@ -1252,7 +1252,7 @@ export function createQueue_<A>(
 /**
  * Creates a queue
  *
- * @dataFirst createQueue_
+ * @ets_data_first createQueue_
  */
 export function createQueue<A>(strategy: Q.Strategy<A>, __trace?: string) {
   return (queue: MutableQueue<A>) => createQueue_(queue, strategy, __trace)

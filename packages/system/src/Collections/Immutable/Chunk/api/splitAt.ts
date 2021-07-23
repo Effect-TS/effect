@@ -14,7 +14,7 @@ export function splitAt_<A>(
 /**
  * Returns two splits of this chunk at the specified index.
  *
- * @dataFirst splitAt_
+ * @ets_data_first splitAt_
  */
 export function splitAt(
   n: number

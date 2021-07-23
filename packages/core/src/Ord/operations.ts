@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type { Ord } from "@effect-ts/system/Ord"
 import { makeOrd } from "@effect-ts/system/Ord"

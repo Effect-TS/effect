@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import * as Tp from "../Collections/Immutable/Tuple"
 import * as absolve from "../Effect/absolve"
@@ -31,7 +31,7 @@ export function unsafeMakeRef<A>(a: A): Ref<A> {
  * function, returning a `XRef` with a `get` value that succeeds with the
  * result of the partial function if it is defined or else fails with `None`.
  *
- * @dataFirst collect_
+ * @ets_data_first collect_
  */
 export function collect<B, C>(pf: (_: B) => O.Option<C>) {
   return <EA, EB, A>(self: XRef<EA, EB, A, B>): XRef<EA, O.Option<EB>, A, C> =>
@@ -53,7 +53,7 @@ export function collect_<EA, EB, A, B, C>(
 /**
  * Transforms the `set` value of the `XRef` with the specified function.
  *
- * @dataFirst contramap_
+ * @ets_data_first contramap_
  */
 export function contramap<A, C>(f: (_: C) => A) {
   return <EA, EB, B>(self: XRef<EA, EB, A, B>): XRef<EA, EB, C, B> =>
@@ -74,7 +74,7 @@ export function contramap_<EA, EB, B, A, C>(
  * Transforms the `set` value of the `XRef` with the specified fallible
  * function.
  *
- * @dataFirst contramapEither_
+ * @ets_data_first contramapEither_
  */
 export function contramapEither<A, EC, C>(f: (_: C) => E.Either<EC, A>) {
   return <EA, EB, B>(self: XRef<EA, EB, A, B>): XRef<EC | EA, EB, C, B> =>
@@ -96,7 +96,7 @@ export function contramapEither_<A, EC, C, EA, EB, B>(
  * Transforms both the `set` and `get` values of the `XRef` with the
  * specified functions.
  *
- * @dataFirst dimap_
+ * @ets_data_first dimap_
  */
 export function dimap<A, B, C, D>(f: (_: C) => A, g: (_: B) => D) {
   return <EA, EB>(self: XRef<EA, EB, A, B>): XRef<EA, EB, C, D> => dimap_(self, f, g)
@@ -122,7 +122,7 @@ export function dimap_<EA, EB, A, B, C, D>(
  * Transforms both the `set` and `get` values of the `XRef` with the
  * specified fallible functions.
  *
- * @dataFirst dimapEither_
+ * @ets_data_first dimapEither_
  */
 export function dimapEither<A, B, C, EC, D, ED>(
   f: (_: C) => E.Either<EC, A>,
@@ -153,7 +153,7 @@ export function dimapEither_<EA, EB, A, B, C, EC, D, ED>(
  * Transforms both the `set` and `get` errors of the `XRef` with the
  * specified functions.
  *
- * @dataFirst dimapError_
+ * @ets_data_first dimapError_
  */
 export function dimapError<EA, EB, EC, ED>(
   f: (_: EA) => EC,
@@ -179,7 +179,7 @@ export function dimapError_<A, B, EA, EB, EC, ED>(
  * returning a `XRef` with a `set` value that succeeds if the predicate is
  * satisfied or else fails with `None`.
  *
- * @dataFirst filterInput_
+ * @ets_data_first filterInput_
  */
 export function filterInput<A, A1 extends A>(f: (_: A1) => boolean) {
   return <EA, EB, B>(self: XRef<EA, EB, A, B>): XRef<O.Option<EA>, EB, A1, B> =>
@@ -208,7 +208,7 @@ export function filterInput_<EA, EB, B, A, A1 extends A>(
  * returning a `XRef` with a `get` value that succeeds if the predicate is
  * satisfied or else fails with `None`.
  *
- * @dataFirst filterOutput_
+ * @ets_data_first filterOutput_
  */
 export function filterOutput<B>(f: (_: B) => boolean) {
   return <EA, EB, A>(_: XRef<EA, EB, A, B>): XRef<EA, O.Option<EB>, A, B> =>
@@ -230,7 +230,7 @@ export function filterOutput_<EA, EB, A, B>(
 /**
  * Transforms the `get` value of the `XRef` with the specified function.
  *
- * @dataFirst map_
+ * @ets_data_first map_
  */
 export function map<B, C>(f: (_: B) => C) {
   return <EA, EB, A>(_: XRef<EA, EB, A, B>): XRef<EA, EB, A, C> => map_(_, f)
@@ -250,7 +250,7 @@ export function map_<EA, EB, A, B, C>(
  * Transforms the `get` value of the `XRef` with the specified fallible
  * function.
  *
- * @dataFirst mapEither_
+ * @ets_data_first mapEither_
  */
 export function mapEither<B, EC, C>(f: (_: B) => E.Either<EC, C>) {
   return <EA, EB, A>(_: XRef<EA, EB, A, B>): XRef<EA, EC | EB, A, C> => mapEither_(_, f)
@@ -270,7 +270,7 @@ export function mapEither_<EA, EB, A, B, EC, C>(
 /**
  * Returns a read only view of the `XRef`.
  *
- * @optimize identity
+ * @ets_optimize identity
  */
 export function readOnly<EA, EB, A, B>(_: XRef<EA, EB, A, B>): XRef<EA, EB, never, B> {
   return _
@@ -295,7 +295,7 @@ export function writeOnly<EA, EB, A, B>(
  * computes a return value for the modification. This is a more powerful
  * version of `update`.
  *
- * @dataFirst modify_
+ * @ets_data_first modify_
  */
 export function modify<B, A>(f: (a: A) => Tp.Tuple<[B, A]>) {
   return <EA, EB>(self: XRef<EA, EB, A, A>): T.IO<EA | EB, B> => modify_(self, f)
@@ -376,7 +376,7 @@ export function modify_<EA, EB, B, A>(
  * defined on the current value otherwise it returns a default value. This
  * is a more powerful version of `updateSome`.
  *
- * @dataFirst modifySome_
+ * @ets_data_first modifySome_
  */
 export function modifySome<B, A>(def: B, f: (a: A) => O.Option<Tp.Tuple<[B, A]>>) {
   return <EA, EB>(self: XRef<EA, EB, A, A>): T.IO<EA | EB, B> =>
@@ -407,7 +407,7 @@ export function modifySome_<EA, EB, A, B>(
  * Atomically writes the specified value to the `XRef`, returning the value
  * immediately before modification.
  *
- * @dataFirst getAndSet_
+ * @ets_data_first getAndSet_
  */
 export function getAndSet<A>(a: A) {
   return <EA, EB>(self: XRef<EA, EB, A, A>): T.IO<EA | EB, A> => getAndSet_(self, a)
@@ -434,7 +434,7 @@ export function getAndSet_<EA, EB, A>(
  * Atomically modifies the `XRef` with the specified function, returning
  * the value immediately before modification.
  *
- * @dataFirst getAndUpdate_
+ * @ets_data_first getAndUpdate_
  */
 export function getAndUpdate<A>(f: (a: A) => A) {
   return <EA, EB>(self: XRef<EA, EB, A, A>) => getAndUpdate_(self, f)
@@ -463,7 +463,7 @@ export function getAndUpdate_<EA, EB, A>(
  * returning the value immediately before modification. If the function is
  * undefined on the current value it doesn't change it.
  *
- * @dataFirst getAndUpdateSome_
+ * @ets_data_first getAndUpdateSome_
  */
 export function getAndUpdateSome<A>(f: (a: A) => O.Option<A>) {
   return <EA, EB>(self: XRef<EA, EB, A, A>) => getAndUpdateSome_(self, f)
@@ -496,7 +496,7 @@ export function getAndUpdateSome_<EA, EB, A>(
 /**
  * Atomically modifies the `XRef` with the specified function.
  *
- * @dataFirst update_
+ * @ets_data_first update_
  */
 export function update<A>(f: (a: A) => A) {
   return <EA, EB>(self: XRef<EA, EB, A, A>): T.IO<EA | EB, void> => update_(self, f)
@@ -522,7 +522,7 @@ export function update_<EA, EB, A>(
  * Atomically modifies the `XRef` with the specified function and returns
  * the updated value.
  *
- * @dataFirst updateAndGet_
+ * @ets_data_first updateAndGet_
  */
 export function updateAndGet<A>(f: (a: A) => A) {
   return <EA, EB>(self: XRef<EA, EB, A, A>): T.IO<EA | EB, A> => updateAndGet_(self, f)
@@ -552,7 +552,7 @@ export function updateAndGet_<EA, EB, A>(
  * Atomically modifies the `XRef` with the specified partial function. If
  * the function is undefined on the current value it doesn't change it.
  *
- * @dataFirst updateSome_
+ * @ets_data_first updateSome_
  */
 export function updateSome<A>(f: (a: A) => O.Option<A>) {
   return <EA, EB>(self: XRef<EA, EB, A, A>): T.IO<EA | EB, void> => updateSome_(self, f)
@@ -587,7 +587,7 @@ export function updateSome_<EA, EB, A>(
  * the function is undefined on the current value it returns the old value
  * without changing it.
  *
- * @dataFirst updateSomeAndGet_
+ * @ets_data_first updateSomeAndGet_
  */
 export function updateSomeAndGet<A>(f: (a: A) => O.Option<A>) {
   return <EA, EB>(self: XRef<EA, EB, A, A>): T.IO<EA | EB, A> =>
@@ -625,7 +625,7 @@ export function updateSomeAndGet_<EA, EB, A>(
  * combinators implemented in terms of `fold` will be more ergonomic but this
  * method is extremely useful for implementing new combinators.
  *
- * @dataFirst fold_
+ * @ets_data_first fold_
  */
 export function fold<EA, EB, A, B, EC, ED, C = A, D = B>(
   ea: (_: EA) => EC,
@@ -658,7 +658,7 @@ export function fold_<EA, EB, A, B, EC, ED, C = A, D = B>(
  * the state in transforming the `set` value. This is a more powerful version
  * of `fold` but requires unifying the error types.
  *
- * @dataFirst foldAll_
+ * @ets_data_first foldAll_
  */
 export function foldAll<EA, EB, A, B, EC, ED, C = A, D = B>(
   ea: (_: EA) => EC,
@@ -698,7 +698,7 @@ export function get<EA, EB, A, B>(self: XRef<EA, EB, A, B>) {
  * Writes a new value to the `XRef`, with a guarantee of immediate
  * consistency (at some cost to performance).
  *
- * @dataFirst set_
+ * @ets_data_first set_
  */
 export function set<A>(a: A) {
   return <EA, EB, B>(self: XRef<EA, EB, A, B>) => self.set(a)

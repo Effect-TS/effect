@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type { Effect } from "../_internal/effect"
 import type { Stream } from "./definitions"

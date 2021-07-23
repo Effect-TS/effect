@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type { UIO } from "../Effect/effect"
 import { pipe } from "../Function"
@@ -8,7 +8,7 @@ import { modify } from "./modify"
 /**
  * Sets the value associated with the current fiber.
  *
- * @dataFirst set_
+ * @ets_data_first set_
  */
 export function set<A>(a: A) {
   return (fiberRef: FiberRef<A>): UIO<void> => set_(fiberRef, a)

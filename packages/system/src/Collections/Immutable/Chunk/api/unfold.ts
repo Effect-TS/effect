@@ -27,7 +27,7 @@ export function unfold_<A, S>(s: S, f: (s: S) => O.Option<Tp.Tuple<[A, S]>>): Ch
  * Constructs a `Chunk` by repeatedly applying the function `f` as long as it
  * returns `Some`.
  *
- * @dataFirst unfold_
+ * @ets_data_first unfold_
  */
 export function unfold<A, S>(
   f: (s: S) => O.Option<Tp.Tuple<[A, S]>>

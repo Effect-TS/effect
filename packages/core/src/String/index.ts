@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import "../Operator"
 
@@ -48,7 +48,7 @@ export function contains_(s: string, substr: string): boolean {
 /**
  * Check if a string contains the given substring
  *
- * @dataFirst contains_
+ * @ets_data_first contains_
  */
 export function contains(substr: string): (s: string) => boolean {
   return (s) => s.includes(substr)
@@ -64,7 +64,7 @@ export function startsWith_(s: string, substr: string): boolean {
 /**
  * Check if a string starts with the given substring
  *
- * @dataFirst startsWith_
+ * @ets_data_first startsWith_
  */
 export function startsWith(substr: string): (s: string) => boolean {
   return (s) => startsWith_(s, substr)
@@ -80,7 +80,7 @@ export function endsWith_(s: string, substr: string): boolean {
 /**
  * Check if a string ends with the given substring
  *
- * @dataFirst endsWith_
+ * @ets_data_first endsWith_
  */
 export function endsWith(substr: string): (s: string) => boolean {
   return (s) => endsWith_(s, substr)
@@ -129,7 +129,7 @@ export function prepend_(s: string, prepend: string): string {
 /**
  * Prepend one string to another
  *
- * @dataFirst prepend_
+ * @ets_data_first prepend_
  */
 export function prepend(prepend: string): (s: string) => string {
   return (s) => prepend + s
@@ -145,7 +145,7 @@ export function unprepend_(s: string, s1: string): string {
 /**
  * Removes the given string from the beginning, if it exists
  *
- * @dataFirst unprepend_
+ * @ets_data_first unprepend_
  */
 export function unprepend(s1: string): (s: string) => string {
   return (s) => unprepend_(s, s1)
@@ -161,7 +161,7 @@ export function append_(s: string, x: string): string {
 /**
  * Append one string to another.
  *
- * @dataFirst append_
+ * @ets_data_first append_
  */
 export function append(x: string): (s: string) => string {
   return (s) => s + x
@@ -177,7 +177,7 @@ export function unappend_(s: string, x: string): string {
 /**
  * Remove the end of a string, if it exists.
  *
- * @dataFirst unappend_
+ * @ets_data_first unappend_
  */
 export function unappend(x: string): (s: string) => string {
   return (s) => unappend_(s, x)
@@ -195,7 +195,7 @@ export function surround_(s: string, x: string): string {
  * Surround a string. Equivalent to calling `prepend` and `append` with the
  * same outer value.
  *
- * @dataFirst surround_
+ * @ets_data_first surround_
  */
 export function surround(x: string): (s: string) => string {
   return (s) => surround_(s, x)
@@ -211,7 +211,7 @@ export function unsurround_(s: string, x: string): string {
 /**
  * Remove the start and end of a string, if they both exist.
  *
- * @dataFirst unsurround_
+ * @ets_data_first unsurround_
  */
 export function unsurround(x: string): (s: string) => string {
   return (s) => unsurround_(s, x)
@@ -229,7 +229,7 @@ export function slice_(s: string, start: number, end: number): string {
  * Returns the substring between the start index (inclusive) and the end index
  * (exclusive).
  *
- * @dataFirst slice_
+ * @ets_data_first slice_
  */
 export function slice(start: number, end: number): (s: string) => string {
   return (s) => s.slice(start, end)
@@ -259,7 +259,7 @@ export function takeLeft_(s: string, n: number): string {
  *
  * If `n` is a float, it will be rounded down to the nearest integer.
  *
- * @dataFirst takeLeft_
+ * @ets_data_first takeLeft_
  */
 export function takeLeft(n: number): (s: string) => string {
   return (s) => takeLeft_(s, n)
@@ -289,7 +289,7 @@ export function takeRight_(s: string, n: number): string {
  *
  * If `n` is a float, it will be rounded down to the nearest integer.
  *
- * @dataFirst takeRight_
+ * @ets_data_first takeRight_
  */
 export function takeRight(n: number): (s: string) => string {
   return (s) => takeRight_(s, n)
@@ -305,7 +305,7 @@ export function match_(s: string, r: RegExp): O.Option<RegExpMatchArray> {
 /**
  * Match a string with a RegExp
  *
- * @dataFirst match_
+ * @ets_data_first match_
  */
 export function match(r: RegExp): (s: string) => O.Option<RegExpMatchArray> {
   return (s) => match_(s, r)
@@ -324,7 +324,7 @@ export function matchAll_(
 /**
  * Matches a string with a global RegExp
  *
- * @dataFirst matchAll_
+ * @ets_data_first matchAll_
  */
 export function matchAll(
   r: RegExp
@@ -344,7 +344,7 @@ export function split_(s: string, on: string | RegExp): A.Array<string> {
  * Split a string into substrings using the specified separator and return them
  * as an array.
  *
- * @dataFirst split_
+ * @ets_data_first split_
  */
 export function split(on: string | RegExp): (s: string) => A.Array<string> {
   return (s) => s.split(on)
@@ -367,7 +367,7 @@ export function under_(
  * This is useful as it allows you to run many polymorphic functions targeting
  * arrays against strings without having to rewrite them.
  *
- * @dataFirst under_
+ * @ets_data_first under_
  */
 export function under(
   f: (chars: A.Array<string>) => A.Array<string>
@@ -406,7 +406,7 @@ export function test_(s: string, r: RegExp): boolean {
 /**
  * Test a string with a RegExp
  *
- * @dataFirst test_
+ * @ets_data_first test_
  */
 export function test(r: RegExp): (s: string) => boolean {
   return (s) => r.test(s)
@@ -422,7 +422,7 @@ export function replace_(s: string, test: string | RegExp, r: string): string {
 /**
  * Replace the first (or all, with a global RegExp) occurrence of a matched substring with a replacement.
  *
- * @dataFirst replace_
+ * @ets_data_first replace_
  */
 export function replace(test: string | RegExp, r: string): (s: string) => string {
   return (s) => s.replace(test, r)

@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type { Clock } from "../Clock"
 import type { Has } from "../Has"
@@ -10,7 +10,7 @@ import { map_ } from "./map"
  * Returns an effect that, if evaluated, will return the cached result of
  * this effect. Cached results will expire after `timeToLive` duration.
  *
- * @dataFirst cached_
+ * @ets_data_first cached_
  */
 export function cached(ttl: number, __trace?: string) {
   return <R, E, A>(fa: Effect<R, E, A>) => cached_(fa, ttl)

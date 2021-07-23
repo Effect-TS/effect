@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import { chain_ } from "./core"
 import type { Effect } from "./effect"
@@ -8,7 +8,7 @@ import { map_ } from "./map"
  * Sequentially zips this effect with the specified effect using the
  * specified combiner function.
  *
- * @dataFirst zipWith_
+ * @ets_data_first zipWith_
  */
 export function zipWith<A, R2, E2, A2, B>(
   b: Effect<R2, E2, A2>,

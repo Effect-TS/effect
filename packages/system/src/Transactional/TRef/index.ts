@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import "../../Operator"
 
@@ -338,7 +338,7 @@ export function modify_<E, A, B>(
  * Updates the value of the variable, returning a function of the specified
  * value.
  *
- * @dataFirst modify_
+ * @ets_data_first modify_
  */
 export function modify<A, B>(
   f: (a: A) => readonly [B, A]
@@ -362,7 +362,7 @@ export function modifySome_<E, A, B>(
  * Updates the value of the variable, returning a function of the specified
  * value.
  *
- * @dataFirst modifySome_
+ * @ets_data_first modifySome_
  */
 export function modifySome<A, B>(
   b: B,
@@ -394,7 +394,7 @@ export function getAndSet_<EA, A>(self: ETRef<EA, A>, a: A): STM.STM<unknown, EA
 /**
  * Sets the value of the `XTRef` and returns the old value.
  *
- * @dataFirst getAndSet_
+ * @ets_data_first getAndSet_
  */
 export function getAndSet<A>(
   a: A
@@ -428,7 +428,7 @@ export function getAndUpdate_<EA, A>(
 /**
  * Updates the value of the variable and returns the old value.
  *
- * @dataFirst getAndUpdate_
+ * @ets_data_first getAndUpdate_
  */
 export function getAndUpdate<A>(
   f: (a: A) => A
@@ -473,7 +473,7 @@ export function getAndUpdateSome_<EA, A>(
  * Updates some values of the variable but leaves others alone, returning the
  * old value.
  *
- * @dataFirst getAndUpdateSome_
+ * @ets_data_first getAndUpdateSome_
  */
 export function getAndUpdateSome<A>(
   f: (a: A) => O.Option<A>
@@ -484,7 +484,7 @@ export function getAndUpdateSome<A>(
 /**
  * Sets the value of the `XTRef`.
  *
- * @dataFirst set_
+ * @ets_data_first set_
  */
 export function set<A>(
   a: A
@@ -516,7 +516,7 @@ export function update_<E, A>(
 /**
  * Updates the value of the variable.
  *
- * @dataFirst update_
+ * @ets_data_first update_
  */
 export function update<A>(
   f: (a: A) => A
@@ -537,7 +537,7 @@ export function updateSome_<E, A>(
 /**
  * Updates some values of the variable but leaves others alone.
  *
- * @dataFirst updateSome_
+ * @ets_data_first updateSome_
  */
 export function updateSome<A>(
   f: (a: A) => O.Option<A>
@@ -558,7 +558,7 @@ export function updateSomeAndGet_<E, A>(
 /**
  * Updates some values of the variable but leaves others alone.
  *
- * @dataFirst updateSomeAndGet_
+ * @ets_data_first updateSomeAndGet_
  */
 export function updateSomeAndGet<A>(
   f: (a: A) => O.Option<A>
@@ -596,7 +596,7 @@ export function updateAndGet_<EA, A>(
 /**
  * Updates the value of the variable and returns the new value.
  *
- * @dataFirst getAndUpdate_
+ * @ets_data_first getAndUpdate_
  */
 export function updateAndGet<A>(
   f: (a: A) => A
@@ -605,7 +605,7 @@ export function updateAndGet<A>(
 }
 
 /**
- * @optimize remove
+ * @ets_optimize remove
  */
 export function concrete<EA, EB, A, B>(
   _: XTRef<EA, EB, A, B>
@@ -692,7 +692,7 @@ export function fold_<EA, EB, A, B, EC, ED, C, D>(
  * specific combinators implemented in terms of `fold` will be more ergonomic
  * but this method is extremely useful for implementing new combinators.
  *
- * @dataFirst fold_
+ * @ets_data_first fold_
  */
 export function fold<EA, EB, A, B, EC, ED, C, D>(
   ea: (ea: EA) => EC,
@@ -724,7 +724,7 @@ export function foldAll_<EA, EB, A, B, EC, ED, C, D>(
  * the state in transforming the `set` value. This is a more powerful version
  * of `fold` but requires unifying the error types.
  *
- * @dataFirst foldAll_
+ * @ets_data_first foldAll_
  */
 export function foldAll<EA, EB, A, B, EC, ED, C, D>(
   ea: (ea: EA) => EC,

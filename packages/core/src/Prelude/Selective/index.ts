@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import * as E from "@effect-ts/system/Either"
 

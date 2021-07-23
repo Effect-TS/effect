@@ -27,7 +27,7 @@ export function every_<A>(self: Chunk.Chunk<A>, f: (a: A) => boolean): boolean {
 /**
  * Determines whether a predicate is satisfied for all elements of this chunk.
  *
- * @dataFirst every_
+ * @ets_data_first every_
  */
 export function every<A>(f: (a: A) => boolean): (self: Chunk.Chunk<A>) => boolean {
   return (self) => every_(self, f)

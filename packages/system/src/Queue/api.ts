@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import * as Chunk from "../Collections/Immutable/Chunk"
 import { succeed } from "../Effect/core"
@@ -68,7 +68,7 @@ function takeRemainderLoop<RA, RB, EA, EB, A, B>(
  * is less than min items available, it'll block until the items are
  * collected.
  *
- * @dataFirst takeBetween_
+ * @ets_data_first takeBetween_
  */
 export function takeBetween(min: number, max: number) {
   return <RA, RB, EA, EB, A, B>(
@@ -118,7 +118,7 @@ export function takeBetween_<RA, RB, EA, EB, A, B>(
  * For example, a dropping queue and a bounded queue composed together may apply `f`
  * to different elements.
  *
- * @dataFirst bothWithM_
+ * @ets_data_first bothWithM_
  */
 export function bothWithM<RA1, RB1, EA1, EB1, A1 extends A, C, B, R3, E3, D, A>(
   that: XQueue<RA1, RB1, EA1, EB1, A1, C>,
@@ -242,7 +242,7 @@ class BothWithM<
 /**
  * Like `bothWithM`, but uses a pure function.
  *
- * @dataFirst bothWith_
+ * @ets_data_first bothWith_
  */
 export function bothWith<RA1, RB1, EA1, EB1, A1 extends A, C, B, D, A>(
   that: XQueue<RA1, RB1, EA1, EB1, A1, C>,
@@ -266,7 +266,7 @@ export function bothWith_<RA, RB, EA, EB, RA1, RB1, EA1, EB1, A1 extends A, C, B
 /**
  * Like `bothWith`, but tuples the elements instead of applying a function.
  *
- * @dataFirst both_
+ * @ets_data_first both_
  */
 export function both<RA1, RB1, EA1, EB1, A1 extends A, C, B, A>(
   that: XQueue<RA1, RB1, EA1, EB1, A1, C>
@@ -289,7 +289,7 @@ export function both_<RA, RB, EA, EB, RA1, RB1, EA1, EB1, A1 extends A, C, B, A>
  * Transforms elements enqueued into and dequeued from this queue with the
  * specified effectual functions.
  *
- * @dataFirst dimap_
+ * @ets_data_first dimap_
  */
 export function dimap<A, B, C, D>(f: (c: C) => A, g: (b: B) => D) {
   return <RA, RB, EA, EB>(self: XQueue<RA, RB, EA, EB, A, B>) => dimap_(self, f, g)
@@ -315,7 +315,7 @@ export function dimap_<RA, RB, EA, EB, A, B, C, D>(
  * Transforms elements enqueued into and dequeued from this queue with the
  * specified effectual functions.
  *
- * @dataFirst dimapM_
+ * @ets_data_first dimapM_
  */
 export function dimapM<A, B, C, RC, EC, RD, ED, D>(
   f: (c: C) => T.Effect<RC, EC, A>,
@@ -398,7 +398,7 @@ export function contramapM_<RA, RB, EA, EB, B, C, RA2, EA2, A>(
 /**
  * Transforms elements enqueued into this queue with an effectful function.
  *
- * @dataFirst contramapM_
+ * @ets_data_first contramapM_
  */
 export function contramapM<C, RA2, EA2, A>(f: (c: C) => T.Effect<RA2, EA2, A>) {
   return <RA, RB, EA, EB, B>(self: XQueue<RA, RB, EA, EB, A, B>) => contramapM_(self, f)
@@ -417,7 +417,7 @@ export function contramap_<RA, RB, EA, EB, B, C, A>(
 /**
  * Transforms elements enqueued into this queue with a pure function.
  *
- * @dataFirst contramap_
+ * @ets_data_first contramap_
  */
 export function contramap<C, A>(f: (c: C) => A) {
   return <RA, RB, EA, EB, B>(self: XQueue<RA, RB, EA, EB, A, B>) => contramap_(self, f)
@@ -426,7 +426,7 @@ export function contramap<C, A>(f: (c: C) => A) {
 /**
  * Like `filterInput`, but uses an effectful function to filter the elements.
  *
- * @dataFirst filterInputM_
+ * @ets_data_first filterInputM_
  */
 export function filterInputM<A, A1 extends A, R2, E2>(
   f: (_: A1) => T.Effect<R2, E2, boolean>
@@ -591,7 +591,7 @@ class FilterOutputM<RA, RB, RB1, EB1, EA, EB, A, B> extends XQueueInternal<
  * Filters elements dequeued from the queue using the specified effectual
  * predicate.
  *
- * @dataFirst filterOutputM_
+ * @ets_data_first filterOutputM_
  */
 export function filterOutputM<RB1, EB1, B>(f: (b: B) => T.Effect<RB1, EB1, boolean>) {
   return <RA, RB, EA, EB, A>(self: XQueue<RA, RB, EA, EB, A, B>) =>
@@ -611,7 +611,7 @@ export function filterOutput_<RA, RB, EA, EB, A, B>(
 /**
  * Filters elements dequeued from the queue using the specified predicate.
  *
- * @dataFirst filterOutput_
+ * @ets_data_first filterOutput_
  */
 export function filterOutput<B>(f: (b: B) => boolean) {
   return <RA, RB, EA, EB, A>(self: XQueue<RA, RB, EA, EB, A, B>) =>
@@ -622,7 +622,7 @@ export function filterOutput<B>(f: (b: B) => boolean) {
  * Applies a filter to elements enqueued into this queue. Elements that do not
  * pass the filter will be immediately dropped.
  *
- * @dataFirst filterInput_
+ * @ets_data_first filterInput_
  */
 export function filterInput<A, A1 extends A>(f: (_: A1) => boolean) {
   return <RA, RB, EA, EB, B>(
@@ -654,7 +654,7 @@ export function map_<RA, RB, EA, EB, A, B, C>(
 /**
  * Transforms elements dequeued from this queue with a function.
  *
- * @dataFirst map_
+ * @ets_data_first map_
  */
 export function map<RA, RB, EA, EB, A, B, C>(f: (b: B) => C) {
   return (self: XQueue<RA, RB, EA, EB, A, B>) => map_(self, f)
@@ -663,7 +663,7 @@ export function map<RA, RB, EA, EB, A, B, C>(f: (b: B) => C) {
 /**
  * Transforms elements dequeued from this queue with an effectful function.
  *
- * @dataFirst mapM_
+ * @ets_data_first mapM_
  */
 export function mapM<B, R2, E2, C>(f: (b: B) => T.Effect<R2, E2, C>) {
   return <RA, RB, EA, EB, A>(self: XQueue<RA, RB, EA, EB, A, B>) => mapM_(self, f)

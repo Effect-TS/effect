@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import * as Tp from "../Collections/Immutable/Tuple"
 import { pipe } from "../Function"
@@ -11,7 +11,7 @@ import * as add from "./ReleaseMap/add"
  * Lifts a `Effect< R, E, A>` into `Managed< R, E, A>` with a release action
  * that handles `Exit`. The acquire and release actions will be performed uninterruptibly.
  *
- * @dataFirst makeExit_
+ * @ets_data_first makeExit_
  */
 export function makeExit<R1, A, X>(
   release: (a: A, exit: T.Exit<any, any>) => T.Effect<R1, never, X>,

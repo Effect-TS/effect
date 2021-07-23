@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import * as Chunk from "../Collections/Immutable/Chunk"
 import * as Tp from "../Collections/Immutable/Tuple"
@@ -15,7 +15,7 @@ import type { Finalizer } from "./ReleaseMap/finalizer"
  * For a parallel version of this method, see `forEachPar`.
  * If you do not need the results, see `forEachUnit` for a more efficient implementation.
  *
- * @dataFirst forEach_
+ * @ets_data_first forEach_
  */
 export function forEach<R, E, A, B>(f: (a: A) => Managed<R, E, B>, __trace?: string) {
   return (as: Iterable<A>) => forEach_(as, f, __trace)
@@ -80,7 +80,7 @@ export function forEachExec_<R, E, A, B>(
  *
  * For a sequential version of this method, see `forEach`.
  *
- * @dataFirst forEachExec_
+ * @ets_data_first forEachExec_
  */
 export function forEachExec<R, E, A, B>(
   es: ExecutionStrategy,
@@ -125,7 +125,7 @@ export function forEachUnit_<R, E, A, B>(
  * Equivalent to `forEach(as)(f).unit`, but without the cost of building
  * the list of results.
  *
- * @dataFirst forEachUnit_
+ * @ets_data_first forEachUnit_
  */
 export function forEachUnit<R, E, A, B>(
   f: (a: A) => Managed<R, E, B>,
@@ -140,7 +140,7 @@ export function forEachUnit<R, E, A, B>(
  *
  * For a sequential version of this method, see `forEach`.
  *
- * @dataFirst forEachPar_
+ * @ets_data_first forEachPar_
  */
 export function forEachPar<R, E, A, B>(
   f: (a: A) => Managed<R, E, B>,
@@ -183,7 +183,7 @@ export function forEachPar_<R, E, A, B>(
  *
  * Unlike `forEachPar`, this method will use at most up to `n` fibers.
  *
- * @dataFirst forEachParN_
+ * @ets_data_first forEachParN_
  */
 export function forEachParN<R, E, A, B>(
   n: number,

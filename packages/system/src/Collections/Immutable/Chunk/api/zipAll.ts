@@ -28,7 +28,7 @@ export function zipAll_<A, B>(
  * shorter chunk with `None`. The returned chunk will have the length of the
  * longer chunk.
  *
- * @dataFirst zipAll_
+ * @ets_data_first zipAll_
  */
 export function zipAll<A, B>(
   that: Chunk<B>

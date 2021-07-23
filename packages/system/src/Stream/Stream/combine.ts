@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type * as Tp from "../../Collections/Immutable/Tuple"
 import type * as Ex from "../../Exit"
@@ -55,7 +55,7 @@ export function combine_<R1, E1, O2, S, R, E, O, O3>(
  *
  * Where possible, prefer `Stream#combineChunks` for a more efficient implementation.
  *
- * @dataFirst combine_
+ * @ets_data_first combine_
  */
 export function combine<R1, E1, O2, S, R, E, O, O3>(
   that: Stream<R1, E1, O2>,

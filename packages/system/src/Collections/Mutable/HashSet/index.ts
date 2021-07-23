@@ -62,7 +62,7 @@ export function isEmpty<A>(self: HashSet<A>): boolean {
 /**
  * Creates a new set
  *
- * @dataFirst contains_
+ * @ets_data_first contains_
  */
 export function contains_<A>(self: HashSet<A>, a: A): boolean {
   return self.contains(a)
@@ -71,7 +71,7 @@ export function contains_<A>(self: HashSet<A>, a: A): boolean {
 /**
  * return true if the set contains `a`
  *
- * @dataFirst contains_
+ * @ets_data_first contains_
  */
 export function contains<A>(a: A) {
   return (self: HashSet<A>) => contains_(self, a)
@@ -87,7 +87,7 @@ export function add_<A>(self: HashSet<A>, a: A): boolean {
 /**
  * add `a` to the set
  *
- * @dataFirst add_
+ * @ets_data_first add_
  */
 export function add<A>(a: A) {
   return (self: HashSet<A>) => add_(self, a)
@@ -103,7 +103,7 @@ export function remove_<A>(self: HashSet<A>, a: A): boolean {
 /**
  * remove `a` from the set
  *
- * @dataFirst remove_
+ * @ets_data_first remove_
  */
 export function remove<A>(a: A) {
   return (self: HashSet<A>) => remove_(self, a)

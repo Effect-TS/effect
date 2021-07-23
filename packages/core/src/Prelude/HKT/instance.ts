@@ -1,7 +1,7 @@
-// tracing: off
+// ets_tracing: off
 
 /**
- * @optimize identity
+ * @ets_optimize identity
  */
 export function instance<T>(_: Omit<T, `_${any}`>): T {
   return _ as any

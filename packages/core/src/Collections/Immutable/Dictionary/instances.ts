@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type { DictionaryURI } from "../../../Modules"
 import type { URI } from "../../../Prelude"

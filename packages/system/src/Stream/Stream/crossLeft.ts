@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import { crossWith_ } from "./crossWith"
 import type { Stream } from "./definitions"
@@ -24,7 +24,7 @@ export function crossLeft_<R, R1, E, E1, O, O2>(
  *
  * See also `Stream#zip` for the more common point-wise variant.
  *
- * @dataFirst crossLeft_
+ * @ets_data_first crossLeft_
  */
 export function crossLeft<R1, E1, O2>(that: Stream<R1, E1, O2>) {
   return <R, E, O>(self: Stream<R, E, O>) => crossLeft_(self, that)

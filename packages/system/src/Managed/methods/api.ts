@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type { Cause } from "../../Cause"
 import * as C from "../../Cause"
@@ -51,7 +51,7 @@ import { suspend } from "./suspend"
  * Attempts to convert defects into a failure, throwing away all information
  * about the cause of the failure.
  *
- * @dataFirst absorb_
+ * @ets_data_first absorb_
  */
 export function absorb<E>(f: (e: E) => unknown, __trace?: string) {
   return <R, A>(self: Managed<R, E, A>) => absorb_(self, f, __trace)
@@ -96,7 +96,7 @@ export function mapError_<R, A, E, E2>(
 /**
  * Returns an effect whose failure is mapped by the specified `f` function.
  *
- * @dataFirst mapError_
+ * @ets_data_first mapError_
  */
 export function mapError<E, E2>(f: (e: E) => E2, __trace?: string) {
   return <R, A>(self: Managed<R, E, A>) => mapError_(self, f, __trace)
@@ -116,7 +116,7 @@ export function mapErrorCause_<R, A, E, E2>(
 /**
  * Returns an effect whose full failure is mapped by the specified `f` function.
  *
- * @dataFirst mapErrorCause_
+ * @ets_data_first mapErrorCause_
  */
 export function mapErrorCause<E, E2>(
   f: (e: C.Cause<E>) => C.Cause<E2>,
@@ -213,7 +213,7 @@ export function fold_<R, E, A, B, C>(
  * does not fail, but succeeds with the value returned by the left or right
  * function passed to `fold`.
  *
- * @dataFirst fold_
+ * @ets_data_first fold_
  */
 export function fold<E, A, B, C>(
   onFail: (e: E) => B,
@@ -252,7 +252,7 @@ export function optional<R, E, A>(
  * Keeps none of the errors, and terminates the fiber with them, using
  * the specified function to convert the `E` into a `Throwable`.
  *
- * @dataFirst orDieWith_
+ * @ets_data_first orDieWith_
  */
 export function orDieWith<E>(f: (e: E) => unknown, __trace?: string) {
   return <R, A>(self: Managed<R, E, A>) => orDieWith_(self, f, __trace)
@@ -282,7 +282,7 @@ export function orDie<R, E, A>(self: Managed<R, E, A>, __trace?: string) {
  * Executes this effect and returns its value, if it succeeds, but
  * otherwise executes the specified effect.
  *
- * @dataFirst orElse_
+ * @ets_data_first orElse_
  */
 export function orElse<R2, E2, A2>(that: () => Managed<R2, E2, A2>, __trace?: string) {
   return <R, E, A>(self: Managed<R, E, A>) => orElse_(self, that, __trace)
@@ -304,7 +304,7 @@ export function orElse_<R, E, A, R2, E2, A2>(
  * Executes this effect and returns its value, if it succeeds, but
  * otherwise fails with the specified error.
  *
- * @dataFirst orElseFail_
+ * @ets_data_first orElseFail_
  */
 export function orElseFail<E2>(e: E2, __trace?: string) {
   return <R, E, A>(self: Managed<R, E, A>) => orElseFail_(self, e, __trace)
@@ -326,7 +326,7 @@ export function orElseFail_<R, E, A, E2>(
  * Executes this effect and returns its value, if it succeeds, but
  * otherwise executes the specified effect.
  *
- * @dataFirst orElseEither_
+ * @ets_data_first orElseEither_
  */
 export function orElseEither<R2, E2, A2>(
   that: () => Managed<R2, E2, A2>,
@@ -378,7 +378,7 @@ export function orElseOptional_<R, E, A, R2, E2, A2>(
  * fails with the `None` value, in which case it will produce the value of
  * the specified effect.
  *
- * @dataFirst orElseOptional_
+ * @ets_data_first orElseOptional_
  */
 export function orElseOptional<R2, E2, A2>(
   that: () => Managed<R2, O.Option<E2>, A2>,
@@ -404,7 +404,7 @@ export function orElseSucceed_<R, E, A, A2>(
  * Executes this effect and returns its value, if it succeeds, but
  * otherwise succeeds with the specified value.
  *
- * @dataFirst orElseSucceed_
+ * @ets_data_first orElseSucceed_
  */
 export function orElseSucceed<R, E, A, A2>(that: () => A2, __trace?: string) {
   return (self: Managed<R, O.Option<E>, A>) => orElseSucceed_(self, that, __trace)
@@ -424,7 +424,7 @@ export function catchAll_<R, E, A, R2, E2, A2>(
 /**
  * Recovers from all errors.
  *
- * @dataFirst catchAll_
+ * @ets_data_first catchAll_
  */
 export function catchAll<E, R2, E2, A2>(
   f: (e: E) => Managed<R2, E2, A2>,
@@ -447,7 +447,7 @@ export function catchAllCause_<R, E, A, R2, E2, A2>(
 /**
  * Recovers from all errors with provided Cause.
  *
- * @dataFirst catchAllCause_
+ * @ets_data_first catchAllCause_
  */
 export function catchAllCause<E, R2, E2, A2>(
   f: (e: C.Cause<E>) => Managed<R2, E2, A2>,
@@ -474,7 +474,7 @@ export function catchSome_<R, E, A, R2, E2, A2>(
 /**
  * Recovers from some or all of the error cases.
  *
- * @dataFirst catchSome_
+ * @ets_data_first catchSome_
  */
 export function catchSome<E, R2, E2, A2>(
   pf: (e: E) => O.Option<Managed<R2, E2, A2>>,
@@ -501,7 +501,7 @@ export function catchSomeCause_<R, E, A, R2, E2, A2>(
 /**
  * Recovers from some or all of the error cases.
  *
- * @dataFirst catchSomeCause_
+ * @ets_data_first catchSomeCause_
  */
 export function catchSomeCause<R, E, A, R2, E2, A2>(
   pf: (e: C.Cause<E>) => O.Option<Managed<R2, E2, A2>>,
@@ -531,7 +531,7 @@ export function continueOrFailM_<R, E, A, E1, R1, E2, B>(
  * Fail with `e` if the supplied `PartialFunction` does not match, otherwise
  * continue with the returned value.
  *
- * @dataFirst continueOrFailM_
+ * @ets_data_first continueOrFailM_
  */
 export function continueOrFailM<A, E1, R1, E2, B>(
   e: () => E1,
@@ -558,7 +558,7 @@ export function continueOrFail_<R, E, A, E1, B>(
  * Fail with `e` if the supplied `PartialFunction` does not match, otherwise
  * succeed with the returned value.
  *
- * @dataFirst continueOrFail_
+ * @ets_data_first continueOrFail_
  */
 export function continueOrFail<A, E1, B>(
   e: () => E1,
@@ -580,7 +580,7 @@ export function provide<R>(r: R, __trace?: string) {
 /**
  * Executes the second effect and then provides its output as an environment to this effect
  *
- * @dataFirst compose_
+ * @ets_data_first compose_
  */
 export function compose<A, E2, B>(that: Managed<A, E2, B>, __trace?: string) {
   return <R, E>(self: Managed<R, E, A>) => compose_(self, that, __trace)
@@ -648,7 +648,7 @@ export function chainError_<R, E, A, R2, E2>(
 /**
  * Effectfully map the error channel
  *
- * @dataFirst chainError_
+ * @ets_data_first chainError_
  */
 export function chainError<E, R2, E2>(f: (e: E) => RIO<R2, E2>, __trace?: string) {
   return <R, A>(self: Managed<R, E, A>) => chainError_(self, f, __trace)
@@ -678,7 +678,7 @@ export function flipWith_<R, E, A, R2, E1, A1>(
 /**
  * Flip the error and result, then apply an effectful function to the effect
  *
- * @dataFirst flipWith_
+ * @ets_data_first flipWith_
  */
 export function flipWith<R, E, A, R2, E1, A1>(
   f: (_: Managed<R, A, E>) => Managed<R2, A1, E1>,
@@ -728,7 +728,7 @@ export function foldCause_<R, E, A, B, C>(
 /**
  * A more powerful version of `fold` that allows recovering from any kind of failure except interruptions.
  *
- * @dataFirst foldCause_
+ * @ets_data_first foldCause_
  */
 export function foldCause<E, A, B, C>(
   f: (e: C.Cause<E>) => B,
@@ -775,7 +775,7 @@ export function isSuccess<R, E, A>(self: Managed<R, E, A>, __trace?: string) {
 /**
  * Depending on the environment execute this or the other effect
  *
- * @dataFirst join_
+ * @ets_data_first join_
  */
 export function join<R1, E1, A1>(that: Managed<R1, E1, A1>, __trace?: string) {
   return <R, E, A>(self: Managed<R, E, A>): Managed<E.Either<R, R1>, E | E1, A | A1> =>
@@ -805,7 +805,7 @@ export function join_<R, E, A, R1, E1, A1>(
 /**
  * Depending on provided environment returns either this one or the other effect.
  *
- * @dataFirst joinEither_
+ * @ets_data_first joinEither_
  */
 export function joinEither<R2, E2, A2>(that: Managed<R2, E2, A2>, __trace?: string) {
   return <R, E, A>(
@@ -861,7 +861,7 @@ export function tryCatch<E, A>(
  * Returns an effect whose success is mapped by the specified side effecting
  * `f` function, translating any thrown exceptions into typed failed effects.
  *
- * @dataFirst mapTryCatch_
+ * @ets_data_first mapTryCatch_
  */
 export function mapTryCatch<E2, A, B>(
   onThrow: (u: unknown) => E2,
@@ -906,7 +906,7 @@ export function mapEffect_<R, E, A, B>(
  * Returns an effect whose success is mapped by the specified side effecting
  * `f` function, translating any thrown exceptions into typed failed effects.
  *
- * @dataFirst mapEffect_
+ * @ets_data_first mapEffect_
  */
 export function mapEffect<A, B>(f: (a: A) => B, __trace?: string) {
   return <R, E>(self: Managed<R, E, A>): Managed<R, unknown, B> =>
@@ -989,7 +989,7 @@ export function preallocateManaged<R, E, A>(
 /**
  * Provides a layer to the `Managed`, which translates it to another level.
  *
- * @dataFirst provideLayer_
+ * @ets_data_first provideLayer_
  */
 export function provideLayer<R2, E2, R>(layer: L.Layer<R2, E2, R>, __trace?: string) {
   return <E, A>(self: Managed<R, E, A>): Managed<R2, E2 | E, A> =>
@@ -1023,7 +1023,7 @@ export function provideSomeLayer<R2, E2, R>(
  * Keeps some of the errors, and terminates the fiber with the rest, using
  * the specified function to convert the `E` into a `Throwable`.
  *
- * @dataFirst refineOrDieWith_
+ * @ets_data_first refineOrDieWith_
  */
 export function refineOrDieWith<E, E1>(
   pf: (e: E) => O.Option<E1>,
@@ -1058,7 +1058,7 @@ export function refineOrDieWith_<R, A, E, E1>(
 /**
  * Keeps some of the errors, and terminates the fiber with the rest
  *
- * @dataFirst refineOrDie_
+ * @ets_data_first refineOrDie_
  */
 export function refineOrDie<E, E1>(pf: (e: E) => O.Option<E1>, __trace?: string) {
   return <R, A>(self: Managed<R, E, A>) => refineOrDie_(self, pf, __trace)
@@ -1107,7 +1107,7 @@ export function dieMessage(message: string, __trace?: string) {
  * translating the successful match into a failure, otherwise continue with
  * our held value.
  *
- * @dataFirst rejectM_
+ * @ets_data_first rejectM_
  */
 export function rejectM<A, R1, E1>(
   pf: (a: A) => O.Option<Managed<R1, E1, E1>>,
@@ -1140,7 +1140,7 @@ export function rejectM_<R, E, A, R1, E1>(
  * Fail with the returned value if the `PartialFunction` matches, otherwise
  * continue with our held value.
  *
- * @dataFirst reject_
+ * @ets_data_first reject_
  */
 export function reject<A, E1>(pf: (a: A) => O.Option<E1>, __trace?: string) {
   return <R, E>(self: Managed<R, E, A>) => reject_(self, pf, __trace)
@@ -1208,7 +1208,7 @@ export function retryOrElseEither_<R, E, A, R1, O, R2, E2, A2>(
  * the schedule is done, then both the value produced by the schedule together with the last
  * error are passed to the specified recovery function.
  *
- * @dataFirst retryOrElseEither_
+ * @ets_data_first retryOrElseEither_
  */
 export function retryOrElseEither<E, R1, O, R2, E2, A2>(
   policy: Schedule<R1, E, O>,
@@ -1241,7 +1241,7 @@ export function retryOrElse_<R, E, A, R1, O, R2, E2, A2>(
  * value produced by the schedule together with the last error are passed to
  * the recovery function.
  *
- * @dataFirst retryOrElse_
+ * @ets_data_first retryOrElse_
  */
 export function retryOrElse<E, R1, O, R2, E2, A2>(
   policy: Schedule<R1, E, O>,
@@ -1271,7 +1271,7 @@ export function retry_<R, E, A, R1, O>(
  * `once` or `recurs` for example), so that that `io.retry(Schedule.once)` means
  * "execute `io` and in case of failure, try again once".
  *
- * @dataFirst retry_
+ * @ets_data_first retry_
  */
 export function retry<R1, E, O>(policy: Schedule<R1, E, O>, __trace?: string) {
   return <R, A>(self: Managed<R, E, A>): Managed<R & R1 & HasClock, E, A> =>
@@ -1312,7 +1312,7 @@ export function unsandbox<R, E, A>(self: Managed<R, C.Cause<E>, A>) {
  * Companion helper to `sandbox`. Allows recovery, and partial recovery, from
  * errors and defects alike.
  *
- * @dataFirst sandboxWith_
+ * @ets_data_first sandboxWith_
  */
 export function sandboxWith<R, E, A, R2, E2, B>(
   f: (_: Managed<R, C.Cause<E>, A>) => Managed<R2, C.Cause<E2>, B>
@@ -1354,7 +1354,7 @@ export function some<R, E, A>(
 /**
  * Extracts the optional value, or returns the given 'orElse'.
  *
- * @dataFirst someOrElse_
+ * @ets_data_first someOrElse_
  */
 export function someOrElse<B>(orElse: () => B) {
   return <R, E, A>(self: Managed<R, E, O.Option<A>>): Managed<R, E, A | B> =>
@@ -1374,7 +1374,7 @@ export function someOrElse_<R, E, A, B>(
 /**
  * Extracts the optional value, or executes the effect 'orElse'.
  *
- * @dataFirst someOrElseM_
+ * @ets_data_first someOrElseM_
  */
 export function someOrElseM<R1, E1, B>(orElse: Managed<R1, E1, B>) {
   return <R, E, A>(self: Managed<R, E, O.Option<A>>) => someOrElseM_(self, orElse)
@@ -1396,7 +1396,7 @@ export function someOrElseM_<R, E, A, R1, E1, B>(
 /**
  * Extracts the optional value, or fails with the given error 'e'.
  *
- * @dataFirst someOrFail_
+ * @ets_data_first someOrFail_
  */
 export function someOrFail<E1>(e: () => E1) {
   return <R, E, A>(self: Managed<R, E, O.Option<A>>): Managed<R, E1 | E, A> =>
@@ -1443,7 +1443,7 @@ export function tapBoth_<R, E, A, R1, E1, R2, E2, X, Y>(
 /**
  * Returns an effect that effectfully peeks at the failure or success of the acquired resource.
  *
- * @dataFirst tapBoth_
+ * @ets_data_first tapBoth_
  */
 export function tapBoth<E, A, R1, E1, R2, E2, X, Y>(
   f: (e: E) => Managed<R1, E1, X>,
@@ -1467,7 +1467,7 @@ export function tapCause_<R, E, A, R1, E1, X>(
  * Returns an effect that effectually peeks at the cause of the failure of
  * the acquired resource.
  *
- * @dataFirst tapCause_
+ * @ets_data_first tapCause_
  */
 export function tapCause<E, R1, E1, X>(f: (c: Cause<E>) => Managed<R1, E1, X>) {
   return <R, A>(self: Managed<R, E, A>): Managed<R & R1, E | E1, A> =>
@@ -1487,7 +1487,7 @@ export function tapError_<R, E, A, R1, E1, X>(
 /**
  * Returns an effect that effectfully peeks at the failure of the acquired resource.
  *
- * @dataFirst tapError_
+ * @ets_data_first tapError_
  */
 export function tapError<E, R1, E1, X>(f: (e: E) => Managed<R1, E1, X>) {
   return <R, A>(self: Managed<R, E, A>) => tapError_(self, f)
@@ -1497,7 +1497,7 @@ export function tapError<E, R1, E1, X>(f: (e: E) => Managed<R1, E1, X>) {
  * Like `tap`, but uses a function that returns a Effect value rather than a
  * Managed value.
  *
- * @dataFirst tapM_
+ * @ets_data_first tapM_
  */
 export function tapM<A, R1, E1, X>(f: (a: A) => Effect<R1, E1, X>) {
   return <R, E>(self: Managed<R, E, A>): Managed<R & R1, E | E1, A> => tapM_(self, f)
@@ -1616,7 +1616,7 @@ export function timeout_<R, E, A>(self: Managed<R, E, A>, d: number) {
  * If the reservation completes successfully (even after the timeout) the release action will be run on a new fiber.
  * `Some` will be returned if acquisition and reservation complete in time
  *
- * @dataFirst timeout_
+ * @ets_data_first timeout_
  */
 export function timeout(d: number) {
   return <R, E, A>(self: Managed<R, E, A>): Managed<R & HasClock, E, O.Option<A>> =>
@@ -1626,7 +1626,7 @@ export function timeout(d: number) {
 /**
  * Constructs a layer from this managed resource.
  *
- * @dataFirst toLayer_
+ * @ets_data_first toLayer_
  */
 export function toLayer<A>(
   tag: Tag<A>
@@ -1692,7 +1692,7 @@ export function asUnit<R, E, A>(self: Managed<R, E, A>): Managed<R, E, void> {
 /**
  * The moral equivalent of `if (!p) exp` when `p` has side-effects
  *
- * @dataFirst unlessM_
+ * @ets_data_first unlessM_
  */
 export function unlessM<R1, E1>(b: Managed<R1, E1, boolean>) {
   return <R, E, A>(self: Managed<R, E, A>): Managed<R1 & R, E1 | E, void> =>
@@ -1712,7 +1712,7 @@ export function unlessM_<R, E, A, R1, E1>(
 /**
  * The moral equivalent of `if (!p) exp`
  *
- * @dataFirst unless_
+ * @ets_data_first unless_
  */
 export function unless(b: () => boolean) {
   return unlessM(core.succeedWith(b))
@@ -1737,7 +1737,7 @@ export function as_<R, E, A, B>(self: Managed<R, E, A>, b: B) {
  * Maps this effect to the specified constant while preserving the
  * effects of this effect.
  *
- * @dataFirst as_
+ * @ets_data_first as_
  */
 export function as<B>(b: B) {
   return <R, E, A>(self: Managed<R, E, A>) => as_(self, b)
@@ -1760,7 +1760,7 @@ export function asSomeError<R, E, A>(self: Managed<R, E, A>) {
 /**
  * Maps the success value of this effect to a service.
  *
- * @dataFirst asService_
+ * @ets_data_first asService_
  */
 export function asService<A>(tag: Tag<A>) {
   return <R, E>(self: Managed<R, E, A>) => asService_(self, tag)
@@ -1786,7 +1786,7 @@ export function andThen_<R, E, A, E1, B>(
 /**
  * Executes the this effect and then provides its output as an environment to the second effect
  *
- * @dataFirst andThen_
+ * @ets_data_first andThen_
  */
 export function andThen<A, E1, B>(that: Managed<A, E1, B>) {
   return <R, E>(self: Managed<R, E, A>) => andThen_(self, that)
@@ -1796,7 +1796,7 @@ export function andThen<A, E1, B>(that: Managed<A, E1, B>) {
  * Returns an effect whose failure and success channels have been mapped by
  * the specified pair of functions, `f` and `g`.
  *
- * @dataFirst bimap_
+ * @ets_data_first bimap_
  */
 export function bimap<E, A, E1, A1>(f: (e: E) => E1, g: (a: A) => A1) {
   return <R>(self: Managed<R, E, A>) => bimap_(self, f, g)
@@ -2000,7 +2000,7 @@ export function provideService<T>(_: Tag<T>) {
 /**
  * Replaces the service with the required Service Entry
  *
- * @dataFirst replaceServiceM_
+ * @ets_data_first replaceServiceM_
  */
 export function replaceServiceM<R, E, T>(_: Tag<T>, f: (_: T) => Managed<R, E, T>) {
   return <R1, E1, A1>(
@@ -2023,7 +2023,7 @@ export function replaceServiceM_<R, E, T, R1, E1, A1>(
 /**
  * Replaces the service with the required Service Entry
  *
- * @dataFirst replaceService_
+ * @ets_data_first replaceService_
  */
 export function replaceService<T>(_: Tag<T>, f: (_: T) => T) {
   return <R1, E1, A1>(ma: Managed<R1 & Has<T>, E1, A1>): Managed<R1 & Has<T>, E1, A1> =>
@@ -2074,7 +2074,7 @@ export function withEarlyReleaseExit_<R, E, A>(
  * A more powerful version of `withEarlyRelease` that allows specifying an
  * exit value in the event of early release.
  *
- * @dataFirst withEarlyReleaseExit_
+ * @ets_data_first withEarlyReleaseExit_
  */
 export function withEarlyReleaseExit<E, A>(exit: Ex.Exit<E, A>) {
   return <R>(self: Managed<R, E, A>) => withEarlyReleaseExit_(self, exit)
@@ -2112,7 +2112,7 @@ export function zipLeft_<R, E, A, R2, E2, A2>(
  * Sequentially zips this effect with the specified effect
  * returning the left side
  *
- * @dataFirst zipLeft_
+ * @ets_data_first zipLeft_
  */
 export function zipLeft<R2, E2, A2>(b: Managed<R2, E2, A2>) {
   return <R, E, A>(a: Managed<R, E, A>) => zipLeft_(a, b)
@@ -2133,7 +2133,7 @@ export function zipLeftPar_<R, E, A, R2, E2, A2>(
  * Parallelly zips this effect with the specified effect
  * returning the left side
  *
- * @dataFirst zipLeftPar_
+ * @ets_data_first zipLeftPar_
  */
 export function zipLeftPar<R2, E2, A2>(b: Managed<R2, E2, A2>) {
   return <R, E, A>(a: Managed<R, E, A>) => zipLeftPar_(a, b)
@@ -2154,7 +2154,7 @@ export function zipRight_<R, E, A, R2, E2, A2>(
  * Sequentially zips this effect with the specified effect
  * returning the right side
  *
- * @dataFirst zipRight_
+ * @ets_data_first zipRight_
  */
 export function zipRight<R2, E2, A2>(b: Managed<R2, E2, A2>) {
   return <R, E, A>(a: Managed<R, E, A>) => zipRight_(a, b)
@@ -2175,7 +2175,7 @@ export function zipRightPar_<R, E, A, R2, E2, A2>(
  * Parallelly zips this effect with the specified effect
  * returning the right side
  *
- * @dataFirst zipRightPar_
+ * @ets_data_first zipRightPar_
  */
 export function zipRightPar<R2, E2, A2>(b: Managed<R2, E2, A2>) {
   return <R, E, A>(a: Managed<R, E, A>) => zipRightPar_(a, b)
@@ -2194,7 +2194,7 @@ export function zipPar_<R, E, A, R2, E2, A2>(
 /**
  * Parallely zips this effects
  *
- * @dataFirst zipPar_
+ * @ets_data_first zipPar_
  */
 export function zipPar<R2, E2, A2>(b: Managed<R2, E2, A2>) {
   return <R, E, A>(a: Managed<R, E, A>): Managed<R & R2, E | E2, [A, A2]> =>
@@ -2231,7 +2231,7 @@ export function cond_<E, A>(pred: boolean, result: () => A, error: () => E): IO<
  * Evaluate the predicate,
  * return the given A as success if predicate returns true, and the given E as error otherwise
  *
- * @dataFirst cond_
+ * @ets_data_first cond_
  */
 export function cond<E, A>(
   result: () => A,
@@ -2276,7 +2276,7 @@ export function forEachUnitPar_<R, E, A, B>(
  *
  * For a sequential version of this method, see `forEachUnit_`.
  *
- * @dataFirst forEachUnitPar_
+ * @ets_data_first forEachUnitPar_
  */
 export function forEachUnitPar<R, E, A, B>(
   f: (a: A) => Managed<R, E, B>,
@@ -2323,7 +2323,7 @@ export function forEachUnitParN_<R, E, A, B>(
  *
  * For a sequential version of this method, see `forEachUnit_`.
  *
- * @dataFirst forEachUnitParN_
+ * @ets_data_first forEachUnitParN_
  */
 export function forEachUnitParN<R, E, A, B>(n: number, f: (a: A) => Managed<R, E, B>) {
   return (as: Iterable<A>): Managed<R, E, void> => forEachUnitParN_(as, n, f)
@@ -2333,7 +2333,7 @@ export function forEachUnitParN<R, E, A, B>(n: number, f: (a: A) => Managed<R, E
  * Evaluate each effect in the structure from left to right, collecting the
  * the successful values and discarding the empty cases. For a parallel version, see `collectPar`.
  *
- * @dataFirst collect_
+ * @ets_data_first collect_
  */
 export function collect<A, R, E, B>(f: (a: A) => Managed<R, Option<E>, B>) {
   return (self: Iterable<A>): Managed<R, E, Chunk.Chunk<B>> => collect_(self, f)
@@ -2357,7 +2357,7 @@ export function collect_<A, R, E, B>(
  * Evaluate each effect in the structure in parallel, collecting the
  * the successful values and discarding the empty cases.
  *
- * @dataFirst collectPar_
+ * @ets_data_first collectPar_
  */
 export function collectPar<A, R, E, B>(f: (a: A) => Managed<R, Option<E>, B>) {
   return (self: Iterable<A>): Managed<R, E, Chunk.Chunk<B>> => collectPar_(self, f)
@@ -2400,7 +2400,7 @@ export function collectParN_<A, R, E, B>(
  *
  * Unlike `collectPar`, this method will use at most up to `n` fibers.
  *
- * @dataFirst collectParN_
+ * @ets_data_first collectParN_
  */
 export function collectParN<A, R, E, B>(
   n: number,
@@ -2434,7 +2434,7 @@ export function collectAllPar<R, E, A>(
  *
  * Unlike `collectAllPar`, this method will use at most `n` fibers.
  *
- * @dataFirst collectAllParN_
+ * @ets_data_first collectAllParN_
  */
 export function collectAllParN(n: number, __trace?: string) {
   return <R, E, A>(as: Iterable<Managed<R, E, A>>) =>
@@ -2483,7 +2483,7 @@ export function collectAllUnitPar<R, E, A>(
  *
  * Unlike `collectAllUnitPar`, this method will use at most `n` fibers.
  *
- * @dataFirst collectAllUnitParN_
+ * @ets_data_first collectAllUnitParN_
  */
 export function collectAllUnitParN(n: number, __trace?: string) {
   return <R, E, A>(as: Iterable<Managed<R, E, A>>) =>
@@ -2520,7 +2520,7 @@ export function collectAllWith_<R, E, A, B>(
  * Evaluate each effect in the structure with `collectAll`, and collect
  * the results with given partial function.
  *
- * @dataFirst collectAllWith_
+ * @ets_data_first collectAllWith_
  */
 export function collectAllWith<A, B>(pf: (a: A) => O.Option<B>, __trace?: string) {
   return <R, E>(as: Iterable<Managed<R, E, A>>) => collectAllWith_(as, pf, __trace)
@@ -2542,7 +2542,7 @@ export function collectAllWithPar_<R, E, A, B>(
  * Evaluate each effect in the structure with `collectAll`, and collect
  * the results with given partial function.
  *
- * @dataFirst collectAllWithPar_
+ * @ets_data_first collectAllWithPar_
  */
 export function collectAllWithPar<A, B>(pf: (a: A) => O.Option<B>, __trace?: string) {
   return <R, E>(as: Iterable<Managed<R, E, A>>) => collectAllWithPar_(as, pf, __trace)
@@ -2569,7 +2569,7 @@ export function collectAllWithParN_<R, E, A, B>(
  *
  * Unlike `collectAllWithPar`, this method will use at most up to `n` fibers.
  *
- * @dataFirst collectAllWithParN_
+ * @ets_data_first collectAllWithParN_
  */
 export function collectAllWithParN<A, B>(
   n: number,
@@ -2612,7 +2612,7 @@ export function collectAllSuccessesPar<R, E, A>(
  *
  * Unlike `collectAllSuccessesPar`, this method will use at most up to `n` fibers.
  *
- * @dataFirst collectAllSuccessesParN_
+ * @ets_data_first collectAllSuccessesParN_
  */
 export function collectAllSuccessesParN(n: number, __trace?: string) {
   return <R, E, A>(as: Iterable<Managed<R, E, A>>) =>
@@ -2677,7 +2677,7 @@ export function reduce_<A, Z, R, E>(
 /**
  * Folds an Iterable[A] using an effectual function f, working sequentially from left to right.
  *
- * @dataFirst reduce_
+ * @ets_data_first reduce_
  */
 export function reduce<Z, R, E, A>(
   zero: Z,
@@ -2708,7 +2708,7 @@ export function reduceRight_<A, Z, R, E>(
 /**
  * Folds an Iterable[A] using an effectual function f, working sequentially from left to right.
  *
- * @dataFirst reduceRight_
+ * @ets_data_first reduceRight_
  */
 export function reduceRight<Z, R, E, A>(zero: Z, f: (a: A, z: Z) => Managed<R, E, Z>) {
   return (i: Iterable<A>) => reduceRight_(i, zero, f)
@@ -2727,7 +2727,7 @@ export function reduceAll_<R, E, A>(
 /**
  * Reduces an `Iterable[IO]` to a single `IO`, working sequentially.
  *
- * @dataFirst reduceAll_
+ * @ets_data_first reduceAll_
  */
 export function reduceAll<A>(f: (acc: A, a: A) => A) {
   return <R, E>(as: NA.NonEmptyArray<Managed<R, E, A>>) => reduceAll_(as, f)
@@ -2754,7 +2754,7 @@ export function reduceAllPar_<R, E, A>(
 /**
  * Reduces an `Iterable[IO]` to a single `IO`, working in parallel.
  *
- * @dataFirst reduceAllPar_
+ * @ets_data_first reduceAllPar_
  */
 export function reduceAllPar<A>(f: (acc: A, a: A) => A) {
   return <R, E>(as: NA.NonEmptyArray<Managed<R, E, A>>) => reduceAllPar_(as, f)
@@ -2783,7 +2783,7 @@ export function reduceAllParN_<R, E, A>(
 /**
  * Reduces an `Iterable[IO]` to a single `IO`, working in up to `n` fibers in parallel.
  *
- * @dataFirst reduceAllParN_
+ * @ets_data_first reduceAllParN_
  */
 export function reduceAllParN<A>(n: number, f: (acc: A, a: A) => A) {
   return <R, E>(as: NA.NonEmptyArray<Managed<R, E, A>>): Managed<R, E, A> =>
@@ -2793,7 +2793,7 @@ export function reduceAllParN<A>(n: number, f: (acc: A, a: A) => A) {
 /**
  * Merges an `Iterable[IO]` to a single IO, working sequentially.
  *
- * @dataFirst mergeAll_
+ * @ets_data_first mergeAll_
  */
 export function mergeAll<A, B>(zero: B, f: (b: B, a: A) => B) {
   return <R, E>(as: Iterable<Managed<R, E, A>>): Managed<R, E, B> =>
@@ -2823,7 +2823,7 @@ export function mergeAll_<R, E, A, B>(
  * It's unsafe to execute side effects inside `f`, as `f` may be executed
  * more than once for some of `in` elements during effect execution.
  *
- * @dataFirst mergeAllPar_
+ * @ets_data_first mergeAllPar_
  */
 export function mergeAllPar<A, B>(zero: B, f: (b: B, a: A) => B) {
   return <R, E>(as: Iterable<Managed<R, E, A>>): Managed<R, E, B> =>
@@ -2867,7 +2867,7 @@ export function mergeAllPar_<R, E, A, B>(
  * It's unsafe to execute side effects inside `f`, as `f` may be executed
  * more than once for some of `in` elements during effect execution.
  *
- * @dataFirst mergeAllParN_
+ * @ets_data_first mergeAllParN_
  */
 export function mergeAllParN<A, B>(n: number, zero: B, f: (b: B, a: A) => B) {
   return <R, E>(as: Iterable<Managed<R, E, A>>): Managed<R, E, B> =>

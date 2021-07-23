@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type { Cause } from "../Cause/cause"
 import { isEmpty } from "../Cause/cause"

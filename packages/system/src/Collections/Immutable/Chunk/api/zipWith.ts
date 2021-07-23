@@ -56,7 +56,7 @@ export function zipWith_<A, B, C>(
 /**
  * Zips this chunk with the specified chunk using the specified combiner.
  *
- * @dataFirst zipWith_
+ * @ets_data_first zipWith_
  */
 export function zipWith<A, B, C>(
   that: Chunk<B>,

@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import { constant, pipe } from "../Function"
 import * as O from "../Option"
@@ -8,7 +8,7 @@ import type { Effect } from "./effect"
 /**
  * Extracts the optional value, or executes the effect 'orElse'.
  *
- * @dataFirst someOrElseM_
+ * @ets_data_first someOrElseM_
  */
 export function someOrElseM<R2, E2, B>(orElse: Effect<R2, E2, B>, __trace?: string) {
   return <R, E, A>(self: Effect<R, E, O.Option<A>>) =>

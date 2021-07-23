@@ -16,7 +16,7 @@ export function mapMParN_<A, R, E, B>(
 /**
  * Effectfully maps the elements of this chunk in parallel.
  *
- * @dataFirst mapMParM_
+ * @ets_data_first mapMParM_
  */
 export function mapMParN<A, R, E, B>(
   n: number,

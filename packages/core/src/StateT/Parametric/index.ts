@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type { StateInURI, StateOutURI } from "../../Modules"
 import type { Monad } from "../../Prelude"

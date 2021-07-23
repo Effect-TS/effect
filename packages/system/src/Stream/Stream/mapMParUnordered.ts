@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import { pipe } from "../../Function"
 import type * as T from "../_internal/effect"

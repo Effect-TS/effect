@@ -50,7 +50,7 @@ export function reduceRight_<A, S>(
 /**
  * Folds over the elements in this chunk from the right.
  *
- * @dataFirst reduceRight_
+ * @ets_data_first reduceRight_
  */
 export function reduceRight<A, S>(
   s: S,

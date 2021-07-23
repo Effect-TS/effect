@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import * as I from "../Iterable"
 import { chain_, succeed, suspend } from "./core"
@@ -25,7 +25,7 @@ export function reduce_<A, Z, R, E>(
 /**
  * Folds an Iterable[A] using an effectual function f, working sequentially from left to right.
  *
- * @dataFirst reduce_
+ * @ets_data_first reduce_
  */
 export function reduce<Z, R, E, A>(
   zero: Z,
@@ -56,7 +56,7 @@ export function reduceRight_<A, Z, R, E>(
 /**
  * Folds an Iterable[A] using an effectual function f, working sequentially from left to right.
  *
- * @dataFirst reduceRight_
+ * @ets_data_first reduceRight_
  */
 export function reduceRight<R, E, A, Z>(
   zero: Z,

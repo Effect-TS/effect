@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import "../../../../Operator"
 
@@ -92,7 +92,7 @@ export abstract class Continuation<
 }
 
 /**
- * @optimize remove
+ * @ets_optimize remove
  */
 export function concreteContinuation<
   Env,
@@ -205,7 +205,7 @@ export class ContinuationFinalizer<Env, OutErr, OutDone> extends Continuation<
 }
 
 /**
- * @optimize remove
+ * @ets_optimize remove
  */
 export function concrete<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
   _: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>

@@ -136,7 +136,7 @@ export default function bundle(
           .split("\n")
           .map((line, i) => {
             const x: [boolean, number][] = []
-            const m = line.matchAll(/tracing: (on|off)/g)
+            const m = line.matchAll(/ets_tracing: (on|off)/g)
             for (const k of m) {
               if (k && k.index) {
                 x.push([k[1] === "on", k.index])

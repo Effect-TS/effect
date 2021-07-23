@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type { HasClock } from "../Clock"
 import * as E from "../Either"
@@ -68,7 +68,7 @@ export function repeatOrElseEither_<R, E, Env1, A, B, R2, E2, C>(
  * `io.repeat(Schedule.once)` yields an effect that executes `io`, and then
  * if that succeeds, executes `io` an additional time.
  *
- * @dataFirst repeatOrElseEither_
+ * @ets_data_first repeatOrElseEither_
  */
 export function repeatOrElseEither<R, E, Env1, A, B, R2, E2, C>(
   schedule: S.Schedule<Env1, A, B>,
@@ -105,7 +105,7 @@ export function repeatOrElse_<R, E, A, SR, B, R2, E2, C>(
  * `io.repeat(Schedule.once)` yields an effect that executes `io`, and then
  * if that succeeds, executes `io` an additional time.
  *
- * @dataFirst repeatOrElse_
+ * @ets_data_first repeatOrElse_
  */
 export function repeatOrElse<E, A, SR, B, R2, E2, C>(
   schedule: S.Schedule<SR, A, B>,
@@ -137,7 +137,7 @@ export function repeat_<R, E, A, SR, B>(
  * effect that executes `io`, and then if that succeeds, executes `io` an
  * additional time.
  *
- * @dataFirst repeat_
+ * @ets_data_first repeat_
  */
 export function repeat<A, SR, B>(schedule: S.Schedule<SR, A, B>, __trace?: string) {
   return <R, E>(self: Effect<R, E, A>): Effect<R & SR & HasClock, E, B> =>

@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import * as A from "../Collections/Immutable/Array"
 import * as NA from "../Collections/Immutable/NonEmptyArray"
@@ -26,7 +26,7 @@ export function reduceAll_<R, E, A>(
 /**
  * Reduces an `Iterable[IO]` to a single `IO`, working sequentially.
  *
- * @dataFirst reduceAll_
+ * @ets_data_first reduceAll_
  */
 export function reduceAll<A>(f: (acc: A, a: A) => A, __trace?: string) {
   return <R, E>(as: NA.NonEmptyArray<Effect<R, E, A>>) => reduceAll_(as, f, __trace)
@@ -63,7 +63,7 @@ export function reduceAllPar_<R, E, A>(
 /**
  * Reduces an `Iterable[IO]` to a single `IO`, working in parallel.
  *
- * @dataFirst reduceAllPar_
+ * @ets_data_first reduceAllPar_
  */
 export function reduceAllPar<A>(f: (acc: A, a: A) => A, __trace?: string) {
   return <R, E>(as: NA.NonEmptyArray<Effect<R, E, A>>) => reduceAllPar_(as, f, __trace)
@@ -102,7 +102,7 @@ export function reduceAllParN_<R, E, A>(
 /**
  * Reduces an `Iterable[IO]` to a single `IO`, working in up to `n` fibers in parallel.
  *
- * @dataFirst reduceAllParN_
+ * @ets_data_first reduceAllParN_
  */
 export function reduceAllParN<A>(n: number, f: (acc: A, a: A) => A, __trace?: string) {
   return <R, E>(as: NA.NonEmptyArray<Effect<R, E, A>>): Effect<R, E, A> =>

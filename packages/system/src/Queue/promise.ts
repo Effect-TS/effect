@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 export { interruptAs } from "../Promise/interruptAs"
 export { make } from "../Promise/make"

@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import { identity } from "../../Function"
 import { chain } from "./chain"

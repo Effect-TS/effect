@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import * as Tp from "../../Collections/Immutable/Tuple"
 import { crossWith_ } from "./crossWith"
@@ -23,7 +23,7 @@ export function cross_<R, R1, E, E1, O, O2>(
  *
  * See also `Stream#zip` for the more common point-wise variant.
  *
- * @dataFirst cross_
+ * @ets_data_first cross_
  */
 export function cross<R1, E1, O2>(that: Stream<R1, E1, O2>) {
   return <R, E, O>(self: Stream<R, E, O>) => cross_(self, that)

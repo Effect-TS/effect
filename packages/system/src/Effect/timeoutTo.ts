@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type { Clock } from "../Clock"
 import { pipe } from "../Function"
@@ -19,7 +19,7 @@ import * as sleep from "./sleep"
  * If the timeout elapses without producing a value, the running effect
  * will be safely interrupted
  *
- * @dataFirst timeoutTo_
+ * @ets_data_first timeoutTo_
  */
 export function timeoutTo<B, B2, A>(
   d: number,

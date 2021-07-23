@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import * as Fiber from "../Fiber"
 import * as FR from "../FiberRef"
@@ -12,7 +12,7 @@ import * as zips from "./zips"
 /**
  * Forks the effect into a new independent fiber, with the specified name.
  *
- * @dataFirst forkAs_
+ * @ets_data_first forkAs_
  */
 export function forkAs(name: string, __trace?: string) {
   return <R, E, A>(self: Effect<R, E, A>): RIO<R, Fiber.FiberContext<E, A>> =>

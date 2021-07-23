@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 export const _R: unique symbol = Symbol()
 export const _E: unique symbol = Symbol()

@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import * as FA from "@effect-ts/system/FreeAssociative"
 

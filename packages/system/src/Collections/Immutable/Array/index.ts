@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 /**
  * adapted from https://github.com/gcanti/fp-ts

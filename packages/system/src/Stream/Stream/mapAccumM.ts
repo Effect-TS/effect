@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import * as A from "../../Collections/Immutable/Chunk"
 import type * as Tp from "../../Collections/Immutable/Tuple"
@@ -14,7 +14,7 @@ import { Stream } from "./definitions"
  * Statefully and effectfully maps over the elements of this stream to produce
  * new elements.
  *
- * @dataFirst mapAccumM_
+ * @ets_data_first mapAccumM_
  */
 export function mapAccumM<Z, O, R1, E1, O1>(
   z: Z,

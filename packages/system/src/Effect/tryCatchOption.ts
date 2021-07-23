@@ -12,7 +12,7 @@ export default function tryCatchOption_<A, E>(ma: O.Option<A>, onNone: () => E) 
 /**
  * Get the A from an option
  *
- * @dataFirst tryCatchOption_
+ * @ets_data_first tryCatchOption_
  */
 export function tryCatchOption<A, E>(onNone: () => E) {
   return (ma: O.Option<A>) => tryCatchOption_(ma, onNone)

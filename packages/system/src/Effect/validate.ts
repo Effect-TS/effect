@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import * as Chunk from "../Collections/Immutable/Chunk"
 import * as E from "../Either"
@@ -125,7 +125,7 @@ export function validateExec_<A, R, E, B>(
  * This combinator is lossy meaning that if there are errors all successes
  * will be lost.
  *
- * @dataFirst validate_
+ * @ets_data_first validate_
  */
 export function validate<A, R, E, B>(f: (a: A) => Effect<R, E, B>, __trace?: string) {
   return (as: Iterable<A>) => validate_(as, f, __trace)
@@ -138,7 +138,7 @@ export function validate<A, R, E, B>(f: (a: A) => Effect<R, E, B>, __trace?: str
  * This combinator is lossy meaning that if there are errors all successes
  * will be lost.
  *
- * @dataFirst validatePar_
+ * @ets_data_first validatePar_
  */
 export function validatePar<A, R, E, B>(
   f: (a: A) => Effect<R, E, B>,
@@ -154,7 +154,7 @@ export function validatePar<A, R, E, B>(
  * This combinator is lossy meaning that if there are errors all successes
  * will be lost.
  *
- * @dataFirst validateParN_
+ * @ets_data_first validateParN_
  */
 export function validateParN<A, R, E, B>(
   n: number,
@@ -171,7 +171,7 @@ export function validateParN<A, R, E, B>(
  * This combinator is lossy meaning that if there are errors all successes
  * will be lost.
  *
- * @dataFirst validateExec_
+ * @ets_data_first validateExec_
  */
 export function validateExec<R, E, A, B>(
   es: ExecutionStrategy,

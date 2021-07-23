@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import { chain_, succeed, suspend } from "./core"
 import type { Effect } from "./effect"
@@ -6,7 +6,7 @@ import type { Effect } from "./effect"
 /**
  * Run conditionally onTrue or onFalse
  *
- * @dataFirst ifM_
+ * @ets_data_first ifM_
  */
 export function ifM<R1, E1, A1, R2, E2, A2>(
   onTrue: () => Effect<R1, E1, A1>,
@@ -35,7 +35,7 @@ export function ifM_<R, E, R1, E1, A1, R2, E2, A2>(
 /**
  * Run conditionally onTrue or onFalse
  *
- * @dataFirst if_
+ * @ets_data_first if_
  */
 function _if<R1, E1, A1, R2, E2, A2>(
   onTrue: () => Effect<R1, E1, A1>,

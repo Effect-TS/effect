@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import "../../Operator"
 
@@ -82,7 +82,7 @@ export function andThen_<R, E, A, E1, B>(
 /**
  * Propagates the given environment to self.
  *
- * @dataFirst andThen_
+ * @ets_data_first andThen_
  */
 export function andThen<A, E1, B>(
   that: P.STM<A, E1, B>
@@ -100,7 +100,7 @@ export function as_<R, E, A, B>(self: P.STM<R, E, A>, b: B): P.STM<R, E, B> {
 /**
  * Maps the success value of this effect to the specified constant value.
  *
- * @dataFirst as_
+ * @ets_data_first as_
  */
 export function as<A, B>(b: B): <R, E>(self: P.STM<R, E, A>) => P.STM<R, E, B> {
   return (self) => as_(self, b)
@@ -140,7 +140,7 @@ export function bimap_<R, E, A, E1, B>(
  * Returns an `STM` effect whose P.failure and success channels have been mapped by
  * the specified pair of functions, `f` and `g`.
  *
- * @dataFirst bimap_
+ * @ets_data_first bimap_
  */
 export function bimap<R, E, A, E1, B>(
   g: (e: E) => E1,
@@ -152,7 +152,7 @@ export function bimap<R, E, A, E1, B>(
 /**
  * Recovers from specified error.
  *
- * @dataFirst catch_
+ * @ets_data_first catch_
  */
 function _catch<N extends keyof E, K extends E[N] & string, E, R1, E1, A1>(
   tag: N,
@@ -191,7 +191,7 @@ export function catch_<N extends keyof E, K extends E[N] & string, E, R, A, R1, 
 /**
  * Recovers from specified error.
  *
- * @dataFirst catchTag_
+ * @ets_data_first catchTag_
  */
 export function catchTag<
   K extends E["_tag"] & string,
@@ -245,7 +245,7 @@ export function catchSome_<R, E, A, R1, E1, B>(
 /**
  * Recovers from some or all of the error cases.
  *
- * @dataFirst catchSome_
+ * @ets_data_first catchSome_
  */
 export function catchSome<E, R1, E1, B>(
   f: (e: E) => O.Option<P.STM<R1, E1, B>>
@@ -268,7 +268,7 @@ export function continueOrRetryM_<R, E, A, R2, E2, A2>(
  * Simultaneously filters and flatMaps the value produced by this effect.
  * Continues on the effect returned from pf.
  *
- * @dataFirst continueOrRetryM_
+ * @ets_data_first continueOrRetryM_
  */
 export function continueOrRetryM<A, R2, E2, A2>(
   pf: (a: A) => O.Option<P.STM<R2, E2, A2>>
@@ -291,7 +291,7 @@ export function continueOrRetry_<R, E, A, A2>(
  * Fail with `e` if the supplied `PartialFunction` does not match, otherwise
  * succeed with the returned value.
  *
- * @dataFirst continueOrRetry_
+ * @ets_data_first continueOrRetry_
  */
 export function continueOrRetry<A, A2>(pf: (a: A) => O.Option<A2>) {
   return <R, E>(fa: P.STM<R, E, A>) => continueOrRetry_(fa, pf)
@@ -316,7 +316,7 @@ export function continueOrFailM_<R, E, E1, A, R2, E2, A2>(
  * Fail with `e` if the supplied `PartialFunction` does not match, otherwise
  * continue with the returned value.
  *
- * @dataFirst continueOrFailM_
+ * @ets_data_first continueOrFailM_
  */
 export function continueOrFailM<E1, A, R2, E2, A2>(
   e: E1,
@@ -341,7 +341,7 @@ export function continueOrFail_<R, E, E1, A, A2>(
  * Fail with `e` if the supplied `PartialFunction` does not match, otherwise
  * succeed with the returned value.
  *
- * @dataFirst continueOrFail_
+ * @ets_data_first continueOrFail_
  */
 export function continueOrFail<E1, A, A2>(e: E1, pf: (a: A) => O.Option<A2>) {
   return <R, E>(fa: P.STM<R, E, A>) => continueOrFail_(fa, e, pf)
@@ -366,7 +366,7 @@ export function continueOrFailWithM_<R, E, E1, A, R2, E2, A2>(
  * Fail with `e` if the supplied `PartialFunction` does not match, otherwise
  * continue with the returned value.
  *
- * @dataFirst continueOrFailWithM_
+ * @ets_data_first continueOrFailWithM_
  */
 export function continueOrFailWithM<E1, A, R2, E2, A2>(
   e: () => E1,
@@ -391,7 +391,7 @@ export function continueOrFailWith_<R, E, E1, A, A2>(
  * Fail with `e` if the supplied `PartialFunction` does not match, otherwise
  * succeed with the returned value.
  *
- * @dataFirst continueOrFailWith_
+ * @ets_data_first continueOrFailWith_
  */
 export function continueOrFailWith<E1, A, A2>(e: () => E1, pf: (a: A) => O.Option<A2>) {
   return <R, E>(fa: P.STM<R, E, A>) => continueOrFailWith_(fa, e, pf)
@@ -401,7 +401,7 @@ export function continueOrFailWith<E1, A, A2>(e: () => E1, pf: (a: A) => O.Optio
  * Creates a composite effect that represents this effect followed by another
  * one that may depend on the error produced by this one.
  *
- * @dataFirst chainError_
+ * @ets_data_first chainError_
  */
 export function chainError<E, R2, E2>(f: (e: E) => P.STM<R2, never, E2>) {
   return <R, A>(self: P.STM<R, E, A>) => chainError_(self, f)
@@ -445,7 +445,7 @@ export function compose_<R, E, A, R1, E1>(
 /**
  * Propagates self environment to that.
  *
- * @dataFirst compose_
+ * @ets_data_first compose_
  */
 export function compose<R, R1, E1>(that: P.STM<R1, E1, R>) {
   return <E, A>(self: P.STM<R, E, A>) => andThen_(that, self)
@@ -531,7 +531,7 @@ export function eventually<R, E, A>(self: P.STM<R, E, A>): P.STM<R, never, A> {
 /**
  * Dies with specified `unknown` if the predicate fails.
  *
- * @dataFirst filterOrDie_
+ * @ets_data_first filterOrDie_
  */
 export function filterOrDie<A, B extends A>(
   p: Refinement<A, B>,
@@ -570,7 +570,7 @@ export function filterOrDie_<R, E, A>(
 /**
  * Fails with `failWith` if the predicate fails.
  *
- * @dataFirst filterOrFail_
+ * @ets_data_first filterOrFail_
  */
 export function filterOrFail<A, B extends A, E1>(
   p: Refinement<A, B>,
@@ -609,7 +609,7 @@ export function filterOrFail_<R, E, E1, A>(
 /**
  * Applies `or` if the predicate fails.
  *
- * @dataFirst filterOrElse_
+ * @ets_data_first filterOrElse_
  */
 export function filterOrElse<A, B extends A, R2, E2, A2>(
   p: Refinement<A, B>,
@@ -653,7 +653,7 @@ export function filterOrElse_<R, E, A, R2, E2, A2>(
  * Dies with a `Error` having the specified text message
  * if the predicate fails.
  *
- * @dataFirst filterOrDieMessage_
+ * @ets_data_first filterOrDieMessage_
  */
 export function filterOrDieMessage<A, B extends A>(
   p: Refinement<A, B>,
@@ -701,7 +701,7 @@ export function flip<R, E, A>(self: P.STM<R, E, A>) {
 /**
  * Swaps the error/value parameters, applies the function `f` and flips the parameters back
  *
- * @dataFirst flipWith_
+ * @ets_data_first flipWith_
  */
 export function flipWith<R, E, A, R2, E2, A2>(
   f: (self: P.STM<R, A, E>) => P.STM<R2, A2, E2>
@@ -739,7 +739,7 @@ export function fold_<R, E, A, B, C>(
  * Folds over the `STM` effect, handling both P.failure and success, but not
  * retry.
  *
- * @dataFirst fold_
+ * @ets_data_first fold_
  */
 export function fold<E, A, B, C>(
   g: (e: E) => C,
@@ -760,7 +760,7 @@ export function flatten<R, E, R1, E1, B>(
 /**
  * Unwraps the optional error, defaulting to the provided value.
  *
- * @dataFirst flattenErrorOptionWith_
+ * @ets_data_first flattenErrorOptionWith_
  */
 export function flattenErrorOptionWith<E2>(def: () => E2) {
   return <R, E, A>(self: P.STM<R, O.Option<E>, A>): P.STM<R, E | E2, A> =>
@@ -780,7 +780,7 @@ export function flattenErrorOptionWith_<R, E, A, E2>(
 /**
  * Unwraps the optional error, defaulting to the provided value.
  *
- * @dataFirst flattenErrorOption_
+ * @ets_data_first flattenErrorOption_
  */
 export function flattenErrorOption<E2>(def: E2) {
   return <R, E, A>(self: P.STM<R, O.Option<E>, A>): P.STM<R, E | E2, A> =>
@@ -826,7 +826,7 @@ export function forEach_<A, R, E, B>(
  * Applies the function `f` to each element of the `Iterable<A>` and
  * returns a transactional effect that produces a new `ReadonlyArray<B>`.
  *
- * @dataFirst forEach_
+ * @ets_data_first forEach_
  */
 export function forEach<A, R, E, B>(
   f: (a: A) => P.STM<R, E, B>
@@ -937,7 +937,7 @@ export function leftOrFail_<R, E, B, C, E1>(
 /**
  * Returns a successful effect if the value is `Left`, or fails with the error e.
  *
- * @dataFirst leftOrFail_
+ * @ets_data_first leftOrFail_
  */
 export function leftOrFail<C, E1>(orFail: (c: C) => E1) {
   return <R, E, B>(self: P.STM<R, E, E.Either<B, C>>) => leftOrFail_(self, orFail)
@@ -953,7 +953,7 @@ export function leftOrFailException<R, E, B, C>(self: P.STM<R, E, E.Either<B, C>
 /**
  * Depending on provided environment returns either this one or the other effect.
  *
- * @dataFirst join_
+ * @ets_data_first join_
  */
 export function join<R1, E1, A1>(that: P.STM<R1, E1, A1>) {
   return <R, E, A>(self: P.STM<R, E, A>): P.STM<E.Either<R, R1>, E | E1, A | A1> => {
@@ -1017,7 +1017,7 @@ export function mapError_<R, E, A, E1>(
 /**
  * Maps from one error type to another.
  *
- * @dataFirst mapError_
+ * @ets_data_first mapError_
  */
 export function mapError<E, E1>(
   f: (a: E) => E1
@@ -1037,7 +1037,7 @@ export function provideAll_<R, E, A>(self: P.STM<R, E, A>, r: R): P.STM<unknown,
  * Provides the transaction its required environment, which eliminates
  * its dependency on `R`.
  *
- * @dataFirst provideAll_
+ * @ets_data_first provideAll_
  */
 export function provideAll<R>(
   r: R
@@ -1076,7 +1076,7 @@ export function repeatUntil_<R, E, A>(
  * - Use `retryUntil` instead if you don't need to maintain transaction state for repeats.
  * - Ensure repeating the STM effect will eventually satisfy the predicate.
  *
- * @dataFirst repeatUntil_
+ * @ets_data_first repeatUntil_
  */
 export function repeatUntil<A>(
   f: (a: A) => boolean
@@ -1115,7 +1115,7 @@ export function repeatWhile_<R, E, A>(
  * - Use `retryWhile` instead if you don't need to maintain transaction state for repeats.
  * - Ensure repeating the STM effect will eventually not satisfy the predicate.
  *
- * @dataFirst repeatWhile_
+ * @ets_data_first repeatWhile_
  */
 export function repeatWhile<R, E, A>(
   f: (a: A) => boolean
@@ -1143,7 +1143,7 @@ export function tap_<R, E, A, R1, E1, B>(
 /**
  * "Peeks" at the success of transactional effect.
  *
- * @dataFirst tap_
+ * @ets_data_first tap_
  */
 export function tap<A, R1, E1, B>(
   f: (a: A) => P.STM<R1, E1, B>
@@ -1181,7 +1181,7 @@ export function zipWith_<R, E, A, R1, E1, B, C>(
  * Sequentially zips this value with the specified one, combining the values
  * using the specified combiner function.
  *
- * @dataFirst zipWith_
+ * @ets_data_first zipWith_
  */
 export function zipWith<A, R1, E1, B, C>(
   that: P.STM<R1, E1, B>,

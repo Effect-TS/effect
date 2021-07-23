@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import { identity } from "../Function"
 import * as I from "../Iterable"
@@ -12,7 +12,7 @@ import { map_ } from "./map"
  * Feeds elements of type `A` to a function `f` that returns an effect.
  * Collects all successes and failures in a separated fashion.
  *
- * @dataFirst partition_
+ * @ets_data_first partition_
  */
 export function partition<A, R, E, B>(f: (a: A) => Effect<R, E, B>, __trace?: string) {
   return (as: Iterable<A>): RIO<R, Separated<Iterable<E>, Iterable<B>>> =>
@@ -39,7 +39,7 @@ export function partition_<A, R, E, B>(
  * Collects all successes and failures in parallel and returns the result as
  * a tuple.
  *
- * @dataFirst partitionPar_
+ * @ets_data_first partitionPar_
  */
 export function partitionPar<A, R, E, B>(
   f: (a: A) => Effect<R, E, B>,
@@ -72,7 +72,7 @@ export function partitionPar_<A, R, E, B>(
  *
  * Unlike `partitionPar`, this method will use at most up to `n` fibers.
  *
- * @dataFirst partitionParN_
+ * @ets_data_first partitionParN_
  */
 export function partitionParN<A, R, E, B>(
   n: number,

@@ -74,7 +74,7 @@ export function zipAllWith_<A, B, C, D, E>(
  * function `left` or `right` to map the element that does exist to the
  * result type.
  *
- * @dataFirst zipAllWith_
+ * @ets_data_first zipAllWith_
  */
 export function zipAllWith<A, B, C, D, E>(
   that: Chunk<B>,

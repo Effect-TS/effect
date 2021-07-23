@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type { Cause } from "../Cause/cause"
 import * as Tp from "../Collections/Immutable/Tuple"
@@ -24,7 +24,7 @@ import { use_ } from "./use"
  * the passing of its value to the specified continuation function `f`,
  * followed by the managed that it returns.
  *
- * @dataFirst chain_
+ * @ets_data_first chain_
  */
 export function chain<A, R2, E2, A2>(
   f: (a: A) => Managed<R2, E2, A2>,
@@ -90,7 +90,7 @@ export function ensuring_<R, E, A, R2, X>(
  *
  * For usecases that need access to the Managed's result, see `onExit`.
  *
- * @dataFirst ensuring_
+ * @ets_data_first ensuring_
  */
 export function ensuring<R2, X>(f: T.Effect<R2, never, X>, __trace?: string) {
   return <R, E, A>(self: Managed<R, E, A>) => ensuring_(self, f, __trace)
@@ -126,7 +126,7 @@ export function finalizerRef(initial: Finalizer, __trace?: string) {
 /**
  * A more powerful version of `foldM` that allows recovering from any kind of failure except interruptions.
  *
- * @dataFirst foldCauseM_
+ * @ets_data_first foldCauseM_
  */
 export function foldCauseM<E, A, R1, E1, A1, R2, E2, A2>(
   f: (cause: Cause<E>) => Managed<R1, E1, A1>,
@@ -161,7 +161,7 @@ export function foldCauseM_<R, E, A, R1, E1, A1, R2, E2, A2>(
  * Lifts a `Effect< R, E, A>` into `Managed< R, E, A>` with a release action.
  * The acquire and release actions will be performed uninterruptibly.
  *
- * @dataFirst make_
+ * @ets_data_first make_
  */
 export function make<R1, A>(
   release: (a: A) => T.Effect<R1, never, unknown>,
@@ -187,7 +187,7 @@ export function make_<R, E, A, R1>(
  * The acquire action will be performed interruptibly, while release
  * will be performed uninterruptibly.
  *
- * @dataFirst makeInterruptible_
+ * @ets_data_first makeInterruptible_
  */
 export function makeInterruptible<A, R1>(
   release: (a: A) => T.Effect<R1, never, unknown>,
@@ -282,7 +282,7 @@ export function makeReserve<R, E, R2, E2, A>(
 /**
  * Returns a managed whose success is mapped by the specified `f` function.
  *
- * @dataFirst map_
+ * @ets_data_first map_
  */
 export function map<A, B>(f: (a: A) => B, __trace?: string) {
   return <R, E>(self: Managed<R, E, A>) => map_(self, f, __trace)
@@ -375,7 +375,7 @@ export function onExit_<R, E, A, R2, X>(
  * Ensures that a cleanup function runs when this Managed is finalized, after
  * the existing finalizers.
  *
- * @dataFirst onExit_
+ * @ets_data_first onExit_
  */
 export function onExit<E, A, R2, X>(
   cleanup: (exit: T.Exit<E, A>) => T.Effect<R2, never, X>,
@@ -388,7 +388,7 @@ export function onExit<E, A, R2, X>(
  * Ensures that a cleanup function runs when this Managed is finalized, before
  * the existing finalizers.
  *
- * @dataFirst onExitFirst_
+ * @ets_data_first onExitFirst_
  */
 export function onExitFirst<E, A, R2, X>(
   cleanup: (exit: T.Exit<E, A>) => T.Effect<R2, never, X>,
@@ -458,7 +458,7 @@ export function provideSome_<R, E, A, R0>(
 /**
  * Like provideSome for effect but for Managed
  *
- * @dataFirst provideSome_
+ * @ets_data_first provideSome_
  */
 export function provideSome<R, R0>(f: (r0: R0) => R, __trace?: string) {
   return <E, A>(self: Managed<R, E, A>) => provideSome_(self, f, __trace)
@@ -468,7 +468,7 @@ export function provideSome<R, R0>(f: (r0: R0) => R, __trace?: string) {
  * Provides the `Managed` effect with its required environment, which eliminates
  * its dependency on `R`.
  *
- * @dataFirst provideAll_
+ * @ets_data_first provideAll_
  */
 export function provideAll<R>(r: R, __trace?: string) {
   return <E, A>(self: Managed<R, E, A>) => provideAll_(self, r)
@@ -513,7 +513,7 @@ export function makeReservation_<R, E, A, R2>(
 /**
  * Make a new reservation
  *
- * @dataFirst makeReservation_
+ * @ets_data_first makeReservation_
  */
 export function makeReservation<R2>(
   release: (exit: T.Exit<any, any>) => T.Effect<R2, never, unknown>
@@ -543,7 +543,7 @@ export function tap_<A, R, R2, E, E2, X>(
 /**
  * Returns a managed that effectfully peeks at the acquired resource.
  *
- * @dataFirst tap_
+ * @ets_data_first tap_
  */
 export function tap<A, R2, E2, X>(f: (a: A) => Managed<R2, E2, X>, __trace?: string) {
   return <R, E>(self: Managed<R, E, A>) => tap_(self, f, __trace)
@@ -583,7 +583,7 @@ export function zip_<R, E, A, R2, E2, A2>(
  * Returns a managed that executes both this managed and the specified managed,
  * in sequence, combining their results with the specified `f` function.
  *
- * @dataFirst zip_
+ * @ets_data_first zip_
  */
 export function zip<R2, E2, A2>(that: Managed<R2, E2, A2>, __trace?: string) {
   return <R, E, A>(self: Managed<R, E, A>) => zip_(self, that, __trace)
@@ -593,7 +593,7 @@ export function zip<R2, E2, A2>(that: Managed<R2, E2, A2>, __trace?: string) {
  * Returns a managed that executes both this managed and the specified managed,
  * in sequence, combining their results with the specified `f` function.
  *
- * @dataFirst zipWith_
+ * @ets_data_first zipWith_
  */
 export function zipWith<A, R2, E2, A2, B>(
   that: Managed<R2, E2, A2>,
@@ -620,7 +620,7 @@ export function zipWith_<R, E, A, R2, E2, A2, B>(
  * Returns a managed that executes both this managed and the specified managed,
  * in parallel, combining their results with the specified `f` function.
  *
- * @dataFirst zipWithPar_
+ * @ets_data_first zipWithPar_
  */
 export function zipWithPar<A, R2, E2, A2, B>(
   that: Managed<R2, E2, A2>,

@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type { HasClock } from "../Clock"
 import * as E from "../Either"
@@ -66,7 +66,7 @@ export function retryOrElseEither_<R, E extends I, A, I, R1, O, R2, E2, A2>(
  * the schedule is done, then both the value produced by the schedule together with the last
  * error are passed to the specified recovery function.
  *
- * @dataFirst retryOrElseEither_
+ * @ets_data_first retryOrElseEither_
  */
 export function retryOrElseEither<E extends I, I, R1, O, R2, E2, A2>(
   policy: Schedule<R1, I, O>,
@@ -99,7 +99,7 @@ export function retryOrElse_<R, E extends I, I, A, R1, O, R2, E2, A2>(
  * value produced by the schedule together with the last error are passed to
  * the recovery function.
  *
- * @dataFirst retryOrElse_
+ * @ets_data_first retryOrElse_
  */
 export function retryOrElse<E extends I, I, R1, O, R2, E2, A2>(
   policy: Schedule<R1, I, O>,
@@ -129,7 +129,7 @@ export function retry_<R, E extends I, I, A, R1, O>(
  * `once` or `recurs` for example), so that that `io.retry(Schedule.once)` means
  * "execute `io` and in case of failure, try again once".
  *
- * @dataFirst retry_
+ * @ets_data_first retry_
  */
 export function retry<R1, I, O>(policy: Schedule<R1, I, O>, __trace?: string) {
   return <E extends I, R, A>(self: Effect<R, E, A>): Effect<R & R1 & HasClock, E, A> =>

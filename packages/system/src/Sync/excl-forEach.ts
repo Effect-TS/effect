@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import * as ChunkFilterMap from "../Collections/Immutable/Chunk/api/filterMap"
 import * as Chunk from "../Collections/Immutable/Chunk/core"
@@ -39,7 +39,7 @@ export function forEach_<A, R, E, B>(
  * For a parallel version of this method, see `forEachPar`.
  * If you do not need the results, see `forEachUnit` for a more efficient implementation.
  *
- * @dataFirst forEach_
+ * @ets_data_first forEach_
  */
 export function forEach<A, R, E, B>(f: (a: A) => Sync<R, E, B>) {
   return (as: Iterable<A>) => forEach_(as, f)
@@ -77,7 +77,7 @@ export function forEachUnit_<R, E, A, X>(
  * Equivalent to `asUnit(forEach(as, f))`, but without the cost of building
  * the list of results.
  *
- * @dataFirst forEachUnit_
+ * @ets_data_first forEachUnit_
  */
 export function forEachUnit<R, E, A, X>(
   f: (a: A) => Sync<R, E, X>,
@@ -118,7 +118,7 @@ export function collectAllWith_<R, E, A, B>(
  * Evaluate each Sync in the structure with `collectAll`, and collect
  * the results with given partial function.
  *
- * @dataFirst collectAllWith_
+ * @ets_data_first collectAllWith_
  */
 export function collectAllWith<A, B>(pf: (a: A) => O.Option<B>) {
   return <R, E>(as: Iterable<Sync<R, E, A>>) => collectAllWith_(as, pf)

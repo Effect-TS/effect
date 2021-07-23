@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import * as Q from "../../Queue"
 import type { Stream } from "./definitions"

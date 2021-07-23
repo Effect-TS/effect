@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type { Tag } from "../Has"
 import type { Effect } from "./effect"

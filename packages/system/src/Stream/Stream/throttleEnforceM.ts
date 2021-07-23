@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import * as CL from "../../Clock"
 import type * as A from "../../Collections/Immutable/Chunk"
@@ -16,7 +16,7 @@ import { Stream } from "./definitions"
  * tokens up to a `units + burst` threshold. Chunks that do not meet the bandwidth constraints are dropped.
  * The weight of each chunk is determined by the `costFn` effectful function.
  *
- * @dataFirst throttleEnforceM_
+ * @ets_data_first throttleEnforceM_
  */
 export function throttleEnforceM<O, R1, E1>(
   costFn: (c: A.Chunk<O>) => T.Effect<R1, E1, number>,

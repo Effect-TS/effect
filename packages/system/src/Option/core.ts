@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 /* adapted from https://github.com/gcanti/fp-ts */
 
@@ -68,7 +68,7 @@ export function ap_<A, B>(fab: Option<(a: A) => B>, fa: Option<A>): Option<B> {
 /**
  * Classic applicative
  *
- * @dataFirst ap_
+ * @ets_data_first ap_
  */
 export function ap<A>(fa: Option<A>) {
   return <B>(fab: Option<(a: A) => B>): Option<B> => ap_(fab, fa)
@@ -84,7 +84,7 @@ export function zip_<A, B>(fa: Option<A>, fb: Option<B>): Option<Tp.Tuple<[A, B]
 /**
  * Zips `Option[A]` and `Option[B]` into `Option[(A, B)]
  *
- * @dataFirst zip_
+ * @ets_data_first zip_
  */
 export function zip<B>(fb: Option<B>) {
   return <A>(fa: Option<A>): Option<Tp.Tuple<[A, B]>> => zip_(fa, fb)
@@ -93,7 +93,7 @@ export function zip<B>(fb: Option<B>) {
 /**
  * Apply both and return first
  *
- * @dataFirst zipFirst_
+ * @ets_data_first zipFirst_
  */
 export function zipFirst<B>(fb: Option<B>) {
   return <A>(fa: Option<A>): Option<A> => zipFirst_(fa, fb)
@@ -112,7 +112,7 @@ export function zipFirst_<A, B>(fa: Option<A>, fb: Option<B>): Option<A> {
 /**
  * Apply both and return second
  *
- * @dataFirst zipSecond_
+ * @ets_data_first zipSecond_
  */
 export function zipSecond<B>(fb: Option<B>) {
   return <A>(fa: Option<A>): Option<B> => zipSecond_(fa, fb)
@@ -138,7 +138,7 @@ export function chain_<A, B>(self: Option<A>, f: (a: A) => Option<B>): Option<B>
 /**
  * Builds a new option constructed using the value of self
  *
- * @dataFirst chain_
+ * @ets_data_first chain_
  */
 export function chain<A, B>(f: (a: A) => Option<B>) {
   return (self: Option<A>): Option<B> => chain_(self, f)
@@ -147,7 +147,7 @@ export function chain<A, B>(f: (a: A) => Option<B>) {
 /**
  * Like chain but ignores the constructed outout
  *
- * @dataFirst tap_
+ * @ets_data_first tap_
  */
 export function tap<A>(f: (a: A) => Option<any>) {
   return (ma: Option<A>): Option<A> => chain_(ma, (a) => map_(f(a), () => a))
@@ -177,7 +177,7 @@ export function duplicate<A>(ma: Option<A>): Option<Option<A>> {
 /**
  * Returns `true` if the predicate is satisfied by the wrapped value
  *
- * @dataFirst exists_
+ * @ets_data_first exists_
  */
 export function exists<A>(predicate: Predicate<A>): (ma: Option<A>) => boolean {
   return (ma) => (isNone(ma) ? false : predicate(ma.value))
@@ -193,7 +193,7 @@ export function exists_<A>(ma: Option<A>, predicate: Predicate<A>): boolean {
 /**
  * Apply `Option[A] => B` in case self is some returning `Option[B]`
  *
- * @dataFirst extend_
+ * @ets_data_first extend_
  */
 export function extend<A, B>(f: (fa: Option<A>) => B) {
   return (self: Option<A>): Option<B> => extend_(self, f)
@@ -210,7 +210,7 @@ export function extend_<A, B>(self: Option<A>, f: (fa: Option<A>) => B): Option<
  * Takes a default value, a function, and an `Option` value, if the `Option` value is `None` the default value is
  * returned, otherwise the function is applied to the value inside the `Some` and the result is returned.
  *
- * @dataFirst fold_
+ * @ets_data_first fold_
  */
 export function fold<A, B, C>(
   onNone: () => B,
@@ -249,7 +249,7 @@ export function fromNullable<A>(a: A): Option<NonNullable<A>> {
 /**
  * Returns a smart constructor based on the given predicate
  *
- * @dataFirst fromPredicate_
+ * @ets_data_first fromPredicate_
  */
 export function fromPredicate<A, B extends A>(
   refinement: Refinement<A, B>
@@ -257,13 +257,13 @@ export function fromPredicate<A, B extends A>(
 /**
  * Returns a smart constructor based on the given predicate
  *
- * @dataFirst fromPredicate_
+ * @ets_data_first fromPredicate_
  */
 export function fromPredicate<A>(predicate: Predicate<A>): (a: A) => Option<A>
 /**
  * Returns a smart constructor based on the given predicate
  *
- * @dataFirst fromPredicate_
+ * @ets_data_first fromPredicate_
  */
 export function fromPredicate<A>(predicate: Predicate<A>): (a: A) => Option<A> {
   return (a) => (predicate(a) ? some(a) : none)
@@ -297,7 +297,7 @@ export function getLeft<E, A>(ma: Either<E, A>): Option<E> {
 /**
  * Extracts the value out of the structure, if it exists. Otherwise returns the given default value
  *
- * @dataFirst getOrElse_
+ * @ets_data_first getOrElse_
  */
 export function getOrElse<B>(onNone: () => B): <A>(ma: Option<A>) => A | B {
   return (o) => getOrElse_(o, onNone)
@@ -306,7 +306,7 @@ export function getOrElse<B>(onNone: () => B): <A>(ma: Option<A>) => A | B {
 /**
  * Extracts the value out of the structure, if it exists. Otherwise returns the given default value
  *
- * @dataFirst getOrElseS_
+ * @ets_data_first getOrElseS_
  */
 export function getOrElseS<B>(onNone: () => B): (ma: Option<B>) => B {
   return getOrElse(onNone)
@@ -367,7 +367,7 @@ export function map_<A, B>(ma: Option<A>, f: (a: A) => B): Option<B> {
 /**
  * Use `A => B` to transform `Option[A]` to `Option[B]`
  *
- * @dataFirst map_
+ * @ets_data_first map_
  */
 export function map<A, B>(f: (a: A) => B) {
   return (fa: Option<A>): Option<B> => map_(fa, f)

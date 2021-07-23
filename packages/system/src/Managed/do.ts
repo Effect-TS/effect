@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import { chain_, map_ } from "./core"
 import type { Managed } from "./managed"
@@ -7,7 +7,7 @@ import { succeed } from "./succeed"
 /**
  * Binds an effectful value in a `do` scope
  *
- * @dataFirst bind_
+ * @ets_data_first bind_
  */
 export function bind<R, E, A, K, N extends string>(
   tag: Exclude<N, keyof K>,
@@ -59,7 +59,7 @@ export function bind_<R2, E2, R, E, A, K, N extends string>(
 /**
  * Binds a value in a `do` scope
  *
- * @dataFirst let_
+ * @ets_data_first let_
  */
 function let__<A, K, N extends string>(
   tag: Exclude<N, keyof K>,

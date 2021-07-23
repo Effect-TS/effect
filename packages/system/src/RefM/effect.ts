@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 export { as, as_ } from "../Effect/as"
 export { asSomeError } from "../Effect/asSomeError"

@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type { NonEmptyArray } from "../Collections/Immutable/NonEmptyArray"
 import type * as Tp from "../Collections/Immutable/Tuple"
@@ -11,7 +11,7 @@ import { tuple, tuplePar, tupleParN } from "./tuple"
  * Sequentially zips the specified effects using the specified combiner
  * function.
  *
- * @dataFirst mapN_
+ * @ets_data_first mapN_
  */
 export function mapN<T extends NonEmptyArray<Effect<any, any, any>>, B>(
   f: (..._: ForcedArray<{ [k in keyof T]: _A<T[k]> }>) => B,
@@ -37,7 +37,7 @@ export function mapN_<T extends NonEmptyArray<Effect<any, any, any>>, B>(
  * Zips the specified effects in parallel using the specified combiner
  * function.
  *
- * @dataFirst mapNPar_
+ * @ets_data_first mapNPar_
  */
 export function mapNPar<T extends NonEmptyArray<Effect<any, any, any>>, B>(
   f: (..._: ForcedArray<{ [k in keyof T]: _A<T[k]> }>) => B,

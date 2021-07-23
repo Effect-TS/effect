@@ -59,7 +59,7 @@ export function reduceWhileM_<A, R, E, S>(
  * Folds over the elements in this chunk from the left.
  * Stops the fold early when the condition is not fulfilled.
  *
- * @dataFirst reduceWhileM_
+ * @ets_data_first reduceWhileM_
  */
 export function reduceWhileM<A, R, E, S>(
   s: S,

@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import "../../../Operator"
 
@@ -101,7 +101,7 @@ export function intersection_<A>(l: HashSet<A>, r: Iterable<A>): HashSet<A> {
 /**
  * The set of elements which are in both the first and second set
  *
- * @dataFirst intersection_
+ * @ets_data_first intersection_
  */
 export function intersection<A>(r: Iterable<A>) {
   return (l: HashSet<A>) => intersection_(l, r)
@@ -126,7 +126,7 @@ export function map_<A, B>(set: HashSet<A>, f: (x: A) => B): HashSet<B> {
 /**
  * Projects a Set through a function
  *
- * @dataFirst map_
+ * @ets_data_first map_
  */
 export function map<A, B>(f: (x: A) => B): (set: HashSet<A>) => HashSet<B> {
   return (set) => map_(set, f)
@@ -135,7 +135,7 @@ export function map<A, B>(f: (x: A) => B): (set: HashSet<A>) => HashSet<B> {
 /**
  * true if one or more elements match predicate
  *
- * @dataFirst some_
+ * @ets_data_first some_
  */
 export function some<A>(predicate: Predicate<A>): (set: HashSet<A>) => boolean {
   return (set) => some_(set, predicate)
@@ -189,7 +189,7 @@ export function equal<A>(): Equal<HashSet<A>> {
 /**
  * true if all elements match predicate
  *
- * @dataFirst every_
+ * @ets_data_first every_
  */
 export function every<A>(predicate: Predicate<A>): (set: HashSet<A>) => boolean {
   return (set) => every_(set, predicate)
@@ -205,7 +205,7 @@ export function every_<A>(set: HashSet<A>, predicate: Predicate<A>): boolean {
 /**
  * Map + Flatten
  *
- * @dataFirst chain_
+ * @ets_data_first chain_
  */
 export function chain<A, B>(f: (x: A) => Iterable<B>): (set: HashSet<A>) => HashSet<B> {
   return (set) => chain_(set, f)
@@ -233,7 +233,7 @@ export function chain_<A, B>(set: HashSet<A>, f: (x: A) => Iterable<B>): HashSet
  *
  * the hash and equal of the 2 sets has to be the same
  *
- * @dataFirst isSubset_
+ * @ets_data_first isSubset_
  */
 export function isSubset<A>(y: HashSet<A>): (x: HashSet<A>) => boolean {
   return (x) => isSubset_(y, x)
@@ -251,7 +251,7 @@ export function isSubset_<A>(x: HashSet<A>, y: HashSet<A>): boolean {
 /**
  * Filter set values using predicate
  *
- * @dataFirst filter_
+ * @ets_data_first filter_
  */
 export function filter<A, B extends A>(
   refinement: Refinement<A, B>
@@ -288,7 +288,7 @@ export function filter_<A>(set: HashSet<A>, predicate: Predicate<A>): HashSet<A>
 /**
  * Partition set values using predicate
  *
- * @dataFirst partition_
+ * @ets_data_first partition_
  */
 export function partition<A, B extends A>(
   refinement: Refinement<A, B>
@@ -361,7 +361,7 @@ export function difference_<A>(x: HashSet<A>, y: Iterable<A>): HashSet<A> {
 /**
  * Form the set difference (`x` - `y`)
  *
- * @dataFirst difference_
+ * @ets_data_first difference_
  */
 export function difference<A>(y: Iterable<A>): (x: HashSet<A>) => HashSet<A> {
   return (x) => difference_(x, y)
@@ -377,7 +377,7 @@ export function reduce_<V, Z>(set: HashSet<V>, z: Z, f: (z: Z, v: V) => Z): Z {
 /**
  * Reduce a state over the map entries
  *
- * @dataFirst reduce_
+ * @ets_data_first reduce_
  */
 export function reduce<V, Z>(z: Z, f: (z: Z, v: V) => Z) {
   return (set: HashSet<V>) => reduce_(set, z, f)
@@ -386,7 +386,7 @@ export function reduce<V, Z>(z: Z, f: (z: Z, v: V) => Z) {
 /**
  * If element is present remove it, if not add it
  *
- * @dataFirst toggle_
+ * @ets_data_first toggle_
  */
 export function toggle<A>(a: A): (set: HashSet<A>) => HashSet<A> {
   return (set) => toggle_(set, a)
@@ -422,7 +422,7 @@ export function union_<A>(l: HashSet<A>, r: Iterable<A>): HashSet<A> {
  *
  * the hash and equal of the 2 sets has to be the same
  *
- * @dataFirst union_
+ * @ets_data_first union_
  */
 export function union<A>(y: Iterable<A>): (x: HashSet<A>) => HashSet<A> {
   return (x) => union_(x, y)

@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import * as Cause from "../Cause/core"
 import * as Chunk from "../Collections/Immutable/Chunk"
@@ -310,7 +310,7 @@ export function collectAll<E, A>(fibers: Iterable<Fiber.Fiber<E, A>>) {
 }
 
 /**
- * @optimize identity
+ * @ets_optimize identity
  */
 export function makeSynthetic<E, A>(
   _: Omit<Fiber.Synthetic<E, A>, "_tag" | symbol>

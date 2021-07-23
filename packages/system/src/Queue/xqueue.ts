@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type * as Chunk from "../Collections/Immutable/Chunk"
 import type { Effect, UIO } from "../Effect/effect"
@@ -33,7 +33,7 @@ export interface XQueue<RA, RB, EA, EB, A, B> {
 }
 
 /**
- * @optimize remove
+ * @ets_optimize remove
  */
 export function concreteQueue<RA, RB, EA, EB, A, B>(
   _: XQueue<RA, RB, EA, EB, A, B>

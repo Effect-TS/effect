@@ -36,7 +36,7 @@ export function reduceWhile_<A, S>(
  * Folds over the elements in this chunk from the left.
  * Stops the fold early when the condition is not fulfilled.
  *
- * @dataFirst reduceWhile_
+ * @ets_data_first reduceWhile_
  */
 export function reduceWhile<A, S>(
   s: S,

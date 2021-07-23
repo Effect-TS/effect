@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import * as R from "../Collections/Immutable/Dictionary"
 import type { _E, _R, EnforceNonEmptyRecord } from "../Utils"
@@ -67,7 +67,7 @@ export function structPar<NER extends Record<string, Effect<any, any, any>>>(
 /**
  * Applicative structure processed in parallel with up to N fibers
  *
- * @dataFirst structParN_
+ * @ets_data_first structParN_
  */
 export function structParN(n: number, __trace?: string) {
   return <NER extends Record<string, Effect<any, any, any>>>(

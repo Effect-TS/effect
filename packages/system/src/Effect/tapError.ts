@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import { failureOrCause } from "../Cause"
 import * as E from "../Either"
@@ -29,7 +29,7 @@ export function tapError_<R, E, A, R2, E2, X>(
 /**
  * Returns an effect that effectfully "peeks" at the failure of this effect.
  *
- * @dataFirst tapError_
+ * @ets_data_first tapError_
  */
 export function tapError<E, R2, E2, X>(
   f: (e: E) => Effect<R2, E2, X>,

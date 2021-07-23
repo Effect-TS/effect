@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import * as P from "../../Promise"
 import * as T from "../_internal/effect"

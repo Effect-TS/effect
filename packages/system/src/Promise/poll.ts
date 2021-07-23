@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import { succeedWith } from "../Effect/core"
 import * as O from "../Option"

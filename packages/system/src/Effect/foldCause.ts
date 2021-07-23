@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type { Cause } from "../Cause/cause"
 import { foldCauseM_, succeed } from "./core"
@@ -24,7 +24,7 @@ export function foldCause_<R, E, A, A2, A3>(
 /**
  * A more powerful version of `fold` that allows recovering from any kind of failure except interruptions.
  *
- * @dataFirst foldCause_
+ * @ets_data_first foldCause_
  */
 export function foldCause<E, A, A2, A3>(
   failure: (cause: Cause<E>) => A2,

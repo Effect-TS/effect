@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 declare global {
   interface Object {
@@ -8,7 +8,7 @@ declare global {
      * T.succeed(1)["|>"](T.map(n => n + 1))["|>"](T.map(n => n + 2))
      * ```
      *
-     * @optimize operator
+     * @ets_optimize operator
      */
     ["|>"]<Self, Result>(this: Self, next: (value: Self) => Result): Result
   }

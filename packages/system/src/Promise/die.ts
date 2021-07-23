@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import { die as effectDie } from "../Effect/die"
 import { completeWith } from "./completeWith"

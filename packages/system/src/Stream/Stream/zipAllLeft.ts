@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import { identity } from "../../Function"
 import type { Stream } from "./definitions"
@@ -28,7 +28,7 @@ export function zipAllLeft_<R, R1, E, E1, O, O2>(
  *
  * The provided default value will be used if the other stream ends before this one.
  *
- * @dataFirst zipAllLeft_
+ * @ets_data_first zipAllLeft_
  */
 export function zipAllLeft<R1, E1, O, O2>(
   that: Stream<R1, E1, O2>,

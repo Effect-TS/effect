@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import * as T from "./deps"
 import { fromEffect } from "./fromEffect"

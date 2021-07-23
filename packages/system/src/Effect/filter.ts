@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import * as Chunk from "../Collections/Immutable/Chunk"
 import { pipe } from "../Function"
@@ -13,7 +13,7 @@ import * as zipWith from "./zipWith"
 /**
  * Filters the collection using the specified effectual predicate.
  *
- * @dataFirst filter_
+ * @ets_data_first filter_
  */
 export function filter<A, R, E>(f: (a: A) => Effect<R, E, boolean>, __trace?: string) {
   return (as: Iterable<A>) => filter_(as, f, __trace)
@@ -65,7 +65,7 @@ export function filterPar_<A, R, E>(
  * Filters the collection in parallel using the specified effectual predicate.
  * See `filter` for a sequential version of it.
  *
- * @dataFirst filterPar_
+ * @ets_data_first filterPar_
  */
 export function filterPar<A, R, E>(
   f: (a: A) => Effect<R, E, boolean>,
@@ -103,7 +103,7 @@ export function filterParN_<A, R, E>(
  *
  * This method will use up to `n` fibers.
  *
- * @dataFirst filterParN_
+ * @ets_data_first filterParN_
  */
 export function filterParN<A, R, E>(
   n: number,
@@ -117,7 +117,7 @@ export function filterParN<A, R, E>(
  * Filters the collection using the specified effectual predicate, removing
  * all elements that satisfy the predicate.
  *
- * @dataFirst filterNot_
+ * @ets_data_first filterNot_
  */
 export function filterNot<A, R, E>(
   f: (a: A) => Effect<R, E, boolean>,
@@ -154,7 +154,7 @@ export function filterNotPar_<A, R, E>(
  * Filters the collection in parallel using the specified effectual predicate.
  * See `filterNot` for a sequential version of it.
  *
- * @dataFirst filterNotPar_
+ * @ets_data_first filterNotPar_
  */
 export function filterNotPar<A, R, E>(
   f: (a: A) => Effect<R, E, boolean>,
@@ -180,7 +180,7 @@ export function filterNotParN_<A, R, E>(
  * Filters the collection in parallel using the specified effectual predicate.
  * See `filterNot` for a sequential version of it.
  *
- * @dataFirst filterNotParN_
+ * @ets_data_first filterNotParN_
  */
 export function filterNotParN<R, E, A>(
   n: number,

@@ -120,7 +120,7 @@ export function zipWith_<R, E, A, R1, E1, A1, B>(
  *
  * The new stream will end when one of the sides ends.
  *
- * @dataFirst zipWith_
+ * @ets_data_first zipWith_
  */
 export function zipWith<A, R1, E1, A1, B>(
   that: S.Stream<R1, E1, A1>,
@@ -146,7 +146,7 @@ export function zip_<R, E, A, R1, E1, A1>(
  *
  * The new stream will end when one of the sides ends.
  *
- * @dataFirst zip_
+ * @ets_data_first zip_
  */
 export function zip<R1, E1, A1>(
   that: S.Stream<R1, E1, A1>
@@ -171,7 +171,7 @@ export function zipRight_<R, R1, E, E1, A, A1>(
  *
  * The new stream will end when one of the sides ends.
  *
- * @dataFirst zipRight_
+ * @ets_data_first zipRight_
  */
 export function zipRight<R, R1, E, E1, A, A1>(that: S.Stream<R1, E1, A1>) {
   return (self: S.Stream<R, E, A>) => zipRight_(self, that)
@@ -194,7 +194,7 @@ export function zipLeft_<R, R1, E, E1, A, A1>(
  *
  * The new stream will end when one of the sides ends.
  *
- * @dataFirst zipLeft_
+ * @ets_data_first zipLeft_
  */
 export function zipLeft<R, R1, E, E1, A, A1>(that: S.Stream<R1, E1, A1>) {
   return (self: S.Stream<R, E, A>) => zipLeft_(self, that)

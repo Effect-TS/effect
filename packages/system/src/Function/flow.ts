@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable prefer-rest-params */
@@ -13,7 +13,7 @@
  *
  * assert.strictEqual(f('aaa'), 6)
  *
- * @optimize flow
+ * @ets_optimize flow
  */
 export function flow<A extends ReadonlyArray<unknown>, B>(
   ab: (...a: A) => B

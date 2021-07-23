@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type { Cause } from "../Cause"
 import { foldCauseM_, succeed } from "./core"

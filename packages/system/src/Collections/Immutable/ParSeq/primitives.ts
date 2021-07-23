@@ -339,7 +339,7 @@ export function both_<A, A1>(left: ParSeq<A>, right: ParSeq<A1>): ParSeq<A | A1>
  * return a new collection of events that represents this collection of
  * events in parallel with that collection of events.
  *
- * @dataFirst both_
+ * @ets_data_first both_
  */
 export function both<A1>(right: ParSeq<A1>): <A>(left: ParSeq<A>) => ParSeq<A | A1> {
   return (left) => both_(left, right)
@@ -359,7 +359,7 @@ export function then_<A, A1>(left: ParSeq<A>, right: ParSeq<A1>): ParSeq<A | A1>
  * return a new collection of events that represents this collection of
  * events followed by that collection of events.
  *
- * @dataFirst then_
+ * @ets_data_first then_
  */
 export function then<A1>(right: ParSeq<A1>): <A>(left: ParSeq<A>) => ParSeq<A | A1> {
   return (left) => then_(left, right)

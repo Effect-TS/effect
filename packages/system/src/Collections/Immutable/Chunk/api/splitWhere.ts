@@ -35,7 +35,7 @@ export function splitWhere_<A>(
 /**
  * Splits this chunk on the first element that matches this predicate.
  *
- * @dataFirst splitWhere_
+ * @ets_data_first splitWhere_
  */
 export function splitWhere<A>(
   f: (a: A) => boolean

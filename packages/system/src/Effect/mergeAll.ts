@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import { pipe } from "../Function"
 import * as I from "../Iterable"
@@ -12,7 +12,7 @@ import { zipWithPar_ } from "./zipWithPar"
 /**
  * Merges an `Iterable[IO]` to a single IO, working sequentially.
  *
- * @dataFirst mergeAll_
+ * @ets_data_first mergeAll_
  */
 export function mergeAll<A, B>(zero: B, f: (b: B, a: A) => B, __trace?: string) {
   return <R, E>(as: Iterable<Effect<R, E, A>>): Effect<R, E, B> =>
@@ -45,7 +45,7 @@ export function mergeAll_<R, E, A, B>(
  * It's unsafe to execute side effects inside `f`, as `f` may be executed
  * more than once for some of `in` elements during effect execution.
  *
- * @dataFirst mergeAllPar_
+ * @ets_data_first mergeAllPar_
  */
 export function mergeAllPar<A, B>(zero: B, f: (b: B, a: A) => B, __trace?: string) {
   return <R, E>(as: Iterable<Effect<R, E, A>>): Effect<R, E, B> =>
@@ -87,7 +87,7 @@ export function mergeAllPar_<R, E, A, B>(
  * It's unsafe to execute side effects inside `f`, as `f` may be executed
  * more than once for some of `in` elements during effect execution.
  *
- * @dataFirst mergeAllParN_
+ * @ets_data_first mergeAllParN_
  */
 export function mergeAllParN<A, B>(
   n: number,

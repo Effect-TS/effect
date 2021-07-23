@@ -11,7 +11,7 @@ export function join_(self: Chunk<string>, sep: string) {
 /**
  * joins the elements togehther with "sep" in the middle
  *
- * @dataFirst join_
+ * @ets_data_first join_
  */
 export function join(sep: string) {
   return (self: Chunk<string>) => join_(self, sep)

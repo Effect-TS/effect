@@ -1,8 +1,8 @@
-// tracing: off
+// ets_tracing: off
 
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /**
- * @optimize pipe
+ * @ets_optimize pipe
  */
 export function pipe<A>(a: A): A
 export function pipe<A, B>(a: A, ab: (a: A) => B): B

@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import * as L from "../Collections/Immutable/List"
 import * as Tp from "../Collections/Immutable/Tuple"
@@ -153,7 +153,7 @@ export function withPermits_<R, E, A>(e: T.Effect<R, E, A>, s: Semaphore, n: num
 /**
  * Acquires `n` permits, executes the action and releases the permits right after.
  *
- * @dataFirst withPermits_
+ * @ets_data_first withPermits_
  */
 export function withPermits(s: Semaphore, n: number) {
   return <R, E, A>(e: T.Effect<R, E, A>) =>
@@ -174,7 +174,7 @@ export function withPermit_<R, E, A>(self: T.Effect<R, E, A>, s: Semaphore) {
 /**
  * Acquires a permit, executes the action and releases the permit right after.
  *
- * @dataFirst withPermit_
+ * @ets_data_first withPermit_
  */
 export function withPermit(s: Semaphore) {
   return <R, E, A>(self: T.Effect<R, E, A>) => withPermit_(self, s)

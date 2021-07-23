@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import "../../../Operator"
 
@@ -1552,7 +1552,7 @@ export function reduceWithIndex_<K, V, Z>(
 /**
  * Reduce a state over the map entries
  *
- * @dataFirst reduceWithIndex_
+ * @ets_data_first reduceWithIndex_
  */
 export function reduceWithIndex<K, V, Z>(
   z: Z,
@@ -1575,7 +1575,7 @@ export function reduce_<K, V, Z>(
 /**
  * Reduce a state over the map entries
  *
- * @dataFirst reduceWithIndex_
+ * @ets_data_first reduceWithIndex_
  */
 export function reduce<V, Z>(
   z: Z,

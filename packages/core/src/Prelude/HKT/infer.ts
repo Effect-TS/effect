@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type { Param } from "./fix"
 import type { Kind, URIS } from "./kind"

@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type * as CL from "../Clock"
 import * as O from "../Option"
@@ -21,7 +21,7 @@ import { timeoutTo_ } from "./timeoutTo"
  * the timeout, resulting in earliest possible return, before an underlying
  * effect has been successfully interrupted.
  *
- * @dataFirst timeout_
+ * @ets_data_first timeout_
  */
 export function timeout(d: number, __trace?: string) {
   return <R, E, A>(self: Effect<R, E, A>) => timeout_(self, d, __trace)

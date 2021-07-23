@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import { sequenceF } from "../Prelude"
 import * as DSL from "../Prelude/DSL"

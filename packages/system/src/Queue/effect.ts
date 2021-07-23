@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 export * from "../Effect/asUnit"
 export * from "../Effect/core"

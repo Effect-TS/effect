@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type { Reservation } from "../Managed"
 import { makeReserve } from "../Managed/core"
@@ -14,7 +14,7 @@ import type { Effect } from "./effect"
  * 'deallocator' can tell if the allocation succeeded or not just by
  * inspecting internal / external state.
  *
- * @dataFirst reserve_
+ * @ets_data_first reserve_
  */
 export function reserve<R3, E3, B, A>(
   use: (a: A) => Effect<R3, E3, B>,

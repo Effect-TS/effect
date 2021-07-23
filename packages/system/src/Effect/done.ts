@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type { Exit } from "../Exit/exit"
 import { halt, succeed } from "./core"

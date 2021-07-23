@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import * as H from "../../Hub"
 import type { Stream } from "./definitions"

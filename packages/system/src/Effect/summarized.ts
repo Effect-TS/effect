@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import * as Tp from "../Collections/Immutable/Tuple"
 import { pipe } from "../Function"
@@ -36,7 +36,7 @@ export function summarized_<R, E, A, R2, E2, B, C>(
  * then combining the values to produce a summary, together with the result of
  * execution.
  *
- * @dataFirst summarized_
+ * @ets_data_first summarized_
  */
 export function summarized<R2, E2, B, C>(
   summary: Effect<R2, E2, B>,

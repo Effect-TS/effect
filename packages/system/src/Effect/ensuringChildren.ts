@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type * as Chunk from "../Collections/Immutable/Chunk"
 import type { SortedSet } from "../Collections/Immutable/SortedSet"
@@ -13,7 +13,7 @@ import * as ensuring from "./ensuring"
  * Acts on the children of this fiber, guaranteeing the specified callback
  * will be invoked, whether or not this effect succeeds.
  *
- * @dataFirst ensuringChildren_
+ * @ets_data_first ensuringChildren_
  */
 export function ensuringChildren<R1, X>(
   children: (_: SortedSet<Fiber.Runtime<any, any>>) => RIO<R1, X>,
@@ -62,7 +62,7 @@ export function ensuringChild_<R, E, A, R2, X>(
  * guaranteeing the specified callback will be invoked, whether or not
  * this effect succeeds.
  *
- * @dataFirst ensuringChild_
+ * @ets_data_first ensuringChild_
  */
 export function ensuringChild<R, E, A, R2, X>(
   f: (_: Fiber.Fiber<any, Chunk.Chunk<unknown>>) => RIO<R2, X>,

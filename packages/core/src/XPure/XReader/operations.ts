@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type * as Tp from "@effect-ts/system/Collections/Immutable/Tuple"
 import * as F from "@effect-ts/system/XPure"

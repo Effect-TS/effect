@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import { compact } from "../Collections/Immutable/Chunk/api/compact"
 import type { Chunk } from "../Collections/Immutable/Chunk/core"
@@ -12,7 +12,7 @@ import { optional } from "./optional"
  * Evaluate each sync in the structure from left to right, collecting the
  * the successful values and discarding the empty cases. For a parallel version, see `collectPar`.
  *
- * @dataFirst collect_
+ * @ets_data_first collect_
  */
 export function collect<A, R, E, B>(f: (a: A) => Sync<R, Option<E>, B>) {
   return (self: Iterable<A>): Sync<R, E, Chunk<B>> => collect_(self, f)

@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import * as T from "../_internal/effect"
 import type { Stream } from "./definitions"
@@ -28,7 +28,7 @@ export function zipAllWith_<R, R1, E, E1, O, O2, O3>(
  * The functions `left` and `right` will be used if the streams have different lengths
  * and one of the streams has ended before the other.
  *
- * @dataFirst zipAllWith_
+ * @ets_data_first zipAllWith_
  */
 export function zipAllWith<R1, E1, O, O2, O3>(
   that: Stream<R1, E1, O2>,

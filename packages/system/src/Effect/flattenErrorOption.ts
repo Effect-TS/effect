@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import { identity } from "../Function"
 import type { Option } from "../Option"
@@ -9,7 +9,7 @@ import { mapError_ } from "./mapError"
 /**
  * Unwraps the optional error, defaulting to the provided value.
  *
- * @dataFirst flattenErrorOption_
+ * @ets_data_first flattenErrorOption_
  */
 export function flattenErrorOption<E2>(def: () => E2, __trace?: string) {
   return <R, E, A>(self: Effect<R, Option<E>, A>): Effect<R, E | E2, A> =>

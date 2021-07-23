@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type { FilterMapWithIndex } from "../FilterMapWithIndex"
 import type { FilterWithIndex } from "../FilterWithIndex"

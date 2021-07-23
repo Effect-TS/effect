@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import * as R from "../Collections/Immutable/Dictionary"
 import type { _E, _R, EnforceNonEmptyRecord } from "../Utils"
@@ -59,7 +59,7 @@ export function structPar<NER extends Record<string, Managed<any, any, any>>>(
 }
 
 /**
- * @dataFirst structParN_
+ * @ets_data_first structParN_
  */
 export function structParN(
   n: number,
@@ -106,7 +106,7 @@ export function structParN_<NER extends Record<string, Managed<any, any, any>>>(
 }
 
 /**
- * @dataFirst bindAll_
+ * @ets_data_first bindAll_
  */
 export function bindAll<
   K,
@@ -166,7 +166,7 @@ export function bindAll_<
 }
 
 /**
- * @dataFirst bindAllPar_
+ * @ets_data_first bindAllPar_
  */
 export function bindAllPar<
   K,
@@ -226,7 +226,7 @@ export function bindAllPar_<
 }
 
 /**
- * @dataFirst bindAllParN_
+ * @ets_data_first bindAllParN_
  */
 export function bindAllParN<
   K,

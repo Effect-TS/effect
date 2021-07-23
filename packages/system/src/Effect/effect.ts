@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import { _A, _E, _R, _S1, _S2, _U, _W } from "./commons"
 import type { Instruction } from "./primitives"
@@ -33,7 +33,7 @@ export abstract class Base<R, E, A> implements Effect<R, E, A> {
 }
 
 /**
- * @optimize identity
+ * @ets_optimize identity
  */
 export function instruction<R, E, A>(self: Effect<R, E, A>): Instruction {
   // @ts-expect-error

@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type { Option } from "@effect-ts/system/Option"
 

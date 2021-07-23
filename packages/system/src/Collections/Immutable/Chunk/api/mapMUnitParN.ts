@@ -15,7 +15,7 @@ export function mapMUnitPar_<A, R, E, B>(
 /**
  * Effectfully maps the elements of this chunk in parallel purely for the effects.
  *
- * @dataFirst mapMUnitPar_
+ * @ets_data_first mapMUnitPar_
  */
 export function mapMUnitPar<A, R, E, B>(
   f: (a: A) => Effect<R, E, B>

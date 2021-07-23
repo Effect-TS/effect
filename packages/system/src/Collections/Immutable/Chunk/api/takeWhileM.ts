@@ -42,7 +42,7 @@ export function takeWhileM_<R, E, A>(
 /**
  * Takes all elements so long as the effectual predicate returns true.
  *
- * @dataFirst takeWhileM_
+ * @ets_data_first takeWhileM_
  */
 export function takeWhileM<R, E, A>(
   f: (a: A) => Effect<R, E, boolean>

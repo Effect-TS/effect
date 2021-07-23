@@ -24,7 +24,7 @@ export function grouped_<A>(self: core.Chunk<A>, n: number): core.Chunk<core.Chu
 /**
  * Groups elements in chunks of up to n elements
  *
- * @dataFirst grouped_
+ * @ets_data_first grouped_
  */
 export function grouped(
   n: number

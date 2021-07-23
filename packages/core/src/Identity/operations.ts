@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type { Associative } from "../Associative"
 import * as A from "../Associative"

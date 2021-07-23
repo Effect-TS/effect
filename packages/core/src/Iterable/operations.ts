@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import { pipe } from "@effect-ts/system/Function"
 import * as I from "@effect-ts/system/Iterable"

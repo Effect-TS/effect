@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 export type ExecutionStrategy = Sequential | Parallel | ParallelN
 

@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import * as SS from "../Collections/Immutable/SortedSet"
 import type { Runtime } from "../Fiber"

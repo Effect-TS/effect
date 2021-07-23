@@ -45,7 +45,7 @@ export function collectWhileM_<A, R, E, B>(
 /**
  * Transforms all elements of the chunk for as long as the specified partial function is defined.
  *
- * @dataFirst collectWhileM_
+ * @ets_data_first collectWhileM_
  */
 export function collectWhileM<A, R, E, B>(
   f: (a: A) => O.Option<Effect<R, E, B>>

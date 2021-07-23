@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type { Array } from "../Collections/Immutable/Array"
 import type { MutableArray } from "../Support/Mutable"
@@ -9,7 +9,7 @@ import { map_ } from "./map"
 /**
  * Drops all elements so long as the effectful predicate returns true.
  *
- * @dataFirst dropWhile_
+ * @ets_data_first dropWhile_
  */
 export function dropWhile<A, R, E>(
   p: (a: A) => Effect<R, E, boolean>,

@@ -26,7 +26,7 @@ export default function unpipe(_program: ts.Program) {
                     return ts
                       .getAllJSDocTags(
                         overloadDeclarations,
-                        (t): t is ts.JSDocTag => t.tagName.getText() === "optimize"
+                        (t): t is ts.JSDocTag => t.tagName.getText() === "ets_optimize"
                       )
                       .map((e) => e.comment)
                       .filter((s): s is string => s != null)
@@ -56,7 +56,7 @@ export default function unpipe(_program: ts.Program) {
                     return ts
                       .getAllJSDocTags(
                         overloadDeclarations,
-                        (t): t is ts.JSDocTag => t.tagName.getText() === "optimize"
+                        (t): t is ts.JSDocTag => t.tagName.getText() === "ets_optimize"
                       )
                       .map((e) => e.comment)
                       .filter((s): s is string => s != null)
@@ -74,7 +74,7 @@ export default function unpipe(_program: ts.Program) {
                     return ts
                       .getAllJSDocTags(
                         e,
-                        (t): t is ts.JSDocTag => t.tagName?.getText() === "optimize"
+                        (t): t is ts.JSDocTag => t.tagName?.getText() === "ets_optimize"
                       )
                       .map((e) => e.comment)
                   } catch {
@@ -88,7 +88,7 @@ export default function unpipe(_program: ts.Program) {
               ...(optimizeTagsOverload || [])
             ])
 
-            if (optimizeTags.has("pipe")) {
+            if (optimizeTags.has("ets_pipe")) {
               if (node.arguments.findIndex((xx) => ts.isSpreadElement(xx)) === -1) {
                 return factory.createParenthesizedExpression(
                   optimisePipe(

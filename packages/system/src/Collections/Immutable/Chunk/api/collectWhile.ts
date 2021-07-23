@@ -37,7 +37,7 @@ export function collectWhile_<A, B>(
 /**
  * Transforms all elements of the chunk for as long as the specified partial function is defined.
  *
- * @dataFirst collectWhile_
+ * @ets_data_first collectWhile_
  */
 export function collectWhile<A, B>(
   f: (a: A) => O.Option<B>

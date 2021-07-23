@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type * as Cause from "../Cause/core"
 import type * as Exit from "../Exit/exit"

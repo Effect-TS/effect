@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import * as E from "../../Either"
 import type { Stream } from "./definitions"
@@ -31,7 +31,7 @@ export function merge_<R, E, A, R1, E1, B>(
  * New produced stream will terminate when both specified stream terminate if no termination
  * strategy is specified.
  *
- * @dataFirst merge_
+ * @ets_data_first merge_
  */
 export function merge<R1, E1, B>(
   that: Stream<R1, E1, B>,
@@ -113,7 +113,7 @@ export function mergeEither_<R, E, A, R1, E1, B>(
  * Merges this stream and the specified stream together to produce a stream of
  * eithers.
  *
- * @dataFirst mergeEither_
+ * @ets_data_first mergeEither_
  */
 export function mergeEither<R1, E1, B>(
   that: Stream<R1, E1, B>,

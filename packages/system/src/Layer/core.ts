@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import * as C from "../Cause"
 import * as CL from "../Clock"
@@ -146,7 +146,7 @@ export function prepare<T>(has: Tag<T>) {
 /**
  * Constructs a layer from the specified effect.
  *
- * @dataFirst fromEffect_
+ * @ets_data_first fromEffect_
  */
 export function fromEffect<T>(has: Tag<T>) {
   return <R, E>(resource: T.Effect<R, E, T>): Layer<R, E, Has<T>> =>

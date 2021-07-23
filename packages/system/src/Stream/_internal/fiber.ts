@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 export { interruptAll } from "../../Fiber/api"
 export { interrupt } from "../../Fiber/interrupt"
