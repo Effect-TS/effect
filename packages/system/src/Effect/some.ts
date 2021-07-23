@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import * as O from "../Option"
 import { succeed } from "./core"

@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import { chain_ } from "./core"
 import type { Effect } from "./effect"
@@ -7,7 +7,7 @@ import { map_ } from "./map"
 /**
  * Returns an effect that effectfully "peeks" at the success of this effect.
  *
- * @dataFirst tap_
+ * @ets_data_first tap_
  */
 export function tap<A, R, E, X>(
   f: (_: A) => Effect<R, E, X>,

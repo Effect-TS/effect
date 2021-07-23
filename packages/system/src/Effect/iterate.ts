@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import { chain_, succeed, suspend } from "./core"
 import type { Effect } from "./effect"

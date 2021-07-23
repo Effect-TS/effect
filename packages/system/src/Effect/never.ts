@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import { succeedWith, suspend } from "./core"
 import { effectAsyncInterrupt } from "./effectAsyncInterrupt"

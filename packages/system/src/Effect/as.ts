@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type { Effect } from "./effect"
 import { map_ } from "./map"
@@ -13,7 +13,7 @@ export function as_<R, E, A, B>(self: Effect<R, E, A>, b: B, __trace?: string) {
 /**
  * Maps the success value of this effect to the specified constant value.
  *
- * @dataFirst as_
+ * @ets_data_first as_
  */
 export function as<B>(b: B, __trace?: string) {
   return <R, E, A>(self: Effect<R, E, A>) => as_(self, b, __trace)

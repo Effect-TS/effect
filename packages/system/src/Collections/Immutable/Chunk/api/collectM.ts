@@ -43,7 +43,7 @@ export function collectM_<A, R, E, B>(
 /**
  * Returns a filtered, mapped subset of the elements of this chunk based on a .
  *
- * @dataFirst collectM_
+ * @ets_data_first collectM_
  */
 export function collectM<A, R, E, B>(
   f: (a: A) => O.Option<Effect<R, E, B>>

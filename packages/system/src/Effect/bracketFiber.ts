@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type { Runtime } from "../Fiber/core"
 import { bracket_ } from "./bracket"
@@ -28,7 +28,7 @@ export function bracketFiber_<R, E, A, R2, E2, A2>(
  * Fork the effect into a separate fiber wrapping it in a bracket.
  * Acquisition will fork and release will interrupt the fiber.
  *
- * @dataFirst bracketFiber_
+ * @ets_data_first bracketFiber_
  */
 export function bracketFiber<R2, E2, A2, E, A>(
   use: (f: Runtime<E, A>) => Effect<R2, E2, A2>,

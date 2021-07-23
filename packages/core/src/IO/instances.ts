@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import * as F from "@effect-ts/system/IO"
 

@@ -24,11 +24,17 @@ export default function rewrite(_program: ts.Program) {
               .getSymbolAtLocation(node)
               ?.getJsDocTags()
               .map((_) => `${_.name} ${_.text?.map((_) => _.text).join(" ")}`)
-              .filter((_) => _.startsWith("rewriteGetter"))[0]
+              .filter((_) => _.startsWith("ets_rewrite_getter"))[0]
+
+            const ets_rewrite_static = checker
+              .getSymbolAtLocation(node)
+              ?.getJsDocTags()
+              .map((_) => `${_.name} ${_.text?.map((_) => _.text).join(" ")}`)
+              .filter((_) => _.startsWith("ets_rewrite_static"))[0]
 
             if (rewrite) {
               const [fn, mod, attachTrace] = rewrite
-                .match(/rewriteGetter (.*) from "(.*)"(?:(.*))/)!
+                .match(/ets_rewrite_getter (.*) from "(.*)"(?:(.*))/)!
                 .splice(1)
 
               if (!mods.has(mod!)) {
@@ -55,9 +61,23 @@ export default function rewrite(_program: ts.Program) {
                 visitor,
                 ctx
               )
+            } else if (ets_rewrite_static) {
+              const [fn, mod] = ets_rewrite_static
+                .match(/ets_rewrite_static (.*) from "(.*)"/)!
+                .splice(1)
+
+              if (!mods.has(mod!)) {
+                mods.set(mod!, factory.createUniqueName("module"))
+              }
+
+              const id = mods.get(mod!)!
+
+              return factory.createPropertyAccessExpression(
+                id,
+                factory.createIdentifier(fn!)
+              )
             }
-          }
-          if (
+          } else if (
             ts.isCallExpression(node) &&
             ts.isPropertyAccessExpression(node.expression)
           ) {
@@ -77,27 +97,84 @@ export default function rewrite(_program: ts.Program) {
             }
 
             if (signature) {
-              const rewrite = signature
+              const sigTags = signature
                 .getJsDocTags()
                 .map((_) => `${_.name} ${_.text?.map((_) => _.text).join(" ")}`)
-                .filter((_) => _.startsWith("rewrite"))[0]
+
+              const exprTags =
+                checker
+                  .getSymbolAtLocation(node.expression)
+                  ?.getJsDocTags()
+                  .map((_) => `${_.name} ${_.text?.map((_) => _.text).join(" ")}`) || []
+
+              const rewrite = sigTags.filter((_) =>
+                _.startsWith("ets_rewrite_method")
+              )[0]
+
+              const rewriteStatic = [...sigTags, ...exprTags].filter((_) =>
+                _.startsWith("ets_rewrite_static")
+              )[0]
+
+              const processedArguments =
+                rewrite || rewriteStatic
+                  ? node.arguments.map((x) => {
+                      const ds = getSignatureIfSole(checker, x)?.getDeclaration()
+                      const params = ds?.parameters
+
+                      if (
+                        params?.length === 2 &&
+                        params[1]?.name.getText() === "__trace"
+                      ) {
+                        return factory.createCallExpression(
+                          traceCallLastId,
+                          undefined,
+                          [ts.visitNode(x, visitor), getTrace(x)]
+                        )
+                      }
+
+                      return ts.visitNode(x, visitor)
+                    })
+                  : node.arguments
+
+              if (rewriteStatic) {
+                const [fn, mod] = rewriteStatic
+                  .match(/ets_rewrite_static (.*) from "(.*)"/)!
+                  .splice(1)
+
+                const additions = [] as ts.Expression[]
+
+                if (
+                  isTracing &&
+                  signature.parameters.length > node.arguments.length &&
+                  signature.parameters[signature.parameters.length - 1]?.name ===
+                    "__trace"
+                ) {
+                  additions.push(getTrace(node.expression))
+                }
+
+                if (!mods.has(mod!)) {
+                  mods.set(mod!, factory.createUniqueName("module"))
+                }
+
+                const nodeNew = factory.updateCallExpression(
+                  node,
+                  factory.createPropertyAccessExpression(
+                    mods.get(mod!)!,
+                    factory.createIdentifier(fn!)
+                  ),
+                  node.typeArguments,
+                  [...processedArguments, ...additions]
+                )
+
+                nodeNew["_ets_sig_tags"] = sigTags
+
+                return nodeNew
+              }
 
               if (rewrite) {
-                const processedArguments = node.arguments.map((x) => {
-                  const ds = getSignatureIfSole(checker, x)?.getDeclaration()
-                  const params = ds?.parameters
-
-                  if (params?.length === 2 && params[1]?.name.getText() === "__trace") {
-                    return factory.createCallExpression(traceCallLastId, undefined, [
-                      ts.visitNode(x, visitor),
-                      getTrace(x)
-                    ])
-                  }
-
-                  return ts.visitNode(x, visitor)
-                })
-
-                const [fn, mod] = rewrite.match(/rewrite (.*) from "(.*)"/)!.splice(1)
+                const [fn, mod] = rewrite
+                  .match(/ets_rewrite_method (.*) from "(.*)"/)!
+                  .splice(1)
 
                 if (mod === "smart:identity") {
                   return ts.visitNode(node.expression.expression, visitor)

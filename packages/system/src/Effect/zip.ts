@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import * as Tp from "../Collections/Immutable/Tuple"
 import { chain_ } from "./core"
@@ -7,7 +7,7 @@ import { map_ } from "./map"
 /**
  * Sequentially zips this effect with the specified effect
  *
- * @dataFirst zip_
+ * @ets_data_first zip_
  */
 export function zip<R2, E2, A2>(b: Effect<R2, E2, A2>, __trace?: string) {
   return <R, E, A>(a: Effect<R, E, A>): Effect<R & R2, E | E2, Tp.Tuple<[A, A2]>> =>

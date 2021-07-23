@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import * as Tp from "../Collections/Immutable/Tuple"
 import * as E from "../Either"
@@ -322,7 +322,7 @@ export interface Ref<A> extends XRef<never, never, A, A> {}
 /**
  * Cast to a sealed union in case of ERef (where it make sense)
  *
- * @optimize identity
+ * @ets_optimize identity
  */
 export function concrete<EA, EB, A, B>(self: XRef<EA, EB, A, B>) {
   return self as Atomic<A | B> | DerivedAll<EA, EB, A, B> | Derived<EA, EB, A, A>

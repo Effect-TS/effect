@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type { RIO } from "./definitions"
 import { environment } from "./environment"

@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import { currentTime } from "../Clock"
 import type { Effect } from "./effect"
@@ -18,7 +18,7 @@ export function timedWith_<R, E, A, R2, E2>(
 /**
  * A more powerful variation of `timed` that allows specifying the clock.
  *
- * @dataFirst timedWith_
+ * @ets_data_first timedWith_
  */
 export function timedWith<R2, E2>(msTime: Effect<R2, E2, number>, __trace?: string) {
   return <R, E, A>(self: Effect<R, E, A>) => timedWith_(self, msTime, __trace)

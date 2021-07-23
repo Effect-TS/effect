@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type { Cause } from "../Cause"
 import { failureOrCause } from "../Cause"
@@ -41,7 +41,7 @@ export function onTermination_<R1, R, E, A, X>(
  * Runs the specified effect if this effect is terminated, either because of
  * a defect or because of interruption.
  *
- * @dataFirst onTermination_
+ * @ets_data_first onTermination_
  */
 export function onTermination<R1, R, E, A, X>(
   cleanup: (_: Cause<never>) => RIO<R1, X>,

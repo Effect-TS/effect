@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import "../../../Operator"
 
@@ -52,7 +52,7 @@ export function as_<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone, OutDon
  *
  * This method produces the same result as mapping this channel to the specified constant value.
  *
- * @dataFirst as_
+ * @ets_data_first as_
  */
 export function as<OutDone2>(z2: OutDone2) {
   return <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
@@ -108,7 +108,7 @@ export function catchAll_<
  * typed error, then the returned channel will switch over to using the fallback channel returned
  * by the specified error handler.
  *
- * @dataFirst catchAll_
+ * @ets_data_first catchAll_
  */
 export function catchAll<
   Env1,
@@ -181,7 +181,7 @@ export function catchAllCause_<
  * typed error, then the returned channel will switch over to using the fallback channel returned
  * by the specified error handler.
  *
- * @dataFirst catchAllCause_
+ * @ets_data_first catchAllCause_
  */
 export function catchAllCause<
   Env1,
@@ -238,7 +238,7 @@ export function collect_<
  * Returns a new channel, which is the same as this one, except its outputs are filtered and
  * transformed by the specified partial function.
  *
- * @dataFirst collect_
+ * @ets_data_first collect_
  */
 export function collect<OutElem, OutElem2>(f: (o: OutElem) => O.Option<OutElem2>) {
   return <Env, InErr, InElem, InDone, OutErr, OutDone>(
@@ -291,7 +291,7 @@ export function contramap_<
 }
 
 /**
- * @dataFirst contramap_
+ * @ets_data_first contramap_
  */
 export function contramap<InDone, InDone0>(f: (a: InDone0) => InDone) {
   return <Env, InErr, InElem, OutErr, OutElem, OutDone>(
@@ -326,7 +326,7 @@ export function contramapIn_<
 }
 
 /**
- * @dataFirst contramapIn_
+ * @ets_data_first contramapIn_
  */
 export function contramapIn<InElem0, InElem>(f: (a: InElem0) => InElem) {
   return <Env, InErr, InDone, OutErr, OutElem, OutDone>(
@@ -362,7 +362,7 @@ export function contramapM_<
 }
 
 /**
- * @dataFirst contramapM_
+ * @ets_data_first contramapM_
  */
 export function contramapM<Env1, InErr, InDone0, InDone>(
   f: (i: InDone0) => T.Effect<Env1, InErr, InDone>
@@ -404,7 +404,7 @@ export function contramapInM_<
 }
 
 /**
- * @dataFirst contramapInM_
+ * @ets_data_first contramapInM_
  */
 export function contramapInM<Env1, InErr, InElem0, InElem>(
   f: (a: InElem0) => T.Effect<Env1, InErr, InElem>
@@ -503,7 +503,7 @@ export function interruptWhen_<
  * value. On the other hand, if the underlying channel finishes first, then the returned channel
  * will yield the success value of the underlying channel as its terminal value.
  *
- * @dataFirst interruptWhen_
+ * @ets_data_first interruptWhen_
  */
 export function interruptWhen<Env1, OutErr1, OutDone1>(
   io: T.Effect<Env1, OutErr1, OutDone1>
@@ -552,7 +552,7 @@ export function interruptWhenP_<
  * underlying channel finishes first, then the returned channel will yield the value of the
  * underlying channel.
  *
- * @dataFirst interruptWhenP_
+ * @ets_data_first interruptWhenP_
  */
 export function interruptWhenP<OutErr1, OutDone1>(
   promise: PR.Promise<OutErr1, OutDone1>
@@ -598,7 +598,7 @@ export function ensuring_<
 }
 
 /**
- * @dataFirst ensuring_
+ * @ets_data_first ensuring_
  */
 export function ensuring<Env1, Z>(finalizer: T.RIO<Env1, Z>) {
   return <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
@@ -659,7 +659,7 @@ export function foldM_<
 }
 
 /**
- * @dataFirst foldM_
+ * @ets_data_first foldM_
  */
 export function foldM<
   Env1,
@@ -722,7 +722,7 @@ export function orElse_<
  * Returns a new channel that will perform the operations of this one, until failure, and then
  * it will switch over to the operations of the specified fallback channel.
  *
- * @dataFirst orElse_
+ * @ets_data_first orElse_
  */
 export function orElse<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>(
   that: C.Channel<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>
@@ -749,7 +749,7 @@ export function map_<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone, OutDo
  * returned channel is created by applying the specified function to the terminal value of this
  * channel.
  *
- * @dataFirst map_
+ * @ets_data_first map_
  */
 export function map<OutDone, OutDone2>(f: (out: OutDone) => OutDone2) {
   return <Env, InErr, InElem, InDone, OutErr, OutElem>(
@@ -781,7 +781,7 @@ export function mapError_<
  * Returns a new channel, which is the same as this one, except the failure value of the returned
  * channel is created by applying the specified function to the failure value of this channel.
  *
- * @dataFirst mapError_
+ * @ets_data_first mapError_
  */
 export function mapError<OutErr, OutErr2>(f: (err: OutErr) => OutErr2) {
   return <Env, InErr, InElem, InDone, OutElem, OutDone>(
@@ -811,7 +811,7 @@ export function mapErrorCause_<
 /**
  * A more powerful version of `mapError` which also surfaces the `Cause` of the channel failure
  *
- * @dataFirst mapErrorCause_
+ * @ets_data_first mapErrorCause_
  */
 export function mapErrorCause<OutErr, OutErr2>(
   f: (cause: Cause.Cause<OutErr>) => Cause.Cause<OutErr2>
@@ -897,7 +897,7 @@ export function mapM_<
  * returned channel is created by applying the specified effectful function to the terminal value
  * of this channel.
  *
- * @dataFirst mapM_
+ * @ets_data_first mapM_
  */
 export function mapM<Env1, OutErr1, OutDone, OutDone1>(
   f: (o: OutDone) => T.Effect<Env1, OutErr1, OutDone1>
@@ -1185,7 +1185,7 @@ export function mergeWith_<
  * the behavior of the returned channel on left or right early termination is decided by the
  * specified `leftDone` and `rightDone` merge decisions.
  *
- * @dataFirst mergeWith_
+ * @ets_data_first mergeWith_
  */
 export function mergeWith<
   Env1,
@@ -1231,7 +1231,7 @@ export function mapOut_<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone, Ou
 /**
  * Maps the output of this channel using f
  *
- * @dataFirst mapOut_
+ * @ets_data_first mapOut_
  */
 export function mapOut<OutElem, OutElem2>(
   f: (o: OutElem) => OutElem2
@@ -1278,7 +1278,7 @@ export function mapOutM_<
 }
 
 /**
- * @dataFirst mapOutM_
+ * @ets_data_first mapOutM_
  */
 export function mapOutM<Env1, OutErr1, OutElem, OutElem1>(
   f: (o: OutElem) => T.Effect<Env1, OutErr1, OutElem1>
@@ -1299,7 +1299,7 @@ export function orDie_<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone, E>(
 }
 
 /**
- * @dataFirst orDie_
+ * @ets_data_first orDie_
  */
 export function orDie<E>(err: E) {
   return <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
@@ -1315,7 +1315,7 @@ export function orDieWith_<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone,
 }
 
 /**
- * @dataFirst orDieWith_
+ * @ets_data_first orDieWith_
  */
 export function orDieWith<OutErr, E>(f: (e: OutErr) => E) {
   return <Env, InErr, InElem, InDone, OutElem, OutDone>(
@@ -1430,7 +1430,7 @@ export function zip_<
  * Returns a new channel that is the sequential composition of this channel and the specified
  * channel. The returned channel terminates with a tuple of the terminal values of both channels.
  *
- * @dataFirst zip_
+ * @ets_data_first zip_
  */
 export function zip<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>(
   that: C.Channel<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>
@@ -1478,7 +1478,7 @@ export function zipLeft_<
  * Returns a new channel that is the sequential composition of this channel and the specified
  * channel. The returned channel terminates with the terminal value of this channel.
  *
- * @dataFirst zipLeft_
+ * @ets_data_first zipLeft_
  */
 export function zipLeft<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>(
   that: C.Channel<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>
@@ -1524,7 +1524,7 @@ export function zipPar_<
 }
 
 /**
- * @dataFirst zipPar_
+ * @ets_data_first zipPar_
  */
 export function zipPar<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>(
   that: C.Channel<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>
@@ -1565,7 +1565,7 @@ export function zipParLeft_<
 }
 
 /**
- * @dataFirst zipParLeft_
+ * @ets_data_first zipParLeft_
  */
 export function zipParLeft<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>(
   that: C.Channel<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>
@@ -1606,7 +1606,7 @@ export function zipParRight_<
 }
 
 /**
- * @dataFirst zipParRight_
+ * @ets_data_first zipParRight_
  */
 export function zipParRight<
   Env1,
@@ -1660,7 +1660,7 @@ export function zipRight_<
  * Returns a new channel that is the sequential composition of this channel and the specified
  * channel. The returned channel terminates with the terminal value of the other channel.
  *
- * @dataFirst zipRight_
+ * @ets_data_first zipRight_
  */
 export function zipRight<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>(
   that: C.Channel<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>
@@ -1678,7 +1678,7 @@ export function bracketOut_<Env, OutErr, Acquired, Z>(
 }
 
 /**
- * @dataFirst bracketOut_
+ * @ets_data_first bracketOut_
  */
 export function bracketOut<Env, Acquired, Z>(release: (a: Acquired) => T.RIO<Env, Z>) {
   return <OutErr>(acquire: T.Effect<Env, OutErr, Acquired>) =>
@@ -1705,7 +1705,7 @@ export function bracket_<
 }
 
 /**
- * @dataFirst bracket_
+ * @ets_data_first bracket_
  */
 export function bracket<
   Env,
@@ -1758,7 +1758,7 @@ export function bracketExit_<
 }
 
 /**
- * @dataFirst bracketExit_
+ * @ets_data_first bracketExit_
  */
 export function bracketExit<
   Env,
@@ -1911,7 +1911,7 @@ export function managed_<
 }
 
 /**
- * @dataFirst managed_
+ * @ets_data_first managed_
  */
 export function managed<
   Env,

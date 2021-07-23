@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import * as E from "../Either/core"
 import { chain_, succeed, succeedWith } from "./core"

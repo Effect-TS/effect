@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type { Equal } from "../Equal"
 import type { Ordering } from "../Ordering"

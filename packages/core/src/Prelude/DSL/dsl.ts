@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import { constant, pipe, tuple } from "../../Function"
 import type { Has, Tag } from "../../Has"

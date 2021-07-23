@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import { then } from "../Cause/cause"
 import { foldCauseM_, halt, succeed } from "./core"
@@ -16,7 +16,7 @@ import { uninterruptibleMask } from "./interruption"
  * should generally not be used for releasing resources. For higher-level
  * logic built on `ensuring`, see `bracket`.
  *
- * @dataFirst ensuring_
+ * @ets_data_first ensuring_
  */
 export function ensuring<R1, X>(finalizer: Effect<R1, never, X>, __trace?: string) {
   return <R, E, A>(effect: Effect<R, E, A>) => ensuring_(effect, finalizer, __trace)

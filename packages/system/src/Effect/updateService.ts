@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type { Has, Tag } from "../Has"
 import type { Effect } from "./effect"
@@ -23,7 +23,7 @@ export function updateService_<T, R, E, A>(
 /**
  * Updates a service in the environment of this effect.
  *
- * @dataFirst updateService_
+ * @ets_data_first updateService_
  */
 export function updateService<T>(
   tag: Tag<T>,

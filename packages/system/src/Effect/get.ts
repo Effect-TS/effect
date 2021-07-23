@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import { map_ as mapCause } from "../Cause"
 import type { Option } from "../Option"

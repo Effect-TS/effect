@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type { Clock } from "../Clock"
 import { currentTime } from "../Clock"
@@ -24,7 +24,7 @@ import * as to from "./to"
  * addition, returns an effect that can be used to invalidate the current
  * cached value before the `timeToLive` duration expires.
  *
- * @dataFirst cachedInvalidate_
+ * @ets_data_first cachedInvalidate_
  */
 export function cachedInvalidate(ttl: number, __trace?: string) {
   return <R, E, A>(fa: Effect<R, E, A>) => cachedInvalidate_(fa, ttl)

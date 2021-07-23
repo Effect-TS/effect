@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type { FiberID } from "../Fiber/id"
 import { AtomicReference } from "../Support/AtomicReference"

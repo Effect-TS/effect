@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import * as C from "../Cause/cause"
 import { haltWith } from "./core"

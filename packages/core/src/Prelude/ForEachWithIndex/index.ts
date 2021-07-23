@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type { Covariant } from "../Covariant"
 import type * as HKT from "../HKT"

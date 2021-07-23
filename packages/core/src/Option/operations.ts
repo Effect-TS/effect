@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import * as O from "@effect-ts/system/Option"
 
@@ -103,7 +103,7 @@ export const Fail = P.instance<P.FX.Fail<[URI<OptionURI>]>>({
 /**
  * Returns `true` if `ma` contains `a`
  *
- * @dataFirst elem_
+ * @ets_data_first elem_
  */
 export function elem<A>(E: Equal<A>): (a: A) => (ma: O.Option<A>) => boolean {
   const el = elem_(E)
@@ -235,7 +235,7 @@ export function getOrd<A>(_: Ord<A>): Ord<O.Option<A>> {
 /**
  * Filter using refinement
  *
- * @dataFirst filter_
+ * @ets_data_first filter_
  */
 export function filter<A, B extends A>(
   refinement: Refinement<A, B>
@@ -243,13 +243,13 @@ export function filter<A, B extends A>(
 /**
  * Filter using predicate
  *
- * @dataFirst filter_
+ * @ets_data_first filter_
  */
 export function filter<A>(predicate: Predicate<A>): (fa: O.Option<A>) => O.Option<A>
 /**
  * Filter using predicate/refinement
  *
- * @dataFirst filter_
+ * @ets_data_first filter_
  */
 export function filter<A>(predicate: Predicate<A>): (fa: O.Option<A>) => O.Option<A> {
   return (fa) => filter_(fa, predicate)
@@ -276,7 +276,7 @@ export function filter_<A>(fa: O.Option<A>, predicate: Predicate<A>): O.Option<A
 /**
  * Filter + Map
  *
- * @dataFirst filterMap_
+ * @ets_data_first filterMap_
  */
 export function filterMap<A, B>(f: (a: A) => O.Option<B>) {
   return (fa: O.Option<A>): O.Option<B> => filterMap_(fa, f)
@@ -307,7 +307,7 @@ export function separate<A, B>(
 /**
  * Partition
  *
- * @dataFirst partition_
+ * @ets_data_first partition_
  */
 export function partition<A, B extends A>(
   refinement: Refinement<A, B>
@@ -315,7 +315,7 @@ export function partition<A, B extends A>(
 /**
  * Partition
  *
- * @dataFirst partition_
+ * @ets_data_first partition_
  */
 export function partition<A>(
   predicate: Predicate<A>
@@ -323,7 +323,7 @@ export function partition<A>(
 /**
  * Partition
  *
- * @dataFirst partition_
+ * @ets_data_first partition_
  */
 export function partition<A>(
   predicate: Predicate<A>
@@ -361,7 +361,7 @@ export function partition_<A>(
 /**
  * Partition + Map
  *
- * @dataFirst partitionMap_
+ * @ets_data_first partitionMap_
  */
 export function partitionMap<A, B, B1>(f: (a: A) => Either<B, B1>) {
   return (fa: O.Option<A>): Separated<O.Option<B>, O.Option<B1>> => partitionMap_(fa, f)

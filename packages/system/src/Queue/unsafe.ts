@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import { None } from "../Fiber/id"
 import { AtomicBoolean } from "../Support/AtomicBoolean"
@@ -13,7 +13,7 @@ import type { Queue } from "./xqueue"
 /**
  * Unsafely creates a queue
  *
- * @dataFirst unsafeCreateQueue_
+ * @ets_data_first unsafeCreateQueue_
  */
 export function unsafeCreateQueue<A>(strategy: Strategy<A>) {
   return (queue: MutableQueue<A>) => unsafeCreateQueue_(queue, strategy)

@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type * as A from "../../Collections/Immutable/Chunk"
 import type * as T from "../_internal/effect"

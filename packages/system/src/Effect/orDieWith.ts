@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import { succeed } from "./core"
 import { die } from "./die"
@@ -9,7 +9,7 @@ import { foldM_ } from "./foldM"
  * Keeps none of the errors, and terminates the fiber with them, using
  * the specified function to convert the `E` into a `unknown`.
  *
- * @dataFirst orDieWith_
+ * @ets_data_first orDieWith_
  */
 export function orDieWith<E>(f: (e: E) => unknown, __trace?: string) {
   return <R, A>(effect: Effect<R, E, A>) => orDieWith_(effect, f, __trace)

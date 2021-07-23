@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import { constVoid } from "../Function"
 import type { Effect, RIO } from "./effect"

@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import { then } from "../Cause/cause"
 import { fold_ } from "../Exit/api"
@@ -15,7 +15,7 @@ import { uninterruptibleMask } from "./interruption"
  * succeeds. If `use` fails, then after release, the returned effect will fail
  * with the same error.
  *
- * @dataFirst bracketExit_
+ * @ets_data_first bracketExit_
  */
 export function bracketExit<A, E1, R1, A1, R2, E2, A2>(
   use: (a: A) => Effect<R1, E1, A1>,

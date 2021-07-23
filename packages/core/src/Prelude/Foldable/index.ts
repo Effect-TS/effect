@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type { FoldMap } from "../FoldMap"
 import type { Auto, URIS } from "../HKT"

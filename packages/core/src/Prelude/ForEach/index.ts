@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import { identity, pipe } from "../../Function"
 import type { Covariant, CovariantComposition } from "../Covariant"

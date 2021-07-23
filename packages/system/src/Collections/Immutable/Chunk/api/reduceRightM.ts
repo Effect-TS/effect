@@ -24,7 +24,7 @@ export function reduceRightM_<A, R, E, S>(
 /**
  * Folds over the elements in this chunk from the right.
  *
- * @dataFirst reduceRightM_
+ * @ets_data_first reduceRightM_
  */
 export function reduceRightM<A, R, E, S>(
   s: S,

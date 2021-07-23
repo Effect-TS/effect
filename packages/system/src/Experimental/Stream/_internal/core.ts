@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import "../../../Operator"
 
@@ -88,7 +88,7 @@ export function chain_<R, E, O, R1, E1, O1>(
  * Returns a stream made of the concatenation in strict order of all the streams
  * produced by passing each element of this stream to `f`
  *
- * @dataFirst chain_
+ * @ets_data_first chain_
  */
 export function chain<O, R1, E1, O1>(
   f: (o: O) => Stream<R1, E1, O1>
@@ -132,7 +132,7 @@ export function combineChunks_<R, E, A, R1, E1, A1, S, R2, A2>(
  * it to the destination stream. `f` can maintain some internal state to control
  * the combining process, with the initial state being specified by `s`.
  *
- * @dataFirst combineChunks_
+ * @ets_data_first combineChunks_
  */
 export function combineChunks<R, E, A, R1, E1, A1, S, R2, A2>(
   that: Stream<R1, E1, A1>,
@@ -247,7 +247,7 @@ export function mapM_<R, E, A, R1, E1, B>(
 /**
  * Maps over elements of the stream with the specified effectful function.
  *
- * @dataFirst mapM_
+ * @ets_data_first mapM_
  */
 export function mapM<A, R1, E1, B>(
   f: (a: A) => T.Effect<R1, E1, B>
@@ -352,7 +352,7 @@ export function map_<R, E, O, O1>(
 /**
  * Transforms the elements of this stream using the supplied function.
  *
- * @dataFirst map_
+ * @ets_data_first map_
  */
 export function map<O, O1>(
   f: (o: O) => O1
@@ -373,7 +373,7 @@ export function run_<R, E, A, R2, E2, Z>(
 /**
  * Runs the sink on the stream to produce either the sink's result or an error.
  *
- * @dataFirst run_
+ * @ets_data_first run_
  */
 export function run<E, A, R2, E2, Z>(
   sink: Sink.Sink<R2, E, A, E2, unknown, Z>
@@ -445,7 +445,7 @@ export function take_<R, E, A>(self: Stream<R, E, A>, n: number): Stream<R, E, A
 /**
  * Takes the specified number of elements from this stream.
  *
- * @dataFirst take_
+ * @ets_data_first take_
  */
 export function take(n: number): <R, E, A>(self: Stream<R, E, A>) => Stream<R, E, A> {
   return (self) => take_(self, n)

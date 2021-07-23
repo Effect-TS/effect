@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import { succeed } from "./core"
 import type { Effect } from "./effect"
@@ -19,7 +19,7 @@ export function catchAll_<R2, E2, A2, R, E, A>(
 /**
  * Recovers from all errors.
  *
- * @dataFirst catchAll_
+ * @ets_data_first catchAll_
  */
 export function catchAll<R, E, E2, A>(f: (e: E2) => Effect<R, E, A>, __trace?: string) {
   return <R2, A2>(effect: Effect<R2, E2, A2>) => catchAll_(effect, f, __trace)
@@ -28,7 +28,7 @@ export function catchAll<R, E, E2, A>(f: (e: E2) => Effect<R, E, A>, __trace?: s
 /**
  * Recovers from specified error.
  *
- * @dataFirst catch_
+ * @ets_data_first catch_
  */
 function _catch<N extends keyof E, K extends E[N] & string, E, R1, E1, A1>(
   tag: N,
@@ -76,7 +76,7 @@ export function catch_<N extends keyof E, K extends E[N] & string, E, R, A, R1, 
 /**
  * Recovers from specified error.
  *
- * @dataFirst catchTag_
+ * @ets_data_first catchTag_
  */
 export function catchTag<
   K extends E["_tag"] & string,

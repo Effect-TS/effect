@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 /**
  * adapted from https://github.com/gcanti/fp-ts
@@ -79,7 +79,7 @@ export function leftW<E, A = never>(e: E): Either<E, A> {
 export function widenE<E1>() {
   return (
     /**
-     * @optimize identity
+     * @ets_optimize identity
      */
     <E, A>(self: Either<E, A>): Either<E | E1, A> => self
   )
@@ -91,7 +91,7 @@ export function widenE<E1>() {
 export function widenA<A1>() {
   return (
     /**
-     * @optimize identity
+     * @ets_optimize identity
      */
     <E, A>(self: Either<E, A>): Either<E, A | A1> => self
   )
@@ -110,7 +110,7 @@ export function alt_<E, E2, A, A2>(
 /**
  * Alternatively construct that if self is left
  *
- * @dataFirst alt_
+ * @ets_data_first alt_
  */
 export function alt<E, A>(that: () => Either<E, A>) {
   return <E2, A2>(self: Either<E2, A2>): Either<E | E2, A | A2> => alt_(self, that)
@@ -129,7 +129,7 @@ export function ap_<E, A, B, E2>(
 /**
  * Classic Applicative
  *
- * @dataFirst ap_
+ * @ets_data_first ap_
  */
 export function ap<E, A>(fa: Either<E, A>) {
   return <E2, B>(fab: Either<E2, (a: A) => B>): Either<E | E2, B> => ap_(fab, fa)
@@ -148,7 +148,7 @@ export function zip_<E2, A, E, B>(
 /**
  * Apply both and return both
  *
- * @dataFirst zip_
+ * @ets_data_first zip_
  */
 export function zip<E, B>(fb: Either<E, B>) {
   return <E2, A>(fa: Either<E2, A>): Either<E | E2, Tp.Tuple<[A, B]>> => zip_(fa, fb)
@@ -157,7 +157,7 @@ export function zip<E, B>(fb: Either<E, B>) {
 /**
  * Apply both and return first
  *
- * @dataFirst zipFirst_
+ * @ets_data_first zipFirst_
  */
 export function zipFirst<E, B>(fb: Either<E, B>) {
   return <E2, A>(fa: Either<E2, A>): Either<E | E2, A> => zipFirst_(fa, fb)
@@ -179,7 +179,7 @@ export function zipFirst_<E2, A, E, B>(
 /**
  * Apply both and return second
  *
- * @dataFirst zipSecond_
+ * @ets_data_first zipSecond_
  */
 export function zipSecond<E, B>(fb: Either<E, B>) {
   return <E2, A>(fa: Either<E2, A>): Either<E | E2, B> => zipSecond_(fa, fb)
@@ -212,7 +212,7 @@ export function bimap_<E, A, G, B>(
 /**
  * Maps both left and right
  *
- * @dataFirst bimap_
+ * @ets_data_first bimap_
  */
 export function bimap<E, G, A, B>(f: (e: E) => G, g: (a: A) => B) {
   return (fa: Either<E, A>): Either<G, B> => bimap_(fa, f, g)
@@ -235,7 +235,7 @@ export function chain_<E, A, B, E2>(
  * result of this computation by running the first computation, using its
  * result to generate a second computation, and running that computation.
  *
- * @dataFirst chain_
+ * @ets_data_first chain_
  */
 export function chain<E, A, B>(f: (a: A) => Either<E, B>) {
   return <E2>(ma: Either<E2, A>): Either<E | E2, B> => chain_(ma, f)
@@ -244,7 +244,7 @@ export function chain<E, A, B>(f: (a: A) => Either<E, B>) {
 /**
  * Like chain but ignores the constructed outout
  *
- * @dataFirst tap_
+ * @ets_data_first tap_
  */
 export function tap<E, A, B>(f: (a: A) => Either<E, B>) {
   return <E2>(ma: Either<E2, A>): Either<E | E2, A> =>
@@ -271,7 +271,7 @@ export function duplicate<E, A>(ma: Either<E, A>): Either<E, Either<E, A>> {
 /**
  * Returns `false` if `Left` or returns the result of the application of the given predicate to the `Right` value.
  *
- * @dataFirst exists_
+ * @ets_data_first exists_
  */
 export function exists<A>(predicate: Predicate<A>): <E>(ma: Either<E, A>) => boolean {
   return (ma) => (isLeft(ma) ? false : predicate(ma.right))
@@ -297,7 +297,7 @@ export function extend_<E, A, B>(
 /**
  * Apply `Either[E, A] => B` in case self is right returning `Either[E, B]`
  *
- * @dataFirst extend_
+ * @ets_data_first extend_
  */
 export function extend<E, A, B>(f: (fa: Either<E, A>) => B) {
   return (ma: Either<E, A>): Either<E, B> => extend_(ma, f)
@@ -306,7 +306,7 @@ export function extend<E, A, B>(f: (fa: Either<E, A>) => B) {
 /**
  * Apply predicate to A and construct E in case the predicate is false
  *
- * @dataFirst filterOrElse_
+ * @ets_data_first filterOrElse_
  */
 export function filterOrElse<E, A, B extends A>(
   refinement: Refinement<A, B>,
@@ -353,7 +353,7 @@ export function flatten<E, E2, A>(mma: Either<E, Either<E2, A>>): Either<E | E2,
  * Takes two functions and an `Either` value, if the value is a `Left` the inner value is applied to the first function,
  * if the value is a `Right` the inner value is applied to the second function.
  *
- * @dataFirst fold_
+ * @ets_data_first fold_
  */
 export function fold<E, A, B, C>(
   onLeft: (e: E) => B,
@@ -378,7 +378,7 @@ export function fold_<E, A, B, C>(
  * Takes a default and a nullable value, if the value is not nully, turn it into a `Right`, if the value is nully use
  * the provided default as a `Left`
  *
- * @dataFirst fromNullable_
+ * @ets_data_first fromNullable_
  */
 export function fromNullable<E>(e: Lazy<E>): <A>(a: A) => Either<E, NonNullable<A>> {
   return <A>(a: A) => (a == null ? left(e()) : right(a as NonNullable<A>))
@@ -395,7 +395,7 @@ export function fromNullable_<A, E>(a: A, e: Lazy<E>): Either<E, NonNullable<A>>
 /**
  * Construct `Either[E, A]` from `Option[A]` constructing `E` with `onNone`
  *
- * @dataFirst fromOption_
+ * @ets_data_first fromOption_
  */
 export function fromOption<E>(onNone: () => E) {
   return <A>(ma: Option<A>): Either<E, A> =>
@@ -413,7 +413,7 @@ export function fromOption_<A, E>(ma: Option<A>, onNone: () => E): Either<E, A> 
  * Construct `Either[E, A]` by applying a predicate to `A` and constructing
  * `E` if the predicate is false
  *
- * @dataFirst fromPredicate_
+ * @ets_data_first fromPredicate_
  */
 export function fromPredicate<E, A, B extends A>(
   refinement: Refinement<A, B>,
@@ -452,7 +452,7 @@ export function fromPredicate_<E, A>(
 /**
  * Get `A` or in case self is left return `onLeft` result
  *
- * @dataFirst getOrElse_
+ * @ets_data_first getOrElse_
  */
 export function getOrElse<E, A>(onLeft: (e: E) => A): <B>(self: Either<E, B>) => A | B {
   return (ma) => getOrElse_(ma, onLeft)
@@ -494,7 +494,7 @@ export function map_<E, A, B>(fa: Either<E, A>, f: (a: A) => B): Either<E, B> {
 /**
  * Use `A => B` to transform `Either[E, A]` to `Either[E, B]`
  *
- * @dataFirst map_
+ * @ets_data_first map_
  */
 export function map<A, B>(f: (a: A) => B) {
   return <E>(fa: Either<E, A>): Either<E, B> => map_(fa, f)
@@ -510,7 +510,7 @@ export function mapLeft_<E, A, G>(fea: Either<E, A>, f: (e: E) => G): Either<G, 
 /**
  * Use `E => E1` to transform `Either[E, A]` to `Either[E1, A]`
  *
- * @dataFirst mapLeft_
+ * @ets_data_first mapLeft_
  */
 export function mapLeft<E, G>(f: (e: E) => G) {
   return <A>(fa: Either<E, A>): Either<G, A> => mapLeft_(fa, f)
@@ -530,7 +530,7 @@ export function merge<E, A>(self: Either<E, A>): E | A {
 /**
  * Alternatively run onLeft
  *
- * @dataFirst orElse_
+ * @ets_data_first orElse_
  */
 export function orElse<E, A, M>(
   onLeft: (e: E) => Either<M, A>
@@ -551,7 +551,7 @@ export function orElse_<E, A, B, M>(
 /**
  * Alternatively run onLeft returning
  *
- * @dataFirst orElseEither_
+ * @ets_data_first orElseEither_
  */
 export function orElseEither<E, B, M>(onLeft: (e: E) => Either<M, B>) {
   return <A>(ma: Either<E, A>) => orElseEither_(ma, onLeft)
@@ -580,7 +580,7 @@ export function parseJSON_<E>(
 /**
  * Converts a JavaScript Object Notation (JSON) string into an object.
  *
- * @dataFirst parseJSON_
+ * @ets_data_first parseJSON_
  */
 export function parseJSON<E>(
   onError: (reason: unknown) => E
@@ -601,7 +601,7 @@ export function stringifyJSON_<E>(
 /**
  * Converts a JavaScript value to a JavaScript Object Notation (JSON) string.
  *
- * @dataFirst stringifyJSON_
+ * @ets_data_first stringifyJSON_
  */
 export function stringifyJSON<E>(
   onError: (reason: unknown) => E
@@ -637,7 +637,7 @@ export function tryCatch<E, A>(f: Lazy<A>, onError: (e: unknown) => E): Either<E
 /**
  * Compact types Either<E, A> | Either<E2, B> = Either<E | E2, A | B>
  *
- * @optimize identity
+ * @ets_optimize identity
  */
 export function compact<E extends Either<any, any>>(
   _: E
@@ -655,7 +655,7 @@ export function reduce_<E, A, B>(fa: Either<E, A>, b: B, f: (b: B, a: A) => B): 
 /**
  * Reduce a value `b` through an `Either`
  *
- * @dataFirst reduce_
+ * @ets_data_first reduce_
  */
 export function reduce<A, B>(b: B, f: (b: B, a: A) => B): <E>(fa: Either<E, A>) => B {
   return (fa) => reduce_(fa, b, f)
@@ -664,7 +664,7 @@ export function reduce<A, B>(b: B, f: (b: B, a: A) => B): <E>(fa: Either<E, A>) 
 /**
  * Reduce a value `b` through an `Either` in inverted order
  *
- * @dataFirst reduceRight_
+ * @ets_data_first reduceRight_
  */
 export function reduceRight<A, B>(b: B, f: (a: A, b: B) => B) {
   return <E>(fa: Either<E, A>): B => reduceRight_(fa, b, f)

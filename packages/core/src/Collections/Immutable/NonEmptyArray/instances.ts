@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type { NonEmptyArrayURI } from "../../../Modules"
 import type { URI } from "../../../Prelude"

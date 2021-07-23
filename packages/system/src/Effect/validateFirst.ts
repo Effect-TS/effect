@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type { Chunk } from "../Collections/Immutable/Chunk"
 import type { Effect } from "./effect"
@@ -21,7 +21,7 @@ export function validateFirst_<A, R, E, B>(
  * Feeds elements of type `A` to `f` until it succeeds. Returns first success
  * or the accumulation of all errors.
  *
- * @dataFirst validateFirst_
+ * @ets_data_first validateFirst_
  */
 export function validateFirst<A, R, E, B>(
   f: (a: A) => Effect<R, E, B>,
@@ -50,7 +50,7 @@ export function validateFirstPar_<A, R, E, B>(
  *
  * In case of success all other running fibers are terminated.
  *
- * @dataFirst validateFirstPar_
+ * @ets_data_first validateFirstPar_
  */
 export function validateFirstPar<A, R, E, B>(
   f: (a: A) => Effect<R, E, B>,
@@ -84,7 +84,7 @@ export function validateFirstParN_<A, R, E, B>(
  *
  * Uses up to N fibers.
  *
- * @dataFirst validateFirstParN_
+ * @ets_data_first validateFirstParN_
  */
 export function validateFirstParN<A, R, E, B>(
   n: number,

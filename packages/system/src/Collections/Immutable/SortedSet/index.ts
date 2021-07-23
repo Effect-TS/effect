@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import "../../../Operator"
 
@@ -84,7 +84,7 @@ export function intersection_<A>(l: SortedSet<A>, r: Iterable<A>): SortedSet<A> 
 /**
  * The set of elements which are in both the first and second set
  *
- * @dataFirst intersection_
+ * @ets_data_first intersection_
  */
 export function intersection<A>(r: Iterable<A>) {
   return (l: SortedSet<A>) => intersection_(l, r)
@@ -111,7 +111,7 @@ export function map_<B>(
 /**
  * Projects a Set through a function
  *
- * @dataFirst map_
+ * @ets_data_first map_
  */
 export function map<B>(
   E: Ord<B>
@@ -123,7 +123,7 @@ export function map<B>(
 /**
  * true if one or more elements match predicate
  *
- * @dataFirst some_
+ * @ets_data_first some_
  */
 export function some<A>(predicate: Predicate<A>): (set: SortedSet<A>) => boolean {
   return (set) => some_(set, predicate)
@@ -177,7 +177,7 @@ export function equal<A>(): Equal<SortedSet<A>> {
 /**
  * true if all elements match predicate
  *
- * @dataFirst every_
+ * @ets_data_first every_
  */
 export function every<A>(predicate: Predicate<A>): (set: SortedSet<A>) => boolean {
   return (set) => every_(set, predicate)
@@ -193,7 +193,7 @@ export function every_<A>(set: SortedSet<A>, predicate: Predicate<A>): boolean {
 /**
  * Map + Flatten
  *
- * @dataFirst chain_
+ * @ets_data_first chain_
  */
 export function chain<B>(
   E: Ord<B>
@@ -226,7 +226,7 @@ export function chain_<B>(
  *
  * the hash and equal of the 2 sets has to be the same
  *
- * @dataFirst isSubset_
+ * @ets_data_first isSubset_
  */
 export function isSubset<A>(y: SortedSet<A>): (x: SortedSet<A>) => boolean {
   return (x) => isSubset_(y, x)
@@ -244,7 +244,7 @@ export function isSubset_<A>(x: SortedSet<A>, y: SortedSet<A>): boolean {
 /**
  * Filter set values using predicate
  *
- * @dataFirst filter_
+ * @ets_data_first filter_
  */
 export function filter<A, B extends A>(
   refinement: Refinement<A, B>
@@ -281,7 +281,7 @@ export function filter_<A>(set: SortedSet<A>, predicate: Predicate<A>): SortedSe
 /**
  * Partition set values using predicate
  *
- * @dataFirst partition_
+ * @ets_data_first partition_
  */
 export function partition<A, B extends A>(
   refinement: Refinement<A, B>
@@ -339,7 +339,7 @@ export function difference_<A>(x: SortedSet<A>, y: Iterable<A>): SortedSet<A> {
 /**
  * Form the set difference (`x` - `y`)
  *
- * @dataFirst difference_
+ * @ets_data_first difference_
  */
 export function difference<A>(y: Iterable<A>): (x: SortedSet<A>) => SortedSet<A> {
   return (x) => difference_(x, y)
@@ -355,7 +355,7 @@ export function reduce_<V, Z>(set: SortedSet<V>, z: Z, f: (z: Z, v: V) => Z): Z 
 /**
  * Reduce a state over the map entries
  *
- * @dataFirst reduce_
+ * @ets_data_first reduce_
  */
 export function reduce<V, Z>(z: Z, f: (z: Z, v: V) => Z) {
   return (set: SortedSet<V>) => reduce_(set, z, f)
@@ -364,7 +364,7 @@ export function reduce<V, Z>(z: Z, f: (z: Z, v: V) => Z) {
 /**
  * If element is present remove it, if not add it
  *
- * @dataFirst toggle_
+ * @ets_data_first toggle_
  */
 export function toggle<A>(a: A): (set: SortedSet<A>) => SortedSet<A> {
   return (set) => toggle_(set, a)
@@ -399,7 +399,7 @@ export function union_<A>(l: SortedSet<A>, r: Iterable<A>): SortedSet<A> {
  *
  * the hash and equal of the 2 sets has to be the same
  *
- * @dataFirst union_
+ * @ets_data_first union_
  */
 export function union<A>(y: Iterable<A>): (x: SortedSet<A>) => SortedSet<A> {
   return (x) => union_(x, y)

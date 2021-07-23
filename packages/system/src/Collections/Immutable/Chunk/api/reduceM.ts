@@ -24,7 +24,7 @@ export function reduceM_<A, R, E, S>(
 /**
  * Folds over the elements in this chunk from the left.
  *
- * @dataFirst reduceM_
+ * @ets_data_first reduceM_
  */
 export function reduceM<A, R, E, S>(
   s: S,

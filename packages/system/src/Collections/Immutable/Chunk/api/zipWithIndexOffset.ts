@@ -34,7 +34,7 @@ export function zipWithIndexOffset_<A>(
  * Zips this chunk with the index of every element, starting from the initial
  * index value.
  *
- * @dataFirst zipWithIndexOffset_
+ * @ets_data_first zipWithIndexOffset_
  */
 export function zipWithIndexOffset(
   offset: number

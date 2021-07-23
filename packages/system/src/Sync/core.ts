@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type * as Tp from "../Collections/Immutable/Tuple"
 import type { Either } from "../Either/core"
@@ -319,7 +319,7 @@ export const run: <A>(self: Sync<unknown, never, A>) => A = X.run
 /**
  * Compact the union produced by the result of f
  *
- * @optimize identity
+ * @ets_optimize identity
  */
 export function unionFn<ARGS extends any[], Ret extends Sync<any, any, any>>(
   _: (...args: ARGS) => Ret
@@ -330,7 +330,7 @@ export function unionFn<ARGS extends any[], Ret extends Sync<any, any, any>>(
 /**
  * Compact the union
  *
- * @optimize identity
+ * @ets_optimize identity
  */
 export function union<Ret extends Sync<any, any, any>>(
   _: Ret

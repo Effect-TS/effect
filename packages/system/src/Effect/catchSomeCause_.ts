@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type { Cause } from "../Cause/cause"
 import * as O from "../Option"
@@ -29,7 +29,7 @@ export function catchSomeCause_<R2, E2, A2, R, E, A>(
 /**
  * Recovers from some or all of the error cases with provided cause.
  *
- * @dataFirst catchSomeCause_
+ * @ets_data_first catchSomeCause_
  */
 export function catchSomeCause<R, E, E2, A>(
   f: (_: Cause<E2>) => O.Option<Effect<R, E, A>>,

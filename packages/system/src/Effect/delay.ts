@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type { HasClock } from "../Clock"
 import { chain_ } from "./core"
@@ -8,7 +8,7 @@ import { sleep } from "./sleep"
 /**
  * Delay the effect of n milliseconds
  *
- * @dataFirst delay_
+ * @ets_data_first delay_
  */
 export function delay(ms: number, __trace?: string) {
   return <R, E, A>(effect: Effect<R, E, A>): Effect<R & HasClock, E, A> =>

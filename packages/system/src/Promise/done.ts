@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import { done as effectDone } from "../Effect/done"
 import type { Exit } from "../Exit/exit"

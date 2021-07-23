@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import { chain_, tryCatch } from "./core"
 import type { Effect } from "./effect"
@@ -20,7 +20,7 @@ export function mapTryCatch_<R, E1, E, A, B>(
  * Returns an effect whose success is mapped by the specified side effecting
  * `f` function, translating any thrown exceptions into typed failed effects.
  *
- * @dataFirst mapTryCatch_
+ * @ets_data_first mapTryCatch_
  */
 export function mapTryCatch<E, A, B>(
   f: (a: A) => B,

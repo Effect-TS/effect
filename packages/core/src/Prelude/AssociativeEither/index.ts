@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type { Either } from "@effect-ts/system/Either"
 

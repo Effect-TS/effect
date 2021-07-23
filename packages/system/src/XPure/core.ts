@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 /* eslint-disable prefer-const */
 import * as Chunk from "../Collections/Immutable/Chunk/core"
@@ -44,7 +44,7 @@ export abstract class XPureBase<W, S1, S2, R, E, A>
 }
 
 /**
- * @optimize remove
+ * @ets_optimize remove
  */
 function concrete<W, S1, S2, R, E, A>(
   _: XPure<W, S1, S2, R, E, A>
@@ -814,7 +814,7 @@ export function runState_<W, S1, S2, A>(
  * Runs this computation with the specified initial state, returning both
  * the updated state and the result.
  *
- * @dataFirst runState_
+ * @ets_data_first runState_
  */
 export function runState<S1>(
   s: S1

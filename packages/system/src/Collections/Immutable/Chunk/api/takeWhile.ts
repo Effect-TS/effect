@@ -49,7 +49,7 @@ export function takeWhile_<A>(
 /**
  * Takes all elements so long as the predicate returns true.
  *
- * @dataFirst takeWhile_
+ * @ets_data_first takeWhile_
  */
 export function takeWhile<A>(
   f: (a: A) => boolean

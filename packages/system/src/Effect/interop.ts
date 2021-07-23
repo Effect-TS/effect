@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import * as Async from "../Async"
 import * as IO from "../IO"

@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type { NonEmptyArray } from "../Collections/Immutable/NonEmptyArray"
 import * as Tp from "../Collections/Immutable/Tuple"
@@ -15,7 +15,7 @@ export type TupleA<T extends NonEmptyArray<Managed<any, any, any>>> = {
 /**
  * Like `forEach` + `identity` with a tuple type
  *
- * @trace call
+ * @ets_trace call
  */
 export function tuple<T extends NonEmptyArray<Managed<any, any, any>>>(
   ...t: T & {
@@ -43,7 +43,7 @@ export function tuplePar<T extends NonEmptyArray<Managed<any, any, any>>>(
  */
 export function tupleParN(n: number): {
   /**
-   * @trace call
+   * @ets_trace call
    */
   <T extends NonEmptyArray<Managed<any, any, any>>>(
     ...t: T & {

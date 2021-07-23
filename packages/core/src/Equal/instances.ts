@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import * as Equal from "@effect-ts/system/Equal"
 

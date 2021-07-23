@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import * as Ex from "../../Exit"
 import { pipe } from "../../Function"

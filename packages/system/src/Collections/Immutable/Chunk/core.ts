@@ -35,7 +35,7 @@ export function empty<A>(): Chunk<A> {
 /**
  * Appends a value to a chunk
  *
- * @dataFirst append_
+ * @ets_data_first append_
  */
 export function append<A1>(a: A1) {
   return <A>(self: Chunk<A>): Chunk<A | A1> => concreteId(self).append(a)
@@ -51,7 +51,7 @@ export function append_<A, A1>(self: Chunk<A>, a: A1): Chunk<A | A1> {
 /**
  * Prepends a value to a chunk
  *
- * @dataFirst prepend_
+ * @ets_data_first prepend_
  */
 export function prepend<A1>(a: A1) {
   return <A>(self: Chunk<A>): Chunk<A | A1> => concreteId(self).prepend(a)
@@ -67,7 +67,7 @@ export function prepend_<A, A1>(self: Chunk<A>, a: A1): Chunk<A | A1> {
 /**
  * Concats chunks
  *
- * @dataFirst concat_
+ * @ets_data_first concat_
  */
 export function concat<A1>(that: Chunk<A1>) {
   return <A>(self: Chunk<A>): Chunk<A | A1> => concreteId(self).concat(concreteId(that))
@@ -106,7 +106,7 @@ export function get_<A>(self: Chunk<A>, n: number): O.Option<A> {
 /**
  * Safely get a value
  *
- * @dataFirst get_
+ * @ets_data_first get_
  */
 export function get(n: number) {
   return <A>(self: Chunk<A>): O.Option<A> => get_(self, n)
@@ -122,7 +122,7 @@ export function unsafeGet_<A>(self: Chunk<A>, n: number): A {
 /**
  * Safely get a value
  *
- * @dataFirst unsafeGet_
+ * @ets_data_first unsafeGet_
  */
 export function unsafeGet(n: number) {
   return <A>(self: Chunk<A>): A => unsafeGet_(self, n)
@@ -138,7 +138,7 @@ export function equals_<A, B>(self: Chunk<A>, that: Chunk<B>): boolean {
 /**
  * Referential equality check
  *
- * @dataFirst equals_
+ * @ets_data_first equals_
  */
 export function equals<B>(that: Chunk<B>): <A>(self: Chunk<A>) => boolean {
   return (self) => equals_(self, that)
@@ -154,7 +154,7 @@ export function take_<A>(self: Chunk<A>, n: number): Chunk<A> {
 /**
  * Takes the first n elements
  *
- * @dataFirst take_
+ * @ets_data_first take_
  */
 export function take(n: number): <A>(self: Chunk<A>) => Chunk<A> {
   return (self) => concreteId(self).take(n)
@@ -194,7 +194,7 @@ export function drop_<A>(self: Chunk<A>, n: number): Chunk<A> {
 /**
  * Drops the first n elements
  *
- * @dataFirst drop_
+ * @ets_data_first drop_
  */
 export function drop(n: number): <A>(self: Chunk<A>) => Chunk<A> {
   return (self) => concreteId(self).take(n)
@@ -227,7 +227,7 @@ export function map_<A, B>(self: Chunk<A>, f: (a: A) => B): Chunk<B> {
 /**
  * Returns a chunk with the elements mapped by the specified function.
  *
- * @dataFirst map_
+ * @ets_data_first map_
  */
 export function map<A, B>(f: (a: A) => B): (self: Chunk<A>) => Chunk<B> {
   return (self) => map_(self, f)
@@ -253,7 +253,7 @@ export function chain_<A, B>(self: Chunk<A>, f: (a: A) => Chunk<B>): Chunk<B> {
 /**
  * Returns a chunk with the elements mapped by the specified function.
  *
- * @dataFirst chain_
+ * @ets_data_first chain_
  */
 export function chain<A, B>(f: (a: A) => Chunk<B>): (self: Chunk<A>) => Chunk<B> {
   return (self) => chain_(self, f)

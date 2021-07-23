@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import "../Operator"
 
@@ -110,7 +110,7 @@ export abstract class XHubInternal<RA, RB, EA, EB, A, B>
 }
 
 /**
- * @optimize remove
+ * @ets_optimize remove
  */
 export function concrete<RA, RB, EA, EB, A, B>(
   _: XHub<RA, RB, EA, EB, A, B>
@@ -164,7 +164,7 @@ export function publish_<RA, RB, EA, EB, A, B>(
  * Publishes a message to the hub, returning whether the message was
  * published to the hub.
  *
- * @dataFirst publish_
+ * @ets_data_first publish_
  */
 export function publish<A>(a: A) {
   return <RA, RB, EA, EB, B>(self: XHub<RA, RB, EA, EB, A, B>) => publish_(self, a)
@@ -186,7 +186,7 @@ export function publishAll_<RA, RB, EA, EB, A, B>(
  * Publishes all of the specified messages to the hub, returning whether
  * they were published to the hub.
  *
- * @dataFirst publishAll_
+ * @ets_data_first publishAll_
  */
 export function publishAll<A>(as: Iterable<A>) {
   return <RA, RB, EA, EB, B>(self: XHub<RA, RB, EA, EB, A, B>) => publishAll_(self, as)
@@ -239,7 +239,7 @@ export function contramapM_<RA, RB, RC, EA, EB, EC, A, B, C>(
  * Transforms messages published to the hub using the specified effectual
  * function.
  *
- * @dataFirst contramapM_
+ * @ets_data_first contramapM_
  */
 export function contramapM<RC, EC, A, C>(f: (c: C) => T.Effect<RC, EC, A>) {
   return <RA, RB, EA, EB, B>(self: XHub<RA, RB, EA, EB, A, B>) => contramapM_(self, f)
@@ -265,7 +265,7 @@ export function dimap_<RA, RB, EA, EB, A, B, C, D>(
  * Transforms messages published to and taken from the hub using the
  * specified functions.
  *
- * @dataFirst dimap_
+ * @ets_data_first dimap_
  */
 export function dimap<A, B, C, D>(f: (c: C) => A, g: (b: B) => D) {
   return <RA, RB, EA, EB>(self: XHub<RA, RB, EA, EB, A, B>) => dimap_(self, f, g)
@@ -332,7 +332,7 @@ export function dimapM_<RA, RB, RC, RD, EA, EB, EC, ED, A, B, C, D>(
  * Transforms messages published to and taken from the hub using the
  * specified effectual functions.
  *
- * @dataFirst dimapM_
+ * @ets_data_first dimapM_
  */
 export function dimapM<A, B, C, D, EC, ED, RC, RD>(
   f: (c: C) => T.Effect<RC, EC, A>,
@@ -393,7 +393,7 @@ export function filterInput_<RA, RB, EA, EB, A, B>(
 /**
  * Filters messages published to the hub using the specified function.
  *
- * @dataFirst filterInput_
+ * @ets_data_first filterInput_
  */
 export function filterInput<A>(f: (a: A) => boolean) {
   return <RA, RB, EA, EB, B>(self: XHub<RA, RB, EA, EB, A, B>) => filterInput_(self, f)
@@ -415,7 +415,7 @@ export function filterInputM_<RA, RA1, RB, EA, EA1, EB, A, B>(
  * Filters messages published to the hub using the specified effectual
  * function.
  *
- * @dataFirst filterInputM_
+ * @ets_data_first filterInputM_
  */
 export function filterInputM<RA1, EA1, A>(f: (a: A) => T.Effect<RA1, EA1, boolean>) {
   return <RA, RB, EA, EB, B>(self: XHub<RA, RB, EA, EB, A, B>) => filterInputM_(self, f)
@@ -434,7 +434,7 @@ export function filterOutput_<RA, RB, EA, EB, A, B>(
 /**
  * Filters messages taken from the hub using the specified function.
  *
- * @dataFirst filterOutput_
+ * @ets_data_first filterOutput_
  */
 export function filterOutput<B>(f: (b: B) => boolean) {
   return <RA, RB, EA, EB, A>(self: XHub<RA, RB, EA, EB, A, B>) => filterOutput_(self, f)
@@ -493,7 +493,7 @@ export function filterOutputM_<RA, RB, RB1, EA, EB, EB1, A, B>(
  * Filters messages taken from the hub using the specified effectual
  * function.
  *
- * @dataFirst filterOutputM_
+ * @ets_data_first filterOutputM_
  */
 export function filterOutputM<RB1, EB1, B>(f: (a: B) => T.Effect<RB1, EB1, boolean>) {
   return <RA, RB, EA, EB, A>(self: XHub<RA, RB, EA, EB, A, B>) =>
@@ -513,7 +513,7 @@ export function map_<RA, RB, EA, EB, A, B, C>(
 /**
  * Transforms messages taken from the hub using the specified function.
  *
- * @dataFirst map_
+ * @ets_data_first map_
  */
 export function map<B, C>(f: (b: B) => C) {
   return <RA, RB, EA, EB, A>(self: XHub<RA, RB, EA, EB, A, B>) => map_(self, f)
@@ -534,7 +534,7 @@ export function mapM_<RA, RB, RC, EA, EB, EC, A, B, C>(
  * Transforms messages taken from the hub using the specified effectual
  * function.
  *
- * @dataFirst mapM_
+ * @ets_data_first mapM_
  */
 export function mapM<B, C, EC, RC>(f: (b: B) => T.Effect<RC, EC, C>) {
   return <A, EA, EB, RA, RB>(self: XHub<RA, RB, EA, EB, A, B>) => mapM_(self, f)

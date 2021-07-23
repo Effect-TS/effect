@@ -16,7 +16,7 @@ export function mapEffect_<A, R, E, B>(
 /**
  * Applies the function f to each element of the Array<A> and returns the results in a new B[]
  *
- * @dataFirst mapEffect_
+ * @ets_data_first mapEffect_
  */
 export function mapEffect<A, R, E, B>(f: (a: A) => T.Effect<R, E, B>) {
   return (self: A.Array<A>) => mapEffect_(self, f)
@@ -35,7 +35,7 @@ export function mapEffectPar_<A, R, E, B>(
 /**
  * Applies the function f to each element of the Array<A> and returns the results in a new B[]
  *
- * @dataFirst mapEffectPar_
+ * @ets_data_first mapEffectPar_
  */
 export function mapEffectPar<A, R, E, B>(f: (a: A) => T.Effect<R, E, B>) {
   return (self: A.Array<A>) => mapEffectPar_(self, f)
@@ -55,7 +55,7 @@ export function mapEffectParN_<A, R, E, B>(
 /**
  * Applies the function f to each element of the Array<A> and returns the results in a new B[]
  *
- * @dataFirst mapEffectParN_
+ * @ets_data_first mapEffectParN_
  */
 export function mapEffectParN<A, R, E, B>(n: number, f: (a: A) => T.Effect<R, E, B>) {
   return (self: A.Array<A>) => mapEffectParN_(self, n, f)
@@ -74,7 +74,7 @@ export function mapSync_<A, R, E, B>(
 /**
  * Applies the function f to each element of the Array<A> and returns the results in a new B[]
  *
- * @dataFirst mapSync_
+ * @ets_data_first mapSync_
  */
 export function mapSync<A, R, E, B>(f: (a: A) => S.Sync<R, E, B>) {
   return (self: A.Array<A>): S.Sync<R, E, A.Array<B>> => mapSync_(self, f)

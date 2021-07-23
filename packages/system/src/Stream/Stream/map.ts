@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import * as Chunk from "../../Collections/Immutable/Chunk"
 import type { Stream } from "./definitions"

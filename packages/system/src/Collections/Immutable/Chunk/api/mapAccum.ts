@@ -35,7 +35,7 @@ export function mapAccum_<A, B, S>(
 /**
  * Statefully maps over the chunk, producing new elements of type `B`.
  *
- * @dataFirst mapAccum_
+ * @ets_data_first mapAccum_
  */
 export function mapAccum<A, B, S>(
   s: S,

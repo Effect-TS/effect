@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import * as Chunk from "@effect-ts/system/Collections/Immutable/Chunk"
 import type * as Tp from "@effect-ts/system/Collections/Immutable/Tuple"

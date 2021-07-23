@@ -303,7 +303,7 @@ export class Empty<A> extends ChunkInternal<A> {
 export const _Empty: ChunkInternal<never> = new Empty()
 
 /**
- * @optimize remove
+ * @ets_optimize remove
  */
 export function concrete<A>(
   _: Chunk<A>
@@ -319,7 +319,7 @@ export function concrete<A>(
 }
 
 /**
- * @optimize identity
+ * @ets_optimize identity
  */
 export function concreteId<A>(
   _: Chunk<A>
@@ -1152,7 +1152,7 @@ export function corresponds_<A, B>(
  * and every pair of corresponding elements of this chunk and the specified
  * chunk satisfy the specified predicate.
  *
- * @dataFirst corresponds_
+ * @ets_data_first corresponds_
  */
 export function corresponds<A, B>(
   that: Chunk<B>,

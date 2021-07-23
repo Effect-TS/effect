@@ -47,7 +47,7 @@ export function get_<A>(self: TArray<A>, index: number): STM.STM<unknown, never,
 /**
  * Extracts value from ref in array.
  *
- * @dataFirst get_
+ * @ets_data_first get_
  */
 export function get(index: number): <A>(self: TArray<A>) => STM.STM<unknown, never, A> {
   return (self) => get_(self, index)
@@ -78,7 +78,7 @@ export function find_<A>(
 /**
  * Find the first element in the array matching a predicate.
  *
- * @dataFirst find_
+ * @ets_data_first find_
  */
 export function find<A>(
   p: (a: A) => boolean
@@ -112,7 +112,7 @@ export function findLast_<A>(
 /**
  * Find the last element in the array matching a predicate.
  *
- * @dataFirst find_
+ * @ets_data_first find_
  */
 export function findLast<A>(
   p: (a: A) => boolean

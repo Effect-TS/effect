@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import { chain_, succeed } from "./core"
 import type { Effect } from "./effect"
@@ -6,7 +6,7 @@ import type { Effect } from "./effect"
 /**
  * Repeats this effect the specified number of times.
  *
- * @dataFirst repeatN_
+ * @ets_data_first repeatN_
  */
 export function repeatN(n: number, __trace?: string) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R, E, A> => repeatN_(self, n, __trace)

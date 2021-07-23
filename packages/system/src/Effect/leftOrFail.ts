@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import * as E from "../Either"
 import { NoSuchElementException } from "../GlobalExceptions"
@@ -26,7 +26,7 @@ export function leftOrFail_<R, E, B, C, E1>(
 /**
  * Returns a successful effect if the value is `Left`, or fails with the error e.
  *
- * @dataFirst leftOrFail_
+ * @ets_data_first leftOrFail_
  */
 export function leftOrFail<C, E1>(orFail: (c: C) => E1, __trace?: string) {
   return <R, E, B>(self: Effect<R, E, E.Either<B, C>>) =>

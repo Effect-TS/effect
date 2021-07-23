@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 export * from "../Effect/as"
 export * from "../Effect/catchAll"

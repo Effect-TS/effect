@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type * as Ex from "../../Exit"
 import * as T from "../_internal/effect"

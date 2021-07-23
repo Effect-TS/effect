@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import { failureOrCause } from "../Cause/core"
 import * as E from "../Either"
@@ -41,7 +41,7 @@ export function foldM_<R, E, A, R2, E2, A2, R3, E3, A3>(
  * The error parameter of the returned `IO` may be chosen arbitrarily, since
  * it will depend on the `IO`s returned by the given continuations.
  *
- * @dataFirst foldM_
+ * @ets_data_first foldM_
  */
 export function foldM<E, A, R2, E2, A2, R3, E3, A3>(
   failure: (failure: E) => Effect<R2, E2, A2>,

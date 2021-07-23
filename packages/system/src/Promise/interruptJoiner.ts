@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type { Canceler } from "../Effect/Canceler"
 import { succeedWith } from "../Effect/core"

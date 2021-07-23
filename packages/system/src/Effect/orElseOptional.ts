@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import { pipe } from "../Function"
 import * as O from "../Option"
@@ -11,7 +11,7 @@ import { fail } from "./fail"
  * fails with the `None` value, in which case it will produce the value of
  * the specified effect.
  *
- * @dataFirst orElseOptional_
+ * @ets_data_first orElseOptional_
  */
 export function orElseOptional<R2, E2, A2>(
   that: () => Effect<R2, O.Option<E2>, A2>,

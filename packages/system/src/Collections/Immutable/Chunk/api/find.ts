@@ -35,7 +35,7 @@ export function find_<A>(self: Chunk.Chunk<A>, f: (a: A) => boolean): O.Option<A
 /**
  * Returns the first element that satisfies the predicate.
  *
- * @dataFirst find_
+ * @ets_data_first find_
  */
 export function find<A, B extends A>(
   f: Refinement<A, B>

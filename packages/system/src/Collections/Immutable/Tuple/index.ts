@@ -50,7 +50,7 @@ export function tuple<Ks extends unknown[]>(...args: Ks): Tuple<Ks> {
 /**
  * Gets an element from the tuple
  *
- * @dataFirst get_
+ * @ets_data_first get_
  */
 export function get<Ks extends unknown[], I extends keyof Ks>(
   i: I
@@ -85,7 +85,7 @@ export function fromNative<Ks extends readonly unknown[]>(self: Ks): Tuple<Ks> {
 /**
  * Replaces the element in position I
  *
- * @dataFirst update_
+ * @ets_data_first update_
  */
 export function update<Ks extends readonly unknown[], I extends keyof Ks & number, J>(
   i: I,
@@ -129,7 +129,7 @@ export function update_<Ks extends readonly unknown[], I extends keyof Ks & numb
 /**
  * Appends a value to a tuple
  *
- * @dataFirst append_
+ * @ets_data_first append_
  */
 export function append<K>(
   k: K
@@ -150,7 +150,7 @@ export function append_<Ks extends unknown[], K>(
 /**
  * Appends a value to a tuple
  *
- * @dataFirst prepend_
+ * @ets_data_first prepend_
  */
 export function prepend<K>(
   k: K
@@ -171,7 +171,7 @@ export function prepend_<Ks extends unknown[], K>(
 /**
  * Concat tuples
  *
- * @dataFirst concat_
+ * @ets_data_first concat_
  */
 export function concat<Hs extends unknown[]>(
   that: Tuple<Hs>

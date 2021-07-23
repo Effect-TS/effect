@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type { FiberContext } from "../Fiber"
 import { fork } from "../Managed/fork"

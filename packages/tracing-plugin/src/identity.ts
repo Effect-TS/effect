@@ -4,7 +4,6 @@ export default function identity(_program: ts.Program) {
   const checker = _program.getTypeChecker()
   return {
     before(ctx: ts.TransformationContext) {
-      //const factory = ctx.factory
       return (sourceFile: ts.SourceFile) => {
         function visitor(node: ts.Node): ts.VisitResult<ts.Node> {
           if (ts.isCallExpression(node)) {
@@ -20,7 +19,7 @@ export default function identity(_program: ts.Program) {
                     return ts
                       .getAllJSDocTags(
                         overloadDeclarations,
-                        (t): t is ts.JSDocTag => t.tagName.getText() === "optimize"
+                        (t): t is ts.JSDocTag => t.tagName.getText() === "ets_optimize"
                       )
                       .map((e) => e.comment)
                       .filter((s): s is string => typeof s === "string")
@@ -38,7 +37,7 @@ export default function identity(_program: ts.Program) {
                     return ts
                       .getAllJSDocTags(
                         e,
-                        (t): t is ts.JSDocTag => t.tagName?.getText() === "optimize"
+                        (t): t is ts.JSDocTag => t.tagName?.getText() === "ets_optimize"
                       )
                       .map((e) => e.comment)
                       .filter((s): s is string => typeof s === "string")

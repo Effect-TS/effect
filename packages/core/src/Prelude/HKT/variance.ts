@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type { UnionToIntersection } from "../../Utils"
 import type { Param } from "./fix"

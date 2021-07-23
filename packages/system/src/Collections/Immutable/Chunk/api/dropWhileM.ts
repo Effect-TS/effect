@@ -42,7 +42,7 @@ export function dropWhileM_<R, E, A>(
 /**
  * Drops all elements so long as the predicate returns true.
  *
- * @dataFirst dropWhileM_
+ * @ets_data_first dropWhileM_
  */
 export function dropWhileM<R, E, A>(
   f: (a: A) => Effect<R, E, boolean>

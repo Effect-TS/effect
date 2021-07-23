@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type { Effect } from "../../Effect"
 import { onExitFirst, onExitFirst_ } from "../core"
@@ -10,7 +10,7 @@ import type { Managed } from "../managed"
  *
  * For use cases that need access to the Managed's result, see `onExitFirst`.
  *
- * @dataFirst ensuringFirst_
+ * @ets_data_first ensuringFirst_
  */
 export function ensuringFirst<R1>(
   f: Effect<R1, never, unknown>,

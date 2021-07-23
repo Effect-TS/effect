@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import { pipe } from "../Function"
 import * as fromEffect from "../Managed/fromEffect"

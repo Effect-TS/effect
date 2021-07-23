@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import { RuntimeError } from "../Cause"
 import type { Predicate, Refinement } from "../Function"
@@ -11,7 +11,7 @@ import { fail } from "./fail"
 /**
  * Dies with specified `unknown` if the predicate fails.
  *
- * @dataFirst filterOrDie_
+ * @ets_data_first filterOrDie_
  */
 export function filterOrDie<A, B extends A>(
   p: Refinement<A, B>,
@@ -60,7 +60,7 @@ export function filterOrDie_<R, E, A>(
 /**
  * Fails with `failWith` if the predicate fails.
  *
- * @dataFirst filterOrFail_
+ * @ets_data_first filterOrFail_
  */
 export function filterOrFail<A, B extends A, E1>(
   p: Refinement<A, B>,
@@ -108,7 +108,7 @@ export function filterOrFail_<R, E, E1, A>(
 /**
  * Applies `or` if the predicate fails.
  *
- * @dataFirst filterOrElse_
+ * @ets_data_first filterOrElse_
  */
 export function filterOrElse<A, B extends A, R2, E2, A2>(
   p: Refinement<A, B>,
@@ -163,7 +163,7 @@ export function filterOrElse_<R, E, A, R2, E2, A2>(
  * Dies with a `Error` having the specified text message
  * if the predicate fails.
  *
- * @dataFirst filterOrDieMessage_
+ * @ets_data_first filterOrDieMessage_
  */
 export function filterOrDieMessage<A, B extends A>(
   p: Refinement<A, B>,

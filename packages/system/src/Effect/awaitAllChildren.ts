@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import * as Fiber from "../Fiber"
 import type { Effect } from "./effect"

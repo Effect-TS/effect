@@ -32,7 +32,7 @@ export function filterMap_<A, B>(
 /**
  * Returns a filtered, mapped subset of the elements of this chunk.
  *
- * @dataFirst filterMap_
+ * @ets_data_first filterMap_
  */
 export function filterMap<A, B>(
   f: (a: A) => O.Option<B>

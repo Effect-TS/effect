@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import * as CL from "../../Clock"
 import type * as A from "../../Collections/Immutable/Chunk"
@@ -75,7 +75,7 @@ export function throttleShapeM_<O, R1, E1, R, E>(
  * tokens up to a `units + burst` threshold. The weight of each chunk is determined by the `costFn`
  * effectful function.
  *
- * @dataFirst throttleShapeM_
+ * @ets_data_first throttleShapeM_
  */
 export function throttleShapeM<O, R1, E1>(
   costFn: (c: A.Chunk<O>) => T.Effect<R1, E1, number>,

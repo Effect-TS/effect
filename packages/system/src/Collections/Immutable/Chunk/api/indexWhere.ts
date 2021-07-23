@@ -11,7 +11,7 @@ export function indexWhere_<A>(self: Chunk.Chunk<A>, f: (a: A) => boolean): numb
 /**
  * Returns the first index for which the given predicate is satisfied.
  *
- * @dataFirst indexWhere_
+ * @ets_data_first indexWhere_
  */
 export function indexWhere<A>(f: (a: A) => boolean): (self: Chunk.Chunk<A>) => number {
   return (self) => indexWhere_(self, f)

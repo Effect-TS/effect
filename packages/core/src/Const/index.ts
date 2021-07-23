@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import "../Operator"
 
@@ -174,7 +174,7 @@ export const makeConst: <E>(e: E) => <A = never>() => Const<E, A> = (e) => () =>
 /**
  * Maps `Const[E, A]` to `Const[E, B]` via `f : A => B`
  *
- * @optimize identity
+ * @ets_optimize identity
  */
 export const map_: <E, A, B>(fa: Const<E, A>, f: (a: A) => B) => Const<E, B> =
   unsafeCoerce
@@ -186,7 +186,7 @@ export function map<A, B>(
   f: (a: A) => B
 ): {
   /**
-   * @optimize identity
+   * @ets_optimize identity
    */
   <E>(fa: Const<E, A>): Const<E, B>
 } {

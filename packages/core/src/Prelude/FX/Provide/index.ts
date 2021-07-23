@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type * as HKT from "../../HKT"
 

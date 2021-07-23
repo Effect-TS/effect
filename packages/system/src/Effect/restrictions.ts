@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type { Effect, RIO } from "./effect"
 import type { DefaultEnv } from "./runtime"
@@ -6,7 +6,7 @@ import type { DefaultEnv } from "./runtime"
 /**
  * Forces `self` to be non failable
  *
- * @optimize identity
+ * @ets_optimize identity
  */
 export function unfailable<R, A>(self: Effect<R, never, A>): RIO<R, A> {
   return self
@@ -15,7 +15,7 @@ export function unfailable<R, A>(self: Effect<R, never, A>): RIO<R, A> {
 /**
  * Forces `self` to be only require `DefaultEnv`
  *
- * @optimize identity
+ * @ets_optimize identity
  */
 export function onlyDefaultEnv<E, A>(
   self: Effect<DefaultEnv, E, A>
@@ -26,7 +26,7 @@ export function onlyDefaultEnv<E, A>(
 /**
  * Forces `self` to be not require any environment
  *
- * @optimize identity
+ * @ets_optimize identity
  */
 export function noEnv<E, A>(self: Effect<unknown, E, A>): Effect<unknown, E, A> {
   return self

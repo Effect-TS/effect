@@ -166,7 +166,7 @@ export function get_<K, V>(map: HashMap<K, V>, key: K): O.Option<V> {
 /**
  * Lookup the value for `key` in `map` using internal hash function.
  *
- * @dataFirst get_
+ * @ets_data_first get_
  */
 export function get<K>(key: K) {
   return <V>(map: HashMap<K, V>) => get_(map, key)
@@ -182,7 +182,7 @@ export function set_<K, V>(map: HashMap<K, V>, key: K, value: V) {
 /**
  * Store `value` for `key` in `map` using internal hash function.
  *
- * @dataFirst set_
+ * @ets_data_first set_
  */
 export function set<K, V>(key: K, value: V) {
   return (map: HashMap<K, V>) => set_(map, key, value)
@@ -198,7 +198,7 @@ export function remove_<K, V>(map: HashMap<K, V>, key: K): HashMap<K, V> {
 /**
  * Remove the entry for `key` in `map` using internal hash.
  *
- * @dataFirst remove_
+ * @ets_data_first remove_
  */
 export function remove<K>(key: K) {
   return <V>(map: HashMap<K, V>) => remove_(map, key)
@@ -221,7 +221,7 @@ export function update_<K, V>(map: HashMap<K, V>, key: K, f: (v: V) => V) {
 /**
  * Update a value if exists
  *
- * @dataFirst update_
+ * @ets_data_first update_
  */
 export function update<K, V>(key: K, f: (v: V) => V) {
   return (map: HashMap<K, V>) => update_(map, key, f)
@@ -259,7 +259,7 @@ export function modify_<K, V>(
  * `modify` will always either update or insert a value into the map.
  * Returns a map with the modified value. Does not alter `map`.
  *
- * @dataFirst modify_
+ * @ets_data_first modify_
  */
 export function modify<K, V>(key: K, f: (v: O.Option<V>) => O.Option<V>) {
   return (map: HashMap<K, V>) => modify_(map, key, f)

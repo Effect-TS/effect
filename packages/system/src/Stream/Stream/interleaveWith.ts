@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 import * as C from "../../Cause"
 import * as Tp from "../../Collections/Immutable/Tuple"
 import * as Ex from "../../Exit"
@@ -120,7 +120,7 @@ export function interleaveWith_<R, E, O, R1, E1, O1>(
  * `b`. If either this stream or the specified stream are exhausted further
  * requests for values from that stream will be ignored.
  *
- * @dataFirst interleaveWith_
+ * @ets_data_first interleaveWith_
  */
 export function interleaveWith<R1, E1, O1>(
   that: Stream<R1, E1, O1>,

@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import "../../../Operator"
 
@@ -340,7 +340,7 @@ export function chain_<
  *
  * This function essentially runs sinks in sequence.
  *
- * @dataFirst chain_
+ * @ets_data_first chain_
  */
 export function chain<R1, InErr1, In, In1 extends In, OutErr1, L, L1 extends L, Z, Z1>(
   f: (z: Z) => Sink<R1, InErr1, In1, OutErr1, L1, Z1>
@@ -419,7 +419,7 @@ export function foldM_<
 
 /**
  *
- * @dataFirst foldM_
+ * @ets_data_first foldM_
  */
 export function foldM<
   R1,

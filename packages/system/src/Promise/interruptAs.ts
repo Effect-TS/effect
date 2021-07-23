@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import { interruptAs as effectInterruptAs } from "../Effect/interruption"
 import type { FiberID } from "../Fiber/id"

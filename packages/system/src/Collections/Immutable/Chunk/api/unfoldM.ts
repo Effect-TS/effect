@@ -34,7 +34,7 @@ export function unfoldM_<A, R, E, S>(
  * Constructs a `Chunk` by repeatedly applying the effectual function `f` as
  * long as it returns `Some`.
  *
- * @dataFirst unfoldM_
+ * @ets_data_first unfoldM_
  */
 export function unfoldM<A, R, E, S>(
   f: (s: S) => Effect<R, E, O.Option<Tp.Tuple<[A, S]>>>

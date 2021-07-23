@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import "../../../Operator"
 
@@ -163,7 +163,7 @@ export function unsafeGet_<K, V>(map: HashMap<K, V>, key: K): V {
 /**
  * Lookup the value for `key` in `map` using internal hash function.
  *
- * @dataFirst unsafeGet_
+ * @ets_data_first unsafeGet_
  */
 export function unsafeGet<K>(key: K) {
   return <V>(map: HashMap<K, V>) => unsafeGet_(map, key)
@@ -179,7 +179,7 @@ export function get_<K, V>(map: HashMap<K, V>, key: K): O.Option<V> {
 /**
  * Lookup the value for `key` in `map` using internal hash function.
  *
- * @dataFirst get_
+ * @ets_data_first get_
  */
 export function get<K>(key: K) {
   return <V>(map: HashMap<K, V>) => get_(map, key)
@@ -202,7 +202,7 @@ export function has_<K, V>(map: HashMap<K, V>, key: K): boolean {
 /**
  * Does an entry exist for `key` in `map`? Uses internal hash function.
  *
- * @dataFirst has_
+ * @ets_data_first has_
  */
 export function has<K>(key: K) {
   return <V>(map: HashMap<K, V>) => has_(map, key)
@@ -257,7 +257,7 @@ export function modify_<K, V>(map: HashMap<K, V>, key: K, f: UpdateFn<V>) {
  * `modify` will always either update or insert a value into the map.
  * Returns a map with the modified value. Does not alter `map`.
  *
- * @dataFirst modify_
+ * @ets_data_first modify_
  */
 export function modify<K, V>(key: K, f: UpdateFn<V>) {
   return (map: HashMap<K, V>) => modify_(map, key, f)
@@ -273,7 +273,7 @@ export function set_<K, V>(map: HashMap<K, V>, key: K, value: V) {
 /**
  * Store `value` for `key` in `map` using internal hash function.
  *
- * @dataFirst set_
+ * @ets_data_first set_
  */
 export function set<K, V>(key: K, value: V) {
   return (map: HashMap<K, V>) => set_(map, key, value)
@@ -289,7 +289,7 @@ export function remove_<K, V>(map: HashMap<K, V>, key: K) {
 /**
  * Remove the entry for `key` in `map` using internal hash.
  *
- * @dataFirst remove_
+ * @ets_data_first remove_
  */
 export function remove<K>(key: K) {
   return <V>(map: HashMap<K, V>) => remove_(map, key)
@@ -313,7 +313,7 @@ export function endMutation<K, V>(map: HashMap<K, V>) {
 /**
  * Mutate `map` within the context of `f`.
  *
- * @dataFirst mutate_
+ * @ets_data_first mutate_
  */
 export function mutate<K, V>(f: (map: HashMap<K, V>) => void) {
   return (map: HashMap<K, V>) => mutate_(map, f)
@@ -418,7 +418,7 @@ export function update_<K, V>(map: HashMap<K, V>, key: K, f: (v: V) => V) {
 /**
  * Update a value if exists
  *
- * @dataFirst update_
+ * @ets_data_first update_
  */
 export function update<K, V>(key: K, f: (v: V) => V) {
   return (map: HashMap<K, V>) => update_(map, key, f)
@@ -458,7 +458,7 @@ export function reduceWithIndex_<K, V, Z>(
 /**
  * Reduce a state over the map entries
  *
- * @dataFirst reduceWithIndex_
+ * @ets_data_first reduceWithIndex_
  */
 export function reduceWithIndex<K, V, Z>(z: Z, f: (z: Z, k: K, v: V) => Z) {
   return (map: HashMap<K, V>) => reduceWithIndex_(map, z, f)
@@ -474,7 +474,7 @@ export function reduce_<K, V, Z>(map: HashMap<K, V>, z: Z, f: (z: Z, v: V) => Z)
 /**
  * Reduce a state over the map entries
  *
- * @dataFirst reduce_
+ * @ets_data_first reduce_
  */
 export function reduce<V, Z>(z: Z, f: (z: Z, v: V) => Z) {
   return <K>(map: HashMap<K, V>) => reduce_(map, z, f)
@@ -490,7 +490,7 @@ export function forEachWithIndex_<K, V>(map: HashMap<K, V>, f: (k: K, v: V) => v
 /**
  * Apply f to each element
  *
- * @dataFirst forEachWithIndex_
+ * @ets_data_first forEachWithIndex_
  */
 export function forEachWithIndex<K, V>(f: (k: K, v: V) => void) {
   return (map: HashMap<K, V>) => forEachWithIndex_(map, f)
@@ -506,7 +506,7 @@ export function forEach_<K, V>(map: HashMap<K, V>, f: (v: V) => void) {
 /**
  * Apply f to each element
  *
- * @dataFirst forEach_
+ * @ets_data_first forEach_
  */
 export function forEach<V>(f: (v: V) => void) {
   return <K>(map: HashMap<K, V>) => forEach_(map, f)
@@ -522,7 +522,7 @@ export function mapWithIndex_<K, V, A>(map: HashMap<K, V>, f: (k: K, v: V) => A)
 /**
  * Maps over the map entries
  *
- * @dataFirst mapWithIndex_
+ * @ets_data_first mapWithIndex_
  */
 export function mapWithIndex<K, V, A>(f: (k: K, v: V) => A) {
   return (map: HashMap<K, V>) => mapWithIndex_(map, f)
@@ -538,7 +538,7 @@ export function map_<K, V, A>(map: HashMap<K, V>, f: (v: V) => A) {
 /**
  * Maps over the map entries
  *
- * @dataFirst map_
+ * @ets_data_first map_
  */
 export function map<V, A>(f: (v: V) => A) {
   return <K>(map: HashMap<K, V>) => map_(map, f)
@@ -560,7 +560,7 @@ export function chain_<K, V, A>(map: HashMap<K, V>, f: (v: V) => HashMap<K, A>) 
 /**
  * Chain over the map entries, the hash and equal of the 2 maps has to be the same
  *
- * @dataFirst chain_
+ * @ets_data_first chain_
  */
 export function chain<K, V, A>(f: (v: V) => HashMap<K, A>) {
   return (map: HashMap<K, V>) => chain_(map, f)
@@ -585,7 +585,7 @@ export function chainWithIndex_<K, V, A>(
 /**
  * Chain over the map entries, the hash and equal of the 2 maps has to be the same
  *
- * @dataFirst chainWithIndex_
+ * @ets_data_first chainWithIndex_
  */
 export function chainWithIndex<K, V, A>(f: (k: K, v: V) => HashMap<K, A>) {
   return (map: HashMap<K, V>) => chainWithIndex_(map, f)
@@ -620,7 +620,7 @@ export function filterMapWithIndex_<K, A, B>(
 /**
  * Filter out None and map
  *
- * @dataFirst filterMapWithIndex_
+ * @ets_data_first filterMapWithIndex_
  */
 export function filterMapWithIndex<K, A, B>(f: (k: K, a: A) => O.Option<B>) {
   return (fa: HashMap<K, A>) => filterMapWithIndex_(fa, f)
@@ -639,7 +639,7 @@ export function filterMap_<E, A, B>(
 /**
  * Filter out None and map
  *
- * @dataFirst filterMap_
+ * @ets_data_first filterMap_
  */
 export function filterMap<A, B>(f: (a: A) => O.Option<B>) {
   return <E>(fa: HashMap<E, A>) => filterMap_(fa, f)
@@ -666,7 +666,7 @@ export function filterWithIndex_<K, A>(
 /**
  * Filter out by predicate
  *
- * @dataFirst filterWithIndex_
+ * @ets_data_first filterWithIndex_
  */
 export function filterWithIndex<K, A>(p: (k: K, a: A) => boolean) {
   return (fa: HashMap<K, A>) => filterWithIndex_(fa, p)
@@ -687,7 +687,7 @@ export function filter_<K, A>(fa: HashMap<K, A>, p: (a: A) => boolean): HashMap<
 /**
  * Filter out by predicate
  *
- * @dataFirst filter_
+ * @ets_data_first filter_
  */
 export function filter<A, B extends A>(
   p: Refinement<A, B>
@@ -719,7 +719,7 @@ export function removeMany_<K, V>(self: HashMap<K, V>, ks: Iterable<K>): HashMap
 /**
  * Remove many keys
  *
- * @dataFirst removeMany_
+ * @ets_data_first removeMany_
  */
 export function removeMany<K>(ks: Iterable<K>) {
   return <V>(self: HashMap<K, V>) => removeMany_(self, ks)

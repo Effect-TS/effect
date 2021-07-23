@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import { squash } from "../Cause"
 import { identity, pipe } from "../Function"

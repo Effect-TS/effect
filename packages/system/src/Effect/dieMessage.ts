@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import { RuntimeError } from "../Cause"
 import { dieWith } from "./die"

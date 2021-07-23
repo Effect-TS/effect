@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import { checkTraced, traced, untraced } from "./core"
 import type { Effect } from "./effect"

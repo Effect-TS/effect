@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import { asUnit } from "./asUnit"
 import { chain_, suspend, unit } from "./core"
@@ -7,7 +7,7 @@ import type { Effect } from "./effect"
 /**
  * The moral equivalent of `if (!p) exp`
  *
- * @dataFirst unless_
+ * @ets_data_first unless_
  */
 export function unless(b: () => boolean, __trace?: string) {
   return <R, E, A>(self: Effect<R, E, A>) =>
@@ -28,7 +28,7 @@ export function unless_<R, E, A>(
 /**
  * The moral equivalent of `if (!p) exp` when `p` has side-effects
  *
- * @dataFirst unlessM_
+ * @ets_data_first unlessM_
  */
 export function unlessM<R2, E2>(b: Effect<R2, E2, boolean>, __trace?: string) {
   return <R, E, A>(self: Effect<R, E, A>) => unlessM_(self, b, __trace)

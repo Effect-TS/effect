@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import { failureOrCause } from "../Cause"
 import * as E from "../Either"
@@ -10,7 +10,7 @@ import { map_ } from "./map"
  * Returns an effect that effectfully "peeks" at the failure or success of
  * this effect.
  *
- * @dataFirst tapBoth_
+ * @ets_data_first tapBoth_
  */
 export function tapBoth<E, A, R2, E2, R3, E3, X, Y>(
   f: (e: E) => Effect<R2, E2, X>,

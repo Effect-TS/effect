@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import * as Tp from "@effect-ts/system/Collections/Immutable/Tuple"
 import { pipe } from "@effect-ts/system/Function"

@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import { pipe, tuple } from "../../Function"
 import type { StateInURI, StateOutURI } from "../../Modules"

@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import { chain_ } from "./chain"
 import type { Stream } from "./definitions"
@@ -26,7 +26,7 @@ export function crossWith_<R, R1, E, E1, O, O2, C>(
  *
  * See also `Stream#zip` for the more common point-wise variant.
  *
- * @dataFirst crossWith_
+ * @ets_data_first crossWith_
  */
 export function crossWith<O, C, R1, E1, O2>(
   that: Stream<R1, E1, O2>,

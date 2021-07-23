@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type * as E from "../Either"
 import type { FiberID } from "../Fiber/id"

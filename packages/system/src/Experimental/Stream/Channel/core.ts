@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import "../../../Operator"
 
@@ -71,7 +71,7 @@ export function pipeTo_<
 /**
  * Pipe the output of a channel into the input of another
  *
- * @dataFirst pipeTo_
+ * @ets_data_first pipeTo_
  */
 export function pipeTo<Env2, OutErr, OutElem, OutDone, OutErr2, OutElem2, OutDone2>(
   right: P.Channel<Env2, OutErr, OutElem, OutDone, OutErr2, OutElem2, OutDone2>
@@ -299,7 +299,7 @@ export function ensuringWith_<
  * Returns a new channel with an attached finalizer. The finalizer is guaranteed to be executed
  * so long as the channel begins execution (and regardless of whether or not it completes).
  *
- * @dataFirst ensuringWith_
+ * @ets_data_first ensuringWith_
  */
 export function ensuringWith<Env2, OutErr, OutDone>(
   finalizer: (e: Exit.Exit<OutErr, OutDone>) => T.Effect<Env2, never, unknown>
@@ -369,7 +369,7 @@ export function concatMapWith_<
  * is used to merge the terminal values of all channels into the single terminal value of the
  * returned channel.
  *
- * @dataFirst concatMapWith_
+ * @ets_data_first concatMapWith_
  */
 export function concatMapWith<
   OutDone,
@@ -458,7 +458,7 @@ export function concatAllWith_<
 /**
  * Concat sequentially a channel of channels
  *
- * @dataFirst concatAllWith_
+ * @ets_data_first concatAllWith_
  */
 export function concatAllWith<OutDone, OutDone2, OutDone3>(
   f: (o: OutDone, o1: OutDone) => OutDone,
@@ -544,7 +544,7 @@ export function concatMap_<
  * new channels in response. These new channels are sequentially concatenated together, and all
  * their outputs appear as outputs of the newly returned channel.
  *
- * @dataFirst concatMap_
+ * @ets_data_first concatMap_
  */
 export function concatMap<
   OutElem,
@@ -644,7 +644,7 @@ export function foldCauseM_<
 /**
  * Fold the channel exposing success and full error cause
  *
- * @dataFirst foldCauseM_
+ * @ets_data_first foldCauseM_
  */
 export function foldCauseM<
   Env1,
@@ -697,7 +697,7 @@ export function embedInput_<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone
 /**
  * Embed inputs from continuos pulling of a producer
  *
- * @dataFirst embedInput_
+ * @ets_data_first embedInput_
  */
 export function embedInput<InErr, InElem, InDone>(
   input: AsyncInputProducer<InErr, InElem, InDone>
@@ -720,7 +720,7 @@ export function bracketOutExit_<R, R2, E, Z>(
 /**
  * Construct a resource Channel with Acquire / Release
  *
- * @dataFirst bracketOutExit_
+ * @ets_data_first bracketOutExit_
  */
 export function bracketOutExit<R2, Z>(
   release: (z: Z, e: Exit.Exit<unknown, unknown>) => T.RIO<R2, unknown>
@@ -745,7 +745,7 @@ export function provideAll_<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone
  * Provides the channel with its required environment, which eliminates
  * its dependency on `Env`.
  *
- * @dataFirst provideAll_
+ * @ets_data_first provideAll_
  */
 export function provideAll<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
   env: Env
@@ -809,7 +809,7 @@ export function chain_<
  * The result is a channel that will first perform the functions of this channel, before
  * performing the functions of the created channel (including yielding its terminal value).
  *
- * @dataFirst chain_
+ * @ets_data_first chain_
  */
 export function chain<
   OutDone,

@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type { Ref } from "../Ref/XRef"
 import * as semaphore from "../Semaphore"

@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import { fromEffect } from "../Managed/fromEffect"
 import { makeExit_ } from "../Managed/makeExit"
@@ -28,7 +28,7 @@ export function toManagedRelease_<A, R1, E1, R>(
  * Converts this Effect to a Managed. This Effect and the provided release action
  * will be performed uninterruptibly.
  *
- * @dataFirst toManagedRelease_
+ * @ets_data_first toManagedRelease_
  */
 export function toManagedRelease<R, A>(
   release: (a: A) => Effect<R, never, any>

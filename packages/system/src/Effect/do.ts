@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import { chain_, succeed } from "./core"
 import type { Effect } from "./effect"
@@ -7,7 +7,7 @@ import { map_ } from "./map"
 /**
  * Binds an effectful value in a `do` scope
  *
- * @dataFirst bind_
+ * @ets_data_first bind_
  */
 function bind<R, E, A, K, N extends string>(
   tag: Exclude<N, keyof K>,
@@ -61,7 +61,7 @@ export function bind_<R2, E2, R, E, A, K, N extends string>(
 /**
  * Like bind for values
  *
- * @dataFirst let_
+ * @ets_data_first let_
  */
 function let__<A, K, N extends string>(
   tag: Exclude<N, keyof K>,

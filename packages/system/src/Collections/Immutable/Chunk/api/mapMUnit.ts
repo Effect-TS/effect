@@ -15,7 +15,7 @@ export function mapMUnit_<A, R, E, B>(
 /**
  * Effectfully maps the elements of this chunk purely for the effects.
  *
- * @dataFirst mapMUnit_
+ * @ets_data_first mapMUnit_
  */
 export function mapMUnit<A, R, E, B>(
   f: (a: A) => Effect<R, E, B>

@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type { Chunk } from "../Collections/Immutable/Chunk"
 import { constant, tuple } from "../Function"

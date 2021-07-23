@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import { chain_ } from "../core"
 import type { Managed } from "../managed"
@@ -7,7 +7,7 @@ import { succeed } from "../succeed"
 /**
  * Conditional logic
  *
- * @dataFirst ifM_
+ * @ets_data_first ifM_
  */
 export function ifM<R1, E1, A1, R2, E2, A2>(
   onTrue: () => Managed<R1, E1, A1>,
@@ -36,7 +36,7 @@ export function ifM_<R, E, R1, E1, A1, R2, E2, A2>(
 /**
  * Conditional logic
  *
- * @dataFirst if_
+ * @ets_data_first if_
  */
 function _if<R1, E1, A1, R2, E2, A2>(
   onTrue: () => Managed<R1, E1, A1>,

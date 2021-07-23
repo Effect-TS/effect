@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import { chain_, succeed } from "./core"
 import type { Effect } from "./effect"
@@ -13,7 +13,7 @@ export function map_<R, E, A, B>(_: Effect<R, E, A>, f: (a: A) => B, __trace?: s
 /**
  * Returns an effect whose success is mapped by the specified `f` function.
  *
- * @dataFirst map_
+ * @ets_data_first map_
  */
 export function map<A, B>(f: (a: A) => B, __trace?: string) {
   return <R, E>(self: Effect<R, E, A>) => map_(self, f)

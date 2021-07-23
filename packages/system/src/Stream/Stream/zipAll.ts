@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import * as Tp from "../../Collections/Immutable/Tuple"
 import type { Stream } from "./definitions"
@@ -33,7 +33,7 @@ export function zipAll_<R, R1, E, E1, O, O2>(
  * The defaults `defaultLeft` and `defaultRight` will be used if the streams have different lengths
  * and one of the streams has ended before the other.
  *
- * @dataFirst zipAll_
+ * @ets_data_first zipAll_
  */
 export function zipAll<R1, E1, O, O2>(
   that: Stream<R1, E1, O2>,

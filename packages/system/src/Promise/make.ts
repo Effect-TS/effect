@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import { chain_ } from "../Effect/core"
 import { fiberId } from "../Effect/fiberId"

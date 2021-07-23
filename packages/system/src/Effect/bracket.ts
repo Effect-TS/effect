@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import { bracketExit_ } from "./bracketExit"
 import type { Effect } from "./effect"
@@ -23,7 +23,7 @@ import type { Effect } from "./effect"
  * if the `use` effect succeeds. If this fail-fast behavior is not desired,
  * errors produced by the `release` effect can be caught and ignored.
  *
- * @dataFirst bracket_
+ * @ets_data_first bracket_
  */
 export function bracket<A, E1, R1, A1, R2, E2, A2>(
   use: (a: A) => Effect<R1, E1, A1>,

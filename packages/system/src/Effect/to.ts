@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import { done } from "../Promise/done"
 import type { Promise } from "../Promise/promise"
@@ -11,7 +11,7 @@ import { uninterruptibleMask } from "./interruption"
  * this effect. Synchronizes interruption, so if this effect is interrupted,
  * the specified promise will be interrupted, too.
  *
- * @dataFirst to_
+ * @ets_data_first to_
  */
 export function to<E, A>(p: Promise<E, A>, __trace?: string) {
   return <R>(effect: Effect<R, E, A>): Effect<R, never, boolean> =>

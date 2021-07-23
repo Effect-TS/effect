@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type * as C from "./_internal/cause"
 import * as T from "./_internal/effect"

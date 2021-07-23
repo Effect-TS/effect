@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type { HasClock } from "../../Clock"
 import type * as A from "../../Collections/Immutable/Chunk"
@@ -12,7 +12,7 @@ import { throttleShapeM_ } from "./throttleShapeM"
  * tokens up to a `units + burst` threshold. The weight of each chunk is determined by the `costFn`
  * function.
  *
- * @dataFirst throttleShape_
+ * @ets_data_first throttleShape_
  */
 export function throttleShape<O>(
   costFn: (c: A.Chunk<O>) => number,

@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import { pipe } from "../Function"
 import * as O from "../Option/core"
@@ -31,7 +31,7 @@ export function continueOrFailM_<R, E, E1, A, R2, E2, A2>(
  * Fail with `e` if the supplied `PartialFunction` does not match, otherwise
  * continue with the returned value.
  *
- * @dataFirst continueOrFailM_
+ * @ets_data_first continueOrFailM_
  */
 export function continueOrFailM<E1, A, R2, E2, A2>(
   f: () => E1,
@@ -58,7 +58,7 @@ export function continueOrFail_<R, E, E1, A, A2>(
  * Fail with `e` if the supplied `PartialFunction` does not match, otherwise
  * succeed with the returned value.
  *
- * @dataFirst continueOrFail_
+ * @ets_data_first continueOrFail_
  */
 export function continueOrFail<E1, A, A2>(
   f: () => E1,

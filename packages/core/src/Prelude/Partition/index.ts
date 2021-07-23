@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type { Predicate, Refinement } from "../../Function"
 import type { Separated } from "../../Utils"

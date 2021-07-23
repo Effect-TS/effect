@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import { pipe } from "../Function"
 import * as O from "../Option"
@@ -11,7 +11,7 @@ import { fail } from "./fail"
  * translating the successful match into a failure, otherwise continue with
  * our held value.
  *
- * @dataFirst rejectM_
+ * @ets_data_first rejectM_
  */
 export function rejectM<A, R1, E1>(
   pf: (a: A) => O.Option<Effect<R1, E1, E1>>,
@@ -47,7 +47,7 @@ export function rejectM_<R, E, A, R1, E1>(
  * Fail with the returned value if the `PartialFunction` matches, otherwise
  * continue with our held value.
  *
- * @dataFirst reject_
+ * @ets_data_first reject_
  */
 export function reject<A, E1>(pf: (a: A) => O.Option<E1>, __trace?: string) {
   return <R, E>(self: Effect<R, E, A>) => reject_(self, pf)

@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type { Cause } from "../Cause/cause"
 import { keepDefects } from "../Cause/core"
@@ -55,7 +55,7 @@ export function accessM<R0, R, E, A>(
  * the passing of its value to the specified continuation function `f`,
  * followed by the effect that it returns.
  *
- * @dataFirst chain_
+ * @ets_data_first chain_
  */
 export function chain<R1, E1, A1, A>(
   f: (a: A) => Effect<R1, E1, A1>,
@@ -206,7 +206,7 @@ export function succeedWith<A>(effect: () => A, __trace?: string): UIO<A> {
 /**
  * A more powerful version of `foldM` that allows recovering from any kind of failure except interruptions.
  *
- * @dataFirst foldCauseM_
+ * @ets_data_first foldCauseM_
  */
 export function foldCauseM<E, A, R2, E2, A2, R3, E3, A3>(
   failure: (cause: Cause<E>) => Effect<R2, E2, A2>,
@@ -258,7 +258,7 @@ export function fork<R, E, A>(
  * The fiber is forked with interrupt supervision mode, meaning that when the
  * fiber that forks the child exits, the child will be interrupted.
  *
- * @dataFirst forkReport_
+ * @ets_data_first forkReport_
  */
 export function forkReport(reportFailure: FailureReporter, __trace?: string) {
   return <R, E, A>(value: Effect<R, E, A>): RIO<R, Fiber.FiberContext<E, A>> =>
@@ -310,7 +310,7 @@ export function haltWith<E>(
  * the effect becomes uninterruptible. These changes are compositional, so
  * they only affect regions of the effect.
  *
- * @dataFirst interruptStatus_
+ * @ets_data_first interruptStatus_
  */
 export function interruptStatus(flag: Fiber.InterruptStatus, __trace?: string) {
   return <R, E, A>(effect: Effect<R, E, A>): Effect<R, E, A> =>
@@ -337,7 +337,7 @@ export function interruptStatus_<R, E, A>(
  * is disabled. These changes are compositional, so they only affect regions
  * of the effect.
  *
- * @dataFirst tracingStatus_
+ * @ets_data_first tracingStatus_
  */
 export function tracingStatus(flag: boolean) {
   return <R, E, A>(effect: Effect<R, E, A>): Effect<R, E, A> =>
@@ -361,7 +361,7 @@ export function tracingStatus_<R, E, A>(
  * Provides the `Effect` effect with its required environment, which eliminates
  * its dependency on `R`.
  *
- * @dataFirst provideAll_
+ * @ets_data_first provideAll_
  */
 export function provideAll<R>(r: R, __trace?: string) {
   return <E, A>(next: Effect<R, E, A>): Effect<unknown, E, A> =>
@@ -407,7 +407,7 @@ export function succeed<A>(a: A, __trace?: string): Effect<unknown, never, A> {
  * Returns an effect with the behavior of this one, but where all child
  * fibers forked in the effect are reported to the specified supervisor.
  *
- * @dataFirst supervised_
+ * @ets_data_first supervised_
  */
 export function supervised(supervisor: Supervisor<any>, __trace?: string) {
   return <R, E, A>(fa: Effect<R, E, A>): Effect<R, E, A> =>
@@ -471,7 +471,7 @@ export function tryOrElse_<R, E, A, R2, E2, A2, R3, E3, A3>(
  * Executed `that` in case `self` fails with a `Cause` that doesn't contain defects,
  * executes `success` in case of successes
  *
- * @dataFirst tryOrElse_
+ * @ets_data_first tryOrElse_
  */
 export function tryOrElse<A, R2, E2, A2, R3, E3, A3>(
   that: () => Effect<R2, E2, A2>,

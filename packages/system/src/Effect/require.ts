@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import * as O from "../Option"
 import { chain_, succeed, succeedWith } from "./core"
@@ -9,7 +9,7 @@ import { fail } from "./fail"
  * Requires that the given `Effect<R, E, Option<A>>` contain a value. If there is no
  * value, then the specified error will be raised.
  *
- * @dataFirst require_
+ * @ets_data_first require_
  */
 function _require<E>(error: () => E, __trace?: string) {
   return <R, A>(io: Effect<R, E, O.Option<A>>) => require_(io, error, __trace)

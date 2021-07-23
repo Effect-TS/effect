@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type { Exit } from "../Exit"
 import { bracketExit_ } from "./bracketExit"
@@ -8,7 +8,7 @@ import type { Effect } from "./effect"
 /**
  * Executes the release effect only if there was an error.
  *
- * @dataFirst bracketOnError_
+ * @ets_data_first bracketOnError_
  */
 export function bracketOnError<E, A, E1, R1, A1, R2, E2, X>(
   use: (a: A) => Effect<R1, E1, A1>,

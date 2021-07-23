@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type { XPure } from "@effect-ts/system/XPure"
 

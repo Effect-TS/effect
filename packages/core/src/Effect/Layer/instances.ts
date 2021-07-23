@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import * as T from "@effect-ts/system/Effect"
 import * as L from "@effect-ts/system/Layer"

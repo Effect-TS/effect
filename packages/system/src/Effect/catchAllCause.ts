@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type { Cause } from "../Cause/cause"
 import { foldCauseM_, succeed } from "./core"
@@ -18,7 +18,7 @@ export function catchAllCause_<R2, E2, A2, R, E, A>(
 /**
  * Recovers from all errors with provided cause.
  *
- * @dataFirst catchAllCause_
+ * @ets_data_first catchAllCause_
  */
 export function catchAllCause<R2, E2, A2, R, E, A>(
   f: (_: Cause<E2>) => Effect<R, E, A>,

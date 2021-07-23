@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import { chain_, succeed } from "./core"
 import type { Effect } from "./effect"
@@ -6,7 +6,7 @@ import type { Effect } from "./effect"
 /**
  * Repeats this effect while its error satisfies the specified effectful predicate.
  *
- * @dataFirst repeatWhileM_
+ * @ets_data_first repeatWhileM_
  */
 export function repeatWhileM<A, R1, E1>(
   f: (a: A) => Effect<R1, E1, boolean>,
@@ -34,7 +34,7 @@ export function repeatWhileM_<R, E, A, R1, E1>(
 /**
  * Repeats this effect while its error satisfies the specified predicate.
  *
- * @dataFirst repeatWhile_
+ * @ets_data_first repeatWhile_
  */
 export function repeatWhile<A>(f: (a: A) => boolean, __trace?: string) {
   return <R, E>(self: Effect<R, E, A>) => repeatWhile_(self, f, __trace)

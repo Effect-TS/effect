@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import * as O from "../Option"
 import { catchSomeDefect_ } from "./catchSomeDefect"
@@ -28,7 +28,7 @@ export function catchAllDefect_<R2, E2, A2, R, E, A>(
  * system, to transmit information on a defect for diagnostic or explanatory
  * purposes.
  *
- * @dataFirst catchAllDefect_
+ * @ets_data_first catchAllDefect_
  */
 export function catchAllDefect<R, E, A>(
   f: (_: unknown) => Effect<R, E, A>,

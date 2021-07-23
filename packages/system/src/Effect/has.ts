@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 /**
  * Copyright 2020 Michael Arnaldi and the Matechs Garage Contributors.
@@ -135,7 +135,7 @@ export function service<T>(s: Tag<T>, __trace?: string) {
 /**
  * Accesses the specified services in the environment of the effect.
  *
- * @trace call
+ * @ets_trace call
  */
 export function services<Ts extends readonly Tag<any>[]>(...s: Ts) {
   return core.access(
@@ -228,7 +228,7 @@ export function replaceServiceM_<R, E, T, R1, E1, A1>(
 /**
  * Replaces the service with the required Service Entry
  *
- * @dataFirst replaceService_
+ * @ets_data_first replaceService_
  */
 export function replaceService<T>(_: Tag<T>, f: (_: T) => T, __trace?: string) {
   return <R1, E1, A1>(ma: Effect<R1 & Has<T>, E1, A1>): Effect<R1 & Has<T>, E1, A1> =>
@@ -237,8 +237,6 @@ export function replaceService<T>(_: Tag<T>, f: (_: T) => T, __trace?: string) {
 
 /**
  * Replaces the service with the required Service Entry
- *
- * @trace 2
  */
 export function replaceService_<R1, E1, A1, T>(
   ma: Effect<R1 & Has<T>, E1, A1>,

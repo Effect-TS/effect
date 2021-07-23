@@ -41,7 +41,7 @@ export function forEach_<A, U>(self: Chunk.Chunk<A>, f: (a: A) => U): void {
 /**
  * Iterate over the chunk applying f
  *
- * @dataFirst forEach_
+ * @ets_data_first forEach_
  */
 export function forEach<A, U>(f: (a: A) => U): (self: Chunk.Chunk<A>) => void {
   return (self) => forEach_(self, f)

@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 export * from "../Effect/andThen"
 export * from "../Effect/as"

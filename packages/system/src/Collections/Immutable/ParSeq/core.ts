@@ -118,7 +118,7 @@ export function fold_<A, B>(
  * Folds over the events in this collection of events using the specified
  * functions.
  *
- * @dataFirst fold_
+ * @ets_data_first fold_
  */
 export function fold<A, B>(
   emptyCase: B,
@@ -141,7 +141,7 @@ export function chain_<A, B>(self: ParSeq<A>, f: (a: A) => ParSeq<B>): ParSeq<B>
  * Constructs a new collection of events for each event in this collection of
  * events, collecting them back into a single collection of events.
  *
- * @dataFirst chain_
+ * @ets_data_first chain_
  */
 export function chain<A, B>(f: (a: A) => ParSeq<B>): (self: ParSeq<A>) => ParSeq<B> {
   return (self) => chain_(self, f)
@@ -174,7 +174,7 @@ export function map_<A, B>(self: ParSeq<A>, f: (a: A) => B): ParSeq<B> {
  * Transforms the type of events in this collection of events with the
  * specified function.
  *
- * @dataFirst map_
+ * @ets_data_first map_
  */
 export function map<A, B>(f: (a: A) => B): (self: ParSeq<A>) => ParSeq<B> {
   return (self) => map_(self, f)
@@ -196,7 +196,7 @@ export function zipWith_<A, B, C>(
  * Combines this collection of events with that collection of events to
  * return the Cartesian product of events using the specified function.
  *
- * @dataFirst zipWith_
+ * @ets_data_first zipWith_
  */
 export function zipWith<A, B, C>(
   that: ParSeq<B>,
@@ -219,7 +219,7 @@ export function zip_<A, B>(self: ParSeq<A>, that: ParSeq<B>): ParSeq<Tp.Tuple<[A
  * return the Cartesian product of events, combining the elements into a
  * tuple.
  *
- * @dataFirst zip_
+ * @ets_data_first zip_
  */
 export function zip<B>(
   that: ParSeq<B>
@@ -241,7 +241,7 @@ export function zipLeft_<A, B>(self: ParSeq<A>, that: ParSeq<B>): ParSeq<A> {
  * return the Cartesian product of events, keeping only the events from this
  * collection.
  *
- * @dataFirst zipLeft_
+ * @ets_data_first zipLeft_
  */
 export function zipLeft<B>(that: ParSeq<B>): <A>(self: ParSeq<A>) => ParSeq<A> {
   return (self) => zipLeft_(self, that)
@@ -261,7 +261,7 @@ export function zipRight_<A, B>(self: ParSeq<A>, that: ParSeq<B>): ParSeq<B> {
  * return the Cartesian product of events, keeping only the events from that
  * collection.
  *
- * @dataFirst zipRight_
+ * @ets_data_first zipRight_
  */
 export function zipRight<B>(that: ParSeq<B>): <A>(self: ParSeq<A>) => ParSeq<B> {
   return (self) => zipRight_(self, that)

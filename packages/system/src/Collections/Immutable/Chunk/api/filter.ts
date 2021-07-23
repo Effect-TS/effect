@@ -53,7 +53,7 @@ export function filter_<A>(self: Chunk.Chunk<A>, f: (a: A) => boolean): Chunk.Ch
 /**
  * Returns a filtered subset of this chunk.
  *
- * @dataFirst filter_
+ * @ets_data_first filter_
  */
 export function filter<A, B extends A>(
   f: Refinement<A, B>

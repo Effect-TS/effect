@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type { Lazy } from "../Function"
 import { pipe } from "../Function"

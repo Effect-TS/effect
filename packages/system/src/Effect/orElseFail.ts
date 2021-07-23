@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type { Effect } from "./effect"
 import { fail } from "./fail"
@@ -8,7 +8,7 @@ import { orElse_ } from "./orElse"
  * Executes this effect and returns its value, if it succeeds, but
  * otherwise fails with the specified error.
  *
- * @dataFirst orElseFail_
+ * @ets_data_first orElseFail_
  */
 export function orElseFail<E2>(e: E2, __trace?: string) {
   return <R, E, A>(self: Effect<R, E, A>) => orElseFail_(self, e, __trace)

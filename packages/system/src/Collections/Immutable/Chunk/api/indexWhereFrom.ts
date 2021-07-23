@@ -37,7 +37,7 @@ export function indexWhereFrom_<A>(
 /**
  * Returns the first index for which the given predicate is satisfied after or at some given index.
  *
- * @dataFirst indexWhereFrom_
+ * @ets_data_first indexWhereFrom_
  */
 export function indexWhereFrom<A>(
   from: number,

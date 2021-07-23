@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import * as Cause from "../Cause/core"
 import type { InterruptStatus } from "../Fiber/core"
@@ -131,7 +131,7 @@ export function onInterruptExtended_<R, E, A, R2, E2, X>(
  * Calls the specified function, and runs the effect it returns, if this
  * effect is interrupted.
  *
- * @dataFirst onInterrupt_
+ * @ets_data_first onInterrupt_
  */
 export function onInterrupt<R2, X>(
   cleanup: (interruptors: readonly FiberID[]) => Effect<R2, never, X>,

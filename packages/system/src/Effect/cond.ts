@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import { chain_, succeedWith, suspend } from "./core"
 import type { Effect, RIO } from "./effect"
@@ -9,7 +9,7 @@ import { fail } from "./fail"
  * return the given A as success if predicate returns true,
  * and the given E as error otherwise
  *
- * @dataFirst cond_
+ * @ets_data_first cond_
  */
 export function cond<E, A>(onTrue: () => A, onFalse: () => E, __trace?: string) {
   return (b: boolean): Effect<unknown, E, A> => cond_(b, onTrue, onFalse, __trace)

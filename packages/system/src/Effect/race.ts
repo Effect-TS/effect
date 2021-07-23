@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import * as Cause from "../Cause/core"
 import * as E from "../Either"
@@ -70,7 +70,7 @@ export function race_<R, E, A, R2, E2, A2>(
  * WARNING: The raced effect will safely interrupt the "loser", but will not
  * resume until the loser has been cleanly terminated.
  *
- * @dataFirst race_
+ * @ets_data_first race_
  */
 export function race<R2, E2, A2>(that: Effect<R2, E2, A2>, __trace?: string) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R & R2, E | E2, A | A2> =>
@@ -101,7 +101,7 @@ export function raceEither_<R, E, A, R2, E2, A2>(
  * WARNING: The raced effect will safely interrupt the "loser", but will not
  * resume until the loser has been cleanly terminated.
  *
- * @dataFirst raceEither_
+ * @ets_data_first raceEither_
  */
 export function raceEither<R2, E2, A2>(that: Effect<R2, E2, A2>, __trace?: string) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R & R2, E | E2, E.Either<A, A2>> =>
@@ -143,7 +143,7 @@ export function raceFirst_<R, R2, E, E2, A, A2>(
  * interrupt signal, allowing a fast return, with interruption performed
  * in the background.
  *
- * @dataFirst raceFirst_
+ * @ets_data_first raceFirst_
  */
 export function raceFirst<R2, E2, A2>(that: Effect<R2, E2, A2>, __trace?: string) {
   return <R, E, A>(self: Effect<R, E, A>) => raceFirst_(self, that, __trace)

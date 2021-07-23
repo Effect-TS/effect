@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import { pipe } from "../Function"
 import * as catchAll from "./catchAll"
@@ -9,7 +9,7 @@ import * as fail from "./fail"
 /**
  * Retries this effect until its error satisfies the specified effectful predicate.
  *
- * @dataFirst retryUtilM_
+ * @ets_data_first retryUtilM_
  */
 export function retryUntilM<E, R1, E1>(
   f: (a: E) => Effect<R1, E1, boolean>,
@@ -45,7 +45,7 @@ export function retryUntilM_<R, E, A, R1, E1>(
 /**
  * Retries this effect until its error satisfies the specified predicate.
  *
- * @dataFirst retryUntil_
+ * @ets_data_first retryUntil_
  */
 export function retryUntil<E>(f: (a: E) => boolean, __trace?: string) {
   return <R, A>(self: Effect<R, E, A>) => retryUntil_(self, f, __trace)

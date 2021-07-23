@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import * as A from "../../Collections/Immutable/Chunk"
 import type { Predicate, Refinement } from "../../Function"
@@ -102,7 +102,7 @@ export function collectWhile_<R, E, O>(
 /**
  * Transforms all elements of the stream for as long as the specified partial function is defined.
  *
- * @dataFirst collectWhile_
+ * @ets_data_first collectWhile_
  */
 export function collectWhile<O, O1 extends O>(
   f: Refinement<O, O1>

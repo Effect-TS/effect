@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type { UIO } from "../Effect/effect"
 import { IFiberRefModify } from "../Effect/primitives"

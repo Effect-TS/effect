@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type { Auto } from "./base"
 import type { V } from "./variance"

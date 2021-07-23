@@ -27,7 +27,7 @@ export function exists_<A>(self: Chunk.Chunk<A>, f: (a: A) => boolean): boolean 
 /**
  * Determines whether a predicate is satisfied for at least one element of this chunk.
  *
- * @dataFirst exists_
+ * @ets_data_first exists_
  */
 export function exists<A>(f: (a: A) => boolean): (self: Chunk.Chunk<A>) => boolean {
   return (self) => exists_(self, f)

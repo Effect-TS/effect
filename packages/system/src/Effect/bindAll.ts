@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import * as R from "../Collections/Immutable/Dictionary"
 import type { _E, _R, EnforceNonEmptyRecord } from "../Utils"
@@ -10,7 +10,7 @@ import { map_ } from "./map"
 /**
  * Bind a record of effects in a do
  *
- * @dataFirst bindAll_
+ * @ets_data_first bindAll_
  */
 export function bindAll<
   K,
@@ -81,7 +81,7 @@ export function bindAll_<
 /**
  * Bind a record of effects, in parallel, in a do
  *
- * @dataFirst bindAllPar_
+ * @ets_data_first bindAllPar_
  */
 export function bindAllPar<
   K,
@@ -152,7 +152,7 @@ export function bindAllPar_<
 /**
  * Bind a record of effects, in parallel (up to N fibers), in a do
  *
- * @dataFirst bindAllParN_
+ * @ets_data_first bindAllParN_
  */
 export function bindAllParN<
   K,
@@ -180,8 +180,6 @@ export function bindAllParN<
 
 /**
  * Bind a record of effects, in parallel (up to N fibers), in a do
- *
- * @trace 2
  */
 export function bindAllParN_<
   K,
