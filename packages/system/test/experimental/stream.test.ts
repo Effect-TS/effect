@@ -46,14 +46,36 @@ describe("Stream", () => {
       )
     ).equals(Chunk.many(Tp.tuple(0, 1), Tp.tuple(0, 1)))
   })
-  it("mapM", async () => {
+  it("mapEff", async () => {
     expect(
       await pipe(
         S.fromChunk(Chunk.many(0, 1, 2)),
-        S.mapM((n) => T.succeedWith(() => n + 1)),
+        S.mapEff((n) => T.succeedWith(() => n + 1)),
         S.runCollect,
         T.runPromise
       )
     ).equals(Chunk.many(1, 2, 3))
+  })
+
+  it("interleaveWith", async () => {
+    expect(
+      await pipe(
+        S.fromChunk(Chunk.many(0, 2, 4)),
+        S.interleave(S.fromChunk(Chunk.many(1, 3, 5))),
+        S.runCollect,
+        T.runPromise
+      )
+    ).equals(Chunk.many(0, 1, 2, 3, 4, 5))
+  })
+
+  it("debounce", async () => {
+    expect(
+      await pipe(
+        S.fromChunk(Chunk.many(0, 1, 2, 3, 4, 5)),
+        S.debounce(100),
+        S.runCollect,
+        T.runPromise
+      )
+    ).equals(Chunk.single(5))
   })
 })

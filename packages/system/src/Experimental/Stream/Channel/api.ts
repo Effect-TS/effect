@@ -98,7 +98,7 @@ export function catchAll_<
     E.fold_(
       Cause.failureOrCause(cause),
       (l) => f(l),
-      (r) => C.halt(r)
+      (r) => C.failCause(r)
     )
   )
 }
@@ -344,7 +344,7 @@ function contramapMReader<Env1, InErr, InElem, InDone0, InDone>(
   )
 }
 
-export function contramapM_<
+export function contramapEff_<
   Env,
   Env1,
   InErr,
@@ -362,14 +362,14 @@ export function contramapM_<
 }
 
 /**
- * @ets_data_first contramapM_
+ * @ets_data_first contramapEff_
  */
-export function contramapM<Env1, InErr, InDone0, InDone>(
+export function contramapEff<Env1, InErr, InDone0, InDone>(
   f: (i: InDone0) => T.Effect<Env1, InErr, InDone>
 ) {
   return <Env, InElem, OutErr, OutElem, OutDone>(
     self: C.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
-  ) => contramapM_(self, f)
+  ) => contramapEff_(self, f)
 }
 
 function contramapInMReader<Env1, InErr, InElem0, InElem, InDone>(
@@ -386,7 +386,7 @@ function contramapInMReader<Env1, InErr, InElem0, InElem, InDone>(
   )
 }
 
-export function contramapInM_<
+export function contramapInEff_<
   Env,
   Env1,
   InErr,
@@ -404,14 +404,14 @@ export function contramapInM_<
 }
 
 /**
- * @ets_data_first contramapInM_
+ * @ets_data_first contramapInEff_
  */
-export function contramapInM<Env1, InErr, InElem0, InElem>(
+export function contramapInEff<Env1, InErr, InElem0, InElem>(
   f: (a: InElem0) => T.Effect<Env1, InErr, InElem>
 ) {
   return <Env, InDone, OutErr, OutElem, OutDone>(
     self: C.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
-  ) => contramapInM_(self, f)
+  ) => contramapInEff_(self, f)
 }
 
 function doneCollectReader<Env, OutErr, OutElem, OutDone>(
@@ -606,7 +606,7 @@ export function ensuring<Env1, Z>(finalizer: T.RIO<Env1, Z>) {
   ) => ensuring_(self, finalizer)
 }
 
-export function foldM_<
+export function foldChannel_<
   Env,
   Env1,
   Env2,
@@ -645,13 +645,13 @@ export function foldM_<
   OutElem | OutElem2 | OutElem1,
   OutDone2 | OutDone1
 > {
-  return C.foldCauseM_(
+  return C.foldCauseChannel_(
     self,
     (_) => {
       return E.fold_(
         Cause.failureOrCause(_),
         (err) => onErr(err),
-        (cause) => C.halt(cause)
+        (cause) => C.failCause(cause)
       )
     },
     onSucc
@@ -659,9 +659,9 @@ export function foldM_<
 }
 
 /**
- * @ets_data_first foldM_
+ * @ets_data_first foldChannel_
  */
-export function foldM<
+export function foldChannel<
   Env1,
   InErr1,
   InElem1,
@@ -681,7 +681,7 @@ export function foldM<
 ) {
   return <Env, InErr, InElem, InDone, OutElem>(
     self: C.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
-  ) => foldM_(self, onErr, onSucc)
+  ) => foldChannel_(self, onErr, onSucc)
 }
 
 /**
@@ -805,7 +805,7 @@ export function mapErrorCause_<
   self: C.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
   f: (cause: Cause.Cause<OutErr>) => Cause.Cause<OutErr2>
 ): C.Channel<Env, InErr, InElem, InDone, OutErr2, OutElem, OutDone> {
-  return catchAllCause_(self, (cause) => C.halt(f(cause)))
+  return catchAllCause_(self, (cause) => C.failCause(f(cause)))
 }
 
 /**
@@ -874,7 +874,7 @@ function toPullInterpret<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
  * returned channel is created by applying the specified effectful function to the terminal value
  * of this channel.
  */
-export function mapM_<
+export function mapEff_<
   Env,
   Env1,
   InErr,
@@ -897,14 +897,14 @@ export function mapM_<
  * returned channel is created by applying the specified effectful function to the terminal value
  * of this channel.
  *
- * @ets_data_first mapM_
+ * @ets_data_first mapEff_
  */
-export function mapM<Env1, OutErr1, OutDone, OutDone1>(
+export function mapEff<Env1, OutErr1, OutDone, OutDone1>(
   f: (o: OutDone) => T.Effect<Env1, OutErr1, OutDone1>
 ) {
   return <Env, InErr, InElem, InDone, OutErr, OutElem>(
     self: C.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
-  ) => mapM_(self, f)
+  ) => mapEff_(self, f)
 }
 
 /**
@@ -1223,7 +1223,7 @@ export function mapOut_<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone, Ou
   f: (o: OutElem) => OutElem2
 ): C.Channel<Env, InErr, InElem, InDone, OutErr, OutElem2, OutDone> {
   const reader: C.Channel<Env, OutErr, OutElem, OutDone, OutErr, OutElem2, OutDone> =
-    C.readWithCause((i) => C.chain_(C.write(f(i)), () => reader), C.halt, C.end)
+    C.readWithCause((i) => C.chain_(C.write(f(i)), () => reader), C.failCause, C.end)
 
   return self[">>>"](reader)
 }
@@ -1259,7 +1259,7 @@ const mapOutMReader = <Env, Env1, OutErr, OutErr1, OutElem, OutElem1, OutDone>(
     (z) => C.end(z)
   )
 
-export function mapOutM_<
+export function mapOutEff_<
   Env,
   Env1,
   InErr,
@@ -1278,14 +1278,14 @@ export function mapOutM_<
 }
 
 /**
- * @ets_data_first mapOutM_
+ * @ets_data_first mapOutEff_
  */
-export function mapOutM<Env1, OutErr1, OutElem, OutElem1>(
+export function mapOutEff<Env1, OutErr1, OutElem, OutElem1>(
   f: (o: OutElem) => T.Effect<Env1, OutErr1, OutElem1>
 ) {
   return <Env, InErr, InElem, InDone, OutErr, OutDone>(
     self: C.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
-  ) => mapOutM_(self, f)
+  ) => mapOutEff_(self, f)
 }
 
 export const never: C.Channel<unknown, unknown, unknown, unknown, never, never, never> =
@@ -1870,7 +1870,7 @@ export function identity<Err, Elem, Done>(): C.Channel<
 export function interrupt(
   fiberId: F.FiberID
 ): C.Channel<unknown, unknown, unknown, unknown, never, never, never> {
-  return C.halt(Cause.interrupt(fiberId))
+  return C.failCause(Cause.interrupt(fiberId))
 }
 
 export function managed_<
@@ -1969,7 +1969,7 @@ export function fromInput<Err, Elem, Done>(
 ): C.Channel<unknown, unknown, unknown, unknown, Err, Elem, Done> {
   return C.unwrap(
     input.takeWith(
-      (_) => C.halt(_),
+      (_) => C.failCause(_),
       (_) => zipRight_(C.write(_), fromInput(input)),
       (_) => C.end(_)
     )
@@ -1985,7 +1985,7 @@ export function fromQueue<Err, Elem, Done>(
       (cause) =>
         E.fold_(
           Cause.flipCauseEither(cause),
-          (cause) => C.halt(cause),
+          (cause) => C.failCause(cause),
           (done) => C.end(done)
         ),
       (elem) => zipRight_(C.write(elem), fromQueue(queue))

@@ -62,7 +62,7 @@ export function fold<E, A, Z>(
  * Folds over the failure cause, success value and end-of-stream marker to
  * yield an effect.
  */
-export function foldM_<R, R1, R2, E, E1, E2, E3, A, Z>(
+export function foldEff_<R, R1, R2, E, E1, E2, E3, A, Z>(
   self: Take<E, A>,
   end: T.Effect<R, E1, Z>,
   error: (cause: C.Cause<E>) => T.Effect<R1, E2, Z>,
@@ -82,14 +82,14 @@ export function foldM_<R, R1, R2, E, E1, E2, E3, A, Z>(
  * Folds over the failure cause, success value and end-of-stream marker to
  * yield an effect.
  *
- * @ets_data_first foldM_
+ * @ets_data_first foldEff_
  */
-export function foldM<R, R1, R2, E, E1, E2, E3, A, Z>(
+export function foldEff<R, R1, R2, E, E1, E2, E3, A, Z>(
   end: T.Effect<R, E1, Z>,
   error: (cause: C.Cause<E>) => T.Effect<R1, E2, Z>,
   value: (chunk: A.Chunk<A>) => T.Effect<R2, E3, Z>
 ) {
-  return (self: Take<E, A>) => foldM_(self, end, error, value)
+  return (self: Take<E, A>) => foldEff_(self, end, error, value)
 }
 
 /**
@@ -179,6 +179,13 @@ export function chunk<A>(as: A.Chunk<A>): Take<never, A> {
  */
 export function fail<E>(e: E): Take<E, never> {
   return new Take(Ex.fail(O.some(e)))
+}
+
+/**
+ * Creates a failing `Take[E, Nothing]` with the specified cause.
+ */
+export function failCause<E>(c: C.Cause<E>): Take<E, never> {
+  return new Take(Ex.failCause(C.map_(c, O.some)))
 }
 
 /**

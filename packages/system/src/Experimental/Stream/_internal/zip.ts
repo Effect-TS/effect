@@ -80,7 +80,7 @@ export function zipWith_<R, E, A, R1, E1, A1, B>(
   return S.combineChunks_(
     self,
     that,
-    <State<A, A1>>new Running(E.left(Chunk.empty())),
+    new Running(E.left(Chunk.empty())) as State<A, A1>,
     (st, p1, p2) => {
       switch (st._tag) {
         case "End": {

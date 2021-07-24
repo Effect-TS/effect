@@ -461,4 +461,51 @@ describe("Chunk", () => {
   it("equality", () => {
     expect(Chunk.many(0, 1, 2)).equals(Chunk.from([0, 1, 2]))
   })
+
+  it("findM found", async () => {
+    const chunk = Chunk.from([1, 2, 3, 4])
+
+    const result = await pipe(
+      T.fold_(
+        Chunk.findM_(chunk, (a) => T.succeed(a === 3)),
+        () => -1,
+        O.fold(
+          () => -1,
+          (n) => n
+        )
+      ),
+      T.runPromise
+    )
+
+    expect(result).equals(3)
+  })
+
+  it("findM not found", async () => {
+    const chunk = Chunk.from([1, 2, 3, 4])
+
+    const result = await pipe(
+      T.fold_(
+        Chunk.findM_(chunk, (a) => T.succeed(a === 20)),
+        () => -1,
+        O.fold(
+          () => 42,
+          (n) => n
+        )
+      ),
+      T.runPromise
+    )
+
+    expect(result).equals(42)
+  })
+
+  it("findM with failing predicate", async () => {
+    const chunk = Chunk.from([1, 2, 3, 4])
+
+    const result = await pipe(
+      Chunk.findM_(chunk, (a) => T.fail({ _tag: "Error" } as const)),
+      T.runPromiseExit
+    )
+
+    expect(result._tag).equals("Failure")
+  })
 })
