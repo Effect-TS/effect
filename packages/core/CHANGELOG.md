@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.43.0](https://github.com/Effect-TS/core/compare/@effect-ts/core@0.42.8...@effect-ts/core@0.43.0) (2021-07-28)
+
+
+### Features
+
+* revise plugin and prefix annotations ([7390e3a](https://github.com/Effect-TS/core/commit/7390e3a1eafd6c8d37a8cbf891917c5ad5cd5ebb))
+
+
+
+
+
 ## [0.42.8](https://github.com/Effect-TS/core/compare/@effect-ts/core@0.42.7...@effect-ts/core@0.42.8) (2021-07-05)
 
 **Note:** Version bump only for package @effect-ts/core

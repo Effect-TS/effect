@@ -3,6 +3,22 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.14.0](https://github.com/Effect-TS/core/compare/@effect-ts/tracing-plugin@0.13.5...@effect-ts/tracing-plugin@0.14.0) (2021-07-28)
+
+
+### Bug Fixes
+
+* fix pipe annotation and chunk drop ([5da4555](https://github.com/Effect-TS/core/commit/5da4555090503b233fdfb11aef62ea198d4734bf))
+
+
+### Features
+
+* revise plugin and prefix annotations ([7390e3a](https://github.com/Effect-TS/core/commit/7390e3a1eafd6c8d37a8cbf891917c5ad5cd5ebb))
+
+
+
+
+
 ## [0.13.5](https://github.com/Effect-TS/core/compare/@effect-ts/tracing-plugin@0.13.4...@effect-ts/tracing-plugin@0.13.5) (2021-07-02)
 
 **Note:** Version bump only for package @effect-ts/tracing-plugin

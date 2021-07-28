@@ -3,6 +3,28 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.40.0](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.39.8...@effect-ts/system@0.40.0) (2021-07-28)
+
+
+### Bug Fixes
+
+* fix pipe annotation and chunk drop ([5da4555](https://github.com/Effect-TS/core/commit/5da4555090503b233fdfb11aef62ea198d4734bf))
+* **stream:** fix sink's reduce function ([fb9b0d9](https://github.com/Effect-TS/core/commit/fb9b0d97e71314a27d36de00fd39e669d7e56987))
+
+
+### Features
+
+* revise plugin and prefix annotations ([7390e3a](https://github.com/Effect-TS/core/commit/7390e3a1eafd6c8d37a8cbf891917c5ad5cd5ebb))
+
+
+### Performance Improvements
+
+* **effect:** remove closure in zipWithPar ([67f2ce8](https://github.com/Effect-TS/core/commit/67f2ce88880857e99010782eb1aac1fa6c7c7ca4))
+
+
+
+
+
 ## [0.39.8](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.39.7...@effect-ts/system@0.39.8) (2021-07-05)
 
 
