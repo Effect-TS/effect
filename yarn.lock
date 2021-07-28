@@ -4083,9 +4083,9 @@ form-data@~2.3.2:
     mime-types "^2.1.12"
 
 fp-ts@^2.1.0, fp-ts@^2.11.0:
-  version "2.11.0"
-  resolved "https://registry.yarnpkg.com/fp-ts/-/fp-ts-2.11.0.tgz#2dc1e3c8a136cfb9ffe7877e7fac253304de49cc"
-  integrity sha512-MRss/AgPUBgScVtHaaNkKa/3+SaN3QOokYr1CnOOgdfterSwuaE2x6h/ADQOTcs3mKDC17d6NzQyZOZDFijQmA==
+  version "2.11.1"
+  resolved "https://registry.yarnpkg.com/fp-ts/-/fp-ts-2.11.1.tgz#b1eeb2540728b6328542664888442f8f805d2443"
+  integrity sha512-CJOfs+Heq/erkE5mqH2mhpsxCKABGmcLyeEwPxtbTlkLkItGUs6bmk2WqjB2SgoVwNwzTE5iKjPQJiq06CPs5g==
 
 fragment-cache@^0.2.1:
   version "0.2.1"
