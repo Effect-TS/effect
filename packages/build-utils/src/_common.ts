@@ -16,7 +16,7 @@ export const exec = Ef.fromNodeCb<string, cp.ExecException, string>(cp.exec)
 
 export const readFile = Ef.fromNodeCb<
   fs.PathLike,
-  string,
+  BufferEncoding,
   NodeJS.ErrnoException,
   string
 >(fs.readFile)

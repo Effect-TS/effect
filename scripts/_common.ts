@@ -12,9 +12,12 @@ import * as TE from "fp-ts/TaskEither"
 import fs from "fs"
 import glob_ from "glob"
 
-export const readFile = TE.taskify<fs.PathLike, string, NodeJS.ErrnoException, string>(
-  fs.readFile
-)
+export const readFile = TE.taskify<
+  fs.PathLike,
+  BufferEncoding,
+  NodeJS.ErrnoException,
+  string
+>(fs.readFile)
 
 export const writeFile = TE.taskify<fs.PathLike, string, NodeJS.ErrnoException, void>(
   fs.writeFile
