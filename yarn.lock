@@ -8702,10 +8702,10 @@ typedarray@^0.0.6:
   resolved "https://registry.yarnpkg.com/typedarray/-/typedarray-0.0.6.tgz#867ac74e3864187b1d3d47d996a78ec5c8830777"
   integrity sha1-hnrHTjhkGHsdPUfZlqeOxciDB3c=
 
-typescript-transform-paths@3.3.0:
-  version "3.3.0"
-  resolved "https://registry.yarnpkg.com/typescript-transform-paths/-/typescript-transform-paths-3.3.0.tgz#fb59a8b101f7f47cefe792398e245d55e8ab21bb"
-  integrity sha512-4JUADV9+o/98Q4EQnXBgImqDMOW0EurnNNtrWPOjxrT0ZwF/bZRHeMC6bsk4e8tfnzu44XBn7qtjZTx8bBd3DA==
+typescript-transform-paths@3.3.1:
+  version "3.3.1"
+  resolved "https://registry.yarnpkg.com/typescript-transform-paths/-/typescript-transform-paths-3.3.1.tgz#74526bc1b6dc575ffe269cc81833db7bd81763e1"
+  integrity sha512-c+8Cqd2rsRtTU68rJI0NX/OtqgBDddNs1fIxm1nCNyhn0WpoyqtpUxc1w9Ke5c5kgE4/OT5xYbKf2cf694RYEg==
   dependencies:
     minimatch "^3.0.4"
 
