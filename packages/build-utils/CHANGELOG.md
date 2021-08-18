@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.23.2](https://github.com/Effect-TS/core/compare/@effect-ts/build-utils@0.23.1...@effect-ts/build-utils@0.23.2) (2021-08-18)
+
+**Note:** Version bump only for package @effect-ts/build-utils
+
+
+
+
+
 ## [0.23.1](https://github.com/Effect-TS/core/compare/@effect-ts/build-utils@0.23.0...@effect-ts/build-utils@0.23.1) (2021-08-18)
 
 **Note:** Version bump only for package @effect-ts/build-utils
