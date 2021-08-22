@@ -179,7 +179,11 @@ export function readWith<
   OutElem | OutElem1 | OutElem2,
   OutDone | OutDone1 | OutDone2
 > {
-  return readWithCause(inp, (c) => E.fold_(Cause.failureOrCause(c), error, halt), done)
+  return readWithCause(
+    inp,
+    (c) => E.fold_(Cause.failureOrCause(c), error, failCause),
+    done
+  )
 }
 
 /**
@@ -203,7 +207,7 @@ export function end<OutDone>(
 /**
  * Halt a channel with the specified cause
  */
-export function haltWith<E>(
+export function failCauseWith<E>(
   result: () => Cause.Cause<E>
 ): P.Channel<unknown, unknown, unknown, unknown, E, never, never> {
   return new Halt(result)
@@ -212,7 +216,7 @@ export function haltWith<E>(
 /**
  * Halt a channel with the specified cause
  */
-export function halt<E>(
+export function failCause<E>(
   result: Cause.Cause<E>
 ): P.Channel<unknown, unknown, unknown, unknown, E, never, never> {
   return new Halt(() => result)
@@ -576,7 +580,7 @@ export function concatMap<
 /**
  * Fold the channel exposing success and full error cause
  */
-export function foldCauseM_<
+export function foldCauseChannel_<
   Env,
   Env1,
   Env2,
@@ -644,9 +648,9 @@ export function foldCauseM_<
 /**
  * Fold the channel exposing success and full error cause
  *
- * @ets_data_first foldCauseM_
+ * @ets_data_first foldCauseChannel_
  */
-export function foldCauseM<
+export function foldCauseChannel<
   Env1,
   Env2,
   InErr1,
@@ -681,7 +685,7 @@ export function foldCauseM<
   OutElem | OutElem1 | OutElem2,
   OutDone2 | OutDone3
 > {
-  return (self) => foldCauseM_(self, onErr, onSucc)
+  return (self) => foldCauseChannel_(self, onErr, onSucc)
 }
 
 /**
@@ -800,7 +804,7 @@ export function chain_<
     OutDone2,
     OutErr | OutErr1,
     OutDone
-  >(self, new P.ContinuationK(f, halt))
+  >(self, new P.ContinuationK(f, failCause))
 }
 
 /**
@@ -846,7 +850,7 @@ export function drain<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
   self: P.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
 ): P.Channel<Env, InErr, InElem, InDone, OutErr, never, OutDone> {
   const drainer: P.Channel<Env, OutErr, OutElem, OutDone, OutErr, never, OutDone> =
-    readWithCause((_) => drainer, halt, end)
+    readWithCause((_) => drainer, failCause, end)
   return self[">>>"](drainer)
 }
 

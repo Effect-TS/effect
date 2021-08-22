@@ -4,14 +4,16 @@ import "../../../Operator"
 
 import * as Cause from "../../../Cause"
 import * as Chunk from "../../../Collections/Immutable/Chunk"
-import type * as Tp from "../../../Collections/Immutable/Tuple"
+import * as Tp from "../../../Collections/Immutable/Tuple"
 import * as T from "../../../Effect"
-import type * as Exit from "../../../Exit"
+import type * as Ex from "../../../Exit"
 import { identity, pipe } from "../../../Function"
 import * as M from "../../../Managed"
 import * as O from "../../../Option"
+import * as HO from "../_internal/Handoff"
 import * as C from "../Channel"
 import * as Sink from "../Sink"
+import * as Take from "./Take"
 
 export const StreamTypeId = Symbol()
 export type StreamTypeId = typeof StreamTypeId
@@ -57,6 +59,10 @@ export class Stream<R, E, A> {
  */
 export const empty = fromChunk(Chunk.empty<never>())
 
+export function isStream(u: unknown): u is Stream<unknown, never, unknown> {
+  return typeof u === "object" && u != null && StreamTypeId in u
+}
+
 /**
  * Returns a stream made of the concatenation in strict order of all the streams
  * produced by passing each element of this stream to `f`
@@ -97,31 +103,101 @@ export function chain<O, R1, E1, O1>(
 }
 
 /**
+ * Creates a stream by effectfully peeling off the "layers" of a value of type `S`
+ */
+export function unfoldChunkEff<R, E, A, S>(
+  s: S,
+  f: (s: S) => T.Effect<R, E, O.Option<Tp.Tuple<[Chunk.Chunk<A>, S]>>>
+): Stream<R, E, A> {
+  const loop = (
+    s: S
+  ): C.Channel<R, unknown, unknown, unknown, E, Chunk.Chunk<A>, any> =>
+    C.unwrap(
+      T.map_(
+        f(s),
+        O.fold(
+          () => C.end(undefined),
+          ({ tuple: [as, s] }) => C.zipRight_(C.write(as), loop(s))
+        )
+      )
+    )
+
+  return new Stream(loop(s))
+}
+
+/**
  * Combines the chunks from this stream and the specified stream by repeatedly applying the
  * function `f` to extract a chunk using both sides and conceptually "offer"
  * it to the destination stream. `f` can maintain some internal state to control
  * the combining process, with the initial state being specified by `s`.
  */
-export function combineChunks_<R, E, A, R1, E1, A1, S, R2, A2>(
+export function combineChunks_<R, R1, E, E1, A, A2, A3, S>(
   self: Stream<R, E, A>,
-  that: Stream<R1, E1, A1>,
+  that: Stream<R1, E1, A2>,
   s: S,
   f: (
     s: S,
-    l: T.Effect<R, O.Option<E>, Chunk.Chunk<A>>,
-    r: T.Effect<R1, O.Option<E1>, Chunk.Chunk<A1>>
-  ) => T.Effect<R2, never, Exit.Exit<O.Option<E | E1>, Tp.Tuple<[Chunk.Chunk<A2>, S]>>>
-): Stream<R1 & R & R2, E | E1, A2> {
-  return unwrapManaged(
-    pipe(
-      M.do,
-      M.bind("pullLeft", () => toPull(self)),
-      M.bind("pullRight", () => toPull(that)),
-      M.map(({ pullLeft, pullRight }) =>
-        unfoldChunksM(s, (s) =>
-          T.chain_(f(s, pullLeft, pullRight), (ex) => T.optional(T.done(ex)))
-        )
+    e1: T.Effect<R, O.Option<E>, Chunk.Chunk<A>>,
+    e2: T.Effect<R1, O.Option<E1>, Chunk.Chunk<A2>>
+  ) => T.Effect<
+    R & R1,
+    never,
+    Ex.Exit<O.Option<E | E1>, Tp.Tuple<[Chunk.Chunk<A3>, S]>>
+  >
+): Stream<R & R1, E | E1, A3> {
+  const producer = <Err, Elem>(
+    handoff: HO.Handoff<Take.Take<Err, Elem>>,
+    latch: HO.Handoff<void>
+  ): C.Channel<R1, Err, Chunk.Chunk<Elem>, unknown, never, never, any> =>
+    C.zipRight_(
+      C.fromEffect(HO.take(latch)),
+      C.readWithCause(
+        (chunk: Chunk.Chunk<Elem>) =>
+          C.zipRight_(
+            C.fromEffect(HO.offer(handoff, Take.chunk(chunk))),
+            producer(handoff, latch)
+          ),
+        (cause) => C.fromEffect(HO.offer(handoff, Take.failCause(cause))),
+        (_) =>
+          C.zipRight_(
+            C.fromEffect(HO.offer(handoff, Take.end)),
+            producer(handoff, latch)
+          )
       )
+    )
+
+  return new Stream(
+    C.managed_(
+      pipe(
+        M.do,
+        M.bind("left", () => T.toManaged(HO.make<Take.Take<E, A>>())),
+        M.bind("right", () => T.toManaged(HO.make<Take.Take<E1, A2>>())),
+        M.bind("latchL", () => T.toManaged(HO.make<void>())),
+        M.bind("latchR", () => T.toManaged(HO.make<void>())),
+        M.tap(({ latchL, left }) =>
+          pipe(self.channel[">>>"](producer(left, latchL)), C.runManaged, M.fork)
+        ),
+        M.tap(({ latchR, right }) =>
+          pipe(that.channel[">>>"](producer(right, latchR)), C.runManaged, M.fork)
+        ),
+        M.map(({ latchL, latchR, left, right }) =>
+          Tp.tuple(left, right, latchL, latchR)
+        )
+      ),
+      ({ tuple: [left, right, latchL, latchR] }) => {
+        const pullLeft = T.zipRight_(
+          HO.offer(latchL, undefined),
+          T.chain_(HO.take(left), Take.done)
+        )
+        const pullRight = T.zipRight_(
+          HO.offer(latchR, undefined),
+          T.chain_(HO.take(right), Take.done)
+        )
+
+        return unfoldChunkEff(s, (s) =>
+          T.chain_(f(s, pullLeft, pullRight), (_) => T.unoption(T.done(_)))
+        ).channel
+      }
     )
   )
 }
@@ -134,16 +210,20 @@ export function combineChunks_<R, E, A, R1, E1, A1, S, R2, A2>(
  *
  * @ets_data_first combineChunks_
  */
-export function combineChunks<R, E, A, R1, E1, A1, S, R2, A2>(
-  that: Stream<R1, E1, A1>,
+export function combineChunks<R, R1, E, E1, A, A2, A3, S>(
+  that: Stream<R1, E1, A2>,
   s: S,
   f: (
     s: S,
-    l: T.Effect<R, O.Option<E>, Chunk.Chunk<A>>,
-    r: T.Effect<R1, O.Option<E1>, Chunk.Chunk<A1>>
-  ) => T.Effect<R2, never, Exit.Exit<O.Option<E | E1>, Tp.Tuple<[Chunk.Chunk<A2>, S]>>>
-): (self: Stream<R, E, A>) => Stream<R1 & R & R2, E | E1, A2> {
-  return (self) => combineChunks_(self, that, s, f)
+    e1: T.Effect<R, O.Option<E>, Chunk.Chunk<A>>,
+    e2: T.Effect<R1, O.Option<E1>, Chunk.Chunk<A2>>
+  ) => T.Effect<
+    R & R1,
+    never,
+    Ex.Exit<O.Option<E | E1>, Tp.Tuple<[Chunk.Chunk<A3>, S]>>
+  >
+) {
+  return (self: Stream<R, E, A>) => combineChunks_(self, that, s, f)
 }
 
 /**
@@ -235,7 +315,7 @@ export function managed<R, E, A>(self: M.Managed<R, E, A>): Stream<R, E, A> {
 /**
  * Maps over elements of the stream with the specified effectful function.
  */
-export function mapM_<R, E, A, R1, E1, B>(
+export function mapEff_<R, E, A, R1, E1, B>(
   self: Stream<R, E, A>,
   f: (a: A) => T.Effect<R1, E1, B>
 ): Stream<R & R1, E | E1, B> {
@@ -247,12 +327,12 @@ export function mapM_<R, E, A, R1, E1, B>(
 /**
  * Maps over elements of the stream with the specified effectful function.
  *
- * @ets_data_first mapM_
+ * @ets_data_first mapEff_
  */
-export function mapM<A, R1, E1, B>(
+export function mapEff<A, R1, E1, B>(
   f: (a: A) => T.Effect<R1, E1, B>
 ): <R, E>(self: Stream<R, E, A>) => Stream<R & R1, E | E1, B> {
-  return (self) => mapM_(self, f)
+  return (self) => mapEff_(self, f)
 }
 
 /**
@@ -284,7 +364,7 @@ export function loopOnChunks_<R, E, A, R1, E1, A1>(
     boolean
   > = C.readWithCause(
     (chunk) => C.chain_(f(chunk), (cont) => (cont ? loop : C.end(false))),
-    C.halt,
+    C.failCause,
     (_) => C.end(false)
   )
   return new Stream(self.channel[">>>"](loop))
@@ -414,7 +494,7 @@ export function succeedWith<O>(o: () => O): Stream<unknown, never, O> {
 function takeLoop<E, A>(
   n: number
 ): C.Channel<unknown, E, Chunk.Chunk<A>, unknown, E, Chunk.Chunk<A>, unknown> {
-  return C.readWithCause(
+  return C.readWith(
     (i) => {
       const taken = Chunk.take_(i, n)
       const left = Math.max(n - Chunk.size(taken), 0)
@@ -424,7 +504,7 @@ function takeLoop<E, A>(
         return C.write(taken)
       }
     },
-    C.halt,
+    C.fail,
     C.end
   )
 }
@@ -480,7 +560,7 @@ function unfoldChunksLoop<S, R, E, A>(
 /**
  * Creates a stream by effectfully peeling off the "layers" of a value of type `S`
  */
-export function unfoldChunksM<R, E, A, S>(
+export function unfoldChunksEff<R, E, A, S>(
   s: S,
   f: (s: S) => T.Effect<R, E, O.Option<Tp.Tuple<[Chunk.Chunk<A>, S]>>>
 ): Stream<R, E, A> {

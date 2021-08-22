@@ -10,7 +10,7 @@ function collectLoop<Err, A>(
 ): C.Channel<unknown, Err, A, void, Err, never, Chunk.Chunk<A>> {
   return C.readWithCause(
     (i: A) => collectLoop(Chunk.append_(state, i)),
-    (e: Cause.Cause<Err>) => C.halt(e),
+    (e: Cause.Cause<Err>) => C.failCause(e),
     () => C.end(state)
   )
 }

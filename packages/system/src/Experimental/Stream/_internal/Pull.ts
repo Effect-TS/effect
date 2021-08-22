@@ -26,7 +26,7 @@ export function fail<E>(e: E): T.IO<O.Option<E>, never> {
   return T.fail(O.some(e))
 }
 
-export function halt<E>(c: C.Cause<E>): T.IO<O.Option<E>, never> {
+export function failCause<E>(c: C.Cause<E>): T.IO<O.Option<E>, never> {
   return T.mapError_(T.halt(c), O.some)
 }
 

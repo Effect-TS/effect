@@ -228,6 +228,13 @@ export function fail<E>(e: E) {
 }
 
 /**
+ * Constructs a failed exit with the specified cause
+ */
+export function failCause<E>(cause: C.Cause<E>): Exit<E, never> {
+  return new Failure(cause)
+}
+
+/**
  * Flatten nested Exits
  */
 export function flatten<E, E1, A>(exit: Exit<E, Exit<E1, A>>) {
