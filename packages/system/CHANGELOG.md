@@ -3,6 +3,22 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.40.2](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.40.1...@effect-ts/system@0.40.2) (2021-08-23)
+
+
+### Bug Fixes
+
+* **system:** Sync.tryCatchOption_ not exported. ([8d95dc8](https://github.com/Effect-TS/core/commit/8d95dc8d97113c4887ce6023bc6c76735d531256))
+
+
+### Features
+
+* **experimental-stream:** Added Stream and Sink combinators ([#788](https://github.com/Effect-TS/core/issues/788)) ([1e992a8](https://github.com/Effect-TS/core/commit/1e992a8a66acf28c0ea190f9800d309b5b290d9e))
+
+
+
+
+
 ## [0.40.1](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.40.0...@effect-ts/system@0.40.1) (2021-08-18)
 
 **Note:** Version bump only for package @effect-ts/system
