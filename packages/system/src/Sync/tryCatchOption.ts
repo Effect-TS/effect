@@ -5,7 +5,7 @@ import { fromEither } from "./fromEither"
 /**
  * Get the A from an option
  */
-export default function tryCatchOption_<A, E>(ma: O.Option<A>, onNone: () => E) {
+export function tryCatchOption_<A, E>(ma: O.Option<A>, onNone: () => E) {
   return fromEither(() => E.fromOption_(ma, onNone))
 }
 
