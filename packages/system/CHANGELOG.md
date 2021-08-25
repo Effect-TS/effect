@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.40.5](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.40.3...@effect-ts/system@0.40.5) (2021-08-25)
+
+
+### Bug Fixes
+
+* **stream:** fix chainParSwitch ([#829](https://github.com/Effect-TS/core/issues/829)) ([dfc4a0a](https://github.com/Effect-TS/core/commit/dfc4a0ad1d88a5a7354d111aa1e8fb545fc77e04))
+
+
+
+
+
 ## [0.40.4](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.40.3...@effect-ts/system@0.40.4) (2021-08-25)
 
 
