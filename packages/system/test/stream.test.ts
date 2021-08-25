@@ -250,4 +250,19 @@ describe("Stream", () => {
       6
     )
   })
+
+  it("chainParSwitch", async () => {
+    expect(
+      await pipe(
+        S.fromIterable([1, 2, 3]),
+        S.chainParSwitch(
+          10,
+          (n) => S.fromChunk<number>(A.from([n, n ** 2, n ** 3])),
+          undefined
+        ),
+        S.runCollect,
+        T.runPromise
+      )
+    ).toEqual([1, 1, 1, 2, 4, 8, 3, 9, 27])
+  })
 })
