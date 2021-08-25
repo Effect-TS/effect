@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.40.3](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.40.2...@effect-ts/system@0.40.3) (2021-08-25)
+
+
+### Bug Fixes
+
+* **chunk:** fix iterator findM ([#828](https://github.com/Effect-TS/core/issues/828)) ([06cb61b](https://github.com/Effect-TS/core/commit/06cb61b0f69d984a7356df7bfdf40344e00a7f04))
+
+
+
+
+
 ## [0.40.2](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.40.1...@effect-ts/system@0.40.2) (2021-08-23)
 
 
