@@ -8707,10 +8707,10 @@ typescript-transform-paths@3.3.1:
   dependencies:
     minimatch "^3.0.4"
 
-typescript@4.4.0-insiders.20210805:
-  version "4.4.0-insiders.20210805"
-  resolved "https://registry.yarnpkg.com/typescript/-/typescript-4.4.0-insiders.20210805.tgz#225a003c8bcad188069a29520a3bc9840ce0758e"
-  integrity sha512-pNeBoduMJYUs6Oatyew8OFNWunGXdatQHqUQJX3vy+kYwm39P+5QjiSVTXJhzc+PHnUCJGoJ9BN2bkdY4N9/4A==
+typescript@4.4.2:
+  version "4.4.2"
+  resolved "https://registry.yarnpkg.com/typescript/-/typescript-4.4.2.tgz#6d618640d430e3569a1dfb44f7d7e600ced3ee86"
+  integrity sha512-gzP+t5W4hdy4c+68bfcv0t400HVJMMd2+H9B7gae1nQlBzCqvrXX+6GL/b3GAgyTH966pzrZ70/fRjwAtZksSQ==
 
 typescript@^3.9.5, typescript@^3.9.7:
   version "3.9.10"
