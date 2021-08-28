@@ -265,4 +265,30 @@ describe("Stream", () => {
       )
     ).toEqual([1, 1, 1, 2, 4, 8, 3, 9, 27])
   })
+
+  it("zipWithLatest & interruptWhen", async () => {
+    const stream = S.zipWithLatest(
+      S.effectAsync<unknown, unknown, string>((cb) => {
+        setTimeout(() => cb(T.succeed(A.single("C1"))), 10)
+        setTimeout(() => cb(T.succeed(A.single("C2"))), 20)
+        setTimeout(() => cb(T.fail(O.none)), 30)
+      }),
+      S.effectAsync<unknown, unknown, string>((cb) => {
+        setTimeout(() => cb(T.succeed(A.single("C1"))), 10)
+        setTimeout(() => cb(T.succeed(A.single("C2"))), 20)
+        setTimeout(() => cb(T.fail(O.none)), 30)
+      })
+    )((c, e) => `${c}-${e}`)
+
+    const res0 = await pipe(
+      stream,
+      S.interruptWhen(T.sleep(1000)),
+      S.runCollect,
+      T.runPromise
+    )
+
+    const res1 = await pipe(stream, S.runCollect, T.runPromise)
+
+    expect(res0).toEqual(res1)
+  })
 })
