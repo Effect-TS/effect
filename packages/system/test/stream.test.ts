@@ -267,27 +267,22 @@ describe("Stream", () => {
   })
 
   it("zipWithLatest & interruptWhen", async () => {
-    const stream = S.zipWithLatest(
-      S.effectAsync<unknown, unknown, string>((cb) => {
-        setTimeout(() => cb(T.succeed(A.single("C1"))), 10)
-        setTimeout(() => cb(T.succeed(A.single("C2"))), 20)
-        setTimeout(() => cb(T.fail(O.none)), 30)
-      }),
-      S.effectAsync<unknown, unknown, string>((cb) => {
-        setTimeout(() => cb(T.succeed(A.single("C1"))), 10)
-        setTimeout(() => cb(T.succeed(A.single("C2"))), 20)
-        setTimeout(() => cb(T.fail(O.none)), 30)
-      })
-    )((c, e) => `${c}-${e}`)
+    const source = S.effectAsync<unknown, unknown, string>((cb) => {
+      setTimeout(() => cb(T.succeed(A.single("C1"))), 10)
+      setTimeout(() => cb(T.succeed(A.single("C2"))), 20)
+      setTimeout(() => cb(T.fail(O.none)), 30)
+    })
+
+    const zipped = S.zipWithLatest_(source, source, (c, e) => `${c}-${e}`)
 
     const res0 = await pipe(
-      stream,
-      S.interruptWhen(T.sleep(1000)),
+      zipped,
+      S.interruptWhen(T.sleep(1_000)),
       S.runCollect,
       T.runPromise
     )
 
-    const res1 = await pipe(stream, S.runCollect, T.runPromise)
+    const res1 = await pipe(zipped, S.runCollect, T.runPromise)
 
     expect(res0).toEqual(res1)
   })
