@@ -3827,7 +3827,7 @@ export function peel_<R, R1, E extends E1, E1, A extends A1, A1, Z>(
     M.bind("p", () => T.toManaged(P.make<E | E1, Z>())),
     M.bind("handoff", () => T.toManaged(HO.make<Signal<A | A1, E | E1>>())),
     M.map(({ handoff, p }) => {
-      const consumer = SK.foldEff_(
+      const consumer = SK.foldSink_(
         SK.exposeLeftover(sink),
         (e) => SK.zipRight_(SK.fromEffect(P.fail_(p, e)), SK.fail(e)),
         ({ tuple: [z1, leftovers] }) => {
@@ -4312,13 +4312,35 @@ export function runManaged_<R, R1, E, A, E2, B, L>(
   return pipe(CH.pipeTo_(self.channel, sink.channel), CH.drain, CH.runManaged)
 }
 
-// TODO: runCount -> Missing Sink.count
+/**
+ * Runs the stream and emits the number of elements processed
+ */
+export function runCount<R, E, A>(self: Stream<R, E, A>): T.Effect<R, E, number> {
+  return C.run_(self, SK.count())
+}
 
-// TODO: runHead -> Missing Sink.head
+/**
+ * Runs the stream to collect the first value emitted by it without running
+ * the rest of the stream.
+ */
+export function runHead<R, E, A>(self: Stream<R, E, A>): T.Effect<R, E, O.Option<A>> {
+  return C.run_(self, SK.head())
+}
 
-// TODO: runLast -> Missing Sink.last
+/**
+ * Runs the stream to completion and yields the last value emitted by it,
+ * discarding the rest of the elements.
+ */
+export function runLast<R, E, A>(self: Stream<R, E, A>): T.Effect<R, E, O.Option<A>> {
+  return C.run_(self, SK.last())
+}
 
-// TODO: runSum -> Missing Sink.sum
+/**
+ * Runs the stream to a sink which sums elements, provided they are Numeric.
+ */
+export function runSum<R, E>(self: Stream<R, E, number>): T.Effect<R, E, number> {
+  return C.run_(self, SK.sum())
+}
 
 /**
  * @ets_data_first runManaged_
