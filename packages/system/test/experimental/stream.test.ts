@@ -3,6 +3,7 @@ import * as Tp from "../../src/Collections/Immutable/Tuple"
 import * as T from "../../src/Effect"
 import * as S from "../../src/Experimental/Stream"
 import { pipe } from "../../src/Function"
+import * as O from "../../src/Option"
 
 describe("Stream", () => {
   it("runCollect", async () => {
@@ -77,5 +78,24 @@ describe("Stream", () => {
         T.runPromise
       )
     ).equals(Chunk.single(5))
+  })
+
+  it("async", async () => {
+    const stream = S.async((cb) => {
+      let i = 0
+
+      ;(function loop() {
+        if (i++ < 5) {
+          cb(T.succeed(Chunk.single(i)))
+          setTimeout(loop, 20)
+        } else {
+          cb(T.fail(O.none))
+        }
+      })()
+    })
+
+    expect(await pipe(stream, S.runCollect, T.runPromise)).equals(
+      Chunk.many(1, 2, 3, 4, 5)
+    )
   })
 })
