@@ -337,6 +337,8 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
 
           switch (currentChannel._typeId) {
             case P.BridgeTypeId: {
+              this.currentChannel = currentChannel.channel
+
               if (this.input) {
                 const inputExecutor = this.input
                 this.input = undefined
