@@ -1,6 +1,7 @@
 import * as Chunk from "../../src/Collections/Immutable/Chunk"
 import * as Tp from "../../src/Collections/Immutable/Tuple"
 import * as T from "../../src/Effect"
+import * as E from "../../src/Either"
 import * as S from "../../src/Experimental/Stream"
 import { pipe } from "../../src/Function"
 
@@ -77,5 +78,50 @@ describe("Stream", () => {
         T.runPromise
       )
     ).equals(Chunk.single(5))
+  })
+
+  it("async", async () => {
+    const stream = S.async((cb) => {
+      let i = 0
+
+      ;(function loop() {
+        if (i++ < 5) {
+          cb.single(i)
+          setTimeout(loop, 20)
+        } else {
+          cb.end()
+        }
+      })()
+    })
+
+    expect(await pipe(stream, S.runCollect, T.runPromise)).equals(
+      Chunk.many(1, 2, 3, 4, 5)
+    )
+  })
+
+  it("asyncInterrupt", async () => {
+    let closed = false
+    const stream = S.asyncInterrupt<unknown, never, number>((cb) => {
+      let i = 0
+
+      ;(function loop() {
+        if (i++ < 5) {
+          cb.single(i + 1)
+          setTimeout(loop, 20)
+        } else {
+          cb.end()
+        }
+      })()
+
+      return E.left(
+        T.succeedWith(() => {
+          closed = true
+        })
+      )
+    })
+
+    await pipe(stream, S.interruptAfter(55), S.runDrain, T.runPromise)
+
+    expect(closed).toBeTruthy()
   })
 })

@@ -3827,7 +3827,7 @@ export function peel_<R, R1, E extends E1, E1, A extends A1, A1, Z>(
     M.bind("p", () => T.toManaged(P.make<E | E1, Z>())),
     M.bind("handoff", () => T.toManaged(HO.make<Signal<A | A1, E | E1>>())),
     M.map(({ handoff, p }) => {
-      const consumer = SK.foldEff_(
+      const consumer = SK.foldSink_(
         SK.exposeLeftover(sink),
         (e) => SK.zipRight_(SK.fromEffect(P.fail_(p, e)), SK.fail(e)),
         ({ tuple: [z1, leftovers] }) => {
@@ -4312,13 +4312,35 @@ export function runManaged_<R, R1, E, A, E2, B, L>(
   return pipe(CH.pipeTo_(self.channel, sink.channel), CH.drain, CH.runManaged)
 }
 
-// TODO: runCount -> Missing Sink.count
+/**
+ * Runs the stream and emits the number of elements processed
+ */
+export function runCount<R, E, A>(self: Stream<R, E, A>): T.Effect<R, E, number> {
+  return C.run_(self, SK.count())
+}
 
-// TODO: runHead -> Missing Sink.head
+/**
+ * Runs the stream to collect the first value emitted by it without running
+ * the rest of the stream.
+ */
+export function runHead<R, E, A>(self: Stream<R, E, A>): T.Effect<R, E, O.Option<A>> {
+  return C.run_(self, SK.head())
+}
 
-// TODO: runLast -> Missing Sink.last
+/**
+ * Runs the stream to completion and yields the last value emitted by it,
+ * discarding the rest of the elements.
+ */
+export function runLast<R, E, A>(self: Stream<R, E, A>): T.Effect<R, E, O.Option<A>> {
+  return C.run_(self, SK.last())
+}
 
-// TODO: runSum -> Missing Sink.sum
+/**
+ * Runs the stream to a sink which sums elements, provided they are Numeric.
+ */
+export function runSum<R, E>(self: Stream<R, E, number>): T.Effect<R, E, number> {
+  return C.run_(self, SK.sum())
+}
 
 /**
  * @ets_data_first runManaged_
@@ -6338,3 +6360,255 @@ export function groupedWithin(chunkSize: number, within: number) {
 // TODO: groupBy -> Missing ensuringFirst
 
 // TODO: groupByKey -> Missing groupBy
+
+export type Canceler<R> = T.RIO<R, unknown>
+
+interface AsyncEmitOps<R, E, A, B> {
+  chunk(as: A.Chunk<A>): B
+  die<Err>(err: Err): B
+  dieMessage(message: string): B
+  done(exit: Ex.Exit<E, A>): B
+  end(): B
+  fail(e: E): B
+  fromEffect(io: T.Effect<R, E, A>): B
+  fromEffectChunk(io: T.Effect<R, E, A.Chunk<A>>): B
+  halt(cause: CS.Cause<E>): B
+  single(a: A): B
+}
+
+export interface AsyncEmit<R, E, A, B> extends AsyncEmitOps<R, E, A, B> {
+  (f: T.Effect<R, O.Option<E>, A.Chunk<A>>): B
+}
+
+function toAsyncEmit<R, E, A, B>(
+  fn: (f: T.Effect<R, O.Option<E>, A.Chunk<A>>) => B
+): AsyncEmit<R, E, A, B> {
+  const ops: AsyncEmitOps<R, E, A, B> = {
+    chunk(this: AsyncEmit<R, E, A, B>, as) {
+      return this(T.succeed(as))
+    },
+    die<Err>(this: AsyncEmit<R, E, A, B>, err: Err): B {
+      return this(T.die(err))
+    },
+    dieMessage(this: AsyncEmit<R, E, A, B>, message: string): B {
+      return this(T.dieMessage(message))
+    },
+    done(this: AsyncEmit<R, E, A, B>, exit: Ex.Exit<E, A>): B {
+      return this(
+        T.done(
+          Ex.mapBoth_(
+            exit,
+            (e) => O.some(e),
+            (a) => A.single(a)
+          )
+        )
+      )
+    },
+    end(this: AsyncEmit<R, E, A, B>): B {
+      return this(T.fail(O.none))
+    },
+    fail(this: AsyncEmit<R, E, A, B>, e: E): B {
+      return this(T.fail(O.some(e)))
+    },
+    fromEffect(this: AsyncEmit<R, E, A, B>, io: T.Effect<R, E, A>): B {
+      return this(
+        T.mapBoth_(
+          io,
+          (e) => O.some(e),
+          (a) => A.single(a)
+        )
+      )
+    },
+    fromEffectChunk(this: AsyncEmit<R, E, A, B>, io: T.Effect<R, E, A.Chunk<A>>): B {
+      return this(T.mapError_(io, (e) => O.some(e)))
+    },
+    halt(this: AsyncEmit<R, E, A, B>, cause: CS.Cause<E>): B {
+      return this(T.halt(CS.map_(cause, (e) => O.some(e))))
+    },
+    single(this: AsyncEmit<R, E, A, B>, a: A): B {
+      return this(T.succeed(A.single(a)))
+    }
+  }
+
+  return Object.assign(fn, ops)
+}
+
+/**
+ * Creates a stream from an asynchronous callback that can be called multiple times.
+ * The optionality of the error type `E` can be used to signal the end of the stream,
+ * by setting it to `None`.
+ */
+export function async<R, E, A>(
+  register: (emit: AsyncEmit<R, E, A, void>) => void,
+  outputBuffer = 16
+): Stream<R, E, A> {
+  return asyncMaybe<R, E, A>((callback) => {
+    register(callback)
+    return O.none
+  }, outputBuffer)
+}
+
+/**
+ * Creates a stream from an asynchronous callback that can be called multiple times.
+ * The registration of the callback can possibly return the stream synchronously.
+ * The optionality of the error type `E` can be used to signal the end of the stream,
+ * by setting it to `None`.
+ */
+export function asyncMaybe<R, E, A>(
+  register: (emit: AsyncEmit<R, E, A, void>) => O.Option<Stream<R, E, A>>,
+  outputBuffer = 16
+): Stream<R, E, A> {
+  return asyncInterrupt<R, E, A>(
+    (k) => E.fromOption_(register(k), () => T.unit),
+    outputBuffer
+  )
+}
+
+/**
+ * Creates a stream from an asynchronous callback that can be called multiple times.
+ * The registration of the callback returns either a canceler or synchronously returns a stream.
+ * The optionality of the error type `E` can be used to signal the end of the stream, by
+ * setting it to `None`.
+ */
+export function asyncInterrupt<R, E, A>(
+  register: (emit: AsyncEmit<R, E, A, void>) => E.Either<Canceler<R>, Stream<R, E, A>>,
+  outputBuffer = 16
+): Stream<R, E, A> {
+  return C.unwrapManaged(
+    pipe(
+      M.do,
+      M.bind("output", () =>
+        T.toManagedRelease_(Q.makeBounded<Take.Take<E, A>>(outputBuffer), Q.shutdown)
+      ),
+      M.bind("runtime", () => M.runtime<R>()),
+      M.bind("eitherStream", ({ output, runtime }) =>
+        M.succeed(
+          register(
+            toAsyncEmit((k) => {
+              try {
+                runtime.run(T.chain_(Take.fromPull(k), (_) => Q.offer_(output, _)))
+              } catch (e: unknown) {
+                if (CS.isFiberFailure(e)) {
+                  if (!CS.interrupted(e.cause)) {
+                    throw e
+                  }
+                }
+              }
+            })
+          )
+        )
+      ),
+      M.map(({ eitherStream, output }) =>
+        E.fold_(
+          eitherStream,
+          (canceler) => {
+            const loop: CH.Channel<
+              unknown,
+              unknown,
+              unknown,
+              unknown,
+              E,
+              A.Chunk<A>,
+              void
+            > = CH.unwrap(
+              pipe(
+                Q.take(output),
+                T.chain((_) => Take.done(_)),
+                T.fold(
+                  (maybeError) =>
+                    CH.zipRight_(
+                      CH.fromEffect(Q.shutdown(output)),
+                      O.fold_(
+                        maybeError,
+                        () => CH.end(undefined),
+                        (_) => CH.fail(_)
+                      )
+                    ),
+                  (a) => CH.zipRight_(CH.write(a), loop)
+                )
+              )
+            )
+
+            return ensuring_(new Stream(loop), canceler)
+          },
+          (value) => C.unwrap(T.as_(Q.shutdown(output), value))
+        )
+      )
+    )
+  )
+}
+
+/**
+ * Creates a stream from an asynchronous callback that can be called multiple times
+ * The registration of the callback itself returns an effect. The optionality of the
+ * error type `E` can be used to signal the end of the stream, by setting it to `None`.
+ */
+export function asyncEff<R, E, A, Z>(
+  register: (emit: AsyncEmit<R, E, A, void>) => T.Effect<R, E, Z>,
+  outputBuffer = 16
+): Stream<R, E, A> {
+  return new Stream(
+    CH.unwrapManaged(
+      pipe(
+        M.do,
+        M.bind("output", () =>
+          T.toManagedRelease_(Q.makeBounded<Take.Take<E, A>>(outputBuffer), Q.shutdown)
+        ),
+        M.bind("runtime", () => M.runtime<R>()),
+        M.tap(({ output, runtime }) =>
+          T.toManaged(
+            register(
+              toAsyncEmit((k) => {
+                try {
+                  runtime.run(T.chain_(Take.fromPull(k), (_) => Q.offer_(output, _)))
+                } catch (e: unknown) {
+                  if (CS.isFiberFailure(e)) {
+                    if (!CS.interrupted(e.cause)) {
+                      throw e
+                    }
+                  }
+                }
+              })
+            )
+          )
+        ),
+        M.map(({ output }) => {
+          const loop: CH.Channel<
+            unknown,
+            unknown,
+            unknown,
+            unknown,
+            E,
+            A.Chunk<A>,
+            void
+          > = CH.unwrap(
+            pipe(
+              Q.take(output),
+              T.chain((_) => Take.done(_)),
+              T.foldCauseM(
+                (maybeError) => {
+                  return T.as_(
+                    Q.shutdown(output),
+                    E.fold_(
+                      CS.failureOrCause(maybeError),
+                      (l) =>
+                        O.fold_(
+                          l,
+                          () => CH.end(undefined),
+                          (failure) => CH.fail(failure)
+                        ),
+                      (cause) => CH.failCause(cause)
+                    )
+                  )
+                },
+                (a) => T.succeed(CH.zipRight_(CH.write(a), loop))
+              )
+            )
+          )
+
+          return loop
+        })
+      )
+    )
+  )
+}
