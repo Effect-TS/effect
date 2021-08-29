@@ -6362,8 +6362,75 @@ export function groupedWithin(chunkSize: number, within: number) {
 // TODO: groupByKey -> Missing groupBy
 
 export type Canceler<R> = T.RIO<R, unknown>
-export interface AsyncEmit<R, E, A, B> {
+
+interface AsyncEmitOps<R, E, A, B> {
+  chunk(as: A.Chunk<A>): B
+  die<Err>(err: Err): B
+  dieMessage(message: string): B
+  done(exit: Ex.Exit<E, A>): B
+  end(): B
+  fail(e: E): B
+  fromEffect(io: T.Effect<R, E, A>): B
+  fromEffectChunk(io: T.Effect<R, E, A.Chunk<A>>): B
+  halt(cause: CS.Cause<E>): B
+  single(a: A): B
+}
+
+export interface AsyncEmit<R, E, A, B> extends AsyncEmitOps<R, E, A, B> {
   (f: T.Effect<R, O.Option<E>, A.Chunk<A>>): B
+}
+
+function toAsyncEmit<R, E, A, B>(
+  fn: (f: T.Effect<R, O.Option<E>, A.Chunk<A>>) => B
+): AsyncEmit<R, E, A, B> {
+  const ops: AsyncEmitOps<R, E, A, B> = {
+    chunk(this: AsyncEmit<R, E, A, B>, as) {
+      return this(T.succeed(as))
+    },
+    die<Err>(this: AsyncEmit<R, E, A, B>, err: Err): B {
+      return this(T.die(err))
+    },
+    dieMessage(this: AsyncEmit<R, E, A, B>, message: string): B {
+      return this(T.dieMessage(message))
+    },
+    done(this: AsyncEmit<R, E, A, B>, exit: Ex.Exit<E, A>): B {
+      return this(
+        T.done(
+          Ex.mapBoth_(
+            exit,
+            (e) => O.some(e),
+            (a) => A.single(a)
+          )
+        )
+      )
+    },
+    end(this: AsyncEmit<R, E, A, B>): B {
+      return this(T.fail(O.none))
+    },
+    fail(this: AsyncEmit<R, E, A, B>, e: E): B {
+      return this(T.fail(O.some(e)))
+    },
+    fromEffect(this: AsyncEmit<R, E, A, B>, io: T.Effect<R, E, A>): B {
+      return this(
+        T.mapBoth_(
+          io,
+          (e) => O.some(e),
+          (a) => A.single(a)
+        )
+      )
+    },
+    fromEffectChunk(this: AsyncEmit<R, E, A, B>, io: T.Effect<R, E, A.Chunk<A>>): B {
+      return this(T.mapError_(io, (e) => O.some(e)))
+    },
+    halt(this: AsyncEmit<R, E, A, B>, cause: CS.Cause<E>): B {
+      return this(T.halt(CS.map_(cause, (e) => O.some(e))))
+    },
+    single(this: AsyncEmit<R, E, A, B>, a: A): B {
+      return this(T.succeed(A.single(a)))
+    }
+  }
+
+  return Object.assign(fn, ops)
 }
 
 /**
@@ -6416,17 +6483,19 @@ export function asyncInterrupt<R, E, A>(
       M.bind("runtime", () => M.runtime<R>()),
       M.bind("eitherStream", ({ output, runtime }) =>
         M.succeed(
-          register((k) => {
-            try {
-              runtime.run(T.chain_(Take.fromPull(k), (_) => Q.offer_(output, _)))
-            } catch (e: unknown) {
-              if (CS.isFiberFailure(e)) {
-                if (!CS.interrupted(e.cause)) {
-                  throw e
+          register(
+            toAsyncEmit((k) => {
+              try {
+                runtime.run(T.chain_(Take.fromPull(k), (_) => Q.offer_(output, _)))
+              } catch (e: unknown) {
+                if (CS.isFiberFailure(e)) {
+                  if (!CS.interrupted(e.cause)) {
+                    throw e
+                  }
                 }
               }
-            }
-          })
+            })
+          )
         )
       ),
       M.map(({ eitherStream, output }) =>
@@ -6488,17 +6557,19 @@ export function asyncEff<R, E, A, Z>(
         M.bind("runtime", () => M.runtime<R>()),
         M.tap(({ output, runtime }) =>
           T.toManaged(
-            register((k) => {
-              try {
-                runtime.run(T.chain_(Take.fromPull(k), (_) => Q.offer_(output, _)))
-              } catch (e: unknown) {
-                if (CS.isFiberFailure(e)) {
-                  if (!CS.interrupted(e.cause)) {
-                    throw e
+            register(
+              toAsyncEmit((k) => {
+                try {
+                  runtime.run(T.chain_(Take.fromPull(k), (_) => Q.offer_(output, _)))
+                } catch (e: unknown) {
+                  if (CS.isFiberFailure(e)) {
+                    if (!CS.interrupted(e.cause)) {
+                      throw e
+                    }
                   }
                 }
-              }
-            })
+              })
+            )
           )
         ),
         M.map(({ output }) => {

@@ -612,3 +612,23 @@ export function assertsFailure<E, A>(exit: Exit<E, A>): asserts exit is Failure<
     throw new Error("expected a failed exit and got success")
   }
 }
+
+/**
+ * Maps over both the error and value type.
+ */
+export function mapBoth_<E, E1, A, A1>(
+  self: Exit<E, A>,
+  f: (e: E) => E1,
+  g: (a: A) => A1
+): Exit<E1, A1> {
+  return map_(mapError_(self, f), g)
+}
+
+/**
+ * Maps over both the error and value type.
+ *
+ * @ets_data_first mapBoth_
+ */
+export function mapBoth<E, E1, A, A1>(f: (e: E) => E1, g: (a: A) => A1) {
+  return (self: Exit<E, A>) => mapBoth_(self, f, g)
+}

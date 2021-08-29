@@ -4,7 +4,6 @@ import * as T from "../../src/Effect"
 import * as E from "../../src/Either"
 import * as S from "../../src/Experimental/Stream"
 import { pipe } from "../../src/Function"
-import * as O from "../../src/Option"
 
 describe("Stream", () => {
   it("runCollect", async () => {
@@ -87,10 +86,10 @@ describe("Stream", () => {
 
       ;(function loop() {
         if (i++ < 5) {
-          cb(T.succeed(Chunk.single(i)))
+          cb.single(i)
           setTimeout(loop, 20)
         } else {
-          cb(T.fail(O.none))
+          cb.end()
         }
       })()
     })
@@ -102,15 +101,15 @@ describe("Stream", () => {
 
   it("asyncInterrupt", async () => {
     let closed = false
-    const stream = S.asyncInterrupt((cb) => {
+    const stream = S.asyncInterrupt<unknown, never, number>((cb) => {
       let i = 0
 
       ;(function loop() {
         if (i++ < 5) {
-          cb(T.succeed(Chunk.single(i)))
+          cb.single(i + 1)
           setTimeout(loop, 20)
         } else {
-          cb(T.fail(O.none))
+          cb.end()
         }
       })()
 
