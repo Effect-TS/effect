@@ -2089,7 +2089,7 @@ export function reflow(s: string, char = " "): Doc<never> {
 // instances
 // -------------------------------------------------------------------------------------
 
-export const DocURI = "@effect-ts/pretty/DocURI"
+export const DocURI = "@effect-ts/printer/DocURI"
 
 export type DocURI = typeof DocURI
 

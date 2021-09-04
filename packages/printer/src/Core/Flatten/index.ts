@@ -125,7 +125,7 @@ export function map<A, B>(f: (a: A) => B) {
 // instances
 // -------------------------------------------------------------------------------------
 
-export const FlattenURI = "@effect-ts/pretty/Flatten"
+export const FlattenURI = "@effect-ts/printer/Flatten"
 
 export type FlattenURI = typeof FlattenURI
 

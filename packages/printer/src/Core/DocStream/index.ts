@@ -416,7 +416,7 @@ export function foldMap<I>(I: Identity<I>) {
 // instances
 // -------------------------------------------------------------------------------------
 
-export const DocStreamURI = "@effect-ts/pretty/DocStream"
+export const DocStreamURI = "@effect-ts/printer/DocStream"
 
 export type DocStreamURI = typeof DocStreamURI
 
