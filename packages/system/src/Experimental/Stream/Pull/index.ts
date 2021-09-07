@@ -4,7 +4,7 @@ import * as T from "../../../Effect"
 import { _A, _E } from "../../../Effect/commons"
 import * as O from "../../../Option"
 import * as Q from "../../../Queue"
-import * as Take from "./Take"
+import * as Take from "../Take"
 
 export type Pull<R, E, A> = T.Effect<R, O.Option<E>, A.Chunk<A>>
 

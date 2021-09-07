@@ -25,13 +25,13 @@ import { AtomicReference } from "../../../Support/AtomicReference"
 import { RingBuffer } from "../../../Support/RingBuffer"
 import * as CH from "../Channel"
 import * as MD from "../Channel/_internal/mergeHelpers"
+import * as Pull from "../Pull"
 import * as SK from "../Sink"
+import * as Take from "../Take"
 import * as C from "./core"
 import { Stream } from "./core"
 import * as HO from "./Handoff"
-import * as Pull from "./Pull"
-import * as SER from "./sinkEndReason"
-import * as Take from "./Take"
+import * as SER from "./SinkEndReason"
 import * as Z from "./zip"
 
 /**
@@ -40,7 +40,7 @@ import * as Z from "./zip"
 export function absolve<R, E, E2, A>(
   xs: Stream<R, E, E.Either<E2, A>>
 ): Stream<R, E | E2, A> {
-  return C.mapEff_(xs, (_) => T.fromEither(() => _))
+  return C.mapEffect_(xs, (_) => T.fromEither(() => _))
 }
 
 /**
@@ -1057,7 +1057,7 @@ export function collectSuccess<R, E, A, L1>(self: Stream<R, E, Ex.Exit<L1, A>>) 
 /**
  * Performs an effectful filter and map in a single step.
  */
-export function collectEff_<R, R1, E, E1, A, A1>(
+export function collectEffect_<R, R1, E, E1, A, A1>(
   self: Stream<R, E, A>,
   pf: (a: A) => O.Option<T.Effect<R1, E1, A1>>
 ): Stream<R & R1, E | E1, A1> {
@@ -1073,12 +1073,12 @@ export function collectEff_<R, R1, E, E1, A, A1>(
 /**
  * Performs an effectful filter and map in a single step.
  *
- * @ets_data_first collectEff_
+ * @ets_data_first collectEffect_
  */
-export function collectEff<R1, E1, A, A1>(
+export function collectEffect<R1, E1, A, A1>(
   pf: (a: A) => O.Option<T.Effect<R1, E1, A1>>
 ) {
-  return <R, E>(self: Stream<R, E, A>) => collectEff_(self, pf)
+  return <R, E>(self: Stream<R, E, A>) => collectEffect_(self, pf)
 }
 
 /**
@@ -1132,7 +1132,7 @@ export function collectWhileLeft<R, E, A1, L1>(
 /**
  * Effectfully transforms all elements of the stream for as long as the specified partial function is defined.
  */
-export function collectWhileEff_<R, R1, E, E1, A, A1>(
+export function collectWhileEffect_<R, R1, E, E1, A, A1>(
   self: Stream<R, E, A>,
   pf: (a: A) => O.Option<T.Effect<R1, E1, A1>>
 ): Stream<R & R1, E | E1, A1> {
@@ -1165,12 +1165,12 @@ export function collectWhileEff_<R, R1, E, E1, A, A1>(
 /**
  * Effectfully transforms all elements of the stream for as long as the specified partial function is defined.
  *
- * @ets_data_first collectWhileEff_
+ * @ets_data_first collectWhileEffect_
  */
-export function collectWhileEff<R1, E1, A, A1>(
+export function collectWhileEffect<R1, E1, A, A1>(
   pf: (a: A) => O.Option<T.Effect<R1, E1, A1>>
 ) {
-  return <R, E>(self: Stream<R, E, A>) => collectWhileEff_(self, pf)
+  return <R, E>(self: Stream<R, E, A>) => collectWhileEffect_(self, pf)
 }
 
 /**
@@ -1292,7 +1292,7 @@ export function combine_<R, R1, E, E1, A, A1, A2, S>(
           T.chain_(HO.take(right), T.done)
         )
 
-        return unfoldEff(s, (s) =>
+        return unfoldEffect(s, (s) =>
           T.chain_(f(s, pullLeft, pullRight), (_) => T.unoption(T.done(_)))
         ).channel
       }
@@ -2006,7 +2006,7 @@ export function find<A>(f: Predicate<A>) {
 /**
  * Finds the first element emitted by this stream that satisfies the provided effectful predicate.
  */
-export function findEff_<R, R1, E, E1, A>(
+export function findEffect_<R, R1, E, E1, A>(
   self: Stream<R, E, A>,
   f: (a: A) => T.Effect<R1, E1, boolean>
 ): Stream<R & R1, E | E1, A> {
@@ -2038,10 +2038,10 @@ export function findEff_<R, R1, E, E1, A>(
 
 /**
  * Finds the first element emitted by this stream that satisfies the provided effectful predicate.
- * @ets_data_first findEff_
+ * @ets_data_first findEffect_
  */
-export function findEff<R1, E1, A>(f: (a: A) => T.Effect<R1, E1, boolean>) {
-  return <R, E>(self: Stream<R, E, A>) => findEff_(self, f)
+export function findEffect<R1, E1, A>(f: (a: A) => T.Effect<R1, E1, boolean>) {
+  return <R, E>(self: Stream<R, E, A>) => findEffect_(self, f)
 }
 
 /**
@@ -2075,13 +2075,13 @@ export function runReduce<A, S>(s: S, f: (s: S, a: A) => S) {
 /**
  * Executes an effectful fold over the stream of values.
  */
-export function runReduceEff_<R, R1, E, E1, A, S>(
+export function runReduceEffect_<R, R1, E, E1, A, S>(
   self: Stream<R, E, A>,
   s: S,
   f: (s: S, a: A) => T.Effect<R1, E1, S>
 ): T.Effect<R & R1, E | E1, S> {
   return M.use_(
-    runReduceWhileManagedEff_(self, s, (_) => true, f),
+    runReduceWhileManagedEffect_(self, s, (_) => true, f),
     T.succeed
   )
 }
@@ -2089,13 +2089,13 @@ export function runReduceEff_<R, R1, E, E1, A, S>(
 /**
  * Executes an effectful fold over the stream of values.
  *
- * @ets_data_first runReduceEff_
+ * @ets_data_first runReduceEffect_
  */
-export function runReduceEff<R1, E1, A, S>(
+export function runReduceEffect<R1, E1, A, S>(
   s: S,
   f: (s: S, a: A) => T.Effect<R1, E1, S>
 ) {
-  return <R, E>(self: Stream<R, E, A>) => runReduceEff_(self, s, f)
+  return <R, E>(self: Stream<R, E, A>) => runReduceEffect_(self, s, f)
 }
 
 /**
@@ -2129,25 +2129,25 @@ export function runReduceManaged<A, S>(s: S, f: (s: S, a: A) => S) {
  * Executes an effectful fold over the stream of values.
  * Returns a Managed value that represents the scope of the stream.
  */
-export function runReduceManagedEff_<R, R1, E, E1, A, S>(
+export function runReduceManagedEffect_<R, R1, E, E1, A, S>(
   self: Stream<R, E, A>,
   s: S,
   f: (s: S, a: A) => T.Effect<R1, E1, S>
 ): M.Managed<R & R1, E | E1, S> {
-  return runReduceWhileManagedEff_(self, s, (_) => true, f)
+  return runReduceWhileManagedEffect_(self, s, (_) => true, f)
 }
 
 /**
  * Executes an effectful fold over the stream of values.
  * Returns a Managed value that represents the scope of the stream.
  *
- * @ets_data_first runReduceManagedEff_
+ * @ets_data_first runReduceManagedEffect_
  */
-export function runReduceManagedEff<R1, E1, A, S>(
+export function runReduceManagedEffect<R1, E1, A, S>(
   s: S,
   f: (s: S, a: A) => T.Effect<R1, E1, S>
 ) {
-  return <R, E>(self: Stream<R, E, A>) => runReduceManagedEff_(self, s, f)
+  return <R, E>(self: Stream<R, E, A>) => runReduceManagedEffect_(self, s, f)
 }
 
 /**
@@ -2180,27 +2180,27 @@ export function runReduceWhile<A, S>(s: S, cont: Predicate<S>, f: (s: S, a: A) =
  * Executes an effectful fold over the stream of values.
  * Stops the fold early when the condition is not fulfilled.
  */
-export function runReduceWhileEff_<R, R1, E, E1, A, S>(
+export function runReduceWhileEffect_<R, R1, E, E1, A, S>(
   self: Stream<R, E, A>,
   s: S,
   cont: Predicate<S>,
   f: (s: S, a: A) => T.Effect<R1, E1, S>
 ): T.Effect<R & R1, E | E1, S> {
-  return M.use_(runReduceWhileManagedEff_(self, s, cont, f), T.succeed)
+  return M.use_(runReduceWhileManagedEffect_(self, s, cont, f), T.succeed)
 }
 
 /**
  * Executes an effectful fold over the stream of values.
  * Stops the fold early when the condition is not fulfilled.
  *
- * @ets_data_first runReduceWhileEff_
+ * @ets_data_first runReduceWhileEffect_
  */
-export function runReduceWhileEff<R1, E1, A, S>(
+export function runReduceWhileEffect<R1, E1, A, S>(
   s: S,
   cont: Predicate<S>,
   f: (s: S, a: A) => T.Effect<R1, E1, S>
 ) {
-  return <R, E>(self: Stream<R, E, A>) => runReduceWhileEff_(self, s, cont, f)
+  return <R, E>(self: Stream<R, E, A>) => runReduceWhileEffect_(self, s, cont, f)
 }
 
 /**
@@ -2238,13 +2238,13 @@ export function runReduceWhileManaged<S, A>(
  * Returns a Managed value that represents the scope of the stream.
  * Stops the fold early when the condition is not fulfilled.
  */
-export function runReduceWhileManagedEff_<R, R1, E, E1, A, S>(
+export function runReduceWhileManagedEffect_<R, R1, E, E1, A, S>(
   self: Stream<R, E, A>,
   s: S,
   cont: Predicate<S>,
   f: (s: S, a: A) => T.Effect<R1, E1, S>
 ): M.Managed<R & R1, E | E1, S> {
-  return runManaged_(self, SK.reduceEff(s, cont, f))
+  return runManaged_(self, SK.reduceEffect(s, cont, f))
 }
 
 /**
@@ -2252,12 +2252,12 @@ export function runReduceWhileManagedEff_<R, R1, E, E1, A, S>(
  * Returns a Managed value that represents the scope of the stream.
  * Stops the fold early when the condition is not fulfilled.
  */
-export function runReduceWhileManagedEff<R1, E1, A, S>(
+export function runReduceWhileManagedEffect<R1, E1, A, S>(
   s: S,
   cont: Predicate<S>,
   f: (s: S, a: A) => T.Effect<R1, E1, S>
 ) {
-  return <R, E>(self: Stream<R, E, A>) => runReduceWhileManagedEff_(self, s, cont, f)
+  return <R, E>(self: Stream<R, E, A>) => runReduceWhileManagedEffect_(self, s, cont, f)
 }
 
 /**
@@ -2408,7 +2408,7 @@ export function runForEachWhileManaged<R1, E1, A>(
 /**
  * Effectfully filters the elements emitted by this stream.
  */
-export function filterEff_<R, R1, E, E1, A>(
+export function filterEffect_<R, R1, E, E1, A>(
   self: Stream<R, E, A>,
   f: (a: A) => T.Effect<R1, E1, boolean>
 ): Stream<R & R1, E | E1, A> {
@@ -2420,10 +2420,10 @@ export function filterEff_<R, R1, E, E1, A>(
 /**
  * Effectfully filters the elements emitted by this stream.
  *
- * @ets_data_first filterEff_
+ * @ets_data_first filterEffect_
  */
-export function filterEff<R1, E1, A>(f: (a: A) => T.Effect<R1, E1, boolean>) {
-  return <R, E>(self: Stream<R, E, A>) => filterEff_(self, f)
+export function filterEffect<R1, E1, A>(f: (a: A) => T.Effect<R1, E1, boolean>) {
+  return <R, E>(self: Stream<R, E, A>) => filterEffect_(self, f)
 }
 
 /**
@@ -2505,7 +2505,7 @@ export function flattenChunks<R, E, A>(
 export function flattenExit<R, E, E1, A>(
   self: Stream<R, E, Ex.Exit<E1, A>>
 ): Stream<R, E | E1, A> {
-  return C.mapEff_(self, (a) => T.done(a))
+  return C.mapEffect_(self, (a) => T.done(a))
 }
 
 /**
@@ -3135,7 +3135,7 @@ export function runIntoManaged_<R, R1, E extends E1, E1, A, Z>(
 
   return pipe(
     self.channel[">>>"](writer),
-    CH.mapOutEff((_) => Q.offer_(queue, _)),
+    CH.mapOutEffect((_) => Q.offer_(queue, _)),
     CH.drain,
     CH.runManaged,
     M.asUnit
@@ -3195,7 +3195,7 @@ export function runIntoElementsManaged_<R, R1, E, A>(
 
   return pipe(
     self.channel[">>>"](writer()),
-    CH.mapOutEff((_) => Q.offer_(queue, _)),
+    CH.mapOutEffect((_) => Q.offer_(queue, _)),
     CH.drain,
     CH.runManaged,
     M.asUnit
@@ -3255,7 +3255,7 @@ export function mapAccum<A, A1, S>(s: S, f: (s: S, a: A) => Tp.Tuple<[S, A1]>) {
  * Statefully and effectfully maps over the elements of this stream to produce
  * new elements.
  */
-export function mapAccumEff_<R, R1, E, E1, A, A1, S>(
+export function mapAccumEffect_<R, R1, E, E1, A, A1, S>(
   self: Stream<R, E, A>,
   s: S,
   f: (s: S, a: A) => T.Effect<R1, E1, Tp.Tuple<[S, A1]>>
@@ -3306,13 +3306,13 @@ export function mapAccumEff_<R, R1, E, E1, A, A1, S>(
  * Statefully and effectfully maps over the elements of this stream to produce
  * new elements.
  *
- * @ets_data_first mapAccumEff_
+ * @ets_data_first mapAccumEffect_
  */
-export function mapAccumEff<R1, E1, A, A1, S>(
+export function mapAccumEffect<R1, E1, A, A1, S>(
   s: S,
   f: (s: S, a: A) => T.Effect<R1, E1, Tp.Tuple<[S, A1]>>
 ) {
-  return <R, E>(self: Stream<R, E, A>) => mapAccumEff_(self, s, f)
+  return <R, E>(self: Stream<R, E, A>) => mapAccumEffect_(self, s, f)
 }
 
 /**
@@ -3337,22 +3337,22 @@ export function mapChunks<A, A1>(f: (chunk: A.Chunk<A>) => A.Chunk<A1>) {
 /**
  * Effectfully transforms the chunks emitted by this stream.
  */
-export function mapChunksEff_<R, R1, E, E1, A, A1>(
+export function mapChunksEffect_<R, R1, E, E1, A, A1>(
   self: Stream<R, E, A>,
   f: (c: A.Chunk<A>) => T.Effect<R1, E1, A.Chunk<A1>>
 ): Stream<R & R1, E | E1, A1> {
-  return new Stream(CH.mapOutEff_(self.channel, f))
+  return new Stream(CH.mapOutEffect_(self.channel, f))
 }
 
 /**
  * Effectfully transforms the chunks emitted by this stream.
  *
- * @ets_data_first mapChunksEff_
+ * @ets_data_first mapChunksEffect_
  */
-export function mapChunksEff<R1, E1, A, A1>(
+export function mapChunksEffect<R1, E1, A, A1>(
   f: (c: A.Chunk<A>) => T.Effect<R1, E1, A.Chunk<A1>>
 ) {
-  return <R, E>(self: Stream<R, E, A>) => mapChunksEff_(self, f)
+  return <R, E>(self: Stream<R, E, A>) => mapChunksEffect_(self, f)
 }
 
 /**
@@ -3401,35 +3401,35 @@ export function mapConcatChunk<A, A1>(f: (a: A) => A.Chunk<A1>) {
  * Effectfully maps each element to a chunk, and flattens the chunks into
  * the output of this stream.
  */
-export function mapConcatChunkEff_<R, R1, E, E1, A, A1>(
+export function mapConcatChunkEffect_<R, R1, E, E1, A, A1>(
   self: Stream<R, E, A>,
   f: (a: A) => T.Effect<R1, E1, A.Chunk<A1>>
 ): Stream<R & R1, E | E1, A1> {
-  return mapConcatChunk_(C.mapEff_(self, f), identity)
+  return mapConcatChunk_(C.mapEffect_(self, f), identity)
 }
 
 /**
  * Effectfully maps each element to a chunk, and flattens the chunks into
  * the output of this stream.
  *
- * @ets_data_first mapConcatChunkEff_
+ * @ets_data_first mapConcatChunkEffect_
  */
-export function mapConcatChunkEff<R1, E1, A, A1>(
+export function mapConcatChunkEffect<R1, E1, A, A1>(
   f: (a: A) => T.Effect<R1, E1, A.Chunk<A1>>
 ) {
-  return <R, E>(self: Stream<R, E, A>) => mapConcatChunkEff_(self, f)
+  return <R, E>(self: Stream<R, E, A>) => mapConcatChunkEffect_(self, f)
 }
 
 /**
  * Effectfully maps each element to an iterable, and flattens the iterables into
  * the output of this stream.
  */
-export function mapConcatEff_<R, R1, E, E1, A, A1>(
+export function mapConcatEffect_<R, R1, E, E1, A, A1>(
   self: Stream<R, E, A>,
   f: (a: A) => T.Effect<R1, E1, Iterable<A1>>
 ): Stream<R & R1, E | E1, A1> {
   return mapConcatChunk_(
-    C.mapEff_(self, (a) => T.map_(f(a), A.from)),
+    C.mapEffect_(self, (a) => T.map_(f(a), A.from)),
     identity
   )
 }
@@ -3438,12 +3438,12 @@ export function mapConcatEff_<R, R1, E, E1, A, A1>(
  * Effectfully maps each element to an iterable, and flattens the iterables into
  * the output of this stream.
  *
- * @ets_data_first mapConcatEff_
+ * @ets_data_first mapConcatEffect_
  */
-export function mapConcatEff<R1, E1, A, A1>(
+export function mapConcatEffect<R1, E1, A, A1>(
   f: (a: A) => T.Effect<R1, E1, Iterable<A1>>
 ) {
-  return <R, E>(self: Stream<R, E, A>) => mapConcatEff_(self, f)
+  return <R, E>(self: Stream<R, E, A>) => mapConcatEffect_(self, f)
 }
 
 /**
@@ -4287,7 +4287,7 @@ export function rightOrFail_<R, E, E1, A1, A2>(
   self: Stream<R, E, E.Either<A1, A2>>,
   e: () => E1
 ): Stream<R, E | E1, A2> {
-  return C.mapEff_(
+  return C.mapEffect_(
     self,
     E.fold(
       () => T.fail(e()),
@@ -4358,7 +4358,7 @@ export function scan_<R, E, A, S>(
   s: S,
   f: (s: S, a: A) => S
 ): Stream<R, E, S> {
-  return scanEff_(self, s, (s, a) => T.succeed(f(s, a)))
+  return scanEffect_(self, s, (s, a) => T.succeed(f(s, a)))
 }
 
 /**
@@ -4380,7 +4380,7 @@ export function scanReduce_<R, E, A, A1 extends A>(
   self: Stream<R, E, A>,
   f: (a1: A1, a: A) => A1
 ): Stream<R, E, A1> {
-  return scanReduceEff_(self, (curr, next) => T.succeed(f(curr, next)))
+  return scanReduceEffect_(self, (curr, next) => T.succeed(f(curr, next)))
 }
 
 /**
@@ -4398,13 +4398,13 @@ export function scanReduce<A, A1 extends A>(f: (a1: A1, a: A) => A1) {
  * Statefully and effectfully maps over the elements of this stream to produce all
  * intermediate results.
  *
- * See also `Stream#scanEff`.
+ * See also `Stream#scanEffect`.
  */
-export function scanReduceEff_<R, R1, E, E1, A, A1 extends A>(
+export function scanReduceEffect_<R, R1, E, E1, A, A1 extends A>(
   self: Stream<R, E, A>,
   f: (a1: A1, a: A) => T.Effect<R1, E1, A1>
 ): Stream<R & R1, E | E1, A1> {
-  return mapAccumEff_(self, O.emptyOf<A1>(), (s, a) =>
+  return mapAccumEffect_(self, O.emptyOf<A1>(), (s, a) =>
     O.fold_(
       s,
       () => T.succeed(Tp.tuple(O.some(a as A1), a as A1)),
@@ -4417,28 +4417,28 @@ export function scanReduceEff_<R, R1, E, E1, A, A1 extends A>(
  * Statefully and effectfully maps over the elements of this stream to produce all
  * intermediate results.
  *
- * See also `Stream#scanEff`.
+ * See also `Stream#scanEffect`.
  *
- * @ets_data_first scanReduceEff_
+ * @ets_data_first scanReduceEffect_
  */
-export function scanReduceEff<R1, E1, A, A1 extends A>(
+export function scanReduceEffect<R1, E1, A, A1 extends A>(
   f: (a1: A1, a: A) => T.Effect<R1, E1, A1>
 ) {
-  return <R, E>(self: Stream<R, E, A>) => scanReduceEff_(self, f)
+  return <R, E>(self: Stream<R, E, A>) => scanReduceEffect_(self, f)
 }
 
 /**
  * Statefully and effectfully maps over the elements of this stream to produce all
  * intermediate results of type `S` given an initial S.
  */
-export function scanEff_<R, R1, E, E1, A, S>(
+export function scanEffect_<R, R1, E, E1, A, S>(
   self: Stream<R, E, A>,
   s: S,
   f: (s: S, a: A) => T.Effect<R1, E1, S>
 ): Stream<R & R1, E | E1, S> {
   return concat_(
     C.succeed(s),
-    mapAccumEff_(self, s, (s, a) => T.map_(f(s, a), (s) => Tp.tuple(s, s)))
+    mapAccumEffect_(self, s, (s, a) => T.map_(f(s, a), (s) => Tp.tuple(s, s)))
   )
 }
 
@@ -4446,10 +4446,10 @@ export function scanEff_<R, R1, E, E1, A, S>(
  * Statefully and effectfully maps over the elements of this stream to produce all
  * intermediate results of type `S` given an initial S.
  *
- * @ets_data_first scanEff_
+ * @ets_data_first scanEffect_
  */
-export function scanEff<R1, E1, A, S>(s: S, f: (s: S, a: A) => T.Effect<R1, E1, S>) {
-  return <R, E>(self: Stream<R, E, A>) => scanEff_(self, s, f)
+export function scanEffect<R1, E1, A, S>(s: S, f: (s: S, a: A) => T.Effect<R1, E1, S>) {
+  return <R, E>(self: Stream<R, E, A>) => scanEffect_(self, s, f)
 }
 
 /**
@@ -4581,7 +4581,7 @@ export function someOrFail_<R, E, E1, A>(
   self: Stream<R, E, O.Option<A>>,
   e: E1
 ): Stream<R, E | E1, A> {
-  return C.mapEff_(
+  return C.mapEffect_(
     self,
     O.fold(
       () => T.fail(e),
@@ -4687,7 +4687,7 @@ export function takeUntil<A>(f: Predicate<A>) {
  * Takes all elements of the stream until the specified effectual predicate
  * evaluates to `true`.
  */
-export function takeUntilEff_<R, R1, E, E1, A>(
+export function takeUntilEffect_<R, R1, E, E1, A>(
   self: Stream<R, E, A>,
   f: (a: A) => T.Effect<R1, E1, boolean>
 ): Stream<R & R1, E | E1, A> {
@@ -4712,10 +4712,10 @@ export function takeUntilEff_<R, R1, E, E1, A>(
  * Takes all elements of the stream until the specified effectual predicate
  * evaluates to `true`.
  *
- * @ets_data_first takeUntilEff_
+ * @ets_data_first takeUntilEffect_
  */
-export function takeUntilEff<R1, E1, A>(f: (a: A) => T.Effect<R1, E1, boolean>) {
-  return <R, E>(self: Stream<R, E, A>) => takeUntilEff_(self, f)
+export function takeUntilEffect<R1, E1, A>(f: (a: A) => T.Effect<R1, E1, boolean>) {
+  return <R, E>(self: Stream<R, E, A>) => takeUntilEffect_(self, f)
 }
 
 /**
@@ -4761,7 +4761,7 @@ export function tap_<R, R1, E, E1, A, Z>(
   self: Stream<R, E, A>,
   f: (a: A) => T.Effect<R1, E1, Z>
 ): Stream<R & R1, E | E1, A> {
-  return C.mapEff_(self, (a) => T.as_(f(a), a))
+  return C.mapEffect_(self, (a) => T.as_(f(a), a))
 }
 
 /**
@@ -4786,7 +4786,7 @@ export function throttleEnforce_<R, E, A>(
   costFn: (c: A.Chunk<A>) => number,
   burst = 0
 ): Stream<Has<CL.Clock> & R, E, A> {
-  return throttleEnforceEff_(
+  return throttleEnforceEffect_(
     self,
     units,
     duration,
@@ -4819,7 +4819,7 @@ export function throttleEnforce<A>(
  * tokens up to a `units + burst` threshold. Chunks that do not meet the bandwidth constraints are dropped.
  * The weight of each chunk is determined by the `costFn` effectful function.
  */
-export function throttleEnforceEff_<R, R1, E, E1, A>(
+export function throttleEnforceEffect_<R, R1, E, E1, A>(
   self: Stream<R, E, A>,
   units: number,
   duration: number,
@@ -4876,16 +4876,16 @@ export function throttleEnforceEff_<R, R1, E, E1, A>(
  * tokens up to a `units + burst` threshold. Chunks that do not meet the bandwidth constraints are dropped.
  * The weight of each chunk is determined by the `costFn` effectful function.
  *
- * @ets_data_first throttleEnforceEff_
+ * @ets_data_first throttleEnforceEffect_
  */
-export function throttleEnforceEff<R1, E1, A>(
+export function throttleEnforceEffect<R1, E1, A>(
   units: number,
   duration: number,
   costFn: (c: A.Chunk<A>) => T.Effect<R1, E1, number>,
   burst = 0
 ) {
   return <R, E>(self: Stream<R, E, A>) =>
-    throttleEnforceEff_(self, units, duration, costFn, burst)
+    throttleEnforceEffect_(self, units, duration, costFn, burst)
 }
 
 /**
@@ -4901,7 +4901,13 @@ export function throttleShape_<R, E, A>(
   costFn: (a: A.Chunk<A>) => number,
   burst = 0
 ): Stream<CL.HasClock & R, E, A> {
-  return throttleShapeEff_(self, units, duration, (os) => T.succeed(costFn(os)), burst)
+  return throttleShapeEffect_(
+    self,
+    units,
+    duration,
+    (os) => T.succeed(costFn(os)),
+    burst
+  )
 }
 
 /**
@@ -4928,7 +4934,7 @@ export function throttleShape<A>(
  * tokens up to a `units + burst` threshold. The weight of each chunk is determined by the `costFn`
  * effectful function.
  */
-export function throttleShapeEff_<R, R1, E, E1, A>(
+export function throttleShapeEffect_<R, R1, E, E1, A>(
   self: Stream<R, E, A>,
   units: number,
   duration: number,
@@ -4994,16 +5000,16 @@ export function throttleShapeEff_<R, R1, E, E1, A>(
  * tokens up to a `units + burst` threshold. The weight of each chunk is determined by the `costFn`
  * effectful function.
  *
- * @ets_data_first throttleShapeEff_
+ * @ets_data_first throttleShapeEffect_
  */
-export function throttleShapeEff<R1, E1, A>(
+export function throttleShapeEffect<R1, E1, A>(
   units: number,
   duration: number,
   costFn: (a: A.Chunk<A>) => T.Effect<R1, E1, number>,
   burst = 0
 ) {
   return <R, E>(self: Stream<R, E, A>) =>
-    throttleShapeEff_(self, units, duration, costFn, burst)
+    throttleShapeEffect_(self, units, duration, costFn, burst)
 }
 
 const NotStartedTypeId = Symbol()
@@ -5488,7 +5494,7 @@ export function fromQueue(maxChunkSize: number = DEFAULT_CHUNK_SIZE) {
 export function repeatEffectChunkOption<R, E, A>(
   fa: T.Effect<R, O.Option<E>, A.Chunk<A>>
 ): Stream<R, E, A> {
-  return C.unfoldChunkEff(undefined, (_) => {
+  return C.unfoldChunkEffect(undefined, (_) => {
     return T.catchAll_(
       T.map_(fa, (chunk) => O.some(Tp.tuple(chunk, undefined))),
       O.fold(
@@ -5502,11 +5508,11 @@ export function repeatEffectChunkOption<R, E, A>(
 /**
  * Creates a stream by effectfully peeling off the "layers" of a value of type `S`
  */
-export function unfoldEff<R, E, A, S>(
+export function unfoldEffect<R, E, A, S>(
   s: S,
   f: (s: S) => T.Effect<R, E, O.Option<Tp.Tuple<[A, S]>>>
 ): Stream<R, E, A> {
-  return C.unfoldChunkEff(s, (_) =>
+  return C.unfoldChunkEffect(s, (_) =>
     T.map_(
       f(_),
       O.map(({ tuple: [a, s] }) => Tp.tuple(A.single(a), s))
@@ -5885,10 +5891,10 @@ export function access<R, A>(f: (r: R) => A): Stream<R, never, A> {
 /**
  * Accesses the environment of the stream in the context of an effect.
  */
-export function accessEff<R, R1, E, A>(
+export function accessEffect<R, R1, E, A>(
   f: (r: R) => T.Effect<R1, E, A>
 ): Stream<R & R1, E, A> {
-  return C.mapEff_(environment<R>(), f)
+  return C.mapEffect_(environment<R>(), f)
 }
 
 /**
@@ -6036,7 +6042,7 @@ export function fromIterable<O>(as: Iterable<O>): Stream<unknown, never, O> {
 /**
  * Creates a stream from an effect producing a value of type `Iterable[A]`
  */
-export function fromIterableEff<R, E, O>(
+export function fromIterableEffect<R, E, O>(
   iterable: T.Effect<R, E, Iterable<O>>
 ): Stream<R, E, O> {
   return mapConcat_(fromEffect(iterable), identity)
@@ -6069,7 +6075,7 @@ export function fromSchedule<R, A>(
 export function repeatEffChunkOption<R, E, A>(
   fa: T.Effect<R, O.Option<E>, A.Chunk<A>>
 ): Stream<R, E, A> {
-  return C.unfoldChunkEff(undefined, (_) =>
+  return C.unfoldChunkEffect(undefined, (_) =>
     T.catchAll_(
       T.map_(fa, (chunk) => O.some(Tp.tuple(chunk, undefined))),
       O.fold(
@@ -6144,7 +6150,7 @@ export function paginateChunk<A, S>(
  * the unfolding of the state. This is useful for embedding paginated APIs,
  * hence the name.
  */
-export function paginateChunkEff<R, E, A, S>(
+export function paginateChunkEffect<R, E, A, S>(
   s: S,
   f: (s: S) => T.Effect<R, E, Tp.Tuple<[A.Chunk<A>, O.Option<S>]>>
 ): Stream<R, E, A> {
@@ -6167,11 +6173,11 @@ export function paginateChunkEff<R, E, A, S>(
  * the unfolding of the state. This is useful for embedding paginated APIs,
  * hence the name.
  */
-export function paginateEff<R, E, A, S>(
+export function paginateEffect<R, E, A, S>(
   s: S,
   f: (s: S) => T.Effect<R, E, Tp.Tuple<[A, O.Option<S>]>>
 ): Stream<R, E, A> {
-  return paginateChunkEff(s, (_) =>
+  return paginateChunkEffect(s, (_) =>
     T.map_(f(_), ({ tuple: [a, s] }) => Tp.tuple(A.single(a), s))
   )
 }
@@ -6212,7 +6218,7 @@ export function repeat<A>(a: A): Stream<unknown, never, A> {
 /**
  * Creates a stream from an effect producing a value of type `A` which repeats forever.
  */
-export function repeatEff<R, E, A>(fa: T.Effect<R, E, A>): Stream<R, E, A> {
+export function repeatEffect<R, E, A>(fa: T.Effect<R, E, A>): Stream<R, E, A> {
   return repeatEffOption(T.mapError_(fa, O.some))
 }
 
@@ -6238,7 +6244,7 @@ export function repeatEffWith<R, E, A>(
     ({ tuple: [a, driver] }) =>
       concat_(
         C.succeed(a),
-        unfoldEff(a, (_) =>
+        unfoldEffect(a, (_) =>
           T.foldM_(
             driver.next(_),
             (_) => T.succeed(_),
@@ -6251,7 +6257,7 @@ export function repeatEffWith<R, E, A>(
 
 export function accessServiceM<A>(s: Tag<A>) {
   return <R, E, B>(f: (a: A) => T.Effect<R, E, B>) =>
-    accessEff((r: Has<A>) => f(r[s.key as any]))
+    accessEffect((r: Has<A>) => f(r[s.key as any]))
 }
 
 /**
@@ -6543,7 +6549,7 @@ export function asyncInterrupt<R, E, A>(
  * The registration of the callback itself returns an effect. The optionality of the
  * error type `E` can be used to signal the end of the stream, by setting it to `None`.
  */
-export function asyncEff<R, E, A, Z>(
+export function asyncEffect<R, E, A, Z>(
   register: (emit: AsyncEmit<R, E, A, void>) => T.Effect<R, E, Z>,
   outputBuffer = 16
 ): Stream<R, E, A> {
@@ -6611,4 +6617,45 @@ export function asyncEff<R, E, A, Z>(
       )
     )
   )
+}
+
+/**
+ * Recovers from specified error.
+ *
+ * @ets_data_first catchTag_
+ */
+export function catchTag<
+  K extends E["_tag"] & string,
+  E extends { _tag: string },
+  R1,
+  E1,
+  A1
+>(k: K, f: (e: Extract<E, { _tag: K }>) => Stream<R1, E1, A1>) {
+  return <R, A>(
+    self: Stream<R, E, A>
+  ): Stream<R & R1, Exclude<E, { _tag: K }> | E1, A | A1> => catchTag_(self, k, f)
+}
+
+/**
+ * Recovers from specified error.
+ */
+export function catchTag_<
+  K extends E["_tag"] & string,
+  E extends { _tag: string },
+  R,
+  A,
+  R1,
+  E1,
+  A1
+>(
+  self: Stream<R, E, A>,
+  k: K,
+  f: (e: Extract<E, { _tag: K }>) => Stream<R1, E1, A1>
+): Stream<R & R1, Exclude<E, { _tag: K }> | E1, A | A1> {
+  return catchAll_(self, (e) => {
+    if ("_tag" in e && e["_tag"] === k) {
+      return f(e as any)
+    }
+    return C.fail(e as any)
+  })
 }
