@@ -6,6 +6,7 @@ import { flow, identity, pipe, tuple } from "../src/Function"
 import * as M from "../src/Managed"
 import * as O from "../src/Option"
 import * as R from "../src/Ref"
+import * as SC from "../src/Schedule"
 import * as S from "../src/Stream"
 import * as BufferedPull from "../src/Stream/BufferedPull"
 import * as Pull from "../src/Stream/Pull"
@@ -264,5 +265,26 @@ describe("Stream", () => {
         T.runPromise
       )
     ).toEqual([1, 1, 1, 2, 4, 8, 3, 9, 27])
+  })
+
+  it("retries", async () => {
+    let counter = 0
+
+    expect(
+      (
+        await pipe(
+          S.fromIterable([1]),
+          S.chain(() => {
+            counter += 1
+            return S.fail(new Error(""))
+          }),
+          S.retry(SC.recurs(3)),
+          S.runDrain,
+          T.runPromiseExit
+        )
+      )._tag
+    ).toEqual("Failure")
+
+    expect(counter).toEqual(4)
   })
 })

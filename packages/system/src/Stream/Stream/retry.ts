@@ -23,7 +23,7 @@ import { Stream } from "./definitions"
  */
 export function retry_<R, R1, E, O>(
   self: Stream<R, E, O>,
-  schedule: SC.Schedule<R1, E, void>
+  schedule: SC.Schedule<R1, E, unknown>
 ): Stream<R & R1 & CL.HasClock, E, O> {
   return new Stream(
     pipe(
@@ -81,6 +81,6 @@ export function retry_<R, R1, E, O>(
  * @param schedule Schedule receiving as input the errors of the stream
  * @return Stream outputting elements of all attempts of the stream
  */
-export function retry<R1, E>(schedule: SC.Schedule<R1, E, void>) {
+export function retry<R1, E>(schedule: SC.Schedule<R1, E, unknown>) {
   return <R, O>(self: Stream<R, E, O>) => retry_(self, schedule)
 }
