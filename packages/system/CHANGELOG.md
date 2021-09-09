@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.40.9](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.40.8...@effect-ts/system@0.40.9) (2021-09-09)
+
+
+### Bug Fixes
+
+* **stream:** fix retry type ([#858](https://github.com/Effect-TS/core/issues/858)) ([73c2077](https://github.com/Effect-TS/core/commit/73c2077d24a493870481a1cc9bf7d724d03aef46))
+
+
+
+
+
 ## [0.40.8](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.40.7...@effect-ts/system@0.40.8) (2021-09-09)
 
 **Note:** Version bump only for package @effect-ts/system
