@@ -4,7 +4,7 @@ import * as T from "../../../Effect"
 import { _A, _E } from "../../../Effect/commons"
 import * as Ex from "../../../Exit"
 import * as O from "../../../Option"
-import type { Pull } from "./Pull"
+import type { Pull } from "../Pull"
 
 /**
  * A `Take<E, A>` represents a single `take` from a queue modeling a stream of
@@ -62,7 +62,7 @@ export function fold<E, A, Z>(
  * Folds over the failure cause, success value and end-of-stream marker to
  * yield an effect.
  */
-export function foldEff_<R, R1, R2, E, E1, E2, E3, A, Z>(
+export function foldEffect_<R, R1, R2, E, E1, E2, E3, A, Z>(
   self: Take<E, A>,
   end: T.Effect<R, E1, Z>,
   error: (cause: C.Cause<E>) => T.Effect<R1, E2, Z>,
@@ -82,14 +82,14 @@ export function foldEff_<R, R1, R2, E, E1, E2, E3, A, Z>(
  * Folds over the failure cause, success value and end-of-stream marker to
  * yield an effect.
  *
- * @ets_data_first foldEff_
+ * @ets_data_first foldEffect_
  */
-export function foldEff<R, R1, R2, E, E1, E2, E3, A, Z>(
+export function foldEffect<R, R1, R2, E, E1, E2, E3, A, Z>(
   end: T.Effect<R, E1, Z>,
   error: (cause: C.Cause<E>) => T.Effect<R1, E2, Z>,
   value: (chunk: A.Chunk<A>) => T.Effect<R2, E3, Z>
 ) {
-  return (self: Take<E, A>) => foldEff_(self, end, error, value)
+  return (self: Take<E, A>) => foldEffect_(self, end, error, value)
 }
 
 /**

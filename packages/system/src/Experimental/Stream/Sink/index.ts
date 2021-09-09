@@ -182,7 +182,7 @@ export function contramapChunks<In, In1>(f: (c: A.Chunk<In1>) => A.Chunk<In>) {
  * Effectfully transforms this sink's input chunks.
  * `f` must preserve chunking-invariance
  */
-export function contramapChunksEff_<
+export function contramapChunksEffect_<
   R,
   R1,
   InErr,
@@ -217,13 +217,13 @@ export function contramapChunksEff_<
  * Effectfully transforms this sink's input chunks.
  * `f` must preserve chunking-invariance
  *
- * @ets_data_first contramapChunksEff_
+ * @ets_data_first contramapChunksEffect_
  */
-export function contramapChunksEff<R1, In, InErr, InErr1 extends InErr, In1>(
+export function contramapChunksEffect<R1, In, InErr, InErr1 extends InErr, In1>(
   f: (c: A.Chunk<In1>) => T.Effect<R1, InErr1, A.Chunk<In>>
 ) {
   return <R, OutErr, L, Z>(self: Sink<R, InErr, In, OutErr, L, Z>) =>
-    contramapChunksEff_(self, f)
+    contramapChunksEffect_(self, f)
 }
 
 function collectLoop<Err, A>(
@@ -239,7 +239,7 @@ function collectLoop<Err, A>(
 /**
  * Effectfully transforms this sink's input elements.
  */
-export function contramapEff_<
+export function contramapEffect_<
   R,
   R1,
   InErr,
@@ -253,19 +253,19 @@ export function contramapEff_<
   self: Sink<R, InErr, In, OutErr, L, Z>,
   f: (in_: In1) => T.Effect<R1, InErr1, In>
 ): Sink<R1 & R, InErr & InErr1, In1, OutErr, L, Z> {
-  return contramapChunksEff_(self, A.mapM(f))
+  return contramapChunksEffect_(self, A.mapM(f))
 }
 
 /**
  * Effectfully transforms this sink's input elements.
  *
- * @ets_data_first contramapEff_
+ * @ets_data_first contramapEffect_
  */
-export function contramapEff<R1, InErr, InErr1 extends InErr, In, In1>(
+export function contramapEffect<R1, InErr, InErr1 extends InErr, In, In1>(
   f: (in_: In1) => T.Effect<R1, InErr1, In>
 ) {
   return <R, OutErr, L, Z>(self: Sink<R, InErr, In, OutErr, L, Z>) =>
-    contramapEff_(self, f)
+    contramapEffect_(self, f)
 }
 
 /**
@@ -317,7 +317,7 @@ export function dimapChunks<In, In1, Z, Z1>(
  * Effectfully transforms both input chunks and result of this sink using the provided functions.
  * `f` and `g` must preserve chunking-invariance
  */
-export function dimapChunksEff_<
+export function dimapChunksEffect_<
   R,
   R1,
   R2,
@@ -335,16 +335,16 @@ export function dimapChunksEff_<
   f: (in_: A.Chunk<In1>) => T.Effect<R1, InErr1, A.Chunk<In>>,
   g: (z: Z) => T.Effect<R2, OutErr1, Z1>
 ): Sink<R1 & R & R2, InErr & InErr1, In1, OutErr | OutErr1, L, Z1> {
-  return mapEff_(contramapChunksEff_(self, f), g)
+  return mapEffect_(contramapChunksEffect_(self, f), g)
 }
 
 /**
  * Effectfully transforms both input chunks and result of this sink using the provided functions.
  * `f` and `g` must preserve chunking-invariance
  *
- * @ets_data_first dimapChunksEff_
+ * @ets_data_first dimapChunksEffect_
  */
-export function dimapChunksEff<
+export function dimapChunksEffect<
   R1,
   R2,
   InErr,
@@ -359,13 +359,13 @@ export function dimapChunksEff<
   g: (z: Z) => T.Effect<R2, OutErr1, Z1>
 ) {
   return <R, OutErr, L>(self: Sink<R, InErr, In, OutErr, L, Z>) =>
-    dimapChunksEff_(self, f, g)
+    dimapChunksEffect_(self, f, g)
 }
 
 /**
  * Effectfully transforms both inputs and result of this sink using the provided functions.
  */
-export function dimapEff_<
+export function dimapEffect_<
   R,
   R1,
   R2,
@@ -383,19 +383,27 @@ export function dimapEff_<
   f: (in_: In1) => T.Effect<R1, InErr1, In>,
   g: (z: Z) => T.Effect<R2, OutErr1, Z1>
 ): Sink<R1 & R & R2, InErr & InErr1, In1, OutErr | OutErr1, L, Z1> {
-  return mapEff_(contramapEff_(self, f), g)
+  return mapEffect_(contramapEffect_(self, f), g)
 }
 
 /**
  * Effectfully transforms both inputs and result of this sink using the provided functions.
  *
- * @ets_data_first dimapEff_
+ * @ets_data_first dimapEffect_
  */
-export function dimapEff<R1, R2, InErr, InErr1 extends InErr, In, In1, OutErr1, Z, Z1>(
-  f: (in_: In1) => T.Effect<R1, InErr1, In>,
-  g: (z: Z) => T.Effect<R2, OutErr1, Z1>
-) {
-  return <R, OutErr, L>(self: Sink<R, InErr, In, OutErr, L, Z>) => dimapEff_(self, f, g)
+export function dimapEffect<
+  R1,
+  R2,
+  InErr,
+  InErr1 extends InErr,
+  In,
+  In1,
+  OutErr1,
+  Z,
+  Z1
+>(f: (in_: In1) => T.Effect<R1, InErr1, In>, g: (z: Z) => T.Effect<R2, OutErr1, Z1>) {
+  return <R, OutErr, L>(self: Sink<R, InErr, In, OutErr, L, Z>) =>
+    dimapEffect_(self, f, g)
 }
 
 export function filterInput_<
@@ -444,7 +452,7 @@ export function filterInput<In, In1 extends In>(
     filterInput_(self, p)
 }
 
-export function filterInputEff_<
+export function filterInputEffect_<
   R,
   R1,
   InErr,
@@ -458,17 +466,17 @@ export function filterInputEff_<
   self: Sink<R, InErr, In, OutErr, L, Z>,
   p: (in_: In1) => T.Effect<R1, InErr1, boolean>
 ): Sink<R1 & R, InErr & InErr1, In1, OutErr, L, Z> {
-  return contramapChunksEff_(self, A.filterM(p))
+  return contramapChunksEffect_(self, A.filterM(p))
 }
 
 /**
- * @ets_data_first filterInputEff_
+ * @ets_data_first filterInputEffect_
  */
-export function filterInputEff<R1, InErr, InErr1 extends InErr, In, In1 extends In>(
+export function filterInputEffect<R1, InErr, InErr1 extends InErr, In, In1 extends In>(
   p: (in_: In1) => T.Effect<R1, InErr1, boolean>
 ) {
   return <R, OutErr, L, Z>(self: Sink<R, InErr, In, OutErr, L, Z>) =>
-    filterInputEff_(self, p)
+    filterInputEffect_(self, p)
 }
 
 /**
@@ -648,21 +656,21 @@ export function mapError<OutErr, OutErr1>(f: (err: OutErr) => OutErr1) {
 /**
  * Effectfully transforms this sink's result.
  */
-export function mapEff_<R, R1, InErr, In, OutErr, OutErr1, L, Z, Z1>(
+export function mapEffect_<R, R1, InErr, In, OutErr, OutErr1, L, Z, Z1>(
   self: Sink<R, InErr, In, OutErr, L, Z>,
   f: (z: Z) => T.Effect<R1, OutErr1, Z1>
 ): Sink<R & R1, InErr, In, OutErr | OutErr1, L, Z1> {
-  return new Sink(C.mapEff_(self.channel, f))
+  return new Sink(C.mapEffect_(self.channel, f))
 }
 
 /**
  * Effectfully transforms this sink's result.
  *
- * @ets_data_first mapEff_
+ * @ets_data_first mapEffect_
  */
-export function mapEff<R1, OutErr1, Z, Z1>(f: (z: Z) => T.Effect<R1, OutErr1, Z1>) {
+export function mapEffect<R1, OutErr1, Z, Z1>(f: (z: Z) => T.Effect<R1, OutErr1, Z1>) {
   return <R, InErr, In, OutErr, L>(self: Sink<R, InErr, In, OutErr, L, Z>) =>
-    mapEff_(self, f)
+    mapEffect_(self, f)
 }
 
 // TODO: race -> Missing raceBoth
@@ -919,7 +927,7 @@ export function dropLeftover<R, InErr, In, OutErr, L, Z>(
   return new Sink(C.drain(self.channel))
 }
 
-// TODO: untilOutputEff_ -> Not implemented
+// TODO: untilOutputEffect_ -> Not implemented
 
 export function accessSink<R, InErr, In, OutErr, L, Z>(
   f: (r: R) => Sink<R, InErr, In, OutErr, L, Z>
@@ -1053,11 +1061,11 @@ export function collectAllWhile<Err, In>(
 /**
  * Accumulates incoming elements into a chunk as long as they verify effectful predicate `p`.
  */
-export function collectAllWhileEff<Env, Err, In>(
+export function collectAllWhileEffect<Env, Err, In>(
   p: (in_: In) => T.Effect<Env, Err, boolean>
 ): Sink<Env, Err, In, Err, In, A.Chunk<In>> {
   return pipe(
-    foldEff<Env, Err, In, Tp.Tuple<[L.List<In>, boolean]>>(
+    foldEffect<Env, Err, In, Tp.Tuple<[L.List<In>, boolean]>>(
       Tp.tuple(L.empty(), true),
       Tp.get(1),
       ({ tuple: [as, _] }, a) =>
@@ -1244,7 +1252,7 @@ export function foldChunks<Err, In, S>(
  * `contFn` condition is checked only for the initial value and at the end of processing of each chunk.
  * `f` and `contFn` must preserve chunking-invariance.
  */
-export function foldChunksEff<Env, Err, In, S>(
+export function foldChunksEffect<Env, Err, In, S>(
   z: S,
   contFn: Predicate<S>,
   f: (s: S, chunk: A.Chunk<In>) => T.Effect<Env, Err, S>
@@ -1291,21 +1299,21 @@ export function foldLeftChunks<Err, In, S>(
  * A sink that effectfully folds its input chunks with the provided function and initial state.
  * `f` must preserve chunking-invariance.
  */
-export function foldLeftChunksEff<R, Err, In, S>(
+export function foldLeftChunksEffect<R, Err, In, S>(
   z: S,
   f: (s: S, chunk: A.Chunk<In>) => T.Effect<R, Err, S>
 ): Sink<R, Err, In, Err, unknown, S> {
-  return dropLeftover(foldChunksEff<R, Err, In, S>(z, (_) => true, f))
+  return dropLeftover(foldChunksEffect<R, Err, In, S>(z, (_) => true, f))
 }
 
 /**
  * A sink that effectfully folds its inputs with the provided function and initial state.
  */
-export function foldLeftEff<R, Err, In, S>(
+export function foldLeftEffect<R, Err, In, S>(
   z: S,
   f: (s: S, in_: In) => T.Effect<R, Err, S>
 ): Sink<R, Err, In, Err, In, S> {
-  return foldEff<R, Err, In, S>(z, (_) => true, f)
+  return foldEffect<R, Err, In, S>(z, (_) => true, f)
 }
 
 /**
@@ -1335,13 +1343,13 @@ export function foldUntil<Err, In, S>(
  *
  * Like `foldWeightedM`, but with a constant cost function of 1.
  */
-export function foldUntilEff<Env, In, Err, S>(
+export function foldUntilEffect<Env, In, Err, S>(
   z: S,
   max: number,
   f: (s: S, in_: In) => T.Effect<Env, Err, S>
 ): Sink<Env, Err, In, Err, In, S> {
   return pipe(
-    foldEff<Env, Err, In, Tp.Tuple<[S, number]>>(
+    foldEffect<Env, Err, In, Tp.Tuple<[S, number]>>(
       Tp.tuple(z, 0),
       ({ tuple: [_, a] }) => a < max,
       ({ tuple: [o, count] }, i) => T.map_(f(o, i), (_) => Tp.tuple(_, count + 1))
@@ -1467,7 +1475,7 @@ export function foldWeightedDecompose<Err, In, S>(
  *
  * See `foldWeightedDecompose` for an example.
  */
-export function foldWeightedDecomposeEff<Env, Env1, Env2, Err, Err1, Err2, In, S>(
+export function foldWeightedDecomposeEffect<Env, Env1, Env2, Err, Err1, Err2, In, S>(
   z: S,
   costFn: (s: S, in_: In) => T.Effect<Env, Err, number>,
   max: number,
@@ -1564,19 +1572,19 @@ export function foldWeightedDecomposeEff<Env, Env1, Env2, Err, Err1, Err2, In, S
  * force the sink to cross the `max` cost. See `foldWeightedDecomposeM`
  * for a variant that can handle these cases.
  */
-export function foldWeightedEff<Env, Err, In, S>(
+export function foldWeightedEffect<Env, Err, In, S>(
   z: S,
   costFn: (s: S, in_: In) => T.Effect<Env, Err, number>,
   max: number,
   f: (s: S, in_: In) => T.Effect<Env, Err, S>
 ): Sink<Env, Err, In, Err, In, S> {
-  return foldWeightedDecomposeEff(z, costFn, max, (i) => T.succeed(A.single(i)), f)
+  return foldWeightedDecomposeEffect(z, costFn, max, (i) => T.succeed(A.single(i)), f)
 }
 
 /**
  * A sink that effectfully folds its inputs with the provided function, termination predicate and initial state.
  */
-export function foldEff<Env, Err, In, S>(
+export function foldEffect<Env, Err, In, S>(
   z: S,
   contFn: (s: S) => boolean,
   f: (s: S, in_: In) => T.Effect<Env, Err, S>
@@ -1881,7 +1889,7 @@ export function reduce<S, In, Err>(z: S, cont: Predicate<S>, f: (s: S, _in: In) 
 /**
  * A sink that effectfully folds its inputs with the provided function, termination predicate and initial state.
  */
-export function reduceEff<S, Env, In, InErr, OutErr>(
+export function reduceEffect<S, Env, In, InErr, OutErr>(
   z: S,
   cont: Predicate<S>,
   f: (s: S, _in: In) => T.Effect<Env, OutErr, S>

@@ -344,7 +344,7 @@ function contramapMReader<Env1, InErr, InElem, InDone0, InDone>(
   )
 }
 
-export function contramapEff_<
+export function contramapEffect_<
   Env,
   Env1,
   InErr,
@@ -362,14 +362,14 @@ export function contramapEff_<
 }
 
 /**
- * @ets_data_first contramapEff_
+ * @ets_data_first contramapEffect_
  */
-export function contramapEff<Env1, InErr, InDone0, InDone>(
+export function contramapEffect<Env1, InErr, InDone0, InDone>(
   f: (i: InDone0) => T.Effect<Env1, InErr, InDone>
 ) {
   return <Env, InElem, OutErr, OutElem, OutDone>(
     self: C.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
-  ) => contramapEff_(self, f)
+  ) => contramapEffect_(self, f)
 }
 
 function contramapInMReader<Env1, InErr, InElem0, InElem, InDone>(
@@ -386,7 +386,7 @@ function contramapInMReader<Env1, InErr, InElem0, InElem, InDone>(
   )
 }
 
-export function contramapInEff_<
+export function contramapInEffect_<
   Env,
   Env1,
   InErr,
@@ -404,14 +404,14 @@ export function contramapInEff_<
 }
 
 /**
- * @ets_data_first contramapInEff_
+ * @ets_data_first contramapInEffect_
  */
-export function contramapInEff<Env1, InErr, InElem0, InElem>(
+export function contramapInEffect<Env1, InErr, InElem0, InElem>(
   f: (a: InElem0) => T.Effect<Env1, InErr, InElem>
 ) {
   return <Env, InDone, OutErr, OutElem, OutDone>(
     self: C.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
-  ) => contramapInEff_(self, f)
+  ) => contramapInEffect_(self, f)
 }
 
 function doneCollectReader<Env, OutErr, OutElem, OutDone>(
@@ -874,7 +874,7 @@ function toPullInterpret<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
  * returned channel is created by applying the specified effectful function to the terminal value
  * of this channel.
  */
-export function mapEff_<
+export function mapEffect_<
   Env,
   Env1,
   InErr,
@@ -897,14 +897,14 @@ export function mapEff_<
  * returned channel is created by applying the specified effectful function to the terminal value
  * of this channel.
  *
- * @ets_data_first mapEff_
+ * @ets_data_first mapEffect_
  */
-export function mapEff<Env1, OutErr1, OutDone, OutDone1>(
+export function mapEffect<Env1, OutErr1, OutDone, OutDone1>(
   f: (o: OutDone) => T.Effect<Env1, OutErr1, OutDone1>
 ) {
   return <Env, InErr, InElem, InDone, OutErr, OutElem>(
     self: C.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
-  ) => mapEff_(self, f)
+  ) => mapEffect_(self, f)
 }
 
 /**
@@ -1259,7 +1259,7 @@ const mapOutMReader = <Env, Env1, OutErr, OutErr1, OutElem, OutElem1, OutDone>(
     (z) => C.end(z)
   )
 
-export function mapOutEff_<
+export function mapOutEffect_<
   Env,
   Env1,
   InErr,
@@ -1278,14 +1278,14 @@ export function mapOutEff_<
 }
 
 /**
- * @ets_data_first mapOutEff_
+ * @ets_data_first mapOutEffect_
  */
-export function mapOutEff<Env1, OutErr1, OutElem, OutElem1>(
+export function mapOutEffect<Env1, OutErr1, OutElem, OutElem1>(
   f: (o: OutElem) => T.Effect<Env1, OutErr1, OutElem1>
 ) {
   return <Env, InErr, InElem, InDone, OutErr, OutDone>(
     self: C.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
-  ) => mapOutEff_(self, f)
+  ) => mapOutEffect_(self, f)
 }
 
 export const never: C.Channel<unknown, unknown, unknown, unknown, never, never, never> =

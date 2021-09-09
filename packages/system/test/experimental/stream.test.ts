@@ -47,11 +47,11 @@ describe("Stream", () => {
       )
     ).equals(Chunk.many(Tp.tuple(0, 1), Tp.tuple(0, 1)))
   })
-  it("mapEff", async () => {
+  it("mapEffect", async () => {
     expect(
       await pipe(
         S.fromChunk(Chunk.many(0, 1, 2)),
-        S.mapEff((n) => T.succeedWith(() => n + 1)),
+        S.mapEffect((n) => T.succeedWith(() => n + 1)),
         S.runCollect,
         T.runPromise
       )

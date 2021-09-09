@@ -6,7 +6,7 @@ import { pipe } from "../../../Function"
 import * as O from "../../../Option"
 import * as P from "../../../Promise"
 import * as Ref from "../../../Ref"
-import type * as SER from "./sinkEndReason"
+import type * as SER from "./SinkEndReason"
 
 export class Handoff<A> {
   constructor(readonly ref: Ref.Ref<State<A>>) {}

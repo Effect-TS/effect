@@ -4,7 +4,7 @@ import * as T from "../../../Effect"
 import { pipe } from "../../../Function"
 import * as O from "../../../Option"
 import * as Ref from "../../../Ref"
-import * as Pull from "./Pull"
+import * as Pull from "../Pull"
 
 export class BufferedPull<R, E, A> {
   constructor(

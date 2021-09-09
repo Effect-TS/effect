@@ -13,7 +13,7 @@ import * as O from "../../../Option"
 import * as HO from "../_internal/Handoff"
 import * as C from "../Channel"
 import * as Sink from "../Sink"
-import * as Take from "./Take"
+import * as Take from "../Take"
 
 export const StreamTypeId = Symbol()
 export type StreamTypeId = typeof StreamTypeId
@@ -105,7 +105,7 @@ export function chain<O, R1, E1, O1>(
 /**
  * Creates a stream by effectfully peeling off the "layers" of a value of type `S`
  */
-export function unfoldChunkEff<R, E, A, S>(
+export function unfoldChunkEffect<R, E, A, S>(
   s: S,
   f: (s: S) => T.Effect<R, E, O.Option<Tp.Tuple<[Chunk.Chunk<A>, S]>>>
 ): Stream<R, E, A> {
@@ -194,7 +194,7 @@ export function combineChunks_<R, R1, E, E1, A, A2, A3, S>(
           T.chain_(HO.take(right), Take.done)
         )
 
-        return unfoldChunkEff(s, (s) =>
+        return unfoldChunkEffect(s, (s) =>
           T.chain_(f(s, pullLeft, pullRight), (_) => T.unoption(T.done(_)))
         ).channel
       }
@@ -315,7 +315,7 @@ export function managed<R, E, A>(self: M.Managed<R, E, A>): Stream<R, E, A> {
 /**
  * Maps over elements of the stream with the specified effectful function.
  */
-export function mapEff_<R, E, A, R1, E1, B>(
+export function mapEffect_<R, E, A, R1, E1, B>(
   self: Stream<R, E, A>,
   f: (a: A) => T.Effect<R1, E1, B>
 ): Stream<R & R1, E | E1, B> {
@@ -327,12 +327,12 @@ export function mapEff_<R, E, A, R1, E1, B>(
 /**
  * Maps over elements of the stream with the specified effectful function.
  *
- * @ets_data_first mapEff_
+ * @ets_data_first mapEffect_
  */
-export function mapEff<A, R1, E1, B>(
+export function mapEffect<A, R1, E1, B>(
   f: (a: A) => T.Effect<R1, E1, B>
 ): <R, E>(self: Stream<R, E, A>) => Stream<R & R1, E | E1, B> {
-  return (self) => mapEff_(self, f)
+  return (self) => mapEffect_(self, f)
 }
 
 /**
@@ -560,7 +560,7 @@ function unfoldChunksLoop<S, R, E, A>(
 /**
  * Creates a stream by effectfully peeling off the "layers" of a value of type `S`
  */
-export function unfoldChunksEff<R, E, A, S>(
+export function unfoldChunksEffect<R, E, A, S>(
   s: S,
   f: (s: S) => T.Effect<R, E, O.Option<Tp.Tuple<[Chunk.Chunk<A>, S]>>>
 ): Stream<R, E, A> {
