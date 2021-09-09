@@ -25,8 +25,7 @@
   },
   "sideEffects": false,
   "peerDependencies": {
-    "@effect-ts/core": "^0.43.7",
-    "fast-check": ">= 2.14.0"
+    "@effect-ts/core": "^0.43.7"
   },
   "config": {
     "side": [],
@@ -34,6 +33,7 @@
       "Core",
       "Core/Doc",
       "Core/DocStream",
+      "Core/DocTree",
       "Core/Flatten",
       "Core/Layout",
       "Core/Optimize",
