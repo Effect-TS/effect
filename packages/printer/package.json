@@ -42,6 +42,7 @@
       "Terminal",
       "Terminal/Color",
       "Terminal/Layer",
+      "Terminal/Render",
       "Terminal/SGR",
       "Terminal/Style"
     ]
