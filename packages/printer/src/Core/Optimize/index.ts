@@ -108,18 +108,19 @@ function optimizeRec<A>(x: Doc<A>, depth: FusionDepth): IO.IO<Doc<A>> {
           const inner = yield* _(optimizeRec(D.cat_(x.left.right, x.right), depth))
           return yield* _(optimizeRec(D.cat_(x.left.left, inner), depth))
         }
-        const inner = D.cat_(
+        return D.cat_(
           yield* _(optimizeRec(x.left, depth)),
           yield* _(optimizeRec(x.right, depth))
         )
-        return yield* _(optimizeRec(inner, depth))
       }
       case "Nest": {
         if (D.isEmpty(x.doc)) return x.doc
         if (D.isChar(x.doc)) return x.doc
         if (D.isText(x.doc)) return x.doc
         if (D.isNest(x.doc)) {
-          return yield* _(optimizeRec(D.nest_(x.doc, x.indent + x.doc.indent), depth))
+          return yield* _(
+            optimizeRec(D.nest_(x.doc.doc, x.indent + x.doc.indent), depth)
+          )
         }
         if (x.indent === 0) return yield* _(optimizeRec(x.doc, depth))
         return D.nest_(yield* _(optimizeRec(x.doc, depth)), x.indent)
