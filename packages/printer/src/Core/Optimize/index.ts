@@ -69,7 +69,6 @@ function optimizeRec<A>(x: Doc<A>, depth: FusionDepth): IO.IO<Doc<A>> {
         if (D.isEmpty(x.right)) {
           return yield* _(optimizeRec(x.left, depth))
         }
-
         // String documents
         if (D.isChar(x.left) && D.isChar(x.right)) {
           return D.text(x.left.char + x.right.char)
@@ -100,7 +99,7 @@ function optimizeRec<A>(x: Doc<A>, depth: FusionDepth): IO.IO<Doc<A>> {
           const inner = yield* _(optimizeRec(D.cat_(x.left, x.right.left), depth))
           return yield* _(optimizeRec(D.cat_(inner, x.right.right), depth))
         }
-        if (D.isCat(x.left) && D.isChar(x.right)) {
+        if (D.isCat(x.left) && D.isChar(x.left.right)) {
           const inner = yield* _(optimizeRec(D.cat_(x.left.right, x.right), depth))
           return yield* _(optimizeRec(D.cat_(x.left.left, inner), depth))
         }
