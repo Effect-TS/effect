@@ -407,9 +407,9 @@ function fitsSmartRec<A>(
           fitsSmartRec(x.stream, w - x.text.length, minNestingLevel, lineWidth)
         )
       case "LineStream": {
-        if (minNestingLevel > x.indentation) return true
+        if (minNestingLevel >= x.indentation) return true
         return yield* _(
-          fitsSmartRec(x.stream, x.indentation - lineWidth, minNestingLevel, lineWidth)
+          fitsSmartRec(x.stream, lineWidth - x.indentation, minNestingLevel, lineWidth)
         )
       }
       case "PushAnnotationStream":

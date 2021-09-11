@@ -1780,9 +1780,9 @@ export function list<A>(docs: Array<Doc<A>>): Doc<A> {
   return group(
     encloseSep_(
       docs,
-      flatAlt_(char("[ "), lbracket),
-      flatAlt_(char(" ]"), rbracket),
-      char(", ")
+      flatAlt_(text("[ "), lbracket),
+      flatAlt_(text(" ]"), rbracket),
+      text(", ")
     )
   )
 }
@@ -1808,9 +1808,9 @@ export function tupled<A>(docs: Array<Doc<A>>): Doc<A> {
   return group(
     encloseSep_(
       docs,
-      flatAlt_(char("( "), lparen),
-      flatAlt_(char(" )"), rparen),
-      char(", ")
+      flatAlt_(text("( "), lparen),
+      flatAlt_(text(" )"), rparen),
+      text(", ")
     )
   )
 }

@@ -22,9 +22,8 @@ describe("Optimize", () => {
     expect(unfused).toHaveProperty(["left", "right", "char"], "c")
     expect(unfused).toHaveProperty(["right", "char"], "d")
 
-    // Fused document will result in a single `Cat` document with two branches
-    // containing the concatenated characters in each branch of the previous
-    // unfused document
+    // Fused document will have be a single text document combining each
+    // individual char document together
     expect(fused).toHaveProperty("text", "abcd")
   })
 
