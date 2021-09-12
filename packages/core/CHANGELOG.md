@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.44.4](https://github.com/Effect-TS/core/compare/@effect-ts/core@0.44.3...@effect-ts/core@0.44.4) (2021-09-12)
+
+
+### Bug Fixes
+
+* **chunk:** fix data first forEachF ([b14ddd2](https://github.com/Effect-TS/core/commit/b14ddd24f4d1f9542ec00c1a3fc863ef261f108a))
+
+
+
+
+
 ## [0.44.3](https://github.com/Effect-TS/core/compare/@effect-ts/core@0.44.2...@effect-ts/core@0.44.3) (2021-09-12)
 
 
