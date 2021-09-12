@@ -38,32 +38,12 @@ export interface ForeachFn<F extends HKT.URIS, C = HKT.Auto> {
 }
 
 export interface ForeachFn_<F extends HKT.URIS, C = HKT.Auto> {
-  <
-    G extends HKT.URIS,
-    GC,
-    FK,
-    FQ,
-    FW,
-    FX,
-    FI,
-    FS,
-    FR,
-    FE,
-    GK,
-    GQ,
-    GW,
-    GX,
-    GI,
-    GS,
-    GR,
-    GE,
-    A,
-    B
-  >(
+  <G extends HKT.URIS, GC, FK, FQ, FW, FX, FI, FS, FR, FE, A>(
     fa: HKT.Kind<F, C, FK, FQ, FW, FX, FI, FS, FR, FE, A>,
-    G: IdentityBoth<G, GC> & Covariant<G, GC>,
+    G: IdentityBoth<G, GC> & Covariant<G, GC>
+  ): <GK, GQ, GW, GX, GI, GS, GR, GE, B>(
     f: (a: A) => HKT.Kind<G, GC, GK, GQ, GW, GX, GI, GS, GR, GE, B>
-  ): HKT.Kind<
+  ) => HKT.Kind<
     G,
     GC,
     GK,

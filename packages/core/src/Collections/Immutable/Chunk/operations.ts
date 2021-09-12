@@ -49,7 +49,8 @@ export const forEachF = P.implementForEachF<[URI<ChunkURI>]>()(
 /**
  * `ForEach`'s `forEachF` function
  */
-export const forEachF_: P.ForeachFn_<[URI<ChunkURI>]> = (fa, G, f) => forEachF(G)(f)(fa)
+export const forEachF_: P.ForeachFn_<[URI<ChunkURI>]> = (fa, G) => (f) =>
+  forEachF(G)(f)(fa)
 
 /**
  * `Wilt`'s `separateF` function
