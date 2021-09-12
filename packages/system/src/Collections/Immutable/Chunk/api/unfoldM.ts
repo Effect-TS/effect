@@ -23,21 +23,9 @@ function loop<A, R, E, S>(
  * Constructs a `Chunk` by repeatedly applying the effectual function `f` as
  * long as it returns `Some`.
  */
-export function unfoldM_<A, R, E, S>(
+export function unfoldM<A, R, E, S>(
   s: S,
   f: (s: S) => Effect<R, E, O.Option<Tp.Tuple<[A, S]>>>
 ): Effect<R, E, Chunk<A>> {
   return loop(s, f, empty())
-}
-
-/**
- * Constructs a `Chunk` by repeatedly applying the effectual function `f` as
- * long as it returns `Some`.
- *
- * @ets_data_first unfoldM_
- */
-export function unfoldM<A, R, E, S>(
-  f: (s: S) => Effect<R, E, O.Option<Tp.Tuple<[A, S]>>>
-): (s: S) => Effect<R, E, Chunk<A>> {
-  return (s) => unfoldM_(s, f)
 }

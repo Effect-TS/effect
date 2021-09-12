@@ -80,10 +80,11 @@ export const compactWithIndexF = P.implementCompactWithIndexF<[URI<ChunkURI>]>()
  * Test if a value is a member of an array. Takes a `Equal<A>` as a single
  * argument which returns the function to use to search for a value of type `A` in
  * an array of type `Chunk<A>`.
+ *
+ * @ets_data_first elem_
  */
-export function elem<A>(E: Equal<A>): (a: A) => (as: Chunk.Chunk<A>) => boolean {
-  const elemE = elem_(E)
-  return (a) => (as) => elemE(as, a)
+export function elem<A>(E: Equal<A>, a: A): (as: Chunk.Chunk<A>) => boolean {
+  return (as) => elem_(as, E, a)
 }
 
 /**
@@ -91,18 +92,16 @@ export function elem<A>(E: Equal<A>): (a: A) => (as: Chunk.Chunk<A>) => boolean 
  * argument which returns the function to use to search for a value of type `A` in
  * an array of type `Chunk<A>`.
  */
-export function elem_<A>(E: Equal<A>): (as: Chunk.Chunk<A>, a: A) => boolean {
-  return (as, a) => {
-    const predicate = (element: A) => E.equals(element, a)
-    let i = 0
-    const len = as.length
-    for (; i < len; i++) {
-      if (predicate(Chunk.unsafeGet_(as, i)!)) {
-        return true
-      }
+export function elem_<A>(as: Chunk.Chunk<A>, E: Equal<A>, a: A): boolean {
+  const predicate = (element: A) => E.equals(element, a)
+  let i = 0
+  const len = as.length
+  for (; i < len; i++) {
+    if (predicate(Chunk.unsafeGet_(as, i)!)) {
+      return true
     }
-    return false
   }
+  return false
 }
 
 /**
@@ -110,21 +109,24 @@ export function elem_<A>(E: Equal<A>): (as: Chunk.Chunk<A>, a: A) => boolean {
  * comparisons. The order and references of result values are determined by the first array.
  */
 export function difference_<A>(
-  E: Equal<A>
-): (xs: Chunk.Chunk<A>, ys: Chunk.Chunk<A>) => Chunk.Chunk<A> {
-  const elemE = elem_(E)
-  return (xs, ys) => Chunk.filter_(xs, (a) => !elemE(ys, a))
+  xs: Chunk.Chunk<A>,
+  E: Equal<A>,
+  ys: Chunk.Chunk<A>
+): Chunk.Chunk<A> {
+  return Chunk.filter_(xs, (a) => !elem_(ys, E, a))
 }
 
 /**
  * Creates an array of array values not included in the other given array using a `Equal` for equality
  * comparisons. The order and references of result values are determined by the first array.
+ *
+ * @ets_data_first difference_
  */
 export function difference<A>(
-  E: Equal<A>
-): (ys: Chunk.Chunk<A>) => (xs: Chunk.Chunk<A>) => Chunk.Chunk<A> {
-  const diff = difference_(E)
-  return (ys) => (xs) => diff(xs, ys)
+  E: Equal<A>,
+  ys: Chunk.Chunk<A>
+): (xs: Chunk.Chunk<A>) => Chunk.Chunk<A> {
+  return (xs) => difference_(xs, E, ys)
 }
 
 /**
@@ -175,21 +177,24 @@ export function getShow<A>(S: Show<A>): Show<Chunk.Chunk<A>> {
  * comparisons. The order and references of result values are determined by the first array.
  */
 export function intersection_<A>(
-  E: Equal<A>
-): (xs: Chunk.Chunk<A>, ys: Chunk.Chunk<A>) => Chunk.Chunk<A> {
-  const elemE = elem_(E)
-  return (xs, ys) => Chunk.filter_(xs, (a) => elemE(ys, a))
+  xs: Chunk.Chunk<A>,
+  E: Equal<A>,
+  ys: Chunk.Chunk<A>
+): Chunk.Chunk<A> {
+  return Chunk.filter_(xs, (a) => elem_(ys, E, a))
 }
 
 /**
  * Creates an array of unique values that are included in all given arrays using a `Eq` for equality
  * comparisons. The order and references of result values are determined by the first array.
+ *
+ * @ets_data_first intersection_
  */
 export function intersection<A>(
-  E: Equal<A>
-): (ys: Chunk.Chunk<A>) => (xs: Chunk.Chunk<A>) => Chunk.Chunk<A> {
-  const int = intersection_(E)
-  return (ys) => (xs) => int(xs, ys)
+  E: Equal<A>,
+  ys: Chunk.Chunk<A>
+): (xs: Chunk.Chunk<A>) => Chunk.Chunk<A> {
+  return (xs) => intersection_(xs, E, ys)
 }
 
 /**
@@ -233,67 +238,102 @@ export function foldMapWithIndex_<M>(
 
 /**
  * Sort the elements of an array in increasing order
+ *
+ * @ets_data_first sort_
  */
 export function sort<A>(O: Ord.Ord<A>): (as: Chunk.Chunk<A>) => Chunk.Chunk<A> {
-  return (as) => Chunk.from([...Chunk.toArray(as)].sort((x, y) => O.compare(x, y)))
+  return (as) => sort_(as, O)
+}
+
+/**
+ * Sort the elements of an array in increasing order
+ */
+export function sort_<A>(as: Chunk.Chunk<A>, O: Ord.Ord<A>): Chunk.Chunk<A> {
+  return Chunk.from([...Chunk.toArray(as)].sort((x, y) => O.compare(x, y)))
+}
+
+/**
+ * Sort the elements of an array in increasing order, where elements are compared using first `ords[0]`,
+ * then `ords[1]`, then `ords[2]`, etc...
+ *
+ * @ets_data_first sortBy_
+ */
+export function sortBy<A>(
+  ords: Array<Ord.Ord<A>>
+): (as: Chunk.Chunk<A>) => Chunk.Chunk<A> {
+  return (as) => sortBy_(as, ords)
 }
 
 /**
  * Sort the elements of an array in increasing order, where elements are compared using first `ords[0]`,
  * then `ords[1]`, then `ords[2]`, etc...
  */
-export function sortBy<A>(
+export function sortBy_<A>(
+  as: Chunk.Chunk<A>,
   ords: Array<Ord.Ord<A>>
-): (as: Chunk.Chunk<A>) => Chunk.Chunk<A> {
+): Chunk.Chunk<A> {
   const M = Ord.getIdentity<A>()
-  return sort(ords.reduce((x, y) => M.combine(x, y), M.identity))
+  return sort_(
+    as,
+    ords.reduce((x, y) => M.combine(x, y), M.identity)
+  )
 }
 
 /**
  * Creates an array of unique values, in order, from all given arrays using a `Equal` for equality comparisons
  */
 export function union_<A>(
-  E: Equal<A>
-): (xs: Chunk.Chunk<A>, ys: Chunk.Chunk<A>) => Chunk.Chunk<A> {
-  const elemE = elem_(E)
-  return (xs, ys) =>
-    Chunk.concat_(
-      xs,
-      Chunk.filter_(ys, (a) => !elemE(xs, a))
-    )
+  xs: Chunk.Chunk<A>,
+  E: Equal<A>,
+  ys: Chunk.Chunk<A>
+): Chunk.Chunk<A> {
+  return Chunk.concat_(
+    xs,
+    Chunk.filter_(ys, (a) => !elem_(xs, E, a))
+  )
 }
 
 /**
  * Creates an array of unique values, in order, from all given arrays using a `Equal` for equality comparisons
+ *
+ * @ets_data_first union_
  */
 export function union<A>(
-  E: Equal<A>
-): (ys: Chunk.Chunk<A>) => (xs: Chunk.Chunk<A>) => Chunk.Chunk<A> {
-  const un = union_(E)
-  return (ys) => (xs) => un(xs, ys)
+  E: Equal<A>,
+  ys: Chunk.Chunk<A>
+): (xs: Chunk.Chunk<A>) => Chunk.Chunk<A> {
+  return (xs) => union_(xs, E, ys)
 }
 
 /**
  * Remove duplicates from an array, keeping the first occurrence of an element.
  */
-export function uniq<A>(E: Equal<A>): (as: Chunk.Chunk<A>) => Chunk.Chunk<A> {
-  const elemS = elem_(E)
-  return (as) => {
-    let r: Chunk.Chunk<A> = Chunk.empty()
-    const len = as.length
-    let i = 0
-    for (; i < len; i++) {
-      const a = as[i]!
-      if (!elemS(r, a)) {
-        r = Chunk.append_(r, a)
-      }
+export function uniq_<A>(as: Chunk.Chunk<A>, E: Equal<A>): Chunk.Chunk<A> {
+  let r: Chunk.Chunk<A> = Chunk.empty()
+  const len = as.length
+  let i = 0
+  for (; i < len; i++) {
+    const a = as[i]!
+    if (!elem_(r, E, a)) {
+      r = Chunk.append_(r, a)
     }
-    return len === r.length ? as : r
   }
+  return len === r.length ? as : r
+}
+
+/**
+ * Remove duplicates from an array, keeping the first occurrence of an element.
+ *
+ * @ets_data_first uniq_
+ */
+export function uniq<A>(E: Equal<A>): (as: Chunk.Chunk<A>) => Chunk.Chunk<A> {
+  return (as) => uniq_(as, E)
 }
 
 /**
  * Separate elements based on a apredicate
+ *
+ * @ets_data_first partition_
  */
 export function partition<A>(predicate: Predicate<A>) {
   return (fa: Chunk.Chunk<A>): Separated<Chunk.Chunk<A>, Chunk.Chunk<A>> =>
@@ -335,6 +375,8 @@ export function partitionMapWithIndex_<A, B, C>(
 
 /**
  * Separate elements based on a map function that also carry the index
+ *
+ * @ets_data_first partitionMapWithIndex_
  */
 export function partitionMapWithIndex<A, B, C>(f: (i: number, a: A) => Either<B, C>) {
   return (fa: Chunk.Chunk<A>): Separated<Chunk.Chunk<B>, Chunk.Chunk<C>> =>
@@ -343,6 +385,8 @@ export function partitionMapWithIndex<A, B, C>(f: (i: number, a: A) => Either<B,
 
 /**
  * Separate elements based on a predicate that also carry the index
+ *
+ * @ets_data_first partitionWithIndex
  */
 export function partitionWithIndex<A>(
   predicateWithIndex: PredicateWithIndex<number, A>
