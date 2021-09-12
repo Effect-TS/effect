@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.44.0](https://github.com/Effect-TS/core/compare/@effect-ts/core@0.43.9...@effect-ts/core@0.44.0) (2021-09-12)
+
+
+### Features
+
+* **chunk:** fix data-first variants ([29d20be](https://github.com/Effect-TS/core/commit/29d20bebf908c948a68659aa992dff94c96aacf5))
+
+
+
+
+
 ## [0.43.9](https://github.com/Effect-TS/core/compare/@effect-ts/core@0.43.8...@effect-ts/core@0.43.9) (2021-09-09)
 
 **Note:** Version bump only for package @effect-ts/core

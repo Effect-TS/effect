@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.41.0](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.40.9...@effect-ts/system@0.41.0) (2021-09-12)
+
+
+### Features
+
+* **chunk:** fix data-first variants ([29d20be](https://github.com/Effect-TS/core/commit/29d20bebf908c948a68659aa992dff94c96aacf5))
+
+
+
+
+
 ## [0.40.9](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.40.8...@effect-ts/system@0.40.9) (2021-09-09)
 
 
