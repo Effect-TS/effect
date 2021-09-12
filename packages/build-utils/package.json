@@ -1,6 +1,6 @@
 {
   "name": "@effect-ts/build-utils",
-  "version": "0.24.1",
+  "version": "0.24.2",
   "license": "MIT",
   "private": false,
   "repository": "https://github.com/Effect-TS/core.git",
@@ -29,7 +29,7 @@
     "cpx": ">= 1.5.0"
   },
   "devDependencies": {
-    "@effect-ts/core": "^0.44.1"
+    "@effect-ts/core": "^0.44.2"
   },
   "bin": {
     "build-utils": "./build-utils"

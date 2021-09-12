@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.41.2](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.41.1...@effect-ts/system@0.41.2) (2021-09-12)
+
+
+### Features
+
+* **managed:** make class impl detail ([e8a1ca2](https://github.com/Effect-TS/core/commit/e8a1ca2b99cd8ea648b5aca696ce47dff4a81f4c))
+
+
+
+
+
 ## [0.41.1](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.41.0...@effect-ts/system@0.41.1) (2021-09-12)
 
 
