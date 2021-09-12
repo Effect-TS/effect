@@ -47,6 +47,11 @@ export const forEachF = P.implementForEachF<[URI<ChunkURI>]>()(
 )
 
 /**
+ * `ForEach`'s `forEachF` function
+ */
+export const forEachF_: P.ForeachFn_<[URI<ChunkURI>]> = (fa, G, f) => forEachF(G)(f)(fa)
+
+/**
  * `Wilt`'s `separateF` function
  */
 export const separateF = P.implementSeparateF<[URI<ChunkURI>]>()(
@@ -209,10 +214,8 @@ export function foldMap<M>(
 /**
  * Fold Identity with a mapping function
  */
-export function foldMap_<M>(
-  M: Identity<M>
-): <A>(fa: Chunk.Chunk<A>, f: (a: A) => M) => M {
-  return (fa, f) => foldMapWithIndex_(M)(fa, (_, a) => f(a))
+export function foldMap_<M, A>(fa: Chunk.Chunk<A>, M: Identity<M>, f: (a: A) => M): M {
+  return foldMapWithIndex_(fa, M, (_, a) => f(a))
 }
 
 /**
@@ -221,19 +224,20 @@ export function foldMap_<M>(
 export function foldMapWithIndex<M>(
   M: Identity<M>
 ): <A>(f: (i: number, a: A) => M) => (fa: Chunk.Chunk<A>) => M {
-  return (f) => (fa) => foldMapWithIndex_(M)(fa, f)
+  return (f) => (fa) => foldMapWithIndex_(fa, M, f)
 }
 
 /**
  * Fold Identity with a mapping function that consider also the index
  */
-export function foldMapWithIndex_<M>(
-  M: Identity<M>
-): <A>(fa: Chunk.Chunk<A>, f: (i: number, a: A) => M) => M {
-  return (fa, f) =>
-    Chunk.reduce_(Chunk.zipWithIndex(fa), M.identity, (b, { tuple: [a, i] }) =>
-      M.combine(b, f(i, a))
-    )
+export function foldMapWithIndex_<M, A>(
+  fa: Chunk.Chunk<A>,
+  M: Identity<M>,
+  f: (i: number, a: A) => M
+): M {
+  return Chunk.reduce_(Chunk.zipWithIndex(fa), M.identity, (b, { tuple: [a, i] }) =>
+    M.combine(b, f(i, a))
+  )
 }
 
 /**

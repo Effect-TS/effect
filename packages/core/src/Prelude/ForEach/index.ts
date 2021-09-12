@@ -8,7 +8,6 @@ import type { IdentityBoth } from "../IdentityBoth"
 
 export interface ForeachFn<F extends HKT.URIS, C = HKT.Auto> {
   <G extends HKT.URIS, GC = HKT.Auto>(G: IdentityBoth<G, GC> & Covariant<G, GC>): <
-    GN extends string,
     GK,
     GQ,
     GW,
@@ -21,9 +20,50 @@ export interface ForeachFn<F extends HKT.URIS, C = HKT.Auto> {
     B
   >(
     f: (a: A) => HKT.Kind<G, GC, GK, GQ, GW, GX, GI, GS, GR, GE, B>
-  ) => <FN extends string, FK, FQ, FW, FX, FI, FS, FR, FE>(
+  ) => <FK, FQ, FW, FX, FI, FS, FR, FE>(
     fa: HKT.Kind<F, C, FK, FQ, FW, FX, FI, FS, FR, FE, A>
   ) => HKT.Kind<
+    G,
+    GC,
+    GK,
+    GQ,
+    GW,
+    GX,
+    GI,
+    GS,
+    GR,
+    GE,
+    HKT.Kind<F, C, FK, FQ, FW, FX, FI, FS, FR, FE, B>
+  >
+}
+
+export interface ForeachFn_<F extends HKT.URIS, C = HKT.Auto> {
+  <
+    G extends HKT.URIS,
+    GC,
+    FK,
+    FQ,
+    FW,
+    FX,
+    FI,
+    FS,
+    FR,
+    FE,
+    GK,
+    GQ,
+    GW,
+    GX,
+    GI,
+    GS,
+    GR,
+    GE,
+    A,
+    B
+  >(
+    fa: HKT.Kind<F, C, FK, FQ, FW, FX, FI, FS, FR, FE, A>,
+    G: IdentityBoth<G, GC> & Covariant<G, GC>,
+    f: (a: A) => HKT.Kind<G, GC, GK, GQ, GW, GX, GI, GS, GR, GE, B>
+  ): HKT.Kind<
     G,
     GC,
     GK,
@@ -78,7 +118,6 @@ export interface ForEachCompositionFn<
   CG = HKT.Auto
 > {
   <H extends HKT.URIS, CH = HKT.Auto>(H: IdentityBoth<H, CH> & Covariant<H, CH>): <
-    HN extends string,
     HK,
     HQ,
     HW,
@@ -91,26 +130,7 @@ export interface ForEachCompositionFn<
     B
   >(
     f: (a: A) => HKT.Kind<H, CH, HK, HQ, HW, HX, HI, HS, HR, HE, B>
-  ) => <
-    FN extends string,
-    FK,
-    FQ,
-    FW,
-    FX,
-    FI,
-    FS,
-    FR,
-    FE,
-    GN extends string,
-    GK,
-    GQ,
-    GW,
-    GX,
-    GI,
-    GS,
-    GR,
-    GE
-  >(
+  ) => <FK, FQ, FW, FX, FI, FS, FR, FE, GK, GQ, GW, GX, GI, GS, GR, GE>(
     fa: HKT.Kind<
       F,
       CF,
@@ -174,7 +194,7 @@ export function getForEachComposition<F, G>(
 ) {
   return HKT.instance<ForEachComposition<HKT.UHKT<F>, HKT.UHKT<G>>>({
     ...getCovariantComposition(F, G),
-    forEachF: (H) => (x) => pipe(x, G.forEachF(H), F.forEachF(H))
+    forEachF: (H) => (f) => pipe(f, G.forEachF(H), F.forEachF(H))
   })
 }
 
