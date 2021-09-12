@@ -174,6 +174,18 @@ export function fromManaged<T>(has: Tag<T>) {
 }
 
 /**
+ * Constructs a layer from a managed resource.
+ */
+export function fromManaged_<R, E, T>(
+  resource: M.Managed<R, E, T>,
+  has: Tag<T>
+): Layer<R, E, Has<T>> {
+  return new LayerManaged(M.chain_(resource, (a) => environmentFor(has, a))).setKey(
+    has.key
+  )
+}
+
+/**
  * Constructs a layer from the environment using the specified function.
  */
 export function fromFunction<B>(tag: Tag<B>) {
