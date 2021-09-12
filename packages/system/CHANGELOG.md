@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.41.1](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.41.0...@effect-ts/system@0.41.1) (2021-09-12)
+
+
+### Features
+
+* **layer:** add fromManaged_ ([7bf10f5](https://github.com/Effect-TS/core/commit/7bf10f5bc99e1d531e9d9271c534347dd0fe5642))
+
+
+
+
+
 # [0.41.0](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.40.9...@effect-ts/system@0.41.0) (2021-09-12)
 
 
