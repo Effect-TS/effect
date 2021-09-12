@@ -26,7 +26,7 @@ export function make<A>(a: A): T.UIO<SubscriptionRef<A>> {
     T.bind("hub", () => H.makeUnbounded<A>()),
     T.let("changes", ({ hub, ref }) =>
       S.unwrapManaged(
-        new M.Managed(
+        M.managedApply(
           T.uninterruptible(
             RefM.modify_(ref, (a) =>
               T.zipWith_(

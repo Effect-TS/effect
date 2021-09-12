@@ -13,7 +13,8 @@ import type * as Utils from "../../Utils"
 import { isEither, isOption, isTag } from "../../Utils"
 import { chain_, fail } from "../core"
 import { fromEffect } from "../fromEffect"
-import { Managed } from "../managed"
+import type { Managed } from "../managed"
+import { ManagedImpl } from "../managed"
 import { succeed } from "../succeed"
 import { suspend } from "./suspend"
 
@@ -49,7 +50,7 @@ const adapter = (_: any, __?: any, ___?: any) => {
     }
     return new GenManaged(fromEffect(getOrFail(_)), __)
   }
-  if (_ instanceof Managed) {
+  if (_ instanceof ManagedImpl) {
     return new GenManaged(_, __)
   }
   return new GenManaged(fromEffect(_), __)

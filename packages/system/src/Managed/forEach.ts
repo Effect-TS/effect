@@ -6,7 +6,8 @@ import type { ExecutionStrategy } from "../Effect/ExecutionStrategy"
 import { sequential } from "../Effect/ExecutionStrategy"
 import { makeManagedReleaseMap, mapM_ } from "./core"
 import * as T from "./deps"
-import { Managed } from "./managed"
+import type { Managed } from "./managed"
+import { managedApply } from "./managed"
 import type { Finalizer } from "./ReleaseMap/finalizer"
 /**
  * Applies the function `f` to each element of the `Iterable<A>` and
@@ -33,7 +34,7 @@ export function forEach_<R, E, A, B>(
   f: (a: A) => Managed<R, E, B>,
   __trace?: string
 ) {
-  return new Managed<R, E, Chunk.Chunk<B>>(
+  return managedApply<R, E, Chunk.Chunk<B>>(
     T.map_(
       T.forEach_(as, (a) => f(a).effect, __trace),
       (res) => {
@@ -102,7 +103,7 @@ export function forEachUnit_<R, E, A, B>(
   f: (a: A) => Managed<R, E, B>,
   __trace?: string
 ) {
-  return new Managed<R, E, void>(
+  return managedApply<R, E, void>(
     T.map_(
       T.forEach_(as, (a) => f(a).effect, __trace),
       (result) => {

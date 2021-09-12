@@ -2,7 +2,7 @@
 
 import * as Tp from "../Collections/Immutable/Tuple"
 import * as T from "./deps-core"
-import { Managed } from "./managed"
+import { managedApply } from "./managed"
 import * as Finalizer from "./ReleaseMap/finalizer"
 
 /**
@@ -10,7 +10,7 @@ import * as Finalizer from "./ReleaseMap/finalizer"
  * effect will be performed interruptibly.
  */
 export function fromEffect<R, E, A>(effect: T.Effect<R, E, A>, __trace?: string) {
-  return new Managed<R, E, A>(
+  return managedApply<R, E, A>(
     T.map_(
       T.provideSome_(effect, (_) => _.get(0), __trace),
       (a) => Tp.tuple(Finalizer.noopFinalizer, a)

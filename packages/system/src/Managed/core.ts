@@ -9,7 +9,8 @@ import { makeRef } from "../Ref"
 import * as T from "./deps-core"
 import { fromEffect } from "./fromEffect"
 import { makeExit_ } from "./makeExit"
-import { Managed } from "./managed"
+import type { Managed } from "./managed"
+import { managedApply } from "./managed"
 import type { ReleaseMap } from "./ReleaseMap"
 import * as add from "./ReleaseMap/add"
 import * as addIfOpen from "./ReleaseMap/addIfOpen"
@@ -43,7 +44,7 @@ export function chain_<R, E, A, R2, E2, A2>(
   f: (a: A) => Managed<R2, E2, A2>,
   __trace?: string
 ) {
-  return new Managed<R & R2, E | E2, A2>(
+  return managedApply<R & R2, E | E2, A2>(
     T.chain_(self.effect, ({ tuple: [releaseSelf, a] }) =>
       T.map_(
         f(a).effect,
@@ -145,7 +146,7 @@ export function foldCauseM_<R, E, A, R1, E1, A1, R2, E2, A2>(
   g: (a: A) => Managed<R2, E2, A2>,
   __trace?: string
 ) {
-  return new Managed<R & R1 & R2, E1 | E2, A1 | A2>(
+  return managedApply<R & R1 & R2, E1 | E2, A1 | A2>(
     pipe(
       self.effect,
       T.foldCauseM(
@@ -239,7 +240,7 @@ export function makeReserve<R, E, R2, E2, A>(
   reservation: T.Effect<R, E, Reservation<R2, E2, A>>,
   __trace?: string
 ) {
-  return new Managed<R & R2, E | E2, A>(
+  return managedApply<R & R2, E | E2, A>(
     T.uninterruptibleMask(({ restore }) =>
       pipe(
         T.do,
@@ -296,7 +297,7 @@ export function map_<R, E, A, B>(
   f: (a: A) => B,
   __trace?: string
 ) {
-  return new Managed<R, E, B>(
+  return managedApply<R, E, B>(
     T.map_(self.effect, ({ tuple: [fin, a] }) => Tp.tuple(fin, f(a)), __trace)
   )
 }
@@ -309,7 +310,7 @@ export function mapM_<R, E, A, R2, E2, B>(
   f: (a: A) => T.Effect<R2, E2, B>,
   __trace?: string
 ) {
-  return new Managed<R & R2, E | E2, B>(
+  return managedApply<R & R2, E | E2, B>(
     T.chain_(self.effect, ({ tuple: [fin, a] }) =>
       T.provideSome_(
         T.map_(f(a), (b) => Tp.tuple(fin, b), __trace),
@@ -335,7 +336,7 @@ export function onExit_<R, E, A, R2, X>(
   cleanup: (exit: T.Exit<E, A>) => T.Effect<R2, never, X>,
   __trace?: string
 ) {
-  return new Managed<R & R2, E, A>(
+  return managedApply<R & R2, E, A>(
     T.uninterruptibleMask(({ restore }) =>
       pipe(
         T.do,
@@ -406,7 +407,7 @@ export function onExitFirst_<R, E, A, R2, X>(
   cleanup: (exit: T.Exit<E, A>) => T.Effect<R2, never, X>,
   __trace?: string
 ) {
-  return new Managed<R & R2, E, A>(
+  return managedApply<R & R2, E, A>(
     T.uninterruptibleMask(({ restore }) =>
       pipe(
         T.do,
@@ -448,7 +449,7 @@ export function provideSome_<R, E, A, R0>(
   f: (r0: R0) => R,
   __trace?: string
 ): Managed<R0, E, A> {
-  return new Managed(
+  return managedApply(
     T.accessM(({ tuple: [r0, rm] }: Tp.Tuple<[R0, ReleaseMap]>) =>
       T.provideAll_(self.effect, Tp.tuple(f(r0), rm), __trace)
     )

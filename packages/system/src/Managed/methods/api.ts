@@ -33,8 +33,8 @@ import * as core from "../core"
 import * as forEach from "../forEach"
 import { fromEffect } from "../fromEffect"
 import { makeExit_ } from "../makeExit"
-import type { IO, RIO, UIO } from "../managed"
-import { Managed } from "../managed"
+import type { IO, Managed, RIO, UIO } from "../managed"
+import { managedApply } from "../managed"
 import type * as RM from "../ReleaseMap"
 import * as add from "../ReleaseMap/add"
 import * as makeReleaseMap from "../ReleaseMap/makeReleaseMap"
@@ -90,7 +90,7 @@ export function mapError_<R, A, E, E2>(
   f: (e: E) => E2,
   __trace?: string
 ) {
-  return new Managed(T.mapError_(self.effect, f, __trace))
+  return managedApply(T.mapError_(self.effect, f, __trace))
 }
 
 /**
@@ -110,7 +110,7 @@ export function mapErrorCause_<R, A, E, E2>(
   f: (e: C.Cause<E>) => C.Cause<E2>,
   __trace?: string
 ) {
-  return new Managed(T.mapErrorCause_(self.effect, f, __trace))
+  return managedApply(T.mapErrorCause_(self.effect, f, __trace))
 }
 
 /**
@@ -267,7 +267,7 @@ export function orDieWith_<R, E, A>(
   f: (e: E) => unknown,
   __trace?: string
 ) {
-  return new Managed(T.orDieWith_(self.effect, f, __trace))
+  return managedApply(T.orDieWith_(self.effect, f, __trace))
 }
 
 /**
@@ -624,7 +624,7 @@ export function eventually<R, E, A>(
   self: Managed<R, E, A>,
   __trace?: string
 ): Managed<R, never, A> {
-  return new Managed(T.eventually(self.effect, __trace))
+  return managedApply(T.eventually(self.effect, __trace))
 }
 
 /**
@@ -946,7 +946,7 @@ export function preallocate<R, E, A>(
             ),
           ({ tuple: [release, a] }) =>
             T.succeed(
-              new Managed(
+              managedApply(
                 T.accessM(
                   ({ tuple: [_, releaseMap] }: Tp.Tuple<[unknown, RM.ReleaseMap]>) =>
                     T.map_(add.add(release)(releaseMap), (_) => Tp.tuple(_, a))
@@ -968,13 +968,13 @@ export function preallocateManaged<R, E, A>(
   self: Managed<R, E, A>,
   __trace?: string
 ): Managed<R, E, UIO<A>> {
-  return new Managed(
+  return managedApply(
     T.map_(
       self.effect,
       ({ tuple: [release, a] }) =>
         Tp.tuple(
           release,
-          new Managed(
+          managedApply(
             T.accessM(
               ({ tuple: [_, releaseMap] }: Tp.Tuple<[unknown, RM.ReleaseMap]>) =>
                 T.map_(add.add(release)(releaseMap), (_) => Tp.tuple(_, a))
@@ -1179,7 +1179,7 @@ export function retryOrElseEither_<R, E, A, R1, O, R2, E2, A2>(
   orElse: (e: E, o: O) => Managed<R2, E2, A2>,
   __trace?: string
 ): Managed<R & R1 & R2 & HasClock, E2, E.Either<A2, A>> {
-  return new Managed(
+  return managedApply(
     T.map_(
       T.accessM(
         ({
@@ -1298,7 +1298,7 @@ export function result<R, E, A>(
  * Exposes the full cause of failure of this effect.
  */
 export function sandbox<R, E, A>(self: Managed<R, E, A>, __trace?: string) {
-  return new Managed(T.sandbox(self.effect, __trace))
+  return managedApply(T.sandbox(self.effect, __trace))
 }
 
 /**
@@ -1520,7 +1520,7 @@ export function tapM_<R, E, A, R1, E1, X>(
 export function timed<R, E, A>(
   self: Managed<R, E, A>
 ): Managed<R & HasClock, E, Tp.Tuple<[number, A]>> {
-  return new Managed(
+  return managedApply(
     T.chain_(
       T.environment<Tp.Tuple<[R, RM.ReleaseMap]>>(),
       ({ tuple: [r, releaseMap] }) =>
@@ -1549,7 +1549,7 @@ export function timed<R, E, A>(
  * `Some` will be returned if acquisition and reservation complete in time
  */
 export function timeout_<R, E, A>(self: Managed<R, E, A>, d: number) {
-  return new Managed(
+  return managedApply(
     T.uninterruptibleMask(({ restore }) =>
       T.gen(function* (_) {
         const env = yield* _(T.environment<Tp.Tuple<[R & HasClock, RM.ReleaseMap]>>())
@@ -2063,7 +2063,7 @@ export function withEarlyReleaseExit_<R, E, A>(
   self: Managed<R, E, A>,
   exit: Ex.Exit<E, A>
 ): Managed<R, E, Tp.Tuple<[T.UIO<any>, A]>> {
-  return new Managed(
+  return managedApply(
     T.map_(self.effect, (tp) =>
       Tp.tuple(tp.get(0), Tp.tuple(T.uninterruptible(tp.get(0)(exit)), tp.get(1)))
     )
@@ -2216,7 +2216,7 @@ export function zipPar<R2, E2, A2>(b: Managed<R2, E2, A2>) {
 export function create<R, E, A>(
   effect: T.Effect<Tp.Tuple<[R, RM.ReleaseMap]>, E, Tp.Tuple<[RM.Finalizer, A]>>
 ) {
-  return new Managed(effect)
+  return managedApply(effect)
 }
 
 /**
@@ -2934,18 +2934,16 @@ export function withChildren<R, E, A>(
   ) => Managed<R, E, A>
 ): Managed<R, E, A> {
   return unwrap(
-    T.map_(
-      track,
-      (supervisor) =>
-        new Managed(
-          T.supervised(supervisor)(
-            get(
-              T.chain_(supervisor.value, (children) =>
-                T.map_(T.descriptor, (d) => SS.filter_(children, (_) => _.id !== d.id))
-              )
-            ).effect
-          )
+    T.map_(track, (supervisor) =>
+      managedApply(
+        T.supervised(supervisor)(
+          get(
+            T.chain_(supervisor.value, (children) =>
+              T.map_(T.descriptor, (d) => SS.filter_(children, (_) => _.id !== d.id))
+            )
+          ).effect
         )
+      )
     )
   )
 }
@@ -3001,5 +2999,5 @@ export function interruptAs(id: FiberID) {
 export function exposeTracer<R, E, A>(
   f: (tracer: (trace?: string) => void) => Managed<R, E, A>
 ): Managed<R, E, A> {
-  return new Managed(new ITracer((tracer) => f(tracer).effect))
+  return managedApply(new ITracer((tracer) => f(tracer).effect))
 }

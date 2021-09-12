@@ -3,7 +3,7 @@
 import * as Tp from "../Collections/Immutable/Tuple"
 import { pipe } from "../Function"
 import * as T from "./deps-core"
-import { Managed } from "./managed"
+import { managedApply } from "./managed"
 import type { ReleaseMap } from "./ReleaseMap"
 import * as add from "./ReleaseMap/add"
 
@@ -29,7 +29,7 @@ export function makeExit_<R, E, A, R1, X>(
   release: (a: A, exit: T.Exit<any, any>) => T.Effect<R1, never, X>,
   __trace?: string
 ) {
-  return new Managed<R & R1, E, A>(
+  return managedApply<R & R1, E, A>(
     T.uninterruptible(
       pipe(
         T.do,

@@ -18,7 +18,8 @@ import { interrupt as fiberInterrupt } from "../Fiber/interrupt"
 import { identity, pipe } from "../Function"
 import * as I from "../Iterable"
 import { descriptorWith } from "../Managed/deps-core"
-import { Managed } from "../Managed/managed"
+import type { Managed } from "../Managed/managed"
+import { managedApply } from "../Managed/managed"
 import type { ReleaseMap, State } from "../Managed/ReleaseMap"
 import { add } from "../Managed/ReleaseMap/add"
 import { Exited } from "../Managed/ReleaseMap/Exited"
@@ -886,7 +887,7 @@ export function managedFork<R, E, A>(
   self: Managed<R, E, A>,
   __trace?: string
 ): Managed<R, never, FiberContext<E, A>> {
-  return new Managed(
+  return managedApply(
     interruption.uninterruptibleMask(({ restore }) =>
       pipe(
         Do.do,

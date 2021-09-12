@@ -8,7 +8,17 @@ import type { Finalizer, ReleaseMap } from "./ReleaseMap"
 export const ManagedURI = "@matechs/core/Eff/ManagedURI"
 export type ManagedURI = typeof ManagedURI
 
-export class Managed<R, E, A> {
+export interface Managed<R, E, A> {
+  readonly [unifyIndex]: ManagedURI
+  readonly [T._U]: ManagedURI
+  readonly [T._E]: () => E
+  readonly [T._A]: () => A
+  readonly [T._R]: (_: R) => void
+
+  readonly effect: T.Effect<Tp.Tuple<[R, ReleaseMap]>, E, Tp.Tuple<[Finalizer, A]>>
+}
+
+export class ManagedImpl<R, E, A> implements Managed<R, E, A> {
   readonly [unifyIndex]: ManagedURI;
   readonly [T._U]: ManagedURI;
   readonly [T._E]: () => E;
@@ -18,6 +28,12 @@ export class Managed<R, E, A> {
   constructor(
     readonly effect: T.Effect<Tp.Tuple<[R, ReleaseMap]>, E, Tp.Tuple<[Finalizer, A]>>
   ) {}
+}
+
+export function managedApply<R, E, A>(
+  effect: T.Effect<Tp.Tuple<[R, ReleaseMap]>, E, Tp.Tuple<[Finalizer, A]>>
+): Managed<R, E, A> {
+  return new ManagedImpl(effect)
 }
 
 export type UIO<A> = Managed<unknown, never, A>

@@ -7,7 +7,8 @@ import * as Tp from "../Collections/Immutable/Tuple"
 import type { Either } from "../Either"
 import type { NoSuchElementException } from "../GlobalExceptions"
 import type { Has, Tag } from "../Has"
-import { Managed } from "../Managed/managed"
+import type { Managed } from "../Managed/managed"
+import { ManagedImpl } from "../Managed/managed"
 import type { ReleaseMap } from "../Managed/ReleaseMap"
 import { makeReleaseMap } from "../Managed/ReleaseMap/makeReleaseMap"
 import { releaseAll } from "../Managed/ReleaseMap/releaseAll"
@@ -90,22 +91,22 @@ export function genM<Eff extends GenEffect<any, any, any>, AEff>(
         suspend(
           () =>
             state.value.trace
-              ? state.value["effect"] instanceof Managed
+              ? state.value["effect"] instanceof ManagedImpl
                 ? map_(
                     provideSome_(state.value["effect"]["effect"], (r0) =>
                       Tp.tuple(r0, rm)
                     ),
                     (_) => _.get(1)
                   )
-                : state.value["effect"]
-              : state.value["effect"] instanceof Managed
+                : (state.value["effect"] as Effect<any, any, any>)
+              : state.value["effect"] instanceof ManagedImpl
               ? map_(
                   provideSome_(state.value["effect"]["effect"], (r0) =>
                     Tp.tuple(r0, rm)
                   ),
                   (_) => _.get(1)
                 )
-              : state.value["effect"],
+              : (state.value["effect"] as Effect<any, any, any>),
           state.value.trace
         ),
         (val) => {

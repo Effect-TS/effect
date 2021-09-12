@@ -528,7 +528,7 @@ export class MemoMap {
    * and adds a finalizer to the outer `Managed`.
    */
   getOrElseMemoize = <R, E, A>(layer: Layer<R, E, A>) => {
-    return new M.Managed<R, E, A>(
+    return M.managedApply<R, E, A>(
       pipe(
         this.ref,
         RM.modify((m) => {
