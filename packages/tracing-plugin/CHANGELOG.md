@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.14.9](https://github.com/Effect-TS/core/compare/@effect-ts/tracing-plugin@0.14.8...@effect-ts/tracing-plugin@0.14.9) (2021-09-13)
+
+
+### Features
+
+* **plugin:** throw on optional chaining https://github.com/Effect-TS/fluent/issues/99 ([a64224b](https://github.com/Effect-TS/core/commit/a64224ba8845721321c6514bca4cea21912a2d77))
+
+
+
+
+
 ## [0.14.8](https://github.com/Effect-TS/core/compare/@effect-ts/tracing-plugin@0.14.7...@effect-ts/tracing-plugin@0.14.8) (2021-09-09)
 
 **Note:** Version bump only for package @effect-ts/tracing-plugin
