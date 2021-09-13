@@ -1,3 +1,4 @@
+/* eslint-disable no-inner-declarations */
 import ts from "typescript"
 
 import type { Config } from "./shared"
@@ -8,21 +9,21 @@ function checkOptionalChaining(
 ) {
   let found: ts.Node | undefined
 
-  function visitor(node: ts.Node): ts.Node {
-    if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression)) {
-      return ts.visitEachChild(node, visitor, ctx)
+  function visitor(_node: ts.Node): ts.Node {
+    if (ts.isCallExpression(_node) && ts.isPropertyAccessExpression(_node.expression)) {
+      return ts.visitEachChild(_node, visitor, ctx)
     }
 
-    if (!ts.isPropertyAccessExpression(node)) {
-      return node
+    if (!ts.isPropertyAccessExpression(_node)) {
+      return _node
     }
 
-    if (ts.isPropertyAccessExpression(node) && node.questionDotToken != null) {
-      found = node.questionDotToken
-      return node
+    if (ts.isPropertyAccessExpression(_node) && _node.questionDotToken != null) {
+      found = _node.questionDotToken
+      return _node
     }
 
-    return ts.visitEachChild(node, visitor, ctx)
+    return ts.visitEachChild(_node, visitor, ctx)
   }
 
   ts.visitNode(node, visitor)
@@ -46,16 +47,49 @@ export default function rewrite(_program: ts.Program) {
           tracingOn
         }: Config
       ) => {
-        function throwIfOptionalChaining(node: ts.PropertyAccessExpression) {
-          const isOptional = checkOptionalChaining(node, ctx)
+        const opt_chain_var = factory.createUniqueName("opt_chain")
+        const opt_chain_var_node = factory.createVariableStatement(
+          undefined,
+          factory.createVariableDeclarationList(
+            [
+              factory.createVariableDeclaration(
+                opt_chain_var,
+                undefined,
+                undefined,
+                factory.createVoidExpression(factory.createNumericLiteral("0"))
+              )
+            ],
+            ts.NodeFlags.None
+          )
+        )
+        // eslint-disable-next-line prefer-const
+        let opt_chain_var_used = false
 
-          if (isOptional) {
-            const pos = sourceFile.getLineAndCharacterOfPosition(isOptional.getEnd())
-            throw new Error(
-              `compiler plugin doesn't support optional chaining: ${
-                sourceFile.fileName
-              }:${pos.line + 1}:${pos.character}`
+        function wrapOptChain(
+          should: boolean,
+          body: ts.Expression,
+          callExpr: (_: ts.Expression) => ts.Expression
+        ) {
+          if (should) {
+            opt_chain_var_used = true
+
+            return factory.createBinaryExpression(
+              factory.createBinaryExpression(
+                opt_chain_var,
+                factory.createToken(ts.SyntaxKind.EqualsToken),
+                body
+              ),
+              factory.createToken(ts.SyntaxKind.CommaToken),
+              factory.createConditionalExpression(
+                opt_chain_var,
+                factory.createToken(ts.SyntaxKind.QuestionToken),
+                callExpr(opt_chain_var),
+                factory.createToken(ts.SyntaxKind.ColonToken),
+                factory.createVoidExpression(factory.createNumericLiteral("0"))
+              )
             )
+          } else {
+            return callExpr(body)
           }
         }
 
@@ -73,11 +107,13 @@ export default function rewrite(_program: ts.Program) {
               .map((_) => `${_.name} ${_.text?.map((_) => _.text).join(" ")}`)
               .filter((_) => _.startsWith("ets_rewrite_static"))[0]
 
-            if (rewrite || ets_rewrite_static) {
-              throwIfOptionalChaining(node)
-            }
-
             if (rewrite) {
+              let opt_chain = false
+
+              if (checkOptionalChaining(node, ctx)) {
+                opt_chain = true
+              }
+
               const [fn, mod, attachTrace] = rewrite
                 .match(/ets_rewrite_getter (.*) from "(.*)"(?:(.*))/)!
                 .splice(1)
@@ -94,17 +130,18 @@ export default function rewrite(_program: ts.Program) {
                 post.push(getTrace(node))
               }
 
-              return ts.visitEachChild(
-                factory.createCallExpression(
-                  factory.createPropertyAccessExpression(
-                    id,
-                    factory.createIdentifier(fn!)
-                  ),
-                  undefined,
-                  [node.expression, ...post]
-                ),
-                visitor,
-                ctx
+              return wrapOptChain(
+                opt_chain,
+                ts.visitNode(node.expression, visitor),
+                (x) =>
+                  factory.createCallExpression(
+                    factory.createPropertyAccessExpression(
+                      id,
+                      factory.createIdentifier(fn!)
+                    ),
+                    undefined,
+                    [x, ...post]
+                  )
               )
             } else if (ets_rewrite_static) {
               const [fn, mod] = ets_rewrite_static
@@ -159,10 +196,6 @@ export default function rewrite(_program: ts.Program) {
               const rewriteStatic = [...sigTags, ...exprTags].filter((_) =>
                 _.startsWith("ets_rewrite_static")
               )[0]
-
-              if (rewrite || rewriteStatic) {
-                throwIfOptionalChaining(node.expression)
-              }
 
               const processedArguments =
                 rewrite || rewriteStatic
@@ -221,6 +254,12 @@ export default function rewrite(_program: ts.Program) {
               }
 
               if (rewrite) {
+                let opt_chain = false
+
+                if (checkOptionalChaining(node.expression, ctx)) {
+                  opt_chain = true
+                }
+
                 const [fn, mod] = rewrite
                   .match(/ets_rewrite_method (.*) from "(.*)"/)!
                   .splice(1)
@@ -252,17 +291,18 @@ export default function rewrite(_program: ts.Program) {
                   mods.set(mod!, factory.createUniqueName("module"))
                 }
 
-                return factory.createCallExpression(
-                  factory.createPropertyAccessExpression(
-                    mods.get(mod!)!,
-                    factory.createIdentifier(fn!)
-                  ),
-                  undefined,
-                  [
-                    ts.visitNode(node.expression.expression, visitor),
-                    ...processedArguments,
-                    ...additions
-                  ]
+                return wrapOptChain(
+                  opt_chain,
+                  ts.visitNode(node.expression.expression, visitor),
+                  (x) =>
+                    factory.createCallExpression(
+                      factory.createPropertyAccessExpression(
+                        mods.get(mod!)!,
+                        factory.createIdentifier(fn!)
+                      ),
+                      undefined,
+                      [x, ...processedArguments, ...additions]
+                    )
                 )
               }
             }
@@ -270,7 +310,19 @@ export default function rewrite(_program: ts.Program) {
           return ts.visitEachChild(node, visitor, ctx)
         }
 
-        return ts.visitNode(sourceFile, visitor)
+        const updated = ts.visitNode(sourceFile, visitor)
+
+        return factory.updateSourceFile(
+          updated,
+          opt_chain_var_used
+            ? [opt_chain_var_node, ...updated.statements]
+            : updated.statements,
+          updated.isDeclarationFile,
+          updated.referencedFiles,
+          updated.typeReferenceDirectives,
+          updated.hasNoDefaultLib,
+          updated.libReferenceDirectives
+        )
       }
     }
   }
