@@ -2,6 +2,34 @@ import ts from "typescript"
 
 import type { Config } from "./shared"
 
+function checkOptionalChaining(
+  node: ts.PropertyAccessExpression,
+  ctx: ts.TransformationContext
+) {
+  let found: ts.Node | undefined
+
+  function visitor(node: ts.Node): ts.Node {
+    if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression)) {
+      return ts.visitEachChild(node, visitor, ctx)
+    }
+
+    if (!ts.isPropertyAccessExpression(node)) {
+      return node
+    }
+
+    if (ts.isPropertyAccessExpression(node) && node.questionDotToken != null) {
+      found = node.questionDotToken
+      return node
+    }
+
+    return ts.visitEachChild(node, visitor, ctx)
+  }
+
+  ts.visitNode(node, visitor)
+
+  return found
+}
+
 export default function rewrite(_program: ts.Program) {
   return {
     before(ctx: ts.TransformationContext) {
@@ -18,6 +46,19 @@ export default function rewrite(_program: ts.Program) {
           tracingOn
         }: Config
       ) => {
+        function throwIfOptionalChaining(node: ts.PropertyAccessExpression) {
+          const isOptional = checkOptionalChaining(node, ctx)
+
+          if (isOptional) {
+            const pos = sourceFile.getLineAndCharacterOfPosition(isOptional.getEnd())
+            throw new Error(
+              `compiler plugin doesn't support optional chaining: ${
+                sourceFile.fileName
+              }:${pos.line + 1}:${pos.character}`
+            )
+          }
+        }
+
         function visitor(node: ts.Node): ts.VisitResult<ts.Node> {
           if (ts.isPropertyAccessExpression(node)) {
             const rewrite = checker
@@ -31,6 +72,10 @@ export default function rewrite(_program: ts.Program) {
               ?.getJsDocTags()
               .map((_) => `${_.name} ${_.text?.map((_) => _.text).join(" ")}`)
               .filter((_) => _.startsWith("ets_rewrite_static"))[0]
+
+            if (rewrite || ets_rewrite_static) {
+              throwIfOptionalChaining(node)
+            }
 
             if (rewrite) {
               const [fn, mod, attachTrace] = rewrite
@@ -114,6 +159,10 @@ export default function rewrite(_program: ts.Program) {
               const rewriteStatic = [...sigTags, ...exprTags].filter((_) =>
                 _.startsWith("ets_rewrite_static")
               )[0]
+
+              if (rewrite || rewriteStatic) {
+                throwIfOptionalChaining(node.expression)
+              }
 
               const processedArguments =
                 rewrite || rewriteStatic
