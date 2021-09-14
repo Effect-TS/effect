@@ -3,6 +3,21 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.11.0](https://github.com/Effect-TS/printer/compare/@effect-ts/printer@0.10.0...@effect-ts/printer@0.11.0) (2021-09-14)
+
+
+### Bug Fixes
+
+* **printer:** add DocTree to the package config ([b5a9d89](https://github.com/Effect-TS/printer/commit/b5a9d89dc1e54af387f73e0a0d110f97b17a97fc))
+* **printer:** ensure smart documents are rendered appropriately ([22a14b1](https://github.com/Effect-TS/printer/commit/22a14b15b63272e89e4800fc477325a8e7736282))
+* **printer:** export Render module from Terminal ([ffe1824](https://github.com/Effect-TS/printer/commit/ffe1824189611b685e028c243b2d8111faf2c2b6))
+* **printer:** fix issues with optimization routine ([c8e6752](https://github.com/Effect-TS/printer/commit/c8e6752d1325b8933aea6265c4972aac98bd4026))
+* **printer:** flatten nested characters appropriately during optimization ([15e703e](https://github.com/Effect-TS/printer/commit/15e703ee607008a9608c658031a14e6d48bb47a4))
+
+
+
+
+
 # [0.10.0](https://github.com/Effect-TS/printer/compare/@effect-ts/printer@0.9.1...@effect-ts/printer@0.10.0) (2021-09-09)
 
 
