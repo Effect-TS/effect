@@ -3,6 +3,24 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.41.3](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.41.2...@effect-ts/system@0.41.3) (2021-09-20)
+
+
+### Bug Fixes
+
+* **effect:** fixed data-first annotation for zipLeft ([5f32700](https://github.com/Effect-TS/core/commit/5f32700cf9b064977b4bd06bf64dfe9076b1b9f0))
+* **stream:** Promise.resolve to setTimeout in fiber context executor ([1103789](https://github.com/Effect-TS/core/commit/1103789983648c7ed3dac92a1c8aa07c9263bf10))
+* **test:** fix broken debounce test ([a331e8d](https://github.com/Effect-TS/core/commit/a331e8d8bfe7d5b180106c4ac7bb39f1abd86f94))
+
+
+### Features
+
+* **system:** add scheduler ([5bf93c2](https://github.com/Effect-TS/core/commit/5bf93c2761b8a53a13b24485aeebdc8fc80a20b0))
+
+
+
+
+
 ## [0.41.2](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.41.1...@effect-ts/system@0.41.2) (2021-09-12)
 
 
