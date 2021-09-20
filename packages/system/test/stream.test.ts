@@ -322,7 +322,7 @@ describe("Stream", () => {
       T.runPromise
     )
 
-    expect(result).toEqual(3)
+    expect(result).toEqual([3])
   })
 
   it("zipWithLatest & interruptWhen", async () => {
