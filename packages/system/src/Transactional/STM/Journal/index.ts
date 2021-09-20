@@ -6,6 +6,7 @@ import * as HM from "../../../Collections/Immutable/HashMap"
 import * as T from "../../../Effect"
 import type { FiberID } from "../../../Fiber"
 import type { AtomicBoolean } from "../../../Support/AtomicBoolean"
+import { defaultScheduler } from "../../../Support/Scheduler"
 import type { Atomic } from "../../TRef"
 import { STMDriver } from "../_internal/driver"
 import type { STM } from "../_internal/primitives"
@@ -100,7 +101,7 @@ export function execTodos(todos: Map<TxnId, Todo>) {
 export function completeTodos<E, A>(io: T.IO<E, A>, journal: Journal): Done<E, A> {
   const todos = collectTodos(journal)
   if (todos.size > 0) {
-    Promise.resolve(todos).then(execTodos)
+    defaultScheduler(() => execTodos(todos))
   }
   return new Done(io)
 }
