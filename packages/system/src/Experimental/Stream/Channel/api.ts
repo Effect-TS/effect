@@ -1223,7 +1223,7 @@ export function mapOut_<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone, Ou
   f: (o: OutElem) => OutElem2
 ): C.Channel<Env, InErr, InElem, InDone, OutErr, OutElem2, OutDone> {
   const reader: C.Channel<Env, OutErr, OutElem, OutDone, OutErr, OutElem2, OutDone> =
-    C.readWithCause((i) => C.chain_(C.write(f(i)), () => reader), C.failCause, C.end)
+    C.readWith((i) => C.chain_(C.write(f(i)), () => reader), C.fail, C.end)
 
   return self[">>>"](reader)
 }

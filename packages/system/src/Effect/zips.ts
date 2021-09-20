@@ -20,7 +20,7 @@ export function zipLeft_<R, E, A, R2, E2, A2>(
  * Sequentially zips this effect with the specified effect
  * returning the left side
  *
- * @ets_data_first zipLeft
+ * @ets_data_first zipLeft_
  */
 export function zipLeft<R2, E2, A2>(b: Effect<R2, E2, A2>, __trace?: string) {
   return <R, E, A>(a: Effect<R, E, A>) => zipLeft_(a, b, __trace)
