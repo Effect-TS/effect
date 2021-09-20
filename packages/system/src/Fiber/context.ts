@@ -562,7 +562,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   }
 
   evaluateLater(i0: T.Instruction) {
-    Promise.resolve(i0).then(this.evaluateNow)
+    setTimeout(() => this.evaluateNow(i0), 0)
   }
 
   get scope(): Scope.Scope<Exit.Exit<E, A>> {
@@ -622,7 +622,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
     const toExecute = this.parentScopeOp(parentScope, childContext, i0)
 
-    Promise.resolve(toExecute).then(childContext.evaluateNow)
+    setTimeout(() => childContext.evaluateNow(toExecute), 0)
 
     return childContext
   }
