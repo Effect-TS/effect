@@ -25,6 +25,7 @@ import * as Sup from "../Supervisor"
 // support
 import { AtomicReference } from "../Support/AtomicReference"
 import { RingBuffer } from "../Support/RingBuffer"
+import { defaultScheduler } from "../Support/Scheduler"
 import * as X from "../XPure"
 import * as T from "./_internal/effect"
 // fiber
@@ -562,7 +563,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   }
 
   evaluateLater(i0: T.Instruction) {
-    setTimeout(() => this.evaluateNow(i0), 0)
+    defaultScheduler(() => this.evaluateNow(i0))
   }
 
   get scope(): Scope.Scope<Exit.Exit<E, A>> {
@@ -622,7 +623,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
     const toExecute = this.parentScopeOp(parentScope, childContext, i0)
 
-    setTimeout(() => childContext.evaluateNow(toExecute), 0)
+    defaultScheduler(() => childContext.evaluateNow(toExecute))
 
     return childContext
   }

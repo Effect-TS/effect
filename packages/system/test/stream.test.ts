@@ -296,31 +296,6 @@ describe("Stream", () => {
       S.runCollect,
       T.runPromise
     )
-    console.log("ALL DONE", result)
-  })
-
-  /*
-  it("debounce + zipWithLatest", async () => {
-    const result = await pipe(
-      S.zipWithLatest(
-        pipe(S.fromIterable([1, 2, 3]), S.schedule(SC.spaced(5))),
-        pipe(S.fromIterable([1, 2, 3]), S.schedule(SC.spaced(10)))
-      )((a, b) => [a, b] as const),
-      S.debounce(20),
-      S.runCollect,
-      T.runPromise
-    )
-  })
-  */
-
-  it("debounces", async () => {
-    const result = await pipe(
-      S.fromIterable([1, 2, 3]),
-      S.fixed(5),
-      S.debounce(20),
-      S.runCollect,
-      T.runPromise
-    )
 
     expect(result).toEqual([3])
   })
