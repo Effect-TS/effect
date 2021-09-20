@@ -287,4 +287,41 @@ describe("Stream", () => {
 
     expect(counter).toEqual(4)
   })
+
+  /*
+  it("retries", async () => {
+    await pipe(
+      S.zipWithLatest(
+        pipe(S.fromIterable([1, 2, 3]), S.schedule(SC.spaced(500))),
+        pipe(S.fromIterable([1, 2, 3]), S.schedule(SC.spaced(1000)))
+      )((a, b) => [a, b] as const),
+      S.debounce(100),
+      S.tap((a) => T.succeedWith(() => console.log(a))),
+      S.runDrain,
+      T.runPromise
+    )
+    console.log("ALL DONE")
+  })
+*/
+
+  it("zipWithLatest & interruptWhen", async () => {
+    const source = S.effectAsync<unknown, unknown, string>((cb) => {
+      setTimeout(() => cb(T.succeed(A.single("C1"))), 10)
+      setTimeout(() => cb(T.succeed(A.single("C2"))), 20)
+      setTimeout(() => cb(T.fail(O.none)), 30)
+    })
+
+    const zipped = S.zipWithLatest(source, source)((c, e) => `${c}-${e}`)
+
+    const res0 = await pipe(
+      zipped,
+      S.interruptWhen(T.sleep(1_000)),
+      S.runCollect,
+      T.runPromise
+    )
+
+    const res1 = await pipe(zipped, S.runCollect, T.runPromise)
+
+    expect(res0).toEqual(res1)
+  })
 })
