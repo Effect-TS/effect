@@ -288,21 +288,42 @@ describe("Stream", () => {
     expect(counter).toEqual(4)
   })
 
-  /*
-  it("retries", async () => {
-    await pipe(
-      S.zipWithLatest(
-        pipe(S.fromIterable([1, 2, 3]), S.schedule(SC.spaced(500))),
-        pipe(S.fromIterable([1, 2, 3]), S.schedule(SC.spaced(1000)))
-      )((a, b) => [a, b] as const),
-      S.debounce(100),
-      S.tap((a) => T.succeedWith(() => console.log(a))),
-      S.runDrain,
+  it("debounces", async () => {
+    const result = await pipe(
+      S.fromIterable([1, 2, 3]),
+      S.fixed(5),
+      S.debounce(20),
+      S.runCollect,
       T.runPromise
     )
-    console.log("ALL DONE")
+    console.log("ALL DONE", result)
   })
-*/
+
+  /*
+  it("debounce + zipWithLatest", async () => {
+    const result = await pipe(
+      S.zipWithLatest(
+        pipe(S.fromIterable([1, 2, 3]), S.schedule(SC.spaced(5))),
+        pipe(S.fromIterable([1, 2, 3]), S.schedule(SC.spaced(10)))
+      )((a, b) => [a, b] as const),
+      S.debounce(20),
+      S.runCollect,
+      T.runPromise
+    )
+  })
+  */
+
+  it("debounces", async () => {
+    const result = await pipe(
+      S.fromIterable([1, 2, 3]),
+      S.fixed(5),
+      S.debounce(20),
+      S.runCollect,
+      T.runPromise
+    )
+
+    expect(result).toEqual(3)
+  })
 
   it("zipWithLatest & interruptWhen", async () => {
     const source = S.effectAsync<unknown, unknown, string>((cb) => {

@@ -5772,7 +5772,7 @@ export function zipWithLatest_<R, R1, E, E1, A, A1, A2>(
                 writer(lastLeft, O.some(a2))
               )
             } else {
-              return writer(lastLeft, lastRight)
+              return writer(lastLeft, O.some(a2))
             }
           }
         } else {
