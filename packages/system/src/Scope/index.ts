@@ -253,7 +253,7 @@ export class Local<A> implements CommonScope<A> {
       const result = this.unsafeRelease()
 
       if (result != null) {
-        return result
+        return map_(result, () => true)
       } else {
         return succeed(false)
       }
