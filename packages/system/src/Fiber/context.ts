@@ -371,7 +371,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   }
 
   get await(): T.UIO<Exit.Exit<E, A>> {
-    return T.effectMaybeAsyncInterrupt(
+    return T.effectMaybeAsyncInterruptBlockingOn(
       (k): E.Either<T.UIO<void>, T.UIO<Exit.Exit<E, A>>> => {
         const cb: Callback<never, Exit.Exit<E, A>> = (x) => k(T.done(x))
         return O.fold_(
@@ -379,7 +379,8 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
           () => E.left(T.succeedWith(() => this.interruptObserver(cb))),
           E.right
         )
-      }
+      },
+      [this.fiberId]
     )
   }
 
@@ -417,7 +418,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
           )
         )
 
-        this.evaluateLater(instruction(T.interruptAs(this.fiberId)))
+        this.evaluateLater(instruction(T.interruptAs(fiberId)))
       } else if (oldState._tag === "Executing") {
         const newCause = Cause.then(oldState.interrupted, interruptedCause)
 

@@ -238,7 +238,7 @@ export class Local<A> implements CommonScope<A> {
       case "Global":
         return true
       case "Local":
-        if (this.unsafeClosed && that.unsafeClosed) {
+        if (!this.unsafeClosed && !that.unsafeClosed) {
           that.unsafeAddRef()
           this.unsafeEnsure((_) => that.release)
           return true

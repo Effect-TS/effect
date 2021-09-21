@@ -301,16 +301,25 @@ describe("Stream", () => {
   })
 
   it("zipWithLatest & interruptWhen", async () => {
+    const neverendingSource = S.effectAsync<unknown, unknown, string>((cb) => {
+      setTimeout(() => cb(T.succeed(A.single("C1"))), 10)
+      setTimeout(() => cb(T.succeed(A.single("C2"))), 20)
+    })
+    const neverendingZipped = S.zipWithLatest(
+      neverendingSource,
+      neverendingSource
+    )((c, e) => `${c}-${e}`)
+
     const source = S.effectAsync<unknown, unknown, string>((cb) => {
       setTimeout(() => cb(T.succeed(A.single("C1"))), 10)
       setTimeout(() => cb(T.succeed(A.single("C2"))), 20)
-      setTimeout(() => cb(T.fail(O.none)), 30)
+      setTimeout(() => cb(T.fail(O.none)), 25)
     })
 
     const zipped = S.zipWithLatest(source, source)((c, e) => `${c}-${e}`)
 
     const res0 = await pipe(
-      zipped,
+      neverendingZipped,
       S.interruptWhen(T.sleep(1_000)),
       S.runCollect,
       T.runPromise
