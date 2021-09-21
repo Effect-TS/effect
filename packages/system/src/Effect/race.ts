@@ -5,25 +5,14 @@ import * as E from "../Either"
 import * as Exit from "../Exit/api"
 import * as Fiber from "../Fiber/core"
 import { pipe } from "../Function"
+import { as_ } from "./as"
 import * as core from "./core"
 import { raceWith_ } from "./core-scope"
 import { done } from "./done"
-import type { Effect, IO } from "./effect"
+import type { Effect } from "./effect"
+import { uninterruptibleMask } from "./interruption"
 import { map_ } from "./map"
 import { mapErrorCause_ } from "./mapErrorCause"
-
-function mergeInterruption<A, E2, A2>(a: A): (a: Exit.Exit<E2, A2>) => IO<E2, A> {
-  return (x) => {
-    switch (x._tag) {
-      case "Success": {
-        return core.succeed(a)
-      }
-      case "Failure": {
-        return Cause.interruptedOnly(x.cause) ? core.succeed(a) : core.halt(x.cause)
-      }
-    }
-  }
-}
 
 /**
  * Returns an effect that races this effect with the specified effect,
@@ -40,25 +29,29 @@ export function race_<R, E, A, R2, E2, A2>(
   that: Effect<R2, E2, A2>,
   __trace?: string
 ): Effect<R & R2, E | E2, A | A2> {
-  return core.descriptorWith((d) =>
-    raceWith_(
-      self,
-      that,
+  return core.descriptorWith((descriptor) => {
+    const parentFiberId = descriptor.id
+    const maybeDisconnect = <R, E, A>(io: Effect<R, E, A>) =>
+      uninterruptibleMask((interruptible) => interruptible.force(io))
+
+    return raceWith_(
+      maybeDisconnect(self),
+      maybeDisconnect(that),
       (exit, right) =>
         Exit.foldM_(
           exit,
           (cause) => mapErrorCause_(Fiber.join(right), (_) => Cause.both(cause, _)),
-          (a) => core.chain_(right.interruptAs(d.id), mergeInterruption(a))
+          (a) => as_(right.interruptAs(parentFiberId), a)
         ),
       (exit, left) =>
         Exit.foldM_(
           exit,
           (cause) => mapErrorCause_(Fiber.join(left), (_) => Cause.both(_, cause)),
-          (a) => core.chain_(left.interruptAs(d.id), mergeInterruption(a))
+          (a) => as_(left.interruptAs(parentFiberId), a)
         ),
       __trace
     )
-  )
+  })
 }
 
 /**
