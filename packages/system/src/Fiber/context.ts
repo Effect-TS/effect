@@ -357,7 +357,10 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
   notifyObservers(v: Exit.Exit<E, A>, observers: Callback<never, Exit.Exit<E, A>>[]) {
     const result = Exit.succeed(v)
-    observers.forEach((k) => k(result))
+    observers
+      .slice(0)
+      .reverse()
+      .forEach((k) => k(result))
   }
 
   observe0(k: Callback<never, Exit.Exit<E, A>>): O.Option<T.UIO<Exit.Exit<E, A>>> {
@@ -374,6 +377,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     return T.effectMaybeAsyncInterruptBlockingOn(
       (k): E.Either<T.UIO<void>, T.UIO<Exit.Exit<E, A>>> => {
         const cb: Callback<never, Exit.Exit<E, A>> = (x) => k(T.done(x))
+
         return O.fold_(
           this.observe0(cb),
           () => E.left(T.succeedWith(() => this.interruptObserver(cb))),
@@ -418,9 +422,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
           )
         )
 
-        setTimeout(() => {
-          this.evaluateNow(instruction(T.interruptAs(fiberId)))
-        }, 0)
+        this.evaluateLater(instruction(T.interruptAs(fiberId)))
       } else if (oldState._tag === "Executing") {
         const newCause = Cause.then(oldState.interrupted, interruptedCause)
 
@@ -960,11 +962,11 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                       // Error not caught, stack is empty:
                       const cause = () => {
                         const interrupted = this.state.get.interrupted
-                        const causeAndInterrupt = Cause.contains(interrupted)(
+                        const causeAndInterrupt = !Cause.contains(interrupted)(
                           maybeRedactedCause
                         )
-                          ? maybeRedactedCause
-                          : Cause.then(maybeRedactedCause, interrupted)
+                          ? Cause.then(maybeRedactedCause, interrupted)
+                          : maybeRedactedCause
 
                         return causeAndInterrupt
                       }

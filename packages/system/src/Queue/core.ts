@@ -19,7 +19,10 @@ export interface Strategy<A> {
     isShutdown: AtomicBoolean
   ) => T.UIO<boolean>
 
-  readonly unsafeOnQueueEmptySpace: (queue: MutableQueue<A>) => void
+  readonly unsafeOnQueueEmptySpace: (
+    queue: MutableQueue<A>,
+    takers: MutableQueue<P.Promise<never, A>>
+  ) => void
 
   readonly surplusSize: number
 
@@ -107,12 +110,12 @@ export function unsafeCompleteTakers<A>(
   while (keepPolling && !queue.isEmpty) {
     const taker = takers.poll(undefined)
 
-    if (taker != null) {
+    if (taker) {
       const element = queue.poll(undefined)
 
-      if (element != null) {
+      if (element) {
         unsafeCompletePromise(taker, element)
-        strategy.unsafeOnQueueEmptySpace(queue)
+        strategy.unsafeOnQueueEmptySpace(queue, takers)
       } else {
         unsafeOfferAll(takers, Chunk.prepend_(unsafePollAll(takers), taker))
       }
@@ -129,39 +132,14 @@ export function unsafeRemove<A>(q: MutableQueue<A>, a: A) {
 }
 
 export function unsafePollN<A>(q: MutableQueue<A>, max: number): Chunk.Chunk<A> {
-  let j = 0
-  let as = Chunk.empty<A>()
-
-  while (j < max) {
-    const p = q.poll(undefined)
-
-    if (p != null) {
-      as = Chunk.append_(as, p)
-    } else {
-      return as
-    }
-
-    j += 1
-  }
-
-  return as
+  return q.pollUpTo(max)
 }
 
 export function unsafeOfferAll<A>(
   q: MutableQueue<A>,
   as: Chunk.Chunk<A>
 ): Chunk.Chunk<A> {
-  let bs = as
-
-  while (Chunk.size(bs) > 0) {
-    if (!q.offer(Chunk.unsafeGet_(bs, 0)!)) {
-      return bs
-    } else {
-      bs = Chunk.drop_(bs, 1)
-    }
-  }
-
-  return bs
+  return q.offerAll(as)
 }
 
 export function unsafePollAll<A>(q: MutableQueue<A>): Chunk.Chunk<A> {
