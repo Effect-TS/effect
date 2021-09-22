@@ -1,7 +1,8 @@
 // ets_tracing: off
 
+import { as_ } from "./as"
+import { chain_ } from "./core"
 import type { Effect } from "./effect"
-import { zipWith_ } from "./zipWith"
 import { zipWithPar_ } from "./zipWithPar"
 
 /**
@@ -13,7 +14,7 @@ export function zipLeft_<R, E, A, R2, E2, A2>(
   b: Effect<R2, E2, A2>,
   __trace?: string
 ): Effect<R & R2, E | E2, A> {
-  return zipWith_(a, b, (a) => a, __trace)
+  return chain_(a, (r) => as_(b, r))
 }
 
 /**
@@ -57,7 +58,7 @@ export function zipRight_<R, E, A, R2, E2, A2>(
   b: Effect<R2, E2, A2>,
   __trace?: string
 ): Effect<R & R2, E | E2, A2> {
-  return zipWith_(a, b, (_, a) => a, __trace)
+  return chain_(a, () => b, __trace)
 }
 
 /**

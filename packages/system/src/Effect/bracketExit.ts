@@ -3,7 +3,7 @@
 import { then } from "../Cause/cause"
 import { fold_ } from "../Exit/api"
 import type { Exit } from "../Exit/exit"
-import { chain_, foldCauseM_, halt, result } from "./core"
+import { chain_, foldCauseM_, halt, result, suspend } from "./core"
 import { done } from "./done"
 import type { Effect } from "./effect"
 import { uninterruptibleMask } from "./interruption"
@@ -43,9 +43,9 @@ export function bracketExit_<R, E, A, E1, R1, A1, R2, E2, X>(
     chain_(
       acquire,
       (a) =>
-        chain_(result(restore(use(a))), (e) =>
+        chain_(result(suspend(() => restore(use(a)))), (e) =>
           foldCauseM_(
-            release(a, e),
+            suspend(() => release(a, e)),
             (cause2) =>
               halt(
                 fold_(
