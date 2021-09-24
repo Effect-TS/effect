@@ -26,7 +26,6 @@ export function mapAccum_<A, B, S>(
       builder = Chunk.append_(builder, x.get(1))
       i++
     }
-    next = iterator.next()
   }
 
   return Tp.tuple(s1, builder)

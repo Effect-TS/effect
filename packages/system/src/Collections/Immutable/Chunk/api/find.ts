@@ -26,7 +26,6 @@ export function find_<A>(self: Chunk.Chunk<A>, f: (a: A) => boolean): O.Option<A
       }
       i++
     }
-    next = iterator.next()
   }
 
   return O.none

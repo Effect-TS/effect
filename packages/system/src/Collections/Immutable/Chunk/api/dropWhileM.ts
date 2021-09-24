@@ -33,7 +33,6 @@ export function dropWhileM_<R, E, A>(
         )
         i++
       }
-      next = iterator.next()
     }
     return coreMap.map_(dropping, () => builder)
   })

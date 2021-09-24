@@ -5,6 +5,11 @@ import { pipe } from "../../src/Function"
 import * as O from "../../src/Option"
 
 describe("Chunk", () => {
+  it("find & concat", () => {
+    const ca = Chunk.concat_(Chunk.many(4, 5, 6), Chunk.many(1, 2, 3))
+
+    expect(Chunk.find_(ca, (v) => v === 3)).toEqual(O.some(3))
+  })
   it("spread", () => {
     const f = (...args: number[]) => args
     expect(f(...Chunk.many(0, 1, 2))).toEqual([0, 1, 2])
