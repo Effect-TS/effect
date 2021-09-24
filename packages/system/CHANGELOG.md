@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.41.4](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.41.3...@effect-ts/system@0.41.4) (2021-09-24)
+
+
+### Bug Fixes
+
+* **chunk:** fix bad iterations ([1fa0cab](https://github.com/Effect-TS/core/commit/1fa0cab3c9a5ec959064dd31b74bb4cd4a5da203))
+* **scope:** return type of 'release' ([2061beb](https://github.com/Effect-TS/core/commit/2061beb8813035ff563d13951e6b1daecf83132d))
+
+
+
+
+
 ## [0.41.3](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.41.2...@effect-ts/system@0.41.3) (2021-09-20)
 
 
