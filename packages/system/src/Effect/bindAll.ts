@@ -14,10 +14,9 @@ import { map_ } from "./map"
  */
 export function bindAll<
   K,
-  NER extends Record<string, Effect<any, any, any>> &
-    {
-      [k in keyof K & keyof NER]?: never
-    }
+  NER extends Record<string, Effect<any, any, any>> & {
+    [k in keyof K & keyof NER]?: never
+  }
 >(
   r: (k: K) => EnforceNonEmptyRecord<NER> & Record<string, Effect<any, any, any>>,
   __trace?: string
@@ -26,10 +25,9 @@ export function bindAll<
 ) => Effect<
   R & _R<NER[keyof NER]>,
   E | _E<NER[keyof NER]>,
-  K &
-    {
-      [K in keyof NER]: [NER[K]] extends [Effect<any, any, infer A>] ? A : never
-    }
+  K & {
+    [K in keyof NER]: [NER[K]] extends [Effect<any, any, infer A>] ? A : never
+  }
 > {
   // @ts-expect-error
   return (s) => bindAll_(s, r, __trace)
@@ -40,10 +38,9 @@ export function bindAll<
  */
 export function bindAll_<
   K,
-  NER extends Record<string, Effect<any, any, any>> &
-    {
-      [k in keyof K & keyof NER]?: never
-    },
+  NER extends Record<string, Effect<any, any, any>> & {
+    [k in keyof K & keyof NER]?: never
+  },
   R,
   E
 >(
@@ -53,10 +50,9 @@ export function bindAll_<
 ): Effect<
   R & _R<NER[keyof NER]>,
   E | _E<NER[keyof NER]>,
-  K &
-    {
-      [K in keyof NER]: [NER[K]] extends [Effect<any, any, infer A>] ? A : never
-    }
+  K & {
+    [K in keyof NER]: [NER[K]] extends [Effect<any, any, infer A>] ? A : never
+  }
 > {
   return chain_(
     s,
@@ -85,10 +81,9 @@ export function bindAll_<
  */
 export function bindAllPar<
   K,
-  NER extends Record<string, Effect<any, any, any>> &
-    {
-      [k in keyof K & keyof NER]?: never
-    }
+  NER extends Record<string, Effect<any, any, any>> & {
+    [k in keyof K & keyof NER]?: never
+  }
 >(
   r: (k: K) => EnforceNonEmptyRecord<NER> & Record<string, Effect<any, any, any>>,
   __trace?: string
@@ -97,10 +92,9 @@ export function bindAllPar<
 ) => Effect<
   R & _R<NER[keyof NER]>,
   E | _E<NER[keyof NER]>,
-  K &
-    {
-      [K in keyof NER]: [NER[K]] extends [Effect<any, any, infer A>] ? A : never
-    }
+  K & {
+    [K in keyof NER]: [NER[K]] extends [Effect<any, any, infer A>] ? A : never
+  }
 > {
   // @ts-expect-error
   return (s) => bindAllPar_(s, r, __trace)
@@ -111,10 +105,9 @@ export function bindAllPar<
  */
 export function bindAllPar_<
   K,
-  NER extends Record<string, Effect<any, any, any>> &
-    {
-      [k in keyof K & keyof NER]?: never
-    },
+  NER extends Record<string, Effect<any, any, any>> & {
+    [k in keyof K & keyof NER]?: never
+  },
   R,
   E
 >(
@@ -124,10 +117,9 @@ export function bindAllPar_<
 ): Effect<
   R & _R<NER[keyof NER]>,
   E | _E<NER[keyof NER]>,
-  K &
-    {
-      [K in keyof NER]: [NER[K]] extends [Effect<any, any, infer A>] ? A : never
-    }
+  K & {
+    [K in keyof NER]: [NER[K]] extends [Effect<any, any, infer A>] ? A : never
+  }
 > {
   return chain_(
     s,
@@ -156,10 +148,9 @@ export function bindAllPar_<
  */
 export function bindAllParN<
   K,
-  NER extends Record<string, Effect<any, any, any>> &
-    {
-      [k in keyof K & keyof NER]?: never
-    }
+  NER extends Record<string, Effect<any, any, any>> & {
+    [k in keyof K & keyof NER]?: never
+  }
 >(
   n: number,
   r: (k: K) => EnforceNonEmptyRecord<NER> & Record<string, Effect<any, any, any>>,
@@ -169,10 +160,9 @@ export function bindAllParN<
 ) => Effect<
   R & _R<NER[keyof NER]>,
   E | _E<NER[keyof NER]>,
-  K &
-    {
-      [K in keyof NER]: [NER[K]] extends [Effect<any, any, infer A>] ? A : never
-    }
+  K & {
+    [K in keyof NER]: [NER[K]] extends [Effect<any, any, infer A>] ? A : never
+  }
 > {
   // @ts-expect-error
   return (s) => bindAllParN_(s, n, r, __trace)
@@ -183,10 +173,9 @@ export function bindAllParN<
  */
 export function bindAllParN_<
   K,
-  NER extends Record<string, Effect<any, any, any>> &
-    {
-      [k in keyof K & keyof NER]?: never
-    },
+  NER extends Record<string, Effect<any, any, any>> & {
+    [k in keyof K & keyof NER]?: never
+  },
   R,
   E
 >(
@@ -197,10 +186,9 @@ export function bindAllParN_<
 ): Effect<
   R & _R<NER[keyof NER]>,
   E | _E<NER[keyof NER]>,
-  K &
-    {
-      [K in keyof NER]: [NER[K]] extends [Effect<any, any, infer A>] ? A : never
-    }
+  K & {
+    [K in keyof NER]: [NER[K]] extends [Effect<any, any, infer A>] ? A : never
+  }
 > {
   return chain_(
     s,

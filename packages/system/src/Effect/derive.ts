@@ -33,15 +33,13 @@ export type DerivedLifted<
   [k in Fns]: T[k] extends (...args: infer ARGS) => Effect<infer R, infer E, infer A>
     ? (...args: ARGS) => Effect<R & Has<T>, E, A>
     : never
-} &
-  {
-    [k in Cns]: T[k] extends Effect<infer R, infer E, infer A>
-      ? Effect<R & Has<T>, E, A>
-      : never
-  } &
-  {
-    [k in Values]: Effect<Has<T>, never, T[k]>
-  }
+} & {
+  [k in Cns]: T[k] extends Effect<infer R, infer E, infer A>
+    ? Effect<R & Has<T>, E, A>
+    : never
+} & {
+  [k in Values]: Effect<Has<T>, never, T[k]>
+}
 
 export function deriveLifted<T>(
   H: Tag<T>

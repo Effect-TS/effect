@@ -110,8 +110,9 @@ export function structParN_<NER extends Record<string, Managed<any, any, any>>>(
  */
 export function bindAll<
   K,
-  NER extends Record<string, Managed<any, any, any>> &
-    { [k in keyof K & keyof NER]?: never }
+  NER extends Record<string, Managed<any, any, any>> & {
+    [k in keyof K & keyof NER]?: never
+  }
 >(
   r: (k: K) => EnforceNonEmptyRecord<NER> & Record<string, Managed<any, any, any>>,
   __trace?: string
@@ -120,10 +121,9 @@ export function bindAll<
 ) => Managed<
   R & _R<NER[keyof NER]>,
   E | _E<NER[keyof NER]>,
-  K &
-    {
-      [K in keyof NER]: [NER[K]] extends [Managed<any, any, infer A>] ? A : never
-    }
+  K & {
+    [K in keyof NER]: [NER[K]] extends [Managed<any, any, infer A>] ? A : never
+  }
 > {
   // @ts-expect-error
   return (s) => bindAll_(s, r, __trace)
@@ -131,8 +131,9 @@ export function bindAll<
 
 export function bindAll_<
   K,
-  NER extends Record<string, Managed<any, any, any>> &
-    { [k in keyof K & keyof NER]?: never },
+  NER extends Record<string, Managed<any, any, any>> & {
+    [k in keyof K & keyof NER]?: never
+  },
   R,
   E
 >(
@@ -142,10 +143,9 @@ export function bindAll_<
 ): Managed<
   R & _R<NER[keyof NER]>,
   E | _E<NER[keyof NER]>,
-  K &
-    {
-      [K in keyof NER]: [NER[K]] extends [Managed<any, any, infer A>] ? A : never
-    }
+  K & {
+    [K in keyof NER]: [NER[K]] extends [Managed<any, any, infer A>] ? A : never
+  }
 > {
   return chain_(s, (k) =>
     map_(
@@ -170,8 +170,9 @@ export function bindAll_<
  */
 export function bindAllPar<
   K,
-  NER extends Record<string, Managed<any, any, any>> &
-    { [k in keyof K & keyof NER]?: never }
+  NER extends Record<string, Managed<any, any, any>> & {
+    [k in keyof K & keyof NER]?: never
+  }
 >(
   r: (k: K) => EnforceNonEmptyRecord<NER> & Record<string, Managed<any, any, any>>,
   __trace?: string
@@ -180,10 +181,9 @@ export function bindAllPar<
 ) => Managed<
   R & _R<NER[keyof NER]>,
   E | _E<NER[keyof NER]>,
-  K &
-    {
-      [K in keyof NER]: [NER[K]] extends [Managed<any, any, infer A>] ? A : never
-    }
+  K & {
+    [K in keyof NER]: [NER[K]] extends [Managed<any, any, infer A>] ? A : never
+  }
 > {
   // @ts-expect-error
   return (s) => bindAllPar_(s, r, __trace)
@@ -191,8 +191,9 @@ export function bindAllPar<
 
 export function bindAllPar_<
   K,
-  NER extends Record<string, Managed<any, any, any>> &
-    { [k in keyof K & keyof NER]?: never },
+  NER extends Record<string, Managed<any, any, any>> & {
+    [k in keyof K & keyof NER]?: never
+  },
   R,
   E
 >(
@@ -202,10 +203,9 @@ export function bindAllPar_<
 ): Managed<
   R & _R<NER[keyof NER]>,
   E | _E<NER[keyof NER]>,
-  K &
-    {
-      [K in keyof NER]: [NER[K]] extends [Managed<any, any, infer A>] ? A : never
-    }
+  K & {
+    [K in keyof NER]: [NER[K]] extends [Managed<any, any, infer A>] ? A : never
+  }
 > {
   return chain_(s, (k) =>
     map_(
@@ -230,8 +230,9 @@ export function bindAllPar_<
  */
 export function bindAllParN<
   K,
-  NER extends Record<string, Managed<any, any, any>> &
-    { [k in keyof K & keyof NER]?: never }
+  NER extends Record<string, Managed<any, any, any>> & {
+    [k in keyof K & keyof NER]?: never
+  }
 >(
   n: number,
   r: (k: K) => EnforceNonEmptyRecord<NER> & Record<string, Managed<any, any, any>>,
@@ -241,10 +242,9 @@ export function bindAllParN<
 ) => Managed<
   R & _R<NER[keyof NER]>,
   E | _E<NER[keyof NER]>,
-  K &
-    {
-      [K in keyof NER]: [NER[K]] extends [Managed<any, any, infer A>] ? A : never
-    }
+  K & {
+    [K in keyof NER]: [NER[K]] extends [Managed<any, any, infer A>] ? A : never
+  }
 > {
   // @ts-expect-error
   return (s) => bindAllParN_(s, n, r, __trace)
@@ -252,8 +252,9 @@ export function bindAllParN<
 
 export function bindAllParN_<
   K,
-  NER extends Record<string, Managed<any, any, any>> &
-    { [k in keyof K & keyof NER]?: never },
+  NER extends Record<string, Managed<any, any, any>> & {
+    [k in keyof K & keyof NER]?: never
+  },
   R,
   E
 >(
@@ -264,10 +265,9 @@ export function bindAllParN_<
 ): Managed<
   R & _R<NER[keyof NER]>,
   E | _E<NER[keyof NER]>,
-  K &
-    {
-      [K in keyof NER]: [NER[K]] extends [Managed<any, any, infer A>] ? A : never
-    }
+  K & {
+    [K in keyof NER]: [NER[K]] extends [Managed<any, any, infer A>] ? A : never
+  }
 > {
   return chain_(s, (k) =>
     map_(

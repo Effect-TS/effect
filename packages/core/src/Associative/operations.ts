@@ -54,9 +54,9 @@ export function func<S>(S: Associative<S>): <A = never>() => Associative<(a: A) 
 /**
  * `Associative` for a structure
  */
-export function struct<O extends Record<string, any>>(
-  associatives: { [K in keyof O]: Associative<O[K]> }
-): Associative<O> {
+export function struct<O extends Record<string, any>>(associatives: {
+  [K in keyof O]: Associative<O[K]>
+}): Associative<O> {
   return makeAssociative((x, y) => {
     const r: any = {}
     for (const key of Object.keys(associatives)) {

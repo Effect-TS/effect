@@ -108,24 +108,22 @@ export function matchers<URI extends URIS, C>(_: Base<URI, C>) {
       X extends {
         [tag in N]: string
       },
-      K extends Partial<
-        {
-          [k in X[N]]: (
-            _: Extract<
-              X,
-              {
-                [tag in N]: k
-              }
-            >,
-            __: Extract<
-              X,
-              {
-                [tag in N]: k
-              }
-            >
-          ) => Kind<URI, C, any, any, any, any, any, any, any, any, any>
-        }
-      >,
+      K extends Partial<{
+        [k in X[N]]: (
+          _: Extract<
+            X,
+            {
+              [tag in N]: k
+            }
+          >,
+          __: Extract<
+            X,
+            {
+              [tag in N]: k
+            }
+          >
+        ) => Kind<URI, C, any, any, any, any, any, any, any, any, any>
+      }>,
       Ret extends Kind<URI, C, any, any, any, any, any, any, any, any, any>
     >(
       matcher: K,
@@ -348,24 +346,22 @@ export function matchers<URI extends URIS, C>(_: Base<URI, C>) {
       >
     >
     <
-      K extends Partial<
-        {
-          [k in X[N]]: (
-            _: Extract<
-              X,
-              {
-                [tag in N]: k
-              }
-            >,
-            __: Extract<
-              X,
-              {
-                [tag in N]: k
-              }
-            >
-          ) => Kind<URI, C, any, any, any, any, any, any, any, any, any>
-        }
-      >,
+      K extends Partial<{
+        [k in X[N]]: (
+          _: Extract<
+            X,
+            {
+              [tag in N]: k
+            }
+          >,
+          __: Extract<
+            X,
+            {
+              [tag in N]: k
+            }
+          >
+        ) => Kind<URI, C, any, any, any, any, any, any, any, any, any>
+      }>,
       Ret extends Kind<URI, C, any, any, any, any, any, any, any, any, any>
     >(
       matcher: K,
@@ -594,24 +590,22 @@ export function matchers<URI extends URIS, C>(_: Base<URI, C>) {
       X extends {
         [tag in N]: string
       },
-      K extends Partial<
-        {
-          [k in X[N]]: (
-            _: Extract<
-              X,
-              {
-                [tag in N]: k
-              }
-            >,
-            __: Extract<
-              X,
-              {
-                [tag in N]: k
-              }
-            >
-          ) => Kind<URI, C, any, any, any, any, any, any, any, any, any>
-        }
-      >,
+      K extends Partial<{
+        [k in X[N]]: (
+          _: Extract<
+            X,
+            {
+              [tag in N]: k
+            }
+          >,
+          __: Extract<
+            X,
+            {
+              [tag in N]: k
+            }
+          >
+        ) => Kind<URI, C, any, any, any, any, any, any, any, any, any>
+      }>,
       Ret extends Kind<URI, C, any, any, any, any, any, any, any, any, any>
     >(
       matcher: K,

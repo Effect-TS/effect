@@ -15,11 +15,9 @@ import * as X from "./core"
  */
 export function accessServicesM<SS extends Record<string, Tag<any>>>(s: SS) {
   return <R = unknown, E = never, B = unknown>(
-    f: (
-      a: {
-        [k in keyof SS]: [SS[k]] extends [Tag<infer T>] ? T : unknown
-      }
-    ) => X.Sync<R, E, B>
+    f: (a: {
+      [k in keyof SS]: [SS[k]] extends [Tag<infer T>] ? T : unknown
+    }) => X.Sync<R, E, B>
   ) =>
     X.accessM(
       (
@@ -75,11 +73,9 @@ export function accessServicesT<SS extends Tag<any>[]>(...s: SS) {
  */
 export function accessServices<SS extends Record<string, Tag<any>>>(s: SS) {
   return <B>(
-    f: (
-      a: {
-        [k in keyof SS]: [SS[k]] extends [Tag<infer T>] ? T : unknown
-      }
-    ) => B
+    f: (a: {
+      [k in keyof SS]: [SS[k]] extends [Tag<infer T>] ? T : unknown
+    }) => B
   ) =>
     X.access(
       (

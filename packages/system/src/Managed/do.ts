@@ -19,10 +19,9 @@ export function bind<R, E, A, K, N extends string>(
   ): Managed<
     R & R2,
     E | E2,
-    K &
-      {
-        [k in N]: A
-      }
+    K & {
+      [k in N]: A
+    }
   > => bind_(mk, tag, f, __trace)
 }
 
@@ -37,20 +36,18 @@ export function bind_<R2, E2, R, E, A, K, N extends string>(
 ): Managed<
   R & R2,
   E | E2,
-  K &
-    {
-      [k in N]: A
-    }
+  K & {
+    [k in N]: A
+  }
 > {
   return chain_(mk, (k) =>
     map_(
       f(k),
       (
         a
-      ): K &
-        {
-          [k in N]: A
-        } => ({ ...k, [tag]: a } as any),
+      ): K & {
+        [k in N]: A
+      } => ({ ...k, [tag]: a } as any),
       __trace
     )
   )
@@ -71,19 +68,17 @@ function let__<A, K, N extends string>(
   ): Managed<
     R2,
     E2,
-    K &
-      {
-        [k in N]: A
-      }
+    K & {
+      [k in N]: A
+    }
   > =>
     map_(
       mk,
       (
         k
-      ): K &
-        {
-          [k in N]: A
-        } => ({ ...k, [tag]: f(k) } as any),
+      ): K & {
+        [k in N]: A
+      } => ({ ...k, [tag]: f(k) } as any),
       __trace
     )
 }
@@ -98,19 +93,17 @@ export function let_<R2, E2, A, K, N extends string>(
 ): Managed<
   R2,
   E2,
-  K &
-    {
-      [k in N]: A
-    }
+  K & {
+    [k in N]: A
+  }
 > {
   return map_(
     mk,
     (
       k
-    ): K &
-      {
-        [k in N]: A
-      } => ({ ...k, [tag]: f(k) } as any)
+    ): K & {
+      [k in N]: A
+    } => ({ ...k, [tag]: f(k) } as any)
   )
 }
 

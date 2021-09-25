@@ -41,23 +41,20 @@ export const pattern: <N extends string>(
   ): (m: X) => Unify<ReturnType<K[keyof K]>>
   <
     X extends { [k in N]: string },
-    K extends Partial<
-      {
-        [k in X[N]]: (
-          _: Extract<X, { [_tag in N]: k }>,
-          __: Extract<X, { [_tag in N]: k }>
-        ) => any
-      }
-    >,
+    K extends Partial<{
+      [k in X[N]]: (
+        _: Extract<X, { [_tag in N]: k }>,
+        __: Extract<X, { [_tag in N]: k }>
+      ) => any
+    }>,
     H
   >(
-    _: K &
-      {
-        [k in X[N]]?: (
-          _: Extract<X, { [_tag in N]: k }>,
-          __: Extract<X, { [_tag in N]: k }>
-        ) => any
-      },
+    _: K & {
+      [k in X[N]]?: (
+        _: Extract<X, { [_tag in N]: k }>,
+        __: Extract<X, { [_tag in N]: k }>
+      ) => any
+    },
     __: (_: Exclude<X, { _tag: keyof K }>, __: Exclude<X, { _tag: keyof K }>) => H
   ): (m: X) => Unify<{ [k in keyof K]: ReturnType<NonNullable<K[k]>> }[keyof K] | H>
 } = (n) =>
@@ -84,24 +81,21 @@ export const pattern_: <N extends string>(
   ): Unify<ReturnType<K[keyof K]>>
   <
     X extends { [k in N]: string },
-    K extends Partial<
-      {
-        [k in X[N]]: (
-          _: Extract<X, { [_tag in N]: k }>,
-          __: Extract<X, { [_tag in N]: k }>
-        ) => any
-      }
-    >,
+    K extends Partial<{
+      [k in X[N]]: (
+        _: Extract<X, { [_tag in N]: k }>,
+        __: Extract<X, { [_tag in N]: k }>
+      ) => any
+    }>,
     H
   >(
     m: X,
-    _: K &
-      {
-        [k in X[N]]?: (
-          _: Extract<X, { [_tag in N]: k }>,
-          __: Extract<X, { [_tag in N]: k }>
-        ) => any
-      },
+    _: K & {
+      [k in X[N]]?: (
+        _: Extract<X, { [_tag in N]: k }>,
+        __: Extract<X, { [_tag in N]: k }>
+      ) => any
+    },
     __: (_: Exclude<X, { _tag: keyof K }>, __: Exclude<X, { _tag: keyof K }>) => H
   ): Unify<{ [k in keyof K]: ReturnType<NonNullable<K[k]>> }[keyof K] | H>
 } = (n) =>
@@ -125,23 +119,20 @@ export const patternFor: <N extends string>(
     _: K
   ): (m: X) => Unify<ReturnType<K[keyof K]>>
   <
-    K extends Partial<
-      {
-        [k in X[N]]: (
-          _: Extract<X, { [_tag in N]: k }>,
-          __: Extract<X, { [_tag in N]: k }>
-        ) => any
-      }
-    >,
+    K extends Partial<{
+      [k in X[N]]: (
+        _: Extract<X, { [_tag in N]: k }>,
+        __: Extract<X, { [_tag in N]: k }>
+      ) => any
+    }>,
     H
   >(
-    _: K &
-      {
-        [k in X[N]]?: (
-          _: Extract<X, { [_tag in N]: k }>,
-          __: Extract<X, { [_tag in N]: k }>
-        ) => any
-      },
+    _: K & {
+      [k in X[N]]?: (
+        _: Extract<X, { [_tag in N]: k }>,
+        __: Extract<X, { [_tag in N]: k }>
+      ) => any
+    },
     __: (_: Exclude<X, { _tag: keyof K }>, __: Exclude<X, { _tag: keyof K }>) => H
   ): (m: X) => Unify<{ [k in keyof K]: ReturnType<NonNullable<K[k]>> }[keyof K] | H>
 } = (n) => () =>

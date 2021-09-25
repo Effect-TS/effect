@@ -92,8 +92,7 @@ export interface CaseConstructorTagged<
   K extends string | symbol
 > {
   new <T>(args: IsEqualTo<T, {}> extends true ? void : T): T &
-    Copy<T> &
-    { readonly [k in K]: Tag }
+    Copy<T> & { readonly [k in K]: Tag }
 }
 
 export function Tagged<Tag extends string | symbol, Key extends string | symbol>(

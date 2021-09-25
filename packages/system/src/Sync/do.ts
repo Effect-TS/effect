@@ -11,20 +11,18 @@ function bind<R, E, A, K, N extends string>(
   ): X.Sync<
     R & R2,
     E | E2,
-    K &
-      {
-        [k in N]: A
-      }
+    K & {
+      [k in N]: A
+    }
   > =>
     X.chain_(mk, (k) =>
       X.map_(
         f(k),
         (
           a
-        ): K &
-          {
-            [k in N]: A
-          } => ({ ...k, [tag]: a } as any)
+        ): K & {
+          [k in N]: A
+        } => ({ ...k, [tag]: a } as any)
       )
     )
 }
@@ -35,19 +33,17 @@ function let_<A, K, N extends string>(tag: Exclude<N, keyof K>, f: (_: K) => A) 
   ): X.Sync<
     R2,
     E2,
-    K &
-      {
-        [k in N]: A
-      }
+    K & {
+      [k in N]: A
+    }
   > =>
     X.map_(
       mk,
       (
         k
-      ): K &
-        {
-          [k in N]: A
-        } => ({ ...k, [tag]: f(k) } as any)
+      ): K & {
+        [k in N]: A
+      } => ({ ...k, [tag]: f(k) } as any)
     )
 }
 

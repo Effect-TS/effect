@@ -129,11 +129,9 @@ export function array<A>(EqA: Equal<A>): Equal<A.Array<A>> {
 export function tuple<T extends ReadonlyArray<Equal<any>>>(
   ...eqs: T
 ): Equal<
-  ForcedTuple<
-    {
-      [K in keyof T]: T[K] extends Equal<infer A> ? A : never
-    }
-  >
+  ForcedTuple<{
+    [K in keyof T]: T[K] extends Equal<infer A> ? A : never
+  }>
 > {
   return makeEqual((x, y) => eqs.every((E, i) => E.equals(x.get(i), y.get(i))))
 }
@@ -141,11 +139,9 @@ export function tuple<T extends ReadonlyArray<Equal<any>>>(
 /**
  * Given a struct of `Equal`s returns a `Equal` for the struct
  */
-export function struct<O extends Record<string, any>>(
-  eqs: {
-    [K in keyof O]: Equal<O[K]>
-  }
-): Equal<O> {
+export function struct<O extends Record<string, any>>(eqs: {
+  [K in keyof O]: Equal<O[K]>
+}): Equal<O> {
   return makeEqual((x, y) => {
     for (const k in eqs) {
       if (!eqs[k].equals(x[k], y[k])) {

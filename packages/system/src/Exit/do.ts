@@ -12,10 +12,9 @@ function bind<E, A, K, N extends string>(
     mk: Exit<E2, K>
   ): Exit<
     E | E2,
-    K &
-      {
-        [k in N]: A
-      }
+    K & {
+      [k in N]: A
+    }
   > =>
     pipe(
       mk,
@@ -25,10 +24,9 @@ function bind<E, A, K, N extends string>(
           map(
             (
               a
-            ): K &
-              {
-                [k in N]: A
-              } => ({ ...k, [tag]: a } as any)
+            ): K & {
+              [k in N]: A
+            } => ({ ...k, [tag]: a } as any)
           )
         )
       )
@@ -40,20 +38,18 @@ function let_<A, K, N extends string>(tag: Exclude<N, keyof K>, f: (_: K) => A) 
     mk: Exit<E2, K>
   ): Exit<
     E2,
-    K &
-      {
-        [k in N]: A
-      }
+    K & {
+      [k in N]: A
+    }
   > =>
     pipe(
       mk,
       map(
         (
           k
-        ): K &
-          {
-            [k in N]: A
-          } => ({ ...k, [tag]: f(k) } as any)
+        ): K & {
+          [k in N]: A
+        } => ({ ...k, [tag]: f(k) } as any)
       )
     )
 }

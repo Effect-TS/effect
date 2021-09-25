@@ -91,11 +91,9 @@ export function update<Ks extends readonly unknown[], I extends keyof Ks & numbe
   i: I,
   f: (_: Ks[I]) => J
 ): (self: Tuple<Ks>) => Tuple<
-  ForcedArray<
-    {
-      [k in keyof Ks]: k extends `${I}` ? J : Ks[k]
-    }
-  >
+  ForcedArray<{
+    [k in keyof Ks]: k extends `${I}` ? J : Ks[k]
+  }>
 > {
   return (self) => update_(self, i, f)
 }
@@ -108,11 +106,9 @@ export function update_<Ks extends readonly unknown[], I extends keyof Ks & numb
   i: I,
   f: (_: Ks[I]) => J
 ): Tuple<
-  ForcedArray<
-    {
-      [k in keyof Ks]: k extends `${I}` ? J : Ks[k]
-    }
-  >
+  ForcedArray<{
+    [k in keyof Ks]: k extends `${I}` ? J : Ks[k]
+  }>
 > {
   const len = self.tuple.length
   const r = new Array(len)

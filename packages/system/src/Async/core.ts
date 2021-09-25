@@ -1000,9 +1000,9 @@ export function tuple<Tasks extends Async<any, any, any>[]>(
 ): Async<
   U._R<Tasks[number]>,
   U._E<Tasks[number]>,
-  U.ForcedTuple<
-    { [k in keyof Tasks]: [Tasks[k]] extends [Async<any, any, infer A>] ? A : never }
-  >
+  U.ForcedTuple<{
+    [k in keyof Tasks]: [Tasks[k]] extends [Async<any, any, infer A>] ? A : never
+  }>
 > {
   return map_(collectAll(tasks), (x) => Tp.tuple(...x)) as any
 }
@@ -1021,10 +1021,9 @@ export function bind<K extends string>(k: K) {
     ): Async<
       R & R1,
       E | E1,
-      S &
-        {
-          [k in K]: A1
-        }
+      S & {
+        [k in K]: A1
+      }
     > =>
       pipe(
         self,
@@ -1033,10 +1032,9 @@ export function bind<K extends string>(k: K) {
             f(s),
             map(
               (a1) =>
-                ({ ...s, [k]: a1 } as S &
-                  {
-                    [k in K]: A1
-                  })
+                ({ ...s, [k]: a1 } as S & {
+                  [k in K]: A1
+                })
             )
           )
         )
@@ -1052,10 +1050,9 @@ function assign<K extends string>(k: K) {
     ): Async<
       R,
       E,
-      S &
-        {
-          [k in K]: A1
-        }
+      S & {
+        [k in K]: A1
+      }
     > =>
       pipe(
         self,
@@ -1063,10 +1060,9 @@ function assign<K extends string>(k: K) {
           pipe(
             f(s),
             (a1) =>
-              ({ ...s, [k]: a1 } as S &
-                {
-                  [k in K]: A1
-                })
+              ({ ...s, [k]: a1 } as S & {
+                [k in K]: A1
+              })
           )
         )
       )

@@ -67,11 +67,9 @@ export function min<A>(B: Bounded<A>): Identity<A> {
 /**
  * Given a struct of `Identity` returns a `Identity` for the struct
  */
-export function struct<O extends Record<string, any>>(
-  identities: {
-    [K in keyof O]: Identity<O[K]>
-  }
-): Identity<O> {
+export function struct<O extends Record<string, any>>(identities: {
+  [K in keyof O]: Identity<O[K]>
+}): Identity<O> {
   const empty: any = {}
   for (const key of Object.keys(identities)) {
     empty[key] = identities[key]!.identity
@@ -84,11 +82,9 @@ export function struct<O extends Record<string, any>>(
  */
 export function tuple<T extends ReadonlyArray<Identity<any>>>(
   ...identities: T
-): Identity<
-  {
-    [K in keyof T]: T[K] extends Associative<infer A> ? A : never
-  }
-> {
+): Identity<{
+  [K in keyof T]: T[K] extends Associative<infer A> ? A : never
+}> {
   return makeIdentity(
     identities.map((m) => m.identity) as any,
     A.tuple(...identities).combine as any
