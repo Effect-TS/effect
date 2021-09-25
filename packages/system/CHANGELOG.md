@@ -3,6 +3,28 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.41.5](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.41.4...@effect-ts/system@0.41.5) (2021-09-25)
+
+
+### Bug Fixes
+
+* **runtime:** set default maxOp to 64 ([2607672](https://github.com/Effect-TS/core/commit/26076727e92e299e8e0b75cea8cf5d312b6963ca))
+* use macrotask for interruption ([c1d5559](https://github.com/Effect-TS/core/commit/c1d5559c4d30709ee3e7c328808d6e07aad2e9a3))
+
+
+### Features
+
+* **scheduler:** use microtasks ([82dc2b9](https://github.com/Effect-TS/core/commit/82dc2b980e3c186fed7f1b8cf1667110e37a0343))
+
+
+### Performance Improvements
+
+* **system:** improve scheduler ([616585a](https://github.com/Effect-TS/core/commit/616585af7e8826ef5a2eca150f6f7f2a24bcc5d5))
+
+
+
+
+
 ## [0.41.4](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.41.3...@effect-ts/system@0.41.4) (2021-09-24)
 
 
