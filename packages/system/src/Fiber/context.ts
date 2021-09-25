@@ -418,7 +418,9 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
           )
         )
 
-        this.evaluateLater(instruction(T.interruptAs(fiberId)))
+        setTimeout(() => {
+          this.evaluateNow(instruction(T.interruptAs(fiberId)))
+        }, 0)
       } else if (oldState._tag === "Executing") {
         const newCause = Cause.then(oldState.interrupted, interruptedCause)
 
@@ -624,7 +626,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
     const toExecute = this.parentScopeOp(parentScope, childContext, i0)
 
-    defaultScheduler(() => childContext.evaluateNow(toExecute))
+    childContext.evaluateLater(toExecute)
 
     return childContext
   }
