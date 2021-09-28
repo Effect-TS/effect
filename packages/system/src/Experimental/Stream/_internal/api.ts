@@ -2484,9 +2484,82 @@ export function fixed(duration: number) {
   return <R, E, A>(self: Stream<R, E, A>) => fixed_(self, duration)
 }
 
-// TODO: chainPar -> Missing Channel's mergeAllWith
+/**
+ * Maps each element of this stream to another stream and returns the
+ * non-deterministic merge of those streams, executing up to `n` inner streams
+ * concurrently. Up to `bufferSize` elements of the produced streams may be
+ * buffered in memory by this operator.
+ */
+export function chainPar_<R, R1, E, E1, A, B>(
+  self: Stream<R, E, A>,
+  f: (a: A) => Stream<R1, E1, B>,
+  n: number,
+  bufferSize = 16
+): Stream<R & R1, E | E1, B> {
+  return new Stream(
+    CH.mergeMap(
+      CH.concatMap_(self.channel, (_) => CH.writeChunk(_)),
+      n,
+      (_) => f(_).channel,
+      bufferSize
+    )
+  )
+}
 
-// TODO: chainParSwitch -> Not implemented
+/**
+ * Maps each element of this stream to another stream and returns the
+ * non-deterministic merge of those streams, executing up to `n` inner streams
+ * concurrently. Up to `bufferSize` elements of the produced streams may be
+ * buffered in memory by this operator.
+ *
+ * @ets_data_first chainPar_
+ */
+export function chainPar<R1, E1, A, B>(
+  f: (a: A) => Stream<R1, E1, B>,
+  n: number,
+  bufferSize = 16
+) {
+  return <R, E>(self: Stream<R, E, A>) => chainPar_(self, f, n, bufferSize)
+}
+
+/**
+ * Maps each element of this stream to another stream and returns the non-deterministic merge
+ * of those streams, executing up to `n` inner streams concurrently. When a new stream is created
+ * from an element of the source stream, the oldest executing stream is cancelled. Up to `bufferSize`
+ * elements of the produced streams may be buffered in memory by this operator.
+ */
+export function chainParSwitch_<R, R1, E, E1, A, B>(
+  self: Stream<R, E, A>,
+  f: (a: A) => Stream<R1, E1, B>,
+  n: number,
+  bufferSize = 16
+): Stream<R & R1, E | E1, B> {
+  return new Stream(
+    CH.mergeMap(
+      CH.concatMap_(self.channel, (_) => CH.writeChunk(_)),
+      n,
+      (_) => f(_).channel,
+      bufferSize,
+      "BufferSliding"
+    )
+  )
+}
+
+/**
+ * Maps each element of this stream to another stream and returns the non-deterministic merge
+ * of those streams, executing up to `n` inner streams concurrently. When a new stream is created
+ * from an element of the source stream, the oldest executing stream is cancelled. Up to `bufferSize`
+ * elements of the produced streams may be buffered in memory by this operator.
+ *
+ * @ets_data_first chainParSwitch_
+ */
+export function chainParSwitch<R1, E1, A, B>(
+  f: (a: A) => Stream<R1, E1, B>,
+  n: number,
+  bufferSize = 16
+) {
+  return <R, E>(self: Stream<R, E, A>) => chainParSwitch_(self, f, n, bufferSize)
+}
 
 /**
  * Submerges the chunks carried by this stream into the stream's structure, while
@@ -2594,9 +2667,50 @@ export function flattenIterables<R, E, A>(
   return flattenChunks(C.map_(self, (a) => A.from(a)))
 }
 
-// TODO: flattenPar -> Missing chainPar
+/**
+ * Flattens a stream of streams into a stream by executing a non-deterministic
+ * concurrent merge. Up to `n` streams may be consumed in parallel and up to
+ * `outputBuffer` elements may be buffered by this operator.
+ */
+export function flattenPar_<R, R1, E, E1, A>(
+  self: Stream<R, E, Stream<R1, E1, A>>,
+  n: number,
+  outputBuffer = 16
+): Stream<R & R1, E | E1, A> {
+  return chainPar_(self, identity, n, outputBuffer)
+}
 
-// TODO: flattenParUnbounded -> Missing chainPar
+/**
+ * Flattens a stream of streams into a stream by executing a non-deterministic
+ * concurrent merge. Up to `n` streams may be consumed in parallel and up to
+ * `outputBuffer` elements may be buffered by this operator.
+ *
+ * @ets_data_first flattenPar_
+ */
+export function flattenPar(n: number, outputBuffer = 16) {
+  return <R, R1, E, E1, A>(self: Stream<R, E, Stream<R1, E1, A>>) =>
+    flattenPar_(self, n, outputBuffer)
+}
+
+/**
+ * Like `flattenPar`, but executes all streams concurrently.
+ */
+export function flattenParUnbounded_<R, R1, E, E1, A>(
+  self: Stream<R, E, Stream<R1, E1, A>>,
+  outputBuffer = 16
+): Stream<R & R1, E | E1, A> {
+  return flattenPar_(self, Number.MAX_SAFE_INTEGER, outputBuffer)
+}
+
+/**
+ * Like `flattenPar`, but executes all streams concurrently.
+ *
+ * @ets_data_first flattenParUnbounded_
+ */
+export function flattenParUnbounded(outputBuffer = 16) {
+  return <R, R1, E, E1, A>(self: Stream<R, E, Stream<R1, E1, A>>) =>
+    flattenParUnbounded_(self, outputBuffer)
+}
 
 /**
  * Unwraps `Exit` values and flatten chunks that also signify end-of-stream by failing with `None`.
@@ -6095,9 +6209,23 @@ export function repeatEffOption<R, E, A>(
   return repeatEffectChunkOption(T.map_(fa, A.single))
 }
 
-// TODO: mergeAll -> Missing flattenPar
+/**
+ * Merges a variable list of streams in a non-deterministic fashion.
+ * Up to `n` streams may be consumed in parallel and up to
+ * `outputBuffer` chunks may be buffered by this operator.
+ */
+export function mergeAll(n: number, outputBuffer = 16) {
+  return <R, E, O>(...streams: Stream<R, E, O>[]) =>
+    flattenPar_(fromIterable(streams), n, outputBuffer)
+}
 
-// TODO: mergeAllUnbounded -> Missing mergeAll
+/**
+ * Like `mergeAll`, but runs all streams concurrently.
+ */
+export function mergeAllUnbounded(outputBuffer = 16) {
+  return <R, E, O>(...streams: Stream<R, E, O>[]) =>
+    mergeAll(Number.MAX_SAFE_INTEGER, outputBuffer)(...streams)
+}
 
 export const never: Stream<unknown, never, never> = fromEffect(T.never)
 
