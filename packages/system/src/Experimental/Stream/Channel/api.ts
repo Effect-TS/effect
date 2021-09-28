@@ -20,6 +20,7 @@ import * as O from "../../../Option"
 import * as PR from "../../../Promise"
 import * as Q from "../../../Queue"
 import * as Ref from "../../../Ref"
+import * as SM from "../../../Semaphore"
 import type { ChannelState } from "./_internal/executor"
 import {
   ChannelExecutor,
@@ -2031,4 +2032,309 @@ export function writeChunk<Out>(
       : zipRight_(C.write(A.unsafeGet_(outs, idx)), writer(idx + 1, len))
 
   return writer(0, A.size(outs))
+}
+
+export type MergeStrategy = "BackPressure" | "BufferSliding"
+
+export function mergeAllWith<
+  Env,
+  Env1,
+  InErr,
+  InErr1,
+  InElem,
+  InElem1,
+  InDone,
+  InDone1,
+  OutErr,
+  OutErr1,
+  OutElem,
+  OutDone
+>(
+  channels: P.Channel<
+    Env,
+    InErr,
+    InElem,
+    InDone,
+    OutErr,
+    P.Channel<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem, OutDone>,
+    OutDone
+  >,
+  n: number,
+  f: (o1: OutDone, o2: OutDone) => OutDone,
+  bufferSize = 16,
+  mergeStrategy: MergeStrategy = "BackPressure"
+): P.Channel<
+  Env & Env1,
+  InErr & InErr1,
+  InElem & InElem1,
+  InDone & InDone1,
+  OutErr | OutErr1,
+  OutElem,
+  OutDone
+> {
+  return managed_(
+    M.withChildren((getChildren) =>
+      pipe(
+        M.do,
+        M.tap(() => M.finalizer(T.chain_(getChildren, F.interruptAll))),
+        M.bind("queue", () =>
+          T.toManagedRelease_(
+            Q.makeBounded<T.Effect<Env, E.Either<OutErr | OutErr1, OutDone>, OutElem>>(
+              bufferSize
+            ),
+            Q.shutdown
+          )
+        ),
+        M.bind("cancelers", () =>
+          T.toManagedRelease_(Q.makeBounded<PR.Promise<never, void>>(n), Q.shutdown)
+        ),
+        M.bind("lastDone", () => Ref.makeManagedRef<O.Option<OutDone>>(O.none)),
+        M.bind("errorSignal", () => PR.makeManaged<never, void>()),
+        M.bind("permits", () => T.toManaged(SM.makeSemaphore(n))),
+        M.bind("pull", () => toPull(channels)),
+        M.let(
+          "evaluatePull",
+          ({ errorSignal, lastDone, queue }) =>
+            (
+              pull: T.Effect<Env & Env1, E.Either<OutErr | OutErr1, OutDone>, OutElem>
+            ) =>
+              pipe(
+                pull,
+                T.chain((outElem) => Q.offer_(queue, T.succeed(outElem))),
+                T.forever,
+                T.catchAllCause((c) =>
+                  E.fold_(
+                    Cause.flipCauseEither(c),
+                    (cause) =>
+                      T.zipRight_(
+                        Q.offer_(queue, T.halt(Cause.map_(cause, E.left))),
+                        T.asUnit(PR.succeed_(errorSignal, void 0))
+                      ),
+                    (outDone) =>
+                      Ref.update_(
+                        lastDone,
+                        O.fold(
+                          () => O.some(outDone),
+                          (lastDone) => O.some(f(lastDone, outDone))
+                        )
+                      )
+                  )
+                )
+              )
+        ),
+        M.tap(
+          ({
+            cancelers,
+            errorSignal,
+            evaluatePull,
+            lastDone,
+            permits,
+            pull,
+            queue
+          }) => {
+            return pipe(
+              pull,
+              T.foldCauseM(
+                (c) =>
+                  E.fold_(
+                    Cause.flipCauseEither(c),
+                    (cause) =>
+                      pipe(
+                        getChildren,
+                        T.chain(F.interruptAll),
+                        T.zipRight(
+                          T.as_(
+                            Q.offer_(queue, T.halt(Cause.map_(cause, E.left))),
+                            false
+                          )
+                        )
+                      ),
+                    (outDone) =>
+                      T.raceWith_(
+                        PR.await(errorSignal),
+                        SM.withPermits_(T.unit, permits, n),
+                        (_, permitAcquisition) =>
+                          pipe(
+                            getChildren,
+                            T.chain(F.interruptAll),
+                            T.zipRight(T.as_(F.interrupt(permitAcquisition), false))
+                          ),
+                        (_, failureAwait) =>
+                          pipe(
+                            F.interrupt(failureAwait),
+                            T.zipRight(
+                              T.as_(
+                                T.chain_(
+                                  lastDone.get,
+                                  O.fold(
+                                    () => Q.offer_(queue, T.fail(E.right(outDone))),
+                                    (lastDone) =>
+                                      Q.offer_(
+                                        queue,
+                                        T.fail(E.right(f(lastDone, outDone)))
+                                      )
+                                  )
+                                ),
+                                false
+                              )
+                            )
+                          )
+                      )
+                  ),
+                (channel) => {
+                  switch (mergeStrategy) {
+                    case "BackPressure": {
+                      return pipe(
+                        T.do,
+                        T.bind("latch", () => PR.make<never, void>()),
+                        T.let("raceIOs", () =>
+                          M.use_(toPull(channel), (_) =>
+                            T.race_(evaluatePull(_), PR.await(errorSignal))
+                          )
+                        ),
+                        T.tap(({ latch, raceIOs }) =>
+                          T.fork(
+                            SM.withPermit_(
+                              T.zipRight_(PR.succeed_(latch, void 0), raceIOs),
+                              permits
+                            )
+                          )
+                        ),
+                        T.tap(({ latch }) => PR.await(latch)),
+                        T.bind("errored", () => PR.isDone(errorSignal)),
+                        T.map(({ errored }) => !errored)
+                      )
+                    }
+                    case "BufferSliding": {
+                      return pipe(
+                        T.do,
+                        T.bind("canceler", () => PR.make<never, void>()),
+                        T.bind("latch", () => PR.make<never, void>()),
+                        T.bind("size", () => Q.size(cancelers)),
+                        T.tap(({ size }) =>
+                          T.when_(
+                            T.chain_(Q.take(cancelers), (_) => PR.succeed_(_, void 0)),
+                            () => size >= n
+                          )
+                        ),
+                        T.tap(({ canceler }) => Q.offer_(cancelers, canceler)),
+                        T.let("raceIOs", ({ canceler }) =>
+                          M.use_(toPull(channel), (_) =>
+                            T.race_(
+                              T.race_(evaluatePull(_), PR.await(errorSignal)),
+                              PR.await(canceler)
+                            )
+                          )
+                        ),
+                        T.tap(({ latch, raceIOs }) =>
+                          T.fork(
+                            SM.withPermit_(
+                              T.zipRight_(PR.succeed_(latch, void 0), raceIOs),
+                              permits
+                            )
+                          )
+                        ),
+                        T.tap(({ latch }) => PR.await(latch)),
+                        T.bind("errored", () => PR.isDone(errorSignal)),
+                        T.map(({ errored }) => !errored)
+                      )
+                    }
+                  }
+                }
+              ),
+              T.repeatWhile((x) => x),
+              T.forkManaged
+            )
+          }
+        ),
+        M.map(({ queue }) => queue)
+      )
+    ),
+    (queue) => {
+      const consumer: P.Channel<
+        Env & Env1,
+        unknown,
+        unknown,
+        unknown,
+        OutErr | OutErr1,
+        OutElem,
+        OutDone
+      > = C.unwrap(
+        pipe(
+          Q.take(queue),
+          T.flatten,
+          T.foldCause(
+            (c) =>
+              E.fold_(
+                Cause.flipCauseEither(c),
+                (cause) => C.failCause(cause),
+                (outDone) => C.end(outDone)
+              ),
+            (outElem) => zipRight_(C.write(outElem), consumer)
+          )
+        )
+      )
+
+      return consumer
+    }
+  )
+}
+
+export function mergeMap<
+  Env,
+  InErr,
+  InElem,
+  InDone,
+  OutErr,
+  OutElem,
+  OutDone,
+  Env1,
+  InErr1,
+  InElem1,
+  InDone1,
+  OutErr1,
+  OutElem1,
+  Z
+>(
+  self: P.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
+  n: number,
+  f: (
+    outElem: OutElem
+  ) => P.Channel<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, Z>,
+  bufferSize = 16,
+  mergeStrategy: MergeStrategy = "BackPressure"
+): P.Channel<
+  Env & Env1,
+  InErr & InErr1,
+  InElem & InElem1,
+  InDone & InDone1,
+  OutErr | OutErr1,
+  OutElem1,
+  Z
+> {
+  return mergeAll<
+    Env & Env1,
+    InErr & InErr1,
+    InElem & InElem1,
+    InDone & InDone1,
+    OutErr | OutErr1,
+    OutElem1
+  >(mapOut_(self, f), n, bufferSize, mergeStrategy)
+}
+
+export function mergeAll<Env, InErr, InElem, InDone, OutErr, OutElem>(
+  channels: P.Channel<
+    Env,
+    InErr,
+    InElem,
+    InDone,
+    OutErr,
+    P.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, any>,
+    any
+  >,
+  n: number,
+  bufferSize = 16,
+  mergeStrategy: MergeStrategy = "BackPressure"
+): P.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, any> {
+  return mergeAllWith(channels, n, (_, __) => void 0, bufferSize, mergeStrategy)
 }
