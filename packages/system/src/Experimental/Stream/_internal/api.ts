@@ -6267,9 +6267,11 @@ export function mergeAll(n: number, outputBuffer = 16) {
 /**
  * Like `mergeAll`, but runs all streams concurrently.
  */
-export function mergeAllUnbounded(outputBuffer = 16) {
-  return <R, E, O>(...streams: Stream<R, E, O>[]) =>
-    mergeAll(Number.MAX_SAFE_INTEGER, outputBuffer)(...streams)
+export function mergeAllUnbounded<R, E, O>(
+  outputBuffer = 16,
+  ...streams: Stream<R, E, O>[]
+) {
+  return mergeAll(Number.MAX_SAFE_INTEGER, outputBuffer)(...streams)
 }
 
 export const never: Stream<unknown, never, never> = fromEffect(T.never)

@@ -124,4 +124,20 @@ describe("Stream", () => {
 
     expect(closed).toBeTruthy()
   })
+
+  it("mergeAllUnbounded", async () => {
+    const result = await pipe(
+      S.mergeAllUnbounded(
+        16,
+        S.map_(S.tick(10), (_) => 1),
+        S.map_(S.tick(20), (_) => 2),
+        S.map_(S.tick(40), (_) => 3)
+      ),
+      S.take(10),
+      S.runReduce(0, (a, b) => a + b),
+      T.runPromise
+    )
+
+    expect(result).toEqual(17)
+  })
 })
