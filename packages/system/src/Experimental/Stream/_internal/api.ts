@@ -2492,12 +2492,12 @@ export function fixed(duration: number) {
  */
 export function chainPar_<R, R1, E, E1, A, B>(
   self: Stream<R, E, A>,
-  f: (a: A) => Stream<R1, E1, B>,
   n: number,
+  f: (a: A) => Stream<R1, E1, B>,
   bufferSize = 16
 ): Stream<R & R1, E | E1, B> {
   return new Stream(
-    CH.mergeMap(
+    CH.mergeMap_(
       CH.concatMap_(self.channel, (_) => CH.writeChunk(_)),
       n,
       (_) => f(_).channel,
@@ -2515,11 +2515,11 @@ export function chainPar_<R, R1, E, E1, A, B>(
  * @ets_data_first chainPar_
  */
 export function chainPar<R1, E1, A, B>(
-  f: (a: A) => Stream<R1, E1, B>,
   n: number,
+  f: (a: A) => Stream<R1, E1, B>,
   bufferSize = 16
 ) {
-  return <R, E>(self: Stream<R, E, A>) => chainPar_(self, f, n, bufferSize)
+  return <R, E>(self: Stream<R, E, A>) => chainPar_(self, n, f, bufferSize)
 }
 
 /**
@@ -2535,7 +2535,7 @@ export function chainParSwitch_<R, R1, E, E1, A, B>(
   bufferSize = 16
 ): Stream<R & R1, E | E1, B> {
   return new Stream(
-    CH.mergeMap(
+    CH.mergeMap_(
       CH.concatMap_(self.channel, (_) => CH.writeChunk(_)),
       n,
       (_) => f(_).channel,
@@ -2677,7 +2677,7 @@ export function flattenPar_<R, R1, E, E1, A>(
   n: number,
   outputBuffer = 16
 ): Stream<R & R1, E | E1, A> {
-  return chainPar_(self, identity, n, outputBuffer)
+  return chainPar_(self, n, identity, outputBuffer)
 }
 
 /**
@@ -3598,9 +3598,54 @@ export function mapErrorCause<E, E1>(f: (c: CS.Cause<E>) => CS.Cause<E1>) {
   return <R, A>(self: Stream<R, E, A>) => mapErrorCause_(self, f)
 }
 
-// TODO: mapEffPar -> Missing Channel mapOutEffPar
+/**
+ * Maps over elements of the stream with the specified effectful function,
+ * executing up to `n` invocations of `f` concurrently. Transformed elements
+ * will be emitted in the original order.
+ *
+ * @note This combinator destroys the chunking structure. It's recommended to use rechunk afterwards.
+ */
+export function mapEffectPar<R, R1, E, E1, A, A1>(
+  self: Stream<R, E, A>,
+  f: (a: A) => T.Effect<R1, E1, A1>,
+  n: number
+): Stream<R & R1, E | E1, A1> {
+  return new Stream(
+    pipe(
+      self.channel,
+      CH.concatMap(CH.writeChunk),
+      CH.mapOutEffectPar(n, f),
+      CH.mapOut(A.single)
+    )
+  )
+}
 
-// TODO: mapEffParUnordered -> missing chainPar
+/**
+ * Maps over elements of the stream with the specified effectful function,
+ * executing up to `n` invocations of `f` concurrently. The element order
+ * is not enforced by this combinator, and elements may be reordered.
+ */
+export function mapEffectParUnordered_<R, R1, E, E1, A, A1>(
+  self: Stream<R, E, A>,
+  n: number,
+  f: (a: A) => T.Effect<R1, E1, A1>
+): Stream<R & R1, E | E1, A1> {
+  return chainPar_(self, n, (a) => fromEffect(f(a)))
+}
+
+/**
+ * Maps over elements of the stream with the specified effectful function,
+ * executing up to `n` invocations of `f` concurrently. The element order
+ * is not enforced by this combinator, and elements may be reordered.
+ *
+ * @ets_data_first mapEffectParUnordered_
+ */
+export function mapEffectParUnordered<R1, E1, A, A1>(
+  n: number,
+  f: (a: A) => T.Effect<R1, E1, A1>
+) {
+  return <R, E>(self: Stream<R, E, A>) => mapEffectParUnordered_(self, n, f)
+}
 
 // TODO: mapEffPartitioned -> groupBy
 
