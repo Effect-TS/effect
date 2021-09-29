@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.41.7](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.41.6...@effect-ts/system@0.41.7) (2021-09-29)
+
+
+### Features
+
+* **exp-stream:** C.mergeWithAll/C.mergeAll/S.chainPar/S.flattenPar/S.mergeAll/S.mergeAllUnbounded ([da02865](https://github.com/Effect-TS/core/commit/da0286509b1b973b7053537ed304d0678ba6dfe3))
+* **exp-stream:** implement par combinators ([6252cf0](https://github.com/Effect-TS/core/commit/6252cf05fffd97c7288a1c96b4ec18ff02f83025))
+
+
+
+
+
 ## [0.41.6](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.41.5...@effect-ts/system@0.41.6) (2021-09-25)
 
 **Note:** Version bump only for package @effect-ts/system
