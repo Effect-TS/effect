@@ -61,7 +61,7 @@ export const defaultPlatform = new Platform({
   ancestryLength: 25,
   renderer: defaultRenderer,
   reportFailure: constVoid,
-  maxOp: 64,
+  maxOp: 128,
   supervisor: Supervisor.trackMainFibers
 })
 
