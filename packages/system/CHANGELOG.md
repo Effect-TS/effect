@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.41.8](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.41.7...@effect-ts/system@0.41.8) (2021-09-29)
+
+
+### Bug Fixes
+
+* **stream:** fix merge signature ([0cde41c](https://github.com/Effect-TS/core/commit/0cde41cf608ea7f112408512b35c9173af03cb7c))
+
+
+
+
+
 ## [0.41.7](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.41.6...@effect-ts/system@0.41.7) (2021-09-29)
 
 
