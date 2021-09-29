@@ -2036,7 +2036,7 @@ export function writeChunk<Out>(
 
 export type MergeStrategy = "BackPressure" | "BufferSliding"
 
-export function mergeAllWith<
+export function mergeAllWith_<
   Env,
   Env1,
   InErr,
@@ -2280,7 +2280,41 @@ export function mergeAllWith<
   )
 }
 
-export function mergeMap<
+/**
+ * @ets_data_first mergeAllWith_
+ */
+export function mergeAllWith<OutDone>(
+  n: number,
+  f: (o1: OutDone, o2: OutDone) => OutDone,
+  bufferSize = 16,
+  mergeStrategy: MergeStrategy = "BackPressure"
+) {
+  return <
+    Env,
+    Env1,
+    InErr,
+    InErr1,
+    InElem,
+    InElem1,
+    InDone,
+    InDone1,
+    OutErr,
+    OutErr1,
+    OutElem
+  >(
+    channels: P.Channel<
+      Env,
+      InErr,
+      InElem,
+      InDone,
+      OutErr,
+      P.Channel<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem, OutDone>,
+      OutDone
+    >
+  ) => mergeAllWith_(channels, n, f, bufferSize, mergeStrategy)
+}
+
+export function mergeMap_<
   Env,
   InErr,
   InElem,
@@ -2312,7 +2346,7 @@ export function mergeMap<
   OutElem1,
   Z
 > {
-  return mergeAll<
+  return mergeAll_<
     Env & Env1,
     InErr & InErr1,
     InElem & InElem1,
@@ -2322,7 +2356,23 @@ export function mergeMap<
   >(mapOut_(self, f), n, bufferSize, mergeStrategy)
 }
 
-export function mergeAll<Env, InErr, InElem, InDone, OutErr, OutElem>(
+/**
+ * @ets_data_first mergeMap_
+ */
+export function mergeMap<OutElem, Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, Z>(
+  n: number,
+  f: (
+    outElem: OutElem
+  ) => P.Channel<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, Z>,
+  bufferSize = 16,
+  mergeStrategy: MergeStrategy = "BackPressure"
+) {
+  return <Env, InErr, InElem, InDone, OutErr, OutDone>(
+    self: P.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
+  ) => mergeMap_(self, n, f, bufferSize, mergeStrategy)
+}
+
+export function mergeAll_<Env, InErr, InElem, InDone, OutErr, OutElem>(
   channels: P.Channel<
     Env,
     InErr,
@@ -2336,5 +2386,313 @@ export function mergeAll<Env, InErr, InElem, InDone, OutErr, OutElem>(
   bufferSize = 16,
   mergeStrategy: MergeStrategy = "BackPressure"
 ): P.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, any> {
-  return mergeAllWith(channels, n, (_, __) => void 0, bufferSize, mergeStrategy)
+  return mergeAllWith_(channels, n, (_, __) => void 0, bufferSize, mergeStrategy)
+}
+
+/**
+ * @ets_data_first mergeAll_
+ */
+export function mergeAll(
+  n: number,
+  bufferSize = 16,
+  mergeStrategy: MergeStrategy = "BackPressure"
+) {
+  return <Env, InErr, InElem, InDone, OutErr, OutElem>(
+    channels: P.Channel<
+      Env,
+      InErr,
+      InElem,
+      InDone,
+      OutErr,
+      P.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, any>,
+      any
+    >
+  ) => mergeAll_(channels, n, bufferSize, mergeStrategy)
+}
+
+export function mergeOut_<
+  Env,
+  Env1,
+  InErr,
+  InErr1,
+  InElem,
+  InElem1,
+  InDone,
+  InDone1,
+  OutErr,
+  OutErr1,
+  OutElem1,
+  OutDone
+>(
+  self: P.Channel<
+    Env,
+    InErr,
+    InElem,
+    InDone,
+    OutErr,
+    P.Channel<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, any>,
+    OutDone
+  >,
+  n: number
+): P.Channel<
+  Env & Env1,
+  InErr & InErr1,
+  InElem & InElem1,
+  InDone & InDone1,
+  OutErr | OutErr1,
+  OutElem1,
+  any
+> {
+  return mergeAll_<
+    Env & Env1,
+    InErr & InErr1,
+    InElem & InElem1,
+    InDone & InDone1,
+    OutErr | OutErr1,
+    OutElem1
+  >(
+    mapOut_(self, (x) => x),
+    n
+  )
+}
+
+/**
+ * @ets_data_first mergeOut_
+ */
+export function mergeOut(n: number) {
+  return <
+    Env,
+    Env1,
+    InErr,
+    InErr1,
+    InElem,
+    InElem1,
+    InDone,
+    InDone1,
+    OutErr,
+    OutErr1,
+    OutElem1,
+    OutDone
+  >(
+    self: P.Channel<
+      Env,
+      InErr,
+      InElem,
+      InDone,
+      OutErr,
+      P.Channel<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, any>,
+      OutDone
+    >
+  ) => mergeOut_(self, n)
+}
+
+export function mergeOutWith_<
+  Env,
+  Env1,
+  InErr,
+  InErr1,
+  InElem,
+  InElem1,
+  InDone,
+  InDone1,
+  OutErr,
+  OutErr1,
+  OutElem1,
+  OutDone1
+>(
+  self: P.Channel<
+    Env,
+    InErr,
+    InElem,
+    InDone,
+    OutErr,
+    P.Channel<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>,
+    OutDone1
+  >,
+  n: number,
+  f: (o1: OutDone1, o2: OutDone1) => OutDone1
+): P.Channel<
+  Env & Env1,
+  InErr & InErr1,
+  InElem & InElem1,
+  InDone & InDone1,
+  OutErr | OutErr1,
+  OutElem1,
+  OutDone1
+> {
+  return mergeAllWith_(
+    mapOut_(self, (x) => x),
+    n,
+    f
+  )
+}
+
+/**
+ * @ets_data_first mergeOutWith_
+ */
+export function mergeOutWith<OutDone1>(
+  n: number,
+  f: (o1: OutDone1, o2: OutDone1) => OutDone1
+) {
+  return <
+    Env,
+    Env1,
+    InErr,
+    InErr1,
+    InElem,
+    InElem1,
+    InDone,
+    InDone1,
+    OutErr,
+    OutErr1,
+    OutElem1
+  >(
+    self: P.Channel<
+      Env,
+      InErr,
+      InElem,
+      InDone,
+      OutErr,
+      P.Channel<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>,
+      OutDone1
+    >
+  ) => mergeOutWith_(self, n, f)
+}
+
+export function mergeAllUnbounded<Env, InErr, InElem, InDone, OutErr, OutElem>(
+  channels: P.Channel<
+    Env,
+    InErr,
+    InElem,
+    InDone,
+    OutErr,
+    P.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, any>,
+    any
+  >
+): P.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, any> {
+  return mergeAll_(channels, Number.MAX_SAFE_INTEGER)
+}
+
+export function mapOutEffectPar_<
+  Env,
+  Env1,
+  InErr,
+  InElem,
+  InDone,
+  OutErr,
+  OutErr1,
+  OutElem,
+  OutElem1,
+  OutDone
+>(
+  self: P.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
+  n: number,
+  f: (o: OutElem) => T.Effect<Env1, OutErr1, OutElem1>
+): P.Channel<Env & Env1, InErr, InElem, InDone, OutErr | OutErr1, OutElem1, OutDone> {
+  return managed_(
+    M.withChildren((getChildren) =>
+      pipe(
+        M.do,
+        M.tap(() => M.finalizer(T.chain_(getChildren, F.interruptAll))),
+        M.bind("queue", () =>
+          T.toManagedRelease_(
+            Q.makeBounded<
+              T.Effect<Env1, E.Either<OutErr | OutErr1, OutDone>, OutElem1>
+            >(n),
+            Q.shutdown
+          )
+        ),
+        M.bind("errorSignal", () => PR.makeManaged<OutErr1, never>()),
+        M.bind("permits", () => T.toManaged(SM.makeSemaphore(n))),
+        M.bind("pull", () => toPull(self)),
+        M.tap(({ errorSignal, permits, pull, queue }) =>
+          pipe(
+            pull,
+            T.foldCauseM(
+              (c) =>
+                E.fold_(
+                  Cause.flipCauseEither(c),
+                  (cause) => Q.offer_(queue, T.halt(Cause.map_(cause, E.left))),
+                  (outDone) =>
+                    pipe(
+                      SM.withPermits_(T.unit, permits, n),
+                      T.interruptible,
+                      T.zipRight(Q.offer_(queue, T.fail(E.right(outDone))))
+                    )
+                ),
+              (outElem) =>
+                pipe(
+                  T.do,
+                  T.bind("p", () => PR.make<OutErr1, OutElem1>()),
+                  T.bind("latch", () => PR.make<never, void>()),
+                  T.tap(({ p }) => Q.offer_(queue, T.mapError_(PR.await(p), E.left))),
+                  T.tap(({ latch, p }) =>
+                    T.fork(
+                      SM.withPermit_(
+                        pipe(
+                          PR.succeed_(latch, void 0),
+                          T.zipRight(
+                            pipe(
+                              T.raceFirst_(PR.await(errorSignal), f(outElem)),
+                              T.tapCause((_) => PR.halt_(errorSignal, _)),
+                              T.to(p)
+                            )
+                          )
+                        ),
+                        permits
+                      )
+                    )
+                  ),
+                  T.tap(({ latch }) => PR.await(latch)),
+                  T.asUnit
+                )
+            ),
+            T.forever,
+            T.interruptible,
+            T.forkManaged
+          )
+        ),
+        M.map(({ queue }) => queue)
+      )
+    ),
+    (queue) => {
+      const consumer: P.Channel<
+        Env1,
+        unknown,
+        unknown,
+        unknown,
+        OutErr | OutErr1,
+        OutElem1,
+        OutDone
+      > = C.unwrap(
+        pipe(
+          Q.take(queue),
+          T.flatten,
+          T.foldCause(
+            (c) =>
+              E.fold_(
+                Cause.flipCauseEither(c),
+                (cause) => C.failCause(cause),
+                (outDone) => C.end(outDone)
+              ),
+            (outElem) => zipRight_(C.write(outElem), consumer)
+          )
+        )
+      )
+
+      return consumer
+    }
+  )
+}
+
+/**
+ * @ets_data_first mapOutEffectPar_
+ */
+export function mapOutEffectPar<Env1, OutErr1, OutElem, OutElem1>(
+  n: number,
+  f: (o: OutElem) => T.Effect<Env1, OutErr1, OutElem1>
+) {
+  return <Env, InErr, InElem, InDone, OutErr, OutDone>(
+    self: P.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
+  ) => mapOutEffectPar_(self, n, f)
 }
