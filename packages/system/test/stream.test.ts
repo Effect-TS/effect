@@ -306,10 +306,10 @@ describe("Stream", () => {
       setTimeout(() => cb(T.succeed(A.single("C1"))), 10)
       setTimeout(() => cb(T.succeed(A.single("C2"))), 20)
     })
-    const neverendingZipped = S.zipWithLatest(
+    const neverendingZipped = pipe(
       neverendingSource,
-      neverendingSource
-    )((c, e) => `${c}-${e}`)
+      S.zipWithLatest(neverendingSource, (c, e) => `${c}-${e}`)
+    )
 
     const source = S.effectAsync<unknown, unknown, string>((cb) => {
       setTimeout(() => cb(T.succeed(A.single("C1"))), 10)
@@ -317,7 +317,10 @@ describe("Stream", () => {
       setTimeout(() => cb(T.fail(O.none)), 25)
     })
 
-    const zipped = S.zipWithLatest(source, source)((c, e) => `${c}-${e}`)
+    const zipped = pipe(
+      source,
+      S.zipWithLatest(source, (c, e) => `${c}-${e}`)
+    )
 
     const res0 = await pipe(
       neverendingZipped,
