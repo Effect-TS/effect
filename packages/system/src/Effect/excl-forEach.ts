@@ -1168,18 +1168,18 @@ class UnsafeCreate<A> extends XQueueInternal<unknown, unknown, never, never, A, 
     })
   }
 
-  shutdown: UIO<void> = core.suspend((_, fiberId) => {
-    this.shutdownFlag.set(true)
+  shutdown: UIO<void> = interruption.uninterruptible(
+    core.suspend((_, fiberId) => {
+      this.shutdownFlag.set(true)
 
-    return interruption.uninterruptible(
-      whenM.whenM(promise.succeed<void>(undefined)(this.shutdownHook))(
+      return whenM.whenM(promise.succeed<void>(undefined)(this.shutdownHook))(
         core.chain_(
           forEachPar_(Q.unsafePollAll(this.takers), promise.interruptAs(fiberId)),
           () => this.strategy.shutdown
         )
       )
-    )
-  })
+    })
+  )
 
   size: UIO<number> = core.suspend(() => {
     if (this.shutdownFlag.get) {
