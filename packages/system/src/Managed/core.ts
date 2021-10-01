@@ -52,7 +52,7 @@ export function chain_<R, E, A, R2, E2, A2>(
           Tp.tuple(
             (e) =>
               T.chain_(T.result(releaseThat(e)), (e1) =>
-                T.chain_(T.result(releaseSelf(e1)), (e2) =>
+                T.chain_(T.result(releaseSelf(e)), (e2) =>
                   T.done(T.exitZipRight_(e1, e2), __trace)
                 )
               ),
