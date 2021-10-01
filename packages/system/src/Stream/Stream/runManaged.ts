@@ -35,7 +35,7 @@ export function runManaged_<R, R1, E, E1, O, B>(
                       C.sequenceCauseEither,
                       E.fold(T.halt, T.succeed)
                     ),
-                  () => T.die("empty stream / empty sinks")
+                  () => T.dieMessage("empty stream / empty sinks")
                 ),
               T.halt
             )
