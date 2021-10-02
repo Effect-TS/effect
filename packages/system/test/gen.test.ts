@@ -4,7 +4,7 @@ import * as T from "../src/Effect"
 import * as E from "../src/Either"
 import * as Ex from "../src/Exit"
 import { pipe } from "../src/Function"
-import { PrematureGeneratorExit } from "../src/GlobalExceptions"
+import { NoSuchElementException, PrematureGeneratorExit } from "../src/GlobalExceptions"
 import { tag } from "../src/Has"
 import * as M from "../src/Managed"
 import * as O from "../src/Option"
@@ -37,6 +37,15 @@ class MyError {
 }
 
 describe("Generator", () => {
+  it("should interop with option", async () => {
+    const result = await pipe(
+      T.gen(function* (_) {
+        yield* _(O.none)
+      }),
+      T.runPromiseExit
+    )
+    expect(Ex.untraced(result)).toEqual(Ex.fail(new NoSuchElementException()))
+  })
   it("should use generator program", async () => {
     const result = await pipe(
       program,
