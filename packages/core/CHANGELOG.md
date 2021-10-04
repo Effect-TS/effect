@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.44.11](https://github.com/Effect-TS/core/compare/@effect-ts/core@0.44.10...@effect-ts/core@0.44.11) (2021-10-04)
+
+
+### Bug Fixes
+
+* **stream:** updated zipWithLatest ([e43faa1](https://github.com/Effect-TS/core/commit/e43faa1b2edf06f8718cb0cdc468f8074563479c))
+
+
+
+
+
 ## [0.44.10](https://github.com/Effect-TS/core/compare/@effect-ts/core@0.44.9...@effect-ts/core@0.44.10) (2021-09-29)
 
 **Note:** Version bump only for package @effect-ts/core
