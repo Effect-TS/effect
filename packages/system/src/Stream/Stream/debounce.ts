@@ -74,40 +74,42 @@ export function debounce_<R, E, O>(
         return T.chain_(ref.get, (state) => {
           switch (state._tag) {
             case "Previous":
-              return pipe(
-                F.join(state.fiber),
-                T.raceWithScope(
-                  chunks,
-                  (ex, current) => {
-                    if (Ex.succeeded(ex)) {
-                      return T.as_(ref.set(new Current(current)), A.single(ex.value))
-                    } else {
-                      return T.zipRight_(F.interrupt(current), Pull.halt(ex.cause))
-                    }
-                  },
-                  (ex, previous) => {
-                    if (Ex.succeeded(ex)) {
-                      const chunk = ex.value
-
-                      if (A.isEmpty(chunk)) {
-                        return Pull.empty<O>()
+              return T.transplant((graft) =>
+                pipe(
+                  F.join(state.fiber),
+                  T.raceWithScope(
+                    graft(chunks),
+                    (ex, current) => {
+                      if (Ex.succeeded(ex)) {
+                        return T.as_(ref.set(new Current(current)), A.single(ex.value))
                       } else {
-                        return T.zipRight_(F.interrupt(previous), store(chunk))
+                        return T.zipRight_(F.interrupt(current), Pull.halt(ex.cause))
                       }
-                    } else {
-                      return O.fold_(
-                        C.sequenceCauseOption(ex.cause),
-                        () =>
-                          pipe(
-                            F.join(previous),
-                            T.map(A.single),
-                            T.zipLeft(ref.set(new Done()))
-                          ),
-                        (e) => T.zipRight_(F.interrupt(previous), Pull.halt(e))
-                      )
-                    }
-                  },
-                  Scope.globalScope
+                    },
+                    (ex, previous) => {
+                      if (Ex.succeeded(ex)) {
+                        const chunk = ex.value
+
+                        if (A.isEmpty(chunk)) {
+                          return Pull.empty<O>()
+                        } else {
+                          return T.zipRight_(F.interrupt(previous), store(chunk))
+                        }
+                      } else {
+                        return O.fold_(
+                          C.sequenceCauseOption(ex.cause),
+                          () =>
+                            pipe(
+                              F.join(previous),
+                              T.map(A.single),
+                              T.zipLeft(ref.set(new Done()))
+                            ),
+                          (e) => T.zipRight_(F.interrupt(previous), Pull.halt(e))
+                        )
+                      }
+                    },
+                    Scope.globalScope
+                  )
                 )
               )
             case "Current":

@@ -332,4 +332,49 @@ describe("Stream", () => {
 
     expect(res0).toEqual(res1)
   })
+
+  jest.setTimeout(10000)
+
+  it.only("zomg", async () => {
+    const withDebounce = await pipe(
+      S.zipWithLatest_(
+        S.effectAsync((cb) => {
+          setTimeout(() => cb(T.succeed(A.single("a"))))
+          setTimeout(() => cb(T.succeed(A.single("b"))), 100)
+          setTimeout(() => cb(T.fail(O.none)), 120)
+        }),
+        S.effectAsync((cb) => {
+          setTimeout(() => cb(T.succeed(A.single(1))))
+          setTimeout(() => cb(T.succeed(A.single(2))), 50)
+          setTimeout(() => cb(T.succeed(A.single(3))), 150)
+          setTimeout(() => cb(T.fail(O.none)), 155)
+        }),
+        (a, b) => [a, b] as const
+      ),
+      S.debounce(10),
+      S.runCollect,
+      T.runPromise
+    )
+
+    const withoutDebounce = await pipe(
+      S.zipWithLatest_(
+        S.effectAsync((cb) => {
+          setTimeout(() => cb(T.succeed(A.single("a"))))
+          setTimeout(() => cb(T.succeed(A.single("b"))), 100)
+          setTimeout(() => cb(T.fail(O.none)), 120)
+        }),
+        S.effectAsync((cb) => {
+          setTimeout(() => cb(T.succeed(A.single(1))))
+          setTimeout(() => cb(T.succeed(A.single(2))), 50)
+          setTimeout(() => cb(T.succeed(A.single(3))), 150)
+          setTimeout(() => cb(T.fail(O.none)), 155)
+        }),
+        (a, b) => [a, b] as const
+      ),
+      S.runCollect,
+      T.runPromise
+    )
+
+    expect(withDebounce).toEqual(withoutDebounce)
+  })
 })
