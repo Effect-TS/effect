@@ -42,7 +42,7 @@ export function interruptWhenP_<R, E, E1, O>(
             } else if (b) {
               return asPull
             } else {
-              return T.raceFirst_(as, asPull)
+              return T.transplant((graft) => T.raceFirst_(graft(as), asPull))
             }
           }
         )
