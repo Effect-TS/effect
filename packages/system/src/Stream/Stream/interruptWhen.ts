@@ -28,7 +28,11 @@ export function interruptWhen_<R, R1, E, E1, O, X>(
           pipe(T.asSomeError(io), T.zipRight(T.fail(O.none)))
         )
       ),
-      M.map(({ as, runIO }) => pipe(F.join(runIO), T.disconnect, T.raceFirst(as)))
+      M.map(({ as, runIO }) =>
+        T.transplant((graft) =>
+          pipe(F.join(runIO), T.disconnect, T.raceFirst(graft(as)))
+        )
+      )
     )
   )
 }
