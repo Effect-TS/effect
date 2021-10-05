@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.41.10](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.41.9...@effect-ts/system@0.41.10) (2021-10-05)
+
+
+### Bug Fixes
+
+* **managed:** fixed onExit/onExitFirst ([#884](https://github.com/Effect-TS/core/issues/884)) ([62b637f](https://github.com/Effect-TS/core/commit/62b637f8587fd1ee97c881c765a2b14dfd8ed2bf))
+* **stream:** interruptWhen fiber scope issue ([#885](https://github.com/Effect-TS/core/issues/885)) ([b02d5b2](https://github.com/Effect-TS/core/commit/b02d5b2b46026c9a42cc150d62416327cf7b7902))
+
+
+
+
+
 ## [0.41.9](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.41.8...@effect-ts/system@0.41.9) (2021-10-04)
 
 
