@@ -345,11 +345,9 @@ export function onExit_<R, E, A, R2, X>(
         T.let("outerReleaseMap", (s) => s.tp.get(1)),
         T.bind("innerReleaseMap", () => makeReleaseMap.makeReleaseMap),
         T.bind("exitEA", (s) =>
-          restore(
-            T.provideAll_(
-              T.result(T.map_(self.effect, ({ tuple: [_, a] }) => a)),
-              Tp.tuple(s.r, s.innerReleaseMap)
-            )
+          T.provideAll_(
+            T.result(restore(T.map_(self.effect, ({ tuple: [_, a] }) => a))),
+            Tp.tuple(s.r, s.innerReleaseMap)
           )
         ),
         T.bind("releaseMapEntry", (s) =>
@@ -359,9 +357,10 @@ export function onExit_<R, E, A, R2, X>(
               T.result,
               T.zipWith(
                 pipe(cleanup(s.exitEA), T.provideAll(s.r), T.result),
-                (l, r) => T.exitZipRight_(l, r),
+                (l, r) => T.done(T.exitZipRight_(l, r)),
                 __trace
-              )
+              ),
+              T.flatten
             )
           )(s.outerReleaseMap)
         ),
@@ -416,11 +415,9 @@ export function onExitFirst_<R, E, A, R2, X>(
         T.let("outerReleaseMap", (s) => s.tp.get(1)),
         T.bind("innerReleaseMap", () => makeReleaseMap.makeReleaseMap),
         T.bind("exitEA", (s) =>
-          restore(
-            T.provideAll_(
-              T.result(T.map_(self.effect, ({ tuple: [_, a] }) => a)),
-              Tp.tuple(s.r, s.innerReleaseMap)
-            )
+          T.provideAll_(
+            T.result(restore(T.map_(self.effect, ({ tuple: [_, a] }) => a))),
+            Tp.tuple(s.r, s.innerReleaseMap)
           )
         ),
         T.bind("releaseMapEntry", (s) =>
