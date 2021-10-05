@@ -335,7 +335,7 @@ describe("Stream", () => {
 
   jest.setTimeout(10000)
 
-  it.only("zipWithLatest & Debounce", async () => {
+  it("zipWithLatest & Debounce", async () => {
     const withDebounce = await pipe(
       S.zipWithLatest_(
         S.effectAsync((cb) => {
