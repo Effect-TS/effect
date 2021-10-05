@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.41.11](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.41.10...@effect-ts/system@0.41.11) (2021-10-05)
+
+
+### Bug Fixes
+
+* **stream:** debounce + zipWithLatest ([#886](https://github.com/Effect-TS/core/issues/886)) ([4f97024](https://github.com/Effect-TS/core/commit/4f970246e21fb07a8db89ee960f475c62d120891))
+
+
+
+
+
 ## [0.41.10](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.41.9...@effect-ts/system@0.41.10) (2021-10-05)
 
 
