@@ -6879,6 +6879,8 @@ export function dropRight_<R, E, A>(self: Stream<R, E, A>, n: number): Stream<R,
  * Drops the last specified number of elements from this stream.
  *
  * @note This combinator keeps `n` elements in memory. Be careful with big numbers.
+ *
+ * @ets_data_first dropRight_
  */
 export function dropRight(n: number) {
   return <R, E, A>(self: Stream<R, E, A>) => dropRight_(self, n)
