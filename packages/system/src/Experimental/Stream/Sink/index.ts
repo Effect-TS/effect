@@ -927,7 +927,80 @@ export function dropLeftover<R, InErr, In, OutErr, L, Z>(
   return new Sink(C.drain(self.channel))
 }
 
-// TODO: untilOutputEffect_ -> Not implemented
+/**
+ * Creates a sink that produces values until one verifies
+ * the predicate `f`.
+ */
+export function untilOutputEffect_<R, R1, InErr, In, OutErr, OutErr1, L extends In, Z>(
+  self: Sink<R, InErr, In, OutErr, L, Z>,
+  f: (z: Z) => T.Effect<R1, OutErr1, boolean>
+): Sink<R & R1, InErr, In, OutErr | OutErr1, L, O.Option<Z>> {
+  return new Sink(
+    C.chain_(
+      C.fromEffect(T.zip_(Ref.makeRef<A.Chunk<In>>(A.empty()), Ref.makeRef(false))),
+      ({ tuple: [leftoversRef, upstreamDoneRef] }) => {
+        const upstreamMarker: C.Channel<
+          unknown,
+          InErr,
+          A.Chunk<In>,
+          unknown,
+          InErr,
+          A.Chunk<In>,
+          any
+        > = C.readWith(
+          (in_) => C.zipRight_(C.write(in_), upstreamMarker),
+          (_) => C.fail(_),
+          (_) => C.as_(C.fromEffect(upstreamDoneRef.set(true)), _)
+        )
+
+        const loop: C.Channel<
+          R & R1,
+          InErr,
+          A.Chunk<In>,
+          unknown,
+          OutErr | OutErr1,
+          A.Chunk<L>,
+          O.Option<Z>
+        > = C.foldChannel_(
+          C.doneCollect(self.channel),
+          C.fail,
+          ({ tuple: [leftovers, doneValue] }) =>
+            pipe(
+              C.do,
+              C.bind("satisfied", () => C.fromEffect(f(doneValue))),
+              C.bind("_", () => C.fromEffect(leftoversRef.set(A.flatten(leftovers)))),
+              C.bind("upstreamDone", () => C.fromEffect(upstreamDoneRef.get)),
+              C.bind("res", ({ satisfied, upstreamDone }) => {
+                if (satisfied) {
+                  return C.as_(C.write(A.flatten(leftovers)), O.some(doneValue))
+                } else if (upstreamDone) {
+                  return C.as_(C.write(A.flatten(leftovers)), O.none)
+                } else {
+                  return loop
+                }
+              }),
+              C.map(({ res }) => res)
+            )
+        )
+
+        return upstreamMarker[">>>"](C.bufferChunk(leftoversRef))[">>>"](loop)
+      }
+    )
+  )
+}
+
+/**
+ * Creates a sink that produces values until one verifies
+ * the predicate `f`.
+ *
+ * @ets_data_first untilOutputEffect_
+ */
+export function untilOutputEffect<R1, OutErr1, Z>(
+  f: (z: Z) => T.Effect<R1, OutErr1, boolean>
+) {
+  return <R, InErr, In, OutErr, L extends In>(self: Sink<R, InErr, In, OutErr, L, Z>) =>
+    untilOutputEffect_(self, f)
+}
 
 export function accessSink<R, InErr, In, OutErr, L, Z>(
   f: (r: R) => Sink<R, InErr, In, OutErr, L, Z>
