@@ -139,4 +139,15 @@ describe("Stream", () => {
 
     expect(result).toEqual(17)
   })
+
+  it("dropRight", async () => {
+    const result = await pipe(
+      S.fromIterable([1, 2, 3, 4, 5, 6, 7]),
+      S.dropRight(2),
+      S.runCollect,
+      T.runPromise
+    )
+
+    expect(result).toEqual(Chunk.many(1, 2, 3, 4, 5))
+  })
 })

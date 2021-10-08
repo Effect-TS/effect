@@ -22,7 +22,7 @@ import * as SM from "../../../Semaphore"
 import { AtomicBoolean } from "../../../Support/AtomicBoolean"
 import { AtomicNumber } from "../../../Support/AtomicNumber"
 import { AtomicReference } from "../../../Support/AtomicReference"
-import { RingBuffer } from "../../../Support/RingBuffer"
+import { RingBufferNew } from "../../../Support/RingBufferNew"
 import * as CH from "../Channel"
 import * as MD from "../Channel/_internal/mergeHelpers"
 import * as Pull from "../Pull"
@@ -4770,7 +4770,7 @@ export function takeRight_<R, E, A>(self: Stream<R, E, A>, n: number): Stream<R,
     CH.unwrap(
       pipe(
         T.do,
-        T.bind("queue", () => T.succeedWith(() => new RingBuffer<A>(n))),
+        T.bind("queue", () => T.succeedWith(() => new RingBufferNew<A>(n))),
         T.map(({ queue }) => {
           const reader: CH.Channel<
             unknown,
@@ -4782,12 +4782,12 @@ export function takeRight_<R, E, A>(self: Stream<R, E, A>, n: number): Stream<R,
             void
           > = CH.readWith(
             (in_) => {
-              A.forEach_(in_, (_) => queue.push(_))
+              A.forEach_(in_, (_) => queue.put(_))
 
               return reader
             },
             (_) => CH.fail(_),
-            (_) => CH.zipRight_(CH.write(A.from(L.toArray(queue.list))), CH.unit)
+            (_) => CH.zipRight_(CH.write(queue.toChunk()), CH.unit)
           )
 
           return self.channel[">>>"](reader)
@@ -6831,4 +6831,55 @@ export function catchTag_<
     }
     return C.fail(e as any)
   })
+}
+
+/**
+ * Drops the last specified number of elements from this stream.
+ *
+ * @note This combinator keeps `n` elements in memory. Be careful with big numbers.
+ */
+export function dropRight_<R, E, A>(self: Stream<R, E, A>, n: number): Stream<R, E, A> {
+  if (n <= 0) {
+    return new Stream(self.channel)
+  }
+
+  return C.chain_(
+    C.succeedWith(() => new RingBufferNew<A>(n)),
+    (queue) => {
+      const reader: CH.Channel<
+        unknown,
+        E,
+        A.Chunk<A>,
+        unknown,
+        E,
+        A.Chunk<A>,
+        void
+      > = CH.readWith(
+        (in_) => {
+          const outs = A.filterMap_(in_, (elem) => {
+            const head = queue.head()
+
+            queue.put(elem)
+
+            return head
+          })
+
+          return CH.zipRight_(CH.write(outs), reader)
+        },
+        (_) => CH.fail(_),
+        (_) => CH.unit
+      )
+
+      return new Stream(self.channel[">>>"](reader))
+    }
+  )
+}
+
+/**
+ * Drops the last specified number of elements from this stream.
+ *
+ * @note This combinator keeps `n` elements in memory. Be careful with big numbers.
+ */
+export function dropRight(n: number) {
+  return <R, E, A>(self: Stream<R, E, A>) => dropRight_(self, n)
 }
