@@ -64,6 +64,7 @@
     "lerna": "^4.0.0",
     "madge": "^5.0.1",
     "prettier": "^2.4.0",
+    "reflect-metadata": "^0.1.13",
     "ts-jest": "^27.0.4",
     "ts-node": "^10.1.0",
     "ttypescript": "^1.5.12",
