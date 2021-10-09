@@ -920,7 +920,7 @@ class Rechunker<A> {
  * `n` elements each.
  * The last chunk might contain less than `n` elements
  */
-export function chunkN_<R, E, A>(self: Stream<R, E, A>, n: number): Stream<R, E, A> {
+export function rechunk_<R, E, A>(self: Stream<R, E, A>, n: number): Stream<R, E, A> {
   return C.unwrap(
     T.succeedWith(() => {
       const rechunker = new Rechunker<A>(n)
@@ -972,10 +972,10 @@ export function chunkN_<R, E, A>(self: Stream<R, E, A>, n: number): Stream<R, E,
  * `n` elements each.
  * The last chunk might contain less than `n` elements
  *
- * @ets_data_first chunkN_
+ * @ets_data_first rechunk_
  */
-export function chunkN(n: number) {
-  return <R, E, A>(self: Stream<R, E, A>) => chunkN_(self, n)
+export function rechunk(n: number) {
+  return <R, E, A>(self: Stream<R, E, A>) => rechunk_(self, n)
 }
 
 /**
