@@ -714,7 +714,7 @@ export function embedInput<InErr, InElem, InDone>(
 /**
  * Construct a resource Channel with Acquire / Release
  */
-export function bracketOutExit_<R, R2, E, Z>(
+export function acquireReleaseOutExitWith_<R, R2, E, Z>(
   self: T.Effect<R, E, Z>,
   release: (z: Z, e: Exit.Exit<unknown, unknown>) => T.RIO<R2, unknown>
 ): P.Channel<R & R2, unknown, unknown, unknown, E, Z, void> {
@@ -724,14 +724,14 @@ export function bracketOutExit_<R, R2, E, Z>(
 /**
  * Construct a resource Channel with Acquire / Release
  *
- * @ets_data_first bracketOutExit_
+ * @ets_data_first acquireReleaseOutExitWith_
  */
-export function bracketOutExit<R2, Z>(
+export function acquireReleaseOutExitWith<R2, Z>(
   release: (z: Z, e: Exit.Exit<unknown, unknown>) => T.RIO<R2, unknown>
 ): <R, E>(
   self: T.Effect<R, E, Z>
 ) => P.Channel<R & R2, unknown, unknown, unknown, E, Z, void> {
-  return (self) => bracketOutExit_(self, release)
+  return (self) => acquireReleaseOutExitWith_(self, release)
 }
 
 /**
@@ -870,7 +870,7 @@ export function managedOut<R, E, A>(
   self: M.Managed<R, E, A>
 ): P.Channel<R, unknown, unknown, unknown, E, A, unknown> {
   return concatMap_(
-    bracketOutExit_(ReleaseMap.makeReleaseMap, (rm, ex) =>
+    acquireReleaseOutExitWith_(ReleaseMap.makeReleaseMap, (rm, ex) =>
       ReleaseMap.releaseAll(ex, T.sequential)(rm)
     ),
     (rm) =>

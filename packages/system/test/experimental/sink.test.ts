@@ -9,7 +9,7 @@ describe("Sink", () => {
   it("untilOutputEffect", async () => {
     const result = await pipe(
       S.range(1, 8),
-      S.chunkN(2),
+      S.rechunk(2),
       S.run(
         SK.untilOutputEffect_(SK.take(4), (x) =>
           T.succeed(Chunk.reduce_(x, 0, (a, b) => a + b) > 10)
