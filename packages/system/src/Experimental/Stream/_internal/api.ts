@@ -6907,3 +6907,10 @@ export function dropRight_<R, E, A>(self: Stream<R, E, A>, n: number): Stream<R,
 export function dropRight(n: number) {
   return <R, E, A>(self: Stream<R, E, A>) => dropRight_(self, n)
 }
+
+/**
+ * Creates a stream that executes the specified effect but emits no elements.
+ */
+export function execute<R, E, Z>(effect: T.Effect<R, E, Z>): Stream<R, E, never> {
+  return drain(fromEffect(effect))
+}
