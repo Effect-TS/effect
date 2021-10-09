@@ -22,7 +22,7 @@ import * as SM from "../../../Semaphore"
 import { AtomicBoolean } from "../../../Support/AtomicBoolean"
 import { AtomicNumber } from "../../../Support/AtomicNumber"
 import { AtomicReference } from "../../../Support/AtomicReference"
-import { RingBuffer } from "../../../Support/RingBuffer"
+import { RingBufferNew } from "../../../Support/RingBufferNew"
 import * as CH from "../Channel"
 import * as MD from "../Channel/_internal/mergeHelpers"
 import * as Pull from "../Pull"
@@ -920,7 +920,7 @@ class Rechunker<A> {
  * `n` elements each.
  * The last chunk might contain less than `n` elements
  */
-export function chunkN_<R, E, A>(self: Stream<R, E, A>, n: number): Stream<R, E, A> {
+export function rechunk_<R, E, A>(self: Stream<R, E, A>, n: number): Stream<R, E, A> {
   return C.unwrap(
     T.succeedWith(() => {
       const rechunker = new Rechunker<A>(n)
@@ -972,10 +972,10 @@ export function chunkN_<R, E, A>(self: Stream<R, E, A>, n: number): Stream<R, E,
  * `n` elements each.
  * The last chunk might contain less than `n` elements
  *
- * @ets_data_first chunkN_
+ * @ets_data_first rechunk_
  */
-export function chunkN(n: number) {
-  return <R, E, A>(self: Stream<R, E, A>) => chunkN_(self, n)
+export function rechunk(n: number) {
+  return <R, E, A>(self: Stream<R, E, A>) => rechunk_(self, n)
 }
 
 /**
@@ -1841,6 +1841,18 @@ export function drop(n: number) {
 }
 
 /**
+ * Pipes all of the values from this stream through the provided sink.
+ *
+ * @see `transduce`
+ */
+export function pipeThrough<R, R1, E extends E1, E1, E2, A, L, Z>(
+  self: Stream<R, E, A>,
+  sink: SK.Sink<R1, E1, A, E2, L, Z>
+): Stream<R & R1, E2, L> {
+  return new Stream(self.channel[">>>"](sink.channel))
+}
+
+/**
  * Drops all elements of the stream for as long as the specified predicate
  * evaluates to `true`.
  */
@@ -1848,22 +1860,7 @@ export function dropWhile_<R, E, A>(
   self: Stream<R, E, A>,
   f: Predicate<A>
 ): Stream<R, E, A> {
-  const loop: CH.Channel<R, E, A.Chunk<A>, unknown, E, A.Chunk<A>, any> = CH.readWith(
-    (_in) => {
-      const leftover = A.dropWhile_(_in, f)
-      const more = A.isEmpty(_in)
-
-      if (more) {
-        return loop
-      } else {
-        return CH.zipRight_(CH.write(leftover), CH.identity<E, A.Chunk<A>, any>())
-      }
-    },
-    (e) => CH.fail(e),
-    (_) => CH.unit
-  )
-
-  return new Stream(self.channel[">>>"](loop))
+  return pipeThrough(self, SK.dropWhile<E, A>(f))
 }
 
 /**
@@ -1874,6 +1871,31 @@ export function dropWhile_<R, E, A>(
  */
 export function dropWhile<A>(f: Predicate<A>) {
   return <R, E>(self: Stream<R, E, A>) => dropWhile_(self, f)
+}
+
+/**
+ * Drops all elements of the stream for as long as the specified predicate
+ * produces an effect that evalutates to `true`
+ *
+ * @see `dropWhile`
+ */
+export function dropWhileEffect_<R, R1, E, E1, A>(
+  self: Stream<R, E, A>,
+  f: (a: A) => T.Effect<R1, E1, boolean>
+): Stream<R & R1, E | E1, A> {
+  return pipeThrough(self, SK.dropWhileEffect<R1, E | E1, A>(f))
+}
+
+/**
+ * Drops all elements of the stream for as long as the specified predicate
+ * produces an effect that evalutates to `true`
+ *
+ * @see `dropWhile`
+ *
+ * @ets_data_first dropWhileEffect_
+ */
+export function dropWhileEffect<R1, E1, A>(f: (a: A) => T.Effect<R1, E1, boolean>) {
+  return <R, E>(self: Stream<R, E, A>) => dropWhileEffect_(self, f)
 }
 
 /**
@@ -4770,7 +4792,7 @@ export function takeRight_<R, E, A>(self: Stream<R, E, A>, n: number): Stream<R,
     CH.unwrap(
       pipe(
         T.do,
-        T.bind("queue", () => T.succeedWith(() => new RingBuffer<A>(n))),
+        T.bind("queue", () => T.succeedWith(() => new RingBufferNew<A>(n))),
         T.map(({ queue }) => {
           const reader: CH.Channel<
             unknown,
@@ -4782,12 +4804,12 @@ export function takeRight_<R, E, A>(self: Stream<R, E, A>, n: number): Stream<R,
             void
           > = CH.readWith(
             (in_) => {
-              A.forEach_(in_, (_) => queue.push(_))
+              A.forEach_(in_, (_) => queue.put(_))
 
               return reader
             },
             (_) => CH.fail(_),
-            (_) => CH.zipRight_(CH.write(A.from(L.toArray(queue.list))), CH.unit)
+            (_) => CH.zipRight_(CH.write(queue.toChunk()), CH.unit)
           )
 
           return self.channel[">>>"](reader)
@@ -6831,4 +6853,64 @@ export function catchTag_<
     }
     return C.fail(e as any)
   })
+}
+
+/**
+ * Drops the last specified number of elements from this stream.
+ *
+ * @note This combinator keeps `n` elements in memory. Be careful with big numbers.
+ */
+export function dropRight_<R, E, A>(self: Stream<R, E, A>, n: number): Stream<R, E, A> {
+  if (n <= 0) {
+    return new Stream(self.channel)
+  }
+
+  return C.chain_(
+    C.succeedWith(() => new RingBufferNew<A>(n)),
+    (queue) => {
+      const reader: CH.Channel<
+        unknown,
+        E,
+        A.Chunk<A>,
+        unknown,
+        E,
+        A.Chunk<A>,
+        void
+      > = CH.readWith(
+        (in_) => {
+          const outs = A.filterMap_(in_, (elem) => {
+            const head = queue.head()
+
+            queue.put(elem)
+
+            return head
+          })
+
+          return CH.zipRight_(CH.write(outs), reader)
+        },
+        (_) => CH.fail(_),
+        (_) => CH.unit
+      )
+
+      return new Stream(self.channel[">>>"](reader))
+    }
+  )
+}
+
+/**
+ * Drops the last specified number of elements from this stream.
+ *
+ * @note This combinator keeps `n` elements in memory. Be careful with big numbers.
+ *
+ * @ets_data_first dropRight_
+ */
+export function dropRight(n: number) {
+  return <R, E, A>(self: Stream<R, E, A>) => dropRight_(self, n)
+}
+
+/**
+ * Creates a stream that executes the specified effect but emits no elements.
+ */
+export function execute<R, E, Z>(effect: T.Effect<R, E, Z>): Stream<R, E, never> {
+  return drain(fromEffect(effect))
 }

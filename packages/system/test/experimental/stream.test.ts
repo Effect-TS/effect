@@ -139,4 +139,48 @@ describe("Stream", () => {
 
     expect(result).toEqual(17)
   })
+
+  it("dropRight", async () => {
+    const result = await pipe(
+      S.fromIterable([1, 2, 3, 4, 5, 6, 7]),
+      S.dropRight(2),
+      S.runCollect,
+      T.runPromise
+    )
+
+    expect(result).toEqual(Chunk.many(1, 2, 3, 4, 5))
+  })
+
+  it("zipAllSortedByKey", async () => {
+    const a = S.fromIterable([
+      Tp.tuple(1, "one"),
+      Tp.tuple(2, "two"),
+      Tp.tuple(3, "three"),
+      Tp.tuple(4, "four"),
+      Tp.tuple(5, "five")
+    ])
+    const b = S.fromIterable([
+      Tp.tuple(1, "un"),
+      Tp.tuple(2, "deux"),
+      // No three
+      Tp.tuple(4, "quatre"),
+      Tp.tuple(5, "cinq")
+    ])
+
+    const result = await pipe(
+      S.zipAllSortedByKey_(a, b, "<Unknown>", "<Inconnu>", (a, b) => a - b),
+      S.runCollect,
+      T.runPromise
+    )
+
+    expect(result).toEqual(
+      Chunk.many(
+        Tp.tuple(1, Tp.tuple("one", "un")),
+        Tp.tuple(2, Tp.tuple("two", "deux")),
+        Tp.tuple(3, Tp.tuple("three", "<Inconnu>")),
+        Tp.tuple(4, Tp.tuple("four", "quatre")),
+        Tp.tuple(5, Tp.tuple("five", "cinq"))
+      )
+    )
+  })
 })

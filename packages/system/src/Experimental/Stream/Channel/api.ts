@@ -1671,22 +1671,24 @@ export function zipRight<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutD
   ) => zipRight_(self, that)
 }
 
-export function bracketOut_<Env, OutErr, Acquired, Z>(
+export function acquireReleaseOutWith_<Env, OutErr, Acquired, Z>(
   acquire: T.Effect<Env, OutErr, Acquired>,
   release: (a: Acquired) => T.RIO<Env, Z>
 ): C.Channel<Env, unknown, unknown, unknown, OutErr, Acquired, void> {
-  return C.bracketOutExit_(acquire, (z, _) => release(z))
+  return C.acquireReleaseOutExitWith_(acquire, (z, _) => release(z))
 }
 
 /**
- * @ets_data_first bracketOut_
+ * @ets_data_first acquireReleaseOutWith_
  */
-export function bracketOut<Env, Acquired, Z>(release: (a: Acquired) => T.RIO<Env, Z>) {
+export function acquireReleaseOutWith<Env, Acquired, Z>(
+  release: (a: Acquired) => T.RIO<Env, Z>
+) {
   return <OutErr>(acquire: T.Effect<Env, OutErr, Acquired>) =>
-    bracketOut_(acquire, release)
+    acquireReleaseOutWith_(acquire, release)
 }
 
-export function bracket_<
+export function acquireReleaseWith_<
   Env,
   InErr,
   InElem,
@@ -1702,13 +1704,13 @@ export function bracket_<
   ) => C.Channel<Env, InErr, InElem, InDone, OutErr, OutElem1, OutDone>,
   release: (a: Acquired) => T.RIO<Env, any>
 ): C.Channel<Env, InErr, InElem, InDone, OutErr, OutElem1, OutDone> {
-  return bracketExit_(acquire, use, (a, _) => release(a))
+  return acquireReleaseExitWith_(acquire, use, (a, _) => release(a))
 }
 
 /**
- * @ets_data_first bracket_
+ * @ets_data_first acquireReleaseWith_
  */
-export function bracket<
+export function acquireReleaseWith<
   Env,
   InErr,
   InElem,
@@ -1723,10 +1725,11 @@ export function bracket<
   ) => C.Channel<Env, InErr, InElem, InDone, OutErr, OutElem1, OutDone>,
   release: (a: Acquired) => T.RIO<Env, any>
 ) {
-  return (acquire: T.Effect<Env, OutErr, Acquired>) => bracket_(acquire, use, release)
+  return (acquire: T.Effect<Env, OutErr, Acquired>) =>
+    acquireReleaseWith_(acquire, use, release)
 }
 
-export function bracketExit_<
+export function acquireReleaseExitWith_<
   Env,
   InErr,
   InElem,
@@ -1759,9 +1762,9 @@ export function bracketExit_<
 }
 
 /**
- * @ets_data_first bracketExit_
+ * @ets_data_first acquireReleaseExitWith_
  */
-export function bracketExit<
+export function acquireReleaseExitWith<
   Env,
   InErr,
   InElem,
@@ -1777,7 +1780,7 @@ export function bracketExit<
   release: (a: Acquired, exit: Ex.Exit<OutErr, OutDone>) => T.RIO<Env, any>
 ) {
   return (acquire: T.Effect<Env, OutErr, Acquired>) =>
-    bracketExit_(acquire, use, release)
+    acquireReleaseExitWith_(acquire, use, release)
 }
 
 /**
@@ -1889,7 +1892,7 @@ export function managed_<
   m: M.Managed<Env, OutErr, A>,
   use: (a: A) => C.Channel<Env1, InErr, InElem, InDone, OutErr1, OutElem, OutDone>
 ): P.Channel<Env & Env1, InErr, InElem, InDone, OutErr | OutErr1, OutElem, OutDone> {
-  return bracket_(
+  return acquireReleaseExitWith_(
     RM.makeReleaseMap,
     (releaseMap) => {
       return pipe(
@@ -1903,11 +1906,7 @@ export function managed_<
         C.chain(use)
       )
     },
-    (_) =>
-      RM.releaseAll(
-        Ex.unit, // FIXME: BracketOut should be BracketOutExit (From ZIO)
-        sequential
-      )(_)
+    (releaseMap, exit) => RM.releaseAll(exit, sequential)(releaseMap)
   )
 }
 

@@ -1641,6 +1641,8 @@ export function last<I>(): Sink<unknown, never, I, never, O.Option<I>> {
 /**
  * A sink that depends on another managed value
  * `resource` will be finalized after the processing.
+ *
+ * @deprecated Use unwrapManaged
  */
 export function managed_<R, E, A, I, L extends I, Z>(
   resource: M.Managed<R, E, A>,
@@ -1659,6 +1661,8 @@ export function managed_<R, E, A, I, L extends I, Z>(
 /**
  * A sink that depends on another managed value
  * `resource` will be finalized after the processing.
+ *
+ * @deprecated Use unwrapManaged
  */
 export function managed<R, E, A>(resource: M.Managed<R, E, A>) {
   return <I, L extends I, Z>(fn: (a: A) => Sink<R, E, I, L, Z>) =>
@@ -1800,4 +1804,31 @@ export function fromHubWithShutdown<R, E, I, A>(
   hub: H.XHub<R, never, E, unknown, I, A>
 ): Sink<R, E, I, never, void> {
   return fromQueueWithShutdown(H.toQueue(hub))
+}
+
+/**
+ * Creates a sink produced from an effect.
+ */
+export function unwrap<R, E, I, L extends I, Z>(
+  effect: T.Effect<R, E, Sink<R, E, I, L, Z>>
+): Sink<R, E, I, I, Z> {
+  return unwrapManaged(T.toManaged(effect))
+}
+
+/**
+ * Creates a sink produced from a managed effect.
+ */
+export function unwrapManaged<R, E, I, L extends I, Z>(
+  managed: M.Managed<R, E, Sink<R, E, I, L, Z>>
+): Sink<R, E, I, I, Z> {
+  return new Sink(
+    M.chain_(
+      M.fold_(
+        managed,
+        (err): Sink<R, E, I, I, Z> => fail<E>(err)<I>(),
+        (_) => _
+      ),
+      (_) => _.push
+    )
+  )
 }

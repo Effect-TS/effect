@@ -12,7 +12,7 @@ import * as Tp from "../../../Collections/Immutable/Tuple"
 import * as T from "../../../Effect"
 import type { Predicate, Refinement } from "../../../Function"
 import { pipe } from "../../../Function"
-import type * as M from "../../../Managed"
+import * as M from "../../../Managed"
 import * as O from "../../../Option"
 import * as Ref from "../../../Ref"
 import { AtomicReference } from "../../../Support/AtomicReference"
@@ -927,7 +927,80 @@ export function dropLeftover<R, InErr, In, OutErr, L, Z>(
   return new Sink(C.drain(self.channel))
 }
 
-// TODO: untilOutputEffect_ -> Not implemented
+/**
+ * Creates a sink that produces values until one verifies
+ * the predicate `f`.
+ */
+export function untilOutputEffect_<R, R1, InErr, In, OutErr, OutErr1, L extends In, Z>(
+  self: Sink<R, InErr, In, OutErr, L, Z>,
+  f: (z: Z) => T.Effect<R1, OutErr1, boolean>
+): Sink<R & R1, InErr, In, OutErr | OutErr1, L, O.Option<Z>> {
+  return new Sink(
+    C.chain_(
+      C.fromEffect(T.zip_(Ref.makeRef<A.Chunk<In>>(A.empty()), Ref.makeRef(false))),
+      ({ tuple: [leftoversRef, upstreamDoneRef] }) => {
+        const upstreamMarker: C.Channel<
+          unknown,
+          InErr,
+          A.Chunk<In>,
+          unknown,
+          InErr,
+          A.Chunk<In>,
+          any
+        > = C.readWith(
+          (in_) => C.zipRight_(C.write(in_), upstreamMarker),
+          (_) => C.fail(_),
+          (_) => C.as_(C.fromEffect(upstreamDoneRef.set(true)), _)
+        )
+
+        const loop: C.Channel<
+          R & R1,
+          InErr,
+          A.Chunk<In>,
+          unknown,
+          OutErr | OutErr1,
+          A.Chunk<L>,
+          O.Option<Z>
+        > = C.foldChannel_(
+          C.doneCollect(self.channel),
+          C.fail,
+          ({ tuple: [leftovers, doneValue] }) =>
+            pipe(
+              C.do,
+              C.bind("satisfied", () => C.fromEffect(f(doneValue))),
+              C.bind("_", () => C.fromEffect(leftoversRef.set(A.flatten(leftovers)))),
+              C.bind("upstreamDone", () => C.fromEffect(upstreamDoneRef.get)),
+              C.bind("res", ({ satisfied, upstreamDone }) => {
+                if (satisfied) {
+                  return C.as_(C.write(A.flatten(leftovers)), O.some(doneValue))
+                } else if (upstreamDone) {
+                  return C.as_(C.write(A.flatten(leftovers)), O.none)
+                } else {
+                  return loop
+                }
+              }),
+              C.map(({ res }) => res)
+            )
+        )
+
+        return upstreamMarker[">>>"](C.bufferChunk(leftoversRef))[">>>"](loop)
+      }
+    )
+  )
+}
+
+/**
+ * Creates a sink that produces values until one verifies
+ * the predicate `f`.
+ *
+ * @ets_data_first untilOutputEffect_
+ */
+export function untilOutputEffect<R1, OutErr1, Z>(
+  f: (z: Z) => T.Effect<R1, OutErr1, boolean>
+) {
+  return <R, InErr, In, OutErr, L extends In>(self: Sink<R, InErr, In, OutErr, L, Z>) =>
+    untilOutputEffect_(self, f)
+}
 
 export function accessSink<R, InErr, In, OutErr, L, Z>(
   f: (r: R) => Sink<R, InErr, In, OutErr, L, Z>
@@ -1946,4 +2019,78 @@ export function reduceEffect<S, Env, In, InErr, OutErr>(
   }
 
   return new Sink(reader(z))
+}
+
+export function dropWhile<Err, In>(
+  p: Predicate<In>
+): Sink<unknown, Err, In, Err, In, any> {
+  const loop: C.Channel<
+    unknown,
+    Err,
+    A.Chunk<In>,
+    unknown,
+    Err,
+    A.Chunk<In>,
+    any
+  > = C.readWith(
+    (in_) => {
+      const leftover = A.dropWhile_(in_, p)
+      const more = A.isEmpty(leftover)
+
+      return more
+        ? loop
+        : C.zipRight_(C.write(leftover), C.identity<Err, A.Chunk<In>, any>())
+    },
+    (_) => C.fail(_),
+    (_) => C.unit
+  )
+
+  return new Sink(loop)
+}
+
+export function dropWhileEffect<R, InErr, In>(
+  p: (in_: In) => T.Effect<R, InErr, boolean>
+): Sink<R, InErr, In, InErr, In, any> {
+  const loop: C.Channel<
+    R,
+    InErr,
+    A.Chunk<In>,
+    unknown,
+    InErr,
+    A.Chunk<In>,
+    any
+  > = C.readWith(
+    (in_) =>
+      C.unwrap(
+        T.map_(A.dropWhileM_(in_, p), (leftover) => {
+          const more = A.isEmpty(leftover)
+
+          return more
+            ? loop
+            : C.zipRight_(C.write(leftover), C.identity<InErr, A.Chunk<In>, any>())
+        })
+      ),
+    (_) => C.fail(_),
+    (_) => C.unit
+  )
+
+  return new Sink(loop)
+}
+
+/**
+ * Creates a sink produced from a managed effect.
+ */
+export function unwrapManaged<R, InErr, In, OutErr, L, Z>(
+  managed: M.Managed<R, OutErr, Sink<R, InErr, In, OutErr, L, Z>>
+): Sink<R, InErr, In, OutErr, L, Z> {
+  return new Sink(C.unwrapManaged(M.map_(managed, (_) => _.channel)))
+}
+
+/**
+ * Creates a sink produced from an effect.
+ */
+export function unwrap<R, InErr, In, OutErr, L, Z>(
+  managed: T.Effect<R, OutErr, Sink<R, InErr, In, OutErr, L, Z>>
+): Sink<R, InErr, In, OutErr, L, Z> {
+  return new Sink(C.unwrap(T.map_(managed, (_) => _.channel)))
 }
