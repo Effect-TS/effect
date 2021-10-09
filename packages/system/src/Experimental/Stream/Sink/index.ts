@@ -12,7 +12,7 @@ import * as Tp from "../../../Collections/Immutable/Tuple"
 import * as T from "../../../Effect"
 import type { Predicate, Refinement } from "../../../Function"
 import { pipe } from "../../../Function"
-import type * as M from "../../../Managed"
+import * as M from "../../../Managed"
 import * as O from "../../../Option"
 import * as Ref from "../../../Ref"
 import { AtomicReference } from "../../../Support/AtomicReference"
@@ -2075,4 +2075,22 @@ export function dropWhileEffect<R, InErr, In>(
   )
 
   return new Sink(loop)
+}
+
+/**
+ * Creates a sink produced from a managed effect.
+ */
+export function unwrapManaged<R, InErr, In, OutErr, L, Z>(
+  managed: M.Managed<R, OutErr, Sink<R, InErr, In, OutErr, L, Z>>
+): Sink<R, InErr, In, OutErr, L, Z> {
+  return new Sink(C.unwrapManaged(M.map_(managed, (_) => _.channel)))
+}
+
+/**
+ * Creates a sink produced from an effect.
+ */
+export function unwrap<R, InErr, In, OutErr, L, Z>(
+  managed: T.Effect<R, OutErr, Sink<R, InErr, In, OutErr, L, Z>>
+): Sink<R, InErr, In, OutErr, L, Z> {
+  return new Sink(C.unwrap(T.map_(managed, (_) => _.channel)))
 }

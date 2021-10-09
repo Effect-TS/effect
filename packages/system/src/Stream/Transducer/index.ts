@@ -1094,3 +1094,30 @@ export function filterInputM<I, R1, E1>(
 ): <R, E, O>(fa: Transducer<R, E, I, O>) => Transducer<R & R1, E | E1, I, O> {
   return (fa) => filterInputM_(fa, predicate)
 }
+
+/**
+ * Creates a transducer produced from an effect.
+ */
+export function unwrap<R, E, I, O>(
+  effect: T.Effect<R, E, Transducer<R, E, I, O>>
+): Transducer<R, E, I, O> {
+  return unwrapManaged(T.toManaged(effect))
+}
+
+/**
+ * Creates a transducer produced from a managed effect.
+ */
+export function unwrapManaged<R, E, I, O>(
+  managed: M.Managed<R, E, Transducer<R, E, I, O>>
+): Transducer<R, E, I, O> {
+  return new Transducer(
+    M.chain_(
+      M.fold_(
+        managed,
+        (err) => fail<E>(err),
+        (_) => _
+      ),
+      (_) => _.push
+    )
+  )
+}
