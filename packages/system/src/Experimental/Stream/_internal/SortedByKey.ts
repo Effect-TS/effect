@@ -262,10 +262,10 @@ export function zipAllSortedByKeyWithExec_<R, R1, E, E1, K, A, B, C1, C2, C3>(
           k2 = rightTuple.get(0)
           b = rightTuple.get(1)
         } else if (hasNext(leftChunk, leftIndex)) {
-          state = new PullRight(A.drop_(leftChunk, leftIndex))
+          state = new PullRight(A.drop_(leftChunk, leftIndex + 1))
           loop = false
         } else if (hasNext(rightChunk, rightIndex)) {
-          state = new PullLeft(A.drop_(rightChunk, rightIndex))
+          state = new PullLeft(A.drop_(rightChunk, rightIndex + 1))
           loop = false
         } else {
           state = new PullBoth()
