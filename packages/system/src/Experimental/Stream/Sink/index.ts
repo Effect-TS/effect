@@ -2020,3 +2020,59 @@ export function reduceEffect<S, Env, In, InErr, OutErr>(
 
   return new Sink(reader(z))
 }
+
+export function dropWhile<Err, In>(
+  p: Predicate<In>
+): Sink<unknown, Err, In, Err, In, any> {
+  const loop: C.Channel<
+    unknown,
+    Err,
+    A.Chunk<In>,
+    unknown,
+    Err,
+    A.Chunk<In>,
+    any
+  > = C.readWith(
+    (in_) => {
+      const leftover = A.dropWhile_(in_, p)
+      const more = A.isEmpty(leftover)
+
+      return more
+        ? loop
+        : C.zipRight_(C.write(leftover), C.identity<Err, A.Chunk<In>, any>())
+    },
+    (_) => C.fail(_),
+    (_) => C.unit
+  )
+
+  return new Sink(loop)
+}
+
+export function dropWhileEffect<R, InErr, In>(
+  p: (in_: In) => T.Effect<R, InErr, boolean>
+): Sink<R, InErr, In, InErr, In, any> {
+  const loop: C.Channel<
+    R,
+    InErr,
+    A.Chunk<In>,
+    unknown,
+    InErr,
+    A.Chunk<In>,
+    any
+  > = C.readWith(
+    (in_) =>
+      C.unwrap(
+        T.map_(A.dropWhileM_(in_, p), (leftover) => {
+          const more = A.isEmpty(leftover)
+
+          return more
+            ? loop
+            : C.zipRight_(C.write(leftover), C.identity<InErr, A.Chunk<In>, any>())
+        })
+      ),
+    (_) => C.fail(_),
+    (_) => C.unit
+  )
+
+  return new Sink(loop)
+}

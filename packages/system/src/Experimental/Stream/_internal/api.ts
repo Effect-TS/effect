@@ -1841,6 +1841,18 @@ export function drop(n: number) {
 }
 
 /**
+ * Pipes all of the values from this stream through the provided sink.
+ *
+ * @see `transduce`
+ */
+export function pipeThrough<R, R1, E extends E1, E1, E2, A, L, Z>(
+  self: Stream<R, E, A>,
+  sink: SK.Sink<R1, E1, A, E2, L, Z>
+): Stream<R & R1, E2, L> {
+  return new Stream(self.channel[">>>"](sink.channel))
+}
+
+/**
  * Drops all elements of the stream for as long as the specified predicate
  * evaluates to `true`.
  */
@@ -1848,22 +1860,7 @@ export function dropWhile_<R, E, A>(
   self: Stream<R, E, A>,
   f: Predicate<A>
 ): Stream<R, E, A> {
-  const loop: CH.Channel<R, E, A.Chunk<A>, unknown, E, A.Chunk<A>, any> = CH.readWith(
-    (_in) => {
-      const leftover = A.dropWhile_(_in, f)
-      const more = A.isEmpty(_in)
-
-      if (more) {
-        return loop
-      } else {
-        return CH.zipRight_(CH.write(leftover), CH.identity<E, A.Chunk<A>, any>())
-      }
-    },
-    (e) => CH.fail(e),
-    (_) => CH.unit
-  )
-
-  return new Stream(self.channel[">>>"](loop))
+  return pipeThrough(self, SK.dropWhile<E, A>(f))
 }
 
 /**
@@ -1874,6 +1871,31 @@ export function dropWhile_<R, E, A>(
  */
 export function dropWhile<A>(f: Predicate<A>) {
   return <R, E>(self: Stream<R, E, A>) => dropWhile_(self, f)
+}
+
+/**
+ * Drops all elements of the stream for as long as the specified predicate
+ * produces an effect that evalutates to `true`
+ *
+ * @see `dropWhile`
+ */
+export function dropWhileEffect_<R, R1, E, E1, A>(
+  self: Stream<R, E, A>,
+  f: (a: A) => T.Effect<R1, E1, boolean>
+): Stream<R & R1, E | E1, A> {
+  return pipeThrough(self, SK.dropWhileEffect<R1, E | E1, A>(f))
+}
+
+/**
+ * Drops all elements of the stream for as long as the specified predicate
+ * produces an effect that evalutates to `true`
+ *
+ * @see `dropWhile`
+ *
+ * @ets_data_first dropWhileEffect_
+ */
+export function dropWhileEffect<R1, E1, A>(f: (a: A) => T.Effect<R1, E1, boolean>) {
+  return <R, E>(self: Stream<R, E, A>) => dropWhileEffect_(self, f)
 }
 
 /**
