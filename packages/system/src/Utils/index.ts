@@ -9,7 +9,6 @@ import type { Tag } from "../Has"
 import type { Option } from "../Option"
 import { none, some } from "../Option"
 import type { Sync } from "../Sync"
-import type { Unify } from "./union"
 
 export type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (
   k: infer I
@@ -38,7 +37,7 @@ export const pattern: <N extends string>(
     }
   >(
     _: K
-  ): (m: X) => Unify<ReturnType<K[keyof K]>>
+  ): (m: X) => ReturnType<K[keyof K]>
   <
     X extends { [k in N]: string },
     K extends Partial<{
@@ -56,7 +55,7 @@ export const pattern: <N extends string>(
       ) => any
     },
     __: (_: Exclude<X, { _tag: keyof K }>, __: Exclude<X, { _tag: keyof K }>) => H
-  ): (m: X) => Unify<{ [k in keyof K]: ReturnType<NonNullable<K[k]>> }[keyof K] | H>
+  ): (m: X) => { [k in keyof K]: ReturnType<NonNullable<K[k]>> }[keyof K] | H
 } = (n) =>
   ((_: any, d: any) => (m: any) => {
     return (_[m[n]] ? _[m[n]](m, m) : d(m, m)) as any
@@ -78,7 +77,7 @@ export const pattern_: <N extends string>(
   >(
     m: X,
     _: K
-  ): Unify<ReturnType<K[keyof K]>>
+  ): ReturnType<K[keyof K]>
   <
     X extends { [k in N]: string },
     K extends Partial<{
@@ -97,7 +96,7 @@ export const pattern_: <N extends string>(
       ) => any
     },
     __: (_: Exclude<X, { _tag: keyof K }>, __: Exclude<X, { _tag: keyof K }>) => H
-  ): Unify<{ [k in keyof K]: ReturnType<NonNullable<K[k]>> }[keyof K] | H>
+  ): { [k in keyof K]: ReturnType<NonNullable<K[k]>> }[keyof K] | H
 } = (n) =>
   ((m: any, _: any, d: any) => {
     return (_[m[n]] ? _[m[n]](m, m) : d(m, m)) as any
@@ -117,7 +116,7 @@ export const patternFor: <N extends string>(
     }
   >(
     _: K
-  ): (m: X) => Unify<ReturnType<K[keyof K]>>
+  ): (m: X) => ReturnType<K[keyof K]>
   <
     K extends Partial<{
       [k in X[N]]: (
@@ -134,7 +133,7 @@ export const patternFor: <N extends string>(
       ) => any
     },
     __: (_: Exclude<X, { _tag: keyof K }>, __: Exclude<X, { _tag: keyof K }>) => H
-  ): (m: X) => Unify<{ [k in keyof K]: ReturnType<NonNullable<K[k]>> }[keyof K] | H>
+  ): (m: X) => { [k in keyof K]: ReturnType<NonNullable<K[k]>> }[keyof K] | H
 } = (n) => () =>
   ((_: any, d: any) => (m: any) => {
     return (_[m[n]] ? _[m[n]](m, m) : d(m, m)) as any
@@ -235,5 +234,4 @@ export type ForcedArray<A> = A extends readonly any[] ? A : []
 export interface UnifiableIndexed<X> {}
 
 export * from "./lazy"
-export * from "./union"
 export * from "./equal"
