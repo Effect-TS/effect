@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.42.0](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.41.13...@effect-ts/system@0.42.0) (2021-10-11)
+
+
+### Bug Fixes
+
+* **system:** remove auto unify as it breaks newer TS ([4fb9c7a](https://github.com/Effect-TS/core/commit/4fb9c7ab3c87b83181cb630403dd682bf9f5cecf))
+
+
+
+
+
 ## [0.41.13](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.41.12...@effect-ts/system@0.41.13) (2021-10-09)
 
 **Note:** Version bump only for package @effect-ts/system
