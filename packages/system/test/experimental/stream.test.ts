@@ -4,6 +4,8 @@ import * as T from "../../src/Effect"
 import * as E from "../../src/Either"
 import * as S from "../../src/Experimental/Stream"
 import { pipe } from "../../src/Function"
+import * as Ord from "../../src/Ord"
+import * as ST from "../../src/Structural"
 
 describe("Stream", () => {
   it("runCollect", async () => {
@@ -151,36 +153,39 @@ describe("Stream", () => {
     expect(result).toEqual(Chunk.many(1, 2, 3, 4, 5))
   })
 
-  it("zipAllSortedByKey", async () => {
-    const a = S.fromIterable([
+  it.only("zipAllSortedByKey", async () => {
+    const a = S.from(
       Tp.tuple(1, "one"),
       Tp.tuple(2, "two"),
       Tp.tuple(3, "three"),
       Tp.tuple(4, "four"),
       Tp.tuple(5, "five")
-    ])
-    const b = S.fromIterable([
+    )
+    const b = S.from(
       Tp.tuple(1, "un"),
       Tp.tuple(2, "deux"),
       // No three
       Tp.tuple(4, "quatre"),
       Tp.tuple(5, "cinq")
-    ])
+    )
 
     const result = await pipe(
-      S.zipAllSortedByKey_(a, b, "<Unknown>", "<Inconnu>", (a, b) => a - b),
+      S.zipAllSortedByKey_(a, b, "<Unknown>", "<Inconnu>", Ord.number),
       S.runCollect,
       T.runPromise
     )
 
-    expect(result).toEqual(
-      Chunk.many(
-        Tp.tuple(1, Tp.tuple("one", "un")),
-        Tp.tuple(2, Tp.tuple("two", "deux")),
-        Tp.tuple(3, Tp.tuple("three", "<Inconnu>")),
-        Tp.tuple(4, Tp.tuple("four", "quatre")),
-        Tp.tuple(5, Tp.tuple("five", "cinq"))
+    expect(
+      ST.deepEquals(
+        result,
+        Chunk.many(
+          Tp.tuple(1, Tp.tuple("one", "un")),
+          Tp.tuple(2, Tp.tuple("two", "deux")),
+          Tp.tuple(3, Tp.tuple("three", "<Inconnu>")),
+          Tp.tuple(4, Tp.tuple("four", "quatre")),
+          Tp.tuple(5, Tp.tuple("five", "cinq"))
+        )
       )
-    )
+    ).toBeTruthy()
   })
 })

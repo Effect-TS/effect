@@ -4,12 +4,11 @@ import * as T from "../../../Effect"
 import * as Ex from "../../../Exit"
 import { identity } from "../../../Function"
 import * as O from "../../../Option"
+import type * as OD from "../../../Ord"
 import type { Stream } from "./core"
 import { combineChunks_ } from "./core"
 
 export type SortedByKey<R, E, K, A> = Stream<R, E, Tp.Tuple<[K, A]>>
-
-export type KeyComparator<K> = (k1: K, k2: K) => number
 
 class DrainLeft {
   readonly _tag = "DrainLeft"
@@ -60,7 +59,7 @@ export function zipAllSortedByKeyWithExec_<R, R1, E, E1, K, A, B, C1, C2, C3>(
   left: (a: A) => C1,
   right: (b: B) => C2,
   both: (a: A, b: B) => C3,
-  comparator: KeyComparator<K>,
+  ord: OD.Ord<K>,
   exec: T.ExecutionStrategy
 ): Stream<R & R1, E | E1, Tp.Tuple<[K, C1 | C2 | C3]>> {
   const pull = (
@@ -247,7 +246,7 @@ export function zipAllSortedByKeyWithExec_<R, R1, E, E1, K, A, B, C1, C2, C3>(
     const hasNext = <T>(c: A.Chunk<T>, index: number) => index < A.size(c) - 1
 
     while (loop) {
-      const compare = comparator(k1, k2)
+      const compare = ord.compare(k1, k2)
 
       if (compare === 0) {
         builder.append(Tp.tuple(k1, both(a, b)))
@@ -341,11 +340,11 @@ export function zipAllSortedByKeyWithExec<R1, E1, K, A, B, C1, C2, C3>(
   left: (a: A) => C1,
   right: (b: B) => C2,
   both: (a: A, b: B) => C3,
-  comparator: KeyComparator<K>,
+  ord: OD.Ord<K>,
   exec: T.ExecutionStrategy
 ) {
   return <R, E>(self: SortedByKey<R, E, K, A>) =>
-    zipAllSortedByKeyWithExec_(self, that, left, right, both, comparator, exec)
+    zipAllSortedByKeyWithExec_(self, that, left, right, both, ord, exec)
 }
 
 /**
@@ -365,17 +364,9 @@ export function zipAllSortedByKeyWith_<R, R1, E, E1, K, A, B, C1, C2, C3>(
   left: (a: A) => C1,
   right: (b: B) => C2,
   both: (a: A, b: B) => C3,
-  comparator: KeyComparator<K>
+  ord: OD.Ord<K>
 ): Stream<R & R1, E | E1, Tp.Tuple<[K, C1 | C2 | C3]>> {
-  return zipAllSortedByKeyWithExec_(
-    self,
-    that,
-    left,
-    right,
-    both,
-    comparator,
-    T.parallel
-  )
+  return zipAllSortedByKeyWithExec_(self, that, left, right, both, ord, T.parallel)
 }
 
 /**
@@ -396,10 +387,10 @@ export function zipAllSortedByKeyWith<R1, E1, K, A, B, C1, C2, C3>(
   left: (a: A) => C1,
   right: (b: B) => C2,
   both: (a: A, b: B) => C3,
-  comparator: KeyComparator<K>
+  ord: OD.Ord<K>
 ) {
   return <R, E>(self: SortedByKey<R, E, K, A>) =>
-    zipAllSortedByKeyWith_(self, that, left, right, both, comparator)
+    zipAllSortedByKeyWith_(self, that, left, right, both, ord)
 }
 
 /**
@@ -416,7 +407,7 @@ export function zipAllSortedByKeyRight_<R, R1, E, E1, K, A, B>(
   self: SortedByKey<R, E, K, A>,
   that: Stream<R1, E1, Tp.Tuple<[K, B]>>,
   default_: B,
-  comparator: KeyComparator<K>
+  ord: OD.Ord<K>
 ): Stream<R & R1, E | E1, Tp.Tuple<[K, B]>> {
   return zipAllSortedByKeyWith_(
     self,
@@ -424,7 +415,7 @@ export function zipAllSortedByKeyRight_<R, R1, E, E1, K, A, B>(
     (_) => default_,
     identity,
     (_, b) => b,
-    comparator
+    ord
   )
 }
 
@@ -443,10 +434,10 @@ export function zipAllSortedByKeyRight_<R, R1, E, E1, K, A, B>(
 export function zipAllSortedByKeyRight<R1, E1, K, A, B>(
   that: Stream<R1, E1, Tp.Tuple<[K, B]>>,
   default_: B,
-  comparator: KeyComparator<K>
+  ord: OD.Ord<K>
 ) {
   return <R, E>(self: SortedByKey<R, E, K, A>) =>
-    zipAllSortedByKeyRight_(self, that, default_, comparator)
+    zipAllSortedByKeyRight_(self, that, default_, ord)
 }
 
 /**
@@ -463,7 +454,7 @@ export function zipAllSortedByKeyLeft_<R, R1, E, E1, K, A, B>(
   self: SortedByKey<R, E, K, A>,
   that: Stream<R1, E1, Tp.Tuple<[K, B]>>,
   default_: A,
-  comparator: KeyComparator<K>
+  ord: OD.Ord<K>
 ): Stream<R & R1, E | E1, Tp.Tuple<[K, A]>> {
   return zipAllSortedByKeyWith_(
     self,
@@ -471,7 +462,7 @@ export function zipAllSortedByKeyLeft_<R, R1, E, E1, K, A, B>(
     identity,
     (_) => default_,
     (a, _) => a,
-    comparator
+    ord
   )
 }
 
@@ -490,10 +481,10 @@ export function zipAllSortedByKeyLeft_<R, R1, E, E1, K, A, B>(
 export function zipAllSortedByKeyLeft<R1, E1, K, A, B>(
   that: Stream<R1, E1, Tp.Tuple<[K, B]>>,
   default_: A,
-  comparator: KeyComparator<K>
+  ord: OD.Ord<K>
 ) {
   return <R, E>(self: SortedByKey<R, E, K, A>) =>
-    zipAllSortedByKeyLeft_(self, that, default_, comparator)
+    zipAllSortedByKeyLeft_(self, that, default_, ord)
 }
 
 /**
@@ -512,7 +503,7 @@ export function zipAllSortedByKey_<R, R1, E, E1, K, A, B>(
   that: Stream<R1, E1, Tp.Tuple<[K, B]>>,
   defaultLeft: A,
   defaultRight: B,
-  comparator: KeyComparator<K>
+  ord: OD.Ord<K>
 ): Stream<R & R1, E | E1, Tp.Tuple<[K, Tp.Tuple<[A, B]>]>> {
   return zipAllSortedByKeyWith_(
     self,
@@ -520,7 +511,7 @@ export function zipAllSortedByKey_<R, R1, E, E1, K, A, B>(
     (_) => Tp.tuple(_, defaultRight),
     (_) => Tp.tuple(defaultLeft, _),
     (a, b) => Tp.tuple(a, b),
-    comparator
+    ord
   )
 }
 
@@ -541,8 +532,8 @@ export function zipAllSortedByKey<R1, E1, K, A, B>(
   that: Stream<R1, E1, Tp.Tuple<[K, B]>>,
   defaultLeft: A,
   defaultRight: B,
-  comparator: KeyComparator<K>
+  ord: OD.Ord<K>
 ) {
   return <R, E>(self: SortedByKey<R, E, K, A>) =>
-    zipAllSortedByKey_(self, that, defaultLeft, defaultRight, comparator)
+    zipAllSortedByKey_(self, that, defaultLeft, defaultRight, ord)
 }

@@ -6,6 +6,7 @@ import * as L from "../../../Collections/Immutable/List"
 import * as Tp from "../../../Collections/Immutable/Tuple"
 import * as T from "../../../Effect"
 import * as E from "../../../Either"
+import * as EQ from "../../../Equal"
 import * as Ex from "../../../Exit"
 import * as F from "../../../Fiber"
 import type { Predicate, Refinement } from "../../../Function"
@@ -831,7 +832,7 @@ export function catchSomeCause<R1, E, E1, A1>(
  * elements are equal.
  */
 export function changes<R, E, A>(self: Stream<R, E, A>) {
-  return changesWith_(self, (_) => _ === _)
+  return changesWith_(self, EQ.strict<A>())
 }
 
 /**
@@ -841,7 +842,7 @@ export function changes<R, E, A>(self: Stream<R, E, A>) {
  */
 export function changesWith_<R, E, A>(
   self: Stream<R, E, A>,
-  f: (a1: A, a2: A) => boolean
+  equal: EQ.Equal<A>
 ): Stream<R, E, A> {
   const writer = (
     last: O.Option<A>
@@ -855,7 +856,7 @@ export function changesWith_<R, E, A>(
           Tp.tuple(last, A.empty<A>()),
           ({ tuple: [op, os] }, o1) => {
             if (O.isSome(op)) {
-              if (f(op.value, o1)) {
+              if (equal.equals(op.value, o1)) {
                 return Tp.tuple(O.some(o1), os)
               }
             }
@@ -880,8 +881,8 @@ export function changesWith_<R, E, A>(
  *
  * @ets_data_first changesWith_
  */
-export function changesWith<A>(f: (a1: A, a2: A) => boolean) {
-  return <R, E>(self: Stream<R, E, A>) => changesWith_(self, f)
+export function changesWith<A>(equal: EQ.Equal<A>) {
+  return <R, E>(self: Stream<R, E, A>) => changesWith_(self, equal)
 }
 
 class Rechunker<A> {
@@ -6913,4 +6914,11 @@ export function dropRight(n: number) {
  */
 export function execute<R, E, Z>(effect: T.Effect<R, E, Z>): Stream<R, E, never> {
   return drain(fromEffect(effect))
+}
+
+/**
+ * Creates a stream from the specified values
+ */
+export function from<A>(...values: A[]): Stream<unknown, never, A> {
+  return fromIterable(values)
 }
