@@ -70,7 +70,7 @@
     "ts-jest": "^27.0.4",
     "ts-node": "^10.1.0",
     "ttypescript": "^1.5.12",
-    "typescript": "4.4.3",
+    "typescript": "4.4.4",
     "typescript-transform-paths": "3.3.1",
     "ultra-runner": "^3.10.3",
     "yarn-deduplicate": "^3.0.0"
