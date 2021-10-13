@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.42.2](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.42.1...@effect-ts/system@0.42.2) (2021-10-13)
+
+
+### Reverts
+
+* Revert "fix(system): remove auto unify as it breaks newer TS" ([88fd102](https://github.com/Effect-TS/core/commit/88fd102d7a386c5cfeb32461e5008891e5321385))
+
+
+
+
+
 ## [0.42.1](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.42.0...@effect-ts/system@0.42.1) (2021-10-11)
 
 **Note:** Version bump only for package @effect-ts/system
