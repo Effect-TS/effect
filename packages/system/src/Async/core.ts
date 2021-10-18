@@ -1008,8 +1008,17 @@ export function tuple<Tasks extends Async<any, any, any>[]>(
 }
 
 // like Promise.all + map on steroids
+export function forEach_<R, A, E1, B>(as: Iterable<A>, f: (a: A) => Async<R, E1, B>) {
+  return collectAll(Array.from(as).map(f))
+}
+
+/**
+ * like Promise.all + map on steroids
+ *
+ * @ets_data_first forEach_
+ */
 export function forEach<R, A, E1, B>(f: (a: A) => Async<R, E1, B>) {
-  return (as: Iterable<A>) => collectAll(Array.from(as).map(f))
+  return (as: Iterable<A>) => forEach_(as, f)
 }
 
 // binds the output of a computation to a variable
