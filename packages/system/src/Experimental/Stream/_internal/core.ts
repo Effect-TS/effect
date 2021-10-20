@@ -54,6 +54,12 @@ export class Stream<R, E, A> {
   ) {}
 }
 
+export type IO<E, A> = Stream<unknown, E, A>
+
+export type RIO<R, A> = Stream<R, never, A>
+
+export type UIO<A> = Stream<unknown, never, A>
+
 /**
  * Empty stream
  */
