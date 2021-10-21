@@ -542,7 +542,7 @@ export function take(n: number): <R, E, A>(self: Stream<R, E, A>) => Stream<R, E
  */
 export function toPull<R, E, A>(
   self: Stream<R, E, A>
-): M.Managed<R, never, T.Effect<R, O.Option<E>, Chunk.Chunk<A>>> {
+): M.RIO<R, T.Effect<R, O.Option<E>, Chunk.Chunk<A>>> {
   return M.map_(C.toPull(self.channel), (pull) =>
     T.mapError_(pull, (e) => (e._tag === "Left" ? O.some(e.left) : O.none))
   )
