@@ -366,7 +366,7 @@ export function bimap<E, E1, A, A1>(f: (e: E) => E1, g: (a: A) => A1) {
 export function broadcastDynamic_<R, E, A>(
   self: Stream<R, E, A>,
   maximumLag: number
-): M.Managed<R, never, C.Stream<unknown, E, A>> {
+): M.Managed<R, never, C.IO<E, A>> {
   return M.map_(broadcastedQueuesDynamic_(self, maximumLag), (_) =>
     pipe(C.managed(_), C.chain(fromQueue()), flattenTake)
   )
@@ -1930,9 +1930,7 @@ export function dropUntil<A>(f: Predicate<A>) {
  *
  * @note the stream will end as soon as the first error occurs.
  */
-export function either<R, E, A>(
-  self: Stream<R, E, A>
-): Stream<R, never, E.Either<E, A>> {
+export function either<R, E, A>(self: Stream<R, E, A>): C.RIO<R, E.Either<E, A>> {
   return catchAll_(C.map_(self, E.right), (e) => C.succeed(E.left(e)))
 }
 
@@ -4093,10 +4091,7 @@ export function peel<R1, E extends E1, E1, A extends A1, A1, Z>(
  * Provides the stream with its required environment, which eliminates
  * its dependency on `R`.
  */
-export function provideAll_<R, E, A>(
-  self: Stream<R, E, A>,
-  r: R
-): Stream<unknown, E, A> {
+export function provideAll_<R, E, A>(self: Stream<R, E, A>, r: R): C.IO<E, A> {
   return new Stream(CH.provideAll_(self.channel, r))
 }
 
@@ -5863,7 +5858,7 @@ export function fromHub(maxChunkSize = DEFAULT_CHUNK_SIZE) {
 /**
  * The stream that always fails with `cause`.
  */
-export function failCause<E>(cause: CS.Cause<E>): Stream<unknown, E, never> {
+export function failCause<E>(cause: CS.Cause<E>): C.IO<E, never> {
   return fromEffect(T.halt(cause))
 }
 
@@ -6066,7 +6061,7 @@ export function zipWithPreviousAndNext<R, E, A>(
 /**
  * Accesses the environment of the stream.
  */
-export function access<R, A>(f: (r: R) => A): Stream<R, never, A> {
+export function access<R, A>(f: (r: R) => A): C.RIO<R, A> {
   return C.map_(environment<R>(), f)
 }
 
@@ -6140,21 +6135,21 @@ export function concatAll<R, E, O>(streams: A.Chunk<Stream<R, E, O>>): Stream<R,
 /**
  * The stream that dies with an exception described by `msg`.
  */
-export function dieMessage(msg: string): Stream<unknown, never, never> {
+export function dieMessage(msg: string): C.UIO<never> {
   return fromEffect(T.dieMessage(msg))
 }
 
 /**
  * The stream that ends with the `Exit` value `exit`.
  */
-export function done<E, A>(exit: Ex.Exit<E, A>): Stream<unknown, E, A> {
+export function done<E, A>(exit: Ex.Exit<E, A>): C.IO<E, A> {
   return fromEffect(T.done(exit))
 }
 
 /**
  * Accesses the whole environment of the stream.
  */
-export function environment<R>(): Stream<R, never, R> {
+export function environment<R>(): C.RIO<R, R> {
   return fromEffect(T.environment<R>())
 }
 
@@ -6210,14 +6205,14 @@ export function fromChunkQueue<R, E, O>(
 /**
  * Creates a stream from an arbitrary number of chunks.
  */
-export function fromChunks<O>(...chunks: A.Chunk<O>[]): Stream<unknown, never, O> {
+export function fromChunks<O>(...chunks: A.Chunk<O>[]): C.UIO<O> {
   return C.chain_(fromIterable(chunks), (_) => C.fromChunk(_))
 }
 
 /**
  * Creates a stream from an iterable collection of values
  */
-export function fromIterable<O>(as: Iterable<O>): Stream<unknown, never, O> {
+export function fromIterable<O>(as: Iterable<O>): C.UIO<O> {
   return C.fromChunk(A.from(as))
 }
 
@@ -6295,7 +6290,7 @@ export function mergeAllUnbounded(outputBuffer = 16) {
     mergeAll(Number.MAX_SAFE_INTEGER, outputBuffer)(...streams)
 }
 
-export const never: Stream<unknown, never, never> = fromEffect(T.never)
+export const never: C.UIO<never> = fromEffect(T.never)
 
 /**
  * Like `unfold`, but allows the emission of values to end one step further than
@@ -6305,7 +6300,7 @@ export const never: Stream<unknown, never, never> = fromEffect(T.never)
 export function paginate<A, S>(
   s: S,
   f: (s: S) => Tp.Tuple<[A, O.Option<S>]>
-): Stream<unknown, never, A> {
+): C.UIO<A> {
   return paginateChunk(s, (s) => {
     const {
       tuple: [a, b]
@@ -6323,7 +6318,7 @@ export function paginate<A, S>(
 export function paginateChunk<A, S>(
   s: S,
   f: (s: S) => Tp.Tuple<[A.Chunk<A>, O.Option<S>]>
-): Stream<unknown, never, A> {
+): C.UIO<A> {
   const loop = (
     s: S
   ): CH.Channel<unknown, unknown, unknown, unknown, never, A.Chunk<A>, any> => {
@@ -6385,7 +6380,7 @@ export function range(
   min: number,
   max: number,
   chunkSize = DEFAULT_CHUNK_SIZE
-): Stream<unknown, never, number> {
+): C.UIO<number> {
   const go = (
     current: number
   ): CH.Channel<unknown, unknown, unknown, unknown, never, A.Chunk<number>, any> => {
@@ -6407,7 +6402,7 @@ export function range(
 /**
  * Repeats the provided value infinitely.
  */
-export function repeat<A>(a: A): Stream<unknown, never, A> {
+export function repeat<A>(a: A): C.UIO<A> {
   return new Stream(CH.repeated(CH.write(A.single(a))))
 }
 
@@ -6483,15 +6478,12 @@ export function tick(interval: number): Stream<CL.HasClock, never, void> {
 /**
  * A stream that contains a single `Unit` value.
  */
-export const unit: Stream<unknown, never, void> = C.succeed(undefined)
+export const unit: C.UIO<void> = C.succeed(undefined)
 
 /**
  * Creates a stream by peeling off the "layers" of a value of type `S`
  */
-export function unfold<S, A>(
-  s: S,
-  f: (s: S) => O.Option<Tp.Tuple<[A, S]>>
-): Stream<unknown, never, A> {
+export function unfold<S, A>(s: S, f: (s: S) => O.Option<Tp.Tuple<[A, S]>>): C.UIO<A> {
   return unfoldChunk(s, (_) =>
     O.map_(f(_), ({ tuple: [a, s] }) => Tp.tuple(A.single(a), s))
   )
@@ -6503,7 +6495,7 @@ export function unfold<S, A>(
 export function unfoldChunk<S, A>(
   s: S,
   f: (s: S) => O.Option<Tp.Tuple<[A.Chunk<A>, S]>>
-): Stream<unknown, never, A> {
+): C.UIO<A> {
   const loop = (
     s: S
   ): CH.Channel<unknown, unknown, unknown, unknown, never, A.Chunk<A>, any> =>
@@ -6919,6 +6911,6 @@ export function execute<R, E, Z>(effect: T.Effect<R, E, Z>): Stream<R, E, never>
 /**
  * Creates a stream from the specified values
  */
-export function from<A>(...values: A[]): Stream<unknown, never, A> {
+export function from<A>(...values: A[]): C.UIO<A> {
   return fromIterable(values)
 }
