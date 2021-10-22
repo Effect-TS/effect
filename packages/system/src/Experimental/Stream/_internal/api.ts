@@ -3,6 +3,7 @@ import * as CL from "../../../Clock"
 import * as A from "../../../Collections/Immutable/Chunk"
 import * as HashMap from "../../../Collections/Immutable/HashMap"
 import * as L from "../../../Collections/Immutable/List"
+import * as Mp from "../../../Collections/Immutable/Map"
 import * as Tp from "../../../Collections/Immutable/Tuple"
 import * as T from "../../../Effect"
 import * as E from "../../../Either"
@@ -26,6 +27,7 @@ import { AtomicReference } from "../../../Support/AtomicReference"
 import { RingBufferNew } from "../../../Support/RingBufferNew"
 import * as CH from "../Channel"
 import * as MD from "../Channel/_internal/mergeHelpers"
+import * as GB from "../GroupBy"
 import * as Pull from "../Pull"
 import * as SK from "../Sink"
 import * as Take from "../Take"
@@ -3681,7 +3683,38 @@ export function mapEffectParUnordered<R1, E1, A, A1>(
   return <R, E>(self: Stream<R, E, A>) => mapEffectParUnordered_(self, n, f)
 }
 
-// TODO: mapEffPartitioned -> groupBy
+/**
+ * Maps over elements of the stream with the specified effectful function,
+ * partitioned by `p` executing invocations of `f` concurrently. The number
+ * of concurrent invocations of `f` is determined by the number of different
+ * outputs of type `K`. Up to `buffer` elements may be buffered per partition.
+ * Transformed elements may be reordered but the order within a partition is maintained.
+ */
+export function mapEffectPartitioned_<R, R1, E, E1, A, A1, K>(
+  self: Stream<R, E, A>,
+  keyBy: (a: A) => K,
+  f: (a: A) => T.Effect<R1, E1, A1>,
+  buffer = 16
+): Stream<R & R1, E | E1, A1> {
+  return mergeGroupBy_(groupByKey_(self, keyBy, buffer), (_, s) => C.mapEffect_(s, f))
+}
+
+/**
+ * Maps over elements of the stream with the specified effectful function,
+ * partitioned by `p` executing invocations of `f` concurrently. The number
+ * of concurrent invocations of `f` is determined by the number of different
+ * outputs of type `K`. Up to `buffer` elements may be buffered per partition.
+ * Transformed elements may be reordered but the order within a partition is maintained.
+ *
+ * @ets_data_first mapEffectPartitioned_
+ */
+export function mapEffectPartitioned<R1, E1, A, A1, K>(
+  keyBy: (a: A) => K,
+  f: (a: A) => T.Effect<R1, E1, A1>,
+  buffer = 16
+) {
+  return <R, E>(self: Stream<R, E, A>) => mapEffectPartitioned_(self, keyBy, f, buffer)
+}
 
 export type TerminationStrategy = "Left" | "Right" | "Both" | "Either"
 
@@ -6166,7 +6199,9 @@ export function accessEffect<R, R1, E, A>(
 /**
  * Accesses the environment of the stream in the context of a stream.
  */
-export function accessStream<R, E, A>(f: (r: R) => Stream<R, E, A>): Stream<R, E, A> {
+export function accessStream<R, R1, E, A>(
+  f: (r: R) => Stream<R1, E, A>
+): Stream<R & R1, E, A> {
   return C.chain_(environment<R>(), f)
 }
 
@@ -6759,10 +6794,6 @@ export function groupedWithin(chunkSize: number, within: number) {
   return <R, E, A>(self: Stream<R, E, A>) => groupedWithin_(self, chunkSize, within)
 }
 
-// TODO: groupBy -> Missing ensuringFirst
-
-// TODO: groupByKey -> Missing groupBy
-
 export type Canceler<R> = T.RIO<R, unknown>
 
 interface AsyncEmitOps<R, E, A, B> {
@@ -7121,4 +7152,147 @@ export function execute<R, E, Z>(effect: T.Effect<R, E, Z>): Stream<R, E, never>
  */
 export function from<A>(...values: A[]): C.UIO<A> {
   return fromIterable(values)
+}
+
+export function mergeGroupBy_<R, R1, E, E1, K, V, A>(
+  self: GB.GroupBy<R, E, K, V>,
+  f: (k: K, stream: C.IO<E, V>) => C.Stream<R1, E1, A>
+): C.Stream<R & R1, E | E1, A> {
+  return chainPar_(self.grouped, Number.MAX_SAFE_INTEGER, ({ tuple: [k, q] }) =>
+    f(k, flattenExitOption(fromQueueWithShutdown_(q)))
+  )
+}
+
+/**
+ * @ets_data_first mergeGroupBy_
+ */
+export function mergeGroupBy<R1, E, E1, K, V, A>(
+  f: (k: K, stream: C.IO<E, V>) => C.Stream<R1, E1, A>
+) {
+  return <R>(self: GB.GroupBy<R, E, K, V>) => mergeGroupBy_(self, f)
+}
+
+type UniqueKey = number
+
+/**
+ * More powerful version of `Stream.groupByKey`
+ */
+export function groupBy_<R, R1, E, E1, A, K, V>(
+  self: C.Stream<R, E, A>,
+  f: (a: A) => T.Effect<R1, E1, Tp.Tuple<[K, V]>>,
+  buffer = 16
+): GB.GroupBy<R & R1, E | E1, K, V> {
+  const qstream = C.unwrapManaged(
+    pipe(
+      M.do,
+      M.bind("decider", () =>
+        T.toManaged(P.make<never, (k: K, v: V) => T.UIO<Predicate<UniqueKey>>>())
+      ),
+      M.bind("out", () =>
+        T.toManagedRelease_(
+          Q.makeBounded<
+            Ex.Exit<
+              O.Option<E | E1>,
+              Tp.Tuple<[K, Q.Dequeue<Ex.Exit<O.Option<E | E1>, V>>]>
+            >
+          >(buffer),
+          Q.shutdown
+        )
+      ),
+      M.bind("ref", () => T.toManaged(Ref.makeRef<Mp.Map<K, UniqueKey>>(Mp.empty))),
+      M.bind("add", ({ decider, out }) =>
+        pipe(
+          self,
+          C.mapEffect(f),
+          distributedWithDynamic(
+            buffer,
+            ({ tuple: [k, v] }) => T.chain_(P.await(decider), (_) => _(k, v)),
+            (_) => Q.offer_(out, _)
+          )
+        )
+      ),
+      M.tap(({ add, decider, out, ref }) =>
+        T.toManaged(
+          P.succeed_(decider, (k, _) =>
+            pipe(
+              ref.get,
+              T.map((_) => Mp.lookup_(_, k)),
+              T.chain(
+                O.fold(
+                  () =>
+                    T.chain_(add, ({ tuple: [idx, q] }) => {
+                      return T.as_(
+                        T.zipRight_(
+                          Ref.update_(ref, Mp.insert(k, idx)),
+                          Q.offer_(
+                            out,
+                            Ex.succeed(Tp.tuple(k, Q.map_(q, Ex.map(Tp.get(1)))))
+                          )
+                        ),
+                        (_) => _ === idx
+                      )
+                    }),
+                  (idx) => T.succeed((_) => _ === idx)
+                )
+              )
+            )
+          )
+        )
+      ),
+      M.map(({ out }) => flattenExitOption(fromQueueWithShutdown_(out)))
+    )
+  )
+
+  return new GB.GroupBy(qstream, buffer)
+}
+
+/**
+ * More powerful version of `Stream.groupByKey`
+ *
+ * @ets_data_first groupBy_
+ */
+export function groupBy<R1, E1, A, K, V>(
+  f: (a: A) => T.Effect<R1, E1, Tp.Tuple<[K, V]>>,
+  buffer = 16
+) {
+  return <R, E>(self: C.Stream<R, E, A>) => groupBy_(self, f, buffer)
+}
+
+/**
+ * Partition a stream using a function and process each stream individually.
+ * This returns a data structure that can be used
+ * to further filter down which groups shall be processed.
+ *
+ * After calling apply on the GroupBy object, the remaining groups will be processed
+ * in parallel and the resulting streams merged in a nondeterministic fashion.
+ *
+ * Up to `buffer` elements may be buffered in any group stream before the producer
+ * is backpressured. Take care to consume from all streams in order
+ * to prevent deadlocks.
+
+ */
+export function groupByKey_<R, E, A, K>(
+  self: C.Stream<R, E, A>,
+  f: (a: A) => K,
+  buffer = 16
+): GB.GroupBy<R, E, K, A> {
+  return groupBy_(self, (a) => T.succeed(Tp.tuple(f(a), a)), buffer)
+}
+
+/**
+ * Partition a stream using a function and process each stream individually.
+ * This returns a data structure that can be used
+ * to further filter down which groups shall be processed.
+ *
+ * After calling apply on the GroupBy object, the remaining groups will be processed
+ * in parallel and the resulting streams merged in a nondeterministic fashion.
+ *
+ * Up to `buffer` elements may be buffered in any group stream before the producer
+ * is backpressured. Take care to consume from all streams in order
+ * to prevent deadlocks.
+ *
+ * @ets_data_first groupByKey_
+ */
+export function groupByKey<A, K>(f: (a: A) => K, buffer = 16) {
+  return <R, E>(self: C.Stream<R, E, A>) => groupByKey_(self, f, buffer)
 }

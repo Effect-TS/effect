@@ -64,6 +64,7 @@
       "Experimental/Stream/Sink",
       "Experimental/Stream/Take",
       "Experimental/Stream/Pull",
+      "Experimental/Stream/GroupBy",
       "Experimental/Stream/SubscriptionRef",
       "Fiber",
       "FiberRef",

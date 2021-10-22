@@ -333,8 +333,6 @@ describe("Stream", () => {
     expect(res0).toEqual(res1)
   })
 
-  jest.setTimeout(10000)
-
   it("zipWithLatest & Debounce", async () => {
     const withDebounce = await pipe(
       S.zipWithLatest_(
