@@ -21,6 +21,10 @@ export abstract class Async<R, E, A> {
   readonly [_R]!: (_: R) => void
 }
 
+export interface UIO<A> extends Async<unknown, never, A> {}
+export interface RIO<R, A> extends Async<R, never, A> {}
+export interface IO<E, A> extends Async<unknown, E, A> {}
+
 /**
  * @ets_optimize identity
  */
