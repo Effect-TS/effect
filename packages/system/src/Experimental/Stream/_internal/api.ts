@@ -3,6 +3,7 @@ import * as CL from "../../../Clock"
 import * as A from "../../../Collections/Immutable/Chunk"
 import * as HashMap from "../../../Collections/Immutable/HashMap"
 import * as L from "../../../Collections/Immutable/List"
+import * as Mp from "../../../Collections/Immutable/Map"
 import * as Tp from "../../../Collections/Immutable/Tuple"
 import * as T from "../../../Effect"
 import * as E from "../../../Either"
@@ -26,6 +27,7 @@ import { AtomicReference } from "../../../Support/AtomicReference"
 import { RingBufferNew } from "../../../Support/RingBufferNew"
 import * as CH from "../Channel"
 import * as MD from "../Channel/_internal/mergeHelpers"
+import * as GB from "../GroupBy"
 import * as Pull from "../Pull"
 import * as SK from "../Sink"
 import * as Take from "../Take"
@@ -356,7 +358,32 @@ export function bimap<E, E1, A, A1>(f: (e: E) => E1, g: (a: A) => A1) {
   return <R>(self: Stream<R, E, A>) => bimap_(self, f, g)
 }
 
-// TODO: broadcast -> Missing fromQueueWithShutdown
+/**
+ * Fan out the stream, producing a list of streams that have the same
+ * elements as this stream. The driver stream will only ever advance the
+ * `maximumLag` chunks before the slowest downstream stream.
+ */
+export function broadcast_<R, E, A>(
+  self: Stream<R, E, A>,
+  n: number,
+  maximumLag: number
+): M.RIO<R, A.Chunk<C.IO<E, A>>> {
+  return M.map_(
+    broadcastedQueues_(self, n, maximumLag),
+    A.map((_) => flattenTake(fromQueueWithShutdown_(_)))
+  )
+}
+
+/**
+ * Fan out the stream, producing a list of streams that have the same
+ * elements as this stream. The driver stream will only ever advance the
+ * `maximumLag` chunks before the slowest downstream stream.
+ *
+ * @ets_data_first broadcast_
+ */
+export function broadcast(n: number, maximumLag: number) {
+  return <R, E, A>(self: Stream<R, E, A>) => broadcast_(self, n, maximumLag)
+}
 
 /**
  * Fan out the stream, producing a dynamic number of streams that have the same elements as this stream.
@@ -366,7 +393,7 @@ export function bimap<E, E1, A, A1>(f: (e: E) => E1, g: (a: A) => A1) {
 export function broadcastDynamic_<R, E, A>(
   self: Stream<R, E, A>,
   maximumLag: number
-): M.Managed<R, never, C.Stream<unknown, E, A>> {
+): M.RIO<R, C.IO<E, A>> {
   return M.map_(broadcastedQueuesDynamic_(self, maximumLag), (_) =>
     pipe(C.managed(_), C.chain(fromQueue()), flattenTake)
   )
@@ -393,7 +420,7 @@ export function broadcastedQueues_<R, E, A>(
   self: Stream<R, E, A>,
   n: number,
   maximumLag: number
-): M.Managed<R, never, A.Chunk<H.HubDequeue<unknown, never, Take.Take<E, A>>>> {
+): M.RIO<R, A.Chunk<H.HubDequeue<unknown, never, Take.Take<E, A>>>> {
   return pipe(
     M.do,
     M.bind("hub", () => T.toManaged(H.makeBounded<Take.Take<E, A>>(maximumLag))),
@@ -424,11 +451,7 @@ export function broadcastedQueues(n: number, maximumLag: number) {
 export function broadcastedQueuesDynamic_<R, E, A>(
   self: Stream<R, E, A>,
   maximumLag: number
-): M.Managed<
-  R,
-  never,
-  M.Managed<unknown, never, H.HubDequeue<unknown, never, Take.Take<E, A>>>
-> {
+): M.RIO<R, M.UIO<H.HubDequeue<unknown, never, Take.Take<E, A>>>> {
   return M.map_(toHub_(self, maximumLag), (_) => H.subscribe(_))
 }
 
@@ -537,11 +560,7 @@ export function bufferChunks(capacity: number) {
 }
 
 export function bufferSignal<R1, E1, A1>(
-  managed: M.Managed<
-    unknown,
-    never,
-    Q.Queue<Tp.Tuple<[Take.Take<E1, A1>, P.Promise<never, void>]>>
-  >,
+  managed: M.UIO<Q.Queue<Tp.Tuple<[Take.Take<E1, A1>, P.Promise<never, void>]>>>,
   channel: CH.Channel<R1, unknown, unknown, unknown, E1, A.Chunk<A1>, any>
 ): CH.Channel<R1, unknown, unknown, unknown, E1, A.Chunk<A1>, void> {
   const producer = (
@@ -804,7 +823,7 @@ export function catchSomeCause_<R, R1, E, E1, A, A1>(
 ): Stream<R & R1, E | E1, A | A1> {
   return catchAllCause_(
     self,
-    (e): C.Stream<R1, E | E1, A1> =>
+    (e): Stream<R1, E | E1, A1> =>
       O.fold_(
         pf(e),
         () => failCause(e),
@@ -992,7 +1011,7 @@ export function chunks<R, E, A>(self: Stream<R, E, A>): Stream<R, E, A.Chunk<A>>
 export function collect_<R, E, A, B>(
   self: Stream<R, E, A>,
   f: (a: A) => O.Option<B>
-): C.Stream<R, E, B> {
+): Stream<R, E, B> {
   return mapChunks_(self, A.filterMap(f))
 }
 
@@ -1510,16 +1529,16 @@ export function defaultIfEmpty_<R, E, A>(
  */
 export function defaultIfEmpty<R, R1, E, E1, A, A1>(
   stream: Stream<R1, E1, A1>
-): (self: Stream<R, E, A>) => C.Stream<R & R1, E | E1, A | A1>
+): (self: Stream<R, E, A>) => Stream<R & R1, E | E1, A | A1>
 export function defaultIfEmpty<R, E, A, A1>(
   chunk: A.Chunk<A1>
-): (self: Stream<R, E, A>) => C.Stream<R, E, A | A1>
+): (self: Stream<R, E, A>) => Stream<R, E, A | A1>
 export function defaultIfEmpty<R, E, A, A1>(
   a: A1
-): (self: Stream<R, E, A>) => C.Stream<R, E, A | A1>
+): (self: Stream<R, E, A>) => Stream<R, E, A | A1>
 export function defaultIfEmpty<R, E, A>(
   emptyValue: unknown
-): (self: Stream<R, E, A>) => C.Stream<R, E, unknown> {
+): (self: Stream<R, E, A>) => Stream<R, E, unknown> {
   return (self: Stream<R, E, A>) => defaultIfEmpty_(self, emptyValue)
 }
 
@@ -1533,7 +1552,7 @@ export function distributedWith_<R, E, A>(
   n: number,
   maximumLag: number,
   decide: (a: A) => T.UIO<Predicate<number>>
-): M.Managed<R, never, L.List<Q.Dequeue<Ex.Exit<O.Option<E>, A>>>> {
+): M.RIO<R, L.List<Q.Dequeue<Ex.Exit<O.Option<E>, A>>>> {
   return M.chain_(
     T.toManaged(P.make<never, (a: A) => T.UIO<Predicate<number>>>()),
     (prom) => {
@@ -1616,7 +1635,7 @@ export function distributedWithDynamic_<R, E, A, A1>(
   maximumLag: number,
   decide: (a: A) => T.UIO<Predicate<number>>,
   done: (ex: Ex.Exit<O.Option<E>, never>) => T.UIO<A1>
-): M.Managed<R, never, T.UIO<Tp.Tuple<[number, Q.Dequeue<Ex.Exit<O.Option<E>, A>>]>>> {
+): M.RIO<R, T.UIO<Tp.Tuple<[number, Q.Dequeue<Ex.Exit<O.Option<E>, A>>]>>> {
   return pipe(
     M.do,
     M.bind("queuesRef", () =>
@@ -1930,9 +1949,7 @@ export function dropUntil<A>(f: Predicate<A>) {
  *
  * @note the stream will end as soon as the first error occurs.
  */
-export function either<R, E, A>(
-  self: Stream<R, E, A>
-): Stream<R, never, E.Either<E, A>> {
+export function either<R, E, A>(self: Stream<R, E, A>): C.RIO<R, E.Either<E, A>> {
   return catchAll_(C.map_(self, E.right), (e) => C.succeed(E.left(e)))
 }
 
@@ -1954,8 +1971,6 @@ export function ensuring_<R, R1, E, A, Z>(
 export function ensuring<R1, Z>(fin: T.Effect<R1, never, Z>) {
   return <R, E, A>(self: Stream<R, E, A>) => ensuring_(self, fin)
 }
-
-// TODO: EnsuringFirst -> Not implemented
 
 /**
  * Filters the elements emitted by this stream using the provided function.
@@ -1982,13 +1997,13 @@ export function filter_<R, E, A>(
  */
 export function filter<A, B extends A>(
   f: Refinement<A, B>
-): <R, E>(self: C.Stream<R, E, A>) => C.Stream<R, E, B>
+): <R, E>(self: Stream<R, E, A>) => Stream<R, E, B>
 export function filter<A>(
   f: Predicate<A>
-): <R, E>(self: C.Stream<R, E, A>) => C.Stream<R, E, A>
+): <R, E>(self: Stream<R, E, A>) => Stream<R, E, A>
 export function filter<A>(
   f: Predicate<A>
-): <R, E>(self: C.Stream<R, E, A>) => C.Stream<R, E, A> {
+): <R, E>(self: Stream<R, E, A>) => Stream<R, E, A> {
   return <R, E>(self: Stream<R, E, A>) => filter_(self, f)
 }
 
@@ -2476,13 +2491,13 @@ export function filterNot_<R, E, A>(
  */
 export function filterNot<A, B extends A>(
   pred: Refinement<A, B>
-): <R, E>(self: C.Stream<R, E, A>) => C.Stream<R, E, B>
+): <R, E>(self: Stream<R, E, A>) => Stream<R, E, B>
 export function filterNot<A>(
   pred: Predicate<A>
-): <R, E>(self: C.Stream<R, E, A>) => C.Stream<R, E, A>
+): <R, E>(self: Stream<R, E, A>) => Stream<R, E, A>
 export function filterNot<A>(
   pred: Predicate<A>
-): <R, E>(self: C.Stream<R, E, A>) => C.Stream<R, E, A> {
+): <R, E>(self: Stream<R, E, A>) => Stream<R, E, A> {
   return <R, E>(self: Stream<R, E, A>) => filterNot_(self, pred)
 }
 
@@ -3351,8 +3366,6 @@ export function runIntoElementsManaged<R1, E, A>(
   return <R>(self: Stream<R, E, A>) => runIntoElementsManaged_(self, queue)
 }
 
-// TODO: lock -> requires `Executor` support in Effect?
-
 /**
  * Statefully maps over the elements of this stream to produce new elements.
  */
@@ -3670,7 +3683,38 @@ export function mapEffectParUnordered<R1, E1, A, A1>(
   return <R, E>(self: Stream<R, E, A>) => mapEffectParUnordered_(self, n, f)
 }
 
-// TODO: mapEffPartitioned -> groupBy
+/**
+ * Maps over elements of the stream with the specified effectful function,
+ * partitioned by `p` executing invocations of `f` concurrently. The number
+ * of concurrent invocations of `f` is determined by the number of different
+ * outputs of type `K`. Up to `buffer` elements may be buffered per partition.
+ * Transformed elements may be reordered but the order within a partition is maintained.
+ */
+export function mapEffectPartitioned_<R, R1, E, E1, A, A1, K>(
+  self: Stream<R, E, A>,
+  keyBy: (a: A) => K,
+  f: (a: A) => T.Effect<R1, E1, A1>,
+  buffer = 16
+): Stream<R & R1, E | E1, A1> {
+  return mergeGroupBy_(groupByKey_(self, keyBy, buffer), (_, s) => C.mapEffect_(s, f))
+}
+
+/**
+ * Maps over elements of the stream with the specified effectful function,
+ * partitioned by `p` executing invocations of `f` concurrently. The number
+ * of concurrent invocations of `f` is determined by the number of different
+ * outputs of type `K`. Up to `buffer` elements may be buffered per partition.
+ * Transformed elements may be reordered but the order within a partition is maintained.
+ *
+ * @ets_data_first mapEffectPartitioned_
+ */
+export function mapEffectPartitioned<R1, E1, A, A1, K>(
+  keyBy: (a: A) => K,
+  f: (a: A) => T.Effect<R1, E1, A1>,
+  buffer = 16
+) {
+  return <R, E>(self: Stream<R, E, A>) => mapEffectPartitioned_(self, keyBy, f, buffer)
+}
 
 export type TerminationStrategy = "Left" | "Right" | "Both" | "Either"
 
@@ -3964,9 +4008,85 @@ export function orElseSucceed<A1>(a1: A1) {
   return <R, E, A>(self: Stream<R, E, A>) => orElseSucceed_(self, a1)
 }
 
-// TODO: partition -> Missing paritionEither
+/**
+ * Partition a stream using a predicate. The first stream will contain all element evaluated to true
+ * and the second one will contain all element evaluated to false.
+ * The faster stream may advance by up to buffer elements further than the slower one.
+ */
+export function partition_<R, E, A>(
+  self: Stream<R, E, A>,
+  p: Predicate<A>,
+  buffer = 16
+): M.Managed<R, E, Tp.Tuple<[C.IO<E, A>, C.IO<E, A>]>> {
+  return partitionEither_(
+    self,
+    (a) => (p(a) ? T.succeed(E.left(a)) : T.succeed(E.right(a))),
+    buffer
+  )
+}
 
-// TODO: partitionEither -> Missing fromQueueWithShutdown -> missing ensuringFirst
+/**
+ * Partition a stream using a predicate. The first stream will contain all element evaluated to true
+ * and the second one will contain all element evaluated to false.
+ * The faster stream may advance by up to buffer elements further than the slower one.
+ *
+ * @ets_data_first partition_
+ */
+export function partition<A>(p: Predicate<A>, buffer = 16) {
+  return <R, E>(self: Stream<R, E, A>) => partition_(self, p, buffer)
+}
+
+/**
+ * Split a stream by a predicate. The faster stream may advance by up to buffer elements further than the slower one.
+ */
+export function partitionEither_<R, R1, E, E1, A, A1, A2>(
+  self: Stream<R, E, A>,
+  p: (a: A) => T.Effect<R1, E1, E.Either<A1, A2>>,
+  buffer = 16
+): M.Managed<R & R1, E | E1, Tp.Tuple<[C.IO<E | E1, A1>, C.IO<E | E1, A2>]>> {
+  return pipe(
+    self,
+    C.mapEffect(p),
+    distributedWith(
+      2,
+      buffer,
+      E.fold(
+        (_) => T.succeed((_) => _ === 0),
+        (_) => T.succeed((_) => _ === 1)
+      )
+    ),
+    M.chain((dequeues) => {
+      if (L.size(dequeues) === 2) {
+        return M.succeed(
+          Tp.tuple(
+            collectLeft(
+              flattenExitOption(fromQueueWithShutdown_(L.unsafeFirst(dequeues)!))
+            ),
+            collectRight(
+              flattenExitOption(fromQueueWithShutdown_(L.unsafeLast(dequeues)!))
+            )
+          )
+        )
+      }
+
+      return M.dieMessage(
+        `partitionEither: expected two streams but got ${L.size(dequeues)}`
+      )
+    })
+  )
+}
+
+/**
+ * Split a stream by a predicate. The faster stream may advance by up to buffer elements further than the slower one.
+ *
+ * @ets_data_first partitionEither_
+ */
+export function partitionEither<R1, E1, A, A1, A2>(
+  p: (a: A) => T.Effect<R1, E1, E.Either<A1, A2>>,
+  buffer = 16
+) {
+  return <R, E>(self: Stream<R, E, A>) => partitionEither_(self, p, buffer)
+}
 
 const SignalTypeId = Symbol()
 
@@ -4003,7 +4123,7 @@ type Signal<A, E> = Emit<A> | Halt<E> | End
 export function peel_<R, R1, E extends E1, E1, A extends A1, A1, Z>(
   self: Stream<R, E, A>,
   sink: SK.Sink<R1, E1, A1, E1, A1, Z>
-): M.Managed<R & R1, E | E1, Tp.Tuple<[Z, C.Stream<R & R1, E | E1, A | A1>]>> {
+): M.Managed<R & R1, E | E1, Tp.Tuple<[Z, Stream<R & R1, E | E1, A | A1>]>> {
   return pipe(
     M.do,
     M.bind("p", () => T.toManaged(P.make<E | E1, Z>())),
@@ -4093,10 +4213,7 @@ export function peel<R1, E extends E1, E1, A extends A1, A1, Z>(
  * Provides the stream with its required environment, which eliminates
  * its dependency on `R`.
  */
-export function provideAll_<R, E, A>(
-  self: Stream<R, E, A>,
-  r: R
-): Stream<unknown, E, A> {
+export function provideAll_<R, E, A>(self: Stream<R, E, A>, r: R): C.IO<E, A> {
   return new Stream(CH.provideAll_(self.channel, r))
 }
 
@@ -5474,7 +5591,7 @@ export function timeoutTo<R1, E1, A1>(d: number, that: Stream<R1, E1, A1>) {
 export function toHub_<R, E, A>(
   self: Stream<R, E, A>,
   capacity: number
-): M.Managed<R, never, H.Hub<Take.Take<E, A>>> {
+): M.RIO<R, H.Hub<Take.Take<E, A>>> {
   return pipe(
     M.do,
     M.bind("hub", () =>
@@ -5504,7 +5621,7 @@ export function toHub(capacity: number) {
 export function toQueue_<R, E, A>(
   self: Stream<R, E, A>,
   capacity = 2
-): M.Managed<R, never, Q.Queue<Take.Take<E, A>>> {
+): M.RIO<R, Q.Queue<Take.Take<E, A>>> {
   return pipe(
     M.do,
     M.bind("queue", () =>
@@ -5532,7 +5649,7 @@ export function toQueue(capacity = 2) {
 export function toQueueDropping_<R, E, A>(
   self: Stream<R, E, A>,
   capacity = 2
-): M.Managed<R, never, Q.Queue<Take.Take<E, A>>> {
+): M.RIO<R, Q.Queue<Take.Take<E, A>>> {
   return pipe(
     M.do,
     M.bind("queue", () =>
@@ -5560,7 +5677,7 @@ export function toQueueDropping(capacity = 2) {
 export function toQueueOfElements_<R, E, A>(
   self: Stream<R, E, A>,
   capacity = 2
-): M.Managed<R, never, Q.Queue<Ex.Exit<O.Option<E>, A>>> {
+): M.RIO<R, Q.Queue<Ex.Exit<O.Option<E>, A>>> {
   return pipe(
     M.do,
     M.bind("queue", () =>
@@ -5588,7 +5705,7 @@ export function toQueueOfElements(capacity = 2) {
 export function toQueueSliding_<R, E, A>(
   self: Stream<R, E, A>,
   capacity = 2
-): M.Managed<R, never, Q.Queue<Take.Take<E, A>>> {
+): M.RIO<R, Q.Queue<Take.Take<E, A>>> {
   return pipe(
     M.do,
     M.bind("queue", () =>
@@ -5708,7 +5825,7 @@ export function unfoldEffect<R, E, A, S>(
  */
 export function toQueueUnbounded<R, E, A>(
   self: Stream<R, E, A>
-): M.Managed<R, never, Q.Queue<Take.Take<E, A>>> {
+): M.RIO<R, Q.Queue<Take.Take<E, A>>> {
   return pipe(
     M.do,
     M.bind("queue", () =>
@@ -5863,12 +5980,12 @@ export function fromHub(maxChunkSize = DEFAULT_CHUNK_SIZE) {
 /**
  * The stream that always fails with `cause`.
  */
-export function failCause<E>(cause: CS.Cause<E>): Stream<unknown, E, never> {
+export function failCause<E>(cause: CS.Cause<E>): C.IO<E, never> {
   return fromEffect(T.halt(cause))
 }
 
 export function fromPull<R, E, A>(
-  io: M.Managed<R, never, T.Effect<R, O.Option<E>, A.Chunk<A>>>
+  io: M.RIO<R, T.Effect<R, O.Option<E>, A.Chunk<A>>>
 ): Stream<R, E, A> {
   return C.unwrapManaged(M.map_(io, (pull) => repeatEffectChunkOption(pull)))
 }
@@ -6066,7 +6183,7 @@ export function zipWithPreviousAndNext<R, E, A>(
 /**
  * Accesses the environment of the stream.
  */
-export function access<R, A>(f: (r: R) => A): Stream<R, never, A> {
+export function access<R, A>(f: (r: R) => A): C.RIO<R, A> {
   return C.map_(environment<R>(), f)
 }
 
@@ -6082,7 +6199,9 @@ export function accessEffect<R, R1, E, A>(
 /**
  * Accesses the environment of the stream in the context of a stream.
  */
-export function accessStream<R, E, A>(f: (r: R) => Stream<R, E, A>): Stream<R, E, A> {
+export function accessStream<R, R1, E, A>(
+  f: (r: R) => Stream<R1, E, A>
+): Stream<R & R1, E, A> {
   return C.chain_(environment<R>(), f)
 }
 
@@ -6140,21 +6259,21 @@ export function concatAll<R, E, O>(streams: A.Chunk<Stream<R, E, O>>): Stream<R,
 /**
  * The stream that dies with an exception described by `msg`.
  */
-export function dieMessage(msg: string): Stream<unknown, never, never> {
+export function dieMessage(msg: string): C.UIO<never> {
   return fromEffect(T.dieMessage(msg))
 }
 
 /**
  * The stream that ends with the `Exit` value `exit`.
  */
-export function done<E, A>(exit: Ex.Exit<E, A>): Stream<unknown, E, A> {
+export function done<E, A>(exit: Ex.Exit<E, A>): C.IO<E, A> {
   return fromEffect(T.done(exit))
 }
 
 /**
  * Accesses the whole environment of the stream.
  */
-export function environment<R>(): Stream<R, never, R> {
+export function environment<R>(): C.RIO<R, R> {
   return fromEffect(T.environment<R>())
 }
 
@@ -6174,13 +6293,33 @@ export function fromChunkHub<R, E, O>(
  */
 export function fromChunkHubManaged<R, E, O>(
   hub: H.XHub<never, R, unknown, E, never, A.Chunk<O>>
-): M.Managed<unknown, never, C.Stream<R, E, O>> {
+): M.UIO<Stream<R, E, O>> {
   return M.map_(H.subscribe(hub), (queue) => fromChunkQueue(queue))
 }
 
-// TODO: fromChunkHubWithShutdown -> missing ensuringFirst
+/**
+ * Creates a stream from a subscription to a hub.
+ *
+ * The hub will be shut down once the stream is closed.
+ */
+export function fromChunkHubWithShutdown<R, E, O>(
+  hub: H.XHub<never, R, unknown, E, never, A.Chunk<O>>
+): Stream<R, E, O> {
+  return ensuring_(fromChunkHub(hub), H.shutdown(hub))
+}
 
-// TODO: fromChunkHubManagedWithShutdown -> missing ensuringFirst
+/**
+ * Creates a stream from a subscription to a hub in the context of a managed
+ * effect. The managed effect describes subscribing to receive messages from
+ * the hub while the stream describes taking messages from the hub.
+ *
+ * The hub will be shut down once the stream is closed.
+ */
+export function fromChunkHubManagedWithShutdown<R, E, O>(
+  hub: H.XHub<never, R, unknown, E, never, A.Chunk<O>>
+): M.UIO<Stream<R, E, O>> {
+  return M.map_(fromChunkHubManaged(hub), ensuring(H.shutdown(hub)))
+}
 
 /**
  * Creates a stream from a queue of values
@@ -6205,19 +6344,26 @@ export function fromChunkQueue<R, E, O>(
   )
 }
 
-// TODO: fromChunkQueueWithShutdown -> Missing ensuringFirst
+/**
+ * Creates a stream from a queue of values. The queue will be shutdown once the stream is closed.
+ */
+export function fromChunkQueueWithShutdown<R, E, O>(
+  queue: Q.XQueue<never, R, unknown, E, never, A.Chunk<O>>
+): Stream<R, E, O> {
+  return ensuring_(fromChunkQueue(queue), Q.shutdown(queue))
+}
 
 /**
  * Creates a stream from an arbitrary number of chunks.
  */
-export function fromChunks<O>(...chunks: A.Chunk<O>[]): Stream<unknown, never, O> {
+export function fromChunks<O>(...chunks: A.Chunk<O>[]): C.UIO<O> {
   return C.chain_(fromIterable(chunks), (_) => C.fromChunk(_))
 }
 
 /**
  * Creates a stream from an iterable collection of values
  */
-export function fromIterable<O>(as: Iterable<O>): Stream<unknown, never, O> {
+export function fromIterable<O>(as: Iterable<O>): C.UIO<O> {
   return C.fromChunk(A.from(as))
 }
 
@@ -6230,13 +6376,105 @@ export function fromIterableEffect<R, E, O>(
   return mapConcat_(fromEffect(iterable), identity)
 }
 
-// TODO: fromHubManaged -> Missing fromQueueWithShutdown
+/**
+ * Creates a stream from a subscription to a hub in the context of a managed
+ * effect. The managed effect describes subscribing to receive messages from
+ * the hub while the stream describes taking messages from the hub.
+ */
+export function fromHubManaged_<R, E, A>(
+  hub: H.XHub<never, R, unknown, E, never, A>,
+  maxChunkSize = DEFAULT_CHUNK_SIZE
+): M.UIO<Stream<R, E, A>> {
+  return M.map_(H.subscribe(hub), fromQueueWithShutdown(maxChunkSize))
+}
 
-// TODO: fromHubWithShutdown -> Missing ensuringFirst
+/**
+ * Creates a stream from a subscription to a hub in the context of a managed
+ * effect. The managed effect describes subscribing to receive messages from
+ * the hub while the stream describes taking messages from the hub.
+ *
+ * @ets_data_first fromHubManaged_
+ */
+export function fromHubManaged(maxChunkSize = DEFAULT_CHUNK_SIZE) {
+  return <R, E, A>(hub: H.XHub<never, R, unknown, E, never, A>) =>
+    fromHubManaged_(hub, maxChunkSize)
+}
 
-// TODO: fromHubManagedWithShutdown -> Missing ensuringFirst
+/**
+ * Creates a stream from a subscription to a hub.
+ *
+ * The hub will be shut down once the stream is closed.
+ */
+export function fromHubWithShutdown_<R, E, A>(
+  hub: H.XHub<never, R, unknown, E, never, A>,
+  maxChunkSize = DEFAULT_CHUNK_SIZE
+): Stream<R, E, A> {
+  return ensuring_(fromHub_(hub, maxChunkSize), H.shutdown(hub))
+}
 
-// TODO: fromQueueWithShutdown -> Missing ensuringFirst
+/**
+ * Creates a stream from a subscription to a hub.
+ *
+ * The hub will be shut down once the stream is closed.
+ *
+ * @ets_data_first fromHubWithShutdown_
+ */
+export function fromHubWithShutdown(maxChunkSize = DEFAULT_CHUNK_SIZE) {
+  return <R, E, A>(hub: H.XHub<never, R, unknown, E, never, A>) =>
+    fromHubWithShutdown_(hub, maxChunkSize)
+}
+
+/**
+ * Creates a stream from a subscription to a hub in the context of a managed
+ * effect. The managed effect describes subscribing to receive messages from
+ * the hub while the stream describes taking messages from the hub.
+ *
+ * The hub will be shut down once the stream is closed.
+ */
+export function fromHubManagedWithShutdown_<R, E, A>(
+  hub: H.XHub<never, R, unknown, E, never, A>,
+  maxChunkSize = DEFAULT_CHUNK_SIZE
+): M.UIO<Stream<R, E, A>> {
+  return M.map_(fromHubManaged_(hub, maxChunkSize), ensuring(H.shutdown(hub)))
+}
+
+/**
+ * Creates a stream from a subscription to a hub in the context of a managed
+ * effect. The managed effect describes subscribing to receive messages from
+ * the hub while the stream describes taking messages from the hub.
+ *
+ * The hub will be shut down once the stream is closed.
+ *
+ * @ets_data_first fromHubManagedWithShutdown_
+ */
+export function fromHubManagedWithShutdown(maxChunkSize = DEFAULT_CHUNK_SIZE) {
+  return <R, E, A>(hub: H.XHub<never, R, unknown, E, never, A>) =>
+    fromHubManagedWithShutdown_(hub, maxChunkSize)
+}
+
+/**
+ * Creates a stream from a queue of values. The queue will be shutdown once the stream is closed.
+ *
+ * @param maxChunkSize Maximum number of queued elements to put in one chunk in the stream
+ */
+export function fromQueueWithShutdown_<R, E, O>(
+  queue: Q.XQueue<never, R, unknown, E, never, O>,
+  maxChunkSize = DEFAULT_CHUNK_SIZE
+): Stream<R, E, O> {
+  return ensuring_(fromQueue_(queue, maxChunkSize), Q.shutdown(queue))
+}
+
+/**
+ * Creates a stream from a queue of values. The queue will be shutdown once the stream is closed.
+ *
+ * @param maxChunkSize Maximum number of queued elements to put in one chunk in the stream
+ *
+ * @ets_data_first fromQueueWithShutdown_
+ */
+export function fromQueueWithShutdown<R, E, O>(maxChunkSize = DEFAULT_CHUNK_SIZE) {
+  return (queue: Q.XQueue<never, R, unknown, E, never, O>) =>
+    fromQueueWithShutdown_(queue, maxChunkSize)
+}
 
 /**
  * Creates a stream from a `Schedule` that does not require any further
@@ -6295,7 +6533,7 @@ export function mergeAllUnbounded(outputBuffer = 16) {
     mergeAll(Number.MAX_SAFE_INTEGER, outputBuffer)(...streams)
 }
 
-export const never: Stream<unknown, never, never> = fromEffect(T.never)
+export const never: C.UIO<never> = fromEffect(T.never)
 
 /**
  * Like `unfold`, but allows the emission of values to end one step further than
@@ -6305,7 +6543,7 @@ export const never: Stream<unknown, never, never> = fromEffect(T.never)
 export function paginate<A, S>(
   s: S,
   f: (s: S) => Tp.Tuple<[A, O.Option<S>]>
-): Stream<unknown, never, A> {
+): C.UIO<A> {
   return paginateChunk(s, (s) => {
     const {
       tuple: [a, b]
@@ -6323,7 +6561,7 @@ export function paginate<A, S>(
 export function paginateChunk<A, S>(
   s: S,
   f: (s: S) => Tp.Tuple<[A.Chunk<A>, O.Option<S>]>
-): Stream<unknown, never, A> {
+): C.UIO<A> {
   const loop = (
     s: S
   ): CH.Channel<unknown, unknown, unknown, unknown, never, A.Chunk<A>, any> => {
@@ -6385,7 +6623,7 @@ export function range(
   min: number,
   max: number,
   chunkSize = DEFAULT_CHUNK_SIZE
-): Stream<unknown, never, number> {
+): C.UIO<number> {
   const go = (
     current: number
   ): CH.Channel<unknown, unknown, unknown, unknown, never, A.Chunk<number>, any> => {
@@ -6407,7 +6645,7 @@ export function range(
 /**
  * Repeats the provided value infinitely.
  */
-export function repeat<A>(a: A): Stream<unknown, never, A> {
+export function repeat<A>(a: A): C.UIO<A> {
   return new Stream(CH.repeated(CH.write(A.single(a))))
 }
 
@@ -6483,15 +6721,12 @@ export function tick(interval: number): Stream<CL.HasClock, never, void> {
 /**
  * A stream that contains a single `Unit` value.
  */
-export const unit: Stream<unknown, never, void> = C.succeed(undefined)
+export const unit: C.UIO<void> = C.succeed(undefined)
 
 /**
  * Creates a stream by peeling off the "layers" of a value of type `S`
  */
-export function unfold<S, A>(
-  s: S,
-  f: (s: S) => O.Option<Tp.Tuple<[A, S]>>
-): Stream<unknown, never, A> {
+export function unfold<S, A>(s: S, f: (s: S) => O.Option<Tp.Tuple<[A, S]>>): C.UIO<A> {
   return unfoldChunk(s, (_) =>
     O.map_(f(_), ({ tuple: [a, s] }) => Tp.tuple(A.single(a), s))
   )
@@ -6503,7 +6738,7 @@ export function unfold<S, A>(
 export function unfoldChunk<S, A>(
   s: S,
   f: (s: S) => O.Option<Tp.Tuple<[A.Chunk<A>, S]>>
-): Stream<unknown, never, A> {
+): C.UIO<A> {
   const loop = (
     s: S
   ): CH.Channel<unknown, unknown, unknown, unknown, never, A.Chunk<A>, any> =>
@@ -6558,10 +6793,6 @@ export function groupedWithin_<R, E, A>(
 export function groupedWithin(chunkSize: number, within: number) {
   return <R, E, A>(self: Stream<R, E, A>) => groupedWithin_(self, chunkSize, within)
 }
-
-// TODO: groupBy -> Missing ensuringFirst
-
-// TODO: groupByKey -> Missing groupBy
 
 export type Canceler<R> = T.RIO<R, unknown>
 
@@ -6919,6 +7150,149 @@ export function execute<R, E, Z>(effect: T.Effect<R, E, Z>): Stream<R, E, never>
 /**
  * Creates a stream from the specified values
  */
-export function from<A>(...values: A[]): Stream<unknown, never, A> {
+export function from<A>(...values: A[]): C.UIO<A> {
   return fromIterable(values)
+}
+
+export function mergeGroupBy_<R, R1, E, E1, K, V, A>(
+  self: GB.GroupBy<R, E, K, V>,
+  f: (k: K, stream: C.IO<E, V>) => C.Stream<R1, E1, A>
+): C.Stream<R & R1, E | E1, A> {
+  return chainPar_(self.grouped, Number.MAX_SAFE_INTEGER, ({ tuple: [k, q] }) =>
+    f(k, flattenExitOption(fromQueueWithShutdown_(q)))
+  )
+}
+
+/**
+ * @ets_data_first mergeGroupBy_
+ */
+export function mergeGroupBy<R1, E, E1, K, V, A>(
+  f: (k: K, stream: C.IO<E, V>) => C.Stream<R1, E1, A>
+) {
+  return <R>(self: GB.GroupBy<R, E, K, V>) => mergeGroupBy_(self, f)
+}
+
+type UniqueKey = number
+
+/**
+ * More powerful version of `Stream.groupByKey`
+ */
+export function groupBy_<R, R1, E, E1, A, K, V>(
+  self: C.Stream<R, E, A>,
+  f: (a: A) => T.Effect<R1, E1, Tp.Tuple<[K, V]>>,
+  buffer = 16
+): GB.GroupBy<R & R1, E | E1, K, V> {
+  const qstream = C.unwrapManaged(
+    pipe(
+      M.do,
+      M.bind("decider", () =>
+        T.toManaged(P.make<never, (k: K, v: V) => T.UIO<Predicate<UniqueKey>>>())
+      ),
+      M.bind("out", () =>
+        T.toManagedRelease_(
+          Q.makeBounded<
+            Ex.Exit<
+              O.Option<E | E1>,
+              Tp.Tuple<[K, Q.Dequeue<Ex.Exit<O.Option<E | E1>, V>>]>
+            >
+          >(buffer),
+          Q.shutdown
+        )
+      ),
+      M.bind("ref", () => T.toManaged(Ref.makeRef<Mp.Map<K, UniqueKey>>(Mp.empty))),
+      M.bind("add", ({ decider, out }) =>
+        pipe(
+          self,
+          C.mapEffect(f),
+          distributedWithDynamic(
+            buffer,
+            ({ tuple: [k, v] }) => T.chain_(P.await(decider), (_) => _(k, v)),
+            (_) => Q.offer_(out, _)
+          )
+        )
+      ),
+      M.tap(({ add, decider, out, ref }) =>
+        T.toManaged(
+          P.succeed_(decider, (k, _) =>
+            pipe(
+              ref.get,
+              T.map((_) => Mp.lookup_(_, k)),
+              T.chain(
+                O.fold(
+                  () =>
+                    T.chain_(add, ({ tuple: [idx, q] }) => {
+                      return T.as_(
+                        T.zipRight_(
+                          Ref.update_(ref, Mp.insert(k, idx)),
+                          Q.offer_(
+                            out,
+                            Ex.succeed(Tp.tuple(k, Q.map_(q, Ex.map(Tp.get(1)))))
+                          )
+                        ),
+                        (_) => _ === idx
+                      )
+                    }),
+                  (idx) => T.succeed((_) => _ === idx)
+                )
+              )
+            )
+          )
+        )
+      ),
+      M.map(({ out }) => flattenExitOption(fromQueueWithShutdown_(out)))
+    )
+  )
+
+  return new GB.GroupBy(qstream, buffer)
+}
+
+/**
+ * More powerful version of `Stream.groupByKey`
+ *
+ * @ets_data_first groupBy_
+ */
+export function groupBy<R1, E1, A, K, V>(
+  f: (a: A) => T.Effect<R1, E1, Tp.Tuple<[K, V]>>,
+  buffer = 16
+) {
+  return <R, E>(self: C.Stream<R, E, A>) => groupBy_(self, f, buffer)
+}
+
+/**
+ * Partition a stream using a function and process each stream individually.
+ * This returns a data structure that can be used
+ * to further filter down which groups shall be processed.
+ *
+ * After calling apply on the GroupBy object, the remaining groups will be processed
+ * in parallel and the resulting streams merged in a nondeterministic fashion.
+ *
+ * Up to `buffer` elements may be buffered in any group stream before the producer
+ * is backpressured. Take care to consume from all streams in order
+ * to prevent deadlocks.
+
+ */
+export function groupByKey_<R, E, A, K>(
+  self: C.Stream<R, E, A>,
+  f: (a: A) => K,
+  buffer = 16
+): GB.GroupBy<R, E, K, A> {
+  return groupBy_(self, (a) => T.succeed(Tp.tuple(f(a), a)), buffer)
+}
+
+/**
+ * Partition a stream using a function and process each stream individually.
+ * This returns a data structure that can be used
+ * to further filter down which groups shall be processed.
+ *
+ * After calling apply on the GroupBy object, the remaining groups will be processed
+ * in parallel and the resulting streams merged in a nondeterministic fashion.
+ *
+ * Up to `buffer` elements may be buffered in any group stream before the producer
+ * is backpressured. Take care to consume from all streams in order
+ * to prevent deadlocks.
+ *
+ * @ets_data_first groupByKey_
+ */
+export function groupByKey<A, K>(f: (a: A) => K, buffer = 16) {
+  return <R, E>(self: C.Stream<R, E, A>) => groupByKey_(self, f, buffer)
 }

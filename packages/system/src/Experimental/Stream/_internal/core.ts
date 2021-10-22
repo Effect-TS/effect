@@ -54,6 +54,12 @@ export class Stream<R, E, A> {
   ) {}
 }
 
+export type IO<E, A> = Stream<unknown, E, A>
+
+export type RIO<R, A> = Stream<R, never, A>
+
+export type UIO<A> = Stream<unknown, never, A>
+
 /**
  * Empty stream
  */
@@ -229,28 +235,28 @@ export function combineChunks<R, R1, E, E1, A, A2, A3, S>(
 /**
  * Halt a stream with the specified exception
  */
-export function die(u: unknown): Stream<unknown, never, never> {
+export function die(u: unknown): UIO<never> {
   return new Stream(C.die(u))
 }
 
 /**
  * Halt a stream with the specified exception
  */
-export function dieWith(u: () => unknown): Stream<unknown, never, never> {
+export function dieWith(u: () => unknown): UIO<never> {
   return new Stream(C.dieWith(u))
 }
 
 /**
  * Halt a stream with the specified error
  */
-export function fail<E>(error: E): Stream<unknown, E, never> {
+export function fail<E>(error: E): IO<E, never> {
   return new Stream(C.fail(error))
 }
 
 /**
  * Halt a stream with the specified error
  */
-export function failWith<E>(error: () => E): Stream<unknown, E, never> {
+export function failWith<E>(error: () => E): IO<E, never> {
   return new Stream(C.failWith(error))
 }
 
@@ -267,7 +273,7 @@ export function forever<R, E, A>(self: Stream<R, E, A>): Stream<R, E, A> {
  * @param c a chunk of values
  * @return a finite stream of values
  */
-export function fromChunk<O>(c: Chunk.Chunk<O>): Stream<unknown, never, O> {
+export function fromChunk<O>(c: Chunk.Chunk<O>): UIO<O> {
   return new Stream(C.unwrap(T.succeedWith(() => C.write(c))))
 }
 
@@ -277,7 +283,7 @@ export function fromChunk<O>(c: Chunk.Chunk<O>): Stream<unknown, never, O> {
  * @param c a chunk of values
  * @return a finite stream of values
  */
-export function fromChunkWith<O>(c: () => Chunk.Chunk<O>): Stream<unknown, never, O> {
+export function fromChunkWith<O>(c: () => Chunk.Chunk<O>): UIO<O> {
   return new Stream(C.unwrap(T.succeedWith(() => C.writeWith(c))))
 }
 
@@ -480,14 +486,14 @@ export function runDrain<R, E, A>(self: Stream<R, E, A>): T.Effect<R, E, void> {
 /**
  * Creates a single-valued pure stream
  */
-export function succeed<O>(o: O): Stream<unknown, never, O> {
+export function succeed<O>(o: O): UIO<O> {
   return fromChunk(Chunk.single(o))
 }
 
 /**
  * Creates a single-valued pure stream
  */
-export function succeedWith<O>(o: () => O): Stream<unknown, never, O> {
+export function succeedWith<O>(o: () => O): UIO<O> {
   return fromChunkWith(() => Chunk.single(o()))
 }
 
@@ -536,7 +542,7 @@ export function take(n: number): <R, E, A>(self: Stream<R, E, A>) => Stream<R, E
  */
 export function toPull<R, E, A>(
   self: Stream<R, E, A>
-): M.Managed<R, never, T.Effect<R, O.Option<E>, Chunk.Chunk<A>>> {
+): M.RIO<R, T.Effect<R, O.Option<E>, Chunk.Chunk<A>>> {
   return M.map_(C.toPull(self.channel), (pull) =>
     T.mapError_(pull, (e) => (e._tag === "Left" ? O.some(e.left) : O.none))
   )

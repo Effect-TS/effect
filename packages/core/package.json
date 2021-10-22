@@ -86,6 +86,7 @@
       "Effect/Experimental",
       "Effect/Experimental/Stream",
       "Effect/Experimental/Stream/Channel",
+      "Effect/Experimental/Stream/GroupBy",
       "Effect/Experimental/Stream/Sink",
       "Effect/Experimental/Stream/Pull",
       "Effect/Experimental/Stream/Take",

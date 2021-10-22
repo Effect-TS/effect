@@ -153,7 +153,7 @@ describe("Stream", () => {
     expect(result).toEqual(Chunk.many(1, 2, 3, 4, 5))
   })
 
-  it.only("zipAllSortedByKey", async () => {
+  it("zipAllSortedByKey", async () => {
     const a = S.from(
       Tp.tuple(1, "one"),
       Tp.tuple(2, "two"),
@@ -187,5 +187,25 @@ describe("Stream", () => {
         )
       )
     ).toBeTruthy()
+  })
+
+  it("groupByKey", async () => {
+    const result = await pipe(
+      S.fromIterable(["hello", "world", "hi", "holla"]),
+      S.groupByKey((a) => a[0]!),
+      S.mergeGroupBy((k, s) =>
+        pipe(
+          s,
+          S.take(2),
+          S.map((_) => Tp.tuple(k, _))
+        )
+      ),
+      S.runCollect,
+      T.runPromise
+    )
+
+    expect(result).equals(
+      Chunk.many(Tp.tuple("h", "hello"), Tp.tuple("h", "hi"), Tp.tuple("w", "world"))
+    )
   })
 })
