@@ -10,7 +10,7 @@ import type { Fail } from "../FX/Fail"
 import type { Run } from "../FX/Run"
 import * as HKT from "../HKT"
 import type { Monad } from "../Monad"
-import { succeedF } from "./dsl"
+import { succeedF } from "./succeed"
 
 export function getValidationF<F extends HKT.URIS, C = HKT.Auto>(
   F: Monad<F, C> & Run<F, C> & Fail<F, C> & Applicative<F, C>

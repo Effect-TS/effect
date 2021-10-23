@@ -6,7 +6,7 @@ import { pipe } from "@effect-ts/system/Function"
 import type { Applicative } from "../Applicative"
 import * as HKT from "../HKT"
 import type { Monad } from "../Monad"
-import { chainF } from "./dsl"
+import { chainF } from "./chain"
 
 export function getApplicativeF<F extends HKT.URIS, C = HKT.Auto>(
   F: Monad<F, C>

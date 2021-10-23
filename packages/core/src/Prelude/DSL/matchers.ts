@@ -16,7 +16,7 @@ type KindFromObj<URI extends URIS, C, __> = Kind<
   Infer<URI, C, "A", __>
 >
 
-interface MatchFn<URI extends URIS, C, N extends string> {
+export interface MatchFn<URI extends URIS, C, N extends string> {
   <
     X extends { [tag in N]: string },
     K extends {
@@ -54,7 +54,7 @@ interface MatchFn<URI extends URIS, C, N extends string> {
   >
 }
 
-interface MatchInFn<URI extends URIS, C, N extends string> {
+export interface MatchInFn<URI extends URIS, C, N extends string> {
   <X extends { [tag in N]: string }>(): {
     <
       K extends {
@@ -92,7 +92,7 @@ interface MatchInFn<URI extends URIS, C, N extends string> {
   }
 }
 
-interface MatchMorphFn<
+export interface MatchMorphFn<
   URI extends URIS,
   C,
   N extends string,
