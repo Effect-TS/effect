@@ -2,7 +2,7 @@
 
 import "../Operator"
 
-export * from "@effect-ts/system/Option"
+export * from "./instances"
 export * from "./operations"
 export * from "./dsl"
 export { OptionURI } from "../Modules"
