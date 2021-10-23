@@ -1,7 +1,7 @@
 // ets_tracing: off
 
 import type { Either } from "../../../Either"
-import type { ArrayURI, ChunkURI } from "../../../Modules"
+import type { ChunkURI } from "../../../Modules"
 import * as O from "../../../Option"
 import type { URI } from "../../../Prelude"
 import { getApplicativeF } from "../../../Prelude"
@@ -52,7 +52,7 @@ export const ForEachWithIndex = P.instance<P.ForEachWithIndex<[URI<ChunkURI>]>>(
   forEachWithIndexF: Chunk.forEachWithIndexF
 })
 
-export const Wiltable = P.instance<P.Wiltable<[URI<ArrayURI>]>>({
+export const Wiltable = P.instance<P.Wiltable<[URI<ChunkURI>]>>({
   separateF: Chunk.separateF
 })
 
