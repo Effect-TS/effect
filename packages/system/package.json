@@ -83,6 +83,7 @@
       "Option",
       "Ord",
       "Ordering",
+      "Pool",
       "Promise",
       "Queue",
       "Random",

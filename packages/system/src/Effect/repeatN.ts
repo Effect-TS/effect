@@ -1,7 +1,8 @@
 // ets_tracing: off
 
-import { chain_, succeed } from "./core"
+import { chain_, succeed, yieldNow } from "./core"
 import type { Effect } from "./effect"
+import { zipRight_ } from "./zips"
 
 /**
  * Repeats this effect the specified number of times.
@@ -20,5 +21,9 @@ export function repeatN_<R, E, A>(
   n: number,
   __trace?: string
 ): Effect<R, E, A> {
-  return chain_(self, (a) => (n <= 0 ? succeed(a) : repeatN_(self, n - 1)), __trace)
+  return chain_(
+    self,
+    (a) => (n <= 0 ? succeed(a) : zipRight_(yieldNow, repeatN_(self, n - 1))),
+    __trace
+  )
 }

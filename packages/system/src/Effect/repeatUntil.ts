@@ -1,7 +1,8 @@
 // ets_tracing: off
 
-import { chain_, succeed } from "./core"
+import { chain_, succeed, yieldNow } from "./core"
 import type { Effect } from "./effect"
+import { zipRight_ } from "./zips"
 
 /**
  * Repeats this effect until its error satisfies the specified effectful predicate.
@@ -26,7 +27,10 @@ export function repeatUntilM_<R, E, A, R1, E1>(
 ): Effect<R & R1, E | E1, A> {
   return chain_(
     self,
-    (a) => chain_(f(a), (b) => (b ? succeed(a) : repeatUntilM_(self, f))),
+    (a) =>
+      chain_(f(a), (b) =>
+        b ? succeed(a) : zipRight_(yieldNow, repeatUntilM_(self, f))
+      ),
     __trace
   )
 }

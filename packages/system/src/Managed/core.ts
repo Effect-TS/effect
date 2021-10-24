@@ -666,3 +666,21 @@ export function zipWithPar_<R, E, A, R2, E2, A2, B>(
     )
   })
 }
+
+/**
+ * Returns a `Reservation` that allows separately accessing effects
+ * describing resource acquisition and release.
+ */
+export function managedReserve<R, E, A>(
+  self: Managed<R, E, A>
+): T.UIO<Reservation<R, E, A>> {
+  return T.map_(makeReleaseMap.makeReleaseMap, (releaseMap) =>
+    Reservation.of(
+      T.map_(
+        T.provideSome_(self.effect, (_: R) => Tp.tuple(_, releaseMap)),
+        Tp.get(1)
+      ),
+      (_) => releaseAll.releaseAll(_, T.sequential)(releaseMap)
+    )
+  )
+}
