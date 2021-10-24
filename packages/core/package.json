@@ -98,6 +98,7 @@
       "Effect/Layer",
       "Effect/Managed",
       "Effect/Managed/ReleaseMap",
+      "Effect/Pool",
       "Effect/Promise",
       "Effect/Queue",
       "Effect/Random",

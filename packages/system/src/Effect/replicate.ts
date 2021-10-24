@@ -2,6 +2,7 @@
 
 import { range } from "../Collections/Immutable/Array"
 import type { Effect } from "./effect"
+import { collectAllUnit } from "./excl-forEach"
 
 /**
  * Replicates the given effect `n` times.
@@ -17,4 +18,23 @@ export function replicate(n: number, __trace?: string) {
  */
 export function replicate_<R, E, A>(self: Effect<R, E, A>, n: number) {
   return range(0, n).map(() => self)
+}
+
+/**
+ * Performs this effect the specified number of times, discarding the
+ * results.
+ */
+export function replicateMUnit_<R, E, A>(
+  self: Effect<R, E, A>,
+  n: number
+): Effect<R, E, void> {
+  return collectAllUnit(replicate_(self, n))
+}
+
+/**
+ * Performs this effect the specified number of times, discarding the
+ * results.
+ */
+export function replicateMUnit(n: number) {
+  return <R, E, A>(self: Effect<R, E, A>) => replicateMUnit_(self, n)
 }

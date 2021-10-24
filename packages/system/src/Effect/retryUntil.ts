@@ -5,6 +5,7 @@ import * as catchAll from "./catchAll"
 import * as core from "./core"
 import type { Effect } from "./effect"
 import * as fail from "./fail"
+import { zipRight_ } from "./zips"
 
 /**
  * Retries this effect until its error satisfies the specified effectful predicate.
@@ -34,7 +35,9 @@ export function retryUntilM_<R, E, A, R1, E1>(
         catchAll.catchAll((e) =>
           pipe(
             f(e),
-            core.chain((b) => (b ? fail.fail(e) : retryUntilM_(self, f)))
+            core.chain((b) =>
+              b ? fail.fail(e) : zipRight_(core.yieldNow, retryUntilM_(self, f))
+            )
           )
         )
       ),
