@@ -90,6 +90,7 @@
       "Effect/Experimental/Stream/Sink",
       "Effect/Experimental/Stream/Pull",
       "Effect/Experimental/Stream/Take",
+      "Effect/Experimental/Stream/SortedByKey",
       "Effect/Experimental/Stream/SubscriptionRef",
       "Effect/Fiber",
       "Effect/FiberRef",

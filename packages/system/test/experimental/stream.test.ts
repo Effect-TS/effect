@@ -3,6 +3,7 @@ import * as Tp from "../../src/Collections/Immutable/Tuple"
 import * as T from "../../src/Effect"
 import * as E from "../../src/Either"
 import * as S from "../../src/Experimental/Stream"
+import * as SBK from "../../src/Experimental/Stream/SortedByKey"
 import { pipe } from "../../src/Function"
 import * as Ord from "../../src/Ord"
 import * as ST from "../../src/Structural"
@@ -170,7 +171,7 @@ describe("Stream", () => {
     )
 
     const result = await pipe(
-      S.zipAllSortedByKey_(a, b, "<Unknown>", "<Inconnu>", Ord.number),
+      SBK.zipAllSortedByKey_(a, b, "<Unknown>", "<Inconnu>", Ord.number),
       S.runCollect,
       T.runPromise
     )

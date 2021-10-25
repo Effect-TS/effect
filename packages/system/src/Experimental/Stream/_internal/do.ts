@@ -3,30 +3,33 @@
 import * as T from "../../../Effect"
 import { pipe } from "../../../Function"
 import { fromEffect } from "./api"
-import type { Stream } from "./core"
-import { chain, map } from "./core"
+import * as Chain from "./api/chain"
+import * as Map from "./api/map"
+import type * as C from "./core"
 
 function bind<R, E, A, K, N extends string>(
   tag: Exclude<N, keyof K>,
-  f: (_: K) => Stream<R, E, A>
+  f: (_: K) => C.Stream<R, E, A>
 ) {
-  return <R2, E2>(mk: Stream<R2, E2, K>): Stream<R & R2, E | E2, K & { [k in N]: A }> =>
+  return <R2, E2>(
+    mk: C.Stream<R2, E2, K>
+  ): C.Stream<R & R2, E | E2, K & { [k in N]: A }> =>
     pipe(
       mk,
-      chain((k) =>
+      Chain.chain((k) =>
         pipe(
           f(k),
-          map((a): K & { [k in N]: A } => ({ ...k, [tag]: a } as any))
+          Map.map((a): K & { [k in N]: A } => ({ ...k, [tag]: a } as any))
         )
       )
     )
 }
 
 function let_<A, K, N extends string>(tag: Exclude<N, keyof K>, f: (_: K) => A) {
-  return <R2, E2>(mk: Stream<R2, E2, K>): Stream<R2, E2, K & { [k in N]: A }> =>
+  return <R2, E2>(mk: C.Stream<R2, E2, K>): C.Stream<R2, E2, K & { [k in N]: A }> =>
     pipe(
       mk,
-      map((k): K & { [k in N]: A } => ({ ...k, [tag]: f(k) } as any))
+      Map.map((k): K & { [k in N]: A } => ({ ...k, [tag]: f(k) } as any))
     )
 }
 
