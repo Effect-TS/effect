@@ -5,8 +5,10 @@ import type { Predicate } from "../../../Function"
 import { pipe } from "../../../Function"
 import type * as O from "../../../Option"
 import * as Q from "../../../Queue"
-import * as CC from "../_internal/api"
-import * as C from "../_internal/core"
+import * as FilterEffect from "../_internal/api/filterEffect"
+import * as Map from "../_internal/api/map"
+import * as ZipWithIndex from "../_internal/api/zipWithIndex"
+import type * as C from "../_internal/core"
 
 export class GroupBy<R, E, K, V> {
   constructor(
@@ -24,8 +26,8 @@ export function first_<R, E, K, V>(
 ): GroupBy<R, E, K, V> {
   const g1 = pipe(
     self.grouped,
-    CC.zipWithIndex,
-    CC.filterEffect((elem) => {
+    ZipWithIndex.zipWithIndex,
+    FilterEffect.filterEffect((elem) => {
       const {
         tuple: [
           {
@@ -41,7 +43,7 @@ export function first_<R, E, K, V>(
         return T.as_(Q.shutdown(q), false)
       }
     }),
-    C.map(Tp.get(0))
+    Map.map(Tp.get(0))
   )
 
   return new GroupBy(g1, self.buffer)
@@ -65,7 +67,7 @@ export function filter_<R, E, K, V>(
 ): GroupBy<R, E, K, V> {
   const g1 = pipe(
     self.grouped,
-    CC.filterEffect((elem) => {
+    FilterEffect.filterEffect((elem) => {
       const {
         tuple: [k, q]
       } = elem
