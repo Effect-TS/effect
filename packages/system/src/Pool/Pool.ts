@@ -216,7 +216,7 @@ export class DefaultPool<R, E, A, S> extends PoolInternal<E, A> {
               T.chain_(Q.take(this.items), (attempted) =>
                 pipe(
                   attempted,
-                  AT.forEach((a) =>
+                  AT.forEachUnit((a) =>
                     Ref.update_(this.invalidated, (_) => HS.remove_(_, a))
                   ),
                   T.zipRight(attempted.finalizer),
@@ -270,7 +270,7 @@ export class DefaultPool<R, E, A, S> extends PoolInternal<E, A> {
               (attempted) =>
                 pipe(
                   attempted,
-                  AT.forEach((a) =>
+                  AT.forEachUnit((a) =>
                     Ref.update_(this.invalidated, (_) => HS.remove_(_, a))
                   ),
                   T.zipRight(attempted.finalizer),
