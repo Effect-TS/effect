@@ -5,7 +5,7 @@ import * as CL from "../Clock"
 import * as Tp from "../Collections/Immutable/Tuple"
 import * as E from "../Either"
 import { identity as idFn, pipe } from "../Function"
-import type { Has, Tag } from "../Has"
+import type { AnyService, Has, Tag } from "../Has"
 import { mergeEnvironments } from "../Has"
 import type * as SC from "../Schedule"
 import type * as SCD from "../Schedule/Decision"
@@ -35,10 +35,17 @@ import * as M from "./deps-managed"
 
 export * from "./definitions"
 
-function environmentFor<T>(has: Tag<T>, a: T): M.Managed<unknown, never, Has<T>>
-function environmentFor<T>(has: Tag<T>, a: T): M.Managed<unknown, never, any> {
+function environmentFor<T extends AnyService>(
+  has: Tag<T>,
+  a: T
+): M.Managed<unknown, never, Has<T>>
+function environmentFor<T extends AnyService>(
+  has: Tag<T>,
+  a: T
+): M.Managed<unknown, never, any> {
   return M.fromEffect(
     T.access((r) => ({
+      // @ts-expect-error
       [has.key]: mergeEnvironments(has, r, a as any)[has.key]
     }))
   )
@@ -117,7 +124,7 @@ export function zipPar<RIn, RIn1, E, E1, ROut, ROut1>(that: Layer<RIn1, E1, ROut
 /**
  * Construct a service layer from a value
  */
-export function pure<T>(has: Tag<T>) {
+export function fromValue<T extends AnyService>(has: Tag<T>) {
   return (resource: T): Layer<unknown, never, Has<T>> =>
     new LayerManaged(
       M.chain_(M.fromEffect(T.succeed(resource)), (a) => environmentFor(has, a))
@@ -125,30 +132,11 @@ export function pure<T>(has: Tag<T>) {
 }
 
 /**
- * DSL to construct service layers with acquire->open->release
- */
-export function prepare<T>(has: Tag<T>) {
-  return <R, E, A extends T>(acquire: T.Effect<R, E, A>) => ({
-    open: <R1, E1, X>(open: (_: A) => T.Effect<R1, E1, X>) => ({
-      release: <R2, Y>(release: (_: A) => T.Effect<R2, never, Y>) =>
-        fromManaged(has)(
-          M.chain_(
-            M.makeExit_(acquire, (a) => release(a)),
-            (a) => M.fromEffect(T.map_(open(a), () => a))
-          )
-        )
-    }),
-    release: <R2, X>(release: (_: A) => T.Effect<R2, never, X>) =>
-      fromManaged(has)(M.makeExit_(acquire, (a) => release(a)))
-  })
-}
-
-/**
  * Constructs a layer from the specified effect.
  *
  * @ets_data_first fromEffect_
  */
-export function fromEffect<T>(has: Tag<T>) {
+export function fromEffect<T extends AnyService>(has: Tag<T>) {
   return <R, E>(resource: T.Effect<R, E, T>): Layer<R, E, Has<T>> =>
     fromEffect_(resource, has)
 }
@@ -156,7 +144,7 @@ export function fromEffect<T>(has: Tag<T>) {
 /**
  * Constructs a layer from the specified effect.
  */
-export function fromEffect_<R, E, T>(
+export function fromEffect_<R, E, T extends AnyService>(
   resource: T.Effect<R, E, T>,
   has: Tag<T>
 ): Layer<R, E, Has<T>> {
@@ -168,7 +156,7 @@ export function fromEffect_<R, E, T>(
 /**
  * Constructs a layer from a managed resource.
  */
-export function fromManaged<T>(has: Tag<T>) {
+export function fromManaged<T extends AnyService>(has: Tag<T>) {
   return <R, E>(resource: M.Managed<R, E, T>): Layer<R, E, Has<T>> =>
     new LayerManaged(M.chain_(resource, (a) => environmentFor(has, a))).setKey(has.key)
 }
@@ -176,7 +164,7 @@ export function fromManaged<T>(has: Tag<T>) {
 /**
  * Constructs a layer from a managed resource.
  */
-export function fromManaged_<R, E, T>(
+export function fromManaged_<R, E, T extends AnyService>(
   resource: M.Managed<R, E, T>,
   has: Tag<T>
 ): Layer<R, E, Has<T>> {
@@ -188,7 +176,7 @@ export function fromManaged_<R, E, T>(
 /**
  * Constructs a layer from the environment using the specified function.
  */
-export function fromFunction<B>(tag: Tag<B>) {
+export function fromFunction<B extends AnyService>(tag: Tag<B>) {
   return <A>(f: (a: A) => B): Layer<A, never, Has<B>> => fromEffect(tag)(T.access(f))
 }
 
@@ -311,151 +299,6 @@ export function flatten<R, E, R2, E2, B>(
   ffa: Layer<R, E, Layer<R2, E2, B>>
 ): Layer<R & R2, E | E2, B> {
   return chain_(ffa, idFn)
-}
-
-/**
- * Creates a layer from a constructor (...deps) => T
- */
-export function fromConstructor<S>(
-  tag: Tag<S>
-): <Services extends any[]>(
-  constructor: (...services: Services) => S
-) => (
-  ...tags: { [k in keyof Services]: Tag<Services[k]> }
-) => Layer<
-  UnionToIntersection<
-    { [k in keyof Services]: Has<Services[k]> }[keyof Services & number]
-  >,
-  never,
-  Has<S>
-> {
-  return (f) =>
-    (...tags) =>
-      fromEffect(tag)(
-        T.accessServicesT(...tags)(((...services: any[]) =>
-          f(...(services as any))) as any) as any
-      )
-}
-
-/**
- * Creates a layer from a constructor (...deps) => Effect<R, E, T>
- */
-export function fromConstructorM<S>(
-  tag: Tag<S>
-): <Services extends any[], R0, E0>(
-  constructor: (...services: Services) => T.Effect<R0, E0, S>
-) => (
-  ...tags: { [k in keyof Services]: Tag<Services[k]> }
-) => Layer<
-  UnionToIntersection<
-    { [k in keyof Services]: Has<Services[k]> }[keyof Services & number]
-  > &
-    R0,
-  E0,
-  Has<S>
-> {
-  return (f) =>
-    (...tags) =>
-      fromEffect(tag)(
-        T.accessServicesTM(...tags)(((...services: any[]) =>
-          f(...(services as any))) as any) as any
-      )
-}
-
-/**
- * Creates a layer from a constructor (...deps) => Managed<R, E, T>
- */
-export function fromConstructorManaged<S>(
-  tag: Tag<S>
-): <Services extends any[], R0, E0>(
-  constructor: (...services: Services) => M.Managed<R0, E0, S>
-) => (
-  ...tags: { [k in keyof Services]: Tag<Services[k]> }
-) => Layer<
-  UnionToIntersection<
-    { [k in keyof Services]: Has<Services[k]> }[keyof Services & number]
-  > &
-    R0,
-  E0,
-  Has<S>
-> {
-  return (f) =>
-    (...tags) =>
-      fromManaged(tag)(
-        M.chain_(
-          M.fromEffect(
-            T.accessServicesT(...tags)((...services: any[]) => f(...(services as any)))
-          ),
-          idFn
-        )
-      )
-}
-
-/**
- * Creates a layer from a constructor (...deps) => T
- * with an open + release operation
- */
-export function bracketConstructor<S>(
-  tag: Tag<S>
-): <Services extends any[], S2 extends S>(
-  constructor: (...services: Services) => S2
-) => (
-  ...tags: { [k in keyof Services]: Tag<Services[k]> }
-) => <R, R2, E>(
-  open: (s: S2) => T.Effect<R, E, unknown>,
-  release: (s: S2) => T.Effect<R2, never, unknown>
-) => Layer<
-  UnionToIntersection<
-    { [k in keyof Services]: Has<Services[k]> }[keyof Services & number]
-  > &
-    R &
-    R2,
-  E,
-  Has<S>
-> {
-  return (f) =>
-    (...tags) =>
-    (open, release) =>
-      prepare(tag)(
-        T.accessServicesT(...tags)(((...services: any[]) =>
-          f(...(services as any))) as any) as any
-      )
-        .open(open as any)
-        .release(release as any) as any
-}
-
-/**
- * Creates a layer from a constructor (...deps) => T
- * with an open + release operation
- */
-export function bracketConstructorM<S>(
-  tag: Tag<S>
-): <Services extends any[], S2 extends S, R0, E0>(
-  constructor: (...services: Services) => T.Effect<R0, E0, S2>
-) => (
-  ...tags: { [k in keyof Services]: Tag<Services[k]> }
-) => <R, R2, E>(
-  open: (s: S2) => T.Effect<R, E, unknown>,
-  release: (s: S2) => T.Effect<R2, never, unknown>
-) => Layer<
-  UnionToIntersection<
-    { [k in keyof Services]: Has<Services[k]> }[keyof Services & number]
-  > &
-    R &
-    R2 &
-    R0,
-  E | E0,
-  Has<S>
-> {
-  return (f) =>
-    (...tags) =>
-    (open, release) =>
-      prepare(tag)(
-        T.accessServicesTM(...tags)(((...services: any[]) =>
-          f(...(services as any))) as any) as any
-      )
-        .open(open as any)
-        .release(release as any) as any
 }
 
 /**

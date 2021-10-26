@@ -18,6 +18,8 @@ import * as TAM from "../TestAnnotationMap"
  */
 export type Annotated<A> = Tuple.Tuple<[A, TAM.TestAnnotationMap]>
 
+export const AnnotationsId = Symbol()
+
 /**
  * The `Annotations` trait provides access to an annotation map that tests
  * can add arbitrary annotations to. Each annotation consists of a string
@@ -27,6 +29,8 @@ export type Annotated<A> = Tuple.Tuple<[A, TAM.TestAnnotationMap]>
  * monad effect.
  */
 export interface Annotations {
+  readonly serviceId: typeof AnnotationsId
+
   readonly annotate: <V>(key: TestAnnotation.TestAnnotation<V>, value: V) => T.UIO<void>
 
   readonly get: <V>(key: TestAnnotation.TestAnnotation<V>) => T.UIO<V>
@@ -41,7 +45,7 @@ export interface Annotations {
 /**
  * Tag for the Annotations service
  */
-export const Annotations = tag<Annotations>()
+export const Annotations = tag<Annotations>(AnnotationsId)
 
 /**
  * Constructs a new `Annotations` service.
@@ -108,6 +112,7 @@ export const live = L.fromEffect(Annotations)(
     )
 
     const annotations: Annotations = {
+      serviceId: AnnotationsId,
       annotate,
       get,
       supervisedFibers,

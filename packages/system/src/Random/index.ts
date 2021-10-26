@@ -10,15 +10,15 @@ import "../Operator"
 import { chain_, succeedWith } from "../Effect/core"
 import type { UIO } from "../Effect/effect"
 import { accessServiceM, replaceService } from "../Effect/has"
-import type { HasTag } from "../Has"
+import type { Has } from "../Has"
 import { tag } from "../Has"
 import { PCGRandom } from "./PCG"
 
-export const RandomSymbol: unique symbol = Symbol.for("@effect-ts/system/Random")
-export type RandomSymbol = typeof RandomSymbol
+export const RandomId: unique symbol = Symbol.for("@effect-ts/system/Random")
+export type RandomId = typeof RandomId
 
 export abstract class Random {
-  readonly _tag: RandomSymbol = RandomSymbol
+  readonly serviceId: RandomId = RandomId
 
   abstract readonly next: UIO<number>
   abstract readonly nextBoolean: UIO<boolean>
@@ -50,9 +50,9 @@ export class LiveRandom extends Random {
 
 export const defaultRandom = new LiveRandom((Math.random() * 4294967296) >>> 0)
 
-export const HasRandom = tag(Random).setKey(RandomSymbol)
+export const HasRandom = tag<Random>(RandomId)
 
-export type HasRandom = HasTag<typeof HasRandom>
+export type HasRandom = Has<Random>
 
 export const next = accessServiceM(HasRandom)((_) => _.next)
 

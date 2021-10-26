@@ -2,6 +2,8 @@ import * as T from "../../Effect"
 import { tag } from "../../Has"
 import * as L from "../../Layer"
 
+export const LiveId = Symbol.for("@effect-ts/system/Test/LiveId")
+
 /**
  * The `Live` trait provides access to the "live" environment from within the
  * test environment for effects such as printing test results to the console or
@@ -16,15 +18,18 @@ import * as L from "../../Layer"
  * methods are re-exported in the `environment` package for easy availability.
  */
 export interface Live {
+  readonly serviceId: typeof LiveId
+
   readonly provide: <E, A>(
     effect: T.Effect<T.DefaultEnv, E, A>
   ) => T.Effect<unknown, E, A>
 }
 
-export const Live = tag<Live>()
+export const Live = tag<Live>(LiveId)
 
 export const live = L.fromEffect(Live)(
   T.access((r: T.DefaultEnv) => ({
+    serviceId: LiveId,
     provide: T.provideAll(r)
   }))
 )

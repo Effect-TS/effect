@@ -3,9 +3,11 @@ import * as Tp from "@effect-ts/system/Collections/Immutable/Tuple"
 import * as T from "../../src/Effect"
 import * as Ref from "../../src/Effect/Ref"
 import { pipe } from "../../src/Function"
-import { tag } from "../../src/Has"
+import { BaseService, tag } from "../../src/Has"
 
-class ConsoleService {
+const ConsoleServiceId = Symbol()
+
+class ConsoleService extends BaseService(ConsoleServiceId) {
   logN(n: number) {
     return T.succeedWith(() => {
       console.log(`Number: ${n}`)
@@ -14,7 +16,7 @@ class ConsoleService {
 }
 
 interface Console extends ConsoleService {}
-const Console = tag<Console>()
+const Console = tag<Console>(ConsoleServiceId)
 
 const program = T.gen(function* (_) {
   const { logN } = yield* _(Console)
@@ -40,6 +42,7 @@ test("21", async () => {
   await pipe(
     program,
     T.provideService(Console)({
+      serviceId: ConsoleServiceId,
       logN: (n) =>
         T.succeedWith(() => {
           f(n)

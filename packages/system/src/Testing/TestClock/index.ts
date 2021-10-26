@@ -1,5 +1,6 @@
 import { Tagged } from "../../Case"
 import * as Clock from "../../Clock"
+import * as ClockId from "../../Clock/id"
 import * as Chunk from "../../Collections/Immutable/Chunk"
 import * as HashMap from "../../Collections/Immutable/HashMap"
 import * as List from "../../Collections/Immutable/List"
@@ -8,6 +9,7 @@ import * as Tuple from "../../Collections/Immutable/Tuple"
 import * as T from "../../Effect"
 import * as Fiber from "../../Fiber"
 import { identity, pipe } from "../../Function"
+import type { Has } from "../../Has"
 import { tag } from "../../Has"
 import * as L from "../../Layer"
 import * as M from "../../Managed"
@@ -17,7 +19,6 @@ import * as Promise from "../../Promise"
 import * as Ref from "../../Ref"
 import * as RefM from "../../RefM"
 import * as St from "../../Structural"
-import { intersect } from "../../Utils"
 import { Annotations } from "../Annotations"
 import { fiberSet } from "../FiberSet"
 import { Live } from "../Live"
@@ -96,12 +97,13 @@ export function Duration(n: number): Duration {
  * another 60 minutes exactly one more value is placed in the queue.
  */
 export interface TestClock extends Restorable {
+  readonly serviceId: Clock.ClockId
   readonly adjust: (duration: number) => T.UIO<void>
   readonly setTime: (duration: number) => T.UIO<void>
   readonly sleeps: T.UIO<List.List<Duration>>
 }
 
-export const TestClock = tag<TestClock>()
+export const TestClock = tag<TestClock>(Clock.HasClock.key)
 
 /**
  * `Data` represents the state of the `TestClock`, including the clock time
@@ -136,6 +138,8 @@ export class Pending extends Tagged("Pending")<{
 }
 
 export class Test implements TestClock {
+  readonly serviceId: Clock.ClockId = ClockId.ClockId
+
   constructor(
     readonly clockState: Ref.Ref<Data>,
     readonly live: Live,
@@ -445,15 +449,9 @@ export function live(data: Data) {
       )
     )
 
-    const clock = Clock.HasClock.of({
-      currentTime: test.currentTime,
-      _tag: Clock.ClockSymbol,
-      sleep: (ms) => test.sleep(Duration(ms))
-    })
-
     const testClock = TestClock.of(test)
 
-    return intersect(testClock, clock)
+    return testClock as Has<Clock.Clock> & Has<TestClock>
   })["|>"](L.fromRawManaged)
 }
 

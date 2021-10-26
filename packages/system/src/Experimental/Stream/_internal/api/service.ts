@@ -8,6 +8,8 @@ import * as AccessServiceEffect from "./accessServiceEffect"
 /**
  * Accesses the specified service in the environment of the effect.
  */
-export function service<T>(s: HS.Tag<T>): C.Stream<HS.Has<T>, never, T> {
-  return AccessServiceEffect.accessServiceEffect_(s, T.succeed)
+export function service<T extends HS.AnyService>(
+  s: HS.Tag<T>
+): C.Stream<HS.Has<T>, never, T> {
+  return AccessServiceEffect.accessServiceEffect(s)(T.succeed)
 }

@@ -6,7 +6,7 @@
 import * as Tp from "../Collections/Immutable/Tuple"
 import type { Either } from "../Either"
 import type { NoSuchElementException } from "../GlobalExceptions"
-import type { Has, Tag } from "../Has"
+import type { AnyService, Has, Tag } from "../Has"
 import type { Managed } from "../Managed/managed"
 import { ManagedImpl } from "../Managed/managed"
 import type { ReleaseMap } from "../Managed/ReleaseMap"
@@ -61,7 +61,7 @@ function adapter(_: any, __?: any, ___?: any) {
 }
 
 export interface Adapter {
-  <A>(_: Tag<A>, __trace?: string): GenEffect<Has<A>, never, A>
+  <A extends AnyService>(_: Tag<A>, __trace?: string): GenEffect<Has<A>, never, A>
   <E, A>(_: Option<A>, onNone: () => E, __trace?: string): GenEffect<unknown, E, A>
   <A>(_: Option<A>, __trace?: string): GenEffect<unknown, NoSuchElementException, A>
   <E, A>(_: Either<E, A>, __trace?: string): GenEffect<unknown, E, A>

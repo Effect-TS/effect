@@ -5,7 +5,7 @@ import * as E from "../src/Either"
 import * as Ex from "../src/Exit"
 import { pipe } from "../src/Function"
 import { NoSuchElementException, PrematureGeneratorExit } from "../src/GlobalExceptions"
-import { tag } from "../src/Has"
+import { BaseService, tag } from "../src/Has"
 import * as M from "../src/Managed"
 import * as O from "../src/Option"
 import * as S from "../src/Stream"
@@ -142,14 +142,15 @@ describe("Generator", () => {
   })
 
   it("should use services", async () => {
-    class CalcService {
+    const CalcServiceId = Symbol()
+    class CalcService extends BaseService(CalcServiceId) {
       add(x: number, y: number) {
         return T.succeedWith(() => x + y)
       }
     }
 
     interface Calc extends CalcService {}
-    const Calc = tag<Calc>()
+    const Calc = tag<Calc>(CalcServiceId)
 
     const prog = T.gen(function* (_) {
       const { add } = yield* _(Calc)

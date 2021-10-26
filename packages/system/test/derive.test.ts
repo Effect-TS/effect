@@ -1,24 +1,25 @@
 import * as T from "../src/Effect"
 import { pipe } from "../src/Function"
-import { tag } from "../src/Has"
+import { service, tag } from "../src/Has"
 
 // module definition
+export const CalculatorId = Symbol()
 
 export function LiveCalculator() {
-  return {
+  return service(CalculatorId, {
     factor: 2,
-    factorFun: () => 3,
+    factorFun: (): number => 3,
     base: T.succeed(1),
     add: (x: number, y: number) => T.succeedWith(() => x + y),
     mul: (x: number, y: number) => T.succeedWith(() => x * y),
     gen: <A>(a: A) => T.succeedWith(() => a)
-  }
+  })
 }
 
 export interface Calculator extends ReturnType<typeof LiveCalculator> {}
 
 // module tag
-export const Calculator = tag<Calculator>()
+export const Calculator = tag<Calculator>(CalculatorId)
 
 // lifted functions
 export const { add, base, factor, mul } = T.deriveLifted(Calculator)(
@@ -56,6 +57,7 @@ const program = pipe(
 
 export function MockCalculator(): Calculator {
   return {
+    serviceId: CalculatorId,
     add: () => T.succeed(0),
     mul: () => T.succeed(0),
     base: T.succeed(0),

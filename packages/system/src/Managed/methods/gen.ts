@@ -7,7 +7,7 @@ import { getOrFail } from "../../Effect/getOrFail"
 import type { Either } from "../../Either"
 import { identity } from "../../Function"
 import type { NoSuchElementException } from "../../GlobalExceptions"
-import type { Has, Tag } from "../../Has"
+import type { AnyService, Has, Tag } from "../../Has"
 import type { Option } from "../../Option"
 import type * as Utils from "../../Utils"
 import { isEither, isOption, isTag } from "../../Utils"
@@ -58,7 +58,7 @@ const adapter = (_: any, __?: any, ___?: any) => {
 
 export function gen<Eff extends GenManaged<any, any, any>, AEff>(
   f: (i: {
-    <A>(_: Tag<A>, __trace?: string): GenManaged<Has<A>, never, A>
+    <A extends AnyService>(_: Tag<A>, __trace?: string): GenManaged<Has<A>, never, A>
     <E, A>(_: Option<A>, onNone: () => E, __trace?: string): GenManaged<unknown, E, A>
     <A>(_: Option<A>, __trace?: string): GenManaged<unknown, NoSuchElementException, A>
     <E, A>(_: Either<E, A>, __trace?: string): GenManaged<unknown, E, A>

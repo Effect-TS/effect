@@ -13,7 +13,7 @@ import "../Operator"
 import * as A from "@effect-ts/system/Async"
 import * as E from "@effect-ts/system/Either"
 import { NoSuchElementException } from "@effect-ts/system/GlobalExceptions"
-import type { Has, Tag } from "@effect-ts/system/Has"
+import type { AnyService, Has, Tag } from "@effect-ts/system/Has"
 import type * as O from "@effect-ts/system/Option"
 
 import { identity, pipe } from "../Function"
@@ -97,24 +97,24 @@ export const Access = P.instance<P.FX.Access<[URI<AsyncURI>], V>>({
   access: A.access
 })
 
-export const accessServiceM: <Service>(
+export const accessServiceM: <Service extends AnyService>(
   H: Tag<Service>
 ) => <R, E, A>(f: (_: Service) => A.Async<R, E, A>) => A.Async<R & Has<Service>, E, A> =
   P.accessServiceMF({ ...Monad, ...Access })
 
-export const accessService: <Service>(
+export const accessService: <Service extends AnyService>(
   H: Tag<Service>
 ) => <A>(f: (_: Service) => A) => A.Async<Has<Service>, never, A> = (tag) => (f) =>
   accessServiceM(tag)((_) => A.succeed(f(_)))
 
-export const provideService: <Service>(
+export const provideService: <Service extends AnyService>(
   H: Tag<Service>
 ) => (
   S: Service
 ) => <R, E, A>(fa: A.Async<R & Has<Service>, E, A>) => A.Async<R, E, A> =
   P.provideServiceF({ ...Monad, ...Provide, ...Access })
 
-export const provideServiceM: <Service>(
+export const provideServiceM: <Service extends AnyService>(
   H: Tag<Service>
 ) => <R2, E2>(
   SM: A.Async<R2, E2, Service>
@@ -126,7 +126,7 @@ export const provideServiceM: <Service>(
     )
 
 const genAdapter: {
-  <A>(_: Tag<A>): P.GenHKT<A.Async<Has<A>, never, A>, A>
+  <A extends AnyService>(_: Tag<A>): P.GenHKT<A.Async<Has<A>, never, A>, A>
   <E, A>(_: O.Option<A>, onNone: () => E): P.GenHKT<A.Async<unknown, E, A>, A>
   <A>(_: O.Option<A>): P.GenHKT<A.Async<unknown, NoSuchElementException, A>, A>
   <E, A>(_: E.Either<E, A>): P.GenHKT<A.Async<unknown, E, A>, A>
