@@ -33,7 +33,7 @@ export const matchEffect = pipe(
     B: (_) => T.succeed(_),
     C: (_) => T.succeed(_)
   })
-)
+).unify()
 
 export const matchSync = pipe(
   adt(),
@@ -42,7 +42,7 @@ export const matchSync = pipe(
     B: (_) => S.succeed(_),
     C: (_) => S.succeed(_)
   })
-)
+).unify()
 
 export const matchManaged = pipe(
   adt(),
@@ -51,7 +51,7 @@ export const matchManaged = pipe(
     B: (_) => M.succeed(_),
     C: (_) => M.succeed(_)
   })
-)
+).unify()
 
 export const matchIO = pipe(
   adt(),
@@ -60,13 +60,13 @@ export const matchIO = pipe(
     B: (_) => IO.succeed(_),
     C: (_) => IO.succeed(_)
   })
-)
+).unify()
 
 export const matchIOFor = matchTagFor<ADT>()({
   A: (_) => IO.succeed(_),
   B: (_) => IO.succeed(_),
   C: (_) => IO.succeed(_)
-})
+}).unify()
 
 it("io", () => {
   expect(IO.run(matchIO)).toEqual({ _tag: "A", a: 0 })

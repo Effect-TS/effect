@@ -1,6 +1,7 @@
 // ets_tracing: off
 
 import type * as Tp from "../Collections/Immutable/Tuple"
+import type { HasUnify } from "../Utils"
 import { unifyIndex } from "../Utils"
 import * as T from "./deps-core"
 import type { Finalizer, ReleaseMap } from "./ReleaseMap"
@@ -8,7 +9,7 @@ import type { Finalizer, ReleaseMap } from "./ReleaseMap"
 export const ManagedURI = "@matechs/core/Eff/ManagedURI"
 export type ManagedURI = typeof ManagedURI
 
-export interface Managed<R, E, A> {
+export interface Managed<R, E, A> extends HasUnify {
   readonly [unifyIndex]: ManagedURI
   readonly [T._U]: ManagedURI
   readonly [T._E]: () => E
