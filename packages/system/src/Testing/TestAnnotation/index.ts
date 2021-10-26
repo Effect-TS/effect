@@ -3,8 +3,6 @@ import * as List from "../../Collections/Immutable/List"
 import type * as SS from "../../Collections/Immutable/SortedSet"
 import * as E from "../../Either"
 import type * as Fiber from "../../Fiber"
-import type { Tag } from "../../Has"
-import { tag } from "../../Has"
 import * as St from "../../Structural"
 import type { AtomicReference } from "../../Support/AtomicReference"
 import { Int } from "../Int"
@@ -12,24 +10,20 @@ import { Int } from "../Int"
 /**
  * A type of annotation.
  */
+
 export class TestAnnotation<V> implements St.HasHash, St.HasEquals {
   constructor(
     readonly identifier: string,
     readonly initial: V,
-    readonly combine: (x: V, y: V) => V,
-    readonly tag: Tag<V>
+    readonly combine: (x: V, y: V) => V
   ) {}
 
   get [St.hashSym](): number {
-    return St.combineHash(St.hash(this.identifier), St.hash(this.tag))
+    return St.hash(this.identifier)
   }
 
   [St.equalsSym](that: unknown): boolean {
-    return (
-      that instanceof TestAnnotation &&
-      St.equals(this.identifier, that.identifier) &&
-      St.equals(this.tag, that.tag)
-    )
+    return that instanceof TestAnnotation && St.equals(this.identifier, that.identifier)
   }
 }
 
@@ -38,13 +32,10 @@ export type FibersAnnotation = E.Either<
   Chunk.Chunk<AtomicReference<SS.SortedSet<Fiber.Runtime<unknown, unknown>>>>
 >
 
-export const FibersAnnotation = tag<FibersAnnotation>()
-
 export const fibers: TestAnnotation<FibersAnnotation> = new TestAnnotation(
   "fibers",
-  E.left(0 as Int),
-  compose,
-  FibersAnnotation
+  E.leftW(0 as Int),
+  compose
 )
 
 function compose<A>(
@@ -64,11 +55,8 @@ function compose<A>(
 
 export type LocationAnnotation = List.List<Fiber.SourceLocation>
 
-export const LocationAnnotation = tag<LocationAnnotation>()
-
 export const location: TestAnnotation<LocationAnnotation> = new TestAnnotation(
   "location",
   List.empty(),
-  List.concat_,
-  LocationAnnotation
+  List.concat_
 )

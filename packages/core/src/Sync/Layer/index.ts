@@ -7,7 +7,7 @@ import { AtomicReference } from "@effect-ts/system/Support/AtomicReference"
 
 import * as A from "../../Collections/Immutable/Array"
 import { pipe } from "../../Function"
-import type { Has, Tag } from "../../Has"
+import type { AnyService, Has, Tag } from "../../Has"
 import type { Erase, UnionToIntersection } from "../../Utils"
 import * as Sy from "../_internal"
 
@@ -281,17 +281,17 @@ export function suspended<R, E, A>(layer: () => SyncLayer<R, E, A>) {
   return new Suspended(layer)
 }
 
-export function fromSync<T>(tag: Tag<T>) {
+export function fromSync<T extends AnyService>(tag: Tag<T>) {
   return <R, E>(_: Sy.Sync<R, E, T>): SyncLayer<R, E, Has<T>> =>
     new Of(pipe(_, Sy.map(tag.of)))
 }
 
-export function fromFunction<T>(tag: Tag<T>) {
+export function fromFunction<T extends AnyService>(tag: Tag<T>) {
   return <R>(_: (_: R) => T): SyncLayer<R, never, Has<T>> =>
     new Of(pipe(Sy.access(_), Sy.map(tag.of)))
 }
 
-export function fromValue<T>(tag: Tag<T>) {
+export function fromValue<T extends AnyService>(tag: Tag<T>) {
   return (_: T): SyncLayer<unknown, never, Has<T>> => new Of(Sy.succeed(tag.of(_)))
 }
 

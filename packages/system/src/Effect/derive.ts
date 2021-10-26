@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import type { Has, Tag } from "../Has"
+import type { AnyService, Has, Tag } from "../Has"
 import type { Effect } from "./effect"
 import * as has from "./has"
 
@@ -25,7 +25,7 @@ export type ShapeCn<T> = Pick<
 >
 
 export type DerivedLifted<
-  T,
+  T extends AnyService,
   Fns extends keyof ShapeFn<T>,
   Cns extends keyof ShapeCn<T>,
   Values extends keyof T
@@ -41,7 +41,7 @@ export type DerivedLifted<
   [k in Values]: Effect<Has<T>, never, T[k]>
 }
 
-export function deriveLifted<T>(
+export function deriveLifted<T extends AnyService>(
   H: Tag<T>
 ): <
   Fns extends keyof ShapeFn<T> = never,
@@ -71,14 +71,14 @@ export function deriveLifted<T>(
   }
 }
 
-export type DerivedAccessM<T, Gens extends keyof T> = {
+export type DerivedAccessM<T extends AnyService, Gens extends keyof T> = {
   [k in Gens]: <R_, E_, A_>(
     f: (_: T[k]) => Effect<R_, E_, A_>,
     __trace?: string
   ) => Effect<R_ & Has<T>, E_, A_>
 }
 
-export function deriveAccessM<T>(
+export function deriveAccessM<T extends AnyService>(
   H: Tag<T>
 ): <Gens extends keyof T = never>(generics: Gens[]) => DerivedAccessM<T, Gens> {
   return (generics) => {
@@ -92,11 +92,11 @@ export function deriveAccessM<T>(
   }
 }
 
-export type DerivedAccess<T, Gens extends keyof T> = {
+export type DerivedAccess<T extends AnyService, Gens extends keyof T> = {
   [k in Gens]: <A_>(f: (_: T[k]) => A_, __trace?: string) => Effect<Has<T>, never, A_>
 }
 
-export function deriveAccess<T>(
+export function deriveAccess<T extends AnyService>(
   H: Tag<T>
 ): <Gens extends keyof T = never>(generics: Gens[]) => DerivedAccess<T, Gens> {
   return (generics) => {

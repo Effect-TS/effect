@@ -4,18 +4,27 @@ import { tag } from "../src/Has"
 
 describe("Has", () => {
   it("use services", async () => {
+    const AddServiceId = Symbol()
+
     class AddService {
+      readonly serviceId: typeof AddServiceId = AddServiceId
+
       sum(a: number, b: number) {
         return T.succeedWith(() => a + b)
       }
     }
+
+    const MulServiceId = Symbol()
+
     class MulService {
+      readonly serviceId: typeof MulServiceId = MulServiceId
+
       prod(a: number, b: number) {
         return T.succeedWith(() => a * b)
       }
     }
-    const Add = tag(AddService)
-    const Mul = tag(MulService)
+    const Add = tag<AddService>(AddServiceId)
+    const Mul = tag<MulService>(MulServiceId)
 
     const result = await pipe(
       T.accessServicesM({ add: Add, mul: Mul })((_) =>

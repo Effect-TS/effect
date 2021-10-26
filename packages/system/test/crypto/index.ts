@@ -1,8 +1,9 @@
 import * as crypto from "crypto"
 
+import type { _A } from "../../src//Utils"
 import * as T from "../../src/Effect"
 import { pipe } from "../../src/Function"
-import { tag } from "../../src/Has"
+import { service, tag } from "../../src/Has"
 import * as L from "../../src/Layer"
 
 // larger numbers mean better security, less
@@ -22,27 +23,30 @@ const defaultConfig = {
 }
 
 type _config = typeof defaultConfig
+export const PBKDF2ConfigId = Symbol()
+export interface PBKDF2Config extends _config {
+  readonly serviceId: typeof PBKDF2ConfigId
+}
 
-export interface PBKDF2Config extends _config {}
-
-export const PBKDF2Config = tag<PBKDF2Config>()
+export const PBKDF2Config = tag<PBKDF2Config>(PBKDF2ConfigId)
 
 export const PBKDF2ConfigLive = L.fromEffect(PBKDF2Config)(
-  T.succeedWith(() => defaultConfig)
+  T.succeedWith(() => service(PBKDF2ConfigId, defaultConfig))
 )
 export const PBKDF2ConfigTest = L.fromEffect(PBKDF2Config)(
-  T.succeedWith(() => ({
-    ...defaultConfig,
-    iterations: 1
-  }))
+  T.succeedWith(() => ({ serviceId: PBKDF2ConfigId, ...defaultConfig, iterations: 1 }))
 )
 
 export class InvalidPassword {
   readonly _tag = "InvalidPassword"
 }
 
-export function makeCrypto(config: PBKDF2Config) {
-  return {
+export const CryptoId = Symbol()
+
+export const makeCrypto = T.gen(function* (_) {
+  const config = yield* _(PBKDF2Config)
+
+  return service(CryptoId, {
     hashPassword: (password: string) =>
       T.effectAsync<unknown, never, string>((cb) => {
         // generate a salt for pbkdf2
@@ -113,12 +117,13 @@ export function makeCrypto(config: PBKDF2Config) {
           }
         )
       })
-  }
+  })
+})
+
+export interface Crypto extends _A<typeof makeCrypto> {
+  readonly serviceId: typeof CryptoId
 }
-
-export interface Crypto extends ReturnType<typeof makeCrypto> {}
-
-export const Crypto = tag<Crypto>()
+export const Crypto = tag<Crypto>(CryptoId)
 
 export const {
   /**
@@ -138,4 +143,4 @@ export const {
   verifyPassword
 } = T.deriveLifted(Crypto)(["hashPassword", "verifyPassword"], [], [])
 
-export const CryptoLive = L.fromConstructor(Crypto)(makeCrypto)(PBKDF2Config)
+export const CryptoLive = L.fromEffect(Crypto)(makeCrypto)

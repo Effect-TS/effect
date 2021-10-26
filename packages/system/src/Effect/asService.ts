@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import type { Tag } from "../Has"
+import type { AnyService, Tag } from "../Has"
 import type { Effect } from "./effect"
 import { map_ } from "./map"
 
@@ -9,14 +9,14 @@ import { map_ } from "./map"
  *
  * @datFirst asService_
  */
-export function asService<A>(has: Tag<A>, __trace?: string) {
+export function asService<A extends AnyService>(has: Tag<A>, __trace?: string) {
   return <R, E>(fa: Effect<R, E, A>) => asService_(fa, has, __trace)
 }
 
 /**
  * Maps the success value of this effect to a service.
  */
-export function asService_<R, E, A>(
+export function asService_<R, E, A extends AnyService>(
   fa: Effect<R, E, A>,
   has: Tag<A>,
   __trace?: string

@@ -5,7 +5,7 @@
  */
 import * as A from "../Collections/Immutable/Array"
 import * as R from "../Collections/Immutable/Dictionary"
-import type { Has, Tag } from "../Has"
+import type { AnyService, Has, Tag } from "../Has"
 import { mergeEnvironments } from "../Has"
 import type { UnionToIntersection } from "../Utils"
 import * as X from "./core"
@@ -91,7 +91,7 @@ export function accessServices<SS extends Record<string, Tag<any>>>(s: SS) {
 /**
  * Access a service with the required Service Entry
  */
-export function accessServiceM<T>(s: Tag<T>) {
+export function accessServiceM<T extends AnyService>(s: Tag<T>) {
   return <R, E, B>(f: (a: T) => X.Sync<R, E, B>) =>
     X.accessM((r: Has<T>) => f(r[s.key as any]))
 }
@@ -99,21 +99,21 @@ export function accessServiceM<T>(s: Tag<T>) {
 /**
  * Access a service with the required Service Entry
  */
-export function accessService<T>(s: Tag<T>) {
+export function accessService<T extends AnyService>(s: Tag<T>) {
   return <B>(f: (a: T) => B) => accessServiceM(s)((a) => X.succeed(f(a)))
 }
 
 /**
  * Access a service with the required Service Entry
  */
-export function service<T>(s: Tag<T>) {
+export function service<T extends AnyService>(s: Tag<T>) {
   return accessServiceM(s)((a) => X.succeed(a))
 }
 
 /**
  * Provides the service with the required Service Entry
  */
-export function provideServiceM<T>(_: Tag<T>) {
+export function provideServiceM<T extends AnyService>(_: Tag<T>) {
   return <R, E>(f: X.Sync<R, E, T>) =>
     <R1, E1, A1>(ma: X.Sync<R1 & Has<T>, E1, A1>): X.Sync<R & R1, E | E1, A1> =>
       X.accessM((r: R & R1) =>
@@ -124,7 +124,7 @@ export function provideServiceM<T>(_: Tag<T>) {
 /**
  * Provides the service with the required Service Entry
  */
-export function provideService<T>(_: Tag<T>) {
+export function provideService<T extends AnyService>(_: Tag<T>) {
   return (f: T) =>
     <R1, E1, A1>(ma: X.Sync<R1 & Has<T>, E1, A1>): X.Sync<R1, E1, A1> =>
       provideServiceM(_)(X.succeed(f))(ma)
@@ -133,7 +133,10 @@ export function provideService<T>(_: Tag<T>) {
 /**
  * Replaces the service with the required Service Entry
  */
-export function replaceServiceM<R, E, T>(_: Tag<T>, f: (_: T) => X.Sync<R, E, T>) {
+export function replaceServiceM<R, E, T extends AnyService>(
+  _: Tag<T>,
+  f: (_: T) => X.Sync<R, E, T>
+) {
   return <R1, E1, A1>(
     ma: X.Sync<R1 & Has<T>, E1, A1>
   ): X.Sync<R & R1 & Has<T>, E | E1, A1> =>
@@ -143,7 +146,7 @@ export function replaceServiceM<R, E, T>(_: Tag<T>, f: (_: T) => X.Sync<R, E, T>
 /**
  * Replaces the service with the required Service Entry
  */
-export function replaceServiceM_<R, E, T, R1, E1, A1>(
+export function replaceServiceM_<R, E, T extends AnyService, R1, E1, A1>(
   ma: X.Sync<R1 & Has<T>, E1, A1>,
   _: Tag<T>,
   f: (_: T) => X.Sync<R, E, T>
@@ -154,7 +157,7 @@ export function replaceServiceM_<R, E, T, R1, E1, A1>(
 /**
  * Replaces the service with the required Service Entry
  */
-export function replaceService<T>(_: Tag<T>, f: (_: T) => T) {
+export function replaceService<T extends AnyService>(_: Tag<T>, f: (_: T) => T) {
   return <R1, E1, A1>(ma: X.Sync<R1 & Has<T>, E1, A1>): X.Sync<R1 & Has<T>, E1, A1> =>
     accessServiceM(_)((t) => provideServiceM(_)(X.succeed(f(t)))(ma))
 }
@@ -162,7 +165,7 @@ export function replaceService<T>(_: Tag<T>, f: (_: T) => T) {
 /**
  * Replaces the service with the required Service Entry
  */
-export function replaceService_<R1, E1, A1, T>(
+export function replaceService_<R1, E1, A1, T extends AnyService>(
   ma: X.Sync<R1 & Has<T>, E1, A1>,
   _: Tag<T>,
   f: (_: T) => T

@@ -11,17 +11,17 @@ import { succeedWith, unit } from "../Effect/core"
 import type { Effect, UIO } from "../Effect/effect"
 import { effectAsyncInterrupt } from "../Effect/effectAsyncInterrupt"
 import { accessService, accessServiceM, provideServiceM } from "../Effect/has"
-import type { Has, HasTag, Tag } from "../Has"
+import type { Has, Tag } from "../Has"
 import { tag } from "../Has"
+import { ClockId } from "./id"
 
-export const ClockSymbol: unique symbol = Symbol.for("@effect-ts/system/Clock")
-export type ClockSymbol = typeof ClockSymbol
+export { ClockId }
 
 //
 // Clock Definition
 //
 export abstract class Clock {
-  readonly _tag = ClockSymbol
+  readonly serviceId: ClockId = ClockId
 
   abstract readonly currentTime: UIO<number>
   abstract readonly sleep: (ms: number, __trace?: string) => UIO<void>
@@ -30,9 +30,9 @@ export abstract class Clock {
 //
 // Has Clock
 //
-export const HasClock = tag(Clock).setKey(ClockSymbol)
+export const HasClock = tag<Clock>(ClockId)
 
-export type HasClock = HasTag<typeof HasClock>
+export type HasClock = Has<Clock>
 
 //
 // Live Clock Implementation
@@ -107,7 +107,7 @@ export class TestClock extends Clock {
 /**
  * Accesses the TestClock
  */
-export const HasTestClock: Tag<TestClock> = tag<TestClock>().setKey(HasClock.key)
+export const HasTestClock: Tag<TestClock> = tag<TestClock>(HasClock.key)
 
 // @ts-expect-error
 export const provideTestClock: <R1, E1, A1>(

@@ -1,13 +1,13 @@
 // ets_tracing: off
 
-import type { Has, Tag } from "../Has"
+import type { AnyService, Has, Tag } from "../Has"
 import type { Effect } from "./effect"
 import { provideSome_ } from "./provideSome"
 
 /**
  * Updates a service in the environment of this effect.
  */
-export function updateService_<T, R, E, A>(
+export function updateService_<T extends AnyService, R, E, A>(
   self: Effect<R, E, A>,
   tag: Tag<T>,
   f: (_: T) => T,
@@ -25,7 +25,7 @@ export function updateService_<T, R, E, A>(
  *
  * @ets_data_first updateService_
  */
-export function updateService<T>(
+export function updateService<T extends AnyService>(
   tag: Tag<T>,
   f: (_: T) => T,
   __trace?: string

@@ -46,7 +46,7 @@ const adapter = (_: any, __?: any) => {
 
 export function gen<RBase, EBase, AEff>(): <Eff extends GenStream<RBase, EBase, any>>(
   f: (i: {
-    <A>(_: () => H.Tag<A>): GenStream<H.Has<A>, never, A>
+    <A extends H.AnyService>(_: () => H.Tag<A>): GenStream<H.Has<A>, never, A>
     <E, A>(_: () => O.Option<A>, onNone: () => E): GenStream<unknown, E, A>
     <A>(_: () => O.Option<A>): GenStream<unknown, NoSuchElementException, A>
     <E, A>(_: () => E.Either<E, A>): GenStream<unknown, E, A>
@@ -56,7 +56,7 @@ export function gen<RBase, EBase, AEff>(): <Eff extends GenStream<RBase, EBase, 
 ) => Stream<Utils._R<Eff>, Utils._E<Eff>, AEff>
 export function gen<EBase, AEff>(): <Eff extends GenStream<any, EBase, any>>(
   f: (i: {
-    <A>(_: () => H.Tag<A>): GenStream<H.Has<A>, never, A>
+    <A extends H.AnyService>(_: () => H.Tag<A>): GenStream<H.Has<A>, never, A>
     <E, A>(_: () => O.Option<A>, onNone: () => E): GenStream<unknown, E, A>
     <A>(_: () => O.Option<A>): GenStream<unknown, NoSuchElementException, A>
     <E, A>(_: () => E.Either<E, A>): GenStream<unknown, E, A>
@@ -66,7 +66,7 @@ export function gen<EBase, AEff>(): <Eff extends GenStream<any, EBase, any>>(
 ) => Stream<Utils._R<Eff>, Utils._E<Eff>, AEff>
 export function gen<AEff>(): <Eff extends GenStream<any, any, any>>(
   f: (i: {
-    <A>(_: () => H.Tag<A>): GenStream<H.Has<A>, never, A>
+    <A extends H.AnyService>(_: () => H.Tag<A>): GenStream<H.Has<A>, never, A>
     <E, A>(_: () => O.Option<A>, onNone: () => E): GenStream<unknown, E, A>
     <A>(_: () => O.Option<A>): GenStream<unknown, NoSuchElementException, A>
     <E, A>(_: () => E.Either<E, A>): GenStream<unknown, E, A>
@@ -76,7 +76,7 @@ export function gen<AEff>(): <Eff extends GenStream<any, any, any>>(
 ) => Stream<Utils._R<Eff>, Utils._E<Eff>, AEff>
 export function gen<Eff extends GenStream<any, any, any>, AEff>(
   f: (i: {
-    <A>(_: () => H.Tag<A>): GenStream<H.Has<A>, never, A>
+    <A extends H.AnyService>(_: () => H.Tag<A>): GenStream<H.Has<A>, never, A>
     <E, A>(_: () => O.Option<A>, onNone: () => E): GenStream<unknown, E, A>
     <A>(_: () => O.Option<A>): GenStream<unknown, NoSuchElementException, A>
     <E, A>(_: () => E.Either<E, A>): GenStream<unknown, E, A>
