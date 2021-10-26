@@ -3,10 +3,12 @@
 import type * as Tp from "../Collections/Immutable/Tuple"
 import type { Either } from "../Either/core"
 import { pipe } from "../Function"
-import type { _A, _E, _R } from "../Utils"
+import type { _A, _E, _R, HasUnify } from "../Utils"
 import * as X from "../XPure"
 
-export interface Sync<R, E, A> extends X.XPure<unknown, unknown, unknown, R, E, A> {}
+export interface Sync<R, E, A>
+  extends X.XPure<unknown, unknown, unknown, R, E, A>,
+    HasUnify {}
 
 export interface UIO<A> extends Sync<unknown, never, A> {}
 export interface RIO<R, A> extends Sync<R, never, A> {}

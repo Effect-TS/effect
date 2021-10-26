@@ -7,6 +7,7 @@ import { _A, _E, _R, _S1, _S2, _U, _W } from "../Effect/commons"
 import type { EffectURI } from "../Effect/effect"
 import * as E from "../Either/core"
 import { Stack } from "../Stack"
+import type { HasUnify } from "../Utils"
 
 /**
  * `XPure[W, S1, S2, R, E, A]` is a purely functional description of a
@@ -16,7 +17,7 @@ import { Stack } from "../Stack"
  * polymorphism `ZPure` can be used to model a variety of effects including
  * context, state, failure, and logging.
  */
-export interface XPure<W, S1, S2, R, E, A> {
+export interface XPure<W, S1, S2, R, E, A> extends HasUnify {
   readonly _tag: "XPure"
   readonly [_S1]: (_: S1) => void
   readonly [_S2]: () => S2

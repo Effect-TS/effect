@@ -1,12 +1,13 @@
 // ets_tracing: off
 
+import type { HasUnify } from "../Utils"
 import { _A, _E, _R, _S1, _S2, _U, _W } from "./commons"
 import type { Instruction } from "./primitives"
 
 export const EffectURI = "Effect"
 export type EffectURI = typeof EffectURI
 
-export interface Effect<R, E, A> {
+export interface Effect<R, E, A> extends HasUnify {
   readonly [_U]: EffectURI
   readonly [_E]: () => E
   readonly [_A]: () => A

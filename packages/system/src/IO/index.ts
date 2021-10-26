@@ -6,6 +6,7 @@ import "../Operator"
 import * as Tp from "../Collections/Immutable/Tuple"
 import { _A, _U } from "../Effect/commons"
 import { Stack } from "../Stack"
+import type { HasUnify } from "../Utils"
 import { unifyIndex } from "../Utils"
 
 /**
@@ -28,6 +29,7 @@ declare module "../Utils" {
   }
 }
 
+interface Base<A> extends HasUnify {}
 abstract class Base<A> {
   readonly [unifyIndex]: IoURI;
   readonly [_U]!: "IO";

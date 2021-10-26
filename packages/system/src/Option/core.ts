@@ -7,6 +7,7 @@ import type { Either } from "../Either/core"
 import type { Lazy, Predicate, Refinement } from "../Function/core"
 import { identity } from "../Function/core"
 import * as St from "../Structural"
+import type { HasUnify } from "../Utils"
 
 const _noneHash = St.hashString("@effect-ts/system/Option/None")
 const _someHash = St.hashString("@effect-ts/system/Option/Some")
@@ -14,7 +15,7 @@ const _someHash = St.hashString("@effect-ts/system/Option/Some")
 /**
  * Definitions
  */
-export class None {
+export class None implements HasUnify {
   readonly _tag = "None";
 
   [St.equalsSym](that: unknown): boolean {
@@ -25,7 +26,7 @@ export class None {
   }
 }
 
-export class Some<A> {
+export class Some<A> implements HasUnify {
   readonly _tag = "Some"
   constructor(readonly value: A) {}
 

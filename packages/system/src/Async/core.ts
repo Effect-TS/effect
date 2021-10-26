@@ -14,6 +14,7 @@ import type * as U from "../Utils"
  * that requires an environment `R` and may either  fail with an `E` or succeed
  * with an `A`.
  */
+export interface Async<R, E, A> extends U.HasUnify {}
 export abstract class Async<R, E, A> {
   readonly [_U]!: "Async";
   readonly [_E]!: () => E;

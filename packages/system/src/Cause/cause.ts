@@ -11,6 +11,7 @@ import * as IO from "../IO"
 import * as O from "../Option"
 import { Stack } from "../Stack"
 import * as St from "../Structural"
+import type { HasUnify } from "../Utils"
 
 /**
  * Cause is a Free Semiring structure that allows tracking of multiple error causes.
@@ -25,6 +26,7 @@ export function isCause(self: unknown): self is Cause<unknown> {
 
 const _emptyHash = St.opt(St.randomInt())
 
+export interface Empty extends HasUnify {}
 export class Empty implements St.HasEquals, St.HasHash {
   readonly _tag = "Empty";
   readonly [CauseSym]: typeof CauseSym = CauseSym;
@@ -62,6 +64,7 @@ export class Empty implements St.HasEquals, St.HasHash {
 
 export const empty: Cause<never> = new Empty()
 
+export interface Fail<E> extends HasUnify {}
 export class Fail<E> implements St.HasEquals, St.HasHash {
   readonly _tag = "Fail";
   readonly [CauseSym]: typeof CauseSym = CauseSym
@@ -99,7 +102,8 @@ export class Fail<E> implements St.HasEquals, St.HasHash {
   }
 }
 
-export class Die implements St.HasEquals, St.HasHash {
+export interface Die extends HasUnify {}
+export class Die implements St.HasEquals, St.HasHash, HasUnify {
   readonly _tag = "Die";
   readonly [CauseSym]: typeof CauseSym = CauseSym
 
@@ -136,7 +140,8 @@ export class Die implements St.HasEquals, St.HasHash {
   }
 }
 
-export class Interrupt implements St.HasEquals, St.HasHash {
+export interface Interrupt extends HasUnify {}
+export class Interrupt implements St.HasEquals, St.HasHash, HasUnify {
   readonly _tag = "Interrupt";
   readonly [CauseSym]: typeof CauseSym = CauseSym
 
@@ -173,6 +178,7 @@ export class Interrupt implements St.HasEquals, St.HasHash {
   }
 }
 
+export interface Traced<E> extends HasUnify {}
 export class Traced<E> implements St.HasEquals, St.HasHash {
   readonly _tag = "Traced";
   readonly [CauseSym]: typeof CauseSym = CauseSym
@@ -199,6 +205,7 @@ export class Traced<E> implements St.HasEquals, St.HasHash {
   }
 }
 
+export interface Then<E> extends HasUnify {}
 export class Then<E> implements St.HasEquals, St.HasHash {
   readonly _tag = "Then";
   readonly [CauseSym]: typeof CauseSym = CauseSym
@@ -246,6 +253,7 @@ export class Then<E> implements St.HasEquals, St.HasHash {
   }
 }
 
+export interface Both<E> extends HasUnify {}
 export class Both<E> implements St.HasEquals, St.HasHash {
   readonly _tag = "Both";
   readonly [CauseSym]: typeof CauseSym = CauseSym
