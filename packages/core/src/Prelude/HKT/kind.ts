@@ -10,10 +10,21 @@ export interface URI<F extends ConcreteURIS, C = {}> {
   _C: C
 }
 
-export type Kind<F extends URIS, C, K, Q, W, X, I, S, R, E, A> = F extends [
-  any,
-  ...infer Next
-]
+export type Kind<F extends URIS, C, K, Q, W, X, I, S, R, E, A> = KindRec<
+  F,
+  C,
+  K,
+  Q,
+  W,
+  X,
+  I,
+  S,
+  R,
+  E,
+  A
+>
+
+type KindRec<F, C, K, Q, W, X, I, S, R, E, A> = F extends [any, ...infer Next]
   ? URItoKind<
       F[0]["_C"],
       C,
@@ -25,9 +36,9 @@ export type Kind<F extends URIS, C, K, Q, W, X, I, S, R, E, A> = F extends [
       OrFix<"S", F[0]["_C"], OrFix<"S", C, S>>,
       OrFix<"R", F[0]["_C"], OrFix<"R", C, R>>,
       OrFix<"E", F[0]["_C"], OrFix<"E", C, E>>,
-      Next extends URIS ? Kind<Next, C, K, Q, W, X, I, S, R, E, A> : A
+      KindRec<Next, C, K, Q, W, X, I, S, R, E, A>
     >[F[0]["_F"]]
-  : never
+  : A
 
 export type IndexForBase<F extends ConcreteURIS, K> = F extends keyof URItoIndex<any>
   ? URItoIndex<K>[F]
