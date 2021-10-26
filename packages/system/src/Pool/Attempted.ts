@@ -15,9 +15,9 @@ export function isFailure<E, A>(self: Attempted<E, A>): boolean {
   return self.result._tag === "Failure"
 }
 
-export function forEach_<R, E, E1, A>(
+export function forEachUnit_<R, E, E1, A, Z>(
   self: Attempted<E, A>,
-  f: (a: A) => T.Effect<R, E1, void>
+  f: (a: A) => T.Effect<R, E1, Z>
 ): T.Effect<R, E1, void> {
   return Ex.foldM_(
     self.result,
@@ -26,8 +26,8 @@ export function forEach_<R, E, E1, A>(
   )
 }
 
-export function forEach<R, E1, A>(f: (a: A) => T.Effect<R, E1, void>) {
-  return <E>(self: Attempted<E, A>) => forEach_(self, f)
+export function forEachUnit<R, E1, A, Z>(f: (a: A) => T.Effect<R, E1, Z>) {
+  return <E>(self: Attempted<E, A>) => forEachUnit_(self, f)
 }
 
 export function toManaged<E, A>(self: Attempted<E, A>): M.IO<E, A> {
