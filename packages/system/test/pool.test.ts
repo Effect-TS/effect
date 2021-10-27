@@ -85,7 +85,7 @@ describe("Pool", () => {
           (_) => Ref.update_(count, (_) => _ - 1)
         )
         const reserve = yield* _(
-          M.managedReserve(Pool.makeFixed<number, string>(get, 10))
+          M.managedReserve(Pool.makeFixed<unknown, number, string>(get, 10))
         )
         const pool = yield* _(reserve.acquire)
 
