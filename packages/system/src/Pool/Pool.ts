@@ -349,7 +349,10 @@ export function fromIterable<A>(
  * shutdown because the `Managed` is used, the individual items allocated by
  * the pool will be released in some unspecified order.
  */
-export function makeFixed<E, A>(get: M.IO<E, A>, min: number): M.UIO<Pool<E, A>> {
+export function makeFixed<R, E, A>(
+  get: M.Managed<R, E, A>,
+  min: number
+): M.RIO<R, Pool<E, A>> {
   return makeWith(get, Tp.tuple(min, min), new STR.None())
 }
 
@@ -361,11 +364,11 @@ export function makeFixed<E, A>(get: M.IO<E, A>, min: number): M.UIO<Pool<E, A>>
  * `Managed` is used, the individual items allocated by the pool will be
  * released in some unspecified order.
  */
-export function make<E, A>(
+export function make<R, E, A>(
   get: M.IO<E, A>,
   range: Range,
   timeToLive: number
-): M.RIO<CL.HasClock, Pool<E, A>> {
+): M.RIO<R & CL.HasClock, Pool<E, A>> {
   return makeWith(get, range, new STR.TimeToLive(timeToLive))
 }
 
@@ -374,13 +377,14 @@ export function make<E, A>(
  * describes how a pool whose excess items are not being used will be shrunk
  * down to the minimum size.
  */
-export function makeWith<R, E, A>(
-  get: M.IO<E, A>,
+export function makeWith<R, R1, E, A>(
+  get: M.Managed<R, E, A>,
   range: Range,
-  strategy: STR.Strategy<R, E, A>
-): M.RIO<R, Pool<E, A>> {
+  strategy: STR.Strategy<R1, E, A>
+): M.RIO<R & R1, Pool<E, A>> {
   return pipe(
     M.do,
+    M.bind("env", () => M.environment<R>()),
     M.bind("down", () => T.toManaged(Ref.makeRef(false))),
     M.bind("state", () => T.toManaged(Ref.makeRef<State>({ size: 0, free: 0 }))),
     M.bind("items", () =>
@@ -390,8 +394,16 @@ export function makeWith<R, E, A>(
     M.bind("initial", () => T.toManaged(strategy.initial())),
     M.let(
       "pool",
-      ({ down, initial, inv, items, state }) =>
-        new DefaultPool(get, range, down, state, items, inv, strategy.track(initial))
+      ({ down, env, initial, inv, items, state }) =>
+        new DefaultPool(
+          M.provideAll_(get, env),
+          range,
+          down,
+          state,
+          items,
+          inv,
+          strategy.track(initial)
+        )
     ),
     M.bind("fiber", ({ pool }) => T.toManaged(T.forkDaemon(pool.initialize()))),
     M.bind("shrink", ({ initial, pool }) =>
