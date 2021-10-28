@@ -244,11 +244,11 @@ export function flatten<E, E1, A>(exit: Exit<E, Exit<E1, A>>) {
 /**
  * Folds over the value or cause.
  */
-export function fold_<E, A, Z>(
+export function fold_<E, A, Z1, Z2>(
   exit: Exit<E, A>,
-  failed: (e: C.Cause<E>) => Z,
-  succeed: (a: A) => Z
-): Z {
+  failed: (e: C.Cause<E>) => Z1,
+  succeed: (a: A) => Z2
+): Z1 | Z2 {
   switch (exit._tag) {
     case "Success": {
       return succeed(exit.value)
@@ -264,8 +264,11 @@ export function fold_<E, A, Z>(
  *
  * @ets_data_first fold_
  */
-export function fold<E, A, Z>(failed: (e: C.Cause<E>) => Z, succeed: (a: A) => Z) {
-  return (exit: Exit<E, A>): Z => fold_(exit, failed, succeed)
+export function fold<E, A, Z1, Z2>(
+  failed: (e: C.Cause<E>) => Z1,
+  succeed: (a: A) => Z2
+) {
+  return (exit: Exit<E, A>): Z1 | Z2 => fold_(exit, failed, succeed)
 }
 
 /**
