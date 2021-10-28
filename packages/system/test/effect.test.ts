@@ -453,4 +453,45 @@ describe("Effect", () => {
     expect(res).toEqual(res2)
     expect(res2).toEqual([1, 2, 3, 4, 5, 6])
   })
+
+  describe("tapExit", () => {
+    it("success", async () => {
+      let tapFunctionCalled = false
+      const res = await pipe(
+        T.tapExit_(T.succeed(7), () =>
+          T.succeedWith(() => {
+            tapFunctionCalled = true
+          })
+        ),
+        T.runPromiseExit
+      )
+
+      if (Ex.succeeded(res)) {
+        expect(tapFunctionCalled).toBeTruthy()
+        expect(res.value).toEqual(7)
+      } else {
+        fail("Should have succeeded")
+      }
+    })
+
+    it("failure", async () => {
+      let tapFunctionCalled = false
+      const res = await pipe(
+        T.tapExit_(T.fail("FAIL"), () =>
+          T.succeedWith(() => {
+            tapFunctionCalled = true
+          })
+        ),
+        T.runPromiseExit
+      )
+
+      if (!Ex.succeeded(res)) {
+        expect(tapFunctionCalled).toBeTruthy()
+        expect(res.cause._tag).toEqual("Fail")
+        expect(res.cause._tag === "Fail" && res.cause.value).toEqual("FAIL")
+      } else {
+        fail("Should have failed")
+      }
+    })
+  })
 })
