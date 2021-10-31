@@ -8,7 +8,7 @@ import * as O from "../../src/Option"
 describe("Sink", () => {
   it("untilOutputEffect", async () => {
     const result = await pipe(
-      S.range(1, 8),
+      S.range(1, 9),
       S.rechunk(2),
       S.run(
         SK.untilOutputEffect_(SK.take(4), (x) =>
