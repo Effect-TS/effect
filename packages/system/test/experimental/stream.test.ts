@@ -10,6 +10,7 @@ import * as M from "../../src/Managed"
 import * as O from "../../src/Option"
 import * as Ord from "../../src/Ord"
 import * as Ref from "../../src/Ref"
+import * as SC from "../../src/Schedule"
 import * as ST from "../../src/Structural"
 
 describe("Stream", () => {
@@ -474,5 +475,26 @@ describe("Stream", () => {
     )
 
     expect(withDebounce).toEqual(withoutDebounce)
+  })
+
+  it("retries", async () => {
+    let counter = 0
+
+    expect(
+      (
+        await pipe(
+          S.fromIterable([1]),
+          S.chain(() => {
+            counter += 1
+            return S.fail(new Error(""))
+          }),
+          S.retry(SC.recurs(3)),
+          S.runDrain,
+          T.runPromiseExit
+        )
+      )._tag
+    ).toEqual("Failure")
+
+    expect(counter).toEqual(4)
   })
 })

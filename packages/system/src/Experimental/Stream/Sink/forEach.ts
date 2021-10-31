@@ -1,14 +1,30 @@
 // ets_tracing: off
 
+import type * as CK from "../../../Collections/Immutable/Chunk"
 import * as T from "../../../Effect"
+import * as CH from "../Channel"
+import * as SK from "../Sink"
 import type * as C from "./core"
-import * as ForEachWhile from "./forEachWhile"
 
 /**
  * A sink that executes the provided effectful function for every element fed to it.
  */
-export function forEach<R, ErrIn, ErrOut, In, B>(
-  f: (_in: In) => T.Effect<R, ErrOut, B>
-): C.Sink<R, ErrIn, In, ErrIn | ErrOut, In, void> {
-  return ForEachWhile.forEachWhile((_) => T.as_(f(_), true))
+export function forEach<R, ErrIn, Err, In, B>(
+  f: (_in: In) => T.Effect<R, Err, B>
+): C.Sink<R, ErrIn, In, ErrIn | Err, unknown, void> {
+  const process: CH.Channel<
+    R,
+    ErrIn,
+    CK.Chunk<In>,
+    unknown,
+    Err | ErrIn,
+    never,
+    void
+  > = CH.readWithCause(
+    (in_) => CH.zipRight_(CH.fromEffect(T.forEachUnit_(in_, f)), process),
+    (halt) => CH.failCause(halt),
+    (_) => CH.end(undefined)
+  )
+
+  return new SK.Sink(process)
 }
