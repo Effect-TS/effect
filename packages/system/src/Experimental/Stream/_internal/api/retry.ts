@@ -52,6 +52,8 @@ export function retry_<R, R1, E, A, Z>(
  * This retries the entire stream, so will re-execute all of the stream's acquire operations.
  *
  * The schedule is reset as soon as the first element passes through the stream again.
+ *
+ * @ets_data_first retry_
  */
 export function retry<R1, E, Z>(schedule: SC.Schedule<R1, E, Z>) {
   return <R, A>(self: C.Stream<R, E, A>) => retry_(self, schedule)
