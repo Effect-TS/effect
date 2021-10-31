@@ -3,12 +3,86 @@ import * as Tp from "../../src/Collections/Immutable/Tuple"
 import * as T from "../../src/Effect"
 import * as E from "../../src/Either"
 import * as S from "../../src/Experimental/Stream"
+import * as SK from "../../src/Experimental/Stream/Sink"
 import * as SBK from "../../src/Experimental/Stream/SortedByKey"
-import { pipe } from "../../src/Function"
+import { flow, pipe } from "../../src/Function"
+import * as M from "../../src/Managed"
+import * as O from "../../src/Option"
 import * as Ord from "../../src/Ord"
+import * as Ref from "../../src/Ref"
 import * as ST from "../../src/Structural"
 
 describe("Stream", () => {
+  describe("Broadcast", () => {
+    it("should broadcast", async () => {
+      const fn = jest.fn()
+
+      const stream = pipe(
+        Ref.makeRef(0),
+        T.map((ref) =>
+          S.repeatEffect(T.delay(100)(Ref.updateAndGet_(ref, (n) => n + 1)))
+        ),
+        S.unwrap,
+        S.take(2)
+      )
+
+      const copies = await pipe(
+        stream,
+        S.broadcast(2, 10),
+        M.use(
+          T.forEachPar(
+            flow(
+              S.chain((n) =>
+                S.fromEffect(
+                  T.succeedWith(() => {
+                    fn(`n: ${n}`)
+                  })
+                )
+              ),
+              S.runDrain
+            )
+          )
+        ),
+        T.runPromiseExit
+      )
+
+      expect(copies._tag).toEqual("Success")
+      expect(fn.mock.calls).toEqual([["n: 1"], ["n: 1"], ["n: 2"], ["n: 2"]])
+    })
+  })
+
+  describe("Core", () => {
+    it("fromArray", async () => {
+      const a = S.fromChunk(Chunk.many(0, 1, 2))
+
+      expect(await T.runPromise(S.runCollect(a))).toEqual(Chunk.many(0, 1, 2))
+    })
+  })
+
+  it("interleave", async () => {
+    expect(
+      await pipe(
+        S.fromChunk(Chunk.many(1, 1, 1, 1, 1, 1, 1, 1, 1, 1)),
+        S.interleave(S.fromChunk(Chunk.many(2, 2, 2, 2, 2, 2, 2, 2, 2, 2))),
+        S.take(5),
+        S.runCollect,
+        T.runPromise
+      )
+    ).equals(Chunk.many(1, 2, 1, 2, 1))
+  })
+
+  it("intersperse", async () => {
+    expect(
+      await pipe(
+        S.fromChunk(Chunk.many(1, 1, 1, 1, 1, 1, 1, 1, 1, 1)),
+        S.intersperse(2),
+        S.take(5),
+        S.runCollect,
+        T.runPromise
+      )
+    ).equals(Chunk.many(1, 2, 1, 2, 1))
+  })
+
   it("runCollect", async () => {
     const result = await pipe(
       S.fromChunk(Chunk.many(0, 1, 2)),
@@ -208,5 +282,197 @@ describe("Stream", () => {
     expect(result).equals(
       Chunk.many(Tp.tuple("h", "hello"), Tp.tuple("h", "hi"), Tp.tuple("w", "world"))
     )
+  })
+
+  it("merge", async () => {
+    let n = 0
+    const streamA = S.repeatEffectOption(
+      T.delay(100)(
+        T.suspend(() => {
+          n++
+          if (n > 3) {
+            return T.fail(O.none)
+          } else {
+            return T.succeed(1)
+          }
+        })
+      )
+    )
+    let n2 = 0
+    const streamB = S.repeatEffectOption(
+      T.delay(200)(
+        T.suspend(() => {
+          n2++
+          if (n2 > 2) {
+            return T.fail(O.none)
+          } else {
+            return T.succeed(2)
+          }
+        })
+      )
+    )
+
+    expect(await pipe(streamA, S.merge(streamB), S.runCollect, T.runPromise)).equals(
+      Chunk.many(1, 2, 1, 1, 2)
+    )
+  })
+
+  /*
+  it.skip("zipN", async () => {
+    expect(
+      await pipe(
+        S.zipN(
+          S.fromChunk(A.many(1, 1, 1, 1)),
+          S.fromChunk(A.many("a", "b", "c", "d")),
+          S.fromChunk(A.many(2, 2, 2, 2)),
+          S.fromChunk(A.many("e", "f", "g", "h"))
+        )(tuple),
+        S.runCollect,
+        T.runPromise
+      )
+    ).toEqual([
+      [1, "a", 2, "e"],
+      [1, "b", 2, "f"],
+      [1, "c", 2, "g"],
+      [1, "d", 2, "h"]
+    ])
+  })
+    it("crossN", async () => {
+    expect(
+      await pipe(
+        S.crossN(
+          S.fromChunk(A.many(1, 2)),
+          S.fromChunk(A.many("a", "b")),
+          S.fromChunk(A.many(3, 4))
+        )(tuple),
+        S.runCollect,
+        T.runPromise
+      )
+    ).toEqual([
+      [1, "a", 3],
+      [1, "a", 4],
+      [1, "b", 3],
+      [1, "b", 4],
+      [2, "a", 3],
+      [2, "a", 4],
+      [2, "b", 3],
+      [2, "b", 4]
+    ])
+  })
+  */
+
+  it("range", async () => {
+    expect(await pipe(S.range(2, 8), S.runCollect, T.runPromise)).equals(
+      Chunk.many(2, 3, 4, 5, 6, 7)
+    )
+  })
+
+  it("sums", async () => {
+    expect(
+      await pipe(S.fromIterable([1, 2, 3]), S.run(SK.sum()), T.runPromise)
+    ).toEqual(6)
+  })
+
+  it("chainParSwitch", async () => {
+    expect(
+      await pipe(
+        S.fromIterable([1, 2, 3]),
+        S.chainParSwitch(
+          (n) => S.fromChunk<number>(Chunk.from([n, n ** 2, n ** 3])),
+          10
+        ),
+        S.runCollect,
+        T.runPromise
+      )
+    ).equals(Chunk.many(1, 1, 1, 2, 4, 8, 3, 9, 27))
+  })
+
+  it("debounces", async () => {
+    const result = await pipe(
+      S.fromIterable([1, 2, 3]),
+      S.fixed(5),
+      S.debounce(20),
+      S.runCollect,
+      T.runPromise
+    )
+
+    expect(result).equals(Chunk.single(3))
+  })
+
+  it.skip("zipWithLatest & interruptWhen", async () => {
+    const neverendingSource = S.async<unknown, unknown, string>((cb) => {
+      setTimeout(() => cb.single("C1"), 10)
+      setTimeout(() => cb.single("C2"), 20)
+      setTimeout(() => cb.end(), 25)
+    })
+    const neverendingZipped = pipe(
+      neverendingSource,
+      S.zipWithLatest(neverendingSource, (c, e) => `${c}-${e}`)
+    )
+
+    const source = S.async<unknown, unknown, string>((cb) => {
+      setTimeout(() => cb.single("C1"), 10)
+      setTimeout(() => cb.single("C2"), 20)
+      setTimeout(() => cb.end(), 25)
+    })
+
+    const zipped = pipe(
+      source,
+      S.zipWithLatest(source, (c, e) => `${c}-${e}`)
+    )
+
+    const res0 = await pipe(
+      neverendingZipped,
+      S.interruptWhen(T.sleep(1_000)),
+      S.runCollect,
+      T.runPromise
+    )
+
+    const res1 = await pipe(zipped, S.runCollect, T.runPromise)
+
+    expect(res0).toEqual(res1)
+  })
+
+  it.skip("zipWithLatest & Debounce", async () => {
+    const withDebounce = await pipe(
+      S.zipWithLatest_(
+        S.async((cb) => {
+          setTimeout(() => cb.single("a"))
+          setTimeout(() => cb.single("b"), 100)
+          setTimeout(() => cb.end(), 120)
+        }),
+        S.async((cb) => {
+          setTimeout(() => cb.single(1))
+          setTimeout(() => cb.single(2), 50)
+          setTimeout(() => cb.single(3), 150)
+          setTimeout(() => cb.end(), 155)
+        }),
+        (a, b) => [a, b] as const
+      ),
+      S.debounce(10),
+      S.runCollect,
+      T.runPromise
+    )
+
+    const withoutDebounce = await pipe(
+      S.zipWithLatest_(
+        S.async((cb) => {
+          setTimeout(() => cb.single("a"))
+          setTimeout(() => cb.single("b"), 100)
+          setTimeout(() => cb.end(), 120)
+        }),
+        S.async((cb) => {
+          setTimeout(() => cb.single(1))
+          setTimeout(() => cb.single(2), 50)
+          setTimeout(() => cb.single(3), 150)
+          setTimeout(() => cb.end(), 155)
+        }),
+        (a, b) => [a, b] as const
+      ),
+      S.runCollect,
+      T.runPromise
+    )
+
+    expect(withDebounce).toEqual(withoutDebounce)
   })
 })
