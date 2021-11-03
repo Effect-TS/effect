@@ -1,6 +1,5 @@
 // ets_tracing: off
 
-import * as CS from "../../../../Cause"
 import * as T from "../../../../Effect"
 import * as E from "../../../../Either"
 import * as Ex from "../../../../Exit"
@@ -85,9 +84,9 @@ export function mergeWith_<
 
       const handleSide =
         <Err, Done, Err2, Done2>(
-          exit: Ex.Exit<E.Either<Err, Done>, OutElem | OutElem1>,
-          fiber: F.Fiber<E.Either<Err2, Done2>, OutElem | OutElem1>,
-          pull: T.Effect<Env & Env1, E.Either<Err, Done>, OutElem | OutElem1>
+          exit: Ex.Exit<Err, E.Either<Done, OutElem | OutElem1>>,
+          fiber: F.Fiber<Err2, E.Either<Done2, OutElem | OutElem1>>,
+          pull: T.Effect<Env & Env1, Err, E.Either<Done, OutElem | OutElem1>>
         ) =>
         (
           done: (
@@ -100,8 +99,8 @@ export function mergeWith_<
             OutDone2 | OutDone3
           >,
           both: (
-            f1: F.Fiber<E.Either<Err, Done>, OutElem | OutElem1>,
-            f2: F.Fiber<E.Either<Err2, Done2>, OutElem | OutElem1>
+            f1: F.Fiber<Err, E.Either<Done, OutElem | OutElem1>>,
+            f2: F.Fiber<Err2, E.Either<Done2, OutElem | OutElem1>>
           ) => MergeState,
           single: (
             f: (
@@ -120,64 +119,59 @@ export function mergeWith_<
             OutElem | OutElem1,
             OutDone2 | OutDone3
           >
-        > =>
-          Ex.fold_(
-            exit,
-            (
-              cause
-            ): T.Effect<
+        > => {
+          const onDecision = (
+            decision: MH.MergeDecision<
               Env & Env1,
-              never,
-              C.Channel<
-                Env & Env1,
-                unknown,
-                unknown,
-                unknown,
-                OutErr2 | OutErr3,
-                OutElem1 | OutElem,
-                OutDone2 | OutDone3
-              >
-            > => {
-              const result = done(
-                E.fold_(
-                  CS.flipCauseEither(cause),
-                  (_) => Ex.halt(_),
-                  (_) => Ex.succeed(_)
-                )
+              Err2,
+              Done2,
+              OutErr2 | OutErr3,
+              OutDone2 | OutDone3
+            >
+          ): T.Effect<
+            unknown,
+            never,
+            C.Channel<
+              Env & Env1,
+              unknown,
+              unknown,
+              unknown,
+              OutErr2 | OutErr3,
+              OutElem | OutElem1,
+              OutDone2 | OutDone3
+            >
+          > => {
+            MH.concrete(decision)
+            if (decision._typeId === MH.DoneTypeId) {
+              return T.succeed(
+                C.fromEffect(T.zipRight_(F.interrupt(fiber), decision.io))
               )
-
-              MH.concrete(result)
-
-              if (result._typeId === MH.DoneTypeId) {
-                return T.succeed(
-                  C.fromEffect(T.zipRight_(F.interrupt(fiber), result.io))
-                )
-              } else if (result._typeId === MH.AwaitTypeId) {
-                return T.map_(
-                  fiber.await,
-                  Ex.fold(
-                    (cause) =>
-                      C.fromEffect(
-                        result.f(
-                          E.fold_(
-                            CS.flipCauseEither(cause),
-                            (_) => Ex.halt(_),
-                            (_) => Ex.succeed(_)
-                          )
-                        )
-                      ),
-                    (elem) => ZipRight.zipRight_(C.write(elem), go(single(result.f)))
+            } else {
+              return T.map_(
+                fiber.await,
+                Ex.fold(
+                  (cause) => C.fromEffect(decision.f(Ex.halt(cause))),
+                  E.fold(
+                    (z) => C.fromEffect(decision.f(Ex.succeed(z))),
+                    (elem) => ZipRight.zipRight_(C.write(elem), go(single(decision.f)))
                   )
                 )
-              }
-
-              throw new Error("Unexpected")
-            },
-            (elem) =>
-              T.map_(T.fork(pull), (leftFiber) =>
-                ZipRight.zipRight_(C.write(elem), go(both(leftFiber, fiber)))
               )
+            }
+          }
+
+          return Ex.fold_(
+            exit,
+            (failure) => onDecision(done(Ex.halt(failure))),
+            E.fold(
+              (z) => onDecision(done(Ex.succeed(z))),
+              (elem) =>
+                T.map_(T.fork(pull), (leftFiber) =>
+                  ZipRight.zipRight_(C.write(elem), go(both(leftFiber, fiber)))
+                )
+            )
           )
+        }
 
       const go = (
         state: MergeState
@@ -193,13 +187,13 @@ export function mergeWith_<
         if (state._typeId === MH.BothRunningTypeId) {
           const lj: T.Effect<
             Env1,
-            E.Either<OutErr, OutDone>,
-            OutElem | OutElem1
+            OutErr,
+            E.Either<OutDone, OutElem | OutElem1>
           > = F.join(state.left)
           const rj: T.Effect<
             Env1,
-            E.Either<OutErr1, OutDone1>,
-            OutElem | OutElem1
+            OutErr1,
+            E.Either<OutDone1, OutElem | OutElem1>
           > = F.join(state.right)
 
           return Unwrap.unwrap(
@@ -225,18 +219,12 @@ export function mergeWith_<
             T.map_(
               T.result(pullR),
               Ex.fold(
-                (cause) =>
-                  C.fromEffect(
-                    state.f(
-                      E.fold_(
-                        CS.flipCauseEither(cause),
-                        (_) => Ex.halt(_),
-                        (_) => Ex.succeed(_)
-                      )
-                    )
-                  ),
-                (elem) =>
-                  ZipRight.zipRight_(C.write(elem), go(new MH.LeftDone(state.f)))
+                (cause) => C.fromEffect(state.f(Ex.halt(cause))),
+                E.fold(
+                  (z) => C.fromEffect(state.f(Ex.succeed(z))),
+                  (elem) =>
+                    ZipRight.zipRight_(C.write(elem), go(new MH.LeftDone(state.f)))
+                )
               )
             )
           )
@@ -245,18 +233,12 @@ export function mergeWith_<
             T.map_(
               T.result(pullL),
               Ex.fold(
-                (cause) =>
-                  C.fromEffect(
-                    state.f(
-                      E.fold_(
-                        CS.flipCauseEither(cause),
-                        (_) => Ex.halt(_),
-                        (_) => Ex.succeed(_)
-                      )
-                    )
-                  ),
-                (elem) =>
-                  ZipRight.zipRight_(C.write(elem), go(new MH.RightDone(state.f)))
+                (cause) => C.fromEffect(state.f(Ex.halt(cause))),
+                E.fold(
+                  (z) => C.fromEffect(state.f(Ex.succeed(z))),
+                  (elem) =>
+                    ZipRight.zipRight_(C.write(elem), go(new MH.RightDone(state.f)))
+                )
               )
             )
           )

@@ -1,24 +1,33 @@
 // ets_tracing: off
 
-import * as CK from "../../../../Collections/Immutable/Chunk"
+import * as A from "../../../../Collections/Immutable/Array"
 import * as Tp from "../../../../Collections/Immutable/Tuple"
-import * as CH from "../../Channel"
-import * as C from "../core"
+import type { _A, _E, _R } from "../../../../Utils"
+import type * as C from "../core"
+import * as CrossWith from "./crossWith"
 
 /**
  * Composes this stream with the specified stream to create a cartesian product of elements.
  * The `that` stream would be run multiple times, for every element in the `this` stream.
  */
-export function cross_<R, R1, E, E1, A, A1>(
-  self: C.Stream<R, E, A>,
-  that: C.Stream<R1, E1, A1>
-): C.Stream<R & R1, E | E1, Tp.Tuple<[A, A1]>> {
-  return new C.Stream(
-    CH.concatMap_(self.channel, (a) =>
-      CH.mapOut_(that.channel, (b) =>
-        CK.chain_(a, (a) => CK.map_(b, (b) => Tp.tuple(a, b)))
-      )
-    )
+export function cross_<SN extends readonly C.Stream<any, any, any>[]>(
+  ...[s1, s2, ...streams]: SN & {
+    readonly 0: C.Stream<any, any, any>
+    readonly 1: C.Stream<any, any, any>
+  }
+): C.Stream<
+  _R<SN[number]>,
+  _E<SN[number]>,
+  Tp.Tuple<{
+    [K in keyof SN]: _A<SN[K]>
+  }>
+> {
+  const init = CrossWith.crossWith_(s1, s2, Tp.tuple)
+
+  // @ts-expect-error
+  return A.reduce_(streams, init, (acc, v) =>
+    // @ts-expect-error
+    CrossWith.crossWith_(acc, v, (a, b) => Tp.append_(a, b))
   )
 }
 
@@ -28,6 +37,24 @@ export function cross_<R, R1, E, E1, A, A1>(
  *
  * @ets_data_first cross_
  */
-export function cross<R1, E1, A1>(that: C.Stream<R1, E1, A1>) {
-  return <R, E, A>(self: C.Stream<R, E, A>) => cross_(self, that)
+export function cross<SN extends readonly C.Stream<any, any, any>[]>(
+  ...[s1, ...streams]: SN & {
+    readonly 0: C.Stream<any, any, any>
+  }
+) {
+  return <R, E, A>(
+    self: C.Stream<R, E, A>
+  ): C.Stream<
+    R & _R<SN[number]>,
+    E | _E<SN[number]>,
+    Tp.Tuple<
+      [
+        ...{
+          [K in keyof SN]: _A<SN[K]>
+        }
+      ]
+    >
+  > =>
+    // @ts-expect-error
+    cross_(self, s1, ...streams)
 }
