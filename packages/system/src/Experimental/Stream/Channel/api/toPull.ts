@@ -1,6 +1,5 @@
 // ets_tracing: off
 
-import * as CS from "../../../../Cause"
 import * as T from "../../../../Effect"
 import * as E from "../../../../Either"
 import * as M from "../../../../Managed"
@@ -10,22 +9,20 @@ import type * as C from "../core"
 function toPullInterpret<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
   channelState: Executor.ChannelState<Env, OutErr>,
   exec: Executor.ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
-): T.Effect<Env, E.Either<OutErr, OutDone>, OutElem> {
+): T.Effect<Env, OutErr, E.Either<OutDone, OutElem>> {
   switch (channelState._typeId) {
     case Executor.ChannelStateEffectTypeId: {
-      return T.chain_(T.mapError_(channelState.effect, E.left), () =>
-        toPullInterpret(exec.run(), exec)
-      )
+      return T.chain_(channelState.effect, () => toPullInterpret(exec.run(), exec))
     }
     case Executor.ChannelStateEmitTypeId: {
-      return T.succeed(exec.getEmit())
+      return T.succeed(E.right(exec.getEmit()))
     }
     case Executor.ChannelStateDoneTypeId: {
       const done = exec.getDone()
       if (done._tag === "Success") {
-        return T.fail(E.right(done.value))
+        return T.succeed(E.left(done.value))
       } else {
-        return T.halt(CS.map_(done.cause, E.left))
+        return T.halt(done.cause)
       }
     }
   }
@@ -36,7 +33,7 @@ function toPullInterpret<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
  */
 export function toPull<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
   self: C.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
-): M.Managed<Env, never, T.Effect<Env, E.Either<OutErr, OutDone>, OutElem>> {
+): M.Managed<Env, never, T.Effect<Env, OutErr, E.Either<OutDone, OutElem>>> {
   return M.map_(
     M.makeExit_(
       T.succeedWith(() => new Executor.ChannelExecutor(() => self, undefined)),

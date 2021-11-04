@@ -1,6 +1,5 @@
 // ets_tracing: off
 
-import * as CS from "../../../../Cause"
 import * as T from "../../../../Effect"
 import * as E from "../../../../Either"
 import * as F from "../../../../Fiber"
@@ -62,7 +61,7 @@ export function mergeAllWith_<
         M.tap(() => M.finalizer(T.chain_(getChildren, F.interruptAll))),
         M.bind("queue", () =>
           T.toManagedRelease_(
-            Q.makeBounded<T.Effect<Env, E.Either<OutErr | OutErr1, OutDone>, OutElem>>(
+            Q.makeBounded<T.Effect<Env, OutErr | OutErr1, E.Either<OutDone, OutElem>>>(
               bufferSize
             ),
             Q.shutdown
@@ -79,20 +78,21 @@ export function mergeAllWith_<
           "evaluatePull",
           ({ errorSignal, lastDone, queue }) =>
             (
-              pull: T.Effect<Env & Env1, E.Either<OutErr | OutErr1, OutDone>, OutElem>
+              pull: T.Effect<Env & Env1, OutErr | OutErr1, E.Either<OutDone, OutElem>>
             ) =>
               pipe(
                 pull,
-                T.chain((outElem) => Q.offer_(queue, T.succeed(outElem))),
-                T.forever,
-                T.catchAllCause((c) =>
-                  E.fold_(
-                    CS.flipCauseEither(c),
-                    (cause) =>
-                      T.zipRight_(
-                        Q.offer_(queue, T.halt(CS.map_(cause, E.left))),
-                        T.asUnit(P.succeed_(errorSignal, void 0))
-                      ),
+                T.chain(
+                  E.fold(
+                    (done) => T.succeed(O.some(done)),
+                    (outElem) =>
+                      T.as_(Q.offer_(queue, T.succeed(E.right(outElem))), O.none)
+                  )
+                ),
+                T.repeatUntil(O.isSome),
+                T.chain(
+                  O.fold(
+                    () => T.unit,
                     (outDone) =>
                       Ref.update_(
                         lastDone,
@@ -102,68 +102,56 @@ export function mergeAllWith_<
                         )
                       )
                   )
+                ),
+                T.catchAllCause((cause) =>
+                  T.zipRight_(
+                    Q.offer_(queue, T.halt(cause)),
+                    T.asUnit(P.succeed_(errorSignal, undefined))
+                  )
                 )
               )
         ),
         M.tap(
-          ({
-            cancelers,
-            errorSignal,
-            evaluatePull,
-            lastDone,
-            permits,
-            pull,
-            queue
-          }) => {
-            return pipe(
+          ({ cancelers, errorSignal, evaluatePull, lastDone, permits, pull, queue }) =>
+            pipe(
               pull,
               T.foldCauseM(
-                (c) =>
-                  E.fold_(
-                    CS.flipCauseEither(c),
-                    (cause) =>
-                      pipe(
-                        getChildren,
-                        T.chain(F.interruptAll),
-                        T.zipRight(
-                          T.as_(Q.offer_(queue, T.halt(CS.map_(cause, E.left))), false)
-                        )
-                      ),
-                    (outDone) =>
-                      T.raceWith_(
-                        P.await(errorSignal),
-                        SM.withPermits_(T.unit, permits, n),
-                        (_, permitAcquisition) =>
-                          pipe(
-                            getChildren,
-                            T.chain(F.interruptAll),
-                            T.zipRight(T.as_(F.interrupt(permitAcquisition), false))
-                          ),
-                        (_, failureAwait) =>
-                          pipe(
-                            F.interrupt(failureAwait),
-                            T.zipRight(
-                              T.as_(
-                                T.chain_(
-                                  lastDone.get,
-                                  O.fold(
-                                    () => Q.offer_(queue, T.fail(E.right(outDone))),
-                                    (lastDone) =>
-                                      Q.offer_(
-                                        queue,
-                                        T.fail(E.right(f(lastDone, outDone)))
-                                      )
-                                  )
-                                ),
-                                false
-                              )
-                            )
-                          )
-                      )
+                (cause) =>
+                  T.zipRight_(
+                    T.chain_(getChildren, F.interruptAll),
+                    T.as_(Q.offer_(queue, T.halt(cause)), false)
                   ),
-                (channel) => {
-                  switch (mergeStrategy) {
-                    case "BackPressure": {
+                E.fold(
+                  (outDone) =>
+                    T.raceWith_(
+                      P.await(errorSignal),
+                      SM.withPermits_(T.unit, permits, n),
+                      (_, permitAcquisition) =>
+                        T.zipRight_(
+                          T.chain_(getChildren, F.interruptAll),
+                          T.as_(F.interrupt(permitAcquisition), false)
+                        ),
+                      (_, failureAwait) =>
+                        T.zipRight_(
+                          F.interrupt(failureAwait),
+                          T.as_(
+                            T.chain_(
+                              lastDone.get,
+                              O.fold(
+                                () => Q.offer_(queue, T.succeed(E.left(outDone))),
+                                (lastDone) =>
+                                  Q.offer_(
+                                    queue,
+                                    T.succeed(E.left(f(lastDone, outDone)))
+                                  )
+                              )
+                            ),
+                            false
+                          )
+                        )
+                    ),
+                  (channel) => {
+                    if (mergeStrategy === "BackPressure") {
                       return pipe(
                         T.do,
                         T.bind("latch", () => P.make<never, void>()),
@@ -175,7 +163,7 @@ export function mergeAllWith_<
                         T.tap(({ latch, raceIOs }) =>
                           T.fork(
                             SM.withPermit_(
-                              T.zipRight_(P.succeed_(latch, void 0), raceIOs),
+                              T.zipRight_(P.succeed_(latch, undefined), raceIOs),
                               permits
                             )
                           )
@@ -184,8 +172,7 @@ export function mergeAllWith_<
                         T.bind("errored", () => P.isDone(errorSignal)),
                         T.map(({ errored }) => !errored)
                       )
-                    }
-                    case "BufferSliding": {
+                    } else {
                       return pipe(
                         T.do,
                         T.bind("canceler", () => P.make<never, void>()),
@@ -193,7 +180,9 @@ export function mergeAllWith_<
                         T.bind("size", () => Q.size(cancelers)),
                         T.tap(({ size }) =>
                           T.when_(
-                            T.chain_(Q.take(cancelers), (_) => P.succeed_(_, void 0)),
+                            T.chain_(Q.take(cancelers), (_) =>
+                              P.succeed_(_, undefined)
+                            ),
                             () => size >= n
                           )
                         ),
@@ -209,7 +198,7 @@ export function mergeAllWith_<
                         T.tap(({ latch, raceIOs }) =>
                           T.fork(
                             SM.withPermit_(
-                              T.zipRight_(P.succeed_(latch, void 0), raceIOs),
+                              T.zipRight_(P.succeed_(latch, undefined), raceIOs),
                               permits
                             )
                           )
@@ -220,12 +209,11 @@ export function mergeAllWith_<
                       )
                     }
                   }
-                }
+                )
               ),
-              T.repeatWhile((x) => x),
+              T.repeatWhile((x) => x === true),
               T.forkManaged
             )
-          }
         ),
         M.map(({ queue }) => queue)
       )
@@ -244,13 +232,11 @@ export function mergeAllWith_<
           Q.take(queue),
           T.flatten,
           T.foldCause(
-            (c) =>
-              E.fold_(
-                CS.flipCauseEither(c),
-                (cause) => C.failCause(cause),
-                (outDone) => C.end(outDone)
-              ),
-            (outElem) => ZipRight.zipRight_(C.write(outElem), consumer)
+            (cause) => C.failCause(cause),
+            E.fold(
+              (outDone) => C.end(outDone),
+              (outElem) => ZipRight.zipRight_(C.write(outElem), consumer)
+            )
           )
         )
       )

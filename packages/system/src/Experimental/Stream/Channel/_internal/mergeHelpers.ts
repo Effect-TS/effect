@@ -10,8 +10,8 @@ export class BothRunning<_Env, Err, Err1, _Err2, Elem, Done, Done1, _Done2> {
   readonly _typeId: typeof BothRunningTypeId = BothRunningTypeId
 
   constructor(
-    readonly left: F.Fiber<E.Either<Err, Done>, Elem>,
-    readonly right: F.Fiber<E.Either<Err1, Done1>, Elem>
+    readonly left: F.Fiber<Err, E.Either<Done, Elem>>,
+    readonly right: F.Fiber<Err1, E.Either<Done1, Elem>>
   ) {}
 }
 

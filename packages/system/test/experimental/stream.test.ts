@@ -497,4 +497,54 @@ describe("Stream", () => {
 
     expect(counter).toEqual(4)
   })
+
+  it("splitLines", async () => {
+    const result = await pipe(
+      S.from("Hello\nthis\nis\r\na\r\ntest\n"),
+      S.splitLines,
+      S.runCollect,
+      T.runPromise
+    )
+
+    expect(result).equals(Chunk.many("Hello", "this", "is", "a", "test"))
+  })
+
+  it("zip", async () => {
+    const result = await pipe(
+      S.from(1, 2, 3),
+      S.zip(S.from("a", "b", "c"), S.from(true, false, true), S.from("x", "y", "z")),
+      S.runCollect,
+      T.runPromise
+    )
+
+    expect(result).equals(
+      Chunk.many(
+        Tp.tuple(1, "a", true, "x"),
+        Tp.tuple(2, "b", false, "y"),
+        Tp.tuple(3, "c", true, "z")
+      )
+    )
+  })
+
+  it("cross", async () => {
+    const result = await pipe(
+      S.from(1, 2),
+      S.cross(S.from("a", "b"), S.from(true, false)),
+      S.runCollect,
+      T.runPromise
+    )
+
+    expect(result).equals(
+      Chunk.many(
+        Tp.tuple(1, "a", true),
+        Tp.tuple(1, "a", false),
+        Tp.tuple(1, "b", true),
+        Tp.tuple(1, "b", false),
+        Tp.tuple(2, "a", true),
+        Tp.tuple(2, "a", false),
+        Tp.tuple(2, "b", true),
+        Tp.tuple(2, "b", false)
+      )
+    )
+  })
 })

@@ -1,6 +1,8 @@
 // ets_tracing: off
 
+import * as A from "../../../../Collections/Immutable/Array"
 import * as Tp from "../../../../Collections/Immutable/Tuple"
+import type { _A, _E, _R } from "../../../../Utils"
 import type * as C from "../core"
 import * as ZipWith from "./zipWith"
 
@@ -9,11 +11,26 @@ import * as ZipWith from "./zipWith"
  *
  * The new stream will end when one of the sides ends.
  */
-export function zip_<R, E, A, R1, E1, A1>(
-  self: C.Stream<R, E, A>,
-  that: C.Stream<R1, E1, A1>
-): C.Stream<R1 & R, E | E1, Tp.Tuple<[A, A1]>> {
-  return ZipWith.zipWith_(self, that, Tp.tuple)
+
+export function zip_<SN extends readonly C.Stream<any, any, any>[]>(
+  ...[s1, s2, ...streams]: SN & {
+    readonly 0: C.Stream<any, any, any>
+    readonly 1: C.Stream<any, any, any>
+  }
+): C.Stream<
+  _R<SN[number]>,
+  _E<SN[number]>,
+  Tp.Tuple<{
+    [K in keyof SN]: _A<SN[K]>
+  }>
+> {
+  const init = ZipWith.zipWith_(s1, s2, Tp.tuple)
+
+  // @ts-expect-error
+  return A.reduce_(streams, init, (acc, v) =>
+    // @ts-expect-error
+    ZipWith.zipWith_(acc, v, (a, b) => Tp.append_(a, b))
+  )
 }
 
 /**
@@ -23,8 +40,24 @@ export function zip_<R, E, A, R1, E1, A1>(
  *
  * @ets_data_first zip_
  */
-export function zip<R1, E1, A1>(
-  that: C.Stream<R1, E1, A1>
-): <R, E, A>(self: C.Stream<R, E, A>) => C.Stream<R1 & R, E | E1, Tp.Tuple<[A, A1]>> {
-  return (self) => zip_(self, that)
+export function zip<SN extends readonly C.Stream<any, any, any>[]>(
+  ...[s1, ...streams]: SN & {
+    readonly 0: C.Stream<any, any, any>
+  }
+) {
+  return <R, E, A>(
+    self: C.Stream<R, E, A>
+  ): C.Stream<
+    R & _R<SN[number]>,
+    E | _E<SN[number]>,
+    Tp.Tuple<
+      [
+        ...{
+          [K in keyof SN]: _A<SN[K]>
+        }
+      ]
+    >
+  > =>
+    // @ts-expect-error
+    zip_(self, s1, ...streams)
 }
