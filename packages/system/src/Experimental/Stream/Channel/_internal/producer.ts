@@ -9,6 +9,7 @@ import * as E from "../../../../Either"
 import * as Exit from "../../../../Exit"
 import * as P from "../../../../Promise"
 import * as Ref from "../../../../Ref"
+import * as IQ from "../../../../Support/ImmutableQueue"
 
 /**
  * Producer-side view of `SingleProducerAsyncInput` for variance purposes.
@@ -17,6 +18,7 @@ export interface AsyncInputProducer<Err, Elem, Done> {
   emit(el: Elem): T.UIO<unknown>
   done(a: Done): T.UIO<unknown>
   error(cause: Cause.Cause<Err>): T.UIO<unknown>
+  awaitRead: T.UIO<unknown>
 }
 
 /**
@@ -33,17 +35,17 @@ export interface AsyncInputConsumer<Err, Elem, Done> {
 export const DoneTypeId = Symbol()
 export type DoneTypeId = typeof DoneTypeId
 
-export class StateDone<A> {
+export class StateDone<Elem> {
   readonly _typeId: DoneTypeId = DoneTypeId
-  constructor(readonly a: A) {}
+  constructor(readonly a: Elem) {}
 }
 
 export const ErrorTypeId = Symbol()
 export type ErrorTypeId = typeof ErrorTypeId
 
-export class StateError<E> {
+export class StateError<Err> {
   readonly _typeId: ErrorTypeId = ErrorTypeId
-  constructor(readonly cause: Cause.Cause<E>) {}
+  constructor(readonly cause: Cause.Cause<Err>) {}
 }
 
 export const EmptyTypeId = Symbol()
@@ -51,20 +53,22 @@ export type EmptyTypeId = typeof EmptyTypeId
 
 export class StateEmpty {
   readonly _typeId: EmptyTypeId = EmptyTypeId
-  constructor(readonly notifyConsumer: P.Promise<never, void>) {}
+  constructor(readonly notifyProducer: P.Promise<never, void>) {}
 }
 
 export const EmitTypeId = Symbol()
 export type EmitTypeId = typeof EmitTypeId
 
-export class StateEmit<Elem> {
+export class StateEmit<Err, Elem, Done> {
   readonly _typeId: EmitTypeId = EmitTypeId
-  constructor(readonly a: Elem, readonly notifyProducer: P.Promise<never, void>) {}
+  constructor(
+    readonly notifyConsumers: IQ.ImmutableQueue<P.Promise<Err, E.Either<Done, Elem>>>
+  ) {}
 }
 
 export type State<Err, Elem, Done> =
   | StateEmpty
-  | StateEmit<Elem>
+  | StateEmit<Err, Elem, Done>
   | StateError<Err>
   | StateDone<Done>
 
@@ -95,10 +99,22 @@ export class SingleProducerAsyncInput<Err, Elem, Done>
         Ref.modify_(this.ref, (state) => {
           switch (state._typeId) {
             case EmitTypeId: {
-              return Tp.tuple(
-                T.chain_(P.await(state.notifyProducer), () => this.emit(el)),
-                state
-              )
+              const dequeued = state.notifyConsumers.dequeue()
+
+              if (dequeued._tag === "Some") {
+                const {
+                  tuple: [notifyConsumer, notifyConsumers]
+                } = dequeued.value
+
+                return Tp.tuple(
+                  P.succeed_(notifyConsumer, E.right(el)),
+                  notifyConsumers.size === 0
+                    ? new StateEmpty(p)
+                    : new StateEmit(notifyConsumers)
+                )
+              }
+
+              throw new Error("SingleProducerAsyncInput#emit: queue was empty")
             }
             case ErrorTypeId: {
               return Tp.tuple(T.interrupt, state)
@@ -107,10 +123,7 @@ export class SingleProducerAsyncInput<Err, Elem, Done>
               return Tp.tuple(T.interrupt, state)
             }
             case EmptyTypeId: {
-              return Tp.tuple(
-                T.chain_(P.succeed_(state.notifyConsumer, void 0), () => P.await(p)),
-                new StateEmit(el, p)
-              )
+              return Tp.tuple(P.await(state.notifyProducer), state)
             }
           }
         })
@@ -125,8 +138,8 @@ export class SingleProducerAsyncInput<Err, Elem, Done>
           switch (state._typeId) {
             case EmitTypeId: {
               return Tp.tuple(
-                T.chain_(P.await(state.notifyProducer), () => this.done(a)),
-                state
+                T.forEachUnit_(state.notifyConsumers, (p) => P.succeed_(p, E.left(a))),
+                new StateDone(a)
               )
             }
             case ErrorTypeId: {
@@ -136,10 +149,7 @@ export class SingleProducerAsyncInput<Err, Elem, Done>
               return Tp.tuple(T.interrupt, state)
             }
             case EmptyTypeId: {
-              return Tp.tuple(
-                P.succeed_(state.notifyConsumer, void 0),
-                new StateDone(a)
-              )
+              return Tp.tuple(P.await(state.notifyProducer), state)
             }
           }
         })
@@ -154,8 +164,8 @@ export class SingleProducerAsyncInput<Err, Elem, Done>
           switch (state._typeId) {
             case EmitTypeId: {
               return Tp.tuple(
-                T.chain_(P.await(state.notifyProducer), () => this.error(cause)),
-                state
+                T.forEachUnit_(state.notifyConsumers, (p) => P.halt_(p, cause)),
+                new StateError(cause)
               )
             }
             case ErrorTypeId: {
@@ -165,10 +175,7 @@ export class SingleProducerAsyncInput<Err, Elem, Done>
               return Tp.tuple(T.interrupt, state)
             }
             case EmptyTypeId: {
-              return Tp.tuple(
-                P.succeed_(state.notifyConsumer, void 0),
-                new StateError(cause)
-              )
+              return Tp.tuple(P.await(state.notifyProducer), state)
             }
           }
         })
@@ -181,16 +188,14 @@ export class SingleProducerAsyncInput<Err, Elem, Done>
     onElement: (element: Elem) => X,
     onDone: (done: Done) => X
   ): T.UIO<X> {
-    return T.chain_(P.make<never, void>(), (p) =>
+    return T.chain_(P.make<Err, E.Either<Done, Elem>>(), (p) =>
       T.flatten(
         Ref.modify_(this.ref, (state) => {
           switch (state._typeId) {
             case EmitTypeId: {
               return Tp.tuple(
-                T.map_(P.succeed_(state.notifyProducer, void 0), () =>
-                  onElement(state.a)
-                ),
-                new StateEmpty(p)
+                T.foldCause_(P.await(p), onError, E.fold(onDone, onElement)),
+                new StateEmit(state.notifyConsumers.push(p))
               )
             }
             case ErrorTypeId: {
@@ -201,10 +206,11 @@ export class SingleProducerAsyncInput<Err, Elem, Done>
             }
             case EmptyTypeId: {
               return Tp.tuple(
-                T.chain_(P.await(state.notifyConsumer), () =>
-                  this.takeWith(onError, onElement, onDone)
+                T.zipRight_(
+                  P.succeed_(state.notifyProducer, undefined),
+                  T.foldCause_(P.await(p), onError, E.fold(onDone, onElement))
                 ),
-                state
+                new StateEmit(IQ.ImmutableQueue.single(p))
               )
             }
           }
@@ -220,6 +226,16 @@ export class SingleProducerAsyncInput<Err, Elem, Done>
   )
 
   close = T.chain_(T.fiberId, (id) => this.error(Cause.interrupt(id)))
+
+  awaitRead = T.flatten(
+    Ref.modify_(this.ref, (state) => {
+      if (state._typeId === EmptyTypeId) {
+        return Tp.tuple(P.await(state.notifyProducer), state)
+      }
+
+      return Tp.tuple(T.unit, state)
+    })
+  )
 }
 
 /**

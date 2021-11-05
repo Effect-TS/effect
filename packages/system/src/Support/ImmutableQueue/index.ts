@@ -42,4 +42,12 @@ export class ImmutableQueue<A> {
   filter(f: (a: A) => boolean) {
     return new ImmutableQueue(L.filter_(this.backing, f))
   }
+
+  static single<A>(a: A) {
+    return new ImmutableQueue(L.of(a))
+  }
+
+  [Symbol.iterator]() {
+    return L.toArray(this.backing).values()
+  }
 }

@@ -342,32 +342,35 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
               if (this.input) {
                 const inputExecutor = this.input
                 this.input = undefined
-                const drainer: T.RIO<Env, unknown> = T.suspend(() => {
-                  const state = inputExecutor.run()
+                const drainer: T.RIO<Env, unknown> = T.zipRight_(
+                  currentChannel.input.awaitRead,
+                  T.suspend(() => {
+                    const state = inputExecutor.run()
 
-                  switch (state._typeId) {
-                    case ChannelStateEmitTypeId: {
-                      return T.chain_(
-                        currentChannel.input.emit(inputExecutor.getEmit()),
-                        () => drainer
-                      )
-                    }
-                    case ChannelStateEffectTypeId: {
-                      return T.foldCauseM_(
-                        state.effect,
-                        (cause) => currentChannel.input.error(cause),
-                        () => drainer
-                      )
-                    }
-                    case ChannelStateDoneTypeId: {
-                      const done = inputExecutor.getDone()
+                    switch (state._typeId) {
+                      case ChannelStateEmitTypeId: {
+                        return T.chain_(
+                          currentChannel.input.emit(inputExecutor.getEmit()),
+                          () => drainer
+                        )
+                      }
+                      case ChannelStateEffectTypeId: {
+                        return T.foldCauseM_(
+                          state.effect,
+                          (cause) => currentChannel.input.error(cause),
+                          () => drainer
+                        )
+                      }
+                      case ChannelStateDoneTypeId: {
+                        const done = inputExecutor.getDone()
 
-                      return done._tag === "Success"
-                        ? currentChannel.input.done(done.value)
-                        : currentChannel.input.error(done.cause)
+                        return done._tag === "Success"
+                          ? currentChannel.input.done(done.value)
+                          : currentChannel.input.error(done.cause)
+                      }
                     }
-                  }
-                })
+                  })
+                )
                 result = new ChannelStateEffect(
                   T.chain_(T.fork(drainer), (fiber) =>
                     T.succeedWith(() => {
