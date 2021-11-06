@@ -547,4 +547,15 @@ describe("Stream", () => {
       )
     )
   })
+
+  it("splitOn", async () => {
+    const result = await pipe(
+      S.from("This|is|a|test"),
+      S.splitOn("|"),
+      S.runCollect,
+      T.runPromise
+    )
+
+    expect(result).equals(Chunk.many("This", "is", "a", "test"))
+  })
 })

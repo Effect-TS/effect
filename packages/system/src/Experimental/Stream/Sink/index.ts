@@ -65,6 +65,8 @@ export * from "./mapEffect"
 export * from "./mapError"
 export * from "./mkString"
 export * from "./orElse"
+export * from "./race"
+export * from "./raceBoth"
 export * from "./reduce"
 export * from "./reduceEffect"
 export * from "./repeat"
@@ -84,8 +86,6 @@ export * from "./zipRight"
 export * from "./zipWith"
 // codegen:end
 
-// TODO: race -> Missing raceBoth
-// TODO: raceBoth -> Not implemented
 // TODO: zipPar -> Missing zipWithPar
 // TODO: zipParLeft -> Missing zipWithPar
 // TODO: zipParRight -> Missing zipWithPar
