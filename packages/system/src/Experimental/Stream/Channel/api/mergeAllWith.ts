@@ -68,7 +68,7 @@ export function mergeAllWith_<
           )
         ),
         M.bind("cancelers", () =>
-          T.toManagedRelease_(Q.makeBounded<P.Promise<never, void>>(n), Q.shutdown)
+          T.toManagedRelease_(Q.makeUnbounded<P.Promise<never, void>>(), Q.shutdown)
         ),
         M.bind("lastDone", () => Ref.makeManagedRef<O.Option<OutDone>>(O.none)),
         M.bind("errorSignal", () => P.makeManaged<never, void>()),

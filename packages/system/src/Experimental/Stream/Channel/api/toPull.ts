@@ -2,6 +2,7 @@
 
 import * as T from "../../../../Effect"
 import * as E from "../../../../Either"
+import { identity } from "../../../../Function"
 import * as M from "../../../../Managed"
 import * as Executor from "../_internal/executor"
 import type * as C from "../core"
@@ -36,7 +37,9 @@ export function toPull<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
 ): M.Managed<Env, never, T.Effect<Env, OutErr, E.Either<OutDone, OutElem>>> {
   return M.map_(
     M.makeExit_(
-      T.succeedWith(() => new Executor.ChannelExecutor(() => self, undefined)),
+      T.succeedWith(
+        () => new Executor.ChannelExecutor(() => self, undefined, identity)
+      ),
       (exec, exit) => exec.close(exit) || T.unit
     ),
     (exec) => T.suspend(() => toPullInterpret(exec.run(), exec))

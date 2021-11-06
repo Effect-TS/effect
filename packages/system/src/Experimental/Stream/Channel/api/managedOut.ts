@@ -5,7 +5,7 @@ import * as T from "../../../../Effect"
 import type * as M from "../../../../Managed"
 import * as ReleaseMap from "../../../../Managed/ReleaseMap"
 import * as C from "../core"
-import * as ConcatMap from "./concatMap"
+import * as MapOut from "./mapOut"
 
 /**
  * Use a managed to emit an output element
@@ -13,19 +13,17 @@ import * as ConcatMap from "./concatMap"
 export function managedOut<R, E, A>(
   self: M.Managed<R, E, A>
 ): C.Channel<R, unknown, unknown, unknown, E, A, unknown> {
-  return ConcatMap.concatMap_(
-    C.acquireReleaseOutExitWith_(ReleaseMap.makeReleaseMap, (rm, ex) =>
-      ReleaseMap.releaseAll(ex, T.sequential)(rm)
+  return MapOut.mapOut_(
+    C.acquireReleaseOutExitWith_(
+      T.chain_(ReleaseMap.makeReleaseMap, (releaseMap) =>
+        T.map_(
+          T.provideSome_(self.effect, (_: R) => Tp.tuple(_, releaseMap)),
+          ({ tuple: [_, out] }) => Tp.tuple(out, releaseMap)
+        )
+      ),
+      ({ tuple: [_, releaseMap] }, exit) =>
+        ReleaseMap.releaseAll(exit, T.sequential)(releaseMap)
     ),
-    (rm) =>
-      C.chain_(
-        C.fromEffect(
-          T.map_(
-            T.provideSome_(self.effect, (r: R) => Tp.tuple(r, rm)),
-            Tp.get(1)
-          )
-        ),
-        C.write
-      )
+    Tp.get(0)
   )
 }

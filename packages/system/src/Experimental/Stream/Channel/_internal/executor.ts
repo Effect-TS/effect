@@ -2,13 +2,12 @@
 
 import "../../../../Operator"
 
-import * as Cause from "../../../../Cause"
+import type * as Cause from "../../../../Cause"
 import * as L from "../../../../Collections/Immutable/List"
 import * as T from "../../../../Effect"
 import * as Either from "../../../../Either"
 import * as Exit from "../../../../Exit"
 import * as F from "../../../../Fiber"
-import { identity } from "../../../../Function"
 import * as O from "../../../../Option"
 import * as P from "./primitives"
 
@@ -159,6 +158,7 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
   private cancelled?: Exit.Exit<OutErr, OutDone> | undefined
   private emitted?: unknown | undefined
   private currentChannel?: ErasedChannel<Env> | undefined
+  private closeLastSubstream?: T.Effect<Env, never, unknown> | undefined
 
   constructor(
     initialChannel: () => P.Channel<
@@ -170,7 +170,10 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
       OutElem,
       OutDone
     >,
-    private providedEnv: unknown
+    private providedEnv: unknown,
+    private executeCloseLastSubstream: (
+      io: T.Effect<Env, never, unknown>
+    ) => T.Effect<Env, never, unknown>
   ) {
     this.currentChannel = initialChannel() as ErasedChannel<Env>
   }
@@ -393,7 +396,8 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
               const previousInput = this.input
               const leftExec = new ChannelExecutor(
                 currentChannel.left,
-                this.providedEnv
+                this.providedEnv,
+                this.executeCloseLastSubstream
               )
               leftExec.input = previousInput
               this.input = leftExec
@@ -459,9 +463,18 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
               break
             }
             case P.ConcatAllTypeId: {
+              const innerExecuteLastClose = (f: T.Effect<Env, never, unknown>) =>
+                T.succeedWith(() => {
+                  const prevLastClose = this.closeLastSubstream
+                    ? this.closeLastSubstream
+                    : T.unit
+
+                  this.closeLastSubstream = T.zipRight_(prevLastClose, f)
+                })
               const exec = new ChannelExecutor(
                 () => currentChannel.value,
-                this.providedEnv
+                this.providedEnv,
+                innerExecuteLastClose
               )
               exec.input = this.input
               this.subexecutorStack = new Inner(
@@ -471,6 +484,7 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
                 currentChannel.combineInners,
                 currentChannel.combineAll
               )
+              this.closeLastSubstream = undefined
               this.currentChannel = undefined
               break
             }
@@ -641,14 +655,10 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
     self: ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
     cause: Cause.Cause<unknown>
   ): ChannelState<Env, unknown> | undefined {
-    const closeEffect = maybeCloseBoth(
-      exec.close(Exit.halt(cause)),
-      rest.exec.close(Exit.halt(cause))
-    )
-
     return self.finishSubexecutorWithCloseEffect(
       Exit.halt(cause),
-      closeEffect ? T.chain_(closeEffect, T.done) : undefined
+      (_) => rest.exec.close(_),
+      (_) => exec.close(_)
     )
   }
 
@@ -677,7 +687,6 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
             return this.handleSubexecFailure(exec, rest, this, done.cause)
           }
           case "Success": {
-            const closeEffect = exec.close(done)
             const modifiedRest = new Inner(
               rest.exec,
               rest.subK,
@@ -685,32 +694,9 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
               rest.combineSubK,
               rest.combineSubKAndInner
             )
-
-            if (closeEffect) {
-              return new ChannelStateEffect(
-                T.foldCauseM_(
-                  closeEffect,
-                  (cause) => {
-                    const restClose = rest.exec.close(Exit.halt(cause))
-
-                    if (restClose) {
-                      return T.foldCauseM_(
-                        restClose,
-                        (restCause) =>
-                          this.finishWithExit(Exit.halt(Cause.then(cause, restCause))),
-                        () => this.finishWithExit(Exit.halt(cause))
-                      )
-                    } else {
-                      return this.finishWithExit(Exit.halt(cause))
-                    }
-                  },
-                  () => T.succeedWith(() => this.replaceSubexecutor(modifiedRest))
-                )
-              )
-            } else {
-              this.replaceSubexecutor(modifiedRest)
-              return undefined
-            }
+            this.closeLastSubstream = exec.close(done)
+            this.replaceSubexecutor(modifiedRest)
+            return undefined
           }
         }
       }
@@ -724,53 +710,36 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
 
   private finishSubexecutorWithCloseEffect(
     subexecDone: Exit.Exit<unknown, unknown>,
-    closeEffect: T.Effect<Env, never, unknown> | undefined
+    ...closeFns: ((
+      ex: Exit.Exit<unknown, unknown>
+    ) => T.Effect<Env, never, unknown> | undefined)[]
   ): ChannelState<Env, unknown> | undefined {
-    if (closeEffect) {
-      return new ChannelStateEffect(
-        T.foldCauseM_(
-          closeEffect,
-          (cause) =>
-            this.finishWithExit(
-              Exit.halt(
-                Cause.then(
-                  Exit.fold_(subexecDone, identity, () => Cause.empty),
-                  cause
-                )
-              )
-            ),
-          () => this.finishWithExit(subexecDone)
+    this.addFinalizer(
+      new P.ContinuationFinalizer((_) =>
+        T.forEachUnit_(closeFns, (closeFn) =>
+          T.chain_(
+            T.succeedWith(() => closeFn(subexecDone)),
+            (closeEffect) => {
+              if (closeEffect) {
+                return closeEffect
+              } else {
+                return T.unit
+              }
+            }
+          )
         )
       )
-    } else {
-      const state: ChannelState<Env, unknown> | undefined = Exit.fold_(
-        subexecDone,
-        (e) => this.doneHalt(e),
-        (a) => this.doneSucceed(a)
-      )
+    )
 
-      this.subexecutorStack = undefined
-
-      return state
-    }
-  }
-
-  private finishWithExit(
-    exit: Exit.Exit<unknown, unknown>
-  ): T.Effect<Env, unknown, unknown> {
-    const state: ChannelState<Env, unknown> | undefined = Exit.fold_(
-      exit,
+    const state = Exit.fold_(
+      subexecDone,
       (e) => this.doneHalt(e),
       (a) => this.doneSucceed(a)
     )
 
     this.subexecutorStack = undefined
 
-    if (state) {
-      return channelStateEffect(state)
-    } else {
-      return T.unit
-    }
+    return state
   }
 
   private doneSucceed(z: unknown): ChannelState<Env, unknown> | undefined {
@@ -885,19 +854,44 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
 
     switch (run._typeId) {
       case ChannelStateEmitTypeId: {
-        const fromK: ErasedExecutor<Env> = new ChannelExecutor(
-          () => inner.subK(inner.exec.getEmit()),
-          this.providedEnv
-        )
-        fromK.input = this.input
-        this.subexecutorStack = new FromKAnd(fromK, inner)
-        return undefined
+        if (this.closeLastSubstream) {
+          const closeLast = this.closeLastSubstream
+          this.closeLastSubstream = undefined
+
+          return new ChannelStateEffect(
+            T.map_(this.executeCloseLastSubstream(closeLast), (_) => {
+              const fromK: ErasedExecutor<Env> = new ChannelExecutor(
+                () => inner.subK(inner.exec.getEmit()),
+                this.providedEnv,
+                this.executeCloseLastSubstream
+              )
+
+              fromK.input = this.input
+              this.subexecutorStack = new FromKAnd(fromK, inner)
+            })
+          )
+        } else {
+          const fromK: ErasedExecutor<Env> = new ChannelExecutor(
+            () => inner.subK(inner.exec.getEmit()),
+            this.providedEnv,
+            this.executeCloseLastSubstream
+          )
+
+          fromK.input = this.input
+          this.subexecutorStack = new FromKAnd(fromK, inner)
+          return undefined
+        }
       }
       case ChannelStateDoneTypeId: {
+        const lastClose = this.closeLastSubstream
         const done = inner.exec.getDone()
         switch (done._tag) {
           case "Failure": {
-            return this.finishSubexecutorWithCloseEffect(done, inner.exec.close(done))
+            return this.finishSubexecutorWithCloseEffect(
+              done,
+              () => lastClose,
+              (_) => inner.exec.close(_)
+            )
           }
           case "Success": {
             const doneValue = Exit.succeed(
@@ -905,18 +899,27 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
             )
             return this.finishSubexecutorWithCloseEffect(
               doneValue,
-              inner.exec.close(doneValue)
+              () => lastClose,
+              (_) => inner.exec.close(_)
             )
           }
         }
       }
       case ChannelStateEffectTypeId: {
+        const closeLast = this.closeLastSubstream ? this.closeLastSubstream : T.unit
+
+        this.closeLastSubstream = undefined
+
         return new ChannelStateEffect(
-          T.catchAllCause_(run.effect, (cause) =>
-            channelStateEffect(
-              this.finishSubexecutorWithCloseEffect(
-                Exit.halt(cause),
-                inner.exec.close(Exit.halt(cause))
+          T.zipRight_(
+            this.executeCloseLastSubstream(closeLast),
+            T.catchAllCause_(run.effect, (cause) =>
+              channelStateEffect(
+                this.finishSubexecutorWithCloseEffect(
+                  Exit.halt(cause),
+                  (_) => inner.exec.close(_),
+                  (_) => inner.exec.close(_)
+                )
               )
             )
           )

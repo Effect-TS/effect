@@ -1,7 +1,6 @@
 // ets_tracing: off
 
-import type * as CK from "../../../../Collections/Immutable/Chunk"
-import * as T from "../../../../Effect"
+import * as CK from "../../../../Collections/Immutable/Chunk"
 import * as CH from "../../Channel"
 import * as C from "../core"
 
@@ -12,5 +11,5 @@ import * as C from "../core"
  * @return a finite stream of values
  */
 export function fromChunk<O>(c: CK.Chunk<O>): C.UIO<O> {
-  return new C.Stream(CH.unwrap(T.succeedWith(() => CH.write(c))))
+  return new C.Stream(CH.suspend(() => (CK.isEmpty(c) ? CH.unit : CH.write(c))))
 }
