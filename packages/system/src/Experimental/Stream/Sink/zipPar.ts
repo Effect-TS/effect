@@ -4,9 +4,12 @@ import * as A from "../../../Collections/Immutable/Array"
 import * as Tp from "../../../Collections/Immutable/Tuple"
 import type * as C from "./core"
 import type * as U from "./utils"
-import * as ZipWith from "./zipWith"
+import * as ZipWithPar from "./zipWithPar"
 
-export function zip_<SN extends readonly C.Sink<any, any, any, any, any, any>[]>(
+/**
+ * Runs both sinks in parallel on the input and combines the results in a tuple.
+ */
+export function zipPar_<SN extends readonly C.Sink<any, any, any, any, any, any>[]>(
   ...[s1, s2, ...sinks]: SN & {
     readonly 0: C.Sink<any, any, any, any, any, any>
     readonly 1: C.Sink<any, any, any, any, any, any>
@@ -21,19 +24,21 @@ export function zip_<SN extends readonly C.Sink<any, any, any, any, any, any>[]>
     [K in keyof SN]: U._Z<SN[K]>
   }>
 > {
-  const init = ZipWith.zipWith_(s1, s2, Tp.tuple)
+  const init = ZipWithPar.zipWithPar_(s1, s2, Tp.tuple)
 
   // @ts-expect-error
   return A.reduce_(sinks, init, (acc, v) =>
     // @ts-expect-error
-    ZipWith.zipWith_(acc, v, (a, b) => Tp.append_(a, b))
+    ZipWithPar.zipWithPar_(acc, v, (a, b) => Tp.append_(a, b))
   )
 }
 
 /**
- * @ets_data_first zip_
+ * Runs both sinks in parallel on the input and combines the results in a tuple.
+ *
+ * @ets_data_first zipPar_
  */
-export function zip<SN extends readonly C.Sink<any, any, any, any, any, any>[]>(
+export function zipPar<SN extends readonly C.Sink<any, any, any, any, any, any>[]>(
   ...[s1, ...sinks]: SN & {
     readonly 0: C.Sink<any, any, any, any, any, any>
   }
@@ -55,5 +60,5 @@ export function zip<SN extends readonly C.Sink<any, any, any, any, any, any>[]>(
       ]
     >
     // @ts-expect-error
-  > => zip_(self, s1, ...sinks)
+  > => zipPar_(self, s1, ...sinks)
 }

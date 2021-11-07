@@ -1,6 +1,7 @@
 // ets_tracing: off
 
 import * as T from "../../../../Effect"
+import { identity } from "../../../../Function"
 import * as M from "../../../../Managed"
 import * as Executor from "../_internal/executor"
 import type * as C from "../core"
@@ -37,7 +38,9 @@ export function runManaged<Env, InErr, InDone, OutErr, OutDone>(
 ): M.Managed<Env, OutErr, OutDone> {
   return M.mapM_(
     M.makeExit_(
-      T.succeedWith(() => new Executor.ChannelExecutor(() => self, undefined)),
+      T.succeedWith(
+        () => new Executor.ChannelExecutor(() => self, undefined, identity)
+      ),
       (exec, exit) => exec.close(exit) || T.unit
     ),
     (exec) => T.suspend(() => runManagedInterpret(exec.run(), exec))

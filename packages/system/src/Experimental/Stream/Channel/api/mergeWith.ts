@@ -166,7 +166,7 @@ export function mergeWith_<
             E.fold(
               (z) => onDecision(done(Ex.succeed(z))),
               (elem) =>
-                T.map_(T.fork(pull), (leftFiber) =>
+                T.map_(T.forkDaemon(pull), (leftFiber) =>
                   ZipRight.zipRight_(C.write(elem), go(both(leftFiber, fiber)))
                 )
             )
@@ -248,8 +248,8 @@ export function mergeWith_<
       return pipe(
         C.fromEffect(
           T.zipWith_(
-            T.fork(pullL),
-            T.fork(pullR),
+            T.forkDaemon(pullL),
+            T.forkDaemon(pullR),
             (a, b): MergeState =>
               new MH.BothRunning<
                 unknown,

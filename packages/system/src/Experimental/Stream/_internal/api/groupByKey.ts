@@ -23,7 +23,7 @@ export function groupByKey_<R, E, A, K>(
   self: C.Stream<R, E, A>,
   f: (a: A) => K,
   buffer = 16
-): GB.GroupBy<R, E, K, A> {
+): GB.GroupBy<R, E, K, A, A> {
   return GroupBy.groupBy_(self, (a) => T.succeed(Tp.tuple(f(a), a)), buffer)
 }
 

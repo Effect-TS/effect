@@ -318,50 +318,6 @@ describe("Stream", () => {
     )
   })
 
-  /*
-  it.skip("zipN", async () => {
-    expect(
-      await pipe(
-        S.zipN(
-          S.fromChunk(A.many(1, 1, 1, 1)),
-          S.fromChunk(A.many("a", "b", "c", "d")),
-          S.fromChunk(A.many(2, 2, 2, 2)),
-          S.fromChunk(A.many("e", "f", "g", "h"))
-        )(tuple),
-        S.runCollect,
-        T.runPromise
-      )
-    ).toEqual([
-      [1, "a", 2, "e"],
-      [1, "b", 2, "f"],
-      [1, "c", 2, "g"],
-      [1, "d", 2, "h"]
-    ])
-  })
-    it("crossN", async () => {
-    expect(
-      await pipe(
-        S.crossN(
-          S.fromChunk(A.many(1, 2)),
-          S.fromChunk(A.many("a", "b")),
-          S.fromChunk(A.many(3, 4))
-        )(tuple),
-        S.runCollect,
-        T.runPromise
-      )
-    ).toEqual([
-      [1, "a", 3],
-      [1, "a", 4],
-      [1, "b", 3],
-      [1, "b", 4],
-      [2, "a", 3],
-      [2, "a", 4],
-      [2, "b", 3],
-      [2, "b", 4]
-    ])
-  })
-  */
-
   it("range", async () => {
     expect(await pipe(S.range(2, 8), S.runCollect, T.runPromise)).equals(
       Chunk.many(2, 3, 4, 5, 6, 7)
