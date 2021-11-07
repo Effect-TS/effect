@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import * as CS from "../../../../Cause"
 import type * as CL from "../../../../Clock"
 import type * as C from "../core"
-import * as TimeoutFailCause from "./timeoutFailCause"
+import * as Fail from "./fail"
+import * as TimeoutTo from "./timeoutTo"
 
 /**
  * Fails the stream with given error if it does not produce a value after d duration.
@@ -13,7 +13,7 @@ export function timeoutFail_<R, E, E1, A>(
   e: E1,
   d: number
 ): C.Stream<R & CL.HasClock, E | E1, A> {
-  return TimeoutFailCause.timeoutFailCause_(self, CS.fail(e), d)
+  return TimeoutTo.timeoutTo_(self, d, Fail.fail(e))
 }
 
 /**
