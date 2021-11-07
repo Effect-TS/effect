@@ -268,8 +268,8 @@ export function mergeGroupBy_<R, R1, E, E1, K, V, A, A1>(
 /**
  * @ets_data_first mergeGroupBy_
  */
-export function mergeGroupBy<R1, E, E1, K, V, A>(
-  f: (k: K, stream: C.Stream<unknown, E, V>) => C.Stream<R1, E1, A>
+export function mergeGroupBy<R1, E, E1, K, V, A, A1>(
+  f: (k: K, stream: C.Stream<unknown, E, V>) => C.Stream<R1, E1, A1>
 ) {
   return <R>(self: GroupBy<R, E, K, V, A>) => mergeGroupBy_(self, f)
 }

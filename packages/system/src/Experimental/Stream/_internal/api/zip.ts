@@ -52,6 +52,7 @@ export function zip<SN extends readonly C.Stream<any, any, any>[]>(
     E | _E<SN[number]>,
     Tp.Tuple<
       [
+        A,
         ...{
           [K in keyof SN]: _A<SN[K]>
         }

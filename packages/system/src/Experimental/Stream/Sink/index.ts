@@ -80,13 +80,13 @@ export * from "./timed"
 export * from "./untilOutputEffect"
 export * from "./unwrap"
 export * from "./unwrapManaged"
+export * from "./utils"
 export * from "./zip"
 export * from "./zipLeft"
+export * from "./zipPar"
+export * from "./zipParLeft"
+export * from "./zipParRight"
 export * from "./zipRight"
 export * from "./zipWith"
+export * from "./zipWithPar"
 // codegen:end
-
-// TODO: zipPar -> Missing zipWithPar
-// TODO: zipParLeft -> Missing zipWithPar
-// TODO: zipParRight -> Missing zipWithPar
-// TODO: zipWithPar -> Not implemented

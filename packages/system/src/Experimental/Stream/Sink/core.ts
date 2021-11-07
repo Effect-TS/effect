@@ -4,6 +4,7 @@ import "../../../Operator"
 
 import type * as CK from "../../../Collections/Immutable/Chunk"
 import type * as C from "../Channel"
+import * as U from "./utils"
 
 /**
  * Sink is a data type that represent a channel that reads elements
@@ -12,6 +13,13 @@ import type * as C from "../Channel"
  * of type `Z`.
  */
 export class Sink<R, InErr, In, OutErr, L, Z> {
+  readonly [U._R]: (_: R) => void;
+  readonly [U._InErr]: (_: InErr) => void;
+  readonly [U._In]: (_: In) => void;
+  readonly [U._OutErr]: () => OutErr;
+  readonly [U._L]: () => L;
+  readonly [U._Z]: () => Z
+
   constructor(
     readonly channel: C.Channel<R, InErr, CK.Chunk<In>, unknown, OutErr, CK.Chunk<L>, Z>
   ) {}
