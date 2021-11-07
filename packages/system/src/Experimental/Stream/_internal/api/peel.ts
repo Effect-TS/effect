@@ -48,11 +48,11 @@ type Signal<A, E> = Emit<A> | Halt<E> | End
 export function peel_<R, R1, E extends E1, E1, A extends A1, A1, Z>(
   self: C.Stream<R, E, A>,
   sink: SK.Sink<R1, E1, A1, E1, A1, Z>
-): M.Managed<R & R1, E | E1, Tp.Tuple<[Z, C.Stream<R & R1, E | E1, A | A1>]>> {
+): M.Managed<R & R1, E | E1, Tp.Tuple<[Z, C.IO<E | E1, A1>]>> {
   return pipe(
     M.do,
     M.bind("p", () => T.toManaged(P.make<E | E1, Z>())),
-    M.bind("handoff", () => T.toManaged(HO.make<Signal<A | A1, E | E1>>())),
+    M.bind("handoff", () => T.toManaged(HO.make<Signal<A1, E | E1>>())),
     M.map(({ handoff, p }) => {
       const consumer = SK.foldSink_(
         SK.exposeLeftover(sink),
@@ -61,10 +61,10 @@ export function peel_<R, R1, E extends E1, E1, A extends A1, A1, Z>(
           const loop: CH.Channel<
             unknown,
             E,
-            CK.Chunk<A | A1>,
+            CK.Chunk<A1>,
             unknown,
             E | E1,
-            CK.Chunk<A | A1>,
+            CK.Chunk<A1>,
             void
           > = CH.readWithCause(
             (in_) =>
@@ -95,7 +95,7 @@ export function peel_<R, R1, E extends E1, E1, A extends A1, A1, Z>(
         unknown,
         unknown,
         E | E1,
-        CK.Chunk<A | A1>,
+        CK.Chunk<A1>,
         void
       > = CH.unwrap(
         T.map_(HO.take(handoff), (sig) => {
