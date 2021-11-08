@@ -320,7 +320,7 @@ describe("Stream", () => {
 
   it("range", async () => {
     expect(await pipe(S.range(2, 8), S.runCollect, T.runPromise)).equals(
-      Chunk.many(2, 3, 4, 5, 6, 7)
+      Chunk.many(2, 3, 4, 5, 6, 7, 8)
     )
   })
 
@@ -513,5 +513,22 @@ describe("Stream", () => {
     )
 
     expect(result).equals(Chunk.many("This", "is", "a", "test"))
+  })
+
+  it("schedule", async () => {
+    const result = await pipe(
+      S.range(1, 9),
+      S.buffer(1),
+      S.schedule(SC.fixed(100)),
+      S.tap((n) =>
+        T.succeedWith(() => {
+          console.log(Date.now(), n)
+        })
+      ),
+      S.runCollect,
+      T.runPromise
+    )
+
+    expect(result).equals(Chunk.range(1, 9))
   })
 })

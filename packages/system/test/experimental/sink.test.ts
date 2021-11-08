@@ -28,7 +28,7 @@ describe("Sink", () => {
 
   it("zip", async () => {
     const result = await pipe(
-      S.range(1, 9),
+      S.range(1, 8),
       S.run(
         pipe(
           SK.take(1),
@@ -46,7 +46,7 @@ describe("Sink", () => {
 
   it("zipPar", async () => {
     const result = await pipe(
-      S.range(1, 9),
+      S.range(1, 8),
       S.run(
         pipe(
           SK.foldLeft(0, (acc: number, v: number) => acc + v),

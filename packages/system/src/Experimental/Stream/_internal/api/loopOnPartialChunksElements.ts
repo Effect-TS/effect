@@ -1,6 +1,5 @@
 // ets_tracing: off
 
-import * as CK from "../../../../Collections/Immutable/Chunk"
 import * as T from "../../../../Effect"
 import type * as C from "../core"
 import * as LoopOnPartialChunks from "./loopOnPartialChunks"
@@ -14,7 +13,7 @@ export function loopOnPartialChunksElements_<R, E, A, R1, E1, A1>(
 ): C.Stream<R & R1, E | E1, A1> {
   return LoopOnPartialChunks.loopOnPartialChunks_(self, (a, emit) =>
     T.as_(
-      CK.mapM_(a, (a) => f(a, emit)),
+      T.forEachUnit_(a, (a) => f(a, emit)),
       true
     )
   )

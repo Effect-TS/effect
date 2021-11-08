@@ -16,22 +16,24 @@ export function loopOnPartialChunks_<R, E, A, R1, E1, A1>(
   return LoopOnChunks.loopOnChunks_(self, (chunk) =>
     CH.unwrap(
       T.suspend(() => {
-        let outputChunk = CK.empty<A1>()
+        const outputChunk = CK.builder<A1>()
+        const emit = (a: A1) =>
+          T.succeedWith(() => {
+            outputChunk.append(a)
+          })
+
         return T.catchAll_(
-          T.map_(
-            f(chunk, (a: A1) =>
-              T.succeedWith(() => {
-                outputChunk = CK.append_(outputChunk, a)
-              })
-            ),
-            (cont) => CH.chain_(CH.write(outputChunk), () => CH.end(cont))
+          T.map_(f(chunk, emit), (cont) =>
+            CH.chain_(CH.write(outputChunk.build()), () => CH.end(cont))
           ),
           (failure) =>
             T.succeedWith(() => {
-              if (CK.isEmpty(outputChunk)) {
+              const partialResult = outputChunk.build()
+
+              if (CK.isEmpty(partialResult)) {
                 return CH.fail(failure)
               } else {
-                return CH.chain_(CH.write(outputChunk), () => CH.fail(failure))
+                return CH.zipRight_(CH.write(partialResult), CH.fail(failure))
               }
             })
         )

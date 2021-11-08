@@ -15,7 +15,7 @@ export function range(
   const go = (
     current: number
   ): CH.Channel<unknown, unknown, unknown, unknown, never, CK.Chunk<number>, any> => {
-    const remaining = max - current - 1
+    const remaining = max - current
 
     if (remaining > chunkSize) {
       return CH.zipRight_(

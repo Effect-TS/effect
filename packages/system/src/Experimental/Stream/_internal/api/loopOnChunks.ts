@@ -21,10 +21,10 @@ export function loopOnChunks_<R, E, A, R1, E1, A1>(
     E | E1,
     CK.Chunk<A1>,
     boolean
-  > = CH.readWithCause(
+  > = CH.readWith(
     (chunk) => CH.chain_(f(chunk), (cont) => (cont ? loop : CH.end(false))),
-    CH.failCause,
-    (_) => CH.end(false)
+    CH.fail,
+    (_) => CH.succeed(false)
   )
   return new C.Stream(self.channel[">>>"](loop))
 }
