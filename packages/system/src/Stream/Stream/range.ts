@@ -20,8 +20,8 @@ export function range(
     pipe(
       T.do,
       T.bind("start", () => Ref.getAndUpdate_(ref, (_) => _ + chunkSize)),
-      T.tap(({ start }) => T.when_(T.fail(O.none), () => start >= max)),
-      T.map(({ start }) => A.range(start, Math.min(start + chunkSize, max - 1)))
+      T.tap(({ start }) => T.when_(T.fail(O.none), () => start >= max + 1)),
+      T.map(({ start }) => A.range(start, Math.min(start + chunkSize, max)))
     )
 
   return new Stream(M.map_(Ref.makeManagedRef(min), pull))

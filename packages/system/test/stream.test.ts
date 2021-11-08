@@ -242,7 +242,7 @@ describe("Stream", () => {
 
   it("range", async () => {
     expect(await pipe(S.range(2, 8), S.runCollect, T.runPromise)).toEqual([
-      2, 3, 4, 5, 6, 7
+      2, 3, 4, 5, 6, 7, 8
     ])
   })
 
@@ -374,5 +374,21 @@ describe("Stream", () => {
     )
 
     expect(withDebounce).toEqual(withoutDebounce)
+  })
+
+  it("schedule", async () => {
+    const result = await pipe(
+      S.fromChunk(A.range(1, 9)),
+      S.schedule(SC.fixed(100)),
+      S.tap((n) =>
+        T.succeedWith(() => {
+          console.log(Date.now(), n)
+        })
+      ),
+      S.runCollect,
+      T.runPromise
+    )
+
+    expect(result).toEqual([...A.range(1, 9)])
   })
 })
