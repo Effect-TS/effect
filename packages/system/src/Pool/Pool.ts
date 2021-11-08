@@ -126,11 +126,13 @@ export class DefaultPool<R, E, A, S> extends PoolInternal<E, A> {
                   }),
                   { size, free: free - 1 }
                 )
-              } else {
+              } else if (size >= 0) {
                 return Tp.tuple(T.zipRight_(this.allocate(), acquire), {
                   size: size + 1,
                   free: free + 1
                 })
+              } else {
+                return Tp.tuple(T.interrupt, { size, free })
               }
             })
           )
@@ -170,7 +172,7 @@ export class DefaultPool<R, E, A, S> extends PoolInternal<E, A> {
       T.uninterruptibleMask(({ restore }) =>
         T.flatten(
           Ref.modify_(this.state, ({ free, size }) => {
-            if (size < Tp.get_(this.range, 0)) {
+            if (size < Tp.get_(this.range, 0) && size >= 0) {
               return Tp.tuple(
                 pipe(
                   T.do,
@@ -288,7 +290,7 @@ export class DefaultPool<R, E, A, S> extends PoolInternal<E, A> {
         } else if (size > 0) {
           return Tp.tuple(T.unit, { size, free })
         } else {
-          return Tp.tuple(Q.shutdown(this.items), { size, free })
+          return Tp.tuple(Q.shutdown(this.items), { size: size - 1, free })
         }
       })
     )
@@ -298,7 +300,7 @@ export class DefaultPool<R, E, A, S> extends PoolInternal<E, A> {
     return T.flatten(
       Ref.modify_(this.isShuttingDown, (down) => {
         if (down) {
-          return Tp.tuple(T.unit, true)
+          return Tp.tuple(Q.awaitShutdown(this.items), true)
         } else {
           return Tp.tuple(
             T.zipRight_(this.getAndShutdown(), Q.awaitShutdown(this.items)),
