@@ -220,7 +220,7 @@ describe("Pool", () => {
           (_) => Ref.update_(count, (_) => _ - 1)
         )
         const reserve = yield* _(
-          M.managedReserve(Pool.make(get, Tp.tuple(10, 15), 60000))
+          M.managedReserve(Pool.make(get, Tp.tuple(10, 15), 1000))
         )
         const pool = yield* _(reserve.acquire)
 
@@ -232,7 +232,7 @@ describe("Pool", () => {
 
         const max = yield* _(count.get)
 
-        yield* _(T.sleep(60000))
+        yield* _(T.sleep(2500))
 
         const min = yield* _(count.get)
 
@@ -241,7 +241,7 @@ describe("Pool", () => {
       T.runPromise
     )
 
-    expect(result).equals({ min: 10, max: 16 })
+    expect(result).toEqual({ min: 10, max: 15 })
   })
 
   it("shutdown robustness", async () => {
