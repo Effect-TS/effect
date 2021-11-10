@@ -380,11 +380,6 @@ describe("Stream", () => {
     const result = await pipe(
       S.fromChunk(A.range(1, 9)),
       S.schedule(SC.fixed(100)),
-      S.tap((n) =>
-        T.succeedWith(() => {
-          console.log(Date.now(), n)
-        })
-      ),
       S.runCollect,
       T.runPromise
     )

@@ -356,7 +356,7 @@ describe("Stream", () => {
     expect(result).equals(Chunk.single(3))
   })
 
-  it.skip("zipWithLatest & interruptWhen", async () => {
+  it("zipWithLatest & interruptWhen", async () => {
     const neverendingSource = S.async<unknown, unknown, string>((cb) => {
       setTimeout(() => cb.single("C1"), 10)
       setTimeout(() => cb.single("C2"), 20)
