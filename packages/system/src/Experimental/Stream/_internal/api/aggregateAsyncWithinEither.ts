@@ -18,9 +18,9 @@ import * as C from "../core"
 import * as HO from "../Handoff"
 import * as SER from "../SinkEndReason"
 import * as Chain from "./chain"
+import * as CrossRight from "./crossRight"
 import * as FromEffect from "./fromEffect"
 import * as Managed from "./managed"
-import * as ZipRight from "./zipRight"
 
 /**
  * Aggregates elements using the provided sink until it completes, or until the
@@ -185,7 +185,7 @@ export function aggregateAsyncWithinEither_<
         )
       }
 
-      return ZipRight.zipRight_(
+      return CrossRight.crossRight_(
         Managed.managed(
           pipe(self.channel[">>>"](handoffProducer), CH.runManaged, M.fork)
         ),

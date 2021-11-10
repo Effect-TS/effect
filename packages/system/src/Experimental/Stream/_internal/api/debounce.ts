@@ -12,9 +12,9 @@ import * as CH from "../../Channel"
 import * as C from "../core"
 import * as HO from "../Handoff"
 import * as SER from "../SinkEndReason"
+import * as CrossRight from "./crossRight"
 import * as Managed from "./managed"
 import * as Unwrap from "./unwrap"
-import * as ZipRight from "./zipRight"
 
 const NotStartedTypeId = Symbol()
 class NotStarted {
@@ -164,7 +164,7 @@ export function debounce_<R, E, A>(
             })()
           )
 
-        return ZipRight.zipRight_(
+        return CrossRight.crossRight_(
           Managed.managed(M.fork(CH.runManaged(self.channel[">>>"](producer)))),
           new C.Stream(consumer(new NotStarted()))
         )

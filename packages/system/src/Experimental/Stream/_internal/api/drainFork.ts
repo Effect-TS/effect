@@ -6,11 +6,11 @@ import * as M from "../../../../Managed"
 import * as P from "../../../../Promise"
 import type * as C from "../core"
 import * as Chain from "./chain"
+import * as CrossRight from "./crossRight"
 import * as FromEffect from "./fromEffect"
 import * as InterruptWhenP from "./interruptWhenP"
 import * as Managed from "./managed"
 import * as RunForEachManaged from "./runForEachManaged"
-import * as ZipRight from "./zipRight"
 
 /**
  * Drains the provided stream in the background for as long as this stream is running.
@@ -22,7 +22,7 @@ export function drainFork_<R, R1, E, E1, A, Z>(
   other: C.Stream<R1, E1, Z>
 ): C.Stream<R & R1, E | E1, A> {
   return Chain.chain_(FromEffect.fromEffect(P.make<E1, never>()), (bgDied) =>
-    ZipRight.zipRight_(
+    CrossRight.crossRight_(
       Managed.managed(
         pipe(
           RunForEachManaged.runForEachManaged_(other, (_) => T.unit),

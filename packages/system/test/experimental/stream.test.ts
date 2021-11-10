@@ -390,7 +390,7 @@ describe("Stream", () => {
     expect(res0).toEqual(res1)
   })
 
-  it.skip("zipWithLatest & Debounce", async () => {
+  it("zipWithLatest & Debounce", async () => {
     const withDebounce = await pipe(
       S.zipWithLatest_(
         S.async((cb) => {
