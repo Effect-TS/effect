@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.46.0](https://github.com/Effect-TS/core/compare/@effect-ts/core@0.45.5...@effect-ts/core@0.46.0) (2021-11-10)
+
+
+### Features
+
+* **pool:** initial pool implementation + test ([61902c7](https://github.com/Effect-TS/core/commit/61902c759a45b7ec7ffcd460e8a917c826e6f8fa))
+* **tag:** type-safe tag & has with standard services ([3e66bd0](https://github.com/Effect-TS/core/commit/3e66bd027ef78b1bea98a3ffef0c84c5d900b05d))
+
+
+
+
+
 ## [0.45.5](https://github.com/Effect-TS/core/compare/@effect-ts/core@0.45.4...@effect-ts/core@0.45.5) (2021-10-25)
 
 **Note:** Version bump only for package @effect-ts/core

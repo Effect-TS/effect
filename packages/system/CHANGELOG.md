@@ -3,6 +3,29 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.43.0](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.42.5...@effect-ts/system@0.43.0) (2021-11-10)
+
+
+### Bug Fixes
+
+* **exp-stream:** fixed aggregateAsyncWithinEither, debounce and drainFork ([#944](https://github.com/Effect-TS/core/issues/944)) ([b495250](https://github.com/Effect-TS/core/commit/b495250a7cd42f09da1c289fbe1948b8536b7a3e))
+* **system:** fix tapEither ([510802d](https://github.com/Effect-TS/core/commit/510802de5a853042c8b0447a5fb42798d85b619a))
+
+
+### Features
+
+* **exp-stream:** add branchAfter/groupAdjacentBy/serviceWith/serviceWithStream ([#930](https://github.com/Effect-TS/core/issues/930)) ([53fc6c0](https://github.com/Effect-TS/core/commit/53fc6c00b051b4048c869cbc4e25fcfc6b37dd35))
+* **exp-stream:** added Sink raceWith ([#938](https://github.com/Effect-TS/core/issues/938)) ([cdb0fec](https://github.com/Effect-TS/core/commit/cdb0fec58db48098777cdd9a122fd407538f142a))
+* **exp-stream:** added splitLines ([#933](https://github.com/Effect-TS/core/issues/933)) ([105cb09](https://github.com/Effect-TS/core/commit/105cb09ba28f035ec0a2c3fcc57314d066f482c2))
+* **pool:** initial pool implementation + test ([61902c7](https://github.com/Effect-TS/core/commit/61902c759a45b7ec7ffcd460e8a917c826e6f8fa))
+* **pool:** support resources with dependencies ([03d845a](https://github.com/Effect-TS/core/commit/03d845ae24bc6743e738022c27a9c4211be0811d))
+* **tag:** type-safe tag & has with standard services ([3e66bd0](https://github.com/Effect-TS/core/commit/3e66bd027ef78b1bea98a3ffef0c84c5d900b05d))
+* **unify:** explicit unification ([4538912](https://github.com/Effect-TS/core/commit/453891229514cf04550ff737fd168669fc120002))
+
+
+
+
+
 ## [0.42.5](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.42.4...@effect-ts/system@0.42.5) (2021-10-25)
 
 **Note:** Version bump only for package @effect-ts/system
