@@ -2,126 +2,76 @@
 
 import type { Base, Infer, Kind, URIS } from "../HKT"
 
-export function matchers<URI extends URIS, C>(_: Base<URI, C>) {
-  function match<N extends string>(
-    tag: N
-  ): {
+type KindFromObj<URI extends URIS, C, __> = Kind<
+  URI,
+  C,
+  Infer<URI, C, "K", __>,
+  Infer<URI, C, "Q", __>,
+  Infer<URI, C, "W", __>,
+  Infer<URI, C, "X", __>,
+  Infer<URI, C, "I", __>,
+  Infer<URI, C, "S", __>,
+  Infer<URI, C, "R", __>,
+  Infer<URI, C, "E", __>,
+  Infer<URI, C, "A", __>
+>
+
+export interface MatchFn<URI extends URIS, C, N extends string> {
+  <
+    X extends { [tag in N]: string },
+    K extends {
+      [k in X[N]]: (
+        _: Extract<X, { [tag in N]: k }>,
+        __: Extract<X, { [tag in N]: k }>
+      ) => Kind<URI, C, any, any, any, any, any, any, any, any, any>
+    }
+  >(
+    matcher: K
+  ): (_: X) => KindFromObj<URI, C, { [k in keyof K]: ReturnType<K[k]> }[keyof K]>
+
+  <
+    X extends { [tag in N]: string },
+    K extends Partial<{
+      [k in X[N]]: (
+        _: Extract<X, { [tag in N]: k }>,
+        __: Extract<X, { [tag in N]: k }>
+      ) => Kind<URI, C, any, any, any, any, any, any, any, any, any>
+    }>,
+    Ret extends Kind<URI, C, any, any, any, any, any, any, any, any, any>
+  >(
+    matcher: K,
+    def: (
+      _: Exclude<X, { [tag in N]: keyof K }>,
+      __: Exclude<X, { [tag in N]: keyof K }>
+    ) => Ret
+  ): (_: X) => KindFromObj<
+    URI,
+    C,
+    | {
+        [k in keyof K]: K[k] extends (...args: any) => any ? ReturnType<K[k]> : never
+      }[keyof K]
+    | Ret
+  >
+}
+
+export interface MatchInFn<URI extends URIS, C, N extends string> {
+  <X extends { [tag in N]: string }>(): {
     <
-      X extends {
-        [tag in N]: string
-      },
       K extends {
         [k in X[N]]: (
-          _: Extract<
-            X,
-            {
-              [tag in N]: k
-            }
-          >,
-          __: Extract<
-            X,
-            {
-              [tag in N]: k
-            }
-          >
+          _: Extract<X, { [tag in N]: k }>,
+          __: Extract<X, { [tag in N]: k }>
         ) => Kind<URI, C, any, any, any, any, any, any, any, any, any>
       }
     >(
       matcher: K
-    ): (_: X) => Kind<
-      URI,
-      C,
-      Infer<
-        URI,
-        C,
-        "K",
-        {
-          [k in keyof K]: ReturnType<K[k]>
-        }[keyof K]
-      >,
-      Infer<
-        URI,
-        C,
-        "Q",
-        {
-          [k in keyof K]: ReturnType<K[k]>
-        }[keyof K]
-      >,
-      Infer<
-        URI,
-        C,
-        "W",
-        {
-          [k in keyof K]: ReturnType<K[k]>
-        }[keyof K]
-      >,
-      Infer<
-        URI,
-        C,
-        "X",
-        {
-          [k in keyof K]: ReturnType<K[k]>
-        }[keyof K]
-      >,
-      Infer<
-        URI,
-        C,
-        "I",
-        {
-          [k in keyof K]: ReturnType<K[k]>
-        }[keyof K]
-      >,
-      Infer<
-        URI,
-        C,
-        "S",
-        {
-          [k in keyof K]: ReturnType<K[k]>
-        }[keyof K]
-      >,
-      Infer<
-        URI,
-        C,
-        "R",
-        {
-          [k in keyof K]: ReturnType<K[k]>
-        }[keyof K]
-      >,
-      Infer<
-        URI,
-        C,
-        "E",
-        {
-          [k in keyof K]: ReturnType<K[k]>
-        }[keyof K]
-      >,
-      Infer<
-        URI,
-        C,
-        "A",
-        {
-          [k in keyof K]: ReturnType<K[k]>
-        }[keyof K]
-      >
-    >
+    ): (_: X) => KindFromObj<URI, C, { [k in keyof K]: ReturnType<K[k]> }[keyof K]>
+
     <
-      X extends {
-        [tag in N]: string
-      },
       K extends Partial<{
         [k in X[N]]: (
-          _: Extract<
-            X,
-            {
-              [tag in N]: k
-            }
-          >,
-          __: Extract<
-            X,
-            {
-              [tag in N]: k
-            }
-          >
+          _: Extract<X, { [tag in N]: k }>,
+          __: Extract<X, { [tag in N]: k }>
         ) => Kind<URI, C, any, any, any, any, any, any, any, any, any>
       }>,
       Ret extends Kind<URI, C, any, any, any, any, any, any, any, any, any>
@@ -131,110 +81,61 @@ export function matchers<URI extends URIS, C>(_: Base<URI, C>) {
         _: Exclude<X, { [tag in N]: keyof K }>,
         __: Exclude<X, { [tag in N]: keyof K }>
       ) => Ret
-    ): (_: X) => Kind<
+    ): (_: X) => KindFromObj<
       URI,
       C,
-      Infer<
-        URI,
-        C,
-        "K",
-        | {
-            [k in keyof K]: K[k] extends (...args: any) => any
-              ? ReturnType<K[k]>
-              : never
-          }[keyof K]
-        | Ret
-      >,
-      Infer<
-        URI,
-        C,
-        "Q",
-        | {
-            [k in keyof K]: K[k] extends (...args: any) => any
-              ? ReturnType<K[k]>
-              : never
-          }[keyof K]
-        | Ret
-      >,
-      Infer<
-        URI,
-        C,
-        "W",
-        | {
-            [k in keyof K]: K[k] extends (...args: any) => any
-              ? ReturnType<K[k]>
-              : never
-          }[keyof K]
-        | Ret
-      >,
-      Infer<
-        URI,
-        C,
-        "X",
-        | {
-            [k in keyof K]: K[k] extends (...args: any) => any
-              ? ReturnType<K[k]>
-              : never
-          }[keyof K]
-        | Ret
-      >,
-      Infer<
-        URI,
-        C,
-        "I",
-        | {
-            [k in keyof K]: K[k] extends (...args: any) => any
-              ? ReturnType<K[k]>
-              : never
-          }[keyof K]
-        | Ret
-      >,
-      Infer<
-        URI,
-        C,
-        "S",
-        | {
-            [k in keyof K]: K[k] extends (...args: any) => any
-              ? ReturnType<K[k]>
-              : never
-          }[keyof K]
-        | Ret
-      >,
-      Infer<
-        URI,
-        C,
-        "R",
-        | {
-            [k in keyof K]: K[k] extends (...args: any) => any
-              ? ReturnType<K[k]>
-              : never
-          }[keyof K]
-        | Ret
-      >,
-      Infer<
-        URI,
-        C,
-        "E",
-        | {
-            [k in keyof K]: K[k] extends (...args: any) => any
-              ? ReturnType<K[k]>
-              : never
-          }[keyof K]
-        | Ret
-      >,
-      Infer<
-        URI,
-        C,
-        "A",
-        | {
-            [k in keyof K]: K[k] extends (...args: any) => any
-              ? ReturnType<K[k]>
-              : never
-          }[keyof K]
-        | Ret
-      >
+      | {
+          [k in keyof K]: K[k] extends (...args: any) => any ? ReturnType<K[k]> : never
+        }[keyof K]
+      | Ret
     >
-  } {
+  }
+}
+
+export interface MatchMorphFn<
+  URI extends URIS,
+  C,
+  N extends string,
+  X extends { [tag in N]: string }
+> {
+  <
+    K extends {
+      [k in X[N]]: (
+        _: Extract<X, { [tag in N]: k }>,
+        __: Extract<X, { [tag in N]: k }>
+      ) => Kind<URI, C, any, any, any, any, any, any, any, any, any>
+    }
+  >(
+    matcher: K
+  ): (_: X) => KindFromObj<URI, C, { [k in keyof K]: ReturnType<K[k]> }[keyof K]>
+
+  <
+    X extends { [tag in N]: string },
+    K extends Partial<{
+      [k in X[N]]: (
+        _: Extract<X, { [tag in N]: k }>,
+        __: Extract<X, { [tag in N]: k }>
+      ) => Kind<URI, C, any, any, any, any, any, any, any, any, any>
+    }>,
+    Ret extends Kind<URI, C, any, any, any, any, any, any, any, any, any>
+  >(
+    matcher: K,
+    def: (
+      _: Exclude<X, { [tag in N]: keyof K }>,
+      __: Exclude<X, { [tag in N]: keyof K }>
+    ) => Ret
+  ): (_: X) => KindFromObj<
+    URI,
+    C,
+    | {
+        [k in keyof K]: K[k] extends (...args: any) => any ? ReturnType<K[k]> : never
+      }[keyof K]
+    | Ret
+  >
+}
+
+export function matchers<URI extends URIS, C>(_: Base<URI, C>) {
+  function match<N extends string>(tag: N): MatchFn<URI, C, N> {
     return (...args: any[]) => {
       return (_: any) => {
         const matcher = args[0][_[tag]]
@@ -243,236 +144,7 @@ export function matchers<URI extends URIS, C>(_: Base<URI, C>) {
     }
   }
 
-  function matchIn<N extends string>(
-    tag: N
-  ): <
-    X extends {
-      [tag in N]: string
-    }
-  >() => {
-    <
-      K extends {
-        [k in X[N]]: (
-          _: Extract<
-            X,
-            {
-              [tag in N]: k
-            }
-          >,
-          __: Extract<
-            X,
-            {
-              [tag in N]: k
-            }
-          >
-        ) => Kind<URI, C, any, any, any, any, any, any, any, any, any>
-      }
-    >(
-      matcher: K
-    ): (_: X) => Kind<
-      URI,
-      C,
-      Infer<
-        URI,
-        C,
-        "K",
-        {
-          [k in keyof K]: ReturnType<K[k]>
-        }[keyof K]
-      >,
-      Infer<
-        URI,
-        C,
-        "Q",
-        {
-          [k in keyof K]: ReturnType<K[k]>
-        }[keyof K]
-      >,
-      Infer<
-        URI,
-        C,
-        "W",
-        {
-          [k in keyof K]: ReturnType<K[k]>
-        }[keyof K]
-      >,
-      Infer<
-        URI,
-        C,
-        "X",
-        {
-          [k in keyof K]: ReturnType<K[k]>
-        }[keyof K]
-      >,
-      Infer<
-        URI,
-        C,
-        "I",
-        {
-          [k in keyof K]: ReturnType<K[k]>
-        }[keyof K]
-      >,
-      Infer<
-        URI,
-        C,
-        "S",
-        {
-          [k in keyof K]: ReturnType<K[k]>
-        }[keyof K]
-      >,
-      Infer<
-        URI,
-        C,
-        "R",
-        {
-          [k in keyof K]: ReturnType<K[k]>
-        }[keyof K]
-      >,
-      Infer<
-        URI,
-        C,
-        "E",
-        {
-          [k in keyof K]: ReturnType<K[k]>
-        }[keyof K]
-      >,
-      Infer<
-        URI,
-        C,
-        "A",
-        {
-          [k in keyof K]: ReturnType<K[k]>
-        }[keyof K]
-      >
-    >
-    <
-      K extends Partial<{
-        [k in X[N]]: (
-          _: Extract<
-            X,
-            {
-              [tag in N]: k
-            }
-          >,
-          __: Extract<
-            X,
-            {
-              [tag in N]: k
-            }
-          >
-        ) => Kind<URI, C, any, any, any, any, any, any, any, any, any>
-      }>,
-      Ret extends Kind<URI, C, any, any, any, any, any, any, any, any, any>
-    >(
-      matcher: K,
-      def: (
-        _: Exclude<X, { [tag in N]: keyof K }>,
-        __: Exclude<X, { [tag in N]: keyof K }>
-      ) => Ret
-    ): (_: X) => Kind<
-      URI,
-      C,
-      Infer<
-        URI,
-        C,
-        "K",
-        | {
-            [k in keyof K]: K[k] extends (...args: any) => any
-              ? ReturnType<K[k]>
-              : never
-          }[keyof K]
-        | Ret
-      >,
-      Infer<
-        URI,
-        C,
-        "Q",
-        | {
-            [k in keyof K]: K[k] extends (...args: any) => any
-              ? ReturnType<K[k]>
-              : never
-          }[keyof K]
-        | Ret
-      >,
-      Infer<
-        URI,
-        C,
-        "W",
-        | {
-            [k in keyof K]: K[k] extends (...args: any) => any
-              ? ReturnType<K[k]>
-              : never
-          }[keyof K]
-        | Ret
-      >,
-      Infer<
-        URI,
-        C,
-        "X",
-        | {
-            [k in keyof K]: K[k] extends (...args: any) => any
-              ? ReturnType<K[k]>
-              : never
-          }[keyof K]
-        | Ret
-      >,
-      Infer<
-        URI,
-        C,
-        "I",
-        | {
-            [k in keyof K]: K[k] extends (...args: any) => any
-              ? ReturnType<K[k]>
-              : never
-          }[keyof K]
-        | Ret
-      >,
-      Infer<
-        URI,
-        C,
-        "S",
-        | {
-            [k in keyof K]: K[k] extends (...args: any) => any
-              ? ReturnType<K[k]>
-              : never
-          }[keyof K]
-        | Ret
-      >,
-      Infer<
-        URI,
-        C,
-        "R",
-        | {
-            [k in keyof K]: K[k] extends (...args: any) => any
-              ? ReturnType<K[k]>
-              : never
-          }[keyof K]
-        | Ret
-      >,
-      Infer<
-        URI,
-        C,
-        "E",
-        | {
-            [k in keyof K]: K[k] extends (...args: any) => any
-              ? ReturnType<K[k]>
-              : never
-          }[keyof K]
-        | Ret
-      >,
-      Infer<
-        URI,
-        C,
-        "A",
-        | {
-            [k in keyof K]: K[k] extends (...args: any) => any
-              ? ReturnType<K[k]>
-              : never
-          }[keyof K]
-        | Ret
-      >
-    >
-  } {
+  function matchIn<N extends string>(tag: N): MatchInFn<URI, C, N> {
     return () =>
       (...args: any[]) => {
         return (_: any) => {
@@ -482,241 +154,10 @@ export function matchers<URI extends URIS, C>(_: Base<URI, C>) {
       }
   }
 
-  function matchMorph<
-    N extends string,
-    X extends {
-      [tag in N]: string
-    }
-  >(MorphADT: {
+  function matchMorph<N extends string, X extends { [tag in N]: string }>(MorphADT: {
     tag: N
     _A: X
-  }): {
-    <
-      K extends {
-        [k in X[N]]: (
-          _: Extract<
-            X,
-            {
-              [tag in N]: k
-            }
-          >,
-          __: Extract<
-            X,
-            {
-              [tag in N]: k
-            }
-          >
-        ) => Kind<URI, C, any, any, any, any, any, any, any, any, any>
-      }
-    >(
-      matcher: K
-    ): (_: X) => Kind<
-      URI,
-      C,
-      Infer<
-        URI,
-        C,
-        "K",
-        {
-          [k in keyof K]: ReturnType<K[k]>
-        }[keyof K]
-      >,
-      Infer<
-        URI,
-        C,
-        "Q",
-        {
-          [k in keyof K]: ReturnType<K[k]>
-        }[keyof K]
-      >,
-      Infer<
-        URI,
-        C,
-        "W",
-        {
-          [k in keyof K]: ReturnType<K[k]>
-        }[keyof K]
-      >,
-      Infer<
-        URI,
-        C,
-        "X",
-        {
-          [k in keyof K]: ReturnType<K[k]>
-        }[keyof K]
-      >,
-      Infer<
-        URI,
-        C,
-        "I",
-        {
-          [k in keyof K]: ReturnType<K[k]>
-        }[keyof K]
-      >,
-      Infer<
-        URI,
-        C,
-        "S",
-        {
-          [k in keyof K]: ReturnType<K[k]>
-        }[keyof K]
-      >,
-      Infer<
-        URI,
-        C,
-        "R",
-        {
-          [k in keyof K]: ReturnType<K[k]>
-        }[keyof K]
-      >,
-      Infer<
-        URI,
-        C,
-        "E",
-        {
-          [k in keyof K]: ReturnType<K[k]>
-        }[keyof K]
-      >,
-      Infer<
-        URI,
-        C,
-        "A",
-        {
-          [k in keyof K]: ReturnType<K[k]>
-        }[keyof K]
-      >
-    >
-    <
-      X extends {
-        [tag in N]: string
-      },
-      K extends Partial<{
-        [k in X[N]]: (
-          _: Extract<
-            X,
-            {
-              [tag in N]: k
-            }
-          >,
-          __: Extract<
-            X,
-            {
-              [tag in N]: k
-            }
-          >
-        ) => Kind<URI, C, any, any, any, any, any, any, any, any, any>
-      }>,
-      Ret extends Kind<URI, C, any, any, any, any, any, any, any, any, any>
-    >(
-      matcher: K,
-      def: (
-        _: Exclude<X, { [tag in N]: keyof K }>,
-        __: Exclude<X, { [tag in N]: keyof K }>
-      ) => Ret
-    ): (_: X) => Kind<
-      URI,
-      C,
-      Infer<
-        URI,
-        C,
-        "K",
-        | {
-            [k in keyof K]: K[k] extends (...args: any) => any
-              ? ReturnType<K[k]>
-              : never
-          }[keyof K]
-        | Ret
-      >,
-      Infer<
-        URI,
-        C,
-        "Q",
-        | {
-            [k in keyof K]: K[k] extends (...args: any) => any
-              ? ReturnType<K[k]>
-              : never
-          }[keyof K]
-        | Ret
-      >,
-      Infer<
-        URI,
-        C,
-        "W",
-        | {
-            [k in keyof K]: K[k] extends (...args: any) => any
-              ? ReturnType<K[k]>
-              : never
-          }[keyof K]
-        | Ret
-      >,
-      Infer<
-        URI,
-        C,
-        "X",
-        | {
-            [k in keyof K]: K[k] extends (...args: any) => any
-              ? ReturnType<K[k]>
-              : never
-          }[keyof K]
-        | Ret
-      >,
-      Infer<
-        URI,
-        C,
-        "I",
-        | {
-            [k in keyof K]: K[k] extends (...args: any) => any
-              ? ReturnType<K[k]>
-              : never
-          }[keyof K]
-        | Ret
-      >,
-      Infer<
-        URI,
-        C,
-        "S",
-        | {
-            [k in keyof K]: K[k] extends (...args: any) => any
-              ? ReturnType<K[k]>
-              : never
-          }[keyof K]
-        | Ret
-      >,
-      Infer<
-        URI,
-        C,
-        "R",
-        | {
-            [k in keyof K]: K[k] extends (...args: any) => any
-              ? ReturnType<K[k]>
-              : never
-          }[keyof K]
-        | Ret
-      >,
-      Infer<
-        URI,
-        C,
-        "E",
-        | {
-            [k in keyof K]: K[k] extends (...args: any) => any
-              ? ReturnType<K[k]>
-              : never
-          }[keyof K]
-        | Ret
-      >,
-      Infer<
-        URI,
-        C,
-        "A",
-        | {
-            [k in keyof K]: K[k] extends (...args: any) => any
-              ? ReturnType<K[k]>
-              : never
-          }[keyof K]
-        | Ret
-      >
-    >
-  } {
+  }): MatchMorphFn<URI, C, N, X> {
     return (...args: any[]) => {
       return (_: any) => {
         const matcher = args[0][_[MorphADT.tag]]

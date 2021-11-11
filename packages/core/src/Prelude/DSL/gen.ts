@@ -6,7 +6,8 @@ import { PrematureGeneratorExit } from "@effect-ts/system/GlobalExceptions"
 import { pipe } from "../../Function"
 import type * as HKT from "../HKT"
 import type { Monad } from "../Monad"
-import { chainF, succeedF } from "./dsl"
+import { chainF } from "./chain"
+import { succeedF } from "./succeed"
 
 export class GenHKT<T, A> {
   constructor(readonly effect: T) {}
