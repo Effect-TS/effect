@@ -2,27 +2,41 @@
 
 import * as CK from "../../../../Collections/Immutable/Chunk"
 import * as CH from "../../Channel"
+import type * as PP from "../../Pipeline/core"
 import * as C from "../core"
 import * as Empty from "./empty"
 import * as FromChunk from "./fromChunk"
-
-interface Pipeline<R, R1, E, E1, A, B> {
-  (stream: C.Stream<R, E, A>): C.Stream<R1, E1, B>
-}
 
 /**
  * Reads the first n values from the stream and uses them to choose the pipeline that will be
  * used for the remainder of the stream.
  */
-export function branchAfter_<R, R1, E, E1, A>(
-  self: C.Stream<R, E, A>,
+export function branchAfter_<
+  LowerEnv,
+  UpperEnv,
+  LowerErr,
+  UpperErr,
+  LowerElem,
+  UpperElem
+>(
+  self: C.Stream<UpperEnv, UpperErr, UpperElem>,
   n: number,
-  f: (a1: CK.Chunk<A>) => Pipeline<R, R1, E, E1, A, A>
-): C.Stream<R & R1, E | E1, A> {
+  f: (
+    a1: CK.Chunk<UpperElem>
+  ) => PP.Pipeline<LowerEnv, UpperEnv, LowerErr, UpperErr, LowerElem, UpperElem>
+) {
   const collecting = (
-    buf: CK.Chunk<A>
-  ): CH.Channel<R1, E | E1, CK.Chunk<A>, unknown, E | E1, CK.Chunk<A>, any> =>
-    CH.readWithCause(
+    buf: CK.Chunk<UpperElem>
+  ): CH.Channel<
+    LowerEnv,
+    UpperErr | LowerErr,
+    CK.Chunk<UpperElem>,
+    unknown,
+    UpperErr | LowerErr,
+    CK.Chunk<UpperElem | LowerElem>,
+    any
+  > => {
+    return CH.readWithCause(
       (chunk) => {
         const newBuf = CK.concat_(buf, chunk)
 
@@ -33,7 +47,7 @@ export function branchAfter_<R, R1, E, E1, A>(
           const pipeline = f(is)
 
           return CH.zipRight_(
-            pipeline(FromChunk.fromChunk(is1)).channel,
+            pipeline.pipeline(FromChunk.fromChunk(is1)).channel,
             emitting(pipeline)
           )
         } else {
@@ -47,17 +61,29 @@ export function branchAfter_<R, R1, E, E1, A>(
         } else {
           const pipeline = f(buf)
 
-          return pipeline(Empty.empty).channel
+          return pipeline.pipeline(Empty.empty).channel
         }
       }
     )
+  }
 
   const emitting = (
-    pipeline: Pipeline<R, R1, E, E1, A, A>
-  ): CH.Channel<R1, E | E1, CK.Chunk<A>, unknown, E | E1, CK.Chunk<A>, any> =>
+    pipeline: PP.Pipeline<LowerEnv, UpperEnv, LowerErr, UpperErr, LowerElem, UpperElem>
+  ): CH.Channel<
+    LowerEnv,
+    UpperErr | LowerErr,
+    CK.Chunk<UpperElem>,
+    unknown,
+    UpperErr | LowerErr,
+    CK.Chunk<UpperElem | LowerElem>,
+    any
+  > =>
     CH.readWithCause(
       (chunk) =>
-        CH.zipRight_(pipeline(FromChunk.fromChunk(chunk)).channel, emitting(pipeline)),
+        CH.zipRight_(
+          pipeline.pipeline(FromChunk.fromChunk(chunk)).channel,
+          emitting(pipeline)
+        ),
       (_) => CH.failCause(_),
       (_) => CH.unit
     )
@@ -71,9 +97,18 @@ export function branchAfter_<R, R1, E, E1, A>(
  *
  * @ets_data_first branchAfter_
  */
-export function branchAfter<R, R1, E, E1, A>(
+export function branchAfter<
+  LowerEnv,
+  UpperEnv,
+  LowerErr,
+  UpperErr,
+  LowerElem,
+  UpperElem
+>(
   n: number,
-  f: (a1: CK.Chunk<A>) => Pipeline<R, R1, E, E1, A, A>
+  f: (
+    a1: CK.Chunk<UpperElem>
+  ) => PP.Pipeline<LowerEnv, UpperEnv, LowerErr, UpperErr, LowerElem, UpperElem>
 ) {
-  return (self: C.Stream<R, E, A>) => branchAfter_(self, n, f)
+  return (self: C.Stream<UpperEnv, UpperErr, UpperElem>) => branchAfter_(self, n, f)
 }
