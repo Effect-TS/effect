@@ -283,16 +283,16 @@ export function suspended<R, E, A>(layer: () => SyncLayer<R, E, A>) {
 
 export function fromSync<T extends AnyService>(tag: Tag<T>) {
   return <R, E>(_: Sy.Sync<R, E, T>): SyncLayer<R, E, Has<T>> =>
-    new Of(pipe(_, Sy.map(tag.of)))
+    new Of(pipe(_, Sy.map(tag.has)))
 }
 
 export function fromFunction<T extends AnyService>(tag: Tag<T>) {
   return <R>(_: (_: R) => T): SyncLayer<R, never, Has<T>> =>
-    new Of(pipe(Sy.access(_), Sy.map(tag.of)))
+    new Of(pipe(Sy.access(_), Sy.map(tag.has)))
 }
 
 export function fromValue<T extends AnyService>(tag: Tag<T>) {
-  return (_: T): SyncLayer<unknown, never, Has<T>> => new Of(Sy.succeed(tag.of(_)))
+  return (_: T): SyncLayer<unknown, never, Has<T>> => new Of(Sy.succeed(tag.has(_)))
 }
 
 export function and<R2, E2, A2>(left: SyncLayer<R2, E2, A2>) {

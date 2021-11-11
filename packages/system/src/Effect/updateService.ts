@@ -15,7 +15,7 @@ export function updateService_<T extends AnyService, R, E, A>(
 ): Effect<R & Has<T>, E, A> {
   return provideSome_(
     self,
-    (r: R & Has<T>) => ({ ...r, ...tag.of(f(tag.read(r))) }),
+    (r: R & Has<T>) => ({ ...r, ...tag.has(f(tag.read(r))) }),
     __trace
   )
 }

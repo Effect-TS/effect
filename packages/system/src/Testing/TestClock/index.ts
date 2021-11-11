@@ -449,7 +449,7 @@ export function live(data: Data) {
       )
     )
 
-    const testClock = TestClock.of(test)
+    const testClock = TestClock.has(test)
 
     return testClock as Has<Clock.Clock> & Has<TestClock>
   })["|>"](L.fromRawManaged)
