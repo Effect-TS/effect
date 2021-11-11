@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import type { AnyService, Has, Tag } from "../../Has"
+import type { AnyService, Has, ServiceConstructor, Tag } from "../../Has"
 import { provideSome_ } from "../core"
 import type { Managed } from "../managed"
 
@@ -10,7 +10,7 @@ import type { Managed } from "../managed"
 export function updateService_<T extends AnyService, R, E, A>(
   self: Managed<R, E, A>,
   tag: Tag<T>,
-  f: (_: T) => T,
+  f: (_: T) => ServiceConstructor<T>,
   __trace?: string
 ): Managed<R & Has<T>, E, A> {
   return provideSome_(
@@ -27,7 +27,7 @@ export function updateService_<T extends AnyService, R, E, A>(
  */
 export function updateService<T extends AnyService>(
   tag: Tag<T>,
-  f: (_: T) => T,
+  f: (_: T) => ServiceConstructor<T>,
   __trace?: string
 ): <R, E, A>(self: Managed<R, E, A>) => Managed<R & Has<T>, E, A> {
   return (self) => updateService_(self, tag, f, __trace)

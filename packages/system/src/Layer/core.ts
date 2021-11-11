@@ -5,7 +5,7 @@ import * as CL from "../Clock"
 import * as Tp from "../Collections/Immutable/Tuple"
 import * as E from "../Either"
 import { identity as idFn, pipe } from "../Function"
-import type { AnyService, Has, Tag } from "../Has"
+import type { AnyService, Has, ServiceConstructor, Tag } from "../Has"
 import { mergeEnvironments } from "../Has"
 import type * as SC from "../Schedule"
 import type * as SCD from "../Schedule/Decision"
@@ -37,16 +37,11 @@ export * from "./definitions"
 
 function environmentFor<T extends AnyService>(
   has: Tag<T>,
-  a: T
-): M.Managed<unknown, never, Has<T>>
-function environmentFor<T extends AnyService>(
-  has: Tag<T>,
-  a: T
-): M.Managed<unknown, never, any> {
+  a: ServiceConstructor<T>
+): M.Managed<{}, never, Has<T>> {
   return M.fromEffect(
     T.access((r) => ({
-      // @ts-expect-error
-      [has.key]: mergeEnvironments(has, r, a as any)[has.key]
+      [has.key]: mergeEnvironments(has, r, a)[has.key]
     }))
   )
 }
@@ -125,7 +120,7 @@ export function zipPar<RIn, RIn1, E, E1, ROut, ROut1>(that: Layer<RIn1, E1, ROut
  * Construct a service layer from a value
  */
 export function fromValue<T extends AnyService>(has: Tag<T>) {
-  return (resource: T): Layer<unknown, never, Has<T>> =>
+  return (resource: ServiceConstructor<T>): Layer<{}, never, Has<T>> =>
     new LayerManaged(
       M.chain_(M.fromEffect(T.succeed(resource)), (a) => environmentFor(has, a))
     ).setKey(has.key)
@@ -137,7 +132,7 @@ export function fromValue<T extends AnyService>(has: Tag<T>) {
  * @ets_data_first fromEffect_
  */
 export function fromEffect<T extends AnyService>(has: Tag<T>) {
-  return <R, E>(resource: T.Effect<R, E, T>): Layer<R, E, Has<T>> =>
+  return <R, E>(resource: T.Effect<R, E, ServiceConstructor<T>>): Layer<R, E, Has<T>> =>
     fromEffect_(resource, has)
 }
 
@@ -145,7 +140,7 @@ export function fromEffect<T extends AnyService>(has: Tag<T>) {
  * Constructs a layer from the specified effect.
  */
 export function fromEffect_<R, E, T extends AnyService>(
-  resource: T.Effect<R, E, T>,
+  resource: T.Effect<R, E, ServiceConstructor<T>>,
   has: Tag<T>
 ): Layer<R, E, Has<T>> {
   return new LayerManaged(
@@ -157,7 +152,9 @@ export function fromEffect_<R, E, T extends AnyService>(
  * Constructs a layer from a managed resource.
  */
 export function fromManaged<T extends AnyService>(has: Tag<T>) {
-  return <R, E>(resource: M.Managed<R, E, T>): Layer<R, E, Has<T>> =>
+  return <R, E>(
+    resource: M.Managed<R, E, ServiceConstructor<T>>
+  ): Layer<R, E, Has<T>> =>
     new LayerManaged(M.chain_(resource, (a) => environmentFor(has, a))).setKey(has.key)
 }
 
@@ -165,7 +162,7 @@ export function fromManaged<T extends AnyService>(has: Tag<T>) {
  * Constructs a layer from a managed resource.
  */
 export function fromManaged_<R, E, T extends AnyService>(
-  resource: M.Managed<R, E, T>,
+  resource: M.Managed<R, E, ServiceConstructor<T>>,
   has: Tag<T>
 ): Layer<R, E, Has<T>> {
   return new LayerManaged(M.chain_(resource, (a) => environmentFor(has, a))).setKey(
@@ -177,7 +174,8 @@ export function fromManaged_<R, E, T extends AnyService>(
  * Constructs a layer from the environment using the specified function.
  */
 export function fromFunction<B extends AnyService>(tag: Tag<B>) {
-  return <A>(f: (a: A) => B): Layer<A, never, Has<B>> => fromEffect(tag)(T.access(f))
+  return <A>(f: (a: A) => ServiceConstructor<B>): Layer<A, never, Has<B>> =>
+    fromEffect(tag)(T.access(f))
 }
 
 /**

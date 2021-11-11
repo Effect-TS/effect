@@ -41,7 +41,7 @@ export function service<T extends symbol, X extends Record<PropertyKey, unknown>
  * Has signal presence of a specific service provided via Tag in the environment
  */
 export type Has<T extends AnyService> = {
-  [k in T["serviceId"]]: T
+  readonly [k in T["serviceId"]]: T
 }
 
 /**
@@ -55,6 +55,10 @@ export type ConstructorType<K extends Constructor<any>> = K extends {
 
 export type Constructor<T> = Function & { prototype: T }
 
+export type ServiceConstructor<T extends AnyService> = Omit<T, "serviceId"> & {
+  readonly serviceId?: T["serviceId"]
+}
+
 /**
  * Tag Encodes capabilities of reading and writing a service T into a generic environment
  */
@@ -64,8 +68,8 @@ export interface Tag<T extends AnyService> {
   key: T["serviceId"]
   read: (r: Has<T>) => T
   readOption: (r: unknown) => Option<T>
-  has: (_: Omit<T, "serviceId"> & { readonly serviceId?: T["serviceId"] }) => Has<T>
-  of: (_: Omit<T, "serviceId"> & { readonly serviceId?: T["serviceId"] }) => T
+  has: (_: ServiceConstructor<T>) => Has<T>
+  of: (_: ServiceConstructor<T>) => T
 }
 
 /**
@@ -112,20 +116,19 @@ export const replaceServiceIn =
 export const replaceServiceIn_ = <R, T extends AnyService>(
   r: R & Has<T>,
   _: Tag<T>,
-  f: (t: T) => T
-): R & Has<T> =>
-  ({
-    ...r,
-    [_.key]: f(r[_.key])
-  } as any)
+  f: (t: T) => ServiceConstructor<T>
+): R & Has<T> => ({
+  ...r,
+  ..._.has(f(r[_.key]))
+})
 
 export function mergeEnvironments<T extends AnyService, R1 extends {}>(
   _: Tag<T>,
   r: R1,
-  t: T
+  t: ServiceConstructor<T>
 ): R1 & Has<T> {
   return {
     ...r,
-    [_.key]: t
-  } as any
+    ..._.has(t)
+  }
 }

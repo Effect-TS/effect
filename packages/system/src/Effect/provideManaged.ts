@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import type { AnyService, Has, Tag } from "../Has"
+import type { AnyService, Has, ServiceConstructor, Tag } from "../Has"
 import type { Managed } from "../Managed/managed"
 import { use_ } from "../Managed/use"
 import type { Effect } from "./effect"
@@ -19,7 +19,7 @@ export function provideSomeManaged<R, E, A>(managed: Managed<R, E, A>) {
  * Provides a managed to the given effect
  */
 export function provideServiceManaged<A extends AnyService>(tag: Tag<A>) {
-  return <R, E>(managed: Managed<R, E, A>) =>
+  return <R, E>(managed: Managed<R, E, ServiceConstructor<A>>) =>
     <R1, E1, A1>(self: Effect<R1 & Has<A>, E1, A1>): Effect<R & R1, E | E1, A1> =>
       use_(managed, (a) => has.provideService(tag)(a)(self))
 }
