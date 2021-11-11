@@ -62,12 +62,10 @@ export interface Tag<T extends AnyService> {
   _tag: "Tag"
   _T: T
   key: T["serviceId"]
-  def: boolean
-  overridable: () => Tag<T>
-  fixed: () => Tag<T>
   read: (r: Has<T>) => T
   readOption: (r: unknown) => Option<T>
-  of: (_: T) => Has<T>
+  has: (_: Omit<T, "serviceId"> & { readonly serviceId?: T["serviceId"] }) => Has<T>
+  of: (_: Omit<T, "serviceId"> & { readonly serviceId?: T["serviceId"] }) => T
 }
 
 /**
@@ -78,10 +76,8 @@ const makeTag = <T extends AnyService>(def = false, key: T["serviceId"]): Tag<T>
   _tag: "Tag",
   _T: undefined as any,
   key,
-  def,
-  of: (t) => ({ [key]: t } as any),
-  overridable: () => makeTag(true, key),
-  fixed: () => makeTag(false, key),
+  has: (t) => ({ [key]: "serviceId" in t ? t : { ...t, serviceId: key } } as any),
+  of: (t) => ("serviceId" in t ? t : ({ ...t, serviceId: key } as any)),
   read: (r: Has<T>) => r[key],
   readOption: (r: unknown) =>
     // @ts-expect-error
@@ -123,25 +119,13 @@ export const replaceServiceIn_ = <R, T extends AnyService>(
     [_.key]: f(r[_.key])
   } as any)
 
-/**
- * Flags the current Has to be overridable, when this is used subsequently provided
- * environments will override pre-existing. Useful to provide defaults.
- */
-export const overridable = <T extends AnyService>(h: Tag<T>): Tag<T> => ({
-  ...h,
-  def: true
-})
-
 export function mergeEnvironments<T extends AnyService, R1 extends {}>(
   _: Tag<T>,
   r: R1,
   t: T
 ): R1 & Has<T> {
-  // @ts-expect-error
-  return _.def && r[_.key]
-    ? r
-    : ({
-        ...r,
-        [_.key]: t
-      } as any)
+  return {
+    ...r,
+    [_.key]: t
+  } as any
 }

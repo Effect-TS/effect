@@ -1773,7 +1773,7 @@ export function asService_<R, E, A extends AnyService>(
   self: Managed<R, E, A>,
   tag: Tag<A>
 ) {
-  return core.map_(self, tag.of)
+  return core.map_(self, tag.has)
 }
 
 /**

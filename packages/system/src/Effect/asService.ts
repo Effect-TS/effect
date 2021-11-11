@@ -18,8 +18,8 @@ export function asService<A extends AnyService>(has: Tag<A>, __trace?: string) {
  */
 export function asService_<R, E, A extends AnyService>(
   fa: Effect<R, E, A>,
-  has: Tag<A>,
+  tag: Tag<A>,
   __trace?: string
 ) {
-  return map_(fa, has.of, __trace)
+  return map_(fa, tag.has, __trace)
 }
