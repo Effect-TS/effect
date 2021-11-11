@@ -431,7 +431,9 @@ export function runPromiseExitEnv<R, E, A>(
           break
         }
         case "All": {
-          const exits = await Promise.all(xp.self.map((a) => runPromiseExit(a, is)))
+          const exits = await Promise.all(
+            xp.self.map((a) => runPromiseExitEnv(a, r, is))
+          )
           const as = []
           let errored = false
           for (let i = 0; i < exits.length && !errored; i += 1) {

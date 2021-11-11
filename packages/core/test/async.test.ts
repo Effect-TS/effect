@@ -75,4 +75,16 @@ describe("Async", () => {
       )
     ).toEqual(As.failExit("reject"))
   })
+
+  it("preserves envioronment in collectAll", async () => {
+    const succeedOne = As.access<{ readonly one: 1 }, 1>((r) => r.one)
+
+    expect(
+      await pipe(
+        As.collectAll([succeedOne, succeedOne]),
+        As.provideAll({ one: 1 as const }),
+        As.runPromiseExit
+      )
+    ).toEqual(As.successExit([1, 1]))
+  })
 })
