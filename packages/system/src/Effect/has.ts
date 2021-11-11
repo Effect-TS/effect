@@ -8,7 +8,7 @@ import * as A from "../Collections/Immutable/Array"
 import * as R from "../Collections/Immutable/Dictionary"
 import * as core from "../Effect/core"
 import type { Effect } from "../Effect/effect"
-import type { AnyService, Has, Tag } from "../Has"
+import type { AnyService, Has, ServiceConstructor, Tag } from "../Has"
 import { mergeEnvironments } from "../Has"
 import { accessCallTrace } from "../Tracing"
 import type { UnionToIntersection } from "../Utils"
@@ -149,7 +149,7 @@ export function services<Ts extends readonly Tag<any>[]>(...s: Ts) {
  * Provides the service with the required Service Entry
  */
 export function provideServiceM<T extends AnyService>(_: Tag<T>) {
-  return <R, E>(service: Effect<R, E, T>, __trace?: string) =>
+  return <R, E>(service: Effect<R, E, ServiceConstructor<T>>, __trace?: string) =>
     <R1, E1, A1>(ma: Effect<R1 & Has<T>, E1, A1>): Effect<R & R1, E | E1, A1> =>
       core.accessM((r: R & R1) =>
         core.chain_(service, (t) =>
@@ -164,7 +164,7 @@ export function provideServiceM<T extends AnyService>(_: Tag<T>) {
 export function provideServiceM_<R1, E1, A1, R, E, T extends AnyService>(
   ma: Effect<R1 & Has<T>, E1, A1>,
   _: Tag<T>,
-  service: Effect<R, E, T>,
+  service: Effect<R, E, ServiceConstructor<T>>,
   __trace?: string
 ): Effect<R & R1, E | E1, A1> {
   return core.accessM((r: R & R1) =>
@@ -178,7 +178,7 @@ export function provideServiceM_<R1, E1, A1, R, E, T extends AnyService>(
  * Provides the service with the required Service Entry
  */
 export function provideService<T extends AnyService>(_: Tag<T>) {
-  return (service: T, __trace?: string) =>
+  return (service: ServiceConstructor<T>, __trace?: string) =>
     <R1, E1, A1>(ma: Effect<R1 & Has<T>, E1, A1>): Effect<R1, E1, A1> =>
       provideServiceM(_)(core.succeed(service), __trace)(ma)
 }
@@ -189,7 +189,7 @@ export function provideService<T extends AnyService>(_: Tag<T>) {
 export function provideService_<R1, E1, A1, T extends AnyService>(
   ma: Effect<R1 & Has<T>, E1, A1>,
   _: Tag<T>,
-  service: T,
+  service: ServiceConstructor<T>,
   __trace?: string
 ): Effect<R1, E1, A1> {
   return provideServiceM(_)(core.succeed(service), __trace)(ma)
@@ -200,7 +200,7 @@ export function provideService_<R1, E1, A1, T extends AnyService>(
  */
 export function replaceServiceM<R, E, T extends AnyService>(
   _: Tag<T>,
-  f: (_: T) => Effect<R, E, T>,
+  f: (_: T) => Effect<R, E, ServiceConstructor<T>>,
   __trace?: string
 ) {
   return <R1, E1, A1>(
@@ -215,7 +215,7 @@ export function replaceServiceM<R, E, T extends AnyService>(
 export function replaceServiceM_<R, E, T extends AnyService, R1, E1, A1>(
   ma: Effect<R1 & Has<T>, E1, A1>,
   _: Tag<T>,
-  f: (_: T) => Effect<R, E, T>,
+  f: (_: T) => Effect<R, E, ServiceConstructor<T>>,
   __trace?: string
 ): Effect<R & R1 & Has<T>, E | E1, A1> {
   return accessServiceM(_)((t) => provideServiceM(_)(f(t), __trace)(ma))
@@ -228,7 +228,7 @@ export function replaceServiceM_<R, E, T extends AnyService, R1, E1, A1>(
  */
 export function replaceService<T extends AnyService>(
   _: Tag<T>,
-  f: (_: T) => T,
+  f: (_: T) => ServiceConstructor<T>,
   __trace?: string
 ) {
   return <R1, E1, A1>(ma: Effect<R1 & Has<T>, E1, A1>): Effect<R1 & Has<T>, E1, A1> =>
@@ -241,7 +241,7 @@ export function replaceService<T extends AnyService>(
 export function replaceService_<R1, E1, A1, T extends AnyService>(
   ma: Effect<R1 & Has<T>, E1, A1>,
   _: Tag<T>,
-  f: (_: T) => T,
+  f: (_: T) => ServiceConstructor<T>,
   __trace?: string
 ): Effect<R1 & Has<T>, E1, A1> {
   return accessServiceM(_)((t) =>
