@@ -3,6 +3,7 @@
 import "../Operator"
 
 export * from "./core"
+export * from "./derive"
 export * from "./excl-forEach"
 export * from "./collect"
 export * from "./fromEither"
