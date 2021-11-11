@@ -76,7 +76,7 @@ describe("Async", () => {
     ).toEqual(As.failExit("reject"))
   })
 
-  it("preserves envioronment in collectAll", async () => {
+  it("preserves environment in collectAll", async () => {
     const succeedOne = As.access<{ readonly one: 1 }, 1>((r) => r.one)
 
     expect(
