@@ -56,10 +56,12 @@ export function deriveLifted<T extends AnyService>(
     const ret = {} as any
 
     for (const k of functions) {
+      // @ts-expect-error
       ret[k] = (...args: any[]) => has.accessServiceM(H)((h) => h[k](...args))
     }
 
     for (const k of constants) {
+      // @ts-expect-error
       ret[k] = has.accessServiceM(H)((h) => h[k])
     }
 
