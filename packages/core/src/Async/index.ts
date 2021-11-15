@@ -97,34 +97,6 @@ export const Access = P.instance<P.FX.Access<[URI<AsyncURI>], V>>({
   access: A.access
 })
 
-export const accessServiceM: <Service extends AnyService>(
-  H: Tag<Service>
-) => <R, E, A>(f: (_: Service) => A.Async<R, E, A>) => A.Async<R & Has<Service>, E, A> =
-  P.accessServiceMF({ ...Monad, ...Access })
-
-export const accessService: <Service extends AnyService>(
-  H: Tag<Service>
-) => <A>(f: (_: Service) => A) => A.Async<Has<Service>, never, A> = (tag) => (f) =>
-  accessServiceM(tag)((_) => A.succeed(f(_)))
-
-export const provideService: <Service extends AnyService>(
-  H: Tag<Service>
-) => (
-  S: Service
-) => <R, E, A>(fa: A.Async<R & Has<Service>, E, A>) => A.Async<R, E, A> =
-  P.provideServiceF({ ...Monad, ...Provide, ...Access })
-
-export const provideServiceM: <Service extends AnyService>(
-  H: Tag<Service>
-) => <R2, E2>(
-  SM: A.Async<R2, E2, Service>
-) => <R, E, A>(fa: A.Async<R & Has<Service>, E, A>) => A.Async<R & R2, E | E2, A> =
-  (tag) => (SM) => (fa) =>
-    pipe(
-      SM,
-      A.chain((s) => pipe(fa, provideService(tag)(s)))
-    )
-
 const genAdapter: {
   <A extends AnyService>(_: Tag<A>): P.GenHKT<A.Async<Has<A>, never, A>, A>
   <E, A>(_: O.Option<A>, onNone: () => E): P.GenHKT<A.Async<unknown, E, A>, A>
@@ -133,7 +105,7 @@ const genAdapter: {
   <R, E, A>(_: A.Async<R, E, A>): P.GenHKT<A.Async<R, E, A>, A>
 } = (_: any, __?: any): any => {
   if (isTag(_)) {
-    return new P.GenHKT(accessService(_)(identity))
+    return new P.GenHKT(A.service(_))
   }
   if (isEither(_)) {
     return new P.GenHKT(_._tag === "Left" ? A.fail(_.left) : A.succeed(_.right))
