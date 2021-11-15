@@ -3,6 +3,22 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.46.1](https://github.com/Effect-TS/core/compare/@effect-ts/core@0.46.0...@effect-ts/core@0.46.1) (2021-11-15)
+
+
+### Bug Fixes
+
+* chainRec in Chunk, refactor Prelude ([ff9319e](https://github.com/Effect-TS/core/commit/ff9319ee495757cbae02c87065fe022b271bf84b))
+
+
+### Features
+
+* **string:** add implementation of stripMargin to string module ([8897cde](https://github.com/Effect-TS/core/commit/8897cde35041e9e78eef918af8c42677569dc265))
+
+
+
+
+
 # [0.46.0](https://github.com/Effect-TS/core/compare/@effect-ts/core@0.45.5...@effect-ts/core@0.46.0) (2021-11-10)
 
 

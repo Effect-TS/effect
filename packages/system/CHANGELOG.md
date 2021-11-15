@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.43.1](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.43.0...@effect-ts/system@0.43.1) (2021-11-15)
+
+
+### Bug Fixes
+
+* chainRec in Chunk, refactor Prelude ([ff9319e](https://github.com/Effect-TS/core/commit/ff9319ee495757cbae02c87065fe022b271bf84b))
+
+
+
+
+
 # [0.43.0](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.42.5...@effect-ts/system@0.43.0) (2021-11-10)
 
 
