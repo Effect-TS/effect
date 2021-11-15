@@ -1,10 +1,17 @@
 import * as T from "../../../Effect"
 import * as E from "../../../Either"
 import { pipe } from "../../../Function"
+import type * as O from "../../../Option"
 import * as S from "../_internal"
 
-export interface BasePipe<UpperEnv = any, UpperErr = any, UpperElem = any> {
+export interface BasePipe<
+  UpperEnv = any,
+  UpperErr = any,
+  UpperElem = any,
+  LowerEnv = any
+> {
   readonly UpperEnv: UpperEnv
+  readonly LowerEnv: LowerEnv
   readonly UpperErr: UpperErr
   readonly UpperElem: UpperElem
 
@@ -43,7 +50,7 @@ export type EnvOf<X extends BasePipe, R, E, A> = X extends { readonly _R: any }
 
 export interface Pipe<X extends BasePipe> {
   <R extends X["UpperEnv"], E extends X["UpperErr"], A extends X["UpperElem"]>(
-    stream: S.Stream<R, E, A>
+    stream: S.Stream<X["LowerEnv"], any, any> & S.Stream<R, E, A>
   ): S.Stream<EnvOf<X, R, E, A>, ErrOf<X, R, E, A>, ElemOf<X, R, E, A>>
 }
 export class Pipe<X extends BasePipe> extends Function {
@@ -53,7 +60,7 @@ export class Pipe<X extends BasePipe> extends Function {
       E extends X["UpperErr"],
       A extends X["UpperElem"]
     >(
-      stream: S.Stream<R, E, A>
+      stream: S.Stream<R, E, A> & S.Stream<X["LowerEnv"], any, any>
     ) => S.Stream<EnvOf<X, R, E, A>, ErrOf<X, R, E, A>, ElemOf<X, R, E, A>>
   ) {
     super()
@@ -82,7 +89,7 @@ export class Pipe<X extends BasePipe> extends Function {
 
 export function pipeline<X extends BasePipe>(
   apply: <R extends X["UpperEnv"], E extends X["UpperErr"], A extends X["UpperElem"]>(
-    stream: S.Stream<R, E, A>
+    stream: S.Stream<R, E, A> & S.Stream<X["LowerEnv"], any, any>
   ) => S.Stream<EnvOf<X, R, E, A>, ErrOf<X, R, E, A>, ElemOf<X, R, E, A>>
 ): Pipe<X> {
   return new Pipe(apply)
@@ -91,6 +98,7 @@ export function pipeline<X extends BasePipe>(
 export interface Compose<Left extends BasePipe, Right extends BasePipe>
   extends BasePipe {
   readonly UpperEnv: Left["UpperEnv"]
+  readonly LowerEnv: Left["LowerEnv"]
   readonly UpperErr: Left["UpperErr"]
   readonly UpperElem: Left["UpperElem"]
 
@@ -174,6 +182,16 @@ export const unEither = pipeline<UnEither>(
   S.chain((a) => (a._tag === "Left" ? S.fail(a.left) : S.succeed(a.right)))
 )
 
+export interface ProvideAll<X> extends BasePipe {
+  readonly UpperEnv: X
+  readonly LowerEnv: X
+  readonly _R: unknown
+}
+
+export function provideAll<X>(r: X) {
+  return pipeline<ProvideAll<X>>((stream) => S.provideAll_(stream, r))
+}
+
 //
 // Usage
 //
@@ -181,8 +199,16 @@ export const unEither = pipeline<UnEither>(
 export const calcLength = map((s: string) => s.length)
 
 export const printOut = mapEffect((n: number) =>
-  T.succeedWith(() => {
-    console.log(`got ${n}`)
+  T.access((r: { foo: string }) => {
+    console.log(`got ${n} ${r.foo}`)
+    return n
+  })
+)
+
+export const printOut2 = mapEffect((n: number) =>
+  T.access((r: { bar: string }) => {
+    console.log(`got ${n} ${r.bar}`)
+    return n
   })
 )
 
@@ -193,11 +219,15 @@ export const orFail = mapEither(
   )
 )
 
+const prov = provideAll({ foo: "ok" })
+
 export const calcLengthAndPrint = calcLength
   .andThen(orFail)
   .andThen(printOut)
+  .andThen(printOut2)
   .andThen(either)
   .andThen(unEither)
+  .andThen(prov)
 
 export const res = pipe(
   S.repeat("ok"),
