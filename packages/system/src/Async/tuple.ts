@@ -2,7 +2,6 @@
 
 import type { NonEmptyArray } from "../Collections/Immutable/NonEmptyArray"
 import * as Tp from "../Collections/Immutable/Tuple"
-import { accessCallTrace } from "../Tracing"
 import type { _E, _R, ForcedTuple } from "../Utils"
 import type { Async } from "./core"
 import { map_ } from "./core"
@@ -31,5 +30,5 @@ export function tuple<T extends NonEmptyArray<Async<any, any, any>>>(
 export function tuplePar<T extends NonEmptyArray<Async<any, any, any>>>(
   ...t: T
 ): Async<_R<T[number]>, _E<T[number]>, ForcedTuple<TupleA<T>>> {
-  return map_(collectAllPar(t, accessCallTrace()), (x) => Tp.tuple(...x)) as any
+  return map_(collectAllPar(t), (x) => Tp.tuple(...x)) as any
 }
