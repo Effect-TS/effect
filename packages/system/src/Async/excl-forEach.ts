@@ -34,7 +34,7 @@ export function forEach_<A, R, E, B>(
 
 /**
  * Applies the function `f` to each element of the `Iterable<A>` and
- * returns the results in a new `readonly B[]`.
+ * returns the results in a new `Chunk<B>`.
  *
  * For a parallel version of this method, see `forEachPar`.
  * If you do not need the results, see `forEachUnit` for a more efficient implementation.
@@ -97,8 +97,7 @@ export function forEachUnit<R, E, A, X>(
  */
 export function forEachUnitPar_<R, E, A, X>(
   as: Iterable<A>,
-  f: (a: A) => Async<R, E, X>,
-  __trace?: string
+  f: (a: A) => Async<R, E, X>
 ): Async<R, E, void> {
   return pipe(
     core.environment<R>(),
@@ -109,9 +108,7 @@ export function forEachUnitPar_<R, E, A, X>(
             const is = new core.InterruptionState()
             const promises: Array<Promise<void>> = []
             onInterrupt(() => {
-              if (!is.interrupted) {
-                is.interrupt()
-              }
+              is.interrupt()
             })
 
             Array.from(as).forEach((a) => {
@@ -155,7 +152,7 @@ export function forEachUnitPar<R, E, A, X>(f: (a: A) => Async<R, E, X>) {
 
 /**
  * Applies the function `f` to each element of the `Iterable<A>` in parallel,
- * and returns the results in a new `readonly B[]`.
+ * and returns the results in a new `Chunk<B>`.
  *
  * For a sequential version of this method, see `forEach`.
  */
@@ -187,7 +184,7 @@ export function forEachPar_<R, E, A, B>(
 
 /**
  * Applies the function `f` to each element of the `Iterable<A>` in parallel,
- * and returns the results in a new `readonly B[]`.
+ * and returns the results in a new `Chunk<B>`.
  *
  * For a sequential version of this method, see `forEach`.
  *
@@ -209,7 +206,7 @@ export function collectAll<R, E, A>(as: Iterable<Async<R, E, A>>) {
  * Evaluate each effect in the structure in parallel, and collect the
  * results. For a sequential version, see `collectAll`.
  */
-export function collectAllPar<R, E, A>(as: Iterable<Async<R, E, A>>, __trace?: string) {
+export function collectAllPar<R, E, A>(as: Iterable<Async<R, E, A>>) {
   return forEachPar_(as, identity)
 }
 
