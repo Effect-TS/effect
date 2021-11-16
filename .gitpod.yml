@@ -3,3 +3,6 @@ tasks:
 github:
   prebuilds:
     addCheck: true
+vscode:
+  extensions:
+    - dbaeumer.vscode-eslint
