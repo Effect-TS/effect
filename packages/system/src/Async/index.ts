@@ -7,4 +7,6 @@ import "../Operator"
  */
 export * from "./core"
 export * from "./derive"
+export * from "./excl-forEach"
 export * from "./has"
+export * from "./tuple"

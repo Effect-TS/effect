@@ -1,4 +1,7 @@
 import * as As from "../src/Async"
+import { range } from "../src/Collections/Immutable/Array"
+import * as Chunk from "../src/Collections/Immutable/Chunk"
+import * as Tp from "../src/Collections/Immutable/Tuple"
 import { identity, pipe } from "../src/Function"
 
 describe("Async", () => {
@@ -35,11 +38,13 @@ describe("Async", () => {
   })
   it("collectAll", async () => {
     expect(
-      await pipe(
-        As.collectAll([As.succeed(1), As.succeed(2), As.succeed(3)] as const),
-        As.runPromiseExit
+      Chunk.toArray(
+        await pipe(
+          As.collectAll([As.succeed(1), As.succeed(2), As.succeed(3)]),
+          As.runPromise
+        )
       )
-    ).toEqual(As.successExit([1, 2, 3]))
+    ).toEqual([1, 2, 3])
   })
 
   it("onError", async () => {
@@ -80,11 +85,60 @@ describe("Async", () => {
     const succeedOne = As.access<{ readonly one: 1 }, 1>((r) => r.one)
 
     expect(
-      await pipe(
-        As.collectAll([succeedOne, succeedOne]),
-        As.provideAll({ one: 1 as const }),
-        As.runPromiseExit
+      Chunk.toArray(
+        await pipe(
+          As.collectAll([succeedOne, succeedOne]),
+          As.provideAll({ one: 1 as const }),
+          As.runPromise
+        )
       )
-    ).toEqual(As.successExit([1, 1]))
+    ).toEqual([1, 1])
+  })
+
+  it("tupled", async () => {
+    const program = As.tuple(As.succeed(0), As.succeed("ok"), As.fail("e"))
+    const programSuccess = As.tuple(As.succeed(0), As.succeed("ok"))
+    expect(await pipe(program, As.runPromiseExit)).toEqual(As.failExit("e"))
+    expect(await pipe(programSuccess, As.runPromiseExit)).toEqual(
+      As.successExit(new Tp.Tuple([0, "ok"]))
+    )
+  })
+
+  it("forEach", async () => {
+    const f = As.forEach_(range(0, 100), (n: number) => As.succeedWith(() => n + 1))
+    const a = await pipe(f, As.runPromise)
+    const b = await pipe(f, As.runPromise)
+    expect(Chunk.toArray(a)).toEqual(Chunk.toArray(b))
+    expect(Chunk.toArray(b)).toEqual(range(1, 101))
+  })
+  it("forEachPar", async () => {
+    const results: number[] = []
+    const result = await pipe(
+      range(0, 10),
+      As.forEachPar((n) =>
+        n > 1 && n % 5 === 0
+          ? As.fail(`error in process: ${n}`)
+          : As.delay(10)(
+              As.succeedWith(() => {
+                results.push(n)
+                return n
+              })
+            )
+      ),
+      As.runPromiseExit
+    )
+    const result_ok = await pipe(
+      range(0, 10),
+      As.forEachPar((n) =>
+        pipe(
+          As.sleep(10),
+          As.map(() => n)
+        )
+      ),
+      As.runPromise
+    )
+    expect(results.length).toEqual(0)
+    expect(result).toEqual(As.failExit("error in process: 5"))
+    expect(Chunk.toArray(result_ok)).toEqual(range(0, 10))
   })
 })
