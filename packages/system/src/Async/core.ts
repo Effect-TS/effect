@@ -115,14 +115,6 @@ class IDone<E, A> extends Async<unknown, E, A> {
   }
 }
 
-class IAll<R, E, A> extends Async<R, E, readonly A[]> {
-  readonly _asyncTag = "All"
-
-  constructor(readonly self: readonly Async<R, E, A>[]) {
-    super()
-  }
-}
-
 type Concrete<R, E, A> =
   | ISucceed<A>
   | IFail<E>
@@ -133,7 +125,6 @@ type Concrete<R, E, A> =
   | ISuspend<R, E, A>
   | IPromise<E, A>
   | IDone<E, A>
-  | IAll<R, E, A>
 
 class FoldFrame {
   readonly _asyncTag = "FoldFrame"
@@ -427,37 +418,6 @@ export function runPromiseExitEnv<R, E, A>(
             curAsync = nextInstr.apply(a)
           } else {
             curAsync = undefined
-          }
-          break
-        }
-        case "All": {
-          const exits = await Promise.all(
-            xp.self.map((a) => runPromiseExitEnv(a, r, is))
-          )
-          const as = []
-          let errored = false
-          for (let i = 0; i < exits.length && !errored; i += 1) {
-            const e = exits[i]!
-            switch (e._tag) {
-              case "Success": {
-                as.push(e.a)
-                break
-              }
-              case "Failure": {
-                errored = true
-                curAsync = new IFail(e.e)
-                break
-              }
-              case "Interrupt": {
-                errored = true
-                interruptedLocal = true
-                curAsync = undefined
-                break
-              }
-            }
-          }
-          if (!errored) {
-            curAsync = new ISucceed(as)
           }
           break
         }
@@ -992,43 +952,6 @@ export function delay(ms: number) {
       sleep(ms),
       chain(() => self)
     )
-}
-
-// like Promise.all
-export function collectAll<R, E, A>(
-  a: readonly Async<R, E, A>[]
-): Async<R, E, readonly A[]> {
-  return new IAll(a)
-}
-
-// like Promise.all for tuples
-export function tuple<Tasks extends Async<any, any, any>[]>(
-  ...tasks: Tasks & { 0: Async<any, any, any> }
-): Async<
-  U._R<Tasks[number]>,
-  U._E<Tasks[number]>,
-  U.ForcedTuple<{
-    [k in keyof Tasks]: [Tasks[k]] extends [Async<any, any, infer A>] ? A : never
-  }>
-> {
-  return map_(collectAll(tasks), (x) => Tp.tuple(...x)) as any
-}
-
-// like Promise.all + map on steroids
-export function forEach_<R, A, E1, B>(
-  as: Iterable<A>,
-  f: (a: A) => Async<R, E1, B>
-): Async<R, E1, readonly B[]> {
-  return collectAll(Array.from(as).map(f))
-}
-
-/**
- * like Promise.all + map on steroids
- *
- * @ets_data_first forEach_
- */
-export function forEach<R, A, E1, B>(f: (a: A) => Async<R, E1, B>) {
-  return (as: Iterable<A>) => forEach_(as, f)
 }
 
 // binds the output of a computation to a variable
