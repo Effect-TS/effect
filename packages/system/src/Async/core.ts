@@ -162,12 +162,14 @@ export class InterruptionState {
   }
 
   interrupt() {
-    // set to interrupted
-    this.isInterrupted = true
-    // notify
-    this.listeners.forEach((i) => {
-      i()
-    })
+    if (!this.isInterrupted) {
+      // set to interrupted
+      this.isInterrupted = true
+      // notify
+      this.listeners.forEach((i) => {
+        i()
+      })
+    }
   }
 }
 
