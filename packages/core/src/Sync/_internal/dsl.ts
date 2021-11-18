@@ -3,8 +3,6 @@
 import * as P from "../../Prelude"
 import { Applicative, Covariant, Fail, Monad, Run } from "./instances"
 
-export const tuple = P.tupleF(Applicative)
-
 export const struct = P.structF(Applicative)
 
 export const getValidationApplicative = P.getValidationF({
