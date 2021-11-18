@@ -67,25 +67,25 @@ export type BuiltInObject =
   | Abstractions
   | WebAssembly
 
-export type ComputeRaw<A extends any> = A extends Function
+export type ComputeRaw<A> = A extends Function
   ? A
   : {
       [K in keyof A]: A[K]
     } & {}
 
-export type ComputeFlat<A extends any> = A extends BuiltInObject
+export type ComputeFlat<A> = A extends BuiltInObject
   ? A
   : {
       [K in keyof A]: A[K]
     } & {}
 
-export type ComputeDeep<A extends any> = A extends BuiltInObject
+export type ComputeDeep<A> = A extends BuiltInObject
   ? A
   : {
       [K in keyof A]: ComputeDeep<A[K]>
     } & {}
 
-export type Compute<A extends any, depth extends Depth = "deep"> = {
+export type Compute<A, depth extends Depth = "deep"> = {
   flat: ComputeFlat<A>
   deep: ComputeDeep<A>
 }[depth]
