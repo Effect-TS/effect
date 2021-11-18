@@ -13,8 +13,6 @@ export type TupleA<T extends NonEmptyArray<Sync<any, any, any>>> = {
 
 /**
  * Like `forEach` + `identity` with a tuple type
- *
- * @ets_trace call
  */
 export function tuple<T extends NonEmptyArray<Sync<any, any, any>>>(
   ...t: T
