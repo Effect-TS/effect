@@ -15,13 +15,13 @@ import { fromNullable, none } from "../Option"
  */
 export declare const HasURI: unique symbol
 
-export interface Service<T extends symbol> {
+export interface Service<T extends PropertyKey> {
   readonly serviceId: T
 }
 
 export interface AnyService extends Service<symbol> {}
 
-export function BaseService<T extends symbol>(serviceId: T) {
+export function BaseService<T extends PropertyKey>(serviceId: T) {
   return class BaseService implements Service<T> {
     readonly serviceId: T = serviceId
   }
@@ -29,7 +29,7 @@ export function BaseService<T extends symbol>(serviceId: T) {
 
 export type Flat<A> = { readonly [k in keyof A]: A[k] } extends infer X ? X : never
 
-export function service<T extends symbol, X extends Record<PropertyKey, unknown>>(
+export function service<T extends PropertyKey, X extends Record<PropertyKey, unknown>>(
   t: T,
   x: X
 ): Flat<X & { readonly serviceId: T }> {
@@ -76,7 +76,7 @@ export interface Tag<T extends AnyService> {
  * Extract the Has type from any augumented variant
  */
 
-const makeTag = <T extends AnyService>(def = false, key: T["serviceId"]): Tag<T> => ({
+const makeTag = <T extends AnyService>(key: T["serviceId"]): Tag<T> => ({
   _tag: "Tag",
   _T: undefined as any,
   key,
@@ -92,7 +92,7 @@ const makeTag = <T extends AnyService>(def = false, key: T["serviceId"]): Tag<T>
  * Create a service entry Tag from a type and a URI
  */
 export function tag<T extends AnyService>(_: T["serviceId"]): Tag<T> {
-  return makeTag(false, _)
+  return makeTag(_)
 }
 
 /**
