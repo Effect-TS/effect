@@ -39,6 +39,7 @@ function environmentFor<T extends AnyService>(
   has: Tag<T>,
   a: ServiceConstructor<T>
 ): M.Managed<{}, never, Has<T>> {
+  // @ts-expect-error
   return M.fromEffect(
     T.access((r) => ({
       [has.key]: mergeEnvironments(has, r, a)[has.key]
