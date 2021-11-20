@@ -8,6 +8,7 @@ import type { Lazy, Predicate, Refinement } from "../Function/core"
 import type { Option } from "../Option/core"
 import { isNone } from "../Option/core"
 import * as St from "../Structural"
+import type { IsEqualTo } from "../Utils"
 
 const _leftHash = St.hashString("@effect-ts/system/Either/Left")
 const _rightHash = St.hashString("@effect-ts/system/Either/Right")
@@ -40,6 +41,14 @@ export class Right<A> {
 }
 
 export type Either<E, A> = Left<E> | Right<A>
+
+declare module "../Has" {
+  interface Taggable<T> {
+    Either: [T] extends [Either<infer E, infer A>]
+      ? `Either<${TypeTag<E>}, ${TypeTag<A>}>`
+      : never
+  }
+}
 
 /**
  * Constructs a new `Either` holding a `Right` value. This usually represents a successful value due to the right bias

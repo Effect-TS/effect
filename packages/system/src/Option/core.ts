@@ -40,6 +40,12 @@ export class Some<A> implements HasUnify {
 
 export type Option<A> = None | Some<A>
 
+declare module "../Has" {
+  interface Taggable<T> {
+    Option: [T] extends [Option<infer A>] ? `Option<${TypeTag<A>}>` : never
+  }
+}
+
 /**
  * Constructs none
  */
