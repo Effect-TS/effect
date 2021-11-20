@@ -91,6 +91,8 @@ export interface CaseConstructorTagged<
   Tag extends string | symbol,
   K extends string | symbol
 > {
+  readonly _tag: Tag
+
   new <T>(args: IsEqualTo<T, {}> extends true ? void : T): T &
     Copy<T> & { readonly [k in K]: Tag }
 }
@@ -108,6 +110,7 @@ export function Tagged<Tag extends string | symbol, Key extends string | symbol>
 ): CaseConstructorTagged<Tag, string> {
   if (key) {
     class X extends Case<{}> {
+      static _tag = tag;
       // @ts-expect-error
       readonly [key] = tag
     }

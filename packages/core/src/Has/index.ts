@@ -65,4 +65,8 @@ export type TypeTag<T> = T extends string
   ? T["serviceId"]
   : T extends { readonly _tag: string }
   ? T["_tag"]
+  : IsEqualTo<T, never> extends true
+  ? `Never`
+  : IsEqualTo<T, unknown> extends true
+  ? `Unknown`
   : never
