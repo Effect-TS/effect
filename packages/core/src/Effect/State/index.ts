@@ -37,7 +37,7 @@ export interface StateExternal<S> {
   readonly Live: (s: S) => L.Layer<unknown, never, Has<State<S>>>
 }
 
-function makeState<S>(
+export function makeState<S>(
   initial: S
 ): T.Effect<unknown, never, ServiceConstructor<State<S>>> {
   return T.map_(FRef.make(initial), (ref) => ({
