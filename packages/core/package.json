@@ -107,6 +107,7 @@
       "Effect/Schedule",
       "Effect/Scope",
       "Effect/Semaphore",
+      "Effect/State",
       "Effect/Stream",
       "Effect/Stream/BufferedPull",
       "Effect/Stream/Pull",
