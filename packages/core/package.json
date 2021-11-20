@@ -1,6 +1,6 @@
 {
   "name": "@effect-ts/core",
-  "version": "0.46.1",
+  "version": "0.46.2",
   "license": "MIT",
   "repository": "https://github.com/Effect-TS/core.git",
   "homepage": "https://www.matechs.com",
@@ -22,7 +22,7 @@
     "directory": "dist"
   },
   "dependencies": {
-    "@effect-ts/system": "^0.43.1"
+    "@effect-ts/system": "^0.43.2"
   },
   "config": {
     "side": [
