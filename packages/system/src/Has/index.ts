@@ -2,7 +2,6 @@
 
 import "../Operator"
 
-import type { Either } from "../Either"
 /**
  * Ported from https://github.com/zio/zio/blob/master/core/shared/src/main/scala/zio/Has.scala
  *
