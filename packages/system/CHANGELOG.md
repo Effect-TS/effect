@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.43.3](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.43.2...@effect-ts/system@0.43.3) (2021-11-20)
+
+
+### Bug Fixes
+
+* **system:** fix AnyService to support PropertyKey ([a31d5b1](https://github.com/Effect-TS/core/commit/a31d5b194bf7265694499e1d63d828a119f9646b))
+
+
+
+
+
 ## [0.43.2](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.43.1...@effect-ts/system@0.43.2) (2021-11-20)
 
 **Note:** Version bump only for package @effect-ts/system
