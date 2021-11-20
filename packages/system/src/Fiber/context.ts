@@ -1210,9 +1210,9 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                     ) {
                       this.addTrace(current.trace)
                     }
-                    const [result, newValue] = current.f(
-                      O.getOrElse_(oldValue, () => c.fiberRef.initial)
-                    )
+                    const {
+                      tuple: [result, newValue]
+                    } = current.f(O.getOrElse_(oldValue, () => c.fiberRef.initial))
                     this.fiberRefLocals.set(c.fiberRef, newValue)
                     current = this.nextInstr(result)
                     break
