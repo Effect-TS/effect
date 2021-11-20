@@ -19,7 +19,7 @@ export interface Service<T extends PropertyKey> {
   readonly serviceId: T
 }
 
-export interface AnyService extends Service<symbol> {}
+export interface AnyService extends Service<PropertyKey> {}
 
 export function BaseService<T extends PropertyKey>(serviceId: T) {
   return class BaseService implements Service<T> {
