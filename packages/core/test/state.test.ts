@@ -5,13 +5,13 @@ import { pipe } from "../src/Function"
 
 describe("State", () => {
   it("should use state", async () => {
-    class Count extends Tagged("Count")<{
+    class Count extends Tagged("@local/Count")<{
       readonly count: number
     }> {
       static of = (n: number) => new Count({ count: n })
     }
 
-    const CountState = State<Count>("Count")
+    const CountState = State<Count>(Count._tag)
 
     const program = T.gen(function* (_) {
       const x = yield* _(CountState.get)
