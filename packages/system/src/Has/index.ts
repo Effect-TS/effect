@@ -2,6 +2,7 @@
 
 import "../Operator"
 
+import type { Either } from "../Either"
 /**
  * Ported from https://github.com/zio/zio/blob/master/core/shared/src/main/scala/zio/Has.scala
  *
@@ -9,6 +10,7 @@ import "../Operator"
  */
 import type { Option } from "../Option"
 import { fromNullable, none } from "../Option"
+import type { IsEqualTo, UnionToIntersection } from "../Utils"
 
 /**
  * URI used in Has
@@ -132,3 +134,33 @@ export function mergeEnvironments<T extends AnyService, R1 extends {}>(
     ..._.has(t)
   }
 }
+
+export interface Taggable<T> {
+  String: [T] extends [string]
+    ? IsEqualTo<T, string> extends true
+      ? `String<${T}>`
+      : "String"
+    : never
+  Number: [T] extends [number]
+    ? [IsEqualTo<T, number>] extends [true]
+      ? "Number"
+      : `Number<${T}>`
+    : never
+  Unknown: [T] extends [unknown] ? ([unknown] extends [T] ? "Unknown" : never) : never
+}
+
+export type TypeTag<T> = UnionToIntersection<
+  [T] extends [never]
+    ? "Never"
+    : [Taggable<T>[keyof Taggable<any>]] extends [never]
+    ? [T] extends [{ readonly serviceId: string }]
+      ? T["serviceId"]
+      : [T] extends [{ readonly _tag: string }]
+      ? T["_tag"]
+      : never
+    : Taggable<T>[keyof Taggable<any>]
+> extends infer X
+  ? X extends string
+    ? X
+    : never
+  : never
