@@ -48,3 +48,21 @@ export function deriveFunctions<
   // @ts-expect-error
   return res
 }
+
+//
+// TypeTag
+//
+
+export type TypeTag<T> = T extends string
+  ? string extends T
+    ? "String"
+    : `String<${T}>`
+  : T extends number
+  ? number extends T
+    ? "Number"
+    : `Number<${T}>`
+  : T extends { readonly serviceId: string }
+  ? T["serviceId"]
+  : T extends { readonly _tag: string }
+  ? T["_tag"]
+  : never
