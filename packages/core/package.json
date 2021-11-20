@@ -94,6 +94,7 @@
       "Effect/Experimental/Stream/SubscriptionRef",
       "Effect/Fiber",
       "Effect/FiberRef",
+      "Effect/FiberState",
       "Effect/Hub",
       "Effect/Layer",
       "Effect/Managed",

@@ -2,8 +2,8 @@ import type * as Tp from "../../Collections/Immutable/Tuple"
 import type { Has, ServiceConstructor, Tag, TypeTag } from "../../Has"
 import { tag } from "../../Has"
 import * as T from ".."
-import * as FRef from "../FiberRef"
 import * as L from "../Layer"
+import * as FRef from "../Ref"
 
 export interface State<S> {
   readonly serviceId: `@effect-ts/core/Effect/State<${TypeTag<S>}>`
@@ -40,7 +40,7 @@ export interface StateExternal<S> {
 export function makeState<S>(
   initial: S
 ): T.Effect<unknown, never, ServiceConstructor<State<S>>> {
-  return T.map_(FRef.make(initial), (ref) => ({
+  return T.map_(FRef.makeRef(initial), (ref) => ({
     get: FRef.get(ref),
     modify: (f) => FRef.modify_(ref, f),
     set: (s) => FRef.set_(ref, s),
