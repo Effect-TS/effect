@@ -8,7 +8,6 @@ import type { Lazy, Predicate, Refinement } from "../Function/core"
 import type { Option } from "../Option/core"
 import { isNone } from "../Option/core"
 import * as St from "../Structural"
-import type { IsEqualTo } from "../Utils"
 
 const _leftHash = St.hashString("@effect-ts/system/Either/Left")
 const _rightHash = St.hashString("@effect-ts/system/Either/Right")
