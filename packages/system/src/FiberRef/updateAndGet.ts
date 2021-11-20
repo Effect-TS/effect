@@ -1,5 +1,6 @@
 // ets_tracing: off
 
+import * as Tp from "../Collections/Immutable/Tuple"
 import { modify } from "./modify"
 
 /**
@@ -9,6 +10,6 @@ import { modify } from "./modify"
 export function updateAndGet<A>(f: (a: A) => A) {
   return modify<A, A>((v) => {
     const result = f(v)
-    return [result, result]
+    return Tp.tuple(result, result)
   })
 }

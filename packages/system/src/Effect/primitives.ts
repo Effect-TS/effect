@@ -1,6 +1,7 @@
 // ets_tracing: off
 
 import type * as Cause from "../Cause/core"
+import type { Tuple } from "../Collections/Immutable/Tuple"
 import type * as Exit from "../Exit/exit"
 import type { Platform } from "../Fiber"
 import type { FiberContext } from "../Fiber/context"
@@ -287,7 +288,7 @@ export class IFiberRefModify<A, B> extends Base<unknown, never, B> {
 
   constructor(
     readonly fiberRef: FiberRef<A>,
-    readonly f: (a: A) => [B, A],
+    readonly f: (a: A) => Tuple<[B, A]>,
     readonly trace?: string
   ) {
     super()

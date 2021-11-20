@@ -1,5 +1,6 @@
 // ets_tracing: off
 
+import * as Tp from "../Collections/Immutable/Tuple"
 import type { Option } from "../Option"
 import { getOrElse_ } from "../Option"
 import { modify } from "./modify"
@@ -11,6 +12,6 @@ import { modify } from "./modify"
  * This is a more powerful version of `updateSome`.
  */
 export function modifySome<B>(defaultValue: () => B) {
-  return <A>(f: (a: A) => Option<[B, A]>) =>
-    modify<A, B>((v) => getOrElse_(f(v), () => [defaultValue(), v]))
+  return <A>(f: (a: A) => Option<Tp.Tuple<[B, A]>>) =>
+    modify<A, B>((v) => getOrElse_(f(v), () => Tp.tuple(defaultValue(), v)))
 }

@@ -1,5 +1,6 @@
 // ets_tracing: off
 
+import * as Tp from "../Collections/Immutable/Tuple"
 import type { Option } from "../Option"
 import { getOrElse_ } from "../Option"
 import { modify } from "./modify"
@@ -12,6 +13,6 @@ import { modify } from "./modify"
 export function updateSomeAndGet<A>(f: (a: A) => Option<A>) {
   return modify<A, A>((v) => {
     const result = getOrElse_(f(v), () => v)
-    return [result, result]
+    return Tp.tuple(result, result)
   })
 }
