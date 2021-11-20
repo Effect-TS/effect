@@ -149,12 +149,17 @@ export interface Taggable<T> {
   Unknown: [T] extends [unknown] ? ([unknown] extends [T] ? "Unknown" : never) : never
 }
 
+export declare const _typeTag: unique symbol
+export type _typeTag = typeof _typeTag
+
 export type TypeTag<T> = UnionToIntersection<
   [T] extends [never]
     ? "Never"
     : [Taggable<T>[keyof Taggable<any>]] extends [never]
     ? [T] extends [{ readonly serviceId: string }]
       ? T["serviceId"]
+      : [T] extends [{ readonly [_typeTag]: string }]
+      ? T[_typeTag]
       : [T] extends [{ readonly _tag: string }]
       ? T["_tag"]
       : never
