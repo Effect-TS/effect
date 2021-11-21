@@ -19,8 +19,8 @@ jobs:
       - name: npm install and build
         run: |
           npm install -g yarn
-          yarn
-          yarn run ci
+          yarn install
+          yarn ci
         env:
           CI: "true"
 
@@ -40,8 +40,8 @@ jobs:
       - name: test
         run: |
           npm install -g yarn
-          yarn
-          yarn run test
+          yarn install
+          yarn test
         env:
           CI: "true"
 
