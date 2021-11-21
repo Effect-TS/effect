@@ -2,19 +2,18 @@
   "name": "@effect-ts/tracing-plugin",
   "version": "0.14.18",
   "license": "MIT",
-  "private": false,
   "repository": "https://github.com/Effect-TS/core.git",
   "homepage": "https://www.matechs.com",
   "scripts": {
-    "clean": "rimraf build tsbuildinfo dist",
-    "build-cjs": "ttsc -p tsconfig.build.cjs.json",
-    "build-post": "ts-node ../../scripts/pack.ts",
+    "clean": "yarn ets:rimraf build tsbuildinfo dist",
+    "build-cjs": "yarn ets:tsc -p tsconfig.build.cjs.json",
+    "build-post": "yarn ets:ts-node ../../scripts/pack.ts",
     "build": "yarn build-cjs && yarn build-post",
-    "lint": "eslint . --ext .ts,.tsx",
+    "lint": "yarn ets:eslint . --ext .ts,.tsx",
     "autofix": "yarn prettier && yarn lint --fix && yarn prettier",
-    "prettier": "prettier --write \"./{src,test,demo}/**/*.ts\"",
-    "tc": "tsc --noEmit",
-    "circular": "madge --circular --ts-config ./tsconfig.json --extensions ts ./src"
+    "prettier": "yarn ets:prettier --write \"./{src,test,demo}/**/*.ts\"",
+    "tc": "yarn ets:tsc --noEmit",
+    "circular": "yarn ets:madge --circular --ts-config ./tsconfig.json --extensions ts ./src"
   },
   "publishConfig": {
     "access": "public",
