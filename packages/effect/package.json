@@ -7,7 +7,6 @@
     "incubation/*"
   ],
   "scripts": {
-    "prepare": "ts-patch install -s",
     "prepublishOnly": "yarn prettier --write \"./packages*/*/build/**/*.ts\"",
     "ci": "yarn run clean && yarn run build && yarn run tc && yarn run lint && yarn run circular",
     "clean": "ultra -r clean",
@@ -17,7 +16,7 @@
     "autofix": "ultra -r autofix",
     "lint": "ultra -r lint",
     "tc": "ultra -r tc",
-    "postinstall": "husky install",
+    "postinstall": "husky install && ts-patch install -s",
     "version:alpha": "lerna version prerelease --conventional-commits --preid=alpha",
     "version:preminor": "lerna version preminor --conventional-commits",
     "version:minor": "lerna version minor --conventional-commits",
