@@ -110,17 +110,18 @@ export function forEachUnitPar_<R, E, A, X>(
             onInterrupt(() => {
               is.interrupt()
             })
-
-            Array.from(as).forEach((a) => {
+            const interruptOnFailure = (ex: core.Exit<E, X>) => {
+              if (ex._tag === "Failure" && !is.interrupted) {
+                is.interrupt()
+                reject(ex.e)
+              }
+            }
+            for (const a of as) {
               promises.push(
-                core.runPromiseExitEnv(f(a), env, is).then((ex) => {
-                  if (ex._tag === "Failure") {
-                    is.interrupt()
-                    reject(ex.e)
-                  }
-                })
+                core.runPromiseExitEnv(f(a), env, is).then(interruptOnFailure)
               )
-            })
+            }
+
             Promise.all(promises).then(() => {
               resolve()
             })
