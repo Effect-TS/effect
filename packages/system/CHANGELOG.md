@@ -3,6 +3,22 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.43.5](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.43.4...@effect-ts/system@0.43.5) (2021-11-24)
+
+
+### chore
+
+* implement state in terms of fiber-ref (following zio 2) ([197bad2](https://github.com/Effect-TS/core/commit/197bad241ac97599fcf53bc8b2135b74542c216d))
+
+
+### BREAKING CHANGES
+
+* FiberRef api now uses Tuple
+
+
+
+
+
 ## [0.43.4](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.43.3...@effect-ts/system@0.43.4) (2021-11-20)
 
 **Note:** Version bump only for package @effect-ts/system

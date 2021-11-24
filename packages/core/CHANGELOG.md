@@ -3,6 +3,27 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.46.5](https://github.com/Effect-TS/core/compare/@effect-ts/core@0.46.4...@effect-ts/core@0.46.5) (2021-11-24)
+
+
+### chore
+
+* implement state in terms of fiber-ref (following zio 2) ([197bad2](https://github.com/Effect-TS/core/commit/197bad241ac97599fcf53bc8b2135b74542c216d))
+
+
+### Features
+
+* **syncLayers:** use serviceConstructor in syncLayers ([6ff7fb2](https://github.com/Effect-TS/core/commit/6ff7fb215a9fd1c60bbbc07d77b8bec4c52a8032))
+
+
+### BREAKING CHANGES
+
+* FiberRef api now uses Tuple
+
+
+
+
+
 ## [0.46.4](https://github.com/Effect-TS/core/compare/@effect-ts/core@0.46.3...@effect-ts/core@0.46.4) (2021-11-20)
 
 **Note:** Version bump only for package @effect-ts/core
