@@ -354,6 +354,15 @@ describe("Effect", () => {
     expect(Chunk.toArray(a)).toEqual(Chunk.toArray(b))
     expect(Chunk.toArray(b)).toEqual(range(1, 101))
   })
+  it("forEachWithIndex", async () => {
+    const f = T.forEachWithIndex_(range(0, 100), (_: number, index: number) =>
+      T.succeedWith(() => index)
+    )
+    const a = await pipe(f, T.runPromise)
+    const b = await pipe(f, T.runPromise)
+    expect(Chunk.toArray(a)).toEqual(Chunk.toArray(b))
+    expect(Chunk.toArray(b)).toEqual(range(0, 100))
+  })
   it("forEachParN", async () => {
     const result = await pipe(
       range(0, 100),
@@ -383,6 +392,39 @@ describe("Effect", () => {
     )
 
     expect(result).toEqual(Ex.fail("error in process: 5"))
+    expect(Ex.map_(result_ok, Chunk.toArray)).toEqual(Ex.succeed(range(0, 100)))
+  })
+  it("forEachParWithIndexN", async () => {
+    const result = await pipe(
+      range(0, 100),
+      T.forEachParWithIndexN(3, (_, i) =>
+        pipe(
+          T.sleep(100),
+          T.chain(() =>
+            i > 1 && i % 5 === 0
+              ? T.fail(`error in process with index: ${i}`)
+              : T.succeed(i)
+          )
+        )
+      ),
+      T.result,
+      T.map(Ex.untraced),
+      T.runPromise
+    )
+    const result_ok = await pipe(
+      range(0, 100),
+      T.forEachParWithIndexN(10, (_, i) =>
+        pipe(
+          T.sleep(10),
+          T.map(() => i)
+        )
+      ),
+      T.result,
+      T.map(Ex.untraced),
+      T.runPromise
+    )
+
+    expect(result).toEqual(Ex.fail("error in process with index: 5"))
     expect(Ex.map_(result_ok, Chunk.toArray)).toEqual(Ex.succeed(range(0, 100)))
   })
   it("catchAllDefect", async () => {

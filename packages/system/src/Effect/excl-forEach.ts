@@ -84,6 +84,32 @@ export function forEach_<A, R, E, B>(
 }
 
 /**
+ * Same as `forEach_`, except that the function `f` is supplied
+ * a second argument that corresponds to the index (starting from 0)
+ * of the current element being iterated over.
+ */
+export function forEachWithIndex_<A, R, E, B>(
+  as: Iterable<A>,
+  f: (a: A, i: number) => Effect<R, E, B>,
+  __trace?: string
+): Effect<R, E, Chunk.Chunk<B>> {
+  return core.suspend(() => {
+    let index = 0
+    const acc: B[] = []
+
+    return map.map_(
+      forEachUnit_(as, (a) =>
+        map.map_(f(a, index), (b) => {
+          acc.push(b)
+          index++
+        })
+      ),
+      () => Chunk.from(acc)
+    )
+  }, __trace)
+}
+
+/**
  * Applies the function `f` to each element of the `Iterable<A>` and
  * returns the results in a new `readonly B[]`.
  *
@@ -94,6 +120,20 @@ export function forEach_<A, R, E, B>(
  */
 export function forEach<A, R, E, B>(f: (a: A) => Effect<R, E, B>, __trace?: string) {
   return (as: Iterable<A>) => forEach_(as, f, __trace)
+}
+
+/**
+ * Same as `forEach`, except that the function `f` is supplied
+ * a second argument that corresponds to the index (starting from 0)
+ * of the current element being iterated over.
+ *
+ * @ets_data_first forEachWithIndex_
+ */
+export function forEachWithIndex<A, R, E, B>(
+  f: (a: A, i: number) => Effect<R, E, B>,
+  __trace?: string
+) {
+  return (as: Iterable<A>) => forEachWithIndex_(as, f, __trace)
 }
 
 function forEachUnitLoop<R, E, A, X>(
@@ -349,6 +389,40 @@ export function forEachPar_<R, E, A, B>(
 }
 
 /**
+ * Same as `forEachPar_`, except that the function `f` is supplied
+ * a second argument that corresponds to the index (starting from 0)
+ * of the current element being iterated over.
+ */
+export function forEachParWithIndex_<R, E, A, B>(
+  as: Iterable<A>,
+  f: (a: A, i: number) => Effect<R, E, B>,
+  __trace?: string
+): Effect<R, E, Chunk.Chunk<B>> {
+  return core.suspend(
+    () =>
+      core.chain_(
+        core.succeedWith<B[]>(() => []),
+        (array) =>
+          map.map_(
+            forEachUnitPar_(
+              I.map_(as, (a, n) => [a, n] as [A, number]),
+              ([a, n]) =>
+                core.chain_(
+                  core.suspend(() => f(a, n)),
+                  (b) =>
+                    core.succeedWith(() => {
+                      array[n] = b
+                    })
+                )
+            ),
+            () => Chunk.from(array)
+          )
+      ),
+    __trace
+  )
+}
+
+/**
  * Applies the function `f` to each element of the `Iterable<A>` in parallel,
  * and returns the results in a new `readonly B[]`.
  *
@@ -358,6 +432,19 @@ export function forEachPar_<R, E, A, B>(
  */
 export function forEachPar<R, E, A, B>(f: (a: A) => Effect<R, E, B>, __trace?: string) {
   return (as: Iterable<A>): Effect<R, E, Chunk.Chunk<B>> => forEachPar_(as, f, __trace)
+}
+
+/**
+ * Same as `forEachPar`, except that the function `f` is supplied
+ * a second argument that corresponds to the index (starting from 0)
+ * of the current element being iterated over.
+ */
+export function forEachParWithIndex<R, E, A, B>(
+  f: (a: A, i: number) => Effect<R, E, B>,
+  __trace?: string
+) {
+  return (as: Iterable<A>): Effect<R, E, Chunk.Chunk<B>> =>
+    forEachParWithIndex_(as, f, __trace)
 }
 
 /**
@@ -503,6 +590,80 @@ export function forEachParN_<R, E, A, B>(
 }
 
 /**
+ * Same as `forEachParN_`, except that the function `f` is supplied
+ * a second argument that corresponds to the index (starting from 0)
+ * of the current element being iterated over.
+ */
+export function forEachParWithIndexN_<R, E, A, B>(
+  as: Iterable<A>,
+  n: number,
+  f: (a: A, i: number) => Effect<R, E, B>,
+  __trace?: string
+): Effect<R, E, Chunk.Chunk<B>> {
+  function worker(
+    q: Q.Queue<Tp.Tuple<[promise.Promise<E, B>, A, number]>>,
+    pairs: Iterable<Tp.Tuple<[promise.Promise<E, B>, A, number]>>,
+    ref: Ref.Ref<number>
+  ): Effect<R, never, void> {
+    return pipe(
+      Q.take(q),
+      core.chain(({ tuple: [p, a, i] }) =>
+        pipe(
+          core.suspend(() => f(a, i)),
+          core.foldCauseM(
+            (c) => forEach_(pairs, (_) => pipe(_.get(0), promise.halt(c))),
+            (b) => pipe(p, promise.succeed(b))
+          )
+        )
+      ),
+      core.chain(() => worker(q, pairs, ref)),
+      whenM.whenM(
+        pipe(
+          ref,
+          Ref.modify((n) => Tp.tuple(n > 0, n - 1))
+        )
+      )
+    )
+  }
+
+  return core.suspend(
+    () =>
+      pipe(
+        makeBoundedQueue<Tp.Tuple<[promise.Promise<E, B>, A, number]>>(n),
+        bracket.bracket(
+          (q) =>
+            pipe(
+              Do.do,
+              Do.bind("pairs", () =>
+                forEachWithIndex_(as, (a, i) =>
+                  pipe(
+                    promise.make<E, B>(),
+                    map.map((p) => Tp.tuple(p, a, i))
+                  )
+                )
+              ),
+              Do.bind("ref", ({ pairs }) => Ref.makeRef(Chunk.size(pairs))),
+              tap.tap(({ pairs }) =>
+                core.fork(forEach_(pairs, (pair) => Q.offer_(q, pair)))
+              ),
+              tap.tap(({ pairs, ref }) =>
+                collectAllUnit(
+                  pipe(
+                    L.range_(0, n),
+                    L.map(() => core.fork(worker(q, pairs, ref)))
+                  )
+                )
+              ),
+              core.chain(({ pairs }) => forEach_(pairs, (_) => promise.await(_.get(0))))
+            ),
+          Q.shutdown
+        )
+      ),
+    __trace
+  )
+}
+
+/**
  * Applies the functionw `f` to each element of the `Iterable<A>` in parallel,
  * and returns the results in a new `readonly B[]`.
  *
@@ -516,6 +677,21 @@ export function forEachParN<R, E, A, B>(
   __trace?: string
 ) {
   return (as: Iterable<A>) => forEachParN_(as, n, f, __trace)
+}
+
+/**
+ * Same as `forEachParN`, except that the function `f` is supplied
+ * a second argument that corresponds to the index (starting from 0)
+ * of the current element being iterated over.
+ *
+ * @ets_data_first forEachParWithIndexN_
+ */
+export function forEachParWithIndexN<R, E, A, B>(
+  n: number,
+  f: (a: A, i: number) => Effect<R, E, B>,
+  __trace?: string
+) {
+  return (as: Iterable<A>) => forEachParWithIndexN_(as, n, f, __trace)
 }
 
 /**
