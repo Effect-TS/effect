@@ -5,7 +5,7 @@ import * as T from "../src/Effect"
 import { assertsFailure } from "../src/Exit"
 import { prettyTrace } from "../src/Fiber"
 import { pipe } from "../src/Function"
-import { tag } from "../src/Has"
+import { ServiceId, tag } from "../src/Has"
 
 describe("Tracing", () => {
   it("should trace zipRight", async () => {
@@ -173,21 +173,21 @@ describe("Tracing", () => {
     expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:157:20")
   })
   it("should trace derived access", async () => {
-    const ServiceId = Symbol()
+    const serviceId = Symbol()
 
     interface Service {
-      readonly serviceId: typeof ServiceId
+      readonly [ServiceId]: typeof serviceId
       readonly value: number
     }
 
-    const Service = tag<Service>(ServiceId)
+    const Service = tag<Service>(serviceId)
 
     const { value: accessValue } = T.deriveAccess(Service)(["value"])
 
     const result = await T.runPromiseExit(
       accessValue((n) => n + 1)
         ["|>"](T.chain((n) => T.fail(n)))
-        ["|>"](T.provideService(Service)({ serviceId: ServiceId, value: 0 }))
+        ["|>"](T.provideService(Service)({ [ServiceId]: serviceId, value: 0 }))
     )
 
     assertsFailure(result)
@@ -199,20 +199,20 @@ describe("Tracing", () => {
     expect(cause).toContain("(@effect-ts/system/test): test/tracing.test.ts:190:41")
   })
   it("should trace derived accessM", async () => {
-    const ServiceId = Symbol()
+    const serviceId = Symbol()
 
     interface Service {
-      readonly serviceId: typeof ServiceId
+      readonly [ServiceId]: typeof serviceId
       readonly value: number
     }
 
-    const Service = tag<Service>(ServiceId)
+    const Service = tag<Service>(serviceId)
 
     const { value: accessValueM } = T.deriveAccessM(Service)(["value"])
 
     const result = await T.runPromiseExit(
       accessValueM((n) => T.fail(n + 1))["|>"](
-        T.provideService(Service)({ serviceId: ServiceId, value: 0 })
+        T.provideService(Service)({ [ServiceId]: serviceId, value: 0 })
       )
     )
 

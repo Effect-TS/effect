@@ -1,5 +1,5 @@
 import { pipe } from "../src/Function"
-import { service, tag } from "../src/Has"
+import { service, ServiceId, tag } from "../src/Has"
 import * as Sy from "../src/Sync"
 
 // module definition
@@ -62,7 +62,7 @@ const program = pipe(
 
 export function MockCalculator(): Calculator {
   return {
-    serviceId: CalculatorId,
+    [ServiceId]: CalculatorId,
     add: () => Sy.succeed(0),
     mul: () => Sy.succeed(0),
     base: Sy.succeed(0),

@@ -12,7 +12,7 @@ import type { Effect, UIO } from "../Effect/effect"
 import { effectAsyncInterrupt } from "../Effect/effectAsyncInterrupt"
 import { accessService, accessServiceM, provideServiceM } from "../Effect/has"
 import type { Has, Tag } from "../Has"
-import { tag } from "../Has"
+import { ServiceId, tag } from "../Has"
 import { ClockId } from "./id"
 
 export { ClockId }
@@ -21,7 +21,7 @@ export { ClockId }
 // Clock Definition
 //
 export abstract class Clock {
-  readonly serviceId: ClockId = ClockId
+  readonly [ServiceId]: ClockId = ClockId
 
   abstract readonly currentTime: UIO<number>
   abstract readonly sleep: (ms: number, __trace?: string) => UIO<void>

@@ -1,5 +1,5 @@
 import * as T from "../../Effect"
-import { tag } from "../../Has"
+import { ServiceId, tag } from "../../Has"
 import * as L from "../../Layer"
 
 export const LiveId = Symbol.for("@effect-ts/system/Test/LiveId")
@@ -18,7 +18,7 @@ export const LiveId = Symbol.for("@effect-ts/system/Test/LiveId")
  * methods are re-exported in the `environment` package for easy availability.
  */
 export interface Live {
-  readonly serviceId: typeof LiveId
+  readonly [ServiceId]: typeof LiveId
 
   readonly provide: <E, A>(
     effect: T.Effect<T.DefaultEnv, E, A>
@@ -28,8 +28,10 @@ export interface Live {
 export const Live = tag<Live>(LiveId)
 
 export const live = L.fromEffect(Live)(
-  T.access((r: T.DefaultEnv) => ({
-    serviceId: LiveId,
-    provide: T.provideAll(r)
-  }))
+  T.access((r: T.DefaultEnv) => {
+    return {
+      [ServiceId]: LiveId,
+      provide: T.provideAll(r)
+    }
+  })
 )

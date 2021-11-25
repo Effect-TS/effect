@@ -10,7 +10,7 @@ import * as T from "../../Effect"
 import * as Fiber from "../../Fiber"
 import { identity, pipe } from "../../Function"
 import type { Has } from "../../Has"
-import { tag } from "../../Has"
+import { ServiceId, tag } from "../../Has"
 import * as L from "../../Layer"
 import * as M from "../../Managed"
 import * as O from "../../Option"
@@ -97,7 +97,7 @@ export function Duration(n: number): Duration {
  * another 60 minutes exactly one more value is placed in the queue.
  */
 export interface TestClock extends Restorable {
-  readonly serviceId: Clock.ClockId
+  readonly [ServiceId]: Clock.ClockId
   readonly adjust: (duration: number) => T.UIO<void>
   readonly setTime: (duration: number) => T.UIO<void>
   readonly sleeps: T.UIO<List.List<Duration>>
@@ -138,7 +138,7 @@ export class Pending extends Tagged("Pending")<{
 }
 
 export class Test implements TestClock {
-  readonly serviceId: Clock.ClockId = ClockId.ClockId
+  readonly [ServiceId]: Clock.ClockId = ClockId.ClockId
 
   constructor(
     readonly clockState: Ref.Ref<Data>,

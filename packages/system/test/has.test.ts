@@ -1,13 +1,13 @@
 import * as T from "../src/Effect"
 import { pipe } from "../src/Function"
-import { tag } from "../src/Has"
+import { ServiceId, tag } from "../src/Has"
 
 describe("Has", () => {
   it("use services", async () => {
     const AddServiceId = Symbol()
 
     class AddService {
-      readonly serviceId: typeof AddServiceId = AddServiceId
+      readonly [ServiceId]: typeof AddServiceId = AddServiceId
 
       sum(a: number, b: number) {
         return T.succeedWith(() => a + b)
@@ -17,7 +17,7 @@ describe("Has", () => {
     const MulServiceId = Symbol()
 
     class MulService {
-      readonly serviceId: typeof MulServiceId = MulServiceId
+      readonly [ServiceId]: typeof MulServiceId = MulServiceId
 
       prod(a: number, b: number) {
         return T.succeedWith(() => a * b)

@@ -11,14 +11,14 @@ import { chain_, succeedWith } from "../Effect/core"
 import type { UIO } from "../Effect/effect"
 import { accessServiceM, replaceService } from "../Effect/has"
 import type { Has } from "../Has"
-import { tag } from "../Has"
+import { ServiceId, tag } from "../Has"
 import { PCGRandom } from "./PCG"
 
 export const RandomId: unique symbol = Symbol.for("@effect-ts/system/Random")
 export type RandomId = typeof RandomId
 
 export abstract class Random {
-  readonly serviceId: RandomId = RandomId
+  readonly [ServiceId]: RandomId = RandomId
 
   abstract readonly next: UIO<number>
   abstract readonly nextBoolean: UIO<boolean>

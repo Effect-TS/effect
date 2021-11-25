@@ -3,7 +3,7 @@ import * as crypto from "crypto"
 import type { _A } from "../../src//Utils"
 import * as T from "../../src/Effect"
 import { pipe } from "../../src/Function"
-import { service, tag } from "../../src/Has"
+import { service, ServiceId, tag } from "../../src/Has"
 import * as L from "../../src/Layer"
 
 // larger numbers mean better security, less
@@ -25,7 +25,7 @@ const defaultConfig = {
 type _config = typeof defaultConfig
 export const PBKDF2ConfigId = Symbol()
 export interface PBKDF2Config extends _config {
-  readonly serviceId: typeof PBKDF2ConfigId
+  readonly [ServiceId]: typeof PBKDF2ConfigId
 }
 
 export const PBKDF2Config = tag<PBKDF2Config>(PBKDF2ConfigId)
@@ -34,7 +34,11 @@ export const PBKDF2ConfigLive = L.fromEffect(PBKDF2Config)(
   T.succeedWith(() => service(PBKDF2ConfigId, defaultConfig))
 )
 export const PBKDF2ConfigTest = L.fromEffect(PBKDF2Config)(
-  T.succeedWith(() => ({ serviceId: PBKDF2ConfigId, ...defaultConfig, iterations: 1 }))
+  T.succeedWith(() => ({
+    [ServiceId]: PBKDF2ConfigId,
+    ...defaultConfig,
+    iterations: 1
+  }))
 )
 
 export class InvalidPassword {
@@ -121,7 +125,7 @@ export const makeCrypto = T.gen(function* (_) {
 })
 
 export interface Crypto extends _A<typeof makeCrypto> {
-  readonly serviceId: typeof CryptoId
+  readonly [ServiceId]: typeof CryptoId
 }
 export const Crypto = tag<Crypto>(CryptoId)
 

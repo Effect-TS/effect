@@ -1,12 +1,12 @@
 import type * as Tp from "../../Collections/Immutable/Tuple"
-import type { Has, ServiceConstructor, Tag, TypeTag } from "../../Has"
+import type { Has, ServiceConstructor, ServiceId, Tag, TypeTag } from "../../Has"
 import { tag } from "../../Has"
 import * as T from ".."
 import * as L from "../Layer"
 import * as Ref from "../Ref"
 
 export interface State<S> {
-  readonly serviceId: `@effect-ts/core/Effect/State<${TypeTag<S>}>`
+  readonly [ServiceId]: `@effect-ts/core/Effect/State<${TypeTag<S>}>`
 
   readonly get: T.Effect<unknown, never, S>
 

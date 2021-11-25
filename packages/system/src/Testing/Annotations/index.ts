@@ -5,7 +5,7 @@ import * as T from "../../Effect"
 import type * as Fiber from "../../Fiber"
 import * as FiberRef from "../../FiberRef"
 import { pipe } from "../../Function"
-import { tag } from "../../Has"
+import { ServiceId, tag } from "../../Has"
 import * as L from "../../Layer"
 import * as St from "../../Structural"
 import { fiberSet } from "../FiberSet"
@@ -29,7 +29,7 @@ export const AnnotationsId = Symbol()
  * monad effect.
  */
 export interface Annotations {
-  readonly serviceId: typeof AnnotationsId
+  readonly [ServiceId]: typeof AnnotationsId
 
   readonly annotate: <V>(key: TestAnnotation.TestAnnotation<V>, value: V) => T.UIO<void>
 
@@ -112,7 +112,7 @@ export const live = L.fromEffect(Annotations)(
     )
 
     const annotations: Annotations = {
-      serviceId: AnnotationsId,
+      [ServiceId]: AnnotationsId,
       annotate,
       get,
       supervisedFibers,

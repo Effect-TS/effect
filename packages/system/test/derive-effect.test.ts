@@ -1,6 +1,6 @@
 import * as T from "../src/Effect"
 import { pipe } from "../src/Function"
-import { service, tag } from "../src/Has"
+import { service, ServiceId, tag } from "../src/Has"
 
 // module definition
 export const CalculatorId = Symbol()
@@ -57,7 +57,7 @@ const program = pipe(
 
 export function MockCalculator(): Calculator {
   return {
-    serviceId: CalculatorId,
+    [ServiceId]: CalculatorId,
     add: () => T.succeed(0),
     mul: () => T.succeed(0),
     base: T.succeed(0),

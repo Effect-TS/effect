@@ -16,15 +16,18 @@ import type { IsEqualTo, UnionToIntersection } from "../Utils"
  */
 export declare const HasURI: unique symbol
 
+export const ServiceId = Symbol()
+export type ServiceId = typeof ServiceId
+
 export interface Service<T extends PropertyKey> {
-  readonly serviceId: T
+  readonly [ServiceId]: T
 }
 
 export interface AnyService extends Service<PropertyKey> {}
 
 export function BaseService<T extends PropertyKey>(serviceId: T) {
   return class BaseService implements Service<T> {
-    readonly serviceId: T = serviceId
+    readonly [ServiceId]: T = serviceId
   }
 }
 
@@ -33,16 +36,16 @@ export type Flat<A> = { readonly [k in keyof A]: A[k] } extends infer X ? X : ne
 export function service<T extends PropertyKey, X extends Record<PropertyKey, unknown>>(
   t: T,
   x: X
-): Flat<X & { readonly serviceId: T }> {
+): Flat<X & { readonly [ServiceId]: T }> {
   // @ts-expect-error
-  return { ...x, serviceId: t }
+  return x
 }
 
 /**
  * Has signal presence of a specific service provided via Tag in the environment
  */
 export type Has<T extends AnyService> = {
-  readonly [k in T["serviceId"]]: T
+  readonly [k in T[ServiceId]]: T
 }
 
 /**
@@ -56,8 +59,8 @@ export type ConstructorType<K extends Constructor<any>> = K extends {
 
 export type Constructor<T> = Function & { prototype: T }
 
-export type ServiceConstructor<T extends AnyService> = Omit<T, "serviceId"> & {
-  readonly serviceId?: T["serviceId"]
+export type ServiceConstructor<T extends AnyService> = Omit<T, ServiceId> & {
+  readonly [ServiceId]?: T[ServiceId]
 }
 
 /**
@@ -66,7 +69,7 @@ export type ServiceConstructor<T extends AnyService> = Omit<T, "serviceId"> & {
 export interface Tag<T extends AnyService> {
   _tag: "Tag"
   _T: T
-  key: T["serviceId"]
+  key: T[ServiceId]
   read: (r: Has<T>) => T
   readOption: (r: unknown) => Option<T>
   has: (_: ServiceConstructor<T>) => Has<T>
@@ -77,12 +80,12 @@ export interface Tag<T extends AnyService> {
  * Extract the Has type from any augumented variant
  */
 
-const makeTag = <T extends AnyService>(key: T["serviceId"]): Tag<T> => ({
+const makeTag = <T extends AnyService>(key: T[ServiceId]): Tag<T> => ({
   _tag: "Tag",
   _T: undefined as any,
   key,
-  has: (t) => ({ [key]: "serviceId" in t ? t : { ...t, serviceId: key } } as any),
-  of: (t) => ("serviceId" in t ? t : ({ ...t, serviceId: key } as any)),
+  has: (t) => ({ [key]: service(key, t) } as any),
+  of: (t) => service(key, t) as any,
   read: (r: Has<T>) => r[key],
   readOption: (r: unknown) =>
     // @ts-expect-error
@@ -92,7 +95,7 @@ const makeTag = <T extends AnyService>(key: T["serviceId"]): Tag<T> => ({
 /**
  * Create a service entry Tag from a type and a URI
  */
-export function tag<T extends AnyService>(_: T["serviceId"]): Tag<T> {
+export function tag<T extends AnyService>(_: T[ServiceId]): Tag<T> {
   return makeTag(_)
 }
 
@@ -155,8 +158,8 @@ export type TypeTag<T> = UnionToIntersection<
   [T] extends [never]
     ? "Never"
     : [Taggable<T>[keyof Taggable<any>]] extends [never]
-    ? [T] extends [{ readonly serviceId: string }]
-      ? T["serviceId"]
+    ? [T] extends [{ readonly [ServiceId]: string }]
+      ? T[ServiceId]
       : [T] extends [{ readonly [_typeTag]: string }]
       ? T[_typeTag]
       : [T] extends [{ readonly _tag: string }]

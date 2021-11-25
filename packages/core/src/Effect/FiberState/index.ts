@@ -1,12 +1,12 @@
 import type * as Tp from "../../Collections/Immutable/Tuple"
-import type { Has, ServiceConstructor, Tag, TypeTag } from "../../Has"
+import type { Has, ServiceConstructor, ServiceId, Tag, TypeTag } from "../../Has"
 import { tag } from "../../Has"
 import * as T from ".."
 import * as FRef from "../FiberRef"
 import * as L from "../Layer"
 
 export interface FiberState<S> {
-  readonly serviceId: `@effect-ts/core/Effect/FiberState<${TypeTag<S>}>`
+  readonly [ServiceId]: `@effect-ts/core/Effect/FiberState<${TypeTag<S>}>`
 
   readonly get: T.Effect<unknown, never, S>
 
