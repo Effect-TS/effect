@@ -14,7 +14,7 @@ test("09", () => {
     }
   }
 
-  const MyService = tag<MyServiceImpl>(MyServiceId)
+  const MyService = tag<MyServiceImpl>().setKey(MyServiceId)
 
   const F = {
     ...X.Monad,

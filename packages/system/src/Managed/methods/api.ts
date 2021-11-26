@@ -19,7 +19,7 @@ import type { FiberID } from "../../Fiber"
 import * as F from "../../Fiber"
 import { constVoid, identity, pipe } from "../../Function"
 import { NoSuchElementException } from "../../GlobalExceptions"
-import type { AnyService, Has, ServiceConstructor, Tag } from "../../Has"
+import type { Has, Tag } from "../../Has"
 import { mergeEnvironments } from "../../Has"
 import * as I from "../../Iterable"
 import * as L from "../../Layer"
@@ -1628,17 +1628,17 @@ export function timeout(d: number) {
  *
  * @ets_data_first toLayer_
  */
-export function toLayer<A extends AnyService>(
+export function toLayer<A>(
   tag: Tag<A>
-): <R, E>(self: Managed<R, E, ServiceConstructor<A>>) => L.Layer<R, E, Has<A>> {
+): <R, E>(self: Managed<R, E, A>) => L.Layer<R, E, Has<A>> {
   return L.fromManaged(tag)
 }
 
 /**
  * Constructs a layer from this managed resource.
  */
-export function toLayer_<R, E, A extends AnyService>(
-  self: Managed<R, E, ServiceConstructor<A>>,
+export function toLayer_<R, E, A>(
+  self: Managed<R, E, A>,
   tag: Tag<A>
 ): L.Layer<R, E, Has<A>> {
   return toLayer(tag)(self)
@@ -1762,17 +1762,14 @@ export function asSomeError<R, E, A>(self: Managed<R, E, A>) {
  *
  * @ets_data_first asService_
  */
-export function asService<A extends AnyService>(tag: Tag<A>) {
-  return <R, E>(self: Managed<R, E, ServiceConstructor<A>>) => asService_(self, tag)
+export function asService<A>(tag: Tag<A>) {
+  return <R, E>(self: Managed<R, E, A>) => asService_(self, tag)
 }
 
 /**
  * Maps the success value of this effect to a service.
  */
-export function asService_<R, E, A extends AnyService>(
-  self: Managed<R, E, ServiceConstructor<A>>,
-  tag: Tag<A>
-) {
+export function asService_<R, E, A>(self: Managed<R, E, A>, tag: Tag<A>) {
   return core.map_(self, tag.has)
 }
 
@@ -1943,7 +1940,7 @@ export function accessServices<SS extends Record<string, Tag<any>>>(s: SS) {
 /**
  * Access a service with the required Service Entry
  */
-export function accessServiceM<T extends AnyService>(s: Tag<T>) {
+export function accessServiceM<T>(s: Tag<T>) {
   return <R, E, B>(f: (a: T) => Managed<R, E, B>) =>
     accessManaged((r: Has<T>) => f(r[s.key as any]))
 }
@@ -1951,14 +1948,14 @@ export function accessServiceM<T extends AnyService>(s: Tag<T>) {
 /**
  * Access a service with the required Service Entry
  */
-export function accessService<T extends AnyService>(s: Tag<T>) {
+export function accessService<T>(s: Tag<T>) {
   return <B>(f: (a: T) => B) => accessServiceM(s)((a) => succeed(f(a)))
 }
 
 /**
  * Accesses the specified service in the environment of the effect.
  */
-export function service<T extends AnyService>(s: Tag<T>) {
+export function service<T>(s: Tag<T>) {
   return accessServiceM(s)((a) => succeed(a))
 }
 
@@ -1979,8 +1976,8 @@ export function services<Ts extends readonly Tag<any>[]>(...s: Ts) {
 /**
  * Provides the service with the required Service Entry
  */
-export function provideServiceM<T extends AnyService>(_: Tag<T>) {
-  return <R, E>(f: Managed<R, E, ServiceConstructor<T>>) =>
+export function provideServiceM<T>(_: Tag<T>) {
+  return <R, E>(f: Managed<R, E, T>) =>
     <R1, E1, A1>(ma: Managed<R1 & Has<T>, E1, A1>): Managed<R & R1, E | E1, A1> =>
       accessManaged((r: R & R1) =>
         core.chain_(f, (t) => core.provideAll_(ma, mergeEnvironments(_, r, t)))
@@ -1990,8 +1987,8 @@ export function provideServiceM<T extends AnyService>(_: Tag<T>) {
 /**
  * Provides the service with the required Service Entry
  */
-export function provideService<T extends AnyService>(_: Tag<T>) {
-  return (f: ServiceConstructor<T>) =>
+export function provideService<T>(_: Tag<T>) {
+  return (f: T) =>
     <R1, E1, A1>(ma: Managed<R1 & Has<T>, E1, A1>): Managed<R1, E1, A1> =>
       provideServiceM(_)(succeed(f))(ma)
 }
@@ -2001,10 +1998,7 @@ export function provideService<T extends AnyService>(_: Tag<T>) {
  *
  * @ets_data_first replaceServiceM_
  */
-export function replaceServiceM<R, E, T extends AnyService>(
-  _: Tag<T>,
-  f: (_: T) => Managed<R, E, ServiceConstructor<T>>
-) {
+export function replaceServiceM<R, E, T>(_: Tag<T>, f: (_: T) => Managed<R, E, T>) {
   return <R1, E1, A1>(
     ma: Managed<R1 & Has<T>, E1, A1>
   ): Managed<R & R1 & Has<T>, E | E1, A1> =>
@@ -2014,10 +2008,10 @@ export function replaceServiceM<R, E, T extends AnyService>(
 /**
  * Replaces the service with the required Service Entry
  */
-export function replaceServiceM_<R, E, T extends AnyService, R1, E1, A1>(
+export function replaceServiceM_<R, E, T, R1, E1, A1>(
   ma: Managed<R1 & Has<T>, E1, A1>,
   _: Tag<T>,
-  f: (_: T) => Managed<R, E, ServiceConstructor<T>>
+  f: (_: T) => Managed<R, E, T>
 ): Managed<R & R1 & Has<T>, E | E1, A1> {
   return accessServiceM(_)((t) => provideServiceM(_)(f(t))(ma))
 }
@@ -2027,10 +2021,7 @@ export function replaceServiceM_<R, E, T extends AnyService, R1, E1, A1>(
  *
  * @ets_data_first replaceService_
  */
-export function replaceService<T extends AnyService>(
-  _: Tag<T>,
-  f: (_: T) => ServiceConstructor<T>
-) {
+export function replaceService<T>(_: Tag<T>, f: (_: T) => T) {
   return <R1, E1, A1>(ma: Managed<R1 & Has<T>, E1, A1>): Managed<R1 & Has<T>, E1, A1> =>
     accessServiceM(_)((t) => provideServiceM(_)(succeed(f(t)))(ma))
 }
@@ -2038,10 +2029,10 @@ export function replaceService<T extends AnyService>(
 /**
  * Replaces the service with the required Service Entry
  */
-export function replaceService_<R1, E1, A1, T extends AnyService>(
+export function replaceService_<R1, E1, A1, T>(
   ma: Managed<R1 & Has<T>, E1, A1>,
   _: Tag<T>,
-  f: (_: T) => ServiceConstructor<T>
+  f: (_: T) => T
 ): Managed<R1 & Has<T>, E1, A1> {
   return accessServiceM(_)((t) => provideServiceM(_)(succeed(f(t)))(ma))
 }

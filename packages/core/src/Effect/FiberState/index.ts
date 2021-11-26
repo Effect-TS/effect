@@ -1,12 +1,12 @@
 import type * as Tp from "../../Collections/Immutable/Tuple"
-import type { Has, ServiceConstructor, Tag, TypeTag } from "../../Has"
+import type { Has, Tag, TypeTag } from "../../Has"
 import { tag } from "../../Has"
 import * as T from ".."
 import * as FRef from "../FiberRef"
 import * as L from "../Layer"
 
 export interface FiberState<S> {
-  readonly serviceId: `@effect-ts/core/Effect/FiberState<${TypeTag<S>}>`
+  //readonly serviceId: `@effect-ts/core/Effect/FiberState<${TypeTag<S>}>`
 
   readonly get: T.Effect<unknown, never, S>
 
@@ -37,9 +37,7 @@ export interface FiberStateExternal<S> {
   readonly Live: (s: S) => L.Layer<unknown, never, Has<FiberState<S>>>
 }
 
-export function makeFiberState<S>(
-  initial: S
-): T.Effect<unknown, never, ServiceConstructor<FiberState<S>>> {
+export function makeFiberState<S>(initial: S): T.Effect<unknown, never, FiberState<S>> {
   return T.map_(FRef.make(initial), (ref) => ({
     get: FRef.get(ref),
     modify: (f) => FRef.modify_(ref, f),
@@ -49,7 +47,7 @@ export function makeFiberState<S>(
 }
 
 export function FiberState<S>(S: TypeTag<S>): FiberStateExternal<S> {
-  const Tag = tag<FiberState<S>>(`@effect-ts/core/Effect/FiberState<${S}>`)
+  const Tag = tag<FiberState<S>>().setKey(`@effect-ts/core/Effect/FiberState<${S}>`)
   const derived = T.deriveLifted(Tag)(["set", "update"], ["get"], [])
 
   return {

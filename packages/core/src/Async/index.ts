@@ -13,7 +13,7 @@ import "../Operator"
 import * as A from "@effect-ts/system/Async"
 import * as E from "@effect-ts/system/Either"
 import { NoSuchElementException } from "@effect-ts/system/GlobalExceptions"
-import type { AnyService, Has, Tag } from "@effect-ts/system/Has"
+import type { Has, Tag } from "@effect-ts/system/Has"
 import type * as O from "@effect-ts/system/Option"
 
 import { identity, pipe } from "../Function"
@@ -98,7 +98,7 @@ export const Access = P.instance<P.FX.Access<[URI<AsyncURI>], V>>({
 })
 
 const genAdapter: {
-  <A extends AnyService>(_: Tag<A>): P.GenHKT<A.Async<Has<A>, never, A>, A>
+  <A>(_: Tag<A>): P.GenHKT<A.Async<Has<A>, never, A>, A>
   <E, A>(_: O.Option<A>, onNone: () => E): P.GenHKT<A.Async<unknown, E, A>, A>
   <A>(_: O.Option<A>): P.GenHKT<A.Async<unknown, NoSuchElementException, A>, A>
   <E, A>(_: E.Either<E, A>): P.GenHKT<A.Async<unknown, E, A>, A>

@@ -25,7 +25,7 @@ export interface Live {
   ) => T.Effect<unknown, E, A>
 }
 
-export const Live = tag<Live>(LiveId)
+export const Live = tag<Live>().setKey(LiveId)
 
 export const live = L.fromEffect(Live)(
   T.access((r: T.DefaultEnv) => ({

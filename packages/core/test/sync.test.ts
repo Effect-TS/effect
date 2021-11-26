@@ -22,11 +22,11 @@ interface Baz extends Service<typeof BazId> {
   readonly baz: string
 }
 
-const Foo = tag<Foo>(FooId)
+const Foo = tag<Foo>().setKey(FooId)
 
-const Bar = tag<Bar>(BarId)
+const Bar = tag<Bar>().setKey(BarId)
 
-const Baz = tag<Baz>(BazId)
+const Baz = tag<Baz>().setKey(BazId)
 
 const FooLive = L.fromValue(Foo)({ serviceId: FooId, foo: "foo" })
 

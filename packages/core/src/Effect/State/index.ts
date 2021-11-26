@@ -1,12 +1,12 @@
 import type * as Tp from "../../Collections/Immutable/Tuple"
-import type { Has, ServiceConstructor, Tag, TypeTag } from "../../Has"
+import type { Has, Tag, TypeTag } from "../../Has"
 import { tag } from "../../Has"
 import * as T from ".."
 import * as L from "../Layer"
 import * as Ref from "../Ref"
 
 export interface State<S> {
-  readonly serviceId: `@effect-ts/core/Effect/State<${TypeTag<S>}>`
+  //readonly serviceId: `@effect-ts/core/Effect/State<${TypeTag<S>}>`
 
   readonly get: T.Effect<unknown, never, S>
 
@@ -37,9 +37,7 @@ export interface StateExternal<S> {
   readonly Live: (s: S) => L.Layer<unknown, never, Has<State<S>>>
 }
 
-export function makeState<S>(
-  initial: S
-): T.Effect<unknown, never, ServiceConstructor<State<S>>> {
+export function makeState<S>(initial: S): T.Effect<unknown, never, State<S>> {
   return T.map_(Ref.makeRef(initial), (ref) => ({
     get: Ref.get(ref),
     modify: (f) => Ref.modify_(ref, f),
@@ -49,7 +47,7 @@ export function makeState<S>(
 }
 
 export function State<S>(S: TypeTag<S>): StateExternal<S> {
-  const Tag = tag<State<S>>(`@effect-ts/core/Effect/State<${S}>`)
+  const Tag = tag<State<S>>().setKey(`@effect-ts/core/Effect/State<${S}>`)
   const derived = T.deriveLifted(Tag)(["set", "update"], ["get"], [])
 
   return {

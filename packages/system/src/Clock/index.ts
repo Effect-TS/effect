@@ -30,7 +30,7 @@ export abstract class Clock {
 //
 // Has Clock
 //
-export const HasClock = tag<Clock>(ClockId)
+export const HasClock = tag<Clock>().setKey(ClockId)
 
 export type HasClock = Has<Clock>
 
@@ -107,7 +107,7 @@ export class TestClock extends Clock {
 /**
  * Accesses the TestClock
  */
-export const HasTestClock: Tag<TestClock> = tag<TestClock>(HasClock.key)
+export const HasTestClock: Tag<TestClock> = tag<TestClock>().setKey(HasClock.key)
 
 // @ts-expect-error
 export const provideTestClock: <R1, E1, A1>(

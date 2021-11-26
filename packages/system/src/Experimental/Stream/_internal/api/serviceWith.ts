@@ -8,7 +8,7 @@ import * as FromEffect from "./fromEffect"
  * Accesses the specified service in the environment of the stream in the
  * context of an effect.
  */
-export function serviceWith<T extends HS.AnyService>(s: HS.Tag<T>) {
+export function serviceWith<T>(s: HS.Tag<T>) {
   return <R, E, A>(f: (t: T) => T.Effect<R, E, A>) =>
     FromEffect.fromEffect(T.accessServiceM(s)(f))
 }

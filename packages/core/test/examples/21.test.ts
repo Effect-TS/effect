@@ -16,7 +16,7 @@ class ConsoleService extends BaseService(ConsoleServiceId) {
 }
 
 interface Console extends ConsoleService {}
-const Console = tag<Console>(ConsoleServiceId)
+const Console = tag<Console>().setKey(ConsoleServiceId)
 
 const program = T.gen(function* (_) {
   const { logN } = yield* _(Console)

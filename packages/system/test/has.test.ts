@@ -23,8 +23,8 @@ describe("Has", () => {
         return T.succeedWith(() => a * b)
       }
     }
-    const Add = tag<AddService>(AddServiceId)
-    const Mul = tag<MulService>(MulServiceId)
+    const Add = tag<AddService>().setKey(AddServiceId)
+    const Mul = tag<MulService>().setKey(MulServiceId)
 
     const result = await pipe(
       T.accessServicesM({ add: Add, mul: Mul })((_) =>
