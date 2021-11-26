@@ -1,6 +1,7 @@
 import * as T from "../src/Effect"
 import { pipe } from "../src/Function"
 import { tag } from "../src/Has"
+import * as L from "../src/Layer"
 
 describe("Has", () => {
   it("use services", async () => {
@@ -39,5 +40,41 @@ describe("Has", () => {
     )
 
     expect(result).toEqual(15)
+  })
+})
+
+describe("madness", () => {
+  it("mad", () => {
+    interface SVC1 {
+      readonly serviceId: "svc"
+      readonly config: string
+    }
+
+    interface SVC2 {
+      readonly serviceId: "svc"
+      readonly config: number
+    }
+
+    const t1 = tag<SVC1>("svc")
+    const t2 = tag<SVC2>("svc")
+
+    T.gen(function* ($) {
+      const a = yield* $(t1)
+      const b = yield* $(t2)
+      console.log({ a, b })
+    })
+      ["|>"](
+        T.provideLayer(
+          L.fromFunction(t1)(() => {
+            return { serviceId: "svc", config: "imma string" }
+          })["<+<"](
+            L.fromFunction(t2)(() => {
+              return { serviceId: "svc", config: 1 }
+            })
+          )
+        )
+      )
+      ["|>"](T.runPromise)
+      .catch(console.error)
   })
 })
