@@ -45,7 +45,7 @@ export interface Annotations {
 /**
  * Tag for the Annotations service
  */
-export const Annotations = tag<Annotations>(AnnotationsId)
+export const Annotations = tag<Annotations>().setKey(AnnotationsId)
 
 /**
  * Constructs a new `Annotations` service.

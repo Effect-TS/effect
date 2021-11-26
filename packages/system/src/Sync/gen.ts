@@ -7,7 +7,7 @@ import { _A, _E, _R } from "../Effect/commons"
 import type { Either } from "../Either"
 import { identity } from "../Function"
 import { NoSuchElementException } from "../GlobalExceptions"
-import type { AnyService, Has, Tag } from "../Has"
+import type { Has, Tag } from "../Has"
 import type { Option } from "../Option"
 import type * as Utils from "../Utils"
 import { isEither, isOption, isTag } from "../Utils"
@@ -46,7 +46,7 @@ const adapter = (_: any, __?: any) => {
 
 export function gen<Eff extends GenSync<any, any, any>, AEff>(
   f: (i: {
-    <A extends AnyService>(_: Tag<A>): GenSync<Has<A>, never, A>
+    <A>(_: Tag<A>): GenSync<Has<A>, never, A>
     <E, A>(_: Option<A>, onNone: () => E): GenSync<unknown, E, A>
     <A>(_: Option<A>): GenSync<unknown, NoSuchElementException, A>
     <E, A>(_: Either<E, A>): GenSync<unknown, E, A>

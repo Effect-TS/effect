@@ -1,7 +1,7 @@
 // ets_tracing: off
 
 import { pipe } from "../../Function"
-import type { AnyService, Has, Tag } from "../../Has"
+import type { Has, Tag } from "../../Has"
 import type { AssociativeFlatten } from "../AssociativeFlatten"
 import type { Access, Provide } from "../FX"
 import type * as HKT from "../HKT"
@@ -20,7 +20,7 @@ export function accessMF<F>(
 
 export function accessServiceMF<F extends HKT.URIS, C extends HKT.V<"R", "-">>(
   F: Monad<F, C> & Access<F, C>
-): <Service extends AnyService>(
+): <Service>(
   H: Tag<Service>
 ) => <K, Q, W, X, I, S, R, E, A>(
   f: (_: Service) => HKT.Kind<F, C, K, Q, W, X, I, S, R, E, A>
@@ -28,7 +28,7 @@ export function accessServiceMF<F extends HKT.URIS, C extends HKT.V<"R", "-">>(
 export function accessServiceMF<F>(
   F: Monad<HKT.UHKT3<F>, HKT.V<"R", "-">> & Access<HKT.UHKT3<F>, HKT.V<"R", "-">>
 ) {
-  return <Service extends AnyService>(H: Tag<Service>) =>
+  return <Service>(H: Tag<Service>) =>
     <R, E, A>(
       f: (_: Service) => HKT.HKT3<F, R, E, A>
     ): HKT.HKT3<F, Has<Service> & R, E, A> =>
@@ -37,7 +37,7 @@ export function accessServiceMF<F>(
 
 export function provideServiceF<F extends HKT.URIS, C extends HKT.V<"R", "-">>(
   F: Monad<F, C> & Access<F, C> & Provide<F, C>
-): <Service extends AnyService>(
+): <Service>(
   H: Tag<Service>
 ) => (
   S: Service
@@ -49,7 +49,7 @@ export function provideServiceF<F>(
     Access<HKT.UHKT3<F>, HKT.V<"R", "-">> &
     Provide<HKT.UHKT3<F>, HKT.V<"R", "-">>
 ) {
-  return <Service extends AnyService>(H: Tag<Service>) =>
+  return <Service>(H: Tag<Service>) =>
     <R, E, A>(S: Service) =>
     (fa: HKT.HKT3<F, Has<Service> & R, E, A>): HKT.HKT3<F, R, E, A> =>
       accessMF(F)((r: R) =>

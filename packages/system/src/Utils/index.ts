@@ -5,7 +5,7 @@ import "../Operator"
 import type { Tuple } from "../Collections/Immutable/Tuple"
 import type { _A, _E, _R } from "../Effect"
 import type { Either } from "../Either/core"
-import type { AnyService, Tag } from "../Has"
+import type { Tag } from "../Has"
 import type { Option } from "../Option"
 import { none, some } from "../Option"
 import type { Sync } from "../Sync"
@@ -178,7 +178,7 @@ export function isOption(u: unknown): u is Option<unknown> {
   )
 }
 
-export function isTag(u: unknown): u is Tag<AnyService> {
+export function isTag(u: unknown): u is Tag<unknown> {
   return typeof u === "object" && u != null && "_tag" in u && u["_tag"] === "Tag"
 }
 

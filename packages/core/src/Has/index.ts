@@ -3,12 +3,12 @@
 import "../Operator"
 
 import * as T from "@effect-ts/system/Effect"
-import type { AnyService, Has, Tag } from "@effect-ts/system/Has"
+import type { Has, Tag } from "@effect-ts/system/Has"
 import type { Compute, IsEqualTo, UnionToIntersection } from "@effect-ts/system/Utils"
 
 export * from "@effect-ts/system/Has"
 
-export type DerivedFunctions<A extends AnyService> = UnionToIntersection<
+export type DerivedFunctions<A> = UnionToIntersection<
   {
     [K in keyof A]: [A[K]] extends [
       (...args: infer ARGS) => T.Effect<infer RX, infer EX, infer AX>
@@ -22,10 +22,7 @@ export type DerivedFunctions<A extends AnyService> = UnionToIntersection<
   }[keyof A]
 >
 
-export function deriveFunctions<
-  TX extends AnyService,
-  Ks extends readonly (keyof DerivedFunctions<TX>)[]
->(
+export function deriveFunctions<TX, Ks extends readonly (keyof DerivedFunctions<TX>)[]>(
   self: Tag<TX>,
   ...keys: Ks
 ): Compute<

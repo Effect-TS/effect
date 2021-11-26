@@ -103,7 +103,7 @@ export interface TestClock extends Restorable {
   readonly sleeps: T.UIO<List.List<Duration>>
 }
 
-export const TestClock = tag<TestClock>(Clock.HasClock.key)
+export const TestClock = tag<TestClock>().setKey(Clock.HasClock.key)
 
 /**
  * `Data` represents the state of the `TestClock`, including the clock time

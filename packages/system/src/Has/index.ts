@@ -41,10 +41,11 @@ export function service<T extends PropertyKey, X extends Record<PropertyKey, unk
 /**
  * Has signal presence of a specific service provided via Tag in the environment
  */
-export type Has<T extends AnyService> = {
-  readonly [k in T["serviceId"]]: T
+export interface Has<T> {
+  [HasURI]: {
+    _T: () => T
+  }
 }
-
 /**
  * Extract the type of a class constructor
  */
@@ -56,44 +57,45 @@ export type ConstructorType<K extends Constructor<any>> = K extends {
 
 export type Constructor<T> = Function & { prototype: T }
 
-export type ServiceConstructor<T extends AnyService> = Omit<T, "serviceId"> & {
-  readonly serviceId?: T["serviceId"]
-}
-
 /**
  * Tag Encodes capabilities of reading and writing a service T into a generic environment
  */
-export interface Tag<T extends AnyService> {
+export interface Tag<T> {
   _tag: "Tag"
   _T: T
-  key: T["serviceId"]
+  key: PropertyKey
   read: (r: Has<T>) => T
   readOption: (r: unknown) => Option<T>
-  has: (_: ServiceConstructor<T>) => Has<T>
-  of: (_: ServiceConstructor<T>) => T
+  has: (_: T) => Has<T>
+  of: (_: T) => T
+  setKey: (s: PropertyKey) => Tag<T>
+  refine: <T1 extends T>() => Tag<T1>
 }
 
 /**
  * Extract the Has type from any augumented variant
  */
 
-const makeTag = <T extends AnyService>(key: T["serviceId"]): Tag<T> => ({
+const makeTag = <T>(def = false, key: PropertyKey = Symbol()): Tag<T> => ({
   _tag: "Tag",
   _T: undefined as any,
   key,
-  has: (t) => ({ [key]: "serviceId" in t ? t : { ...t, serviceId: key } } as any),
-  of: (t) => ("serviceId" in t ? t : ({ ...t, serviceId: key } as any)),
+  has: (t) => ({ [key]: t } as any),
+  of: (t) => t,
   read: (r: Has<T>) => r[key],
   readOption: (r: unknown) =>
-    // @ts-expect-error
-    typeof r === "object" && r !== null && key in r ? fromNullable(r[key]) : none
+    typeof r === "object" && r !== null ? fromNullable(r[key]) : none,
+  setKey: (s: PropertyKey) => makeTag(def, s),
+  refine: () => makeTag(def, key)
 })
 
 /**
  * Create a service entry Tag from a type and a URI
  */
-export function tag<T extends AnyService>(_: T["serviceId"]): Tag<T> {
-  return makeTag(_)
+export function tag<T extends Constructor<any>>(_: T): Tag<ConstructorType<T>>
+export function tag<T>(): Tag<T>
+export function tag(_?: any): Tag<unknown> {
+  return makeTag()
 }
 
 /**
@@ -105,7 +107,7 @@ export type ServiceType<T> = [T] extends [Has<infer A>] ? A : never
  * Replaces the service with the required Service Entry, in the specified environment
  */
 export const replaceServiceIn =
-  <T extends AnyService>(_: Tag<T>, f: (t: T) => T) =>
+  <T>(_: Tag<T>, f: (t: T) => T) =>
   <R>(r: R & Has<T>): R & Has<T> => ({
     ...r,
     [_.key]: f(r[_.key])
@@ -114,19 +116,19 @@ export const replaceServiceIn =
 /**
  * Replaces the service with the required Service Entry, in the specified environment
  */
-export const replaceServiceIn_ = <R, T extends AnyService>(
+export const replaceServiceIn_ = <R, T>(
   r: R & Has<T>,
   _: Tag<T>,
-  f: (t: T) => ServiceConstructor<T>
+  f: (t: T) => T
 ): R & Has<T> => ({
   ...r,
   ..._.has(f(r[_.key]))
 })
 
-export function mergeEnvironments<T extends AnyService, R1 extends {}>(
+export function mergeEnvironments<T, R1 extends {}>(
   _: Tag<T>,
   r: R1,
-  t: ServiceConstructor<T>
+  t: T
 ): R1 & Has<T> {
   return {
     ...r,
