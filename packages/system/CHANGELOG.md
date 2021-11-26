@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.44.0](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.43.5...@effect-ts/system@0.44.0) (2021-11-26)
+
+
+### Reverts
+
+* serviceId requirement, AnyService, ServiceConstructor<T> ([#974](https://github.com/Effect-TS/core/issues/974)) ([1fd57ec](https://github.com/Effect-TS/core/commit/1fd57ecd2a7e4cc6796fd30ffb516ba99c58093e))
+
+
+
+
+
 ## [0.43.5](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.43.4...@effect-ts/system@0.43.5) (2021-11-24)
 
 
