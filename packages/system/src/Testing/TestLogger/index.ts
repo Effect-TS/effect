@@ -9,7 +9,7 @@ export interface TestLogger {
   readonly logLine: (line: string) => T.UIO<void>
 }
 
-export const TestLogger = tag<TestLogger>().setKey(LoggerId)
+export const TestLogger = tag<TestLogger>(LoggerId)
 
 export const FromConsole = L.fromEffect(TestLogger)(
   T.succeedWith(() => ({

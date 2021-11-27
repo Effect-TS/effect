@@ -180,7 +180,7 @@ describe("Tracing", () => {
       readonly value: number
     }
 
-    const Service = tag<Service>().setKey(ServiceId)
+    const Service = tag<Service>(ServiceId)
 
     const { value: accessValue } = T.deriveAccess(Service)(["value"])
 
@@ -206,7 +206,7 @@ describe("Tracing", () => {
       readonly value: number
     }
 
-    const Service = tag<Service>().setKey(ServiceId)
+    const Service = tag<Service>(ServiceId)
 
     const { value: accessValueM } = T.deriveAccessM(Service)(["value"])
 

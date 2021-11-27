@@ -19,7 +19,7 @@ export function LiveCalculator() {
 export interface Calculator extends ReturnType<typeof LiveCalculator> {}
 
 // module tag
-export const Calculator = tag<Calculator>().setKey(CalculatorId)
+export const Calculator = tag<Calculator>(CalculatorId)
 
 // lifted functions
 export const { add, base, factor, mul } = T.deriveLifted(Calculator)(

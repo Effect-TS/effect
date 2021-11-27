@@ -68,6 +68,9 @@ export interface Tag<T> {
   readOption: (r: unknown) => Option<T>
   has: (_: T) => Has<T>
   of: (_: T) => T
+  /**
+   * @deprecated Use tag<T>(key)
+   */
   setKey: (s: PropertyKey) => Tag<T>
   refine: <T1 extends T>() => Tag<T1>
 }
@@ -76,7 +79,7 @@ export interface Tag<T> {
  * Extract the Has type from any augumented variant
  */
 
-const makeTag = <T>(def = false, key: PropertyKey = Symbol()): Tag<T> => ({
+const makeTag = <T>(key: PropertyKey = Symbol()): Tag<T> => ({
   _tag: "Tag",
   _T: undefined as any,
   key,
@@ -85,17 +88,18 @@ const makeTag = <T>(def = false, key: PropertyKey = Symbol()): Tag<T> => ({
   read: (r: Has<T>) => r[key],
   readOption: (r: unknown) =>
     typeof r === "object" && r !== null ? fromNullable(r[key]) : none,
-  setKey: (s: PropertyKey) => makeTag(def, s),
-  refine: () => makeTag(def, key)
+  setKey: (s: PropertyKey) => makeTag(s),
+  refine: () => makeTag(key)
 })
+
+type ServiceId<T> = T extends { serviceId: PropertyKey } ? T["serviceId"] : PropertyKey
 
 /**
  * Create a service entry Tag from a type and a URI
  */
-export function tag<T extends Constructor<any>>(_: T): Tag<ConstructorType<T>>
-export function tag<T>(): Tag<T>
-export function tag(_?: any): Tag<unknown> {
-  return makeTag()
+export function tag<T>(key: ServiceId<T>): Tag<T>
+export function tag<T>(key?: PropertyKey): Tag<T> {
+  return makeTag(key)
 }
 
 /**
