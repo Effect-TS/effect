@@ -47,7 +47,7 @@ export function makeState<S>(initial: S): T.Effect<unknown, never, State<S>> {
 }
 
 export function State<S>(S: TypeTag<S>): StateExternal<S> {
-  const Tag = tag<State<S>>().setKey(`@effect-ts/core/Effect/State<${S}>`)
+  const Tag = tag<State<S>>(`@effect-ts/core/Effect/State<${S}>`)
   const derived = T.deriveLifted(Tag)(["set", "update"], ["get"], [])
 
   return {

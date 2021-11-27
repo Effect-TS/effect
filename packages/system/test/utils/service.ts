@@ -23,4 +23,4 @@ export const makeCustomService = T.succeed(
 
 export interface CustomService extends _A<typeof makeCustomService> {}
 
-export const CustomService = tag<CustomService>().setKey(CustomServiceId)
+export const CustomService = tag<CustomService>(CustomServiceId)

@@ -47,7 +47,7 @@ export function makeFiberState<S>(initial: S): T.Effect<unknown, never, FiberSta
 }
 
 export function FiberState<S>(S: TypeTag<S>): FiberStateExternal<S> {
-  const Tag = tag<FiberState<S>>().setKey(`@effect-ts/core/Effect/FiberState<${S}>`)
+  const Tag = tag<FiberState<S>>(`@effect-ts/core/Effect/FiberState<${S}>`)
   const derived = T.deriveLifted(Tag)(["set", "update"], ["get"], [])
 
   return {

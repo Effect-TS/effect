@@ -28,7 +28,7 @@ export interface PBKDF2Config extends _config {
   readonly serviceId: typeof PBKDF2ConfigId
 }
 
-export const PBKDF2Config = tag<PBKDF2Config>().setKey(PBKDF2ConfigId)
+export const PBKDF2Config = tag<PBKDF2Config>(PBKDF2ConfigId)
 
 export const PBKDF2ConfigLive = L.fromEffect(PBKDF2Config)(
   T.succeedWith(() => service(PBKDF2ConfigId, defaultConfig))
@@ -123,7 +123,7 @@ export const makeCrypto = T.gen(function* (_) {
 export interface Crypto extends _A<typeof makeCrypto> {
   readonly serviceId: typeof CryptoId
 }
-export const Crypto = tag<Crypto>().setKey(CryptoId)
+export const Crypto = tag<Crypto>(CryptoId)
 
 export const {
   /**

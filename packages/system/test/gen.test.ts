@@ -150,7 +150,7 @@ describe("Generator", () => {
     }
 
     interface Calc extends CalcService {}
-    const Calc = tag<Calc>().setKey(CalcServiceId)
+    const Calc = tag<Calc>(CalcServiceId)
 
     const prog = T.gen(function* (_) {
       const { add } = yield* _(Calc)

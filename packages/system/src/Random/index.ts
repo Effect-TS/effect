@@ -50,7 +50,7 @@ export class LiveRandom extends Random {
 
 export const defaultRandom = new LiveRandom((Math.random() * 4294967296) >>> 0)
 
-export const HasRandom = tag<Random>().setKey(RandomId)
+export const HasRandom = tag<Random>(RandomId)
 
 export type HasRandom = Has<Random>
 
