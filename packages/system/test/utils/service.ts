@@ -11,7 +11,7 @@ export const CustomServiceId = Symbol()
  * @module CustomService
  */
 export const makeCustomService = T.succeed(
-  service(CustomServiceId, {
+  service({
     /**
      * @module CustomService
      */
