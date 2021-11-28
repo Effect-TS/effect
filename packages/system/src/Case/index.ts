@@ -87,10 +87,7 @@ export const Case: CaseConstructor = class<T>
   }
 }
 
-export interface CaseConstructorTagged<
-  Tag extends string | symbol,
-  K extends string | symbol
-> {
+export interface CaseConstructorTagged<Tag extends PropertyKey, K extends PropertyKey> {
   readonly _tag: Tag
 
   new <T>(args: IsEqualTo<T, {}> extends true ? void : T): T &
@@ -101,7 +98,7 @@ export function Tagged<Tag extends string | symbol, Key extends string | symbol>
   tag: Tag,
   key: Key
 ): CaseConstructorTagged<Tag, Key>
-export function Tagged<Tag extends string | symbol>(
+export function Tagged<Tag extends PropertyKey>(
   tag: Tag
 ): CaseConstructorTagged<Tag, "_tag">
 export function Tagged<Tag extends string | symbol, Key extends string | symbol>(

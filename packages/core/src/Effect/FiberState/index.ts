@@ -1,5 +1,5 @@
 import type * as Tp from "../../Collections/Immutable/Tuple"
-import type { Has, Tag, TypeTag } from "../../Has"
+import type { Has, Tag } from "../../Has"
 import { tag } from "../../Has"
 import * as T from ".."
 import * as FRef from "../FiberRef"
@@ -46,8 +46,8 @@ export function makeFiberState<S>(initial: S): T.Effect<unknown, never, FiberSta
   }))
 }
 
-export function FiberState<S>(S: TypeTag<S>): FiberStateExternal<S> {
-  const Tag = tag<FiberState<S>>(`@effect-ts/core/Effect/FiberState<${S}>`)
+export function FiberState<S>(S: PropertyKey): FiberStateExternal<S> {
+  const Tag = tag<FiberState<S>>(S)
   const derived = T.deriveLifted(Tag)(["set", "update"], ["get"], [])
 
   return {

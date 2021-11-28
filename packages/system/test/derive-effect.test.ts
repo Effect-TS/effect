@@ -6,7 +6,7 @@ import { service, tag } from "../src/Has"
 export const CalculatorId = Symbol()
 
 export function LiveCalculator() {
-  return service(CalculatorId, {
+  return service({
     factor: 2,
     factorFun: (): number => 3,
     base: T.succeed(1),
@@ -57,7 +57,6 @@ const program = pipe(
 
 export function MockCalculator(): Calculator {
   return {
-    serviceId: CalculatorId,
     add: () => T.succeed(0),
     mul: () => T.succeed(0),
     base: T.succeed(0),

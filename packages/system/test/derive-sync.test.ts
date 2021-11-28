@@ -6,7 +6,7 @@ import * as Sy from "../src/Sync"
 export const CalculatorId = Symbol()
 
 export function LiveCalculator() {
-  return service(CalculatorId, {
+  return service({
     factor: 2,
     factorFun: (): number => 3,
     base: Sy.succeed(1),
@@ -62,7 +62,6 @@ const program = pipe(
 
 export function MockCalculator(): Calculator {
   return {
-    serviceId: CalculatorId,
     add: () => Sy.succeed(0),
     mul: () => Sy.succeed(0),
     base: Sy.succeed(0),

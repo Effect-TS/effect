@@ -1,11 +1,6 @@
 {
   "packages": [
-    "packages/*",
-    "packages_be/*",
-    "packages_fe/*",
-    "packages_http/*",
-    "packages_inc/*",
-    "packages_sys/*"
+    "packages/*"
   ],
   "npmClient": "yarn",
   "useWorkspaces": true,
@@ -13,6 +8,11 @@
   "command": {
     "version": {
       "message": "chore(release): publish"
+    },
+    "publish": {
+      "ignoreChanges": [
+        "yarn.lock"
+      ]
     }
   }
 }

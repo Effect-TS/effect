@@ -5,7 +5,7 @@ import * as E from "../src/Either"
 import * as Ex from "../src/Exit"
 import { pipe } from "../src/Function"
 import { NoSuchElementException, PrematureGeneratorExit } from "../src/GlobalExceptions"
-import { BaseService, tag } from "../src/Has"
+import { tag } from "../src/Has"
 import * as M from "../src/Managed"
 import * as O from "../src/Option"
 import * as S from "../src/Stream"
@@ -143,7 +143,8 @@ describe("Generator", () => {
 
   it("should use services", async () => {
     const CalcServiceId = Symbol()
-    class CalcService extends BaseService(CalcServiceId) {
+
+    class CalcService {
       add(x: number, y: number) {
         return T.succeedWith(() => x + y)
       }
