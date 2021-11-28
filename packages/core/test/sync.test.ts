@@ -1,4 +1,3 @@
-import type { Service } from "@effect-ts/system/Has"
 import { tag } from "@effect-ts/system/Has"
 
 import { pipe } from "../src/Function"
@@ -7,18 +6,18 @@ import * as L from "../src/Sync/Layer"
 
 const FooId = Symbol()
 
-interface Foo extends Service<typeof FooId> {
+interface Foo {
   readonly foo: string
 }
 
 const BarId = Symbol()
 
-interface Bar extends Service<typeof BarId> {
+interface Bar {
   readonly bar: string
 }
 
 const BazId = Symbol()
-interface Baz extends Service<typeof BazId> {
+interface Baz {
   readonly baz: string
 }
 
@@ -28,9 +27,9 @@ const Bar = tag<Bar>(BarId)
 
 const Baz = tag<Baz>(BazId)
 
-const FooLive = L.fromValue(Foo)({ serviceId: FooId, foo: "foo" })
+const FooLive = L.fromValue(Foo)({ foo: "foo" })
 
-const BarLive = L.fromValue(Bar)({ serviceId: BarId, bar: "bar" })
+const BarLive = L.fromValue(Bar)({ bar: "bar" })
 
 const BazLive = L.fromSync(Baz)(
   Sy.gen(function* (_) {

@@ -24,15 +24,12 @@ const defaultConfig = {
 
 type _config = typeof defaultConfig
 export const PBKDF2ConfigId = Symbol()
-export interface PBKDF2Config extends _config {
-  readonly serviceId: typeof PBKDF2ConfigId
-}
+export interface PBKDF2Config extends _config {}
 
 export const PBKDF2Config = tag<PBKDF2Config>(PBKDF2ConfigId)
 
-export const PBKDF2ConfigLive = L.fromEffect(PBKDF2Config)(
-  T.succeedWith(() => service(PBKDF2ConfigId, defaultConfig))
-)
+export const PBKDF2ConfigLive = L.fromValue(PBKDF2Config)(defaultConfig)
+
 export const PBKDF2ConfigTest = L.fromEffect(PBKDF2Config)(
   T.succeedWith(() => ({ serviceId: PBKDF2ConfigId, ...defaultConfig, iterations: 1 }))
 )
@@ -46,7 +43,7 @@ export const CryptoId = Symbol()
 export const makeCrypto = T.gen(function* (_) {
   const config = yield* _(PBKDF2Config)
 
-  return service(CryptoId, {
+  return service({
     hashPassword: (password: string) =>
       T.effectAsync<unknown, never, string>((cb) => {
         // generate a salt for pbkdf2
@@ -120,9 +117,7 @@ export const makeCrypto = T.gen(function* (_) {
   })
 })
 
-export interface Crypto extends _A<typeof makeCrypto> {
-  readonly serviceId: typeof CryptoId
-}
+export interface Crypto extends _A<typeof makeCrypto> {}
 export const Crypto = tag<Crypto>(CryptoId)
 
 export const {

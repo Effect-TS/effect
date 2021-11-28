@@ -9,34 +9,18 @@ import "../Operator"
  */
 import type { Option } from "../Option"
 import { fromNullable, none } from "../Option"
-import type { IsEqualTo, UnionToIntersection } from "../Utils"
+
+export type Flat<A> = { readonly [k in keyof A]: A[k] } extends infer X ? X : never
+
+export function service<X extends Record<PropertyKey, unknown>>(x: X): Flat<X> {
+  // @ts-expect-error
+  return x
+}
 
 /**
  * URI used in Has
  */
 export declare const HasURI: unique symbol
-
-export interface Service<T extends PropertyKey> {
-  readonly serviceId: T
-}
-
-export interface AnyService extends Service<PropertyKey> {}
-
-export function BaseService<T extends PropertyKey>(serviceId: T) {
-  return class BaseService implements Service<T> {
-    readonly serviceId: T = serviceId
-  }
-}
-
-export type Flat<A> = { readonly [k in keyof A]: A[k] } extends infer X ? X : never
-
-export function service<T extends PropertyKey, X extends Record<PropertyKey, unknown>>(
-  t: T,
-  x: X
-): Flat<X & { readonly serviceId: T }> {
-  // @ts-expect-error
-  return { ...x, serviceId: t }
-}
 
 /**
  * Has signal presence of a specific service provided via Tag in the environment
@@ -68,10 +52,6 @@ export interface Tag<T> {
   readOption: (r: unknown) => Option<T>
   has: (_: T) => Has<T>
   of: (_: T) => T
-  /**
-   * @deprecated Use tag<T>(key)
-   */
-  setKey: (s: PropertyKey) => Tag<T>
   refine: <T1 extends T>() => Tag<T1>
 }
 
@@ -88,16 +68,12 @@ const makeTag = <T>(key: PropertyKey = Symbol()): Tag<T> => ({
   read: (r: Has<T>) => r[key],
   readOption: (r: unknown) =>
     typeof r === "object" && r !== null ? fromNullable(r[key]) : none,
-  setKey: (s: PropertyKey) => makeTag(s),
   refine: () => makeTag(key)
 })
-
-type ServiceId<T> = T extends { serviceId: PropertyKey } ? T["serviceId"] : PropertyKey
 
 /**
  * Create a service entry Tag from a type and a URI
  */
-export function tag<T>(key: ServiceId<T>): Tag<T>
 export function tag<T>(key?: PropertyKey): Tag<T> {
   return makeTag(key)
 }
@@ -139,38 +115,3 @@ export function mergeEnvironments<T, R1 extends {}>(
     ..._.has(t)
   }
 }
-
-export interface Taggable<T> {
-  String: [T] extends [string]
-    ? IsEqualTo<T, string> extends true
-      ? `String<${T}>`
-      : "String"
-    : never
-  Number: [T] extends [number]
-    ? [IsEqualTo<T, number>] extends [true]
-      ? "Number"
-      : `Number<${T}>`
-    : never
-  Unknown: [T] extends [unknown] ? ([unknown] extends [T] ? "Unknown" : never) : never
-}
-
-export declare const _typeTag: unique symbol
-export type _typeTag = typeof _typeTag
-
-export type TypeTag<T> = UnionToIntersection<
-  [T] extends [never]
-    ? "Never"
-    : [Taggable<T>[keyof Taggable<any>]] extends [never]
-    ? [T] extends [{ readonly serviceId: string }]
-      ? T["serviceId"]
-      : [T] extends [{ readonly [_typeTag]: string }]
-      ? T[_typeTag]
-      : [T] extends [{ readonly _tag: string }]
-      ? T["_tag"]
-      : never
-    : Taggable<T>[keyof Taggable<any>]
-> extends infer X
-  ? X extends string
-    ? X
-    : never
-  : never

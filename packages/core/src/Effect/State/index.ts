@@ -1,5 +1,5 @@
 import type * as Tp from "../../Collections/Immutable/Tuple"
-import type { Has, Tag, TypeTag } from "../../Has"
+import type { Has, Tag } from "../../Has"
 import { tag } from "../../Has"
 import * as T from ".."
 import * as L from "../Layer"
@@ -46,8 +46,8 @@ export function makeState<S>(initial: S): T.Effect<unknown, never, State<S>> {
   }))
 }
 
-export function State<S>(S: TypeTag<S>): StateExternal<S> {
-  const Tag = tag<State<S>>(`@effect-ts/core/Effect/State<${S}>`)
+export function State<S>(S: PropertyKey): StateExternal<S> {
+  const Tag = tag<State<S>>(S)
   const derived = T.deriveLifted(Tag)(["set", "update"], ["get"], [])
 
   return {

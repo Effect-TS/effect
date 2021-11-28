@@ -41,14 +41,6 @@ export class Right<A> {
 
 export type Either<E, A> = Left<E> | Right<A>
 
-declare module "../Has" {
-  interface Taggable<T> {
-    Either: [T] extends [Either<infer E, infer A>]
-      ? `Either<${TypeTag<E>}, ${TypeTag<A>}>`
-      : never
-  }
-}
-
 /**
  * Constructs a new `Either` holding a `Right` value. This usually represents a successful value due to the right bias
  * of this structure

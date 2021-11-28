@@ -1,12 +1,12 @@
 import { pipe } from "@effect-ts/system/Function"
-import { BaseService, tag } from "@effect-ts/system/Has"
+import { tag } from "@effect-ts/system/Has"
 
 import * as DSL from "../../src/Prelude/DSL"
 import * as X from "../../src/XPure"
 
 test("09", () => {
   const MyServiceId = Symbol()
-  class MyServiceImpl extends BaseService(MyServiceId) {
+  class MyServiceImpl {
     hello(message: string) {
       return X.succeedWith(() => {
         console.log(`Yeah: ${message}`)
