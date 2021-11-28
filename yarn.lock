@@ -2090,10 +2090,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/node@npm:*, @types/node@npm:^16.11.9":
-  version: 16.11.9
-  resolution: "@types/node@npm:16.11.9"
-  checksum: baec2e6471ee58fd1e9874e6f47ab95a918a0f46b42424392e4c13e3e07f078f8b72b6b48073b0b14f710ed66c5f1b2e497df43f28151000f11f5f299382cfe2
+"@types/node@npm:*, @types/node@npm:^16.11.10":
+  version: 16.11.10
+  resolution: "@types/node@npm:16.11.10"
+  checksum: 9c79419c5c3d92d5825bffa30f3668533f598d8b63a73ea7fc24e47f162bdbed92b0f8e4f4261cc3314b39cee050e303366d2aa154abc95c63a572a110b8c160
   languageName: node
   linkType: hard
 
@@ -3172,13 +3172,20 @@ __metadata:
   languageName: node
   linkType: hard
 
-"chalk@npm:^4.0.0, chalk@npm:^4.1.0, chalk@npm:^4.1.1, chalk@npm:^4.1.2":
+"chalk@npm:^4.0.0, chalk@npm:^4.1.0, chalk@npm:^4.1.1":
   version: 4.1.2
   resolution: "chalk@npm:4.1.2"
   dependencies:
     ansi-styles: ^4.1.0
     supports-color: ^7.1.0
   checksum: fe75c9d5c76a7a98d45495b91b2172fa3b7a09e0cc9370e5c8feb1c567b85c4288e2b3fded7cfdd7359ac28d6b3844feb8b82b8686842e93d23c827c417e83fc
+  languageName: node
+  linkType: hard
+
+"chalk@npm:^5.0.0":
+  version: 5.0.0
+  resolution: "chalk@npm:5.0.0"
+  checksum: 6eba7c518b9aa5fe882ae6d14a1ffa58c418d72a3faa7f72af56641f1bbef51b645fca1d6e05d42357b7d3c846cd504c0b7b64d12309cdd07867e3b4411e0d01
   languageName: node
   linkType: hard
 
@@ -4328,11 +4335,11 @@ __metadata:
     "@types/cpx": ^1.5.2
     "@types/glob": ^7.2.0
     "@types/jest": ^27.0.3
-    "@types/node": ^16.11.9
+    "@types/node": ^16.11.10
     "@typescript-eslint/eslint-plugin": ^5.4.0
     "@typescript-eslint/parser": ^5.4.0
     babel-plugin-annotate-pure-calls: ^0.4.0
-    chalk: ^4.1.2
+    chalk: ^5.0.0
     commitizen: ^4.2.4
     concurrently: ^6.4.0
     cpx: ^1.5.0
@@ -4342,11 +4349,11 @@ __metadata:
     eslint-import-resolver-typescript: ^2.5.0
     eslint-plugin-codegen: ^0.16.1
     eslint-plugin-import: ^2.25.3
-    eslint-plugin-jest: ^25.2.4
+    eslint-plugin-jest: ^25.3.0
     eslint-plugin-prettier: ^4.0.0
     eslint-plugin-simple-import-sort: ^7.0.0
     eslint-plugin-sort-destructure-keys: ^1.4.0
-    fast-check: ^2.19.0
+    fast-check: ^2.20.0
     fast-equals: ^2.0.3
     fast-safe-stringify: ^2.1.1
     fp-ts: ^2.11.5
@@ -4355,12 +4362,11 @@ __metadata:
     jest: ^27.3.1
     lerna: ^4.0.0
     madge: ^5.0.1
-    prettier: ^2.4.1
+    prettier: ^2.5.0
     reflect-metadata: ^0.1.13
     ts-jest: ^27.0.7
     ts-node: ^10.4.0
     ts-patch: ^2.0.1
-    ttypescript: ^1.5.12
     typescript: ^4.5.2
     typescript-transform-paths: 3.3.1
     ultra-runner: ^3.10.5
@@ -4626,9 +4632,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"eslint-plugin-jest@npm:^25.2.4":
-  version: 25.2.4
-  resolution: "eslint-plugin-jest@npm:25.2.4"
+"eslint-plugin-jest@npm:^25.3.0":
+  version: 25.3.0
+  resolution: "eslint-plugin-jest@npm:25.3.0"
   dependencies:
     "@typescript-eslint/experimental-utils": ^5.0.0
   peerDependencies:
@@ -4639,7 +4645,7 @@ __metadata:
       optional: true
     jest:
       optional: true
-  checksum: d263c5564e5ce573759fa06b94011855780e79b0407888a5ac0e80303af2aa249d9d089bcd2f0fc108eb58ef6f367544217b1be2b561216e92fc830e9a924a63
+  checksum: d801c166f528392fbb0234e34b893e97c24a7be049744f2d23b1702bce6202d5f0760886a591f884ffa82c7e01a2b06134e86da991bfa568ca5a90311e5f452e
   languageName: node
   linkType: hard
 
@@ -5008,12 +5014,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"fast-check@npm:^2.19.0":
-  version: 2.19.0
-  resolution: "fast-check@npm:2.19.0"
+"fast-check@npm:^2.20.0":
+  version: 2.20.0
+  resolution: "fast-check@npm:2.20.0"
   dependencies:
     pure-rand: ^5.0.0
-  checksum: 93fd9b37c4ee54ba43fdf58c436290c304e6c7ea402b4c54dbbd7039717bed2f03ea5924aaaa36283fd51ecf6bebe622d7190942f9967c1d594d342544f16e73
+  checksum: 2f8c0bbb089556e51ad9669b21d14611e557ddd11037b26a5a0a9c32c41b23f792cf4c13b58083c735261b0ce8e840c865ea25dc07651deb2045c2d73b63bf57
   languageName: node
   linkType: hard
 
@@ -9463,12 +9469,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"prettier@npm:^2.4.1":
-  version: 2.4.1
-  resolution: "prettier@npm:2.4.1"
+"prettier@npm:^2.5.0":
+  version: 2.5.0
+  resolution: "prettier@npm:2.5.0"
   bin:
     prettier: bin-prettier.js
-  checksum: cc6830588b401b0d742862fe9c46bc9118204fb307c3abe0e49e95b35ed23629573807ffdf9cdd65289c252a0bb51fc0171437f6626ee36378dea80f0ee80b91
+  checksum: aad1b35b73e7c14596d389d90977a83dad0db689ba5802a0ef319c357b7867f55b885db197972aa6a56c30f53088c9f8e0d7f7930ae074c275a4e9cbe091d21d
   languageName: node
   linkType: hard
 
@@ -10068,7 +10074,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"resolve@npm:>=1.9.0, resolve@npm:^1.1.6, resolve@npm:^1.1.7, resolve@npm:^1.10.0, resolve@npm:^1.19.0, resolve@npm:^1.20.0":
+"resolve@npm:^1.1.6, resolve@npm:^1.1.7, resolve@npm:^1.10.0, resolve@npm:^1.19.0, resolve@npm:^1.20.0":
   version: 1.20.0
   resolution: "resolve@npm:1.20.0"
   dependencies:
@@ -10078,7 +10084,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"resolve@patch:resolve@>=1.9.0#~builtin<compat/resolve>, resolve@patch:resolve@^1.1.6#~builtin<compat/resolve>, resolve@patch:resolve@^1.1.7#~builtin<compat/resolve>, resolve@patch:resolve@^1.10.0#~builtin<compat/resolve>, resolve@patch:resolve@^1.19.0#~builtin<compat/resolve>, resolve@patch:resolve@^1.20.0#~builtin<compat/resolve>":
+"resolve@patch:resolve@^1.1.6#~builtin<compat/resolve>, resolve@patch:resolve@^1.1.7#~builtin<compat/resolve>, resolve@patch:resolve@^1.10.0#~builtin<compat/resolve>, resolve@patch:resolve@^1.19.0#~builtin<compat/resolve>, resolve@patch:resolve@^1.20.0#~builtin<compat/resolve>":
   version: 1.20.0
   resolution: "resolve@patch:resolve@npm%3A1.20.0#~builtin<compat/resolve>::version=1.20.0&hash=07638b"
   dependencies:
@@ -11346,21 +11352,6 @@ __metadata:
   peerDependencies:
     typescript: ">=2.8.0 || >= 3.2.0-dev || >= 3.3.0-dev || >= 3.4.0-dev || >= 3.5.0-dev || >= 3.6.0-dev || >= 3.6.0-beta || >= 3.7.0-dev || >= 3.7.0-beta"
   checksum: 1843f4c1b2e0f975e08c4c21caa4af4f7f65a12ac1b81b3b8489366826259323feb3fc7a243123453d2d1a02314205a7634e048d4a8009921da19f99755cdc48
-  languageName: node
-  linkType: hard
-
-"ttypescript@npm:^1.5.12":
-  version: 1.5.12
-  resolution: "ttypescript@npm:1.5.12"
-  dependencies:
-    resolve: ">=1.9.0"
-  peerDependencies:
-    ts-node: ">=8.0.2"
-    typescript: ">=3.2.2"
-  bin:
-    ttsc: bin/tsc
-    ttsserver: bin/tsserver
-  checksum: 91b6d113d2ce4c7f93392b97a6df38ad6ce6ad4c80227e3d2e1d6948c53f8664018060a02020d8f28a3e461876232b78b4c38352c546a02f3b543a062147fafa
   languageName: node
   linkType: hard
 
