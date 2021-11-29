@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.45.0](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.44.0...@effect-ts/system@0.45.0) (2021-11-29)
+
+
+### Features
+
+* restore optional usage of serviceId key for tag. ([031700e](https://github.com/Effect-TS/core/commit/031700ef7ecd25fef68a33bf9b74bf4fccd06ea9))
+
+
+
+
+
 # [0.44.0](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.43.5...@effect-ts/system@0.44.0) (2021-11-26)
 
 
