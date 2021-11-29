@@ -17,12 +17,12 @@
     "lint": "ultra -r lint",
     "tc": "ultra -r tc",
     "postinstall": "husky install && ts-patch install -s",
-    "version:alpha": "lerna version prerelease --conventional-commits --preid=alpha",
-    "version:preminor": "lerna version preminor --conventional-commits",
-    "version:minor": "lerna version minor --conventional-commits",
-    "version:prepatch": "lerna version prepatch --conventional-commits",
-    "version:patch": "lerna version patch --conventional-commits",
-    "version:graduate": "lerna version --conventional-commits --conventional-graduate",
+    "version:alpha": "lerna version prerelease --conventional-commits --preid=alpha --no-push",
+    "version:preminor": "lerna version preminor --conventional-commits  --no-push",
+    "version:minor": "lerna version minor --conventional-commits --no-push",
+    "version:prepatch": "lerna version prepatch --conventional-commits --no-push",
+    "version:patch": "lerna version patch --conventional-commits --no-push",
+    "version:graduate": "lerna version --conventional-commits --conventional-graduate --no-push",
     "commit": "cz",
     "ets:rimraf": "cd $INIT_CWD && rimraf",
     "ets:tsc": "cd $INIT_CWD && tsc",
@@ -32,7 +32,7 @@
     "ets:build-utils": "cd $INIT_CWD && build-utils",
     "ets:madge": "cd $INIT_CWD && madge",
     "ets:ts-node": "cd $INIT_CWD && ts-node",
-    "version": "yarn"
+    "version": "yarn && git add yarn.lock && git add package.json && git commit -m \"update package.json and yarn.lock post release\""
   },
   "config": {
     "commitizen": {
