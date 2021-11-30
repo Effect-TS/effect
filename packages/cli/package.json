@@ -29,7 +29,8 @@
     "ets:prettier": "cd $INIT_CWD && prettier",
     "ets:concurrently": "cd $INIT_CWD && concurrently",
     "ets:build-utils": "cd $INIT_CWD && build-utils",
-    "ets:madge": "cd $INIT_CWD && madge"
+    "ets:madge": "cd $INIT_CWD && madge",
+    "ets:ts-node": "cd $INIT_CWD && ts-node"
   },
   "config": {
     "commitizen": {
