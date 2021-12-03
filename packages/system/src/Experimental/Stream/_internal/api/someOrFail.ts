@@ -10,12 +10,12 @@ import * as MapEffect from "./mapEffect"
  */
 export function someOrFail_<R, E, E1, A>(
   self: C.Stream<R, E, O.Option<A>>,
-  e: E1
+  e: () => E1
 ): C.Stream<R, E | E1, A> {
   return MapEffect.mapEffect_(
     self,
     O.fold(
-      () => T.fail(e),
+      () => T.fail(e()),
       (_) => T.succeed(_)
     )
   )
@@ -26,6 +26,6 @@ export function someOrFail_<R, E, E1, A>(
  *
  * @ets_data_first someOrFail_
  */
-export function someOrFail<E1>(e: E1) {
+export function someOrFail<E1>(e: () => E1) {
   return <R, E, A>(self: C.Stream<R, E, O.Option<A>>) => someOrFail_(self, e)
 }
