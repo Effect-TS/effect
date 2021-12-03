@@ -39,7 +39,7 @@ export function distributedWith_<R, E, A>(
         (next) =>
           pipe(
             T.collectAll(
-              CK.map_(CK.range(0, n), (id) =>
+              CK.map_(CK.range(0, n - 1), (id) =>
                 T.map_(next, ({ tuple: [key, queue] }) =>
                   Tp.tuple(Tp.tuple(key, id), queue)
                 )
