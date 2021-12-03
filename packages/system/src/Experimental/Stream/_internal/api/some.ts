@@ -8,6 +8,8 @@ import * as SomeOrFail from "./someOrFail"
 /**
  * Converts an option on values into an option on errors.
  */
-export function some<R, E, A>(self: C.Stream<R, E, O.Option<A>>) {
-  return SomeOrFail.someOrFail_(MapError.mapError_(self, O.some), O.none)
+export function some<R, E, A>(
+  self: C.Stream<R, E, O.Option<A>>
+): C.Stream<R, O.Option<E>, A> {
+  return SomeOrFail.someOrFail_(MapError.mapError_(self, O.some), () => O.none)
 }

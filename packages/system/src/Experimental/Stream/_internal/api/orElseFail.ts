@@ -11,9 +11,9 @@ import * as OrElse from "./orElse"
  */
 export function orElseFail_<R, E, E1, A>(
   self: C.Stream<R, E, A>,
-  e1: E1
+  e1: () => E1
 ): C.Stream<R, E | E1, A> {
-  return OrElse.orElse_(self, Fail.fail(e1))
+  return OrElse.orElse_(self, Fail.fail(e1()))
 }
 
 /**
@@ -23,6 +23,6 @@ export function orElseFail_<R, E, E1, A>(
  *
  * @ets_data_first orElseFail_
  */
-export function orElseFail<E1>(e1: E1) {
+export function orElseFail<E1>(e1: () => E1) {
   return <R, E, A>(self: C.Stream<R, E, A>) => orElseFail_(self, e1)
 }
