@@ -27,6 +27,10 @@ export interface CaseConstructor {
 export const Case: CaseConstructor = class<T>
   implements CaseBrand, St.HasHash, St.HasEquals
 {
+  static of<T>(args: T) {
+    return new this(args)
+  }
+
   #args: T
   #keys: string[]
   constructor(args: T) {
@@ -90,6 +94,11 @@ export const Case: CaseConstructor = class<T>
 export interface CaseConstructorTagged<Tag extends PropertyKey, K extends PropertyKey> {
   readonly _tag: Tag
 
+  readonly of: <X extends Omit<CaseConstructorTagged<Tag, K>, "new">>(
+    this: X,
+    ...args: X extends new (...args: infer R) => any ? R : never
+  ) => X extends new (...args: any[]) => any ? InstanceType<X> : never
+
   new <T>(args: IsEqualTo<T, {}> extends true ? void : T): T &
     Copy<T> & { readonly [k in K]: Tag }
 }
@@ -107,7 +116,7 @@ export function Tagged<Tag extends string | symbol, Key extends string | symbol>
 ): CaseConstructorTagged<Tag, string> {
   if (key) {
     class X extends Case<{}> {
-      static _tag = tag;
+      static readonly _tag = tag;
       // @ts-expect-error
       readonly [key] = tag
     }
@@ -115,6 +124,7 @@ export function Tagged<Tag extends string | symbol, Key extends string | symbol>
     return X
   }
   class X extends Case<{}> {
+    static readonly _tag = tag
     readonly _tag = tag
   }
 
