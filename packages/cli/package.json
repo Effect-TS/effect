@@ -8,14 +8,15 @@
   ],
   "scripts": {
     "prepublishOnly": "yarn prettier --write \"./packages*/*/build/**/*.ts\"",
-    "ci": "yarn run clean && yarn run build && yarn run tc && yarn run lint && yarn run test",
+    "ci": "yarn run clean && yarn run build && yarn run tc && yarn run lint && yarn run circular",
     "clean": "ultra -r clean",
     "build": "ultra -r build",
+    "circular": "ultra -r circular",
     "test": "jest --detectOpenHandles",
     "autofix": "ultra -r autofix",
     "lint": "ultra -r lint",
     "tc": "ultra -r tc",
-    "postinstall": "husky install && ts-patch install",
+    "postinstall": "husky install && ts-patch install -s",
     "version:alpha": "lerna version prerelease --conventional-commits --preid=alpha",
     "version:preminor": "lerna version preminor --conventional-commits",
     "version:minor": "lerna version minor --conventional-commits",
@@ -29,7 +30,9 @@
     "ets:prettier": "cd $INIT_CWD && prettier",
     "ets:concurrently": "cd $INIT_CWD && concurrently",
     "ets:build-utils": "cd $INIT_CWD && build-utils",
-    "ets:madge": "cd $INIT_CWD && madge"
+    "ets:madge": "cd $INIT_CWD && madge",
+    "ets:ts-node": "cd $INIT_CWD && ts-node",
+    "version": "yarn && git add yarn.lock && git add package.json && git commit -m \"chore: update package.json and yarn.lock\""
   },
   "config": {
     "commitizen": {
