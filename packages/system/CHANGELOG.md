@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.45.3](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.45.2...@effect-ts/system@0.45.3) (2021-12-05)
+
+
+### Bug Fixes
+
+* **exp-stream:** fix distributedWith ([#986](https://github.com/Effect-TS/core/issues/986)) ([67af709](https://github.com/Effect-TS/core/commit/67af709f579ccdf5575092ce9dbda134e88ddc23))
+* **exp-stream:** made orElseFail/someOrFail error parameter lazy ([#984](https://github.com/Effect-TS/core/issues/984)) ([9cee1c4](https://github.com/Effect-TS/core/commit/9cee1c44201759ff572af55039d4aab4e33486e0))
+
+
+
+
+
 ## [0.45.2](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.45.1...@effect-ts/system@0.45.2) (2021-11-29)
 
 **Note:** Version bump only for package @effect-ts/system
