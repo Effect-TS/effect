@@ -878,7 +878,7 @@ export function zipWith_<R, E, A, R1, E1, B, C>(
  * updated state from this computation to that computation and combining the
  * results of both into a tuple.
  *
- * @ets_data_first zip
+ * @ets_data_first zip_
  */
 export function zip<R1, E1, B>(that: Async<R1, E1, B>) {
   return <R, E, A>(self: Async<R, E, A>) => zip_(self, that)
