@@ -1,4 +1,4 @@
-import { Tagged } from "../../Case"
+import { Tagged, TaggedADT } from "../../Case"
 import * as Clock from "../../Clock"
 import * as ClockId from "../../Clock/id"
 import * as Chunk from "../../Collections/Immutable/Chunk"
@@ -123,19 +123,13 @@ export class Data extends Tagged("Data")<{
  */
 export type WarningData = Start | Done | Pending
 
-export class Start extends Tagged("Start")<{}> {
-  static of: WarningData = new Start()
-}
+export class Start extends TaggedADT<WarningData>()("Start")<{}> {}
 
-export class Done extends Tagged("Done")<{}> {
-  static of: WarningData = new Done()
-}
+export class Done extends TaggedADT<WarningData>()("Done")<{}> {}
 
-export class Pending extends Tagged("Pending")<{
+export class Pending extends TaggedADT<WarningData>()("Pending")<{
   readonly fiber: Fiber.Fiber<never, void>
-}> {
-  static of = (fiber: Fiber.Fiber<never, void>): WarningData => new Pending({ fiber })
-}
+}> {}
 
 export class Test implements TestClock {
   readonly serviceId: Clock.ClockId = ClockId.ClockId
@@ -269,7 +263,7 @@ export class Test implements TestClock {
                 )
               )
             ),
-            T.map(({ fiber }) => Pending.of(fiber)),
+            T.map(({ fiber }) => Pending.make({ fiber })),
             O.some
           )
         }
@@ -288,10 +282,10 @@ export class Test implements TestClock {
     RefM.updateSome((_) => {
       switch (_._tag) {
         case "Start": {
-          return O.some(T.succeed(Done.of))
+          return O.some(T.succeed(Done.make()))
         }
         case "Pending": {
-          return pipe(_.fiber, Fiber.interrupt, T.as(Done.of), O.some)
+          return pipe(_.fiber, Fiber.interrupt, T.as(Done.make()), O.some)
         }
         default:
           return O.none
@@ -441,7 +435,7 @@ export function live(data: Data) {
     const live = yield* _(Live)
     const annotations = yield* _(Annotations)
     const ref = yield* _(Ref.makeRef(data))
-    const refM = yield* _(RefM.makeRefM(Start.of))
+    const refM = yield* _(RefM.makeRefM<WarningData>(Start.make()))
 
     const test = yield* _(
       T.succeedWith(() => new Test(ref, live, annotations, refM))["|>"](
