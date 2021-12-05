@@ -956,64 +956,6 @@ export function delay(ms: number) {
     )
 }
 
-// binds the output of a computation to a variable
-// useful for imperative style, like using async/await
-export function bind<K extends string>(k: K) {
-  return <R, S, E1, A1>(f: (s: S) => Async<R, E1, A1>) =>
-    <R1, E>(
-      self: Async<R1, E, S>
-    ): Async<
-      R & R1,
-      E | E1,
-      S & {
-        [k in K]: A1
-      }
-    > =>
-      pipe(
-        self,
-        chain((s) =>
-          pipe(
-            f(s),
-            map(
-              (a1) =>
-                ({ ...s, [k]: a1 } as S & {
-                  [k in K]: A1
-                })
-            )
-          )
-        )
-      )
-}
-
-// binds the result of a function to a variable
-// useful for imperative style, like using async/await
-function assign<K extends string>(k: K) {
-  return <S, A1>(f: (s: S) => A1) =>
-    <R, E>(
-      self: Async<R, E, S>
-    ): Async<
-      R,
-      E,
-      S & {
-        [k in K]: A1
-      }
-    > =>
-      pipe(
-        self,
-        map((s) =>
-          pipe(
-            f(s),
-            (a1) =>
-              ({ ...s, [k]: a1 } as S & {
-                [k in K]: A1
-              })
-          )
-        )
-      )
-}
-
-export { assign as let }
-
 // list an Either
 export function fromEither<E, A>(e: E.Either<E, A>) {
   return e._tag === "Right" ? succeed(e.right) : fail(e.left)
