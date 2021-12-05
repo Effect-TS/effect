@@ -18,6 +18,8 @@ export interface IO<E, A> extends Sync<unknown, E, A> {}
  * Extends this computation with another computation that depends on the
  * result of this computation by running the first computation, using its
  * result to generate a second computation, and running that computation.
+ *
+ * @ets_data_first chain_
  */
 export const chain: <A, R1, E1, B>(
   f: (a: A) => Sync<R1, E1, B>
@@ -35,6 +37,8 @@ export const chain_: <R, E, A, R1, E1, B>(
 
 /**
  * Returns a computation that effectfully "peeks" at the success of this one.
+ *
+ * @ets_data_first tap_
  */
 export const tap: <A, R1, E1, X>(
   f: (a: A) => Sync<R1, E1, X>
@@ -72,6 +76,8 @@ export const map_: <R, E, A, B>(self: Sync<R, E, A>, f: (a: A) => B) => Sync<R, 
  * Extends this computation with another computation that depends on the
  * result of this computation by running the first computation, using its
  * result to generate a second computation, and running that computation.
+ *
+ * @ets_data_first map_
  */
 export const map: <A, B>(
   f: (a: A) => B
@@ -90,6 +96,8 @@ export const foldM_: <R, E, A, R1, E1, B, R2, E2, C>(
 /**
  * Recovers from errors by accepting one computation to execute for the case
  * of an error, and one computation to execute for the case of success.
+ *
+ * @ets_data_first foldM_
  */
 export const foldM: <E, A, R1, E1, B, R2, E2, C>(
   failure: (e: E) => Sync<R1, E1, B>,
@@ -100,6 +108,8 @@ export const foldM: <E, A, R1, E1, B, R2, E2, C>(
  * Folds over the failed or successful results of this computation to yield
  * a computation that does not fail, but succeeds with the value of the left
  * or righr function passed to `fold`.
+ *
+ * fold_
  */
 export const fold: <E, A, B, C>(
   failure: (e: E) => B,
@@ -119,6 +129,8 @@ export const fold_: <R, E, A, B, C>(
 
 /**
  * Recovers from all errors.
+ *
+ * @ets_data_first catchAll_
  */
 export const catchAll: <S1, E, S3, R1, E1, B>(
   failure: (e: E) => Sync<R1, E1, B>
@@ -135,6 +147,8 @@ export const catchAll_: <R, E, A, R1, E1, B>(
 /**
  * Returns a computation whose error and success channels have been mapped
  * by the specified functions, `f` and `g`.
+ *
+ * bimap_
  */
 export const bimap: <E, A, E1, A1>(
   f: (e: E) => E1,
@@ -154,6 +168,8 @@ export const bimap_: <R, E, A, E1, A1>(
 /**
  * Transforms the error type of this computation with the specified
  * function.
+ *
+ * mapError_
  */
 export const mapError: <E, E1>(
   f: (e: E) => E1
@@ -192,6 +208,8 @@ export const provide: <R>(
 
 /**
  * Provides this computation with its required environment.
+ * 
+ * @ets_data_first provideAll_
  */
 export const provideAll: <R>(
   r: R
@@ -230,6 +248,8 @@ export const either: <R, E, A>(self: Sync<R, E, A>) => Sync<R, never, Either<E, 
 /**
  * Executes this computation and returns its value, if it succeeds, but
  * otherwise executes the specified computation.
+ * 
+ * @ets_data_first orElseEither_
  */
 export const orElseEither: <R2, E2, A2>(
   that: () => Sync<R2, E2, A2>
@@ -248,6 +268,8 @@ export const orElseEither_: <R, E, A, R2, E2, A2>(
  * Combines this computation with the specified computation, passing the
  * updated state from this computation to that computation and combining the
  * results of both using the specified function.
+ * 
+ * @ets_data_first zipWith_
  */
 export const zipWith: <R1, E1, A, B, C>(
   that: Sync<R1, E1, B>,
@@ -269,6 +291,8 @@ export const zipWith_: <R, E, A, R1, E1, B, C>(
  * Combines this computation with the specified computation, passing the
  * updated state from this computation to that computation and combining the
  * results of both into a tuple.
+ * 
+ * @ets_data_first zip_
  */
 export const zip: <R1, E1, B>(
   that: Sync<R1, E1, B>

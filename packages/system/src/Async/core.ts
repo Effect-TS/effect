@@ -558,6 +558,8 @@ export function runAsyncEnv<R, E, A>(
  * Extends this computation with another computation that depends on the
  * result of this computation by running the first computation, using its
  * result to generate a second computation, and running that computation.
+ *
+ * @ets_data_first chain_
  */
 export function chain<A, R1, E1, B>(f: (a: A) => Async<R1, E1, B>) {
   return <R, E>(self: Async<R, E, A>): Async<R & R1, E | E1, B> => new IFlatMap(self, f)
@@ -577,6 +579,8 @@ export function chain_<R, E, A, R1, E1, B>(
 
 /**
  * Returns a computation that effectfully "peeks" at the success of this one.
+ *
+ * @ets_data_first tap_
  */
 export function tap<A, R1, E1, X>(f: (a: A) => Async<R1, E1, X>) {
   return <R, E>(self: Async<R, E, A>): Async<R & R1, E | E1, A> => tap_(self, f)
@@ -620,6 +624,8 @@ export function map_<R, E, A, B>(self: Async<R, E, A>, f: (a: A) => B) {
  * Extends this computation with another computation that depends on the
  * result of this computation by running the first computation, using its
  * result to generate a second computation, and running that computation.
+ *
+ * @ets_data_first map_
  */
 export function map<A, B>(f: (a: A) => B) {
   return <R, E>(self: Async<R, E, A>) => map_(self, f)
@@ -644,6 +650,8 @@ export function foldM_<R, E, A, R1, E1, B, R2, E2, C>(
 /**
  * Recovers from errors by accepting one computation to execute for the case
  * of an error, and one computation to execute for the case of success.
+ *
+ * @ets_data_first foldM_
  */
 export function foldM<E, A, R1, E1, B, R2, E2, C>(
   failure: (e: E) => Async<R1, E1, B>,
@@ -655,7 +663,9 @@ export function foldM<E, A, R1, E1, B, R2, E2, C>(
 /**
  * Folds over the failed or successful results of this computation to yield
  * a computation that does not fail, but succeeds with the value of the left
- * or righr function passed to `fold`.
+ * or right function passed to `fold`.
+ *
+ * @ets_data_first fold_
  */
 export function fold<E, A, B, C>(failure: (e: E) => B, success: (a: A) => C) {
   return <R>(self: Async<R, E, A>) => fold_(self, failure, success)
@@ -680,6 +690,8 @@ export function fold_<R, E, A, B, C>(
 
 /**
  * Recovers from all errors.
+ *
+ * @ets_data_first catchAll_
  */
 export function catchAll<E, R1, E1, B>(failure: (e: E) => Async<R1, E1, B>) {
   return <R, A>(self: Async<R, E, A>) => catchAll_(self, failure)
@@ -698,6 +710,8 @@ export function catchAll_<R, E, A, R1, E1, B>(
 /**
  * Returns a computation whose error and success channels have been mapped
  * by the specified functions, `f` and `g`.
+ *
+ * @ets_data_first bimap_
  */
 export function bimap<E, A, E1, A1>(f: (e: E) => E1, g: (a: A) => A1) {
   return <R>(self: Async<R, E, A>) => bimap_(self, f, g)
@@ -722,6 +736,8 @@ export function bimap_<R, E, A, E1, A1>(
 /**
  * Transforms the error type of this computation with the specified
  * function.
+ *
+ * @ets_data_first mapError_
  */
 export function mapError<E, E1>(f: (e: E) => E1) {
   return <R, A>(self: Async<R, E, A>) => mapError_(self, f)
@@ -751,6 +767,8 @@ export function provideSome<R0, R1>(f: (s: R0) => R1) {
 
 /**
  * Provides this computation with its required environment.
+ *
+ * @ets_data_first provideAll_
  */
 export function provideAll<R>(r: R) {
   return <E, A>(self: Async<R, E, A>): Async<unknown, E, A> => new IProvide(r, self)
@@ -807,6 +825,8 @@ export function either<R, E, A>(self: Async<R, E, A>): Async<R, never, E.Either<
 /**
  * Executes this computation and returns its value, if it succeeds, but
  * otherwise executes the specified computation.
+ *
+ * @ets_data_first orElseEither_
  */
 export function orElseEither<R2, E2, A2>(that: () => Async<R2, E2, A2>) {
   return <R, E, A>(self: Async<R, E, A>): Async<R & R2, E2, E.Either<A, A2>> =>
@@ -832,6 +852,8 @@ export function orElseEither_<R, E, A, R2, E2, A2>(
  * Combines this computation with the specified computation, passing the
  * updated state from this computation to that computation and combining the
  * results of both using the specified function.
+ *
+ * @ets_data_first zipWith_
  */
 export function zipWith<R1, E1, A, B, C>(that: Async<R1, E1, B>, f: (a: A, b: B) => C) {
   return <R, E>(self: Async<R, E, A>): Async<R & R1, E1 | E, C> =>
@@ -855,6 +877,8 @@ export function zipWith_<R, E, A, R1, E1, B, C>(
  * Combines this computation with the specified computation, passing the
  * updated state from this computation to that computation and combining the
  * results of both into a tuple.
+ *
+ * @ets_data_first zip
  */
 export function zip<R1, E1, B>(that: Async<R1, E1, B>) {
   return <R, E, A>(self: Async<R, E, A>) => zip_(self, that)
