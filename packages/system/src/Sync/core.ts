@@ -148,7 +148,7 @@ export const catchAll_: <R, E, A, R1, E1, B>(
  * Returns a computation whose error and success channels have been mapped
  * by the specified functions, `f` and `g`.
  *
- * bimap_
+ * @ets_data_first bimap_
  */
 export const bimap: <E, A, E1, A1>(
   f: (e: E) => E1,
@@ -169,7 +169,7 @@ export const bimap_: <R, E, A, E1, A1>(
  * Transforms the error type of this computation with the specified
  * function.
  *
- * mapError_
+ * @ets_data_first mapError_
  */
 export const mapError: <E, E1>(
   f: (e: E) => E1
@@ -208,7 +208,7 @@ export const provide: <R>(
 
 /**
  * Provides this computation with its required environment.
- * 
+ *
  * @ets_data_first provideAll_
  */
 export const provideAll: <R>(
@@ -248,7 +248,7 @@ export const either: <R, E, A>(self: Sync<R, E, A>) => Sync<R, never, Either<E, 
 /**
  * Executes this computation and returns its value, if it succeeds, but
  * otherwise executes the specified computation.
- * 
+ *
  * @ets_data_first orElseEither_
  */
 export const orElseEither: <R2, E2, A2>(
@@ -268,7 +268,7 @@ export const orElseEither_: <R, E, A, R2, E2, A2>(
  * Combines this computation with the specified computation, passing the
  * updated state from this computation to that computation and combining the
  * results of both using the specified function.
- * 
+ *
  * @ets_data_first zipWith_
  */
 export const zipWith: <R1, E1, A, B, C>(
@@ -291,7 +291,7 @@ export const zipWith_: <R, E, A, R1, E1, B, C>(
  * Combines this computation with the specified computation, passing the
  * updated state from this computation to that computation and combining the
  * results of both into a tuple.
- * 
+ *
  * @ets_data_first zip_
  */
 export const zip: <R1, E1, B>(
