@@ -109,7 +109,7 @@ export const foldM: <E, A, R1, E1, B, R2, E2, C>(
  * a computation that does not fail, but succeeds with the value of the left
  * or righr function passed to `fold`.
  *
- * fold_
+ * @ets_data_first fold_
  */
 export const fold: <E, A, B, C>(
   failure: (e: E) => B,
