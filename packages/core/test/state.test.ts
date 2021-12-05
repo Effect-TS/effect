@@ -9,9 +9,7 @@ describe("State", () => {
   it("should use fiber state", async () => {
     class Count extends Tagged("@local/Count")<{
       readonly count: number
-    }> {
-      static of = (n: number) => new Count({ count: n })
-    }
+    }> {}
 
     const CountState = FiberState<Count>(Count._tag)
 
@@ -37,7 +35,9 @@ describe("State", () => {
     const result = await pipe(
       program,
       T.provideSomeLayer(
-        CountState.Live(Count.of(0))["+++"](EitherState.Live(E.right(Count.of(0))))
+        CountState.Live(Count.make({ count: 0 }))["+++"](
+          EitherState.Live(E.right(Count.make({ count: 0 })))
+        )
       ),
       T.runPromise
     )
@@ -48,9 +48,7 @@ describe("State", () => {
   it("should use state", async () => {
     class Count extends Tagged("@local/Count")<{
       readonly count: number
-    }> {
-      static of = (n: number) => new Count({ count: n })
-    }
+    }> {}
 
     const CountState = State<Count>(Count._tag)
 
@@ -74,7 +72,9 @@ describe("State", () => {
     const result = await pipe(
       program,
       T.provideSomeLayer(
-        CountState.Live(Count.of(0))["+++"](EitherState.Live(E.right(Count.of(0))))
+        CountState.Live(Count.make({ count: 0 }))["+++"](
+          EitherState.Live(E.right(Count.make({ count: 0 })))
+        )
       ),
       T.runPromise
     )

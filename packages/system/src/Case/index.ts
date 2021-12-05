@@ -20,6 +20,11 @@ export interface Copy<T> {
 }
 
 export interface CaseConstructor {
+  readonly make: <X extends CaseConstructor>(
+    this: X,
+    ...args: X extends new (...args: infer R) => any ? R : never
+  ) => X extends new (...args: any) => any ? InstanceType<X> : never
+
   new <T>(args: IsEqualTo<T, {}> extends true ? void : T): T & Copy<T>
 }
 
@@ -27,7 +32,7 @@ export interface CaseConstructor {
 export const Case: CaseConstructor = class<T>
   implements CaseBrand, St.HasHash, St.HasEquals
 {
-  static of<T>(args: T) {
+  static make<T>(args: T) {
     return new this(args)
   }
 
@@ -94,13 +99,40 @@ export const Case: CaseConstructor = class<T>
 export interface CaseConstructorTagged<Tag extends PropertyKey, K extends PropertyKey> {
   readonly _tag: Tag
 
-  readonly of: <X extends Omit<CaseConstructorTagged<Tag, K>, "new">>(
+  readonly make: <X extends Omit<CaseConstructorTagged<Tag, K>, "new">>(
     this: X,
     ...args: X extends new (...args: infer R) => any ? R : never
   ) => X extends new (...args: any[]) => any ? InstanceType<X> : never
 
   new <T>(args: IsEqualTo<T, {}> extends true ? void : T): T &
     Copy<T> & { readonly [k in K]: Tag }
+}
+
+export interface CaseConstructorADT<Y, Tag extends PropertyKey, K extends PropertyKey> {
+  readonly _tag: Tag
+
+  readonly make: <X extends Omit<CaseConstructorADT<Y, Tag, K>, "new">>(
+    this: X,
+    ...args: X extends new (...args: infer R) => any ? R : never
+  ) => X extends new (...args: any) => any
+    ? InstanceType<X> extends Y
+      ? Y
+      : InstanceType<X>
+    : Y
+
+  new <T>(args: IsEqualTo<T, {}> extends true ? void : T): T &
+    Copy<T> & { readonly [k in K]: Tag }
+}
+
+export function TaggedADT<X>(): {
+  <Tag extends string | symbol>(tag: Tag): CaseConstructorADT<X, Tag, "_tag">
+  <Tag extends string | symbol, Key extends string | symbol>(
+    tag: Tag,
+    key: Key
+  ): CaseConstructorADT<X, Tag, Key>
+} {
+  // @ts-expect-error
+  return Tagged
 }
 
 export function Tagged<Tag extends string | symbol, Key extends string | symbol>(
