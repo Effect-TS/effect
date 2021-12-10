@@ -20,7 +20,6 @@
 | fill               | ✅    |       |
 | filter             | ✅    |       |
 | find               | ✅    |       |
-| findM              | ✅    |       |
 | flatten            | ✅    |       |
 | forAll             | ✅    |       |
 | forAny             | ✅    |       |
@@ -70,7 +69,7 @@
 | zipWithIndex       | ✅    |       |
 | zipWithIndexOffset | ✅    |       |
 
-## Effect specific methods and constants
+## Effect-specific methods and constants
 | Method name        | Chunk | Array |
 | ------------------ | ----- | ----- |
 | collectEffect      | ✅    |       |
