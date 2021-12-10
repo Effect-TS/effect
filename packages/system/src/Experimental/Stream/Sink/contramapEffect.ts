@@ -22,7 +22,7 @@ export function contramapEffect_<
   self: C.Sink<R, InErr, In, OutErr, L, Z>,
   f: (in_: In1) => T.Effect<R1, InErr1, In>
 ): C.Sink<R1 & R, InErr & InErr1, In1, OutErr, L, Z> {
-  return ContramapChunksEffect.contramapChunksEffect_(self, CK.mapM(f))
+  return ContramapChunksEffect.contramapChunksEffect_(self, CK.mapEffect(f))
 }
 
 /**

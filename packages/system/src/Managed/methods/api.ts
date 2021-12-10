@@ -2509,7 +2509,7 @@ export function collectAllWith_<R, E, A, B>(
   pf: (a: A) => O.Option<B>,
   __trace?: string
 ): Managed<R, E, Chunk.Chunk<B>> {
-  return core.map_(collectAll(as, __trace), Chunk.filterMap(pf))
+  return core.map_(collectAll(as, __trace), Chunk.collectChunk(pf))
 }
 
 /**
@@ -2531,7 +2531,7 @@ export function collectAllWithPar_<R, E, A, B>(
   pf: (a: A) => O.Option<B>,
   __trace?: string
 ): Managed<R, E, Chunk.Chunk<B>> {
-  return core.map_(collectAllPar(as, __trace), Chunk.filterMap(pf))
+  return core.map_(collectAllPar(as, __trace), Chunk.collectChunk(pf))
 }
 
 /**
@@ -2556,7 +2556,7 @@ export function collectAllWithParN_<R, E, A, B>(
   pf: (a: A) => O.Option<B>,
   __trace?: string
 ): Managed<R, E, Chunk.Chunk<B>> {
-  return core.map_(collectAllParN_(as, n, __trace), Chunk.filterMap(pf))
+  return core.map_(collectAllParN_(as, n, __trace), Chunk.collectChunk(pf))
 }
 
 /**

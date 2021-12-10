@@ -8,7 +8,7 @@ describe("Sink", () => {
   describe("collectAllToMap", () => {
     it("does not dupe", async () => {
       const stream = S.fromChunk(
-        A.many("one", "two", "three", "three", "three", "four", "five")
+        A.make("one", "two", "three", "three", "three", "four", "five")
       )
       const sink = SK.collectAllToMap((k: string) => `key-${k}`)((a, b) => `${a} ${b}`)
 

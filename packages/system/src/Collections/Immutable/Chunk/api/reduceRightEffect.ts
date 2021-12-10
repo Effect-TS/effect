@@ -7,7 +7,7 @@ import { reduceRight_ } from "./reduceRight"
 /**
  * Folds over the elements in this chunk from the right.
  */
-export function reduceRightM_<A, R, E, S>(
+export function reduceRightEffect_<A, R, E, S>(
   self: Chunk.Chunk<A>,
   s: S,
   f: (a: A, s: S) => Effect<R, E, S>
@@ -24,11 +24,11 @@ export function reduceRightM_<A, R, E, S>(
 /**
  * Folds over the elements in this chunk from the right.
  *
- * @ets_data_first reduceRightM_
+ * @ets_data_first reduceRightEffect_
  */
-export function reduceRightM<A, R, E, S>(
+export function reduceRightEffect<A, R, E, S>(
   s: S,
   f: (a: A, s: S) => Effect<R, E, S>
 ): (self: Chunk.Chunk<A>) => Effect<R, E, S> {
-  return (self) => reduceRightM_(self, s, f)
+  return (self) => reduceRightEffect_(self, s, f)
 }

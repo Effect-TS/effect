@@ -54,7 +54,7 @@ export function flattenExitOption<R, E, E1, A>(
 
     return CH.zipRight_(
       CH.write(
-        CK.filterMap_(
+        CK.collectChunk_(
           toEmit,
           Ex.fold(
             () => O.none,

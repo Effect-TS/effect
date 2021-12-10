@@ -1,8 +1,8 @@
 // ets_tracing: off
 
 import * as cause from "../Cause"
+import * as ChunkCollectChunk from "../Collections/Immutable/Chunk/api/collectChunk"
 import * as ChunkFilter from "../Collections/Immutable/Chunk/api/filter"
-import * as ChunkFilterMap from "../Collections/Immutable/Chunk/api/filterMap"
 import * as ChunkForEach from "../Collections/Immutable/Chunk/api/forEach"
 import * as ChunkIndexWhere from "../Collections/Immutable/Chunk/api/indexWhere"
 import * as ChunkSplitAt from "../Collections/Immutable/Chunk/api/splitAt"
@@ -839,7 +839,7 @@ export function collectAllWith_<R, E, A, B>(
   pf: (a: A) => O.Option<B>,
   __trace?: string
 ): Effect<R, E, Chunk.Chunk<B>> {
-  return map.map_(collectAll(as, __trace), ChunkFilterMap.filterMap(pf))
+  return map.map_(collectAll(as, __trace), ChunkCollectChunk.collectChunk(pf))
 }
 
 /**
@@ -861,7 +861,7 @@ export function collectAllWithPar_<R, E, A, B>(
   pf: (a: A) => O.Option<B>,
   __trace?: string
 ): Effect<R, E, Chunk.Chunk<B>> {
-  return map.map_(collectAllPar(as, __trace), ChunkFilterMap.filterMap(pf))
+  return map.map_(collectAllPar(as, __trace), ChunkCollectChunk.collectChunk(pf))
 }
 
 /**
@@ -886,7 +886,7 @@ export function collectAllWithParN_<R, E, A, B>(
   pf: (a: A) => O.Option<B>,
   __trace?: string
 ): Effect<R, E, Chunk.Chunk<B>> {
-  return map.map_(collectAllParN_(as, n, __trace), ChunkFilterMap.filterMap(pf))
+  return map.map_(collectAllParN_(as, n, __trace), ChunkCollectChunk.collectChunk(pf))
 }
 
 /**

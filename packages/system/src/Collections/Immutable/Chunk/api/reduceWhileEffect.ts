@@ -36,7 +36,7 @@ function loop<A, R, E, S>(
  * Folds over the elements in this chunk from the left.
  * Stops the fold early when the condition is not fulfilled.
  */
-export function reduceWhileM_<A, R, E, S>(
+export function reduceWhileEffect_<A, R, E, S>(
   self: Chunk.Chunk<A>,
   s: S,
   pred: (s: S) => boolean,
@@ -59,12 +59,12 @@ export function reduceWhileM_<A, R, E, S>(
  * Folds over the elements in this chunk from the left.
  * Stops the fold early when the condition is not fulfilled.
  *
- * @ets_data_first reduceWhileM_
+ * @ets_data_first reduceWhileEffect_
  */
-export function reduceWhileM<A, R, E, S>(
+export function reduceWhileEffect<A, R, E, S>(
   s: S,
   pred: (s: S) => boolean,
   f: (s: S, a: A) => Effect<R, E, S>
 ): (self: Chunk.Chunk<A>) => Effect<R, E, S> {
-  return (self) => reduceWhileM_(self, s, pred, f)
+  return (self) => reduceWhileEffect_(self, s, pred, f)
 }

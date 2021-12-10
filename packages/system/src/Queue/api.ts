@@ -227,14 +227,14 @@ class BothWithM<
   takeAll: T.Effect<RB & RB1 & R3, E3 | EB | EB1, Chunk.Chunk<D>> = T.chain_(
     T.zipPar_(this.self.takeAll, this.that.takeAll),
     ({ tuple: [bs, cs] }) =>
-      Chunk.mapM_(Chunk.zip_(bs, cs), ({ tuple: [b, c] }) => this.f(b, c))
+      Chunk.mapEffect_(Chunk.zip_(bs, cs), ({ tuple: [b, c] }) => this.f(b, c))
   )
 
   takeUpTo(max: number): T.Effect<RB & RB1 & R3, E3 | EB | EB1, Chunk.Chunk<D>> {
     return T.chain_(
       T.zipPar_(this.self.takeUpTo(max), this.that.takeUpTo(max)),
       ({ tuple: [bs, cs] }) =>
-        Chunk.mapM_(Chunk.zip_(bs, cs), ({ tuple: [b, c] }) => this.f(b, c))
+        Chunk.mapEffect_(Chunk.zip_(bs, cs), ({ tuple: [b, c] }) => this.f(b, c))
     )
   }
 }
@@ -377,11 +377,11 @@ class DimapM<RA, RB, EA, EB, A, B, C, RC, EC, RD, ED, D> extends XQueueInternal<
 
   takeAll: T.Effect<RD & RB, ED | EB, Chunk.Chunk<D>> = T.chain_(
     this.self.takeAll,
-    (a) => Chunk.mapM_(a, this.g)
+    (a) => Chunk.mapEffect_(a, this.g)
   )
 
   takeUpTo(n: number): T.Effect<RD & RB, ED | EB, Chunk.Chunk<D>> {
-    return T.chain_(this.self.takeUpTo(n), (bs) => Chunk.mapM_(bs, this.g))
+    return T.chain_(this.self.takeUpTo(n), (bs) => Chunk.mapEffect_(bs, this.g))
   }
 }
 
@@ -482,7 +482,7 @@ class FilterInputM<RA, RB, EA, EB, B, A, A1 extends A, R2, E2> extends XQueueInt
         )
       ),
       T.chain((maybeAs) => {
-        const filtered = Chunk.filterMap_(maybeAs, identity)
+        const filtered = Chunk.collectChunk_(maybeAs, identity)
 
         if (Chunk.isEmpty(filtered)) {
           return T.succeed(false)
@@ -559,7 +559,7 @@ class FilterOutputM<RA, RB, RB1, EB1, EA, EB, A, B> extends XQueueInternal<
 
   takeAll: T.Effect<RB & RB1, EB | EB1, Chunk.Chunk<B>> = T.chain_(
     this.self.takeAll,
-    (bs) => Chunk.filterM_(bs, this.f)
+    (bs) => Chunk.filterEffect_(bs, this.f)
   )
 
   loop(max: number, acc: Chunk.Chunk<B>): T.Effect<RB & RB1, EB | EB1, Chunk.Chunk<B>> {
@@ -568,7 +568,7 @@ class FilterOutputM<RA, RB, RB1, EB1, EA, EB, A, B> extends XQueueInternal<
         return T.succeed(acc)
       }
 
-      return T.chain_(Chunk.filterM_(bs, this.f), (filtered) => {
+      return T.chain_(Chunk.filterEffect_(bs, this.f), (filtered) => {
         const length = Chunk.size(filtered)
 
         if (length === max) {

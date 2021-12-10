@@ -6,7 +6,7 @@ import { concreteId } from "../definition"
 /**
  * Returns the first element that satisfies the effectful predicate.
  */
-export function findM_<R, E, A>(
+export function findEffect_<R, E, A>(
   self: Chunk.Chunk<A>,
   f: (a: A) => T.Effect<R, E, boolean>
 ): T.Effect<R, E, O.Option<A>> {
@@ -44,7 +44,9 @@ export function findM_<R, E, A>(
 
 /**
  * Returns the first element that satisfies the effectful predicate.
+ *
+ * @ets_data_first findEffect_
  */
-export function findM<R, E, A>(f: (a: A) => T.Effect<R, E, boolean>) {
-  return (self: Chunk.Chunk<A>) => findM_(self, f)
+export function findEffect<R, E, A>(f: (a: A) => T.Effect<R, E, boolean>) {
+  return (self: Chunk.Chunk<A>) => findEffect_(self, f)
 }

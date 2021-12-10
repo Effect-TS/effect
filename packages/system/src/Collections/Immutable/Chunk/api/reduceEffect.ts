@@ -7,7 +7,7 @@ import { reduce_ } from "./reduce"
 /**
  * Folds over the elements in this chunk from the left.
  */
-export function reduceM_<A, R, E, S>(
+export function reduceEffect_<A, R, E, S>(
   self: Chunk.Chunk<A>,
   s: S,
   f: (s: S, a: A) => Effect<R, E, S>
@@ -24,11 +24,11 @@ export function reduceM_<A, R, E, S>(
 /**
  * Folds over the elements in this chunk from the left.
  *
- * @ets_data_first reduceM_
+ * @ets_data_first reduceEffect_
  */
-export function reduceM<A, R, E, S>(
+export function reduceEffect<A, R, E, S>(
   s: S,
   f: (s: S, a: A) => Effect<R, E, S>
 ): (self: Chunk.Chunk<A>) => Effect<R, E, S> {
-  return (self) => reduceM_(self, s, f)
+  return (self) => reduceEffect_(self, s, f)
 }

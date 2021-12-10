@@ -49,7 +49,7 @@ export function distributedWith_<R, E, O>(
         ),
         M.chain((next) =>
           pipe(
-            A.mapM_(
+            A.mapEffect_(
               pipe(
                 A.range(0, n - 1),
                 A.map((id) =>

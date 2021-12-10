@@ -9,7 +9,7 @@ import { concreteId } from "../definition"
  * Statefully and effectfully maps over the elements of this chunk to produce
  * new elements.
  */
-export function mapAccumM_<A, B, R, E, S>(
+export function mapAccumEffect_<A, B, R, E, S>(
   self: Chunk.Chunk<A>,
   s: S,
   f: (s: S, a: A) => Effect<R, E, Tp.Tuple<[S, B]>>
@@ -42,11 +42,11 @@ export function mapAccumM_<A, B, R, E, S>(
  * Statefully and effectfully maps over the elements of this chunk to produce
  * new elements.
  *
- * @ets_data_first mapAccumM_
+ * @ets_data_first mapAccumEffect_
  */
-export function mapAccumM<A, B, R, E, S>(
+export function mapAccumEffect<A, B, R, E, S>(
   s: S,
   f: (s: S, a: A) => Effect<R, E, Tp.Tuple<[S, B]>>
 ): (self: Chunk.Chunk<A>) => Effect<R, E, Tp.Tuple<[S, Chunk.Chunk<B>]>> {
-  return (self) => mapAccumM_(self, s, f)
+  return (self) => mapAccumEffect_(self, s, f)
 }

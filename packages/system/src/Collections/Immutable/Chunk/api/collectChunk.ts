@@ -5,7 +5,7 @@ import * as ChunkDef from "../definition"
 /**
  * Returns a filtered, mapped subset of the elements of this chunk.
  */
-export function filterMap_<A, B>(
+export function collectChunk_<A, B>(
   self: Chunk.Chunk<A>,
   f: (a: A) => O.Option<B>
 ): Chunk.Chunk<B> {
@@ -24,7 +24,7 @@ export function filterMap_<A, B>(
       return dest
     }
     default: {
-      return filterMap_(self.materialize(), f)
+      return collectChunk_(self.materialize(), f)
     }
   }
 }
@@ -32,10 +32,10 @@ export function filterMap_<A, B>(
 /**
  * Returns a filtered, mapped subset of the elements of this chunk.
  *
- * @ets_data_first filterMap_
+ * @ets_data_first collectChunk_
  */
-export function filterMap<A, B>(
+export function collectChunk<A, B>(
   f: (a: A) => O.Option<B>
 ): (self: Chunk.Chunk<A>) => Chunk.Chunk<B> {
-  return (self) => filterMap_(self, f)
+  return (self) => collectChunk_(self, f)
 }

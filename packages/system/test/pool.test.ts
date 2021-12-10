@@ -102,7 +102,7 @@ describe("Pool", () => {
       T.runPromise
     )
 
-    expect(result).equals(Chunk.many(1, 2, 3, 4, 5, 6, 7, 8, 9, 10))
+    expect(result).equals(Chunk.make(1, 2, 3, 4, 5, 6, 7, 8, 9, 10))
   })
 
   it("blocks when item not available", async () => {
