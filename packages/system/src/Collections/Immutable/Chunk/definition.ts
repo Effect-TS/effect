@@ -87,6 +87,10 @@ export abstract class ChunkInternal<A>
     return St.hashIterator(this[Symbol.iterator]())
   }
 
+  toString() {
+    return `Chunk(${this.array().join(", ")})`
+  }
+
   toJSON() {
     return this.array()
   }
@@ -1159,4 +1163,8 @@ export function corresponds<A, B>(
   f: (a: A, b: B) => boolean
 ): (self: Chunk<A>) => boolean {
   return (self) => corresponds_(self, that, f)
+}
+
+export function toString<A>(self: Chunk<A>) {
+  return self.toString()
 }
