@@ -122,11 +122,11 @@ export const FilterWithIndex = P.instance<P.FilterWithIndex<[URI<ArrayURI>]>>({
 })
 
 export const FilterMap = P.instance<P.FilterMap<[URI<ArrayURI>]>>({
-  filterMap: A.filterMap
+  filterMap: A.collectArray
 })
 
 export const FilterMapWithIndex = P.instance<P.FilterMapWithIndex<[URI<ArrayURI>]>>({
-  filterMapWithIndex: A.filterMapWithIndex
+  filterMapWithIndex: A.collectArrayWithIndex
 })
 
 export const Partition = P.instance<P.Partition<[URI<ArrayURI>]>>({

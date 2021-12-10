@@ -101,7 +101,7 @@ export function collectAll<E, A>(
     A.head(exits),
     O.map((head) =>
       pipe(
-        A.dropLeft_(exits, 1),
+        A.drop_(exits, 1),
         A.reduce(
           pipe(
             head,
@@ -176,7 +176,7 @@ export function collectAllPar<E, A>(
     A.head(exits),
     O.map((head) =>
       pipe(
-        A.dropLeft_(exits, 1),
+        A.drop_(exits, 1),
         A.reduce(
           pipe(
             head,

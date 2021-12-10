@@ -31,7 +31,7 @@ export interface Tree<A> {
   readonly forest: Forest<A>
 }
 
-export function make<A>(value: A, forest: Forest<A> = A.empty): Tree<A> {
+export function make<A>(value: A, forest: Forest<A> = A.empty()): Tree<A> {
   return {
     value,
     forest
@@ -40,7 +40,7 @@ export function make<A>(value: A, forest: Forest<A> = A.empty): Tree<A> {
 
 export function getShow<A>(S: Show<A>): Show<Tree<A>> {
   function showSafe(t: Tree<A>): IO.IO<string> {
-    if (t.forest === A.empty || t.forest.length === 0) {
+    if (t.forest === A.empty() || t.forest.length === 0) {
       return IO.succeed(`make(${S.show(t.value)})`)
     }
     return pipe(
@@ -250,7 +250,7 @@ export function map_<A, B>(fa: Tree<A>, f: (a: A) => B): Tree<B> {
 export function of<A>(a: A): Tree<A> {
   return {
     value: a,
-    forest: A.empty
+    forest: A.empty()
   }
 }
 
