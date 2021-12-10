@@ -52,7 +52,7 @@ describe("Stream", () => {
   })
   describe("Core", () => {
     it("fromArray", async () => {
-      const a = S.fromChunk(A.many(0, 1, 2))
+      const a = S.fromChunk(A.make(0, 1, 2))
 
       expect(await T.runPromise(S.runCollect(a))).toEqual([0, 1, 2])
     })
@@ -83,8 +83,8 @@ describe("Stream", () => {
   it("interleave", async () => {
     expect(
       await pipe(
-        S.fromChunk(A.many(1, 1, 1, 1, 1, 1, 1, 1, 1, 1)),
-        S.interleave(S.fromChunk(A.many(2, 2, 2, 2, 2, 2, 2, 2, 2, 2))),
+        S.fromChunk(A.make(1, 1, 1, 1, 1, 1, 1, 1, 1, 1)),
+        S.interleave(S.fromChunk(A.make(2, 2, 2, 2, 2, 2, 2, 2, 2, 2))),
         S.take(5),
         S.runCollect,
         T.runPromise
@@ -95,7 +95,7 @@ describe("Stream", () => {
   it("intersperse", async () => {
     expect(
       await pipe(
-        S.fromChunk(A.many(1, 1, 1, 1, 1, 1, 1, 1, 1, 1)),
+        S.fromChunk(A.make(1, 1, 1, 1, 1, 1, 1, 1, 1, 1)),
         S.intersperse(2),
         S.take(5),
         S.runCollect,
@@ -201,10 +201,10 @@ describe("Stream", () => {
     expect(
       await pipe(
         S.zipN(
-          S.fromChunk(A.many(1, 1, 1, 1)),
-          S.fromChunk(A.many("a", "b", "c", "d")),
-          S.fromChunk(A.many(2, 2, 2, 2)),
-          S.fromChunk(A.many("e", "f", "g", "h"))
+          S.fromChunk(A.make(1, 1, 1, 1)),
+          S.fromChunk(A.make("a", "b", "c", "d")),
+          S.fromChunk(A.make(2, 2, 2, 2)),
+          S.fromChunk(A.make("e", "f", "g", "h"))
         )(tuple),
         S.runCollect,
         T.runPromise
@@ -221,9 +221,9 @@ describe("Stream", () => {
     expect(
       await pipe(
         S.crossN(
-          S.fromChunk(A.many(1, 2)),
-          S.fromChunk(A.many("a", "b")),
-          S.fromChunk(A.many(3, 4))
+          S.fromChunk(A.make(1, 2)),
+          S.fromChunk(A.make("a", "b")),
+          S.fromChunk(A.make(3, 4))
         )(tuple),
         S.runCollect,
         T.runPromise

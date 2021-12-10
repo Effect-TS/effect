@@ -19,7 +19,7 @@ export function dropWhileEffect<R, InErr, In>(
   > = CH.readWith(
     (in_) =>
       CH.unwrap(
-        T.map_(CK.dropWhileM_(in_, p), (leftover) => {
+        T.map_(CK.dropWhileEffect_(in_, p), (leftover) => {
           const more = CK.isEmpty(leftover)
 
           return more

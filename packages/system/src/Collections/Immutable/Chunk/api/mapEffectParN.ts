@@ -5,20 +5,22 @@ import type * as Chunk from "../core"
 /**
  * Effectfully maps the elements of this chunk in parallel.
  */
-export function mapMPar_<A, R, E, B>(
+export function mapMParEffect_<A, R, E, B>(
   self: Chunk.Chunk<A>,
+  n: number,
   f: (a: A) => Effect<R, E, B>
 ): Effect<R, E, Chunk.Chunk<B>> {
-  return forEach.forEachPar_(self, f)
+  return forEach.forEachParN_(self, n, f)
 }
 
 /**
  * Effectfully maps the elements of this chunk in parallel.
  *
- * @ets_data_first mapMPar_
+ * @ets_data_first mapMParEffect_
  */
-export function mapMPar<A, R, E, B>(
+export function mapMParEffect<A, R, E, B>(
+  n: number,
   f: (a: A) => Effect<R, E, B>
 ): (self: Chunk.Chunk<A>) => Effect<R, E, Chunk.Chunk<B>> {
-  return (self) => mapMPar_(self, f)
+  return (self) => mapMParEffect_(self, n, f)
 }

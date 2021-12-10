@@ -19,7 +19,7 @@ export function filterInputEffect_<
   self: C.Sink<R, InErr, In, OutErr, L, Z>,
   p: (in_: In1) => T.Effect<R1, InErr1, boolean>
 ): C.Sink<R1 & R, InErr & InErr1, In1, OutErr, L, Z> {
-  return ContramapChunksEffect.contramapChunksEffect_(self, CK.filterM(p))
+  return ContramapChunksEffect.contramapChunksEffect_(self, CK.filterEffect(p))
 }
 
 /**

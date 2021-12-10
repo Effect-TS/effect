@@ -1,0 +1,92 @@
+# Collections methods
+
+## Standard methods and constants
+| Method name        | Chunk | Array |
+| ------------------ | ----- | ----- |
+| append             | ✅    |       |
+| buckets            | ✅    |       |
+| chain              | ✅    |       |
+| collectChunk       | ✅    |       |
+| collectWhile       | ✅    |       |
+| concat             | ✅    |       |
+| corresponds        | ✅    |       |
+| compact            | ✅    |       |
+| dedupe             | ✅    |       |
+| drop               | ✅    |       |
+| dropWhile          | ✅    |       |
+| empty              | ✅    |       |
+| equals             | ✅    |       |
+| exists             | ✅    |       |
+| fill               | ✅    |       |
+| filter             | ✅    |       |
+| find               | ✅    |       |
+| findM              | ✅    |       |
+| flatten            | ✅    |       |
+| forAll             | ✅    |       |
+| forAny             | ✅    |       |
+| forEach            | ✅    |       |
+| get                | ✅    |       |
+| grouped            | ✅    |       |
+| head               | ✅    |       |
+| indexWhere         | ✅    |       |
+| indexWhereFrom     | ✅    |       |
+| isEmpty            | ✅    |       |
+| join               | ✅    |       |
+| last               | ✅    |       |
+| make               | ✅    |       |
+| map                | ✅    |       |
+| mapAccum           | ✅    |       |
+| materialize        | ✅    |       |
+| partitionMap       | ✅    |       |
+| prepend            | ✅    |       |
+| range              | ✅    |       |
+| reduce             | ✅    |       |
+| reduceRight        | ✅    |       |
+| reduceWhile        | ✅    |       |
+| reverse            | ✅    |       |
+| reverseBuckets     | ✅    |       |
+| separate           | ✅    |       |
+| single             | ✅    |       |
+| size               | ✅    |       |
+| split              | ✅    |       |
+| splitAt            | ✅    |       |
+| splitWhere         | ✅    |       |
+| tail               | ✅    |       |
+| take               | ✅    |       |
+| takeWhile          | ✅    |       |
+| toArrayLike        | ✅    |       |
+| toArray            | ✅    |       |
+| unfold             | ✅    |       |
+| unit               | ✅    |       |
+| unsafeGet          | ✅    |       |
+| unsafeHead         | ✅    |       |
+| unsafeLast         | ✅    |       |
+| unsafeTail         | ✅    |       |
+| unzip              | ✅    |       |
+| zip                | ✅    |       |
+| zipAll             | ✅    |       |
+| zipAllWith         | ✅    |       |
+| zipWith            | ✅    |       |
+| zipWithIndex       | ✅    |       |
+| zipWithIndexOffset | ✅    |       |
+
+## Effect specific methods and constants
+| Method name        | Chunk | Array |
+| ------------------ | ----- | ----- |
+| collectEffect      | ✅    |       |
+| collectWhileEffect | ✅    |       |
+| dropWhileEffect    | ✅    |       |
+| filterEffect       | ✅    |       |
+| findEffect         | ✅    |       |
+| mapAccumEffect     | ✅    |       |
+| mapEffect          | ✅    |       |
+| mapEffectPar       | ✅    |       |
+| mapEffectParN      | ✅    |       |
+| mapEffectUnit      | ✅    |       |
+| mapEffectUnitPar   | ✅    |       |
+| mapEffectUnitParN  | ✅    |       |
+| reduceEffect       | ✅    |       |
+| reduceRightEffect  | ✅    |       |
+| reduceWhileEffect  | ✅    |       |
+| takeWhileEffect    | ✅    |       |
+| unfoldEffect       | ✅    |       |

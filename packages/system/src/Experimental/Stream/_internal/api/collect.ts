@@ -12,7 +12,7 @@ export function collect_<R, E, A, B>(
   self: C.Stream<R, E, A>,
   f: (a: A) => O.Option<B>
 ): C.Stream<R, E, B> {
-  return MapChunks.mapChunks_(self, CK.filterMap(f))
+  return MapChunks.mapChunks_(self, CK.collectChunk(f))
 }
 
 /**

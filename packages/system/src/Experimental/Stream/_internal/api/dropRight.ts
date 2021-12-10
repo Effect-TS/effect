@@ -33,7 +33,7 @@ export function dropRight_<R, E, A>(
         void
       > = CH.readWith(
         (in_) => {
-          const outs = CK.filterMap_(in_, (elem) => {
+          const outs = CK.collectChunk_(in_, (elem) => {
             const head = queue.head()
 
             queue.put(elem)

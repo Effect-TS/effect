@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as ChunkFilterMap from "../Collections/Immutable/Chunk/api/filterMap"
+import * as ChunkCollectChunk from "../Collections/Immutable/Chunk/api/collectChunk"
 import * as Chunk from "../Collections/Immutable/Chunk/core"
 import { identity } from "../Function"
 import type * as O from "../Option"
@@ -111,7 +111,7 @@ export function collectAllWith_<R, E, A, B>(
   pf: (a: A) => O.Option<B>,
   __trace?: string
 ): Sync<R, E, Chunk.Chunk<B>> {
-  return core.map_(collectAll(as), ChunkFilterMap.filterMap(pf))
+  return core.map_(collectAll(as), ChunkCollectChunk.collectChunk(pf))
 }
 
 /**

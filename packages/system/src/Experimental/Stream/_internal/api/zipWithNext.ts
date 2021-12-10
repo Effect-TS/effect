@@ -33,7 +33,7 @@ export function zipWithNext<R, E, A>(
             O.map_(prev, (_) => Tp.tuple(_, curr))
           )
         )
-        const out = CK.filterMap_(
+        const out = CK.collectChunk_(
           chunk,
           O.fold(
             () => O.none,

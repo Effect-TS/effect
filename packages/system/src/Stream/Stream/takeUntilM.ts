@@ -33,7 +33,9 @@ export function takeUntilM_<R, R1, E, E1, O>(
                 T.do,
                 T.bind("chunk", () => chunks),
                 T.bind("taken", ({ chunk }) =>
-                  T.asSomeError(A.takeWhileM_(chunk, (_) => T.map_(pred(_), (r) => !r)))
+                  T.asSomeError(
+                    A.takeWhileEffect_(chunk, (_) => T.map_(pred(_), (r) => !r))
+                  )
                 ),
                 T.let("last", ({ chunk, taken }) =>
                   A.take_(A.drop_(chunk, A.size(taken)), 1)

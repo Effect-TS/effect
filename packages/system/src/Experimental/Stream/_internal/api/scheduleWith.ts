@@ -42,7 +42,7 @@ export function scheduleWith_<R, R1, E, E1, A, B, C1, C2>(
               T.zipLeft_(
                 T.map_(T.orDie(driver.last), (b) =>
                   CH.zipRight_(
-                    CH.write(CK.many(f(a), g(b))),
+                    CH.write(CK.make(f(a), g(b))),
                     loop(driver, chunk, index + 1)
                   )
                 ),

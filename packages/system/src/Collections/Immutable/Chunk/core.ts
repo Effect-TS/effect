@@ -386,7 +386,7 @@ export const unit: Chunk<void> = single(void 0)
  * NOTE: different from Chunk#from this copies the elements 1 by 1
  * allowing for binary to be correctly stored in typed arrays
  */
-export function many<Elem extends readonly any[]>(...iter: Elem): Chunk<Elem[number]> {
+export function make<Elem extends readonly any[]>(...iter: Elem): Chunk<Elem[number]> {
   let builder = empty<Elem[number]>()
   for (const x of iter) {
     builder = append_(builder, x)

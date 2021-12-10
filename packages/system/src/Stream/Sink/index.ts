@@ -137,7 +137,7 @@ export function contramapM_<R, R1, E, E1, I, I2, L, Z>(
   self: Sink<R, E, I, L, Z>,
   f: (i2: I2) => T.Effect<R1, E1, I>
 ): Sink<R & R1, E | E1, I2, L, Z> {
-  return contramapChunksM_(self, A.mapM(f))
+  return contramapChunksM_(self, A.mapEffect(f))
 }
 
 /**
