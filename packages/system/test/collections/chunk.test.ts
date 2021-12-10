@@ -522,4 +522,10 @@ describe("Chunk", () => {
 
     expect(result._tag).equals("Failure")
   })
+
+  it("dedupe", async () => {
+    expect(
+      Chunk.dedupe(Chunk.many(0, 0, 1, 2, 3, 4, 4, 5, 6, 7, 7, 7, 8, 9, 9, 9, 9))
+    ).equals(Chunk.range(0, 9))
+  })
 })
