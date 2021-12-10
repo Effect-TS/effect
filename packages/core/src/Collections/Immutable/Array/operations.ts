@@ -129,7 +129,7 @@ export function getEqual<A>(E: Equal<A>): Equal<Array<A>> {
  * Returns a `Identity` for `Array<A>`
  */
 export function getIdentity<A>() {
-  return makeIdentity(A.empty as Array<A>, A.concat_)
+  return makeIdentity(A.empty<A>(), A.concat_)
 }
 
 /**
