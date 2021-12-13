@@ -514,7 +514,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@effect-ts/build-utils@workspace:packages/build-utils"
   dependencies:
-    "@effect-ts/core": ^0.48.3
+    "@effect-ts/core": ^0.48.4
   peerDependencies:
     "@effect-ts/core": ">= 0.28.9"
     chalk: ">= 4.1.0"
@@ -524,15 +524,15 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@effect-ts/core@^0.48.3, @effect-ts/core@workspace:packages/core":
+"@effect-ts/core@^0.48.4, @effect-ts/core@workspace:packages/core":
   version: 0.0.0-use.local
   resolution: "@effect-ts/core@workspace:packages/core"
   dependencies:
-    "@effect-ts/system": ^0.45.3
+    "@effect-ts/system": ^0.45.4
   languageName: unknown
   linkType: soft
 
-"@effect-ts/system@^0.45.3, @effect-ts/system@workspace:packages/system":
+"@effect-ts/system@^0.45.4, @effect-ts/system@workspace:packages/system":
   version: 0.0.0-use.local
   resolution: "@effect-ts/system@workspace:packages/system"
   languageName: unknown
