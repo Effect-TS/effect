@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.45.5](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.45.4...@effect-ts/system@0.45.5) (2021-12-13)
+
+
+### Features
+
+* **exp-stream:** added sliding combinator ([#1002](https://github.com/Effect-TS/core/issues/1002)) ([a4fb5aa](https://github.com/Effect-TS/core/commit/a4fb5aa80ec615b453e2e1a2e621acfb5c7f32a8))
+
+
+
+
+
 ## [0.45.4](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.45.3...@effect-ts/system@0.45.4) (2021-12-13)
 
 
