@@ -203,3 +203,17 @@ export function enforceContext<R>() {
     <T extends { [k in typeof _R]: (_: R) => void }>(_: T): T => _
   )
 }
+
+/**
+ * Increments a number by one
+ */
+export function increment(n: number): number {
+  return n + 1
+}
+
+/**
+ * Decrements a number by one
+ */
+export function decrement(n: number): number {
+  return n - 1
+}

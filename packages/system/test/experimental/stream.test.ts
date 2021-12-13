@@ -531,4 +531,12 @@ describe("Stream", () => {
 
     expect(result).equals(Chunk.range(1, 9))
   })
+
+  it("sliding", async () => {
+    const result = await pipe(S.range(1, 4), S.sliding(2), S.runCollect, T.runPromise)
+
+    expect(result).equals(
+      Chunk.many(Chunk.many(1, 2), Chunk.many(2, 3), Chunk.many(3, 4))
+    )
+  })
 })

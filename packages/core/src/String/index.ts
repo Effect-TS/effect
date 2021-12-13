@@ -41,16 +41,16 @@ export function isEmpty(s: string): boolean {
 /**
  * Check if a string contains the given substring
  */
-export function contains_(s: string, substr: string): boolean {
+export function includes_(s: string, substr: string): boolean {
   return s.includes(substr)
 }
 
 /**
  * Check if a string contains the given substring
  *
- * @ets_data_first contains_
+ * @ets_data_first includes_
  */
-export function contains(substr: string): (s: string) => boolean {
+export function includes(substr: string): (s: string) => boolean {
   return (s) => s.includes(substr)
 }
 
@@ -109,14 +109,14 @@ export function trim(s: string): string {
  * Trim whitespace from the left side of the string
  */
 export function trimLeft(s: string): string {
-  return s.trimLeft()
+  return s.trimStart()
 }
 
 /**
  * Trim whitespace from the right side of the string
  */
 export function trimRight(s: string): string {
-  return s.trimRight()
+  return s.trimEnd()
 }
 
 /**
@@ -559,4 +559,17 @@ export function stripMarginWith_(str: string, marginChar: string): string {
  */
 export function stripMarginWith(marginChar: string) {
   return (str: string): string => stripMarginWith_(str, marginChar)
+}
+
+/**
+ * Converts the string to uppercase
+ */
+export function toUpperCase(str: string): string {
+  return str.toUpperCase()
+}
+/**
+ * Converts the string to uppercase
+ */
+export function toLowerCase(str: string): string {
+  return str.toLowerCase()
 }

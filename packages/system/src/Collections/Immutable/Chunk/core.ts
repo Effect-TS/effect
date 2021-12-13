@@ -161,6 +161,21 @@ export function take(n: number): <A>(self: Chunk<A>) => Chunk<A> {
 }
 
 /**
+ * Takes the last n elements
+ */
+export function takeRight_<A>(self: Chunk<A>, n: number): Chunk<A> {
+  return drop_(concreteId(self), size(self) - n)
+}
+
+/**
+ * Takes the last n elements
+ *
+ * @ets_data_first takeRight_
+ */
+export function takeRight(n: number) {
+  return <A>(self: Chunk<A>) => takeRight_(self, n)
+}
+/**
  * Drops the first n elements
  */
 export function drop_<A>(self: Chunk<A>, n: number): Chunk<A> {
