@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.45.4](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.45.3...@effect-ts/system@0.45.4) (2021-12-13)
+
+
+### Bug Fixes
+
+* **collections:** fix immutable hashset map function ([c43b17b](https://github.com/Effect-TS/core/commit/c43b17b759ec6ae267b9b3a32c2096eef4716f54))
+
+
+
+
+
 ## [0.45.3](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.45.2...@effect-ts/system@0.45.3) (2021-12-05)
 
 
