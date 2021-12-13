@@ -112,7 +112,8 @@ export function intersection<A>(r: Iterable<A>) {
  */
 export function map_<A, B>(set: HashSet<A>, f: (x: A) => B): HashSet<B> {
   const r = make<B>()
-  mutate_(r, (r) => {
+
+  return mutate_(r, (r) => {
     forEach_(set, (e) => {
       const v = f(e)
       if (!has_(r, v)) {
@@ -120,7 +121,6 @@ export function map_<A, B>(set: HashSet<A>, f: (x: A) => B): HashSet<B> {
       }
     })
   })
-  return r
 }
 
 /**
