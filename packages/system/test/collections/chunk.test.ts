@@ -90,6 +90,15 @@ describe("Chunk", () => {
       )
     ).equals(Chunk.many(1, 2, 3, 4, 5))
   })
+  it("takeRight", () => {
+    expect(
+      pipe(
+        Chunk.from([1, 2, 3, 4, 5]),
+        Chunk.concat(Chunk.from([6, 7, 8, 9, 10])),
+        Chunk.takeRight(6)
+      )
+    ).equals(Chunk.many(5, 6, 7, 8, 9, 10))
+  })
   it("drop", () => {
     expect(
       pipe(
