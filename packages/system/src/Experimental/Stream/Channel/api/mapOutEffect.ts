@@ -18,8 +18,9 @@ const mapOutMReader = <Env, Env1, OutErr, OutErr1, OutElem, OutElem1, OutDone>(
 > =>
   ReadWith.readWith(
     (out) =>
-      C.chain_(C.fromEffect(f(out)), (_) =>
-        ZipRight.zipRight_(C.write(_), mapOutMReader(f))
+      ZipRight.zipRight_(
+        C.chain_(C.fromEffect(f(out)), (_) => C.write(_)),
+        mapOutMReader(f)
       ),
     (e) => C.fail(e),
     (z) => C.end(z)

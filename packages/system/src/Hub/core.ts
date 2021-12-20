@@ -4,6 +4,7 @@ import "../Operator"
 
 import * as AR from "../Collections/Immutable/Array"
 import * as Chunk from "../Collections/Immutable/Chunk"
+import * as Tp from "../Collections/Immutable/Tuple"
 import * as HS from "../Collections/Mutable/HashSet"
 import * as T from "../Effect"
 import * as ES from "../Effect/ExecutionStrategy"
@@ -18,7 +19,6 @@ import { XQueueInternal } from "../Queue"
 import * as Ref from "../Ref"
 import * as AB from "../Support/AtomicBoolean"
 import * as MQ from "../Support/MutableQueue"
-import * as HP from "./_internal/HashedPair"
 import type * as InternalHub from "./_internal/Hub"
 import * as HF from "./_internal/hubFactory"
 import * as U from "./_internal/unsafe"
@@ -746,7 +746,7 @@ class UnsafeMakeHubImplementation<A> extends XHubInternal<
   constructor(
     private hub: InternalHub.Hub<A>,
     private subscribers: HS.HashSet<
-      HP.HashedPair<InternalHub.Subscription<A>, MQ.MutableQueue<P.Promise<never, A>>>
+      Tp.Tuple<[InternalHub.Subscription<A>, MQ.MutableQueue<P.Promise<never, A>>]>
     >,
     releaseMap: RM.ReleaseMap,
     shutdownHook: P.Promise<never, void>,
@@ -761,12 +761,14 @@ class UnsafeMakeHubImplementation<A> extends XHubInternal<
       T.suspend((_, fiberId) => {
         shutdownFlag.set(true)
 
-        return T.whenM_(
-          T.zipRight_(
-            RM.releaseAll(Ex.interrupt(fiberId), ES.parallel)(releaseMap),
-            strategy.shutdown
-          ),
-          P.succeed_(shutdownHook, undefined)
+        return T.asUnit(
+          T.whenM_(
+            T.zipRight_(
+              RM.releaseAll(Ex.interrupt(fiberId), ES.parallel)(releaseMap),
+              strategy.shutdown
+            ),
+            P.succeed_(shutdownHook, undefined)
+          )
         )
       })
     )
@@ -807,7 +809,7 @@ class UnsafeMakeHubImplementation<A> extends XHubInternal<
       return this.strategy.handleSurplus(
         this.hub,
         this.subscribers,
-        AR.single(a),
+        Chunk.single(a),
         this.shutdownFlag
       )
     })
@@ -858,7 +860,7 @@ function makeHub<A>(hub: InternalHub.Hub<A>, strategy: S.Strategy<A>): T.UIO<Hub
 function unsafeMakeHub<A>(
   hub: InternalHub.Hub<A>,
   subscribers: HS.HashSet<
-    HP.HashedPair<InternalHub.Subscription<A>, MQ.MutableQueue<P.Promise<never, A>>>
+    Tp.Tuple<[InternalHub.Subscription<A>, MQ.MutableQueue<P.Promise<never, A>>]>
   >,
   releaseMap: RM.ReleaseMap,
   shutdownHook: P.Promise<never, void>,
@@ -881,7 +883,7 @@ function unsafeMakeHub<A>(
 function makeSubscription<A>(
   hub: InternalHub.Hub<A>,
   subscribers: HS.HashSet<
-    HP.HashedPair<InternalHub.Subscription<A>, MQ.MutableQueue<P.Promise<never, A>>>
+    Tp.Tuple<[InternalHub.Subscription<A>, MQ.MutableQueue<P.Promise<never, A>>]>
   >,
   strategy: S.Strategy<A>
 ): T.UIO<Q.Dequeue<A>> {
@@ -909,7 +911,7 @@ class UnsafeMakeSubscriptionImplementation<A> extends XQueueInternal<
   constructor(
     private hub: InternalHub.Hub<A>,
     private subscribers: HS.HashSet<
-      HP.HashedPair<InternalHub.Subscription<A>, MQ.MutableQueue<P.Promise<never, A>>>
+      Tp.Tuple<[InternalHub.Subscription<A>, MQ.MutableQueue<P.Promise<never, A>>]>
     >,
     private subscription: InternalHub.Subscription<A>,
     private pollers: MQ.MutableQueue<P.Promise<never, A>>,
@@ -930,14 +932,16 @@ class UnsafeMakeSubscriptionImplementation<A> extends XQueueInternal<
     T.suspend((_, fiberId) => {
       this.shutdownFlag.set(true)
 
-      return T.whenM_(
-        T.zipRight_(
-          T.forEachPar_(U.unsafePollAllQueue(this.pollers), (_) => {
-            return P.interruptAs(fiberId)(_)
-          }),
-          T.succeedWith(() => this.subscription.unsubscribe())
-        ),
-        P.succeed_(this.shutdownHook, undefined)
+      return T.asUnit(
+        T.whenM_(
+          T.zipRight_(
+            T.forEachPar_(U.unsafePollAllQueue(this.pollers), (_) => {
+              return P.interruptAs(fiberId)(_)
+            }),
+            T.succeedWith(() => this.subscription.unsubscribe())
+          ),
+          P.succeed_(this.shutdownHook, undefined)
+        )
       )
     })
   )
@@ -972,13 +976,15 @@ class UnsafeMakeSubscriptionImplementation<A> extends XQueueInternal<
       return T.onInterrupt_(
         T.suspend(() => {
           this.pollers.offer(promise)
-          this.subscribers.add(new HP.HashedPair(this.subscription, this.pollers))
+
+          this.subscribers.add(Tp.tuple(this.subscription, this.pollers))
           this.strategy.unsafeCompletePollers(
             this.hub,
             this.subscribers,
             this.subscription,
             this.pollers
           )
+
           if (this.shutdownFlag.get) {
             return T.interrupt
           } else {
@@ -1032,7 +1038,7 @@ class UnsafeMakeSubscriptionImplementation<A> extends XQueueInternal<
 function unsafeMakeSubscription<A>(
   hub: InternalHub.Hub<A>,
   subscribers: HS.HashSet<
-    HP.HashedPair<InternalHub.Subscription<A>, MQ.MutableQueue<P.Promise<never, A>>>
+    Tp.Tuple<[InternalHub.Subscription<A>, MQ.MutableQueue<P.Promise<never, A>>]>
   >,
   subscription: InternalHub.Subscription<A>,
   pollers: MQ.MutableQueue<P.Promise<never, A>>,
@@ -1052,9 +1058,9 @@ function unsafeMakeSubscription<A>(
 }
 
 function makeSubscribersHashSet<A>(): HS.HashSet<
-  HP.HashedPair<InternalHub.Subscription<A>, MQ.MutableQueue<P.Promise<never, A>>>
+  Tp.Tuple<[InternalHub.Subscription<A>, MQ.MutableQueue<P.Promise<never, A>>]>
 > {
   return HS.make<
-    HP.HashedPair<InternalHub.Subscription<A>, MQ.MutableQueue<P.Promise<never, A>>>
+    Tp.Tuple<[InternalHub.Subscription<A>, MQ.MutableQueue<P.Promise<never, A>>]>
   >()
 }

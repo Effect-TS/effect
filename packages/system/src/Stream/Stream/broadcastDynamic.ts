@@ -3,9 +3,11 @@
 import { pipe } from "../../Function"
 import * as M from "../_internal/managed"
 import { broadcastedQueuesDynamic_ } from "./broadcastedQueuesDynamic"
+import { chain_ } from "./chain"
 import type { Stream } from "./definitions"
 import { flattenTake } from "./flattenTake"
-import { fromQueueWithShutdown } from "./fromQueueWithShutdown"
+import { fromQueue } from "./fromQueue"
+import { managed } from "./managed"
 
 /**
  * Fan out the stream, producing a dynamic number of streams that have the same elements as this stream.
@@ -15,10 +17,10 @@ import { fromQueueWithShutdown } from "./fromQueueWithShutdown"
 export function broadcastDynamic_<R, E, O>(
   self: Stream<R, E, O>,
   maximumLag: number
-): M.Managed<R, never, M.Managed<unknown, never, Stream<unknown, E, O>>> {
+): M.Managed<R, never, Stream<unknown, E, O>> {
   return pipe(
     broadcastedQueuesDynamic_(self, maximumLag),
-    M.map(M.map((_) => flattenTake(fromQueueWithShutdown(_))))
+    M.map((_) => flattenTake(chain_(managed(_), fromQueue)))
   )
 }
 

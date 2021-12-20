@@ -13,9 +13,9 @@ import * as UnfoldChunkEffect from "./unfoldChunkEffect"
 export function repeatEffectChunkOption<R, E, A>(
   fa: T.Effect<R, O.Option<E>, CK.Chunk<A>>
 ): C.Stream<R, E, A> {
-  return UnfoldChunkEffect.unfoldChunkEffect(undefined, (_) => {
+  return UnfoldChunkEffect.unfoldChunkEffect(fa, (fa) => {
     return T.catchAll_(
-      T.map_(fa, (chunk) => O.some(Tp.tuple(chunk, undefined))),
+      T.map_(fa, (chunk) => O.some(Tp.tuple(chunk, fa))),
       O.fold(
         () => T.none,
         (e) => T.fail(e)
