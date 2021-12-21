@@ -540,7 +540,7 @@ describe("Stream", () => {
     )
   })
 
-  it.skip("broadcastDynamic", async () => {
+  it("broadcastDynamic", async () => {
     const result = await pipe(
       T.gen(function* (_) {
         const broadcaster = pipe(S.from(1, 2, 3, 4, 5), S.broadcastDynamic(25))

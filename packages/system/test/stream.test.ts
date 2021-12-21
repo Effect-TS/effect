@@ -387,7 +387,7 @@ describe("Stream", () => {
     expect(result).toEqual([...A.range(1, 9)])
   })
 
-  it.skip("broadcastDynamic", async () => {
+  it("broadcastDynamic", async () => {
     const result = await pipe(
       T.gen(function* (_) {
         const broadcaster = pipe(
