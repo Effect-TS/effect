@@ -3,13 +3,13 @@
 import "../Operator"
 
 import * as Chunk from "../Collections/Immutable/Chunk"
+import * as Tp from "../Collections/Immutable/Tuple"
 import type * as HS from "../Collections/Mutable/HashSet"
 import * as T from "../Effect"
 import { pipe } from "../Function"
 import * as P from "../Promise"
 import type { AtomicBoolean } from "../Support/AtomicBoolean"
 import * as MQ from "../Support/MutableQueue"
-import * as HP from "./_internal/HashedPair"
 import type * as InternalHub from "./_internal/Hub"
 import * as U from "./_internal/unsafe"
 
@@ -25,7 +25,7 @@ export abstract class Strategy<A> {
   abstract handleSurplus(
     hub: InternalHub.Hub<A>,
     subscribers: HS.HashSet<
-      HP.HashedPair<InternalHub.Subscription<A>, MQ.MutableQueue<P.Promise<never, A>>>
+      Tp.Tuple<[InternalHub.Subscription<A>, MQ.MutableQueue<P.Promise<never, A>>]>
     >,
     as: Iterable<A>,
     isShutdown: AtomicBoolean
@@ -43,7 +43,7 @@ export abstract class Strategy<A> {
   abstract unsafeOnHubEmptySpace(
     hub: InternalHub.Hub<A>,
     subscribers: HS.HashSet<
-      HP.HashedPair<InternalHub.Subscription<A>, MQ.MutableQueue<P.Promise<never, A>>>
+      Tp.Tuple<[InternalHub.Subscription<A>, MQ.MutableQueue<P.Promise<never, A>>]>
     >
   ): void
 
@@ -55,7 +55,7 @@ export abstract class Strategy<A> {
   unsafeCompletePollers(
     hub: InternalHub.Hub<A>,
     subscribers: HS.HashSet<
-      HP.HashedPair<InternalHub.Subscription<A>, MQ.MutableQueue<P.Promise<never, A>>>
+      Tp.Tuple<[InternalHub.Subscription<A>, MQ.MutableQueue<P.Promise<never, A>>]>
     >,
     subscription: InternalHub.Subscription<A>,
     pollers: MQ.MutableQueue<P.Promise<never, A>>
@@ -68,7 +68,7 @@ export abstract class Strategy<A> {
       const poller = pollers.poll(nullPoller)!
 
       if (poller === nullPoller) {
-        const subPollerPair = new HP.HashedPair(subscription, pollers)
+        const subPollerPair = Tp.tuple(subscription, pollers)
 
         subscribers.remove(subPollerPair)
 
@@ -99,10 +99,12 @@ export abstract class Strategy<A> {
   unsafeCompleteSubscribers(
     hub: InternalHub.Hub<A>,
     subscribers: HS.HashSet<
-      HP.HashedPair<InternalHub.Subscription<A>, MQ.MutableQueue<P.Promise<never, A>>>
+      Tp.Tuple<[InternalHub.Subscription<A>, MQ.MutableQueue<P.Promise<never, A>>]>
     >
   ): void {
-    for (const { first: subscription, second: pollers } of subscribers) {
+    for (const {
+      tuple: [subscription, pollers]
+    } of subscribers) {
       this.unsafeCompletePollers(hub, subscribers, subscription, pollers)
     }
   }
@@ -122,7 +124,7 @@ export class BackPressure<A> extends Strategy<A> {
   handleSurplus(
     hub: InternalHub.Hub<A>,
     subscribers: HS.HashSet<
-      HP.HashedPair<InternalHub.Subscription<A>, MQ.MutableQueue<P.Promise<never, A>>>
+      Tp.Tuple<[InternalHub.Subscription<A>, MQ.MutableQueue<P.Promise<never, A>>]>
     >,
     as: Iterable<A>,
     isShutdown: AtomicBoolean
@@ -162,7 +164,7 @@ export class BackPressure<A> extends Strategy<A> {
   unsafeOnHubEmptySpace(
     hub: InternalHub.Hub<A>,
     subscribers: HS.HashSet<
-      HP.HashedPair<InternalHub.Subscription<A>, MQ.MutableQueue<P.Promise<never, A>>>
+      Tp.Tuple<[InternalHub.Subscription<A>, MQ.MutableQueue<P.Promise<never, A>>]>
     >
   ): void {
     const empty = null as unknown as readonly [A, P.Promise<never, boolean>, boolean]
@@ -223,7 +225,7 @@ export class Dropping<A> extends Strategy<A> {
   handleSurplus(
     _hub: InternalHub.Hub<A>,
     _subscribers: HS.HashSet<
-      HP.HashedPair<InternalHub.Subscription<A>, MQ.MutableQueue<P.Promise<never, A>>>
+      Tp.Tuple<[InternalHub.Subscription<A>, MQ.MutableQueue<P.Promise<never, A>>]>
     >,
     _as: Iterable<A>,
     _isShutdown: AtomicBoolean
@@ -236,7 +238,7 @@ export class Dropping<A> extends Strategy<A> {
   unsafeOnHubEmptySpace(
     _hub: InternalHub.Hub<A>,
     _subscribers: HS.HashSet<
-      HP.HashedPair<InternalHub.Subscription<A>, MQ.MutableQueue<P.Promise<never, A>>>
+      Tp.Tuple<[InternalHub.Subscription<A>, MQ.MutableQueue<P.Promise<never, A>>]>
     >
   ): void {
     //
@@ -273,7 +275,7 @@ export class Sliding<A> extends Strategy<A> {
   handleSurplus(
     hub: InternalHub.Hub<A>,
     subscribers: HS.HashSet<
-      HP.HashedPair<InternalHub.Subscription<A>, MQ.MutableQueue<P.Promise<never, A>>>
+      Tp.Tuple<[InternalHub.Subscription<A>, MQ.MutableQueue<P.Promise<never, A>>]>
     >,
     as: Iterable<A>,
     _isShutdown: AtomicBoolean
@@ -290,7 +292,7 @@ export class Sliding<A> extends Strategy<A> {
   unsafeOnHubEmptySpace(
     _hub: InternalHub.Hub<A>,
     _subscribers: HS.HashSet<
-      HP.HashedPair<InternalHub.Subscription<A>, MQ.MutableQueue<P.Promise<never, A>>>
+      Tp.Tuple<[InternalHub.Subscription<A>, MQ.MutableQueue<P.Promise<never, A>>]>
     >
   ): void {
     //

@@ -386,4 +386,23 @@ describe("Stream", () => {
 
     expect(result).toEqual([...A.range(1, 9)])
   })
+
+  it("broadcastDynamic", async () => {
+    const result = await pipe(
+      T.gen(function* (_) {
+        const broadcaster = pipe(
+          S.fromChunk(A.many(1, 2, 3, 4, 5)),
+          S.broadcastDynamic(25)
+        )
+
+        const subscriptionA = pipe(S.unwrapManaged(broadcaster), S.runCollect)
+        const subscriptionB = pipe(S.unwrapManaged(broadcaster), S.runCollect)
+
+        return yield* _(T.zipPar_(subscriptionA, subscriptionB))
+      }),
+      T.runPromise
+    )
+
+    expect(result).toEqual(Tp.tuple([1, 2, 3, 4, 5], [1, 2, 3, 4, 5]))
+  })
 })

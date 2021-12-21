@@ -62,7 +62,7 @@ export class BoundedHubArb<A> extends Hub<A> {
     const publishAllIndex = this.publisherIndex + forHub
 
     while (this.publisherIndex !== publishAllIndex) {
-      const a = asArray[iteratorIndex++]!
+      const a = Chunk.unsafeGet_(asArray, iteratorIndex++)
       const index = this.publisherIndex % this.capacity
       this.array[index] = a
       this.publisherIndex += 1

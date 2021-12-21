@@ -539,4 +539,22 @@ describe("Stream", () => {
       Chunk.many(Chunk.many(1, 2), Chunk.many(2, 3), Chunk.many(3, 4))
     )
   })
+
+  it("broadcastDynamic", async () => {
+    const result = await pipe(
+      T.gen(function* (_) {
+        const broadcaster = pipe(S.from(1, 2, 3, 4, 5), S.broadcastDynamic(25))
+
+        const subscriptionA = pipe(S.unwrapManaged(broadcaster), S.runCollect)
+        const subscriptionB = pipe(S.unwrapManaged(broadcaster), S.runCollect)
+
+        return yield* _(T.zipPar_(subscriptionA, subscriptionB))
+      }),
+      T.runPromise
+    )
+
+    expect(result).equals(
+      Tp.tuple(Chunk.many(1, 2, 3, 4, 5), Chunk.many(1, 2, 3, 4, 5))
+    )
+  })
 })
