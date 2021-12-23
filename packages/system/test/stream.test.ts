@@ -389,20 +389,29 @@ describe("Stream", () => {
 
   it("broadcastDynamic", async () => {
     const result = await pipe(
-      T.gen(function* (_) {
-        const broadcaster = pipe(
-          S.fromChunk(A.many(1, 2, 3, 4, 5)),
-          S.broadcastDynamic(25)
+      M.gen(function* (_) {
+        const broadcaster = yield* _(
+          pipe(
+            S.effectAsync<unknown, never, number>((cb) => {
+              setTimeout(() => cb(T.succeed(A.single(1))), 50)
+              setTimeout(() => cb(T.succeed(A.single(2))), 100)
+              setTimeout(() => cb(T.succeed(A.single(3))), 150)
+              setTimeout(() => cb(T.fail(O.none)), 200)
+            }),
+            S.broadcastDynamic(25)
+          )
         )
 
-        const subscriptionA = pipe(S.unwrapManaged(broadcaster), S.runCollect)
-        const subscriptionB = pipe(S.unwrapManaged(broadcaster), S.runCollect)
+        const subscriptionA = pipe(broadcaster, S.runCollect)
+
+        const subscriptionB = pipe(broadcaster, S.runCollect)
 
         return yield* _(T.zipPar_(subscriptionA, subscriptionB))
       }),
+      M.use(T.succeed),
       T.runPromise
     )
 
-    expect(result).toEqual(Tp.tuple([1, 2, 3, 4, 5], [1, 2, 3, 4, 5]))
+    expect(result).toEqual(Tp.tuple([1, 2, 3], [1, 2, 3]))
   })
 })

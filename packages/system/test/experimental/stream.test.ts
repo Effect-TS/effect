@@ -542,19 +542,29 @@ describe("Stream", () => {
 
   it("broadcastDynamic", async () => {
     const result = await pipe(
-      T.gen(function* (_) {
-        const broadcaster = pipe(S.from(1, 2, 3, 4, 5), S.broadcastDynamic(25))
+      M.gen(function* (_) {
+        const broadcaster = yield* _(
+          pipe(
+            S.async<unknown, never, number>((cb) => {
+              setTimeout(() => cb.single(1), 50)
+              setTimeout(() => cb.single(2), 100)
+              setTimeout(() => cb.single(3), 150)
+              setTimeout(() => cb.end(), 200)
+            }),
+            S.broadcastDynamic(25)
+          )
+        )
 
-        const subscriptionA = pipe(S.unwrapManaged(broadcaster), S.runCollect)
-        const subscriptionB = pipe(S.unwrapManaged(broadcaster), S.runCollect)
+        const subscriptionA = pipe(broadcaster, S.runCollect)
+
+        const subscriptionB = pipe(broadcaster, S.runCollect)
 
         return yield* _(T.zipPar_(subscriptionA, subscriptionB))
       }),
+      M.use(T.succeed),
       T.runPromise
     )
 
-    expect(result).equals(
-      Tp.tuple(Chunk.many(1, 2, 3, 4, 5), Chunk.many(1, 2, 3, 4, 5))
-    )
+    expect(result).equals(Tp.tuple(Chunk.many(1, 2, 3), Chunk.many(1, 2, 3)))
   })
 })
