@@ -189,7 +189,7 @@ export function get<K>(key: K) {
  * Does an entry exist for `key` in `map`? Uses custom `hash`.
  */
 export function hasHash_<K, V>(map: HashMap<K, V>, key: K, hash: number): boolean {
-  return O.isNone(tryGetHash_(map, key, hash))
+  return O.isSome(tryGetHash_(map, key, hash))
 }
 
 /**
