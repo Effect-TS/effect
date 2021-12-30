@@ -30,7 +30,7 @@ Within the ecosystem of packages you will find:
 
 - `@effect-ts/morphic` Based on a fork of `morphic-ts` this library provides derivation of common typeclasses like `Decoder`, `Encoder`, `Guard` in a highly configurable manner and utilities around `ADT` in general data-modelling needs.
 
-- `@effect-ts/tracing-plugin` This typescript compiler plugin, to be used with `ttypescript`, can be configured to:
+- `@effect-ts/tracing-plugin` This typescript compiler plugin, to be used with `typescript`, can be configured to:
   - add compile time traces to your application code
   - reduce the calls to `pipe`
   - reduce the calls to `flow`
