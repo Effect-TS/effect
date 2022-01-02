@@ -454,6 +454,19 @@ export function make<Elem extends readonly any[]>(...iter: Elem): Chunk<Elem[num
 }
 
 /**
+ * Return a chunk of length `n` with element `i` initialized with `f(i)`
+ */
+export function makeBy_<A>(n: number, f: (i: number) => A): Chunk<A> {
+  const b = builder<A>()
+
+  for (let i = 0; i < n; i++) {
+    b.append(f(i))
+  }
+
+  return b.build()
+}
+
+/**
  * Builder
  */
 export function builder<A>() {

@@ -24,8 +24,8 @@
 | filterWithIndex      | ✅    | ✅    |               |
 | find                 | ✅    | ✅    |               |
 | findIndex            | ✅    | ✅    |               |
-| findLast             |       | ✅    |               |
-| findLastIndex        |       | ✅    |               |
+| findLast             | ✅    | ✅    |               |
+| findLastIndex        | ✅    | ✅    |               |
 | flatten              | ✅    | ✅    |               |
 | forAll               | ✅    |       |               |
 | forAny               | ✅    |       |               |
@@ -41,7 +41,7 @@
 | join                 | ✅    |       |               |
 | last                 | ✅    | ✅    | ✅            |
 | make                 | ✅    |       |               |
-| makeBy               |       | ✅    |               |
+| makeBy               | ✅    | ✅    |               |
 | map                  | ✅    | ✅    |               |
 | mapWithIndex         | ✅    | ✅    |               |
 | mapAccum             | ✅    |       |               |
@@ -63,7 +63,7 @@
 | splitAt              | ✅    | ✅    |               |
 | splitWhere           | ✅    |       |               |
 | tail                 | ✅    | ✅    | ✅            |
-| tap                  |       | ✅    |               |
+| tap                  | ✅    | ✅    |               |
 | take                 | ✅    | ✅    |               |
 | takeWhile            | ✅    | ✅    |               |
 | toArrayLike          | ✅    |       |               |

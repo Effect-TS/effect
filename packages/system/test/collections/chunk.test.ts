@@ -563,4 +563,49 @@ describe("Chunk", () => {
       )
     ).toEqual([6, 5, 4, 3, 2, 1, 0])
   })
+
+  it("findIndex", async () => {
+    expect(
+      Chunk.findIndex_(
+        Chunk.concat_(Chunk.make(1, 2, 3, 4), Chunk.make(5, 6, 7)),
+        (e) => e === 5
+      )
+    ).toEqual(O.some(4))
+  })
+
+  it("findLast", async () => {
+    const objs = Chunk.mapWithIndex_(
+      Chunk.make(1, 2, 3, 4, 5, 6, 7, 5, 9, 10),
+      (i, n) => ({ id: i, n })
+    )
+
+    expect(Chunk.findLast_(objs, ({ n }) => n === 5)).toEqual(O.some({ id: 7, n: 5 }))
+  })
+
+  it("findLast not found", async () => {
+    const objs = Chunk.mapWithIndex_(
+      Chunk.make(1, 2, 3, 4, 5, 6, 7, 5, 9, 10),
+      (i, n) => ({ id: i, n })
+    )
+
+    expect(Chunk.findLast_(objs, ({ n }) => n === 25)).toEqual(O.none)
+  })
+
+  it("findLastIndex", async () => {
+    const objs = Chunk.mapWithIndex_(
+      Chunk.make(1, 2, 3, 4, 5, 6, 7, 5, 9, 10),
+      (i, n) => ({ id: i, n })
+    )
+
+    expect(Chunk.findLastIndex_(objs, ({ n }) => n === 5)).toEqual(O.some(7))
+  })
+
+  it("findLastIndex not found", async () => {
+    const objs = Chunk.mapWithIndex_(
+      Chunk.make(1, 2, 3, 4, 5, 6, 7, 5, 9, 10),
+      (i, n) => ({ id: i, n })
+    )
+
+    expect(Chunk.findLastIndex_(objs, ({ n }) => n === 25)).toEqual(O.none)
+  })
 })
