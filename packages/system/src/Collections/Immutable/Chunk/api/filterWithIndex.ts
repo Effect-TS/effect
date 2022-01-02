@@ -37,16 +37,18 @@ export function filterWithIndex_<A>(
       const iterator = self.arrayLikeIterator()
       let next
       let builder = Chunk.empty<A>()
+      let index = 0
       while ((next = iterator.next()) && !next.done) {
         const array = next.value
         const len = array.length
         let i = 0
         while (i < len) {
           const a = array[i]!
-          if (f(i, a)) {
+          if (f(index, a)) {
             builder = Chunk.append_(builder, a)
           }
           i++
+          index++
         }
       }
 

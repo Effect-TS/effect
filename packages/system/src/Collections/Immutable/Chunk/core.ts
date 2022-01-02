@@ -175,6 +175,7 @@ export function takeRight_<A>(self: Chunk<A>, n: number): Chunk<A> {
 export function takeRight(n: number) {
   return <A>(self: Chunk<A>) => takeRight_(self, n)
 }
+
 /**
  * Drops the first n elements
  */
@@ -213,6 +214,24 @@ export function drop_<A>(self: Chunk<A>, n: number): Chunk<A> {
  */
 export function drop(n: number): <A>(self: Chunk<A>) => Chunk<A> {
   return (self) => drop_(self, n)
+}
+
+/**
+ * Drops the first n elements
+ */
+export function dropRight_<A>(self: Chunk<A>, n: number) {
+  concrete(self)
+
+  return take_(self, Math.max(0, self.length - n))
+}
+
+/**
+ * Drops the first n elements
+ *
+ * @ets_data_first dropRight_
+ */
+export function dropRight(n: number) {
+  return <A>(self: Chunk<A>) => dropRight_(self, n)
 }
 
 /**

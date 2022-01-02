@@ -14,7 +14,7 @@
 | compact              | ✅    |       |               |
 | dedupe               | ✅    |       |               |
 | drop                 | ✅    | ✅    |               |
-| dropRight            |       | ✅    |               |
+| dropRight            | ✅    | ✅    |               |
 | dropWhile            | ✅    | ✅    |               |
 | empty                | ✅    | ✅    |               |
 | equals               | ✅    |       |               |
@@ -23,7 +23,7 @@
 | filter               | ✅    | ✅    |               |
 | filterWithIndex      | ✅    | ✅    |               |
 | find                 | ✅    | ✅    |               |
-| findIndex            |       | ✅    |               |
+| findIndex            | ✅    | ✅    |               |
 | findLast             |       | ✅    |               |
 | findLastIndex        |       | ✅    |               |
 | flatten              | ✅    | ✅    |               |

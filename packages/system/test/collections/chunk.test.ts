@@ -528,4 +528,39 @@ describe("Chunk", () => {
       Chunk.dedupe(Chunk.make(0, 0, 1, 2, 3, 4, 4, 5, 6, 7, 7, 7, 8, 9, 9, 9, 9))
     ).equals(Chunk.range(0, 9))
   })
+
+  it("dropRight", async () => {
+    expect(Chunk.dropRight_(Chunk.make(1, 2, 3, 4, 5, 6, 7), 3)).equals(
+      Chunk.range(1, 4)
+    )
+  })
+
+  it("mapWithIndex", async () => {
+    expect(
+      Chunk.mapWithIndex_(
+        Chunk.concat_(Chunk.make(1, 2, 3, 4), Chunk.make(5, 6, 7)),
+        (i, _) => i
+      )
+    ).equals(Chunk.range(0, 6))
+  })
+
+  it("reduceWithIndex", async () => {
+    expect(
+      Chunk.reduceWithIndex_(
+        Chunk.concat_(Chunk.make(1, 2, 3, 4), Chunk.make(5, 6, 7)),
+        [] as number[],
+        (i, acc, _) => [...acc, i]
+      )
+    ).toEqual([0, 1, 2, 3, 4, 5, 6])
+  })
+
+  it("reduceRightWithIndex", async () => {
+    expect(
+      Chunk.reduceRightWithIndex_(
+        Chunk.concat_(Chunk.make(1, 2, 3, 4), Chunk.make(5, 6, 7)),
+        [] as number[],
+        (i, _, acc) => [...acc, i]
+      )
+    ).toEqual([6, 5, 4, 3, 2, 1, 0])
+  })
 })
