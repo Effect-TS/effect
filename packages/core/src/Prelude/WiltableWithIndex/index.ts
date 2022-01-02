@@ -1,8 +1,8 @@
 // ets_tracing: off
 
 import type { Either } from "@effect-ts/system/Either"
-import type { Separated } from "@effect-ts/system/Utils"
 
+import type * as Tp from "../../Collections/Immutable/Tuple"
 import type { Applicative } from "../Applicative"
 import type * as HKT from "../HKT"
 
@@ -38,9 +38,11 @@ export interface WiltWithIndex<F extends HKT.URIS, C = HKT.Auto> {
     GS,
     GR,
     GE,
-    Separated<
-      HKT.Kind<F, C, FK, FSI, FSO, FX, FI, FS, FR, FE, B>,
-      HKT.Kind<F, C, FK, FSI, FSO, FX, FI, FS, FR, FE, B2>
+    Tp.Tuple<
+      [
+        HKT.Kind<F, C, FK, FSI, FSO, FX, FI, FS, FR, FE, B>,
+        HKT.Kind<F, C, FK, FSI, FSO, FX, FI, FS, FR, FE, B2>
+      ]
     >
   >
 }
@@ -72,9 +74,11 @@ export function implementSeparateWithIndexF<F extends HKT.URIS, C = HKT.Auto>():
     ta: HKT.Kind<F, C, FK, FQ, FW, FX, FI, FS, FR, FE, A>
   ) => HKT.HKT<
     G,
-    Separated<
-      HKT.Kind<F, C, FK, FQ, FW, FX, FI, FS, FR, FE, B>,
-      HKT.Kind<F, C, FK, FQ, FW, FX, FI, FS, FR, FE, B2>
+    Tp.Tuple<
+      [
+        HKT.Kind<F, C, FK, FQ, FW, FX, FI, FS, FR, FE, B>,
+        HKT.Kind<F, C, FK, FQ, FW, FX, FI, FS, FR, FE, B2>
+      ]
     >
   >
 ) => WiltWithIndex<F, C>

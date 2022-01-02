@@ -3,9 +3,9 @@ import type { Predicate, Refinement } from "../../../Function/core"
 import type { Option } from "../../../Option"
 import { isSome, none, some } from "../../../Option"
 import type { MutableArray, MutableRecord } from "../../../Support/Mutable"
-import type { Separated } from "../../../Utils"
 import type { Dictionary } from "../Dictionary"
 import type { NonEmptyArray } from "../NonEmptyArray"
+import * as Tp from "../Tuple"
 import * as C from "./core"
 
 /**
@@ -539,7 +539,7 @@ export function unsafeDeleteAt(i: number): <A>(as: C.Array<A>) => C.Array<A> {
  */
 export function separate<B, C>(
   fa: C.Array<Either<B, C>>
-): Separated<C.Array<B>, C.Array<C>> {
+): Tp.Tuple<[C.Array<B>, C.Array<C>]> {
   const left: MutableArray<B> = []
   const right: MutableArray<C> = []
   for (const e of fa) {
@@ -549,10 +549,7 @@ export function separate<B, C>(
       right.push(e.right)
     }
   }
-  return {
-    left,
-    right
-  }
+  return Tp.tuple(left, right)
 }
 
 /**

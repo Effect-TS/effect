@@ -128,8 +128,8 @@
 | join               |       | ✅    |               |
 | lefts              |       | ✅    |               |
 | modifyAt           |       | ✅    | ✅            |
-| partition          | ✅    | ✅    |               | Use Separated or Tuple?
-| partitionWithIndex | ✅    | ✅    |               | Use Separated or Tuple?
+| partition          | ✅    | ✅    |               |
+| partitionWithIndex | ✅    | ✅    |               |
 | replicate          |       | ✅    |               |
 | rights             |       | ✅    | ✅            |
 | rotate             |       | ✅    | ✅            |

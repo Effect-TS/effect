@@ -2,8 +2,8 @@
 
 import type * as O from "@effect-ts/system/Option"
 
+import * as Tp from "../../Collections/Immutable/Tuple"
 import type { Predicate, Refinement } from "../../Function"
-import type { Separated } from "../../Utils"
 import { filter } from "./filter"
 
 /**
@@ -13,7 +13,7 @@ import { filter } from "./filter"
  */
 export function partition<A, B extends A>(
   refinement: Refinement<A, B>
-): (fa: O.Option<A>) => Separated<O.Option<A>, O.Option<B>>
+): (fa: O.Option<A>) => Tp.Tuple<[O.Option<A>, O.Option<B>]>
 /**
  * Partition
  *
@@ -21,7 +21,7 @@ export function partition<A, B extends A>(
  */
 export function partition<A>(
   predicate: Predicate<A>
-): (fa: O.Option<A>) => Separated<O.Option<A>, O.Option<A>>
+): (fa: O.Option<A>) => Tp.Tuple<[O.Option<A>, O.Option<A>]>
 /**
  * Partition
  *
@@ -29,7 +29,7 @@ export function partition<A>(
  */
 export function partition<A>(
   predicate: Predicate<A>
-): (fa: O.Option<A>) => Separated<O.Option<A>, O.Option<A>> {
+): (fa: O.Option<A>) => Tp.Tuple<[O.Option<A>, O.Option<A>]> {
   return (fa) => partition_(fa, predicate)
 }
 
@@ -39,23 +39,20 @@ export function partition<A>(
 export function partition_<A, B extends A>(
   fa: O.Option<A>,
   refinement: Refinement<A, B>
-): Separated<O.Option<A>, O.Option<B>>
+): Tp.Tuple<[O.Option<A>, O.Option<B>]>
 /**
  * Partition
  */
 export function partition_<A>(
   fa: O.Option<A>,
   predicate: Predicate<A>
-): Separated<O.Option<A>, O.Option<A>>
+): Tp.Tuple<[O.Option<A>, O.Option<A>]>
 /**
  * Partition
  */
 export function partition_<A>(
   fa: O.Option<A>,
   predicate: Predicate<A>
-): Separated<O.Option<A>, O.Option<A>> {
-  return {
-    left: filter((a: A) => !predicate(a))(fa),
-    right: filter(predicate)(fa)
-  }
+): Tp.Tuple<[O.Option<A>, O.Option<A>]> {
+  return Tp.tuple(filter((a: A) => !predicate(a))(fa), filter(predicate)(fa))
 }

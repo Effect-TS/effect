@@ -16,8 +16,9 @@ import * as Ord from "../../../Ord"
 import type { URI } from "../../../Prelude"
 import * as P from "../../../Prelude"
 import type { Show } from "../../../Show"
-import type { PredicateWithIndex, Separated } from "../../../Utils"
+import type { PredicateWithIndex } from "../../../Utils"
 import * as C from "../Chunk/operations"
+import * as Tp from "../Tuple"
 
 export * from "@effect-ts/system/Collections/Immutable/Array"
 
@@ -276,7 +277,7 @@ export function uniq<A>(E: Equal<A>): (as: Array<A>) => Array<A> {
  * Separate elements based on a apredicate
  */
 export function partition<A>(predicate: Predicate<A>) {
-  return (fa: readonly A[]): Separated<readonly A[], readonly A[]> =>
+  return (fa: readonly A[]): Tp.Tuple<[readonly A[], readonly A[]]> =>
     partitionWithIndex((_, a: A) => predicate(a))(fa)
 }
 
@@ -286,7 +287,7 @@ export function partition<A>(predicate: Predicate<A>) {
 export function partition_<A>(
   fa: readonly A[],
   predicate: Predicate<A>
-): Separated<readonly A[], readonly A[]> {
+): Tp.Tuple<[readonly A[], readonly A[]]> {
   return partitionWithIndex((_, a: A) => predicate(a))(fa)
 }
 
@@ -303,7 +304,7 @@ export function partitionMap<A, B, C>(f: (a: A) => Either<B, C>) {
 export function partitionMap_<A, B, C>(
   fa: readonly A[],
   f: (a: A) => Either<B, C>
-): Separated<readonly B[], readonly C[]> {
+): Tp.Tuple<[readonly B[], readonly C[]]> {
   return partitionMapWithIndex_(fa, (_, a) => f(a))
 }
 
@@ -313,7 +314,7 @@ export function partitionMap_<A, B, C>(
 export function partitionMapWithIndex_<A, B, C>(
   fa: readonly A[],
   f: (i: number, a: A) => Either<B, C>
-): Separated<readonly B[], readonly C[]> {
+): Tp.Tuple<[readonly B[], readonly C[]]> {
   const left: MutableArray<B> = []
   const right: MutableArray<C> = []
   for (let i = 0; i < fa.length; i++) {
@@ -324,17 +325,14 @@ export function partitionMapWithIndex_<A, B, C>(
       right.push(e.right)
     }
   }
-  return {
-    left,
-    right
-  }
+  return Tp.tuple(left, right)
 }
 
 /**
  * Separate elements based on a map function that also carry the index
  */
 export function partitionMapWithIndex<A, B, C>(f: (i: number, a: A) => Either<B, C>) {
-  return (fa: readonly A[]): Separated<readonly B[], readonly C[]> =>
+  return (fa: readonly A[]): Tp.Tuple<[readonly B[], readonly C[]]> =>
     partitionMapWithIndex_(fa, f)
 }
 
@@ -344,7 +342,7 @@ export function partitionMapWithIndex<A, B, C>(f: (i: number, a: A) => Either<B,
 export function partitionWithIndex<A>(
   predicateWithIndex: PredicateWithIndex<number, A>
 ) {
-  return (fa: readonly A[]): Separated<readonly A[], readonly A[]> =>
+  return (fa: readonly A[]): Tp.Tuple<[readonly A[], readonly A[]]> =>
     partitionWithIndex_(fa, predicateWithIndex)
 }
 
@@ -354,7 +352,7 @@ export function partitionWithIndex<A>(
 export function partitionWithIndex_<A>(
   fa: readonly A[],
   predicateWithIndex: PredicateWithIndex<number, A>
-): Separated<readonly A[], readonly A[]> {
+): Tp.Tuple<[readonly A[], readonly A[]]> {
   const left: MutableArray<A> = []
   const right: MutableArray<A> = []
   for (let i = 0; i < fa.length; i++) {
@@ -365,8 +363,5 @@ export function partitionWithIndex_<A>(
       left.push(a)
     }
   }
-  return {
-    left,
-    right
-  }
+  return Tp.tuple(left, right)
 }

@@ -1,8 +1,8 @@
 // ets_tracing: off
 
+import type * as Tp from "../Collections/Immutable/Tuple"
 import { identity } from "../Function"
 import * as I from "../Iterable"
-import type { Separated } from "../Utils"
 import type { Effect, RIO } from "./effect"
 import { either } from "./either"
 import { forEach_, forEachPar_, forEachParN_ } from "./excl-forEach"
@@ -15,7 +15,7 @@ import { map_ } from "./map"
  * @ets_data_first partition_
  */
 export function partition<A, R, E, B>(f: (a: A) => Effect<R, E, B>, __trace?: string) {
-  return (as: Iterable<A>): RIO<R, Separated<Iterable<E>, Iterable<B>>> =>
+  return (as: Iterable<A>): RIO<R, Tp.Tuple<[Iterable<E>, Iterable<B>]>> =>
     partition_(as, f, __trace)
 }
 
@@ -27,7 +27,7 @@ export function partition_<A, R, E, B>(
   as: Iterable<A>,
   f: (a: A) => Effect<R, E, B>,
   __trace?: string
-): RIO<R, Separated<Iterable<E>, Iterable<B>>> {
+): RIO<R, Tp.Tuple<[Iterable<E>, Iterable<B>]>> {
   return map_(
     forEach_(as, (a) => either(f(a)), __trace),
     I.partitionMap(identity)
@@ -45,7 +45,7 @@ export function partitionPar<A, R, E, B>(
   f: (a: A) => Effect<R, E, B>,
   __trace?: string
 ) {
-  return (as: Iterable<A>): Effect<R, never, Separated<Iterable<E>, Iterable<B>>> =>
+  return (as: Iterable<A>): Effect<R, never, Tp.Tuple<[Iterable<E>, Iterable<B>]>> =>
     partitionPar_(as, f, __trace)
 }
 
@@ -58,7 +58,7 @@ export function partitionPar_<A, R, E, B>(
   as: Iterable<A>,
   f: (a: A) => Effect<R, E, B>,
   __trace?: string
-): Effect<R, never, Separated<Iterable<E>, Iterable<B>>> {
+): Effect<R, never, Tp.Tuple<[Iterable<E>, Iterable<B>]>> {
   return map_(
     forEachPar_(as, (a) => either(f(a)), __trace),
     I.partitionMap(identity)
@@ -78,7 +78,7 @@ export function partitionParN<A, R, E, B>(
   n: number,
   f: (a: A) => Effect<R, E, B>,
   __trace?: string
-): (as: Iterable<A>) => Effect<R, never, Separated<Iterable<E>, Iterable<B>>> {
+): (as: Iterable<A>) => Effect<R, never, Tp.Tuple<[Iterable<E>, Iterable<B>]>> {
   return (as) => partitionParN_(as, n, f, __trace)
 }
 
@@ -94,7 +94,7 @@ export function partitionParN_<A, R, E, B>(
   n: number,
   f: (a: A) => Effect<R, E, B>,
   __trace?: string
-): Effect<R, never, Separated<Iterable<E>, Iterable<B>>> {
+): Effect<R, never, Tp.Tuple<[Iterable<E>, Iterable<B>]>> {
   return map_(
     forEachParN_(as, n, (a) => either(f(a)), __trace),
     I.partitionMap(identity)
