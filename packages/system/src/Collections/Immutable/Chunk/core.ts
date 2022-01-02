@@ -251,6 +251,39 @@ export function map<A, B>(f: (a: A) => B): (self: Chunk<A>) => Chunk<B> {
 /**
  * Returns a chunk with the elements mapped by the specified function.
  */
+export function mapWithIndex_<A, B>(
+  self: Chunk<A>,
+  f: (index: number, a: A) => B
+): Chunk<B> {
+  concrete(self)
+
+  if (self._typeId === SingletonTypeId) {
+    return new Singleton(f(0, self.a))
+  }
+
+  let r = empty<B>()
+  let i = 0
+  for (const k of self) {
+    r = append_(r, f(i, k))
+    i += 1
+  }
+  return r
+}
+
+/**
+ * Returns a chunk with the elements mapped by the specified function.
+ *
+ * @ets_data_first mapWithIndex_
+ */
+export function mapWithIndex<A, B>(
+  f: (index: number, a: A) => B
+): (self: Chunk<A>) => Chunk<B> {
+  return (self) => mapWithIndex_(self, f)
+}
+
+/**
+ * Returns a chunk with the elements mapped by the specified function.
+ */
 export function chain_<A, B>(self: Chunk<A>, f: (a: A) => Chunk<B>): Chunk<B> {
   concrete(self)
 
@@ -344,6 +377,13 @@ export function unsafeLast<A>(self: Chunk<A>): A {
  */
 export function isEmpty<A>(self: Chunk<A>): boolean {
   return concreteId(self).length === 0
+}
+
+/**
+ * Determines if the chunk is empty.
+ */
+export function isNonEmpty<A>(self: Chunk<A>): boolean {
+  return concreteId(self).length !== 0
 }
 
 /**
