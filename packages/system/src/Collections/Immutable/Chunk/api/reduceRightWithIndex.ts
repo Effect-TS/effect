@@ -7,13 +7,13 @@ import { ArrTypeId, concrete, SingletonTypeId } from "../definition"
 export function reduceRightWithIndex_<A, S>(
   self: Chunk.Chunk<A>,
   s: S,
-  f: (a: A, index: number, s: S) => S
+  f: (index: number, a: A, s: S) => S
 ): S {
   concrete(self)
 
   switch (self._typeId) {
     case SingletonTypeId: {
-      return f(self.a, 0, s)
+      return f(0, self.a, s)
     }
     case ArrTypeId: {
       const arr = self.arrayLike()
@@ -21,7 +21,7 @@ export function reduceRightWithIndex_<A, S>(
       let s1 = s
       let i = len - 1
       while (i >= 0) {
-        s1 = f(arr[i]!, i, s1)
+        s1 = f(i, arr[i]!, s1)
         i--
       }
       return s1
@@ -30,6 +30,7 @@ export function reduceRightWithIndex_<A, S>(
       const iterator = self.reverseArrayLikeIterator()
       let next
       let s1 = s
+      let index = self.length - 1
 
       while ((next = iterator.next()) && !next.done) {
         const array = next.value
@@ -37,8 +38,9 @@ export function reduceRightWithIndex_<A, S>(
         let i = len - 1
         while (i >= 0) {
           const a = array[i]!
-          s1 = f(a, i, s1)
+          s1 = f(index, a, s1)
           i--
+          index--
         }
       }
 
@@ -54,7 +56,7 @@ export function reduceRightWithIndex_<A, S>(
  */
 export function reduceRightWithIndex<A, S>(
   s: S,
-  f: (a: A, index: number, s: S) => S
+  f: (index: number, a: A, s: S) => S
 ): (self: Chunk.Chunk<A>) => S {
   return (self) => reduceRightWithIndex_(self, s, f)
 }
