@@ -81,10 +81,9 @@ export const separateWithIndexF = P.implementSeparateWithIndexF<[URI<DictionaryU
           )
         )
       ),
-      G.map(({ left, right }) => ({
-        left: R.fromArray(left),
-        right: R.fromArray(right)
-      }))
+      G.map(({ tuple: [left, right] }) =>
+        Tp.tuple(R.fromArray(left), R.fromArray(right))
+      )
     )
 )
 

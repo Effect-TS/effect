@@ -4,7 +4,6 @@ import "../../../Operator"
 
 import type { Option } from "@effect-ts/system/Option"
 import type { MutableSet } from "@effect-ts/system/Support/Mutable"
-import type { Separated } from "@effect-ts/system/Utils"
 
 import type { Associative } from "../../../Associative"
 import { makeAssociative } from "../../../Associative"
@@ -17,6 +16,7 @@ import type { Identity } from "../../../Identity"
 import { makeIdentity } from "../../../Identity"
 import type { Ord } from "../../../Ord"
 import type { Show } from "../../../Show"
+import * as Tp from "../Tuple"
 
 export type Set<A> = ReadonlySet<A>
 
@@ -270,13 +270,13 @@ export function filter_<A>(set: Set<A>, predicate: Predicate<A>): Set<A> {
  */
 export function partition<A, B extends A>(
   refinement: Refinement<A, B>
-): (set: Set<A>) => Separated<Set<A>, Set<B>>
+): (set: Set<A>) => Tp.Tuple<[Set<A>, Set<B>]>
 export function partition<A>(
   predicate: Predicate<A>
-): (set: Set<A>) => Separated<Set<A>, Set<A>>
+): (set: Set<A>) => Tp.Tuple<[Set<A>, Set<A>]>
 export function partition<A>(
   predicate: Predicate<A>
-): (set: Set<A>) => Separated<Set<A>, Set<A>> {
+): (set: Set<A>) => Tp.Tuple<[Set<A>, Set<A>]> {
   return (set) => partition_(set, predicate)
 }
 
@@ -286,15 +286,15 @@ export function partition<A>(
 export function partition_<A, B extends A>(
   set: Set<A>,
   refinement: Refinement<A, B>
-): Separated<Set<A>, Set<B>>
+): Tp.Tuple<[Set<A>, Set<B>]>
 export function partition_<A>(
   set: Set<A>,
   predicate: Predicate<A>
-): Separated<Set<A>, Set<A>>
+): Tp.Tuple<[Set<A>, Set<A>]>
 export function partition_<A>(
   set: Set<A>,
   predicate: Predicate<A>
-): Separated<Set<A>, Set<A>> {
+): Tp.Tuple<[Set<A>, Set<A>]> {
   const values = set.values()
   let e: Next<A>
   const right = new Set<A>()
@@ -307,7 +307,7 @@ export function partition_<A>(
       left.add(value)
     }
   }
-  return { left, right }
+  return Tp.tuple(left, right)
 }
 
 /**
@@ -339,7 +339,7 @@ export function elem<A>(E: Equal<A>): (a: A) => (set: Set<A>) => boolean {
 export function partitionMap<B, C>(
   EB: Equal<B>,
   EC: Equal<C>
-): <A>(f: (a: A) => Either<B, C>) => (set: Set<A>) => Separated<Set<B>, Set<C>> {
+): <A>(f: (a: A) => Either<B, C>) => (set: Set<A>) => Tp.Tuple<[Set<B>, Set<C>]> {
   const pm = partitionMap_(EB, EC)
   return <A>(f: (a: A) => Either<B, C>) =>
     (set: Set<A>) =>
@@ -352,7 +352,7 @@ export function partitionMap<B, C>(
 export function partitionMap_<B, C>(
   EB: Equal<B>,
   EC: Equal<C>
-): <A>(set: Set<A>, f: (a: A) => Either<B, C>) => Separated<Set<B>, Set<C>> {
+): <A>(set: Set<A>, f: (a: A) => Either<B, C>) => Tp.Tuple<[Set<B>, Set<C>]> {
   return <A>(set: Set<A>, f: (a: A) => Either<B, C>) => {
     const values = set.values()
     let e: Next<A>
@@ -375,7 +375,7 @@ export function partitionMap_<B, C>(
           break
       }
     }
-    return { left, right }
+    return Tp.tuple(left, right)
   }
 }
 
@@ -532,7 +532,7 @@ export function compact<A>(E: Equal<A>): (fa: Set<Option<A>>) => Set<A> {
 export function separate<E, A>(
   EE: Equal<E>,
   EA: Equal<A>
-): (fa: Set<Either<E, A>>) => Separated<Set<E>, Set<A>> {
+): (fa: Set<Either<E, A>>) => Tp.Tuple<[Set<E>, Set<A>]> {
   return (fa) => {
     const elemEE = elem_(EE)
     const elemEA = elem_(EA)
@@ -552,7 +552,7 @@ export function separate<E, A>(
           break
       }
     })
-    return { left, right }
+    return Tp.tuple(left, right)
   }
 }
 

@@ -2,8 +2,8 @@
 
 import * as O from "@effect-ts/system/Option"
 
+import type * as Tp from "../../Collections/Immutable/Tuple"
 import type { Either } from "../../Either"
-import type { Separated } from "../../Utils"
 import { separate } from "./separate"
 
 /**
@@ -12,7 +12,8 @@ import { separate } from "./separate"
  * @ets_data_first partitionMap_
  */
 export function partitionMap<A, B, B1>(f: (a: A) => Either<B, B1>) {
-  return (fa: O.Option<A>): Separated<O.Option<B>, O.Option<B1>> => partitionMap_(fa, f)
+  return (fa: O.Option<A>): Tp.Tuple<[O.Option<B>, O.Option<B1>]> =>
+    partitionMap_(fa, f)
 }
 
 /**
@@ -21,6 +22,6 @@ export function partitionMap<A, B, B1>(f: (a: A) => Either<B, B1>) {
 export function partitionMap_<A, B, B1>(
   fa: O.Option<A>,
   f: (a: A) => Either<B, B1>
-): Separated<O.Option<B>, O.Option<B1>> {
+): Tp.Tuple<[O.Option<B>, O.Option<B1>]> {
   return separate(O.map_(fa, f))
 }

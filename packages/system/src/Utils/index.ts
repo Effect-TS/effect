@@ -141,11 +141,6 @@ export const patternFor: <N extends string>(
 
 export const matchTagFor = patternFor("_tag")
 
-export interface Separated<A, B> {
-  readonly left: A
-  readonly right: B
-}
-
 export type RefinementWithIndex<I, A, B extends A> = (i: I, a: A) => a is B
 
 export type PredicateWithIndex<I, A> = (i: I, a: A) => boolean

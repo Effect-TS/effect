@@ -7,9 +7,9 @@ import type { Predicate, Refinement } from "../../../Function"
 import { not } from "../../../Function"
 import * as I from "../../../Iterable"
 import * as St from "../../../Structural"
-import type { Separated } from "../../../Utils"
 import * as HM from "../HashMap/core"
 import type { Next } from "../Map"
+import * as Tp from "../Tuple"
 
 export class HashSet<V> implements Iterable<V>, St.HasHash, St.HasEquals {
   constructor(readonly keyMap: HM.HashMap<V, unknown>) {}
@@ -292,13 +292,13 @@ export function filter_<A>(set: HashSet<A>, predicate: Predicate<A>): HashSet<A>
  */
 export function partition<A, B extends A>(
   refinement: Refinement<A, B>
-): (set: HashSet<A>) => Separated<HashSet<A>, HashSet<B>>
+): (set: HashSet<A>) => Tp.Tuple<[HashSet<A>, HashSet<B>]>
 export function partition<A>(
   predicate: Predicate<A>
-): (set: HashSet<A>) => Separated<HashSet<A>, HashSet<A>>
+): (set: HashSet<A>) => Tp.Tuple<[HashSet<A>, HashSet<A>]>
 export function partition<A>(
   predicate: Predicate<A>
-): (set: HashSet<A>) => Separated<HashSet<A>, HashSet<A>> {
+): (set: HashSet<A>) => Tp.Tuple<[HashSet<A>, HashSet<A>]> {
   return (set) => partition_(set, predicate)
 }
 
@@ -308,15 +308,15 @@ export function partition<A>(
 export function partition_<A, B extends A>(
   set: HashSet<A>,
   refinement: Refinement<A, B>
-): Separated<HashSet<A>, HashSet<B>>
+): Tp.Tuple<[HashSet<A>, HashSet<B>]>
 export function partition_<A>(
   set: HashSet<A>,
   predicate: Predicate<A>
-): Separated<HashSet<A>, HashSet<A>>
+): Tp.Tuple<[HashSet<A>, HashSet<A>]>
 export function partition_<A>(
   set: HashSet<A>,
   predicate: Predicate<A>
-): Separated<HashSet<A>, HashSet<A>> {
+): Tp.Tuple<[HashSet<A>, HashSet<A>]> {
   const values_ = values(set)
   let e: Next<A>
   const right = beginMutation(make<A>())
@@ -329,7 +329,7 @@ export function partition_<A>(
       add_(left, value)
     }
   }
-  return { left: endMutation(left), right: endMutation(right) }
+  return Tp.tuple(endMutation(left), endMutation(right))
 }
 
 /**

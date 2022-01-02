@@ -1,5 +1,5 @@
 import type * as E from "../../../../Either"
-import type { Separated } from "../../../../Utils"
+import * as Tp from "../../Tuple"
 import * as Chunk from "../core"
 import { forEach_ } from "./forEach"
 
@@ -10,7 +10,7 @@ import { forEach_ } from "./forEach"
 export function partitionMap_<A, B, C>(
   self: Chunk.Chunk<A>,
   f: (a: A) => E.Either<B, C>
-): Separated<Chunk.Chunk<B>, Chunk.Chunk<C>> {
+): Tp.Tuple<[Chunk.Chunk<B>, Chunk.Chunk<C>]> {
   let bs = Chunk.empty<B>()
   let cs = Chunk.empty<C>()
 
@@ -23,10 +23,7 @@ export function partitionMap_<A, B, C>(
     }
   })
 
-  return {
-    left: bs,
-    right: cs
-  }
+  return Tp.tuple(bs, cs)
 }
 
 /**
@@ -37,6 +34,6 @@ export function partitionMap_<A, B, C>(
  */
 export function partitionMap<A, B, C>(
   f: (a: A) => E.Either<B, C>
-): (self: Chunk.Chunk<A>) => Separated<Chunk.Chunk<B>, Chunk.Chunk<C>> {
+): (self: Chunk.Chunk<A>) => Tp.Tuple<[Chunk.Chunk<B>, Chunk.Chunk<C>]> {
   return (self) => partitionMap_(self, f)
 }

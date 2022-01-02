@@ -6,7 +6,6 @@ import * as A from "../Collections/Immutable/Array"
 import * as Tp from "../Collections/Immutable/Tuple"
 import type { Either } from "../Either"
 import { identity } from "../Function"
-import type { Separated } from "../Utils"
 
 function* genOf<A>(a: A) {
   yield a
@@ -239,7 +238,7 @@ export function flatten<A>(a: Iterable<Iterable<A>>) {
 }
 
 export function partitionMap<A, A1, A2>(f: (a: A) => Either<A1, A2>) {
-  return (as: Iterable<A>): Separated<Iterable<A1>, Iterable<A2>> =>
+  return (as: Iterable<A>): Tp.Tuple<[Iterable<A1>, Iterable<A2>]> =>
     A.separate(Array.from(map_(as, f)))
 }
 
