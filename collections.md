@@ -7,7 +7,7 @@
 | buckets              | ✅    | N/A   | N/A           |
 | chain                | ✅    | ✅    |               |
 | collectX             | ✅    | ✅    |               |
-| collectXWithIndex    |       | ✅    |               |
+| collectXWithIndex    | ✅    | ✅    |               |
 | collectWhile         | ✅    | ✅    |               |
 | concat               | ✅    | ✅    |               |
 | corresponds          | ✅    |       |               |
@@ -21,7 +21,7 @@
 | exists               | ✅    |       |               |
 | fill                 | ✅    |       |               |
 | filter               | ✅    | ✅    |               |
-| filterWithIndex      |       | ✅    |               |
+| filterWithIndex      | ✅    | ✅    |               |
 | find                 | ✅    | ✅    |               |
 | findIndex            |       | ✅    |               |
 | findLast             |       | ✅    |               |
@@ -37,22 +37,22 @@
 | indexWhere           | ✅    |       |               |
 | indexWhereFrom       | ✅    |       |               |
 | isEmpty              | ✅    | ✅    |               |
-| isNonEmpty           |       | ✅    |               |
+| isNonEmpty           | ✅    | ✅    |               |
 | join                 | ✅    |       |               |
 | last                 | ✅    | ✅    | ✅            |
 | make                 | ✅    |       |               |
 | makeBy               |       | ✅    |               |
 | map                  | ✅    | ✅    |               |
-| mapWithIndex         |       | ✅    |               |
+| mapWithIndex         | ✅    | ✅    |               |
 | mapAccum             | ✅    |       |               |
 | materialize          | ✅    |       |               |
 | partitionMap         | ✅    |       |               |
 | prepend              | ✅    | ✅    | ✅            |
 | range                | ✅    | ✅    |               |
 | reduce               | ✅    | ✅    |               |
-| reduceIndex          |       | ✅    |               |
+| reduceWithIndex      | ✅Î   | ✅    |               |
 | reduceRight          | ✅    | ✅    |               |
-| reduceRightWithIndex |       | ✅    |               |
+| reduceRightWithIndex | ✅    | ✅    |               |
 | reduceWhile          | ✅    |       |               |
 | reverse              | ✅    | ✅    | ✅            |
 | reverseBuckets       | ✅    | N/A   |               |
@@ -119,8 +119,6 @@
 | findFirstMap       |       | ✅    |               |
 | findLastMap        |       | ✅    |               |
 | foldLeft           |       | ✅    |               |
-| foldMap            | ✅    | ✅    | ✅            |
-| foldMapWithIndex   | ✅    | ✅    | ✅            |
 | foldRight          |       | ✅    |               |
 | groupBy            |       | ✅    | ✅            |
 | init               |       | ✅    | ✅            |
@@ -152,3 +150,5 @@
 | unsafeInsertAt     |       | ✅    |               |
 | unsafeUpdate       |       | ✅    |               |
 | unsafeUpdateAt     |       | ✅    |               |
+| copy               |       | ✅    |               |
+| includes           |       | ✅    |               |
