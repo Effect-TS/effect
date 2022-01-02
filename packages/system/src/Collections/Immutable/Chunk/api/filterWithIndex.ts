@@ -1,3 +1,4 @@
+import type { PredicateWithIndex, RefinementWithIndex } from "../../../../Utils"
 import * as Chunk from "../core"
 import { ArrTypeId, concrete } from "../definition"
 
@@ -6,15 +7,15 @@ import { ArrTypeId, concrete } from "../definition"
  */
 export function filterWithIndex_<A, B extends A>(
   self: Chunk.Chunk<A>,
-  f: (index: number, a: A) => a is B
+  f: RefinementWithIndex<number, A, B>
 ): Chunk.Chunk<B>
 export function filterWithIndex_<A>(
   self: Chunk.Chunk<A>,
-  f: (index: number, a: A) => boolean
+  f: PredicateWithIndex<number, A>
 ): Chunk.Chunk<A>
 export function filterWithIndex_<A>(
   self: Chunk.Chunk<A>,
-  f: (index: number, a: A) => boolean
+  f: PredicateWithIndex<number, A>
 ): Chunk.Chunk<A> {
   concrete(self)
 
@@ -63,13 +64,13 @@ export function filterWithIndex_<A>(
  * @ets_data_first filterWithIndex_
  */
 export function filterWithIndex<A, B extends A>(
-  f: (index: number, a: A) => a is B
+  f: RefinementWithIndex<number, A, B>
 ): (self: Chunk.Chunk<A>) => Chunk.Chunk<B>
 export function filterWithIndex<A>(
-  f: (index: number, a: A) => boolean
+  f: PredicateWithIndex<number, A>
 ): (self: Chunk.Chunk<A>) => Chunk.Chunk<A>
 export function filterWithIndex<A>(
-  f: (index: number, a: A) => boolean
+  f: PredicateWithIndex<number, A>
 ): (self: Chunk.Chunk<A>) => Chunk.Chunk<A> {
   return (self) => filterWithIndex_(self, f)
 }
