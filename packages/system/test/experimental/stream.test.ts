@@ -230,14 +230,14 @@ describe("Stream", () => {
   })
 
   it("zipAllSortedByKey", async () => {
-    const a = S.from(
+    const a = S.make(
       Tp.tuple(1, "one"),
       Tp.tuple(2, "two"),
       Tp.tuple(3, "three"),
       Tp.tuple(4, "four"),
       Tp.tuple(5, "five")
     )
-    const b = S.from(
+    const b = S.make(
       Tp.tuple(1, "un"),
       Tp.tuple(2, "deux"),
       // No three
@@ -456,7 +456,7 @@ describe("Stream", () => {
 
   it("splitLines", async () => {
     const result = await pipe(
-      S.from("Hello\nthis\nis\r\na\r\ntest\n"),
+      S.make("Hello\nthis\nis\r\na\r\ntest\n"),
       S.splitLines,
       S.runCollect,
       T.runPromise
@@ -467,8 +467,8 @@ describe("Stream", () => {
 
   it("zip", async () => {
     const result = await pipe(
-      S.from(1, 2, 3),
-      S.zip(S.from("a", "b", "c"), S.from(true, false, true), S.from("x", "y", "z")),
+      S.make(1, 2, 3),
+      S.zip(S.make("a", "b", "c"), S.make(true, false, true), S.make("x", "y", "z")),
       S.runCollect,
       T.runPromise
     )
@@ -484,8 +484,8 @@ describe("Stream", () => {
 
   it("cross", async () => {
     const result = await pipe(
-      S.from(1, 2),
-      S.cross(S.from("a", "b"), S.from(true, false)),
+      S.make(1, 2),
+      S.cross(S.make("a", "b"), S.make(true, false)),
       S.runCollect,
       T.runPromise
     )
@@ -506,7 +506,7 @@ describe("Stream", () => {
 
   it("splitOn", async () => {
     const result = await pipe(
-      S.from("This|is|a|test"),
+      S.make("This|is|a|test"),
       S.splitOn("|"),
       S.runCollect,
       T.runPromise
