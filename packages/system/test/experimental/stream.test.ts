@@ -536,7 +536,7 @@ describe("Stream", () => {
     const result = await pipe(S.range(1, 4), S.sliding(2), S.runCollect, T.runPromise)
 
     expect(result).equals(
-      Chunk.many(Chunk.many(1, 2), Chunk.many(2, 3), Chunk.many(3, 4))
+      Chunk.make(Chunk.make(1, 2), Chunk.make(2, 3), Chunk.make(3, 4))
     )
   })
 
@@ -565,6 +565,6 @@ describe("Stream", () => {
       T.runPromise
     )
 
-    expect(result).equals(Tp.tuple(Chunk.many(1, 2, 3), Chunk.many(1, 2, 3)))
+    expect(result).equals(Tp.tuple(Chunk.make(1, 2, 3), Chunk.make(1, 2, 3)))
   })
 })

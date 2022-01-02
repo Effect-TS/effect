@@ -74,7 +74,7 @@ export function sliding_<R, E, A>(
                 pipe(
                   in_,
                   CK.zipWithIndex,
-                  CK.filterMap(({ tuple: [i, idx] }) => {
+                  CK.collectChunk(({ tuple: [i, idx] }) => {
                     queue.put(i)
 
                     const currentIndex = queueSize + idx + 1

@@ -97,7 +97,7 @@ describe("Chunk", () => {
         Chunk.concat(Chunk.from([6, 7, 8, 9, 10])),
         Chunk.takeRight(6)
       )
-    ).equals(Chunk.many(5, 6, 7, 8, 9, 10))
+    ).equals(Chunk.make(5, 6, 7, 8, 9, 10))
   })
   it("drop", () => {
     expect(

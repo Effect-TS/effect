@@ -1078,3 +1078,83 @@ export interface Spanned<I, R> {
   readonly init: Array<I>
   readonly rest: Array<R>
 }
+
+/**
+ * Returns the size of an array
+ */
+export function size<A>(as: Array<A>): number {
+  return as.length
+}
+
+/**
+ * Returns true if all the elements of the array match a predicate
+ */
+export function forAll_<A>(as: Array<A>, pred: Predicate<A>): boolean {
+  for (const a of as) {
+    if (!pred(a)) {
+      return false
+    }
+  }
+
+  return true
+}
+
+/**
+ * Returns true if all the elements of the array match a predicate
+ *
+ * @ets_data_first forAll_
+ */
+export function forAll<A>(pred: Predicate<A>) {
+  return (as: Array<A>) => forAll_(as, pred)
+}
+
+/**
+ * Returns true if any the elements of the array match a predicate
+ */
+export function forAny_<A>(as: Array<A>, pred: Predicate<A>): boolean {
+  for (const a of as) {
+    if (pred(a)) {
+      return true
+    }
+  }
+
+  return false
+}
+
+/**
+ * Returns true if any the elements of the array match a predicate
+ *
+ * @ets_data_first forAny_
+ */
+export function forAny<A>(pred: Predicate<A>) {
+  return (as: Array<A>) => forAny_(as, pred)
+}
+
+/**
+ * Returns true if the array contains the element
+ */
+export function includes_<A>(as: Array<A>, elem: A): boolean {
+  for (const a of as) {
+    if (a === elem) {
+      return true
+    }
+  }
+
+  return false
+}
+
+/**
+ * Returns true if the array contains the element
+ *
+ * @ets_data_first includes_
+ */
+export function includes<A>(elem: A) {
+  return (as: Array<A>) => includes_(as, elem)
+}
+
+/**
+ * Returns a copy of the array
+ */
+export function copy<A>(as: Array<A>): Array<A> {
+  return as.slice(0)
+}
