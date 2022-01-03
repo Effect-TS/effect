@@ -1,0 +1,24 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "build/esm",
+    "target": "ES2018",
+    "module": "ES6",
+    "moduleResolution": "Node",
+    "incremental": true,
+    "tsBuildInfoFile": "tsbuildinfo/esm.tsbuildinfo",
+    "declaration": false,
+    "declarationMap": false,
+    "removeComments": false,
+    "plugins": [
+      {
+        "transform": "../tracing-plugin/src/index.ts",
+        "moduleMap": {
+          "^src/(.*)": "(@effect-ts/system-next): _src/$1"
+        },
+        "__importTracingFrom": "./src/Tracing"
+      }
+    ]
+  },
+  "include": ["src/**/*.ts"]
+}

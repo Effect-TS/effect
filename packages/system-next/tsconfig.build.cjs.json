@@ -1,0 +1,22 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "build/cjs",
+    "target": "ES2018",
+    "module": "CommonJS",
+    "incremental": true,
+    "tsBuildInfoFile": "tsbuildinfo/build.tsbuildinfo",
+    "declarationDir": "build/dts",
+    "removeComments": false,
+    "plugins": [
+      {
+        "transform": "../tracing-plugin/src/index.ts",
+        "moduleMap": {
+          "^src/(.*)": "(@effect-ts/system-next): _src/$1"
+        },
+        "__importTracingFrom": "./src/Tracing"
+      }
+    ]
+  },
+  "include": ["src/**/*.ts"]
+}
