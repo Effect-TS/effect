@@ -3,6 +3,27 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.46.0](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.45.6...@effect-ts/system@0.46.0) (2022-01-04)
+
+
+### Bug Fixes
+
+* **HashMap:** Fix `hasHash_` function ([f35edf6](https://github.com/Effect-TS/core/commit/f35edf662f05abcfde60d3f24f013cc86dbdd52e))
+
+
+### Features
+
+* add static of() on Tagged base class ([8fdc6b5](https://github.com/Effect-TS/core/commit/8fdc6b515934223a18bba256a5cb669997245e4d))
+* **Async:** Added struct and structPar support for Async effect type ([3268fda](https://github.com/Effect-TS/core/commit/3268fda814359d8286beba2784224fead30b46f6))
+* **chunk:** added dedupe ([80e4d24](https://github.com/Effect-TS/core/commit/80e4d24fba69728a7febacf4aadd1b0a08cee04a))
+* **chunk:** added findIndex, findLast, findLastIndex, tap, dropRight ([67d592d](https://github.com/Effect-TS/core/commit/67d592def504e3e9bcd754db4ea677bee87d084a))
+* **chunk:** added toString ([11a74b3](https://github.com/Effect-TS/core/commit/11a74b33e443409d944469e67d8d078e13aa0740))
+* **chunk:** added withIndex variants for map/filter/reduce/reduceRight ([5d48890](https://github.com/Effect-TS/core/commit/5d4889049b86c28e76148e5bdcd01329c21be40c))
+
+
+
+
+
 ## [0.45.6](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.45.5...@effect-ts/system@0.45.6) (2021-12-21)
 
 **Note:** Version bump only for package @effect-ts/system
