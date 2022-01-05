@@ -27,6 +27,8 @@ export const prepend_: <A>(tail: A.Array<A>, head: A) => NonEmptyArray<A> =
 
 /**
  * Append an element to the front of an array, creating a new non empty array
+ *
+ * @ets_data_first prepend_
  */
 export const prepend: <A>(head: A) => (tail: A.Array<A>) => NonEmptyArray<A> =
   A.prepend as any
@@ -42,6 +44,8 @@ export const append_: <A>(init: A.Array<A>, end: A) => NonEmptyArray<A> =
 
 /**
  * Append an element to the end of an array, creating a new non empty array
+ *
+ * @ets_data_first append_
  */
 export const append: <A>(end: A) => (init: A.Array<A>) => NonEmptyArray<A> =
   A.append as any
@@ -93,6 +97,8 @@ export function init<A>(nea: NonEmptyArray<A>): A.Array<A> {
 /**
  * Insert an element at the specified index, creating a new array,
  * or returning None if the index is out of bounds
+ *
+ * @ets_data_first insertAt_
  */
 export function insertAt<A>(
   i: number,
@@ -105,7 +111,6 @@ export function insertAt<A>(
  * Insert an element at the specified index, creating a new array,
  * or returning None if the index is out of bounds
  */
-
 export function insertAt_<A>(
   nea: NonEmptyArray<A>,
   i: number,
@@ -117,6 +122,8 @@ export function insertAt_<A>(
 /**
  * Change the element at the specified index,
  * creating a new array, or returning None if the index is out of bounds
+ *
+ * @ets_data_first updateAt_
  */
 export function updateAt<A>(
   i: number,
@@ -140,6 +147,8 @@ export function updateAt_<A>(
 /**
  * Apply a function to the element at the specified index,
  * creating a new array, or returning None if the index is out of bounds
+ *
+ * @ets_data_first modifyAt_
  */
 export function modifyAt<A>(
   i: number,
@@ -162,6 +171,8 @@ export function modifyAt_<A>(
 
 /**
  * Filters the array
+ *
+ * @ets_data_first filter_
  */
 export function filter<A, B extends A>(
   refinement: Refinement<A, B>
@@ -195,6 +206,8 @@ export function filter_<A>(
 
 /**
  * Filters the array also passing element index
+ *
+ * @ets_data_first filterWithIndex_
  */
 export function filterWithIndex<A>(
   predicate: (i: number, a: A) => boolean
@@ -228,6 +241,8 @@ export function concat_<A>(fx: A.Array<A>, fy: A.Array<A>): A.Array<A> {
 
 /**
  * Concatenate arrays
+ *
+ * @ets_data_first concat_
  */
 export function concat<A>(fy: NonEmptyArray<A>): (fx: A.Array<A>) => NonEmptyArray<A>
 export function concat<A>(fy: A.Array<A>): (fx: A.Array<A>) => NonEmptyArray<A>
@@ -250,6 +265,8 @@ export const zipWith_: <A, B, C>(
  * Apply a function to pairs of elements at the same index in two arrays,
  * collecting the results in a new array. If one input array is short, excess
  * elements of the longer array are discarded.
+ *
+ * @ets_data_first zipWith_
  */
 export const zipWith: <A, B, C>(
   fb: NonEmptyArray<B>,
@@ -268,6 +285,8 @@ export const zip_: <A, B>(
 /**
  * Takes two arrays and returns an array of corresponding pairs.
  * If one input array is short, excess elements of the longer array are discarded
+ *
+ * @ets_data_first zip_
  */
 export const zip: <B>(
   fb: NonEmptyArray<B>
@@ -283,6 +302,8 @@ export const unzip: <A, B>(
 
 /**
  * Classic Applicative's ap
+ *
+ * @ets_data_first ap_
  */
 export const ap: <A>(
   fa: NonEmptyArray<A>
@@ -299,6 +320,8 @@ export const ap_: <A, B>(
 /**
  * Composes computations in sequence, using the return value
  * of one computation to determine the next computation.
+ *
+ * @ets_data_first chain_
  */
 export const chain: <A, B>(
   f: (a: A) => NonEmptyArray<B>
@@ -314,21 +337,6 @@ export const chain_: <A, B>(
 ) => NonEmptyArray<B> = A.chain_ as any
 
 /**
- * Like chain but ignores output
- */
-export const tap: <A, B>(
-  f: (a: A) => NonEmptyArray<B>
-) => (ma: NonEmptyArray<A>) => NonEmptyArray<A> = A.tap as any
-
-/**
- * Like chain but ignores output
- */
-export const tap_: <A, B>(
-  ma: NonEmptyArray<A>,
-  f: (a: A) => NonEmptyArray<B>
-) => NonEmptyArray<A> = A.tap_ as any
-
-/**
  * Array[A] => Array[Array[A]]
  */
 export const duplicate: <A>(ma: NonEmptyArray<A>) => NonEmptyArray<NonEmptyArray<A>> =
@@ -339,6 +347,8 @@ export const duplicate: <A>(ma: NonEmptyArray<A>) => NonEmptyArray<NonEmptyArray
  * element's index, and uses the return value to construct the result array
  *
  * i.e: like map that also consumes all the elements up to `i`
+ *
+ * @ets_data_first extend_
  */
 export const extend: <A, B>(
   f: (fa: NonEmptyArray<A>) => B
@@ -363,6 +373,8 @@ export const flatten: <A>(mma: NonEmptyArray<NonEmptyArray<A>>) => NonEmptyArray
 
 /**
  * Apply f to every element of Array returning Array
+ *
+ * @ets_data_first map_
  */
 export const map: <A, B>(f: (a: A) => B) => (fa: NonEmptyArray<A>) => NonEmptyArray<B> =
   A.map as any
@@ -375,6 +387,8 @@ export const map_: <A, B>(fa: NonEmptyArray<A>, f: (a: A) => B) => NonEmptyArray
 
 /**
  * Like map but also passes the index to f
+ *
+ * @ets_data_first mapWithIndex_
  */
 export const mapWithIndex: <A, B>(
   f: (i: number, a: A) => B
@@ -390,6 +404,8 @@ export const mapWithIndex_: <A, B>(
 
 /**
  * Construct B by compacting with f over the array from left to right
+ *
+ * @ets_data_first reduce_
  */
 export const reduce: <A, B>(b: B, f: (b: B, a: A) => B) => (fa: NonEmptyArray<A>) => B =
   A.reduce as any
@@ -402,6 +418,8 @@ export const reduce_: <A, B>(fa: NonEmptyArray<A>, b: B, f: (b: B, a: A) => B) =
 
 /**
  * Construct B by compacting with f over the array from right to left
+ *
+ * @ets_data_first reduceRight_
  */
 export const reduceRight: <A, B>(
   b: B,
@@ -419,6 +437,8 @@ export const reduceRight_: <A, B>(
 
 /**
  * Construct B by compacting with f over the array from right to left
+ *
+ * @ets_data_first reduceRightWithIndex_
  */
 export const reduceRightWithIndex: <A, B>(
   b: B,
@@ -436,6 +456,8 @@ export const reduceRightWithIndex_: <A, B>(
 
 /**
  * Construct B by compacting with f over the array from left to right
+ *
+ * @ets_data_first reduceWithIndex_
  */
 export const reduceWithIndex: <A, B>(
   b: B,

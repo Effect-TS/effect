@@ -63,7 +63,6 @@
 | splitAt              | ✅    | ✅    |               |
 | splitWhere           | ✅    |       |               |
 | tail                 | ✅    | ✅    | ✅            |
-| tap                  | ✅    | ✅    |               |
 | take                 | ✅    | ✅    |               |
 | takeWhile            | ✅    | ✅    |               |
 | toArrayLike          | ✅    |       |               |

@@ -17,6 +17,8 @@ export type Array<A> = ReadonlyArray<A>
 
 /**
  * Composes computations in sequence, using the return value of one computation to determine the next computation.
+ *
+ * @ets_data_first chain_
  */
 export function chain<A, B>(f: (a: A) => Array<B>) {
   return (ma: Array<A>): Array<B> => chain_(ma, f)
@@ -49,20 +51,6 @@ export function chain_<A, B>(fa: Array<A>, f: (a: A) => Array<B>): Array<B> {
 }
 
 /**
- * Like chain but ignores output
- */
-export function tap<A, B>(f: (a: A) => Array<B>) {
-  return (ma: Array<A>): Array<A> => tap_(ma, f)
-}
-
-/**
- * Like chain but ignores output
- */
-export function tap_<A, B>(ma: Array<A>, f: (a: A) => Array<B>): Array<A> {
-  return chain_(ma, (a) => map(() => a)(f(a)))
-}
-
-/**
  * Splits an array into length-`n` pieces. The last piece will be shorter if `n` does not evenly divide the length of
  * the array. Note that `split(n)([])` is `[]`, not `[[]]`. This is intentional, and is consistent with a recursive
  * definition of `split`; it satisfies the property that
@@ -72,6 +60,8 @@ export function tap_<A, B>(ma: Array<A>, f: (a: A) => Array<B>): Array<A> {
  * ```
  *
  * whenever `n` evenly divides the length of `xs`.
+ *
+ * @ets_data_first split_
  */
 export function split(n: number): <A>(as: Array<A>) => Array<Array<A>> {
   return (as) => split_(as, n)
@@ -97,7 +87,7 @@ export function split_<A>(as: Array<A>, n: number): Array<Array<A>> {
  * Filter out optional values
  */
 export function compact<A>(fa: Array<Option<A>>): Array<A> {
-  return collectArray((x: Option<A>) => x)(fa)
+  return collect((x: Option<A>) => x)(fa)
 }
 
 /**
@@ -124,6 +114,8 @@ export function concat_<A, A1>(x: Array<A>, y: Array<A1>): Array<A | A1> {
 
 /**
  * Concatenate
+ *
+ * @ets_data_first concat_
  */
 export function concat<A1>(y: Array<A1>) {
   return <A>(x: Array<A>): Array<A | A1> => concat_(x, y)
@@ -148,6 +140,8 @@ export function prepend_<A>(tail: Array<A>, head: A): Array<A> {
 
 /**
  * Attaches an element to the front of an array, creating a new non empty array
+ *
+ * @ets_data_first prepend_
  */
 export function prepend<A>(head: A): (tail: Array<A>) => Array<A> {
   return (tail) => prepend_(tail, head)
@@ -159,6 +153,8 @@ export function prepend<A>(head: A): (tail: Array<A>) => Array<A> {
  * ```ts
  * assert.deepStrictEqual(drop(2)([1, 2, 3]), [3])
  * ```
+ *
+ * @ets_data_first drop_
  */
 export function drop(n: number): <A>(as: Array<A>) => Array<A> {
   return (as) => drop_(as, n)
@@ -177,6 +173,8 @@ export function drop_<A>(as: Array<A>, n: number): Array<A> {
  * ```ts
  * assert.deepStrictEqual(dropWhile((n: number) => n % 2 === 1)([1, 3, 2, 4, 5]), [2, 4, 5])
  * ```
+ *
+ * @ets_data_first dropWhile_
  */
 export function dropWhile<A>(predicate: Predicate<A>): (as: Array<A>) => Array<A> {
   return (as) => dropWhile_(as, predicate)
@@ -205,6 +203,8 @@ export function dropWhile_<A>(as: Array<A>, predicate: Predicate<A>): Array<A> {
  * ```
  * assert.deepStrictEqual(dropRight(2)([1, 2, 3, 4, 5]), [1, 2, 3])
  * ```
+ *
+ * @ets_data_first dropRight_
  */
 export function dropRight(n: number): <A>(as: Array<A>) => Array<A> {
   return (as) => dropRight_(as, n)
@@ -230,6 +230,8 @@ export function empty<A>(): Array<A> {
 
 /**
  * Filters the array
+ *
+ * @ets_data_first filter_
  */
 export function filter<A, B extends A>(
   refinement: Refinement<A, B>
@@ -253,6 +255,8 @@ export function filter_<A>(fa: Array<A>, predicate: Predicate<A>): Array<A> {
 
 /**
  * Filters the array also passing element index
+ *
+ * @ets_data_first filterWithIndex_
  */
 export function filterWithIndex<A>(
   predicate: (i: number, a: A) => boolean
@@ -272,30 +276,34 @@ export function filterWithIndex_<A>(
 
 /**
  * Filters the array also mapping the output
+ *
+ * @ets_data_first collect_
  */
-export const collectArray =
+export const collect =
   <A, B>(f: (a: A) => Option<B>) =>
   (fa: Array<A>): Array<B> =>
-    collectArray_(fa, f)
+    collect_(fa, f)
 
 /**
  * Filters the array also mapping the output
  */
-export function collectArray_<A, B>(fa: Array<A>, f: (a: A) => Option<B>): Array<B> {
-  return collectArrayWithIndex_(fa, (_, a) => f(a))
+export function collect_<A, B>(fa: Array<A>, f: (a: A) => Option<B>): Array<B> {
+  return collectWithIndex_(fa, (_, a) => f(a))
+}
+
+/**
+ * Filters the array also mapping the output
+ *
+ * @ets_data_first collectWithIndex_
+ */
+export function collectWithIndex<A, B>(f: (i: number, a: A) => Option<B>) {
+  return (fa: Array<A>): Array<B> => collectWithIndex_(fa, f)
 }
 
 /**
  * Filters the array also mapping the output
  */
-export function collectArrayWithIndex<A, B>(f: (i: number, a: A) => Option<B>) {
-  return (fa: Array<A>): Array<B> => collectArrayWithIndex_(fa, f)
-}
-
-/**
- * Filters the array also mapping the output
- */
-export function collectArrayWithIndex_<A, B>(
+export function collectWithIndex_<A, B>(
   fa: Array<A>,
   f: (i: number, a: A) => Option<B>
 ): Array<B> {
@@ -330,6 +338,8 @@ export function collectWhile_<A, B>(arr: Array<A>, f: (x: A) => Option<B>): Arra
 
 /**
  * Maps an array until `none` is returned
+ *
+ * @ets_data_first collectWhile_
  */
 export function collectWhile<A, B>(f: (x: A) => Option<B>) {
   return (arr: Array<A>) => collectWhile_(arr, f)
@@ -341,6 +351,8 @@ export function collectWhile<A, B>(f: (x: A) => Option<B>) {
  * ```ts
  * assert.deepStrictEqual(find((x: { a: number, b: number }) => x.a === 1)([{ a: 1, b: 1 }, { a: 1, b: 2 }]), some({ a: 1, b: 1 }))
  * ```
+ *
+ * @ets_data_first find_
  */
 export function find<A, B extends A>(
   refinement: Refinement<A, B>
@@ -375,6 +387,8 @@ export function find_<A>(as: Array<A>, predicate: Predicate<A>): Option<A> {
  * assert.deepStrictEqual(findIndex((n: number) => n === 2)([1, 2, 3]), some(1))
  * assert.deepStrictEqual(findIndex((n: number) => n === 2)([]), none)
  * ```
+ *
+ * @ets_data_first findIndex_
  */
 export function findIndex<A>(
   predicate: Predicate<A>
@@ -401,6 +415,8 @@ export function findIndex_<A>(as: Array<A>, predicate: Predicate<A>): Option<num
  * ```
  * assert.deepStrictEqual(findLast((x: { a: number, b: number }) => x.a === 1)([{ a: 1, b: 1 }, { a: 1, b: 2 }]), some({ a: 1, b: 2 }))
  * ```
+ *
+ * @ets_data_first findLast_
  */
 export function findLast<A, B extends A>(
   refinement: Refinement<A, B>
@@ -440,6 +456,8 @@ export function findLast_<A>(as: Array<A>, predicate: Predicate<A>): Option<A> {
  * assert.deepStrictEqual(findLastIndex((x: { a: number }) => x.a === 1)(xs), some(1))
  * assert.deepStrictEqual(findLastIndex((x: { a: number }) => x.a === 4)(xs), none)
  * ```
+ *
+ * @ets_data_first findLastIndex_
  */
 export function findLastIndex<A>(
   predicate: Predicate<A>
@@ -545,6 +563,8 @@ export function get_<A>(as: Array<A>, i: number): Option<A> {
 
 /**
  * This function provides a safe way to read a value at a particular index from an array
+ *
+ * @ets_data_first get_
  */
 export function get(i: number): <A>(as: Array<A>) => Option<A> {
   return (as) => get_(as, i)
@@ -568,6 +588,8 @@ export function makeBy_<A>(n: number, f: (i: number) => A): Array<A> {
 
 /**
  * Return a list of length `n` with element `i` initialized with `f(i)`
+ *
+ * @ets_data_first makeBy_
  */
 export function makeBy<A>(f: (i: number) => A): (n: number) => Array<A> {
   return (n) => makeBy_(n, f)
@@ -575,6 +597,8 @@ export function makeBy<A>(f: (i: number) => A): (n: number) => Array<A> {
 
 /**
  * Apply f to every element of Array<A> returning Array<B>
+ *
+ * @ets_data_first map_
  */
 export function map<A, B>(f: (a: A) => B) {
   return (fa: Array<A>): Array<B> => fa.map(f)
@@ -589,6 +613,8 @@ export function map_<A, B>(fa: Array<A>, f: (a: A) => B): Array<B> {
 
 /**
  * Like map but also passes the index to f
+ *
+ * @ets_data_first mapWithIndex_
  */
 export function mapWithIndex<A, B>(f: (i: number, a: A) => B) {
   return (fa: Array<A>): Array<B> => mapWithIndex_(fa, f)
@@ -621,6 +647,8 @@ export function range(start: number, end: number): Array<number> {
 
 /**
  * Construct B by compacting with f over the array from left to right
+ *
+ * @ets_data_first reduce_
  */
 export function reduce<A, B>(b: B, f: (b: B, a: A) => B) {
   return (fa: Array<A>): B => reduce_(fa, b, f)
@@ -635,6 +663,8 @@ export function reduce_<A, B>(fa: Array<A>, b: B, f: (b: B, a: A) => B): B {
 
 /**
  * Construct B by compacting with f over the array from right to left
+ *
+ * @ets_data_first reduceRight_
  */
 export function reduceRight<A, B>(b: B, f: (a: A, b: B) => B) {
   return (fa: Array<A>): B => reduceRight_(fa, b, f)
@@ -642,6 +672,7 @@ export function reduceRight<A, B>(b: B, f: (a: A, b: B) => B) {
 
 /**
  * Construct B by compacting with f over the array from right to left
+ *
  */
 export function reduceRight_<A, B>(fa: Array<A>, b: B, f: (a: A, b: B) => B): B {
   return reduceRightWithIndex_(fa, b, (_, a, b) => f(a, b))
@@ -649,6 +680,8 @@ export function reduceRight_<A, B>(fa: Array<A>, b: B, f: (a: A, b: B) => B): B 
 
 /**
  * Construct B by compacting with f over the array from right to left
+ *
+ * @ets_data_first reduceRightWithIndex_
  */
 export function reduceRightWithIndex<A, B>(b: B, f: (i: number, a: A, b: B) => B) {
   return (fa: Array<A>): B => fa.reduceRight((b, a, i) => f(i, a, b), b)
@@ -656,6 +689,7 @@ export function reduceRightWithIndex<A, B>(b: B, f: (i: number, a: A, b: B) => B
 
 /**
  * Construct B by compacting with f over the array from right to left
+ *
  */
 export function reduceRightWithIndex_<A, B>(
   fa: Array<A>,
@@ -667,6 +701,8 @@ export function reduceRightWithIndex_<A, B>(
 
 /**
  * Construct B by compacting with f over the array from left to right
+ *
+ * @ets_data_first reduceWithIndex_
  */
 export function reduceWithIndex<A, B>(b: B, f: (i: number, b: B, a: A) => B) {
   return (fa: Array<A>): B => reduceWithIndex_(fa, b, f)
@@ -705,6 +741,8 @@ export function replicate_<A>(n: number, a: A): Array<A> {
  * ```ts
  * assert.deepStrictEqual(replicate_(3, 'a'), ['a', 'a', 'a'])
  * ```
+ *
+ * @ets_data_first replicate_
  */
 export function replicate<A>(a: A): (n: number) => Array<A> {
   return (n) => replicate_(n, a)
@@ -740,6 +778,8 @@ export function append_<A>(init: Array<A>, end: A): Array<A> {
 
 /**
  * Append an element to the end of an array, creating a new non empty array
+ *
+ * @ets_data_first append_
  */
 export function append<A>(end: A): (init: Array<A>) => Array<A> {
   return (init) => append_(init, end)
@@ -751,6 +791,8 @@ export function append<A>(end: A): (init: Array<A>) => Array<A> {
  * ```ts
  * assert.deepStrictEqual(splitAt(2)([1, 2, 3, 4, 5]), [[1, 2], [3, 4, 5]])
  * ```
+ *
+ * @ets_data_first aplitAt_
  */
 export function splitAt(
   n: number
@@ -784,6 +826,8 @@ export function tail<A>(as: Array<A>): Option<Array<A>> {
  * ```ts
  * assert.deepStrictEqual(take(2)([1, 2, 3]), [1, 2])
  * ```
+ *
+ * @ets_data_first take_
  */
 export function take(n: number): <A>(as: Array<A>) => Array<A> {
   return (as) => as.slice(0, n)
@@ -803,6 +847,8 @@ export function take_<A>(as: Array<A>, n: number): Array<A> {
  * ```ts
  * assert.deepStrictEqual(takeWhile((n: number) => n % 2 === 0)([2, 4, 3, 6]), [2, 4])
  * ```
+ *
+ * @ets_data_first takeWhile_
  */
 export function takeWhile<A, B extends A>(
   refinement: Refinement<A, B>
@@ -836,6 +882,8 @@ export function takeWhile_<A>(as: Array<A>, predicate: Predicate<A>): Array<A> {
  * ```ts
  * assert.deepStrictEqual(takeRight(2)([1, 2, 3, 4, 5]), [4, 5])
  * ```
+ *
+ * @ets_data_first takeRight_
  */
 export function takeRight(n: number): <A>(as: Array<A>) => Array<A> {
   return (as) => takeRight_(as, n)
@@ -883,6 +931,8 @@ export function unfold_<A, B>(b: B, f: (b: B) => Option<Tp.Tuple<[A, B]>>): Arra
 
 /**
  * Construct A by unfolding B signaling end with an option
+ *
+ * @ets_data_first unfold_
  */
 export function unfold<A, B>(f: (b: B) => Option<Tp.Tuple<[A, B]>>) {
   return (b: B) => unfold_(b, f)
@@ -914,6 +964,7 @@ export function unzip<A, B>(
  * ```ts
  * assert.deepStrictEqual(zip([1, 2, 3], ['a', 'b', 'c', 'd']), [[1, 'a'], [2, 'b'], [3, 'c']])
  * ```
+ * @ets_data_first zip_
  */
 export function zip<B>(fb: Array<B>): <A>(fa: Array<A>) => Array<Tp.Tuple<[A, B]>> {
   return zipWith(fb, Tp.tuple)
@@ -951,6 +1002,8 @@ export function zipWith_<A, B, C>(
 /**
  * Apply a function to pairs of elements at the same index in two arrays, collecting the results in a new array. If one
  * input array is short, excess elements of the longer array are discarded.
+ *
+ * @ets_data_first zipWith_
  */
 export function zipWith<A, B, C>(
   fb: Array<B>,
@@ -975,6 +1028,8 @@ export function join_(as: Array<string>, s: string): string {
 
 /**
  * Joins together string arrays
+ *
+ * @ets_data_first join_
  */
 export function join(s: string): (as: Array<string>) => string {
   return (as) => as.join(s)
@@ -984,6 +1039,8 @@ export function join(s: string): (as: Array<string>) => string {
  * A useful recursion pattern for processing an array to produce a new array, often used for "chopping" up the input
  * array. Typically chop is called with some function that will consume an initial prefix of the array and produce a
  * value and the rest of the array.
+ *
+ * @ets_data_first chop_
  */
 export function chop<A, B>(
   f: (as: NonEmptyArray<A>) => Tp.Tuple<[B, Array<A>]>
@@ -1022,7 +1079,7 @@ export function isOutOfBound<A>(i: number, as: Array<A>): boolean {
 /**
  * Finds the first index that doesn't satisfy predicate or the length of as
  */
-export const spanIndex_ = <A>(as: Array<A>, predicate: Predicate<A>): number => {
+export function spanIndex_<A>(as: Array<A>, predicate: Predicate<A>): number {
   const l = as.length
   let i = 0
   for (; i < l; i++) {
@@ -1041,6 +1098,8 @@ export const spanIndex_ = <A>(as: Array<A>, predicate: Predicate<A>): number => 
  * ```ts
  * assert.deepStrictEqual(spanLeft((n: number) => n % 2 === 1)([1, 3, 2, 4, 5]), { init: [1, 3], rest: [2, 4, 5] })
  * ```
+ *
+ * @ets_data_first spanLeft_
  */
 export function spanLeft<A, B extends A>(
   refinement: Refinement<A, B>
