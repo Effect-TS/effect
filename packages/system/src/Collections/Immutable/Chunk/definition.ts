@@ -345,23 +345,27 @@ export class AppendN<A> extends ChunkInternal<A> {
   readonly left = _Empty
   readonly right = _Empty
   readonly length: number
+  readonly #start: ChunkInternal<A>
+  readonly #chain: AtomicNumber
 
   constructor(
-    readonly start: ChunkInternal<A>,
+    start: ChunkInternal<A>,
     readonly buffer: Array<unknown> | Uint8Array,
     readonly bufferUsed: number,
-    readonly chain: AtomicNumber,
+    chain: AtomicNumber,
     readonly binary: boolean
   ) {
     super()
-    this.length = this.start.length + this.bufferUsed
+    this.#start = start
+    this.#chain = chain
+    this.length = this.#start.length + this.bufferUsed
   }
 
   get(n: number): A {
-    if (n < this.start.length) {
-      return this.start.get(n)
+    if (n < this.#start.length) {
+      return this.#start.get(n)
     }
-    const k = n - this.start.length
+    const k = n - this.#start.length
     if (k >= this.buffer.length || k < 0) {
       throw new ArrayIndexOutOfBoundsException(n)
     }
@@ -373,7 +377,7 @@ export class AppendN<A> extends ChunkInternal<A> {
 
     if (
       this.bufferUsed < this.buffer.length &&
-      this.chain.compareAndSet(this.bufferUsed, this.bufferUsed + 1)
+      this.#chain.compareAndSet(this.bufferUsed, this.bufferUsed + 1)
     ) {
       if (this.binary && !binary) {
         const buffer = new Array(BufferSize)
@@ -382,19 +386,19 @@ export class AppendN<A> extends ChunkInternal<A> {
         }
         buffer[this.bufferUsed] = a1
         return new AppendN(
-          this.start,
+          this.#start,
           buffer,
           this.bufferUsed + 1,
-          this.chain,
+          this.#chain,
           this.binary && binary
         )
       }
       this.buffer[this.bufferUsed] = a1
       return new AppendN(
-        this.start,
+        this.#start,
         this.buffer,
         this.bufferUsed + 1,
-        this.chain,
+        this.#chain,
         this.binary && binary
       )
     } else {
@@ -402,7 +406,7 @@ export class AppendN<A> extends ChunkInternal<A> {
       buffer[0] = a1
       const chunk = array_(this.buffer as A1[]).take(this.bufferUsed)
       return new AppendN(
-        this.start.concat(chunk),
+        this.#start.concat(chunk),
         buffer,
         1,
         new AtomicNumber(1),
@@ -412,8 +416,8 @@ export class AppendN<A> extends ChunkInternal<A> {
   }
 
   copyToArray(n: number, array: Array<A> | Uint8Array) {
-    this.start.copyToArray(n, array)
-    _copy(this.buffer as A[], 0, array, this.start.length + n, this.bufferUsed)
+    this.#start.copyToArray(n, array)
+    _copy(this.buffer as A[], 0, array, this.#start.length + n, this.bufferUsed)
   }
 
   [Symbol.iterator](): Iterator<A> {
@@ -826,6 +830,7 @@ export class PrependN<A> extends ChunkInternal<A> {
   readonly right = _Empty
   readonly length: number
   readonly _typeId: PrependNTypeId = PrependNTypeId
+  readonly #chain: AtomicNumber
 
   get(n: number): A {
     if (n < this.bufferUsed) {
@@ -842,10 +847,11 @@ export class PrependN<A> extends ChunkInternal<A> {
     readonly end: ChunkInternal<A>,
     readonly buffer: Array<unknown> | Uint8Array,
     readonly bufferUsed: number,
-    readonly chain: AtomicNumber,
+    chain: AtomicNumber,
     readonly binary: boolean
   ) {
     super()
+    this.#chain = chain
     this.length = this.end.length + this.bufferUsed
   }
 
@@ -859,7 +865,7 @@ export class PrependN<A> extends ChunkInternal<A> {
     const binary = this.binary && isByte(a1)
     if (
       this.bufferUsed < this.buffer.length &&
-      this.chain.compareAndSet(this.bufferUsed, this.bufferUsed + 1)
+      this.#chain.compareAndSet(this.bufferUsed, this.bufferUsed + 1)
     ) {
       if (this.binary && !binary) {
         const buffer = new Array(BufferSize)
@@ -867,14 +873,14 @@ export class PrependN<A> extends ChunkInternal<A> {
           buffer[i] = this.buffer[i]
         }
         buffer[BufferSize - this.bufferUsed - 1] = a1
-        return new PrependN(this.end, buffer, this.bufferUsed + 1, this.chain, false)
+        return new PrependN(this.end, buffer, this.bufferUsed + 1, this.#chain, false)
       }
       this.buffer[BufferSize - this.bufferUsed - 1] = a1
       return new PrependN(
         this.end,
         this.buffer,
         this.bufferUsed + 1,
-        this.chain,
+        this.#chain,
         this.binary && binary
       )
     } else {
