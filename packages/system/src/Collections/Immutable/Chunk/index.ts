@@ -2,10 +2,10 @@ export * from "./core"
 
 // codegen:start { preset: barrel, include: ./api/*.ts }
 export * from "./api/collect"
-export * from "./api/collectWithIndex"
 export * from "./api/collectEffect"
 export * from "./api/collectWhile"
 export * from "./api/collectWhileEffect"
+export * from "./api/collectWithIndex"
 export * from "./api/compact"
 export * from "./api/dedupe"
 export * from "./api/dropWhile"
