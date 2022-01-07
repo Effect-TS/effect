@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.48.0](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.47.0...@effect-ts/system@0.48.0) (2022-01-07)
+
+
+### Bug Fixes
+
+* **chunk:** rename collectChunk => collect ([#1021](https://github.com/Effect-TS/core/issues/1021)) ([635c877](https://github.com/Effect-TS/core/commit/635c877866ddaf6c1644a8008204e721fc16882a))
+
+
+
+
+
 # [0.47.0](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.46.0...@effect-ts/system@0.47.0) (2022-01-05)
 
 **Note:** Version bump only for package @effect-ts/system
