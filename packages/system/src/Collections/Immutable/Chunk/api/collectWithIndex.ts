@@ -5,7 +5,7 @@ import * as ChunkDef from "../definition"
 /**
  * Returns a filtered, mapped subset of the elements of this chunk.
  */
-export function collectChunkWithIndex_<A, B>(
+export function collectWithIndex_<A, B>(
   self: Chunk.Chunk<A>,
   f: (index: number, a: A) => O.Option<B>
 ): Chunk.Chunk<B> {
@@ -24,7 +24,7 @@ export function collectChunkWithIndex_<A, B>(
       return dest
     }
     default: {
-      return collectChunkWithIndex_(self.materialize(), f)
+      return collectWithIndex_(self.materialize(), f)
     }
   }
 }
@@ -32,10 +32,10 @@ export function collectChunkWithIndex_<A, B>(
 /**
  * Returns a filtered, mapped subset of the elements of this chunk.
  *
- * @ets_data_first collectChunkWithIndex_
+ * @ets_data_first collectWithIndex_
  */
-export function collectChunkWithIndex<A, B>(
+export function collectWithIndex<A, B>(
   f: (index: number, a: A) => O.Option<B>
 ): (self: Chunk.Chunk<A>) => Chunk.Chunk<B> {
-  return (self) => collectChunkWithIndex_(self, f)
+  return (self) => collectWithIndex_(self, f)
 }

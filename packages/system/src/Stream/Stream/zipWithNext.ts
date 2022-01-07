@@ -48,7 +48,7 @@ export function zipWithNext<R, E, O>(
           T.tap(({ sc }) => ref.set(sc.get(0))),
           T.bind("result", ({ sc }) =>
             Pull.emitChunk(
-              A.collectChunk_(
+              A.collect_(
                 sc.get(1),
                 O.fold(
                   () => O.none,

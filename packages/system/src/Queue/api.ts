@@ -482,7 +482,7 @@ class FilterInputM<RA, RB, EA, EB, B, A, A1 extends A, R2, E2> extends XQueueInt
         )
       ),
       T.chain((maybeAs) => {
-        const filtered = Chunk.collectChunk_(maybeAs, identity)
+        const filtered = Chunk.collect_(maybeAs, identity)
 
         if (Chunk.isEmpty(filtered)) {
           return T.succeed(false)

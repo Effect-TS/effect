@@ -1,8 +1,8 @@
 export * from "./core"
 
 // codegen:start { preset: barrel, include: ./api/*.ts }
-export * from "./api/collectChunk"
-export * from "./api/collectChunkWithIndex"
+export * from "./api/collect"
+export * from "./api/collectWithIndex"
 export * from "./api/collectEffect"
 export * from "./api/collectWhile"
 export * from "./api/collectWhileEffect"
