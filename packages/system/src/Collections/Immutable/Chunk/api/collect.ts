@@ -5,7 +5,7 @@ import * as ChunkDef from "../definition"
 /**
  * Returns a filtered, mapped subset of the elements of this chunk.
  */
-export function collectChunk_<A, B>(
+export function collect_<A, B>(
   self: Chunk.Chunk<A>,
   f: (a: A) => O.Option<B>
 ): Chunk.Chunk<B> {
@@ -24,7 +24,7 @@ export function collectChunk_<A, B>(
       return dest
     }
     default: {
-      return collectChunk_(self.materialize(), f)
+      return collect_(self.materialize(), f)
     }
   }
 }
@@ -32,10 +32,10 @@ export function collectChunk_<A, B>(
 /**
  * Returns a filtered, mapped subset of the elements of this chunk.
  *
- * @ets_data_first collectChunk_
+ * @ets_data_first collect_
  */
-export function collectChunk<A, B>(
+export function collect<A, B>(
   f: (a: A) => O.Option<B>
 ): (self: Chunk.Chunk<A>) => Chunk.Chunk<B> {
-  return (self) => collectChunk_(self, f)
+  return (self) => collect_(self, f)
 }

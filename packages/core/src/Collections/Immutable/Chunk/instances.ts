@@ -130,18 +130,18 @@ export const FilterWithIndex = P.instance<P.FilterWithIndex<[URI<ChunkURI>]>>({
   filterWithIndex:
     <A>(predicate: PredicateWithIndex<number, A>) =>
     (fa: Chunk.Chunk<A>): Chunk.Chunk<A> =>
-      Chunk.collectChunk_(Chunk.zipWithIndex(fa), ({ tuple: [a, i] }) =>
+      Chunk.collect_(Chunk.zipWithIndex(fa), ({ tuple: [a, i] }) =>
         predicate(i, a) ? O.some(a) : O.none
       )
 })
 
 export const FilterMap = P.instance<P.FilterMap<[URI<ChunkURI>]>>({
-  filterMap: Chunk.collectChunk
+  filterMap: Chunk.collect
 })
 
 export const FilterMapWithIndex = P.instance<P.FilterMapWithIndex<[URI<ChunkURI>]>>({
   filterMapWithIndex: (f) => (fa) =>
-    Chunk.collectChunk_(Chunk.zipWithIndex(fa), ({ tuple: [a, i] }) => f(i, a))
+    Chunk.collect_(Chunk.zipWithIndex(fa), ({ tuple: [a, i] }) => f(i, a))
 })
 
 export const Partition = P.instance<P.Partition<[URI<ChunkURI>]>>({
