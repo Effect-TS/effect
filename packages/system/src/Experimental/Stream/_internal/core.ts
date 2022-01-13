@@ -43,7 +43,7 @@ export type RIO<R, A> = Stream<R, never, A>
 
 export type UIO<A> = Stream<unknown, never, A>
 
-export function isStream(u: unknown): u is Stream<unknown, never, unknown> {
+export function isStream(u: unknown): u is Stream<unknown, unknown, unknown> {
   return typeof u === "object" && u != null && StreamTypeId in u
 }
 
