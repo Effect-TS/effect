@@ -70,6 +70,26 @@ export function mergeWith_<
     M.let("queueReader", ({ input }) => FromInput.fromInput(input)),
     M.bind("pullL", ({ queueReader }) => ToPull.toPull(queueReader[">>>"](self))),
     M.bind("pullR", ({ queueReader }) => ToPull.toPull(queueReader[">>>"](that))),
+    M.chain(({ input, pullL, pullR, queueReader }) =>
+      M.gen(function* (_) {
+        const transplant = yield* _(
+          M.fromEffect(
+            T.transplant((graft) =>
+              T.succeed({
+                pullL: graft(pullL),
+                pullR: graft(pullR)
+              })
+            )
+          )
+        )
+        return {
+          input,
+          pullL: transplant.pullL,
+          pullR: transplant.pullR,
+          queueReader
+        }
+      })
+    ),
     M.map(({ input, pullL, pullR }) => {
       type MergeState = MH.MergeState<
         Env & Env1,
