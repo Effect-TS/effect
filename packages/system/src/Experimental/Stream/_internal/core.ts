@@ -27,7 +27,7 @@ export type StreamTypeId = typeof StreamTypeId
  * for rich and expressive composition of streams.
  */
 export class Stream<R, E, A> {
-  readonly [StreamTypeId]: StreamTypeId = StreamTypeId
+  readonly [StreamTypeId]: StreamTypeId = StreamTypeId;
   readonly [T._R]!: (_: R) => void;
   readonly [T._E]!: () => E;
   readonly [T._A]!: () => A
