@@ -567,4 +567,46 @@ describe("Stream", () => {
 
     expect(result).equals(Tp.tuple(Chunk.make(1, 2, 3), Chunk.make(1, 2, 3)))
   })
+
+  // Re-enable once fixed upstream
+  it("zipWithLatest & Debounce neverending", async () => {
+    const withDebounce = await pipe(
+      S.zipWithLatest_(
+        S.async((cb) => {
+          setTimeout(() => cb.single("a"))
+          setTimeout(() => cb.single("b"), 100)
+        }),
+        S.async((cb) => {
+          setTimeout(() => cb.single(1))
+          setTimeout(() => cb.single(2), 50)
+          setTimeout(() => cb.single(3), 150)
+        }),
+        (a, b) => [a, b] as const
+      ),
+      S.debounce(10),
+      S.interruptWhen(T.sleep(1_000)),
+      S.runCollect,
+      T.runPromise
+    )
+
+    const withoutDebounce = await pipe(
+      S.zipWithLatest_(
+        S.async((cb) => {
+          setTimeout(() => cb.single("a"))
+          setTimeout(() => cb.single("b"), 100)
+        }),
+        S.async((cb) => {
+          setTimeout(() => cb.single(1))
+          setTimeout(() => cb.single(2), 50)
+          setTimeout(() => cb.single(3), 150)
+        }),
+        (a, b) => [a, b] as const
+      ),
+      S.interruptWhen(T.sleep(1_000)),
+      S.runCollect,
+      T.runPromise
+    )
+
+    expect(withDebounce).toEqual(withoutDebounce)
+  })
 })

@@ -43,8 +43,20 @@ export function zipWithLatest_<R, R1, E, E1, A, A1, A2>(
   return FromPull.fromPull(
     pipe(
       M.do,
-      M.bind("left", () => M.map_(ToPull.toPull(self), pullNonEmpty)),
-      M.bind("right", () => M.map_(ToPull.toPull(that), pullNonEmpty)),
+      M.bindAll(() => ({
+        left: M.map_(ToPull.toPull(self), pullNonEmpty),
+        right: M.map_(ToPull.toPull(that), pullNonEmpty)
+      })),
+      M.chain(({ left, right }) =>
+        M.fromEffect(
+          T.transplant((graft) =>
+            T.succeed({
+              left: graft(left),
+              right: graft(right)
+            })
+          )
+        )
+      ),
       M.bind("pull", ({ left, right }) =>
         ToPull.toPull(
           Chain.chain_(
