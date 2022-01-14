@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.48.2](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.48.1...@effect-ts/system@0.48.2) (2022-01-14)
+
+
+### Bug Fixes
+
+* **exp-stream:** missing [StreamTypeId] on Stream ([#1032](https://github.com/Effect-TS/core/issues/1032)) ([db43713](https://github.com/Effect-TS/core/commit/db43713df390521de974ed1ffd9116bdf02316be))
+
+
+
+
+
 ## [0.48.1](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.48.0...@effect-ts/system@0.48.1) (2022-01-14)
 
 
