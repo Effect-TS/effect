@@ -3,6 +3,24 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.48.1](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.48.0...@effect-ts/system@0.48.1) (2022-01-14)
+
+
+### Bug Fixes
+
+* **exp-stream,exp-channel:** missing T.transplants for zipWithLatest, mergeWith ([#1030](https://github.com/Effect-TS/core/issues/1030)) ([f34a1ab](https://github.com/Effect-TS/core/commit/f34a1abe86b07f27d630837e2034b8ae7e907d3b))
+* **stream:** isStream return signature ([8132718](https://github.com/Effect-TS/core/commit/813271895d1788372e82c3d5a81a7f13414f3ae3))
+
+
+### Features
+
+* **sync:** added missing isSuccess and isFailure for Sync effect type ([b5f7fcd](https://github.com/Effect-TS/core/commit/b5f7fcd6a478579b26642e0ba9685363c6084a20))
+* **sync:** export and test isFailure ([b37fc55](https://github.com/Effect-TS/core/commit/b37fc55810885cb30e02581bc123f420bc2b0a64))
+
+
+
+
+
 # [0.48.0](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.47.0...@effect-ts/system@0.48.0) (2022-01-07)
 
 

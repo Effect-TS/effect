@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.51.1](https://github.com/Effect-TS/core/compare/@effect-ts/core@0.51.0...@effect-ts/core@0.51.1) (2022-01-14)
+
+
+### Bug Fixes
+
+* **option:** getApplyIdentity ([1badc59](https://github.com/Effect-TS/core/commit/1badc598461cffccafec2cd71a3c2504845de7a9))
+
+
+
+
+
 # [0.51.0](https://github.com/Effect-TS/core/compare/@effect-ts/core@0.50.0...@effect-ts/core@0.51.0) (2022-01-07)
 
 
