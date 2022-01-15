@@ -331,6 +331,8 @@ export class DerivedAll<EA, EB, A, B> implements XFiberRef<EA, EB, A, B> {
   }
 }
 
+export interface FiberRef<A> extends XFiberRef<never, never, A, A> {}
+
 /**
  * @ets_optimize identity
  */
