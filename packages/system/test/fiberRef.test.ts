@@ -75,7 +75,7 @@ describe("FiberRef", () => {
   it("`locally` restores original value", () =>
     T.gen(function* (_) {
       const fiberRef = yield* _(FR.make(initial))
-      const local = yield* _(pipe(fiberRef, FR.locally(update1)(FR.get(fiberRef))))
+      const local = yield* _(pipe(FR.get(fiberRef), FR.locally_(fiberRef, update1)))
       const value = yield* _(FR.get(fiberRef))
       expect(local).toEqual(update1)
       expect(value).toEqual(initial)
@@ -86,7 +86,7 @@ describe("FiberRef", () => {
     T.gen(function* (_) {
       const fiberRef = yield* _(FR.make(initial))
       const child = yield* _(
-        pipe(fiberRef, FR.locally(update1)(FR.get(fiberRef)), T.fork)
+        pipe(FR.get(fiberRef), FR.locally_(fiberRef, update1), T.fork)
       )
       const local = yield* _(F.join(child))
       const value = yield* _(FR.get(fiberRef))
@@ -98,7 +98,9 @@ describe("FiberRef", () => {
     T.gen(function* (_) {
       const child = yield* _(pipe(FR.make(initial), T.fork))
       const fiberRef = yield* _(pipe(child, F.await, T.chain(T.done)))
-      const localValue = yield* _(pipe(fiberRef, FR.locally(update1)(FR.get(fiberRef))))
+      const localValue = yield* _(
+        pipe(FR.get(fiberRef), FR.locally_(fiberRef, update1))
+      )
       const value = yield* _(FR.get(fiberRef))
       expect(localValue).toEqual(update1)
       expect(value).toEqual(initial)
