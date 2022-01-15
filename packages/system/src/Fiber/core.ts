@@ -5,7 +5,7 @@ import { done } from "../Effect/done"
 import type { IO, UIO } from "../Effect/effect"
 import { tap_ } from "../Effect/tap"
 import type * as Exit from "../Exit/core"
-import type { FiberRef } from "../FiberRef/fiberRef"
+import type * as FR from "../FiberRef/fiberRef"
 import type * as O from "../Option"
 import type { Scope } from "../Scope"
 import type { FiberID } from "./id"
@@ -51,7 +51,7 @@ export interface CommonFiber<E, A> {
    * Gets the value of the fiber ref for this fiber, or the initial value of
    * the fiber ref, if the fiber is not storing the ref.
    */
-  getRef: <K>(fiberRef: FiberRef<K>) => UIO<K>
+  getRef: <K>(fiberRef: FR.Runtime<K>) => UIO<K>
   /**
    * Inherits values from all {@link FiberRef} instances into current fiber.
    * This will resume immediately.
@@ -90,7 +90,7 @@ export class Synthetic<E, A> implements CommonFiber<E, A> {
 
   constructor(
     _await: UIO<Exit.Exit<E, A>>,
-    readonly getRef: <K>(fiberRef: FiberRef<K>) => UIO<K>,
+    readonly getRef: <K>(fiberRef: FR.Runtime<K>) => UIO<K>,
     readonly inheritRefs: UIO<void>,
     readonly interruptAs: (fiberId: FiberID) => UIO<Exit.Exit<E, A>>,
     readonly poll: UIO<O.Option<Exit.Exit<E, A>>>

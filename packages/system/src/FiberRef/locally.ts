@@ -1,12 +1,7 @@
 // ets_tracing: off
 
-import { bracket_ } from "../Effect/bracket"
-import { chain } from "../Effect/core"
 import type { Effect } from "../Effect/effect"
-import { pipe } from "../Function"
-import type { FiberRef } from "./fiberRef"
-import { get } from "./get"
-import { set } from "./set"
+import type { XFiberRef } from "./fiberRef"
 
 /**
  * Returns an `IO` that runs with `value` bound to the current fiber.
@@ -15,15 +10,6 @@ import { set } from "./set"
  */
 export const locally =
   <A>(value: A) =>
-  <R, E, B>(use: Effect<R, E, B>) =>
-  (fiberRef: FiberRef<A>): Effect<R, E, B> =>
-    pipe(
-      get(fiberRef),
-      chain((oldValue) =>
-        bracket_(
-          set(value)(fiberRef),
-          () => use,
-          () => set(oldValue)(fiberRef)
-        )
-      )
-    )
+  <R, E, C>(use: Effect<R, E, C>) =>
+  <EA, EB, B>(fiberRef: XFiberRef<EA, EB, A, B>): Effect<R, EA | E, C> =>
+    fiberRef.locally(value)(use)
