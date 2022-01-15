@@ -3,12 +3,12 @@
 import "../Operator"
 
 /**
- * Ported from https://github.com/zio/zio/blob/master/core/shared/src/main/scala/zio/FiberRef.scala
+ * Ported from https://github.com/zio/zio/blob/series/2.x/core/shared/src/main/scala/zio/ZFiberRef.scala
  *
  * Copyright 2020 Michael Arnaldi and the Matechs Garage Contributors.
  */
 
-// codegen:start {preset: barrel, include: ./*.ts}
+// codegen:start {preset: barrel, include: ./*.ts, exclude: ./excl-*.ts}
 export * from "./fiberRef"
 export * from "./get"
 export * from "./getAndSet"
