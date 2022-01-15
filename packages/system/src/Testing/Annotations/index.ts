@@ -67,27 +67,23 @@ export const live = L.fromEffect(Annotations)(
       self: T.Effect<R, E, A>
     ) => T.Effect<R, Annotated<E>, Annotated<A>> = (effect) =>
       pipe(
-        fiberRef,
-        FiberRef.locally(TAM.TestAnnotationMap.empty)(
-          pipe(
-            effect,
-            T.foldM(
-              (e) =>
-                pipe(
-                  fiberRef,
-                  FiberRef.get,
-                  T.map((_) => Tuple.tuple(e, _)),
-                  T.flip
-                ),
-              (a) =>
-                pipe(
-                  fiberRef,
-                  FiberRef.get,
-                  T.map((_) => Tuple.tuple(a, _))
-                )
+        effect,
+        T.foldM(
+          (e) =>
+            pipe(
+              fiberRef,
+              FiberRef.get,
+              T.map((_) => Tuple.tuple(e, _)),
+              T.flip
+            ),
+          (a) =>
+            pipe(
+              fiberRef,
+              FiberRef.get,
+              T.map((_) => Tuple.tuple(a, _))
             )
-          )
-        )
+        ),
+        FiberRef.locally_(fiberRef, TAM.TestAnnotationMap.empty)
       )
 
     const supervisedFibers = T.descriptorWith((d) =>

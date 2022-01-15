@@ -46,9 +46,10 @@ export interface XFiberRef<EA, EB, A, B> {
    *
    * Guarantees that fiber data is properly restored via `bracket`.
    */
-  readonly locally: (
-    value: A
-  ) => <R, EC, C>(use: T.Effect<R, EC, C>) => T.Effect<R, EA | EC, C>
+  readonly locally: <R, EC, C>(
+    value: A,
+    use: T.Effect<R, EC, C>
+  ) => T.Effect<R, EA | EC, C>
 
   /**
    * Sets the value associated with the current fiber.
@@ -103,15 +104,14 @@ export class Runtime<A> implements XFiberRef<never, never, A, A> {
     return this.modify((v) => Tp.tuple(v, v))
   }
 
-  locally(a: A): <R, EC, C>(use: T.Effect<R, EC, C>) => T.Effect<R, EC, C> {
-    return (use) =>
-      T.chain_(this.get, (oldValue) =>
-        T.bracket_(
-          this.set(a),
-          () => use,
-          () => this.set(oldValue)
-        )
+  locally<R, EC, C>(a: A, use: T.Effect<R, EC, C>): T.Effect<R, EC, C> {
+    return T.chain_(this.get, (oldValue) =>
+      T.bracket_(
+        this.set(a),
+        () => use,
+        () => this.set(oldValue)
       )
+    )
   }
 
   set(value: A): T.UIO<void> {
@@ -197,24 +197,23 @@ export class Derived<EA, EB, A, B> implements XFiberRef<EA, EB, A, B> {
     )
   }
 
-  locally(a: A) {
-    return <R, EC, C>(use: T.Effect<R, EC, C>): T.Effect<R, EA | EC, C> =>
-      this.use((value, _getEither, setEither) =>
-        T.chain_(value.get, (old) =>
-          E.fold_(
-            setEither(a),
-            (e) => T.fail(e) as T.IO<EA | EC, never>,
-            (s) =>
-              pipe(
-                value.set(s),
-                T.bracket(
-                  () => use,
-                  () => value.set(old)
-                )
+  locally<R, EC, C>(a: A, use: T.Effect<R, EC, C>): T.Effect<R, EA | EC, C> {
+    return this.use((value, _getEither, setEither) =>
+      T.chain_(value.get, (old) =>
+        E.fold_(
+          setEither(a),
+          (e) => T.fail(e) as T.IO<EA | EC, never>,
+          (s) =>
+            pipe(
+              value.set(s),
+              T.bracket(
+                () => use,
+                () => value.set(old)
               )
-          )
+            )
         )
       )
+    )
   }
 
   set(a: A): T.IO<EA, void> {
@@ -296,24 +295,23 @@ export class DerivedAll<EA, EB, A, B> implements XFiberRef<EA, EB, A, B> {
     )
   }
 
-  locally(a: A) {
-    return <R, EC, C>(use: T.Effect<R, EC, C>): T.Effect<R, EA | EC, C> =>
-      this.use((value, _getEither, setEither) =>
-        T.chain_(value.get, (old) =>
-          E.fold_(
-            setEither(a)(old),
-            (e) => T.fail(e) as T.IO<EA | EC, never>,
-            (s) =>
-              pipe(
-                value.set(s),
-                T.bracket(
-                  () => use,
-                  () => value.set(old)
-                )
+  locally<R, EC, C>(a: A, use: T.Effect<R, EC, C>): T.Effect<R, EA | EC, C> {
+    return this.use((value, _getEither, setEither) =>
+      T.chain_(value.get, (old) =>
+        E.fold_(
+          setEither(a)(old),
+          (e) => T.fail(e) as T.IO<EA | EC, never>,
+          (s) =>
+            pipe(
+              value.set(s),
+              T.bracket(
+                () => use,
+                () => value.set(old)
               )
-          )
+            )
         )
       )
+    )
   }
 
   set(a: A): T.IO<EA, void> {
