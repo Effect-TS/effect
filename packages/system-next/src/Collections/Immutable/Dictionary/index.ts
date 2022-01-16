@@ -6,7 +6,7 @@ import type { Either } from "../../../Either"
 import type { Predicate, Refinement } from "../../../Function"
 import * as O from "../../../Option"
 import type { MutableRecord } from "../../../Support/Mutable"
-import type { PredicateWithIndex, RefinementWithIndex, Separated } from "../../../Utils"
+import type { PredicateWithIndex, RefinementWithIndex } from "../../../Utils"
 import * as A from "../Array"
 import * as Tp from "../Tuple"
 
@@ -333,7 +333,7 @@ export function singleton<A>(k: string, a: A): Dictionary<A> {
  */
 export function partitionMapWithIndex<A, B, C>(
   f: (key: string, a: A) => Either<B, C>
-): (fa: Dictionary<A>) => Separated<Dictionary<B>, Dictionary<C>> {
+): (fa: Dictionary<A>) => Tp.Tuple<[Dictionary<B>, Dictionary<C>]> {
   return (fa) => partitionMapWithIndex_(fa, f)
 }
 
@@ -343,7 +343,7 @@ export function partitionMapWithIndex<A, B, C>(
 export function partitionMapWithIndex_<A, B, C>(
   fa: Dictionary<A>,
   f: (key: string, a: A) => Either<B, C>
-): Separated<Dictionary<B>, Dictionary<C>> {
+): Tp.Tuple<[Dictionary<B>, Dictionary<C>]> {
   const left: MutableRecord<string, B> = {}
   const right: MutableRecord<string, C> = {}
   const keys = Object.keys(fa)
@@ -358,10 +358,7 @@ export function partitionMapWithIndex_<A, B, C>(
         break
     }
   }
-  return {
-    left,
-    right
-  }
+  return Tp.tuple(left, right)
 }
 
 /**
@@ -369,13 +366,13 @@ export function partitionMapWithIndex_<A, B, C>(
  */
 export function partitionWithIndex<A, B extends A>(
   refinementWithIndex: RefinementWithIndex<string, A, B>
-): (fa: Dictionary<A>) => Separated<Dictionary<A>, Dictionary<B>>
+): (fa: Dictionary<A>) => Tp.Tuple<[Dictionary<A>, Dictionary<B>]>
 export function partitionWithIndex<A>(
   predicateWithIndex: PredicateWithIndex<string, A>
-): (fa: Dictionary<A>) => Separated<Dictionary<A>, Dictionary<A>>
+): (fa: Dictionary<A>) => Tp.Tuple<[Dictionary<A>, Dictionary<A>]>
 export function partitionWithIndex<A>(
   predicateWithIndex: PredicateWithIndex<string, A>
-): (fa: Dictionary<A>) => Separated<Dictionary<A>, Dictionary<A>> {
+): (fa: Dictionary<A>) => Tp.Tuple<[Dictionary<A>, Dictionary<A>]> {
   return (fa) => partitionWithIndex_(fa, predicateWithIndex)
 }
 
@@ -385,15 +382,15 @@ export function partitionWithIndex<A>(
 export function partitionWithIndex_<A, B extends A>(
   fa: Dictionary<A>,
   refinementWithIndex: RefinementWithIndex<string, A, B>
-): Separated<Dictionary<A>, Dictionary<B>>
+): Tp.Tuple<[Dictionary<A>, Dictionary<B>]>
 export function partitionWithIndex_<A>(
   fa: Dictionary<A>,
   predicateWithIndex: PredicateWithIndex<string, A>
-): Separated<Dictionary<A>, Dictionary<A>>
+): Tp.Tuple<[Dictionary<A>, Dictionary<A>]>
 export function partitionWithIndex_<A>(
   fa: Dictionary<A>,
   predicateWithIndex: PredicateWithIndex<string, A>
-): Separated<Dictionary<A>, Dictionary<A>> {
+): Tp.Tuple<[Dictionary<A>, Dictionary<A>]> {
   const left: MutableRecord<string, A> = {}
   const right: MutableRecord<string, A> = {}
   const keys = Object.keys(fa)
@@ -405,10 +402,7 @@ export function partitionWithIndex_<A>(
       left[key] = a
     }
   }
-  return {
-    left,
-    right
-  }
+  return Tp.tuple(left, right)
 }
 
 /**
@@ -544,7 +538,7 @@ export const compact = <A>(fa: Dictionary<O.Option<A>>): Dictionary<A> => {
  */
 export const separate = <A, B>(
   fa: Dictionary<Either<A, B>>
-): Separated<Dictionary<A>, Dictionary<B>> => {
+): Tp.Tuple<[Dictionary<A>, Dictionary<B>]> => {
   const left: MutableRecord<string, A> = {}
   const right: MutableRecord<string, B> = {}
   const keys = Object.keys(fa)
@@ -559,10 +553,7 @@ export const separate = <A, B>(
         break
     }
   }
-  return {
-    left,
-    right
-  }
+  return Tp.tuple(left, right)
 }
 
 /**
@@ -605,31 +596,29 @@ export const filterMap_ = <A, B>(fa: Dictionary<A>, f: (a: A) => O.Option<B>) =>
 export const partition: {
   <A, B extends A>(refinement: Refinement<A, B>): (
     fa: Dictionary<A>
-  ) => Separated<Dictionary<A>, Dictionary<B>>
+  ) => Tp.Tuple<[Dictionary<A>, Dictionary<B>]>
   <A>(predicate: Predicate<A>): <K extends string>(
     fa: Dictionary<A>
-  ) => Separated<Dictionary<A>, Dictionary<A>>
+  ) => Tp.Tuple<[Dictionary<A>, Dictionary<A>]>
 } =
   <A>(predicate: Predicate<A>) =>
-  (fa: Dictionary<A>): Separated<Dictionary<A>, Dictionary<A>> =>
+  (fa: Dictionary<A>): Tp.Tuple<[Dictionary<A>, Dictionary<A>]> =>
     partition_(fa, predicate)
 
 /**
  * Partition record entries according to a predicate
  */
 export const partition_: {
-  <A, B extends A>(fa: Dictionary<A>, refinement: Refinement<A, B>): Separated<
-    Dictionary<A>,
-    Dictionary<B>
+  <A, B extends A>(fa: Dictionary<A>, refinement: Refinement<A, B>): Tp.Tuple<
+    [Dictionary<A>, Dictionary<B>]
   >
-  <A>(fa: Dictionary<A>, predicate: Predicate<A>): Separated<
-    Dictionary<A>,
-    Dictionary<A>
+  <A>(fa: Dictionary<A>, predicate: Predicate<A>): Tp.Tuple<
+    [Dictionary<A>, Dictionary<A>]
   >
 } = <A>(
   fa: Dictionary<A>,
   predicate: Predicate<A>
-): Separated<Dictionary<A>, Dictionary<A>> =>
+): Tp.Tuple<[Dictionary<A>, Dictionary<A>]> =>
   partitionWithIndex_(fa, (_, a) => predicate(a))
 
 /**
@@ -638,10 +627,10 @@ export const partition_: {
 export const partitionMap: {
   <A, B, C>(f: (a: A) => Either<B, C>): (
     fa: Dictionary<A>
-  ) => Separated<Dictionary<B>, Dictionary<C>>
+  ) => Tp.Tuple<[Dictionary<B>, Dictionary<C>]>
   <A, B, C>(f: (a: A) => Either<B, C>): (
     fa: Dictionary<A>
-  ) => Separated<Dictionary<B>, Dictionary<C>>
+  ) => Tp.Tuple<[Dictionary<B>, Dictionary<C>]>
 } =
   <A, B, C>(f: (a: A) => Either<B, C>) =>
   (fa: Dictionary<A>) =>

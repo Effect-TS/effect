@@ -3,7 +3,7 @@
 import "../Operator"
 
 import type { Tuple } from "../Collections/Immutable/Tuple"
-import type { _A, _E, _R } from "../Effect"
+import type * as Effect from "../Effect/definition/commons"
 import type { Either } from "../Either/core"
 import type { Tag } from "../Has"
 import type { Option } from "../Option"
@@ -141,22 +141,19 @@ export const patternFor: <N extends string>(
 
 export const matchTagFor = patternFor("_tag")
 
-export interface Separated<A, B> {
-  readonly left: A
-  readonly right: B
-}
-
 export type RefinementWithIndex<I, A, B extends A> = (i: I, a: A) => a is B
 
 export type PredicateWithIndex<I, A> = (i: I, a: A) => boolean
 
 export type Erase<R, K> = R & K extends K & infer R1 ? R1 : R
 
-export type _A<T> = [T] extends [{ [k in typeof _A]: () => infer A }] ? A : never
+export type _A<T> = [T] extends [{ [k in typeof Effect._A]: () => infer A }] ? A : never
 
-export type _R<T> = [T] extends [{ [k in typeof _R]: (_: infer R) => void }] ? R : never
+export type _R<T> = [T] extends [{ [k in typeof Effect._R]: (_: infer R) => void }]
+  ? R
+  : never
 
-export type _E<T> = [T] extends [{ [k in typeof _E]: () => infer E }] ? E : never
+export type _E<T> = [T] extends [{ [k in typeof Effect._E]: () => infer E }] ? E : never
 
 export * from "./tool"
 

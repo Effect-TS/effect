@@ -175,6 +175,7 @@ export function takeRight_<A>(self: Chunk<A>, n: number): Chunk<A> {
 export function takeRight(n: number) {
   return <A>(self: Chunk<A>) => takeRight_(self, n)
 }
+
 /**
  * Drops the first n elements
  */
@@ -216,6 +217,24 @@ export function drop(n: number): <A>(self: Chunk<A>) => Chunk<A> {
 }
 
 /**
+ * Drops the first n elements
+ */
+export function dropRight_<A>(self: Chunk<A>, n: number) {
+  concrete(self)
+
+  return take_(self, Math.max(0, self.length - n))
+}
+
+/**
+ * Drops the first n elements
+ *
+ * @ets_data_first dropRight_
+ */
+export function dropRight(n: number) {
+  return <A>(self: Chunk<A>) => dropRight_(self, n)
+}
+
+/**
  * Returns the number of elements in the chunk
  */
 export function size<A>(self: Chunk<A>) {
@@ -246,6 +265,39 @@ export function map_<A, B>(self: Chunk<A>, f: (a: A) => B): Chunk<B> {
  */
 export function map<A, B>(f: (a: A) => B): (self: Chunk<A>) => Chunk<B> {
   return (self) => map_(self, f)
+}
+
+/**
+ * Returns a chunk with the elements mapped by the specified function.
+ */
+export function mapWithIndex_<A, B>(
+  self: Chunk<A>,
+  f: (index: number, a: A) => B
+): Chunk<B> {
+  concrete(self)
+
+  if (self._typeId === SingletonTypeId) {
+    return new Singleton(f(0, self.a))
+  }
+
+  let r = empty<B>()
+  let i = 0
+  for (const k of self) {
+    r = append_(r, f(i, k))
+    i += 1
+  }
+  return r
+}
+
+/**
+ * Returns a chunk with the elements mapped by the specified function.
+ *
+ * @ets_data_first mapWithIndex_
+ */
+export function mapWithIndex<A, B>(
+  f: (index: number, a: A) => B
+): (self: Chunk<A>) => Chunk<B> {
+  return (self) => mapWithIndex_(self, f)
 }
 
 /**
@@ -347,6 +399,13 @@ export function isEmpty<A>(self: Chunk<A>): boolean {
 }
 
 /**
+ * Determines if the chunk is empty.
+ */
+export function isNonEmpty<A>(self: Chunk<A>): boolean {
+  return concreteId(self).length !== 0
+}
+
+/**
  * Buckets iterator
  */
 export function buckets<A>(self: Chunk<A>): Iterable<ArrayLike<A>> {
@@ -386,12 +445,25 @@ export const unit: Chunk<void> = single(void 0)
  * NOTE: different from Chunk#from this copies the elements 1 by 1
  * allowing for binary to be correctly stored in typed arrays
  */
-export function many<Elem extends readonly any[]>(...iter: Elem): Chunk<Elem[number]> {
+export function make<Elem extends readonly any[]>(...iter: Elem): Chunk<Elem[number]> {
   let builder = empty<Elem[number]>()
   for (const x of iter) {
     builder = append_(builder, x)
   }
   return builder
+}
+
+/**
+ * Return a chunk of length `n` with element `i` initialized with `f(i)`
+ */
+export function makeBy_<A>(n: number, f: (i: number) => A): Chunk<A> {
+  const b = builder<A>()
+
+  for (let i = 0; i < n; i++) {
+    b.append(f(i))
+  }
+
+  return b.build()
 }
 
 /**

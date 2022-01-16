@@ -2,7 +2,7 @@
 
 import type { Cause } from "../../Cause"
 import type { Exit } from "../definition"
-import { failure } from "./failure"
+import { Failure } from "../definition"
 
 /**
  * Maps over the cause type.
@@ -13,7 +13,7 @@ export function mapErrorCause_<E, A, E1>(
 ): Exit<E1, A> {
   switch (self._tag) {
     case "Failure":
-      return failure(f(self.cause))
+      return new Failure(f(self.cause))
     case "Success":
       return self
   }
