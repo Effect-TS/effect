@@ -13,7 +13,7 @@ export function collectAll<E, A>(
   exits: Iterable<Exit<E, A>>
 ): O.Option<Exit<E, L.List<A>>> {
   const head = exits[Symbol.iterator]().next()
-  if (head.value) {
+  if (!head.done && head.value) {
     return O.some(
       pipe(
         I.skip_(exits, 1),

@@ -9,7 +9,6 @@ import { identity } from "../../../Function"
 import * as O from "../../../Option"
 import type { Ord } from "../../../Ord"
 import * as St from "../../../Structural"
-import type { Separated } from "../../../Utils"
 import * as Tp from "../Tuple"
 
 /**
@@ -1293,22 +1292,21 @@ export function filterNot<A>(predicate: (a: A) => boolean): (l: List<A>) => List
 export function partition_<A, B extends A>(
   l: List<A>,
   predicate: (a: A) => a is B
-): Separated<List<B>, List<Exclude<A, B>>>
+): Tp.Tuple<[List<B>, List<Exclude<A, B>>]>
 export function partition_<A>(
   l: List<A>,
   predicate: (a: A) => boolean
-): Separated<List<A>, List<A>>
+): Tp.Tuple<[List<A>, List<A>]>
 export function partition_<A>(
   l: List<A>,
   predicate: (a: A) => boolean
-): Separated<List<A>, List<A>> {
+): Tp.Tuple<[List<A>, List<A>]> {
   return reduce_(
     l,
-    { left: emptyPushable<A>(), right: emptyPushable<A>() } as Separated<
-      MutableList<A>,
-      MutableList<A>
+    Tp.tuple(emptyPushable<A>(), emptyPushable<A>()) as Tp.Tuple<
+      [MutableList<A>, MutableList<A>]
     >,
-    (arr, a) => (predicate(a) ? push_(arr.left, a) : push_(arr.right, a), arr)
+    (arr, a) => (predicate(a) ? push_(arr.get(0), a) : push_(arr.get(1), a), arr)
   )
 }
 
@@ -1321,13 +1319,13 @@ export function partition_<A>(
  */
 export function partition<A, B extends A>(
   predicate: (a: A) => a is B
-): (l: List<A>) => Separated<List<B>, List<Exclude<A, B>>>
+): (l: List<A>) => Tp.Tuple<[List<B>, List<Exclude<A, B>>]>
 export function partition<A>(
   predicate: (a: A) => boolean
-): (l: List<A>) => Separated<List<A>, List<A>>
+): (l: List<A>) => Tp.Tuple<[List<A>, List<A>]>
 export function partition<A>(
   predicate: (a: A) => boolean
-): (l: List<A>) => Separated<List<A>, List<A>> {
+): (l: List<A>) => Tp.Tuple<[List<A>, List<A>]> {
   return (l) => partition_(l, predicate)
 }
 
@@ -1340,19 +1338,18 @@ export function partition<A>(
 export function partitionMap_<A, B, C>(
   l: List<A>,
   f: (_: A) => Either<B, C>
-): Separated<List<B>, List<C>> {
+): Tp.Tuple<[List<B>, List<C>]> {
   return reduce_(
     l,
-    { left: emptyPushable<B>(), right: emptyPushable<C>() } as Separated<
-      MutableList<B>,
-      MutableList<C>
+    Tp.tuple(emptyPushable<B>(), emptyPushable<C>()) as Tp.Tuple<
+      [MutableList<B>, MutableList<C>]
     >,
     (arr, a) => {
       const fa = f(a)
       if (fa._tag === "Left") {
-        push_(arr.left, fa.left)
+        push_(arr.get(0), fa.left)
       } else {
-        push_(arr.right, fa.right)
+        push_(arr.get(1), fa.right)
       }
       return arr
     }
@@ -1367,7 +1364,7 @@ export function partitionMap_<A, B, C>(
  */
 export function partitionMap<A, B, C>(
   f: (_: A) => Either<B, C>
-): (l: List<A>) => Separated<List<B>, List<C>> {
+): (l: List<A>) => Tp.Tuple<[List<B>, List<C>]> {
   return (l) => partitionMap_(l, f)
 }
 
@@ -1377,7 +1374,7 @@ export function partitionMap<A, B, C>(
  *
  * @complexity O(n)
  */
-export function separate<B, C>(l: List<Either<B, C>>): Separated<List<B>, List<C>> {
+export function separate<B, C>(l: List<Either<B, C>>): Tp.Tuple<[List<B>, List<C>]> {
   return partitionMap_(l, identity)
 }
 

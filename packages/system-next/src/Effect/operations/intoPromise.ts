@@ -1,0 +1,36 @@
+// ets_tracing: off
+
+import type { Promise } from "../../Promise"
+import { done_ } from "../../Promise/operations/done"
+import type { Effect, RIO } from "../definition"
+import { chain_ } from "./chain"
+import { exit } from "./exit"
+import { uninterruptibleMask } from "./interruption"
+
+/**
+ * Returns an effect that keeps or breaks a promise based on the result of
+ * this effect. Synchronizes interruption, so if this effect is interrupted,
+ * the specified promise will be interrupted, too.
+ */
+export function intoPromise_<R, E, A>(
+  self: Effect<R, E, A>,
+  promise: Promise<E, A>,
+  __trace?: string
+): RIO<R, boolean> {
+  return uninterruptibleMask(
+    (status) => chain_(exit(status.restore(self)), (_) => done_(promise, _)),
+    __trace
+  )
+}
+
+/**
+ * Returns an effect that keeps or breaks a promise based on the result of
+ * this effect. Synchronizes interruption, so if this effect is interrupted,
+ * the specified promise will be interrupted, too.
+ *
+ * @ets_data_first intoPromise_
+ */
+export function intoPromise<E, A>(promise: Promise<E, A>, __trace?: string) {
+  return <R>(self: Effect<R, E, A>): RIO<R, boolean> =>
+    intoPromise_(self, promise, __trace)
+}

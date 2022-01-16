@@ -1,4 +1,4 @@
-import { _A } from "../../../Effect/commons"
+import { _A } from "../../../Effect/definition/commons"
 import { ArrayIndexOutOfBoundsException } from "../../../GlobalExceptions"
 import * as St from "../../../Structural"
 import { AtomicNumber } from "../../../Support/AtomicNumber"
@@ -85,6 +85,10 @@ export abstract class ChunkInternal<A>
 
   get [St.hashSym](): number {
     return St.hashIterator(this[Symbol.iterator]())
+  }
+
+  toString() {
+    return `Chunk(${this.array().join(", ")})`
   }
 
   toJSON() {
@@ -1159,4 +1163,8 @@ export function corresponds<A, B>(
   f: (a: A, b: B) => boolean
 ): (self: Chunk<A>) => boolean {
   return (self) => corresponds_(self, that, f)
+}
+
+export function toString<A>(self: Chunk<A>) {
+  return self.toString()
 }

@@ -7,9 +7,11 @@
  */
 import "../Operator"
 
-import { chain_, succeedWith } from "../Effect/core"
-import type { UIO } from "../Effect/effect"
-import { accessServiceM, replaceService } from "../Effect/has"
+import type { UIO } from "../Effect"
+import { chain_ } from "../Effect/operations/chain"
+import { serviceWithEffect } from "../Effect/operations/serviceWithEffect"
+import { succeed } from "../Effect/operations/succeed"
+import { updateService } from "../Effect/operations/updateService"
 import type { Has } from "../Has"
 import { tag } from "../Has"
 import { PCGRandom } from "./PCG"
@@ -35,17 +37,17 @@ export class LiveRandom extends Random {
     this.PRNG = new PCGRandom(seed)
   }
 
-  next: UIO<number> = succeedWith(() => this.PRNG.number())
+  next: UIO<number> = succeed(() => this.PRNG.number())
 
-  nextBoolean: UIO<boolean> = chain_(this.next, (n) => succeedWith(() => n > 0.5))
+  nextBoolean: UIO<boolean> = chain_(this.next, (n) => succeed(() => n > 0.5))
 
-  nextInt: UIO<number> = succeedWith(() => this.PRNG.integer(0))
+  nextInt: UIO<number> = succeed(() => this.PRNG.integer(0))
 
   nextRange: (low: number, high: number) => UIO<number> = (low, high) =>
-    chain_(this.next, (n) => succeedWith(() => (high - low) * n + low))
+    chain_(this.next, (n) => succeed(() => (high - low) * n + low))
 
   nextIntBetween: (low: number, high: number) => UIO<number> = (low, high) =>
-    succeedWith(() => this.PRNG.integer(1 + high - low) + low)
+    succeed(() => this.PRNG.integer(1 + high - low) + low)
 }
 
 export const defaultRandom = new LiveRandom((Math.random() * 4294967296) >>> 0)
@@ -54,17 +56,17 @@ export const HasRandom = tag<Random>(RandomId)
 
 export type HasRandom = Has<Random>
 
-export const next = accessServiceM(HasRandom)((_) => _.next)
+export const next = serviceWithEffect(HasRandom)((_) => _.next)
 
-export const nextBoolean = accessServiceM(HasRandom)((_) => _.nextBoolean)
+export const nextBoolean = serviceWithEffect(HasRandom)((_) => _.nextBoolean)
 
 export const nextIntBetween = (low: number, high: number) =>
-  accessServiceM(HasRandom)((_) => _.nextIntBetween(low, high))
+  serviceWithEffect(HasRandom)((_) => _.nextIntBetween(low, high))
 
-export const nextInt = accessServiceM(HasRandom)((_) => _.nextInt)
+export const nextInt = serviceWithEffect(HasRandom)((_) => _.nextInt)
 
 export const nextRange = (low: number, high: number) =>
-  accessServiceM(HasRandom)((_) => _.nextRange(low, high))
+  serviceWithEffect(HasRandom)((_) => _.nextRange(low, high))
 
 export const withSeed = (seed: number) =>
-  replaceService(HasRandom, () => new LiveRandom(seed))
+  updateService(HasRandom, () => new LiveRandom(seed))
