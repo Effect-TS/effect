@@ -23,5 +23,5 @@ export function chain_<E, A, E1, A1>(
  * @ets_data_first chain_
  */
 export function chain<A, E1, A1>(f: (a: A) => Exit<E1, A1>) {
-  return <E>(self: Exit<E, A>): Exit<E1, A1> => chain_(self, f)
+  return <E>(self: Exit<E, A>): Exit<E | E1, A1> => chain_(self, f)
 }

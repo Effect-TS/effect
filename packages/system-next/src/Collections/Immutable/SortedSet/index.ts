@@ -7,9 +7,9 @@ import type { Predicate, Refinement } from "../../../Function"
 import { not } from "../../../Function"
 import type { Ord } from "../../../Ord"
 import * as St from "../../../Structural"
-import type { Separated } from "../../../Utils"
 import type { Next } from "../Map"
 import * as RB from "../RedBlackTree"
+import * as Tp from "../Tuple"
 
 export class SortedSet<V> implements Iterable<V> {
   constructor(readonly keyTree: RB.RedBlackTree<V, any>) {}
@@ -285,13 +285,13 @@ export function filter_<A>(set: SortedSet<A>, predicate: Predicate<A>): SortedSe
  */
 export function partition<A, B extends A>(
   refinement: Refinement<A, B>
-): (set: SortedSet<A>) => Separated<SortedSet<A>, SortedSet<B>>
+): (set: SortedSet<A>) => Tp.Tuple<[SortedSet<A>, SortedSet<B>]>
 export function partition<A>(
   predicate: Predicate<A>
-): (set: SortedSet<A>) => Separated<SortedSet<A>, SortedSet<A>>
+): (set: SortedSet<A>) => Tp.Tuple<[SortedSet<A>, SortedSet<A>]>
 export function partition<A>(
   predicate: Predicate<A>
-): (set: SortedSet<A>) => Separated<SortedSet<A>, SortedSet<A>> {
+): (set: SortedSet<A>) => Tp.Tuple<[SortedSet<A>, SortedSet<A>]> {
   return (set) => partition_(set, predicate)
 }
 
@@ -301,15 +301,15 @@ export function partition<A>(
 export function partition_<A, B extends A>(
   set: SortedSet<A>,
   refinement: Refinement<A, B>
-): Separated<SortedSet<A>, SortedSet<B>>
+): Tp.Tuple<[SortedSet<A>, SortedSet<B>]>
 export function partition_<A>(
   set: SortedSet<A>,
   predicate: Predicate<A>
-): Separated<SortedSet<A>, SortedSet<A>>
+): Tp.Tuple<[SortedSet<A>, SortedSet<A>]>
 export function partition_<A>(
   set: SortedSet<A>,
   predicate: Predicate<A>
-): Separated<SortedSet<A>, SortedSet<A>> {
+): Tp.Tuple<[SortedSet<A>, SortedSet<A>]> {
   const values_ = values(set)
   let e: Next<A>
   let right = make(set.keyTree.ord)
@@ -322,7 +322,7 @@ export function partition_<A>(
       left = add_(left, value)
     }
   }
-  return { left, right }
+  return Tp.tuple(left, right)
 }
 
 /**

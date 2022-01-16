@@ -1,20 +1,21 @@
 // ets_tracing: off
 
 import type { Cause } from "./definition"
-import { pretty } from "./Pretty"
 
-//
-// @category FiberFailure
-//
+// -----------------------------------------------------------------------------
+// Fiber Failure
+// -----------------------------------------------------------------------------
+
+// import { pretty } from "./Pretty"
 
 export const FiberFailureSymbol: unique symbol = Symbol.for(
-  "@effect-ts/core/symbols/errors/FiberFailure"
+  "@matechs/core/symbols/errors/FiberFailure"
 )
 
 export class FiberFailure<E> extends Error {
   readonly [FiberFailureSymbol] = "FiberFailure"
 
-  readonly pretty = pretty(this.cause)
+  // readonly pretty = pretty(this.cause)
 
   constructor(readonly cause: Cause<E>) {
     super()
@@ -27,12 +28,12 @@ export class FiberFailure<E> extends Error {
 export const isFiberFailure = (u: unknown): u is FiberFailure<unknown> =>
   u instanceof Error && u[FiberFailureSymbol] === "FiberFailure"
 
-//
-// @category Untraced
-//
+// -----------------------------------------------------------------------------
+// Untraced
+// -----------------------------------------------------------------------------
 
 export const UntracedSymbol: unique symbol = Symbol.for(
-  "@effect-ts/core/symbols/errors/Untraced"
+  "@matechs/core/symbols/errors/Untraced"
 )
 
 export class Untraced extends Error {
@@ -48,12 +49,12 @@ export class Untraced extends Error {
 export const isUntraced = (u: unknown): u is Untraced =>
   u instanceof Error && u[UntracedSymbol] === "Untraced"
 
-//
-// @category Runtime
-//
+// -----------------------------------------------------------------------------
+// Runtime
+// -----------------------------------------------------------------------------
 
 export const RuntimeSymbol: unique symbol = Symbol.for(
-  "@effect-ts/core/symbols/errors/Runtime"
+  "@matechs/core/symbols/errors/Runtime"
 )
 
 export class RuntimeError {
@@ -65,12 +66,12 @@ export class RuntimeError {
 export const isRuntime = (u: unknown): u is RuntimeError =>
   u instanceof RuntimeError && u[RuntimeSymbol] === "RuntimeError"
 
-//
-// @category Interrupted
-//
+// -----------------------------------------------------------------------------
+// Interrupted
+// -----------------------------------------------------------------------------
 
 export const InterruptedSymbol: unique symbol = Symbol.for(
-  "@effect-ts/core/symbols/errors/Interrupted"
+  "@matechs/core/symbols/errors/Interrupted"
 )
 
 export class InterruptedException extends Error {
@@ -85,12 +86,12 @@ export class InterruptedException extends Error {
 export const isInterruptedException = (u: unknown): u is InterruptedException =>
   u instanceof Error && u[InterruptedSymbol] === "InterruptedException"
 
-//
-// @category IllegalState
-//
+// -----------------------------------------------------------------------------
+// Illegal State
+// -----------------------------------------------------------------------------
 
 export const IllegalStateSymbol: unique symbol = Symbol.for(
-  "@effect-ts/core/symbols/errors/IllegalState"
+  "@matechs/core/symbols/errors/IllegalState"
 )
 
 export class IllegalStateException extends Error {
@@ -105,11 +106,12 @@ export class IllegalStateException extends Error {
 export const isIllegalStateException = (u: unknown): u is IllegalStateException =>
   u instanceof Error && u[IllegalStateSymbol] === "IllegalStateException"
 
-//
-// @category IllegalState
-//
+// -----------------------------------------------------------------------------
+// Illegal Argument
+// -----------------------------------------------------------------------------
+
 export const IllegalArgumentSymbol: unique symbol = Symbol.for(
-  "@effect-ts/core/symbols/errors/IllegalArgument"
+  "@matechs/core/symbols/errors/IllegalArgument"
 )
 export class IllegalArgumentException extends Error {
   readonly [IllegalArgumentSymbol] = "IllegalArgumentException"

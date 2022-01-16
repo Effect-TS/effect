@@ -1,7 +1,7 @@
 // ets_tracing: off
 
 import * as C from "../../Cause"
-import type { FiberId } from "../../Fiber/FiberId"
+import type { FiberId } from "../../FiberId"
 import type { Exit } from "../definition"
 import { failCause } from "./failCause"
 

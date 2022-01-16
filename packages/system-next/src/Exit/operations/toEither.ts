@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import { FiberFailure } from "../../Cause"
+import { FiberFailure } from "../../Cause/errors"
 import * as E from "../../Either"
 import type { Exit } from "../definition"
 

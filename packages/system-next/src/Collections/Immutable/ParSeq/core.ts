@@ -1,4 +1,4 @@
-import * as Cause from "../../../Cause/core"
+import * as Cause from "../../../Cause/definition"
 import * as E from "../../../Either"
 import { identity } from "../../../Function"
 import * as O from "../../../Option"
