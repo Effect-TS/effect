@@ -1,7 +1,7 @@
-import * as core from "../../../../Effect/core"
-import type { Effect } from "../../../../Effect/effect"
-import * as forEach from "../../../../Effect/excl-forEach"
-import * as coreMap from "../../../../Effect/map"
+import type { Effect } from "../../../../Effect/definition"
+import { forEachDiscard_ } from "../../../../Effect/operations/excl-forEach"
+import { map_ } from "../../../../Effect/operations/map"
+import { suspendSucceed } from "../../../../Effect/operations/suspendSucceed"
 import * as List from "../core"
 
 /**
@@ -11,12 +11,12 @@ export function mapM_<A, R, E, B>(
   self: List.List<A>,
   f: (a: A) => Effect<R, E, B>
 ): Effect<R, E, List.List<B>> {
-  return core.suspend(() => {
+  return suspendSucceed(() => {
     const builder = List.emptyPushable<B>()
 
-    return coreMap.map_(
-      forEach.forEachUnit_(self, (a) =>
-        coreMap.map_(f(a), (b) => {
+    return map_(
+      forEachDiscard_(self, (a) =>
+        map_(f(a), (b) => {
           List.push_(builder, b)
         })
       ),

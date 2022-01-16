@@ -1,4 +1,4 @@
-import { _A } from "../../../Effect/commons"
+import { _A } from "../../../Effect/definition/commons"
 import { tuple } from "../../../Function"
 import * as IO from "../../../IO"
 import * as St from "../../../Structural"

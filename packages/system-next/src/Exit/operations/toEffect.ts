@@ -1,16 +1,18 @@
 // ets_tracing: off
 
-import * as T from "../../Effect"
+import type { IO } from "../../Effect/definition/base"
+import { failCause } from "../../Effect/operations/failCause"
+import { succeedNow } from "../../Effect/operations/succeedNow"
 import type { Exit } from "../definition"
 
 /**
  * Converts the `Exit` to an `Effect`.
  */
-export function toEffect<E, A>(self: Exit<E, A>): T.IO<E, A> {
+export function toEffect<E, A>(self: Exit<E, A>): IO<E, A> {
   switch (self._tag) {
     case "Failure":
-      return T.failCause(self.cause)
+      return failCause(self.cause)
     case "Success":
-      return T.succeed(self.value)
+      return succeedNow(self.value)
   }
 }

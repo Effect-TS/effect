@@ -14,7 +14,8 @@
     "autofix": "yarn prettier && yarn lint --fix && yarn prettier",
     "prettier": "yarn ets:prettier --write \"./{src,test,demo}/**/*.ts\"",
     "tc": "yarn ets:tsc --noEmit",
-    "circular": "yarn ets:madge --circular --ts-config ./tsconfig.json --extensions ts ./src"
+    "circular": "yarn ets:madge --circular --ts-config ./tsconfig.json --extensions ts ./src",
+    "demo": "yarn ets:ts-node -O '{\"module\":\"commonjs\"}' --project tsconfig.build.cjs.json"
   },
   "publishConfig": {
     "access": "public",

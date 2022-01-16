@@ -42,6 +42,19 @@ export interface FunctionN<A extends ReadonlyArray<unknown>, B> {
 }
 
 /**
+ * Models a function argument which is evaluated lazily.
+ *
+ * For example:
+ *
+ * ```typescript
+ * declare function succeed<A>(a: () => A): Effect<unknown, never, A>
+ * ```
+ */
+export interface LazyArg<A> {
+  (): A
+}
+
+/**
  * Will raise if called
  */
 export function absurd<A = never>(_: never): A {
