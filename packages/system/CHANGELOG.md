@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.49.0](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.48.2...@effect-ts/system@0.49.0) (2022-01-16)
+
+
+### Features
+
+* **fiberref:** add `FiberRef` type alias ([555d9f6](https://github.com/Effect-TS/core/commit/555d9f6edd40c1fadbb638cea911c8f7d2c81a14))
+* **fiberref:** polymorphic FiberRef ([1a57e76](https://github.com/Effect-TS/core/commit/1a57e76ed5ec0b41e990b44758656b18e8da28cb))
+
+
+
+
+
 ## [0.48.2](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.48.1...@effect-ts/system@0.48.2) (2022-01-14)
 
 
