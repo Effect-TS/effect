@@ -184,3 +184,22 @@ export function concat_<Ks extends unknown[], Hs extends unknown[]>(
 ): Tuple<[...Ks, ...Hs]> {
   return new Tuple([...self.tuple, ...that.tuple])
 }
+
+export type MergeTuple<A, B> = A extends Tuple<infer TA>
+  ? B extends Tuple<infer TB>
+    ? Tuple<[...TA, ...TB]>
+    : Tuple<[...TA, B]>
+  : B extends Tuple<infer TB>
+  ? Tuple<[A, ...TB]>
+  : Tuple<[A, B]>
+
+export function mergeTuple<A2, A>(_a: A, _b: A2): MergeTuple<A, A2> {
+  // @ts-expect-error
+  return isTuple(_a) && isTuple(_b)
+    ? tuple(..._a.tuple, ..._b.tuple)
+    : isTuple(_a)
+    ? tuple(..._a.tuple, _b)
+    : isTuple(_b)
+    ? tuple(_a, ..._b.tuple)
+    : tuple(_a, _b)
+}
