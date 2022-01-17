@@ -31,6 +31,14 @@ export function make<V>() {
   return new HashSet<V>(HM.make())
 }
 
+export function from<V>(items: Iterable<V>) {
+  const set = beginMutation(make<V>())
+  for (const v of items) {
+    add_(set, v)
+  }
+  return endMutation(set)
+}
+
 export function add_<V>(set: HashSet<V>, v: V) {
   return set.keyMap.editable
     ? (HM.set_(set.keyMap, v, true), set)

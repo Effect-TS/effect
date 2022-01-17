@@ -1,4 +1,5 @@
 import type { FiberContext } from "../Fiber/context"
+import { _roots } from "../Fiber/context"
 import type { FiberId } from "../FiberId/definition"
 import { none } from "../FiberId/operations/none"
 import type { RuntimeConfig } from "../RuntimeConfig"
@@ -35,7 +36,11 @@ export class Global implements CommonScope {
         RuntimeConfigFlag.enableFiberRoots
       )
     ) {
-      // TODO: ?
+      const childRef = _roots.add(child)
+
+      child.unsafeOnDone(() => {
+        childRef.clear()
+      })
     }
     return true
   }
