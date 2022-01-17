@@ -59,7 +59,7 @@ export function switchable<R, E, A>(
               T.bind("inner", () => make),
               T.bind("a", ({ inner, r }) =>
                 status.restore(
-                  locally_(currentReleaseMap.value, inner, newResource.effect)
+                  locally_(currentReleaseMap.value, inner)(newResource.effect)
                 )
               ),
               T.tap(({ inner }) =>

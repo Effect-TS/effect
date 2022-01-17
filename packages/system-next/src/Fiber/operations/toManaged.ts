@@ -26,9 +26,8 @@ export function toManaged<E, A>(
                 locally_(
                   currentEnvironment.value,
                   r,
-                  interrupt(a) as T.UIO<any>,
                   __trace
-                )
+                )(interrupt(a) as T.UIO<any>)
               ),
               (releaseMapEntry) => Tp.tuple(releaseMapEntry, a)
             )

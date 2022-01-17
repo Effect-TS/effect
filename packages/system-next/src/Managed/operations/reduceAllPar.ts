@@ -21,7 +21,8 @@ export function reduceAllPar_<R, E, A>(
     (parallelReleaseMap) =>
       locally_(
         currentReleaseMap.value,
-        parallelReleaseMap,
+        parallelReleaseMap
+      )(
         T.reduceAllPar_(
           Iter.map_(as, (_) => T.map_(_.effect, (_) => _.get(1))),
           T.map_(a.effect, (_) => _.get(1)),

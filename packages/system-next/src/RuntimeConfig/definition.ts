@@ -1,4 +1,5 @@
 import type { Cause } from "../Cause"
+import type { Has } from "../Has"
 import type { LoggerSet } from "../Logger/Set"
 import type { Supervisor } from "../Supervisor"
 import type { RuntimeConfigFlags } from "./Flags"
@@ -17,8 +18,7 @@ export class RuntimeConfig {
       readonly fatal: (defect: unknown) => boolean
       readonly reportFatal: (defect: unknown) => void
       readonly supervisor: Supervisor<any>
-      // TODO: This type is very very strange
-      readonly loggers: LoggerSet<string & Cause<any>, any>
+      readonly loggers: LoggerSet<Has<string> & Has<Cause<any>>, any>
       readonly flags: RuntimeConfigFlags
       readonly maxOp: number
     }

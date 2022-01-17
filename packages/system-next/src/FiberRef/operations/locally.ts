@@ -7,14 +7,13 @@ import { concreteUnified } from "../definition/concrete"
  *
  * Guarantees that fiber data is properly restored via `acquireRelease`.
  */
-export function locally_<R, EA, EB, EC, A, B, C>(
+export function locally_<EA, EB, A, B>(
   self: XFiberRef<EA, EB, A, B>,
   value: A,
-  use: Effect<R, EC, C>,
   __trace?: string
-): Effect<R, EA | EC, C> {
+): <R, EC, C>(use: Effect<R, EC, C>) => Effect<R, EA | EC, C> {
   concreteUnified(self)
-  return self.locally(value, __trace)(use)
+  return self.locally(value, __trace)
 }
 
 /**
@@ -24,11 +23,9 @@ export function locally_<R, EA, EB, EC, A, B, C>(
  *
  * @ets_data_first locally_
  */
-export function locally<R, EC, A, C>(
-  value: A,
-  use: Effect<R, EC, C>,
-  __trace?: string
-) {
-  return <EA, EB, B>(self: XFiberRef<EA, EB, A, B>): Effect<R, EA | EC, C> =>
-    locally_(self, value, use, __trace)
+export function locally<R, EC, A, C>(value: A, __trace?: string) {
+  return <EA, EB, B>(
+    self: XFiberRef<EA, EB, A, B>
+  ): ((use: Effect<R, EC, C>) => Effect<R, EA | EC, C>) =>
+    locally_(self, value, __trace)
 }

@@ -25,6 +25,6 @@ export const scope: Managed<unknown, never, Scope> = map_(
   (finalizers) =>
     <R, E, A>(self: Managed<R, E, A>): T.Effect<R, E, Tp.Tuple<[Finalizer, A]>> =>
       T.chain_(T.environment<R>(), (r) =>
-        locally_(currentReleaseMap.value, finalizers, self.effect)
+        locally_(currentReleaseMap.value, finalizers)(self.effect)
       )
 )

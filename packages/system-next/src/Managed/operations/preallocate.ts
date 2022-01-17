@@ -28,7 +28,7 @@ export function preallocate<R, E, A>(
       T.bind("tp", ({ releaseMap }) =>
         T.exit(
           status.restore(
-            locally_(currentReleaseMap.value, releaseMap, self.effect),
+            locally_(currentReleaseMap.value, releaseMap)(self.effect),
             __trace
           )
         )

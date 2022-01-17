@@ -10,11 +10,11 @@ import type { Logger } from "../definition"
 export const LoggerSetInputSym = Symbol.for("@effect-ts/system/Logger/Set/Input")
 export type LoggerSetInputSym = typeof LoggerSetInputSym
 
-export const LoggerSetOutputSym = Symbol.for("@effect-ts/system/Logger/Set/Input")
+export const LoggerSetOutputSym = Symbol.for("@effect-ts/system/Logger/Set/Output")
 export type LoggerSetOutputSym = typeof LoggerSetOutputSym
 
 export class LoggerSet<A, B> {
-  readonly [LoggerSetInputSym]: (_: A) => void;
+  readonly [LoggerSetInputSym]: (_: never) => A;
   readonly [LoggerSetOutputSym]: (_: never) => B
 
   #cache: ReadonlyMap<PropertyKey, ReadonlySet<Logger<any, any>>> = Map.empty

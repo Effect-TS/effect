@@ -11,7 +11,7 @@ export function provideEnvironment_<R, E, A>(
   environment: R,
   __trace?: string
 ): IO<E, A> {
-  return locally_(currentEnvironment.value, environment, self as IO<E, A>, __trace)
+  return locally_(currentEnvironment.value, environment, __trace)(self as IO<E, A>)
 }
 
 /**

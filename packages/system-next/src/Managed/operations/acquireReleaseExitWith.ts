@@ -32,9 +32,8 @@ export function acquireReleaseExitWith_<R, R1, E, A>(
                 locally_(
                   currentEnvironment.value,
                   r,
-                  release(a, ex) as UIO<any>,
                   __trace
-                )
+                )(release(a, ex) as UIO<any>)
               ),
               (releaseMapEntry) => Tp.tuple(releaseMapEntry, a)
             )

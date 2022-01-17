@@ -8,7 +8,7 @@ export function locally_<R, E, A>(
   logLevel: LogLevel,
   __trace?: string
 ): Effect<R, E, A> {
-  return fiberRefLocally_(currentLogLevel.value, logLevel, self, __trace)
+  return fiberRefLocally_(currentLogLevel.value, logLevel, __trace)(self)
 }
 
 export function locally(logLevel: LogLevel, __trace?: string) {

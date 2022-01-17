@@ -903,11 +903,12 @@ export function managedFork<R, E, A>(
           locally_(
             currentReleaseMap.value,
             innerReleaseMap,
+            __trace
+          )(
             forkDaemon(status.restore(map_(self.effect, (_) => _.get(1)))) as RIO<
               R,
               FiberContext<E, A>
-            >,
-            __trace
+            >
           )
         ),
         Do.bind("releaseMapEntry", ({ fiber, innerReleaseMap, outerReleaseMap }) =>
@@ -938,12 +939,13 @@ export function managedUse_<R, E, A, R2, E2, B>(
     locally_(
       currentReleaseMap.value,
       releaseMap,
+      __trace
+    )(
       acquireReleaseExitWith_(
         fiberRefGet(currentReleaseMap.value),
         () => chain_(self.effect, (_) => f(_.get(1)), __trace),
         (relMap, ex) => releaseMapReleaseAll_(relMap, ex, sequential, __trace)
-      ),
-      __trace
+      )
     )
   )
 }

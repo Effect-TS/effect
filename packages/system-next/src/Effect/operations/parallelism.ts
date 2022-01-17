@@ -35,7 +35,7 @@ export function withParallelism_<R, E, A>(
   __trace?: string
 ): Effect<R, E, A> {
   return suspendSucceed(
-    () => locally_(currentParallelism.value, O.some(n), self),
+    () => locally_(currentParallelism.value, O.some(n))(self),
     __trace
   )
 }
@@ -59,5 +59,5 @@ export function withParallelismUnbounded<R, E, A>(
   self: Effect<R, E, A>,
   __trace?: string
 ): Effect<R, E, A> {
-  return suspendSucceed(() => locally_(currentParallelism.value, O.none, self), __trace)
+  return suspendSucceed(() => locally_(currentParallelism.value, O.none)(self), __trace)
 }

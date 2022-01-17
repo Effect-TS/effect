@@ -14,21 +14,21 @@ import type { Either } from "../../Either"
 import * as E from "../../Either"
 import { identity } from "../../Function"
 import { LazyValue } from "../../LazyValue"
-import type { LogLevel as LogLevel_1 } from "../../LogLevel"
+import type { LogLevel } from "../../LogLevel"
 import { Info } from "../../LogLevel/definition"
 import type { LogSpan } from "../../LogSpan"
 import type { Managed } from "../../Managed/definition"
 import { managedApply } from "../../Managed/definition"
 import { asUnit } from "../../Managed/operations/asUnit"
-import type { ReleaseMap as ReleaseMap_1 } from "../../Managed/ReleaseMap"
+import type { ReleaseMap } from "../../Managed/ReleaseMap"
 import { add_ } from "../../Managed/ReleaseMap/add"
-import { unsafeMake as unsafeMake_1 } from "../../Managed/ReleaseMap/make"
+import { unsafeMake as unsafeMakeReleaseMap } from "../../Managed/ReleaseMap/make"
 import * as O from "../../Option"
 import type { Scope } from "../../Scope"
 import { get as fiberRefGet } from "../operations/get"
 import { locally_ } from "../operations/locally"
 import { update_ } from "../operations/update"
-import type { XFiberRef } from "./base"
+import type { FiberRef, XFiberRef } from "./base"
 import { XFiberRefInternal } from "./base"
 
 export class Runtime<A> extends XFiberRefInternal<never, never, A, A> {
@@ -94,9 +94,8 @@ export class Runtime<A> extends XFiberRefInternal<never, never, A, A> {
                       locally_(
                         currentEnvironment.value,
                         r,
-                        this.set(a) as UIO<any>,
                         __trace
-                      )
+                      )(this.set(a) as UIO<any>)
                     ),
                     (releaseMapEntry) => Tp.tuple(releaseMapEntry, a)
                   )
@@ -227,9 +226,8 @@ export class Derived<EA, EB, A, B> extends XFiberRefInternal<EA, EB, A, B> {
                         locally_(
                           currentEnvironment.value,
                           r,
-                          value.set(a) as UIO<any>,
                           __trace
-                        )
+                        )(value.set(a) as UIO<any>)
                       ),
                       (releaseMapEntry) => Tp.tuple(releaseMapEntry, a)
                     )
@@ -364,9 +362,8 @@ export class DerivedAll<EA, EB, A, B> extends XFiberRefInternal<EA, EB, A, B> {
                         locally_(
                           currentEnvironment.value,
                           r,
-                          value.set(a) as UIO<any>,
                           __trace
-                        )
+                        )(value.set(a) as UIO<any>)
                       ),
                       (releaseMapEntry) => Tp.tuple(releaseMapEntry, a)
                     )
@@ -388,7 +385,7 @@ export function make<A>(
   fork: (a: A) => A = identity,
   join: (x: A, y: A) => A = (_, a) => a,
   __trace?: string
-): UIO<Runtime<A>> {
+): UIO<FiberRef.Runtime<A>> {
   return suspendSucceed(() => {
     const ref = unsafeMake(initial, fork, join)
     return map_(update_(ref, identity), () => ref)
@@ -399,51 +396,47 @@ export function unsafeMake<A>(
   initial: A,
   fork: (a: A) => A = identity,
   join: (x: A, y: A) => A = (_, a) => a
-): Runtime<A> {
+): FiberRef.Runtime<A> {
   return new Runtime(initial, fork, join)
 }
 
 /**
  * A `FiberRef` containing a reference to the current environment.
  */
-export const currentEnvironment: LazyValue<Runtime<any>> = LazyValue.make(() =>
+export const currentEnvironment: LazyValue<FiberRef.Runtime<any>> = LazyValue.make(() =>
   unsafeMake({} as any, identity, (a, _) => a)
 )
 
 /**
  * A `FiberRef` containing a reference to the current `LogLevel`.
  */
-export const currentLogLevel: LazyValue<Runtime<LogLevel_1>> = LazyValue.make(() =>
-  unsafeMake(Info)
+export const currentLogLevel: LazyValue<FiberRef.Runtime<LogLevel>> = LazyValue.make(
+  () => unsafeMake(Info)
 )
 
 /**
  * A `FiberRef` containing a reference to the current list of `LogSpan`s.
  */
-export const currentLogSpan: LazyValue<Runtime<Chunk<LogSpan>>> = LazyValue.make(() =>
-  unsafeMake(emptyChunk())
-)
+export const currentLogSpan: LazyValue<FiberRef.Runtime<Chunk<LogSpan>>> =
+  LazyValue.make(() => unsafeMake(emptyChunk()))
 
 /**
  * A `FiberRef` containing a reference to the current operation parallelism.
  */
-export const currentParallelism: LazyValue<Runtime<O.Option<number>>> = LazyValue.make(
-  () => unsafeMake(O.emptyOf<number>())
-)
+export const currentParallelism: LazyValue<FiberRef.Runtime<O.Option<number>>> =
+  LazyValue.make(() => unsafeMake(O.emptyOf<number>()))
 
 /**
  * A `FiberRef` containing a reference to the current `ReleaseMap`.
  */
-export const currentReleaseMap: LazyValue<Runtime<ReleaseMap_1>> = LazyValue.make(() =>
-  unsafeMake(unsafeMake_1())
-)
+export const currentReleaseMap: LazyValue<FiberRef.Runtime<ReleaseMap>> =
+  LazyValue.make(() => unsafeMake(unsafeMakeReleaseMap()))
 
 /**
  * A `FiberRef` containing a reference to the current fiber `Scope`.
  */
-export const forkScopeOverride: LazyValue<Runtime<O.Option<Scope>>> = LazyValue.make(
-  () => unsafeMake<O.Option<Scope>>(O.none, identity, (a, _) => a)
-)
+export const forkScopeOverride: LazyValue<FiberRef.Runtime<O.Option<Scope>>> =
+  LazyValue.make(() => unsafeMake<O.Option<Scope>>(O.none, identity, (a, _) => a))
 
 /**
  * Accesses the whole environment of the effect.

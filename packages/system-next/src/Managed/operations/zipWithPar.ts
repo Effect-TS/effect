@@ -21,9 +21,8 @@ export function zipWithPar_<R, E, A, R2, E2, A2, B>(
     (parallelReleaseMap) => {
       const innerMap = locally_(
         currentReleaseMap.value,
-        parallelReleaseMap,
-        makeManaged(T.sequential).effect
-      )
+        parallelReleaseMap
+      )(makeManaged(T.sequential).effect)
 
       return T.chain_(
         T.zip_(innerMap, innerMap),
@@ -37,8 +36,8 @@ export function zipWithPar_<R, E, A, R2, E2, A2, B>(
             }
           ]
         }) => {
-          const left = locally_(currentReleaseMap.value, l, self.effect)
-          const right = locally_(currentReleaseMap.value, r, that.effect)
+          const left = locally_(currentReleaseMap.value, l)(self.effect)
+          const right = locally_(currentReleaseMap.value, r)(that.effect)
           // We can safely discard the finalizers here because the resulting ZManaged's early
           // release will trigger the ReleaseMap, which would release both finalizers in
           // parallel.

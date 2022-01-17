@@ -39,7 +39,7 @@ export function timeout_<R, E, A>(
         T.bind("raceResult", ({ innerReleaseMap }) =>
           restore(
             T.raceWith_(
-              locally_(currentReleaseMap.value, innerReleaseMap, self.effect),
+              locally_(currentReleaseMap.value, innerReleaseMap)(self.effect),
               T.map_(T.sleep(duration), () => O.none),
               (result, sleeper) =>
                 T.zipRight_(

@@ -33,9 +33,8 @@ export function onExit_<R, E, A, R1, X>(
         T.bind("exitEA", ({ innerReleaseMap }) =>
           locally_(
             currentReleaseMap.value,
-            innerReleaseMap,
-            T.exit(status.restore(T.map_(self.effect, (_) => _.get(1))))
-          )
+            innerReleaseMap
+          )(T.exit(status.restore(T.map_(self.effect, (_) => _.get(1)))))
         ),
         T.bind("releaseMapEntry", ({ exitEA, innerReleaseMap, outerReleaseMap, r1 }) =>
           add_(outerReleaseMap, (ex) =>

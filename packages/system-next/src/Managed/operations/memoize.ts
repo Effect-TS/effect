@@ -24,7 +24,7 @@ export function memoize_<R, E, A>(
         T.bind("promise", () => makePromise<E, A>()),
         T.bind("complete", ({ promise }) =>
           pipe(
-            locally_(currentReleaseMap.value, finalizers, self.effect),
+            locally_(currentReleaseMap.value, finalizers)(self.effect),
             T.map((_) => _.get(1)),
             T.intoPromise(promise),
             T.once

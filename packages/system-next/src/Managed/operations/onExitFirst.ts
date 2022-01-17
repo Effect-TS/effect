@@ -40,9 +40,8 @@ export function onExitFirst_<R, E, A, R1, X>(
         bind("exitEA", ({ innerReleaseMap }) =>
           locally_(
             currentReleaseMap.value,
-            innerReleaseMap,
-            pipe(status.restore(self.effect), exit, map(Ex.map((_) => _.get(1))))
-          )
+            innerReleaseMap
+          )(pipe(status.restore(self.effect), exit, map(Ex.map((_) => _.get(1)))))
         ),
         bind("releaseMapEntry", ({ exitEA, innerReleaseMap, outerReleaseMap, r1 }) =>
           add_(outerReleaseMap, (e) =>

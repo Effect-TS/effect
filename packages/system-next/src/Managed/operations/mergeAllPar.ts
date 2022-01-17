@@ -23,7 +23,8 @@ export function mergeAllPar_<R, E, A, B>(
   return mapEffect_(makeManagedPar, (parallelReleaseMap) =>
     locally_(
       currentReleaseMap.value,
-      parallelReleaseMap,
+      parallelReleaseMap
+    )(
       T.mergeAllPar_(
         Iter.map_(as, (_) => T.map_(_.effect, (_) => _.get(1))),
         zero,
