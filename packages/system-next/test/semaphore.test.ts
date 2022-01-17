@@ -1,5 +1,6 @@
 import * as Tp from "../src/Collections/Immutable/Tuple"
 import * as T from "../src/Effect"
+import * as Ex from "../src/Exit"
 import * as Fiber from "../src/Fiber"
 import { pipe } from "../src/Function"
 import * as Promise from "../src/Promise"
@@ -142,16 +143,24 @@ describe("TSemaphore", () => {
     })
 
     it("withPermit acquire is interruptible", async () => {
-      await pipe(
+      const f = jest.fn()
+      const res = await pipe(
         T.do,
         T.bind("semaphore", () => STM.commit(TSemaphore.make(0))),
-        T.let("effect", ({ semaphore }) => TSemaphore.withPermit_(T.unit, semaphore)),
+        T.let("effect", ({ semaphore }) =>
+          TSemaphore.withPermit_(
+            T.succeed(() => f()),
+            semaphore
+          )
+        ),
         T.bind("fiber", ({ effect }) => T.fork(effect)),
         T.tap(({ fiber }) => Fiber.interrupt(fiber)),
-        T.unsafeRunPromise
+        T.chain(({ fiber }) => Fiber.join(fiber)),
+        T.unsafeRunPromiseExit
       )
 
-      expect.anything()
+      expect(Ex.isInterrupted(res)).toBe(true)
+      expect(f).toHaveBeenCalledTimes(0)
     })
   })
 })
