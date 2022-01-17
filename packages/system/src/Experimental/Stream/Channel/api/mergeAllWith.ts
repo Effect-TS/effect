@@ -72,7 +72,7 @@ export function mergeAllWith_<
         ),
         M.bind("lastDone", () => Ref.makeManagedRef<O.Option<OutDone>>(O.none)),
         M.bind("errorSignal", () => P.makeManaged<never, void>()),
-        M.bind("permits", () => T.toManaged(SM.makeSemaphore(n))),
+        M.bind("permits", () => T.toManaged(SM.make(n))),
         M.bind("pull", () => ToPull.toPull(channels)),
         M.let(
           "evaluatePull",
