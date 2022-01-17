@@ -37,10 +37,6 @@ describe("WeakConcurrentBag", () => {
 
     expect(bag.size).toEqual(100)
 
-    console.log(Array.from(HS.from(bag)))
-
-    console.log(Array.from(hard))
-
     expect(Structural.equals(HS.from(bag), hard)).toBeTruthy()
   })
 
