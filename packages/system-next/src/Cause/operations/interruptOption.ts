@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import type { FiberId } from "../../FiberId"
-import * as O from "../../Option"
+import type { FiberId } from "../../FiberId/definition"
+import * as O from "../../Option/core"
 import type { Cause } from "../definition"
 import { isInterruptType } from "../definition"
 import { find_ } from "./find"

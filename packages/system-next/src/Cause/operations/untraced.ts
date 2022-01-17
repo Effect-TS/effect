@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import { none } from "../../Trace"
+import { none } from "../../Trace/operations/none"
 import type { Cause } from "../definition"
 import { mapTrace_ } from "./mapTrace"
 

@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import * as L from "../../Collections/Immutable/List"
-import * as O from "../../Option"
-import { isFailType } from ".."
+import * as L from "../../Collections/Immutable/List/core"
+import * as O from "../../Option/core"
 import type { Cause } from "../definition"
+import { isFailType } from "../definition"
 import { reduceLeft_ } from "./reduceLeft"
 
 /**

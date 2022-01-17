@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as HS from "../../Collections/Immutable/HashSet"
+import * as HS from "../../Collections/Immutable/HashSet/core"
 import type { Cause } from "../definition"
 import * as C from "../definition"
 import { fold_ } from "./fold"

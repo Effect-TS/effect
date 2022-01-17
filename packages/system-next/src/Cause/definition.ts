@@ -1,15 +1,15 @@
 // ets_tracing: off
 
-import * as HS from "../Collections/Immutable/HashSet"
-import * as L from "../Collections/Immutable/List"
-import * as Tp from "../Collections/Immutable/Tuple"
-import type { FiberId } from "../FiberId"
-import { tuple } from "../Function"
-import * as IO from "../IO"
+import * as HS from "../Collections/Immutable/HashSet/core"
+import * as L from "../Collections/Immutable/List/core"
+import * as Tp from "../Collections/Immutable/Tuple/core"
+import type { FiberId } from "../FiberId/definition"
+import { tuple } from "../Function/core"
+import * as IO from "../IO/core"
 import { Stack } from "../Stack"
 import * as St from "../Structural"
-import type { Trace } from "../Trace"
-import * as Tr from "../Trace"
+import type { Trace } from "../Trace/definition"
+import { none } from "../Trace/operations/none"
 import type { HasUnify } from "../Utils"
 
 // TODO:
@@ -365,15 +365,15 @@ export class Both<E> implements St.HasEquals, St.HasHash {
 
 export const empty: Cause<never> = new Empty()
 
-export function die(defect: unknown, trace: Trace = Tr.none): Cause<never> {
+export function die(defect: unknown, trace: Trace = none): Cause<never> {
   return new Die(defect, trace)
 }
 
-export function fail<E>(error: E, trace: Trace = Tr.none): Cause<E> {
+export function fail<E>(error: E, trace: Trace = none): Cause<E> {
   return new Fail(error, trace)
 }
 
-export function interrupt(fiberId: FiberId, trace: Trace = Tr.none): Cause<never> {
+export function interrupt(fiberId: FiberId, trace: Trace = none): Cause<never> {
   return new Interrupt(fiberId, trace)
 }
 

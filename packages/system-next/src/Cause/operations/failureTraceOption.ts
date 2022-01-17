@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import * as Tp from "../../Collections/Immutable/Tuple"
-import * as O from "../../Option"
-import type { Trace } from "../../Trace"
+import * as Tp from "../../Collections/Immutable/Tuple/core"
+import * as O from "../../Option/core"
+import type { Trace } from "../../Trace/definition"
 import type { Cause } from "../definition"
 import { isFailType } from "../definition"
 import { find_ } from "./find"

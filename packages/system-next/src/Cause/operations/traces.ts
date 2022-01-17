@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import * as L from "../../Collections/Immutable/List"
-import * as O from "../../Option"
-import type { Trace } from "../../Trace"
+import * as L from "../../Collections/Immutable/List/core"
+import * as O from "../../Option/core"
+import type { Trace } from "../../Trace/definition"
 import type { Cause } from "../definition"
 import { realCause } from "../definition"
 import { reduceLeft_ } from "./reduceLeft"

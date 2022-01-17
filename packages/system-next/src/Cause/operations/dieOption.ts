@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as O from "../../Option"
+import * as O from "../../Option/core"
 import type { Cause } from "../definition"
 import { isDieType } from "../definition"
 import { find_ } from "./find"

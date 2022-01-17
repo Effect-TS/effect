@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import * as IO from "../../IO"
-import type * as O from "../../Option"
+import * as IO from "../../IO/core"
+import type * as O from "../../Option/core"
 import type { Cause } from "../definition"
 import { realCause } from "../definition"
 

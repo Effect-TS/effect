@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as O from "../../Option"
+import * as O from "../../Option/core"
 import * as St from "../../Structural"
 import type { Cause } from "../definition"
 import { reduceLeft_ } from "./reduceLeft"

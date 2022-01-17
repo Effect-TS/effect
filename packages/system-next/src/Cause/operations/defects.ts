@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import * as L from "../../Collections/Immutable/List"
-import * as O from "../../Option"
+import * as L from "../../Collections/Immutable/List/core"
+import * as O from "../../Option/core"
 import type { Cause } from "../definition"
 import { isDieType } from "../definition"
 import { reduceLeft_ } from "./reduceLeft"

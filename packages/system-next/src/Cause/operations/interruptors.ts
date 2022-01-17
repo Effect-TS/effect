@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import * as HS from "../../Collections/Immutable/HashSet"
-import type { FiberId } from "../../FiberId"
-import * as O from "../../Option"
+import * as HS from "../../Collections/Immutable/HashSet/core"
+import type { FiberId } from "../../FiberId/definition"
+import * as O from "../../Option/core"
 import type { Cause } from "../definition"
 import { isInterruptType } from "../definition"
 import { reduceLeft_ } from "./reduceLeft"
