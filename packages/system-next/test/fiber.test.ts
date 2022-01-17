@@ -4,7 +4,7 @@ import * as Exit from "../src/Exit"
 import * as Fiber from "../src/Fiber"
 import * as FiberId from "../src/FiberId"
 import * as FiberRef from "../src/FiberRef"
-import { pipe } from "../src/Function"
+import { flow, identity, pipe } from "../src/Function"
 import * as M from "../src/Managed"
 import * as O from "../src/Option"
 import * as Promise from "../src/Promise"
@@ -266,20 +266,46 @@ describe("Fiber", () => {
     })
   })
 
-  // TODO: implement after fiber roots are figured out
-  // describe("roots", () => {
-  // test("dual roots") {
-  //   def rootContains(f: Fiber.Runtime[_, _]): UIO[Boolean] =
-  //     Fiber.roots.map(_.contains(f))
+  describe("roots", () => {
+    test("dual roots", async () => {
+      const rootContains = (f: Fiber.Runtime<any, any>): T.UIO<boolean> =>
+        pipe(
+          Fiber.roots,
+          T.map(
+            flow(
+              Chunk.find((fr) => f === fr),
+              O.isSome
+            )
+          )
+        )
 
-  //   for {
-  //     fiber1 <- ZIO.never.forkDaemon
-  //     fiber2 <- ZIO.never.forkDaemon
-  //     _      <- (rootContains(fiber1) && rootContains(fiber2)).repeatUntil(_ == true)
-  //     _      <- fiber1.interrupt *> fiber2.interrupt
-  //   } yield assertCompletes
-  // }
-  // })
+      const rootsTest = T.gen(function* (_) {
+        const fiber1 = yield* _(pipe(T.never, T.forkDaemon))
+        const fiber2 = yield* _(pipe(T.never, T.forkDaemon))
+        yield* _(
+          pipe(
+            rootContains(fiber1),
+            T.zipWith(rootContains(fiber2), (b1, b2) => b1 && b2),
+            T.repeatUntil(identity)
+          )
+        )
+        yield* _(pipe(Fiber.interrupt(fiber1), T.zipRight(Fiber.interrupt(fiber2))))
+        return true
+      })
+
+      // Since `rootsTest` has a potentially infinite loop (T.never + T.repeatUntil),
+      // race the real test against a 10 second timer and fail the test if it didn't complete.
+      // This delay time may be increased if it turns out this test is flaky.
+      const test = await pipe(
+        T.sleep(10000),
+        T.zipRight(T.succeedNow(false)),
+        T.race(rootsTest),
+        T.unsafeRunPromise
+      )
+
+      expect(test).toBeTruthy()
+    })
+  })
 
   describe("stack safety", () => {
     it("awaitAll", async () => {
