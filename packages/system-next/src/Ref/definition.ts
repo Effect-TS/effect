@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Effect } from "../Effect/definition"
 import type { Either } from "../Either"
 import type { Atomic } from "./Atomic/Atomic"

@@ -1,10 +1,5 @@
-// ets_tracing: off
-
 import * as Tp from "../../Collections/Immutable/Tuple"
-import {
-  currentEnvironment,
-  currentReleaseMap
-} from "../../FiberRef/definition/concrete"
+import { currentEnvironment, currentReleaseMap } from "../../FiberRef/definition/data"
 import { get } from "../../FiberRef/operations/get"
 import { locally_ } from "../../FiberRef/operations/locally"
 import type { Managed } from "../../Managed/definition"
@@ -31,9 +26,8 @@ export function toManaged<E, A>(
                 locally_(
                   currentEnvironment.value,
                   r,
-                  interrupt(a) as T.UIO<any>,
                   __trace
-                )
+                )(interrupt(a) as T.UIO<any>)
               ),
               (releaseMapEntry) => Tp.tuple(releaseMapEntry, a)
             )

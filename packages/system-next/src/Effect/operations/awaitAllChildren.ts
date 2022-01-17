@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import { awaitAll } from "../../Fiber/operations/awaitAll"
 import type { Effect } from "../definition"
 import { ensuringChildren_ } from "./ensuringChildren"

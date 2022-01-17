@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Effect, IO } from "../../Effect"
 import type { Either } from "../../Either"
 import type { Managed } from "../../Managed/definition"
@@ -7,6 +5,10 @@ import { _A, _B, _EA, _EB } from "./commons"
 
 export const FiberRefSym: unique symbol = Symbol.for("@effect-ts/core/FiberRef")
 export type FiberRefSym = typeof FiberRefSym
+export const FiberRefRuntimeSym: unique symbol = Symbol.for(
+  "@effect-ts/core/FiberRefRuntime"
+)
+export type FiberRefRuntimeSym = typeof FiberRefRuntimeSym
 
 /**
  * A `FiberRef` is Effect-TS's equivalent of Java's `ThreadLocal`. The value of a
@@ -19,6 +21,10 @@ export type FiberRefSym = typeof FiberRefSym
  */
 export type FiberRef<A> = XFiberRef<never, never, A, A>
 
+export declare namespace FiberRef {
+  type Runtime<A> = XFiberRefRuntime<never, never, A, A>
+}
+
 export interface XFiberRef<EA, EB, A, B> {
   readonly [FiberRefSym]: FiberRefSym
 
@@ -28,10 +34,15 @@ export interface XFiberRef<EA, EB, A, B> {
   readonly [_B]: (_: never) => B
 }
 
+export interface XFiberRefRuntime<EA, EB, A, B> extends XFiberRef<EA, EB, A, B> {
+  readonly [FiberRefRuntimeSym]: FiberRefRuntimeSym
+}
+
 export abstract class XFiberRefInternal<EA, EB, A, B>
-  implements XFiberRef<EA, EB, A, B>
+  implements XFiberRefRuntime<EA, EB, A, B>
 {
   readonly [FiberRefSym]: FiberRefSym = FiberRefSym;
+  readonly [FiberRefRuntimeSym]: FiberRefRuntimeSym = FiberRefRuntimeSym;
 
   readonly [_EA]: (_: never) => EA;
   readonly [_EB]: (_: never) => EB;

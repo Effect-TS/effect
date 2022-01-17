@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Cause } from "../../Cause"
 import { pipe } from "../../Function"
 import * as Promise from "../../Promise"

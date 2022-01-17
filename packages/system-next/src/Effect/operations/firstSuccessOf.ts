@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import * as A from "../../Collections/Immutable/Array"
 import * as NA from "../../Collections/Immutable/NonEmptyArray"
 import type { Effect } from "../definition"

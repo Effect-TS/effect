@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import { identity } from "../../../Function"
 import * as O from "../../../Option"
 import type { XSynchronized } from "../definition"

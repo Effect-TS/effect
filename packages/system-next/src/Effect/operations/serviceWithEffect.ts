@@ -1,6 +1,4 @@
-// ets_tracing: off
-
-import { currentEnvironment } from "../../FiberRef/definition/concrete"
+import { currentEnvironment } from "../../FiberRef/definition/data"
 import { get as fiberRefGet } from "../../FiberRef/operations/get"
 import type { Has, Tag } from "../../Has"
 import type { Effect } from "../definition"

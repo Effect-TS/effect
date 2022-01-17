@@ -81,8 +81,5 @@
     "typescript-transform-paths": "3.3.1",
     "ultra-runner": "^3.10.5"
   },
-  "resolutions": {
-    "typescript": "4.5.4"
-  },
   "packageManager": "yarn@3.1.0"
 }

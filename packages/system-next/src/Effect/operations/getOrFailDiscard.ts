@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import { constVoid } from "../../Function"
 import type * as O from "../../Option"
 import type { IO } from "../definition"

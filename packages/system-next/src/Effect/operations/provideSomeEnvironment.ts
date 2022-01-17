@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Effect } from "../definition"
 import { environmentWithEffect } from "./environmentWithEffect"
 import { provideEnvironment_ } from "./provideEnvironment"

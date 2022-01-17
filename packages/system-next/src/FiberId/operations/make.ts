@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import { AtomicNumber } from "../../Support/AtomicNumber"
 import type { FiberId } from "../definition"
 import { Runtime } from "../definition"

@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Managed } from "../definition"
 import type { ExecutionStrategy } from "./_internal/effect"
 import { forEach_ } from "./forEach"

@@ -1,7 +1,6 @@
-// ets_tracing: off
-
 import type { FiberContext } from "../Fiber/context"
-import * as FiberId from "../FiberId"
+import type { FiberId } from "../FiberId/definition"
+import { none } from "../FiberId/operations/none"
 import type { RuntimeConfig } from "../RuntimeConfig"
 import * as RuntimeConfigFlag from "../RuntimeConfig/Flag"
 import * as RuntimeConfigFlags from "../RuntimeConfig/Flags"
@@ -14,7 +13,7 @@ import * as RuntimeConfigFlags from "../RuntimeConfig/Flags"
 export type Scope = Global | Local
 
 export interface CommonScope {
-  readonly fiberId: FiberId.FiberId
+  readonly fiberId: FiberId
   readonly unsafeAdd: (
     runtimeConfig: RuntimeConfig,
     child: FiberContext<any, any>,
@@ -23,7 +22,7 @@ export interface CommonScope {
 }
 
 export class Global implements CommonScope {
-  readonly fiberId = FiberId.none
+  readonly fiberId = none
 
   unsafeAdd(
     runtimeConfig: RuntimeConfig,
@@ -43,10 +42,7 @@ export class Global implements CommonScope {
 }
 
 export class Local implements CommonScope {
-  constructor(
-    readonly fiberId: FiberId.FiberId,
-    readonly parent: FiberContext<any, any>
-  ) {}
+  constructor(readonly fiberId: FiberId, readonly parent: FiberContext<any, any>) {}
   unsafeAdd(
     runtimeConfig: RuntimeConfig,
     child: FiberContext<any, any>,

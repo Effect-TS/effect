@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 // codegen:start {preset: barrel, include: ./*.ts}
 export * from "./collect"
 export * from "./contramap"

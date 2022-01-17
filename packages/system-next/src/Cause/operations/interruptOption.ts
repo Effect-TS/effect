@@ -1,8 +1,7 @@
-// ets_tracing: off
-
-import type { FiberId } from "../../FiberId"
-import * as O from "../../Option"
+import type { FiberId } from "../../FiberId/definition"
+import * as O from "../../Option/core"
 import type { Cause } from "../definition"
+import { isInterruptType } from "../definition"
 import { find_ } from "./find"
 
 /**
@@ -11,6 +10,6 @@ import { find_ } from "./find"
  */
 export function interruptOption<E>(self: Cause<E>): O.Option<FiberId> {
   return find_(self, (cause) =>
-    cause._tag === "Interrupt" ? O.some(cause.fiberId) : O.none
+    isInterruptType(cause) ? O.some(cause.fiberId) : O.none
   )
 }

@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Has, Tag } from "../Has"
 import type { Sync } from "./core"
 import * as has from "./has"

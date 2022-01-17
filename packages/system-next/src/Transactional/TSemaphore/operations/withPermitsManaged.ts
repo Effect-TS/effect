@@ -1,6 +1,5 @@
-// ets_tracing: off
-
-import * as M from "../../../Managed"
+import type { Managed } from "../../../Managed"
+import { acquireReleaseInterruptible_ } from "../../../Managed/operations/acquireReleaseInterruptible"
 import * as STM from "../../STM"
 import type { TSemaphore } from "../definition"
 import { acquireN_ } from "./acquireN"
@@ -14,8 +13,8 @@ export function withPermitsManaged_(
   self: TSemaphore,
   permits: number,
   __trace?: string
-): M.Managed<unknown, never, void> {
-  return M.acquireReleaseInterruptible_(
+): Managed<unknown, never, void> {
+  return acquireReleaseInterruptible_(
     STM.commit(acquireN_(self, permits)),
     STM.commit(releaseN_(self, permits)),
     __trace
@@ -29,6 +28,6 @@ export function withPermitsManaged_(
  * @ets_data_first withPermitsManaged_
  */
 export function withPermitsManaged(permits: number, __trace?: string) {
-  return (self: TSemaphore): M.Managed<unknown, never, void> =>
+  return (self: TSemaphore): Managed<unknown, never, void> =>
     withPermitsManaged_(self, permits, __trace)
 }

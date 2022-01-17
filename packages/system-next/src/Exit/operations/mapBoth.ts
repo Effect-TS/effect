@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 // TODO: implementation
 import { map_ } from "../../Cause"
 import type { Exit } from "../definition"

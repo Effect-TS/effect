@@ -1,8 +1,6 @@
-// ets_tracing: off
-
 import * as Tp from "../../Collections/Immutable/Tuple"
 import { provideEnvironment_ } from "../../Effect/operations/provideEnvironment"
-import { currentReleaseMap } from "../../FiberRef/definition/concrete"
+import { currentReleaseMap } from "../../FiberRef/definition/data"
 import { get as fiberRefGet } from "../../FiberRef/operations/get"
 import { pipe } from "../../Function"
 import type { Managed } from "../definition"

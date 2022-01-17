@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { IO, UIO } from "../../Effect"
 import { succeed } from "../../Effect/operations/succeed"
 import type { Promise } from "../definition"
@@ -15,8 +13,7 @@ import { Done } from "../state"
  * the effect produces different results on subsequent evaluations. In this
  * case te meaning of the "exactly once" guarantee of `Promise` is that the
  * promise can be completed with exactly one effect. For a version that
- * completes the promise with the result of an effect see
- * `Promise.complete`.
+ * completes the promise with the result of an effect see `Promise.complete`.
  */
 export function completeWith_<E, A>(
   self: Promise<E, A>,

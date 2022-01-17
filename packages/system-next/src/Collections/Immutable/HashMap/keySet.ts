@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import * as S from "../HashSet"
 import type { HashMap } from "./index"
 

@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Has, Tag } from "../../Has"
 import type { Managed } from "../definition"
 import { provideServiceManaged } from "./provideServiceManaged"

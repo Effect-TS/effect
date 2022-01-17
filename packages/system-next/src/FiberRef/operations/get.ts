@@ -1,8 +1,5 @@
-// ets_tracing: off
-
 import type { IO } from "../../Effect"
-import type { XFiberRef } from "../definition"
-import { concreteUnified } from "../definition"
+import type { XFiberRef, XFiberRefInternal } from "../definition"
 
 /**
  * Reads the value associated with the current fiber. Returns initial value if
@@ -12,6 +9,5 @@ export function get<EA, EB, A, B>(
   self: XFiberRef<EA, EB, A, B>,
   __trace?: string
 ): IO<EB, B> {
-  concreteUnified(self)
-  return self.get
+  return (self as XFiberRefInternal<EA, EB, A, B>).get
 }

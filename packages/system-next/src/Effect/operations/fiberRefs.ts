@@ -1,7 +1,5 @@
-// ets_tracing: off
-
 import * as M from "../../Collections/Immutable/Map"
-import type * as FiberRef from "../../FiberRef"
+import type { FiberRef, Runtime } from "../../FiberRef"
 import { set_ as fiberRefSet_ } from "../../FiberRef/operations/set"
 import * as O from "../../Option"
 import type { UIO } from "../definition"
@@ -52,7 +50,7 @@ export class FiberRefs {
    * values if it exists or the `initial` value of the `FiberRef` otherwise.
    */
   getOrDefault<A>(fiberRef: FiberRef.Runtime<A>): A {
-    return O.getOrElse_(this.get(fiberRef), () => fiberRef.initial)
+    return O.getOrElse_(this.get(fiberRef), () => (fiberRef as Runtime<A>).initial)
   }
 }
 

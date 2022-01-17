@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { XRef } from "../definition"
 import { concrete } from "../definition"
 import type { Effect } from "./_internal/effect"

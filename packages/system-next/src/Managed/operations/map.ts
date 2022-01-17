@@ -1,9 +1,7 @@
-// ets_tracing: off
-
 import * as Tp from "../../Collections/Immutable/Tuple"
+import { map_ as effectMap_ } from "../../Effect/operations/map"
 import type { Managed } from "../definition"
 import { managedApply } from "../definition"
-import * as T from "./_internal/effect"
 
 /**
  * Returns a managed whose success is mapped by the specified `f` function.
@@ -14,7 +12,7 @@ export function map_<R, E, A, B>(
   __trace?: string
 ) {
   return managedApply<R, E, B>(
-    T.map_(self.effect, ({ tuple: [fin, a] }) => Tp.tuple(fin, f(a)), __trace)
+    effectMap_(self.effect, ({ tuple: [fin, a] }) => Tp.tuple(fin, f(a)), __trace)
   )
 }
 

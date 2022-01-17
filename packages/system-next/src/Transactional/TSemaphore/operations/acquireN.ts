@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import { IllegalArgumentException } from "../../../Cause/errors"
 import type { STM } from "../../STM"
 import { STMEffect, STMRetryException } from "../../STM"
@@ -22,7 +20,7 @@ export function acquireN_(self: TSemaphore, n: number): STM<unknown, never, void
     if (value < n) {
       throw new STMRetryException()
     } else {
-      return TRef.unsafeSet_(self.permits, value, journal)
+      return TRef.unsafeSet_(self.permits, value - n, journal)
     }
   })
 }

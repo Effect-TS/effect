@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import { fail } from "../../Exit"
 import type { FiberId } from "../../FiberId"
 import type { RuntimeConfig } from "../../RuntimeConfig"

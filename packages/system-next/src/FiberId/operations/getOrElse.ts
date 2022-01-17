@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { FiberId } from "../definition"
 import { isNone } from "./isNone"
 

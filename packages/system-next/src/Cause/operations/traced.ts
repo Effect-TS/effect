@@ -1,7 +1,5 @@
-// ets_tracing: off
-
-import type { Trace } from "../../Trace"
-import { combine } from "../../Trace"
+import type { Trace } from "../../Trace/definition"
+import { combine } from "../../Trace/operations/combine"
 import type { Cause } from "../definition"
 import { mapTrace_ } from "./mapTrace"
 

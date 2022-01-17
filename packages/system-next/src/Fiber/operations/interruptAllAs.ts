@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { FiberId } from "../../FiberId"
 import * as Iter from "../../Iterable"
 import type { Fiber } from "../definition"

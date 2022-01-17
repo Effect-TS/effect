@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import * as E from "../../Either"
 import type { Effect } from "../definition"
 import { failNow } from "./failNow"

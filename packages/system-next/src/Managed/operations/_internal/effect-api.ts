@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 export {
   forEach,
   forEachPar,

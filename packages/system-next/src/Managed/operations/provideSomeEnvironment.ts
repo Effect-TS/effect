@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import { provideSomeEnvironment_ as provideSomeEnvironmentEffect_ } from "../../Effect/operations/provideSomeEnvironment"
 import type { Managed } from "../definition"
 import { managedApply } from "../definition"

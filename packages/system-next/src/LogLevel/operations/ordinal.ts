@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import * as Ord from "../../Ord"
 import type { LogLevel } from "../definition"
 import { ordLogLevel } from "../instances"

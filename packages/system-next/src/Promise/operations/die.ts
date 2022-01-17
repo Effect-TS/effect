@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { UIO } from "../../Effect"
 import { die as effectDie } from "../../Effect/operations/die"
 import type { Promise } from "../definition"

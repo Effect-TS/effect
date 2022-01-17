@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 /* eslint-disable prefer-const */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable no-var */

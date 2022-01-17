@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Promise } from "../../Promise"
 import { done_ } from "../../Promise/operations/done"
 import type { Effect, RIO } from "../definition"
@@ -18,7 +16,7 @@ export function intoPromise_<R, E, A>(
   __trace?: string
 ): RIO<R, boolean> {
   return uninterruptibleMask(
-    (status) => chain_(exit(status.restore(self)), (_) => done_(promise, _)),
+    ({ restore }) => chain_(exit(restore(self)), (_) => done_(promise, _)),
     __trace
   )
 }

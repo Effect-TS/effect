@@ -1,8 +1,6 @@
-// ets_tracing: off
-
 import type { HasClock } from "../../Clock"
 import type { Effect, IO } from "../definition"
-import { cachedInvalidate_ } from "."
+import { cachedInvalidate_ } from "./cachedInvalidate"
 import { map_ } from "./map"
 
 /**

@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Tuple } from "../../Collections/Immutable/Tuple"
 import type { ConcurrentCounter } from "../ConcurrentCounter"
 import type { ConcurrentGauge } from "../ConcurrentGauge"

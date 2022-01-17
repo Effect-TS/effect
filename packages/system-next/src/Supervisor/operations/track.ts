@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import * as C from "../../Collections/Immutable/Chunk"
 import { succeed } from "../../Effect/operations/succeed"
 import type * as Fiber from "../../Fiber"

@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /**
  * @ets_optimize pipe

@@ -1,7 +1,6 @@
-// ets_tracing: off
-
-import * as O from "../../Option"
+import * as O from "../../Option/core"
 import type { Cause } from "../definition"
+import { isDieType, isFailType } from "../definition"
 import { find_ } from "./find"
 
 /**
@@ -11,7 +10,7 @@ import { find_ } from "./find"
 export function isInterruptedOnly<E>(self: Cause<E>): boolean {
   return O.getOrElse_(
     find_(self, (cause) =>
-      cause._tag === "Die" || cause._tag === "Fail" ? O.some(false) : O.none
+      isDieType(cause) || isFailType(cause) ? O.some(false) : O.none
     ),
     () => true
   )

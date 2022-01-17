@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { EqualityComparator } from "./utils"
 import {
   areArraysEqual,

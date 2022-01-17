@@ -1,6 +1,4 @@
-// ets_tracing: off
-
-import * as O from "../../Option"
+import * as O from "../../Option/core"
 import type { Cause } from "../definition"
 import { Both, Die, Stackless, Then } from "../definition"
 import { fold_ } from "./fold"

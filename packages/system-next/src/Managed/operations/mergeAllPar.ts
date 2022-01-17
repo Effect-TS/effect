@@ -1,6 +1,4 @@
-// ets_tracing: off
-
-import { currentReleaseMap } from "../../FiberRef/definition/concrete"
+import { currentReleaseMap } from "../../FiberRef/definition/data"
 import { locally_ } from "../../FiberRef/operations/locally"
 import * as Iter from "../../Iterable"
 import type { Managed } from "../definition"
@@ -25,7 +23,8 @@ export function mergeAllPar_<R, E, A, B>(
   return mapEffect_(makeManagedPar, (parallelReleaseMap) =>
     locally_(
       currentReleaseMap.value,
-      parallelReleaseMap,
+      parallelReleaseMap
+    )(
       T.mergeAllPar_(
         Iter.map_(as, (_) => T.map_(_.effect, (_) => _.get(1))),
         zero,

@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import { forEach, forEach_ } from "../../Exit/operations/forEach"
 import * as O from "../../Option"
 import type { Fiber } from "../definition"

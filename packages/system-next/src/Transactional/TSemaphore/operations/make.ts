@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import * as STM from "../../STM"
 import * as TRef from "../../TRef"
 import { TSemaphore } from "../definition"

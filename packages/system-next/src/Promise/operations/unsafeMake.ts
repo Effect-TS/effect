@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { FiberId } from "../../FiberId"
 import { AtomicReference } from "../../Support/AtomicReference"
 import { Promise } from "../definition"

@@ -1,6 +1,6 @@
-// ets_tracing: off
-
-import * as Ex from "../../Exit"
+import type { Exit } from "../../Exit/definition"
+import { failCause } from "../../Exit/operations/failCause"
+import { succeed } from "../../Exit/operations/succeed"
 import type { Effect, RIO } from "../definition"
 import { IFold } from "../definition"
 import { succeedNow } from "./succeedNow"
@@ -12,11 +12,11 @@ import { succeedNow } from "./succeedNow"
 export function exit<R, E, A>(
   self: Effect<R, E, A>,
   __trace?: string
-): RIO<R, Ex.Exit<E, A>> {
+): RIO<R, Exit<E, A>> {
   return new IFold(
     self,
-    (cause) => succeedNow(Ex.failCause(cause)),
-    (success) => succeedNow(Ex.succeed(success)),
+    (cause) => succeedNow(failCause(cause)),
+    (success) => succeedNow(succeed(success)),
     __trace
   )
 }

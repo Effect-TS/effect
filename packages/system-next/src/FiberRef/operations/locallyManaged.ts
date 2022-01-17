@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Managed } from "../../Managed/definition"
 import type { XFiberRef } from "../definition"
 import { concreteUnified } from "../definition"

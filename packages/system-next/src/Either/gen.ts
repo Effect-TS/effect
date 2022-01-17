@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import { _A, _E } from "../Effect/definition/commons"
 import { NoSuchElementException } from "../GlobalExceptions"
 import type { Option } from "../Option"

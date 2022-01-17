@@ -1,7 +1,5 @@
-// ets_tracing: off
-
 import type * as Tp from "../../Collections/Immutable/Tuple"
-import { currentReleaseMap } from "../../FiberRef/definition/concrete"
+import { currentReleaseMap } from "../../FiberRef/definition/data"
 import { locally_ } from "../../FiberRef/operations/locally"
 import type { Managed } from "../definition"
 import type { Finalizer } from "../ReleaseMap/finalizer"
@@ -27,6 +25,6 @@ export const scope: Managed<unknown, never, Scope> = map_(
   (finalizers) =>
     <R, E, A>(self: Managed<R, E, A>): T.Effect<R, E, Tp.Tuple<[Finalizer, A]>> =>
       T.chain_(T.environment<R>(), (r) =>
-        locally_(currentReleaseMap.value, finalizers, self.effect)
+        locally_(currentReleaseMap.value, finalizers)(self.effect)
       )
 )

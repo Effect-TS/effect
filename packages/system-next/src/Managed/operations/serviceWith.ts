@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import * as T from "../../Effect/operations/serviceWith"
 import type { Has, Tag } from "../../Has"
 import type { Managed } from "../definition"

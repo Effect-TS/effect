@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import * as C from "../../Cause"
 import type { Exit } from "../definition"
 
