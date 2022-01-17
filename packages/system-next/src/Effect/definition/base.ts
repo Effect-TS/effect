@@ -1,4 +1,3 @@
-import type { HasUnify } from "../../Utils"
 import { _A, _E, _R, _S1, _S2, _U, _W } from "./commons"
 
 export const EffectURI = "Effect"
@@ -26,7 +25,7 @@ export type EffectURI = typeof EffectURI
  * To run an effect, you need a `Runtime`, which is capable of executing
  * effects.
  */
-export interface Effect<R, E, A> extends HasUnify {
+export interface Effect<R, E, A> {
   readonly [_U]: EffectURI
   readonly [_E]: () => E
   readonly [_A]: () => A

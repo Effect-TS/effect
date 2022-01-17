@@ -1,6 +1,10 @@
+import * as Tp from "../src/Collections/Immutable/Tuple"
 import * as T from "../src/Effect"
+import * as Fiber from "../src/Fiber"
 import { pipe } from "../src/Function"
+import * as Promise from "../src/Promise"
 import * as STM from "../src/Transactional/STM"
+import * as TRef from "../src/Transactional/TRef"
 import * as TSemaphore from "../src/Transactional/TSemaphore"
 
 function repeat<E, A>(self: STM.STM<unknown, E, A>, n: number): STM.STM<unknown, E, A> {
@@ -12,11 +16,6 @@ function repeat<E, A>(self: STM.STM<unknown, E, A>, n: number): STM.STM<unknown,
   }
   return STM.chain_(self, () => STM.suspend(() => repeat(self, n - 1)))
 }
-// private def repeat[E, A](stm: STM[E, A])(n: Long): STM[E, A] = n match {
-//     case x if x < 1 => STM.die(new Throwable("n must be greater than 0"))
-//     case 1          => stm
-//     case x          => stm *> repeat(stm)(x - 1)
-//   }
 
 describe("TSemaphore", () => {
   describe("factories", () => {
@@ -71,6 +70,88 @@ describe("TSemaphore", () => {
       const usedCapacity = acquire - release
 
       expect(result).toBe(capacity - usedCapacity)
+    })
+
+    it("acquireN/releaseN(n) is acquire/release repeated N times", async () => {
+      const capacity = 50
+
+      function acquireRelease(
+        sem: TSemaphore.TSemaphore,
+        acquire: (n: number) => STM.STM<unknown, never, void>,
+        release: (n: number) => STM.STM<unknown, never, void>
+      ): STM.STM<unknown, never, Tp.Tuple<[number, number]>> {
+        return STM.gen(function* (_) {
+          yield* _(acquire(50))
+
+          const usedCapacity = yield* _(TSemaphore.available(sem))
+
+          yield* _(release(capacity))
+
+          const freeCapacity = yield* _(TSemaphore.available(sem))
+
+          return Tp.tuple(usedCapacity, freeCapacity)
+        })
+      }
+
+      const stm = STM.gen(function* (_) {
+        const sem = yield* _(TSemaphore.make(capacity))
+        const acquireReleaseN = acquireRelease(
+          sem,
+          (n) => TSemaphore.acquireN_(sem, n),
+          (n) => TSemaphore.releaseN_(sem, n)
+        )
+        const acquireReleaseRep = acquireRelease(
+          sem,
+          (n) => repeat(TSemaphore.acquire(sem), n),
+          (n) => repeat(TSemaphore.release(sem), n)
+        )
+        const resN = yield* _(acquireReleaseN)
+        const resRep = yield* _(acquireReleaseRep)
+        return { resN, resRep }
+      })
+
+      const { resN, resRep } = await pipe(STM.commit(stm), T.unsafeRunPromise)
+
+      expect(resN.get(0)).toBe(resRep.get(0))
+      expect(resN.get(1)).toBe(resRep.get(1))
+      expect(resN.get(0)).toBe(0)
+      expect(resN.get(1)).toBe(capacity)
+    })
+
+    it("withPermit automatically releases the permit if the effect is interrupted", async () => {
+      const { permits } = await pipe(
+        T.do,
+        T.bind("promise", () => Promise.make<never, void>()),
+        T.bind("semaphore", () => STM.commit(TSemaphore.make(1))),
+        T.let("effect", ({ promise, semaphore }) =>
+          T.chain_(
+            TSemaphore.withPermit_(Promise.succeed_(promise, undefined), semaphore),
+            () => T.never
+          )
+        ),
+        T.bind("fiber", ({ effect }) => T.fork(effect)),
+        T.tap(({ promise }) => Promise.await(promise)),
+        T.tap(({ fiber }) => Fiber.interrupt(fiber)),
+        T.bind("permits", ({ semaphore }) =>
+          pipe(TRef.get(semaphore.permits), STM.commit)
+        ),
+        T.unsafeRunPromise
+      )
+
+      expect(permits).toBe(1)
+    })
+
+    it("withPermit acquire is interruptible", async () => {
+      await pipe(
+        T.do,
+        T.bind("semaphore", () => STM.commit(TSemaphore.make(0))),
+        T.let("effect", ({ semaphore }) => TSemaphore.withPermit_(T.unit, semaphore)),
+        T.bind("fiber", ({ effect }) => T.fork(effect)),
+        T.tap(({ fiber }) => Fiber.interrupt(fiber)),
+        T.unsafeRunPromise
+      )
+
+      expect.anything()
     })
   })
 })

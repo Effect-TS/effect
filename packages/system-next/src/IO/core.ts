@@ -4,8 +4,6 @@ import "../Operator"
 import * as Tp from "../Collections/Immutable/Tuple"
 import { _A, _U } from "../Effect/definition/commons"
 import { Stack } from "../Stack"
-import type { HasUnify } from "../Utils"
-import { unifyIndex } from "../Utils"
 
 /**
  * `IO<A>` is a purely functional description of a computation.
@@ -21,15 +19,7 @@ export type IO<A> = Succeed<A> | FlatMap<any, A> | Suspend<A>
 export const IoURI = Symbol()
 export type IoURI = typeof IoURI
 
-declare module "../Utils" {
-  export interface UnifiableIndexed<X> {
-    [IoURI]: [X] extends [IO<infer A>] ? IO<A> : never
-  }
-}
-
-interface Base<A> extends HasUnify {}
 abstract class Base<A> {
-  readonly [unifyIndex]: IoURI;
   readonly [_U]!: "IO";
   readonly [_A]!: () => A
 }

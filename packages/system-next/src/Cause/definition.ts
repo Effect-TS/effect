@@ -8,7 +8,6 @@ import { Stack } from "../Stack"
 import * as St from "../Structural"
 import type { Trace } from "../Trace/definition"
 import { none } from "../Trace/operations/none"
-import type { HasUnify } from "../Utils"
 
 // TODO:
 // - [ ] renderPretty
@@ -70,7 +69,6 @@ export function isBothType<E>(cause: Cause<E>): cause is Both<E> {
   return cause._tag === "Both"
 }
 
-export interface Empty extends HasUnify {}
 export interface Empty extends Cause<never> {}
 export class Empty implements St.HasEquals, St.HasHash {
   readonly _tag = "Empty";
@@ -110,7 +108,6 @@ export class Empty implements St.HasEquals, St.HasHash {
   }
 }
 
-export interface Fail<E> extends HasUnify {}
 export interface Fail<E> extends Cause<E> {}
 export class Fail<E> implements St.HasEquals, St.HasHash {
   readonly _tag = "Fail";
@@ -150,7 +147,6 @@ export class Fail<E> implements St.HasEquals, St.HasHash {
   }
 }
 
-export interface Die extends HasUnify {}
 export interface Die extends Cause<never> {}
 export class Die implements St.HasEquals, St.HasHash {
   readonly _tag = "Die";
@@ -190,7 +186,6 @@ export class Die implements St.HasEquals, St.HasHash {
   }
 }
 
-export interface Interrupt extends HasUnify {}
 export interface Interrupt extends Cause<never> {}
 export class Interrupt implements St.HasEquals, St.HasHash {
   readonly _tag = "Interrupt";
@@ -230,7 +225,6 @@ export class Interrupt implements St.HasEquals, St.HasHash {
   }
 }
 
-export interface Stackless<E> extends HasUnify {}
 export interface Stackless<E> extends Cause<E> {}
 export class Stackless<E> implements St.HasEquals, St.HasHash {
   readonly _tag = "Stackless";
@@ -257,7 +251,6 @@ export class Stackless<E> implements St.HasEquals, St.HasHash {
   }
 }
 
-export interface Then<E> extends HasUnify {}
 export interface Then<E> extends Cause<E> {}
 export class Then<E> implements St.HasEquals, St.HasHash {
   readonly _tag = "Then";
@@ -307,7 +300,6 @@ export class Then<E> implements St.HasEquals, St.HasHash {
   }
 }
 
-export interface Both<E> extends HasUnify {}
 export interface Both<E> extends Cause<E> {}
 export class Both<E> implements St.HasEquals, St.HasHash {
   readonly _tag = "Both";
