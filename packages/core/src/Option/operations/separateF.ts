@@ -2,6 +2,7 @@
 
 import * as O from "@effect-ts/system/Option"
 
+import * as Tp from "../../Collections/Immutable/Tuple"
 import { pipe } from "../../Function"
 import type { OptionURI } from "../../Modules"
 import * as P from "../../Prelude"
@@ -11,17 +12,9 @@ export const separateF = P.implementSeparateF<[P.URI<OptionURI>]>()(
     const o = O.map_(fa, (a) =>
       pipe(
         f(a),
-        F.map((e) => ({
-          left: O.getLeft(e),
-          right: O.getRight(e)
-        }))
+        F.map((e) => Tp.tuple(O.getLeft(e), O.getRight(e)))
       )
     )
-    return O.isNone(o)
-      ? P.succeedF(F)({
-          left: O.none,
-          right: O.none
-        })
-      : o.value
+    return O.isNone(o) ? P.succeedF(F)(Tp.tuple(O.none, O.none)) : o.value
   }
 )

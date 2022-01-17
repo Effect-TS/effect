@@ -5,16 +5,16 @@ import * as Chunk from "../core"
 import { concreteId } from "../definition"
 
 /**
- * Takes all elements so long as the effectual predicate returns true.
+ * Drops all elements so long as the predicate returns true.
  */
-export function takeWhileM_<R, E, A>(
+export function dropWhileEffect_<R, E, A>(
   self: Chunk.Chunk<A>,
   f: (a: A) => Effect<R, E, boolean>
 ): Effect<R, E, Chunk.Chunk<A>> {
   return core.suspend(() => {
     const iterator = concreteId(self).arrayLikeIterator()
     let next
-    let taking: Effect<R, E, boolean> = core.succeed(true)
+    let dropping: Effect<R, E, boolean> = core.succeed(true)
     let builder = Chunk.empty<A>()
 
     while ((next = iterator.next()) && !next.done) {
@@ -23,9 +23,9 @@ export function takeWhileM_<R, E, A>(
       let i = 0
       while (i < len) {
         const a = array[i]!
-        taking = core.chain_(taking, (d) =>
+        dropping = core.chain_(dropping, (d) =>
           coreMap.map_(d ? f(a) : core.succeed(false), (b) => {
-            if (b) {
+            if (!b) {
               builder = Chunk.append_(builder, a)
             }
             return b
@@ -34,17 +34,17 @@ export function takeWhileM_<R, E, A>(
         i++
       }
     }
-    return coreMap.map_(taking, () => builder)
+    return coreMap.map_(dropping, () => builder)
   })
 }
 
 /**
- * Takes all elements so long as the effectual predicate returns true.
+ * Drops all elements so long as the predicate returns true.
  *
- * @ets_data_first takeWhileM_
+ * @ets_data_first dropWhileEffect_
  */
-export function takeWhileM<R, E, A>(
+export function dropWhileEffect<R, E, A>(
   f: (a: A) => Effect<R, E, boolean>
 ): (self: Chunk.Chunk<A>) => Effect<R, E, Chunk.Chunk<A>> {
-  return (self) => takeWhileM_(self, f)
+  return (self) => dropWhileEffect_(self, f)
 }

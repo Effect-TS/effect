@@ -54,51 +54,51 @@ describe("Stream", () => {
 
   describe("Core", () => {
     it("fromArray", async () => {
-      const a = S.fromChunk(Chunk.many(0, 1, 2))
+      const a = S.fromChunk(Chunk.make(0, 1, 2))
 
-      expect(await T.runPromise(S.runCollect(a))).toEqual(Chunk.many(0, 1, 2))
+      expect(await T.runPromise(S.runCollect(a))).toEqual(Chunk.make(0, 1, 2))
     })
   })
 
   it("interleave", async () => {
     expect(
       await pipe(
-        S.fromChunk(Chunk.many(1, 1, 1, 1, 1, 1, 1, 1, 1, 1)),
-        S.interleave(S.fromChunk(Chunk.many(2, 2, 2, 2, 2, 2, 2, 2, 2, 2))),
+        S.fromChunk(Chunk.make(1, 1, 1, 1, 1, 1, 1, 1, 1, 1)),
+        S.interleave(S.fromChunk(Chunk.make(2, 2, 2, 2, 2, 2, 2, 2, 2, 2))),
         S.take(5),
         S.runCollect,
         T.runPromise
       )
-    ).equals(Chunk.many(1, 2, 1, 2, 1))
+    ).equals(Chunk.make(1, 2, 1, 2, 1))
   })
 
   it("intersperse", async () => {
     expect(
       await pipe(
-        S.fromChunk(Chunk.many(1, 1, 1, 1, 1, 1, 1, 1, 1, 1)),
+        S.fromChunk(Chunk.make(1, 1, 1, 1, 1, 1, 1, 1, 1, 1)),
         S.intersperse(2),
         S.take(5),
         S.runCollect,
         T.runPromise
       )
-    ).equals(Chunk.many(1, 2, 1, 2, 1))
+    ).equals(Chunk.make(1, 2, 1, 2, 1))
   })
 
   it("runCollect", async () => {
     const result = await pipe(
-      S.fromChunk(Chunk.many(0, 1, 2)),
+      S.fromChunk(Chunk.make(0, 1, 2)),
       S.map((n) => n + 1),
       S.runCollect,
       T.runPromise
     )
 
-    expect(result).equals(Chunk.many(1, 2, 3))
+    expect(result).equals(Chunk.make(1, 2, 3))
   })
   it("runDrain", async () => {
     const result: number[] = []
 
     await pipe(
-      S.fromChunk(Chunk.many(0, 1, 2)),
+      S.fromChunk(Chunk.make(0, 1, 2)),
       S.map((n) => n + 1),
       S.map((n) => {
         result.push(n)
@@ -112,7 +112,7 @@ describe("Stream", () => {
   it("forever", async () => {
     expect(
       await pipe(S.succeed(1), S.forever, S.take(10), S.runCollect, T.runPromise)
-    ).equals(Chunk.many(1, 1, 1, 1, 1, 1, 1, 1, 1, 1))
+    ).equals(Chunk.make(1, 1, 1, 1, 1, 1, 1, 1, 1, 1))
   })
   it("zip", async () => {
     expect(
@@ -123,34 +123,34 @@ describe("Stream", () => {
         S.runCollect,
         T.runPromise
       )
-    ).equals(Chunk.many(Tp.tuple(0, 1), Tp.tuple(0, 1)))
+    ).equals(Chunk.make(Tp.tuple(0, 1), Tp.tuple(0, 1)))
   })
   it("mapEffect", async () => {
     expect(
       await pipe(
-        S.fromChunk(Chunk.many(0, 1, 2)),
+        S.fromChunk(Chunk.make(0, 1, 2)),
         S.mapEffect((n) => T.succeedWith(() => n + 1)),
         S.runCollect,
         T.runPromise
       )
-    ).equals(Chunk.many(1, 2, 3))
+    ).equals(Chunk.make(1, 2, 3))
   })
 
   it("interleaveWith", async () => {
     expect(
       await pipe(
-        S.fromChunk(Chunk.many(0, 2, 4)),
-        S.interleave(S.fromChunk(Chunk.many(1, 3, 5))),
+        S.fromChunk(Chunk.make(0, 2, 4)),
+        S.interleave(S.fromChunk(Chunk.make(1, 3, 5))),
         S.runCollect,
         T.runPromise
       )
-    ).equals(Chunk.many(0, 1, 2, 3, 4, 5))
+    ).equals(Chunk.make(0, 1, 2, 3, 4, 5))
   })
 
   it("debounce", async () => {
     expect(
       await pipe(
-        S.fromChunk(Chunk.many(0, 1, 2, 3, 4, 5)),
+        S.fromChunk(Chunk.make(0, 1, 2, 3, 4, 5)),
         S.debounce(100),
         S.runCollect,
         T.runPromise
@@ -173,7 +173,7 @@ describe("Stream", () => {
     })
 
     expect(await pipe(stream, S.runCollect, T.runPromise)).equals(
-      Chunk.many(1, 2, 3, 4, 5)
+      Chunk.make(1, 2, 3, 4, 5)
     )
   })
 
@@ -226,18 +226,18 @@ describe("Stream", () => {
       T.runPromise
     )
 
-    expect(result).toEqual(Chunk.many(1, 2, 3, 4, 5))
+    expect(result).toEqual(Chunk.make(1, 2, 3, 4, 5))
   })
 
   it("zipAllSortedByKey", async () => {
-    const a = S.from(
+    const a = S.make(
       Tp.tuple(1, "one"),
       Tp.tuple(2, "two"),
       Tp.tuple(3, "three"),
       Tp.tuple(4, "four"),
       Tp.tuple(5, "five")
     )
-    const b = S.from(
+    const b = S.make(
       Tp.tuple(1, "un"),
       Tp.tuple(2, "deux"),
       // No three
@@ -254,7 +254,7 @@ describe("Stream", () => {
     expect(
       ST.deepEquals(
         result,
-        Chunk.many(
+        Chunk.make(
           Tp.tuple(1, Tp.tuple("one", "un")),
           Tp.tuple(2, Tp.tuple("two", "deux")),
           Tp.tuple(3, Tp.tuple("three", "<Inconnu>")),
@@ -281,7 +281,7 @@ describe("Stream", () => {
     )
 
     expect(result).equals(
-      Chunk.many(Tp.tuple("h", "hello"), Tp.tuple("h", "hi"), Tp.tuple("w", "world"))
+      Chunk.make(Tp.tuple("h", "hello"), Tp.tuple("h", "hi"), Tp.tuple("w", "world"))
     )
   })
 
@@ -314,13 +314,13 @@ describe("Stream", () => {
     )
 
     expect(await pipe(streamA, S.merge(streamB), S.runCollect, T.runPromise)).equals(
-      Chunk.many(1, 2, 1, 1, 2)
+      Chunk.make(1, 2, 1, 1, 2)
     )
   })
 
   it("range", async () => {
     expect(await pipe(S.range(2, 8), S.runCollect, T.runPromise)).equals(
-      Chunk.many(2, 3, 4, 5, 6, 7, 8)
+      Chunk.make(2, 3, 4, 5, 6, 7, 8)
     )
   })
 
@@ -341,7 +341,7 @@ describe("Stream", () => {
         S.runCollect,
         T.runPromise
       )
-    ).equals(Chunk.many(1, 1, 1, 2, 4, 8, 3, 9, 27))
+    ).equals(Chunk.make(1, 1, 1, 2, 4, 8, 3, 9, 27))
   })
 
   it("debounces", async () => {
@@ -456,25 +456,25 @@ describe("Stream", () => {
 
   it("splitLines", async () => {
     const result = await pipe(
-      S.from("Hello\nthis\nis\r\na\r\ntest\n"),
+      S.make("Hello\nthis\nis\r\na\r\ntest\n"),
       S.splitLines,
       S.runCollect,
       T.runPromise
     )
 
-    expect(result).equals(Chunk.many("Hello", "this", "is", "a", "test"))
+    expect(result).equals(Chunk.make("Hello", "this", "is", "a", "test"))
   })
 
   it("zip", async () => {
     const result = await pipe(
-      S.from(1, 2, 3),
-      S.zip(S.from("a", "b", "c"), S.from(true, false, true), S.from("x", "y", "z")),
+      S.make(1, 2, 3),
+      S.zip(S.make("a", "b", "c"), S.make(true, false, true), S.make("x", "y", "z")),
       S.runCollect,
       T.runPromise
     )
 
     expect(result).equals(
-      Chunk.many(
+      Chunk.make(
         Tp.tuple(1, "a", true, "x"),
         Tp.tuple(2, "b", false, "y"),
         Tp.tuple(3, "c", true, "z")
@@ -484,14 +484,14 @@ describe("Stream", () => {
 
   it("cross", async () => {
     const result = await pipe(
-      S.from(1, 2),
-      S.cross(S.from("a", "b"), S.from(true, false)),
+      S.make(1, 2),
+      S.cross(S.make("a", "b"), S.make(true, false)),
       S.runCollect,
       T.runPromise
     )
 
     expect(result).equals(
-      Chunk.many(
+      Chunk.make(
         Tp.tuple(1, "a", true),
         Tp.tuple(1, "a", false),
         Tp.tuple(1, "b", true),
@@ -506,13 +506,13 @@ describe("Stream", () => {
 
   it("splitOn", async () => {
     const result = await pipe(
-      S.from("This|is|a|test"),
+      S.make("This|is|a|test"),
       S.splitOn("|"),
       S.runCollect,
       T.runPromise
     )
 
-    expect(result).equals(Chunk.many("This", "is", "a", "test"))
+    expect(result).equals(Chunk.make("This", "is", "a", "test"))
   })
 
   it("schedule", async () => {
@@ -536,7 +536,7 @@ describe("Stream", () => {
     const result = await pipe(S.range(1, 4), S.sliding(2), S.runCollect, T.runPromise)
 
     expect(result).equals(
-      Chunk.many(Chunk.many(1, 2), Chunk.many(2, 3), Chunk.many(3, 4))
+      Chunk.make(Chunk.make(1, 2), Chunk.make(2, 3), Chunk.make(3, 4))
     )
   })
 
@@ -565,6 +565,48 @@ describe("Stream", () => {
       T.runPromise
     )
 
-    expect(result).equals(Tp.tuple(Chunk.many(1, 2, 3), Chunk.many(1, 2, 3)))
+    expect(result).equals(Tp.tuple(Chunk.make(1, 2, 3), Chunk.make(1, 2, 3)))
+  })
+
+  // Re-enable once fixed upstream
+  it("zipWithLatest & Debounce neverending", async () => {
+    const withDebounce = await pipe(
+      S.zipWithLatest_(
+        S.async((cb) => {
+          setTimeout(() => cb.single("a"))
+          setTimeout(() => cb.single("b"), 100)
+        }),
+        S.async((cb) => {
+          setTimeout(() => cb.single(1))
+          setTimeout(() => cb.single(2), 50)
+          setTimeout(() => cb.single(3), 150)
+        }),
+        (a, b) => [a, b] as const
+      ),
+      S.debounce(10),
+      S.interruptWhen(T.sleep(1_000)),
+      S.runCollect,
+      T.runPromise
+    )
+
+    const withoutDebounce = await pipe(
+      S.zipWithLatest_(
+        S.async((cb) => {
+          setTimeout(() => cb.single("a"))
+          setTimeout(() => cb.single("b"), 100)
+        }),
+        S.async((cb) => {
+          setTimeout(() => cb.single(1))
+          setTimeout(() => cb.single(2), 50)
+          setTimeout(() => cb.single(3), 150)
+        }),
+        (a, b) => [a, b] as const
+      ),
+      S.interruptWhen(T.sleep(1_000)),
+      S.runCollect,
+      T.runPromise
+    )
+
+    expect(withDebounce).toEqual(withoutDebounce)
   })
 })

@@ -6,6 +6,6 @@ import * as FromIterable from "./fromIterable"
 /**
  * Creates a stream from the specified values
  */
-export function from<A>(...values: A[]): C.UIO<A> {
+export function make<A>(...values: A[]): C.UIO<A> {
   return FromIterable.fromIterable(values)
 }

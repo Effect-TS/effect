@@ -1,6 +1,7 @@
 // ets_tracing: off
 
-import type { PredicateWithIndex, RefinementWithIndex, Separated } from "../../Utils"
+import type * as Tp from "../../Collections/Immutable/Tuple"
+import type { PredicateWithIndex, RefinementWithIndex } from "../../Utils"
 import type * as HKT from "../HKT"
 
 export interface PartitionWithIndexFn<F extends HKT.URIS, C = HKT.Auto> {
@@ -8,9 +9,11 @@ export interface PartitionWithIndexFn<F extends HKT.URIS, C = HKT.Auto> {
     refinement: RefinementWithIndex<HKT.IndexFor<F, HKT.OrFix<"K", C, K>>, A, B>
   ): <Q, W, X, I, S, R, E>(
     fa: HKT.Kind<F, C, K, Q, W, X, I, S, R, E, A>
-  ) => Separated<
-    HKT.Kind<F, C, K, Q, W, X, I, S, R, E, A>,
-    HKT.Kind<F, C, K, Q, W, X, I, S, R, E, B>
+  ) => Tp.Tuple<
+    [
+      HKT.Kind<F, C, K, Q, W, X, I, S, R, E, A>,
+      HKT.Kind<F, C, K, Q, W, X, I, S, R, E, B>
+    ]
   >
   <K, A>(predicate: PredicateWithIndex<HKT.IndexFor<F, HKT.OrFix<"K", C, K>>, A>): <
     K,
@@ -23,9 +26,11 @@ export interface PartitionWithIndexFn<F extends HKT.URIS, C = HKT.Auto> {
     E
   >(
     fa: HKT.Kind<F, C, K, Q, W, X, I, S, R, E, A>
-  ) => Separated<
-    HKT.Kind<F, C, K, Q, W, X, I, S, R, E, A>,
-    HKT.Kind<F, C, K, Q, W, X, I, S, R, E, A>
+  ) => Tp.Tuple<
+    [
+      HKT.Kind<F, C, K, Q, W, X, I, S, R, E, A>,
+      HKT.Kind<F, C, K, Q, W, X, I, S, R, E, A>
+    ]
   >
 }
 

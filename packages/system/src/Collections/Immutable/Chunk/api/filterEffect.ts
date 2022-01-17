@@ -8,7 +8,7 @@ import { concreteId } from "../definition"
  * Filters this chunk by the specified effectful predicate, retaining all elements for
  * which the predicate evaluates to true.
  */
-export function filterM_<R, E, A>(
+export function filterEffect_<R, E, A>(
   self: Chunk.Chunk<A>,
   f: (a: A) => Effect<R, E, boolean>
 ): Effect<R, E, Chunk.Chunk<A>> {
@@ -35,10 +35,10 @@ export function filterM_<R, E, A>(
  * Filters this chunk by the specified effectful predicate, retaining all elements for
  * which the predicate evaluates to true.
  *
- * @ets_data_first filterM_
+ * @ets_data_first filterEffect_
  */
-export function filterM<R, E, A>(
+export function filterEffect<R, E, A>(
   f: (a: A) => Effect<R, E, boolean>
 ): (self: Chunk.Chunk<A>) => Effect<R, E, Chunk.Chunk<A>> {
-  return (self) => filterM_(self, f)
+  return (self) => filterEffect_(self, f)
 }

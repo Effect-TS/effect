@@ -9,7 +9,7 @@ import * as ChunkDef from "../definition"
 /**
  * Returns a filtered, mapped subset of the elements of this chunk based on a .
  */
-export function collectM_<A, R, E, B>(
+export function collectEffect_<A, R, E, B>(
   self: Chunk.Chunk<A>,
   f: (a: A) => O.Option<Effect<R, E, B>>
 ): Effect<R, E, Chunk.Chunk<B>> {
@@ -35,7 +35,7 @@ export function collectM_<A, R, E, B>(
       return dest
     }
     default: {
-      return collectM_(self.materialize(), f)
+      return collectEffect_(self.materialize(), f)
     }
   }
 }
@@ -43,10 +43,10 @@ export function collectM_<A, R, E, B>(
 /**
  * Returns a filtered, mapped subset of the elements of this chunk based on a .
  *
- * @ets_data_first collectM_
+ * @ets_data_first collectEffect_
  */
-export function collectM<A, R, E, B>(
+export function collectEffect<A, R, E, B>(
   f: (a: A) => O.Option<Effect<R, E, B>>
 ): (self: Chunk.Chunk<A>) => Effect<R, E, Chunk.Chunk<B>> {
-  return (self) => collectM_(self, f)
+  return (self) => collectEffect_(self, f)
 }

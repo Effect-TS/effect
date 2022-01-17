@@ -70,6 +70,18 @@ export function mergeWith_<
     M.let("queueReader", ({ input }) => FromInput.fromInput(input)),
     M.bind("pullL", ({ queueReader }) => ToPull.toPull(queueReader[">>>"](self))),
     M.bind("pullR", ({ queueReader }) => ToPull.toPull(queueReader[">>>"](that))),
+    M.chain(({ input, pullL, pullR, queueReader }) =>
+      T.toManaged(
+        T.transplant((graft) =>
+          T.succeed({
+            input,
+            pullL: graft(pullL),
+            pullR: graft(pullR),
+            queueReader
+          })
+        )
+      )
+    ),
     M.map(({ input, pullL, pullR }) => {
       type MergeState = MH.MergeState<
         Env & Env1,

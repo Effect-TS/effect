@@ -8,7 +8,7 @@ import type { FiberContext } from "../Fiber/context"
 import type * as Fiber from "../Fiber/core"
 import type { FiberID } from "../Fiber/id"
 import type { Trace } from "../Fiber/tracing"
-import type { FiberRef } from "../FiberRef/fiberRef"
+import type { Runtime } from "../FiberRef/fiberRef"
 import type * as O from "../Option"
 import type { Scope } from "../Scope"
 import type { Supervisor } from "../Supervisor"
@@ -271,7 +271,7 @@ export class ISuspendPartial<R, E, A, E2> extends Base<R, E | E2, A> {
   }
 }
 
-export class IFiberRefNew<A> extends Base<unknown, never, FiberRef<A>> {
+export class IFiberRefNew<A> extends Base<unknown, never, Runtime<A>> {
   readonly _tag = "FiberRefNew"
 
   constructor(
@@ -287,7 +287,7 @@ export class IFiberRefModify<A, B> extends Base<unknown, never, B> {
   readonly _tag = "FiberRefModify"
 
   constructor(
-    readonly fiberRef: FiberRef<A>,
+    readonly fiberRef: Runtime<A>,
     readonly f: (a: A) => Tuple<[B, A]>,
     readonly trace?: string
   ) {

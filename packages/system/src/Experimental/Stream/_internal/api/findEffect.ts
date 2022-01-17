@@ -25,7 +25,7 @@ export function findEffect_<R, R1, E, E1, A>(
     (in_) =>
       CH.unwrap(
         T.map_(
-          CK.findM_(in_, f),
+          CK.findEffect_(in_, f),
           O.fold(
             () => loop,
             (i) => CH.write(CK.single(i))

@@ -64,10 +64,10 @@ export function defaultIfEmpty_<R, E, A, A1>(
   self: C.Stream<R, E, A>,
   a: A1
 ): C.Stream<R, E, A | A1>
-export function defaultIfEmpty_<R, E, A>(
+export function defaultIfEmpty_<R, E, E1, A, A1>(
   self: C.Stream<R, E, A>,
-  emptyValue: unknown
-): C.Stream<R, E, unknown> {
+  emptyValue: A1 | CK.Chunk<A1> | C.Stream<unknown, E1, A1>
+): C.Stream<R, E | E1, A | A1> {
   if (CK.isChunk(emptyValue)) {
     return defaultIfEmptyChunk(self, emptyValue)
   }

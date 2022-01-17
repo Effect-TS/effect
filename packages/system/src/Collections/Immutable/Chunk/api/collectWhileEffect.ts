@@ -9,7 +9,7 @@ import * as ChunkDef from "../definition"
 /**
  * Transforms all elements of the chunk for as long as the specified partial function is defined.
  */
-export function collectWhileM_<A, R, E, B>(
+export function collectWhileEffect_<A, R, E, B>(
   self: Chunk.Chunk<A>,
   f: (a: A) => O.Option<Effect<R, E, B>>
 ): Effect<R, E, Chunk.Chunk<B>> {
@@ -37,7 +37,7 @@ export function collectWhileM_<A, R, E, B>(
       return dest
     }
     default: {
-      return collectWhileM_(self.materialize(), f)
+      return collectWhileEffect_(self.materialize(), f)
     }
   }
 }
@@ -45,10 +45,10 @@ export function collectWhileM_<A, R, E, B>(
 /**
  * Transforms all elements of the chunk for as long as the specified partial function is defined.
  *
- * @ets_data_first collectWhileM_
+ * @ets_data_first collectWhileEffect_
  */
-export function collectWhileM<A, R, E, B>(
+export function collectWhileEffect<A, R, E, B>(
   f: (a: A) => O.Option<Effect<R, E, B>>
 ): (self: Chunk.Chunk<A>) => Effect<R, E, Chunk.Chunk<B>> {
-  return (self) => collectWhileM_(self, f)
+  return (self) => collectWhileEffect_(self, f)
 }

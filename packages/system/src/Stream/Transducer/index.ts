@@ -148,7 +148,7 @@ export function mapM_<R, E, I, O, R1, E1, O1>(
   f: (o: O) => T.Effect<R1, E1, O1>
 ): Transducer<R & R1, E | E1, I, O1> {
   return new Transducer(
-    M.map_(fa.push, (push) => (input) => T.chain_(push(input), Chunk.mapM(f)))
+    M.map_(fa.push, (push) => (input) => T.chain_(push(input), Chunk.mapEffect(f)))
   )
 }
 
@@ -429,7 +429,7 @@ export function dropWhileM<R, E, I>(
                   T.chain((b) =>
                     b
                       ? T.map_(
-                          Chunk.dropWhileM_(is, p),
+                          Chunk.dropWhileEffect_(is, p),
                           (l: Chunk.Chunk<I>) => [l, Chunk.isEmpty(l)] as const
                         )
                       : T.succeed([is, false] as const)
@@ -1078,7 +1078,7 @@ export function filterInputM_<R, E, I, O, R1, E1>(
           (x) =>
             pipe(
               x,
-              Chunk.filterM(predicate),
+              Chunk.filterEffect(predicate),
               T.chain((in_) => push(O.some(in_)))
             )
         )

@@ -1,7 +1,7 @@
 // ets_tracing: off
 
 import * as Chunk from "@effect-ts/system/Collections/Immutable/Chunk"
-import type * as Tp from "@effect-ts/system/Collections/Immutable/Tuple"
+import * as Tp from "@effect-ts/system/Collections/Immutable/Tuple"
 import type { Predicate } from "@effect-ts/system/Function"
 import { identity, pipe } from "@effect-ts/system/Function"
 
@@ -16,7 +16,7 @@ import type { URI } from "../../../Prelude"
 import * as P from "../../../Prelude"
 import * as DSL from "../../../Prelude/DSL"
 import type { Show } from "../../../Show"
-import type { PredicateWithIndex, Separated } from "../../../Utils"
+import type { PredicateWithIndex } from "../../../Utils"
 
 export * from "@effect-ts/system/Collections/Immutable/Chunk"
 
@@ -341,7 +341,7 @@ export function uniq<A>(E: Equal<A>): (as: Chunk.Chunk<A>) => Chunk.Chunk<A> {
  * @ets_data_first partition_
  */
 export function partition<A>(predicate: Predicate<A>) {
-  return (fa: Chunk.Chunk<A>): Separated<Chunk.Chunk<A>, Chunk.Chunk<A>> =>
+  return (fa: Chunk.Chunk<A>): Tp.Tuple<[Chunk.Chunk<A>, Chunk.Chunk<A>]> =>
     partitionWithIndex((_, a: A) => predicate(a))(fa)
 }
 
@@ -351,7 +351,7 @@ export function partition<A>(predicate: Predicate<A>) {
 export function partition_<A>(
   fa: Chunk.Chunk<A>,
   predicate: Predicate<A>
-): Separated<Chunk.Chunk<A>, Chunk.Chunk<A>> {
+): Tp.Tuple<[Chunk.Chunk<A>, Chunk.Chunk<A>]> {
   return partitionWithIndex((_, a: A) => predicate(a))(fa)
 }
 
@@ -361,7 +361,7 @@ export function partition_<A>(
 export function partitionMapWithIndex_<A, B, C>(
   fa: Chunk.Chunk<A>,
   f: (i: number, a: A) => Either<B, C>
-): Separated<Chunk.Chunk<B>, Chunk.Chunk<C>> {
+): Tp.Tuple<[Chunk.Chunk<B>, Chunk.Chunk<C>]> {
   const left: Array<B> = []
   const right: Array<C> = []
   for (let i = 0; i < fa.length; i++) {
@@ -372,10 +372,7 @@ export function partitionMapWithIndex_<A, B, C>(
       right.push(e.right)
     }
   }
-  return {
-    left: Chunk.from(left),
-    right: Chunk.from(right)
-  }
+  return Tp.tuple(Chunk.from(left), Chunk.from(right))
 }
 
 /**
@@ -384,7 +381,7 @@ export function partitionMapWithIndex_<A, B, C>(
  * @ets_data_first partitionMapWithIndex_
  */
 export function partitionMapWithIndex<A, B, C>(f: (i: number, a: A) => Either<B, C>) {
-  return (fa: Chunk.Chunk<A>): Separated<Chunk.Chunk<B>, Chunk.Chunk<C>> =>
+  return (fa: Chunk.Chunk<A>): Tp.Tuple<[Chunk.Chunk<B>, Chunk.Chunk<C>]> =>
     partitionMapWithIndex_(fa, f)
 }
 
@@ -396,7 +393,7 @@ export function partitionMapWithIndex<A, B, C>(f: (i: number, a: A) => Either<B,
 export function partitionWithIndex<A>(
   predicateWithIndex: PredicateWithIndex<number, A>
 ) {
-  return (fa: Chunk.Chunk<A>): Separated<Chunk.Chunk<A>, Chunk.Chunk<A>> =>
+  return (fa: Chunk.Chunk<A>): Tp.Tuple<[Chunk.Chunk<A>, Chunk.Chunk<A>]> =>
     partitionWithIndex_(fa, predicateWithIndex)
 }
 
@@ -406,7 +403,7 @@ export function partitionWithIndex<A>(
 export function partitionWithIndex_<A>(
   fa: Chunk.Chunk<A>,
   predicateWithIndex: PredicateWithIndex<number, A>
-): Separated<Chunk.Chunk<A>, Chunk.Chunk<A>> {
+): Tp.Tuple<[Chunk.Chunk<A>, Chunk.Chunk<A>]> {
   const left: Array<A> = []
   const right: Array<A> = []
   for (let i = 0; i < fa.length; i++) {
@@ -417,8 +414,5 @@ export function partitionWithIndex_<A>(
       left.push(a)
     }
   }
-  return {
-    left: Chunk.from(left),
-    right: Chunk.from(right)
-  }
+  return Tp.tuple(Chunk.from(left), Chunk.from(right))
 }

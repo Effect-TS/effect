@@ -3,6 +3,54 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.32.0](https://github.com/Effect-TS/core/compare/@effect-ts/build-utils@0.31.2...@effect-ts/build-utils@0.32.0) (2022-01-16)
+
+**Note:** Version bump only for package @effect-ts/build-utils
+
+
+
+
+
+## [0.31.2](https://github.com/Effect-TS/core/compare/@effect-ts/build-utils@0.31.1...@effect-ts/build-utils@0.31.2) (2022-01-14)
+
+**Note:** Version bump only for package @effect-ts/build-utils
+
+
+
+
+
+## [0.31.1](https://github.com/Effect-TS/core/compare/@effect-ts/build-utils@0.31.0...@effect-ts/build-utils@0.31.1) (2022-01-14)
+
+**Note:** Version bump only for package @effect-ts/build-utils
+
+
+
+
+
+# [0.31.0](https://github.com/Effect-TS/core/compare/@effect-ts/build-utils@0.30.0...@effect-ts/build-utils@0.31.0) (2022-01-07)
+
+**Note:** Version bump only for package @effect-ts/build-utils
+
+
+
+
+
+# [0.30.0](https://github.com/Effect-TS/core/compare/@effect-ts/build-utils@0.29.0...@effect-ts/build-utils@0.30.0) (2022-01-05)
+
+**Note:** Version bump only for package @effect-ts/build-utils
+
+
+
+
+
+# [0.29.0](https://github.com/Effect-TS/core/compare/@effect-ts/build-utils@0.28.6...@effect-ts/build-utils@0.29.0) (2022-01-04)
+
+**Note:** Version bump only for package @effect-ts/build-utils
+
+
+
+
+
 ## [0.28.6](https://github.com/Effect-TS/core/compare/@effect-ts/build-utils@0.28.5...@effect-ts/build-utils@0.28.6) (2021-12-21)
 
 **Note:** Version bump only for package @effect-ts/build-utils

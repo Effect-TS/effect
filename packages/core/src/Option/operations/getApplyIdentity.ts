@@ -17,5 +17,5 @@ import { getApplyAssociative } from "./getApplyAssociative"
  * | some(a) | some(b) | some(concat(a, b)) |
  */
 export function getApplyIdentity<A>(M: Identity<A>): Identity<O.Option<A>> {
-  return fromAssociative(getApplyAssociative(M))(O.none)
+  return fromAssociative(getApplyAssociative(M))(O.some(M.identity))
 }

@@ -3,6 +3,87 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.49.0](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.48.2...@effect-ts/system@0.49.0) (2022-01-16)
+
+
+### Features
+
+* **fiberref:** add `FiberRef` type alias ([555d9f6](https://github.com/Effect-TS/core/commit/555d9f6edd40c1fadbb638cea911c8f7d2c81a14))
+* **fiberref:** polymorphic FiberRef ([1a57e76](https://github.com/Effect-TS/core/commit/1a57e76ed5ec0b41e990b44758656b18e8da28cb))
+
+
+
+
+
+## [0.48.2](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.48.1...@effect-ts/system@0.48.2) (2022-01-14)
+
+
+### Bug Fixes
+
+* **exp-stream:** missing [StreamTypeId] on Stream ([#1032](https://github.com/Effect-TS/core/issues/1032)) ([db43713](https://github.com/Effect-TS/core/commit/db43713df390521de974ed1ffd9116bdf02316be))
+
+
+
+
+
+## [0.48.1](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.48.0...@effect-ts/system@0.48.1) (2022-01-14)
+
+
+### Bug Fixes
+
+* **exp-stream,exp-channel:** missing T.transplants for zipWithLatest, mergeWith ([#1030](https://github.com/Effect-TS/core/issues/1030)) ([f34a1ab](https://github.com/Effect-TS/core/commit/f34a1abe86b07f27d630837e2034b8ae7e907d3b))
+* **stream:** isStream return signature ([8132718](https://github.com/Effect-TS/core/commit/813271895d1788372e82c3d5a81a7f13414f3ae3))
+
+
+### Features
+
+* **sync:** added missing isSuccess and isFailure for Sync effect type ([b5f7fcd](https://github.com/Effect-TS/core/commit/b5f7fcd6a478579b26642e0ba9685363c6084a20))
+* **sync:** export and test isFailure ([b37fc55](https://github.com/Effect-TS/core/commit/b37fc55810885cb30e02581bc123f420bc2b0a64))
+
+
+
+
+
+# [0.48.0](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.47.0...@effect-ts/system@0.48.0) (2022-01-07)
+
+
+### Bug Fixes
+
+* **chunk:** rename collectChunk => collect ([#1021](https://github.com/Effect-TS/core/issues/1021)) ([635c877](https://github.com/Effect-TS/core/commit/635c877866ddaf6c1644a8008204e721fc16882a))
+
+
+
+
+
+# [0.47.0](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.46.0...@effect-ts/system@0.47.0) (2022-01-05)
+
+**Note:** Version bump only for package @effect-ts/system
+
+
+
+
+
+# [0.46.0](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.45.6...@effect-ts/system@0.46.0) (2022-01-04)
+
+
+### Bug Fixes
+
+* **HashMap:** Fix `hasHash_` function ([f35edf6](https://github.com/Effect-TS/core/commit/f35edf662f05abcfde60d3f24f013cc86dbdd52e))
+
+
+### Features
+
+* add static of() on Tagged base class ([8fdc6b5](https://github.com/Effect-TS/core/commit/8fdc6b515934223a18bba256a5cb669997245e4d))
+* **Async:** Added struct and structPar support for Async effect type ([3268fda](https://github.com/Effect-TS/core/commit/3268fda814359d8286beba2784224fead30b46f6))
+* **chunk:** added dedupe ([80e4d24](https://github.com/Effect-TS/core/commit/80e4d24fba69728a7febacf4aadd1b0a08cee04a))
+* **chunk:** added findIndex, findLast, findLastIndex, tap, dropRight ([67d592d](https://github.com/Effect-TS/core/commit/67d592def504e3e9bcd754db4ea677bee87d084a))
+* **chunk:** added toString ([11a74b3](https://github.com/Effect-TS/core/commit/11a74b33e443409d944469e67d8d078e13aa0740))
+* **chunk:** added withIndex variants for map/filter/reduce/reduceRight ([5d48890](https://github.com/Effect-TS/core/commit/5d4889049b86c28e76148e5bdcd01329c21be40c))
+
+
+
+
+
 ## [0.45.6](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.45.5...@effect-ts/system@0.45.6) (2021-12-21)
 
 **Note:** Version bump only for package @effect-ts/system

@@ -3,11 +3,11 @@
 import type { Either } from "@effect-ts/system/Either"
 import * as E from "@effect-ts/system/Either"
 
+import * as Tp from "../../Collections/Immutable/Tuple"
 import { pipe } from "../../Function"
 import type { Identity } from "../../Identity"
 import type { EitherURI } from "../../Modules"
 import * as P from "../../Prelude"
-import type { Separated } from "../../Utils"
 import { forEachF } from "./forEachF"
 
 /**
@@ -16,12 +16,14 @@ import { forEachF } from "./forEachF"
 export function separate<E>(M: Identity<E>) {
   const empty = E.left(M.identity)
 
-  return <A, B>(ma: Either<E, Either<A, B>>): Separated<Either<E, A>, Either<E, B>> => {
+  return <A, B>(
+    ma: Either<E, Either<A, B>>
+  ): Tp.Tuple<[Either<E, A>, Either<E, B>]> => {
     return E.isLeft(ma)
-      ? { left: ma, right: ma }
+      ? Tp.tuple(ma, ma)
       : E.isLeft(ma.right)
-      ? { left: E.right(ma.right.left), right: empty }
-      : { left: empty, right: E.right(ma.right.right) }
+      ? Tp.tuple(E.right(ma.right.left), empty)
+      : Tp.tuple(empty, E.right(ma.right.right))
   }
 }
 

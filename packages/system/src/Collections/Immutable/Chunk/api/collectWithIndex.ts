@@ -5,9 +5,9 @@ import * as ChunkDef from "../definition"
 /**
  * Returns a filtered, mapped subset of the elements of this chunk.
  */
-export function filterMap_<A, B>(
+export function collectWithIndex_<A, B>(
   self: Chunk.Chunk<A>,
-  f: (a: A) => O.Option<B>
+  f: (index: number, a: A) => O.Option<B>
 ): Chunk.Chunk<B> {
   ChunkDef.concrete(self)
 
@@ -16,7 +16,7 @@ export function filterMap_<A, B>(
       const array = self.arrayLike()
       let dest = Chunk.empty<B>()
       for (let i = 0; i < array.length; i++) {
-        const rhs = f(array[i]!)
+        const rhs = f(i, array[i]!)
         if (O.isSome(rhs)) {
           dest = Chunk.append_(dest, rhs.value)
         }
@@ -24,7 +24,7 @@ export function filterMap_<A, B>(
       return dest
     }
     default: {
-      return filterMap_(self.materialize(), f)
+      return collectWithIndex_(self.materialize(), f)
     }
   }
 }
@@ -32,10 +32,10 @@ export function filterMap_<A, B>(
 /**
  * Returns a filtered, mapped subset of the elements of this chunk.
  *
- * @ets_data_first filterMap_
+ * @ets_data_first collectWithIndex_
  */
-export function filterMap<A, B>(
-  f: (a: A) => O.Option<B>
+export function collectWithIndex<A, B>(
+  f: (index: number, a: A) => O.Option<B>
 ): (self: Chunk.Chunk<A>) => Chunk.Chunk<B> {
-  return (self) => filterMap_(self, f)
+  return (self) => collectWithIndex_(self, f)
 }

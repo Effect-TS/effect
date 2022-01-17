@@ -600,7 +600,7 @@ export function all<A>(as: Iterable<BoolAlgebra<A>>): O.Option<BoolAlgebra<A>> {
   const arr = A.from(as)
 
   if (A.isNonEmpty(arr)) {
-    return O.some(A.reduce_(A.dropLeft_(arr, 1), arr[0], and_))
+    return O.some(A.reduce_(A.drop_(arr, 1), arr[0], and_))
   }
 
   return O.none

@@ -13,7 +13,7 @@ import * as E from "../Either"
 // exit
 import * as Exit from "../Exit/api"
 // fiberRef
-import { FiberRef } from "../FiberRef/fiberRef"
+import * as FR from "../FiberRef/fiberRef"
 import * as update from "../FiberRef/update"
 import { constVoid } from "../Function"
 // option
@@ -37,7 +37,7 @@ import * as Status from "./status"
 import type { TraceElement } from "./tracing"
 import { SourceLocation, Trace, traceLocation, truncatedParentTrace } from "./tracing"
 
-export type FiberRefLocals = Map<FiberRef<any>, any>
+export type FiberRefLocals = Map<FR.Runtime<any>, any>
 
 export class Stack<A> {
   constructor(readonly value: A, readonly previous?: Stack<A>) {}
@@ -154,7 +154,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     }
   }
 
-  getRef<K>(fiberRef: FiberRef<K>): T.UIO<K> {
+  getRef<K>(fiberRef: FR.Runtime<K>): T.UIO<K> {
     return T.succeedWith(() => this.fiberRefLocals.get(fiberRef) || fiberRef.initial)
   }
 
@@ -1187,7 +1187,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                   }
 
                   case "FiberRefNew": {
-                    const fiberRef = new FiberRef(
+                    const fiberRef = new FR.Runtime(
                       current.initial,
                       current.onFork,
                       current.onJoin

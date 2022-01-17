@@ -18,7 +18,7 @@ export function takeUntilEffect_<R, R1, E, E1, A>(
     pipe(
       T.do,
       T.bind("taken", () =>
-        CK.takeWhileM_(chunk, (v) =>
+        CK.takeWhileEffect_(chunk, (v) =>
           T.zipRight_(
             emit(v),
             T.map_(f(v), (_) => !_)

@@ -27,7 +27,7 @@ export type StreamTypeId = typeof StreamTypeId
  * for rich and expressive composition of streams.
  */
 export class Stream<R, E, A> {
-  readonly _typeId: StreamTypeId = StreamTypeId;
+  readonly [StreamTypeId]: StreamTypeId = StreamTypeId;
   readonly [T._R]!: (_: R) => void;
   readonly [T._E]!: () => E;
   readonly [T._A]!: () => A
@@ -43,7 +43,7 @@ export type RIO<R, A> = Stream<R, never, A>
 
 export type UIO<A> = Stream<unknown, never, A>
 
-export function isStream(u: unknown): u is Stream<unknown, never, unknown> {
+export function isStream(u: unknown): u is Stream<unknown, unknown, unknown> {
   return typeof u === "object" && u != null && StreamTypeId in u
 }
 

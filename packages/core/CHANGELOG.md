@@ -3,6 +3,60 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.52.0](https://github.com/Effect-TS/core/compare/@effect-ts/core@0.51.2...@effect-ts/core@0.52.0) (2022-01-16)
+
+**Note:** Version bump only for package @effect-ts/core
+
+
+
+
+
+## [0.51.2](https://github.com/Effect-TS/core/compare/@effect-ts/core@0.51.1...@effect-ts/core@0.51.2) (2022-01-14)
+
+**Note:** Version bump only for package @effect-ts/core
+
+
+
+
+
+## [0.51.1](https://github.com/Effect-TS/core/compare/@effect-ts/core@0.51.0...@effect-ts/core@0.51.1) (2022-01-14)
+
+
+### Bug Fixes
+
+* **option:** getApplyIdentity ([1badc59](https://github.com/Effect-TS/core/commit/1badc598461cffccafec2cd71a3c2504845de7a9))
+
+
+
+
+
+# [0.51.0](https://github.com/Effect-TS/core/compare/@effect-ts/core@0.50.0...@effect-ts/core@0.51.0) (2022-01-07)
+
+
+### Bug Fixes
+
+* **chunk:** rename collectChunk => collect ([#1021](https://github.com/Effect-TS/core/issues/1021)) ([635c877](https://github.com/Effect-TS/core/commit/635c877866ddaf6c1644a8008204e721fc16882a))
+
+
+
+
+
+# [0.50.0](https://github.com/Effect-TS/core/compare/@effect-ts/core@0.49.0...@effect-ts/core@0.50.0) (2022-01-05)
+
+**Note:** Version bump only for package @effect-ts/core
+
+
+
+
+
+# [0.49.0](https://github.com/Effect-TS/core/compare/@effect-ts/core@0.48.6...@effect-ts/core@0.49.0) (2022-01-04)
+
+**Note:** Version bump only for package @effect-ts/core
+
+
+
+
+
 ## [0.48.6](https://github.com/Effect-TS/core/compare/@effect-ts/core@0.48.5...@effect-ts/core@0.48.6) (2021-12-21)
 
 **Note:** Version bump only for package @effect-ts/core
