@@ -4,7 +4,7 @@ on:
   pull_request:
     branches:
       - master
-      - features/*
+      - feat/system-next
 
 jobs:
   build:
