@@ -1,7 +1,6 @@
 {
   "name": "@effect-ts/system-next",
   "version": "0.0.0",
-  "private": "true",
   "license": "MIT",
   "repository": "https://github.com/Effect-TS/core.git",
   "homepage": "https://www.matechs.com",
