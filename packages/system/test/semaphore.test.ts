@@ -8,11 +8,12 @@ describe("Semaphores", () => {
     const program = T.gen(function* (_) {
       let blockingExecuted = 0
       let unblockingExecuted = 0
-      const semaphore = yield* _(SM.makeSemaphore(1))
+      const semaphore = yield* _(SM.make(1))
       const fiber = yield* _(
         T.fork(
           T.forEachPar_(A.range(1, 10), () =>
-            SM.withPermit(semaphore)(
+            SM.withPermit_(
+              semaphore,
               T.gen(function* (_) {
                 // Blocking IO
                 yield* _(
@@ -55,11 +56,12 @@ describe("Semaphores", () => {
     const program = T.gen(function* (_) {
       let blockingExecuted = 0
       let unblockingExecuted = 0
-      const semaphore = yield* _(SM.makeSemaphore(1))
+      const semaphore = yield* _(SM.make(1))
       const fiber = yield* _(
         T.fork(
           T.forEachPar_(A.range(1, 10), () =>
-            SM.withPermit(semaphore)(
+            SM.withPermit_(
+              semaphore,
               // Unblocking IO
               T.gen(function* (_) {
                 yield* _(
