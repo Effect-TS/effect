@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Managed } from "../definition"
 import type { ExecutionStrategy } from "../operations/_internal/effect"
 import { acquireReleaseExitWith_ } from "../operations/acquireReleaseExitWith"

@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Effect } from "../definition"
 import { collectAllDiscard } from "./excl-forEach"
 import { replicate_ } from "./replicate"

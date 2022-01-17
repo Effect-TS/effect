@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type * as Tp from "../../../Collections/Immutable/Tuple"
 import { XSynchronized } from "../definition"
 import * as T from "./_internal/effect"

@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Managed } from "../definition"
 import { succeedNow } from "./succeedNow"
 import { tapBoth_ } from "./tapBoth"

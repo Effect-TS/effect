@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { IO } from "../Effect"
 
 export type State<E, A> = Pending<E, A> | Done<E, A>

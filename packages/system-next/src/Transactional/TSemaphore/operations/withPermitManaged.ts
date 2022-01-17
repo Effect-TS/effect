@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Managed } from "../../../Managed"
 import type { TSemaphore } from "../definition"
 import { withPermitsManaged_ } from "./withPermitsManaged"

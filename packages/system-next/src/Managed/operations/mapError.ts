@@ -1,8 +1,6 @@
-// ets_tracing: off
-
+import { mapError_ as effectMapError } from "../../Effect/operations/mapError"
 import type { Managed } from "../definition"
 import { managedApply } from "../definition"
-import * as T from "./_internal/effect"
 
 /**
  * Returns an effect whose failure is mapped by the specified `f` function.
@@ -12,7 +10,7 @@ export function mapError_<R, E, A, E1>(
   f: (e: E) => E1,
   __trace?: string
 ): Managed<R, E1, A> {
-  return managedApply(T.mapError_(self.effect, f, __trace))
+  return managedApply(effectMapError(self.effect, f, __trace))
 }
 
 /**

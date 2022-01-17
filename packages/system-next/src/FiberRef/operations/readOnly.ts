@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { XFiberRef } from "../definition"
 
 /**

@@ -1,7 +1,5 @@
-// ets_tracing: off
-
 import type { Tuple } from "../../Collections/Immutable/Tuple"
-import * as T from "../../Effect"
+import { zip_ } from "../../Effect/operations/zip"
 import { Supervisor } from "../definition"
 
 /**
@@ -14,7 +12,7 @@ export function and_<A, B>(
   that: Supervisor<B>
 ): Supervisor<Tuple<[A, B]>> {
   return new Supervisor(
-    T.zip_(self.value, that.value),
+    zip_(self.value, that.value),
     (environment, effect, parent, fiber) => {
       try {
         self.unsafeOnStart(environment, effect, parent, fiber)

@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import * as Tp from "../../Collections/Immutable/Tuple"
 import type { IO } from "../../Effect"
 import type { XFiberRef } from "../definition"

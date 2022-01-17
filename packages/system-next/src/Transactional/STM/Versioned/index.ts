@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import "../../../Operator"
 
 export const VersionedTypeId = Symbol.for("@effect-ts/system/STM/Versioned")

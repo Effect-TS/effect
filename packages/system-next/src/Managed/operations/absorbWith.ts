@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import { squashWith_ } from "../../Cause"
 import type { Managed } from "../definition"
 import { failNow } from "./failNow"

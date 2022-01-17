@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Option } from "../../Option"
 import type { Effect } from "../definition"
 import { catchAll_ } from "./catchAll"

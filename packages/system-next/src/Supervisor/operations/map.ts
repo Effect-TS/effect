@@ -1,6 +1,4 @@
-// ets_tracing: off
-
-import * as T from "../../Effect"
+import { map_ as effectMap_ } from "../../Effect/operations/map"
 import type { Supervisor } from "../definition"
 import { ProxySupervisor } from "./_internal"
 
@@ -9,7 +7,7 @@ import { ProxySupervisor } from "./_internal"
  * value has been transformed by the specified function.
  */
 export function map_<A, B>(self: Supervisor<A>, f: (a: A) => B): Supervisor<B> {
-  return new ProxySupervisor(T.map_(self.value, f), self)
+  return new ProxySupervisor(effectMap_(self.value, f), self)
 }
 /**
  * Maps this supervisor to another one, which has the same effect, but whose

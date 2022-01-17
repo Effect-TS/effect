@@ -1,9 +1,7 @@
-// ets_tracing: off
-
 import type { Cause } from "../../Cause"
 import { empty } from "../../Cause"
 import { identity } from "../../Function"
-import type { Effect, RIO } from ".."
+import type { Effect, RIO } from "../definition"
 import { foldCause_ } from "./foldCause"
 
 /**

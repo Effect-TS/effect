@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 /* adapted from https://github.com/gcanti/fp-ts */
 /**
  * Data structure which represents non-empty arrays

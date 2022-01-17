@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { RIO } from "../definition"
 import { environment } from "./environment"
 import { map_ } from "./map"

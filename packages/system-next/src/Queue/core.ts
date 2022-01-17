@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import * as ChunkFilter from "../Collections/Immutable/Chunk/api/filter"
 import * as Chunk from "../Collections/Immutable/Chunk/core"
 import type { AtomicBoolean } from "../Support/AtomicBoolean"

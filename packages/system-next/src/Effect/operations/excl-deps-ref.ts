@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 export type { Ref } from "../../Ref/definition"
 export * from "../../Ref/operations/get"
 export * from "../../Ref/operations/getAndSet"

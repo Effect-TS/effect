@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 export type { Effect, UIO } from "../../../../Effect/definition/base"
 export * from "../../../../Effect/operations/asSomeError"
 export * from "../../../../Effect/operations/chain"

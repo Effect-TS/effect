@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type * as Fiber from "../../Fiber"
 import type { UIO } from "../definition"
 import { descriptorWith } from "./descriptorWith"

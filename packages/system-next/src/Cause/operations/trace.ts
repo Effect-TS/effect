@@ -1,8 +1,7 @@
-// ets_tracing: off
-
-import * as L from "../../Collections/Immutable/List"
-import type { Trace } from "../../Trace"
-import { combine_, none } from "../../Trace"
+import * as L from "../../Collections/Immutable/List/core"
+import type { Trace } from "../../Trace/definition"
+import { combine_ } from "../../Trace/operations/combine"
+import { none } from "../../Trace/operations/none"
 import type { Cause } from "../definition"
 import { traces } from "./traces"
 

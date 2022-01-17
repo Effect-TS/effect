@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { UIO } from "../../../Effect/definition"
 import * as STM from "../../STM"
 import type { TSemaphore } from "../definition"

@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Effect } from "../../Effect"
 import { exit } from "../../Effect/operations/exit"
 import { succeedNow } from "../../Effect/operations/succeedNow"

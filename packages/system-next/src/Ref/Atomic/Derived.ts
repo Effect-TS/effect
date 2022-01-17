@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import * as E from "../../Either"
 import { pipe } from "../../Function"
 import type { XRef } from "../definition"

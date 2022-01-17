@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import * as Map from "../../../Collections/Immutable/Map"
 import * as LoggerMap from "../../operations/map"
 import { LoggerSet } from "../definition"

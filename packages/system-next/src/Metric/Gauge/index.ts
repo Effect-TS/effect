@@ -1,6 +1,4 @@
-// ets_tracing: off
-
-import { _A } from "../../Effect"
+import { _A } from "../../Effect/definition/commons"
 import type { UIO } from "../_internal/effect"
 
 /**

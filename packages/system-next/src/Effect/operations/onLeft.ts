@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Effect } from "../definition"
 import { environment } from "./environment"
 import { joinEither_ } from "./joinEither"

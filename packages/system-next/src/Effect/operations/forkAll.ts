@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type * as Chunk from "../../Collections/Immutable/Chunk"
 import * as Fiber from "../../Fiber"
 import type { Effect, RIO } from "../definition"

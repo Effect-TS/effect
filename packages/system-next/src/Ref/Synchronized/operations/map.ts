@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { XSynchronized } from "../definition"
 import * as T from "./_internal/effect"
 import { mapEffect_ } from "./mapEffect"

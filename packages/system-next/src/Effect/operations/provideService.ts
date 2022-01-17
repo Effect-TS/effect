@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Effect } from "../../Effect/definition"
 import { succeed } from "../../Effect/operations/succeed"
 import type { Has, Tag } from "../../Has"

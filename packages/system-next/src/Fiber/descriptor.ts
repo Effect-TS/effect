@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { HashSet } from "../Collections/Immutable/HashSet"
 import type { FiberId } from "../FiberId"
 import type { InterruptStatus } from "../InterruptStatus"

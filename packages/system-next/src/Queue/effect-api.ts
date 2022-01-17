@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 export type { Effect, UIO } from "../Effect/definition"
 export * from "../Effect/operations/excl-forEach"
 export * from "../Effect/operations/asUnit"

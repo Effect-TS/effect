@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Either } from "../../Either"
 import { identity } from "../../Function"
 import type { XFiberRef } from "../definition"

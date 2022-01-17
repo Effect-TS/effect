@@ -1,8 +1,6 @@
-// ets_tracing: off
-
 import * as Cause from "../../Cause"
 import type { Exit } from "../../Exit"
-import * as Ex from "../../Exit"
+import { fold_ } from "../../Exit/operations/fold"
 import type { Effect } from "../definition"
 import { chain_ } from "./chain"
 import { done } from "./done"
@@ -33,7 +31,7 @@ export function acquireReleaseExitWith_<R, E, A, R1, E1, A1, R2, E2, X>(
             suspendSucceed(() => release(a, exit)),
             (cause2) =>
               failCause(
-                Ex.fold_(
+                fold_(
                   exit,
                   (cause1) => Cause.then(cause1, cause2),
                   () => cause2

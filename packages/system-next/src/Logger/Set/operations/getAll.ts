@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Tag } from "../../../Has"
 import type { Logger } from "../../definition"
 import type { LoggerSet } from "../definition"

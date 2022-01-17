@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Equal } from "../../../../Equal"
 import * as O from "../../../../Option"
 import { Stack } from "../../../../Stack"

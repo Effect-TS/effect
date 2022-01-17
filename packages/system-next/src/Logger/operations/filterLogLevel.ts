@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { LogLevel } from "../../LogLevel"
 import * as O from "../../Option"
 import type { Logger } from "../definition"

@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 export * from "./operations"
 
 // codegen:start {preset: barrel, include: ./*.ts}

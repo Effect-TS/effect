@@ -1,7 +1,5 @@
-// ets_tracing: off
-
 import * as Tp from "../../Collections/Immutable/Tuple"
-import { currentReleaseMap } from "../../FiberRef/definition/concrete"
+import { currentReleaseMap } from "../../FiberRef/definition/data"
 import { get } from "../../FiberRef/operations/get"
 import { locally_ } from "../../FiberRef/operations/locally"
 import { pipe } from "../../Function"
@@ -30,7 +28,7 @@ export function preallocate<R, E, A>(
       T.bind("tp", ({ releaseMap }) =>
         T.exit(
           status.restore(
-            locally_(currentReleaseMap.value, releaseMap, self.effect),
+            locally_(currentReleaseMap.value, releaseMap)(self.effect),
             __trace
           )
         )

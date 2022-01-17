@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import * as Cause from "../../Cause"
 import * as Exit from "../../Exit"
 import * as FiberId from "../../FiberId"

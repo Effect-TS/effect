@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Cause } from "../../Cause"
 import { stripFailures } from "../../Cause/operations/stripFailures"
 import type { Managed } from "../definition"

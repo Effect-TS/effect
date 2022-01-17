@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Exit } from "../../Exit"
 import type { Effect } from "../definition"
 import { acquireReleaseExitWith_ } from "./acquireReleaseExitWith"

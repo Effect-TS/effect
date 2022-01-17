@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import { pipe } from "../../Function"
 import type * as T from "../operations/_internal/effect"
 import * as Ref from "../operations/_internal/ref"

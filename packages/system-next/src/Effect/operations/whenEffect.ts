@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Effect } from "../definition"
 import { asUnit } from "./asUnit"
 import { chain_ } from "./chain"

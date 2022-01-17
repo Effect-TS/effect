@@ -1,9 +1,10 @@
-// ets_tracing: off
-
 import "../../../Operator"
 
 import * as HM from "../../../Collections/Immutable/HashMap"
-import * as T from "../../../Effect"
+import type { Effect, IO } from "../../../Effect"
+import { die } from "../../../Effect/operations/die"
+import { failNow } from "../../../Effect/operations/failNow"
+import { succeed } from "../../../Effect/operations/succeed"
 import type { FiberId } from "../../../FiberId"
 import type { AtomicBoolean } from "../../../Support/AtomicBoolean"
 import { defaultScheduler } from "../../../Support/Scheduler"
@@ -98,7 +99,7 @@ export function execTodos(todos: Map<TxnId, Todo>) {
 /**
  * Runs all the todos.
  */
-export function completeTodos<E, A>(io: T.IO<E, A>, journal: Journal): Done<E, A> {
+export function completeTodos<E, A>(io: IO<E, A>, journal: Journal): Done<E, A> {
   const todos = collectTodos(journal)
   if (todos.size > 0) {
     defaultScheduler(() => execTodos(todos))
@@ -171,22 +172,22 @@ export function tryCommit<R, E, A>(
     }
     case SucceedTypeId: {
       return completeTodos(
-        T.succeed(() => value.value),
+        succeed(() => value.value),
         journal
       )
     }
     case FailTypeId: {
-      return completeTodos(T.failNow(value.value), journal)
+      return completeTodos(failNow(value.value), journal)
     }
     case DieTypeId: {
-      return completeTodos(T.die(value.value), journal)
+      return completeTodos(die(value.value), journal)
     }
   }
 }
 
 function completeTryCommit<R, E, A>(
-  io: T.IO<E, A>,
-  k: (_: T.Effect<R, E, A>) => unknown,
+  io: IO<E, A>,
+  k: (_: Effect<R, E, A>) => unknown,
   done: AtomicBoolean
 ) {
   done.set(true)
@@ -198,7 +199,7 @@ function suspendTryCommit<R, E, A>(
   txnId: TxnId,
   done: AtomicBoolean,
   r: R,
-  k: (_: T.Effect<R, E, A>) => unknown,
+  k: (_: Effect<R, E, A>) => unknown,
   accum: Journal,
   journal: Journal
 ) {
@@ -241,7 +242,7 @@ export function tryCommitAsync<R, E, A>(
   done: AtomicBoolean,
   r: R
 ) {
-  return (k: (_: T.Effect<R, E, A>) => unknown) => {
+  return (k: (_: Effect<R, E, A>) => unknown) => {
     if (!done.get) {
       if (journal == null) {
         const v = tryCommit(fiberId, stm, r)

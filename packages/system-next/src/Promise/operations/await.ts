@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { IO } from "../../Effect"
 import { asyncInterruptBlockingOn } from "../../Effect/operations/asyncInterrupt"
 import * as E from "../../Either"

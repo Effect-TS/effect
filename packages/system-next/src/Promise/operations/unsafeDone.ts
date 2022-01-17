@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { IO } from "../../Effect"
 import type { Promise } from "../definition"
 import { Done } from "../state"

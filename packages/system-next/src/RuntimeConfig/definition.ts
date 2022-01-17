@@ -1,6 +1,5 @@
-// ets_tracing: off
-
 import type { Cause } from "../Cause"
+import type { Has } from "../Has"
 import type { LoggerSet } from "../Logger/Set"
 import type { Supervisor } from "../Supervisor"
 import type { RuntimeConfigFlags } from "./Flags"
@@ -19,7 +18,7 @@ export class RuntimeConfig {
       readonly fatal: (defect: unknown) => boolean
       readonly reportFatal: (defect: unknown) => void
       readonly supervisor: Supervisor<any>
-      readonly loggers: LoggerSet<String & Cause<any>, any>
+      readonly loggers: LoggerSet<Has<string> & Has<Cause<any>>, any>
       readonly flags: RuntimeConfigFlags
       readonly maxOp: number
     }

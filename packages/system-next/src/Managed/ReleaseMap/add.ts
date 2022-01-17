@@ -1,7 +1,7 @@
-// ets_tracing: off
-
+import { map_ } from "../../Effect/operations/map"
+import { unit } from "../../Effect/operations/unit"
 import * as O from "../../Option"
-import * as T from "../operations/_internal/effect"
+import type { UIO } from "../operations/_internal/effect"
 import { addIfOpen_ } from "./addIfOpen"
 import type { ReleaseMap } from "./definition"
 import type { Finalizer } from "./finalizer"
@@ -19,11 +19,11 @@ export function add_(
   self: ReleaseMap,
   finalizer: Finalizer,
   __trace?: string
-): T.UIO<Finalizer> {
-  return T.map_(
+): UIO<Finalizer> {
+  return map_(
     addIfOpen_(self, finalizer),
     O.fold(
-      (): Finalizer => () => T.unit,
+      (): Finalizer => () => unit,
       (k): Finalizer =>
         (e) =>
           release_(self, k, e)

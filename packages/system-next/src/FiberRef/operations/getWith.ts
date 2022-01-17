@@ -1,7 +1,5 @@
-// ets_tracing: off
-
 import type { Effect } from "../../Effect"
-import { chain_ } from "../../Effect"
+import { chain_ } from "../../Effect/operations/chain"
 import type { XFiberRef } from "../definition"
 import { concreteUnified } from "../definition"
 

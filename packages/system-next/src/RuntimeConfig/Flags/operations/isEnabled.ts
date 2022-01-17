@@ -1,8 +1,6 @@
-// ets_tracing: off
-
 import * as HS from "../../../Collections/Immutable/HashSet"
 import type { RuntimeConfigFlag } from "../../Flag"
-import type { RuntimeConfigFlags } from ".."
+import type { RuntimeConfigFlags } from "../definition"
 
 export function isEnabled_(self: RuntimeConfigFlags, flag: RuntimeConfigFlag): boolean {
   return HS.has_(self.flags, flag)

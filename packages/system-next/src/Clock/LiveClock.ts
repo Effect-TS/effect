@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { UIO } from "../Effect/definition"
 import { asyncInterrupt } from "../Effect/operations/asyncInterrupt"
 import { succeed } from "../Effect/operations/succeed"

@@ -1,6 +1,4 @@
-// ets_tracing: off
-
-import type { Trace } from "../../Trace"
+import type { Trace } from "../../Trace/definition"
 import type { Cause } from "../definition"
 import { Both, Die, empty, Fail, Interrupt, Stackless, Then } from "../definition"
 import { fold_ } from "./fold"

@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Managed } from "../../Managed/definition"
 import { acquireReleaseWith_ } from "../../Managed/operations/acquireReleaseWith"
 import type { Effect } from "../definition"

@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Managed } from "../definition"
 import { managedApply } from "../definition"
 import * as T from "./_internal/effect"
