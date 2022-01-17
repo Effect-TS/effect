@@ -19,7 +19,8 @@ export class RuntimeConfig {
       readonly fatal: (defect: unknown) => boolean
       readonly reportFatal: (defect: unknown) => void
       readonly supervisor: Supervisor<any>
-      readonly loggers: LoggerSet<String & Cause<any>, any>
+      // TODO: This type is very very strange
+      readonly loggers: LoggerSet<string & Cause<any>, any>
       readonly flags: RuntimeConfigFlags
       readonly maxOp: number
     }

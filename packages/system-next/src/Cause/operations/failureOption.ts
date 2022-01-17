@@ -2,6 +2,7 @@
 
 import * as O from "../../Option"
 import type { Cause } from "../definition"
+import { isFailType } from "../definition"
 import { find_ } from "./find"
 
 /**
@@ -9,5 +10,5 @@ import { find_ } from "./find"
  * exists.
  */
 export function failureOption<E>(self: Cause<E>): O.Option<E> {
-  return find_(self, (cause) => (cause._tag === "Fail" ? O.some(cause.value) : O.none))
+  return find_(self, (cause) => (isFailType(cause) ? O.some(cause.value) : O.none))
 }

@@ -2,6 +2,7 @@
 
 import * as L from "../../Collections/Immutable/List"
 import * as O from "../../Option"
+import { isFailType } from ".."
 import type { Cause } from "../definition"
 import { reduceLeft_ } from "./reduceLeft"
 
@@ -10,6 +11,6 @@ import { reduceLeft_ } from "./reduceLeft"
  */
 export function failures<E>(self: Cause<E>): L.List<E> {
   return reduceLeft_(self, L.empty<E>(), (acc, curr) =>
-    curr._tag === "Fail" ? O.some(L.prepend_(acc, curr.value)) : O.some(acc)
+    isFailType(curr) ? O.some(L.prepend_(acc, curr.value)) : O.some(acc)
   )
 }

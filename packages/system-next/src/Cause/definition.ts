@@ -25,7 +25,12 @@ import type { HasUnify } from "../Utils"
 
 export const CauseSym = Symbol()
 
-export type Cause<E> =
+export interface Cause<E> {
+  readonly [CauseSym]: typeof CauseSym
+  readonly _E: () => E
+}
+
+export type RealCause<E> =
   | Empty
   | Fail<E>
   | Die
@@ -34,7 +39,41 @@ export type Cause<E> =
   | Then<E>
   | Both<E>
 
+export function realCause<E>(cause: Cause<E>): asserts cause is RealCause<E> {
+  //
+}
+
+export function isEmptyType<E>(cause: Cause<E>): cause is Empty {
+  realCause(cause)
+  return cause._tag === "Empty"
+}
+export function isDieType<E>(cause: Cause<E>): cause is Die {
+  realCause(cause)
+  return cause._tag === "Die"
+}
+export function isFailType<E>(cause: Cause<E>): cause is Fail<E> {
+  realCause(cause)
+  return cause._tag === "Fail"
+}
+export function isInterruptType<E>(cause: Cause<E>): cause is Interrupt {
+  realCause(cause)
+  return cause._tag === "Interrupt"
+}
+export function isStacklessType<E>(cause: Cause<E>): cause is Stackless<E> {
+  realCause(cause)
+  return cause._tag === "Stackless"
+}
+export function isThenType<E>(cause: Cause<E>): cause is Then<E> {
+  realCause(cause)
+  return cause._tag === "Then"
+}
+export function isBothType<E>(cause: Cause<E>): cause is Both<E> {
+  realCause(cause)
+  return cause._tag === "Both"
+}
+
 export interface Empty extends HasUnify {}
+export interface Empty extends Cause<never> {}
 export class Empty implements St.HasEquals, St.HasHash {
   readonly _tag = "Empty";
 
@@ -45,27 +84,27 @@ export class Empty implements St.HasEquals, St.HasHash {
   }
 
   [St.equalsSym](that: unknown): boolean {
-    return isCause(that) && IO.run(this.equalsSafe(that))
+    return isCause(that) && IO.run(this.__equalsSafe(that))
   }
 
-  equalsSafe(that: Cause<unknown>): IO.IO<boolean> {
-    // eslint-disable-next-line @typescript-eslint/no-this-alias
+  __equalsSafe(that: Cause<unknown>): IO.IO<boolean> {
     const self = this
     return IO.gen(function* (_) {
+      realCause(that)
       if (that._tag === "Empty") {
         return true
       } else if (that._tag === "Then") {
         return (
-          (yield* _(self.equalsSafe(that.left))) &&
-          (yield* _(self.equalsSafe(that.right)))
+          (yield* _(self.__equalsSafe(that.left))) &&
+          (yield* _(self.__equalsSafe(that.right)))
         )
       } else if (that._tag === "Both") {
         return (
-          (yield* _(self.equalsSafe(that.left))) &&
-          (yield* _(self.equalsSafe(that.right)))
+          (yield* _(self.__equalsSafe(that.left))) &&
+          (yield* _(self.__equalsSafe(that.right)))
         )
       } else if (that._tag === "Stackless") {
-        return yield* _(self.equalsSafe(that.cause))
+        return yield* _(self.__equalsSafe(that.cause))
       } else {
         return false
       }
@@ -74,6 +113,7 @@ export class Empty implements St.HasEquals, St.HasHash {
 }
 
 export interface Fail<E> extends HasUnify {}
+export interface Fail<E> extends Cause<E> {}
 export class Fail<E> implements St.HasEquals, St.HasHash {
   readonly _tag = "Fail";
 
@@ -89,13 +129,13 @@ export class Fail<E> implements St.HasEquals, St.HasHash {
   }
 
   [St.equalsSym](that: unknown): boolean {
-    return isCause(that) && IO.run(this.equalsSafe(that))
+    return isCause(that) && IO.run(this.__equalsSafe(that))
   }
 
-  equalsSafe(that: Cause<unknown>): IO.IO<boolean> {
-    // eslint-disable-next-line @typescript-eslint/no-this-alias
+  __equalsSafe(that: Cause<unknown>): IO.IO<boolean> {
     const self = this
     return IO.gen(function* (_) {
+      realCause(that)
       switch (that._tag) {
         case "Fail":
           return St.equals(self.value, that.value)
@@ -104,7 +144,7 @@ export class Fail<E> implements St.HasEquals, St.HasHash {
         case "Both":
           return yield* _(sym(zero)(self, that))
         case "Stackless":
-          return yield* _(self.equalsSafe(that.cause))
+          return yield* _(self.__equalsSafe(that.cause))
         default:
           return false
       }
@@ -113,6 +153,7 @@ export class Fail<E> implements St.HasEquals, St.HasHash {
 }
 
 export interface Die extends HasUnify {}
+export interface Die extends Cause<never> {}
 export class Die implements St.HasEquals, St.HasHash {
   readonly _tag = "Die";
 
@@ -128,13 +169,13 @@ export class Die implements St.HasEquals, St.HasHash {
   }
 
   [St.equalsSym](that: unknown): boolean {
-    return isCause(that) && IO.run(this.equalsSafe(that))
+    return isCause(that) && IO.run(this.__equalsSafe(that))
   }
 
-  equalsSafe(that: Cause<unknown>): IO.IO<boolean> {
-    // eslint-disable-next-line @typescript-eslint/no-this-alias
+  __equalsSafe(that: Cause<unknown>): IO.IO<boolean> {
     const self = this
     return IO.gen(function* (_) {
+      realCause(that)
       switch (that._tag) {
         case "Die":
           return St.equals(self.value, that.value)
@@ -143,7 +184,7 @@ export class Die implements St.HasEquals, St.HasHash {
         case "Both":
           return yield* _(sym(zero)(self, that))
         case "Stackless":
-          return yield* _(self.equalsSafe(that.cause))
+          return yield* _(self.__equalsSafe(that.cause))
         default:
           return false
       }
@@ -152,6 +193,7 @@ export class Die implements St.HasEquals, St.HasHash {
 }
 
 export interface Interrupt extends HasUnify {}
+export interface Interrupt extends Cause<never> {}
 export class Interrupt implements St.HasEquals, St.HasHash {
   readonly _tag = "Interrupt";
 
@@ -167,13 +209,13 @@ export class Interrupt implements St.HasEquals, St.HasHash {
   }
 
   [St.equalsSym](that: unknown): boolean {
-    return isCause(that) && IO.run(this.equalsSafe(that))
+    return isCause(that) && IO.run(this.__equalsSafe(that))
   }
 
-  equalsSafe(that: Cause<unknown>): IO.IO<boolean> {
-    // eslint-disable-next-line @typescript-eslint/no-this-alias
+  __equalsSafe(that: Cause<unknown>): IO.IO<boolean> {
     const self = this
     return IO.gen(function* (_) {
+      realCause(that)
       switch (that._tag) {
         case "Interrupt":
           return self.fiberId[St.equalsSym](that.fiberId)
@@ -182,7 +224,7 @@ export class Interrupt implements St.HasEquals, St.HasHash {
         case "Both":
           return yield* _(sym(zero)(self, that))
         case "Stackless":
-          return yield* _(self.equalsSafe(that.cause))
+          return yield* _(self.__equalsSafe(that.cause))
         default:
           return false
       }
@@ -191,6 +233,7 @@ export class Interrupt implements St.HasEquals, St.HasHash {
 }
 
 export interface Stackless<E> extends HasUnify {}
+export interface Stackless<E> extends Cause<E> {}
 export class Stackless<E> implements St.HasEquals, St.HasHash {
   readonly _tag = "Stackless";
 
@@ -203,19 +246,21 @@ export class Stackless<E> implements St.HasEquals, St.HasHash {
   }
 
   [St.equalsSym](that: unknown): boolean {
-    return isCause(that) && IO.run(this.equalsSafe(that))
+    return isCause(that) && IO.run(this.__equalsSafe(that))
   }
 
-  equalsSafe(that: Cause<unknown>): IO.IO<boolean> {
-    // eslint-disable-next-line @typescript-eslint/no-this-alias
+  __equalsSafe(that: Cause<unknown>): IO.IO<boolean> {
     const self = this
+    realCause(that)
+    realCause(self.cause)
     return that._tag === "Stackless"
-      ? self.cause.equalsSafe(that.cause)
-      : self.cause.equalsSafe(that)
+      ? self.cause.__equalsSafe(that.cause)
+      : self.cause.__equalsSafe(that)
   }
 }
 
 export interface Then<E> extends HasUnify {}
+export interface Then<E> extends Cause<E> {}
 export class Then<E> implements St.HasEquals, St.HasHash {
   readonly _tag = "Then";
 
@@ -228,15 +273,15 @@ export class Then<E> implements St.HasEquals, St.HasHash {
   }
 
   [St.equalsSym](that: unknown): boolean {
-    return isCause(that) && IO.run(this.equalsSafe(that))
+    return isCause(that) && IO.run(this.__equalsSafe(that))
   }
 
-  equalsSafe(that: Cause<unknown>): IO.IO<boolean> {
-    // eslint-disable-next-line @typescript-eslint/no-this-alias
+  __equalsSafe(that: Cause<unknown>): IO.IO<boolean> {
     const self = this
     return IO.gen(function* (_) {
+      realCause(that)
       if (that._tag === "Stackless") {
-        return yield* _(self.equalsSafe(that.cause))
+        return yield* _(self.__equalsSafe(that.cause))
       }
       return (
         (yield* _(self.eq(that))) ||
@@ -248,13 +293,15 @@ export class Then<E> implements St.HasEquals, St.HasHash {
   }
 
   private eq(that: Cause<unknown>): IO.IO<boolean> {
-    // eslint-disable-next-line @typescript-eslint/no-this-alias
     const self = this
+    realCause(that)
     if (that._tag === "Then") {
       return IO.gen(function* (_) {
+        realCause(self.left)
+        realCause(self.right)
         return (
-          (yield* _(self.left.equalsSafe(that.left))) &&
-          (yield* _(self.right.equalsSafe(that.right)))
+          (yield* _(self.left.__equalsSafe(that.left))) &&
+          (yield* _(self.right.__equalsSafe(that.right)))
         )
       })
     }
@@ -263,6 +310,7 @@ export class Then<E> implements St.HasEquals, St.HasHash {
 }
 
 export interface Both<E> extends HasUnify {}
+export interface Both<E> extends Cause<E> {}
 export class Both<E> implements St.HasEquals, St.HasHash {
   readonly _tag = "Both";
 
@@ -275,15 +323,15 @@ export class Both<E> implements St.HasEquals, St.HasHash {
   }
 
   [St.equalsSym](that: unknown): boolean {
-    return isCause(that) && IO.run(this.equalsSafe(that))
+    return isCause(that) && IO.run(this.__equalsSafe(that))
   }
 
-  equalsSafe(that: Cause<unknown>): IO.IO<boolean> {
-    // eslint-disable-next-line @typescript-eslint/no-this-alias
+  __equalsSafe(that: Cause<unknown>): IO.IO<boolean> {
     const self = this
     return IO.gen(function* (_) {
+      realCause(that)
       if (that._tag === "Stackless") {
-        return yield* _(self.equalsSafe(that.cause))
+        return yield* _(self.__equalsSafe(that.cause))
       }
       return (
         (yield* _(self.eq(that))) ||
@@ -296,13 +344,15 @@ export class Both<E> implements St.HasEquals, St.HasHash {
   }
 
   private eq(that: Cause<unknown>): IO.IO<boolean> {
-    // eslint-disable-next-line @typescript-eslint/no-this-alias
     const self = this
+    realCause(that)
     if (that._tag === "Both") {
       return IO.gen(function* (_) {
+        realCause(self.left)
+        realCause(self.right)
         return (
-          (yield* _(self.left.equalsSafe(that.left))) &&
-          (yield* _(self.right.equalsSafe(that.right)))
+          (yield* _(self.left.__equalsSafe(that.left))) &&
+          (yield* _(self.right.__equalsSafe(that.right)))
         )
       })
     }
@@ -358,14 +408,12 @@ export function isCause(self: unknown): self is Cause<unknown> {
  * Determines if the `Cause` is empty.
  */
 export function isEmpty<E>(cause: Cause<E>): boolean {
-  if (
-    cause._tag === "Empty" ||
-    (cause._tag === "Stackless" && cause.cause._tag === "Empty")
-  ) {
+  if (isEmptyType(cause) || (isStacklessType(cause) && isEmptyType(cause.cause))) {
     return true
   }
   let causes: Stack<Cause<E>> | undefined = undefined
-  let current: Cause<E> | undefined = cause
+  realCause(cause)
+  let current: RealCause<E> | undefined = cause
   while (current) {
     switch (current._tag) {
       case "Die":
@@ -376,15 +424,18 @@ export function isEmpty<E>(cause: Cause<E>): boolean {
         return false
       case "Then": {
         causes = new Stack(current.right, causes)
+        realCause(current.left)
         current = current.left
         break
       }
       case "Both": {
         causes = new Stack(current.right, causes)
+        realCause(current.left)
         current = current.left
         break
       }
       case "Stackless": {
+        realCause(current.cause)
         current = current.cause
         break
       }
@@ -393,6 +444,7 @@ export function isEmpty<E>(cause: Cause<E>): boolean {
       }
     }
     if (!current && causes) {
+      realCause(causes.value)
       current = causes.value
       causes = causes.previous
     }
@@ -408,8 +460,8 @@ function stepLoop<A>(
   parallel: HS.HashSet<Cause<A>>,
   sequential: L.List<Cause<A>>
 ): Tp.Tuple<[HS.HashSet<Cause<A>>, L.List<Cause<A>>]> {
-  // eslint-disable-next-line no-constant-condition
   while (1) {
+    realCause(cause)
     switch (cause._tag) {
       case "Empty": {
         if (L.isEmpty(stack)) {
@@ -423,6 +475,7 @@ function stepLoop<A>(
       case "Then": {
         const left = cause.left
         const right = cause.right
+        realCause(left)
         switch (left._tag) {
           case "Empty": {
             cause = cause.right
@@ -483,7 +536,6 @@ function flattenCauseLoop<A>(
   causes: L.List<Cause<A>>,
   flattened: L.List<HS.HashSet<Cause<A>>>
 ): L.List<HS.HashSet<Cause<A>>> {
-  // eslint-disable-next-line no-constant-condition
   while (1) {
     const [parallel, sequential] = L.reduce_(
       causes,
@@ -538,17 +590,21 @@ function sym<E>(
 }
 
 function zero<E>(self: Cause<E>, that: Cause<E>): IO.IO<boolean> {
-  if (self._tag === "Then" && self.right._tag === "Empty") {
-    return self.left.equalsSafe(that)
+  if (isThenType(self) && isEmptyType(self.right)) {
+    realCause(self.left)
+    return self.left.__equalsSafe(that)
   }
-  if (self._tag === "Then" && self.left._tag === "Empty") {
-    return self.right.equalsSafe(that)
+  if (isThenType(self) && isEmptyType(self.left)) {
+    realCause(self.right)
+    return self.right.__equalsSafe(that)
   }
-  if (self._tag === "Both" && self.right._tag === "Empty") {
-    return self.left.equalsSafe(that)
+  if (isBothType(self) && isEmptyType(self.right)) {
+    realCause(self.left)
+    return self.left.__equalsSafe(that)
   }
-  if (self._tag === "Both" && self.left._tag === "Empty") {
-    return self.right.equalsSafe(that)
+  if (isBothType(self) && isEmptyType(self.left)) {
+    realCause(self.right)
+    return self.right.__equalsSafe(that)
   }
   return IO.succeed(false)
 }
@@ -556,10 +612,10 @@ function zero<E>(self: Cause<E>, that: Cause<E>): IO.IO<boolean> {
 function associativeThen<E>(self: Cause<E>, that: Cause<E>): IO.IO<boolean> {
   return IO.gen(function* (_) {
     if (
-      self._tag === "Then" &&
-      self.left._tag === "Then" &&
-      that._tag === "Then" &&
-      that.right._tag === "Then"
+      isThenType(self) &&
+      isThenType(self.left) &&
+      isThenType(that) &&
+      isThenType(that.right)
     ) {
       const al = self.left.left
       const bl = self.left.right
@@ -567,10 +623,15 @@ function associativeThen<E>(self: Cause<E>, that: Cause<E>): IO.IO<boolean> {
       const ar = that.left
       const br = that.right.left
       const cr = that.right.right
+
+      realCause(al)
+      realCause(bl)
+      realCause(cl)
+
       return (
-        (yield* _(al.equalsSafe(ar))) &&
-        (yield* _(bl.equalsSafe(br))) &&
-        (yield* _(cl.equalsSafe(cr)))
+        (yield* _(al.__equalsSafe(ar))) &&
+        (yield* _(bl.__equalsSafe(br))) &&
+        (yield* _(cl.__equalsSafe(cr)))
       )
     }
     return false
@@ -580,11 +641,11 @@ function associativeThen<E>(self: Cause<E>, that: Cause<E>): IO.IO<boolean> {
 function distributiveThen<E>(self: Cause<E>, that: Cause<E>): IO.IO<boolean> {
   return IO.gen(function* (_) {
     if (
-      self._tag === "Then" &&
-      self.right._tag === "Both" &&
-      that._tag === "Both" &&
-      that.left._tag === "Then" &&
-      that.right._tag === "Then"
+      isThenType(self) &&
+      isBothType(self.right) &&
+      isBothType(that) &&
+      isThenType(that.left) &&
+      isThenType(that.right)
     ) {
       const al = self.left
       const bl = self.right.left
@@ -594,21 +655,26 @@ function distributiveThen<E>(self: Cause<E>, that: Cause<E>): IO.IO<boolean> {
       const ar2 = that.right.left
       const cr = that.right.right
 
+      realCause(ar1)
+      realCause(al)
+      realCause(bl)
+      realCause(cl)
+
       if (
-        (yield* _(ar1.equalsSafe(ar2))) &&
-        (yield* _(al.equalsSafe(ar1))) &&
-        (yield* _(bl.equalsSafe(br))) &&
-        (yield* _(cl.equalsSafe(cr)))
+        (yield* _(ar1.__equalsSafe(ar2))) &&
+        (yield* _(al.__equalsSafe(ar1))) &&
+        (yield* _(bl.__equalsSafe(br))) &&
+        (yield* _(cl.__equalsSafe(cr)))
       ) {
         return true
       }
     }
     if (
-      self._tag === "Then" &&
-      self.left._tag === "Both" &&
-      that._tag === "Both" &&
-      that.left._tag === "Then" &&
-      that.right._tag === "Then"
+      isThenType(self) &&
+      isBothType(self.left) &&
+      isBothType(that) &&
+      isThenType(that.left) &&
+      isThenType(that.right)
     ) {
       const al = self.left.left
       const bl = self.left.right
@@ -618,11 +684,16 @@ function distributiveThen<E>(self: Cause<E>, that: Cause<E>): IO.IO<boolean> {
       const br = that.right.left
       const cr2 = that.right.right
 
+      realCause(cr1)
+      realCause(al)
+      realCause(bl)
+      realCause(cl)
+
       if (
-        (yield* _(cr1.equalsSafe(cr2))) &&
-        (yield* _(al.equalsSafe(ar))) &&
-        (yield* _(bl.equalsSafe(br))) &&
-        (yield* _(cl.equalsSafe(cr1)))
+        (yield* _(cr1.__equalsSafe(cr2))) &&
+        (yield* _(al.__equalsSafe(ar))) &&
+        (yield* _(bl.__equalsSafe(br))) &&
+        (yield* _(cl.__equalsSafe(cr1)))
       ) {
         return true
       }
@@ -634,10 +705,10 @@ function distributiveThen<E>(self: Cause<E>, that: Cause<E>): IO.IO<boolean> {
 function associativeBoth<E>(self: Cause<E>, that: Cause<E>): IO.IO<boolean> {
   return IO.gen(function* (_) {
     if (
-      self._tag === "Both" &&
-      self.left._tag === "Both" &&
-      that._tag === "Both" &&
-      that.right._tag === "Both"
+      isBothType(self) &&
+      isBothType(self.left) &&
+      isBothType(that) &&
+      isBothType(that.right)
     ) {
       const al = self.left.left
       const bl = self.left.right
@@ -645,10 +716,15 @@ function associativeBoth<E>(self: Cause<E>, that: Cause<E>): IO.IO<boolean> {
       const ar = that.left
       const br = that.right.left
       const cr = that.right.right
+
+      realCause(al)
+      realCause(bl)
+      realCause(cl)
+
       return (
-        (yield* _(al.equalsSafe(ar))) &&
-        (yield* _(bl.equalsSafe(br))) &&
-        (yield* _(cl.equalsSafe(cr)))
+        (yield* _(al.__equalsSafe(ar))) &&
+        (yield* _(bl.__equalsSafe(br))) &&
+        (yield* _(cl.__equalsSafe(cr)))
       )
     }
     return false
@@ -658,11 +734,11 @@ function associativeBoth<E>(self: Cause<E>, that: Cause<E>): IO.IO<boolean> {
 function distributiveBoth<E>(self: Cause<E>, that: Cause<E>): IO.IO<boolean> {
   return IO.gen(function* (_) {
     if (
-      self._tag === "Both" &&
-      self.left._tag === "Then" &&
-      self.right._tag === "Then" &&
-      that._tag === "Then" &&
-      that.right._tag === "Both"
+      isBothType(self) &&
+      isThenType(self.left) &&
+      isThenType(self.right) &&
+      isThenType(that) &&
+      isBothType(that.right)
     ) {
       const al1 = self.left.left
       const bl = self.left.right
@@ -672,21 +748,25 @@ function distributiveBoth<E>(self: Cause<E>, that: Cause<E>): IO.IO<boolean> {
       const br = that.right.left
       const cr = that.right.right
 
+      realCause(al1)
+      realCause(bl)
+      realCause(cl)
+
       if (
-        (yield* _(al1.equalsSafe(al2))) &&
-        (yield* _(al1.equalsSafe(ar))) &&
-        (yield* _(bl.equalsSafe(br))) &&
-        (yield* _(cl.equalsSafe(cr)))
+        (yield* _(al1.__equalsSafe(al2))) &&
+        (yield* _(al1.__equalsSafe(ar))) &&
+        (yield* _(bl.__equalsSafe(br))) &&
+        (yield* _(cl.__equalsSafe(cr)))
       ) {
         return true
       }
     }
     if (
-      self._tag === "Both" &&
-      self.left._tag === "Then" &&
-      self.right._tag === "Then" &&
-      that._tag === "Then" &&
-      that.left._tag === "Both"
+      isBothType(self) &&
+      isThenType(self.left) &&
+      isThenType(self.right) &&
+      isThenType(that) &&
+      isBothType(that.left)
     ) {
       const al = self.left.left
       const cl1 = self.left.right
@@ -696,11 +776,15 @@ function distributiveBoth<E>(self: Cause<E>, that: Cause<E>): IO.IO<boolean> {
       const br = that.left.right
       const cr = that.right
 
+      realCause(cl1)
+      realCause(al)
+      realCause(bl)
+
       if (
-        (yield* _(cl1.equalsSafe(cl2))) &&
-        (yield* _(al.equalsSafe(ar))) &&
-        (yield* _(bl.equalsSafe(br))) &&
-        (yield* _(cl1.equalsSafe(cr)))
+        (yield* _(cl1.__equalsSafe(cl2))) &&
+        (yield* _(al.__equalsSafe(ar))) &&
+        (yield* _(bl.__equalsSafe(br))) &&
+        (yield* _(cl1.__equalsSafe(cr)))
       ) {
         return true
       }
@@ -711,10 +795,12 @@ function distributiveBoth<E>(self: Cause<E>, that: Cause<E>): IO.IO<boolean> {
 
 function commutativeBoth<E>(self: Both<E>, that: Cause<E>): IO.IO<boolean> {
   return IO.gen(function* (_) {
-    if (that._tag === "Both") {
+    if (isBothType(that)) {
+      realCause(self.left)
+      realCause(self.right)
       return (
-        (yield* _(self.left.equalsSafe(that.right))) &&
-        (yield* _(self.right.equalsSafe(that.left)))
+        (yield* _(self.left.__equalsSafe(that.right))) &&
+        (yield* _(self.right.__equalsSafe(that.left)))
       )
     }
     return false

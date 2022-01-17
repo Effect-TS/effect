@@ -4,6 +4,7 @@ import * as Tp from "../../Collections/Immutable/Tuple"
 import * as O from "../../Option"
 import type { Trace } from "../../Trace"
 import type { Cause } from "../definition"
+import { isFailType } from "../definition"
 import { find_ } from "./find"
 
 /**
@@ -12,6 +13,6 @@ import { find_ } from "./find"
  */
 export function failureTraceOption<E>(self: Cause<E>): O.Option<Tp.Tuple<[E, Trace]>> {
   return find_(self, (cause) =>
-    cause._tag === "Fail" ? O.some(Tp.tuple(cause.value, cause.trace)) : O.none
+    isFailType(cause) ? O.some(Tp.tuple(cause.value, cause.trace)) : O.none
   )
 }

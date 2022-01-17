@@ -2,6 +2,7 @@
 
 import * as O from "../../Option"
 import type { Cause } from "../definition"
+import { isInterruptType } from "../definition"
 import { find_ } from "./find"
 
 /**
@@ -9,6 +10,6 @@ import { find_ } from "./find"
  */
 export function isInterrupted<E>(self: Cause<E>): boolean {
   return O.isSome(
-    find_(self, (cause) => (cause._tag === "Interrupt" ? O.some(undefined) : O.none))
+    find_(self, (cause) => (isInterruptType(cause) ? O.some(undefined) : O.none))
   )
 }

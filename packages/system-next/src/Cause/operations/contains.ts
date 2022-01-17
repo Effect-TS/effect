@@ -9,7 +9,7 @@ import { reduceLeft_ } from "./reduceLeft"
  * Determines if this cause contains or is equal to the specified cause.
  */
 export function contains_<E, E1>(self: Cause<E>, that: Cause<E1>): boolean {
-  if (self === that) {
+  if ((self as Cause<E | E1>) === that) {
     return true
   }
   return reduceLeft_<E, boolean>(self, false, (acc, cause) =>
