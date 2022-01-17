@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import * as Tp from "../../Collections/Immutable/Tuple"
 import type { Effect } from "../definition"
 import { chain_ } from "./chain"

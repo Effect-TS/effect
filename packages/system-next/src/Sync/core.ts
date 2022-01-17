@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type * as Tp from "../Collections/Immutable/Tuple"
 import type { Either } from "../Either/core"
 import { pipe } from "../Function"

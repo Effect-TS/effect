@@ -1,8 +1,6 @@
-// ets_tracing: off
-
 import type { Effect } from "../../Effect"
 import type { XFiberRef } from "../definition"
-import { concreteUnified } from "../definition"
+import { concreteUnified } from "../definition/concrete"
 
 /**
  * Returns an `Effect` that runs with `value` bound to the current fiber.

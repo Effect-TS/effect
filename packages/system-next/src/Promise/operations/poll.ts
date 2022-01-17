@@ -1,9 +1,7 @@
-// ets_tracing: off
-
 import type { IO, UIO } from "../../Effect"
 import { succeed } from "../../Effect/operations/succeed"
 import * as O from "../../Option"
-import type { Promise } from ".."
+import type { Promise } from "../definition"
 
 /**
  * Checks for completion of this `Promise`. Returns the result effect if this

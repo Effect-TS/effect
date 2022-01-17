@@ -1,8 +1,6 @@
-// ets_tracing: off
-
 import { IllegalArgumentException } from "../../../Cause/errors"
 import type { STM } from "../../STM"
-import { STMEffect } from "../../STM"
+import { STMEffect } from "../../STM/core"
 import * as TRef from "../../TRef"
 import type { TSemaphore } from "../definition"
 

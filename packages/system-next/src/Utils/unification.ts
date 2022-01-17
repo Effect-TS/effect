@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Unify } from "./union"
 
 export interface HasUnify {

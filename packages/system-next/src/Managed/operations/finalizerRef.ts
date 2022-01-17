@@ -1,6 +1,4 @@
-// ets_tracing: off
-
-import type { Managed } from ".."
+import type { Managed } from "../definition"
 import type { Finalizer } from "../ReleaseMap/finalizer"
 import * as T from "./_internal/effect"
 import * as Ref from "./_internal/ref"

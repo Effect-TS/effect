@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import { pipe } from "../../Function"
 import type { Exit } from "../definition"
 import { chain, map, succeed } from "../operations"

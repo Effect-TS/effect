@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import * as L from "../../Collections/Immutable/List/core"
 import type { Trace } from "../../Trace/definition"
 import { combine_ } from "../../Trace/operations/combine"

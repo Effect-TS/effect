@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Logger } from "../definition"
 
 export function simple<A, B>(log: (a: A) => B): Logger<A, B> {

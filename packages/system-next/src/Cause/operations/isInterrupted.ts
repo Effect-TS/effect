@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import * as O from "../../Option/core"
 import type { Cause } from "../definition"
 import { isInterruptType } from "../definition"

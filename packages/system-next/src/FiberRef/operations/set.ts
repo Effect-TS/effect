@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { IO } from "../../Effect"
 import type { XFiberRef } from "../definition"
 import { concreteUnified } from "../definition"

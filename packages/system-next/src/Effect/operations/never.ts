@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import { left } from "../../Either"
 import type { UIO } from "../definition"
 import { asyncInterrupt } from "./asyncInterrupt"

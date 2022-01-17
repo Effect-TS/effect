@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type * as O from "../../Option/core"
 import { Stack } from "../../Stack"
 import type { Cause, RealCause } from "../definition"

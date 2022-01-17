@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Next } from "../../Collections/Immutable/Map"
 import * as FiberId from "../../FiberId"
 import { tag } from "../../Has"

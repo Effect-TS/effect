@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Effect, RIO } from "./operations/_internal/effect"
 import type { Exit } from "./operations/_internal/exit"
 

@@ -1,8 +1,6 @@
-// ets_tracing: off
-
 import * as HS from "../../../Collections/Immutable/HashSet"
 import type { RuntimeConfigFlag } from "../../Flag"
-import { RuntimeConfigFlags } from ".."
+import { RuntimeConfigFlags } from "../definition"
 
 export function add_(
   self: RuntimeConfigFlags,

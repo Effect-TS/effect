@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import { then } from "../../Cause"
 import type { Exit } from "../definition"
 import { zipWith_ } from "./zipWith"

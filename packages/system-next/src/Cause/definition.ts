@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import * as HS from "../Collections/Immutable/HashSet/core"
 import * as L from "../Collections/Immutable/List/core"
 import * as Tp from "../Collections/Immutable/Tuple/core"

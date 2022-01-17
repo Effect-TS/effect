@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Effect } from "../Effect"
 
 export type CancelerState = Empty | Pending | Registered

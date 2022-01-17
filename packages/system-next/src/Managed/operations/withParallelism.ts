@@ -1,6 +1,4 @@
-// ets_tracing: off
-
-import { currentParallelism } from "../../FiberRef/definition/concrete"
+import { currentParallelism } from "../../FiberRef/definition/data"
 import { locallyManaged_ } from "../../FiberRef/operations/locallyManaged"
 import { some } from "../../Option"
 import type { Managed } from "../definition"

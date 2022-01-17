@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import "../../Operator"
 
 import { AtomicReference } from "../AtomicReference"

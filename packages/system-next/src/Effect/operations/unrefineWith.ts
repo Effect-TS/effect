@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import { isDieType as causeIsDieType } from "../../Cause/definition"
 import { find as causeFind } from "../../Cause/operations/find"
 import { map_ as causeMap_ } from "../../Cause/operations/map"

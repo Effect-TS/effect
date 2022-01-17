@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Tuple } from "../../Collections/Immutable/Tuple/core"
 import * as E from "../../Either/core"
 import type { Trace } from "../../Trace/definition"

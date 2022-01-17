@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import * as Iter from "../../Iterable"
 import type { Managed } from "../definition"
 import { succeedNow } from "./succeedNow"

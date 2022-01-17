@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 /* adapted from https://github.com/gcanti/fp-ts */
 
 import * as Tp from "../Collections/Immutable/Tuple"

@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import { squashWith_ } from "../../Cause/operations/squashWith"
 import type { Effect } from "../definition"
 import { failNow } from "./failNow"

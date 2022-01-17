@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import * as M from "../../Collections/Immutable/Map"
 import type * as FiberRef from "../../FiberRef"
 import { set_ as fiberRefSet_ } from "../../FiberRef/operations/set"

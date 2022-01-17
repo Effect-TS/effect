@@ -1,7 +1,5 @@
-// ets_tracing: off
-
 import { identity } from "../../Function"
-import type { Effect, RIO } from ".."
+import type { Effect, RIO } from "../definition"
 import { orDieWith_ } from "./orDieWith"
 
 /**

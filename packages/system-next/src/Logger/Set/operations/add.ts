@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import * as Map from "../../../Collections/Immutable/Map"
 import type { Tag } from "../../../Has"
 import type { Logger } from "../../definition"

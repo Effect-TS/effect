@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { STM } from "../../STM"
 import type { TSemaphore } from "../definition"
 import { releaseN_ } from "./releaseN"

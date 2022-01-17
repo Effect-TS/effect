@@ -1,6 +1,4 @@
-// ets_tracing: off
-
-import { currentReleaseMap } from "../../FiberRef/definition/concrete"
+import { currentReleaseMap } from "../../FiberRef/definition/data"
 import { locally_ } from "../../FiberRef/operations/locally"
 import type { Managed } from "../definition"
 import { makeManaged } from "../ReleaseMap/makeManaged"

@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import { Fail } from "../../Cause"
 import { none } from "../../Trace"
 import type { IO } from "../definition"

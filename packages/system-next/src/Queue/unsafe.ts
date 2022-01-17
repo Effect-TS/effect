@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import { none } from "../FiberId"
 import { AtomicBoolean } from "../Support/AtomicBoolean"
 import type { MutableQueue } from "../Support/MutableQueue"

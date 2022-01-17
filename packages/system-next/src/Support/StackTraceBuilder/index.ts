@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import * as C from "../../Collections/Immutable/Chunk"
 import type { TraceElement } from "../../TraceElement"
 import * as TE from "../../TraceElement"

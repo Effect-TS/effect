@@ -1,7 +1,5 @@
-// ets_tracing: off
-
 import { both } from "../../Cause/definition"
-import * as L from "../../Collections/Immutable/List"
+import * as L from "../../Collections/Immutable/List/core"
 import { pipe } from "../../Function"
 import * as I from "../../Iterable"
 import * as O from "../../Option"

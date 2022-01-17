@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import * as HS from "../../Collections/Immutable/HashSet/core"
 import type { FiberId } from "../../FiberId/definition"
 import * as O from "../../Option/core"

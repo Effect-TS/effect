@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { UIO } from "../../Effect"
 import { done as effectDone } from "../../Effect/operations/done"
 import type { Exit } from "../../Exit"

@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import { identity } from "../../Function"
 import type { Managed } from "../definition"
 import { forEachParDiscard_ } from "./forEachParDiscard"

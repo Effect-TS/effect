@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import * as O from "../../Option/core"
 import * as Trace from "../../Trace/operations/none"
 import type { Cause } from "../definition"

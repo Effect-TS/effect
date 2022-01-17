@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import * as Cause from "../../Cause"
 import * as Trace from "../../Trace"
 import type { UIO } from "../definition"

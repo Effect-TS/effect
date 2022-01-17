@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import * as Cause from "../../Cause"
 import * as ChunkCollect from "../../Collections/Immutable/Chunk/api/collect"
 import * as ChunkFilter from "../../Collections/Immutable/Chunk/api/filter"
@@ -10,12 +8,15 @@ import * as ChunkZipWithIndex from "../../Collections/Immutable/Chunk/api/zipWit
 import * as Chunk from "../../Collections/Immutable/Chunk/core"
 import * as List from "../../Collections/Immutable/List/core"
 import * as Tp from "../../Collections/Immutable/Tuple"
-import * as Ex from "../../Exit"
+import type { Exit } from "../../Exit"
+import { collectAll as exitCollectAll } from "../../Exit/operations/collectAll"
+import { collectAllPar as exitCollectAllPar } from "../../Exit/operations/collectAllPar"
+import { succeed as exitSucceed } from "../../Exit/operations/succeed"
 import type { FiberContext } from "../../Fiber/context"
 import type { Fiber } from "../../Fiber/definition"
 import { interrupt as interruptFiber } from "../../Fiber/operations/interrupt"
 import * as FiberIdNone from "../../FiberId/operations/none"
-import { currentReleaseMap } from "../../FiberRef/definition/concrete"
+import { currentReleaseMap } from "../../FiberRef/definition/data"
 import { get as fiberRefGet } from "../../FiberRef/operations/get"
 import { locally_ } from "../../FiberRef/operations/locally"
 import { identity, pipe } from "../../Function"
@@ -28,8 +29,14 @@ import { make as releaseMapMake } from "../../Managed/ReleaseMap/make"
 import type { State } from "../../Managed/ReleaseMap/state"
 import { Exited } from "../../Managed/ReleaseMap/state"
 import * as O from "../../Option"
-import * as P from "../../Promise"
 import type { Promise } from "../../Promise/definition"
+import { await as promiseAwait } from "../../Promise/operations/await"
+import { fail_ } from "../../Promise/operations/fail"
+import { interruptAs } from "../../Promise/operations/interruptAs"
+import { make } from "../../Promise/operations/make"
+import { succeed as succeed_1 } from "../../Promise/operations/succeed"
+import { unsafeDone_ } from "../../Promise/operations/unsafeDone"
+import { unsafeMake } from "../../Promise/operations/unsafeMake"
 import type { Queue, Strategy } from "../../Queue/core"
 import * as QCore from "../../Queue/core"
 import { concreteQueue, XQueueInternal } from "../../Queue/xqueue"
@@ -442,7 +449,7 @@ function forEachParUnboundedDiscard<R, E, A, X>(
     }
 
     return uninterruptibleMask((status) => {
-      const promise = P.unsafeMake<void, void>(FiberIdNone.none)
+      const promise = unsafeMake<void, void>(FiberIdNone.none)
       const ref = new AtomicNumber(0)
 
       return pipe(
@@ -452,10 +459,10 @@ function forEachParUnboundedDiscard<R, E, A, X>(
               graft(
                 foldCauseEffect_(
                   status.restore(suspendSucceed(() => f(a))),
-                  (cause) => zipRight_(P.fail_(promise, undefined), failCause(cause)),
+                  (cause) => zipRight_(fail_(promise, undefined), failCause(cause)),
                   () => {
                     if (ref.incrementAndGet() === size) {
-                      P.unsafeDone_(promise, unit)
+                      unsafeDone_(promise, unit)
                       return unit
                     } else {
                       return unit
@@ -469,10 +476,10 @@ function forEachParUnboundedDiscard<R, E, A, X>(
         ),
         chain((fibers) =>
           foldCauseEffect_(
-            status.restore(P.await(promise)),
+            status.restore(promiseAwait(promise)),
             (cause) =>
               chain_(forEachParUnbounded(fibers, interruptFiber), (exits) => {
-                const collected = Ex.collectAllPar(exits)
+                const collected = exitCollectAllPar(exits)
                 if (collected._tag === "Some" && collected.value._tag === "Failure") {
                   return failCause(
                     Cause.both(Cause.stripFailures(cause), collected.value.cause)
@@ -785,7 +792,7 @@ export function fiberJoinAll<E, A>(
 export function fiberWaitAll<E, A>(
   as: Iterable<Fiber<E, A>>,
   __trace?: string
-): RIO<unknown, Ex.Exit<E, Chunk.Chunk<A>>> {
+): RIO<unknown, Exit<E, Chunk.Chunk<A>>> {
   return exit(
     forEachPar_(as, (f) => chain_(f.await, done)),
     __trace
@@ -801,7 +808,7 @@ export function fiberWaitAll<E, A>(
  */
 export function releaseMapReleaseAll_(
   self: ReleaseMap,
-  ex: Ex.Exit<any, any>,
+  ex: Exit<any, any>,
   execStrategy: ExecutionStrategy,
   __trace?: string
 ): UIO<any> {
@@ -824,8 +831,8 @@ export function releaseMapReleaseAll_(
                   ),
                   (results) =>
                     done(
-                      O.getOrElse_(Ex.collectAll(results), () =>
-                        Ex.succeed(List.empty())
+                      O.getOrElse_(exitCollectAll(results), () =>
+                        exitSucceed(List.empty())
                       )
                     )
                 ),
@@ -842,8 +849,8 @@ export function releaseMapReleaseAll_(
                   ),
                   (results) =>
                     done(
-                      O.getOrElse_(Ex.collectAllPar(results), () =>
-                        Ex.succeed(List.empty())
+                      O.getOrElse_(exitCollectAllPar(results), () =>
+                        exitSucceed(List.empty())
                       )
                     )
                 ),
@@ -861,8 +868,8 @@ export function releaseMapReleaseAll_(
                   ),
                   (results) =>
                     done(
-                      O.getOrElse_(Ex.collectAllPar(results), () =>
-                        Ex.succeed(List.empty())
+                      O.getOrElse_(exitCollectAllPar(results), () =>
+                        exitSucceed(List.empty())
                       )
                     )
                 ),
@@ -955,7 +962,7 @@ export class BackPressureStrategy<A> implements Strategy<A> {
     isShutdown: AtomicBoolean
   ): UIO<boolean> {
     return suspendSucceedWith((_, fiberId) => {
-      const p = P.unsafeMake<never, boolean>(fiberId)
+      const p = unsafeMake<never, boolean>(fiberId)
 
       return onInterrupt_(
         suspendSucceed(() => {
@@ -965,7 +972,7 @@ export class BackPressureStrategy<A> implements Strategy<A> {
           if (isShutdown.get) {
             return interrupt
           } else {
-            return P.await(p)
+            return promiseAwait(p)
           }
         }),
         () => succeed(() => this.unsafeRemove(p))
@@ -1031,7 +1038,7 @@ export class BackPressureStrategy<A> implements Strategy<A> {
       Do.bind("putters", () => succeed(() => QCore.unsafePollAll(this.putters))),
       tap((s) =>
         forEachPar_(s.putters, ({ tuple: [_, p, lastItem] }) =>
-          lastItem ? P.interruptAs(s.fiberId)(p) : unit
+          lastItem ? interruptAs(s.fiberId)(p) : unit
         )
       ),
       asUnit
@@ -1078,7 +1085,7 @@ class UnsafeCreate<A> extends XQueueInternal<unknown, unknown, never, never, A, 
     super()
   }
 
-  awaitShutdown: UIO<void> = P.await(this.shutdownHook)
+  awaitShutdown: UIO<void> = promiseAwait(this.shutdownHook)
 
   capacity: number = this.queue.capacity
 
@@ -1171,9 +1178,9 @@ class UnsafeCreate<A> extends XQueueInternal<unknown, unknown, never, never, A, 
     suspendSucceedWith((_, fiberId) => {
       this.shutdownFlag.set(true)
 
-      return whenEffect(P.succeed<void>(undefined)(this.shutdownHook))(
+      return whenEffect(succeed_1<void>(undefined)(this.shutdownHook))(
         chain_(
-          forEachPar_(QCore.unsafePollAll(this.takers), P.interruptAs(fiberId)),
+          forEachPar_(QCore.unsafePollAll(this.takers), interruptAs(fiberId)),
           () => this.strategy.shutdown
         )
       )
@@ -1199,7 +1206,7 @@ class UnsafeCreate<A> extends XQueueInternal<unknown, unknown, never, never, A, 
       this.strategy.unsafeOnQueueEmptySpace(this.queue, this.takers)
       return succeedNow(item)
     } else {
-      const p = P.unsafeMake<never, A>(fiberId)
+      const p = unsafeMake<never, A>(fiberId)
 
       return onInterrupt_(
         suspendSucceed(() => {
@@ -1208,7 +1215,7 @@ class UnsafeCreate<A> extends XQueueInternal<unknown, unknown, never, never, A, 
           if (this.shutdownFlag.get) {
             return interrupt
           } else {
-            return P.await(p)
+            return promiseAwait(p)
           }
         }),
         () => succeed(() => QCore.unsafeRemove(this.takers, p))
@@ -1252,7 +1259,7 @@ export function createQueue_<A>(
   __trace?: string
 ) {
   return map_(
-    P.make<never, void>(),
+    make<never, void>(),
     (p) =>
       unsafeCreateQueue(queue, new Unbounded(), p, new AtomicBoolean(false), strategy),
     __trace

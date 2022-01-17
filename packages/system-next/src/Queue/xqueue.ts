@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type * as Chunk from "../Collections/Immutable/Chunk"
 import type { Effect, UIO } from "../Effect/definition/base"
 

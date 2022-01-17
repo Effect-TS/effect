@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { FiberId } from "../../FiberId/definition"
 import * as IO from "../../IO/core"
 import type { Trace } from "../../Trace/definition"

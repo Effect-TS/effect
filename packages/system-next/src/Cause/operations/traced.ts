@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Trace } from "../../Trace/definition"
 import { combine } from "../../Trace/operations/combine"
 import type { Cause } from "../definition"

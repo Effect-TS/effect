@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import { HasClock, LiveClock } from "../../Clock"
 import { constTrue, constVoid, pipe } from "../../Function"
 import * as LoggerSet from "../../Logger/Set"

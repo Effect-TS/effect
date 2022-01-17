@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import * as O from "../../Option"
 import type { Effect, RIO } from "../definition"
 import { foldEffect_ } from "./foldEffect"

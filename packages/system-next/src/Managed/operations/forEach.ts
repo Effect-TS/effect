@@ -1,10 +1,9 @@
-// ets_tracing: off
-
-import * as C from "../../Collections/Immutable/Chunk"
+import * as C from "../../Collections/Immutable/Chunk/core"
 import * as Tp from "../../Collections/Immutable/Tuple"
+import { forEach_ as effectForEach_ } from "../../Effect/operations/excl-forEach"
+import { map_ } from "../../Effect/operations/map"
 import type { Managed } from "../definition"
 import { managedApply } from "../definition"
-import * as T from "./_internal/effect-api"
 
 /**
  * Applies the function `f` to each element of the `Iterable<A>` and
@@ -19,14 +18,14 @@ export function forEach_<R, E, A, B>(
   __trace?: string
 ): Managed<R, E, C.Chunk<B>> {
   return managedApply(
-    T.map_(
-      T.forEach_(as, (a) => f(a).effect, __trace),
+    map_(
+      effectForEach_(as, (a) => f(a).effect, __trace),
       (res) => {
         const fins = C.map_(res, (k) => k.get(0))
         const as = C.map_(res, (k) => k.get(1))
 
         return Tp.tuple(
-          (e) => T.forEach_(C.reverse(fins), (fin) => fin(e), __trace),
+          (e) => effectForEach_(C.reverse(fins), (fin) => fin(e), __trace),
           as
         )
       }

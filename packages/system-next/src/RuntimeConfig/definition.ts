@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Cause } from "../Cause"
 import type { LoggerSet } from "../Logger/Set"
 import type { Supervisor } from "../Supervisor"

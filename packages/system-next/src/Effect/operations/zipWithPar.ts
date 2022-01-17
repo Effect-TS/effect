@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import { both } from "../../Cause/definition"
 import type { Exit } from "../../Exit/definition"
 import type { Fiber } from "../../Fiber/definition"

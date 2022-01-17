@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { FiberId } from "../../FiberId"
 import type { RuntimeConfig } from "../../RuntimeConfig"
 import type { UIO } from "../definition"

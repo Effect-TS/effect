@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Effect, UIO } from "../definition"
 import * as Ref from "./excl-deps-ref"
 import { map_ } from "./map"

@@ -1,7 +1,5 @@
-// ets_tracing: off
-
 import type * as C from "../../Collections/Immutable/Chunk"
-import { currentReleaseMap } from "../../FiberRef/definition/concrete"
+import { currentReleaseMap } from "../../FiberRef/definition/data"
 import { locally_ } from "../../FiberRef/operations/locally"
 import type { Managed } from "../definition"
 import { makeManaged } from "../ReleaseMap/makeManaged"

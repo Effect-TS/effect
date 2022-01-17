@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import * as Map from "../../Collections/Immutable/Map"
 import * as Tp from "../../Collections/Immutable/Tuple"
 import { pipe } from "../../Function"

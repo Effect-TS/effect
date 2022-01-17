@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { XSynchronized } from "../definition"
 import { foldEffect_ } from "../definition"
 import type * as T from "./_internal/effect"

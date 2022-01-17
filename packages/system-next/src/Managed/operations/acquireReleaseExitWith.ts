@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import * as Tp from "../../Collections/Immutable/Tuple"
 import type { Effect, UIO } from "../../Effect/definition/base"
 import { chain_ } from "../../Effect/operations/chain"
@@ -7,15 +5,12 @@ import { environment } from "../../Effect/operations/environment"
 import { uninterruptible } from "../../Effect/operations/interruption"
 import { map_ } from "../../Effect/operations/map"
 import type { Exit } from "../../Exit/definition"
-import {
-  currentEnvironment,
-  currentReleaseMap
-} from "../../FiberRef/definition/concrete"
+import { currentEnvironment, currentReleaseMap } from "../../FiberRef/definition/data"
 import { get } from "../../FiberRef/operations/get"
 import { locally_ } from "../../FiberRef/operations/locally"
 import type { Managed } from "../definition"
 import { managedApply } from "../definition"
-import { add_ } from "../ReleaseMap"
+import { add_ } from "../ReleaseMap/add"
 
 /**
  * Lifts an `Effect<R, E, A>` into `Managed<R, E, A>` with a release action that

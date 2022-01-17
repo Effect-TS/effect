@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import { identity } from "../../Function/core"
 import type { Cause } from "../definition"
 import { chain_ } from "./chain"

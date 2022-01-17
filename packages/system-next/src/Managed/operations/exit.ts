@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Managed } from "../definition"
 import * as Ex from "./_internal/exit"
 import { foldCauseManaged_ } from "./foldCauseManaged"

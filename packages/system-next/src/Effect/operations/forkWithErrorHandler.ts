@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import { failureOrCause } from "../../Cause"
 import * as E from "../../Either"
 import type * as Fiber from "../../Fiber"

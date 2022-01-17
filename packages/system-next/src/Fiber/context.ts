@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import * as Cause from "../Cause"
 import { InterruptedException } from "../Cause"
 import * as Chunk from "../Collections/Immutable/Chunk"
@@ -365,7 +363,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   interruptExit: InterruptExit = new InterruptExit((v: any) => {
     if (this.unsafeIsInterruptible) {
       this.popInterruptStatus()
-      return instruction(T.succeed(v))
+      return instruction(T.succeedNow(v))
     } else {
       return instruction(
         T.succeed(() => {
@@ -1341,8 +1339,9 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                   }
 
                   case "Fold": {
-                    this.pushContinuation(current)
-                    current = instruction(current.effect)
+                    const effect = current
+                    current = instruction(effect.effect)
+                    this.pushContinuation(effect)
                     break
                   }
 
@@ -1443,8 +1442,6 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                     current = instruction(current.f(this.unsafeGetDescriptor()))
                     break
                   }
-
-                  // TODO: "Shift"
 
                   case "Yield": {
                     this.unsafeRunLater(instruction(T.unit))

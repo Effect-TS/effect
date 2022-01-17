@@ -1,8 +1,6 @@
-// ets_tracing: off
-
 import type { Either } from "../../Either"
 import type { FiberId } from "../../FiberId"
-import { none } from "../../FiberId"
+import { none } from "../../FiberId/operations/none"
 import type { Canceler, Effect } from "../definition"
 import { IAsync } from "../definition"
 import type { Cb } from "./Cb"

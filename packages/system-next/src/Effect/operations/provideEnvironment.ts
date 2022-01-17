@@ -1,6 +1,4 @@
-// ets_tracing: off
-
-import { currentEnvironment } from "../../FiberRef/definition/concrete"
+import { currentEnvironment } from "../../FiberRef/definition/data"
 import { locally_ } from "../../FiberRef/operations/locally"
 import type { Effect, IO } from "../definition"
 

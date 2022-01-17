@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import * as E from "../../Either/core"
 import * as O from "../../Option/core"
 import type { Cause } from "../definition"

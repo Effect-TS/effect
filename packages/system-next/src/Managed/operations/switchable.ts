@@ -1,4 +1,4 @@
-import { currentReleaseMap } from "../../FiberRef/definition/concrete"
+import { currentReleaseMap } from "../../FiberRef/definition/data"
 import { locally_ } from "../../FiberRef/operations/locally"
 import { pipe } from "../../Function"
 import { fold } from "../../Option"

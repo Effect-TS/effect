@@ -1,10 +1,8 @@
-// ets_tracing: off
-
 /* eslint-disable prefer-const */
 import "../Operator"
 
 import * as Tp from "../Collections/Immutable/Tuple"
-import { _A, _U } from "../Effect"
+import { _A, _U } from "../Effect/definition/commons"
 import { Stack } from "../Stack"
 import type { HasUnify } from "../Utils"
 import { unifyIndex } from "../Utils"

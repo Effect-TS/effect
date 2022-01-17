@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import * as Tp from "../../Collections/Immutable/Tuple"
 import type { Managed } from "../definition"
 import { managedApply } from "../definition"

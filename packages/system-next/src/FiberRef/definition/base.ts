@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Effect, IO } from "../../Effect"
 import type { Either } from "../../Either"
 import type { Managed } from "../../Managed/definition"

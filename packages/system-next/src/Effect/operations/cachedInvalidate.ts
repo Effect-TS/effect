@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { HasClock } from "../../Clock"
 import { currentTime } from "../../Clock"
 import * as Tp from "../../Collections/Immutable/Tuple"

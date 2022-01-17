@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 /**
  * A `MetricClient` provides the functionality to consume metrics produced by
  * Effect-TS applications. `MetricClient` supports two ways of consuming
