@@ -277,6 +277,27 @@ export function set_<EA, EB, A, B>(
 }
 
 /**
+ * Unsafely sets the value of the `XTRef`.
+ */
+export function unsafeSet_<EA, EB, A, B>(
+  self: XTRef<EA, EB, A, B>,
+  value: A,
+  journal: Journal
+): void {
+  return getOrMakeEntry(self.atomic, journal).use((_) => _.unsafeSet(value))
+}
+
+/**
+ * Unsafely sets the value of the `XTRef`.
+ *
+ * @ets_data_first unsafeSet_
+ */
+export function unsafeSet<A>(value: A, journal: Journal) {
+  return <EA, EB, B>(self: XTRef<EA, EB, A, B>): void =>
+    unsafeSet_(self, value, journal)
+}
+
+/**
  * Updates the value of the variable, returning a function of the specified
  * value.
  */
