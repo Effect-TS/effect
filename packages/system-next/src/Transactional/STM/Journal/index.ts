@@ -1,5 +1,3 @@
-import "../../../Operator"
-
 import * as HM from "../../../Collections/Immutable/HashMap"
 import type { Effect, IO } from "../../../Effect"
 import { die } from "../../../Effect/operations/die"

@@ -1,5 +1,3 @@
-import "../../../Operator"
-
 import type { Refinement } from "../../../Function"
 import { constant, identity, tuple } from "../../../Function"
 import { NoSuchElementException } from "../../../GlobalExceptions"
