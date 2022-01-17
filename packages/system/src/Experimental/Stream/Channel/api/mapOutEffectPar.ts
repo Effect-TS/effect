@@ -44,7 +44,7 @@ export function mapOutEffectPar_<
           )
         ),
         M.bind("errorSignal", () => P.makeManaged<OutErr1, never>()),
-        M.bind("permits", () => T.toManaged(SM.makeSemaphore(n))),
+        M.bind("permits", () => T.toManaged(SM.make(n))),
         M.bind("pull", () => ToPull.toPull(self)),
         M.tap(({ errorSignal, permits, pull, queue }) =>
           pipe(

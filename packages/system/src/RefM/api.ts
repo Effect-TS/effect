@@ -20,18 +20,9 @@ export function makeRefM<A>(a: A): T.UIO<RefM<A>> {
   return pipe(
     T.do,
     T.bind("ref", () => R.makeRef(a)),
-    T.bind("semaphore", () => S.makeSemaphore(1)),
+    T.bind("semaphore", () => S.make(1)),
     T.map(({ ref, semaphore }) => new AtomicM(ref, semaphore))
   )
-}
-
-/**
- * Creates a new `XRefM` with the specified value.
- */
-export function unsafeMakeRefM<A>(a: A): RefM<A> {
-  const ref = R.unsafeMakeRef(a)
-  const semaphore = S.unsafeMakeSemaphore(1)
-  return new AtomicM(ref, semaphore)
 }
 
 /**

@@ -38,7 +38,7 @@ export function chainPar(n: number, outputBuffer = 16) {
                 Q.shutdown
               )
             ),
-            M.bind("permits", () => T.toManaged(SM.makeSemaphore(n))),
+            M.bind("permits", () => T.toManaged(SM.make(n))),
             M.bind("innerFailure", () => T.toManaged(P.make<C.Cause<E1>, never>())),
             M.tap(({ innerFailure, out, permits }) =>
               pipe(

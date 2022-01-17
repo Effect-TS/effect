@@ -95,7 +95,7 @@ export function distributedWithDynamic_<R, E, O>(
     M.bind("add", ({ queuesRef }) =>
       pipe(
         M.do,
-        M.bind("queuesLock", () => T.toManaged(SM.makeSemaphore(1))),
+        M.bind("queuesLock", () => T.toManaged(SM.make(1))),
         M.bind("newQueue", () =>
           pipe(
             R.makeRef<T.UIO<Tp.Tuple<[symbol, Q.Queue<Ex.Exit<O.Option<E>, O>>]>>>(

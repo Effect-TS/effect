@@ -26,7 +26,7 @@ export function mapMPar(n: number) {
             M.fromEffect(Q.makeBounded<T.Effect<R1, O.Option<E1 | E>, O1>>(n))
           ),
           M.bind("errorSignal", () => M.fromEffect(P.make<E1, never>())),
-          M.bind("permits", () => M.fromEffect(SM.makeSemaphore(n))),
+          M.bind("permits", () => M.fromEffect(SM.make(n))),
           M.tap(({ errorSignal, out, permits }) =>
             pipe(
               self,

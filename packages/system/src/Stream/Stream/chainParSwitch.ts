@@ -36,7 +36,7 @@ export function chainParSwitch<R1, E1, O, O2>(
               Q.shutdown
             )
           ),
-          M.bind("permits", () => T.toManaged(SM.makeSemaphore(n))),
+          M.bind("permits", () => T.toManaged(SM.make(n))),
           M.bind("innerFailure", () => T.toManaged(P.make<C.Cause<E1>, never>())),
           M.bind("cancelers", () =>
             T.toManagedRelease_(Q.makeBounded<P.Promise<never, void>>(n), Q.shutdown)

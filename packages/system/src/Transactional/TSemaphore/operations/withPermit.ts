@@ -10,11 +10,11 @@ import { withPermits_ } from "./withPermits"
  * completes execution, whether by success, failure, or interruption.
  */
 export function withPermit_<R, E, A>(
-  self: TSemaphore,
-  effect: Effect<R, E, A>,
+  self: Effect<R, E, A>,
+  semaphore: TSemaphore,
   __trace?: string
 ): Effect<R, E, A> {
-  return withPermits_(self, 1, effect, __trace)
+  return withPermits_(self, semaphore, 1, __trace)
 }
 
 /**
@@ -24,6 +24,7 @@ export function withPermit_<R, E, A>(
  *
  * @ets_data_first withPermit_
  */
-export function withPermit<R, E, A>(effect: Effect<R, E, A>, __trace?: string) {
-  return (self: TSemaphore): Effect<R, E, A> => withPermit_(self, effect, __trace)
+export function withPermit(semaphore: TSemaphore, __trace?: string) {
+  return <R, E, A>(self: Effect<R, E, A>): Effect<R, E, A> =>
+    withPermit_(self, semaphore, __trace)
 }

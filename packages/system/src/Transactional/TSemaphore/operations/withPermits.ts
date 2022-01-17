@@ -13,16 +13,16 @@ import { releaseN_ } from "./releaseN"
  * failure, or interruption.
  */
 export function withPermits_<R, E, A>(
-  self: TSemaphore,
+  self: T.Effect<R, E, A>,
+  semaphore: TSemaphore,
   permits: number,
-  effect: T.Effect<R, E, A>,
   __trace?: string
 ): T.Effect<R, E, A> {
   return T.uninterruptibleMask(
     ({ restore }) =>
       T.zipRight_(
-        restore(STM.commit(acquireN_(self, permits))),
-        T.ensuring_(restore(effect), STM.commit(releaseN_(self, permits)))
+        restore(STM.commit(acquireN_(semaphore, permits))),
+        T.ensuring_(restore(self), STM.commit(releaseN_(semaphore, permits)))
       ),
     __trace
   )
@@ -36,11 +36,7 @@ export function withPermits_<R, E, A>(
  *
  * @ets_data_first withPermits_
  */
-export function withPermits<R, E, A>(
-  permits: number,
-  effect: T.Effect<R, E, A>,
-  __trace?: string
-) {
-  return (self: TSemaphore): T.Effect<R, E, A> =>
-    withPermits_(self, permits, effect, __trace)
+export function withPermits(semaphore: TSemaphore, permits: number, __trace?: string) {
+  return <R, E, A>(self: T.Effect<R, E, A>): T.Effect<R, E, A> =>
+    withPermits_(self, semaphore, permits, __trace)
 }
