@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Either } from "../../Either"
 import type { Exit } from "../definition"
 import { fail } from "./fail"

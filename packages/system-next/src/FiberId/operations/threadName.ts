@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import * as C from "../../Collections/Immutable/Chunk"
 import { pipe } from "../../Function"
 import type { FiberId } from "../definition"

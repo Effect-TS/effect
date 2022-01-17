@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { IO, UIO } from "../../Effect"
 import { intoPromise_ } from "../../Effect/operations/intoPromise"
 import type { Promise } from "../definition"

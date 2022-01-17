@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 // codegen:start {preset: barrel, include: ./*.ts}
 export * from "./await"
 export * from "./awaitAll"

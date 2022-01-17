@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import { fail } from "../../Exit"
 import type { Effect } from "../definition"
 import { EffectError } from "../definition"

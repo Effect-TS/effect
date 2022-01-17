@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 /**
  * Ported from https://github.com/zio/zio/blob/master/core/shared/src/main/scala/zio/Random.scala
  *

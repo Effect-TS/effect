@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import * as Cause from "../../Cause"
 import type { Effect, RIO } from "../definition"
 import { chain_ } from "./chain"

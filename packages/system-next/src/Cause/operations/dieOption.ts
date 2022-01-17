@@ -1,7 +1,6 @@
-// ets_tracing: off
-
-import * as O from "../../Option"
+import * as O from "../../Option/core"
 import type { Cause } from "../definition"
+import { isDieType } from "../definition"
 import { find_ } from "./find"
 
 /**
@@ -9,5 +8,5 @@ import { find_ } from "./find"
  * one exists.
  */
 export function dieOption<E>(self: Cause<E>): O.Option<unknown> {
-  return find_(self, (cause) => (cause._tag === "Die" ? O.some(cause.value) : O.none))
+  return find_(self, (cause) => (isDieType(cause) ? O.some(cause.value) : O.none))
 }

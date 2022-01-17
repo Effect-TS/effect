@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import * as X from "./core"
 
 function bind<R, E, A, K, N extends string>(

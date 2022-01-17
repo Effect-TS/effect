@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { IO } from "../definition"
 import { fail } from "./fail"
 import { succeed } from "./succeed"

@@ -1,6 +1,4 @@
-// ets_tracing: off
-
-import { unit } from "../../Effect"
+import { unit } from "../../Effect/operations/unit"
 import type { Supervisor } from "../definition"
 import { ConstSupervisor } from "./_internal"
 

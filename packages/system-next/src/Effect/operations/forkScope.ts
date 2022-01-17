@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Scope } from "../../Scope"
 import type { UIO } from "../definition"
 import { IGetForkScope } from "../definition"

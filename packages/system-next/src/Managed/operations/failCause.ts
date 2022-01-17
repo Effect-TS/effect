@@ -1,8 +1,6 @@
-// ets_tracing: off
-
 import type { Cause } from "../../Cause"
+import { failCause as effectFailCause } from "../../Effect/operations/failCause"
 import type { Managed } from "../definition"
-import * as T from "./_internal/effect"
 import { fromEffect } from "./fromEffect"
 
 /**
@@ -12,5 +10,5 @@ export function failCause<E>(
   cause: Cause<E>,
   __trace?: string
 ): Managed<unknown, E, never> {
-  return fromEffect(T.failCause(cause, __trace))
+  return fromEffect(effectFailCause(cause, __trace))
 }

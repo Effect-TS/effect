@@ -1,7 +1,5 @@
-// ets_tracing: off
-
-import * as C from "../../Cause"
-import * as L from "../../Collections/Immutable/List"
+import { then } from "../../Cause/definition"
+import * as L from "../../Collections/Immutable/List/core"
 import { pipe } from "../../Function"
 import * as I from "../../Iterable"
 import * as O from "../../Option"
@@ -18,7 +16,7 @@ export function collectAll<E, A>(
       pipe(
         I.skip_(exits, 1),
         I.reduce(map_(head.value, L.of), (acc, el) =>
-          zipWith_(acc, el, (list, a) => L.prepend_(list, a), C.then)
+          zipWith_(acc, el, (list, a) => L.prepend_(list, a), then)
         ),
         map(L.reverse)
       )

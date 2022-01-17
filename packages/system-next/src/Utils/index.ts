@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import "../Operator"
 
 import type { Tuple } from "../Collections/Immutable/Tuple"
@@ -228,9 +226,5 @@ export type ForcedTuple<A> = A extends unknown[] ? Tuple<A> : never
 
 export type ForcedArray<A> = A extends readonly any[] ? A : []
 
-export interface UnifiableIndexed<X> {}
-
 export * from "./lazy"
-export * from "./union"
 export * from "./equal"
-export * from "./unification"

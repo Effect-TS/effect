@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Cause } from "../../Cause"
 import type { Effect, RIO } from "../definition"
 import { onExit_ } from "./onExit"

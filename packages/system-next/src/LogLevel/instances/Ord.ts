@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import { contramap_, number } from "../../Ord"
 import type { LogLevel } from "../definition"
 

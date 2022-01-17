@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { UIO } from "../../Effect"
 import type { Supervisor } from "../definition"
 import { ConstSupervisor } from "./_internal"

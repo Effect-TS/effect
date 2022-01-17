@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { HasClock } from "../../Clock"
 import { sleep as clockSleep } from "../../Clock"
 import type { RIO } from "../definition"

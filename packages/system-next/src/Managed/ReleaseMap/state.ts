@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Exit } from "../operations/_internal/exit"
 import type { Finalizer } from "./finalizer"
 

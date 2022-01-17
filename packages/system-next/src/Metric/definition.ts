@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import * as T from "./_internal/effect"
 import * as MetricClient from "./MetricClient"
 import type { MetricLabel } from "./MetricLabel"

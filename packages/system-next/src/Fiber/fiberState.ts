@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import * as C from "../Cause"
 import * as HS from "../Collections/Immutable/HashSet"
 import type { UIO } from "../Effect"

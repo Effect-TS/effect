@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import * as O from "../../Option"
 import type { Scope } from "../../Scope"
 import type { Effect } from "../definition"

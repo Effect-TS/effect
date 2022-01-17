@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { UIO } from "../../Effect/definition"
 import { releaseMapReleaseAll_ } from "../../Effect/operations/excl-forEach"
 import type { ExecutionStrategy } from "../../Effect/operations/ExecutionStrategy"

@@ -1,8 +1,7 @@
-// ets_tracing: off
-
-import * as IO from "../../IO"
-import type * as O from "../../Option"
+import * as IO from "../../IO/core"
+import type * as O from "../../Option/core"
 import type { Cause } from "../definition"
+import { realCause } from "../definition"
 
 /**
  * Finds something and extracts some details from it.
@@ -32,7 +31,7 @@ function findSafe<E, Z>(
   if (result._tag === "Some") {
     return IO.succeed(result)
   }
-
+  realCause(self)
   switch (self._tag) {
     case "Then":
       return IO.chain_(

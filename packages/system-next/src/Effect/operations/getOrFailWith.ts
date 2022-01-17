@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import * as O from "../../Option"
 import type { IO } from "../definition"
 import { fail } from "./fail"

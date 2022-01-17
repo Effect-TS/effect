@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import { constVoid } from "../../Function"
 import type { Effect, RIO } from "../definition"
 import { fold_ } from "./fold"

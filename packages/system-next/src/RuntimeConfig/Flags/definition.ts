@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { HashSet } from "../../Collections/Immutable/HashSet"
 import type { RuntimeConfigFlag } from "../Flag"
 

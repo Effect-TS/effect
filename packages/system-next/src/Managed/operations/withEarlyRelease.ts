@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Tuple } from "../../Collections/Immutable/Tuple"
 import type { Managed } from "../definition"
 import type { UIO } from "./_internal/effect"

@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type * as O from "../../../Option"
 import type { Atomic } from "../Atomic"
 import * as T from "./_internal/effect"

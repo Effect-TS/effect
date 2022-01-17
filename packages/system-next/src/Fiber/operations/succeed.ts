@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import * as Exit from "../../Exit/operations/succeed"
 import type { Fiber } from "../definition"
 import { done } from "./done"

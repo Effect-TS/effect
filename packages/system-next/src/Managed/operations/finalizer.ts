@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Managed } from "../definition"
 import type { Effect } from "./_internal/effect"
 import { finalizerExit } from "./finalizerExit"

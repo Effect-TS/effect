@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import { pipe } from "../../Function"
 import * as O from "../../Option"
 import type { Effect } from "../definition"

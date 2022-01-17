@@ -1,9 +1,8 @@
-// ets_tracing: off
-
-import type { FiberId } from "../../FiberId"
-import * as IO from "../../IO"
-import type { Trace } from "../../Trace"
+import type { FiberId } from "../../FiberId/definition"
+import * as IO from "../../IO/core"
+import type { Trace } from "../../Trace/definition"
 import type { Cause } from "../definition"
+import { realCause } from "../definition"
 
 /**
  * Folds over the cases of this cause with the specified functions.
@@ -69,6 +68,7 @@ function foldSafe<E, Z>(
   onBothCause: (x: Z, y: Z) => Z,
   onStacklessCause: (z: Z, stackless: boolean) => Z
 ): IO.IO<Z> {
+  realCause(self)
   switch (self._tag) {
     case "Empty":
       return IO.succeedWith(onEmptyCause)

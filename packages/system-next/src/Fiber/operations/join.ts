@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { IO } from "../../Effect"
 import { chain_ } from "../../Effect/operations/chain"
 import { done } from "../../Effect/operations/done"

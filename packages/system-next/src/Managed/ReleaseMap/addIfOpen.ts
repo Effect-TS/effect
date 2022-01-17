@@ -1,9 +1,10 @@
-// ets_tracing: off
-
 import { insert_ } from "../../Collections/Immutable/Map/core"
 import * as Tp from "../../Collections/Immutable/Tuple"
+import type { Effect, UIO } from "../../Effect/definition/base"
+import { flatten } from "../../Effect/operations/flatten"
+import { map_ } from "../../Effect/operations/map"
+import { succeed } from "../../Effect/operations/succeed"
 import * as O from "../../Option"
-import * as T from "../operations/_internal/effect"
 import * as Ref from "../operations/_internal/ref"
 import type { ReleaseMap } from "./definition"
 import type { Finalizer } from "./finalizer"
@@ -21,19 +22,19 @@ export function addIfOpen_(
   self: ReleaseMap,
   finalizer: Finalizer,
   __trace?: string
-): T.UIO<O.Option<number>> {
-  return T.flatten(
+): UIO<O.Option<number>> {
+  return flatten(
     Ref.modify_(self.ref, (s) => {
       switch (s._tag) {
         case "Exited": {
           return Tp.tuple(
-            T.map_(finalizer(s.exit), () => O.none),
+            map_(finalizer(s.exit), () => O.none),
             new Exited(next(s.nextKey), s.exit, s.update)
           )
         }
         case "Running": {
           return Tp.tuple(
-            T.succeed(() => O.some(s.nextKey)),
+            succeed(() => O.some(s.nextKey)),
             new Running(
               next(s.nextKey),
               insert_(s.finalizers(), s.nextKey, finalizer),
@@ -57,6 +58,6 @@ export function addIfOpen_(
  * @ets_data_first addIfOpen_
  */
 export function addIfOpen(finalizer: Finalizer, __trace?: string) {
-  return (self: ReleaseMap): T.Effect<unknown, never, O.Option<number>> =>
+  return (self: ReleaseMap): Effect<unknown, never, O.Option<number>> =>
     addIfOpen_(self, finalizer, __trace)
 }

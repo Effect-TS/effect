@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import * as St from "../../Structural"
 
 export const MetricLabelSym = Symbol.for("@effect-ts/core/Metric/MetricLabel")

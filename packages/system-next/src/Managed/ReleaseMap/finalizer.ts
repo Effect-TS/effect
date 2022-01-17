@@ -1,6 +1,5 @@
-// ets_tracing: off
-
-import * as T from "../operations/_internal/effect"
+import type { UIO } from "../../Effect/definition"
+import { unit } from "../../Effect/operations/unit"
 import type { Exit } from "../operations/_internal/exit"
 
 /**
@@ -8,6 +7,6 @@ import type { Exit } from "../operations/_internal/exit"
  * the result of executing `Managed#use` or an arbitrary value passed into
  * `ReleaseMap#release`.
  */
-export type Finalizer = (exit: Exit<any, any>) => T.UIO<any>
+export type Finalizer = (exit: Exit<any, any>) => UIO<any>
 
-export const noopFinalizer: Finalizer = () => T.unit
+export const noopFinalizer: Finalizer = () => unit

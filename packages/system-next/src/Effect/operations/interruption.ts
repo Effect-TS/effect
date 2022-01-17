@@ -1,9 +1,9 @@
-// ets_tracing: off
-
-import * as Cause from "../../Cause"
-import type { HashSet } from "../../Collections/Immutable/HashSet"
-import * as Fiber from "../../Fiber"
-import type { FiberId } from "../../FiberId"
+import { interrupt as causeInterrupt } from "../../Cause/definition"
+import { interruptors as causeInterruptors } from "../../Cause/operations/interruptors"
+import { isInterrupted as causeIsInterrupted } from "../../Cause/operations/isInterrupted"
+import type * as HashSet from "../../Collections/Immutable/HashSet/core"
+import { join as fiberJoin } from "../../Fiber/operations/join"
+import type * as FiberId from "../../FiberId"
 import type { InterruptStatus } from "../../InterruptStatus"
 import { Interruptible, Uninterruptible } from "../../InterruptStatus"
 import type { Effect } from "../definition"
@@ -180,7 +180,7 @@ export function disconnect<R, E, A>(
     ({ restore }) =>
       chain_(fiberId, (id) =>
         chain_(forkDaemon(restore(effect)), (fiber) =>
-          onInterrupt_(restore(Fiber.join(fiber)), () =>
+          onInterrupt_(restore(fiberJoin(fiber)), () =>
             forkDaemon(fiber.interruptAs(id))
           )
         )
@@ -195,15 +195,15 @@ export function disconnect<R, E, A>(
  */
 export function onInterrupt_<R, E, A, R2, X>(
   self: Effect<R, E, A>,
-  cleanup: (interruptors: HashSet<FiberId>) => Effect<R2, never, X>,
+  cleanup: (interruptors: HashSet.HashSet<FiberId.FiberId>) => Effect<R2, never, X>,
   __trace?: string
 ): Effect<R & R2, E, A> {
   return uninterruptibleMask((status) =>
     foldCauseEffect_(
       status.restore(self),
       (cause) =>
-        Cause.isInterrupted(cause)
-          ? chain_(cleanup(Cause.interruptors(cause)), () => failCause(cause))
+        causeIsInterrupted(cause)
+          ? chain_(cleanup(causeInterruptors(cause)), () => failCause(cause))
           : failCause(cause),
       succeedNow,
       __trace
@@ -218,7 +218,7 @@ export function onInterrupt_<R, E, A, R2, X>(
  * @ets_data_first onInterrupt_
  */
 export function onInterrupt<R2, X>(
-  cleanup: (interruptors: HashSet<FiberId>) => Effect<R2, never, X>,
+  cleanup: (interruptors: HashSet.HashSet<FiberId.FiberId>) => Effect<R2, never, X>,
   __trace?: string
 ) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R & R2, E, A> =>
@@ -231,16 +231,16 @@ export function onInterrupt<R2, X>(
  */
 export function onInterruptExtended_<R, E, A, R2, E2, X>(
   self: Effect<R, E, A>,
-  cleanup: (interruptors: HashSet<FiberId>) => Effect<R2, E2, X>,
+  cleanup: (interruptors: HashSet.HashSet<FiberId.FiberId>) => Effect<R2, E2, X>,
   __trace?: string
 ): Effect<R & R2, E | E2, A> {
   return uninterruptibleMask(({ restore }) =>
     foldCauseEffect_(
       restore(self),
       (cause) =>
-        Cause.isInterrupted(cause)
+        causeIsInterrupted(cause)
           ? foldCauseEffect_(
-              cleanup(Cause.interruptors(cause)),
+              cleanup(causeInterruptors(cause)),
               (_) => failCause(_),
               () => failCause(cause)
             )
@@ -258,7 +258,7 @@ export function onInterruptExtended_<R, E, A, R2, E2, X>(
  * @ets_data_first onInterruptExtended_
  */
 export function onInterruptExtended<R2, E2, X>(
-  cleanup: (interruptors: HashSet<FiberId>) => Effect<R2, E2, X>,
+  cleanup: (interruptors: HashSet.HashSet<FiberId.FiberId>) => Effect<R2, E2, X>,
   __trace?: string
 ) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R & R2, E | E2, A> =>
@@ -268,6 +268,6 @@ export function onInterruptExtended<R2, E2, X>(
 /**
  * Returns an effect that is interrupted as if by the specified fiber.
  */
-export function interruptAs(fiberId: FiberId, __trace?: string) {
-  return failCause(Cause.interrupt(fiberId), __trace)
+export function interruptAs(fiberId: FiberId.FiberId, __trace?: string) {
+  return failCause(causeInterrupt(fiberId), __trace)
 }

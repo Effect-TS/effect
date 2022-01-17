@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { UIO } from "../../Effect"
 import { interruptAs as effectInterruptAs } from "../../Effect/operations/interruption"
 import type { FiberId } from "../../FiberId"

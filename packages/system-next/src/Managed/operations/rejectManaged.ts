@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Option } from "../../Option"
 import { fold_ } from "../../Option"
 import type { Managed } from "../definition"

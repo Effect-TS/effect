@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { HashSet } from "../Collections/Immutable/HashSet"
 import { equal } from "../Collections/Immutable/HashSet"
 import * as St from "../Structural"

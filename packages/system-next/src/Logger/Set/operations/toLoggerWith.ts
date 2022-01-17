@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import * as Chunk from "../../../Collections/Immutable/Chunk"
 import { pipe } from "../../../Function"
 import type { Tag } from "../../../Has"

@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import * as Chunk from "../../Collections/Immutable/Chunk"
 import type { Option } from "../../Option"
 import type { Effect } from "../definition"

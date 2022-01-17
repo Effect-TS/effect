@@ -1,9 +1,13 @@
-// ets_tracing: off
-
 import "../../Operator"
 
 import { RuntimeError } from "../../Cause"
-import * as T from "../../Effect"
+import type { Effect } from "../../Effect"
+import { absolve as absolve_1 } from "../../Effect/operations/absolve"
+import { async as effectAsync } from "../../Effect/operations/async"
+import { ensuring_ } from "../../Effect/operations/ensuring"
+import { environmentWithEffect } from "../../Effect/operations/environmentWithEffect"
+import { succeedWith } from "../../Effect/operations/succeedWith"
+import { suspendSucceedWith } from "../../Effect/operations/suspendSucceedWith"
 import * as E from "../../Either"
 import type { LazyArg, Predicate, Refinement } from "../../Function"
 import { constVoid, identity } from "../../Function"
@@ -455,8 +459,8 @@ export function compose<R, R1, E1>(that: P.STM<R1, E1, R>) {
  * Commits this transaction atomically.
  */
 export function commit<R, E, A>(self: P.STM<R, E, A>) {
-  return T.environmentWithEffect((r: R) =>
-    T.suspendSucceedWith((_, fiberId) => {
+  return environmentWithEffect((r: R) =>
+    suspendSucceedWith((_, fiberId) => {
       const v = tryCommit(fiberId, self, r)
 
       switch (v._typeId) {
@@ -466,9 +470,11 @@ export function commit<R, E, A>(self: P.STM<R, E, A>) {
         case SuspendTypeId: {
           const txnId = makeTxnId()
           const done = new AtomicBoolean(false)
-          const interrupt = T.succeedWith(() => done.set(true))
-          const io = T.async(tryCommitAsync(v.journal, fiberId, self, txnId, done, r))
-          return T.ensuring_(io, interrupt)
+          const interrupt = succeedWith(() => done.set(true))
+          const io = effectAsync(
+            tryCommitAsync(v.journal, fiberId, self, txnId, done, r)
+          )
+          return ensuring_(io, interrupt)
         }
       }
     })
@@ -479,8 +485,8 @@ export function commit<R, E, A>(self: P.STM<R, E, A>) {
  * Commits this transaction atomically, regardless of whether the transaction
  * is a success or a failure.
  */
-export function commitEither<R, E, A>(self: P.STM<R, E, A>): T.Effect<R, E, A> {
-  return T.absolve(commit(either(self)))
+export function commitEither<R, E, A>(self: P.STM<R, E, A>): Effect<R, E, A> {
+  return absolve_1(commit(either(self)))
 }
 
 /**

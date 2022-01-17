@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Managed } from "../definition"
 import type { Reservation } from "../reservation"
 import * as T from "./_internal/effect"

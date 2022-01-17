@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Effect } from "../definition"
 import { filter_ } from "./filter"
 import { map_ } from "./map"

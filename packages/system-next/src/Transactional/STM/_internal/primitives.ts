@@ -1,6 +1,4 @@
-// ets_tracing: off
-
-import * as T from "../../../Effect"
+import { _A, _E, _R } from "../../../Effect/definition/commons"
 import * as E from "../../../Either"
 import type { FiberId } from "../../../FiberId"
 import type { LazyArg } from "../../../Function"
@@ -49,9 +47,9 @@ export type STMTypeId = typeof STMTypeId
  */
 export abstract class STM<R, E, A> {
   readonly [STMTypeId]: STMTypeId = STMTypeId;
-  readonly [T._R]: (_: R) => void;
-  readonly [T._E]: () => E;
-  readonly [T._A]: () => A
+  readonly [_R]: (_: R) => void;
+  readonly [_E]: () => E;
+  readonly [_A]: () => A
 }
 
 export const STMEffectTypeId = Symbol.for("@effect-ts/system/STM/Effect")

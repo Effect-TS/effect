@@ -1,8 +1,6 @@
-// ets_tracing: off
-
 import type { UIO } from "../../Effect"
 import { failNow } from "../../Effect/operations/failNow"
-import type { Promise } from ".."
+import type { Promise } from "../definition"
 import { completeWith_ } from "./completeWith"
 
 /**

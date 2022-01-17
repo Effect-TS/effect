@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import { compact } from "../Collections/Immutable/Chunk/api/compact"
 import type { Chunk } from "../Collections/Immutable/Chunk/core"
 import type { Option } from "../Option"

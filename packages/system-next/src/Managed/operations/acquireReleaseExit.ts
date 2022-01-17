@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Exit } from "../../Exit/definition"
 import type { Managed } from "../definition"
 import type * as T from "./_internal/effect"

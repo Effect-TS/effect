@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Has, Tag } from "../../Has"
 import { accessCallTrace } from "../../Tracing"
 import type { UnionToIntersection } from "../../Utils"

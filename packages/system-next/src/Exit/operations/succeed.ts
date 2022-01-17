@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Exit } from "../definition"
 import { Success } from "../definition"
 

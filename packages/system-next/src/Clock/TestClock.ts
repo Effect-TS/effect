@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Effect, UIO } from "../Effect/definition"
 import { provideServiceEffect } from "../Effect/operations/provideServiceEffect"
 import { serviceWith } from "../Effect/operations/serviceWith"

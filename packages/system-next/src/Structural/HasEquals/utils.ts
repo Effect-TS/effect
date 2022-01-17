@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 const HAS_WEAKSET_SUPPORT = typeof WeakSet === "function"
 
 const { keys } = Object

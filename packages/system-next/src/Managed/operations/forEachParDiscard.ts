@@ -1,6 +1,4 @@
-// ets_tracing: off
-
-import { currentReleaseMap } from "../../FiberRef/definition/concrete"
+import { currentReleaseMap } from "../../FiberRef/definition/data"
 import { locally_ } from "../../FiberRef/operations/locally"
 import type { Managed } from "../definition"
 import { makeManaged } from "../ReleaseMap/makeManaged"
@@ -22,9 +20,8 @@ export function forEachParDiscard_<R, E, A, X>(
   return mapEffect_(makeManagedPar, (parallelReleaseMap) => {
     const makeInnerMap = locally_(
       currentReleaseMap.value,
-      parallelReleaseMap,
-      T.map_(makeManaged(T.sequential).effect, (_) => _.get(1))
-    )
+      parallelReleaseMap
+    )(T.map_(makeManaged(T.sequential).effect, (_) => _.get(1)))
 
     return T.forEachParDiscard_(
       as,
@@ -32,9 +29,8 @@ export function forEachParDiscard_<R, E, A, X>(
         T.chain_(makeInnerMap, (innerMap) =>
           locally_(
             currentReleaseMap.value,
-            innerMap,
-            T.map_(f(a).effect, (_) => _.get(1))
-          )
+            innerMap
+          )(T.map_(f(a).effect, (_) => _.get(1)))
         ),
       __trace
     )

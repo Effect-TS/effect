@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Cause } from "../../Cause"
 import * as Exit from "../../Exit/operations/failCause"
 import type { Fiber } from "../definition"

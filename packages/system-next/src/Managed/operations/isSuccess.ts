@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import { constFalse, constTrue } from "../../Function"
 import type { Managed } from "../definition"
 import { fold_ } from "./fold"

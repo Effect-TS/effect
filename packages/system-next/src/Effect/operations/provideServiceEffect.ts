@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Effect } from "../../Effect/definition"
 import { chain_ } from "../../Effect/operations/chain"
 import { environmentWithEffect } from "../../Effect/operations/environmentWithEffect"

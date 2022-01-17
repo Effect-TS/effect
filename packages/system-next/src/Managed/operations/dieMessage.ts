@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import { RuntimeError } from "../../Cause/errors"
 import type { Managed } from "../definition"
 import { die } from "./die"

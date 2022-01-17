@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Managed } from "../../Managed"
 import { fromEffect } from "../../Managed/operations/fromEffect"
 import type { Ref } from "../definition"

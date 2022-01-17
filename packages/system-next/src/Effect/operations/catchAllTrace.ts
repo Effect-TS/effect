@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Tuple } from "../../Collections/Immutable/Tuple"
 import type { Trace } from "../../Trace"
 import type { Effect } from "../definition"
