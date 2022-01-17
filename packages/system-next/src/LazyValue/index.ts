@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 export class LazyValue<A> {
   static make = <A>(f: () => A) => new LazyValue(f)
 

@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import * as O from "../Option"
 import type { Sync as Effect } from "./core"
 import { fail, foldM_, succeed } from "./core"

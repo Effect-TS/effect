@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Option } from "../../Option"
 import type { Managed } from "../definition"
 import { asSome } from "./asSome"

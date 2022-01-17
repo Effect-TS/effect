@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 export const _EA = Symbol()
 export type _EA = typeof _EA
 

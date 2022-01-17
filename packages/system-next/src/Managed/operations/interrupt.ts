@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import * as Cause from "../../Cause/definition"
 import type { Managed } from "../definition"
 import * as T from "./_internal/effect"

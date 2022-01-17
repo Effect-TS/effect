@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 /**
  * inspired by https://github.com/tusharmath/qio/pull/22 (revised)
  */

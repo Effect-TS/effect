@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 // codegen:start {preset: barrel, include: ./*.ts, exclude: ./excl-*.ts}
 export * from "./absolve"
 export * from "./absorb"

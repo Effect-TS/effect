@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { UIO } from "../../Effect/definition/base"
 import { map_ } from "../../Effect/operations/map"
 import type { Fiber } from "../definition"

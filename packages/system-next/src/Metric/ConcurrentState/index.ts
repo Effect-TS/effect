@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Chunk } from "../../Collections/Immutable/Chunk"
 import * as HM from "../../Collections/Immutable/HashMap"
 import type { Next } from "../../Collections/Immutable/Map"

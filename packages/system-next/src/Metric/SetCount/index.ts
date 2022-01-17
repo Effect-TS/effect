@@ -1,8 +1,6 @@
-// ets_tracing: off
-
 import type { Chunk } from "../../Collections/Immutable/Chunk"
 import type { Tuple } from "../../Collections/Immutable/Tuple"
-import { _A } from "../../Effect"
+import { _A } from "../../Effect/definition/commons"
 import type { UIO } from "../_internal/effect"
 
 /**

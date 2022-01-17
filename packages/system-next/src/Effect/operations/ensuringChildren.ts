@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Chunk } from "../../Collections/Immutable/Chunk"
 import type * as Fiber from "../../Fiber/definition"
 import { track } from "../../Supervisor/operations/track"

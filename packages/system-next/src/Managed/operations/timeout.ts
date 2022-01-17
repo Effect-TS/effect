@@ -1,10 +1,8 @@
-// ets_tracing: off
-
 import type { HasClock } from "../../Clock"
 import * as Tp from "../../Collections/Immutable/Tuple"
 import * as E from "../../Either"
 import * as Fiber from "../../Fiber"
-import { currentReleaseMap } from "../../FiberRef/definition/concrete"
+import { currentReleaseMap } from "../../FiberRef/definition/data"
 import { get } from "../../FiberRef/operations/get"
 import { locally_ } from "../../FiberRef/operations/locally"
 import { pipe } from "../../Function"
@@ -41,7 +39,7 @@ export function timeout_<R, E, A>(
         T.bind("raceResult", ({ innerReleaseMap }) =>
           restore(
             T.raceWith_(
-              locally_(currentReleaseMap.value, innerReleaseMap, self.effect),
+              locally_(currentReleaseMap.value, innerReleaseMap)(self.effect),
               T.map_(T.sleep(duration), () => O.none),
               (result, sleeper) =>
                 T.zipRight_(

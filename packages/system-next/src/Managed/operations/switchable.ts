@@ -1,4 +1,4 @@
-import { currentReleaseMap } from "../../FiberRef/definition/concrete"
+import { currentReleaseMap } from "../../FiberRef/definition/data"
 import { locally_ } from "../../FiberRef/operations/locally"
 import { pipe } from "../../Function"
 import { fold } from "../../Option"
@@ -59,7 +59,7 @@ export function switchable<R, E, A>(
               T.bind("inner", () => make),
               T.bind("a", ({ inner, r }) =>
                 status.restore(
-                  locally_(currentReleaseMap.value, inner, newResource.effect)
+                  locally_(currentReleaseMap.value, inner)(newResource.effect)
                 )
               ),
               T.tap(({ inner }) =>

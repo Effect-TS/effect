@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import { MASK } from "../Config"
 
 // Bit Ops

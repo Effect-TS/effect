@@ -1,9 +1,7 @@
-// ets_tracing: off
-
 import type { Cause } from "../../Cause"
 import type { UIO } from "../../Effect"
 import { failCause as effectFailCause } from "../../Effect/operations/failCause"
-import type { Promise } from ".."
+import type { Promise } from "../definition"
 import { completeWith_ } from "./completeWith"
 
 /**

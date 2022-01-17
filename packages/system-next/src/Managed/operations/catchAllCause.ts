@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Cause } from "../../Cause"
 import type { Managed } from "../definition"
 import { foldCauseManaged_ } from "./foldCauseManaged"

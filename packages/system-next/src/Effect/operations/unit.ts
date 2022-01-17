@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { UIO } from "../definition"
 import { succeedNow } from "./succeedNow"
 

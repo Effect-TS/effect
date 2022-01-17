@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Either } from "../../Either"
 import * as S from "../../Semaphore"
 import { XRefInternal } from "../definition"

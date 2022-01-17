@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { RuntimeConfig } from "../../RuntimeConfig"
 import type { UIO } from "../definition"
 import { ISetRuntimeConfig } from "../definition"

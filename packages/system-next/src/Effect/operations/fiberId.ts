@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { FiberId } from "../../FiberId"
 import type { UIO } from "../definition"
 import { descriptor } from "./descriptor"

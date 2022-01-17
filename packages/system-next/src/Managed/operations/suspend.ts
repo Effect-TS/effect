@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Managed } from "../definition"
 import { chain_ } from "./chain"
 import { unit } from "./unit"

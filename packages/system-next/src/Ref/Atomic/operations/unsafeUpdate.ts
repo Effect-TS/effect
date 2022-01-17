@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Atomic } from "../Atomic"
 
 export function unsafeUpdate_<A>(self: Atomic<A>, f: (a: A) => A): void {

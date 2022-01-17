@@ -1,7 +1,5 @@
-// ets_tracing: off
-
-import * as Chunk from "../../Collections/Immutable/Chunk"
-import * as FiberId from "../../FiberId"
+import * as Chunk from "../../Collections/Immutable/Chunk/core"
+import * as FiberId from "../../FiberId/operations/combine"
 import { Trace } from "../definition"
 
 /**

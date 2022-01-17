@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import { keepDefects } from "../../Cause"
 import * as O from "../../Option"
 import type { Effect } from "../definition"

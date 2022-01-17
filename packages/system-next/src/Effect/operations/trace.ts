@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Trace } from "../../Trace"
 import type { UIO } from "../definition"
 import { ITrace } from "../definition"

@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 /* adapted from https://github.com/gcanti/fp-ts */
 
 import * as Tp from "../Collections/Immutable/Tuple"
@@ -7,7 +5,6 @@ import type { Either } from "../Either/core"
 import type { Lazy, Predicate, Refinement } from "../Function/core"
 import { identity } from "../Function/core"
 import * as St from "../Structural"
-import type { HasUnify } from "../Utils"
 
 const _noneHash = St.hashString("@effect-ts/system/Option/None")
 const _someHash = St.hashString("@effect-ts/system/Option/Some")
@@ -15,7 +12,7 @@ const _someHash = St.hashString("@effect-ts/system/Option/Some")
 /**
  * Definitions
  */
-export class None implements HasUnify {
+export class None {
   readonly _tag = "None";
 
   [St.equalsSym](that: unknown): boolean {
@@ -26,7 +23,7 @@ export class None implements HasUnify {
   }
 }
 
-export class Some<A> implements HasUnify {
+export class Some<A> {
   readonly _tag = "Some"
   constructor(readonly value: A) {}
 

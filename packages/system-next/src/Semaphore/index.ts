@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { UIO } from "../Effect"
 import { commit } from "../Transactional/STM/core"
 import type { TSemaphore } from "../Transactional/TSemaphore"

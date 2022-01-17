@@ -1,10 +1,8 @@
-// ets_tracing: off
-
 import type { Either } from "../../Either"
 import type { Effect } from "../definition"
-import { suspendSucceed } from "."
 import { chain_ } from "./chain"
 import { fromEither } from "./fromEither"
+import { suspendSucceed } from "./suspendSucceed"
 
 /**
  * Submerges the error case of an `Either` into the `Effect`. The inverse

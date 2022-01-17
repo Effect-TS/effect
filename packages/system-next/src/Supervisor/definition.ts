@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Effect, UIO } from "../Effect"
 import type { Exit } from "../Exit"
 import type * as Fiber from "../Fiber"

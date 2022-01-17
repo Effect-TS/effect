@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import { failureOrCause } from "../../Cause"
 import { fold_ } from "../../Either"
 import type { Managed } from "../definition"

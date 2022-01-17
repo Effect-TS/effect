@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { IO } from "../../Effect/definition/base"
 import { failCause } from "../../Effect/operations/failCause"
 import { succeedNow } from "../../Effect/operations/succeedNow"

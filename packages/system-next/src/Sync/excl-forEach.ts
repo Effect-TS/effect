@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import * as ChunkCollect from "../Collections/Immutable/Chunk/api/collect"
 import * as Chunk from "../Collections/Immutable/Chunk/core"
 import { identity } from "../Function"

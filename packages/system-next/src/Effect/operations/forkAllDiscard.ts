@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Effect } from "../definition"
 import { forEachDiscard_ } from "./excl-forEach"
 import { fork } from "./fork"

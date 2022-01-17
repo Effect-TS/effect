@@ -1,6 +1,4 @@
-// ets_tracing: off
-
 import * as HS from "../../../Collections/Immutable/HashSet"
-import { RuntimeConfigFlags } from ".."
+import { RuntimeConfigFlags } from "../definition"
 
 export const empty: RuntimeConfigFlags = new RuntimeConfigFlags(HS.make())

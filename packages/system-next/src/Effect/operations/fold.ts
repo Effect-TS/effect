@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Effect, RIO } from "../definition"
 import { foldEffect_ } from "./foldEffect"
 import { succeedNow } from "./succeedNow"

@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Next } from "../../Collections/Immutable/Map"
 import * as FiberId from "../../FiberId"
 import { tag } from "../../Has"
@@ -10,6 +8,7 @@ export const StringLoggerSym = Symbol.for("@effect-ts/system/Logger/String")
 export type StringLoggerSym = typeof StringLoggerSym
 
 export const StringLogger = tag<string>(StringLoggerSym)
+export const NumberLogger = tag<number>(Symbol())
 
 export const defaultString: Logger<string, string> = (
   trace,

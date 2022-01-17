@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import * as Iter from "../../Iterable"
 import * as O from "../../Option"
 import type { Managed } from "../definition"

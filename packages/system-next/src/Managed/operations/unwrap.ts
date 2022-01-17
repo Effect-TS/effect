@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Managed } from "../definition"
 import type * as T from "./_internal/effect"
 import { flatten } from "./flatten"

@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Lazy } from "../../Function"
 import type { IO, UIO } from "../definition"
 import { async } from "./async"

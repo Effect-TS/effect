@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Fiber } from "../definition"
 import * as T from "./_internal/effect"
 import { collectAll } from "./collectAll"

@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Supervisor } from "../../Supervisor/definition"
 import type { Effect } from "../definition"
 import { ISupervise } from "../definition"

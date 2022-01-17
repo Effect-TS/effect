@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import * as Cause from "../Cause"
 import type { Effect } from "../Effect"
 import type { Exit } from "../Exit"

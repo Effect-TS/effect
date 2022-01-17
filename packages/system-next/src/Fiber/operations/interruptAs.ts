@@ -1,8 +1,6 @@
-// ets_tracing: off
-
 import * as Exit from "../../Exit"
 import type { FiberId } from "../../FiberId"
-import type { Fiber } from ".."
+import type { Fiber } from "../definition"
 import { done } from "./done"
 
 /**

@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { LazyArg } from "../../Function"
 import type { UIO } from "../definition"
 import { ISucceed } from "../definition"

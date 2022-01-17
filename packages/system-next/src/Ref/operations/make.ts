@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import { AtomicReference } from "../../Support/AtomicReference"
 import { Atomic } from "../Atomic"
 import type { Ref } from "../definition"

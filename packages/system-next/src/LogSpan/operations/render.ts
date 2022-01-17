@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { LogSpan } from "../definition"
 
 export function render_(self: LogSpan, now: number): string {

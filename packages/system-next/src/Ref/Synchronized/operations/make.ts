@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import { pipe } from "../../../Function"
 import * as Semaphore from "../../../Semaphore"
 import * as Ref from "../../operations"

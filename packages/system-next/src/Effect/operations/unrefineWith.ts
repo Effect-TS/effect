@@ -1,8 +1,9 @@
-// ets_tracing: off
-
-import * as Cause from "../../Cause"
+import { isDieType as causeIsDieType } from "../../Cause/definition"
+import { find as causeFind } from "../../Cause/operations/find"
+import { map_ as causeMap_ } from "../../Cause/operations/map"
 import { pipe } from "../../Function"
-import * as O from "../../Option"
+import type { Option } from "../../Option"
+import { fold as optionFold, none as optionNone } from "../../Option/core"
 import type { Effect } from "../definition"
 import { catchAllCause_ } from "./catchAllCause"
 import { failCause } from "./failCause"
@@ -13,7 +14,7 @@ import { failCause } from "./failCause"
  */
 export function unrefineWith_<R, E, E1, E2, A>(
   fa: Effect<R, E, A>,
-  pf: (u: unknown) => O.Option<E1>,
+  pf: (u: unknown) => Option<E1>,
   f: (e: E) => E2,
   __trace?: string
 ) {
@@ -22,8 +23,8 @@ export function unrefineWith_<R, E, E1, E2, A>(
     (cause): Effect<R, E1 | E2, A> =>
       pipe(
         cause,
-        Cause.find((c) => (c._tag === "Die" ? pf(c.value) : O.none)),
-        O.fold(() => failCause(Cause.map_(cause, f)), fail)
+        causeFind((c) => (causeIsDieType(c) ? pf(c.value) : optionNone)),
+        optionFold(() => failCause(causeMap_(cause, f)), fail)
       ),
     __trace
   )
@@ -36,7 +37,7 @@ export function unrefineWith_<R, E, E1, E2, A>(
  * @ets_data_first unrefineWith_
  */
 export function unrefineWith<E1, E, E2>(
-  pf: (u: unknown) => O.Option<E1>,
+  pf: (u: unknown) => Option<E1>,
   f: (e: E) => E2,
   __trace?: string
 ) {

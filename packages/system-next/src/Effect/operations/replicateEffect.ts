@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Chunk } from "../../Collections/Immutable/Chunk"
 import type { Effect } from "../definition"
 import { collectAll } from "./excl-forEach"

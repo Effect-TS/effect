@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 export type { Effect, IO, UIO, RIO } from "../../../Effect/definition/base"
 export type {
   Instruction,

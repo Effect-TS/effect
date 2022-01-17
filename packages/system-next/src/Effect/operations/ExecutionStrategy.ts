@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 /**
  * Describes a strategy for evaluating multiple effects, potentially in
  * parallel. There are three possible execution strategies: `Sequential`,

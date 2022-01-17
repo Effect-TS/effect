@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Cause } from "../../Cause"
 import type { LazyArg } from "../../Function"
 import { CauseLogger } from "../../Logger/operations/defaultCause"

@@ -1,5 +1,3 @@
-// ets_Tracing: off
-
 import type { Scope } from "../../Scope"
 import type { Effect } from "../definition"
 import { IGetForkScope } from "../definition"

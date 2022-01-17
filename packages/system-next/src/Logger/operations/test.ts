@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import * as Chunk from "../../Collections/Immutable/Chunk"
 import * as FiberId from "../../FiberId"
 import * as LogLevel from "../../LogLevel"

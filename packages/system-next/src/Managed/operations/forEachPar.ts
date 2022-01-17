@@ -1,7 +1,5 @@
-// ets_tracing: off
-
 import type * as C from "../../Collections/Immutable/Chunk"
-import { currentReleaseMap } from "../../FiberRef/definition/concrete"
+import { currentReleaseMap } from "../../FiberRef/definition/data"
 import { locally_ } from "../../FiberRef/operations/locally"
 import type { Managed } from "../definition"
 import { makeManaged } from "../ReleaseMap/makeManaged"
@@ -23,17 +21,15 @@ export function forEachPar_<R, E, A, B>(
   return mapEffect_(makeManagedPar, (parallelReleaseMap) => {
     const makeInnerMap = locally_(
       currentReleaseMap.value,
-      parallelReleaseMap,
-      T.map_(makeManaged(T.sequential).effect, (_) => _.get(1))
-    )
+      parallelReleaseMap
+    )(T.map_(makeManaged(T.sequential).effect, (_) => _.get(1)))
 
     return T.forEachPar_(as, (a) =>
       T.chain_(makeInnerMap, (innerMap) =>
         locally_(
           currentReleaseMap.value,
-          innerMap,
-          T.map_(f(a).effect, (_) => _.get(1))
-        )
+          innerMap
+        )(T.map_(f(a).effect, (_) => _.get(1)))
       )
     )
   })

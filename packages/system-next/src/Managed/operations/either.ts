@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Either } from "../../Either"
 import { left, right } from "../../Either"
 import type { Managed } from "../definition"

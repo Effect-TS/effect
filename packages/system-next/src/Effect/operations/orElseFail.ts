@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Effect } from "../definition"
 import { failNow } from "./failNow"
 import { orElse_ } from "./orElse"

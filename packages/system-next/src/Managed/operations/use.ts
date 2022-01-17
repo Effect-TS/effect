@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Managed } from "../definition"
 import type { Effect } from "./_internal/effect"
 import { managedUse_ as use_ } from "./_internal/effect-api"

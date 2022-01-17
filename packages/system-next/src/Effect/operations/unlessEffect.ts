@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type * as O from "../../Option"
 import type { Effect } from "../definition"
 import { asSome } from "./asSome"

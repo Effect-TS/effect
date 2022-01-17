@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import * as E from "../../Either"
 import type { Predicate, Refinement } from "../../Function"
 import { identity } from "../../Function"
