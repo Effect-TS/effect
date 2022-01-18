@@ -1,5 +1,3 @@
-import "../../Operator"
-
 import { RuntimeError } from "../../Cause"
 import type { Effect } from "../../Effect"
 import { absolve as absolve_1 } from "../../Effect/operations/absolve"

@@ -1,5 +1,3 @@
-import "../../Operator"
-
 import { AtomicReference } from "../AtomicReference"
 
 export class AtomicNumber extends AtomicReference<number> {

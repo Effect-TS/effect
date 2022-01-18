@@ -1,3 +1,4 @@
+import type { MergeRecord } from "../../Utils/types"
 import type { Effect } from "../definition"
 import { chain_ } from "./chain"
 import { map_ } from "./map"
@@ -18,9 +19,12 @@ function bind<R, E, A, K, N extends string>(
   ): Effect<
     R & R2,
     E | E2,
-    K & {
-      [k in N]: A
-    }
+    MergeRecord<
+      K,
+      {
+        [k in N]: A
+      }
+    >
   > => bind_(mk, tag, f, __trace)
 }
 
@@ -35,9 +39,12 @@ export function bind_<R2, E2, R, E, A, K, N extends string>(
 ): Effect<
   R & R2,
   E | E2,
-  K & {
-    [k in N]: A
-  }
+  MergeRecord<
+    K,
+    {
+      [k in N]: A
+    }
+  >
 > {
   return chain_(
     mk,
@@ -46,9 +53,12 @@ export function bind_<R2, E2, R, E, A, K, N extends string>(
         f(k),
         (
           a
-        ): K & {
-          [k in N]: A
-        } => ({ ...k, [tag]: a } as any)
+        ): MergeRecord<
+          K,
+          {
+            [k in N]: A
+          }
+        > => ({ ...k, [tag]: a } as any)
       ),
     __trace
   )
@@ -69,9 +79,12 @@ function let__<A, K, N extends string>(
   ): Effect<
     R2,
     E2,
-    K & {
-      [k in N]: A
-    }
+    MergeRecord<
+      K,
+      {
+        [k in N]: A
+      }
+    >
   > => let_(mk, tag, f)
 }
 
@@ -86,17 +99,23 @@ export function let_<R2, E2, A, K, N extends string>(
 ): Effect<
   R2,
   E2,
-  K & {
-    [k in N]: A
-  }
+  MergeRecord<
+    K,
+    {
+      [k in N]: A
+    }
+  >
 > {
   return map_(
     mk,
     (
       k
-    ): K & {
-      [k in N]: A
-    } => ({ ...k, [tag]: f(k) } as any),
+    ): MergeRecord<
+      K,
+      {
+        [k in N]: A
+      }
+    > => ({ ...k, [tag]: f(k) } as any),
     __trace
   )
 }

@@ -1,5 +1,3 @@
-import "../../Operator"
-
 import * as L from "../../Collections/Immutable/List"
 import * as Tp from "../../Collections/Immutable/Tuple"
 import * as O from "../../Option"
