@@ -36,10 +36,10 @@ export class Global implements CommonScope {
         RuntimeConfigFlag.enableFiberRoots
       )
     ) {
-      const childRef = _roots.add(child)
+      _roots.add(child)
 
       child.unsafeOnDone(() => {
-        childRef.clear()
+        _roots.delete(child)
       })
     }
     return true

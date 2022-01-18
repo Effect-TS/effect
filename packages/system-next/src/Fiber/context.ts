@@ -32,12 +32,10 @@ import * as RuntimeConfigFlags from "../RuntimeConfig/Flags"
 import * as Scope from "../Scope"
 import { Stack } from "../Stack"
 import { equalsSym } from "../Structural"
-import * as H from "../Structural/HasHash"
 import * as Supervisor from "../Supervisor"
 import { AtomicReference } from "../Support/AtomicReference"
 import { defaultScheduler } from "../Support/Scheduler"
 import * as StackTraceBuilder from "../Support/StackTraceBuilder"
-import { WeakConcurrentBag } from "../Support/WeakConcurrentBag"
 import { Trace } from "../Trace"
 import * as TE from "../TraceElement"
 import * as CancelerState from "./cancelerState"
@@ -126,7 +124,7 @@ export type FiberRefLocals = Map<FiberRef.Runtime<any>, any>
 
 export const currentFiber = new AtomicReference<FiberContext<any, any> | null>(null)
 
-export const _roots = new WeakConcurrentBag<FiberContext<any, any>>(10000)
+export const _roots = new Set<FiberContext<any, any>>()
 
 export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   readonly _tag = "Runtime"
@@ -164,14 +162,6 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
       fibersStarted.unsafeIncrement()
       fiberForkLocations.unsafeObserve(TE.stringify(location))
     }
-  }
-
-  // -----------------------------------------------------------------------------
-  // Hash
-  // -----------------------------------------------------------------------------
-
-  get [H.hashSym](): number {
-    return H.combineHash(this.id.id, this.id.startTimeSeconds)
   }
 
   // -----------------------------------------------------------------------------
