@@ -1,5 +1,3 @@
-import "../../../Operator"
-
 import type { Either } from "../../../Either"
 import type { Predicate, Refinement } from "../../../Function"
 import * as O from "../../../Option"

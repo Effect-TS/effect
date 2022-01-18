@@ -1,5 +1,3 @@
-import "../../../Operator"
-
 import { AtomicNumber } from "../../../Support/AtomicNumber"
 
 export type TxnId = number

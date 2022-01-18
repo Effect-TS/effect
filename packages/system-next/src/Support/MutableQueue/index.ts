@@ -1,5 +1,3 @@
-import "../../Operator"
-
 import * as Chunk from "../../Collections/Immutable/Chunk/core"
 import { DoublyLinkedList } from "../DoublyLinkedList"
 

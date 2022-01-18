@@ -1,5 +1,3 @@
-import "../../../Operator"
-
 import * as St from "../../../Structural"
 
 export type TExit<A, B> = Fail<A> | Succeed<B> | Retry | Die

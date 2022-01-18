@@ -1,5 +1,3 @@
-import "../../Operator"
-
 import * as L from "../../Collections/Immutable/List"
 import type { Predicate } from "../../Function"
 import { DoublyLinkedList } from "../DoublyLinkedList"
