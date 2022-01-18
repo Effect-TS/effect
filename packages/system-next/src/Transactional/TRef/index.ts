@@ -1,5 +1,3 @@
-import "../../Operator"
-
 import type { HashMap } from "../../Collections/Immutable/HashMap"
 import type * as T from "../../Effect"
 import * as E from "../../Either"

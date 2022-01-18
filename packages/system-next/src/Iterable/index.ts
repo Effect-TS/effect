@@ -1,5 +1,3 @@
-import "../Operator"
-
 import * as A from "../Collections/Immutable/Array"
 import * as Tp from "../Collections/Immutable/Tuple"
 import type { Either } from "../Either"

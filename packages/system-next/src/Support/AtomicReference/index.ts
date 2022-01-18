@@ -1,5 +1,3 @@
-import "../../Operator"
-
 export class AtomicReference<A> {
   private current: A
 

@@ -1,5 +1,3 @@
-import "../Operator"
-
 export * from "./core"
 export * from "./derive"
 export * from "./excl-forEach"

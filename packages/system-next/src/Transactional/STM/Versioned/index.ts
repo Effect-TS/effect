@@ -1,5 +1,3 @@
-import "../../../Operator"
-
 export const VersionedTypeId = Symbol.for("@effect-ts/system/STM/Versioned")
 export type VersionedTypeId = typeof VersionedTypeId
 

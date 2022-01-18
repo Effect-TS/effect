@@ -1,5 +1,3 @@
-import "../../../Operator"
-
 import type { Atomic } from "../../TRef"
 import { Versioned } from "../Versioned"
 

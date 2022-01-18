@@ -1,5 +1,3 @@
-import "../Operator"
-
 // codegen:start {preset: barrel, include: ./*.ts}
 export * from "./definition"
 export * from "./reservation"
