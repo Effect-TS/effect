@@ -1,5 +1,3 @@
-import "../../../Operator"
-
 import { tuple } from "../../../Function"
 import * as I from "../../../Iterable"
 import * as O from "../../../Option"

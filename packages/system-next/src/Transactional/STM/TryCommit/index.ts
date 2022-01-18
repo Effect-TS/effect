@@ -1,5 +1,3 @@
-import "../../../Operator"
-
 import type * as T from "../../../Effect"
 import type { Journal } from "../Journal"
 

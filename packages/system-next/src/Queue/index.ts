@@ -1,5 +1,3 @@
-import "../Operator"
-
 /**
  * Ported from https://github.com/zio/zio/blob/master/core/shared/src/main/scala/zio/ZQueue.scala
  *

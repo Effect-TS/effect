@@ -1,8 +1,6 @@
 /**
  * adapted from https://github.com/gcanti/fp-ts
  */
-import "../../../Operator"
-
 import type { Predicate, Refinement } from "../../../Function/core"
 import { identity } from "../../../Function/core"
 import type { Option } from "../../../Option"

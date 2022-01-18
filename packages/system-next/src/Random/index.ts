@@ -3,7 +3,6 @@
  *
  * Copyright 2020 Michael Arnaldi and the Matechs Garage Contributors.
  */
-import "../Operator"
 
 import type { UIO } from "../Effect"
 import { chain_ } from "../Effect/operations/chain"

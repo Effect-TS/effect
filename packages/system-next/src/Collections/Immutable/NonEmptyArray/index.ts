@@ -2,7 +2,6 @@
 /**
  * Data structure which represents non-empty arrays
  */
-import "../../../Operator"
 
 import type { Predicate, Refinement } from "../../../Function"
 import type { Option } from "../../../Option"
