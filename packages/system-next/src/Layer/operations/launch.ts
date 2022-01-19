@@ -1,9 +1,7 @@
-// ets_tracing: off
-
 import type { Effect } from "../../Effect/definition"
 import { useForever } from "../../Managed/operations/useForever"
 import type { Layer } from "../definition"
-import { build } from "../definition/constructor"
+import { build } from "../memoMap"
 
 /**
  * Builds this layer and uses it until it is interrupted. This is useful when

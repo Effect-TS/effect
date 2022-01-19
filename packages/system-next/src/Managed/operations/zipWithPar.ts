@@ -17,7 +17,7 @@ export function zipWithPar_<R, E, A, R2, E2, A2, B>(
   __trace?: string
 ): Managed<R & R2, E | E2, B> {
   return mapEffect_(
-    makeManaged(T.sequential),
+    makeManaged(T.parallel),
     (parallelReleaseMap) => {
       const innerMap = locally_(
         currentReleaseMap.value,
@@ -38,9 +38,9 @@ export function zipWithPar_<R, E, A, R2, E2, A2, B>(
         }) => {
           const left = locally_(currentReleaseMap.value, l)(self.effect)
           const right = locally_(currentReleaseMap.value, r)(that.effect)
-          // We can safely discard the finalizers here because the resulting ZManaged's early
-          // release will trigger the ReleaseMap, which would release both finalizers in
-          // parallel.
+          // We can safely discard the finalizers here because the resulting
+          // Managed's early release will trigger the ReleaseMap, which would
+          // release both finalizers in parallel
           return T.zipWithPar_(left, right, ({ tuple: [, a] }, { tuple: [, b] }) =>
             f(a, b)
           )

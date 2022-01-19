@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Layer } from "../definition"
 import { catchAll_ } from "./catchAll"
 import { die } from "./die"

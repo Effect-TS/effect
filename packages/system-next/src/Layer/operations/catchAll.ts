@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import { succeedNow } from "../../Managed/operations/succeedNow"
 import type { Layer } from "../definition"
 import { foldLayer_ } from "./foldLayer"

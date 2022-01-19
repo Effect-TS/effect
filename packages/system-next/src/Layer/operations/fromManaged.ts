@@ -1,14 +1,28 @@
-// ets_tracing: off
-
 import type { Has, Tag } from "../../Has"
 import type { Managed } from "../../Managed"
+import { chain_ } from "../../Managed/operations/chain"
+import type { Layer } from "../definition"
 import { ILayerManaged } from "../definition"
-import type { Layer } from "../definition/base"
+import { environmentFor } from "./_internal/environmentFor"
 
 /**
  * Constructs a layer from a managed resource.
  */
+export function fromManaged_<R, E, T>(
+  resource: Managed<R, E, T>,
+  has: Tag<T>
+): Layer<R, E, Has<T>> {
+  return new ILayerManaged(chain_(resource, (a) => environmentFor(has, a))).setKey(
+    has.key
+  )
+}
+
+/**
+ * Constructs a layer from a managed resource.
+ *
+ * @ets_data_first fromManaged_
+ */
 export function fromManaged<T>(has: Tag<T>) {
-  return <R, E>(managed: Managed<R, E, Has<T>>): Layer<R, E, Has<T>> =>
-    new ILayerManaged(managed).setKey(has.key)
+  return <R, E>(resource: Managed<R, E, T>): Layer<R, E, Has<T>> =>
+    fromManaged_(resource, has)
 }

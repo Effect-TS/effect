@@ -1,7 +1,5 @@
-// ets_tracing: off
-
 import { environmentWith } from "../../Effect/operations/environmentWith"
-import type { Layer } from "../definition/base"
+import type { Layer } from "../definition"
 import { fromRawEffect } from "./fromRawEffect"
 
 /**
