@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import { environmentWith } from "../../../Effect/operations/environmentWith"
 import type { Has, Tag } from "../../../Has"
 import { mergeEnvironments } from "../../../Has"

@@ -1,9 +1,7 @@
-// ets_tracing: off
-
 import type { Effect } from "../../Effect/definition/base"
 import { fromEffect } from "../../Managed/operations/fromEffect"
-import type { Layer } from "../definition/base"
-import { ILayerManaged } from "../definition/primitives"
+import type { Layer } from "../definition"
+import { ILayerManaged } from "../definition"
 
 /**
  * Creates a layer from an effect
