@@ -52,6 +52,8 @@ export abstract class STM<R, E, A> {
   readonly [_A]: () => A
 }
 
+export type USTM<A> = STM<unknown, never, A>
+
 export const STMEffectTypeId = Symbol.for("@effect-ts/system/STM/Effect")
 export type STMEffectTypeId = typeof STMEffectTypeId
 

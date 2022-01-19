@@ -1,4 +1,7 @@
 import { RuntimeError } from "../../Cause"
+import { fill as chunkFill } from "../../Collections/Immutable/Chunk/api/fill"
+import { from as chunkFrom } from "../../Collections/Immutable/Chunk/core"
+import type { Chunk } from "../../Collections/Immutable/Chunk/definition"
 import type { Effect } from "../../Effect"
 import { absolve as absolve_1 } from "../../Effect/operations/absolve"
 import { async as effectAsync } from "../../Effect/operations/async"
@@ -40,6 +43,7 @@ export {
   succeedNow,
   succeed,
   unit,
+  USTM,
   die,
   dieWith
 } from "./_internal/primitives"
@@ -1179,4 +1183,51 @@ export function zipWith<A, R1, E1, B, C>(
   f: (a: A, b: B) => C
 ): <R, E>(self: P.STM<R, E, A>) => P.STM<R1 & R, E | E1, C> {
   return (self) => P.chain_(self, (a) => P.map_(that, (b) => f(a, b)))
+}
+
+/**
+ * Replicates the given effect n times. If 0 or negative numbers are given, an
+ * empty `Iterable` will return.
+ */
+export function replicate_<R, E, A>(
+  that: P.STM<R, E, A>,
+  n: number
+): Chunk<P.STM<R, E, A>> {
+  return chunkFill(n, () => that)
+}
+
+/**
+ * Replicates the given effect n times. If 0 or negative numbers are given, an
+ * empty `Iterable` will return.
+ *
+ * @ets_data_first replicate_
+ */
+export function replicate(n: number) {
+  return <R, E, A>(that: P.STM<R, E, A>) => replicate_(that, n)
+}
+
+/**
+ * Collects all the transactional effects in a collection, returning a single
+ * transactional effect that produces a collection of values.
+ */
+export function collectAll<R, E, A>(
+  input: Iterable<P.STM<R, E, A>>
+): P.STM<R, E, Chunk<A>> {
+  return P.map_(forEach_(input, identity), chunkFrom)
+}
+
+/**
+ * Lifts an `Option` into a `STM` but preserves the error as an option in the error channel, making it easier to compose
+ * in some scenarios.
+ */
+export function fromOption<A>(o: O.Option<A>): P.STM<unknown, O.Option<never>, A> {
+  return o._tag === "None" ? P.fail(() => O.none) : P.succeed(() => o.value)
+}
+
+/**
+ * Lifts a nullable value into a `STM` but preserves the error as an option in the error channel, making it easier to compose
+ * in some scenarios.
+ */
+export function fromNullable<A>(o: A): P.STM<unknown, O.Option<never>, NonNullable<A>> {
+  return fromOption(O.fromNullable(o))
 }
