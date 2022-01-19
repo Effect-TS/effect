@@ -1,10 +1,8 @@
-// ets_tracing: off
-
 import type { Managed } from "../../Managed/definition"
 import { map_ } from "../../Managed/operations/map"
 import { memoize_ } from "../../Managed/operations/memoize"
 import type { Layer } from "../definition"
-import { build } from "../definition/constructor"
+import { build } from "../memoMap"
 import { fromRawManaged } from "./fromRawManaged"
 
 /**

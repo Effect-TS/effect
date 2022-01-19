@@ -1,8 +1,6 @@
-// ets_tracing: off
-
 import type { Cause } from "../../Cause"
 import { failCause as managedFailCause } from "../../Managed/operations/failCause"
-import type { Layer } from "../definition/base"
+import type { Layer } from "../definition"
 import { fromRawManaged } from "./fromRawManaged"
 
 /**

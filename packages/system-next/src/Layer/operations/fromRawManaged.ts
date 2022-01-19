@@ -1,8 +1,6 @@
-// ets_tracing: off
-
 import type { Managed } from "../../Managed/definition"
-import type { Layer } from "../definition/base"
-import { ILayerManaged } from "../definition/primitives"
+import type { Layer } from "../definition"
+import { ILayerManaged } from "../definition"
 
 /**
  * Creates a layer from a managed environment

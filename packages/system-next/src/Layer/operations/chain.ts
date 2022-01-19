@@ -1,5 +1,3 @@
-// ets_tracing: off
-
 import type { Layer } from "../definition"
 import { fail } from "./fail"
 import { foldLayer_ } from "./foldLayer"

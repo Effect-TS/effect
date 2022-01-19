@@ -1,7 +1,5 @@
-// ets_tracing: off
-
 import * as Cause from "../../Cause/definition"
-import type { Layer } from "../definition/base"
+import type { Layer } from "../definition"
 import { failCause } from "./failCause"
 
 /**

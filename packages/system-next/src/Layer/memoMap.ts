@@ -1,36 +1,45 @@
-// ets_tracing: off
-
-import * as Map from "../../Collections/Immutable/Map"
-import * as Tp from "../../Collections/Immutable/Tuple"
-import type { IO, UIO } from "../../Effect/definition/base"
-import { chain } from "../../Effect/operations/chain"
-import * as DoEffect from "../../Effect/operations/do"
-import { environment } from "../../Effect/operations/environment"
-import * as ExecutionStrategy from "../../Effect/operations/ExecutionStrategy"
-import { exit } from "../../Effect/operations/exit"
-import { failCause } from "../../Effect/operations/failCause"
-import { flatten } from "../../Effect/operations/flatten"
-import { uninterruptibleMask } from "../../Effect/operations/interruption"
-import { map } from "../../Effect/operations/map"
-import { onExit_ } from "../../Effect/operations/onExit"
-import { succeed } from "../../Effect/operations/succeed"
-import { tap } from "../../Effect/operations/tap"
-import { unit } from "../../Effect/operations/unit"
-import { whenEffect_ } from "../../Effect/operations/whenEffect"
-import type { Exit } from "../../Exit"
-import { currentReleaseMap } from "../../FiberRef/definition/concrete"
-import { get } from "../../FiberRef/operations/get"
-import { locally_ } from "../../FiberRef/operations/locally"
-import { pipe } from "../../Function"
-import * as M from "../../Managed"
-import * as ReleaseMap from "../../Managed/ReleaseMap"
-import * as Finalizer from "../../Managed/ReleaseMap/finalizer"
-import * as Promise from "../../Promise"
-import * as Ref from "../../Ref/Synchronized"
-import { matchTag_ } from "../../Utils"
-import type { Layer } from "../definition"
-import { LayerHashSym } from "../definition"
-import { instruction } from "./primitives"
+import * as Map from "../Collections/Immutable/Map"
+import * as Tp from "../Collections/Immutable/Tuple"
+import type { IO, UIO } from "../Effect/definition/base"
+import { chain } from "../Effect/operations/chain"
+import * as DoEffect from "../Effect/operations/do"
+import * as ExecutionStrategy from "../Effect/operations/ExecutionStrategy"
+import { exit } from "../Effect/operations/exit"
+import { failCause } from "../Effect/operations/failCause"
+import { flatten } from "../Effect/operations/flatten"
+import { uninterruptibleMask } from "../Effect/operations/interruption"
+import { map } from "../Effect/operations/map"
+import { onExit_ } from "../Effect/operations/onExit"
+import { succeed } from "../Effect/operations/succeed"
+import { succeedNow } from "../Effect/operations/succeedNow"
+import { tap } from "../Effect/operations/tap"
+import { unit } from "../Effect/operations/unit"
+import { whenEffect_ } from "../Effect/operations/whenEffect"
+import type { Exit } from "../Exit"
+import { currentReleaseMap } from "../FiberRef/definition/data"
+import { get } from "../FiberRef/operations/get"
+import { locally_ } from "../FiberRef/operations/locally"
+import { pipe } from "../Function"
+import type { Managed } from "../Managed/definition"
+import { managedApply } from "../Managed/definition"
+import {
+  chain as chainManaged,
+  chain_ as chainManaged_
+} from "../Managed/operations/chain"
+import * as DoManaged from "../Managed/operations/do"
+import { foldCauseManaged } from "../Managed/operations/foldCauseManaged"
+import { fromEffect as fromEffectManaged } from "../Managed/operations/fromEffect"
+import { provideEnvironment_ as provideEnvironmentManaged_ } from "../Managed/operations/provideEnvironment"
+import { succeed as succeedManaged } from "../Managed/operations/succeed"
+import { zipWith as zipWithManaged } from "../Managed/operations/zipWith"
+import { zipWithPar as zipWithParManaged } from "../Managed/operations/zipWithPar"
+import * as ReleaseMap from "../Managed/ReleaseMap"
+import * as Finalizer from "../Managed/ReleaseMap/finalizer"
+import * as Promise from "../Promise"
+import * as Ref from "../Ref/Synchronized"
+import { matchTag_ } from "../Utils"
+import type { Layer } from "./definition"
+import { instruction, LayerHashSym } from "./definition"
 
 /**
  * A `MemoMap` memoizes layers.
@@ -47,8 +56,8 @@ export class MemoMap {
    * returns it. Otherwise, obtains the layer, stores it in the memo map, and
    * adds a finalizer to the outer `Managed`.
    */
-  getOrElseMemoize<R, E, A>(layer: Layer<R, E, A>): M.Managed<R, E, A> {
-    return M.managedApply(
+  getOrElseMemoize<R, E, A>(layer: Layer<R, E, A>): Managed<R, E, A> {
+    return managedApply(
       pipe(
         this.ref,
         Ref.modifyEffect((m) => {
@@ -79,7 +88,7 @@ export class MemoMap {
                 )
               )
 
-              return succeed(() => Tp.tuple(cached, m))
+              return succeedNow(Tp.tuple(cached, m))
             }
             case "None": {
               return pipe(
@@ -91,7 +100,6 @@ export class MemoMap {
                   uninterruptibleMask(({ restore }) =>
                     pipe(
                       DoEffect.do,
-                      DoEffect.bind("r", () => environment<R>()),
                       DoEffect.bind("outerReleaseMap", () =>
                         get(currentReleaseMap.value)
                       ),
@@ -101,9 +109,8 @@ export class MemoMap {
                           restore(
                             locally_(
                               currentReleaseMap.value,
-                              innerReleaseMap,
-                              M.chain_(scope(layer), (_) => _(this)).effect
-                            )
+                              innerReleaseMap
+                            )(chainManaged_(scope(layer), (_) => _(this)).effect)
                           ),
                           exit,
                           chain((exit) => {
@@ -218,57 +225,59 @@ export function makeMemoMap(): UIO<MemoMap> {
 export function build<R, E, A>(
   self: Layer<R, E, A>,
   __trace?: string
-): M.Managed<R, E, A> {
+): Managed<R, E, A> {
   return pipe(
-    M.do,
-    M.bind("memoMap", () => M.fromEffect(makeMemoMap())),
-    M.bind("run", () => scope(self)),
-    M.chain(({ memoMap, run }) => run(memoMap))
+    DoManaged.do,
+    DoManaged.bind("memoMap", () => fromEffectManaged(makeMemoMap())),
+    DoManaged.bind("run", () => scope(self)),
+    chainManaged(({ memoMap, run }) => run(memoMap))
   )
 }
 
 export function scope<R, E, A>(
   self: Layer<R, E, A>,
   __trace?: string
-): M.Managed<unknown, never, (_: MemoMap) => M.Managed<R, E, A>> {
+): Managed<unknown, never, (_: MemoMap) => Managed<R, E, A>> {
   return matchTag_(instruction(self), {
     LayerFold: (_) =>
-      M.succeed(
+      succeedManaged(
         () => (memoMap: MemoMap) =>
           pipe(
             memoMap.getOrElseMemoize(_.self),
-            M.foldCauseManaged(
+            foldCauseManaged(
               (e) => memoMap.getOrElseMemoize(_.failure(e)),
               (r) => memoMap.getOrElseMemoize(_.success(r))
             )
           )
       ),
-    LayerFresh: (_) => M.succeed(() => () => build(_.self)),
-    LayerManaged: (_) => M.succeed(() => () => _.self),
+    LayerFresh: (_) => succeedManaged(() => () => build(_.self)),
+    LayerManaged: (_) => succeedManaged(() => () => _.self),
     LayerSuspend: (_) =>
-      M.succeed(() => (memoMap: MemoMap) => memoMap.getOrElseMemoize(_.self())),
+      succeedManaged(() => (memoMap: MemoMap) => memoMap.getOrElseMemoize(_.self())),
     LayerTo: (_) =>
-      M.succeed(
+      succeedManaged(
         () => (memoMap: MemoMap) =>
           pipe(
             memoMap.getOrElseMemoize(_.self),
-            M.chain((r) => M.provideEnvironment_(memoMap.getOrElseMemoize(_.that), r))
+            chainManaged((r) =>
+              provideEnvironmentManaged_(memoMap.getOrElseMemoize(_.that), r)
+            )
           )
       ),
     LayerZipWith: (_) =>
-      M.succeed(
+      succeedManaged(
         () => (memoMap: MemoMap) =>
           pipe(
             memoMap.getOrElseMemoize(_.self),
-            M.zipWith(memoMap.getOrElseMemoize(_.that), _.f)
+            zipWithManaged(memoMap.getOrElseMemoize(_.that), _.f)
           )
       ),
     LayerZipWithPar: (_) =>
-      M.succeed(
+      succeedManaged(
         () => (memoMap: MemoMap) =>
           pipe(
             memoMap.getOrElseMemoize(_.self),
-            M.zipWithPar(memoMap.getOrElseMemoize(_.that), _.f)
+            zipWithParManaged(memoMap.getOrElseMemoize(_.that), _.f)
           )
       )
   })
