@@ -1,9 +1,7 @@
 import type { Cause } from "../Cause/definition"
 import { _E, _RIn, _ROut } from "../Effect/definition/commons"
 import type { Managed } from "../Managed/definition"
-import { environment } from "../Managed/operations/environment"
 import { AtomicReference } from "../Support/AtomicReference"
-import type { Erase } from "../Utils"
 
 export const LayerHashSym = Symbol.for("@effect-ts/system/Layer")
 export type LayerHashSym = typeof LayerHashSym
@@ -38,50 +36,6 @@ export abstract class Layer<RIn, E, ROut> {
   setKey(hash: PropertyKey) {
     this[LayerHashSym].set(hash)
     return this
-  }
-
-  /**
-   * Combines this layer with the specified layer, producing a new layer that
-   * has the inputs and outputs of both.
-   */
-  ["++"]<RIn2, E2, ROut2>(
-    that: Layer<RIn2, E2, ROut2>
-  ): Layer<RIn & RIn2, E | E2, ROut & ROut2> {
-    return new ILayerZipWithPar(this, that, (a, b) => ({ ...a, ...b }))
-  }
-
-  /**
-   * Feeds the output services of this builder into the input of the specified
-   * builder, resulting in a new builder with the inputs of this builder, and
-   * the outputs of the specified builder.
-   */
-  [">=>"]<E2, ROut2>(that: Layer<ROut, E2, ROut2>): Layer<RIn, E | E2, ROut2> {
-    return new ILayerTo(this, that)
-  }
-
-  /**
-   * Feeds the output services of this builder into the input of the specified
-   * builder, resulting in a new builder with the inputs of this builder as
-   * well as any leftover inputs, and the outputs of the specified builder.
-   */
-  [">>>"]<RIn2, E2, ROut2>(
-    that: Layer<RIn2, E2, ROut2>
-  ): Layer<RIn & Erase<RIn2, ROut>, E | E2, ROut2>
-  [">>>"]<RIn2, E2, ROut2>(
-    that: Layer<RIn2 & ROut, E2, ROut2>
-  ): Layer<RIn & RIn2, E | E2, ROut2> {
-    return new ILayerTo(new ILayerManaged(environment<RIn2>())["++"](this), that)
-  }
-
-  /**
-   * Feeds the output services of this layer into the input of the specified
-   * layer, resulting in a new layer with the inputs of this layer, and the
-   * outputs of both layers.
-   */
-  [">+>"]<RIn2, E2, ROut2>(
-    that: Layer<RIn2 & ROut, E2, ROut2>
-  ): Layer<RIn & Erase<ROut & RIn2, ROut>, E | E2, ROut & ROut2> {
-    return this["++"](this[">>>"](that))
   }
 }
 

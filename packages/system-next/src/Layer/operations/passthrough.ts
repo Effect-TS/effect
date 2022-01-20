@@ -1,4 +1,5 @@
 import type { Layer } from "../definition"
+import { and_ } from "./and"
 import { environment } from "./environment"
 
 /**
@@ -8,5 +9,5 @@ import { environment } from "./environment"
 export function passthrough<RIn, E, ROut>(
   self: Layer<RIn, E, ROut>
 ): Layer<RIn, E, RIn & ROut> {
-  return environment<RIn>()["++"](self)
+  return and_(environment<RIn>(), self)
 }
