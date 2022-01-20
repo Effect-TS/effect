@@ -1,5 +1,5 @@
-import { ILayerZipWithPar } from ".."
 import type { Layer } from "../definition"
+import { ILayerZipWithPar } from "../definition"
 
 /**
  * Combines this layer with the specified layer, producing a new layer that
