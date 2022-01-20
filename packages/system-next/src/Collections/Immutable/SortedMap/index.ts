@@ -1,5 +1,4 @@
-import { pipe } from "@effect-ts/system/Function"
-
+import { pipe } from "../../../Function"
 import * as It from "../../../Iterable"
 import type * as O from "../../../Option"
 import type * as Ord from "../../../Ord"
