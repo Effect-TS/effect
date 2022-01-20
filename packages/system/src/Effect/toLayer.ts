@@ -1,7 +1,7 @@
 // ets_tracing: off
 
 import type { Has, Tag } from "../Has"
-import * as L from "../Layer"
+import * as L from "../Layer/core"
 import type { Effect } from "./effect"
 
 /**

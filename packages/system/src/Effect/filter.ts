@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as Chunk from "../Collections/Immutable/Chunk"
+import { compact } from "../Collections/Immutable/Chunk/api/compact"
 import { pipe } from "../Function"
 import * as I from "../Iterable"
 import * as O from "../Option"
@@ -57,7 +57,7 @@ export function filterPar_<A, R, E>(
   return pipe(
     as,
     forEach.forEachPar((a) => map.map_(f(a), (b) => (b ? O.some(a) : O.none)), __trace),
-    map.map(Chunk.compact)
+    map.map(compact)
   )
 }
 
@@ -93,7 +93,7 @@ export function filterParN_<A, R, E>(
       (a) => map.map_(f(a), (b) => (b ? O.some(a) : O.none)),
       __trace
     ),
-    map.map(Chunk.compact)
+    map.map(compact)
   )
 }
 

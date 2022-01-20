@@ -1,6 +1,7 @@
 // ets_tracing: off
 
-import * as Chunk from "../Collections/Immutable/Chunk"
+import { unzip } from "../Collections/Immutable/Chunk/api/unzip"
+import * as Chunk from "../Collections/Immutable/Chunk/core"
 import * as Tp from "../Collections/Immutable/Tuple"
 import type { ExecutionStrategy } from "../Effect/ExecutionStrategy"
 import { sequential } from "../Effect/ExecutionStrategy"
@@ -109,7 +110,7 @@ export function forEachUnit_<R, E, A, B>(
       (result) => {
         const {
           tuple: [fins]
-        } = Chunk.unzip(result)
+        } = unzip(result)
         return Tp.tuple<[Finalizer, void]>(
           (e) => T.forEach_(Chunk.reverse(fins), (f) => f(e), __trace),
           undefined

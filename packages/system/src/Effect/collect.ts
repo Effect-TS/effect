@@ -1,6 +1,7 @@
 // ets_tracing: off
 
-import * as Chunk from "../Collections/Immutable/Chunk"
+import { compact } from "../Collections/Immutable/Chunk/api/compact"
+import type * as Chunk from "../Collections/Immutable/Chunk/core"
 import type { Option } from "../Option"
 import type { Effect } from "./effect"
 import { forEach_, forEachPar_, forEachParN_ } from "./excl-forEach"
@@ -31,7 +32,7 @@ export function collect_<A, R, E, B>(
 ): Effect<R, E, Chunk.Chunk<B>> {
   return map_(
     forEach_(self, (a) => optional(f(a)), __trace),
-    Chunk.compact
+    compact
   )
 }
 
@@ -60,7 +61,7 @@ export function collectPar_<A, R, E, B>(
 ): Effect<R, E, Chunk.Chunk<B>> {
   return map_(
     forEachPar_(self, (a) => optional(f(a)), __trace),
-    Chunk.compact
+    compact
   )
 }
 
@@ -78,7 +79,7 @@ export function collectParN_<A, R, E, B>(
 ): Effect<R, E, Chunk.Chunk<B>> {
   return map_(
     forEachParN_(self, n, (a) => optional(f(a)), __trace),
-    Chunk.compact
+    compact
   )
 }
 

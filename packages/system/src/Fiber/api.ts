@@ -1,7 +1,8 @@
 // ets_tracing: off
 
 import * as Cause from "../Cause/core"
-import * as Chunk from "../Collections/Immutable/Chunk"
+import { reduceRight as chunkReduceRight } from "../Collections/Immutable/Chunk/api/reduceRight"
+import * as Chunk from "../Collections/Immutable/Chunk/core"
 import * as E from "../Either"
 import * as Exit from "../Exit/api"
 import { constant, pipe } from "../Function"
@@ -271,7 +272,7 @@ export function collectAll<E, A>(fibers: Iterable<Fiber.Fiber<E, A>>) {
       pipe(
         T.forEach_(fibers, (f) => f.interruptAs(fiberId)),
         T.map(
-          Chunk.reduceRight(
+          chunkReduceRight(
             Exit.succeed(Chunk.empty()) as Exit.Exit<E, Chunk.Chunk<A>>,
             (a, b) =>
               Exit.zipWith_(a, b, (_a, _b) => Chunk.prepend_(_b, _a), Cause.both)
@@ -281,7 +282,7 @@ export function collectAll<E, A>(fibers: Iterable<Fiber.Fiber<E, A>>) {
     poll: pipe(
       T.forEach_(fibers, (f) => f.poll),
       T.map(
-        Chunk.reduceRight(
+        chunkReduceRight(
           O.some(Exit.succeed(Chunk.empty()) as Exit.Exit<E, Chunk.Chunk<A>>),
           (a, b) =>
             O.fold_(

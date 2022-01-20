@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import type * as CK from "../../../Collections/Immutable/Chunk"
+import type * as CK from "../../../Collections/Immutable/Chunk/core"
 import type * as T from "../../../Effect"
 import * as CH from "../Channel"
-import * as SK from "../Sink"
+import * as SK from "../Sink/core"
 import type * as C from "./core"
 
 /**

@@ -2,11 +2,11 @@
 
 import type { Cause } from "../Cause"
 import { pipe } from "../Function"
-import * as P from "../Promise"
 import * as catchAllCause from "./catchAllCause"
 import { fork } from "./core"
 import * as Do from "./do"
 import type { Effect } from "./effect"
+import * as P from "./excl-forEach-promise"
 import { uninterruptibleMask } from "./interruption"
 import * as map from "./map"
 import { runtime } from "./runtime"

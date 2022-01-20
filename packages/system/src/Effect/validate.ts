@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as Chunk from "../Collections/Immutable/Chunk"
+import * as Chunk from "../Collections/Immutable/Chunk/core"
 import * as E from "../Either"
 import { absolve } from "./absolve"
 import type { Effect } from "./effect"

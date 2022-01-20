@@ -2,7 +2,9 @@
 
 import * as Tp from "../Collections/Immutable/Tuple"
 import { pipe } from "../Function"
-import * as P from "../Promise"
+import type { Promise } from "../Promise"
+import { await as promiseAwait } from "../Promise/await"
+import { make as promiseMake } from "../Promise/make"
 import * as RefM from "../RefM"
 import { fork, succeed } from "./core"
 import * as Do from "./do"
@@ -19,7 +21,7 @@ export function memoize<A, R, E, B>(
   __trace?: string
 ): UIO<(a: A) => Effect<R, E, B>> {
   return pipe(
-    RefM.makeRefM(new Map<A, P.Promise<E, B>>()),
+    RefM.makeRefM(new Map<A, Promise<E, B>>()),
     map.map(
       (ref) => (a: A) =>
         pipe(
@@ -36,14 +38,14 @@ export function memoize<A, R, E, B>(
 
                 return pipe(
                   Do.do,
-                  Do.bind("promise", () => P.make<E, B>()),
+                  Do.bind("promise", () => promiseMake<E, B>()),
                   tap.tap(({ promise }) => fork(to.to(promise)(f(a)))),
                   map.map(({ promise }) => Tp.tuple(promise, m.set(a, promise)))
                 )
               })
             )
           ),
-          Do.bind("b", ({ promise }) => P.await(promise)),
+          Do.bind("b", ({ promise }) => promiseAwait(promise)),
           map.map(({ b }) => b)
         ),
       __trace
@@ -59,7 +61,7 @@ export function memoize<A, R, E, B>(
 export function memoizeEq<A>(compare: (r: A) => (l: A) => boolean) {
   return <R, E, B>(f: (a: A) => Effect<R, E, B>): UIO<(a: A) => Effect<R, E, B>> =>
     pipe(
-      RefM.makeRefM(new Map<A, P.Promise<E, B>>()),
+      RefM.makeRefM(new Map<A, Promise<E, B>>()),
       map.map(
         (ref) => (a: A) =>
           pipe(
@@ -76,14 +78,14 @@ export function memoizeEq<A>(compare: (r: A) => (l: A) => boolean) {
 
                   return pipe(
                     Do.do,
-                    Do.bind("promise", () => P.make<E, B>()),
+                    Do.bind("promise", () => promiseMake<E, B>()),
                     tap.tap(({ promise }) => fork(to.to(promise)(f(a)))),
                     map.map(({ promise }) => Tp.tuple(promise, m.set(a, promise)))
                   )
                 })
               )
             ),
-            Do.bind("b", ({ promise }) => P.await(promise)),
+            Do.bind("b", ({ promise }) => promiseAwait(promise)),
             map.map(({ b }) => b)
           )
       )
