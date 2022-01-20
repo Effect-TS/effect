@@ -3,7 +3,6 @@ import type * as T from "../../Effect"
 import * as E from "../../Either"
 import { identity } from "../../Function"
 import * as O from "../../Option"
-import { AtomicReference } from "../../Support/AtomicReference"
 import { STMEffect } from "../STM/_internal/primitives"
 import * as STM from "../STM/core"
 import { makeEntry } from "../STM/Entry"
@@ -67,10 +66,7 @@ export class Atomic<A> implements XTRef<never, never, A, A> {
   readonly _B!: () => A
   readonly atomic: Atomic<unknown> = this as Atomic<unknown>
 
-  constructor(
-    public versioned: Versioned<A>,
-    readonly todo: AtomicReference<HashMap<TxnId, Todo>>
-  ) {}
+  constructor(public versioned: Versioned<A>, public todo: HashMap<TxnId, Todo>) {}
 
   fold<EC, ED, C, D>(
     _ea: (ea: never) => EC,
@@ -649,7 +645,7 @@ export function makeWith<A>(a: () => A): STM.STM<unknown, never, TRef<A>> {
   return new STMEffect((journal) => {
     const value = a()
     const versioned = new Versioned(value)
-    const todo = new AtomicReference(emptyTodoMap)
+    const todo = emptyTodoMap
     const tref = new Atomic(versioned, todo)
     journal.set(tref, makeEntry(tref, true))
     return tref
@@ -663,7 +659,7 @@ export function make<A>(a: A): STM.STM<unknown, never, TRef<A>> {
   return new STMEffect((journal) => {
     const value = a
     const versioned = new Versioned(value)
-    const todo = new AtomicReference(emptyTodoMap)
+    const todo = emptyTodoMap
     const tref = new Atomic(versioned, todo)
     journal.set(tref, makeEntry(tref, true))
     return tref
@@ -676,7 +672,7 @@ export function make<A>(a: A): STM.STM<unknown, never, TRef<A>> {
 export function unsafeMake<A>(a: A): TRef<A> {
   const value = a
   const versioned = new Versioned(value)
-  const todo = new AtomicReference(emptyTodoMap)
+  const todo = emptyTodoMap
   return new Atomic(versioned, todo)
 }
 

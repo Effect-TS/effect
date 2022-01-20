@@ -10,11 +10,11 @@ export function modifySome_<A, B>(
   __trace?: string
 ): T.UIO<B> {
   return T.succeed(() => {
-    const v = self.value.get
+    const v = self.value
     const o = f(v)
 
     if (o._tag === "Some") {
-      self.value.set(o.value.get(1))
+      self.value = o.value.get(1)
       return o.value.get(0)
     }
 

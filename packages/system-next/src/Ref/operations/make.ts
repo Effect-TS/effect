@@ -1,4 +1,3 @@
-import { AtomicReference } from "../../Support/AtomicReference"
 import { Atomic } from "../Atomic"
 import type { Ref } from "../definition"
 import * as T from "./_internal/effect"
@@ -11,5 +10,5 @@ export function make<A>(value: A): T.UIO<Ref<A>> {
 }
 
 export function unsafeMake<A>(value: A): Atomic<A> {
-  return new Atomic(new AtomicReference(value))
+  return new Atomic(value)
 }

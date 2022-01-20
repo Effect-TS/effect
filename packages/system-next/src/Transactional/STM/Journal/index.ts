@@ -75,11 +75,11 @@ export function collectTodos(journal: Journal): Map<TxnId, Todo> {
 
   for (const entry of journal) {
     const tref: Atomic<unknown> = entry[1].use((_) => _.tref as Atomic<unknown>)
-    const todos = tref.todo.get
+    const todos = tref.todo
     for (const todo of todos) {
       allTodos.set(todo[0], todo[1])
     }
-    tref.todo.set(emptyTodoMap)
+    tref.todo = emptyTodoMap
   }
 
   return allTodos
@@ -114,10 +114,10 @@ export function addTodo(txnId: TxnId, journal: Journal, todoEffect: Todo): boole
 
   for (const entry of journal) {
     const tref = entry[1].use((_) => _.tref as Atomic<unknown>)
-    const oldTodo = tref.todo.get
+    const oldTodo = tref.todo
     if (!HM.has_(oldTodo, txnId)) {
       const newTodo = HM.set_(oldTodo, txnId, todoEffect)
-      tref.todo.set(newTodo)
+      tref.todo = newTodo
       added = true
     }
   }

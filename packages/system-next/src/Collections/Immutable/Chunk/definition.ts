@@ -1,7 +1,6 @@
 import { _A } from "../../../Effect/definition/commons"
 import { ArrayIndexOutOfBoundsException } from "../../../GlobalExceptions"
 import * as St from "../../../Structural"
-import { AtomicNumber } from "../../../Support/AtomicNumber"
 import * as A from "../Array"
 
 export const BufferSize = 64
@@ -155,14 +154,14 @@ export abstract class ChunkInternal<A>
     const binary = this.binary && isByte(a1)
     const buffer = this.binary && binary ? alloc(BufferSize) : new Array(BufferSize)
     buffer[0] = a1
-    return new AppendN(this, buffer, 1, new AtomicNumber(1), this.binary && binary)
+    return new AppendN(this, buffer, 1, this.binary && binary)
   }
 
   prepend<A1>(a1: A1): ChunkInternal<A | A1> {
     const binary = this.binary && isByte(a1)
     const buffer = this.binary && binary ? alloc(BufferSize) : new Array(BufferSize)
     buffer[BufferSize - 1] = a1
-    return new PrependN(this, buffer, 1, new AtomicNumber(1), this.binary && binary)
+    return new PrependN(this, buffer, 1, this.binary && binary)
   }
 
   take(n: number): ChunkInternal<A> {
@@ -350,7 +349,6 @@ export class AppendN<A> extends ChunkInternal<A> {
     readonly start: ChunkInternal<A>,
     readonly buffer: Array<unknown> | Uint8Array,
     readonly bufferUsed: number,
-    readonly chain: AtomicNumber,
     readonly binary: boolean
   ) {
     super()
@@ -371,10 +369,7 @@ export class AppendN<A> extends ChunkInternal<A> {
   append<A1>(a1: A1): ChunkInternal<A | A1> {
     const binary = this.binary && isByte(a1)
 
-    if (
-      this.bufferUsed < this.buffer.length &&
-      this.chain.compareAndSet(this.bufferUsed, this.bufferUsed + 1)
-    ) {
+    if (this.bufferUsed < this.buffer.length) {
       if (this.binary && !binary) {
         const buffer = new Array(BufferSize)
         for (let i = 0; i < BufferSize; i++) {
@@ -385,7 +380,6 @@ export class AppendN<A> extends ChunkInternal<A> {
           this.start,
           buffer,
           this.bufferUsed + 1,
-          this.chain,
           this.binary && binary
         )
       }
@@ -394,20 +388,13 @@ export class AppendN<A> extends ChunkInternal<A> {
         this.start,
         this.buffer,
         this.bufferUsed + 1,
-        this.chain,
         this.binary && binary
       )
     } else {
       const buffer = this.binary && binary ? alloc(BufferSize) : new Array(BufferSize)
       buffer[0] = a1
       const chunk = array_(this.buffer as A1[]).take(this.bufferUsed)
-      return new AppendN(
-        this.start.concat(chunk),
-        buffer,
-        1,
-        new AtomicNumber(1),
-        this.binary && binary
-      )
+      return new AppendN(this.start.concat(chunk), buffer, 1, this.binary && binary)
     }
   }
 
@@ -842,7 +829,6 @@ export class PrependN<A> extends ChunkInternal<A> {
     readonly end: ChunkInternal<A>,
     readonly buffer: Array<unknown> | Uint8Array,
     readonly bufferUsed: number,
-    readonly chain: AtomicNumber,
     readonly binary: boolean
   ) {
     super()
@@ -857,24 +843,20 @@ export class PrependN<A> extends ChunkInternal<A> {
 
   prepend<A1>(a1: A1): ChunkInternal<A | A1> {
     const binary = this.binary && isByte(a1)
-    if (
-      this.bufferUsed < this.buffer.length &&
-      this.chain.compareAndSet(this.bufferUsed, this.bufferUsed + 1)
-    ) {
+    if (this.bufferUsed < this.buffer.length) {
       if (this.binary && !binary) {
         const buffer = new Array(BufferSize)
         for (let i = 0; i < BufferSize; i++) {
           buffer[i] = this.buffer[i]
         }
         buffer[BufferSize - this.bufferUsed - 1] = a1
-        return new PrependN(this.end, buffer, this.bufferUsed + 1, this.chain, false)
+        return new PrependN(this.end, buffer, this.bufferUsed + 1, false)
       }
       this.buffer[BufferSize - this.bufferUsed - 1] = a1
       return new PrependN(
         this.end,
         this.buffer,
         this.bufferUsed + 1,
-        this.chain,
         this.binary && binary
       )
     } else {
@@ -885,13 +867,7 @@ export class PrependN<A> extends ChunkInternal<A> {
           ? this.buffer.subarray(this.buffer.length - this.bufferUsed)
           : this.buffer.slice(this.buffer.length - this.bufferUsed)
       ) as ChunkInternal<A>
-      return new PrependN(
-        chunk.concat(this.end),
-        buffer,
-        1,
-        new AtomicNumber(1),
-        this.binary && binary
-      )
+      return new PrependN(chunk.concat(this.end), buffer, 1, this.binary && binary)
     }
   }
 

@@ -130,7 +130,7 @@ export const _roots = LazyValue.make(() => new Set<FiberContext<any, any>>())
 export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   readonly _tag = "Runtime"
 
-  readonly state = new AtomicReference(FiberState.initial<E, A>())
+  state = FiberState.initial<E, A>()
 
   asyncEpoch = 0
 
@@ -174,14 +174,14 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   }
 
   get status(): T.UIO<FiberStatus.Status> {
-    return T.succeed(() => this.state.get.status)
+    return T.succeed(() => this.state.status)
   }
 
   unsafeGetDescriptor(): Descriptor {
     return new Descriptor(
       this.fiberId,
-      this.state.get.status,
-      this.state.get.interruptors,
+      this.state.status,
+      this.state.interruptors,
       InterruptStatus.fromBoolean(this.unsafeIsInterruptible),
       this.scope
     )
@@ -405,7 +405,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     const interruptedCause = Cause.interrupt(fiberId)
 
     return T.suspendSucceed(() => {
-      const oldState = this.state.get
+      const oldState = this.state
 
       if (
         oldState._tag === "Executing" &&
@@ -422,7 +422,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
           oldState.mailbox
         )
 
-        this.state.set(newState)
+        this.state = newState
 
         const interrupt = T.failCause(interruptedCause)
         const asyncCanceler = oldState.asyncCanceler.asyncCanceler
@@ -441,7 +441,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
           oldState.mailbox
         )
 
-        this.state.set(newState)
+        this.state = newState
       }
 
       return this.await
@@ -449,18 +449,16 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   }
 
   private unsafeSetInterrupting(value: boolean): void {
-    const oldState = this.state.get
+    const oldState = this.state
 
     if (oldState._tag === "Executing") {
-      this.state.set(
-        new FiberState.Executing(
-          FiberStatus.withInterrupting(value)(oldState.status),
-          oldState.observers,
-          oldState.suppressed,
-          oldState.interruptors,
-          oldState.asyncCanceler,
-          oldState.mailbox
-        )
+      this.state = new FiberState.Executing(
+        FiberStatus.withInterrupting(value)(oldState.status),
+        oldState.observers,
+        oldState.suppressed,
+        oldState.interruptors,
+        oldState.asyncCanceler,
+        oldState.mailbox
       )
     }
   }
@@ -477,7 +475,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   }
 
   get unsafeIsInterrupted(): boolean {
-    return HS.size(this.state.get.interruptors) > 0
+    return HS.size(this.state.interruptors) > 0
   }
 
   get unsafeIsInterruptible(): boolean {
@@ -485,7 +483,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   }
 
   get unsafeIsInterrupting(): boolean {
-    return FiberState.isInterrupting(this.state.get)
+    return FiberState.isInterrupting(this.state)
   }
 
   get unsafeShouldInterrupt(): boolean {
@@ -566,20 +564,18 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   // -----------------------------------------------------------------------------
 
   unsafeAddObserverMaybe(k: Callback<never, Ex.Exit<E, A>>): Ex.Exit<E, A> | undefined {
-    const oldState = this.state.get
+    const oldState = this.state
     switch (oldState._tag) {
       case "Executing": {
         const observers = [k, ...oldState.observers]
 
-        this.state.set(
-          new FiberState.Executing(
-            oldState.status,
-            observers,
-            oldState.suppressed,
-            oldState.interruptors,
-            oldState.asyncCanceler,
-            oldState.mailbox
-          )
+        this.state = new FiberState.Executing(
+          oldState.status,
+          observers,
+          oldState.suppressed,
+          oldState.interruptors,
+          oldState.asyncCanceler,
+          oldState.mailbox
         )
 
         return undefined
@@ -591,20 +587,18 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   }
 
   unsafeRemoveObserver(k: Callback<never, Ex.Exit<E, A>>): void {
-    const oldState = this.state.get
+    const oldState = this.state
 
     if (oldState._tag === "Executing") {
       const observers = oldState.observers.filter((o) => o !== k)
 
-      this.state.set(
-        new FiberState.Executing(
-          oldState.status,
-          observers,
-          oldState.suppressed,
-          oldState.interruptors,
-          oldState.asyncCanceler,
-          oldState.mailbox
-        )
+      this.state = new FiberState.Executing(
+        oldState.status,
+        observers,
+        oldState.suppressed,
+        oldState.interruptors,
+        oldState.asyncCanceler,
+        oldState.mailbox
       )
     }
   }
@@ -642,7 +636,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
   private unsafeAddSuppressed(cause: Cause.Cause<never>): void {
     if (!Cause.isEmpty(cause)) {
-      const oldState = this.state.get
+      const oldState = this.state
 
       if (oldState._tag === "Executing") {
         const newState = new FiberState.Executing(
@@ -654,13 +648,13 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
           oldState.mailbox
         )
 
-        this.state.set(newState)
+        this.state = newState
       }
     }
   }
 
   private unsafeClearSuppressed(): Cause.Cause<never> {
-    const oldState = this.state.get
+    const oldState = this.state
 
     switch (oldState._tag) {
       case "Executing": {
@@ -673,7 +667,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
           oldState.mailbox
         )
 
-        this.state.set(newState)
+        this.state = newState
 
         const interruptorsCause = FiberState.interruptorsCause(oldState)
 
@@ -694,7 +688,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   }
 
   unsafePoll(): O.Option<Ex.Exit<E, A>> {
-    const state = this.state.get
+    const state = this.state
     return state._tag === "Done" ? O.some(state.value) : O.none
   }
 
@@ -736,7 +730,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     blockingOn: FiberId.FiberId,
     trace: TE.TraceElement
   ): void {
-    const oldState = this.state.get
+    const oldState = this.state
 
     if (oldState._tag === "Executing" && oldState.asyncCanceler._tag === "Empty") {
       const newStatus = new FiberStatus.Suspended(
@@ -756,12 +750,12 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
         oldState.mailbox
       )
 
-      this.state.set(newState)
+      this.state = newState
     }
   }
 
   unsafeExitAsync(epoch: number): boolean {
-    const oldState = this.state.get
+    const oldState = this.state
 
     if (
       oldState._tag === "Executing" &&
@@ -777,7 +771,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
         oldState.mailbox
       )
 
-      this.state.set(newState)
+      this.state = newState
 
       return true
     }
@@ -797,7 +791,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     epoch: number,
     asyncCanceler0: T.Effect<any, any, any> | undefined
   ): void {
-    const oldState = this.state.get
+    const oldState = this.state
     const asyncCanceler = asyncCanceler0 == null ? T.unit : asyncCanceler0
 
     if (
@@ -806,15 +800,13 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
       oldState.asyncCanceler._tag === "Pending" &&
       epoch === oldState.status.epoch
     ) {
-      this.state.set(
-        new FiberState.Executing(
-          oldState.status,
-          oldState.observers,
-          oldState.suppressed,
-          oldState.interruptors,
-          new CancelerState.Registered(asyncCanceler),
-          oldState.mailbox
-        )
+      this.state = new FiberState.Executing(
+        oldState.status,
+        oldState.observers,
+        oldState.suppressed,
+        oldState.interruptors,
+        new CancelerState.Registered(asyncCanceler),
+        oldState.mailbox
       )
     }
     if (
@@ -872,22 +864,20 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   }
 
   unsafeEvalOn(effect: T.UIO<any>): boolean {
-    const oldState = this.state.get
+    const oldState = this.state
 
     switch (oldState._tag) {
       case "Executing": {
         const newMailbox =
           oldState.mailbox == null ? effect : T.chain_(oldState.mailbox, () => effect)
 
-        this.state.set(
-          new FiberState.Executing(
-            oldState.status,
-            oldState.observers,
-            oldState.suppressed,
-            oldState.interruptors,
-            oldState.asyncCanceler,
-            newMailbox
-          )
+        this.state = new FiberState.Executing(
+          oldState.status,
+          oldState.observers,
+          oldState.suppressed,
+          oldState.interruptors,
+          oldState.asyncCanceler,
+          newMailbox
         )
 
         return true
@@ -899,7 +889,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   }
 
   unsafeTryDone(exit: Ex.Exit<E, A>): T.Instruction | undefined {
-    const oldState = this.state.get
+    const oldState = this.state
 
     switch (oldState._tag) {
       case "Executing": {
@@ -914,7 +904,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
             undefined
           )
 
-          this.state.set(newState)
+          this.state = newState
 
           this.unsafeSetInterrupting(true)
 
@@ -932,7 +922,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
               )
 
           //  We are truly "unsafeTryDone" because the scope has been closed
-          this.state.set(new FiberState.Done(newExit))
+          this.state = new FiberState.Done(newExit)
 
           this.unsafeReportUnhandled(newExit)
           this.unsafeNotifyObservers(newExit, oldState.observers)
@@ -1014,7 +1004,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   }
 
   unsafeDrainMailbox(): T.UIO<any> | undefined {
-    const oldState = this.state.get
+    const oldState = this.state
 
     switch (oldState._tag) {
       case "Executing": {
@@ -1027,7 +1017,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
           undefined
         )
 
-        this.state.set(newState)
+        this.state = newState
 
         return oldState.mailbox
       }

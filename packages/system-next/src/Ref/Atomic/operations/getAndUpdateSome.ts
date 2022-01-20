@@ -8,10 +8,10 @@ export function getAndUpdateSome_<A>(
   __trace?: string
 ): T.UIO<A> {
   return T.succeed(() => {
-    const v = self.value.get
+    const v = self.value
     const o = f(v)
     if (o._tag === "Some") {
-      self.value.set(o.value)
+      self.value = o.value
     }
     return v
   }, __trace)

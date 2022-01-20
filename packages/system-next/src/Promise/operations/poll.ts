@@ -12,7 +12,7 @@ export function poll<E, A>(
   __trace?: string
 ): UIO<O.Option<IO<E, A>>> {
   return succeed(() => {
-    const state = self.state.get
+    const state = self.state
     switch (state._tag) {
       case "Pending": {
         return O.none

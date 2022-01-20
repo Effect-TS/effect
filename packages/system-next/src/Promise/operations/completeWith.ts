@@ -21,14 +21,14 @@ export function completeWith_<E, A>(
   __trace?: string
 ): UIO<boolean> {
   return succeed(() => {
-    const state = self.state.get
+    const state = self.state
 
     switch (state._tag) {
       case "Done": {
         return false
       }
       case "Pending": {
-        self.state.set(new Done(io))
+        self.state = new Done(io)
         state.joiners.forEach((f) => {
           f(io)
         })

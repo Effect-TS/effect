@@ -7,8 +7,8 @@ export function getAndUpdate_<A>(
   __trace?: string
 ): T.UIO<A> {
   return T.succeed(() => {
-    const v = self.value.get
-    self.value.set(f(v))
+    const v = self.value
+    self.value = f(v)
     return v
   }, __trace)
 }

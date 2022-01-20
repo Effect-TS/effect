@@ -7,5 +7,5 @@ import type { Promise } from "../definition"
  * already been completed with a value or an error and false otherwise.
  */
 export function isDone<E, A>(self: Promise<E, A>, __trace?: string): UIO<boolean> {
-  return succeed(() => self.state.get._tag === "Done")
+  return succeed(() => self.state._tag === "Done")
 }

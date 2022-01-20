@@ -8,14 +8,14 @@ import { interruptJoiner_ } from "./interruptJoiner"
 function wait<E, A>(self: Promise<E, A>, __trace?: string): IO<E, A> {
   return asyncInterruptBlockingOn(
     (k) => {
-      const state = self.state.get
+      const state = self.state
 
       switch (state._tag) {
         case "Done": {
           return E.right(state.value)
         }
         case "Pending": {
-          self.state.set(new Pending([k, ...state.joiners]))
+          self.state = new Pending([k, ...state.joiners])
           return E.left(interruptJoiner_(self, k))
         }
       }

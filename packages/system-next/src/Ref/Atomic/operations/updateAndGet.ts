@@ -7,8 +7,8 @@ export function updateAndGet_<A>(
   __trace?: string
 ): T.UIO<A> {
   return T.succeed(() => {
-    self.value.set(f(self.value.get))
-    return self.value.get
+    self.value = f(self.value)
+    return self.value
   }, __trace)
 }
 

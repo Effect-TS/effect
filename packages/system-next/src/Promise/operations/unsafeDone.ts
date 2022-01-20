@@ -6,10 +6,10 @@ import { Done } from "../state"
  * Unsafe version of `done`.
  */
 export function unsafeDone_<E, A>(self: Promise<E, A>, io: IO<E, A>): void {
-  const state = self.state.get
+  const state = self.state
 
   if (state._tag === "Pending") {
-    self.state.set(new Done(io))
+    self.state = new Done(io)
 
     Array.from(state.joiners)
       .reverse()

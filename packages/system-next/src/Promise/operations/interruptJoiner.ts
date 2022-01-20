@@ -9,10 +9,10 @@ export function interruptJoiner_<E, A>(
   __trace?: string
 ): Canceler<unknown> {
   return succeed(() => {
-    const state = self.state.get
+    const state = self.state
 
     if (state._tag === "Pending") {
-      self.state.set(new Pending(state.joiners.filter((j) => j !== joiner)))
+      self.state = new Pending(state.joiners.filter((j) => j !== joiner))
     }
   }, __trace)
 }

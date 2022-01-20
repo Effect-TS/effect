@@ -7,7 +7,7 @@ export function update_<A>(
   __trace?: string
 ): T.UIO<void> {
   return T.succeed(() => {
-    self.value.set(f(self.value.get))
+    self.value = f(self.value)
   }, __trace)
 }
 

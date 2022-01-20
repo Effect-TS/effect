@@ -8,9 +8,9 @@ export function modify_<A, B>(
   __trace?: string
 ): T.UIO<B> {
   return T.succeed(() => {
-    const v = self.value.get
+    const v = self.value
     const o = f(v)
-    self.value.set(o.get(1))
+    self.value = o.get(1)
     return o.get(0)
   }, __trace)
 }

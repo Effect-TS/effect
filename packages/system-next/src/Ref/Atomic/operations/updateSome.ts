@@ -8,9 +8,9 @@ export function updateSome_<A>(
   __trace?: string
 ): T.UIO<void> {
   return T.succeed(() => {
-    const o = f(self.value.get)
+    const o = f(self.value)
     if (o._tag === "Some") {
-      self.value.set(o.value)
+      self.value = o.value
     }
   }, __trace)
 }
