@@ -1,5 +1,3 @@
-
-
 import type { Cause } from "../../Cause"
 import type { Layer } from "../definition"
 import { ILayerFold } from "../definition"
