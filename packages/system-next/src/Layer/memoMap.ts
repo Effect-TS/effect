@@ -134,13 +134,13 @@ export class MemoMap {
                                   tap(() =>
                                     Ref.set_(finalizerRef, (exit) =>
                                       whenEffect_(
-                                        Ref.modify_(observers, (n) =>
-                                          Tp.tuple(n === 1, n - 1)
-                                        ),
                                         ReleaseMap.releaseAll_(
                                           innerReleaseMap,
                                           exit,
                                           ExecutionStrategy.sequential
+                                        ),
+                                        Ref.modify_(observers, (n) =>
+                                          Tp.tuple(n === 1, n - 1)
                                         )
                                       )
                                     )

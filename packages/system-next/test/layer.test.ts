@@ -16,7 +16,7 @@ import * as Ref from "../src/Ref"
 // Service 1
 // -----------------------------------------------------------------------------
 
-const Service1Id = Symbol()
+const Service1Id = Symbol.for("tests/layer/Service1")
 
 class Service1Impl {
   readonly [Service1Id] = Service1Id
@@ -31,10 +31,10 @@ const Service1 = tag<Service1Impl>(Service1Id)
 // Service 2
 // -----------------------------------------------------------------------------
 
-const Service2Id = Symbol()
+const Service2Id = Symbol.for("tests/layer/Service2")
 
 class Service2Impl {
-  readonly [Service2Id] = Service1Id
+  readonly [Service2Id] = Service2Id
   get two(): T.UIO<number> {
     return T.succeedNow(1)
   }
@@ -46,10 +46,10 @@ const Service2 = tag<Service2Impl>(Service2Id)
 // Service 3
 // -----------------------------------------------------------------------------
 
-const Service3Id = Symbol()
+const Service3Id = Symbol.for("tests/layer/Service3")
 
 class Service3Impl {
-  readonly [Service3Id] = Service1Id
+  readonly [Service3Id] = Service3Id
   get three(): T.UIO<number> {
     return T.succeedNow(1)
   }
