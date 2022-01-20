@@ -1,3 +1,4 @@
+import { ILayerZipWithPar } from ".."
 import type { Layer } from "../definition"
 
 /**
@@ -8,7 +9,7 @@ export function and_<RIn, E, ROut, RIn2, E2, ROut2>(
   self: Layer<RIn, E, ROut>,
   that: Layer<RIn2, E2, ROut2>
 ): Layer<RIn & RIn2, E | E2, ROut & ROut2> {
-  return self["++"](that)
+  return new ILayerZipWithPar(self, that, (a, b) => ({ ...a, ...b }))
 }
 
 /**

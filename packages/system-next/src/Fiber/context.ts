@@ -34,6 +34,7 @@ import * as Scope from "../Scope"
 import { Stack } from "../Stack"
 import { equalsSym } from "../Structural"
 import * as Supervisor from "../Supervisor"
+import { AtomicBoolean } from "../Support/AtomicBoolean"
 import { AtomicReference } from "../Support/AtomicReference"
 import { defaultScheduler } from "../Support/Scheduler"
 import * as StackTraceBuilder from "../Support/StackTraceBuilder"
@@ -122,6 +123,8 @@ export type Frame =
   | ApplyFrame
 
 export type FiberRefLocals = Map<FiberRef.Runtime<any>, any>
+
+export const catastrophicFailure = new AtomicBoolean(false)
 
 export const currentFiber = new AtomicReference<FiberContext<any, any> | null>(null)
 
@@ -1631,23 +1634,24 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
             // Prevent interruption of interruption:
             this.unsafeSetInterrupting(true)
           } else if (e instanceof T.EffectError) {
-            Ex.fold_(
-              e.exit,
-              (cause) => {
-                const trace = current?.trace
-                current = instruction(T.failCause(cause, trace))
-              },
-              (value) => {
-                current = this.unsafeNextEffect(value)
+            switch (e.exit._tag) {
+              case "Success": {
+                current = this.unsafeNextEffect(e.exit.value)
+                break
               }
-            )
+              case "Failure": {
+                const trace = current ? current.trace : undefined
+                current = instruction(T.failCause(e.exit.cause, trace))
+                break
+              }
+            }
           } else if (this.runtimeConfig.value.fatal(e)) {
+            catastrophicFailure.set(true)
             // Catastrophic error handler. Any error thrown inside the interpreter
             // is either a bug in the interpreter or a bug in the user's code. Let
             // the fiber die but attempt finalization & report errors.
-            current = undefined
-            // TODO: catastrophicFailure.set(true)
             this.runtimeConfig.value.reportFatal(e)
+            current = undefined
           } else {
             this.unsafeSetInterrupting(true)
             current = instruction(T.die(e))
