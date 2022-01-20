@@ -404,7 +404,7 @@ describe("Layer", () => {
   })
 
   it("layers can be acquired in parallel", async () => {
-    const test = await pipe(
+    const test = pipe(
       T.do,
       T.bind("promise", () => Promise.make<never, void>()),
       T.let("layer1", () => L.fromRawManaged(M.never)),
@@ -416,8 +416,9 @@ describe("Layer", () => {
         )
       ),
       T.let("env", ({ layer1, layer2 }) => L.build(layer1["++"](layer2))),
-      T.tap(({ env }) => T.forkDaemon(M.useDiscard_(env, T.unit))),
+      T.bind("fiber", ({ env }) => T.forkDaemon(M.useDiscard_(env, T.unit))),
       T.tap(({ promise }) => Promise.await(promise)),
+      T.tap(({ fiber }) => Fiber.interrupt(fiber)),
       T.map(() => true)
     )
 
