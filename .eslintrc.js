@@ -25,7 +25,10 @@ module.exports = {
   plugins: ["import", "sort-destructure-keys", "simple-import-sort", "codegen"],
   rules: {
     // codegen
-    "codegen/codegen": "error",
+    "codegen/codegen": [
+      "error",
+      { presets: require("./packages/eslint-codegen-effect-ts/dist") }
+    ],
 
     // eslint built-in rules, sorted alphabetically
     "no-constant-condition": "off",

@@ -1,0 +1,26 @@
+{
+  "name": "@effect-ts/eslint-codegen-effect-ts",
+  "version": "0.15.2",
+  "license": "MIT",
+  "repository": "https://github.com/Effect-TS/core.git",
+  "homepage": "https://www.matechs.com",
+  "scripts": {
+    "clean": "yarn ets:rimraf build tsbuildinfo dist",
+    "build-cjs": "yarn ets:tsc -p tsconfig.build.cjs.json",
+    "build-post": "yarn ets:ts-node ../../scripts/pack.ts",
+    "build": "yarn build-cjs && yarn build-post",
+    "lint": "yarn ets:eslint . --ext .ts,.tsx",
+    "autofix": "yarn prettier && yarn lint --fix && yarn prettier",
+    "prettier": "yarn ets:prettier --write \"./{src,test,demo}/**/*.ts\"",
+    "tc": "yarn ets:tsc --noEmit",
+    "circular": "yarn ets:madge --circular --ts-config ./tsconfig.json --extensions ts ./src"
+  },
+  "publishConfig": {
+    "access": "public",
+    "directory": "dist"
+  },
+  "config": {
+    "side": [],
+    "modules": []
+  }
+}

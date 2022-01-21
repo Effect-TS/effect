@@ -36,7 +36,9 @@
       "@effect-ts/system/*": ["packages/system/build/dts/*"],
       "@effect-ts/system": ["packages/system/build/dts"],
       "@effect-ts/tracing-plugin/*": ["packages/tracing-plugin/build/dts/*"],
-      "@effect-ts/tracing-plugin": ["packages/tracing-plugin/build/dts"]
+      "@effect-ts/tracing-plugin": ["packages/tracing-plugin/build/dts"],
+      "@effect-ts/eslint-codegen-effect-ts/*": ["packages/eslint-codegen-effect-ts/build/dts/*"],
+      "@effect-ts/eslint-codegen-effect-ts": ["packages/eslint-codegen-effect-ts/build/dts"]
     },
     "target": "ES2018"
   },
