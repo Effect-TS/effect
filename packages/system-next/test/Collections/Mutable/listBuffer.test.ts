@@ -36,10 +36,10 @@ describe("ListBuffer", () => {
   describe("length", () => {
     it("returns the number of elements contained in the ListBuffer", () => {
       const buf = new ListBuffer<number>()
-      for (let i = 0; i < 100; i++) {
+      for (let i = 0; i < 10; i++) {
         buf.append(i)
       }
-      expect(buf.length).toEqual(100)
+      expect(buf.length).toEqual(10)
     })
   })
 

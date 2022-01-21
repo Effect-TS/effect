@@ -23,6 +23,29 @@ describe("LinkedList", () => {
     })
   })
 
+  describe("length", () => {
+    it("returns the number of elements in the LinkedList", () => {
+      let l = L.empty<number>()
+      for (let i = 0; i < 10; i++) {
+        l = L.prepend_(l, i)
+      }
+      expect(L.length(l)).toEqual(10)
+    })
+  })
+
+  describe("equalsWith", () => {
+    it("cpompares two lists based on the given equality function", () => {
+      const l0 = L.from([{ n: 0 }, { n: 1 }, { n: 2 }])
+      const l1 = L.from([{ n: 0 }, { n: 1 }, { n: 2 }])
+      const l2 = L.from([{ n: 1 }, { n: 2 }, { n: 3 }])
+
+      const equalsFn = (x: { n: number }, y: { n: number }): boolean => x.n === y.n
+
+      expect(L.equalsWith_(l0, l1, equalsFn)).toEqual(true)
+      expect(L.equalsWith_(l1, l2, equalsFn)).toEqual(false)
+    })
+  })
+
   describe("prepend", () => {
     it("returns a new LinkedList with an element prepended", () => {
       let l = L.empty<number>()
