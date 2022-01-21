@@ -232,7 +232,7 @@ export const pipeable: Preset<{
           node.modifiers &&
           node.modifiers.filter(
             (modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword
-          )
+          ).length > 0
       )
       .filter((node) => !!node.name)
       .filter((node) => node.parameters.length >= 2)
@@ -264,6 +264,3 @@ export const pipeable: Preset<{
     )
   }
 }
-
-// codegen:start { preset: pipeable }
-// codegen:end
