@@ -102,6 +102,9 @@ export function length<A>(self: LinkedList<A>): number {
   return len
 }
 
+/**
+ * @ets_data_first equalsWith_
+ */
 export function equalsWith<A>(
   that: LinkedList<A>,
   f: (a: A, b: A) => boolean

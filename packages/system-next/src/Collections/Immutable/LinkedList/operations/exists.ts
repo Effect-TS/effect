@@ -13,6 +13,13 @@ import type { Predicate } from "../../../../Function"
 import type { LinkedList } from "../definition"
 import { isNil } from "../definition"
 
+/**
+ * @ets_data_first exists_
+ */
+export function exists<A>(p: Predicate<A>): (self: LinkedList<A>) => boolean {
+  return (self) => exists_(self, p)
+}
+
 export function exists_<A>(self: LinkedList<A>, p: Predicate<A>): boolean {
   let these = self
   while (!isNil(these)) {
@@ -22,11 +29,4 @@ export function exists_<A>(self: LinkedList<A>, p: Predicate<A>): boolean {
     these = these.tail
   }
   return false
-}
-
-/**
- * @ets_data_first exists_
- */
-export function exists<A>(p: Predicate<A>): (self: LinkedList<A>) => boolean {
-  return (self) => exists_(self, p)
 }

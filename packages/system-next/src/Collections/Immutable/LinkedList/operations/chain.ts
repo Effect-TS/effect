@@ -12,6 +12,15 @@
 import type { LinkedList } from "../definition"
 import { _Nil, Cons, isNil } from "../definition"
 
+/**
+ * @ets_data_first chain_
+ */
+export function chain<A, B>(
+  f: (a: A) => LinkedList<B>
+): (ma: LinkedList<A>) => LinkedList<B> {
+  return (ma) => chain_(ma, f)
+}
+
 export function chain_<A, B>(
   self: LinkedList<A>,
   f: (a: A) => LinkedList<B>
@@ -35,10 +44,4 @@ export function chain_<A, B>(
   }
   if (h === undefined) return _Nil
   else return h
-}
-
-export function chain<A, B>(
-  f: (a: A) => LinkedList<B>
-): (ma: LinkedList<A>) => LinkedList<B> {
-  return (ma) => chain_(ma, f)
 }
