@@ -1,0 +1,10 @@
+{
+    "Effect": {
+      "prefix": "+pipeable",
+      "body": [
+          "// codegen:start { preset: pipeable }",
+          "// codegen:end"
+        ],
+      "description": "Codegen all pipeable functions for this file"
+    }
+}
