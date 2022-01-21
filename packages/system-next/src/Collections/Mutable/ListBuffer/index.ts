@@ -24,6 +24,18 @@ export class ListBuffer<A> implements Iterable<A> {
     return this.first[Symbol.iterator]()
   }
 
+  static empty<A>(): ListBuffer<A> {
+    return new ListBuffer()
+  }
+
+  static from<A>(as: Iterable<A>): ListBuffer<A> {
+    const buf = new ListBuffer<A>()
+    for (const a of as) {
+      buf.append(a)
+    }
+    return buf
+  }
+
   get length(): number {
     return this.len
   }
@@ -32,16 +44,16 @@ export class ListBuffer<A> implements Iterable<A> {
     return this.len === 0
   }
 
-  get unsafeHead(): A {
+  get unsafeHead(): A | undefined {
     if (this.isEmpty) {
-      throw new NoSuchElementException()
+      return undefined
     }
     return (this.first as L.Cons<A>).head
   }
 
-  get unsafeTail(): L.LinkedList<A> {
+  get unsafeTail(): L.LinkedList<A> | undefined {
     if (this.isEmpty) {
-      throw new NoSuchElementException()
+      return undefined
     }
     return (this.first as L.Cons<A>).tail
   }

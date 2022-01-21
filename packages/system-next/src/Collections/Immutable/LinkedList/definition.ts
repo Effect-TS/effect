@@ -8,8 +8,10 @@
  * Licensed under Apache License 2.0
  * (http://www.apache.org/licenses/LICENSE-2.0).
  */
+import * as St from "../../../Structural"
+import type { HasEquals } from "../../../Structural/HasEquals"
 
-export class Cons<A> implements Iterable<A> {
+export class Cons<A> implements Iterable<A>, HasEquals {
   readonly _tag = "Cons"
   constructor(readonly head: A, public tail: LinkedList<A>) {}
 
@@ -38,9 +40,17 @@ export class Cons<A> implements Iterable<A> {
       }
     }
   }
+
+  get [St.hashSym](): number {
+    return St.hashIterator(this[Symbol.iterator]())
+  }
+
+  [St.equalsSym](that: unknown): boolean {
+    return that instanceof Cons && equalsWith_(this, that, St.equals)
+  }
 }
 
-export class Nil<A> implements Iterable<A> {
+export class Nil<A> implements Iterable<A>, HasEquals {
   readonly _tag = "Nil";
   [Symbol.iterator](): Iterator<A> {
     return {
@@ -48,6 +58,14 @@ export class Nil<A> implements Iterable<A> {
         return { done: true, value: undefined }
       }
     }
+  }
+
+  get [St.hashSym](): number {
+    return St.hashIterator(this[Symbol.iterator]())
+  }
+
+  [St.equalsSym](that: unknown): boolean {
+    return that instanceof Nil
   }
 }
 
@@ -69,4 +87,47 @@ export function isNil<A>(self: LinkedList<A>): self is Nil<A> {
 
 export function isCons<A>(self: LinkedList<A>): self is Cons<A> {
   return self._tag === "Cons"
+}
+
+/**
+ * Returns the number of elements contained in a `LinkedList`
+ */
+export function length<A>(self: LinkedList<A>): number {
+  let these = self
+  let len = 0
+  while (!isNil(these)) {
+    len += 1
+    these = these.tail
+  }
+  return len
+}
+
+export function equalsWith<A>(
+  that: LinkedList<A>,
+  f: (a: A, b: A) => boolean
+): (self: LinkedList<A>) => boolean {
+  return (self) => equalsWith_(self, that, f)
+}
+
+export function equalsWith_<A>(
+  self: LinkedList<A>,
+  that: LinkedList<A>,
+  f: (a: A, b: A) => boolean
+): boolean {
+  if (self === that) {
+    return true
+  } else if (length(self) !== length(that)) {
+    return false
+  } else {
+    const i0 = self[Symbol.iterator]()
+    const i1 = that[Symbol.iterator]()
+    let a: IteratorResult<A>
+    let b: IteratorResult<A>
+    while (!(a = i0.next()).done && !(b = i1.next()).done) {
+      if (!f(a.value, b.value)) {
+        return false
+      }
+    }
+    return true
+  }
 }

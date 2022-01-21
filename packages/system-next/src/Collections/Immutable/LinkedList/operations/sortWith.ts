@@ -12,8 +12,7 @@
 import type { Ordering } from "../../../../Ordering"
 import { ListBuffer } from "../../../Mutable/ListBuffer"
 import type { LinkedList } from "../definition"
-import { isNil } from "../definition"
-import { length } from "./length"
+import { isNil, length } from "../definition"
 import { unsafeHead } from "./unsafeHead"
 
 /**
