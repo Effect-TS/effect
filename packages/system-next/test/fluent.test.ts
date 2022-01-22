@@ -30,6 +30,7 @@ describe("Effect Fluent API", () => {
       .bind("envB", () => Effect.service(EnvB))
       .provideSomeLayer(LiveEnvA)
       .provideSomeLayer(LiveEnvB)
+      .orElse(Effect.die("hello"))
       .unsafeRunPromise()
 
     expect(a).toEqual(1)
