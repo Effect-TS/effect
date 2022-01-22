@@ -1,6 +1,6 @@
-import type { FiberId } from "../FiberId"
-import type { Trace } from "../Trace"
-import type { Status } from "./status"
+import type { FiberId } from "../../FiberId"
+import type { Trace } from "../../Trace"
+import type { Status } from "../status"
 
 export class Dump {
   constructor(

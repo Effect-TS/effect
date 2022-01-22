@@ -1,10 +1,10 @@
-import * as C from "../Cause"
-import * as HS from "../Collections/Immutable/HashSet"
-import type { UIO } from "../Effect"
-import type * as Exit from "../Exit"
-import type { FiberId } from "../FiberId"
+import * as C from "../../Cause"
+import * as HS from "../../Collections/Immutable/HashSet"
+import type { UIO } from "../../Effect"
+import type * as Exit from "../../Exit"
+import type { FiberId } from "../../FiberId"
+import * as Status from "../status"
 import * as CancelerState from "./cancelerState"
-import * as Status from "./status"
 
 export type FiberState<E, A> = Executing<E, A> | Done<E, A>
 

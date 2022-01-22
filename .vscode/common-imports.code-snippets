@@ -1,4 +1,11 @@
 {
+  "barrel": {
+    "prefix": "barrel",
+    "body": [
+      "// codegen:start {preset: barrel, include: ./$0/*.ts}",
+      "// codegen:end"
+    ],
+  },
   "etsEffectFluent": {
     "prefix": "etsEffectFluent",
     "body": [

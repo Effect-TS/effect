@@ -31,5 +31,8 @@
       "require": "./build/cjs/*.js",
       "import": "./build/esm/*.js"
     }
+  },
+  "ets": {
+    "typeDir": "./build/dts"
   }
 }

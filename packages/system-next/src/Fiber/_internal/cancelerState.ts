@@ -1,4 +1,4 @@
-import type { Effect } from "../Effect"
+import type { Effect } from "../../Effect"
 
 export type CancelerState = Empty | Pending | Registered
 

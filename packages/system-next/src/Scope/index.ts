@@ -1,5 +1,5 @@
-import type { FiberContext } from "../Fiber/context"
-import { _roots } from "../Fiber/context"
+import type { FiberContext } from "../Fiber/_internal/context"
+import { _roots } from "../Fiber/_internal/context"
 import type { FiberId } from "../FiberId/definition"
 import { none } from "../FiberId/operations/none"
 import type { RuntimeConfig } from "../RuntimeConfig"
