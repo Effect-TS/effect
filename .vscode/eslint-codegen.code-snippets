@@ -1,0 +1,11 @@
+{
+    "ESLintCodegenEffectTS": {
+      "prefix": "+pipeable",
+      "body": [
+          "// codegen:start { preset: pipeable }",
+          "// codegen:end"
+        ],
+      "description": "Add pipeable declarations"
+    }
+  }
+  

@@ -512,6 +512,12 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@effect-ts/eslint-codegen-effect-ts@workspace:packages/eslint-codegen-effect-ts":
+  version: 0.0.0-use.local
+  resolution: "@effect-ts/eslint-codegen-effect-ts@workspace:packages/eslint-codegen-effect-ts"
+  languageName: unknown
+  linkType: soft
+
 "@effect-ts/system-next@workspace:packages/system-next":
   version: 0.0.0-use.local
   resolution: "@effect-ts/system-next@workspace:packages/system-next"
