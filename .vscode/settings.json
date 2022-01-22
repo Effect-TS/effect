@@ -1,5 +1,5 @@
 {
-  "typescript.tsdk": "node_modules/@effect-ts/typescript-extension/lib",
+  "typescript.tsdk": "node_modules/typescript/lib",
   "editor.formatOnSave": true,
   "eslint.format.enable": true,
   "[javascript]": {
