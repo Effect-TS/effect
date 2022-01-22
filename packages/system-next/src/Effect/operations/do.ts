@@ -122,6 +122,9 @@ export function let_<R2, E2, A, K, N extends string>(
   )
 }
 
-const do_ = succeedNow({})
+/**
+ * @ets static ets/EffectOps do
+ */
+export const do_ = succeedNow({})
 
 export { let__ as let, bind, do_ as do }
