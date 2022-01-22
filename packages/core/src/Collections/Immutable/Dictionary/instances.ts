@@ -1,8 +1,7 @@
 // ets_tracing: off
 
-import type { DictionaryURI } from "../../../Modules/index.js"
-import type { URI } from "../../../Prelude/index.js"
-import * as P from "../../../Prelude/index.js"
+import * as P from "../../../PreludeV2/index.js"
+import type { Dictionary } from "./operations.js"
 import {
   compact,
   compactF,
@@ -22,91 +21,95 @@ import {
   separateWithIndexF
 } from "./operations.js"
 
-export const Covariant = P.instance<P.Covariant<[URI<DictionaryURI>]>>({
+export interface DictionaryF extends P.HKT {
+  readonly type: Dictionary<this["A"]>
+}
+
+export const Covariant = P.instance<P.Covariant<DictionaryF>>({
   map
 })
 
-export const CovariantWithIndex = P.instance<
-  P.CovariantWithIndex<[URI<DictionaryURI>]>
->({
-  mapWithIndex
-})
+export const CovariantWithIndex = P.instance<P.CovariantWithIndex<string, DictionaryF>>(
+  {
+    mapWithIndex
+  }
+)
 
-export const ForEach = P.instance<P.ForEach<[URI<DictionaryURI>]>>({
+export const ForEach = P.instance<P.ForEach<DictionaryF>>({
   map,
   forEachF
 })
 
-export const ForEachWithIndex = P.instance<P.ForEachWithIndex<[URI<DictionaryURI>]>>({
+export const ForEachWithIndex = P.instance<P.ForEachWithIndex<string, DictionaryF>>({
   map,
   forEachWithIndexF
 })
 
-export const Reduce = P.instance<P.Reduce<[URI<DictionaryURI>]>>({
+export const Reduce = P.instance<P.Reduce<DictionaryF>>({
   reduce
 })
 
-export const ReduceRight = P.instance<P.ReduceRight<[URI<DictionaryURI>]>>({
+export const ReduceRight = P.instance<P.ReduceRight<DictionaryF>>({
   reduceRight
 })
 
-export const ReduceWithIndex = P.instance<P.ReduceWithIndex<[URI<DictionaryURI>]>>({
+export const ReduceWithIndex = P.instance<P.ReduceWithIndex<string, DictionaryF>>({
   reduceWithIndex
 })
 
 export const ReduceRightWithIndex = P.instance<
-  P.ReduceRightWithIndex<[URI<DictionaryURI>]>
+  P.ReduceRightWithIndex<string, DictionaryF>
 >({
   reduceRightWithIndex
 })
 
-export const FoldMap = P.instance<P.FoldMap<[URI<DictionaryURI>]>>({
+export const FoldMap = P.instance<P.FoldMap<DictionaryF>>({
   foldMap
 })
 
-export const FoldMapWithIndex = P.instance<P.FoldMapWithIndex<[URI<DictionaryURI>]>>({
+export const FoldMapWithIndex = P.instance<P.FoldMapWithIndex<string, DictionaryF>>({
   foldMapWithIndex
 })
 
-export const Foldable = P.instance<P.Foldable<[URI<DictionaryURI>]>>({
+export const Foldable = P.instance<P.Foldable<DictionaryF>>({
   ...FoldMap,
   ...Reduce,
   ...ReduceRight
 })
 
-export const FoldableWithIndex = P.instance<P.FoldableWithIndex<[URI<DictionaryURI>]>>({
+export const FoldableWithIndex = P.instance<P.FoldableWithIndex<string, DictionaryF>>({
   ...FoldMapWithIndex,
   ...ReduceWithIndex,
   ...ReduceRightWithIndex
 })
 
-export const Wiltable = P.instance<P.Wiltable<[URI<DictionaryURI>]>>({
+export const Wiltable = P.instance<P.Wiltable<DictionaryF>>({
   separateF
 })
 
-export const WiltableWithIndex = P.instance<P.WiltableWithIndex<[URI<DictionaryURI>]>>({
+export const WiltableWithIndex = P.instance<P.WiltableWithIndex<string, DictionaryF>>({
   separateWithIndexF
 })
 
-export const Witherable = P.instance<P.Witherable<[URI<DictionaryURI>]>>({
+export const Witherable = P.instance<P.Witherable<DictionaryF>>({
   compactF
 })
 
 export const WitherableWithIndex = P.instance<
-  P.WitherableWithIndex<[URI<DictionaryURI>]>
+  P.WitherableWithIndex<string, DictionaryF>
 >({
   compactWithIndexF
 })
 
-export const Compact = P.instance<P.Compact<[URI<DictionaryURI>]>>({
+export const Compact = P.instance<P.Compact<DictionaryF>>({
   compact
 })
 
-export const Separate = P.instance<P.Separate<[URI<DictionaryURI>]>>({
+export const Separate = P.instance<P.Separate<DictionaryF>>({
   separate
 })
 
-export const Compactable = P.instance<P.Compactable<[URI<DictionaryURI>]>>({
+export const Compactable = P.instance<P.Compactable<DictionaryF>>({
   ...Separate,
   ...Compact
 })

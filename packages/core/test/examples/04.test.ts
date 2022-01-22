@@ -11,10 +11,10 @@ test("04", () => {
 
   const traverse = R.forEachF(ValidationApplicative)
 
-  const result = pipe(
+  const result: E.Either<string, R.Dictionary<number>> = pipe(
     { a: 0, b: 1, c: 2 },
-    traverse((n) => (n > 3 ? E.left("bad") : E.right("good")))
+    traverse((n) => (n > 3 ? E.left("bad") : E.right(n)))
   )
 
-  console.log(result)
+  expect(result).toEqual(E.right({ a: 0, b: 1, c: 2 }))
 })

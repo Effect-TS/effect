@@ -5,17 +5,16 @@ import * as A from "../Associative/index.js"
 import type { Bounded } from "../Bounded/index.js"
 import type { Endomorphism } from "../Function/index.js"
 import { identity } from "../Function/index.js"
-import type { IdentityURI } from "../Modules/index.js"
-import type { Derive } from "../Prelude/Derive/index.js"
-import type { URI, URIS } from "../Prelude/HKT/index.js"
-import type { Identity } from "./definition.js"
+import type { Derive } from "../PreludeV2/Derive/index.js"
+import type { HKT } from "../PreludeV2/index.js"
+import type { Identity, IdentityF } from "./definition.js"
 import { makeIdentity } from "./makeIdentity.js"
 
 /**
  * Derive `Identity`
  */
-export function deriveIdentity<F extends URIS, A>(
-  D: Derive<F, [URI<IdentityURI>]>,
+export function deriveIdentity<F extends HKT, A>(
+  D: Derive<F, IdentityF>,
   I: Identity<A>
 ) {
   return D.derive(I)

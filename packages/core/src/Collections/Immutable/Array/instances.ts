@@ -2,166 +2,166 @@
 
 import type { Either } from "@effect-ts/system/Either"
 
-import type { ArrayURI } from "../../../Modules/index.js"
-import type { URI } from "../../../Prelude/index.js"
-import { getApplicativeF } from "../../../Prelude/index.js"
-import * as P from "../../../Prelude/index.js"
+import * as DSL from "../../../PreludeV2/DSL/index.js"
+import * as P from "../../../PreludeV2/index.js"
 import * as A from "./operations.js"
 
-export const Any = P.instance<P.Any<[URI<ArrayURI>]>>({
+export interface ArrayF extends P.HKT {
+  readonly type: A.Array<this["A"]>
+}
+
+export const Any = P.instance<P.Any<ArrayF>>({
   any: () => [{}]
 })
 
-export const AssociativeBothZip = P.instance<P.AssociativeBoth<[URI<ArrayURI>]>>({
+export const AssociativeBothZip = P.instance<P.AssociativeBoth<ArrayF>>({
   both: A.zip
 })
 
-export const AssociativeFlatten = P.instance<P.AssociativeFlatten<[URI<ArrayURI>]>>({
+export const AssociativeFlatten = P.instance<P.AssociativeFlatten<ArrayF>>({
   flatten: A.flatten
 })
 
-export const Covariant = P.instance<P.Covariant<[URI<ArrayURI>]>>({
+export const Covariant = P.instance<P.Covariant<ArrayF>>({
   map: A.map
 })
 
-export const ApplyZip = P.instance<P.Apply<[URI<ArrayURI>]>>({
+export const ApplyZip = P.instance<P.Apply<ArrayF>>({
   ...Covariant,
   ...AssociativeBothZip
 })
 
-export const Monad = P.instance<P.Monad<[URI<ArrayURI>]>>({
+export const Monad = P.instance<P.Monad<ArrayF>>({
   ...Any,
   ...Covariant,
   ...AssociativeFlatten
 })
 
-export const Applicative = getApplicativeF(Monad)
+export const Applicative = DSL.getApplicativeF(Monad)
 
-export const ForEach = P.instance<P.ForEach<[URI<ArrayURI>]>>({
+export const ForEach = P.instance<P.ForEach<ArrayF>>({
   map: A.map,
   forEachF: A.forEachF
 })
 
-export const ForEachWithIndex = P.instance<P.ForEachWithIndex<[URI<ArrayURI>]>>({
+export const ForEachWithIndex = P.instance<P.ForEachWithIndex<number, ArrayF>>({
   map: A.map,
   forEachWithIndexF: A.forEachWithIndexF
 })
 
-export const Wiltable = P.instance<P.Wiltable<[URI<ArrayURI>]>>({
+export const Wiltable = P.instance<P.Wiltable<ArrayF>>({
   separateF: A.separateF
 })
 
-export const WiltableWithIndex = P.instance<P.WiltableWithIndex<[URI<ArrayURI>]>>({
+export const WiltableWithIndex = P.instance<P.WiltableWithIndex<number, ArrayF>>({
   separateWithIndexF: A.separateWithIndexF
 })
 
-export const Witherable = P.instance<P.Witherable<[URI<ArrayURI>]>>({
+export const Witherable = P.instance<P.Witherable<ArrayF>>({
   compactF: A.compactF
 })
 
-export const WitherableWithIndex = P.instance<P.WitherableWithIndex<[URI<ArrayURI>]>>({
+export const WitherableWithIndex = P.instance<P.WitherableWithIndex<number, ArrayF>>({
   compactWithIndexF: A.compactWithIndexF
 })
 
-export const Compact = P.instance<P.Compact<[URI<ArrayURI>]>>({
+export const Compact = P.instance<P.Compact<ArrayF>>({
   compact: A.compact
 })
 
-export const Separate = P.instance<P.Separate<[URI<ArrayURI>]>>({
+export const Separate = P.instance<P.Separate<ArrayF>>({
   separate: A.separate
 })
 
-export const Extend = P.instance<P.Extend<[URI<ArrayURI>]>>({
+export const Extend = P.instance<P.Extend<ArrayF>>({
   extend: A.extend
 })
 
-export const Reduce = P.instance<P.Reduce<[URI<ArrayURI>]>>({
+export const Reduce = P.instance<P.Reduce<ArrayF>>({
   reduce: A.reduce
 })
 
-export const ReduceWithIndex = P.instance<P.ReduceWithIndex<[URI<ArrayURI>]>>({
+export const ReduceWithIndex = P.instance<P.ReduceWithIndex<number, ArrayF>>({
   reduceWithIndex: A.reduceWithIndex
 })
 
-export const ReduceRightWithIndex = P.instance<P.ReduceRightWithIndex<[URI<ArrayURI>]>>(
-  {
-    reduceRightWithIndex: A.reduceRightWithIndex
-  }
-)
+export const ReduceRightWithIndex = P.instance<P.ReduceRightWithIndex<number, ArrayF>>({
+  reduceRightWithIndex: A.reduceRightWithIndex
+})
 
-export const ReduceRight = P.instance<P.ReduceRight<[URI<ArrayURI>]>>({
+export const ReduceRight = P.instance<P.ReduceRight<ArrayF>>({
   reduceRight: A.reduceRight
 })
 
-export const FoldMap = P.instance<P.FoldMap<[URI<ArrayURI>]>>({
+export const FoldMap = P.instance<P.FoldMap<ArrayF>>({
   foldMap: A.foldMap
 })
 
-export const FoldMapWithIndex = P.instance<P.FoldMapWithIndex<[URI<ArrayURI>]>>({
+export const FoldMapWithIndex = P.instance<P.FoldMapWithIndex<number, ArrayF>>({
   foldMapWithIndex: A.foldMapWithIndex
 })
 
-export const Foldable = P.instance<P.Foldable<[URI<ArrayURI>]>>({
+export const Foldable = P.instance<P.Foldable<ArrayF>>({
   ...FoldMap,
   ...Reduce,
   ...ReduceRight
 })
 
-export const FoldableWithIndex = P.instance<P.FoldableWithIndex<[URI<ArrayURI>]>>({
+export const FoldableWithIndex = P.instance<P.FoldableWithIndex<number, ArrayF>>({
   ...FoldMapWithIndex,
   ...ReduceWithIndex,
   ...ReduceRightWithIndex
 })
 
-export const Filter = P.instance<P.Filter<[URI<ArrayURI>]>>({
+export const Filter = P.instance<P.Filter<ArrayF>>({
   filter: A.filter
 })
 
-export const FilterWithIndex = P.instance<P.FilterWithIndex<[URI<ArrayURI>]>>({
+export const FilterWithIndex = P.instance<P.FilterWithIndex<number, ArrayF>>({
   filterWithIndex: A.filterWithIndex
 })
 
-export const FilterMap = P.instance<P.FilterMap<[URI<ArrayURI>]>>({
+export const FilterMap = P.instance<P.FilterMap<ArrayF>>({
   filterMap: A.collect
 })
 
-export const FilterMapWithIndex = P.instance<P.FilterMapWithIndex<[URI<ArrayURI>]>>({
+export const FilterMapWithIndex = P.instance<P.FilterMapWithIndex<number, ArrayF>>({
   filterMapWithIndex: A.collectWithIndex
 })
 
-export const Partition = P.instance<P.Partition<[URI<ArrayURI>]>>({
+export const Partition = P.instance<P.Partition<ArrayF>>({
   partition: A.partition
 })
 
-export const PartitionWithIndex = P.instance<P.PartitionWithIndex<[URI<ArrayURI>]>>({
+export const PartitionWithIndex = P.instance<P.PartitionWithIndex<number, ArrayF>>({
   partitionWithIndex: A.partitionWithIndex
 })
 
-export const PartitionMap = P.instance<P.PartitionMap<[URI<ArrayURI>]>>({
+export const PartitionMap = P.instance<P.PartitionMap<ArrayF>>({
   partitionMap: A.partitionMap
 })
 
 export const PartitionMapWithIndex = P.instance<
-  P.PartitionMapWithIndex<[URI<ArrayURI>]>
+  P.PartitionMapWithIndex<number, ArrayF>
 >({
   partitionMapWithIndex: A.partitionMapWithIndex
 })
 
-export const Filterable = P.instance<P.Filterable<[URI<ArrayURI>]>>({
+export const Filterable = P.instance<P.Filterable<ArrayF>>({
   ...Filter,
   ...FilterMap,
   ...Partition,
   ...PartitionMap
 })
 
-export const FilterableWithIndex = P.instance<P.FilterableWithIndex<[URI<ArrayURI>]>>({
+export const FilterableWithIndex = P.instance<P.FilterableWithIndex<number, ArrayF>>({
   ...FilterWithIndex,
   ...FilterMapWithIndex,
   ...PartitionWithIndex,
   ...PartitionMapWithIndex
 })
 
-export const depthFirstChainRec: P.ChainRec<[URI<ArrayURI>]>["chainRec"] = <A, B>(
+export const depthFirstChainRec: P.ChainRec<ArrayF>["chainRec"] = <A, B>(
   f: (a: A) => ReadonlyArray<Either<A, B>>
 ): ((a: A) => ReadonlyArray<B>) => {
   return (a) => {
@@ -216,13 +216,13 @@ export function breadthFirstChainRec<A, B>(
 /**
  * Exposing depth first recursion
  */
-export const DepthFirstChainRec = P.instance<P.ChainRec<[URI<ArrayURI>]>>({
+export const DepthFirstChainRec = P.instance<P.ChainRec<ArrayF>>({
   chainRec: depthFirstChainRec
 })
 
 /**
  * Exposing breadth first recursion
  */
-export const BreadthFirstChainRec = P.instance<P.ChainRec<[URI<ArrayURI>]>>({
+export const BreadthFirstChainRec = P.instance<P.ChainRec<ArrayF>>({
   chainRec: breadthFirstChainRec
 })

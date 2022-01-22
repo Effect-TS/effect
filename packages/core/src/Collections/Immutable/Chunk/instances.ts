@@ -1,132 +1,128 @@
 // ets_tracing: off
 
 import type { Either } from "../../../Either/index.js"
-import type { ChunkURI } from "../../../Modules/index.js"
 import * as O from "../../../Option/index.js"
-import type { URI } from "../../../Prelude/index.js"
-import { getApplicativeF } from "../../../Prelude/index.js"
-import * as P from "../../../Prelude/index.js"
+import * as DSL from "../../../PreludeV2/DSL/index.js"
+import * as P from "../../../PreludeV2/index.js"
 import type { PredicateWithIndex } from "../../../Utils/index.js"
 import * as Chunk from "./operations.js"
 
-export const Collection = P.instance<P.Collection<[P.URI<ChunkURI>]>>({
+export interface ChunkF extends P.HKT {
+  readonly type: Chunk.Chunk<this["A"]>
+}
+export const Collection = P.instance<P.Collection<ChunkF>>({
   builder: Chunk.builder
 })
 
-export const Any = P.instance<P.Any<[URI<ChunkURI>]>>({
+export const Any = P.instance<P.Any<ChunkF>>({
   any: () => Chunk.single({})
 })
 
-export const AssociativeBothZip = P.instance<P.AssociativeBoth<[URI<ChunkURI>]>>({
+export const AssociativeBothZip = P.instance<P.AssociativeBoth<ChunkF>>({
   both: Chunk.zip
 })
 
-export const AssociativeFlatten = P.instance<P.AssociativeFlatten<[URI<ChunkURI>]>>({
+export const AssociativeFlatten = P.instance<P.AssociativeFlatten<ChunkF>>({
   flatten: Chunk.flatten
 })
 
-export const Covariant = P.instance<P.Covariant<[URI<ChunkURI>]>>({
+export const Covariant = P.instance<P.Covariant<ChunkF>>({
   map: Chunk.map
 })
 
-export const ApplyZip = P.instance<P.Apply<[URI<ChunkURI>]>>({
+export const ApplyZip = P.instance<P.Apply<ChunkF>>({
   ...Covariant,
   ...AssociativeBothZip
 })
 
-export const Monad = P.instance<P.Monad<[URI<ChunkURI>]>>({
+export const Monad = P.instance<P.Monad<ChunkF>>({
   ...Any,
   ...Covariant,
   ...AssociativeFlatten
 })
+export const Applicative = DSL.getApplicativeF(Monad)
 
-export const Applicative = getApplicativeF(Monad)
-
-export const ForEach = P.instance<P.ForEach<[URI<ChunkURI>]>>({
+export const ForEach = P.instance<P.ForEach<ChunkF>>({
   map: Chunk.map,
   forEachF: Chunk.forEachF
 })
 
-export const ForEachWithIndex = P.instance<P.ForEachWithIndex<[URI<ChunkURI>]>>({
+export const ForEachWithIndex = P.instance<P.ForEachWithIndex<number, ChunkF>>({
   map: Chunk.map,
   forEachWithIndexF: Chunk.forEachWithIndexF
 })
 
-export const Wiltable = P.instance<P.Wiltable<[URI<ChunkURI>]>>({
+export const Wiltable = P.instance<P.Wiltable<ChunkF>>({
   separateF: Chunk.separateF
 })
 
-export const WiltableWithIndex = P.instance<P.WiltableWithIndex<[URI<ChunkURI>]>>({
+export const WiltableWithIndex = P.instance<P.WiltableWithIndex<number, ChunkF>>({
   separateWithIndexF: Chunk.separateWithIndexF
 })
 
-export const Witherable = P.instance<P.Witherable<[URI<ChunkURI>]>>({
+export const Witherable = P.instance<P.Witherable<ChunkF>>({
   compactF: Chunk.compactF
 })
 
-export const WitherableWithIndex = P.instance<P.WitherableWithIndex<[URI<ChunkURI>]>>({
+export const WitherableWithIndex = P.instance<P.WitherableWithIndex<number, ChunkF>>({
   compactWithIndexF: Chunk.compactWithIndexF
 })
 
-export const Compact = P.instance<P.Compact<[URI<ChunkURI>]>>({
+export const Compact = P.instance<P.Compact<ChunkF>>({
   compact: Chunk.compact
 })
 
-export const Separate = P.instance<P.Separate<[URI<ChunkURI>]>>({
+export const Separate = P.instance<P.Separate<ChunkF>>({
   separate: Chunk.separate
 })
 
-export const Extend = P.instance<P.Extend<[URI<ChunkURI>]>>({
+export const Extend = P.instance<P.Extend<ChunkF>>({
   extend: (f) => (fa) => Chunk.single(f(fa))
 })
 
-export const Reduce = P.instance<P.Reduce<[URI<ChunkURI>]>>({
+export const Reduce = P.instance<P.Reduce<ChunkF>>({
   reduce: Chunk.reduce
 })
 
-export const ReduceWithIndex = P.instance<P.ReduceWithIndex<[URI<ChunkURI>]>>({
+export const ReduceWithIndex = P.instance<P.ReduceWithIndex<number, ChunkF>>({
   reduceWithIndex: (b, f) => (fa) =>
     Chunk.reduce_(Chunk.zipWithIndex(fa), b, (b, { tuple: [a, i] }) => f(i, b, a))
 })
 
-export const ReduceRightWithIndex = P.instance<P.ReduceRightWithIndex<[URI<ChunkURI>]>>(
-  {
-    reduceRightWithIndex: (b, f) => (fa) =>
-      Chunk.reduceRight_(Chunk.zipWithIndex(fa), b, ({ tuple: [a, i] }, b) =>
-        f(i, a, b)
-      )
-  }
-)
+export const ReduceRightWithIndex = P.instance<P.ReduceRightWithIndex<number, ChunkF>>({
+  reduceRightWithIndex: (b, f) => (fa) =>
+    Chunk.reduceRight_(Chunk.zipWithIndex(fa), b, ({ tuple: [a, i] }, b) => f(i, a, b))
+})
 
-export const ReduceRight = P.instance<P.ReduceRight<[URI<ChunkURI>]>>({
+export const ReduceRight = P.instance<P.ReduceRight<ChunkF>>({
   reduceRight: Chunk.reduceRight
 })
 
-export const FoldMap = P.instance<P.FoldMap<[URI<ChunkURI>]>>({
+export const FoldMap = P.instance<P.FoldMap<ChunkF>>({
   foldMap: Chunk.foldMap
 })
 
-export const FoldMapWithIndex = P.instance<P.FoldMapWithIndex<[URI<ChunkURI>]>>({
+export const FoldMapWithIndex = P.instance<P.FoldMapWithIndex<number, ChunkF>>({
   foldMapWithIndex: Chunk.foldMapWithIndex
 })
 
-export const Foldable = P.instance<P.Foldable<[URI<ChunkURI>]>>({
+export const Foldable = P.instance<P.Foldable<ChunkF>>({
   ...FoldMap,
   ...Reduce,
   ...ReduceRight
 })
 
-export const FoldableWithIndex = P.instance<P.FoldableWithIndex<[URI<ChunkURI>]>>({
+export const FoldableWithIndex = P.instance<P.FoldableWithIndex<number, ChunkF>>({
   ...FoldMapWithIndex,
   ...ReduceWithIndex,
   ...ReduceRightWithIndex
 })
 
-export const Filter = P.instance<P.Filter<[URI<ChunkURI>]>>({
+export const Filter = P.instance<P.Filter<ChunkF>>({
   filter: Chunk.filter
 })
 
-export const FilterWithIndex = P.instance<P.FilterWithIndex<[URI<ChunkURI>]>>({
+export const FilterWithIndex = P.instance<P.FilterWithIndex<number, ChunkF>>({
   filterWithIndex:
     <A>(predicate: PredicateWithIndex<number, A>) =>
     (fa: Chunk.Chunk<A>): Chunk.Chunk<A> =>
@@ -135,41 +131,41 @@ export const FilterWithIndex = P.instance<P.FilterWithIndex<[URI<ChunkURI>]>>({
       )
 })
 
-export const FilterMap = P.instance<P.FilterMap<[URI<ChunkURI>]>>({
+export const FilterMap = P.instance<P.FilterMap<ChunkF>>({
   filterMap: Chunk.collect
 })
 
-export const FilterMapWithIndex = P.instance<P.FilterMapWithIndex<[URI<ChunkURI>]>>({
+export const FilterMapWithIndex = P.instance<P.FilterMapWithIndex<number, ChunkF>>({
   filterMapWithIndex: (f) => (fa) =>
     Chunk.collect_(Chunk.zipWithIndex(fa), ({ tuple: [a, i] }) => f(i, a))
 })
 
-export const Partition = P.instance<P.Partition<[URI<ChunkURI>]>>({
+export const Partition = P.instance<P.Partition<ChunkF>>({
   partition: Chunk.partition
 })
 
-export const PartitionWithIndex = P.instance<P.PartitionWithIndex<[URI<ChunkURI>]>>({
+export const PartitionWithIndex = P.instance<P.PartitionWithIndex<number, ChunkF>>({
   partitionWithIndex: Chunk.partitionWithIndex
 })
 
-export const PartitionMap = P.instance<P.PartitionMap<[URI<ChunkURI>]>>({
+export const PartitionMap = P.instance<P.PartitionMap<ChunkF>>({
   partitionMap: Chunk.partitionMap
 })
 
 export const PartitionMapWithIndex = P.instance<
-  P.PartitionMapWithIndex<[URI<ChunkURI>]>
+  P.PartitionMapWithIndex<number, ChunkF>
 >({
   partitionMapWithIndex: Chunk.partitionMapWithIndex
 })
 
-export const Filterable = P.instance<P.Filterable<[URI<ChunkURI>]>>({
+export const Filterable = P.instance<P.Filterable<ChunkF>>({
   ...Filter,
   ...FilterMap,
   ...Partition,
   ...PartitionMap
 })
 
-export const FilterableWithIndex = P.instance<P.FilterableWithIndex<[URI<ChunkURI>]>>({
+export const FilterableWithIndex = P.instance<P.FilterableWithIndex<number, ChunkF>>({
   ...FilterWithIndex,
   ...FilterMapWithIndex,
   ...PartitionWithIndex,
@@ -179,7 +175,7 @@ export const FilterableWithIndex = P.instance<P.FilterableWithIndex<[URI<ChunkUR
 /**
  * Exposing depth first recursion
  */
-export const DepthFirstChainRec = P.instance<P.ChainRec<[URI<ChunkURI>]>>({
+export const DepthFirstChainRec = P.instance<P.ChainRec<ChunkF>>({
   chainRec:
     <A, B>(f: (a: A) => Chunk.Chunk<Either<A, B>>) =>
     (a: A): Chunk.Chunk<B> => {
@@ -206,7 +202,7 @@ export const depthFirstChainRec = DepthFirstChainRec.chainRec
 /**
  * Exposing breadth first recursion
  */
-export const BreadthFirstChainRec = P.instance<P.ChainRec<[URI<ChunkURI>]>>({
+export const BreadthFirstChainRec = P.instance<P.ChainRec<ChunkF>>({
   chainRec:
     <A, B>(f: (a: A) => Chunk.Chunk<Either<A, B>>) =>
     (a: A): Chunk.Chunk<B> => {

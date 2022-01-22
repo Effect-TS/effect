@@ -10,52 +10,47 @@ import type { Equal } from "../../../Equal/index.js"
 import { makeEqual } from "../../../Equal/index.js"
 import type { Identity } from "../../../Identity/index.js"
 import { makeIdentity } from "../../../Identity/index.js"
-import type { ChunkURI } from "../../../Modules/index.js"
 import * as Ord from "../../../Ord/index.js"
-import * as DSL from "../../../Prelude/DSL/index.js"
-import type { URI } from "../../../Prelude/index.js"
-import * as P from "../../../Prelude/index.js"
+import * as DSL from "../../../PreludeV2/DSL/index.js"
+import * as P from "../../../PreludeV2/index.js"
 import type { Show } from "../../../Show/index.js"
 import type { PredicateWithIndex } from "../../../Utils/index.js"
+import type { ChunkF } from "./instances.js"
 
 export * from "@effect-ts/system/Collections/Immutable/Chunk"
 
 /**
  * `ForEachWithIndex`'s `forEachWithIndexF` function
  */
-export const forEachWithIndexF = P.implementForEachWithIndexF<[URI<ChunkURI>]>()(
-  (_) => (G) => {
+export const forEachWithIndexF = P.implementForEachWithIndexF<number, ChunkF>()(
+  (_) => (G) => (f) => (fa) => {
     const succeed = DSL.succeedF(G)
-    return (f) => (fa) => {
-      let base = succeed(Chunk.empty<typeof _.B>())
-      for (let k = 0; k < fa.length; k += 1) {
-        base = G.map(
-          ({ tuple: [bs, b] }: Tp.Tuple<[Chunk.Chunk<typeof _.B>, typeof _.B]>) =>
-            Chunk.append_(bs, b)
-        )(G.both(f(k, Chunk.unsafeGet_(fa, k)!))(base))
-      }
-      return base
+    let base = succeed<Chunk.Chunk<typeof _.B>, typeof _.R, typeof _.E>(Chunk.empty())
+    for (let k = 0; k < fa.length; k += 1) {
+      base = G.map(
+        ({ tuple: [bs, b] }: Tp.Tuple<[Chunk.Chunk<typeof _.B>, typeof _.B]>) =>
+          Chunk.append_(bs, b)
+      )(G.both(f(k, Chunk.unsafeGet_(fa, k)!))(base))
     }
+    return base
   }
 )
 
 /**
  * `ForEach`'s `forEachF` function
  */
-export const forEachF = P.implementForEachF<[URI<ChunkURI>]>()(
-  (_) => (G) => (f) => forEachWithIndexF(G)((_, a) => f(a))
-)
+export const forEachF: P.ForeachFn<ChunkF> = (G) => (f) =>
+  forEachWithIndexF(G)((_, a) => f(a))
 
 /**
  * `ForEach`'s `forEachF` function
  */
-export const forEachF_: P.ForeachFn_<[URI<ChunkURI>]> = (fa, G) => (f) =>
-  forEachF(G)(f)(fa)
+export const forEachF_: P.ForeachFn_<ChunkF> = (fa, G) => (f) => forEachF(G)(f)(fa)
 
 /**
  * `Wilt`'s `separateF` function
  */
-export const separateF = P.implementSeparateF<[URI<ChunkURI>]>()(
+export const separateF = P.implementSeparateF<ChunkF>()(
   (_) => (G) => (f) => (x) =>
     pipe(x, forEachF(G)(f), G.map(Chunk.partitionMap(identity)))
 )
@@ -63,7 +58,7 @@ export const separateF = P.implementSeparateF<[URI<ChunkURI>]>()(
 /**
  * `Wilt`'s `separateF` function
  */
-export const separateWithIndexF = P.implementSeparateWithIndexF<[URI<ChunkURI>]>()(
+export const separateWithIndexF = P.implementSeparateWithIndexF<number, ChunkF>()(
   (_) => (G) => (f) => (x) =>
     pipe(x, forEachWithIndexF(G)(f), G.map(Chunk.partitionMap(identity)))
 )
@@ -71,14 +66,14 @@ export const separateWithIndexF = P.implementSeparateWithIndexF<[URI<ChunkURI>]>
 /**
  * `Wither`'s `compactF` function
  */
-export const compactF = P.implementCompactF<[URI<ChunkURI>]>()(
+export const compactF = P.implementCompactF<ChunkF>()(
   (_) => (G) => (f) => (x) => pipe(x, forEachF(G)(f), G.map(Chunk.compact))
 )
 
 /**
  * `WitherWithIndex`'s `compactWithIndexF` function
  */
-export const compactWithIndexF = P.implementCompactWithIndexF<[URI<ChunkURI>]>()(
+export const compactWithIndexF = P.implementCompactWithIndexF<number, ChunkF>()(
   (_) => (G) => (f) => (x) => pipe(x, forEachWithIndexF(G)(f), G.map(Chunk.compact))
 )
 

@@ -7,13 +7,15 @@ import * as Tp from "@effect-ts/system/Collections/Immutable/Tuple"
 
 import type { Equal } from "../Equal/index.js"
 import type { Identity } from "../Identity/index.js"
-import type { IdURI } from "../Modules/index.js"
-import { structF, tupleF } from "../Prelude/DSL/index.js"
-import type { URI } from "../Prelude/index.js"
-import * as P from "../Prelude/index.js"
+import * as DSL from "../PreludeV2/DSL/index.js"
+import * as P from "../PreludeV2/index.js"
 import type { Show } from "../Show/index.js"
 
 export type Id<A> = A
+
+export interface IdF extends P.HKT {
+  readonly type: Id<this["A"]>
+}
 
 /**
  * @ets_optimize identity
@@ -159,65 +161,65 @@ export function reduceRight<A, B>(b: B, f: (a: A, b: B) => B) {
   return (fa: A): B => reduceRight_(fa, b, f)
 }
 
-export const Any = P.instance<P.Any<[URI<IdURI>]>>({
+export const Any = P.instance<P.Any<IdF>>({
   any: () => ({})
 })
 
-export const Covariant = P.instance<P.Covariant<[URI<IdURI>]>>({
+export const Covariant = P.instance<P.Covariant<IdF>>({
   map
 })
 
-export const AssociativeBoth = P.instance<P.AssociativeBoth<[URI<IdURI>]>>({
+export const AssociativeBoth = P.instance<P.AssociativeBoth<IdF>>({
   both: (b) => (a) => Tp.tuple(a, b)
 })
 
-export const AssociativeFlatten = P.instance<P.AssociativeFlatten<[URI<IdURI>]>>({
+export const AssociativeFlatten = P.instance<P.AssociativeFlatten<IdF>>({
   flatten: (a) => a
 })
 
-export const IdentityBoth = P.instance<P.IdentityBoth<[URI<IdURI>]>>({
+export const IdentityBoth = P.instance<P.IdentityBoth<IdF>>({
   ...Any,
   ...AssociativeBoth
 })
 
-export const IdentityFlatten = P.instance<P.IdentityFlatten<[URI<IdURI>]>>({
+export const IdentityFlatten = P.instance<P.IdentityFlatten<IdF>>({
   ...Any,
   ...AssociativeFlatten
 })
 
-export const Applicative = P.instance<P.Applicative<[URI<IdURI>]>>({
+export const Applicative = P.instance<P.Applicative<IdF>>({
   ...Covariant,
   ...IdentityBoth
 })
 
-export const Monad = P.instance<P.Monad<[URI<IdURI>]>>({
+export const Monad = P.instance<P.Monad<IdF>>({
   ...Covariant,
   ...IdentityFlatten
 })
 
-export const Reduce = P.instance<P.Reduce<[URI<IdURI>]>>({
+export const Reduce = P.instance<P.Reduce<IdF>>({
   reduce
 })
 
-export const ReduceRight = P.instance<P.ReduceRight<[URI<IdURI>]>>({
+export const ReduceRight = P.instance<P.ReduceRight<IdF>>({
   reduceRight
 })
 
-export const FoldMap = P.instance<P.FoldMap<[URI<IdURI>]>>({
+export const FoldMap = P.instance<P.FoldMap<IdF>>({
   foldMap
 })
 
-export const Foldable = P.instance<P.Foldable<[URI<IdURI>]>>({
+export const Foldable = P.instance<P.Foldable<IdF>>({
   ...Reduce,
   ...ReduceRight,
   ...FoldMap
 })
 
-export const ForEach = P.instance<P.ForEach<[URI<IdURI>]>>({
+export const ForEach = P.instance<P.ForEach<IdF>>({
   ...Covariant,
   forEachF: () => (f) => f
 })
 
-export const struct = structF(Applicative)
+export const struct = DSL.structF(Applicative)
 
-export const tuple = tupleF(Applicative)
+export const tuple = DSL.tupleF(Applicative)

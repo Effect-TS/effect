@@ -1,10 +1,10 @@
 // ets_tracing: off
 
-import * as P from "../../Prelude/index.js"
-import { Covariant } from "../instances/Covariant.js"
+import * as DSL from "../../PreludeV2/DSL/index.js"
+import type { OptionF } from "../definitions.js"
 
 /**
  * Matchers
  */
 export const { match, matchIn, matchMorph, matchTag, matchTagIn } =
-  P.matchers(Covariant)
+  DSL.matchers<OptionF>()

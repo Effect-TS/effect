@@ -1,18 +1,20 @@
 // ets_tracing: off
 
 import type * as O from "../../../Option/index.js"
-import * as P from "../../../Prelude/index.js"
+import * as DSL from "../../../PreludeV2/DSL/index.js"
+import * as P from "../../../PreludeV2/index.js"
 import { isOption } from "../../../Utils/index.js"
-import { Applicative, ApplyZip, Covariant, ForEach, Monad } from "./instances.js"
-import type * as A from "./operations.js"
+import type { ArrayF } from "./instances.js"
+import { Applicative, ApplyZip, ForEach, Monad } from "./instances.js"
+import type * as AR from "./operations.js"
 
 export const sequence = P.sequenceF(ForEach)
 
 const adapter: {
-  <A>(_: () => O.Option<A>): P.GenLazyHKT<A.Array<A>, A>
-  <A>(_: () => A.Array<A>): P.GenLazyHKT<A.Array<A>, A>
+  <A>(_: () => O.Option<A>): DSL.GenLazyHKT<AR.Array<A>, A>
+  <A>(_: () => AR.Array<A>): DSL.GenLazyHKT<AR.Array<A>, A>
 } = (_: () => any) =>
-  new P.GenLazyHKT(() => {
+  new DSL.GenLazyHKT(() => {
     const x = _()
     if (isOption(x)) {
       return x._tag === "None" ? [] : [x.value]
@@ -20,36 +22,35 @@ const adapter: {
     return x
   })
 
-export const gen = P.genWithHistoryF(Monad, {
+export const gen = DSL.genWithHistoryF(Monad, {
   adapter
 })
 
-export const tupleZip = P.tupleF(ApplyZip)
+export const tupleZip = DSL.tupleF(ApplyZip)
 
-export const structZip = P.structF(ApplyZip)
+export const structZip = DSL.structF(ApplyZip)
 
-export const tuple = P.tupleF(Applicative)
+export const tuple = DSL.tupleF(Applicative)
 
-export const struct = P.structF(Applicative)
+export const struct = DSL.structF(Applicative)
 
-const do_ = P.doF(Monad)
+/**
+ * Do
+ */
+const { bind, do: do_, let: let_ } = DSL.getDo(Monad)
 
-export const bind = P.bindF(Monad)
-
-const let_ = P.letF(Monad)
-
-export { do_ as do, let_ as let }
+export { do_ as do, let_ as let, bind }
 
 /**
  * Matchers
  */
 export const { match, matchIn, matchMorph, matchTag, matchTagIn } =
-  P.matchers(Covariant)
+  DSL.matchers<ArrayF>()
 
 /**
  * Conditionals
  */
-const branch = P.conditionalF(Covariant)
-const branch_ = P.conditionalF_(Covariant)
+const branch = DSL.conditionalF<ArrayF>()
+const branch_ = DSL.conditionalF_<ArrayF>()
 
 export { branch as if, branch_ as if_ }

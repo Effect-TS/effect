@@ -10,9 +10,9 @@ import { makeAssociative } from "../../src/Associative/index.js"
 import * as Either from "../../src/Either/index.js"
 import * as EitherT from "../../src/EitherT/index.js"
 import * as Option from "../../src/Option/index.js"
-import { GenHKT } from "../../src/Prelude/DSL/index.js"
-import * as DSL from "../../src/Prelude/DSL/index.js"
-import * as S from "../../src/Prelude/Selective/index.js"
+import * as DSL from "../../src/PreludeV2/DSL/index.js"
+import { GenHKT } from "../../src/PreludeV2/DSL/index.js"
+import * as S from "../../src/PreludeV2/Selective/index.js"
 import type { XIO } from "../../src/XPure/XIO/index.js"
 import * as IO from "../../src/XPure/XIO/index.js"
 import * as Reader from "../../src/XPure/XReader/index.js"
@@ -54,8 +54,7 @@ namespace ReaderIOEither {
   export const succeed = DSL.succeedF(Monad)
   export const accessM = DSL.accessMF({ ...Monad, ...Access })
 
-  export const Do = DSL.doF(Monad)
-  export const bind = DSL.bindF(Monad)
+  export const { bind, do: Do } = DSL.getDo(Monad)
 
   export const provideSome = DSL.provideSomeF({
     ...Monad,
@@ -114,7 +113,7 @@ namespace ReaderIO {
 }
 
 test("13", () => {
-  pipe(
+  const program: Reader.XReader<number, XIO<string>> = pipe(
     ReaderIOEither.Do,
     ReaderIOEither.bind("x", () => ReaderIOEither.succeed("0")),
     ReaderIOEither.bind("y", () => ReaderIOEither.succeed("1")),
@@ -129,17 +128,17 @@ test("13", () => {
     ReaderIO.branchA(
       ReaderIO.succeed((s) => `error: ${s}`),
       ReaderIO.succeed((s) => `success: ${s}`)
-    ),
-    Reader.runEnv(2),
-    IO.run,
-    (x) => {
-      console.log(x)
-    }
+    )
   )
+
+  expect(pipe(program, Reader.runEnv(2), IO.run)).toEqual("error: bar, foo")
 })
 
 test("13 generator", () => {
-  const result = ReaderIOEither.gen(function* (_) {
+  const result: Reader.XReader<
+    { a: number } & { b: number },
+    XIO<Either.Either<string | NoSuchElementException, number>>
+  > = ReaderIOEither.gen(function* (_) {
     const a = yield* _(ReaderIOEither.access((_: { a: number }) => _.a))
     const b = yield* _(ReaderIOEither.access((_: { b: number }) => _.b))
     const c = yield* _(Either.right(2))

@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as P from "../../Prelude/index.js"
+import * as DSL from "../../PreludeV2/DSL/index.js"
 import { Monad } from "../instances/Monad.js"
 
-export const gen = P.genF(Monad)
+export const gen = DSL.genF(Monad)

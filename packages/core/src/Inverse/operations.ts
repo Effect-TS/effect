@@ -1,6 +1,5 @@
 // ets_tracing: off
 
-import { instance } from "../Prelude/index.js"
 import type { Inverse } from "./index.js"
 
 export function makeInverse<A>(
@@ -8,9 +7,11 @@ export function makeInverse<A>(
   combine: (x: A, y: A) => A,
   inverse: (x: A, y: A) => A
 ): Inverse<A> {
-  return instance({
+  return {
+    _Closure: "Closure",
+    _Associative: "Associative",
     combine,
     identity,
     inverse
-  })
+  }
 }

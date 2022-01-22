@@ -11,21 +11,20 @@ import type { Equal } from "../../../Equal/index.js"
 import { makeEqual } from "../../../Equal/index.js"
 import type { Identity } from "../../../Identity/index.js"
 import { makeIdentity } from "../../../Identity/index.js"
-import type { ArrayURI } from "../../../Modules/index.js"
 import * as Ord from "../../../Ord/index.js"
-import type { URI } from "../../../Prelude/index.js"
-import * as P from "../../../Prelude/index.js"
+import * as P from "../../../PreludeV2/index.js"
 import type { Show } from "../../../Show/index.js"
 import type { PredicateWithIndex } from "../../../Utils/index.js"
 import * as C from "../Chunk/operations.js"
 import * as Tp from "../Tuple/index.js"
+import type { ArrayF } from "./instances.js"
 
 export * from "@effect-ts/system/Collections/Immutable/Array"
 
 /**
  * `ForEachWithIndex`'s `forEachWithIndexF` function
  */
-export const forEachWithIndexF = P.implementForEachWithIndexF<[URI<ArrayURI>]>()(
+export const forEachWithIndexF = P.implementForEachWithIndexF<number, ArrayF>()(
   (_) => (G) => (f) => (fa) =>
     pipe(C.from(fa), C.forEachWithIndexF(G)(f), G.map(C.toArray))
 )
@@ -33,35 +32,35 @@ export const forEachWithIndexF = P.implementForEachWithIndexF<[URI<ArrayURI>]>()
 /**
  * `ForEach`'s `forEachF` function
  */
-export const forEachF = P.implementForEachF<[URI<ArrayURI>]>()(
+export const forEachF = P.implementForEachF<ArrayF>()(
   (_) => (G) => (f) => forEachWithIndexF(G)((_, a) => f(a))
 )
 
 /**
  * `Wilt`'s `separateF` function
  */
-export const separateF = P.implementSeparateF<[URI<ArrayURI>]>()(
+export const separateF = P.implementSeparateF<ArrayF>()(
   (_) => (G) => (f) => (x) => pipe(x, forEachF(G)(f), G.map(A.separate))
 )
 
 /**
  * `Wilt`'s `separateF` function
  */
-export const separateWithIndexF = P.implementSeparateWithIndexF<[URI<ArrayURI>]>()(
+export const separateWithIndexF = P.implementSeparateWithIndexF<number, ArrayF>()(
   (_) => (G) => (f) => (x) => pipe(x, forEachWithIndexF(G)(f), G.map(A.separate))
 )
 
 /**
  * `Wither`'s `compactF` function
  */
-export const compactF = P.implementCompactF<[URI<ArrayURI>]>()(
+export const compactF = P.implementCompactF<ArrayF>()(
   (_) => (G) => (f) => (x) => pipe(x, forEachF(G)(f), G.map(A.compact))
 )
 
 /**
  * `WitherWithIndex`'s `compactWithIndexF` function
  */
-export const compactWithIndexF = P.implementCompactWithIndexF<[URI<ArrayURI>]>()(
+export const compactWithIndexF = P.implementCompactWithIndexF<number, ArrayF>()(
   (_) => (G) => (f) => (x) => pipe(x, forEachWithIndexF(G)(f), G.map(A.compact))
 )
 

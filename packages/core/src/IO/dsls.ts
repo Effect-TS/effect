@@ -1,8 +1,9 @@
 // ets_tracing: off
 
 import * as A from "../Collections/Immutable/Array/index.js"
-import * as DSL from "../Prelude/DSL/index.js"
-import { Applicative, Covariant, Monad } from "./instances.js"
+import * as DSL from "../PreludeV2/DSL/index.js"
+import type { IOF } from "./instances.js"
+import { Applicative, Monad } from "./instances.js"
 
 /**
  * Struct based applicative for IO[+_]
@@ -17,31 +18,20 @@ export const tuple = DSL.tupleF(Applicative)
 /**
  * Initialize Do
  */
-export const do_ = DSL.doF(Monad)
+const { bind, do: do_, let: let_ } = DSL.getDo(Monad)
 
-/**
- * Bind variable in scope
- */
-export const bind = DSL.bindF(Monad)
-
-/**
- * Bind variable in scope
- */
-const let_ = DSL.letF(Monad)
-
-export { let_ as let, do_ as do }
+export { do_ as do, let_ as let, bind }
 
 /**
  * Matchers
  */
-export const { match, matchIn, matchMorph, matchTag, matchTagIn } =
-  DSL.matchers(Covariant)
+export const { match, matchIn, matchMorph, matchTag, matchTagIn } = DSL.matchers<IOF>()
 
 /**
  * Conditionals
  */
-const branch = DSL.conditionalF(Covariant)
-const branch_ = DSL.conditionalF_(Covariant)
+const branch = DSL.conditionalF<IOF>()
+const branch_ = DSL.conditionalF_<IOF>()
 
 export { branch as if, branch_ as if_ }
 
