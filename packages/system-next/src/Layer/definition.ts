@@ -22,8 +22,20 @@ export type LayerHashSym = typeof LayerHashSym
  *
  * Because of their excellent composition properties, layers are the idiomatic
  * way in Effect-TS to create services that depend on other services.
+ *
+ * @ets type ets/Layer
  */
-export abstract class Layer<RIn, E, ROut> {
+export interface Layer<RIn, E, ROut> {
+  readonly [_RIn]: (_: RIn) => void
+  readonly [_E]: () => E
+  readonly [_ROut]: () => ROut
+
+  readonly [LayerHashSym]: AtomicReference<PropertyKey>
+
+  setKey(hash: PropertyKey): this
+}
+
+export abstract class LayerAbstract<RIn, E, ROut> implements Layer<RIn, E, ROut> {
   readonly [LayerHashSym] = new AtomicReference<PropertyKey>(Symbol());
 
   readonly [_RIn]: (_: RIn) => void;
@@ -48,11 +60,17 @@ export type Instruction =
   | ILayerZipWith<any, any, any, any, any, any, any>
   | ILayerZipWithPar<any, any, any, any, any, any, any>
 
-export class ILayerFold<RIn, E, ROut, RIn2, E2, ROut2, RIn3, E3, ROut3> extends Layer<
-  RIn & RIn2 & RIn3,
-  E2 | E3,
-  ROut2 | ROut3
-> {
+export class ILayerFold<
+  RIn,
+  E,
+  ROut,
+  RIn2,
+  E2,
+  ROut2,
+  RIn3,
+  E3,
+  ROut3
+> extends LayerAbstract<RIn & RIn2 & RIn3, E2 | E3, ROut2 | ROut3> {
   readonly _tag = "LayerFold"
 
   constructor(
@@ -64,7 +82,7 @@ export class ILayerFold<RIn, E, ROut, RIn2, E2, ROut2, RIn3, E3, ROut3> extends 
   }
 }
 
-export class ILayerFresh<RIn, E, ROut> extends Layer<RIn, E, ROut> {
+export class ILayerFresh<RIn, E, ROut> extends LayerAbstract<RIn, E, ROut> {
   readonly _tag = "LayerFresh"
 
   constructor(readonly self: Layer<RIn, E, ROut>) {
@@ -72,7 +90,7 @@ export class ILayerFresh<RIn, E, ROut> extends Layer<RIn, E, ROut> {
   }
 }
 
-export class ILayerManaged<RIn, E, ROut> extends Layer<RIn, E, ROut> {
+export class ILayerManaged<RIn, E, ROut> extends LayerAbstract<RIn, E, ROut> {
   readonly _tag = "LayerManaged"
 
   constructor(readonly self: Managed<RIn, E, ROut>) {
@@ -80,7 +98,7 @@ export class ILayerManaged<RIn, E, ROut> extends Layer<RIn, E, ROut> {
   }
 }
 
-export class ILayerSuspend<RIn, E, ROut> extends Layer<RIn, E, ROut> {
+export class ILayerSuspend<RIn, E, ROut> extends LayerAbstract<RIn, E, ROut> {
   readonly _tag = "LayerSuspend"
 
   constructor(readonly self: () => Layer<RIn, E, ROut>) {
@@ -88,7 +106,11 @@ export class ILayerSuspend<RIn, E, ROut> extends Layer<RIn, E, ROut> {
   }
 }
 
-export class ILayerTo<RIn, E, ROut, E1, ROut1> extends Layer<RIn, E | E1, ROut1> {
+export class ILayerTo<RIn, E, ROut, E1, ROut1> extends LayerAbstract<
+  RIn,
+  E | E1,
+  ROut1
+> {
   readonly _tag = "LayerTo"
 
   constructor(
@@ -99,7 +121,7 @@ export class ILayerTo<RIn, E, ROut, E1, ROut1> extends Layer<RIn, E | E1, ROut1>
   }
 }
 
-export class ILayerZipWith<RIn, E, ROut, RIn1, E1, ROut2, ROut3> extends Layer<
+export class ILayerZipWith<RIn, E, ROut, RIn1, E1, ROut2, ROut3> extends LayerAbstract<
   RIn & RIn1,
   E | E1,
   ROut3
@@ -115,11 +137,15 @@ export class ILayerZipWith<RIn, E, ROut, RIn1, E1, ROut2, ROut3> extends Layer<
   }
 }
 
-export class ILayerZipWithPar<RIn, E, ROut, RIn1, E1, ROut2, ROut3> extends Layer<
-  RIn & RIn1,
-  E | E1,
+export class ILayerZipWithPar<
+  RIn,
+  E,
+  ROut,
+  RIn1,
+  E1,
+  ROut2,
   ROut3
-> {
+> extends LayerAbstract<RIn & RIn1, E | E1, ROut3> {
   readonly _tag = "LayerZipWithPar"
 
   constructor(

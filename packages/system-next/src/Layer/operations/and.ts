@@ -4,6 +4,8 @@ import { ILayerZipWithPar } from "../definition"
 /**
  * Combines this layer with the specified layer, producing a new layer that
  * has the inputs and outputs of both.
+ *
+ * @ets operator ets/Layer +
  */
 export function and_<RIn, E, ROut, RIn2, E2, ROut2>(
   self: Layer<RIn, E, ROut>,

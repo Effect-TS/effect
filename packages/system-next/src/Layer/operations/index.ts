@@ -1,5 +1,6 @@
 // codegen:start {preset: barrel, include: ./*.ts}
 export * from "./and"
+export * from "./andFrom"
 export * from "./andTo"
 export * from "./catchAll"
 export * from "./chain"
@@ -34,5 +35,6 @@ export * from "./tap"
 export * from "./tapError"
 export * from "./to"
 export * from "./toRuntime"
+export * from "./using"
 export * from "./zipWithPar"
 // codegen:end

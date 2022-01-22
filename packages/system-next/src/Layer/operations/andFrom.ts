@@ -8,11 +8,11 @@ import { to_ } from "./to"
  * layer, resulting in a new layer with the inputs of this layer, and the
  * outputs of both layers.
  *
- * @ets operator ets/Layer >
+ * @ets operator ets/Layer <
  */
-export function andTo_<RIn, E, ROut, RIn2, E2, ROut2>(
-  self: Layer<RIn, E, ROut>,
-  that: Layer<RIn2, E2, ROut2>
+export function andUsing_<RIn, E, ROut, RIn2, E2, ROut2>(
+  that: Layer<RIn2, E2, ROut2>,
+  self: Layer<RIn, E, ROut>
 ): Layer<RIn & Erase<ROut & RIn2, ROut>, E2 | E, ROut & ROut2> {
   return and_(self, to_(self, that))
 }
@@ -22,11 +22,11 @@ export function andTo_<RIn, E, ROut, RIn2, E2, ROut2>(
  * layer, resulting in a new layer with the inputs of this layer, and the
  * outputs of both layers.
  *
- * @ets_data_first andTo_
+ * @ets_data_first andUsing_
  */
-export function andTo<RIn2, E2, ROut2>(that: Layer<RIn2, E2, ROut2>) {
-  return <RIn, E, ROut>(
-    self: Layer<RIn, E, ROut>
+export function andUsing<RIn, E, ROut>(self: Layer<RIn, E, ROut>) {
+  return <RIn2, E2, ROut2>(
+    that: Layer<RIn2, E2, ROut2>
   ): Layer<RIn & Erase<ROut & RIn2, ROut>, E | E2, ROut & ROut2> =>
-    andTo_<RIn, E, ROut, RIn2, E2, ROut2>(self, that)
+    andUsing_<RIn, E, ROut, RIn2, E2, ROut2>(that, self)
 }
