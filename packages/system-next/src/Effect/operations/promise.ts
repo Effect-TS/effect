@@ -1,4 +1,4 @@
-import type { Lazy } from "../../Function"
+import type { LazyArg } from "../../Function"
 import type { IO, UIO } from "../definition"
 import { async } from "./async"
 import { die } from "./die"
@@ -8,9 +8,11 @@ import { succeedNow } from "./succeedNow"
 /**
  * Create an `Effect` that when executed will construct `promise` and wait for
  * its result, errors will be handled using `onReject`.
+ *
+ * @ets static ets/EffectOps tryCatchPromise
  */
 export function tryCatchPromise<E, A>(
-  promise: Lazy<Promise<A>>,
+  promise: LazyArg<Promise<A>>,
   onReject: (reason: unknown) => E,
   __trace?: string
 ): IO<E, A> {
@@ -24,9 +26,11 @@ export function tryCatchPromise<E, A>(
 /**
  * Create an `Effect` that when executed will construct `promise` and wait for
  * its result, errors will produce failure as `unknown`.
+ *
+ * @ets static ets/EffectOps tryPromise
  */
 export function tryPromise<A>(
-  effect: Lazy<Promise<A>>,
+  effect: LazyArg<Promise<A>>,
   __trace?: string
 ): IO<unknown, A> {
   return async((resolve) => {
@@ -38,8 +42,10 @@ export function tryPromise<A>(
 
 /**
  * Like `tryPromise` but produces a defect in case of errors.
+ *
+ * @ets static ets/EffectOps promise
  */
-export function promise<A>(effect: Lazy<Promise<A>>, __trace?: string): UIO<A> {
+export function promise<A>(effect: LazyArg<Promise<A>>, __trace?: string): UIO<A> {
   return async((resolve) => {
     effect()
       .then((a) => resolve(succeedNow(a)))

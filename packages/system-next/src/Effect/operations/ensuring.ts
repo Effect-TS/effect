@@ -11,6 +11,8 @@ import { IEnsuring } from "../definition"
  * Finalizers offer very powerful guarantees, but they are low-level, and
  * should generally not be used for releasing resources. For higher-level
  * logic built on `ensuring`, see `acquireReleaseWith`.
+ *
+ * @ets fluent ets/Effect ensuring
  */
 export function ensuring_<R, E, A, R1, X>(
   self: Effect<R, E, A>,

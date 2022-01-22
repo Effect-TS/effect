@@ -6,6 +6,8 @@ import { succeedNow } from "./succeedNow"
 /**
  * Executes this effect, skipping the error but returning optionally the
  * success.
+ *
+ * @ets fluent ets/Effect option
  */
 export function option<R, E, A>(
   self: Effect<R, E, A>,

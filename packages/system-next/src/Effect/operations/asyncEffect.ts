@@ -15,6 +15,8 @@ import { zipRight } from "./zipRight"
 /**
  * Imports an asynchronous effect into a pure `ZIO` value. This formulation is
  * necessary when the effect is itself expressed in terms of `ZIO`.
+ *
+ * @ets static ets/EffectOps asyncEffect
  */
 export function asyncEffect<R2, E2, R, E, A, X>(
   register: (callback: Cb<Effect<R2, E2, A>>) => Effect<R, E, X>,

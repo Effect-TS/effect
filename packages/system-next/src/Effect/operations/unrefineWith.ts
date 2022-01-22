@@ -11,6 +11,8 @@ import { failCause } from "./failCause"
 /**
  * Takes some fiber failures and converts them into errors, using the
  * specified function to convert the `E` into an `E1 | E2`.
+ *
+ * @ets fluent ets/Effect unrefineWith
  */
 export function unrefineWith_<R, E, E1, E2, A>(
   fa: Effect<R, E, A>,

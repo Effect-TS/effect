@@ -3,6 +3,8 @@ import { chain_ } from "./chain"
 
 /**
  * A variant of `flatMap` that ignores the value produced by this effect.
+ *
+ * @ets fluent ets/Effect zipRight
  */
 export function zipRight_<R, E, A, R2, E2, A2>(
   self: Effect<R, E, A>,

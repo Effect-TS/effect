@@ -7,6 +7,8 @@ import { succeedNow } from "./succeedNow"
 
 /**
  * Recovers from all non-fatal defects.
+ *
+ * @ets fluent ets/Effect catchNonFatalOrDie
  */
 export function catchNonFatalOrDie_<R, E, A, R2, E2, A2>(
   self: Effect<R, E, A>,

@@ -3,6 +3,8 @@ import { chain_ } from "./chain"
 import { suspendSucceed } from "./suspendSucceed"
 import { unit } from "./unit"
 
+// TODO(Mike/Max): fix name
+
 /**
  * Loops with the specified effectual function purely for its effects. The
  * moral equivalent of:
@@ -15,6 +17,8 @@ import { unit } from "./unit"
  *   s = inc(s)
  * }
  * ```
+ *
+ * @ets static ets/EffectOps loopDiscard
  */
 export function loopUnit<Z>(initial: Z, cont: (z: Z) => boolean, inc: (z: Z) => Z) {
   return <R, E, X>(

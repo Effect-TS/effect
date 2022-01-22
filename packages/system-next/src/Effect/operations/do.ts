@@ -30,6 +30,8 @@ function bind<R, E, A, K, N extends string>(
 
 /**
  * Binds an effectful value in a `do` scope
+ *
+ * @ets fluent ets/Effect bind
  */
 export function bind_<R2, E2, R, E, A, K, N extends string>(
   mk: Effect<R2, E2, K>,

@@ -4,6 +4,8 @@ import { suspendSucceed } from "./suspendSucceed"
 
 /**
  * Runs `onTrue` if the result of `self` is `true` and `onFalse` otherwise.
+ *
+ * @ets fluent ets/Effect ifEffect
  */
 export function ifEffect_<R, R1, R2, E, E1, E2, A, A1>(
   self: Effect<R, E, boolean>,

@@ -5,6 +5,8 @@ import { provideServiceEffect } from "./provideServiceEffect"
 
 /**
  * Provides the service with the required service entry.
+ *
+ * @ets fluent ets/Effect provideService
  */
 export function provideService_<R, E, A, T>(
   effect: Effect<R & Has<T>, E, A>,

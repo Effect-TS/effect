@@ -15,6 +15,8 @@ import { suspendSucceed } from "./suspendSucceed"
  *
  * return s
  * ```
+ *
+ * @ets static ets/EffectOps iterate
  */
 export function iterate<Z>(initial: Z, cont: (z: Z) => boolean) {
   return <R, E>(body: (z: Z) => Effect<R, E, Z>, __trace?: string): Effect<R, E, Z> => {

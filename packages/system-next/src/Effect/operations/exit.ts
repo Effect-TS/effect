@@ -8,6 +8,8 @@ import { succeedNow } from "./succeedNow"
 /**
  * Returns an effect that semantically runs the effect on a fiber, producing
  * an `Exit` for the completion value of the fiber.
+ *
+ * @ets fluent ets/Effect exit
  */
 export function exit<R, E, A>(
   self: Effect<R, E, A>,

@@ -9,6 +9,8 @@ import { catchSomeDefect_ } from "./catchSomeDefect"
  * method should be used only at the boundary between Effect and an external
  * system, to transmit information on a defect for diagnostic or explanatory
  * purposes.
+ *
+ * @ets fluent ets/Effect catchAllDefect
  */
 export function catchAllDefect_<R, E, A, R2, E2, A2>(
   self: Effect<R, E, A>,

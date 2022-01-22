@@ -7,6 +7,8 @@ import { provideLayer_ } from "./provideLayer"
 /**
  * Splits the environment into two parts, providing one part using the
  * specified layer and leaving the remainder `R0`.
+ *
+ * @ets fluent ets/Effect provideSomeLayer
  */
 export function provideSomeLayer_<R1, E1, A1, R, E, A>(
   self: Effect<R1 & A, E1, A1>,

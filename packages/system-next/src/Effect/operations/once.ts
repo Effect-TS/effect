@@ -6,6 +6,8 @@ import { whenEffect_ } from "./whenEffect"
 /**
  * Returns an effect that will be executed at most once, even if it is
  * evaluated multiple times.
+ *
+ * @ets fluent ets/Effect once
  */
 export function once<R, E, A>(
   self: Effect<R, E, A>,

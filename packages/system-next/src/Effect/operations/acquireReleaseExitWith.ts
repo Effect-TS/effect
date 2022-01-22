@@ -16,6 +16,8 @@ import { suspendSucceed } from "./suspendSucceed"
  * resource is guaranteed to be released, so long as the `acquire` effect
  * succeeds. If `use` fails, then after release, the returned effect will fail
  * with the same error.
+ *
+ * @ets fluent ets/Effect acquireReleaseExitWith
  */
 export function acquireReleaseExitWith_<R, E, A, R1, E1, A1, R2, E2, X>(
   acquire: Effect<R, E, A>,

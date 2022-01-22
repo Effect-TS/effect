@@ -8,6 +8,8 @@ import { zipRight_ } from "./zipRight"
 
 /**
  * Returns an effect that effectfully "peeks" at the failure of this effect.
+ *
+ * @ets fluent ets/Effect tapError
  */
 export function tapError_<R, E, A, R2, E2, X>(
   self: Effect<R, E, A>,

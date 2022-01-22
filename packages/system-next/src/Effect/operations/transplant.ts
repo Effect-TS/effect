@@ -8,6 +8,9 @@ export type Grafter = <R, E, A>(
   __trace?: string
 ) => Effect<R, E, A>
 
+/**
+ * @ets static ets/EffectOps transplant
+ */
 export function transplant<R, E, A>(
   f: (grafter: Grafter) => Effect<R, E, A>,
   __trace?: string

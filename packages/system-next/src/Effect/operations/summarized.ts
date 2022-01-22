@@ -9,6 +9,8 @@ import { suspendSucceed } from "./suspendSucceed"
  * Summarizes a effect by computing some value before and after execution, and
  * then combining the values to produce a summary, together with the result of
  * execution.
+ *
+ * @ets fluent ets/Effect summarized
  */
 export function summarized_<R, E, A, R2, E2, B, C>(
   self: Effect<R, E, A>,

@@ -8,6 +8,8 @@ import { succeedNow } from "./succeedNow"
  *
  * Especially useful for creating "accessor" methods on services' companion
  * objects.
+ *
+ * @ets static ets/EffectOps service
  */
 export function service<T>(_: Tag<T>, __trace?: string): Effect<Has<T>, never, T> {
   return serviceWithEffect(_)(succeedNow, __trace)

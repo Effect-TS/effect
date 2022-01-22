@@ -5,6 +5,8 @@ import { unrefineWith_ } from "./unrefineWith"
 
 /**
  * Takes some fiber failures and converts them into errors.
+ *
+ * @ets fluent ets/Effect unrefine
  */
 export function unrefine_<R, E, A, E1>(
   fa: Effect<R, E, A>,

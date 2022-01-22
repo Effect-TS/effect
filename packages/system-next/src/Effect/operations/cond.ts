@@ -8,6 +8,8 @@ import { suspendSucceed } from "./suspendSucceed"
  * true, and the given `E` as error otherwise
  *
  * For effectful conditionals, see `ifEffect`.
+ *
+ * @ets static ets/EffectOps cond
  */
 export function cond_<E, A>(
   predicate: () => boolean,

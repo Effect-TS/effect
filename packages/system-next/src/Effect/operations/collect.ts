@@ -8,6 +8,8 @@ import { unsome } from "./unsome"
 /**
  * Evaluate each effect in the structure from left to right, collecting the
  * the successful values and discarding the empty cases. For a parallel version, see `collectPar`.
+ *
+ * @ets static ets/EffectOps collect
  */
 export function collect_<A, R, E, B>(
   self: Iterable<A>,

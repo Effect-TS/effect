@@ -8,6 +8,8 @@ import { onError_ } from "./onError"
 
 /**
  * Like fork but handles an error with the provided handler.
+ *
+ * @ets fluent ets/Effect forkWithErrorHandler
  */
 export function forkWithErrorHandler_<R, E, A, X>(
   self: Effect<R, E, A>,

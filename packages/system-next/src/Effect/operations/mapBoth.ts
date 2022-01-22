@@ -6,6 +6,8 @@ import { succeedNow } from "./succeedNow"
 /**
  * Returns an effect whose failure and success channels have been mapped by
  * the specified pair of functions, `f` and `g`.
+ *
+ * @ets fluent ets/Effect mapBoth
  */
 export function mapBoth_<R, E, A, E2, B>(
   self: Effect<R, E, A>,

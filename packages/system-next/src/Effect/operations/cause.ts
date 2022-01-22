@@ -7,6 +7,8 @@ import { foldCause_ } from "./foldCause"
 /**
  * Returns an effect that succeeds with the cause of failure of this effect,
  * or `Cause.empty` if the effect did succeed.
+ *
+ * @ets fluent ets/Effect cause
  */
 export function cause<R, E, A>(
   self: Effect<R, E, A>,

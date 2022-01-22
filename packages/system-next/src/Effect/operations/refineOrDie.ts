@@ -5,6 +5,8 @@ import { refineOrDieWith_ } from "./refineOrDieWith"
 
 /**
  * Keeps some of the errors, and terminates the fiber with the rest
+ *
+ * @ets fluent ets/Effect refineOrDie
  */
 export function refineOrDie_<R, A, E, E1>(
   self: Effect<R, E, A>,

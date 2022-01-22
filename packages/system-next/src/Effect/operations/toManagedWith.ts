@@ -5,6 +5,8 @@ import type { Effect } from "../definition"
 /**
  * Converts this Effect to a Managed. This Effect and the provided release action
  * will be performed uninterruptibly.
+ *
+ * @ets fluent ets/Effect toManagedWith
  */
 export function toManagedWith_<R, R1, E, A>(
   self: Effect<R, E, A>,

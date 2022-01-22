@@ -6,6 +6,8 @@ import { fail } from "./fail"
 /**
  * Fail with `e` if the supplied `PartialFunction` does not match, otherwise
  * continue with the returned value.
+ *
+ * @ets fluent ets/Effect continueOrFailEffect
  */
 export function continueOrFailEffect_<R, E, A, E1, R2, E2, A2>(
   self: Effect<R, E, A>,

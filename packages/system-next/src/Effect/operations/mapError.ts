@@ -9,6 +9,8 @@ import { succeedNow } from "./succeedNow"
 /**
  * Returns an effect with its error channel mapped using the specified
  * function. This can be used to lift a "smaller" error into a "larger" error.
+ *
+ * @ets fluent ets/Effect mapError
  */
 export function mapError_<R, E, A, E2>(
   self: Effect<R, E, A>,

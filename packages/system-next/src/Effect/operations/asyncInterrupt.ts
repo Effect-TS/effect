@@ -16,6 +16,8 @@ import type { Cb } from "./Cb"
  * If the register function returns a value synchronously, then the callback
  * function `Effect<R, E, A> => void` must not be called. Otherwise the callback
  * function must be called at most once.
+ *
+ * @ets static ets/EffectOps asyncInterrupt
  */
 export function asyncInterrupt<R, E, A>(
   register: (callback: Cb<Effect<R, E, A>>) => Either<Canceler<R>, Effect<R, E, A>>,
@@ -38,6 +40,8 @@ export function asyncInterrupt<R, E, A>(
  *
  * The list of fibers, that may complete the async callback, is used to
  * provide better diagnostics.
+ *
+ * @ets static ets/EffectOps asyncInterruptBlockingOn
  */
 export function asyncInterruptBlockingOn<R, E, A>(
   register: (callback: Cb<Effect<R, E, A>>) => Either<Canceler<R>, Effect<R, E, A>>,

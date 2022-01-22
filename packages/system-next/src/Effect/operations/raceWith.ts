@@ -7,6 +7,8 @@ import { IRaceWith } from "../definition/primitives"
 /**
  * Returns an effect that races this effect with the specified effect, calling
  * the specified finisher as soon as one result or the other has been computed.
+ *
+ * @ets fluent ets/Effect raceWith
  */
 export function raceWith_<R, E, A, R1, E1, A1, R2, E2, A2, R3, E3, A3>(
   left: Effect<R, E, A>,

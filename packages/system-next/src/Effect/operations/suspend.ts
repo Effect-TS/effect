@@ -1,4 +1,5 @@
 import { fail } from "../../Exit"
+import type { LazyArg } from "../../Function"
 import type { Effect } from "../definition"
 import { EffectError } from "../definition"
 import { suspendSucceedWith } from "./suspendSucceedWith"
@@ -7,9 +8,11 @@ import { suspendSucceedWith } from "./suspendSucceedWith"
  * Returns a lazily constructed effect, whose construction may itself require
  * effects. When no environment is required (i.e., when `R == unknown`) it is
  * conceptually equivalent to `flatten(succeed(io))`.
+ *
+ * @ets static ets/EffectOps suspend
  */
 export function suspend<R, E, A>(
-  f: () => Effect<R, E, A>,
+  f: LazyArg<Effect<R, E, A>>,
   __trace?: string
 ): Effect<R, unknown, A> {
   return suspendSucceedWith((runtimeConfig) => {

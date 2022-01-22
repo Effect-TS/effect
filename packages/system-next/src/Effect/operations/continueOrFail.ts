@@ -6,6 +6,8 @@ import { succeedNow } from "./succeedNow"
 /**
  * Fail with `e` if the supplied `PartialFunction` does not match, otherwise
  * succeed with the returned value.
+ *
+ * @ets static ets/EffectOps continueOrFail
  */
 export function continueOrFail_<R, E, E1, A, A2>(
   self: Effect<R, E, A>,

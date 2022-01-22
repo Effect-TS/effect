@@ -5,6 +5,8 @@ import { replicate_ } from "./replicate"
 /**
  * Performs this effect the specified number of times, discarding the
  * results.
+ *
+ * @ets fluent ets/Effect replicateEffectDiscard
  */
 export function replicateEffectDiscard_<R, E, A>(
   self: Effect<R, E, A>,

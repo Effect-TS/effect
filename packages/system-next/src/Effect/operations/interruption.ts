@@ -57,6 +57,8 @@ export class InterruptStatusRestoreImpl implements InterruptStatusRestore {
 
 /**
  * Returns an effect that is interrupted by the current fiber
+ *
+ * @ets static ets/EffectOps interrupt
  */
 export const interrupt = chain_(fiberId, interruptAs)
 
@@ -65,6 +67,8 @@ export const interrupt = chain_(fiberId, interruptAs)
  * effect becomes interruptible (the default), while if `false` is used, then
  * the effect becomes uninterruptible. These changes are compositional, so
  * they only affect regions of the effect.
+ *
+ * @ets fluent ets/Effect interruptStatus
  */
 export function interruptStatus_<R, E, A>(
   self: Effect<R, E, A>,
@@ -97,6 +101,8 @@ export function interruptStatus(flag: InterruptStatus, __trace?: string) {
  * **WARNING**: This operator "punches holes" into effects, allowing them to be
  * interrupted in unexpected places. Do not use this operator unless you know
  * exactly what you are doing. Instead, you should use `uninterruptibleMask`.
+ *
+ * @ets fluent ets/Effect interruptible
  */
 export function interruptible<R, E, A>(
   self: Effect<R, E, A>,
@@ -112,6 +118,8 @@ export function interruptible<R, E, A>(
  *
  * Uninterruptible effects may recover from all failure causes (including
  * interruption of an inner effect that has been made interruptible).
+ *
+ * @ets fluent ets/Effect uninterruptible
  */
 export function uninterruptible<R, E, A>(
   self: Effect<R, E, A>,
@@ -123,6 +131,8 @@ export function uninterruptible<R, E, A>(
 /**
  * Checks the interrupt status, and produces the effect returned by the
  * specified callback.
+ *
+ * @ets static ets/EffectOps checkInterruptible
  */
 export function checkInterruptible<R, E, A>(
   f: (interruptStatus: InterruptStatus) => Effect<R, E, A>,
@@ -135,6 +145,8 @@ export function checkInterruptible<R, E, A>(
  * Makes the effect interruptible, but passes it a restore function that can
  * be used to restore the inherited interruptibility from whatever region the
  * effect is composed into.
+ *
+ * @ets static ets/EffectOps interruptibleMask
  */
 export function interruptibleMask<R, E, A>(
   f: (statusRestore: InterruptStatusRestore) => Effect<R, E, A>,
@@ -149,6 +161,8 @@ export function interruptibleMask<R, E, A>(
  * Makes the effect uninterruptible, but passes it a restore function that can
  * be used to restore the inherited interruptibility from whatever region the
  * effect is composed into.
+ *
+ * @ets static ets/EffectOps uninterruptibleMask
  */
 export function uninterruptibleMask<R, E, A>(
   f: (statusRestore: InterruptStatusRestore) => Effect<R, E, A>,
@@ -171,6 +185,8 @@ export function uninterruptibleMask<R, E, A>(
  * background.
  *
  * See timeout and race for other applications.
+ *
+ * @ets fluent ets/Effect disconnect
  */
 export function disconnect<R, E, A>(
   effect: Effect<R, E, A>,
@@ -192,6 +208,8 @@ export function disconnect<R, E, A>(
 /**
  * Calls the specified function, and runs the effect it returns, if this
  * effect is interrupted.
+ *
+ * @ets fluent ets/Effect onInterrupt
  */
 export function onInterrupt_<R, E, A, R2, X>(
   self: Effect<R, E, A>,
@@ -225,9 +243,13 @@ export function onInterrupt<R2, X>(
     onInterrupt_(self, cleanup, __trace)
 }
 
+// TOSO(Mike/Max): Rename
+
 /**
  * Calls the specified function, and runs the effect it returns, if this
  * effect is interrupted (allows for expanding error).
+ *
+ * @ets fluent ets/Effect onInterruptPolymorphic
  */
 export function onInterruptExtended_<R, E, A, R2, E2, X>(
   self: Effect<R, E, A>,
@@ -267,6 +289,8 @@ export function onInterruptExtended<R2, E2, X>(
 
 /**
  * Returns an effect that is interrupted as if by the specified fiber.
+ *
+ * @ets static ets/EffectOps interruptAs
  */
 export function interruptAs(fiberId: FiberId.FiberId, __trace?: string) {
   return failCause(causeInterrupt(fiberId), __trace)

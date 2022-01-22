@@ -6,5 +6,7 @@ import { map_ } from "./map"
 /**
  * Returns the `FiberId` of the fiber executing the effect that calls this
  * method.
+ *
+ * @ets static ets/EffectOps fiberId
  */
 export const fiberId: UIO<FiberId> = map_(descriptor, (_) => _.id)

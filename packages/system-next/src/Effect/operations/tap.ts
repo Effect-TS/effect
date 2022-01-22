@@ -16,6 +16,8 @@ export function tap<R, E, A, X>(
 
 /**
  * Returns an effect that effectfully "peeks" at the success of this effect.
+ *
+ * @ets fluent ets/Effect tap
  */
 export function tap_<R2, E2, A, R, E, X>(
   _: Effect<R2, E2, A>,

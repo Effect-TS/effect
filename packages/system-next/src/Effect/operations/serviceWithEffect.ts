@@ -11,6 +11,8 @@ import { suspendSucceed } from "./suspendSucceed"
  *
  * Especially useful for creating "accessor" methods on services' companion
  * objects.
+ *
+ * @ets static ets/EffectOps serviceWithEffect
  */
 export function serviceWithEffect<T>(_: Tag<T>) {
   return <R, E, A>(

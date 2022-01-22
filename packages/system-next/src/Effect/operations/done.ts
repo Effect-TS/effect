@@ -6,6 +6,8 @@ import { suspendSucceed } from "./suspendSucceed"
 
 /**
  * Returns an effect from a `Exit` value.
+ *
+ * @ets static ets/EffectOps done
  */
 export function done<E, A>(exit: Exit<E, A>, __trace?: string): IO<E, A> {
   return suspendSucceed(

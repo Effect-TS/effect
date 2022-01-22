@@ -8,6 +8,8 @@ import { foldCauseEffect_ } from "./foldCauseEffect"
 
 /**
  * A version of `foldEffect` that gives you the trace of the error.
+ *
+ * @ets fluent ets/Effect foldTraceEffect
  */
 export function foldTraceEffect_<R, E, A, R2, E2, A2, R3, E3, A3>(
   self: Effect<R, E, A>,

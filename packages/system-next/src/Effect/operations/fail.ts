@@ -7,6 +7,8 @@ import { failCauseWith } from "./failCauseWith"
 /**
  * Returns an effect that models failure with the specified error. The moral
  * equivalent of `throw` for pure code.
+ *
+ * @ets static ets/EffectOps fail
  */
 export function fail<E>(f: LazyArg<E>, __trace?: string): IO<E, never> {
   return failCauseWith(() => new Fail(f(), none), __trace)

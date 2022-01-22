@@ -6,6 +6,8 @@ import { succeedNow } from "./succeedNow"
 
 /**
  * Extracts the optional value, or executes the effect 'orElse'.
+ *
+ * @ets fluent ets/Effect someOrElseEffect
  */
 export function someOrElseEffect_<R, E, A, R2, E2, B>(
   self: Effect<R, E, O.Option<A>>,

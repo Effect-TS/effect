@@ -9,6 +9,8 @@ import { supervised_ } from "./supervised"
 /**
  * Acts on the children of this fiber, guaranteeing the specified callback
  * will be invoked, whether or not this effect succeeds.
+ *
+ * @ets fluent ets/Effect ensuringChildren
  */
 export function ensuringChildren_<R, E, A, R1, X>(
   self: Effect<R, E, A>,

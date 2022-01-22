@@ -27,6 +27,8 @@ import { zipLeft_ } from "./zipLeft"
  * Returns an effect that races this effect with all the specified effects,
  * yielding the value of the first effect to succeed with a value. Losers of
  * the race will be interrupted immediately
+ *
+ * @ets fluent ets/Effect raceAll
  */
 export function raceAll_<R, E, A>(
   self: Effect<R, E, A>,

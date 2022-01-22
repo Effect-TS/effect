@@ -4,6 +4,8 @@ import { map_ } from "./map"
 
 /**
  * Extracts the optional value, or returns the given 'orElse'.
+ *
+ * @ets fluent ets/Effect someOrElse
  */
 export function someOrElse_<R, E, A, B>(
   self: Effect<R, E, O.Option<A>>,

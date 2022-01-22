@@ -5,6 +5,8 @@ import { IFlatMap } from "../definition"
  * Returns an effect that models the execution of this effect, followed by the
  * passing of its value to the specified continuation function `k`, followed
  * by the effect that it returns.
+ *
+ * @ets fluent ets/Effect flatMap
  */
 export function chain_<R, E, A, R1, E1, B>(
   self: Effect<R, E, A>,

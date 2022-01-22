@@ -5,6 +5,8 @@ import { map_ } from "./map"
 /**
  * Filters the collection using the specified effectual predicate, removing
  * all elements that satisfy the predicate.
+ *
+ * @ets static ets/EffectOps filterNot
  */
 export function filterNot_<A, R, E>(
   as: Iterable<A>,

@@ -7,6 +7,8 @@ import { suspendSucceed } from "./suspendSucceed"
 /**
  * Reduces an `Iterable<Effect<R, E, A>>` to a single `Effect<R, E, A>`, working
  * in parallel.
+ *
+ * @ets static ets/EffectOps reduceAllPar
  */
 export function reduceAllPar_<R, E, A>(
   as: Iterable<Effect<R, E, A>>,

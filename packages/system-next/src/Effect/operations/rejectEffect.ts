@@ -8,6 +8,8 @@ import { succeedNow } from "./succeedNow"
  * Continue with the returned computation if the `PartialFunction` matches,
  * translating the successful match into a failure, otherwise continue with
  * our held value.
+ *
+ * @ets fluent ets/Effect rejectEffect
  */
 export function rejectEffect_<R, E, A, R1, E1>(
   self: Effect<R, E, A>,

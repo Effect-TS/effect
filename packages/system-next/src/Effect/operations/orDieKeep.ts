@@ -6,6 +6,8 @@ import { succeedNow } from "./succeedNow"
 
 /**
  * Converts all failures to unchecked exceptions.
+ *
+ * @ets fluent ets/Effect orDieKeep
  */
 export function orDieKeep<R, E, A>(effect: Effect<R, E, A>, __trace?: string) {
   return foldCauseEffect_(

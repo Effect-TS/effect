@@ -17,6 +17,8 @@ export function repeatUntil<A>(p: Predicate<A>, __trace?: string) {
 /**
  * Repeats this effect until its value satisfies the specified predicate or
  * until the first failure.
+ *
+ * @ets fluent ets/Effect repeatUntil
  */
 export function repeatUntil_<R, E, A>(
   self: Effect<R, E, A>,

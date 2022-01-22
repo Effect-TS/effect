@@ -3,6 +3,8 @@ import { catchAll_ } from "./catchAll"
 
 /**
  * Recovers from specified error.
+ *
+ * @ets fluent ets/Effect catchTag
  */
 export function catchTag_<
   K extends E["_tag"] & string,

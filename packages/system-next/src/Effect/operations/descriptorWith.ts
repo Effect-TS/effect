@@ -5,6 +5,8 @@ import { IDescriptor } from "../definition"
 /**
  * Constructs an effect based on information about the current fiber, such as
  * its identity.
+ *
+ * @ets static ets/EffectOps descriptorWith
  */
 export function descriptorWith<R, E, A>(
   f: (descriptor: Fiber.Descriptor) => Effect<R, E, A>,

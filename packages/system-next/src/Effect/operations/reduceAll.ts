@@ -6,6 +6,8 @@ import { zipWith_ } from "./zipWith"
 /**
  * Reduces an `Iterable<Effect<R, E, A>>` to a single `Effect<R, E, A>`, working
  * sequentially.
+ *
+ * @ets static ets/EffectOps reduceAll
  */
 export function reduceAll_<R, E, A>(
   as: Iterable<Effect<R, E, A>>,

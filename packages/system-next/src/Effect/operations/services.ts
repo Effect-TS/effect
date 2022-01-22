@@ -6,7 +6,7 @@ import { environmentWith } from "./environmentWith"
 /**
  * Access a the specified services in the environment of the effect.
  *
- * @ets_trace call
+ * @ets static ets/EffectOps services
  */
 export function services<Ts extends readonly Tag<any>[]>(...s: Ts) {
   return environmentWith(

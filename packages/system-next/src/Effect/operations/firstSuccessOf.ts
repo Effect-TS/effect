@@ -7,6 +7,8 @@ import { suspendSucceed } from "./suspendSucceed"
 /**
  * Returns an effect that runs this effect and in case of failure, runs each
  * of the specified effects in order until one of them succeeds.
+ *
+ * @ets static ets/EffectOps firstSuccessOf
  */
 export function firstSuccessOf<R, E, A>(
   effects: NA.NonEmptyArray<Effect<R, E, A>>,

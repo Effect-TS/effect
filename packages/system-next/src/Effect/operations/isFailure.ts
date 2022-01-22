@@ -4,6 +4,8 @@ import { fold_ } from "./fold"
 
 /**
  * Returns whether this effect is a failure.
+ *
+ * @ets fluent ets/Effect isFailure
  */
 export function isFailure<R, E, A>(
   self: Effect<R, E, A>,

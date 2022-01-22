@@ -440,6 +440,8 @@ export const forkScopeOverride: LazyValue<FiberRef.Runtime<O.Option<Scope>>> =
 
 /**
  * Accesses the whole environment of the effect.
+ *
+ * @ets static ets/EffectOps environment
  */
 export function effectEnvironment<R>(__trace?: string): RIO<R, R> {
   return suspendSucceed(() => fiberRefGet(currentEnvironment.value), __trace)

@@ -4,6 +4,8 @@ import { succeedNow } from "./succeedNow"
 
 /**
  * Recovers from all errors.
+ *
+ * @ets fluent ets/Effect catchAll
  */
 export function catchAll_<R2, E2, A2, R, E, A>(
   self: Effect<R2, E2, A2>,

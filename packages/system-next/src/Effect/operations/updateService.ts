@@ -6,6 +6,8 @@ import { succeed } from "./succeed"
 
 /**
  * Updates the service with the required service entry.
+ *
+ * @ets fluent ets/Effect updateService
  */
 export function updateService_<R, E, A, T>(
   effect: Effect<R & Has<T>, E, A>,

@@ -10,6 +10,8 @@ import { succeedNow } from "./succeedNow"
 
 /**
  * A version of `catchSome` that gives you the trace of the error.
+ *
+ * @ets fluent ets/Effect catchSomeTrace
  */
 export function catchSomeTrace_<R, E, A, R2, E2, A2>(
   self: Effect<R, E, A>,

@@ -6,6 +6,8 @@ import { succeedNow } from "./succeedNow"
 
 /**
  * A version of `catchAll` that gives you the (optional) trace of the error.
+ *
+ * @ets fluent ets/Effect catchAllTrace
  */
 export function catchAllTrace_<R, E, A, R2, E2, A2>(
   self: Effect<R, E, A>,

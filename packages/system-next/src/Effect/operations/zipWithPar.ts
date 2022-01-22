@@ -14,6 +14,8 @@ import { transplant } from "./transplant"
 /**
  * Sequentially zips this effect with the specified effect using the
  * specified combiner function.
+ *
+ * @ets fluent ets/Effect zipWithPar
  */
 export function zipWithPar_<R, E, A, R2, E2, A2, B>(
   self: Effect<R, E, A>,

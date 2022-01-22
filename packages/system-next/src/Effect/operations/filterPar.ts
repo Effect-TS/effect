@@ -7,6 +7,8 @@ import { map_ } from "./map"
 /**
  * Filters the collection in parallel using the specified effectual predicate.
  * See `filter` for a sequential version of it.
+ *
+ * @ets static ets/EffectOps filterPar
  */
 export function filterPar_<A, R, E>(
   as: Iterable<A>,

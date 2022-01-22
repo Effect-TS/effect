@@ -4,10 +4,9 @@ import { map_ } from "./map"
 
 /**
  * Accesses the environment of the effect.
+ *
+ * @ets static ets/EffectOps environmentWith
  */
-export function environmentWith<R, R1, E, A>(
-  f: (env: R) => A,
-  __trace?: string
-): RIO<R, A> {
+export function environmentWith<R, A>(f: (env: R) => A, __trace?: string): RIO<R, A> {
   return map_(environment<R>(), f, __trace)
 }

@@ -7,6 +7,8 @@ import { provideEnvironment_ } from "./provideEnvironment"
 
 /**
  * Depending on provided environment returns either this one or the other effect.
+ *
+ * @ets fluent ets/Effect joinEither
  */
 export function joinEither_<R, E, A, R1, E1, A1>(
   self: Effect<R, E, A>,

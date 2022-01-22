@@ -7,6 +7,8 @@ import { failCause } from "./failCause"
 /**
  * Executed `that` in case `self` fails with a `Cause` that doesn't contain
  * defects, executes `success` in case of successes
+ *
+ * @ets fluent ets/Effect tryOrElse
  */
 export function tryOrElse_<R, E, A, R2, E2, A2, R3, E3, A3>(
   self: Effect<R, E, A>,

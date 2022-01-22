@@ -21,6 +21,8 @@ export function repeatUntilEffect<A, R1>(
 /**
  * Repeats this effect until its value satisfies the specified effectful
  * predicate or until the first failure.
+ *
+ * @ets fluent ets/Effect repeatUntilEffect
  */
 export function repeatUntilEffect_<R, E, A, R1>(
   self: Effect<R, E, A>,

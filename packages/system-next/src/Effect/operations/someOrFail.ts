@@ -1,3 +1,4 @@
+import type { LazyArg } from "../../Function"
 import * as O from "../../Option"
 import type { Effect } from "../definition"
 import { chain_ } from "./chain"
@@ -7,10 +8,12 @@ import { succeedNow } from "./succeedNow"
 
 /**
  * Extracts the optional value, or fails with the given error 'e'.
+ *
+ * @ets fluent ets/Effect someOrFail
  */
 export function someOrFail_<R, E, A, E2>(
   self: Effect<R, E, O.Option<A>>,
-  orFail: () => E2,
+  orFail: LazyArg<E2>,
   __trace?: string
 ): Effect<R, E | E2, A> {
   return chain_(

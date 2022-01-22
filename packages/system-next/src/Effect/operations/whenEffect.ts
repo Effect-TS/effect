@@ -3,8 +3,12 @@ import { asUnit } from "./asUnit"
 import { chain_ } from "./chain"
 import { unit } from "./unit"
 
+// TODO(Mike/Max): Make predicate lazy
+
 /**
  * The moral equivalent of `if (p) exp` when `p` has side-effects.
+ *
+ * @ets fluent ets/Effect whenEffect
  */
 export function whenEffect_<R1, E1, A, R, E>(
   self: Effect<R1, E1, A>,

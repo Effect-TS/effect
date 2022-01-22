@@ -6,6 +6,8 @@ import { suspendSucceed } from "./suspendSucceed"
 
 /**
  * Folds an `Iterable<A>` using an effectual function f, working sequentially from left to right.
+ *
+ * @ets static ets/EffectOps reduceRight
  */
 export function reduceRight_<A, Z, R, E>(
   i: Iterable<A>,

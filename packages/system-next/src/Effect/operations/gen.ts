@@ -73,6 +73,9 @@ export interface AdapterWithManaged extends Adapter {
   <R, E, A>(_: Managed<R, E, A>, __trace?: string): GenEffect<R, E, A>
 }
 
+/**
+ * @ets static ets/EffectOps genWithManaged
+ */
 export function genM<Eff extends GenEffect<any, any, any>, AEff>(
   f: (i: AdapterWithManaged) => Generator<Eff, AEff, any>,
   __trace?: string
@@ -127,6 +130,9 @@ export function genM<Eff extends GenEffect<any, any, any>, AEff>(
   }, __trace)
 }
 
+/**
+ * @ets static ets/EffectOps gen
+ */
 export function gen<Eff extends GenEffect<any, any, any>, AEff>(
   f: (i: Adapter) => Generator<Eff, AEff, any>,
   __trace?: string

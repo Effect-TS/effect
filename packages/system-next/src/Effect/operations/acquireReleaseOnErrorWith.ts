@@ -5,6 +5,8 @@ import { unit } from "./unit"
 
 /**
  * Executes the release effect only if there was an error.
+ *
+ * @ets fluent ets/Effect acquireReleaseOnErrorWith
  */
 export function acquireReleaseOnErrorWith_<R, E, A, E1, R1, A1, R2, E2, X>(
   acquire: Effect<R, E, A>,

@@ -1,3 +1,4 @@
+import type { LazyArg } from "../../Function"
 import type * as O from "../../Option"
 import type { Effect } from "../definition"
 import { asSome } from "./asSome"
@@ -7,10 +8,12 @@ import { suspendSucceed } from "./suspendSucceed"
 
 /**
  * The moral equivalent of `if (!p) exp` when `p` has side-effects.
+ *
+ * @ets fluent ets/Effect unlessEffect
  */
 export function unlessEffect_<R, E, A, R2, E2>(
   self: Effect<R, E, A>,
-  predicate: () => Effect<R2, E2, boolean>,
+  predicate: LazyArg<Effect<R2, E2, boolean>>,
   __trace?: string
 ): Effect<R & R2, E | E2, O.Option<A>> {
   return suspendSucceed(
@@ -25,7 +28,7 @@ export function unlessEffect_<R, E, A, R2, E2>(
  * @ets_data_first unlessEffect_
  */
 export function unlessEffect<R2, E2>(
-  predicate: () => Effect<R2, E2, boolean>,
+  predicate: LazyArg<Effect<R2, E2, boolean>>,
   __trace?: string
 ) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R & R2, E | E2, O.Option<A>> =>

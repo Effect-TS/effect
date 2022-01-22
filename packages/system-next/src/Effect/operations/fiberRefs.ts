@@ -57,6 +57,8 @@ export class FiberRefs {
 /**
  * Returns a collection of all `FiberRef` values for the fiber running this
  * effect.
+ *
+ * @ets static ets/EffectOps getFiberRefs
  */
 export const getFiberRefs: UIO<FiberRefs> = new IFiberRefGetAll((fiberRefLocals) =>
   succeedNow(new FiberRefs(fiberRefLocals))
@@ -65,6 +67,8 @@ export const getFiberRefs: UIO<FiberRefs> = new IFiberRefGetAll((fiberRefLocals)
 /**
  * Sets the `FiberRef` values for the fiber running this effect to the values
  * in the specified collection of `FiberRef` values.
+ *
+ * @ets static ets/EffectOps setFiberRefs
  */
 export function setFiberRefs(fiberRefs: FiberRefs, __trace?: string): UIO<void> {
   return suspendSucceed(() => fiberRefs.setAll)

@@ -5,6 +5,8 @@ import type { Effect } from "../definition"
 
 /**
  * Replicates the given effect `n` times.
+ *
+ * @ets fluent ets/Effect replicate
  */
 export function replicate_<R, E, A>(
   self: Effect<R, E, A>,

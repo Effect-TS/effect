@@ -9,6 +9,8 @@ import { zipRight_ } from "./zipRight"
 
 /**
  * A version of `tapError` that gives you the trace of the error.
+ *
+ * @ets fluent ets/Effect tapErrorTrace
  */
 export function tapErrorTrace_<R, E, A, R2, E2, X>(
   self: Effect<R, E, A>,

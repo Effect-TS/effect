@@ -7,6 +7,8 @@ import { suspendSucceed } from "./suspendSucceed"
 /**
  * Submerges the error case of an `Either` into the `Effect`. The inverse
  * operation of `either`.
+ *
+ * @ets fluent ets/Effect absolve
  */
 export function absolve<R, E, A>(
   self: Effect<R, E, Either<E, A>>,

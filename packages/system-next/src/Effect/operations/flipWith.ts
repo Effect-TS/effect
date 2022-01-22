@@ -4,6 +4,8 @@ import { flip } from "./flip"
 /**
  * Swaps the error/value parameters, applies the function `f` and flips the
  * parameters back
+ *
+ * @ets fluent ets/Effect flipWith
  */
 export function flipWith_<R, E, A, R2, E2, A2>(
   self: Effect<R, E, A>,

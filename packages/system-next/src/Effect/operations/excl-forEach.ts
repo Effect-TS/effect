@@ -93,6 +93,8 @@ import { zipRight_ } from "./zipRight"
  *
  * For a parallel version of this method, see `forEachPar`. If you do not need
  * the results, see `forEachDiscard` for a more efficient implementation.
+ *
+ * @ets static ets/EffectOps forEach
  */
 export function forEach_<A, R, E, B>(
   as: Iterable<A>,
@@ -134,6 +136,8 @@ export function forEach<A, R, E, B>(f: (a: A) => Effect<R, E, B>, __trace?: stri
  * Same as `forEach_`, except that the function `f` is supplied
  * a second argument that corresponds to the index (starting from 0)
  * of the current element being iterated over.
+ *
+ * @ets static ets/EffectOps forEachWithIndex
  */
 export function forEachWithIndex_<A, R, E, B>(
   as: Iterable<A>,
@@ -180,6 +184,8 @@ export function forEachWithIndex<A, R, E, B>(
  *
  * Equivalent to `asUnit(forEach(as, f))`, but without the cost of building
  * the list of results.
+ *
+ * @ets static ets/EffectOps forEachDiscard
  */
 export function forEachDiscard_<R, E, A, X>(
   as: Iterable<A>,
@@ -222,6 +228,8 @@ function forEachDiscardLoop<R, E, A, X>(
  * and returns the results in a new `Chunk<B>`.
  *
  * For a sequential version of this method, see `forEach`.
+ *
+ * @ets static ets/EffectOps forEachPar
  */
 export function forEachPar_<R, E, A, B>(
   as: Iterable<A>,
@@ -345,6 +353,8 @@ function forEachParN<R, E, A, B>(
  * Same as `forEachPar_`, except that the function `f` is supplied
  * a second argument that corresponds to the index (starting from 0)
  * of the current element being iterated over.
+ *
+ * @ets static ets/EffectOps forEachParWithIndex
  */
 export function forEachParWithIndex_<R, E, A, B>(
   as: Iterable<A>,
@@ -401,6 +411,8 @@ export function forEachParWithIndex<R, E, A, B>(
  * Optimized to avoid keeping full tree of effects, so that method could be
  * able to handle large input sequences. Additionally, interrupts all effects
  * on any failure.
+ *
+ * @ets static ets/EffectOps forEachParDiscard
  */
 export function forEachParDiscard_<R, E, A, X>(
   as: Iterable<A>,
@@ -536,6 +548,8 @@ function forEachParNDiscard<R, E, A, X>(
 /**
  * Applies the function `f` to each element of the `Iterable<A>` and returns
  * the result in a new `Chunk<B>` using the specified execution strategy.
+ *
+ * @ets static ets/EffectOps forEachExec
  */
 export function forEachExec_<R, E, A, B>(
   as: Iterable<A>,
@@ -580,6 +594,8 @@ export function forEachExec<R, E, A, B>(
 /**
  * Evaluate each effect in the structure from left to right, and collect the
  * results. For a parallel version, see `collectAllPar`.
+ *
+ * @ets static ets/EffectOps collectAll
  */
 export function collectAll<R, E, A>(as: Iterable<Effect<R, E, A>>, __trace?: string) {
   return forEach_(as, identity, __trace)
@@ -592,6 +608,8 @@ export function collectAll<R, E, A>(as: Iterable<Effect<R, E, A>>, __trace?: str
 /**
  * Evaluate each effect in the structure in parallel, and collect the
  * results. For a sequential version, see `collectAll`.
+ *
+ * @ets static ets/EffectOps collectAllPar
  */
 export function collectAllPar<R, E, A>(
   as: Iterable<Effect<R, E, A>>,
@@ -607,6 +625,8 @@ export function collectAllPar<R, E, A>(
 /**
  * Evaluate each effect in the structure from left to right, and discard the
  * results. For a parallel version, see `collectAllParDiscard`.
+ *
+ * @ets static ets/EffectOps collectAllDiscard
  */
 export function collectAllDiscard<R, E, A>(
   as: Iterable<Effect<R, E, A>>,
@@ -622,6 +642,8 @@ export function collectAllDiscard<R, E, A>(
 /**
  * Evaluate each effect in the structure in parallel, and discard the
  * results. For a sequential version, see `collectAllDiscard`.
+ *
+ * @ets static ets/EffectOps collectAllParDiscard
  */
 export function collectAllParDiscard<R, E, A>(
   as: Iterable<Effect<R, E, A>>,
@@ -637,6 +659,8 @@ export function collectAllParDiscard<R, E, A>(
 /**
  * Evaluate each effect in the structure in parallel, and discard the
  * results. For a sequential version, see `collectAllDiscard`.
+ *
+ * @ets static ets/EffectOps collectAllParUnboundedDiscard
  */
 export function collectAllParUnboundedDiscard<R, E, A>(
   as: Iterable<Effect<R, E, A>>,
@@ -654,6 +678,8 @@ export function collectAllParUnboundedDiscard<R, E, A>(
  * results. For a sequential version, see `collectAllDiscard`.
  *
  * Unlike `collectAllParDiscard`, this method will use at most `n` fibers.
+ *
+ * @ets static ets/EffectOps collectAllParNDiscard
  */
 export function collectAllParNDiscard_<R, E, A>(
   as: Iterable<Effect<R, E, A>>,
@@ -683,6 +709,8 @@ export function collectAllParNDiscard(n: number, __trace?: string) {
 /**
  * Evaluate each effect in the structure with `collectAll`, and collect
  * the results with given partial function.
+ *
+ * @ets static ets/EffectOps collectAllWith
  */
 export function collectAllWith_<R, E, A, B>(
   as: Iterable<Effect<R, E, A>>,
@@ -710,6 +738,8 @@ export function collectAllWith<A, B>(pf: (a: A) => O.Option<B>, __trace?: string
 /**
  * Evaluate each effect in the structure with `collectAll`, and collect
  * the results with given partial function.
+ *
+ * @ets static ets/EffectOps collectAllWithPar
  */
 export function collectAllWithPar_<R, E, A, B>(
   as: Iterable<Effect<R, E, A>>,
@@ -736,6 +766,8 @@ export function collectAllWithPar<A, B>(pf: (a: A) => O.Option<B>, __trace?: str
 
 /**
  * Evaluate and run each effect in the structure and collect discarding failed ones.
+ *
+ * @ets static ets/EffectOps collectAllSuccesses
  */
 export function collectAllSuccesses<R, E, A>(
   as: Iterable<Effect<R, E, A>>,
@@ -754,6 +786,8 @@ export function collectAllSuccesses<R, E, A>(
 
 /**
  * Evaluate and run each effect in the structure in parallel, and collect discarding failed ones.
+ *
+ * @ets static ets/EffectOps collectAllSuccessesPar
  */
 export function collectAllSuccessesPar<R, E, A>(
   as: Iterable<Effect<R, E, A>>,

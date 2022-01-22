@@ -3,9 +3,13 @@ import type { Effect, RIO } from "../definition"
 import { foldCauseEffect_ } from "./foldCauseEffect"
 import { succeedNow } from "./succeedNow"
 
+// TODO(Mike/Max): fix name
+
 /**
  * A more powerful version of `fold` that allows recovering from any kind of
  * failure except interruptions.
+ *
+ * @ets fluent ets/Effect foldCause
  */
 export function foldCause_<R, E, A, A2, A3>(
   self: Effect<R, E, A>,

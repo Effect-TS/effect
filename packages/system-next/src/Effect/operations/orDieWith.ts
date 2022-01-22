@@ -6,6 +6,8 @@ import { succeedNow } from "./succeedNow"
 /**
  * Keeps none of the errors, and terminates the fiber with them, using the
  * specified function to convert the `E` into a `Throwable`.
+ *
+ * @ets fluent ets/Effect orDieWith
  */
 export function orDieWith_<R, E, A>(
   self: Effect<R, E, A>,

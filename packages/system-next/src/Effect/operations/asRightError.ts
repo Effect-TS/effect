@@ -5,6 +5,8 @@ import { mapError_ } from "./mapError"
 
 /**
  * Maps the error value of this effect to a right value.
+ *
+ * @ets fluent ets/Effect asRightError
  */
 export function asRightError<R, E, A>(
   self: Effect<R, E, A>

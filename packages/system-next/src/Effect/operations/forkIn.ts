@@ -4,6 +4,9 @@ import type { Scope } from "../../Scope"
 import type { Effect, RIO } from "../definition"
 import { IFork } from "../definition"
 
+/**
+ * @ets fluent ets/Effect forkIn
+ */
 export function forkIn_<R, E, A>(
   self: Effect<R, E, A>,
   scope: Scope,

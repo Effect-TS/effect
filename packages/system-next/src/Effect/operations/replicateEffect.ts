@@ -7,6 +7,8 @@ import { suspendSucceed } from "./suspendSucceed"
 /**
  * Performs this effect the specified number of times and collects the
  * results.
+ *
+ * @ets fluent ets/Effect replicateEffect
  */
 export function replicateEffect_<R, E, A>(
   self: Effect<R, E, A>,

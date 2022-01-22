@@ -17,6 +17,8 @@ export class ForkScopeRestore {
  * Captures the fork scope, before overriding it with the specified new
  * scope, passing a function that allows restoring the fork scope to
  * what it was originally.
+ *
+ * @ets static ets/EffectOps forkScopeMask
  */
 export function forkScopeMask_<R, E, A>(
   newScope: Scope,

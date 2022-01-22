@@ -1,3 +1,4 @@
+import type { LazyArg } from "../../Function"
 import type { Effect } from "../definition"
 import { ISuspend } from "../definition"
 
@@ -7,9 +8,11 @@ import { ISuspend } from "../definition"
  * required (i.e., when `R == unknown`) it is conceptually equivalent to
  * `flatten(succeed(effect))`. If you wonder if the effect throws
  * exceptions, do not use this method, use `suspend`.
+ *
+ * @ets static ets/EffectOps suspendSucceed
  */
 export function suspendSucceed<R, E, A>(
-  f: () => Effect<R, E, A>,
+  f: LazyArg<Effect<R, E, A>>,
   __trace?: string
 ): Effect<R, E, A> {
   return new ISuspend(f, __trace)

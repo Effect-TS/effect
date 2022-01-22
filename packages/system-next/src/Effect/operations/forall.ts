@@ -7,6 +7,8 @@ import { suspendSucceed } from "./suspendSucceed"
 /**
  * Determines whether any element of the `Iterable<A>` satisfies the effectual
  * predicate `f`.
+ *
+ * @ets static ets/EffectOps forall
  */
 export function forall_<R, E, A>(
   as: Iterable<A>,

@@ -8,6 +8,8 @@ import { succeedNow } from "./succeedNow"
 
 /**
  * Recovers from some or all of the error cases.
+ *
+ * @ets fluent ets/Effect catchSome
  */
 export function catchSome_<R, E, A, R2, E2, A2>(
   fa: Effect<R, E, A>,

@@ -2,9 +2,13 @@ import type { Effect } from "../definition"
 import { failNow } from "./failNow"
 import { orElse_ } from "./orElse"
 
+// TODO(Mike/Max): make e lazy
+
 /**
  * Executes this effect and returns its value, if it succeeds, but otherwise
  * fails with the specified error.
+ *
+ * @ets fluent ets/Effect orElseFail
  */
 export function orElseFail_<R, E, A, E2>(
   self: Effect<R, E, A>,

@@ -10,6 +10,8 @@ import { unit } from "./unit"
  * succeeds with unit, depending on whether the cause is empty.
  *
  * This operation is the opposite of `cause`.
+ *
+ * @ets fluent ets/Effect uncause
  */
 export function uncause<R, E>(
   self: RIO<R, Cause.Cause<E>>,

@@ -8,6 +8,8 @@ import { failNow } from "./failNow"
 /**
  * Keeps some of the errors, and terminates the fiber with the rest, using
  * the specified function to convert the `E` into a `Throwable`.
+ *
+ * @ets fluent ets/Effect refineOrDieWith
  */
 export function refineOrDieWith_<R, A, E, E1>(
   self: Effect<R, E, A>,

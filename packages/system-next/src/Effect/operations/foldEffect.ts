@@ -14,6 +14,8 @@ import { foldCauseEffect_ } from "./foldCauseEffect"
  *
  * The error parameter of the returned `IO` may be chosen arbitrarily, since
  * it will depend on the `IO`s returned by the given continuations.
+ *
+ * @ets fluent ets/Effect foldEffect
  */
 export function foldEffect_<R, E, A, R2, E2, A2, R3, E3, A3>(
   self: Effect<R, E, A>,

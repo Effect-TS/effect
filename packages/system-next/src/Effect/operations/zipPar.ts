@@ -4,6 +4,8 @@ import { zipWithPar_ } from "./zipWithPar"
 
 /**
  * Parallely zips this effects
+ *
+ * @ets fluent ets/Effect zipPar
  */
 export function zipPar_<R, E, A, R2, E2, A2>(
   a: Effect<R, E, A>,

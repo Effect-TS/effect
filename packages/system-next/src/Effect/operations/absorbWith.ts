@@ -8,6 +8,8 @@ import { succeedNow } from "./succeedNow"
 /**
  * Attempts to convert defects into a failure, throwing away all information
  * about the cause of the failure.
+ *
+ * @ets fluent ets/Effect absorbWith
  */
 export function absorbWith_<R, A, E>(
   self: Effect<R, E, A>,

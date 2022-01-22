@@ -1,4 +1,5 @@
 import * as E from "../../Either"
+import type { LazyArg } from "../../Function"
 import type { Effect } from "../definition"
 import { map_ } from "./map"
 import { succeedNow } from "./succeedNow"
@@ -7,10 +8,12 @@ import { tryOrElse_ } from "./tryOrElse"
 /**
  * Returns an effect that will produce the value of this effect, unless it
  * fails, in which case, it will produce the value of the specified effect.
+ *
+ * @ets fluent ets/Effect orElseEither
  */
 export function orElseEither_<R, E, A, R2, E2, A2>(
   self: Effect<R, E, A>,
-  that: () => Effect<R2, E2, A2>,
+  that: LazyArg<Effect<R2, E2, A2>>,
   __trace?: string
 ): Effect<R & R2, E2, E.Either<A, A2>> {
   return tryOrElse_(

@@ -8,6 +8,8 @@ import { map_ } from "./map"
 /**
  * Returns an effect that forks all of the specified values, and returns a
  * composite fiber that produces a list of their results, in order.
+ *
+ * @ets static ets/EffectOps forkAll
  */
 export function forkAll<R, E, A>(
   effects: Iterable<Effect<R, E, A>>,

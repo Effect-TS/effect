@@ -7,6 +7,8 @@ import { succeedNow } from "./succeedNow"
 /**
  * Converts a `Effect<R, Either<B, E>, A>` into a `Effect<R, E, Either<B, A>>`.
  * The inverse of `right`.
+ *
+ * @ets fluent ets/Effect unright
  */
 export function unright<R, B, E, A>(
   self: Effect<R, E.Either<B, E>, A>,

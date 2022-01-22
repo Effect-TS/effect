@@ -6,6 +6,8 @@ import { zipWith_ } from "./zipWith"
 
 /**
  * Filters the collection using the specified effectual predicate.
+ *
+ * @ets static ets/EffectOps filter
  */
 export function filter_<A, R, E>(
   as: Iterable<A>,

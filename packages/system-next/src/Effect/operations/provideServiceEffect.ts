@@ -7,6 +7,8 @@ import { mergeEnvironments } from "../../Has"
 
 /**
  * Provides the service with the required service entry.
+ *
+ * @ets fluent ets/Effect provideServiceEffect
  */
 export function provideServiceEffect_<R1, E1, A1, R, E, T>(
   effect: Effect<R1 & Has<T>, E1, A1>,

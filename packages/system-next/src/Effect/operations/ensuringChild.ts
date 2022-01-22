@@ -8,6 +8,8 @@ import { ensuringChildren_ } from "./ensuringChildren"
  * Acts on the children of this fiber (collected into a single fiber),
  * guaranteeing the specified callback will be invoked, whether or not this
  * effect succeeds.
+ *
+ * @ets fluent ets/Effect ensuringChild
  */
 export function ensuringChild_<R, E, A, R2, X>(
   fa: Effect<R, E, A>,

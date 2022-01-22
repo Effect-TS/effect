@@ -2,9 +2,13 @@ import type { Effect } from "../definition"
 import { orElse_ } from "./orElse"
 import { succeedNow } from "./succeedNow"
 
+// TODO(Mike/Max): make a lazy
+
 /**
  * Executes this effect and returns its value, if it succeeds, but
  * otherwise succeeds with the specified value.
+ *
+ * @ets fluent ets/Effect orElseSucceed
  */
 export function orElseSucceed_<R, E, A, A2>(
   self: Effect<R, E, A>,

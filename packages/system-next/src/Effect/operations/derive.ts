@@ -40,6 +40,9 @@ export type DerivedLifted<
   [k in Values]: Effect<Has<T>, never, T[k]>
 }
 
+/**
+ * @ets static ets/EffectOps deriveLifted
+ */
 export function deriveLifted<T>(
   H: Tag<T>
 ): <
@@ -77,7 +80,10 @@ export type DerivedAccessM<T, Gens extends keyof T> = {
   ) => Effect<R_ & Has<T>, E_, A_>
 }
 
-export function deriveAccessM<T>(
+/**
+ * @ets static ets/EffectOps deriveAccessEffect
+ */
+export function deriveAccessEffect<T>(
   H: Tag<T>
 ): <Gens extends keyof T = never>(generics: Gens[]) => DerivedAccessM<T, Gens> {
   return (generics) => {
@@ -95,6 +101,9 @@ export type DerivedAccess<T, Gens extends keyof T> = {
   [k in Gens]: <A_>(f: (_: T[k]) => A_, __trace?: string) => Effect<Has<T>, never, A_>
 }
 
+/**
+ * @ets static ets/EffectOps deriveAccess
+ */
 export function deriveAccess<T>(
   H: Tag<T>
 ): <Gens extends keyof T = never>(generics: Gens[]) => DerivedAccess<T, Gens> {

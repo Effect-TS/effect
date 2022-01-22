@@ -4,6 +4,8 @@ import { IGetForkScope } from "../definition"
 
 /**
  * Retrieves the scope that will be used to supervise forked effects.
+ *
+ * @ets static ets/EffectOps forkScopeWith
  */
 export function forkScopeWith<R, E, A>(
   f: (scope: Scope) => Effect<R, E, A>,
