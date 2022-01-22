@@ -1,5 +1,5 @@
 import * as HS from "../../Collections/Immutable/HashSet"
-import * as L from "../../Collections/Immutable/List/core"
+import * as L from "../../Collections/Immutable/Vector/core"
 import { ids } from "../../FiberId/operations/ids"
 import * as O from "../../Option/core"
 import type { Cause } from "../definition"

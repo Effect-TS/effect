@@ -1,6 +1,6 @@
 import * as HS from "../Collections/Immutable/HashSet"
-import * as L from "../Collections/Immutable/List/core"
 import * as Tp from "../Collections/Immutable/Tuple"
+import * as V from "../Collections/Immutable/Vector/core"
 import type { FiberId } from "../FiberId/definition"
 import { tuple } from "../Function/core"
 import * as IO from "../IO/core"
@@ -446,19 +446,19 @@ const _emptyHash = St.opt(St.randomInt())
 
 function stepLoop<A>(
   cause: Cause<A>,
-  stack: L.List<Cause<A>>,
+  stack: V.Vector<Cause<A>>,
   parallel: HS.HashSet<Cause<A>>,
-  sequential: L.List<Cause<A>>
-): Tp.Tuple<[HS.HashSet<Cause<A>>, L.List<Cause<A>>]> {
+  sequential: V.Vector<Cause<A>>
+): Tp.Tuple<[HS.HashSet<Cause<A>>, V.Vector<Cause<A>>]> {
   while (1) {
     realCause(cause)
     switch (cause._tag) {
       case "Empty": {
-        if (L.isEmpty(stack)) {
+        if (V.isEmpty(stack)) {
           return Tp.tuple(parallel, sequential)
         } else {
-          cause = L.unsafeFirst(stack)!
-          stack = L.tail(stack)
+          cause = V.unsafeFirst(stack)!
+          stack = V.tail(stack)
         }
         break
       }
@@ -485,13 +485,13 @@ function stepLoop<A>(
           }
           default: {
             cause = left
-            sequential = L.prepend_(sequential, right)
+            sequential = V.prepend_(sequential, right)
           }
         }
         break
       }
       case "Both": {
-        stack = L.prepend_(stack, cause.right)
+        stack = V.prepend_(stack, cause.right)
         cause = cause.left
         break
       }
@@ -500,12 +500,12 @@ function stepLoop<A>(
         break
       }
       default: {
-        if (L.isEmpty(stack)) {
+        if (V.isEmpty(stack)) {
           return Tp.tuple(HS.add_(parallel, cause), sequential)
         } else {
           parallel = HS.add_(parallel, cause)
-          cause = L.unsafeFirst(stack)!
-          stack = L.tail(stack)
+          cause = V.unsafeFirst(stack)!
+          stack = V.tail(stack)
           break
         }
       }
@@ -518,28 +518,28 @@ function stepLoop<A>(
  * Takes one step in evaluating a cause, returning a set of causes that fail
  * in parallel and a list of causes that fail sequentially after those causes.
  */
-function step<A>(self: Cause<A>): Tp.Tuple<[HS.HashSet<Cause<A>>, L.List<Cause<A>>]> {
-  return stepLoop(self, L.empty(), HS.make(), L.empty())
+function step<A>(self: Cause<A>): Tp.Tuple<[HS.HashSet<Cause<A>>, V.Vector<Cause<A>>]> {
+  return stepLoop(self, V.empty(), HS.make(), V.empty())
 }
 
 function flattenCauseLoop<A>(
-  causes: L.List<Cause<A>>,
-  flattened: L.List<HS.HashSet<Cause<A>>>
-): L.List<HS.HashSet<Cause<A>>> {
+  causes: V.Vector<Cause<A>>,
+  flattened: V.Vector<HS.HashSet<Cause<A>>>
+): V.Vector<HS.HashSet<Cause<A>>> {
   while (1) {
-    const [parallel, sequential] = L.reduce_(
+    const [parallel, sequential] = V.reduce_(
       causes,
-      tuple(HS.make<Cause<A>>(), L.empty<Cause<A>>()),
+      tuple(HS.make<Cause<A>>(), V.empty<Cause<A>>()),
       ([parallel, sequential], cause) => {
         const {
           tuple: [set, seq]
         } = step(cause)
-        return tuple(HS.union_(parallel, set), L.concat_(sequential, seq))
+        return tuple(HS.union_(parallel, set), V.concat_(sequential, seq))
       }
     )
-    const updated = HS.size(parallel) > 0 ? L.prepend_(flattened, parallel) : flattened
-    if (L.isEmpty(sequential)) {
-      return L.reverse(updated)
+    const updated = HS.size(parallel) > 0 ? V.prepend_(flattened, parallel) : flattened
+    if (V.isEmpty(sequential)) {
+      return V.reverse(updated)
     } else {
       causes = sequential
       flattened = updated
@@ -553,18 +553,18 @@ function flattenCauseLoop<A>(
  * causes that fail in parallel and sequential sets represent causes that fail
  * after each other.
  */
-function flattenCause<E>(self: Cause<E>): L.List<HS.HashSet<Cause<E>>> {
-  return flattenCauseLoop(L.of(self), L.empty())
+function flattenCause<E>(self: Cause<E>): V.Vector<HS.HashSet<Cause<E>>> {
+  return flattenCauseLoop(V.of(self), V.empty())
 }
 
 function hashCode<E>(self: Cause<E>): number {
   const flat = flattenCause(self)
-  const size = L.size(flat)
+  const size = V.size(flat)
   let head
   if (size === 0) {
     return _emptyHash
-  } else if (size === 1 && (head = L.unsafeFirst(flat)!) && HS.size(head) === 1) {
-    return L.unsafeFirst(L.from(head))![St.hashSym]
+  } else if (size === 1 && (head = V.unsafeFirst(flat)!) && HS.size(head) === 1) {
+    return V.unsafeFirst(V.from(head))![St.hashSym]
   } else {
     return St.hashIterator(flat[Symbol.iterator]())
   }

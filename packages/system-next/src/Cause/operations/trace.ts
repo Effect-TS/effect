@@ -1,4 +1,4 @@
-import * as L from "../../Collections/Immutable/List/core"
+import * as L from "../../Collections/Immutable/Vector/core"
 import type { Trace } from "../../Trace/definition"
 import { combine_ } from "../../Trace/operations/combine"
 import { none } from "../../Trace/operations/none"

@@ -1,4 +1,4 @@
-import * as L from "../../Collections/Immutable/List"
+import * as V from "../../Collections/Immutable/Vector"
 import { pipe } from "../../Function"
 import type { Effect } from "../definition"
 import { chain_ } from "./chain"
@@ -30,7 +30,7 @@ export function loop<Z>(initial: Z, cont: (z: Z) => boolean, inc: (z: Z) => Z) {
     __trace?: string
   ): Effect<R, E, readonly A[]> => {
     return map_(loopInternal_(initial, cont, inc, body, __trace), (x) =>
-      Array.from(L.reverse(x))
+      Array.from(V.reverse(x))
     )
   }
 }
@@ -41,19 +41,19 @@ function loopInternal_<Z, R, E, A>(
   inc: (z: Z) => Z,
   body: (z: Z) => Effect<R, E, A>,
   __trace?: string
-): Effect<R, E, L.MutableList<A>> {
+): Effect<R, E, V.MutableVector<A>> {
   return suspendSucceed(() => {
     if (cont(initial)) {
       return chain_(body(initial), (a) =>
         pipe(
           loopInternal_(inc(initial), cont, inc, body),
           map((as) => {
-            L.push_(as, a)
+            V.push_(as, a)
             return as
           })
         )
       )
     }
-    return succeed(() => L.emptyPushable())
+    return succeed(() => V.emptyPushable())
   }, __trace)
 }

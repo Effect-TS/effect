@@ -3,8 +3,8 @@ import { tuple } from "../../../Function"
 import * as IO from "../../../IO"
 import * as St from "../../../Structural"
 import * as HS from "../HashSet"
-import * as L from "../List/core"
 import * as Tp from "../Tuple"
+import * as V from "../Vector/core"
 
 export const _ParSeqBrand = Symbol()
 export type _ParSeqBrand = typeof _ParSeqBrand
@@ -377,10 +377,10 @@ export function single<A>(a: A): ParSeq<A> {
  */
 export const empty: ParSeq<never> = new Empty()
 
-function isEmptyLoop<A>(self: L.List<ParSeq<A>>): boolean {
-  while (!L.isEmpty(self)) {
-    const head = L.unsafeFirst(self)!
-    const tail = L.tail(self)
+function isEmptyLoop<A>(self: V.Vector<ParSeq<A>>): boolean {
+  while (!V.isEmpty(self)) {
+    const head = V.unsafeFirst(self)!
+    const tail = V.tail(self)
     switch (head._tag) {
       case "Empty": {
         self = tail
@@ -390,11 +390,11 @@ function isEmptyLoop<A>(self: L.List<ParSeq<A>>): boolean {
         return false
       }
       case "Both": {
-        self = L.prepend_(L.prepend_(tail, head.right), head.left)
+        self = V.prepend_(V.prepend_(tail, head.right), head.left)
         break
       }
       case "Then": {
-        self = L.prepend_(L.prepend_(tail, head.right), head.left)
+        self = V.prepend_(V.prepend_(tail, head.right), head.left)
         break
       }
     }
@@ -406,29 +406,29 @@ function isEmptyLoop<A>(self: L.List<ParSeq<A>>): boolean {
  * Checks if the ParSeq is empty
  */
 export function isEmpty<A>(self: ParSeq<A>): boolean {
-  return isEmptyLoop(L.of(self))
+  return isEmptyLoop(V.of(self))
 }
 
 function stepLoop<A>(
   cause: ParSeq<A>,
-  stack: L.List<ParSeq<A>>,
+  stack: V.Vector<ParSeq<A>>,
   parallel: HS.HashSet<ParSeq<A>>,
-  sequential: L.List<ParSeq<A>>
-): Tp.Tuple<[HS.HashSet<ParSeq<A>>, L.List<ParSeq<A>>]> {
+  sequential: V.Vector<ParSeq<A>>
+): Tp.Tuple<[HS.HashSet<ParSeq<A>>, V.Vector<ParSeq<A>>]> {
   // eslint-disable-next-line no-constant-condition
   while (1) {
     switch (cause._tag) {
       case "Empty": {
-        if (L.isEmpty(stack)) {
+        if (V.isEmpty(stack)) {
           return Tp.tuple(parallel, sequential)
         } else {
-          cause = L.unsafeFirst(stack)!
-          stack = L.tail(stack)
+          cause = V.unsafeFirst(stack)!
+          stack = V.tail(stack)
         }
         break
       }
       case "Both": {
-        stack = L.prepend_(stack, cause.right)
+        stack = V.prepend_(stack, cause.right)
         cause = cause.left
         break
       }
@@ -450,18 +450,18 @@ function stepLoop<A>(
           }
           default: {
             cause = left
-            sequential = L.prepend_(sequential, right)
+            sequential = V.prepend_(sequential, right)
           }
         }
         break
       }
       default: {
-        if (L.isEmpty(stack)) {
+        if (V.isEmpty(stack)) {
           return Tp.tuple(HS.add_(parallel, cause), sequential)
         } else {
           parallel = HS.add_(parallel, cause)
-          cause = L.unsafeFirst(stack)!
-          stack = L.tail(stack)
+          cause = V.unsafeFirst(stack)!
+          stack = V.tail(stack)
           break
         }
       }
@@ -472,27 +472,27 @@ function stepLoop<A>(
 
 function step<A>(
   self: ParSeq<A>
-): Tp.Tuple<[HS.HashSet<ParSeq<A>>, L.List<ParSeq<A>>]> {
-  return stepLoop(self, L.empty(), HS.make(), L.empty())
+): Tp.Tuple<[HS.HashSet<ParSeq<A>>, V.Vector<ParSeq<A>>]> {
+  return stepLoop(self, V.empty(), HS.make(), V.empty())
 }
 
 function flattenLoop<A>(
-  causes: L.List<ParSeq<A>>,
-  flattened: L.List<HS.HashSet<ParSeq<A>>>
-): L.List<HS.HashSet<ParSeq<A>>> {
+  causes: V.Vector<ParSeq<A>>,
+  flattened: V.Vector<HS.HashSet<ParSeq<A>>>
+): V.Vector<HS.HashSet<ParSeq<A>>> {
   // eslint-disable-next-line no-constant-condition
   while (1) {
-    const [parallel, sequential] = L.reduce_(
+    const [parallel, sequential] = V.reduce_(
       causes,
-      tuple(HS.make<ParSeq<A>>(), L.empty<ParSeq<A>>()),
+      tuple(HS.make<ParSeq<A>>(), V.empty<ParSeq<A>>()),
       ([parallel, sequential], cause) => {
         const [set, seq] = step(cause).tuple
-        return tuple(HS.union_(parallel, set), L.concat_(sequential, seq))
+        return tuple(HS.union_(parallel, set), V.concat_(sequential, seq))
       }
     )
-    const updated = HS.size(parallel) > 0 ? L.prepend_(flattened, parallel) : flattened
-    if (L.isEmpty(sequential)) {
-      return L.reverse(updated)
+    const updated = HS.size(parallel) > 0 ? V.prepend_(flattened, parallel) : flattened
+    if (V.isEmpty(sequential)) {
+      return V.reverse(updated)
     } else {
       causes = sequential
       flattened = updated
@@ -502,17 +502,17 @@ function flattenLoop<A>(
 }
 
 function flatten<A>(self: ParSeq<A>) {
-  return flattenLoop(L.of(self), L.empty())
+  return flattenLoop(V.of(self), V.empty())
 }
 
 function hashCode(self: ParSeq<unknown>) {
   const flat = flatten(self)
-  const size = L.size(flat)
+  const size = V.size(flat)
   let head
   if (size === 0) {
     return _emptyHash
-  } else if (size === 1 && (head = L.unsafeFirst(flat)!) && HS.size(head) === 1) {
-    return L.unsafeFirst(L.from(head))![St.hashSym]
+  } else if (size === 1 && (head = V.unsafeFirst(flat)!) && HS.size(head) === 1) {
+    return V.unsafeFirst(V.from(head))![St.hashSym]
   } else {
     return St.hashIterator(flat[Symbol.iterator]())
   }

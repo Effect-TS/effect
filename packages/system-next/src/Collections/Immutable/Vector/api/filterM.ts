@@ -2,21 +2,21 @@ import type { Effect } from "../../../../Effect/definition"
 import { succeedNow } from "../../../../Effect/operations/succeedNow"
 import { suspendSucceed } from "../../../../Effect/operations/suspendSucceed"
 import { zipWith_ } from "../../../../Effect/operations/zipWith"
-import * as List from "../core"
+import * as V from "../core"
 
 /**
  * Filters this list by the specified effectful predicate, retaining all elements for
  * which the predicate evaluates to true.
  */
 export function filterM_<R, E, A>(
-  self: List.List<A>,
+  self: V.Vector<A>,
   f: (a: A) => Effect<R, E, boolean>
-): Effect<R, E, List.List<A>> {
+): Effect<R, E, V.Vector<A>> {
   return suspendSucceed(() => {
-    let dest: Effect<R, E, List.List<A>> = succeedNow(List.empty<A>())
+    let dest: Effect<R, E, V.Vector<A>> = succeedNow(V.empty<A>())
 
     for (const a of self) {
-      dest = zipWith_(dest, f(a), (d, b) => (b ? List.append_(d, a) : d))
+      dest = zipWith_(dest, f(a), (d, b) => (b ? V.append_(d, a) : d))
     }
 
     return dest
@@ -31,6 +31,6 @@ export function filterM_<R, E, A>(
  */
 export function filterM<R, E, A>(
   f: (a: A) => Effect<R, E, boolean>
-): (self: List.List<A>) => Effect<R, E, List.List<A>> {
+): (self: V.Vector<A>) => Effect<R, E, V.Vector<A>> {
   return (self) => filterM_(self, f)
 }

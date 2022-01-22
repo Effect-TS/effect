@@ -2,8 +2,8 @@ import * as Cause from "../../../Cause/definition"
 import * as E from "../../../Either"
 import { identity } from "../../../Function"
 import * as O from "../../../Option"
-import * as L from "../List/core"
 import * as Tp from "../Tuple"
+import * as V from "../Vector/core"
 import type { ParSeq } from "./primitives"
 import * as P from "./primitives"
 
@@ -40,56 +40,56 @@ function foldLoop<A, B>(
   singleCase: (a: A) => B,
   thenCase: (l: B, r: B) => B,
   bothCase: (l: B, r: B) => B,
-  inp: L.List<ParSeq<A>>,
-  out: L.List<E.Either<boolean, B>>
-): L.List<B> {
+  inp: V.Vector<ParSeq<A>>,
+  out: V.Vector<E.Either<boolean, B>>
+): V.Vector<B> {
   // eslint-disable-next-line no-constant-condition
   while (1) {
-    if (L.isEmpty(inp)) {
-      return L.reduce_(out, L.empty<B>(), (acc, val) => {
+    if (V.isEmpty(inp)) {
+      return V.reduce_(out, V.empty<B>(), (acc, val) => {
         if (val._tag === "Right") {
-          return L.prepend_(acc, val.right)
+          return V.prepend_(acc, val.right)
         } else {
           if (val.left) {
             let parSeqs = acc
-            const left = L.unsafeFirst(parSeqs)
-            parSeqs = L.tail(parSeqs)
-            const right = L.unsafeFirst(parSeqs)
-            parSeqs = L.tail(parSeqs)
-            return L.prepend_(parSeqs, bothCase(left!, right!))
+            const left = V.unsafeFirst(parSeqs)
+            parSeqs = V.tail(parSeqs)
+            const right = V.unsafeFirst(parSeqs)
+            parSeqs = V.tail(parSeqs)
+            return V.prepend_(parSeqs, bothCase(left!, right!))
           } else {
             let parSeqs = acc
-            const left = L.unsafeFirst(parSeqs)
-            parSeqs = L.tail(parSeqs)
-            const right = L.unsafeFirst(parSeqs)
-            parSeqs = L.tail(parSeqs)
-            return L.prepend_(parSeqs, thenCase(left!, right!))
+            const left = V.unsafeFirst(parSeqs)
+            parSeqs = V.tail(parSeqs)
+            const right = V.unsafeFirst(parSeqs)
+            parSeqs = V.tail(parSeqs)
+            return V.prepend_(parSeqs, thenCase(left!, right!))
           }
         }
       })
     } else {
-      const head = L.unsafeFirst(inp)!
-      const parSeqs = L.tail(inp)
+      const head = V.unsafeFirst(inp)!
+      const parSeqs = V.tail(inp)
 
       switch (head._tag) {
         case "Empty": {
           inp = parSeqs
-          out = L.prepend_(out, E.right(emptyCase))
+          out = V.prepend_(out, E.right(emptyCase))
           break
         }
         case "Single": {
           inp = parSeqs
-          out = L.prepend_(out, E.right(singleCase(head.a)))
+          out = V.prepend_(out, E.right(singleCase(head.a)))
           break
         }
         case "Then": {
-          inp = L.prepend_(L.prepend_(parSeqs, head.right), head.left)
-          out = L.prepend_(out, E.left(false))
+          inp = V.prepend_(V.prepend_(parSeqs, head.right), head.left)
+          out = V.prepend_(out, E.left(false))
           break
         }
         case "Both": {
-          inp = L.prepend_(L.prepend_(parSeqs, head.right), head.left)
-          out = L.prepend_(out, E.left(true))
+          inp = V.prepend_(V.prepend_(parSeqs, head.right), head.left)
+          out = V.prepend_(out, E.left(true))
           break
         }
       }
@@ -109,8 +109,8 @@ export function fold_<A, B>(
   thenCase: (l: B, r: B) => B,
   bothCase: (l: B, r: B) => B
 ): B {
-  return L.unsafeFirst(
-    foldLoop(emptyCase, singleCase, thenCase, bothCase, L.of(self), L.empty())
+  return V.unsafeFirst(
+    foldLoop(emptyCase, singleCase, thenCase, bothCase, V.of(self), V.empty())
   )!
 }
 

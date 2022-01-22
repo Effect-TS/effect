@@ -6,8 +6,8 @@ import * as ChunkSplitAt from "../../Collections/Immutable/Chunk/api/splitAt"
 import * as ChunkZip from "../../Collections/Immutable/Chunk/api/zip"
 import * as ChunkZipWithIndex from "../../Collections/Immutable/Chunk/api/zipWithIndex"
 import * as Chunk from "../../Collections/Immutable/Chunk/core"
-import * as List from "../../Collections/Immutable/List/core"
 import * as Tp from "../../Collections/Immutable/Tuple"
+import * as Vector from "../../Collections/Immutable/Vector/core"
 import type { Exit } from "../../Exit"
 import { collectAll as exitCollectAll } from "../../Exit/operations/collectAll"
 import { collectAllPar as exitCollectAllPar } from "../../Exit/operations/collectAllPar"
@@ -866,7 +866,7 @@ export function releaseMapReleaseAll_(
                   (results) =>
                     done(
                       O.getOrElse_(exitCollectAll(results), () =>
-                        exitSucceed(List.empty())
+                        exitSucceed(Vector.empty())
                       )
                     )
                 ),
@@ -884,7 +884,7 @@ export function releaseMapReleaseAll_(
                   (results) =>
                     done(
                       O.getOrElse_(exitCollectAllPar(results), () =>
-                        exitSucceed(List.empty())
+                        exitSucceed(Vector.empty())
                       )
                     )
                 ),
@@ -903,7 +903,7 @@ export function releaseMapReleaseAll_(
                   (results) =>
                     done(
                       O.getOrElse_(exitCollectAllPar(results), () =>
-                        exitSucceed(List.empty())
+                        exitSucceed(Vector.empty())
                       )
                     )
                 ),

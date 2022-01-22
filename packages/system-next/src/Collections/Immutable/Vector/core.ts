@@ -157,7 +157,7 @@ function cloneNode({ array, sizes }: Node): Node {
 // it. Thus the affix will not be owned and thus not mutated.
 const emptyAffix: any[] = [0]
 
-// We store a bit field in list. From right to left, the first five
+// We store a bit field in vector. From right to left, the first five
 // bits are suffix length, the next five are prefix length and the
 // rest is depth. The functions below are for working with the bits in
 // a sane way.
@@ -165,16 +165,16 @@ const emptyAffix: any[] = [0]
 const affixBits = 6
 const affixMask = 0b111111
 
-function getSuffixSize(l: List<any>): number {
-  return l.bits & affixMask
+function getSuffixSize(vec: Vector<any>): number {
+  return vec.bits & affixMask
 }
 
-function getPrefixSize(l: List<any>): number {
-  return (l.bits >> affixBits) & affixMask
+function getPrefixSize(vec: Vector<any>): number {
+  return (vec.bits >> affixBits) & affixMask
 }
 
-function getDepth(l: List<any>): number {
-  return l.bits >> (affixBits * 2)
+function getDepth(vec: Vector<any>): number {
+  return vec.bits >> (affixBits * 2)
 }
 
 function setPrefix(size: number, bits: number): number {
@@ -206,7 +206,7 @@ function decrementDepth(bits: number): number {
 }
 
 /*
- * Invariants that any list `l` should satisfy
+ * Invariants that any vector `l` should satisfy
  *
  * 1. If `l.root !== undefined` then `getSuffixSize(l) !== 0` and
  *    `getPrefixSize(l) !== 0`. The invariant ensures that `first` and
@@ -219,7 +219,7 @@ function decrementDepth(bits: number): number {
 /**
  * Represents a list of elements.
  */
-export class List<A> implements Iterable<A>, St.HasEquals, St.HasHash {
+export class Vector<A> implements Iterable<A>, St.HasEquals, St.HasHash {
   constructor(
     readonly bits: number,
     readonly offset: number,
@@ -229,46 +229,53 @@ export class List<A> implements Iterable<A>, St.HasEquals, St.HasHash {
     readonly suffix: A[]
   ) {}
   [Symbol.iterator](): Iterator<A> {
-    return new ForwardListIterator(this)
+    return new ForwardVectorIterator(this)
   }
   toJSON(): readonly A[] {
     return toArray(this)
   }
   [St.equalsSym](that: unknown): boolean {
-    return that instanceof List && equalsWith_(this, that, St.equals)
+    return that instanceof Vector && equalsWith_(this, that, St.equals)
   }
   get [St.hashSym](): number {
     return St.hashIterator(this[Symbol.iterator]())
   }
 }
 
-export type MutableList<A> = { -readonly [K in keyof List<A>]: List<A>[K] } & {
+export type MutableVector<A> = { -readonly [K in keyof Vector<A>]: Vector<A>[K] } & {
   [Symbol.iterator]: () => Iterator<A>
   // This property doesn't exist at run-time. It exists to prevent a
-  // MutableList from being assignable to a List.
+  // MutableVector from being assignable to a Vector.
   "@@mutable": true
 }
 
-function cloneList<A>(l: List<A>): MutableList<A> {
-  return new List(l.bits, l.offset, l.length, l.prefix, l.root, l.suffix) as any
+function cloneVector<A>(vec: Vector<A>): MutableVector<A> {
+  return new Vector(
+    vec.bits,
+    vec.offset,
+    vec.length,
+    vec.prefix,
+    vec.root,
+    vec.suffix
+  ) as any
 }
 
-abstract class ListIterator<A> implements Iterator<A> {
+abstract class VectorIterator<A> implements Iterator<A> {
   stack: any[][] | undefined
   indices: number[] | undefined
   idx: number
   prefixSize: number
   middleSize: number
   result: IteratorResult<A> = { done: false, value: undefined as any }
-  constructor(protected l: List<A>, direction: 1 | -1) {
-    this.idx = direction === 1 ? -1 : l.length
-    this.prefixSize = getPrefixSize(l)
-    this.middleSize = l.length - getSuffixSize(l)
-    if (l.root !== undefined) {
-      const depth = getDepth(l)
+  constructor(protected vec: Vector<A>, direction: 1 | -1) {
+    this.idx = direction === 1 ? -1 : vec.length
+    this.prefixSize = getPrefixSize(vec)
+    this.middleSize = vec.length - getSuffixSize(vec)
+    if (vec.root !== undefined) {
+      const depth = getDepth(vec)
       this.stack = new Array(depth + 1)
       this.indices = new Array(depth + 1)
-      let currentNode = l.root.array
+      let currentNode = vec.root.array
       for (let i = depth; 0 <= i; --i) {
         this.stack[i] = currentNode
         const idx = direction === 1 ? 0 : currentNode.length - 1
@@ -281,9 +288,9 @@ abstract class ListIterator<A> implements Iterator<A> {
   abstract next(): IteratorResult<A>
 }
 
-class ForwardListIterator<A> extends ListIterator<A> {
-  constructor(l: List<A>) {
-    super(l, 1)
+class ForwardVectorIterator<A> extends VectorIterator<A> {
+  constructor(vec: Vector<A>) {
+    super(vec, 1)
   }
   nextInTree(): void {
     for (var i = 0; ++this.indices![i] === this.stack![i]!.length; ++i) {
@@ -297,12 +304,12 @@ class ForwardListIterator<A> extends ListIterator<A> {
     let newVal
     const idx = ++this.idx
     if (idx < this.prefixSize) {
-      newVal = this.l.prefix[this.prefixSize - idx - 1]
+      newVal = this.vec.prefix[this.prefixSize - idx - 1]
     } else if (idx < this.middleSize) {
       this.nextInTree()
       newVal = this.stack![0]![this.indices![0]!]
-    } else if (idx < this.l.length) {
-      newVal = this.l.suffix[idx - this.middleSize]
+    } else if (idx < this.vec.length) {
+      newVal = this.vec.suffix[idx - this.middleSize]
     } else {
       this.result.done = true
     }
@@ -311,9 +318,9 @@ class ForwardListIterator<A> extends ListIterator<A> {
   }
 }
 
-class BackwardsListIterator<A> extends ListIterator<A> {
-  constructor(l: List<A>) {
-    super(l, -1)
+class BackwardsVectorIterator<A> extends VectorIterator<A> {
+  constructor(vec: Vector<A>) {
+    super(vec, -1)
   }
   prevInTree(): void {
     for (var i = 0; this.indices![i] === 0; ++i) {
@@ -330,12 +337,12 @@ class BackwardsListIterator<A> extends ListIterator<A> {
     let newVal
     const idx = --this.idx
     if (this.middleSize <= idx) {
-      newVal = this.l.suffix[idx - this.middleSize]
+      newVal = this.vec.suffix[idx - this.middleSize]
     } else if (this.prefixSize <= idx) {
       this.prevInTree()
       newVal = this.stack![0]![this.indices![0]!]
     } else if (0 <= idx) {
-      newVal = this.l.prefix[this.prefixSize - idx - 1]
+      newVal = this.vec.prefix[this.prefixSize - idx - 1]
     } else {
       this.result.done = true
     }
@@ -345,42 +352,42 @@ class BackwardsListIterator<A> extends ListIterator<A> {
 }
 
 /**
- * Returns an iterable that iterates backwards over the given list.
+ * Returns an iterable that iterates backwards over the given vector.
  *
  * @complexity O(1)
  */
-export function backwards<A>(l: List<A>): Iterable<A> {
+export function backwards<A>(vec: Vector<A>): Iterable<A> {
   return {
     [Symbol.iterator](): Iterator<A> {
-      return new BackwardsListIterator(l)
+      return new BackwardsVectorIterator(vec)
     }
   }
 }
 
-export function emptyPushable<A>(): MutableList<A> {
-  return new List(0, 0, 0, [], undefined, []) as any
+export function emptyPushable<A>(): MutableVector<A> {
+  return new Vector(0, 0, 0, [], undefined, []) as any
 }
 
-/** Appends the value to the list by _mutating_ the list and its content. */
-export function push_<A>(l: MutableList<A>, value: A): MutableList<A> {
-  const suffixSize = getSuffixSize(l)
-  if (l.length === 0) {
-    l.bits = setPrefix(1, l.bits)
-    l.prefix = [value]
+/** Appends the value to the vector by _mutating_ the vector and its content. */
+export function push_<A>(vec: MutableVector<A>, value: A): MutableVector<A> {
+  const suffixSize = getSuffixSize(vec)
+  if (vec.length === 0) {
+    vec.bits = setPrefix(1, vec.bits)
+    vec.prefix = [value]
   } else if (suffixSize < 32) {
-    l.bits = incrementSuffix(l.bits)
-    l.suffix.push(value)
-  } else if (l.root === undefined) {
-    l.root = new Node(undefined, l.suffix)
-    l.suffix = [value]
-    l.bits = setSuffix(1, l.bits)
+    vec.bits = incrementSuffix(vec.bits)
+    vec.suffix.push(value)
+  } else if (vec.root === undefined) {
+    vec.root = new Node(undefined, vec.suffix)
+    vec.suffix = [value]
+    vec.bits = setSuffix(1, vec.bits)
   } else {
-    const newNode = new Node(undefined, l.suffix)
-    const index = l.length - 1 - 32 + 1
-    let current = l.root!
-    let depth = getDepth(l)
-    l.suffix = [value]
-    l.bits = setSuffix(1, l.bits)
+    const newNode = new Node(undefined, vec.suffix)
+    const index = vec.length - 1 - 32 + 1
+    let current = vec.root!
+    let depth = getDepth(vec)
+    vec.suffix = [value]
+    vec.bits = setSuffix(1, vec.bits)
     if (index - 1 < branchingFactor ** (depth + 1)) {
       for (; depth >= 0; --depth) {
         const path = (index >> (depth * branchBits)) & mask
@@ -392,20 +399,20 @@ export function push_<A>(l: MutableList<A>, value: A): MutableList<A> {
         }
       }
     } else {
-      l.bits = incrementDepth(l.bits)
-      l.root = new Node(undefined, [l.root, createPath(depth, newNode)])
+      vec.bits = incrementDepth(vec.bits)
+      vec.root = new Node(undefined, [vec.root, createPath(depth, newNode)])
     }
   }
-  l.length++
-  return l
+  vec.length++
+  return vec
 }
 
 /**
- * Creates a list of the given elements.
+ * Creates a vector of the given elements.
  *
  * @complexity O(n)
  */
-export function list<A>(...elements: A[]): List<A> {
+export function vector<A>(...elements: A[]): Vector<A> {
   const l = emptyPushable<A>()
   for (const element of elements) {
     push_(l, element)
@@ -414,48 +421,48 @@ export function list<A>(...elements: A[]): List<A> {
 }
 
 /**
- * Creates an empty list.
+ * Creates an empty vector.
  *
  * @complexity O(1)
  */
-export function empty<A = any>(): List<A> {
-  return new List(0, 0, 0, emptyAffix, undefined, emptyAffix)
+export function empty<A = any>(): Vector<A> {
+  return new Vector(0, 0, 0, emptyAffix, undefined, emptyAffix)
 }
 
 /**
- * Takes a single arguments and returns a singleton list that contains it.
+ * Takes a single arguments and returns a singleton vector that contains it.
  *
  * @complexity O(1)
  */
-export function of<A>(a: A): List<A> {
-  return list(a)
+export function of<A>(a: A): Vector<A> {
+  return vector(a)
 }
 
 /**
- * Takes two arguments and returns a list that contains them.
+ * Takes two arguments and returns a vector that contains them.
  *
  * @complexity O(1)
  */
-export function pair<A>(second: A): (first: A) => List<A> {
+export function pair<A>(second: A): (first: A) => Vector<A> {
   return (first: A) => pair_(first, second)
 }
 
 /**
- * Takes two arguments and returns a list that contains them.
+ * Takes two arguments and returns a vector that contains them.
  *
  * @complexity O(1)
  */
-export function pair_<A>(first: A, second: A): List<A> {
-  return new List(2, 0, 2, emptyAffix, undefined, [first, second])
+export function pair_<A>(first: A, second: A): Vector<A> {
+  return new Vector(2, 0, 2, emptyAffix, undefined, [first, second])
 }
 
 /**
- * Converts an array, an array-like, or an iterable into a list.
+ * Converts an array, an array-like, or an iterable into a vector.
  *
  * @complexity O(n)
  */
-export function from<A>(sequence: A[] | ArrayLike<A> | Iterable<A>): List<A>
-export function from<A>(sequence: any): List<A> {
+export function from<A>(sequence: A[] | ArrayLike<A> | Iterable<A>): Vector<A>
+export function from<A>(sequence: any): Vector<A> {
   const l = emptyPushable<A>()
   if (sequence.length > 0 && (sequence[0] !== undefined || 0 in sequence)) {
     for (let i = 0; i < sequence.length; ++i) {
@@ -473,44 +480,44 @@ export function from<A>(sequence: any): List<A> {
 }
 
 /**
- * Returns a list of numbers between an inclusive lower bound and an exclusive upper bound.
+ * Returns a vector of numbers between an inclusive lower bound and an exclusive upper bound.
  *
  * @complexity O(n)
  */
-export function range(end: number): (start: number) => List<number> {
+export function range(end: number): (start: number) => Vector<number> {
   return (start) => range_(start, end)
 }
 
 /**
- * Returns a list of numbers between an inclusive lower bound and an exclusive upper bound.
+ * Returns a vector of numbers between an inclusive lower bound and an exclusive upper bound.
  *
  * @complexity O(n)
  */
-export function range_(start: number, end: number): List<number> {
-  const list = emptyPushable<number>()
+export function range_(start: number, end: number): Vector<number> {
+  const vector = emptyPushable<number>()
   for (let i = start; i < end; ++i) {
-    push_(list, i)
+    push_(vector, i)
   }
-  return list
+  return vector
 }
 
 /**
- * Returns a list of a given length that contains the specified value
+ * Returns a vector of a given length that contains the specified value
  * in all positions.
  *
  * @complexity O(n)
  */
-export function repeat(times: number): <A>(value: A) => List<A> {
+export function repeat(times: number): <A>(value: A) => Vector<A> {
   return (value) => repeat_(value, times)
 }
 
 /**
- * Returns a list of a given length that contains the specified value
+ * Returns a vector of a given length that contains the specified value
  * in all positions.
  *
  * @complexity O(n)
  */
-export function repeat_<A>(value: A, times: number): List<A> {
+export function repeat_<A>(value: A, times: number): Vector<A> {
   const l = emptyPushable<A>()
   while (--times >= 0) {
     push_(l, value)
@@ -519,22 +526,22 @@ export function repeat_<A>(value: A, times: number): List<A> {
 }
 
 /**
- * Generates a new list by calling a function with the current index
+ * Generates a new vector by calling a function with the current index
  * `n` times.
  *
  * @complexity O(n)
  */
-export function times(times: number): <A>(func: (index: number) => A) => List<A> {
+export function times(times: number): <A>(func: (index: number) => A) => Vector<A> {
   return (func) => times_(func, times)
 }
 
 /**
- * Generates a new list by calling a function with the current index
+ * Generates a new vector by calling a function with the current index
  * `n` times.
  *
  * @complexity O(n)
  */
-export function times_<A>(func: (index: number) => A, times: number): List<A> {
+export function times_<A>(func: (index: number) => A, times: number): Vector<A> {
   const l = emptyPushable<A>()
   for (let i = 0; i < times; i++) {
     push_(l, func(i))
@@ -584,65 +591,65 @@ function nodeNth(node: Node, depth: number, offset: number, index: number): any 
 }
 
 /**
- * Gets the nth element of the list. If `n` is out of bounds
+ * Gets the nth element of the vector. If `n` is out of bounds
  * `undefined` is returned.
  *
  * @complexity O(log(n))
  */
-export function unsafeNth_<A>(l: List<A>, index: number): A | undefined {
-  return O.toUndefined(nth_(l, index))
+export function unsafeNth_<A>(self: Vector<A>, index: number): A | undefined {
+  return O.toUndefined(nth_(self, index))
 }
 
 /**
- * Gets the nth element of the list. If `n` is out of bounds
+ * Gets the nth element of the vector. If `n` is out of bounds
  * `undefined` is returned.
  *
  * @complexity O(log(n))
  */
-export function unsafeNth(index: number): <A>(l: List<A>) => A | undefined {
-  return (l) => unsafeNth_(l, index)
+export function unsafeNth(index: number): <A>(self: Vector<A>) => A | undefined {
+  return (self) => unsafeNth_(self, index)
 }
 
 /**
- * Gets the nth element of the list. If `n` is out of bounds
+ * Gets the nth element of the vector. If `n` is out of bounds
  * `undefined` is returned.
  *
  * @complexity O(log(n))
  */
-export function nth_<A>(l: List<A>, index: number): O.Option<A> {
-  if (index < 0 || l.length <= index) {
+export function nth_<A>(self: Vector<A>, index: number): O.Option<A> {
+  if (index < 0 || self.length <= index) {
     return O.none
   }
-  const prefixSize = getPrefixSize(l)
-  const suffixSize = getSuffixSize(l)
+  const prefixSize = getPrefixSize(self)
+  const suffixSize = getSuffixSize(self)
   if (index < prefixSize) {
-    return O.some(l.prefix[prefixSize - index - 1]!)
-  } else if (index >= l.length - suffixSize) {
-    return O.some(l.suffix[index - (l.length - suffixSize)]!)
+    return O.some(self.prefix[prefixSize - index - 1]!)
+  } else if (index >= self.length - suffixSize) {
+    return O.some(self.suffix[index - (self.length - suffixSize)]!)
   }
-  const { offset } = l
-  const depth = getDepth(l)
+  const { offset } = self
+  const depth = getDepth(self)
   return O.some(
-    l.root!.sizes === undefined
+    self.root!.sizes === undefined
       ? nodeNthDense(
-          l.root!,
+          self.root!,
           depth,
           offset === 0
             ? index - prefixSize
             : handleOffset(depth, offset, index - prefixSize)
         )
-      : nodeNth(l.root!, depth, offset, index - prefixSize)
+      : nodeNth(self.root!, depth, offset, index - prefixSize)
   )
 }
 
 /**
- * Gets the nth element of the list. If `n` is out of bounds
+ * Gets the nth element of the vector. If `n` is out of bounds
  * `undefined` is returned.
  *
  * @complexity O(log(n))
  */
-export function nth(index: number): <A>(l: List<A>) => O.Option<A> {
-  return (l) => nth_(l, index)
+export function nth(index: number): <A>(self: Vector<A>) => O.Option<A> {
+  return (self) => nth_(self, index)
 }
 
 function setSizes(node: Node, height: number): Node {
@@ -688,50 +695,50 @@ function affixPush<A>(a: A, array: A[], length: number): A[] {
 }
 
 /**
- * Prepends an element to the front of a list and returns the new list.
+ * Prepends an element to the front of a vector and returns the new vector.
  *
  * @complexity O(1)
  */
-export function prepend_<A>(l: List<A>, value: A): List<A> {
-  const prefixSize = getPrefixSize(l)
+export function prepend_<A>(self: Vector<A>, value: A): Vector<A> {
+  const prefixSize = getPrefixSize(self)
   if (prefixSize < 32) {
-    return new List<A>(
-      incrementPrefix(l.bits),
-      l.offset,
-      l.length + 1,
-      affixPush(value, l.prefix, prefixSize),
-      l.root,
-      l.suffix
+    return new Vector<A>(
+      incrementPrefix(self.bits),
+      self.offset,
+      self.length + 1,
+      affixPush(value, self.prefix, prefixSize),
+      self.root,
+      self.suffix
     )
   } else {
-    const newList = cloneList(l)
-    prependNodeToTree(newList, reverseArray(l.prefix))
+    const newVector = cloneVector(self)
+    prependNodeToTree(newVector, reverseArray(self.prefix))
     const newPrefix = [value]
-    newList.prefix = newPrefix
-    newList.length++
-    newList.bits = setPrefix(1, newList.bits)
-    return newList
+    newVector.prefix = newPrefix
+    newVector.length++
+    newVector.bits = setPrefix(1, newVector.bits)
+    return newVector
   }
 }
 
 /**
- * Prepends an element to the front of a list and returns the new list.
+ * Prepends an element to the front of a vector and returns the new vector.
  *
  * @complexity O(1)
  */
-export function prepend<A>(value: A): (l: List<A>) => List<A> {
-  return (l) => prepend_(l, value)
+export function prepend<A>(value: A): (self: Vector<A>) => Vector<A> {
+  return (self) => prepend_(self, value)
 }
 
 /**
  * Traverses down the left edge of the tree and copies k nodes.
  * Returns the last copied node.
- * @param l
+ * @param vec
  * @param k The number of nodes to copy. Should always be at least 1.
  */
-function copyLeft(l: MutableList<any>, k: number): Node {
-  let currentNode = cloneNode(l.root!) // copy root
-  l.root = currentNode // install copy of root
+function copyLeft(vec: MutableVector<any>, k: number): Node {
+  let currentNode = cloneNode(vec.root!) // copy root
+  vec.root = currentNode // install copy of root
 
   for (let i = 1; i < k; ++i) {
     const index = 0 // go left
@@ -768,63 +775,63 @@ function nodePrepend(value: any, size: number, node: Node): Node {
  * Prepends a node to a tree. Either by shifting the nodes in the root
  * left or by increasing the height
  */
-function prependTopTree<A>(l: MutableList<A>, depth: number, node: Node): number {
+function prependTopTree<A>(vec: MutableVector<A>, depth: number, node: Node): number {
   let newOffset
-  if (l.root!.array.length < branchingFactor) {
+  if (vec.root!.array.length < branchingFactor) {
     // There is space in the root, there is never a size table in this
     // case
     newOffset = 32 ** depth - 32
-    l.root = new Node(
+    vec.root = new Node(
       undefined,
-      arrayPrepend(createPath(depth - 1, node), l.root!.array)
+      arrayPrepend(createPath(depth - 1, node), vec.root!.array)
     )
   } else {
     // We need to create a new root
-    l.bits = incrementDepth(l.bits)
+    vec.bits = incrementDepth(vec.bits)
     const sizes =
-      l.root!.sizes === undefined ? undefined : [32, arrayLast(l.root!.sizes!) + 32]
+      vec.root!.sizes === undefined ? undefined : [32, arrayLast(vec.root!.sizes!) + 32]
     newOffset = depth === 0 ? 0 : 32 ** (depth + 1) - 32
-    l.root = new Node(sizes, [createPath(depth, node), l.root])
+    vec.root = new Node(sizes, [createPath(depth, node), vec.root])
   }
   return newOffset
 }
 
 /**
- * Takes a list and a node tail. It then prepends the node to the tree
- * of the list.
- * @param l The subject for prepending. `l` will be mutated. Nodes in
+ * Takes a vector and a node tail. It then prepends the node to the tree
+ * of the vector.
+ * @param vec The subject for prepending. `l` will be mutated. Nodes in
  * the tree will _not_ be mutated.
  * @param node The node that should be prepended to the tree.
  */
-function prependNodeToTree<A>(l: MutableList<A>, array: A[]): List<A> {
-  if (l.root === undefined) {
-    if (getSuffixSize(l) === 0) {
+function prependNodeToTree<A>(vec: MutableVector<A>, array: A[]): Vector<A> {
+  if (vec.root === undefined) {
+    if (getSuffixSize(vec) === 0) {
       // ensure invariant 1
-      l.bits = setSuffix(array.length, l.bits)
-      l.suffix = array
+      vec.bits = setSuffix(array.length, vec.bits)
+      vec.suffix = array
     } else {
-      l.root = new Node(undefined, array)
+      vec.root = new Node(undefined, array)
     }
-    return l
+    return vec
   } else {
     const node = new Node(undefined, array)
-    const depth = getDepth(l)
+    const depth = getDepth(vec)
     let newOffset = 0
-    if (l.root.sizes === undefined) {
-      if (l.offset !== 0) {
-        newOffset = l.offset - branchingFactor
-        l.root = prependDense(l.root, depth, l.offset, node)
+    if (vec.root.sizes === undefined) {
+      if (vec.offset !== 0) {
+        newOffset = vec.offset - branchingFactor
+        vec.root = prependDense(vec.root, depth, vec.offset, node)
       } else {
         // in this case we can be sure that the is not room in the tree
         // for the new node
-        newOffset = prependTopTree(l, depth, node)
+        newOffset = prependTopTree(vec, depth, node)
       }
     } else {
       // represents how many nodes _with size-tables_ that we should copy.
       let copyableCount = 0
       // go down while there is size tables
       let nodesTraversed = 0
-      let currentNode = l.root
+      let currentNode = vec.root
       while (currentNode.sizes !== undefined && nodesTraversed < depth) {
         ++nodesTraversed
         if (currentNode.array.length < 32) {
@@ -834,48 +841,48 @@ function prependNodeToTree<A>(l: MutableList<A>, array: A[]): List<A> {
         }
         currentNode = currentNode.array[0]
       }
-      if (l.offset !== 0) {
-        const copiedNode = copyLeft(l, nodesTraversed)
+      if (vec.offset !== 0) {
+        const copiedNode = copyLeft(vec, nodesTraversed)
         for (let i = 0; i < copiedNode.sizes!.length; ++i) {
           copiedNode.sizes![i] += branchingFactor
         }
         copiedNode.array[0] = prependDense(
           copiedNode.array[0],
           depth - nodesTraversed,
-          l.offset,
+          vec.offset,
           node
         )
-        l.offset = l.offset - branchingFactor
-        return l
+        vec.offset = vec.offset - branchingFactor
+        return vec
       } else {
         if (copyableCount === 0) {
-          l.offset = prependTopTree(l, depth, node)
+          vec.offset = prependTopTree(vec, depth, node)
         } else {
           let parent: Node | undefined
           let prependableNode: Node
           // Copy the part of the path with size tables
           if (copyableCount > 1) {
-            parent = copyLeft(l, copyableCount - 1)
+            parent = copyLeft(vec, copyableCount - 1)
             prependableNode = parent.array[0]
           } else {
             parent = undefined
-            prependableNode = l.root!
+            prependableNode = vec.root!
           }
           const path = createPath(depth - copyableCount, node)
           // add offset
-          l.offset = 32 ** (depth - copyableCount + 1) - 32
+          vec.offset = 32 ** (depth - copyableCount + 1) - 32
           const prepended = nodePrepend(path, 32, prependableNode)
           if (parent === undefined) {
-            l.root = prepended
+            vec.root = prepended
           } else {
             parent.array[0] = prepended
           }
         }
-        return l
+        return vec
       }
     }
-    l.offset = newOffset
-    return l
+    vec.offset = newOffset
+    return vec
   }
 }
 
@@ -896,96 +903,96 @@ function prependDense(node: Node, depth: number, offset: number, value: Node): N
 }
 
 /**
- * Appends an element to the end of a list and returns the new list.
+ * Appends an element to the end of a vector and returns the new vector.
  *
  * @complexity O(n)
  */
-export function append_<A>(l: List<A>, value: A): List<A> {
-  const suffixSize = getSuffixSize(l)
+export function append_<A>(self: Vector<A>, value: A): Vector<A> {
+  const suffixSize = getSuffixSize(self)
   if (suffixSize < 32) {
-    return new List(
-      incrementSuffix(l.bits),
-      l.offset,
-      l.length + 1,
-      l.prefix,
-      l.root,
-      affixPush(value, l.suffix, suffixSize)
+    return new Vector(
+      incrementSuffix(self.bits),
+      self.offset,
+      self.length + 1,
+      self.prefix,
+      self.root,
+      affixPush(value, self.suffix, suffixSize)
     )
   }
   const newSuffix = [value]
-  const newList = cloneList(l)
-  appendNodeToTree(newList, l.suffix)
-  newList.suffix = newSuffix
-  newList.length++
-  newList.bits = setSuffix(1, newList.bits)
-  return newList
+  const newVector = cloneVector(self)
+  appendNodeToTree(newVector, self.suffix)
+  newVector.suffix = newSuffix
+  newVector.length++
+  newVector.bits = setSuffix(1, newVector.bits)
+  return newVector
 }
 
 /**
- * Appends an element to the end of a list and returns the new list.
+ * Appends an element to the end of a vector and returns the new vector.
  *
  * @complexity O(n)
  */
-export function append<A>(value: A): (l: List<A>) => List<A> {
-  return (l) => append_(l, value)
+export function append<A>(value: A): (self: Vector<A>) => Vector<A> {
+  return (self) => append_(self, value)
 }
 
 /**
- * Gets the length of a list.
+ * Gets the length of a vector.
  *
  * @complexity `O(1)`
  */
-export function size(l: List<any>): number {
+export function size(l: Vector<any>): number {
   return l.length
 }
 
 /**
- * Returns the first element of the list. If the list is empty the
+ * Returns the first element of the vector. If the vector is empty the
  * function returns undefined.
  *
  * @complexity O(1)
  */
-export function unsafeFirst<A>(l: List<A>): A | undefined {
-  return O.toUndefined(first(l))
+export function unsafeFirst<A>(self: Vector<A>): A | undefined {
+  return O.toUndefined(first(self))
 }
 
 /**
- * Returns the first element of the list. If the list is empty the
+ * Returns the first element of the vector. If the vector is empty the
  * function returns undefined.
  *
  * @complexity O(1)
  */
-export function first<A>(l: List<A>): O.Option<A> {
-  const prefixSize = getPrefixSize(l)
+export function first<A>(self: Vector<A>): O.Option<A> {
+  const prefixSize = getPrefixSize(self)
   return prefixSize !== 0
-    ? O.some(l.prefix[prefixSize - 1]!)
-    : l.length !== 0
-    ? O.some(l.suffix[0]!)
+    ? O.some(self.prefix[prefixSize - 1]!)
+    : self.length !== 0
+    ? O.some(self.suffix[0]!)
     : O.none
 }
 
 /**
- * Returns the last element of the list. If the list is empty the
+ * Returns the last element of the vector. If the vector is empty the
  * function returns `undefined`.
  *
  * @complexity O(1)
  */
-export function unsafeLast<A>(l: List<A>): A | undefined {
-  return O.toUndefined(last(l))
+export function unsafeLast<A>(self: Vector<A>): A | undefined {
+  return O.toUndefined(last(self))
 }
 
 /**
- * Returns the last element of the list. If the list is empty the
+ * Returns the last element of the vector. If the vector is empty the
  * function returns `undefined`.
  *
  * @complexity O(1)
  */
-export function last<A>(l: List<A>): O.Option<A> {
-  const suffixSize = getSuffixSize(l)
+export function last<A>(self: Vector<A>): O.Option<A> {
+  const suffixSize = getSuffixSize(self)
   return suffixSize !== 0
-    ? O.some(l.suffix[suffixSize - 1]!)
-    : l.length !== 0
-    ? O.some(l.prefix[0]!)
+    ? O.some(self.suffix[suffixSize - 1]!)
+    : self.length !== 0
+    ? O.some(self.prefix[0]!)
     : O.none
 }
 
@@ -1029,52 +1036,52 @@ function mapAffix<A, B>(f: (a: A) => B, suffix: A[], length: number): B[] {
 }
 
 /**
- * Applies a function to each element in the given list and returns a
- * new list of the values that the function return.
+ * Applies a function to each element in the given vector and returns a
+ * new vector of the values that the function return.
  *
  * @complexity O(n)
  */
-export function map_<A, B>(l: List<A>, f: (a: A) => B): List<B> {
-  return new List(
-    l.bits,
-    l.offset,
-    l.length,
-    mapPrefix(f, l.prefix, getPrefixSize(l)),
-    l.root === undefined ? undefined : mapNode(f, l.root, getDepth(l)),
-    mapAffix(f, l.suffix, getSuffixSize(l))
+export function map_<A, B>(self: Vector<A>, f: (a: A) => B): Vector<B> {
+  return new Vector(
+    self.bits,
+    self.offset,
+    self.length,
+    mapPrefix(f, self.prefix, getPrefixSize(self)),
+    self.root === undefined ? undefined : mapNode(f, self.root, getDepth(self)),
+    mapAffix(f, self.suffix, getSuffixSize(self))
   )
 }
 
 /**
- * Applies a function to each element in the given list and returns a
- * new list of the values that the function return.
+ * Applies a function to each element in the given vector and returns a
+ * new vector of the values that the function return.
  *
  * @complexity O(n)
  */
-export function map<A, B>(f: (a: A) => B): (l: List<A>) => List<B> {
-  return (l) =>
-    new List(
-      l.bits,
-      l.offset,
-      l.length,
-      mapPrefix(f, l.prefix, getPrefixSize(l)),
-      l.root === undefined ? undefined : mapNode(f, l.root, getDepth(l)),
-      mapAffix(f, l.suffix, getSuffixSize(l))
+export function map<A, B>(f: (a: A) => B): (self: Vector<A>) => Vector<B> {
+  return (self) =>
+    new Vector(
+      self.bits,
+      self.offset,
+      self.length,
+      mapPrefix(f, self.prefix, getPrefixSize(self)),
+      self.root === undefined ? undefined : mapNode(f, self.root, getDepth(self)),
+      mapAffix(f, self.suffix, getSuffixSize(self))
     )
 }
 
 /**
- * Extracts the specified property from each object in the list.
+ * Extracts the specified property from each object in the vector.
  */
-export function pluck_<A, K extends keyof A>(l: List<A>, key: K): List<A[K]> {
-  return map_(l, (a) => a[key])
+export function pluck_<A, K extends keyof A>(self: Vector<A>, key: K): Vector<A[K]> {
+  return map_(self, (a) => a[key])
 }
 
 /**
- * Extracts the specified property from each object in the list.
+ * Extracts the specified property from each object in the vector.
  */
-export function pluck<A, K extends keyof A>(key: K): (l: List<A>) => List<A[K]> {
-  return (l) => pluck_(l, key)
+export function pluck<A, K extends keyof A>(key: K): (self: Vector<A>) => Vector<A[K]> {
+  return (self) => pluck_(self, key)
 }
 
 // fold
@@ -1120,121 +1127,129 @@ function foldlNode<A, B>(
 }
 
 /**
- * Folds a function over a list. Left-associative.
+ * Folds a function over a vector. Left-associative.
  */
-export function reduce_<A, B>(l: List<A>, initial: B, f: (acc: B, value: A) => B): B {
-  const suffixSize = getSuffixSize(l)
-  const prefixSize = getPrefixSize(l)
-  initial = foldlPrefix(f, initial, l.prefix, prefixSize)
-  if (l.root !== undefined) {
-    initial = foldlNode(f, initial, l.root, getDepth(l))
+export function reduce_<A, B>(
+  self: Vector<A>,
+  initial: B,
+  f: (acc: B, value: A) => B
+): B {
+  const suffixSize = getSuffixSize(self)
+  const prefixSize = getPrefixSize(self)
+  initial = foldlPrefix(f, initial, self.prefix, prefixSize)
+  if (self.root !== undefined) {
+    initial = foldlNode(f, initial, self.root, getDepth(self))
   }
-  return foldlSuffix(f, initial, l.suffix, suffixSize)
+  return foldlSuffix(f, initial, self.suffix, suffixSize)
 }
 
 /**
- * Folds a function over a list. Left-associative.
+ * Folds a function over a vector. Left-associative.
  */
 export function reduce<A, B>(
   initial: B,
   f: (acc: B, value: A) => B
-): (l: List<A>) => B {
-  return (l) => reduce_(l, initial, f)
+): (self: Vector<A>) => B {
+  return (self) => reduce_(self, initial, f)
 }
 
 /**
- * Folds a function over a list from left to right while collecting
- * all the intermediate steps in a resulting list.
+ * Folds a function over a vector from left to right while collecting
+ * all the intermediate steps in a resulting vector.
  */
 export function scan_<A, B>(
-  l: List<A>,
+  self: Vector<A>,
   initial: B,
   f: (acc: B, value: A) => B
-): List<B> {
-  return reduce_(l, push_(emptyPushable<B>(), initial), (l2, a) =>
+): Vector<B> {
+  return reduce_(self, push_(emptyPushable<B>(), initial), (l2, a) =>
     push_(l2, f(unsafeLast(l2)!, a))
   )
 }
 
 /**
- * Folds a function over a list from left to right while collecting
- * all the intermediate steps in a resulting list.
+ * Folds a function over a vector from left to right while collecting
+ * all the intermediate steps in a resulting vector.
  */
 export function scan<A, B>(
   initial: B,
   f: (acc: B, value: A) => B
-): (l: List<A>) => List<B> {
-  return (l) => scan_(l, initial, f)
+): (self: Vector<A>) => Vector<B> {
+  return (self) => scan_(self, initial, f)
 }
 
 /**
- * Invokes a given callback for each element in the list from left to
+ * Invokes a given callback for each element in the vector from left to
  * right. Returns `undefined`.
  *
  * This function is very similar to map. It should be used instead of
  * `map` when the mapping function has side-effects. Whereas `map`
- * constructs a new list `forEach` merely returns `undefined`. This
- * makes `forEach` faster when the new list is unneeded.
+ * constructs a new vector `forEach` merely returns `undefined`. This
+ * makes `forEach` faster when the new vector is unneeded.
  *
  * @complexity O(n)
  */
-export function forEach_<A>(l: List<A>, callback: (a: A) => void): void {
-  reduce_(l, undefined as void, (_, element) => callback(element))
+export function forEach_<A>(self: Vector<A>, callback: (a: A) => void): void {
+  reduce_(self, undefined as void, (_, element) => callback(element))
 }
 
 /**
- * Invokes a given callback for each element in the list from left to
+ * Invokes a given callback for each element in the vector from left to
  * right. Returns `undefined`.
  *
  * This function is very similar to map. It should be used instead of
  * `map` when the mapping function has side-effects. Whereas `map`
- * constructs a new list `forEach` merely returns `undefined`. This
- * makes `forEach` faster when the new list is unneeded.
+ * constructs a new vector `forEach` merely returns `undefined`. This
+ * makes `forEach` faster when the new vector is unneeded.
  *
  * @complexity O(n)
  */
-export function forEach<A>(callback: (a: A) => void): (l: List<A>) => void {
-  return (l) => forEach_(l, callback)
+export function forEach<A>(callback: (a: A) => void): (self: Vector<A>) => void {
+  return (self) => forEach_(self, callback)
 }
 
 /**
- * Returns a new list that only contains the elements of the original
- * list for which the predicate returns `true`.
+ * Returns a new vector that only contains the elements of the original
+ * vector for which the predicate returns `true`.
  *
  * @complexity O(n)
  */
 export function filter_<A, B extends A>(
-  l: List<A>,
+  self: Vector<A>,
   predicate: (a: A) => a is B
-): List<B>
-export function filter_<A>(l: List<A>, predicate: (a: A) => boolean): List<A>
-export function filter_<A>(l: List<A>, predicate: (a: A) => boolean): List<A> {
-  return reduce_(l, emptyPushable(), (acc, a) => (predicate(a) ? push_(acc, a) : acc))
+): Vector<B>
+export function filter_<A>(self: Vector<A>, predicate: (a: A) => boolean): Vector<A>
+export function filter_<A>(self: Vector<A>, predicate: (a: A) => boolean): Vector<A> {
+  return reduce_(self, emptyPushable(), (acc, a) =>
+    predicate(a) ? push_(acc, a) : acc
+  )
 }
 
 /**
- * Returns a new list that only contains the elements of the original
- * list for which the predicate returns `true`.
+ * Returns a new vector that only contains the elements of the original
+ * vector for which the predicate returns `true`.
  *
  * @complexity O(n)
  */
 export function filter<A, B extends A>(
   predicate: (a: A) => a is B
-): (l: List<A>) => List<B>
-export function filter<A>(predicate: (a: A) => boolean): (l: List<A>) => List<A>
-export function filter<A>(predicate: (a: A) => boolean): (l: List<A>) => List<A> {
-  return (l) =>
-    reduce_(l, emptyPushable(), (acc, a) => (predicate(a) ? push_(acc, a) : acc))
+): (self: Vector<A>) => Vector<B>
+export function filter<A>(predicate: (a: A) => boolean): (self: Vector<A>) => Vector<A>
+export function filter<A>(
+  predicate: (a: A) => boolean
+): (self: Vector<A>) => Vector<A> {
+  return (self) =>
+    reduce_(self, emptyPushable(), (acc, a) => (predicate(a) ? push_(acc, a) : acc))
 }
 
 /**
- * Returns a new list that only contains the elements of the original
- * list for which the f returns `Some`.
+ * Returns a new vector that only contains the elements of the original
+ * vector for which the f returns `Some`.
  *
  * @complexity O(n)
  */
-export function filterMap_<A, B>(l: List<A>, f: (a: A) => O.Option<B>): List<B> {
-  return reduce_(l, emptyPushable(), (acc, a) => {
+export function filterMap_<A, B>(self: Vector<A>, f: (a: A) => O.Option<B>): Vector<B> {
+  return reduce_(self, emptyPushable(), (acc, a) => {
     const fa = f(a)
     if (fa._tag === "Some") {
       push_(acc, fa.value)
@@ -1244,72 +1259,81 @@ export function filterMap_<A, B>(l: List<A>, f: (a: A) => O.Option<B>): List<B> 
 }
 
 /**
- * Returns a new list that only contains the elements of the original
- * list for which the f returns `Some`.
+ * Returns a new vector that only contains the elements of the original
+ * vector for which the f returns `Some`.
  *
  * @complexity O(n)
  */
-export function filterMap<A, B>(f: (a: A) => O.Option<B>): (l: List<A>) => List<B> {
-  return (l) => filterMap_(l, f)
+export function filterMap<A, B>(
+  f: (a: A) => O.Option<B>
+): (self: Vector<A>) => Vector<B> {
+  return (self) => filterMap_(self, f)
 }
 
 /**
  * Filter out optional values
  */
-export function compact<A>(fa: List<O.Option<A>>): List<A> {
-  return filterMap((x: O.Option<A>) => x)(fa)
+export function compact<A>(self: Vector<O.Option<A>>): Vector<A> {
+  return filterMap((x: O.Option<A>) => x)(self)
 }
 
 /**
- * Returns a new list that only contains the elements of the original
- * list for which the predicate returns `false`.
+ * Returns a new vector that only contains the elements of the original
+ * vector for which the predicate returns `false`.
  *
  * @complexity O(n)
  */
-export function filterNot_<A>(l: List<A>, predicate: (a: A) => boolean): List<A> {
-  return reduce_(l, emptyPushable(), (acc, a) => (predicate(a) ? acc : push_(acc, a)))
+export function filterNot_<A>(
+  self: Vector<A>,
+  predicate: (a: A) => boolean
+): Vector<A> {
+  return reduce_(self, emptyPushable(), (acc, a) =>
+    predicate(a) ? acc : push_(acc, a)
+  )
 }
 
 /**
- * Returns a new list that only contains the elements of the original
- * list for which the predicate returns `false`.
+ * Returns a new vector that only contains the elements of the original
+ * vector for which the predicate returns `false`.
  *
  * @complexity O(n)
  */
-export function filterNot<A>(predicate: (a: A) => boolean): (l: List<A>) => List<A> {
-  return (l) => filterNot_(l, predicate)
+export function filterNot<A>(
+  predicate: (a: A) => boolean
+): (self: Vector<A>) => Vector<A> {
+  return (self) => filterNot_(self, predicate)
 }
 
 /**
- * Splits the list into two lists. One list that contains all the
+ * Splits the vector into two vectors. One vector that contains all the
  * values for which the predicate returns `true` and one containing
  * the values for which it returns `false`.
  *
  * @complexity O(n)
  */
 export function partition_<A, B extends A>(
-  l: List<A>,
+  self: Vector<A>,
   predicate: (a: A) => a is B
-): Tp.Tuple<[List<B>, List<Exclude<A, B>>]>
+): Tp.Tuple<[Vector<B>, Vector<Exclude<A, B>>]>
 export function partition_<A>(
-  l: List<A>,
+  self: Vector<A>,
   predicate: (a: A) => boolean
-): Tp.Tuple<[List<A>, List<A>]>
+): Tp.Tuple<[Vector<A>, Vector<A>]>
 export function partition_<A>(
-  l: List<A>,
+  self: Vector<A>,
   predicate: (a: A) => boolean
-): Tp.Tuple<[List<A>, List<A>]> {
+): Tp.Tuple<[Vector<A>, Vector<A>]> {
   return reduce_(
-    l,
+    self,
     Tp.tuple(emptyPushable<A>(), emptyPushable<A>()) as Tp.Tuple<
-      [MutableList<A>, MutableList<A>]
+      [MutableVector<A>, MutableVector<A>]
     >,
     (arr, a) => (predicate(a) ? push_(arr.get(0), a) : push_(arr.get(1), a), arr)
   )
 }
 
 /**
- * Splits the list into two lists. One list that contains all the
+ * Splits the vector into two vectors. One vector that contains all the
  * values for which the predicate returns `true` and one containing
  * the values for which it returns `false`.
  *
@@ -1317,30 +1341,30 @@ export function partition_<A>(
  */
 export function partition<A, B extends A>(
   predicate: (a: A) => a is B
-): (l: List<A>) => Tp.Tuple<[List<B>, List<Exclude<A, B>>]>
+): (self: Vector<A>) => Tp.Tuple<[Vector<B>, Vector<Exclude<A, B>>]>
 export function partition<A>(
   predicate: (a: A) => boolean
-): (l: List<A>) => Tp.Tuple<[List<A>, List<A>]>
+): (self: Vector<A>) => Tp.Tuple<[Vector<A>, Vector<A>]>
 export function partition<A>(
   predicate: (a: A) => boolean
-): (l: List<A>) => Tp.Tuple<[List<A>, List<A>]> {
-  return (l) => partition_(l, predicate)
+): (self: Vector<A>) => Tp.Tuple<[Vector<A>, Vector<A>]> {
+  return (self) => partition_(self, predicate)
 }
 
 /**
- * Splits the list into two lists. One list that contains the lefts
+ * Splits the vector into two vectors. One vector that contains the lefts
  * and one contains the rights
  *
  * @complexity O(n)
  */
 export function partitionMap_<A, B, C>(
-  l: List<A>,
+  self: Vector<A>,
   f: (_: A) => Either<B, C>
-): Tp.Tuple<[List<B>, List<C>]> {
+): Tp.Tuple<[Vector<B>, Vector<C>]> {
   return reduce_(
-    l,
+    self,
     Tp.tuple(emptyPushable<B>(), emptyPushable<C>()) as Tp.Tuple<
-      [MutableList<B>, MutableList<C>]
+      [MutableVector<B>, MutableVector<C>]
     >,
     (arr, a) => {
       const fa = f(a)
@@ -1355,39 +1379,41 @@ export function partitionMap_<A, B, C>(
 }
 
 /**
- * Splits the list into two lists. One list that contains the lefts
+ * Splits the vector into two vectors. One vector that contains the lefts
  * and one contains the rights
  *
  * @complexity O(n)
  */
 export function partitionMap<A, B, C>(
   f: (_: A) => Either<B, C>
-): (l: List<A>) => Tp.Tuple<[List<B>, List<C>]> {
-  return (l) => partitionMap_(l, f)
+): (self: Vector<A>) => Tp.Tuple<[Vector<B>, Vector<C>]> {
+  return (self) => partitionMap_(self, f)
 }
 
 /**
- * Splits the list into two lists. One list that contains the lefts
+ * Splits the vector into two vectors. One vector that contains the lefts
  * and one contains the rights
  *
  * @complexity O(n)
  */
-export function separate<B, C>(l: List<Either<B, C>>): Tp.Tuple<[List<B>, List<C>]> {
-  return partitionMap_(l, identity)
+export function separate<B, C>(
+  self: Vector<Either<B, C>>
+): Tp.Tuple<[Vector<B>, Vector<C>]> {
+  return partitionMap_(self, identity)
 }
 
 /**
- * Concats the strings in the list separated by a specified separator.
+ * Concats the strings in the vector separated by a specified separator.
  */
-export function join_(l: List<string>, separator: string): string {
-  return reduce_(l, "", (a, b) => (a.length === 0 ? b : a + separator + b))
+export function join_(self: Vector<string>, separator: string): string {
+  return reduce_(self, "", (a, b) => (a.length === 0 ? b : a + separator + b))
 }
 
 /**
- * Concats the strings in the list separated by a specified separator.
+ * Concats the strings in the vector separated by a specified separator.
  */
-export function join(separator: string): (l: List<string>) => string {
-  return (l) => join_(l, separator)
+export function join(separator: string): (self: Vector<string>) => string {
+  return (self) => join_(self, separator)
 }
 
 function foldrSuffix<A, B>(
@@ -1433,74 +1459,74 @@ function foldrNode<A, B>(
 }
 
 /**
- * Folds a function over a list. Right-associative.
+ * Folds a function over a vector. Right-associative.
  *
  * @complexity O(n)
  */
 export function reduceRight_<A, B>(
-  l: List<A>,
+  self: Vector<A>,
   initial: B,
   f: (value: A, acc: B) => B
 ): B {
-  const suffixSize = getSuffixSize(l)
-  const prefixSize = getPrefixSize(l)
-  let acc = foldrSuffix(f, initial, l.suffix, suffixSize)
-  if (l.root !== undefined) {
-    acc = foldrNode(f, acc, l.root, getDepth(l))
+  const suffixSize = getSuffixSize(self)
+  const prefixSize = getPrefixSize(self)
+  let acc = foldrSuffix(f, initial, self.suffix, suffixSize)
+  if (self.root !== undefined) {
+    acc = foldrNode(f, acc, self.root, getDepth(self))
   }
-  return foldrPrefix(f, acc, l.prefix, prefixSize)
+  return foldrPrefix(f, acc, self.prefix, prefixSize)
 }
 
 /**
- * Folds a function over a list. Right-associative.
+ * Folds a function over a vector. Right-associative.
  *
  * @complexity O(n)
  */
 export function reduceRight<A, B>(
   initial: B,
   f: (value: A, acc: B) => B
-): (l: List<A>) => B {
-  return (l) => reduceRight_(l, initial, f)
+): (self: Vector<A>) => B {
+  return (self) => reduceRight_(self, initial, f)
 }
 
 /**
- * Applies a list of functions to a list of values.
+ * Applies a vector of functions to a vector of values.
  */
-export function ap_<A, B>(listF: List<(a: A) => B>, l: List<A>): List<B> {
-  return flatten(map_(listF, (f) => map_(l, f)))
+export function ap_<A, B>(self: Vector<(a: A) => B>, vecA: Vector<A>): Vector<B> {
+  return flatten(map_(self, (f) => map_(vecA, f)))
 }
 
 /**
- * Applies a list of functions to a list of values.
+ * Applies a vector of functions to a vector of values.
  */
-export function ap<A, B>(l: List<A>): (listF: List<(a: A) => B>) => List<B> {
-  return (listF) => ap_(listF, l)
+export function ap<A, B>(vecA: Vector<A>): (self: Vector<(a: A) => B>) => Vector<B> {
+  return (self) => ap_(self, vecA)
 }
 
 /**
- * Flattens a list of lists into a list. Note that this function does
+ * Flattens a vector of vectors into a vector. Note that this function does
  * not flatten recursively. It removes one level of nesting only.
  *
- * @complexity O(n * log(m)), where n is the length of the outer list and m the length of the inner lists.
+ * @complexity O(n * log(m)), where n is the length of the outer vector and m the length of the inner vectors.
  */
-export function flatten<A>(nested: List<List<A>>): List<A> {
-  return reduce_<List<A>, List<A>>(nested, empty(), concat_)
+export function flatten<A>(self: Vector<Vector<A>>): Vector<A> {
+  return reduce_<Vector<A>, Vector<A>>(self, empty(), concat_)
 }
 
 /**
- * Maps a function over a list and concatenates all the resulting
- * lists together.
+ * Maps a function over a vector and concatenates all the resulting
+ * vectors together.
  */
-export function chain_<A, B>(l: List<A>, f: (a: A) => List<B>): List<B> {
-  return flatten(map_(l, f))
+export function chain_<A, B>(self: Vector<A>, f: (a: A) => Vector<B>): Vector<B> {
+  return flatten(map_(self, f))
 }
 
 /**
- * Maps a function over a list and concatenates all the resulting
- * lists together.
+ * Maps a function over a vector and concatenates all the resulting
+ * vectors together.
  */
-export function chain<A, B>(f: (a: A) => List<B>): (l: List<A>) => List<B> {
-  return (l) => chain_(l, f)
+export function chain<A, B>(f: (a: A) => Vector<B>): (self: Vector<A>) => Vector<B> {
+  return (self) => chain_(self, f)
 }
 
 // callback fold
@@ -1559,7 +1585,7 @@ function foldlNodeCb<A, B>(
  * to continue the fold. `true` indicates that the folding should
  * continue.
  */
-function foldlCb<A, B>(cb: FoldCb<A, B>, state: B, l: List<A>): B {
+function foldlCb<A, B>(cb: FoldCb<A, B>, state: B, l: Vector<A>): B {
   const prefixSize = getPrefixSize(l)
   if (
     !foldrArrayCb(cb, state, l.prefix, prefixSize, 0) ||
@@ -1590,7 +1616,7 @@ function foldrNodeCb<A, B>(
   return true
 }
 
-function foldrCb<A, B>(cb: FoldCb<A, B>, state: B, l: List<A>): B {
+function foldrCb<A, B>(cb: FoldCb<A, B>, state: B, l: Vector<A>): B {
   const suffixSize = getSuffixSize(l)
   const prefixSize = getPrefixSize(l)
   if (
@@ -1620,10 +1646,10 @@ type FoldlWhileState<A, B> = {
  * @example
  * const isOdd = (_acc:, x) => x % 2 === 1;
  *
- * const xs = L.list(1, 3, 5, 60, 777, 800);
+ * const xs = L.vector(1, 3, 5, 60, 777, 800);
  * foldlWhile(isOdd, (n, m) => n + m, 0, xs) //=> 9
  *
- * const ys = L.list(2, 4, 6);
+ * const ys = L.vector(2, 4, 6);
  * foldlWhile(isOdd, (n, m) => n + m, 111, ys) //=> 111
  */
 function foldlWhileCb<A, B>(a: A, state: FoldlWhileState<A, B>): boolean {
@@ -1635,7 +1661,7 @@ function foldlWhileCb<A, B>(a: A, state: FoldlWhileState<A, B>): boolean {
 }
 
 export function reduceWhile_<A, B>(
-  l: List<A>,
+  self: Vector<A>,
   initial: B,
   predicate: (acc: B, value: A) => boolean,
   f: (acc: B, value: A) => B
@@ -1643,7 +1669,7 @@ export function reduceWhile_<A, B>(
   return foldlCb<A, FoldlWhileState<A, B>>(
     foldlWhileCb,
     { predicate, f, result: initial },
-    l
+    self
   ).result
 }
 
@@ -1651,8 +1677,8 @@ export function reduceWhile<A, B>(
   initial: B,
   predicate: (acc: B, value: A) => boolean,
   f: (acc: B, value: A) => B
-): (l: List<A>) => B {
-  return (l) => reduceWhile_(l, initial, predicate, f)
+): (self: Vector<A>) => B {
+  return (self) => reduceWhile_(self, initial, predicate, f)
 }
 
 type PredState = {
@@ -1666,22 +1692,22 @@ function everyCb<A>(value: A, state: any): boolean {
 
 /**
  * Returns `true` if and only if the predicate function returns `true`
- * for all elements in the given list.
+ * for all elements in the given vector.
  *
  * @complexity O(n)
  */
-export function every_<A>(l: List<A>, predicate: (a: A) => boolean): boolean {
-  return foldlCb<A, PredState>(everyCb, { predicate, result: true }, l).result
+export function every_<A>(self: Vector<A>, predicate: (a: A) => boolean): boolean {
+  return foldlCb<A, PredState>(everyCb, { predicate, result: true }, self).result
 }
 
 /**
  * Returns `true` if and only if the predicate function returns `true`
- * for all elements in the given list.
+ * for all elements in the given vector.
  *
  * @complexity O(n)
  */
-export function every<A>(predicate: (a: A) => boolean): (l: List<A>) => boolean {
-  return (l) => every_(l, predicate)
+export function every<A>(predicate: (a: A) => boolean): (self: Vector<A>) => boolean {
+  return (self) => every_(self, predicate)
 }
 
 function someCb<A>(value: A, state: any): boolean {
@@ -1689,43 +1715,43 @@ function someCb<A>(value: A, state: any): boolean {
 }
 
 /**
- * Returns true if and only if there exists an element in the list for
+ * Returns true if and only if there exists an element in the vector for
  * which the predicate returns true.
  *
  * @complexity O(n)
  */
-export function some_<A>(l: List<A>, predicate: (a: A) => boolean): boolean {
-  return foldlCb<A, PredState>(someCb, { predicate, result: false }, l).result
+export function some_<A>(self: Vector<A>, predicate: (a: A) => boolean): boolean {
+  return foldlCb<A, PredState>(someCb, { predicate, result: false }, self).result
 }
 
 /**
- * Returns true if and only if there exists an element in the list for
+ * Returns true if and only if there exists an element in the vector for
  * which the predicate returns true.
  *
  * @complexity O(n)
  */
-export function some<A>(predicate: (a: A) => boolean): (l: List<A>) => boolean {
-  return (l) => some_(l, predicate)
+export function some<A>(predicate: (a: A) => boolean): (self: Vector<A>) => boolean {
+  return (self) => some_(self, predicate)
 }
 
 /**
  * Returns `true` if and only if the predicate function returns
- * `false` for every element in the given list.
+ * `false` for every element in the given vector.
  *
  * @complexity O(n)
  */
-export function none_<A>(l: List<A>, predicate: (a: A) => boolean): boolean {
-  return !some_(l, predicate)
+export function none_<A>(self: Vector<A>, predicate: (a: A) => boolean): boolean {
+  return !some_(self, predicate)
 }
 
 /**
  * Returns `true` if and only if the predicate function returns
- * `false` for every element in the given list.
+ * `false` for every element in the given vector.
  *
  * @complexity O(n)
  */
-export function none<A>(predicate: (a: A) => boolean): (l: List<A>) => boolean {
-  return (l) => none_(l, predicate)
+export function none<A>(predicate: (a: A) => boolean): (self: Vector<A>) => boolean {
+  return (self) => none_(self, predicate)
 }
 
 function findCb<A>(value: A, state: PredState): boolean {
@@ -1744,10 +1770,10 @@ function findCb<A>(value: A, state: PredState): boolean {
  * @complexity O(n)
  */
 export function unsafeFind_<A>(
-  l: List<A>,
+  self: Vector<A>,
   predicate: (a: A) => boolean
 ): A | undefined {
-  return O.toUndefined(find_(l, predicate))
+  return O.toUndefined(find_(self, predicate))
 }
 
 /**
@@ -1758,8 +1784,8 @@ export function unsafeFind_<A>(
  */
 export function unsafeFind<A>(
   predicate: (a: A) => boolean
-): (l: List<A>) => A | undefined {
-  return (l) => unsafeFind_(l, predicate)
+): (self: Vector<A>) => A | undefined {
+  return (self) => unsafeFind_(self, predicate)
 }
 
 /**
@@ -1768,8 +1794,8 @@ export function unsafeFind<A>(
  *
  * @complexity O(n)
  */
-export function find_<A>(l: List<A>, predicate: (a: A) => boolean): O.Option<A> {
-  return foldlCb<A, PredState>(findCb, { predicate, result: O.none }, l).result
+export function find_<A>(self: Vector<A>, predicate: (a: A) => boolean): O.Option<A> {
+  return foldlCb<A, PredState>(findCb, { predicate, result: O.none }, self).result
 }
 
 /**
@@ -1779,7 +1805,7 @@ export function find_<A>(l: List<A>, predicate: (a: A) => boolean): O.Option<A> 
  * @complexity O(n)
  */
 export function find<A>(predicate: (a: A) => boolean) {
-  return (l: List<A>) => find_(l, predicate)
+  return (self: Vector<A>) => find_(self, predicate)
 }
 
 /**
@@ -1789,10 +1815,10 @@ export function find<A>(predicate: (a: A) => boolean) {
  * @complexity O(n)
  */
 export function unsafeFindLast_<A>(
-  l: List<A>,
+  self: Vector<A>,
   predicate: (a: A) => boolean
 ): A | undefined {
-  return O.toUndefined(findLast_(l, predicate))
+  return O.toUndefined(findLast_(self, predicate))
 }
 
 /**
@@ -1803,8 +1829,8 @@ export function unsafeFindLast_<A>(
  */
 export function unsafeFindLast<A>(
   predicate: (a: A) => boolean
-): (l: List<A>) => A | undefined {
-  return (l) => unsafeFindLast_(l, predicate)
+): (self: Vector<A>) => A | undefined {
+  return (self) => unsafeFindLast_(self, predicate)
 }
 
 /**
@@ -1813,8 +1839,11 @@ export function unsafeFindLast<A>(
  *
  * @complexity O(n)
  */
-export function findLast_<A>(l: List<A>, predicate: (a: A) => boolean): O.Option<A> {
-  return foldrCb<A, PredState>(findCb, { predicate, result: O.none }, l).result
+export function findLast_<A>(
+  self: Vector<A>,
+  predicate: (a: A) => boolean
+): O.Option<A> {
+  return foldrCb<A, PredState>(findCb, { predicate, result: O.none }, self).result
 }
 
 /**
@@ -1823,8 +1852,10 @@ export function findLast_<A>(l: List<A>, predicate: (a: A) => boolean): O.Option
  *
  * @complexity O(n)
  */
-export function findLast<A>(predicate: (a: A) => boolean): (l: List<A>) => O.Option<A> {
-  return (l) => findLast_(l, predicate)
+export function findLast<A>(
+  predicate: (a: A) => boolean
+): (self: Vector<A>) => O.Option<A> {
+  return (self) => findLast_(self, predicate)
 }
 
 type IndexOfState = {
@@ -1839,47 +1870,47 @@ function indexOfCb(value: any, state: IndexOfState): boolean {
 }
 
 /**
- * Returns the index of the _first_ element in the list that is equal
+ * Returns the index of the _first_ element in the vector that is equal
  * to the given element. If no such element is found `-1` is returned.
  *
  * @complexity O(n)
  */
-export function indexOf_<A>(l: List<A>, element: A): number {
+export function indexOf_<A>(self: Vector<A>, element: A): number {
   const state = { element, found: false, index: -1 }
-  foldlCb(indexOfCb, state, l)
+  foldlCb(indexOfCb, state, self)
   return state.found ? state.index : -1
 }
 
 /**
- * Returns the index of the _first_ element in the list that is equal
+ * Returns the index of the _first_ element in the vector that is equal
  * to the given element. If no such element is found `-1` is returned.
  *
  * @complexity O(n)
  */
-export function indexOf<A>(element: A): (l: List<A>) => number {
-  return (l) => indexOf_(l, element)
+export function indexOf<A>(element: A): (self: Vector<A>) => number {
+  return (self) => indexOf_(self, element)
 }
 
 /**
- * Returns the index of the _last_ element in the list that is equal
+ * Returns the index of the _last_ element in the vector that is equal
  * to the given element. If no such element is found `-1` is returned.
  *
  * @complexity O(n)
  */
-export function lastIndexOf_<A>(l: List<A>, element: A): number {
+export function lastIndexOf_<A>(self: Vector<A>, element: A): number {
   const state = { element, found: false, index: 0 }
-  foldrCb(indexOfCb, state, l)
-  return state.found ? l.length - state.index : -1
+  foldrCb(indexOfCb, state, self)
+  return state.found ? self.length - state.index : -1
 }
 
 /**
- * Returns the index of the _last_ element in the list that is equal
+ * Returns the index of the _last_ element in the vector that is equal
  * to the given element. If no such element is found `-1` is returned.
  *
  * @complexity O(n)
  */
-export function lastIndexOf<A>(element: A): (l: List<A>) => number {
-  return (l) => lastIndexOf_(l, element)
+export function lastIndexOf<A>(element: A): (self: Vector<A>) => number {
+  return (self) => lastIndexOf_(self, element)
 }
 
 type FindIndexState = {
@@ -1900,11 +1931,11 @@ function findIndexCb<A>(value: A, state: FindIndexState): boolean {
  *
  * @complexity O(n)
  */
-export function findIndex_<A>(l: List<A>, predicate: (a: A) => boolean): number {
+export function findIndex_<A>(self: Vector<A>, predicate: (a: A) => boolean): number {
   const { found, index } = foldlCb<A, FindIndexState>(
     findIndexCb,
     { predicate, found: false, index: -1 },
-    l
+    self
   )
   return found ? index : -1
 }
@@ -1916,8 +1947,10 @@ export function findIndex_<A>(l: List<A>, predicate: (a: A) => boolean): number 
  *
  * @complexity O(n)
  */
-export function findIndex<A>(predicate: (a: A) => boolean): (l: List<A>) => number {
-  return (l) => findIndex_(l, predicate)
+export function findIndex<A>(
+  predicate: (a: A) => boolean
+): (self: Vector<A>) => number {
+  return (self) => findIndex_(self, predicate)
 }
 
 type ContainsState = {
@@ -1935,25 +1968,25 @@ function containsCb(value: any, state: ContainsState): boolean {
 }
 
 /**
- * Returns `true` if the list contains the specified element.
+ * Returns `true` if the vector contains the specified element.
  * Otherwise it returns `false`.
  *
  * @complexity O(n)
  */
-export function contains_<A>(l: List<A>, element: A): boolean {
+export function contains_<A>(self: Vector<A>, element: A): boolean {
   containsState.element = element
   containsState.result = false
-  return foldlCb(containsCb, containsState, l).result
+  return foldlCb(containsCb, containsState, self).result
 }
 
 /**
- * Returns `true` if the list contains the specified element.
+ * Returns `true` if the vector contains the specified element.
  * Otherwise it returns `false`.
  *
  * @complexity O(n)
  */
-export function contains<A>(element: A): (l: List<A>) => boolean {
-  return (l) => contains_(l, element)
+export function contains<A>(element: A): (self: Vector<A>) => boolean {
+  return (self) => contains_(self, element)
 }
 
 type EqualsState<A> = {
@@ -1968,55 +2001,55 @@ function equalsCb<A>(value2: A, state: EqualsState<A>): boolean {
 }
 
 /**
- * Returns true if the two lists are equivalent.
+ * Returns true if the two vectors are equivalent.
  *
  * @complexity O(n)
  */
-export function equals_<A>(l1: List<A>, l2: List<A>): boolean {
-  return equalsWith_(l1, l2, elementEquals)
+export function equals_<A>(self: Vector<A>, that: Vector<A>): boolean {
+  return equalsWith_(self, that, elementEquals)
 }
 
 /**
- * Returns true if the two lists are equivalent.
+ * Returns true if the two vectors are equivalent.
  *
  * @complexity O(n)
  */
-export function equals<A>(l2: List<A>): (l1: List<A>) => boolean {
-  return (l1) => equals_(l1, l2)
+export function equals<A>(that: Vector<A>): (self: Vector<A>) => boolean {
+  return (self) => equals_(self, that)
 }
 
 /**
- * Returns true if the two lists are equivalent when comparing each
+ * Returns true if the two vectors are equivalent when comparing each
  * pair of elements with the given comparison function.
  *
  * @complexity O(n)
  */
 export function equalsWith_<A>(
-  l1: List<A>,
-  l2: List<A>,
+  self: Vector<A>,
+  that: Vector<A>,
   f: (a: A, b: A) => boolean
 ): boolean {
-  if (l1 === l2) {
+  if (self === that) {
     return true
-  } else if (l1.length !== l2.length) {
+  } else if (self.length !== that.length) {
     return false
   } else {
-    const s = { iterator: l2[Symbol.iterator](), equals: true, f }
-    return foldlCb<A, EqualsState<A>>(equalsCb, s, l1).equals
+    const s = { iterator: that[Symbol.iterator](), equals: true, f }
+    return foldlCb<A, EqualsState<A>>(equalsCb, s, self).equals
   }
 }
 
 /**
- * Returns true if the two lists are equivalent when comparing each
+ * Returns true if the two vectors are equivalent when comparing each
  * pair of elements with the given comparison function.
  *
  * @complexity O(n)
  */
 export function equalsWith<A>(
-  l2: List<A>,
+  that: Vector<A>,
   f: (a: A, b: A) => boolean
-): (l1: List<A>) => boolean {
-  return (l1) => equalsWith_(l1, l2, f)
+): (self: Vector<A>) => boolean {
+  return (self) => equalsWith_(self, that, f)
 }
 
 // concat
@@ -2195,9 +2228,9 @@ function getHeight(node: Node): number {
  * the tree will _not_ be mutated.
  * @param array The affix that should be appended to the tree.
  */
-function appendNodeToTree<A>(l: MutableList<A>, array: A[]): MutableList<A> {
+function appendNodeToTree<A>(l: MutableVector<A>, array: A[]): MutableVector<A> {
   if (l.root === undefined) {
-    // The old list has no content in tree, all content is in affixes
+    // The old vector has no content in tree, all content is in affixes
     if (getPrefixSize(l) === 0) {
       l.bits = setPrefix(array.length, l.bits)
       l.prefix = reverseArray(array)
@@ -2266,14 +2299,13 @@ function appendNodeToTree<A>(l: MutableList<A>, array: A[]): MutableList<A> {
 
 /**
  * Traverses down the right edge of the tree and copies k nodes.
- * @param oldList
- * @param newList
+ * @param newVector
  * @param k The number of nodes to copy. Will always be at least 1.
  * @param leafSize The number of elements in the leaf that will be inserted.
  */
-function copyFirstK(newList: MutableList<any>, k: number, leafSize: number): Node {
-  let currentNode = cloneNode(newList.root!) // copy root
-  newList.root = currentNode // install root
+function copyFirstK(newVector: MutableVector<any>, k: number, leafSize: number): Node {
+  let currentNode = cloneNode(newVector.root!) // copy root
+  newVector.root = currentNode // install root
 
   for (let i = 1; i < k; ++i) {
     const index = currentNode.array.length - 1
@@ -2293,7 +2325,7 @@ function copyFirstK(newList: MutableList<any>, k: number, leafSize: number): Nod
 
 const concatBuffer = new Array(3)
 
-function concatAffixes<A>(left: List<A>, right: List<A>): number {
+function concatAffixes<A>(left: Vector<A>, right: Vector<A>): number {
   // TODO: Try and find a neat way to reduce the LOC here
   let nr = 0
   let arrIdx = 0
@@ -2325,136 +2357,145 @@ function concatAffixes<A>(left: List<A>, right: List<A>): number {
 }
 
 /**
- * Concatenates two lists.
+ * Concatenates two vectors.
  *
  * @complexity O(log(n))
  */
-export function concat_<A>(left: List<A>, right: List<A>): List<A> {
-  if (left.length === 0) {
-    return right
-  } else if (right.length === 0) {
-    return left
+export function concat_<A>(self: Vector<A>, that: Vector<A>): Vector<A> {
+  if (self.length === 0) {
+    return that
+  } else if (that.length === 0) {
+    return self
   }
-  const newSize = left.length + right.length
-  const rightSuffixSize = getSuffixSize(right)
-  let newList = cloneList(left)
-  if (right.root === undefined) {
+  const newSize = self.length + that.length
+  const rightSuffixSize = getSuffixSize(that)
+  let newVector = cloneVector(self)
+  if (that.root === undefined) {
     // right is nothing but a prefix and a suffix
-    const nrOfAffixes = concatAffixes(left, right)
+    const nrOfAffixes = concatAffixes(self, that)
     for (let i = 0; i < nrOfAffixes; ++i) {
-      newList = appendNodeToTree(newList, concatBuffer[i])
-      newList.length += concatBuffer[i].length
+      newVector = appendNodeToTree(newVector, concatBuffer[i])
+      newVector.length += concatBuffer[i].length
       // wipe pointer, otherwise it might end up keeping the array alive
       concatBuffer[i] = undefined
     }
-    newList.length = newSize
-    newList.suffix = concatBuffer[nrOfAffixes]
-    newList.bits = setSuffix(concatBuffer[nrOfAffixes].length, newList.bits)
+    newVector.length = newSize
+    newVector.suffix = concatBuffer[nrOfAffixes]
+    newVector.bits = setSuffix(concatBuffer[nrOfAffixes].length, newVector.bits)
     concatBuffer[nrOfAffixes] = undefined
-    return newList
+    return newVector
   } else {
-    const leftSuffixSize = getSuffixSize(left)
+    const leftSuffixSize = getSuffixSize(self)
     if (leftSuffixSize > 0) {
-      newList = appendNodeToTree(newList, left.suffix.slice(0, leftSuffixSize))
-      newList.length += leftSuffixSize
+      newVector = appendNodeToTree(newVector, self.suffix.slice(0, leftSuffixSize))
+      newVector.length += leftSuffixSize
     }
-    newList = appendNodeToTree(
-      newList,
-      right.prefix.slice(0, getPrefixSize(right)).reverse()
+    newVector = appendNodeToTree(
+      newVector,
+      that.prefix.slice(0, getPrefixSize(that)).reverse()
     )
     const newNode = concatSubTree(
-      newList.root!,
-      getDepth(newList),
-      right.root,
-      getDepth(right),
+      newVector.root!,
+      getDepth(newVector),
+      that.root,
+      getDepth(that),
       true
     )
     const newDepth = getHeight(newNode)
     setSizes(newNode, newDepth)
-    newList.root = newNode
-    newList.offset &= ~(mask << (getDepth(left) * branchBits))
-    newList.length = newSize
-    newList.bits = setSuffix(rightSuffixSize, setDepth(newDepth, newList.bits))
-    newList.suffix = right.suffix
-    return newList
+    newVector.root = newNode
+    newVector.offset &= ~(mask << (getDepth(self) * branchBits))
+    newVector.length = newSize
+    newVector.bits = setSuffix(rightSuffixSize, setDepth(newDepth, newVector.bits))
+    newVector.suffix = that.suffix
+    return newVector
   }
 }
 
 /**
- * Concatenates two lists.
+ * Concatenates two vectors.
  *
  * @complexity O(log(n))
  */
-export function concat<A>(right: List<A>): (left: List<A>) => List<A> {
-  return (left) => concat_(left, right)
+export function concat<A>(that: Vector<A>): (self: Vector<A>) => Vector<A> {
+  return (left) => concat_(left, that)
 }
 
 /**
- * Returns a list that has the entry specified by the index replaced with the given value.
+ * Returns a vector that has the entry specified by the index replaced with the given value.
  *
- * If the index is out of bounds the given list is returned unchanged.
+ * If the index is out of bounds the given vector is returned unchanged.
  *
  * @complexity O(log(n))
  */
-export function update_<A>(l: List<A>, index: number, a: A): List<A> {
-  if (index < 0 || l.length <= index) {
-    return l
+export function update_<A>(self: Vector<A>, index: number, a: A): Vector<A> {
+  if (index < 0 || self.length <= index) {
+    return self
   }
-  const prefixSize = getPrefixSize(l)
-  const suffixSize = getSuffixSize(l)
-  const newList = cloneList(l)
+  const prefixSize = getPrefixSize(self)
+  const suffixSize = getSuffixSize(self)
+  const newVector = cloneVector(self)
   if (index < prefixSize) {
-    const newPrefix = copyArray(newList.prefix)
+    const newPrefix = copyArray(newVector.prefix)
     newPrefix[newPrefix.length - index - 1] = a
-    newList.prefix = newPrefix
-  } else if (index >= l.length - suffixSize) {
-    const newSuffix = copyArray(newList.suffix)
-    newSuffix[index - (l.length - suffixSize)] = a
-    newList.suffix = newSuffix
+    newVector.prefix = newPrefix
+  } else if (index >= self.length - suffixSize) {
+    const newSuffix = copyArray(newVector.suffix)
+    newSuffix[index - (self.length - suffixSize)] = a
+    newVector.suffix = newSuffix
   } else {
-    newList.root = updateNode(l.root!, getDepth(l), index - prefixSize, l.offset, a)
+    newVector.root = updateNode(
+      self.root!,
+      getDepth(self),
+      index - prefixSize,
+      self.offset,
+      a
+    )
   }
-  return newList
+  return newVector
 }
 
 /**
- * Returns a list that has the entry specified by the index replaced with the given value.
+ * Returns a vector that has the entry specified by the index replaced with the given value.
  *
- * If the index is out of bounds the given list is returned unchanged.
+ * If the index is out of bounds the given vector is returned unchanged.
  *
  * @complexity O(log(n))
  */
-export function update<A>(index: number, a: A): (l: List<A>) => List<A> {
-  return (l) => update_(l, index, a)
+export function update<A>(index: number, a: A): (self: Vector<A>) => Vector<A> {
+  return (self) => update_(self, index, a)
 }
 
 /**
- * Returns a list that has the entry specified by the index replaced with
+ * Returns a vector that has the entry specified by the index replaced with
  * the value returned by applying the function to the value.
  *
- * If the index is out of bounds the given list is
+ * If the index is out of bounds the given vector is
  * returned unchanged.
  *
  * @complexity `O(log(n))`
  */
-export function adjust_<A>(l: List<A>, index: number, f: (a: A) => A): List<A> {
-  if (index < 0 || l.length <= index) {
-    return l
+export function adjust_<A>(self: Vector<A>, index: number, f: (a: A) => A): Vector<A> {
+  if (index < 0 || self.length <= index) {
+    return self
   }
-  return update_(l, index, f(unsafeNth_(l, index)!))
+  return update_(self, index, f(unsafeNth_(self, index)!))
 }
 
 /**
- * Returns a list that has the entry specified by the index replaced with
+ * Returns a vector that has the entry specified by the index replaced with
  * the value returned by applying the function to the value.
  *
- * If the index is out of bounds the given list is
+ * If the index is out of bounds the given vector is
  * returned unchanged.
  *
  * @complexity `O(log(n))`
  */
-export function adjust<A>(index: number, f: (a: A) => A): (l: List<A>) => List<A> {
-  return (l) => adjust_(l, index, f)
+export function adjust<A>(
+  index: number,
+  f: (a: A) => A
+): (self: Vector<A>) => Vector<A> {
+  return (self) => adjust_(self, index, f)
 }
 
 // slice and slice based functions
@@ -2602,14 +2643,14 @@ function sliceRight(
   }
 }
 
-function sliceTreeList<A>(
+function sliceTreeVector<A>(
   from: number,
   to: number,
   tree: Node,
   depth: number,
   offset: number,
-  l: MutableList<A>
-): List<A> {
+  l: MutableVector<A>
+): Vector<A> {
   const sizes = tree.sizes
   let { index: newFrom, path: pathLeft } = getPath(from, offset, depth, sizes)
   let { index: newTo, path: pathRight } = getPath(to, offset, depth, sizes)
@@ -2624,7 +2665,7 @@ function sliceTreeList<A>(
     // Both ends are located in the same subtree, this means that we
     // can reduce the height
     l.bits = decrementDepth(l.bits)
-    return sliceTreeList(
+    return sliceTreeVector(
       newFrom,
       newTo,
       tree.array[pathLeft],
@@ -2681,14 +2722,14 @@ function sliceTreeList<A>(
 }
 
 /**
- * Returns a slice of a list. Elements are removed from the beginning and
+ * Returns a slice of a vector. Elements are removed from the beginning and
  * end. Both the indices can be negative in which case they will count
- * from the right end of the list.
+ * from the right end of the vector.
  *
  * @complexity `O(log(n))`
  */
-export function slice_<A>(l: List<A>, from: number, to: number): List<A> {
-  let { bits, length } = l
+export function slice_<A>(self: Vector<A>, from: number, to: number): Vector<A> {
+  let { bits, length } = self
 
   to = Math.min(length, to)
   // Handle negative indices
@@ -2699,27 +2740,27 @@ export function slice_<A>(l: List<A>, from: number, to: number): List<A> {
     to = length + to
   }
 
-  // Should we just return the empty list?
+  // Should we just return the empty vector?
   if (to <= from || to <= 0 || length <= from) {
     return empty()
   }
 
-  // Return list unchanged if we are slicing nothing off
+  // Return vector unchanged if we are slicing nothing off
   if (from <= 0 && length <= to) {
-    return l
+    return self
   }
 
   const newLength = to - from
-  let prefixSize = getPrefixSize(l)
-  const suffixSize = getSuffixSize(l)
+  let prefixSize = getPrefixSize(self)
+  const suffixSize = getSuffixSize(self)
 
   // Both indices lie in the prefix
   if (to <= prefixSize) {
-    return new List(
+    return new Vector(
       setPrefix(newLength, 0),
       0,
       newLength,
-      l.prefix.slice(prefixSize - to, prefixSize - from),
+      self.prefix.slice(prefixSize - to, prefixSize - from),
       undefined,
       emptyAffix
     )
@@ -2728,30 +2769,30 @@ export function slice_<A>(l: List<A>, from: number, to: number): List<A> {
   const suffixStart = length - suffixSize
   // Both indices lie in the suffix
   if (suffixStart <= from) {
-    return new List(
+    return new Vector(
       setSuffix(newLength, 0),
       0,
       newLength,
       emptyAffix,
       undefined,
-      l.suffix.slice(from - suffixStart, to - suffixStart)
+      self.suffix.slice(from - suffixStart, to - suffixStart)
     )
   }
 
-  const newList = cloneList(l)
-  newList.length = newLength
+  const newVector = cloneVector(self)
+  newVector.length = newLength
 
   // Both indices lie in the tree
   if (prefixSize <= from && to <= suffixStart) {
-    sliceTreeList(
-      from - prefixSize + l.offset,
-      to - prefixSize + l.offset - 1,
-      l.root!,
-      getDepth(l),
-      l.offset,
-      newList
+    sliceTreeVector(
+      from - prefixSize + self.offset,
+      to - prefixSize + self.offset - 1,
+      self.root!,
+      getDepth(self),
+      self.offset,
+      newVector
     )
-    return newList
+    return newVector
   }
 
   if (0 < from) {
@@ -2759,26 +2800,26 @@ export function slice_<A>(l: List<A>, from: number, to: number): List<A> {
     if (from < prefixSize) {
       // shorten the prefix even though it's not strictly needed,
       // so that referenced items can be GC'd
-      newList.prefix = l.prefix.slice(0, prefixSize - from)
+      newVector.prefix = self.prefix.slice(0, prefixSize - from)
       bits = setPrefix(prefixSize - from, bits)
     } else {
       // if we're here `to` can't lie in the tree, so we can set the
       // root
       newOffset = 0
-      newList.root = sliceLeft(
-        newList.root!,
-        getDepth(l),
+      newVector.root = sliceLeft(
+        newVector.root!,
+        getDepth(self),
         from - prefixSize,
-        l.offset,
+        self.offset,
         true
       )
-      newList.offset = newOffset
-      if (newList.root === undefined) {
+      newVector.offset = newOffset
+      if (newVector.root === undefined) {
         bits = setDepth(0, bits)
       }
       bits = setPrefix(newAffix.length, bits)
       prefixSize = newAffix.length
-      newList.prefix = newAffix
+      newVector.prefix = newAffix
     }
   }
   if (to < length) {
@@ -2787,53 +2828,53 @@ export function slice_<A>(l: List<A>, from: number, to: number): List<A> {
       bits = setSuffix(suffixSize - (length - to), bits)
       // slice the suffix even though it's not strictly needed,
       // to allow the removed items to be GC'd
-      newList.suffix = l.suffix.slice(0, suffixSize - (length - to))
+      newVector.suffix = self.suffix.slice(0, suffixSize - (length - to))
     } else {
-      newList.root = sliceRight(
-        newList.root!,
-        getDepth(l),
+      newVector.root = sliceRight(
+        newVector.root!,
+        getDepth(self),
         to - prefixSize - 1,
-        newList.offset
+        newVector.offset
       )
-      if (newList.root === undefined) {
+      if (newVector.root === undefined) {
         bits = setDepth(0, bits)
-        newList.offset = 0
+        newVector.offset = 0
       }
       bits = setSuffix(newAffix.length, bits)
-      newList.suffix = newAffix
+      newVector.suffix = newAffix
     }
   }
-  newList.bits = bits
-  return newList
+  newVector.bits = bits
+  return newVector
 }
 
 /**
- * Returns a slice of a list. Elements are removed from the beginning and
+ * Returns a slice of a vector. Elements are removed from the beginning and
  * end. Both the indices can be negative in which case they will count
- * from the right end of the list.
+ * from the right end of the vector.
  *
  * @complexity `O(log(n))`
  */
-export function slice(from: number, to: number): <A>(l: List<A>) => List<A> {
-  return (l) => slice_(l, from, to)
+export function slice(from: number, to: number): <A>(self: Vector<A>) => Vector<A> {
+  return (self) => slice_(self, from, to)
 }
 
 /**
- * Takes the first `n` elements from a list and returns them in a new list.
+ * Takes the first `n` elements from a vector and returns them in a new vector.
  *
  * @complexity `O(log(n))`
  */
-export function take_<A>(l: List<A>, n: number): List<A> {
-  return slice_(l, 0, n)
+export function take_<A>(self: Vector<A>, n: number): Vector<A> {
+  return slice_(self, 0, n)
 }
 
 /**
- * Takes the first `n` elements from a list and returns them in a new list.
+ * Takes the first `n` elements from a vector and returns them in a new vector.
  *
  * @complexity `O(log(n))`
  */
-export function take(n: number): <A>(l: List<A>) => List<A> {
-  return (l) => take_(l, n)
+export function take(n: number): <A>(self: Vector<A>) => Vector<A> {
+  return (self) => take_(self, n)
 }
 
 type FindNotIndexState = {
@@ -2851,42 +2892,50 @@ function findNotIndexCb(value: any, state: FindNotIndexState): boolean {
 }
 
 /**
- * Takes the first elements in the list for which the predicate returns
+ * Takes the first elements in the vector for which the predicate returns
  * `true`.
  *
  * @complexity `O(k + log(n))` where `k` is the number of elements satisfying
  * the predicate.
  */
-export function takeWhile_<A>(l: List<A>, predicate: (a: A) => boolean): List<A> {
-  const { index } = foldlCb(findNotIndexCb, { predicate, index: 0 }, l)
-  return slice_(l, 0, index)
+export function takeWhile_<A>(
+  self: Vector<A>,
+  predicate: (a: A) => boolean
+): Vector<A> {
+  const { index } = foldlCb(findNotIndexCb, { predicate, index: 0 }, self)
+  return slice_(self, 0, index)
 }
 
 /**
- * Takes the first elements in the list for which the predicate returns
+ * Takes the first elements in the vector for which the predicate returns
  * `true`.
  *
  * @complexity `O(k + log(n))` where `k` is the number of elements satisfying
  * the predicate.
  */
-export function takeWhile<A>(predicate: (a: A) => boolean): (l: List<A>) => List<A> {
-  return (l) => takeWhile_(l, predicate)
+export function takeWhile<A>(
+  predicate: (a: A) => boolean
+): (self: Vector<A>) => Vector<A> {
+  return (self) => takeWhile_(self, predicate)
 }
 
 /**
- * Takes the last elements in the list for which the predicate returns
+ * Takes the last elements in the vector for which the predicate returns
  * `true`.
  *
  * @complexity `O(k + log(n))` where `k` is the number of elements
  * satisfying the predicate.
  */
-export function takeLastWhile_<A>(l: List<A>, predicate: (a: A) => boolean): List<A> {
-  const { index } = foldrCb(findNotIndexCb, { predicate, index: 0 }, l)
-  return slice_(l, l.length - index, l.length)
+export function takeLastWhile_<A>(
+  self: Vector<A>,
+  predicate: (a: A) => boolean
+): Vector<A> {
+  const { index } = foldrCb(findNotIndexCb, { predicate, index: 0 }, self)
+  return slice_(self, self.length - index, self.length)
 }
 
 /**
- * Takes the last elements in the list for which the predicate returns
+ * Takes the last elements in the vector for which the predicate returns
  * `true`.
  *
  * @complexity `O(k + log(n))` where `k` is the number of elements
@@ -2894,146 +2943,151 @@ export function takeLastWhile_<A>(l: List<A>, predicate: (a: A) => boolean): Lis
  */
 export function takeLastWhile<A>(
   predicate: (a: A) => boolean
-): (l: List<A>) => List<A> {
+): (l: Vector<A>) => Vector<A> {
   return (l) => takeLastWhile_(l, predicate)
 }
 
 /**
- * Removes the first elements in the list for which the predicate returns
+ * Removes the first elements in the vector for which the predicate returns
  * `true`.
  *
  * @complexity `O(k + log(n))` where `k` is the number of elements
  * satisfying the predicate.
  */
-export function dropWhile_<A>(l: List<A>, predicate: (a: A) => boolean): List<A> {
-  const { index } = foldlCb(findNotIndexCb, { predicate, index: 0 }, l)
-  return slice_(l, index, l.length)
+export function dropWhile_<A>(
+  self: Vector<A>,
+  predicate: (a: A) => boolean
+): Vector<A> {
+  const { index } = foldlCb(findNotIndexCb, { predicate, index: 0 }, self)
+  return slice_(self, index, self.length)
 }
 
 /**
- * Removes the first elements in the list for which the predicate returns
+ * Removes the first elements in the vector for which the predicate returns
  * `true`.
  *
  * @complexity `O(k + log(n))` where `k` is the number of elements
  * satisfying the predicate.
  */
-export function dropWhile<A>(predicate: (a: A) => boolean): (l: List<A>) => List<A> {
+export function dropWhile<A>(
+  predicate: (a: A) => boolean
+): (self: Vector<A>) => Vector<A> {
   return (l) => dropWhile_(l, predicate)
 }
 
 /**
- * Returns a new list without repeated elements.
+ * Returns a new vector without repeated elements.
  *
  * @complexity `O(n)`
  */
-export function dropRepeats<A>(l: List<A>): List<A> {
-  return dropRepeatsWith_(l, elementEquals)
+export function dropRepeats<A>(self: Vector<A>): Vector<A> {
+  return dropRepeatsWith_(self, elementEquals)
 }
 
 /**
- * Returns a new list without repeated elements by using the given
+ * Returns a new vector without repeated elements by using the given
  * function to determine when elements are equal.
  *
  * @complexity `O(n)`
  */
 export function dropRepeatsWith_<A>(
-  l: List<A>,
+  self: Vector<A>,
   predicate: (a: A, b: A) => boolean
-): List<A> {
-  return reduce_(l, emptyPushable(), (acc, a) =>
+): Vector<A> {
+  return reduce_(self, emptyPushable(), (acc, a) =>
     acc.length !== 0 && predicate(unsafeLast(acc)!, a) ? acc : push_(acc, a)
   )
 }
 
 /**
- * Returns a new list without repeated elements by using the given
+ * Returns a new vector without repeated elements by using the given
  * function to determine when elements are equal.
  *
  * @complexity `O(n)`
  */
 export function dropRepeatsWith<A>(
   predicate: (a: A, b: A) => boolean
-): (l: List<A>) => List<A> {
-  return (l) => dropRepeatsWith_(l, predicate)
+): (self: Vector<A>) => Vector<A> {
+  return (self) => dropRepeatsWith_(self, predicate)
 }
 
 /**
- * Takes the last `n` elements from a list and returns them in a new
- * list.
+ * Takes the last `n` elements from a vector and returns them in a new
+ * vector.
  *
  * @complexity `O(log(n))`
  */
-export function takeLast_<A>(l: List<A>, n: number): List<A> {
-  return slice_(l, l.length - n, l.length)
+export function takeLast_<A>(self: Vector<A>, n: number): Vector<A> {
+  return slice_(self, self.length - n, self.length)
 }
 
 /**
- * Takes the last `n` elements from a list and returns them in a new
- * list.
+ * Takes the last `n` elements from a vector and returns them in a new
+ * vector.
  *
  * @complexity `O(log(n))`
  */
-export function takeLast<A>(n: number): (l: List<A>) => List<A> {
-  return (l) => takeLast_(l, n)
+export function takeLast<A>(n: number): (self: Vector<A>) => Vector<A> {
+  return (self) => takeLast_(self, n)
 }
 
 /**
- * Splits a list at the given index and return the two sides in a pair.
+ * Splits a vector at the given index and return the two sides in a pair.
  * The left side will contain all elements before but not including the
  * element at the given index. The right side contains the element at the
  * index and all elements after it.
  *
  * @complexity `O(log(n))`
  */
-export function splitAt_<A>(l: List<A>, index: number): [List<A>, List<A>] {
-  return [slice_(l, 0, index), slice_(l, index, l.length)]
+export function splitAt_<A>(self: Vector<A>, index: number): [Vector<A>, Vector<A>] {
+  return [slice_(self, 0, index), slice_(self, index, self.length)]
 }
 
 /**
- * Splits a list at the given index and return the two sides in a pair.
+ * Splits a vector at the given index and return the two sides in a pair.
  * The left side will contain all elements before but not including the
  * element at the given index. The right side contains the element at the
  * index and all elements after it.
  *
  * @complexity `O(log(n))`
  */
-export function splitAt(index: number): <A>(l: List<A>) => [List<A>, List<A>] {
-  return (l) => splitAt_(l, index)
+export function splitAt(index: number): <A>(self: Vector<A>) => [Vector<A>, Vector<A>] {
+  return (self) => splitAt_(self, index)
 }
 
 /**
- * Splits a list at the first element in the list for which the given
+ * Splits a vector at the first element in the vector for which the given
  * predicate returns `true`.
  *
  * @complexity `O(n)`
  */
 export function splitWhen_<A>(
-  l: List<A>,
+  self: Vector<A>,
   predicate: (a: A) => boolean
-): [List<A>, List<A>] {
-  const idx = findIndex_(l, predicate)
-  return idx === -1 ? [l, empty()] : splitAt_(l, idx)
+): [Vector<A>, Vector<A>] {
+  const idx = findIndex_(self, predicate)
+  return idx === -1 ? [self, empty()] : splitAt_(self, idx)
 }
 
 /**
- * Splits a list at the first element in the list for which the given
+ * Splits a vector at the first element in the vector for which the given
  * predicate returns `true`.
  *
  * @complexity `O(n)`
  */
 export function splitWhen<A>(
   predicate: (a: A) => boolean
-): (l: List<A>) => [List<A>, List<A>] {
-  return (l) => splitWhen_(l, predicate)
+): (self: Vector<A>) => [Vector<A>, Vector<A>] {
+  return (self) => splitWhen_(self, predicate)
 }
 
 /**
- * Splits the list into chunks of the given size.
+ * Splits the vector into chunks of the given size.
  */
-export function splitEvery_<A>(l: List<A>, size: number): List<List<A>> {
+export function splitEvery_<A>(self: Vector<A>, size: number): Vector<Vector<A>> {
   const { buffer, l2 } = reduce_(
-    l,
-    { l2: emptyPushable<List<A>>(), buffer: emptyPushable<A>() },
+    self,
+    { l2: emptyPushable<Vector<A>>(), buffer: emptyPushable<A>() },
     ({ buffer, l2 }, elm) => {
       push_(buffer, elm)
       if (buffer.length === size) {
@@ -3047,88 +3101,91 @@ export function splitEvery_<A>(l: List<A>, size: number): List<List<A>> {
 }
 
 /**
- * Splits the list into chunks of the given size.
+ * Splits the vector into chunks of the given size.
  */
-export function splitEvery(size: number): <A>(l: List<A>) => List<List<A>> {
-  return (l) => splitEvery_(l, size)
+export function splitEvery(size: number): <A>(self: Vector<A>) => Vector<Vector<A>> {
+  return (self) => splitEvery_(self, size)
 }
 
 /**
- * Takes an index, a number of elements to remove and a list. Returns a
- * new list with the given amount of elements removed from the specified
+ * Takes an index, a number of elements to remove and a vector. Returns a
+ * new vector with the given amount of elements removed from the specified
  * index.
  *
  * @complexity `O(log(n))`
  */
-export function remove_<A>(l: List<A>, from: number, amount: number): List<A> {
-  return concat_(slice_(l, 0, from), slice_(l, from + amount, l.length))
+export function remove_<A>(self: Vector<A>, from: number, amount: number): Vector<A> {
+  return concat_(slice_(self, 0, from), slice_(self, from + amount, self.length))
 }
 
 /**
- * Takes an index, a number of elements to remove and a list. Returns a
- * new list with the given amount of elements removed from the specified
+ * Takes an index, a number of elements to remove and a vector. Returns a
+ * new vector with the given amount of elements removed from the specified
  * index.
  *
  * @complexity `O(log(n))`
  */
-export function remove(from: number, amount: number): <A>(l: List<A>) => List<A> {
-  return (l) => remove_(l, from, amount)
+export function remove(
+  from: number,
+  amount: number
+): <A>(self: Vector<A>) => Vector<A> {
+  return (self) => remove_(self, from, amount)
 }
 
 /**
- * Returns a new list without the first `n` elements.
+ * Returns a new vector without the first `n` elements.
  *
  * @complexity `O(log(n))`
  */
-export function drop_<A>(l: List<A>, n: number): List<A> {
-  return slice_(l, n, l.length)
+export function drop_<A>(self: Vector<A>, n: number): Vector<A> {
+  return slice_(self, n, self.length)
 }
 
 /**
- * Returns a new list without the first `n` elements.
+ * Returns a new vector without the first `n` elements.
  *
  * @complexity `O(log(n))`
  */
-export function drop(n: number): <A>(l: List<A>) => List<A> {
-  return (l) => drop_(l, n)
+export function drop(n: number): <A>(self: Vector<A>) => Vector<A> {
+  return (self) => drop_(self, n)
 }
 
 /**
- * Returns a new list without the last `n` elements.
+ * Returns a new vector without the last `n` elements.
  *
  * @complexity `O(log(n))`
  */
-export function dropLast_<A>(l: List<A>, n: number): List<A> {
-  return slice_(l, 0, l.length - n)
+export function dropLast_<A>(self: Vector<A>, n: number): Vector<A> {
+  return slice_(self, 0, self.length - n)
 }
 
 /**
- * Returns a new list without the last `n` elements.
+ * Returns a new vector without the last `n` elements.
  *
  * @complexity `O(log(n))`
  */
-export function dropLast<A>(n: number): (l: List<A>) => List<A> {
-  return (l) => dropLast_(l, n)
+export function dropLast<A>(n: number): (self: Vector<A>) => Vector<A> {
+  return (self) => dropLast_(self, n)
 }
 
 /**
- * Returns a new list with the last element removed. If the list is
- * empty the empty list is returned.
+ * Returns a new vector with the last element removed. If the vector is
+ * empty the empty vector is returned.
  *
  * @complexity `O(1)`
  */
-export function pop<A>(l: List<A>): List<A> {
-  return slice_(l, 0, -1)
+export function pop<A>(self: Vector<A>): Vector<A> {
+  return slice_(self, 0, -1)
 }
 
 /**
- * Returns a new list with the first element removed. If the list is
- * empty the empty list is returned.
+ * Returns a new vector with the first element removed. If the vector is
+ * empty the empty vector is returned.
  *
  * @complexity `O(1)`
  */
-export function tail<A>(l: List<A>): List<A> {
-  return slice_(l, 1, l.length)
+export function tail<A>(self: Vector<A>): Vector<A> {
+  return slice_(self, 1, self.length)
 }
 
 function arrayPush<A>(array: A[], a: A): A[] {
@@ -3137,133 +3194,145 @@ function arrayPush<A>(array: A[], a: A): A[] {
 }
 
 /**
- * Converts a list into an array.
+ * Converts a vector into an array.
  *
  * @complexity `O(n)`
  */
-export function toArray<A>(l: List<A>): readonly A[] {
-  return reduce_<A, A[]>(l, [], arrayPush)
+export function toArray<A>(self: Vector<A>): readonly A[] {
+  return reduce_<A, A[]>(self, [], arrayPush)
 }
 
 /**
- * Inserts the given element at the given index in the list.
+ * Inserts the given element at the given index in the vector.
  *
  * @complexity O(log(n))
  */
-export function insert_<A>(l: List<A>, index: number, element: A): List<A> {
-  return concat_(append_(slice_(l, 0, index), element), slice_(l, index, l.length))
+export function insert_<A>(self: Vector<A>, index: number, element: A): Vector<A> {
+  return concat_(
+    append_(slice_(self, 0, index), element),
+    slice_(self, index, self.length)
+  )
 }
 
 /**
- * Inserts the given element at the given index in the list.
+ * Inserts the given element at the given index in the vector.
  *
  * @complexity O(log(n))
  */
-export function insert<A>(index: number, element: A): (l: List<A>) => List<A> {
-  return (l) => insert_(l, index, element)
+export function insert<A>(index: number, element: A): (self: Vector<A>) => Vector<A> {
+  return (self) => insert_(self, index, element)
 }
 
 /**
- * Inserts the given list of elements at the given index in the list.
+ * Inserts the given vector of elements at the given index in the vector.
  *
  * @complexity `O(log(n))`
  */
-export function insertAll_<A>(l: List<A>, index: number, elements: List<A>): List<A> {
-  return concat_(concat_(slice_(l, 0, index), elements), slice_(l, index, l.length))
+export function insertAll_<A>(
+  self: Vector<A>,
+  index: number,
+  elements: Vector<A>
+): Vector<A> {
+  return concat_(
+    concat_(slice_(self, 0, index), elements),
+    slice_(self, index, self.length)
+  )
 }
 
 /**
- * Inserts the given list of elements at the given index in the list.
+ * Inserts the given vector of elements at the given index in the vector.
  *
  * @complexity `O(log(n))`
  */
 export function insertAll<A>(
   index: number,
-  elements: List<A>
-): (l: List<A>) => List<A> {
-  return (l) => insertAll_(l, index, elements)
+  elements: Vector<A>
+): (self: Vector<A>) => Vector<A> {
+  return (self) => insertAll_(self, index, elements)
 }
 
 /**
- * Reverses a list.
+ * Reverses a vector.
  * @complexity O(n)
  */
-export function reverse<A>(l: List<A>): List<A> {
-  return reduce_(l, empty(), (newL, element) => prepend_(newL, element))
+export function reverse<A>(self: Vector<A>): Vector<A> {
+  return reduce_(self, empty(), (newL, element) => prepend_(newL, element))
 }
 
 /**
- * Returns `true` if the given argument is a list and `false`
+ * Returns `true` if the given argument is a vector and `false`
  * otherwise.
  *
  * @complexity O(1)
  */
-export function isList<A>(l: any): l is List<A> {
-  return typeof l === "object" && Array.isArray(l.suffix)
+export function isVector<A>(self: any): self is Vector<A> {
+  return typeof self === "object" && Array.isArray(self.suffix)
 }
 
 /**
- * Iterate over two lists in parallel and collect the pairs.
+ * Iterate over two vectors in parallel and collect the pairs.
  *
  * @complexity `O(log(n))`, where `n` is the length of the smallest
- * list.
+ * vector.
  */
-export function zip_<A, B>(as: List<A>, bs: List<B>): List<Tp.Tuple<[A, B]>> {
-  return zipWith_(as, bs, Tp.tuple)
+export function zip_<A, B>(self: Vector<A>, that: Vector<B>): Vector<Tp.Tuple<[A, B]>> {
+  return zipWith_(self, that, Tp.tuple)
 }
 
 /**
- * Iterate over two lists in parallel and collect the pairs.
+ * Iterate over two vectors in parallel and collect the pairs.
  *
  * @complexity `O(log(n))`, where `n` is the length of the smallest
- * list.
+ * vector.
  */
-export function zip<B>(bs: List<B>): <A>(as: List<A>) => List<Tp.Tuple<[A, B]>> {
-  return (as) => zip_(as, bs)
+export function zip<B>(
+  that: Vector<B>
+): <A>(self: Vector<A>) => Vector<Tp.Tuple<[A, B]>> {
+  return (self) => zip_(self, that)
 }
 
 /**
- * This is like mapping over two lists at the same time. The two lists
+ * This is like mapping over two vectors at the same time. The two vectors
  * are iterated over in parallel and each pair of elements is passed
- * to the function. The returned values are assembled into a new list.
+ * to the function. The returned values are assembled into a new vector.
  *
- * The shortest list determines the size of the result.
+ * The shortest vector determines the size of the result.
  *
  * @complexity `O(log(n))` where `n` is the length of the smallest
- * list.
+ * vector.
  */
 export function zipWith_<A, B, C>(
-  as: List<A>,
-  bs: List<B>,
+  self: Vector<A>,
+  that: Vector<B>,
   f: (a: A, b: B) => C
-): List<C> {
-  const swapped = bs.length < as.length
-  const iterator = (swapped ? as : bs)[Symbol.iterator]()
-  return map_((swapped ? bs : as) as any, (a: any) => {
+): Vector<C> {
+  const swapped = that.length < self.length
+  const iterator = (swapped ? self : that)[Symbol.iterator]()
+  return map_((swapped ? that : self) as any, (a: any) => {
     const b: any = iterator.next().value
     return swapped ? f(b, a) : f(a, b)
   })
 }
 
 /**
- * This is like mapping over two lists at the same time. The two lists
+ * This is like mapping over two vectors at the same time. The two vectors
  * are iterated over in parallel and each pair of elements is passed
- * to the function. The returned values are assembled into a new list.
+ * to the function. The returned values are assembled into a new vector.
  *
- * The shortest list determines the size of the result.
+ * The shortest vector determines the size of the result.
  *
  * @complexity `O(log(n))` where `n` is the length of the smallest
- * list.
+ * vector.
  */
 export function zipWith<A, B, C>(
-  bs: List<B>,
+  that: Vector<B>,
   f: (a: A, b: B) => C
-): (as: List<A>) => List<C> {
-  return (as) => zipWith_(as, bs, f)
+): (self: Vector<A>) => Vector<C> {
+  return (self) => zipWith_(self, that, f)
 }
 
 /**
- * Sort the given list by comparing values using the given function.
+ * Sort the given vector by comparing values using the given function.
  * The function receieves two values and should return `-1` if the
  * first value is stricty larger than the second, `0` is they are
  * equal and `1` if the first values is strictly smaller than the
@@ -3271,10 +3340,10 @@ export function zipWith<A, B, C>(
  *
  * @complexity O(n * log(n))
  */
-export function sortWith_<A>(l: List<A>, ord: Ord<A>): List<A> {
+export function sortWith_<A>(self: Vector<A>, ord: Ord<A>): Vector<A> {
   const arr: { idx: number; elm: A }[] = []
   let i = 0
-  forEach_(l, (elm) => arr.push({ idx: i++, elm }))
+  forEach_(self, (elm) => arr.push({ idx: i++, elm }))
   arr.sort(({ elm: a, idx: i }, { elm: b, idx: j }) => {
     const c = ord.compare(a, b)
     return c !== 0 ? c : i < j ? -1 : 1
@@ -3287,7 +3356,7 @@ export function sortWith_<A>(l: List<A>, ord: Ord<A>): List<A> {
 }
 
 /**
- * Sort the given list by comparing values using the given function.
+ * Sort the given vector by comparing values using the given function.
  * The function receieves two values and should return `-1` if the
  * first value is stricty larger than the second, `0` is they are
  * equal and `1` if the first values is strictly smaller than the
@@ -3295,30 +3364,33 @@ export function sortWith_<A>(l: List<A>, ord: Ord<A>): List<A> {
  *
  * @complexity O(n * log(n))
  */
-export function sortWith<A>(ord: Ord<A>): (l: List<A>) => List<A> {
-  return (l) => sortWith_(l, ord)
+export function sortWith<A>(ord: Ord<A>): (self: Vector<A>) => Vector<A> {
+  return (self) => sortWith_(self, ord)
 }
 
 /**
- * Returns a list of lists where each sublist's elements are all
+ * Returns a vector of vectors where each subvector's elements are all
  * equal.
  */
-export function group<A>(l: List<A>): List<List<A>> {
-  return groupWith_(l, elementEquals)
+export function group<A>(self: Vector<A>): Vector<Vector<A>> {
+  return groupWith_(self, elementEquals)
 }
 
 /**
- * Returns a list of lists where each sublist's elements are pairwise
+ * Returns a vector of vectors where each subvector's elements are pairwise
  * equal based on the given comparison function.
  *
  * Note that only adjacent elements are compared for equality. If all
- * equal elements should be grouped together the list should be sorted
+ * equal elements should be grouped together the vector should be sorted
  * before grouping.
  */
-export function groupWith_<A>(l: List<A>, f: (a: A, b: A) => boolean): List<List<A>> {
-  const result = emptyPushable<MutableList<A>>()
+export function groupWith_<A>(
+  self: Vector<A>,
+  f: (a: A, b: A) => boolean
+): Vector<Vector<A>> {
+  const result = emptyPushable<MutableVector<A>>()
   let buffer = emptyPushable<A>()
-  forEach_(l, (a) => {
+  forEach_(self, (a) => {
     if (buffer.length !== 0 && !f(unsafeLast(buffer)!, a)) {
       push_(result, buffer)
       buffer = emptyPushable()
@@ -3329,56 +3401,56 @@ export function groupWith_<A>(l: List<A>, f: (a: A, b: A) => boolean): List<List
 }
 
 /**
- * Returns a list of lists where each sublist's elements are pairwise
+ * Returns a vector of vectors where each subvector's elements are pairwise
  * equal based on the given comparison function.
  *
  * Note that only adjacent elements are compared for equality. If all
- * equal elements should be grouped together the list should be sorted
+ * equal elements should be grouped together the vector should be sorted
  * before grouping.
  */
 export function groupWith<A>(
   f: (a: A, b: A) => boolean
-): (l: List<A>) => List<List<A>> {
-  return (l) => groupWith_(l, f)
+): (self: Vector<A>) => Vector<Vector<A>> {
+  return (self) => groupWith_(self, f)
 }
 
 /**
- * Inserts a separator between each element in a list.
+ * Inserts a separator between each element in a vector.
  */
-export function intersperse_<A>(l: List<A>, separator: A): List<A> {
-  return pop(reduce_(l, emptyPushable(), (l2, a) => push_(push_(l2, a), separator)))
+export function intersperse_<A>(self: Vector<A>, separator: A): Vector<A> {
+  return pop(reduce_(self, emptyPushable(), (l2, a) => push_(push_(l2, a), separator)))
 }
 
 /**
- * Inserts a separator between each element in a list.
+ * Inserts a separator between each element in a vector.
  */
-export function intersperse<A>(separator: A): (l: List<A>) => List<A> {
-  return (l) => intersperse_(l, separator)
+export function intersperse<A>(separator: A): (self: Vector<A>) => Vector<A> {
+  return (self) => intersperse_(self, separator)
 }
 
 /**
- * Returns `true` if the given list is empty and `false` otherwise.
+ * Returns `true` if the given vector is empty and `false` otherwise.
  */
-export function isEmpty(l: List<any>): boolean {
-  return l.length === 0
+export function isEmpty(self: Vector<any>): boolean {
+  return self.length === 0
 }
 
 /**
  * Builder
  */
 export function builder<A>() {
-  return new ListBuilder<A>(emptyPushable())
+  return new VectorBuilder<A>(emptyPushable())
 }
 
-export class ListBuilder<A> {
-  constructor(private chunk: MutableList<A>) {}
+export class VectorBuilder<A> {
+  constructor(private vec: MutableVector<A>) {}
 
-  append(a: A): ListBuilder<A> {
-    push_(this.chunk, a)
+  append(a: A): VectorBuilder<A> {
+    push_(this.vec, a)
     return this
   }
 
   build() {
-    return this.chunk
+    return this.vec
   }
 }

@@ -1,4 +1,4 @@
-import * as L from "../Collections/Immutable/List"
+import * as V from "../Collections/Immutable/Vector"
 import type { Predicate } from "../Function"
 import { DoublyLinkedList } from "./DoublyLinkedList"
 
@@ -27,15 +27,15 @@ export class RingBuffer<T> {
     return this.values
   }
 
-  get list(): L.List<T> {
-    const l = L.emptyPushable<T>()
+  get list(): V.Vector<T> {
+    const l = V.emptyPushable<T>()
     this.values.forEach((t) => {
-      L.push_(l, t)
+      V.push_(l, t)
     })
     return l
   }
 
-  get listReverse(): L.List<T> {
-    return L.reverse(this.list)
+  get listReverse(): V.Vector<T> {
+    return V.reverse(this.list)
   }
 }
