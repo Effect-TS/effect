@@ -1,0 +1,6 @@
+demo
+build-cjs.sh
+tsconfig.json
+.gitignore
+tsbuildinfo
+test

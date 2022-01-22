@@ -23,7 +23,7 @@
     "version:graduate": "lerna version --conventional-commits --conventional-graduate",
     "commit": "cz",
     "ets:rimraf": "cd $INIT_CWD && rimraf",
-    "ets:tsc": "cd $INIT_CWD && etsc",
+    "ets:tsc": "cd $INIT_CWD && tsc",
     "ets:eslint": "cd $INIT_CWD && eslint",
     "ets:prettier": "cd $INIT_CWD && prettier",
     "ets:concurrently": "cd $INIT_CWD && concurrently",
@@ -76,9 +76,12 @@
     "rimraf": "^3.0.2",
     "ts-jest": "^27.1.3",
     "ts-node": "^10.4.0",
-    "typescript": "https://github.com/Effect-TS/TypeScript/raw/821b989775b81499bca51983e1269891e76bf190/dev/typescript-4.6.0-ets.20220122.tgz",
+    "typescript": "^4.6.0",
     "typescript-transform-paths": "3.3.1",
     "ultra-runner": "^3.10.5"
   },
-  "packageManager": "yarn@3.1.0"
+  "packageManager": "yarn@3.1.0",
+  "resolutions": {
+    "typescript": "https://github.com/Effect-TS/TypeScript/raw/8f3aba4b153d48bacedea62c54027de45697c210/dev/typescript-4.6.0-ets.20220122.tgz"
+  }
 }

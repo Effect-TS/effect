@@ -4149,7 +4149,7 @@ __metadata:
     rimraf: ^3.0.2
     ts-jest: ^27.1.3
     ts-node: ^10.4.0
-    typescript: "https://github.com/Effect-TS/TypeScript/raw/821b989775b81499bca51983e1269891e76bf190/dev/typescript-4.6.0-ets.20220122.tgz"
+    typescript: ^4.6.0
     typescript-transform-paths: 3.3.1
     ultra-runner: ^3.10.5
   languageName: unknown
@@ -10888,43 +10888,23 @@ __metadata:
   languageName: node
   linkType: hard
 
-"typescript@https://github.com/Effect-TS/TypeScript/raw/821b989775b81499bca51983e1269891e76bf190/dev/typescript-4.6.0-ets.20220122.tgz":
+"typescript@https://github.com/Effect-TS/TypeScript/raw/8f3aba4b153d48bacedea62c54027de45697c210/dev/typescript-4.6.0-ets.20220122.tgz":
   version: 4.6.0-ets.20220122
-  resolution: "typescript@https://github.com/Effect-TS/TypeScript/raw/821b989775b81499bca51983e1269891e76bf190/dev/typescript-4.6.0-ets.20220122.tgz"
+  resolution: "typescript@https://github.com/Effect-TS/TypeScript/raw/8f3aba4b153d48bacedea62c54027de45697c210/dev/typescript-4.6.0-ets.20220122.tgz"
   bin:
-    etsc: ./bin/etsc
-    etsserver: ./bin/etsserver
-  checksum: b3c13ddbbf8f3283b3079397a170669c465d99a5ef76a14fd57e4662695845b27ad7e0dc29d1b86bbd2aa84854fab116eca868c15b07748fd08dc61b8b2f344a
+    tsc: ./bin/tsc
+    tsserver: ./bin/tsserver
+  checksum: b7ab637b7fe64fa1f08bef11e5aedede8c8c3ebb2ab55ac0749fe6270c58166054ece2b3b9fd372b25b743e051d9598eaefe81b2ebd3ebe486dbabedf7cec499
   languageName: node
   linkType: hard
 
-"typescript@npm:^4.4.3":
-  version: 4.5.5
-  resolution: "typescript@npm:4.5.5"
-  bin:
-    tsc: bin/tsc
-    tsserver: bin/tsserver
-  checksum: 506f4c919dc8aeaafa92068c997f1d213b9df4d9756d0fae1a1e7ab66b585ab3498050e236113a1c9e57ee08c21ec6814ca7a7f61378c058d79af50a4b1f5a5e
-  languageName: node
-  linkType: hard
-
-"typescript@patch:typescript@^4.4.3#~builtin<compat/typescript>":
-  version: 4.5.5
-  resolution: "typescript@patch:typescript@npm%3A4.5.5#~builtin<compat/typescript>::version=4.5.5&hash=ddd1e8"
-  bin:
-    tsc: bin/tsc
-    tsserver: bin/tsserver
-  checksum: 9cdde4aae20b2904431f3f2ca8acaf3b0cc52faddf68aa88b288c9d0520221817da43783a756fce7ab9360033ada0371c3ff93dfc4bdb4b13f6e9bac64e1658d
-  languageName: node
-  linkType: hard
-
-"typescript@patch:typescript@https%3A//github.com/Effect-TS/TypeScript/raw/821b989775b81499bca51983e1269891e76bf190/dev/typescript-4.6.0-ets.20220122.tgz#~builtin<compat/typescript>":
+"typescript@patch:typescript@https%3A//github.com/Effect-TS/TypeScript/raw/8f3aba4b153d48bacedea62c54027de45697c210/dev/typescript-4.6.0-ets.20220122.tgz#~builtin<compat/typescript>":
   version: 4.6.0-ets.20220122
-  resolution: "typescript@patch:typescript@https%3A//github.com/Effect-TS/TypeScript/raw/821b989775b81499bca51983e1269891e76bf190/dev/typescript-4.6.0-ets.20220122.tgz#~builtin<compat/typescript>::version=4.6.0-ets.20220122&hash=ddd1e8"
+  resolution: "typescript@patch:typescript@https%3A//github.com/Effect-TS/TypeScript/raw/8f3aba4b153d48bacedea62c54027de45697c210/dev/typescript-4.6.0-ets.20220122.tgz#~builtin<compat/typescript>::version=4.6.0-ets.20220122&hash=ddd1e8"
   bin:
-    etsc: ./bin/etsc
-    etsserver: ./bin/etsserver
-  checksum: 8e62dbf0be9cbb4e2e74c16e548e52661d5700acfdf2afa7deeb4982cbb1f7d1fa34461f2c51de46c6618038075894d5cc8fb3ce00e91034bb586637795a53cd
+    tsc: ./bin/tsc
+    tsserver: ./bin/tsserver
+  checksum: 339e65b3cf4c3b111bf1bf3abb1a659391c8838856c6db50d6e4c2945a99c6083afef44f6e3d7c37b26baf312eb8e0418659f31371d46e771571b659d51d20cd
   languageName: node
   linkType: hard
 
