@@ -2,10 +2,14 @@ import { Int } from "../src/Int"
 
 describe("Int", () => {
   it("should perform basic integer aritmetic", () => {
-    const result = (Int.of(1) + Int.of(1)) * Int.of(2) + Int.of(1)
+    const one = Int.of(1)
+    const two = Int.of(2)
+    const five = Int.of(5)
 
-    expect(result).toEqual(Int.of(5))
-    expect(result / Int.of(2)).toEqual(Int.of(2))
-    expect(result % Int.of(2)).toEqual(Int.of(1))
+    const result = (one + one) * two + one
+
+    expect(result).toEqual(five)
+    expect(result / two).toEqual(two)
+    expect(result % two).toEqual(one)
   })
 })

@@ -36,6 +36,7 @@ export function divide(self: Int, that: Int): Int {
 
 /**
  * @ets operator ets/Int %
+ * @ets inline identity
  */
 export function divisionRest(self: Int, that: Int): Int {
   return Int.unsafeFromNumber(self.asNumber() % that.asNumber())
