@@ -19,7 +19,8 @@ module.exports = {
   verbose: true,
   globals: {
     "ts-jest": {
-      tsconfig: "<rootDir>/tsconfig.jest.json"
+      tsconfig: "<rootDir>/tsconfig.jest.json",
+      compiler: "@effect-ts/typescript-extension"
     }
   }
 }

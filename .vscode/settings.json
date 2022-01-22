@@ -1,5 +1,5 @@
 {
-  "typescript.tsdk": "node_modules/typescript/lib",
+  "typescript.tsdk": "node_modules/@effect-ts/typescript-extension/lib",
   "editor.formatOnSave": true,
   "eslint.format.enable": true,
   "[javascript]": {
@@ -20,7 +20,11 @@
     "typescript",
     "typescriptreact"
   ],
-  "eslint.validate": ["markdown", "javascript", "typescript"],
+  "eslint.validate": [
+    "markdown",
+    "javascript",
+    "typescript"
+  ],
   "editor.codeActionsOnSave": {
     "source.fixAll.eslint": true
   },
