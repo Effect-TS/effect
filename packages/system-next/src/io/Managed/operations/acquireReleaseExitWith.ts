@@ -5,10 +5,7 @@ import { environment } from "../../Effect/operations/environment"
 import { uninterruptible } from "../../Effect/operations/interruption"
 import { map_ } from "../../Effect/operations/map"
 import type { Exit } from "../../Exit/definition"
-import {
-  currentEnvironment,
-  currentReleaseMap
-} from "../../FiberRef/definition/data"
+import { currentEnvironment, currentReleaseMap } from "../../FiberRef/definition/data"
 import { get } from "../../FiberRef/operations/get"
 import { locally_ } from "../../FiberRef/operations/locally"
 import type { Managed } from "../definition"

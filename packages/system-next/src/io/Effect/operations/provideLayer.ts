@@ -1,6 +1,6 @@
-import { use_ } from "../../Managed/operations/use"
 import type { Layer } from "../../Layer/definition"
 import { build } from "../../Layer/memoMap"
+import { use_ } from "../../Managed/operations/use"
 import type { Effect } from "../definition"
 import { provideEnvironment_ } from "./provideEnvironment"
 

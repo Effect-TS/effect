@@ -4,6 +4,8 @@ import { mapEffect_ as chunkMapEffect_ } from "../../collection/immutable/Chunk/
 import { zip_ as chunkZip_ } from "../../collection/immutable/Chunk/api/zip"
 import * as Chunk from "../../collection/immutable/Chunk/core"
 import { identity, pipe, tuple } from "../../data/Function"
+import * as O from "../../data/Option"
+import { Bounded, Unbounded } from "../../support/MutableQueue"
 import {
   BackPressureStrategy,
   createQueue,
@@ -11,8 +13,6 @@ import {
   unsafeCreateQueue as unsafeCreate
 } from "../Effect/operations/excl-forEach"
 import * as exclForEach from "../Effect/operations/excl-forEach"
-import * as O from "../../data/Option"
-import { Bounded, Unbounded } from "../../support/MutableQueue"
 import { DroppingStrategy, SlidingStrategy } from "./core"
 import * as T from "./effect"
 import type { Queue, XQueue } from "./xqueue"

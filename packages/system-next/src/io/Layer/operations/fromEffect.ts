@@ -1,7 +1,7 @@
 import type { Has, Tag } from "../../../data/Has"
+import type { Effect } from "../../Effect"
 import { chain_ as chainManaged_ } from "../../Managed/operations/chain"
 import { fromEffect as fromEffectManaged } from "../../Managed/operations/fromEffect"
-import type { Effect } from "../../Effect"
 import type { Layer } from "../definition"
 import { ILayerManaged } from "../definition"
 import { environmentFor } from "./_internal/environmentFor"

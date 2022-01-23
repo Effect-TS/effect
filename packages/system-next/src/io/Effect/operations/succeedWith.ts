@@ -1,5 +1,5 @@
-import type { RuntimeConfig } from "../../RuntimeConfig"
 import type { FiberId } from "../../FiberId"
+import type { RuntimeConfig } from "../../RuntimeConfig"
 import type { UIO } from "../definition"
 import { ISucceedWith } from "../definition"
 

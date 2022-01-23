@@ -1,6 +1,6 @@
 import type { Either } from "../../../data/Either"
-import type { Managed } from "../../Managed/definition"
 import type { Effect, IO } from "../../Effect"
+import type { Managed } from "../../Managed/definition"
 import { _A, _B, _EA, _EB } from "./commons"
 
 export const FiberRefSym: unique symbol = Symbol.for("@effect-ts/core/FiberRef")

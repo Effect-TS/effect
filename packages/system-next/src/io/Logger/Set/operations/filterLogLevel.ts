@@ -1,6 +1,6 @@
 import * as Map from "../../../../collection/immutable/Map"
-import type { LogLevel } from "../../../LogLevel"
 import type { Option } from "../../../../data/Option"
+import type { LogLevel } from "../../../LogLevel"
 import * as LoggerFilter from "../../operations/filterLogLevel"
 import { LoggerSet } from "../definition"
 

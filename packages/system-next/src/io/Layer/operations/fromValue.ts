@@ -1,7 +1,7 @@
 import type { Has, Tag } from "../../../data/Has"
+import { succeedNow } from "../../Effect/operations/succeedNow"
 import { chain_ } from "../../Managed/operations/chain"
 import { fromEffect } from "../../Managed/operations/fromEffect"
-import { succeedNow } from "../../Effect/operations/succeedNow"
 import type { Layer } from "../definition"
 import { ILayerManaged } from "../definition"
 import { environmentFor } from "./_internal/environmentFor"

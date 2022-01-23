@@ -1,9 +1,9 @@
 import type { LazyArg } from "../../../data/Function"
+import * as O from "../../../data/Option"
+import type { Cause } from "../../Cause"
 import { CauseLogger } from "../../Logger/operations/defaultCause"
 import { StringLogger } from "../../Logger/operations/defaultString"
 import * as LogLevel from "../../LogLevel"
-import * as O from "../../../data/Option"
-import type { Cause } from "../../Cause"
 import type { UIO } from "../definition"
 import { ILogged } from "../definition"
 

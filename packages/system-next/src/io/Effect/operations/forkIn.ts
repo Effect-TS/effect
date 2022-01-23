@@ -1,6 +1,6 @@
 import * as O from "../../../data/Option"
-import type { Scope } from "../../Scope"
 import type * as Fiber from "../../Fiber"
+import type { Scope } from "../../Scope"
 import type { Effect, RIO } from "../definition"
 import { IFork } from "../definition"
 

@@ -1,8 +1,8 @@
+import * as O from "../../../../data/Option"
 import type { Effect } from "../../../../io/Effect/definition"
 import { map_ } from "../../../../io/Effect/operations/map"
 import { succeedNow } from "../../../../io/Effect/operations/succeedNow"
 import { zipWith_ } from "../../../../io/Effect/operations/zipWith"
-import * as O from "../../../../data/Option"
 import * as ChunkDef from "../_definition"
 import * as Chunk from "../core"
 

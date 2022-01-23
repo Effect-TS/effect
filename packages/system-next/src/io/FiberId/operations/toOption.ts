@@ -1,6 +1,6 @@
 import * as HS from "../../../collection/immutable/HashSet"
-import * as IO from "../../../io-light/IO"
 import * as O from "../../../data/Option"
+import * as IO from "../../../io-light/IO"
 import type { FiberId } from "../definition"
 import { combineAll } from "./combineAll"
 

@@ -1,5 +1,5 @@
-import * as IO from "../../../io-light/IO/core"
 import type * as O from "../../../data/Option/core"
+import * as IO from "../../../io-light/IO/core"
 import type { Cause } from "../definition"
 import { realCause } from "../definition"
 

@@ -1,5 +1,5 @@
-import type { Cause } from "../../Cause"
 import * as O from "../../../data/Option"
+import type { Cause } from "../../Cause"
 import type { Managed } from "../definition"
 import { catchAllCause_ } from "./catchAllCause"
 import { failCause } from "./failCause"

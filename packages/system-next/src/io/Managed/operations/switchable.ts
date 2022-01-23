@@ -1,7 +1,7 @@
 import { pipe } from "../../../data/Function"
+import { fold } from "../../../data/Option"
 import { currentReleaseMap } from "../../FiberRef/definition/data"
 import { locally_ } from "../../FiberRef/operations/locally"
-import { fold } from "../../../data/Option"
 import type { Managed } from "../definition"
 import { addIfOpen } from "../ReleaseMap/addIfOpen"
 import { make } from "../ReleaseMap/make"

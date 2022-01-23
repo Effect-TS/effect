@@ -1,7 +1,7 @@
 import * as E from "../../../data/Either"
 import { identity } from "../../../data/Function"
-import * as Cause from "../../../io/Cause/definition"
 import * as O from "../../../data/Option"
+import * as Cause from "../../../io/Cause/definition"
 import * as L from "../List/core"
 import * as Tp from "../Tuple"
 import type { ParSeq } from "./primitives"

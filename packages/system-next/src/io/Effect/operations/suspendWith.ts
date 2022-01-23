@@ -1,6 +1,6 @@
-import type { RuntimeConfig } from "../../RuntimeConfig"
 import { fail } from "../../Exit"
 import type { FiberId } from "../../FiberId"
+import type { RuntimeConfig } from "../../RuntimeConfig"
 import type { RIO } from "../definition"
 import { EffectError } from "../definition"
 import { suspendSucceedWith } from "./suspendSucceedWith"

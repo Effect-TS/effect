@@ -2,8 +2,8 @@ import { reduce_ } from "../../collection/immutable/Chunk/api/reduce"
 import { splitWhere_ } from "../../collection/immutable/Chunk/api/splitWhere"
 import * as C from "../../collection/immutable/Chunk/core"
 import * as Tp from "../../collection/immutable/Tuple"
-import * as IO from "../../io-light/IO"
 import * as O from "../../data/Option"
+import * as IO from "../../io-light/IO"
 import { AtomicNumber } from "../../support/AtomicNumber"
 
 export interface ConcurrentSummary {

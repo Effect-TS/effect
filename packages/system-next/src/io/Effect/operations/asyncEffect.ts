@@ -1,6 +1,6 @@
 import { pipe } from "../../../data/Function"
-import * as Promise from "../../Promise"
 import type { Cause } from "../../Cause"
+import * as Promise from "../../Promise"
 import type { Effect } from "../definition"
 import { catchAllCause } from "./catchAllCause"
 import type { Cb } from "./Cb"

@@ -1,7 +1,7 @@
+import * as O from "../../../../data/Option"
 import type { Effect } from "../../../../io/Effect/definition"
 import { chain_ } from "../../../../io/Effect/operations/chain"
 import { succeedNow } from "../../../../io/Effect/operations/succeedNow"
-import * as O from "../../../../data/Option"
 import type * as Tp from "../../Tuple"
 import type { Chunk } from "../core"
 import { append_, empty } from "../core"

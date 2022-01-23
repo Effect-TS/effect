@@ -1,6 +1,6 @@
+import { none } from "../../../data/Option"
 import { currentParallelism } from "../../FiberRef/definition/data"
 import { locallyManaged_ } from "../../FiberRef/operations/locallyManaged"
-import { none } from "../../../data/Option"
 import type { Managed } from "../definition"
 import { zipRight_ } from "./zipRight"
 

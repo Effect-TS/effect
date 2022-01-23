@@ -1,6 +1,6 @@
+import * as O from "../../../data/Option"
 import { map_ } from "../../Effect/operations/map"
 import { unit } from "../../Effect/operations/unit"
-import * as O from "../../../data/Option"
 import type { UIO } from "../operations/_internal/effect"
 import { addIfOpen_ } from "./addIfOpen"
 import type { ReleaseMap } from "./definition"

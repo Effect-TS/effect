@@ -1,7 +1,7 @@
 import type { HashSet } from "../../collection/immutable/HashSet"
-import type { Scope } from "../Scope"
 import type { FiberId } from "../FiberId"
 import type { InterruptStatus } from "../InterruptStatus"
+import type { Scope } from "../Scope"
 import type { Status } from "./status"
 
 /**

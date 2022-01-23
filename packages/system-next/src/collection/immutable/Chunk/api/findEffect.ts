@@ -1,8 +1,8 @@
+import * as O from "../../../../data/Option"
 import type { Effect } from "../../../../io/Effect/definition/base"
 import { chain_ } from "../../../../io/Effect/operations/chain"
 import { succeedNow } from "../../../../io/Effect/operations/succeedNow"
 import { suspendSucceed } from "../../../../io/Effect/operations/suspendSucceed"
-import * as O from "../../../../data/Option"
 import { concreteId } from "../_definition"
 import type * as Chunk from "../core"
 

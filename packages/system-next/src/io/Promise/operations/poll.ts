@@ -1,6 +1,6 @@
+import * as O from "../../../data/Option"
 import type { IO, UIO } from "../../Effect"
 import { succeed } from "../../Effect/operations/succeed"
-import * as O from "../../../data/Option"
 import type { Promise } from "../definition"
 
 /**

@@ -1,6 +1,6 @@
-import type { Ordering } from "../Ordering"
 import type { Equal } from "../Equal"
 import { makeEqual } from "../Equal"
+import type { Ordering } from "../Ordering"
 import type { Ord } from "./definition"
 
 /**

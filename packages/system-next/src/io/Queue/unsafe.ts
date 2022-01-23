@@ -1,7 +1,7 @@
-import { none } from "../FiberId"
 import { AtomicBoolean } from "../../support/AtomicBoolean"
 import type { MutableQueue } from "../../support/MutableQueue"
 import { Bounded, Unbounded } from "../../support/MutableQueue"
+import { none } from "../FiberId"
 import { BackPressureStrategy, unsafeCreate } from "./api"
 import type { Strategy } from "./core"
 import { DroppingStrategy, SlidingStrategy } from "./core"

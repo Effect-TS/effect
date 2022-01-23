@@ -1,7 +1,7 @@
+import type { Option } from "../../../data/Option"
 import { suspendSucceed } from "../../Effect/operations/suspendSucceed"
 import { currentParallelism } from "../../FiberRef/definition/data"
 import { get } from "../../FiberRef/operations/get"
-import type { Option } from "../../../data/Option"
 import type { Managed } from "../definition"
 import { fromEffect } from "./fromEffect"
 

@@ -1,7 +1,7 @@
-import type { Managed } from "../Managed/definition"
 import { AtomicReference } from "../../support/AtomicReference"
 import { _E, _RIn, _ROut } from "../../support/Symbols"
 import type { Cause } from "../Cause/definition"
+import type { Managed } from "../Managed/definition"
 
 export const LayerHashSym = Symbol.for("@effect-ts/system/Layer")
 export type LayerHashSym = typeof LayerHashSym

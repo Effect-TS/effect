@@ -1,7 +1,7 @@
 import * as O from "../../../data/Option"
-import type { Scope } from "../../Scope"
 import type { Exit } from "../../Exit/definition"
 import type { Fiber } from "../../Fiber/definition"
+import type { Scope } from "../../Scope"
 import type { Effect } from "../definition"
 import { IRaceWith } from "../definition/primitives"
 

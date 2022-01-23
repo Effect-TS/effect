@@ -1,6 +1,6 @@
 import type * as Tp from "../../collection/immutable/Tuple"
-import type { Effect } from "../Effect/definition/base"
 import { _A, _E, _R, _U } from "../../support/Symbols"
+import type { Effect } from "../Effect/definition/base"
 import type { Finalizer } from "./ReleaseMap"
 
 export const ManagedURI = "@matechs/core/Eff/ManagedURI"

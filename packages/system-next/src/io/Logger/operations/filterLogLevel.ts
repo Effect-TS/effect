@@ -1,5 +1,5 @@
-import type { LogLevel } from "../../LogLevel"
 import * as O from "../../../data/Option"
+import type { LogLevel } from "../../LogLevel"
 import type { Logger } from "../definition"
 
 /**
