@@ -3,6 +3,15 @@
   "editor.formatOnSave": true,
   "eslint.format.enable": true,
   "explorer.sortOrder": "mixed",
+  "files.exclude": {
+    "**/.yarn*": true,
+    "**/.ci.*": true,
+    "**/.*.js": true,
+    "**/.*config": true,
+    "**/.git*": true,
+    "**/.npmignore*": true,
+    "**/.husky": true
+  },
   "[javascript]": {
     "editor.defaultFormatter": "dbaeumer.vscode-eslint"
   },

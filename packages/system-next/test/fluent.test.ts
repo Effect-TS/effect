@@ -6,13 +6,13 @@ interface EnvA {
   readonly a: number
 }
 const EnvA = tag<EnvA>(Symbol.for("effect-ts/system/test/fluent/env-a"))
-const LiveEnvA = Effect.succeed(() => EnvA.has({ a: 1 })).toLayerRaw()
+const LiveEnvA = Effect.succeed(EnvA.has({ a: 1 })).toLayerRaw()
 
 interface EnvB {
   readonly b: number
 }
 const EnvB = tag<EnvB>(Symbol.for("effect-ts/system/test/fluent/env-b"))
-const LiveEnvB = Effect.succeed(() => EnvB.has({ b: 2 })).toLayerRaw()
+const LiveEnvB = Effect.succeed(EnvB.has({ b: 2 })).toLayerRaw()
 
 interface EnvC {
   readonly c: number
@@ -26,7 +26,7 @@ const LiveEnvC = Effect.Do()
 
 describe("Effect Fluent API", () => {
   it("should succeed in using the fluent api", async () => {
-    const result = await Effect.succeed(() => 0)
+    const result = await Effect.succeed(0)
       .map((n) => n + 1)
       .unsafeRunPromise()
 
@@ -38,7 +38,7 @@ describe("Effect Fluent API", () => {
       T.bind("envA", () => T.service(EnvA)) |
       T.bind("envB", () => T.service(EnvB)) |
       T.bind("envC", () => T.service(EnvC)) |
-      T.orElse(() => T.die("hello")) |
+      T.orElse(() => T.dieWith("hello")) |
       T.provideSomeLayer(LiveEnvA + LiveEnvB > LiveEnvC)
 
     const {
@@ -56,7 +56,7 @@ describe("Effect Fluent API", () => {
       .bind("envA", () => Effect.service(EnvA))
       .bind("envB", () => Effect.service(EnvB))
       .bind("envC", () => Effect.service(EnvC))
-      .orElse(() => Effect.die(() => "hello"))
+      .orElse(() => Effect.die("hello"))
 
     const {
       envA: { a },

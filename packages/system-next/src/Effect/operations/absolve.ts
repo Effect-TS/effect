@@ -12,7 +12,7 @@ export function absolveNow<R, E, A>(
   self: Effect<R, E, Either<E, A>>,
   __etsTrace?: string
 ): Effect<R, E, A> {
-  return Effect.absolve(() => self)
+  return Effect.absolve(self)
 }
 
 /**
