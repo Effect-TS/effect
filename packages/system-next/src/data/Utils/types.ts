@@ -36,3 +36,5 @@ export type _R<T> = [T] extends [{ [k in typeof Effect._R]: (_: infer R) => void
   : never
 
 export type _E<T> = [T] extends [{ [k in typeof Effect._E]: () => infer E }] ? E : never
+
+export interface Spreadable extends Record<PropertyKey, any> {}

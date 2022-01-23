@@ -1,4 +1,4 @@
-import type { Erase } from "../../../data/Utils"
+import type { Erase, Spreadable } from "../../../data/Utils"
 import { environment } from "../../Managed/operations/environment"
 import type { Layer } from "../definition"
 import { ILayerManaged, ILayerTo } from "../definition"
@@ -11,11 +11,25 @@ import { and_ } from "./and"
  *
  * @ets operator ets/Layer >>
  */
-export function to_<RIn, E, ROut, RIn2, E2, ROut2>(
+export function to_<
+  RIn,
+  E,
+  ROut,
+  RIn2 extends Spreadable,
+  E2,
+  ROut2 extends Spreadable
+>(
   self: Layer<RIn, E, ROut>,
   that: Layer<RIn2, E2, ROut2>
 ): Layer<RIn & Erase<RIn2, ROut>, E | E2, ROut2>
-export function to_<RIn, E, ROut, RIn2, E2, ROut2>(
+export function to_<
+  RIn,
+  E,
+  ROut extends Spreadable,
+  RIn2 extends Spreadable,
+  E2,
+  ROut2
+>(
   self: Layer<RIn, E, ROut>,
   that: Layer<RIn2 & ROut, E2, ROut2>
 ): Layer<RIn & RIn2, E | E2, ROut2> {
@@ -29,12 +43,14 @@ export function to_<RIn, E, ROut, RIn2, E2, ROut2>(
  *
  * @ets_data_first to_
  */
-export function to<RIn2, E2, ROut2>(
+export function to<RIn2 extends Spreadable, E2, ROut2 extends Spreadable>(
   that: Layer<RIn2, E2, ROut2>
 ): <RIn, E, ROut>(
   self: Layer<RIn, E, ROut>
 ) => Layer<RIn & Erase<RIn2, ROut>, E | E2, ROut2>
-export function to<ROut, RIn2, E2, ROut2>(that: Layer<RIn2 & ROut, E2, ROut2>) {
+export function to<ROut, RIn2 extends Spreadable, E2, ROut2 extends Spreadable>(
+  that: Layer<RIn2 & ROut, E2, ROut2>
+) {
   return <RIn, E>(self: Layer<RIn, E, ROut>): Layer<RIn & RIn2, E | E2, ROut2> =>
     to_(self, that) as any
 }

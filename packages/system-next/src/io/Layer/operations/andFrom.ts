@@ -1,4 +1,4 @@
-import type { Erase } from "../../../data/Utils"
+import type { Erase, Spreadable } from "../../../data/Utils"
 import type { Layer } from "../definition"
 import { and_ } from "./and"
 import { to_ } from "./to"
@@ -10,7 +10,14 @@ import { to_ } from "./to"
  *
  * @ets operator ets/Layer <
  */
-export function andUsing_<RIn, E, ROut, RIn2, E2, ROut2>(
+export function andUsing_<
+  RIn,
+  E,
+  ROut extends Spreadable,
+  RIn2 extends Spreadable,
+  E2,
+  ROut2 extends Spreadable
+>(
   that: Layer<RIn2, E2, ROut2>,
   self: Layer<RIn, E, ROut>
 ): Layer<RIn & Erase<ROut & RIn2, ROut>, E2 | E, ROut & ROut2> {
@@ -24,8 +31,8 @@ export function andUsing_<RIn, E, ROut, RIn2, E2, ROut2>(
  *
  * @ets_data_first andUsing_
  */
-export function andUsing<RIn, E, ROut>(self: Layer<RIn, E, ROut>) {
-  return <RIn2, E2, ROut2>(
+export function andUsing<RIn, E, ROut extends Spreadable>(self: Layer<RIn, E, ROut>) {
+  return <RIn2 extends Spreadable, E2, ROut2 extends Spreadable>(
     that: Layer<RIn2, E2, ROut2>
   ): Layer<RIn & Erase<ROut & RIn2, ROut>, E | E2, ROut & ROut2> =>
     andUsing_<RIn, E, ROut, RIn2, E2, ROut2>(that, self)

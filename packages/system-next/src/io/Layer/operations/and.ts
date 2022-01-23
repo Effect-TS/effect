@@ -1,3 +1,4 @@
+import type { Spreadable } from "../../../data/Utils"
 import type { Layer } from "../definition"
 import { ILayerZipWithPar } from "../definition"
 
@@ -7,7 +8,14 @@ import { ILayerZipWithPar } from "../definition"
  *
  * @ets operator ets/Layer +
  */
-export function and_<RIn, E, ROut, RIn2, E2, ROut2>(
+export function and_<
+  RIn,
+  E,
+  ROut extends Spreadable,
+  RIn2,
+  E2,
+  ROut2 extends Spreadable
+>(
   self: Layer<RIn, E, ROut>,
   that: Layer<RIn2, E2, ROut2>
 ): Layer<RIn & RIn2, E | E2, ROut & ROut2> {
@@ -20,8 +28,8 @@ export function and_<RIn, E, ROut, RIn2, E2, ROut2>(
  *
  * @ets_data_first and_
  */
-export function and<RIn2, E2, ROut2>(that: Layer<RIn2, E2, ROut2>) {
-  return <RIn, E, ROut>(
+export function and<RIn2, E2, ROut2 extends Spreadable>(that: Layer<RIn2, E2, ROut2>) {
+  return <RIn, E, ROut extends Spreadable>(
     self: Layer<RIn, E, ROut>
   ): Layer<RIn & RIn2, E | E2, ROut & ROut2> => and_(self, that)
 }

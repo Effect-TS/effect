@@ -410,7 +410,8 @@ describe("Layer", () => {
         pipe(
           Promise.succeed_(promise, undefined),
           M.acquireReleaseWith(() => T.unit),
-          L.fromRawManaged
+          L.fromRawManaged,
+          L.map((a) => ({ a }))
         )
       ),
       T.bindValue("env", ({ layer1, layer2 }) => pipe(layer1, L.and(layer2), L.build)),
@@ -658,12 +659,13 @@ describe("Layer", () => {
       T.provideService(Clock.HasClock)(new Clock.LiveClock())
     )
     const layer1 = L.fail("foo")
-    const layer2 = L.succeed("bar")
-    const layer3 = L.succeed("baz")
+    const layer2 = L.succeed({ bar: "bar" })
+    const layer3 = L.succeed({ baz: "baz" })
     const layer4 = pipe(
       sleep,
       M.acquireReleaseWith(() => sleep),
-      M.toLayerRaw
+      M.toLayerRaw,
+      L.map((b) => ({ b }))
     )
 
     const env = pipe(layer1, L.and(pipe(layer2, L.and(layer3), L.andTo(layer4))))
