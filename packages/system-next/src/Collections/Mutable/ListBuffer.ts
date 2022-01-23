@@ -9,8 +9,10 @@
  * (http://www.apache.org/licenses/LICENSE-2.0).
  */
 
-import { IndexOutOfBoundsException } from "../../GlobalExceptions/IndexOutOfBoundsException"
-import { NoSuchElementException } from "../../GlobalExceptions/NoSuchElementException"
+import {
+  IndexOutOfBoundsException,
+  NoSuchElementException
+} from "../../GlobalExceptions"
 import { reduce_ } from "../Immutable/List/api/reduce"
 import { unsafeTail } from "../Immutable/List/api/unsafeTail"
 import * as L from "../Immutable/List/core"
