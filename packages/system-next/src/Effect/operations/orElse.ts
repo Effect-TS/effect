@@ -7,6 +7,7 @@ import { tryOrElse_ } from "./tryOrElse"
  * Executes this effect and returns its value, if it succeeds, but otherwise
  * executes the specified effect.
  *
+ * @ets operator ets/Effect |
  * @ets fluent ets/Effect orElse
  */
 export function orElse_<R, E, A, R2, E2, A2>(

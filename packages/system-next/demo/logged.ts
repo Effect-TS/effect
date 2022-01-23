@@ -14,4 +14,6 @@ export const program = (numbers + numbersPar).flatMap(
     Effect.logWarning(`maybe: ${f}`)
 )
 
+export const executeOrDie = Effect.fail("error") | program
+
 program.apply(LogLevel.locally(LogLevel.All)).unsafeRunPromise()
