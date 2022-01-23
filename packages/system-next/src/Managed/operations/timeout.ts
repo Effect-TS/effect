@@ -28,7 +28,7 @@ export function timeout_<R, E, A>(
   return managedApply(
     T.uninterruptibleMask(({ restore }) =>
       pipe(
-        T.do,
+        T.Do(),
         T.bind("outerReleaseMap", () => get(currentReleaseMap.value)),
         T.bind("innerReleaseMap", () => RM.make),
         T.bind("earlyRelease", ({ innerReleaseMap, outerReleaseMap }) =>

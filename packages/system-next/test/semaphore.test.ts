@@ -121,10 +121,10 @@ describe("TSemaphore", () => {
 
     it("withPermit automatically releases the permit if the effect is interrupted", async () => {
       const { permits } = await pipe(
-        T.do,
+        T.Do(),
         T.bind("promise", () => Promise.make<never, void>()),
         T.bind("semaphore", () => STM.commit(TSemaphore.make(1))),
-        T.let("effect", ({ promise, semaphore }) =>
+        T.bindValue("effect", ({ promise, semaphore }) =>
           T.chain_(
             TSemaphore.withPermit_(Promise.succeed_(promise, undefined), semaphore),
             () => T.never
@@ -145,9 +145,9 @@ describe("TSemaphore", () => {
     it("withPermit acquire is interruptible", async () => {
       const f = jest.fn()
       const res = await pipe(
-        T.do,
+        T.Do(),
         T.bind("semaphore", () => STM.commit(TSemaphore.make(0))),
-        T.let("effect", ({ semaphore }) =>
+        T.bindValue("effect", ({ semaphore }) =>
           TSemaphore.withPermit_(
             T.succeed(() => f()),
             semaphore

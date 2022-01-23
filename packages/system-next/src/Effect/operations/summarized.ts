@@ -21,7 +21,7 @@ export function summarized_<R, E, A, R2, E2, B, C>(
   return suspendSucceed(
     () =>
       pipe(
-        Do.do,
+        Do.Do(),
         Do.bind("start", () => summary),
         Do.bind("value", () => self),
         Do.bind("end", () => summary),

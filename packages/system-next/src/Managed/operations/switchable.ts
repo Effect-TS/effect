@@ -31,7 +31,7 @@ export function switchable<R, E, A>(
   __trace?: string
 ): Managed<R, never, (x: Managed<R, E, A>) => T.Effect<R, E, A>> {
   return pipe(
-    Do.do,
+    Do.Do(),
     Do.bind("releaseMap", () => releaseMap),
     Do.bind("key", ({ releaseMap }) =>
       pipe(
@@ -54,7 +54,7 @@ export function switchable<R, E, A>(
                   (fin) => fin(Ex.unit)
                 )
               ),
-              T.zipRight(T.do),
+              T.zipRight(T.Do()),
               T.bind("r", () => T.environment<R>()),
               T.bind("inner", () => make),
               T.bind("a", ({ inner, r }) =>

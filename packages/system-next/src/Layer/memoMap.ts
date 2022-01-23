@@ -92,14 +92,14 @@ export class MemoMap {
             }
             case "None": {
               return pipe(
-                DoEffect.do,
+                DoEffect.Do(),
                 DoEffect.bind("observers", () => Ref.make(0)),
                 DoEffect.bind("promise", () => Promise.make<E, A>()),
                 DoEffect.bind("finalizerRef", () => Ref.make(Finalizer.noopFinalizer)),
-                DoEffect.let("resource", ({ finalizerRef, observers, promise }) =>
+                DoEffect.bindValue("resource", ({ finalizerRef, observers, promise }) =>
                   uninterruptibleMask(({ restore }) =>
                     pipe(
-                      DoEffect.do,
+                      DoEffect.Do(),
                       DoEffect.bind("outerReleaseMap", () =>
                         get(currentReleaseMap.value)
                       ),
@@ -130,7 +130,7 @@ export class MemoMap {
                               }
                               case "Success": {
                                 return pipe(
-                                  DoEffect.do,
+                                  DoEffect.Do(),
                                   tap(() =>
                                     Ref.set_(finalizerRef, (exit) =>
                                       whenEffect_(
@@ -170,7 +170,7 @@ export class MemoMap {
                     )
                   )
                 ),
-                DoEffect.let("memoized", ({ finalizerRef, observers, promise }) =>
+                DoEffect.bindValue("memoized", ({ finalizerRef, observers, promise }) =>
                   Tp.tuple(
                     onExit_(Promise.await(promise) as IO<E, A>, (exit) => {
                       switch (exit._tag) {
@@ -227,7 +227,7 @@ export function build<R, E, A>(
   __trace?: string
 ): Managed<R, E, A> {
   return pipe(
-    DoManaged.do,
+    DoManaged.Do(),
     DoManaged.bind("memoMap", () => fromEffectManaged(makeMemoMap())),
     DoManaged.bind("run", () => scope(self)),
     chainManaged(({ memoMap, run }) => run(memoMap))

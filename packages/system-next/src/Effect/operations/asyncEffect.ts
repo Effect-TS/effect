@@ -23,7 +23,7 @@ export function asyncEffect<R2, E2, R, E, A, X>(
   __trace?: string
 ): Effect<R & R2, E | E2, A> {
   return pipe(
-    Do.do,
+    Do.Do(),
     Do.bind("promise", () => Promise.make<E | E2, A>()),
     Do.bind("runtime", () => runtime<R & R2>()),
     Do.bind("a", ({ promise, runtime }) =>

@@ -10,7 +10,7 @@ import * as Ref from "../src/Ref"
 describe("Promise", () => {
   it("complete a promise using succeed", async () => {
     const { s, v } = await pipe(
-      T.do,
+      T.Do(),
       T.bind("p", () => Promise.make<never, number>()),
       T.bind("s", ({ p }) => Promise.succeed_(p, 32)),
       T.bind("v", ({ p }) => Promise.await(p)),
@@ -23,7 +23,7 @@ describe("Promise", () => {
 
   it("complete a promise using complete", async () => {
     const { v1, v2 } = await pipe(
-      T.do,
+      T.Do(),
       T.bind("p", () => Promise.make<never, number>()),
       T.bind("r", () => Ref.make(13)),
       T.bind("s", ({ p, r }) =>
@@ -43,7 +43,7 @@ describe("Promise", () => {
 
   it("complete a promise using completeWith", async () => {
     const { v1, v2 } = await pipe(
-      T.do,
+      T.Do(),
       T.bind("p", () => Promise.make<never, number>()),
       T.bind("r", () => Ref.make(13)),
       T.bind("s", ({ p, r }) =>
@@ -63,7 +63,7 @@ describe("Promise", () => {
 
   it("fail a promise using fail", async () => {
     const { s, v } = await pipe(
-      T.do,
+      T.Do(),
       T.bind("p", () => Promise.make<string, number>()),
       T.bind("s", ({ p }) => Promise.fail_(p, "error with fail")),
       T.bind("v", ({ p }) => T.exit(Promise.await(p))),
@@ -76,7 +76,7 @@ describe("Promise", () => {
 
   it("fail a promise using complete", async () => {
     const { s, v1, v2 } = await pipe(
-      T.do,
+      T.Do(),
       T.bind("p", () => Promise.make<string, number>()),
       T.bind("r", () => Ref.make(Chunk.from(["first error", "second error"]))),
       T.bind("s", ({ p, r }) =>
@@ -99,7 +99,7 @@ describe("Promise", () => {
 
   it("fail a promise using completeWith", async () => {
     const { s, v1, v2 } = await pipe(
-      T.do,
+      T.Do(),
       T.bind("p", () => Promise.make<string, number>()),
       T.bind("r", () => Ref.make(Chunk.from(["first error", "second error"]))),
       T.bind("s", ({ p, r }) =>
@@ -122,7 +122,7 @@ describe("Promise", () => {
 
   it("complete a promise twice", async () => {
     const { s, v } = await pipe(
-      T.do,
+      T.Do(),
       T.bind("p", () => Promise.make<string, number>()),
       T.tap(({ p }) => Promise.succeed_(p, 1)),
       T.bind("s", ({ p }) => Promise.complete_(p, T.succeedNow(9))),
@@ -136,7 +136,7 @@ describe("Promise", () => {
 
   it("interrupt a promise", async () => {
     const { s } = await pipe(
-      T.do,
+      T.Do(),
       T.bind("p", () => Promise.make<string, number>()),
       T.bind("s", ({ p }) => Promise.interrupt(p)),
       T.unsafeRunPromise
@@ -147,7 +147,7 @@ describe("Promise", () => {
 
   it("poll a promise that is not completed yet", async () => {
     const { attempt } = await pipe(
-      T.do,
+      T.Do(),
       T.bind("p", () => Promise.make<string, number>()),
       T.bind("attempt", ({ p }) => Promise.poll(p)),
       T.unsafeRunPromise
@@ -158,7 +158,7 @@ describe("Promise", () => {
 
   it("poll a promise that is completed", async () => {
     const { attempt } = await pipe(
-      T.do,
+      T.Do(),
       T.bind("p", () => Promise.make<string, number>()),
       T.tap(({ p }) => Promise.succeed_(p, 12)),
       T.bind("attempt", ({ p }) =>
@@ -177,7 +177,7 @@ describe("Promise", () => {
 
   it("poll a promise that is failed", async () => {
     const { result } = await pipe(
-      T.do,
+      T.Do(),
       T.bind("p", () => Promise.make<string, number>()),
       T.tap(({ p }) => Promise.fail_(p, "failure")),
       T.bind("result", ({ p }) =>
@@ -196,7 +196,7 @@ describe("Promise", () => {
 
   it("poll a promise that is interrupted", async () => {
     const { result } = await pipe(
-      T.do,
+      T.Do(),
       T.bind("p", () => Promise.make<string, number>()),
       T.tap(({ p }) => Promise.interrupt(p)),
       T.bind("result", ({ p }) =>
@@ -215,7 +215,7 @@ describe("Promise", () => {
 
   it("isDone when a promise is completed", async () => {
     const { d } = await pipe(
-      T.do,
+      T.Do(),
       T.bind("p", () => Promise.make<string, number>()),
       T.tap(({ p }) => Promise.succeed_(p, 0)),
       T.bind("d", ({ p }) => Promise.isDone(p)),
@@ -227,7 +227,7 @@ describe("Promise", () => {
 
   it("isDone when a promise is failed", async () => {
     const { d } = await pipe(
-      T.do,
+      T.Do(),
       T.bind("p", () => Promise.make<string, number>()),
       T.tap(({ p }) => Promise.fail_(p, "failure")),
       T.bind("d", ({ p }) => Promise.isDone(p)),

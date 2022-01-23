@@ -30,7 +30,7 @@ export function cachedInvalidate_<R, E, A>(
   __trace?: string
 ): RIO<R & HasClock, Tp.Tuple<[IO<E, A>, UIO<void>]>> {
   return pipe(
-    Do.do,
+    Do.Do(),
     Do.bind("r", () => environment<R & HasClock>()),
     Do.bind("cache", () =>
       Ref.make<O.Option<Tp.Tuple<[number, P.Promise<E, A>]>>>(O.none)
@@ -67,7 +67,7 @@ function compute<R, E, A>(
   start: number
 ): Effect<R & HasClock, never, O.Option<Tp.Tuple<[number, P.Promise<E, A>]>>> {
   return pipe(
-    Do.do,
+    Do.Do(),
     Do.bind("p", () => P.make<E, A>()),
     tap(({ p }) => intoPromise_(self, p)),
     map(({ p }) => O.some(Tp.tuple(start + timeToLive, p)))

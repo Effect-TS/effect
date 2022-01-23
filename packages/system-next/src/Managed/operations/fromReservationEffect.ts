@@ -28,7 +28,7 @@ export function fromReservationEffect<R, E, A>(
   return managedApply(
     T.uninterruptibleMask((status) =>
       pipe(
-        T.do,
+        T.Do(),
         T.bind("r", () => T.environment<R>()),
         T.bind("releaseMap", () => fiberRefGet(currentReleaseMap.value)),
         T.bind("reserved", () => reservation),

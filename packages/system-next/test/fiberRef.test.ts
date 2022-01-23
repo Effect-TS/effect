@@ -25,7 +25,7 @@ describe("FiberRef", () => {
     it("`delete` restores the original value", async () => {
       const { value } = await T.unsafeRunPromise(
         pipe(
-          T.do,
+          T.Do(),
           T.bind("fiberRef", () => FiberRef.make(initial)),
           T.tap(({ fiberRef }) => FiberRef.set_(fiberRef, update)),
           T.tap(({ fiberRef }) => FiberRef.delete(fiberRef)),
@@ -39,7 +39,7 @@ describe("FiberRef", () => {
     it("`get` returns the current value", async () => {
       const { value } = await T.unsafeRunPromise(
         pipe(
-          T.do,
+          T.Do(),
           T.bind("fiberRef", () => FiberRef.make(initial)),
           T.bind("value", ({ fiberRef }) => FiberRef.get(fiberRef))
         )
@@ -51,7 +51,7 @@ describe("FiberRef", () => {
     it("`get` returns the correct value for a child", async () => {
       const { value } = await T.unsafeRunPromise(
         pipe(
-          T.do,
+          T.Do(),
           T.bind("fiberRef", () => FiberRef.make(initial)),
           T.bind("child", ({ fiberRef }) => T.fork(FiberRef.get(fiberRef))),
           T.bind("value", ({ child }) => Fiber.join(child))
@@ -64,7 +64,7 @@ describe("FiberRef", () => {
     it("`getAndUpdate` changes value", async () => {
       const { value1, value2 } = await T.unsafeRunPromise(
         pipe(
-          T.do,
+          T.Do(),
           T.bind("fiberRef", () => FiberRef.make(initial)),
           T.bind("value1", ({ fiberRef }) =>
             FiberRef.getAndUpdate_(fiberRef, () => update)
@@ -80,7 +80,7 @@ describe("FiberRef", () => {
     it("`getAndUpdateSome` changes value", async () => {
       const { value1, value2 } = await T.unsafeRunPromise(
         pipe(
-          T.do,
+          T.Do(),
           T.bind("fiberRef", () => FiberRef.make(initial)),
           T.bind("value1", ({ fiberRef }) =>
             FiberRef.getAndUpdateSome_(fiberRef, () => O.some(update))
@@ -96,7 +96,7 @@ describe("FiberRef", () => {
     it("`getAndUpdateSome` not changes value", async () => {
       const { value1, value2 } = await T.unsafeRunPromise(
         pipe(
-          T.do,
+          T.Do(),
           T.bind("fiberRef", () => FiberRef.make(initial)),
           T.bind("value1", ({ fiberRef }) =>
             FiberRef.getAndUpdateSome_(fiberRef, () => O.none)
@@ -112,7 +112,7 @@ describe("FiberRef", () => {
     it("`locally` restores original value", async () => {
       const { local, value } = await T.unsafeRunPromise(
         pipe(
-          T.do,
+          T.Do(),
           T.bind("fiberRef", () => FiberRef.make(initial)),
           T.bind("local", ({ fiberRef }) =>
             pipe(fiberRef, FiberRef.locally(update))(FiberRef.get(fiberRef))
@@ -128,7 +128,7 @@ describe("FiberRef", () => {
     it("`locally` restores parent's value", async () => {
       const { local, value } = await T.unsafeRunPromise(
         pipe(
-          T.do,
+          T.Do(),
           T.bind("fiberRef", () => FiberRef.make(initial)),
           T.bind("child", ({ fiberRef }) =>
             pipe(FiberRef.get(fiberRef), FiberRef.locally_(fiberRef, update), T.fork)
@@ -145,10 +145,10 @@ describe("FiberRef", () => {
     it("`locally` restores undefined value", async () => {
       const { localValue, value } = await T.unsafeRunPromise(
         pipe(
-          T.do,
+          T.Do(),
           T.bind("child", () => T.fork(FiberRef.make(initial))),
           // Don't use join as it inherits values from child
-          T.bind("fiberRef", ({ child }) => T.chain_(Fiber.await(child), T.done)),
+          T.bind("fiberRef", ({ child }) => T.chain_(Fiber.await(child), T.Do()ne)),
           T.bind("localValue", ({ fiberRef }) =>
             pipe(fiberRef, FiberRef.locally(update))(FiberRef.get(fiberRef))
           ),
@@ -163,7 +163,7 @@ describe("FiberRef", () => {
     it("`modify` changes value", async () => {
       const { value1, value2 } = await T.unsafeRunPromise(
         pipe(
-          T.do,
+          T.Do(),
           T.bind("fiberRef", () => FiberRef.make(initial)),
           T.bind("value1", ({ fiberRef }) =>
             FiberRef.modify_(fiberRef, () => Tp.tuple(1, update))
@@ -179,7 +179,7 @@ describe("FiberRef", () => {
     it("`modifySome` not changes value", async () => {
       const { value1, value2 } = await T.unsafeRunPromise(
         pipe(
-          T.do,
+          T.Do(),
           T.bind("fiberRef", () => FiberRef.make(initial)),
           T.bind("value1", ({ fiberRef }) =>
             FiberRef.modifySome_(fiberRef, 2, () => O.none)
@@ -195,7 +195,7 @@ describe("FiberRef", () => {
     it("`set` updates the current value", async () => {
       const { value } = await T.unsafeRunPromise(
         pipe(
-          T.do,
+          T.Do(),
           T.bind("fiberRef", () => FiberRef.make(initial)),
           T.tap(({ fiberRef }) => FiberRef.set_(fiberRef, update)),
           T.bind("value", ({ fiberRef }) => FiberRef.get(fiberRef))
@@ -208,7 +208,7 @@ describe("FiberRef", () => {
     it("`set` by a child doesn't update parent's value", async () => {
       const { value } = await T.unsafeRunPromise(
         pipe(
-          T.do,
+          T.Do(),
           T.bind("fiberRef", () => FiberRef.make(initial)),
           T.bind("promise", () => Promise.make<never, void>()),
           T.tap(({ fiberRef, promise }) =>
@@ -229,7 +229,7 @@ describe("FiberRef", () => {
     it("`updateAndGet` changes value", async () => {
       const { value1, value2 } = await T.unsafeRunPromise(
         pipe(
-          T.do,
+          T.Do(),
           T.bind("fiberRef", () => FiberRef.make(initial)),
           T.bind("value1", ({ fiberRef }) =>
             FiberRef.updateAndGet_(fiberRef, () => update)
@@ -245,7 +245,7 @@ describe("FiberRef", () => {
     it("`updateSomeAndGet` changes value", async () => {
       const { value1, value2 } = await T.unsafeRunPromise(
         pipe(
-          T.do,
+          T.Do(),
           T.bind("fiberRef", () => FiberRef.make(initial)),
           T.bind("value1", ({ fiberRef }) =>
             FiberRef.updateSomeAndGet_(fiberRef, () => O.some(update))
@@ -261,7 +261,7 @@ describe("FiberRef", () => {
     it("`updateSomeAndGet` not changes value", async () => {
       const { value1, value2 } = await T.unsafeRunPromise(
         pipe(
-          T.do,
+          T.Do(),
           T.bind("fiberRef", () => FiberRef.make(initial)),
           T.bind("value1", ({ fiberRef }) =>
             FiberRef.updateSomeAndGet_(fiberRef, () => O.none)
@@ -277,7 +277,7 @@ describe("FiberRef", () => {
     it("its value is inherited on join", async () => {
       const { value } = await T.unsafeRunPromise(
         pipe(
-          T.do,
+          T.Do(),
           T.bind("fiberRef", () => FiberRef.make(initial)),
           T.bind("child", ({ fiberRef }) => T.fork(FiberRef.set_(fiberRef, update))),
           T.tap(({ child }) => Fiber.join(child)),
@@ -291,9 +291,9 @@ describe("FiberRef", () => {
     it("initial value is always available", async () => {
       const { value } = await T.unsafeRunPromise(
         pipe(
-          T.do,
+          T.Do(),
           T.bind("child", () => T.fork(FiberRef.make(initial))),
-          T.bind("fiberRef", ({ child }) => T.chain_(Fiber.await(child), T.done)),
+          T.bind("fiberRef", ({ child }) => T.chain_(Fiber.await(child), T.Do()ne)),
           T.bind("value", ({ fiberRef }) => FiberRef.get(fiberRef))
         )
       )
@@ -304,7 +304,7 @@ describe("FiberRef", () => {
     it("its value is inherited after simple race", async () => {
       const { value } = await T.unsafeRunPromise(
         pipe(
-          T.do,
+          T.Do(),
           T.bind("fiberRef", () => FiberRef.make(initial)),
           T.tap(({ fiberRef }) =>
             pipe(
@@ -323,7 +323,7 @@ describe("FiberRef", () => {
     // it("its value is inherited after a race with a bad winner", async () => {
     //   const { value } = await T.unsafeRunPromise(
     //     pipe(
-    //       T.do,
+    //       T.Do(),
     //       T.bind("fiberRef", () => FiberRef.make(initial)),
     //       T.let("badWinner", ({ fiberRef }) =>
     //         T.zipRight_(FiberRef.set_(fiberRef, update1), T.fail("ups"))
@@ -342,12 +342,12 @@ describe("FiberRef", () => {
     it("its value is not inherited after a race of losers", async () => {
       const { value } = await T.unsafeRunPromise(
         pipe(
-          T.do,
+          T.Do(),
           T.bind("fiberRef", () => FiberRef.make(initial)),
-          T.let("loser1", ({ fiberRef }) =>
+          T.bindValue("loser1", ({ fiberRef }) =>
             T.zipRight_(FiberRef.set_(fiberRef, update1), T.failNow("ups1"))
           ),
-          T.let("loser2", ({ fiberRef }) =>
+          T.bindValue("loser2", ({ fiberRef }) =>
             T.zipRight_(FiberRef.set_(fiberRef, update2), T.failNow("ups2"))
           ),
           T.tap(({ loser1, loser2 }) => T.ignore(T.race_(loser1, loser2))),
@@ -362,7 +362,7 @@ describe("FiberRef", () => {
     // it("the value of the loser is inherited in zipPar", async () => {
     //   const { value } = await T.unsafeRunPromise(
     //     pipe(
-    //       T.do,
+    //       T.Do(),
     //       T.bind("fiberRef", () => FiberRef.make(initial)),
     //       T.bind("latch", () => Promise.make<never, void>()),
     //       T.let("winner", ({ fiberRef, latch }) =>
@@ -390,13 +390,13 @@ describe("FiberRef", () => {
     it("nothing gets inherited with a failure in zipPar", async () => {
       const { value } = await T.unsafeRunPromise(
         pipe(
-          T.do,
+          T.Do(),
           T.bind("fiberRef", () => FiberRef.make(initial)),
-          T.let("success", ({ fiberRef }) => FiberRef.set_(fiberRef, update)),
-          T.let("failure1", ({ fiberRef }) =>
+          T.bindValue("success", ({ fiberRef }) => FiberRef.set_(fiberRef, update)),
+          T.bindValue("failure1", ({ fiberRef }) =>
             pipe(FiberRef.set_(fiberRef, update), T.zipRight(T.failNow(":-(")))
           ),
-          T.let("failure2", ({ fiberRef }) =>
+          T.bindValue("failure2", ({ fiberRef }) =>
             pipe(FiberRef.set_(fiberRef, update), T.zipRight(T.failNow(":-O")))
           ),
           T.tap(({ failure1, failure2, success }) =>
@@ -420,7 +420,7 @@ describe("FiberRef", () => {
 
       const { value } = await T.unsafeRunPromise(
         pipe(
-          T.do,
+          T.Do(),
           T.bind("fiberRef", () => FiberRef.make(0, increment)),
           T.bind("child", () => T.fork(T.unit)),
           T.tap(({ child }) => Fiber.join(child)),
@@ -438,7 +438,7 @@ describe("FiberRef", () => {
 
       const { value } = await T.unsafeRunPromise(
         pipe(
-          T.do,
+          T.Do(),
           T.bind("fiberRef", () => FiberRef.make(0, increment)),
           T.bind("child", () => pipe(T.unit, T.fork, T.chain(Fiber.join), T.fork)),
           T.tap(({ child }) => Fiber.join(child)),
@@ -452,7 +452,7 @@ describe("FiberRef", () => {
     it("join function is applied on join - 1", async () => {
       const { value } = await T.unsafeRunPromise(
         pipe(
-          T.do,
+          T.Do(),
           T.bind("fiberRef", () => FiberRef.make(0, identity, Math.max)),
           T.bind("child", ({ fiberRef }) =>
             T.fork(FiberRef.update_(fiberRef, (_) => _ + 1))
@@ -468,7 +468,7 @@ describe("FiberRef", () => {
     it("join function is applied on join - 2", async () => {
       const { value } = await T.unsafeRunPromise(
         pipe(
-          T.do,
+          T.Do(),
           T.bind("fiberRef", () => FiberRef.make(0, identity, Math.max)),
           T.bind("child", ({ fiberRef }) =>
             T.fork(FiberRef.update_(fiberRef, (_) => _ + 1))
@@ -485,7 +485,7 @@ describe("FiberRef", () => {
     it("its value is inherited in a trivial race", async () => {
       const { value } = await T.unsafeRunPromise(
         pipe(
-          T.do,
+          T.Do(),
           T.bind("fiberRef", () => FiberRef.make(initial)),
           T.tap(({ fiberRef }) =>
             pipe(FiberRef.set_(fiberRef, update), T.raceAll(Chunk.empty()))
@@ -501,7 +501,7 @@ describe("FiberRef", () => {
     // it("the value of the winner is inherited when racing two effects with raceAll", () => {
     //   const { value1, value2 } = await T.unsafeRunPromise(
     //     pipe(
-    //       T.do,
+    //       T.Do(),
     //       T.bind("fiberRef", () => FiberRef.make(initial)),
     //       T.bind("latch", () => Promise.make<never, void>()),
     //       T.let("winner1", ({ fiberRef, latch }) =>
@@ -540,7 +540,7 @@ describe("FiberRef", () => {
     // it("the value of the winner is inherited when racing many effects with raceAll", async () => {
     //   const { value1, value2 } = await T.unsafeRunPromise(
     //     pipe(
-    //       T.do,
+    //       T.Do(),
     //       T.bind("fiberRef", () => FiberRef.make(initial)),
     //       T.let("n", () => 63),
     //       T.bind("latch", () => Promise.make<never, void>()),
@@ -588,9 +588,9 @@ describe("FiberRef", () => {
     it("nothing gets inherited when racing failures with raceAll", async () => {
       const { value } = await T.unsafeRunPromise(
         pipe(
-          T.do,
+          T.Do(),
           T.bind("fiberRef", () => FiberRef.make(initial)),
-          T.let("loser", ({ fiberRef }) =>
+          T.bindValue("loser", ({ fiberRef }) =>
             pipe(FiberRef.set_(fiberRef, update), T.zipRight(T.failNow("darn")))
           ),
           T.tap(({ loser }) =>
@@ -610,7 +610,7 @@ describe("FiberRef", () => {
     it("the value of all fibers in inherited when running many effects with collectAllPar", async () => {
       const { value } = await T.unsafeRunPromise(
         pipe(
-          T.do,
+          T.Do(),
           T.bind("fiberRef", () =>
             FiberRef.make(
               0,
@@ -646,11 +646,11 @@ describe("FiberRef", () => {
 
       const { person } = await T.unsafeRunPromise(
         pipe(
-          T.do,
+          T.Do(),
           T.bind("personRef", () =>
             FiberRef.make<Person>({ name: "Jane Doe", age: 42 })
           ),
-          T.let("ageRef", ({ personRef }) =>
+          T.bindValue("ageRef", ({ personRef }) =>
             FiberRef.foldAll_(personRef, identity, identity, identity, setAge, getAge)
           ),
           T.bind("fiber", ({ ageRef }) =>

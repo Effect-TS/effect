@@ -9,7 +9,7 @@ describe("FiberRefs", () => {
   it("propagate FiberRef values across fiber boundaries", async () => {
     const { value } = await T.unsafeRunPromise(
       pipe(
-        T.do,
+        T.Do(),
         T.bind("fiberRef", () => FiberRef.make(false)),
         T.bind("queue", () => Queue.makeUnbounded<FiberRefs>()),
         T.bind("producer", ({ fiberRef, queue }) =>

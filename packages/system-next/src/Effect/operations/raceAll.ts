@@ -38,23 +38,23 @@ export function raceAll_<R, E, A>(
 ): Effect<R, E, A> {
   const ios = Chunk.from(effects)
   return pipe(
-    Do.do,
+    Do.Do(),
     Do.bind("done", () => P.make<E, Tp.Tuple<[A, Fiber.Fiber<E, A>]>>()),
     Do.bind("fails", () => Ref.make(Chunk.size(ios))),
     chain(({ done, fails }) =>
       uninterruptibleMask(
         ({ restore }) =>
           pipe(
-            Do.do,
+            Do.Do(),
             Do.bind("head", () => fork(uninterruptible(self))),
             Do.bind("tail", () => forEach_(ios, (io) => fork(interruptible(io)))),
-            Do.let("fs", ({ head, tail }) => Chunk.prepend_(tail, head)),
+            Do.bindValue("fs", ({ head, tail }) => Chunk.prepend_(tail, head)),
             tap(({ fs }) =>
               reduce_(fs, unit, (io, f) =>
                 chain_(io, () => chain_(Fiber.await(f), arbiter(fs, f, done, fails)))
               )
             ),
-            Do.let(
+            Do.bindValue(
               "inheritRefs",
               () =>
                 (res: Tp.Tuple<[A, Fiber.Fiber<E, A>]>): UIO<A> =>

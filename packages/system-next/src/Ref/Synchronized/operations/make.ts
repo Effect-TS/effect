@@ -10,7 +10,7 @@ import * as T from "./_internal/effect"
  */
 export function make<A>(value: A): T.UIO<Synchronized<A>> {
   return pipe(
-    T.do,
+    T.Do(),
     T.bind("ref", () => Ref.make<A>(value)),
     T.bind("semaphore", () => Semaphore.make(1)),
     T.map(

@@ -9,7 +9,7 @@ import { succeedNow } from "./succeedNow"
  *
  * @ets_data_first bind_
  */
-function bind<R, E, A, K, N extends string>(
+export function bind<R, E, A, K, N extends string>(
   tag: Exclude<N, keyof K>,
   f: (_: K) => Effect<R, E, A>,
   __trace?: string
@@ -71,7 +71,7 @@ export function bind_<R2, E2, R, E, A, K, N extends string>(
  *
  * @ets_data_first let_
  */
-function let__<A, K, N extends string>(
+export function bindValue<A, K, N extends string>(
   tag: Exclude<N, keyof K>,
   f: (_: K) => A,
   __trace?: string
@@ -87,13 +87,13 @@ function let__<A, K, N extends string>(
         [k in N]: A
       }
     >
-  > => let_(mk, tag, f)
+  > => bindValue_(mk, tag, f)
 }
 
 /**
  * Like bind for values
  */
-export function let_<R2, E2, A, K, N extends string>(
+export function bindValue_<R2, E2, A, K, N extends string>(
   mk: Effect<R2, E2, K>,
   tag: Exclude<N, keyof K>,
   f: (_: K) => A,
@@ -123,8 +123,8 @@ export function let_<R2, E2, A, K, N extends string>(
 }
 
 /**
- * @ets static ets/EffectOps do
+ * @ets static ets/EffectOps Do
  */
-export const do_ = succeedNow({})
-
-export { let__ as let, bind, do_ as do }
+export function Do() {
+  return succeedNow({})
+}

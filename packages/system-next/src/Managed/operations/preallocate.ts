@@ -23,7 +23,7 @@ export function preallocate<R, E, A>(
 ): T.Effect<R, E, Managed<unknown, never, A>> {
   return T.uninterruptibleMask((status) =>
     pipe(
-      T.do,
+      T.Do(),
       T.bind("releaseMap", () => make),
       T.bind("tp", ({ releaseMap }) =>
         T.exit(

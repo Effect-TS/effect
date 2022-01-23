@@ -20,7 +20,7 @@ export function memoize_<R, E, A>(
     releaseMap,
     (finalizers) =>
       pipe(
-        T.do,
+        T.Do(),
         T.bind("promise", () => makePromise<E, A>()),
         T.bind("complete", ({ promise }) =>
           pipe(

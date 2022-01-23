@@ -26,7 +26,7 @@ export function onExit_<R, E, A, R1, X>(
   return managedApply(
     T.uninterruptibleMask((status) =>
       pipe(
-        T.do,
+        T.Do(),
         T.bind("r1", () => T.environment<R1>()),
         T.bind("outerReleaseMap", () => get(currentReleaseMap.value)),
         T.bind("innerReleaseMap", () => make),

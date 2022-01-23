@@ -1,6 +1,6 @@
 import * as X from "./core"
 
-function bind<R, E, A, K, N extends string>(
+export function bind<R, E, A, K, N extends string>(
   tag: Exclude<N, keyof K>,
   f: (_: K) => X.Sync<R, E, A>
 ) {
@@ -25,7 +25,10 @@ function bind<R, E, A, K, N extends string>(
     )
 }
 
-function let_<A, K, N extends string>(tag: Exclude<N, keyof K>, f: (_: K) => A) {
+export function bindValue<A, K, N extends string>(
+  tag: Exclude<N, keyof K>,
+  f: (_: K) => A
+) {
   return <R2, E2>(
     mk: X.Sync<R2, E2, K>
   ): X.Sync<
@@ -45,6 +48,6 @@ function let_<A, K, N extends string>(tag: Exclude<N, keyof K>, f: (_: K) => A) 
     )
 }
 
-const do_ = X.succeed({})
-
-export { let_ as let, bind, do_ as do }
+export function Do() {
+  return X.succeed({})
+}

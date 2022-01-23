@@ -930,7 +930,7 @@ export function managedFork<R, E, A>(
   return managedApply(
     uninterruptibleMask((status) =>
       pipe(
-        Do.do,
+        Do.Do(),
         Do.bind("outerReleaseMap", () => fiberRefGet(currentReleaseMap.value)),
         Do.bind("innerReleaseMap", () => releaseMapMake),
         Do.bind("fiber", ({ innerReleaseMap }) =>
@@ -1069,7 +1069,7 @@ export class BackPressureStrategy<A> implements Strategy<A> {
 
   get shutdown(): UIO<void> {
     return pipe(
-      Do.do,
+      Do.Do(),
       Do.bind("fiberId", () => fiberId),
       Do.bind("putters", () => succeed(() => QCore.unsafePollAll(this.putters))),
       tap((s) =>

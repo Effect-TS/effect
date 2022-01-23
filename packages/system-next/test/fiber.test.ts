@@ -21,7 +21,7 @@ describe("Fiber", () => {
     it("lift it into Managed", async () => {
       const { value } = await T.unsafeRunPromise(
         pipe(
-          T.do,
+          T.Do(),
           T.bind("ref", () => Ref.make<boolean>(false)),
           T.bind("fiber", ({ ref }) =>
             withLatch((release) =>
@@ -52,7 +52,7 @@ describe("Fiber", () => {
     it("`map`", async () => {
       const { value } = await T.unsafeRunPromise(
         pipe(
-          T.do,
+          T.Do(),
           T.bind("fiberRef", () => FiberRef.make(initial)),
           T.bind("child", ({ fiberRef }) =>
             withLatch((release) =>
@@ -70,7 +70,7 @@ describe("Fiber", () => {
     it("`orElse`", async () => {
       const { value } = await T.unsafeRunPromise(
         pipe(
-          T.do,
+          T.Do(),
           T.bind("fiberRef", () => FiberRef.make(initial)),
           T.bind("latch1", () => Promise.make<never, void>()),
           T.bind("latch2", () => Promise.make<never, void>()),
@@ -102,7 +102,7 @@ describe("Fiber", () => {
     it("`zip`", async () => {
       const { value } = await T.unsafeRunPromise(
         pipe(
-          T.do,
+          T.Do(),
           T.bind("fiberRef", () => FiberRef.make(initial)),
           T.bind("latch1", () => Promise.make<never, void>()),
           T.bind("latch2", () => Promise.make<never, void>()),
@@ -217,10 +217,10 @@ describe("Fiber", () => {
       }
 
       const { exit } = await pipe(
-        T.do,
+        T.Do(),
         T.bind("queue", () => Queue.makeUnbounded<number>()),
         T.tap(({ queue }) => Queue.offerAll_(queue, Chunk.range(1, 100))),
-        T.let(
+        T.bindValue(
           "worker",
           ({ queue }) =>
             (n: number) =>
@@ -236,17 +236,17 @@ describe("Fiber", () => {
 
     it("grandparent interruption is propagated to grandchild despite parent termination", async () => {
       const exit = await pipe(
-        T.do,
+        T.Do(),
         T.bind("latch1", () => Promise.make<never, void>()),
         T.bind("latch2", () => Promise.make<never, void>()),
-        T.let("c", ({ latch2 }) =>
+        T.bindValue("c", ({ latch2 }) =>
           pipe(
             T.never,
             T.interruptible,
             T.onInterrupt(() => Promise.succeed_(latch2, undefined))
           )
         ),
-        T.let("a", ({ c, latch1 }) =>
+        T.bindValue("a", ({ c, latch1 }) =>
           pipe(
             Promise.succeed_(latch1, undefined),
             T.zipRight(T.fork(T.fork(c))),
@@ -328,7 +328,7 @@ describe("Fiber", () => {
   describe("track blockingOn", () => {
     it("in await", async () => {
       const { blockingOn, f1 } = await pipe(
-        T.do,
+        T.Do(),
         T.bind("f1", () => T.fork(T.never)),
         T.bind("f2", ({ f1 }) => T.fork(Fiber.await(f1))),
         T.bind("blockingOn", ({ f2 }) =>

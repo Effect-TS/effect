@@ -1,6 +1,6 @@
 import * as Tp from "../../Collections/Immutable/Tuple"
 import type { Effect } from "../../Effect/definition"
-import { bind, do as effectDo } from "../../Effect/operations/do"
+import { bind, Do as effectDo } from "../../Effect/operations/do"
 import { done } from "../../Effect/operations/done"
 import { environment } from "../../Effect/operations/environment"
 import { sequential } from "../../Effect/operations/ExecutionStrategy"
@@ -33,7 +33,7 @@ export function onExitFirst_<R, E, A, R1, X>(
   return managedApply(
     uninterruptibleMask((status) =>
       pipe(
-        effectDo,
+        effectDo(),
         bind("r1", () => environment<R1>()),
         bind("outerReleaseMap", () => get(currentReleaseMap.value)),
         bind("innerReleaseMap", () => make),

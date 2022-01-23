@@ -25,7 +25,7 @@ export function memoizeF<R, E, A, B>(
   __trace?: string
 ): Managed<unknown, never, (a: A) => T.Effect<R, E, B>> {
   return pipe(
-    Do.do,
+    Do.Do(),
     Do.bind("fiberId", () => fromEffect(T.fiberId)),
     Do.bind("ref", () => fromEffect(Ref.make<Map.Map<A, Promise<E, B>>>(Map.empty))),
     Do.bind("scope", () => scope),

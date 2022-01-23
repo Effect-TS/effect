@@ -2,7 +2,7 @@ import { pipe } from "../../Function"
 import type { Exit } from "../definition"
 import { chain, map, succeed } from "../operations"
 
-function bind<E, A, K, N extends string>(
+export function bind<E, A, K, N extends string>(
   tag: Exclude<N, keyof K>,
   f: (_: K) => Exit<E, A>
 ) {
@@ -31,7 +31,10 @@ function bind<E, A, K, N extends string>(
     )
 }
 
-function let_<A, K, N extends string>(tag: Exclude<N, keyof K>, f: (_: K) => A) {
+export function bindValue_<A, K, N extends string>(
+  tag: Exclude<N, keyof K>,
+  f: (_: K) => A
+) {
   return <E2>(
     mk: Exit<E2, K>
   ): Exit<
@@ -52,6 +55,6 @@ function let_<A, K, N extends string>(tag: Exclude<N, keyof K>, f: (_: K) => A) 
     )
 }
 
-const do_ = succeed({})
-
-export { let_ as let, bind, do_ as do }
+export function Do() {
+  return succeed({})
+}

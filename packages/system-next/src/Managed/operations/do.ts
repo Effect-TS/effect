@@ -57,7 +57,7 @@ export function bind_<R2, E2, R, E, A, K, N extends string>(
  *
  * @ets_data_first let_
  */
-function let__<A, K, N extends string>(
+export function bindValue<A, K, N extends string>(
   tag: Exclude<N, keyof K>,
   f: (_: K) => A,
   __trace?: string
@@ -85,7 +85,7 @@ function let__<A, K, N extends string>(
 /**
  * Binds a value in a `do` scope
  */
-export function let_<R2, E2, A, K, N extends string>(
+export function bindValue_<R2, E2, A, K, N extends string>(
   mk: Managed<R2, E2, K>,
   tag: Exclude<N, keyof K>,
   f: (_: K) => A
@@ -109,6 +109,6 @@ export function let_<R2, E2, A, K, N extends string>(
 /**
  * Begin a `do` scope
  */
-const do_ = succeedNow({})
-
-export { let__ as let, do_ as do }
+export function Do() {
+  return succeedNow({})
+}

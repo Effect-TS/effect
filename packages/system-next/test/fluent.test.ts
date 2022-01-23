@@ -18,7 +18,7 @@ interface EnvC {
   readonly c: number
 }
 const EnvC = tag<EnvC>(Symbol.for("effect-ts/system/test/fluent/env-c"))
-const LiveEnvC = Effect.do
+const LiveEnvC = Effect.Do()
   .bind("a", () => Effect.service(EnvA))
   .bind("b", () => Effect.service(EnvB))
   .map(({ a, b }) => EnvC.has({ c: a.a + b.b }))
@@ -34,7 +34,7 @@ describe("Effect Fluent API", () => {
   })
   it("should use pipe operator", async () => {
     const program =
-      T.do |
+      T.Do() |
       T.bind("envA", () => T.service(EnvA)) |
       T.bind("envB", () => T.service(EnvB)) |
       T.bind("envC", () => T.service(EnvC)) |
@@ -52,7 +52,7 @@ describe("Effect Fluent API", () => {
     expect(c).toEqual(3)
   })
   it("should access and provide", async () => {
-    const program = Effect.do
+    const program = Effect.Do()
       .bind("envA", () => Effect.service(EnvA))
       .bind("envB", () => Effect.service(EnvB))
       .bind("envC", () => Effect.service(EnvC))
