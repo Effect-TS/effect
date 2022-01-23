@@ -1,4 +1,5 @@
 import { Effect } from "../src/Effect"
+import * as T from "../src/Effect"
 import { tag } from "../src/Has"
 
 interface EnvA {
@@ -28,6 +29,19 @@ describe("Effect Fluent API", () => {
     const result = await Effect.succeed(0)
       .map((n) => n + 1)
       .unsafeRunPromise()
+
+    expect(result).toEqual(1)
+  })
+  it("should use pipe operator", async () => {
+    const program =
+      T.do |
+      T.bind("envA", () => T.service(EnvA)) |
+      T.bind("envB", () => T.service(EnvB)) |
+      T.bind("envC", () => T.service(EnvC)) |
+      T.orElse(T.die("hello")) |
+      T.provideSomeLayer(LiveEnvA + LiveEnvB > LiveEnvC)
+
+    const result = await (program | T.unsafeRunPromise)
 
     expect(result).toEqual(1)
   })
