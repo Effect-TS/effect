@@ -9,17 +9,17 @@
  * (http://www.apache.org/licenses/LICENSE-2.0).
  */
 
-import type { LinkedList } from "../definition"
-import { _Nil, cons, isNil } from "../definition"
+import type { List } from "../core"
+import { _Nil, cons, isNil } from "../core"
 
 /**
  * @ets_data_first take_
  */
-export function take(n: number): <A>(self: LinkedList<A>) => LinkedList<A> {
+export function take(n: number): <A>(self: List<A>) => List<A> {
   return (self) => take_(self, n)
 }
 
-export function take_<A>(self: LinkedList<A>, n: number): LinkedList<A> {
+export function take_<A>(self: List<A>, n: number): List<A> {
   if (isNil(self) || n <= 0) {
     return _Nil
   } else {

@@ -10,9 +10,10 @@
  */
 
 import * as O from "../../../../Option"
-import type { LinkedList } from "../definition"
-import { isNil } from "../definition"
+import type { List } from "../core"
+import { isNil } from "../core"
+import { unsafeLast } from "./unsafeLast"
 
-export function tail<A>(self: LinkedList<A>): O.Option<LinkedList<A>> {
-  return isNil(self) ? O.none : O.some(self.tail)
+export function last<A>(self: List<A>): O.Option<A> {
+  return isNil(self) ? O.none : O.some(unsafeLast(self)!)
 }

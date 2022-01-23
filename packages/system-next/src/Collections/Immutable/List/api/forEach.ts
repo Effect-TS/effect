@@ -9,17 +9,17 @@
  * (http://www.apache.org/licenses/LICENSE-2.0).
  */
 
-import type { LinkedList } from "../definition"
-import { isNil } from "../definition"
+import type { List } from "../core"
+import { isNil } from "../core"
 
 /**
  * @ets_data_first forEach_
  */
-export function forEach<A, U>(f: (a: A) => U): (self: LinkedList<A>) => void {
+export function forEach<A, U>(f: (a: A) => U): (self: List<A>) => void {
   return (list) => forEach_(list, f)
 }
 
-export function forEach_<A, U>(self: LinkedList<A>, f: (a: A) => U): void {
+export function forEach_<A, U>(self: List<A>, f: (a: A) => U): void {
   let these = self
   while (!isNil(these)) {
     f(these.head)

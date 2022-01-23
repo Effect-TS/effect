@@ -13,12 +13,12 @@ import type { HasEquals } from "../../../Structural/HasEquals"
 
 export class Cons<A> implements Iterable<A>, HasEquals {
   readonly _tag = "Cons"
-  constructor(readonly head: A, public tail: LinkedList<A>) {}
+  constructor(readonly head: A, public tail: List<A>) {}
 
   [Symbol.iterator](): Iterator<A> {
     let done = false
     // eslint-disable-next-line @typescript-eslint/no-this-alias
-    let these: LinkedList<A> = this
+    let these: List<A> = this
     return {
       next() {
         if (done) {
@@ -71,28 +71,28 @@ export class Nil<A> implements Iterable<A>, HasEquals {
 
 export const _Nil = new Nil<never>()
 
-export type LinkedList<A> = Cons<A> | Nil<A>
+export type List<A> = Cons<A> | Nil<A>
 
 export function nil<A>(): Nil<A> {
   return _Nil
 }
 
-export function cons<A>(head: A, tail: LinkedList<A>): Cons<A> {
+export function cons<A>(head: A, tail: List<A>): Cons<A> {
   return new Cons(head, tail)
 }
 
-export function isNil<A>(self: LinkedList<A>): self is Nil<A> {
+export function isNil<A>(self: List<A>): self is Nil<A> {
   return self._tag === "Nil"
 }
 
-export function isCons<A>(self: LinkedList<A>): self is Cons<A> {
+export function isCons<A>(self: List<A>): self is Cons<A> {
   return self._tag === "Cons"
 }
 
 /**
- * Returns the number of elements contained in a `LinkedList`
+ * Returns the number of elements contained in a `List`
  */
-export function length<A>(self: LinkedList<A>): number {
+export function length<A>(self: List<A>): number {
   let these = self
   let len = 0
   while (!isNil(these)) {
@@ -106,15 +106,15 @@ export function length<A>(self: LinkedList<A>): number {
  * @ets_data_first equalsWith_
  */
 export function equalsWith<A>(
-  that: LinkedList<A>,
+  that: List<A>,
   f: (a: A, b: A) => boolean
-): (self: LinkedList<A>) => boolean {
+): (self: List<A>) => boolean {
   return (self) => equalsWith_(self, that, f)
 }
 
 export function equalsWith_<A>(
-  self: LinkedList<A>,
-  that: LinkedList<A>,
+  self: List<A>,
+  that: List<A>,
   f: (a: A, b: A) => boolean
 ): boolean {
   if (self === that) {

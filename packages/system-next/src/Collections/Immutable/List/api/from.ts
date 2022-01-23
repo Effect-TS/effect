@@ -9,13 +9,13 @@
  * (http://www.apache.org/licenses/LICENSE-2.0).
  */
 
-import type { LinkedList } from "../definition"
-import { _Nil, Cons } from "../definition"
+import type { List } from "../core"
+import { _Nil, Cons } from "../core"
 
 /**
- * Constructs a new `LinkedList` from an `Iterable`
+ * Constructs a new `List` from an `Iterable`
  */
-export function from<A>(prefix: Iterable<A>): LinkedList<A> {
+export function from<A>(prefix: Iterable<A>): List<A> {
   const iter = prefix[Symbol.iterator]()
   let a: IteratorResult<A>
   if (!(a = iter.next()).done) {

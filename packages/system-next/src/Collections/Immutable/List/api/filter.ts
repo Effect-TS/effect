@@ -11,27 +11,23 @@
 
 import type { Predicate } from "../../../../Function"
 import { unsafeCoerce } from "../../../../Function"
-import type { LinkedList } from "../definition"
-import { _Nil, Cons, cons, isNil } from "../definition"
+import type { List } from "../core"
+import { _Nil, Cons, cons, isNil } from "../core"
 import { unsafeHead } from "./unsafeHead"
 import { unsafeTail } from "./unsafeTail"
 
 /**
  * @ets_data_first filter_
  */
-export function filter<A>(p: Predicate<A>): (self: LinkedList<A>) => LinkedList<A> {
+export function filter<A>(p: Predicate<A>): (self: List<A>) => List<A> {
   return (self) => filter_(self, p)
 }
 
-export function filter_<A>(self: LinkedList<A>, p: Predicate<A>): LinkedList<A> {
+export function filter_<A>(self: List<A>, p: Predicate<A>): List<A> {
   return filterCommon_(self, p, false)
 }
 
-function noneIn<A>(
-  l: LinkedList<A>,
-  p: Predicate<A>,
-  isFlipped: boolean
-): LinkedList<A> {
+function noneIn<A>(l: List<A>, p: Predicate<A>, isFlipped: boolean): List<A> {
   while (true) {
     if (isNil(l)) {
       return _Nil
@@ -46,11 +42,11 @@ function noneIn<A>(
 }
 
 function allIn<A>(
-  start: LinkedList<A>,
-  remaining: LinkedList<A>,
+  start: List<A>,
+  remaining: List<A>,
   p: Predicate<A>,
   isFlipped: boolean
-): LinkedList<A> {
+): List<A> {
   while (true) {
     if (isNil(remaining)) {
       return start
@@ -65,11 +61,11 @@ function allIn<A>(
 }
 
 function partialFill<A>(
-  origStart: LinkedList<A>,
-  firstMiss: LinkedList<A>,
+  origStart: List<A>,
+  firstMiss: List<A>,
   p: Predicate<A>,
   isFlipped: boolean
-): LinkedList<A> {
+): List<A> {
   const newHead = cons<A>(unsafeHead(origStart)!, _Nil)
   let toProcess = unsafeTail(origStart)! as Cons<A>
   let currentLast = newHead
@@ -106,10 +102,6 @@ function partialFill<A>(
   return newHead
 }
 
-function filterCommon_<A>(
-  list: LinkedList<A>,
-  p: Predicate<A>,
-  isFlipped: boolean
-): LinkedList<A> {
+function filterCommon_<A>(list: List<A>, p: Predicate<A>, isFlipped: boolean): List<A> {
   return noneIn(list, p, isFlipped)
 }

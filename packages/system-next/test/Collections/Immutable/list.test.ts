@@ -1,12 +1,12 @@
-import * as L from "../../../src/Collections/Immutable/LinkedList"
+import * as L from "../../../src/Collections/Immutable/List"
 import * as O from "../../../src/Option"
 import * as St from "../../../src/Structural"
 
 const numbers = L.from([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
 
-describe("LinkedList", () => {
+describe("List", () => {
   describe("empty", () => {
-    it("returns the empty LinkedList", () => {
+    it("returns the empty List", () => {
       const l = L.empty()
       expect(L.length(l)).toEqual(0)
       expect(l).toEqual(L.from([]))
@@ -14,7 +14,7 @@ describe("LinkedList", () => {
   })
 
   describe("from", () => {
-    it("returns a new LinkedList from an Iterable", () => {
+    it("returns a new List from an Iterable", () => {
       let l = L.empty<number>()
       l = L.prepend_(l, 2)
       l = L.prepend_(l, 1)
@@ -24,7 +24,7 @@ describe("LinkedList", () => {
   })
 
   describe("length", () => {
-    it("returns the number of elements in the LinkedList", () => {
+    it("returns the number of elements in the List", () => {
       let l = L.empty<number>()
       for (let i = 0; i < 10; i++) {
         l = L.prepend_(l, i)
@@ -47,7 +47,7 @@ describe("LinkedList", () => {
   })
 
   describe("prepend", () => {
-    it("returns a new LinkedList with an element prepended", () => {
+    it("returns a new List with an element prepended", () => {
       let l = L.empty<number>()
       for (let i = 0; i < 10; i++) {
         l = L.prepend_(l, i)
@@ -57,21 +57,21 @@ describe("LinkedList", () => {
   })
 
   describe("prependAll", () => {
-    it("returns a new LinkedList with another LinkedList prepended", () => {
+    it("returns a new List with another List prepended", () => {
       const prefix = L.from([4, 3, 2, 1])
       let l = L.empty<number>()
       l = L.prepend_(l, 0)
       l = L.prependAll_(l, prefix)
       expect(St.equals(l, L.from([4, 3, 2, 1, 0]))).toEqual(true)
     })
-    it("returns the original LinkedList if one is empty", () => {
+    it("returns the original List if one is empty", () => {
       expect(L.prependAll_(numbers, L.empty()) === numbers).toEqual(true)
       expect(L.prependAll_(L.empty(), numbers) === numbers).toEqual(true)
     })
   })
 
   describe("map", () => {
-    it("applies a function to each element of a LinkedList, returning a new LinkedList of the results", () => {
+    it("applies a function to each element of a List, returning a new List of the results", () => {
       const l = L.from([1, 2, 3, 4])
       const mapped = L.map_(l, (n) => n * 2)
       expect(mapped).toEqual(L.from([2, 4, 6, 8]))
@@ -79,7 +79,7 @@ describe("LinkedList", () => {
   })
 
   describe("sort", () => {
-    it("returns a new LinkedList with the elements sorted according to the given compare function", () => {
+    it("returns a new List with the elements sorted according to the given compare function", () => {
       const l = L.sortWith_(L.from([9, 4, 6, 2, 7, 3, 5, 1, 8, 0]), (x, y) =>
         x < y ? -1 : x > y ? 1 : 0
       )
@@ -88,7 +88,7 @@ describe("LinkedList", () => {
   })
 
   describe("filter", () => {
-    it("returns a new LinkedList filtered with the given predicate", () => {
+    it("returns a new List filtered with the given predicate", () => {
       const l = L.filter_(numbers, (n) => n % 2 === 0)
       expect(l).toEqual(L.from([0, 2, 4, 6, 8]))
     })
@@ -113,43 +113,43 @@ describe("LinkedList", () => {
   })
 
   describe("unsafeHead", () => {
-    it("returns the first element of a LinkedList", () => {
+    it("returns the first element of a List", () => {
       expect(L.unsafeHead(numbers)).toEqual(0)
     })
-    it("returns undefined if the LinkedList is empty", () => {
+    it("returns undefined if the List is empty", () => {
       expect(L.unsafeHead(L.empty())).toEqual(undefined)
     })
   })
 
   describe("head", () => {
-    it("returns the first element of a LinkedList in an Option", () => {
+    it("returns the first element of a List in an Option", () => {
       expect(L.head(numbers)).toEqual(O.some(0))
     })
-    it("returns None if the LinkedList is empty", () => {
+    it("returns None if the List is empty", () => {
       expect(L.head(L.empty())).toEqual(O.none)
     })
   })
 
   describe("unsafeTail", () => {
-    it("returns the LinkedList with the first element excluded", () => {
+    it("returns the List with the first element excluded", () => {
       expect(L.unsafeTail(numbers)).toEqual(L.from([1, 2, 3, 4, 5, 6, 7, 8, 9]))
     })
-    it("returns undefined if the LinkedList is empty", () => {
+    it("returns undefined if the List is empty", () => {
       expect(L.unsafeTail(L.empty())).toEqual(undefined)
     })
   })
 
   describe("tail", () => {
-    it("returns the LinkedList with the first element excluded in an Option", () => {
+    it("returns the List with the first element excluded in an Option", () => {
       expect(L.tail(numbers)).toEqual(O.some(L.from([1, 2, 3, 4, 5, 6, 7, 8, 9])))
     })
-    it("returns None if the LinkedList is empty", () => {
+    it("returns None if the List is empty", () => {
       expect(L.tail(L.empty())).toEqual(O.none)
     })
   })
 
   describe("unsafeLast", () => {
-    it("returns the last element in the LinkedList", () => {
+    it("returns the last element in the List", () => {
       expect(L.unsafeLast(numbers)).toEqual(9)
     })
     it("returns undefined if the list is empty", () => {
@@ -158,7 +158,7 @@ describe("LinkedList", () => {
   })
 
   describe("last", () => {
-    it("returns the last element in the LinkedList in an Option", () => {
+    it("returns the last element in the List in an Option", () => {
       expect(L.last(numbers)).toEqual(O.some(9))
     })
     it("returns None if the list is empty", () => {
@@ -167,25 +167,25 @@ describe("LinkedList", () => {
   })
 
   describe("reverse", () => {
-    it("returns a new LinkedList with the order of elements reversed", () => {
+    it("returns a new List with the order of elements reversed", () => {
       expect(L.reverse(numbers)).toEqual(L.from([9, 8, 7, 6, 5, 4, 3, 2, 1, 0]))
     })
   })
 
   describe("take", () => {
-    it("returns a new LinkedList with the given number of elements, taken from the beginning", () => {
+    it("returns a new List with the given number of elements, taken from the beginning", () => {
       expect(L.take_(numbers, 5)).toEqual(L.from([0, 1, 2, 3, 4]))
     })
-    it("returns the original LinkedList if the given number of elements is greater than the length", () => {
+    it("returns the original List if the given number of elements is greater than the length", () => {
       expect(L.take_(numbers, 11) === numbers).toEqual(true)
     })
-    it("returns the empty LinkedList if the list is empty", () => {
+    it("returns the empty List if the list is empty", () => {
       expect(L.take_(numbers, 0)).toEqual(L.empty())
     })
   })
 
   describe("reduce", () => {
-    it("accumulates a value over a LinkedList", () => {
+    it("accumulates a value over a List", () => {
       expect(L.reduce_(numbers, 0, (b, a) => b + a)).toEqual(45)
     })
     it("returns the initial value if the list is empty", () => {
@@ -194,12 +194,12 @@ describe("LinkedList", () => {
   })
 
   describe("concat", () => {
-    it("concatenates two LinkedLists", () => {
+    it("concatenates two Lists", () => {
       expect(L.concat_(numbers, L.from([10, 11, 12, 13, 14, 15]))).toEqual(
         L.from([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
       )
     })
-    it("returns the original LinkedList if the other one is empty", () => {
+    it("returns the original List if the other one is empty", () => {
       expect(L.concat_(numbers, L.empty()) === numbers).toEqual(true)
       expect(L.concat_(L.empty(), numbers) === numbers).toEqual(true)
     })
@@ -230,7 +230,7 @@ describe("LinkedList", () => {
   })
 
   describe("builder", () => {
-    it("mutably constructs a LinkedList", () => {
+    it("mutably constructs a List", () => {
       const b = L.builder<number>()
       b.append(0)
       b.append(1)
@@ -238,7 +238,7 @@ describe("LinkedList", () => {
       expect(b.build()).toEqual(L.from([0, 1, 2]))
     })
 
-    it("returns the empty LinkedList if no element is appended", () => {
+    it("returns the empty List if no element is appended", () => {
       const b = L.builder<number>()
       expect(b.build()).toEqual(L.empty())
     })

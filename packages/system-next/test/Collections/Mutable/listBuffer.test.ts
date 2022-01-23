@@ -1,6 +1,6 @@
-import { IndexOutOfBoundsException } from "../../..//src/GlobalExceptions"
-import * as L from "../../../src/Collections/Immutable/LinkedList"
+import * as L from "../../../src/Collections/Immutable/List"
 import { ListBuffer } from "../../../src/Collections/Mutable/ListBuffer"
+import { IndexOutOfBoundsException } from "../../../src/GlobalExceptions/IndexOutOfBoundsException"
 
 describe("ListBuffer", () => {
   describe("empty", () => {
@@ -54,7 +54,7 @@ describe("ListBuffer", () => {
   })
 
   describe("unsafeTail", () => {
-    it("returns a LinkedList with the first element excluded", () => {
+    it("returns a List with the first element excluded", () => {
       const buf = ListBuffer.from([0, 1, 2])
       expect(buf.unsafeTail).toEqual(L.from([1, 2]))
     })

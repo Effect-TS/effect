@@ -9,14 +9,14 @@
  * (http://www.apache.org/licenses/LICENSE-2.0).
  */
 
-import { IndexOutOfBoundsException } from "../../../GlobalExceptions/IndexOutOfBoundsException"
-import { NoSuchElementException } from "../../../GlobalExceptions/NoSuchElementException"
-import * as L from "../../Immutable/LinkedList/definition"
-import { reduce_ } from "../../Immutable/LinkedList/operations/reduce"
-import { unsafeTail } from "../../Immutable/LinkedList/operations/unsafeTail"
+import { IndexOutOfBoundsException } from "../../GlobalExceptions/IndexOutOfBoundsException"
+import { NoSuchElementException } from "../../GlobalExceptions/NoSuchElementException"
+import { reduce_ } from "../Immutable/List/api/reduce"
+import { unsafeTail } from "../Immutable/List/api/unsafeTail"
+import * as L from "../Immutable/List/core"
 
 export class ListBuffer<A> implements Iterable<A> {
-  private first: L.LinkedList<A> = L._Nil
+  private first: L.List<A> = L._Nil
   private last0: L.Cons<A> | undefined = undefined
   private len = 0;
 
@@ -51,7 +51,7 @@ export class ListBuffer<A> implements Iterable<A> {
     return (this.first as L.Cons<A>).head
   }
 
-  get unsafeTail(): L.LinkedList<A> | undefined {
+  get unsafeTail(): L.List<A> | undefined {
     if (this.isEmpty) {
       return undefined
     }
@@ -85,7 +85,7 @@ export class ListBuffer<A> implements Iterable<A> {
     return h
   }
 
-  get toList(): L.LinkedList<A> {
+  get toList(): L.List<A> {
     return this.first
   }
 
@@ -114,7 +114,7 @@ export class ListBuffer<A> implements Iterable<A> {
     return reduce_(this.first, b, f)
   }
 
-  private getNext(p: L.LinkedList<A> | undefined): L.LinkedList<A> {
+  private getNext(p: L.List<A> | undefined): L.List<A> {
     if (p === undefined) {
       return this.first
     } else {
@@ -122,7 +122,7 @@ export class ListBuffer<A> implements Iterable<A> {
     }
   }
 
-  private locate(i: number): L.LinkedList<A> | undefined {
+  private locate(i: number): L.List<A> | undefined {
     if (i === 0) {
       return undefined
     } else if (i === this.len) {

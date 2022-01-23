@@ -11,17 +11,17 @@
 
 import type { Predicate } from "../../../../Function"
 import * as O from "../../../../Option"
-import type { LinkedList } from "../definition"
-import { isNil } from "../definition"
+import type { List } from "../core"
+import { isNil } from "../core"
 
 /**
  * @ets_data_first find_
  */
-export function find<A>(p: Predicate<A>): (self: LinkedList<A>) => O.Option<A> {
+export function find<A>(p: Predicate<A>): (self: List<A>) => O.Option<A> {
   return (self) => find_(self, p)
 }
 
-export function find_<A>(self: LinkedList<A>, p: Predicate<A>): O.Option<A> {
+export function find_<A>(self: List<A>, p: Predicate<A>): O.Option<A> {
   let these = self
   while (!isNil(these)) {
     if (p(these.head)) {

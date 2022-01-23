@@ -9,17 +9,17 @@
  * (http://www.apache.org/licenses/LICENSE-2.0).
  */
 
-import type { LinkedList } from "../definition"
-import { isNil } from "../definition"
+import type { List } from "../core"
+import { isNil } from "../core"
 
 /**
  * @dataFirst reduce_
  */
-export function reduce<A, B>(b: B, f: (b: B, a: A) => B): (self: LinkedList<A>) => B {
+export function reduce<A, B>(b: B, f: (b: B, a: A) => B): (self: List<A>) => B {
   return (self) => reduce_(self, b, f)
 }
 
-export function reduce_<A, B>(self: LinkedList<A>, b: B, f: (b: B, a: A) => B): B {
+export function reduce_<A, B>(self: List<A>, b: B, f: (b: B, a: A) => B): B {
   let acc = b
   let these = self
   while (!isNil(these)) {

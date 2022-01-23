@@ -11,8 +11,8 @@
 
 import type { Ordering } from "../../../../Ordering"
 import { ListBuffer } from "../../../Mutable/ListBuffer"
-import type { LinkedList } from "../definition"
-import { isNil, length } from "../definition"
+import type { List } from "../core"
+import { isNil, length } from "../core"
 import { unsafeHead } from "./unsafeHead"
 
 /**
@@ -20,14 +20,14 @@ import { unsafeHead } from "./unsafeHead"
  */
 export function sortWith<A>(
   compare: (x: A, y: A) => Ordering
-): (self: LinkedList<A>) => LinkedList<A> {
+): (self: List<A>) => List<A> {
   return (self) => sortWith_(self, compare)
 }
 
 export function sortWith_<A>(
-  self: LinkedList<A>,
+  self: List<A>,
   compare: (x: A, y: A) => Ordering
-): LinkedList<A> {
+): List<A> {
   const len = length(self)
   const b = new ListBuffer<A>()
   if (len === 1) {
@@ -46,7 +46,7 @@ export function sortWith_<A>(
   return b.toList
 }
 
-function copyToArrayWithIndex<A>(list: LinkedList<A>, arr: Array<[number, A]>): void {
+function copyToArrayWithIndex<A>(list: List<A>, arr: Array<[number, A]>): void {
   let these = list
   let i = 0
   while (!isNil(these)) {

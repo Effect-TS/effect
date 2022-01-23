@@ -10,9 +10,9 @@
  */
 
 import * as O from "../../../../Option"
-import type { LinkedList } from "../definition"
-import { isNil } from "../definition"
+import type { List } from "../core"
+import { isNil } from "../core"
 
-export function head<A>(self: LinkedList<A>): O.Option<A> {
+export function head<A>(self: List<A>): O.Option<A> {
   return isNil(self) ? O.none : O.some(self.head)
 }

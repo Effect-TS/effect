@@ -9,15 +9,15 @@
  * (http://www.apache.org/licenses/LICENSE-2.0).
  */
 
-import type { LinkedList } from "../definition"
-import { isNil } from "../definition"
+import type { List } from "../core"
+import { isNil } from "../core"
 import { empty } from "./empty"
 import { prepend_ } from "./prepend"
 
 /**
- * Reverses a `LinkedList`, returning a new `LinkedList`
+ * Reverses a `List`, returning a new `List`
  */
-export function reverse<A>(self: LinkedList<A>): LinkedList<A> {
+export function reverse<A>(self: List<A>): List<A> {
   let result = empty<A>()
   let these = self
   while (!isNil(these)) {

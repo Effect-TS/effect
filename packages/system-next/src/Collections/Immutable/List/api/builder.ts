@@ -1,9 +1,9 @@
 import { ListBuffer } from "../../../Mutable/ListBuffer"
 
-export class LinkedListBuilder<A> {
+export class ListBuilder<A> {
   constructor(private buffer: ListBuffer<A>) {}
 
-  append(a: A): LinkedListBuilder<A> {
+  append(a: A): ListBuilder<A> {
     this.buffer.append(a)
     return this
   }
@@ -13,6 +13,6 @@ export class LinkedListBuilder<A> {
   }
 }
 
-export function builder<A>(): LinkedListBuilder<A> {
-  return new LinkedListBuilder(new ListBuffer())
+export function builder<A>(): ListBuilder<A> {
+  return new ListBuilder(new ListBuffer())
 }

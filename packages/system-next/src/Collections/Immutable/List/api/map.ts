@@ -9,19 +9,19 @@
  * (http://www.apache.org/licenses/LICENSE-2.0).
  */
 
-import type { LinkedList } from "../definition"
-import { _Nil, cons, isNil } from "../definition"
+import type { List } from "../core"
+import { _Nil, cons, isNil } from "../core"
 
 /**
  * @ets_data_first map_
  */
-export function map<A, B>(f: (a: A) => B): (self: LinkedList<A>) => LinkedList<B> {
+export function map<A, B>(f: (a: A) => B): (self: List<A>) => List<B> {
   return (self) => map_(self, f)
 }
 
-export function map_<A, B>(self: LinkedList<A>, f: (a: A) => B): LinkedList<B> {
+export function map_<A, B>(self: List<A>, f: (a: A) => B): List<B> {
   if (isNil(self)) {
-    return self as LinkedList<B>
+    return self as List<B>
   } else {
     const h = cons(f(self.head), _Nil)
     let t = h

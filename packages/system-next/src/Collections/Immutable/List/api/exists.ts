@@ -10,17 +10,17 @@
  */
 
 import type { Predicate } from "../../../../Function"
-import type { LinkedList } from "../definition"
-import { isNil } from "../definition"
+import type { List } from "../core"
+import { isNil } from "../core"
 
 /**
  * @ets_data_first exists_
  */
-export function exists<A>(p: Predicate<A>): (self: LinkedList<A>) => boolean {
+export function exists<A>(p: Predicate<A>): (self: List<A>) => boolean {
   return (self) => exists_(self, p)
 }
 
-export function exists_<A>(self: LinkedList<A>, p: Predicate<A>): boolean {
+export function exists_<A>(self: List<A>, p: Predicate<A>): boolean {
   let these = self
   while (!isNil(these)) {
     if (p(these.head)) {

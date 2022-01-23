@@ -9,22 +9,17 @@
  * (http://www.apache.org/licenses/LICENSE-2.0).
  */
 
-import type { LinkedList } from "../definition"
-import { cons, isNil } from "../definition"
+import type { List } from "../core"
+import { cons, isNil } from "../core"
 
 /**
  * @ets_data_first prependAll_
  */
-export function prependAll<B>(
-  prefix: LinkedList<B>
-): <A>(self: LinkedList<A>) => LinkedList<A | B> {
+export function prependAll<B>(prefix: List<B>): <A>(self: List<A>) => List<A | B> {
   return (self) => prependAll_(self, prefix)
 }
 
-export function prependAll_<A, B>(
-  self: LinkedList<A>,
-  prefix: LinkedList<B>
-): LinkedList<A | B> {
+export function prependAll_<A, B>(self: List<A>, prefix: List<B>): List<A | B> {
   if (isNil(self)) {
     return prefix
   } else if (isNil(prefix)) {

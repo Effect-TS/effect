@@ -9,22 +9,17 @@
  * (http://www.apache.org/licenses/LICENSE-2.0).
  */
 
-import type { LinkedList } from "../definition"
-import { _Nil, Cons, isNil } from "../definition"
+import type { List } from "../core"
+import { _Nil, Cons, isNil } from "../core"
 
 /**
  * @ets_data_first chain_
  */
-export function chain<A, B>(
-  f: (a: A) => LinkedList<B>
-): (ma: LinkedList<A>) => LinkedList<B> {
+export function chain<A, B>(f: (a: A) => List<B>): (ma: List<A>) => List<B> {
   return (ma) => chain_(ma, f)
 }
 
-export function chain_<A, B>(
-  self: LinkedList<A>,
-  f: (a: A) => LinkedList<B>
-): LinkedList<B> {
+export function chain_<A, B>(self: List<A>, f: (a: A) => List<B>): List<B> {
   let rest = self
   let h: Cons<B> | undefined = undefined
   let t: Cons<B> | undefined = undefined

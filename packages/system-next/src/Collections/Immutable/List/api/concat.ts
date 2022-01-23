@@ -9,21 +9,16 @@
  * (http://www.apache.org/licenses/LICENSE-2.0).
  */
 
-import type { LinkedList } from "../definition"
+import type { List } from "../core"
 import { prependAll_ } from "./prependAll"
 
 /**
  * @ets_data_first concat_
  */
-export function concat<B>(
-  that: LinkedList<B>
-): <A>(self: LinkedList<A>) => LinkedList<A | B> {
+export function concat<B>(that: List<B>): <A>(self: List<A>) => List<A | B> {
   return (self) => concat_(self, that)
 }
 
-export function concat_<A, B>(
-  self: LinkedList<A>,
-  that: LinkedList<B>
-): LinkedList<A | B> {
+export function concat_<A, B>(self: List<A>, that: List<B>): List<A | B> {
   return prependAll_(that, self)
 }

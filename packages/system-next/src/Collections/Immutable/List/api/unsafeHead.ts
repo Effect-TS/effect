@@ -9,10 +9,10 @@
  * (http://www.apache.org/licenses/LICENSE-2.0).
  */
 
-import type { LinkedList } from "../definition"
-import { isNil } from "../definition"
+import type { List } from "../core"
+import { isNil } from "../core"
 
-export function unsafeHead<A>(self: LinkedList<A>): A | undefined {
+export function unsafeHead<A>(self: List<A>): A | undefined {
   if (isNil(self)) {
     return undefined
   }
