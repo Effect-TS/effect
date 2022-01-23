@@ -10,7 +10,9 @@
     "preserveSymlinks": true,
     "moduleResolution": "node",
     "noEmit": false,
-    "lib": ["es2020"],
+    "lib": [
+      "es2020"
+    ],
     "sourceMap": true,
     "declarationMap": true,
     "strict": true,
@@ -30,15 +32,14 @@
     "noUncheckedIndexedAccess": true,
     "strictNullChecks": true,
     "baseUrl": ".",
-    "paths": {
-      "@effect-ts/core/*": ["packages/core/build/dts/*"],
-      "@effect-ts/core": ["packages/core/build/dts"],
-      "@effect-ts/system/*": ["packages/system/build/dts/*"],
-      "@effect-ts/system": ["packages/system/build/dts"],
-      "@effect-ts/tracing-plugin/*": ["packages/tracing-plugin/build/dts/*"],
-      "@effect-ts/tracing-plugin": ["packages/tracing-plugin/build/dts"]
-    },
-    "target": "ES2018"
+    "target": "ES2018",
+    "typeRoots": [
+      "./node_modules/@types"
+    ]
   },
-  "exclude": ["node_modules", "build", "dist"]
+  "exclude": [
+    "node_modules",
+    "build",
+    "dist"
+  ]
 }

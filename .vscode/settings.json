@@ -2,6 +2,7 @@
   "typescript.tsdk": "node_modules/typescript/lib",
   "editor.formatOnSave": true,
   "eslint.format.enable": true,
+  "explorer.sortOrder": "mixed",
   "[javascript]": {
     "editor.defaultFormatter": "dbaeumer.vscode-eslint"
   },
