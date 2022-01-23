@@ -1,6 +1,6 @@
 import type * as Tp from "../../Tuple"
+import { concreteId } from "../_definition"
 import type * as Chunk from "../core"
-import { concreteId } from "../definition"
 import { splitAt_ } from "./splitAt"
 /**
  * Splits this chunk on the first element that matches this predicate.

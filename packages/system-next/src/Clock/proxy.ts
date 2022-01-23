@@ -1,5 +1,5 @@
 import type { UIO } from "../Effect/definition"
-import { Clock } from "./Clock"
+import { Clock } from "./definition"
 
 export class ProxyClock extends Clock {
   constructor(

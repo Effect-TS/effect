@@ -1,6 +1,6 @@
+import type { Chunk } from "../_definition"
+import { concreteId } from "../_definition"
 import { append_, empty } from "../core"
-import type { Chunk } from "../definition"
-import { concreteId } from "../definition"
 
 /**
  * Zips with chunk with the specified chunk to produce a new chunk with

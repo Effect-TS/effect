@@ -2,8 +2,8 @@ import type { Effect } from "../../../../Effect/definition"
 import { chain_ } from "../../../../Effect/operations/chain"
 import { succeedNow } from "../../../../Effect/operations/succeedNow"
 import { suspendSucceed } from "../../../../Effect/operations/suspendSucceed"
+import { concreteId } from "../_definition"
 import type * as Chunk from "../core"
-import { concreteId } from "../definition"
 
 function loop<A, R, E, S>(
   s: S,

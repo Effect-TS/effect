@@ -1,5 +1,5 @@
+import { concreteId } from "../_definition"
 import * as Chunk from "../core"
-import { concreteId } from "../definition"
 import { forEach_ } from "./forEach"
 
 /**

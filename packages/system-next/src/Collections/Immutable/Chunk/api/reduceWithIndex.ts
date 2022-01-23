@@ -1,5 +1,5 @@
+import { ArrTypeId, concrete, SingletonTypeId } from "../_definition"
 import type * as Chunk from "../core"
-import { ArrTypeId, concrete, SingletonTypeId } from "../definition"
 
 /**
  * Folds over the elements in this chunk from the left.

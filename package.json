@@ -21,15 +21,16 @@
     "version:prepatch": "lerna version prepatch --conventional-commits",
     "version:patch": "lerna version patch --conventional-commits",
     "version:graduate": "lerna version --conventional-commits --conventional-graduate",
+    "version": "yarn && git add yarn.lock && git add package.json && git commit -m \"chore: update package.json and yarn.lock\"",
     "commit": "cz",
     "ets:rimraf": "cd $INIT_CWD && rimraf",
     "ets:tsc": "cd $INIT_CWD && tsc",
+    "ets:madge": "cd $INIT_CWD && madge",
     "ets:eslint": "cd $INIT_CWD && eslint",
     "ets:prettier": "cd $INIT_CWD && prettier",
     "ets:concurrently": "cd $INIT_CWD && concurrently",
     "ets:ts-node": "cd $INIT_CWD && ts-node",
-    "ets:esbuild": "cd $INIT_CWD && esbuild",
-    "version": "yarn && git add yarn.lock && git add package.json && git commit -m \"chore: update package.json and yarn.lock\""
+    "ets:esbuild": "cd $INIT_CWD && esbuild"
   },
   "config": {
     "commitizen": {
@@ -71,6 +72,7 @@
     "husky": "7.0.4",
     "jest": "^27.4.7",
     "lerna": "^4.0.0",
+    "madge": "^5.0.1",
     "prettier": "^2.5.1",
     "reflect-metadata": "^0.1.13",
     "rimraf": "^3.0.2",

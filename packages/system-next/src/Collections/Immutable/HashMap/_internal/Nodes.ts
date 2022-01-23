@@ -1,10 +1,10 @@
-import type { Equal } from "../../../Equal"
-import * as O from "../../../Option"
-import { Stack } from "../../../Stack"
-import * as St from "../../../Structural"
-import { arraySpliceIn, arraySpliceOut, arrayUpdate } from "./_internal/Array"
-import { fromBitmap, hashFragment, toBitmap } from "./_internal/Bitwise"
-import { MAX_INDEX_NODE, MIN_ARRAY_NODE, SIZE } from "./_internal/Config"
+import type { Equal } from "../../../../Equal"
+import * as O from "../../../../Option"
+import { Stack } from "../../../../Stack"
+import * as St from "../../../../Structural"
+import { arraySpliceIn, arraySpliceOut, arrayUpdate } from "./Array"
+import { fromBitmap, hashFragment, toBitmap } from "./Bitwise"
+import { MAX_INDEX_NODE, MIN_ARRAY_NODE, SIZE } from "./Config"
 
 export type Node<K, V> =
   | LeafNode<K, V>

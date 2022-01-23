@@ -1,5 +1,5 @@
+import { concreteId } from "../_definition"
 import type * as Chunk from "../core"
-import { concreteId } from "../definition"
 
 /**
  * Determines whether a predicate is satisfied for all elements of this chunk.

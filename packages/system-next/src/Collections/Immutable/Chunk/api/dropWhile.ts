@@ -1,5 +1,5 @@
+import { ArrTypeId, concrete } from "../_definition"
 import * as Chunk from "../core"
-import { ArrTypeId, concrete } from "../definition"
 
 /**
  * Drops all elements so long as the predicate returns true.

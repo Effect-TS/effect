@@ -1,5 +1,5 @@
+import { ArrTypeId, concrete } from "../_definition"
 import type * as Chunk from "../core"
-import { ArrTypeId, concrete } from "../definition"
 
 /**
  * Iterate over the chunk applying f

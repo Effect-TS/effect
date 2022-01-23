@@ -1,6 +1,6 @@
 import * as O from "../../../../Option"
+import { concreteId } from "../_definition"
 import * as Chunk from "../core"
-import { concreteId } from "../definition"
 
 /**
  * Returns the last index of the element that satisfies the predicate.

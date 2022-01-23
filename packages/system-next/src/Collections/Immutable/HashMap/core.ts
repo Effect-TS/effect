@@ -5,10 +5,10 @@ import * as I from "../../../Iterable"
 import * as O from "../../../Option"
 import * as St from "../../../Structural"
 import * as Tp from "../Tuple"
-import { fromBitmap, hashFragment, toBitmap } from "./Bitwise"
-import { SIZE } from "./Config"
-import type { Node, UpdateFn } from "./Nodes"
-import { Empty, isEmptyNode } from "./Nodes"
+import { fromBitmap, hashFragment, toBitmap } from "./_internal/Bitwise"
+import { SIZE } from "./_internal/Config"
+import type { Node, UpdateFn } from "./_internal/Nodes"
+import { Empty, isEmptyNode } from "./_internal/Nodes"
 
 export class HashMap<K, V> implements Iterable<readonly [K, V]> {
   readonly _K!: () => K

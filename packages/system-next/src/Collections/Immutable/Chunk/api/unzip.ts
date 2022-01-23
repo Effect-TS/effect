@@ -1,6 +1,6 @@
 import * as Tp from "../../Tuple"
+import type { Chunk } from "../_definition"
 import { append_, empty } from "../core"
-import type { Chunk } from "../definition"
 import { forEach_ } from "./forEach"
 
 /**

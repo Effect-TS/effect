@@ -3,8 +3,8 @@ import { chain_ } from "../../../../Effect/operations/chain"
 import { map_ } from "../../../../Effect/operations/map"
 import { succeedNow } from "../../../../Effect/operations/succeedNow"
 import { suspendSucceed } from "../../../../Effect/operations/suspendSucceed"
+import { concreteId } from "../_definition"
 import * as Chunk from "../core"
-import { concreteId } from "../definition"
 
 /**
  * Drops all elements so long as the predicate returns true.

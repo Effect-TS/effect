@@ -1,6 +1,6 @@
 import type { Refinement } from "../../../../Function"
+import { ArrTypeId, concrete } from "../_definition"
 import * as Chunk from "../core"
-import { ArrTypeId, concrete } from "../definition"
 
 /**
  * Returns a filtered subset of this chunk.

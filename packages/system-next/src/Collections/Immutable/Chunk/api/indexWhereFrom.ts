@@ -1,5 +1,5 @@
+import { concreteId } from "../_definition"
 import type * as Chunk from "../core"
-import { concreteId } from "../definition"
 
 /**
  * Returns the first index for which the given predicate is satisfied after or at some given index.

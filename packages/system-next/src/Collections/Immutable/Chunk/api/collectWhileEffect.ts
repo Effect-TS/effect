@@ -3,8 +3,8 @@ import { map_ } from "../../../../Effect/operations/map"
 import { succeedNow } from "../../../../Effect/operations/succeedNow"
 import { zipWith_ } from "../../../../Effect/operations/zipWith"
 import * as O from "../../../../Option"
+import * as ChunkDef from "../_definition"
 import * as Chunk from "../core"
-import * as ChunkDef from "../definition"
 
 /**
  * Transforms all elements of the chunk for as long as the specified partial function is defined.

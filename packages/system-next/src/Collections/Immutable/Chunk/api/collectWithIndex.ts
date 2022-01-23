@@ -1,6 +1,6 @@
 import * as O from "../../../../Option"
+import * as ChunkDef from "../_definition"
 import * as Chunk from "../core"
-import * as ChunkDef from "../definition"
 
 /**
  * Returns a filtered, mapped subset of the elements of this chunk.

@@ -3,7 +3,7 @@ import { ArrayIndexOutOfBoundsException } from "../../../GlobalExceptions"
 import * as O from "../../../Option"
 import * as St from "../../../Structural"
 import * as A from "../Array"
-import type { Chunk } from "./definition"
+import type { Chunk } from "./_definition"
 import {
   _Empty,
   concrete,
@@ -14,9 +14,9 @@ import {
   SingletonTypeId,
   Slice,
   SliceTypeId
-} from "./definition"
+} from "./_definition"
 
-export * from "./definition"
+export * from "./_definition"
 
 /**
  * Builds a chunk of a single value

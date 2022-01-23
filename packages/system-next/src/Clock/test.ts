@@ -5,7 +5,7 @@ import { succeed } from "../Effect/operations/succeed"
 import { unit } from "../Effect/operations/unit"
 import type { Has, Tag } from "../Has"
 import { tag } from "../Has"
-import { Clock, ClockId } from "./Clock"
+import { Clock, ClockId } from "./definition"
 
 export const HasTestClock: Tag<TestClock> = tag<TestClock>(ClockId)
 

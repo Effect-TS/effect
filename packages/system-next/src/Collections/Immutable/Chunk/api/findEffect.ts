@@ -3,8 +3,8 @@ import { chain_ } from "../../../../Effect/operations/chain"
 import { succeedNow } from "../../../../Effect/operations/succeedNow"
 import { suspendSucceed } from "../../../../Effect/operations/suspendSucceed"
 import * as O from "../../../../Option"
+import { concreteId } from "../_definition"
 import type * as Chunk from "../core"
-import { concreteId } from "../definition"
 
 /**
  * Returns the first element that satisfies the effectful predicate.

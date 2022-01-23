@@ -1,6 +1,6 @@
 import * as Tp from "../../Tuple"
+import { concreteId } from "../_definition"
 import * as Chunk from "../core"
-import { concreteId } from "../definition"
 
 /**
  * Statefully maps over the chunk, producing new elements of type `B`.

@@ -1,4 +1,4 @@
-import type { Chunk } from "../definition"
+import type { Chunk } from "../_definition"
 import { reduce_ } from "./reduce"
 
 /**

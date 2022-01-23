@@ -1,7 +1,7 @@
 import { RuntimeError } from "../../Cause"
+import type { Chunk } from "../../Collections/Immutable/Chunk/_definition"
 import { fill as chunkFill } from "../../Collections/Immutable/Chunk/api/fill"
 import { from as chunkFrom } from "../../Collections/Immutable/Chunk/core"
-import type { Chunk } from "../../Collections/Immutable/Chunk/definition"
 import type { Effect } from "../../Effect"
 import { absolve as absolve_1 } from "../../Effect/operations/absolve"
 import { async as effectAsync } from "../../Effect/operations/async"

@@ -3,7 +3,7 @@ import { asyncInterrupt } from "../Effect/operations/asyncInterrupt"
 import { succeed } from "../Effect/operations/succeed"
 import { unit } from "../Effect/operations/unit"
 import { left } from "../Either"
-import { Clock } from "./Clock"
+import { Clock } from "./definition"
 
 export class LiveClock extends Clock {
   currentTime: UIO<number> = succeed(() => new Date().getTime())

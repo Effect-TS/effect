@@ -4,8 +4,8 @@ import { map_ } from "../../../../Effect/operations/map"
 import { succeedNow } from "../../../../Effect/operations/succeedNow"
 import { suspendSucceed } from "../../../../Effect/operations/suspendSucceed"
 import * as Tp from "../../Tuple"
+import { concreteId } from "../_definition"
 import * as Chunk from "../core"
-import { concreteId } from "../definition"
 
 /**
  * Statefully and effectfully maps over the elements of this chunk to produce

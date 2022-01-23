@@ -1,8 +1,8 @@
 import type { Effect } from "../../../../Effect/definition"
 import { chain_ } from "../../../../Effect/operations/chain"
 import { succeedNow } from "../../../../Effect/operations/succeedNow"
+import { concrete, SingletonTypeId } from "../_definition"
 import type * as Chunk from "../core"
-import { concrete, SingletonTypeId } from "../definition"
 import { reduceRight_ } from "./reduceRight"
 
 /**

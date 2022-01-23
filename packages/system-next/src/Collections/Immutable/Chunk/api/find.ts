@@ -1,7 +1,7 @@
 import type { Refinement } from "../../../../Function"
 import * as O from "../../../../Option"
+import { concreteId } from "../_definition"
 import type * as Chunk from "../core"
-import { concreteId } from "../definition"
 
 /**
  * Returns the first element that satisfies the predicate.

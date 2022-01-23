@@ -1,6 +1,6 @@
 import * as O from "../../../../Option"
 import * as Tp from "../../Tuple"
-import type { Chunk } from "../definition"
+import type { Chunk } from "../_definition"
 import { zipAllWith_ } from "./zipAllWith"
 
 /**

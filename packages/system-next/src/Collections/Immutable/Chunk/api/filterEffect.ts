@@ -2,8 +2,8 @@ import type { Effect } from "../../../../Effect/definition"
 import { succeedNow } from "../../../../Effect/operations/succeedNow"
 import { suspendSucceed } from "../../../../Effect/operations/suspendSucceed"
 import { zipWith_ } from "../../../../Effect/operations/zipWith"
+import { concreteId } from "../_definition"
 import * as Chunk from "../core"
-import { concreteId } from "../definition"
 
 /**
  * Filters this chunk by the specified effectful predicate, retaining all elements for
