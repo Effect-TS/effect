@@ -1,6 +1,6 @@
 import * as Tp from "../../Collections/Immutable/Tuple"
 import type { IO } from "../../Effect"
-import { absolve as effectabsolve } from "../../Effect/operations/absolve"
+import { absolveNow as effectabsolve } from "../../Effect/operations/absolve"
 import * as E from "../../Either/core"
 import { matchTag_ } from "../../Utils"
 import type { XFiberRef } from "../definition"

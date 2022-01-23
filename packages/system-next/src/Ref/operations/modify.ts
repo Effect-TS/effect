@@ -21,7 +21,7 @@ export function modify_<RA, RB, EA, EB, A, B>(
     Atomic: (_) => A.modify_(_, f, __trace),
     Derived: (_) =>
       _.use((value, getEither, setEither) =>
-        T.absolve(
+        T.absolveNow(
           A.modify_(value, (s) =>
             E.fold_(
               getEither(s),
@@ -43,7 +43,7 @@ export function modify_<RA, RB, EA, EB, A, B>(
       ),
     DerivedAll: (_) =>
       _.use((value, getEither, setEither) =>
-        T.absolve(
+        T.absolveNow(
           A.modify_(value, (s) =>
             E.fold_(
               getEither(s),

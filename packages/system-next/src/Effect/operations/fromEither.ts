@@ -1,11 +1,19 @@
 import type { Either } from "../../Either"
 import { fold } from "../../Either"
 import type { LazyArg } from "../../Function"
-import type { Effect } from "../definition"
-import { chain_ } from "./chain"
-import { failNow } from "./failNow"
-import { succeed } from "./succeed"
-import { succeedNow } from "./succeedNow"
+import { Effect } from "../definition"
+
+/**
+ * Lifts an `Either` into an `Effect` value.
+ *
+ * @ets static ets/EffectOps fromEitherNow
+ */
+export function fromEitherNow<E, A>(
+  self: Either<E, A>,
+  __trace?: string
+): Effect<unknown, E, A> {
+  return Effect.fromEither(() => self)
+}
 
 /**
  * Lifts an `Either` into an `Effect` value.
@@ -16,5 +24,5 @@ export function fromEither<E, A>(
   f: LazyArg<Either<E, A>>,
   __trace?: string
 ): Effect<unknown, E, A> {
-  return chain_(succeed(f), fold(failNow, succeedNow), __trace)
+  return Effect.succeed(f).flatMap(fold(Effect.failNow, Effect.succeedNow))
 }

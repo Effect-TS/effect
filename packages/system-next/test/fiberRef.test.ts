@@ -148,7 +148,7 @@ describe("FiberRef", () => {
           T.Do(),
           T.bind("child", () => T.fork(FiberRef.make(initial))),
           // Don't use join as it inherits values from child
-          T.bind("fiberRef", ({ child }) => T.chain_(Fiber.await(child), T.Do()ne)),
+          T.bind("fiberRef", ({ child }) => T.chain_(Fiber.await(child), T.done)),
           T.bind("localValue", ({ fiberRef }) =>
             pipe(fiberRef, FiberRef.locally(update))(FiberRef.get(fiberRef))
           ),
@@ -293,7 +293,7 @@ describe("FiberRef", () => {
         pipe(
           T.Do(),
           T.bind("child", () => T.fork(FiberRef.make(initial))),
-          T.bind("fiberRef", ({ child }) => T.chain_(Fiber.await(child), T.Do()ne)),
+          T.bind("fiberRef", ({ child }) => T.chain_(Fiber.await(child), T.done)),
           T.bind("value", ({ fiberRef }) => FiberRef.get(fiberRef))
         )
       )

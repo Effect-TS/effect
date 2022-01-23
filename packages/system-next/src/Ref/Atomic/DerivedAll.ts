@@ -37,7 +37,7 @@ export class DerivedAll<EA, EB, A, B> extends XRefInternal<
 
   set(a: A): T.Effect<unknown, EA, void> {
     return this.use((value, _, setEither) =>
-      T.absolve(
+      T.absolveNow(
         modify_(value, (s) =>
           E.fold_(
             setEither(a)(s),
