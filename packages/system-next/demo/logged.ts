@@ -1,11 +1,11 @@
 import * as T from "../src/Effect"
-import { pipe } from "../src/Function"
 import * as LogLevel from "../src/LogLevel"
 
-pipe(
-  T.log(() => "yay"),
-  T.tap(() => T.logInfo(() => "ok")),
-  T.tap(() => T.logWarning(() => "maybe")),
-  LogLevel.locally(LogLevel.All),
-  T.unsafeRunPromise
+export const numbers = T.succeed(0) + T.succeed(1) + T.succeed(2)
+
+export const program = numbers.flatMap(
+  ({ tuple: [a, b, c] }) =>
+    T.log(`yay: ${a}`) > T.logInfo(`ok: ${b}`) > T.logWarning(`maybe: ${c}`)
 )
+
+program.apply(LogLevel.locally(LogLevel.All)).unsafeRunPromise()

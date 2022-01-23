@@ -7,6 +7,7 @@ import { chain_ } from "./chain"
  * produced by the effect.
  *
  * @ets fluent ets/Effect zipLeft
+ * @ets operator ets/Effect <
  */
 export function zipLeft_<R, E, A, R2, E2, A2>(
   self: Effect<R, E, A>,
