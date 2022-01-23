@@ -4,3 +4,4 @@ tsconfig.json
 .gitignore
 tsbuildinfo
 test
+artifacts
