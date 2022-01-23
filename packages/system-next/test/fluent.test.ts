@@ -1,6 +1,6 @@
-import { Effect } from "../src/Effect"
-import * as T from "../src/Effect"
-import { tag } from "../src/Has"
+import { tag } from "../src/data/Has"
+import { Effect } from "../src/io/Effect"
+import * as T from "../src/io/Effect"
 
 interface EnvA {
   readonly a: number

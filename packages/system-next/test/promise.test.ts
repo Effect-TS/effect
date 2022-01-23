@@ -1,11 +1,11 @@
-import * as Chunk from "../src/Collections/Immutable/Chunk"
-import * as Tp from "../src/Collections/Immutable/Tuple"
-import * as T from "../src/Effect"
-import * as Exit from "../src/Exit"
-import { pipe } from "../src/Function"
-import * as O from "../src/Option"
-import * as Promise from "../src/Promise"
-import * as Ref from "../src/Ref"
+import * as Chunk from "../src/collection/immutable/Chunk"
+import * as Tp from "../src/collection/immutable/Tuple"
+import { pipe } from "../src/data/Function"
+import * as O from "../src/data/Option"
+import * as T from "../src/io/Effect"
+import * as Exit from "../src/io/Exit"
+import * as Promise from "../src/io/Promise"
+import * as Ref from "../src/io/Ref"
 
 describe("Promise", () => {
   it("complete a promise using succeed", async () => {

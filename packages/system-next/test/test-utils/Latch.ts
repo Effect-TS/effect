@@ -1,6 +1,6 @@
-import * as T from "../../src/Effect"
-import { pipe } from "../../src/Function"
-import * as Promise from "../../src/Promise"
+import { pipe } from "../../src/data/Function"
+import * as T from "../../src/io/Effect"
+import * as Promise from "../../src/io/Promise"
 
 export function withLatch<R, E, A>(
   release: (_: T.UIO<void>) => T.Effect<R, E, A>

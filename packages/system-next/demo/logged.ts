@@ -1,5 +1,5 @@
-import { Effect } from "../src/Effect"
-import * as LogLevel from "../src/LogLevel"
+import { Effect } from "../src/io/Effect"
+import * as LogLevel from "../src/io/LogLevel"
 
 export const numbers = Effect.succeed(0) + Effect.succeed(1) + Effect.succeed(2)
 export const numbersPar = Effect.succeed(0) & Effect.succeed(1) & Effect.succeed(2)

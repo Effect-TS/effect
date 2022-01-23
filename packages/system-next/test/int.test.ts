@@ -1,4 +1,4 @@
-import { Int } from "../src/Int"
+import { Int } from "../src/data/Int"
 
 describe("Int", () => {
   it("should perform basic integer aritmetic", () => {
