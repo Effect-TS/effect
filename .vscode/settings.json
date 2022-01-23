@@ -10,7 +10,11 @@
     "**/.*config": true,
     "**/.git*": true,
     "**/.npmignore*": true,
-    "**/.husky": true
+    "**/.husky": true,
+    "**/node_modules": true,
+    "**/LICENSE.*": true,
+    "**/lerna.json": true,
+    "**/jest.config.js": true,
   },
   "[javascript]": {
     "editor.defaultFormatter": "dbaeumer.vscode-eslint"
