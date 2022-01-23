@@ -34,18 +34,18 @@ describe("Effect Fluent API", () => {
   })
   it("should use pipe operator", async () => {
     const program =
-      T.Do() |
-      T.bind("envA", () => T.service(EnvA)) |
-      T.bind("envB", () => T.service(EnvB)) |
-      T.bind("envC", () => T.service(EnvC)) |
-      T.orElse(() => T.dieWith("hello")) |
+      T.Do() >=
+      T.bind("envA", () => T.service(EnvA)) >=
+      T.bind("envB", () => T.service(EnvB)) >=
+      T.bind("envC", () => T.service(EnvC)) >=
+      T.orElse(() => T.dieWith("hello")) >=
       T.provideSomeLayer(LiveEnvA + LiveEnvB > LiveEnvC)
 
     const {
       envA: { a },
       envB: { b },
       envC: { c }
-    } = await (program | T.unsafeRunPromise)
+    } = await (program >= T.unsafeRunPromise)
 
     expect(a).toEqual(1)
     expect(b).toEqual(2)

@@ -1,7 +1,7 @@
 import type { Effect } from "../definition/base"
 
 /**
- * @ets operator ets/Effect |
+ * @ets operator ets/Effect >=
  * @ets fluent ets/Effect apply
  */
 export function pipeEffect<R, E, A, B>(
