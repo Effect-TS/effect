@@ -1,4 +1,4 @@
-import * as HS from "../../Collections/Immutable/HashSet/core"
+import * as HS from "../../Collections/Immutable/HashSet"
 import type { FiberId } from "../../FiberId/definition"
 import * as O from "../../Option/core"
 import type { Cause } from "../definition"

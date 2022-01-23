@@ -1,4 +1,4 @@
-import * as Tp from "../../Collections/Immutable/Tuple/core"
+import * as Tp from "../../Collections/Immutable/Tuple"
 import * as O from "../../Option/core"
 import type { Trace } from "../../Trace/definition"
 import type { Cause } from "../definition"

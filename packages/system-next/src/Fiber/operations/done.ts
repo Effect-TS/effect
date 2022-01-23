@@ -1,4 +1,4 @@
-import * as Chunk from "../../Collections/Immutable/Chunk"
+import * as Chunk from "../../Collections/Immutable/Chunk/core"
 import { succeed } from "../../Effect/operations/succeed"
 import { succeedNow } from "../../Effect/operations/succeedNow"
 import { unit } from "../../Effect/operations/unit"

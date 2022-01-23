@@ -1,7 +1,7 @@
 import { interrupt as causeInterrupt } from "../../Cause/definition"
 import { interruptors as causeInterruptors } from "../../Cause/operations/interruptors"
 import { isInterrupted as causeIsInterrupted } from "../../Cause/operations/isInterrupted"
-import type * as HashSet from "../../Collections/Immutable/HashSet/core"
+import type * as HashSet from "../../Collections/Immutable/HashSet"
 import { join as fiberJoin } from "../../Fiber/operations/join"
 import type * as FiberId from "../../FiberId"
 import type { InterruptStatus } from "../../InterruptStatus"

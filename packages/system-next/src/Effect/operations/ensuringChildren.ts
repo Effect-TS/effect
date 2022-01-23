@@ -1,4 +1,4 @@
-import type { Chunk } from "../../Collections/Immutable/Chunk"
+import type { Chunk } from "../../Collections/Immutable/Chunk/core"
 import type * as Fiber from "../../Fiber/definition"
 import { track } from "../../Supervisor/operations/track"
 import type { Effect, RIO } from "../definition"

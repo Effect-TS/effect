@@ -1,6 +1,6 @@
 import type { Cause } from "../../Cause"
 import { failures } from "../../Cause"
-import * as C from "../../Collections/Immutable/Chunk"
+import * as C from "../../Collections/Immutable/Chunk/core"
 import type { Effect } from "../definition"
 import { failCause } from "./failCause"
 import { failNow } from "./failNow"

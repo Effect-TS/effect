@@ -1,4 +1,4 @@
-import { insert, lookup } from "../../Collections/Immutable/Map/core"
+import { insert, lookup } from "../../Collections/Immutable/Map"
 import * as Tp from "../../Collections/Immutable/Tuple"
 import * as O from "../../Option"
 import * as T from "../operations/_internal/effect"

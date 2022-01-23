@@ -1,7 +1,7 @@
 import type { Canceler, IO } from "../../Effect"
 import { succeed } from "../../Effect/operations/succeed"
+import { Pending } from "../_internal/state"
 import type { Promise } from "../definition"
-import { Pending } from "../state"
 
 export function interruptJoiner_<E, A>(
   self: Promise<E, A>,

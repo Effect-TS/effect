@@ -1,4 +1,4 @@
-import type { Chunk } from "../Collections/Immutable/Chunk"
+import type { Chunk } from "../Collections/Immutable/Chunk/core"
 import type { Effect, UIO } from "../Effect"
 import type { Exit } from "../Exit"
 import type * as FiberId from "../FiberId"

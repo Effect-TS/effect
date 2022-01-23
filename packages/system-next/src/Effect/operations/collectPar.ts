@@ -1,4 +1,5 @@
-import * as Chunk from "../../Collections/Immutable/Chunk"
+import { compact } from "../../Collections/Immutable/Chunk/api/compact"
+import type * as Chunk from "../../Collections/Immutable/Chunk/core"
 import type { Option } from "../../Option"
 import type { Effect } from "../definition"
 import { forEachPar_ } from "./excl-forEach"
@@ -18,7 +19,7 @@ export function collectPar_<A, R, E, B>(
 ): Effect<R, E, Chunk.Chunk<B>> {
   return map_(
     forEachPar_(self, (a) => unsome(f(a)), __trace),
-    Chunk.compact
+    compact
   )
 }
 

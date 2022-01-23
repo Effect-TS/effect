@@ -3,7 +3,7 @@ import type { Chunk } from "../Collections/Immutable/Chunk/core"
 import type { Option } from "../Option"
 import type { Sync } from "./core"
 import { map_ } from "./core"
-import { forEach_ } from "./excl-forEach"
+import { forEach_ } from "./forEach"
 import { optional } from "./optional"
 
 /**

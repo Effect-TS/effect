@@ -2,7 +2,7 @@ import type { IO } from "../../Effect"
 import { asyncInterruptBlockingOn } from "../../Effect/operations/asyncInterrupt"
 import * as E from "../../Either"
 import type { Promise } from "../../Promise"
-import { Pending } from "../state"
+import { Pending } from "../_internal/state"
 import { interruptJoiner_ } from "./interruptJoiner"
 
 function wait<E, A>(self: Promise<E, A>, __trace?: string): IO<E, A> {

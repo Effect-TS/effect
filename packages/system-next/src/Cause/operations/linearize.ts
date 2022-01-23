@@ -1,4 +1,4 @@
-import * as HS from "../../Collections/Immutable/HashSet/core"
+import * as HS from "../../Collections/Immutable/HashSet"
 import type { Cause } from "../definition"
 import * as C from "../definition"
 import { fold_ } from "./fold"

@@ -1,4 +1,4 @@
-import { insert_ } from "../../Collections/Immutable/Map/core"
+import { insert_ } from "../../Collections/Immutable/Map"
 import * as Tp from "../../Collections/Immutable/Tuple"
 import type { Effect, UIO } from "../../Effect/definition/base"
 import { flatten } from "../../Effect/operations/flatten"

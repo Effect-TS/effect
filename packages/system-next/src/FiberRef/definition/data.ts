@@ -1,4 +1,4 @@
-import type { Chunk } from "../../Collections/Immutable/Chunk"
+import type { Chunk } from "../../Collections/Immutable/Chunk/core"
 import { empty as emptyChunk } from "../../Collections/Immutable/Chunk/core"
 import * as Tp from "../../Collections/Immutable/Tuple"
 import type { Effect, IO, RIO, UIO } from "../../Effect/definition/base"

@@ -1,4 +1,5 @@
-import * as Chunk from "../../Collections/Immutable/Chunk"
+import { reduce_ } from "../../Collections/Immutable/Chunk/api/reduce"
+import * as Chunk from "../../Collections/Immutable/Chunk/core"
 import * as Tp from "../../Collections/Immutable/Tuple"
 import * as Exit from "../../Exit"
 import * as Fiber from "../../Fiber"
@@ -49,7 +50,7 @@ export function raceAll_<R, E, A>(
             Do.bind("tail", () => forEach_(ios, (io) => fork(interruptible(io)))),
             Do.let("fs", ({ head, tail }) => Chunk.prepend_(tail, head)),
             tap(({ fs }) =>
-              Chunk.reduce_(fs, unit, (io, f) =>
+              reduce_(fs, unit, (io, f) =>
                 chain_(io, () => chain_(Fiber.await(f), arbiter(fs, f, done, fails)))
               )
             ),
@@ -61,7 +62,7 @@ export function raceAll_<R, E, A>(
             ),
             chain(({ fs, inheritRefs }) =>
               onInterrupt_(restore(chain_(P.await(done), inheritRefs)), () =>
-                Chunk.reduce_(fs, unit, (io, f) => zipLeft_(io, Fiber.interrupt(f)))
+                reduce_(fs, unit, (io, f) => zipLeft_(io, Fiber.interrupt(f)))
               )
             )
           ),
@@ -100,7 +101,7 @@ function arbiter<E, A>(
       (a) =>
         chain_(P.succeed_(promise, Tp.tuple(a, winner)), (set) =>
           set
-            ? Chunk.reduce_(fibers, unit, (io, f) =>
+            ? reduce_(fibers, unit, (io, f) =>
                 f === winner ? io : zipLeft_(io, Fiber.interrupt(f))
               )
             : unit

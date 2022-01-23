@@ -1,4 +1,4 @@
-import * as HS from "../../Collections/Immutable/HashSet/core"
+import * as HS from "../../Collections/Immutable/HashSet"
 import * as L from "../../Collections/Immutable/List/core"
 import { ids } from "../../FiberId/operations/ids"
 import * as O from "../../Option/core"

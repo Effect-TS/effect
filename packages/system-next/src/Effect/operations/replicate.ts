@@ -1,5 +1,5 @@
-import type { Chunk } from "../../Collections/Immutable/Chunk"
 import { range } from "../../Collections/Immutable/Chunk/api/range"
+import type { Chunk } from "../../Collections/Immutable/Chunk/core"
 import { map_ } from "../../Collections/Immutable/Chunk/core"
 import type { Effect } from "../definition"
 

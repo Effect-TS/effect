@@ -1,5 +1,6 @@
-import * as Cause from "../../Cause"
-import * as Chunk from "../../Collections/Immutable/Chunk"
+import * as Cause from "../../Cause/definition"
+import { reduceRight } from "../../Collections/Immutable/Chunk/api/reduceRight"
+import * as Chunk from "../../Collections/Immutable/Chunk/core"
 import { chain_ } from "../../Effect/operations/chain"
 import { done } from "../../Effect/operations/done"
 import {
@@ -38,7 +39,7 @@ export function collectAll<E, A>(
     poll: pipe(
       forEach_(fibers, (f) => f.poll),
       map(
-        Chunk.reduceRight(
+        reduceRight(
           O.some(Exit.succeed(Chunk.empty()) as Exit.Exit<E, Chunk.Chunk<A>>),
           (a, b) =>
             O.fold_(
@@ -73,7 +74,7 @@ export function collectAll<E, A>(
       pipe(
         forEach_(fibers, (f) => f.interruptAs(fiberId)),
         map(
-          Chunk.reduceRight(
+          reduceRight(
             Exit.succeed(Chunk.empty()) as Exit.Exit<E, Chunk.Chunk<A>>,
             (a, b) =>
               Exit.zipWith_(a, b, (_a, _b) => Chunk.prepend_(_b, _a), Cause.both)

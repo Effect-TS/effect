@@ -1,5 +1,5 @@
 import * as S from "../HashSet"
-import type { HashMap } from "./index"
+import type { HashMap } from "./core"
 
 /**
  * Get the set of keys

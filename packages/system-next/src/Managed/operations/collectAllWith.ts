@@ -1,4 +1,5 @@
-import * as Chunk from "../../Collections/Immutable/Chunk"
+import { collect } from "../../Collections/Immutable/Chunk/api/collect"
+import type * as Chunk from "../../Collections/Immutable/Chunk/core"
 import type * as O from "../../Option"
 import type { Managed } from "../definition"
 import { collectAll } from "./collectAll"
@@ -13,7 +14,7 @@ export function collectAllWith_<R, E, A, B>(
   pf: (a: A) => O.Option<B>,
   __trace?: string
 ): Managed<R, E, Chunk.Chunk<B>> {
-  return map_(collectAll(as, __trace), Chunk.collect(pf))
+  return map_(collectAll(as, __trace), collect(pf))
 }
 
 /**

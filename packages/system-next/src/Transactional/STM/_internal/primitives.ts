@@ -2,7 +2,7 @@ import { _A, _E, _R } from "../../../Effect/definition/commons"
 import * as E from "../../../Either"
 import type { FiberId } from "../../../FiberId"
 import type { LazyArg } from "../../../Function"
-import type { Journal } from "../Journal/index"
+import type { Journal } from "../Journal"
 
 // -----------------------------------------------------------------------------
 // Model

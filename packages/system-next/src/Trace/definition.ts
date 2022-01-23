@@ -1,4 +1,4 @@
-import type { Chunk } from "../Collections/Immutable/Chunk"
+import type { Chunk } from "../Collections/Immutable/Chunk/core"
 import type { FiberId } from "../FiberId"
 import type { TraceElement } from "../TraceElement"
 

@@ -1,6 +1,6 @@
 import type { FiberId } from "../../../FiberId"
 import { Stack } from "../../../Stack"
-import type { Journal } from "../Journal/index"
+import type { Journal } from "../Journal"
 import * as TExit from "../TExit"
 import type { STMOnFailure, STMOnRetry } from "./primitives"
 import * as STM from "./primitives"

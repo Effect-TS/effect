@@ -1,4 +1,5 @@
-import * as C from "../../Collections/Immutable/Chunk"
+import { unzip } from "../../Collections/Immutable/Chunk/api/unzip"
+import * as C from "../../Collections/Immutable/Chunk/core"
 import * as Tp from "../../Collections/Immutable/Tuple"
 import type { Managed } from "../definition"
 import { managedApply } from "../definition"
@@ -23,7 +24,7 @@ export function forEachDiscard_<R, E, A, B>(
       (result) => {
         const {
           tuple: [fins]
-        } = C.unzip(result)
+        } = unzip(result)
         return Tp.tuple<[Finalizer, void]>(
           (e) => T.forEach_(C.reverse(fins), (f) => f(e), __trace),
           undefined

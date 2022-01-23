@@ -1,4 +1,4 @@
-import type { Chunk } from "../../Collections/Immutable/Chunk"
+import type { Chunk } from "../../Collections/Immutable/Chunk/core"
 import type { Effect } from "../definition"
 import { collectAll } from "./excl-forEach"
 import { replicate_ } from "./replicate"

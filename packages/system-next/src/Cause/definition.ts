@@ -1,6 +1,6 @@
-import * as HS from "../Collections/Immutable/HashSet/core"
+import * as HS from "../Collections/Immutable/HashSet"
 import * as L from "../Collections/Immutable/List/core"
-import * as Tp from "../Collections/Immutable/Tuple/core"
+import * as Tp from "../Collections/Immutable/Tuple"
 import type { FiberId } from "../FiberId/definition"
 import { tuple } from "../Function/core"
 import * as IO from "../IO/core"

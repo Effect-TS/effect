@@ -1,6 +1,5 @@
 import type { NonEmptyArray } from "../../Collections/Immutable/NonEmptyArray"
 import * as Tp from "../../Collections/Immutable/Tuple"
-import { accessCallTrace } from "../../Tracing"
 import type { _E, _R, ForcedTuple } from "../../Utils"
 import type { Managed } from "../definition"
 import { collectAll } from "./collectAll"
@@ -14,16 +13,13 @@ export type TupleA<T extends NonEmptyArray<Managed<any, any, any>>> = {
 
 /**
  * Like `forEach` + `identity` with a tuple type
- *
- * @ets_trace call
  */
 export function tuple<T extends NonEmptyArray<Managed<any, any, any>>>(
   ...t: T & {
     0: Managed<any, any, any>
   }
 ): Managed<_R<T[number]>, _E<T[number]>, ForcedTuple<TupleA<T>>> {
-  const trace = accessCallTrace()
-  return map_(collectAll(t, trace), (x) => Tp.tuple(...x)) as any
+  return map_(collectAll(t), (x) => Tp.tuple(...x)) as any
 }
 
 /**
@@ -52,7 +48,5 @@ export function tupleParN(n: number): {
   ): Managed<_R<T[number]>, _E<T[number]>, ForcedTuple<TupleA<T>>>
 } {
   return ((...t: Managed<any, any, any>[]) =>
-    map_(withParallelism_(collectAllPar(t, accessCallTrace()), n), (x) =>
-      Tp.tuple(...x)
-    )) as any
+    map_(withParallelism_(collectAllPar(t), n), (x) => Tp.tuple(...x))) as any
 }

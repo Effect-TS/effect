@@ -1,5 +1,5 @@
-import type { Chunk } from "../../Collections/Immutable/Chunk"
 import { compact } from "../../Collections/Immutable/Chunk/api/compact"
+import type { Chunk } from "../../Collections/Immutable/Chunk/core"
 import type { Option } from "../../Option"
 import type { Managed } from "../definition"
 import { forEach_ } from "./forEach"

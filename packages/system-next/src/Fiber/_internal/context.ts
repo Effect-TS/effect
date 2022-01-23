@@ -1,6 +1,6 @@
 import * as Cause from "../../Cause"
 import { InterruptedException } from "../../Cause"
-import * as Chunk from "../../Collections/Immutable/Chunk"
+import * as Chunk from "../../Collections/Immutable/Chunk/core"
 import * as HS from "../../Collections/Immutable/HashSet"
 import type { Next } from "../../Collections/Immutable/Map"
 import { instruction } from "../../Effect/definition/primitives"
@@ -18,7 +18,6 @@ import {
 import { constVoid, pipe } from "../../Function"
 import type { Tag } from "../../Has"
 import * as InterruptStatus from "../../InterruptStatus"
-import { LazyValue } from "../../LazyValue"
 import type { Logger } from "../../Logger"
 import { CauseLogger, StringLogger } from "../../Logger/operations"
 import * as LogLevel from "../../LogLevel"
@@ -127,8 +126,6 @@ export type FiberRefLocals = Map<FiberRef.Runtime<any>, any>
 export const catastrophicFailure = new AtomicBoolean(false)
 
 export const currentFiber = new AtomicReference<FiberContext<any, any> | null>(null)
-
-export const _roots = LazyValue.make(() => new Set<FiberContext<any, any>>())
 
 export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   readonly _tag = "Runtime"

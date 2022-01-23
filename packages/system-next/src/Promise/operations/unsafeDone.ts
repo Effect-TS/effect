@@ -1,6 +1,6 @@
 import type { IO } from "../../Effect"
+import { Done } from "../_internal/state"
 import type { Promise } from "../definition"
-import { Done } from "../state"
 
 /**
  * Unsafe version of `done`.

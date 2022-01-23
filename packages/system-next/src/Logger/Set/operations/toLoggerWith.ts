@@ -1,4 +1,5 @@
-import * as Chunk from "../../../Collections/Immutable/Chunk"
+import { reduce } from "../../../Collections/Immutable/Chunk/api/reduce"
+import * as Chunk from "../../../Collections/Immutable/Chunk/core"
 import { pipe } from "../../../Function"
 import type { Tag } from "../../../Has"
 import type { Logger } from "../../definition"
@@ -16,7 +17,7 @@ export function toLoggerWith_<C>(typeTag: Tag<C>) {
   ): Logger<C, B1> => {
     return pipe(
       Chunk.from(getAll_(self, typeTag)),
-      Chunk.reduce(LoggerSucceed.succeed(def), (acc, a) =>
+      reduce(LoggerSucceed.succeed(def), (acc, a) =>
         LoggerMap.map_(LoggerZip.zip_(acc, a), ({ tuple: [x, y] }) => f(x, y))
       )
     )

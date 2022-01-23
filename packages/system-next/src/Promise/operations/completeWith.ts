@@ -1,7 +1,7 @@
 import type { IO, UIO } from "../../Effect"
 import { succeed } from "../../Effect/operations/succeed"
+import { Done } from "../_internal/state"
 import type { Promise } from "../definition"
-import { Done } from "../state"
 
 /**
  * Completes the promise with the specified effect. If the promise has

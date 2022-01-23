@@ -1,4 +1,4 @@
-import type { FiberId } from "../../FiberId"
+import type { FiberId } from "../../FiberId/definition"
 import type { Trace } from "../../Trace"
 import type { Status } from "../status"
 

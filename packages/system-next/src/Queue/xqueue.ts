@@ -1,4 +1,4 @@
-import type * as Chunk from "../Collections/Immutable/Chunk"
+import type * as Chunk from "../Collections/Immutable/Chunk/core"
 import type { Effect, UIO } from "../Effect/definition/base"
 
 export const _RA = Symbol()

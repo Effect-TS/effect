@@ -1,4 +1,4 @@
-import type * as C from "../../Collections/Immutable/Chunk"
+import type * as C from "../../Collections/Immutable/Chunk/core"
 import { currentReleaseMap } from "../../FiberRef/definition/data"
 import { locally_ } from "../../FiberRef/operations/locally"
 import type { Managed } from "../definition"

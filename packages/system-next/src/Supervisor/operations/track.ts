@@ -1,4 +1,4 @@
-import * as C from "../../Collections/Immutable/Chunk"
+import * as C from "../../Collections/Immutable/Chunk/core"
 import { succeed } from "../../Effect/operations/succeed"
 import type * as Fiber from "../../Fiber"
 import { AtomicReference } from "../../Support/AtomicReference"

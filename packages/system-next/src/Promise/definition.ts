@@ -1,6 +1,6 @@
 import type { FiberId } from "../FiberId"
 import type { AtomicReference } from "../Support/AtomicReference"
-import type { State } from "./state"
+import type { State } from "./_internal/state"
 
 export class Promise<E, A> {
   constructor(

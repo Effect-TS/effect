@@ -1,4 +1,4 @@
-import { lookup_, remove_ } from "../../Collections/Immutable/Map/core"
+import { lookup_, remove_ } from "../../Collections/Immutable/Map"
 import * as Tp from "../../Collections/Immutable/Tuple"
 import { flatten } from "../../Effect/operations/flatten"
 import { unit } from "../../Effect/operations/unit"

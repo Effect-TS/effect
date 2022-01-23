@@ -1,5 +1,5 @@
 import * as C from "../../Collections/Immutable/Chunk/core"
-import { _roots } from "../_internal/context"
+import { _roots } from "../../Scope"
 import type { Runtime } from "../definition"
 import * as T from "./_internal/effect"
 

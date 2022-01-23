@@ -1,4 +1,4 @@
-import * as Chunk from "../../Collections/Immutable/Chunk"
+import * as Chunk from "../../Collections/Immutable/Chunk/core"
 import * as FiberId from "../../FiberId"
 import * as LogLevel from "../../LogLevel"
 import * as TraceElement from "../../TraceElement"

@@ -1,4 +1,4 @@
-import { empty } from "../../Collections/Immutable/Chunk"
+import { empty } from "../../Collections/Immutable/Chunk/core"
 import { never as effectNever } from "../../Effect/operations/never"
 import { succeed } from "../../Effect/operations/succeed"
 import { succeedNow } from "../../Effect/operations/succeedNow"

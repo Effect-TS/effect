@@ -1,4 +1,4 @@
-import type * as Chunk from "../../Collections/Immutable/Chunk"
+import type * as Chunk from "../../Collections/Immutable/Chunk/core"
 import * as Fiber from "../../Fiber"
 import type { Effect, RIO } from "../definition"
 import { forEach_ } from "./excl-forEach"
