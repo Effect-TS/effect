@@ -74,6 +74,16 @@ export function right<A>(a: A): Either<never, A> {
  * Constructs a new `Either` holding a `Right` value. This usually represents a successful value due to the right bias
  * of this structure
  *
+ * @ets static ets/EitherOps __call
+ */
+export function apply<A>(a: A): Either<never, A> {
+  return new Right(a)
+}
+
+/**
+ * Constructs a new `Either` holding a `Right` value. This usually represents a successful value due to the right bias
+ * of this structure
+ *
  * @ets static ets/EitherOps rightW
  */
 export function rightW<A, E = never>(a: A): Either<E, A> {
