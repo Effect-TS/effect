@@ -1,3 +1,4 @@
+import type * as UT from "../../../data/Utils/types"
 import { _A, _E, _R, _S1, _S2, _U, _W } from "../../../support/Symbols"
 
 export const EffectURI = "Effect"
@@ -36,6 +37,15 @@ export interface Effect<R, E, A> {
   readonly [_S1]: (_: unknown) => void
   readonly [_S2]: () => unknown
   readonly [_W]: () => unknown
+}
+
+/**
+ * @ets identity ets/Effect
+ */
+export function identityEffect<X extends Effect<any, any, any>>(
+  self: X
+): Effect<UT._R<X>, UT._E<X>, UT._A<X>> {
+  return self
 }
 
 /**

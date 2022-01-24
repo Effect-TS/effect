@@ -51,7 +51,12 @@ export const Either: EitherOps = {}
 /**
  * @ets identity ets/Either
  */
-export function identity<E, A>(self: Either<E, A>): Either<E, A> {
+export function identity<X extends Either<any, any>>(
+  self: X
+): Either<
+  [X] extends [Either<infer EX, any>] ? EX : never,
+  [X] extends [Either<any, infer AX>] ? AX : never
+> {
   return self
 }
 
