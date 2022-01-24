@@ -49,6 +49,13 @@ export interface EitherOps {}
 export const Either: EitherOps = {}
 
 /**
+ * @ets identity ets/Either
+ */
+export function identity<E, A>(self: Either<E, A>): Either<E, A> {
+  return self
+}
+
+/**
  * Constructs a new `Either` holding a `Right` value. This usually represents a successful value due to the right bias
  * of this structure
  *

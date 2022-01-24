@@ -5,7 +5,7 @@ import * as LogLevel from "../src/io/LogLevel"
 export const numbers = Effect.succeed(0) + Effect.succeed(1) + Effect.succeed(2)
 export const numbersPar = Effect.succeed(0) & Effect.succeed(1) & Effect.succeed(2)
 
-export const isPositive = (n: number): Either<string, string> =>
+export const isPositive = (n: number) =>
   n > 0 ? Either.right("positive") : Either.left("negative")
 
 export const message = isPositive(10).fold(

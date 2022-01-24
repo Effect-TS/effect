@@ -11572,23 +11572,23 @@ __metadata:
   languageName: node
   linkType: hard
 
-"typescript@https://github.com/Effect-TS/TypeScript/raw/d3c0ce28534ada21829b3e5abda1417bdabe6a40/dev/typescript-4.6.0-ets.20220124.tgz":
+"typescript@https://github.com/Effect-TS/TypeScript/raw/6382367ecff48d26e87b067194b87b551a1f5a11/dev/typescript-4.6.0-ets.20220124.tgz":
   version: 4.6.0-ets.20220124
-  resolution: "typescript@https://github.com/Effect-TS/TypeScript/raw/d3c0ce28534ada21829b3e5abda1417bdabe6a40/dev/typescript-4.6.0-ets.20220124.tgz"
+  resolution: "typescript@https://github.com/Effect-TS/TypeScript/raw/6382367ecff48d26e87b067194b87b551a1f5a11/dev/typescript-4.6.0-ets.20220124.tgz"
   bin:
     tsc: ./bin/tsc
     tsserver: ./bin/tsserver
-  checksum: 7973c2eb3fc0e628c9fe6f8a5052f412a719d65352e3c55f6f02bcb0626b8131ec5047ef9c4e38b62073de7c5b018f14cec23be3fc13d71f4c7eac2bb2eb7b44
+  checksum: f60336def4b7cd68ed7fbd92125531f8449519fda6c6f60f28931bd9213a4b1a88dc1b38274c70275ee856d7fc6142c32bd55372fc93a7fdba805e3bcc003701
   languageName: node
   linkType: hard
 
-"typescript@patch:typescript@https%3A//github.com/Effect-TS/TypeScript/raw/d3c0ce28534ada21829b3e5abda1417bdabe6a40/dev/typescript-4.6.0-ets.20220124.tgz#~builtin<compat/typescript>":
+"typescript@patch:typescript@https%3A//github.com/Effect-TS/TypeScript/raw/6382367ecff48d26e87b067194b87b551a1f5a11/dev/typescript-4.6.0-ets.20220124.tgz#~builtin<compat/typescript>":
   version: 4.6.0-ets.20220124
-  resolution: "typescript@patch:typescript@https%3A//github.com/Effect-TS/TypeScript/raw/d3c0ce28534ada21829b3e5abda1417bdabe6a40/dev/typescript-4.6.0-ets.20220124.tgz#~builtin<compat/typescript>::version=4.6.0-ets.20220124&hash=ddd1e8"
+  resolution: "typescript@patch:typescript@https%3A//github.com/Effect-TS/TypeScript/raw/6382367ecff48d26e87b067194b87b551a1f5a11/dev/typescript-4.6.0-ets.20220124.tgz#~builtin<compat/typescript>::version=4.6.0-ets.20220124&hash=ddd1e8"
   bin:
     tsc: ./bin/tsc
     tsserver: ./bin/tsserver
-  checksum: a19d97addcf76ed8b51fe99af268ecc6a588381cbc851c23323c836acf5fcb78a4b6946f5a7f84ece3ffb0111761f2975b3e97a9a5ea07a93212b60ba836b420
+  checksum: 46f7f4588cd616646689ca98395dbcc90d0cc52f0608389a4cda3e264c9590dc52916050d9304530f31b5c88312ab8258c68ceabfca9bea8f8312c225aaf4e0a
   languageName: node
   linkType: hard
 
