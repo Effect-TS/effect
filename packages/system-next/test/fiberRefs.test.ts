@@ -1,15 +1,15 @@
-import type { FiberRefs } from "../src/Effect"
-import * as T from "../src/Effect"
-import * as Fiber from "../src/Fiber"
-import * as FiberRef from "../src/FiberRef"
-import { pipe } from "../src/Function"
-import * as Queue from "../src/Queue"
+import { pipe } from "../src/data/Function"
+import type { FiberRefs } from "../src/io/Effect"
+import * as T from "../src/io/Effect"
+import * as Fiber from "../src/io/Fiber"
+import * as FiberRef from "../src/io/FiberRef"
+import * as Queue from "../src/io/Queue"
 
 describe("FiberRefs", () => {
   it("propagate FiberRef values across fiber boundaries", async () => {
     const { value } = await T.unsafeRunPromise(
       pipe(
-        T.do,
+        T.Do(),
         T.bind("fiberRef", () => FiberRef.make(false)),
         T.bind("queue", () => Queue.makeUnbounded<FiberRefs>()),
         T.bind("producer", ({ fiberRef, queue }) =>

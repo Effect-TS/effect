@@ -1,15 +1,15 @@
-import * as Chunk from "../src/Collections/Immutable/Chunk"
-import * as T from "../src/Effect"
-import * as Exit from "../src/Exit"
-import * as Fiber from "../src/Fiber"
-import * as FiberId from "../src/FiberId"
-import * as FiberRef from "../src/FiberRef"
-import { flow, identity, pipe } from "../src/Function"
-import * as M from "../src/Managed"
-import * as O from "../src/Option"
-import * as Promise from "../src/Promise"
-import * as Queue from "../src/Queue"
-import * as Ref from "../src/Ref"
+import * as Chunk from "../src/collection/immutable/Chunk"
+import { flow, identity, pipe } from "../src/data/Function"
+import * as O from "../src/data/Option"
+import * as T from "../src/io/Effect"
+import * as Exit from "../src/io/Exit"
+import * as Fiber from "../src/io/Fiber"
+import * as FiberId from "../src/io/FiberId"
+import * as FiberRef from "../src/io/FiberRef"
+import * as M from "../src/io/Managed"
+import * as Promise from "../src/io/Promise"
+import * as Queue from "../src/io/Queue"
+import * as Ref from "../src/io/Ref"
 import { withLatch } from "./test-utils/Latch"
 
 const initial = "initial"
@@ -21,7 +21,7 @@ describe("Fiber", () => {
     it("lift it into Managed", async () => {
       const { value } = await T.unsafeRunPromise(
         pipe(
-          T.do,
+          T.Do(),
           T.bind("ref", () => Ref.make<boolean>(false)),
           T.bind("fiber", ({ ref }) =>
             withLatch((release) =>
@@ -52,7 +52,7 @@ describe("Fiber", () => {
     it("`map`", async () => {
       const { value } = await T.unsafeRunPromise(
         pipe(
-          T.do,
+          T.Do(),
           T.bind("fiberRef", () => FiberRef.make(initial)),
           T.bind("child", ({ fiberRef }) =>
             withLatch((release) =>
@@ -70,7 +70,7 @@ describe("Fiber", () => {
     it("`orElse`", async () => {
       const { value } = await T.unsafeRunPromise(
         pipe(
-          T.do,
+          T.Do(),
           T.bind("fiberRef", () => FiberRef.make(initial)),
           T.bind("latch1", () => Promise.make<never, void>()),
           T.bind("latch2", () => Promise.make<never, void>()),
@@ -102,7 +102,7 @@ describe("Fiber", () => {
     it("`zip`", async () => {
       const { value } = await T.unsafeRunPromise(
         pipe(
-          T.do,
+          T.Do(),
           T.bind("fiberRef", () => FiberRef.make(initial)),
           T.bind("latch1", () => Promise.make<never, void>()),
           T.bind("latch2", () => Promise.make<never, void>()),
@@ -217,10 +217,10 @@ describe("Fiber", () => {
       }
 
       const { exit } = await pipe(
-        T.do,
+        T.Do(),
         T.bind("queue", () => Queue.makeUnbounded<number>()),
         T.tap(({ queue }) => Queue.offerAll_(queue, Chunk.range(1, 100))),
-        T.let(
+        T.bindValue(
           "worker",
           ({ queue }) =>
             (n: number) =>
@@ -236,17 +236,17 @@ describe("Fiber", () => {
 
     it("grandparent interruption is propagated to grandchild despite parent termination", async () => {
       const exit = await pipe(
-        T.do,
+        T.Do(),
         T.bind("latch1", () => Promise.make<never, void>()),
         T.bind("latch2", () => Promise.make<never, void>()),
-        T.let("c", ({ latch2 }) =>
+        T.bindValue("c", ({ latch2 }) =>
           pipe(
             T.never,
             T.interruptible,
             T.onInterrupt(() => Promise.succeed_(latch2, undefined))
           )
         ),
-        T.let("a", ({ c, latch1 }) =>
+        T.bindValue("a", ({ c, latch1 }) =>
           pipe(
             Promise.succeed_(latch1, undefined),
             T.zipRight(T.fork(T.fork(c))),
@@ -328,7 +328,7 @@ describe("Fiber", () => {
   describe("track blockingOn", () => {
     it("in await", async () => {
       const { blockingOn, f1 } = await pipe(
-        T.do,
+        T.Do(),
         T.bind("f1", () => T.fork(T.never)),
         T.bind("f2", ({ f1 }) => T.fork(Fiber.await(f1))),
         T.bind("blockingOn", ({ f2 }) =>

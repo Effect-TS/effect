@@ -1,23 +1,6 @@
 {
   "extends": "./tsconfig.json",
-  "files": [],
   "compilerOptions": {
-    "baseUrl": ".",
-    "target": "ES2018",
-    "module": "CommonJS",
-    "plugins": [
-      {
-        "transform": "@effect-ts/tracing-plugin/src/index.ts",
-        "moduleMap": {
-          "^packages/core/src/(.*)": "(@effect-ts/core): src/$1",
-          "^packages/core/test/(.*)": "(@effect-ts/core/test): test/$1",
-          "^packages/system/src/(.*)": "(@effect-ts/system): src/$1",
-          "^packages/system/test/(.*)": "(@effect-ts/system/test): test/$1",
-          "^packages/tracing-plugin/src/(.*)": "(@effect-ts/tracing-plugin): src/$1",
-          "^packages/tracing-plugin/test/(.*)": "(@effect-ts/tracing-plugin/test): test/$1"
-        }
-      },
-      { "transform": "typescript-transform-paths" }
-    ]
+    "module": "CommonJS"
   }
 }
