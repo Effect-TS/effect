@@ -11572,9 +11572,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"typescript@https://github.com/Effect-TS/TypeScript/raw/6382367ecff48d26e87b067194b87b551a1f5a11/dev/typescript-4.6.0-ets.20220124.tgz":
+"typescript@https://github.com/Effect-TS/TypeScript/raw/30f7a9dec1433451f0f1d4003213126697399beb/dev/typescript-4.6.0-ets.20220124.tgz":
   version: 4.6.0-ets.20220124
-  resolution: "typescript@https://github.com/Effect-TS/TypeScript/raw/6382367ecff48d26e87b067194b87b551a1f5a11/dev/typescript-4.6.0-ets.20220124.tgz"
+  resolution: "typescript@https://github.com/Effect-TS/TypeScript/raw/30f7a9dec1433451f0f1d4003213126697399beb/dev/typescript-4.6.0-ets.20220124.tgz"
   bin:
     tsc: ./bin/tsc
     tsserver: ./bin/tsserver
@@ -11582,9 +11582,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"typescript@patch:typescript@https%3A//github.com/Effect-TS/TypeScript/raw/6382367ecff48d26e87b067194b87b551a1f5a11/dev/typescript-4.6.0-ets.20220124.tgz#~builtin<compat/typescript>":
+"typescript@patch:typescript@https%3A//github.com/Effect-TS/TypeScript/raw/30f7a9dec1433451f0f1d4003213126697399beb/dev/typescript-4.6.0-ets.20220124.tgz#~builtin<compat/typescript>":
   version: 4.6.0-ets.20220124
-  resolution: "typescript@patch:typescript@https%3A//github.com/Effect-TS/TypeScript/raw/6382367ecff48d26e87b067194b87b551a1f5a11/dev/typescript-4.6.0-ets.20220124.tgz#~builtin<compat/typescript>::version=4.6.0-ets.20220124&hash=ddd1e8"
+  resolution: "typescript@patch:typescript@https%3A//github.com/Effect-TS/TypeScript/raw/30f7a9dec1433451f0f1d4003213126697399beb/dev/typescript-4.6.0-ets.20220124.tgz#~builtin<compat/typescript>::version=4.6.0-ets.20220124&hash=ddd1e8"
   bin:
     tsc: ./bin/tsc
     tsserver: ./bin/tsserver
