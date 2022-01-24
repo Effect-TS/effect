@@ -4,6 +4,7 @@ import { HasClock, LiveClock } from "../../Clock"
 import type { Exit } from "../../Exit/definition"
 import type { FiberId } from "../../FiberId/definition"
 import * as LoggerSet from "../../Logger/Set"
+import * as LogLevel from "../../LogLevel"
 import { defaultRandom, HasRandom } from "../../Random"
 import { Runtime } from "../../Runtime"
 import { RuntimeConfig } from "../../RuntimeConfig"
@@ -50,7 +51,7 @@ export const defaultRuntimeConfig: RuntimeConfig = new RuntimeConfig({
   loggers: pipe(
     LoggerSet.defaultSet.value,
     LoggerSet.map((b) => console.log(b)),
-    LoggerSet.filterLogLevel((logLevel) => logLevel._tag === "Info")
+    LoggerSet.filterLogLevel((level) => LogLevel.geq_(level, LogLevel.Info))
   ),
   flags: RuntimeConfigFlags.add_(
     RuntimeConfigFlags.empty,
