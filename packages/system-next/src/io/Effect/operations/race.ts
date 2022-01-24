@@ -30,7 +30,7 @@ import { raceWith_ } from "./raceWith"
 export function race_<R, E, A, R2, E2, A2>(
   self: Effect<R, E, A>,
   that: Effect<R2, E2, A2>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R & R2, E | E2, A | A2> {
   return descriptorWith((descriptor) => {
     const parentFiberId = descriptor.id
@@ -52,7 +52,7 @@ export function race_<R, E, A, R2, E2, A2>(
           (cause) => mapErrorCause_(join(left), (_) => Cause.both(_, cause)),
           (a) => as_(left.interruptAs(parentFiberId), a)
         ),
-      __trace
+      __etsTrace
     )
   })
 }
@@ -68,9 +68,9 @@ export function race_<R, E, A, R2, E2, A2>(
  *
  * @ets_data_first race_
  */
-export function race<R2, E2, A2>(that: Effect<R2, E2, A2>, __trace?: string) {
+export function race<R2, E2, A2>(that: Effect<R2, E2, A2>, __etsTrace?: string) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R & R2, E | E2, A | A2> =>
-    race_(self, that, __trace)
+    race_(self, that, __etsTrace)
 }
 
 /**
@@ -86,9 +86,9 @@ export function race<R2, E2, A2>(that: Effect<R2, E2, A2>, __trace?: string) {
 export function raceEither_<R, E, A, R2, E2, A2>(
   self: Effect<R, E, A>,
   that: Effect<R2, E2, A2>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R & R2, E | E2, E.Either<A, A2>> {
-  return race_(map_(self, E.left), map_(that, E.right), __trace)
+  return race_(map_(self, E.left), map_(that, E.right), __etsTrace)
 }
 
 /**
@@ -101,9 +101,9 @@ export function raceEither_<R, E, A, R2, E2, A2>(
  *
  * @ets_data_first raceEither_
  */
-export function raceEither<R2, E2, A2>(that: Effect<R2, E2, A2>, __trace?: string) {
+export function raceEither<R2, E2, A2>(that: Effect<R2, E2, A2>, __etsTrace?: string) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R & R2, E | E2, E.Either<A, A2>> =>
-    raceEither_(self, that, __trace)
+    raceEither_(self, that, __etsTrace)
 }
 
 /**
@@ -123,10 +123,10 @@ export function raceEither<R2, E2, A2>(that: Effect<R2, E2, A2>, __trace?: strin
 export function raceFirst_<R, R2, E, E2, A, A2>(
   self: Effect<R, E, A>,
   that: Effect<R2, E2, A2>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R & R2, E2 | E, A2 | A> {
   return pipe(
-    race_(exit(self), exit(that), __trace),
+    race_(exit(self), exit(that), __etsTrace),
     chain((a) => done(a as Exit<E | E2, A | A2>))
   )
 }
@@ -145,6 +145,6 @@ export function raceFirst_<R, R2, E, E2, A, A2>(
  *
  * @ets_data_first raceFirst_
  */
-export function raceFirst<R2, E2, A2>(that: Effect<R2, E2, A2>, __trace?: string) {
-  return <R, E, A>(self: Effect<R, E, A>) => raceFirst_(self, that, __trace)
+export function raceFirst<R2, E2, A2>(that: Effect<R2, E2, A2>, __etsTrace?: string) {
+  return <R, E, A>(self: Effect<R, E, A>) => raceFirst_(self, that, __etsTrace)
 }

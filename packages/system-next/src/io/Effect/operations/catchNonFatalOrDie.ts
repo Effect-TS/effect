@@ -13,7 +13,7 @@ import { succeedNow } from "./succeedNow"
 export function catchNonFatalOrDie_<R, E, A, R2, E2, A2>(
   self: Effect<R, E, A>,
   f: (e: E) => Effect<R2, E2, A2>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R & R2, E | E2, A | A2> {
   return foldEffect_(
     self,
@@ -22,7 +22,7 @@ export function catchNonFatalOrDie_<R, E, A, R2, E2, A2>(
         runtime.runtimeConfig.value.fatal(e) ? die(e) : f(e)
       ),
     succeedNow,
-    __trace
+    __etsTrace
   )
 }
 
@@ -31,8 +31,8 @@ export function catchNonFatalOrDie_<R, E, A, R2, E2, A2>(
  */
 export function catchNonFatalOrDie<E, R2, E2, A2>(
   f: (e: E) => Effect<R2, E2, A2>,
-  __trace?: string
+  __etsTrace?: string
 ) {
   return <R, A>(self: Effect<R, E, A>): Effect<R & R2, E | E2, A | A2> =>
-    catchNonFatalOrDie_(self, f, __trace)
+    catchNonFatalOrDie_(self, f, __etsTrace)
 }

@@ -14,13 +14,13 @@ import { zipRight_ } from "./zipRight"
 export function tapDefect_<R, E, A, R2, E2, X>(
   self: Effect<R, E, A>,
   f: (cause: Cause<never>) => Effect<R2, E2, X>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R & R2, E | E2, A> {
   return foldCauseEffect_(
     self,
     (cause) => zipRight_(f(stripFailures(cause)), failCause(cause)),
     succeedNow,
-    __trace
+    __etsTrace
   )
 }
 
@@ -31,8 +31,8 @@ export function tapDefect_<R, E, A, R2, E2, X>(
  */
 export function tapDefect<R2, E2, X>(
   f: (cause: Cause<never>) => Effect<R2, E2, X>,
-  __trace?: string
+  __etsTrace?: string
 ) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R & R2, E | E2, A> =>
-    tapDefect_(self, f, __trace)
+    tapDefect_(self, f, __etsTrace)
 }

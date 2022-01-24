@@ -10,9 +10,9 @@ import { succeedNow } from "./succeedNow"
 export function map_<R, E, A, B>(
   self: Effect<R, E, A>,
   f: (a: A) => B,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R, E, B> {
-  return chain_(self, (a) => succeedNow(f(a)), __trace)
+  return chain_(self, (a) => succeedNow(f(a)), __etsTrace)
 }
 
 /**
@@ -20,6 +20,6 @@ export function map_<R, E, A, B>(
  *
  * @ets_data_first map_
  */
-export function map<A, B>(f: (a: A) => B, __trace?: string) {
-  return <R, E>(self: Effect<R, E, A>): Effect<R, E, B> => map_(self, f, __trace)
+export function map<A, B>(f: (a: A) => B, __etsTrace?: string) {
+  return <R, E>(self: Effect<R, E, A>): Effect<R, E, B> => map_(self, f, __etsTrace)
 }

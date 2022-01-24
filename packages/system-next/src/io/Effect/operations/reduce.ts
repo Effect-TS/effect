@@ -13,14 +13,14 @@ export function reduce_<A, Z, R, E>(
   i: Iterable<A>,
   zero: Z,
   f: (z: Z, a: A) => Effect<R, E, Z>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R, E, Z> {
   return suspendSucceed(
     () =>
       Iter.reduce_(i, succeedNow(zero) as Effect<R, E, Z>, (acc, el) =>
         chain_(acc, (a) => f(a, el))
       ),
-    __trace
+    __etsTrace
   )
 }
 
@@ -32,7 +32,7 @@ export function reduce_<A, Z, R, E>(
 export function reduce<Z, R, E, A>(
   zero: Z,
   f: (z: Z, a: A) => Effect<R, E, Z>,
-  __trace?: string
+  __etsTrace?: string
 ) {
-  return (i: Iterable<A>) => reduce_(i, zero, f, __trace)
+  return (i: Iterable<A>) => reduce_(i, zero, f, __etsTrace)
 }

@@ -14,13 +14,13 @@ export function tryOrElse_<R, E, A, R2, E2, A2, R3, E3, A3>(
   self: Effect<R, E, A>,
   that: () => Effect<R2, E2, A2>,
   success: (a: A) => Effect<R3, E3, A3>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R & R2 & R3, E2 | E3, A2 | A3> {
   return new IFold(
     self,
     (cause) => O.fold_(keepDefects(cause), that, failCause),
     success,
-    __trace
+    __etsTrace
   )
 }
 
@@ -33,8 +33,8 @@ export function tryOrElse_<R, E, A, R2, E2, A2, R3, E3, A3>(
 export function tryOrElse<R2, E2, A2, B, A, R3, E3, A3>(
   that: () => Effect<R2, E2, A2>,
   success: (a: A) => Effect<R3, E3, A3>,
-  __trace?: string
+  __etsTrace?: string
 ) {
   return <R, E>(self: Effect<R, E, A>): Effect<R & R2 & R3, E2 | E3, A2 | A3> =>
-    tryOrElse_(self, that, success, __trace)
+    tryOrElse_(self, that, success, __etsTrace)
 }

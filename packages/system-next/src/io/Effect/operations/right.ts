@@ -7,6 +7,6 @@ import { succeed } from "./succeed"
  *
  * @ets static ets/EffectOps right
  */
-export function right<A>(value: A, __trace?: string): UIO<E.Either<never, A>> {
+export function right<A>(value: A, __etsTrace?: string): UIO<E.Either<never, A>> {
   return succeed(() => E.right(value))
 }

@@ -15,9 +15,9 @@ export function raceWith_<R, E, A, R1, E1, A1, R2, E2, A2, R3, E3, A3>(
   right: Effect<R1, E1, A1>,
   leftWins: (exit: Exit<E, A>, fiber: Fiber<E1, A1>) => Effect<R2, E2, A2>,
   rightWins: (exit: Exit<E1, A1>, fiber: Fiber<E, A>) => Effect<R3, E3, A3>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R & R1 & R2 & R3, E2 | E3, A2 | A3> {
-  return new IRaceWith(left, right, leftWins, rightWins, O.none, __trace)
+  return new IRaceWith(left, right, leftWins, rightWins, O.none, __etsTrace)
 }
 
 /**
@@ -30,8 +30,8 @@ export function raceWith<E, A, R1, E1, A1, R2, E2, A2, R3, E3, A3>(
   right: Effect<R1, E1, A1>,
   leftWins: (exit: Exit<E, A>, fiber: Fiber<E1, A1>) => Effect<R2, E2, A2>,
   rightWins: (exit: Exit<E1, A1>, fiber: Fiber<E, A>) => Effect<R3, E3, A3>,
-  __trace?: string
+  __etsTrace?: string
 ) {
   return <R>(left: Effect<R, E, A>) =>
-    raceWith_(left, right, leftWins, rightWins, __trace)
+    raceWith_(left, right, leftWins, rightWins, __etsTrace)
 }

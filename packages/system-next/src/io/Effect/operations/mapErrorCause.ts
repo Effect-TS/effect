@@ -17,9 +17,9 @@ import { succeedNow } from "./succeedNow"
 export function mapErrorCause_<R, E, A, E2>(
   self: Effect<R, E, A>,
   f: (cause: Cause<E>) => Cause<E2>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R, E2, A> {
-  return foldCauseEffect_(self, (c) => failCause(f(c)), succeedNow, __trace)
+  return foldCauseEffect_(self, (c) => failCause(f(c)), succeedNow, __etsTrace)
 }
 
 /**
@@ -34,8 +34,8 @@ export function mapErrorCause_<R, E, A, E2>(
  */
 export function mapErrorCause<E, E2>(
   f: (cause: Cause<E>) => Cause<E2>,
-  __trace?: string
+  __etsTrace?: string
 ) {
   return <R, A>(self: Effect<R, E, A>): Effect<R, E2, A> =>
-    mapErrorCause_(self, f, __trace)
+    mapErrorCause_(self, f, __etsTrace)
 }

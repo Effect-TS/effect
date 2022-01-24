@@ -13,6 +13,6 @@ import { failCauseWith } from "./failCauseWith"
  *
  * @ets static ets/EffectOps die
  */
-export function dieWith<A>(f: LazyArg<A>, __trace?: string): UIO<never> {
-  return failCauseWith(() => Cause.die(f(), Trace.none), __trace)
+export function dieWith<A>(f: LazyArg<A>, __etsTrace?: string): UIO<never> {
+  return failCauseWith(() => Cause.die(f(), Trace.none), __etsTrace)
 }

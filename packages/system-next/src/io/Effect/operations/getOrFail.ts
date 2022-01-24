@@ -11,7 +11,7 @@ import { getOrFailWith_ } from "./getOrFailWith"
  */
 export function getOrFail<A>(
   v: O.Option<A>,
-  __trace?: string
+  __etsTrace?: string
 ): IO<NoSuchElementException, A> {
-  return getOrFailWith_(v, () => new NoSuchElementException(), __trace)
+  return getOrFailWith_(v, () => new NoSuchElementException(), __etsTrace)
 }

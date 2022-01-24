@@ -14,12 +14,12 @@ import { succeedNow } from "./succeedNow"
 export function rejectEffect_<R, E, A, R1, E1>(
   self: Effect<R, E, A>,
   pf: (a: A) => O.Option<Effect<R1, E1, E1>>,
-  __trace?: string
+  __etsTrace?: string
 ) {
   return chain_(
     self,
     (a) => O.fold_(pf(a), () => succeedNow(a), chain(failNow)),
-    __trace
+    __etsTrace
   )
 }
 
@@ -32,8 +32,8 @@ export function rejectEffect_<R, E, A, R1, E1>(
  */
 export function rejectEffect<A, R1, E1>(
   pf: (a: A) => O.Option<Effect<R1, E1, E1>>,
-  __trace?: string
+  __etsTrace?: string
 ) {
   return <R, E>(self: Effect<R, E, A>): Effect<R & R1, E | E1, A> =>
-    rejectEffect_(self, pf, __trace)
+    rejectEffect_(self, pf, __etsTrace)
 }

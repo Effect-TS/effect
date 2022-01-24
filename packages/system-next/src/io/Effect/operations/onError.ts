@@ -12,12 +12,12 @@ import { unit } from "./unit"
 export function onError_<R, E, A, R2, X>(
   self: Effect<R, E, A>,
   cleanup: (cause: Cause<E>) => RIO<R2, X>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R & R2, E, A> {
   return onExit_(
     self,
     (exit): RIO<R2, X | void> => (exit._tag === "Success" ? unit : cleanup(exit.cause)),
-    __trace
+    __etsTrace
   )
 }
 
@@ -29,8 +29,8 @@ export function onError_<R, E, A, R2, X>(
  */
 export function onError<E, R2, X>(
   cleanup: (cause: Cause<E>) => RIO<R2, X>,
-  __trace?: string
+  __etsTrace?: string
 ) {
   return <R, A>(self: Effect<R, E, A>): Effect<R & R2, E, A> =>
-    onError_(self, cleanup, __trace)
+    onError_(self, cleanup, __etsTrace)
 }

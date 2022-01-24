@@ -10,7 +10,7 @@ import { map_ } from "./map"
  */
 export function asSome<R, E, A>(
   self: Effect<R, E, A>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R, E, Option<A>> {
-  return map_(self, some, __trace)
+  return map_(self, some, __etsTrace)
 }

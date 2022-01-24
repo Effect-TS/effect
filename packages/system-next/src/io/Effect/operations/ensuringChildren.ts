@@ -15,13 +15,13 @@ import { supervised_ } from "./supervised"
 export function ensuringChildren_<R, E, A, R1, X>(
   self: Effect<R, E, A>,
   children: (_: Chunk<Fiber.Runtime<any, any>>) => RIO<R1, X>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R & R1, E, A> {
   return chain_(
     track,
     (supervisor) =>
       ensuring_(supervised_(self, supervisor), chain_(supervisor.value, children)),
-    __trace
+    __etsTrace
   )
 }
 
@@ -33,8 +33,8 @@ export function ensuringChildren_<R, E, A, R1, X>(
  */
 export function ensuringChildren<R1, X>(
   children: (_: Chunk<Fiber.Runtime<any, any>>) => RIO<R1, X>,
-  __trace?: string
+  __etsTrace?: string
 ) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R & R1, E, A> =>
-    ensuringChildren_(self, children, __trace)
+    ensuringChildren_(self, children, __etsTrace)
 }

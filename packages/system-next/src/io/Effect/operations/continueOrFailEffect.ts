@@ -13,12 +13,12 @@ export function continueOrFailEffect_<R, E, A, E1, R2, E2, A2>(
   self: Effect<R, E, A>,
   e: () => E1,
   pf: (a: A) => O.Option<Effect<R2, E2, A2>>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R & R2, E | E1 | E2, A2> {
   return chain_(
     self,
     (v): Effect<R2, E1 | E2, A2> => O.getOrElse_(pf(v), () => fail(e)),
-    __trace
+    __etsTrace
   )
 }
 
@@ -31,8 +31,8 @@ export function continueOrFailEffect_<R, E, A, E1, R2, E2, A2>(
 export function continueOrFailEffect<E1, A, R2, E2, A2>(
   e: () => E1,
   pf: (a: A) => O.Option<Effect<R2, E2, A2>>,
-  __trace?: string
+  __etsTrace?: string
 ) {
   return <R, E>(self: Effect<R, E, A>): Effect<R & R2, E | E1 | E2, A2> =>
-    continueOrFailEffect_(self, e, pf, __trace)
+    continueOrFailEffect_(self, e, pf, __etsTrace)
 }

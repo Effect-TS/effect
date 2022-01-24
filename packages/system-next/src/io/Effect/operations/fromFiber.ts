@@ -10,7 +10,7 @@ import { succeed } from "./succeed"
  *
  * @ets static ets/EffectOps fromFiber
  */
-export function fromFiber<E, A>(fiber: Fiber<E, A>, __trace?: string): IO<E, A> {
+export function fromFiber<E, A>(fiber: Fiber<E, A>, __etsTrace?: string): IO<E, A> {
   return chain_(
     succeed(() => fiber),
     join

@@ -23,13 +23,13 @@ import { unit } from "./unit"
 export function loopUnit<Z>(initial: Z, cont: (z: Z) => boolean, inc: (z: Z) => Z) {
   return <R, E, X>(
     body: (z: Z) => Effect<R, E, X>,
-    __trace?: string
+    __etsTrace?: string
   ): Effect<R, E, void> => {
     return suspendSucceed(() => {
       if (cont(initial)) {
         return chain_(body(initial), () => loopUnit(inc(initial), cont, inc)(body))
       }
       return unit
-    }, __trace)
+    }, __etsTrace)
   }
 }

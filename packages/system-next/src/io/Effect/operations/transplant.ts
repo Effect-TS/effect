@@ -5,7 +5,7 @@ import { forkScopeWith } from "./forkScopeWith"
 
 export type Grafter = <R, E, A>(
   effect: Effect<R, E, A>,
-  __trace?: string
+  __etsTrace?: string
 ) => Effect<R, E, A>
 
 /**
@@ -13,10 +13,11 @@ export type Grafter = <R, E, A>(
  */
 export function transplant<R, E, A>(
   f: (grafter: Grafter) => Effect<R, E, A>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R, E, A> {
   return forkScopeWith(
-    (scope) => f((eff, __trace) => new IOverrideForkScope(eff, O.some(scope), __trace)),
-    __trace
+    (scope) =>
+      f((eff, __etsTrace) => new IOverrideForkScope(eff, O.some(scope), __etsTrace)),
+    __etsTrace
   )
 }

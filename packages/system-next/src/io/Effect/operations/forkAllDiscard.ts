@@ -11,7 +11,7 @@ import { fork } from "./fork"
  */
 export function forkAllDiscard<R, E, A>(
   effects: Iterable<Effect<R, E, A>>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R, never, void> {
-  return forEachDiscard_(effects, fork, __trace)
+  return forEachDiscard_(effects, fork, __etsTrace)
 }

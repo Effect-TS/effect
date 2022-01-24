@@ -10,7 +10,7 @@ import { ensuringChildren_ } from "./ensuringChildren"
  */
 export function awaitAllChildren<R, E, A>(
   self: Effect<R, E, A>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R, E, A> {
-  return ensuringChildren_(self, awaitAll, __trace)
+  return ensuringChildren_(self, awaitAll, __etsTrace)
 }

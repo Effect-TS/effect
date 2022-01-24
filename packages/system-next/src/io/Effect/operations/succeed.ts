@@ -8,6 +8,6 @@ import { ISucceed } from "../definition"
  *
  * @ets static ets/EffectOps succeed
  */
-export function succeed<A>(f: LazyArg<A>, __trace?: string): UIO<A> {
-  return new ISucceed(f, __trace)
+export function succeed<A>(f: LazyArg<A>, __etsTrace?: string): UIO<A> {
+  return new ISucceed(f, __etsTrace)
 }

@@ -27,9 +27,9 @@ import { suspendSucceed } from "./suspendSucceed"
 export function loop<Z>(initial: Z, cont: (z: Z) => boolean, inc: (z: Z) => Z) {
   return <R, E, A>(
     body: (z: Z) => Effect<R, E, A>,
-    __trace?: string
+    __etsTrace?: string
   ): Effect<R, E, readonly A[]> => {
-    return map_(loopInternal_(initial, cont, inc, body, __trace), (x) =>
+    return map_(loopInternal_(initial, cont, inc, body, __etsTrace), (x) =>
       Array.from(L.reverse(x))
     )
   }
@@ -40,7 +40,7 @@ function loopInternal_<Z, R, E, A>(
   cont: (z: Z) => boolean,
   inc: (z: Z) => Z,
   body: (z: Z) => Effect<R, E, A>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R, E, L.MutableList<A>> {
   return suspendSucceed(() => {
     if (cont(initial)) {
@@ -55,5 +55,5 @@ function loopInternal_<Z, R, E, A>(
       )
     }
     return succeed(() => L.emptyPushable())
-  }, __trace)
+  }, __etsTrace)
 }

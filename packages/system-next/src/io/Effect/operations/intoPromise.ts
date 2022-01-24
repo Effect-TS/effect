@@ -15,11 +15,11 @@ import { uninterruptibleMask } from "./interruption"
 export function intoPromise_<R, E, A>(
   self: Effect<R, E, A>,
   promise: Promise<E, A>,
-  __trace?: string
+  __etsTrace?: string
 ): RIO<R, boolean> {
   return uninterruptibleMask(
     ({ restore }) => chain_(exit(restore(self)), (_) => done_(promise, _)),
-    __trace
+    __etsTrace
   )
 }
 
@@ -30,7 +30,7 @@ export function intoPromise_<R, E, A>(
  *
  * @ets_data_first intoPromise_
  */
-export function intoPromise<E, A>(promise: Promise<E, A>, __trace?: string) {
+export function intoPromise<E, A>(promise: Promise<E, A>, __etsTrace?: string) {
   return <R>(self: Effect<R, E, A>): RIO<R, boolean> =>
-    intoPromise_(self, promise, __trace)
+    intoPromise_(self, promise, __etsTrace)
 }

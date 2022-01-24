@@ -7,6 +7,6 @@ import { succeed } from "./succeed"
  *
  * @ets static ets/EffectOps some
  */
-export function some<A>(a: A, __trace?: string): UIO<O.Option<A>> {
-  return succeed(() => O.some(a), __trace)
+export function some<A>(a: A, __etsTrace?: string): UIO<O.Option<A>> {
+  return succeed(() => O.some(a), __etsTrace)
 }

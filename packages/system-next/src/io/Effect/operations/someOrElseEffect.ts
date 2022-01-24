@@ -12,7 +12,7 @@ import { succeedNow } from "./succeedNow"
 export function someOrElseEffect_<R, E, A, R2, E2, B>(
   self: Effect<R, E, O.Option<A>>,
   orElse: Effect<R2, E2, B>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R & R2, E | E2, A | B> {
   return chain_(
     self as Effect<R, E, O.Option<A | B>>,
@@ -22,7 +22,7 @@ export function someOrElseEffect_<R, E, A, R2, E2, B>(
         O.map(succeedNow),
         O.getOrElse(() => orElse)
       ),
-    __trace
+    __etsTrace
   )
 }
 
@@ -33,8 +33,8 @@ export function someOrElseEffect_<R, E, A, R2, E2, B>(
  */
 export function someOrElseEffect<R2, E2, B>(
   orElse: Effect<R2, E2, B>,
-  __trace?: string
+  __etsTrace?: string
 ) {
   return <R, E, A>(self: Effect<R, E, O.Option<A>>) =>
-    someOrElseEffect_(self, orElse, __trace)
+    someOrElseEffect_(self, orElse, __etsTrace)
 }

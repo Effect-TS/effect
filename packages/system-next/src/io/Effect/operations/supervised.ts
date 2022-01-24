@@ -11,9 +11,9 @@ import { ISupervise } from "../definition"
 export function supervised_<R, E, A>(
   self: Effect<R, E, A>,
   supervisor: Supervisor<any>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R, E, A> {
-  return new ISupervise(self, supervisor, __trace)
+  return new ISupervise(self, supervisor, __etsTrace)
 }
 
 /**
@@ -22,7 +22,7 @@ export function supervised_<R, E, A>(
  *
  * @ets_data_first supervised_
  */
-export function supervised(supervisor: Supervisor<any>, __trace?: string) {
+export function supervised(supervisor: Supervisor<any>, __etsTrace?: string) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R, E, A> =>
-    supervised_(self, supervisor, __trace)
+    supervised_(self, supervisor, __etsTrace)
 }

@@ -11,6 +11,6 @@ import { mapErrorCause_ } from "./mapErrorCause"
  *
  * @ets fluent ets/Effect unsandbox
  */
-export function unsandbox<R, E, A>(fa: Effect<R, Cause<E>, A>, __trace?: string) {
-  return mapErrorCause_(fa, flatten, __trace)
+export function unsandbox<R, E, A>(fa: Effect<R, Cause<E>, A>, __etsTrace?: string) {
+  return mapErrorCause_(fa, flatten, __etsTrace)
 }

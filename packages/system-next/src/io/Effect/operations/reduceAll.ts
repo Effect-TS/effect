@@ -13,11 +13,11 @@ export function reduceAll_<R, E, A>(
   as: Iterable<Effect<R, E, A>>,
   a: Effect<R, E, A>,
   f: (acc: A, a: A) => A,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R, E, A> {
   return suspendSucceed(
     () => Iter.reduce_(as, a, (acc, a) => zipWith_(acc, a, f)),
-    __trace
+    __etsTrace
   )
 }
 
@@ -30,7 +30,7 @@ export function reduceAll_<R, E, A>(
 export function reduceAll<R, E, A>(
   a: Effect<R, E, A>,
   f: (acc: A, a: A) => A,
-  __trace?: string
+  __etsTrace?: string
 ) {
-  return (as: Iterable<Effect<R, E, A>>) => reduceAll_(as, a, f, __trace)
+  return (as: Iterable<Effect<R, E, A>>) => reduceAll_(as, a, f, __etsTrace)
 }

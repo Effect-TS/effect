@@ -17,12 +17,12 @@ import { unrefineWith_ } from "./unrefineWith"
 export function catchSomeDefect_<R, E, A, R2, E2, A2>(
   self: Effect<R, E, A>,
   f: (_: unknown) => Option<Effect<R2, E2, A2>>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R & R2, E | E2, A | A2> {
   return catchAll_(
     unrefineWith_(self, f, failNow),
     (s): Effect<R2, E | E2, A2> => s,
-    __trace
+    __etsTrace
   )
 }
 
@@ -38,8 +38,8 @@ export function catchSomeDefect_<R, E, A, R2, E2, A2>(
  */
 export function catchSomeDefect<R2, E2, A2>(
   f: (_: unknown) => Option<Effect<R2, E2, A2>>,
-  __trace?: string
+  __etsTrace?: string
 ) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R & R2, E | E2, A | A2> =>
-    catchSomeDefect_(self, f, __trace)
+    catchSomeDefect_(self, f, __etsTrace)
 }

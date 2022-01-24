@@ -13,7 +13,7 @@ import { suspendSucceed } from "./suspendSucceed"
 export function unless_<R, E, A>(
   self: Effect<R, E, A>,
   predicate: LazyArg<boolean>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R, E, O.Option<A>> {
   return suspendSucceed(() => (predicate() ? none : asSome(self)))
 }
@@ -23,7 +23,7 @@ export function unless_<R, E, A>(
  *
  * @ets_data_first unless_
  */
-export function unless(predicate: LazyArg<boolean>, __trace?: string) {
+export function unless(predicate: LazyArg<boolean>, __etsTrace?: string) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R, E, O.Option<A>> =>
-    unless_(self, predicate, __trace)
+    unless_(self, predicate, __etsTrace)
 }

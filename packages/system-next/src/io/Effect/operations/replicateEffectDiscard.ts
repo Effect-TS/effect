@@ -11,9 +11,9 @@ import { replicate_ } from "./replicate"
 export function replicateEffectDiscard_<R, E, A>(
   self: Effect<R, E, A>,
   n: number,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R, E, void> {
-  return collectAllDiscard(replicate_(self, n), __trace)
+  return collectAllDiscard(replicate_(self, n), __etsTrace)
 }
 
 /**
@@ -22,6 +22,7 @@ export function replicateEffectDiscard_<R, E, A>(
  *
  * @ets_data_first replicateEffectDiscard_
  */
-export function replicateEffectDiscard(n: number, __trace?: string) {
-  return <R, E, A>(self: Effect<R, E, A>) => replicateEffectDiscard_(self, n, __trace)
+export function replicateEffectDiscard(n: number, __etsTrace?: string) {
+  return <R, E, A>(self: Effect<R, E, A>) =>
+    replicateEffectDiscard_(self, n, __etsTrace)
 }

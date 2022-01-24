@@ -14,16 +14,16 @@ import { suspendSucceedWith } from "./suspendSucceedWith"
  */
 export function suspendWith<R, A>(
   f: (runtimeConfig: RuntimeConfig, fiberId: FiberId) => RIO<R, A>,
-  __trace?: string
+  __etsTrace?: string
 ): RIO<R, A> {
   return suspendSucceedWith((runtimeConfig, fiberId) => {
     try {
       return f(runtimeConfig, fiberId)
     } catch (error) {
       if (!runtimeConfig.value.fatal(error)) {
-        throw new EffectError(fail(error), __trace)
+        throw new EffectError(fail(error), __etsTrace)
       }
       throw error
     }
-  }, __trace)
+  }, __etsTrace)
 }

@@ -14,7 +14,7 @@ export function reduceAllPar_<R, E, A>(
   as: Iterable<Effect<R, E, A>>,
   a: Effect<R, E, A>,
   f: (acc: A, a: A) => A,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R, E, A> {
   return suspendSucceed(() =>
     map_(
@@ -29,7 +29,7 @@ export function reduceAllPar_<R, E, A>(
               (a) => f(a, elem)
             )
           ),
-        __trace
+        __etsTrace
       ),
       O.getOrElse(() => {
         throw new Error("Bug")
@@ -47,7 +47,7 @@ export function reduceAllPar_<R, E, A>(
 export function reduceAllPar<R, E, A>(
   a: Effect<R, E, A>,
   f: (acc: A, a: A) => A,
-  __trace?: string
+  __etsTrace?: string
 ) {
-  return (as: Iterable<Effect<R, E, A>>) => reduceAllPar_(as, a, f, __trace)
+  return (as: Iterable<Effect<R, E, A>>) => reduceAllPar_(as, a, f, __etsTrace)
 }

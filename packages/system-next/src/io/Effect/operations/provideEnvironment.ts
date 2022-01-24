@@ -11,9 +11,9 @@ import type { Effect, IO } from "../definition"
 export function provideEnvironment_<R, E, A>(
   self: Effect<R, E, A>,
   environment: R,
-  __trace?: string
+  __etsTrace?: string
 ): IO<E, A> {
-  return locally_(currentEnvironment.value, environment, __trace)(self as IO<E, A>)
+  return locally_(currentEnvironment.value, environment, __etsTrace)(self as IO<E, A>)
 }
 
 /**
@@ -22,7 +22,7 @@ export function provideEnvironment_<R, E, A>(
  *
  * @ets_data_first provideEnvironment_
  */
-export function provideEnvironment<R>(environment: R, __trace?: string) {
+export function provideEnvironment<R>(environment: R, __etsTrace?: string) {
   return <E, A>(self: Effect<R, E, A>): IO<E, A> =>
-    provideEnvironment_(self, environment, __trace)
+    provideEnvironment_(self, environment, __etsTrace)
 }

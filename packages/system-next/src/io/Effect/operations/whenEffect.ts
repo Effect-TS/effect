@@ -13,9 +13,9 @@ import { unit } from "./unit"
 export function whenEffect_<R1, E1, A, R, E>(
   self: Effect<R1, E1, A>,
   predicate: Effect<R, E, boolean>,
-  __trace?: string
+  __etsTrace?: string
 ) {
-  return chain_(predicate, (a) => (a ? asUnit(self, __trace) : unit))
+  return chain_(predicate, (a) => (a ? asUnit(self, __etsTrace) : unit))
 }
 
 /**
@@ -23,6 +23,10 @@ export function whenEffect_<R1, E1, A, R, E>(
  *
  * @ets_data_first whenEffect_
  */
-export function whenEffect<R, E>(predicate: Effect<R, E, boolean>, __trace?: string) {
-  return <R1, E1, A>(self: Effect<R1, E1, A>) => whenEffect_(self, predicate, __trace)
+export function whenEffect<R, E>(
+  predicate: Effect<R, E, boolean>,
+  __etsTrace?: string
+) {
+  return <R1, E1, A>(self: Effect<R1, E1, A>) =>
+    whenEffect_(self, predicate, __etsTrace)
 }

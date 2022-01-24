@@ -13,7 +13,7 @@ import { provideEnvironment_ } from "./provideEnvironment"
 export function joinEither_<R, E, A, R1, E1, A1>(
   self: Effect<R, E, A>,
   that: Effect<R1, E1, A1>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<E.Either<R, R1>, E | E1, Either<A, A1>> {
   return environmentWithEffect(
     (_: E.Either<R, R1>): Effect<unknown, E | E1, Either<A, A1>> =>
@@ -22,7 +22,7 @@ export function joinEither_<R, E, A, R1, E1, A1>(
         (r) => map_(provideEnvironment_(self, r), E.left),
         (r1) => map_(provideEnvironment_(that, r1), E.right)
       ),
-    __trace
+    __etsTrace
   )
 }
 
@@ -33,7 +33,7 @@ export function joinEither_<R, E, A, R1, E1, A1>(
  */
 export function joinEither<R, E, A, R1, E1, A1>(
   that: Effect<R1, E1, A1>,
-  __trace?: string
+  __etsTrace?: string
 ): (self: Effect<R, E, A>) => Effect<E.Either<R, R1>, E | E1, Either<A, A1>> {
-  return (self) => joinEither_(self, that, __trace)
+  return (self) => joinEither_(self, that, __etsTrace)
 }

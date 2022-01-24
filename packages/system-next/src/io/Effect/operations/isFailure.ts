@@ -9,7 +9,7 @@ import { fold_ } from "./fold"
  */
 export function isFailure<R, E, A>(
   self: Effect<R, E, A>,
-  __trace?: string
+  __etsTrace?: string
 ): RIO<R, boolean> {
-  return fold_(self, constTrue, constFalse, __trace)
+  return fold_(self, constTrue, constFalse, __etsTrace)
 }

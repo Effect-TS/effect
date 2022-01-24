@@ -13,7 +13,7 @@ import { IFork } from "../definition"
  */
 export function forkDaemon<R, E, A>(
   self: Effect<R, E, A>,
-  __trace?: string
+  __etsTrace?: string
 ): RIO<R, Fiber.Runtime<E, A>> {
-  return new IFork(self, O.some(globalScope), __trace)
+  return new IFork(self, O.some(globalScope), __etsTrace)
 }

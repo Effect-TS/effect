@@ -17,12 +17,12 @@ import { succeedNow } from "./succeedNow"
  */
 export function either<R, E, A>(
   self: Effect<R, E, A>,
-  __trace?: string
+  __etsTrace?: string
 ): RIO<R, E.Either<E, A>> {
   return foldEffect_(
     self,
     (e) => succeedNow(E.left(e)),
     (a) => succeedNow(E.right(a)),
-    __trace
+    __etsTrace
   )
 }

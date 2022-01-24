@@ -13,13 +13,13 @@ export function mapBoth_<R, E, A, E2, B>(
   self: Effect<R, E, A>,
   f: (e: E) => E2,
   g: (a: A) => B,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R, E2, B> {
   return foldEffect_(
     self,
     (e) => failNow(f(e)),
     (a) => succeedNow(g(a)),
-    __trace
+    __etsTrace
   )
 }
 
@@ -32,7 +32,8 @@ export function mapBoth_<R, E, A, E2, B>(
 export function mapBoth<E, E2, A, B>(
   f: (e: E) => E2,
   g: (a: A) => B,
-  __trace?: string
+  __etsTrace?: string
 ) {
-  return <R>(self: Effect<R, E, A>): Effect<R, E2, B> => mapBoth_(self, f, g, __trace)
+  return <R>(self: Effect<R, E, A>): Effect<R, E2, B> =>
+    mapBoth_(self, f, g, __etsTrace)
 }

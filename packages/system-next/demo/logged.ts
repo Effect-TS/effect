@@ -9,7 +9,7 @@ export const isPositive = (n: number) =>
   n > 0 ? Either.right("positive") : Either.left("negative")
 
 export const isPositiveEff = (n: number) =>
-  n > 0 ?S Effect.succeed("positive") : Effect.fail("negative")
+  n > 0 ? Effect.succeed("positive") : Effect.fail("negative")
 
 export const switched = (n: number) => {
   switch (n) {

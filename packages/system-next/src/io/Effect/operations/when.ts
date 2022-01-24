@@ -13,11 +13,11 @@ import { suspendSucceed } from "./suspendSucceed"
 export function when_<R1, E1, A>(
   self: Effect<R1, E1, A>,
   predicate: LazyArg<boolean>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R1, E1, O.Option<A>> {
   return suspendSucceed(
     () => (predicate() ? map_(self, O.some) : succeedNow(O.none)),
-    __trace
+    __etsTrace
   )
 }
 
@@ -26,7 +26,7 @@ export function when_<R1, E1, A>(
  *
  * @ets_data_first when_
  */
-export function when(predicate: LazyArg<boolean>, __trace?: string) {
+export function when(predicate: LazyArg<boolean>, __etsTrace?: string) {
   return <R1, E1, A>(self: Effect<R1, E1, A>): Effect<R1, E1, O.Option<A>> =>
-    when_(self, predicate, __trace)
+    when_(self, predicate, __etsTrace)
 }

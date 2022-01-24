@@ -23,11 +23,11 @@ import { runtimeConfig } from "./runtimeConfig"
  *
  * @ets static ets/EffectOps runtime
  */
-export function runtime<R>(__trace?: string): RIO<R, Runtime<R>> {
+export function runtime<R>(__etsTrace?: string): RIO<R, Runtime<R>> {
   return chain_(
     environment<R>(),
     (env) => map_(runtimeConfig, (config) => new Runtime(env, config)),
-    __trace
+    __etsTrace
   )
 }
 
@@ -74,9 +74,9 @@ export const {
  */
 export function unsafeRunPromiseMethod<E, A>(
   self: Effect<DefaultEnv, E, A>,
-  __trace?: string | undefined
+  __etsTrace?: string | undefined
 ): Promise<A> {
-  return unsafeRunPromise(self, __trace)
+  return unsafeRunPromise(self, __etsTrace)
 }
 
 /**
@@ -84,9 +84,9 @@ export function unsafeRunPromiseMethod<E, A>(
  */
 export function unsafeRunPromiseExitMethod<E, A>(
   self: Effect<DefaultEnv, E, A>,
-  __trace?: string | undefined
+  __etsTrace?: string | undefined
 ): Promise<Exit<E, A>> {
-  return unsafeRunPromiseExit(self, __trace)
+  return unsafeRunPromiseExit(self, __etsTrace)
 }
 
 /**
@@ -95,9 +95,9 @@ export function unsafeRunPromiseExitMethod<E, A>(
 export function unsafeRunWithMethod<E, A>(
   self: Effect<DefaultEnv, E, A>,
   k: (exit: Exit<E, A>) => void,
-  __trace?: string | undefined
+  __etsTrace?: string | undefined
 ): (fiberId: FiberId) => (_: (exit: Exit<E, A>) => void) => void {
-  return unsafeRunWith(self, k, __trace)
+  return unsafeRunWith(self, k, __etsTrace)
 }
 
 /**
@@ -105,9 +105,9 @@ export function unsafeRunWithMethod<E, A>(
  */
 export function unsafeRunAsynchMethod<E, A>(
   self: Effect<DefaultEnv, E, A>,
-  __trace?: string | undefined
+  __etsTrace?: string | undefined
 ): void {
-  return unsafeRunAsync(self, __trace)
+  return unsafeRunAsync(self, __etsTrace)
 }
 
 /**
@@ -116,9 +116,9 @@ export function unsafeRunAsynchMethod<E, A>(
 export function unsafeRunAsynchWithMethod<E, A>(
   self: Effect<DefaultEnv, E, A>,
   k: (exit: Exit<E, A>) => void,
-  __trace?: string | undefined
+  __etsTrace?: string | undefined
 ): void {
-  return unsafeRunAsyncWith(self, k, __trace)
+  return unsafeRunAsyncWith(self, k, __etsTrace)
 }
 
 /**
@@ -127,7 +127,7 @@ export function unsafeRunAsynchWithMethod<E, A>(
 export function unsafeRunAsyncCancelableMethod<E, A>(
   effect: Effect<DefaultEnv, E, A>,
   k: (exit: Exit<E, A>) => void,
-  __trace?: string | undefined
+  __etsTrace?: string | undefined
 ): (fiberId: FiberId) => Exit<E, A> {
-  return unsafeRunAsyncCancelable(effect, k, __trace)
+  return unsafeRunAsyncCancelable(effect, k, __etsTrace)
 }

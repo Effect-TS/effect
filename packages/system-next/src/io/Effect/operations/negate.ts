@@ -8,7 +8,7 @@ import { map_ } from "./map"
  */
 export function negate<R, E>(
   self: Effect<R, E, boolean>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R, E, boolean> {
   return map_(self, (b) => !b)
 }

@@ -12,7 +12,7 @@ import { succeedNow } from "./succeedNow"
 export function bind<R, E, A, K, N extends string>(
   tag: Exclude<N, keyof K>,
   f: (_: K) => Effect<R, E, A>,
-  __trace?: string
+  __etsTrace?: string
 ) {
   return <R2, E2>(
     mk: Effect<R2, E2, K>
@@ -25,7 +25,7 @@ export function bind<R, E, A, K, N extends string>(
         [k in N]: A
       }
     >
-  > => bind_(mk, tag, f, __trace)
+  > => bind_(mk, tag, f, __etsTrace)
 }
 
 /**
@@ -37,7 +37,7 @@ export function bind_<R2, E2, R, E, A, K, N extends string>(
   mk: Effect<R2, E2, K>,
   tag: Exclude<N, keyof K>,
   f: (_: K) => Effect<R, E, A>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<
   R & R2,
   E | E2,
@@ -62,7 +62,7 @@ export function bind_<R2, E2, R, E, A, K, N extends string>(
           }
         > => ({ ...k, [tag]: a } as any)
       ),
-    __trace
+    __etsTrace
   )
 }
 
@@ -74,7 +74,7 @@ export function bind_<R2, E2, R, E, A, K, N extends string>(
 export function bindValue<A, K, N extends string>(
   tag: Exclude<N, keyof K>,
   f: (_: K) => A,
-  __trace?: string
+  __etsTrace?: string
 ) {
   return <R2, E2>(
     mk: Effect<R2, E2, K>
@@ -97,7 +97,7 @@ export function bindValue_<R2, E2, A, K, N extends string>(
   mk: Effect<R2, E2, K>,
   tag: Exclude<N, keyof K>,
   f: (_: K) => A,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<
   R2,
   E2,
@@ -118,7 +118,7 @@ export function bindValue_<R2, E2, A, K, N extends string>(
         [k in N]: A
       }
     > => ({ ...k, [tag]: f(k) } as any),
-    __trace
+    __etsTrace
   )
 }
 

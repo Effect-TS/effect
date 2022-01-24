@@ -14,11 +14,11 @@ import { onError_ } from "./onError"
 export function forkWithErrorHandler_<R, E, A, X>(
   self: Effect<R, E, A>,
   handler: (e: E) => UIO<X>,
-  __trace?: string
+  __etsTrace?: string
 ): RIO<R, Fiber.Runtime<E, A>> {
   return fork(
     onError_(self, (cause) => E.fold_(failureOrCause(cause), handler, failCause)),
-    __trace
+    __etsTrace
   )
 }
 
@@ -29,8 +29,8 @@ export function forkWithErrorHandler_<R, E, A, X>(
  */
 export function forkWithErrorHandler<E, X>(
   handler: (e: E) => UIO<X>,
-  __trace?: string
+  __etsTrace?: string
 ) {
   return <R, A>(self: Effect<R, E, A>): RIO<R, Fiber.Runtime<E, A>> =>
-    forkWithErrorHandler_(self, handler, __trace)
+    forkWithErrorHandler_(self, handler, __etsTrace)
 }

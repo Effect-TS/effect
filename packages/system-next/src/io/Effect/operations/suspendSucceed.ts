@@ -13,7 +13,7 @@ import { ISuspend } from "../definition"
  */
 export function suspendSucceed<R, E, A>(
   f: LazyArg<Effect<R, E, A>>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R, E, A> {
-  return new ISuspend(f, __trace)
+  return new ISuspend(f, __etsTrace)
 }

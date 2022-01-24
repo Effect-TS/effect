@@ -12,9 +12,9 @@ import { provideEnvironment_ } from "./provideEnvironment"
 export function provideLayer_<R, E, A, E1, A1>(
   self: Effect<A, E1, A1>,
   layer: Layer<R, E, A>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R, E | E1, A1> {
-  return use_(build(layer), (r) => provideEnvironment_(self, r), __trace)
+  return use_(build(layer), (r) => provideEnvironment_(self, r), __etsTrace)
 }
 
 /**
@@ -22,6 +22,6 @@ export function provideLayer_<R, E, A, E1, A1>(
  *
  * @ets_data_first provideLayer_
  */
-export function provideLayer<R, E, A>(layer: Layer<R, E, A>, __trace?: string) {
-  return <E1, A1>(self: Effect<A, E1, A1>) => provideLayer_(self, layer, __trace)
+export function provideLayer<R, E, A>(layer: Layer<R, E, A>, __etsTrace?: string) {
+  return <E1, A1>(self: Effect<A, E1, A1>) => provideLayer_(self, layer, __etsTrace)
 }

@@ -10,7 +10,7 @@ import { someOrFail_ } from "./someOrFail"
  */
 export function someOrFailException<R, E, A>(
   self: Effect<R, E, O.Option<A>>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R, E | NoSuchElementException, A> {
-  return someOrFail_(self, () => new NoSuchElementException(), __trace)
+  return someOrFail_(self, () => new NoSuchElementException(), __etsTrace)
 }

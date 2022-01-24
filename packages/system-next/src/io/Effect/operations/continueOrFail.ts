@@ -13,9 +13,9 @@ export function continueOrFail_<R, E, E1, A, A2>(
   self: Effect<R, E, A>,
   e: () => E1,
   pf: (a: A) => O.Option<A2>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R, E | E1, A2> {
-  return continueOrFailEffect_(self, e, (a) => O.map_(pf(a), succeedNow), __trace)
+  return continueOrFailEffect_(self, e, (a) => O.map_(pf(a), succeedNow), __etsTrace)
 }
 
 /**
@@ -27,8 +27,8 @@ export function continueOrFail_<R, E, E1, A, A2>(
 export function continueOrFail<E1, A, A2>(
   e: () => E1,
   pf: (a: A) => O.Option<A2>,
-  __trace?: string
+  __etsTrace?: string
 ) {
   return <R, E>(self: Effect<R, E, A>): Effect<R, E | E1, A2> =>
-    continueOrFail_(self, e, pf, __trace)
+    continueOrFail_(self, e, pf, __etsTrace)
 }

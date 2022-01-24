@@ -13,12 +13,12 @@ export function updateService_<R, E, A, T>(
   effect: Effect<R & Has<T>, E, A>,
   _: Tag<T>,
   f: (_: T) => T,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R & Has<T>, E, A> {
   return serviceWithEffect(_)((t) =>
     provideServiceEffect(_)(
       succeed(() => f(t)),
-      __trace
+      __etsTrace
     )(effect)
   )
 }
@@ -26,7 +26,7 @@ export function updateService_<R, E, A, T>(
 /**
  * Updates the service with the required service entry.
  */
-export function updateService<T>(_: Tag<T>, f: (_: T) => T, __trace?: string) {
+export function updateService<T>(_: Tag<T>, f: (_: T) => T, __etsTrace?: string) {
   return <R, E, A>(effect: Effect<R & Has<T>, E, A>): Effect<R & Has<T>, E, A> =>
-    updateService_(effect, _, f, __trace)
+    updateService_(effect, _, f, __etsTrace)
 }

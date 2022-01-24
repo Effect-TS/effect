@@ -14,10 +14,10 @@ import { provideLayer_ } from "./provideLayer"
 export function provideSomeLayer_<R1, E1, A1, R, E, A>(
   self: Effect<R1, E1, A1>,
   layer: Layer<R, E, A>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R & Erase<R1, A>, E | E1, A1> {
   // @ts-expect-error
-  return provideLayer_(self, andLayer_(environmentLayer<R1>(), layer), __trace)
+  return provideLayer_(self, andLayer_(environmentLayer<R1>(), layer), __etsTrace)
 }
 
 /**
@@ -26,8 +26,8 @@ export function provideSomeLayer_<R1, E1, A1, R, E, A>(
  *
  * @ets_data_first provideSomeLayer_
  */
-export function provideSomeLayer<R, E, A>(layer: Layer<R, E, A>, __trace?: string) {
+export function provideSomeLayer<R, E, A>(layer: Layer<R, E, A>, __etsTrace?: string) {
   return <R1, E1, A1>(self: Effect<R1 & A, E1, A1>): Effect<R & R1, E | E1, A1> =>
     // @ts-expect-error
-    provideSomeLayer_<R1, E1, A1, R, E, A>(self, layer, __trace)
+    provideSomeLayer_<R1, E1, A1, R, E, A>(self, layer, __etsTrace)
 }

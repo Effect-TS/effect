@@ -12,6 +12,6 @@ import { succeedNow } from "./succeedNow"
  * @ets static ets/EffectOps serviceWith
  */
 export function serviceWith<T>(_: Tag<T>) {
-  return <A>(f: (a: T) => A, __trace?: string): Effect<Has<T>, never, A> =>
-    serviceWithEffect(_)((a) => succeedNow(f(a)), __trace)
+  return <A>(f: (a: T) => A, __etsTrace?: string): Effect<Has<T>, never, A> =>
+    serviceWithEffect(_)((a) => succeedNow(f(a)), __etsTrace)
 }

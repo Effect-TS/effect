@@ -10,9 +10,9 @@ import { flip } from "./flip"
 export function flipWith_<R, E, A, R2, E2, A2>(
   self: Effect<R, E, A>,
   f: (self: Effect<R, A, E>) => Effect<R2, A2, E2>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R2, E2, A2> {
-  return flip(f(flip(self)), __trace)
+  return flip(f(flip(self)), __etsTrace)
 }
 
 /**
@@ -23,7 +23,7 @@ export function flipWith_<R, E, A, R2, E2, A2>(
  */
 export function flipWith<R, A, E, R2, E2, A2>(
   f: (self: Effect<R, A, E>) => Effect<R2, A2, E2>,
-  __trace?: string
+  __etsTrace?: string
 ) {
-  return (self: Effect<R, E, A>): Effect<R2, E2, A2> => flipWith_(self, f, __trace)
+  return (self: Effect<R, E, A>): Effect<R2, E2, A2> => flipWith_(self, f, __etsTrace)
 }
