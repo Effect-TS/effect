@@ -31,7 +31,7 @@ export function orElseEither_<R, E, A, R2, E2, A2>(
  * @ets_data_first orElseEither_
  */
 export function orElseEither<R2, E2, A2>(
-  that: () => Effect<R2, E2, A2>,
+  that: LazyArg<Effect<R2, E2, A2>>,
   __trace?: string
 ) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R & R2, E2, E.Either<A, A2>> =>

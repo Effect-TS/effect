@@ -6,6 +6,18 @@
       "// codegen:end"
     ],
   },
+  "etsEitherFluent": {
+    "prefix": "etsEitherFluent",
+    "body": [
+      "@ets fluent ets/Either $0"
+    ],
+  },
+  "etsEitherStatic": {
+    "prefix": "etsEitherStatic",
+    "body": [
+      "@ets static ets/EitherOps $0"
+    ],
+  },
   "etsEffectFluent": {
     "prefix": "etsEffectFluent",
     "body": [
