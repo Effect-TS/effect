@@ -1,6 +1,6 @@
 ## Welcome to Effect-TS [![Gitpod Ready-to-Code](https://img.shields.io/badge/Gitpod-ready--to--code-908a85?logo=gitpod)](https://gitpod.io/#https://github.com/Effect-TS/core)
 
-Effect-TS is a zero dependenibraries to write highly productive, purely functional TypeScript at scale.
+Effect-TS is a collection of zero dependency libraries to write highly productive, purely functional TypeScript at scale.
 
 The main driver of inspiration and the source of most of the ideas politely borrowed by this library is the core [ZIO](https://github.com/zio/zio) and its ecosystem of libraries, in particular [ZIO-Prelude](https://github.com/zio/zio-prelude) from which we take the naming and design of a highly innovative typeclass system.
 
