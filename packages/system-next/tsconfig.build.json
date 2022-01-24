@@ -10,7 +10,8 @@
     "declaration": true,
     "declarationDir": "build/dts",
     "declarationMap": false,
-    "removeComments": false
+    "removeComments": false,
+    "etsTracingPackageName": "@effect-ts/system-next"
   },
   "include": [
     "src/**/*.ts"
