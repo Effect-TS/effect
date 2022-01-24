@@ -1,12 +1,12 @@
-import * as Tp from "../src/Collections/Immutable/Tuple"
-import * as T from "../src/Effect"
-import * as Ex from "../src/Exit"
-import * as Fiber from "../src/Fiber"
-import { pipe } from "../src/Function"
-import * as Promise from "../src/Promise"
-import * as STM from "../src/Transactional/STM"
-import * as TRef from "../src/Transactional/TRef"
-import * as TSemaphore from "../src/Transactional/TSemaphore"
+import * as Tp from "../src/collection/immutable/Tuple"
+import { pipe } from "../src/data/Function"
+import * as T from "../src/io/Effect"
+import * as Ex from "../src/io/Exit"
+import * as Fiber from "../src/io/Fiber"
+import * as Promise from "../src/io/Promise"
+import * as STM from "../src/stm/STM"
+import * as TRef from "../src/stm/TRef"
+import * as TSemaphore from "../src/stm/TSemaphore"
 
 function repeat<E, A>(self: STM.STM<unknown, E, A>, n: number): STM.STM<unknown, E, A> {
   if (n < 1) {
@@ -121,10 +121,10 @@ describe("TSemaphore", () => {
 
     it("withPermit automatically releases the permit if the effect is interrupted", async () => {
       const { permits } = await pipe(
-        T.do,
+        T.Do(),
         T.bind("promise", () => Promise.make<never, void>()),
         T.bind("semaphore", () => STM.commit(TSemaphore.make(1))),
-        T.let("effect", ({ promise, semaphore }) =>
+        T.bindValue("effect", ({ promise, semaphore }) =>
           T.chain_(
             TSemaphore.withPermit_(Promise.succeed_(promise, undefined), semaphore),
             () => T.never
@@ -145,9 +145,9 @@ describe("TSemaphore", () => {
     it("withPermit acquire is interruptible", async () => {
       const f = jest.fn()
       const res = await pipe(
-        T.do,
+        T.Do(),
         T.bind("semaphore", () => STM.commit(TSemaphore.make(0))),
-        T.let("effect", ({ semaphore }) =>
+        T.bindValue("effect", ({ semaphore }) =>
           TSemaphore.withPermit_(
             T.succeed(() => f()),
             semaphore
