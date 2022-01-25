@@ -16,7 +16,7 @@ export function servicesWithS<SS extends Record<string, Tag<any>>>(s: SS) {
     f: (a: {
       [k in keyof SS]: [SS[k]] extends [Tag<infer T>] ? T : unknown
     }) => B,
-    __trace?: string
+    __etsTrace?: string
   ) =>
     environmentWith(
       (
@@ -26,7 +26,7 @@ export function servicesWithS<SS extends Record<string, Tag<any>>>(s: SS) {
           }[keyof SS]
         >
       ) => f(D.map_(s, (v) => r[v.key]) as any),
-      __trace
+      __etsTrace
     )
 }
 
@@ -42,7 +42,7 @@ export function servicesWithT<SS extends Tag<any>[]>(...s: SS) {
         [k in keyof SS]: [SS[k]] extends [Tag<infer T>] ? T : unknown
       }
     ) => B,
-    __trace?: string
+    __etsTrace?: string
   ) =>
     environmentWith(
       (
@@ -52,6 +52,6 @@ export function servicesWithT<SS extends Tag<any>[]>(...s: SS) {
           }[keyof SS & number]
         >
       ) => f(...(A.map_(s, (v) => r[v.key]) as any)),
-      __trace
+      __etsTrace
     )
 }

@@ -62,15 +62,15 @@ function adapter(_: any, __?: any, ___?: any) {
 }
 
 export interface Adapter {
-  <A>(_: Tag<A>, __trace?: string): GenEffect<Has<A>, never, A>
-  <E, A>(_: Option<A>, onNone: () => E, __trace?: string): GenEffect<unknown, E, A>
-  <A>(_: Option<A>, __trace?: string): GenEffect<unknown, NoSuchElementException, A>
-  <E, A>(_: Either<E, A>, __trace?: string): GenEffect<unknown, E, A>
-  <R, E, A>(_: Effect<R, E, A>, __trace?: string): GenEffect<R, E, A>
+  <A>(_: Tag<A>, __etsTrace?: string): GenEffect<Has<A>, never, A>
+  <E, A>(_: Option<A>, onNone: () => E, __etsTrace?: string): GenEffect<unknown, E, A>
+  <A>(_: Option<A>, __etsTrace?: string): GenEffect<unknown, NoSuchElementException, A>
+  <E, A>(_: Either<E, A>, __etsTrace?: string): GenEffect<unknown, E, A>
+  <R, E, A>(_: Effect<R, E, A>, __etsTrace?: string): GenEffect<R, E, A>
 }
 
 export interface AdapterWithManaged extends Adapter {
-  <R, E, A>(_: Managed<R, E, A>, __trace?: string): GenEffect<R, E, A>
+  <R, E, A>(_: Managed<R, E, A>, __etsTrace?: string): GenEffect<R, E, A>
 }
 
 /**
@@ -78,7 +78,7 @@ export interface AdapterWithManaged extends Adapter {
  */
 export function genM<Eff extends GenEffect<any, any, any>, AEff>(
   f: (i: AdapterWithManaged) => Generator<Eff, AEff, any>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<Utils._R<Eff>, Utils._E<Eff>, AEff> {
   return suspendSucceed(() => {
     const iterator = f(adapter as any)
@@ -127,7 +127,7 @@ export function genM<Eff extends GenEffect<any, any, any>, AEff>(
         (_, e) => releaseAll(e, sequential)(rm)
       )
     )
-  }, __trace)
+  }, __etsTrace)
 }
 
 /**
@@ -135,7 +135,7 @@ export function genM<Eff extends GenEffect<any, any, any>, AEff>(
  */
 export function gen<Eff extends GenEffect<any, any, any>, AEff>(
   f: (i: Adapter) => Generator<Eff, AEff, any>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<Utils._R<Eff>, Utils._E<Eff>, AEff> {
   return suspendSucceed(() => {
     const iterator = f(adapter as any)
@@ -157,5 +157,5 @@ export function gen<Eff extends GenEffect<any, any, any>, AEff>(
     }
 
     return run(state)
-  }, __trace)
+  }, __etsTrace)
 }

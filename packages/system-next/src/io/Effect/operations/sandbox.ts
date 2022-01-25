@@ -11,7 +11,7 @@ import { succeedNow } from "./succeedNow"
  */
 export function sandbox<R, E, A>(
   self: Effect<R, E, A>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R, Cause<E>, A> {
   return foldCauseEffect_(self, failNow, succeedNow)
 }

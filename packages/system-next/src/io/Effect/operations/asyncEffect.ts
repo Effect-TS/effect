@@ -20,7 +20,7 @@ import { zipRight } from "./zipRight"
  */
 export function asyncEffect<R2, E2, R, E, A, X>(
   register: (callback: Cb<Effect<R2, E2, A>>) => Effect<R, E, X>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R & R2, E | E2, A> {
   return pipe(
     Do.Do(),
@@ -38,7 +38,7 @@ export function asyncEffect<R2, E2, R, E, A, X>(
                 )
               )
             ),
-            __trace
+            __etsTrace
           ),
           zipRight(status.restore(Promise.await(promise)))
         )

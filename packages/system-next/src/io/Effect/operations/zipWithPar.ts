@@ -21,7 +21,7 @@ export function zipWithPar_<R, E, A, R2, E2, A2, B>(
   self: Effect<R, E, A>,
   that: Effect<R2, E2, A2>,
   f: (a: A, b: A2) => B,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R & R2, E | E2, B> {
   const g = (b: A2, a: A) => f(a, b)
 
@@ -32,7 +32,7 @@ export function zipWithPar_<R, E, A, R2, E2, A2, B>(
         graft(that),
         (ex, fi) => coordinateZipPar<E | E2, B, A, A2>(d.id, f, true, ex, fi),
         (ex, fi) => coordinateZipPar<E | E2, B, A2, A>(d.id, g, false, ex, fi),
-        __trace
+        __etsTrace
       )
     )
   )
@@ -47,10 +47,10 @@ export function zipWithPar_<R, E, A, R2, E2, A2, B>(
 export function zipWithPar<A, R2, E2, A2, B>(
   that: Effect<R2, E2, A2>,
   f: (a: A, b: A2) => B,
-  __trace?: string
+  __etsTrace?: string
 ) {
   return <R, E>(self: Effect<R, E, A>): Effect<R & R2, E | E2, B> =>
-    zipWithPar_(self, that, f, __trace)
+    zipWithPar_(self, that, f, __etsTrace)
 }
 
 function coordinateZipPar<E, B, X, Y>(

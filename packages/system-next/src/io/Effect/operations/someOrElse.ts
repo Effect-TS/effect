@@ -10,9 +10,9 @@ import { map_ } from "./map"
 export function someOrElse_<R, E, A, B>(
   self: Effect<R, E, O.Option<A>>,
   orElse: () => B,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R, E, A | B> {
-  return map_(self, O.getOrElse(orElse), __trace)
+  return map_(self, O.getOrElse(orElse), __etsTrace)
 }
 
 /**
@@ -20,7 +20,7 @@ export function someOrElse_<R, E, A, B>(
  *
  * @ets_data_first someOrElse_
  */
-export function someOrElse<B>(orElse: () => B, __trace?: string) {
+export function someOrElse<B>(orElse: () => B, __etsTrace?: string) {
   return <R, E, A>(self: Effect<R, E, O.Option<A>>) =>
-    someOrElse_(self, orElse, __trace)
+    someOrElse_(self, orElse, __etsTrace)
 }

@@ -9,9 +9,9 @@ import { succeed } from "./succeed"
  *
  * @ets_data_first repeatUntil_
  */
-export function repeatUntil<A>(p: Predicate<A>, __trace?: string) {
+export function repeatUntil<A>(p: Predicate<A>, __etsTrace?: string) {
   return <R, E>(self: Effect<R, E, A>): Effect<R, E, A> =>
-    repeatUntil_(self, p, __trace)
+    repeatUntil_(self, p, __etsTrace)
 }
 
 /**
@@ -23,7 +23,7 @@ export function repeatUntil<A>(p: Predicate<A>, __trace?: string) {
 export function repeatUntil_<R, E, A>(
   self: Effect<R, E, A>,
   p: Predicate<A>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R, E, A> {
-  return repeatUntilEffect_(self, (a) => succeed(() => p(a)), __trace)
+  return repeatUntilEffect_(self, (a) => succeed(() => p(a)), __etsTrace)
 }

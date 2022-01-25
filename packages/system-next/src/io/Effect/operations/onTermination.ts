@@ -14,7 +14,7 @@ import { unit } from "./unit"
 export function onTermination_<R, E, A, R2, X>(
   self: Effect<R, E, A>,
   cleanup: (cause: Cause<never>) => RIO<R2, X>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R & R2, E, A> {
   return acquireReleaseExitWith_(
     unit,
@@ -23,7 +23,7 @@ export function onTermination_<R, E, A, R2, X>(
       exit._tag === "Failure"
         ? E.fold_(failureOrCause(exit.cause), () => unit, cleanup)
         : unit,
-    __trace
+    __etsTrace
   )
 }
 
@@ -35,8 +35,8 @@ export function onTermination_<R, E, A, R2, X>(
  */
 export function onTermination<R2, X>(
   cleanup: (cause: Cause<never>) => RIO<R2, X>,
-  __trace?: string
+  __etsTrace?: string
 ) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R & R2, E, A> =>
-    onTermination_(self, cleanup, __trace)
+    onTermination_(self, cleanup, __etsTrace)
 }

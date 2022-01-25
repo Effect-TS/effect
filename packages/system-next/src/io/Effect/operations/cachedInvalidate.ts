@@ -27,7 +27,7 @@ import { tap } from "./tap"
 export function cachedInvalidate_<R, E, A>(
   self: Effect<R, E, A>,
   timeToLive: number,
-  __trace?: string
+  __etsTrace?: string
 ): RIO<R & HasClock, Tp.Tuple<[IO<E, A>, UIO<void>]>> {
   return pipe(
     Do.Do(),
@@ -41,7 +41,7 @@ export function cachedInvalidate_<R, E, A>(
           provideEnvironment_(get(self, timeToLive, cache), r),
           invalidate(cache)
         ),
-      __trace
+      __etsTrace
     )
   )
 }
@@ -54,11 +54,11 @@ export function cachedInvalidate_<R, E, A>(
  *
  * @ets_data_first cachedInvalidate_
  */
-export function cachedInvalidate(timeToLive: number, __trace?: string) {
+export function cachedInvalidate(timeToLive: number, __etsTrace?: string) {
   return <R, E, A>(
     self: Effect<R, E, A>
   ): RIO<R & HasClock, Tp.Tuple<[IO<E, A>, UIO<void>]>> =>
-    cachedInvalidate_(self, timeToLive, __trace)
+    cachedInvalidate_(self, timeToLive, __etsTrace)
 }
 
 function compute<R, E, A>(

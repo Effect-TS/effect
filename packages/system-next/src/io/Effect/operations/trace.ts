@@ -7,6 +7,6 @@ import { ITrace } from "../definition"
  *
  * @ets static ets/EffectOps trace
  */
-export function trace(__trace?: string): UIO<Trace> {
-  return new ITrace(__trace)
+export function trace(__etsTrace?: string): UIO<Trace> {
+  return new ITrace(__etsTrace)
 }

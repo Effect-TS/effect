@@ -18,8 +18,8 @@ const someDebug = O.some(LogLevel.Debug)
  *
  * @ets static ets/EffectOps log
  */
-export function log(message: LazyArg<string>, __trace?: string): UIO<void> {
-  return new ILogged(StringLogger, message, O.none, null, null, __trace)
+export function log(message: LazyArg<string>, __etsTrace?: string): UIO<void> {
+  return new ILogged(StringLogger, message, O.none, null, null, __etsTrace)
 }
 
 /**
@@ -27,8 +27,8 @@ export function log(message: LazyArg<string>, __trace?: string): UIO<void> {
  *
  * @ets static ets/EffectOps logDebug
  */
-export function logDebug(message: LazyArg<string>, __trace?: string): UIO<void> {
-  return new ILogged(StringLogger, message, someDebug, null, null, __trace)
+export function logDebug(message: LazyArg<string>, __etsTrace?: string): UIO<void> {
+  return new ILogged(StringLogger, message, someDebug, null, null, __etsTrace)
 }
 
 /**
@@ -36,8 +36,8 @@ export function logDebug(message: LazyArg<string>, __trace?: string): UIO<void> 
  *
  * @ets static ets/EffectOps logError
  */
-export function logError(message: LazyArg<string>, __trace?: string): UIO<void> {
-  return new ILogged(StringLogger, message, someError, null, null, __trace)
+export function logError(message: LazyArg<string>, __etsTrace?: string): UIO<void> {
+  return new ILogged(StringLogger, message, someError, null, null, __etsTrace)
 }
 
 /**
@@ -47,9 +47,9 @@ export function logError(message: LazyArg<string>, __trace?: string): UIO<void> 
  */
 export function logErrorCause(
   message: LazyArg<Cause<any>>,
-  __trace?: string
+  __etsTrace?: string
 ): UIO<void> {
-  return new ILogged(CauseLogger, message, someError, null, null, __trace)
+  return new ILogged(CauseLogger, message, someError, null, null, __etsTrace)
 }
 
 /**
@@ -57,8 +57,8 @@ export function logErrorCause(
  *
  * @ets static ets/EffectOps logFatal
  */
-export function logFatal(message: LazyArg<string>, __trace?: string): UIO<void> {
-  return new ILogged(StringLogger, message, someFatal, null, null, __trace)
+export function logFatal(message: LazyArg<string>, __etsTrace?: string): UIO<void> {
+  return new ILogged(StringLogger, message, someFatal, null, null, __etsTrace)
 }
 
 /**
@@ -66,8 +66,8 @@ export function logFatal(message: LazyArg<string>, __trace?: string): UIO<void> 
  *
  * @ets static ets/EffectOps logInfo
  */
-export function logInfo(message: LazyArg<string>, __trace?: string): UIO<void> {
-  return new ILogged(StringLogger, message, someInfo, null, null, __trace)
+export function logInfo(message: LazyArg<string>, __etsTrace?: string): UIO<void> {
+  return new ILogged(StringLogger, message, someInfo, null, null, __etsTrace)
 }
 
 /**
@@ -75,6 +75,6 @@ export function logInfo(message: LazyArg<string>, __trace?: string): UIO<void> {
  *
  * @ets static ets/EffectOps logWarning
  */
-export function logWarning(message: LazyArg<string>, __trace?: string): UIO<void> {
-  return new ILogged(StringLogger, message, someWarning, null, null, __trace)
+export function logWarning(message: LazyArg<string>, __etsTrace?: string): UIO<void> {
+  return new ILogged(StringLogger, message, someWarning, null, null, __etsTrace)
 }

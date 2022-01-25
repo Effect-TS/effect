@@ -18,7 +18,7 @@ export function unrefineWith_<R, E, E1, E2, A>(
   fa: Effect<R, E, A>,
   pf: (u: unknown) => Option<E1>,
   f: (e: E) => E2,
-  __trace?: string
+  __etsTrace?: string
 ) {
   return catchAllCause_(
     fa,
@@ -28,7 +28,7 @@ export function unrefineWith_<R, E, E1, E2, A>(
         causeFind((c) => (causeIsDieType(c) ? pf(c.value) : optionNone)),
         optionFold(() => failCause(causeMap_(cause, f)), fail)
       ),
-    __trace
+    __etsTrace
   )
 }
 
@@ -41,7 +41,7 @@ export function unrefineWith_<R, E, E1, E2, A>(
 export function unrefineWith<E1, E, E2>(
   pf: (u: unknown) => Option<E1>,
   f: (e: E) => E2,
-  __trace?: string
+  __etsTrace?: string
 ) {
-  return <R, A>(fa: Effect<R, E, A>) => unrefineWith_(fa, pf, f, __trace)
+  return <R, A>(fa: Effect<R, E, A>) => unrefineWith_(fa, pf, f, __etsTrace)
 }

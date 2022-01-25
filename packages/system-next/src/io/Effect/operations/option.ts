@@ -11,12 +11,12 @@ import { succeedNow } from "./succeedNow"
  */
 export function option<R, E, A>(
   self: Effect<R, E, A>,
-  __trace?: string
+  __etsTrace?: string
 ): RIO<R, O.Option<A>> {
   return foldEffect_(
     self,
     () => succeedNow(O.none),
     (a) => succeedNow(O.some(a)),
-    __trace
+    __etsTrace
   )
 }

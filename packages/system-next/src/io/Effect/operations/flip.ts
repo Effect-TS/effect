@@ -11,7 +11,7 @@ import { succeedNow } from "./succeedNow"
  */
 export function flip<R, E, A>(
   self: Effect<R, E, A>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R, A, E> {
-  return foldEffect_(self, succeedNow, failNow, __trace)
+  return foldEffect_(self, succeedNow, failNow, __etsTrace)
 }

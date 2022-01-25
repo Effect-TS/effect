@@ -12,9 +12,9 @@ export function zipWith_<R, E, A, R2, E2, A2, B>(
   self: Effect<R, E, A>,
   that: Effect<R2, E2, A2>,
   f: (a: A, b: A2) => B,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R & R2, E | E2, B> {
-  return chain_(self, (a) => map_(that, (b) => f(a, b)), __trace)
+  return chain_(self, (a) => map_(that, (b) => f(a, b)), __etsTrace)
 }
 
 /**
@@ -26,8 +26,8 @@ export function zipWith_<R, E, A, R2, E2, A2, B>(
 export function zipWith<A, R2, E2, A2, B>(
   that: Effect<R2, E2, A2>,
   f: (a: A, b: A2) => B,
-  __trace?: string
+  __etsTrace?: string
 ) {
   return <R, E>(self: Effect<R, E, A>): Effect<R & R2, E | E2, B> =>
-    zipWith_(self, that, f, __trace)
+    zipWith_(self, that, f, __etsTrace)
 }

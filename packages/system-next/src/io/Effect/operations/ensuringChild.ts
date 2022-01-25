@@ -14,9 +14,9 @@ import { ensuringChildren_ } from "./ensuringChildren"
 export function ensuringChild_<R, E, A, R2, X>(
   fa: Effect<R, E, A>,
   f: (_: Fiber<any, Chunk<unknown>>) => RIO<R2, X>,
-  __trace?: string
+  __etsTrace?: string
 ) {
-  return ensuringChildren_(fa, (children) => f(collectAll(children)), __trace)
+  return ensuringChildren_(fa, (children) => f(collectAll(children)), __etsTrace)
 }
 
 /**
@@ -28,7 +28,7 @@ export function ensuringChild_<R, E, A, R2, X>(
  */
 export function ensuringChild<R, E, A, R2, X>(
   f: (_: Fiber<any, Chunk<unknown>>) => RIO<R2, X>,
-  __trace?: string
+  __etsTrace?: string
 ) {
-  return (fa: Effect<R, E, A>) => ensuringChild_(fa, f, __trace)
+  return (fa: Effect<R, E, A>) => ensuringChild_(fa, f, __etsTrace)
 }

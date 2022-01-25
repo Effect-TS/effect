@@ -12,7 +12,7 @@ import { succeedNow } from "./succeedNow"
 export function orDieWith_<R, E, A>(
   self: Effect<R, E, A>,
   f: (e: E) => unknown,
-  __trace?: string
+  __etsTrace?: string
 ): RIO<R, A> {
   return foldEffect_(self, (e) => die(f(e)), succeedNow)
 }
@@ -23,6 +23,6 @@ export function orDieWith_<R, E, A>(
  *
  * @ets_data_first orDieWith_
  */
-export function orDieWith<E>(f: (e: E) => unknown, __trace?: string) {
-  return <R, A>(self: Effect<R, E, A>): RIO<R, A> => orDieWith_(self, f, __trace)
+export function orDieWith<E>(f: (e: E) => unknown, __etsTrace?: string) {
+  return <R, A>(self: Effect<R, E, A>): RIO<R, A> => orDieWith_(self, f, __etsTrace)
 }

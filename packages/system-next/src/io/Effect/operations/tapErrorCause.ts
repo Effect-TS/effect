@@ -14,13 +14,13 @@ import { zipRight_ } from "./zipRight"
 export function tapErrorCause_<R, E, A, R2, E2, X>(
   self: Effect<R, E, A>,
   f: (cause: Cause<E>) => Effect<R2, E2, X>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R & R2, E | E2, A> {
   return foldCauseEffect_(
     self,
     (cause) => zipRight_(f(cause), failCause(cause)),
     succeedNow,
-    __trace
+    __etsTrace
   )
 }
 
@@ -32,8 +32,8 @@ export function tapErrorCause_<R, E, A, R2, E2, X>(
  */
 export function tapErrorCause<E, R2, E2, X>(
   f: (cause: Cause<E>) => Effect<R2, E2, X>,
-  __trace?: string
+  __etsTrace?: string
 ) {
   return <R, A>(self: Effect<R, E, A>): Effect<R & R2, E | E2, A> =>
-    tapErrorCause_(self, f, __trace)
+    tapErrorCause_(self, f, __etsTrace)
 }

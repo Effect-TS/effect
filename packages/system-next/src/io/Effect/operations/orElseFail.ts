@@ -13,9 +13,9 @@ import { orElse_ } from "./orElse"
 export function orElseFail_<R, E, A, E2>(
   self: Effect<R, E, A>,
   e: E2,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R, E2, A> {
-  return orElse_(self, () => failNow(e), __trace)
+  return orElse_(self, () => failNow(e), __etsTrace)
 }
 
 /**
@@ -24,7 +24,7 @@ export function orElseFail_<R, E, A, E2>(
  *
  * @ets_data_first orElseFail_
  */
-export function orElseFail<E2>(e: E2, __trace?: string) {
+export function orElseFail<E2>(e: E2, __etsTrace?: string) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R, E2, A> =>
-    orElseFail_(self, e, __trace)
+    orElseFail_(self, e, __etsTrace)
 }

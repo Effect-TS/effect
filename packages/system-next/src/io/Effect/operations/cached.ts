@@ -12,9 +12,9 @@ import { map_ } from "./map"
 export function cached_<R, E, A>(
   self: Effect<R, E, A>,
   timeToLive: number,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R & HasClock, never, IO<E, A>> {
-  return map_(cachedInvalidate_(self, timeToLive, __trace), (_) => _.get(0))
+  return map_(cachedInvalidate_(self, timeToLive, __etsTrace), (_) => _.get(0))
 }
 
 /**
@@ -23,7 +23,7 @@ export function cached_<R, E, A>(
  *
  * @ets_data_first cached_
  */
-export function cached(timeToLive: number, __trace?: string) {
+export function cached(timeToLive: number, __etsTrace?: string) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R & HasClock, never, IO<E, A>> =>
-    cached_(self, timeToLive, __trace)
+    cached_(self, timeToLive, __etsTrace)
 }

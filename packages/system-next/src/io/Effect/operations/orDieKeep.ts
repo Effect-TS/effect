@@ -9,11 +9,11 @@ import { succeedNow } from "./succeedNow"
  *
  * @ets fluent ets/Effect orDieKeep
  */
-export function orDieKeep<R, E, A>(effect: Effect<R, E, A>, __trace?: string) {
+export function orDieKeep<R, E, A>(effect: Effect<R, E, A>, __etsTrace?: string) {
   return foldCauseEffect_(
     effect,
     (ce) => failCause(Cause.chain_(ce, Cause.die)),
     succeedNow,
-    __trace
+    __etsTrace
   )
 }

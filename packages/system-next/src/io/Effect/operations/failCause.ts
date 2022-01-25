@@ -9,6 +9,6 @@ import { IFail } from "../definition"
  *
  * @ets static ets/EffectOps failCauseNow
  */
-export function failCause<E>(cause: Cause<E>, __trace?: string): IO<E, never> {
-  return new IFail(() => cause, __trace)
+export function failCause<E>(cause: Cause<E>, __etsTrace?: string): IO<E, never> {
+  return new IFail(() => cause, __etsTrace)
 }

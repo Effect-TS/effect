@@ -11,12 +11,12 @@ import { succeedNow } from "./succeedNow"
  */
 export function unsome<R, E, A>(
   self: Effect<R, O.Option<E>, A>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R, E, O.Option<A>> {
   return foldEffect_(
     self,
     (e) => O.fold_(e, () => succeedNow(O.none), failNow),
     (a) => succeedNow(O.some(a)),
-    __trace
+    __etsTrace
   )
 }

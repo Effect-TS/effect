@@ -11,6 +11,6 @@ import { getOrFailWith_ } from "./getOrFailWith"
  *
  * @ets static ets/EffectOps getOrFailDiscard
  */
-export function getOrFailUnit<A>(v: O.Option<A>, __trace?: string): IO<void, A> {
-  return getOrFailWith_(v, constVoid, __trace)
+export function getOrFailUnit<A>(v: O.Option<A>, __etsTrace?: string): IO<void, A> {
+  return getOrFailWith_(v, constVoid, __etsTrace)
 }

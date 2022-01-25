@@ -10,15 +10,15 @@ import { IFork } from "../definition"
 export function forkIn_<R, E, A>(
   self: Effect<R, E, A>,
   scope: Scope,
-  __trace?: string
+  __etsTrace?: string
 ): RIO<R, Fiber.Runtime<E, A>> {
-  return new IFork(self, O.some(scope), __trace)
+  return new IFork(self, O.some(scope), __etsTrace)
 }
 
 /**
  * @ets_data_first forkIn_
  */
-export function forkIn(scope: Scope, __trace?: string) {
+export function forkIn(scope: Scope, __etsTrace?: string) {
   return <R, E, A>(self: Effect<R, E, A>): RIO<R, Fiber.Runtime<E, A>> =>
-    forkIn_(self, scope, __trace)
+    forkIn_(self, scope, __etsTrace)
 }

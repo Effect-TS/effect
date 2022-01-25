@@ -12,12 +12,12 @@ import { succeedNow } from "./succeedNow"
  */
 export function unleft<R, E, B, A>(
   self: Effect<R, E.Either<E, B>, A>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R, E, E.Either<A, B>> {
   return foldEffect_(
     self,
     E.fold(failNow, (b) => succeedNow(E.right(b))),
     (a) => succeedNow(E.left(a)),
-    __trace
+    __etsTrace
   )
 }

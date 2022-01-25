@@ -12,6 +12,6 @@ import { failCause } from "./failCause"
  *
  * @ets static ets/EffectOps dieNow
  */
-export function die(defect: unknown, __trace?: string): UIO<never> {
-  return failCause(Cause.die(defect, Trace.none), __trace)
+export function die(defect: unknown, __etsTrace?: string): UIO<never> {
+  return failCause(Cause.die(defect, Trace.none), __etsTrace)
 }

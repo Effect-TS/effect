@@ -14,13 +14,13 @@ import { succeedNow } from "./succeedNow"
 export function absorbWith_<R, A, E>(
   self: Effect<R, E, A>,
   f: (e: E) => unknown,
-  __trace?: string
+  __etsTrace?: string
 ) {
   return foldEffect_(
     sandbox(self),
     (x) => failNow(squashWith_(x, f)),
     succeedNow,
-    __trace
+    __etsTrace
   )
 }
 
@@ -30,7 +30,7 @@ export function absorbWith_<R, A, E>(
  *
  * @ets_data_first absorbWith_
  */
-export function absorbWith<E>(f: (e: E) => unknown, __trace?: string) {
+export function absorbWith<E>(f: (e: E) => unknown, __etsTrace?: string) {
   return <R, A>(self: Effect<R, E, A>): Effect<R, unknown, A> =>
-    absorbWith_(self, f, __trace)
+    absorbWith_(self, f, __etsTrace)
 }

@@ -21,9 +21,9 @@ import type { Cb } from "./Cb"
  */
 export function asyncInterrupt<R, E, A>(
   register: (callback: Cb<Effect<R, E, A>>) => Either<Canceler<R>, Effect<R, E, A>>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R, E, A> {
-  return new IAsync(register, none, __trace)
+  return new IAsync(register, none, __etsTrace)
 }
 
 /**
@@ -46,7 +46,7 @@ export function asyncInterrupt<R, E, A>(
 export function asyncInterruptBlockingOn<R, E, A>(
   register: (callback: Cb<Effect<R, E, A>>) => Either<Canceler<R>, Effect<R, E, A>>,
   blockingOn: FiberId,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R, E, A> {
-  return new IAsync(register, blockingOn, __trace)
+  return new IAsync(register, blockingOn, __etsTrace)
 }

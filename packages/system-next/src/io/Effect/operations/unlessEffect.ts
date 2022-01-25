@@ -14,11 +14,11 @@ import { suspendSucceed } from "./suspendSucceed"
 export function unlessEffect_<R, E, A, R2, E2>(
   self: Effect<R, E, A>,
   predicate: LazyArg<Effect<R2, E2, boolean>>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R & R2, E | E2, O.Option<A>> {
   return suspendSucceed(
     () => chain_(predicate(), (b) => (b ? none : asSome(self))),
-    __trace
+    __etsTrace
   )
 }
 
@@ -29,8 +29,8 @@ export function unlessEffect_<R, E, A, R2, E2>(
  */
 export function unlessEffect<R2, E2>(
   predicate: LazyArg<Effect<R2, E2, boolean>>,
-  __trace?: string
+  __etsTrace?: string
 ) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R & R2, E | E2, O.Option<A>> =>
-    unlessEffect_(self, predicate, __trace)
+    unlessEffect_(self, predicate, __etsTrace)
 }

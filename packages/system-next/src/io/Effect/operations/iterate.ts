@@ -19,12 +19,15 @@ import { suspendSucceed } from "./suspendSucceed"
  * @ets static ets/EffectOps iterate
  */
 export function iterate<Z>(initial: Z, cont: (z: Z) => boolean) {
-  return <R, E>(body: (z: Z) => Effect<R, E, Z>, __trace?: string): Effect<R, E, Z> => {
+  return <R, E>(
+    body: (z: Z) => Effect<R, E, Z>,
+    __etsTrace?: string
+  ): Effect<R, E, Z> => {
     return suspendSucceed(() => {
       if (cont(initial)) {
         return chain_(body(initial), (z2) => iterate(z2, cont)(body))
       }
       return succeedNow(initial)
-    }, __trace)
+    }, __etsTrace)
   }
 }

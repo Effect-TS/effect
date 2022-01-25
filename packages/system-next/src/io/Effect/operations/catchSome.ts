@@ -14,7 +14,7 @@ import { succeedNow } from "./succeedNow"
 export function catchSome_<R, E, A, R2, E2, A2>(
   fa: Effect<R, E, A>,
   f: (e: E) => O.Option<Effect<R2, E2, A2>>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R & R2, E | E2, A | A2> {
   return foldCauseEffect_(
     fa,
@@ -25,7 +25,7 @@ export function catchSome_<R, E, A, R2, E2, A2>(
         failCause
       ),
     succeedNow,
-    __trace
+    __etsTrace
   )
 }
 
@@ -36,8 +36,8 @@ export function catchSome_<R, E, A, R2, E2, A2>(
  */
 export function catchSome<R, E, A, R2, E2, A2>(
   f: (e: E) => O.Option<Effect<R2, E2, A2>>,
-  __trace?: string
+  __etsTrace?: string
 ) {
   return (fa: Effect<R, E, A>): Effect<R & R2, E | E2, A | A2> =>
-    catchSome_(fa, f, __trace)
+    catchSome_(fa, f, __etsTrace)
 }
