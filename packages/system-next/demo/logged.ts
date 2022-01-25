@@ -28,10 +28,7 @@ export const switched = (n: number) => {
   }
 }
 
-export const message = isPositive(10).fold(
-  (left) => `hello: ${left}`,
-  (right) => `hello: ${right}`
-)
+export const message = isPositive(10)
 
 export const program = (numbers + numbersPar).flatMap(
   ({ tuple: [a, b, c, d, e, f] }) =>

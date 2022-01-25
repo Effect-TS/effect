@@ -84,6 +84,6 @@
   },
   "packageManager": "yarn@3.1.0",
   "resolutions": {
-    "typescript": "https://github.com/Effect-TS/TypeScript/raw/1436444704293d81f6b2bb5b50bb8a0faf8a1070/dev/typescript-4.6.0-ets.20220125.tgz"
+    "typescript": "https://github.com/Effect-TS/TypeScript/raw/e7f55286d74016c71b9d69775bbb22e1b977626d/dev/typescript-4.6.0-ets.20220125.tgz"
   }
 }

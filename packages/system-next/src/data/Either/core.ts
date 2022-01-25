@@ -380,10 +380,10 @@ export function filterOrElse<E, A>(predicate: Predicate<A>, onFalse: (a: A) => E
     chain_(ma, (a) => (predicate(a) ? right(a) : left(onFalse(a))))
 }
 
-// TODO(Mike): handle overloads in plugin
-
 /**
  * Apply predicate to A and construct E in case the predicate is false
+ *
+ * @ets fluent ets/Either filterOrElse
  */
 export function filterOrElse_<E, E2, A, B extends A>(
   ma: Either<E2, A>,
@@ -478,8 +478,6 @@ export function fromOption_<A, E>(ma: Option<A>, onNone: () => E): Either<E, A> 
   return isNone(ma) ? left(onNone()) : right(ma.value)
 }
 
-// TODO(Mike): handle overloads in extensions
-
 /**
  * Construct `Either[E, A]` by applying a predicate to `A` and constructing
  * `E` if the predicate is false
@@ -501,6 +499,8 @@ export function fromPredicate<E, A>(predicate: Predicate<A>, onFalse: (a: A) => 
 /**
  * Construct `Either[E, A]` by applying a predicate to `A` and constructing
  * `E` if the predicate is false
+ *
+ * @ets static ets/EitherOps fromPredicate
  */
 export function fromPredicate_<E, A, B extends A>(
   a: A,
