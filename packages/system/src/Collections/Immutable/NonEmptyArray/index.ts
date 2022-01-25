@@ -476,6 +476,9 @@ export const reduceWithIndex_: <A, B>(
 /**
  * Constructs a NonEmptyArray
  */
-export function make<A>(arr: NonEmptyArray<A>): NonEmptyArray<A> {
+
+export function make<T extends readonly [any, ...A.Array<any>]>(
+  arr: T
+): NonEmptyArray<T[number]> {
   return arr
 }
