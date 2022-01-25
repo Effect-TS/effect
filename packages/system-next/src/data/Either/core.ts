@@ -49,9 +49,9 @@ export interface EitherOps {}
 export const Either: EitherOps = {}
 
 /**
- * @ets identity ets/Either
+ * @ets unify ets/Either
  */
-export function identity<X extends Either<any, any>>(
+export function unify<X extends Either<any, any>>(
   self: X
 ): Either<
   [X] extends [Either<infer EX, any>] ? EX : never,

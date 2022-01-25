@@ -40,9 +40,9 @@ export interface Effect<R, E, A> {
 }
 
 /**
- * @ets identity ets/Effect
+ * @ets unify ets/Effect
  */
-export function identityEffect<X extends Effect<any, any, any>>(
+export function unify<X extends Effect<any, any, any>>(
   self: X
 ): Effect<UT._R<X>, UT._E<X>, UT._A<X>> {
   return self
