@@ -9,7 +9,7 @@ import { joinEither_ } from "./joinEither"
  * whatever is on the right unmodified. Note that the result is lifted
  * in either.
  */
-export function onLeft<C>(__trace?: string) {
+export function onLeft<C>(__etsTrace?: string) {
   return <R, E, A>(self: Effect<R, E, A>) =>
-    joinEither_(self, environment<C>(), __trace)
+    joinEither_(self, environment<C>(), __etsTrace)
 }

@@ -13,10 +13,10 @@ import { map_ } from "./map"
 export function filterPar_<A, R, E>(
   as: Iterable<A>,
   f: (a: A) => Effect<R, E, boolean>,
-  __trace?: string
+  __etsTrace?: string
 ) {
   return map_(
-    forEachPar_(as, (a) => map_(f(a), (b) => (b ? O.some(a) : O.none)), __trace),
+    forEachPar_(as, (a) => map_(f(a), (b) => (b ? O.some(a) : O.none)), __etsTrace),
     Chunk.compact
   )
 }
@@ -29,7 +29,7 @@ export function filterPar_<A, R, E>(
  */
 export function filterPar<A, R, E>(
   f: (a: A) => Effect<R, E, boolean>,
-  __trace?: string
+  __etsTrace?: string
 ) {
-  return (as: Iterable<A>) => filterPar_(as, f, __trace)
+  return (as: Iterable<A>) => filterPar_(as, f, __etsTrace)
 }

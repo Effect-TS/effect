@@ -9,6 +9,6 @@ import { zip_ } from "./zip"
  *
  * @ets fluent ets/Effect onSecond
  */
-export function onSecond<R, E, A>(self: Effect<R, E, A>, __trace?: string) {
-  return zip_(environment<R>(), self, __trace)
+export function onSecond<R, E, A>(self: Effect<R, E, A>, __etsTrace?: string) {
+  return zip_(environment<R>(), self, __etsTrace)
 }

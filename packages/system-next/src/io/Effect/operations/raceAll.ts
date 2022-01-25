@@ -34,7 +34,7 @@ import { zipLeft_ } from "./zipLeft"
 export function raceAll_<R, E, A>(
   self: Effect<R, E, A>,
   effects: Iterable<Effect<R, E, A>>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R, E, A> {
   const ios = Chunk.from(effects)
   return pipe(
@@ -66,7 +66,7 @@ export function raceAll_<R, E, A>(
               )
             )
           ),
-        __trace
+        __etsTrace
       )
     )
   )
@@ -79,8 +79,8 @@ export function raceAll_<R, E, A>(
  *
  * @ets_data_first raceAll_
  */
-export function raceAll<R, E, A>(as: Iterable<Effect<R, E, A>>, __trace?: string) {
-  return (self: Effect<R, E, A>): Effect<R, E, A> => raceAll_(self, as, __trace)
+export function raceAll<R, E, A>(as: Iterable<Effect<R, E, A>>, __etsTrace?: string) {
+  return (self: Effect<R, E, A>): Effect<R, E, A> => raceAll_(self, as, __etsTrace)
 }
 
 function arbiter<E, A>(

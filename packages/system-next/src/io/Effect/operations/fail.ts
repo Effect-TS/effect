@@ -10,6 +10,6 @@ import { failCauseWith } from "./failCauseWith"
  *
  * @ets static ets/EffectOps fail
  */
-export function fail<E>(f: LazyArg<E>, __trace?: string): IO<E, never> {
-  return failCauseWith(() => new Fail(f(), none), __trace)
+export function fail<E>(f: LazyArg<E>, __etsTrace?: string): IO<E, never> {
+  return failCauseWith(() => new Fail(f(), none), __etsTrace)
 }

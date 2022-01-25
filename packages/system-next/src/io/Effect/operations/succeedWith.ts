@@ -11,7 +11,7 @@ import { ISucceedWith } from "../definition"
  */
 export function succeedWith<A>(
   f: (runtimeConfig: RuntimeConfig, fiberId: FiberId) => A,
-  __trace?: string
+  __etsTrace?: string
 ): UIO<A> {
-  return new ISucceedWith(f, __trace)
+  return new ISucceedWith(f, __etsTrace)
 }

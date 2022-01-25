@@ -99,7 +99,7 @@ import { zipRight_ } from "./zipRight"
 export function forEach_<A, R, E, B>(
   as: Iterable<A>,
   f: (a: A) => Effect<R, E, B>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R, E, Chunk.Chunk<B>> {
   return suspendSucceed(() => {
     const acc: B[] = []
@@ -112,7 +112,7 @@ export function forEach_<A, R, E, B>(
       ),
       () => Chunk.from(acc)
     )
-  }, __trace)
+  }, __etsTrace)
 }
 
 /**
@@ -124,8 +124,8 @@ export function forEach_<A, R, E, B>(
  *
  * @ets_data_first forEach_
  */
-export function forEach<A, R, E, B>(f: (a: A) => Effect<R, E, B>, __trace?: string) {
-  return (as: Iterable<A>) => forEach_(as, f, __trace)
+export function forEach<A, R, E, B>(f: (a: A) => Effect<R, E, B>, __etsTrace?: string) {
+  return (as: Iterable<A>) => forEach_(as, f, __etsTrace)
 }
 
 // -----------------------------------------------------------------------------
@@ -142,7 +142,7 @@ export function forEach<A, R, E, B>(f: (a: A) => Effect<R, E, B>, __trace?: stri
 export function forEachWithIndex_<A, R, E, B>(
   as: Iterable<A>,
   f: (a: A, i: number) => Effect<R, E, B>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R, E, Chunk.Chunk<B>> {
   return suspendSucceed(() => {
     let index = 0
@@ -157,7 +157,7 @@ export function forEachWithIndex_<A, R, E, B>(
       ),
       () => Chunk.from(acc)
     )
-  }, __trace)
+  }, __etsTrace)
 }
 
 /**
@@ -169,9 +169,9 @@ export function forEachWithIndex_<A, R, E, B>(
  */
 export function forEachWithIndex<A, R, E, B>(
   f: (a: A, i: number) => Effect<R, E, B>,
-  __trace?: string
+  __etsTrace?: string
 ) {
-  return (as: Iterable<A>) => forEachWithIndex_(as, f, __trace)
+  return (as: Iterable<A>) => forEachWithIndex_(as, f, __etsTrace)
 }
 
 // -----------------------------------------------------------------------------
@@ -190,9 +190,9 @@ export function forEachWithIndex<A, R, E, B>(
 export function forEachDiscard_<R, E, A, X>(
   as: Iterable<A>,
   f: (a: A) => Effect<R, E, X>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R, E, void> {
-  return suspendSucceed(() => forEachDiscardLoop(as[Symbol.iterator](), f), __trace)
+  return suspendSucceed(() => forEachDiscardLoop(as[Symbol.iterator](), f), __etsTrace)
 }
 
 /**
@@ -206,9 +206,9 @@ export function forEachDiscard_<R, E, A, X>(
  */
 export function forEachDiscard<R, E, A, X>(
   f: (a: A) => Effect<R, E, X>,
-  __trace?: string
+  __etsTrace?: string
 ): (as: Iterable<A>) => Effect<R, E, void> {
-  return (as) => forEachDiscard_(as, f, __trace)
+  return (as) => forEachDiscard_(as, f, __etsTrace)
 }
 
 function forEachDiscardLoop<R, E, A, X>(
@@ -234,14 +234,14 @@ function forEachDiscardLoop<R, E, A, X>(
 export function forEachPar_<R, E, A, B>(
   as: Iterable<A>,
   f: (a: A) => Effect<R, E, B>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R, E, Chunk.Chunk<B>> {
   return parallelismWith(
     O.fold(
       () => forEachParUnbounded(as, f),
       (n) => forEachParN(as, n, f)
     ),
-    __trace
+    __etsTrace
   )
 }
 
@@ -253,8 +253,12 @@ export function forEachPar_<R, E, A, B>(
  *
  * @ets_data_first forEachPar_
  */
-export function forEachPar<R, E, A, B>(f: (a: A) => Effect<R, E, B>, __trace?: string) {
-  return (as: Iterable<A>): Effect<R, E, Chunk.Chunk<B>> => forEachPar_(as, f, __trace)
+export function forEachPar<R, E, A, B>(
+  f: (a: A) => Effect<R, E, B>,
+  __etsTrace?: string
+) {
+  return (as: Iterable<A>): Effect<R, E, Chunk.Chunk<B>> =>
+    forEachPar_(as, f, __etsTrace)
 }
 
 /**
@@ -264,7 +268,7 @@ export function forEachPar<R, E, A, B>(f: (a: A) => Effect<R, E, B>, __trace?: s
 function forEachParUnbounded<R, E, A, B>(
   as: Iterable<A>,
   f: (a: A) => Effect<R, E, B>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R, E, Chunk.Chunk<B>> {
   return suspendSucceed(
     () =>
@@ -286,7 +290,7 @@ function forEachParUnbounded<R, E, A, B>(
             () => Chunk.from(array)
           )
       ),
-    __trace
+    __etsTrace
   )
 }
 
@@ -294,7 +298,7 @@ function forEachParN<R, E, A, B>(
   as: Iterable<A>,
   n: number,
   f: (a: A) => Effect<R, E, B>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R, E, Chunk.Chunk<B>> {
   return suspendSucceed(() => {
     if (n < 1) {
@@ -305,7 +309,7 @@ function forEachParN<R, E, A, B>(
     const size = Chunk.size(as0)
 
     if (size === 0) {
-      return succeedNow(Chunk.empty(), __trace)
+      return succeedNow(Chunk.empty(), __etsTrace)
     }
 
     function worker(
@@ -342,7 +346,7 @@ function forEachParN<R, E, A, B>(
           )
         )
     )
-  }, __trace)
+  }, __etsTrace)
 }
 
 // -----------------------------------------------------------------------------
@@ -359,7 +363,7 @@ function forEachParN<R, E, A, B>(
 export function forEachParWithIndex_<R, E, A, B>(
   as: Iterable<A>,
   f: (a: A, i: number) => Effect<R, E, B>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R, E, Chunk.Chunk<B>> {
   return suspendSucceed(
     () =>
@@ -381,7 +385,7 @@ export function forEachParWithIndex_<R, E, A, B>(
             () => Chunk.from(array)
           )
       ),
-    __trace
+    __etsTrace
   )
 }
 
@@ -392,10 +396,10 @@ export function forEachParWithIndex_<R, E, A, B>(
  */
 export function forEachParWithIndex<R, E, A, B>(
   f: (a: A, i: number) => Effect<R, E, B>,
-  __trace?: string
+  __etsTrace?: string
 ) {
   return (as: Iterable<A>): Effect<R, E, Chunk.Chunk<B>> =>
-    forEachParWithIndex_(as, f, __trace)
+    forEachParWithIndex_(as, f, __etsTrace)
 }
 
 // -----------------------------------------------------------------------------
@@ -417,14 +421,14 @@ export function forEachParWithIndex<R, E, A, B>(
 export function forEachParDiscard_<R, E, A, X>(
   as: Iterable<A>,
   f: (a: A) => Effect<R, E, X>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R, E, void> {
   return parallelismWith(
     O.fold(
       () => forEachParUnboundedDiscard(as, f),
       (n) => forEachParNDiscard(as, n, f)
     ),
-    __trace
+    __etsTrace
   )
 }
 
@@ -442,15 +446,15 @@ export function forEachParDiscard_<R, E, A, X>(
  */
 export function forEachParDiscard<R, E, A, X>(
   f: (a: A) => Effect<R, E, X>,
-  __trace?: string
+  __etsTrace?: string
 ) {
-  return (as: Iterable<A>): Effect<R, E, void> => forEachParDiscard_(as, f, __trace)
+  return (as: Iterable<A>): Effect<R, E, void> => forEachParDiscard_(as, f, __etsTrace)
 }
 
 function forEachParUnboundedDiscard<R, E, A, X>(
   as: Iterable<A>,
   f: (a: A) => Effect<R, E, X>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R, E, void> {
   return suspendSucceed<R, E, void>(() => {
     const bs = Chunk.from(as)
@@ -481,7 +485,7 @@ function forEachParUnboundedDiscard<R, E, A, X>(
                     }
                   }
                 ),
-                __trace
+                __etsTrace
               )
             )
           )
@@ -511,7 +515,7 @@ function forEachParNDiscard<R, E, A, X>(
   as: Iterable<A>,
   n: number,
   f: (a: A) => Effect<R, E, X>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R, E, void> {
   return suspendSucceed(() => {
     const bs = Chunk.from(as)
@@ -538,7 +542,7 @@ function forEachParNDiscard<R, E, A, X>(
         )
       )
     }
-  }, __trace)
+  }, __etsTrace)
 }
 
 // -----------------------------------------------------------------------------
@@ -555,18 +559,18 @@ export function forEachExec_<R, E, A, B>(
   as: Iterable<A>,
   f: (a: A) => Effect<R, E, B>,
   strategy: ExecutionStrategy,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R, E, Chunk.Chunk<B>> {
   return suspendSucceed(() => {
     switch (strategy._tag) {
       case "Parallel": {
-        return withParallelismUnbounded(forEachPar_(as, f, __trace))
+        return withParallelismUnbounded(forEachPar_(as, f, __etsTrace))
       }
       case "ParallelN": {
-        return withParallelism_(forEachPar_(as, f, __trace), strategy.n)
+        return withParallelism_(forEachPar_(as, f, __etsTrace), strategy.n)
       }
       case "Sequential": {
-        return forEach_(as, f, __trace)
+        return forEach_(as, f, __etsTrace)
       }
     }
   })
@@ -581,10 +585,10 @@ export function forEachExec_<R, E, A, B>(
 export function forEachExec<R, E, A, B>(
   f: (a: A) => Effect<R, E, B>,
   strategy: ExecutionStrategy,
-  __trace?: string
+  __etsTrace?: string
 ) {
   return (as: Iterable<A>): Effect<R, E, Chunk.Chunk<B>> =>
-    forEachExec_(as, f, strategy, __trace)
+    forEachExec_(as, f, strategy, __etsTrace)
 }
 
 // -----------------------------------------------------------------------------
@@ -597,8 +601,11 @@ export function forEachExec<R, E, A, B>(
  *
  * @ets static ets/EffectOps collectAll
  */
-export function collectAll<R, E, A>(as: Iterable<Effect<R, E, A>>, __trace?: string) {
-  return forEach_(as, identity, __trace)
+export function collectAll<R, E, A>(
+  as: Iterable<Effect<R, E, A>>,
+  __etsTrace?: string
+) {
+  return forEach_(as, identity, __etsTrace)
 }
 
 // -----------------------------------------------------------------------------
@@ -613,9 +620,9 @@ export function collectAll<R, E, A>(as: Iterable<Effect<R, E, A>>, __trace?: str
  */
 export function collectAllPar<R, E, A>(
   as: Iterable<Effect<R, E, A>>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R, E, Chunk.Chunk<A>> {
-  return forEachPar_(as, identity, __trace)
+  return forEachPar_(as, identity, __etsTrace)
 }
 
 // -----------------------------------------------------------------------------
@@ -630,9 +637,9 @@ export function collectAllPar<R, E, A>(
  */
 export function collectAllDiscard<R, E, A>(
   as: Iterable<Effect<R, E, A>>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R, E, void> {
-  return forEachDiscard_(as, identity, __trace)
+  return forEachDiscard_(as, identity, __etsTrace)
 }
 
 // -----------------------------------------------------------------------------
@@ -647,9 +654,9 @@ export function collectAllDiscard<R, E, A>(
  */
 export function collectAllParDiscard<R, E, A>(
   as: Iterable<Effect<R, E, A>>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R, E, void> {
-  return forEachParDiscard_(as, identity, __trace)
+  return forEachParDiscard_(as, identity, __etsTrace)
 }
 
 // -----------------------------------------------------------------------------
@@ -664,9 +671,9 @@ export function collectAllParDiscard<R, E, A>(
  */
 export function collectAllParUnboundedDiscard<R, E, A>(
   as: Iterable<Effect<R, E, A>>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R, E, void> {
-  return forEachParUnboundedDiscard(as, identity, __trace)
+  return forEachParUnboundedDiscard(as, identity, __etsTrace)
 }
 
 // -----------------------------------------------------------------------------
@@ -684,9 +691,9 @@ export function collectAllParUnboundedDiscard<R, E, A>(
 export function collectAllParNDiscard_<R, E, A>(
   as: Iterable<Effect<R, E, A>>,
   n: number,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R, E, void> {
-  return forEachParNDiscard(as, n, identity, __trace)
+  return forEachParNDiscard(as, n, identity, __etsTrace)
 }
 
 /**
@@ -697,9 +704,9 @@ export function collectAllParNDiscard_<R, E, A>(
  *
  * @ets_data_first collectAllParNDiscard_
  */
-export function collectAllParNDiscard(n: number, __trace?: string) {
+export function collectAllParNDiscard(n: number, __etsTrace?: string) {
   return <R, E, A>(as: Iterable<Effect<R, E, A>>): Effect<R, E, void> =>
-    collectAllParNDiscard_(as, n, __trace)
+    collectAllParNDiscard_(as, n, __etsTrace)
 }
 
 // -----------------------------------------------------------------------------
@@ -715,9 +722,9 @@ export function collectAllParNDiscard(n: number, __trace?: string) {
 export function collectAllWith_<R, E, A, B>(
   as: Iterable<Effect<R, E, A>>,
   pf: (a: A) => O.Option<B>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R, E, Chunk.Chunk<B>> {
-  return map_(collectAll(as, __trace), ChunkCollect.collect(pf))
+  return map_(collectAll(as, __etsTrace), ChunkCollect.collect(pf))
 }
 
 /**
@@ -726,9 +733,9 @@ export function collectAllWith_<R, E, A, B>(
  *
  * @ets_data_first collectAllWith_
  */
-export function collectAllWith<A, B>(pf: (a: A) => O.Option<B>, __trace?: string) {
+export function collectAllWith<A, B>(pf: (a: A) => O.Option<B>, __etsTrace?: string) {
   return <R, E>(as: Iterable<Effect<R, E, A>>): Effect<R, E, Chunk.Chunk<B>> =>
-    collectAllWith_(as, pf, __trace)
+    collectAllWith_(as, pf, __etsTrace)
 }
 
 // -----------------------------------------------------------------------------
@@ -744,9 +751,9 @@ export function collectAllWith<A, B>(pf: (a: A) => O.Option<B>, __trace?: string
 export function collectAllWithPar_<R, E, A, B>(
   as: Iterable<Effect<R, E, A>>,
   pf: (a: A) => O.Option<B>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R, E, Chunk.Chunk<B>> {
-  return map_(collectAllPar(as, __trace), ChunkCollect.collect(pf))
+  return map_(collectAllPar(as, __etsTrace), ChunkCollect.collect(pf))
 }
 
 /**
@@ -755,9 +762,12 @@ export function collectAllWithPar_<R, E, A, B>(
  *
  * @ets_data_first collectAllWithPar_
  */
-export function collectAllWithPar<A, B>(pf: (a: A) => O.Option<B>, __trace?: string) {
+export function collectAllWithPar<A, B>(
+  pf: (a: A) => O.Option<B>,
+  __etsTrace?: string
+) {
   return <R, E>(as: Iterable<Effect<R, E, A>>): Effect<R, E, Chunk.Chunk<B>> =>
-    collectAllWithPar_(as, pf, __trace)
+    collectAllWithPar_(as, pf, __etsTrace)
 }
 
 // -----------------------------------------------------------------------------
@@ -771,12 +781,12 @@ export function collectAllWithPar<A, B>(pf: (a: A) => O.Option<B>, __trace?: str
  */
 export function collectAllSuccesses<R, E, A>(
   as: Iterable<Effect<R, E, A>>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R, never, Chunk.Chunk<A>> {
   return collectAllWith_(
     Iter.map_(as, (x) => exit(x)),
     (e) => (e._tag === "Success" ? O.some(e.value) : O.none),
-    __trace
+    __etsTrace
   )
 }
 
@@ -791,12 +801,12 @@ export function collectAllSuccesses<R, E, A>(
  */
 export function collectAllSuccessesPar<R, E, A>(
   as: Iterable<Effect<R, E, A>>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R, never, Chunk.Chunk<A>> {
   return collectAllWithPar_(
     Iter.map_(as, (x) => exit(x)),
     (e) => (e._tag === "Success" ? O.some(e.value) : O.none),
-    __trace
+    __etsTrace
   )
 }
 
@@ -811,12 +821,12 @@ export function collectAllSuccessesPar<R, E, A>(
  */
 export function fiberJoinAll<E, A>(
   as: Iterable<Fiber<E, A>>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<unknown, E, Chunk.Chunk<A>> {
   return tap_(
     chain_(fiberWaitAll(as), done),
     () => forEach_(as, (f) => f.inheritRefs),
-    __trace
+    __etsTrace
   )
 }
 
@@ -825,11 +835,11 @@ export function fiberJoinAll<E, A>(
  */
 export function fiberWaitAll<E, A>(
   as: Iterable<Fiber<E, A>>,
-  __trace?: string
+  __etsTrace?: string
 ): RIO<unknown, Exit<E, Chunk.Chunk<A>>> {
   return exit(
     forEachPar_(as, (f) => chain_(f.await, done)),
-    __trace
+    __etsTrace
   )
 }
 
@@ -844,7 +854,7 @@ export function releaseMapReleaseAll_(
   self: ReleaseMap,
   ex: Exit<any, any>,
   execStrategy: ExecutionStrategy,
-  __trace?: string
+  __etsTrace?: string
 ): UIO<any> {
   return pipe(
     self.ref,
@@ -861,7 +871,7 @@ export function releaseMapReleaseAll_(
                   forEach_(
                     Array.from(s.finalizers()).reverse(),
                     ([_, f]) => exit(s.update(f)(ex)),
-                    __trace
+                    __etsTrace
                   ),
                   (results) =>
                     done(
@@ -879,7 +889,7 @@ export function releaseMapReleaseAll_(
                   forEachPar_(
                     Array.from(s.finalizers()).reverse(),
                     ([_, f]) => exit(s.update(f)(ex)),
-                    __trace
+                    __etsTrace
                   ),
                   (results) =>
                     done(
@@ -898,7 +908,7 @@ export function releaseMapReleaseAll_(
                     Array.from(s.finalizers()).reverse(),
                     execStrategy.n,
                     ([_, f]) => exit(s.update(f)(ex)),
-                    __trace
+                    __etsTrace
                   ),
                   (results) =>
                     done(
@@ -925,7 +935,7 @@ export function releaseMapReleaseAll_(
  */
 export function managedFork<R, E, A>(
   self: Managed<R, E, A>,
-  __trace?: string
+  __etsTrace?: string
 ): Managed<R, never, FiberContext<E, A>> {
   return managedApply(
     uninterruptibleMask((status) =>
@@ -937,7 +947,7 @@ export function managedFork<R, E, A>(
           locally_(
             currentReleaseMap.value,
             innerReleaseMap,
-            __trace
+            __etsTrace
           )(
             forkDaemon(status.restore(map_(self.effect, (_) => _.get(1)))) as RIO<
               R,
@@ -952,7 +962,7 @@ export function managedFork<R, E, A>(
               chain_(interruptFiber(fiber), () =>
                 releaseMapReleaseAll_(innerReleaseMap, e, sequential)
               ),
-            __trace
+            __etsTrace
           )
         ),
         map(({ fiber, releaseMapEntry }) => Tp.tuple(releaseMapEntry, fiber))
@@ -967,18 +977,18 @@ export function managedFork<R, E, A>(
 export function managedUse_<R, E, A, R2, E2, B>(
   self: Managed<R, E, A>,
   f: (a: A) => Effect<R2, E2, B>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R & R2, E | E2, B> {
   return chain_(releaseMapMake, (releaseMap) =>
     locally_(
       currentReleaseMap.value,
       releaseMap,
-      __trace
+      __etsTrace
     )(
       acquireReleaseExitWith_(
         fiberRefGet(currentReleaseMap.value),
-        () => chain_(self.effect, (_) => f(_.get(1)), __trace),
-        (relMap, ex) => releaseMapReleaseAll_(relMap, ex, sequential, __trace)
+        () => chain_(self.effect, (_) => f(_.get(1)), __etsTrace),
+        (relMap, ex) => releaseMapReleaseAll_(relMap, ex, sequential, __etsTrace)
       )
     )
   )
@@ -1089,11 +1099,14 @@ export class BackPressureStrategy<A> implements Strategy<A> {
 /**
  * Creates a bounded queue
  */
-export function makeBoundedQueue<A>(capacity: number, __trace?: string): UIO<Queue<A>> {
+export function makeBoundedQueue<A>(
+  capacity: number,
+  __etsTrace?: string
+): UIO<Queue<A>> {
   return chain_(
     succeed(() => new Bounded<A>(capacity)),
     (x) => createQueue_(x, new BackPressureStrategy()),
-    __trace
+    __etsTrace
   )
 }
 
@@ -1292,13 +1305,13 @@ class UnsafeCreate<A> extends XQueueInternal<unknown, unknown, never, never, A, 
 export function createQueue_<A>(
   queue: MutableQueue<A>,
   strategy: Strategy<A>,
-  __trace?: string
+  __etsTrace?: string
 ) {
   return map_(
     make<never, void>(),
     (p) =>
       unsafeCreateQueue(queue, new Unbounded(), p, new AtomicBoolean(false), strategy),
-    __trace
+    __etsTrace
   )
 }
 
@@ -1307,6 +1320,6 @@ export function createQueue_<A>(
  *
  * @ets_data_first createQueue_
  */
-export function createQueue<A>(strategy: Strategy<A>, __trace?: string) {
-  return (queue: MutableQueue<A>) => createQueue_(queue, strategy, __trace)
+export function createQueue<A>(strategy: Strategy<A>, __etsTrace?: string) {
+  return (queue: MutableQueue<A>) => createQueue_(queue, strategy, __etsTrace)
 }

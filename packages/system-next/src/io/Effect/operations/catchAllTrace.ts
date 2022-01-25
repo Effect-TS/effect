@@ -12,9 +12,9 @@ import { succeedNow } from "./succeedNow"
 export function catchAllTrace_<R, E, A, R2, E2, A2>(
   self: Effect<R, E, A>,
   h: (tuple: Tuple<[E, Trace]>) => Effect<R2, E2, A2>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R & R2, E2, A | A2> {
-  return foldTraceEffect_(self, h, succeedNow, __trace)
+  return foldTraceEffect_(self, h, succeedNow, __etsTrace)
 }
 
 /**
@@ -24,8 +24,8 @@ export function catchAllTrace_<R, E, A, R2, E2, A2>(
  */
 export function catchAllTrace<E, R2, E2, A2>(
   h: (tuple: Tuple<[E, Trace]>) => Effect<R2, E2, A2>,
-  __trace?: string
+  __etsTrace?: string
 ) {
   return <R, A>(self: Effect<R, E, A>): Effect<R & R2, E2, A | A2> =>
-    catchAllTrace_(self, h, __trace)
+    catchAllTrace_(self, h, __etsTrace)
 }

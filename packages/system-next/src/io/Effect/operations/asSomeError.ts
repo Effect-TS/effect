@@ -10,7 +10,7 @@ import { mapError_ } from "./mapError"
  */
 export function asSomeError<R, E, A>(
   self: Effect<R, E, A>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R, Option<E>, A> {
-  return mapError_(self, some, __trace)
+  return mapError_(self, some, __etsTrace)
 }

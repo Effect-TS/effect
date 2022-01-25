@@ -13,7 +13,7 @@ import { map_ } from "./map"
  */
 export function forkAll<R, E, A>(
   effects: Iterable<Effect<R, E, A>>,
-  __trace?: string
+  __etsTrace?: string
 ): RIO<R, Fiber.Fiber<E, Chunk.Chunk<A>>> {
-  return map_(forEach_(effects, fork, __trace), Fiber.collectAll)
+  return map_(forEach_(effects, fork, __etsTrace), Fiber.collectAll)
 }

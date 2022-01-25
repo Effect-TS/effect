@@ -9,9 +9,9 @@ import { suspendSucceed } from "./suspendSucceed"
  *
  * @ets static ets/EffectOps done
  */
-export function done<E, A>(exit: Exit<E, A>, __trace?: string): IO<E, A> {
+export function done<E, A>(exit: Exit<E, A>, __etsTrace?: string): IO<E, A> {
   return suspendSucceed(
     () => (exit._tag === "Success" ? succeedNow(exit.value) : failCause(exit.cause)),
-    __trace
+    __etsTrace
   )
 }

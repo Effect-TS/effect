@@ -11,9 +11,9 @@ import { unrefineWith_ } from "./unrefineWith"
 export function unrefine_<R, E, A, E1>(
   fa: Effect<R, E, A>,
   pf: (u: unknown) => O.Option<E1>,
-  __trace?: string
+  __etsTrace?: string
 ) {
-  return unrefineWith_(fa, pf, identity, __trace)
+  return unrefineWith_(fa, pf, identity, __etsTrace)
 }
 
 /**
@@ -21,6 +21,6 @@ export function unrefine_<R, E, A, E1>(
  *
  * @ets_data_first unrefine_
  */
-export function unrefine<E1>(pf: (u: unknown) => O.Option<E1>, __trace?: string) {
-  return <R, E, A>(fa: Effect<R, E, A>) => unrefine_(fa, pf, __trace)
+export function unrefine<E1>(pf: (u: unknown) => O.Option<E1>, __etsTrace?: string) {
+  return <R, E, A>(fa: Effect<R, E, A>) => unrefine_(fa, pf, __etsTrace)
 }

@@ -12,7 +12,7 @@ import { provideEnvironment_ } from "./provideEnvironment"
 export function join_<R, E, A, R1, E1, A1>(
   self: Effect<R, E, A>,
   that: Effect<R1, E1, A1>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<Either<R, R1>, E | E1, A | A1> {
   return environmentWithEffect(
     (_: Either<R, R1>): Effect<unknown, E | E1, A | A1> =>
@@ -21,7 +21,7 @@ export function join_<R, E, A, R1, E1, A1>(
         (r) => provideEnvironment_(self, r),
         (r1) => provideEnvironment_(that, r1)
       ),
-    __trace
+    __etsTrace
   )
 }
 
@@ -30,8 +30,8 @@ export function join_<R, E, A, R1, E1, A1>(
  *
  * @ets_data_first join_
  */
-export function join<R1, E1, A1>(that: Effect<R1, E1, A1>, __trace?: string) {
+export function join<R1, E1, A1>(that: Effect<R1, E1, A1>, __etsTrace?: string) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<Either<R, R1>, E | E1, A | A1> => {
-    return join_(self, that, __trace)
+    return join_(self, that, __etsTrace)
   }
 }

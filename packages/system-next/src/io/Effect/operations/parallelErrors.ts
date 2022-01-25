@@ -15,7 +15,7 @@ import { succeedNow } from "./succeedNow"
  */
 export function parallelErrors<R, E, A>(
   self: Effect<R, E, A>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R, C.Chunk<E>, A> {
   return mapError_(
     foldCauseEffect_(
@@ -32,6 +32,6 @@ export function parallelErrors<R, E, A>(
       succeedNow
     ),
     C.from,
-    __trace
+    __etsTrace
   )
 }

@@ -26,6 +26,9 @@ function adapter(_: any, __?: any) {
     : new GenEither(_)
 }
 
+/**
+ * @ets static ets/EitherOps gen
+ */
 export function gen<Eff extends GenEither<any, any>, AEff>(
   f: (i: {
     <E, A>(_: Option<A>, onNone: () => E): GenEither<E, A>

@@ -15,7 +15,7 @@ import { unit } from "./unit"
  */
 export function uncause<R, E>(
   self: RIO<R, Cause.Cause<E>>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R, E, void> {
-  return chain_(self, (c) => (Cause.isEmpty(c) ? unit : failCause(c)), __trace)
+  return chain_(self, (c) => (Cause.isEmpty(c) ? unit : failCause(c)), __etsTrace)
 }

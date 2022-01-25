@@ -9,9 +9,9 @@ import { map_ } from "./map"
  */
 export function tap<R, E, A, X>(
   f: (_: A) => Effect<R, E, X>,
-  __trace?: string
+  __etsTrace?: string
 ): <R2, E2>(_: Effect<R2, E2, A>) => Effect<R & R2, E | E2, A> {
-  return (fa) => tap_(fa, f, __trace)
+  return (fa) => tap_(fa, f, __etsTrace)
 }
 
 /**
@@ -22,7 +22,7 @@ export function tap<R, E, A, X>(
 export function tap_<R2, E2, A, R, E, X>(
   _: Effect<R2, E2, A>,
   f: (_: A) => Effect<R, E, X>,
-  __trace?: string
+  __etsTrace?: string
 ) {
-  return chain_(_, (a: A) => map_(f(a), () => a), __trace)
+  return chain_(_, (a: A) => map_(f(a), () => a), __etsTrace)
 }

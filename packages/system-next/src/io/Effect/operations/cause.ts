@@ -12,7 +12,7 @@ import { foldCause_ } from "./foldCause"
  */
 export function cause<R, E, A>(
   self: Effect<R, E, A>,
-  __trace?: string
+  __etsTrace?: string
 ): RIO<R, Cause<E>> {
-  return foldCause_(self, identity, () => empty, __trace)
+  return foldCause_(self, identity, () => empty, __etsTrace)
 }

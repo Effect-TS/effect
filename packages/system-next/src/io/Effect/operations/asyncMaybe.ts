@@ -19,9 +19,9 @@ import { unit } from "./unit"
  */
 export function asyncMaybe<R, E, A>(
   register: (callback: Cb<Effect<R, E, A>>) => O.Option<Effect<R, E, A>>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R, E, A> {
-  return asyncMaybeBlockingOn(register, none, __trace)
+  return asyncMaybeBlockingOn(register, none, __etsTrace)
 }
 
 /**
@@ -40,7 +40,7 @@ export function asyncMaybe<R, E, A>(
 export function asyncMaybeBlockingOn<R, E, A>(
   register: (callback: Cb<Effect<R, E, A>>) => O.Option<Effect<R, E, A>>,
   blockingOn: FiberId,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R, E, A> {
   return asyncInterruptBlockingOn(
     (cb) => {
@@ -53,6 +53,6 @@ export function asyncMaybeBlockingOn<R, E, A>(
       }
     },
     blockingOn,
-    __trace
+    __etsTrace
   )
 }

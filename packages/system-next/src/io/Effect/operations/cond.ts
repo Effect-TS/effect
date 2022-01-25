@@ -15,9 +15,9 @@ export function cond_<E, A>(
   predicate: () => boolean,
   result: () => A,
   error: () => E,
-  __trace?: string
+  __etsTrace?: string
 ): IO<E, A> {
-  return suspendSucceed(() => (predicate() ? succeed(result) : fail(error)), __trace)
+  return suspendSucceed(() => (predicate() ? succeed(result) : fail(error)), __etsTrace)
 }
 
 /**
@@ -28,7 +28,7 @@ export function cond_<E, A>(
  *
  * @ets_data_first cond_
  */
-export function cond<E, A>(result: () => A, error: () => E, __trace?: string) {
+export function cond<E, A>(result: () => A, error: () => E, __etsTrace?: string) {
   return (predicate: () => boolean): IO<E, A> =>
-    cond_(predicate, result, error, __trace)
+    cond_(predicate, result, error, __etsTrace)
 }

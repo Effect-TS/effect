@@ -7,6 +7,9 @@ import { fold_ } from "./fold"
  *
  * @ets fluent ets/Effect ignore
  */
-export function ignore<R, E, A>(self: Effect<R, E, A>, __trace?: string): RIO<R, void> {
-  return fold_(self, constVoid, constVoid, __trace)
+export function ignore<R, E, A>(
+  self: Effect<R, E, A>,
+  __etsTrace?: string
+): RIO<R, void> {
+  return fold_(self, constVoid, constVoid, __etsTrace)
 }

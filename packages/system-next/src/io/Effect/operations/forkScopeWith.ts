@@ -9,7 +9,7 @@ import { IGetForkScope } from "../definition"
  */
 export function forkScopeWith<R, E, A>(
   f: (scope: Scope) => Effect<R, E, A>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R, E, A> {
-  return new IGetForkScope(f, __trace)
+  return new IGetForkScope(f, __etsTrace)
 }

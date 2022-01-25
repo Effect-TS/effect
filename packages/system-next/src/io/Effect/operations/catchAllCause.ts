@@ -14,9 +14,9 @@ import { succeedNow } from "./succeedNow"
 export function catchAllCause_<R, E, A, R2, E2, A2>(
   self: Effect<R, E, A>,
   f: (cause: Cause<E>) => Effect<R2, E2, A2>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R & R2, E2, A | A2> {
-  return foldCauseEffect_(self, f, succeedNow, __trace)
+  return foldCauseEffect_(self, f, succeedNow, __etsTrace)
 }
 
 /**
@@ -29,8 +29,8 @@ export function catchAllCause_<R, E, A, R2, E2, A2>(
  */
 export function catchAllCause<E, R2, E2, A2>(
   f: (cause: Cause<E>) => Effect<R2, E2, A2>,
-  __trace?: string
+  __etsTrace?: string
 ) {
   return <R, A>(self: Effect<R, E, A>): Effect<R & R2, E2, A | A2> =>
-    catchAllCause_(self, f, __trace)
+    catchAllCause_(self, f, __etsTrace)
 }

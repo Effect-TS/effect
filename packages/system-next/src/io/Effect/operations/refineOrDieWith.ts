@@ -15,7 +15,7 @@ export function refineOrDieWith_<R, A, E, E1>(
   self: Effect<R, E, A>,
   pf: (e: E) => O.Option<E1>,
   f: (e: E) => unknown,
-  __trace?: string
+  __etsTrace?: string
 ) {
   return catchAll_(
     self,
@@ -28,7 +28,7 @@ export function refineOrDieWith_<R, A, E, E1>(
           (e1) => failNow(e1)
         )
       ),
-    __trace
+    __etsTrace
   )
 }
 
@@ -41,7 +41,7 @@ export function refineOrDieWith_<R, A, E, E1>(
 export function refineOrDieWith<E, E1>(
   pf: (e: E) => O.Option<E1>,
   f: (e: E) => unknown,
-  __trace?: string
+  __etsTrace?: string
 ) {
-  return <R, A>(self: Effect<R, E, A>) => refineOrDieWith_(self, pf, f, __trace)
+  return <R, A>(self: Effect<R, E, A>) => refineOrDieWith_(self, pf, f, __etsTrace)
 }

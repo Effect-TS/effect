@@ -16,11 +16,11 @@ import { succeedNow } from "./succeedNow"
  */
 export function fromEitherCause<E, A>(
   either: Either<Cause<E>, A>,
-  __trace?: string
+  __etsTrace?: string
 ): IO<E, A> {
   return chain_(
     succeed(() => either),
     fold(failCause, succeedNow),
-    __trace
+    __etsTrace
   )
 }

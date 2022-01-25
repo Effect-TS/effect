@@ -76,7 +76,7 @@ export function deriveLifted<T>(
 export type DerivedAccessM<T, Gens extends keyof T> = {
   [k in Gens]: <R_, E_, A_>(
     f: (_: T[k]) => Effect<R_, E_, A_>,
-    __trace?: string
+    __etsTrace?: string
   ) => Effect<R_ & Has<T>, E_, A_>
 }
 
@@ -98,7 +98,10 @@ export function deriveAccessEffect<T>(
 }
 
 export type DerivedAccess<T, Gens extends keyof T> = {
-  [k in Gens]: <A_>(f: (_: T[k]) => A_, __trace?: string) => Effect<Has<T>, never, A_>
+  [k in Gens]: <A_>(
+    f: (_: T[k]) => A_,
+    __etsTrace?: string
+  ) => Effect<Has<T>, never, A_>
 }
 
 /**

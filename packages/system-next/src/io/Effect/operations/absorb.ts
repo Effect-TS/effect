@@ -8,6 +8,6 @@ import { absorbWith_ } from "./absorbWith"
  *
  * @ets fluent ets/Effect absorb
  */
-export function absorb<R, E, A>(self: Effect<R, E, A>, __trace?: string) {
-  return absorbWith_(self, identity, __trace)
+export function absorb<R, E, A>(self: Effect<R, E, A>, __etsTrace?: string) {
+  return absorbWith_(self, identity, __etsTrace)
 }

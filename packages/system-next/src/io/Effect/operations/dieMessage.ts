@@ -9,6 +9,9 @@ import { failCause } from "./failCause"
  *
  * @ets static ets/EffectOps dieMessage
  */
-export function dieMessage(message: string, __trace?: string): UIO<never> {
-  return failCause(Cause.stackless(Cause.die(new Cause.RuntimeError(message))), __trace)
+export function dieMessage(message: string, __etsTrace?: string): UIO<never> {
+  return failCause(
+    Cause.stackless(Cause.die(new Cause.RuntimeError(message))),
+    __etsTrace
+  )
 }

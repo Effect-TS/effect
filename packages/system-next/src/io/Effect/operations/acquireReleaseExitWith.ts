@@ -23,7 +23,7 @@ export function acquireReleaseExitWith_<R, E, A, R1, E1, A1, R2, E2, X>(
   acquire: Effect<R, E, A>,
   use: (a: A) => Effect<R1, E1, A1>,
   release: (a: A, e: Exit<E1, A1>) => Effect<R2, E2, X>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R & R1 & R2, E | E1 | E2, A1> {
   return uninterruptibleMask(
     (status) =>
@@ -43,7 +43,7 @@ export function acquireReleaseExitWith_<R, E, A, R1, E1, A1, R2, E2, X>(
           )
         )
       ),
-    __trace
+    __etsTrace
   )
 }
 
@@ -59,8 +59,8 @@ export function acquireReleaseExitWith_<R, E, A, R1, E1, A1, R2, E2, X>(
 export function acquireReleaseExitWith<A, R1, E1, A1, R2, E2, X>(
   use: (a: A) => Effect<R1, E1, A1>,
   release: (a: A, e: Exit<E1, A1>) => Effect<R2, E2, X>,
-  __trace?: string
+  __etsTrace?: string
 ) {
   return <R, E>(acquire: Effect<R, E, A>): Effect<R & R1 & R2, E | E1 | E2, A1> =>
-    acquireReleaseExitWith_(acquire, use, release, __trace)
+    acquireReleaseExitWith_(acquire, use, release, __etsTrace)
 }

@@ -11,9 +11,9 @@ import { refineOrDieWith_ } from "./refineOrDieWith"
 export function refineOrDie_<R, A, E, E1>(
   self: Effect<R, E, A>,
   pf: (e: E) => O.Option<E1>,
-  __trace?: string
+  __etsTrace?: string
 ) {
-  return refineOrDieWith_(self, pf, identity, __trace)
+  return refineOrDieWith_(self, pf, identity, __etsTrace)
 }
 
 /**
@@ -21,6 +21,6 @@ export function refineOrDie_<R, A, E, E1>(
  *
  * @ets_data_first refineOrDie_
  */
-export function refineOrDie<E, E1>(pf: (e: E) => O.Option<E1>, __trace?: string) {
-  return <R, A>(self: Effect<R, E, A>) => refineOrDie_(self, pf, __trace)
+export function refineOrDie<E, E1>(pf: (e: E) => O.Option<E1>, __etsTrace?: string) {
+  return <R, A>(self: Effect<R, E, A>) => refineOrDie_(self, pf, __etsTrace)
 }

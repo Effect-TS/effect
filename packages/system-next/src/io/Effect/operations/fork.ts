@@ -28,7 +28,7 @@ import { IFork } from "../definition"
  */
 export function fork<R, E, A>(
   self: Effect<R, E, A>,
-  __trace?: string
+  __etsTrace?: string
 ): RIO<R, Fiber.Runtime<E, A>> {
-  return new IFork(self, O.none, __trace)
+  return new IFork(self, O.none, __etsTrace)
 }

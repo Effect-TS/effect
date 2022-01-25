@@ -12,11 +12,11 @@ import { suspendSucceed } from "./suspendSucceed"
  */
 export function firstSuccessOf<R, E, A>(
   effects: NA.NonEmptyArray<Effect<R, E, A>>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R, E, A> {
   return suspendSucceed(() => {
     const head = NA.head(effects)
     const rest = NA.tail(effects)
     return A.reduce_(rest, head, (b, a) => orElse_(b, () => a))
-  }, __trace)
+  }, __etsTrace)
 }

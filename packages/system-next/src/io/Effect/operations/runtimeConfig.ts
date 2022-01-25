@@ -20,7 +20,7 @@ export const runtimeConfig: UIO<RuntimeConfig> = suspendSucceedWith((runtimeConf
  */
 export function setRuntimeConfig(
   runtimeConfig: RuntimeConfig,
-  __trace?: string
+  __etsTrace?: string
 ): UIO<void> {
-  return new ISetRuntimeConfig(runtimeConfig, __trace)
+  return new ISetRuntimeConfig(runtimeConfig, __etsTrace)
 }

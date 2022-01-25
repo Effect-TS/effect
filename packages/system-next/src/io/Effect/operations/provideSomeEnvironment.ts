@@ -11,9 +11,12 @@ import { provideEnvironment_ } from "./provideEnvironment"
 export function provideSomeEnvironment_<R0, R, E, A>(
   effect: Effect<R, E, A>,
   f: (r0: R0) => R,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R0, E, A> {
-  return environmentWithEffect((r0: R0) => provideEnvironment_(effect, f(r0)), __trace)
+  return environmentWithEffect(
+    (r0: R0) => provideEnvironment_(effect, f(r0)),
+    __etsTrace
+  )
 }
 
 /**
@@ -22,7 +25,7 @@ export function provideSomeEnvironment_<R0, R, E, A>(
  *
  * @ets_data_first provideSomeEnvironment_
  */
-export function provideSomeEnvironment<R0, R>(f: (r0: R0) => R, __trace?: string) {
+export function provideSomeEnvironment<R0, R>(f: (r0: R0) => R, __etsTrace?: string) {
   return <E, A>(effect: Effect<R, E, A>): Effect<R0, E, A> =>
-    provideSomeEnvironment_(effect, f, __trace)
+    provideSomeEnvironment_(effect, f, __etsTrace)
 }

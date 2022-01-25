@@ -9,6 +9,6 @@ import { failCause } from "./failCause"
  *
  * @ets static ets/EffectOps failNow
  */
-export function failNow<E>(e: E, __trace?: string): IO<E, never> {
-  return failCause(new Fail(e, none), __trace)
+export function failNow<E>(e: E, __etsTrace?: string): IO<E, never> {
+  return failCause(new Fail(e, none), __etsTrace)
 }

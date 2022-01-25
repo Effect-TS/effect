@@ -13,13 +13,13 @@ import { none } from "./none"
 export function forEachEffect_<R, E, A, R1, E1, B>(
   self: Effect<R, E, A>,
   f: (a: A) => Effect<R1, E1, B>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R & R1, E | E1, O.Option<B>> {
   return foldCauseEffect_(
     self,
     () => none,
     (a) => map_(f(a), O.some),
-    __trace
+    __etsTrace
   )
 }
 
@@ -31,8 +31,8 @@ export function forEachEffect_<R, E, A, R1, E1, B>(
  */
 export function forEachEffect<A, R1, E1, B>(
   f: (a: A) => Effect<R1, E1, B>,
-  __trace?: string
+  __etsTrace?: string
 ) {
   return <R, E>(self: Effect<R, E, A>): Effect<R & R1, E | E1, O.Option<B>> =>
-    forEachEffect_(self, f, __trace)
+    forEachEffect_(self, f, __etsTrace)
 }

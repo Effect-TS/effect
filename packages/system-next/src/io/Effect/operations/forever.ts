@@ -9,7 +9,7 @@ import { yieldNow } from "./yieldNow"
  */
 export function forever<R, E, A>(
   effect: Effect<R, E, A>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R, E, never> {
-  return chain_(effect, () => chain_(yieldNow, () => forever(effect)), __trace)
+  return chain_(effect, () => chain_(yieldNow, () => forever(effect)), __etsTrace)
 }

@@ -15,7 +15,7 @@ import { zipRight_ } from "./zipRight"
 export function tapErrorTrace_<R, E, A, R2, E2, X>(
   self: Effect<R, E, A>,
   f: (trace: Trace) => Effect<R2, E2, X>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R & R2, E | E2, A> {
   return foldCauseEffect_(
     self,
@@ -26,7 +26,7 @@ export function tapErrorTrace_<R, E, A, R2, E2, X>(
         () => failCause(cause)
       ),
     succeedNow,
-    __trace
+    __etsTrace
   )
 }
 
@@ -37,8 +37,8 @@ export function tapErrorTrace_<R, E, A, R2, E2, X>(
  */
 export function tapErrorTrace<E, R2, E2, X>(
   f: (cause: Trace) => Effect<R2, E2, X>,
-  __trace?: string
+  __etsTrace?: string
 ) {
   return <R, A>(self: Effect<R, E, A>): Effect<R & R2, E | E2, A> =>
-    tapErrorTrace_(self, f, __trace)
+    tapErrorTrace_(self, f, __etsTrace)
 }

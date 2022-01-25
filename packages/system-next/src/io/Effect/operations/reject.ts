@@ -12,9 +12,9 @@ import { rejectEffect_ } from "./rejectEffect"
 export function reject_<R, E, A, E1>(
   self: Effect<R, E, A>,
   pf: (a: A) => O.Option<E1>,
-  __trace?: string
+  __etsTrace?: string
 ) {
-  return rejectEffect_(self, (a) => O.map_(pf(a), failNow), __trace)
+  return rejectEffect_(self, (a) => O.map_(pf(a), failNow), __etsTrace)
 }
 
 /**
@@ -23,6 +23,6 @@ export function reject_<R, E, A, E1>(
  *
  * @ets_data_first reject_
  */
-export function reject<A, E1>(pf: (a: A) => O.Option<E1>, __trace?: string) {
+export function reject<A, E1>(pf: (a: A) => O.Option<E1>, __etsTrace?: string) {
   return <R, E>(self: Effect<R, E, A>) => reject_(self, pf)
 }

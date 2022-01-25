@@ -15,10 +15,10 @@ import { unsome } from "./unsome"
 export function collectPar_<A, R, E, B>(
   self: Iterable<A>,
   f: (a: A) => Effect<R, Option<E>, B>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R, E, Chunk.Chunk<B>> {
   return map_(
-    forEachPar_(self, (a) => unsome(f(a)), __trace),
+    forEachPar_(self, (a) => unsome(f(a)), __etsTrace),
     compact
   )
 }
@@ -31,8 +31,8 @@ export function collectPar_<A, R, E, B>(
  */
 export function collectPar<A, R, E, B>(
   f: (a: A) => Effect<R, Option<E>, B>,
-  __trace?: string
+  __etsTrace?: string
 ) {
   return (self: Iterable<A>): Effect<R, E, Chunk.Chunk<B>> =>
-    collectPar_(self, f, __trace)
+    collectPar_(self, f, __etsTrace)
 }

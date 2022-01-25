@@ -9,6 +9,6 @@ import { zip_ } from "./zip"
  *
  * @ets fluent ets/Effect onFirst
  */
-export function onFirst<R, E, A>(self: Effect<R, E, A>, __trace?: string) {
-  return zip_(self, environment<R>(), __trace)
+export function onFirst<R, E, A>(self: Effect<R, E, A>, __etsTrace?: string) {
+  return zip_(self, environment<R>(), __etsTrace)
 }

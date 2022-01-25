@@ -9,7 +9,7 @@ import { environment } from "./environment"
  */
 export function environmentWithEffect<R, R0, E, A>(
   f: (env: R0) => Effect<R, E, A>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R & R0, E, A> {
-  return chain_(environment<R0>(), f, __trace)
+  return chain_(environment<R0>(), f, __etsTrace)
 }

@@ -13,12 +13,12 @@ import { succeedNow } from "./succeedNow"
  */
 export function exit<R, E, A>(
   self: Effect<R, E, A>,
-  __trace?: string
+  __etsTrace?: string
 ): RIO<R, Exit<E, A>> {
   return new IFold(
     self,
     (cause) => succeedNow(failCause(cause)),
     (success) => succeedNow(succeed(success)),
-    __trace
+    __etsTrace
   )
 }

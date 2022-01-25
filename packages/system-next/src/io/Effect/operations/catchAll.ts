@@ -10,9 +10,9 @@ import { succeedNow } from "./succeedNow"
 export function catchAll_<R2, E2, A2, R, E, A>(
   self: Effect<R2, E2, A2>,
   f: (e: E2) => Effect<R, E, A>,
-  __trace?: string
+  __etsTrace?: string
 ) {
-  return foldEffect_(self, f, succeedNow, __trace)
+  return foldEffect_(self, f, succeedNow, __etsTrace)
 }
 
 /**
@@ -20,6 +20,9 @@ export function catchAll_<R2, E2, A2, R, E, A>(
  *
  * @ets_data_first catchAll_
  */
-export function catchAll<R, E, E2, A>(f: (e: E2) => Effect<R, E, A>, __trace?: string) {
-  return <R2, A2>(self: Effect<R2, E2, A2>) => catchAll_(self, f, __trace)
+export function catchAll<R, E, E2, A>(
+  f: (e: E2) => Effect<R, E, A>,
+  __etsTrace?: string
+) {
+  return <R2, A2>(self: Effect<R2, E2, A2>) => catchAll_(self, f, __etsTrace)
 }

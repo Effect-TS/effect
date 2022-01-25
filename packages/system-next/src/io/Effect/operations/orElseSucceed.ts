@@ -13,9 +13,9 @@ import { succeedNow } from "./succeedNow"
 export function orElseSucceed_<R, E, A, A2>(
   self: Effect<R, E, A>,
   a: A2,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R, E, A | A2> {
-  return orElse_(self, () => succeedNow(a), __trace)
+  return orElse_(self, () => succeedNow(a), __etsTrace)
 }
 
 /**
@@ -24,6 +24,6 @@ export function orElseSucceed_<R, E, A, A2>(
  *
  * @ets_data_first orElseSucceed_
  */
-export function orElseSucceed<A2>(a: A2, __trace?: string) {
-  return <R, E, A>(self: Effect<R, E, A>) => orElseSucceed_(self, a, __trace)
+export function orElseSucceed<A2>(a: A2, __etsTrace?: string) {
+  return <R, E, A>(self: Effect<R, E, A>) => orElseSucceed_(self, a, __etsTrace)
 }

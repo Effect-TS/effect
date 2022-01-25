@@ -13,9 +13,11 @@ import { suspendSucceed } from "./suspendSucceed"
 export function exists_<R, E, A>(
   as: Iterable<A>,
   f: (a: A) => Effect<R, E, boolean>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R, E, boolean> {
-  return chain_(succeed(as[Symbol.iterator]), (iterator) => loop(iterator, f, __trace))
+  return chain_(succeed(as[Symbol.iterator]), (iterator) =>
+    loop(iterator, f, __etsTrace)
+  )
 }
 
 /**
@@ -24,20 +26,23 @@ export function exists_<R, E, A>(
  *
  * @ets_data_first exists_
  */
-export function exists<R, E, A>(f: (a: A) => Effect<R, E, boolean>, __trace?: string) {
-  return (as: Iterable<A>): Effect<R, E, boolean> => exists_(as, f, __trace)
+export function exists<R, E, A>(
+  f: (a: A) => Effect<R, E, boolean>,
+  __etsTrace?: string
+) {
+  return (as: Iterable<A>): Effect<R, E, boolean> => exists_(as, f, __etsTrace)
 }
 
 function loop<R, E, A>(
   iterator: Iterator<A>,
   f: (a: A) => Effect<R, E, boolean>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R, E, boolean> {
   const next = iterator.next()
   if (next.done) {
     return succeedNow(false)
   }
   return chain_(f(next.value), (b) =>
-    b ? succeedNow(b) : suspendSucceed(() => loop(iterator, f, __trace))
+    b ? succeedNow(b) : suspendSucceed(() => loop(iterator, f, __etsTrace))
   )
 }

@@ -17,13 +17,13 @@ import { suspendSucceed } from "./suspendSucceed"
 export function serviceWithEffect<T>(_: Tag<T>) {
   return <R, E, A>(
     f: (a: T) => Effect<R, E, A>,
-    __trace?: string
+    __etsTrace?: string
   ): Effect<R & Has<T>, E, A> =>
     suspendSucceed(() =>
       chain_(
         fiberRefGet(currentEnvironment.value),
         (environment: Has<T>) => f(environment[_.key]),
-        __trace
+        __etsTrace
       )
     )
 }

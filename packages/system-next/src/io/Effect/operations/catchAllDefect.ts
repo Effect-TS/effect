@@ -15,9 +15,9 @@ import { catchSomeDefect_ } from "./catchSomeDefect"
 export function catchAllDefect_<R, E, A, R2, E2, A2>(
   self: Effect<R, E, A>,
   f: (defect: unknown) => Effect<R2, E2, A2>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R & R2, E | E2, A | A2> {
-  return catchSomeDefect_(self, (d) => O.some(f(d)), __trace)
+  return catchSomeDefect_(self, (d) => O.some(f(d)), __etsTrace)
 }
 
 /**
@@ -32,8 +32,8 @@ export function catchAllDefect_<R, E, A, R2, E2, A2>(
  */
 export function catchAllDefect<R2, E2, A2>(
   f: (defect: unknown) => Effect<R2, E2, A2>,
-  __trace?: string
+  __etsTrace?: string
 ) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R & R2, E | E2, A | A2> =>
-    catchAllDefect_(self, f, __trace)
+    catchAllDefect_(self, f, __etsTrace)
 }

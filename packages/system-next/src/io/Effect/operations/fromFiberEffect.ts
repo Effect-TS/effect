@@ -12,7 +12,7 @@ import { suspendSucceed } from "./suspendSucceed"
  */
 export function fromFiberEffect<R, E, A>(
   fiber: Effect<R, E, Fiber<E, A>>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R, E, A> {
-  return suspendSucceed(() => chain_(fiber, join), __trace)
+  return suspendSucceed(() => chain_(fiber, join), __etsTrace)
 }

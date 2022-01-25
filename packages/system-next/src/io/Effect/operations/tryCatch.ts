@@ -13,7 +13,7 @@ import { suspendSucceed } from "./suspendSucceed"
 export function tryCatch<E, A>(
   attempt: LazyArg<A>,
   onThrow: (u: unknown) => E,
-  __trace?: string
+  __etsTrace?: string
 ): IO<E, A> {
   return suspendSucceed(() => {
     try {
@@ -21,5 +21,5 @@ export function tryCatch<E, A>(
     } catch (error) {
       return failNow(onThrow(error))
     }
-  }, __trace)
+  }, __etsTrace)
 }

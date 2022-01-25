@@ -14,12 +14,12 @@ import { failNow } from "./failNow"
 export function orElseOptional_<R, E, A, R2, E2, A2>(
   self: Effect<R, O.Option<E>, A>,
   that: LazyArg<Effect<R2, O.Option<E2>, A2>>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R & R2, O.Option<E | E2>, A | A2> {
   return catchAll_(
     self,
     O.fold(that, (e) => failNow(O.some<E | E2>(e))),
-    __trace
+    __etsTrace
   )
 }
 
@@ -32,8 +32,8 @@ export function orElseOptional_<R, E, A, R2, E2, A2>(
  */
 export function orElseOptional<R2, E2, A2>(
   that: LazyArg<Effect<R2, O.Option<E2>, A2>>,
-  __trace?: string
+  __etsTrace?: string
 ) {
   return <R, E, A>(self: Effect<R, O.Option<E>, A>) =>
-    orElseOptional_(self, that, __trace)
+    orElseOptional_(self, that, __etsTrace)
 }

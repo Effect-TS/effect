@@ -20,7 +20,7 @@ export function mergeAllPar_<R, E, A, B>(
   as: Iterable<Effect<R, E, A>>,
   zero: B,
   f: (b: B, a: A) => B,
-  __trace?: string
+  __etsTrace?: string
 ) {
   return chain_(
     Ref.make(zero),
@@ -32,7 +32,7 @@ export function mergeAllPar_<R, E, A, B>(
         ),
         () => Ref.get(acc)
       ),
-    __trace
+    __etsTrace
   )
 }
 
@@ -49,7 +49,7 @@ export function mergeAllPar_<R, E, A, B>(
  *
  * @ets_data_first mergeAllPar_
  */
-export function mergeAllPar<A, B>(zero: B, f: (b: B, a: A) => B, __trace?: string) {
+export function mergeAllPar<A, B>(zero: B, f: (b: B, a: A) => B, __etsTrace?: string) {
   return <R, E>(as: Iterable<Effect<R, E, A>>): Effect<R, E, B> =>
-    mergeAllPar_(as, zero, f, __trace)
+    mergeAllPar_(as, zero, f, __etsTrace)
 }

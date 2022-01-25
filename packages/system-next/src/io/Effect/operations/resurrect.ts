@@ -10,7 +10,7 @@ import { unrefineWith_ } from "./unrefineWith"
  */
 export function resurrect<R, E, A>(
   self: Effect<R, E, A>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R, unknown, A> {
-  return unrefineWith_(self, some, identity, __trace)
+  return unrefineWith_(self, some, identity, __etsTrace)
 }

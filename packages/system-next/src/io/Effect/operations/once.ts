@@ -11,9 +11,9 @@ import { whenEffect_ } from "./whenEffect"
  */
 export function once<R, E, A>(
   self: Effect<R, E, A>,
-  __trace?: string
+  __etsTrace?: string
 ): UIO<Effect<R, E, void>> {
   return map_(Ref.make(true), (ref) =>
-    map_(whenEffect_(self, Ref.getAndSet_(ref, false)), () => undefined, __trace)
+    map_(whenEffect_(self, Ref.getAndSet_(ref, false)), () => undefined, __etsTrace)
   )
 }

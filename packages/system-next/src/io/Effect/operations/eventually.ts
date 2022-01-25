@@ -11,7 +11,7 @@ import { yieldNow } from "./yieldNow"
  */
 export function eventually<R, E, A>(
   self: Effect<R, E, A>,
-  __trace?: string
+  __etsTrace?: string
 ): RIO<R, A> {
-  return orElse_(self, () => chain_(yieldNow, () => eventually(self)), __trace)
+  return orElse_(self, () => chain_(yieldNow, () => eventually(self)), __etsTrace)
 }

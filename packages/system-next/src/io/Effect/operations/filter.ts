@@ -12,7 +12,7 @@ import { zipWith_ } from "./zipWith"
 export function filter_<A, R, E>(
   as: Iterable<A>,
   f: (a: A) => Effect<R, E, boolean>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R, E, readonly A[]> {
   return suspendSucceed(
     () =>
@@ -28,7 +28,7 @@ export function filter_<A, R, E>(
           }
         )
       ),
-    __trace
+    __etsTrace
   )
 }
 
@@ -37,6 +37,9 @@ export function filter_<A, R, E>(
  *
  * @ets_data_first filter_
  */
-export function filter<A, R, E>(f: (a: A) => Effect<R, E, boolean>, __trace?: string) {
-  return (as: Iterable<A>) => filter_(as, f, __trace)
+export function filter<A, R, E>(
+  f: (a: A) => Effect<R, E, boolean>,
+  __etsTrace?: string
+) {
+  return (as: Iterable<A>) => filter_(as, f, __etsTrace)
 }

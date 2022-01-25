@@ -14,14 +14,14 @@ export function mergeAll_<R, E, A, B>(
   as: Iterable<Effect<R, E, A>>,
   zero: B,
   f: (b: B, a: A) => B,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R, E, B> {
   return suspendSucceed(
     () =>
       Iter.reduce_(as, succeedNow(zero) as Effect<R, E, B>, (acc, a) =>
         zipWith_(acc, a, f)
       ),
-    __trace
+    __etsTrace
   )
 }
 
@@ -31,7 +31,7 @@ export function mergeAll_<R, E, A, B>(
  *
  * @ets_data_first mergeAll_
  */
-export function mergeAll<A, B>(zero: B, f: (b: B, a: A) => B, __trace?: string) {
+export function mergeAll<A, B>(zero: B, f: (b: B, a: A) => B, __etsTrace?: string) {
   return <R, E>(as: Iterable<Effect<R, E, A>>): Effect<R, E, B> =>
-    mergeAll_(as, zero, f, __trace)
+    mergeAll_(as, zero, f, __etsTrace)
 }

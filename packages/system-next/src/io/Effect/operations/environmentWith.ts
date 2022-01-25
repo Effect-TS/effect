@@ -7,6 +7,9 @@ import { map_ } from "./map"
  *
  * @ets static ets/EffectOps environmentWith
  */
-export function environmentWith<R, A>(f: (env: R) => A, __trace?: string): RIO<R, A> {
-  return map_(environment<R>(), f, __trace)
+export function environmentWith<R, A>(
+  f: (env: R) => A,
+  __etsTrace?: string
+): RIO<R, A> {
+  return map_(environment<R>(), f, __etsTrace)
 }

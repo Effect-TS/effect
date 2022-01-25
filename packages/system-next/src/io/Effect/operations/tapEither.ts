@@ -14,7 +14,7 @@ import { zipRight_ } from "./zipRight"
 export function tapEither_<R, E, A, R2, E2, X>(
   self: Effect<R, E, A>,
   f: (either: E.Either<E, A>) => Effect<R2, E2, X>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R & R2, E | E2, A> {
   return foldCauseEffect_(
     self,
@@ -25,7 +25,7 @@ export function tapEither_<R, E, A, R2, E2, X>(
         () => failCause(cause)
       ),
     (a) => as_(f(E.right(a)), a),
-    __trace
+    __etsTrace
   )
 }
 
@@ -36,8 +36,8 @@ export function tapEither_<R, E, A, R2, E2, X>(
  */
 export function tapEither<E, A, R2, E2, X>(
   f: (either: E.Either<E, A>) => Effect<R2, E2, X>,
-  __trace?: string
+  __etsTrace?: string
 ) {
   return <R>(self: Effect<R, E, A>): Effect<R & R2, E | E2, A> =>
-    tapEither_(self, f, __trace)
+    tapEither_(self, f, __etsTrace)
 }

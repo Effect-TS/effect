@@ -13,16 +13,16 @@ import { suspendSucceedWith } from "./suspendSucceedWith"
  */
 export function suspend<R, E, A>(
   f: LazyArg<Effect<R, E, A>>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R, unknown, A> {
   return suspendSucceedWith((runtimeConfig) => {
     try {
       return f()
     } catch (error) {
       if (!runtimeConfig.value.fatal(error)) {
-        throw new EffectError(fail(error), __trace)
+        throw new EffectError(fail(error), __etsTrace)
       }
       throw error
     }
-  }, __trace)
+  }, __etsTrace)
 }
