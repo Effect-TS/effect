@@ -1,5 +1,5 @@
+import type { IO } from "../../Effect"
 import type { Fiber } from "../definition"
-import * as T from "./_internal/effect-api"
 import { collectAll } from "./collectAll"
 import { join } from "./join"
 
@@ -10,7 +10,7 @@ import { join } from "./join"
  */
 export function joinAll<E>(
   fs: Iterable<Fiber<E, any>>,
-  __trace?: string
-): T.IO<E, void> {
-  return T.asUnit(join(collectAll(fs)), __trace)
+  __etsTrace?: string
+): IO<E, void> {
+  return join(collectAll(fs)).asUnit()
 }

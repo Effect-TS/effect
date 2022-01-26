@@ -1,7 +1,6 @@
 import * as O from "../../../data/Option"
 import * as FiberId from "../../FiberId"
 import type { Fiber } from "../definition"
-import * as T from "./_internal/effect"
 import { makeSynthetic } from "./makeSynthetic"
 
 /**
@@ -15,17 +14,15 @@ export function orElse_<E, E1, A, A1>(
 ): Fiber<E | E1, A | A1> {
   return makeSynthetic<E | E1, A | A1>({
     id: FiberId.getOrElse_(self.id, () => that.id),
-    await: T.zipWith_(self.await, that.await, (e1, e2) =>
+    await: self.await.zipWith(that.await, (e1, e2) =>
       e1._tag === "Success" ? e1 : e2
     ),
     children: self.children,
     getRef: (ref) =>
-      T.zipWith_(self.getRef(ref), that.getRef(ref), (a, b) =>
-        a === ref.initial ? b : a
-      ),
-    inheritRefs: T.chain_(that.inheritRefs, () => self.inheritRefs),
-    interruptAs: (id) => T.chain_(self.interruptAs(id), () => that.interruptAs(id)),
-    poll: T.zipWith_(self.poll, that.poll, (e1, e2) => {
+      self.getRef(ref).zipWith(that.getRef(ref), (a, b) => (a === ref.initial ? b : a)),
+    inheritRefs: that.inheritRefs.flatMap(() => self.inheritRefs),
+    interruptAs: (id) => self.interruptAs(id).flatMap(() => that.interruptAs(id)),
+    poll: self.poll.zipWith(that.poll, (e1, e2) => {
       switch (e1._tag) {
         case "Some": {
           return e1.value._tag === "Success" ? e1 : e2

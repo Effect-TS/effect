@@ -1,5 +1,4 @@
 import type { UIO } from "../../Effect/definition/base"
-import { map_ } from "../../Effect/operations/map"
 import type { Fiber } from "../definition"
 import { failCause } from "./failCause"
 
@@ -11,7 +10,7 @@ export function mapFiber_<E, E1, A, B>(
   self: Fiber<E, A>,
   f: (a: A) => Fiber<E1, B>
 ): UIO<Fiber<E | E1, B>> {
-  return map_(self.await, (exit) => {
+  return self.await.map((exit) => {
     switch (exit._tag) {
       case "Success": {
         return f(exit.value)

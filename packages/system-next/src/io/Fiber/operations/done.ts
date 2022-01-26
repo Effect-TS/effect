@@ -1,8 +1,6 @@
 import * as Chunk from "../../../collection/immutable/Chunk/core"
 import * as O from "../../../data/Option"
-import { succeed } from "../../Effect/operations/succeed"
-import { succeedNow } from "../../Effect/operations/succeedNow"
-import { unit } from "../../Effect/operations/unit"
+import { Effect } from "../../Effect"
 import type { Exit } from "../../Exit"
 import * as FiberId from "../../FiberId"
 import type { Fiber } from "../definition"
@@ -14,11 +12,11 @@ import { makeSynthetic } from "./makeSynthetic"
 export function done<E, A>(exit: Exit<E, A>): Fiber<E, A> {
   return makeSynthetic({
     id: FiberId.none,
-    await: succeedNow(exit),
-    children: succeedNow(Chunk.empty()),
-    inheritRefs: unit,
-    poll: succeedNow(O.some(exit)),
-    getRef: (ref) => succeed(() => ref.initial),
-    interruptAs: () => succeedNow(exit)
+    await: Effect.succeedNow(exit),
+    children: Effect.succeedNow(Chunk.empty()),
+    inheritRefs: Effect.unit,
+    poll: Effect.succeedNow(O.some(exit)),
+    getRef: (ref) => Effect.succeed(() => ref.initial),
+    interruptAs: () => Effect.succeedNow(exit)
   })
 }

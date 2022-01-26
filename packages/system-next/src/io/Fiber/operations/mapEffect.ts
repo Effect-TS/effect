@@ -1,7 +1,8 @@
 import * as O from "../../../data/Option"
+import type { IO } from "../../Effect"
+import { Effect } from "../../Effect"
 import { forEach, forEach_ } from "../../Exit/operations/forEach"
 import type { Fiber } from "../definition"
-import * as T from "./_internal/effect"
 import { makeSynthetic } from "./makeSynthetic"
 
 /**
@@ -9,22 +10,21 @@ import { makeSynthetic } from "./makeSynthetic"
  */
 export function mapEffect_<E, E1, A, B>(
   self: Fiber<E, A>,
-  f: (a: A) => T.IO<E1, B>
+  f: (a: A) => IO<E1, B>
 ): Fiber<E | E1, B> {
   return makeSynthetic({
     id: self.id,
-    await: T.chain_(self.await, forEach(f)),
+    await: self.await.flatMap(forEach(f)),
     children: self.children,
     inheritRefs: self.inheritRefs,
-    poll: T.chain_(
-      self.poll,
+    poll: self.poll.flatMap(
       O.fold(
-        () => T.succeedNow(O.none),
-        (exit) => T.map_(forEach_(exit, f), O.some)
+        () => Effect.succeedNow(O.none),
+        (exit) => forEach_(exit, f).map(O.some)
       )
     ),
     getRef: (ref) => self.getRef(ref),
-    interruptAs: (id) => T.chain_(self.interruptAs(id), forEach(f))
+    interruptAs: (id) => self.interruptAs(id).flatMap(forEach(f))
   })
 }
 
@@ -33,6 +33,6 @@ export function mapEffect_<E, E1, A, B>(
  *
  * @ets_data_first mapEffect_
  */
-export function mapEffect<E1, A, B>(f: (a: A) => T.IO<E1, B>) {
+export function mapEffect<E1, A, B>(f: (a: A) => IO<E1, B>) {
   return <E>(self: Fiber<E, A>): Fiber<E | E1, B> => mapEffect_(self, f)
 }

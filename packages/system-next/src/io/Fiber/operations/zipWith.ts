@@ -1,9 +1,9 @@
 import * as O from "../../../data/Option"
 import * as Cause from "../../Cause"
+import { Effect } from "../../Effect"
 import * as Exit from "../../Exit"
 import * as FiberId from "../../FiberId"
 import type { Fiber } from "../definition"
-import * as T from "./_internal/effect"
 import { makeSynthetic } from "./makeSynthetic"
 
 /**
@@ -18,17 +18,20 @@ export function zipWith_<E, E1, A, B, C>(
 ): Fiber<E | E1, C> {
   return makeSynthetic({
     id: FiberId.getOrElse_(self.id, () => that.id),
-    await: T.exit(
-      T.zipWithPar_(T.chain_(self.await, T.done), T.chain_(that.await, T.done), f)
-    ),
+    await: self.await
+      .flatMap(Effect.done)
+      .zipWithPar(that.await.flatMap(Effect.done), f)
+      .exit(),
     children: self.children,
-    getRef: (ref) => T.zipWith_(self.getRef(ref), that.getRef(ref), ref.join),
-    inheritRefs: T.chain_(that.inheritRefs, () => self.inheritRefs),
+    getRef: (ref) => self.getRef(ref).zipWith(that.getRef(ref), ref.join),
+    inheritRefs: that.inheritRefs.flatMap(() => self.inheritRefs),
     interruptAs: (id) =>
-      T.zipWith_(self.interruptAs(id), that.interruptAs(id), (ea, eb) =>
-        Exit.zipWith_(ea, eb, f, Cause.both)
-      ),
-    poll: T.zipWith_(self.poll, that.poll, (oa, ob) =>
+      self
+        .interruptAs(id)
+        .zipWith(that.interruptAs(id), (ea, eb) =>
+          Exit.zipWith_(ea, eb, f, Cause.both)
+        ),
+    poll: self.poll.zipWith(that.poll, (oa, ob) =>
       O.chain_(oa, (ea) => O.map_(ob, (eb) => Exit.zipWith_(ea, eb, f, Cause.both)))
     )
   })
@@ -44,10 +47,3 @@ export function zipWith_<E, E1, A, B, C>(
 export function zipWith<E1, A, B, C>(that: Fiber<E1, B>, f: (a: A, b: B) => C) {
   return <E>(self: Fiber<E, A>): Fiber<E | E1, C> => zipWith_(self, that, f)
 }
-
-//    final def poll(implicit trace: ZTraceElement): UIO[Option[Exit[E1, C]]] =
-//      self.poll.zipWith(that.poll) {
-//        case (Some(ra), Some(rb)) => Some(ra.zipWith(rb)(f, _ && _))
-//        case _                    => None
-//      }
-//  }
