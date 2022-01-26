@@ -1,14 +1,14 @@
 import type { Cause } from "../../Cause"
-import type { Managed } from "../definition"
-import { managedApply } from "../definition"
-import * as T from "./_internal/effect"
+import { Managed } from "../definition"
 
 /**
  * Exposes the full cause of failure of this effect.
+ *
+ * @ets fluent ets/Managed sandbox
  */
 export function sandbox<R, E, A>(
   self: Managed<R, E, A>,
-  __trace?: string
+  __etsTrace?: string
 ): Managed<R, Cause<E>, A> {
-  return managedApply(T.sandbox(self.effect, __trace))
+  return Managed(self.effect.sandbox())
 }

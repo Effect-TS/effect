@@ -1,13 +1,14 @@
 import * as O from "../../../data/Option"
-import type { Managed } from "../definition"
-import { succeed } from "./succeed"
+import { Managed } from "../definition"
 
 /**
  * Returns a `Managed` with the optional value.
+ *
+ * @ets static ets/ManagedOps some
  */
 export function some<A>(
   value: A,
-  __trace?: string
+  __etsTrace?: string
 ): Managed<unknown, never, O.Option<A>> {
-  return succeed(() => O.some(value), __trace)
+  return Managed.succeed(O.some(value))
 }

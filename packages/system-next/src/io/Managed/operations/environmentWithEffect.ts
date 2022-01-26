@@ -1,14 +1,14 @@
-import type { Managed } from "../definition"
-import type { Effect } from "./_internal/effect-api"
-import { environment } from "./environment"
-import { mapEffect_ } from "./mapEffect"
+import type { Effect } from "../../Effect"
+import { Managed } from "../definition"
 
 /**
  * Effectfully accesses the environment of the effect.
+ *
+ * @ets static ets/ManagedOps environmentWithEffect
  */
 export function environmentWithEffect<R0, R, E, A>(
   f: (_: R0) => Effect<R, E, A>,
-  __trace?: string
+  __etsTrace?: string
 ): Managed<R & R0, E, A> {
-  return mapEffect_(environment<R0>(), f, __trace)
+  return Managed.environment<R0>().mapEffect(f)
 }

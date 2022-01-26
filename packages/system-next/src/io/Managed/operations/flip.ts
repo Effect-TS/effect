@@ -1,14 +1,13 @@
-import type { Managed } from "../definition"
-import { failNow } from "./failNow"
-import { foldManaged_ } from "./foldManaged"
-import { succeedNow } from "./succeedNow"
+import { Managed } from "../definition"
 
 /**
- * Flip the error and result
+ * Flip the error and result.
+ *
+ * @ets fluent ets/Managed flip
  */
 export function flip<R, E, A>(
   self: Managed<R, E, A>,
-  __trace?: string
+  __etsTrace?: string
 ): Managed<R, A, E> {
-  return foldManaged_(self, succeedNow, failNow, __trace)
+  return self.foldManaged(Managed.succeedNow, Managed.failNow)
 }

@@ -1,13 +1,14 @@
+import { Effect } from "../../Effect"
 import type { Runtime } from "../../Runtime/definition"
-import type { Managed } from "../definition"
-import * as T from "./_internal/effect"
-import { fromEffect } from "./fromEffect"
+import { Managed } from "../definition"
 
 /**
  * Returns an `Managed` that accesses the runtime, which can be used to
  * (unsafely) execute tasks. This is useful for integration with legacy code
  * that must call back into Effect-TS code.
+ *
+ * @ets static ets/ManagedOps runtime
  */
-export function runtime<R>(__trace?: string): Managed<R, never, Runtime<R>> {
-  return fromEffect(T.runtime<R>(), __trace)
+export function runtime<R>(__etsTrace?: string): Managed<R, never, Runtime<R>> {
+  return Managed.fromEffect(Effect.runtime<R>())
 }

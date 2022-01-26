@@ -1,10 +1,11 @@
 import { constFalse, constTrue } from "../../../data/Function"
 import type { Managed } from "../definition"
-import { fold_ } from "./fold"
 
 /**
  * Returns whether this managed effect is a failure.
+ *
+ * @ets fluent ets/Managed isFailure
  */
-export function isFailure<R, E, A>(self: Managed<R, E, A>, __trace?: string) {
-  return fold_(self, constTrue, constFalse, __trace)
+export function isFailure<R, E, A>(self: Managed<R, E, A>, __etsTrace?: string) {
+  return self.fold(constTrue, constFalse)
 }

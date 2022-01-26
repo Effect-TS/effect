@@ -1,19 +1,18 @@
 import type * as O from "../../../data/Option"
-import type { Managed } from "../definition"
-import { chain_ } from "./chain"
-import { suspend } from "./suspend"
-import { whenCase } from "./whenCase"
+import { Managed } from "../definition"
 
 /**
  * Runs an effect when the supplied `PartialFunction` matches for the given
  * effectful value, otherwise does nothing.
+ *
+ * @ets static ets/Managed whenCaseManaged
  */
 export function whenCaseManaged_<R, E, A, B>(
   managed: Managed<R, E, A>,
   pf: (a: A) => O.Option<Managed<R, E, B>>,
-  __trace?: string
+  __etsTrace?: string
 ): Managed<R, E, O.Option<B>> {
-  return suspend(() => chain_(managed, whenCase(pf)), __trace)
+  return Managed.suspend(managed.flatMap((a) => Managed.whenCase(a, pf)))
 }
 
 /**
@@ -24,8 +23,8 @@ export function whenCaseManaged_<R, E, A, B>(
  */
 export function whenCaseManaged<R, E, A, B>(
   pf: (a: A) => O.Option<Managed<R, E, B>>,
-  __trace?: string
+  __etsTrace?: string
 ) {
   return (managed: Managed<R, E, A>): Managed<R, E, O.Option<B>> =>
-    whenCaseManaged_(managed, pf, __trace)
+    whenCaseManaged_(managed, pf)
 }

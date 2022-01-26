@@ -1,19 +1,20 @@
+import type { Effect } from "../../Effect"
 import type { Exit } from "../../Exit/definition"
-import type { Managed } from "../definition"
-import type * as T from "./_internal/effect"
-import { acquireReleaseExitWith_ } from "./acquireReleaseExitWith"
+import { Managed } from "../definition"
 
 /**
  * Lifts an `Effect<R, E, A>` into `Managed<R, E, A>` with a release action that
  * does not need access to the resource but handles `Exit`. The acquire and
  * release actions will be performed uninterruptibly.
+ *
+ * @ets static ets/ManagedOps acquireReleaseExit
  */
 export function acquireReleaseExit_<R, R1, E, A>(
-  acquire: T.Effect<R, E, A>,
-  release: (exit: Exit<any, any>) => T.Effect<R1, never, any>,
-  __trace?: string
+  acquire: Effect<R, E, A>,
+  release: (exit: Exit<any, any>) => Effect<R1, never, any>,
+  __etsTrace?: string
 ): Managed<R & R1, E, A> {
-  return acquireReleaseExitWith_(acquire, (_, exit) => release(exit), __trace)
+  return Managed.acquireReleaseExitWith(acquire, (_, exit) => release(exit))
 }
 
 /**
@@ -24,9 +25,9 @@ export function acquireReleaseExit_<R, R1, E, A>(
  * @ets_data_first acquireReleaseExit_
  */
 export function acquireReleaseExit<R1>(
-  release: (exit: Exit<any, any>) => T.Effect<R1, never, any>,
-  __trace?: string
+  release: (exit: Exit<any, any>) => Effect<R1, never, any>,
+  __etsTrace?: string
 ) {
-  return <R, E, A>(acquire: T.Effect<R, E, A>): Managed<R & R1, E, A> =>
-    acquireReleaseExit_(acquire, release, __trace)
+  return <R, E, A>(acquire: Effect<R, E, A>): Managed<R & R1, E, A> =>
+    acquireReleaseExit_(acquire, release)
 }

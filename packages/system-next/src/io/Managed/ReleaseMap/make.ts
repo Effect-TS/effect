@@ -1,18 +1,22 @@
 import { identity } from "../../../data/Function"
-import * as T from "../../Effect/operations/succeed"
-import * as Ref from "../operations/_internal/ref"
+import { Effect } from "../../Effect"
+import { unsafeMake as unsafeMakeRef } from "../../Ref/operations/make"
 import { ReleaseMap } from "./definition"
 import type { State } from "./state"
 import { Running } from "./state"
 
 /**
  * Creates a new `ReleaseMap`.
+ *
+ * @ets static ets/ReleaseMapOps make
  */
-export const make = T.succeed(unsafeMake)
+export const make = Effect.succeed(unsafeMake)
 
 /**
  * Creates a new `ReleaseMap`.
+ *
+ * @ets static ets/ReleaseMapOps unsafeMake
  */
 export function unsafeMake(): ReleaseMap {
-  return new ReleaseMap(Ref.unsafeMake<State>(new Running(0, new Map(), identity)))
+  return ReleaseMap(unsafeMakeRef<State>(new Running(0, new Map(), identity)))
 }

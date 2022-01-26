@@ -1,8 +1,9 @@
-import { never as neverEffect } from "../../Effect/operations/never"
-import type { Managed } from "../definition"
-import { fromEffect } from "./fromEffect"
+import { Effect } from "../../Effect"
+import { Managed } from "../definition"
 
 /**
  * Returns a `Managed` that never acquires a resource.
+ *
+ * @ets static ets/ManagedOps never
  */
-export const never: Managed<unknown, never, never> = fromEffect(neverEffect)
+export const never: Managed<unknown, never, never> = Managed.fromEffect(Effect.never)

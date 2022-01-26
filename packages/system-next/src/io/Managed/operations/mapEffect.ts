@@ -1,21 +1,20 @@
 import * as Tp from "../../../collection/immutable/Tuple"
-import type { Managed } from "../definition"
-import { managedApply } from "../definition"
-import * as T from "./_internal/effect"
+import type { Effect } from "../../Effect"
+import { Managed } from "../definition"
 
 /**
  * Returns an effect whose success is mapped by the specified side effecting
  * `f` function, translating any thrown exceptions into typed failed effects.
+ *
+ * @ets fluent ets/Managed mapEffect
  */
 export function mapEffect_<R, E, A, R2, E2, B>(
   self: Managed<R, E, A>,
-  f: (a: A) => T.Effect<R2, E2, B>,
-  __trace?: string
+  f: (a: A) => Effect<R2, E2, B>,
+  __etsTrace?: string
 ): Managed<R & R2, E | E2, B> {
-  return managedApply(
-    T.chain_(self.effect, ({ tuple: [fin, a] }) =>
-      T.map_(f(a), (_) => Tp.tuple(fin, _), __trace)
-    )
+  return Managed(
+    self.effect.flatMap(({ tuple: [fin, a] }) => f(a).map((_) => Tp.tuple(fin, _)))
   )
 }
 
@@ -25,8 +24,8 @@ export function mapEffect_<R, E, A, R2, E2, B>(
  * @ets_data_first mapEffect_
  */
 export function mapEffect<A, R2, E2, B>(
-  f: (a: A) => T.Effect<R2, E2, B>,
-  __trace?: string
+  f: (a: A) => Effect<R2, E2, B>,
+  __etsTrace?: string
 ) {
-  return <R, E>(self: Managed<R, E, A>) => mapEffect_(self, f, __trace)
+  return <R, E>(self: Managed<R, E, A>) => mapEffect_(self, f)
 }

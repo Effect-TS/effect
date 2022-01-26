@@ -1,4 +1,3 @@
-import type { LazyArg } from "../../../data/Function"
 import * as Cause from "../../Cause/definition"
 import { Managed } from "../definition"
 
@@ -7,11 +6,11 @@ import { Managed } from "../definition"
  * be used for terminating a fiber because a defect has been detected in the
  * code.
  *
- * @ets static ets/ManagedOps die
+ * @ets static ets/ManagedOps dieNow
  */
-export function die(
-  defect: LazyArg<unknown>,
+export function dieNow(
+  defect: unknown,
   __etsTrace?: string
 ): Managed<unknown, never, never> {
-  return Managed.failCause(Cause.die(defect))
+  return Managed.failCauseNow(Cause.die(defect))
 }

@@ -1,9 +1,14 @@
+import { constVoid } from "../../../data/Function"
 import type { Managed } from "../definition"
-import { map_ } from "./map"
 
+/**
+ * Return unit while running the effect.
+ *
+ * @ets fluent ets/Managed asUnit
+ */
 export function asUnit<R, E, A>(
   self: Managed<R, E, A>,
-  __trace?: string
+  __etsTrace?: string
 ): Managed<R, E, void> {
-  return map_(self, () => undefined)
+  return self.map(constVoid)
 }

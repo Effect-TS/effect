@@ -18,9 +18,7 @@ import { suspendSucceed } from "../../Effect/operations/suspendSucceed"
 import type { LogLevel } from "../../LogLevel"
 import { Info } from "../../LogLevel/definition"
 import type { LogSpan } from "../../LogSpan"
-import type { Managed } from "../../Managed/definition"
-import { managedApply } from "../../Managed/definition"
-import { asUnit } from "../../Managed/operations/asUnit"
+import { Managed } from "../../Managed/definition"
 import type { ReleaseMap } from "../../Managed/ReleaseMap"
 import { add_ } from "../../Managed/ReleaseMap/add"
 import { unsafeMake as unsafeMakeReleaseMap } from "../../Managed/ReleaseMap/make"
@@ -81,30 +79,28 @@ export class Runtime<A> extends XFiberRefInternal<never, never, A, A> {
   }
 
   locallyManaged(value: A, __trace?: string): Managed<unknown, never, void> {
-    return asUnit(
-      managedApply(
-        uninterruptible(
-          chain_(effectEnvironment<unknown>(), (r) =>
-            chain_(fiberRefGet(currentReleaseMap.value), (releaseMap) =>
-              chain_(
-                chain_(this.get, (old) => map_(this.set(value), () => old)),
-                (a) =>
-                  map_(
-                    add_(releaseMap, () =>
-                      locally_(
-                        currentEnvironment.value,
-                        r,
-                        __trace
-                      )(this.set(a) as UIO<any>)
-                    ),
-                    (releaseMapEntry) => Tp.tuple(releaseMapEntry, a)
-                  )
-              )
+    return Managed(
+      uninterruptible(
+        chain_(effectEnvironment<unknown>(), (r) =>
+          chain_(fiberRefGet(currentReleaseMap.value), (releaseMap) =>
+            chain_(
+              chain_(this.get, (old) => map_(this.set(value), () => old)),
+              (a) =>
+                map_(
+                  add_(releaseMap, () =>
+                    locally_(
+                      currentEnvironment.value,
+                      r,
+                      __trace
+                    )(this.set(a) as UIO<any>)
+                  ),
+                  (releaseMapEntry) => Tp.tuple(releaseMapEntry, a)
+                )
             )
           )
         )
       )
-    )
+    ).asUnit()
   }
 
   modify<B>(f: (a: A) => Tp.Tuple<[B, A]>, __trace?: string): UIO<B> {
@@ -207,36 +203,34 @@ export class Derived<EA, EB, A, B> extends XFiberRefInternal<EA, EB, A, B> {
 
   locallyManaged(a: A, __trace?: string): Managed<unknown, EA, void> {
     return this.use((value, _, setEither) =>
-      asUnit(
-        managedApply(
-          uninterruptible(
-            chain_(effectEnvironment<unknown>(), (r) =>
-              chain_(fiberRefGet(currentReleaseMap.value), (releaseMap) =>
-                chain_(
-                  chain_(value.get, (old) =>
-                    E.fold_(
-                      setEither(a),
-                      (e) => fail(e),
-                      (s) => map_(value.set(s), () => old)
-                    )
-                  ),
-                  (a) =>
-                    map_(
-                      add_(releaseMap, (ex) =>
-                        locally_(
-                          currentEnvironment.value,
-                          r,
-                          __trace
-                        )(value.set(a) as UIO<any>)
-                      ),
-                      (releaseMapEntry) => Tp.tuple(releaseMapEntry, a)
-                    )
-                )
+      Managed(
+        uninterruptible(
+          chain_(effectEnvironment<unknown>(), (r) =>
+            chain_(fiberRefGet(currentReleaseMap.value), (releaseMap) =>
+              chain_(
+                chain_(value.get, (old) =>
+                  E.fold_(
+                    setEither(a),
+                    (e) => fail(e),
+                    (s) => map_(value.set(s), () => old)
+                  )
+                ),
+                (a) =>
+                  map_(
+                    add_(releaseMap, (ex) =>
+                      locally_(
+                        currentEnvironment.value,
+                        r,
+                        __trace
+                      )(value.set(a) as UIO<any>)
+                    ),
+                    (releaseMapEntry) => Tp.tuple(releaseMapEntry, a)
+                  )
               )
             )
           )
         )
-      )
+      ).asUnit()
     )
   }
 }
@@ -345,34 +339,30 @@ export class DerivedAll<EA, EB, A, B> extends XFiberRefInternal<EA, EB, A, B> {
 
   locallyManaged(a: A, __trace?: string): Managed<unknown, EA, void> {
     return this.use((value, _, __, setEither) =>
-      asUnit(
-        managedApply(
-          uninterruptible(
-            chain_(effectEnvironment<unknown>(), (r) =>
-              chain_(fiberRefGet(currentReleaseMap.value), (releaseMap) =>
-                chain_(
-                  chain_(value.get, (old) =>
-                    E.fold_(setEither(a)(old), fail, (s) =>
-                      map_(value.set(s), () => old)
-                    )
-                  ),
-                  (a) =>
-                    map_(
-                      add_(releaseMap, () =>
-                        locally_(
-                          currentEnvironment.value,
-                          r,
-                          __trace
-                        )(value.set(a) as UIO<any>)
-                      ),
-                      (releaseMapEntry) => Tp.tuple(releaseMapEntry, a)
-                    )
-                )
+      Managed(
+        uninterruptible(
+          chain_(effectEnvironment<unknown>(), (r) =>
+            chain_(fiberRefGet(currentReleaseMap.value), (releaseMap) =>
+              chain_(
+                chain_(value.get, (old) =>
+                  E.fold_(setEither(a)(old), fail, (s) => map_(value.set(s), () => old))
+                ),
+                (a) =>
+                  map_(
+                    add_(releaseMap, () =>
+                      locally_(
+                        currentEnvironment.value,
+                        r,
+                        __trace
+                      )(value.set(a) as UIO<any>)
+                    ),
+                    (releaseMapEntry) => Tp.tuple(releaseMapEntry, a)
+                  )
               )
             )
           )
         )
-      )
+      ).asUnit()
     )
   }
 }

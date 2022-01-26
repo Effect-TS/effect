@@ -1,10 +1,8 @@
 import * as O from "../../../data/Option"
-import { map_ } from "../../Effect/operations/map"
-import { unit } from "../../Effect/operations/unit"
-import type { UIO } from "../operations/_internal/effect"
-import { addIfOpen_ } from "./addIfOpen"
+import type { UIO } from "../../Effect"
 import type { ReleaseMap } from "./definition"
 import type { Finalizer } from "./finalizer"
+import { noopFinalizer } from "./finalizer"
 import { release_ } from "./release"
 
 /**
@@ -14,21 +12,21 @@ import { release_ } from "./release"
  *
  * The finalizer returned from this method will remove the original
  * finalizer from the map and run it.
+ *
+ * @ets fluent ets/ReleaseMap add
  */
 export function add_(
   self: ReleaseMap,
   finalizer: Finalizer,
-  __trace?: string
+  __etsTrace?: string
 ): UIO<Finalizer> {
-  return map_(
-    addIfOpen_(self, finalizer),
+  return self.addIfOpen(finalizer).map(
     O.fold(
-      (): Finalizer => () => unit,
+      (): Finalizer => noopFinalizer,
       (k): Finalizer =>
         (e) =>
           release_(self, k, e)
-    ),
-    __trace
+    )
   )
 }
 
@@ -42,6 +40,6 @@ export function add_(
  *
  * @ets_data_first add_
  */
-export function add(finalizer: Finalizer, __trace?: string) {
-  return (self: ReleaseMap) => add_(self, finalizer, __trace)
+export function add(finalizer: Finalizer, __etsTrace?: string) {
+  return (self: ReleaseMap) => add_(self, finalizer)
 }

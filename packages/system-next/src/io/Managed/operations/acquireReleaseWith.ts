@@ -1,17 +1,18 @@
 import type { Effect } from "../../Effect/definition/base"
-import type { Managed } from "../definition"
-import { acquireReleaseExitWith_ } from "./acquireReleaseExitWith"
+import { Managed } from "../definition"
 
 /**
  * Lifts an `Effect<R, E, A>` into `Managed<R, E, A>` with a release action. The
  * acquire and release actions will be performed uninterruptibly.
+ *
+ * @ets static ets/ManagedOps acquireReleaseWith
  */
 export function acquireReleaseWith_<R, R1, E, A>(
   acquire: Effect<R, E, A>,
   release: (a: A) => Effect<R1, never, any>,
-  __trace?: string
+  __etsTrace?: string
 ): Managed<R & R1, E, A> {
-  return acquireReleaseExitWith_(acquire, (a) => release(a), __trace)
+  return Managed.acquireReleaseExitWith(acquire, (a) => release(a))
 }
 
 /**
@@ -22,8 +23,8 @@ export function acquireReleaseWith_<R, R1, E, A>(
  */
 export function acquireReleaseWith<A, R1>(
   release: (a: A) => Effect<R1, never, any>,
-  __trace?: string
+  __etsTrace?: string
 ) {
   return <R, E>(acquire: Effect<R, E, A>): Managed<R & R1, E, A> =>
-    acquireReleaseWith_(acquire, release, __trace)
+    acquireReleaseWith_(acquire, release)
 }

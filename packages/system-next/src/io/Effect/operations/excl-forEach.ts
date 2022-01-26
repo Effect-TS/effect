@@ -19,15 +19,13 @@ import type { Exit } from "../../Exit"
 import { collectAll as exitCollectAll } from "../../Exit/operations/collectAll"
 import { collectAllPar as exitCollectAllPar } from "../../Exit/operations/collectAllPar"
 import { succeed as exitSucceed } from "../../Exit/operations/succeed"
-import type { FiberContext } from "../../Fiber/_internal/context"
 import type { Fiber } from "../../Fiber/definition"
 import { interrupt as interruptFiber } from "../../Fiber/operations/interrupt"
 import * as FiberIdNone from "../../FiberId/operations/none"
 import { currentReleaseMap } from "../../FiberRef/definition/data"
 import { get as fiberRefGet } from "../../FiberRef/operations/get"
 import { locally_ } from "../../FiberRef/operations/locally"
-import type { Managed } from "../../Managed/definition"
-import { managedApply } from "../../Managed/definition"
+import { Managed } from "../../Managed/definition"
 import { add_ as releaseMapAdd_ } from "../../Managed/ReleaseMap/add"
 import type { ReleaseMap } from "../../Managed/ReleaseMap/definition"
 import { make as releaseMapMake } from "../../Managed/ReleaseMap/make"
@@ -775,7 +773,7 @@ export function fiberWaitAll<E, A>(
 // -----------------------------------------------------------------------------
 
 /**
- * Releases all the finalizers in the releaseMap according to the ExecutionStrategy
+ * Releases all the finalizers in the releaseMap according to the ExecutionStrategy.
  */
 export function releaseMapReleaseAll_(
   self: ReleaseMap,
@@ -846,8 +844,8 @@ export function releaseMapReleaseAll_(
 export function managedFork<R, E, A>(
   self: Managed<R, E, A>,
   __etsTrace?: string
-): Managed<R, never, FiberContext<E, A>> {
-  return managedApply(
+): Managed<R, never, Fiber<E, A>> {
+  return Managed(
     Effect.uninterruptibleMask(({ restore }) =>
       Effect.Do()
         .bind("outerReleaseMap", () => fiberRefGet(currentReleaseMap.value))
@@ -859,7 +857,7 @@ export function managedFork<R, E, A>(
           )(
             restore(self.effect.map((_) => _.get(1))).forkDaemon() as RIO<
               R,
-              FiberContext<E, A>
+              Fiber<E, A>
             >
           )
         )

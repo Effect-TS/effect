@@ -1,7 +1,4 @@
-import type { Managed } from "../definition"
-import { chain_ } from "./chain"
-import { succeedNow } from "./succeedNow"
-import { suspend } from "./suspend"
+import { Managed } from "../definition"
 
 /**
  * Iterates with the specified effectual function. The moral equivalent of:
@@ -15,14 +12,16 @@ import { suspend } from "./suspend"
  *
  * return s
  * ```
+ *
+ * @ets static ets/ManagedOps iterate
  */
 export function iterate<Z>(initial: Z) {
   return (cont: (z: Z) => boolean) =>
-    <R, E>(body: (z: Z) => Managed<R, E, Z>, __trace?: string): Managed<R, E, Z> =>
-      suspend(() => {
+    <R, E>(body: (z: Z) => Managed<R, E, Z>, __etsTrace?: string): Managed<R, E, Z> =>
+      Managed.suspend(() => {
         if (cont(initial)) {
-          return chain_(body(initial), (z2) => iterate(z2)(cont)(body))
+          return body(initial).flatMap((z2) => iterate(z2)(cont)(body))
         }
-        return succeedNow(initial)
-      }, __trace)
+        return Managed.succeedNow(initial)
+      })
 }

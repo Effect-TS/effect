@@ -1,17 +1,18 @@
 import { identity } from "../../../data/Function"
 import type { Option } from "../../../data/Option"
 import type { Managed } from "../definition"
-import { refineOrDieWith_ } from "./refineOrDieWith"
 
 /**
  * Keeps some of the errors, and terminates the fiber with the rest.
+ *
+ * @ets fluent ets/Managed refineOrDie
  */
 export function refineOrDie_<R, A, E, E1>(
   self: Managed<R, E, A>,
   pf: (e: E) => Option<E1>,
-  __trace?: string
+  __etsTrace?: string
 ) {
-  return refineOrDieWith_(self, pf, identity, __trace)
+  return self.refineOrDieWith(pf, identity)
 }
 
 /**
@@ -19,6 +20,6 @@ export function refineOrDie_<R, A, E, E1>(
  *
  * @ets_data_first refineOrDie_
  */
-export function refineOrDie<E, E1>(pf: (e: E) => Option<E1>, __trace?: string) {
-  return <R, A>(self: Managed<R, E, A>) => refineOrDie_(self, pf, __trace)
+export function refineOrDie<E, E1>(pf: (e: E) => Option<E1>, __etsTrace?: string) {
+  return <R, A>(self: Managed<R, E, A>) => refineOrDie_(self, pf)
 }

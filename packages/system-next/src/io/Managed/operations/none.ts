@@ -1,8 +1,9 @@
 import * as O from "../../../data/Option"
-import type { Managed } from "../definition"
-import { succeedNow } from "./succeedNow"
+import { Managed } from "../definition"
 
 /**
  * Returns a `Managed` with the `None` value.
+ *
+ * @ets static ets/ManagedOps none
  */
-export const none: Managed<unknown, never, O.Option<never>> = succeedNow(O.none)
+export const none: Managed<unknown, never, O.Option<never>> = Managed.succeedNow(O.none)

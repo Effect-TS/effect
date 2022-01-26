@@ -1,20 +1,20 @@
-import type { Managed } from "../definition"
-import type * as T from "./_internal/effect"
-import * as Ex from "./_internal/exit"
-import { fromEffect } from "./fromEffect"
-import { onExitFirst_ } from "./onExitFirst"
+import type { Effect } from "../../Effect"
+import { forEach as exitForEach } from "../../Exit/operations/forEach"
+import { Managed } from "../definition"
 
 /**
  * Lifts an `Effect<R, E, A>` into a `Managed<R, E, A>` with a release action.
  * The acquire action will be performed interruptibly, while release will be
  * performed uninterruptibly.
+ *
+ * @ets static ets/ManagedOps acquireReleaseInterruptibleWith
  */
 export function acquireReleaseInterruptibleWith_<R, R1, E, A>(
-  acquire: T.Effect<R, E, A>,
-  release: (a: A) => T.Effect<R1, never, any>,
-  __trace?: string
+  acquire: Effect<R, E, A>,
+  release: (a: A) => Effect<R1, never, any>,
+  __etsTrace?: string
 ): Managed<R & R1, E, A> {
-  return onExitFirst_(fromEffect(acquire), Ex.forEach(release))
+  return Managed.fromEffect(acquire).onExitFirst(exitForEach(release))
 }
 
 /**
@@ -25,9 +25,9 @@ export function acquireReleaseInterruptibleWith_<R, R1, E, A>(
  * @ets_data_First acquireReleaseInterruptibleWith_
  */
 export function acquireReleaseInterruptibleWith<A, R1>(
-  release: (a: A) => T.Effect<R1, never, any>,
-  __trace?: string
+  release: (a: A) => Effect<R1, never, any>,
+  __etsTrace?: string
 ) {
-  return <R, E>(acquire: T.Effect<R, E, A>): Managed<R & R1, E, A> =>
-    acquireReleaseInterruptibleWith_(acquire, release, __trace)
+  return <R, E>(acquire: Effect<R, E, A>): Managed<R & R1, E, A> =>
+    acquireReleaseInterruptibleWith_(acquire, release)
 }

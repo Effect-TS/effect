@@ -1,15 +1,18 @@
+import type { LazyArg } from "../../../data/Function"
+import { Effect } from "../../Effect"
 import type { Managed } from "../definition"
-import * as T from "./_internal/effect"
 import { fromEffect } from "./fromEffect"
 
 /**
  * Lifts a synchronous side-effect into a `Managed[R, E, A]`,
  * translating any thrown exceptions into typed failed effects using onThrow.
+ *
+ * @ets static ets/ManagedOps tryCatch
  */
 export function tryCatch<E, A>(
-  f: () => A,
+  f: LazyArg<A>,
   onThrow: (u: unknown) => E,
-  __trace?: string
+  __etsTrace?: string
 ): Managed<unknown, E, A> {
-  return fromEffect(T.tryCatch(f, onThrow), __trace)
+  return fromEffect(Effect.tryCatch(f, onThrow))
 }

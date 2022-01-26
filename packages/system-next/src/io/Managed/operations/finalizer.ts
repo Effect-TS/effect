@@ -1,14 +1,15 @@
-import type { Managed } from "../definition"
-import type { Effect } from "./_internal/effect"
-import { finalizerExit } from "./finalizerExit"
+import type { Effect } from "../../Effect"
+import { Managed } from "../definition"
 
 /**
  * Creates an effect that only executes the provided finalizer as its
  * release action.
+ *
+ * @ets static ets/ManagedOps finalizer
  */
 export function finalizer<R, X>(
   f: Effect<R, never, X>,
-  __trace?: string
+  __etsTrace?: string
 ): Managed<R, never, void> {
-  return finalizerExit(() => f, __trace)
+  return Managed.finalizerExit(() => f)
 }

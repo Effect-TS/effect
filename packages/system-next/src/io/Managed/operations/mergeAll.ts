@@ -1,25 +1,22 @@
 import * as Iter from "../../../collection/immutable/Iterable"
-import type { Managed } from "../definition"
-import { succeedNow } from "./succeedNow"
-import { suspend } from "./suspend"
-import { zipWith_ } from "./zipWith"
+import { Managed } from "../definition"
 
 /**
  * Merges an `Iterable<Managed<R, E, A>` to a single `Managed<R, E, B>`,
  * working sequentially.
+ *
+ * @ets static ets/ManagedOps mergeAll
  */
 export function mergeAll_<R, E, A, B>(
   as: Iterable<Managed<R, E, A>>,
   zero: B,
   f: (b: B, a: A) => B,
-  __trace?: string
+  __etsTrace?: string
 ): Managed<R, E, B> {
-  return suspend(
-    () =>
-      Iter.reduce_(as, succeedNow(zero) as Managed<R, E, B>, (b, a) =>
-        zipWith_(b, a, f)
-      ),
-    __trace
+  return Managed.suspend(
+    Iter.reduce_(as, Managed.succeedNow(zero) as Managed<R, E, B>, (b, a) =>
+      b.zipWith(a, f)
+    )
   )
 }
 
@@ -29,7 +26,7 @@ export function mergeAll_<R, E, A, B>(
  *
  * @ets_data_first mergeAll_
  */
-export function mergeAll<A, B>(zero: B, f: (b: B, a: A) => B, __trace?: string) {
+export function mergeAll<A, B>(zero: B, f: (b: B, a: A) => B, __etsTrace?: string) {
   return <R, E>(as: Iterable<Managed<R, E, A>>): Managed<R, E, B> =>
-    mergeAll_(as, zero, f, __trace)
+    mergeAll_(as, zero, f)
 }

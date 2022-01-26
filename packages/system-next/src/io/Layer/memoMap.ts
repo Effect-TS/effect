@@ -22,8 +22,7 @@ import type { Exit } from "../Exit"
 import { currentReleaseMap } from "../FiberRef/definition/data"
 import { get } from "../FiberRef/operations/get"
 import { locally_ } from "../FiberRef/operations/locally"
-import type { Managed } from "../Managed/definition"
-import { managedApply } from "../Managed/definition"
+import { Managed } from "../Managed/definition"
 import {
   chain as chainManaged,
   chain_ as chainManaged_
@@ -57,7 +56,7 @@ export class MemoMap {
    * adds a finalizer to the outer `Managed`.
    */
   getOrElseMemoize<R, E, A>(layer: Layer<R, E, A>): Managed<R, E, A> {
-    return managedApply(
+    return Managed(
       pipe(
         this.ref,
         Ref.modifyEffect((m) => {

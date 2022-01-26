@@ -1,19 +1,19 @@
 import * as Iter from "../../../collection/immutable/Iterable"
-import type { Managed } from "../definition"
-import { suspend } from "./suspend"
-import { zipWith_ } from "./zipWith"
+import { Managed } from "../definition"
 
 /**
  * Reduces an `Iterable<Managed<R, E ,A>>` to a single `Managed<R, E, A>`,
  * working sequentially.
+ *
+ * @ets static ets/ManagedOps reduceAll
  */
 export function reduceAll_<R, E, A>(
   as: Iterable<Managed<R, E, A>>,
   init: Managed<R, E, A>,
   f: (acc: A, a: A) => A,
-  __trace?: string
+  __etsTrace?: string
 ): Managed<R, E, A> {
-  return suspend(() => Iter.reduce_(as, init, (acc, a) => zipWith_(acc, a, f)), __trace)
+  return Managed.suspend(Iter.reduce_(as, init, (acc, a) => acc.zipWith(a, f)))
 }
 
 /**
@@ -25,8 +25,7 @@ export function reduceAll_<R, E, A>(
 export function reduceAll<R, E, A>(
   init: Managed<R, E, A>,
   f: (acc: A, a: A) => A,
-  __trace?: string
+  __etsTrace?: string
 ) {
-  return (as: Iterable<Managed<R, E, A>>): Managed<R, E, A> =>
-    reduceAll_(as, init, f, __trace)
+  return (as: Iterable<Managed<R, E, A>>): Managed<R, E, A> => reduceAll_(as, init, f)
 }

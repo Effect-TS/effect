@@ -1,22 +1,19 @@
-import type { Managed } from "../definition"
-import type { ExecutionStrategy } from "../operations/_internal/effect"
-import { acquireReleaseExitWith_ } from "../operations/acquireReleaseExitWith"
-import type { ReleaseMap } from "./definition"
-import { make } from "./make"
-import { releaseAll_ } from "./releaseAll"
+import type { ExecutionStrategy } from "../../Effect"
+import { Managed } from "../definition"
+import { ReleaseMap } from "./definition"
 
 /**
  * Construct a `ReleaseMap` wrapped in a `Managed`. The `ReleaseMap`
  * will be released with the in parallel as the release action for the
- * resulting `ZManaged`.
+ * resulting `Managed`.
+ *
+ * @ets static ets/ReleaseMapOps makeManaged
  */
 export function makeManaged(
   executionStrategy: ExecutionStrategy,
-  __trace?: string
+  __etsTrace?: string
 ): Managed<unknown, never, ReleaseMap> {
-  return acquireReleaseExitWith_(
-    make,
-    (m, e) => releaseAll_(m, e, executionStrategy),
-    __trace
+  return Managed.acquireReleaseExitWith(ReleaseMap.make, (map, exit) =>
+    map.releaseAll(exit, executionStrategy)
   )
 }

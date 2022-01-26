@@ -1,21 +1,21 @@
-import type { Managed } from "../definition"
+import type { Ref } from "../../Ref"
+import { get as refGet } from "../../Ref/operations/get"
+import { make as refMake } from "../../Ref/operations/make"
+import { Managed } from "../definition"
 import type { Finalizer } from "../ReleaseMap/finalizer"
-import * as T from "./_internal/effect"
-import * as Ref from "./_internal/ref"
-import { acquireReleaseExitWith_ } from "./acquireReleaseExitWith"
 
 /**
  * Creates an effect that executes a finalizer stored in a `Ref`. The `Ref`
  * is yielded as the result of the effect, allowing for control flows that
  * require mutating finalizers.
+ *
+ * @ets static ets/ManagedOps finalizerRef
  */
 export function finalizerRef<R>(
   initial: Finalizer,
-  __trace?: string
-): Managed<R, never, Ref.Ref<Finalizer>> {
-  return acquireReleaseExitWith_(
-    Ref.make<Finalizer>(initial),
-    (ref, exit) => T.chain_(Ref.get(ref), (fin) => fin(exit)),
-    __trace
+  __etsTrace?: string
+): Managed<R, never, Ref<Finalizer>> {
+  return Managed.acquireReleaseExitWith(refMake<Finalizer>(initial), (ref, exit) =>
+    refGet(ref).flatMap((fin) => fin(exit))
   )
 }

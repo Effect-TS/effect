@@ -1,20 +1,20 @@
 import type { Cause } from "../../Cause"
-import type { Managed } from "../definition"
-import { foldCauseManaged_ } from "./foldCauseManaged"
-import { succeedNow } from "./succeedNow"
+import { Managed } from "../definition"
 
 /**
  * Recovers from all errors with provided `Cause`.
  *
  * See `absorb`, `sandbox`, `mapErrorCause` for other functions that can
- * recover from defects
+ * recover from defects.
+ *
+ * @ets fluent ets/Managed catchAllCause
  */
 export function catchAllCause_<R, E, A, R2, E2, A2>(
   self: Managed<R, E, A>,
   f: (cause: Cause<E>) => Managed<R2, E2, A2>,
-  __trace?: string
+  __etsTrace?: string
 ): Managed<R & R2, E2, A | A2> {
-  return foldCauseManaged_(self, f, succeedNow, __trace)
+  return self.foldCauseManaged(f, Managed.succeedNow)
 }
 
 /**
@@ -27,8 +27,8 @@ export function catchAllCause_<R, E, A, R2, E2, A2>(
  */
 export function catchAllCause<E, R2, E2, A2>(
   f: (cause: Cause<E>) => Managed<R2, E2, A2>,
-  __trace?: string
+  __etsTrace?: string
 ) {
   return <R, A>(self: Managed<R, E, A>): Managed<R & R2, E2, A | A2> =>
-    catchAllCause_(self, f, __trace)
+    catchAllCause_(self, f)
 }

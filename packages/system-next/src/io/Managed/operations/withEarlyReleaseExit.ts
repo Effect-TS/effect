@@ -1,24 +1,22 @@
 import * as Tp from "../../../collection/immutable/Tuple"
-import type { Managed } from "../definition"
-import { managedApply } from "../definition"
-import * as T from "./_internal/effect"
-import type { Exit } from "./_internal/exit"
+import type { UIO } from "../../Effect"
+import type { Exit } from "../../Exit"
+import { Managed } from "../definition"
 
 /**
  * A more powerful version of `withEarlyRelease` that allows specifying an
  * exit value in the event of early release.
+ *
+ * @ets fluent ets/Managed withEarlyReleaseExit
  */
 export function withEarlyReleaseExit_<R, E, A>(
   self: Managed<R, E, A>,
   exit: Exit<any, any>,
-  __trace?: string
-): Managed<R, E, Tp.Tuple<[T.UIO<any>, A]>> {
-  return managedApply(
-    T.map_(
-      self.effect,
-      ({ tuple: [finalizer, a] }) =>
-        Tp.tuple(finalizer, Tp.tuple(T.uninterruptible(finalizer(exit)), a)),
-      __trace
+  __etsTrace?: string
+): Managed<R, E, Tp.Tuple<[UIO<any>, A]>> {
+  return Managed(
+    self.effect.map(({ tuple: [finalizer, a] }) =>
+      Tp.tuple(finalizer, Tp.tuple(finalizer(exit).uninterruptible(), a))
     )
   )
 }
@@ -29,7 +27,7 @@ export function withEarlyReleaseExit_<R, E, A>(
  *
  * @ets_data_first withEarlyReleaseExit_
  */
-export function withEarlyReleaseExit(exit: Exit<any, any>, __trace?: string) {
-  return <R, E, A>(self: Managed<R, E, A>): Managed<R, E, Tp.Tuple<[T.UIO<any>, A]>> =>
-    withEarlyReleaseExit_(self, exit, __trace)
+export function withEarlyReleaseExit(exit: Exit<any, any>, __etsTrace?: string) {
+  return <R, E, A>(self: Managed<R, E, A>): Managed<R, E, Tp.Tuple<[UIO<any>, A]>> =>
+    withEarlyReleaseExit_(self, exit)
 }

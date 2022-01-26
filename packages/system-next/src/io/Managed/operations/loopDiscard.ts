@@ -1,7 +1,4 @@
-import type { Managed } from "../definition"
-import { chain_ } from "./chain"
-import { suspend } from "./suspend"
-import { unit } from "./unit"
+import { Managed } from "../definition"
 
 /**
  * Loops with the specified effectual function purely for its effects. The
@@ -16,15 +13,15 @@ import { unit } from "./unit"
  * }
  * ```
  */
-export function loopUnit<Z>(initial: Z, cont: (z: Z) => boolean, inc: (z: Z) => Z) {
+export function loopDiscard<Z>(initial: Z, cont: (z: Z) => boolean, inc: (z: Z) => Z) {
   return <R, E, X>(
     body: (z: Z) => Managed<R, E, X>,
-    __trace?: string
+    __etsTrace?: string
   ): Managed<R, E, void> =>
-    suspend(() => {
+    Managed.suspend(() => {
       if (cont(initial)) {
-        return chain_(body(initial), () => loopUnit(inc(initial), cont, inc)(body))
+        return body(initial).flatMap(() => loopDiscard(inc(initial), cont, inc)(body))
       }
-      return unit
-    }, __trace)
+      return Managed.unit
+    })
 }

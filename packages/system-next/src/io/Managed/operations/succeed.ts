@@ -1,16 +1,17 @@
 import * as Tp from "../../../collection/immutable/Tuple"
 import type { LazyArg } from "../../../data/Function"
-import type { Managed } from "../definition"
-import { managedApply } from "../definition"
+import { Effect } from "../../Effect"
+import { Managed } from "../definition"
 import * as Finalizer from "../ReleaseMap/finalizer"
-import * as T from "./_internal/effect"
 
 /**
  * Lifts a lazy pure value into a `Managed`.
+ *
+ * @ets static ets/ManagedOps succeed
  */
 export function succeed<A>(
   f: LazyArg<A>,
-  __trace?: string
+  __etsTrace?: string
 ): Managed<unknown, never, A> {
-  return managedApply(T.succeed(() => Tp.tuple(Finalizer.noopFinalizer, f())))
+  return Managed(Effect.succeed(Tp.tuple(Finalizer.noopFinalizer, f())))
 }

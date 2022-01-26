@@ -1,8 +1,5 @@
-import type { Managed } from "../definition"
-import * as T from "./_internal/effect"
-import { acquireReleaseExitWith_ } from "./acquireReleaseExitWith"
-import { map_ } from "./map"
-import { scope } from "./scope"
+import { Effect } from "../../Effect"
+import { Managed } from "../definition"
 
 /**
  * A scope in which resources can be safely preallocated. Passing a `Managed`
@@ -10,17 +7,21 @@ import { scope } from "./scope"
  * is already acquired and cannot fail.
  */
 export interface PreallocationScope {
-  <R, E, A>(managed: Managed<R, E, A>): T.Effect<R, E, Managed<unknown, never, A>>
+  <R, E, A>(managed: Managed<R, E, A>): Effect<R, E, Managed<unknown, never, A>>
 }
 
 /**
  * Creates a scope in which resources can be safely preallocated.
+ *
+ * @ets static ets/ManagedOps preallocationScope
  */
-export const preallocationScope: Managed<unknown, never, PreallocationScope> = map_(
-  scope,
-  (allocate): PreallocationScope =>
-    (managed) =>
-      T.map_(allocate(managed), ({ tuple: [release, res] }) =>
-        acquireReleaseExitWith_(T.succeedNow(res), (_, exit) => release(exit))
-      )
-)
+export const preallocationScope: Managed<unknown, never, PreallocationScope> =
+  Managed.scope.map(
+    (allocate): PreallocationScope =>
+      (managed) =>
+        allocate(managed).map(({ tuple: [release, res] }) =>
+          Managed.acquireReleaseExitWith(Effect.succeedNow(res), (_, exit) =>
+            release(exit)
+          )
+        )
+  )

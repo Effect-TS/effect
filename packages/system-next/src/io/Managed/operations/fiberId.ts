@@ -1,9 +1,12 @@
+import { Effect } from "../../Effect"
 import type { FiberId } from "../../FiberId/definition"
-import type { Managed } from "../definition"
-import * as T from "./_internal/effect"
-import { fromEffect } from "./fromEffect"
+import { Managed } from "../definition"
 
 /**
  * Returns an effect that succeeds with the `FiberId` of the caller.
+ *
+ * @ets static ets/ManagedOps fiberId
  */
-export const fiberId: Managed<unknown, never, FiberId> = fromEffect(T.fiberId)
+export const fiberId: Managed<unknown, never, FiberId> = Managed.fromEffect(
+  Effect.fiberId
+)

@@ -1,20 +1,19 @@
 import * as Tp from "../../../collection/immutable/Tuple"
 import type { HasClock } from "../../Clock"
-import type { Managed } from "../definition"
-import { managedApply } from "../definition"
-import * as T from "./_internal/effect"
+import { Managed } from "../definition"
 
 /**
  * Returns a new effect that executes this one and times the acquisition of
  * the resource.
+ *
+ * @ets fluent ets/Managed timed
  */
 export function timed<R, E, A>(
   self: Managed<R, E, A>,
-  __trace?: string
+  __etsTrace?: string
 ): Managed<R & HasClock, E, Tp.Tuple<[number, A]>> {
-  return managedApply(
-    T.map_(
-      T.timed(self.effect),
+  return Managed(
+    self.effect.timed().map(
       ({
         tuple: [
           duration,

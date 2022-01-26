@@ -1,5 +1,5 @@
-import type { Effect, RIO } from "./operations/_internal/effect"
-import type { Exit } from "./operations/_internal/exit"
+import type { Effect, RIO } from "../Effect"
+import type { Exit } from "../Exit"
 
 /**
  * A `Reservation<R, E, A>` encapsulates resource acquisition and disposal

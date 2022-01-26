@@ -1,9 +1,7 @@
 import * as C from "../../../collection/immutable/Chunk/core"
 import * as Tp from "../../../collection/immutable/Tuple"
-import { forEach_ as effectForEach_ } from "../../Effect/operations/excl-forEach"
-import { map_ } from "../../Effect/operations/map"
-import type { Managed } from "../definition"
-import { managedApply } from "../definition"
+import { Effect } from "../../Effect"
+import { Managed } from "../definition"
 
 /**
  * Applies the function `f` to each element of the `Iterable<A>` and
@@ -11,25 +9,20 @@ import { managedApply } from "../definition"
  *
  * For a parallel version of this method, see `forEachPar_`.
  * If you do not need the results, see `forEachUnit_` for a more efficient implementation.
+ *
+ * @ets static ets/ManagedOps forEach
  */
 export function forEach_<R, E, A, B>(
   as: Iterable<A>,
   f: (a: A) => Managed<R, E, B>,
-  __trace?: string
+  __etsTrace?: string
 ): Managed<R, E, C.Chunk<B>> {
-  return managedApply(
-    map_(
-      effectForEach_(as, (a) => f(a).effect, __trace),
-      (res) => {
-        const fins = C.map_(res, (k) => k.get(0))
-        const as = C.map_(res, (k) => k.get(1))
-
-        return Tp.tuple(
-          (e) => effectForEach_(C.reverse(fins), (fin) => fin(e), __trace),
-          as
-        )
-      }
-    )
+  return Managed(
+    Effect.forEach(as, (a) => f(a).effect).map((res) => {
+      const fins = C.map_(res, (k) => k.get(0))
+      const as = C.map_(res, (k) => k.get(1))
+      return Tp.tuple((e) => Effect.forEach(C.reverse(fins), (fin) => fin(e)), as)
+    })
   )
 }
 
@@ -42,6 +35,9 @@ export function forEach_<R, E, A, B>(
  *
  * @ets_data_first forEach_
  */
-export function forEach<R, E, A, B>(f: (a: A) => Managed<R, E, B>, __trace?: string) {
-  return (as: Iterable<A>) => forEach_(as, f, __trace)
+export function forEach<R, E, A, B>(
+  f: (a: A) => Managed<R, E, B>,
+  __etsTrace?: string
+) {
+  return (as: Iterable<A>) => forEach_(as, f)
 }

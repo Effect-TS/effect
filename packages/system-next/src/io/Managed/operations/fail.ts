@@ -1,15 +1,16 @@
 import type { LazyArg } from "../../../data/Function"
-import type { Managed } from "../definition"
-import * as T from "./_internal/effect"
-import { fromEffect } from "./fromEffect"
+import { Effect } from "../../Effect"
+import { Managed } from "../definition"
 
 /**
  * Returns an effect that models failure with the specified error. The moral
  * equivalent of `throw` for pure code.
+ *
+ * @ets static ets/ManagedOps fail
  */
 export function fail<E>(
-  error: LazyArg<E>,
-  __trace?: string
+  f: LazyArg<E>,
+  __etsTrace?: string
 ): Managed<unknown, E, never> {
-  return fromEffect(T.fail(error, __trace))
+  return Managed.fromEffect(Effect.fail(f))
 }

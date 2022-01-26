@@ -2,11 +2,13 @@ import * as A from "../../../collection/immutable/Array"
 import * as D from "../../../collection/immutable/Dictionary"
 import type { Has, Tag } from "../../../data/Has"
 import type { UnionToIntersection } from "../../../data/Utils"
-import type { Effect } from "./_internal/effect-api"
-import { environmentWithEffect } from "./environmentWithEffect"
+import type { Effect } from "../../Effect"
+import { Managed } from "../definition"
 
 /**
  * Access a tuple of services with the required service entries monadically.
+ *
+ * @ets static ets/ManagedOps servicesWithEffectT
  */
 export function servicesWithEffectT<SS extends Tag<any>[]>(...s: SS) {
   return <R = unknown, E = never, B = unknown>(
@@ -14,9 +16,10 @@ export function servicesWithEffectT<SS extends Tag<any>[]>(...s: SS) {
       ...a: {
         [k in keyof SS]: [SS[k]] extends [Tag<infer T>] ? T : unknown
       }
-    ) => Effect<R, E, B>
+    ) => Effect<R, E, B>,
+    __etsTrace?: string
   ) =>
-    environmentWithEffect(
+    Managed.environmentWithEffect(
       (
         r: UnionToIntersection<
           {
@@ -29,14 +32,17 @@ export function servicesWithEffectT<SS extends Tag<any>[]>(...s: SS) {
 
 /**
  * Access a record of services with the required service entries monadically.
+ *
+ * @ets static ets/ManagedOps servicesWithEffectS
  */
 export function servicesWithEffectS<SS extends Record<string, Tag<any>>>(s: SS) {
   return <R = unknown, E = never, B = unknown>(
     f: (a: {
       [k in keyof SS]: [SS[k]] extends [Tag<infer T>] ? T : unknown
-    }) => Effect<R, E, B>
+    }) => Effect<R, E, B>,
+    __etsTrace?: string
   ) =>
-    environmentWithEffect(
+    Managed.environmentWithEffect(
       (
         r: UnionToIntersection<
           {

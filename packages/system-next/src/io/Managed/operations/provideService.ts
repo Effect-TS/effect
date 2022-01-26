@@ -1,7 +1,21 @@
 import type { Has, Tag } from "../../../data/Has"
-import type { Managed } from "../definition"
+import { Managed } from "../definition"
 import { provideServiceManaged } from "./provideServiceManaged"
 import { succeedNow } from "./succeedNow"
+
+/**
+ * Provides the service with the required service entry.
+ *
+ * @ets fluent ets/Managed provideService
+ */
+export function provideService_<R, E, A, T>(
+  self: Managed<R & Has<T>, E, A>,
+  tag: Tag<T>,
+  __etsTrace?: string
+) {
+  return (service: T): Managed<R, E, A> =>
+    self.provideServiceManaged(tag)(Managed.succeedNow(service)) as Managed<R, E, A>
+}
 
 /**
  * Provides the service with the required service entry.

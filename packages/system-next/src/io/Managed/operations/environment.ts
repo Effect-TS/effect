@@ -1,9 +1,11 @@
-import * as T from "./_internal/effect"
+import { Effect } from "../../Effect"
 import { fromEffect } from "./fromEffect"
 
 /**
- * Create a managed that accesses the environment.
+ * Create a managed that accesses the environment.\
+ *
+ * @ets static ets/ManagedOps environment
  */
-export function environment<R>(__trace?: string) {
-  return fromEffect(T.environment<R>(), __trace)
+export function environment<R>(__etsTrace?: string) {
+  return fromEffect(Effect.environment<R>())
 }

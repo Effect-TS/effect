@@ -1,22 +1,20 @@
 import * as O from "../../../data/Option"
-import type { Managed } from "../definition"
-import { failNow } from "./failNow"
-import { foldManaged_ } from "./foldManaged"
-import { succeedNow } from "./succeedNow"
+import { Managed } from "../definition"
 
 /**
  * Requires the option produced by this value to be `None`.
+ *
+ * @ets fluent ets/Managed asNone
  */
 export function asNone<R, E, A>(
   self: Managed<R, E, O.Option<A>>,
-  __trace?: string
+  __etsTrace?: string
 ): Managed<R, O.Option<E>, void> {
-  return foldManaged_(
-    self,
-    (e) => failNow(O.some(e)),
+  return self.foldManaged(
+    (e) => Managed.failNow(O.some(e)),
     O.fold(
-      () => failNow(O.none),
-      () => succeedNow(undefined)
+      () => Managed.failNow(O.none),
+      () => Managed.succeedNow(undefined)
     )
   )
 }

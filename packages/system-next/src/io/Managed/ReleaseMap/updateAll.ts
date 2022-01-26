@@ -1,6 +1,5 @@
-import { pipe } from "../../../data/Function"
-import type * as T from "../operations/_internal/effect"
-import * as Ref from "../operations/_internal/ref"
+import type { UIO } from "../../Effect"
+import { update_ as refUpdate_ } from "../../Ref/operations/update"
 import type { ReleaseMap } from "./definition"
 import type { Finalizer } from "./finalizer"
 import { Exited, Running } from "./state"
@@ -8,27 +7,24 @@ import { Exited, Running } from "./state"
 /**
  * Updates the finalizers associated with this scope using the specified
  * function.
+ *
+ * @ets fluent ets/ReleaseMap updateAll
  */
 export function updateAll_(
   self: ReleaseMap,
   f: (finalizer: Finalizer) => Finalizer,
-  __trace?: string
-): T.UIO<void> {
-  return pipe(
-    self.ref,
-    Ref.update((state) => {
-      switch (state._tag) {
-        case "Exited": {
-          return new Exited(state.nextKey, state.exit, (_) => f(state.update(_)))
-        }
-        case "Running": {
-          return new Running(state.nextKey, state.finalizers(), (_) =>
-            f(state.update(_))
-          )
-        }
+  __etsTrace?: string
+): UIO<void> {
+  return refUpdate_(self.ref, (state) => {
+    switch (state._tag) {
+      case "Exited": {
+        return new Exited(state.nextKey, state.exit, (_) => f(state.update(_)))
       }
-    }, __trace)
-  )
+      case "Running": {
+        return new Running(state.nextKey, state.finalizers(), (_) => f(state.update(_)))
+      }
+    }
+  })
 }
 
 /**
@@ -37,6 +33,6 @@ export function updateAll_(
  *
  * @ets_data_first updateAll_
  */
-export function updateAll(f: (finalizer: Finalizer) => Finalizer, __trace?: string) {
-  return (self: ReleaseMap): T.UIO<void> => updateAll_(self, f, __trace)
+export function updateAll(f: (finalizer: Finalizer) => Finalizer, __etsTrace?: string) {
+  return (self: ReleaseMap): UIO<void> => updateAll_(self, f)
 }

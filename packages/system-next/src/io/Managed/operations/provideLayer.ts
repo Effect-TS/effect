@@ -1,19 +1,18 @@
 import type { Layer } from "../../Layer/definition"
 import { build } from "../../Layer/memoMap"
-import type { Managed } from "../definition"
-import { chain_ } from "./chain"
-import { provideEnvironment_ } from "./provideEnvironment"
-import { suspend } from "./suspend"
+import { Managed } from "../definition"
 
 /**
  * Provides a layer to the effect, which translates it to another level.
+ *
+ * @ets fluent ets/Managed provideLayer
  */
 export function provideLayer_<R, E, A, E1, A1>(
   self: Managed<A, E1, A1>,
   layer: Layer<R, E, A>,
-  __trace?: string
+  __etsTrace?: string
 ): Managed<R, E | E1, A1> {
-  return suspend(() => chain_(build(layer), (r) => provideEnvironment_(self, r)))
+  return Managed.suspend(() => build(layer).flatMap((r) => self.provideEnvironment(r)))
 }
 
 /**
@@ -21,6 +20,6 @@ export function provideLayer_<R, E, A, E1, A1>(
  *
  * @ets_data_first provideLayer_
  */
-export function provideLayer<R, E, A>(layer: Layer<R, E, A>, __trace?: string) {
-  return <E1, A1>(self: Managed<A, E1, A1>) => provideLayer_(self, layer, __trace)
+export function provideLayer<R, E, A>(layer: Layer<R, E, A>, __etsTrace?: string) {
+  return <E1, A1>(self: Managed<A, E1, A1>) => provideLayer_(self, layer)
 }

@@ -1,16 +1,16 @@
-import type { Managed } from "../definition"
-import { succeedNow } from "./succeedNow"
-import { tapBoth_ } from "./tapBoth"
+import { Managed } from "../definition"
 
 /**
  * Returns an effect that effectfully peeks at the failure of the acquired resource.
+ *
+ * @ets fluent ets/Managed tapError
  */
 export function tapError_<R, E, A, R1, E1, X>(
   self: Managed<R, E, A>,
   f: (e: E) => Managed<R1, E1, X>,
-  __trace?: string
+  __etsTrace?: string
 ): Managed<R & R1, E | E1, A> {
-  return tapBoth_(self, f, succeedNow, __trace)
+  return self.tapBoth(f, Managed.succeedNow)
 }
 
 /**
@@ -20,7 +20,7 @@ export function tapError_<R, E, A, R1, E1, X>(
  */
 export function tapError<E, R1, E1, X>(
   f: (e: E) => Managed<R1, E1, X>,
-  __trace?: string
+  __etsTrace?: string
 ) {
-  return <R, A>(self: Managed<R, E, A>) => tapError_(self, f, __trace)
+  return <R, A>(self: Managed<R, E, A>) => tapError_(self, f)
 }
