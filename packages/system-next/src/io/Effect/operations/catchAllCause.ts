@@ -1,7 +1,5 @@
 import type { Cause } from "../../Cause"
-import type { Effect } from "../definition"
-import { foldCauseEffect_ } from "./foldCauseEffect"
-import { succeedNow } from "./succeedNow"
+import { Effect } from "../definition"
 
 /**
  * Recovers from all errors with provided `Cause`.
@@ -16,7 +14,7 @@ export function catchAllCause_<R, E, A, R2, E2, A2>(
   f: (cause: Cause<E>) => Effect<R2, E2, A2>,
   __etsTrace?: string
 ): Effect<R & R2, E2, A | A2> {
-  return foldCauseEffect_(self, f, succeedNow, __etsTrace)
+  return self.foldCauseEffect(f, Effect.succeedNow)
 }
 
 /**
@@ -32,5 +30,5 @@ export function catchAllCause<E, R2, E2, A2>(
   __etsTrace?: string
 ) {
   return <R, A>(self: Effect<R, E, A>): Effect<R & R2, E2, A | A2> =>
-    catchAllCause_(self, f, __etsTrace)
+    catchAllCause_(self, f)
 }

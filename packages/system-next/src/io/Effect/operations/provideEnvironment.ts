@@ -13,7 +13,7 @@ export function provideEnvironment_<R, E, A>(
   environment: R,
   __etsTrace?: string
 ): IO<E, A> {
-  return locally_(currentEnvironment.value, environment, __etsTrace)(self as IO<E, A>)
+  return locally_(currentEnvironment.value, environment)(self as IO<E, A>)
 }
 
 /**
@@ -24,5 +24,5 @@ export function provideEnvironment_<R, E, A>(
  */
 export function provideEnvironment<R>(environment: R, __etsTrace?: string) {
   return <E, A>(self: Effect<R, E, A>): IO<E, A> =>
-    provideEnvironment_(self, environment, __etsTrace)
+    provideEnvironment_(self, environment)
 }

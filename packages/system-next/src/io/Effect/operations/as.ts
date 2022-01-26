@@ -1,5 +1,4 @@
 import type { Effect } from "../definition"
-import { map_ } from "./map"
 
 /**
  * Maps the success value of this effect to the specified constant value.
@@ -11,13 +10,14 @@ export function as_<R, E, A, B>(
   value: B,
   __etsTrace?: string
 ): Effect<R, E, B> {
-  return map_(self, () => value, __etsTrace)
+  return self.map(() => value)
 }
 
 /**
  * Maps the success value of this effect to the specified constant value.
+ *
+ * @ets_data_first as_
  */
 export function as<B>(value: B, __etsTrace?: string) {
-  return <R, E, A>(self: Effect<R, E, A>): Effect<R, E, B> =>
-    as_(self, value, __etsTrace)
+  return <R, E, A>(self: Effect<R, E, A>): Effect<R, E, B> => as_(self, value)
 }

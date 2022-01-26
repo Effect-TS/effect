@@ -1,7 +1,6 @@
 import * as E from "../../../data/Either"
-import type { Effect, RIO } from "../definition"
-import { foldEffect_ } from "./foldEffect"
-import { succeedNow } from "./succeedNow"
+import type { RIO } from "../definition"
+import { Effect } from "../definition"
 
 /**
  * Returns an effect whose failure and success have been lifted into an
@@ -19,10 +18,8 @@ export function either<R, E, A>(
   self: Effect<R, E, A>,
   __etsTrace?: string
 ): RIO<R, E.Either<E, A>> {
-  return foldEffect_(
-    self,
-    (e) => succeedNow(E.left(e)),
-    (a) => succeedNow(E.right(a)),
-    __etsTrace
+  return self.foldEffect(
+    (e) => Effect.succeedNow(E.left(e)),
+    (a) => Effect.succeedNow(E.right(a))
   )
 }

@@ -1,8 +1,4 @@
-import type { Effect } from "../definition"
-import { chain_ } from "./chain"
-import { succeed } from "./succeed"
-import { succeedNow } from "./succeedNow"
-import { suspendSucceed } from "./suspendSucceed"
+import { Effect } from "../definition"
 
 /**
  * Determines whether any element of the `Iterable<A>` satisfies the effectual
@@ -15,9 +11,7 @@ export function exists_<R, E, A>(
   f: (a: A) => Effect<R, E, boolean>,
   __etsTrace?: string
 ): Effect<R, E, boolean> {
-  return chain_(succeed(as[Symbol.iterator]), (iterator) =>
-    loop(iterator, f, __etsTrace)
-  )
+  return Effect.succeed(as[Symbol.iterator]).flatMap((iterator) => loop(iterator, f))
 }
 
 /**
@@ -30,7 +24,7 @@ export function exists<R, E, A>(
   f: (a: A) => Effect<R, E, boolean>,
   __etsTrace?: string
 ) {
-  return (as: Iterable<A>): Effect<R, E, boolean> => exists_(as, f, __etsTrace)
+  return (as: Iterable<A>): Effect<R, E, boolean> => exists_(as, f)
 }
 
 function loop<R, E, A>(
@@ -40,9 +34,9 @@ function loop<R, E, A>(
 ): Effect<R, E, boolean> {
   const next = iterator.next()
   if (next.done) {
-    return succeedNow(false)
+    return Effect.succeedNow(false)
   }
-  return chain_(f(next.value), (b) =>
-    b ? succeedNow(b) : suspendSucceed(() => loop(iterator, f, __etsTrace))
+  return f(next.value).flatMap((b) =>
+    b ? Effect.succeedNow(b) : Effect.suspendSucceed(() => loop(iterator, f))
   )
 }

@@ -1,8 +1,5 @@
 import * as O from "../../../data/Option"
-import type { Effect } from "../definition"
-import { failNow } from "./failNow"
-import { foldEffect_ } from "./foldEffect"
-import { succeedNow } from "./succeedNow"
+import { Effect } from "../definition"
 
 /**
  * Converts an option on errors into an option on values.
@@ -13,10 +10,8 @@ export function unsome<R, E, A>(
   self: Effect<R, O.Option<E>, A>,
   __etsTrace?: string
 ): Effect<R, E, O.Option<A>> {
-  return foldEffect_(
-    self,
-    (e) => O.fold_(e, () => succeedNow(O.none), failNow),
-    (a) => succeedNow(O.some(a)),
-    __etsTrace
+  return self.foldEffect(
+    (e) => O.fold_(e, () => Effect.succeedNow(O.none), Effect.failNow),
+    (a) => Effect.succeedNow(O.some(a))
   )
 }

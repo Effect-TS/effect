@@ -1,9 +1,6 @@
 import type { LazyArg } from "../../../data/Function"
 import type { IO, UIO } from "../definition"
-import { async } from "./async"
-import { die } from "./die"
-import { failNow } from "./failNow"
-import { succeedNow } from "./succeedNow"
+import { Effect } from "../definition"
 
 /**
  * Create an `Effect` that when executed will construct `promise` and wait for
@@ -16,11 +13,11 @@ export function tryCatchPromise<E, A>(
   onReject: (reason: unknown) => E,
   __etsTrace?: string
 ): IO<E, A> {
-  return async((resolve) => {
+  return Effect.async((resolve) => {
     promise()
-      .then((a) => resolve(succeedNow(a)))
-      .catch((e) => resolve(failNow(onReject(e))))
-  }, __etsTrace)
+      .then((a) => resolve(Effect.succeedNow(a)))
+      .catch((e) => resolve(Effect.failNow(onReject(e))))
+  })
 }
 
 /**
@@ -33,11 +30,11 @@ export function tryPromise<A>(
   effect: LazyArg<Promise<A>>,
   __etsTrace?: string
 ): IO<unknown, A> {
-  return async((resolve) => {
+  return Effect.async((resolve) => {
     effect()
-      .then((a) => resolve(succeedNow(a)))
-      .catch((e) => resolve(fail(e)))
-  }, __etsTrace)
+      .then((a) => resolve(Effect.succeedNow(a)))
+      .catch((e) => resolve(Effect.failNow(e)))
+  })
 }
 
 /**
@@ -46,9 +43,9 @@ export function tryPromise<A>(
  * @ets static ets/EffectOps promise
  */
 export function promise<A>(effect: LazyArg<Promise<A>>, __etsTrace?: string): UIO<A> {
-  return async((resolve) => {
+  return Effect.async((resolve) => {
     effect()
-      .then((a) => resolve(succeedNow(a)))
-      .catch((e) => resolve(die(e)))
-  }, __etsTrace)
+      .then((a) => resolve(Effect.succeedNow(a)))
+      .catch((e) => resolve(Effect.dieNow(e)))
+  })
 }

@@ -1,8 +1,5 @@
-import type { Effect } from "../definition"
-import { failNow } from "./failNow"
-import { orElse_ } from "./orElse"
-
-// TODO(Mike/Max): make e lazy
+import type { LazyArg } from "../../../data/Function"
+import { Effect } from "../definition"
 
 /**
  * Executes this effect and returns its value, if it succeeds, but otherwise
@@ -12,10 +9,10 @@ import { orElse_ } from "./orElse"
  */
 export function orElseFail_<R, E, A, E2>(
   self: Effect<R, E, A>,
-  e: E2,
+  e: LazyArg<E2>,
   __etsTrace?: string
 ): Effect<R, E2, A> {
-  return orElse_(self, () => failNow(e), __etsTrace)
+  return self.orElse(Effect.fail(e))
 }
 
 /**
@@ -24,7 +21,6 @@ export function orElseFail_<R, E, A, E2>(
  *
  * @ets_data_first orElseFail_
  */
-export function orElseFail<E2>(e: E2, __etsTrace?: string) {
-  return <R, E, A>(self: Effect<R, E, A>): Effect<R, E2, A> =>
-    orElseFail_(self, e, __etsTrace)
+export function orElseFail<E2>(e: LazyArg<E2>, __etsTrace?: string) {
+  return <R, E, A>(self: Effect<R, E, A>): Effect<R, E2, A> => orElseFail_(self, e)
 }

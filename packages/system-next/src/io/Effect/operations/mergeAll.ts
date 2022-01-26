@@ -1,8 +1,5 @@
 import * as Iter from "../../../collection/immutable/Iterable"
-import type { Effect } from "../definition"
-import { succeedNow } from "./succeedNow"
-import { suspendSucceed } from "./suspendSucceed"
-import { zipWith_ } from "./zipWith"
+import { Effect } from "../definition"
 
 /**
  * Merges an `Iterable<Effect<R, E, A>>` to a single `Effect<R, E, B>`, working
@@ -16,12 +13,10 @@ export function mergeAll_<R, E, A, B>(
   f: (b: B, a: A) => B,
   __etsTrace?: string
 ): Effect<R, E, B> {
-  return suspendSucceed(
-    () =>
-      Iter.reduce_(as, succeedNow(zero) as Effect<R, E, B>, (acc, a) =>
-        zipWith_(acc, a, f)
-      ),
-    __etsTrace
+  return Effect.suspendSucceed(() =>
+    Iter.reduce_(as, Effect.succeedNow(zero) as Effect<R, E, B>, (acc, a) =>
+      acc.zipWith(a, f)
+    )
   )
 }
 
@@ -33,5 +28,5 @@ export function mergeAll_<R, E, A, B>(
  */
 export function mergeAll<A, B>(zero: B, f: (b: B, a: A) => B, __etsTrace?: string) {
   return <R, E>(as: Iterable<Effect<R, E, A>>): Effect<R, E, B> =>
-    mergeAll_(as, zero, f, __etsTrace)
+    mergeAll_(as, zero, f)
 }

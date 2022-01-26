@@ -1,10 +1,7 @@
 import { compact } from "../../../collection/immutable/Chunk/api/compact"
-import type * as Chunk from "../../../collection/immutable/Chunk/core"
+import type { Chunk } from "../../../collection/immutable/Chunk/core"
 import type { Option } from "../../../data/Option"
-import type { Effect } from "../definition"
-import { forEach_ } from "./excl-forEach"
-import { map_ } from "./map"
-import { unsome } from "./unsome"
+import { Effect } from "../definition"
 
 /**
  * Evaluate each effect in the structure from left to right, collecting the
@@ -16,11 +13,8 @@ export function collect_<A, R, E, B>(
   self: Iterable<A>,
   f: (a: A) => Effect<R, Option<E>, B>,
   __etsTrace?: string
-): Effect<R, E, Chunk.Chunk<B>> {
-  return map_(
-    forEach_(self, (a) => unsome(f(a)), __etsTrace),
-    compact
-  )
+): Effect<R, E, Chunk<B>> {
+  return Effect.forEach(self, (a) => f(a).unsome()).map(compact)
 }
 
 /**
@@ -33,6 +27,5 @@ export function collect<A, R, E, B>(
   f: (a: A) => Effect<R, Option<E>, B>,
   __etsTrace?: string
 ) {
-  return (self: Iterable<A>): Effect<R, E, Chunk.Chunk<B>> =>
-    collect_(self, f, __etsTrace)
+  return (self: Iterable<A>): Effect<R, E, Chunk<B>> => collect_(self, f)
 }

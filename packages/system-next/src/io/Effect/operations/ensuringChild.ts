@@ -2,7 +2,6 @@ import type { Chunk } from "../../../collection/immutable/Chunk/core"
 import type { Fiber } from "../../Fiber/definition"
 import { collectAll } from "../../Fiber/operations/collectAll"
 import type { Effect, RIO } from "../definition"
-import { ensuringChildren_ } from "./ensuringChildren"
 
 /**
  * Acts on the children of this fiber (collected into a single fiber),
@@ -12,11 +11,11 @@ import { ensuringChildren_ } from "./ensuringChildren"
  * @ets fluent ets/Effect ensuringChild
  */
 export function ensuringChild_<R, E, A, R2, X>(
-  fa: Effect<R, E, A>,
+  self: Effect<R, E, A>,
   f: (_: Fiber<any, Chunk<unknown>>) => RIO<R2, X>,
   __etsTrace?: string
 ) {
-  return ensuringChildren_(fa, (children) => f(collectAll(children)), __etsTrace)
+  return self.ensuringChildren((children) => f(collectAll(children)))
 }
 
 /**
@@ -30,5 +29,5 @@ export function ensuringChild<R, E, A, R2, X>(
   f: (_: Fiber<any, Chunk<unknown>>) => RIO<R2, X>,
   __etsTrace?: string
 ) {
-  return (fa: Effect<R, E, A>) => ensuringChild_(fa, f, __etsTrace)
+  return (self: Effect<R, E, A>) => ensuringChild_(self, f)
 }

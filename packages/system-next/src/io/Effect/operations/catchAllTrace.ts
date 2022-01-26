@@ -1,8 +1,6 @@
 import type { Tuple } from "../../../collection/immutable/Tuple"
 import type { Trace } from "../../../io/Trace"
-import type { Effect } from "../definition"
-import { foldTraceEffect_ } from "./foldTraceEffect"
-import { succeedNow } from "./succeedNow"
+import { Effect } from "../definition"
 
 /**
  * A version of `catchAll` that gives you the (optional) trace of the error.
@@ -14,7 +12,7 @@ export function catchAllTrace_<R, E, A, R2, E2, A2>(
   h: (tuple: Tuple<[E, Trace]>) => Effect<R2, E2, A2>,
   __etsTrace?: string
 ): Effect<R & R2, E2, A | A2> {
-  return foldTraceEffect_(self, h, succeedNow, __etsTrace)
+  return self.foldTraceEffect(h, Effect.succeedNow)
 }
 
 /**
@@ -27,5 +25,5 @@ export function catchAllTrace<E, R2, E2, A2>(
   __etsTrace?: string
 ) {
   return <R, A>(self: Effect<R, E, A>): Effect<R & R2, E2, A | A2> =>
-    catchAllTrace_(self, h, __etsTrace)
+    catchAllTrace_(self, h)
 }

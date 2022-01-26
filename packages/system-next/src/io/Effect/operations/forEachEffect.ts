@@ -18,8 +18,7 @@ export function forEachEffect_<R, E, A, R1, E1, B>(
   return foldCauseEffect_(
     self,
     () => none,
-    (a) => map_(f(a), O.some),
-    __etsTrace
+    (a) => map_(f(a), O.some)
   )
 }
 
@@ -34,5 +33,5 @@ export function forEachEffect<A, R1, E1, B>(
   __etsTrace?: string
 ) {
   return <R, E>(self: Effect<R, E, A>): Effect<R & R1, E | E1, O.Option<B>> =>
-    forEachEffect_(self, f, __etsTrace)
+    forEachEffect_(self, f)
 }

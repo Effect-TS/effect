@@ -1,9 +1,7 @@
 import type { Promise } from "../../Promise"
-import { done_ } from "../../Promise/operations/done"
-import type { Effect, RIO } from "../definition"
-import { chain_ } from "./chain"
-import { exit } from "./exit"
-import { uninterruptibleMask } from "./interruption"
+import { done_ as promiseDone_ } from "../../Promise/operations/done"
+import type { RIO } from "../definition"
+import { Effect } from "../definition"
 
 /**
  * Returns an effect that keeps or breaks a promise based on the result of
@@ -17,9 +15,10 @@ export function intoPromise_<R, E, A>(
   promise: Promise<E, A>,
   __etsTrace?: string
 ): RIO<R, boolean> {
-  return uninterruptibleMask(
-    ({ restore }) => chain_(exit(restore(self)), (_) => done_(promise, _)),
-    __etsTrace
+  return Effect.uninterruptibleMask(({ restore }) =>
+    restore(self)
+      .exit()
+      .flatMap((_) => promiseDone_(promise, _))
   )
 }
 
@@ -31,6 +30,5 @@ export function intoPromise_<R, E, A>(
  * @ets_data_first intoPromise_
  */
 export function intoPromise<E, A>(promise: Promise<E, A>, __etsTrace?: string) {
-  return <R>(self: Effect<R, E, A>): RIO<R, boolean> =>
-    intoPromise_(self, promise, __etsTrace)
+  return <R>(self: Effect<R, E, A>): RIO<R, boolean> => intoPromise_(self, promise)
 }

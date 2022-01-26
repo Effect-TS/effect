@@ -1,5 +1,4 @@
-import type { Effect } from "../definition"
-import { catchAll_ } from "./catchAll"
+import { Effect } from "../definition"
 
 /**
  * Recovers from specified error.
@@ -20,16 +19,12 @@ export function catchTag_<
   f: (e: Extract<E, { _tag: K }>) => Effect<R1, E1, A1>,
   __etsTrace?: string
 ): Effect<R & R1, Exclude<E, { _tag: K }> | E1, A | A1> {
-  return catchAll_(
-    self,
-    (e) => {
-      if ("_tag" in e && e["_tag"] === k) {
-        return f(e as any)
-      }
-      return fail(e as any)
-    },
-    __etsTrace
-  )
+  return self.catchAll((e) => {
+    if ("_tag" in e && e["_tag"] === k) {
+      return f(e as any)
+    }
+    return Effect.failNow(e as any)
+  })
 }
 
 /**
@@ -46,6 +41,5 @@ export function catchTag<
 >(k: K, f: (e: Extract<E, { _tag: K }>) => Effect<R1, E1, A1>, __etsTrace?: string) {
   return <R, A>(
     self: Effect<R, E, A>
-  ): Effect<R & R1, Exclude<E, { _tag: K }> | E1, A | A1> =>
-    catchTag_(self, k, f, __etsTrace)
+  ): Effect<R & R1, Exclude<E, { _tag: K }> | E1, A | A1> => catchTag_(self, k, f)
 }

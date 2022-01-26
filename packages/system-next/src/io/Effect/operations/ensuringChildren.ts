@@ -2,9 +2,6 @@ import type { Chunk } from "../../../collection/immutable/Chunk/core"
 import { track } from "../../../io/Supervisor/operations/track"
 import type * as Fiber from "../../Fiber/definition"
 import type { Effect, RIO } from "../definition"
-import { chain_ } from "./chain"
-import { ensuring_ } from "./ensuring"
-import { supervised_ } from "./supervised"
 
 /**
  * Acts on the children of this fiber, guaranteeing the specified callback
@@ -17,11 +14,8 @@ export function ensuringChildren_<R, E, A, R1, X>(
   children: (_: Chunk<Fiber.Runtime<any, any>>) => RIO<R1, X>,
   __etsTrace?: string
 ): Effect<R & R1, E, A> {
-  return chain_(
-    track,
-    (supervisor) =>
-      ensuring_(supervised_(self, supervisor), chain_(supervisor.value, children)),
-    __etsTrace
+  return track.flatMap((supervisor) =>
+    self.supervised(supervisor).ensuring(supervisor.value.flatMap(children))
   )
 }
 
@@ -36,5 +30,5 @@ export function ensuringChildren<R1, X>(
   __etsTrace?: string
 ) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R & R1, E, A> =>
-    ensuringChildren_(self, children, __etsTrace)
+    ensuringChildren_(self, children)
 }

@@ -1,11 +1,7 @@
 import * as E from "../../../data/Either"
 import type { Trace } from "../../../io/Trace"
 import { failureTraceOrCause } from "../../Cause"
-import type { Effect } from "../definition"
-import { failCause } from "./failCause"
-import { foldCauseEffect_ } from "./foldCauseEffect"
-import { succeedNow } from "./succeedNow"
-import { zipRight_ } from "./zipRight"
+import { Effect } from "../definition"
 
 /**
  * A version of `tapError` that gives you the trace of the error.
@@ -17,16 +13,14 @@ export function tapErrorTrace_<R, E, A, R2, E2, X>(
   f: (trace: Trace) => Effect<R2, E2, X>,
   __etsTrace?: string
 ): Effect<R & R2, E | E2, A> {
-  return foldCauseEffect_(
-    self,
+  return self.foldCauseEffect(
     (cause) =>
       E.fold_(
         failureTraceOrCause(cause),
-        ({ tuple: [_, trace] }) => zipRight_(f(trace), failCause(cause)),
-        () => failCause(cause)
+        ({ tuple: [_, trace] }) => f(trace).zipRight(Effect.failCauseNow(cause)),
+        () => Effect.failCauseNow(cause)
       ),
-    succeedNow,
-    __etsTrace
+    Effect.succeedNow
   )
 }
 
@@ -40,5 +34,5 @@ export function tapErrorTrace<E, R2, E2, X>(
   __etsTrace?: string
 ) {
   return <R, A>(self: Effect<R, E, A>): Effect<R & R2, E | E2, A> =>
-    tapErrorTrace_(self, f, __etsTrace)
+    tapErrorTrace_(self, f)
 }

@@ -1,7 +1,5 @@
 import * as O from "../../../data/Option"
-import type { Effect } from "../definition"
-import { IOverrideForkScope } from "../definition"
-import { forkScopeWith } from "./forkScopeWith"
+import { Effect, IOverrideForkScope } from "../definition"
 
 export type Grafter = <R, E, A>(
   effect: Effect<R, E, A>,
@@ -15,9 +13,7 @@ export function transplant<R, E, A>(
   f: (grafter: Grafter) => Effect<R, E, A>,
   __etsTrace?: string
 ): Effect<R, E, A> {
-  return forkScopeWith(
-    (scope) =>
-      f((eff, __etsTrace) => new IOverrideForkScope(eff, O.some(scope), __etsTrace)),
-    __etsTrace
+  return Effect.forkScopeWith((scope) =>
+    f((eff, __etsTrace) => new IOverrideForkScope(eff, O.some(scope), __etsTrace))
   )
 }

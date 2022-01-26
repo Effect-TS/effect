@@ -1,7 +1,4 @@
-import type { Effect } from "../definition"
-import { chain_ } from "./chain"
-import { succeedNow } from "./succeedNow"
-import { suspendSucceed } from "./suspendSucceed"
+import { Effect } from "../definition"
 
 /**
  * Iterates with the specified effectual function. The moral equivalent of:
@@ -23,11 +20,11 @@ export function iterate<Z>(initial: Z, cont: (z: Z) => boolean) {
     body: (z: Z) => Effect<R, E, Z>,
     __etsTrace?: string
   ): Effect<R, E, Z> => {
-    return suspendSucceed(() => {
+    return Effect.suspendSucceed(() => {
       if (cont(initial)) {
-        return chain_(body(initial), (z2) => iterate(z2, cont)(body))
+        return body(initial).flatMap((z2) => iterate(z2, cont)(body))
       }
-      return succeedNow(initial)
-    }, __etsTrace)
+      return Effect.succeedNow(initial)
+    })
   }
 }

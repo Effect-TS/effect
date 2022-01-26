@@ -16,7 +16,7 @@ export function filterPar_<A, R, E>(
   __etsTrace?: string
 ) {
   return map_(
-    forEachPar_(as, (a) => map_(f(a), (b) => (b ? O.some(a) : O.none)), __etsTrace),
+    forEachPar_(as, (a) => map_(f(a), (b) => (b ? O.some(a) : O.none))),
     Chunk.compact
   )
 }
@@ -31,5 +31,5 @@ export function filterPar<A, R, E>(
   f: (a: A) => Effect<R, E, boolean>,
   __etsTrace?: string
 ) {
-  return (as: Iterable<A>) => filterPar_(as, f, __etsTrace)
+  return (as: Iterable<A>) => filterPar_(as, f)
 }

@@ -1,10 +1,6 @@
 import type { LazyArg } from "../../../data/Function"
 import * as O from "../../../data/Option"
-import type { Effect } from "../definition"
-import { chain_ } from "./chain"
-import { failNow } from "./failNow"
-import { succeed } from "./succeed"
-import { succeedNow } from "./succeedNow"
+import { Effect } from "../definition"
 
 /**
  * Extracts the optional value, or fails with the given error 'e'.
@@ -16,10 +12,8 @@ export function someOrFail_<R, E, A, E2>(
   orFail: LazyArg<E2>,
   __etsTrace?: string
 ): Effect<R, E | E2, A> {
-  return chain_(
-    self,
-    O.fold(() => chain_(succeed(orFail), failNow), succeedNow),
-    __etsTrace
+  return self.flatMap(
+    O.fold(() => Effect.succeed(orFail).flatMap(Effect.failNow), Effect.succeedNow)
   )
 }
 
@@ -28,6 +22,6 @@ export function someOrFail_<R, E, A, E2>(
  *
  * @ets_data_first someOrFail_
  */
-export function someOrFail<E2>(orFail: () => E2, __etsTrace?: string) {
+export function someOrFail<E2>(orFail: LazyArg<E2>, __etsTrace?: string) {
   return <R, E, A>(self: Effect<R, E, O.Option<A>>) => someOrFail_(self, orFail)
 }

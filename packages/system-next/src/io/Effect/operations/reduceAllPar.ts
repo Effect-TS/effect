@@ -1,8 +1,5 @@
 import * as O from "../../../data/Option"
-import type { Effect } from "../definition"
-import { map_ } from "./map"
-import { mergeAllPar_ } from "./mergeAllPar"
-import { suspendSucceed } from "./suspendSucceed"
+import { Effect } from "../definition"
 
 /**
  * Reduces an `Iterable<Effect<R, E, A>>` to a single `Effect<R, E, A>`, working
@@ -16,21 +13,16 @@ export function reduceAllPar_<R, E, A>(
   f: (acc: A, a: A) => A,
   __etsTrace?: string
 ): Effect<R, E, A> {
-  return suspendSucceed(() =>
-    map_(
-      mergeAllPar_(
-        as,
-        O.emptyOf<A>(),
-        (acc, elem) =>
-          O.some(
-            O.fold_(
-              acc,
-              () => elem,
-              (a) => f(a, elem)
-            )
-          ),
-        __etsTrace
-      ),
+  return Effect.suspendSucceed(() =>
+    Effect.mergeAllPar(as, O.emptyOf<A>(), (acc, elem) =>
+      O.some(
+        O.fold_(
+          acc,
+          () => elem,
+          (a) => f(a, elem)
+        )
+      )
+    ).map(
       O.getOrElse(() => {
         throw new Error("Bug")
       })
@@ -49,5 +41,5 @@ export function reduceAllPar<R, E, A>(
   f: (acc: A, a: A) => A,
   __etsTrace?: string
 ) {
-  return (as: Iterable<Effect<R, E, A>>) => reduceAllPar_(as, a, f, __etsTrace)
+  return (as: Iterable<Effect<R, E, A>>) => reduceAllPar_(as, a, f)
 }

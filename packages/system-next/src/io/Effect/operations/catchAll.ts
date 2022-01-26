@@ -1,6 +1,4 @@
-import type { Effect } from "../definition"
-import { foldEffect_ } from "./foldEffect"
-import { succeedNow } from "./succeedNow"
+import { Effect } from "../definition"
 
 /**
  * Recovers from all errors.
@@ -12,7 +10,7 @@ export function catchAll_<R2, E2, A2, R, E, A>(
   f: (e: E2) => Effect<R, E, A>,
   __etsTrace?: string
 ) {
-  return foldEffect_(self, f, succeedNow, __etsTrace)
+  return self.foldEffect(f, Effect.succeedNow)
 }
 
 /**
@@ -24,5 +22,5 @@ export function catchAll<R, E, E2, A>(
   f: (e: E2) => Effect<R, E, A>,
   __etsTrace?: string
 ) {
-  return <R2, A2>(self: Effect<R2, E2, A2>) => catchAll_(self, f, __etsTrace)
+  return <R2, A2>(self: Effect<R2, E2, A2>) => catchAll_(self, f)
 }

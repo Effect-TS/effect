@@ -2,7 +2,6 @@ import { identity } from "../../../data/Function"
 import type { Cause } from "../../Cause"
 import { empty } from "../../Cause"
 import type { Effect, RIO } from "../definition"
-import { foldCause_ } from "./foldCause"
 
 /**
  * Returns an effect that succeeds with the cause of failure of this effect,
@@ -14,5 +13,5 @@ export function cause<R, E, A>(
   self: Effect<R, E, A>,
   __etsTrace?: string
 ): RIO<R, Cause<E>> {
-  return foldCause_(self, identity, () => empty, __etsTrace)
+  return self.foldCause(identity, () => empty)
 }

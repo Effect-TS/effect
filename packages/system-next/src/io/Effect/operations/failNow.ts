@@ -1,7 +1,7 @@
 import { none } from "../../../io/Trace"
 import { Fail } from "../../Cause"
 import type { IO } from "../definition"
-import { failCause } from "./failCause"
+import { Effect } from "../definition"
 
 /**
  * Returns an effect that models failure with the specified error. The moral
@@ -10,5 +10,5 @@ import { failCause } from "./failCause"
  * @ets static ets/EffectOps failNow
  */
 export function failNow<E>(e: E, __etsTrace?: string): IO<E, never> {
-  return failCause(new Fail(e, none), __etsTrace)
+  return Effect.failCauseNow(new Fail(e, none))
 }

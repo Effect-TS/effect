@@ -1,6 +1,4 @@
-import type { Effect } from "../definition"
-import { chain_ } from "./chain"
-import { suspendSucceed } from "./suspendSucceed"
+import { Effect } from "../definition"
 
 /**
  * Runs `onTrue` if the result of `self` is `true` and `onFalse` otherwise.
@@ -13,11 +11,9 @@ export function ifEffect_<R, R1, R2, E, E1, E2, A, A1>(
   onFalse: () => Effect<R2, E2, A1>,
   __etsTrace?: string
 ): Effect<R & R1 & R2, E | E1 | E2, A | A1> {
-  return chain_(
-    self,
+  return self.flatMap(
     (b): Effect<R & R1 & R2, E | E1 | E2, A | A1> =>
-      b ? suspendSucceed(onTrue) : suspendSucceed(onFalse),
-    __etsTrace
+      b ? Effect.suspendSucceed(onTrue) : Effect.suspendSucceed(onFalse)
   )
 }
 

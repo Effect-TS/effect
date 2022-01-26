@@ -1,6 +1,4 @@
-import type { Effect } from "../definition"
-import { environmentWithEffect } from "./environmentWithEffect"
-import { provideEnvironment_ } from "./provideEnvironment"
+import { Effect } from "../definition"
 
 /**
  * Provides some of the environment required to run this effect,
@@ -9,14 +7,11 @@ import { provideEnvironment_ } from "./provideEnvironment"
  * @ets fluent ets/Effect provideSomeEnvironment
  */
 export function provideSomeEnvironment_<R0, R, E, A>(
-  effect: Effect<R, E, A>,
+  self: Effect<R, E, A>,
   f: (r0: R0) => R,
   __etsTrace?: string
 ): Effect<R0, E, A> {
-  return environmentWithEffect(
-    (r0: R0) => provideEnvironment_(effect, f(r0)),
-    __etsTrace
-  )
+  return Effect.environmentWithEffect((r0: R0) => self.provideEnvironment(f(r0)))
 }
 
 /**
@@ -26,6 +21,6 @@ export function provideSomeEnvironment_<R0, R, E, A>(
  * @ets_data_first provideSomeEnvironment_
  */
 export function provideSomeEnvironment<R0, R>(f: (r0: R0) => R, __etsTrace?: string) {
-  return <E, A>(effect: Effect<R, E, A>): Effect<R0, E, A> =>
-    provideSomeEnvironment_(effect, f, __etsTrace)
+  return <E, A>(self: Effect<R, E, A>): Effect<R0, E, A> =>
+    provideSomeEnvironment_(self, f)
 }

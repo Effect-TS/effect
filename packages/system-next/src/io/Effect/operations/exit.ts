@@ -1,9 +1,8 @@
 import type { Exit } from "../../Exit/definition"
 import { failCause } from "../../Exit/operations/failCause"
 import { succeed } from "../../Exit/operations/succeed"
-import type { Effect, RIO } from "../definition"
-import { IFold } from "../definition"
-import { succeedNow } from "./succeedNow"
+import type { RIO } from "../definition"
+import { Effect, IFold } from "../definition"
 
 /**
  * Returns an effect that semantically runs the effect on a fiber, producing
@@ -17,8 +16,8 @@ export function exit<R, E, A>(
 ): RIO<R, Exit<E, A>> {
   return new IFold(
     self,
-    (cause) => succeedNow(failCause(cause)),
-    (success) => succeedNow(succeed(success)),
+    (cause) => Effect.succeedNow(failCause(cause)),
+    (success) => Effect.succeedNow(succeed(success)),
     __etsTrace
   )
 }

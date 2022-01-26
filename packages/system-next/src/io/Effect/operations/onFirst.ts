@@ -1,6 +1,4 @@
-import type { Effect } from "../definition"
-import { environment } from "./environment"
-import { zip_ } from "./zip"
+import { Effect } from "../definition"
 
 /**
  * Propagates the success value to the first element of a tuple, but
@@ -10,5 +8,5 @@ import { zip_ } from "./zip"
  * @ets fluent ets/Effect onFirst
  */
 export function onFirst<R, E, A>(self: Effect<R, E, A>, __etsTrace?: string) {
-  return zip_(self, environment<R>(), __etsTrace)
+  return self.zip(Effect.environment<R>(), __etsTrace)
 }

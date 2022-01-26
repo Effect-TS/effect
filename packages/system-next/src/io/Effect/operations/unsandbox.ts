@@ -1,7 +1,6 @@
 import type { Cause } from "../../Cause"
 import { flatten } from "../../Cause"
 import type { Effect } from "../definition"
-import { mapErrorCause_ } from "./mapErrorCause"
 
 /**
  * The inverse operation `sandbox(effect)`
@@ -11,6 +10,6 @@ import { mapErrorCause_ } from "./mapErrorCause"
  *
  * @ets fluent ets/Effect unsandbox
  */
-export function unsandbox<R, E, A>(fa: Effect<R, Cause<E>, A>, __etsTrace?: string) {
-  return mapErrorCause_(fa, flatten, __etsTrace)
+export function unsandbox<R, E, A>(self: Effect<R, Cause<E>, A>, __etsTrace?: string) {
+  return self.mapErrorCause(flatten)
 }

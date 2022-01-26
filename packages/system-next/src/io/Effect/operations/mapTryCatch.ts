@@ -1,6 +1,4 @@
-import type { Effect } from "../definition"
-import { chain_ } from "./chain"
-import { tryCatch } from "./tryCatch"
+import { Effect } from "../definition"
 
 /**
  * Returns an effect whose success is mapped by the specified side effecting
@@ -14,7 +12,7 @@ export function mapTryCatch_<R, E1, E, A, B>(
   onThrow: (u: unknown) => E,
   __etsTrace?: string
 ): Effect<R, E | E1, B> {
-  return chain_(self, (a) => tryCatch(() => f(a), onThrow, __etsTrace))
+  return self.flatMap((a) => Effect.tryCatch(() => f(a), onThrow))
 }
 
 /**
@@ -29,5 +27,5 @@ export function mapTryCatch<E, A, B>(
   __etsTrace?: string
 ) {
   return <R, E1>(self: Effect<R, E1, A>): Effect<R, E | E1, B> =>
-    mapTryCatch_(self, f, onThrow, __etsTrace)
+    mapTryCatch_(self, f, onThrow)
 }

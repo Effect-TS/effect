@@ -1,7 +1,4 @@
-import type { Effect } from "../definition"
-import { failNow } from "./failNow"
-import { foldEffect_ } from "./foldEffect"
-import { succeedNow } from "./succeedNow"
+import { Effect } from "../definition"
 
 /**
  * Returns an effect whose failure and success channels have been mapped by
@@ -15,11 +12,9 @@ export function mapBoth_<R, E, A, E2, B>(
   g: (a: A) => B,
   __etsTrace?: string
 ): Effect<R, E2, B> {
-  return foldEffect_(
-    self,
-    (e) => failNow(f(e)),
-    (a) => succeedNow(g(a)),
-    __etsTrace
+  return self.foldEffect(
+    (e) => Effect.failNow(f(e)),
+    (a) => Effect.succeedNow(g(a))
   )
 }
 
@@ -34,6 +29,5 @@ export function mapBoth<E, E2, A, B>(
   g: (a: A) => B,
   __etsTrace?: string
 ) {
-  return <R>(self: Effect<R, E, A>): Effect<R, E2, B> =>
-    mapBoth_(self, f, g, __etsTrace)
+  return <R>(self: Effect<R, E, A>): Effect<R, E2, B> => mapBoth_(self, f, g)
 }

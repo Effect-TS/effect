@@ -15,5 +15,5 @@ export function forkAll<R, E, A>(
   effects: Iterable<Effect<R, E, A>>,
   __etsTrace?: string
 ): RIO<R, Fiber.Fiber<E, Chunk.Chunk<A>>> {
-  return map_(forEach_(effects, fork, __etsTrace), Fiber.collectAll)
+  return map_(forEach_(effects, fork), Fiber.collectAll)
 }

@@ -36,5 +36,5 @@ export function raceWithScope<E, A, R1, E1, A1, R2, E2, A2, R3, E3, A3>(
   __etsTrace?: string
 ) {
   return <R>(left: Effect<R, E, A>) =>
-    raceWithScope_(left, right, leftWins, rightWins, scope, __etsTrace)
+    raceWithScope_(left, right, leftWins, rightWins, scope)
 }

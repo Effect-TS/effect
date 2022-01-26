@@ -3,8 +3,8 @@ import { currentParallelism } from "../../FiberRef/definition/data"
 import { get } from "../../FiberRef/operations/get"
 import { getWith_ } from "../../FiberRef/operations/getWith"
 import { locally_ } from "../../FiberRef/operations/locally"
-import type { Effect, UIO } from "../definition"
-import { suspendSucceed } from "./suspendSucceed"
+import type { UIO } from "../definition"
+import { Effect } from "../definition"
 
 /**
  * Retrieves the maximum number of fibers for parallel operators or `None` if
@@ -13,7 +13,7 @@ import { suspendSucceed } from "./suspendSucceed"
  * @ets static ets/EffectOps parallelism
  */
 export function parallelism(__etsTrace?: string): UIO<O.Option<number>> {
-  return get(currentParallelism.value, __etsTrace)
+  return get(currentParallelism.value)
 }
 
 /**
@@ -26,7 +26,7 @@ export function parallelismWith<R, E, A>(
   f: (parallelism: O.Option<number>) => Effect<R, E, A>,
   __etsTrace?: string
 ): Effect<R, E, A> {
-  return getWith_(currentParallelism.value, f, __etsTrace)
+  return getWith_(currentParallelism.value, f)
 }
 
 /**
@@ -40,9 +40,8 @@ export function withParallelism_<R, E, A>(
   n: number,
   __etsTrace?: string
 ): Effect<R, E, A> {
-  return suspendSucceed(
-    () => locally_(currentParallelism.value, O.some(n))(self),
-    __etsTrace
+  return Effect.suspendSucceed(() =>
+    locally_(currentParallelism.value, O.some(n))(self)
   )
 }
 
@@ -53,8 +52,7 @@ export function withParallelism_<R, E, A>(
  * @ets_data_first withParallelism_
  */
 export function withParellelism(n: number, __etsTrace?: string) {
-  return <R, E, A>(self: Effect<R, E, A>): Effect<R, E, A> =>
-    withParallelism_(self, n, __etsTrace)
+  return <R, E, A>(self: Effect<R, E, A>): Effect<R, E, A> => withParallelism_(self, n)
 }
 
 /**
@@ -67,8 +65,5 @@ export function withParallelismUnbounded<R, E, A>(
   self: Effect<R, E, A>,
   __etsTrace?: string
 ): Effect<R, E, A> {
-  return suspendSucceed(
-    () => locally_(currentParallelism.value, O.none)(self),
-    __etsTrace
-  )
+  return Effect.suspendSucceed(() => locally_(currentParallelism.value, O.none)(self))
 }

@@ -1,5 +1,4 @@
 import type { Effect } from "../definition"
-import { chain_ } from "./chain"
 
 /**
  * A variant of `flatMap` that ignores the value produced by this effect.
@@ -12,7 +11,7 @@ export function zipRight_<R, E, A, R2, E2, A2>(
   that: Effect<R2, E2, A2>,
   __etsTrace?: string
 ): Effect<R & R2, E | E2, A2> {
-  return chain_(self, () => that, __etsTrace)
+  return self.flatMap(() => that)
 }
 
 /**
@@ -22,5 +21,5 @@ export function zipRight_<R, E, A, R2, E2, A2>(
  */
 export function zipRight<R2, E2, A2>(that: Effect<R2, E2, A2>, __etsTrace?: string) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R & R2, E | E2, A2> =>
-    zipRight_(self, that, __etsTrace)
+    zipRight_(self, that)
 }

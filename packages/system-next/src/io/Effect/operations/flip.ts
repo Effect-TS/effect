@@ -13,5 +13,5 @@ export function flip<R, E, A>(
   self: Effect<R, E, A>,
   __etsTrace?: string
 ): Effect<R, A, E> {
-  return foldEffect_(self, succeedNow, failNow, __etsTrace)
+  return foldEffect_(self, succeedNow, failNow)
 }

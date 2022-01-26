@@ -1,8 +1,6 @@
 import type { Fiber } from "../../Fiber"
 import { join } from "../../Fiber/operations/join"
-import type { Effect } from "../definition"
-import { chain_ } from "./chain"
-import { suspendSucceed } from "./suspendSucceed"
+import { Effect } from "../definition"
 
 /**
  * Creates an `Effect` value that represents the exit value of the specified
@@ -14,5 +12,5 @@ export function fromFiberEffect<R, E, A>(
   fiber: Effect<R, E, Fiber<E, A>>,
   __etsTrace?: string
 ): Effect<R, E, A> {
-  return suspendSucceed(() => chain_(fiber, join), __etsTrace)
+  return Effect.suspendSucceed(() => fiber.flatMap(join))
 }

@@ -1,8 +1,5 @@
 import type { Cause } from "../../Cause"
-import type { Effect } from "../definition"
-import { failCause } from "./failCause"
-import { foldCauseEffect_ } from "./foldCauseEffect"
-import { succeedNow } from "./succeedNow"
+import { Effect } from "../definition"
 
 /**
  * Returns an effect with its full cause of failure mapped using the specified
@@ -19,7 +16,7 @@ export function mapErrorCause_<R, E, A, E2>(
   f: (cause: Cause<E>) => Cause<E2>,
   __etsTrace?: string
 ): Effect<R, E2, A> {
-  return foldCauseEffect_(self, (c) => failCause(f(c)), succeedNow, __etsTrace)
+  return self.foldCauseEffect((c) => Effect.failCauseNow(f(c)), Effect.succeedNow)
 }
 
 /**
@@ -36,6 +33,5 @@ export function mapErrorCause<E, E2>(
   f: (cause: Cause<E>) => Cause<E2>,
   __etsTrace?: string
 ) {
-  return <R, A>(self: Effect<R, E, A>): Effect<R, E2, A> =>
-    mapErrorCause_(self, f, __etsTrace)
+  return <R, A>(self: Effect<R, E, A>): Effect<R, E2, A> => mapErrorCause_(self, f)
 }

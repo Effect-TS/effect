@@ -24,5 +24,5 @@ export function supervised_<R, E, A>(
  */
 export function supervised(supervisor: Supervisor<any>, __etsTrace?: string) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R, E, A> =>
-    supervised_(self, supervisor, __etsTrace)
+    supervised_(self, supervisor)
 }

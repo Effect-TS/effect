@@ -10,11 +10,8 @@ import { Runtime } from "../../Runtime"
 import { RuntimeConfig } from "../../RuntimeConfig"
 import * as RuntimeConfigFlag from "../../RuntimeConfig/Flag"
 import * as RuntimeConfigFlags from "../../RuntimeConfig/Flags"
-import type { Effect, RIO } from "../definition"
-import { chain_ } from "./chain"
-import { environment } from "./environment"
-import { map_ } from "./map"
-import { runtimeConfig } from "./runtimeConfig"
+import type { RIO } from "../definition"
+import { Effect } from "../definition"
 
 /**
  * Returns an effect that accesses the runtime, which can be used to
@@ -24,9 +21,8 @@ import { runtimeConfig } from "./runtimeConfig"
  * @ets static ets/EffectOps runtime
  */
 export function runtime<R>(__etsTrace?: string): RIO<R, Runtime<R>> {
-  return chain_(
-    environment<R>(),
-    (env) => map_(runtimeConfig, (config) => new Runtime(env, config)),
+  return Effect.environment<R>().flatMap(
+    (env) => Effect.runtimeConfig.map((config) => new Runtime(env, config)),
     __etsTrace
   )
 }

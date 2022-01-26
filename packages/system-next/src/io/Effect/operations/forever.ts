@@ -11,5 +11,5 @@ export function forever<R, E, A>(
   effect: Effect<R, E, A>,
   __etsTrace?: string
 ): Effect<R, E, never> {
-  return chain_(effect, () => chain_(yieldNow, () => forever(effect)), __etsTrace)
+  return chain_(effect, () => chain_(yieldNow, () => forever(effect)))
 }

@@ -1,20 +1,11 @@
 import * as Tp from "../../../collection/immutable/Tuple"
-import { pipe } from "../../../data/Function"
 import * as O from "../../../data/Option"
 import * as Ref from "../../../io/Ref/Synchronized"
 import type { HasClock } from "../../Clock"
 import { currentTime } from "../../Clock"
 import * as P from "../../Promise"
-import type { Effect, IO, RIO, UIO } from "../definition"
-import { chain_ } from "./chain"
-import { die } from "./die"
-import * as Do from "./do"
-import { environment } from "./environment"
-import { uninterruptibleMask } from "./interruption"
-import { intoPromise_ } from "./intoPromise"
-import { map } from "./map"
-import { provideEnvironment_ } from "./provideEnvironment"
-import { tap } from "./tap"
+import type { IO, RIO, UIO } from "../definition"
+import { Effect } from "../definition"
 
 /**
  * Returns an effect that, if evaluated, will return the cached result of this
@@ -29,21 +20,14 @@ export function cachedInvalidate_<R, E, A>(
   timeToLive: number,
   __etsTrace?: string
 ): RIO<R & HasClock, Tp.Tuple<[IO<E, A>, UIO<void>]>> {
-  return pipe(
-    Do.Do(),
-    Do.bind("r", () => environment<R & HasClock>()),
-    Do.bind("cache", () =>
+  return Effect.Do()
+    .bind("r", () => Effect.environment<R & HasClock>())
+    .bind("cache", () =>
       Ref.make<O.Option<Tp.Tuple<[number, P.Promise<E, A>]>>>(O.none)
-    ),
-    map(
-      ({ cache, r }) =>
-        Tp.tuple(
-          provideEnvironment_(get(self, timeToLive, cache), r),
-          invalidate(cache)
-        ),
-      __etsTrace
     )
-  )
+    .map(({ cache, r }) =>
+      Tp.tuple(get(self, timeToLive, cache).provideEnvironment(r), invalidate(cache))
+    )
 }
 
 /**
@@ -58,7 +42,7 @@ export function cachedInvalidate(timeToLive: number, __etsTrace?: string) {
   return <R, E, A>(
     self: Effect<R, E, A>
   ): RIO<R & HasClock, Tp.Tuple<[IO<E, A>, UIO<void>]>> =>
-    cachedInvalidate_(self, timeToLive, __etsTrace)
+    cachedInvalidate_(self, timeToLive)
 }
 
 function compute<R, E, A>(
@@ -66,12 +50,10 @@ function compute<R, E, A>(
   timeToLive: number,
   start: number
 ): Effect<R & HasClock, never, O.Option<Tp.Tuple<[number, P.Promise<E, A>]>>> {
-  return pipe(
-    Do.Do(),
-    Do.bind("p", () => P.make<E, A>()),
-    tap(({ p }) => intoPromise_(self, p)),
-    map(({ p }) => O.some(Tp.tuple(start + timeToLive, p)))
-  )
+  return Effect.Do()
+    .bind("p", () => P.make<E, A>())
+    .tap(({ p }) => self.intoPromise(p))
+    .map(({ p }) => O.some(Tp.tuple(start + timeToLive, p)))
 }
 
 function get<R, E, A>(
@@ -79,18 +61,17 @@ function get<R, E, A>(
   timeToLive: number,
   cache: Ref.Synchronized<O.Option<Tp.Tuple<[number, P.Promise<E, A>]>>>
 ): Effect<R & HasClock, E, A> {
-  return uninterruptibleMask(({ restore }) =>
-    chain_(currentTime, (time) =>
-      chain_(
-        Ref.updateSomeAndGetEffect_(
-          cache,
-          O.fold(
-            () => O.some(compute(self, timeToLive, time)),
-            ({ tuple: [end] }) =>
-              end - time <= 0 ? O.some(compute(self, timeToLive, time)) : O.none
-          )
-        ),
-        (a) => (a._tag === "None" ? die("Bug") : restore(P.await(a.value.get(1))))
+  return Effect.uninterruptibleMask(({ restore }) =>
+    currentTime.flatMap((time) =>
+      Ref.updateSomeAndGetEffect_(
+        cache,
+        O.fold(
+          () => O.some(compute(self, timeToLive, time)),
+          ({ tuple: [end] }) =>
+            end - time <= 0 ? O.some(compute(self, timeToLive, time)) : O.none
+        )
+      ).flatMap((a) =>
+        a._tag === "None" ? Effect.die("Bug") : restore(P.await(a.value.get(1)))
       )
     )
   )

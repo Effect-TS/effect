@@ -1,7 +1,5 @@
 import * as O from "../../../data/Option"
-import type { Effect } from "../definition"
-import { continueOrFailEffect_ } from "./continueOrFailEffect"
-import { succeedNow } from "./succeedNow"
+import { Effect } from "../definition"
 
 /**
  * Fail with `e` if the supplied `PartialFunction` does not match, otherwise
@@ -15,7 +13,7 @@ export function continueOrFail_<R, E, E1, A, A2>(
   pf: (a: A) => O.Option<A2>,
   __etsTrace?: string
 ): Effect<R, E | E1, A2> {
-  return continueOrFailEffect_(self, e, (a) => O.map_(pf(a), succeedNow), __etsTrace)
+  return self.continueOrFailEffect(e, (a) => O.map_(pf(a), Effect.succeedNow))
 }
 
 /**
@@ -30,5 +28,5 @@ export function continueOrFail<E1, A, A2>(
   __etsTrace?: string
 ) {
   return <R, E>(self: Effect<R, E, A>): Effect<R, E | E1, A2> =>
-    continueOrFail_(self, e, pf, __etsTrace)
+    continueOrFail_(self, e, pf)
 }
