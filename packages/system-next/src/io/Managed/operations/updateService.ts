@@ -12,13 +12,9 @@ export function updateService_<R, E, A, T>(
   f: (_: T) => T,
   __etsTrace?: string
 ): Managed<R & Has<T>, E, A> {
-  return Managed.serviceWithManaged(_)(
-    (s) =>
-      self.provideServiceManaged(_)(Managed.succeedNow(f(s))) as Managed<
-        R & Has<T>,
-        E,
-        A
-      >
+  // @ts-expect-error
+  return Managed.serviceWithManaged(_)((s) =>
+    self.provideServiceManaged(_)(Managed.succeedNow(f(s)))
   )
 }
 

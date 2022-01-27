@@ -13,9 +13,10 @@ export function updateServiceEffect_<R, E, A, R1, E1, T>(
   f: (_: T) => Effect<R1, E1, T>,
   __etsTrace?: string
 ): Managed<R & R1 & Has<T>, E | E1, A> {
+  // @ts-expect-error
   return Managed.serviceWithManaged(_)((s) =>
     self.provideServiceManaged(_)(Managed.fromEffect(f(s)) as any)
-  ) as Managed<R & R1 & Has<T>, E | E1, A>
+  )
 }
 
 /**

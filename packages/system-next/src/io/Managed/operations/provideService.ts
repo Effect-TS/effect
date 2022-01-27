@@ -1,10 +1,11 @@
 import type { Has, Tag } from "../../../data/Has"
+import type { Erase } from "../../../data/Utils"
 import { Managed } from "../definition"
-import { provideServiceManaged } from "./provideServiceManaged"
-import { succeedNow } from "./succeedNow"
 
 /**
- * Provides the service with the required service entry.
+ * Provides the `Managed` effect with the single service it requires. If the
+ * managed effect requires more than one service use `provideEnvironment`
+ * instead.
  *
  * @ets fluent ets/Managed provideService
  */
@@ -13,15 +14,21 @@ export function provideService_<R, E, A, T>(
   tag: Tag<T>,
   __etsTrace?: string
 ) {
-  return (service: T): Managed<R, E, A> =>
-    self.provideServiceManaged(tag)(Managed.succeedNow(service)) as Managed<R, E, A>
+  return (service: T): Managed<Erase<R & Has<T>, Has<T>>, E, A> =>
+    self.provideServiceManaged(tag)(Managed.succeedNow(service))
 }
 
 /**
- * Provides the service with the required service entry.
+ * Provides the `Managed` effect with the single service it requires. If the
+ * managed effect requires more than one service use `provideEnvironment`
+ * instead.
+ *
+ * @ets_data_first provideService_
  */
-export function provideService<T>(_: Tag<T>) {
+export function provideService<T>(tag: Tag<T>) {
   return (service: T) =>
-    <R1, E1, A1>(ma: Managed<R1 & Has<T>, E1, A1>): Managed<R1, E1, A1> =>
-      provideServiceManaged(_)(succeedNow(service))(ma)
+    <R, E, A>(
+      self: Managed<R & Has<T>, E, A>
+    ): Managed<Erase<R & Has<T>, Has<T>>, E, A> =>
+      provideService_(self, tag)(service)
 }
