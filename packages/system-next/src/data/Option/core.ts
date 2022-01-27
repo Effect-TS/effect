@@ -35,7 +35,19 @@ export class Some<A> {
   }
 }
 
+/**
+ * @ets type ets/Option
+ */
 export type Option<A> = None | Some<A>
+
+/**
+ * @ets unify ets/Option
+ */
+export function unifyOption<X extends Option<any>>(
+  self: X
+): Option<[X] extends [Option<infer A>] ? A : never> {
+  return self
+}
 
 /**
  * Constructs none
@@ -389,6 +401,8 @@ export function toNullable<A>(ma: Option<A>): A | null {
 
 /**
  * Extracts the value out of the structure, if it exists. Otherwise returns `undefined`.
+ *
+ * @ets getter ets/Option value
  */
 export function toUndefined<A>(ma: Option<A>): A | undefined {
   return isNone(ma) ? undefined : ma.value

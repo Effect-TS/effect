@@ -5,7 +5,7 @@ import * as Tp from "../../collection/immutable/Tuple"
 import * as St from "../../prelude/Structural"
 import type { Lazy, LazyArg, Predicate, Refinement } from "../Function/core"
 import type { Option } from "../Option/core"
-import { isNone } from "../Option/core"
+import { isNone, none, some } from "../Option/core"
 
 const _leftHash = St.hashString("@effect-ts/system/Either/Left")
 const _rightHash = St.hashString("@effect-ts/system/Either/Right")
@@ -803,4 +803,18 @@ export function reduceRight<A, B>(b: B, f: (a: A, b: B) => B) {
  */
 export function reduceRight_<E, A, B>(fa: Either<E, A>, b: B, f: (a: A, b: B) => B): B {
   return isLeft(fa) ? b : f(fa.right, b)
+}
+
+/**
+ * @ets getter ets/Either left
+ */
+export function getLeft<E, A>(self: Either<E, A>): Option<E> {
+  return self._tag === "Left" ? some(self.left) : none
+}
+
+/**
+ * @ets getter ets/Either right
+ */
+export function getRight<E, A>(self: Either<E, A>): Option<A> {
+  return self._tag === "Right" ? some(self.right) : none
 }

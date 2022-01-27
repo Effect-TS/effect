@@ -444,6 +444,8 @@ export const unit: Chunk<void> = single(void 0)
  *
  * NOTE: different from Chunk#from this copies the elements 1 by 1
  * allowing for binary to be correctly stored in typed arrays
+ *
+ * @ets static ets/ChunkOps make
  */
 export function make<Elem extends readonly any[]>(...iter: Elem): Chunk<Elem[number]> {
   let builder = empty<Elem[number]>()

@@ -1,4 +1,5 @@
 import { ArrayIndexOutOfBoundsException } from "../../../data/GlobalExceptions"
+import type { HKT } from "../../../prelude/HKT"
 import * as St from "../../../prelude/Structural"
 import { AtomicNumber } from "../../../support/AtomicNumber"
 import { _A } from "../../../support/Symbols"
@@ -29,6 +30,8 @@ export type IterableArrayLike<A> = ArrayLike<A> & Iterable<A>
  * Aleksandar Prokopec and Martin Odersky.
  *
  * http://aleksandar-prokopec.com/resources/docs/lcpc-conc-trees.pdf
+ *
+ * @ets type ets/Chunk
  */
 export interface Chunk<A> {
   readonly [ChunkTypeId]: ChunkTypeId
@@ -37,6 +40,12 @@ export interface Chunk<A> {
 
   [Symbol.iterator](): Iterator<A>
 }
+
+/**
+ * @ets type ets/ChunkOps
+ */
+export interface ChunkOps {}
+export const Chunk: ChunkOps = {}
 
 /**
  * Internal base class
@@ -1167,4 +1176,8 @@ export function corresponds<A, B>(
 
 export function toString<A>(self: Chunk<A>) {
   return self.toString()
+}
+
+export interface ChunkF extends HKT {
+  type: Chunk<this["A"]>
 }

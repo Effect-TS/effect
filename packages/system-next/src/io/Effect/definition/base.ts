@@ -1,4 +1,5 @@
 import type * as UT from "../../../data/Utils/types"
+import type { HKT } from "../../../prelude/HKT"
 import { _A, _E, _R, _S1, _S2, _U, _W } from "../../../support/Symbols"
 
 export const EffectURI = "Effect"
@@ -67,4 +68,8 @@ export abstract class Base<R, E, A> implements Effect<R, E, A> {
   readonly [_E]: () => E;
   readonly [_A]: () => A;
   readonly [_R]: (_: R) => void
+}
+
+export interface EffectF extends HKT {
+  type: Effect<this["R"], this["E"], this["A"]>
 }
