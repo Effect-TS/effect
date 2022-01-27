@@ -73,7 +73,7 @@ export class ManagedImpl<R, E, A> implements Managed<R, E, A> {
  *
  * @ets static ets/ManagedOps __call
  */
-export function apply<R, E, A>(
+export function managedApply<R, E, A>(
   effect: Effect<R, E, Tp.Tuple<[Finalizer, A]>>
 ): Managed<R, E, A> {
   return new ManagedImpl(effect)
