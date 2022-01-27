@@ -11572,23 +11572,23 @@ __metadata:
   languageName: node
   linkType: hard
 
-"typescript@https://github.com/Effect-TS/TypeScript/raw/e418858a9d1f1b1056fe9bc39309384c35dd38cc/dev/typescript-4.6.0-ets.20220125.tgz":
-  version: 4.6.0-ets.20220125
-  resolution: "typescript@https://github.com/Effect-TS/TypeScript/raw/e418858a9d1f1b1056fe9bc39309384c35dd38cc/dev/typescript-4.6.0-ets.20220125.tgz"
+"typescript@https://github.com/Effect-TS/TypeScript/raw/06ec0c9886a3f4e125081ac73dbdda016b72019c/dev/typescript-4.6.0-ets.20220127.tgz":
+  version: 4.6.0-ets.20220127
+  resolution: "typescript@https://github.com/Effect-TS/TypeScript/raw/06ec0c9886a3f4e125081ac73dbdda016b72019c/dev/typescript-4.6.0-ets.20220127.tgz"
   bin:
     tsc: ./bin/tsc
     tsserver: ./bin/tsserver
-  checksum: 710f3207879bd60b52deed238b60cd0b39079246f7fdccef8a434258a424c1c36c16042b1a7094f4d9dd7b650754cc6b5e85d5fb439caca97169a39f07b596a0
+  checksum: cc84aa9062444eb223bd8e3ab8f94033568d625c8476965b26c46f0ef84f1a59e0695df1162556a6db39f82ad2d25c00a5108e7eabffc296fe8dc08d90eddf54
   languageName: node
   linkType: hard
 
-"typescript@patch:typescript@https%3A//github.com/Effect-TS/TypeScript/raw/e418858a9d1f1b1056fe9bc39309384c35dd38cc/dev/typescript-4.6.0-ets.20220125.tgz#~builtin<compat/typescript>":
-  version: 4.6.0-ets.20220125
-  resolution: "typescript@patch:typescript@https%3A//github.com/Effect-TS/TypeScript/raw/e418858a9d1f1b1056fe9bc39309384c35dd38cc/dev/typescript-4.6.0-ets.20220125.tgz#~builtin<compat/typescript>::version=4.6.0-ets.20220125&hash=ddd1e8"
+"typescript@patch:typescript@https%3A//github.com/Effect-TS/TypeScript/raw/06ec0c9886a3f4e125081ac73dbdda016b72019c/dev/typescript-4.6.0-ets.20220127.tgz#~builtin<compat/typescript>":
+  version: 4.6.0-ets.20220127
+  resolution: "typescript@patch:typescript@https%3A//github.com/Effect-TS/TypeScript/raw/06ec0c9886a3f4e125081ac73dbdda016b72019c/dev/typescript-4.6.0-ets.20220127.tgz#~builtin<compat/typescript>::version=4.6.0-ets.20220127&hash=ddd1e8"
   bin:
     tsc: ./bin/tsc
     tsserver: ./bin/tsserver
-  checksum: 8bdb1680fefe332376421bf7d4206079ee3b50cf5a398cbaefae23e21f672f896db54e756d9ec3cfde11aa431b8b0b23fa421f70cf74458652a3fe6b7fe4ba5c
+  checksum: 6b8fbf97fc5bfa5bbca24e989b06fa02bcba234e022fcbdff3977814e2d23edc3d81d37ab663483a066fd2d1df3b906ffc433d87fbeba55a788d7a366a3a5de3
   languageName: node
   linkType: hard
 

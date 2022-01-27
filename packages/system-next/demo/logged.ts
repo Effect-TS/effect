@@ -1,3 +1,4 @@
+import { Chunk } from "../src/collection/immutable/Chunk"
 import { Either } from "../src/data/Either"
 import { Effect } from "../src/io/Effect"
 import * as LogLevel from "../src/io/LogLevel"
@@ -29,6 +30,7 @@ export const switched = (n: number) => {
 }
 
 export const message = isPositive(10)
+export const messageLeft = message.left.value
 
 export const program = (numbers + numbersPar).flatMap(
   ({ tuple: [a, b, c, d, e, f] }) =>
@@ -43,3 +45,9 @@ export const program = (numbers + numbersPar).flatMap(
 export const executeOrDie = Effect.fail("error") | program
 
 program.apply(LogLevel.locally(LogLevel.Error)).unsafeRunPromise()
+
+export const x4 = Chunk.make(0, 1, 2).mapK(Effect.Applicative)((n) =>
+  n > 0 ? Effect.fail("error") : Effect.succeed(`${n + 1}`)
+)
+
+export const x5 = Chunk.make(Effect(0), Effect(1)).sequenceK(Effect.Applicative)
