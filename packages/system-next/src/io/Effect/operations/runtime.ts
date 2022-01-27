@@ -1,4 +1,4 @@
-import { constTrue, constVoid, pipe } from "../../../data/Function"
+import { constFalse, pipe } from "../../../data/Function"
 import { unsafeTrack } from "../../../io/Supervisor"
 import { HasClock, LiveClock } from "../../Clock"
 import type { Exit } from "../../Exit/definition"
@@ -41,8 +41,10 @@ export const defaultEnv: DefaultEnv = {
  * @ets static ets/EffectOps defaultRuntimeConfig
  */
 export const defaultRuntimeConfig: RuntimeConfig = new RuntimeConfig({
-  fatal: constTrue,
-  reportFatal: constVoid,
+  fatal: constFalse,
+  reportFatal: (defect) => {
+    throw defect
+  },
   supervisor: unsafeTrack(),
   loggers: pipe(
     LoggerSet.defaultSet.value,

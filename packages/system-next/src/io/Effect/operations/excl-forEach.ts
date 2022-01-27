@@ -6,7 +6,6 @@ import * as ChunkZip from "../../../collection/immutable/Chunk/api/zip"
 import * as ChunkZipWithIndex from "../../../collection/immutable/Chunk/api/zipWithIndex"
 import * as Chunk from "../../../collection/immutable/Chunk/core"
 import * as Iter from "../../../collection/immutable/Iterable"
-import * as List from "../../../collection/immutable/List/core"
 import * as Tp from "../../../collection/immutable/Tuple"
 import { identity } from "../../../data/Function"
 import * as O from "../../../data/Option"
@@ -18,7 +17,7 @@ import * as Cause from "../../Cause"
 import type { Exit } from "../../Exit"
 import { collectAll as exitCollectAll } from "../../Exit/operations/collectAll"
 import { collectAllPar as exitCollectAllPar } from "../../Exit/operations/collectAllPar"
-import { succeed as exitSucceed } from "../../Exit/operations/succeed"
+import { unit as exitUnit } from "../../Exit/operations/unit"
 import type { Fiber } from "../../Fiber/definition"
 import { interrupt as interruptFiber } from "../../Fiber/operations/interrupt"
 import * as FiberIdNone from "../../FiberId/operations/none"
@@ -26,9 +25,7 @@ import { currentReleaseMap } from "../../FiberRef/definition/data"
 import { get as fiberRefGet } from "../../FiberRef/operations/get"
 import { locally_ } from "../../FiberRef/operations/locally"
 import { Managed } from "../../Managed/definition"
-import { add_ as releaseMapAdd_ } from "../../Managed/ReleaseMap/add"
-import type { ReleaseMap } from "../../Managed/ReleaseMap/definition"
-import { make as releaseMapMake } from "../../Managed/ReleaseMap/make"
+import { ReleaseMap } from "../../Managed/ReleaseMap/definition"
 import type { State } from "../../Managed/ReleaseMap/state"
 import { Exited } from "../../Managed/ReleaseMap/state"
 import type { Promise } from "../../Promise/definition"
@@ -285,7 +282,7 @@ function forEachParN<R, E, A, B>(
         )
     }
 
-    return Effect.succeed(() => new Array<B>(size)).flatMap((array) =>
+    return Effect.succeed(new Array<B>(size)).flatMap((array) =>
       makeBoundedQueue<Tp.Tuple<[A, number]>>(size).flatMap((queue) =>
         QCore.offerAll_(queue, ChunkZipWithIndex.zipWithIndex(as0)).flatMap(() =>
           collectAllParUnboundedDiscard(worker(queue, array).replicate(n)).map(() =>
@@ -794,7 +791,7 @@ export function releaseMapReleaseAll_(
                 s.update(f)(ex).exit()
               ).flatMap((results) =>
                 Effect.done(
-                  O.getOrElse_(exitCollectAll(results), () => exitSucceed(List.empty()))
+                  O.getOrElse_(exitCollectAll(results), () => exitUnit as any)
                 )
               ),
               new Exited(s.nextKey, ex, s.update)
@@ -806,9 +803,7 @@ export function releaseMapReleaseAll_(
                 s.update(f)(ex).exit()
               ).flatMap((results) =>
                 Effect.done(
-                  O.getOrElse_(exitCollectAllPar(results), () =>
-                    exitSucceed(List.empty())
-                  )
+                  O.getOrElse_(exitCollectAllPar(results), () => exitUnit as any)
                 )
               ),
               new Exited(s.nextKey, ex, s.update)
@@ -816,17 +811,15 @@ export function releaseMapReleaseAll_(
           }
           case "ParallelN": {
             return Tp.tuple(
-              forEachParN(
-                Array.from(s.finalizers()).reverse(),
-                execStrategy.n,
-                ([_, f]) => s.update(f)(ex).exit()
-              ).flatMap((results) =>
-                Effect.done(
-                  O.getOrElse_(exitCollectAllPar(results), () =>
-                    exitSucceed(List.empty())
+              forEachPar_(Array.from(s.finalizers()).reverse(), ([_, f]) =>
+                s.update(f)(ex).exit()
+              )
+                .flatMap((results) =>
+                  Effect.done(
+                    O.getOrElse_(exitCollectAllPar(results), () => exitUnit as any)
                   )
                 )
-              ),
+                .withParallelism(execStrategy.n) as UIO<any>,
               new Exited(s.nextKey, ex, s.update)
             )
           }
@@ -849,7 +842,7 @@ export function managedFork<R, E, A>(
     Effect.uninterruptibleMask(({ restore }) =>
       Effect.Do()
         .bind("outerReleaseMap", () => fiberRefGet(currentReleaseMap.value))
-        .bind("innerReleaseMap", () => releaseMapMake)
+        .bind("innerReleaseMap", () => ReleaseMap.make)
         .bind("fiber", ({ innerReleaseMap }) =>
           locally_(
             currentReleaseMap.value,
@@ -862,7 +855,7 @@ export function managedFork<R, E, A>(
           )
         )
         .bind("releaseMapEntry", ({ fiber, innerReleaseMap, outerReleaseMap }) =>
-          releaseMapAdd_(outerReleaseMap, (e) =>
+          outerReleaseMap.add((e) =>
             interruptFiber(fiber).flatMap(() =>
               releaseMapReleaseAll_(innerReleaseMap, e, sequential)
             )
@@ -881,7 +874,7 @@ export function managedUse_<R, E, A, R2, E2, B>(
   f: (a: A) => Effect<R2, E2, B>,
   __etsTrace?: string
 ): Effect<R & R2, E | E2, B> {
-  return releaseMapMake.flatMap((releaseMap) =>
+  return ReleaseMap.make.flatMap((releaseMap) =>
     locally_(
       currentReleaseMap.value,
       releaseMap

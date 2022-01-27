@@ -5,6 +5,7 @@ import type { Managed } from "../definition"
  * returning the right side.
  *
  * @ets fluent ets/Managed zipRight
+ * @ets operator ets/Managed >
  */
 export function zipRight_<R, E, A, R2, E2, A2>(
   self: Managed<R, E, A>,
