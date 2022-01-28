@@ -13,5 +13,5 @@ export function dieMessage(
   message: LazyArg<string>,
   __etsTrace?: string
 ): Managed<unknown, never, never> {
-  return Managed.die(() => new RuntimeError(message()))
+  return Managed.die(new RuntimeError(message()))
 }

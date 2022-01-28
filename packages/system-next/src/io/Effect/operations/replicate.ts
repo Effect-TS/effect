@@ -12,7 +12,7 @@ export function replicate_<R, E, A>(
   self: Effect<R, E, A>,
   n: number
 ): Chunk<Effect<R, E, A>> {
-  return map_(range(0, n), () => self)
+  return map_(range(0, n - 1), () => self)
 }
 
 /**

@@ -450,27 +450,26 @@ function forEachParNDiscard<R, E, A, X>(
 
     if (size === 0) {
       return Effect.unit
-    } else {
-      // eslint-disable-next-line no-inner-declarations
-      function worker(queue: Queue<A>): Effect<R, E, void> {
-        concreteQueue(queue)
-        return queue
-          .takeUpTo(1)
-          .map(Chunk.head)
-          .flatMap(
-            O.fold(
-              () => Effect.unit,
-              (a) => f(a).flatMap(() => Effect.suspendSucceed(() => worker(queue)))
-            )
-          )
-      }
-
-      return makeBoundedQueue<A>(size).flatMap((queue) =>
-        QCore.offerAll_(queue, as).flatMap(() =>
-          collectAllParUnboundedDiscard(worker(queue).replicate(n))
-        )
-      )
     }
+
+    function worker(queue: Queue<A>): Effect<R, E, void> {
+      concreteQueue(queue)
+      return queue
+        .takeUpTo(1)
+        .map(Chunk.head)
+        .flatMap(
+          O.fold(
+            () => Effect.unit,
+            (a) => f(a).flatMap(() => worker(queue))
+          )
+        )
+    }
+
+    return makeBoundedQueue<A>(size).flatMap((queue) =>
+      QCore.offerAll_(queue, as).flatMap(() =>
+        collectAllParUnboundedDiscard(worker(queue).replicate(n))
+      )
+    )
   })
 }
 
