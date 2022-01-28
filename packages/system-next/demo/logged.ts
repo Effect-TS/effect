@@ -51,3 +51,5 @@ export const x4 = Chunk.make(0, 1, 2).mapK(Effect.Applicative)((n) =>
 )
 
 export const x5 = Chunk.make(Effect(0), Effect(1)).sequenceK(Effect.Applicative)
+
+x5.unsafeRunPromise()
